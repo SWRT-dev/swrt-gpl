@@ -1,0 +1,8 @@
+SKU_2G_FCC	= "mt7621-sku.dat"
+SKU_5G_FCC	= "mt7621-sku.dat"
+SKU_2G_IC	= "mt7621-sku.dat"
+SKU_5G_IC	= "mt7621-sku.dat"
+SKU_2G_CE	= "20201221_SingleSKU_CE.dat"
+SKU_5G_CE	= "20201221_SingleSKU_CE.dat"
+SKU_2G_NCC	= "20210830_SingleSKU_NCC.dat"
+SKU_5G_NCC	= "20210830_SingleSKU_NCC.dat"

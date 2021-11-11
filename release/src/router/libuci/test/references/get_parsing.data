@@ -1,0 +1,5 @@
+config 'type' 'section'
+	option 'opt'	'val'
+
+config 'unnamed'
+	option 'opt1'	'val1'

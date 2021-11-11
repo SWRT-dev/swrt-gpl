@@ -1,0 +1,6 @@
+test_export ()
+{
+	cp ${REF_DIR}/export.data ${CONFIG_DIR}/export
+	${UCI} export > ${TMP_DIR}/export.result
+	assertSameFile ${REF_DIR}/export.result ${TMP_DIR}/export.result
+}

@@ -1,0 +1,6 @@
+
+config 'type' 'section'
+	option 'opt' 'val'
+	list 'list_opt' 'val0'
+	list 'list_opt' 'val1'
+

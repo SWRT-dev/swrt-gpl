@@ -1,0 +1,87 @@
+menu "CPU & DDR configuration"
+	depends on !MT7621_LEGACY_DRAMC_BIN
+
+config MT7621_CPU_FREQ
+	int "CPU Frequency (MHz)"
+	range 400 1200
+	default 880
+
+choice
+	prompt "DRAM speed"
+	default MT7621_DRAM_FREQ_1200
+
+config MT7621_DRAM_FREQ_400
+	bool "400MT/s"
+
+config MT7621_DRAM_FREQ_800
+	bool "800MT/s"
+
+config MT7621_DRAM_FREQ_1066
+	bool "1066MT/s"
+
+config MT7621_DRAM_FREQ_1200
+	bool "1200MT/s"
+
+endchoice
+
+config MT7621_DRAM_FREQ
+	int
+	default "400" if MT7621_DRAM_FREQ_400
+	default "800" if MT7621_DRAM_FREQ_800
+	default "1066" if MT7621_DRAM_FREQ_1066
+	default "1200" if MT7621_DRAM_FREQ_1200
+	default "1200"
+
+#config MT7621_DRAM_FREQ_TUNE
+#	int "DRAM speed tune"
+#	default 0
+#	help
+#	  This option is used to tune the DRAM frequency and will only take
+#	  effect if the xtal clock is 40MHz.
+#	  The final DRAM freq will be: DRAM_FREQ + 80 * DRAM_FREQ_TUNE.
+#	  e.g.: if DRAM_FREQ == 1200, DRAM_FREQ_TUNE == 1, final DRAM clock
+#	  will be 640MHz, and DRAM speed will be 1280MT/s
+choice
+	prompt "Prefered DDR2 init parameters"
+	default MT7621_DRAM_DDR2_1024M
+
+config MT7621_DRAM_DDR2_512M
+	bool "64MB"
+
+config MT7621_DRAM_DDR2_1024M
+	bool "128MB"
+
+config MT7621_DRAM_DDR2_512M_W9751G6KB_A02_1066MHZ
+	bool "W9751G6KB_A02 @ 1066MHz (64MB)"
+
+config MT7621_DRAM_DDR2_1024M_W971GG6KB25_800MHZ
+	bool "W971GG6KB25 @ 800MHz (128MB)"
+
+config MT7621_DRAM_DDR2_1024M_W971GG6KB18_1066MHZ
+	bool "W971GG6KB18 @ 1066MHz (128MB)"
+
+endchoice
+
+choice
+	prompt "Prefered DDR3 init parameters"
+	default MT7621_DRAM_DDR3_2048M
+
+config MT7621_DRAM_DDR3_1024M
+	bool "128MB"
+
+config MT7621_DRAM_DDR3_1024M_KGD
+	bool "128MB KGD"
+
+config MT7621_DRAM_DDR3_2048M
+	bool "256MB"
+
+config MT7621_DRAM_DDR3_4096M
+	bool "512MB"
+
+endchoice
+
+config MT7621_DRAMC_DEBUG
+	bool "Enable verbose output during DRAMC initialization"
+	default y
+
+endmenu

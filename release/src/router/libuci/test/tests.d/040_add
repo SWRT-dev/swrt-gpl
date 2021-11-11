@@ -1,0 +1,8 @@
+test_add_section()
+{
+	touch ${CONFIG_DIR}/add
+	section_name=$(${UCI} add add type)
+	assertNotNull "uci add does not return a section name." $section_name
+	sed 's/section/'$section_name'/' ${REF_DIR}/add_section.result > ${TMP_DIR}/add_section.result
+	assertSameFile ${TMP_DIR}/add_section.result ${CHANGES_DIR}/add
+}

@@ -1,0 +1,43 @@
+menu "ASUS Miscellaneous options"
+
+config  SINGLE_SKU_IN_DRIVER
+        bool "Single sku in driver, not file"
+        default n
+
+#config  MTD_JFFS2_LEN
+#        hex "MTD JFFS2 Partition Length (Unit:Bytes)"
+#        default 0x0
+
+config  MODEL_RTACRH18
+        bool "RT-ACRH18"
+        default n
+
+config  MODEL_RT4GAX56
+        bool "RT-4GAX56"
+        default n
+
+config  MODEL_RTAX53U
+        bool "RT-AX53U"
+        default n
+
+config  MODEL_RTAX54
+        bool "RT-AX54"
+        default n
+
+config  MODEL_RT4GAC86U
+        bool "4G-AC86U"
+        default n
+
+config  ASUS_EXT
+        bool "ASUS_EXT"
+        default n
+
+config  MTK_NAND_BLOCK2
+        bool "For MTK nand using 2 block"
+        default n
+
+config  FIBOCOM_FG621
+        bool "LTE module FIBOCOM FG621"
+        default n
+
+endmenu        

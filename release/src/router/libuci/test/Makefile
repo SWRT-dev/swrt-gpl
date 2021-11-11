@@ -1,0 +1,2 @@
+all:
+	sh ./tests.sh

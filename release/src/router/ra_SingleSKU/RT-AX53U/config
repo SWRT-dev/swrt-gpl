@@ -1,0 +1,4 @@
+SKU_2G_FCC	= "20210517_SingleSKU_FCC.dat"
+SKU_5G_FCC	= "20210517_SingleSKU_FCC.dat"
+SKU_2G_CE	= "20210611_SingleSKU_CE_.dat"
+SKU_5G_CE	= "20210611_SingleSKU_CE_.dat"

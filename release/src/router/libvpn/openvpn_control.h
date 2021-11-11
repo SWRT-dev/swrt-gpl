@@ -1,0 +1,15 @@
+extern void append_ovpn_accnt(const char *path, const char *ovpn_path);
+extern void create_ovpn_passwd();
+extern void run_ovpn_fw_scripts();
+extern void start_ovpn_eas();
+extern void start_ovpn_client(int unit);
+extern void start_ovpn_server(int unit);
+extern void stop_ovpn_eas();
+extern void stop_ovpn_client(int unit);
+extern void stop_ovpn_server(int unit);
+extern void write_ovpn_dnsmasq_config(FILE* f);
+extern int write_ovpn_resolv_dnsmasq(FILE* fp_servers);
+extern void update_ovpn_profie_remote();
+extern void ovpn_up_handler();
+extern void ovpn_down_handler();
+extern void ovpn_route_up_handler();

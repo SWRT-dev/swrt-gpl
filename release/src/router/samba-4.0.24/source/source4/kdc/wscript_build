@@ -1,0 +1,69 @@
+#!/usr/bin/env python
+
+bld.SAMBA_MODULE('service_kdc',
+	source='kdc.c kpasswdd.c proxy.c',
+	subsystem='service',
+	init_function='server_service_kdc_init',
+	deps='kdc HDB_SAMBA4 WDC_SAMBA4 samba-hostconfig LIBTSOCKET LIBSAMBA_TSOCKET com_err samba_server_gensec PAC_GLUE',
+	internal_module=False,
+	)
+
+
+bld.SAMBA_LIBRARY('HDB_SAMBA4',
+                  source='hdb-samba4.c hdb-samba4-plugin.c',
+                  deps='ldb auth4_sam auth_sam_reply samba-credentials hdb db-glue samba-hostconfig com_err',
+                  includes='../heimdal/kdc',
+                  private_library=True
+                  )
+
+# A plugin for Heimdal's kadmin for users who need to operate that tool
+bld.SAMBA_LIBRARY('HDB_SAMBA4_PLUGIN',
+                  source='hdb-samba4-plugin.c',
+                  deps='hdb HDB_SAMBA4 samba-util samba-hostconfig ',
+                  includes='../heimdal/kdc',
+                  link_name='modules/hdb/hdb_samba4.so',
+                  realname='hdb_samba4.so',
+                  install_path='${MODULESDIR}/hdb',
+                  enabled = (bld.CONFIG_SET("USING_SYSTEM_KRB5") and bld.CONFIG_SET("USING_SYSTEM_HDB"))
+                  )
+
+bld.SAMBA_SUBSYSTEM('WDC_SAMBA4',
+	source='wdc-samba4.c',
+	includes='../heimdal/kdc',
+	deps='ldb auth4_sam auth_sam_reply samba-credentials hdb PAC_GLUE samba-hostconfig com_err'
+	)
+
+
+bld.SAMBA_SUBSYSTEM('PAC_GLUE',
+	source='pac-glue.c',
+	includes='../heimdal/kdc',
+	deps='ldb auth4_sam auth_sam_reply samba-credentials hdb samba-hostconfig com_err'
+	)
+
+bld.SAMBA_LIBRARY('pac',
+	source=[],
+	deps='PAC_GLUE',
+	private_library=True,
+	grouping_library=True)
+
+
+bld.SAMBA_LIBRARY('db-glue',
+	source='db-glue.c',
+	deps='ldb auth4_sam auth_sam_reply samba-credentials hdb samba-hostconfig com_err',
+	private_library=True,
+	includes='../heimdal/kdc',
+	)
+
+bld.SAMBA_SUBSYSTEM('MIT_SAMBA',
+	source='mit_samba.c',
+	deps='ldb auth4_sam auth_sam_reply samba-credentials hdb db-glue PAC_GLUE samba-hostconfig com_err'
+	)
+
+
+bld.SAMBA_LIBRARY('mit-samba',
+	source='',
+	deps='MIT_SAMBA',
+	external_library=True,
+	realname='mit_samba.so'
+	)
+

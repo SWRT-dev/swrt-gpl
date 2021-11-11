@@ -1,0 +1,11 @@
+test_get_parsing()
+{
+	cp ${REF_DIR}/show_parsing.data ${CONFIG_DIR}/test
+
+	assertFailWithNoReturn "${UCI_Q} show test."
+	assertFailWithNoReturn "${UCI_Q} show test.section."
+	assertFailWithNoReturn "${UCI_Q} show test.section.opt."
+	assertFailWithNoReturn "${UCI_Q} show test.section.opt.val."
+	assertFailWithNoReturn "${UCI_Q} show test.section.opt.val.qsdf.qsd"
+	assertFailWithNoReturn "${UCI_Q} show test.section.opt.valqsqsd"
+}

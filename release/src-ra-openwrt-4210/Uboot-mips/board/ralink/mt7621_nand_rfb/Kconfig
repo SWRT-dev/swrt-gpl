@@ -1,0 +1,60 @@
+if BOARD_MT7621_NAND_RFB
+
+config SYS_VENDOR
+	default "ralink"
+
+config SYS_BOARD
+	default "mt7621_nand_rfb"
+
+config SYS_CONFIG_NAME
+	default "mt7621_nand"
+
+config CRC32C_BE
+	bool
+	default y
+
+config ENABLE_NAND_NMBM
+	bool "Enable NAND bad block mapping management"
+	default n
+	select MTD_DEVICE
+	select NMBM
+	select NMBM_MTD
+	help
+	  Select this if you want to use bad block management to handle
+	  bad blocks marked druing factory production, and to handle new
+	  bad blocks during use.
+	  Enabling this option will create a MTD translation layer on
+	  the original MTD of the NAND device.
+
+config NMBM_MAX_RATIO
+	int "Default ratio for reserved block for management (N/16)"
+	range 1 8
+	default 1
+	depends on ENABLE_NAND_NMBM
+	help
+	  This option determines how many blocks at the high adress of NAND
+	  can be used for NMBM. For a large size NAND, 1/16 of total blocks
+	  are still too large for NMBM. For this situation please set
+	  CONFIG_NMBM_MAX_BLOCKS to a proper value to limit the maximum
+	  reserved blocks.
+
+config NMBM_MAX_BLOCKS
+	int "Maximum blocks allowed for reserved block for management"
+	range 32 2147483647
+	default 256
+	depends on ENABLE_NAND_NMBM
+	help
+	  This option is applied after NMBM_MAX_RATIO to ensure maximum
+	  blocks reserved block for NMBM will not exceed the value set by
+	  this option.
+
+config DEFAULT_NAND_KERNEL_OFFSET
+	hex "Default kernel offset in the NAND"
+	default 0x140000
+	help
+	  This is the fallback value if mtkboardboot command can't
+	  boot from MTD partition directly.
+
+source "board/ralink/common/Kconfig"
+
+endif

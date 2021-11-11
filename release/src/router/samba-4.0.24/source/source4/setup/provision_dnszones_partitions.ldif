@@ -1,0 +1,18 @@
+################################
+## DNSZones Naming Context
+################################
+dn: ${DOMAINZONE_DN}
+objectClass: top
+objectClass: domainDNS
+description: Microsoft DNS Directory
+msDS-NcType: 0
+instanceType: 13
+ntSecurityDescriptor:: ${SECDESC}
+
+dn: ${FORESTZONE_DN}
+objectClass: top
+objectClass: domainDNS
+description: Microsoft DNS Directory
+msDS-NcType: 0
+instanceType: 13
+ntSecurityDescriptor:: ${SECDESC}

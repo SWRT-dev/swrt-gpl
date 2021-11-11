@@ -1,0 +1,14 @@
+New network section 'lan'
+	type: static
+	ifname: eth0
+	ipaddr: 0.0.0.0
+	test: 123
+	enabled: off
+Configured aliases: a b
+New network section 'wan'
+	type: dhcp
+	ifname: eth1
+	ipaddr: 0.0.0.0
+	test: -1
+	enabled: on
+Configured aliases: c d

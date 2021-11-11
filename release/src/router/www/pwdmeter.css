@@ -1,0 +1,32 @@
+#score, .strength_text {
+	color: #222;
+	font-weight: bold;
+	position:absolute;
+	text-align: center;
+	width: 120px;
+	z-index: 10;
+}
+
+#scorebar, .strength_color{
+	background-image: url(images/pwd_strength_gradient.jpg);
+	background-repeat: repeat;
+	background-position: 0 0;
+	position:absolute;
+	width: 120px;
+	height: 23px;
+	z-index: 0;
+	box-shadow: inset 1px 1px 1px 0px rgba(20%, 20%, 20%, 1);
+}
+#scorebarBorder {
+	background: #333;
+	border: 1px #999 solid;
+	height: 23px;
+	margin-bottom: 2px;
+	width: 120px;	
+}
+.pwd_strength_container {
+	height: 23px;
+	line-height: 25px;
+	width: 120px;
+	outline: 1px #999 solid;
+}

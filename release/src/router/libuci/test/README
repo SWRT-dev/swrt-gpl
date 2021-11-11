@@ -1,0 +1,34 @@
+This test script uses shunit2 :
+http://code.google.com/p/shunit2/
+
+uci-static binary is used during tests.
+
+
+How to add a test
+=================
+
+* Test files are located in './test/tests.d'
+
+* These files contain shell functions beginning with 'test' :
+"
+test_get_option ()
+{
+...
+}
+...
+"
+
+* shunit2 functions can be used in these functions :
+http://shunit2.googlecode.com/svn/trunk/source/2.1/doc/shunit2.html
+
+* Additional environment variables are available :
+	- ${CONFIG_DIR} : uci search path for config files. This directory is
+	  reset after each test.
+	- ${CHANGES_DIR} : uci search path for config change files. This directory is
+	  reset after each test.
+	- ${TMP_DIR} : path to a directory where can be stored temporary files
+	  during tests. This directory is reset after each test.
+	- ${UCI} : uci static binary called with above config and changes
+	  directories as parameters.
+	- ${REF_DIR} : path to a directory where can be stored reference files
+	  or data.

@@ -1,0 +1,2 @@
+config 'named' 'section'
+	option 'opt'	'err'
