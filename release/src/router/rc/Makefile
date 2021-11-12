@@ -1567,7 +1567,7 @@ ifneq ($(wildcard ./prebuild/air_monitor.o),)
 air_monitor.o:
 	@-cp -f ./prebuild/air_monitor.o .
 endif
-ifneq ($(wildcard ./prebuild/ralink.o),)
+ifeq ($(wildcard ./sysdeps/ralink/ralink.c),)
 ralink.o:
 	@-cp -f ./prebuild/ralink.o .
 endif
