@@ -515,4 +515,6 @@ config CRYPTO_DEV_MEDIATEK
 	  EIP97 which can be found on the MT7623 MT2701, MT8521p, etc ....
 	  Select this if you want to use it for AES/SHA1/SHA2 algorithms.
 
+source "drivers/crypto/mtk-eip93/Kconfig"
+
 endif # CRYPTO_HW
