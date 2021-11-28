@@ -68,10 +68,19 @@ endif
 version.h:
 	@echo "#define VERSION \"$(VERSION)\"" > src/version.h
 
+ifneq ($(BCMSYSROOT),)
+install:
+	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(BCMCC)) ARCH=arm64 EXTRA_CFLAGS="-I$(TOP)/shared -I$(PWD)/src -I$(BCMSYSROOT) -D$(HWCHIP) -DENABLE_ASYNC" SUBDIRS=$(PWD)/src INSTALL_MOD_PATH=$(INSTALLDIR) modules_install
+	@find $(INSTALLDIR) -name "modules.*" | xargs rm -f
+	@find $(INSTALLDIR) -name "*.ko" | xargs $(BCMCC)strip -x
+
+else
 install:
 	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) EXTRA_CFLAGS=-I$(TOP)/shared SUBDIRS=$(PWD)/src INSTALL_MOD_PATH=$(INSTALLDIR) modules_install
 	@find $(INSTALLDIR) -name "modules.*" | xargs rm -f
 	@find $(INSTALLDIR) -name "*.ko" | xargs $(STRIPX)
+
+endif
 
 clean:
 	$(RM) src/*.o src/*.ko src/*.mod.* src/version.h
