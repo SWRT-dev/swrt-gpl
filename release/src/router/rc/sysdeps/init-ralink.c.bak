@@ -1201,7 +1201,8 @@ void generate_wl_para(int unit, int subunit)
 {
 }
 
-#if defined(RTAC85U) || defined(RTAC85P) || defined(RTACRH26) || defined(RMAC2100) || defined(R6800)
+//#if defined(RTAC85U) || defined(RTAC85P) || defined(RTACRH26) || defined(RMAC2100) || defined(R6800)
+#if 0
 #define HW_NAT_WIFI_OFFLOADING		(0xFF00)
 #define HW_NAT_DEVNAME			"hwnat0"
 static void adjust_hwnat_wifi_offloading(void)
@@ -1256,7 +1257,7 @@ void reinit_hwnat(int unit)
 	if (!nvram_get_int("hwnat"))
 		return;
 
-#if defined(RTAC85U) || defined(RTAC85P) || defined(TUFAC1750) || defined(RMAC2100) || defined(R6800)
+#if defined(RTAC85U) || defined(RTAC85P) || defined(TUFAC1750) || defined(RTAX53U) || defined(RMAC2100) || defined(R6800)
 	if(!is_wan_connect(prim_unit))
 		return;
 #endif
@@ -1265,7 +1266,7 @@ void reinit_hwnat(int unit)
 	if (nvram_get_int("qos_enable") == 1)
 		act = 0;
 
-#if defined(RTAC85U) || defined(RTAC85P) || defined(TUFAC1750) || defined(RMAC2100) || defined(R6800)
+#if defined(RTAC85U) || defined(RTAC85P) || defined(TUFAC1750) || defined(RTAX53U) || defined(RMAC2100) || defined(R6800)
 	if (act > 0 && !nvram_match("switch_wantag", "none") && !nvram_match("switch_wantag", ""))
 		act = 0;
 #endif
@@ -1295,7 +1296,7 @@ void reinit_hwnat(int unit)
 #endif
 	}
 
-#if defined(RTAC85U) || defined(RTAC85P) || defined(TUFAC1750) || defined(RMAC2100) || defined(R6800)
+#if defined(RTAC85U) || defined(RTAC85P) || defined(TUFAC1750) || defined(RTAX53U) || defined(RMAC2100) || defined(R6800)
 	if (act > 0) {
 #if defined(RTCONFIG_DUALWAN)
 		if (unit < 0 || unit > WAN_UNIT_SECOND || nvram_match("wans_mode", "lb")) {
@@ -1361,9 +1362,10 @@ void reinit_hwnat(int unit)
 
 	if (act < 0)
 		return;
-
+#if 0 //3.10.x
 	switch (act) {
 	case 0:		/* remove hwnat */
+
 		if (module_loaded("hw_nat")) {
 #if defined (RTCONFIG_WLMODULE_MT7615E_AP)
 			doSystem("iwpriv %s set hw_nat_register=%d", get_wifname(0), 0);
@@ -1393,12 +1395,22 @@ void reinit_hwnat(int unit)
 #endif
 #endif		
 		adjust_hwnat_wifi_offloading();
-	
 	}
+#else //4.4.x
+	if (act){
+		if (!module_loaded("mtkhnat")) {
+			modprobe("mtkhnat");
+		}		
+	} else {
+		if (module_loaded("mtkhnat")) {
+			modprobe_r("mtkhnat");
+			sleep(1);
+		}
+	}
+#endif
 }
 
-int
-wl_exist(char *ifname, int band)
+int wl_exist(char *ifname, int band)
 {
 	int ret = 0;
 	ret = eval("iwpriv", ifname, "stat");
@@ -1406,8 +1418,7 @@ wl_exist(char *ifname, int band)
 	return !ret;
 }
 
-void
-set_wan_tag(char *interface) {
+void set_wan_tag(char *interface) {
 	int model, wan_vid; //, iptv_vid, voip_vid, wan_prio, iptv_prio, voip_prio;
 	char wan_dev[10], port_id[7];
 
@@ -1425,6 +1436,7 @@ set_wan_tag(char *interface) {
 	case MODEL_R6800:
 #endif
 	case MODEL_TUFAC1750:
+	case MODEL_RTAX53U:
 		ifconfig(interface, IFUP, 0, 0);
 		if(wan_vid) { /* config wan port */
 			eval("vconfig", "rem", "vlan2");
@@ -1531,12 +1543,15 @@ void reset_ra_sku(const char *location, const char *country, const char *reg_spe
 =============================================================================*/
 
 
-void setup_smp(void)
+void setup_smp(int which)
 {
 #if defined(RTAC85U) || defined(RTAC85P) || defined(TUFAC1750) || defined(RTAX53U) || defined(RMAC2100) || defined(R6800)
-	//eval("/sbin/smp.sh", "wifi", NULL);
+	if(which == 1)
+		eval("/sbin/smp.sh", "usb0", NULL);
+	else
+		eval("/sbin/smp.sh", "wifi", NULL);
 	//nas or auto
-	doSystem("pbr-optimizer -m 1 -o &");
+	//doSystem("pbr-optimizer -m 1 -o &");
 	//nat
 	//doSystem("pbr-optimizer -m 2 -o &");
 	//wifi

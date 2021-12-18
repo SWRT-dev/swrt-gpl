@@ -2311,7 +2311,7 @@ extern int get_channel_list_via_country(int unit, const char *country_code, char
 extern int get_mtk_wifi_driver_version(char *buffer, int len);
 #if defined(RTCONFIG_RALINK_MT7620)
 extern int __mt7620_wan_bytecount(int unit, unsigned long *tx, unsigned long *rx);
-#elif defined(RTCONFIG_RALINK_MT7620)
+#elif defined(RTCONFIG_RALINK_MT7621)
 extern int __mt7621_wan_bytecount(int unit, unsigned long *tx, unsigned long *rx);
 #endif
 extern int get_channel_list(int unit, int ch_list[], int size);
