@@ -251,6 +251,11 @@ static int __setup_vlan(int vid, int prio, unsigned int mask)
 }
 
 int config_switch_for_first_time = 1;
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+int lan_port_bit_shift = 1;
+#else
+int lan_port_bit_shift = 0;
+#endif
 void config_switch()
 {
 	int model = get_model();
@@ -345,7 +350,9 @@ void config_switch()
 				if(!strncmp(nvram_safe_get("switch_wantag"), "unifi", 5)) {
 					/* Added for Unifi. Cherry Cho modified in 2011/6/28.*/
 					if(strstr(nvram_safe_get("switch_wantag"), "home")) {
-						system("rtkswitch 38 1");		/* IPTV: P0 */
+						//system("rtkswitch 38 1");		/* IPTV: P0 */
+						snprintf(parm_buf, sizeof(parm_buf), "%d", 1 << lan_port_bit_shift);
+						eval("rtkswitch", "38", parm_buf);
 						/* Internet:	untag: P9;   port: P4, P9 */
 						__setup_vlan(500, 0, 0x02000210);
 						/* IPTV:	untag: P0;   port: P0, P4 */
@@ -363,53 +370,68 @@ void config_switch()
 					if(strstr(nvram_safe_get("switch_wantag"), "mio")) {
 						/* Connect Singtel MIO box to P3 */
 						system("rtkswitch 40 1");		/* admin all frames on all ports */
-						system("rtkswitch 38 3");		/* IPTV: P0  VoIP: P1 */
+						//system("rtkswitch 38 3");		/* IPTV: P0  VoIP: P1 */
+						snprintf(parm_buf, sizeof(parm_buf), "%d", 3 << lan_port_bit_shift);
+						eval("rtkswitch", "38", parm_buf);
 						/* Internet:	untag: P9;   port: P4, P9 */
 						__setup_vlan(10, 0, 0x02000210);
 						/* VoIP:	untag: N/A;  port: P1, P4 */
 						//VoIP Port: P1 tag
-						__setup_vlan(30, 4, 0x00000012);
+						//__setup_vlan(30, 4, 0x00000012);
+						__setup_vlan(30, 4, ((2 << lan_port_bit_shift) | 0x10));
 					}
 					else {
 						//Connect user's own ATA to lan port and use VoIP by Singtel WAN side VoIP gateway at voip.singtel.com
-						system("rtkswitch 38 1");		/* IPTV: P0 */
+						//system("rtkswitch 38 1");		/* IPTV: P0 */
+						snprintf(parm_buf, sizeof(parm_buf), "%d", 1 << lan_port_bit_shift);
+						eval("rtkswitch", "38", parm_buf);
 						/* Internet:	untag: P9;   port: P4, P9 */
 						__setup_vlan(10, 0, 0x02000210);
 					}
+					if(strstr(nvram_safe_get("switch_wantag"), "mstb"))
+						__setup_vlan(20, 4, ((0x30003 << lan_port_bit_shift) | 0x10));		/* untag: P0;   port: P0, P4 */
+					else
+						__setup_vlan(20, 4, ((0x10001 << lan_port_bit_shift) | 0x10));		/* untag: P0;   port: P0, P4 */
 
-					/* IPTV */
-					__setup_vlan(20, 4, 0x00010011);		/* untag: P0;   port: P0, P4 */
 				}
 				else if(!strcmp(nvram_safe_get("switch_wantag"), "m1_fiber")) {
 					//VoIP: P1 tag. Cherry Cho added in 2012/1/13.
 					system("rtkswitch 40 1");			/* admin all frames on all ports */
-					system("rtkswitch 38 2");			/* VoIP: P1  2 = 0x10 */
+					//system("rtkswitch 38 2");			/* VoIP: P1  2 = 0x10 */
+					snprintf(parm_buf, sizeof(parm_buf), "%d", 2 << lan_port_bit_shift);
+					eval("rtkswitch", "38", parm_buf);
 					/* Internet:	untag: P9;   port: P4, P9 */
 					__setup_vlan(1103, 1, 0x02000210);
 					/* VoIP:	untag: N/A;  port: P1, P4 */
 					//VoIP Port: P1 tag
-					__setup_vlan(1107, 1, 0x00000012);
+					//__setup_vlan(1107, 1, 0x00000012);
+					__setup_vlan(1107, 1, ((2 << lan_port_bit_shift) | 0x10));
 				}
 				else if(!strcmp(nvram_safe_get("switch_wantag"), "maxis_fiber")) {
 					//VoIP: P1 tag. Cherry Cho added in 2012/11/6.
 					system("rtkswitch 40 1");			/* admin all frames on all ports */
-					system("rtkswitch 38 2");			/* VoIP: P1  2 = 0x10 */
+					//system("rtkswitch 38 2");			/* VoIP: P1  2 = 0x10 */
+					snprintf(parm_buf, sizeof(parm_buf), "%d", 2 << lan_port_bit_shift);
+					eval("rtkswitch", "38", parm_buf);
 					/* Internet:	untag: P9;   port: P4, P9 */
 					__setup_vlan(621, 0, 0x02000210);
 					/* VoIP:	untag: N/A;  port: P1, P4 */
-					__setup_vlan(821, 0, 0x00000012);
+					__setup_vlan(821, 0, ((2 << lan_port_bit_shift) | 0x10));
 
-					__setup_vlan(822, 0, 0x00000012);		/* untag: N/A;  port: P1, P4 */ //VoIP Port: P1 tag
+					__setup_vlan(822, 0, ((2 << lan_port_bit_shift) | 0x10));		/* untag: N/A;  port: P1, P4 */ //VoIP Port: P1 tag
 				}
 				else if(!strcmp(nvram_safe_get("switch_wantag"), "maxis_fiber_sp")) {
 					//VoIP: P1 tag. Cherry Cho added in 2012/11/6.
 					system("rtkswitch 40 1");			/* admin all frames on all ports */
-					system("rtkswitch 38 2");			/* VoIP: P1  2 = 0x10 */
+					//system("rtkswitch 38 2");			/* VoIP: P1  2 = 0x10 */
+					snprintf(parm_buf, sizeof(parm_buf), "%d", 2 << lan_port_bit_shift);
+					eval("rtkswitch", "38", parm_buf);
 					/* Internet:	untag: P9;   port: P4, P9 */
 					__setup_vlan(11, 0, 0x02000210);
 					/* VoIP:	untag: N/A;  port: P1, P4 */
 					//VoIP Port: P1 tag
-					__setup_vlan(14, 0, 0x00000012);
+					//__setup_vlan(14, 0, 0x00000012);
+					__setup_vlan(14, 0, ((2 << lan_port_bit_shift) | 0x10));
 				}
 #ifdef RTCONFIG_MULTICAST_IPTV
 			else if (!strcmp(nvram_safe_get("switch_wantag"), "movistar")) {
@@ -431,33 +453,51 @@ void config_switch()
 #endif
 				else if (!strcmp(nvram_safe_get("switch_wantag"), "meo")) {
 					system("rtkswitch 40 1");			/* admin all frames on all ports */
-					system("rtkswitch 38 1");			/* VoIP: P0 */
+					//system("rtkswitch 38 1");			/* VoIP: P0 */
+					snprintf(parm_buf, sizeof(parm_buf), "%d", 1 << lan_port_bit_shift);
+					eval("rtkswitch", "38", parm_buf);
 					/* Internet/VoIP:	untag: P9;   port: P0, P4, P9 */
-					__setup_vlan(12, 0, 0x02000211);
+					//__setup_vlan(12, 0, 0x02000211);
+					__setup_vlan(12, 0, ((1 << lan_port_bit_shift) | 0x2000210));
 				}
 				else if (!strcmp(nvram_safe_get("switch_wantag"), "vodafone")) {
 					system("rtkswitch 40 1");			/* admin all frames on all ports */
-					system("rtkswitch 38 3");			/* Vodafone: P0  IPTV: P1 */
+					//system("rtkswitch 38 3");			/* Vodafone: P0  IPTV: P1 */
+					snprintf(parm_buf, sizeof(parm_buf), "%d", 3 << lan_port_bit_shift);
+					eval("rtkswitch", "38", parm_buf);
 					/* Internet:	untag: P9;   port: P4, P9 */
-					__setup_vlan(100, 1, 0x02000211);
+					//__setup_vlan(100, 1, 0x02000211);
+					__setup_vlan(100, 1, ((1 << lan_port_bit_shift) | 0x2000210));
 					/* IPTV:	untag: N/A;  port: P0, P4 */
-					__setup_vlan(101, 0, 0x00000011);
+					//__setup_vlan(101, 0, 0x00000011);
+					__setup_vlan(101, 0, ((1 << lan_port_bit_shift) | 0x10));
 					/* Vodafone:	untag: P1;   port: P0, P1, P4 */
-					__setup_vlan(105, 1, 0x00020013);
+					//__setup_vlan(105, 1, 0x00020013);
+					__setup_vlan(105, 1, ((0x20003 << lan_port_bit_shift) | 0x10));
 				}
 				else if (!strcmp(nvram_safe_get("switch_wantag"), "hinet")) { /* Hinet MOD */
+#if defined(RTAX53U)
+					eval("rtkswitch", "8", "3");			/* LAN4 with WAN */
+#else
 					eval("rtkswitch", "8", "4");			/* LAN4 with WAN */
+#endif
 				}
 				else {
 					/* Cherry Cho added in 2011/7/11. */
 					/* Initialize VLAN and set Port Isolation */
-					if(strcmp(nvram_safe_get("switch_wan1tagid"), "") && strcmp(nvram_safe_get("switch_wan2tagid"), ""))
-						system("rtkswitch 38 3");		// 3 = 0x11 IPTV: P0  VoIP: P1
-					else if(strcmp(nvram_safe_get("switch_wan1tagid"), ""))
-						system("rtkswitch 38 1");		// 1 = 0x01 IPTV: P0
-					else if(strcmp(nvram_safe_get("switch_wan2tagid"), ""))
-						system("rtkswitch 38 2");		// 2 = 0x10 VoIP: P1
-					else
+					if(strcmp(nvram_safe_get("switch_wan1tagid"), "") && strcmp(nvram_safe_get("switch_wan2tagid"), "")){
+						//system("rtkswitch 38 3");		// 3 = 0x11 IPTV: P0  VoIP: P1
+						snprintf(parm_buf, sizeof(parm_buf), "%d", 3 << lan_port_bit_shift);
+						eval("rtkswitch", "38", parm_buf);
+					}else if(strcmp(nvram_safe_get("switch_wan1tagid"), "")){
+						//system("rtkswitch 38 1");		// 1 = 0x01 IPTV: P0
+						snprintf(parm_buf, sizeof(parm_buf), "%d", 1 << lan_port_bit_shift);
+						eval("rtkswitch", "38", parm_buf);
+					}else if(strcmp(nvram_safe_get("switch_wan2tagid"), "")){
+						//system("rtkswitch 38 2");		// 2 = 0x10 VoIP: P1
+						snprintf(parm_buf, sizeof(parm_buf), "%d", 2 << lan_port_bit_shift);
+						eval("rtkswitch", "38", parm_buf);
+					}else
 						system("rtkswitch 38 0");		//No IPTV and VoIP ports
 
 					/*++ Get and set Vlan Information */
@@ -471,7 +511,7 @@ void config_switch()
 
 						__setup_vlan(vlan_val, prio_val, 0x02000210);
 					}
-#if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7621)
+#if defined(RTCONFIG_RALINK_MT7621)
 					else {
 						/* Internet: untag: P4, P9; port: P4, P9 */
 						__setup_vlan(2, 0, 0x02100210);
@@ -490,8 +530,8 @@ void config_switch()
 							mask = 0x00030013;	//IPTV=VOIP
 						else
 							mask = 0x00010011;	//IPTV Port: P0 untag 65553 = 0x10 011
-
-						__setup_vlan(vlan_val, prio_val, mask);
+						//__setup_vlan(vlan_val, prio_val, mask);
+						__setup_vlan(vlan_val, prio_val, (((mask & 0xf000f) << lan_port_bit_shift) | 0x10));
 					}
 
 					t = nvram_get_int("switch_wan2tagid") & 0x0fff;
@@ -507,7 +547,8 @@ void config_switch()
 						else
 							mask = 0x00020012;	//VoIP Port: P1 untag
 
-						__setup_vlan(vlan_val, prio_val, mask);
+						//__setup_vlan(vlan_val, prio_val, mask);
+						__setup_vlan(vlan_val, prio_val, (((mask & 0xf000f) << lan_port_bit_shift) | 0x10));
 					}
 				}
 			}
