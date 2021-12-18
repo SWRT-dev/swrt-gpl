@@ -628,6 +628,7 @@ void init_wl(void)
 	char tmpStr1[16];
 	char tmpStr2[24];
 	char tmpStr3[24];
+	char cmd[1024];
 	int i;
 
 	memset(tmpStr1, 0, sizeof(tmpStr1));
@@ -689,6 +690,7 @@ void init_wl(void)
 
 	if (!module_loaded("rt2860v2_ap"))
 		modprobe("rt2860v2_ap");
+
 #if defined (RTCONFIG_WLMODULE_MT7610_AP)
 	if (!module_loaded("MT7610_ap"))
 		modprobe("MT7610_ap");
@@ -715,11 +717,26 @@ void init_wl(void)
 		//modprobe("mt_wifi_7615E", tmpStr1, tmpStr2, tmpStr3);
 		modprobe("mt_wifi_7615E");
 #endif
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+	system("dd if=/dev/mtdblock3 of=/lib/firmware/e2p bs=131072 skip=0 count=1");
+	system("ln -sf /rom/etc/wireless/mediatek /etc/wireless/");
+	if (!module_loaded("mt_wifi"))
+		modprobe("mt_wifi", tmpStr1, tmpStr2, tmpStr3);
+	//if (!module_loaded("mt_wifi_7915D"))
+		//modprobe("mt_wifi_7619D");
+	snprintf(cmd, sizeof(cmd), "iwpriv %s set RuntimePara_%s\n", get_wifname(0), tmpStr1);
+	system(cmd);
+	snprintf(cmd, sizeof(cmd), "iwpriv %s set RuntimePara_%s\n", get_wifname(0), tmpStr2);
+	system(cmd);
+	snprintf(cmd, sizeof(cmd), "iwpriv %s set RuntimePara_%s\n", get_wifname(0), tmpStr3);
+	system(cmd);
+#endif
 	sleep(1);
 }
 
 void fini_wl(void)
 {
+#if 0 //3.10.x
 	if (module_loaded("hw_nat")) {
 #if defined (RTCONFIG_WLMODULE_MT7615E_AP)
 		doSystem("iwpriv %s set hw_nat_register=%d", get_wifname(0), 0);
@@ -729,6 +746,10 @@ void fini_wl(void)
 #endif
 		modprobe_r("hw_nat");
 	}
+#else //4.4.x
+	if (module_loaded("mtkhnat"))
+		modprobe_r("mtkhnat");
+#endif
 
 #if defined (RTCONFIG_WLMODULE_MT7610_AP)
 	if (module_loaded("MT7610_ap"))
@@ -751,7 +772,6 @@ void fini_wl(void)
 
 	if (module_loaded("rt2860v2_ap"))
 		modprobe_r("rt2860v2_ap");
-
 }
 
 
@@ -982,12 +1002,14 @@ void init_syspara(void)
 
 		dst[i] = 0;
 		nvram_set("wl_reg_2g", dst);
-		if      (strcmp(dst, "2G_CH11") == 0)
+		if (strcmp(dst, "2G_CH11") == 0)
 			nvram_set("wl0_country_code", "US");
 		else if (strcmp(dst, "2G_CH13") == 0)
 			nvram_set("wl0_country_code", "GB");
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 		else if (strcmp(dst, "2G_CH14") == 0)
 			nvram_set("wl0_country_code", "DB");
+#endif
 		else
 			nvram_set("wl0_country_code", "DB");
 	}
@@ -1027,12 +1049,14 @@ void init_syspara(void)
 			nvram_set("wl1_country_code", "CN");
 		else if (strcmp(dst, "5G_BAND124") == 0)
 			nvram_set("wl1_country_code", "IN");
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 		else if (strcmp(dst, "5G_BAND12") == 0)	{
 			nvram_set("wl1_country_code", "IL");
 #ifdef RTCONFIG_RALINK_DFS
 			nvram_set("wl1_IEEE80211H", "1");
 #endif	/* RTCONFIG_RALINK_DFS */
 		}
+#endif
 		else if (strcmp(dst, "5G_ALL") == 0)	{
 #if defined(RTAC85P)
 			nvram_set("wl1_country_code", "RU");
@@ -1145,7 +1169,7 @@ void init_syspara(void)
 	_dprintf("bootloader version: %s\n", nvram_safe_get("blver"));
 	_dprintf("firmware version: %s\n", nvram_safe_get("firmver"));
 
-#if !defined (RTCONFIG_WLMODULE_MT7615E_AP)
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
 	dst = txbf_para;
 	int count_0xff = 0;
 	if (FRead(dst, OFFSET_TXBF_PARA, 33) < 0)
