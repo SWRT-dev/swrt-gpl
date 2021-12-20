@@ -3630,8 +3630,7 @@ int iw_ignore_version_sp = 0;
 /*
  * Get the range information out of the driver
  */
-int
-ralink_get_range_info(iwrange *	range, char* buffer, int length)
+int ralink_get_range_info(iwrange *	range, char* buffer, int length)
 {
   union iw_range_raw *	range_raw;
 
@@ -3735,13 +3734,12 @@ ralink_get_range_info(iwrange *	range, char* buffer, int length)
   return (0);
 }
 
-int
-getSSID(int band)
+int getSSID(int band)
 {
 	struct iwreq wrq;
 	wrq.u.data.flags = 0;
 	char buffer[33];
-	bzero(buffer, sizeof(buffer));
+	memset(buffer, 0, sizeof(buffer));
 	wrq.u.essid.pointer = (caddr_t) buffer;
 	wrq.u.essid.length = IW_ESSID_MAX_SIZE + 1;
 	wrq.u.essid.flags = 0;
@@ -3763,8 +3761,7 @@ getSSID(int band)
 	return 0;
 }
 
-int
-getChannel(int band)
+int getChannel(int band)
 {
 	int channel;
 	struct iw_range	range;
@@ -3777,7 +3774,7 @@ getChannel(int band)
 		return 0;
 
 	char buffer[sizeof(iwrange) * 2];
-	bzero(buffer, sizeof(buffer));
+	memset(buffer, 0, sizeof(buffer));
 	wrq2.u.data.pointer = (caddr_t) buffer;
 	wrq2.u.data.length = sizeof(buffer);
 	wrq2.u.data.flags = 0;
@@ -3804,9 +3801,31 @@ getChannel(int band)
 	return 0;
 }
 
+int startScan(int band)
+{
+	int lock;
+	char data[64];
+	struct iwreq wrq;
 
-int
-getSiteSurvey(int band,char* ofile)
+	memset(data, 0, sizeof(data));
+	strcpy(data, "SiteSurvey=1");
+	wrq.u.data.length = strlen(data) + 1;
+	wrq.u.data.pointer = data;
+	wrq.u.data.flags = 0;
+
+	lock = file_lock("sitesurvey");
+	if(wl_ioctl(get_wifname(band), RTPRIV_IOCTL_SET, &wrq) < 0)
+	{
+		file_unlock(lock);
+		dbg("Site Survey fails\n");
+		return 0;
+	}
+	file_unlock(lock);
+	sleep(4);
+	return 1;
+}
+
+int getSiteSurvey(int band, char* ofile)
 {
 	int i = 0, apCount = 0;
 	char data[8192];
@@ -3818,9 +3837,9 @@ getSiteSurvey(int band,char* ofile)
 	char ssid_str[256],tmp[256];
 	char ure_mac[18];
 	int wl_authorized = 0;
-	memset(data, 0x00, 255);
+	memset(data, 0, sizeof(data));
 	strcpy(data, "SiteSurvey=1");
-	wrq.u.data.length = strlen(data)+1;
+	wrq.u.data.length = strlen(data) + 1;
 	wrq.u.data.pointer = data;
 	wrq.u.data.flags = 0;
 
@@ -3859,9 +3878,9 @@ getSiteSurvey(int band,char* ofile)
 	sleep(1);
 	dbg(".\n\n");
 
-	memset(data, 0, 8192);
+	memset(data, 0, sizeof(data));
 	strcpy(data, "");
-	wrq.u.data.length = 8192;
+	wrq.u.data.length = sizeof(data);
 	wrq.u.data.pointer = data;
 	wrq.u.data.flags = 0;
 
@@ -4043,24 +4062,27 @@ getSiteSurvey(int band,char* ofile)
 #endif
 					fprintf(fp, "\"%d\",", atoi(ssap->SiteSurvey[i].signal));
 					fprintf(fp, "\"%s\",", ssap->SiteSurvey[i].bssid);
-					if(strncmp(ssap->SiteSurvey[i].wmode, "11a/n/ac", 8)==0)
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+					if(strncmp(ssap->SiteSurvey[i].wmode, "11b/g/n/ax", 10) == 0 || strncmp(ssap->SiteSurvey[i].wmode, "11ax", 4) == 0)
+						fprintf(fp, "\"%s\",", "ax");
+					else if(strncmp(ssap->SiteSurvey[i].wmode, "11a/n/ac", 8) == 0 || strncmp(ssap->SiteSurvey[i].wmode, "11ac", 4) == 0)
 						fprintf(fp, "\"%s\",", "ac");
-					else if(strncmp(ssap->SiteSurvey[i].wmode, "11b/g/n", 7)==0)
+#else
+					if(strncmp(ssap->SiteSurvey[i].wmode, "11a/n/ac", 8) == 0 || strncmp(ssap->SiteSurvey[i].wmode, "11ac", 4) == 0)
+						fprintf(fp, "\"%s\",", "ac");
+#endif
+					else if(strncmp(ssap->SiteSurvey[i].wmode, "11b/g/n", 7) == 0)
 						fprintf(fp, "\"%s\",", "bgn");
-					else if(strncmp(ssap->SiteSurvey[i].wmode, "11a/n", 5)==0)
+					else if(strncmp(ssap->SiteSurvey[i].wmode, "11a/n", 5) == 0)
 						fprintf(fp, "\"%s\",", "an");
-					else if(strncmp(ssap->SiteSurvey[i].wmode, "11b/g", 5)==0)
+					else if(strncmp(ssap->SiteSurvey[i].wmode, "11b/g", 5) == 0)
 						fprintf(fp, "\"%s\",", "bg");
-					else if(strncmp(ssap->SiteSurvey[i].wmode, "11a", 3)==0)
+					else if(strncmp(ssap->SiteSurvey[i].wmode, "11a", 3) == 0)
 						fprintf(fp, "\"%s\",", "a");
-					else if(strncmp(ssap->SiteSurvey[i].wmode, "11b", 3)==0)
+					else if(strncmp(ssap->SiteSurvey[i].wmode, "11b", 3) == 0)
 						fprintf(fp, "\"%s\",", "b");
 					else
 						fprintf(fp, "\"%s\",", "");
-
-
-
-
 #if 0
 					if (apinfos[i].NetworkType == Ndis802_11FH || apinfos[i].NetworkType == Ndis802_11DS)
 						fprintf(fp, "\"%s\",", "b");
@@ -4132,9 +4154,6 @@ getSiteSurvey(int band,char* ofile)
 				fclose(fp);
 			}
 		}	/* if */
-
-
-
 	}
 	else
 	{
@@ -4145,13 +4164,65 @@ getSiteSurvey(int band,char* ofile)
 	return 1;
 }
 
+int getSiteSurveyVSIE(int band, char *buf)
+{
+	int i = 0, apCount = 0;
+	char data[8192];
+	char header[128];
+	struct iwreq wrq;
+	SSA *ssap;
+	int lock;
+	FILE *fp;
+	char ssid_str[256],tmp[256];
+	char ure_mac[18];
+	int wl_authorized = 0;
+	memset(data, 0, sizeof(data));
+	strcpy(data, "SiteSurvey=1");
+	wrq.u.data.length = strlen(data) + 1;
+	wrq.u.data.pointer = data;
+	wrq.u.data.flags = 0;
+
+	lock = file_lock("sitesurvey");
+	if (wl_ioctl(get_wifname(band), RTPRIV_IOCTL_SET, &wrq) < 0)
+	{
+		file_unlock(lock);
+		dbg("Site Survey fails\n");
+		return 0;
+	}
+	file_unlock(lock);
+	sleep(4);
+
+	memset(data, 0, sizeof(data));
+	strcpy(data, "");
+	wrq.u.data.length = sizeof(data);
+	wrq.u.data.pointer = data;
+	wrq.u.data.flags = 0;
+
+	if (wl_ioctl(get_wifname(band), RTPRIV_IOCTL_ASUSCMD, &wrq) < 0)
+	{
+		dbg("errors in getting site survey vie result\n");
+		return 0;
+	}
+
+	if (wrq.u.data.length > 0 && strlen(wrq.u.data.pointer) > 0)
+	{
+		memcpy(buf, wrq.u.data.pointer, wrq.u.data.length);
+	}
+	else
+	{
+		dbg("The output var result is NULL\n");
+		return 0;
+	}
+	return 1;
+}
+
 int getBSSID(int band)	// get AP's BSSID
 {
 	unsigned char data[MACSIZE];
 	char macaddr[18];
 	struct iwreq wrq;
 
-	memset(data, 0x00, MACSIZE);
+	memset(data, 0, MACSIZE);
 	wrq.u.data.length = MACSIZE;
 	wrq.u.data.pointer = data;
 	wrq.u.data.flags = OID_802_11_BSSID;
@@ -4194,12 +4265,12 @@ int site_survey_for_channel(int n, const char *wif, int *HT_EXT)
 			|| nvram_match(strcat_r(prefix, "auth_mode", tmp), "psk"))
 		wep = 1;
 
-	memset(data, 0x00, 255);
+	memset(data, 0, 255);
 	if (chk_hidden_ap == 1) {
 		sprintf(data, "SiteSurvey=%s", ssid);
 	}else
 		strcpy(data, "SiteSurvey=1");
-	wrq.u.data.length = strlen(data)+1;
+	wrq.u.data.length = strlen(data) + 1;
 	wrq.u.data.pointer = data;
 	wrq.u.data.flags = 0;
 
@@ -4219,9 +4290,9 @@ int site_survey_for_channel(int n, const char *wif, int *HT_EXT)
 	sleep(1);
 	fprintf(stderr, ".\n");
 
-	memset(data, 0x0, 8192);
+	memset(data, 0, sizeof(data));
 	strcpy(data, "");
-	wrq.u.data.length = 8192;
+	wrq.u.data.length = sizeof(data);
 	wrq.u.data.pointer = data;
 	wrq.u.data.flags = 0;
 
@@ -4237,10 +4308,10 @@ int site_survey_for_channel(int n, const char *wif, int *HT_EXT)
 		char commch[4];
 		char cench[4];
 		int signal_max = -1, signal_tmp = -1, ht_extcha_max, idx = -1;
-		ssap = (SSA *)(wrq.u.data.pointer + strlen(header)+1);
+		ssap = (SSA *)(wrq.u.data.pointer + strlen(header) + 1);
 		int len = strlen(wrq.u.data.pointer + strlen(header))-1;
 		char *sp, *op;
- 		op = sp = wrq.u.data.pointer + strlen(header)+1;
+ 		op = sp = wrq.u.data.pointer + strlen(header) + 1;
 
 		while (*sp && ((len - (sp-op)) >= 0)) {
 			ssap->SiteSurvey[i].channel[3] = '\0';
@@ -4253,14 +4324,14 @@ int site_survey_for_channel(int n, const char *wif, int *HT_EXT)
 			ssap->SiteSurvey[i].nt[2] = '\0';
 			ssap->SiteSurvey[i].wps[3] = '\0';
 			ssap->SiteSurvey[i].dpid[4] = '\0';
-			sp+=strlen(header);
-			apCount=++i;
+			sp += strlen(header);
+			apCount = ++i;
 		}
 
 		if (apCount) {
 			for (i = 0; i < apCount; i++) {
 				memset(commch,0,sizeof(commch));
-				memcpy(commch,ssap->SiteSurvey[i].channel,3);
+				memcpy(commch, ssap->SiteSurvey[i].channel, 3);
 				commonchannel=atoi(commch);
 				//fprintf(stderr, "##common ch=%d##\n",commonchannel);
 #if 0
@@ -4352,8 +4423,7 @@ int site_survey_for_channel(int n, const char *wif, int *HT_EXT)
 }
 #endif	/* RTCONFIG_WIRELESSREPEATER */
 
-int
-get_channel(int band)
+int get_channel(int band)
 {
 	int channel;
 	struct iw_range	range;
@@ -4365,7 +4435,7 @@ get_channel(int band)
 		return 0;
 
 	char buffer[sizeof(iwrange) * 2];
-	bzero(buffer, sizeof(buffer));
+	memset(buffer, 0, sizeof(buffer));
 	wrq2.u.data.pointer = (caddr_t) buffer;
 	wrq2.u.data.length = sizeof(buffer);
 	wrq2.u.data.flags = 0;
@@ -4396,7 +4466,7 @@ asuscfe(const char *PwqV, const char *IF)
 	{
 		eval("iwpriv", (char*) IF, "stat");
 	}
-	else if (strstr(PwqV, "=") && strstr(PwqV, "=")!=PwqV)
+	else if (strstr(PwqV, "=") && strstr(PwqV, "=") != PwqV)
 	{
 		eval("iwpriv", (char*) IF, "set", (char*) PwqV);
 		puts("1");
@@ -4404,8 +4474,7 @@ asuscfe(const char *PwqV, const char *IF)
 	return 0;
 }
 
-int
-__need_to_start_wps_band(char *prefix)
+int __need_to_start_wps_band(char *prefix)
 {
 	char *p, tmp[128];
 
@@ -4441,196 +4510,7 @@ int need_to_start_wps_band(int wps_band)
 	return ret;
 }
 
-#if defined (W7_LOGO) || defined (wifi_LOGO)
-int
-wps_pin(int pincode)
-{
-	int i, wps_band = nvram_get_int("wps_band_x"), multiband = get_wps_multiband();
-	char str_lan_ipaddr[16];
-	char tmp[128], prefix[] = "wlXXXXXXXXXX_", word[256], *next, ifnames[128];
-
-	if (nvram_match("lan_ipaddr", ""))
-		return 0;
-
-	i = 0;
-	strcpy(ifnames, nvram_safe_get("wl_ifnames"));
-	foreach (word, ifnames, next) {
-		if (i >= MAX_NR_WL_IF)
-			break;
-		if (!multiband && wps_band != i) {
-			++i;
-			continue;
-		}
-		SKIP_ABSENT_BAND_AND_INC_UNIT(i);
-		snprintf(prefix, sizeof(prefix), "wl%d_", i);
-
-		if (!need_to_start_wps_band(i)) {
-			++i;
-			continue;
-		}
-
-		eval("route", "delete", "239.255.255.250");
-		kill_pidfile_s_rm(get_wscd_pidfile_band(i), SIGKILL);
-
-		dbg("%s: start wsc (%d)\n", __func__, i);
-
-
-#if defined(RTCONFIG_RALINK_RT3883) || defined(RTCONFIG_RALINK_RT3052)
-		doSystem("iwpriv %s set WscConfMode=%d", get_wifname(i), 0);		// WPS disabled
-#else
-		doSystem("iwpriv %s set WscStop=1", get_wifname(i));	// Stop WPS Process.
-#endif
-
-		doSystem("iwpriv %s set WscConfMode=%d", get_wifname(i), 7);		// Enrollee + Proxy + Registrar
-
-		eval("route", "add", "-host", "239.255.255.250", "dev", "br0");
-		strcpy(str_lan_ipaddr, nvram_safe_get("lan_ipaddr"));
-		doSystem("wscd -m 1 -a %s -i %s &", str_lan_ipaddr, get_wifname(i));
-
-		dbg("WPS: PIN\n");					// PIN method
-		doSystem("iwpriv %s set WscMode=1", get_wifname(i));
-
-		if (pincode == 0) {
-			g_isEnrollee[i] = 1;
-			doSystem("iwpriv %s set WscPinCode=%d", get_wifname(i), 0);
-			doSystem("iwpriv %s set WscGetConf=%d", get_wifname(i), 1);	// Trigger WPS AP to do simple config with WPS Client
-		}
-		else {
-			doSystem("iwpriv %s set WscPinCode=%08d", get_wifname(i), pincode);
-			doSystem("iwpriv %s set WscGetConf=%d", get_wifname(i), 1);	// Trigger WPS AP to do simple config with WPS Client
-		}
-
-		++i;
-	}
-
-	return 0;
-}
-
-static int
-__wps_pbc(const int multiband)
-{
-	int i, wps_band = nvram_get_int("wps_band_x");
-	char str_lan_ipaddr[16];
-	char tmp[128], prefix[] = "wlXXXXXXXXXX_", word[256], *next, ifnames[128];
-
-	if (nvram_match("lan_ipaddr", ""))
-		return 0;
-
-	i = 0;
-	strcpy(ifnames, nvram_safe_get("wl_ifnames"));
-	foreach (word, ifnames, next) {
-		if (i >= MAX_NR_WL_IF)
-			break;
-		if (!multiband && wps_band != i) {
-			++i;
-			continue;
-		}
-		SKIP_ABSENT_BAND_AND_INC_UNIT(i);
-		snprintf(prefix, sizeof(prefix), "wl%d_", i);
-
-		if (!need_to_start_wps_band(i)) {
-			++i;
-			continue;
-		}
-
-		eval("route", "delete", "239.255.255.250");
-		kill_pidfile_s_rm(get_wscd_pidfile_band(i), SIGKILL);
-
-		dbg("%s: start wsc (%d)\n", __func__, i);
-
-#if defined(RTCONFIG_RALINK_RT3883) || defined(RTCONFIG_RALINK_RT3052)
-		doSystem("iwpriv %s set WscConfMode=%d", get_wifname(i), 0);		// WPS disabled
-#else
-		doSystem("iwpriv %s set WscStop=1", get_wifname(i));	// Stop WPS Process.
-#endif
-
-		doSystem("iwpriv %s set WscConfMode=%d", get_wifname(i), 7);		// Enrollee + Proxy + Registrar
-
-		eval("route", "add", "-host", "239.255.255.250", "dev", "br0");
-		strcpy(str_lan_ipaddr, nvram_safe_get("lan_ipaddr"));
-		doSystem("wscd -m 1 -a %s -i %s &", str_lan_ipaddr, get_wifname(i));
-
-//		dbg("WPS: PBC\n");
-		g_isEnrollee[i] = 1;
-		doSystem("iwpriv %s set WscMode=%d", get_wifname(i), 2);		// PBC method
-		doSystem("iwpriv %s set WscGetConf=%d", get_wifname(i), 1);		// Trigger WPS AP to do simple config with WPS Client
-
-		++i;
-	}
-
-	return 0;
-}
-
-int
-wps_pbc(void)
-{
-	return __wps_pbc(get_wps_multiband());
-}
-
-int
-wps_pbc_both(void)
-{
-#if defined(RTCONFIG_WPSMULTIBAND)
-	return __wps_pbc(1);
-#else
-	char str_lan_ipaddr[16];
-
-	if (nvram_match("lan_ipaddr", ""))
-		return 0;
-
-	if (!__need_to_start_wps_band("wl1") || !__need_to_start_wps_band("wl0")) return 0;
-
-	eval("route", "delete", "239.255.255.250");
-
-#if defined(RTCONFIG_HAS_5G)
-	kill_pidfile_s_rm(get_wscd_pidfile_band(1), SIGKILL);
-#endif	/* RTCONFIG_HAS_5G */
-	kill_pidfile_s_rm(get_wscd_pidfile_band(0), SIGKILL);
-
-	dbg("%s: start wsc ()\n", __func__);
-
-#if defined(RTCONFIG_HAS_5G)
-#if defined(RTCONFIG_RALINK_RT3883) || defined(RTCONFIG_RALINK_RT3052)
-		doSystem("iwpriv %s set WscConfMode=%d", get_wifname(1), 0);		// WPS disabled
-#else
-		doSystem("iwpriv %s set WscStop=1", get_wifname(1));	// Stop WPS Process.
-#endif
-
-	doSystem("iwpriv %s set WscConfMode=%d", get_wifname(1), 7);		// Enrollee + Proxy + Registrar
-#endif	/* RTCONFIG_HAS_5G */
-
-#if defined(RTCONFIG_RALINK_RT3883) || defined(RTCONFIG_RALINK_RT3052)
-		doSystem("iwpriv %s set WscConfMode=%d", get_wifname(0), 0);		// WPS disabled
-#else
-		doSystem("iwpriv %s set WscStop=1", get_wifname(0));	// Stop WPS Process.
-#endif
-
-	doSystem("iwpriv %s set WscConfMode=%d", get_wifname(0), 7);		// Enrollee + Proxy + Registrar
-
-	eval("route", "add", "-host", "239.255.255.250", "dev", "br0");
-	strcpy(str_lan_ipaddr, nvram_safe_get("lan_ipaddr"));
-#if defined(RTCONFIG_HAS_5G)
-	doSystem("wscd -m 1 -a %s -i %s &", str_lan_ipaddr, get_wifname(1));
-#endif	/* RTCONFIG_HAS_5G */
-	doSystem("wscd -m 1 -a %s -i %s &", str_lan_ipaddr, get_wifname(0));
-
-//	dbg("WPS: PBC\n");
-#if defined(RTCONFIG_HAS_5G)
-	g_isEnrollee[1] = 1;
-	doSystem("iwpriv %s set WscMode=%d", get_wifname(1), 2);		// PBC method
-	doSystem("iwpriv %s set WscGetConf=%d", get_wifname(1), 1);		// Trigger WPS AP to do simple config with WPS Client
-#endif	/* RTCONFIG_HAS_5G */
-
-	g_isEnrollee[0] = 1;
-	doSystem("iwpriv %s set WscMode=%d", get_wifname(0), 2);		// PBC method
-	doSystem("iwpriv %s set WscGetConf=%d", get_wifname(0), 1);		// Trigger WPS AP to do simple config with WPS Client
-
-	return 0;
-#endif	/* RTCONFIG_WPSMULTIBAND */
-}
-#else	/* !(defined (W7_LOGO) || defined (wifi_LOGO)) */
-int
-wps_pin(int pincode)
+int wps_pin(int pincode)
 {
 	int i;
 	char prefix[] = "wlXXXXXXXXXX_", word[256], *next, ifnames[128];
@@ -4703,14 +4583,12 @@ __wps_pbc(const int multiband)
 	return 0;
 }
 
-int
-wps_pbc(void)
+int wps_pbc(void)
 {
 	return __wps_pbc(get_wps_multiband());
 }
 
-int
-wps_pbc_both(void)
+int wps_pbc_both(void)
 {
 #if defined(RTCONFIG_WPSMULTIBAND)
 	return __wps_pbc(1);
@@ -4731,12 +4609,10 @@ wps_pbc_both(void)
 	return 0;
 #endif
 }
-#endif	/* defined (W7_LOGO) || defined (wifi_LOGO) */
 
 extern void wl_default_wps(int unit);
 
-void
-__wps_oob(const int multiband)
+void __wps_oob(const int multiband)
 {
 	int i, wps_band = nvram_get_int("wps_band_x");
 	char tmp[128], prefix[] = "wlXXXXXXXXXX_", word[256], *next;
@@ -4763,11 +4639,10 @@ __wps_oob(const int multiband)
 			nvram_set("wl1_wsc_config_state", "0");
 
 		wl_default_wps(i);
-
 		nvram_commit();
 
-	snprintf(prefix, sizeof(prefix), "wl%d_", wps_band);
-#if defined (W7_LOGO) || defined (wifi_LOGO)
+		snprintf(prefix, sizeof(prefix), "wl%d_", wps_band);
+
 		doSystem("iwpriv %s set AuthMode=%s", get_wifname(i), "OPEN");
 		doSystem("iwpriv %s set EncrypType=%s", get_wifname(i), "NONE");
 		doSystem("iwpriv %s set IEEE8021X=%d", get_wifname(i), 0);
@@ -4781,63 +4656,22 @@ __wps_oob(const int multiband)
 			iwprivSet(get_wifname(i), "Key4", p);
 		doSystem("iwpriv %s set DefaultKeyID=%s", get_wifname(i), nvram_safe_get(strcat_r(prefix, "key", tmp)));
 		iwprivSet(get_wifname(i), "SSID", nvram_safe_get(strcat_r(prefix, "ssid", tmp)));
-
-		eval("route", "delete", "239.255.255.250");
-		kill_pidfile_s_rm(get_wscd_pidfile_band(i), SIGKILL);
-
-#if defined(RTCONFIG_RALINK_RT3883) || defined(RTCONFIG_RALINK_RT3052)
-		doSystem("iwpriv %s set WscConfMode=%d", get_wifname(i), 0);		// WPS disabled
-#else
 		doSystem("iwpriv %s set WscStop=1", get_wifname(i));	// Stop WPS Process.
-#endif
-
-		doSystem("iwpriv %s set WscConfMode=%d", get_wifname(i), 7);		// Enrollee + Proxy + Registrar
-		doSystem("iwpriv %s set WscConfStatus=%d", get_wifname(i), 1);		// AP is unconfigured
-		g_wsc_configured = 0;
-
-		eval("route", "add", "-host", "239.255.255.250", "dev", "br0");
-		strcpy(str_lan_ipaddr, nvram_safe_get("lan_ipaddr"));
-		doSystem("wscd -m 1 -a %s -i %s &", str_lan_ipaddr, get_wifname(i));
-
-		doSystem("iwpriv %s set WscMode=1", get_wifname(i));			// PIN method
-//		doSystem("iwpriv %s set WscGetConf=%d", get_wifname(i), 1);		// Trigger WPS AP to do simple config with WPS Client
-#else
-		doSystem("iwpriv %s set AuthMode=%s", get_wifname(i), "OPEN");
-		doSystem("iwpriv %s set EncrypType=%s", get_wifname(i), "NONE");
-		doSystem("iwpriv %s set IEEE8021X=%d", get_wifname(i), 0);
-		if (strlen((p = nvram_safe_get(strcat_r(prefix, "key1", tmp)))))
-			iwprivSet(get_wifname(i), "Key1", p);
-		if (strlen((p = nvram_safe_get(strcat_r(prefix, "key2", tmp)))))
-			iwprivSet(get_wifname(i), "Key2", p);
-		if (strlen((p = nvram_safe_get(strcat_r(prefix, "key3", tmp)))))
-			iwprivSet(get_wifname(i), "Key3", p);
-		if (strlen((p = nvram_safe_get(strcat_r(prefix, "key4", tmp)))))
-			iwprivSet(get_wifname(i), "Key4", p);
-		doSystem("iwpriv %s set DefaultKeyID=%s", get_wifname(i), nvram_safe_get(strcat_r(prefix, "key", tmp)));
-		iwprivSet(get_wifname(i), "SSID", nvram_safe_get(strcat_r(prefix, "ssid", tmp)));
-
-#if defined(RTCONFIG_RALINK_RT3883) || defined(RTCONFIG_RALINK_RT3052)
-		doSystem("iwpriv %s set WscConfMode=%d", get_wifname(i), 0);		// WPS disabled. Force WPS status to change
-#else
-		doSystem("iwpriv %s set WscStop=1", get_wifname(i));	// Stop WPS Process.
-#endif
 		doSystem("iwpriv %s set WscConfMode=%d", get_wifname(i), 7);		// WPS enabled. Force WPS status to change
 		doSystem("iwpriv %s set WscConfStatus=%d", get_wifname(i), 1);		// AP is unconfigured
-#endif
+
 		g_isEnrollee[i] = 0;
 
 		++i;
 	}
 }
 
-void
-wps_oob(void)
+void wps_oob(void)
 {
 	__wps_oob(get_wps_multiband());
 }
 
-void
-wps_oob_both(void)
+void wps_oob_both(void)
 {
 #if defined(RTCONFIG_WPSMULTIBAND)
 	__wps_oob(1);
@@ -4848,10 +4682,11 @@ wps_oob_both(void)
 //	if (!__need_to_start_wps_band("wl1") || !__need_to_start_wps_band("wl0")) return 0;
 
 	nvram_set("w_Setting", "0");
-//	nvram_set("wl0_wsc_config_state", "0");
-//	nvram_set("wl1_wsc_config_state", "0");
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+	nvram_set("wl0_wsc_config_state", "0");
+	nvram_set("wl1_wsc_config_state", "0");
+#endif
 	wl_defaults_wps();
-
 	nvram_commit();
 
 #if defined (W7_LOGO) || defined (wifi_LOGO)
@@ -4940,11 +4775,7 @@ wps_oob_both(void)
 	doSystem("iwpriv %s set DefaultKeyID=%s", get_wifname(1), nvram_safe_get("wl1_key"));
 	iwprivSet(get_wifname(1), "SSID", nvram_safe_get("wl1_ssid"));
 
-#if defined(RTCONFIG_RALINK_RT3883) || defined(RTCONFIG_RALINK_RT3052)
-		doSystem("iwpriv %s set WscConfMode=%d", get_wifname(1), 0);		// WPS disabled
-#else
-		doSystem("iwpriv %s set WscStop=1", get_wifname(1));			// Stop WPS Process.
-#endif
+	doSystem("iwpriv %s set WscStop=1", get_wifname(1));			// Stop WPS Process.
 	doSystem("iwpriv %s set WscConfMode=%d", get_wifname(1), 7);		// WPS enabled. Force WPS status to change
 	doSystem("iwpriv %s set WscConfStatus=%d", get_wifname(1), 1);		// AP is unconfigured
 #endif	/* RTCONFIG_HAS_5G */
@@ -4962,11 +4793,7 @@ wps_oob_both(void)
 		iwprivSet(get_wifname(0), "Key4", nvram_safe_get("wl0_key4"));
 	doSystem("iwpriv %s set DefaultKeyID=%s", get_wifname(0), nvram_safe_get("wl0_key"));
 	iwprivSet(get_wifname(0), "SSID", nvram_safe_get("wl0_ssid"));
-#if defined(RTCONFIG_RALINK_RT3883) || defined(RTCONFIG_RALINK_RT3052)
-		doSystem("iwpriv %s set WscConfMode=%d", get_wifname(0), 0);		// WPS disabled
-#else
-		doSystem("iwpriv %s set WscStop=1", get_wifname(0));			// Stop WPS Process.
-#endif
+	doSystem("iwpriv %s set WscStop=1", get_wifname(0));			// Stop WPS Process.
 	doSystem("iwpriv %s set WscConfMode=%d", get_wifname(0), 7);		// WPS enabled. Force WPS status to change
 	doSystem("iwpriv %s set WscConfStatus=%d", get_wifname(0), 1);		// AP is unconfigured
 #endif
@@ -4974,8 +4801,7 @@ wps_oob_both(void)
 #endif	/* RTCONFIG_WPSMULTIBAND */
 }
 
-void
-start_wsc(void)
+void start_wsc(void)
 {
 	int i;
 	char *wps_sta_pin = nvram_safe_get("wps_sta_pin");
@@ -5004,15 +4830,11 @@ start_wsc(void)
 		}
 
 		eval("route", "delete", "239.255.255.250");
-		kill_pidfile_s_rm(get_wscd_pidfile_band(i), SIGKILL);
+		kill_pidfile_s_rm(get_wscd_pidfile_band(i), SIGKILL, 1);
 
 		dbg("%s: start wsc(%d)\n", __func__, i);
 
-#if defined(RTCONFIG_RALINK_RT3883) || defined(RTCONFIG_RALINK_RT3052)
-		doSystem("iwpriv %s set WscConfMode=%d", get_wifname(i), 0);		// WPS disabled
-#else
 		doSystem("iwpriv %s set WscStop=1", get_wifname(i));			// Stop WPS Process.
-#endif
 		doSystem("iwpriv %s set WscConfMode=%d", get_wifname(i), 7);	// Enrollee + Proxy + Registrar
 
 		eval("route", "add", "-host", "239.255.255.250", "dev", "br0");
@@ -5071,7 +4893,7 @@ start_wsc_pin_enrollee(void)
 		}
 
 		eval("route", "add", "-host", "239.255.255.250", "dev", "br0");
-		kill_pidfile_s_rm(get_wscd_pidfile_band(i), SIGKILL);
+		kill_pidfile_s_rm(get_wscd_pidfile_band(i), SIGKILL, 1);
 
 		dbg("%s: start wsc (%d)\n", __func__, i);
 
@@ -5084,12 +4906,9 @@ start_wsc_pin_enrollee(void)
 
 		++i;
 	}
-
-//	nvram_set("wps_start_flag", "1");
 }
 
-static void
-__stop_wsc(int multiband)
+static void __stop_wsc(int multiband)
 {
 	int i;
 	char prefix[] = "wlXXXXXXXXXX_", word[256], *next, ifnames[128];
@@ -5113,26 +4932,18 @@ __stop_wsc(int multiband)
 		}
 
 		eval("route", "delete", "239.255.255.250");
-		kill_pidfile_s_rm(get_wscd_pidfile_band(i), SIGKILL);
-
-#if defined(RTCONFIG_RALINK_RT3883) || defined(RTCONFIG_RALINK_RT3052)
-		doSystem("iwpriv %s set WscConfMode=%d", get_wifname(i), 0);		// WPS disabled
-		doSystem("iwpriv %s set WscStatus=%d", get_wifname(i), 0);		// Not Used
-#else
+		kill_pidfile_s_rm(get_wscd_pidfile_band(i), SIGKILL, 1);
 		doSystem("iwpriv %s set WscStop=1", get_wifname(i));			// Stop WPS Process.
-#endif
 		++i;
 	}
 }
 
-void
-stop_wsc(void)
+void stop_wsc(void)
 {
 	__stop_wsc(get_wps_multiband());
 }
 
-void
-stop_wsc_both(void)
+void stop_wsc_both(void)
 {
 #if defined(RTCONFIG_WPSMULTIBAND)
 	__stop_wsc(1);
@@ -5146,24 +4957,13 @@ stop_wsc_both(void)
 
 	system("route delete 239.255.255.250 1>/dev/null 2>&1");
 
-	kill_pidfile_s_rm(get_wscd_pidfile_band(0), SIGKILL);
+	kill_pidfile_s_rm(get_wscd_pidfile_band(0), SIGKILL, 1);
 
 #if defined(RTCONFIG_HAS_5G)
-	kill_pidfile_s_rm(get_wscd_pidfile_band(1), SIGKILL);
-#if defined(RTCONFIG_RALINK_RT3883) || defined(RTCONFIG_RALINK_RT3052)
-		doSystem("iwpriv %s set WscConfMode=%d", get_wifname(1), 0);		// WPS disabled
-		doSystem("iwpriv %s set WscStatus=%d", get_wifname(1), 0);		// Not Used
-#else
+	kill_pidfile_s_rm(get_wscd_pidfile_band(1), SIGKILL, 1);
 		doSystem("iwpriv %s set WscStop=1", get_wifname(1));			// Stop WPS Process.
 #endif
-#endif	/* RTCONFIG_HAS_5G */
-
-#if defined(RTCONFIG_RALINK_RT3883) || defined(RTCONFIG_RALINK_RT3052)
-		doSystem("iwpriv %s set WscConfMode=%d", get_wifname(0), 0);		// WPS disabled
-		doSystem("iwpriv %s set WscStatus=%d", get_wifname(0), 0);		// Not Used
-#else
 		doSystem("iwpriv %s set WscStop=1", get_wifname(0));			// Stop WPS Process.
-#endif
 #endif
 }
 
@@ -5199,14 +4999,13 @@ int getWscProfile(char *interface, WSC_CONFIGURED_VALUE *data, int len)
 	return 0;
 }
 
-int
-stainfo(int band)
+int stainfo(int band)
 {
 	char data[2048];
 	struct iwreq wrq;
 
-	memset(data, 0x00, 2048);
-	wrq.u.data.length = 2048;
+	memset(data, 0, sizeof(data));
+	wrq.u.data.length = sizeof(data);
 	wrq.u.data.pointer = (caddr_t) data;
 	wrq.u.data.flags = ASUS_SUBCMD_GSTAINFO;
 
@@ -5224,14 +5023,13 @@ stainfo(int band)
 	return 0;
 }
 
-int
-getstat(int band)
+int getstat(int band)
 {
 	char data[4096];
 	struct iwreq wrq;
 
-	memset(data, 0x00, 4096);
-	wrq.u.data.length = 4096;
+	memset(data, 0, sizeof(data));
+	wrq.u.data.length = sizeof(data);
 	wrq.u.data.pointer = (caddr_t) data;
 	wrq.u.data.flags = ASUS_SUBCMD_GSTAT;
 
@@ -5249,9 +5047,7 @@ getstat(int band)
 	return 0;
 }
 
-
-void
-wsc_user_commit(void)
+void wsc_user_commit(void)
 {
 	int i, flag_wep;
 	char tmp[128], prefix[] = "wlXXXXXXXXXX_";
@@ -5346,8 +5142,7 @@ wsc_user_commit(void)
 //	doSystem("iwpriv %s set WscConfMode=%d", get_non_wpsifname(), 7);	// trigger Windows OS to give a popup about WPS PBC AP
 }
 
-int
-wl_WscConfigured(int unit)
+int wl_WscConfigured(int unit)
 {
 	WSC_CONFIGURED_VALUE result;
 	struct iwreq wrq;
@@ -5372,8 +5167,236 @@ wl_WscConfigured(int unit)
 		return 0;
 }
 
-void
-Get_fail_log(char *buf, int size, unsigned int offset)
+void gen_ra_config(const char* wif)
+{
+	char word[256], *next;
+
+	foreach (word, nvram_safe_get("wl_ifnames"), next) {
+		SKIP_ABSENT_FAKE_IFACE(word);
+		if (!strcmp(word, wif))
+		{
+			if (!strcmp(word, nvram_safe_get("wl0_ifname"))) // 2.4G
+			{
+				if (!strncmp(word, "rai", 3))	// iNIC
+					gen_ralink_config(0, 1);
+				else{
+					gen_ralink_config(0, 0);
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+					gen_ralink_config(1, 1); //why? 5g always on? ax53u only?
+#endif
+				}
+			}
+			else if (!strcmp(word, nvram_safe_get("wl1_ifname"))) // 5G
+			{
+				if (!strncmp(word, "rai", 3))	// iNIC
+					gen_ralink_config(1, 1);
+				else
+					gen_ralink_config(1, 0);
+			}
+		}
+	}
+}
+
+int radio_ra(const char *wif, int band, int ctrl)
+{
+	char tmp[100], prefix[]="wlXXXXXXX_";
+
+	snprintf(prefix, sizeof(prefix), "wl%d_", band);
+
+	if (wif == NULL) return -1;
+
+	if (!ctrl)
+		//doSystem("iwpriv %s set RadioOn=0", wif);
+		ifconfig(wif, 0, NULL, NULL);
+	else
+	{
+		if(nvram_match(strcat_r(prefix, "radio", tmp), "1"))
+			//doSystem("iwpriv %s set RadioOn=1", wif);
+			ifconfig(wif, 1, NULL, NULL);
+	}
+
+	return 0;
+}
+
+void set_wlpara_ra(const char* wif, int band)
+{
+	char tmp[100], prefix[]="wlXXXXXXX_";
+
+	snprintf(prefix, sizeof(prefix), "wl%d_", band);
+
+	if (nvram_match(strcat_r(prefix, "radio", tmp), "0"))
+		radio_ra(wif, band, 0);
+	else
+	{
+		int txpower = nvram_get_int(strcat_r(prefix, "txpower", tmp));
+		if ((txpower >= 0) && (txpower <= 100))
+			doSystem("iwpriv %s set TxPower=%d", wif, txpower);
+	}
+#if 0
+	if (nvram_match(strcat_r(prefix, "bw", tmp), "2"))
+	{
+		int channel = get_channel(band);
+
+		if (channel)
+			eval("iwpriv", (char *)wif, "set", "HtBw=1");
+	}
+#endif
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+	if(nvram_match(strcat_r(prefix, "radio", tmp), "1"))
+		eval("iwpriv", (char *)wif, "set", "led_setting=00-00-01-00-02-00-00-02");
+	else
+		eval("iwpriv", (char *)wif, "set", "led_setting=00-00-01-00-02-00-00-00");
+#endif
+	eval("iwpriv", (char *)wif, "set", "IgmpAdd=01:00:5e:7f:ff:fa");
+	eval("iwpriv", (char *)wif, "set", "IgmpAdd=01:00:5e:00:00:09");
+	eval("iwpriv", (char *)wif, "set", "IgmpAdd=01:00:5e:00:00:fb");
+}
+
+void set_wlpara_ra_down()
+{
+
+}
+
+//fix me
+int wlconf_ra_down(const char* wif)
+{
+	int unit = 0;
+	char word[256], *next;
+	char tmp[128], prefix[] = "wlXXXXXXXXXX_";
+	char *p;
+
+	foreach (word, nvram_safe_get("wl_ifnames"), next) {
+		SKIP_ABSENT_BAND_AND_INC_UNIT(unit);
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+#if 0
+		if (!strcmp(word, wif))
+		{
+			if (!strcmp(word, WIF_2G))
+				set_wlpara_ra_down(wif, 0);
+#if defined(RTCONFIG_HAS_5G)
+			else if (!strcmp(word, WIF_5G))
+				set_wlpara_ra_down(wif, 1);
+#endif
+		}
+#endif
+		unit++;
+	}
+	return 0;
+}
+
+int wlconf_ra(const char* wif)
+{
+	int unit = 0;
+	char word[256], *next;
+	char tmp[128], prefix[] = "wlXXXXXXXXXX_";
+	char *p;
+
+	foreach (word, nvram_safe_get("wl_ifnames"), next) {
+		SKIP_ABSENT_BAND_AND_INC_UNIT(unit);
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+
+		if (!strcmp(word, wif))
+		{
+			p = get_hwaddr(wif);
+			if (p)
+			{
+				nvram_set(strcat_r(prefix, "hwaddr", tmp), p);
+				free(p);
+			}
+
+			if (!strcmp(word, WIF_2G))
+				set_wlpara_ra(wif, 0);
+#if defined(RTCONFIG_HAS_5G)
+			else if (!strcmp(word, WIF_5G))
+				set_wlpara_ra(wif, 1);
+#endif
+		}
+
+		unit++;
+	}
+	return 0;
+}
+
+void apcli_start(void)
+{
+//repeater mode :sitesurvey channel and apclienable=1
+	int ch;
+	char *aif;
+	int ht_ext;
+
+	if(sw_mode() == SW_MODE_REPEATER)
+	{
+#if defined(RTCONFIG_CONCURRENTREPEATER)
+		int wlc_express = nvram_get_int("wlc_express");
+		if (wlc_express == 0) {		// concurrent
+			aif=nvram_safe_get("wl0_ifname");
+			enable_apcli(aif, 0);
+			aif=nvram_safe_get("wl1_ifname");
+			enable_apcli(aif, 1);
+		}
+		else if (wlc_express == 1) {	// 2.4G express way
+			aif=nvram_safe_get("wl0_ifname");
+			enable_apcli(aif, 0);
+		}
+		else if (wlc_express == 2) {	// 5G express way
+			aif=nvram_safe_get("wl1_ifname");
+			enable_apcli(aif, 1);
+		}
+		else
+			fprintf(stderr,"## No correct wlc_express for apcli ##\n");
+#else /* RTCONFIG_CONCURRENTREPEATER */
+		int wlc_band = nvram_get_int("wlc_band");
+		if (wlc_band == 0)
+			//aif=nvram_safe_get("wl0_ifname");
+			aif = APCLI_2G;
+		else
+			//aif=nvram_safe_get("wl1_ifname");
+			aif = APCLI_5G;
+		ch = site_survey_for_channel(wlc_band, aif, &ht_ext);
+		if(ch != -1)
+		{
+			if (wlc_band == 1)
+			{
+				doSystem("iwpriv %s set Channel=%d", APCLI_5G, ch);
+				doSystem("iwpriv %s set ApCliEnable=1", APCLI_5G);
+			}
+			else
+			{
+				doSystem("iwpriv %s set Channel=%d", APCLI_2G, ch);
+				doSystem("iwpriv %s set ApCliEnable=1", APCLI_2G);
+
+			}
+			fprintf(stderr, "##set channel=%d, enable apcli ..#\n", ch);
+		}
+		else
+			fprintf(stderr, "## Can not find pap's ssid ##\n");
+#endif /* RTCONFIG_CONCURRENTREPEATER */
+	}
+}
+
+void stop_wds_ra(const char* lan_ifname, const char* wif)
+{
+	char prefix[32];
+	char wdsif[32];
+	int i;
+
+	if (strcmp(wif, WIF_2G) && strcmp(wif, WIF_5G))
+		return;
+
+	if (!strncmp(wif, "rai", 3))
+		snprintf(prefix, sizeof(prefix), "wdsi");
+	else
+		snprintf(prefix, sizeof(prefix), "wds");
+
+	for (i = 0; i < 4; i++)
+	{
+		sprintf(wdsif, "%s%d", prefix, i);
+		doSystem("brctl delif %s %s 1>/dev/null 2>&1", lan_ifname, wdsif);
+		ifconfig(wdsif, 0, NULL, NULL);
+	}
+}
+
+void Get_fail_log(char *buf, int size, unsigned int offset)
 {
 	struct FAIL_LOG fail_log, *log = &fail_log;
 	char *p = buf;
@@ -5397,8 +5420,7 @@ Get_fail_log(char *buf, int size, unsigned int offset)
 	}
 }
 
-void
-Gen_fail_log(const char *logStr, int max, struct FAIL_LOG *log)
+void Gen_fail_log(const char *logStr, int max, struct FAIL_LOG *log)
 {
 	const char *p = logStr;
 	char *next;
@@ -5595,7 +5617,7 @@ int get_apcli_status(void)
 	else
 		ifname = APCLI_2G;
 
-	memset(data, 0x00, sizeof(data));
+	memset(data, 0, sizeof(data));
 	wrq.u.data.length = sizeof(data);
 	wrq.u.data.pointer = (caddr_t) data;
 	wrq.u.data.flags = ASUS_SUBCMD_CONN_STATUS;
@@ -5620,11 +5642,6 @@ int get_apcli_status(void)
 	return WLC_STATE_INITIALIZING;
 }
 #endif
-
-
-
-
-
 
 char *wlc_nvname(char *keyword)
 {
@@ -5719,7 +5736,7 @@ int ap_set(char *wif, const char *pv_pair)
 	struct iwreq wrq;
 	char data[256];
 
-	memset(data, 0x0, 256);
+	memset(data, 0, sizeof(data));
 	strcpy(data, pv_pair);
 	wrq.u.data.pointer = data;
 	wrq.u.data.length = strlen(data);
@@ -6053,14 +6070,12 @@ void rssi_check_unit(int unit)
 }
 #endif	/* RTCONFIG_USER_LOW_RSSI */
 
-
-
 void set_default_psk()
 {
-	if (!strlen(nvram_safe_get("wifi_psk")))
+	char *psk = nvram_safe_get("wifi_psk");
+	if(!*psk)
 	{
 		unsigned char key[32];
-
 		generate_wireless_key(&key);
 		nvram_set("wl0_auth_mode_x", "psk2");
 		nvram_set("wl0_crypto", "aes");
@@ -6073,3 +6088,34 @@ void set_default_psk()
 	}
 }
 
+#if defined(RTCONFIG_LANWAN_LED)
+int update_wan_leds(int wan_unit, int link_wan_unit)
+{
+	if(nvram_get_int("x_Setting")) //normal use
+	{
+		int link_internet = nvram_get_int("link_internet");
+		if(link_wan_unit && !inhibit_led_on())
+			led_control(LED_WAN, LED_ON);
+		} else {
+			if(link_internet != 2)
+				led_control(LED_WAN, LED_OFF);
+		}
+	}
+	else //first use
+		led_control(LED_WAN, LED_OFF);
+#if defined(RTCONFIG_FAILOVER_LED)
+	update_failover_led();
+#endif
+	return 0;
+}
+#endif
+
+#if defined(RTCONFIG_LANWAN_LED) || defined(RTCONFIG_LAN4WAN_LED)
+int LanWanLedCtrl(void)
+{
+	if(get_lanports_status() && nvram_match("AllLED", "1"))
+		led_control(LED_LAN, LED_ON);
+	led_control(LED_LAN, LED_OFF);
+	return 1;
+}
+#endif
