@@ -1959,6 +1959,10 @@ define RouterOptions
 				sed -i "/RTCONFIG_TUXERA_NTFS/d" $(1); \
 				echo "RTCONFIG_TUXERA_NTFS=y" >>$(1); \
 			fi; \
+			if [ "$(findstring tuxera, $(NTFS))" = "ntfs3" ]; then \
+				sed -i "/RTCONFIG_NTFS3/d" $(1); \
+				echo "RTCONFIG_NTFS3=y" >>$(1); \
+			fi; \
 		fi; \
 		if [ "$(HFS)" != "" ]; then \
 			sed -i "/RTCONFIG_HFS/d" $(1); \
