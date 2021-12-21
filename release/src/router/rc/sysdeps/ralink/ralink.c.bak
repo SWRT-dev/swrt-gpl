@@ -299,7 +299,7 @@ int getCountryRegion5G(const char *countryCode, int *warning, int IEEE80211H)
 	}
 #endif	/* RTCONFIG_RALINK_DFS */
 
-	if (		(!strcasecmp(countryCode, "AE")) ||
+	if ((!strcasecmp(countryCode, "AE")) ||
 			(!strcasecmp(countryCode, "AL")) ||
 #ifdef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "AR")) ||
@@ -721,6 +721,11 @@ int gen_ralink_config(int band, int is_iNIC)
 #if defined(RTCONFIG_MUMIMO_2G) || defined(RTCONFIG_MUMIMO_5G)
 	int mumimo = 0;
 #endif
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+	unsigned char *dst;
+	char macaddr[]="00:11:22:33:44:55";
+	char macaddr2[]="00:11:22:33:44:58";
+#endif
 
 #if defined(RTCONFIG_CONCURRENTREPEATER)
 	char prefix_wlc[] = "wlcXXXXXX_";
@@ -746,12 +751,14 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	fprintf(fp, "#The word of \"Default\" must not be removed\n");
 	fprintf(fp, "Default\n");
-
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+	fprintf(fp, "DBDC_MODE=1\n");
+#endif
 	snprintf(prefix, sizeof(prefix), "wl%d_", band);
 
 	//CountryRegion
 	str = nvram_safe_get(strcat_r(prefix, "country_code", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 	{
 		int region;
 		region = getCountryRegion2G(str);
@@ -771,7 +778,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//CountryRegion for A band
 	str = nvram_safe_get(strcat_r(prefix, "country_code", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 	{
 		int region;
 #ifdef RTCONFIG_RALINK_DFS		
@@ -807,9 +814,9 @@ int gen_ralink_config(int band, int is_iNIC)
 	}
 	else
 #endif	/* CE_ADAPTIVITY */
-	if (str && strlen(str))
+	if (str && *str)
 	{
-#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTAC85P) || defined(RMAC2100) || defined(R6800)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 		if(nvram_match("JP_CS","1"))
 			fprintf(fp, "CountryCode=JP\n");
 		else
@@ -821,30 +828,69 @@ int gen_ralink_config(int band, int is_iNIC)
 		warning = 4;
 		fprintf(fp, "CountryCode=DB\n");
 	}
-
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+	dst = tmp;
+	if(band)
+	{
+		if (FRead(dst, OFFSET_MAC_ADDR, 6) < 0)
+		{
+			_dprintf("READ MAC address: Out of scope\n");
+		}
+		else
+		{
+			ether_etoa(tmp, macaddr);
+			if(!strcmp(macaddr, "FF:FF:FF:FF:FF:FF"))
+			{
+				if (FRead(dst, OFFSET_MAC_ADDR_2G, 6) < 0)
+					strlcpy(macaddr, "00:0C:43:26:60:2C");
+				else
+					ether_cal_b(dst, macaddr, 4);
+			}
+		}
+	}
+	else
+	{
+		if (FRead(dst, OFFSET_MAC_ADDR_2G, 6) < 0)
+		{
+			_dprintf("READ MAC address 2G: Out of scope\n");
+		}
+		else
+		{
+			ether_etoa(tmp, macaddr);
+		}
+	}
+	fprintf(fp, "MacAddress=%s\n", macaddr);
+	memset(tmp, 0, sizeof(tmp));
+	strncpy(tmp, macaddr, strlen(macaddr));
+	for(i = 1; i < 4; i++)
+	{
+//fix me
+		ether_cal(macaddr, macaddr2, i);
+		fprintf(fp, "MacAddress%d=%s\n", i, macaddr2);
+	}
+	if (!mssid_mac_validate(tmp))
+#else
 	//SSID Num. [MSSID Only]
-
-
-
 	if (!mssid_mac_validate(nvram_safe_get(strcat_r(prefix, "hwaddr", tmp))))
+#endif
 	{
 		dbG("Main BSSID is not multiple of 4s!");
 		ssid_num = 1;
 	}
 	else
-	for (i = 0; i < MAX_NO_MSSID; i++)
-	{
-		if (i)
-			snprintf(prefix_mssid, sizeof(prefix_mssid), "wl%d.%d_", band, i);
-		else
-			snprintf(prefix_mssid, sizeof(prefix_mssid), "wl%d_", band);
-
-		if ((!i) ||
-			(i && (nvram_match(strcat_r(prefix_mssid, "bss_enabled", temp), "1"))))
+		for (i = 0; i < MAX_NO_MSSID; i++)
 		{
-			if (i) ssid_num++;
+			if (i)
+				snprintf(prefix_mssid, sizeof(prefix_mssid), "wl%d.%d_", band, i);
+			else
+				snprintf(prefix_mssid, sizeof(prefix_mssid), "wl%d_", band);
+
+			if ((!i) ||
+				(i && (nvram_match(strcat_r(prefix_mssid, "bss_enabled", temp), "1"))))
+			{
+				if (i) ssid_num++;
+			}
 		}
-	}
 
 	if ((ssid_num < 1) || (ssid_num > MAX_NO_MSSID))
 	{
@@ -904,59 +950,65 @@ int gen_ralink_config(int band, int is_iNIC)
 		sprintf(tmpstr, "SSID%d=\n", i + 1);
 		fprintf(fp, "%s", tmpstr);
 	}
-
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+	if(nvram_match("wl_atf", "1"))
+		fprintf(fp, "VOW_Airtime_Fairness_En=%d\n", 1);
+	else
+		fprintf(fp, "VOW_Airtime_Fairness_En=%d\n", 0);
+#endif
 	//Network Mode
 	str = nvram_safe_get(strcat_r(prefix, "nmode_x", tmp));
 	if (band)
 	{
-		if (str && strlen(str))
+		if (str && *str)
 		{
 			if (atoi(str) == 0)       // Auto
 			{
-#if defined(VHT_SUPPORT)
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+				if(nvram_match("wl1_11ax", "1"))
+					fprintf(fp, "WirelessMode=%d\n", 17);		// A + AN + AC +AX mixed
+				else
+#endif
 				fprintf(fp, "WirelessMode=%d\n", 14);	// A + AN + AC mixed
 				VHTBW_MAX = 1;
-#else
-				fprintf(fp, "WirelessMode=%d\n", 8);	// A + AN mixed
-#endif
 			}
 			else if (atoi(str) == 1)  // N Only
 			{
 				fprintf(fp, "WirelessMode=%d\n", 11);	// N in 5G
 			}
-#if defined(VHT_SUPPORT)
 			else if (atoi(str) == 8)  // AN/AC Mixed
 			{
 				fprintf(fp, "WirelessMode=%d\n", 15);	// AN + AC mixed
 				VHTBW_MAX = 1;
 			}
-#endif
 			else if (atoi(str) == 2)  // A
 				fprintf(fp, "WirelessMode=%d\n", 2);
 			else			// A,N[,AC]
 			{
-#if defined(VHT_SUPPORT)
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+				if(nvram_match("wl1_11ax", "1"))
+					fprintf(fp, "WirelessMode=%d\n", 17);		// A + AN + AC +AX mixed
+				else
+#endif
 				fprintf(fp, "WirelessMode=%d\n", 14);
 				VHTBW_MAX = 1;
-#else
-				fprintf(fp, "WirelessMode=%d\n", 8);
-#endif
 			}
 		}
 		else
 		{
-			warning = 6;
-#if defined(VHT_SUPPORT)
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+			if(nvram_match("wl1_11ax", "1"))
+				fprintf(fp, "WirelessMode=%d\n", 17);		// A + AN + AC +AX mixed
+			else
+#endif
 			fprintf(fp, "WirelessMode=%d\n", 14);		// A + AN + AC mixed
 			VHTBW_MAX = 1;
-#else
-			fprintf(fp, "WirelessMode=%d\n", 8);		// A + AN mixed
-#endif
+			warning = 6;
 		}
 	}
 	else
 	{
-		if (str && strlen(str))
+		if (str && *str)
 		{
 			if (atoi(str) == 0)       // B,G,N
 				fprintf(fp, "WirelessMode=%d\n", 9);
@@ -964,31 +1016,97 @@ int gen_ralink_config(int band, int is_iNIC)
 				fprintf(fp, "WirelessMode=%d\n", 0);
 			else if (atoi(str) == 1)  // N
 				fprintf(fp, "WirelessMode=%d\n", 6);
-/*
-			else if (atoi(str) == 4)  // G
-				fprintf(fp, "WirelessMode=%d\n", 4);
-			else if (atoi(str) == 0)  // B
-				fprintf(fp, "WirelessMode=%d\n", 1);
-*/
+//			else if (atoi(str) == 4)  // G
+//				fprintf(fp, "WirelessMode=%d\n", 4);
+//			else if (atoi(str) == 0)  // B
+//				fprintf(fp, "WirelessMode=%d\n", 1);
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+			else if(nvram_match("wl0_11ax", "1"))
+				fprintf(fp, "WirelessMode=%d\n", 16);		// B + G + N +AX mixed
+#endif
 			else			// B,G,N
 				fprintf(fp, "WirelessMode=%d\n", 9);
 		}
 		else
 		{
 			warning = 7;
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+				if(nvram_match("wl0_11ax", "1"))
+					fprintf(fp, "WirelessMode=%d\n", 16);		// B + G + N +AX mixed
+				else
+#endif
 			fprintf(fp, "WirelessMode=%d\n", 9);
 		}
 	}
 
+	fprintf(fp, "TxCmdMode=%d\n", 1);
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+	if(nvram_match(strcat_r(prefix, "twt", tmp), "1"))
+		fprintf(fp, "TWTSupport=%d\n", 1);
+	else
+		fprintf(fp, "TWTSupport=%d\n", 0);
+	if(nvram_match(strcat_r(prefix, "mbo_enable", tmp), "1"))
+		fprintf(fp, "MboSupport=%d\n", 1);
+	else
+		fprintf(fp, "MboSupport=%d\n", 0);
+	if(nvram_match(strcat_r(prefix, "11ax", tmp), "1")
+	{ 
+		if(nvram_match(strcat_r(prefix, "ofdma", tmp), "1"))
+		{
+			fprintf(fp, "MuOfdmaDlEnable=%d\n", 1);
+			fprintf(fp, "MuOfdmaUlEnable=%d\n", 0);
+			fprintf(fp, "MuMimoDlEnable=%d\n", 0);
+			fprintf(fp, "MuMimoUlEnable=%d\n", 0);
+		}
+		else if(nvram_match(strcat_r(prefix, "ofdma", tmp), "2"))
+		{
+			fprintf(fp, "MuOfdmaDlEnable=%d\n", 1);
+			fprintf(fp, "MuOfdmaUlEnable=%d\n", 1);
+			fprintf(fp, "MuMimoDlEnable=%d\n", 0);
+			fprintf(fp, "MuMimoUlEnable=%d\n", 0);
+		}
+		else if(nvram_match(strcat_r(prefix, "ofdma", tmp), "3"))
+		{
+			fprintf(fp, "MuOfdmaDlEnable=%d\n", 1);
+			fprintf(fp, "MuOfdmaUlEnable=%d\n", 1);
+			fprintf(fp, "MuMimoDlEnable=%d\n", 1);
+			fprintf(fp, "MuMimoUlEnable=%d\n", 1);
+		}
+		else if(nvram_match(strcat_r(prefix, "ofdma", tmp), "4"))
+		{
+			fprintf(fp, "MuOfdmaDlEnable=%d\n", 1);
+			fprintf(fp, "MuOfdmaUlEnable=%d\n", 0);
+			fprintf(fp, "MuMimoDlEnable=%d\n", 1);
+			fprintf(fp, "MuMimoUlEnable=%d\n", 0);
+		}
+		else
+		{
+			fprintf(fp, "MuOfdmaDlEnable=%d\n", 0);
+			fprintf(fp, "MuOfdmaUlEnable=%d\n", 0);
+			fprintf(fp, "MuMimoDlEnable=%d\n", 0);
+			fprintf(fp, "MuMimoUlEnable=%d\n", 0);
+		}
+	}
+	else
+	{
+		fprintf(fp, "MuOfdmaDlEnable=%d\n", 0);
+		fprintf(fp, "MuOfdmaUlEnable=%d\n", 0);
+		fprintf(fp, "MuMimoDlEnable=%d\n", 0);
+		fprintf(fp, "MuMimoUlEnable=%d\n", 0);
+	}
+#endif
+	fprintf(fp, "ApCliMuMimoDlEnable=%d\n", 0);
+	fprintf(fp, "ApCliMuMimoUlEnable=%d\n", 0);
+	fprintf(fp, "ApCliMuOfdmaUlEnable=%d\n", 0);
+	fprintf(fp, "ApCliMuOfdmaDlEnable=%d\n", 0);
+
 	fprintf(fp, "FixedTxMode=\n");
-/*
-	fprintf(fp, "TxRate=%d\n", 0);
-*/
+
 	if (ssid_num == 1)
 		fprintf(fp, "TxRate=%d\n", 0);
 	else
 	{
-		memset(tmpstr, 0x0, sizeof(tmpstr));
+		memset(tmpstr, 0, sizeof(tmpstr));
 
 		for (i = 0; i < ssid_num; i++)
 		{
@@ -1036,7 +1154,7 @@ int gen_ralink_config(int band, int is_iNIC)
  	 * not supported in 5G mode
 	 */
 		str = nvram_safe_get(strcat_r(prefix, "rateset", tmp));
-		if (str && strlen(str))
+		if (str && *str)
 		{
 			if (!strcmp(str, "default"))	// 1, 2, 5.5, 11
 				fprintf(fp, "BasicRate=%d\n", 15);
@@ -1056,7 +1174,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//BeaconPeriod
 	str = nvram_safe_get(strcat_r(prefix, "bcn", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 	{
 		if (atoi(str) > 1000 || atoi(str) < 20)
 		{
@@ -1074,7 +1192,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//DTIM Period
 	str = nvram_safe_get(strcat_r(prefix, "dtim", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 		fprintf(fp, "DtimPeriod=%d\n", atoi(str));
 	else
 	{
@@ -1086,7 +1204,7 @@ int gen_ralink_config(int band, int is_iNIC)
 	str = nvram_safe_get(strcat_r(prefix, "txpower", tmp));
 	if (nvram_match(strcat_r(prefix, "radio", tmp), "0"))
 		fprintf(fp, "TxPower=%d\n", 0);
-	else if (str && strlen(str))
+	else if (str && *str)
 		fprintf(fp, "TxPower=%d\n", atoi(str));
 	else
 	{
@@ -1099,7 +1217,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//BGProtection
 	str = nvram_safe_get(strcat_r(prefix, "gmode_protection", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 	{
 		if (!strcmp(str, "auto"))
 			fprintf(fp, "BGProtection=%d\n", 0);
@@ -1129,7 +1247,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//RTSThreshold  Default=2347
 	str = nvram_safe_get(strcat_r(prefix, "rts", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 		fprintf(fp, "RTSThreshold=%d\n", atoi(str));
 	else
 	{
@@ -1139,7 +1257,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//FragThreshold  Default=2346
 	str = nvram_safe_get(strcat_r(prefix, "frag", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 		fprintf(fp, "FragThreshold=%d\n", atoi(str));
 	else
 	{
@@ -1153,19 +1271,24 @@ int gen_ralink_config(int band, int is_iNIC)
 	if (nvram_match("reg_spec", "CE"))
 		;
 	else
-#endif	/* CE_ADAPTIVITY */
-	if (str && strlen(str))
-//		fprintf(fp, "TxBurst=%d\n", atoi(str));
+#endif
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+	if (!nvram_match("reg_spec", "EAC"))
+	{
+#endif
+	if (str && *str)
 		fprintf(fp, "TxBurst=%d\n", strcmp(str, "off") ? 1 : 0);
 	else
 	{
 		warning = 16;
 		fprintf(fp, "TxBurst=%d\n", 1);
 	}
-
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+	}
+#endif
 	//PktAggregate
 	str = nvram_safe_get(strcat_r(prefix, "PktAggregate", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 		fprintf(fp, "PktAggregate=%d\n", atoi(str));
 	else
 	{
@@ -1177,8 +1300,8 @@ int gen_ralink_config(int band, int is_iNIC)
 	fprintf(fp, "TurboRate=%d\n", 0);
 
 	//WmmCapable
-	memset(tmpstr, 0x0, sizeof(tmpstr));
-	memset(wmm_enable, 0x0, sizeof(wmm_enable));
+	memset(tmpstr, 0, sizeof(tmpstr));
+	memset(wmm_enable, 0, sizeof(wmm_enable));
 
 	str = nvram_safe_get(strcat_r(prefix, "nmode_x", tmp));
 	if (str && atoi(str) == 1)	// always enable WMM in N only mode
@@ -1221,7 +1344,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//APSDCapable UAPSDCapable
 	str = nvram_safe_get(strcat_r(prefix, "wme_apsd", tmp));
-	if (str && strlen(str)){
+	if (str && *str){
 		fprintf(fp, "APSDCapable=%d\n", strcmp(str, "off") ? 1 : 0);
 		fprintf(fp, "UAPSDCapable=%d\n", strcmp(str, "off") ? 1 : 0);
 		fprintf(fp, "ApCliAPSDCapable=%d\n", strcmp(str, "off") ? 1 : 0);
@@ -1234,14 +1357,9 @@ int gen_ralink_config(int band, int is_iNIC)
 		fprintf(fp, "ApCliAPSDCapable=%d\n", 1);
 	}
 
-
-	fprintf(fp, "ApCliMuMimoDlEnable=%d\n", 0);
-	fprintf(fp, "ApCliMuMimoUlEnable=%d\n", 0);
-	fprintf(fp, "ApCliMuOfdmaUlEnable=%d\n", 0);
-	fprintf(fp, "ApCliMuOfdmaDlEnable=%d\n", 0);
 	//DLSDCapable
 	str = nvram_safe_get(strcat_r(prefix, "DLSCapable", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 		fprintf(fp, "DLSCapable=%d\n", atoi(str));
 	else
 	{
@@ -1253,7 +1371,7 @@ int gen_ralink_config(int band, int is_iNIC)
 	memset(tmpstr, 0x0, sizeof(tmpstr));
 
 	str = nvram_safe_get(strcat_r(prefix, "ap_isolate", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 	{
 		for (i = 0; i < ssid_num; i++)
 		{
@@ -1337,13 +1455,13 @@ int gen_ralink_config(int band, int is_iNIC)
 					if(nvram_get_int(strcat_r(prefix_mssid, "channel", tmp)) == 0){
 						memset(tmpstr, 0x0, sizeof(tmpstr));
 						if ((nvram_get_int(strcat_r(prefix_mssid, "bw", tmp)) == 1) || (nvram_get_int(strcat_r(prefix_mssid, "bw", tmp)) == 3)){
-							if(band && IEEE80211H){
+							if(IEEE80211H){
 								sprintf(tmpstr,"%d;%d;%d;%d",116,132,136,140);
 								fprintf(fp,"AutoChannelSkipList=%s\n",tmpstr);
 							}
 						}
 						else if (nvram_get_int(strcat_r(prefix_mssid, "bw", tmp)) == 2){
-							if(band && IEEE80211H){
+							if(IEEE80211H){
 								sprintf(tmpstr,"%d;%d",116,140);
 								fprintf(fp,"AutoChannelSkipList=%s\n",tmpstr);
 							}
@@ -1352,15 +1470,10 @@ int gen_ralink_config(int band, int is_iNIC)
 				}
 #endif	/* RTCONFIG_RALINK_DFS */
 		}
-		else if (str && strlen(str))
+		else if (str && *str)
 		{
 			if (atoi(str) == 0)
 			{
-#ifdef RTCONFIG_RALINK_DFS
-				if(band && IEEE80211H)
-					fprintf(fp, "AutoChannelSelect=%d\n", 1);			//NEED rule 1 for DFS
-				else
-#endif	/* RTCONFIG_RALINK_DFS */
 #if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
 				fprintf(fp, "AutoChannelSelect=%d\n", 3);
 #else
@@ -1368,20 +1481,24 @@ int gen_ralink_config(int band, int is_iNIC)
 #endif
 				memset(tmpstr, 0x0, sizeof(tmpstr));
 				if (band && nvram_get_int(strcat_r(prefix, "bw", tmp)) > 0) {
-#ifdef RTN56U
-					if (nvram_match(strcat_r(prefix, "country_code", tmp), "TW"))
-						sprintf(tmpstr,"%d;%d",56,165);
-					else
-#endif
 					sprintf(tmpstr,"%d",165);// skip 165 in A band when bw setting to 20/40Mhz or 40Mhz.
 
 #ifdef RTCONFIG_RALINK_DFS
-					if(band && IEEE80211H){
+					if(IEEE80211H){
 						if((nvram_get_int(strcat_r(prefix, "bw", tmp))==1) || (nvram_get_int(strcat_r(prefix, "bw", tmp))==3)){
-							sprintf(tmpstr,"%s;%d;%d;%d;%d",tmpstr,116,132,136,140);	//skip 116 132 136 140 under auto mode					
+							if(!nvram_match("reg_spec", "EAC"))
+							{
+								if(!strncmp(nvram_safe_get("territory_code"), "JP"))
+									sprintf(tmpstr,"%s;%d;%d;%d", tmpstr ,132,136,140);	//skip 132 136 140 under auto mode					
+								else
+									sprintf(tmpstr,"%s;%d;%d;%d;%d",tmpstr,116,132,136,140);	//skip 116 132 136 140 under auto mode					
+							}				
 						}
 						else if(nvram_get_int(strcat_r(prefix, "bw", tmp))==2){
-							sprintf(tmpstr,"%s;%d;%d",tmpstr,116,140);	//skip 116 132 136 140 under auto mode					
+							if(!strncmp(nvram_safe_get("territory_code"), "JP"))
+								sprintf(tmpstr,"%s;%d",tmpstr,140);	//skip 140 under auto mode					
+							else
+							sprintf(tmpstr,"%s;%d;%d",tmpstr,116,140);	//skip 116 140 under auto mode					
 						}
 					}
 #endif	/* RTCONFIG_RALINK_DFS */
@@ -1431,6 +1548,8 @@ int gen_ralink_config(int band, int is_iNIC)
 								sprintf(tmpstr,"%d;%d",12,13);	
 								fprintf(fp,"AutoChannelSkipList=%s\n",tmpstr);							
 							}
+							else
+								fprintf(fp,"AutoChannelSkipList=%s\n", atoi(nvram_safe_get("acs_ch13")));
 							nvram_set("skip_channel_2g", "CH13");	
 						}
 					}
@@ -1445,8 +1564,10 @@ int gen_ralink_config(int band, int is_iNIC)
 							if(atoi(nvram_safe_get("acs_band1")) == 0) {
 								memset(tmpstr, 0x00, sizeof(tmpstr));
 								sprintf(tmpstr,"%d;%d;%d;%d",36,40,44,48);	
-								fprintf(fp,"AutoChannelSkipList=%s\n",tmpstr);
+								fprintf(fp,"AutoChannelSkipList=%s\n", tmpstr);
 							}
+							else
+								fprintf(fp,"AutoChannelSkipList=%s\n", atoi(nvram_safe_get("acs_band1")));
 							nvram_set("skip_channel_5g", "band1");	
 						}
 					}
@@ -1463,21 +1584,74 @@ int gen_ralink_config(int band, int is_iNIC)
 								sprintf(tmpstr,"%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d", 100,104,108,112,116,120,124,128,132,136,140);	
 								fprintf(fp,"AutoChannelSkipList=%s\n",tmpstr);
 							}
+							else
+								fprintf(fp,"AutoChannelSkipList=%s\n", atoi(nvram_safe_get("acs_band3")));
 							nvram_set("skip_channel_5g", "band3");	
 						}
 					}
 					//skip band2,band3		
 					for(i=0; i < (sizeof(t_code_noselect_5G)/sizeof(&t_code_noselect_5G[0][0])); i++) {
 						if(!strncmp(nvram_safe_get("territory_code"),&t_code_noselect_5G[i][0],2)){
-							if(atoi(nvram_safe_get("acs_dfs")) == 0) {							
-								memset(tmpstr, 0x00, sizeof(tmpstr));
-								sprintf(tmpstr,"%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d",52,56,60,64,100,104,108,112,116,120,124,128,132,136,140);	
-								fprintf(fp,"AutoChannelSkipList=%s\n",tmpstr);	
+							memset(tmpstr, 0x00, sizeof(tmpstr));
+							if(nvram_match("location_code", "RU"))
+							{
+								if(nvram_match("acs_dfs", "0"))
+								{
+									sprintf(tmpstr,"%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d", 100,104,108,112,116,120,124,128,132,136,140);	
+									fprintf(fp,"AutoChannelSkipList=%s\n",tmpstr);	
+								}
 							}
-							nvram_set("skip_channel_5g", "band23");								
+							else
+							{
+								if(atoi(nvram_safe_get("acs_dfs")) == 0) {							
+									sprintf(tmpstr,"%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d",52,56,60,64,100,104,108,112,116,120,124,128,132,136,140);	
+									fprintf(fp,"AutoChannelSkipList=%s\n",tmpstr);
+									nvram_set("skip_channel_5g", "band23");
+								}
+								else if(IEEE80211H)
+								{
+									if((nvram_get_int(strcat_r(prefix, "bw", tmp))==1) || (nvram_get_int(strcat_r(prefix, "bw", tmp))==3)){
+										sprintf(tmpstr,"%s;%d;%d;%d;%d",tmpstr,116,132,136,140);	//skip 116 132 136 140 under auto mode					
+									}
+									else if(nvram_get_int(strcat_r(prefix, "bw", tmp))==2){
+										sprintf(tmpstr,"%s;%d;%d",tmpstr,116,140);	//skip 116 140 under auto mode					
+									}
+									fprintf(fp,"AutoChannelSkipList=%s\n",tmpstr);
+									nvram_set("skip_channel_5g", "band23");
+								}
+							}
 						}
 					}
-				}	
+				}
+				if(!strcmp(nvram_safe_get("wl_reg_5g"), &reg_5g[3][0]) || !strcmp(nvram_safe_get("wl_reg_5g"), &reg_5g[4][0])
+					|| !strcmp(nvram_safe_get("wl_reg_5g"), &reg_5g[5][0])) 
+				{
+					memset(tmpstr, 0, sizeof(tmpstr));
+					sprintf(tmpstr,"%d", 165);	//skip 165 under auto mode		
+					fprintf(fp,"AutoChannelSkipList=%s\n",tmpstr);
+				}
+				if(!strcmp(nvram_safe_get("wl_reg_5g"), "5G_ALL"))
+				{
+					memset(tmpstr, 0, sizeof(tmpstr));
+					for(i=0; i < (sizeof(t_code_noselect_5G)/sizeof(&t_code_noselect_5G[0][0])); i++) {
+						if(!strncmp(nvram_safe_get("territory_code"),&t_code_noselect_5G[i][0],2)) {
+							if(IEEE80211H)
+							{
+								if((nvram_get_int(strcat_r(prefix, "bw", tmp)) == 1) || (nvram_get_int(strcat_r(prefix, "bw", tmp)) == 3)){
+									sprintf(tmpstr,"%s;%d;%d;%d;%d", tmpstr, 116, 132, 136, 140);
+								}
+								else if(nvram_get_int(strcat_r(prefix, "bw", tmp)) == 2){
+									sprintf(tmpstr,"%s;%d;%d", tmpstr, 116, 140);
+								}
+							}
+							else
+							{
+								sprintf(tmpstr,"%s;%d;%d;%d;%d;%d", tmpstr, 116, 120, 124, 128, 165);
+							}
+						}
+					}
+					fprintf(fp,"AutoChannelSkipList=%s\n", tmpstr);
+				}
 			}					
 #else
 				
@@ -1572,15 +1746,12 @@ int gen_ralink_config(int band, int is_iNIC)
 #endif
 	{
 #ifdef RTCONFIG_RALINK_DFS
-#if defined (RTCONFIG_WLMODULE_MT7615E_AP) || (RTCONFIG_WLMODULE_MT7915D_AP)
-		if (band && nvram_match("reg_spec", "JP"))
-			fprintf(fp, "RDRegion=%s\n", "JAP");
-		else
-#endif
-		fprintf(fp, "RDRegion=%s\n",nvram_get("reg_spec"));
+		fprintf(fp, "RDRegion=%s\n", nvram_get("reg_spec"));
 #else
 		fprintf(fp, "RDRegion=\n");
 #endif
+		fprintf(fp, "DfsZeroWaitDefault=%d\n", 0);
+		fprintf(fp, "DfsDedicatedZeroWait=%d\n", 0);
 		fprintf(fp, "CarrierDetect=%d\n", 0);
 	}
 //	if (band)
@@ -1590,9 +1761,9 @@ int gen_ralink_config(int band, int is_iNIC)
 	fprintf(fp, "DebugFlags=%d\n", 0);
 	fprintf(fp, "FineAGC=%d\n", 0);
 	if(band)
-		fprintf(fp, "StreamMode=%d\n", 3);	// from RT3883_EVT.TXT for test 5G in factory. But the meaning of value is unknown.
+		fprintf(fp, "StreamMode=%d\n", 3);
 	else
-	fprintf(fp, "StreamMode=%d\n", 0);
+		fprintf(fp, "StreamMode=%d\n", 0);
 	fprintf(fp, "StreamModeMac0=\n");
 	fprintf(fp, "StreamModeMac1=\n");
 	fprintf(fp, "StreamModeMac2=\n");
@@ -1638,10 +1809,7 @@ int gen_ralink_config(int band, int is_iNIC)
 	}
 #else
 	str = nvram_safe_get(strcat_r(prefix, "GreenAP", tmp));
-/*
-	if (sw_mode == SW_MODE_REPEATER && wlc_band == band)
-		fprintf(fp, "GreenAP=%d\n", 0);
-	else */if (str && strlen(str))
+	if (str && *str)
 		fprintf(fp, "GreenAP=%d\n", atoi(str));
 	else
 	{
@@ -1732,6 +1900,18 @@ int gen_ralink_config(int band, int is_iNIC)
 				sprintf(tmpstr, "%s%s", tmpstr, "WPA1WPA2");
 				flag_8021x = 1;
 			}
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+			else if (!strcmp(str, "sae"))
+			{
+				sprintf(tmpstr, "%s%s", tmpstr, "WPA3PSK");
+				flag_8021x = 1;
+			}
+			else if (!strcmp(str, "psk2sae"))
+			{
+				sprintf(tmpstr, "%s%s", tmpstr, "WPA2PSKWPA3PSK");
+				flag_8021x = 1;
+			}
+#endif
 			else if ((!strcmp(str, "radius")))
 			{
 				sprintf(tmpstr, "%s%s", tmpstr, "OPEN");
@@ -1823,7 +2003,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//RekeyInterval
 	str = nvram_safe_get(strcat_r(prefix, "wpa_gtk_rekey", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 	{
 		if (atol(str) == 0)
 			fprintf(fp, "RekeyMethod=%s\n", "DISABLE");
@@ -1841,7 +2021,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//PMKCachePeriod (in minutes)
 	str = nvram_safe_get(strcat_r(prefix, "pmk_cache", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 		fprintf(fp, "PMKCachePeriod=%ld\n", atol(str));
 	else
 	fprintf(fp, "PMKCachePeriod=%d\n", 10);
@@ -2193,7 +2373,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//HT_HTC
 	str = nvram_safe_get(strcat_r(prefix, "HT_HTC", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 		fprintf(fp, "HT_HTC=%d\n", atoi(str));
 	else
 	{
@@ -2218,7 +2398,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//HT_LinkAdapt
 	str = nvram_safe_get(strcat_r(prefix, "HT_LinkAdapt", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 		fprintf(fp, "HT_LinkAdapt=%d\n", atoi(str));
 	else
 	{
@@ -2230,7 +2410,7 @@ int gen_ralink_config(int band, int is_iNIC)
 //	str = nvram_safe_get(strcat_r(prefix, "HT_OpMode", tmp));
 	str = nvram_safe_get(strcat_r(prefix, "mimo_preamble", tmp));
 	int opmode = strcmp(str, "mm") ? 1 : 0;
-	if (str && strlen(str))
+	if (str && *str)
 //		fprintf(fp, "HT_OpMode=%d\n", atoi(str));
 		fprintf(fp, "HT_OpMode=%d\n", opmode);
 	else
@@ -2241,7 +2421,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//HT_MpduDensity
 	str = nvram_safe_get(strcat_r(prefix, "HT_MpduDensity", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 		fprintf(fp, "HT_MpduDensity=%d\n", atoi(str));
 	else
 	{
@@ -2277,11 +2457,7 @@ int gen_ralink_config(int band, int is_iNIC)
 	}
 	else
 	{
-		if (Channel == 0)
-			EXTCHA_MAX = 1;
-		else if ((Channel >=1) && (Channel <= 4))
-			EXTCHA_MAX = 1;
-		else if ((Channel >= 5) && (Channel <= 7))
+		if ((Channel >= 0) && (Channel <= 7))
 			EXTCHA_MAX = 1;
 		else if ((Channel >= 8) && (Channel <= 14))
 		{
@@ -2304,9 +2480,9 @@ int gen_ralink_config(int band, int is_iNIC)
 //		str = nvram_safe_get(strcat_r(prefix, "HT_EXTCHA", tmp));
 		str = nvram_safe_get(strcat_r(prefix, "nctrlsb", tmp));
 		int extcha = strcmp(str, "lower") ? 0 : 1;
-		if (str && strlen(str))
+		if (str && *str)
 		{
-			if ((Channel >=1) && (Channel <= 4))
+			if ((Channel >= 1) && (Channel <= 4))
 				fprintf(fp, "HT_EXTCHA=%d\n", 1);
 //			else if (atoi(str) <= EXTCHA_MAX)
 			else if (extcha <= EXTCHA_MAX)
@@ -2385,7 +2561,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//HT_AutoBA
 	str = nvram_safe_get(strcat_r(prefix, "HT_AutoBA", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 		fprintf(fp, "HT_AutoBA=%d\n", atoi(str));
 	else
 	{
@@ -2395,7 +2571,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//HT_BADecline
 	str = nvram_safe_get(strcat_r(prefix, "HT_BADecline", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 		fprintf(fp, "HT_BADecline=%d\n", atoi(str));
 	else
 	{
@@ -2405,7 +2581,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//HT_AMSDU
 	str = nvram_safe_get(strcat_r(prefix, "HT_AMSDU", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 		fprintf(fp, "HT_AMSDU=%d\n", atoi(str));
 	else
 	{
@@ -2415,7 +2591,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//HT_BAWinSize
 	str = nvram_safe_get(strcat_r(prefix, "HT_BAWinSize", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 		fprintf(fp, "HT_BAWinSize=%d\n", atoi(str));
 	else
 	{
@@ -2425,40 +2601,39 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//HT_GI
 	str = nvram_safe_get(strcat_r(prefix, "HT_GI", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 	{
 		fprintf(fp, "HT_GI=%d\n", atoi(str));
-#if defined(RTCONFIG_MTK_REP) || defined(RTAC85P) || defined(RTACRH26) || defined(RMAC2100) || defined(R6800)
-#if defined(VHT_SUPPORT)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 		if(band)
+#endif
 			fprintf(fp, "VHT_SGI=%d\n", atoi(str));
-#endif
-#endif
+
+
 	}
 	else
 	{
 		warning = 39;
 		fprintf(fp, "HT_GI=%d\n", 1);
-#if defined(RTCONFIG_MTK_REP) || defined(RTAC85P) || defined(RTACRH26) || defined(RMAC2100) || defined(R6800)
-#if defined(VHT_SUPPORT)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 		if(band)
+#endif
 			fprintf(fp, "VHT_SGI=%d\n", 1);
-#endif
-#endif
+
 	}
 
-#if defined(RTCONFIG_MTK_REP) || defined(RTAC85P) || defined(RTACRH26) || defined(RMAC2100) || defined(R6800)
-#if defined(VHT_SUPPORT)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 	if(band){
+#endif
 		fprintf(fp, "VHT_STBC=%d\n",1);
 		fprintf(fp, "VHT_LDPC=%d\n",1);
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 	}
-#endif
 #endif
 
 	//HT_STBC
 	str = nvram_safe_get(strcat_r(prefix, "HT_STBC", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 		fprintf(fp, "HT_STBC=%d\n", atoi(str));
 	else
 	{
@@ -2468,7 +2643,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//HT_MCS
 	str = nvram_safe_get(strcat_r(prefix, "HT_MCS", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 		fprintf(fp, "HT_MCS=%d\n", atoi(str));
 	else
 	{
@@ -2478,7 +2653,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//HT_TxStream
 	str = nvram_safe_get(strcat_r(prefix, "HT_TxStream", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 		fprintf(fp, "HT_TxStream=%d\n", atoi(str));
 	else
 	{
@@ -2488,7 +2663,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//HT_RxStream
 	str = nvram_safe_get(strcat_r(prefix, "HT_RxStream", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 		fprintf(fp, "HT_RxStream=%d\n", atoi(str));
 	else
 	{
@@ -2500,7 +2675,7 @@ int gen_ralink_config(int band, int is_iNIC)
 //	str = nvram_safe_get(strcat_r(prefix, "HT_PROTECT", tmp));
 	str = nvram_safe_get(strcat_r(prefix, "nmode_protection", tmp));
 	int nprotect = strcmp(str, "auto") ? 0 : 1;
-	if (str && strlen(str))
+	if (str && *str)
 //		fprintf(fp, "HT_PROTECT=%d\n", atoi(str));
 		fprintf(fp, "HT_PROTECT=%d\n", nprotect);
 	else
@@ -2511,97 +2686,36 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//HT_DisallowTKIP
 	fprintf(fp, "HT_DisallowTKIP=%d\n", 1);
-
-#if defined(VHT_SUPPORT)
-#if 0	
-	//VHT_BW, VHT_DisallowNonVHT
-	//str = nvram_safe_get(strcat_r(prefix, "bw", tmp));
-	if(band != 1)
-	{
-	}
-	else if (sw_mode == SW_MODE_REPEATER
-#if defined(RTCONFIG_WIRELESSREPEATER) && defined(RTCONFIG_CONCURRENTREPEATER)
-		&& (wlc_express == 0 || (wlc_express - 1) != band)
-#else
-		&& wlc_band == band
-#endif
-		)	// Repeater
-		fprintf(fp, "VHT_BW=%d\n", 1);
-	else if(wl_bw == 1 && (HTBW_MAX == 1) && (VHTBW_MAX == 1))	// Auto
-		fprintf(fp, "VHT_BW=%d\n", 1);
-	else if(wl_bw == 3 && (HTBW_MAX == 1) && (VHTBW_MAX == 1))	// 80 MHz
-		fprintf(fp, "VHT_BW=%d\n", 1);
-#if defined(RTCONFIG_WIRELESSREPEATER) && defined(RTCONFIG_CONCURRENTREPEATER)
-	else if ((wlc_express - 1) == band)   //express way (apclii0)
-		fprintf(fp, "VHT_BW=%d\n", 1);
-#endif
-	else
-		fprintf(fp, "VHT_BW=%d\n", 0);
-
-
-#endif
-
-
-#if 0
-		int vbw = 0;		
-		for (i = 0; i < MAX_NO_MSSID; i++)
+	int vbw = get_bw_via_channel(band, Channel);
+	if (band) {
+		if (vbw > 0)
 		{
-			if (sw_mode == SW_MODE_REPEATER
-	#if defined(RTCONFIG_WIRELESSREPEATER) && defined(RTCONFIG_CONCURRENTREPEATER)
-				&& (wlc_express == 0 || (wlc_express - 1) != band)
-	#else
-				&& wlc_band == band
-	#endif
-				&& i != 1)
-					continue;
-				
-			if (i && sw_mode == SW_MODE_REPEATER)
-			{
-				sprintf(prefix_mssid, "wl%d.%d_", band, i);
-
-				if (!nvram_match(strcat_r(prefix_mssid, "bss_enabled", temp), "1"))
-					continue;
-				
-				vbw = nvram_safe_get(strcat_r(prefix_mssid, "bw", temp));
-
-			}
-			else {
-				sprintf(prefix_mssid, "wl%d_", band);
-				//vbw = nvram_safe_get(strcat_r(prefix_mssid, "bw", temp));
-				vbw = get_bw_via_channel(band, Channel);
-			}
-		}
-#else
-		int vbw = get_bw_via_channel(band, Channel);
-#endif	
-		if (band) {
-			if (vbw > 0)
-			{
-				if (vbw == 2)	// 40 MHz					
-					fprintf(fp, "VHT_BW=%d\n", 0);
-				else if (vbw == 5) // 160 MHz
-					fprintf(fp, "VHT_BW=%d\n", 2);
-				else // vbw == 3, 1 ==> 20/40/80 MHz and 80 MHz
-					fprintf(fp, "VHT_BW=%d\n", 1);
-			}
-			else
-			{
-				warning = 8;
+			if (vbw == 2)	// 40 MHz					
 				fprintf(fp, "VHT_BW=%d\n", 0);
-			}
-			
-			str = nvram_get(strcat_r(prefix_mssid, "VHT_DisallowNonVHT", tmp));
-			if (str && strlen(str))
-				fprintf(fp, "VHT_DisallowNonVHT=%d\n", atoi(str));
-			else
-				fprintf(fp, "VHT_DisallowNonVHT=%d\n", 0);
-			fprintf(fp, "VHT_BW_SIGNAL=%d\n", 0);
+			else if (vbw == 5 || nvram_match(strcat_r(prefix, "bw_160", tmp), "1")) // 160 MHz
+				fprintf(fp, "VHT_BW=%d\n", 2);
+			else // vbw == 3, 1 ==> 20/40/80/160 MHz and 80 MHz
+				fprintf(fp, "VHT_BW=%d\n", 1);
 		}
-		
-
+		else
+		{
+			warning = 8;
+			fprintf(fp, "VHT_BW=%d\n", 0);
+		}
+			
+		str = nvram_get(strcat_r(prefix_mssid, "VHT_DisallowNonVHT", tmp));
+		if (str && *str)
+			fprintf(fp, "VHT_DisallowNonVHT=%d\n", atoi(str));
+		else
+			fprintf(fp, "VHT_DisallowNonVHT=%d\n", 0);
+		fprintf(fp, "VHT_BW_SIGNAL=%d\n", 0);
+	}
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+	else
+		fprintf(fp, "VHT_BW=%d\n", 0);// 40 MHz
 #endif
 
-#if !defined (RTCONFIG_WLMODULE_MT7615E_AP)
+#if defined(RMAC2100)
 	// TxBF
 	if (band)
 #endif
@@ -2631,27 +2745,28 @@ int gen_ralink_config(int band, int is_iNIC)
 		str = nvram_safe_get(strcat_r(prefix, "txbf", tmp));
 		if ((atoi(str) > 0) && nvram_match(strcat_r(prefix, "txbf_en", tmp), "1"))
 		{
-#if defined (RTCONFIG_WLMODULE_MT7615E_AP)
-			fprintf(fp, "BFBACKOFFenable=%d\n", 1);
-			fprintf(fp, "ITxBfEn=%d\n", 0);
+			if(!nvram_match("territory_code", ""))
+				fprintf(fp, "BFBACKOFFenable=%d\n", 1);
+			else
+				fprintf(fp, "BFBACKOFFenable=%d\n", 0);
+			str = nvram_safe_get(strcat_r(prefix, "itxbf", tmp));
+			fprintf(fp, "ITxBfEn=%d\n", (atoi(str) ? 1 : 0));
 			fprintf(fp, "ETxBfIncapable=%d\n", 0);
-#else
-			fprintf(fp, "ITxBfEn=%d\n", 1);
-#endif
 			fprintf(fp, "ETxBfEnCond=%d\n", 1);
 
-#if defined(RTCONFIG_MUMIMO_2G) || defined(RTCONFIG_MUMIMO_5G)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 			if (band)
+#endif
 				fprintf(fp, "MUTxRxEnable=%d\n", (mumimo ? 1 : 0));
-#if defined (RTCONFIG_WLMODULE_MT7615E_AP)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 			fprintf(fp, "MuMimoDlEnable=%d\n", (mumimo ? 1 : 0));
 			fprintf(fp, "MuMimoUlEnable=%d\n", 0);
-#endif
 #endif
 		}
 		else
 		{
-			fprintf(fp, "ITxBfEn=%d\n", 0);
+			str = nvram_safe_get(strcat_r(prefix, "itxbf", tmp));
+			fprintf(fp, "ITxBfEn=%d\n", (atoi(str) ? 1 : 0));
 #if defined(RTCONFIG_MUMIMO_2G) || defined(RTCONFIG_MUMIMO_5G)
 			if (band) {
 				if (mumimo) {
@@ -2669,22 +2784,10 @@ int gen_ralink_config(int band, int is_iNIC)
 #else
 			fprintf(fp, "ETxBfEnCond=%d\n", 0);
 #endif
-#if defined (RTCONFIG_WLMODULE_MT7615E_AP)
-			fprintf(fp, "ETxBfIncapable=%d\n", 1);
-#endif
+			fprintf(fp, "ETxBfIncapable=%d\n", 0);
 		}
 	}
-
 	//WscConfStatus
-//	str = nvram_safe_get(strcat_r(prefix, "wsc_config_state", tmp));
-//	if (str && strlen(str))
-//		wsc_configure = atoi(str);
-//	else
-//	{
-//		warning = 45;
-//		wsc_configure = 0;
-//	}
-
 	str2 = nvram_safe_get("w_Setting");
 
 	if (str2)
@@ -2708,64 +2811,12 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	fprintf(fp, "WscVendorPinCode=%s\n", nvram_safe_get("secret_code"));
 
-#if !defined(OLD_ACL)
 	memset(mac_filter,0,sizeof(mac_filter));
-#endif
 	//AccessPolicy0
 	gen_macmode(mac_filter, band); //Ren
-#ifdef OLD_ACL
-	str = nvram_safe_get(strcat_r(prefix, "macmode", tmp));
-
-	if (str && strlen(str))
-	{
-		#if 1 //Ren.B
-		for (i = 0; i < ssid_num; i++)
-		{
-			fprintf(fp, "AccessPolicy%d=%d\n", i, mac_filter[i]);
-		}
-		#else
-		if (!strcmp(str, "disabled"))
-		{
-			for (i = 0; i < ssid_num; i++)
-				fprintf(fp, "AccessPolicy%d=%d\n", i, 0);
-		}
-		else if (!strcmp(str, "allow"))
-		{
-			for (i = 0; i < ssid_num; i++)
-				fprintf(fp, "AccessPolicy%d=%d\n", i, 1);
-		}
-		else if (!strcmp(str, "deny"))
-		{
-			for (i = 0; i < ssid_num; i++)
-				fprintf(fp, "AccessPolicy%d=%d\n", i, 2);
-		}
-		else
-		{
-			warning = 46;
-			for (i = 0; i < ssid_num; i++)
-				fprintf(fp, "AccessPolicy%d=%d\n", i, 0);
-		}
-		#endif //Ren.E
-	}
-	else
-	{
-		warning = 47;
-		for (i = 0; i < ssid_num; i++)
-			fprintf(fp, "AccessPolicy%d=%d\n", i, 0);
-	}
-#else
 	for (i = 0; i < MAX_NO_MSSID; i++)
 		fprintf(fp, "AccessPolicy%d=%d\n", i, mac_filter[i]);
 
-#endif	 //OLD_ACL
-
-#ifdef OLD_ACL
-	list[0]=0;
-	list[1]=0;
-	if (nvram_invmatch(strcat_r(prefix, "macmode", tmp), "disabled"))
-	{
-		nv = nvp = strdup(nvram_safe_get(strcat_r(prefix, "maclist_x", tmp)));
-#else
 	for (i = 0,j = 0; i < MAX_NO_MSSID; i++)
 	{
 
@@ -2783,7 +2834,6 @@ int gen_ralink_config(int band, int is_iNIC)
 		if (nvram_invmatch(strcat_r(prefix_mssid, "macmode", tmp), "disabled"))
 		{
 			nv = nvp = strdup(nvram_safe_get(strcat_r(prefix_mssid, "maclist_x", tmp)));
-#endif //OLD_ACL
 			if (nv) {
 				while ((b = strsep(&nvp, "<")) != NULL) {
 					if (strlen(b)==0) continue;
@@ -2794,140 +2844,132 @@ int gen_ralink_config(int band, int is_iNIC)
 				}
 				free(nv);
 			}
-#ifdef OLD_ACL
-	}
-	// AccessControlLis0~3
-	for (i = 0; i < ssid_num; i++)
-		if(mac_filter[i] != 0)
-			fprintf(fp, "AccessControlList%d=%s\n", i, list);
-		else
-			fprintf(fp, "AccessControlList%d=%s\n", i, "");
-#else
 			fprintf(fp, "AccessControlList%d=%s\n", j, list);
 		}
 		else
 			fprintf(fp, "AccessControlList%d=%s\n", j, "");
 		j++;
-#endif
 
-#if !defined(OLD_ACL)
 	} //for loop
-#endif
-
-	if (sw_mode != SW_MODE_REPEATER && !nvram_match(strcat_r(prefix, "mode_x", tmp), "0"))
-	{
 	//WdsEnable
-	str = nvram_safe_get(strcat_r(prefix, "mode_x", tmp));
-	if (str && strlen(str))
+	if (sw_mode = SW_MODE_REPEATER || nvram_match(strcat_r(prefix, "mode_x", tmp), "0"))
 	{
-		if (	(nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "open") ||
+		fprintf(fp, "WdsEnable=%d\n", 0);
+		fprintf(fp, "WdsPhyMode=%d\n", 0);
+		fprintf(fp, "WdsEncrypType=%s\n", "NONE");
+		fprintf(fp, "WdsList=\n", );
+		fprintf(fp, "Wds0Key=\n", );
+		fprintf(fp, "Wds1Key=\n", );
+		fprintf(fp, "Wds2Key=\n", );
+		fprintf(fp, "Wds3Key=\n", );
+	}
+	else
+	{
+		str = nvram_safe_get(strcat_r(prefix, "mode_x", tmp));
+		if (str && *str)
+		{
+			if ((nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "open") ||
+				(nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "psk2") && nvram_match(strcat_r(prefix, "crypto", tmp), "aes")))
+			)
+			{
+				if (atoi(str) == 0)
+					fprintf(fp, "WdsEnable=%d\n", 0);
+				else if (atoi(str) == 1)
+					fprintf(fp, "WdsEnable=%d\n", 2);
+				else if (atoi(str) == 2)
+				{
+					if (nvram_match(strcat_r(prefix, "wdsapply_x", tmp), "0"))
+						fprintf(fp, "WdsEnable=%d\n", 4);
+					else
+						fprintf(fp, "WdsEnable=%d\n", 3);
+				}
+			}
+			else
+				fprintf(fp, "WdsEnable=%d\n", 0);
+		}
+		else
+		{
+			warning = 49;
+			fprintf(fp, "WdsEnable=%d\n", 0);
+		}
+
+		//WdsPhyMode
+		str = nvram_safe_get(strcat_r(prefix, "mode_x", tmp));
+		if (str && strlen(str))
+		{
+			{
+				if ((nvram_get_int(strcat_r(prefix, "nmode_x", tmp)) == 0))
+					fprintf(fp, "WdsPhyMode=%s\n", "HTMIX");
+				else if ((nvram_get_int(strcat_r(prefix, "nmode_x", tmp)) == 1))
+					fprintf(fp, "WdsPhyMode=%s\n", "GREENFIELD");
+				else
+					fprintf(fp, "WdsPhyMode=\n");
+			}
+		}
+
+		//WdsEncrypType
+		if (nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "open") && nvram_match(strcat_r(prefix, "wep_x", tmp), "0"))
+			fprintf(fp, "WdsEncrypType=%s\n", "NONE;NONE;NONE;NONE");
+		else if (nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "open") && nvram_invmatch(strcat_r(prefix, "wep_x", tmp), "0"))
+			fprintf(fp, "WdsEncrypType=%s\n", "WEP;WEP;WEP;WEP");
+		else if (nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "psk2") && nvram_match(strcat_r(prefix, "crypto", tmp), "aes"))
+			fprintf(fp, "WdsEncrypType=%s\n", "AES;AES;AES;AES");
+		else
+			fprintf(fp, "WdsEncrypType=%s\n", "NONE;NONE;NONE;NONE");
+
+		list[0]=0;
+		list[1]=0;
+		if ((nvram_match(strcat_r(prefix, "mode_x", tmp), "1") || (nvram_match(strcat_r(prefix, "mode_x", tmp), "2") && nvram_match(strcat_r(prefix, "wdsapply_x", tmp), "1"))) &&
+			(nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "open") ||
 			(nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "psk2") && nvram_match(strcat_r(prefix, "crypto", tmp), "aes")))
 		)
 		{
-			if (atoi(str) == 0)
-				fprintf(fp, "WdsEnable=%d\n", 0);
-			else if (atoi(str) == 1)
-				fprintf(fp, "WdsEnable=%d\n", 2);
-			else if (atoi(str) == 2)
-			{
-				if (nvram_match(strcat_r(prefix, "wdsapply_x", tmp), "0"))
-					fprintf(fp, "WdsEnable=%d\n", 4);
-				else
-					fprintf(fp, "WdsEnable=%d\n", 3);
+			nv = nvp = strdup(nvram_safe_get(strcat_r(prefix, "wdslist", tmp)));
+			if (nv) {
+				while ((b = strsep(&nvp, "<")) != NULL) {
+					if (strlen(b)==0) continue;
+					if (list[0]==0)
+						sprintf(list, "%s", b);
+					else
+						sprintf(list, "%s;%s", list, b);
+				}
+				free(nv);
 			}
 		}
-		else
-			fprintf(fp, "WdsEnable=%d\n", 0);
-	}
-	else
-	{
-		warning = 49;
-		fprintf(fp, "WdsEnable=%d\n", 0);
-	}
 
-	//WdsPhyMode
-	str = nvram_safe_get(strcat_r(prefix, "mode_x", tmp));
-	if (str && strlen(str))
-	{
+		//WdsList
+		fprintf(fp, "WdsList=%s\n", list);
+
+		//WdsKey
+		if (nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "open") && nvram_match(strcat_r(prefix, "wep_x", tmp), "0"))
 		{
-			if ((nvram_get_int(strcat_r(prefix, "nmode_x", tmp)) == 0))
-				fprintf(fp, "WdsPhyMode=%s\n", "HTMIX");
-			else if ((nvram_get_int(strcat_r(prefix, "nmode_x", tmp)) == 1))
-				fprintf(fp, "WdsPhyMode=%s\n", "GREENFIELD");
-			else
-				fprintf(fp, "WdsPhyMode=\n");
+			fprintf(fp, "WdsDefaultKeyID=\n");
+			fprintf(fp, "Wds0Key=\n");
+			fprintf(fp, "Wds1Key=\n");
+			fprintf(fp, "Wds2Key=\n");
+			fprintf(fp, "Wds3Key=\n");
 		}
-	}
+		else if (nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "open") && nvram_invmatch(strcat_r(prefix, "wep_x", tmp), "0"))
+		{
+			fprintf(fp, "WdsDefaultKeyID=%s;%s;%s;%s\n", nvram_safe_get(strcat_r(prefix, "key", tmp)), nvram_safe_get(strcat_r(prefix, "key", tmp)), nvram_safe_get(strcat_r(prefix, "key", tmp)), nvram_safe_get(strcat_r(prefix, "key", tmp)));
+	//		sprintf(list, "wl%d_key%s", band, nvram_safe_get(strcat_r(prefix, "key", tmp)));
+			str = strcat_r(prefix, "key", tmp);
+			str2 = nvram_safe_get(str);
+			sprintf(list, "%s%s", str, str2);
 
-	//WdsEncrypType
-	if (nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "open") && nvram_match(strcat_r(prefix, "wep_x", tmp), "0"))
-		fprintf(fp, "WdsEncrypType=%s\n", "NONE;NONE;NONE;NONE");
-	else if (nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "open") && nvram_invmatch(strcat_r(prefix, "wep_x", tmp), "0"))
-		fprintf(fp, "WdsEncrypType=%s\n", "WEP;WEP;WEP;WEP");
-	else if (nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "psk2") && nvram_match(strcat_r(prefix, "crypto", tmp), "aes"))
-		fprintf(fp, "WdsEncrypType=%s\n", "AES;AES;AES;AES");
-	else
-		fprintf(fp, "WdsEncrypType=%s\n", "NONE;NONE;NONE;NONE");
-
-	list[0]=0;
-	list[1]=0;
-	if (	(nvram_match(strcat_r(prefix, "mode_x", tmp), "1") || (nvram_match(strcat_r(prefix, "mode_x", tmp), "2") && nvram_match(strcat_r(prefix, "wdsapply_x", tmp), "1"))) &&
-		(nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "open") ||
-		(nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "psk2") && nvram_match(strcat_r(prefix, "crypto", tmp), "aes")))
-	)
-	{
-#if 0
-		num = nvram_get_int(strcat_r(prefix, "wdsnum_x", tmp));
-		for (i=0;i<num;i++)
-			sprintf(list, "%s;%s", list, mac_conv(strcat_r(prefix, "wdslist_x", tmp), i, macbuf));
-#else
-		nv = nvp = strdup(nvram_safe_get(strcat_r(prefix, "wdslist", tmp)));
-		if (nv) {
-			while ((b = strsep(&nvp, "<")) != NULL) {
-				if (strlen(b)==0) continue;
-				if (list[0]==0)
-					sprintf(list, "%s", b);
-				else
-					sprintf(list, "%s;%s", list, b);
-			}
-			free(nv);
+			fprintf(fp, "Wds0Key=%s\n", nvram_safe_get(list));
+			fprintf(fp, "Wds1Key=%s\n", nvram_safe_get(list));
+			fprintf(fp, "Wds2Key=%s\n", nvram_safe_get(list));
+			fprintf(fp, "Wds3Key=%s\n", nvram_safe_get(list));
 		}
-#endif
-	}
-
-	//WdsList
-	fprintf(fp, "WdsList=%s\n", list);
-
-	//WdsKey
-	if (nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "open") && nvram_match(strcat_r(prefix, "wep_x", tmp), "0"))
-	{
-		fprintf(fp, "WdsDefaultKeyID=\n");
-		fprintf(fp, "Wds0Key=\n");
-		fprintf(fp, "Wds1Key=\n");
-		fprintf(fp, "Wds2Key=\n");
-		fprintf(fp, "Wds3Key=\n");
-	}
-	else if (nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "open") && nvram_invmatch(strcat_r(prefix, "wep_x", tmp), "0"))
-	{
-		fprintf(fp, "WdsDefaultKeyID=%s;%s;%s;%s\n", nvram_safe_get(strcat_r(prefix, "key", tmp)), nvram_safe_get(strcat_r(prefix, "key", tmp)), nvram_safe_get(strcat_r(prefix, "key", tmp)), nvram_safe_get(strcat_r(prefix, "key", tmp)));
-//		sprintf(list, "wl%d_key%s", band, nvram_safe_get(strcat_r(prefix, "key", tmp)));
-		str = strcat_r(prefix, "key", tmp);
-		str2 = nvram_safe_get(str);
-		sprintf(list, "%s%s", str, str2);
-
-		fprintf(fp, "Wds0Key=%s\n", nvram_safe_get(list));
-		fprintf(fp, "Wds1Key=%s\n", nvram_safe_get(list));
-		fprintf(fp, "Wds2Key=%s\n", nvram_safe_get(list));
-		fprintf(fp, "Wds3Key=%s\n", nvram_safe_get(list));
-	}
-	else if (nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "psk2") && nvram_match(strcat_r(prefix, "crypto", tmp), "aes"))
-	{
-		fprintf(fp, "WdsKey=%s\n", nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp)));
-		fprintf(fp, "Wds0Key=%s\n", nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp)));
-		fprintf(fp, "Wds1Key=%s\n", nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp)));
-		fprintf(fp, "Wds2Key=%s\n", nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp)));
-		fprintf(fp, "Wds3Key=%s\n", nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp)));
-	}
+		else if (nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "psk2") && nvram_match(strcat_r(prefix, "crypto", tmp), "aes"))
+		{
+			fprintf(fp, "WdsKey=%s\n", nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp)));
+			fprintf(fp, "Wds0Key=%s\n", nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp)));
+			fprintf(fp, "Wds1Key=%s\n", nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp)));
+			fprintf(fp, "Wds2Key=%s\n", nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp)));
+			fprintf(fp, "Wds3Key=%s\n", nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp)));
+		}
 
 	} // sw_mode
 
@@ -3171,7 +3213,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 		nvram_set(strcat_r(prefix, "crypto", tmp), nvram_safe_get("wlc_crypto"));
 		nvram_set(strcat_r(prefix, "wpa_psk", tmp), nvram_safe_get("wlc_wpa_psk"));
-#if defined (RTCONFIG_WLMODULE_MT7615E_AP)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
 // ui force 40,but 7615 support 80 and 160
 		if(band)
 			nvram_set(strcat_r(prefix, "bw", tmp), "1");
@@ -3303,7 +3345,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//RadioOn
 	str = nvram_safe_get(strcat_r(prefix, "radio", tmp));
-	if (str && strlen(str))
+	if (str && *str)
 		fprintf(fp, "RadioOn=%d\n", atoi(str));
 	else
 	{
@@ -3455,28 +3497,38 @@ next_mrate:
 	}
 	fprintf(fp, "\n");
 
-#if defined (RTCONFIG_WLMODULE_MT7615E_AP)
 	fprintf(fp, "EfuseBufferMode=0\n");
 	fprintf(fp, "E2pAccessMode=2\n");
 	fprintf(fp, "VOW_RX_En=%d\n", 1);
-	fprintf(fp, "TxCmdMode=%d\n", 1);
 	fprintf(fp, "AMSDU_NUM=%d\n", 4);
 	fprintf(fp, "CP_SUPPORT=%d\n", 2);
 	fprintf(fp, "RED_Enable=%d\n", 1);
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+	if(band) {
+		str = nvram_safe_get(strcat_r(prefix, "turbo_qam", tmp));
+		if (str && *str)
+			fprintf(fp, "Vht1024QamSupport=%d\n", atoi(str));
+	} else {
+		str = nvram_safe_get(strcat_r(prefix, "turbo_qam", tmp));
+		if (str && *str)
+			fprintf(fp, "G_BAND_256QAM=%d\n", atoi(str));
+	}
+#else
 #if defined (RTCONFIG_QAM256_2G)
 	/* 2.4G 256QAM */
 	if(!band) {
 		str = nvram_safe_get(strcat_r(prefix, "turbo_qam", tmp));
-		if (str && strlen(str))
+		if (str && *str)
 			fprintf(fp, "G_BAND_256QAM=%d\n", atoi(str));
 	}
+#endif
 #endif
 	if(*tcode)
 		fprintf(fp, "SKUenable=1\n");
 	else
 		fprintf(fp, "SKUenable=0\n");
 	fprintf(fp, "WirelessEvent=1\n");
-#endif
+
 #if defined(RTCONFIG_SWRT_KVR)
 	fprintf(fp, "WNMEnable=1\n");
 	fprintf(fp, "RRMEnable=1\n");
