@@ -859,7 +859,7 @@ define platformKernelConfig
 			sed -i "/CONFIG_RT2860V2_AP_CARRIER/d" $(1); \
 			echo "CONFIG_RT2860V2_AP_CARRIER=y" >>$(1); \
 	fi; \
-	if [ "$(RTAC85P)" = "y" ] || [ "$(RMAC2100)" = "y" ] || [ "$(R6800)" = "y" ]; then \
+	if [ "$(RTAC85P)" = "y" ] || [ "$(RMAC2100)" = "y" ] || [ "$(SWRTR6800)" = "y" ]; then \
 			sed -i "/CONFIG_NF_CT_NETLINK/d" $(1); \
 			echo "CONFIG_NF_CT_NETLINK=m" >>$(1); \
 			sed -i "/CONFIG_NF_CT_NETLINK_TIMEOUT/d" $(1); \

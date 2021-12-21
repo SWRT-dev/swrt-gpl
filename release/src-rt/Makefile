@@ -822,7 +822,7 @@ ifeq ($(CONFIG_RALINK),y)
 		asustools/mkits.sh -D mt7621-rmac2100 -o image/mt7621-rmac2100.its -k $(PLATFORMDIR)/zImage.img -d $(DTS_DIR)/ralink/$(DTB) -C lzma -a 0x81001000 -e 0x81001000 -A mips -v 4.4.198 ; \
 		asustools/u-boot-2014.10/tools/mkimage -f image/mt7621-rmac2100.its $(PLATFORMDIR)/zImage.img ; \
 	fi ; \
-	if [ "$(BUILD_NAME)" = "R6800" ] || [ "$(BUILD_NAME)" = "RM-AC2100" ]; then \
+	if [ "$(BUILD_NAME)" = "SWRT-R6800" ] || [ "$(BUILD_NAME)" = "RM-AC2100" ]; then \
 		SIZE=`wc -c $(PLATFORMDIR)/zImage.img | awk '{print $$1}'`; \
 		PAD=`expr 4194304 - $${SIZE} - 64` ; \
 		dd if=/dev/zero count=1 bs=$${PAD} 2> /dev/null | tr \\000 \\377 >> $(PLATFORMDIR)/zImage.img ; \
@@ -842,19 +842,19 @@ ifeq ($(CONFIG_RALINK),y)
 		-d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx ; \
 	elif [ "$(BUILD_NAME)" = "RT-ACRH18" ] ; then \
 		asustools/u-boot-2014.10/tools/mkimage -A arm -O linux -T kernel -C lzma -a 0x40008000 -e 0x40008000 -r $${RFSOFFSET} \
-		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(EXTENDNO)" "0" "0" "0" "0" "0" "0"  \
+		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0"  \
 		-d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx ; \
 	elif [ "$(BUILD_NAME)" = "4G-AC86U" ] ; then \
 		asustools/u-boot-2014.10/tools/mkimage -A arm64 -O linux -T kernel -C lzma -a 0x41080000 -e 0x41080000 -r $${RFSOFFSET} \
-		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(EXTENDNO)" "0" "0" "0" "0" "0" "0"  \
+		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0"  \
                 -d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx ; \
 	elif [ "$(BUILD_NAME)" = "4G-AX56" ] || [ "$(BUILD_NAME)" = "RT-AX53U" ] || [ "$(BUILD_NAME)" = "RT-AX54" ] ; then \
 		asustools/u-boot-2014.10/tools/mkimage -A mips -O linux -T kernel -C lzma -a 0x81001000 -e 0x81001000 -r $${RFSOFFSET} \
-		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(EXTENDNO)" "0" "0" "0" "0" "0" "0"  \
+		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0"  \
 		-d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx ; \
 	else \
 		asustools/mkimage -A mips -O linux -T kernel -C lzma -a 80000000 -e $${ENTRY} -r $${RFSOFFSET} \
-		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(EXTENDNO)" "0" "0" "0" "0" "0" "0" \
+		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0" \
 		-d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx ; \
 	fi ; \
 	if [ "`grep -c \"^CONFIG_RALINK_MT7620\>\" $(LINUXDIR)/.config`" -gt 0 ]; then \
