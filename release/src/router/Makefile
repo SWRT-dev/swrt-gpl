@@ -1241,6 +1241,7 @@ obj-$(RTCONFIG_OPEN_NTFS3G) += ntfs-3g
 endif
 obj-$(RTCONFIG_PARAGON_NTFS) += ufsd
 obj-$(RTCONFIG_TUXERA_NTFS) += tuxera
+obj-$(RTCONFIG_NTFS3) += ntfs3
 endif
 ifeq ($(RTCONFIG_HFS),y)
 obj-$(RTCONFIG_PARAGON_HFS) += ufsd

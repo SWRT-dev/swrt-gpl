@@ -15,7 +15,9 @@
 #ifndef __RC_H__
 #define __RC_H__
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <rtconfig.h>
 #include <stdio.h>

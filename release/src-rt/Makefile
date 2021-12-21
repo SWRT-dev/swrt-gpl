@@ -108,6 +108,9 @@ else
 export TOP_PLATFORM := $(SRCBASE)/router
 endif
 
+export SWRT_VER := $(SWRT_VER_MAJOR)$(SWRT_VER_MINOR)
+export SWRTVER := $(SWRT_NAME)_$(SWRT_VER)
+
 # tmp depend on busybox
 E2FSPROGS := $(if $(filter $(BUSYBOX),busybox-1.17.4),n,y)
 
@@ -147,14 +150,14 @@ else
 EXSTRING:=
 endif
 ifneq ($(FW_JUMP),)
-export EXTENDNO := $(FW_JUMP)-g$(shell git log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")$(EXSTRING)
+export EXTENDNO := $(SWRTVER)-g$(shell git log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")$(EXSTRING)
 else
-export EXTENDNO := $(shell expr $(EXTENDNO1) + $(RC_EXT_NO))-g$(shell git log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")$(EXSTRING)
+export EXTENDNO := $(SWRTVER)-g$(shell git log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")$(EXSTRING)
 endif
 endif
 
 ifeq ($(EXTENDNO),)
-export EXTENDNO := 0-g$(shell git log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")
+export EXTENDNO := $(SWRTVER)-g$(shell git log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")
 endif
 
 export SWPJNAME := $(shell git branch | grep "*" | grep "swpj-" | sed 's/.*swpj-//g')
@@ -172,7 +175,7 @@ export SWPJEXTENDNO := $(shell git describe --match swpj_$(SWPJNAME)_$(SWPJVERNO
 ifneq ($(SWPJEXTENDNO),)
 export EXTENDNO := $(SWPJEXTENDNO)
 else
-export EXTENDNO := 0-g$(shell git log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")
+export EXTENDNO := $(SWRTVER)-g$(shell git log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")
 endif
 endif
 
@@ -247,6 +250,12 @@ ifneq ($(BRCM_CHIP),4908)
 export CFLAGS += -D$(MODEL)
 endif
 export $(MODEL):=y
+ifneq ($(SWRT_NAME),)
+export CFLAGS += -D$(SWRT_NAME)
+export $(SWRT_NAME):=y
+export CFLAGS += -DSWRT_VER_MAJOR_$(SWRT_VER_MAJOR)
+export SWRT_VER_MAJOR_$(SWRT_VER_MAJOR):=y
+endif
 endif
 
 EXTRA_KERNEL_YES_CONFIGS_1 := $(filter %=y %=Y,$(EXTRA_KERNEL_CONFIGS))
@@ -279,7 +288,11 @@ uppercase_B = $(shell echo $(BUILD_NAME) | tr a-z  A-Z)
 lowercase_B = $(shell echo $(BUILD_NAME) | tr A-Z a-z)
 BUILD_TIME := $(shell LC_ALL=C date -u)
 BUILD_USER ?= $(shell whoami)
+ifneq ($(findstring $(BUILD_USER), paldier iss),)
+BUILD_INFO := SWRTdev
+else
 BUILD_INFO := $(shell git log --pretty="%h" -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")
+endif
 
 ifeq ($(CONFIG_LINUX26),y)
 mips_rev = $(if $(filter $(MIPS32),r2),MIPSR2,MIPSR1)
@@ -292,7 +305,8 @@ endif
 ifeq ($(FAKEID),y)
 export IMGNAME := $(BUILD_NAME)_$(KERNEL_VER).$(FS_VER)_$(FORCE_SN)_$(SWPJVER)$(FORCE_EN)
 else
-export IMGNAME := $(BUILD_NAME)_$(KERNEL_VER).$(FS_VER)_$(SERIALNO)_$(SWPJVER)$(EXTENDNO)
+#export IMGNAME := $(BUILD_NAME)_$(KERNEL_VER).$(FS_VER)_$(SERIALNO)_$(SWPJVER)$(EXTENDNO)
+export IMGNAME := $(EXTENDNO)
 endif
 
 ifeq ($(OPDBG),y)
@@ -589,6 +603,7 @@ endif
 endif
 	@echo '$(BUILD_NAME)_$(KERNEL_VER).$(FS_VER) $(BUILD_TIME)' > router/shared/version
 	@echo 'EXTENDNO=$(EXTENDNO)' > router/extendno.conf
+	@echo '#define RT_FWVER "$(SWRT_VER_MINOR)"' >> router/shared/version.h
 
 rt_ver_ntools:
 	-@rm -f ntools/version
@@ -744,6 +759,24 @@ ifeq ($(CONFIG_RALINK),y)
 		$(CROSS_COMPILE)objcopy -O binary -R .reginfo -R .note -R .comment -R .mdebug -S $(LINUXDIR)/vmlinux $(PLATFORMDIR)/vmlinus ; \
 		#asustools/lzma -9 -f -c $(PLATFORMDIR)/vmlinus > $(PLATFORMDIR)/zImage.lzma ; \
 		asustools/lzma_9k e $(PLATFORMDIR)/vmlinus $(PLATFORMDIR)/zImage.lzma -lc2 -lp2 -pb2 -mfbt2 ; \
+	elif [ "$(BUILD_NAME)" = "RT-AC85P" ] || [ "$(BUILD_NAME)" = "RT-AC85U" ] ; then \
+		$(CROSS_COMPILE)cpp -nostdinc -x assembler-with-cpp -I$(DTS_DIR) -I$(DTS_DIR)/include -undef -D__DTS__ -o $(DTS_DIR)/ralink/$(DTB).tmp $(DTS_DIR)/ralink/mt7621-rtac85x.dts ; \
+		$(LINUXDIR)/scripts/dtc/dtc -O dtb -i$(DTS_DIR)/ralink -o $(DTS_DIR)/ralink/$(DTB) $(DTS_DIR)/ralink/$(DTB).tmp ; \
+		rm $(DTS_DIR)/ralink/$(DTB).tmp ; \
+		$(CROSS_COMPILE)objcopy -O binary -R .reginfo -R .note -R .comment -R .mdebug -S $(LINUXDIR)/vmlinux $(PLATFORMDIR)/vmlinus ; \
+		asustools/lzma_9k e $(PLATFORMDIR)/vmlinus $(PLATFORMDIR)/zImage.lzma -lc2 -lp2 -pb2 -mfbt2 ; \
+	elif [ "$(BUILD_NAME)" = "SWRT-R6800" ] ; then \
+		$(CROSS_COMPILE)cpp -nostdinc -x assembler-with-cpp -I$(DTS_DIR) -I$(DTS_DIR)/include -undef -D__DTS__ -o $(DTS_DIR)/ralink/$(DTB).tmp $(DTS_DIR)/ralink/mt7621-r6800.dts ; \
+		$(LINUXDIR)/scripts/dtc/dtc -O dtb -i$(DTS_DIR)/ralink -o $(DTS_DIR)/ralink/$(DTB) $(DTS_DIR)/ralink/$(DTB).tmp ; \
+		rm $(DTS_DIR)/ralink/$(DTB).tmp ; \
+		$(CROSS_COMPILE)objcopy -O binary -R .reginfo -R .note -R .comment -R .mdebug -S $(LINUXDIR)/vmlinux $(PLATFORMDIR)/vmlinus ; \
+		asustools/lzma_9k e $(PLATFORMDIR)/vmlinus $(PLATFORMDIR)/zImage.lzma -lc2 -lp2 -pb2 -mfbt2 ; \
+	elif [ "$(BUILD_NAME)" = "RM-AC2100" ] ; then \
+		$(CROSS_COMPILE)cpp -nostdinc -x assembler-with-cpp -I$(DTS_DIR) -I$(DTS_DIR)/include -undef -D__DTS__ -o $(DTS_DIR)/ralink/$(DTB).tmp $(DTS_DIR)/ralink/mt7621-rmac2100.dts ; \
+		$(LINUXDIR)/scripts/dtc/dtc -O dtb -i$(DTS_DIR)/ralink -o $(DTS_DIR)/ralink/$(DTB) $(DTS_DIR)/ralink/$(DTB).tmp ; \
+		rm $(DTS_DIR)/ralink/$(DTB).tmp ; \
+		$(CROSS_COMPILE)objcopy -O binary -R .reginfo -R .note -R .comment -R .mdebug -S $(LINUXDIR)/vmlinux $(PLATFORMDIR)/vmlinus ; \
+		asustools/lzma_9k e $(PLATFORMDIR)/vmlinus $(PLATFORMDIR)/zImage.lzma -lc2 -lp2 -pb2 -mfbt2 ; \
 	else \
 		mipsel-linux-objcopy -O binary -R .reginfo -R .note -R .comment -R .mdebug -S $(LINUXDIR)/vmlinux $(PLATFORMDIR)/vmlinus ; \
 		asustools/lzma_9k e $(PLATFORMDIR)/vmlinus $(PLATFORMDIR)/zImage.lzma -lc2 -lp2 -pb2 -mfbt2 ; \
@@ -752,7 +785,7 @@ ifeq ($(CONFIG_RALINK),y)
 	
 	# padded kernel image size
 	@SIZE=`wc -c $(PLATFORMDIR)/zImage.img | awk '{print $$1}'`; \
-	if [ "`grep -c \"^CONFIG_ROOTFS_IN_FLASH_NO_PADDING\>\" $(LINUXDIR)/.config`" -eq 0 ] && [ "$(BUILD_NAME)" != "RT-ACRH18" ] && [ "$(BUILD_NAME)" != "4G-AC86U" ] && [ "$(BUILD_NAME)" != "RT-AX53U" ] && [ "$(BUILD_NAME)" != "4G-AX56" ] && [ "$(BUILD_NAME)" != "RT-AX54" ] ; then \
+	if [ "`grep -c \"^CONFIG_ROOTFS_IN_FLASH_NO_PADDING\>\" $(LINUXDIR)/.config`" -eq 0 ] && [ "$(BUILD_NAME)" != "RT-ACRH18" ] && [ "$(BUILD_NAME)" != "4G-AC86U" ] && [ "$(BUILD_NAME)" != "RT-AX53U" ] && [ "$(BUILD_NAME)" != "4G-AX56" ] && [ "$(BUILD_NAME)" != "RT-AX54" ] && [ "$(BUILD_NAME)" != "RT-AC85P" ] && [ "$(BUILD_NAME)" != "RT-AC85U" ] && [ "$(BUILD_NAME)" != "SWRT-R6800" ] && [ "$(BUILD_NAME)" != "RM-AC2100" ] ; then \
 		CONFIG_MTD_KERNEL_PART_SIZ=`grep "^CONFIG_MTD_KERNEL_PART_SIZ\>" $(LINUXDIR)/.config|sed -e "s,[^=]*=,," -e "s,^\(0x\)*,0x,"` ; \
 		MTD_KRN_PART_SIZE=`printf "%d" $${CONFIG_MTD_KERNEL_PART_SIZ}` ; \
 		PAD=`expr $${MTD_KRN_PART_SIZE} - 64 - $${SIZE}` ; \
@@ -772,15 +805,27 @@ ifeq ($(CONFIG_RALINK),y)
 		asustools/mkits.sh -D MTK-7629-RFB -o image/MTK-7629-RFB.its -k $(PLATFORMDIR)/zImage.img -d $(DTS_DIR)/$(DTB) -C lzma -a 0x40008000 -e 0x40008000 -A arm -v 4.4.198 ; \
 		#asustools/u-boot-2014.10/tools/mkimage -f image/MTK-7629-RFB.its image/$(IMGNAME).img ; \
 		asustools/u-boot-2014.10/tools/mkimage -f image/MTK-7629-RFB.its $(PLATFORMDIR)/zImage.img ; \
-	fi ; \
-	if [ "$(BUILD_NAME)" = "RT-AX53U" ] || [ "$(BUILD_NAME)" = "RT-AX54" ] || [ "$(BUILD_NAME)" = "4G-AX56" ] ; then	\
+	elif [ "$(BUILD_NAME)" = "RT-AX53U" ] || [ "$(BUILD_NAME)" = "RT-AX54" ] || [ "$(BUILD_NAME)" = "4G-AX56" ] ; then	\
 		asustools/mkits.sh -D mt7621-rfb-ax-nmbm -o image/mt7621-rfb-ax-nmbm.its -k $(PLATFORMDIR)/zImage.img -d $(DTS_DIR)/ralink/$(DTB) -C lzma -a 0x81001000 -e 0x81001000 -A mips -v 4.4.198 ; \
 		asustools/u-boot-2014.10/tools/mkimage -f image/mt7621-rfb-ax-nmbm.its $(PLATFORMDIR)/zImage.img ; \
-	fi ; \
-	if [ "$(BUILD_NAME)" = "4G-AC86U" ] ; then	\
+	elif [ "$(BUILD_NAME)" = "4G-AC86U" ] ; then	\
 		asustools/mkits.sh -D MTK-AC2600-RFB1 -o image/MTK-AC2600-RFB1-kernel.bin.its -k $(PLATFORMDIR)/zImage.img -d $(DTS_DIR)/mediatek/$(DTB) -C lzma -a 0x41080000 -e 0x41080000 -A arm64 -v 4.4.198 ; \
 		#asustools/u-boot-2014.10/tools/mkimage -f image/MTK-7622-RFB1.its image/$(IMGNAME).img ; \
 		asustools/u-boot-2014.10/tools/mkimage -f image/MTK-AC2600-RFB1-kernel.bin.its $(PLATFORMDIR)/zImage.img ; \
+	elif [ "$(BUILD_NAME)" = "RT-AC85P" ] || [ "$(BUILD_NAME)" = "RT-AC85U" ] ; then \
+		asustools/mkits.sh -D mt7621-rtac85x -o image/mt7621-rtac85x.its -k $(PLATFORMDIR)/zImage.img -d $(DTS_DIR)/ralink/$(DTB) -C lzma -a 0x81001000 -e 0x81001000 -A mips -v 4.4.198 ; \
+		asustools/u-boot-2014.10/tools/mkimage -f image/mt7621-rtac85x.its $(PLATFORMDIR)/zImage.img ; \
+	elif [ "$(BUILD_NAME)" = "SWRT-R6800" ] ; then \
+		asustools/mkits.sh -D mt7621-r6800 -o image/mt7621-r6800.its -k $(PLATFORMDIR)/zImage.img -d $(DTS_DIR)/ralink/$(DTB) -C lzma -a 0x81001000 -e 0x81001000 -A mips -v 4.4.198 ; \
+		asustools/u-boot-2014.10/tools/mkimage -f image/mt7621-r6800.its $(PLATFORMDIR)/zImage.img ; \
+	elif [ "$(BUILD_NAME)" = "RM-AC2100" ] ; then \
+		asustools/mkits.sh -D mt7621-rmac2100 -o image/mt7621-rmac2100.its -k $(PLATFORMDIR)/zImage.img -d $(DTS_DIR)/ralink/$(DTB) -C lzma -a 0x81001000 -e 0x81001000 -A mips -v 4.4.198 ; \
+		asustools/u-boot-2014.10/tools/mkimage -f image/mt7621-rmac2100.its $(PLATFORMDIR)/zImage.img ; \
+	fi ; \
+	if [ "$(BUILD_NAME)" = "R6800" ] || [ "$(BUILD_NAME)" = "RM-AC2100" ]; then \
+		SIZE=`wc -c $(PLATFORMDIR)/zImage.img | awk '{print $$1}'`; \
+		PAD=`expr 4194304 - $${SIZE} - 64` ; \
+		dd if=/dev/zero count=1 bs=$${PAD} 2> /dev/null | tr \\000 \\377 >> $(PLATFORMDIR)/zImage.img ; \
 	fi ; \
 	cat $(PLATFORMDIR)/target.image >> $(PLATFORMDIR)/zImage.img ; \
 	#cat $(PLATFORMDIR)/target.image >> image/$(IMGNAME).img ; \
@@ -791,9 +836,9 @@ ifeq ($(CONFIG_RALINK),y)
 	RSIZE=`wc -c $(PLATFORMDIR)/target.image | awk '{print $$1}'` ; \
 	PAD2=`expr $${ISIZE} - $${KSIZE} - $${RSIZE}` ; \
 	RFSOFFSET=`expr 64 + $${KSIZE} + $${PAD2}` ; \
-	if [ "$(BUILD_NAME)" = "RT-N56UB1" ] || [ "$(BUILD_NAME)" = "RT-N56UB2" ] || [ "$(BUILD_NAME)" = "RT-AC1200GA1" ] || [ "$(BUILD_NAME)" = "RT-AC1200GU" ] || [ "$(BUILD_NAME)" = "RP-AC56" ] || [ "$(BUILD_NAME)" = "RP-AC87" ] || [ "$(BUILD_NAME)" = "RT-AC85U" ] || [ "$(BUILD_NAME)" = "RT-AC85P" ] || [ "$(BUILD_NAME)" = "RT-AC65U" ] || [ "$(BUILD_NAME)" = "RT-N800HP" ] || [ "$(BUILD_NAME)" = "RT-ACRH26" ] || [ "$(BUILD_NAME)" = "TUF-AC1750" ] ; then \
-		asustools/mkimage -A mips -O linux -T kernel -C lzma -a 80001000 -e $${ENTRY} -r $${RFSOFFSET} \
-		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(EXTENDNO)" "0" "0" "0" "0" "0" "0"  \
+	if [ "$(BUILD_NAME)" = "RT-AC85U" ] || [ "$(BUILD_NAME)" = "RT-AC85P" ] || [ "$(BUILD_NAME)" = "RT-AC65U" ] || [ "$(BUILD_NAME)" = "RT-N800HP" ] || [ "$(BUILD_NAME)" = "RT-ACRH26" ] || [ "$(BUILD_NAME)" = "TUF-AC1750" ] || [ "$(BUILD_NAME)" = "RM-AC2100" ] || [ "$(BUILD_NAME)" = "SWRT-R6800" ] ; then \
+		asustools/u-boot-2014.10/tools/mkimage -A mips -O linux -T kernel -C lzma -a 0x81001000 -e 0x81001000 -r $${RFSOFFSET} \
+		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0"  \
 		-d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx ; \
 	elif [ "$(BUILD_NAME)" = "RT-ACRH18" ] ; then \
 		asustools/u-boot-2014.10/tools/mkimage -A arm -O linux -T kernel -C lzma -a 0x40008000 -e 0x40008000 -r $${RFSOFFSET} \
@@ -1831,21 +1876,19 @@ define RouterOptions
 		sed -i "/RTCONFIG_PUSH_EMAIL/d" $(1); \
 		echo "RTCONFIG_PUSH_EMAIL=y" >>$(1); \
 	fi; \
-	if [ "$(AHS)" = "n" ]; then \
+	if [ "$(AHS)" = "y" ]; then \
 		sed -i "/RTCONFIG_AHS/d" $(1); \
-		echo "# RTCONFIG_AHS is not set" >>$(1); \
-		if [ "$(ASD)" = "n" ]; then \
-			sed -i "/RTCONFIG_LIBASC/d" $(1); \
-			echo "# RTCONFIG_LIBASC is not set" >>$(1); \
-		fi; \
+		echo "RTCONFIG_AHS=y" >>$(1); \
+		sed -i "/RTCONFIG_HTTPS/d" $(1); \
+		echo "RTCONFIG_HTTPS=y" >>$(1); \
+		sed -i "/RTCONFIG_LIBASC/d" $(1); \
+		echo "RTCONFIG_LIBASC=y" >>$(1); \
 	fi; \
-	if [ "$(ASD)" = "n" ]; then \
+	if [ "$(ASD)" = "y" ]; then \
 		sed -i "/RTCONFIG_ASD/d" $(1); \
-		echo "# RTCONFIG_ASD is not set" >>$(1); \
-		if [ "$(AHS)" = "n" ]; then \
-			sed -i "/RTCONFIG_LIBASC/d" $(1); \
-			echo "# RTCONFIG_LIBASC is not set" >>$(1); \
-		fi; \
+		echo "RTCONFIG_ASD=y" >>$(1); \
+		sed -i "/RTCONFIG_LIBASC/d" $(1); \
+		echo "RTCONFIG_LIBASC=y" >>$(1); \
 	fi; \
 	if [ "$(RSYSLOGD)" = "y" ]; then \
 		sed -i "/RTCONFIG_RSYSLOGD/d" $(1); \
@@ -2151,7 +2194,7 @@ define RouterOptions
 		sed -i "/RTCONFIG_HTTPS/d" $(1); \
 		echo "RTCONFIG_HTTPS=y" >>$(1); \
 		sed -i "/RTCONFIG_FORCE_AUTO_UPGRADE/d" $(1); \
-		echo "RTCONFIG_FORCE_AUTO_UPGRADE=y" >>$(1); \
+		echo "# RTCONFIG_FORCE_AUTO_UPGRADE is not set" >>$(1); \
 		sed -i "/RTCONFIG_CAPTCHA/d" $(1); \
 		echo "RTCONFIG_CAPTCHA=y" >>$(1); \
 		if [ "$(AUTO_FW_UPGRADE)" = "y" ]; then \
@@ -2224,8 +2267,6 @@ define RouterOptions
 	if [ "$(CIFS)" = "y" ]; then \
 		sed -i "/RTCONFIG_CIFS/d" $(1); \
 		echo "RTCONFIG_CIFS=y" >>$(1); \
-		sed -i "/RTCONFIG_AUTODICT/d" $(1); \
-		echo "# RTCONFIG_AUTODICT is not set" >>$(1); \
 	fi; \
 	if [ "$(SSH)" = "y" ]; then \
 		sed -i "/RTCONFIG_SSH/d" $(1); \
@@ -3469,6 +3510,13 @@ define RouterOptions
 		sed -i "/RTCONFIG_NO_SELECT_CHANNEL/d" $(1); \
 		echo "# RTCONFIG_NO_SELECT_CHANNEL is not set" >>$(1); \
 	fi; \
+	if [ "$(VHT160)" = "y" ]; then \
+		sed -i "/RTCONFIG_VHT160/d" $(1); \
+		echo "RTCONFIG_VHT160=y" >>$(1); \
+	else \
+		sed -i "/RTCONFIG_VHT160/d" $(1); \
+		echo "# RTCONFIG_VHT160 is not set" >>$(1); \
+	fi; \
 	if [ "$(USB_SWAP)" = "y" ]; then \
 		sed -i "/RTCONFIG_USB_SWAP/d" $(1); \
 		echo "RTCONFIG_USB_SWAP=y" >>$(1); \
@@ -3751,6 +3799,46 @@ define RouterOptions
 	if [ "$(3LANPORT_DEVICE)" = "y" ]; then \
 		sed -i "/RTCONFIG_3LANPORT_DEVICE/d" $(1); \
 		echo "RTCONFIG_3LANPORT_DEVICE=y" >>$(1); \
+	fi; \
+	if [ "$(SOFTCENTER)" = "y" ]; then \
+	sed -i "/RTCONFIG_SOFTCENTER/d" $(1); \
+	echo "RTCONFIG_SOFTCENTER=y" >>$(1); \
+	fi; \
+	if [ "$(SMARTDNS)" = "y" ]; then \
+	sed -i "/RTCONFIG_SMARTDNS/d" $(1); \
+	echo "RTCONFIG_SMARTDNS=y" >>$(1); \
+	fi; \
+	if [ "$(SWRT)" = "y" ]; then \
+	sed -i "/RTCONFIG_SWRT\>/d" $(1); \
+	echo "RTCONFIG_SWRT=y" >>$(1); \
+	fi; \
+	if [ "$(SWRT_LED)" = "y" ]; then \
+	sed -i "/RTCONFIG_SWRT_LED/d" $(1); \
+	echo "RTCONFIG_SWRT_LED=y" >>$(1); \
+	fi; \
+	if [ "$(SWRT_UU)" = "y" ]; then \
+	sed -i "/RTCONFIG_SWRT_UU/d" $(1); \
+	echo "RTCONFIG_SWRT_UU=y" >>$(1); \
+	fi; \
+	if [ "$(SWRT_FULLCONE)" = "y" ]; then \
+	sed -i "/RTCONFIG_SWRT_FULLCONE/d" $(1); \
+	echo "RTCONFIG_SWRT_FULLCONE=y" >>$(1); \
+	fi; \
+	if [ "$(SWRT_I2CLED)" = "y" ]; then \
+	sed -i "/RTCONFIG_SWRT_I2CLED/d" $(1); \
+	echo "RTCONFIG_SWRT_I2CLED=y" >>$(1); \
+	fi; \
+	if [ "$(SWRT_FASTPATH)" = "y" ]; then \
+	sed -i "/RTCONFIG_SWRT_FASTPATH/d" $(1); \
+	echo "RTCONFIG_SWRT_FASTPATH=y" >>$(1); \
+	fi; \
+	if [ "$(SWRT_KVR)" = "y" ]; then \
+	sed -i "/RTCONFIG_SWRT_KVR/d" $(1); \
+	echo "RTCONFIG_SWRT_KVR=y" >>$(1); \
+	fi; \
+	if [ "$(ENTWARE)" = "y" ]; then \
+	sed -i "/RTCONFIG_ENTWARE/d" $(1); \
+	echo "RTCONFIG_ENTWARE=y" >>$(1); \
 	fi; \
 	)
 	$(call platformRouterOptions, $(1))
@@ -4854,45 +4942,45 @@ fi; \
 		sed -i "/CONFIG_BCM_PKTRUNNER_WAR_SKIP_TUN/d" $(1); \
 		echo "CONFIG_BCM_PKTRUNNER_WAR_SKIP_TUN=y" >>$(1); \
 	fi; \
-	if [ "$(TCPLUGIN)" = "y" ]; then \
+	if [ "$(TCPLUGIN)" = "y" ] || [ "$(SWRT)" = "y" ]; then \
 		sed -i "/CONFIG_NETFILTER_XT_SET/d" $(1); \
 		echo "CONFIG_NETFILTER_XT_SET=y" >>$(1); \
 		sed -i "/CONFIG_IP_SET/d" $(1); \
-		echo "CONFIG_IP_SET=y" >>$(1); \
+		echo "CONFIG_IP_SET=m" >>$(1); \
 		sed -i "/CONFIG_IP_SET_MAX/d" $(1); \
 		echo "CONFIG_IP_SET_MAX=256" >>$(1); \
 		sed -i "/CONFIG_IP_SET_BITMAP_IP/d" $(1); \
-		echo "CONFIG_IP_SET_BITMAP_IP=y" >>$(1); \
+		echo "CONFIG_IP_SET_BITMAP_IP=m" >>$(1); \
 		sed -i "/CONFIG_IP_SET_BITMAP_IPMAC/d" $(1); \
-		echo "CONFIG_IP_SET_BITMAP_IPMAC=y" >>$(1); \
+		echo "CONFIG_IP_SET_BITMAP_IPMAC=m" >>$(1); \
 		sed -i "/CONFIG_IP_SET_BITMAP_PORT/d" $(1); \
-		echo "CONFIG_IP_SET_BITMAP_PORT=y" >>$(1); \
+		echo "CONFIG_IP_SET_BITMAP_PORT=m" >>$(1); \
 		sed -i "/CONFIG_IP_SET_HASH_IP/d" $(1); \
-		echo "CONFIG_IP_SET_HASH_IP=y" >>$(1); \
+		echo "CONFIG_IP_SET_HASH_IP=m" >>$(1); \
 		sed -i "/CONFIG_IP_SET_HASH_IPMARK/d" $(1); \
-		echo "CONFIG_IP_SET_HASH_IPMARK=y" >>$(1); \
+		echo "CONFIG_IP_SET_HASH_IPMARK=m" >>$(1); \
 		sed -i "/CONFIG_IP_SET_HASH_IPPORT/d" $(1); \
-		echo "CONFIG_IP_SET_HASH_IPPORT=y" >>$(1); \
+		echo "CONFIG_IP_SET_HASH_IPPORT=m" >>$(1); \
 		sed -i "/CONFIG_IP_SET_HASH_IPPORTIP/d" $(1); \
-		echo "CONFIG_IP_SET_HASH_IPPORTIP=y" >>$(1); \
+		echo "CONFIG_IP_SET_HASH_IPPORTIP=m" >>$(1); \
 		sed -i "/CONFIG_IP_SET_HASH_IPPORTNET/d" $(1); \
-		echo "CONFIG_IP_SET_HASH_IPPORTNET=y" >>$(1); \
-		sed -i "/CONFIG_IP_SET_HASH_IPMAC/d" $(1); \
-		echo "# CONFIG_IP_SET_HASH_IPMAC is not set" >>$(1); \
+		echo "CONFIG_IP_SET_HASH_IPPORTNET=m" >>$(1); \
 		sed -i "/CONFIG_IP_SET_HASH_MAC/d" $(1); \
-		echo "CONFIG_IP_SET_HASH_MAC=y" >>$(1); \
+		echo "CONFIG_IP_SET_HASH_MAC=m" >>$(1); \
 		sed -i "/CONFIG_IP_SET_HASH_NET/d" $(1); \
-		echo "CONFIG_IP_SET_HASH_NET=y" >>$(1); \
+		echo "CONFIG_IP_SET_HASH_NET=m" >>$(1); \
 		sed -i "/CONFIG_IP_SET_HASH_NETNET/d" $(1); \
-		echo "CONFIG_IP_SET_HASH_NETNET=y" >>$(1); \
+		echo "CONFIG_IP_SET_HASH_NETNET=m" >>$(1); \
 		sed -i "/CONFIG_IP_SET_HASH_NETPORT/d" $(1); \
-		echo "CONFIG_IP_SET_HASH_NETPORT=y" >>$(1); \
+		echo "CONFIG_IP_SET_HASH_NETPORT=m" >>$(1); \
 		sed -i "/CONFIG_IP_SET_HASH_NETPORTNET/d" $(1); \
-		echo "CONFIG_IP_SET_HASH_NETPORTNET=y" >>$(1); \
+		echo "CONFIG_IP_SET_HASH_NETPORTNET=m" >>$(1); \
 		sed -i "/CONFIG_IP_SET_HASH_NETIFACE/d" $(1); \
-		echo "CONFIG_IP_SET_HASH_NETIFACE=y" >>$(1); \
+		echo "CONFIG_IP_SET_HASH_NETIFACE=m" >>$(1); \
 		sed -i "/CONFIG_IP_SET_LIST_SET/d" $(1); \
-		echo "CONFIG_IP_SET_LIST_SET=y" >>$(1); \
+		echo "CONFIG_IP_SET_LIST_SET=m" >>$(1); \
+		sed -i "/CONFIG_IP_SET_HASH_IPMAC/d" $(1); \
+		echo "CONFIG_IP_SET_HASH_IPMAC=m" >>$(1); \
 	fi; \
 	if [ "$(GMAC3)" = "y" ]; then \
 		sed -i "/CONFIG_BCM_GMAC3/d" $(1); \
@@ -5210,7 +5298,7 @@ fi; \
 		sed -i "/CONFIG_NETFILTER is not set/d" $(1); \
 		echo "CONFIG_NETFILTER=y" >>$(1); \
 		sed -i "/CONFIG_NETFILTER_XTABLES is not set/d" $(1); \
-		echo "CCONFIG_NETFILTER_XTABLES=y" >>$(1); \
+		echo "CONFIG_NETFILTER_XTABLES=y" >>$(1); \
 		sed -i "/CONFIG_NETFILTER_XT_MATCH_POLICY is not set/d" $(1); \
 		echo "CONFIG_NETFILTER_XT_MATCH_POLICY=y" >>$(1); \
 		echo "# CONFIG_XFRM_SUB_POLICY is not set" >>$(1); \
@@ -5413,6 +5501,10 @@ else
 			cp $(LINUXDIR)/config_base.MT7622 $(LINUXDIR)/config_$(lowercase_B) ; \
 		elif [ "$(BUILD_NAME)" = "RT-AX53U" ] || [ "$(BUILD_NAME)" = "RT-AX54" ] || [ "$(BUILD_NAME)" = "4G-AX56" ] ; then \
 			cp $(LINUXDIR)/config_base.MT7621 $(LINUXDIR)/config_$(lowercase_B) ; \
+		elif [ "$(BUILD_NAME)" = "RM-AC2100" ]; then \
+			cp $(LINUXDIR)/config_base_rmac2100 $(LINUXDIR)/config_$(lowercase_B) ; \
+		elif [ "$(BUILD_NAME)" = "SWRT-R6800" ]; then \
+			cp $(LINUXDIR)/config_base_r6800 $(LINUXDIR)/config_$(lowercase_B) ; \			
 		else \
 			cp $(LINUXDIR)/config_base $(LINUXDIR)/config_$(lowercase_B) ; \
 		fi ; \
@@ -5517,7 +5609,7 @@ endef
 	$(call save_src_config, RT$@)
 	$(MAKE) bin
 
-brt-% BRT-% rt-% RT-% CT-% ct-% gt-% GT-% gx-% GX-% rp-% RP-% ea-% EA-% tm-% TM-% pl-% PL-% ac% map-% MAP-% vzw-% VZW-% sh-% SH-% tuf-% TUF-% gs-% GS-%:
+brt-% BRT-% rt-% RT-% CT-% ct-% gt-% GT-% gx-% GX-% rp-% RP-% ea-% EA-% tm-% TM-% pl-% PL-% ac% map-% MAP-% vzw-% VZW-% sh-% SH-% tuf-% TUF-% gs-% GS-% swrt-% SWRT-%:
 ifeq ($(REALTEK),y)
 	rm -f include
 	ln -sf include-n66u include
@@ -5601,7 +5693,7 @@ endif
 		sed -i "/RTCONFIG_WLMODULE_RLT_WIFI/d" router/.config; \
 		echo "RTCONFIG_WLMODULE_RLT_WIFI=y" >> router/.config; \
 	fi
-	@if grep -q "CONFIG_WIFI_MT7603E=m" $(LINUXDIR)/.config ; then \
+	@if grep -q "CONFIG_RALINK_MT7603E=y" $(LINUXDIR)/.config ; then \
 		sed -i "/RTCONFIG_WLMODULE_MT7603E_AP/d" router/.config; \
 		echo "RTCONFIG_WLMODULE_MT7603E_AP=y" >> router/.config; \
 	fi
@@ -5632,7 +5724,7 @@ endif
 		echo "RTCONFIG_WLMODULE_MT7622_AP=y" >> router/.config; \
 	fi
 
-	if grep -q "CONFIG_RALINK_MT7621=y" $(LINUXDIR)/.config ; then \
+	if grep -q "CONFIG_CHIP_MT7915=y" $(LINUXDIR)/.config ; then \
 		sed -i "/RTCONFIG_WLMODULE_MT7915D_AP/d" router/.config; \
 		echo "RTCONFIG_WLMODULE_MT7915D_AP=y" >> router/.config; \
 	fi

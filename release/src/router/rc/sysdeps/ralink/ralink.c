@@ -37,7 +37,8 @@
 #define	DEFAULT_SSID_5G	"ASUS_5G"
 
 char *wlc_nvname(char *keyword);
-
+extern char *ether_cal_b(const unsigned char *e, char *a, int i);
+extern char *ether_cal(const char *e, char *a, int i);
 
 
 #undef OLD_ACL  //for standalone acl policy
@@ -788,7 +789,7 @@ int gen_ralink_config(int band, int is_iNIC)
 			if(!strcmp(macaddr, "FF:FF:FF:FF:FF:FF"))
 			{
 				if (FRead(dst, OFFSET_MAC_ADDR_2G, 6) < 0)
-					strlcpy(macaddr, "00:0C:43:26:60:2C");
+					strlcpy(macaddr, "00:0C:43:26:60:2C", 17);
 				else
 					ether_cal_b(dst, macaddr, 4);
 			}
@@ -995,7 +996,7 @@ int gen_ralink_config(int band, int is_iNIC)
 		fprintf(fp, "MboSupport=%d\n", 1);
 	else
 		fprintf(fp, "MboSupport=%d\n", 0);
-	if(nvram_match(strcat_r(prefix, "11ax", tmp), "1")
+	if(nvram_match(strcat_r(prefix, "11ax", tmp), "1"))
 	{ 
 		if(nvram_match(strcat_r(prefix, "ofdma", tmp), "1"))
 		{
@@ -1434,14 +1435,14 @@ int gen_ralink_config(int band, int is_iNIC)
 						if((nvram_get_int(strcat_r(prefix, "bw", tmp))==1) || (nvram_get_int(strcat_r(prefix, "bw", tmp))==3)){
 							if(!nvram_match("reg_spec", "EAC"))
 							{
-								if(!strncmp(nvram_safe_get("territory_code"), "JP"))
+								if(!strncmp(nvram_safe_get("territory_code"), "JP", 2))
 									sprintf(tmpstr,"%s;%d;%d;%d", tmpstr ,132,136,140);	//skip 132 136 140 under auto mode					
 								else
 									sprintf(tmpstr,"%s;%d;%d;%d;%d",tmpstr,116,132,136,140);	//skip 116 132 136 140 under auto mode					
 							}				
 						}
 						else if(nvram_get_int(strcat_r(prefix, "bw", tmp))==2){
-							if(!strncmp(nvram_safe_get("territory_code"), "JP"))
+							if(!strncmp(nvram_safe_get("territory_code"), "JP", 2))
 								sprintf(tmpstr,"%s;%d",tmpstr,140);	//skip 140 under auto mode					
 							else
 							sprintf(tmpstr,"%s;%d;%d",tmpstr,116,140);	//skip 116 140 under auto mode					
@@ -1495,7 +1496,7 @@ int gen_ralink_config(int band, int is_iNIC)
 								fprintf(fp,"AutoChannelSkipList=%s\n",tmpstr);							
 							}
 							else
-								fprintf(fp,"AutoChannelSkipList=%s\n", atoi(nvram_safe_get("acs_ch13")));
+								fprintf(fp,"AutoChannelSkipList=%d\n", atoi(nvram_safe_get("acs_ch13")));
 							nvram_set("skip_channel_2g", "CH13");	
 						}
 					}
@@ -1513,7 +1514,7 @@ int gen_ralink_config(int band, int is_iNIC)
 								fprintf(fp,"AutoChannelSkipList=%s\n", tmpstr);
 							}
 							else
-								fprintf(fp,"AutoChannelSkipList=%s\n", atoi(nvram_safe_get("acs_band1")));
+								fprintf(fp,"AutoChannelSkipList=%d\n", atoi(nvram_safe_get("acs_band1")));
 							nvram_set("skip_channel_5g", "band1");	
 						}
 					}
@@ -1531,7 +1532,7 @@ int gen_ralink_config(int band, int is_iNIC)
 								fprintf(fp,"AutoChannelSkipList=%s\n",tmpstr);
 							}
 							else
-								fprintf(fp,"AutoChannelSkipList=%s\n", atoi(nvram_safe_get("acs_band3")));
+								fprintf(fp,"AutoChannelSkipList=%d\n", atoi(nvram_safe_get("acs_band3")));
 							nvram_set("skip_channel_5g", "band3");	
 						}
 					}
@@ -2798,16 +2799,16 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	} //for loop
 	//WdsEnable
-	if (sw_mode = SW_MODE_REPEATER || nvram_match(strcat_r(prefix, "mode_x", tmp), "0"))
+	if (sw_mode == SW_MODE_REPEATER || nvram_match(strcat_r(prefix, "mode_x", tmp), "0"))
 	{
 		fprintf(fp, "WdsEnable=%d\n", 0);
 		fprintf(fp, "WdsPhyMode=%d\n", 0);
 		fprintf(fp, "WdsEncrypType=%s\n", "NONE");
-		fprintf(fp, "WdsList=\n", );
-		fprintf(fp, "Wds0Key=\n", );
-		fprintf(fp, "Wds1Key=\n", );
-		fprintf(fp, "Wds2Key=\n", );
-		fprintf(fp, "Wds3Key=\n", );
+		fprintf(fp, "WdsList=\n");
+		fprintf(fp, "Wds0Key=\n");
+		fprintf(fp, "Wds1Key=\n");
+		fprintf(fp, "Wds2Key=\n");
+		fprintf(fp, "Wds3Key=\n");
 	}
 	else
 	{
@@ -4164,16 +4165,10 @@ int getSiteSurvey(int band, char* ofile)
 
 int getSiteSurveyVSIE(int band, char *buf)
 {
-	int i = 0, apCount = 0;
 	char data[8192];
-	char header[128];
 	struct iwreq wrq;
-	SSA *ssap;
 	int lock;
-	FILE *fp;
-	char ssid_str[256],tmp[256];
-	char ure_mac[18];
-	int wl_authorized = 0;
+
 	memset(data, 0, sizeof(data));
 	strcpy(data, "SiteSurvey=1");
 	wrq.u.data.length = strlen(data) + 1;
@@ -4194,7 +4189,7 @@ int getSiteSurveyVSIE(int band, char *buf)
 	strcpy(data, "");
 	wrq.u.data.length = sizeof(data);
 	wrq.u.data.pointer = data;
-	wrq.u.data.flags = 0;
+	wrq.u.data.flags = ASUS_SUBCMD_GETSITESURVEY_VSIE;
 
 	if (wl_ioctl(get_wifname(band), RTPRIV_IOCTL_ASUSCMD, &wrq) < 0)
 	{
@@ -5260,8 +5255,7 @@ int wlconf_ra_down(const char* wif)
 {
 	int unit = 0;
 	char word[256], *next;
-	char tmp[128], prefix[] = "wlXXXXXXXXXX_";
-	char *p;
+	char prefix[] = "wlXXXXXXXXXX_";
 
 	foreach (word, nvram_safe_get("wl_ifnames"), next) {
 		SKIP_ABSENT_BAND_AND_INC_UNIT(unit);
@@ -5327,43 +5321,29 @@ void apcli_start(void)
 #if defined(RTCONFIG_CONCURRENTREPEATER)
 		int wlc_express = nvram_get_int("wlc_express");
 		if (wlc_express == 0) {		// concurrent
-			aif=nvram_safe_get("wl0_ifname");
+			aif = nvram_safe_get("wl0_ifname");
 			enable_apcli(aif, 0);
-			aif=nvram_safe_get("wl1_ifname");
+			aif = nvram_safe_get("wl1_ifname");
 			enable_apcli(aif, 1);
 		}
 		else if (wlc_express == 1) {	// 2.4G express way
-			aif=nvram_safe_get("wl0_ifname");
+			aif = nvram_safe_get("wl0_ifname");
 			enable_apcli(aif, 0);
 		}
 		else if (wlc_express == 2) {	// 5G express way
-			aif=nvram_safe_get("wl1_ifname");
+			aif = nvram_safe_get("wl1_ifname");
 			enable_apcli(aif, 1);
 		}
 		else
 			fprintf(stderr,"## No correct wlc_express for apcli ##\n");
 #else /* RTCONFIG_CONCURRENTREPEATER */
 		int wlc_band = nvram_get_int("wlc_band");
-		if (wlc_band == 0)
-			//aif=nvram_safe_get("wl0_ifname");
-			aif = APCLI_2G;
-		else
-			//aif=nvram_safe_get("wl1_ifname");
-			aif = APCLI_5G;
+		aif = get_staifname(wlc_band);
 		ch = site_survey_for_channel(wlc_band, aif, &ht_ext);
 		if(ch != -1)
 		{
-			if (wlc_band == 1)
-			{
-				doSystem("iwpriv %s set Channel=%d", APCLI_5G, ch);
-				doSystem("iwpriv %s set ApCliEnable=1", APCLI_5G);
-			}
-			else
-			{
-				doSystem("iwpriv %s set Channel=%d", APCLI_2G, ch);
-				doSystem("iwpriv %s set ApCliEnable=1", APCLI_2G);
-
-			}
+			doSystem("iwpriv %s set Channel=%d", aif, ch);
+			doSystem("iwpriv %s set ApCliEnable=1", aif);
 			fprintf(stderr, "##set channel=%d, enable apcli ..#\n", ch);
 		}
 		else
@@ -6074,7 +6054,7 @@ void set_default_psk()
 	if(!*psk)
 	{
 		unsigned char key[32];
-		generate_wireless_key(&key);
+		generate_wireless_key(key);
 		nvram_set("wl0_auth_mode_x", "psk2");
 		nvram_set("wl0_crypto", "aes");
 		nvram_set("wl0_wpa_psk", key);
@@ -6094,7 +6074,7 @@ int update_wan_leds(int wan_unit, int link_wan_unit)
 		int link_internet = nvram_get_int("link_internet");
 		if(link_wan_unit && !inhibit_led_on())
 			led_control(LED_WAN, LED_ON);
-		} else {
+		else {
 			if(link_internet != 2)
 				led_control(LED_WAN, LED_OFF);
 		}

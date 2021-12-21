@@ -144,7 +144,7 @@ static void init_switch_ralink(void)
 	// TODO: replace to nvram controlled procedure later
 #if 0
 	eval("ifconfig", "eth2", "hw", "ether", get_lan_hwaddr());
-#elif
+#else
 	eval("ifconfig", "eth0", "hw", "ether", get_lan_hwaddr());
 #endif
 #if !defined(RTCONFIG_CONCURRENTREPEATER)		

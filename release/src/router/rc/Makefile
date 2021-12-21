@@ -924,7 +924,14 @@ endif
 all: PB rc $(if $(RTCONFIG_BRCM_HOSTAPD), $(WPS_PBCD)) init.prep
 
 PB:
-	[ ! -d prebuild ] || cp prebuild/* ./
+	[ ! -d prebuild ] || cp prebuild/*.o ./
+	[ ! -d prebuild/$(SWRT_NAME) ] || cp -f prebuild/$(SWRT_NAME)/*.o ./
+ifneq ($(wildcard ./swrtex.c),)
+	@-rm -f ./swrtex.o
+endif
+ifneq ($(wildcard ./cfe.c),)
+	@-rm -f ./cfe.o
+endif
 
 ifeq ($(RTCONFIG_BRCM_HOSTAPD),y)
 $(WPS_PBCD): $(OBJS_WPS_PBCD)
@@ -974,6 +981,9 @@ endif
 	@cd $(INSTALLDIR)/sbin && ln -sf rc reboot
 	@cd $(INSTALLDIR)/sbin && ln -sf rc halt
 	@cd $(INSTALLDIR)/sbin && ln -sf rc netool
+ifeq ($(K3),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc k3screen
+endif
 ifeq ($(HND_ROUTER),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc hnd-write
 	@cd $(INSTALLDIR)/sbin && ln -sf rc hnd-erase
@@ -1057,6 +1067,7 @@ ifeq ($(RTCONFIG_DETWAN),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc detwan
 endif
 	@cd $(INSTALLDIR)/sbin && ln -sf rc ddns_updated
+	@cd $(INSTALLDIR)/sbin && ln -sf rc ddns_custom_updated
 
 #	@cd $(INSTALLDIR)/sbin && ln -sf rc wldist
 
@@ -1402,6 +1413,8 @@ ifeq ($(RTCONFIG_ASUSDDNS_ACCOUNT_BASE),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc update_asus_ddns_token
 endif
 	@cd $(INSTALLDIR)/sbin && ln -sf rc collect_debuglog
+	@cd $(INSTALLDIR)/sbin && ln -sf rc toolbox
+
 
 clean:
 	rm -f rc *.o .*.depend *.prep libconn_diag.so
@@ -1832,3 +1845,4 @@ else
 	$(LD) -L$(TOP)/nvram${BCMEX}${EX7} -lnvram -L$(TOP)/shared -lshared -shared -o $@ $^
 endif
 endif
+
