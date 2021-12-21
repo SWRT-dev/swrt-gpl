@@ -38,9 +38,7 @@
 
 char *wlc_nvname(char *keyword);
 
-#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
-#define VHT_SUPPORT /* 11AC */
-#endif
+
 
 #undef OLD_ACL  //for standalone acl policy
 
@@ -69,36 +67,32 @@ int g_isEnrollee[MAX_NR_WL_IF] = { 0, };
 
 int getCountryRegion5G(const char *countryCode, int *warning, int IEEE80211H);
 
-static void
-iwprivSet(const char *ifname, const char *name, const char *value)
+static void iwprivSet(const char *ifname, const char *name, const char *value)
 {
 	char tmpBuf[256];
-	sprintf(tmpBuf, "%s=%s", name, value);
+	snprintf(tmpBuf, sizeof(tmpBuf), "%s=%s", name, value);
 	_dprintf("[%s] %s (%s)\n", __func__, ifname, tmpBuf);
 	eval("iwpriv", (char*) ifname, "set", tmpBuf);
 }
 
 
-char *
-get_wscd_pidfile(void)
+char *get_wscd_pidfile(void)
 {
-	static char tmpstr[32] = "/var/run/wscd.pid.";
+	static char tmpstr[32];
 
-	sprintf(tmpstr, "/var/run/wscd.pid.%s", (!nvram_get_int("wps_band_x"))? WIF_2G:WIF_5G);
+	snprintf(tmpstr, sizeof(tmpstr), "/var/run/wscd.pid.%s", nvram_get_int("wps_band_x") ? WIF_5G : WIF_2G);
 	return tmpstr;
 }
 
-char *
-get_wscd_pidfile_band(int wps_band)
+char *get_wscd_pidfile_band(int wps_band)
 {
-	static char tmpstr[32] = "/var/run/wscd.pid.";
+	static char tmpstr[32];
 
-	sprintf(tmpstr, "/var/run/wscd.pid.%s", (!wps_band)? WIF_2G:WIF_5G);
+	snprintf(tmpstr, sizeof(tmpstr), "/var/run/wscd.pid.%s", wps_band ? WIF_5G : WIF_2G);
 	return tmpstr;
 }
 
-int
-get_wifname_num(char *name)
+int get_wifname_num(char *name)
 {
 	if(strcmp(WIF_5G,name)==0)
 	   	return 1;
@@ -108,8 +102,7 @@ get_wifname_num(char *name)
 		return -1;
 }
 
-const char *
-get_wifname(int band)
+const char *get_wifname(int band)
 {
 	if (band)
 		return WIF_5G;
@@ -117,8 +110,7 @@ get_wifname(int band)
 		return WIF_2G;
 }
 
-const char *
-get_wpsifname(void)
+const char *get_wpsifname(void)
 {
 	int wps_band = nvram_get_int("wps_band_x");
 
@@ -190,8 +182,7 @@ static int atoh(const char *a, unsigned char *e)
 	return i;
 }
 
-char *
-htoa(const unsigned char *e, char *a, int len)
+char *htoa(const unsigned char *e, char *a, int len)
 {
 	char *c = a;
 	int i;
@@ -539,7 +530,6 @@ int getCountryRegion5G(const char *countryCode, int *warning, int IEEE80211H)
 	}
 }
 
-//Ren.B
 int check_macmode(const char *str)
 {
 	if((!str)||(!strcmp(str, ""))||(!strcmp(str, "disabled")))
@@ -558,51 +548,11 @@ int check_macmode(const char *str)
 	}
 	return 0;
 }
-//Ren.E
 
-//Ren.B
 void gen_macmode(int mac_filter[], int band)
 {
 	int i,j;
 	char temp[128], prefix_mssid[] = "wlXXXXXXXXXX_mssid_";
-#ifdef OLD_ACL
-	snprintf(temp, sizeof(temp), "wl%d_macmode", band);
-	mac_filter[0] = check_macmode(nvram_get(temp));
-	_dprintf("mac_filter[0] = %d\n", mac_filter[0]);
-	if(mac_filter[0] == 0)
-	{
-		for(i = 1, j = 1; i < MAX_NO_MSSID; i++)
-		{
-			sprintf(prefix_mssid, "wl%d.%d_", band, i);
-			if (!nvram_match(strcat_r(prefix_mssid, "bss_enabled", temp), "1"))
-				continue;
-
-			mac_filter[j] = 0;
-			_dprintf("mac_filter[%d] = %d\n", j, mac_filter[j]);
-			j++;
-		}
-	}
-	else
-	{
-		for(i = 1, j = 1; i < MAX_NO_MSSID; i++)
-		{
-			sprintf(prefix_mssid, "wl%d.%d_", band, i);
-			if (!nvram_match(strcat_r(prefix_mssid, "bss_enabled", temp), "1"))
-				continue;
-
-			if(nvram_match(strcat_r(prefix_mssid, "macmode", temp), "disabled"))
-			{
-				mac_filter[j] = 0;
-			}
-			else
-			{
-				mac_filter[j] = mac_filter[0]; //copy rule from "primary" WiFi interface.
-			}
-			_dprintf("mac_filter[%d] = %d\n", j, mac_filter[j]);
-			j++;
-		}
-	}
-#else
 	for (i = 0,j = 0; i < MAX_NO_MSSID; i++)
 	{
 		if (i)
@@ -616,9 +566,7 @@ void gen_macmode(int mac_filter[], int band)
 		mac_filter[j] = check_macmode(nvram_safe_get(strcat_r(prefix_mssid, "macmode", temp)));
 		j++;
 	}
-#endif
 }
-//Ren.E
 
 static inline void __choose_mrate(char *prefix, int *mcast_phy, int *mcast_mcs)
 {
@@ -712,9 +660,7 @@ int gen_ralink_config(int band, int is_iNIC)
 	int wl_key_type[MAX_NO_MSSID];
 	int mcast_phy = 0, mcast_mcs = 0;
 	int mac_filter[MAX_NO_MSSID];
-#if defined(VHT_SUPPORT)
 	int VHTBW_MAX = 0;
-#endif
 	int sw_mode  = sw_mode();
 	int wlc_band = nvram_get_int("wlc_band");
 	int IEEE80211H = 0;
