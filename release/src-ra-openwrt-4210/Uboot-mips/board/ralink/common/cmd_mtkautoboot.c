@@ -49,7 +49,7 @@ static int do_mtkautoboot(cmd_tbl_t *cmdtp, int flag, int argc,
 			 bootmenu_entries[i].desc, bootmenu_entries[i].cmd);
 		env_set(key, val);
 	}
-#if defined(CONFIG_RTAX53U) || defined(CONFIG_4GAX56) || defined(CONFIG_RTAX54)
+#if defined(CONFIG_RTAX53U) || defined(CONFIG_4GAX56) || defined(CONFIG_RTAX54) || defined(CONFIG_RTAC85P) || defined(CONFIG_R6800) || defined(CONFIG_RMAC2100)
 	env_set("mtdids", CONFIG_MTDIDS_DEFAULT);
 	env_set("mtdparts", CONFIG_MTDPARTS_DEFAULT);
 #endif

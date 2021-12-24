@@ -503,6 +503,30 @@ config 4GAX56
 	help
 	  Enable 4GAX56.
 
+config RTAC85U
+	bool "Enable RTAC85U"
+	default n
+	help
+	  Enable RTAC85U.
+
+config RTAC85P
+	bool "Enable RTAC85P"
+	default n
+	help
+	  Enable RTAC85P.
+
+config R6800
+	bool "Enable R6800"
+	default n
+	help
+	  Enable R6800.
+
+config RMAC2100
+	bool "Enable RMAC2100"
+	default n
+	help
+	  Enable RMAC2100.
+
 source "api/Kconfig"
 
 source "common/Kconfig"

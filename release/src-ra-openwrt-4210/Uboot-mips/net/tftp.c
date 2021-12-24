@@ -1082,7 +1082,7 @@ static void tftp_handler(uchar *pkt, unsigned dest, struct in_addr sip,
 		tftp_send(); /* Send ACK or first data block */
 		break;
 	case TFTP_DATA:
-#if defined(CONFIG_RTAX53U) || defined(CONFIG_4GAX56) || defined(CONFIG_RTAX54)
+#if defined(CONFIG_RTAX53U) || defined(CONFIG_4GAX56) || defined(CONFIG_RTAX54) || defined(CONFIG_RTAC85P) || defined(CONFIG_R6800) || defined(CONFIG_RMAC2100)
         PWR_LEDON();
 #endif  // CONFIG_RTAX53U
 		if (len < 2)

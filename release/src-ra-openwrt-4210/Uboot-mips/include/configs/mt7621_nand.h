@@ -22,24 +22,55 @@
 
 #if defined(CONFIG_ASUS_PRODUCT)
 /* NVRAM */
+#if defined(CONFIG_R6800) || defined(CONFIG_RMAC2100)
+#define NAND_NVRAM_OFFSET            0x140000   /* NVRAM offset */
+#define NAND_NVRAM_SIZE              0x40000  /* NVRAM max size : 128K + 128K(backup) */
+#else
 #define NAND_NVRAM_OFFSET            0xe0000   /* NVRAM offset */
 #define NAND_NVRAM_SIZE              0x100000  /* NVRAM max size : 128K + 128K(backup) */
+#endif
 
 /* FACTORY */
+#if defined(CONFIG_R6800)
+#define NAND_RF_OFFSET               0x4600000
+#define MAX_NAND_RF_SIZE             0x400000  /* RF max size : 256K + 256K(backup) */
+#elif defined(CONFIG_RMAC2100)
+#define NAND_RF_OFFSET               0x100000
+#define MAX_NAND_RF_SIZE             0x40000  /* RF max size : 256K + 256K(backup) */
+#else
 #define NAND_RF_OFFSET               0x1e0000
 #define MAX_NAND_RF_SIZE             0x100000  /* RF max size : 256K + 256K(backup) */
+#endif
 
 /* FACTORY2 */
+#if defined(CONFIG_R6800)
+#define NAND_RF_OFFSET               0x4600000
+#define MAX_NAND_RF_SIZE             0x400000  /* RF max size : 256K + 256K(backup) */
+#elif defined(CONFIG_RMAC2100)
+#define NAND_RF_OFFSET               0x100000
+#define MAX_NAND_RF_SIZE             0x40000  /* RF max size : 256K + 256K(backup) */
+#else
 #define NAND_RF_OFFSET_2             0x2e0000
 #define MAX_NAND_RF_SIZE_2           0x100000  /* RF max size : 256K + 256K(backup) */
+#endif
 
 /* KERNEL */
+#if defined(CONFIG_R6800) || defined(CONFIG_RMAC2100)
+#define NAND_LINUX_OFFSET            0x200000
+#define MAX_NAND_LINUX_SIZE          0x2800000
+#else
 #define NAND_LINUX_OFFSET            0x3e0000
 #define MAX_NAND_LINUX_SIZE          0x3200000
+#endif
 
 /* KERNEL2 */
+#if defined(CONFIG_R6800) || defined(CONFIG_RMAC2100)
+#define NAND_LINUX_OFFSET            0x200000
+#define MAX_NAND_LINUX_SIZE          0x2800000
+#else
 #define NAND_LINUX_OFFSET_2          0x35e0000
 #define MAX_NAND_LINUX_SIZE_2        0x3200000
+#endif
 
 #define MAX_NAND_PAGE_SIZE           2048
 #define MAX_NAND_BLOCK_SIZE          262144
@@ -91,5 +122,25 @@
 #define LTE_4G_LED              10
 #define LTE_NO_SIG_LED          0
 #endif
-
+#if defined(CONFIG_RTAC85P)
+#define WPS_BTN                 6
+#define RST_BTN                 3
+#define PWR_LED                 4
+#define WIFI_2G_LED             10
+#define WIFI_5G_LED             8
+#endif
+#if defined(CONFIG_R6800)
+#define WPS_BTN                 18
+#define RST_BTN                 12
+#define PWR_LED                 5
+//#define WIFI_2G_LED             12
+//#define WIFI_5G_LED             13
+#endif
+#if defined(CONFIG_RMAC2100)
+//#define WPS_BTN                 6
+#define RST_BTN                 18
+#define PWR_LED                 8
+#define WIFI_2G_LED             10
+#define WIFI_5G_LED             6
+#endif
 #endif  /* __CONFIG_H */

@@ -60,6 +60,12 @@ const char *model =
 	"4G-AX56";
 #elif defined(CONFIG_RTAX54)
 	"RT-AX54";
+#elif defined(CONFIG_RTAC85P)
+	"RT-AC85P";
+#elif defined(CONFIG_R6800)
+	"R6800";
+#elif defined(CONFIG_RMAC2100)
+	"RM-AC2100";
 #else
     "ASUS PRODUCT";
 #endif
@@ -71,6 +77,8 @@ const char *blver =
 	"1003";
 #elif defined(CONFIG_RTAX54)
 	"1001";
+#elif defined(CONFIG_RTAC85P) || defined(CONFIG_R6800) || defined(CONFIG_RMAC2100)
+	"1000";
 #else
 #error Define bootload version
 #endif

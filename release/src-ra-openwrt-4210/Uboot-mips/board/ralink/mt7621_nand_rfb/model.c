@@ -57,11 +57,15 @@ int gpio_input(unsigned int pin)
 void gpio_init(void)
 {
 	printf("%s ......\n", __func__);
+#if !defined(CONFIG_RMAC2100)
 	gpio_input(WPS_BTN);
+#endif
 	gpio_input(RST_BTN);
 	gpio_output(PWR_LED,0);
+#if !defined(CONFIG_R6800)
 	gpio_output(WIFI_2G_LED,0);
 	gpio_output(WIFI_5G_LED,0);
+#endif
 }
 
 void LEDON(void)
@@ -77,7 +81,7 @@ void LEDOFF(void)
 
 void PWR_LEDON(void)
 {
-#if defined(CONFIG_RTAX53U) || defined(CONFIG_RTAX54)
+#if defined(CONFIG_RTAX53U) || defined(CONFIG_RTAX54) || defined(CONFIG_RTAC85P) || defined(CONFIG_RMAC2100) || defined(CONFIG_R6800)
 	gpio_output(PWR_LED,0);
 #elif defined(CONFIG_4GAX56)
 	gpio_output(PWR_LED,1);
@@ -98,10 +102,12 @@ unsigned long DETECT(void)
 unsigned long DETECT_WPS(void)
 {
 	int key = 0;
+#if !defined(CONFIG_RMAC2100)
 	if(!gpio_input(WPS_BTN))
 	{
 		key = 1;
 		printf("wps buootn pressed!\n");
 	}
+#endif
 	return key;
 }

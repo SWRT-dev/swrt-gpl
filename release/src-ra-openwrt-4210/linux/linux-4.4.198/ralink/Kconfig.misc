@@ -28,6 +28,22 @@ config  MODEL_RT4GAC86U
         bool "4G-AC86U"
         default n
 
+config  MODEL_RTAC85U
+        bool "RT-AC85U"
+        default n
+
+config  MODEL_RTAC85P
+        bool "RT-AC85P"
+        default n
+
+config  MODEL_R6800
+        bool "R6800"
+        default n
+
+config  MODEL_RMAC2100
+        bool "RMAC2100"
+        default n
+
 config  ASUS_EXT
         bool "ASUS_EXT"
         default n
