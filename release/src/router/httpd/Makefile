@@ -154,14 +154,14 @@ OBJS += vis_gui.o
 endif
 
 ifeq ($(RTCONFIG_HTTPS),y)
-OBJS += $(if $(wildcard pwenc.c), pwenc.o, prebuild/pwenc.o)
+OBJS += pwenc.o
 endif
 
 ifeq ($(RTCONFIG_CAPTCHA),y)
 OBJS += libcaptcha.o
 endif
 
-OBJS += $(if $(wildcard web_hook.c), web_hook.o, prebuild/web_hook.o)
+OBJS += web_hook.o
 
 LIBS = -L$(TOP_PLATFORM)/nvram${BCMEX}$(EX7) -lnvram -L$(TOP)/shared -lshared
 ifeq ($(HND_ROUTER),y)
@@ -303,7 +303,10 @@ CFLAGS += -I$(TOP)/libasuslog
 LIBS += -L$(TOP)/libasuslog -lasuslog
 endif
 
-all: httpd #test_apps
+PB:
+	[ ! -d prebuild/$(BUILD_NAME) ] || cp -rf prebuild/$(BUILD_NAME)/*.o prebuild/
+
+all: PB httpd #test_apps
 
 #test_apps: apps.c
 #	$(CC) -DAPPS $(CFLAGS) $(LIBS) $^ -o $@

@@ -286,9 +286,11 @@ char* GetBW(int BW)
 		case BW_40:
 			return "40M";
 
-#if defined(RTAC52U) || defined(RTAC51U) || defined(RTN54U) || defined(RTAC1200HP) || defined(RTAC54U) || defined(RTAC1200) || defined(RTAC1200V2) || defined(RTAC1200GA1) || defined(RTAC1200GU) || defined(RTACRH18) || defined(RT4GAC86U) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
 		case BW_80:
 			return "80M";
+		case BW_160:
+			return "160M";
 #endif
 
 		default:
@@ -311,7 +313,7 @@ char* GetPhyMode(int Mode)
 		case MODE_HTGREENFIELD:
 			return "GREEN";
 
-#if defined(RTAC52U) || defined(RTAC51U)  || defined(RTN54U) || defined(RTAC1200HP) || defined(RTAC54U) || defined(RTAC1200) || defined(RTAC1200V2) || defined(RTAC1200GA1) || defined(RTAC1200GU) || defined(RTACRH18) || defined(RT4GAC86U) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
 		case MODE_VHT:
 			return "VHT";
 #endif
@@ -340,7 +342,6 @@ int MCSMappingRateTable[] =
 	65, 130, 195, 260, 390, 520, 585, 650, 780, 867 /*11ac: 80Mhz, 400ns GI, MCS: 0~9 */
 	};
 
-#if defined(RTCONFIG_WLMODULE_MT7663E_AP) || defined(RTCONFIG_WLMODULE_MT7629_AP) || defined(RTCONFIG_WLMODULE_MT7622_AP)
 int MCSMappingRateTable_5G[] = {
 	2,  4, 11, 22, 12,  18,  24,  36, 48,  72,  96, 108, 109, 110, 111, 112,/* CCK and OFDM */
 	13, 26, 39, 52, 78, 104, 117, 130, 26,  52,  78, 104, 156, 208, 234, 260,
@@ -487,66 +488,8 @@ _fn_(_st_ HTSetting)							\
 	return value;		\
 }
 
-
-#else
-
-#define FN_GETRATE(_fn_, _st_, _if, _mcstbl)						\
-_fn_(_st_ HTSetting)							\
-{									\
-	int rate_count = sizeof(_mcstbl)/sizeof(int);	\
-	int rate_index = 0;						\
-	int value = 0;	\
-									\
-	if (HTSetting.field.MODE >= MODE_VHT)				\
-	{								\
-		if (HTSetting.field.BW == BW_20) {			\
-			rate_index = 108 +				\
-			((unsigned char)HTSetting.field.ShortGI * 29) +	\
-			((unsigned char)HTSetting.field.MCS);		\
-		}							\
-		else if (HTSetting.field.BW == BW_40) {			\
-			rate_index = 117 +				\
-			((unsigned char)HTSetting.field.ShortGI * 29) +	\
-			((unsigned char)HTSetting.field.MCS);		\
-		}							\
-		else if (HTSetting.field.BW == BW_80) {			\
-			rate_index = 127 +				\
-			((unsigned char)HTSetting.field.ShortGI * 29) +	\
-			((unsigned char)HTSetting.field.MCS);		\
-		}							\
-	}								\
-	else								\
-	if (HTSetting.field.MODE >= MODE_HTMIX)				\
-	{								\
-		rate_index = 12 + ((unsigned char)HTSetting.field.BW *24) + ((unsigned char)HTSetting.field.ShortGI *48) + ((unsigned char)HTSetting.field.MCS);	\
-	}								\
-	else								\
-	if (HTSetting.field.MODE == MODE_OFDM)				\
-		rate_index = (unsigned char)(HTSetting.field.MCS) + 4;	\
-	else if (HTSetting.field.MODE == MODE_CCK)			\
-		rate_index = (unsigned char)(HTSetting.field.MCS);	\
-									\
-	if (rate_index < 0)						\
-		rate_index = 0;						\
-									\
-	if (rate_index >= rate_count)					\
-		rate_index = rate_count-1;				\
-	\
-	if (HTSetting.field.MODE != MODE_VHT)	\
-		value = (_mcstbl[rate_index] * 5) / 10;	\
-	else	\
-		value =  _mcstbl[rate_index];	\
-	return value;		\
-}
-
-#endif
-
 #if defined(RTCONFIG_HAS_5G)
-#if defined(RTCONFIG_WLMODULE_MT7663E_AP) || defined(RTCONFIG_WLMODULE_MT7629_AP) || defined(RTCONFIG_WLMODULE_MT7622_AP)
 int FN_GETRATE(getRate,      MACHTTRANSMIT_SETTING_for_5G, 1, MCSMappingRateTable_5G)		//getRate   (MACHTTRANSMIT_SETTING_for_5G)
-#else
-int FN_GETRATE(getRate,      MACHTTRANSMIT_SETTING_for_5G, 1, MCSMappingRateTable)		//getRate   (MACHTTRANSMIT_SETTING_for_5G)
-#endif
 #endif	/* RTCONFIG_HAS_5G */
 int FN_GETRATE(getRate_2g,   MACHTTRANSMIT_SETTING_for_2G, 0, MCSMappingRateTable)		//getRate_2g(MACHTTRANSMIT_SETTING_for_2G)
 
@@ -649,27 +592,6 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	if (ralink_get_range_info(&range, buffer, wrq2.u.data.length) < 0)
 		return ret;
 
-#if defined(RTN65U)
-	if (unit == 0 && get_model() == MODEL_RTN65U)
-	{
-		FILE *fp;
-		phy_mode = 0;
-		if((fp = fopen("/etc/Wireless/iNIC/iNIC_ap.dat", "r")) != NULL)
-		{
-			while(fgets(tmp, sizeof(tmp), fp) != NULL)
-			{
-				if(strncmp(tmp, "WirelessMode=", 13) == 0)
-				{
-					phy_mode = atoi(tmp + 13);
-					break;
-				}
-			}
-			fclose(fp);
-		}
-	}
-	else
-	{
-#endif	/* RTN65U */
 	bzero(buffer, sizeof(unsigned long));
 	wrq2.u.data.length = sizeof(unsigned long);
 	wrq2.u.data.pointer = (caddr_t) buffer;
@@ -685,9 +607,6 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	}
 	else
 		phy_mode=wrq2.u.mode;
-#if defined(RTN65U)
-	}
-#endif	/* RTN65U */
 
 	freq = iw_freq2float(&(wrq1.u.freq));
 	if (freq < KILO)
@@ -707,8 +626,8 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	else
 		ret+=websWrite(wp, "OP Mode		: AP\n");
 
-#if defined(RTAC52U) || defined(RTAC51U) || defined(RTN54U)  || defined(RTAC1200HP) || defined(RTAC54U) || defined(RTAC1200) || defined(RTAC1200GA1) || defined(RTAC1200GU) || defined(RTAC85U) || defined(RTAC85P) || defined(MTK_REP) || defined(RTACRH26) || defined(TUFAC1750)
-	if (unit == 1)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
+	if (unit == 1 || unit == 0)
 	{
 		char *p = tmp;
 		size_t len = sizeof(tmp);
@@ -744,6 +663,23 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 			p += 3;
 			len -= 3;
 		}
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+		if(phy_mode & WMODE_AX_24G) {
+			strlcat(p, "/ax", len);
+			p += 3;
+			len -= 3;
+		}
+		if(phy_mode & WMODE_AX_5G) {
+			strlcat(p, "/ax", len);
+			p += 3;
+			len -= 3;
+		}
+		if(phy_mode & WMODE_AX_6G) {
+			strlcat(p, "/ax", len);
+			p += 3;
+			len -= 3;
+		}
+#endif
 		if(*tmp != '\0')
 			ret+=websWrite(wp, "Phy Mode	: 11%s\n", tmp+1); // skip first '/'
 	}
@@ -790,28 +726,78 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	}
 	else
 #endif
-	if (phy_mode==PHY_11BG_MIXED)
-		ret+=websWrite(wp, "Phy Mode	: 11b/g\n");
-	else if (phy_mode==PHY_11B)
-		ret+=websWrite(wp, "Phy Mode	: 11b\n");
-	else if (phy_mode==PHY_11A)
-		ret+=websWrite(wp, "Phy Mode	: 11a\n");
-	else if (phy_mode==PHY_11ABG_MIXED)
-		ret+=websWrite(wp, "Phy Mode	: 11a/b/g\n");
-	else if (phy_mode==PHY_11G)
-		ret+=websWrite(wp, "Phy Mode	: 11g\n");
-	else if (phy_mode==PHY_11ABGN_MIXED)
-		ret+=websWrite(wp, "Phy Mode	: 11a/b/g/n\n");
-	else if (phy_mode==PHY_11N)
-		ret+=websWrite(wp, "Phy Mode	: 11n\n");
-	else if (phy_mode==PHY_11GN_MIXED)
-		ret+=websWrite(wp, "Phy Mode	: 11g/n\n");
-	else if (phy_mode==PHY_11AN_MIXED)
-		ret+=websWrite(wp, "Phy Mode	: 11a/n\n");
-	else if (phy_mode==PHY_11BGN_MIXED)
-		ret+=websWrite(wp, "Phy Mode	: 11b/g/n\n");
-	else if (phy_mode==PHY_11AGN_MIXED)
-		ret+=websWrite(wp, "Phy Mode	: 11a/g/n\n");
+	{
+		switch(phy_mode){
+			case PHY_11BG_MIXED:
+				ret+=websWrite(wp, "Phy Mode	: 11b/g\n");
+				break;
+			case PHY_11B:
+				ret+=websWrite(wp, "Phy Mode	: 11b\n");
+				break;
+			case PHY_11A:
+				ret+=websWrite(wp, "Phy Mode	: 11a\n");
+				break;
+			case PHY_11ABG_MIXED:
+				ret+=websWrite(wp, "Phy Mode	: 11a/b/g\n");
+				break;
+			case PHY_11G:
+				ret+=websWrite(wp, "Phy Mode	: 11g\n");
+				break;
+			case PHY_11ABGN_MIXED:
+				ret+=websWrite(wp, "Phy Mode	: 11a/b/g/n\n");
+				break;
+			case PHY_11VHT_N_ABG_MIXED:
+				ret+=websWrite(wp, "Phy Mode	: 11b/g/n/an/ac\n");
+				break;
+			case PHY_11N_2_4G:
+			case PHY_11N_5G:
+				ret+=websWrite(wp, "Phy Mode	: 11n\n");
+				break;
+			case PHY_11VHT_N_MIXED:
+				ret+=websWrite(wp, "Phy Mode	: 11n/ac\n");
+				break;
+			case PHY_11GN_MIXED:
+				ret+=websWrite(wp, "Phy Mode	: 11g/n\n");
+				break;
+			case PHY_11AN_MIXED:
+				ret+=websWrite(wp, "Phy Mode	: 11a/n\n");
+				break;
+			case PHY_11VHT_N_A_MIXED:
+				ret+=websWrite(wp, "Phy Mode	: 11/an/ac\n");
+				break;
+			case PHY_11BGN_MIXED:
+				ret+=websWrite(wp, "Phy Mode	: 11b/g/n\n");
+				break;
+			case PHY_11AGN_MIXED:
+				ret+=websWrite(wp, "Phy Mode	: 11a/g/n\n");
+				break;
+			case PHY_11VHT_N_AG_MIXED:
+				ret+=websWrite(wp, "Phy Mode	: 11a/g/n/ac\n");
+				break;
+			case PHY_11AX_24G:
+				ret+=websWrite(wp, "Phy Mode	: 11b/g/n/ax\n");
+				break;
+			case PHY_11AX_5G:
+				ret+=websWrite(wp, "Phy Mode	: 11a/an/ac/ax\n");
+				break;
+#if 0
+			case PHY_11AX_6G:
+				ret+=websWrite(wp, "Phy Mode	: 11?\n");
+				break;
+			case PHY_11AX_24G_6G:
+				ret+=websWrite(wp, "Phy Mode	: 11b/g/n/ax/?\n");
+				break;
+			case PHY_11AX_5G_6G:
+				ret+=websWrite(wp, "Phy Mode	: 11a/an/ac/ax/?\n");
+				break;
+			case PHY_11AX_24G_5G_6G:
+				ret+=websWrite(wp, "Phy Mode	: 11a/b/g/n/an/ac/ax/?\n");
+				break;
+#endif
+			default:
+				ret+=websWrite(wp, "Phy Mode	: unknown[%lu]\n", phy_mode);
+		}
+	}
 
 	ret+=websWrite(wp, "Channel		: %d\n", channel);
 
@@ -875,7 +861,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 typedef struct PACKED _WSC_CONFIGURED_VALUE {
     unsigned short WscConfigured;	// 1 un-configured; 2 configured
     unsigned char WscSsid[32 + 1];
-    unsigned short WscAuthMode;		// mandatory, 0x01: open, 0x02: wpa-psk, 0x04: shared, 0x08:wpa, 0x10: wpa2, 0x
+    unsigned short WscAuthMode;		// mandatory, 0x01: open, 0x02: wpa-psk, 0x04: shared, 0x08:wpa, 0x10: wpa2, 0x20: wpa2-psk
     unsigned short WscEncrypType;	// 0x01: none, 0x02: wep, 0x04: tkip, 0x08: aes
     unsigned char DefaultKeyIdx;
     unsigned char WscWPAKey[64 + 1];
@@ -1230,10 +1216,6 @@ int ej_wl_sta_list_2g(int eid, webs_t wp, int argc, char_t **argv)
 
 	memset(mac, 0, sizeof(mac));
 
-#if defined(RTAC85U) || defined(RTAC85P) || defined(RTACRH26) || defined(TUFAC1750)
-	if (!nvram_get_int("wlready"))
-		goto exit;
-#endif
 
 	/* query wl for authenticated sta list */
 	memset(data, 0, sizeof(data));
@@ -1330,10 +1312,6 @@ int ej_wl_sta_list_5g(int eid, webs_t wp, int argc, char_t **argv)
 
 	memset(mac, 0, sizeof(mac));
 
-#if defined(RTAC85U) || defined(RTAC85P) || defined(RTACRH26) || defined(TUFAC1750)
-	if (!nvram_get_int("wlready"))
-		goto exit;
-#endif
 
 	/* query wl for authenticated sta list */
 	memset(data, 0, sizeof(data));
@@ -1719,74 +1697,12 @@ static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 #if 0// defined(RTN14U)
 	snprintf(header, sizeof(header), "%-4s%-33s%-18s%-9s%-16s%-9s%-8s%-4s%-5s\n", "Ch", "SSID", "BSSID", "Enc", "Auth", "Siganl(%)", "W-Mode"," WPS", " DPID");
 #else
-	snprintf(header, sizeof(header), "%-4s%-33s%-18s%-9s%-16s%-9s%-8s\n", "Ch", "SSID", "BSSID", "Enc", "Auth", "Siganl(%)", "W-Mode");
+//	snprintf(header, sizeof(header), "%-4s%-33s%-18s%-9s%-16s%-9s%-8s\n", "Ch", "SSID", "BSSID", "Enc", "Auth", "Siganl(%)", "W-Mode");
+	snprintf(header, sizeof(header), "%-4s%-33s%-20s%-23s%-9s%-12s%-7s%-3s%-4s%-5s\n", "Ch", "SSID", "BSSID", "Security", "Siganl(%)", "W-Mode", " ExtCH", " NT", " WPS", " DPID");
 #endif
 	dbg("\n%s", header);
 	if (wrq.u.data.length > 0)
 	{
-#if defined(RTN65U)
-		if (unit == 0 && get_model() == MODEL_RTN65U)
-		{
-			char *encryption;
-			SITE_SURVEY_RT3352_iNIC *pSsap, *ssAP;
-
-			pSsap = ssAP = (SITE_SURVEY_RT3352_iNIC *) (1 /* '\n' */ + wrq.u.data.pointer +  sizeof(SITE_SURVEY_RT3352_iNIC) /* header */);
-			while(((unsigned int)wrq.u.data.pointer + wrq.u.data.length) > (unsigned int) ssAP)
-			{
-				ssAP->channel   [sizeof(ssAP->channel)    -1] = '\0';
-				ssAP->ssid      [32                         ] = '\0';
-				ssAP->bssid     [17                         ] = '\0';
-				ssAP->encryption[sizeof(ssAP->encryption) -1] = '\0';
-				if((encryption = strchr(ssAP->authmode, '/')) != NULL)
-				{
-					memmove(ssAP->encryption, encryption +1, sizeof(ssAP->encryption) -1);
-					memset(encryption, ' ', sizeof(ssAP->authmode) - (encryption - ssAP->authmode));
-					*encryption = '\0';
-				}
-				ssAP->authmode  [sizeof(ssAP->authmode)   -1] = '\0';
-				ssAP->signal    [sizeof(ssAP->signal)     -1] = '\0';
-				ssAP->wmode     [sizeof(ssAP->wmode)      -1] = '\0';
-				ssAP->extch     [sizeof(ssAP->extch)      -1] = '\0';
-				ssAP->nt        [sizeof(ssAP->nt)         -1] = '\0';
-				ssAP->wps       [sizeof(ssAP->wps)        -1] = '\0';
-				ssAP->dpid      [sizeof(ssAP->dpid)       -1] = '\0';
-
-				convertToUpper(ssAP->bssid);
-				ssAP++;
-				apCount++;
-			}
-
-			if (apCount)
-			{
-				retval += websWrite(wp, "[");
-				for (i = 0; i < apCount; i++)
-				{
-					dbg("%-4s%-33s%-18s%-9s%-16s%-9s%-8s\n",
-						pSsap[i].channel,
-						pSsap[i].ssid,
-						pSsap[i].bssid,
-						pSsap[i].encryption,
-						pSsap[i].authmode,
-						pSsap[i].signal,
-						pSsap[i].wmode
-					);
-
-					memset(ssid_str, 0, sizeof(ssid_str));
-					char_to_ascii(ssid_str, trim_r(pSsap[i].ssid));
-
-					if (!i)
-						retval += websWrite(wp, "[\"%s\", \"%s\"]", ssid_str, pSsap[i].bssid);
-					else
-						retval += websWrite(wp, ", [\"%s\", \"%s\"]", ssid_str, pSsap[i].bssid);
-				}
-				retval += websWrite(wp, "]");
-				dbg("\n");
-			}
-			else
-				retval += websWrite(wp, "[]");
-			return retval;
-		}
-#endif
 		ssap=(SSA *)(wrq.u.data.pointer+strlen(header)+1);
 		int len = strlen(wrq.u.data.pointer+strlen(header))-1;
 		char *sp, *op;
@@ -1796,14 +1712,13 @@ static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 			ssap->SiteSurvey[i].channel[3] = '\0';
 			ssap->SiteSurvey[i].ssid[32] = '\0';
 			ssap->SiteSurvey[i].bssid[17] = '\0';
-			ssap->SiteSurvey[i].encryption[8] = '\0';
-			ssap->SiteSurvey[i].authmode[15] = '\0';
+			ssap->SiteSurvey[i].security[22] = '\0';
 			ssap->SiteSurvey[i].signal[8] = '\0';
-			ssap->SiteSurvey[i].wmode[7] = '\0';
-#if 0//defined(RTN14U)
+			ssap->SiteSurvey[i].wmode[11] = '\0';
+			ssap->SiteSurvey[i].extch[6] = '\0';
+			ssap->SiteSurvey[i].nt[2] = '\0';
 			ssap->SiteSurvey[i].wps[3] = '\0';
 			ssap->SiteSurvey[i].dpid[4] = '\0';
-#endif
 			sp+=strlen(header);
 			apCount=++i;
 		}
@@ -1813,23 +1728,13 @@ static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 			for (i = 0; i < apCount; i++)
 			{
 			   	dbg("\napCount=%d\n",i);
-				dbg(
-#if 0//defined(RTN14U)
-				"%-4s%-33s%-18s%-9s%-16s%-9s%-8s%-4s%-5s\n",
-#else
-				"%-4s%-33s%-18s%-9s%-16s%-9s%-8s\n",
-#endif
+				dbg("%-4s%-33s%-18s%-23s%-9s%-12s\n",
 					ssap->SiteSurvey[i].channel,
 					(char*)ssap->SiteSurvey[i].ssid,
 					ssap->SiteSurvey[i].bssid,
-					ssap->SiteSurvey[i].encryption,
-					ssap->SiteSurvey[i].authmode,
+					ssap->SiteSurvey[i].security,
 					ssap->SiteSurvey[i].signal,
 					ssap->SiteSurvey[i].wmode
-#if 0//defined(RTN14U)
-					, ssap->SiteSurvey[i].wps
-					, ssap->SiteSurvey[i].dpid
-#endif
 				);
 
 				memset(ssid_str, 0, sizeof(ssid_str));
@@ -1945,9 +1850,6 @@ static int ej_wl_channel_list(int eid, webs_t wp, int argc, char_t **argv, int u
 
 	if (band != 0 && band != 1) return retval;
 
-#if defined(RTAC85U) || defined(RTAC85P) || defined(RTACRH26) || defined(TUFAC1750)
-	if (!nvram_get_int("wlready")) return retval;
-#endif
 
 	//try getting channel list via wifi driver first
 	if(get_channel_list_via_driver(unit, chList, sizeof(chList)) > 0)
@@ -2018,7 +1920,6 @@ static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 #endif		
 		snprintf(prefix, sizeof(prefix), "wl%d.1_", unit);
 	else
-#if 0
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 
 	name = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
@@ -2031,17 +1932,9 @@ static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	}
 
 	rate = wrq.u.bitrate.value;
-	if ((rate == -1) || (rate == 0))
-		strlcpy(rate_buf, "auto", sizeof(rate_buf));
-	else
-		snprintf(rate_buf, sizeof(rate_buf), "%d Mbps", (rate / 1000000));
-#else
-		goto ERROR;
-	name = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
-
-	memset(tmp, 0x00, sizeof(tmp));
+	memset(tmp, 0, sizeof(tmp));
 	wrq.u.data.length = sizeof(tmp);
-	wrq.u.data.pointer = (caddr_t) tmp;
+	wrq.u.data.pointer = &tmp;
 	wrq.u.data.flags = ASUS_SUBCMD_CONN_STATUS;
 
 	if (wl_ioctl(name, RTPRIV_IOCTL_ASUSCMD, &wrq) < 0)
@@ -2049,12 +1942,13 @@ static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 		dbg("%s: errors in getting %s CONN_STATUS result\n", __func__, name);
 		goto ERROR;
 	}
-	status = ((int*)tmp)[0];
-	rate   = ((int*)tmp)[1];
-
-	if(status == 6)
-		snprintf(rate_buf, sizeof(rate_buf), "%d Mbps", rate);
-#endif
+	status = (unsigned int*)tmp;
+	if(*status == 6){
+		if ((rate == -1) || (rate == 0))
+			strlcpy(rate_buf, "auto", sizeof(rate_buf));
+		else
+			snprintf(rate_buf, sizeof(rate_buf), "%d Mbps", (rate / 1000));
+	}
 
 ERROR:
 	if(from_app == 0)
@@ -2088,11 +1982,7 @@ ej_nat_accel_status(int eid, webs_t wp, int argc, char_t **argv)
 {
 	int retval = 0;
 
-#if defined(RTCONFIG_WLMODULE_MT7629_AP) || defined(RTCONFIG_WLMODULE_MT7622_AP)
 	retval += websWrite(wp, "%d", module_loaded("mtkhnat"));
-#else
-	retval += websWrite(wp, "%d", module_loaded("hw_nat"));
-#endif
 
 	return retval;
 }
@@ -2127,3 +2017,4 @@ ej_wl_auth_psta(int eid, webs_t wp, int argc, char_t **argv)
 	return retval;
 }
 #endif
+
