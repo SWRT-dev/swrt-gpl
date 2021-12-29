@@ -1007,9 +1007,9 @@ chip_objs += $(SRC_DIR)/chips/mt7637.o\
                 $(SRC_DIR)/os/linux/pci_main_dev.o
 endif
 
-#ifeq ($(CONFIG_DBDC_MODE),y)
+ifeq ($(CONFIG_DBDC_MODE),y)
 EXTRA_CFLAGS += -DDBDC_MODE
-#endif
+endif
 
 ifeq ($(CONFIG_G_BAND_256QAM_SUPPORT),y)
 EXTRA_CFLAGS += -DG_BAND_256QAM

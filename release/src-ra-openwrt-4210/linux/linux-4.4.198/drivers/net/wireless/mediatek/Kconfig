@@ -18,6 +18,12 @@ choice
 	config FIRST_IF_NONE
 	bool "None"
 
+	config FIRST_IF_MT7603E
+	bool "MT7603E"
+	select WIFI_MT_MAC
+	select MT_MAC
+	select CHIP_MT7603E
+
 	config FIRST_IF_MT7615E
 	bool "MT7615E"
 	select WIFI_MT_MAC
@@ -104,7 +110,15 @@ config  RT_THIRD_IF_RF_OFFSET
         default 0xd0000
 
 if CHIP_MT7915
-source "drivers/net/wireless/mediatek/mt_wifi_7915_v7400/mt_wifi/embedded/Kconfig"
+source "drivers/net/wireless/mediatek/mt7915/7.4.0.0/mt_wifi/embedded/Kconfig"
+endif
+
+if CHIP_MT7615E
+source "drivers/net/wireless/mediatek/mt7615/5.1.0.0/mt_wifi/embedded/Kconfig"
+endif
+
+if CHIP_MT7603E
+source "drivers/net/wireless/mediatek/mt7603/4.1.2.1/mt7603_wifi/Kconfig"
 endif
 
 endif # WIFI_DRIVER

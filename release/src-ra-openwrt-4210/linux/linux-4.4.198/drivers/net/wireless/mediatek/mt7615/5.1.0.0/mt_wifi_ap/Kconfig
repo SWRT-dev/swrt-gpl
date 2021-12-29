@@ -157,11 +157,11 @@ config OCE_SUPPORT
         select WAPP_SUPPORT
         default y
 
-config DPP_FEATURE
-        bool "DPP Support"
-        depends on MT_AP_SUPPORT
-	depends on WIFI_DRIVER
-        default n
+#config DPP_FEATURE
+#        bool "DPP Support"
+#        depends on MT_AP_SUPPORT
+#	depends on WIFI_DRIVER
+#        default n
 
 config ENTERPRISE_AP_SUPPORT
 	bool "Enterprise AP Support"

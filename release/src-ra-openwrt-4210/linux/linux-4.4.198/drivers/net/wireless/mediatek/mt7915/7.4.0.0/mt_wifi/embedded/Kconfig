@@ -569,11 +569,11 @@ menu "WiFi Operation Modes"
     endchoice
 
     if WIFI_MODE_AP || WIFI_MODE_BOTH
-		source "drivers/net/wireless/mt_wifi_ap/Kconfig"
+		source "drivers/net/wireless/mediatek/mt7915d/mt_wifi_ap/Kconfig"
     endif
 
     if WIFI_MODE_STA || WIFI_MODE_BOTH
-		source "drivers/net/wireless/mt_wifi_sta/Kconfig"
+		source "drivers/net/wireless/mediatek/mt7915d/mt_wifi_sta/Kconfig"
     endif
 endmenu	
 
