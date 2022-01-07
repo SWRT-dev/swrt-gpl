@@ -15,7 +15,8 @@ export OPENSSL11=y
 
 export BUILD := $(shell (gcc -dumpmachine))
 export KERNEL_BINARY=$(LINUXDIR)/vmlinux
-ifeq ($(RTAX53U)$(RTAX54)$(RT4GAX56),y)
+ifeq ($(MT7621),y)
+export MUSL32=y
 export PLATFORM := mipsel-musl
 export PLATFORM_ARCH := mipsel-musl
 export TOOLS :=/opt/toolchain-mipsel_24kc_gcc-5.4.0_musl-1.1.24
@@ -31,6 +32,7 @@ export KERNELLD := $(TOOLS)/bin/mipsel-openwrt-linux-musl-ld
 export STAGING_DIR := $(TOOLS)
 else ifeq ($(RT4GAC86U),y)
 export EXTRACFLAGS += -DRT4GAC86U
+export MUSL64=y
 export PLATFORM := arm-glibc
 export PLATFORM_ARCH := arm-glibc
 export TOOLS := /opt/toolchain-aarch64_cortex-a53+neon-vfpv4_gcc-5.4.0_glibc-2.24
@@ -45,6 +47,7 @@ export HOST := arm-linux
 export CONFIGURE := ./configure --host=arm-linux --build=$(BUILD)
 export HOSTCONFIG := linux-aarch64
 else
+export MUSL32=y
 export PLATFORM := arm-musl
 export PLATFORM_ARCH := arm-musl
 export TOOLS := /opt/lede-toolchain-mediatek-mt7629_gcc-5.4.0_musl-1.1.24_eabi.Linux-x86_64/toolchain-arm_cortex-a7_gcc-5.4.0_musl-1.1.24_eabi
@@ -859,13 +862,13 @@ define platformKernelConfig
 			sed -i "/CONFIG_RT2860V2_AP_CARRIER/d" $(1); \
 			echo "CONFIG_RT2860V2_AP_CARRIER=y" >>$(1); \
 	fi; \
-	if [ "$(RTAC85P)" = "y" ] || [ "$(RMAC2100)" = "y" ] || [ "$(SWRTR6800)" = "y" ]; then \
-			sed -i "/CONFIG_NF_CT_NETLINK/d" $(1); \
-			echo "CONFIG_NF_CT_NETLINK=m" >>$(1); \
-			sed -i "/CONFIG_NF_CT_NETLINK_TIMEOUT/d" $(1); \
-			echo "CONFIG_NF_CT_NETLINK_TIMEOUT=m" >>$(1); \
-			sed -i "/CONFIG_NETFILTER_TPROXY/d" $(1); \
-			echo "CONFIG_NETFILTER_TPROXY=m" >>$(1); \
+	if [ "$(MT7621)" = "y" ] ; then \
+		sed -i "/CONFIG_NF_CT_NETLINK/d" $(1); \
+		echo "CONFIG_NF_CT_NETLINK=m" >>$(1); \
+		sed -i "/CONFIG_NF_CT_NETLINK_TIMEOUT/d" $(1); \
+		echo "CONFIG_NF_CT_NETLINK_TIMEOUT=m" >>$(1); \
+		sed -i "/CONFIG_NETFILTER_TPROXY/d" $(1); \
+		echo "CONFIG_NETFILTER_TPROXY=m" >>$(1); \
 	fi; \
 	if [ "$(UBI)" = "y" ]; then \
 		sed -i "/CONFIG_MTD_UBI\>/d" $(1); \

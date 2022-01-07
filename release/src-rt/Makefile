@@ -185,13 +185,14 @@ export CONFIG_BCMWL5=y
 export CONFIG_LINUX26=y
 	# its multi-arch in 94908, specify ARCH in kbuild result bad
 endif
--include .config
+#-include .config
 #
 # include platform.mak after include .config
 # some definitions in platform.mak may be defined as different value, if .config exist.
 include ./platform.mak
 
 -include ./dsl.mak
+-include ./model-desc.mak
 
 ifeq ($(HND_ROUTER),y)
 ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6756)),y)
@@ -256,6 +257,12 @@ export $(SWRT_NAME):=y
 export CFLAGS += -DSWRT_VER_MAJOR_$(SWRT_VER_MAJOR)
 export SWRT_VER_MAJOR_$(SWRT_VER_MAJOR):=y
 endif
+endif
+
+ifeq ($(and $(HND_ROUTER_AX_6756),$(BCM_MFG)),y)
+export BUILD_MFG := 1
+export WLTEST := 1
+export CFLAGS += -DWLTEST
 endif
 
 EXTRA_KERNEL_YES_CONFIGS_1 := $(filter %=y %=Y,$(EXTRA_KERNEL_CONFIGS))
@@ -690,11 +697,14 @@ endif
 	$(eval COMBINE_NAME := $(shell echo $* | tr a-z A-Z))
 	@if [ "$(COMBINE_NAME)" = "RT-AC59_CD6" ]; then \
 		`$(eval COMBINE_MODEL := RT-AC59_CD6R RT-AC59_CD6N)`; \
+	elif [ "$(COMBINE_NAME)" = "RT-AC68U" ]; then \
+		echo "Try to combine RT-AC68U FW..."; \
 	else \
 		echo "Unknown model! Need define COMBINE_MODEL..."; \
 		exit 1; \
 	fi
 	$(eval IMAGEVER := $(KERNEL_VER).$(FS_VER)_$(SERIALNO)_$(SWPJVER)$(EXTENDNO))
+ifeq ($(QCA),y)
 	@rm -f $(IMAGEDIR)/mix.trx
 	@for var in $(COMBINE_MODEL); do \
 		if [ ! -f "$(IMAGEDIR)/$${var}_$(IMAGEVER).trx" ]; then \
@@ -703,14 +713,35 @@ endif
 		fi; \
 		cat $(IMAGEDIR)/$${var}_$(IMAGEVER).trx >> $(IMAGEDIR)/mix.trx; \
 	done
-ifeq ($(QCA),y)
 	@asustools/mkimage -A $(ARCH) -O linux -T kernel -C lzma \
 			-a $(LOADADDR) -e $(ENTRYADDR) -r "0" \
 			-n MULTIFW -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(EXTENDNO)" "0" "0" "0" "0" "0" "0" \
 			-d $(IMAGEDIR)/mix.trx $(IMAGEDIR)/$(COMBINE_NAME)_$(IMAGEVER).trx
 endif
+ifeq ($(BCM),y)
+	@if [ ! -f "$(IMAGEDIR)/RT-AC68U_$(IMAGEVER).trx" ]; then \
+		echo "RT-AC68U_$(IMAGEVER).trx not found!"; \
+		exit 1; \
+	elif [ ! -f "$(IMAGEDIR)/RT-AC68U_V4_$(IMAGEVER)_cferom_puresqubi.w" ]; then \
+		echo "RT-AC68U_V4_$(IMAGEVER)_cferom_puresqubi.w not found!"; \
+		exit 1; \
+	fi;
+	mv $(IMAGEDIR)/RT-AC68U_$(IMAGEVER).trx $(IMAGEDIR)/RT-AC68U_$(IMAGEVER).trx_v123
+	cat $(IMAGEDIR)/RT-AC68U_$(IMAGEVER).trx_v123 $(IMAGEDIR)/RT-AC68U_V4_$(IMAGEVER)_cferom_puresqubi.w > $(IMAGEDIR)/$(COMBINE_NAME)_$(IMAGEVER).trx;
+endif
 	md5sum $(IMAGEDIR)/$(COMBINE_NAME)_$(IMAGEVER).trx > $(IMAGEDIR)/$(COMBINE_NAME)_$(IMAGEVER).md5
+ifneq ($(LIVE_UPDATE_RSA),)
+ifneq (,$(wildcard $(KEY_PATH)/private*.pem))
+	for f in $(KEY_PATH)/private*.pem; do \
+		rsa_idx=$$(echo $${f} | sed "s/.*\///" | sed "s/private//" | sed "s/.pem//"); \
+		$$(openssl sha1 -sign $(KEY_PATH)/private$${rsa_idx}.pem -out $(IMAGEDIR)/$(COMBINE_NAME)_$(IMAGEVER)_rsa$${rsa_idx}.zip $(IMAGEDIR)/$(COMBINE_NAME)_$(IMAGEVER).trx); \
+	done
+else
+ifneq (,$(wildcard $(SRC_ROOT)/../../buildtools/private.pem))
 	openssl sha1 -sign $(SRC_ROOT)/../../buildtools/private.pem -out $(IMAGEDIR)/$(COMBINE_NAME)_$(IMAGEVER)_rsa.zip $(IMAGEDIR)/$(COMBINE_NAME)_$(IMAGEVER).trx
+endif
+endif
+endif
 
 image:
 	@if [ -z "$(BUILD_NAME)" ]; then \
@@ -739,6 +770,7 @@ ifeq ($(CONFIG_RALINK),y)
 # MTK/Ralink platform
 	# generate kernel part
 	@rm -rf $(PLATFORMDIR)/zImage.lzma ;
+	gcc asustools/patch-dtb.c -o asustools/patch-dtb
 	if [ "$(BUILD_NAME)" = "RT-ACRH18" ] ; then \
 		$(CROSS_COMPILE)cpp -nostdinc -x assembler-with-cpp -I$(DTS_DIR) -I$(DTS_DIR)/include -undef -D__DTS__ -o $(DTS_DIR)/$(DTB).tmp $(DTS_DIR)/mt7629-lynx-rfb3.dts ; \
 		$(LINUXDIR)/scripts/dtc/dtc -O dtb -i$(DTS_DIR) -o $(DTS_DIR)/$(DTB) $(DTS_DIR)/$(DTB).tmp ; \
@@ -759,23 +791,28 @@ ifeq ($(CONFIG_RALINK),y)
 		$(CROSS_COMPILE)objcopy -O binary -R .reginfo -R .note -R .comment -R .mdebug -S $(LINUXDIR)/vmlinux $(PLATFORMDIR)/vmlinus ; \
 		#asustools/lzma -9 -f -c $(PLATFORMDIR)/vmlinus > $(PLATFORMDIR)/zImage.lzma ; \
 		asustools/lzma_9k e $(PLATFORMDIR)/vmlinus $(PLATFORMDIR)/zImage.lzma -lc2 -lp2 -pb2 -mfbt2 ; \
-	elif [ "$(BUILD_NAME)" = "RT-AC85P" ] || [ "$(BUILD_NAME)" = "RT-AC85U" ] ; then \
-		$(CROSS_COMPILE)cpp -nostdinc -x assembler-with-cpp -I$(DTS_DIR) -I$(DTS_DIR)/include -undef -D__DTS__ -o $(DTS_DIR)/ralink/$(DTB).tmp $(DTS_DIR)/ralink/mt7621-rtac85x.dts ; \
+	elif [ "$(BUILD_NAME)" = "RT-AC85U" ] ; then \
+		$(CROSS_COMPILE)cpp -nostdinc -x assembler-with-cpp -I$(DTS_DIR) -I$(DTS_DIR)/include -undef -D__DTS__ -o $(DTS_DIR)/ralink/$(DTB).tmp $(DTS_DIR)/ralink/mt7621-rtac85u.dts ; \
+	elif [ "$(BUILD_NAME)" = "RT-AC85P" ] ; then \
+		$(CROSS_COMPILE)cpp -nostdinc -x assembler-with-cpp -I$(DTS_DIR) -I$(DTS_DIR)/include -undef -D__DTS__ -o $(DTS_DIR)/ralink/$(DTB).tmp $(DTS_DIR)/ralink/mt7621-rtac85p.dts ; \
 		$(LINUXDIR)/scripts/dtc/dtc -O dtb -i$(DTS_DIR)/ralink -o $(DTS_DIR)/ralink/$(DTB) $(DTS_DIR)/ralink/$(DTB).tmp ; \
 		rm $(DTS_DIR)/ralink/$(DTB).tmp ; \
 		$(CROSS_COMPILE)objcopy -O binary -R .reginfo -R .note -R .comment -R .mdebug -S $(LINUXDIR)/vmlinux $(PLATFORMDIR)/vmlinus ; \
+		asustools/patch-dtb $(PLATFORMDIR)/vmlinus $(DTS_DIR)/ralink/$(DTB) ; \
 		asustools/lzma_9k e $(PLATFORMDIR)/vmlinus $(PLATFORMDIR)/zImage.lzma -lc2 -lp2 -pb2 -mfbt2 ; \
-	elif [ "$(BUILD_NAME)" = "SWRT-R6800" ] ; then \
+	elif [ "$(BUILD_NAME)" = "R6800" ] ; then \
 		$(CROSS_COMPILE)cpp -nostdinc -x assembler-with-cpp -I$(DTS_DIR) -I$(DTS_DIR)/include -undef -D__DTS__ -o $(DTS_DIR)/ralink/$(DTB).tmp $(DTS_DIR)/ralink/mt7621-r6800.dts ; \
 		$(LINUXDIR)/scripts/dtc/dtc -O dtb -i$(DTS_DIR)/ralink -o $(DTS_DIR)/ralink/$(DTB) $(DTS_DIR)/ralink/$(DTB).tmp ; \
 		rm $(DTS_DIR)/ralink/$(DTB).tmp ; \
 		$(CROSS_COMPILE)objcopy -O binary -R .reginfo -R .note -R .comment -R .mdebug -S $(LINUXDIR)/vmlinux $(PLATFORMDIR)/vmlinus ; \
+		asustools/patch-dtb $(PLATFORMDIR)/vmlinus $(DTS_DIR)/ralink/$(DTB) ; \
 		asustools/lzma_9k e $(PLATFORMDIR)/vmlinus $(PLATFORMDIR)/zImage.lzma -lc2 -lp2 -pb2 -mfbt2 ; \
 	elif [ "$(BUILD_NAME)" = "RM-AC2100" ] ; then \
 		$(CROSS_COMPILE)cpp -nostdinc -x assembler-with-cpp -I$(DTS_DIR) -I$(DTS_DIR)/include -undef -D__DTS__ -o $(DTS_DIR)/ralink/$(DTB).tmp $(DTS_DIR)/ralink/mt7621-rmac2100.dts ; \
 		$(LINUXDIR)/scripts/dtc/dtc -O dtb -i$(DTS_DIR)/ralink -o $(DTS_DIR)/ralink/$(DTB) $(DTS_DIR)/ralink/$(DTB).tmp ; \
 		rm $(DTS_DIR)/ralink/$(DTB).tmp ; \
 		$(CROSS_COMPILE)objcopy -O binary -R .reginfo -R .note -R .comment -R .mdebug -S $(LINUXDIR)/vmlinux $(PLATFORMDIR)/vmlinus ; \
+		asustools/patch-dtb $(PLATFORMDIR)/vmlinus $(DTS_DIR)/ralink/$(DTB) ; \
 		asustools/lzma_9k e $(PLATFORMDIR)/vmlinus $(PLATFORMDIR)/zImage.lzma -lc2 -lp2 -pb2 -mfbt2 ; \
 	else \
 		mipsel-linux-objcopy -O binary -R .reginfo -R .note -R .comment -R .mdebug -S $(LINUXDIR)/vmlinux $(PLATFORMDIR)/vmlinus ; \
@@ -785,7 +822,7 @@ ifeq ($(CONFIG_RALINK),y)
 	
 	# padded kernel image size
 	@SIZE=`wc -c $(PLATFORMDIR)/zImage.img | awk '{print $$1}'`; \
-	if [ "`grep -c \"^CONFIG_ROOTFS_IN_FLASH_NO_PADDING\>\" $(LINUXDIR)/.config`" -eq 0 ] && [ "$(BUILD_NAME)" != "RT-ACRH18" ] && [ "$(BUILD_NAME)" != "4G-AC86U" ] && [ "$(BUILD_NAME)" != "RT-AX53U" ] && [ "$(BUILD_NAME)" != "4G-AX56" ] && [ "$(BUILD_NAME)" != "RT-AX54" ] && [ "$(BUILD_NAME)" != "RT-AC85P" ] && [ "$(BUILD_NAME)" != "RT-AC85U" ] && [ "$(BUILD_NAME)" != "SWRT-R6800" ] && [ "$(BUILD_NAME)" != "RM-AC2100" ] ; then \
+	if [ "`grep -c \"^CONFIG_ROOTFS_IN_FLASH_NO_PADDING\>\" $(LINUXDIR)/.config`" -eq 0 ] && [ "$(BUILD_NAME)" != "RT-ACRH18" ] && [ "$(BUILD_NAME)" != "4G-AC86U" ] && [ "$(BUILD_NAME)" != "RT-AX53U" ] && [ "$(BUILD_NAME)" != "4G-AX56" ] && [ "$(BUILD_NAME)" != "RT-AX54" ] && [ "$(BUILD_NAME)" != "RT-AC85P" ] && [ "$(BUILD_NAME)" != "RT-AC85U" ] && [ "$(BUILD_NAME)" != "R6800" ] && [ "$(BUILD_NAME)" != "RM-AC2100" ] ; then \
 		CONFIG_MTD_KERNEL_PART_SIZ=`grep "^CONFIG_MTD_KERNEL_PART_SIZ\>" $(LINUXDIR)/.config|sed -e "s,[^=]*=,," -e "s,^\(0x\)*,0x,"` ; \
 		MTD_KRN_PART_SIZE=`printf "%d" $${CONFIG_MTD_KERNEL_PART_SIZ}` ; \
 		PAD=`expr $${MTD_KRN_PART_SIZE} - 64 - $${SIZE}` ; \
@@ -812,17 +849,10 @@ ifeq ($(CONFIG_RALINK),y)
 		asustools/mkits.sh -D MTK-AC2600-RFB1 -o image/MTK-AC2600-RFB1-kernel.bin.its -k $(PLATFORMDIR)/zImage.img -d $(DTS_DIR)/mediatek/$(DTB) -C lzma -a 0x41080000 -e 0x41080000 -A arm64 -v 4.4.198 ; \
 		#asustools/u-boot-2014.10/tools/mkimage -f image/MTK-7622-RFB1.its image/$(IMGNAME).img ; \
 		asustools/u-boot-2014.10/tools/mkimage -f image/MTK-AC2600-RFB1-kernel.bin.its $(PLATFORMDIR)/zImage.img ; \
-	elif [ "$(BUILD_NAME)" = "RT-AC85P" ] || [ "$(BUILD_NAME)" = "RT-AC85U" ] ; then \
-		asustools/mkits.sh -D mt7621-rtac85x -o image/mt7621-rtac85x.its -k $(PLATFORMDIR)/zImage.img -d $(DTS_DIR)/ralink/$(DTB) -C lzma -a 0x81001000 -e 0x81001000 -A mips -v 4.4.198 ; \
-		asustools/u-boot-2014.10/tools/mkimage -f image/mt7621-rtac85x.its $(PLATFORMDIR)/zImage.img ; \
-	elif [ "$(BUILD_NAME)" = "SWRT-R6800" ] ; then \
-		asustools/mkits.sh -D mt7621-r6800 -o image/mt7621-r6800.its -k $(PLATFORMDIR)/zImage.img -d $(DTS_DIR)/ralink/$(DTB) -C lzma -a 0x81001000 -e 0x81001000 -A mips -v 4.4.198 ; \
-		asustools/u-boot-2014.10/tools/mkimage -f image/mt7621-r6800.its $(PLATFORMDIR)/zImage.img ; \
-	elif [ "$(BUILD_NAME)" = "RM-AC2100" ] ; then \
-		asustools/mkits.sh -D mt7621-rmac2100 -o image/mt7621-rmac2100.its -k $(PLATFORMDIR)/zImage.img -d $(DTS_DIR)/ralink/$(DTB) -C lzma -a 0x81001000 -e 0x81001000 -A mips -v 4.4.198 ; \
-		asustools/u-boot-2014.10/tools/mkimage -f image/mt7621-rmac2100.its $(PLATFORMDIR)/zImage.img ; \
+	elif [ "$(BUILD_NAME)" = "R6800" ] ; then \
+		cp $(PLATFORMDIR)/zImage.img $(PLATFORMDIR)/kernel.img ; \
 	fi ; \
-	if [ "$(BUILD_NAME)" = "SWRT-R6800" ] || [ "$(BUILD_NAME)" = "RM-AC2100" ]; then \
+	if [ "$(BUILD_NAME)" = "R6800" ] || [ "$(BUILD_NAME)" = "RM-AC2100" ]; then \
 		SIZE=`wc -c $(PLATFORMDIR)/zImage.img | awk '{print $$1}'`; \
 		PAD=`expr 4194304 - $${SIZE} - 64` ; \
 		dd if=/dev/zero count=1 bs=$${PAD} 2> /dev/null | tr \\000 \\377 >> $(PLATFORMDIR)/zImage.img ; \
@@ -836,10 +866,15 @@ ifeq ($(CONFIG_RALINK),y)
 	RSIZE=`wc -c $(PLATFORMDIR)/target.image | awk '{print $$1}'` ; \
 	PAD2=`expr $${ISIZE} - $${KSIZE} - $${RSIZE}` ; \
 	RFSOFFSET=`expr 64 + $${KSIZE} + $${PAD2}` ; \
-	if [ "$(BUILD_NAME)" = "RT-AC85U" ] || [ "$(BUILD_NAME)" = "RT-AC85P" ] || [ "$(BUILD_NAME)" = "RT-AC65U" ] || [ "$(BUILD_NAME)" = "RT-N800HP" ] || [ "$(BUILD_NAME)" = "RT-ACRH26" ] || [ "$(BUILD_NAME)" = "TUF-AC1750" ] || [ "$(BUILD_NAME)" = "RM-AC2100" ] || [ "$(BUILD_NAME)" = "SWRT-R6800" ] ; then \
+	if [ "$(BUILD_NAME)" = "RT-AC85U" ] || [ "$(BUILD_NAME)" = "RT-AC85P" ] || [ "$(BUILD_NAME)" = "RT-AC65U" ] || [ "$(BUILD_NAME)" = "RT-ACRH26" ] || [ "$(BUILD_NAME)" = "TUF-AC1750" ] || [ "$(BUILD_NAME)" = "RM-AC2100" ] || [ "$(BUILD_NAME)" = "R6800" ] ; then \
 		asustools/u-boot-2014.10/tools/mkimage -A mips -O linux -T kernel -C lzma -a 0x81001000 -e 0x81001000 -r $${RFSOFFSET} \
 		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0"  \
 		-d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx ; \
+		if [ "$(BUILD_NAME)" = "R6800" ]; then \
+			asustools/u-boot-2014.10/tools/mkimage -A mips -O linux -T kernel -C lzma -a 0x81001000 -e 0x81001000 -r $$${RFSOFFSET} \
+			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0"  \
+			-d $(PLATFORMDIR)/kernel.img image/kernel.bin ; \
+		fi ; \
 	elif [ "$(BUILD_NAME)" = "RT-ACRH18" ] ; then \
 		asustools/u-boot-2014.10/tools/mkimage -A arm -O linux -T kernel -C lzma -a 0x40008000 -e 0x40008000 -r $${RFSOFFSET} \
 		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0"  \
@@ -900,10 +935,18 @@ ifeq ($(or $(IPQ40XX),$(IPQ60XX),$(IPQ50XX)),y)
 		PAD=`expr 64 - $${SIZE} % 64` ; \
 		dd if=/dev/zero count=1 bs=$${PAD} 2> /dev/null | tr \\000 \\377 >> $(PLATFORMDIR)/zImage.img
 ifeq ($(IPQ60XX),y)
+ifeq ($(MUSL64),y)
+	asustools/mkits.sh -D qcom-ipq6018-cp03-c1 -o image/fit-qcom-ipq6018-cp03-c1.its -k $(PLATFORMDIR)/zImage.img -r $(PLATFORMDIR)/target.image -d $(LINUXDIR)/arch/arm64/boot/dts/qcom/qcom-ipq6018-$(lowercase_B).dtb -C lzma -a 0x$(LOADADDR) -e 0x$(ENTRYADDR) -A $(ARCH) -v $(KERNEL_VER)
+else
 	asustools/mkits.sh -D qcom-ipq6018-cp03-c1 -o image/fit-qcom-ipq6018-cp03-c1.its -k $(PLATFORMDIR)/zImage.img -r $(PLATFORMDIR)/target.image -d $(LINUXDIR)/arch/arm/boot/dts/qcom-ipq6018-$(lowercase_B).dtb -C lzma -a 0x$(LOADADDR) -e 0x$(ENTRYADDR) -A $(ARCH) -v $(KERNEL_VER)
+endif
 	asustools/mkimage -f image/fit-qcom-ipq6018-cp03-c1.its image/$(IMGNAME).img
 else ifeq ($(IPQ50XX),y)
+ifeq ($(MUSL64),y)
+	asustools/mkits.sh -D qcom-ipq5018-mp03.1 -o image/fit-qcom-ipq5018-mp03.1.its -k $(PLATFORMDIR)/zImage.img -r $(PLATFORMDIR)/target.image -d $(LINUXDIR)/arch/arm64/boot/dts/qcom/qcom-ipq5018-$(lowercase_B).dtb -C lzma -a 0x$(LOADADDR) -e 0x$(ENTRYADDR) -A $(ARCH) -v $(KERNEL_VER)
+else
 	asustools/mkits.sh -D qcom-ipq5018-mp03.1 -o image/fit-qcom-ipq5018-mp03.1.its -k $(PLATFORMDIR)/zImage.img -r $(PLATFORMDIR)/target.image -d $(LINUXDIR)/arch/arm/boot/dts/qcom-ipq5018-$(lowercase_B).dtb -C lzma -a 0x$(LOADADDR) -e 0x$(ENTRYADDR) -A $(ARCH) -v $(KERNEL_VER)
+endif
 	asustools/mkimage -f image/fit-qcom-ipq5018-mp03.1.its image/$(IMGNAME).img
 else
 	asustools/mkits.sh -D qcom-ipq40xx-ap.dkxx -o image/fit-qcom-ipq40xx-ap.dkxx.its -k $(PLATFORMDIR)/zImage.img -r $(PLATFORMDIR)/target.image -d $(LINUXDIR)/arch/arm/boot/dts/qcom-$(DAKOTA_DTS)-$(lowercase_B).dtb -C lzma -a 0x$(LOADADDR) -e 0x$(ENTRYADDR) -A $(ARCH) -v $(KERNEL_VER)
@@ -922,8 +965,9 @@ endif
 		RSIZE=`wc -c $(PLATFORMDIR)/target.image | awk '{print $$1}'` ; \
 		PAD2=`expr $${ISIZE} - $${KSIZE} - $${RSIZE} - $${TSIZE}` ; \
 		RFSOFFSET=`expr 64 + $${KSIZE} + $${PAD2}` ; \
+		TRANS_ARCH=`if [ "$(ARCH)" = "arm64" ]; then echo -n arm; else echo -n $(ARCH); fi` ; \
 		echo "PAD2: $${PAD2}" ; \
-	asustools/mkimage -A $(ARCH) -O linux -T kernel -C lzma -a $(LOADADDR) -e $(ENTRYADDR) -r $${RFSOFFSET} \
+	asustools/mkimage -A $${TRANS_ARCH} -O linux -T kernel -C lzma -a $(LOADADDR) -e $(ENTRYADDR) -r $${RFSOFFSET} \
 			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(EXTENDNO)" "0" "0" "0" "0" "0" "0" \
 			-d image/$(IMGNAME).img image/$(IMGNAME).trx
 else
@@ -931,6 +975,33 @@ else
 		echo "$(LINUXDIR)/arch/$(ARCH)/boot/dts/$(DTB) not found!!!" ; \
 		exit 1 ; \
 	fi
+ifeq ($(RAX120),y)
+	# RAX120 kernel.gz rootfs DTB=$(DTB) IMG=$(IMGNAME)
+	gcc asustools/mkdniimg.c -o asustools/mkdniimg
+	@$(CROSS_COMPILE)objcopy -O binary $(LINUXDIR)/vmlinux $(PLATFORMDIR)/vmlinus
+	@gzip -9 -c $(PLATFORMDIR)/vmlinus > $(PLATFORMDIR)/rax120.kernel
+	@cp -f $(PLATFORMDIR)/rax120.kernel $(PLATFORMDIR)/Image.img
+	asustools/mkits.sh -D qcom-ipq807x-rax120 -o image/qcom-ipq807x-rax120.its -k $(PLATFORMDIR)/Image.img -d $(LINUXDIR)/arch/$(ARCH)/boot/dts/$(DTB) -C gzip -a 0x41208000 -e 0x41208000 -A $(ARCH) -v $(KERNEL_VER)
+	@PATH=$(LINUXDIR)/scripts/dtc asustools/mkimage -f image/qcom-ipq807x-rax120.its image/$(IMGNAME).img
+	@SIZE=`wc -c image/$(IMGNAME).img | awk '{print $$1}'` ; \
+		PAD=`expr 64 - $${SIZE} % 64` ; \
+		dd if=/dev/zero count=1 bs=$${PAD} 2> /dev/null | tr \\000 \\377 >> image/$(IMGNAME).img
+	cat $(PLATFORMDIR)/target.image >> image/$(IMGNAME).img
+	# generate NETGEAR Image
+	asustools/mkdniimg -B "RAX120" -v "V1.2.1.22" -r "" -H "29765589+0+512+1024+4x4+8x8" -i image/$(IMGNAME).img -o image/RAX120_OFW2ASUS.img
+	@echo -n "" > image/tail_info
+	# generate ASUS Image
+	@ISIZE=`wc -c image/$(IMGNAME).img | awk '{print $$1}'` ; \
+		TSIZE=`wc -c image/tail_info | awk '{print $$1}'`; \
+		KSIZE=`wc -c $(PLATFORMDIR)/rax120.kernel | awk '{print $$1}'` ; \
+		RSIZE=`wc -c $(PLATFORMDIR)/target.image | awk '{print $$1}'` ; \
+		PAD2=`expr $${ISIZE} - $${KSIZE} - $${RSIZE} - $${TSIZE}` ; \
+		RFSOFFSET=`expr 64 + $${KSIZE} + $${PAD2}` ; \
+		asustools/mkimage -A $(ARCH) -O linux -T kernel -C none \
+			-a $(LOADADDR) -e $(ENTRYADDR) -r $${RFSOFFSET} \
+			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0" \
+			-d image/$(IMGNAME).img image/$(IMGNAME).trx
+else
 	# padded kernel image size, DTB=$(DTB)
 	@if [ -z "$(DTB)" ] ; then \
 		$(CROSS_COMPILE)objcopy -O binary $(LINUXDIR)/vmlinux $(PLATFORMDIR)/vmlinus ; \
@@ -972,8 +1043,9 @@ endif
 		RFSOFFSET=`expr 64 + $${KSIZE} + $${PAD2}` ; \
 		asustools/mkimage -A $(ARCH) -O linux -T kernel -C lzma \
 			-a $(LOADADDR) -e $(ENTRYADDR) -r $${RFSOFFSET} \
-			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(EXTENDNO)" "0" "0" "0" "0" "0" "0" \
+			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0" \
 			-d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx
+endif
 endif
 else ifeq ($(RTCONFIG_REALTEK),y)
 # Realtek platform
@@ -1131,6 +1203,24 @@ endif
 ifeq ($(ARM),y)
 	ln -sf $(LINUXDIR)/vmlinux image/vmlinux
 	ln -sf $(LINUXDIR)/vmlinux.o image/vmlinux.o
+endif
+ifeq ($(R6800),y)
+	gcc asustools/mksercommfw.c -o asustools/mksercommfw
+	dd if=/dev/zero bs=2048K count=1 conv=sync 2> /dev/null | tr \\000 \\377 >> image/factory.img
+	cat image/kernel.bin >> image/factory.img
+	@SIZE=`wc -c image/kernel.bin | awk '{ print $$1 }'` ; \
+	PAD=`expr 4194304 - $$SIZE` ; \
+	dd if=/dev/zero count=1 bs=$$PAD conv=sync 2> /dev/null | tr \\000 \\377 >> image/factory.img
+	cat $(PLATFORMDIR)/target.image >> image/factory.img
+	@SIZE=`wc -c image/factory.img | awk '{ print $$1 }'` ; \
+	PAD=`expr 83886080 - $$SIZE` ; \
+	dd if=/dev/zero count=1 bs=$$PAD conv=sync 2> /dev/null | tr \\000 \\377 >> image/factory.img
+	#asustools/mksercommfw -i image/factory.img -b BZV -r A001 -v 0x0062 -f
+	mkdir image/factory.img.tmp
+	mv image/factory.img image/factory.img.tmp/R6950.bin
+	zip -j -X image/factory.img image/factory.img.tmp/R6950.bin
+	rm -rf image/factory.img.tmp
+	asustools/mksercommfw -i image/factory.img -b BZV -r A001 -v 0x0062
 endif
 	@echo ""
 
@@ -2002,7 +2092,7 @@ define RouterOptions
 				sed -i "/RTCONFIG_TUXERA_NTFS/d" $(1); \
 				echo "RTCONFIG_TUXERA_NTFS=y" >>$(1); \
 			fi; \
-			if [ "$(findstring tuxera, $(NTFS))" = "ntfs3" ]; then \
+			if [ "$(findstring ntfs3, $(NTFS))" = "ntfs3" ]; then \
 				sed -i "/RTCONFIG_NTFS3/d" $(1); \
 				echo "RTCONFIG_NTFS3=y" >>$(1); \
 			fi; \
@@ -3510,13 +3600,6 @@ define RouterOptions
 		sed -i "/RTCONFIG_NO_SELECT_CHANNEL/d" $(1); \
 		echo "# RTCONFIG_NO_SELECT_CHANNEL is not set" >>$(1); \
 	fi; \
-	if [ "$(VHT160)" = "y" ]; then \
-		sed -i "/RTCONFIG_VHT160/d" $(1); \
-		echo "RTCONFIG_VHT160=y" >>$(1); \
-	else \
-		sed -i "/RTCONFIG_VHT160/d" $(1); \
-		echo "# RTCONFIG_VHT160 is not set" >>$(1); \
-	fi; \
 	if [ "$(USB_SWAP)" = "y" ]; then \
 		sed -i "/RTCONFIG_USB_SWAP/d" $(1); \
 		echo "RTCONFIG_USB_SWAP=y" >>$(1); \
@@ -3799,6 +3882,27 @@ define RouterOptions
 	if [ "$(3LANPORT_DEVICE)" = "y" ]; then \
 		sed -i "/RTCONFIG_3LANPORT_DEVICE/d" $(1); \
 		echo "RTCONFIG_3LANPORT_DEVICE=y" >>$(1); \
+	fi; \
+	if [ "$(VHT160)" = "y" ]; then \
+		sed -i "/RTCONFIG_VHT160/d" $(1); \
+		echo "RTCONFIG_VHT160=y" >>$(1); \
+	else \
+		sed -i "/RTCONFIG_VHT160/d" $(1); \
+		echo "# RTCONFIG_VHT160 is not set" >>$(1); \
+	fi; \
+	if [ "$(VHT80_80)" = "y" ]; then \
+		sed -i "/RTCONFIG_VHT80_80/d" $(1); \
+		echo "RTCONFIG_VHT80_80=y" >>$(1); \
+	else \
+		sed -i "/RTCONFIG_VHT80_80/d" $(1); \
+		echo "# RTCONFIG_VHT80_80 is not set" >>$(1); \
+	fi; \
+	if [ "$(BW160M)" = "y" ]; then \
+		sed -i "/RTCONFIG_BW160M/d" $(1); \
+		echo "RTCONFIG_BW160M=y" >>$(1); \
+	else \
+		sed -i "/RTCONFIG_BW160M/d" $(1); \
+		echo "# RTCONFIG_BW160M is not set" >>$(1); \
 	fi; \
 	if [ "$(SOFTCENTER)" = "y" ]; then \
 	sed -i "/RTCONFIG_SOFTCENTER/d" $(1); \
@@ -5392,6 +5496,35 @@ fi; \
 		sed -i "/CONFIG_BCM_PKTFLOW_MAX_FLOWS/d" $(1); \
 		echo "CONFIG_BCM_PKTFLOW_MAX_FLOWS=4096" >>$(1); \
 	fi; \
+	if [ "$(BUILD_NAME)" = "RT-AX95Q" ] || [ "$(BUILD_NAME)" = "RT-AXE95Q" ] || [ "$(BUILD_NAME)" = "RT-AX56U" ] || [ "$(BUILD_NAME)" = "RT-AX56_XD4" ]; then \
+		sed -i "/CONFIG_DEBUG_SLAB\b/d" $(1); \
+		echo "# CONFIG_DEBUG_SLAB is not set" >>$(1); \
+	fi; \
+	if [ "$(BUILD_NAME)" = "RP-AX58" ] ; then \
+		sed -i "/CONFIG_MTD_BCM_SPI_NAND/d" $(1); \
+		echo "# CONFIG_MTD_BCM_SPI_NAND is not set" >>$(1); \
+	fi; \
+	if [ "$(WIREGUARD)" = "y" ]; then \
+		sed -i "/CONFIG_WIREGUARD/d" $(1); \
+		echo "CONFIG_WIREGUARD=m" >>$(1); \
+		sed -i "/CONFIG_WIREGUARD_DEBUG/d" $(1); \
+		echo "# CONFIG_WIREGUARD_DEBUG is not set" >>$(1); \
+		if [ "$(IPV6SUPP)" = "y" -o "$(IPV6FULL)" = "y" ]; then \
+			sed -i "/CONFIG_NF_NAT_IPV6\>/d" $(1); \
+			echo "CONFIG_NF_NAT_IPV6=y" >>$(1); \
+			sed -i "/CONFIG_NF_NAT_MASQUERADE_IPV6\>/d" $(1); \
+			echo "CONFIG_NF_NAT_MASQUERADE_IPV6=y" >>$(1); \
+			sed -i "/CONFIG_IP6_NF_NAT\>/d" $(1); \
+			echo "CONFIG_IP6_NF_NAT=y" >>$(1); \
+			sed -i "/CONFIG_IP6_NF_TARGET_MASQUERADE\>/d" $(1); \
+			echo "CONFIG_IP6_NF_TARGET_MASQUERADE=y" >>$(1); \
+			sed -i "/CONFIG_IP6_NF_TARGET_NPT\>/d" $(1); \
+			echo "CONFIG_IP6_NF_TARGET_NPT=y" >>$(1); \
+		fi;\
+	else \
+		sed -i "/CONFIG_WIREGUARD/d" $(1); \
+		echo "# CONFIG_WIREGUARD is not set" >>$(1); \
+	fi; \
 	)
 	$(call platformKernelConfig, $(1))
 	$(call extraKernelConfig, $(1))
@@ -5490,10 +5623,8 @@ else
 			cp $(LINUXDIR)/ralink/Kconfig_$(lowercase_B) $(LINUXDIR)/ralink/Kconfig ; \
 			cp $(LINUXDIR)/config_base.MT7628 $(LINUXDIR)/config_$(lowercase_B) ; \
 		elif [ "$(BUILD_NAME)" = "RT-AC85P" ]; then \
-			cp $(LINUXDIR)/ralink/Kconfig_$(lowercase_B) $(LINUXDIR)/ralink/Kconfig ; \
-			cp $(LINUXDIR)/config_base $(LINUXDIR)/config_$(lowercase_B) ; \
+			cp $(LINUXDIR)/config_base_rtac85p $(LINUXDIR)/config_$(lowercase_B) ; \
 		elif [ "$(BUILD_NAME)" = "RP-AC87" ] || [ "$(BUILD_NAME)" = "RT-AC85U" ] || [ "$(BUILD_NAME)" = "RT-AC65U" ] || [ "$(BUILD_NAME)" = "RT-ARCH26" ] || [ "$(BUILD_NAME)" = "TUF-AC1750" ]; then \
-			cp $(LINUXDIR)/ralink/Kconfig_$(lowercase_B) $(LINUXDIR)/ralink/Kconfig ; \
 			cp $(LINUXDIR)/config_base $(LINUXDIR)/config_$(lowercase_B) ; \
 		elif [ "$(BUILD_NAME)" = "RT-ACRH18" ]; then \
 			cp $(LINUXDIR)/config_base.MT7629 $(LINUXDIR)/config_$(lowercase_B) ; \
@@ -5503,8 +5634,8 @@ else
 			cp $(LINUXDIR)/config_base.MT7621 $(LINUXDIR)/config_$(lowercase_B) ; \
 		elif [ "$(BUILD_NAME)" = "RM-AC2100" ]; then \
 			cp $(LINUXDIR)/config_base_rmac2100 $(LINUXDIR)/config_$(lowercase_B) ; \
-		elif [ "$(BUILD_NAME)" = "SWRT-R6800" ]; then \
-			cp $(LINUXDIR)/config_base_r6800 $(LINUXDIR)/config_$(lowercase_B) ; \			
+		elif [ "$(BUILD_NAME)" = "R6800" ]; then \
+			cp $(LINUXDIR)/config_base_r6800 $(LINUXDIR)/config_$(lowercase_B) ; \
 		else \
 			cp $(LINUXDIR)/config_base $(LINUXDIR)/config_$(lowercase_B) ; \
 		fi ; \
@@ -5642,8 +5773,12 @@ dsl-% DSL-%:
 	$(call save_src_config, $@)
 	@$(MAKE) bin
 
-ET10 et10:
+ETJ etj:
 	$(call save_src_config,$@,_CFG)
+	$(MAKE) bin
+
+ET12 et12 XT12 xt12 XD4PRO xd4pro XT8PRO xt8pro ET8PRO et8pro:
+	$(call save_src_config, $@,_CFG)
 	$(MAKE) bin
 
 ifeq ($(ALPINE)$(LANTIQ),y)
