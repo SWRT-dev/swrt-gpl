@@ -1,7 +1,8 @@
 ifeq ($(CONFIG_SUPPORT_OPENWRT),y)
 ccflags-y = -I$(src)/../mt7603_wifi/include \
 		-I$(src)/../mt7603_wifi/ate/include
-DRV_NAME = mt7603e
+#DRV_NAME = mt7603e
+DRV_NAME = rlt_wifi_7603e
 RT_WIFI_DIR = ../mt7603_wifi
 
 else

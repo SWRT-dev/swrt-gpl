@@ -14,7 +14,8 @@ EXTRA_CFLAGS = -I$(WIFI_DRV_PATH)/mt_wifi/include \
 				-I$(WIFI_DRV_PATH)/mt_wifi/ate/include \
 				-I$(WIFI_DRV_PATH)/mt_wifi/include/mcu -I$(GLOBAL_DEFINES)
 
-DRV_NAME = mt_wifi
+#DRV_NAME = mt_wifi
+DRV_NAME = mt_wifi_7615E
 ifeq ($(CONFIG_SUPPORT_OPENWRT),y)
 ifeq ($(CONFIG_CHIP_MT7622),y)
 ifeq ($(CONFIG_MT76XX_COMBO_DUAL_DRIVER_SUPPORT),y)

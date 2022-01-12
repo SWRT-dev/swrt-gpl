@@ -7,6 +7,8 @@ menuconfig WL_MEDIATEK
 
 if WL_MEDIATEK
 source "drivers/net/wireless/mediatek/mt7601u/Kconfig"
+source "drivers/net/wireless/mediatek/mt7615/5.1.0.0/mt_wifi/embedded/Kconfig"
+source "drivers/net/wireless/mediatek/mt7603/4.1.2.1/mt7603_wifi/Kconfig"
 
 menuconfig WIFI_DRIVER
 	bool "WiFi Driver Support"
@@ -96,29 +98,24 @@ config  RT_THIRD_CARD
 
 config  RT_FIRST_IF_RF_OFFSET
         hex
-        depends on ! FIRST_IF_NONE
-        default 0xc0000
+        depends on !FIRST_IF_NONE
+        default 0xc0000 if FIRST_IF_MT7915
+		default 0x0 if FIRST_IF_MT7615E
+		default 0x0 if FIRST_IF_MT7603E
 
 config  RT_SECOND_IF_RF_OFFSET
         hex
-        depends on ! SECOND_IF_NONE
-        default 0xc8000
+        depends on !SECOND_IF_NONE
+        default 0xc8000 if !SECOND_IF_MT7615E
+		default 0x4000 if SECOND_IF_MT7615E
 
 config  RT_THIRD_IF_RF_OFFSET
         hex
-        depends on ! THIRD_IF_NONE
+        depends on !THIRD_IF_NONE
         default 0xd0000
 
 if CHIP_MT7915
 source "drivers/net/wireless/mediatek/mt7915/7.4.0.0/mt_wifi/embedded/Kconfig"
-endif
-
-if CHIP_MT7615E
-source "drivers/net/wireless/mediatek/mt7615/5.1.0.0/mt_wifi/embedded/Kconfig"
-endif
-
-if CHIP_MT7603E
-source "drivers/net/wireless/mediatek/mt7603/4.1.2.1/mt7603_wifi/Kconfig"
 endif
 
 endif # WIFI_DRIVER
