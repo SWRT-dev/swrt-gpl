@@ -39,3 +39,6 @@ obj-$(CONFIG_MTD_SPI_NOR)	+= spi-nor/
 obj-$(CONFIG_MTD_UBI)		+= ubi/
 
 obj-$(CONFIG_NMBM)		+= nmbm/
+
+# Composite drivers must be loaded last
+obj-y				+= composite/

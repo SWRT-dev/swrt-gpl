@@ -375,4 +375,6 @@ source "drivers/mtd/ubi/Kconfig"
 
 source "drivers/mtd/nmbm/Kconfig"
 
+source "drivers/mtd/composite/Kconfig"
+
 endif # MTD
