@@ -48,7 +48,7 @@
 #define REG_PINTST		0x60
 #define REG_PINTCL		0x64
 
-#define I2C_MANUAL_MODE
+//#define I2C_MANUAL_MODE
 
 #ifdef I2C_MANUAL_MODE
 #define MM_I2C_REG_BASE		0x0
