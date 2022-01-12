@@ -1,0 +1,256 @@
+/dts-v1/;
+
+#include "mt7621_ac.dtsi"
+#include <dt-bindings/input/input.h>
+
+/ {
+	compatible = "mediatek,mt7621-r6800", "mediatek,mt7621-soc";
+	model = "Netgear R6800";
+
+	chosen {
+		bootargs = "console=ttyS0,115200";
+	};
+
+	gpio-keys-polled {
+		compatible = "gpio-keys-polled";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		poll-interval = <20>;
+
+		reset {
+			label = "reset";
+			gpios = <&gpio0 12 0>;
+			linux,code = <KEY_RESTART>;
+		};
+	};
+
+	nmbm {
+		compatible = "generic,nmbm";
+
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		lower-mtd-device = <&nandflash>;
+		forced-create;
+
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			partition@0 {
+				label = "Bootloader";
+				reg = <0x00000 0xe0000>;
+				read-only;
+			};
+
+			partition@100000 {
+				label = "SC_PART_MAP";
+				reg = <0x100000 0x40000>;
+				read-only;
+			};
+
+			partition@0x140000 {
+				label = "nvram";
+				reg = <0x140000 0xC0000>;
+			};
+
+			partition@200000 {
+				label = "Kernel";
+				reg = <0x200000 0x2c00000>;
+			};
+
+			jffsconcat0: partition@2e00000 {
+				label = "jffsconcat0";
+				reg = <0x2e00000 0x1600000>;
+			};
+
+			partition@4400000  {
+				label = "Factory2";
+				reg = <0x4400000 0x200000>;
+			};
+
+			factory: partition@4600000 {
+				label = "Factory";
+				reg = <0x4600000 0x200000>;
+			};
+
+			partition@4800000 {
+				label = "boarddata";
+				reg = <0x4800000 0x200000>;
+			};
+
+			partition@4a00000 {
+				label = "backup";
+				reg = <0x4a00000 0xa20000>;
+			};
+
+			jffsconcat1: partition@5420000 {
+				label = "jffsconcat1";
+				reg = <0x5420000 0x23e0000>;
+			};
+			//0x7800000-0x7fe0000: nmbm backup block
+		};
+	};
+	jffs2-concat {
+		compatible = "mtd-concat";
+		devices = <&jffsconcat0 &jffsconcat1>;
+
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			partition@0 {
+				label = "jffs2";
+				reg = <0x0 0x39e0000>;
+			};
+		};
+	};
+};
+
+&bch {
+	status = "okay";
+};
+
+&eth {
+        status = "okay";
+
+        gmac0: mac@0 {
+                compatible = "mediatek,eth-mac";
+                reg = <0>;
+                phy-mode = "trgmii";
+                fixed-link {
+                        speed = <1000>;
+                        full-duplex;
+                        pause;
+                };
+        };
+
+        gmac1: mac@1 {
+                compatible = "mediatek,eth-mac";
+                reg = <1>;
+                phy-mode = "rgmii";
+                fixed-link {
+                        speed = <1000>;
+                        full-duplex;
+                        pause;
+                };
+        };
+
+        mdio: mdio-bus {
+                #address-cells = <1>;
+                #size-cells = <0>;
+
+                phy1f: ethernet-phy@1f {
+                        reg = <0x1f>;
+                        phy-mode = "rgmii";
+                };
+        };
+};
+
+&gsw {
+        mediatek,mdio = <&mdio>;
+        mediatek,portmap = "llllw";
+        mediatek,mcm;
+		mt7530,direct-phy-access;
+
+        resets = <&rstctrl 2>;
+        reset-names = "mcm";
+
+        port5: port@5 {
+                compatible = "mediatek,mt753x-port";
+                reg = <5>;
+                phy-mode = "rgmii";
+                fixed-link {
+                        speed = <1000>;
+                        full-duplex;
+                };
+        };
+
+        port6: port@6 {
+                compatible = "mediatek,mt753x-port";
+                reg = <6>;
+                phy-mode = "trgmii";
+                fixed-link {
+                        speed = <1000>;
+                        full-duplex;
+                };
+        };
+
+        mdio-bus {
+                #address-cells = <1>;
+                #size-cells = <0>;
+        };
+};
+
+&hnat {
+        mtketh-wan = "eth1";
+        mtketh-ppd = "vlan1";
+        ext-devices = "rai0", "ra0", "rai1", "ra1", "rai2", "ra2", "rai3", "ra3", "apclii0", "apcli0";
+        mtketh-max-gmac = <2>;
+        status = "okay";
+};
+
+&nand {
+	status = "okay";
+
+	nandflash: flash@0 {
+		reg = <0>;
+		nand-ecc-mode = "hw";
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+		};
+	};
+};
+
+&i2c {
+	status = "okay";
+};
+
+&pinctrl {
+	state_default: pinctrl0 {
+
+		uart2 {
+			mtk,group = "uart2";
+			mtk,function = "gpio";
+		};
+
+		uart3 {
+			mtk,group = "uart3";
+			mtk,function = "gpio";
+		};
+
+		jtag {
+			mtk,group = "jtag";
+			mtk,function = "gpio";
+		};
+
+		wdt {
+			mtk,group = "wdt";
+			mtk,function = "gpio";
+		};
+	};
+};
+
+&uartfull1 {
+	status = "okay";
+};
+
+&uartfull2 {
+	status = "okay";
+};
+
+&pcie {
+	status = "okay";
+};
+
+&u3phy1 {
+	status = "okay";
+};
+
+&xhci {
+	status = "okay";
+};
