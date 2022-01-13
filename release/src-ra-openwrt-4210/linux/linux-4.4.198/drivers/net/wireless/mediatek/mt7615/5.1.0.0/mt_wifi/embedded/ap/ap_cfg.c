@@ -17421,6 +17421,82 @@ INT RTMP_AP_IoctlHandle(
 		DiagGetProcessInfo(pAd, wrq);
 		break;
 #endif
+	case CMD_RTPRIV_IOCTL_ASUSCMD:
+		//RTMPIoctlAsusHandle(pAd, wrq, subcmd, pData, Data);
+		if ( subcmd == ASUS_SUBCMD_CHLIST) {
+			UCHAR BandIdx = 0, ChIdx;
+			CHANNEL_CTRL *pChCtrl;
+			RTMP_STRING Channel[256], Tmp[4];
+			memset(Channel, 0, 256);
+			pChCtrl = hc_get_channel_ctrl(pAd->hdev_ctrl, BandIdx);
+			if (pChCtrl->ChListNum > 0) {
+				for (ChIdx = 0; ChIdx < pChCtrl->ChListNum; ChIdx++) {
+					if(ChIdx > 0)
+						strcat(Channel,",");
+					snprintf(Tmp, sizeof(Tmp), "%d", pChCtrl->ChList[ChIdx].Channel);
+					strcat(Channel,Tmp);
+				}
+			}
+			wrq->u.data.length = strlen(Channel);
+			//Channel[wrq->u.data.length] = '\0';
+			if (copy_to_user(wrq->u.data.pointer, Channel, wrq->u.data.length))
+				Status = -EFAULT;
+		} else if ( subcmd == ASUS_SUBCMD_DRIVERVER ) {
+			RTMP_STRING driverVersion[16];
+			wrq->u.data.length = strlen(AP_DRIVER_VERSION);
+			snprintf(&driverVersion[0], sizeof(driverVersion), "%s", AP_DRIVER_VERSION);
+			driverVersion[wrq->u.data.length] = '\0';
+			if (copy_to_user(wrq->u.data.pointer, &driverVersion, wrq->u.data.length))
+				Status = -EFAULT;
+		} else if ( subcmd == ASUS_SUBCMD_RADIO_STATUS ) {
+			UINT32 Enable = 0;
+			if(pAd->Flags & fRTMP_ADAPTER_RADIO_OFF)
+				Enable = 0;
+			else
+				Enable = 1;
+			if (copy_to_user(wrq->u.data.pointer, &Enable, wrq->u.data.length))
+				Status = -EFAULT;
+		} else if ( subcmd == ASUS_SUBCMD_RADIO_TEMPERATURE ) {
+			UINT32 temperature = 0;
+			RTMP_GET_TEMPERATURE(pAd, &temperature);
+			wrq->u.data.length = sizeof(UINT32);
+			if (copy_to_user(wrq->u.data.pointer, &temperature, wrq->u.data.length))
+				Status = -EFAULT;
+		} else if ( subcmd == ASUS_SUBCMD_CONN_STATUS ) {
+			UINT32 pCurrState = 0;
+			PAPCLI_STRUCT pApCliEntry;
+			pApCliEntry = &pAd->ApCfg.ApCliTab[pObj->ioctl_if];
+			pCurrState = pApCliEntry->CtrlCurrState;
+			wrq->u.data.length = sizeof(UINT32);
+			if (copy_to_user(wrq->u.data.pointer, &pCurrState, wrq->u.data.length))
+				Status = -EFAULT;
+		} else if ( subcmd == ASUS_SUBCMD_GSTAINFO ) {
+		} else if ( subcmd == ASUS_SUBCMD_GSTAT ) {
+		} else if ( subcmd == ASUS_SUBCMD_GRSSI ) {
+		} else if ( subcmd == ASUS_SUBCMD_GROAM ) {
+		} else if ( subcmd == ASUS_SUBCMD_GETSKUTABLE ) {
+		} else if ( subcmd == ASUS_SUBCMD_GETSKUTABLE_TXBF ) {
+		} else if ( subcmd == ASUS_SUBCMD_CLIQ ) {
+			RTMP_STRING tmp[20];
+			PAPCLI_STRUCT pApCliEntry;
+			PMAC_TABLE_ENTRY mac;
+			memset(tmp, 0, sizeof(tmp));
+			pApCliEntry = &pAd->ApCfg.ApCliTab[pObj->ioctl_if];
+			mac = &pAd->MacTab.Content[pApCliEntry->MacTabWCID];
+			snprintf(tmp, sizeof(tmp), "%lu", mac->ChannelQuality);
+			wrq->u.data.length = strlen(tmp);
+			if (copy_to_user(wrq->u.data.pointer, tmp, wrq->u.data.length))
+				Status = -EFAULT;
+		} else if ( subcmd == ASUS_SUBCMD_CLRSSI ) {
+		} else if ( subcmd == ASUS_SUBCMD_GMONITOR_RSSI ) {
+		} else if ( subcmd == ASUS_SUBCMD_MACMODE ) {
+		} else if ( subcmd == ASUS_SUBCMD_MACLIST ) {
+		} else if ( subcmd == ASUS_SUBCMD_GDFSNOPCHANNEL ) {
+		} else if ( subcmd == ASUS_SUBCMD_GCHANNELINFO ) {
+		} else if ( subcmd == ASUS_SUBCMD_GETSITESURVEY_VSIE ) {
+		} else if ( subcmd == ASUS_SUBCMD_GETAPCLIENABLE ) {
+		}
+		break;
 
 	default:
 		Status = RTMP_COM_IoctlHandle(pAd, wrq, cmd, subcmd, pData, Data);
@@ -20771,3 +20847,4 @@ Error:
 	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("@@@ Failed to Set/Reset StaFastIdleCheckEnable\n"));
 	return FALSE;
 }
+

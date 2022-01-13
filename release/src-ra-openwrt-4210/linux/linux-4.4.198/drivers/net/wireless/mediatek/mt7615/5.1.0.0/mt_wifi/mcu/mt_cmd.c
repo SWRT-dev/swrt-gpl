@@ -1901,11 +1901,11 @@ INT32 MtCmdChannelSwitch(RTMP_ADAPTER *pAd, MT_SWITCH_CHANNEL_CFG SwChCfg)
 	}
 
 	{
-		MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+		MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 				 ("%s: control_chl = %d,control_ch2=%d, central_chl = %d DBDCIdx= %d, Band= %d\n",
 				  __func__, SwChCfg.ControlChannel, SwChCfg.ControlChannel2, SwChCfg.CentralChannel, SwChCfg.BandIdx,
 				  SwChCfg.Channel_Band));
-		MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+		MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 				 ("BW = %d,TXStream = %d, RXStream = %d, scan(%d)\n",
 				  SwChCfg.Bw, SwChCfg.TxStream, SwChCfg.RxStream, SwChCfg.bScan));
 	}
@@ -2072,7 +2072,7 @@ INT MtCmdSetRxPath(struct _RTMP_ADAPTER *pAd, UINT32 Path, UCHAR BandIdx)
 
 	/* TODO: Pat: Update new path. It is rx path actually. */
 	pSwChCfg->RxStream = Path;
-	MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+	MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 			 ("%s: control_chl = %d,control_ch2=%d, central_chl = %d, BW = %d,TXStream = %d, RXStream = %d, BandIdx =%d,  scan(%d), Channel_Band = %d\n",
 			  __func__, pSwChCfg->ControlChannel, pSwChCfg->ControlChannel2, pSwChCfg->CentralChannel,
 			  pSwChCfg->Bw, pSwChCfg->TxStream, pSwChCfg->RxStream, pSwChCfg->BandIdx, pSwChCfg->bScan, pSwChCfg->Channel_Band));
@@ -4580,7 +4580,7 @@ INT32 MtCmdGetThermalSensorResult(RTMP_ADAPTER *pAd, UINT8 ActionIdx,
 	MtAndesAppendCmdMsg(msg, (char *)&Cmdmsg, sizeof(Cmdmsg));
 	ret = chip_cmd_tx(pAd, msg);
 error:
-	MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+	MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 			 ("%s:(ret = %d)\n", __func__, ret));
 	return ret;
 }
@@ -9802,7 +9802,7 @@ INT32 MtCmdCr4Set(RTMP_ADAPTER *pAd, UINT32 arg0, UINT32 arg1, UINT32 arg2)
 	INT32 Ret = 0;
 	struct _EXT_CMD_CR4_SET_T  CmdCr4SetSet;
 	struct _CMD_ATTRIBUTE attr = {0};
-	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 			 (":%s: arg0(%d) arg1(%d) arg2(%d)\n",
 			  __func__, arg0, arg1, arg2));
 	msg = MtAndesAllocCmdMsg(pAd, sizeof(CmdCr4SetSet));
@@ -11500,7 +11500,7 @@ INT32 MtCmdPktBudgetCtrl(struct _RTMP_ADAPTER *pAd, UINT8 bss_idx, UINT16 wcid, 
 	struct _CMD_ATTRIBUTE attr = {0};
 	UCHAR i;
 	UINT32 size = sizeof(pbc);
-	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 			 (":%s: bssid(%d),wcid(%d),type(%d)\n", __func__, bss_idx, wcid, type));
 
 	if (type >= PBC_TYPE_END) {
@@ -12590,3 +12590,4 @@ error:
 
 	return ret;
 }
+

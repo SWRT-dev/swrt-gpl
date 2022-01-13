@@ -136,6 +136,7 @@ typedef enum _CMD_RTPRIV_IOCTL_AP {
 #ifdef WIFI_DIAG
 	CMD_RTPRIV_IOCTL_GET_PROCESS_INFO,
 #endif
+	CMD_RTPRIV_IOCTL_ASUSCMD,
 
 	/* can not exceed 0x5000 */
 } CMD_RTPRIV_IOCTL_AP;
@@ -892,3 +893,4 @@ typedef struct __RT_CMD_USB_INIT {
 } RT_CMD_USB_INIT;
 
 #endif /* __RTMP_CMD_H__ */
+
