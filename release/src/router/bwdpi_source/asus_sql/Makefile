@@ -25,7 +25,7 @@ endif
 ifeq ($(HND_ROUTER),y)
 CFLAGS += -idirafter$(LINUXDIR)/include
 CFLAGS += -I$(HND_SRC)/userspace/public/include -I$(HND_SRC)/userspace/public/include/linux -I$(HND_SRC)/userspace/private/include
-ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6756)),y)
+ifeq ($(HND_ROUTER_AX_675X),y)
 LDFLAGS += -L$(TOP_PLATFORM)/wlcsm -lwlcsm -L$(TOP_PLATFORM)/bcm_flashutil -lbcm_flashutil -L$(TOP_PLATFORM)/gen_util -lgen_util -L$(TOP_PLATFORM)/sys_util -lsys_util -L$(TOP_PLATFORM)/bcm_util -lbcm_util -L$(TOP_PLATFORM)/bcm_boardctl -lbcm_boardctl
 else
 LDFLAGS += -L$(TOP_PLATFORM)/wlcsm -lwlcsm -L$(TOP_PLATFORM)/bcm_flashutil -lbcm_flashutil -L$(TOP_PLATFORM)/bcm_util -lbcm_crc -L$(TOP_PLATFORM)/bcm_boardctl -lbcm_boardctl
@@ -111,8 +111,8 @@ endif
 
 ifeq ($(wildcard $(SRCBASE)/router/bwdpi_source/asus_sql/*.c),)
 all:
-	-cp -f prebuild/bwdpi_sqlite bwdpi_sqlite
-	-cp -f prebuild/libbwdpi_sql.so libbwdpi_sql.so
+	-cp -f prebuild/$(BUILD_NAME)/bwdpi_sqlite bwdpi_sqlite
+	-cp -f prebuild/$(BUILD_NAME)/libbwdpi_sql.so libbwdpi_sql.so
 else
 all: bwdpi_sqlite libbwdpi_sql.so
 endif

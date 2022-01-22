@@ -10,9 +10,8 @@
 #include <shared.h>
 #include <shutils.h>
 #include <bcmnvram.h>
-#include "httpd.h"
+#include <openvpn_config.h>
 #include "openvpn_options.h"
-#include "openvpn_config.h"
 
 struct buffer
 alloc_buf (size_t size)
@@ -272,7 +271,7 @@ in_src_get (const struct in_src *is, char *line, const int size)
 	{
 		bool status = buf_parse (is->u.multiline, '\n', line, size);
 		if ((int) strlen (line) + 1 < size)
-			strcat (line, "\n");
+			strlcat (line, "\n", size);
 		return status;
 	}
 	else
@@ -714,3 +713,4 @@ void parse_openvpn_status(int unit)
 	if(fpi) fclose(fpi);
 	if(fpo) fclose(fpo);
 }
+

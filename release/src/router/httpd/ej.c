@@ -37,10 +37,6 @@
 #include <bcmnvram.h>
 #include <shutils.h>
 #include <shared.h>
-#include <json.h>
-
-extern void do_json_decode(struct json_object **root);
-extern char *get_cgi_json(char *name, json_object *root);
 
 #ifdef TRANSLATE_ON_FLY
 #include <json_object.h>

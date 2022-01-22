@@ -120,7 +120,7 @@ OBJS += apps.o
 ifeq ($(CONFIG_REALTEK),y)
 OBJS += web-realtek.o
 else ifeq ($(CONFIG_RALINK),y)
-OBJS += web-ralink.o
+OBJS += web-ralink.o openvpn_options.o
 else ifeq ($(CONFIG_QCA),y)
 OBJS += web-qca.o
 else ifeq ($(CONFIG_ALPINE),y)
@@ -128,6 +128,9 @@ OBJS += web-alpine.o
 else ifeq ($(CONFIG_LANTIQ),y)
 OBJS += $(if $(wildcard sysdeps/web-lantiq.c),web-lantiq.o,prebuild/web-lantiq.o)
 else
+ifeq ($(or $(RTCONFIG_HND_ROUTER_AX_675X),$(RTCONFIG_HND_ROUTER_AX_6710),$(RTCONFIG_HND_ROUTER_AX_6756)),y)
+OBJS += $(if $(wildcard sysdeps/web-broadcom_private.c),web-broadcom_private.o,prebuild/web-broadcom_private.o)
+endif
 OBJS += web-broadcom.o
 ifeq ($(RTCONFIG_QTN),y)
 OBJS += find_host_addr.o
@@ -154,18 +157,27 @@ OBJS += vis_gui.o
 endif
 
 ifeq ($(RTCONFIG_HTTPS),y)
-OBJS += pwenc.o
+OBJS += $(if $(wildcard pwenc.c), pwenc.o, prebuild/pwenc.o)
 endif
 
+OBJS += sysinfo.o
+OBJS += swrt.o
+ifeq ($(RTCONFIG_SOFTCENTER),y)
+OBJS += dbapi.o
+endif
 ifeq ($(RTCONFIG_CAPTCHA),y)
 OBJS += libcaptcha.o
 endif
 
-OBJS += web_hook.o
+OBJS += $(if $(wildcard web_hook.c), web_hook.o, prebuild/web_hook.o)
 
 LIBS = -L$(TOP_PLATFORM)/nvram${BCMEX}$(EX7) -lnvram -L$(TOP)/shared -lshared
 ifeq ($(HND_ROUTER),y)
 LIBS += -L$(TOP_PLATFORM)/wlcsm -lwlcsm
+endif
+
+ifeq ($(HND_ROUTER_AX_6756),y)
+LIBS += -L$(TOP_PLATFORM)/bcm_flashutil -lbcm_flashutil -L$(TOP_PLATFORM)/gen_util -lgen_util -L$(TOP_PLATFORM)/sys_util -lsys_util -L$(TOP_PLATFORM)/bcm_util -lbcm_util -L$(TOP_PLATFORM)/bcm_boardctl -lbcm_boardctl
 endif
 
 # for ceil()
@@ -186,6 +198,9 @@ CFLAGS += -I$(SRCBASE)/wl/sys
 CFLAGS += -I$(SRCBASE)/../../43684/src/wl/sys
 endif
 LIBS += -lgcc_s
+ifeq ($(HND_ROUTER_AX_6756),y)
+CFLAGS += -I$(TOP_PLATFORM)/bcm_flashutil -I$(HND_SRC)/userspace/public/include -I$(HND_SRC)/userspace/public/include/linux 
+endif
 ifeq ($(RTCONFIG_QTN),y)
 CFLAGS += -I$(TOP)/libqcsapi_client -I$(TOP)/shared/sysdeps/qtn
 LIBS += -L$(TOP)/libqcsapi_client -lqcsapi_client
@@ -213,7 +228,6 @@ LIBS += -L$(TOP)/openssl -lssl -lcrypto -ldl
 endif
 
 ifeq ($(RTCONFIG_OPENVPN),y)
-OBJS += openvpn_options.o
 CFLAGS += -I$(TOP)/libvpn
 LIBS += -L$(TOP)/libvpn -lvpn
 LIBS += -L$(TOP)/openssl -lssl -lcrypto -ldl
@@ -303,17 +317,24 @@ CFLAGS += -I$(TOP)/libasuslog
 LIBS += -L$(TOP)/libasuslog -lasuslog
 endif
 
-PB:
-	[ ! -d prebuild/$(BUILD_NAME) ] || cp -rf prebuild/$(BUILD_NAME)/*.o prebuild/
+ifeq ($(RTCONFIG_HND_ROUTER_AX_6710),y)
+CFLAGS +=-DRTCONFIG_HND_ROUTER_AX_6710
+endif
+ifeq ($(RTCONFIG_HND_ROUTER_AX_675X),y)
+CFLAGS +=-DRTCONFIG_HND_ROUTER_AX_675X
+endif
+ifeq ($(RTCONFIG_HND_ROUTER_AX_6756),y)
+CFLAGS +=-DRTCONFIG_HND_ROUTER_AX_6756
+endif
 
-all: PB httpd #test_apps
+all: httpd #test_apps
 
 #test_apps: apps.c
 #	$(CC) -DAPPS $(CFLAGS) $(LIBS) $^ -o $@
 
 httpd: $(OBJS)
 	@echo " [httpd] CC $@"
-	@$(CC) -o $@ $(OBJS) $(LIBS) $(EXTRALDFLAGS)
+	$(CC) -o $@ $(OBJS) $(LIBS) $(EXTRALDFLAGS)
 
 	$(SIZECHECK)
 	$(CPTMP)
@@ -352,3 +373,5 @@ endif
 	@$(CC) $(CFLAGS) -M $< > $@
 
 -include $(OBJS:%.o=.%.depend)
+
+

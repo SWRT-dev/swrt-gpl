@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <html xmlns:v>
 <head>
@@ -879,14 +879,14 @@ function erase_traffic(){
 
 function corrected_timezone(){
 	var today = new Date();
-	var StrIndex;	
-	if(today.toString().indexOf("-") > 0)
-		StrIndex = today.toString().indexOf("-");
-	else if(today.toString().indexOf("+") > 0)
-		StrIndex = today.toString().indexOf("+");
+	var StrIndex = 0;	
+	if(today.toString().indexOf("GMT-") > 0)
+		StrIndex = today.toString().indexOf("GMT-");
+	else if(today.toString().indexOf("GMT+") > 0)
+		StrIndex = today.toString().indexOf("GMT+");
 
 	if(StrIndex > 0){		
-		if(timezone != today.toString().substring(StrIndex, StrIndex+5)){
+		if(timezone != today.toString().substring(StrIndex+3, StrIndex+8)){
 			document.getElementById("timezone_hint").style.visibility = "visible";
 			document.getElementById("timezone_hint").innerHTML = "* <#LANHostConfig_x_TimeZone_itemhint#>";
 		}
@@ -1238,3 +1238,4 @@ function handle_value(){
 </form>
 </body>
 </html>
+

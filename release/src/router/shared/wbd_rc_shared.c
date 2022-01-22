@@ -275,7 +275,7 @@ wbd_nvram_prefix_safe_get(const char *prefix, const char *nvram)
 	char data[WBD_MAX_BUF_256] = {0};
 
 	if (prefix) {
-		return nvram_safe_get(strcat_r(prefix, nvram, data));
+		return nvram_safe_get(strlcat_r(prefix, nvram, data, sizeof(data)));
 	} else {
 		return nvram_safe_get(nvram);
 	}
@@ -332,7 +332,7 @@ wbd_nvram_prefix_set(const char *prefix, const char *nvram, const char *nvramval
 	char data[WBD_MAX_BUF_256] = {0};
 
 	if (prefix) {
-		return nvram_set(strcat_r(prefix, nvram, data), nvramval);
+		return nvram_set(strlcat_r(prefix, nvram, data, sizeof(data)), nvramval);
 	} else {
 		return nvram_set(nvram, nvramval);
 	}
@@ -563,7 +563,7 @@ wbd_find_prim_ifname_fm_wbd_band(int wbd_band, char *ifname, int len, bool check
 			wbd_get_prefix(name, prefix, sizeof(prefix));
 
 			/* Check if Interface's NVRAM wlX_mode = "ap" or not */
-			if (!nvram_match(strcat_r(prefix, NVRAM_MODE, tmp),
+			if (!nvram_match(strlcat_r(prefix, NVRAM_MODE, tmp, sizeof(tmp)),
 				WBD_NV_DEF_MODE_AP)) {
 				continue; /* Skip non-ap Interface */
 			}
@@ -654,7 +654,7 @@ wbd_check_dwds_sta_primif(char *ifname, char *ifname1, int len1)
 	dwds = wbd_nvram_safe_get_int(prefix, NVRAM_DWDS, 0);
 
 	/* Check if on Primary Interface Mode is STA */
-	sta_mode = nvram_match(strcat_r(prefix, NVRAM_MODE, tmp), WBD_NV_DEF_REP_MODE) ? 1 : 0;
+	sta_mode = nvram_match(strlcat_r(prefix, NVRAM_MODE, tmp, sizeof(tmp)), WBD_NV_DEF_REP_MODE) ? 1 : 0;
 
 	/* printf("%sdwds = %d, sta_mode = %d\n", prefix, dwds, sta_mode); */
 	/* if DWDS in ON, mode is STA */
@@ -1149,6 +1149,7 @@ wbd_disable_fbt(char *prefix)
 int
 wbd_is_fbt_possible(char *prefix)
 {
+	int fbt = 0;
 	char *nvval;
 
 	/* Check if the akm contains psk2 or not */
@@ -1158,7 +1159,14 @@ wbd_is_fbt_possible(char *prefix)
 		WBD_RC_PRINT("%s%s[%s]. Not psk2 or sae. So no FBT\n", prefix, NVRAM_AKM, nvval);
 		return 0;
 	}
-	return 1;
+
+	/* Get the wlxy_wbd_ft NVRAM value, which tells whether FBT is enabled from WBD or not
+	 * If the NVRAM is not defined it returns not defined(-1)
+	 */
+	fbt = wbd_nvram_safe_get_int(prefix, WBD_NVRAM_FBT, WBD_FBT_NOT_DEFINED);
+
+end:
+	return fbt;
 }
 
 /* If Device is Upstream AP, Initialize the FBT NVRAMs */
@@ -1189,12 +1197,7 @@ wbd_uap_init_fbt_nvram_config(char *prefix)
 	}
 
 	/* [1] If wbd_fbt NVRAM is not defined. Enable the FBT by setting the wbd_fbt */
-	if (!wbd_is_fbt_possible(prefix)) {
-		WBD_RC_PRINT("Prefix[%s] FBT is not possible\n", prefix);
-		goto end;
-	}
-
-	fbt = wbd_nvram_safe_get_int(prefix, WBD_NVRAM_FBT, WBD_FBT_NOT_DEFINED);
+	fbt = wbd_is_fbt_possible(prefix);
 	if (fbt == WBD_FBT_NOT_DEFINED) {
 		WBD_RC_PRINT("Prefix[%s]\n Enabling FBT...", prefix);
 		fbt = wbd_enable_fbt(prefix);
@@ -1208,7 +1211,7 @@ wbd_uap_init_fbt_nvram_config(char *prefix)
 	}
 
 	/* [2] If FBT AP NVRAM is not defined. set it to default */
-	nvval = nvram_get(strcat_r(prefix, NVRAM_FBT_AP, data));
+	nvval = nvram_get(strlcat_r(prefix, NVRAM_FBT_AP, data, sizeof(data)));
 	if (!nvval) {
 		memset(strnvval, 0, sizeof(strnvval));
 		snprintf(strnvval, sizeof(strnvval), "%d", WBD_FBT_DEF_AP);
@@ -1232,7 +1235,7 @@ wbd_uap_init_fbt_nvram_config(char *prefix)
 	rc_flags |= wbd_nvram_prefix_match_set(prefix, NVRAM_FBT_MDID, new_value, FALSE);
 
 	/* [7] If FBT OVERDS NVRAM is not defined. set it to default */
-	nvval = nvram_get(strcat_r(prefix, NVRAM_FBT_OVERDS, data));
+	nvval = nvram_get(strlcat_r(prefix, NVRAM_FBT_OVERDS, data, sizeof(data)));
 	if (!nvval) {
 		memset(strnvval, 0, sizeof(strnvval));
 		snprintf(strnvval, sizeof(strnvval), "%d", WBD_FBT_DEF_OVERDS);
@@ -1533,3 +1536,4 @@ disable_map_bh_bss(char *name, char *ifname, int bsscfg_idx)
 
 	return 0;
 }
+

@@ -42,10 +42,10 @@ extern const char APCLI_2G[];
 #define BW_40			1
 #define BW_BOTH			2
 #define BW_80			2
-#define BW_10			3
 #define BW_160			3
+#define BW_10			4
 
-#ifdef RTCONFIG_RALINK_MT7622
+#if defined(RTCONFIG_RALINK_MT7622) || defined(RTCONFIG_WLMODULE_MT7629_AP)
 #define RT_802_11_MAC_ENTRY_for_5G			RT_802_11_MAC_ENTRY
 #define MACHTTRANSMIT_SETTING_for_5G		HTTRANSMIT_SETTING
 #define RT_802_11_MAC_ENTRY_for_2G			RT_802_11_MAC_ENTRY
@@ -112,9 +112,12 @@ typedef struct _RT_802_11_MAC_TABLE {
 #define INIC_VLAN_ID_START	4 //first vlan id used for RT3352 iNIC MII
 #define INIC_VLAN_IDX_START	2 //first available index to set vlan id and its group.
 
-#if defined(RTCONFIG_WLMODULE_MT7610_AP) || defined(RTCONFIG_WLMODULE_MT7663E_AP) || defined(RTCONFIG_WLMODULE_MT7629_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#if defined(RTCONFIG_WLMODULE_MT7610_AP) || defined(RTCONFIG_WLMODULE_MT7663E_AP) || defined(RTCONFIG_WLMODULE_MT7615E_AP)
 #define RT_802_11_MAC_ENTRY_for_5G		RT_802_11_MAC_ENTRY_11AC
 #define MACHTTRANSMIT_SETTING_for_5G		MACHTTRANSMIT_SETTING_11AC
+#elif defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#define RT_802_11_MAC_ENTRY_for_5G		RT_802_11_MAC_ENTRY_11AX
+#define MACHTTRANSMIT_SETTING_for_5G		MACHTTRANSMIT_SETTING_11AX
 #else
 #define RT_802_11_MAC_ENTRY_for_5G		RT_802_11_MAC_ENTRY_RT3883
 #define MACHTTRANSMIT_SETTING_for_5G		MACHTTRANSMIT_SETTING_2G
@@ -124,11 +127,17 @@ typedef struct _RT_802_11_MAC_TABLE {
 #define RT_802_11_MAC_ENTRY_for_2G		RT_802_11_MAC_ENTRY_RT3352_iNIC
 #elif defined(RTN56UB1) || defined(RTN56UB2) || defined(RTAC1200GA1) || defined(RTAC1200GU)
 #define RT_802_11_MAC_ENTRY_for_2G		RT_802_11_MAC_ENTRY_7603E
+#elif defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#define RT_802_11_MAC_ENTRY_for_2G		RT_802_11_MAC_ENTRY_11AX
 #else
 #define RT_802_11_MAC_ENTRY_for_2G		RT_802_11_MAC_ENTRY_2G
 #endif
-#define MACHTTRANSMIT_SETTING_for_2G		MACHTTRANSMIT_SETTING_2G
 
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#define MACHTTRANSMIT_SETTING_for_2G		MACHTTRANSMIT_SETTING_11AX
+#else
+#define MACHTTRANSMIT_SETTING_for_2G		MACHTTRANSMIT_SETTING_2G
+#endif
 // MIMO Tx parameter, ShortGI, MCS, STBC, etc.  these are fields in TXWI. Don't change this definition!!!
 typedef union  _MACHTTRANSMIT_SETTING {
 	struct  {
@@ -158,7 +167,7 @@ typedef union  _MACHTTRANSMIT_SETTING_2G {
  } MACHTTRANSMIT_SETTING_2G, *PMACHTTRANSMIT_SETTING_2G;
 
 typedef union  _MACHTTRANSMIT_SETTING_11AC {
-#if defined(RTCONFIG_WLMODULE_MT7663E_AP) || defined(RTCONFIG_WLMODULE_MT7629_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#if defined(RTCONFIG_WLMODULE_MT7663E_AP) || defined(RTCONFIG_WLMODULE_MT7615E_AP)
 	struct  {	/* refter to src-mtk3.5/linux/linux-3.10.108/driver/net/wireless/mtk/mt7663e/mt_wifi/embedded/include/oid.h: typedef union _HTTRANSMIT_SETTING{}; */
 	unsigned short MCS:6;
 	unsigned short ldpc:1;
@@ -182,6 +191,33 @@ typedef union  _MACHTTRANSMIT_SETTING_11AC {
 #endif
 	unsigned short	word;
  } MACHTTRANSMIT_SETTING_11AC, *PMACHTTRANSMIT_SETTING_11AC;
+
+typedef union  _MACHTTRANSMIT_SETTING_11AX {
+#ifdef RT_BIG_ENDIAN
+	struct {
+	unsigned short MODE:3;	/* Use definition MODE_xxx. */
+	unsigned short iTxBF:1;
+	unsigned short eTxBF:1;
+	unsigned short STBC:1;	/* only support in HT/VHT mode with MCS0~7 */
+	unsigned short ShortGI:1;	/* TBD: need to extend to 2 bits for HE GI */
+	unsigned short BW:2;	/* channel bandwidth 20MHz/40/80 MHz */
+	unsigned short ldpc:1;
+	unsigned short MCS:6;	/* MCS */
+	} field;
+#else
+	struct {
+	unsigned short MCS:6;
+	unsigned short ldpc:1;
+	unsigned short BW:2;
+	unsigned short ShortGI:1;
+	unsigned short STBC:1;
+	unsigned short eTxBF:1;
+	unsigned short iTxBF:1;
+	unsigned short MODE:3;
+} field;
+#endif
+	unsigned short	word;
+ } MACHTTRANSMIT_SETTING_11AX, *PMACHTTRANSMIT_SETTING_11AX;
 
 typedef struct _RT_802_11_MAC_ENTRY_RT3352_iNIC {
     unsigned char	ApIdx;
@@ -275,6 +311,22 @@ typedef struct _RT_802_11_MAC_ENTRY_11AC {
     short		StreamSnr[3];	/* BF SNR from RXWI. Units=0.25 dB. 22 dB offset removed */
     short		SoundingRespSnr[3];
 } RT_802_11_MAC_ENTRY_11AC, *PRT_802_11_MAC_ENTRY_11AC;
+
+typedef struct _RT_802_11_MAC_ENTRY_11AX {
+	unsigned char ApIdx;
+	unsigned char Addr[ETHER_ADDR_LEN];
+	uint16_t Aid;
+	unsigned char Psm;		/* 0:PWR_ACTIVE, 1:PWR_SAVE */
+	unsigned char MimoPs;		/* 0:MMPS_STATIC, 1:MMPS_DYNAMIC, 3:MMPS_Enabled */
+	char AvgRssi0;
+	char AvgRssi1;
+	char AvgRssi2;
+	uint32_t ConnectedTime;
+	MACHTTRANSMIT_SETTING_11AX TxRate;
+	uint32_t LastRxRate;
+	short StreamSnr[3];				/* BF SNR from RXWI. Units=0.25 dB. 22 dB offset removed */
+	short SoundingRespSnr[3];			/* SNR from Sounding Response. Units=0.25 dB. 22 dB offset removed */
+} RT_802_11_MAC_ENTRY_11AX, *PRT_802_11_MAC_ENTRY_11AX;
 
 typedef struct _RT_802_11_MAC_TABLE_5G {
     unsigned long	Num;
@@ -392,6 +444,7 @@ enum ASUS_IOCTL_SUBCMD {
 	ASUS_SUBCMD_GCHANNELINFO,
     ASUS_SUBCMD_GETSITESURVEY_VSIE,
     ASUS_SUBCMD_GETAPCLIENABLE,
+	ASUS_SUBCMD_RADIO_TEMPERATURE,
 	ASUS_SUBCMD_MAX
 };
 
@@ -429,7 +482,7 @@ typedef enum _RT_802_11_PHY_MODE {
 #define OFFSET_MTD_FACTORY	0x40000
 #define OFFSET_EEPROM_VER	0x40002
 
-#if defined(RTAC85U) || defined(RTAC85P) || defined(RPAC87) || defined(RTAC1200GU) || defined(RTN800HP) || defined(RTACRH26) || defined(TUFAC1750) || defined(RTACRH18)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTACRH18)
 #define OFFSET_PIN_CODE		0x4ff70	// 8 bytes
 #define OFFSET_COUNTRY_CODE	0x4ff78	// 2 bytes
 #define OFFSET_BOOT_VER		0x4ff7a	// 4 bytes
@@ -462,7 +515,7 @@ typedef enum _RT_802_11_PHY_MODE {
 #define OFFSET_MAC_ADDR_2G	0x40004
 #define OFFSET_MAC_GMAC0	0x40161
 #define OFFSET_MAC_GMAC2	0x40161
-#elif defined(RTAC52U) || defined(RTAC51U) || defined(RTN54U) || defined(RTAC54U) || defined(RTAC1200HP) || defined(RTN56UB1) || defined(RTN56UB2) || defined(RTAC51UP) || defined(RTAC53) || defined(RTAC1200GA1) || defined(RTAC1200GU) || defined(RTAC1200)  || defined(RTAC1200V2) || defined(RPAC87) || defined(RTAC85U) || defined(RTAC85P) || defined(RTN800HP) || defined(RTACRH26) || defined(TUFAC1750) || defined(RT4GAC86U)
+#elif defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RT4GAC86U)
 #if defined(RTN800HP)
 #define OFFSET_MAC_ADDR_2G	0x40004
 #define OFFSET_MAC_ADDR		0x40004 //only one MAC
@@ -473,7 +526,7 @@ typedef enum _RT_802_11_PHY_MODE {
 #define OFFSET_MAC_ADDR_2G	0x40004
 #define OFFSET_MAC_ADDR		0x48004
 #endif
-#if defined(RTAC85U) || defined(RTAC85P) || defined(RPAC87) || defined(RTAC1200GU) || defined(RTACRH26) || defined(TUFAC1750)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 #define OFFSET_MAC_GMAC0	0x4E000
 #define OFFSET_MAC_GMAC2	0x4E006
 #elif defined(RTN800HP)
@@ -495,7 +548,7 @@ typedef enum _RT_802_11_PHY_MODE {
 #endif
 #if defined(RTAC1200HP) || defined(RTN56UB1) || defined(RTN56UB2) || defined(RTAC1200GA1) || defined(RTAC1200GU)
 #define OFFSET_FIX_CHANNEL      0x40170
-#elif defined(RTAC85U) || defined(RTAC85P) || defined(RTN800HP) || defined(RTACRH26) || defined(TUFAC1750)
+#elif defined(RTCONFIG_WLMODULE_MT7615E_AP)
 #define OFFSET_BR_STP      0x4ff7e	// 1 bytes
 #endif
 
@@ -504,7 +557,7 @@ typedef enum _RT_802_11_PHY_MODE {
 #if defined(RTCONFIG_NEW_REGULATION_DOMAIN)
 #define	MAX_REGDOMAIN_LEN	10
 #define	MAX_REGSPEC_LEN		4
-#if defined(RTAC85U) || defined(RTAC85P) || defined(RPAC87) || defined(RTAC1200GU) || defined(RTN800HP) || defined(RTACRH26) || defined(TUFAC1750) || defined(RTACRH18)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTACRH18)
 #define REG2G_EEPROM_ADDR	0x4ff40 //10 bytes
 #define REG5G_EEPROM_ADDR	0x4ff4a //10 bytes
 #define REGSPEC_ADDR		0x4ff54 // 4 bytes
@@ -662,3 +715,4 @@ int ra_gpio_write_bit(int idx, int value);
 extern int wl_ioctl(const char *ifname, int cmd, struct iwreq *pwrq);
 
 #endif
+

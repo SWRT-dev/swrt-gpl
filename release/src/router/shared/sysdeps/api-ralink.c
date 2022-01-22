@@ -27,10 +27,11 @@
 
 typedef uint32_t __u32;
 
-#if defined(RTN14U) || defined(RTAC52U) || defined(RTAC51U) || defined(RTN11P) || defined(RTN300) || defined(RTN54U) || defined(RTAC1200HP) || defined(RTN56UB1) || defined(RTN56UB2) ||defined(RTAC54U) || defined(RTAC51UP)|| defined(RTAC53) || defined(RTAC1200GA1) || defined(RTAC1200GU) || defined(RTAC1200) || defined(RTAC1200V2) || defined(RTN11P_B1) || defined(RPAC87) || defined(RTAC85U) || defined(RTAC85P) || defined(RTAC65U) || defined(RTN800HP) || defined(RTACRH26) || defined(TUFAC1750) || defined(RTACRH18)  || defined(RT4GAC86U) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTACRH18)  || defined(RT4GAC86U) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
 const char WIF_5G[]	= "rai0";
 const char WIF_2G[]	= "ra0";
 const char WDSIF_5G[]	= "wdsi";
+const char WDSIF_2G[]	= "wds";
 const char APCLI_5G[]	= "apclii0";
 const char APCLI_2G[]	= "apcli0";
 #else
@@ -66,12 +67,12 @@ uint32_t gpio_dir(uint32_t gpio, int dir)
 {
 	return ralink_gpio_init(gpio, dir);
 }
-#if defined(RT4GAC86U) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
+
 uint32_t gpio_dir2(uint32_t gpio, int dir)
 {
 	return ralink_gpio_init2(gpio, dir);
 }
-#endif
+
 uint32_t get_gpio(uint32_t gpio)
 {
 	return ralink_gpio_read_bit(gpio);
@@ -188,7 +189,7 @@ void set_radio(int on, int unit, int subunit)
 	//if (nvram_match(strcat_r(prefix, "radio", tmp), "0")) return;
 	// TODO: replace hardcoded 
 	// TODO: handle subunit
-#if defined(RTCONFIG_WLMODULE_MT7629_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#if defined(RTCONFIG_WLMODULE_MT7629_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_WLMODULE_MT7615E_AP)
 	// MTK suggested MT7629/MT7915D use ifconfig down/up to instead RadioOn=0/1
 	doSystem("ifconfig %s %s", unit ? WIF_5G: WIF_2G, on ? "up":"down");
 #else
@@ -197,7 +198,7 @@ void set_radio(int on, int unit, int subunit)
 	else doSystem("iwpriv %s set RadioOn=%d", WIF_5G, on);
 #endif
 
-#if defined(RTAC1200HP) || defined(RTN56UB1) || defined(RTN56UB2) || defined(RTAC1200GA1) || defined(RTAC1200GU) || defined(RTAC85U) || defined(RTAC85P) || defined(RTAC65U)  || defined(RTN800HP)  || defined(RTACRH26) || defined(TUFAC1750) || defined(RTACRH18) || defined(RTCONFIG_WLMODULE_MT7915D_AP) //5G:7612E 2G:7603E
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTACRH18) || defined(RTCONFIG_WLMODULE_MT7915D_AP) //5G:7612E 2G:7603E
 	led_onoff(unit);
 #endif	
 }
@@ -718,16 +719,13 @@ int get_channel_list_via_country(int unit, const char *country_code, char *buffe
 }
 
 
-#if defined(RTAC1200HP) || defined(RTN56UB1) || defined(RTN56UB2) || defined(RTAC1200GA1) || defined(RTAC1200GU) || defined(RTAC85U) || defined(RTAC85P) || defined(RTAC65U) || defined(RTN800HP) || defined(RTACRH26) || defined(TUFAC1750) || defined(RTACRH18) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTACRH18) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
 void led_onoff(int unit)
 {   
-#if defined(RTAC1200HP)
-	if(unit==1)
-#endif		
-		if(get_radio(unit, 0))
-			led_control(get_wl_led_id(unit), LED_ON);
-		else
-			led_control(get_wl_led_id(unit), LED_OFF);
+	if(get_radio(unit, 0))
+		led_control(get_wl_led_id(unit), LED_ON);
+	else
+		led_control(get_wl_led_id(unit), LED_OFF);
 }
 #endif
 
@@ -748,7 +746,7 @@ char *get_wan_base_if(void)
 
 #if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7628) /* RT-N14U, RT-AC52U, RT-AC51U, RT-N11P, RT-N54U, RT-AC1200HP, RT-AC54U */
 	strlcpy(wan_base_if, "eth2", sizeof(wan_base_if));
-#elif (defined(RTCONFIG_RALINK_MT7621) && !defined(RTCONFIG_WLMODULE_MT7915D_AP)) /* RT-N56UB1, RT-N56UB2 */
+#elif (defined(RTCONFIG_RALINK_MT7621) && !defined(RTCONFIG_WLMODULE_MT7915D_AP) && !defined(RTCONFIG_WLMODULE_MT7615E_AP)) /* RT-N56UB1, RT-N56UB2 */
 	strlcpy(wan_base_if, "eth3", sizeof(wan_base_if));
 #endif
 

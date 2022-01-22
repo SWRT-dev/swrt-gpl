@@ -381,10 +381,15 @@ elif [ "$1" == "sim" ]; then
 
 	# check the SIM status.
 	if [ "$modem_model" == "2" ]; then
-		wait_time=3
+		if [ -z "$2" ]; then
+			wait_time=3
+		else
+			wait_time=$2
+		fi
 	else
 		wait_time=1
 	fi
+
 	at_ret=`/usr/sbin/modem_at.sh '+CPIN?' $wait_time 2>&1`
 	sim_inserted1=`echo -n "$at_ret" |grep ": READY" 2>/dev/null`
 	sim_inserted2=`echo -n "$at_ret" |grep "SIM" |awk 'BEGIN{FS=": "}{print $2}' 2>/dev/null`

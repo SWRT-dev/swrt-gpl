@@ -28,7 +28,7 @@
 #include <shutils.h>
 #include <shared.h>
 #include <utils.h>
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
 #include <linux/autoconf.h>
 #else
 #include <linux/config.h>
@@ -38,7 +38,7 @@
 #include "ra_ioctl.h"
 
 #define GPIO_DEV	"/dev/gpio0"
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
 #define ETH_DEVNAME     "eth1"
 #else
 #define ETH_DEVNAME     "eth2"
@@ -175,6 +175,30 @@ enum {
 	LAN2_PORT=2,
 	LAN3_PORT=3,
 	LAN4_PORT=4,
+	P5_PORT=5,
+	CPU_PORT=6,
+	P7_PORT=7,
+};
+#define MT7621_GSW
+#elif defined(RMAC2100)
+enum {
+	WAN_PORT=0,
+	LAN1_PORT=2,
+	LAN2_PORT=3,
+	LAN3_PORT=4,
+	LAN4_PORT=1,
+	P5_PORT=5,
+	CPU_PORT=6,
+	P7_PORT=7,
+};
+#define MT7621_GSW
+#elif defined(R6800)
+enum {
+	WAN_PORT=4,
+	LAN1_PORT=3,
+	LAN2_PORT=2,
+	LAN3_PORT=1,
+	LAN4_PORT=0,
 	P5_PORT=5,
 	CPU_PORT=6,
 	P7_PORT=7,
@@ -394,7 +418,7 @@ int mt7621_reg_read(int offset, unsigned int *value)
          return 0;
 }   
 
-#if defined(RTAC85U) || defined(RTAC85P) || defined(RTN800HP) || defined(RTACRH26) || defined(TUFAC1750) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
 int mt7621_phy_read(int offset, unsigned int *value)
 {
          struct ifreq ifr;
@@ -457,8 +481,8 @@ int mt7621_reg_write(int offset, int value)
 	}
 	return 0;
 }	
-#endif 
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#endif
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
 int mt7621_phy_write(int offset, int reg, int value)
 {
 	struct ifreq ifr;
@@ -478,7 +502,7 @@ int mt7621_phy_write(int offset, int reg, int value)
 	}
 	return 0;
 }
-#endif
+#endif 
 
 static void write_VTCR(unsigned int value)
 {
@@ -739,7 +763,7 @@ int mt7621_vlan_unset(int vid)
 }
 
 
- #if defined(RTN14U) || defined(RTAC52U) || defined(RTAC51U) || defined(RTN11P) || defined(RTN300) || defined(RTN54U) || defined(RTAC1200HP) || defined(RTN56UB1) || defined(RTN56UB2) || defined(RTAC54U) || defined(RTAC1200GA1)  || defined(RTAC1200GU) || defined(RPAC87) || defined(RTAC85U) || defined(RTAC85P) || defined(RTAC65U) || defined(RTN800HP) || defined(RTACRH26) || defined(TUFAC1750) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
  /**
  * Get TX or RX byte count of WAN and WANS_LAN
  * @unit:	WAN unit.
@@ -821,7 +845,8 @@ static void get_mt7621_esw_phy_linkStatus(unsigned int mask, unsigned int *linkS
 		mt7620_reg_read((REG_ESW_MAC_PMSR_P0 + 0x100*i), &value);
 		value &= 0x1;
 #elif defined(RTCONFIG_RALINK_MT7621)
-#if defined(RTAC85U) || defined(RTAC85P) || defined(RTN800HP)  || defined(RTACRH26) || defined(TUFAC1750)
+//#if defined(RTAC85U) || defined(RTAC85P) || defined(RTN800HP)  || defined(RTACRH26) || defined(TUFAC1750)
+#if 0
 		mt7621_phy_read(i, &value);
 		value = (value >> 2) & 0x1;
 #else
@@ -1094,7 +1119,7 @@ static void link_down_up_mt7620_PHY(unsigned int mask, int status, int inverse)
 static void link_down_up_mt7621_PHY(unsigned int mask, int status, int inverse)
 #endif   
 {
- #if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
  	int i;
 	unsigned int m;
 
@@ -1760,8 +1785,8 @@ typedef struct {
 */
 
 #if defined(RTCONFIG_SYSCLASSGPIO)
- #if defined(RTCONFIG_WLMODULE_MT7915D_AP)
- #define RALINK_MT7621_GPIO_PIN_BASE 	0
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#define RALINK_MT7621_GPIO_PIN_BASE 	0
 #define RALINK_MT7621_GPIO_NUM_BASE 	0
 #else
 #define RALINK_MT7621_GPIO_PIN_BASE 	0
@@ -2296,6 +2321,56 @@ void ATE_mt7621_esw_port_status(void)
 	switch_fini();
 }
 
+#if defined(RTCONFIG_SWRT_I2CLED)
+void swrt_esw_port_status(int port, int *mode, int *speed)
+{
+	int i;
+	unsigned int value;
+	phyState pS;
+
+	if (switch_init() < 0)
+		return;
+
+	for (i = 0; i < (NR_WANLAN_PORT+dv); i++) {
+		pS.link[i] = 0;
+		pS.speed[i] = 0;
+#if defined(RTCONFIG_RALINK_MT7620)
+		mt7620_reg_read((REG_ESW_MAC_PMSR_P0 + 0x100*i), &value);
+#elif defined(RTCONFIG_RALINK_MT7621)
+		mt7621_reg_read((REG_ESW_MAC_PMSR_P0 + 0x100*i), &value);
+#endif		
+		pS.link[i] = value & 0x1;
+		pS.speed[i] = (value >> 2) & 0x3;
+	}
+	switch(port){
+		case WAN_PORT:
+			*mode = (pS.link[WAN_PORT] == 1);
+			*speed = (pS.speed[WAN_PORT] == 2);
+			break;
+		case LAN1_PORT:
+			*mode = (pS.link[LAN1_PORT] == 1);
+			*speed = (pS.speed[LAN1_PORT] == 2);
+			break;
+		case LAN2_PORT:
+			*mode = (pS.link[LAN2_PORT] == 1);
+			*speed = (pS.speed[LAN2_PORT] == 2);
+			break;
+		case LAN3_PORT:
+			*mode = (pS.link[LAN3_PORT] == 1);
+			*speed = (pS.speed[LAN3_PORT] == 2);
+			break;
+		case LAN4_PORT:
+			*mode = (pS.link[LAN4_PORT] == 1);
+			*speed = (pS.speed[LAN4_PORT] == 2);
+			break;
+		default:
+			*mode = 0;
+			*speed = 0;
+			break;
+	}
+	switch_fini();
+}
+#endif
 
 void restore_esw(void)
 {

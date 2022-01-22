@@ -92,10 +92,16 @@ typedef unsigned int __u32;   // 1225 ham
 #include "bcmnvram_f.h"
 
 /* A multi-family sockaddr. */
-typedef union {
-    struct sockaddr sa;
-    struct sockaddr_in sa_in;
-} usockaddr;
+struct usockaddr {
+	union {
+		struct sockaddr sa;
+		struct sockaddr_in sa_in;
+#ifdef RTCONFIG_IPV6
+		struct sockaddr_in6 sa_in6;
+#endif
+	};
+	socklen_t sa_len;
+};
 
 #include "queue.h"
 #define MAX_CONN_ACCEPT 128
@@ -225,7 +231,7 @@ struct language_table language_tables[] = {
 #endif //TRANSLATE_ON_FLY
 
 /* Forwards. */
-static int initialize_listen_socket(usockaddr* usa, const char *ifname);
+static int initialize_listen_socket(int family, usockaddr* usa, const char *ifname);
 int check_noauth_referrer(char* referer, int fromapp_flag);
 char *get_referrer(char *referer, char *auth_referer, size_t length);
 static void send_error( int status, char* title, char* extra_header, char* text );
@@ -263,15 +269,16 @@ char indexpage[128];
 
 
 /* Added by Joey for handle one people at the same time */
-unsigned int login_ip=0; // the logined ip
-unsigned int app_login_ip = 0; // the app logined ip
+unsigned int login_ip = 0; // IPv6 compat: the logined ip
+uaddr login_uip = {0}; // the logined ip
+unsigned int app_login_ip = 0; // IPv6 compat: the logined ip
 time_t login_timestamp=0; // the timestamp of the logined ip
 time_t login_timestamp_tmp=0; // the timestamp of the current session.
 time_t last_login_timestamp=0; // the timestamp of the current session.
-unsigned int login_ip_tmp=0; // the ip of the current session.
-usockaddr login_usa_tmp = {{0}};
+unsigned int login_ip_tmp = 0; // IPv6 compat: the ip of the current session.
+uaddr login_uip_tmp = {0}; // the ip of the current session.
+usockaddr login_usa_tmp = {0};
 unsigned int login_try=0;
-unsigned int last_login_ip = 0;	// the last logined ip 2008.08 magic
 //Add by Andy for handle the login block mechanism by LAN/WAN
 time_t login_timestamp_tmp_wan=0; // the timestamp of the current session.
 time_t last_login_timestamp_wan=0; // the timestamp of the current session.
@@ -286,6 +293,7 @@ time_t turn_off_auth_timestamp = 0;
 int temp_turn_off_auth = 0;	// for QISxxx.htm pages
 
 int amas_support = 0;
+int HTS = 0;	//HTTP Transport Security
 
 struct timeval alarm_tv;
 time_t alarm_timestamp = 0;
@@ -295,10 +303,10 @@ int check_alive_flag = 0;
 const int int_1 = 1;
 const struct linger linger = { 1, 0 };
 
-void http_login(unsigned int ip, char *url);
-void app_http_login(unsigned int ip);
-void http_login_timeout(unsigned int ip, char *cookies, int fromapp_flag);
-void http_logout(unsigned int ip, char *cookies, int fromapp_flag);
+void http_login(uaddr *uip, char *url);
+void app_http_login(uaddr *uip);
+void http_login_timeout(uaddr *u, char *cookies, int fromapp_flag);
+void http_logout(uaddr *u, char *cookies, int fromapp_flag);
 int http_login_check(void);
 
 #if 0
@@ -349,40 +357,26 @@ void Debug2File(const char *path, const char *fmt, ...)
 }
 #endif
 
-void sethost(const char *host)
+void sethost(char *host)
 {
-	char *p = host_name;
-	size_t len;
+	char *cp;
 
-	if (!host || *host == '\0')
-		goto error;
+	if(!host) return;
 
-	while (*host == '.') host++;
+	memset(host_name, 0, sizeof(host_name));
+	strlcpy(host_name, host, sizeof(host_name));
 
-	len = strcspn(host, "\r\n");
-	while (len > 0 && strchr(" \t", host[len - 1]) != NULL)
-		len--;
-	if (len > sizeof(host_name) - 1)
-		goto error;
-
-	while (len-- > 0) {
-		int c = *host++;
-		if (((c | 0x20) < 'a' || (c | 0x20) > 'z') &&
-		    ((c < '0' || c > '9')) &&
-		    strchr(".-_:[]", c) == NULL) {
-			p = host_name;
-			break;
-		}
-		*p++ = c;
-	}
-
-error:
-	*p = '\0';
+	cp = host_name;
+	for ( cp = cp + 7; *cp && *cp != '\r' && *cp != '\n'; cp++ );
+	*cp = '\0';
 }
 
 char *gethost(void)
 {
-	return host_name[0] ? host_name : nvram_safe_get("lan_ipaddr");
+	if(strlen(host_name)) {
+		return host_name;
+	}
+	else return(nvram_safe_get("lan_ipaddr"));
 }
 
 #include <sys/sysinfo.h>
@@ -395,15 +389,29 @@ long uptime(void)
 }
 
 static int
-initialize_listen_socket(usockaddr* usa, const char *ifname)
+initialize_listen_socket(int family, usockaddr* usa, const char *ifname)
 {
 	struct ifreq ifr;
 	int fd;
 
 	memset(usa, 0, sizeof(usockaddr));
-	usa->sa.sa_family = AF_INET;
-	usa->sa_in.sin_addr.s_addr = htonl(INADDR_ANY);
-	usa->sa_in.sin_port = htons(http_port);
+	usa->sa.sa_family = family;
+	switch (family) {
+	case AF_INET:
+		usa->sa_in.sin_addr.s_addr = htonl(INADDR_ANY);
+		usa->sa_in.sin_port = htons(http_port);
+		usa->sa_len = sizeof(usa->sa_in);
+		break;
+#ifdef RTCONFIG_IPV6
+	case AF_INET6:
+		usa->sa_in6.sin6_addr = in6addr_any;
+		usa->sa_in6.sin6_port = htons(http_port);
+		usa->sa_len = sizeof(usa->sa_in6);
+		break;
+#endif
+	default:
+		return -1;
+	}
 
 	fd = socket(usa->sa.sa_family, SOCK_STREAM, 0);
 	if (fd < 0) {
@@ -411,22 +419,42 @@ initialize_listen_socket(usockaddr* usa, const char *ifname)
 		return -1;
 	}
 
-	if (ifname) {
-		memset(&ifr, 0, sizeof(ifr));
-		strncpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
-		if (ioctl(fd, SIOCGIFADDR, &ifr) < 0) {
-			perror("ioctl");
-			goto error;
-		}
-		usa->sa_in.sin_addr.s_addr = ((struct sockaddr_in *) &ifr.ifr_addr)->sin_addr.s_addr;
-	}
-
 	fcntl(fd, F_SETFD, FD_CLOEXEC);
 	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &int_1, sizeof(int_1)) < 0) {
 		perror("setsockopt");
 		goto error;
 	}
-	if (bind(fd, &usa->sa, sizeof(struct sockaddr_in)) < 0) {
+#ifdef RTCONFIG_IPV6
+	if (usa->sa.sa_family == AF_INET6 &&
+	    setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &int_1, sizeof(int_1)) < 0) {
+		perror("setsockopt");
+		goto error;
+	}
+#endif
+
+	if (ifname) {
+		memset(&ifr, 0, sizeof(ifr));
+		strlcpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
+		switch (usa->sa.sa_family) {
+		case AF_INET:
+			if (ioctl(fd, SIOCGIFADDR, &ifr) < 0) {
+				perror("ioctl");
+				goto error;
+			}
+			usa->sa_in.sin_addr.s_addr = ((struct sockaddr_in *) &ifr.ifr_addr)->sin_addr.s_addr;
+			break;
+#ifdef RTCONFIG_IPV6
+		case AF_INET6:
+			/* IPv6 addresses are dynamic, bind to interface */
+			if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr)) < 0) {
+				perror("setsockopt");
+				goto error;
+			}
+			break;
+#endif
+		}
+	}
+	if (bind(fd, &usa->sa, usa->sa_len) < 0) {
 		perror("bind");
 		goto error;
 	}
@@ -520,7 +548,7 @@ send_login_page(int fromapp_flag, int error_status, char* url, char* file, int l
 		snprintf(inviteCode, sizeof(inviteCode), "\"error_status\":\"%d\"", error_status);
 		if(error_status == LOGINLOCK){
 			snprintf(buf, sizeof(buf), ",\"remaining_lock_time\":\"%ld\"", LOCKTIME - login_dt);
-			strcat(inviteCode, buf);
+			strlcat(inviteCode, buf, sizeof(inviteCode));
 		}
 	}
 	send_page( 200, "OK", (char*) 0, inviteCode, fromapp_flag);
@@ -888,7 +916,7 @@ void set_referer_host(void)
 			memset(referer_host, 0, sizeof(referer_host));
 			snprintf(referer_host,sizeof(referer_host),"%s:%d",lan_ipaddr, port);
 		}
-#if defined(RTAC68U) || defined(RPAX56)
+#if defined(RTAC68U) || defined(RPAX56) || defined(RPAX58)
 	} else if (is_dpsta_repeater() && nvram_get_int("re_mode") == 0
 		&& !strncmp("repeater.asus.com", host_name, strlen("repeater.asus.com")) && *(host_name + strlen("repeater.asus.com")) == ':' && (port = atoi(host_name + strlen("repeater.asus.com") + 1)) > 0 && port < 65536){//transfer https domain to ip
 		if(port == 80)
@@ -900,7 +928,7 @@ void set_referer_host(void)
 #endif
 	}else if(!strcmp(DUT_DOMAIN_NAME, host_name))	//transfer http domain to ip
 		strlcpy(referer_host, lan_ipaddr, sizeof(referer_host));
-#if defined(RTAC68U) || defined(RPAX56)
+#if defined(RTAC68U) || defined(RPAX56) || defined(RPAX58)
 	else if (is_dpsta_repeater() && nvram_get_int("re_mode") == 0
 		&& !strcmp("repeater.asus.com", host_name))   //transfer http domain to ip
 		strlcpy(referer_host, lan_ipaddr, sizeof(referer_host));
@@ -963,6 +991,7 @@ int max_lock_time = MAX_LOGIN_BLOCK_TIME;
 static void
 handle_request(void)
 {
+	static long flush_cache_t1 = 0;
 	char line[10000], *cur;
 	char *method, *path, *protocol, *authorization, *boundary, *alang, *cookies, *referer, *useragent;
 	char *cp;
@@ -985,7 +1014,7 @@ handle_request(void)
 	auth_result = 1;
 	url_do_auth = 0;
 	authorization = boundary = cookies = referer = useragent = NULL;
-	host_name[0] = '\0';
+	host_name[0] = 0;
 	bzero( line, sizeof line );
 
 	/* Parse the first line of the request. */
@@ -1173,8 +1202,18 @@ handle_request(void)
 		return;
 	}
 
+	if(HTS == 1 && strcmp(inet_ntoa(login_usa_tmp.sa_in.sin_addr), "127.0.0.1")){ //allow tunnel pass
+		snprintf(inviteCode, sizeof(inviteCode), "<meta http-equiv=\"refresh\" content=\"0; https://%s:%d\">\r\n", gethost(), nvram_get_int("https_lanport"));
+		send_page( 307, "Temporary Redirect", (char*) 0, inviteCode, 0);
+		return;
+	}
+
 //2008.08 magic{
+#ifdef RTCONFIG_SOFTCENTER
+	if (file[0] == '\0' || (index(file, '?') == NULL && file[len-1] == '/' && file[0] != '_')){//_api,_temp
+#else
 	if (file[0] == '\0' || (index(file, '?') == NULL && file[len-1] == '/')){
+#endif
 		if (is_firsttime()
 #ifdef RTCONFIG_FINDASUS
 		    && !isDeviceDiscovery
@@ -1212,6 +1251,18 @@ handle_request(void)
 		snprintf(current_page_name, sizeof(current_page_name), "%s", url);
 	}
 
+	if (!strncmp(file, "Main_Login.asp", 14) && (uptime() - flush_cache_t1) > 10 * 60) {
+		/* free pagecahe when login, don't do it again in 10 minutes. */
+		f_write_string("/proc/sys/vm/drop_caches", "1", 0, 0);
+		flush_cache_t1 = uptime();
+	}
+#if defined(RTCONFIG_QCA) && defined(RTCONFIG_QCA_LBD)
+	if (nvram_match("smart_connect_x", "1") && !nvram_match("wl_unit", "0")
+	 && strstr(url, "Advanced_Wireless_Content.asp")) {
+		nvram_set("wl_unit", "0");
+	}
+#endif
+
 	if(strncmp(url, APPLYAPPSTR, strlen(APPLYAPPSTR))==0 
 #ifdef RTCONFIG_ROG
 		|| strncmp(url, APPLYROGSTR, strlen(APPLYROGSTR))==0
@@ -1239,16 +1290,39 @@ handle_request(void)
 #ifdef RTCONFIG_UIDEBUG
         char sysdepPath[128];
 	snprintf(sysdepPath, sizeof(sysdepPath), "sysdep/%s/www/", nvram_safe_get("productid"));
-	strcat(sysdepPath, url);
+	strlcat(sysdepPath, url, sizeof(sysdepPath));
         if(check_if_file_exist(sysdepPath)){
 // _dprintf("[httpd] ### GET ### sysdepPath: %s\n", sysdepPath);
-		snprintf(sysdepPath, 128, "sysdep/%s/www/", nvram_safe_get("productid"));
-		strcat(sysdepPath, file);
+		snprintf(sysdepPath, sizeof(sysdepPath), "sysdep/%s/www/", nvram_safe_get("productid"));
+		strlcat(sysdepPath, file, sizeof(sysdepPath));
 		file = sysdepPath;
 // _dprintf("[httpd] file: %s\n", file);
         }
 #endif
 	HTTPD_DBG("IP(%s), file = %s\nUser-Agent: %s\n", inet_ntoa(login_usa_tmp.sa_in.sin_addr), file, user_agent);
+#ifdef RTCONFIG_SOFTCENTER
+	char scPath[128];
+	if ((strncmp(file, "Main_S", 6)==0) || (strncmp(file, "Module_", 7)==0))//jsp
+	{
+		if(!check_if_file_exist(file)){
+			snprintf(scPath, sizeof(scPath), "/jffs/softcenter/webs/");
+			strcat(scPath, file);
+			if(check_if_file_exist(scPath)){
+				file = scPath;
+			}
+		}
+	}
+	else if (strstr(file, "res/"))//jpg,png,js,css,html
+	{
+		if(!check_if_file_exist(file)){
+			snprintf(scPath, sizeof(scPath), "/jffs/softcenter/");
+			strcat(scPath, file);
+			if(check_if_file_exist(scPath)){
+				file = scPath;
+			}
+		}
+	}
+#endif
 	mime_exception = 0;
 	do_referer = 0;
 
@@ -1267,6 +1341,9 @@ handle_request(void)
 #endif
 			}else{
 				if((strncmp(file, "Main_Login.asp", 14)==0 && login_error_status == LOGINLOCK)|| strstr(url, ".png")){
+#if defined(RTCONFIG_SOFTCENTER)
+				}else if(strstr(url, "_resp") || strstr(url, "_result")){
+#endif
 				}else{
 					send_login_page(fromapp, LOGINLOCK, url, NULL, login_dt, NOLOGINTRY);
 					return;
@@ -1287,13 +1364,16 @@ handle_request(void)
 #endif
 			}else{
 				if((strncmp(file, "Main_Login.asp", 14)==0 && login_error_status == LOGINLOCK)|| strstr(url, ".png")){
+#if defined(RTCONFIG_SOFTCENTER)
+				}else if(strstr(url, "_resp") || strstr(url, "_result")){
+#endif
 				}else{
 					send_login_page(fromapp, LOGINLOCK, url, NULL, login_dt, NOLOGINTRY);
 					return;
 				}
 			}
 		}
-		http_login_timeout(login_ip_tmp, cookies, fromapp);	// 2008.07 James.
+		http_login_timeout(&login_uip_tmp, cookies, fromapp);	// 2008.07 James.
 		login_state = http_login_check();
 		// for each page, mime_exception is defined to do exception handler
 
@@ -1329,7 +1409,11 @@ handle_request(void)
 #endif
 			nvram_set("httpd_handle_request", url);
 			nvram_set_int("httpd_handle_request_fromapp", fromapp);
+#if defined(RTCONFIG_SOFTCENTER)
+			if(login_state==3 && !fromapp && !strstr(url, "_resp") && !strstr(url, "_result")){
+#else
 			if(login_state==3 && !fromapp) { // few pages can be shown even someone else login
+#endif
 				 if(handler->auth || (!strncmp(file, "Main_Login.asp", 14) && login_error_status != 9) || mime_exception&MIME_EXCEPTION_NOPASS)
 				{
 					if(strcasecmp(method, "post") == 0 && handler->input)	//response post request
@@ -1340,6 +1424,7 @@ handle_request(void)
 				}
 			}
 			if (handler->auth) {
+				url_do_auth = 1;
 #if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400)
 				switch_ledg(LEDG_QIS_FINISH);
 #endif
@@ -1363,6 +1448,10 @@ handle_request(void)
 #endif
 				else if((mime_exception&MIME_EXCEPTION_NOAUTH_ALL)) {
 				}
+#if defined(RTCONFIG_SOFTCENTER)
+				else if(strstr(url, "_resp") || strstr(url, "_result")){
+				}
+#endif
 				else {
 					if(do_referer&CHECK_REFERER){
 						referer_result = referer_check(referer, fromapp);
@@ -1371,7 +1460,7 @@ handle_request(void)
 								while (cl--) (void)fgetc(conn_fp);
 
 							send_login_page(fromapp, referer_result, NULL, NULL, 0, NOLOGINTRY);
-							//if(!fromapp) http_logout(login_ip_tmp, cookies);
+							//if(!fromapp) http_logout(&login_uip_tmp, cookies);
 							return;
 						}
 					}
@@ -1397,10 +1486,13 @@ handle_request(void)
 							;//TODO
 						else
 #endif
-						http_login(login_ip_tmp, url);
+						http_login(&login_uip_tmp, url);
 					}
 				}else
-					app_http_login(login_ip_tmp);
+					app_http_login(&login_uip_tmp);
+#if defined(RTCONFIG_SOFTCENTER)
+			}else if(strstr(url, "_resp") || strstr(url, "_result")){
+#endif
 			}else{
 				if(do_referer&CHECK_REFERER){
 					referer_result = check_noauth_referrer(referer, fromapp);
@@ -1409,14 +1501,14 @@ handle_request(void)
 							while (cl--) (void)fgetc(conn_fp);
 
 						send_login_page(fromapp, referer_result, NULL, NULL, 0, NOLOGINTRY);
-						//if(!fromapp) http_logout(login_ip_tmp, cookies);
+						//if(!fromapp) http_logout(&login_uip_tmp, cookies);
 						return;
 					}
 				}
 			}
 
 			if(!strcmp(file, "Logout.asp")){
-				http_logout(login_ip_tmp, cookies, fromapp);
+				http_logout(&login_uip_tmp, cookies, fromapp);
 				send_login_page(fromapp, ISLOGOUT, NULL, NULL, 0, NOLOGINTRY);
 				return;
 			}
@@ -1472,12 +1564,26 @@ handle_request(void)
 					&& !strstr(file, "renew_ikev2_cert_mobile.pem") && !strstr(file, "ikev2_cert_mobile.pem")
 					&& !strstr(file, "renew_ikev2_cert_windows.der") && !strstr(file, "ikev2_cert_windows.der")
 #endif
+#ifdef RTCONFIG_WIREGUARD
+					&& !strstr(file, "wgs_client.")
+#endif
 #if defined(DSL_AX82U)
 					|| (is_ax5400_i1() &&
 						(strstr(file, "Advanced_TR069_Content.asp")
 						 || strstr(file, "Advanced_OAM_Content.asp")
 						 || strstr(file, "Advanced_ADSL_Content.asp")
 						))
+#endif
+#ifdef RTCONFIG_SOFTCENTER
+					&& !strstr(file, "ss_conf")
+					&& !strstr(file, "ss_status")
+					&& !strstr(file, "dbconf")
+					&& !strstr(url, "_api")
+					&& !strstr(url, "_root")
+					&& !strstr(url, "_temp")
+					&& !strstr(url, "_upload")
+					&& !strstr(url, "_resp")
+					&& !strstr(url, "_result")
 #endif
 					){
 				send_error( 404, "Not Found", (char*) 0, "File not found." );
@@ -1513,20 +1619,157 @@ handle_request(void)
 	nvram_unset("httpd_handle_request_fromapp");
 }
 
+uaddr *uaddr_ston(const usockaddr *u, uaddr *uip)
+{
+	memset(uip, 0, sizeof(*uip));
+	uip->family = u->sa.sa_family;
+
+	switch (u->sa.sa_family) {
+	case AF_INET:
+		uip->in = u->sa_in.sin_addr;
+		return uip;
+#ifdef RTCONFIG_IPV6
+	case AF_INET6:
+		uip->in6 = u->sa_in6.sin6_addr;
+		if (IN6_IS_ADDR_V4MAPPED(&uip->in6)) {
+			uip->family = AF_INET;
+			uip->in.s_addr = uip->in6.s6_addr32[3];
+		}
+		return uip;
+#endif
+	}
+
+	return NULL;
+}
+
+uaddr *uaddr_pton(const char *src, uaddr *uip)
+{
+	memset(uip, 0, sizeof(*uip));
+
+	if (inet_pton(AF_INET, src, &uip->in) > 0) {
+		uip->family = AF_INET;
+		return uip;
+	}
+#ifdef RTCONFIG_IPV6
+	else if (inet_pton(AF_INET6, src, &uip->in6) > 0) {
+		uip->family = AF_INET6;
+		if (IN6_IS_ADDR_V4MAPPED(&uip->in6)) {
+			uip->family = AF_INET;
+			uip->in.s_addr = uip->in6.s6_addr32[3];
+		}
+		return uip;
+	}
+#endif
+
+	return NULL;
+}
+
+char *uaddr_ntop(const uaddr *uip, char *dst, size_t cnt)
+{
+	return (char *)inet_ntop(uip->family, &uip->in, dst, cnt);
+}
+
+/* IPv6 compat */
+unsigned int uaddr_addr(uaddr *uip)
+{
+	switch (uip->family) {
+	case AF_INET:
+		return uip->in.s_addr;
+#ifdef RTCONFIG_IPV6
+	case AF_INET6:
+		return uip->in6.s6_addr32[3];
+#endif
+	}
+
+	return 0;
+}
+
+int uaddr_is_unspecified(uaddr *uip)
+{
+	switch (uip->family) {
+	case AF_UNSPEC:
+		return 1;
+	case AF_INET:
+		return (uip->in.s_addr == 0);
+#ifdef RTCONFIG_IPV6
+	case AF_INET6:
+		return IN6_IS_ADDR_UNSPECIFIED(&uip->in6);
+#endif
+	}
+
+	return 0;
+}
+
+int uaddr_is_localhost(uaddr *uip)
+{
+	switch (uip->family) {
+	case AF_INET:
+		return (uip->in.s_addr == htonl(INADDR_LOOPBACK));
+#ifdef RTCONFIG_IPV6
+	case AF_INET6:
+		return IN6_IS_ADDR_LOOPBACK(&uip->in6);
+#endif
+	}
+
+	return 0;
+}
+
+int uaddr_is_equal(uaddr *a, uaddr *b)
+{
+	if (a->family != b->family)
+		return 0;
+	switch (a->family) {
+	case AF_UNSPEC:
+		return 1;
+	case AF_INET:
+		return (a->in.s_addr == b->in.s_addr);
+#ifdef RTCONFIG_IPV6
+	case AF_INET6:
+		return IN6_ARE_ADDR_EQUAL(&a->in6, &b->in6);
+#endif
+	}
+
+	return 0;
+}
+
+uaddr *uaddr_getpeer(webs_t wp, uaddr *uip)
+{
+	usockaddr peer;
+	int fd;
+
+#ifdef RTCONFIG_HTTPS
+	if (do_ssl) {
+		fd = ssl_stream_fd;
+	} else
+#endif
+	{
+		fd = fileno((FILE *)wp);
+	}
+
+	peer.sa_len = sizeof(peer);
+	if (getpeername(fd, &peer.sa, &peer.sa_len) < 0) {
+		perror("getpeername");
+		return NULL;
+	}
+
+	return uaddr_ston(&peer, uip);
+}
+
 //2008 magic{
-void http_login_cache(usockaddr *u) {
+void http_login_cache(usockaddr *u)
+{
 	login_timestamp_cache = uptime();
-	login_ip_tmp = (unsigned int)(u->sa_in.sin_addr.s_addr);
+	uaddr_ston(u, &login_uip_tmp);
+	login_ip_tmp = uaddr_addr(&login_uip_tmp); /* IPv6 compat */
 	login_usa_tmp = *u;
 	cur_login_ip_type = check_current_ip_is_lan_or_wan();
 	if(cur_login_ip_type == -1)
 		_dprintf("[%s, %d]ERROR! Can not check the remote ip!\n", __FUNCTION__, __LINE__);
 }
 
-void app_http_login(unsigned int ip) {
-
-	char app_login_timestampstr[32];
-	time_t app_login_timestamp=0;
+void app_http_login(uaddr *uip)
+{
+	char tmp[100];
 
 	if ((http_port != SERVER_PORT
 	  && http_port != nvram_get_int("http_lanport")
@@ -1534,23 +1777,21 @@ void app_http_login(unsigned int ip) {
 	  && http_port != SERVER_PORT_SSL
 	  && http_port != nvram_get_int("https_lanport")
 #endif
-	    ) || ip == 0x100007f)
+	    ) || uaddr_is_localhost(uip))
 		return;
 
-	memset(app_login_timestampstr, 0, 32);
-	app_login_timestamp = uptime();
-	app_login_ip = ip;
+	app_login_ip = uaddr_addr(uip); /* IPv6 compat */
 
-	sprintf(app_login_timestampstr, "%lu", app_login_timestamp);
-	nvram_set("app_login_timestamp", app_login_timestampstr);
+	snprintf(tmp, sizeof(tmp), "%lu", uptime());
+	nvram_set("app_login_timestamp", tmp);
 }
 
-void http_login(unsigned int ip, char *url) {
-	if(strncmp(url, "Main_Login.asp", strlen(url))==0)
+void http_login(uaddr *uip, char *url)
+{
+	char tmp[100], *login_ip_str;
+
+	if (strncmp(url, "Main_Login.asp", strlen(url)) == 0)
 		return;
-	struct in_addr login_ip_addr;
-	char *login_ip_str;
-	char login_ipstr[32], login_timestampstr[32];
 
 	if ((http_port != SERVER_PORT
 	  && http_port != nvram_get_int("http_lanport")
@@ -1558,25 +1799,19 @@ void http_login(unsigned int ip, char *url) {
 	  && http_port != SERVER_PORT_SSL
 	  && http_port != nvram_get_int("https_lanport")
 #endif
-	    ) || ip == 0x100007f)
+	    ) || uaddr_is_localhost(uip))
 		return;
 
-	login_ip = ip;
-	last_login_ip = 0;
+	login_ip = uaddr_addr(uip); /* IPv6 compat */
+	snprintf(tmp, sizeof(tmp), "%u", login_ip); /* IPv6 compat */
+	nvram_set("login_ip", tmp); /* IPv6 compat */
 
-	login_ip_addr.s_addr = login_ip;
-	login_ip_str = inet_ntoa(login_ip_addr);
-	nvram_set("login_ip_str", login_ip_str);
+	login_uip = *uip;
+	login_ip_str = uaddr_ntop(&login_uip, tmp, sizeof(tmp));
+	nvram_set("login_ip_str", login_ip_str ? : "");
 
-	login_timestamp = uptime();
-
-	memset(login_ipstr, 0, 32);
-	snprintf(login_ipstr, sizeof(login_ipstr), "%u", login_ip);
-	nvram_set("login_ip", login_ipstr);
-
-	memset(login_timestampstr, 0, 32);
-	snprintf(login_timestampstr, sizeof(login_timestampstr), "%lu", login_timestamp);
-	nvram_set("login_timestamp", login_timestampstr);
+	snprintf(tmp, sizeof(tmp), "%lu", uptime());
+	nvram_set("login_timestamp", tmp);
 }
 
 // 0: can not login, 1: can login, 2: loginer, 3: not loginer
@@ -1588,19 +1823,19 @@ int http_login_check(void)
 	  && http_port != SERVER_PORT_SSL
 	  && http_port != nvram_get_int("https_lanport")
 #endif
-	    ) || login_ip_tmp == 0x100007f)
+	    ) || uaddr_is_localhost(&login_uip_tmp))
 		//return 1;
 		return 0;	// 2008.01 James.
 
-	if (login_ip == 0)
+	if (uaddr_is_unspecified(&login_uip))
 		return 1;
-	else if (login_ip == login_ip_tmp)
+	else if (uaddr_is_equal(&login_uip, &login_uip_tmp))
 		return 2;
 
 	return 3;
 }
 
-void http_login_timeout(unsigned int ip, char *cookies, int fromapp_flag)
+void http_login_timeout(uaddr *uip, char *cookies, int fromapp_flag)
 {
 	time_t now, login_ts;
 
@@ -1608,23 +1843,22 @@ void http_login_timeout(unsigned int ip, char *cookies, int fromapp_flag)
 	now = uptime();
 	login_ts = atol(nvram_safe_get("login_timestamp"));
 
-// 2007.10 James. for really logout. {
-	//if (login_ip!=ip && (unsigned long)(now-login_timestamp) > 60) //one minitues
-	if ((login_ip != 0 && login_ip != ip) && ((unsigned long)(now-login_ts) > 60)) //one minitues
-// 2007.10 James }
+	if ((!uaddr_is_unspecified(&login_uip) && !uaddr_is_equal(&login_uip, uip)) &&
+	    ((unsigned long)(now-login_ts) > 60)) //one minitues
 	{
-		http_logout(login_ip, cookies, fromapp_flag);
+		http_logout(&login_uip, cookies, fromapp_flag);
 	}
 }
 
-void http_logout(unsigned int ip, char *cookies, int fromapp_flag)
+void http_logout(uaddr *uip, char *cookies, int fromapp_flag)
 {
-	if ((ip == login_ip || ip == 0 ) && fromapp_flag == 0) {
-		last_login_ip = login_ip;
-		login_ip = 0;
+	if ((uaddr_is_unspecified(uip) || uaddr_is_equal(uip, &login_uip)) && fromapp_flag == 0) {
+		login_ip = 0; /* IPv6 compat */
+		memset(&login_uip, 0, sizeof(login_uip));
 		login_timestamp = 0;
 
-		nvram_set("login_ip", "");
+		nvram_set("login_ip", ""); /* IPv6 compat */
+		nvram_set("login_ip_str", "");
 		nvram_set("login_timestamp", "");
 		memset(referer_host, 0, sizeof(referer_host));
 		delete_logout_from_list(cookies);
@@ -1684,14 +1918,14 @@ char *config_model_name(char *source, char *find,  char *rep){
        result_t = (char*)realloc(result, length * sizeof(char));
        if(result_t == NULL){
        	free(result);
-         	return NULL;
-         }else
-         	result = result_t;
-       strcat(result, rep);
+       	return NULL;
+       }else
+       	result = result_t;
+       strlcat(result, rep, length);
        gap+=rep_L;
 
        former=location+find_L;
-       strcat(result, former);
+       strlcat(result, former, length);
 
        location= strstr(former, find);
    }
@@ -1796,6 +2030,7 @@ load_dictionary (char *lang, pkw_t pkw)
 		strlcpy(pkw->buf, dyn_dict_buf_new, dict_size);
 		free(dyn_dict_buf_new);
 	}
+
 #else
 	pkw->buf = (char *) (q = malloc (dict_size));
 
@@ -1954,7 +2189,7 @@ load_dictionary (char *lang, pkw_t pkw)
 #endif  // RELOAD_DICT
 
 //	gettimeofday (&tv1, NULL);
-	if(lang == NULL || strlen(lang) != 2 || !strstr(ALL_LANGS, lang)){
+	if (lang == NULL || (lang != NULL && strlen (lang) == 0)) {
 		// if "lang" is invalid, use English as default
 		snprintf (dfn, sizeof (dfn), eng_dict);
 	} else {
@@ -2099,11 +2334,26 @@ void check_alive()
 	alarm(20);
 }
 
+int enabled_http_ifname()
+{
+#ifdef DSL_AX82U
+	if (nvram_get_int("http_enable") == 1 && http_port == SERVER_PORT && is_ax5400_i1()){
+		HTS = 1; //HTTP Transport Security
+		return 1;
+	}
+#endif
+#ifdef RTCONFIG_AIHOME_TUNNEL
+	if (nvram_get_int("http_enable") == 1 && http_port == SERVER_PORT)
+		return 0;
+#endif
+
+	return 1;
+}
+
 int main(int argc, char **argv)
 {
 	usockaddr usa;
-	int listen_fd[2];
-	socklen_t sz;
+	int listen_fd[3];
 	char pidfile[32];
 	fd_set active_rfds;
 	conn_list_t pool;
@@ -2162,7 +2412,7 @@ int main(int argc, char **argv)
 	//websSetVer();
 	//2008.08 magic
 	nvram_unset("login_timestamp");
-	nvram_unset("login_ip");
+	nvram_unset("login_ip"); /* IPv6 compat */
 	nvram_unset("login_ip_str");
 
 	/* Ignore broken pipes */
@@ -2181,17 +2431,23 @@ int main(int argc, char **argv)
 	/* Initialize listen socket */
 	for (i = 0; i < ARRAY_SIZE(listen_fd); i++)
 		listen_fd[i] = -1;
-#ifdef RTCONFIG_AIHOME_TUNNEL
-	if (nvram_get_int("http_enable") == 1 && http_port == SERVER_PORT) {
-		//httpd listen lo 80 port for tunnel but unused ifname in https only
-	} else
+	i = 0;
+
+	{
+		if (enabled_http_ifname() && (listen_fd[i++] = initialize_listen_socket(AF_INET, &usa, http_ifname)) < 0) {
+			fprintf(stderr, "can't bind to %s ipv4 address\n", http_ifname ? : "any");
+			return errno;
+		}
+#ifdef RTCONFIG_IPV6
+		if (ipv6_enabled() && enabled_http_ifname() &&
+		    (listen_fd[i++] = initialize_listen_socket(AF_INET6, &usa, http_ifname)) < 0) {
+			fprintf(stderr, "can't bind to %s ipv6 address\n", http_ifname ? : "any");
+			return errno;
+		}
 #endif
-	if ((listen_fd[0] = initialize_listen_socket(&usa, http_ifname)) < 0) {
-		fprintf(stderr, "can't bind to %s address\n", http_ifname ? : "any");
-		return errno;
 	}
 	if ((http_ifname && strcmp(http_ifname, "lo") != 0) &&
-	    (listen_fd[1] = initialize_listen_socket(&usa, "lo")) < 0) {
+	    (listen_fd[i++] = initialize_listen_socket(AF_INET, &usa, "lo")) < 0) {
 		fprintf(stderr, "can't bind to %s address\n", "loopback");
 		/* allow fail if previous bind to interface was ok */
 		/* return errno; */
@@ -2219,6 +2475,10 @@ int main(int argc, char **argv)
 #if defined(RTCONFIG_SW_HW_AUTH) && defined(RTCONFIG_AMAS)
 	amas_support = getAmasSupportMode();
 #endif
+	if(nvram_get_int("x_Setting") == 0){
+		save_ui_support_to_file();
+		save_iptvSettings_to_file();
+	}
 
 	/* Loop forever handling requests */
 	for (;;) {
@@ -2274,8 +2534,8 @@ int main(int argc, char **argv)
 				perror("malloc");
 				return errno;
 			}
-			sz = sizeof(item->usa);
-			while ((item->fd = accept(listen_fd[i], &item->usa.sa, &sz)) < 0 && errno == EINTR)
+			item->usa.sa_len = sizeof(item->usa);
+			while ((item->fd = accept(listen_fd[i], &item->usa.sa, &item->usa.sa_len)) < 0 && errno == EINTR)
 				continue;
 			if (item->fd < 0) {
 				HTTPD_DBG("item->fd = %d (<0): continue\n", item->fd);
@@ -2476,13 +2736,24 @@ void start_ssl(int http_port)
 //return value: 0: LAN,  1: WAN,  -1: ERROR
 int check_current_ip_is_lan_or_wan()
 {
-	unsigned long lan=0, mask=0;
-	lan = inet_addr(nvram_safe_get("lan_ipaddr"));
-	mask = inet_addr(nvram_safe_get("lan_netmask"));
+	struct in_addr lan, mask;
 
-	if(!login_ip_tmp || lan == -1 || mask == -1)
+	if (uaddr_is_unspecified(&login_uip_tmp))
 		return -1;
 
-	return ((lan & mask) == (login_ip_tmp & mask))?0:1;
+	switch (login_uip_tmp.family) {
+	case AF_INET:
+		if (inet_aton(nvram_safe_get("lan_ipaddr"), &lan) == 0 ||
+		    inet_aton(nvram_safe_get("lan_netmask"), &mask) == 0)
+			return -1;
+		return (lan.s_addr & mask.s_addr) == (login_uip_tmp.in.s_addr & mask.s_addr);
+#ifdef RTCONFIG_IPV6
+	case AF_INET6:
+		/* IPv6 addresses are dynamic, must be bind to bind to interface */
+		return 0;
+#endif
+	}
+
+	return -1;
 }
 

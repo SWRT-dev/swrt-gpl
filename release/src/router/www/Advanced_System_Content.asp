@@ -53,7 +53,6 @@
 	border: 1px solid #999;
 	color: #999;
 }
-
 .highlight{
 	background: #78535b;
     border: 1px solid #f06767;
@@ -66,7 +65,7 @@
 	margin-left:2px;
 	*margin-left:-353px;
 	width:346px;
-	text-align:left;	
+	text-align:left;
 	height:auto;
 	overflow-y:auto;
 	z-index:200;
@@ -299,17 +298,46 @@ function initial(){
 		document.form.misc_httpport_x.disabled = true;
 		document.getElementById("nat_redirect_enable_tr").style.display = "none";
 	}
-	else
+	else{
+
+		if(wan_proto=="v6plus" && array_ipv6_s46_ports.length > 1){
+			$(".setup_info_icon.https").show();
+			$(".setup_info_icon.https").click(
+				function() {
+					if($("#s46_ports_content").is(':visible'))
+						$("#s46_ports_content").fadeOut();
+					else{
+						var position = $(".setup_info_icon.https").position();
+						pop_s46_ports(position);
+					}
+				}
+			);
+		}
 		hideport(document.form.misc_http_x[0].checked);
+	}
 	
 	if(ssh_support){
 		check_sshd_enable('<% nvram_get("sshd_enable"); %>');
+
+		if(wan_proto=="v6plus" && array_ipv6_s46_ports.length > 1){
+			$(".setup_info_icon.ssh").show();
+			$(".setup_info_icon.ssh").click(
+				function() {
+					if($("#s46_ports_content").is(':visible'))
+						$("#s46_ports_content").fadeOut();
+					else{
+						var position = $(".setup_info_icon.ssh").position();
+						pop_s46_ports(position);
+					}
+				}
+			);
+		}
 	}
 	else{
 		document.getElementById('sshd_enable_tr').style.display = "none";
 		document.getElementById('sshd_port_tr').style.display = "none";
-                document.getElementById('sshd_password_tr').style.display = "none";
-                document.getElementById('auth_keys_tr').style.display = "none";
+		document.getElementById('sshd_password_tr').style.display = "none";
+		document.getElementById('auth_keys_tr').style.display = "none";
 	}
 
 	/* MODELDEP */
@@ -362,6 +390,8 @@ function initial(){
 	document.getElementById("http_passwd_cur").maxLength = max_pwd_length + 1;
 	document.getElementById("http_passwd_new").maxLength = max_pwd_length + 1;
 	document.getElementById("http_passwd_re").maxLength = max_pwd_length + 1;
+
+
 }
 
 var time_zone_tmp="";
@@ -544,7 +574,7 @@ function applyRule(){
 
 		showLoading();
 
-		var action_script_tmp = "restart_time;restart_upnp;";
+		var action_script_tmp = "restart_time;restart_upnp;restart_leds;restart_uuacc;";
 
 		if(hdspindown_support)
 			action_script_tmp += "restart_usb_idle;";
@@ -617,6 +647,15 @@ function validForm(){
 			document.form.sshd_port.focus();
 			return false;
 		}
+
+		if(wan_proto=="v6plus" && array_ipv6_s46_ports.length > 1){
+			if (!validator.range_s46_ports(document.form.sshd_port, "none")){
+				if(!confirm("The following port related settings may not work properly since the port is not available in current v6plus usable port range. Do you want to continue?")){
+					document.form.sshd_port.focus();
+					return false;
+				}
+			}
+		}
 	}
 	else{
 		document.form.sshd_port.disabled = true;
@@ -624,6 +663,7 @@ function validForm(){
 
 	if (!validator.range(document.form.http_lanport, 1, 65535))
 		/*return false;*/ document.form.http_lanport = 80;
+
 	if (HTTPS_support && !document.form.https_lanport.disabled && !validator.range(document.form.https_lanport, 1025, 65535) && !tmo_support)
 		return false;
 
@@ -632,6 +672,20 @@ function validForm(){
 			return false;
 		if (HTTPS_support && !document.form.misc_httpsport_x.disabled && !validator.range(document.form.misc_httpsport_x, 1024, 65535))
 			return false;
+		
+		if (HTTPS_support && !document.form.misc_httpsport_x.disabled){
+			if (!validator.range(document.form.misc_httpsport_x, 1024, 65535))
+				return false;
+
+			if (wan_proto=="v6plus" && array_ipv6_s46_ports.length > 1){
+				if (!validator.range_s46_ports(document.form.misc_httpsport_x, "none")){
+					if(!confirm("The following port related settings may not work properly since the port is not available in current v6plus usable port range. Do you want to continue?")){
+						document.form.misc_httpsport_x.focus();
+						return false;
+					}
+				}
+			}
+		}
 	}
 	else{
 		document.form.misc_httpport_x.value = '<% nvram_get("misc_httpport_x"); %>';
@@ -718,16 +772,16 @@ function done_validating(action){
 
 function corrected_timezone(){
 	var today = new Date();
-	var StrIndex;
+	var StrIndex = 0;
 	var timezone = uptimeStr_update.substring(26,31);
 
-	if(today.toString().indexOf("-") > 0)
-		StrIndex = today.toString().indexOf("-");
-	else if(today.toString().indexOf("+") > 0)
-		StrIndex = today.toString().indexOf("+");
+	if(today.toString().indexOf("GMT-") > 0)
+		StrIndex = today.toString().indexOf("GMT-");
+	else if(today.toString().indexOf("GMT+") > 0)
+		StrIndex = today.toString().indexOf("GMT+");
 
 	if(StrIndex > 0){
-		if(timezone != today.toString().substring(StrIndex, StrIndex+5)){
+		if(timezone != today.toString().substring(StrIndex+3, StrIndex+8)){
 			document.getElementById("timezone_hint").style.display = "block";
 			document.getElementById("timezone_hint").innerHTML = "* <#LANHostConfig_x_TimeZone_itemhint#>";
 		}
@@ -1499,6 +1553,7 @@ function pullPingTargetList(obj){
 		hidePingTargetList();
 }
 
+
 function reset_portconflict_hint(){
 	if($("#sshd_port").hasClass("highlight"))
 		$("#sshd_port").removeClass("highlight");
@@ -1985,7 +2040,27 @@ function check_password_length(obj){
 					</td>
 				</tr>
 			</table>
-
+			<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3"  class="FormTable">
+				<thead>
+					<tr>
+						<td colspan="2">Persistent JFFS2 partition</td>
+					</tr>
+				</thead>
+				<tr>
+					<th>Format JFFS partition at next boot</th>
+					<td>
+						<input type="radio" name="jffs2_format" value="1" <% nvram_match("jffs2_format", "1", "checked"); %>><#checkbox_Yes#>
+						<input type="radio" name="jffs2_format" value="0" <% nvram_match("jffs2_format", "0", "checked"); %>><#checkbox_No#>
+					</td>
+				</tr>
+				<tr>
+					<th>Enable JFFS custom scripts and configs</th>
+					<td>
+						<input type="radio" name="jffs2_scripts" value="1" <% nvram_match("jffs2_scripts", "1", "checked"); %>><#checkbox_Yes#>
+						<input type="radio" name="jffs2_scripts" value="0" <% nvram_match("jffs2_scripts", "0", "checked"); %>><#checkbox_No#>
+					</td>
+				</tr>
+			</table>
 			<table id="hdd_spindown_table" width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3"  class="FormTable" style="margin-top:8px;display:none;">
 				<thead>
 					<tr>
@@ -2174,6 +2249,20 @@ function check_password_length(obj){
 						</label>					
 					</td>
 				</tr>
+				<tr>
+					<th><#CTL_close#> LEDs</th>
+					<td>
+						<input type="radio" name="led_disable" class="input" value="1" <% nvram_match_x("", "led_disable", "1", "checked"); %>><#checkbox_Yes#>
+						<input type="radio" name="led_disable" class="input" value="0" <% nvram_match_x("", "led_disable", "0", "checked"); %>><#checkbox_No#>
+					</td>
+				</tr>
+				<tr>
+					<th><#CTL_Enabled#> UU</th>
+					<td>
+						<input type="radio" name="uu_enable" class="input" value="1" <% nvram_match_x("", "uu_enable", "1", "checked"); %>><#checkbox_Yes#>
+						<input type="radio" name="uu_enable" class="input" value="0" <% nvram_match_x("", "uu_enable", "0", "checked"); %>><#checkbox_No#>
+					</td>
+				</tr>
 				<tr id="pwrsave_tr">
 					<th align="right"><#usb_Power_Save_Mode#></th>
 					<td>
@@ -2255,7 +2344,7 @@ function check_password_length(obj){
 					</td>
 				</tr>
 				<tr id="sshd_port_tr">
-					<th width="40%"><#Port_SSH#></th>
+					<th width="40%"><#Port_SSH#><div class="setup_info_icon ssh" style="display:none;"></div></th>
 					<td>
 						<input type="text" class="input_6_table" maxlength="5" id="sshd_port" name="sshd_port" onKeyPress="return validator.isNumber(this,event);" autocorrect="off" autocapitalize="off" value='<% nvram_get("sshd_port"); %>' onkeydown="reset_portconflict_hint();">
 						<span id="port_conflict_sshdport" style="color: #e68282; display: none;">Port Conflict</span>
@@ -2352,7 +2441,10 @@ function check_password_length(obj){
 					</td>
 				</tr>
 				<tr id="accessfromwan_port">
-					<th align="right"><a id="access_port_title" class="hintstyle" href="javascript:void(0);" onClick="openHint(8,3);">HTTPS <#FirewallConfig_x_WanWebPort_itemname#></a></th>
+					<th align="right">
+						<a id="access_port_title" class="hintstyle" href="javascript:void(0);" onClick="openHint(8,3);">HTTPS <#FirewallConfig_x_WanWebPort_itemname#></a>
+						<div class="setup_info_icon https" style="display:none;"></div>
+					</th>
 					<td>
 						<span style="margin-left:5px; display:none;" id="http_port"><input type="text" maxlength="5" name="misc_httpport_x" class="input_6_table" value="<% nvram_get("misc_httpport_x"); %>" onKeyPress="return validator.isNumber(this,event);" autocorrect="off" autocapitalize="off" disabled/>&nbsp;&nbsp;</span>
 						<span style="margin-left:5px; display:none;" id="https_port"><input type="text" maxlength="5" name="misc_httpsport_x" class="input_6_table" value="<% nvram_get("misc_httpsport_x"); %>" onKeyPress="return validator.isNumber(this,event);" onBlur="change_url(this.value, 'https_wan');" autocorrect="off" autocapitalize="off" disabled/></span>
@@ -2422,3 +2514,4 @@ function check_password_length(obj){
 <div id="footer"></div>
 </body>
 </html>
+

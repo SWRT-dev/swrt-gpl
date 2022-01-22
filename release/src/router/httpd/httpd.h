@@ -36,6 +36,7 @@
 #include <dmalloc.h>
 #endif
 #include <rtconfig.h>
+#include "swrt.h"
 
 /* Basic authorization userid and passwd limit */
 #define AUTH_MAX 64
@@ -196,12 +197,12 @@ struct wl_sync_nvram {
 enum {
 	HTTP_OK = 200,
 	HTTP_FAIL = 400,
-        HTTP_CHPASS_FAIL,
-        HTTP_CHPASS_FAIL_MAX,
+    HTTP_CHPASS_FAIL,
+    HTTP_CHPASS_FAIL_MAX,
 	HTTP_RULE_ADD_SUCCESS = 2001,
 	HTTP_RULE_DEL_SUCCESS,
 	HTTP_NORULE_DEL,
-        HTTP_RULE_MODIFY_SUCCESS,
+    HTTP_RULE_MODIFY_SUCCESS,
 	HTTP_OVER_MAX_RULE_LIMIT = 4000,
 	HTTP_INVALID_ACTION,
 	HTTP_INVALID_MAC,
@@ -212,7 +213,7 @@ enum {
 	HTTP_INVALID_IPADDR,
 	HTTP_INVALID_TS,
 	HTTP_INVALID_FILE,
-        HTTP_INVALID_SUPPORT,
+    HTTP_INVALID_SUPPORT,
 	HTTP_SHMGET_FAIL = 5000,
 	HTTP_FB_SVR_FAIL
 };
@@ -403,7 +404,6 @@ extern int json_support;
 extern int amas_support;
 extern void start_ssl(int http_port);
 extern char *gethost(void);
-extern void http_logout(unsigned int ip, char *cookies, int fromapp_flag);
 extern int is_auth(void);
 extern int is_firsttime(void);
 extern char *generate_token(char *token_buf, size_t length);
@@ -412,6 +412,28 @@ extern int match_one( const char* pattern, int patternlen, const char* string );
 extern void send_page( int status, char* title, char* extra_header, char* text , int fromapp);
 extern void send_content_page( int status, char* title, char* extra_header, char* text , int fromapp);
 extern char *get_referrer(char *referer, char *auth_referer, size_t length);
+extern int save_ui_support_to_file(void);
+extern int save_iptvSettings_to_file(void);
+
+struct usockaddr;
+typedef struct usockaddr usockaddr;
+typedef struct uaddr {
+	int family;
+	union {
+		struct in_addr in;
+#ifdef RTCONFIG_IPV6
+		struct in6_addr in6;
+#endif
+	};
+} uaddr;
+extern uaddr *uaddr_ston(const usockaddr *u, uaddr *uip);
+extern uaddr *uaddr_pton(const char *src, uaddr *uip);
+extern char *uaddr_ntop(const uaddr *uip, char *dst, size_t cnt);
+extern unsigned int uaddr_addr(uaddr *uip);
+extern int uaddr_is_unspecified(uaddr *uip);
+extern int uaddr_is_localhost(uaddr *uip);
+extern int uaddr_is_equal(uaddr *a, uaddr *b);
+extern uaddr *uaddr_getpeer(webs_t wp, uaddr *uip);
 
 /* web.c */
 extern int ej_lan_leases(int eid, webs_t wp, int argc, char_t **argv);
@@ -457,7 +479,8 @@ extern char url[128];
 extern unsigned int login_ip; // the logined ip
 extern unsigned int app_login_ip; // the app logined ip
 extern char cookies_buf[4096];
-extern unsigned int login_ip_tmp;
+extern unsigned int login_ip_tmp; /* IPv6 compat */
+extern uaddr login_uip_tmp;
 extern time_t login_timestamp_cache;
 extern int check_user_agent(char* user_agent);
 #if defined(RTCONFIG_IFTTT) || defined(RTCONFIG_ALEXA) || defined(RTCONFIG_GOOGLE_ASST)
@@ -545,4 +568,6 @@ extern int filter_ban_ip();
 extern void slowloris_check();
 extern void slow_post_read_check();
 extern int check_chpass_auth(char *cur_username, char *cur_passwd);
+extern void reg_default_final_token();
 #endif /* _httpd_h_ */
+

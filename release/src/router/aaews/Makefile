@@ -35,8 +35,8 @@ WSLIB_OBJS := $(WS_SOURCES:%.c=$(OUTPUT)/%.o)
 
 ifeq ($(wildcard $(TOP)/aaews/*.c),)
 all:
-	-cp -f $(TOP)/aaews/prebuild/aaews aaews
-	-cp -f $(TOP)/aaews/prebuild/mastiff mastiff
+	-cp -f $(TOP)/aaews/prebuild/$(BUILD_NAME)/aaews aaews
+	-cp -f $(TOP)/aaews/prebuild/$(BUILD_NAME)/mastiff mastiff
 else
 all: $(WSLIB) $(TARGET)
 endif
@@ -83,10 +83,16 @@ CFLAGS += -I$(SRCBASE)/include
 CFLAGS += $(ASUSNATNL_CFLAGS)
 CFLAGS += $(AICAM_CFLAGS)
 CFLAGS += $(ROUTER_CFLAGS)
-CFLAGS += -DPTHREAD_STACK_SIZE=0x51200
+CFLAGS += -DPTHREAD_STACK_SIZE=0xa240
 
 LIBS = -lcurl -lssl -lcrypto -lxml2 -ljson-c -ldl -pthread -lrt $(ROUTER_LIBS) -lws -lgcc_s
 LDFLAGS = -L$(OPENSSL_DIR) -L$(CURL_DIR)/lib/.libs -L$(XML2_DIR)/.libs -L$(JSON_C_DIR)/.libs -L. $(ROUTER_LDFLAGS) -L$(WS_SRC) -L$(WB_DIR) -L$(WB_DIR)/output
+
+ifeq ($(RTCONFIG_TR069),y)
+CFLAGS += -I$(TOP)/libssh2-1.9.0/include -I$(TOP)/zlib/include
+LDFLAGS += -L$(TOP)/libssh2-1.9.0/src/.libs -lssh2 -L$(TOP)/zlib -lz
+endif
+
 ifeq ($(RTCONFIG_QCA),y)
 LDFLAGS += -L$(LIBDIR) -lm
 endif
@@ -106,7 +112,7 @@ endif
 
 ifeq ($(wildcard $(TOP)/aaews/*.c),)
 $(DOG):
-	-cp -f $(TOP)/aaews/prebuild/mastiff mastiff
+	-cp -f $(TOP)/aaews/prebuild/$(BUILD_NAME)/mastiff mastiff
 else
 $(DOG): $(DOG).o nat_nvram.o  ws_caller.o nw_util.o natapi.o $(WSLIB_OBJS) info_report.o
 	$(CC) -fPIC $(CFLAGS) $(LDFLAGS) $(LIBS) $(ROUTER_LDFLAGS) $(ROUTER_LIBS) -o $@ $^ 
@@ -116,7 +122,7 @@ aicam:$(TARGET)
 
 ifeq ($(wildcard $(TOP)/aaews/*.c),)
 router:
-	-cp -f $(TOP)/aaews/prebuild/aaews aaews
+	-cp -f $(TOP)/aaews/prebuild/$(BUILD_NAME)/aaews aaews
 else
 router: $(WSLIB) $(TARGET) $(DOG)
 endif

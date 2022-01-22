@@ -1383,7 +1383,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 #if !defined(RTCONFIG_CONCURRENTREPEATER)
 		/* Media bridge mode */
 		snprintf(prefix, sizeof(prefix), "wl%d.1_", unit);
-		ifname = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+		ifname = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
 		if (unit != nvram_get_int("wlc_band")) {
 			snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 			ret += websWrite(wp, "%s radio is disabled\n",
@@ -1393,7 +1393,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 		ret += show_wliface_info(wp, unit, ifname, "Media Bridge");
 #else
 		snprintf(prefix, sizeof(prefix), "wl%d.1_", unit);
-		ifname = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+		ifname = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
 		snprintf(wlc_prefix, sizeof(wlc_prefix), "wlc%d_", unit);
 		ret += show_wliface_info(wp, unit, ifname, "Media Bridge");
 		ret += websWrite(wp, "\n");
@@ -1413,7 +1413,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 			unit = 0;
 #else
 			snprintf(prefix, sizeof(prefix), "wl%d.1_", nvram_get_int("wlc_band"));
-			ifname = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+			ifname = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
 			ret += show_wliface_info(wp, nvram_get_int("wlc_band"), ifname, "Repeater");
 			ret += websWrite(wp, "\n");
 #endif
@@ -1424,7 +1424,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 				if (nvram_get_int("wlc_express") == 0) {	/* concurrent repeater */
 					for (i = 0; i <= 1; i++) {
 						snprintf(prefix, sizeof(prefix), "wl%d.1_", i);
-						ifname = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+						ifname = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
 						snprintf(wlc_prefix, sizeof(wlc_prefix), "wlc%d_", i);
 						ret += show_wliface_info(wp, i, ifname, "Repeater");
 						ret += websWrite(wp, "\n");
@@ -1432,7 +1432,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 				}
 				else {	/* express way (2G or 5G) */
 					snprintf(prefix, sizeof(prefix), "wl%d.1_", nvram_get_int("wlc_express") - 1);
-					ifname = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+					ifname = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
 					snprintf(wlc_prefix, sizeof(wlc_prefix), "wlc%d_", nvram_get_int("wlc_express") - 1);
 					ret += show_wliface_info(wp, nvram_get_int("wlc_express") - 1, ifname, nvram_get_int("wlc_express") == 1 ? "Express Way 2.4 GHz" : "Express Way 5 GHz");
 					ret += websWrite(wp, "\n");
@@ -1449,7 +1449,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 #endif
 
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		ifname = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+		ifname = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
 		if (!get_radio_status(ifname)) {
 #if defined(BAND_2G_ONLY)
 			ret += websWrite(wp, "2.4 GHz radio is disabled\n");
@@ -1467,7 +1467,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 			return ret;
 		}
 
-		wl_mode_x = nvram_get_int(strcat_r(prefix, "mode_x", tmp));
+		wl_mode_x = nvram_get_int(strlcat_r(prefix, "mode_x", tmp, sizeof(tmp)));
 		op_mode = "AP";
 		if (wl_mode_x == 1)
 			op_mode = "WDS Only";
@@ -1848,7 +1848,7 @@ wl_wps_info(int eid, webs_t wp, int argc, char_t **argv, int unit)
 
 #if defined(RTCONFIG_WPSMULTIBAND)
 		SKIP_ABSENT_BAND(u);
-		if (!nvram_get(strcat_r(prefix, "ifname", tmp)))
+		if (!nvram_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp))))
 			continue;
 #endif
 
@@ -1905,18 +1905,18 @@ wl_wps_info(int eid, webs_t wp, int argc, char_t **argv, int unit)
 
 		//8. Saved WPAKey
 #if 0	//hide for security
-		if (!strlen(nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp))))
+		if (!strlen(nvram_safe_get(strlcat_r(prefix, "wpa_psk", tmp, sizeof(tmp)))))
 			retval += websWrite(wp, "%s%s%s\n", tag1, "None", tag2);
 		else
 		{
-			char_to_ascii(tmpstr, nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp)));
+			char_to_ascii(tmpstr, nvram_safe_get(strlcat_r(prefix, "wpa_psk", tmp, sizeof(tmp))));
 			retval += websWrite(wp, "%s%s%s\n", tag1, tmpstr, tag2);
 		}
 #else
 		retval += websWrite(wp, "%s%s\n", tag1, tag2);
 #endif
 		//9. WPS enable?
-		if (!strcmp(nvram_safe_get(strcat_r(prefix, "wps_mode", tmp)), "enabled"))
+		if (!strcmp(nvram_safe_get(strlcat_r(prefix, "wps_mode", tmp, sizeof(tmp))), "enabled"))
 			retval += websWrite(wp, "%s%s%s\n", tag1, "None", tag2);
 		else
 			retval += websWrite(wp, "%s%s%s\n", tag1, nvram_safe_get("wps_enable"), tag2);
@@ -1929,10 +1929,10 @@ wl_wps_info(int eid, webs_t wp, int argc, char_t **argv, int unit)
 			retval += websWrite(wp, "%s%s%s\n", tag1, "2", tag2);
 
 		//B. current auth mode
-		if (!strlen(nvram_safe_get(strcat_r(prefix, "auth_mode_x", tmp))))
+		if (!strlen(nvram_safe_get(strlcat_r(prefix, "auth_mode_x", tmp, sizeof(tmp)))))
 			retval += websWrite(wp, "%s%s%s\n", tag1, "None", tag2);
 		else
-			retval += websWrite(wp, "%s%s%s\n", tag1, nvram_safe_get(strcat_r(prefix, "auth_mode_x", tmp)), tag2);
+			retval += websWrite(wp, "%s%s%s\n", tag1, nvram_safe_get(strlcat_r(prefix, "auth_mode_x", tmp, sizeof(tmp))), tag2);
 
 		//C. WPS band
 		retval += websWrite(wp, "%s%d%s\n", tag1, u, tag2);
@@ -2046,7 +2046,7 @@ static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 #endif
 	lock = file_lock("nvramcommit");
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-	snprintf(cmd, sizeof(cmd), "iwlist %s scanning", nvram_safe_get(strcat_r(prefix, "ifname", tmp)));
+	snprintf(cmd, sizeof(cmd), "iwlist %s scanning", nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp))));
 	fp = popen(cmd, "r");
 	file_unlock(lock);
 #if defined(RTCONFIG_QCA_LBD)
@@ -2237,7 +2237,7 @@ bypass:
 #endif
 
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-	country_code = nvram_get(strcat_r(prefix, "country_code", tmp));
+	country_code = nvram_get(strlcat_r(prefix, "country_code", tmp, sizeof(tmp)));
 
 	if (country_code == NULL || strlen(country_code) != 2) return retval;
 
@@ -2322,7 +2322,7 @@ static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	name = get_staifname(nvram_get_int("wlc_triBand"));
 #else
 	snprintf(prefix, sizeof(prefix), "wl%d.1_", unit);
-	name = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+	name = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
 #endif
 
 	wrq.u.data.pointer = rate;

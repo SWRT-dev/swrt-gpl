@@ -1179,15 +1179,15 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 #ifdef RTCONFIG_REALTEK
 	if (sw_mode() == SW_MODE_REPEATER && nvram_get_int("wlc_express") == 0) {
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		name = nvram_safe_get(strcat_r(prefix, "vxdifnames", tmp));
+		name = nvram_safe_get(strlcat_r(prefix, "vxdifnames", tmp, sizeof(tmp)));
 	}
 	else {
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		name = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+		name = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
 	}
 #else
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-	name = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+	name = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
 #endif
 	if ((ret = wl_ioctl(name, WLC_GET_BSSID, &bssid, ETHER_ADDR_LEN)) == 0) {
 		/* The adapter is associated. */
@@ -1229,14 +1229,14 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 }
 
 char *
-print_rate_buf(int raw_rate, char *buf)
+print_rate_buf(int raw_rate, char *buf, const int buf_len)
 {
 	if (!buf) return NULL;
 
 	if ((raw_rate % 1000) == 0)
-		sprintf(buf, "%6dM ", raw_rate / 1000);
+		snprintf(buf, buf_len, "%6dM ", raw_rate / 1000);
 	else
-		sprintf(buf, "%6.1fM ", (double) raw_rate / 1000);
+		snprintf(buf, buf_len, "%6.1fM ", (double) raw_rate / 1000);
 
 	return buf;
 }
@@ -1272,7 +1272,7 @@ ej_wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 		ret += websWrite(wp, "%s radio is disabled\n",
 			(wl_control_channel(unit) > 0) ?
 			((wl_control_channel(unit) > CH_MAX_2G_CHANNEL) ? "5 GHz" : "2.4 GHz") :
-			(nvram_match(strcat_r(prefix, "nband", tmp), "1") ? "5 GHz" : "2.4 GHz"));
+			(nvram_match(strlcat_r(prefix, "nband", tmp, sizeof(tmp)), "1") ? "5 GHz" : "2.4 GHz"));
 		return ret;
 	}
 #endif
@@ -1286,7 +1286,7 @@ def RTCONFIG_WIRELESSREPEATER
 	}
 	else
 #endif
-	name = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+	name = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
 	{
 		wl_ioctl(name, WLC_GET_RADIO, &val, sizeof(val));
 		val &= WL_RADIO_SW_DISABLE | WL_RADIO_HW_DISABLE;
@@ -1296,38 +1296,38 @@ def RTCONFIG_WIRELESSREPEATER
 		ret += websWrite(wp, "%s radio is disabled\n",
 			(wl_control_channel(unit) > 0) ?
 			((wl_control_channel(unit) > CH_MAX_2G_CHANNEL) ? "5 GHz" : "2.4 GHz") :
-			(nvram_match(strcat_r(prefix, "nband", tmp), "1") ? "5 GHz" : "2.4 GHz"));
+			(nvram_match(strlcat_r(prefix, "nband", tmp, sizeof(tmp)), "1") ? "5 GHz" : "2.4 GHz"));
 		return ret;
 	}
 
-	if (nvram_match(strcat_r(prefix, "mode", tmp), "wds")) {
+	if (nvram_match(strlcat_r(prefix, "mode", tmp, sizeof(tmp)), "wds")) {
 		// dump static info only for wds mode:
-		// ret += websWrite(wp, "SSID: %s\n", nvram_safe_get(strcat_r(prefix, "ssid", tmp)));
+		// ret += websWrite(wp, "SSID: %s\n", nvram_safe_get(strlcat_r(prefix, "ssid", tmp, sizeof(tmp))));
 		ret += websWrite(wp, "Channel: %d\n", wl_control_channel(unit));
 	}
 	else {
 		ret += wl_status(eid, wp, argc, argv, unit);
 	}
 
-	if (nvram_match(strcat_r(prefix, "mode", tmp), "ap"))
+	if (nvram_match(strlcat_r(prefix, "mode", tmp, sizeof(tmp)), "ap"))
 	{
-		if (nvram_match(strcat_r(prefix, "lazywds", tmp), "1") ||
-			nvram_invmatch(strcat_r(prefix, "wds", tmp), ""))
+		if (nvram_match(strlcat_r(prefix, "lazywds", tmp, sizeof(tmp)), "1") ||
+			nvram_invmatch(strlcat_r(prefix, "wds", tmp, sizeof(tmp)), ""))
 			ret += websWrite(wp, "Mode	: Hybrid\n");
 		else	ret += websWrite(wp, "Mode	: AP Only\n");
 	}
-	else if (nvram_match(strcat_r(prefix, "mode", tmp), "wds"))
+	else if (nvram_match(strlcat_r(prefix, "mode", tmp, sizeof(tmp)), "wds"))
 	{
 		ret += websWrite(wp, "Mode	: WDS Only\n");
 		return ret;
 	}
-	else if (nvram_match(strcat_r(prefix, "mode", tmp), "sta"))
+	else if (nvram_match(strlcat_r(prefix, "mode", tmp, sizeof(tmp)), "sta"))
 	{
 		ret += websWrite(wp, "Mode	: Stations\n");
 		ret += ej_wl_sta_status(eid, wp, name);
 		return ret;
 	}
-	else if (nvram_match(strcat_r(prefix, "mode", tmp), "wet"))
+	else if (nvram_match(strlcat_r(prefix, "mode", tmp, sizeof(tmp)), "wet"))
 	{
 //		ret += websWrite(wp, "Mode	: Ethernet Bridge\n");
 #ifdef RTCONFIG_WIRELESSREPEATER
@@ -1340,12 +1340,12 @@ def RTCONFIG_WIRELESSREPEATER
 		}
 		else
 #endif
-		ret += websWrite(wp, "Mode	: Repeater [ SSID local: \"%s\" ]\n", nvram_safe_get(strcat_r(prefix, "ssid", tmp)));
+		ret += websWrite(wp, "Mode	: Repeater [ SSID local: \"%s\" ]\n", nvram_safe_get(strlcat_r(prefix, "ssid", tmp, sizeof(tmp))));
 //		ret += ej_wl_sta_status(eid, wp, name);
 //		return ret;
 	}
 #ifdef RTCONFIG_PROXYSTA
-	else if (nvram_match(strcat_r(prefix, "mode", tmp), "psta"))
+	else if (nvram_match(strlcat_r(prefix, "mode", tmp, sizeof(tmp)), "psta"))
 	{
 		ret += websWrite(wp, "Mode	: Media Bridge\n");
 
@@ -1407,7 +1407,7 @@ def RTCONFIG_WIRELESSREPEATER
 			break;
 #endif
 		snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, i);
-		if (nvram_match(strcat_r(prefix, "bss_enabled", tmp), "1"))
+		if (nvram_match(strlcat_r(prefix, "bss_enabled", tmp, sizeof(tmp)), "1"))
 		{
 			snprintf(name_vif, sizeof(name_vif), "wl%d.%d", unit, i);
 
@@ -1492,7 +1492,7 @@ wl_control_channel(int unit)
 #endif
 
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-	name = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+	name = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
 
 	if ((ret = wl_ioctl(name, WLC_GET_BSSID, &bssid, ETHER_ADDR_LEN)) == 0) {
 		/* The adapter is associated. */
@@ -1568,18 +1568,18 @@ static int ej_wl_channel_list(int eid, webs_t wp, int argc, char_t **argv, int u
 		goto ERROR;
 
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-	name = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+	name = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
 
 	if (is_wlif_up(name) != 1)
 	{
-		foreach (word, nvram_safe_get(strcat_r(prefix, "chlist", tmp)), next)
+		foreach (word, nvram_safe_get(strlcat_r(prefix, "chlist", tmp, sizeof(tmp))), next)
 			count++;
 
 		if (count < 2)
 			goto ERROR;
 
 		i = 0;
-		foreach (word, nvram_safe_get(strcat_r(prefix, "chlist", tmp)), next) {
+		foreach (word, nvram_safe_get(strlcat_r(prefix, "chlist", tmp, sizeof(tmp))), next) {
 			if (i == 0)
 			{
 				snprintf(tmp1, sizeof(tmp1), "[\"%s\",", word);
@@ -1639,7 +1639,7 @@ static int ej_wl_channel_list(int eid, webs_t wp, int argc, char_t **argv, int u
 		}
 
 		if (strlen(tmp2))
-			nvram_set(strcat_r(prefix, "chlist", tmp), tmp2);
+			nvram_set(strlcat_r(prefix, "chlist", tmp, sizeof(tmp)), tmp2);
 	}
 ERROR:
 	retval += websWrite(wp, "%s", tmp1);
@@ -1696,9 +1696,9 @@ static int ej_wl_rssi(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 	
 	if (repeater_mode() && nvram_get_int("wlc_express") == 0)
-		name = nvram_safe_get(strcat_r(prefix, "vxdifnames", tmp));
+		name = nvram_safe_get(strlcat_r(prefix, "vxdifnames", tmp, sizeof(tmp)));
 	else
-		name = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+		name = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
 	
 	mac_list_size = sizeof(mac_list->count) + MAX_STA_COUNT * sizeof(struct ether_addr);
 	mac_list = malloc(mac_list_size);
@@ -1790,7 +1790,7 @@ static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 		}
 		else
 #endif
-	name = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+	name = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
 	wl_ioctl(name, WLC_GET_INSTANCE, &unit_cur, sizeof(unit_cur));
 	//cprintf("%s:%d unit_cur=%d %p\n",__FUNCTION__,__LINE__,unit_cur,&unit_cur);
 	if (wl_ioctl(name, WLC_GET_RATE, &rate, sizeof(int)))
@@ -2002,21 +2002,21 @@ void getWPSAuthMode(int unit, char *ret_str, int len)
 
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 
-	if (nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "shared"))
+	if (nvram_match(strlcat_r(prefix, "auth_mode_x", tmp, sizeof(tmp)), "shared"))
 		strlcpy(ret_str, "Shared Key", len);
-	else if (nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "psk"))
+	else if (nvram_match(strlcat_r(prefix, "auth_mode_x", tmp, sizeof(tmp)), "psk"))
 		strlcpy(ret_str, "WPA-Personal", len);
-	else if (nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "psk2"))
+	else if (nvram_match(strlcat_r(prefix, "auth_mode_x", tmp, sizeof(tmp)), "psk2"))
 		strlcpy(ret_str, "WPA2-Personal", len);
-	else if (nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "pskpsk2"))
+	else if (nvram_match(strlcat_r(prefix, "auth_mode_x", tmp, sizeof(tmp)), "pskpsk2"))
 		strlcpy(ret_str, "WPA-Auto-Personal", len);
-	else if (nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "wpa"))
+	else if (nvram_match(strlcat_r(prefix, "auth_mode_x", tmp, sizeof(tmp)), "wpa"))
 		strlcpy(ret_str, "WPA-Enterprise", len);
-	else if (nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "wpa2"))
+	else if (nvram_match(strlcat_r(prefix, "auth_mode_x", tmp, sizeof(tmp)), "wpa2"))
 		strlcpy(ret_str, "WPA2-Enterprise", len);
-	else if (nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "wpawpa2"))
+	else if (nvram_match(strlcat_r(prefix, "auth_mode_x", tmp, sizeof(tmp)), "wpawpa2"))
 		strlcpy(ret_str, "WPA-Auto-Enterprise", len);
-	else if (nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "radius"))
+	else if (nvram_match(strlcat_r(prefix, "auth_mode_x", tmp, sizeof(tmp)), "radius"))
 		strlcpy(ret_str, "802.1X", len);
 	else
 		strlcpy(ret_str, "Open System", len);
@@ -2028,19 +2028,19 @@ void getWPSEncrypType(int unit, char *ret_str, int len)
 
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 
-	if (nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "open") &&
-		nvram_match(strcat_r(prefix, "wep_x", tmp), "0"))
+	if (nvram_match(strlcat_r(prefix, "auth_mode_x", tmp, sizeof(tmp)), "open") &&
+		nvram_match(strlcat_r(prefix, "wep_x", tmp, sizeof(tmp)), "0"))
 		strlcpy(ret_str, "None", len);
-	else if ((nvram_match(strcat_r(prefix, "auth_mode_x", tmp), "open") && !nvram_match(strcat_r(prefix, "wep_x", tmp), "0")) ||
+	else if ((nvram_match(strlcat_r(prefix, "auth_mode_x", tmp, sizeof(tmp)), "open") && !nvram_match(strlcat_r(prefix, "wep_x", tmp, sizeof(tmp)), "0")) ||
 		nvram_match("wl_auth_mode", "shared") ||
 		nvram_match("wl_auth_mode", "radius"))
 		strlcpy(ret_str, "WEP", len);
 
-	if (nvram_match(strcat_r(prefix, "crypto", tmp), "tkip"))
+	if (nvram_match(strlcat_r(prefix, "crypto", tmp, sizeof(tmp)), "tkip"))
 		strlcpy(ret_str, "TKIP", len);
-	else if (nvram_match(strcat_r(prefix, "crypto", tmp), "aes"))
+	else if (nvram_match(strlcat_r(prefix, "crypto", tmp, sizeof(tmp)), "aes"))
 		strlcpy(ret_str, "AES", len);
-	else if (nvram_match(strcat_r(prefix, "crypto", tmp), "tkip+aes"))
+	else if (nvram_match(strlcat_r(prefix, "crypto", tmp, sizeof(tmp)), "tkip+aes"))
 		strlcpy(ret_str, "TKIP+AES", len);
 }
 
@@ -2057,7 +2057,7 @@ int wl_wps_info(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	retval += websWrite(wp, "<wps>\n");
 
 	//0. WSC Status
-	if (!strcmp(nvram_safe_get(strcat_r(prefix, "wps_mode", tmp)), "enabled"))
+	if (!strcmp(nvram_safe_get(strlcat_r(prefix, "wps_mode", tmp, sizeof(tmp))), "enabled"))
 	{
 		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", getWscStatusStr());
 	}
@@ -2073,7 +2073,7 @@ int wl_wps_info(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	//2. WPSSSID
 	{
 		memset(tmpstr, 0, sizeof(tmpstr));
-		char_to_ascii(tmpstr, nvram_safe_get(strcat_r(prefix, "ssid", tmp)));
+		char_to_ascii(tmpstr, nvram_safe_get(strlcat_r(prefix, "ssid", tmp, sizeof(tmp))));
 		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
 	}
 
@@ -2094,18 +2094,18 @@ int wl_wps_info(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	//5. DefaultKeyIdx
 	{
 		memset(tmpstr, 0, sizeof(tmpstr));
-		snprintf(tmpstr, sizeof(tmpstr), "%s", nvram_safe_get(strcat_r(prefix, "key", tmp)));
+		snprintf(tmpstr, sizeof(tmpstr), "%s", nvram_safe_get(strlcat_r(prefix, "key", tmp, sizeof(tmp))));
 		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
 	}
 
 	//6. WPAKey
 #if 0	//hide for security
-	if (!strlen(nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp))))
+	if (!strlen(nvram_safe_get(strlcat_r(prefix, "wpa_psk", tmp, sizeof(tmp)))))
 		retval += websWrite(wp, "<wps_info>None</wps_info>\n");
 	else
 	{
 		memset(tmpstr, 0, sizeof(tmpstr));
-		char_to_ascii(tmpstr, nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp)));
+		char_to_ascii(tmpstr, nvram_safe_get(strlcat_r(prefix, "wpa_psk", tmp, sizeof(tmp))));
 		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
 	}
 #else
@@ -2120,21 +2120,21 @@ int wl_wps_info(int eid, webs_t wp, int argc, char_t **argv, int unit)
 
 	//8. Saved WPAKey
 #if 0	//hide for security
-	if (!strlen(nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp))))
+	if (!strlen(nvram_safe_get(strlcat_r(prefix, "wpa_psk", tmp, sizeof(tmp)))))
 	{
 		retval += websWrite(wp, "<wps_info>None</wps_info>\n");
 	}
 	else
 	{
 		memset(tmpstr, 0, sizeof(tmpstr));
-		char_to_ascii(tmpstr, nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp)));
+		char_to_ascii(tmpstr, nvram_safe_get(strlcat_r(prefix, "wpa_psk", tmp, sizeof(tmp))));
 		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
 	}
 #else
 	retval += websWrite(wp, "<wps_info></wps_info>\n");
 #endif
 	//9. WPS enable?
-	if (!strcmp(nvram_safe_get(strcat_r(prefix, "wps_mode", tmp)), "enabled"))
+	if (!strcmp(nvram_safe_get(strlcat_r(prefix, "wps_mode", tmp, sizeof(tmp))), "enabled"))
 		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "1");
 	else
 		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "0");
@@ -2147,7 +2147,7 @@ int wl_wps_info(int eid, webs_t wp, int argc, char_t **argv, int unit)
 		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "2");
 
 	//B. current auth mode
-	retval += websWrite(wp, "<wps_info>%s</wps_info>\n", nvram_safe_get(strcat_r(prefix, "auth_mode_x", tmp)));
+	retval += websWrite(wp, "<wps_info>%s</wps_info>\n", nvram_safe_get(strlcat_r(prefix, "auth_mode_x", tmp, sizeof(tmp))));
 
 	//C. WPS band
 	retval += websWrite(wp, "<wps_info>%d</wps_info>\n", nvram_get_int("wps_band_x"));
@@ -2954,7 +2954,7 @@ static int wl_sta_list(int eid, webs_t wp, int argc, char_t **argv, int unit) {
 		goto exit;
 
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-	name = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+	name = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
 
 	memset(auth, 0, maclist_size);
 	memset(assoc, 0, maclist_size);
@@ -3033,7 +3033,7 @@ static int wl_sta_list(int eid, webs_t wp, int argc, char_t **argv, int unit) {
 			break;
 #endif
 		snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, i);
-		if (nvram_match(strcat_r(prefix, "bss_enabled", tmp), "1"))
+		if (nvram_match(strlcat_r(prefix, "bss_enabled", tmp, sizeof(tmp)), "1"))
 		{
 			snprintf(name_vif, sizeof(name_vif), "wl%d.%d", unit, i);
 
@@ -3165,7 +3165,7 @@ int ej_wl_auth_list(int eid, webs_t wp, int argc, char_t **argv) {
 
 	foreach (word, nvram_safe_get("wl_ifnames"), next) {
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		name = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+		name = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
 
 		memset(auth, 0, maclist_size);
 		memset(assoc, 0, maclist_size);
@@ -3222,7 +3222,7 @@ int ej_wl_auth_list(int eid, webs_t wp, int argc, char_t **argv) {
 				break;
 #endif
 			snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, i);
-			if (nvram_match(strcat_r(prefix, "bss_enabled", tmp), "1"))
+			if (nvram_match(strlcat_r(prefix, "bss_enabled", tmp, sizeof(tmp)), "1"))
 			{
 				snprintf(name_vif, sizeof(name_vif), "wl%d.%d", unit, i);
 
@@ -3413,7 +3413,7 @@ wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 
 	apinfo_count = 0;
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-	name = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+	name = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
 	if (wl_get_scan_results(name) == NULL)
 		return 0;
 
@@ -3467,7 +3467,7 @@ wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	int retval = 0;
 
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-	name = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+	name = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
 
 	if (wl_get_scan_results(name) == NULL)
 		return 0;

@@ -16,19 +16,18 @@ LDFLAGS += -L$(TOP)/openssl -lcrypto -lssl
 
 INSTALL = install
 
-OBJS = openvpn_config.o openvpn_control.o openvpn_utils.o
+OBJS = openvpn_config.o openvpn_control.o openvpn_utils.o openvpn_options.o
 
-ifeq ($(wildcard ./*.c),)
+ifneq ($(wildcard ./prebuild/$(BUILD_NAME)/libvpn.so),)
 all:
-	cp -f ./prebuild/libvpn.so .
+	cp -f ./prebuild/$(BUILD_NAME)/libvpn.so .
 else
 all: libvpn.so
-endif
 
 libvpn.so: $(OBJS)
 	@echo " [libvpn] LD $@"
 	@$(CC) $(LDFLAGS) -shared -o $@ $^
-
+endif
 
 install: all
 	@echo " [libvpn] Installing as $(INSTALLDIR)/usr/lib/libvpn.so"
@@ -43,7 +42,7 @@ clean:
 	@echo " [libvpn] CC $@"
 	@$(CC) $(CFLAGS) -o $@ -c $<
 
-%.o: prebuild/%.o
+%.o: prebuild/$(BUILD_NAME)/%.o
 	@echo " [libvpn] cp $@"
 	@cp -f $< $@
 
@@ -57,3 +56,4 @@ clean:
 	@$(CC) $(CFLAGS) -E $< > $@
 
 -include $(OBJS:%.o=.%.depend)
+

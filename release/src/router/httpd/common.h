@@ -41,10 +41,6 @@
 #define FALSE 0
 #endif
 
-#ifndef GIFSIZE
-#define GIFSIZE	17646
-#endif
-
 #ifdef RTCONFIG_LIBASUSLOG
 #include <libasuslog.h>
 #endif

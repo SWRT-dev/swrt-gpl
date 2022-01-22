@@ -3,7 +3,7 @@ include ../version.mak
 #RTSRCBASE=../../..
 PJBASE=../pjproject-1.12
 RTSHAREDBASE=$(TOP)/shared
-RTNVARMBASE=$(TOP_PLATFORM)/nvram$(BCMEX)$(EX7)
+RTNVARMBASE=$(TOP)/nvram$(BCMEX)$(EX7)
 UMEMBASE=../umem-1.0.1
 UDTBASE=../udt
 LIB_UDT=udt
@@ -59,21 +59,18 @@ ifeq ("$(MAKECMDGOALS)", $(filter "$(MAKECMDGOALS)", "android-lib"))
 ifeq ($(findstring i686, $(PJ_CC)), i686)
 ARCH=i686
 STL_DIR=x86
-LDFLAGS +=-static-libstdc++
-LDLIBS +=/opt/android-toolchain/x86/sysroot/usr/lib/i686-linux-android/libc++_static.a
+LDLIBS +=~/android-toolchain-x86/i686-linux-android/lib/libstdc++.a
 endif
 ifeq ($(findstring aarch64, $(PJ_CC)), aarch64)
 ARCH=aarch64
 STL_DIR=arm64
-LDFLAGS +=-static-libstdc++
-LDLIBS +=/opt/android-toolchains/arm64/sysroot/usr/lib/aarch64-linux-android/libc++_static.a
+LDLIBS +=~/android-toolchain-arm64/aarch64-linux-android/lib/libstdc++.a
 endif
 ifeq ($(findstring arm, $(PJ_CC)), arm)
 ARCH=arm
 EABI=eabi
 STL_DIR=arm
-LDFLAGS +=-static-libstdc++
-LDLIBS +=/opt/android-toolchains/arm/sysroot/usr/lib/arm-linux-androideabi/libc++_static.a
+LDLIBS += ~/android-toolchain-arm/arm-linux-androideabi/lib/libstdc++.a
 endif
 ANDROID_CROSS=$(ARCH)-linux-android$(EABI)
 ANDROID_GCC=$(ANDROID_CROSS)-gcc
@@ -110,7 +107,7 @@ android-lib: main.cpp $(OBJS)
 ifeq ($(wildcard ./*.cpp),)
 #For prebuild on router platform. Don't remove it.
 linux-lib:
-	-cp -f $(TOP)/asusnatnl/natnl/prebuild/libasusnatnl.so libasusnatnl.so
+	-cp -f $(TOP)/asusnatnl/natnl/prebuild/$(BUILD_NAME)/libasusnatnl.so libasusnatnl.so
 else
 linux-lib: main.cpp $(OBJS)
 	$(CXX) -shared -o libasusnatnl.so $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(OBJS) $(LDLIBS)

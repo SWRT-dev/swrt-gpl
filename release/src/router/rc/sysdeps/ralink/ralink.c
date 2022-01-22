@@ -3161,7 +3161,7 @@ int gen_ralink_config(int band, int is_iNIC)
 		nvram_set(strcat_r(prefix, "crypto", tmp), nvram_safe_get("wlc_crypto"));
 		nvram_set(strcat_r(prefix, "wpa_psk", tmp), nvram_safe_get("wlc_wpa_psk"));
 #if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
-// ui force 40,but 7615 support 80 and 160
+// ui force 40,but 7615/7915 support 80 and 160
 		if(band)
 			nvram_set(strcat_r(prefix, "bw", tmp), "1");
 		else
@@ -4062,7 +4062,11 @@ int getSiteSurvey(int band, char* ofile)
 					fprintf(fp, "\"%d\",", atoi(ssap->SiteSurvey[i].signal));
 					fprintf(fp, "\"%s\",", ssap->SiteSurvey[i].bssid);
 #if defined(RTCONFIG_WLMODULE_MT7915D_AP)
-					if(strncmp(ssap->SiteSurvey[i].wmode, "11b/g/n/ax", 10) == 0 || strncmp(ssap->SiteSurvey[i].wmode, "11ax", 4) == 0)
+					if(strncmp(ssap->SiteSurvey[i].wmode, "11b/g/n/ax", 10) == 0 )
+						fprintf(fp, "\"%s\",", "ax");
+					else if(strncmp(ssap->SiteSurvey[i].wmode, "11a/n/ac/ax", 10) == 0)
+						fprintf(fp, "\"%s\",", "ax");
+					else if(strncmp(ssap->SiteSurvey[i].wmode, "11ax", 4) == 0)
 						fprintf(fp, "\"%s\",", "ax");
 					else if(strncmp(ssap->SiteSurvey[i].wmode, "11a/n/ac", 8) == 0 || strncmp(ssap->SiteSurvey[i].wmode, "11ac", 4) == 0)
 						fprintf(fp, "\"%s\",", "ac");
@@ -4080,6 +4084,8 @@ int getSiteSurvey(int band, char* ofile)
 						fprintf(fp, "\"%s\",", "a");
 					else if(strncmp(ssap->SiteSurvey[i].wmode, "11b", 3) == 0)
 						fprintf(fp, "\"%s\",", "b");
+					else if(strncmp(ssap->SiteSurvey[i].wmode, "11n", 3) == 0)
+						fprintf(fp, "\"%s\",", "n");
 					else
 						fprintf(fp, "\"%s\",", "");
 #if 0
@@ -5374,6 +5380,37 @@ void stop_wds_ra(const char* lan_ifname, const char* wif)
 	}
 }
 
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
+void start_wds_ra()
+{
+	char* lan_ifname = nvram_safe_get("lan_ifname");
+	char prefix[32];
+	char wdsif[32];
+	int i, j, ret;
+
+	for(i = 0; i < 2; i++) {
+		memset(prefix, 0, sizeof(prefix));
+		snprintf(prefix, sizeof(prefix), "wl%d_mode_x", i);
+		ret = nvram_get_int(prefix);
+		if((ret !=1) && (ret != 2))
+			continue;
+
+		memset(prefix, 0, sizeof(prefix));
+		if(i == 0)
+			snprintf(prefix, sizeof(prefix), "wds");
+		else if( i == 1)
+			snprintf(prefix, sizeof(prefix), "wdsi");
+
+		for (j = 0; j < 4; j++)
+		{
+			snprintf(wdsif, sizeof(wdsif), "%s%d", prefix, j);
+			ifconfig(wdsif, IFUP, NULL, NULL);
+			doSystem("brctl addif %s %s 1>/dev/null 2>&1", lan_ifname, wdsif);
+		}
+	}
+}
+#endif
+
 void Get_fail_log(char *buf, int size, unsigned int offset)
 {
 	struct FAIL_LOG fail_log, *log = &fail_log;
@@ -6097,3 +6134,134 @@ int LanWanLedCtrl(void)
 	return 1;
 }
 #endif
+
+#ifdef RTCONFIG_UUPLUGIN
+void exec_uu()
+{
+	FILE *fp = NULL;
+	int n;
+	static int once = 0;
+	char *pvalue = NULL, *pp = NULL;
+	char *values[2];
+	char buf[128] = {0};
+	char *model = get_productid();
+	switch(get_model())
+	{
+		case MODEL_RTAC68U:
+			if(!strcmp(model, "RP-AC1900"))
+				return;
+			break;
+		case MODEL_RTAX58U:
+			if(strcmp(model, "TUF-AX3000") && strcmp(model, "TUF-AX5400") && strcmp(model, "RT-AX82U") && strcmp(model, "ZenWiFi_XD6") &&
+				strcmp(model, "GS-AX3000") && strcmp(model, "GS-AX5400"))
+				return;
+			break;
+		case MODEL_RTAC82U:
+			if(strcmp(model, "RT-AC2200"))
+				return;
+			break;
+		default:
+			break;
+	}
+	if(is_CN_sku() && (!nvram_get("sw_mode") || nvram_get_int("sw_mode") == 1) && !once && nvram_get_int("ntp_ready"))
+	{
+		once = 1;
+		if((fp = fopen("/var/model", "w")))
+		{
+			fprintf(fp, "%s", model);
+			fclose(fp);
+		}
+		if((fp = fopen("/var/label_macaddr", "w")))
+		{
+			strncpy(buf, get_label_mac(), 17);
+			toLowerCase(buf);
+			fprintf(fp, "%s", buf);
+			fclose(fp);
+		}
+		if((fp = fopen("/var/uu_plugin_dir", "w")))
+		{
+			fprintf(fp, "/jffs");
+			fclose(fp);
+		}
+		system("mkdir -p /tmp/uu");
+		n = system("wget -t 2 -T 30 --dns-timeout=120 --header=Accept:text/plain -q --no-check-certificate 'https://router.uu.16"
+            "3.com/api/script/monitor?type=asuswrt' -O /tmp/uu/script_url");
+		if(!n)
+		{
+			_dprintf("download uuplugin script info successfully\n");
+			if((fp = fopen("/tmp/uu/script_url", "r")))
+			{
+				fgets(buf, sizeof(buf), fp);
+				fclose(fp);
+				unlink("/tmp/uu/script_url");
+				pvalue = strdup(buf);
+				pp = strtok(pvalue, ",");
+				while(pp != NULL){
+						strcpy(values[n], pp);
+						++n;
+						pp = strtok(NULL, ",");
+				}
+				if(n == 2)
+				{
+					_dprintf("URL: %s\n", values[0]);
+					_dprintf("MD5: %s\n", values[1]);
+					if(!doSystem("wget -t 2 -T 30 --dns-timeout=120 --header=Accept:text/plain -q --no-check-certificate %s -O /tmp/uu/u"
+						"uplugin_monitor.sh", values[0]))
+					{
+						_dprintf("download uuplugin script successfully\n");
+						if((fp=popen("md5sum /tmp/uu/uuplugin_monitor.sh | sed 's/[ ][ ]*/ /g' | cut -d' ' -f1", "r")))
+						{
+							memset(buf, 0, sizeof(buf));
+							if((fread(buf, 1, 128, fp)))
+							{
+								buf[32]='\0';
+								buf[33]='\0';
+								if(!strcasecmp(buf, values[1]))
+								{
+									pid_t pid;
+									char *uu_argv[] = { "/tmp/uu/uuplugin_monitor.sh", NULL };
+									_dprintf("prepare to execute uuplugin stript...\n");
+									chmod("/tmp/uu/uuplugin_monitor.sh", 0755);
+									_eval(uu_argv, NULL, 0, &pid);
+								}
+							}
+							pclose(fp);
+						}
+					}
+				}
+				free(pvalue);
+			}
+		}
+	}
+}
+#endif
+
+#ifdef RTCONFIG_ATEUSB3_FORCE
+int getForceU3()
+{
+	unsigned char buffer[2];
+	unsigned char *dst;
+	dst = buffer;
+	FRead(dst, 0x4FF60, 1);
+	if ( *dst == '1' )
+		puts("1");
+	else
+		puts("0");
+	return 0;
+}
+
+int setForceU3(const char *val)
+{
+	if((*val - '0') >= 2 || !IS_ATE_FACTORY_MODE())
+		return -1;
+	FWrite(val, 0x4FF60, 1);
+	if(*val == '0')
+		nvram_unset("usb_usb3");
+	else
+		nvram_set("usb_usb3", "1");
+	nvram_commit();
+	return 0;
+}
+#endif
+
+

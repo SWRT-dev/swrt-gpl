@@ -44,7 +44,7 @@ struct nvram_tuple router_defaults[] = {
 
 	// NVRAM for switch
 	{ "switch_stb_x", "0", CKN_STR2, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* oleg patch */
-#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_REALTEK)
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 	{ "switch_upstream", "none", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* remember upstream port of IPTV, valid value is subset of valid value of wans_dualwan nvram variable. */
 #endif
 	{ "switch_wantag", "none", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* for IPTV/VoIP case */
@@ -68,14 +68,10 @@ struct nvram_tuple router_defaults[] = {
 #ifdef RTCONFIG_WIRELESS_SWITCH
 	{ "wl_HW_switch", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* siwtch WiFi slash */
 #endif
-	{ "wl_ifname", "", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Interface name */
-	{ "wl_hwaddr", "", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* MAC address */
+	{ "wl_ifname", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Interface name */
+	{ "wl_hwaddr", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* MAC address */
 #ifdef RTCONFIG_RALINK
 #elif defined(RTCONFIG_QCA)
-#elif defined(RTCONFIG_REALTEK)
-	{ "wl_phytype", "v", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Current wireless band (a (5 GHz) v(5GHz ac) b (2.4 GHz) or g (2.4 GHz)) */
-	{ "wl0_phytype", "v", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-	{ "wl1_phytype", "v", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #else
 	{ "wl_phytype", "n", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Current wireless band (a (5 GHz) b (2.4 GHz) or g (2.4 GHz)) */
 	{ "wl_corerev", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Current core revision */
@@ -83,7 +79,7 @@ struct nvram_tuple router_defaults[] = {
 	{ "wl_radioids", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* List of radio IDs */
 #endif
 	{ "w_apply", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},                               /* check wireless be applied */
-	{ "wl_ssid", SSID_PREFIX, CKN_STR32, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Service set ID (network name) */
+	{ "wl_ssid", SSID_PREFIX, CKN_STR32, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Service set ID (network name) */
 #ifdef RTCONFIG_CONCURRENTREPEATER
 	{ "wl0_ssid", DEF_SSID_2G, CKN_STR32, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #ifdef RPAC92
@@ -92,7 +88,7 @@ struct nvram_tuple router_defaults[] = {
 #else
 	{ "wl1_ssid", DEF_SSID_5G, CKN_STR32, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
-#if defined(RTCONFIG_RALINK) || defined(RTCONFIG_REALTEK)
+#if defined(RTCONFIG_RALINK)
 	{ "wl1_bw", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl1.1_bw", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl1.1_channel", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
@@ -109,7 +105,7 @@ struct nvram_tuple router_defaults[] = {
 #endif
 #endif	// RTCONFIG_CONCURRENTREPEATER
 
-	{ "wl_bss_enabled", "1", CKN_STR1, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Service set Enable (1) or disable (0) radio */
+	{ "wl_bss_enabled", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Service set Enable (1) or disable (0) radio */
 	{ "wl_bw_enabled", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Bandwidth Limiter of Guest Network set Enable (1) or disable (0) radio */
 	{ "wl_bw_dl", "", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Bandwidth Limiter DownStream */
 	{ "wl_bw_ul", "", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Bandwidth Limiter UpStream */
@@ -144,12 +140,12 @@ struct nvram_tuple router_defaults[] = {
 	{ "hs2_debug_level", "1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 }, /* HS2.0 debeug level default (1) ERROR */
 
 /* #ifdef __CONFIG_802_11U__ */
-	{ "wl_iwnettype", "2", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },  /* Select Access Network Type */
+	{ "wl_iwnettype", "1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },  /* Select Access Network Type */
 	{ "wl_hessid", "50:6F:9A:00:11:22", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },     /* Interworking HESSID */
 	{ "wl_ipv4addr", "3", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Select IPV4 Address Type Availability */
 	{ "wl_ipv6addr", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Select IPV6 Address Type Availability */
 	{ "wl_netauthlist", "accepttc=+" "httpred=httpred=https://tandc-server.wi-fi.org", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Network Authentication Type List */
-	{ "wl_venuegrp", "2", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Venue Name List */
+	{ "wl_venuegrp", "7", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Venue Name List */
 	{ "wl_venuetype", "8", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Venue Type */
 	{ "wl_venuelist", "57692D466920416C6C69616E63650A"
 	    		  "3239383920436F7070657220526F61640A"
@@ -171,34 +167,31 @@ struct nvram_tuple router_defaults[] = {
 //#endif /* __CONFIG_802_11U__ */
 #else
 #ifdef __CONFIG_HSPOT__	/* See "default_get" below. */
-	{ "wl_hsflag", "3159", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Passpoint Flags */
+	{ "wl_hsflag", "3159", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Passpoint Flags */
 	{ "wl_hs2en", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Passpoint Enable (1) */
-	{ "wl_hs2cap", "1", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Passpoint Realese 2 (1) */
-	{ "wl_opercls", "3", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Operating Class */
-	{ "wl_anonai", "anonymous.com", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Anonymous NAI */
+	{ "wl_hs2cap", "1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Passpoint Realese 2 (1) */
+	{ "wl_opercls", "3", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Operating Class */
+	{ "wl_anonai", "anonymous.com", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Anonymous NAI */
 
-	{ "wl_oplist", "T-Mobile!eng", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Operator Friendly Name List */
+	{ "wl_oplist", "T-Mobile!eng", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Operator Friendly Name List */
 
-	{ "wl_homeqlist", "t-mobile.com:rfc4282", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* NAIHomeRealmQueryList */
-	{ "wl_wanmetrics", "1:0:0=2500>384=0>0=0", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* WAN Metrics */
-	{ "wl_osu_ssid", "CellSpot_AutoConnect", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* OSU SSID */
+	{ "wl_homeqlist", "t-mobile.com:rfc4282", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* NAIHomeRealmQueryList */
+	{ "wl_wanmetrics", "1:0:0=2500>384=0>0=0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* WAN Metrics */
+	{ "wl_osu_ssid", "CellSpot_AutoConnect", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* OSU SSID */
 
-	{ "wl_osu_frndname", "T-Mobile!eng", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* OSU Friendly Name */
+	{ "wl_osu_frndname", "T-Mobile!eng", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* OSU Friendly Name */
 
-	{ "wl_osu_uri", "https://osu-server.t-mobile.com/", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* OSU Server URI */
+	{ "wl_osu_uri", "https://osu-server.t-mobile.com/", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* OSU Server URI */
 
-	{ "wl_osu_nai", "", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* OSU NAI */
-	{ "wl_osu_method", "1", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* OSU Method */
+	{ "wl_osu_nai", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* OSU NAI */
+	{ "wl_osu_method", "1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* OSU Method */
 
-	{ "wl_osu_icons", "icon_red_zxx.png+icon_red_eng.png", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* OSU Icons */
+	{ "wl_osu_icons", "icon_red_zxx.png+icon_red_eng.png", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* OSU Icons */
 
-	{ "wl_osu_servdesc", "T-MobilePasspointservice!eng", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* OSU Serv Desc */
-
-	{ "wl_concaplist", "1:0:0;6:20:1;6:22:0;6:80:1;6:443:1;6:1723:0;6:5060:0;17:500:1;17:5060:0;17:4500:1;50:0:1", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Connection Capability List */
-	{ "wl_qosmapie", "35021606+8,15;0,7;255,255;16,31;32,39;255,255;40,47;255,255", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* QoS Map IE */
+	{ "wl_osu_servdesc", "T-MobilePasspointservice!eng", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* OSU Serv Desc */
 
 	/* ---- Passpoint Flag ----------------------------------- */
-	{ "wl_gascbdel", "0", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* GAS CB Delay */
+	{ "wl_gascbdel", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* GAS CB Delay */
 	{ "wl_4framegas", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 4 Frame GAS */
 
 	/* ---- temporary ----------------------------------- */
@@ -208,51 +201,47 @@ struct nvram_tuple router_defaults[] = {
 //#ifdef __CONFIG_802_11U__
 	{ "wl_u11en", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 802.11u IW Enable (1) disable (0) radio */
 	{ "wl_iwint", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Internet Enable (1) disable (0) radio */
-	{ "wl_iwnettype", "2", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Select Access Network Type */
-	{ "wl_hessid", "50:6F:9A:00:11:22", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Interworking HESSID */
-	{ "wl_ipv4addr", "3", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Select IPV4 Address Type Availability */
-	{ "wl_ipv6addr", "0", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Select IPV6 Address Type Availability */
+	{ "wl_iwnettype", "2", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Select Access Network Type */
+	{ "wl_hessid", "50:6F:9A:00:11:22", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Interworking HESSID */
+	{ "wl_ipv4addr", "3", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Select IPV4 Address Type Availability */
+	{ "wl_ipv6addr", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Select IPV6 Address Type Availability */
 
-	{ "wl_netauthlist", "accepttc=+" "httpred=https://t-mobile.com", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Network Authentication Type List */
+	{ "wl_netauthlist", "accepttc=+" "httpred=https://t-mobile.com", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Network Authentication Type List */
 
-	{ "wl_venuegrp", "2", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Venue Name List */
-	{ "wl_venuetype", "8", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Venue Type */
+	{ "wl_venuegrp", "2", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Venue Name List */
+	{ "wl_venuetype", "8", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Venue Type */
 
-	{ "wl_venuelist", "542D4D6F62696C6521656E67", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Venue Name List */
+	{ "wl_venuelist", "542D4D6F62696C6521656E67", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Venue Name List */
 
-	{ "wl_ouilist", "506F9A;001BC504BD", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Roaming Consortium List */
-	{ "wl_3gpplist", "310:260;310:310", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 3GPP Cellular Network Information List */
-	{ "wl_domainlist", "t-mobile.com", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Domain Name List */
+	{ "wl_ouilist", "506F9A;001BC504BD", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Roaming Consortium List */
+	{ "wl_3gpplist", "310:260;310:310", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 3GPP Cellular Network Information List */
+	{ "wl_domainlist", "t-mobile.com", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Domain Name List */
 
-	{"wl_realmlist", "wlan.mnc260.mcc310.3gppnetwork.org+0+21=2,4#5,7?"	"wlan.mnc260.mcc310.3gppnetwork.org+0+13=5,6?"	"wlan.mnc310.mcc310.3gppnetwork.org+0+21=2,4#5,7?"	"wlan.mnc310.mcc310.3gppnetwork.org+0+13=5,6", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{"wl_realmlist", "wlan.mnc260.mcc310.3gppnetwork.org+0+21=2,4#5,7?"	"wlan.mnc260.mcc310.3gppnetwork.org+0+13=5,6?"	"wlan.mnc310.mcc310.3gppnetwork.org+0+21=2,4#5,7?"	"wlan.mnc310.mcc310.3gppnetwork.org+0+13=5,6", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 //#endif /* __CONFIG_802_11U__ */
 
 #endif /* __CONFIG_HSPOT__ */
-#endif
-#ifdef RTCONFIG_REALTEK
-	{ "wl_country_code", DEF_COUNTRY_CODE, CKN_STR2, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-	{ "wl_HT_GI", "1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
 //	{ "wl_country_code", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },		/* Country Code (default obtained from driver) */
 #ifdef CONFIG_BCMWL5
 	{ "wl_country_rev", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Regrev Code (default obtained from driver) */
 #endif
-	{ "wl_radio", "1", CKN_STR1, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Enable (1) or disable (0) radio */
-	{ "wl_closed", "0", CKN_STR1, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Closed (hidden) network */
-	{ "wl_ap_isolate", "0", CKN_STR1, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* AP isolate mode */
+	{ "wl_radio", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Enable (1) or disable (0) radio */
+	{ "wl_closed", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Closed (hidden) network */
+	{ "wl_ap_isolate", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* AP isolate mode */
 
-#if defined(HND_ROUTER)
+#if defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
 	{ "wl_igs", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* BCM: wl_wmf_bss_enable Ralink: IGMPSnEnable */
 #else
 	{ "wl_igs", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* BCM: wl_wmf_bss_enable Ralink: IGMPSnEnable */
 #endif
 #ifdef CONFIG_BCMWL5
-	{ "wl_wmf_bss_enable", "0", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },		/* WMF Enable/Disable */
-	{ "wl_mcast_regen_bss_enable", "1", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* MCAST REGEN Enable/Disable */
+	{ "wl_wmf_bss_enable", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },		/* WMF Enable/Disable */
+	{ "wl_mcast_regen_bss_enable", "1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* MCAST REGEN Enable/Disable */
 
 	/* operational capabilities required for stations to associate to the BSS */
 #ifdef RTCONFIG_BCMWL6
-	{ "wl_bss_opmode_cap_reqd", "0", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wl_bss_opmode_cap_reqd", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
 	{ "wl_rxchain_pwrsave_enable", "1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Rxchain powersave enable */
 	{ "wl_rxchain_pwrsave_quiet_time", "1800", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Quiet time for power save */
@@ -264,12 +253,12 @@ struct nvram_tuple router_defaults[] = {
 	{ "wl_radio_pwrsave_level", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Radio power save level */
 	{ "wl_radio_pwrsave_stas_assoc_check", "1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* STAs associated before powersave */
 #endif
-	{ "wl_mode", "ap", CKN_STR8, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* AP mode (ap|sta|wds) */
+	{ "wl_mode", "ap", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* AP mode (ap|sta|wds) */
 #ifdef RTCONFIG_RALINK
 #elif defined(RTCONFIG_QCA)
 #else
 #if defined(RTCONFIG_BCM9)
-	{ "wl_dwds", "", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wl_dwds", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
 #ifdef RTCONFIG_HND_ROUTER_AX
 	{ "wl_prev_mbss", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 }, /* MBSS mode (4|8|16) */
@@ -277,20 +266,20 @@ struct nvram_tuple router_defaults[] = {
 	{ "wl_lazywds", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Enable (lazy) WDS mode (0|1) */
 	{ "wl_wds", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* xx:xx:xx:xx:xx:xx ... */
 	{ "wl_wds_timeout", "1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* WDS link detection interval defualt 1 sec */
-	{ "wl_wep", "disabled", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* WEP data encryption (enabled|disabled) */
-	{ "wl_auth", "0", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Shared key authentication optional (0) or required (1) */
+	{ "wl_wep", "disabled", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* WEP data encryption (enabled|disabled) */
+	{ "wl_auth", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Shared key authentication optional (0) or required (1) */
 #endif
-	{ "wl_key", "1", CKN_STR1, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Current WEP key */
-	{ "wl_key1", "", CKN_STR32, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 5/13 char ASCII or 10/26 char hex */
-	{ "wl_key2", "", CKN_STR32, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 5/13 char ASCII or 10/26 char hex */
-	{ "wl_key3", "", CKN_STR32, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 5/13 char ASCII or 10/26 char hex */
-	{ "wl_key4", "", CKN_STR32, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 5/13 char ASCII or 10/26 char hex */
+	{ "wl_key", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Current WEP key */
+	{ "wl_key1", "", CKN_STR32, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 5/13 char ASCII or 10/26 char hex */
+	{ "wl_key2", "", CKN_STR32, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 5/13 char ASCII or 10/26 char hex */
+	{ "wl_key3", "", CKN_STR32, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 5/13 char ASCII or 10/26 char hex */
+	{ "wl_key4", "", CKN_STR32, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 5/13 char ASCII or 10/26 char hex */
 #ifdef RTCONFIG_RALINK
 #elif defined(RTCONFIG_QCA)
 #else
-	{ "wl_maclist", "", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* xx:xx:xx:xx:xx:xx ... */
+	{ "wl_maclist", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* xx:xx:xx:xx:xx:xx ... */
 #endif
-	{ "wl_macmode", "disabled", CKN_STR16, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* allow only */
+	{ "wl_macmode", "disabled", CKN_STR16, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* allow only */
 	{ "wl_assoc_retry_max", "3", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Non-zero limit for association retries */
 #ifndef RTCONFIG_BCMWL6
 	{ "wl_channel", "0", CKN_STR4, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Channel number */
@@ -366,14 +355,14 @@ struct nvram_tuple router_defaults[] = {
 	{ "wl_optimizexbox", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Optimize WiFi packet for Xbox */
 #endif
 #ifdef RTCONFIG_HND_ROUTER_AX
-	{ "wl_wme", "on", CKN_STR4, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* WME mode (off|on) */
+	{ "wl_wme", "on", CKN_STR4, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* WME mode (off|on) */
 #else
 	{ "wl_wme", "auto", CKN_STR4, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* WME mode (off|on|auto) */
 #endif
 #ifdef CONFIG_BCMWL5
-	{ "wl_wme_bss_disable", "0", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* WME BSS disable advertising (off|on) */
+	{ "wl_wme_bss_disable", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* WME BSS disable advertising (off|on) */
 	{ "wl_antdiv", "-1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Antenna Diversity (-1|0|1|3) */
-	{ "wl_infra", "1", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Network Type (BSS/IBSS) */
+	{ "wl_infra", "1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Network Type (BSS/IBSS) */
 //	{ "wl_interfmode", "2", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },		/* Interference mitigation mode (2/3/4) */
 #ifndef RTCONFIG_BCMWL6
 	{ "wl_nbw_cap", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* BW Cap; def 20inB and 40inA */
@@ -384,7 +373,7 @@ struct nvram_tuple router_defaults[] = {
 #ifdef BCM_BSD
 	{ "wl1_bw_160", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #ifdef RTCONFIG_HAS_5G_2
-#if defined(RTAX95Q) || defined(RTAXE95Q) || defined(GTAXE11000)
+#if defined(RTAX95Q) || defined(XT8PRO) || defined(RTAXE95Q) || defined(ET8PRO) || defined(GTAXE11000)
 	{ "wl2_bw_160", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #else
 	{ "wl2_bw_160", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
@@ -415,7 +404,11 @@ struct nvram_tuple router_defaults[] = {
 	{ "wl0_nband", "2", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 2.4 GHz */
 	{ "wl1_nband", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 5 GHz */
 #if defined(RTCONFIG_HAS_5G_2)
+#ifdef RTCONFIG_WIFI6E
+	{ "wl2_nband", "4", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 6 GHz */
+#else
 	{ "wl2_nband", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 5G-2 */
+#endif
 #endif
 #if defined(RTCONFIG_WIGIG)
 	{ "wl3_nband", "6", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 802.11ad Wigig */
@@ -425,15 +418,22 @@ struct nvram_tuple router_defaults[] = {
 #endif	/* RTCONFIG_WIGIG */
 #else
 	{ "wl_nband", "2", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* N-BAND */
+#if defined(GTAXE16000)
+	{ "wl0_nband", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 5 GHz*/
+	{ "wl1_nband", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 5 GHz*/
+	{ "wl2_nband", "4", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 6 GHz*/
+	{ "wl3_nband", "2", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 2.4 GHz*/
+#else
 	{ "wl0_nband", "2", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl1_nband", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },    /* 5 GHz */
 #ifdef RTCONFIG_HAS_5G_2
-#if defined(RTAXE95Q) || defined(GTAXE11000)
+#if defined(RTAXE95Q) || defined(ET8PRO) || defined(GTAXE11000) || defined(ET12)
 	{ "wl2_nband", "4", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 6 GHz */
 #else
 	{ "wl2_nband", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
 #endif
+#endif /* #if defined(GTAXE16000)*/
 
 	{ "wl_nmcsidx", "-1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* MCS Index for N - rate */
 	{ "wl_nmode", "-1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* N-mode */
@@ -495,29 +495,29 @@ struct nvram_tuple router_defaults[] = {
 #endif	// RTCONFIG_BCMARM
 #endif	// RTCONFIG_BCMWL6
 #endif	// CONFIG_BCMWL5
-#if defined(CONFIG_BCMWL5) || defined(RTCONFIG_REALTEK)
+#if defined(CONFIG_BCMWL5)
 	{ "wl_amsdu", "auto", CKN_STR4, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Default AMSDU setting */
 #endif
 	/* WPA parameters */
-	{ "wl_auth_mode", "none", CKN_STR8, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Network authentication mode (radius|none) */
-	{ "wl_wpa_psk", "", CKN_STR64, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* WPA pre-shared key */
-	{ "wl_wpa_gtk_rekey", "3600", CKN_STR8, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* GTK rotation interval */
+	{ "wl_auth_mode", "none", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Network authentication mode (radius|none) */
+	{ "wl_wpa_psk", "", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* WPA pre-shared key */
+	{ "wl_wpa_gtk_rekey", "3600", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* GTK rotation interval */
 #ifdef RTCONFIG_HND_ROUTER_AX
 	{ "wl_wpa_ptk_rekey", "0", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* PTK rotation interval */
 #endif
-	{ "wl_radius_ipaddr", "", CKN_STR64, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* RADIUS server IP address */
-	{ "wl_radius_key", "", CKN_STR64, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* RADIUS shared secret */
-	{ "wl_radius_port", "1812", CKN_STR8, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* RADIUS server UDP port */
-	{ "wl_crypto", "tkip+aes", CKN_STR8, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* WPA data encryption */
+	{ "wl_radius_ipaddr", "", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* RADIUS server IP address */
+	{ "wl_radius_key", "", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* RADIUS shared secret */
+	{ "wl_radius_port", "1812", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* RADIUS server UDP port */
+	{ "wl_crypto", "tkip+aes", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* WPA data encryption */
 #if 0
-	{ "wl_net_reauth", "3600", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Network Re-auth/PMK caching duration */
+	{ "wl_net_reauth", "3600", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Network Re-auth/PMK caching duration */
 #else
 	{ "wl_pmk_cache", "60", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Network Re-auth/PMK caching duration in minutes */
 #endif
-	{ "wl_akm", "", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* WPA akm list */
-#if defined(RTCONFIG_BCMWL6) || defined(RTCONFIG_QCA)
+	{ "wl_akm", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* WPA akm list */
+#if defined(RTCONFIG_BCMWL6) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 #if defined(MFP) || defined(RTCONFIG_MFP)
-	{ "wl_mfp", "0", CKN_STR1, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Protected Management Frame */
+	{ "wl_mfp", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Protected Management Frame */
 	{ "wl0_mfp", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },       /* Protected Management Frame */
 	{ "wl1_mfp", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },       /* Protected Management Frame */
 	{ "wl2_mfp", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },       /* Protected Management Frame */
@@ -543,7 +543,7 @@ struct nvram_tuple router_defaults[] = {
 #ifdef RTCONFIG_HND_ROUTER_AX
 	{ "wps_config_method", "0x784", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },   /* config wps methods as Label PIN, Virtual Push Button, Physical Push Button, Keypad*/
 #endif
-	{ "wl_wps_mode", "enabled", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* enabled wps */
+	{ "wl_wps_mode", "enabled", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* enabled wps */
 	{ "wl_wps_config_state", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* config state unconfiged */
 #endif
 //	{ "wps_device_pin", "12345670", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	// it is mapped to secret_code
@@ -574,16 +574,16 @@ struct nvram_tuple router_defaults[] = {
 #endif
 #endif /* __CONFIG_WPS__ */
 #ifdef __CONFIG_WFI__
-	{ "wl_wfi_enable", "0", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 0: disable */
-	{ "wl_wfi_pinmode", "0", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 0: auto pin */
+	{ "wl_wfi_enable", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 0: disable */
+	{ "wl_wfi_pinmode", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 0: auto pin */
 #endif /* __CONFIG_WFI__ */
 #ifdef __CONFIG_WAPI_IAS__
 	/* WAPI parameters */
-	{ "wl_wai_cert_name", "", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* AP certificate name */
-	{ "wl_wai_cert_index", "1", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* AP certificate index. 1:X.509 */
-	{ "wl_wai_cert_status", "0", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* AP certificate status */
-	{ "wl_wai_as_ip", "", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* ASU server IP address */
-	{ "wl_wai_as_port", "3810", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* ASU server UDP port */
+	{ "wl_wai_cert_name", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* AP certificate name */
+	{ "wl_wai_cert_index", "1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* AP certificate index. 1:X.509 */
+	{ "wl_wai_cert_status", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* AP certificate status */
+	{ "wl_wai_as_ip", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* ASU server IP address */
+	{ "wl_wai_as_port", "3810", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* ASU server UDP port */
 #endif /* __CONFIG_WAPI_IAS__ */
 #ifdef CONFIG_BCMWL5
 	/* WME parameters (cwmin cwmax aifsn txop_b txop_ag adm_control oldest_first) */
@@ -605,9 +605,9 @@ struct nvram_tuple router_defaults[] = {
 #elif defined(RTCONFIG_QCA)
 #else
 	{ "wl_maxassoc", "128", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Max associations driver could support */
-	{ "wl_bss_maxassoc", "128", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Max associations driver could support */
+	{ "wl_bss_maxassoc", "128", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Max associations driver could support */
 
-	{ "wl_sta_retry_time", "5", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Seconds between association attempts */
+	{ "wl_sta_retry_time", "5", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Seconds between association attempts */
 #endif
 #ifdef BCMDBG
 	{ "wl_nas_dbg", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Enable/Disable NAS Debugging messages */
@@ -649,7 +649,7 @@ struct nvram_tuple router_defaults[] = {
 	{ "wl_auth_mode_x", "open", CKN_STR16, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #ifdef RTCONFIG_WIFI6E
 	/* default using enhanced open authentication mode for 6G band */
-#if defined(GTAXE11000)
+#if defined(GTAXE11000) || defined(ETJ)
 	{ "wl2_auth_mode_x", "owe", CKN_STR16, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
 #endif
@@ -678,7 +678,7 @@ struct nvram_tuple router_defaults[] = {
 	{ "wl_sync_node", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 0:router only, 1:all */
 #endif	/* RTCONFIG_AMAS_WGN */
 
-#if defined (RTCONFIG_RALINK) || defined (RTCONFIG_BCMWL6) || defined (RTCONFIG_REALTEK)
+#if defined (RTCONFIG_RALINK) || defined (RTCONFIG_BCMWL6)
 #if defined(RTAC53U) || defined(RTAC1200G) || defined(RTAC1200GP) || defined(RPAC87) || defined(RPAC53)
 	/* RT-AC53U disable txbf by default */
 	{ "wl_txbf", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
@@ -709,9 +709,6 @@ struct nvram_tuple router_defaults[] = {
 	{ "wl_mumimo", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #elif defined(RTCONFIG_LANTIQ)
 	{ "wl1_mumimo", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#endif
-#if defined(RTCONFIG_REALTEK) && defined(RTCONFIG_MUMIMO_5G)
-	{ "wl1_mumimo", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
 #if defined(RTCONFIG_QCA)
 #if defined(RTCONFIG_WIFI_QCA9990_QCA9990) || \
@@ -892,7 +889,7 @@ struct nvram_tuple router_defaults[] = {
 #ifdef RTCONFIG_RALINK
 	{ "wl_PktAggregate", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* UI configurable */
 	{ "wl_HT_OpMode", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* UI configurable */
-#if defined(RTAC85U) || defined(RTAC85P) || defined(RTAC65U) || defined(RTN800HP) || defined(RTACRH26) || defined(TUFAC1750)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 	{ "wl_DLSCapable", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* UI configurable */
 #else
 	{ "wl_DLSCapable", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* UI configurable */
@@ -903,7 +900,7 @@ struct nvram_tuple router_defaults[] = {
 	{ "wl_HT_RDG", "1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl_HT_LinkAdapt", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl_HT_MpduDensity", "5", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#if defined(RTAC85U) || defined(RTAC85P) || defined(RPAC87) || defined(RTN800HP) || defined(RTACRH26) || defined(TUFAC1750) || defined(RTACRH18)|| defined(RT4GAC86U) || defined(RT4GAX56)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 	{ "wl_HT_AMSDU", "1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #else
 	{ "wl_HT_AMSDU", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
@@ -953,7 +950,7 @@ struct nvram_tuple router_defaults[] = {
 #endif
 	{ "wl_turbo_qam", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
-#if defined(RTAC85U) || defined(RTAC85P) || defined(RTN800HP) || defined(RTACRH26) || defined(TUFAC1750) || defined(RT4GAC86U) || defined(RTACRH18) || defined(RT4GAX56) || defined(RTAX54)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
 	{ "wl_txbf_en", "1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #else
 	{ "wl_txbf_en", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
@@ -971,7 +968,7 @@ struct nvram_tuple router_defaults[] = {
 	{ "emf_rtport_entry", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* IGMP frames forwarding ports */
 #ifdef RTCONFIG_BCMWL6
 	{ "wl_wmf_ucigmp_query", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Disable Converting IGMP Query to ucast (default) */
-	{ "wl_wmf_mdata_sendup", "0", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Disable Sending Multicast Data to host (default) */
+	{ "wl_wmf_mdata_sendup", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Disable Sending Multicast Data to host (default) */
 #ifdef RTCONFIG_BCMARM
 	{ "wl_wmf_ucast_upnp", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Disable Converting upnp to ucast (default) */
 	{ "wl_wmf_igmpq_filter", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Disable igmp query filter */
@@ -1014,12 +1011,12 @@ struct nvram_tuple router_defaults[] = {
 #if !defined(RTCONFIG_WIFILOGO) && !defined(RTCONFIG_HND_ROUTER_AX)
 	{ "wl_atf", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Airtime Fairness */
 #else
-#ifdef RPAX56
+#if defined(RPAX56) || defined(RPAX58)
 	{ "wl_atf", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #else
 	{ "wl_atf", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
-#if defined(RTAX56_XD4) || defined(CTAX56_XD4)
+#if defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4)
 	{ "wl1_atf", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
 #endif
@@ -1046,7 +1043,7 @@ struct nvram_tuple router_defaults[] = {
 
 #ifdef RTCONFIG_BCMWL6
 	{ "acs_ifnames", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-	{ "wl_wet_tunnel", "0", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Disable wet tunnel */
+	{ "wl_wet_tunnel", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Disable wet tunnel */
 
 #ifdef RTCONFIG_DPSTA
 	{ "dpsta_ifnames", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
@@ -1115,9 +1112,9 @@ struct nvram_tuple router_defaults[] = {
 #else
 	{ "wl_acs_dfs", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* acsd fcs disable init DFS chan */
 #endif
-	{ "wl_acs_dfsr_immediate", "300 3", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* immediate if > 3 switches last 5 minutes */
-	{ "wl_acs_dfsr_deferred", "604800 5", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* deferred if > 5 switches in last 7 days */
-	{ "wl_acs_dfsr_activity", "30 10240", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* active: >10k I/O in the last 30 seconds */
+	{ "wl_acs_dfsr_immediate", "300 3", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* immediate if > 3 switches last 5 minutes */
+	{ "wl_acs_dfsr_deferred", "604800 5", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* deferred if > 5 switches in last 7 days */
+	{ "wl_acs_dfsr_activity", "30 10240", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* active: >10k I/O in the last 30 seconds */
 	{ "wl_acs_cs_scan_timer", "900", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* acsd fcs cs scan timeout */
 #ifdef RTCONFIG_HND_ROUTER_AX
 	{ "wl_acs_ci_scan_timer", "10", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },  /* acsd fcs CI scan period */
@@ -1130,7 +1127,7 @@ struct nvram_tuple router_defaults[] = {
 	{ "wl_acs_chan_dwell_time", "70", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* acsd fcs chan dwell time */
 	{ "wl_acs_chan_flop_period", "70", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* acsd fcs chan flip-flop time */
 	{ "wl_intfer_period", "1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* acsd fcs sample period */
-#ifdef RPAX56
+#if defined(RPAX56) || defined(RPAX58)
         { "wl_intfer_cnt", "3", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 }, /* acsd fcs sample cnt */
         { "wl_intfer_txfail", "5", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },      /* fcs non-TCP txfail threshold setting */
         { "wl_intfer_tcptxfail", "5", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },   /* fcs TCP txfail threshold setting */
@@ -1230,33 +1227,40 @@ struct nvram_tuple router_defaults[] = {
 #endif
 #ifdef RTCONFIG_HAS_5G_2
 	// Tri-Band
-#if defined(GTAC5300) || defined(GTAX11000) || defined(GTAXE11000)
+#if defined(GTAC5300) || defined(GTAX11000) || defined(GTAXE11000) || defined(GTAX11000_PRO)
 	{ "bsd_ifnames", "eth6 eth7 eth8", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#elif defined(GTAX11000_PRO)
-	{ "bsd_ifnames", "eth7 eth8 eth9", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#elif defined(GTAXE16000)
+	{ "bsd_ifnames", "eth7 eth8 eth9 eth10", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #elif defined(RTAC3200)
 	{ "bsd_ifnames", "eth2 eth1 eth3", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #elif defined(RTAX92U)
 	{ "bsd_ifnames", "eth5 eth6 eth7", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#elif defined(RTAX95Q) || defined(RTAXE95Q)
+#elif defined(RTAX95Q) || defined(XT8PRO) || defined(RTAXE95Q) || defined(ET8PRO) || defined(ET12) || defined(XT12)
 	{ "bsd_ifnames", "eth4 eth5 eth6", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #else
 	{ "bsd_ifnames", "eth1 eth2 eth3", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
-	{ "wl0_bsd_steering_policy", "0 5 3 -62 0 0 0x22", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wl0_bsd_steering_policy", "0 5 3 -82 0 0 0x20", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl1_bsd_steering_policy", "0 5 3 -82 0 0 0x20", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl2_bsd_steering_policy", "0 5 3 -82 0 0 0x28", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-	{ "wl0_bsd_sta_select_policy", "30 -62 0 0 0 1 1 0 0 0 0x122", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#if defined(GTAXE16000)
+	{ "wl3_bsd_steering_policy", "0 5 3 -62 0 0 0x22", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#endif
+	{ "wl0_bsd_sta_select_policy", "30 -82 0 0 0 1 1 0 0 0 0x20", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl1_bsd_sta_select_policy", "30 -82 0 0 0 1 1 0 0 0 0x20", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl2_bsd_sta_select_policy", "30 -82 0 0 0 1 1 0 0 0 0x28", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#if defined(GTAC5300) || defined(GTAX11000) || defined(GTAXE11000)
+#if defined(GTAXE16000)
+	{ "wl3_bsd_sta_select_policy", "30 -62 0 0 0 1 1 0 0 0 0x122", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#endif
+#if defined(GTAC5300) || defined(GTAX11000) || defined(GTAXE11000) || defined(GTAX11000_PRO)
 	{ "wl0_bsd_if_select_policy", "eth8 eth7", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl1_bsd_if_select_policy", "eth8 eth6", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl2_bsd_if_select_policy", "eth7 eth6", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#elif defined(GTAX11000_PRO)
-	{ "wl0_bsd_if_select_policy", "eth9 eth8", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-	{ "wl1_bsd_if_select_policy", "eth9 eth7", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-	{ "wl2_bsd_if_select_policy", "eth8 eth7", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#elif defined(GTAX16000)
+	{ "wl0_bsd_if_select_policy", "eth10 eth8", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	// 5GL
+	{ "wl1_bsd_if_select_policy", "eth10 eth7", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	// 5GH
+	{ "wl2_bsd_if_select_policy", "eth10 eth8", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	// 6G
+	{ "wl3_bsd_if_select_policy", "eth9 eth8", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	// 2.4G
 #elif defined(RTAC3200)
 	{ "wl0_bsd_if_select_policy", "eth3 eth1", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl1_bsd_if_select_policy", "eth3 eth2", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
@@ -1265,7 +1269,7 @@ struct nvram_tuple router_defaults[] = {
 	{ "wl0_bsd_if_select_policy", "eth7 eth6", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl1_bsd_if_select_policy", "eth5 eth7", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl2_bsd_if_select_policy", "eth5 eth6", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#elif defined(RTAX95Q) || defined(RTAXE95Q)
+#elif defined(RTAX95Q) || defined(XT8PRO) || defined(RTAXE95Q) || defined(ET8PRO) || defined(ET12) || defined(XT12)
 	{ "wl0_bsd_if_select_policy", "eth6 eth5", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl1_bsd_if_select_policy", "eth4 eth6", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl2_bsd_if_select_policy", "eth4 eth5", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
@@ -1284,12 +1288,10 @@ struct nvram_tuple router_defaults[] = {
 	{ "bsd_ifnames_x", "eth2 eth3", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #elif defined(RTAX92U)
 	{ "bsd_ifnames_x", "eth6 eth7", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#elif defined(RTAX95Q) || defined(RTAXE95Q)
+#elif defined(RTAX95Q) || defined(XT8PRO) || defined(RTAXE95Q) || defined(ET8PRO) || defined(ET12) || defined(XT12)
 	{ "bsd_ifnames_x", "eth5 eth6", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#elif defined(GTAC5300) || defined(GTAX11000) || defined(GTAXE11000)
+#elif defined(GTAC5300) || defined(GTAX11000) || defined(GTAXE11000) || defined(GTAX11000_PRO) || defined(GTAXE16000)
 	{ "bsd_ifnames_x", "eth7 eth8", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#elif defined(GTAX11000_PRO)
-	{ "bsd_ifnames_x", "eth8 eth9", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #elif defined(RTAC3200)
 	{ "bsd_ifnames_x", "eth1 eth3", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #else
@@ -1305,15 +1307,12 @@ struct nvram_tuple router_defaults[] = {
 #elif defined(RTAX92U)
 	{ "wl1_bsd_if_select_policy_x", "eth7", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl2_bsd_if_select_policy_x", "eth6", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#elif defined(RTAX95Q) || defined(RTAXE95Q)
+#elif defined(RTAX95Q) || defined(XT8PRO) || defined(RTAXE95Q) || defined(ET8PRO) || defined(ET12) || defined(XT12)
 	{ "wl1_bsd_if_select_policy_x", "eth6", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl2_bsd_if_select_policy_x", "eth5", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#elif defined(GTAC5300) || defined(GTAX11000) || defined(GTAXE11000)
+#elif defined(GTAC5300) || defined(GTAX11000) || defined(GTAXE11000) || defined(GTAX11000_PRO) || defined(GTAXE16000)
 	{ "wl1_bsd_if_select_policy_x", "eth8", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl2_bsd_if_select_policy_x", "eth7", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#elif defined(GTAX11000_PRO)
-	{ "wl1_bsd_if_select_policy_x", "eth9", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-	{ "wl2_bsd_if_select_policy_x", "eth8", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #elif defined(RTAC3200)
 	{ "wl1_bsd_if_select_policy_x", "eth3", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl2_bsd_if_select_policy_x", "eth1", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
@@ -1327,13 +1326,13 @@ struct nvram_tuple router_defaults[] = {
 	{ "bsd_aclist_timeout", "3", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #else
 	// Dual-Band
-#if defined(RTAC86U) || defined(GTAC2900) || defined(BCM6750) || defined(BCM63178) || defined(RTAX56U) || defined(RTAX68U ) || defined(RTAC68U_V4)
+#if defined(RTAC86U) || defined(GTAC2900) || defined(BCM6750) || defined(BCM63178) || defined(RTAX56U) || defined(RTAX68U) || defined(RTAC68U_V4)
 	{ "bsd_ifnames", "eth5 eth6", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#elif defined(RTAX88U) || defined(RTAX86U) || defined(RTAX5700)
+#elif defined(RTAX88U) || defined(RTAX86U) || defined(RTAX5700) || defined(GTAX6000)
 	{ "bsd_ifnames", "eth6 eth7", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#elif defined(RTAX56_XD4) || defined(CTAX56_XD4)
+#elif defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4)
 	{ "bsd_ifnames", "wl0 wl1", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#elif defined(RTAX55) || defined(RTAX1800)
+#elif defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2)
 	{ "bsd_ifnames", "eth2 eth3", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #else
 	{ "bsd_ifnames", "eth1 eth2", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
@@ -1345,13 +1344,13 @@ struct nvram_tuple router_defaults[] = {
 #if defined(RTAC86U) || defined(GTAC2900) || defined(BCM6750) || defined(BCM63178) || defined(RTAX56U) || defined(RTAX68U) || defined(RTAC68U_V4)
 	{ "wl0_bsd_if_select_policy", "eth6", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl1_bsd_if_select_policy", "eth5", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#elif defined(RTAX88U) || defined(RTAX86U) || defined(RTAX5700)
+#elif defined(RTAX88U) || defined(RTAX86U) || defined(RTAX5700) || defined(GTAX6000)
 	{ "wl0_bsd_if_select_policy", "eth7", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl1_bsd_if_select_policy", "eth6", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#elif defined(RTAX56_XD4) || defined(CTAX56_XD4)
+#elif defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4)
 	{ "wl0_bsd_if_select_policy", "wl1", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl1_bsd_if_select_policy", "wl0", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#elif defined(RTAX55) || defined(RTAX1800)
+#elif defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2)
 	{ "wl0_bsd_if_select_policy", "eth3", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl1_bsd_if_select_policy", "eth2", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #else
@@ -1423,7 +1422,7 @@ struct nvram_tuple router_defaults[] = {
 #endif
 #if defined(RTCONFIG_BCM7) || defined(RTCONFIG_BCM_7114) || defined(RTCONFIG_BCM9) || defined(HND_ROUTER)
 	{ "wl_dfs_pref", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* DFS Preferred channel value */
-	{ "wl_probresp_mf", "0", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* MAC filter based probe response */
+	{ "wl_probresp_mf", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* MAC filter based probe response */
 	{ "wl_probresp_sw", "1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* SW probe response */
 #if defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
 	{ "wl_vhtmode", "-1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* VHT mode */
@@ -1435,8 +1434,12 @@ struct nvram_tuple router_defaults[] = {
 #endif
 #ifdef RTCONFIG_HND_ROUTER_AX
 	{ "wl_11ax", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },		/* 11ax support */
+#ifdef GTAXE11000
+	{ "wl_ofdma", "3", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },             /* DL/UL OFDMA + MU-MIMO */
+#else
 	{ "wl_ofdma", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },		/* 11ax OFDMA support */
 	{ "wl0_ofdma", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#endif
 #ifdef RTAX92U
 	{ "wl0_11ax", "0", CKN_STR2, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },      /* 11ax support */
 	{ "wl1_11ax", "0", CKN_STR2, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },      /* 11ax support */
@@ -1444,8 +1447,12 @@ struct nvram_tuple router_defaults[] = {
 #else
 	{ "wl0_he_features", "3", CKN_STR2, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },      /* HE features */
 	{ "wl1_he_features", "3", CKN_STR2, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },      /* HE features */
-#if defined(GTAX11000) || defined(RTAX95Q) ||  defined(RTAXE95Q) || defined(GTAXE11000) || defined(GTAX11000_PRO)
+#if defined(GTAX11000) || defined(RTAX95Q) || defined(XT8PRO) ||  defined(RTAXE95Q) ||  defined(ET8PRO) || defined(GTAXE11000) || defined(GTAX11000_PRO) || defined(ET12) || defined(XT12)
 	{ "wl2_he_features", "3", CKN_STR2, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },      /* HE features */
+#endif
+#if defined(GTAXE16000)
+	{ "wl2_he_features", "3", CKN_STR2, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },      /* HE features */
+	{ "wl3_he_features", "3", CKN_STR2, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },      /* HE features */
 #endif
 #endif
 	{ "wl_rx_amsdu_in_ampdu_ovr", "-1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 }, /* override amsdu in ampdu */
@@ -1464,22 +1471,22 @@ struct nvram_tuple router_defaults[] = {
 #endif
 #ifdef RTCONFIG_HND_ROUTER_AX
 	{ "crash_log_backup_dir", "/data", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 }, /* dhd_monitor crash log backup path */
-	{ "wl_fbt_generate_local", "1", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},	/* Generate PMKs locally */
-	{ "wl_sae_anti_clog_threshold", "5", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
+	{ "wl_fbt_generate_local", "1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},	/* Generate PMKs locally */
+	{ "wl_sae_anti_clog_threshold", "5", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 	{ "wl0.1_sae_anti_clog_threshold", "5", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 	{ "wl0.2_sae_anti_clog_threshold", "5", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 	{ "wl0.3_sae_anti_clog_threshold", "5", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 	{ "wl1.1_sae_anti_clog_threshold", "5", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 	{ "wl1.2_sae_anti_clog_threshold", "5", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 	{ "wl1.3_sae_anti_clog_threshold", "5", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
-	{ "wl_sae_sync", "5", CKN_STR_DEFAULT, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
+	{ "wl_sae_sync", "5", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 	{ "wl0.1_sae_sync", "5", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 	{ "wl0.2_sae_sync", "5", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 	{ "wl0.3_sae_sync", "5", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 	{ "wl1.1_sae_sync", "5", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 	{ "wl1.2_sae_sync", "5", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 	{ "wl1.3_sae_sync", "5", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
-	{ "wl_sae_groups", "19 20 21", CKN_STR64, CKN_TYPE_VIF, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
+	{ "wl_sae_groups", "19 20 21", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 	{ "wl0.1_sae_groups", "19 20 21", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 	{ "wl0.2_sae_groups", "19 20 21", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 	{ "wl0.3_sae_groups", "19 20 21", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
@@ -1577,6 +1584,11 @@ struct nvram_tuple router_defaults[] = {
 	{ "dwb_band", "", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 #endif
 #ifdef RTCONFIG_FRONTHAUL_DWB
+#ifdef RTCONFIG_WIFI6E
+	{ "fh_ap_enabled", "2", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},  // On
+#else
+	{ "fh_ap_enabled", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},  // Off
+#endif
 	{ "fh_cap_mssid_subunit", "5", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "fh_re_mssid_subunit", "6", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif //RTCONFIG_DWB
@@ -1674,9 +1686,14 @@ struct nvram_tuple router_defaults[] = {
 	{ "lacp_enabled", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* LACP enable or not */
 #endif
 	{ "bonding_policy", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* bonding policy */
+#if defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033)
+	/* 0/1000: auto/1G, SFP+ maximum link speed */
+	{ "sfpp_max_speed", "0", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "sfpp_force_on", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* auto/force SFP+ TX clock */
+#endif
 #if defined(RTCONFIG_BONDING_WAN)
 	{ "bond_wan", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* WAN bonding enable or not */
-#if defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033)
+#if defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033) || defined(RTCONFIG_SWITCH_QCA8075_PHY_AQR111)
 	/* Port numbers that are used to specify slave ports in bond1, same as enum bs_port_id.
 	 * 0: WAN, 1~8: LAN1 ~ 8, 30: 10G base-T (RJ-45), 31: 10G SFP+,  rest bits are not defined.
 	 * e.g. "1 2" = LAN1, LAN2.
@@ -1720,7 +1737,7 @@ struct nvram_tuple router_defaults[] = {
 	// NVRAM for start_dhcpd
 	// DHCP server parameters
 	{ "dhcp_enable_x", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#if defined(RTN300) || defined(RTCONFIG_HND_ROUTER_AX) || defined(RTCONFIG_ALL_DEF_LAN50) || defined(RTN300)
+#if defined(RTCONFIG_HND_ROUTER_AX) || defined(RTCONFIG_ALL_DEF_LAN50)
 	{ "dhcp_start", "192.168.50.2", CKN_STR15, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "dhcp_end", "192.168.50.254", CKN_STR15, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #elif defined(RTCONFIG_WIFI_SON) || defined(RTCONFIG_LYRA_HIDE)
@@ -1735,7 +1752,11 @@ struct nvram_tuple router_defaults[] = {
 	{ "dhcp_dns1_x", "", CKN_STR15, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "dhcp_wins_x", "", CKN_STR15, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "dhcp_static_x", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#if defined(RTCONFIG_EXTEND_LIMIT)
+	{ "dhcp_staticlist", "", CKN_STR_MAX, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#else
 	{ "dhcp_staticlist", "", CKN_STR5500, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#endif
 	{ "dhcpd_lmax", "253", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "dhcpc_mode", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #ifdef RTCONFIG_DHCP_OVERRIDE
@@ -1894,7 +1915,7 @@ struct nvram_tuple router_defaults[] = {
 #ifdef RTCONFIG_DNSPRIVACY
 	{ "dnspriv_enable", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 0: None 1: DNS-over-TLS */
 	{ "dnspriv_profile", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 0: Opportunistic 1: Strict */
-	{ "dnspriv_rulelist", "", CKN_STR2048, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* ... */
+	{ "dnspriv_rulelist", "", CKN_STR1024, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* ... */
 #endif
 
 	/* Misc WAN parameters */
@@ -1952,8 +1973,6 @@ struct nvram_tuple router_defaults[] = {
 	{ "wans_dualwan", "dsl " DEF_SECOND_WANIF, CKN_STR16, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #elif (defined(RTCONFIG_INTERNAL_GOBI) && defined(RTCONFIG_NO_WANPORT))
 	{ "wans_dualwan", DEF_SECOND_WANIF " none", CKN_STR16, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#elif defined(RTCONFIG_INTERNAL_GOBI)
-	{ "wans_dualwan", DEF_SECOND_WANIF " wan", CKN_STR16, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #else
 	{ "wans_dualwan", "wan " DEF_SECOND_WANIF, CKN_STR16, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
@@ -2326,7 +2345,7 @@ struct nvram_tuple router_defaults[] = {
 	{ "qos_orates", "80-100,10-100,5-100,3-100,2-95,0-0,0-0,0-0,0-0,0-0", CKN_STR1024, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{"qos_irates", "100,100,100,100,100,0,0,0,0,0", CKN_STR512, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "qos_enable", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* "0: off */
-#if defined(RTCONFIG_BWDPI) && !defined(MAPAC1750) && !defined(RTAC59_CD6R) && !defined(RTAC59_CD6N) && !defined(RTAX56_XD4) && !defined(CTAX56_XD4) &&!defined(RTAX53U)
+#if defined(RTCONFIG_BWDPI) && !defined(MAPAC1750) && !defined(RTAC59_CD6R) && !defined(RTAC59_CD6N) && !defined(RTAX56_XD4) && !defined(CTAX56_XD4) &&!defined(RTCONFIG_RALINK)
 	{ "qos_type", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* "0: Traditional */
 #else
 	{ "qos_type", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 0: Traditional */
@@ -2400,6 +2419,7 @@ struct nvram_tuple router_defaults[] = {
 	{ "ddns_regular_check", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "ddns_regular_period", "60", CKN_STR5, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "ddns_transfer", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "ddns_act", "", CKN_STR16, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #if defined(RTCONFIG_MULTIWAN_CFG) || defined(RTCONFIG_DUALWAN)
 	/* If dualwan + load-balance is chosen, let user select WAN unit for DDNS.
 	 * -1: Auto, select first/lowest connected WAN unit.
@@ -2422,10 +2442,14 @@ struct nvram_tuple router_defaults[] = {
 	{ "MULTIFILTER_MACFILTER_DAYTIME", "", CKN_STR4096, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #ifdef RTCONFIG_PC_SCHED_V3
 	{ "MULTIFILTER_MACFILTER_DAYTIME_V2", "", CKN_STR4096, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "MULTIFILTER_BLOCK_ALL", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
 	{ "MULTIFILTER_URL_ENABLE", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "MULTIFILTER_URL", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "MULTIFILTER_TMP", "", CKN_STR_MAX, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "OPTUS_MULTIFILTER_ALL", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "OPTUS_MULTIFILTER_ENABLE", "", CKN_STR128, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "OPTUS_MULTIFILTER_MAC", "", CKN_STR2048, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 
 #if defined(RTCONFIG_BWDPI)
 	// TrendMicro module
@@ -2507,14 +2531,6 @@ struct nvram_tuple router_defaults[] = {
 	{ "filter_lw_default_x", "ACCEPT", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "filter_lw_icmp_x", "", CKN_STR32, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "filter_lwlist", "", CKN_STR2048, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-
-	{ "fw_wl_enable_x", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-	{ "filter_wl_date_x", "1111111", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-	{ "filter_wl_time_x", "00002359", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-	{ "filter_wl_time2_x", "00002359", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-	{ "filter_wl_default_x", "ACCEPT", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-	{ "filter_wl_icmp_x", "", CKN_STR32, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-	{ "filter_wllist", "", CKN_STR2048, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 
 	// NVRAM for start_usb
 	{ "usb_enable", "1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
@@ -2902,7 +2918,7 @@ struct nvram_tuple router_defaults[] = {
 	{ "apps_ipkg_server", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "apps_wget_timeout", "30", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "apps_local_space", "/rom", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#if defined (RTAC1200) || defined (RTAC1200V2) || defined (RTAC1200GA1) || defined (RTAC1200GU) || defined(RTAC85U) || defined(RTAC85P) || defined(RTACRH26) || defined(TUFAC1750) || defined(RTACRH18)|| defined(RT4GAC86U) || defined(RT4GAX56)
+#if 0
 	{ "apps_swap_enable", "1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "apps_swap_size", "67000", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #else
@@ -2932,14 +2948,12 @@ struct nvram_tuple router_defaults[] = {
 #endif
 #ifdef RTCONFIG_FRS_LIVE_UPDATE
 	{ "webs_update_trigger", "", CKN_STR32, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#endif
-#ifdef RTCONFIG_FRS_LIVE_UPDATE
-	{ "webs_update_trigger", "", CKN_STR32, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "webs_update_ts", "", CKN_STR32, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #ifdef RTCONFIG_AUTO_FW_UPGRADE
 	{ "webs_update_enable", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "webs_update_time", "02:00", CKN_STR5, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
+	{ "webs_update_trigger", "", CKN_STR32, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
 
 	{ "temp_lang", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
@@ -3021,7 +3035,11 @@ struct nvram_tuple router_defaults[] = {
 	#endif
 
 	{ "record_lanaddr", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#if defined(RTCONFIG_BCM_MFG) && (defined(RPAX56) || defined(RPAX58))
+	{ "telnetd_enable", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#else
 	{ "telnetd_enable", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#endif
 #ifdef RTCONFIG_SSH
 	{ "sshd_enable", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 0: disabled 1: enabled 2: enabled for LAN only */
 	{ "sshd_port", "", CKN_STR5, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
@@ -3183,7 +3201,7 @@ struct nvram_tuple router_defaults[] = {
 	{ "vpnc_pptp_options_x", "", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "vpnc_state_t", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "vpnc_sbstate_t", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-	{ "vpnc_clientlist", "", CKN_STR4096, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "vpnc_clientlist", "", CKN_STR8192, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "vpnc_connect_row", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "vpnc_auto_conn", "", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "vpnc_pptp_options_x_list", "", CKN_STR2048, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
@@ -3301,7 +3319,11 @@ struct nvram_tuple router_defaults[] = {
 	{ "vpn_crt_client_key", "", CKN_STR3999, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "vpn_crt_client_crl", "", CKN_STR3999, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "vpn_crt_client_extra", "", CKN_STR3999, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-
+#ifdef RTCONFIG_TPVPN
+	{ "vpn_client_tp", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "vpn_client_tp_region", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "vpn_client_tp_proto", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#endif
 #endif
 
 #ifdef RTCONFIG_NOTIFICATION_CENTER
@@ -3385,6 +3407,7 @@ struct nvram_tuple router_defaults[] = {
 #ifdef RTCONFIG_DBLOG
 	{ "dblog_enable", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "dblog_tousb", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "dblog_adj_syslog", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "dblog_service", "0", CKN_STR4, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "dblog_duration", "0", CKN_STR10, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "dblog_state", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
@@ -3485,6 +3508,9 @@ struct nvram_tuple router_defaults[] = {
 	{ "ipv6_prefix_length_s", "64", CKN_STR3, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* for ipv6 6in4/other */
 	{ "ipv6_rtr_addr_s", "", CKN_STR39, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* for ipv6 other */
 	{ "ipv6_accept_defrtr", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Accept Default Route */
+#ifdef RTAX82_XD6
+	{ "ipv6_only", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },		/* IPv6 only */
+#endif
 #endif
 
 #if defined(RTCONFIG_IPV6) && defined(RTCONFIG_DUALWAN)
@@ -3529,6 +3555,9 @@ struct nvram_tuple router_defaults[] = {
 	{ "ipv61_prefix_length_s", "64", CKN_STR3, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* for ipv6 6in4/other */
 	{ "ipv61_rtr_addr_s", "", CKN_STR39, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* for ipv6 other */
 	{ "ipv61_accept_defrtr", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Accept Default Route */
+#ifdef RTAX82_XD6
+	{ "ipv61_only", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },		/* IPv6 only */
+#endif
 #endif
 
 	{ "web_redirect", "3", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* treat no phy, no internet as disconnect */
@@ -3583,18 +3612,17 @@ struct nvram_tuple router_defaults[] = {
 	{ "Ate_temp_2G_over_sec", "", CKN_STR32, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 	{ "Ate_temp_5G_over_sec", "", CKN_STR32, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 #ifdef RTCONFIG_HAS_5G_2
-#if defined(RTCONFIG_WIFI6E)
-	{ "Ate_temp_6G_max", "0", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
-	{ "Ate_temp_6G_limit", "115", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
-	{ "Ate_temp_6G_over_sec", "", CKN_STR32, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
-#else
 	{ "Ate_temp_5G2_max", "0", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 	{ "Ate_temp_5G2_limit", "115", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 	{ "Ate_temp_5G2_over_sec", "", CKN_STR32, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 #endif
+#if defined(RTCONFIG_WIFI6E)
+	{ "Ate_temp_6G_max", "0", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
+	{ "Ate_temp_6G_limit", "115", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
+	{ "Ate_temp_6G_over_sec", "", CKN_STR32, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 #endif
 #if defined(RTCONFIG_EXTPHY_BCM84880) \
- || defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033)
+ || defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033) || defined(RTCONFIG_SWITCH_QCA8075_PHY_AQR111)
 	{ "Ate_temp_phy_max", "0", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 	{ "Ate_temp_phy_limit", "115", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
 	{ "Ate_temp_phy_over_sec", "", CKN_STR32, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0},
@@ -3678,7 +3706,7 @@ struct nvram_tuple router_defaults[] = {
 	{ "ttl_inc_enable", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* enable TTL increment */
 	{ "ttl_spoof_enable", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* enable TTL spoofing */
 #ifdef RTCONFIG_TOR
-	{ "Tor_enable", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* enable Tor Transparent Proxy */
+	{ "Tor_enable", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* enable Tor Transparent Proxy */
 	{ "Tor_socksport", "9050", CKN_STR5, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "Tor_transport", "9040", CKN_STR5, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "Tor_dnsport", "9053", CKN_STR5, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
@@ -3763,6 +3791,10 @@ struct nvram_tuple router_defaults[] = {
 #endif
 	{ "ipsec_isakmp_port", "500", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "ipsec_nat_t_port", "4500", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#ifdef RTCONFIG_UPNPC_NEW
+	{ "ipsec_isakmp_ext_port", "3500", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "ipsec_nat_t_ext_port", "4500", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#endif /* RTCONFIG_UPNPC_NEW */
 #endif
 #ifdef RTCONFIG_QUAGGA
 	{ "quagga_enable", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 0: Disable */
@@ -3771,10 +3803,15 @@ struct nvram_tuple router_defaults[] = {
 	{ "rip_hostname", "ripd", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* Set hostname of the ripd.(default: ripd) */
 	{ "rip_passwd", "zebra", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_SVR, 0 },	/* Set password for vty interface. If there is no password */
 #endif
+#if defined(RTCONFIG_QCA)
+	/* 0: MSG_INFO (default debug level in hostapd/wpa_supplicant), 1: MSG_DEBUG, 2: MSG_MSGDUMP, 3: MSG_EXCESSIVE */
+	{ "hapd_dbg", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wsup_dbg", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#endif
 #if defined(RTCONFIG_SWITCH_RTL8370M_PHY_QCA8033_X2) || defined(RTCONFIG_SWITCH_RTL8370MB_PHY_QCA8033_X2)
 	{ "lan_trunk_0", "0", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "lan_trunk_1", "0", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-	{ "lan_trunk_type", "0", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "lan_trunk_type", "0", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 0: disable, 1: static, 2: LACP */
 	{ "lan_hash_algorithm", "0", CKN_STR8, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* 0: Source Port, 1: Layer2, 2: Layer2+3, 3: Layer3, 4: Layer3+4 */
 #endif
 #if defined(RTCONFIG_DUALWAN)
@@ -3784,7 +3821,7 @@ struct nvram_tuple router_defaults[] = {
 //#if defined(RTCONFIG_PORT_BASED_VLAN)
 	{ "vlan_enable", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #ifdef RTCONFIG_AMAS_WGN
-#if defined(RTAC5300) || defined(GTAC5300)
+#if defined(RTAC5300) || defined(GTAC5300)	
 	{ "vlan_rulelist",\
 	  // <enable>vid>prio>wanportset>lanportset>wl2gset>wl5gset>subnet_name>internet>public_vlan>type>
 	  "<1>501>0>0>FFFF>0002>0000>192.168.101.1/24>1>0>1>"\
@@ -3812,9 +3849,9 @@ struct nvram_tuple router_defaults[] = {
 	  CKN_STR4096, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0\
 	},
 #endif
-#endif	// defined(RTAC5300) || defined(GTAC5300)
+#endif	// defined(RTAC5300) || defined(GTAC5300)	  
 
-#if defined(RTAC5300) || defined(GTAC5300)
+#if defined(RTAC5300) || defined(GTAC5300)	
 	{ "subnet_rulelist",\
 	  // <ip>netmask>dhcp_enable>dhcp_start>dhcp_end>dhcp_lease>domainname>dns>wins>ema>macipbinding>type>
 	  "<192.168.101.1>255.255.255.0>1>192.168.101.2>192.168.101.254>86400>>>>>>1>"\
@@ -3842,9 +3879,9 @@ struct nvram_tuple router_defaults[] = {
 	  CKN_STR5500, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0\
 	},
 #endif
-#endif	// defined(RTAC5300) || defined(GTAC5300)
+#endif	// defined(RTAC5300) || defined(GTAC5300)	  
 
-#else 	// RTCONFIG_AMAS_WGN
+#else 	// RTCONFIG_AMAS_WGN	
 	{ "vlan_rulelist", "", CKN_STR4096, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "subnet_rulelist", "", CKN_STR5500, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif	// RTCONFIG_AMAS_WGN
@@ -3882,12 +3919,13 @@ struct nvram_tuple router_defaults[] = {
 #ifdef RTCONFIG_MASTER_DET
 	{ "cfg_master", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
-	{ "cfg_recount", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "cfg_recount", "0", CKN_STR4, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "cfg_relist", "", CKN_STR4096, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "cfg_relist_x", "", CKN_STR4096, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #ifdef RTCONFIG_BHCOST_OPT
 	{ "cfg_tcso", "60", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
+	{ "cfg_tbrelist", "", CKN_STR1024, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
 
 #ifdef RTCONFIG_BT_CONN
@@ -3958,6 +3996,7 @@ struct nvram_tuple router_defaults[] = {
 #endif
 #if defined(RTCONFIG_ALEXA)
 	{ "alexa_new_binding", "0" , CKN_STR1 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "amazon_alexa_skill_user_id", "", CKN_STR1024, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
 	{ "label_mac", "" , CKN_STR_DEFAULT , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #ifdef RTCONFIG_IPERF3
@@ -3977,8 +4016,12 @@ struct nvram_tuple router_defaults[] = {
 #ifdef RTCONFIG_CAPTCHA
 	{ "captcha_enable"   , "1",  CKN_STR1  , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
-#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400)
+#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX11000_PRO) || defined(GTAXE16000) || defined(GTAX6000)
+#ifdef TUFAX5400
+	{ "ledg_scheme", "2", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#else
 	{ "ledg_scheme", "6", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#endif
 #if defined(GSAX3000) || defined(GSAX5400)
 	{ "ledg_rgb1", "0,100,128,0,50,128,0,0,128,15,0,128,30,0,128", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "ledg_rgb2", "128,0,0,128,0,0,128,0,0,128,0,0,128,0,0", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
@@ -3986,7 +4029,11 @@ struct nvram_tuple router_defaults[] = {
 	{ "ledg_rgb7", "0,0,128,0,0,128,0,0,128,0,0,128,0,0,128", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #else
 	{ "ledg_rgb1", "0,100,128,0,50,128,0,0,128,30,0,128", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#ifdef TUFAX5400
+	{ "ledg_rgb2", "128,55,0,128,55,0,128,55,0,128,55,0", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#else
 	{ "ledg_rgb2", "128,0,0,128,0,0,128,0,0,128,0,0", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#endif
 	{ "ledg_rgb3", "0,0,128,0,0,128,0,0,128,0,0,128", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "ledg_rgb7", "0,0,128,0,0,128,0,0,128,0,0,128", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
@@ -4027,7 +4074,7 @@ struct nvram_tuple router_defaults[] = {
 	{ "oam1_rmep_id"         , "0", CKN_STR4  , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "oam1_ccm_itvl"        , "0", CKN_STR1  , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
-#ifdef BCM_KF_NETFILTER
+#if defined(BCM_KF_NETFILTER) || defined(RTCONFIG_SWRT_FULLCONE)
 	{ "nat_type", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },		//0: Symmetric  1: Full cone
 #endif
 #ifdef RTCONFIG_DNSFILTER
@@ -4046,6 +4093,132 @@ struct nvram_tuple router_defaults[] = {
 	{ "dnsfilter_custom1", "8.8.8.8", CKN_STR15, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* User-defined DNS filter 1 */
 	{ "dnsfilter_custom2", "8.8.8.8", CKN_STR15, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },     /* User-defined DNS filter 2 */
 	{ "dnsfilter_custom3", "8.8.8.8", CKN_STR15, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },     /* User-defined DNS filter 3 */
+#endif
+#ifdef RTCONFIG_QCA_PLC2
+	{ "cfg_plc_master", "", CKN_STR17, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },	/* MAC address of the PLC master device */
+#endif	/* RTCONFIG_QCA_PLC2 */
+#ifdef RTCONFIG_WIREGUARD
+	{ "wgs_unit", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgs_enable", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgs_addr", "10.6.0.1/24", CKN_STR63, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgs_port", "51820", CKN_STR5, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgs_alive", "25", CKN_STR5, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgs_dns", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgs_psk", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgs_priv", "", CKN_STR63, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgs_pub", "", CKN_STR63, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+
+	{ "wgsc_unit", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgsc_enable", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgsc_addr", "", CKN_STR63, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgsc_aips", "", CKN_STR1024, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgsc_caips", "", CKN_STR1024, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgsc_priv", "", CKN_STR63, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgsc_pub", "", CKN_STR63, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgsc_psk", "", CKN_STR63, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+
+	{ "wgc_unit", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgc_enable", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgc_addr", "", CKN_STR63, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgc_ep_addr", "", CKN_STR63, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgc_ep_port", "", CKN_STR5, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgc_alive", "25", CKN_STR5, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgc_aips", "", CKN_STR1024, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgc_nat", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgc_dns", "", CKN_STR128, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgc_priv", "", CKN_STR63, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgc_ppub", "", CKN_STR63, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgc_psk", "", CKN_STR63, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#ifdef RTCONFIG_TPVPN
+	{ "wgc_tp", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "wgc_tp_region", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#endif
+#endif
+#ifdef RTCONFIG_TPVPN
+#ifdef RTCONFIG_WIREGUARD
+	{ "nordvpn_exchange_token", "", CKN_STR128, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#endif
+#endif
+
+	{ "jffs2_enable", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "jffs2_scripts", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "jffs2_format", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#if defined(RTCONFIG_SOFTCENTER)
+	{ "sc_mount", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "sc_disk", "" , CKN_STR128 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "sc_cifs_url", "" , CKN_STR1024 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "sc_cifs_user", "" , CKN_STR1024 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "sc_cifs_pw", "" , CKN_STR1024 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "sc_installed", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "sc_wan_sig", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "sc_nat_sig", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "sc_mount_sig", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "sc_unmount_sig", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "sc_services_start_sig", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "sc_services_stop_sig", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#endif
+	{ "uu_enable", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "led_disable", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "message_loglevel", "5", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#if defined(RTCONFIG_SWRT_UU)
+	{ "swrt_uu", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#endif
+#if defined(RTCONFIG_ENTWARE)
+#if defined(RTAC86U) || defined(GTAC2900) || defined(GTAC5300) || defined(RTAX68U) || defined(RTAX86U) || defined(RTAX88U) || defined(RTAX92U) || defined(GTAX6000) || defined(GTAX11000) || defined(GTAXE11000) || defined(GTAXE16000)
+	{ "entware_arch", "aarch64-k3.10", CKN_STR16, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#elif defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK_MT7622)
+	{ "entware_arch", "armv7sf-k3.2", CKN_STR16, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#elif defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER)
+	{ "entware_arch", "armv7sf-k2.6", CKN_STR16, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#elif defined(RTCONFIG_LANTIQ)
+	{ "entware_arch", "mipssf-k3.4", CKN_STR16, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#elif defined(RTCONFIG_RALINK_MT7621)
+	{ "entware_arch", "mipselsf-k3.4", CKN_STR16, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#else
+#warning fix me
+#endif
+	{ "entware_mount", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "entware_disk", "" , CKN_STR128 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "entware_installed", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "entware_wan_sig", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "entware_stop_sig", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "entware_type", "" , CKN_STR16 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#endif
+#if defined(RTCONFIG_SMARTDNS)
+	{ "smartdns_dis_ipv6", "1" , CKN_STR1 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_prefetch", "1" , CKN_STR1 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_dualstackip", "0" , CKN_STR1 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_num", "0" , CKN_STR1 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_server_1", "" , CKN_STR128 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_port_1", "" , CKN_STR10 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_type_1", "" , CKN_STR10 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_server_2", "" , CKN_STR128 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_port_2", "" , CKN_STR10 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_type_2", "" , CKN_STR10 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_server_3", "" , CKN_STR128 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_port_3", "" , CKN_STR10 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_type_3", "" , CKN_STR10 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_server_4", "" , CKN_STR128 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_port_4", "" , CKN_STR10 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_type_4", "" , CKN_STR64 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_server_5", "" , CKN_STR128 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_port_5", "" , CKN_STR10 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_type_5", "" , CKN_STR10 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_server_6", "" , CKN_STR128 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_port_6", "" , CKN_STR10 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_type_6", "" , CKN_STR10 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_server_7", "" , CKN_STR128 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_port_7", "" , CKN_STR10 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_type_7", "" , CKN_STR10 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_server_8", "" , CKN_STR128 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_port_8", "" , CKN_STR10 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_type_8", "" , CKN_STR10 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_server_9", "" , CKN_STR128 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_port_9", "" , CKN_STR10 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "smartdns_type_9", "" , CKN_STR10 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#endif
+#if defined(RTCONFIG_EASYMESH)
+	{ "easymesh_master", "0" , CKN_STR1 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
 	{ 0, 0, 0, 0, 0, 0, 0 }
 }; // router_defaults
@@ -4400,6 +4573,10 @@ struct nvram_tuple router_state_defaults[] = {
 //	diagnostic
 	{ "dsltmp_diag_log_path", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "dsltmp_diag_confxdsl", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "dsltmp_syncup_short", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#if defined(RTCONFIG_DSL_BCM)
+	{ "dsltmp_config_xtm", "0", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#endif
 #if defined(RTCONFIG_DSL_TCLINUX) || defined(RTCONFIG_DSL_BCM)
 	{ "dsllog_fwver", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "dsllog_drvver", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
@@ -4448,6 +4625,14 @@ struct nvram_tuple router_state_defaults[] = {
 #endif
 #ifdef RTCONFIG_DSL_BCM
 	{ "dsllog_vectoringstate", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "dsllog_fecdown", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "dsllog_fecup", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "dsllog_hecdown", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "dsllog_hecup", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "dsllog_esdown", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "dsllog_esup", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "dsllog_sesdown", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "dsllog_sesup", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
 #endif
 #endif
@@ -4463,6 +4648,9 @@ struct nvram_tuple router_state_defaults[] = {
 
 	{ "ddns_cache", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "ddns_ipaddr", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#ifdef RTCONFIG_IPV6
+	{ "ddns_ipv6_ipaddr", "", CKN_STR64, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#endif
 	{ "ddns_status", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "ddns_server_x_old", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "ddns_hostname_old", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
@@ -4472,6 +4660,15 @@ struct nvram_tuple router_state_defaults[] = {
 	{ "ddns_update_by_wdog", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "ddns_last_wan_unit", "-1", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "reboot_time", "70", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+
+#ifdef RTCONFIG_TPVPN
+	{ "tpvpn_provider", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "tpvpn_region", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "tpvpn_conntype", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "tpvpn_serverid", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "tpvpn_filename", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "tpvpn_state", "", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+#endif
 
 	{ "app_access", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ 0, 0, 0, 0, 0, 0, 0 }
@@ -4813,7 +5010,7 @@ struct nvram_tuple bcm4360ac_defaults[] = {
 	{ "2:ledbh10", "7", CKN_STR_DEFAULT, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ 0, 0, 0, 0, 0, 0, 0 }
 };
-#elif defined(RTAC88U) || defined(RTAC3100) || defined(RTAC5300) || defined(GTAC5300) || defined(RTAX88U) || defined(RTAC86U) || defined(GTAC2900) || defined(GTAX11000) || defined(RTAX92U) || defined(RTAX95Q) || defined(RTAXE95Q) || defined(RTAX86U) || defined(RTAX5700) || defined(RTAX68U) || defined(GTAXE11000) || defined(RTAC68U_V4)
+#elif defined(RTAC88U) || defined(RTAC3100) || defined(RTAC5300) || defined(GTAC5300) || defined(RTAX88U) || defined(RTAC86U) || defined(GTAC2900) || defined(GTAX11000) || defined(RTAX92U) || defined(RTAX95Q) || defined(XT8PRO) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX86U) || defined(RTAX5700) || defined(RTAX68U) || defined(GTAXE11000) || defined(RTAC68U_V4)
 struct nvram_tuple bcm4360ac_defaults[] = {
 	{ 0, 0, 0, 0, 0, 0, 0 }
 };
@@ -5130,7 +5327,7 @@ nvram_validate_all(char *prefix, bool restore)
 
 	for (t = router_defaults; t->name; t++) {
 		if (!strncmp(t->name, "wl_", 3)) {
-			strcat_r(prefix, &t->name[3], tmp);
+			strlcat_r(prefix, &t->name[3], tmp, sizeof(tmp));
 			if (!restore && nvram_get(tmp))
 				continue;
 			v = nvram_get(t->name);
@@ -5143,7 +5340,7 @@ nvram_validate_all(char *prefix, bool restore)
 	if (!strcmp(nvram_safe_get("devicemode"), "1")) {
 		for (t = router_defaults_override_type1; t->name; t++) {
 			if (!strncmp(t->name, "wl_", 3)) {
-				strcat_r(prefix, &t->name[3], tmp);
+				strlcat_r(prefix, &t->name[3], tmp, sizeof(tmp));
 				if (!restore && nvram_get(tmp))
 					continue;
 				v = nvram_get(t->name);
@@ -5152,23 +5349,6 @@ nvram_validate_all(char *prefix, bool restore)
 		}
 	}
 #endif
-}
-
-void
-nvram_initialize_all(char *prefix)
-{
-	struct nvram_tuple *t;
-	char tmp[100];
-
-	for (t = router_defaults; t->name; t++) {
-		if (!strncmp(t->name, "wl_", 3) && (t->type & CKN_TYPE_VIF)) {
-			strcat_r(prefix, &t->name[3], tmp);
-			if (nvram_get(tmp))
-				continue;
-			nvram_set(tmp, t->value);
-			break;
-		}
-	}
 }
 
 /* restore specific per-interface variable */
@@ -5180,7 +5360,7 @@ nvram_restore_var(char *prefix, char *name)
 
 	for (t = router_defaults; t->name; t++) {
 		if (!strncmp(t->name, "wl_", 3) && !strcmp(&t->name[3], name)) {
-			nvram_set(strcat_r(prefix, name, tmp), t->value);
+			nvram_set(strlcat_r(prefix, name, tmp, sizeof(tmp)), t->value);
 			break;
 		}
 	}
@@ -5190,7 +5370,7 @@ nvram_restore_var(char *prefix, char *name)
 	if (!strcmp(nvram_safe_get("devicemode"), "1")) {
 		for (t = router_defaults_override_type1; t->name; t++) {
 			if (!strncmp(t->name, "wl_", 3) && !strcmp(&t->name[3], name)) {
-				nvram_set(strcat_r(prefix, name, tmp), t->value);
+				nvram_set(strlcat_r(prefix, name, tmp, sizeof(tmp)), t->value);
 				break;
 			}
 		}
@@ -5198,3 +5378,4 @@ nvram_restore_var(char *prefix, char *name)
 #endif
 }
 #endif	/* CONFIG_BCMWL5 */
+

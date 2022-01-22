@@ -113,20 +113,6 @@ typedef struct _PAIR_CHANNEL_FREQ_ENTRY
 	unsigned long   lFreq;
 } PAIR_CHANNEL_FREQ_ENTRY, *PPAIR_CHANNEL_FREQ_ENTRY;
 
-#ifndef RTCONFIG_WLMODULE_MT7622_AP
-typedef union  _HTTRANSMIT_SETTING {
-	struct {
-		unsigned short  MCS:7;          // MCS
-		unsigned short  BW:1;           //channel bandwidth 20MHz or 40 MHz
-		unsigned short  ShortGI:1;
-		unsigned short  STBC:2;         //SPACE
-		unsigned short  rsv:3;
-		unsigned short  MODE:2;         // 0: CCK, 1:OFDM, 2:Mixedmode, 3:GreenField
-	} field;
-	unsigned short  word;
-} HTTRANSMIT_SETTING, *PHTTRANSMIT_SETTING;
-#endif
-
 typedef union _LARGE_INTEGER {
 	struct {
 		unsigned long LowPart;
@@ -348,6 +334,12 @@ typedef enum _RT_802_11_PHY_MODE {
 	PHY_11VHT_N_AG_MIXED,
 	PHY_11VHT_N_A_MIXED,// 14
 	PHY_11VHT_N_MIXED,
+	PHY_11AX_24G,
+	PHY_11AX_5G,
+	PHY_11AX_6G,
+	PHY_11AX_24G_6G,
+	PHY_11AX_5G_6G,
+	PHY_11AX_24G_5G_6G,
 	PHY_MODE_MAX
 } RT_802_11_PHY_MODE;
 
@@ -550,6 +542,4 @@ typedef struct _NDIS_802_11_WEP                                                 
 	unsigned int        KeyLength;     // length of key in bytes
 	unsigned char       KeyMaterial[1];// variable length depending on above field
 } NDIS_802_11_WEP, *PNDIS_802_11_WEP;
-
-
 

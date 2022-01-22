@@ -92,6 +92,10 @@ define platformRouterOptions
 		echo "RTCONFIG_RALINK=y" >>$(1); \
 		sed -i "/CONFIG_RA_HW_NAT_IPV6/d" $(1); \
 		echo "# CONFIG_RA_HW_NAT_IPV6 is not set" >>$(1); \
+		if [ "$(PMF)" = "y" ]; then \
+			sed -i "/RTCONFIG_MFP/d" $(1); \
+			echo "RTCONFIG_MFP=y" >>$(1); \
+		fi; \
 		if [ "$(RT3883)" = "y" ]; then \
 			sed -i "/RTCONFIG_RALINK_RT3883/d" $(1); \
 			echo "RTCONFIG_RALINK_RT3883=y" >>$(1); \
@@ -120,27 +124,27 @@ define platformRouterOptions
 			sed -i "/RTCONFIG_RALINK_MT7621/d" $(1); \
 			echo "# RTCONFIG_RALINK_MT7621 is not set" >>$(1); \
 		fi; \
-                if [ "$(MT7628)" = "y" ]; then \
-                        sed -i "/RTCONFIG_RALINK_MT7628/d" $(1); \
-                        echo "RTCONFIG_RALINK_MT7628=y" >>$(1); \
-                else \
-                        sed -i "/RTCONFIG_RALINK_MT7628/d" $(1); \
-                        echo "# RTCONFIG_RALINK_MT7628 is not set" >>$(1); \
-                fi; \
-                if [ "$(MT7629)" = "y" ]; then \
-                        sed -i "/RTCONFIG_RALINK_MT7629/d" $(1); \
-                        echo "RTCONFIG_RALINK_MT7629=y" >>$(1); \
-                else \
-                        sed -i "/RTCONFIG_RALINK_MT7629/d" $(1); \
-                        echo "# RTCONFIG_RALINK_MT7629 is not set" >>$(1); \
-                fi; \
-                if [ "$(MT7622)" = "y" ]; then \
-                        sed -i "/RTCONFIG_RALINK_MT7622/d" $(1); \
-                        echo "RTCONFIG_RALINK_MT7622=y" >>$(1); \
-                else \
-                        sed -i "/RTCONFIG_RALINK_MT7622/d" $(1); \
-                        echo "# RTCONFIG_RALINK_MT7622 is not set" >>$(1); \
-                fi; \
+		if [ "$(MT7628)" = "y" ]; then \
+			sed -i "/RTCONFIG_RALINK_MT7628/d" $(1); \
+			echo "RTCONFIG_RALINK_MT7628=y" >>$(1); \
+		else \
+			sed -i "/RTCONFIG_RALINK_MT7628/d" $(1); \
+			echo "# RTCONFIG_RALINK_MT7628 is not set" >>$(1); \
+		fi; \
+		if [ "$(MT7629)" = "y" ]; then \
+			sed -i "/RTCONFIG_RALINK_MT7629/d" $(1); \
+			echo "RTCONFIG_RALINK_MT7629=y" >>$(1); \
+		else \
+			sed -i "/RTCONFIG_RALINK_MT7629/d" $(1); \
+			echo "# RTCONFIG_RALINK_MT7629 is not set" >>$(1); \
+		fi; \
+		if [ "$(MT7622)" = "y" ]; then \
+			sed -i "/RTCONFIG_RALINK_MT7622/d" $(1); \
+			echo "RTCONFIG_RALINK_MT7622=y" >>$(1); \
+		else \
+			sed -i "/RTCONFIG_RALINK_MT7622/d" $(1); \
+			echo "# RTCONFIG_RALINK_MT7622 is not set" >>$(1); \
+		fi; \
 	fi; \
 	)
 endef
