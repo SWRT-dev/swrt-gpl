@@ -727,6 +727,7 @@ static inline bool usb_device_no_sg_constraint(struct usb_device *udev)
 	return udev && udev->bus && udev->bus->no_sg_constraint;
 }
 
+extern struct usb_device *usb_find_device_by_name(const char *name);
 
 /*-------------------------------------------------------------------------*/
 
@@ -1904,3 +1905,4 @@ static inline void usb_led_activity(enum usb_led_event ev) {}
 #endif  /* __KERNEL__ */
 
 #endif
+

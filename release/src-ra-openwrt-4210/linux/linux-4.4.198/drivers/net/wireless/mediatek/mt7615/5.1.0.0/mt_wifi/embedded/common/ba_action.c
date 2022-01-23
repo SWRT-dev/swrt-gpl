@@ -747,7 +747,7 @@ void ba_flush_reordering_timeout_mpdus(PRTMP_ADAPTER pAd,
 		if (Sequence != INVALID_RCV_SEQ)
 			pBAEntry->LastIndSeq = Sequence;
 
-		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_BA, DBG_LVL_OFF, ("%x, flush one!\n", pBAEntry->LastIndSeq));
+		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_BA, DBG_LVL_TRACE, ("%x, flush one!\n", pBAEntry->LastIndSeq));
 	}
 
 }

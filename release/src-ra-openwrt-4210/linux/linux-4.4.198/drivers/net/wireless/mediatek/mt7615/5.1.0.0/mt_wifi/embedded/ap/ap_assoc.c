@@ -2037,7 +2037,7 @@ SendAssocResponse:
 #endif /* DOT11_N_SUPPORT */
 #ifdef CONFIG_HOTSPOT_R2
 	/* qosmap IE */
-	MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("entry wcid %d QosMapSupport=%d\n",
+	MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("entry wcid %d QosMapSupport=%d\n",
 			 pEntry->wcid, pEntry->QosMapSupport));
 
 	if (pEntry->QosMapSupport) {

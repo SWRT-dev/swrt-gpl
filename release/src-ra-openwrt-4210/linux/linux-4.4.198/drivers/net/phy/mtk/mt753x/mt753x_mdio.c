@@ -21,6 +21,10 @@
 #include <linux/of_gpio.h>
 #include <linux/of_net.h>
 #include <linux/of_irq.h>
+#if defined(CONFIG_MODEL_R6800)
+#include <linux/fs.h>
+#include <linux/proc_fs.h>
+#endif
 
 #include "mt753x.h"
 #include "mt753x_swconfig.h"
@@ -560,6 +564,44 @@ static const char *phy_speed_to_str(int speed)
 	}
 }
 
+#if defined(CONFIG_MODEL_R6800)
+struct port_s {
+	int status;
+	int speed;
+};
+struct port_s ports_status[] = { {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0} };
+static struct proc_dir_entry *swconfig_entry = NULL;
+
+void ports_set_status(int port, int status, int speed)
+{
+	ports_status[port].status = status;
+	ports_status[port].speed = speed;
+}
+
+static ssize_t ports_ops_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
+{
+	char pbuf[40];
+	int len=0;
+//	if(*ppos > 0 || count < 40)
+//		return 0;
+	len += sprintf(pbuf, "p0=%d,%d;", ports_status[0].status, ports_status[0].speed);
+	len += sprintf(pbuf + len, "p1=%d,%d;", ports_status[1].status, ports_status[1].speed);
+	len += sprintf(pbuf + len, "p2=%d,%d;", ports_status[2].status, ports_status[2].speed);
+	len += sprintf(pbuf + len, "p3=%d,%d;", ports_status[3].status, ports_status[3].speed);
+	len += sprintf(pbuf + len, "p4=%d,%d\n", ports_status[4].status, ports_status[4].speed);
+	
+	if(copy_to_user(buf,pbuf,len))
+		return -EFAULT;
+	*ppos = len;
+	return len;
+}
+
+static const struct file_operations ports_ops = {
+	.owner = THIS_MODULE,
+	.read = ports_ops_read,
+};
+#endif
+
 static void mt753x_phy_link_handler(struct net_device *dev)
 {
 	struct mt753x_phy *phy = container_of(dev, struct mt753x_phy, netdev);
@@ -791,6 +833,11 @@ static int mt753x_probe(struct platform_device *pdev)
 	if (gsw->irq >= 0)
 		mt753x_irq_enable(gsw);
 
+#if defined(CONFIG_MODEL_R6800)
+	swconfig_entry = proc_mkdir("swconfig_led", NULL);
+	proc_create("ports_status", 0644, swconfig_entry, &ports_ops);
+#endif
+
 	return 0;
 
 fail:
@@ -812,7 +859,10 @@ static int mt753x_remove(struct platform_device *pdev)
 #ifdef CONFIG_SWCONFIG
 	mt753x_swconfig_destroy(gsw);
 #endif
-
+#if defined(CONFIG_MODEL_R6800)
+	remove_proc_entry("ports_status", swconfig_entry);
+	remove_proc_entry("swconfig_led", NULL);
+#endif
 	mt753x_disconnect_internal_phys(gsw);
 
 	mdiobus_unregister(gsw->gphy_bus);

@@ -14,6 +14,10 @@
 #include "mt753x.h"
 #include "mt753x_regs.h"
 
+#if defined(CONFIG_MODEL_R6800)
+extern void ports_set_status(int port, int status, int speed);
+#endif
+
 void mt753x_irq_enable(struct gsw_mt753x *gsw)
 {
 	u32 val;
@@ -35,7 +39,9 @@ static void display_port_link_status(struct gsw_mt753x *gsw, u32 port)
 {
 	u32 pmsr, speed_bits;
 	const char *speed;
-
+#if defined(CONFIG_MODEL_R6800)
+	int spd = 0;
+#endif
 	pmsr = mt753x_reg_read(gsw, PMSR(port));
 
 	speed_bits = (pmsr & MAC_SPD_STS_M) >> MAC_SPD_STS_S;
@@ -43,22 +49,40 @@ static void display_port_link_status(struct gsw_mt753x *gsw, u32 port)
 	switch (speed_bits) {
 	case MAC_SPD_10:
 		speed = "10Mbps";
+#if defined(CONFIG_MODEL_R6800)
+		spd = 0;
+#endif
 		break;
 	case MAC_SPD_100:
 		speed = "100Mbps";
+#if defined(CONFIG_MODEL_R6800)
+		spd = 1;
+#endif
 		break;
 	case MAC_SPD_1000:
 		speed = "1Gbps";
+#if defined(CONFIG_MODEL_R6800)
+		spd = 2;
+#endif
 		break;
 	case MAC_SPD_2500:
 		speed = "2.5Gbps";
+#if defined(CONFIG_MODEL_R6800)
+		spd = 3;
+#endif
 		break;
 	}
 
 	if (pmsr & MAC_LNK_STS) {
+#if defined(CONFIG_MODEL_R6800)
+		ports_set_status(port, 1, spd);
+#endif
 	dev_info(gsw->dev, "Port %d Link is Up - %s/%s\n",
 		 port, speed, (pmsr & MAC_DPX_STS) ? "Full" : "Half");
 	} else {
+#if defined(CONFIG_MODEL_R6800)
+		ports_set_status(port, 0, spd);
+#endif
 		dev_info(gsw->dev, "Port %d Link is Down\n", port);
 	}
 }
