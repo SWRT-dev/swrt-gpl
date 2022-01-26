@@ -4,7 +4,7 @@ ccflags-y += -DCONFIG_NTFS3_LZX_XPRESS
 
 obj-m := ntfs3.o
 
-ntfs3-objs :=	compat.o \
+ntfs3-y :=	compat.o \
 		attrib.o \
 		attrlist.o \
 		bitfunc.o \
@@ -24,7 +24,7 @@ ntfs3-objs :=	compat.o \
 		upcase.o \
 		xattr.o
 
-ntfs3-objs += $(addprefix lib/,\
+ntfs3-y += $(addprefix lib/,\
 		decompress_common.o \
 		lzx_decompress.o \
 		xpress_decompress.o \
