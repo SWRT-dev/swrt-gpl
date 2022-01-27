@@ -1170,16 +1170,17 @@ static ssize_t ntfs_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
 out:
 	inode_unlock(inode);
 
-	if (ret > 0){
-		ssize_t err;
+	if (ret > 0)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	{
+		ssize_t err;
 		err = generic_write_sync(file, iocb->ki_pos - ret, ret);
-#else
-		err = generic_write_sync(iocb, ret);
-#endif
 		if (err < 0)
 			ret = err;
 	}
+#else
+		ret = generic_write_sync(iocb, ret);
+#endif
 	return ret;
 }
 
