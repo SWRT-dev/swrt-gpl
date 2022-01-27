@@ -3436,7 +3436,7 @@ INT RTMPAPSetInformation(
 #ifndef WAPP_SUPPORT
 	case OID_802_11_WNM_COMMAND:
 		{
-			UCHAR *Buf;
+			UCHAR *Buf = NULL;
 			struct wnm_command *cmd_data;
 
 			os_alloc_mem(Buf, (UCHAR **)&Buf, wrq->u.data.length);
@@ -12509,15 +12509,15 @@ INT set_hnat_register(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 	struct wifi_dev *wdev;
 
 	reg_en = simple_strtol(arg, 0, 10);
-	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("Device Instance\n"));
+	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("Device Instance\n"));
 	for (idx = 0; idx < WDEV_NUM_MAX; idx++) {
-		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("\tWDEV %02d:", idx));
+		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("\tWDEV %02d:", idx));
 		if (pAd->wdev_list[idx]) {
 			wdev = pAd->wdev_list[idx];
-			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("\n\t\tName:%s\n",
+			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("\n\t\tName:%s\n",
 					RTMP_OS_NETDEV_GET_DEVNAME(wdev->if_dev)));
-			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("\t\tWdev(list) Idx:%d\n", wdev->wdev_idx));
-			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("\t\tWdev(list) Idx:%d\n", wdev->wdev_idx));
+			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 				("\t\t Idx:%d\n", RtmpOsGetNetIfIndex(wdev->if_dev)));
 #if !defined(CONFIG_RA_NAT_NONE)
 #ifdef CONFIG_RA_HW_NAT_WIFI_NEW_ARCH
@@ -13350,8 +13350,8 @@ VOID RTMPIoctlNfcStatus(
 	memset(msg, 0 ,128 );
 
 	/*
-		Action: b��<7:6>: 0x0 �V To NFC, 0x1 �V From NFC
-        		b��<5:0>: 0x0 �V Get, 0x01 - Set
+		Action: b锟斤拷<7:6>: 0x0 锟絍 To NFC, 0x1 锟絍 From NFC
+        		b锟斤拷<5:0>: 0x0 锟絍 Get, 0x01 - Set
 	*/
 	UCHAR action = 0, type = TYPE_NFC_STATUS; /* 5 - NFC Status */
 	
@@ -15565,6 +15565,50 @@ INT RTMP_AP_IoctlHandle(
 			DiagGetProcessInfo(pAd, wrq);
 			break;
 #endif
+		case CMD_RTPRIV_IOCTL_ASUSCMD:
+			//RTMPIoctlAsusHandle(pAd, wrq, subcmd, pData, Data);
+			if ( subcmd == ASUS_SUBCMD_CHLIST) {
+				INT i;
+				RTMP_STRING pChannel[256], pTmp[4];
+				memset(pChannel, 0, 256);
+				for (i = 0; i < pAd->ChannelListNum; i++) {
+					if(i > 0)
+						strcat(pChannel,",");
+					snprintf(pTmp, sizeof(pTmp), "%d", pAd->ChannelList[i].Channel);
+					strcat(pChannel,pTmp);
+				}
+				wrq->u.data.length = strlen(pChannel);
+				pChannel[wrq->u.data.length] = '\0';
+				Status = copy_to_user(wrq->u.data.pointer, pChannel, wrq->u.data.length);
+			} else if ( subcmd == ASUS_SUBCMD_DRIVERVER ) {
+				RTMP_STRING driverVersion[16] = {0};
+				wrq->u.data.length = strlen(AP_DRIVER_VERSION);
+				snprintf(driverVersion, sizeof(driverVersion), "%s", AP_DRIVER_VERSION);
+				driverVersion[wrq->u.data.length] = '\0';
+				Status = copy_to_user(wrq->u.data.pointer, driverVersion, wrq->u.data.length);
+			} else if ( subcmd == ASUS_SUBCMD_RADIO_STATUS ) {
+				UINT Enable = 0;
+				if(pAd->Flags & fRTMP_ADAPTER_RADIO_OFF)
+					Enable = 0;
+				else
+					Enable = 1;
+				wrq->u.data.length = 1;
+				Status = copy_to_user(wrq->u.data.pointer, &Enable, wrq->u.data.length);
+			} else if ( subcmd == ASUS_SUBCMD_RADIO_TEMPERATURE ) {
+				UINT32 temperature = 0;
+				temperature = MtAsicGetThemalSensor(pAd, 0);
+				wrq->u.data.length = sizeof(UINT32);
+				Status = copy_to_user(wrq->u.data.pointer, &temperature, wrq->u.data.length);
+			} else if ( subcmd == ASUS_SUBCMD_CONN_STATUS ) {
+				UINT32 pCurrState = 0;
+				PAPCLI_STRUCT pApCliEntry;
+				pApCliEntry = &pAd->ApCfg.ApCliTab[pObj->ioctl_if];
+				pCurrState = pApCliEntry->CtrlCurrState;
+				wrq->u.data.length = sizeof(UINT32);
+				Status = copy_to_user(wrq->u.data.pointer, &pCurrState, wrq->u.data.length);
+			}
+			break;
+
 		default:
 			Status = RTMP_COM_IoctlHandle(pAd, wrq, cmd, subcmd, pData, Data);
 			break;
@@ -18284,5 +18328,4 @@ INT Set_Bh_Sta_Proc(
 }
 
 #endif /* MAP_SUPPORT */
-
 

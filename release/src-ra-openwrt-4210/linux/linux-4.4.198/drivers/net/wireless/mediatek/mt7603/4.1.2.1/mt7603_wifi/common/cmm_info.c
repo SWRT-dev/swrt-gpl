@@ -2714,7 +2714,9 @@ RTMP_STRING *GetAuthMode(CHAR auth)
     ==========================================================================
 */
 #ifndef WH_EZ_SETUP
-#define	LINE_LEN	(4+65+20+23+9+7+7+3)	/* Channel+SSID(2*32+1)+Bssid+Security+Signal+WiressMode+ExtCh+NetworkType*/
+//#define	LINE_LEN	(4+33+20+9+16+9+7+7+3)	/* Channel+SSID(2*32+1)+Bssid+Security+Signal+WiressMode+ExtCh+NetworkType*/
+//#define	LINE_LEN	(4+33+18+9+16+9+8)	/* Channel+SSID(2*32+1)+Bssid+Enc+Auth+Signal+WiressMode*/
+#define	LINE_LEN	(4+33+20+23+9+12+7+3)	/* Channel+SSID(2*32+1)+Bssid+Security+Signal+WiressMode+ExtCh+NetworkType*/
 #endif
 
 #ifdef AIRPLAY_SUPPORT
@@ -2900,17 +2902,17 @@ VOID RTMPCommSiteSurveyData(
 		wireless_mode = NetworkTypeInUseSanity(pBss);
 		if (wireless_mode == Ndis802_11FH ||
 			wireless_mode == Ndis802_11DS)
-			sprintf(msg+strlen(msg),"%-7s", "11b");
+			sprintf(msg+strlen(msg),"%-12s", "11b");
 		else if (wireless_mode == Ndis802_11OFDM5)
-			sprintf(msg+strlen(msg),"%-7s", "11a");
+			sprintf(msg+strlen(msg),"%-12s", "11a");
 		else if (wireless_mode == Ndis802_11OFDM5_N)
-			sprintf(msg+strlen(msg),"%-7s", "11a/n");
+			sprintf(msg+strlen(msg),"%-12s", "11a/n");
 		else if (wireless_mode == Ndis802_11OFDM24)
-			sprintf(msg+strlen(msg),"%-7s", "11b/g");
+			sprintf(msg+strlen(msg),"%-12s", "11b/g");
 		else if (wireless_mode == Ndis802_11OFDM24_N)
-			sprintf(msg+strlen(msg),"%-7s", "11b/g/n");
+			sprintf(msg+strlen(msg),"%-12s", "11b/g/n");
 		else
-			sprintf(msg+strlen(msg),"%-7s", "unknow");
+			sprintf(msg+strlen(msg),"%-12s", "unknow");
 
 		/* Ext Channel*/
 		if (pBss->AddHtInfoLen > 0)
@@ -2933,7 +2935,7 @@ VOID RTMPCommSiteSurveyData(
 		else
 			sprintf(msg+strlen(msg),"%-3s", " In");
 		/* SSID Length */
-		sprintf(msg + strlen(msg), " %-8d", pBss->SsidLen);
+		//sprintf(msg + strlen(msg), " %-8d", pBss->SsidLen);
         sprintf(msg+strlen(msg),"\n");
 	
 	return;
@@ -2975,6 +2977,7 @@ VOID RTMPIoctlGetSiteSurvey(
 	UINT32	bss_start_idx;
 	UINT32 TotalLen, BufLen = IW_SCAN_MAX_DATA;
 	INT last_msg_len = 0;
+	BSS_TABLE *pScanTab;
 #ifdef AIRPLAY_SUPPORT
 	UCHAR TargetSsid[MAX_LEN_OF_SSID+1];
 	UCHAR TargetSsidLen = 0;
@@ -2988,7 +2991,7 @@ VOID RTMPIoctlGetSiteSurvey(
 	max_len += MWDS_LINE_LEN;
 #endif /* MWDS */
 #ifdef DOT11K_RRM_SUPPORT
-	max_len += BCNREPT_LINE_LEN;
+//	max_len += BCNREPT_LINE_LEN;
 #endif /* DOT11K_RRM_SUPPORT */
 
 #ifdef AIRPLAY_SUPPORT
@@ -3020,7 +3023,7 @@ VOID RTMPIoctlGetSiteSurvey(
 		BufLen = IW_SCAN_MAX_DATA;
 #endif /* AIRPLAY_SUPPORT */
 #ifdef APCLI_OWE_SUPPORT
-	max_len += OWETRANSIE_LINE_LEN;
+//	max_len += OWETRANSIE_LINE_LEN;
 #endif
 	os_alloc_mem(NULL, (UCHAR **)&this_char, wrq->u.data.length + 1);
 	if (!this_char) {
@@ -3075,16 +3078,20 @@ VOID RTMPIoctlGetSiteSurvey(
 		return;
 	}
 
-	snprintf(msg, TotalLen, "%s", "\n");
+	//snprintf(msg, TotalLen, "%s", "\n");
 	sprintf(msg, "%s", "\n");
-	sprintf(msg + strlen(msg), "Total=%-4d", pAdapter->ScanTab.BssNr);
-	sprintf(msg + strlen(msg), "%s", "\n");
+	//sprintf(msg + strlen(msg), "Total=%-4d", pAdapter->ScanTab.BssNr);
+	//sprintf(msg + strlen(msg), "%s", "\n");
 #ifdef AIRPLAY_SUPPORT
 		sprintf(msg+strlen(msg),"%-4s%-33s%-4s%-20s%-23s%-9s%-7s%-7s%-3s\n",
 			"Ch", "SSID", "UN", "BSSID", "Security", "Siganl(%)", "W-Mode", " ExtCH"," NT");
 #else
-	sprintf(msg + strlen(msg), "%-4s%-4s%-33s%-20s%-23s%-9s%-7s%-7s%-3s%-8s\n",
-		"No", "Ch", "SSID", "BSSID", "Security", "Siganl(%)", "W-Mode", " ExtCH", " NT", " SSID_Len");
+//	sprintf(msg + strlen(msg), "%-4s%-33s%-20s%-9s%-16s%-9s%-7s%-7s%-3s\n",
+//		"Ch", "SSID", "BSSID", "Enc", "Auth", "Signal(%)", "W-Mode", "ExtCH", "NT");
+//	sprintf(msg + strlen(msg), "%-4s%-33s%-18s%-9s%-16s%-9s%-8s\n",
+//			"Ch", "SSID", "BSSID", "Enc", "Auth", "Siganl(%)", "W-Mode");
+	sprintf(msg + strlen(msg), "%-4s%-33s%-20s%-23s%-9s%-12s%-7s%-3s\n",
+		"Ch", "SSID", "BSSID", "Security", "Signal(%)", "W-Mode", " ExtCH", " NT");
 #endif /* AIRPLAY_SUPPORT */
 
 
@@ -3092,19 +3099,22 @@ VOID RTMPIoctlGetSiteSurvey(
 	sprintf(msg+strlen(msg)-1,"%-4s%-5s\n", " WPS", " DPID");
 #endif /* WSC_INCLUDED */
 #ifdef DOT11K_RRM_SUPPORT
-	sprintf(msg+strlen(msg)-1, "%-10s\n", " BcnRept");
+//	sprintf(msg+strlen(msg)-1, "%-10s\n", " BcnRept");
 #endif /* DOT11K_RRM_SUPPORT */
 #ifdef MWDS
 	sprintf(msg+strlen(msg)-1,"%-8s\n", " MWDSCap");
 #endif /* MWDS */
 #ifdef APCLI_OWE_SUPPORT
-	sprintf(msg + strlen(msg) - 1, "%-10s\n", " OWETranIe");
+//	sprintf(msg + strlen(msg) - 1, "%-10s\n", " OWETranIe");
 #endif /* APCLI_OWE_SUPPORT */
 
 	WaitCnt = 0;
 
 	while ((ScanRunning(pAdapter) == TRUE) && (WaitCnt++ < 200))
 		OS_WAIT(500);	
+
+	pScanTab = &pAdapter->ScanTab;
+	BssTableSortByRssi(pScanTab,FALSE);
 
 	for (i = bss_start_idx; i < pAdapter->ScanTab.BssNr; i++)
 	{
@@ -3134,7 +3144,7 @@ VOID RTMPIoctlGetSiteSurvey(
 						continue;
 				}
 #endif /* AIRPLAY_SUPPORT */
-		sprintf(msg + strlen(msg), "%-4d", i);
+		//sprintf(msg + strlen(msg), "%-4d", i);
 		RTMPCommSiteSurveyData(msg, pBss, TotalLen);
 		
 #ifdef WSC_INCLUDED
@@ -3152,7 +3162,7 @@ VOID RTMPIoctlGetSiteSurvey(
 			sprintf(msg+strlen(msg), "%-5s\n", " ");
 #endif /* WSC_INCLUDED */
 #ifdef DOT11K_RRM_SUPPORT
-		sprintf(msg+strlen(msg)-1, "%-7s\n", pBss->FromBcnReport ? " YES" : " NO");
+//		sprintf(msg+strlen(msg)-1, "%-7s\n", pBss->FromBcnReport ? " YES" : " NO");
 #endif /* DOT11K_RRM_SUPPORT */
 #ifndef MWDS
 		/*sprintf(msg+strlen(msg), "%-7s\n", pBss->FromBcnReport ? " YES" : " NO");*/
@@ -3165,10 +3175,10 @@ VOID RTMPIoctlGetSiteSurvey(
 			sprintf(msg+strlen(msg)-1, "%-4s\n", " NO");
 #endif /* MWDS */
 #ifdef APCLI_OWE_SUPPORT
-		if (pBss->bhas_owe_trans_ie)
-			sprintf(msg + strlen(msg), "%-10s\n", " YES");
-		else
-			sprintf(msg + strlen(msg), "%-10s\n", " NO");
+//		if (pBss->bhas_owe_trans_ie)
+//			sprintf(msg + strlen(msg), "%-10s\n", " YES");
+//		else
+//			sprintf(msg + strlen(msg), "%-10s\n", " NO");
 #endif
 
 	}

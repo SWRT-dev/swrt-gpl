@@ -155,7 +155,7 @@ typedef struct usb_ctrlrequest devctrlrequest;
 
 #if defined(CONFIG_FIRST_IF_MT7603E) || defined(CONFIG_SECOND_IF_MT7603E)
 //for SDK's PATH
-#define AP_PROFILE_PATH			"/etc/Wireless/RT2860/RT2860.dat"
+#define AP_PROFILE_PATH			"/etc/Wireless/RT2860/RT2860AP.dat"
 #else /* CONFIG_FIRST_IF_MT7603E */
 //for PC's PATH
 #define AP_PROFILE_PATH			"/etc/Wireless/RT2860AP/RT2860AP.dat"
