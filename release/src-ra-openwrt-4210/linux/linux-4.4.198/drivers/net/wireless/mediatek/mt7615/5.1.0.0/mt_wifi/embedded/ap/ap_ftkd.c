@@ -83,9 +83,12 @@
 #include "rt_config.h"
 #include "ft_cmm.h"
 
+
+/* #define FT_KDP_DEBUG */ /* debug messages for FT */
+/* #define FT_KDP_FUNC_TEST */ /* do not check security of bssid for debug*/
 #define TYPE_FUNC
-#define FT_KDP_DEBUG
-#define FT_KDP_FUNC_TEST
+//#define FT_KDP_DEBUG
+//#define FT_KDP_FUNC_TEST
 /*#define FT_KDP_EMPTY */ /* empty codes to debug */
 
 #define IAPP_DAEMON_CMD_PARSE(__pInfo, __InfoLen, __PeerIP, __pData, __DataLen)	\

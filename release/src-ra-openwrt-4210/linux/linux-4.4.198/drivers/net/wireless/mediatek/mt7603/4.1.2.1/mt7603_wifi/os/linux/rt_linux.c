@@ -1689,7 +1689,7 @@ int RtmpOSNetDevAttach(
 		 */
 		if (pDevOpHook->get_stats)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,31)
-			pNetDevOps->ndo_get_stats = pDevOpHook->get_stats;
+			pNetDevOps->ndo_get_stats64 = pDevOpHook->get_stats;
 #else
 			pNetDev->get_stats = pDevOpHook->get_stats;
 #endif

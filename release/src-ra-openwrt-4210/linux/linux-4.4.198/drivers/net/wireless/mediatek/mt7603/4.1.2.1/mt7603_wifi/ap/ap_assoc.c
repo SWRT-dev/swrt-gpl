@@ -344,7 +344,7 @@ static USHORT update_associated_mac_entry(
 				pEntry->MaxHTPhyMode.field.MCS = 9;
 			} else if (ie_list->vht_cap.mcs_set.rx_mcs_map.mcs_ss1 == VHT_MCS_CAP_8) {
 				pEntry->MaxHTPhyMode.field.MCS = 8;
-			} else if (ie_list->vht_cap.mcs_set.rx_mcs_map.mcs_ss1 == VHT_MCS_CAP_8) {
+			} else if (ie_list->vht_cap.mcs_set.rx_mcs_map.mcs_ss1 == VHT_MCS_CAP_7) {
 				pEntry->MaxHTPhyMode.field.MCS = 7;
 			}
 			
@@ -391,7 +391,7 @@ DBGPRINT(RT_DEBUG_OFF, ("%s(): Peer's PhyCap=>Mode:%s, BW:%s\n",
 		{
 			pEntry->operating_mode = ie_list->operating_mode;
 			pEntry->force_op_mode = TRUE;
-			DBGPRINT(RT_DEBUG_OFF, ("%s(): Peer's OperatingMode=>RxNssType: %d, RxNss: %d, ChBW: %d\n",
+			DBGPRINT(RT_DEBUG_TRACE, ("%s(): Peer's OperatingMode=>RxNssType: %d, RxNss: %d, ChBW: %d\n",
 				__FUNCTION__, pEntry->operating_mode.rx_nss_type,
 				pEntry->operating_mode.rx_nss,
 				pEntry->operating_mode.ch_width));		
@@ -3464,4 +3464,5 @@ VOID APAssocStateMachineInit(
     StateMachineSetAction(S, AP_ASSOC_IDLE, APMT2_PEER_REASSOC_REQ,  (STATE_MACHINE_FUNC)APPeerReassocReqAction);
 /*  StateMachineSetAction(S, AP_ASSOC_IDLE, APMT2_CLS3ERR,           APCls3errAction); */
 }
+
 

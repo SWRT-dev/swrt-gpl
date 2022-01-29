@@ -1710,7 +1710,7 @@ int RtmpOSNetDevAttach(
 		  */
 		if (pDevOpHook->get_stats)
 #if (KERNEL_VERSION(2, 6, 31) <= LINUX_VERSION_CODE)
-			pNetDevOps->ndo_get_stats = pDevOpHook->get_stats;
+			pNetDevOps->ndo_get_stats64 = pDevOpHook->get_stats;
 
 #else
 			pNetDev->get_stats = pDevOpHook->get_stats;
@@ -5153,3 +5153,4 @@ void os_system_tx_queue_dump(PNET_DEV dev)
 	}
 }
 #endif /*CONFIG_DBG_QDISC*/
+

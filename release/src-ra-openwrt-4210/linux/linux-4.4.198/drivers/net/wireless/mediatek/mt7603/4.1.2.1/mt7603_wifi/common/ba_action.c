@@ -680,7 +680,7 @@ BOOLEAN BARecSessionAdd(
 				/* initial LastIndSeq = SSN - 1*/
 		pBAEntry->LastIndSeq = (pFrame->BaStartSeq.field.StartSeq - 1) & MAXSEQ;
 		
-		DBGPRINT(RT_DEBUG_OFF, ("Start Seq = %08x\n",  pFrame->BaStartSeq.field.StartSeq));
+		DBGPRINT(RT_DEBUG_TRACE, ("Start Seq = %08x\n",  pFrame->BaStartSeq.field.StartSeq));
 
 		if (pEntry->RXBAbitmap & (1<<TID))
 			RTMPCancelTimer(&pBAEntry->RECBATimer, &Cancelled);
@@ -720,7 +720,7 @@ BA_REC_ENTRY *BATableAllocRecEntry(RTMP_ADAPTER *pAd, USHORT *Idx)
 
 	if (pAd->BATable.numAsRecipient >= (MAX_LEN_OF_BA_REC_TABLE - 1))
 	{
-		DBGPRINT(RT_DEBUG_OFF, ("BA Recipeint Session (%ld) > %d\n", 
+		DBGPRINT(RT_DEBUG_TRACE, ("BA Recipeint Session (%ld) > %d\n", 
 							pAd->BATable.numAsRecipient, (MAX_LEN_OF_BA_REC_TABLE - 1)));
 		goto done;
 	}
@@ -1131,7 +1131,7 @@ VOID BARecSessionIdleTimeout(
 			pAd = pBAEntry->pAdapter;
 			/* flush all pending reordering mpdus */
 			ba_refresh_reordering_mpdus(pAd, pBAEntry); 
-			DBGPRINT(RT_DEBUG_OFF, ("%ld: REC BA session Timeout\n", Now32));
+			DBGPRINT(RT_DEBUG_TRACE, ("%ld: REC BA session Timeout\n", Now32));
 		}
 	}
 }
@@ -1171,7 +1171,7 @@ VOID PeerAddBAReqAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 	{
 		if ((pAd->CommonCfg.bBADecline == FALSE) && IS_HT_STA(pMacEntry))
 		{
-			DBGPRINT(RT_DEBUG_OFF, ("Rcv Wcid(%d) AddBAReq\n", Elem->Wcid));
+			DBGPRINT(RT_DEBUG_TRACE, ("Rcv Wcid(%d) AddBAReq\n", Elem->Wcid));
 			if (BARecSessionAdd(pAd, &pAd->MacTab.Content[Elem->Wcid], pAddreqFrame))
 			{
 #ifdef PEER_DELBA_TX_ADAPT
@@ -1897,6 +1897,13 @@ VOID Indicate_AMPDU_Packet(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk, UCHAR wdev_idx)
 	{
 		max_pkt_len = MAX_RX_PKT_LEN;
 		data_len = pRxBlk->DataSize;
+	}
+
+	if (!data_len) {
+		/* release packet*/
+		/* avoid processing with null paiload packets - QCA61X4A bug */
+		RELEASE_NDIS_PACKET(pAd, pRxBlk->pRxPacket, NDIS_STATUS_FAILURE);
+		return;
 	}
 
 	if (!RX_BLK_TEST_FLAG(pRxBlk, fRX_AMSDU) &&  (data_len > max_pkt_len))
