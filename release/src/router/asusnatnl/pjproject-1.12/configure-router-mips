@@ -37,7 +37,7 @@ if [ "$BLUECAVE" != "" ]; then
 	EXTRA_LDFLAGS="-L$LIBDIR  -ldl -lc -lgcc_s"
 fi
 
-if [ "$QCA" = "y" ]; then
+if [ "$QCA" = "y" ] || [ "$MUSL_LIBC" = "y" ]; then
 	EXTRA_CFLAGS=
 	EXTRA_LDFLAGS="-L$LIBDIR -L$(ls -d -1 $LIBDIR/gcc/*/*) -lc -lm -ldl -lgcc_s"
 fi

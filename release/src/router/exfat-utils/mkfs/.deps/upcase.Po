@@ -1,0 +1,126 @@
+upcase.o: upcase.c \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/stdc-predef.h \
+ ../config.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/stdio.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/features.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/sys/glibc-types.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/sys/cdefs.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/bits/alltypes.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/stdlib.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/alloca.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/unistd.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/bits/posix.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/errno.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/bits/errno.h \
+ ../include/exfat_ondisk.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/stdint.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/bits/stdint.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/linux/fs.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/linux/limits.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/linux/ioctl.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/asm/ioctl.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/asm-generic/ioctl.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/linux/blk_types.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/linux/types.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/asm/types.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/asm-generic/int-ll64.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/asm/bitsperlong.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/asm-generic/bitsperlong.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/linux/posix_types.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/linux/stddef.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/asm/posix_types.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/asm-generic/posix_types.h \
+ ../config.h ../include/libexfat.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/stdbool.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/sys/types.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/endian.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/sys/select.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/sys/sysmacros.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/wchar.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/limits.h \
+ /home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/bits/limits.h \
+ mkfs.h
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/stdc-predef.h:
+
+../config.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/stdio.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/features.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/sys/glibc-types.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/sys/cdefs.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/bits/alltypes.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/stdlib.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/alloca.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/unistd.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/bits/posix.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/errno.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/bits/errno.h:
+
+../include/exfat_ondisk.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/stdint.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/bits/stdint.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/linux/fs.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/linux/limits.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/linux/ioctl.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/asm/ioctl.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/asm-generic/ioctl.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/linux/blk_types.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/linux/types.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/asm/types.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/asm-generic/int-ll64.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/asm/bitsperlong.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/asm-generic/bitsperlong.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/linux/posix_types.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/linux/stddef.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/asm/posix_types.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/asm-generic/posix_types.h:
+
+../config.h:
+
+../include/libexfat.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/stdbool.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/sys/types.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/endian.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/sys/select.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/sys/sysmacros.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/wchar.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/limits.h:
+
+/home/paldier/ddwrt/toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/include/bits/limits.h:
+
+mkfs.h:

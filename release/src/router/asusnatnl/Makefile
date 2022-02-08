@@ -1,6 +1,6 @@
 include ../common.mak
 
-ifeq ($(or $(RTCONFIG_BCMARM),$(RTCONFIG_QCA_ARM),$(RTCONFIG_ALPINE),$(MUSL_LIBC)),y)
+ifeq ($(or $(RTCONFIG_BCMARM),$(RTCONFIG_QCA_ARM),$(RTCONFIG_ALPINE)),y)
 CONFIGURE=configure-router-arm
 ARCH=ARM
 else ifeq ($(RTCONFIG_RALINK_MT7622),y)

@@ -63,7 +63,7 @@ export CC_OUT CC AR RANLIB HOST_MV HOST_RM HOST_RMDIR HOST_MKDIR OBJEXT LD LDOUT
 # $(TARGET) is defined in os-$(OS_NAME).mak file in current directory.
 #
 TARGETS := libumem
-CFG_TARGET := $(if $(RTCONFIG_QCA),fix-config)
+CFG_TARGET := $(if $(or $(RTCONFIG_QCA),$(MUSL_LIBC)),fix-config)
 
 all: $(CFG_TARGET) $(TARGETS)
 

@@ -36,8 +36,6 @@ typedef struct im_shm_data {
 // Signal defined
 #ifdef PJ_CONFIG_IPHONE
 #define IM_MSG_SIG_REQ SIGUSR2
-#elif MUSL_LIBC
-#define IM_MSG_SIG_REQ SIGRTMAX
 #else
 #ifdef __SIGRTMAX
 #define IM_MSG_SIG_REQ __SIGRTMAX

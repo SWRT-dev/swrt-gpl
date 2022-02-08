@@ -5,22 +5,6 @@ config RTCONFIG_FW_JUMP
 	bool "build the jumped firmware"
 	default n
 
-config RTCONFIG_REALTEK
-	bool "Realtek SoC support"
-	default n
-
-config RTCONFIG_RTL819X
-	bool "Realtek RTL819X support"
-	default n
-
-config RTCONFIG_RTL8197F
-	bool "Realtek RTL8197F support"
-	default n
-
-config RTCONFIG_RTK_NAND
-	bool "Realtek NAND Flash support"
-	default n
-
 config RTCONFIG_OPTIMIZE_SHARED_LIBS
 	bool "Optimize shared libraries (remove unused symbols)"
 	default y
@@ -98,6 +82,14 @@ config RTCONFIG_HND_ROUTER_AX_6710
 	bool "BCM6710"
 	default n
 
+config RTCONFIG_SDK502L07P1_121_37
+	bool "SDK 5.02L.07p1_17.10.121.37"
+	default n
+
+config RTCONFIG_SDK504L02_188_1303
+	bool "SDK 5.04L.02_17.10.188.1303"
+	default n
+
 config RTCONFIG_HND_WL
 	bool "BCM wl NIC mode support"
 	depends on RTCONFIG_HND_ROUTER_AX
@@ -149,6 +141,10 @@ config RTCONFIG_DPSTA
 	bool "Bcm7 dpsta"
 	default n
 
+config RTCONFIG_DPSR
+	bool "Bcm7 dpsr"
+	default n
+
 config RTCONFIG_GMAC3
 	bool "Bcm7 gmac3"
 	default n
@@ -187,7 +183,7 @@ config RTCONFIG_BRCM_NAND_JFFS2
 
 config RTCONFIG_JFFS_NVRAM
 	bool "NVRAM on JFFS support"
-	depends on RTCONFIG_BRCM_NAND_JFFS2
+	depends on RTCONFIG_BRCM_NAND_JFFS2 || RTCONFIG_UBIFS
 	default y
 
 config RTCONFIG_JFFS2
@@ -866,6 +862,10 @@ config RTCONFIG_NEWSSID_REV4
 	bool "RT-V4 SSID rule"
 	default n
 
+config RTCONFIG_NEWSSID_REV5
+	bool "RT-V5 SSID rule"
+	default n
+
 config RTCONFIG_NEWSSID_REV6
 	bool "RT-V6 SSID rule"
 	default n
@@ -987,6 +987,11 @@ config RTCONFIG_TEST_BOARDDATA_FILE
 
 config RTCONFIG_SWITCH_QCA8075_PHY_AQR107
 	bool "Qualcomm Atheros QCA8075 + AQR107"
+	depends on RTCONFIG_QCA
+	default n
+
+config RTCONFIG_SWITCH_QCA8075_PHY_AQR111
+	bool "Qualcomm Atheros QCA8075 + AQR111"
 	depends on RTCONFIG_QCA
 	default n
 
@@ -1624,6 +1629,14 @@ config RTCONFIG_TR181
 	bool "Support TR-181 data model"
 	default n
 
+config RTCONFIG_TR143_110
+	bool "Support TR-143-1-1-0 data model"
+	default n
+
+config RTCONFIG_ISP_OPTUS
+	bool "Support ISP OPTUS Customize"
+	default n
+
 config RTCONFIG_STAINFO
 	bool "STA informtion support"
 	default n
@@ -1828,18 +1841,6 @@ config RTCONFIG_RALINK_EDCCA
 
 config RTCONFIG_AUTOCOVER_SIP
 	bool "Auto cover the special IP"
-	default n
-
-config RTCONFIG_REALTEK
-	bool "Realtek SoC support"
-	default n
-
-config RTCONFIG_RTL819X
-	bool "Realtek RTL819X support"
-	default n
-
-config RTCONFIG_RTK_NAND
-	bool "Realtek NAND Flash support"
 	default n
 
 config RTCONFIG_DEFLAN50
@@ -2219,6 +2220,10 @@ config RTCONFIG_IPERF3
 	bool "Iperf3"
 	default n
 
+config RTCONFIG_NFCM
+	bool "Network Filter Conntrack Monitor"
+	default n
+
 config RTCONFIG_ASUSCTRL
 	bool "asusctrl support"
 	default n
@@ -2252,11 +2257,6 @@ config RTCONFIG_OPEN_NAT
 
 config RTCONFIG_BRCM_HOSTAPD
 	bool "BRCM HOSTAPD support"
-	default n
-
-config RTCONFIG_RTL8198D
-	bool "Realtek RTL8198D support"
-	depends on RTCONFIG_REALTEK
 	default n
 
 config RTCONFIG_FRS_LIVE_UPDATE
@@ -2317,6 +2317,10 @@ config RTCONFIG_AMAZON_WSS
 
 config RTCONFIG_OOKLA
 	bool "speedtest function powered by Ookla"
+	default n
+
+config RTCONFIG_OOKLA_LITE
+	bool "speedtest function powered by Ookla - lite version to store in memory"
 	default n
 
 config RTCONFIG_QCA_MCSD
@@ -2391,9 +2395,6 @@ config RTCONFIG_BH_SWITCH_ETH_FIRST
 	bool "enable wifi backhaul switch on ethernet first"
 	default n
 
-config RTCONFIG_CAPTCHA
-	bool "Web UI supprts captcha"
-
 config RTCONFIG_MULTISERVICE_WAN
 	bool "setup multiple subunit wan"
 	default n
@@ -2402,8 +2403,12 @@ config RTCONFIG_VIF_ONBOARDING
 	bool "onboarding via virtual interface"
 	default n
 
-config RTCONFIG_WIFI6E
-	bool "WiFi 6E"
+config RTCONFIG_OUTFOX
+	bool "Outfox game acceleration support"
+	default n
+
+config RTCONFIG_CAPTCHA
+	bool "Web UI supports captcha"
 	default n
 
 config RTCONFIG_SYSCLASSGPIO
@@ -2418,12 +2423,8 @@ config RTCONFIG_SWCONFIG
 	bool "using swconfig for configure switch"
 	default n
 
-config RTCONFIG_MTK_NAND_BLOCK2
-	bool "For MTK nand using 2 block"
-	default n
-
-config RTCONFIG_QCA_PLC2
-	bool "QCA PLC2"
+config RTCONFIG_WIFI6E
+	bool "WiFi 6E"
 	default n
 
 config RTCONFIG_VAR_NVRAM
@@ -2432,6 +2433,10 @@ config RTCONFIG_VAR_NVRAM
 
 config RTCONFIG_BCM_OAM
 	bool "Broadcom OAM"
+	default n
+
+config RTCONFIG_QCA_PLC2
+	bool "QCA PLC2"
 	default n
 
 config RTCONFIG_NEW_PHYMAP
@@ -2454,16 +2459,22 @@ config RTCONFIG_PREFERAP_RE_SELFOPT
 	bool "Notify RE do self optimization based on prefer ap condition"
 	default n
 
-config RTCONFIG_SYSCLASSGPIO
-	bool "enable sys class gpio"
+config RTCONFIG_MAX_RE
+	int "Support the maximum number of RE"
+	default 9
+
+config RTCONFIG_SPF11_3_QSDK
+	bool "SPF11.3 QSDK"
+	depends on RTCONFIG_QCA
+	default n
+
+config RTCONFIG_SPF11_4_QSDK
+	bool "SPF11.4 QSDK"
+	depends on RTCONFIG_QCA
 	default n
 
 config RTCONFIG_MTK_NAND_BLOCK2
 	bool "For MTK nand using 2 block"
-	default n
-
-config RTCONFIG_MAX_RE_32
-	bool "max number of RE is 32"
 	default n
 
 config RTCONFIG_FRONTHAUL_DBG
@@ -2482,11 +2493,6 @@ config RTCONFIG_FIBOCOM_FG621
 	bool "LTE module FIBOCOM FG621"
 	default n
 
-config RTCONFIG_SPF11_3_QSDK
-	bool "SPF11.3 QSDK"
-	depends on RTCONFIG_QCA
-	default n
-
 config RTCONFIG_QCA_WLAN_SCRIPTS
 	depends on RTCONFIG_QCA
 	bool "use script to load/unload wifi instead of complex & mass code"
@@ -2497,18 +2503,111 @@ config RTCONFIG_QCA_AXCHIP
 	bool "enable some 11AX features"
 	default n
 
+config RTCONFIG_WIREGUARD
+	bool "enable Wireguard features"
+	default n
+
 config RTCONFIG_OWE_TRANS
 	bool "OWE Transition authentication mode support"
+	default n
+
+config RTCONFIG_TPVPN
+	bool "3rd party VPN support"
 	default n
 
 config RTCONFIG_SPECIFIC_PPPOE
 	bool "Support specific PPPoE features"
 	default n
 
+config RTCONFIG_ACL96
+	bool "Support maximum 96 MAC address in ACL list control"
+	default n
+
+config RTCONFIG_ISP_CUSTOMIZE_TOOL
+	bool "ISP customiztion tool"
+	default n
+
+config RTCONFIG_ISPCTRL
+	bool "Append ISP model description to the file name of firmware"
+	default n
+
 config RTCONFIG_GOOGLE_ASST
 	bool "GOOGLE_ASST support"
 	default n
 
+config RTCONFIG_EXTEND_LIMIT
+	bool "Extend rule limitation"
+	default n
+
+config RTCONFIG_COMFW
+	bool "Combined image support"
+	default n
+
+config RTCONFIG_QUADBAND
+	bool "WiFi quad band support"
+	default n
+
+choice
+	prompt "lldpd program & library"
+	default RTCONFIG_LLDPD_0_9_8
+
+config RTCONFIG_LLDPD_0_9_8
+	bool "lldpd-0.9.8"
+
+config RTCONFIG_LLDPD_1_0_11
+	bool "lldpd-1.0.11"
+endchoice
+
 config RTCONFIG_3LANPORT_DEVICE
 	bool "3 LAN Port device"
+	default n
+
+config RTCONFIG_SOFTCENTER
+	bool "softcenter"
+	default n
+
+config RTCONFIG_SMARTDNS
+	bool "smart dns"
+	default n
+
+config RTCONFIG_SWRT
+	bool "RTCONFIG_SWRT"
+	default n
+
+config RTCONFIG_SWRT_LED
+	bool "RTCONFIG_SWRT_LED"
+	default n
+
+config RTCONFIG_SWRT_UU
+	bool "RTCONFIG_SWRT_UU"
+	default n
+
+config RTCONFIG_SWRT_FULLCONE
+	bool "fullcone"
+	default n
+
+config RTCONFIG_SWRT_I2CLED
+	bool "i2c led dirver"
+	default n
+
+config RTCONFIG_SWRT_FASTPATH
+	bool "Q-Path Mass Storage accelerater"
+	default n
+
+config RTCONFIG_SWRT_KVR
+	bool "swrt kvr support"
+	depends on RTCONFIG_RALINK || RTCONFIG_LANTIQ || RTCONFIG_QCA
+	default n
+
+config RTCONFIG_ENTWARE
+	bool "install entware"
+	default n
+
+config RTCONFIG_NTFS3
+	bool "ntfs3 dirver"
+	default n
+
+config RTCONFIG_EASYMESH
+	bool "easymesh"
+	depends on RTCONFIG_RALINK || RTCONFIG_LANTIQ || RTCONFIG_QCA
 	default n

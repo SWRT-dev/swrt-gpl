@@ -1,0 +1,83 @@
+include ../common.mak
+include $(SRCBASE)/.config
+ifeq ($(RTCONFIG_RALINK),y)
+PREBUILT_BIN=$(shell if [ ! -f "$(SRCBASE)/../sdk/mtk/mt7621/1905daemon/Makefile" ]; then echo 1; else echo 0; fi)
+endif
+
+all:
+ifeq ($(RTCONFIG_RALINK),y)
+ifneq ($(PREBUILT_BIN),1)
+	cd datconf && cmake -DCMAKE_INSTALL_PREFIX=/usr	-DCMAKE_BUILD_TYPE=Release -DBUILD_LUA=OFF && $(MAKE) CFLAGS="$(CFLAGS)"
+	cd 1905daemon && $(MAKE) CFLAGS="$(CFLAGS) -D_GNU_SOURCE -I$(LINUXDIR)/user_headers/include -I$(TOP)/libnl-tiny-0.1/include/ -I./1905daemon -I$(LINUXDIR)/drivers/net/ethernet/raeth -DCONFIG_SOC_MT7621=y -DCONFIG_SUPPORT_OPENWRT=y -DCONFIG_MT753X_GSW=y" LDFLAGS="$(LDFLAGS) -L$(TOP)/libnl-tiny-0.1/ -lnl-tiny -lm"
+	cd libmapd && $(MAKE) CFLAGS="$(CFLAGS) -D_GNU_SOURCE -I$(LINUXDIR)/user_headers/include -I$(TOP)/libnl-tiny-0.1/include/ -I./1905daemon -I$(LINUXDIR)/drivers/net/ethernet/raeth -DCONFIG_SOC_MT7621=y -DCONFIG_SUPPORT_OPENWRT=y -DCONFIG_MT753X_GSW=y -DSUPPORT_MULTI_AP"
+	cd mapd && $(MAKE) CFLAGS="$(CFLAGS) -D_GNU_SOURCE -I./1905daemon -DCONFIG_SUPPORT_OPENWRT=y" LDFLAGS="$(LDFLAGS)"
+	cd fwdd && $(MAKE) CFLAGS="$(CFLAGS) -D_GNU_SOURCE -I./1905daemon -DCONFIG_SUPPORT_OPENWRT=y" LDFLAGS="$(LDFLAGS)"
+else
+	mkdir -p 1905daemon datconf fwdd libmapd mapd mapfilter wappd
+	mkdir -p datconf/kvcutil datconf/datconf 1905daemon/ethernet/
+	mkdir -p wappd/src wappd/src/config_and_icon_files
+	cp prebuilt/kvcedit datconf/kvcutil/
+	cp prebuilt/datconf datconf/datconf/
+	cp -rf prebuilt/libkvcutil.so* datconf/kvcutil/
+	cp prebuilt/p1905_managerd 1905daemon/
+	cp prebuilt/1905ctrl 1905daemon/
+	cp prebuilt/tp_ts_switch.sh 1905daemon/
+	cp -rf prebuilt/libeth_1905ops.so 1905daemon/ethernet/
+	cp prebuilt/wappctrl wappd/src/
+	cp prebuilt/wapp wappd/src/
+	cp prebuilt/wifi_config_save.lua wappd/src/
+	cp prebuilt/mbo_nr.sh wappd/src/
+	cp -rf prebuilt/config_and_icon_files/* wappd/src/config_and_icon_files/
+	cp prebuilt/libmapd_interface_client.so libmapd/
+	cp prebuilt/mapd mapd/
+	cp prebuilt/mapd_cli mapd/
+	cp prebuilt/bs20 mapd/
+	cp prebuilt/mapd_user_iface mapd/
+	cp prebuilt/config_agent.lua mapd/
+	cp prebuilt/map_config_agent.lua mapd/
+	cp prebuilt/map_cert_script.sh mapd/
+	cp prebuilt/fwdd fwdd/
+endif
+endif
+
+install:
+ifeq ($(RTCONFIG_RALINK),y)
+	install -d $(INSTALLDIR)/easymesh-sdk/usr/lib
+	install -d $(INSTALLDIR)/easymesh-sdk/rom/etc/wappd/
+	install -d $(INSTALLDIR)/easymesh-sdk/rom/etc/map/
+	install -D 1905daemon/p1905_managerd $(INSTALLDIR)/easymesh-sdk/usr/sbin/p1905_managerd
+	install -D 1905daemon/1905ctrl $(INSTALLDIR)/easymesh-sdk/usr/sbin/1905ctrl
+	install -D 1905daemon/tp_ts_switch.sh $(INSTALLDIR)/easymesh-sdk/usr/sbin/tp_ts_switch.sh
+	install -D datconf/kvcutil/kvcedit $(INSTALLDIR)/easymesh-sdk/usr/sbin/kvcedit
+	install -D datconf/datconf/datconf $(INSTALLDIR)/easymesh-sdk/usr/bin/datconf
+	cp -rf datconf/kvcutil/libkvcutil.so* $(INSTALLDIR)/easymesh-sdk/usr/lib/
+	cp -rf 1905daemon/ethernet/libeth_1905ops.so $(INSTALLDIR)/easymesh-sdk/usr/lib/
+	install -D wappd/src/wappctrl $(INSTALLDIR)/easymesh-sdk/usr/sbin/wappctrl
+	install -D wappd/src/wapp $(INSTALLDIR)/easymesh-sdk/usr/sbin/wapp
+	install -D wappd/src/wifi_config_save.lua $(INSTALLDIR)/easymesh-sdk/usr/sbin/wifi_config_save
+	install -D wappd/src/mbo_nr.sh $(INSTALLDIR)/easymesh-sdk/usr/sbin/mbo_nr.sh
+	cp -rf wappd/src/config_and_icon_files/* $(INSTALLDIR)/easymesh-sdk/rom/etc/wappd/
+	cp -rf libmapd/libmapd_interface_client.so $(INSTALLDIR)/easymesh-sdk/usr/lib/
+	install -D mapd/mapd $(INSTALLDIR)/easymesh-sdk/usr/sbin/mapd
+	install -D mapd/mapd_cli $(INSTALLDIR)/easymesh-sdk/usr/sbin/mapd_cli
+	install -D mapd/bs20 $(INSTALLDIR)/easymesh-sdk/usr/sbin/bs20
+	install -D mapd/mapd_user_iface $(INSTALLDIR)/easymesh-sdk/usr/sbin/mapd_user_iface
+	install -D mapd/config_agent.lua $(INSTALLDIR)/easymesh-sdk/usr/sbin/config_agent.lua
+	install -D mapd/map_config_agent.lua $(INSTALLDIR)/easymesh-sdk/usr/sbin/map_config_agent.lua
+	install -D mapd/map_cert_script.sh $(INSTALLDIR)/easymesh-sdk/usr/sbin/map_cert_script.sh
+	install -D fwdd/fwdd $(INSTALLDIR)/easymesh-sdk/usr/sbin/fwdd
+	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/p1905_managerd
+	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/1905ctrl
+	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/kvcedit
+	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/bin/datconf
+	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/wappctrl
+	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/wapp
+	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/lib/libeth_1905ops.so
+	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/lib/libkvcutil.so.1.0.0.0
+	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/lib/libmapd_interface_client.so
+	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/mapd
+	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/mapd_cli
+	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/bs20
+	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/mapd_user_iface
+	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/fwdd
+endif

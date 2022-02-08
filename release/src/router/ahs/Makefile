@@ -16,6 +16,10 @@ CFLAGS += -I$(TOP)/curl/include
 LDFLAGS += -L$(TOP)/curl/lib/.libs -lcurl
 CFLAGS += -I$(TOP)/openssl/include
 LDFLAGS += -L$(TOP)/openssl -lcrypto -lssl $(if $(RTCONFIG_OPENSSL11),-lpthread,)
+ifeq ($(RTCONFIG_TR069),y)
+CFLAGS += -I$(TOP)/libssh2-1.9.0/include -I$(TOP)/zlib/include
+LDFLAGS += -L$(TOP)/libssh2-1.9.0/src/.libs -lssh2 -L$(TOP)/zlib -lz
+endif
 endif
 
 CFLAGS += -I$(TOP)/json-c
@@ -24,16 +28,11 @@ LDFLAGS += -L$(TOP)/json-c/.libs -ljson-c
 CFLAGS += -I$(TOP)/libasc
 LDFLAGS += -L$(TOP)/libasc -lasc
 
-ifeq ($(RTCONFIG_QTN),y)
-CFLAGS += -I$(TOP)/libqcsapi_client -I$(TOP)/httpd -I./sysdeps/qtn
-LDFLAGS += -L$(TOP)/libqcsapi_client -lqcsapi_client
-endif
-
 OBJS = utility.o ahs.o
 
-ifneq ($(wildcard ./prebuild),)
+ifneq ($(wildcard ./prebuild/$(BUILD_NAME)),)
 all:
-	@-cp -f ./prebuild/ahs .
+	@-cp -f ./prebuild/$(BUILD_NAME)/ahs .
 else
 all: ahs
 endif
