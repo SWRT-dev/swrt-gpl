@@ -107,6 +107,24 @@ export TOP_PLATFORM := $(SRCBASE)/router-sysdep
 else
 export TOP_PLATFORM := $(SRCBASE)/router
 endif
+export SDK_DIR := $(shell (cd $(shell pwd)/../sdk && pwd -P))
+ifeq ($(MT7621),y)
+export SDK_DIR_PLATFORM := $(SDK_DIR)/mtk/mt7621
+else ifeq ($(MT7622),y)
+export SDK_DIR_PLATFORM := $(SDK_DIR)/mtk/mt7622
+else ifeq ($(IPQ40XX),y)
+export SDK_DIR_PLATFORM := $(SDK_DIR)/qca/ipq40xx
+else ifeq ($(IPQ50XX),y)
+export SDK_DIR_PLATFORM := $(SDK_DIR)/qca/ipq50xx
+else ifeq ($(IPQ60XX),y)
+export SDK_DIR_PLATFORM := $(SDK_DIR)/qca/ipq60xx
+else ifeq ($(IPQ806X),y)
+export SDK_DIR_PLATFORM := $(SDK_DIR)/qca/ipq806x
+else ifeq ($(IPQ807X),y)
+export SDK_DIR_PLATFORM := $(SDK_DIR)/qca/ipq807x
+else ifeq ($(GRX500),y)
+export SDK_DIR_PLATFORM := $(SDK_DIR)/lantiq/grx500
+endif
 
 export SWRT_VER := $(SWRT_VER_MAJOR)$(SWRT_VER_MINOR)
 export SWRTVER := $(SWRT_NAME)_$(SWRT_VER)
@@ -1914,7 +1932,7 @@ define RouterOptions
 			fi; \
 		fi; \
 		if [ "$(NTFS)" != "" ]; then \
-			sed -i "/RTCONFIG_NTFS/d" $(1); \
+			sed -i "/RTCONFIG_NTFS\>/d" $(1); \
 			echo "RTCONFIG_NTFS=y" >>$(1); \
 			if [ "$(findstring open, $(NTFS))" = "open" ]; then \
 				sed -i "/RTCONFIG_OPEN_NTFS3G/d" $(1); \

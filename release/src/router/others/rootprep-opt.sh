@@ -38,7 +38,7 @@ ln -sf /www/ext/proxy.pac www/proxy.pac
 ln -sf /www/ext/proxy.pac www/wpad.dat
 
 # link dir under opt to /tmp/opt
-DMfiles="bin etc lib sbin share tmp usr include doc"
+DMfiles="bin etc lib sbin share tmp usr include doc var home"
 
 for f in $DMfiles
 do
