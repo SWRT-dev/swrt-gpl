@@ -9,9 +9,9 @@ LDFLAGS +=-L$(TOP)/shared$(RPEX) -lshared
 EXEC = flash
 OBJS = flash_mtd.o
 
-ifneq ($(wildcard ./prebuild),)
+ifneq ($(wildcard ./prebuild/$(BUILD_NAME)),)
 all:
-	-cp prebuild/$(EXEC) $(EXEC)
+	-cp prebuild/$(BUILD_NAME)/$(EXEC) $(EXEC)
 else
 all: $(EXEC) 
 endif

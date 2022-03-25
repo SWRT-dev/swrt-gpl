@@ -191,6 +191,15 @@ enum {
 	FW_TRX_CHECK_ERROR
 };
 
+enum {
+	_ATE_FW_NOT_ATE=0,
+	_ATE_FW_START,
+	_ATE_FW_WRITING,
+	_ATE_FW_UNEXPECT_ERROR,
+	_ATE_FW_FAILURE,
+	_ATE_FW_COMPLETE
+};
+
 #ifdef RTCONFIG_USB
 #if defined(RTCONFIG_ALPINE) || defined(RTCONFIG_LANTIQ)
 #define USB_XHCI_PORT_1 "2-1"
@@ -294,14 +303,6 @@ enum {
 	DISKMON_FORMAT
 };
 
-#ifdef RTCONFIG_BROOP
-enum {
-	BROOP_IDLE,
-	BROOP_DETECT
-};
-
-#endif
-
 #define DISKMON_FREQ_DISABLE 0
 #define DISKMON_FREQ_MONTH 1
 #define DISKMON_FREQ_WEEK 2
@@ -344,6 +345,7 @@ enum {
 #define WANSCAP_USB	0x20
 #define WANSCAP_WAN2	0x40
 #define WANSCAP_SFPP	0x80	/* SFP+ */
+#define WANSCAP_6G	0x100
 
 // the following definition is for wans_dualwan
 #define WANS_DUALWAN_IF_NONE    0
@@ -413,6 +415,7 @@ extern void set_wanscap_support(char *feature);
 #ifdef RTCONFIG_DUALWAN
 extern void add_wanscap_support(char *feature);
 extern int get_wans_cap(void);
+extern int get_wans_dualwan_str(char *wancaps, int size);
 extern int get_wans_dualwan(void);
 extern int get_dualwan_by_unit(int unit);
 extern int get_wanunit_by_type(int wan_type);
@@ -450,6 +453,13 @@ int detect_broop();
 int get_ms_base_unit(int wan_unit);
 int get_ms_wan_unit(int base_wan_unit, int idx);
 int get_ms_idx_by_wan_unit(int wan_unit);
+#endif
+
+#ifdef RTCONFIG_BROOP
+enum {
+	BROOP_IDLE,
+	BROOP_DETECT
+};
 #endif
 
 #endif	/* !__RTSTATE_H__ */

@@ -2446,34 +2446,22 @@ int gen_ralink_config(int band, int is_iNIC)
 	}
 
 	//HT_BW
-	//str = nvram_safe_get(strcat_r(prefix, "bw", tmp));
-#if 0 //Override wl_bw?
-		for (i = 0; i < MAX_NO_MSSID; i++)
-		{
-			if (sw_mode == SW_MODE_REPEATER
-	#if defined(RTCONFIG_WIRELESSREPEATER) && defined(RTCONFIG_CONCURRENTREPEATER)
-				&& (wlc_express == 0 || (wlc_express - 1) != band)
-	#else
-				&& wlc_band == band
-	#endif
-				&& i != 1) 
-					continue;
+	for (i = 0; i < MAX_NO_MSSID; i++)
+	{
+		if (sw_mode == SW_MODE_REPEATER
+#if defined(RTCONFIG_WIRELESSREPEATER) && defined(RTCONFIG_CONCURRENTREPEATER)
+			&& (wlc_express == 0 || (wlc_express - 1) != band)
+#else
+			&& wlc_band == band
+#endif
+			&& i != 1) 
+			continue;
 					
-				if (i && sw_mode == SW_MODE_REPEATER)
-				{
-					sprintf(prefix_mssid, "wl%d.%d_", band, i);
-
-					if (!nvram_match(strcat_r(prefix_mssid, "bss_enabled", temp), "1"))
-						continue;
-					wl_bw = nvram_get_int(strcat_r(prefix_mssid, "bw", temp));
-					
-				}
-				else {
-					sprintf(prefix_mssid, "wl%d_", band);
-					wl_bw = get_bw_via_channel(band, Channel);
-				}			
-		} // for	
-#endif	
+		if (i && sw_mode == SW_MODE_REPEATER)
+			wl_bw = 1;
+		else
+			wl_bw = get_bw_via_channel(band, Channel);
+	}
 
 		if(wl_bw == 0)
 				fprintf(fp, "HT_BW=%d\n", 0);
@@ -2488,12 +2476,8 @@ int gen_ralink_config(int band, int is_iNIC)
 	//		warning = 34;
 			fprintf(fp, "HT_BW=%d\n", 0);
 		}
-		
 
 		//HT_BSSCoexistence
-#if defined(RMAC2100)
-	fprintf(fp, "HT_BSSCoexistence=%d\n", 0);
-#else
 		if ((wl_bw > 1) && (HTBW_MAX == 1) 
 	#if defined(RTCONFIG_WIRELESSREPEATER) && defined(RTCONFIG_CONCURRENTREPEATER)
 			&& (wlc_express == 0 || (wlc_express - 1) != band)
@@ -2504,7 +2488,6 @@ int gen_ralink_config(int band, int is_iNIC)
 			fprintf(fp, "HT_BSSCoexistence=%d\n", 0);
 		else
 			fprintf(fp, "HT_BSSCoexistence=%d\n", 1);	
-#endif							
 
 	//HT_AutoBA
 	str = nvram_safe_get(strcat_r(prefix, "HT_AutoBA", tmp));
@@ -2633,21 +2616,20 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//HT_DisallowTKIP
 	fprintf(fp, "HT_DisallowTKIP=%d\n", 1);
-	int vbw = get_bw_via_channel(band, Channel);
 	if (band) {
-		if (vbw > 0)
+		if (wl_bw > 0)
 		{
-			if (vbw == 2)	// 40 MHz					
+			if (wl_bw == 2)	// 40 MHz					
 				fprintf(fp, "VHT_BW=%d\n", 0);
-			else if (vbw == 5 || nvram_match(strcat_r(prefix, "bw_160", tmp), "1")) // 160 MHz
+			else if (sw_mode != SW_MODE_REPEATER && (wl_bw == 5 || nvram_match(strcat_r(prefix, "bw_160", tmp), "1"))) // 20/40/80/160 MHz
 				fprintf(fp, "VHT_BW=%d\n", 2);
-			else // vbw == 3, 1 ==> 20/40/80/160 MHz and 80 MHz
+			else // wl_bw == 3 ==> 20/40/80 MHz
 				fprintf(fp, "VHT_BW=%d\n", 1);
 		}
 		else
 		{
 			warning = 8;
-			fprintf(fp, "VHT_BW=%d\n", 0);
+			fprintf(fp, "VHT_BW=%d\n", 1);//20/40/80 MHz
 		}
 			
 		str = nvram_get(strcat_r(prefix_mssid, "VHT_DisallowNonVHT", tmp));
@@ -5241,10 +5223,12 @@ void set_wlpara_ra(const char* wif, int band)
 	}
 #endif
 #if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#if defined(RTAX53U)
 	if(nvram_match(strcat_r(prefix, "radio", tmp), "1"))
 		eval("iwpriv", (char *)wif, "set", "led_setting=00-00-01-00-02-00-00-02");
 	else
 		eval("iwpriv", (char *)wif, "set", "led_setting=00-00-01-00-02-00-00-00");
+#endif
 #endif
 	eval("iwpriv", (char *)wif, "set", "IgmpAdd=01:00:5e:7f:ff:fa");
 	eval("iwpriv", (char *)wif, "set", "IgmpAdd=01:00:5e:00:00:09");
@@ -6233,34 +6217,6 @@ void exec_uu()
 			}
 		}
 	}
-}
-#endif
-
-#ifdef RTCONFIG_ATEUSB3_FORCE
-int getForceU3()
-{
-	unsigned char buffer[2];
-	unsigned char *dst;
-	dst = buffer;
-	FRead(dst, 0x4FF60, 1);
-	if ( *dst == '1' )
-		puts("1");
-	else
-		puts("0");
-	return 0;
-}
-
-int setForceU3(const char *val)
-{
-	if((*val - '0') >= 2 || !IS_ATE_FACTORY_MODE())
-		return -1;
-	FWrite(val, 0x4FF60, 1);
-	if(*val == '0')
-		nvram_unset("usb_usb3");
-	else
-		nvram_set("usb_usb3", "1");
-	nvram_commit();
-	return 0;
 }
 #endif
 

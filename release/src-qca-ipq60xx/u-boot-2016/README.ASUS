@@ -1,0 +1,9 @@
+PL-AX56_XP4
+===========
+
+1. Install toolchain and configure PATH environment variable in accordance with ../../../README.TXT
+2. Run "make PL-AX56_XP4_defconfig"
+3. Run "make"
+4. Load u-boot_nand.img to PL-AX56_XP4.
+
+

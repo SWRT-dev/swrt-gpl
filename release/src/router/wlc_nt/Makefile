@@ -4,10 +4,7 @@ include ../common.mak
 CFLAGS	+= -I. -I$(TOP)/shared -I$(SRCBASE)/include -I$(SRCBASE)/common/include -Wall -Werror -fPIC
 CFLAGS	+= $(if $(WLAN_ComponentIncPath),$(WLAN_ComponentIncPath),$(addprefix -I,$(wildcard $(SRCBASE)/shared/bcmwifi/include)))
 CFLAGS	+= -s -O2
-ifeq ($(HND_ROUTER_AX_6756),y)
-CFLAGS += -Wno-stringop-overflow
-endif
-LDFLAGS += -L$(TOP_PLATFORM)/nvram$(BCMEX)${EX7} ${EXTRA_NV_LDFLAGS} -lnvram
+LDFLAGS += -L$(TOP)/nvram$(BCMEX)${EX7} ${EXTRA_NV_LDFLAGS} -lnvram
 LDFLAGS += -L$(TOP)/shared -L$(INSTALLDIR)/shared/usr/lib -lshared
 
 ifeq ($(HND_ROUTER),y)
@@ -26,11 +23,8 @@ CFLAGS  += -I$(TOP)/nt_center/actMail
 CFLAGS  += -DASUSWRT_SDK
 LDFLAGS += -L$(TOP)/json-c/.libs -ljson-c
 LDFLAGS += -L$(TOP)/sqlite/.libs -lsqlite3 -L$(TOP)/nt_center/lib -lnt
-ifneq ($(RTCONFIG_QCA)$(RTCONFIG_WLMODULE_MT7915D_AP),y)
+ifneq ($(RTCONFIG_QCA),y)
 LDFLAGS += -lpthread
-endif
-ifeq ($(RTCONFIG_RALINK_MT7622),y)
-LDFLAGS += -lm -ldl
 endif
 else
 ifeq ($(RTCONFIG_AMAS),y)

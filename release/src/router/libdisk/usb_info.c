@@ -2402,3 +2402,4 @@ int is_builtin_modem(char *modem_type){
 
 	return 0;
 }
+

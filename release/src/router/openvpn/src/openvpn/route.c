@@ -49,10 +49,6 @@
 #include <linux/rtnetlink.h>            /* RTM_GETROUTE etc. */
 #endif
 
-#if defined(TARGET_NETBSD)
-#include <net/route.h>			/* RT_ROUNDUP(), RT_ADVANCE() */
-#endif
-
 #ifdef _WIN32
 #include "openvpn-msg.h"
 
@@ -327,10 +323,6 @@ init_route(struct route_ipv4 *r,
 
     if (get_special_addr(rl, ro->network, (in_addr_t *) &special.s_addr, &status))
     {
-        if (!status)
-        {
-            goto fail;
-        }
         special.s_addr = htonl(special.s_addr);
         ret = openvpn_getaddrinfo(0, inet_ntoa(special), NULL, 0, NULL,
                                   AF_INET, network_list);
@@ -631,7 +623,7 @@ init_route_list(struct route_list *rl,
 
     rl->flags = opt->flags;
 
-    if (remote_host != IPV4_INVALID_ADDR)
+    if (remote_host)
     {
         rl->spec.remote_host = remote_host;
         rl->spec.flags |= RTSA_REMOTE_HOST;
@@ -1009,9 +1001,13 @@ redirect_default_route_to_vpn(struct route_list *rl, const struct tuntap *tt, un
          * - we are connecting to a non-IPv4 remote host (i.e. we use IPv6)
          */
         else if (!(rl->rgi.flags & RGI_ADDR_DEFINED) && !local
-                 && (rl->spec.flags & RTSA_REMOTE_HOST))
+                 && (rl->spec.remote_host != IPV4_INVALID_ADDR))
         {
             msg(M_WARN, "%s Cannot read current default gateway from system", err);
+        }
+        else if (!(rl->spec.flags & RTSA_REMOTE_HOST))
+        {
+            msg(M_WARN, "%s Cannot obtain current remote host address", err);
         }
         else
         {
@@ -1035,8 +1031,7 @@ redirect_default_route_to_vpn(struct route_list *rl, const struct tuntap *tt, un
                 /* route remote host to original default gateway */
                 /* if remote_host is not ipv4 (ie: ipv6), just skip
                  * adding this special /32 route */
-                if ((rl->spec.flags & RTSA_REMOTE_HOST)
-                    && rl->spec.remote_host != IPV4_INVALID_ADDR)
+                if (rl->spec.remote_host != IPV4_INVALID_ADDR)
                 {
                     add_route3(rl->spec.remote_host,
                                IPV4_NETMASK_HOST,
@@ -2047,8 +2042,8 @@ add_route_ipv6(struct route_ipv6 *r6, const struct tuntap *tt, unsigned int flag
                 r6->netbits,
                 gateway );
 
-    /* on tun (not tap), not "elsewhere"? -> metric 0 */
-    if (tt->type == DEV_TYPE_TUN && !r6->iface)
+    /* on tun/tap, not "elsewhere"? -> metric 0 */
+    if (!r6->iface)
     {
         argv_printf_cat(&argv, "0");
     }
@@ -3556,14 +3551,10 @@ struct rtmsg {
 
 /* the route socket code is identical for all 4 supported BSDs and for
  * MacOS X (Darwin), with one crucial difference: when going from
- * 32 bit to 64 bit, FreeBSD/OpenBSD increased the structure size but kept
+ * 32 bit to 64 bit, the BSDs increased the structure size but kept
  * source code compatibility by keeping the use of "long", while
  * MacOS X decided to keep binary compatibility by *changing* the API
  * to use "uint32_t", thus 32 bit on all OS X variants
- *
- * NetBSD does the MacOS way of "fixed number of bits, no matter if
- * 32 or 64 bit OS", but chose uint64_t.  For maximum portability, we
- * just use the OS RT_ROUNDUP() macro, which is guaranteed to be correct.
  *
  * We used to have a large amount of duplicate code here which really
  * differed only in this (long) vs. (uint32_t) - IMHO, worse than
@@ -3573,8 +3564,6 @@ struct rtmsg {
 #if defined(TARGET_DARWIN)
 #define ROUNDUP(a) \
     ((a) > 0 ? (1 + (((a) - 1) | (sizeof(uint32_t) - 1))) : sizeof(uint32_t))
-#elif defined(TARGET_NETBSD)
-#define ROUNDUP(a) RT_ROUNDUP(a)
 #else
 #define ROUNDUP(a) \
     ((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
@@ -3583,14 +3572,14 @@ struct rtmsg {
 #if defined(TARGET_SOLARIS)
 #define NEXTADDR(w, u) \
     if (rtm_addrs & (w)) { \
-        l = sizeof(u); memmove(cp, &(u), l); cp += ROUNDUP(l); \
+        l = ROUNDUP(sizeof(u)); memmove(cp, &(u), l); cp += l; \
     }
 
 #define ADVANCE(x, n) (x += ROUNDUP(sizeof(struct sockaddr_in)))
 #else  /* if defined(TARGET_SOLARIS) */
 #define NEXTADDR(w, u) \
     if (rtm_addrs & (w)) { \
-        l = ((struct sockaddr *)&(u))->sa_len; memmove(cp, &(u), l); cp += ROUNDUP(l); \
+        l = ROUNDUP( ((struct sockaddr *)&(u))->sa_len); memmove(cp, &(u), l); cp += l; \
     }
 
 #define ADVANCE(x, n) (x += ROUNDUP((n)->sa_len))
@@ -3883,7 +3872,7 @@ get_default_gateway_ipv6(struct route_ipv6_gateway_info *rgi6,
     }
     if (write(sockfd, (char *)&m_rtmsg, l) < 0)
     {
-        msg(M_WARN|M_ERRNO, "GDG6: problem writing to routing socket");
+        msg(M_WARN, "GDG6: problem writing to routing socket");
         goto done;
     }
 

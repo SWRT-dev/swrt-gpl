@@ -14,7 +14,7 @@
 <link rel="stylesheet" type="text/css" href="css/basic.css">
 <link rel="stylesheet" type="text/css" href="css/gameprofile.css">
 <script type="text/javascript" src="js/jquery.js"></script>
-<script type="text/javascript" src="/js/httpApi.js"></script>
+<script type="text/javascript" src="js/httpApi.js"></script>
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/help.js"></script>
 <script type="text/javascript" src="/general.js"></script>
@@ -617,7 +617,6 @@ function newProfileOK(){
 <input type="hidden" name="preferred_lang" id="preferred_lang" value="<% nvram_get("preferred_lang"); %>">
 <input type="hidden" name="firmver" value="<% nvram_get("firmver"); %>">
 <input type="hidden" name="game_vts_rulelist" value=''>
-<input type="hidden" name="vts_enable_x" value='<% nvram_get("vts_enable_x"); %>'>
 
 <table class="content" align="center" cellpadding="0" cellspacing="0" >
 	<tr>
@@ -642,6 +641,7 @@ function newProfileOK(){
 
 				<!-- Content field -->
 				<div class="description-container"><#OpenNAT_desc#></div>
+				<div class="description-container" style="color:#FFCC00;position:relative;z-index:9;"><#OpenNAT_note#></div>
 				<div class="world-map">
 					<div class="map-connection-line"></div>
 					<div class="location-indicator location-US3"></div>

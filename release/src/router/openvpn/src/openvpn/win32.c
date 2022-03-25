@@ -685,10 +685,11 @@ win32_pause(struct win32_signal *ws)
 {
     if (ws->mode == WSO_MODE_CONSOLE && HANDLE_DEFINED(ws->in.read))
     {
+        int status;
         msg(M_INFO|M_NOPREFIX, "Press any key to continue...");
         do
         {
-            WaitForSingleObject(ws->in.read, INFINITE);
+            status = WaitForSingleObject(ws->in.read, INFINITE);
         } while (!win32_keyboard_get(ws));
     }
 }
@@ -1087,7 +1088,7 @@ wide_cmd_line(const struct argv *a, struct gc_arena *gc)
 int
 openvpn_execve(const struct argv *a, const struct env_set *es, const unsigned int flags)
 {
-    int ret = OPENVPN_EXECVE_ERROR;
+    int ret = -1;
     static bool exec_warn = false;
 
     if (a && a->argv[0])
@@ -1136,14 +1137,10 @@ openvpn_execve(const struct argv *a, const struct env_set *es, const unsigned in
             free(env);
             gc_free(&gc);
         }
-        else
+        else if (!exec_warn && (script_security < SSEC_SCRIPTS))
         {
-            ret = OPENVPN_EXECVE_NOT_ALLOWED;
-            if (!exec_warn && (script_security < SSEC_SCRIPTS))
-            {
-                msg(M_WARN, SCRIPT_SECURITY_WARNING);
-                exec_warn = true;
-            }
+            msg(M_WARN, SCRIPT_SECURITY_WARNING);
+            exec_warn = true;
         }
     }
     else

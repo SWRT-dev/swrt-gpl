@@ -77,7 +77,7 @@ if(yadns_support){
 	var yadns_enable = '<% nvram_get("yadns_enable_x"); %>';
 	var yadns_mode = '<% nvram_get("yadns_mode"); %>';
 }
-
+var MaxRule_extend_limit = ((isSupport("MaxRule_extend_limit") != "") ? isSupport("MaxRule_extend_limit") : 64);
 var manually_dhcp_sort_type = 0;//0:increase, 1:decrease
 
 var faq_href = "https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Faq&lang="+ui_lang+"&kw=&num=101";
@@ -140,17 +140,18 @@ function initial(){
 	if(lyra_hide_support){
 		$("#dhcpEnable").hide();
 	}
+	$("#GWStatic").html("<#LANHostConfig_ManualDHCPList_groupitemdesc#>&nbsp;(<#List_limit#>&nbsp;"+MaxRule_extend_limit+")");
 }
 
-function addRow_Group(upper){
+function addRow_Group(){
 	if(dhcp_enable != "1")
 		document.form.dhcp_enable_x[0].checked = true;	
 	if(static_enable != "1")
 		document.form.dhcp_static_x[0].checked = true;
 		
 	var rule_num = Object.keys(manually_dhcp_list_array).length;
-	if(rule_num >= upper){
-		alert("<#JS_itemlimit1#> " + upper + " <#JS_itemlimit2#>");
+	if(rule_num >= MaxRule_extend_limit){
+		alert("<#JS_itemlimit1#> " + MaxRule_extend_limit + " <#JS_itemlimit2#>");
 		return false;	
 	}			
 		
@@ -700,8 +701,8 @@ function sortClientIP(){
 		  <div class="formfonttitle"><#menu5_2#> - <#menu5_2_2#></div>
 		  <div style="margin:10px 0 10px 5px;" class="splitLine"></div>
       <div class="formfontdesc"><#LANHostConfig_DHCPServerConfigurable_sectiondesc#></div>
-      <div id="router_in_pool" class="formfontdesc" style="color:#FFCC00;display:none;"><#LANHostConfig_DHCPServerConfigurable_sectiondesc2#><span id="LANIP"></span></div>	
-      <div id="VPN_conflict" class="formfontdesc" style="color:#FFCC00;display:none;"><span id="VPN_conflict_span"></span></div>
+      <div id="router_in_pool" class="formfontdesc" class="hint-color" style="display:none;"><#LANHostConfig_DHCPServerConfigurable_sectiondesc2#><span id="LANIP"></span></div>	
+      <div id="VPN_conflict" class="formfontdesc" class="hint-color" style="display:none;"><span id="VPN_conflict_span"></span></div>
 			<div class="formfontdesc" style="margin-top:-10px;">
 				<a id="faq" href="" target="_blank" style="font-family:Lucida Console;text-decoration:underline;"><#LANHostConfig_ManualDHCPList_groupitemdesc#>&nbsp;FAQ</a>
 			</div>
@@ -743,7 +744,7 @@ function sortClientIP(){
 			  </tr>
 			  
 			  <tr>
-            <th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(5,5);"><#LANHostConfig_LeaseTime_itemname#> (<#Second#>)</a></th>
+            <th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(5,5);"><#LANHostConfig_LeaseTime_itemname#></a></th>
             <td>
               <input type="text" maxlength="6" name="dhcp_lease" class="input_15_table" value="<% nvram_get("dhcp_lease"); %>" onKeyPress="return validator.isNumber(this,event)" autocorrect="off" autocapitalize="off">
             </td>
@@ -805,7 +806,7 @@ function sortClientIP(){
 			<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" class="FormTable_table" style="margin-top:8px;">
 				<thead>
 					<tr>
-						<td colspan="5" id="GWStatic"><#LANHostConfig_ManualDHCPList_groupitemdesc#>&nbsp;(<#List_limit#>&nbsp;64)</td>
+						<td colspan="5" id="GWStatic"></td>
 					</tr>
 				</thead>
 
@@ -834,7 +835,7 @@ function sortClientIP(){
 					</td>
 					<td width="10%">
 						<div>
-							<input type="button" class="add_btn" onClick="addRow_Group(64);" value="">
+							<input type="button" class="add_btn" onClick="addRow_Group();" value="">
 						</div>
 					</td>
 			  	</tr>	 			  

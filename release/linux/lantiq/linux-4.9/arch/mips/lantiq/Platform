@@ -1,0 +1,31 @@
+#
+# Lantiq
+#
+
+platform-$(CONFIG_LANTIQ)	+= lantiq/
+cflags-$(CONFIG_LANTIQ)		+= -I$(srctree)/arch/mips/include/asm/mach-lantiq
+ifdef CONFIG_EVA
+	ifdef CONFIG_LTQ_EVA_2GB
+	load-$(CONFIG_LANTIQ)		= 0xffffffff20020000
+	endif
+	ifdef CONFIG_LTQ_EVA_1GB
+	load-$(CONFIG_LANTIQ)		= 0xffffffff60020000
+	endif
+	ifdef CONFIG_LTQ_EVA_LEGACY
+	load-$(CONFIG_LANTIQ)   = 0xffffffff80020000
+	endif
+else
+	ifdef CONFIG_SOC_TYPE_GRX500_TEP
+		ifdef CONFIG_BOOTCORE_LOAD_ADDR
+			load-$(CONFIG_LANTIQ)           = $(CONFIG_BOOTCORE_LOAD_ADDR)
+		else
+			load-$(CONFIG_LANTIQ)           = 0xffffffff88000000
+		endif
+	else
+		load-$(CONFIG_LANTIQ)   = 0xffffffff80020000
+	endif
+endif
+cflags-$(CONFIG_SOC_TYPE_XWAY)	+= -I$(srctree)/arch/mips/include/asm/mach-lantiq/xway
+cflags-$(CONFIG_SOC_FALCON)	+= -I$(srctree)/arch/mips/include/asm/mach-lantiq/falcon
+cflags-$(CONFIG_SOC_GRX500)     += -I$(srctree)/arch/mips/include/asm/mach-lantiq/grx500
+cflags-$(CONFIG_SOC_TYPE_GRX500_TEP)           += -I$(srctree)/arch/mips/include/asm/mach-lantiq/grx500

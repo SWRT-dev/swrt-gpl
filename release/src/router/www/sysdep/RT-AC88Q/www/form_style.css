@@ -2095,7 +2095,13 @@ padding-top:1px;
 	width: 740px;
 	margin: 1px 0;
 }
-
+.MainContent{
+	background-color: #4D595D;
+	width: 99%;
+	-webkit-border-radius: 3px;
+	-moz-border-radius: 3px;
+	border-radius:3px;
+}
 .dns_server_list_dropdown {
 	border:1px outset #999;
 	background-color:#576D73;
@@ -2141,4 +2147,7 @@ padding-top:1px;
 	height: 16px;
 	width: 14px;
 	display: none;
+}
+.hint-color{
+	color: #FFCC00;
 }

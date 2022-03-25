@@ -1905,7 +1905,7 @@ static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	char *name;
 	char word[256], *next;
 	int rate=0;
-	int status;
+	int *status;
 	char rate_buf[32];
 	int sw_mode = sw_mode();
 	int wlc_band = nvram_get_int("wlc_band");
@@ -1951,7 +1951,7 @@ static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 		goto ERROR;
 	}
 	status = (unsigned int*)tmp;
-	if(status == 6){
+	if(*status == 6){
 		if ((rate == -1) || (rate == 0))
 			strlcpy(rate_buf, "auto", sizeof(rate_buf));
 		else

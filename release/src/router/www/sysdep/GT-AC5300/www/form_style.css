@@ -2137,24 +2137,16 @@ padding-top:1px;
 	background-color:transparent !important;
 }
 .eula_panel_container{
-	margin: 20px 0 0 200px;
+	margin: 20px 0 0 210px;
 	display: none;
-	position: absolute;
+	position: fixed;
 	width: 600px;
 	z-index: 10000;
-	border: 3px solid #4D5C63;
+	border: 3px solid #5C0C0B;
 	border-radius: 6px;
 	font-family: monospace;
 	font-size: 14px;
 	text-align: left;
-}
-
-#tm_eula_content{
-	line-height: 20px;
-}
-
-#asus_eula_content{
-	line-height: 20px;
 }
 
 #bottom_border{
@@ -2193,6 +2185,13 @@ padding-top:1px;
 	height: 2px;
 	width: 740px;
 	margin: 1px 0;
+}
+.MainContent{
+	background-color: transparent;
+	width: 99%;
+	-webkit-border-radius: 3px;
+	-moz-border-radius: 3px;
+	border-radius:3px;
 }
 .query_list{
 	display: none;
@@ -2250,4 +2249,40 @@ padding-top:1px;
 	height: 16px;
 	width: 14px;
 	display: none;
+}
+.hint-color{
+	color: #FFCC00;
+}
+.button-text{
+    display: table-cell;
+    vertical-align: middle;
+    font-family: Roboto;
+    font-size: 14px;
+    padding-left: 12px;
+}
+.button-icon{
+    width: 18px;
+    height: 18px;
+    display:table-cell;
+    background-repeat: no-repeat;
+    background-size: 100%;
+}
+.icon-cancel{
+    background-image: url('../images/gameprofile/cancel.svg');
+}
+.button-icon-check{
+    background-image: url('../images/gameprofile/ok.svg');
+}
+.button-container:hover, .button-container:active,
+.icon-button-container:hover, .icon-button-container:active{
+    border: 2px solid #E64100;
+    background-color: #000000;
+}
+.button-container{
+    display: table;
+    border: 2px solid #842500;
+    border-radius: 24px;
+    padding: 12px 24px;
+    background-color: #141618;
+    cursor: pointer;
 }

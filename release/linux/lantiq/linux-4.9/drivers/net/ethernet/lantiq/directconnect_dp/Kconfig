@@ -1,0 +1,10 @@
+#
+# DirectConnect Datapath Driver
+#
+config DIRECTCONNECT_DP_API
+       tristate "DirectConnect Datapath API framework"
+       default n
+       depends on SOC_XWAY || SOC_GRX500
+       ---help---
+         DirectConnect Datapath API framework support for Intel/Lantiq SoCs.
+

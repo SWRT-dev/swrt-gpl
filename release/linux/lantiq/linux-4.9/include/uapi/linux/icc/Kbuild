@@ -1,0 +1,3 @@
+# UAPI Header export list
+header-y += drv_icc.h
+header-y += drv_mps.h

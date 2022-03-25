@@ -137,8 +137,6 @@ typedef struct ovpn_cconf {
 	char progname[16];
 // Tunnel options
 	char addr[128];	//remote server address
-	int did_resolv_addr;
-	char resolv_addr[1024];
 	int retry;	//retry resolve hostname
 	char proto[16];
 	int port;

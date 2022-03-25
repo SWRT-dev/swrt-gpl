@@ -1,0 +1,25 @@
+Voltage/Current Regulator Virtual Consumer
+
+Virtual consumer driver is mainly supposed to be used for debug and test
+purposes. It gives a posibility to control a regulator voltage/current from
+userspace.
+
+The bindings below helps to define a dummy platform device in device tree and
+bind the virtual consumer with a regulator you want to test.
+
+Properties:
+  - compatible: must be "intel,reg-virt-platdev"
+  - regulator: a phandle to existing regulator node.
+
+
+Example:
+
+reg-virt-consumer: {
+	compatible = "intel,reg-virt-platdev";
+	regulator = <$buck1_reg>;
+};
+
+reg-virt-consumer2: {
+	compatible = "intel,reg-virt-platdev";
+	regulator = <$buck2_reg>;
+};

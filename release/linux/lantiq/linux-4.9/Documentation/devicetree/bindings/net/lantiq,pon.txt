@@ -1,0 +1,12 @@
+Intel PON Ethernet driver Device Tree Bindings
+-------------------------------------------------------------
+
+ - compatible:		"lantiq,falcon-mountain-pon"
+ - reg:			TODO:
+
+Examples:
+
+pon@0 {
+	compatible = "lantiq,falcon-mountain-pon";
+	reg = <0x00>;
+};

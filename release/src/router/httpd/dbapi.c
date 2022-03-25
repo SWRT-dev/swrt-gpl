@@ -2,7 +2,11 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#if defined(MUSL_LIBC)
+#include <fcntl.h> // fcntl
+#else
 #include <sys/fcntl.h> // fcntl
+#endif
 #include <unistd.h> // close
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -14,6 +18,7 @@
 #include <limits.h> // [LONG|INT][MIN|MAX]
 #include <errno.h>  // errno
 #include <unistd.h>
+#include <json.h>
 #include "dbapi.h"
 
 //"list "
@@ -306,6 +311,53 @@ static int parse_list_result(dbclient *client, char* prefix, webs_t wp, fn_db_pa
     return 0;
 }
 
+static int parse_list_result_json(dbclient *client, char* prefix, json_object *result, fn_db_parse_json fn) {
+    int n1, n2;
+    char *p1, *p2, *magic = MAGIC;
+
+    for(;;) {
+        n1 = read_util(client, HEADER_PREFIX, 110);
+        if(n1 < 0) {
+            return n1;
+        }
+
+        if(0 != memcmp(client->buf, magic, MAGIC_LEN)) {
+            //message error
+            return -3;
+        }
+
+        client->buf[HEADER_PREFIX-1] = '\0';
+        if(S2ISUCCESS != str2int(&n2, client->buf+MAGIC_LEN, 10)) {
+            //message error
+            return -4;
+        }
+
+        n1 = read_util(client, n2, 510);
+        if(n1 < 0) {
+            return n1;
+        }
+
+        client->buf[n2] = '\0';
+
+        if(NULL != strstr(client->buf, "__end__")) {
+            break;
+        }
+
+        p1 = client->buf + LIST_LEN;
+        p2 = strstr(p1, " ");
+        *p2 = '\0';
+        p2++;
+        if(client->buf[n2-1] == '\n') {
+            client->buf[n2-1] = '\0';
+        }
+        if(0 != (*fn)(client, result, prefix, p1, p2)) {
+            break;
+        }
+    }
+
+    return 0;
+}
+
 int dbclient_list(dbclient* client, char* prefix, webs_t wp, fn_db_parse fn) {
     int n1, n2;
 
@@ -317,6 +369,19 @@ int dbclient_list(dbclient* client, char* prefix, webs_t wp, fn_db_parse fn) {
     }
 
     return parse_list_result(client, prefix, wp, fn);
+}
+
+int dbclient_list_json(dbclient* client, char* prefix, json_object *result, fn_db_parse_json fn) {
+    int n1, n2;
+
+    n1 = strlen("list") + strlen(prefix) + 2;//list prefix\n
+    check_buf(client, n1 + HEADER_PREFIX);
+    n2 = sprintf(client->buf, "%s%07d list %s\n", MAGIC, n1, prefix);
+    if(0 != write_util(client, n1 + HEADER_PREFIX, 100)) {
+        return -1;
+    }
+
+    return parse_list_result_json(client, prefix, result, fn);
 }
 
 int dbclient_end(dbclient* client) {

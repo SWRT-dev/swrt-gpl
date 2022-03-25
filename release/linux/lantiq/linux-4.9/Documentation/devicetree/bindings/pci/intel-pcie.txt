@@ -1,0 +1,200 @@
+* Intel AXI bus based PCI express root complex
+
+Required properties:
+- compatible:one of the following values:
+	- "intel,xrx500-pcie" for GRX350/GRX550
+	- "intel,prx300-pcie" for Falcon Mountain
+
+- device_type: Must be "pci"
+
+- #address-cells: Address representation for root ports (must be 3)
+- #size-cells: Size representation for root ports (must be 2)
+
+- reg: Register ranges as listed in the reg-names property
+
+- reg-names: Must include the following entries
+	- "csr"    Controller control and status registers
+	- "cfg"    PCIe configuration space
+	- "app"    Controller application register
+	- "msi"    MSI phyiscal address space
+	- "pic"    MSI Programmable Interrupt Controller registers
+
+- ranges: Ranges for the PCI memory and I/O regions.
+
+- resets: Must contain an entry for each entry in reset-names.
+  See ../reset/reset.txt for details.
+
+- reset-names: Must be "core"
+
+- interrupt-parent: Link to its parent interrupt device.
+	 Must contain "&gic" for MIPS based SoC
+
+- interrupts: MSI interrupts and IR interrupt
+
+- interrupt-names: must contain "msi0", "msi1", "msi2", "msi3",
+		    "msi4", "msi5", "msi6", "msi7" and "ir"
+
+- #interrupt-cells: set to <1>
+
+- interrupt-map-mask and interrupt-map: Standard PCI IRQ mapping properties
+  Please refer to the standard PCI bus binding document for a more detailed
+  explanation.
+
+- clocks: List of phandle and clock specifier pairs as listed
+		    in clock-names property
+
+- clock-names: Should contain the following entries
+		- "ctrl"	Clocks the pcie controller block
+
+- phys:List of PHY specifiers (used by generic PHY framework).
+
+- phy-names: Must contain "phy"
+
+- reset-gpios: gpio or ssio to PERST#
+
+- intel,inbound-shift: Control the inbound endianess conversion. Each
+	RC has unique bit to control it for some strange endpoints
+- intel,outbound-shift: Control the outbound endianness conversion.
+	Each RC unique bit to control it for some strange endpoints
+- intel,iatu: can not decide it by detecting registers. if iatu is supported
+	this field must be 1. Otherwise, must be 0
+- intel,pcie-syscon: syscon interface to chiptop register to control some
+	mixed functions
+
+Optional properties:
+
+- linux,pci-domain: PCI domain ID. Should be unique for each host controller
+- num-lanes: Number of lanes to use for this port.
+- max-link-speed:
+   If present this property specifies PCI gen for link capability.
+- bus-range: Range of bus numbers associated with this controller.
+- intel,rst-interval: reset interval in ms
+- intel,inbound-swap: Control inbound endianness swap
+- intel,outbound-swap: control outbound endianness swap
+
+Examples:
+=========
+
+GRX500:
+--------
+
+SoC DTSI:
+	pcie0:pcie@18900000 {
+		status = "disabled";
+		compatible = "intel,xrx500-pcie";
+		device_type = "pci";
+		#address-cells = <3>;
+		#size-cells = <2>;
+		reg = <
+			0x18900000 0x100000 /* RC controller */
+			0xBB000000 0x800000 /* Cfg */
+			0x18800000 0x100000 /* App logic */
+			0x18600000 0x100000 /* MSI addr space */
+			0x18700000 0x100000 /* MSI PIC */
+		>;
+		reg-names = "csr", "cfg", "app", "msi", "pic";
+		linux,pci-domain = <0>;
+		max-link-speed = <2>;
+		bus-range = <0x00 0x08>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SHARED 128 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 129 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 130 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 131 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 132 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 133 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 134 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 135 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 152 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "msi0", "msi1", "msi2", "msi3", "msi4", "msi5", "msi6", "msi7", "ir";
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0 0 0 0x7>;
+		interrupt-map = <0 0 0 1 &gic  GIC_SHARED 136 IRQ_TYPE_LEVEL_HIGH>,
+				<0 0 0 2 &gic  GIC_SHARED 137 IRQ_TYPE_LEVEL_HIGH>,
+				<0 0 0 3 &gic  GIC_SHARED 138 IRQ_TYPE_LEVEL_HIGH>,
+				<0 0 0 4 &gic  GIC_SHARED 139 IRQ_TYPE_LEVEL_HIGH>;
+		ranges = <0x02000000 0 0xb8000000 0xb8000000 0 0x03000000    /* Non-pretechable memory 32bit */
+			  0x01000000 0 0xbb800000 0xbb800000 0 0x00010000    /* Downsream I/O */
+			 >;
+
+		intel,pcie-syscon = <&sysconf>;
+		intel,inbound-shift = <5>;
+		intel,outbound-shift = <4>;
+		intel,iatu = <0>;
+		clocks = <&clkgate2 GATE_PCIE0_CLK>;
+		clock-names ="ctl";
+		phys = <&pcie_phy0>;
+		phy-names = "phy";
+	};
+
+Board DTS:
+
+	&pcie0 {
+		status = "okay";
+		intel,rst-interval = <200>;
+		intel,inbound-swap = <1>;
+		intel,outbound-swap = <0>;
+		reset-gpio = <&gpio0 18 0>;
+	};
+
+PRX300:
+--------
+SoC DTSI:
+
+	pcie0:pcie@1a400000 {
+		compatible = "intel,prx300-pcie";
+		device_type = "pci";
+		#address-cells = <3>;
+		#size-cells = <2>;
+		reg = <
+			0x1a400000 0x1000 /* RC controller */
+			0xbb000000 0x800000 /* Cfg */
+			0x1a341000 0x1000 /* App logic */
+			0x1a100000 0x100 /* MSI addr space */
+			0x1a200000 0x100 /* MSI PIC */
+		>;
+		reg-names = "csr", "cfg", "app", "msi", "pic";
+		linux,pci-domain = <0>;
+		max-link-speed = <3>;
+		bus-range = <0x00 0x08>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SHARED 128 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 129 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 130 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 131 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 132 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 133 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 134 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 135 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 152 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "msi0", "msi1", "msi2", "msi3", "msi4", "msi5", "msi6", "msi7", "ir";
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0 0 0 0x7>;
+		interrupt-map = <0 0 0 1 &gic  GIC_SHARED 136 IRQ_TYPE_LEVEL_HIGH>,
+				<0 0 0 2 &gic  GIC_SHARED 137 IRQ_TYPE_LEVEL_HIGH>,
+				<0 0 0 3 &gic  GIC_SHARED 138 IRQ_TYPE_LEVEL_HIGH>,
+				<0 0 0 4 &gic  GIC_SHARED 139 IRQ_TYPE_LEVEL_HIGH>;
+		ranges = <0x02000000 0 0xb8000000 0xb8000000 0 0x03000000    /* Non-pretechable memory 32bit */
+			  0x01000000 0 0xbb800000 0xbb800000 0 0x00010000     /* Downsream I/O */
+			 >;
+		resets = <&rcu0 22>;
+		reset-names =  "core";
+		intel,pcie-syscon = <&sysconf>;
+		intel,inbound-shift = <6>;
+		intel,outbound-shift = <4>;
+		intel,iatu = <1>;
+		clocks = <&clkgate2 GATE_CTRL0_CLK>;
+		clock-names ="ctl";
+		phys = <&cb0phy0>;
+		phy-names = "phy";
+	};
+
+Board DTS:
+
+	&pcie0 {
+		intel,rst-interval = <200>;
+		intel,inbound-swap = <1>;
+		intel,outbound-swap = <0>;
+		reset-gpio = <&ssogpio 18 0>;
+		num-lanes = <2>;
+	};

@@ -1,0 +1,63 @@
+* Thermal Sensor for Lantiq SoCs
+
+These are the bindings for Lantiq GRX500/XRX500 on-SoC thermal sensor. It's
+not irq driven sensor so it needs thermal zone definition (see example below)
+to poll the sensor periodically.
+
+Required properties:
+- compatible:
+  - "lantiq,ts-xrx500" for Lantiq GRX500 SoC
+  - "intel,ts-prx300" for prx300 SoC
+
+- intel,syscon: phandle to syscon node
+
+
+Example of sensor definition:
+
+ts: ts@080000 {
+	#thermal-sensor-cells = <0>;
+
+	compatible = "lantiq,ts-xrx500";
+	intel,syscon = <&sysconf>;
+};
+
+
+Example of thermal zone definition:
+
+thermal-zones {
+	cpu_thermal: cpu-thermal {
+		polling-delay-passive = <500>; /* milliseconds */
+		polling-delay = <1000>; /* milliseconds */
+
+		thermal-sensors = <&ts>;
+
+		trips {
+			cpu_alert0: cpu-alert0 {
+				temperature = <65000>; /* millicelsius */
+				hysteresis = <2000>; /* millicelsius */
+				type = "passive";
+			};
+			cpu_alert1: cpu-alert1 {
+				temperature = <100000>; /* millicelsius */
+				hysteresis = <10000>; /* millicelsius */
+				type = "passive";
+			};
+			cpu_crit: cpu-crit {
+				temperature = <125000>; /* millicelsius */
+				hysteresis = <10000>; /* millicelsius */
+				type = "critical";
+			};
+		};
+
+		cooling-maps {
+			map0 {
+				trip = <&cpu_alert0>;
+				cooling-device = <&cpu0 THERMAL_NO_LIMIT 1>;
+			};
+			map1 {
+				trip = <&cpu_alert1>;
+				cooling-device = <&cpu0 2 THERMAL_NO_LIMIT>;
+			};
+		};
+	};
+};

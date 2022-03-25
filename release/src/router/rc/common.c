@@ -520,13 +520,9 @@ static void write_ct_timeout(const char *type, const char *name, unsigned int va
 {
 	unsigned char buf[128];
 	char v[16];
-#if defined(RTCONFIG_RALINK_MT7629)
-	sprintf((char *) buf, "/proc/sys/net/netfilter/nf_conntrack_%s_timeout%s%s",
-		type, (name && name[0]) ? "_" : "", name ? name : "");
-#else
+
 	sprintf((char *) buf, "/proc/sys/net/ipv4/netfilter/ip_conntrack_%s_timeout%s%s",
 		type, (name && name[0]) ? "_" : "", name ? name : "");
-#endif
 	sprintf(v, "%u", val);
 
 	f_write_string((const char *) buf, v, 0, 0);
@@ -545,13 +541,9 @@ static unsigned int read_ct_timeout(const char *type, const char *name)
 	unsigned char buf[128];
 	unsigned int val = 0;
 	char v[16];
-#if defined(RTCONFIG_RALINK_MT7629)
-	sprintf((char *) buf, "/proc/sys/net/netfilter/nf_conntrack_%s_timeout%s%s",
-		type, (name && name[0]) ? "_" : "", name ? name : "");
-#else
+
 	sprintf((char *) buf, "/proc/sys/net/ipv4/netfilter/ip_conntrack_%s_timeout%s%s",
 		type, (name && name[0]) ? "_" : "", name ? name : "");
-#endif
 	if (f_read_string((const char *) buf, v, sizeof(v)) > 0)
 		val = atoi(v);
 
@@ -1385,9 +1377,7 @@ void time_zone_x_mapping(void)
 
 	/* check time_zone_dst for daylight saving */
 	if (nvram_get_int("time_zone_dst"))
-    {
 		len += sprintf(tmpstr + len, ",%s", nvram_safe_get("time_zone_dstoff"));
-    }        
 #ifdef CONVERT_TZ_TO_GMT_DST
 	else	gettzoffset(tmpstr, tmpstr, sizeof(tmpstr));
 #endif
@@ -1436,7 +1426,13 @@ setup_timezone(void)
 	gmtime_r(&now, &gm);
 	localtime_r(&now, &local);
 	gm.tm_isdst = local.tm_isdst;
+	memset(&tz, 0, sizeof(tz));	// On Linux, with glibc, the setting of the tz_dsttime field of struct timezone has never been used by settimeofday() or gettimeofday().
 	tz.tz_minuteswest = (mktime(&gm) - mktime(&local)) / 60;
+
+#if !defined(__GLIBC__) && !defined(__UCLIBC__) /* musl */
+	if (syscall(SYS_settimeofday, NULL, &tz))
+		_dprintf("[%s]: can't set kernel time zone!!!!\n");
+#endif
 
 	/* Setup sane start time */
 	if (now < RC_BUILDTIME) {
@@ -1446,12 +1442,7 @@ setup_timezone(void)
 		tv.tv_sec += info.uptime;
 		tvp = &tv;
 	}
-
 	settimeofday(tvp, &tz);
-#if !defined(__GLIBC__) && !defined(__UCLIBC__) /* musl */
-	if (syscall(SYS_settimeofday, NULL, &tz))
-		_dprintf("[%s]: can't set kernel time zone!!!!\n");
-#endif
 }
 
 int get_meminfo_item(const char *name)
@@ -1617,6 +1608,67 @@ int rand_seed_by_time(void)
 	return rand();
 }
 
+//Andrew add
+#ifdef RTCONFIG_CONNTRACK
+void conntrack_check(int action)
+{
+	static unsigned int conntrack_times = 0;
+	char cmd[80];
+
+	if (!nvram_match("fb_conntrack_debug", "1"))
+		return;
+
+	int pid = pidof("conntrack");
+	/*
+	time_t now;
+	struct tm *info;
+	char t_str[10];
+
+	time(&now);
+	info = localtime(&now);
+	strftime(t_str, 10, "%H:%M:%S", info);
+	*/
+	switch (action) {
+	case CONNTRACK_START:
+		//_dprintf("%s conntrack_check, action=[%d][START], pid=[%d]\n", t_str, CONNTRACK_START, pid);
+		if (pid < 1) {
+			snprintf(cmd, sizeof(cmd), "conntrack -E -p tcp -v %s &", NF_CONNTRACK_FILE);
+			_dprintf("cmd=[%s]\n", cmd);
+			system(cmd);
+			conntrack_times = 0;
+		}
+		break;
+
+	case CONNTRACK_STOP:
+		//_dprintf("%s conntrack_check, action=[%d][STOP], pid=[%d]\n", t_str, CONNTRACK_STOP, pid);
+		if (pid >= 1) {
+			snprintf(cmd, sizeof(cmd), "kill -SIGTERM %d", pid);
+			_dprintf("cmd=[%s]\n", cmd);
+			system(cmd);
+			conntrack_times = 0;
+		}
+		break;
+
+	case CONNTRACK_ROTATE:
+		//_dprintf("%s conntrack_check, action=[%d][ROTATE], pid=[%d], times=[%d]\n", t_str, CONNTRACK_ROTATE, pid, conntrack_times);
+		conntrack_times++;
+		if (conntrack_times < ONEDAY)
+			return;
+
+		if (pid >= 1) {
+			snprintf(cmd, sizeof(cmd), "kill -SIGUSR1 %d", pid);
+			_dprintf("cmd=[%s]\n", cmd);
+			system(cmd);
+			conntrack_times = 0;
+		}
+		break;
+	}
+
+	return;
+}
+#endif //RTCONFIG_CONNTRACK
+//Andrew end
+
 #if defined(RTCONFIG_QCA)
 char *get_wpa_supplicant_pidfile(const char *ifname, char *buf, int size)
 {
@@ -1698,5 +1750,46 @@ void collect_debuglog(int type)
 		strlcat(cmd, buf, sizeof(cmd));
 		system(cmd);
 		delete_tmplog();
+	}
+}
+
+int check_mountpoint(char *mountpoint)
+{
+	FILE *procpt;
+	char line[256], devname[48], mpname[48], system_type[10], mount_mode[128];
+	int dummy1, dummy2;
+
+	if ((procpt = fopen("/proc/mounts", "r")) != NULL)
+	while (fgets(line, sizeof(line), procpt)) {
+		memset(mpname, 0x0, sizeof(mpname));
+		if (sscanf(line, "%s %s %s %s %d %d", devname, mpname, system_type, mount_mode, &dummy1, &dummy2) != 6)
+			continue;
+
+		if (!strcmp(mpname, mountpoint))
+			return 1;
+	}
+
+	if (procpt)
+		fclose(procpt);
+
+	return 0;
+}
+
+extern char **environ;
+void envsave(const char* path)
+{
+	FILE* fp;
+	int i = 0;
+
+	if (!*path)
+		return;
+
+	fp = fopen(path, "w");
+	if (fp) {
+		while(environ[i] != NULL) {
+			fprintf(fp, "%s\n", environ[i]);
+			i++;
+		}
+		fclose(fp);
 	}
 }

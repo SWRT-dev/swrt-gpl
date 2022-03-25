@@ -553,12 +553,18 @@ function applyRule(){
 */
 		if (document.form.dsl_proto.value == "static"){
 			document.form.dsl_DHCPClient.value = 0;
+			document.form.dsl_dnsenable[1].disabled = false;
+			document.form.dsl_dnsenable[1].checked = true;
 		}
 		else if(document.form.dsl_DHCPClient_x){
-			if(document.form.dsl_DHCPClient_x[0].checked == 1)
+			if(document.form.dsl_DHCPClient_x[0].checked == 1){
 				document.form.dsl_DHCPClient.value = 1;
-			else
+			}
+			else{
 				document.form.dsl_DHCPClient.value = 0;
+				document.form.dsl_dnsenable[1].disabled = false;
+				document.form.dsl_dnsenable[1].checked = true;	
+			}
 		}
 
 		document.form.wan_enable.value = document.form.dsl_link_enable.value;
@@ -762,8 +768,8 @@ function change_dsl_type(dsl_type){
 	change_dsl_dns_enable();
 
 	if(dsl_type == "pppoe" || dsl_type == "pppoa"){
-		inputCtrl(document.form.dsl_dnsenable[0], 1);
-		inputCtrl(document.form.dsl_dnsenable[1], 1);
+		//inputCtrl(document.form.dsl_dnsenable[0], 1);
+		//inputCtrl(document.form.dsl_dnsenable[1], 1);
 		showhide("DHCP_option",0);
 		inputCtrl(document.form.dsl_dhcp_vendorid, 0);
 		inputCtrl(document.form.dsl_dhcp_clientid, 0);
@@ -787,8 +793,8 @@ function change_dsl_type(dsl_type){
 		inputCtrl(document.form.dsl_dhcp_qry, 0);
 	}
 	else if(dsl_type == "static"){
-		inputCtrl(document.form.dsl_dnsenable[0], 0);
-		inputCtrl(document.form.dsl_dnsenable[1], 0);
+		//inputCtrl(document.form.dsl_dnsenable[0], 0);
+		//inputCtrl(document.form.dsl_dnsenable[1], 0);
 		showhide("DHCP_option",0);
 		inputCtrl(document.form.dsl_dhcp_vendorid, 0);
 		inputCtrl(document.form.dsl_dhcp_clientid, 0);
@@ -811,8 +817,8 @@ function change_dsl_type(dsl_type){
 		inputCtrl(document.form.dsl_dhcp_qry, 0);
 	}
 	else if(dsl_type == "dhcp"){
-		inputCtrl(document.form.dsl_dnsenable[0], 1);
-		inputCtrl(document.form.dsl_dnsenable[1], 1);
+		//inputCtrl(document.form.dsl_dnsenable[0], 1);
+		//inputCtrl(document.form.dsl_dnsenable[1], 1);
 		showhide("DHCP_option",1);
 		inputCtrl(document.form.dsl_dhcp_vendorid, 1);
 		inputCtrl(document.form.dsl_dhcp_clientid, 1);
@@ -837,8 +843,8 @@ function change_dsl_type(dsl_type){
 		inputCtrl(document.form.dsl_dhcp_qry, 1);
 	}
 	else if(dsl_type == "bridge") {
-		inputCtrl(document.form.dsl_dnsenable[0], 0);
-		inputCtrl(document.form.dsl_dnsenable[1], 0);
+		//inputCtrl(document.form.dsl_dnsenable[0], 0);
+		//inputCtrl(document.form.dsl_dnsenable[1], 0);
 		showhide("DHCP_option",0);
 		inputCtrl(document.form.dsl_dhcp_vendorid, 0);
 		inputCtrl(document.form.dsl_dhcp_clientid, 0);
@@ -963,8 +969,6 @@ function change_dsl_dns_enable(){
 		inputCtrl(document.form.dsl_dnsenable[1], 1);
 
 		var wan_dnsenable = document.form.dsl_dnsenable[0].checked;
-		//var wan_dnsenable = true;
-		//var wan_dnsenable = false;
 
 		inputCtrl(document.form.dsl_dns1, !wan_dnsenable);
 		inputCtrl(document.form.dsl_dns2, !wan_dnsenable);
@@ -985,8 +989,7 @@ function change_dsl_dns_enable(){
 		inputCtrl(document.form.dsl_dns2, 0);
 	}
 
-/*
-	if(document.form.dsl_DHCPClient[0].checked){
+	if(document.form.dsl_DHCPClient_x[0].checked){
 		inputCtrl(document.form.dsl_dnsenable[0], 1);
 		inputCtrl(document.form.dsl_dnsenable[1], 1);
 	}
@@ -998,7 +1001,7 @@ function change_dsl_dns_enable(){
 		inputCtrl(document.form.dsl_dnsenable[0], 1);
 		inputCtrl(document.form.dsl_dnsenable[1], 1);
 	}
-*/
+
 }
 
 function change_dsl_dhcp_enable(){
@@ -1592,7 +1595,7 @@ function showDiableDHCPclientID(clientid_enable){
 <input type="hidden" name="action_mode" value="apply">
 <input type="hidden" name="flag" value="chg_pvc">
 <input type="hidden" name="action_script" value="">
-<input type="hidden" name="action_wait" value="2">
+<input type="hidden" name="action_wait" value="">
 <input type="hidden" name="current_page" value="Advanced_VDSL_Content.asp">
 <input type="hidden" name="dsl_unit" value="8">
 <input type="hidden" name="dsl_subunit" value="">

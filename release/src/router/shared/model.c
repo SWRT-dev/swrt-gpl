@@ -13,66 +13,19 @@ struct model_s {
 };
 
 static const struct model_s model_list[] = {
-#if defined(RTCONFIG_REALTEK)
-	{ "RP-AC68U",		MODEL_RPAC68U		},
-	{ "RP-AC53",		MODEL_RPAC53		},
-	{ "RP-AC55",		MODEL_RPAC55		},
-	{ "RP-AC92",		MODEL_RPAC92		},
-#elif defined(RTCONFIG_RALINK)
-#ifdef RTCONFIG_DSL
-	{ "DSL-N55U",		MODEL_DSLN55U		},
-	{ "DSL-N55U-B",		MODEL_DSLN55U		},
-#endif
-	{ "EA-N66",		MODEL_EAN66		},
-	{ "RT-N11P",		MODEL_RTN11P		},
-	{ "RT-N300",		MODEL_RTN300		},
-	{ "RT-N13U",		MODEL_RTN13U		},
-	{ "RT-N14U",		MODEL_RTN14U		},
-	{ "RT-AC52U",		MODEL_RTAC52U		},
-	{ "RT-AC51U",		MODEL_RTAC51U		},
-	{ "RT-N54U",		MODEL_RTN54U		},
-	{ "RT-AC54U",		MODEL_RTAC54U		},
-	{ "RT-N56UB1",		MODEL_RTN56UB1		},
-	{ "RT-N56UB2",		MODEL_RTN56UB2		},
-	{ "RT-N36U3",		MODEL_RTN36U3		},
-	{ "RT-N56U",		MODEL_RTN56U		},
-	{ "RT-N65U",		MODEL_RTN65U		},
-	{ "RT-N67U",		MODEL_RTN67U		},
-	{ "RT-AC1200HP",	MODEL_RTAC1200HP	},
-	{ "RT-AC1200",		MODEL_RTAC1200		},
-	{ "RT-AC1200_V2",	MODEL_RTAC1200V2	},
 	{ "RT-ACRH18",		MODEL_RTACRH18		},
-	{ "RT-N600",		MODEL_RTAC1200		},
-	{ "RT-AC1200GA1",	MODEL_RTAC1200GA1	},
-	{ "RT-AC1200GU",	MODEL_RTAC1200GU	},
-	{ "RT-AC51U+",		MODEL_RTAC51UP		},
-	{ "RT-AC53",		MODEL_RTAC53		},
-	{ "RT-N11P_B1",		MODEL_RTN11P_B1		},
-	{ "RT-N10P_V3",		MODEL_RTN11P_B1		},
-	{ "RP-AC87",		MODEL_RPAC87		},
 	{ "RT-AC85U",		MODEL_RTAC85U		},
 	{ "RT-AC85P",		MODEL_RTAC85P		},
 	{ "RT-ACRH26",		MODEL_RTACRH26		},
 	{ "TUF-AC1750",		MODEL_TUFAC1750		},
 	{ "RT-AC65U",		MODEL_RTAC85U		},
-	{ "RT-N800HP",		MODEL_RTN800HP		},
 	{ "4G-AC86U",		MODEL_RT4GAC86U		},
 	{ "4G-AX56",		MODEL_RT4GAX56		},
 	{ "RT-AX53U",		MODEL_RTAX53U		},
 	{ "RT-AX54",		MODEL_RTAX54		},
-#elif defined(RTCONFIG_QCA)
-	{ "RT-AC55U",		MODEL_RTAC55U		},
-	{ "RT-AC55UHP",		MODEL_RTAC55UHP		},
-	{ "4G-AC55U",		MODEL_RT4GAC55U		},
-	{ "RT-N19",		MODEL_RTN19		},
 	{ "RT-AC59U",		MODEL_RTAC59U		},
 	{ "RT-AC59U_V2",	MODEL_RTAC59U		},
-	{ "PL-N12",		MODEL_PLN12		},
-	{ "PL-AC56",		MODEL_PLAC56		},
-	{ "PL-AC66U",		MODEL_PLAC66U		},
 	{ "PL-AX56_XP4",	MODEL_PLAX56XP4		},
-	{ "RP-AC66",		MODEL_RPAC66		},
-	{ "RP-AC51",		MODEL_RPAC51		},
 	{ "RT-AC58U",		MODEL_RTAC58U		},
 	{ "4G-AC53U",		MODEL_RT4GAC53U		},
 	{ "4G-AC56",		MODEL_RT4GAC56		},
@@ -92,24 +45,10 @@ static const struct model_s model_list[] = {
 	{ "GT-AXY16000",	MODEL_GTAXY16000	},
 	{ "GT-AX6000N",		MODEL_GTAX6000N		},
 	{ "RT-AX89U",		MODEL_RTAX89U		},
-	{ "ETJ",		MODEL_ETJ		},
-#elif defined(RTCONFIG_ALPINE)
-	{ "GT-AC9600",		MODEL_GTAC9600		},
-#elif defined(RTCONFIG_LANTIQ)
+	{ "ETJ",			MODEL_ETJ			},
 	{ "BLUECAVE",		MODEL_BLUECAVE		},
 	{ "BLUE_CAVE",		MODEL_BLUECAVE		},
-#else
-	{ "RT-N66U",		MODEL_RTN66U		},
-	{ "RT-AC56S",		MODEL_RTAC56S		},
-	{ "RT-AC56U",		MODEL_RTAC56U		},
-	{ "RT-AC66U",		MODEL_RTAC66U		},
-#ifdef RT4GAC68U
-	{ "4G-AC68U",		MODEL_RTAC68U		},
-#endif
 	{ "RT-AC68U",		MODEL_RTAC68U		},
-	{ "RT-AC68A",		MODEL_RTAC68U		},
-	{ "RT-AC87U",		MODEL_RTAC87U		},
-	{ "RT-AC53U",		MODEL_RTAC53U		},
 	{ "RT-AC3200",		MODEL_RTAC3200		},
 	{ "RT-AC88U",		MODEL_RTAC88U		},
 	{ "RT-AC86U",		MODEL_RTAC86U		},
@@ -121,19 +60,23 @@ static const struct model_s model_list[] = {
 	{ "RT-AX88U",		MODEL_RTAX88U		},
 	{ "RT-AX92U",		MODEL_RTAX92U		},
 	{ "RT-AX95Q",		MODEL_RTAX95Q		},
+	{ "XT8PRO",		MODEL_XT8PRO		},
 	{ "RT-AXE95Q",		MODEL_RTAXE95Q		},
+	{ "ET8PRO",		MODEL_ET8PRO		},
 	{ "RT-AX56_XD4",	MODEL_RTAX56_XD4	},
+	{ "XD4PRO",	MODEL_XD4PRO	},
 	{ "CT-AX56_XD4",	MODEL_CTAX56_XD4	},
 	{ "RT-AX58U",		MODEL_RTAX58U		},
 	{ "TUF-AX3000",		MODEL_RTAX58U		},
-	{ "TUF-AX5400",         MODEL_RTAX58U		},
-	{ "RT-AX82U",           MODEL_RTAX58U		},
+	{ "TUF-AX5400",     MODEL_RTAX58U		},
+	{ "RT-AX82U",       MODEL_RTAX58U		},
 	{ "RT-AX82_XD6",	MODEL_RTAX58U		},
 	{ "GS-AX3000",		MODEL_RTAX58U		},
 	{ "GS-AX5400",		MODEL_RTAX58U		},
 	{ "RT-AX58U_V2",	MODEL_RTAX58U_V2	},
 	{ "RT-AX56U",		MODEL_RTAX56U		},
-	{ "RP-AX56",            MODEL_RPAX56            },
+	{ "RP-AX56",        MODEL_RPAX56        },
+	{ "RP-AX58",            MODEL_RPAX58            },
 	{ "RT-AX55",		MODEL_RTAX55		},
 	{ "RT-AX1800",		MODEL_RTAX55		},
 	{ "RT-AX86U",		MODEL_RTAX86U		},
@@ -141,34 +84,33 @@ static const struct model_s model_list[] = {
 	{ "RT-AX86S",		MODEL_RTAX86U		},
 	{ "RT-AX68U",		MODEL_RTAX68U		},
 	{ "RT-AC68U_V4",	MODEL_RTAC68U_V4	},
+	{ "GT-AX6000",		MODEL_GTAX6000		},
 	{ "GT-AXE11000",	MODEL_GTAXE11000	},
-	{ "GT-AX11000_PRO",     MODEL_GTAX11000_PRO     },
-	{ "ET12",		MODEL_ET12		},
-	{ "XT12",		MODEL_XT12		},
+	{ "GT-AX11000_PRO", MODEL_GTAX11000_PRO },
+	{ "GT-AXE16000",	MODEL_GTAXE16000	},
+	{ "ET12",			MODEL_ET12			},
+	{ "XT12",			MODEL_XT12			},
 	{ "DSL-AX82U",		MODEL_DSLAX82U		},
-	{ "RT-N53",		MODEL_RTN53		},
-	{ "RT-N16",		MODEL_RTN16		},
-	{ "RT-N18U",		MODEL_RTN18U		},
-	{ "RT-N15U",		MODEL_RTN15U		},
-	{ "RT-N12",		MODEL_RTN12		},
-	{ "RT-N12B1",		MODEL_RTN12B1		},
-	{ "RT-N12C1",		MODEL_RTN12C1		},
-	{ "RT-N12D1",		MODEL_RTN12D1		},
-	{ "RT-N12VP",		MODEL_RTN12VP		},
-	{ "RT-N12HP",		MODEL_RTN12HP		},
-	{ "RT-N12HP_B1",	MODEL_RTN12HP_B1	},
-	{ "AP-N12",		MODEL_APN12		},
-	{ "AP-N12HP",		MODEL_APN12HP		},
-	{ "RT-N10U",		MODEL_RTN10U		},
-	{ "RT-N14UHP",		MODEL_RTN14UHP		},
-	{ "RT-N10+",		MODEL_RTN10P		},
-	{ "RT-N10P",		MODEL_RTN10P		},
-	{ "RT-N10D1",		MODEL_RTN10D1		},
-	{ "RT-N10PV2",		MODEL_RTN10PV2		},
-	{ "DSL-AC68U",		MODEL_DSLAC68U		},
-	{ "RT-AC1200G",		MODEL_RTAC1200G		},
-	{ "RT-AC1200G+",	MODEL_RTAC1200GP	},
-#endif	/* !RTCONFIG_RALINK */
+	{ "K3", 			MODEL_K3 			},
+	{ "XWR3100", 		MODEL_XWR3100 		},
+	{ "R7000P", 		MODEL_R7000P 		},
+	{ "EA6700", 		MODEL_EA6700 		},
+	{ "SBRAC1900P", 	MODEL_SBRAC1900P 	},
+	{ "F9K1118", 		MODEL_F9K1118 		},
+	{ "SBRAC3200P", 	MODEL_SBRAC3200P 	},
+	{ "R8500", 			MODEL_R8500 		},
+	{ "R8000P", 		MODEL_R8000P 		},
+	{ "K3C", 			MODEL_K3C 			},
+	{ "TY6201_RTK", 	MODEL_TY6201_RTK 	},
+	{ "TY6201_BCM", 	MODEL_TY6201_BCM 	},
+	{ "RAX120", 		MODEL_RAX120 		},
+	{ "DIR868L", 		MODEL_DIR868L 		},
+	{ "R6300V2", 		MODEL_R6300V2 		},
+	{ "RMAC2100", 		MODEL_RMAC2100 		},
+	{ "R6800", 			MODEL_R6800 		},
+	{ "RAX70", 			MODEL_RAX70 		},
+	{ "MS60", 			MODEL_MS60 			},
+	{ "MR60", 			MODEL_MR60 			},
 	{ NULL, 0 },
 };
 
@@ -251,19 +193,6 @@ int get_model(void)
 		}
 	}
 	
-#ifdef RTCONFIG_REALTEK
-	if(model==MODEL_UNKNOWN || !pid[0]) {
-	#ifdef RTCONFIG_RTL819X
-		nvram_set("productid", "RT-RTL8881A");
-		nvram_set("productid", "RP-AC53");
-	#else
-		nvram_set("productid", "RT-RTL8198C");
-		nvram_set("productid", "RP-AC68U");//bruce
-	#endif
-	}
-	cprintf("%s:%d current productid is %s\n",__FILE__,__LINE__,nvram_get("productid"));
-#endif
-
 #if defined(RTCONFIG_RALINK)
 #elif defined(RTCONFIG_QCA)
 #else
@@ -305,4 +234,65 @@ int get_switch(void)
 
 	sw_model = get_switch_model();
 	return sw_model;
+}
+
+static const struct model_s modelname_list[] = {
+	{ "K3", 		SWRT_MODEL_K3 },
+	{ "XWR3100", 	SWRT_MODEL_XWR3100 },
+	{ "R7000P", 	SWRT_MODEL_R7000P },
+	{ "EA6700", 	SWRT_MODEL_EA6700 },
+	{ "SBRAC1900P", SWRT_MODEL_SBRAC1900P },
+	{ "F9K1118", 	SWRT_MODEL_F9K1118 },
+	{ "SBRAC3200P", SWRT_MODEL_SBRAC3200P },
+	{ "R8500", 		SWRT_MODEL_R8500 },
+	{ "R8000P", 	SWRT_MODEL_R8000P },
+	{ "K3C", 		SWRT_MODEL_K3C },
+	{ "TY6201_RTK", SWRT_MODEL_TY6201_RTK },
+	{ "TY6201_BCM", SWRT_MODEL_TY6201_BCM },
+	{ "TY6202", 	SWRT_MODEL_TY6202 },
+	{ "RAX120", 	SWRT_MODEL_RAX120 },
+	{ "DIR868L", 	SWRT_MODEL_DIR868L },
+	{ "R6300V2", 	SWRT_MODEL_R6300V2 },
+	{ "MR60", 		SWRT_MODEL_MR60 },
+	{ "MS60", 		SWRT_MODEL_MS60 },
+	{ "RAX70", 		SWRT_MODEL_RAX70 },
+	{ "360V6", 		SWRT_MODEL_360V6 },
+	{ "GLAX1800", 	SWRT_MODEL_GLAX1800 },
+	{ "RMAC2100", 	SWRT_MODEL_RMAC2100 },
+	{ "R6800", 		SWRT_MODEL_R6800 },
+	{ "PGBM1", 		SWRT_MODEL_PGBM1 },
+	{ NULL, 0 },
+};
+
+int get_modelname(void)
+{
+	static int model = SWRT_MODEL_SWRTMIN;
+	char *pid;
+	const struct model_s *p;
+
+	if (model != SWRT_MODEL_SWRTMIN)
+		return model;
+
+	pid = nvram_safe_get("modelname");
+	for (p = &modelname_list[0]; p->pid; ++p) {
+		if (!strcmp(pid, p->pid)) {
+			model = p->model;
+			break;
+		}
+	}
+	return model;
+}
+
+char *get_modelnameid(int model)
+{
+	char *pid = "unknown";
+	const struct model_s *p;
+
+	for (p = &modelname_list[0]; p->pid; ++p) {
+		if (model == p->model) {
+			pid = p->pid;
+			break;
+		}
+	}
+	return pid;
 }

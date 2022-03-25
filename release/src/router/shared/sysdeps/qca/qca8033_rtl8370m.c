@@ -568,3 +568,27 @@ int __get_upstream_wan_unit(void)
 
 	return unit;
 }
+
+/** Convert bs_port_id to interface name.
+ * @bs_port:	enum bs_port_id
+ * @return:	pointer to interface name or NULL.
+ *  NULL:	@bs_port doesn't have interface name or error.
+ *  otherwise:	interface name.
+ */
+const char *bs_port_id_to_iface(enum bs_port_id bs_port)
+{
+#if defined(RTCONFIG_SWITCH_RTL8370M_PHY_QCA8033_X2)
+	/* BRT-AC828 SR1~SR3, REV 1.00 ~ 1.20 */
+	static const char *wan1 = "eth2", *wan2 = "eth3";
+#else
+	/* BRT-AC828 SR4 or above, REV 1.30+ */
+	static const char *wan1 = "eth0", *wan2 = "eth3";
+#endif
+
+	if (bs_port == BS_WAN_PORT_ID)
+		return wan1;
+	else if (bs_port == BS_WAN2_PORT_ID)
+		return wan2;
+
+	return NULL;
+}

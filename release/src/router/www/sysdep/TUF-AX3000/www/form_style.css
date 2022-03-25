@@ -111,7 +111,7 @@
 	padding: 3px;
 	padding-left: 10px;
 	border-collapse: collapse;
-	background: #92650F;
+	background: rgb(255,165,35);
 }
 .FormTable thead th{
 	color: #000000;
@@ -129,7 +129,7 @@
 }
 .FormTable td span{
 	background-color:transparent;
-	color:#FFCC00;
+	color:rgb(5,252,238);
 
 }
 .FormTable td span#wl_nmode_x_hint{
@@ -152,7 +152,7 @@
 	height:25px;
 	border: 1px solid transparent
 	border-collapse: collapse;
-	background:  #92650F;
+	background:  rgb(33,33,33);
 }
 .FormTable_table th.select_table{
 	width:100px;
@@ -183,8 +183,8 @@
 	padding: 3px;
 	border-collapse: collapse;
 	padding-left: 10px;
-	background-color: #92650F;
-	border-bottom: 1px solid #F8B942;
+	background-color: rgb(255,165,35);
+	border-bottom: 1px solid rgb(76,76,76);
 }
 .FormTable_table thead th{
 	width: 98px;
@@ -211,9 +211,9 @@
 	text-align:center;
 	font-size:12px;
 	height:25px;
-	border: 1px solid #92650F;
+	border: 1px solid rgb(76,76,76);
 	border-collapse: collapse;
- 	background:  #92650F;
+ 	background:  rgb(33,33,33);
 }
 .FormTable_NWM th.select_table{
 	width:100px;
@@ -228,9 +228,9 @@
 	text-align:center;
 }
 .FormTable_NWM td{
-	background-color: #111;
+	background-color: rgb(55,55,55);
 	text-align:center;
-	border: 1px solid #92650F;
+	border: 1px solid rgb(76,76,76);
 	border-collapse: collapse;
 	height:35px;
 }
@@ -276,10 +276,10 @@
 
 .input_option{
 	height:25px;
-	background-color: #3E2902;
+	background-color: rgb(55,55,55);
 	border-top-width:1px;
 	border-bottom-width:1px;
-	border-color:#92650F;
+	border-color:rgb(76,76,76);
 	color:#FFFFFF;
 	font-family: Lucida Console;
 	font-size:13px;
@@ -308,7 +308,6 @@
 	border-color:#888;
 	color:#FFFFFF;
 	margin:8px 10px 0 0;
-	font-family: Lucida Console;
 	font-size:13px;
 }
 
@@ -319,11 +318,10 @@
 	width:345px;
 	line-height:23px \9;	/*IE*/
 	font-size:12px;
-	font-family: Lucida Console;
-	background: transparent;
+	background: rgb(55,55,55);
 	border-width:0;
 	color:#FFFFFF;
-	border: 1px solid #92650F;
+	border: 1px solid rgb(76,76,76);
 }
 .input_30_table{
 	margin-left:2px;
@@ -332,11 +330,10 @@
 	width:315px;
 	line-height:23px \9;	/*IE*/
 	font-size:12px;
-	font-family: Lucida Console;
-	background: transparent;
+	background: rgb(55,55,55);
 	border-width:0;
 	color:#FFFFFF;
-	border: 1px solid #92650F;
+	border: 1px solid rgb(76,76,76);
 }
 .input_25_table{
 	margin-left:2px;
@@ -345,11 +342,10 @@
 	width:235px;
 	line-height:23px \9;	/*IE*/
 	font-size:12px;
-	font-family: Lucida Console;
-	background: transparent;
+	background: rgb(55,55,55);
 	border-width:0;
 	color:#FFFFFF;
-	border: 1px solid #92650F;
+	border: 1px solid rgb(76,76,76);
 }
 .input_22_table{
 	margin-left:2px;
@@ -358,11 +354,10 @@
 	width:202px;
 	line-height:23px \9;	/*IE*/
 	font-size:12px;
-	font-family: Lucida Console;
-	background: transparent;
+	background: rgb(55,55,55);
 	border-width:0;
 	color:#FFFFFF;
-	border: 1px solid #92650F;
+	border: 1px solid rgb(76,76,76);
 }
 .input_20_table{
 	margin-left:2px;
@@ -371,11 +366,10 @@
 	width:180px;
 	line-height:23px \9;	/*IE*/
 	font-size:12px;
-	font-family: Lucida Console;
-	background: transparent;
+	background: rgb(55,55,55);
 	border-width:0;
 	color:#FFFFFF;
-	border: 1px solid #92650F;
+	border: 1px solid rgb(76,76,76);
 }
 .input_18_table{
 	margin-left:2px;
@@ -384,11 +378,10 @@
 	width:160px;
 	line-height:23px \9;	/*IE*/
 	font-size:12px;
-	font-family: Lucida Console;
-	background: transparent;
+	background: rgb(55,55,55);
 	border-width:0;
 	color:#FFFFFF;
-	border: 1px solid #92650F;
+	border: 1px solid rgb(76,76,76);
 }
 .input_15_table{
 	margin-left:2px;
@@ -397,11 +390,10 @@
 	width:120px;
 	line-height:23px \9;	/*IE*/
 	font-size:12px;
-	font-family: Lucida Console;
-	background: transparent;
+	background: rgb(55,55,55);
 	border-width:0;
 	color:#FFFFFF;
-	border: 1px solid #92650F;
+	border: 1px solid rgb(76,76,76);
 }
 .input_12_table{
 	margin-left:2px;
@@ -410,11 +402,10 @@
 	width:90px;
 	line-height:23px \9;	/*IE*/
 	font-size:12px;
-	font-family: Lucida Console;
-	background: transparent;
+	background: rgb(55,55,55);
 	border-width:0;
 	color:#FFFFFF;
-	border: 1px solid #92650F;
+	border: 1px solid rgb(76,76,76);
 }
 .input_6_table{
 	margin-left:2px;
@@ -423,11 +414,10 @@
 	width:50px;
 	line-height:23px \9;	/*IE*/
 	font-size:12px;
-	font-family: Lucida Console;
-	background: transparent;
+	background: rgb(55,55,55);
 	border-width:0;
 	color:#FFFFFF;
-	border: 1px solid #92650F;
+	border: 1px solid rgb(76,76,76);
 }
 .input_3_table{
 	margin-left:2px;
@@ -436,11 +426,10 @@
 	width:28px;
 	line-height:23px \9;	/*IE*/
 	font-size:12px;
-	font-family: Lucida Console;
-	background: transparent;
+	background: rgb(55,55,55);
 	border-width:0;
 	color:#FFFFFF;
-	border: 1px solid #92650F;
+	border: 1px solid rgb(76,76,76);
 }
 .input_macaddr_table{
 	margin-left:2px;
@@ -449,19 +438,16 @@
 	width:125px;
 	line-height:23px \9;	/*IE*/
 	font-size:12px;
-	font-family: Lucida Console;
-	background: #3E2902;
+	background: rgb(55,55,55);
 	border-width:0;
 	color:#FFFFFF;
 }
 
 .button_gen{
 	font-weight: bolder;
-	text-shadow: 1px 1px 0px black;
   	border:0;
-  	color: #FFFFFF;
+  	color: #000000;
 	height:33px;
-	font-family:Verdana;
 	font-size:12px;
   	padding:0 .70em 0 .70em;
  	width:122px;
@@ -470,7 +456,7 @@
 	outline: none; /* for Firefox */
  	hlbr:expression(this.onFocus=this.blur()); /* for IE */
  	white-space:normal;
- 	background: #92650F;
+ 	background: rgb(255,165,35);
  	-webkit-border-radius: 4px;
  	-moz-border-radius: 4px;
  	border-radius: 4px;
@@ -488,8 +474,7 @@
 }
 .button_gen_dis{
 	font-weight: bolder;
-	text-shadow: 1px 1px 0px black;
-  	background: #92650F;
+  	background: rgb(255,165,35);
   	border-radius: 4px;
   border:0;
   color: #333333;
@@ -568,11 +553,11 @@ form{
 
 /*0103 lock*/
 .popTable {
-	border:1px solid #666;
+	border:1px solid rgb(76,76,76);
 }
 .popTable thead td{
-	background: rgb(83,4,18);
-	border-bottom:1px solid #666;
+	background: rgb(33,33,33);
+	border-bottom:1px solid rgb(76,76,76);
 }
 
 .popTable thead span{
@@ -694,16 +679,15 @@ form{
 }
 
 .list_table{
-	border: 1px solid transparent;
+	border: 1px solid rgb(76,76,76);
 	border-collapse: collapse;
-	background-color:transparent;
+	background-color:rgb(55,55,55);
 	text-align:center;
 	font-size:12px;
 }
 .list_table td{
 	border-bottom: 1px solid #FFF;
 	border-collapse: collapse;
-	font-family: Lucida Console;
 	height:25px;
 }
 
@@ -711,7 +695,6 @@ form{
 	height:25px;
 	width:350px;
 	color:#FFFFFF;
-	font-family:Arial, Helvetica, sans-serif;
 	text-align:center;
 	font-size:12px;
 }
@@ -719,7 +702,6 @@ form{
 	height:25px;
 	width:110px;
 	color:#FFFFFF;
-	font-family:Arial, Helvetica, sans-serif;
 	text-align:center;
 	font-size:12px;
 }
@@ -727,7 +709,6 @@ form{
 	height:25px;
 	width:90px;
 	color:#FFFFFF;
-	font-family:Arial, Helvetica, sans-serif;
 	text-align:center;
 	font-size:12px;
 }
@@ -908,9 +889,9 @@ p{margin-top:   0;margin-bottom:   0}
 
 /*  Move to index_style.css By Viz , aidisk still use this*/
 .titlebtn {
-	  background: #92650F;
+	  background: rgb(255,165,35);
       border-radius: 4px;
-      color: White;
+      color: #000000;
       display: block;
       float: left;
       height: 34px;
@@ -981,7 +962,7 @@ color:#FFFFFF;
 	max-width:240px;
 /*	background:  #92650F;*/
 	border-radius: 5px 5px 0 0;
-	border-bottom: 2px solid #92650F;
+	border-bottom: 2px solid rgb(252,165,35);
 }
 .tab_NW span {
 	cursor:pointer;
@@ -1005,7 +986,7 @@ color:#FFFFFF;
 .tabclick_NW {
 	font-weight: bolder;
 	font-family: Verdana, MS UI Gothic, MS P Gothic, Microsoft Yahei UI, sans-serif;
-	color: White;
+	color: #000000;
 	display: block;
 	float: left;
 	height: 28px;
@@ -1014,7 +995,7 @@ color:#FFFFFF;
 	text-align:center;
 	text-decoration: none;
 	max-width:240px;
-	background: #92650F;
+	background: rgb(252,165,35);
 	border-radius: 5px 5px 0 0;
 }
 .tabclick_NW span {
@@ -1058,13 +1039,13 @@ color:#FFFFFF;
 	height: 100%;
 	width: 99%;
 	display: table;
-	border-bottom: 2px solid #92650F;
+	border-bottom: 2px solid rgb(255,165,35);
 }
 .tab_item:hover {
 	background-color: #D0982C;
 }
 .tab_item_click {
-	background-color: #92650F;
+	background-color: rgb(255,165,35);
 	border-radius: 6px 6px 0 0;
 	height: 100%;
 	width: 99%;
@@ -1674,8 +1655,8 @@ padding-top:1px;
 	margin-left:3px;
 	/*padding:0;*/
 	color: #fff;
-	background-color:#0F0201;
-	border-bottom:solid 1px #666;
+	background-color:rgb(55,55,55);
+	border-bottom:solid 1px rgb(76,76,76);
 	width:145px;
 	}
 
@@ -2017,24 +1998,24 @@ padding-top:1px;
 }
 .textarea_ssh_table{
 	color: #FFFFFF;
-	background-color: rgba(17, 17, 17, .5);
-	border-color: #92650F;
+	background-color: rgb(55,55,55);
+	border-color: rgb(76,76,76);
 }
 
 .vpnClientTitle_td_unclick{
-	background-color:  #92650F;
+	background-color:  rgb(33,33,33);
 	height: 30px;
 	cursor: pointer;
-	border: 1px solid rgb(124,6,26);
+	border: 1px solid rgb(76,76,76);
 }
 .vpnClientTitle_td_unclick:hover{
 	background-color: #D0982C;
 }
 .vpnClientTitle_td_click{
-	background-color: #3E2902;
+	background-color: rgb(55,55,55);
 	height: 30px;
 	cursor: pointer;
-	border: 1px solid rgb(124,6,26);
+	border: 1px solid rgb(76,76,76);
 }
 .link{
 	cursor:pointer !important;
@@ -2046,13 +2027,15 @@ padding-top:1px;
 }
 
 .content_bg{
-	background: rgba(17, 17, 17, .5);
+	/* background: rgba(17, 17, 17, .5); */
+	background: rgba(45, 45, 45, .5);
 }
 .divide_line{
 	border: 1px solid #FFF;
 }
 [bgcolor="#4D595D"]{
-	background: rgba(17, 17, 17, .5);
+	/* background: rgba(17, 17, 17, .5); */
+	background: rgba(45, 45, 45, .5);
 }
 .block_bg{
 	background: transparent;
@@ -2064,23 +2047,25 @@ padding-top:1px;
 	border: 1px solid #92650F;
 }
 .control_bg{
-	background: rgba(17, 17, 17, .5);
+	/* background: rgba(17, 17, 17, .5); */
+	background: rgba(45, 45, 45, .5);
 }
 .tab_font_color{
 	color: #FFF;
 }
 .pop_div_bg{
-	background-color: #3E2902;
+	background-color: rgb(33,33,33);
 }
 .analysis_bg, .web_frame{
-	background: rgba(17, 17, 17, .5);
+	/* background: rgba(17, 17, 17, .5); */
+	background: rgba(45, 45, 45, .5);
 	border: 1px solid #92650F;
 }
 .tm_title_bg{
 	background:  #92650F;
 }
 .monitor_qos_bg{
-	background: #3E2902;
+	background: rgb(33,33,33);
 }
 .arrow_up{
 	border-color:#3E2902 #3E2902 rgb(8,255,240) #3E2902;
@@ -2098,11 +2083,11 @@ padding-top:1px;
 	font-weight: bolder;
 }
 .tab_info_bg{
-	background: #92650F;
+	background: rgb(76,76,76);
 }
 .textarea_bg{
-	background: #3E2902;
-	border-color: #92650F;
+	background: rgb(33,33,33);
+	border-color: rgb(76,76,76);
 }
 .minup_bg, .mindown_bg{
 	border-radius: 4px;
@@ -2119,7 +2104,7 @@ padding-top:1px;
 	position: fixed;
 	width: 600px;
 	z-index: 10000;
-	border: 3px solid #4D5C63;
+	border: 3px solid #92650F;
 	border-radius: 6px;
 	font-family: monospace;
 	font-size: 14px;
@@ -2162,6 +2147,13 @@ padding-top:1px;
 	height: 2px;
 	width: 740px;
 	margin: 1px 0;
+}
+.MainContent{
+	background-color: rgba(38,38,38,.87);
+	width: 99%;
+	-webkit-border-radius: 3px;
+	-moz-border-radius: 3px;
+	border-radius:3px;
 }
 .query_list{
 	display: none;
@@ -2219,4 +2211,29 @@ padding-top:1px;
 	height: 16px;
 	width: 14px;
 	display: none;
+}
+.hint-color{
+	color: rgb(5,252,238);
+}
+#cancelBtn, #applyBtn{
+	font-weight: bolder;
+	text-shadow: 1px 1px 0px black;
+	background: #D0982C;
+	border-radius: 8px;
+  border:0;
+  color: #FFFFFF;
+	height:33px;
+	font-family:Verdana;
+	font-size:12px;
+  padding:0 .70em 0 .70em;
+  	width: auto;
+ 	min-width: 122px;
+  overflow:visible;
+	cursor:pointer;
+	outline: none; /* for Firefox */
+ 	hlbr:expression(this.onFocus=this.blur()); /* for IE */
+ 	white-space:normal;
+	 word-break: break-all;
+	 line-height: 33px;
+	 text-align: center;
 }

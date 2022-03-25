@@ -17,7 +17,7 @@ PWD=$(shell pwd)
 VERSION = 1.12
 
 QCA_MODEL_LIST = $(addprefix _,$(addsuffix _,RT-AC82U RT-AC95U))
-QCANSS_MODEL_LIST = $(addprefix _,$(addsuffix _,RT-AX89U))
+QCANSS_MODEL_LIST = $(addprefix _,$(addsuffix _,RT-AX89U PL-AX56_XP4))
 MT7621_MODEL_LIST = $(addprefix _,$(addsuffix _,RT-AC85P RT-AC85U RT-AX53U RM-AC2100 R6800))
 MT7622_MODEL_LIST = $(addprefix _,$(addsuffix _,RT-ACRH18))
 LANTIQ_MODEL_LIST = $(addprefix _,$(addsuffix _,BLUECAVE))

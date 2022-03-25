@@ -89,6 +89,43 @@ stop_wps_method(void)
 	return 0;
 }
 
+void runtime_onoff_wps(int onoff)
+{
+	int unit = 0;
+	char wif[8], *next, prefix[] = "wlXXXXXXXXXX_";
+
+	foreach(wif, nvram_safe_get("wl_ifnames"), next) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if (!nvram_pf_match(prefix, "auth_mode_x", "sae")
+#ifdef RTCONFIG_WIFI6E
+		 && !nvram_pf_match(prefix, "auth_mode_x", "owe")
+#endif
+		 && !nvram_pf_match(prefix, "auth_mode_x", "wpa3")) {
+			//dbg("%s: %s WPS IE of Beacon/Probe resp for %s\n", __func__, onoff ? "unhide" : "hide", wif);
+			doSystem(IWPRIV " %s hide_wpsie %d\n", wif, onoff ? 0 : 1);
+			doSystem("hostapd_cli -i%s update_beacon", wif);
+		}
+
+		unit++;
+	}
+}
+
+int
+start_wps_method_ob(void)
+{
+	if (nvram_get_int("wps_enable") == 0)
+		runtime_onoff_wps(1);
+	start_wps_method();
+}
+
+int
+stop_wps_method_ob(void)
+{
+	stop_wps_method();
+	if (nvram_get_int("wps_enable") == 0)
+		runtime_onoff_wps(0);
+}
+
 extern int g_isEnrollee[MAX_NR_WL_IF];
 
 int is_wps_stopped(void)

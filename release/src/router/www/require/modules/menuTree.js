@@ -65,16 +65,12 @@ define(function(){
 				menuName: "<#AiProtection_title#>",
 				index: "menu_AiProtection", 
 				tab: [
-					{url: "AiProtection_HomeSecurity.asp", tabName: "__HIDE__"},
 					{url: "AiProtection_HomeProtection.asp", tabName: "<#AiProtection_Home#>"},
 					{url: "AiProtection_MaliciousSitesBlocking.asp", tabName: "<#AiProtection_sites_blocking#>"},
 					{url: "AiProtection_IntrusionPreventionSystem.asp", tabName: "<#AiProtection_two-way_IPS#>"},
 					{url: "AiProtection_InfectedDevicePreventBlock.asp", tabName: "<#AiProtection_detection_blocking#>"},
-					{url: "AiProtection_WebProtector.asp", tabName: "<#Parental_Control#>"},
-					{url: "ParentalControl.asp", tabName: "__INHERIT__"},
 					{url: "AiProtection_AdBlock.asp", tabName: "Ad Blocking"},
 					{url: "AiProtection_Key_Guard.asp", tabName: "Key Guard"},
-					{url: "YandexDNS.asp", tabName: "<#YandexDNS#>"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
@@ -93,11 +89,12 @@ define(function(){
 					{url: "Advanced_QOSUserRules_Content.asp", tabName: "__INHERIT__"},
 				] 
 			},
-			{		//for without bwdpi model, RT-N66U_C1
+			{
 				menuName: "<#Parental_Control#>",
 				index: "menu_ParentalControl", 
 				tab: [
-					{url: "ParentalControl.asp", tabName: "<#Parental_Control#>"},
+					{url: "AiProtection_WebProtector.asp", tabName: "<#AiProtection_filter#>"},
+					{url: "ParentalControl.asp", tabName: "<#Time_Scheduling#>"},
 					{url: "YandexDNS.asp", tabName: "<#YandexDNS#>"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
@@ -194,7 +191,7 @@ define(function(){
 				tab: [
 					{url: "Advanced_LAN_Content.asp", tabName: "<#menu5_2_1#>"},
 					{url: "Advanced_DHCP_Content.asp", tabName: "<#menu5_2_2#>"},
-					{url: "DNSFilter.asp", tabName: "DNSFilter"},
+					//{url: "DNSFilter.asp", tabName: "DNSFilter"},
 					{url: "Advanced_MultiSubnet_Content.asp", tabName: "<#menu5_2_2#>"},
 					{url: "Advanced_GWStaticRoute_Content.asp", tabName: "<#menu5_2_3#>"},
 					{url: "Advanced_IPTV_Content.asp", tabName: "IPTV"},
@@ -324,7 +321,6 @@ define(function(){
 					retArray.push("menu_BandwidthMonitor");
 				}
 				else{
-					retArray.push("menu_ParentalControl");
 					retArray.push("menu_QoS");
 				}
 
@@ -755,10 +751,20 @@ define(function(){
 	}
 
 	if(odmpid == "RT-N66U_C1"){
-		menuTree.list.splice(8,2);
+		menuTree.list.filter(function(item, index, array){
+			if(item.index == "menu_BandwidthMonitor")
+				menuTree.list.splice(index, 1);
+		});
+		menuTree.list.filter(function(item, index, array){
+			if(item.index == "menu_TrafficAnalyzer")
+				menuTree.list.splice(index, 1);
+		});
 	}
 	else{
-		menuTree.list.splice(6,2);
+		menuTree.list.filter(function(item, index, array){
+			if(item.index == "menu_QoS")
+				menuTree.list.splice(index, 1);
+		});
 	}
 
 	return menuTree;

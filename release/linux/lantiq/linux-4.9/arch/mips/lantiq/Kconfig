@@ -1,0 +1,151 @@
+if LANTIQ
+
+config SOC_TYPE_XWAY
+	bool
+	select PINCTRL_XWAY
+	default n
+
+config SOC_TYPE_GRX500_TEP
+	bool 
+	select CEVT_R4K
+	select CSRC_R4K
+	select CPU_MIPSR2_IRQ_VI
+	select CPU_MIPSR2_IRQ_EI
+	default n
+
+choice
+	prompt "SoC Type"
+	default SOC_XWAY
+
+config SOC_AMAZON_SE
+	bool "Amazon SE"
+	select SOC_TYPE_XWAY
+
+config SOC_XWAY
+	bool "XWAY"
+	select SOC_TYPE_XWAY
+	select CEVT_R4K
+	select CSRC_R4K
+	select HW_HAS_PCI
+	select ARCH_SUPPORTS_MSI
+	select ARCH_HAS_RESET_CONTROLLER
+	select RESET_CONTROLLER
+
+config SOC_FALCON
+	bool "FALCON"
+	select CEVT_R4K
+	select CSRC_R4K
+	select PINCTRL_FALCON
+
+config SOC_GRX500
+	bool "GRX500"
+	select GENERIC_ISA_DMA
+	select MIPS_GIC
+	select MIPS_CPU_SCACHE
+	select SYS_HAS_CPU_MIPS32_R3_5
+	select CPU_MIPSR2_IRQ_VI
+	select CPU_MIPSR2_IRQ_EI
+	select SYS_SUPPORTS_MIPS_CPS
+	select SYS_SUPPORTS_MIPS_CMP
+	select SYS_SUPPORTS_ZBOOT
+	select SERIAL_EARLYCON
+	select HW_HAS_PCI
+	select ARCH_SUPPORTS_MSI
+	select ARCH_HAS_RESET_CONTROLLER
+	select RESET_CONTROLLER
+	select COMMON_CLK
+	select CPU_SUPPORTS_CPUFREQ
+	select MIPS_EXTERNAL_TIMER
+	select PCI_DRIVERS_GENERIC
+config SOC_GRX500_BOOTCORE
+	bool "GRX500_BOOTCORE"
+	select SOC_TYPE_GRX500_TEP
+
+config SOC_PRX300_BOOTCORE
+	bool "PRX300_BOOTCORE"
+	select SOC_TYPE_GRX500_TEP
+
+endchoice
+
+config XBAR_LE
+	bool "Crossbar Word Level Little Endian Support in Big Endian CPU"
+	depends on SOC_GRX500 && CPU_BIG_ENDIAN
+	help
+	  Falcon Mountain has complicated endianness for different datawidth.
+	  To avoid too many confusion, XBAR word level little endian is added
+	  So that one clean solution can be provided.
+	  It will be only used if Falcon Mountain is chosen.
+
+menu "Emulator Support"
+config USE_EMULATOR
+	bool "Support for FPGA emulation platform"
+	default no
+	help
+	Use FPGA emulator as platform
+
+choice
+	prompt "Emulator"
+	depends on USE_EMULATOR
+	default USE_PALLADIUM
+
+config USE_HAPS
+	bool "HAPS"
+
+config USE_PALLADIUM
+	bool "Palladium"
+
+endchoice
+endmenu
+
+choice
+	prompt "Built-in device tree"
+	help
+	  Legacy bootloaders do not pass a DTB pointer to the kernel, so
+	  if a "wrapper" is not being used, the kernel will need to include
+	  a device tree that matches the target board.
+
+	  The builtin DTB will only be used if the firmware does not supply
+	  a valid DTB.
+
+config LANTIQ_DT_NONE
+	bool "None"
+
+config DT_EASY50712
+	bool "Easy50712"
+	depends on SOC_XWAY
+	select BUILTIN_DTB
+
+config DT_ANYWAN
+	bool "GRX500 Anywan Board"
+	select BUILTIN_DTB
+	depends on SOC_GRX500
+
+config DT_EASY350550_BOOTCORE
+	bool "Easy350550 Bootcore"
+	select BUILTIN_DTB
+	depends on SOC_GRX500_BOOTCORE
+
+endchoice
+
+choice
+	prompt "TOS_SIZE"
+	depends on SOC_TYPE_GRX500_TEP
+	default TOS_SIZE_32M
+config TOS_SIZE_16M
+	bool "16M tos size"
+
+config TOS_SIZE_32M
+	bool "32M tos size"
+
+config TOS_SIZE_64M
+	bool "64M tos size"
+
+config TOS_SIZE_128M
+	bool "128M tos size"
+endchoice
+
+config XRX200_PHY_FW
+	bool "XRX200 PHY firmware loader"
+	depends on SOC_XWAY
+
+endif

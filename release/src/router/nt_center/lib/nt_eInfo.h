@@ -169,6 +169,16 @@ struct eInfo mapInfo[] =
                                                                                                                                       |ACTION_NOTIFY_ALEXA
 	#endif
 	},
+	{"GENERAL_QOS_UPDATE"                        ,GENERAL_QOS_UPDATE                          ,TYPE_OF_TURN_OFF   ,-1             ,ACTION_NOTIFY_GENERAL
+	#if defined(RTCONFIG_ALEXA)
+                                                                                                                                      |ACTION_NOTIFY_ALEXA
+	#endif
+	},
+	{"GENERAL_TOGGLE_STATES_UPDATE"              ,GENERAL_TOGGLE_STATES_UPDATE                ,TYPE_OF_TURN_OFF   ,-1             ,ACTION_NOTIFY_GENERAL
+	#if defined(RTCONFIG_ALEXA)
+                                                                                                                                      |ACTION_NOTIFY_ALEXA
+	#endif
+	},
 	/* ------------------------------
 	   ### Hint Item ###
 	---------------------------------*/

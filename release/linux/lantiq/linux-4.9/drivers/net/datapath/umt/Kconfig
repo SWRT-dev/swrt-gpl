@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-2.0
+
+config INTEL_UMT
+	bool "User message transfer driver"
+	depends on INTEL_DATAPATH
+
+	help
+	  This driver supports Intel UMT Hardware.
+	  UMT HW is designed to work with CQM HW to
+	  send the RX/TX counter to PCIe Endpoint.

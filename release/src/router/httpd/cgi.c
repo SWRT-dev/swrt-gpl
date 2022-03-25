@@ -25,6 +25,7 @@
  * written permission of ASUSTeK Inc..			    
  *
  */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -241,25 +242,25 @@ void webcgi_set(char *name, char *value)
 
 void webcgi_init(char *query)
 {
-	int nel;
-	char *q, *end, *name, *value;
+       int nel;
+       char *q, *end, *name, *value;
  
 #if !(defined(__GLIBC__) || defined(__UBLIBC__))
 	if (!htab.__tab)
 #else
-	if (htab.table)
+       if (htab.table)
 #endif
-		hdestroy_r(&htab);
-	if (query == NULL) return;
+	       hdestroy_r(&htab);
+       if (query == NULL) return;
  
 //    cprintf("query = %s\n", query);
        
-	end = query + strlen(query);
-	q = query;
-	nel = 1;
-	while (strsep(&q, "&;")) {
-		nel++;
-	}
+       end = query + strlen(query);
+       q = query;
+       nel = 1;
+       while (strsep(&q, "&;")) {
+               nel++;
+       }
        hcreate_r(nel, &htab);
  
        for (q = query; q < end; ) {

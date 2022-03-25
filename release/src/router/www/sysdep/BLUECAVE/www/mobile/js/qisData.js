@@ -40,6 +40,10 @@ var wanObj = {
 		"wan_dns2_x": ""
 	},
 
+	"v6plus": {
+		"ipv6_service": "ipv6pt"
+	},
+
 	"vpn": {
 		"wan_heartbeat_x": ""
 	},
@@ -58,7 +62,8 @@ var wanObj = {
 		"wan_gateway_x": "",
 		"wan_dns1_x": "",
 		"wan_dns2_x": "",
-		"wan_heartbeat_x": ""
+		"wan_heartbeat_x": "",
+		"ipv6_service": ""
 	},
 
 	"LWAN_2p5G": {

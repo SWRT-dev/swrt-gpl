@@ -254,7 +254,7 @@ function initial(){
 
 	set_NM_height();
 
-	if(based_modelid == "4G-AC53U" || based_modelid == "4G-AC56"){
+	if(based_modelid == "4G-AC53U"){
 		document.internetForm.wans_lanport1.remove(3);
 		document.internetForm.wans_lanport1.remove(2);
 		document.internetForm.wans_lanport2.remove(3);
@@ -643,7 +643,7 @@ function cancel_action(){
 
 function confirm_action(){
 	document.internetForm.wans_dualwan.value = document.internetForm.wans_primary.value +" "+ document.internetForm.wans_second.value;
-	if(!dsl_support && !noWAN_support && (document.internetForm.wans_dualwan.value == "usb lan" || document.internetForm.wans_dualwan.value == "lan usb")){
+	if(!dsl_support && !noWAN_support && based_modelid != "BRT-AC828" && (document.internetForm.wans_dualwan.value == "usb lan" || document.internetForm.wans_dualwan.value == "lan usb")){
 		alert("WAN port should be selected in Dual WAN.");
 		document.internetForm.wans_primary.focus();
 		return;
@@ -742,7 +742,7 @@ function addWANOption(obj, wanscapItem){
 				wanscapName = "Ethernet WAN";
 			else if(wanscapName == "LAN")
 				wanscapName = "Ethernet LAN";
-			else if(wanscapName == "USB" && based_modelid.substring(0,3) == "4G-")
+			else if(wanscapName == "USB" && (based_modelid == "4G-AC53U" || based_modelid == "4G-AC55U" || based_modelid == "4G-AC68U"))
 				wanscapName = "<#Mobile_title#>";
 			obj.options[i] = new Option(wanscapName, wanscapItem[i]);
 		}	

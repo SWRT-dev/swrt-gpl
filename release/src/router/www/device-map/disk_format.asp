@@ -47,7 +47,7 @@ function initial(){
 		delete disk_list_array.health;
 		delete disk_list_array.format;
 	}
-	if(usb_fatfs_mod != "tuxera" && usb_ntfs_mod != "tuxera" && usb_hfs_mod != "tuxera") {
+	if(usb_fatfs_mod != "tuxera" && usb_ntfs_mod != "tuxera" && usb_hfs_mod != "tuxera" && usb_ntfs_mod != "open") {
 		delete disk_list_array.format;
 	}
 	$('#diskTab').html(parent.gen_tab_menu(disk_list_array, "format"));
@@ -89,6 +89,18 @@ function set_disk_info(device) {
 			document.form.disk_name.maxLength = 30;
 			disk_system = "thfsplus";
 			break;
+		case "vfat" :
+			document.form.disk_name.maxLength = 11;
+			disk_system = "vfat";
+			break;
+		case "ntfs3" :
+			document.form.disk_name.maxLength = 32;
+			disk_system = "ntfs3";
+			break;
+		case "ext4" :
+			document.form.disk_name.maxLength = 16;
+			disk_system = "ext4";
+			break;
 		default :
 			document.form.disk_name.maxLength = 11;
 			disk_system = "tfat";
@@ -103,7 +115,10 @@ function set_disk_info(device) {
 		$("#disk_system option[value='tntfs']").remove();
 	if(usb_hfs_mod != "tuxera")
 		$("#disk_system option[value='thfsplus']").remove();
-
+	if(usb_fatfs_mod == "tuxera" || usb_ntfs_mod == "tuxera"){
+		$("#disk_system option[value='ntfs3']").remove();
+		$("#disk_system option[value='vfat']").remove();
+	}
 	var selected_disk_system = document.form.disk_system;
 	selected_disk_system.selectedIndex = 0; 
 	for(var i = 0; i < selected_disk_system.length; i += 1) {
@@ -178,13 +193,17 @@ function go_format() {
 
 	var disk_system = document.form.disk_system.value;
 	var temp_label = document.form.disk_name.value;
-	if(disk_system == "tfat") {
+	if(disk_system == "tfat" || disk_system == "vfat") {
 		if(temp_label.length > 12)
 			document.form.disk_name.value = temp_label.substr(0, 11);
 	}
 	else if(disk_system == "thfsplus") {
 		if(temp_label.length > 31)
 			document.form.disk_name.value = temp_label.substr(0, 30);
+	}
+	else if(disk_system == "ext4") {
+		if(temp_label.length > 17)
+			document.form.disk_name.value = temp_label.substr(0, 16);
 	}
 
 	if(!Block_chars(document.form.disk_name, ["~", "`", "!", "#", "$", "%", "^", "&", "*", "(", ")", "+", "=", "{", "[", "}", "]", "|", "\\", ":", ";", "\"", "'", "<", ">", ",", ".", "?", "/", " "]))
@@ -211,7 +230,7 @@ function go_format() {
 function change_disk_system() {
 	var disk_system = document.form.disk_system.value;
 	var temp_label = document.form.disk_name.value;
-	if(disk_system == "tfat") {
+	if(disk_system == "tfat" || disk_system == "vfat") {
 		document.form.disk_name.maxLength = 11;
 		if(temp_label.length > 12)
 			document.form.disk_name.value = temp_label.substr(0, 11);
@@ -223,6 +242,9 @@ function change_disk_system() {
 		document.form.disk_name.maxLength = 30;
 		if(temp_label.length > 31)
 			document.form.disk_name.value = temp_label.substr(0, 30);
+	}
+	else if(disk_system == "ext4") {
+		document.form.disk_name.maxLength = 16;
 	}
 }
 function show_loadingBar_field(){
@@ -376,6 +398,9 @@ function showLoadingUpdate(){
 					<option value="tntfs">NTFS</option>
 					<option value="tfat">FAT</option>
 					<option value="thfsplus">HFS</option>
+					<option value="ntfs3">NTFS3</option>
+					<option value="vfat">FAT</option>
+					<option value="ext4">EXT4</option>
 				</select>
 			</div>
 		</div>

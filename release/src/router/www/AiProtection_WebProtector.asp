@@ -365,7 +365,7 @@ function genMain_table(){
 		}
 
 		code += '</div>';
-		code += '<div style="margin-left:25px;color:#FC0;font-size:12px;font-weight:normal;">'+ category_desc[i] +'</div>';
+		code += '<div class="hint-color" style="margin-left:25px;font-size:12px;font-weight:normal;">'+ category_desc[i] +'</div>';
 		code += '</div>';
 	}
 
@@ -851,9 +851,9 @@ function switch_control(_status){
 									<table width="730px">
 										<tr>
 											<td align="left">
-												<div class="formfonttitle" style="width:400px"><#AiProtection_title#> - <#AiProtection_filter#></div>
+												<div class="formfonttitle" style="width:400px"><#Parental_Control#> - <#AiProtection_filter#></div>
 											</td>
-											<td>
+											<td style="display:none;">
 												<div id="switch_menu" style="margin:-20px 0px 0px 0px;">
 													<div style="width:168px;height:30px;border-top-left-radius:8px;border-bottom-left-radius:8px;" class="block_filter_pressed">
 														<table class="block_filter_name_table_pressed"><tr><td style="line-height:13px;"><#AiProtection_filter#></td></tr></table>

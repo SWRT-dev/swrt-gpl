@@ -13,8 +13,16 @@
 #include <xtables.h>
 #include <limits.h> /* INT_MAX in ip_tables.h */
 #include <linux/netfilter_ipv6/ip6_tables.h>
-#include <net/netfilter/nf_conntrack_tuple.h>
+#if defined(BCMARM) && !defined(HND_ROUTER)
+#include <net/netfilter/nf_nat.h>
+#else
 #include <linux/netfilter/nf_nat.h>
+#endif
+
+#if defined(BCMARM) && !defined(HND_ROUTER)
+#define NF_NAT_RANGE_PROTO_SPECIFIED IP_NAT_RANGE_PROTO_SPECIFIED
+#define NF_NAT_RANGE_PROTO_RANDOM IP_NAT_RANGE_PROTO_RANDOM
+#endif
 
 enum {
 	O_TO_PORTS = 0,
@@ -51,9 +59,15 @@ parse_ports(const char *arg, struct nf_nat_range *r)
 
 	switch (*end) {
 	case '\0':
+#if defined(BCMARM) && !defined(HND_ROUTER)
+		r->min.tcp.port
+			= r->max.tcp.port
+			= htons(port);
+#else
 		r->min_proto.tcp.port
 			= r->max_proto.tcp.port
 			= htons(port);
+#endif
 		return;
 	case '-':
 		if (!xtables_strtoui(end + 1, NULL, &maxport, 0, UINT16_MAX))
@@ -61,9 +75,13 @@ parse_ports(const char *arg, struct nf_nat_range *r)
 
 		if (maxport < port)
 			break;
-
+#if defined(BCMARM) && !defined(HND_ROUTER)
+		r->min.tcp.port = htons(port);
+		r->max.tcp.port = htons(maxport);
+#else
 		r->min_proto.tcp.port = htons(port);
 		r->max_proto.tcp.port = htons(maxport);
+#endif
 		return;
 	default:
 		break;
@@ -108,9 +126,15 @@ MASQUERADE_print(const void *ip, const struct xt_entry_target *target,
 
 	if (r->flags & NF_NAT_RANGE_PROTO_SPECIFIED) {
 		printf(" masq ports: ");
+#if defined(BCMARM) && !defined(HND_ROUTER)
+		printf("%hu", ntohs(r->min.tcp.port));
+		if (r->max.tcp.port != r->min.tcp.port)
+			printf("-%hu", ntohs(r->max.tcp.port));
+#else
 		printf("%hu", ntohs(r->min_proto.tcp.port));
 		if (r->max_proto.tcp.port != r->min_proto.tcp.port)
 			printf("-%hu", ntohs(r->max_proto.tcp.port));
+#endif
 	}
 
 	if (r->flags & NF_NAT_RANGE_PROTO_RANDOM)
@@ -123,9 +147,15 @@ MASQUERADE_save(const void *ip, const struct xt_entry_target *target)
 	const struct nf_nat_range *r = (const void *)target->data;
 
 	if (r->flags & NF_NAT_RANGE_PROTO_SPECIFIED) {
+#if defined(BCMARM) && !defined(HND_ROUTER)
+		printf(" --to-ports %hu", ntohs(r->min.tcp.port));
+		if (r->max.tcp.port != r->min.tcp.port)
+			printf("-%hu", ntohs(r->max.tcp.port));
+#else
 		printf(" --to-ports %hu", ntohs(r->min_proto.tcp.port));
 		if (r->max_proto.tcp.port != r->min_proto.tcp.port)
 			printf("-%hu", ntohs(r->max_proto.tcp.port));
+#endif
 	}
 
 	if (r->flags & NF_NAT_RANGE_PROTO_RANDOM)

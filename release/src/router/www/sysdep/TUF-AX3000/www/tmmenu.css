@@ -148,7 +148,7 @@ select {
 	text-decoration: none;
 	height: 15px;
 	color: #FFF;
-	background: #92650F;
+	background: rgb(55,55,55);
 }
 
 .active {
@@ -162,7 +162,7 @@ select {
 	color: #FFFFFF;
 	font-weight: bold;
 	border-width: 2px;
-	background: #1E0505;
+	background: rgb(255,165,35);
 }
 
 #tabs a:hover {
@@ -466,7 +466,7 @@ table.fields {
 }
 .DescTable th{
 	font-family:Arial, Helvetica, sans-serif;
-	background-color: #92650F;
+	background-color: rgb(33,33,33);
 	color:#FFFFFF	;
 	font-weight:normal;
 	line-height:15px;
@@ -474,13 +474,13 @@ table.fields {
 	text-align:left;
 	font-size:12px;
 	padding-left: 10px;
-	border: 1px solid #92650F;
+	border: 1px solid rgb(76,76,76);
 	border-collapse: collapse;
 }
 .DescTable td{
 	padding-left: 10px;
-	background-color: #111;
-	border: 1px solid #92650F;
+	background-color: rgb(55,55,55);
+	border: 1px solid rgb(76,76,76);
 	border-collapse: collapse;
 }
 .DescTable td span{

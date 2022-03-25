@@ -821,6 +821,12 @@ API_EXPORTED int usb_bulk_write(usb_dev_handle *dev, int ep, const char *bytes,
 		ep &= ~USB_ENDPOINT_IN;
 	}
 
+#ifdef ASUS_U2EC
+	/* U2EC uses 32767 as a magic number for no timeout */
+	if (timeout == 32767)
+		timeout = 0;
+#endif
+
 	return usb_bulk_io(dev, ep, (char *)bytes, size, timeout);
 }
 
@@ -836,10 +842,14 @@ API_EXPORTED int usb_bulk_write_sp(usb_dev_handle *dev, int ep, const char *byte
 		ep &= ~USB_ENDPOINT_IN;
 	}
 
+	/* U2EC uses 32767 as a magic number for no timeout */
+	if (timeout == 32767)
+		timeout = 0;
+
 	int r;
-	usbi_dbg("endpoint %x size %d timeout %d max_rw %d", ep, size, timeout, max_rw);
-	r = libusb_bulk_transfer_sp(dev->handle, ep & 0xff, (char *)bytes, size,
-		actual_length, timeout, max_rw);
+	usbi_dbg("endpoint %x size %d timeout %d", ep, size, timeout);
+	r = libusb_bulk_transfer(dev->handle, ep & 0xff, (char *)bytes, size,
+		actual_length, timeout);
 	
 	/* if we timed out but did transfer some data, report as successful short
 	 * read. FIXME: is this how libusb-0.1 works? */

@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: GPL-2.0
+
+menuconfig INTEL_NP_NET_CORE
+	depends on NETDEVICES
+	bool "Intel NP Network device support"
+	---help---
+	  It contains basic network driver sets
+	  required to drive INTEL NP(LGM/PRX300)
+	  to support basic network packet handling.
+
+if INTEL_NP_NET_CORE
+source "drivers/net/datapath/dpm/Kconfig"
+source "drivers/net/datapath/umt/Kconfig"
+endif # INTEL_NP_NET_CORE

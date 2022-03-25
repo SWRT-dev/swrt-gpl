@@ -179,11 +179,9 @@ int reg_read(int offset, int *value)
 	esw_reg reg;
 
 	ra_mii_ioctl_data mii;
-#if !defined(RTCONFIG_RALINK_MT7629) && !defined(RTCONFIG_RALINK_MT7622) && !defined(RTAX53U) && !defined(RT4GAX56) && !defined(RTAX54)
-    strncpy(ifr.ifr_name, "eth2", 5);
-#else
+
     strncpy(ifr.ifr_name, "eth0", 5);
-#endif    
+
 	ifr.ifr_data = &mii;
 
 	mii.phy_id = 0x1f;
@@ -205,11 +203,8 @@ int reg_write(int offset, int value)
 	esw_reg reg;
 	ra_mii_ioctl_data mii;
 
-#if !defined(RTCONFIG_RALINK_MT7629) && !defined(RTCONFIG_RALINK_MT7622) && !defined(RTAX53U) && !defined(RT4GAX56) && !defined(RTAX54)
-    strncpy(ifr.ifr_name, "eth2", 5);
-#else
     strncpy(ifr.ifr_name, "eth0", 5);
-#endif    
+
 	ifr.ifr_data = &mii;
 
 	mii.phy_id = 0x1f;
@@ -234,11 +229,9 @@ int reg_read(int offset, int *value)
 	if (value == NULL)
 		return -1;
 	reg.off = offset;
-#if !defined(RTCONFIG_RALINK_MT7629) && !defined(RTCONFIG_RALINK_MT7622) && !defined(RTAX53U) && !defined(RT4GAX56) && !defined(RTAX54)
-    strncpy(ifr.ifr_name, "eth2", 5);
-#else
+
     strncpy(ifr.ifr_name, "eth0", 5);
-#endif    
+
 	ifr.ifr_data = &reg;
 	if (-1 == ioctl(esw_fd, RAETH_ESW_REG_READ, &ifr)) {
 		perror("ioctl");
@@ -256,11 +249,9 @@ int reg_write(int offset, int value)
 
 	reg.off = offset;
 	reg.val = value;
-#if !defined(RTCONFIG_RALINK_MT7629) && !defined(RTCONFIG_RALINK_MT7622) && !defined(RTAX53U) && !defined(RT4GAX56) && !defined(RTAX54)
-    strncpy(ifr.ifr_name, "eth2", 5);
-#else
+
     strncpy(ifr.ifr_name, "eth0", 5);
-#endif    
+
 	ifr.ifr_data = &reg;
 	if (-1 == ioctl(esw_fd, RAETH_ESW_REG_WRITE, &ifr)) {
 		perror("ioctl");
@@ -277,11 +268,9 @@ int phy_dump(int phy_addr)
 	esw_reg reg;
 
 	reg.val = phy_addr;
-#if !defined(RTCONFIG_RALINK_MT7629) && !defined(RTCONFIG_RALINK_MT7622) && !defined(RTAX53U) && !defined(RT4GAX56) && !defined(RTAX54)
-    strncpy(ifr.ifr_name, "eth2", 5);
-#else
+
     strncpy(ifr.ifr_name, "eth0", 5);
-#endif    
+
 	ifr.ifr_data = &reg;
 	if (-1 == ioctl(esw_fd, RAETH_ESW_PHY_DUMP, &ifr)) {
 		perror("ioctl");
@@ -300,11 +289,9 @@ int ingress_rate_set(int on_off, int port, int bw)
 	reg.on_off = on_off;
 	reg.port = port;
 	reg.bw = bw;
-#if !defined(RTCONFIG_RALINK_MT7629) && !defined(RTCONFIG_RALINK_MT7622) && !defined(RTAX53U) && !defined(RT4GAX56) && !defined(RTAX54)
-    strncpy(ifr.ifr_name, "eth2", 5);
-#else
+
     strncpy(ifr.ifr_name, "eth0", 5);
-#endif    
+
 	ifr.ifr_data = &reg;
 	if (-1 == ioctl(esw_fd, RAETH_ESW_INGRESS_RATE, &ifr)) {
 		perror("ioctl");
@@ -322,11 +309,9 @@ int egress_rate_set(int on_off, int port, int bw)
 	reg.on_off = on_off;
 	reg.port = port;
 	reg.bw = bw;
-#if !defined(RTCONFIG_RALINK_MT7629) && !defined(RTCONFIG_RALINK_MT7622) && !defined(RTAX53U) && !defined(RT4GAX56) && !defined(RTAX54)
-    strncpy(ifr.ifr_name, "eth2", 5);
-#else
+
     strncpy(ifr.ifr_name, "eth0", 5);
-#endif    
+ 
 	ifr.ifr_data = &reg;
 	if (-1 == ioctl(esw_fd, RAETH_ESW_EGRESS_RATE, &ifr)) {
 		perror("ioctl");
@@ -2756,11 +2741,8 @@ int mii_mgr_cl45_read(int port_num, int dev, int reg){
 		printf("Open socket failed\n");
 	}
 
-#if !defined(RTCONFIG_RALINK_MT7629) && !defined(RTCONFIG_RALINK_MT7622) && !defined(RTAX53U) && !defined(RT4GAX56) && !defined(RTAX54)
-    strncpy(ifr.ifr_name, "eth2", 5);
-#else
     strncpy(ifr.ifr_name, "eth0", 5);
-#endif    
+
 	ifr.ifr_data = &mii;
 
 	method = RAETH_MII_WRITE;
@@ -2811,11 +2793,8 @@ int dump_gphy(void){
 		printf("Open socket failed\n");
 	}
 
-#if !defined(RTCONFIG_RALINK_MT7629) && !defined(RTCONFIG_RALINK_MT7622) && !defined(RTAX53U) && !defined(RT4GAX56) && !defined(RTAX54)
-    strncpy(ifr.ifr_name, "eth2", 5);
-#else
     strncpy(ifr.ifr_name, "eth0", 5);
-#endif    
+
 	ifr.ifr_data = &mii;
 	/* dump CL45 reg first*/
 

@@ -114,6 +114,7 @@ var ipsec_server_enable = '<% nvram_get("ipsec_server_enable"); %>';
 var ipsec_connect_status_array = new Array();
 var ddns_enable_x = '<% nvram_get("ddns_enable_x"); %>';
 var ddns_hostname_x = '<% nvram_get("ddns_hostname_x"); %>';
+var conn_name_array = new Array();
 
 var faq_href_windows = "https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Faq&lang="+ui_lang+"&kw=&num=114";
 var faq_href_macOS = "https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Faq&lang="+ui_lang+"&kw=&num=115";
@@ -260,7 +261,7 @@ var external_ip_retry_cnt = MAX_RETRY_NUM;
 function show_warning_message(){
 	var set_ddns_text = '<a href="../Advanced_ASUSDDNS_Content.asp" target="_blank" style="text-decoration: underline; font-family:Lucida Console;"><#vpn_ipsec_set_DDNS#></a>';
 	var set_ip_and_ddns_text = wanlink_ipaddr() + ', ' + set_ddns_text;
-	if(realip_support && (based_modelid == "BRT-AC828"|| wans_mode != "lb")){
+	if(realip_support && (based_modelid == "BRT-AC828" || wans_mode != "lb")){
 		if(realip_state != "2" && external_ip_retry_cnt > 0){
 			if( external_ip_retry_cnt == MAX_RETRY_NUM )
 				get_real_ip();
@@ -728,10 +729,17 @@ function setClientsEnd() {
 
 function update_connect_status() {
 	var get_ipsec_conn = httpApi.hookGet("get_ipsec_conn", true);
-	var parseArray = [];
-	ipsec_connect_status_array["Host-to-Net"] = [];
+	var totalcnt = 0;
+
+	conn_name_array = [];
+	$(".general_connection_status").html("-");
+
 	get_ipsec_conn.forEach(function(item, index, array){
-		if(item[0] != undefined && item[0] == "Host-to-Net" && item[1] != undefined){
+		var parseArray = [];
+
+		ipsec_connect_status_array[get_ipsec_conn[index][0]] = [];
+
+		if(item[0] != undefined && item[0] == get_ipsec_conn[index][0] && item[1] != undefined){
 			var itemRow = item[1].split('<');
 			for(var i = 0; i < itemRow.length; i += 1) {
 				if(itemRow[i] != "") {
@@ -747,32 +755,33 @@ function update_connect_status() {
 					}
 				}
 			}
+			ipsec_connect_status_array[get_ipsec_conn[index][0]] = parseArray;
+			conn_name_array.push(get_ipsec_conn[index][0]);
+			totalcnt += ipsec_connect_status_array[get_ipsec_conn[index][0]].length;
 		}
 	});
 
-	ipsec_connect_status_array["Host-to-Net"] = parseArray;
-	var connected_count = ipsec_connect_status_array["Host-to-Net"].length;
-	if(connected_count > 0) {
+	if(totalcnt > 0) {
 		var code = "";
-		code +='<a class="hintstyle2" href="javascript:void(0);" onClick="showIPSecClients(\'Host-to-Net\', event);">';
-		code +='<#btn_Enabled#>(' + connected_count + ')</a>';
+		code +='<a class="hintstyle2" href="javascript:void(0);" onClick="showIPSecClients(conn_name_array, event);">';
+		code +='<#btn_Enabled#>(' + totalcnt + ')</a>';
 		$(".general_connection_status").html(code);
 	}
-	else
-		$(".general_connection_status").html("-");
 
 	setTimeout("update_connect_status();",3000);
 }
+
 function close_connect_status() {
 	$("#connection_ipsec_profile_panel").fadeOut(300);
 }
-function showIPSecClients(profileName, e) {
+function showIPSecClients(ipsec_conn_name_array, e) {
+	var html = "";
+
 	$("#connection_ipsec_profile_panel").fadeIn(300);
 	$("#connection_ipsec_profile_panel").css("position", "absolute");
 	$("#connection_ipsec_profile_panel").css("top", "440px");
 	$("#connection_ipsec_profile_panel").css("left", "225px");
-	
-	var html = "";
+
 	html += "<div class='ipsec_connect_status_title_bg'>";
 	html += "<div class='ipsec_connect_status_title' style='width:240px;'>Remote IP</div>";/*untranslated*/
 	html += "<div class='ipsec_connect_status_title'><#statusTitle_Client#></div>";
@@ -782,22 +791,29 @@ function showIPSecClients(profileName, e) {
 	html += "<div class='ipsec_connect_status_close'><a onclick='close_connect_status();'><img width='18px' height='18px' src=\"/images/button-close.png\" onmouseover='this.src=\"/images/button-close2.png\"' onmouseout='this.src=\"/images/button-close.png\"' border='0'></a></div>";
 	html += "</div>";
 	html += "<div style='clear:both;'></div>";
-
-	var statusText = [[""], ["<#Connected#>"], ["<#Connecting_str#>"], ["<#Connecting_str#>"]];
-	ipsec_connect_status_array[profileName].forEach(function(item, index, array){
-		if(item != "") {
-			html += "<div class='ipsec_connect_status_content_bg'>";
-			html += "<div class='ipsec_connect_status_content' style='width:240px;word-wrap:break-word;word-break:break-all;'>" + item[0] + "</div>";
-			html += "<div class='ipsec_connect_status_content'>" + statusText[item[1]] + "</div>";
-			html += "<div class='ipsec_connect_status_content'>" + item[2] + "</div>";
-			html += "<div class='ipsec_connect_status_content'>" + item[3] + "</div>";
-			html += "<div class='ipsec_connect_status_content'>" + item[4] + "</div>";
-			html += "</div>";
-			html += "<div style='clear:both;'></div>";
-		}
-	});
 	$("#connection_ipsec_profile_panel").html(html);
+	html = "";
+
+	//for loop to go through all connection names, while the forEach is to go through all connections under the same connection name.
+	var statusText = [[""], ["<#Connected#>"], ["<#Connecting_str#>"], ["<#Connecting_str#>"]];
+	for(var i = 0; i < ipsec_conn_name_array.length; i += 1) {
+		ipsec_connect_status_array[ipsec_conn_name_array[i]].forEach(function(item, index, array){
+			if(item != "") {
+				html += "<div class='ipsec_connect_status_content_bg'>";
+				html += "<div class='ipsec_connect_status_content' style='width:240px;word-wrap:break-word;word-break:break-all;'>" + item[0] + "</div>";
+				html += "<div class='ipsec_connect_status_content'>" + statusText[item[1]] + "</div>";
+				html += "<div class='ipsec_connect_status_content'>" + item[2] + "</div>";
+				html += "<div class='ipsec_connect_status_content'>" + item[3] + "</div>";
+				html += "<div class='ipsec_connect_status_content'>" + item[4] + "</div>";
+				html += "</div>";
+				html += "<div style='clear:both;'></div>";
+			}
+		});
+	}
+
+	$("#connection_ipsec_profile_panel").append(html);
 }
+
 function export_cert(_mode) {
 	var type = $("input[name=ipsec_export_cert]:checked").val();//0:Windows, 1:Mobile
 	if(_mode == "0") {//download
@@ -896,7 +912,7 @@ function export_cert(_mode) {
 									<div style="margin:10px 0 10px 5px;" class="splitLine"></div>
 									<div id="privateIP_notes" class="formfontdesc" style="display:none;color:#FFCC00;"></div>
 									<div class="formfontdesc">
-										<span style="color:#FC0"><#vpn_ipsec_note#></span>
+										<span class="hint-color"><#vpn_ipsec_note#></span>
 									</div>
 
 									<table id="ipsec_general_setting" width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable">
@@ -984,28 +1000,28 @@ function export_cert(_mode) {
 												<th><#IPConnection_x_DNSServer1_itemname#></th>
 												<td>
 													<input type="text" maxlength="15" class="input_15_table" name="ipsec_dns1" onkeypress="return validator.isIPAddr(this, event)" autocomplete="off" autocorrect="off" autocapitalize="off">
-													<span style="color:#FC0"><#feedback_optional#></span>
+													<span class="hint-color"><#feedback_optional#></span>
 												</td>
 											</tr>
 											<tr>
 												<th><#IPConnection_x_DNSServer2_itemname#></th>
 												<td>
 													<input type="text" maxlength="15" class="input_15_table" name="ipsec_dns2" onkeypress="return validator.isIPAddr(this, event)" autocomplete="off" autocorrect="off" autocapitalize="off">
-													<span style="color:#FC0"><#feedback_optional#></span>
+													<span class="hint-color"><#feedback_optional#></span>
 												</td>
 											</tr>
 											<tr>
 												<th><#IPConnection_x_WINSServer1_itemname#></th>
 												<td>
 													<input type="text" maxlength="15" class="input_15_table" name="ipsec_wins1" onkeypress="return validator.isIPAddr(this, event)" autocomplete="off" autocorrect="off" autocapitalize="off">
-													<span style="color:#FC0"><#feedback_optional#></span>
+													<span class="hint-color"><#feedback_optional#></span>
 												</td>
 											</tr>
 											<tr>
 												<th><#IPConnection_x_WINSServer2_itemname#></th>
 												<td>
 													<input type="text" maxlength="15" class="input_15_table" name="ipsec_wins2" onkeypress="return validator.isIPAddr(this, event)" autocomplete="off" autocorrect="off" autocapitalize="off">
-													<span style="color:#FC0"><#feedback_optional#></span>
+													<span class="hint-color"><#feedback_optional#></span>
 												</td>
 											</tr>
 											<tr id="tr_localPublicInterface" style="display:none;">
@@ -1040,7 +1056,7 @@ function export_cert(_mode) {
 													<th><#vpn_ipsec_DPD_Checking_Interval#></th>
 													<td>
 														<input type="text" class="input_3_table" name="ipsec_dpd" maxlength="3" value="10" onKeyPress="return validator.isNumber(this,event)" autocomplete="off" autocorrect="off" autocapitalize="off">
-														<span style="color:#FC0">(10~900) <#Second#></span>
+														<span class="hint-color">(10~900) <#Second#></span>
 													</td>
 												</tr>
 											</table>

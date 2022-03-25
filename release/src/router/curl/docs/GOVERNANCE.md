@@ -18,7 +18,8 @@ expects from us.
 
 There is no legal entity. The curl project is just a bunch of people scattered
 around the globe with the common goal to produce source code that creates
-great products.
+great products. We are not part of any umbrella organization and we are not
+located in any specific country. We are totally independent.
 
 The copyrights in the project are owned by the individuals and organizations
 that wrote those parts of the code.
@@ -36,9 +37,46 @@ If there is no obvious consensus, a maintainer who's knowledgeable in the
 specific area will take an "executive" decision that they think is the right
 for the project.
 
-## Key roles
+## Donations
 
-### Maintainers
+Donating plain money to curl is best done to curl's [Open Collective
+fund](https://opencollective.com/curl). Open Collective is a US based
+non-profit organization that holds on to funds for us. This fund is then used
+for paying the curl security bug bounties, to reimburse project related
+expenses etc.
+
+Donations to the project can also come in form of server hosting, providing
+services and paying for people to work on curl related code etc. Usually, such
+donations are services paid for directly by the sponsors.
+
+We grade sponsors in a few different levels and if they meet the criteria,
+they can be mentioned on the Sponsors page on the curl website.
+
+## Commercial Support
+
+The curl project does not do or offer commercial support. It only hosts
+mailing lists, runs bug trackers etc to facilitate communication and work.
+
+However, Daniel works for wolfSSL and we offer commercial curl support there.
+
+# Key roles
+
+## User
+
+Someone who uses or has used curl or libcurl.
+
+## Contributor
+
+Someone who has helped the curl project, who has contributed to bring it
+forward. Contributing could be to provide advice, debug a problem, file a bug
+report, run test infrastructure or writing code etc.
+
+## Commit author
+
+Sometimes also called 'committer'. Someone who has authored a commit in the
+curl source code repository. Committers are recorded as `Author` in git.
+
+## Maintainers
 
 A maintainer in the curl project is an individual who has been given
 permissions to push commits to one of the git repositories.
@@ -46,9 +84,9 @@ permissions to push commits to one of the git repositories.
 Maintainers are free to push commits to the repositories at their own will.
 Maintainers are however expected to listen to feedback from users and any
 change that is non-trivial in size or nature *should* be brought to the
-project as a PR to allow others to comment/object before merge.
+project as a Pull-Request (PR) to allow others to comment/object before merge.
 
-### Former maintainers
+## Former maintainers
 
 A maintainer who stops being active in the project will at some point get
 their push permissions removed. We do this for security reasons but also to
@@ -58,7 +96,7 @@ stuff to curl".
 Getting push permissions removed is not a punishment. Everyone who ever worked
 on maintaining curl is considered a hero, for all time hereafter.
 
-### Security team members
+## Security team members
 
 We have a security team. That's the team of people who are subscribed to the
 curl-security mailing list; the receivers of security reports from users and
@@ -70,7 +108,7 @@ persons. We invite new members when the team seems to need it, and we also
 expect to retire security team members as they "drift off" from the project or
 just find themselves unable to perform their duties there.
 
-### Server admins
+## Server admins
 
 We run a web server, a mailing list and more on the curl project's primary
 server. That physical machine is owned and run by Haxx. Daniel is the primary
@@ -80,10 +118,10 @@ Feltzing serve as backup admins for when Daniel is gone or unable.
 The primary server is paid for by Haxx. The machine is physically located in a
 server bunker in Stockholm Sweden, operated by the company Portlane.
 
-The web site contents are served to the web via Fastly and Daniel is the
+The website contents are served to the web via Fastly and Daniel is the
 primary curl contact with Fastly.
 
-### BDFL
+## BDFL
 
 That's Daniel.
 
@@ -108,8 +146,8 @@ within the area of personal expertise and experience.
 
 ### Recommendations
 
-- please enable 2fa on your github account to reduce risk of malicious source
-  code tampering
+- we require two-factor authentication enabled on your GitHub account to
+  reduce risk of malicious source code tampering
 - consider enabling signed git commits for additional verification of changes
 
 ### Merge advice
@@ -119,7 +157,7 @@ When you're merging patches/PRs...
 - make sure the commit messages follow our template
 - squash patch sets into a few logical commits even if the PR didn't, if
   necessary
-- avoid the "merge" button on github, do it "manually" instead to get full
+- avoid the "merge" button on GitHub, do it "manually" instead to get full
   control and full audit trail (github leaves out you as "Committer:")
 - remember to credit the reporter and the helpers!
 

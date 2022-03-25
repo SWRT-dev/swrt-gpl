@@ -1,2 +1,0 @@
-::sysinit:/etc_ro/rcS
-ttyMT2::respawn:/bin/sh

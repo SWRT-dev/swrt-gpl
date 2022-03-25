@@ -175,6 +175,34 @@ static int server_transaction(ddns_t *ctx, ddns_info_t *provider)
  */
 static int is_address_valid(int family, const char *host)
 {
+	/*
+	 * cloudflare would return requested hostname before client's ip address
+	 * block cloudflare ips so that https://1.1.1.1/cdn-cgi/trace would work
+	 * even if 1.1.1.1 is the first ip in the response body
+	 */
+	const char *except[] = {
+		"1.1.1.1",
+		"1.0.0.1",
+		"2606:4700:4700::1111",
+		"2606:4700:4700::1001",
+		"1.1.1.2",
+		"1.0.0.2",
+		"2606:4700:4700::1112",
+		"2606:4700:4700::1002",
+		"1.1.1.3",
+		"1.0.0.3",
+		"2606:4700:4700::1113",
+		"2606:4700:4700::1003",
+		"2606:4700:4700::64",
+		"2606:4700:4700::6400"
+	};
+
+	for (size_t i = 0; i < NELEMS(except); i++) {
+		if (!strncmp(host, except[i], strlen(host))) {
+			return 0;
+		}
+	}
+
 	if (!verify_addr) {
 		logit(LOG_DEBUG, "IP address validation disabled, %s is thus valid.", host);
 		return 1;
@@ -438,6 +466,10 @@ static int get_address_iface(ddns_t *ctx, const char *ifname, char *address, siz
 
 static int get_address_backend(ddns_t *ctx, ddns_info_t *info, char *address, size_t len)
 {
+	char name[sizeof(info->checkip_name.name)];
+	char url[sizeof(info->checkip_url)];
+	int rc;
+
 	logit(LOG_DEBUG, "Get address for %s", info->system->name);
 	memset(address, 0, len);
 
@@ -450,6 +482,36 @@ static int get_address_backend(ddns_t *ctx, ddns_info_t *info, char *address, si
 	if (!get_address_remote(ctx, info, address, len))
 		return 0;
 
+	logit(LOG_WARNING, "Communication with checkip server %s failed, "
+	      "run again with 'inadyn -l debug' if problem persists",
+	      info->checkip_name.name);
+
+	/* Skip fallback if it's the same server ... option: flip SSL bit? */
+	if (strstr(info->checkip_name.name, DDNS_MY_IP_SERVER))
+		goto error;
+
+	logit(LOG_WARNING, "Retrying with built-in 'default', api.ipify.org ...");
+
+	/* keep backup, for now, future extension: count failures and replace permanently */
+	strlcpy(name, info->checkip_name.name, sizeof(name));
+	strlcpy(url, info->checkip_url, sizeof(url));
+
+	/* Retry with http(s)://api.ipify.org/ */
+	strlcpy(info->checkip_name.name, DDNS_MY_IP_SERVER, sizeof(info->checkip_name.name));
+	strlcpy(info->checkip_url, "/", sizeof(info->checkip_url));
+	rc = get_address_remote(ctx, info, address, len);
+
+	/* restore backup, for now, the official server may just have temporary problems */
+	strlcpy(info->checkip_name.name, name, sizeof(info->checkip_name.name));
+	strlcpy(info->checkip_url, url, sizeof(info->checkip_url));
+
+	if (!rc) {
+		logit(LOG_WARNING, "Please note, %s seems unstable, consider overriding it "
+		      "in your configuration with 'checkip-server = default'", info->checkip_name.name);
+		return 0;
+	}
+
+error:
 	logit(LOG_ERR, "Failed to get IP address for %s, giving up!", info->system->name);
 
 	return 1;
@@ -523,7 +585,7 @@ static int check_alias_update_table(ddns_t *ctx)
 			ddns_alias_t *alias = &info->alias[i];
 
 /* XXX: TODO time_to_check() will return false positive if the cache
- *     file is missing => causing unnnecessary update.  We should save
+ *     file is missing => causing unnecessary update.  We should save
  *     the cache file with the current IP instead and fall back to
  *     standard update interval!
  */
@@ -557,6 +619,7 @@ static int send_update(ddns_t *ctx, ddns_info_t *info, ddns_alias_t *alias, int 
 	rc = http_init(client, "Sending IP# update to DDNS server");
 	if (rc) {
 		/* Update failed, force update again in ctx->cmd_check_period seconds */
+		logit(LOG_NOTICE, "[%s, %d]http_init fail. rc=%d\n", __FUNCTION__, __LINE__, rc);
 		ctx->force_addr_update = 1;
 		return rc;
 	}
@@ -660,59 +723,69 @@ static int update_alias_table(ddns_t *ctx)
 
 		for (i = 0; i < info->alias_count; i++) {
 			ddns_alias_t *alias = &info->alias[i];
+			char *event = "update";
+			rc = 0;
 
 			if (!alias->update_required) {
-#ifdef ASUSWRT
-				if (script_exec && !alias->script_called)
-				{
-					goto script_exec;
-				}
-#endif
-				continue;
+				if (exec_mode == EXEC_MODE_COMPAT)
+					continue;
+				event = "nochg";
+			} else if ((rc = send_update(ctx, info, alias, &anychange))) {
+				if (exec_mode == EXEC_MODE_COMPAT)
+					break;
+				event = "error";
+			} else {
+				/* Only reset if send_update() succeeds. */
+				alias->update_required = 0;
+				alias->last_update = time(NULL);
+
+				/* Update cache file for this entry */
+				write_cache_file(alias);
 			}
-
-			TRY(send_update(ctx, info, alias, &anychange));
-
-			/* Only reset if send_update() succeeds. */
-			alias->update_required = 0;
-			alias->last_update = time(NULL);
-
-#ifdef ASUSWRT
-			remove_cache_file_with_hostname(alias);
-#endif
-			/* Update cache file for this entry */
-			write_cache_file(alias);
 
 			/* Run command or script on successful update. */
-			if (script_exec) {
-#ifdef ASUSWRT
-			script_exec:
-				alias->script_called = 1;
-#endif
-				os_shell_execute(script_exec, alias->address, alias->name);
-			}
+			if (script_exec)
+				os_shell_execute(script_exec, alias->address, alias->ipv6_address, alias->name, event, rc);
 		}
 
-		if (RC_DDNS_RSP_NOTOK == rc || RC_DDNS_RSP_AUTH_FAIL == rc || RC_DDNS_RSP_NOHOST == rc)
+		//logit(LOG_NOTICE, "[%s, %d]<%d, %d>\n", __FUNCTION__, __LINE__, remember, rc);
+		if (RC_DDNS_RSP_NOTOK == rc || RC_DDNS_RSP_AUTH_FAIL == rc)
 			remember = rc;
 
 		if (RC_DDNS_RSP_RETRY_LATER == rc && !remember)
 			remember = rc;
 #ifdef ASUSWRT
-		/* Return these cases (define in check_error()) will retry again in Inadyn,
-		 * so set the error code and retry in watchdog */
-		if (RC_TCP_INVALID_REMOTE_ADDR == rc
-			|| RC_TCP_CONNECT_FAILED == rc
-			|| RC_TCP_SEND_ERROR == rc
-			|| RC_TCP_RECV_ERROR == rc
-			|| RC_OS_INVALID_IP_ADDRESS == rc
-			|| RC_DDNS_RSP_RETRY_LATER == rc
-			|| RC_DDNS_INVALID_CHECKIP_RSP == rc)
+		if(nvram_match("ddns_return_code", "ddns_query"))
 		{
 			switch (rc) {
-				case RC_TCP_CONNECT_FAILED:
+				/* Return these cases (define in check_error()) will retry again in Inadyn,
+				 * so set the error code and retry in watchdog */
+				/* defined in check_error() */
+				case RC_TCP_INVALID_REMOTE_ADDR: /* Probably temporary DNS error. */
+				case RC_TCP_CONNECT_FAILED:      /* Cannot connect to DDNS server atm. */
+				case RC_TCP_SEND_ERROR:
+				case RC_TCP_RECV_ERROR:
+				case RC_OS_INVALID_IP_ADDRESS:
+				case RC_DDNS_RSP_RETRY_LATER:
+				case RC_DDNS_INVALID_CHECKIP_RSP:
+					logit(LOG_WARNING, "Will retry again ...");
 					nvram_set ("ddns_return_code", "Time-out");
 					nvram_set ("ddns_return_code_chk", "Time-out");
+					break;
+				case RC_HTTPS_FAILED_CONNECT:
+				case RC_HTTPS_FAILED_GETTING_CERT:
+					logit(LOG_WARNING, "Will retry again ...");
+					nvram_set ("ddns_return_code", "connect_fail");
+					nvram_set ("ddns_return_code_chk", "connect_fail");
+					break;
+				case RC_DDNS_RSP_NOHOST:
+				case RC_DDNS_RSP_NOTOK:
+					nvram_set("ddns_return_code", "Update failed");
+					nvram_set("ddns_return_code_chk", "Update failed");
+					break;
+				case RC_DDNS_RSP_AUTH_FAIL:
+					nvram_set("ddns_return_code", "auth_fail");
+					nvram_set("ddns_return_code_chk", "auth_fail");
 					break;
 				default:
 					nvram_set("ddns_return_code", "unknown_error");
@@ -905,7 +978,9 @@ int ddns_main_loop(ddns_t *ctx)
 	static int first_startup = 1;
 
 	if (!ctx)
+	{
 		return RC_INVALID_POINTER;
+	}
 
 	/* On first startup only, optionally wait for network and any NTP daemon
 	 * to set system time correctly.  Intended for devices without battery
@@ -957,6 +1032,7 @@ int ddns_main_loop(ddns_t *ctx)
 			    ++ctx->num_iterations >= ctx->total_iterations)
 				break;
 		}
+
 		if (ctx->cmd == CMD_RESTART) {
 			logit(LOG_INFO, "RESTART command received. Restarting.");
 			ctx->cmd = NO_CMD;
@@ -966,7 +1042,9 @@ int ddns_main_loop(ddns_t *ctx)
 
 		/* On error, check why, possibly need to retry sooner ... */
 		if (check_error(ctx, rc))
+		{
 			break;
+		}
 
 		/* Now sleep a while. Using the time set in update_period data member */
 		wait_for_cmd(ctx);

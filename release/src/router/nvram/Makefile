@@ -16,9 +16,6 @@ endif
 LDFLAGS += -L. -L$(TOP)/shared -lshared
 
 CFLAGS += -I$(TOP)/shared
-ifeq ($(RTACRH18),y)
-CFLAGS += -I$(TOP)/kernel_header/include
-endif
 
 ifeq ($(STATIC),1)
 CFLAGS += -static

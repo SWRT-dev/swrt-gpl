@@ -1788,6 +1788,15 @@ function limit_auth_method(g_unit){
 		auth_array.splice(0, 1); //remove Open System
 	}
 
+	if(isSupport("amas") && isSupport("amasRouter") && (isSwMode("rt") || isSwMode("ap"))){
+		var re_count = httpApi.hookGet("get_cfg_clientlist", true).length;
+		if(re_count > 1){
+			auth_array = auth_array.filter(function(item){
+				return (item[1] != "wpa2" && item[1] != "wpawpa2");//have re node then hide WPA2-Enterprise, WPA/WPA2-Enterprise
+			});
+		}
+	}
+
 	free_options(document.form.wl_auth_mode_x);
 	for(i = 0; i < auth_array.length; i++){
 		if(auth_method_array  == auth_array[i][1])
@@ -1823,6 +1832,8 @@ function getDDNSState(ddns_return_code, ddns_hostname, ddns_old_hostname)
 		ddnsStateHint = "<#LANHostConfig_x_DDNS_alarm_8#>";
 	else if(ddns_return_code.indexOf('299')!=-1)
 		ddnsStateHint = "<#LANHostConfig_x_DDNS_alarm_9#>";
+	else if(ddns_return_code.indexOf('390')!=-1)
+		ddnsStateHint = "Server Error";
 	else if(ddns_return_code.indexOf('401')!=-1)
 		ddnsStateHint = "<#LANHostConfig_x_DDNS_alarm_10#>";
 	else if(ddns_return_code.indexOf('407')!=-1)

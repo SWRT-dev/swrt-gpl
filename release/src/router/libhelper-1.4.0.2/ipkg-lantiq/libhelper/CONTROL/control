@@ -1,0 +1,10 @@
+Package: libhelper
+Version: 1.4.0.2-1
+Depends: libc, libssp
+Source: /media/intel160g/asuswrt-router-3004/UGW-7.2.4.4_05.04.00.131/ugw/feeds_ugw/framework/helper/libhelper
+Section: utils
+Maintainer: Lantiq Beteiligungs-GmbH & Co. KG
+Architecture: lantiq
+Installed-Size: 9551
+Description:  Lantiq UGW SDK Helper Library to define function,prototypes,structs,enums which are
+ used for list manipulation and debug purposes.

@@ -82,7 +82,6 @@ function QKinternettype_load_body(){
 		document.form.http_passwd.focus();
 
 		if (dsl_support) {
-			document.getElementById("prev_btn").style.display = "none";
 			document.form.next_page.value = "/qis/QIS_detect.htm";
 		}
 	}
@@ -92,6 +91,10 @@ function QKinternettype_load_body(){
 	if(parent.based_modelid == "DSL-AC68U" || parent.based_modelid == "DSL-AX82U"){	//dsl detect trigger, MODELDEP : DSL-AC68U
 		var RetryCountDown_fail = 5;
 		update_dsl_info();
+		if('<% nvram_get("x_Setting"); %>' == '1' && parent.based_modelid == "DSL-AC68U"){
+			document.form.action = "/qis/QIS_detect.htm";
+			document.form.submit();
+		}
 	}
 	
         if(parent.based_modelid == "RT-AC58U" || parent.based_modelid == "RT-AC82U"){
@@ -104,7 +107,7 @@ function QKinternettype_load_body(){
         }
 	
 
-	if(wanauxstate == 1)
+	if(!dsl_support && wanauxstate == 1)
 		document.getElementById("prev_btn").style.display = "";
 
 	var amesh_found_cap = '<% nvram_get("amesh_found_cap"); %>';
@@ -417,12 +420,7 @@ function skipsetting(){
 }
 
 function gotoPrev(){
-	if (dsl_support) {
-		location.href = "/qis/QIS_detect.htm";	
-	}
-	else {
-		location.href = "QIS_welcome.htm";
-	}
+	location.href = "QIS_welcome.htm";
 }
 
 /* password item show or not */
@@ -570,10 +568,10 @@ function checkPasswd($obj){
 	<div class="row_end"><a id="loadingIcon_skip" class="iuiA" onclick="skipsetting();"><#CTL_Skip#></a></div>
 </fieldset>
 
-<div class="apply_gen" id="applyBtn">
+<div class="apply_gen">
 	<span id="skip_btn" style="display:none;"><input type="button" value="<#CTL_Skip#>" tabindex="6" onclick="skipsetting();" class="button_gen"></span>
 	<span id="prev_btn" style="display:none"><input type="button" value="<#CTL_prev#>" tabindex="6" onclick="gotoPrev();" class="button_gen"></span>
-	<input type="submit" id="nextButton" tabindex="5"	value="<#CTL_next#>" class="button_gen">
+	<input type="submit" id="nextButton" tabindex="5" value="<#CTL_next#>" class="button_gen">
 </div>
 
 </form>

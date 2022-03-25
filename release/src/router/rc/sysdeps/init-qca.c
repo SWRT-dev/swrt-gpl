@@ -833,7 +833,17 @@ void init_devs(void)
     defined(RTCONFIG_QCN550X)
 	eval("ln", "-sf", "/dev/mtdblock2", "/dev/caldata");	/* mtdblock2 = SPI flash, Factory MTD partition */
 #else
+#if defined(RAX120)
+	int mtd_part = 0, mtd_size = 0;
+	char dev_mtd[] = "/dev/mtdblockXXX";
+	if (mtd_getinfo("Factory", &mtd_part, &mtd_size)){
+		snprintf(dev_mtd, sizeof(dev_mtd), "/dev/mtd%d", mtd_part);
+		eval("ln", "-sf", dev_mtd, "/dev/caldata");
+	}else
+		printf("init_devs: can't find Factory MTD partition\n");
+#else
 	eval("ln", "-sf", "/dev/mtdblock3", "/dev/caldata");	/* mtdblock3 = cal in NAND flash, Factory MTD partition */
+#endif
 #endif
 
 	if ((status = WEXITSTATUS(modprobe("nvram_linux"))))
@@ -946,13 +956,21 @@ static void set_wanifaces_hwaddr(void)
 	switch (get_model()) {
 	case MODEL_GTAXY16000:
 	case MODEL_RTAX89U:
+#if defined(RAX120)
+		wan_ifaces[0] = "eth4";
+		wan_ifaces[1] = "eth5";
+#else
 		wan_ifaces[0] = "eth3";
 		wan_ifaces[1] = "eth5";
 		wan_ifaces[2] = "eth4";
+#endif
 		break;
 	}
-
+#if defined(RAX120)
+	for (i = 0; i < 2; ++i) {
+#else
 	for (i = 0; i < 3; ++i) {
+#endif
 		if (wan_ifaces[i] == NULL)
 			break;
 
@@ -983,7 +1001,7 @@ static void init_switch_qca(void)
 
 		/* 10-shortcut-fe-drv */
 		"shortcut-fe-drv",
-#if defined(RTCONFIG_SWITCH_QCA8337N) || defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033)
+#if defined(RTCONFIG_SWITCH_QCA8337N) || defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033) || defined(RTCONFIG_SWITCH_QCA8075_PHY_AQR111)
 		"qca-ssdk",
 #endif
 		"qca-nss-dp",
@@ -1027,7 +1045,7 @@ static void init_switch_qca(void)
 		"qca-nss-pptp", "qca-nss-crypto", "qca-nss-crypto-tool", 
 		"qca-nss-macsec", "qca-nss-ipsecmgr", "qca-nss-qdisc",
 		"qca-nss-cfi-ocf", "qca-nss-cfi-cryptoapi",
-		"qca-nss-ipsec", "qca-nss-tun6rd", "qca-nss-tunipip6",
+		"qca-nss-ipsec", /*"qca-nss-tun6rd",*/ "qca-nss-tunipip6",
 #else
 //		"qca-nss-capwapmgr",
 		"qca-nss-cfi-cryptoapi",
@@ -1053,7 +1071,7 @@ static void init_switch_qca(void)
 		/* 59-qca-nss-cfi */
 		"qca-nss-cfi-ocf", "qca-nss-cfi-cryptoapi", "qca-nss-ipsec",
 
-		"qca-nss-tun6rd",
+		// "qca-nss-tun6rd",
 		"qca-nss-tunipip6",
 #endif
 #endif	/* RTCONFIG_STRONGSWAN || RTCONFIG_QUICKSEC */
@@ -1081,6 +1099,12 @@ static void init_switch_qca(void)
 	char *argv[30] = {
 		"modprobe", "-s", NULL
 	}, **v;
+#if defined(RTCONFIG_SOC_IPQ8074)
+	int max_speed = 0;
+	int mod_def0_pin = 46;
+	char speed[sizeof("max_speed=10000XXX")];
+	char str[sizeof("d0_mod_def0_pin=57XXXXX")];
+#endif
 
 	for (qmod = &qca_module_list[0]; *qmod != NULL; ++qmod) {
 		if (module_loaded(*qmod))
@@ -1092,12 +1116,15 @@ static void init_switch_qca(void)
 			if (nvram_get_int("ipsec_hw_crypto_enable") == 0)
 			continue;
 		}
-#if defined(RTCONFIG_SOC_IPQ8074)
+#if defined(RTCONFIG_SOC_IPQ8074) && !defined(RAX120)
 		if (!strcmp(*qmod, "qca-ssdk")) {
-			int mod_def0_pin = 46;
-			char str[sizeof("d0_mod_def0_pin=57XXXXX")];
+			max_speed = nvram_get_int("sfpp_max_speed");
+			if (max_speed == 1000 || max_speed == 10000) {
+				snprintf(speed, sizeof(speed), "max_speed=%d", max_speed);
+				*v++ = speed;
+			}
 
-			if (nvram_match("sfp+_force_on", "1"))
+			if (nvram_match("sfpp_force_on", "1"))
 				*v++ = "xgmac_autodet=N";
 
 			if (nvram_match("HwId", "A"))
@@ -1147,7 +1174,11 @@ static void init_switch_qca(void)
 		*v++ = NULL;
 		_eval(argv, NULL, 0, NULL);
 	}
-
+#if defined(RAX120)
+	doSystem("aq-fw-download /lib/firmware/RAX120_aqr111.cld miireg 7\n");
+	doSystem("sleep 1\n");
+	doSystem("ssdk_sh sw0 debug phy set 7 0x4004c441 0x8\n");
+#endif
 	char *wan0_ifname = nvram_safe_get("wan0_ifname");
 	char *lan_ifname, *lan_ifnames, *ifname, *p;
 
@@ -1330,6 +1361,7 @@ void config_switch(void)
 #if defined(RTCONFIG_SWITCH_RTL8370M_PHY_QCA8033_X2) || \
     defined(RTCONFIG_SWITCH_RTL8370MB_PHY_QCA8033_X2)
 	char *str;
+	int wans = get_wans_dualwan();
 #endif
 
 	dbG("link down all ports\n");
@@ -1345,7 +1377,6 @@ void config_switch(void)
 	case MODEL_RTAC59CD6N:	/* fall through */
 	case MODEL_RTAC58U:	/* fall through */
 	case MODEL_RT4GAC53U:	/* fall through */
-	case MODEL_RT4GAC56:	/* fall through */
 	case MODEL_RTAC82U:	/* fall through */
 	case MODEL_MAPAC1300:	/* fall through */
 	case MODEL_VZWAC1300:	/* fall through */
@@ -1788,9 +1819,13 @@ void config_switch(void)
 
 #if defined(RTCONFIG_SWITCH_RTL8370M_PHY_QCA8033_X2) || \
     defined(RTCONFIG_SWITCH_RTL8370MB_PHY_QCA8033_X2)
-	str = nvram_get("lan_hash_algorithm");
-	if(str && *str != '\0') {
-		eval("rtkswitch", "47", str);
+	if (!(wans & WANSCAP_LAN)) {
+		str = nvram_get("lan_hash_algorithm");
+		if (nvram_match("lan_trunk_type", "2"))
+			str = "0";	/* source port */
+		if(str && *str != '\0') {
+			eval("rtkswitch", "47", str);
+		}
 	}
 #endif
 
@@ -1844,18 +1879,32 @@ int switch_exist(void)
 	_dprintf("phy0/1 id %08x/%08x\n", id[0], id[1]);
 
 	return (!ret && id[0] == 0x004dd074 && id[1] == 0x004dd074);
-#elif defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033)
+#elif defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033) || defined(RTCONFIG_SWITCH_QCA8075_PHY_AQR111)
 #if defined(GTAXY16000) || defined(RTAX89U)
+#if defined(RAX120)
+	static const uint32_t     aqr_id[] = { 0x03a1b610, 0x03a1b612, 0 };	/* AQR111, AQR111B0 */
+#else
 	static const uint32_t     aqr_id[] = { 0x03a1b4e2, 0x31c31c41, 0x31c31c12, 0 };	/* AQR107, AQR113, AQR113C */
+#endif
 	static const uint32_t qca8075_id[] = { 0x004dd0b1, 0 };
+#if !defined(RAX120)
 	static const uint32_t qca8337_id[] = { 0x004dd036, 0 };
 	static const uint32_t  ar8033_id[] = { 0x004dd074, 0 };
+#endif
 	static const struct phy_id_list_s {
 		int phy;
 		int phy_type;	/* 0: General; 1: AQR C45 PHY */
 		const uint32_t *pval;
 		uint32_t mask;
 	} phy_id_lists[] = {
+#if defined(RAX120)
+		{ 7, 1,     aqr_id, 0xfffffff0 },	/*  AQR111: WAN2, 5G RJ-45 */
+		{ 4, 0, qca8075_id, 0xffffffff },	/* QCA8075: WAN1 */
+		{ 3, 0, qca8075_id, 0xffffffff },	/* QCA8075: LAN1 */
+		{ 2, 0, qca8075_id, 0xffffffff },	/* QCA8075: LAN2 */
+		{ 1, 0, qca8075_id, 0xffffffff },	/* QCA8075: LAN3 */
+		{ 0, 0, qca8075_id, 0xffffffff },	/* QCA8075: LAN4 */
+#else
 		{  7, 1,     aqr_id, 0xfffffff0 },	/*  AQR1xx: WAN2, 10G RJ-45 */
 		{ 11, 0, qca8075_id, 0xffffffff },	/* QCA8075: WAN1 */
 		{ 10, 0, qca8075_id, 0xffffffff },	/* QCA8075: LAN1 */
@@ -1866,8 +1915,10 @@ int switch_exist(void)
 		{  1, 0, qca8337_id, 0xffffffff },	/* QCA8337: LAN6 */
 		{  0, 0, qca8337_id, 0xffffffff },	/* QCA8337: LAN7 */
 		{  6, 0,  ar8033_id, 0xffffffff },	/*  AR8033: LAN8 */
+#endif
 		{ -1, 0, NULL, 0 },
 	}, *p;
+#if !defined(RAX120)
 	static const struct gmac_spd_s {
 		int port;			/* IPQ8074 GMAC port. */
 		int min_speed;			/* minimal speed of the GMAC. */
@@ -1875,14 +1926,16 @@ int switch_exist(void)
 		{ 1, 1000 },			/* port 1, QCA8337 */
 		{ -1, -1},
 	}, *q;
+#endif
 	time_t t1;
 	uint32_t r, id1, id2;
 	const uint32_t *pval;
 	unsigned int id_reg_addr;
 	int i, r1, ret = 1, val, retry, fw, build, right, phy;
 	char iface[IFNAMSIZ];
+#if !defined(RAX120)
 	char speed_cmd[sizeof("ssdk_sh swX port speed get XYYYYYY")];
-
+#endif
 	/* Check all switch/PHY ports, except SFP+ */
 	for (p = &phy_id_lists[0]; p->phy >= 0; ++p) {
 		if (p->phy_type) {
@@ -1936,6 +1989,7 @@ int switch_exist(void)
 		sleep(1);
 	}
 
+#if !defined(RAX120)
 	/* Check GMAC that are connected to QCA8337 switch.
 	 * For those ports that are connected to Malibu (PHY) and AQR107,
 	 * GMAC speed is negotiated at run-time.  Don't check them.
@@ -1990,6 +2044,7 @@ int switch_exist(void)
 			}
 		}
 	}
+#endif
 
 	if (!ret)
 		return ret;
@@ -2899,10 +2954,11 @@ static void __load_wifi_driver(int testmode)
 #if defined(RTCONFIG_WIFI_SON)
 			if (sw_mode()!=SW_MODE_REPEATER && nvram_match("wifison_ready", "1")) {
 #if defined(RTCONFIG_HIDDEN_BACKHAUL)
-		        	if(strlen(nvram_safe_get("cfg_group"))){
+		        	if(strlen(nvram_safe_get("cfg_group")))
 #else
-				if(nvram_get_int("x_Setting")) {
+				if(nvram_get_int("x_Setting"))
 #endif
+				{
 				eval(IWPRIV, (char*) VPHY_2G, "no_vlan", "1");
 				eval(IWPRIV, (char*) VPHY_5G, "no_vlan", "1");
 				//send RCSA to uplink/CAP/PAP when detect radar
@@ -3163,7 +3219,7 @@ void init_wl(void)
 #if defined(RTCONFIG_REPEATER_STAALLBAND)
 					if (sw_mode() == SW_MODE_REPEATER && nvram_get_int("x_Setting")) {
 						dbG("\ncreate a STA node %s from %s\n", get_staifname(unit), get_vphyifname(unit));
-						create_vap(get_staifname(i), i, "sta");
+						create_vap(get_staifname(unit), unit, "sta");
 						sleep(1);
 					}
 #endif
@@ -3214,7 +3270,7 @@ void init_wl(void)
 				if(nvram_get_int("x_Setting"))
 				{
 					_dprintf("=>init_wl: create sta vaps\n");
-					create_vap(get_staifname(i), i, "sta");
+					create_vap(get_staifname(1), 1, "sta");
 					sleep(1);
 					ifconfig(get_staifname(1), IFUP, NULL, NULL);
 				}
@@ -3406,7 +3462,7 @@ void fini_wl(void)
 	stop_mcsd();
 
 	dbG("fini_wl:destroy wi node\n");
-#if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK) || defined(RTCONFIG_SPF11_3_QSDK)
+#if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK) || defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
 	/* in MBSS case, send notification to allow deletion of transmitting VAP */
 	for (i = WL_2G_BAND; i < MAX_NR_WL_IF; ++i) {
 		SKIP_ABSENT_BAND(i);
@@ -3427,7 +3483,7 @@ void fini_wl(void)
 
 	deinit_all_vaps(1);
 
-#if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK) || defined(RTCONFIG_SPF11_3_QSDK)
+#if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK) || defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
 	for (i = WL_2G_BAND; i < MAX_NR_WL_IF; ++i) {
 		SKIP_ABSENT_BAND(i);
 
@@ -3601,6 +3657,10 @@ void init_syspara(void)
 	boot_version_ck();
 #endif
 	set_basic_fw_name();
+
+#if defined(RTCONFIG_ASUSCTRL)
+	asus_ctrl_sku_check();
+#endif
 
 	/* /dev/mtd/2, RF parameters, starts from 0x40000 */
 	dst = buffer;
@@ -3972,7 +4032,9 @@ void reinit_sfe(int unit)
 	int act = 1,i;	/* -1/0/otherwise: ignore/remove sfe/load sfe */
 	struct load_nat_accel_kmod_seq_s *p = &load_nat_accel_kmod_seq[0];
 #if defined(RTCONFIG_DUALWAN)
-	int nat_x = -1;
+	int nat_x = -1, l, t, link_wan = 1, link_wans_lan = 1;
+	int wans_cap = get_wans_dualwan() & WANSCAP_WAN;
+	int wanslan_cap = get_wans_dualwan() & WANSCAP_LAN;
 	char nat_x_str[] = "wanX_nat_xXXXXXX";
 #endif
 	int sfe_dev;
@@ -3982,6 +4044,12 @@ void reinit_sfe(int unit)
 #endif
 
 	act = nvram_get_int("qca_sfe");	
+
+	if(nvram_get_int("url_enable_x")==1 && strlen(nvram_get("url_rulelist"))!=0)
+		act = 0;
+
+	if(nvram_get_int("keyword_enable_x")==1 && strlen(nvram_get("keyword_rulelist"))!=0)
+		act = 0;
 
 	/* If non-A.QoS is enabled, disable sfe. */
 	if (IS_NON_AQOS())
@@ -4002,28 +4070,25 @@ void reinit_sfe(int unit)
 
 	if (act > 0) {
 #if defined(RTCONFIG_DUALWAN)
-		/* Load Balance */
-		if (nvram_match("wans_mode", "lb"))
-			act = 0;
-#if !defined(RT4GAC53U) && !defined(RT4GAC56) /* for Gobi */
-		/* Fail Over to 3G/4G */
-		else if (/*(unit == -1 && get_wans_dualwan() & WANSCAP_USB) ||*/
-			 (unit == prim_unit && get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_USB))
-			act = 0;
-#endif
-		/* Enable NAT */
-		else {
+		if (unit < 0 || unit > WAN_UNIT_SECOND) {
+			if ((wans_cap && wanslan_cap) /* ||
+			    (wanslan_cap && (!nvram_match("switch_wantag", "none") && !nvram_match("switch_wantag", ""))) */
+			   )
+				act = 0;
+		} else {
 			snprintf(nat_x_str, sizeof(nat_x_str), "wan%d_nat_x", unit);
 			nat_x = nvram_get_int(nat_x_str);
 			if (unit == prim_unit && !nat_x)
+				act = 0;
+			else if ((wans_cap && wanslan_cap) /* ||
+				 (wanslan_cap && (!nvram_match("switch_wantag", "none") && !nvram_match("switch_wantag", ""))) */
+				)
 				act = 0;
 			else if (unit != prim_unit)
 				act = -1;
 		}
 #else
 		if (!is_nat_enabled())
-			act = 0;
-		if (dualwan_unit__usbif(prim_unit))
 			act = 0;
 #endif
 	}
@@ -4033,11 +4098,64 @@ void reinit_sfe(int unit)
 	   ((sw_mode() != SW_MODE_ROUTER) && !nvram_match("cfg_master", "1")))
 		act = 0;
 #endif
+#if !defined(RT4GAC53U) /* for Gobi */
+	if (act > 0) {
+#if defined(RTCONFIG_DUALWAN)
+		if (unit < 0 || unit > WAN_UNIT_SECOND || nvram_match("wans_mode", "lb")) {
+			if (get_wans_dualwan() & WANSCAP_USB)
+				act = 0;
+		} else {
+			if (unit == prim_unit && get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_USB)
+				act = 0;
+		}
+#else
+		if (dualwan_unit__usbif(prim_unit))
+			act = 0;
+#endif
+	}
+#endif
 
 #if defined(RTCONFIG_DUALWAN)
-	_dprintf("%s:DUALWAN: unit %d,%d type %d nat_x %d qos %d wans_mode %s: action %d.\n",
-		__func__, unit, prim_unit, get_dualwan_by_unit(unit),
-		nat_x, nvram_get_int("qos_enable"), nvram_safe_get("wans_mode"), act);
+	if (act != 0 &&
+	    ((wans_cap && wanslan_cap) || (wanslan_cap && (!nvram_match("switch_wantag", "none") && !nvram_match("switch_wantag", ""))))
+	   )
+	{
+		/* If WANS_LAN and WAN is enabled, WANS_LAN is link-up and WAN is not link-up, hw_nat MUST be removed.
+		 * If hw_nat exists in such scenario, LAN PC can't connect to Internet through WANS_LAN correctly.
+		 *
+		 * FIXME:
+		 * If generic IPTV feature is enabled, STB port and VoIP port are recognized as WAN port(s).
+		 * In such case, we don't know whether real WAN port is link-up/down.
+		 * Thus, if WAN is link-up and primary unit is not WAN, assume WAN is link-down.
+		 */
+		for (i = WAN_UNIT_FIRST; i < WAN_UNIT_MAX; ++i) {
+			if ((t = get_dualwan_by_unit(i)) == WANS_DUALWAN_IF_USB)
+				continue;
+
+			l = wanport_status(i);
+			switch (t) {
+			case WANS_DUALWAN_IF_WAN:
+				link_wan = l && (i == prim_unit);
+				break;
+			case WANS_DUALWAN_IF_DSL:
+				link_wan = l;
+				break;
+			case WANS_DUALWAN_IF_LAN:
+				link_wans_lan = l;
+				break;
+			default:
+				_dprintf("%s: Unknown WAN type %d\n", __func__, t);
+			}
+		}
+
+		if (!link_wan && link_wans_lan)
+			act = 0;
+	}
+
+	_dprintf("%s:DUALWAN: unit %d,%d type %d iptv [%s] nat_x %d qos %d wans_mode %s link %d,%d: action %d.\n",
+		__func__, unit, prim_unit, get_dualwan_by_unit(unit), nvram_safe_get("switch_wantag"), nat_x,
+		nvram_get_int("qos_enable"), nvram_safe_get("wans_mode"),
+		link_wan, link_wans_lan, act);
 #else
 	_dprintf("%s:WAN: unit %d,%d type %d nat_x %d qos %d: action %d.\n",
 		__func__, unit, prim_unit, get_dualwan_by_unit(unit),
@@ -4074,7 +4192,16 @@ void reinit_sfe(int unit)
 #endif
 			/* load sfe */
 			if (module_loaded(p->kmod_name))
-				continue;
+			{
+
+#if defined(RTCONFIG_SOC_IPQ40XX)
+				if(nvram_get_int("MULTIFILTER_ENABLE")==1 &&
+				   !strcmp(p->kmod_name,"shortcut_fe_cm"))
+					modprobe_r("shortcut_fe_cm");
+				else				
+#endif
+					continue;
+			}
 			
 #if defined(RTCONFIG_SOC_IPQ40XX) && defined(RTCONFIG_BWDPI)
 			if (!strcmp(p->kmod_name,"shortcut_fe_cm") && handle_bwdpi) {
@@ -4330,7 +4457,6 @@ set_wan_tag(char *interface)
 	case MODEL_RTAC59CD6N:
 	case MODEL_RTAC58U:
 	case MODEL_RT4GAC53U:
-	case MODEL_RT4GAC56:
 	case MODEL_RTAC82U:
 	case MODEL_RTAC88N:
 	case MODEL_MAPAC1750:
@@ -4646,3 +4772,4 @@ void set_tagged_based_vlan_config(char *interface)
 #endif
 
 #endif
+

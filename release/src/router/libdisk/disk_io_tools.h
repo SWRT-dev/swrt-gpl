@@ -59,3 +59,4 @@ extern void strntrim(char *str);
 /*extern void write_escaped_value(FILE *fp, const char *value);//*/
 
 #endif // _DISK_IO_TOOLS_
+

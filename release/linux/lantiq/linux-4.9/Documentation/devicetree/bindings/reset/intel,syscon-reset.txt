@@ -1,0 +1,38 @@
+Intel System Reset Controller
+======================================
+
+Please also refer to reset.txt in this directory for common reset
+controller binding usage.
+
+The reset controller registers are RCU module on Intel GRX500/PRX300 SoC.
+
+Required properties:
+- compatible: should be
+		 "lantiq,rcu-grx500"
+- reg:	should be register base and size for this reset controller
+- #reset-cells : must be 2. type should be a <u32>
+
+	 Cell #1 : offset of the reset assert control
+	           register from the syscon register base
+		   offset + 4: status control register
+	 Cell #2 : bit offset in the reset request control register
+-intel,global-reset: offset and bit offset of global reset
+	in the reset controller that can be used in system reboot.
+
+Example:
+	rcu0: reset-controller@00000000 {
+		compatible = "lantiq,rcu-grx500", "syscon";
+		reg = <0x000000 0x80000>;
+		#reset-cells = <2>;
+		intel,global-reset = <0x10 30>;
+	};
+
+
+Specifying reset lines connected to IP modules
+==============================================
+example:
+	pcie_phy0: pciephy@.... {
+		....
+		resets = <&rcu0 0x10 12>; /* address offset: 0x10, bit offset: 12 */
+		....
+	};

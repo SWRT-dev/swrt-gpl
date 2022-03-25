@@ -1,0 +1,80 @@
+#include "63138.dtsi"
+
+/ {
+    memory_controller {
+        memcfg = <(BP_DDR_SPEED_800_11_11_11   | \
+                   BP_DDR_TOTAL_SIZE_256MB  | \
+                   BP_DDR_DEVICE_WIDTH_8)>;
+    };
+};
+
+&mdio_sf2 {
+	/* PHYs directly connected to SF2 */
+	gphy8:8 {
+		status = "okay";
+	};
+	gphy9:9 {
+		status = "okay";
+	};
+	gphya:a {
+		status = "okay";
+	};
+
+	/* PHYs connected to crossbar */
+	gphyb:b {
+		status = "okay";
+	};
+	gphyc:c {
+		status = "okay";
+	};
+	phy_serdes0:serdes0 {
+		status = "okay";
+	};
+
+	/* Crossbar groups */
+	xbar_grp0:0 {
+		phy-handle = <&gphyb>;
+		status = "okay";
+	};
+	xbar_grp2:2 {
+		phy-handle = <&gphyc &phy_serdes0>;
+		status = "okay";
+	};
+};
+
+&switch_sf2 {
+	ports {
+		/* ports connect directly */
+		sf2_port0@0 {
+			phy-handle = <&gphy8>;
+			status = "okay";
+		};
+
+		sf2_port1@1 {
+			phy-handle = <&gphy9>;
+			status = "okay";
+		};
+
+		sf2_port2@2 {
+			phy-handle = <&gphya>;
+			status = "okay";
+		};
+
+		/* ports connected to crossbar */
+		sf2_port3@3 {
+			phy-handle = <&xbar_grp0>;
+			status = "okay";
+		};
+	};
+};
+
+&switch0 {
+	ports {
+		
+		port0@0 {
+			phy-handle = <&xbar_grp2>;
+			phy-mode = "serdes";
+			status = "okay";
+		};
+	};
+};

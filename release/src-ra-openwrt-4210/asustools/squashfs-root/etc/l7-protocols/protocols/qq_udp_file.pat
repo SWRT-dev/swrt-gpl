@@ -1,2 +1,0 @@
-qq_udp_file
-^\x03\x01\x65

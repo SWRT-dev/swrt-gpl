@@ -14,8 +14,7 @@
 #ifndef aligned_u64
 #define aligned_u64 unsigned long long __attribute__((aligned(8)))
 #endif
-
-#if defined(MUSL_LIBC)
+#if defined(MUSL_LIBC) || defined(RTCONFIG_MUSL_LIBC)
 #include <sys/types.h>
 #endif
 #include <sys/socket.h>	/* for sa_family_t */

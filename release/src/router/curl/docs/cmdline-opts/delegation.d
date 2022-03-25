@@ -2,6 +2,7 @@ Long: delegation
 Arg: <LEVEL>
 Help: GSS-API delegation permission
 Protocols: GSS/kerberos
+Category: auth
 ---
 Set LEVEL to tell the server what it is allowed to delegate when it
 comes to user credentials.
@@ -14,3 +15,5 @@ service ticket, which is a matter of realm policy.
 .IP "always"
 Unconditionally allow the server to delegate.
 .RE
+
+If this option is used several times, the last one will be used.

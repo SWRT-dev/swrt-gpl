@@ -200,7 +200,7 @@ function submitForm(){
 	changeiuiBackground(1);
 
 	check_autodet_state();
-	if( (autodet_state == "0"  || autodet_state == "1") && retry_times > 0 ){
+	if( (autodet_state == "0" || autodet_state == "1") && retry_times > 0 ){
 		setTimeout('submitForm();', 500);
 		retry_times--;
 		return false;

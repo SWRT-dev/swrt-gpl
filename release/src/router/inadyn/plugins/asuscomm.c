@@ -38,6 +38,7 @@
 #endif
 
 #define ASUSDDNS_IP_SERVER	"ns1.asuscomm.com"
+#define ASUSDDNS_IP_SERVER_CN	"ns1.asuscomm.cn"
 //#define ASUSDDNS_IP_SERVER	"52.250.15.7"
 #define ASUSDDNS_CHECKIP_URL	"/myip.php"
 
@@ -87,6 +88,7 @@ static int response_register(http_trans_t *trans, ddns_info_t *info, ddns_alias_
 static ddns_system_t asus_update = {
 	.name         = "update@asus.com",
 
+	.setup = NULL,
 	.request      = (req_fn_t)request,
 	.response     = (rsp_fn_t)response_update,
 
@@ -100,6 +102,7 @@ static ddns_system_t asus_update = {
 static ddns_system_t asus_register = {
 	.name         = "register@asus.com",
 
+	.setup = NULL,
 	.request      = (req_fn_t)request,
 	.response     = (rsp_fn_t)response_register,
 
@@ -113,6 +116,7 @@ static ddns_system_t asus_register = {
 static ddns_system_t asus_unregister = {
 	.name         = "unregister@asus.com",
 
+	.setup = NULL,
 	.request      = (req_fn_t)request_unregister,
 	.response     = (rsp_fn_t)response_register,
 
@@ -317,8 +321,11 @@ static int request(ddns_t *ctx, ddns_info_t *info, ddns_alias_t *alias)
 #ifdef USE_IPV6
 	char ip6_addr[INET6_ADDRSTRLEN] = {0};
 
-	if(!_get_ipv6_addr(iface, ip6_addr, sizeof(ip6_addr)))
-			logit(LOG_WARNING, "%s ipv6 address=<%s>", iface, ip6_addr);
+	if(!_get_ipv6_addr(iface, ip6_addr, sizeof(ip6_addr))) {
+		logit(LOG_WARNING, "%s ipv6 address=<%s>", iface, ip6_addr);
+		memset(alias->ipv6_address, 0, sizeof(alias->ipv6_address));
+		strlcpy(alias->ipv6_address, ip6_addr, sizeof(alias->ipv6_address));
+	}
 #endif
 
 	logit(LOG_WARNING, "alias address=<%s>", alias->address);
@@ -384,7 +391,7 @@ static int request(ddns_t *ctx, ddns_info_t *info, ddns_alias_t *alias)
 			info->creds.encoded_password ? : "",
 			info->server_name.name,
 			info->user_agent);
-	//logit(LOG_WARNING, "request<%s>", ctx->request_buf);
+	logit(LOG_WARNING, "request<%s>", ctx->request_buf);
 	return strlen(ctx->request_buf);
 #endif
 }
@@ -393,13 +400,15 @@ static int request_unregister(ddns_t *ctx, ddns_info_t *info, ddns_alias_t *alia
 {
 	logit(LOG_WARNING, "do request_unregister");
 	make_request(ctx, info, alias);
-	return snprintf(ctx->request_buf, ctx->request_buflen,
+	snprintf(ctx->request_buf, ctx->request_buflen,
 			ASUSDDNS_UNREG_HTTP_REQUEST,
 			info->server_url,
 			alias->name,
 			info->creds.encoded_password ? : "",
 			info->server_name.name,
 			info->user_agent);
+	logit(LOG_WARNING, "unregister_request<%s>", ctx->request_buf);
+	return strlen(ctx->request_buf);
 }
 
 static int response_update(http_trans_t *trans, ddns_info_t *info, ddns_alias_t *alias)
@@ -410,6 +419,9 @@ static int response_update(http_trans_t *trans, ddns_info_t *info, ddns_alias_t 
 	char ret_buf[64];
 #endif
 	p_rsp = trans->rsp_body;
+
+	if(trans->rsp)
+		logit(LOG_WARNING, "[%s]%s", __FUNCTION__, trans->rsp);
 
 	if ((p = strchr(p_rsp, '|')) && (p = strchr(++p, '|')))
 		sscanf(p, "|%255[^|\r\n]", domain);
@@ -478,6 +490,9 @@ static int response_register(http_trans_t *trans, ddns_info_t *info, ddns_alias_
 
 	p_rsp = trans->rsp_body;
 
+	if(trans->rsp)
+		logit(LOG_WARNING, "[%s]%s", __FUNCTION__, trans->rsp);
+
 	if ((p = strchr(p_rsp, '|')) && (p = strchr(++p, '|')))
 		sscanf(p, "|%255[^|\r\n]", domain);
 
@@ -541,6 +556,28 @@ static int response_register(http_trans_t *trans, ddns_info_t *info, ddns_alias_
 
 PLUGIN_INIT(plugin_init)
 {
+#ifdef RTCONFIG_ASUSDDNS_ACCOUNT_BASE
+	char ddns_server[64] = {0};
+	if (nvram_match("oauth_auth_status", "2")) {
+		snprintf(ddns_server, sizeof(ddns_server), "%s", nvram_safe_get("aae_ddnsinfo"));
+		if(strlen(ddns_server) > 0) {
+			asus_update.checkip_name = ddns_server;
+			asus_update.server_name = ddns_server;
+			asus_register.checkip_name = ddns_server;
+			asus_register.server_name = ddns_server;
+			asus_unregister.checkip_name = ddns_server;
+			asus_unregister.server_name = ddns_server;
+		}
+	} else
+#endif
+	if (nvram_match("ddns_server_x", "WWW.ASUS.COM.CN")) {
+		asus_update.checkip_name = ASUSDDNS_IP_SERVER_CN;
+		asus_update.server_name = ASUSDDNS_IP_SERVER_CN;
+		asus_register.checkip_name = ASUSDDNS_IP_SERVER_CN;
+		asus_register.server_name = ASUSDDNS_IP_SERVER_CN;
+		asus_unregister.checkip_name = ASUSDDNS_IP_SERVER_CN;
+		asus_unregister.server_name = ASUSDDNS_IP_SERVER_CN;
+	}
 	plugin_register(&asus_update);
 	plugin_register(&asus_register);
 	plugin_register(&asus_unregister);
@@ -548,6 +585,28 @@ PLUGIN_INIT(plugin_init)
 
 PLUGIN_EXIT(plugin_exit)
 {
+#ifdef RTCONFIG_ASUSDDNS_ACCOUNT_BASE
+	char ddns_server[64] = {0};
+	if (nvram_match("oauth_auth_status", "2")) {
+		snprintf(ddns_server, sizeof(ddns_server), "%s", nvram_safe_get("aae_ddnsinfo"));
+		if(strlen(ddns_server) > 0) {
+			asus_update.checkip_name = ddns_server;
+			asus_update.server_name = ddns_server;
+			asus_register.checkip_name = ddns_server;
+			asus_register.server_name = ddns_server;
+			asus_unregister.checkip_name = ddns_server;
+			asus_unregister.server_name = ddns_server;
+		}
+	} else
+#endif
+	if (nvram_match("ddns_server_x", "WWW.ASUS.COM.CN")) {
+		asus_update.checkip_name = ASUSDDNS_IP_SERVER_CN;
+		asus_update.server_name = ASUSDDNS_IP_SERVER_CN;
+		asus_register.checkip_name = ASUSDDNS_IP_SERVER_CN;
+		asus_register.server_name = ASUSDDNS_IP_SERVER_CN;
+		asus_unregister.checkip_name = ASUSDDNS_IP_SERVER_CN;
+		asus_unregister.server_name = ASUSDDNS_IP_SERVER_CN;
+	}
 	plugin_unregister(&asus_update);
 	plugin_unregister(&asus_register);
 	plugin_unregister(&asus_unregister);

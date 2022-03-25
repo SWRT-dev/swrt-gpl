@@ -1,0 +1,133 @@
+pov4 qos debugfs API
+====================
+
+Each qos device will have its own directory under DEBUGFS_ROOT/ppv4_qos. So the directory for first device
+is DEBUGFS_ROOT/ppv4_qos/qos0, the second will have DEBUGFS_ROOT/ppv4_qos/qos1 and so on. 
+
+The files for each device are:
+
+--w------- 1 root root 0   1 16:50 cmd
+--w------- 1 root root 0   1 16:50 ctrl
+-r-------- 1 root root 0   1 16:50 geninfo
+-rw------- 1 root root 0   1 16:50 node
+-r-------- 1 root root 0   1 16:50 nodeinfo
+-r-------- 1 root root 0   1 16:50 phy2id
+-r-------- 1 root root 0   1 16:50 stat
+
+cmd and ctrl are for internal use, normally should not used by clients. 
+
+For the next explenation I will assume the following configuration:
+3 ports - 0, 7, 26 with logical ids 0 1 2 respectively
+10 queues:  
+	- first 4 iqueues have logical ids 3 4 5 6 and are linked to port 0, 
+	- 3 queues with logical ids 7 8 9 linked to port 7
+	- 3 queues with logical ids 10 11 12 linked to port 26
+
+I will define the term node_phy as the node number where qos scheduler stores information about node.
+For ports and only for them, the node_phy designates the port number, sp port 26 has node_phy 26
+
+
+General system info (geninfo)
+=============================
+Gives general information about the system:
+
+root@LEDE:/sys/kernel/debug/ppv4_qos/qos0# cat geninfo
+Driver version: 1.0.0-fl
+FW version:     major(1) minor(0) build(0)
+Used nodes:     13
+Ports:          3
+Scheds:         0
+Queues:         10
+Internals:      0
+
+Per node information
+====================
+
+File node defines the current node and it interpreted differently by the files. 
+
+Node info (nodeinfo)
+====================
+
+Most of the data is read from hardware(through firmware) and not from driver's database.
+Interprets the content of node file as a logical id of the node for which we want to retrieve info.
+
+root@LEDE:/sys/kernel/debug/ppv4_qos/qos0# echo 1 > node
+root@LEDE:/sys/kernel/debug/ppv4_qos/qos0# cat nodeinfo
+1(7) - Port: suspended(No) internal node(No)
+7(132) 8(133) 9(134)
+Bandwidth: 0 Kbps
+
+We insert 1 to node, meaning we want info about the node whose logical id is 1.
+First line: logical id 1 is mapped to node_phy 7, node is a port, it is not suspended and its not internal node
+Second line: node direct children are logical nodes 7 8 and 9 which have repectively node_phys of 132 133 and 134
+Third line: node's bandwidth limit
+
+Lets get info about the first queue linked to this port:
+root@LEDE:/sys/kernel/debug/ppv4_qos/qos0# echo 7 > node
+root@LEDE:/sys/kernel/debug/ppv4_qos/qos0# cat nodeinfo
+7(132) - Queue: suspended(No) internal node(No)
+7(132) ==> 1(7)
+Physical queue: 235
+Port: 7
+Bandwidth: 0 Kbps
+
+First line: logical id 7 mapped to node_phy 128, node is a queue, it is not suspended and its not internal node
+Second line: ancestors of node, starting with the node itself which is logical id 7 (node_phy 132), its first ancestor is logical id 1 (node_phy 7)
+Third line: physical queue of this node is queue 235
+Fourth line: queue is linked (possibly through schedulers) to port 7 - we could see this also from the second line, the node_phy of the last ancestor is the port number 
+
+Node stat (stat)
+================
+
+Interprets the content of node file as a logical id of the node for which we want to retrieve stat.
+Statistics are aggregated.
+
+root@LEDE:/sys/kernel/debug/ppv4_qos/qos0# ping -5 3 192.168.1.2
+PING 192.168.1.2 (192.168.1.2): 56 data bytes
+64 bytes from 192.168.1.2: seq=0 ttl=64 time=34.501 ms
+64 bytes from 192.168.1.2: seq=1 ttl=64 time=12.055 ms
+64 bytes from 192.168.1.2: seq=2 ttl=64 time=26.934 ms
+64 bytes from 192.168.1.2: seq=3 ttl=64 time=12.084 ms
+64 bytes from 192.168.1.2: seq=4 ttl=64 time=29.290 ms
+
+--- 192.168.1.2 ping statistics ---
+5 packets transmitted, 5 packets received, 0% packet loss
+round-trip min/avg/max = 12.055/22.972/34.501 ms
+root@LEDE:/sys/kernel/debug/ppv4_qos/qos0# cat stat
+7(132) - Queue
+queue_packets_occupancy:0
+queue_bytes_occupancy:0
+total_packets_accepted:6		/**** No idea why it is 6 and not 5 (maybe arp ?) ****/
+total_packets_dropped:0
+total_packets_red_dropped:0
+total_bytes_accepted:598
+total_bytes_dropped:0
+root@LEDE:/sys/kernel/debug/ppv4_qos/qos0# ping -c 3 192.168.1.2
+PING 192.168.1.2 (192.168.1.2): 56 data bytes
+64 bytes from 192.168.1.2: seq=0 ttl=64 time=30.657 ms
+64 bytes from 192.168.1.2: seq=1 ttl=64 time=56.920 ms
+64 bytes from 192.168.1.2: seq=2 ttl=64 time=12.592 ms
+
+--- 192.168.1.2 ping statistics ---
+3 packets transmitted, 3 packets received, 0% packet loss
+round-trip min/avg/max = 12.592/33.389/56.920 ms
+root@LEDE:/sys/kernel/debug/ppv4_qos/qos0# cat stat
+7(132) - Queue
+queue_packets_occupancy:0
+queue_bytes_occupancy:0
+total_packets_accepted:9
+total_packets_dropped:0
+total_packets_red_dropped:0
+total_bytes_accepted:916
+total_bytes_dropped:0
+
+node_phy to id mapping
+======================
+
+Interprets the content of node file as a node_phy of the node for which we want to get the logical id.
+
+root@LEDE:/sys/kernel/debug/ppv4_qos/qos0# echo 7 > node
+root@LEDE:/sys/kernel/debug/ppv4_qos/qos0# cat phy2id
+1
+
+The logical id of node_phy 7 (aka port 7) is 1 

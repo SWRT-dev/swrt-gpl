@@ -219,14 +219,14 @@ function get_log_data(){
 												<th><a class="hintstyle"  href="javascript:void(0);" onClick="openHint(11,1)"><#LANHostConfig_x_ServerLogEnable_itemname#></a></th>
 												<td>
 														<input type="text" maxlength="64" class="input_30_table" name="log_ipaddr" value="<% nvram_get("log_ipaddr"); %>" onKeyPress="return validator.isString(this, event)" autocorrect="off" autocapitalize="off">
-														<br/><span id="alert_msg1" style="color:#FC0;"></span>
+														<br/><span id="alert_msg1" class="hint-color"></span>
 													</td>
 												</tr>
 												<tr>
 													<th><#LANHostConfig_x_ServerLogPort_itemname#></th>
 													<td>
 														<input type="text" class="input_6_table" maxlength="5" name="log_port" onKeyPress="return validator.isNumber(this,event);" autocorrect="off" autocapitalize="off" value='<% nvram_get("log_port"); %>'>
-														<div style="color: #FFCC00;"><#LANHostConfig_x_ServerLogPort_itemhint#></div>
+														<div class="hint-color"><#LANHostConfig_x_ServerLogPort_itemhint#></div>
 												</td>
 											</tr>
 										</table>

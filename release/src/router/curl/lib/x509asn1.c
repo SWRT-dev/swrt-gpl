@@ -5,11 +5,11 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2019, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
- * are also available at https://curl.haxx.se/docs/copyright.html.
+ * are also available at https://curl.se/docs/copyright.html.
  *
  * You may opt to use, copy, modify, merge, publish, distribute and/or sell
  * copies of the Software, and permit persons to whom the Software is
@@ -44,7 +44,7 @@
 static const char       cnOID[] = "2.5.4.3";    /* Common name. */
 static const char       sanOID[] = "2.5.29.17"; /* Subject alternative name. */
 
-static const curl_OID   OIDtable[] = {
+static const struct Curl_OID OIDtable[] = {
   { "1.2.840.10040.4.1",        "dsa" },
   { "1.2.840.10040.4.3",        "dsa-with-sha1" },
   { "1.2.840.10045.2.1",        "ecPublicKey" },
@@ -103,16 +103,16 @@ static const curl_OID   OIDtable[] = {
  * Please note there is no pretention here to rewrite a full SSL library.
  */
 
-static const char *getASN1Element(curl_asn1Element *elem,
+static const char *getASN1Element(struct Curl_asn1Element *elem,
                                   const char *beg, const char *end)
   WARN_UNUSED_RESULT;
 
-static const char *getASN1Element(curl_asn1Element *elem,
+static const char *getASN1Element(struct Curl_asn1Element *elem,
                                   const char *beg, const char *end)
 {
   unsigned char b;
   unsigned long len;
-  curl_asn1Element lelem;
+  struct Curl_asn1Element lelem;
 
   /* Get a single ASN.1 element into `elem', parse ASN.1 string at `beg'
      ending at `end'.
@@ -176,9 +176,9 @@ static const char *getASN1Element(curl_asn1Element *elem,
  * Search the null terminated OID or OID identifier in local table.
  * Return the table entry pointer or NULL if not found.
  */
-static const curl_OID * searchOID(const char *oid)
+static const struct Curl_OID *searchOID(const char *oid)
 {
-  const curl_OID *op;
+  const struct Curl_OID *op;
   for(op = OIDtable; op->numoid; op++)
     if(!strcmp(op->numoid, oid) || strcasecompare(op->textoid, oid))
       return op;
@@ -445,7 +445,7 @@ static const char *OID2str(const char *beg, const char *end, bool symbolic)
         buf[buflen] = '\0';
 
         if(symbolic) {
-          const curl_OID *op = searchOID(buf);
+          const struct Curl_OID *op = searchOID(buf);
           if(op) {
             free(buf);
             buf = strdup(op->textoid);
@@ -517,8 +517,8 @@ static const char *GTime2str(const char *beg, const char *end)
   return curl_maprintf("%.4s-%.2s-%.2s %.2s:%.2s:%c%c%s%.*s%s%.*s",
                        beg, beg + 4, beg + 6,
                        beg + 8, beg + 10, sec1, sec2,
-                       fracl? ".": "", fracl, fracp,
-                       sep, tzl, tzp);
+                       fracl? ".": "", (int)fracl, fracp,
+                       sep, (int)tzl, tzp);
 }
 
 /*
@@ -558,14 +558,14 @@ static const char *UTime2str(const char *beg, const char *end)
   return curl_maprintf("%u%.2s-%.2s-%.2s %.2s:%.2s:%.2s %.*s",
                        20 - (*beg >= '5'), beg, beg + 2, beg + 4,
                        beg + 6, beg + 8, sec,
-                       tzl, tzp);
+                       (int)tzl, tzp);
 }
 
 /*
  * Convert an ASN.1 element to a printable string.
  * Return the dynamically allocated string, or NULL if an error occurs.
  */
-static const char *ASN1tostr(curl_asn1Element *elem, int type)
+static const char *ASN1tostr(struct Curl_asn1Element *elem, int type)
 {
   if(elem->constructed)
     return NULL; /* No conversion of structured elements. */
@@ -609,12 +609,12 @@ static const char *ASN1tostr(curl_asn1Element *elem, int type)
  * ASCII encode distinguished name at `dn' into the `buflen'-sized buffer at
  * `buf'.  Return the total string length, even if larger than `buflen'.
  */
-static ssize_t encodeDN(char *buf, size_t buflen, curl_asn1Element *dn)
+static ssize_t encodeDN(char *buf, size_t buflen, struct Curl_asn1Element *dn)
 {
-  curl_asn1Element rdn;
-  curl_asn1Element atv;
-  curl_asn1Element oid;
-  curl_asn1Element value;
+  struct Curl_asn1Element rdn;
+  struct Curl_asn1Element atv;
+  struct Curl_asn1Element oid;
+  struct Curl_asn1Element value;
   size_t l = 0;
   const char *p1;
   const char *p2;
@@ -683,7 +683,7 @@ static ssize_t encodeDN(char *buf, size_t buflen, curl_asn1Element *dn)
  * Convert an ASN.1 distinguished name into a printable string.
  * Return the dynamically allocated string, or NULL if an error occurs.
  */
-static const char *DNtostr(curl_asn1Element *dn)
+static const char *DNtostr(struct Curl_asn1Element *dn)
 {
   char *buf = NULL;
   ssize_t buflen = encodeDN(NULL, 0, dn);
@@ -703,11 +703,11 @@ static const char *DNtostr(curl_asn1Element *dn)
  * Syntax is assumed to have already been checked by the SSL backend.
  * See RFC 5280.
  */
-int Curl_parseX509(curl_X509certificate *cert,
+int Curl_parseX509(struct Curl_X509certificate *cert,
                    const char *beg, const char *end)
 {
-  curl_asn1Element elem;
-  curl_asn1Element tbsCertificate;
+  struct Curl_asn1Element elem;
+  struct Curl_asn1Element tbsCertificate;
   const char *ccp;
   static const char defaultVersion = 0;  /* v1. */
 
@@ -835,10 +835,10 @@ static size_t copySubstring(char *to, const char *from)
   return i;
 }
 
-static const char *dumpAlgo(curl_asn1Element *param,
+static const char *dumpAlgo(struct Curl_asn1Element *param,
                             const char *beg, const char *end)
 {
-  curl_asn1Element oid;
+  struct Curl_asn1Element oid;
 
   /* Get algorithm parameters and return algorithm name. */
 
@@ -855,7 +855,7 @@ static const char *dumpAlgo(curl_asn1Element *param,
 }
 
 static void do_pubkey_field(struct Curl_easy *data, int certnum,
-                            const char *label, curl_asn1Element *elem)
+                            const char *label, struct Curl_asn1Element *elem)
 {
   const char *output;
 
@@ -866,17 +866,17 @@ static void do_pubkey_field(struct Curl_easy *data, int certnum,
     if(data->set.ssl.certinfo)
       Curl_ssl_push_certinfo(data, certnum, label, output);
     if(!certnum)
-      infof(data, "   %s: %s\n", label, output);
+      infof(data, "   %s: %s", label, output);
     free((char *) output);
   }
 }
 
 static void do_pubkey(struct Curl_easy *data, int certnum,
-                      const char *algo, curl_asn1Element *param,
-                      curl_asn1Element *pubkey)
+                      const char *algo, struct Curl_asn1Element *param,
+                      struct Curl_asn1Element *pubkey)
 {
-  curl_asn1Element elem;
-  curl_asn1Element pk;
+  struct Curl_asn1Element elem;
+  struct Curl_asn1Element pk;
   const char *p;
 
   /* Generate all information records for the public key. */
@@ -905,7 +905,7 @@ static void do_pubkey(struct Curl_easy *data, int certnum,
     if(len > 32)
       elem.beg = q;     /* Strip leading zero bytes. */
     if(!certnum)
-      infof(data, "   RSA Public Key (%lu bits)\n", len);
+      infof(data, "   RSA Public Key (%lu bits)", len);
     if(data->set.ssl.certinfo) {
       q = curl_maprintf("%lu", len);
       if(q) {
@@ -945,14 +945,13 @@ static void do_pubkey(struct Curl_easy *data, int certnum,
   }
 }
 
-CURLcode Curl_extract_certinfo(struct connectdata *conn,
+CURLcode Curl_extract_certinfo(struct Curl_easy *data,
                                int certnum,
                                const char *beg,
                                const char *end)
 {
-  curl_X509certificate cert;
-  struct Curl_easy *data = conn->data;
-  curl_asn1Element param;
+  struct Curl_X509certificate cert;
+  struct Curl_asn1Element param;
   const char *ccp;
   char *cp1;
   size_t cl1;
@@ -979,7 +978,7 @@ CURLcode Curl_extract_certinfo(struct connectdata *conn,
   if(data->set.ssl.certinfo)
     Curl_ssl_push_certinfo(data, certnum, "Subject", ccp);
   if(!certnum)
-    infof(data, "%2d Subject: %s\n", certnum, ccp);
+    infof(data, "%2d Subject: %s", certnum, ccp);
   free((char *) ccp);
 
   /* Issuer. */
@@ -989,7 +988,7 @@ CURLcode Curl_extract_certinfo(struct connectdata *conn,
   if(data->set.ssl.certinfo)
     Curl_ssl_push_certinfo(data, certnum, "Issuer", ccp);
   if(!certnum)
-    infof(data, "   Issuer: %s\n", ccp);
+    infof(data, "   Issuer: %s", ccp);
   free((char *) ccp);
 
   /* Version (always fits in less than 32 bits). */
@@ -1004,7 +1003,7 @@ CURLcode Curl_extract_certinfo(struct connectdata *conn,
     free((char *) ccp);
   }
   if(!certnum)
-    infof(data, "   Version: %lu (0x%lx)\n", version + 1, version);
+    infof(data, "   Version: %lu (0x%lx)", version + 1, version);
 
   /* Serial number. */
   ccp = ASN1tostr(&cert.serialNumber, 0);
@@ -1013,7 +1012,7 @@ CURLcode Curl_extract_certinfo(struct connectdata *conn,
   if(data->set.ssl.certinfo)
     Curl_ssl_push_certinfo(data, certnum, "Serial Number", ccp);
   if(!certnum)
-    infof(data, "   Serial Number: %s\n", ccp);
+    infof(data, "   Serial Number: %s", ccp);
   free((char *) ccp);
 
   /* Signature algorithm .*/
@@ -1024,7 +1023,7 @@ CURLcode Curl_extract_certinfo(struct connectdata *conn,
   if(data->set.ssl.certinfo)
     Curl_ssl_push_certinfo(data, certnum, "Signature Algorithm", ccp);
   if(!certnum)
-    infof(data, "   Signature Algorithm: %s\n", ccp);
+    infof(data, "   Signature Algorithm: %s", ccp);
   free((char *) ccp);
 
   /* Start Date. */
@@ -1034,7 +1033,7 @@ CURLcode Curl_extract_certinfo(struct connectdata *conn,
   if(data->set.ssl.certinfo)
     Curl_ssl_push_certinfo(data, certnum, "Start Date", ccp);
   if(!certnum)
-    infof(data, "   Start Date: %s\n", ccp);
+    infof(data, "   Start Date: %s", ccp);
   free((char *) ccp);
 
   /* Expire Date. */
@@ -1044,7 +1043,7 @@ CURLcode Curl_extract_certinfo(struct connectdata *conn,
   if(data->set.ssl.certinfo)
     Curl_ssl_push_certinfo(data, certnum, "Expire Date", ccp);
   if(!certnum)
-    infof(data, "   Expire Date: %s\n", ccp);
+    infof(data, "   Expire Date: %s", ccp);
   free((char *) ccp);
 
   /* Public Key Algorithm. */
@@ -1055,7 +1054,7 @@ CURLcode Curl_extract_certinfo(struct connectdata *conn,
   if(data->set.ssl.certinfo)
     Curl_ssl_push_certinfo(data, certnum, "Public Key Algorithm", ccp);
   if(!certnum)
-    infof(data, "   Public Key Algorithm: %s\n", ccp);
+    infof(data, "   Public Key Algorithm: %s", ccp);
   do_pubkey(data, certnum, ccp, &param, &cert.subjectPublicKey);
   free((char *) ccp);
 
@@ -1066,7 +1065,7 @@ CURLcode Curl_extract_certinfo(struct connectdata *conn,
   if(data->set.ssl.certinfo)
     Curl_ssl_push_certinfo(data, certnum, "Signature", ccp);
   if(!certnum)
-    infof(data, "   Signature: %s\n", ccp);
+    infof(data, "   Signature: %s", ccp);
   free((char *) ccp);
 
   /* Generate PEM certificate. */
@@ -1099,7 +1098,7 @@ CURLcode Curl_extract_certinfo(struct connectdata *conn,
   if(data->set.ssl.certinfo)
     Curl_ssl_push_certinfo(data, certnum, "Cert", cp2);
   if(!certnum)
-    infof(data, "%s\n", cp2);
+    infof(data, "%s", cp2);
   free(cp2);
   return CURLE_OK;
 }
@@ -1111,7 +1110,7 @@ CURLcode Curl_extract_certinfo(struct connectdata *conn,
 static const char *checkOID(const char *beg, const char *end,
                             const char *oid)
 {
-  curl_asn1Element e;
+  struct Curl_asn1Element e;
   const char *ccp;
   const char *p;
   bool matched;
@@ -1132,26 +1131,22 @@ static const char *checkOID(const char *beg, const char *end,
   return matched? ccp: NULL;
 }
 
-CURLcode Curl_verifyhost(struct connectdata *conn,
+CURLcode Curl_verifyhost(struct Curl_easy *data, struct connectdata *conn,
                          const char *beg, const char *end)
 {
-  struct Curl_easy *data = conn->data;
-  curl_X509certificate cert;
-  curl_asn1Element dn;
-  curl_asn1Element elem;
-  curl_asn1Element ext;
-  curl_asn1Element name;
+  struct Curl_X509certificate cert;
+  struct Curl_asn1Element dn;
+  struct Curl_asn1Element elem;
+  struct Curl_asn1Element ext;
+  struct Curl_asn1Element name;
   const char *p;
   const char *q;
   char *dnsname;
   int matched = -1;
   size_t addrlen = (size_t) -1;
   ssize_t len;
-  const char * const hostname = SSL_IS_PROXY()? conn->http_proxy.host.name:
-                                                conn->host.name;
-  const char * const dispname = SSL_IS_PROXY()?
-                                  conn->http_proxy.host.dispname:
-                                  conn->host.dispname;
+  const char * const hostname = SSL_HOST_NAME();
+  const char * const dispname = SSL_HOST_DISPNAME();
 #ifdef ENABLE_IPV6
   struct in6_addr addr;
 #else
@@ -1225,12 +1220,12 @@ CURLcode Curl_verifyhost(struct connectdata *conn,
   switch(matched) {
   case 1:
     /* an alternative name matched the server hostname */
-    infof(data, "\t subjectAltName: %s matched\n", dispname);
+    infof(data, "  subjectAltName: %s matched", dispname);
     return CURLE_OK;
   case 0:
     /* an alternative name field existed, but didn't match and then
        we MUST fail */
-    infof(data, "\t subjectAltName does not match %s\n", dispname);
+    infof(data, "  subjectAltName does not match %s", dispname);
     return CURLE_PEER_FAILED_VERIFICATION;
   }
 
@@ -1267,7 +1262,7 @@ CURLcode Curl_verifyhost(struct connectdata *conn,
     if(strlen(dnsname) != (size_t) len)         /* Nul byte in string ? */
       failf(data, "SSL: illegal cert name field");
     else if(Curl_cert_hostcheck((const char *) dnsname, hostname)) {
-      infof(data, "\t common name: %s (matched)\n", dnsname);
+      infof(data, "  common name: %s (matched)", dnsname);
       free(dnsname);
       return CURLE_OK;
     }

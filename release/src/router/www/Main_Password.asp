@@ -6,6 +6,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta HTTP-EQUIV="Pragma" CONTENT="no-cache">
 <meta HTTP-EQUIV="Expires" CONTENT="-1">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <link rel="shortcut icon" href="images/favicon.png">
 <link rel="icon" href="images/favicon.png">
 <title>ASUS Login</title>
@@ -16,26 +17,9 @@
 body{
 	font-family: Arial, MS UI Gothic, MS P Gothic, Microsoft Yahei UI, sans-serif;
 }
-.content{
-	width:580px;
-	height:526px;
-	background:rgba(40,52,55,0.1);
-}
 .wrapper{
 	background:#1F1F1F url(images/New_ui/login_bg.png) no-repeat center center fixed;
 	background-size: cover;
-}
-.title_name {
-	font-size: 40pt;
-	color:#93d2d9;
-}
-.prod_madelName{
-	font-size: 26pt;
-	color:#fff;
-}
-.p1{
-	font-size: 16pt;
-	color:#fff;
 }
 .button{
 	background-color: #279FD9;
@@ -50,12 +34,6 @@ body{
 	vertical-align:center;
 	cursor:pointer;
 }
-.button_text{
-	font-size: 28pt;
-	color:#fff;
-	text-align:center;
-	vertical-align:center
-}
 .form_input{
 	background-color:rgba(255,255,255,0.2);
 	background-color:#576D73\9;
@@ -67,13 +45,115 @@ body{
 	color:#fff;
 	font-size:28px
 }
-.form_input_text{
-	font-size: 28pt;
-	color:#a9a9a9;
+.main_content{
+	width: 100%;
+	max-width: 610px;
+	color: #FFF;
 }
-.p2{
-	font-size: 18pt;
-	color:#28fff7;
+.main_content > div{
+	position: relative;
+	margin: 35px 0px 0px 78px;
+}
+.main_content .title_name{
+	font-size: 40pt;
+	color:#93d2d9;
+}
+.main_content .title_name:before{
+	position: absolute;
+	content: "";
+	background-image: url(/images/New_ui/icon_titleName.png);
+	width: 73px;
+	height: 73px;
+	background-repeat: no-repeat;
+	left: -73px;
+	background-position: 0% 50%;
+}
+.main_content .sub_title_name{
+	font-size: 16pt;
+	color: #fff;
+}
+.main_content .ie_title{
+	display: none;
+	margin: 20px 0px -20px 78px;
+}
+.main_content .sub_title_name > div:first-child{
+	margin-bottom: 10px;
+}
+.main_content #error_status_field{
+	color: rgb(255, 204, 0);
+	margin: 10px 0px -10px 78px;
+	display: none;
+}
+.main_content .btn_bg{
+	display: flex;
+	justify-content: flex-end;
+	height: 68px;
+}
+.main_content .btn_bg #loadingIcon{
+	background-image: url(/images/InternetScan.gif);
+	width: 300px;
+	background-repeat: no-repeat;
+	background-size: 35px 35px;
+	background-position: 50%;
+	display: none;
+}
+
+.main_content .btn_bg > div{
+	margin-right: 8px;
+	height: 100%;
+}
+/*for mobile device*/
+@media screen and (max-width: 1000px){
+	.main_content{
+		max-width: 1000px;
+		position: absolute;
+		left: 0;
+		top: 30px;
+		min-width: 300px;
+	}
+	.main_content > div{
+		margin: 30px 0 0 30px;
+		width: calc(100% - 80px);
+	}
+	.main_content .title_name{
+		font-size: 20pt;
+		color: #93d2d9;
+		margin-left: 70px !important;
+	}
+	.main_content .sub_title_name{
+		font-size: 12pt;
+		margin-bottom: -12px;
+	}
+	.main_content .ie_title{
+		margin: 20px 0px -20px 30px;
+	}
+	.main_content .title_name:before{
+		width: 30px;
+		height: 30px;
+		left: -40px;
+		background-size: contain;
+	}
+	.main_content #error_status_field{
+		margin: 10px 0px -10px 30px;
+	}
+	.main_content .btn_bg{
+		justify-content: center;
+	}
+	.main_content .btn_bg > div{
+		width: 100%;
+		margin-right: initial;
+	}
+	.form_input{
+		padding: 10px 11px;
+		width: 100%;
+		height: 30px;
+		font-size: 16px;
+	}
+	.button{
+		height: 50px;
+		font-size: 14pt;
+		width: calc(100% - -22px);
+	}
 }
 </style>
 <script>
@@ -113,24 +193,13 @@ var isIE8 = navigator.userAgent.search("MSIE 8") > -1;
 var isIE9 = navigator.userAgent.search("MSIE 9") > -1; 
 var defaultPass = ("<% check_pw(); %>" == "1");
 var timeZoneObj;
-var productid = '<% nvram_get("productid"); %>';
-var wans_mode = '<% nvram_get("wans_mode"); %>';
-var reboot_time = parseInt("<% get_default_reboot_time(); %>");
-function isSupport(_ptn){
-	var ui_support = [<% get_ui_support(); %>][0];
-	return (ui_support[_ptn]) ? ui_support[_ptn] : 0;
-}
-
-var gobi_support = isSupport("gobi");
 
 function initial(){
 	if(is_KR_sku || is_SG_sku || is_AA_sku)
 		$("#KRHint").show();
 
 	if(isIE8 || isIE9){
-		document.getElementById("router_name_tr").style.display = "";
-		document.getElementById("router_password_tr").style.display = "";
-		document.getElementById("router_password_confirm_tr").style.display = "";
+		$(".ie_title").show();
 	}
 
 	var windowHeight = (function(){
@@ -144,7 +213,7 @@ function initial(){
 			return 800;
 	})();
 
-	document.getElementById("loginTable").style.height = windowHeight + "px";
+	document.getElementById("loginTable").style.height = (windowHeight-16) + "px";
 	document.getElementById("loginTable").style.display = "";
 	document.form.http_username_x.focus();
 
@@ -288,30 +357,17 @@ function validForm(){
 	return true;	
 }
 
-var showLoading_time = 3000;
 function submitForm(){
 	var postData = {"restart_httpd": "0", "new_username":document.form.http_username_x.value, "new_passwd":document.form.http_passwd_x.value};
+	var sw_mode = '<% nvram_get("sw_mode"); %>';
+
+	if(sw_mode == 3 && '<% nvram_get("wlc_psta"); %>' == 2)
+		sw_mode = 2;
 
 	if(validForm()){
-		document.getElementById("error_status_field").style.display = "none";
-		document.form.btn_modify.style.display = "none";
-		document.getElementById('loadingIcon').style.display = '';
-
-		if(defaultPass && gobi_support && wans_mode == "lb"){
-			var form = document.getElementsByName("form")[0];
-			var input = document.createElement("input");
-			var rc_service = document.createElement("input");
-			rc_service.setAttribute("type", "hidden");
-			rc_service.setAttribute("name", "rc_service");
-			rc_service.setAttribute("value", "reboot");
-			form.appendChild(rc_service);
-			input.setAttribute("type", "hidden");
-			input.setAttribute("name", "wans_mode");
-			input.setAttribute("value", "fo");
-			form.appendChild(input);
-			form.action = "/apply.cgi";
-			showLoading_time = reboot_time * 1000;
-		}
+		$("#error_status_field").hide();
+		$("#btn_modify").hide();
+		$("#loadingIcon").show();
 		document.form.submit();
 
 		setTimeout(function(){
@@ -320,8 +376,11 @@ function submitForm(){
 
 		var nextPage = decodeURIComponent('<% get_ascii_parameter("nextPage"); %>');
 		setTimeout(function(){
-			location.href = (nextPage != "") ? nextPage : "/";
-		}, showLoading_time);
+			if('<% nvram_get("w_Setting"); %>' == '0' && sw_mode != 2)
+				location.href = '/QIS_wizard.htm?flag=wireless';
+			else
+				location.href = (nextPage != "") ? nextPage : "/";
+		}, 3000);
 	}
 	else
 		return;
@@ -452,8 +511,8 @@ var validator = {
 }
 
 function showError(str){
-	document.getElementById("error_status_field").style.display = "";
-	document.getElementById("error_status_field").innerHTML = str;
+	$("#error_status_field").show();
+	$("#error_status_field").html(str);
 }
 </script>
 </head>
@@ -465,7 +524,7 @@ function showError(str){
 <input type="hidden" name="action_mode" value="apply">
 <input type="hidden" name="action_script" value="saveNvram">
 <input type="hidden" name="action_wait" value="0">
-<input type="hidden" name="current_page" value="Main_Password.asp">
+<input type="hidden" name="current_page" value="Main_Login.asp">
 <input type="hidden" name="next_page" value="">
 <input type="hidden" name="flag" value="">
 <input type="hidden" name="login_authorization" value="">
@@ -475,80 +534,41 @@ function showError(str){
 <table id="loginTable" align="center" cellpadding="0" cellspacing="0" style="display:none">
 	<tr>
 		<td>
-			<div>
-				<table class="content">
-					<tr style="height:43px;">
-						<td style="width:73px" align="left">
-							<div><img src="/images/New_ui/icon_titleName.png"></div>
-						</td>
-						<td align="left">
-							<div class="title_name"><#PASS_changepasswd#></div>
-						</td>
-					</tr>
-					<tr>
-						<td colspan="2">
-							<div class="p1" style="margin:35px 0px 0px 78px;">
-								<div style="margin-bottom:10px;">
-									<#QIS_pass_desc1#>
-								</div>
-								<div id="KRHint" style="margin-bottom:10px;display:none">
-									<#JS_validLoginPWD#>
-								</div>
-							</div>
-						</td>
-					</tr>
-					<tr id="router_name_tr" style="display:none">
-						<td colspan="2">
-							<div style="color:#FFF;margin:20px 0px -10px 78px;"><#Router_Login_Name#></div>
-						</td>
-					</tr>				
-					<tr style="height:72px;">
-						<td colspan="2">
-							<div style="margin:20px 0px 0px 78px;">
-								<input type="text" name="http_username_x" tabindex="1" class="form_input" maxlength="32" value="" autocapitalize="off" autocomplete="off" placeholder="<#Router_Login_Name#>">
-							</div>
-						</td>
-					</tr>
-					<tr id="router_password_tr" style="display:none">
-						<td colspan="2">
-							<div style="color:#FFF;margin:20px 0px -20px 78px;"><#PASS_new#></div>
-						</td>
-					</tr>					
-					<tr style="height:72px;">
-						<td colspan="2">
-							<div style="margin:30px 0px 0px 78px;">
-								<input type="password" autocapitalize="off" autocomplete="off" value="" name="http_passwd_x" tabindex="2" class="form_input" maxlength="33" onkeyup="" onpaste="return false;"/ onBlur="" placeholder="<#PASS_new#>">
-							</div>
-						</td>
-					</tr>
-					<tr id="router_password_confirm_tr" style="display:none">
-						<td colspan="2">
-							<div style="color:#FFF;margin:20px 0px -20px 78px;"><#Confirmpassword#></div>
-						</td>
-					</tr>							
-					<tr style="height:72px;">
-						<td colspan="2">
-							<div style="margin:30px 0px 0px 78px;">
-								<input type="password" autocapitalize="off" autocomplete="off" value="" name="http_passwd_2_x" tabindex="3" class="form_input" maxlength="33" onkeyup="" onpaste="return false;"/ onBlur="" placeholder="<#Confirmpassword#>">
-							</div>
-						</td>
-					</tr>
-					<tr style="heigh:72px">
-						<td colspan="2">
-							<div style="color: rgb(255, 204, 0); margin:10px 0px -10px 78px; display:none;" id="error_status_field"></div>
-						</td>
-					</tr>
-					<tr align="right" style="height:68px;">
-						<td colspan="2">
-							<div style="text-align: center;float:right; margin:50px 0px 0px 78px;">
-								<input name="btn_modify" type="button" class="button" tabindex="4" onclick="submitForm();" value="<#CTL_modify#>">								
-							</div>
-							<div id="loadingIcon" style="display:none; margin:50px 0px 0px 0px;">
-								<img style="width:35px;height:35px;" src="/images/InternetScan.gif">
-							</div>
-						</td>
-					</tr>
-				</table>
+			<div class="main_content">
+				<div class="title_name"><#PASS_changepasswd#></div>
+				<div class="sub_title_name">
+					<div>
+						<#QIS_pass_desc1#>
+					</div>
+					<div id="KRHint" style="display:none">
+						<#JS_validLoginPWD#>
+					</div>
+				</div>
+				<div id="router_name_tr" class="ie_title">
+					<div><#Router_Login_Name#></div>
+				</div>
+				<div>
+					<input type="text" name="http_username_x" tabindex="1" class="form_input" maxlength="32" value="" autocapitalize="off" autocomplete="off" placeholder="<#Router_Login_Name#>">
+				</div>
+				<div id="router_password_tr" class="ie_title">
+					<div><#PASS_new#></div>
+				</div>
+				<div>
+					<input type="password" autocapitalize="off" autocomplete="off" value="" name="http_passwd_x" tabindex="2" class="form_input" maxlength="33" onkeyup="" onpaste="return false;"/ onBlur="" placeholder="<#PASS_new#>">
+				</div>
+				<div id="router_password_confirm_tr" class="ie_title" >
+					<div><#Confirmpassword#></div>
+				</div>
+				<div>
+					<input type="password" autocapitalize="off" autocomplete="off" value="" name="http_passwd_2_x" tabindex="3" class="form_input" maxlength="33" onkeyup="" onpaste="return false;"/ onBlur="" placeholder="<#Confirmpassword#>">
+				</div>
+				<div id="error_status_field"></div>
+				<div class="btn_bg">
+					<div id="btn_modify">
+						<input name="btn_modify" type="button" class="button" tabindex="4" onclick="submitForm();" value="<#CTL_modify#>">
+					</div>
+					<div id="loadingIcon"></div>
+				</div>
 			</div>
 		</td>
 	</tr>

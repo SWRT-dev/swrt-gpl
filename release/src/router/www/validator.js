@@ -280,9 +280,10 @@ var validator = {
 
 	eachPort: function(o, num, min, max) {	
 		if(num<min || num>max) {
-			alert("<#JS_validport#>");
+			alert(num + " <#JS_validport#>");
 			return false;
-		}else {
+		}
+		else {
 			//o.value = str2val(o.value);
 			if(o.value=="")
 				o.value="0";
@@ -1621,6 +1622,7 @@ var validator = {
 
 	psk: function(psk_obj, wl_unit){
 		var psk_length = psk_obj.value.length;
+		var psk_length_trim = psk_obj.value.trim().length;
 		
 		if(psk_length < 8){
 			alert("<#JS_passzero#>");
@@ -1637,6 +1639,13 @@ var validator = {
 			psk_obj.select();
 			return false;
 		}
+
+		if(psk_length != psk_length_trim){
+			alert("<#JS_PSK64Hex_whiteSpace#>");
+			psk_obj.focus();
+			psk_obj.select();				
+			return false;
+		}
 				
 		if(psk_length >= 8 && psk_length <= 63 && !this.string(psk_obj)){
 			alert("<#JS_PSK64Hex#>");
@@ -1651,7 +1660,7 @@ var validator = {
 			psk_obj.select();				
 			return false;
 		}
-		
+
 		return true;
 	},
 
@@ -1714,6 +1723,34 @@ var validator = {
 				
 			return true;
 		}
+	},
+
+	range_s46_ports: function(obj, port) {
+		//e.g. ipv6_s46_ports="6448-6463 10544-10559 14640-14655 18736-18751 22832-22847 26928-26943 31024-31039 35120-35135 39216-39231 43312-43327 47408-47423 51504-51519 55600-55615 59696-59711 63792-63807"
+		var inAvailable=false;
+		var array_each_s46_ports = new Array("");
+		value_comp = parseInt(obj.value); 
+		port_comp = parseInt(port);
+		for(var x=0;x<array_ipv6_s46_ports.length;x++){
+			array_each_s46_ports=array_ipv6_s46_ports[x].split("-");
+			if(port != "none"){
+				if(port_comp >= parseInt(array_each_s46_ports[0]) && port_comp <= parseInt(array_each_s46_ports[1])) {
+					//console.log("[port]"+port_comp+" : "+array_each_s46_ports[0]+"-"+array_each_s46_ports[1]);
+					inAvailable=true;
+				}
+			}
+			else{
+				if(value_comp >= parseInt(array_each_s46_ports[0]) && value_comp <= parseInt(array_each_s46_ports[1])) {
+					//console.log("[obj.value]"+value_comp+" : "+array_each_s46_ports[0]+"-"+array_each_s46_ports[1]);
+					inAvailable=true;
+				}
+			}
+		}
+
+		if(!inAvailable)
+			return false;
+		else
+			return true;
 	},
 
 	rangeNull: function(o, min, max, def) {		//Viz add 2013.03 allow to set null
@@ -1786,6 +1823,16 @@ var validator = {
 			if(flag != "noalert")
 				alert('<#JS_validstr1#> ["]');
 
+			string_obj.value = "";
+			string_obj.focus();
+
+			return false;
+		}
+		else if(string_obj.value.charAt(string_obj.value.length - 1) == '"'){
+			if(flag != "noalert"){
+				alert('<#JS_validstr3#> ["]');
+			}
+			
 			string_obj.value = "";
 			string_obj.focus();
 
@@ -2279,14 +2326,5 @@ var validator = {
 			}
 		}
 		return status;
-	},
-
-	isMobileNumber: function(_value){
-		var re = /^(\+?[1-9]{1}[0-9]{7,14}|[0-9]{7,14})$/g;
-		if(re.test(_value))
-			return true;
-		else{
-			return false;
-		}
 	}
 };

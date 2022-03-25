@@ -21,15 +21,11 @@ ifneq ($(RTCONFIG_NOTIFICATION_CENTER),y)
 OBJS += linklist.o
 endif
 
-ifeq ($(RT4GAC86U),y)
-OBJS += $(LIBDIR)/libc_nonshared.a
-endif
-
 vpath %.c $(SRCBASE)/protect_srv/
 
 ifeq ($(wildcard $(SRCBASE)/router/protect_srv/lib/*.c),)
 all: 
-	-cp -f prebuild/libptcsrv.so libptcsrv.so
+	-cp -f prebuild/$(BUILD_NAME)/libptcsrv.so libptcsrv.so
 else
 all: libptcsrv.so libptcsrv.a
 endif

@@ -18,6 +18,9 @@ else
 TARGET_MODEL = $(subst -,,$(subst +,P,$(BUILD_NAME)))
 endif
 CFLAGS  += -D$(TARGET_MODEL)
+CFLAGS  += -D$(SWRT_NAME)
+CFLAGS += -DSWRT_VER_MAJOR_$(SWRT_VER_MAJOR)
+CFLAGS  += -I$(TOP)/openssl/include
 
 TARGET_LIBS = -L$(TOP)/openssl -lssl -lcrypto -ldl -lm
 AUTHLIB_LIBS = -L$(TOP)/openssl -lssl -lcrypto -ldl -lm
@@ -25,17 +28,19 @@ AUTHLIB_LIBS = -L$(TOP)/openssl -lssl -lcrypto -ldl -lm
 LDFLAGS = -L.
 LDFLAGS += -L$(TOP_PLATFORM)/nvram$(BCMEX)${EX7} ${EXTRA_NV_LDFLAGS} -lnvram
 LDFLAGS += -L$(TOP)/shared -L$(INSTALLDIR)/shared/usr/lib -lshared
-ifeq ($(HND_ROUTER),y)
-LDFLAGS += $(EXTRALDFLAGS)
+ifeq ($(RTCONFIG_BCM_502L07P2),y)
+LDFLAGS += -L$(TOP_PLATFORM)/ethctl_lib -lethctl
 endif
-ifeq ($(RTCONFIG_QTN),y)
-LDFLAGS += -L$(TOP)/libqcsapi_client -lqcsapi_client
+ifeq ($(HND_ROUTER),y)
+CFLAGS  += -DCONFIG_BCMWL5
+LDFLAGS += $(EXTRALDFLAGS)
 endif
 
 OBJS = sw_auth.o hw_auth.o
 
 # $(TARGET) and $(TOOL) is for debug only, don't enable it
-all :
+all : clean hw_auth.o sw_auth.o
+
 
 $(AUTHLIB): $(OBJS)
 	@echo "[sw-hw-auth] $(AUTHLIB)"
@@ -58,3 +63,4 @@ install: all
 
 clean:
 	rm -f *.o *.so $(TARGET) $(TOOL)
+

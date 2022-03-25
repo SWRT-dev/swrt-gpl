@@ -2963,6 +2963,8 @@ ifeq ($(HND_ROUTER_AX),y)
 	cd httpd && rm -f wlioctl.h && ln -sf $(SRCBASE_DHD)/../components/wlioctl/include/wlioctl.h wlioctl.h && rm -f bcmwifi_rates.h && ln -sf $(SRCBASE_DHD)/shared/bcmwifi/include/bcmwifi_rates.h bcmwifi_rates.h && rm -f wlioctl_defs.h && ln -sf $(SRCBASE_DHD)/../components/wlioctl/include/wlioctl_defs.h wlioctl_defs.h
 endif
 endif
+	@-rm -f httpd/prebuild/*.o || true
+	@-cp -f httpd/prebuild/$(BUILD_NAME)/* httpd/prebuild/
 	$(MAKE) -C httpd
 
 httpd-install:
@@ -3985,6 +3987,9 @@ miniupnpc-install:
 # !!TB
 #shared:
 shared: $(if $(RTCONFIG_HTTPS),openssl) $(if $(RTCONFIG_SW_HW_AUTH),sw-hw-auth)
+# Dig into our collection of prebuilt objects based on model.
+	@-rm -f shared/prebuild/*.o || true
+	@-cp -f shared/prebuild/$(BUILD_NAME)/* shared/prebuild/
 ifeq ($(RTCONFIG_RALINK)$(RTCONFIG_QCA)$(RTCONFIG_LANTIQ),y)
 	make -C wireless_tools wireless.h
 endif
@@ -9227,58 +9232,11 @@ dhcpfwd-install:
 	$(STRIP) $(INSTALLDIR)/dhcpfwd/usr/sbin/dhcpfwd
 
 ifeq ($(RTCONFIG_EASYMESH),y)
-mapfilter/build:
-	$(MAKE) -C easymesh-sdk/mapfilter all
-
-mapfilter/install:
-	$(MAKE) -C easymesh-sdk/mapfilter install
-
-easymesh-sdk:libnl-tiny-0.1 openssl $(if $(RTCONFIG_RALINK),mapfilter/build) 
+easymesh-sdk:libnl-tiny-0.1 openssl 
 	$(MAKE) -C easymesh-sdk all
 
-easymesh-sdk-install: $(if $(RTCONFIG_RALINK),mapfilter/install)
-ifeq ($(RTCONFIG_RALINK),y)
-	install -d $(INSTALLDIR)/easymesh-sdk/usr/lib
-	install -d $(INSTALLDIR)/easymesh-sdk/rom/etc/wappd/
-	install -D easymesh-sdk/1905daemon/p1905_managerd $(INSTALLDIR)/easymesh-sdk/usr/sbin/p1905_managerd
-	install -D easymesh-sdk/1905daemon/1905ctrl $(INSTALLDIR)/easymesh-sdk/usr/sbin/1905ctrl
-	install -D easymesh-sdk/1905daemon/tp_ts_switch.sh $(INSTALLDIR)/easymesh-sdk/usr/sbin/tp_ts_switch.sh
-	install -D easymesh-sdk/datconf/kvcutil/kvcedit $(INSTALLDIR)/easymesh-sdk/usr/sbin/kvcedit
-	install -D easymesh-sdk/datconf/datconf/datconf $(INSTALLDIR)/easymesh-sdk/usr/bin/datconf
-	cp -rf easymesh-sdk/datconf/kvcutil/libkvcutil.so* $(INSTALLDIR)/easymesh-sdk/usr/lib/
-	cp -rf easymesh-sdk/1905daemon/ethernet/libeth_1905ops.so $(INSTALLDIR)/easymesh-sdk/usr/lib/
-	install -D easymesh-sdk/wappd/src/wappctrl $(INSTALLDIR)/easymesh-sdk/usr/sbin/wappctrl
-	install -D easymesh-sdk/wappd/src/wapp $(INSTALLDIR)/easymesh-sdk/usr/sbin/wapp
-	install -D easymesh-sdk/wappd/src/wifi_config_save.lua $(INSTALLDIR)/easymesh-sdk/usr/sbin/wifi_config_save
-	install -D easymesh-sdk/wappd/src/mbo_nr.sh $(INSTALLDIR)/easymesh-sdk/usr/sbin/mbo_nr.sh
-	cp -rf easymesh-sdk/wappd/src/config_and_icon_files/* $(INSTALLDIR)/easymesh-sdk/rom/etc/wappd/
-	cp -rf easymesh-sdk/libmapd/libmapd_interface_client.so $(INSTALLDIR)/easymesh-sdk/usr/lib/
-	install -D easymesh-sdk/mapd/mapd $(INSTALLDIR)/easymesh-sdk/usr/sbin/mapd
-	install -D easymesh-sdk/mapd/mapd_cli $(INSTALLDIR)/easymesh-sdk/usr/sbin/mapd_cli
-	install -D easymesh-sdk/mapd/bs20 $(INSTALLDIR)/easymesh-sdk/usr/sbin/bs20
-	install -D easymesh-sdk/mapd/mapd_user_iface $(INSTALLDIR)/easymesh-sdk/usr/sbin/mapd_user_iface
-	install -D easymesh-sdk/mapd/config_agent.lua $(INSTALLDIR)/easymesh-sdk/usr/sbin/config_agent.lua
-	install -D easymesh-sdk/mapd/map_config_agent.lua $(INSTALLDIR)/easymesh-sdk/usr/sbin/map_config_agent.lua
-	install -D easymesh-sdk/mapd/map_cert_script.sh $(INSTALLDIR)/easymesh-sdk/usr/sbin/map_cert_script.sh
-#	install -D easymesh-sdk/mapd/wts_bss_info_config $(INSTALLDIR)/easymesh-sdk/rom/etc/map/wts_bss_info_config
-#	install -D easymesh-sdk/mapd/mapd_user.cfg $(INSTALLDIR)/easymesh-sdk/rom/etc/map/mapd_user.cfg
-#	install -D easymesh-sdk/mapd/mapd_default.cfg $(INSTALLDIR)/easymesh-sdk/rom/etc/map/mapd_default.cfg
-	install -D easymesh-sdk/fwdd/fwdd $(INSTALLDIR)/easymesh-sdk/usr/sbin/fwdd
-	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/p1905_managerd
-	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/1905ctrl
-	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/kvcedit
-	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/bin/datconf
-	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/wappctrl
-	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/wapp
-	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/lib/libeth_1905ops.so
-	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/lib/libkvcutil.so.1.0.0.0
-	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/lib/libmapd_interface_client.so
-	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/mapd
-	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/mapd_cli
-	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/bs20
-	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/mapd_user_iface
-	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/fwdd
-endif
+easymesh-sdk-install: 
+	$(MAKE) -C easymesh-sdk install
 endif
 
 #

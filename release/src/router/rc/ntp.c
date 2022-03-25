@@ -36,6 +36,7 @@
 #include <shutils.h>
 #include <rc.h>
 #include <stdarg.h>
+#include "swrt.h"
 
 #define SECONDS_TO_WAIT 3
 #define NTP_RETRY_INTERVAL 30
@@ -81,7 +82,12 @@ static void ntp_service()
 		notify_rc("restart_diskmon");
 #endif
 #ifdef RTCONFIG_UUPLUGIN
+		if(nvram_get_int("uu_enable"))
+#if defined(RTCONFIG_SWRT_UU)
+		exec_uu_swrt();
+#else
 		exec_uu();
+#endif
 #endif
 	}
 }
@@ -93,6 +99,21 @@ static void set_alarm()
 	int diff_sec;
 	unsigned int sec;
 
+#if defined(RTCONFIG_IPV6) && defined(RTAX82_XD6)
+	if (!strncmp(nvram_safe_get("territory_code"), "CH", 2) &&
+		ipv6_enabled() &&
+                nvram_match(ipv6_nvname("ipv6_only"), "1") &&
+		!nvram_get_int("ntp_ready") && f_exists("/tmp/ntpdated")) {
+		nvram_set_int("ntp_ready", 1);
+		ntp_service();
+#ifdef RTCONFIG_CFGSYNC
+		if (pidof("cfg_server") >= 0)
+			kill_pidfile_s("/var/run/cfg_server.pid", SIGUSR1);
+		if (pidof("cfg_client") >= 0)
+			kill_pidfile_s("/var/run/cfg_client.pid", SIGUSR1);
+#endif
+	}
+#endif
 	if (nvram_get_int("ntp_ready"))
 	{
 		/* ntp sync every hour when time_zone set as "DST" */
@@ -150,6 +171,13 @@ int ntp_main(int argc, char *argv[])
 	FILE *fp;
 	pid_t pid;
 	char *args[] = {"ntpclient", "-h", server, "-i", "3", "-l", "-s", NULL};
+#ifdef RTAX82_XD6
+	pid_t pid__ntpdate;
+	char *args_ntpdate[] = { "ntpdate", "2.pool.ntp.org", NULL };
+#endif
+
+	if (nvram_get_int("no_ntp"))
+		return 0;
 
 	strlcpy(server, nvram_safe_get("ntp_server0"), sizeof(server));
 
@@ -167,6 +195,9 @@ int ntp_main(int argc, char *argv[])
 //	signal(SIGCHLD, chld_reap);
 	signal(SIGCHLD, catch_sig);
 
+#ifdef RTAX82_XD6
+	unlink("/tmp/ntpdated");
+#endif
 	nvram_set("ntp_ready", "0");
 #ifdef RTCONFIG_QTN
 	nvram_set("qtn_ntp_ready", "0");
@@ -178,7 +209,7 @@ int ntp_main(int argc, char *argv[])
 		if (sig_cur == SIGTSTP)
 			;
 		else if (is_router_mode() &&
-			!nvram_match("link_internet", "2"))
+			(nvram_get_int("link_internet") != 2))
 		{
 			alarm(SECONDS_TO_WAIT);
 		}
@@ -208,7 +239,14 @@ int ntp_main(int argc, char *argv[])
 				!strstr(nvram_safe_get("time_zone_x"), "DST"))
 				logmessage("ntp", "start NTP update");
 
-#if 1 // try simultaneously
+		if (is_router_mode()) {	// try simultaneously
+#if defined(RTCONFIG_IPV6) && defined(RTAX82_XD6)
+			if (!strncmp(nvram_safe_get("territory_code"), "CH", 2) &&
+				ipv6_enabled() &&
+				nvram_match(ipv6_nvname("ipv6_only"), "1"))
+				_eval(args_ntpdate, NULL, 0, &pid__ntpdate);
+			else
+#endif
 			if(strcmp(server, DEFAULT_NTP_SERVER)) //customer setting
 			{
 				_eval(args, NULL, 0, &pid);
@@ -227,10 +265,8 @@ int ntp_main(int argc, char *argv[])
 
 				strlcpy(server, nvram_safe_get("ntp_server0"), sizeof(server));
 			}
-			sleep(SECONDS_TO_WAIT);
-#else
+		} else {
 			_eval(args, NULL, 0, &pid);
-			sleep(SECONDS_TO_WAIT);
 
 			if (strlen(nvram_safe_get("ntp_server0")))
 			{
@@ -246,11 +282,12 @@ int ntp_main(int argc, char *argv[])
 			else
 				strlcpy(server, "", sizeof(server));
 			args[2] = server;
-#endif
-
+		}
+			sleep(SECONDS_TO_WAIT);
 			set_alarm();
 		}
 
 		pause();
 	}
 }
+

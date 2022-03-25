@@ -49,12 +49,14 @@ $(document).ready(function(){
 	genCPUElement();
 	genRAMElement();
 	get_ethernet_ports();
+	get_plc_ports();
 	detect_CPU_RAM();
 	if(isSupport("ledg")){
 		$("#light_effect_tab").show();
 	}  
 });
 
+var model=httpApi.nvramGet(['productid']).productid;
 var nvram = new Object();
 var variable = new Object();
 function getVariable(){
@@ -64,7 +66,6 @@ function getVariable(){
 		_element = ['wl0_hwaddr'];
 		_array.push.apply(_array, _element);
 	}
-
 	if(system.band5gSupport){
 		_element = ['wl1_hwaddr'];
 		_array.push.apply(_array, _element);
@@ -131,8 +132,16 @@ function genElement(){
 			code += '<div class="info-block"><div class="info-title">6 GHz <#MAC_Address#></div><div class="info-content">'+ variable.wl2_hwaddr +'</div></div>';
 		}
 		else{
-			code += '<div class="info-block"><div class="info-title">5 GHz-1 <#MAC_Address#></div><div class="info-content">'+ variable.wl1_hwaddr +'</div></div>';
-			code += '<div class="info-block"><div class="info-title">5 GHz-2 <#MAC_Address#></div><div class="info-content">'+ variable.wl2_hwaddr +'</div></div>';
+			if(model == 'MAP-AC2200')
+			{
+				code += '<div class="info-block"><div class="info-title">5 GHz-1 <#MAC_Address#></div><div class="info-content">'+ variable.wl2_hwaddr +'</div></div>';
+				code += '<div class="info-block"><div class="info-title">5 GHz-2 <#MAC_Address#></div><div class="info-content">'+ variable.wl1_hwaddr +'</div></div>';
+			}
+			else
+			{
+				code += '<div class="info-block"><div class="info-title">5 GHz-1 <#MAC_Address#></div><div class="info-content">'+ variable.wl1_hwaddr +'</div></div>';
+				code += '<div class="info-block"><div class="info-title">5 GHz-2 <#MAC_Address#></div><div class="info-content">'+ variable.wl2_hwaddr +'</div></div>';
+			}
 		}	
 	}
 	else{
@@ -404,6 +413,7 @@ function get_ethernet_ports() {
 			//parse nvram to array
 			var parseStrToArray = function(_array) {
 				var speedMapping = {
+					't': '10 Mbps',
 					'M': '100 Mbps',
 					'G': '1 Gbps',
 					'Q': '2.5 Gbps',
@@ -421,7 +431,10 @@ function get_ethernet_ports() {
 							if(port_name.substr(0, 3) == "WAN") {
 								if(parseInt(wanCount) > 1) {
 									var port_idx = port_name.split(" ");
-									port_name = port_idx[0] + " " + (parseInt(port_idx[1]) + 1);
+									if (port_idx.length >= 2)
+										port_name = port_idx[0] + " " + (parseInt(port_idx[1]) + 1);
+									else
+										port_name = "WAN";
 								}
 								else {
 									port_name = "WAN";
@@ -463,6 +476,37 @@ function get_ethernet_ports() {
 	});
 }
 
+function get_plc_ports() {
+	if(based_modelid == "PL-AX56_XP4"){
+		var code = '<div class="division-block"><#Powerline#></div>';
+		code += '<div>';
+		code += '<div class="display-flex flex-a-center table-header">';
+		code += '<div class="port-block-width table-content"><#Status_Str#></div>';
+		code += '<div class="port-block-width table-content">Tx (<#InternetSpeed_Mbps#>)</div>';
+		code += '<div class="port-block-width table-content">Rx (<#InternetSpeed_Mbps#>)</div>';
+		code += '</div>';
+		var autodet_plc_state = parseInt(httpApi.nvramGet(["autodet_plc_state"], true).autodet_plc_state);
+		var status = "<#Disconnected#>";
+		var tx = "--", rx = "--";
+		if(autodet_plc_state >= 1){
+			var autodet_plc_tx_mimo = httpApi.nvramGet(["autodet_plc_tx_mimo"], true).autodet_plc_tx_mimo;
+			var autodet_plc_rx_mimo = httpApi.nvramGet(["autodet_plc_rx_mimo"], true).autodet_plc_rx_mimo;
+			status = (autodet_plc_tx_mimo >= "1" && autodet_plc_rx_mimo >= "1") ? "MIMO" : "SISO";
+			tx = httpApi.nvramGet(["autodet_plc_tx"], true).autodet_plc_tx;;
+			rx = httpApi.nvramGet(["autodet_plc_rx"], true).autodet_plc_rx;;
+		}
+		code += '<div class="display-flex flex-a-center table-body">';
+		code += '<div class="port-block-width table-content table-content-first" style="text-overflow:ellipsis;overflow:hidden;" title="' + status + '">'+ status +'</div>';
+		code += '<div class="port-block-width table-content">'+ tx +'</div>';
+		code += '<div class="port-block-width table-content">'+rx +'</div>';
+		code += '</div>';
+		code += '</div>';
+		$('#plc_ports').html(code);
+		$('#plc_ports').show();
+		setTimeout("get_plc_ports();", 3000);
+	}
+}
+
 function switchTab(id){
 	var obj = {
 		'wireless_tab': 'router.asp',
@@ -487,6 +531,7 @@ function switchTab(id){
 	<div id="cpu_field" class="unit-block"></div>
 	<div id="ram_field" class="unit-block"></div>
 	<div id="phy_ports" class="unit-block"></div>
+	<div id="plc_ports" class="unit-block" style="display:none"></div>
 	<div id="led_field" class="unit-block" style="display:none"></div>
 	<div id='hw_information_field' class="unit-block"></div>
 	<div id="yadns_field" class="unit-block" style="display:none"></div>

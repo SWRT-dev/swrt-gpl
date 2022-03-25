@@ -495,7 +495,7 @@ extern int initial_var_file(const char *const account, const char *const mount_p
 
 	for (i = -1; i < sh_num; ++i) {
 		fprintf(fp, "*");
-		
+
 		if(i != -1)
 			fprintf(fp, "%s", folder_list[i]);
 #ifdef RTCONFIG_WEBDAV_OLD

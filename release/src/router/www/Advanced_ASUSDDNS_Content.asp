@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <html xmlns:v>
 <head>
@@ -87,9 +87,9 @@ var deregister_fail = 0;
 var cur_wan_ipaddr = wanlink_ipaddr();
 var inadyn = isSupport("inadyn");
 
-var faq_href = "https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Faq&lang="+ui_lang+"&kw=&num=105";
 var le_sbstate_t = '<% nvram_get("le_sbstate_t"); %>';
 var le_auxstate_t = '<% nvram_get("le_auxstate_t"); %>';
+var faq_href = "https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Faq&lang="+ui_lang+"&kw=&num=105";
 
 function init(){
 	show_menu();
@@ -365,7 +365,7 @@ function validForm(){
 			}else if(!validator.string(document.form.ddns_hostname_x)){
 				return false;
 			}
-			
+			if(document.form.ddns_server_x.value != "CUSTOM"){             // Not CUSTOM
 			if(document.form.ddns_username_x.value == ""){
 				alert("<#QKSet_account_nameblank#>");
 				document.form.ddns_username_x.focus();
@@ -382,6 +382,7 @@ function validForm(){
 				return false;
 			}else if(!validator.string(document.form.ddns_passwd_x)){
 				return false;
+			}
 			}
 			
 			if(document.form.ddns_regular_period.value < 30){
@@ -502,6 +503,8 @@ function change_ddns_setting(v){
 			document.form.ddns_regular_check.value = 0;
 			showhide("check_ddns_field", 0);
 			inputCtrl(document.form.ddns_regular_period, 0);
+			showhide("customnote", 0);
+			showhide("need_custom_scripts", 0);
 			document.getElementById("ddns_status_tr").style.display = "";
 
 			if(ddns_enable_x == "1" && ddns_server_x_t == "WWW.ASUS.COM" &&
@@ -512,6 +515,23 @@ function change_ddns_setting(v){
 			}
 			else
 				document.getElementById("ddns_status").innerHTML = "<#Status_Inactive#>";
+	}
+	else if (v == "CUSTOM"){
+			document.form.ddns_hostname_x.parentNode.style.display = "";
+			document.form.DDNSName.parentNode.style.display = "none";
+			inputCtrl(document.form.ddns_username_x, 0);
+			inputCtrl(document.form.ddns_passwd_x, 0);
+			document.form.ddns_wildcard_x[0].disabled= 1;
+			document.form.ddns_wildcard_x[1].disabled= 1;
+			showhide("customnote", 1);
+			showhide("link", 0);
+			showhide("linkToHome", 0);
+			showhide("wildcard_field",0);
+			showhide("check_ddns_field", 0);
+			if (('<% nvram_get("jffs2_enable"); %>' != '1') || ('<% nvram_get("jffs2_scripts"); %>' != '1'))
+				showhide("need_custom_scripts", 1);
+			else
+			showhide("need_custom_scripts", 0);
 	}
 	else if( v == "WWW.ORAY.COM"){
 		document.getElementById("ddns_hostname_tr").style.display="none";
@@ -550,6 +570,8 @@ function change_ddns_setting(v){
 
 			showhide("wildcard_field",!disable_wild);
 			showhide("check_ddns_field", 1);
+			showhide("customnote", 0);
+			showhide("need_custom_scripts", 0);
 			if(document.form.ddns_regular_check.value == 0)
 				inputCtrl(document.form.ddns_regular_period, 0);
 			else
@@ -660,6 +682,7 @@ function show_cert_details(){
 	}
 	else{
 		if(le_auxstate_t == "5" && le_sbstate_t == "7"){
+			console.log("show alert msg")
 			var ddnsHint = "<#DDNS_Auth_Fail_Hint#>";
 			$("#cert_status").text(ddnsHint);
 			$("#cert_status").css("color", "#FFCC00")
@@ -839,10 +862,14 @@ function check_unregister_result(){
 						<option value="WWW.TUNNELBROKER.NET" <% nvram_match("ddns_server_x", "WWW.TUNNELBROKER.NET","selected"); %>>WWW.TUNNELBROKER.NET</option>
 						<option value="WWW.NO-IP.COM" <% nvram_match("ddns_server_x", "WWW.NO-IP.COM","selected"); %>>WWW.NO-IP.COM</option>
 						<option value="WWW.ORAY.COM" <% nvram_match("ddns_server_x", "WWW.ORAY.COM","selected"); %>>WWW.ORAY.COM(花生壳)</option>
+						<option value="WWW.3322.ORG" <% nvram_match("ddns_server_x", "WWW.3322.ORG","selected"); %>>WWW.3322.ORG</option>
+						<option value="CUSTOM" <% nvram_match("ddns_server_x", "CUSTOM","selected"); %>>Custom</option>
 					</select>
 					<input id="deregister_btn" class="button_gen" style="display: none; margin-left: 5px;" type="button" value="Deregister" onclick="showLoading();asuscomm_deregister();"/>
 				<a id="link" href="javascript:openLink('x_DDNSServer')" style=" margin-left:5px; text-decoration: underline;"><#LANHostConfig_x_DDNSServer_linkname#></a>
 				<a id="linkToHome" href="javascript:openLink('x_DDNSServer')" style=" margin-left:5px; text-decoration: underline;"><#ddns_home_link#></a>
+				<div id="customnote" style="display:none;"><span>For the Custom DDNS you must manually create a ddns-start script that handles your custom notification.</span></div>
+				<div id="need_custom_scripts" style="display:none;"><span>WARNING: you must enable both the JFFS2 partition and custom scripts support!<br>Click <a href="Advanced_System_Content.asp" style="text-decoration: underline;">HERE</a> to proceed.</span></div>
 				</td>
 			</tr>
 			<tr id="ddns_hostname_tr">
@@ -996,3 +1023,4 @@ function check_unregister_result(){
 </form>
 </body>
 </html>
+

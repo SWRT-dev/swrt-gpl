@@ -16,13 +16,10 @@ OBJS=$(patsubst %.c, %.o, $(SRC))
 #WS_SOURCES := $(WS_SRC)/curl_api.c $(WS_SRC)/parse_xml.c $(WS_SRC)/wb.c $(WS_SRC)/wb_util.c $(WS_SRC)/ssl_api.c $(WS_SRC)/log.c
 WS_SOURCES := $(wildcard $(WS_SRC)/*.c)
 WSLIB_OBJS := $(WS_SOURCES:%.c=$(OUTPUT)/%.o)
-ifeq ($(RT4GAC86U),y)
-WSLIB_OBJS += $(LIBDIR)/libc_nonshared.a
-endif
 
 ifeq ($(wildcard $(TOP)/wb/ws_src/*.c),)
 all:
-	-cp -f $(TOP)/wb/prebuild/libws.so libws.so
+	-cp -f $(TOP)/wb/prebuild/$(BUILD_NAME)/libws.so libws.so
 else
 all: $(WSLIB)
 endif

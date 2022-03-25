@@ -28,15 +28,11 @@ ifeq ($(HND_ROUTER),y)
 CFLAGS += -DNON_P_THREAD
 endif
 
-ifeq ($(RPAC92),y)
-CFLAGS += -DRPAC92
-endif
-
 ifeq ($(RTCONFIG_BCMARM),y)
 CFLAGS += -I$(SRCBASE)/shared/bcmwifi/include -DTYPEDEF_FLOAT_T
 endif
 
-LDFLAGS += -L$(TOP_PLATFORM)/nvram$(BCMEX)${EX7} ${EXTRA_NV_LDFLAGS} -lnvram
+LDFLAGS += -L$(TOP)/nvram$(BCMEX)${EX7} ${EXTRA_NV_LDFLAGS} -lnvram
 LDFLAGS += -L$(TOP)/shared -L$(INSTALLDIR)/shared/usr/lib -lshared
 LDFLAGS += -L$(TOP)/protect_srv/lib/ -lptcsrv
 
@@ -46,10 +42,10 @@ MDIRS = lib
 
 ifeq ($(wildcard $(SRCBASE)/router/protect_srv/*.c),)
 all: 
-	-cp -f prebuild/protect_srv protect_srv
-	-cp -f prebuild/Send_Event2ptcsrv Send_Event2ptcsrv
-	-cp -f lib/prebuild/libptcsrv.so lib
-	-cp -f prebuild/req_ptcsrv req_ptcsrv
+	-cp -f prebuild/$(BUILD_NAME)/protect_srv protect_srv
+	-cp -f prebuild/$(BUILD_NAME)/Send_Event2ptcsrv Send_Event2ptcsrv
+	-cp -f lib/prebuild/$(BUILD_NAME)/libptcsrv.so lib
+	-cp -f prebuild/$(BUILD_NAME)/req_ptcsrv req_ptcsrv
 
 else
 all: ptcsrvdir Send_Event2ptcsrv protect_srv req_ptcsrv

@@ -1,4 +1,5 @@
 #define _LINUX_IN_H
+#include <linux/types.h>
 #include <sys/types.h>	//musl u_short
 #include <linux/mroute.h>
 #include <netinet/ip.h>

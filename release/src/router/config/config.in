@@ -2599,6 +2599,11 @@ config RTCONFIG_SWRT_KVR
 	depends on RTCONFIG_RALINK || RTCONFIG_LANTIQ || RTCONFIG_QCA
 	default n
 
+config RTCONFIG_SWRT_LED_RGB
+	bool "swrt rgb led support"
+	depends on RTCONFIG_FIXED_BRIGHTNESS_RGBLED || RTCONFIG_RGBLED || RTCONFIG_BCM_CLED
+	default n
+
 config RTCONFIG_ENTWARE
 	bool "install entware"
 	default n

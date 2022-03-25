@@ -1,0 +1,42 @@
+Intel WAN XPCS PHY controller
+
+This file documents the dt bindings for the WAN XPCS PHY
+
+Required properties:
+- compatible	: should be "intel,wanxpcsphy-prx300"
+- clocks	: frequency clock.
+		  Optionally we can include gate clock
+- clock-names	: should be "freq".
+		  Optionally we can include "xpcs" and "hwclken" for gate clock
+- clock-frequency	: frequency of pll3. This is necessary so that clk
+			  framework can select the correct parent
+- #phy-cells	: should be <0>
+- intel,wanxpcsphy-syscon	: phandle to sysconf chiptop
+- resets	: list of phandle and reset specifier pairs.
+- reset-names	: list of reset signal names. Should be "phy".
+		  See: Documentation/devicetree/bindings/reset/reset.txt
+
+Note that WAN XPCS and PON are exclusive; one must be disabled to use the other
+one.
+
+Example:
+
+wan_xpcs_phy: phy {
+	compatible = "intel,wanxpcsphy-prx300";
+	clocks = <&ponclk>, <&clkgate1 GATE_AON_CLK>, <&clkgate3 GATE_SW_REF>;
+	clock-names = "freq", "xpcs", "hwclken";
+	clock-frequency = <156250000>;
+	#phy-cells = <0>;
+	status = "okay";
+	resets = <&rcu0 10>;
+	reset-names = "phy";
+	intel,wanxpcsphy-syscon = <&sysconf>; /* chiptop */
+};
+
+Example to use this phy in driver:
+
+test_driver@0 {
+	...
+	phys = <&wan_xpcs_phy>;
+	phy-names = "wan_xpcs"
+}

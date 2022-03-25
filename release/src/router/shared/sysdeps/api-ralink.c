@@ -34,6 +34,10 @@ const char WDSIF_5G[]	= "wdsi";
 const char WDSIF_2G[]	= "wds";
 const char APCLI_5G[]	= "apclii0";
 const char APCLI_2G[]	= "apcli0";
+#if defined(RTCONFIG_EASYMESH)
+const char MESH_5G[]	= "meshi0";
+const char MESH_2G[]	= "mesh0";
+#endif
 #else
 const char WIF_5G[]	= "ra0";
 const char WIF_2G[]	= "rai0";
@@ -837,7 +841,7 @@ char *get_wlifname(int unit, int subunit, int subunit_x, char *buf)
 			strcpy(buf, "");
 			return buf;
 		}
-        }
+	}
 #endif  /* RTCONFIG_AMAS */
 	{
 		memset(wifbuf, 0, sizeof(wifbuf));
@@ -1197,3 +1201,15 @@ char *get_staifname(int band)
 	}
 	return (char*) sta[band];
 }
+
+#if defined(RTCONFIG_EASYMESH)
+char *get_meshifname(int band)
+{
+	const char *wif[] = { MESH_2G, MESH_5G };
+	if (band < 0 || band >= ARRAY_SIZE(wif)) {
+		printf("%s: Invalid wl%d band!\n", __func__, band);
+		band = 0;
+	}
+	return (char*) wif[band];
+}
+#endif

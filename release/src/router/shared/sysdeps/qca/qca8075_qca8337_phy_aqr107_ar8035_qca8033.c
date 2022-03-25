@@ -36,6 +36,7 @@
 #include <shared.h>
 #include <utils.h>
 #include <qca.h>
+#include <flash_mtd.h>
 
 #define NR_WANLAN_PORT	11
 #define DBGOUT		NULL			/* "/dev/console" */
@@ -1182,7 +1183,6 @@ static void create_Vlan(int bitmask)
 	qca8075_8337_8035_8033_aqr107_vlan_set(vtype, upstream_if, vid, prio, mbr_qca, untag_qca);
 }
 
-
 int qca8075_8337_8035_8033_aqr107_ioctl(int val, int val2)
 {
 	unsigned int value2 = 0;
@@ -1585,6 +1585,17 @@ void __pre_config_switch(void)
 	}
 	free(brvx);
 
+#if defined(RTCONFIG_AMAS_WGN)
+	/* Set P0 ~ P6 of QCA8337 as untouched, otherwise, RE's guest client can't get IP address
+	 * due to VLAN 501/502 DHCP request/reply frames are untagged by QCA8337.
+	 */
+	for (i = 0; i <= 6; ++i) {
+		snprintf(port_str, sizeof(port_str), "%d", i);
+		strlcpy(tag_type, "untouched", sizeof(tag_type));
+		_eval(vegress, DBGOUT, 0, NULL);
+	}
+#endif
+
 	if (sw_mode() != SW_MODE_ROUTER || !iptv_enabled() || !sw_bridge_iptv_different_switches())
 		return;
 
@@ -1603,12 +1614,21 @@ void __pre_config_switch(void)
 		strlcpy(tag_type, (i == 0)? "tagged" : "untagged", sizeof(tag_type));
 		_eval(vmbr_add, DBGOUT, 0, NULL);
 
+#if defined(RTCONFIG_AMAS_WGN)
+		/* Accept tagged/untagged frames both, otherwise, RE's guest client can't get IP address
+		 * if IPTV feature is enabled. Because tagged DHCP request frames are blocked by QCA8337.
+		 */
+		strlcpy(adm_type, "admit_all", sizeof(adm_type));
+		_eval(vadmit, DBGOUT, 0, NULL);
+		_eval(defcvid, DBGOUT, 0, NULL);
+#else
 		strlcpy(adm_type, (i == 0)? "admit_all" : "admit_untagged", sizeof(adm_type));
 		_eval(vadmit, DBGOUT, 0, NULL);
 		_eval(defcvid, DBGOUT, 0, NULL);
 
 		strlcpy(tag_type, (i == 0)? "untouched" : "untagged", sizeof(tag_type));
 		_eval(vegress, DBGOUT, 0, NULL);
+#endif
 		_eval(vingress, DBGOUT, 0, NULL);
 	}
 }
@@ -1899,3 +1919,1023 @@ void __wgn_sysdep_swtich_set(int vid)
 		_eval(vmbr_add, DBGOUT, 0, NULL);
 	}
 }
+
+#if defined(RTCONFIG_FRS_FEEDBACK)
+static const struct sfpp_eeprom_value_defs {
+	int byte;
+	unsigned char value;
+	char *description;
+} g_sfpp_eeprom_value_defs[] = {
+	/* Byte 0, Description */
+	{  0, 0x01, "GBIC" },
+	{  0, 0x02, "Module soldered to motherboard" },
+	{  0, 0x03, "SFP/SFP+" },
+
+	{ -1,    0, NULL }
+};
+
+static const struct sfpp_eeprom_bit_defs {
+	int byte;
+	int bit;
+	char *description;
+} g_sfpp_eeprom_bit_defs[] = {
+	/* Byte 3, 10G Ethernet Compliance Codes */
+	{  3, 7, "10G Base-ER" },
+	{  3, 6, "10G Base-LRM" },
+	{  3, 5, "10G Base-LR" },
+	{  3, 4, "10G base-SR" },
+	{  3, 3, "1X SX" },
+	{  3, 2, "1X LX" },
+	{  3, 1, "1X Copper Active" },
+	{  3, 0, "1X Copper Passive" },
+
+	/* Byte 6, Ethernet Compliance Codes */
+	{  6, 7, "BASE-PX" },
+	{  6, 6, "BASE-BX10" },
+	{  6, 5, "100BASE-FX" },
+	{  6, 4, "100BASE-LX/LX10" },
+	{  6, 3, "1000BASE-T" },
+	{  6, 2, "1000BASE-CX" },
+	{  6, 1, "1000BASE-LX" },
+	{  6, 0, "1000BASE-SX" },
+
+	/* Byte 7, Fiber Channel Link Length */
+	{  7, 7, "very long distance" },
+	{  7, 6, "short distance" },
+	{  7, 5, "intermediate distance" },
+	{  7, 4, "long distance" },
+	{  7, 3, "medium distance" },
+
+	/* Byte 8, SFP+ Cable Technology */
+	{  8, 3, "Active Cable" },
+	{  8, 2, "Passive Cable" },
+
+	/* Byte 9, Fiber Channel Transmission Media */
+	{  9, 7, "Twin Axial Pair" },
+	{  9, 6, "Twisted Pair" },
+	{  9, 5, "Miniature Coax" },
+	{  9, 4, "Video Coax" },
+	{  9, 3, "Multimode, 62.5um" },
+	{  9, 2, "Multimode, 50um" },
+	{  9, 0, "Single mode" },
+
+	/* Byte 10, Fiber Channel Speed */
+	{ 10, 7, "1200 MBytes/s" },
+	{ 10, 6, "800 MBytes/s" },
+	{ 10, 5, "1600 MBytes/s" },
+	{ 10, 4, "400 MBytes/s" },
+	{ 10, 3, "3200 MBytes/s" },
+	{ 10, 2, "200 MBytes/s" },
+	{ 10, 0, "100 MBytes/s" },
+
+	/* Byte 93, Enhanced Options */
+	{ 93, 7, "Opt. Alarm/warning flags implemented for all monitored quantities" },
+	{ 93, 6, "Opt. soft TX_DISABLE control and monitoring implemented" },
+	{ 93, 5, "Opt. soft TX_FAULT monitoring implemented" },
+	{ 93, 4, "Opt. soft RX_LOS monitoring implemented" },
+	{ 93, 3, "Opt. soft RATE_SELECT control and monitoring implemented" },
+	{ 93, 2, "Opt. Application Select control implemented per SFF-8079" },
+	{ 93, 1, "Opt. soft Rate Select control implemented per SFF-8431" },
+
+	{ -1, 0, NULL }
+};
+
+static void trim(char *str)
+{
+	char *end;
+
+	if (!str)
+		return;
+
+	end = str + strlen(str) - 1;
+	while (end > str && isspace(*end)) {
+		*end-- = '\0';
+	}
+}
+
+/* Parse specific byte value in EEPROM A0 of SFP+ module */
+static int parse_sfpp_eeprom_a0_val(FILE *fp, int byte, unsigned char val)
+{
+	const struct sfpp_eeprom_value_defs *p;
+
+	if (!fp || byte < 0 || byte >= 256)
+		return -1;
+
+	fprintf(fp, "Byte %2X: %2X", byte, val);
+	for (p = &g_sfpp_eeprom_value_defs[0]; p->byte >= 0 && p->byte < 256 && p->description; ++p) {
+		if (p->byte != byte || val != p->value)
+			continue;
+
+		fprintf(fp, ", %s", p->description);
+	}
+	fprintf(fp, "\n");
+
+	return 0;
+}
+
+/* Parse specific byte bits in EEPROM A0 of SFP+ module */
+static int parse_sfpp_eeprom_bits(FILE *fp, int byte, unsigned char val)
+{
+	const struct sfpp_eeprom_bit_defs *p;
+
+	if (!fp || byte < 0 || byte >= 256 || !val)
+		return -1;
+
+	fprintf(fp, "Byte %2X: %2X", byte, val);
+	for (p = &g_sfpp_eeprom_bit_defs[0]; p->byte >= 0 && p->byte < 256 && p->description; ++p) {
+		if (p->byte != byte || !(val & (1U << p->bit)))
+			continue;
+
+		fprintf(fp, ", %s", p->description);
+	}
+	fprintf(fp, "\n");
+
+	return 0;
+}
+
+static int parse_sfpp_eeprom_a0(FILE *fp, unsigned char a0[256])
+{
+	char v_name[16 + 1] = { 0 }, v_pn[16 + 1] = { 0 }, v_rev[4 + 1] = { 0 };
+	char v_sn[16 + 1] = { 0 }, v_dcode[8 + 1] = { 0 };
+
+	if (!fp || !a0)
+		return -1;
+
+	/* Parsing most interesting registers. See SFF-8472 */
+	memcpy(v_name, a0 + 20, 16);
+	trim(v_name);
+	memcpy(v_pn, a0 + 40, 16);
+	trim(v_pn);
+	memcpy(v_rev, a0 + 56, 4);
+	trim(v_rev);
+	memcpy(v_sn, a0 + 68, 16);
+	trim(v_sn);
+	memcpy(v_dcode, a0 + 84, 8);
+	trim(v_dcode);
+	fprintf(fp, "VENDOR [%s] OUI %02X-%02X-%02X PN [%s] REV [%s] SN [%s] DATE CODE [%s]\n",
+		v_name, *(a0 + 37), *(a0 + 38), *(a0 + 39), v_pn, v_rev, v_sn, v_dcode);
+	parse_sfpp_eeprom_a0_val(fp, 0, *a0);
+	parse_sfpp_eeprom_bits(fp, 3, *(a0 + 3));
+	parse_sfpp_eeprom_bits(fp, 6, *(a0 + 6));
+	parse_sfpp_eeprom_bits(fp, 7, *(a0 + 7));
+	parse_sfpp_eeprom_bits(fp, 8, *(a0 + 8));
+	parse_sfpp_eeprom_bits(fp, 9, *(a0 + 9));
+	parse_sfpp_eeprom_bits(fp, 10, *(a0 + 10));
+
+	/* Maximum link length of each type cable */
+	if (*(a0 + 14))
+		fprintf(fp, "Byte %2X: %2X, single-mode cable max. length %dkm\n", 14, *(a0 + 14), *(a0 + 14));
+	if (*(a0 + 15))
+		fprintf(fp, "Byte %2X: %2X, single-mode cable max. length %dm\n", 15, *(a0 + 15), *(a0 + 15) * 100);
+	if (*(a0 + 17))
+		fprintf(fp, "Byte %2X: %2X, 62.5um OM1 cable max. length %dm\n", 17, *(a0 + 17), *(a0 + 17) * 10);
+	if (*(a0 + 16))
+		fprintf(fp, "Byte %2X: %2X, 50um OM2 cable max. length %dm\n", 16, *(a0 + 16), *(a0 + 16) * 10);
+	if (*(a0 + 19))
+		fprintf(fp, "Byte %2X: %2X, 50um OM3 cable max. length %dm\n", 19, *(a0 + 19), *(a0 + 19) * 10);
+	if (*(a0 + 18))
+		fprintf(fp, "Byte %2X: %2X, 50um OM4 cable max. length %dm\n", 18, *(a0 + 18), *(a0 + 18) * 10);
+
+	parse_sfpp_eeprom_bits(fp, 93, *(a0 + 93));
+
+	return 0;
+}
+
+/* Detect I2C slave devices, dump slave address 0x50 and d ump slave address 0x51. */
+static int dump_sfpp_eeprom(FILE *fp)
+{
+	int bus = 0, addr = 0x50;
+	int r, rlen = 0, found = 0;
+	FILE *fp_res;
+	char cmd[sizeof("i2cdump -y XXX 0xXXXYYY")];
+	char line[4 + 3 * 16 + 4 + 16 + 10];
+	unsigned char tmp[16], a0[256] = { 0 }, a2[256] = { 0 }, *p;
+
+	if (!fp)
+		return -1;
+
+	fprintf(fp, "\n\n######## Dump I2C bus & EEPROM in SFP+ module ########\n\n");
+	/* Example: i2cdetect -y -r 0
+	 *      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+	 * 00:          -- -- -- -- -- -- -- -- -- -- -- -- --
+	 * 10: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+	 * 20: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+	 * 30: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+	 * 40: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+	 * 50: 50 51 -- -- -- -- -- -- -- -- -- -- -- -- -- --
+	 * 60: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+	 * 70: -- -- -- -- -- -- -- --
+	 */
+	snprintf(cmd, sizeof(cmd), "i2cdetect -y -r %d", bus);
+	if (!(fp_res = popen(cmd, "r"))) {
+		fprintf(fp, "cmd [%s] failed. errno %d (%s)\n", cmd, errno, strerror(errno));
+		return -2;
+	}
+	fprintf(fp, "Detect I2C bus %d:\n", bus);
+	while (fgets(line, sizeof(line), fp_res) != NULL) {
+		fprintf(fp, "%s", line);
+	}
+	pclose(fp_res);
+	fprintf(fp, "\n\n");
+
+	/****** Address A0 ******/
+	/* Example: i2cdump -y 0 0x50
+	 *      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f    0123456789abcdef
+	 * 00: 03 04 21 01 00 00 00 00 04 00 00 00 67 00 00 00    ??!?....?...g...
+	 * 10: 00 00 01 00 4f 45 4d 20 20 20 20 20 20 20 20 20    ..?.OEM
+	 * 20: 20 20 20 20 00 00 40 20 53 46 50 2d 44 41 43 2d        ..@ SFP-DAC-
+	 * 30: 31 4d 20 20 20 20 20 20 30 33 20 20 01 00 00 63    1M      03  ?..c
+	 * 40: 00 00 00 00 54 4f 32 30 30 39 31 36 30 32 30 20    ....TO200916020
+	 * 50: 20 20 20 20 32 30 30 39 31 36 20 20 00 00 00 79        200916  ...y
+	 * 60: 80 00 11 b2 73 06 49 0f 47 61 3b 52 ee a3 2b 51    ?.??s?I?Ga;R??+Q
+	 * 70: b1 92 e9 53 4e 00 00 00 00 00 88 97 92 8e 85 0b    ???SN.....??????
+	 * 80: 43 4f 50 51 41 41 36 4a 41 42 33 37 2d 30 39 36    COPQAA6JAB37-096
+	 * 90: 31 2d 30 33 56 30 33 20 01 00 46 00 00 00 00 cf    1-03V03 ?.F....?
+	 * a0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    ................
+	 * b0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    ................
+	 * c0: 53 46 50 2d 48 31 30 47 42 2d 43 55 31 4d 20 20    SFP-H10GB-CU1M
+	 * d0: 20 20 20 20 30 39 00 00 00 00 00 00 00 00 00 b6        09.........?
+	 * e0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    ................
+	 * f0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    ................
+	 */
+	snprintf(cmd, sizeof(cmd), "i2cdump -y %d 0x%x", bus, addr);
+	if (!(fp_res = popen(cmd, "r"))) {
+		fprintf(fp, "cmd [%s] failed. errno %d (%s)\n", cmd, errno, strerror(errno));
+		return -3;
+	}
+
+	fprintf(fp, "Hexdump I2C bus %d addr 0x%x:\n", bus, addr);
+	p = a0;
+	while (fgets(line, sizeof(line), fp_res) != NULL) {
+		fprintf(fp, "%s", line);
+		if (!strncmp(line, "00: ", 4))
+			found = 1;
+		if (!found)
+			continue;
+		*(line + 3 + 3 * 16) = '\0';	/* remove ascii character */
+
+		/* EEPROM doesn't exist. */
+		if (strstr(line + 4, "XX")) {
+			found = -1;
+			break;
+		}
+		r = sscanf(line + 4, "%hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx "
+			"%hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx",
+			tmp, tmp + 1, tmp + 2, tmp + 3, tmp + 4, tmp + 5,
+			tmp + 6, tmp + 7, tmp + 8, tmp + 9, tmp + 10, tmp + 11,
+			tmp + 12, tmp + 13, tmp + 14, tmp + 15);
+		if (r > 0) {
+			if ((rlen + r) > sizeof(a0)) {
+				fprintf(fp, "Size of a0 (%d) is not enough (%d)!\n", sizeof(a0), rlen + r);
+				rlen = sizeof(a0) - rlen;
+			}
+			memcpy(p, tmp, r);
+			p += r;
+			rlen += r;
+		}
+
+		if (r < 16)
+			break;
+	}
+	pclose(fp_res);
+	if (found < 0) {
+		fprintf(fp, "EEPROM %2X doesn't exist, maybe SFP+ module doesn't exist.\n", addr * 2);
+		return 0;
+	}
+	fprintf(fp, "\n");
+
+	fprintf(fp, "Readed %d bytes from EEPROM of SFP+ module\n", rlen);
+	parse_sfpp_eeprom_a0(fp, a0);
+	fprintf(fp, "\n\n");
+
+	/****** Address A2 ******/
+
+	addr = 0x51;
+	snprintf(cmd, sizeof(cmd), "i2cdump -y %d 0x%x", bus, addr);
+	if (!(fp_res = popen(cmd, "r"))) {
+		fprintf(fp, "cmd [%s] failed. errno %d (%s)\n", cmd, errno, strerror(errno));
+		return -4;
+	}
+
+	fprintf(fp, "Hexdump I2C bus %d addr 0x%x:\n", bus, addr);
+	rlen = found = 0;
+	p = a2;
+	while (fgets(line, sizeof(line), fp_res) != NULL) {
+		fprintf(fp, "%s", line);
+		if (!strncmp(line, "00: ", 4))
+			found = 1;
+		if (!found)
+			continue;
+		*(line + 3 + 3 * 16) = '\0';	/* remove ascii character */
+
+		/* EEPROM doesn't exist. */
+		if (strstr(line + 4, "XX")) {
+			found = -1;
+			break;
+		}
+		r = sscanf(line + 4, "%hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx "
+			"%hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx %*[^\n]",
+			tmp, tmp + 1, tmp + 2, tmp + 3, tmp + 4, tmp + 5,
+			tmp + 6, tmp + 7, tmp + 8, tmp + 9, tmp + 10, tmp + 11,
+			tmp + 12, tmp + 13, tmp + 14, tmp + 15);
+
+		if (r > 0) {
+			if ((rlen + r) > sizeof(a2)) {
+				fprintf(fp, "Size of a2 (%d) is not enough (%d)!\n", sizeof(a2), rlen + r);
+				rlen = sizeof(a2) - rlen;
+			}
+			memcpy(p, tmp, r);
+			p += r;
+			rlen += r;
+		}
+
+		if (r < 16)
+			break;
+	}
+	pclose(fp_res);
+	if (found < 0) {
+		fprintf(fp, "EEPROM %2X doesn't exist, maybe SFP+ module doesn't exist.\n", addr * 2);
+		return 0;
+	}
+
+	return 0;
+}
+
+static char *aqr_id_to_name(int id)
+{
+	/* Reference to drivers/net/phy/aquantia.c */
+	if ((id & 0xFFFFFFF0) == (0x03a1b4e2 & 0xFFFFFFF0))
+		return "AQR107";
+	else if ((id & 0xFFFFFFF0) == (0x31c31c41 & 0xFFFFFFF0))
+		return "AQR113";
+	else if ((id & 0xFFFFFFF0) == (0x31c31C10 & 0xFFFFFFF0))
+		return "AQR113C";
+
+	return 0;
+}
+
+/* Dump important AQR chip registers. */
+static int dump_aqr_regs(FILE *fp)
+{
+	int fw, build, id2, id3, v, val, phy = aqr_phy_addr();
+	char *dstr;
+	unsigned char factory_hwid[HWID_LENGTH] = { 0 };
+
+	if (!fp)
+		return -1;
+
+	fprintf(fp, "\n\n######## Dump AQR chip registers ########\n");
+	FRead(factory_hwid, OFFSET_HWID, sizeof(factory_hwid));
+	fprintf(fp, "SoC [%d], HwID: factory [%s] nvram [%s], HwVer [%s]\n",
+		get_soc_version_major(), factory_hwid, nvram_get("HwId")? : "NULL", nvram_get("HwVer")? : "NULL");
+	fprintf(fp, "AQR chip exist [%d] PHY addr [%d] blver [%s]\n", is_aqr_phy_exist(), phy, nvram_safe_get("blver"));
+
+	fw = read_phy_reg(phy, 0x401e0020);
+	build = read_phy_reg(phy, 0x401ec885);
+	if (fw < 0  || build < 0) {
+		fprintf(fp, "Can't get AQR PHY firmware version.\n");
+	} else {
+		fprintf(fp, "AQR PHY @ %d firmware %d.%d build %d.%d\n", phy,
+			(fw >> 8) & 0xFF, fw & 0xFF, (build >> 4) & 0xF, build & 0xF);
+	}
+
+	id2 = read_phy_reg(phy, 0x40070002);
+	id3 = read_phy_reg(phy, 0x40070003);
+	if (id2 < 0 || id3 < 0) {
+		fprintf(fp, "Can't get AQR chip ID (%04hu%04hu).\n", (unsigned short)id2, (unsigned short)id3);
+	} else {
+		fprintf(fp, "AQR chip ID %04hx%04hx", (unsigned short)id2, (unsigned short)id3);
+		dstr = aqr_id_to_name((id2 & 0xFFFF) << 16 | (id3 & 0xFFFF));
+		if (dstr)
+			fprintf(fp, " (%s)", dstr);
+		fprintf(fp, "\n");
+	}
+
+	val = read_phy_reg(phy, 0x4004e812);
+	if (val < 0) {
+		fprintf(fp, "Can't get XGMAC status.\n");
+	} else {
+		fprintf(fp, "Register 4.e812: %04hx", (unsigned short)val);
+		/* bit F:E */
+		v = (val >> 14) & 3;
+		if (v == 0) {
+			dstr = "N/A";
+		} else if (v == 1) {
+			dstr = "Not complete (okay if no cable)";
+		} else if (v == 2) {
+			dstr = "Complete";
+		} else {
+			dstr = NULL;
+		}
+		if (dstr)
+			fprintf(fp, ", Autoneg status:%s", dstr);
+
+		/* bit D, RX Link UP */
+		fprintf(fp, ", RX link %s", (val & (1U << 13))? "up" : "down");
+
+		/* bit C, TX Ready */
+		fprintf(fp, ", TX %s", (val & (1U << 12))? "Ready" : "Not ready");
+
+		/* bit B:8, System Interface rate */
+		v = (val >> 8) & 0xF;
+		if (v == 0) {
+			dstr = "Power down";
+		} else if (v == 1) {
+			dstr = "100M";
+		} else if (v == 2) {
+			dstr = "1G";
+		} else if (v == 3) {
+			dstr = "10G";
+		} else if (v == 4) {
+			dstr = "2.5G";
+		} else if (v == 5) {
+			dstr = "5G";
+		} else if (v == 6) {
+			dstr = "10M";
+		} else {
+			dstr = NULL;
+		}
+		if (dstr)
+			fprintf(fp, ", System Interface Rate %s", dstr);
+
+		/* bit 0, Read for Data (PHY link status) */
+		fprintf(fp, ", PHY link %s", (val & (1U))? "up" : "down");
+
+		fprintf(fp, "\n");
+	}
+
+	return 0;
+}
+
+static const struct reg_bit_defs_s {
+	int sbit;	/* lowest start bit */
+	int blen;	/* bit-length of the field */
+	char *description;
+} g_8337_reg_4[] = {
+	{ 30,  1, "RMII master" },
+	{ 29,  1, "RMII slave" },
+	{ 28,  1, "Inverse RMII clock" },
+	{ 27,  1, "RMII clock edge" },
+	{ 26,  1, "RGMII EN" },
+	{ 25,  1, "MAC0 RGMII TXCLK delay EN" },
+	{ 22,  2, "MAC0 RGMII TXCLK delay" },
+	{ 20,  2, "MAC0 RGMII RXCLK delay" },
+	{ 19,  1, "SGMII CLK125M RX edge" },
+	{ 18,  1, "SGMII CLK125M TX edge" },
+	{ 17,  1, "FX100_EN" },
+	{ 14,  1, "MAC0_PHY_GMII_EN" },
+	{ 13,  1, "MAC0_PHY_GMII_TXCLK inv." },
+	{ 12,  1, "MAC0_PHY_GMII_RXCLK inv." },
+	{ 11,  1, "MAC0_PHY_MII_PIPE_RXCLK inv." },
+	{ 10,  1, "MAC0_PHY_MII_EN" },
+	{  9,  1, "MAC0_PHY_MII_TXCLK inv." },
+	{  8,  1, "MAC0_PHY_MII_RXCLK inv." },
+	{  7,  1, "MAC0_SGMII_EN" },
+	{  6,  1, "MAC0_GMII_EN" },
+	{  5,  1, "MAC0_MAC_TXCLK inv." },
+	{  4,  1, "MAC0_MAC_RXCLK inv." },
+	{  2,  1, "MAC0_MAC_MII_EN" },
+	{  1,  1, "MAC0_MAC_MII_TXCLK inv." },
+	{  0,  1, "MAc0_MAC_MII_RXCLK inv." },
+	{ -1, -1, NULL }
+}, g_8337_reg_8[] = {
+	{ 26,  1, "MAC5_RGMII_EN" },
+	{ 25,  1, "MAC5_RGMII_TXCLK_DELAY_EN" },
+	{ 24,  1, "MAC5_RGMII_RXCLK_DELAY_EN" },
+	{ 22,  2, "MAC5_RGMII_TXCLK_DELAY" },
+	{ 20,  2, "MAC5_RGMII_RXCLK_DELAY" },
+	{ 11,  1, "MAC5_PHY_MII_PIPE_RXCLK edge" },
+	{ 10,  1, "MAC5_PHY_MII_EN" },
+	{  9,  1, "MAC5_PHY_MII_TXCLK inv." },
+	{  8,  1, "MAC5_PHY_MII_RXCLK inv." },
+	{  2,  1, "MAC5_MAC_MII_EN" },
+	{  1,  1, "MAC5_MAC_MII_TXCLK inv." },
+	{  0,  1, "MAC5_MAC_MII_TXCLK inv." },
+	{ -1, -1, NULL }
+}, g_8337_reg_c[] = {
+	{ 26,  1, "MAC6_RGMII_EN" },
+	{ 25,  1, "MAC6_RGMII_TXCLK_DELAY_EN" },
+	{ 22,  2, "MAC6_RGMII_TXCLK_DELAY" },
+	{ 20,  2, "MAC6_RGMII_RXCLK_DELAY" },
+	{ 17,  1, "PHY4_RGMII_EN edge" },
+	{ 11,  1, "MAC6_PHY_MII_PIPE_RXCLK edge" },
+	{ 10,  1, "MAC6_PHY_MII_EN" },
+	{  9,  1, "MAC6_PHY_MII_TXCLK inv." },
+	{  8,  1, "MAC6_PHY_MII_RXCLK inv." },
+	{  7,  1, "MAC6_SGMII_EN" },
+	{  2,  1, "MAC6_MAC_MII_EN" },
+	{  1,  1, "MAC6_MAC_MII_TXCLK inv." },
+	{  0,  1, "MAC6_MAC_MII_TXCLK inv." },
+	{ -1, -1, NULL }
+}, g_8337_reg_10[] = {
+	{  31, 1, "Power-ON strap" },
+	{  28, 1, "PACKAGEMIN_EN" },
+	{  27, 1, "INPUT_MODE" },
+	{  25, 1, "SPI_EEPROM_EN" },
+	{  24, 1, "LED pad mode" },
+	{  17, 1, "Hibernate" },
+	{   7, 1, "SerDes autoneg EN" },
+	{ -1, -1, NULL }
+}, g_8337_reg_28[] = {
+	{ 29,  1, "ACL" },
+	{ 28,  1, "LOOKUP" },
+	{ 27,  1, "QM" },
+	{ 26,  1, "MIB" },
+	{ 25,  1, "OFFLOAD" },
+	{ 24,  1, "HARDWARE INT DONE EN" },
+	{ 23,  1, "ACL MATCH" },
+	{ 22,  1, "ARL DONE" },
+	{ 21,  1, "ARL CPU FULL" },
+	{ 20,  1, "VT DONE" },
+	{ 19,  1, "MIB DONE" },
+	{ 18,  1, "ACL DONE" },
+	{ 17,  1, "OFFLOAD DONE" },
+	{ 16,  1, "OFFLOAD CPU FULL DONE" },
+	{ 11,  1, "ARL LEARN CREATE" },
+	{ 10,  1, "ARL LEARN CHANGE" },
+	{  9,  1, "ARL DELETE" },
+	{  8,  1, "ARL LEARN FULL" },
+	{  5,  1, "ARP LEARN CREATE" },
+	{  4,  1, "ARP LEARN CHANGE" },
+	{  3,  1, "ARP AGE DELETE" },
+	{  2,  1, "ARP LEARN FULL" },
+	{  1,  1, "VT MISS VIO" },
+	{  0,  1, "VT MEM VIO" },
+	{ -1, -1, NULL }
+}, g_8337_reg_2c[] = {
+	{ 19,  1, "THERM" },
+	{ 18,  1, "EEPROM ERR" },
+	{ 17,  1, "EEPROM" },
+	{ 16,  1, "MDIO DONE" },
+	{ 15,  1, "PHY" },
+	{ 14,  1, "QM ERR" },
+	{ 13,  1, "LOOKUP ERR" },
+	{ 12,  1, "LOOP CHECK" },
+	{  7,  7, "LINK_CHG" },
+	{  0,  1, "BIST_DONE" },
+	{ -1, -1, NULL }
+}, g_8337_reg_30[] = {
+	{ 10,  1, "SPECIAL DIP EN" },
+	{  1,  1, "ACL_EN" },
+	{  0,  1, "MIB_EN" },
+	{ -1, -1, NULL }
+}, g_8337_reg_38[] = {
+	{ 24,  4, "RELOAD_TIMER" },
+	{ 19,  1, "SGMII_CLK125M_RX inv." },
+	{ 18,  1, "SGMII_CLK125M_TX inv." },
+	{ -1, -1, NULL }
+}, g_8337_reg_3c[] = {
+	{ 26,  1, "MDIO_SUP_PRE" },
+	{ 16,  5, "REG_ADDR" },
+	{  0, 16, "MDIO_DATA" },
+	{ -1, -1, NULL }
+}, g_8337_reg_40[] = {
+	{ 31,  1, "BIST_BUSY" },
+	{ 29,  1, "BIST_PASS" },
+	{ 23,  1, "BIST_CRITICAL" },
+	{ 22,  1, "BIST_PTN_EN_2" },
+	{ 21,  1, "BIST_PTN_EN_1" },
+	{ 20,  1, "BIST_PTN_EN_0" },
+	{ -1, -1, NULL }
+}, g_8337_reg_7c[] = {
+	{ 12,  1, "FLOW_LINK_EN" },
+	{ 11,  1, "AUTO RX FLOW EN" },
+	{ 10,  1, "AUTO TX FLOW EN" },
+	{  9,  1, "LINK_EN" },
+	{  8,  1, "LINK" },
+	{  7,  1, "TX_HALF_FLOW_EN" },
+	{  6,  1, "DUPLEX" },
+	{  5,  1, "RX_FLOW_EN" },
+	{  4,  1, "TX_FLOW_EN" },
+	{  3,  1, "RXMAC_EN" },
+	{  2,  1, "TXMAC_EN" },
+	{  0,  2, "SPEED" },
+	{ -1, -1, NULL }
+}, g_8337_reg_100[] = {
+	{ 12,  1, "LPI_EN_5" },
+	{ 10,  1, "LPI_EN_4" },
+	{  8,  1, "LPI_EN_3" },
+	{  6,  1, "LPI_EN_2" },
+	{  4,  1, "LPI_EN_1" },
+	{  3,  1, "EEE_CPU_CHANGE_EN" },
+	{  2,  1, "EEE_LLDP_TO_CPU_EN" },
+	{  1,  1, "EEE_EN" },
+	{ -1, -1, NULL }
+}, g_8337_reg_400[] = {
+	{ 31,  1, "ACL_BUSY" },
+	{  8,  2, "ACL_RULE_SEL" },
+	{  0,  7, "ACL rule index" },
+	{ -1, -1, NULL }
+}, g_8337_reg_420[] = {
+	{ 29,  1, "CVLAN priority" },
+	{ 16, 12, "Default CVID" },
+	{ 13,  3, "SVLAN priority" },
+	{  0, 12, "Default SVID" },
+	{ -1, -1, NULL }
+}, g_8337_reg_424[] = {
+	{ 14,  1, "EG_VLAN_TYPE" },
+	{ 12,  2, "EG_VLAN_MODE" },
+	{ 10,  1, "L3 src port check" },
+	{  9,  1, "CORE_PORT_EN" },
+	{  8,  1, "FORCE_DEF_VID_EN" },
+	{  7,  1, "PORT_TLS_MODE" },
+	{  6,  1, "PORT_VLAN_PROP_EN" },
+	{  5,  1, "PORT_CLONE_EN" },
+	{  4,  1, "VLAN_PRI_PRO_EN" },
+	{  2,  2, "ING_VLAN_MODE" },
+	{ -1, -1, NULL }
+}, g_8337_reg_660[] = {
+	{ 31,  1, "MCAST_DROP_EN" },
+	{ 28,  1, "UNI_LEAKY_EN" },
+	{ 27,  1, "MULTI_LEAKY_EN" },
+	{ 26,  1, "ARP_LEAKY_EN" },
+	{ 25,  1, "NG_MIRROR_EN" },
+	{ 21,  1, "PORT_LOOPBACK_EN" },
+	{ 20,  1, "LEARN_EN" },
+	{ 16,  3, "PORT_STATE" },
+	{ 10,  1, "FORCE_PORT_VLAN_EN" },
+	{  8,  2, "VLAN_MODE" },
+	{  0,  7, "PORT_VID_MEM" },
+	{ -1, -1, NULL }
+};
+
+static const struct qca8337_regs_def_s {
+	int offset;	/* aligned to 4-bytes */
+	char *name;
+	const struct reg_bit_defs_s *bdef;
+} g_qca8337_regs_def[] = {
+	/* 0.Global control registers */
+	{    4, "PORT0_PAD_CTRL", g_8337_reg_4 },
+	{    8, "PORT5_PAD_CTRL", g_8337_reg_8 },
+	{  0xC, "PORT6_PAD_CTLR", g_8337_reg_c },
+	{ 0x10, "PWS_REG", g_8337_reg_10 },
+	{ 0x28, "GLOBAL_INT0_MASK", g_8337_reg_28 },
+	{ 0x2C, "GLOBAL_INT1_MASK", g_8337_reg_2c },
+	{ 0x30, "MODULE_EN", g_8337_reg_30 },
+	{ 0x38, "INTERFACE_HIGH_ADDR", g_8337_reg_38 },
+	{ 0x3C, "MDIO master control", g_8337_reg_3c },
+	{ 0x40, "BIST_CTRL", g_8337_reg_40 },
+	{ 0x7C, "PORT0_STATUS", g_8337_reg_7c },
+	{ 0x80, "PORT1_STATUS", g_8337_reg_7c },	/* same as PORT0_STATUS */
+	{ 0x84, "PORT2_STATUS", g_8337_reg_7c },	/* same as PORT0_STATUS */
+	{ 0x88, "PORT3_STATUS", g_8337_reg_7c },	/* same as PORT0_STATUS */
+	{ 0x8C, "PORT4_STATUS", g_8337_reg_7c },	/* same as PORT0_STATUS */
+	{ 0x90, "PORT5_STATUS", g_8337_reg_7c },	/* same as PORT0_STATUS */
+	{ 0x94, "PORT6_STATUS", g_8337_reg_7c },	/* same as PORT0_STATUS */
+
+	/* 1.EEE control registers */
+	{ 0x100, "EEE_CTRL", g_8337_reg_100 },
+
+	/* 2.Parser control registers */
+
+	/* 3.ACL control registers */
+	{ 0x400, "ACL_FUNC0", g_8337_reg_400 },
+	{ 0x420, "PORT0_VLAN_CTRL0", g_8337_reg_420 },
+	{ 0x424, "PORT0_VLAN_CTRL1", g_8337_reg_424 },
+	{ 0x428, "PORT1_VLAN_CTRL0", g_8337_reg_420 },	/* same as PORT0_VLAN_CTRL0 */
+	{ 0x42C, "PORT1_VLAN_CTRL1", g_8337_reg_424 },	/* same as PORT0_VLAN_CTRL1 */
+	{ 0x430, "PORT2_VLAN_CTRL0", g_8337_reg_420 },	/* same as PORT0_VLAN_CTRL0 */
+	{ 0x434, "PORT2_VLAN_CTRL1", g_8337_reg_424 },	/* same as PORT0_VLAN_CTRL1 */
+	{ 0x438, "PORT3_VLAN_CTRL0", g_8337_reg_420 },	/* same as PORT0_VLAN_CTRL0 */
+	{ 0x43C, "PORT3_VLAN_CTRL1", g_8337_reg_424 },	/* same as PORT0_VLAN_CTRL1 */
+	{ 0x440, "PORT4_VLAN_CTRL0", g_8337_reg_420 },	/* same as PORT0_VLAN_CTRL0 */
+	{ 0x444, "PORT4_VLAN_CTRL1", g_8337_reg_424 },	/* same as PORT0_VLAN_CTRL1 */
+	{ 0x448, "PORT5_VLAN_CTRL0", g_8337_reg_420 },	/* same as PORT0_VLAN_CTRL0 */
+	{ 0x44C, "PORT5_VLAN_CTRL1", g_8337_reg_424 },	/* same as PORT0_VLAN_CTRL1 */
+	{ 0x450, "PORT6_VLAN_CTRL0", g_8337_reg_420 },	/* same as PORT0_VLAN_CTRL0 */
+	{ 0x454, "PORT7_VLAN_CTRL1", g_8337_reg_424 },	/* same as PORT0_VLAN_CTRL1 */
+
+	/* 4.Lookup control registers */
+	{ 0x660, "PORT0_LOOKUP_CTRL", g_8337_reg_660 },
+	{ 0x66C, "PORT1_LOOKUP_CTRL", g_8337_reg_660 },	/* same as PORT0_LOOKUP_CTRL */
+	{ 0x678, "PORT2_LOOKUP_CTRL", g_8337_reg_660 },	/* same as PORT0_LOOKUP_CTRL */
+	{ 0x684, "PORT3_LOOKUP_CTRL", g_8337_reg_660 },	/* same as PORT0_LOOKUP_CTRL */
+	{ 0x690, "PORT4_LOOKUP_CTRL", g_8337_reg_660 },	/* same as PORT0_LOOKUP_CTRL */
+	{ 0x69C, "PORT5_LOOKUP_CTRL", g_8337_reg_660 },	/* same as PORT0_LOOKUP_CTRL */
+	{ 0x6A8, "PORT6_LOOKUP_CTRL", g_8337_reg_660 },	/* same as PORT0_LOOKUP_CTRL */
+
+	/* 5.QM control registers */
+
+	/* 6.PKT edit control registers */
+
+	{ -1, NULL, NULL }
+};
+
+/* Dump important QCA8337 switch registers. */
+static int dump_qca8337_regs(FILE *fp)
+{
+	int i, j, rlen, r, found, s_offset;
+	FILE *fp_res;
+	unsigned int tmp[8], reg[240], *p, m, v;
+	char line[128], cmd[sizeof("ssdk_sh " SWID_QCA8337 " debug reg dump 0XXX")];
+	const struct reg_bit_defs_s *b;
+	const struct qca8337_regs_def_s *q;
+
+	if (!fp)
+		return -1;
+
+	fprintf(fp, "\n\n######## Dump QCA8337 switch registers ########\n");
+	/* Example: ssdk_sh sw1 debug reg dump 0
+	 *
+	 *  SSDK Init OK!
+	 * [Register dump]
+	 * 0.Global control registers.
+	 *              0        4        8        c       10       14       18       1c
+	 *  [0000] 00001302 05600000 01000000 00000080 00261320 f0107650 00004d86 00003f1f
+	 *  [0020] 3f000800 00010000 00000000 00008000 80000401 00000000 0f000000 00000000
+	 *  [0040] 00700000 00000000 000088a8 00000000 cc35cc35 0000007e c935c935 03ffff00
+	 *  [0060] 00000001 00000000 00000000 00000000 b00ee060 03707f07 000005ee 0000004e
+	 *  [0080] 000010c2 000010c2 000010c2 00001ffe 000010c2 00000200 00000000 00000000
+	 *  [00a0] 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+	 *  [00c0] 00000000 00000000 80901040 00000000 fffbff7e 00000001 00000100 000303ff
+	 *  [00e0] c78164de 000aa545
+	 *
+	 *
+	 *
+	 * operation done.
+	 */
+	for (i = 0; i <= 6; ++i) {
+		snprintf(cmd, sizeof(cmd), "ssdk_sh %s debug reg dump %d", SWID_QCA8337, i);
+		if (!(fp_res = popen(cmd, "r"))) {
+			fprintf(fp, "cmd [%s] failed. errno %d (%s)\n", cmd, errno, strerror(errno));
+			continue;
+		}
+		p = &reg[0];
+		rlen = 0;
+		found = s_offset = 0;
+		while (fgets(line, sizeof(line), fp_res) != NULL) {
+			fprintf(fp, "%s", line);
+			if (strncmp(line, " [0", 3))
+				continue;
+
+			if (!found) {
+				if (sscanf(line + 2, "%x", &s_offset) != 1) {
+					fprintf(fp, "Looking up start offset failed\n");
+				}
+				found = 1;
+			}
+
+			r = sscanf(line + 8, "%x %x %x %x %x %x %x %x", tmp, tmp + 1,
+				tmp + 2, tmp + 3, tmp + 4, tmp + 5, tmp + 6, tmp + 7);
+			if (r > 0) {
+				if ((rlen + r) * 4 > sizeof(reg)) {
+					fprintf(fp, "Size of reg (%d) is not enough (%d)!\n", sizeof(reg), (rlen + r) * 4);
+					rlen = sizeof(reg) - rlen;
+				}
+				memcpy(p, tmp, r * 4);
+				p += r;
+				rlen += r;
+			}
+
+			if (r < 8)
+				break;
+		}
+		fprintf(fp, "\n");
+
+		/* Parse interesting registers. */
+		for (q = &g_qca8337_regs_def[0]; q->offset >= 0 && q->name && q->bdef; ++q) {
+			if (q->offset < s_offset || q->offset >= (s_offset + rlen * 4))
+				continue;
+
+			j = (q->offset - s_offset) >> 2;
+			if (!*(reg + j))
+				continue;
+			fprintf(fp, "%20s(%04x): %08x", q->name, q->offset, *(reg + j));
+			for (b = q->bdef; b->sbit >= 0 && b->blen > 0 && b->description; ++b) {
+				if (b->sbit >= 32 || b->blen >= 32)
+					break;
+				m = (1U << b->blen) - 1;
+				v = (*(reg + j) >> b->sbit) & m;
+				if (!v)
+					continue;
+				fprintf(fp, ", %s %x", b->description, v);
+			}
+			fprintf(fp, "\n");
+		}
+
+		pclose(fp_res);
+		fprintf(fp, "\n");
+	}
+
+	return 0;
+}
+
+static const struct reg_bit_defs_s g_phy_reg_0[] = {
+	{ 15,  1, "RESET" },
+	{ 14,  1, "LOOPBACK" },
+	{ 13,  1, "SPEED SEL." },
+	{ 12,  1, "AUTONEG" },
+	{ 11,  1, "POWER DOWN" },
+	{  9,  1, "RESTART AUTONEG" },
+	{  8,  1, "DUPLEX MODE" },
+	{  6,  1, "SPEED SEL (MSB)" },
+	{ -1, -1, NULL }
+}, g_phy_reg_1[] = {
+	{ 14,  1, "100BASE-X full" },
+	{ 13,  1, "100BASE-X half" },
+	{ 12,  1, "10M FDUPX" },
+	{ 11,  1, "10M HDUPX" },
+	{  5,  1, "AUTONEG COMPLETE" },
+	{  3,  1, "AUTONEG ABILITY" },
+	{  2,  1, "LINK STATUS" },
+	{  0,  1, "EXTENDED CAP.." },
+	{ -1, -1, NULL }
+}, g_phy_reg_5[] = {
+	{  8,  1, "100BASE-TX FDUP" },
+	{  7,  1, "100BASE-TX HDUP" },
+	{ -1, -1, NULL }
+}, g_phy_reg_8[] = {
+	{  9,  1, "1000BASE-T FDUP" },
+	{  8,  1, "1000BASE-T HDUP" },
+}, g_phy_reg_9[] = {
+	{ 11,  1, "L.PARTNER 1G FDUP CAP" },
+	{ 10,  1, "L.PARTNER 1G HDUP CAP" },
+	{ -1, -1, NULL }
+}, g_phy_reg_a[] = {
+	{ 15,  1, "Master/Slave conf. fault" },
+	{ 14,  1, "Master/Slave conf. resolution" },
+	{ 13,  1, "Local receiver status" },
+	{ 12,  1, "Remote receiver status" },
+	{ 11,  1, "L.PARTNER 1G FDUP CAP." },
+	{ 10,  1, "L.PARTNER 1G HDUP CAP." },
+	{ -1, -1, NULL }
+}, g_phy_reg_f[] = {
+	{ 13,  1, "1000BASE-T FDUP" },
+	{ 12,  1, "1000BASE-T HDUP" },
+};
+
+static const struct phy_regs_def_s {
+	int addr;	/* 0 ~ 0x1F */
+	char *name;
+	const struct reg_bit_defs_s *bdef;
+} g_phy_regs_def[] = {
+	{    0, "Control", g_phy_reg_0 },
+	{    1, "Status", g_phy_reg_1 },
+	{    5, "Link partner ability", g_phy_reg_5 },
+	{    8, "Link partner next page", g_phy_reg_8 },
+	{    9, "1000BASE-T control", g_phy_reg_9 },
+	{  0xA, "1000BASE-T status", g_phy_reg_a },
+	{  0xF, "Extended status", g_phy_reg_f },
+
+	{ -1, NULL, NULL }
+};
+
+/* Dump PHY registers */
+static int dump_phy_regs(FILE *fp)
+{
+	int phy, i, v;
+	unsigned short reg[64], m;
+	const struct vports_s {
+		int vport;
+		char *name;
+	} vports_tbl[] = {
+		{ WAN_PORT, "WAN port" },
+		{ LAN1_PORT, "LAN1 port" },
+		{ LAN2_PORT, "LAN2 port" },
+		{ LAN3_PORT, "LAN3 port" },
+		{ LAN4_PORT, "LAN4 port" },
+		{ LAN5_PORT, "LAN5 port" },
+		{ LAN6_PORT, "LAN6 port" },
+		{ LAN7_PORT, "LAN7 port" },
+		{ LAN8_PORT, "LAN8 port" },
+
+		{ -1, NULL }
+	}, *p;
+	const struct reg_bit_defs_s *b;
+	const struct phy_regs_def_s *q;
+
+	if (!fp)
+		return -1;
+
+	/* enumerate W1, L1 ~ L8 */
+	fprintf(fp, "\n\n######## Dump PHY/DBG registers of each port ########\n");
+	get_qca8337_port_definition();
+	for (p = &vports_tbl[0]; p->vport >= 0 && p->name; ++p) {
+		phy = *(vport_to_phy_addr + p->vport);
+		if (phy < 0 || phy > 0x20)
+			continue;
+
+		/* PHY registers, 0 ~ 0x1F */
+		fprintf(fp, "\nDump %s (PHY %d)'s phy registers:", p->name, phy);
+		memset(reg, 0, sizeof(reg));
+		for (i = 0; i <= 0x1F; ++i) {
+			if ((v = read_phy_reg(phy, i)) < 0) {
+				fprintf(fp, "Failed to read register 0x%x from phy %d\n", i, phy);
+				continue;
+			}
+			if (!(i % 16))
+				fprintf(fp, "\n%4x:", i);
+			fprintf(fp, " %04x", v);
+			reg[i] = v;
+		}
+		fprintf(fp, "\n\n");
+
+		/* Parse interesting phy registers. */
+		for (q = &g_phy_regs_def[0]; q->addr >= 0 && q->name && q->bdef; ++q) {
+			if (!*(reg + q->addr))
+				continue;
+			fprintf(fp, "%20s(%02x): %04x", q->name, q->addr, *(reg + q->addr));
+			for (b = q->bdef; b->sbit >= 0 && b->blen > 0 && b->description; ++b) {
+				if (b->sbit >= 16 || b->blen >= 16)
+					break;
+				m = (1U << b->blen) - 1;
+				v = (*(reg + q->addr) >> b->sbit) & m;
+				if (!v)
+					continue;
+				fprintf(fp, ", %s %x", b->description, v);
+			}
+			fprintf(fp, "\n");
+		}
+		fprintf(fp, "\n");
+
+		/* dbg registers, 0 ~ 0x3F */
+		fprintf(fp, "\nDump %s (PHY %d)'s debug registers:", p->name, phy);
+		memset(reg, 0, sizeof(reg));
+		for (i = 0; i <= 0x3F; ++i) {
+			if (!write_phy_reg(phy, 0x1d, i)) {
+				fprintf(fp, "Failed to write 0x%x to reg 0x1d of PHY %d\n", i, phy);
+				continue;
+			}
+			if ((v = read_phy_reg(phy, 0x1e)) < 0) {
+				fprintf(fp, "Failed to read register 0x1d from phy %d\n", phy);
+				continue;
+			}
+			if (!(i % 16))
+				fprintf(fp, "\n%4x:", i);
+			fprintf(fp, " %04x", v);
+			reg[i] = v;
+		}
+	}
+
+	return 0;
+}
+
+static const char *g_qca_nss_drv_stats_attrs[] = {
+	"pppoe", "gre", "pptp", "l2tpv2", "n2h", "ipv4", "ipv6",
+	"gmac", "drv", "wifi", "wifili", "eth_rx", "lso_rx",
+	NULL
+};
+
+static int dump_qca_nss_drv_stats(FILE *fp)
+{
+	const char **p;
+	FILE *fp_res;
+	char line[512], path[sizeof("/sys/kernel/debug/qca-nss-drv/stats/XXX") + 16];
+
+	if (!fp)
+		return -1;
+
+	fprintf(fp, "\n");
+	for (p = &g_qca_nss_drv_stats_attrs[0]; *p != NULL; ++p) {
+		snprintf(path, sizeof(path), "/sys/kernel/debug/qca-nss-drv/stats/%s", *p);
+		if (!f_exists(path)) {
+			fprintf(fp, "%s doesn't exist, skip\n", path);
+			continue;
+		}
+
+		if (!(fp_res = fopen(path, "r"))) {
+			fprintf(fp, "Open [%s] failed. errno %d (%s)\n", path, errno, strerror(errno));
+			return -2;
+		}
+		fprintf(fp, "\n\n######## Dump %s ########", path);
+		while (fgets(line, sizeof(line), fp_res) != NULL) {
+			fprintf(fp, "%s", line);
+		}
+		fclose(fp_res);
+	}
+
+	return 0;
+}
+
+void __gen_switch_log(char *fn)
+{
+	char path[64], *ate_cmd[] = { "ATE", "Get_WanLanStatus", NULL };
+	FILE *fp;
+
+	if (!fn || *fn == '\0')
+		return;
+
+	snprintf(path, sizeof(path), ">%s", fn);
+	_eval(ate_cmd, path, 0, NULL);
+
+	if (!(fp = fopen(fn, "a")))
+		return;
+
+	/* EEPROM in SFP+ module */
+	dump_sfpp_eeprom(fp);
+
+	/* Important AQR PHY registers */
+	dump_aqr_regs(fp);
+
+	/* QCA8337 registers */
+	dump_qca8337_regs(fp);
+
+	/* Registers of each PHY */
+	dump_phy_regs(fp);
+
+	/* qca-nss-drv stats */
+	dump_qca_nss_drv_stats(fp);
+
+	fclose(fp);
+}
+#endif

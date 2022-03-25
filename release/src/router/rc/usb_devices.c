@@ -4735,23 +4735,23 @@ int asus_usb_interface(const char *device_name, const char *action)
 		return 0;
 	}
 
+	// set USB common nvram.
+	set_usb_common_nvram(action, device_name, usb_node, "modem");
+
 #ifdef RTCONFIG_INTERNAL_GOBI
-	if(nvram_get_int("usb_gobi") != 1 && !strcmp(port_path, nvram_safe_get("usb_buildin"))){
+	if(nvram_get_int("usb_gobi") != 1 && !strcmp(port_path, get_gobi_portpath())){
 		usb_dbg("(%s): Disable the built-in Gobi.\n", device_name);
 		file_unlock(isLock);
 		return 0;
 	}
 #ifndef RTCONFIG_USB_MULTIMODEM
-	if(nvram_get_int("usb_gobi") == 1 && strcmp(port_path, nvram_safe_get("usb_buildin"))){
+	else if(nvram_get_int("usb_gobi") == 1 && strcmp(port_path, get_gobi_portpath())){
 		usb_dbg("(%s): Just use the built-in Gobi and disable the USB modem.\n", device_name);
 		file_unlock(isLock);
 		return 0;
 	}
 #endif
 #endif
-
-	// set USB common nvram.
-	set_usb_common_nvram(action, device_name, usb_node, "modem");
 
 	// Modem add action.
 	// WiMAX
@@ -4853,10 +4853,6 @@ int asus_usb_interface(const char *device_name, const char *action)
 		usb_dbg("(%s): Android phone: Runing RNDIS...\n", device_name);
 	}
 	else if(isSerialInterface(device_name, 1, vid, pid)){
-#if defined(RT4GAC86U) || defined(RT4GAX56)
-		usb_dbg("(%s): Found USB serial with (0x%04x/0x%04x)...\n", device_name, vid, pid);
-		modprobe("option");
-#else
 		usb_dbg("(%s): Runing USB serial with (0x%04x/0x%04x)...\n", device_name, vid, pid);
 		modprobe("usbserial");
 #if LINUX_KERNEL_VERSION >= KERNEL_VERSION(2,6,36)
@@ -4877,7 +4873,6 @@ int asus_usb_interface(const char *device_name, const char *action)
 		modprobe("option", modem_cmd, buf);
 #endif
 		sleep(1);
-#endif // RT4GAC86U
 	}
 	else if(isACMInterface(device_name, 1, vid, pid)){
 		usb_dbg("(%s): Runing USB ACM...\n", device_name);

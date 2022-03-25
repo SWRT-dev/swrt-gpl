@@ -1,0 +1,12 @@
+#
+# Central Buffer Manager(CBM) configuration
+#
+menu "CQM_PRX300"
+config CBM_LS_ENABLE
+	tristate "CBM loadspreader"
+	depends on LTQ_CBM
+	default n
+	---help---
+	Turn on this option to enable CBM LS and TCP packet Marking
+	in HW.
+endmenu

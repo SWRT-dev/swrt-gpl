@@ -269,7 +269,6 @@ ce_management_query_proxy(struct context *c)
             buf_printf(&out, ">PROXY:%u,%s,%s", (l ? l->current : 0) + 1,
                        (proto_is_udp(ce->proto) ? "UDP" : "TCP"), np(ce->remote));
             management_notify_generic(management, BSTR(&out));
-            management->persist.special_state_msg = BSTR(&out);
         }
         ce->flags |= CE_MAN_QUERY_PROXY;
         while (ce->flags & CE_MAN_QUERY_PROXY)
@@ -281,7 +280,6 @@ ce_management_query_proxy(struct context *c)
                 break;
             }
         }
-        management->persist.special_state_msg = NULL;
         gc_free(&gc);
     }
 
@@ -351,7 +349,6 @@ ce_management_query_remote(struct context *c)
         buf_printf(&out, ">REMOTE:%s,%s,%s", np(ce->remote), ce->remote_port,
                    proto2ascii(ce->proto, ce->af, false));
         management_notify_generic(management, BSTR(&out));
-        management->persist.special_state_msg = BSTR(&out);
 
         ce->flags &= ~(CE_MAN_QUERY_REMOTE_MASK << CE_MAN_QUERY_REMOTE_SHIFT);
         ce->flags |= (CE_MAN_QUERY_REMOTE_QUERY << CE_MAN_QUERY_REMOTE_SHIFT);
@@ -365,7 +362,6 @@ ce_management_query_remote(struct context *c)
                 break;
             }
         }
-        management->persist.special_state_msg = NULL;
     }
     gc_free(&gc);
 
@@ -458,17 +454,6 @@ next_connection_entry(struct context *c)
                  */
                 if (!c->options.persist_remote_ip)
                 {
-                    /* Connection entry addrinfo objects might have been
-                     * resolved earlier but the entry itself might have been
-                     * skipped by management on the previous loop.
-                     * If so, clear the addrinfo objects as close_instance does
-                     */
-                    if (c->c1.link_socket_addr.remote_list)
-                    {
-                        clear_remote_addrlist(&c->c1.link_socket_addr,
-                                              !c->options.resolve_in_advance);
-                    }
-
                     /* close_instance should have cleared the addrinfo objects */
                     ASSERT(c->c1.link_socket_addr.current_remote == NULL);
                     ASSERT(c->c1.link_socket_addr.remote_list == NULL);
@@ -1538,7 +1523,7 @@ initialization_sequence_completed(struct context *c, const unsigned int flags)
      */
     if (c->options.mode == MODE_POINT_TO_POINT)
     {
-        ssl_clean_user_pass();
+        delayed_auth_pass_purge();
     }
 #endif /* ENABLE_CRYPTO */
 
@@ -2309,16 +2294,9 @@ do_deferred_options(struct context *c, const unsigned int found)
         {
             tls_poor_mans_ncp(&c->options, c->c2.tls_multi->remote_ciphername);
         }
-        struct frame *frame_fragment = NULL;
-#ifdef ENABLE_FRAGMENT
-        if (c->options.ce.fragment)
-        {
-            frame_fragment = &c->c2.frame_fragment;
-        }
-#endif
-
-        if (!tls_session_update_crypto_params(session, &c->options, &c->c2.frame,
-                                              frame_fragment))
+        /* Do not regenerate keys if server sends an extra push reply */
+        if (!session->key[KS_PRIMARY].crypto_options.key_ctx_bi.initialized
+            && !tls_session_update_crypto_params(session, &c->options, &c->c2.frame))
         {
             msg(D_TLS_ERRORS, "OPTIONS ERROR: failed to import crypto options");
             return false;
@@ -2745,7 +2723,6 @@ do_init_crypto_tls(struct context *c, const unsigned int flags)
     to.tcp_mode = link_socket_proto_connection_oriented(options->ce.proto);
     to.config_ciphername = c->c1.ciphername;
     to.config_authname = c->c1.authname;
-    to.config_ncp_ciphers = options->ncp_ciphers;
     to.ncp_enabled = options->ncp_enabled;
     to.transition_window = options->transition_window;
     to.handshake_window = options->handshake_window;
@@ -3058,7 +3035,6 @@ do_init_frame(struct context *c)
      */
     c->c2.frame_fragment = c->c2.frame;
     frame_subtract_extra(&c->c2.frame_fragment, &c->c2.frame_fragment_omit);
-    c->c2.frame_fragment_initial = c->c2.frame_fragment;
 #endif
 
 #if defined(ENABLE_FRAGMENT) && defined(ENABLE_OCC)
@@ -3907,7 +3883,7 @@ init_management_callback_p2p(struct context *c)
 #ifdef ENABLE_MANAGEMENT
 
 void
-init_management(void)
+init_management(struct context *c)
 {
     if (!management)
     {

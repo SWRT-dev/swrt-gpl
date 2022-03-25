@@ -173,8 +173,7 @@ int API_EXPORTED libusb_control_transfer(libusb_device_handle *dev_handle,
 
 static int do_sync_bulk_transfer(struct libusb_device_handle *dev_handle,
 	unsigned char endpoint, unsigned char *buffer, int length,
-	int *transferred, unsigned int timeout, unsigned char type,
-	int bulk_buffer_len)
+	int *transferred, unsigned int timeout, unsigned char type)
 {
 	struct libusb_transfer *transfer;
 	int completed = 0;
@@ -190,9 +189,6 @@ static int do_sync_bulk_transfer(struct libusb_device_handle *dev_handle,
 	libusb_fill_bulk_transfer(transfer, dev_handle, endpoint, buffer, length,
 		sync_transfer_cb, &completed, timeout);
 	transfer->type = type;
-#ifdef ASUS_U2EC
-	transfer->bulk_buffer_len = bulk_buffer_len;
-#endif
 
 	r = libusb_submit_transfer(transfer);
 	if (r < 0) {
@@ -283,18 +279,8 @@ int API_EXPORTED libusb_bulk_transfer(struct libusb_device_handle *dev_handle,
 	unsigned int timeout)
 {
 	return do_sync_bulk_transfer(dev_handle, endpoint, data, length,
-		transferred, timeout, LIBUSB_TRANSFER_TYPE_BULK, 0);
+		transferred, timeout, LIBUSB_TRANSFER_TYPE_BULK);
 }
-
-#ifdef ASUS_U2EC
-int API_EXPORTED libusb_bulk_transfer_sp(struct libusb_device_handle *dev_handle,
-	unsigned char endpoint, unsigned char *data, int length, int *transferred,
-	unsigned int timeout, int max_rw)
-{
-	return do_sync_bulk_transfer(dev_handle, endpoint, data, length,
-		transferred, timeout, LIBUSB_TRANSFER_TYPE_BULK, max_rw);
-}
-#endif
 
 /** \ingroup libusb_syncio
  * Perform a USB interrupt transfer. The direction of the transfer is inferred
@@ -345,5 +331,5 @@ int API_EXPORTED libusb_interrupt_transfer(
 	unsigned char *data, int length, int *transferred, unsigned int timeout)
 {
 	return do_sync_bulk_transfer(dev_handle, endpoint, data, length,
-		transferred, timeout, LIBUSB_TRANSFER_TYPE_INTERRUPT, 0);
+		transferred, timeout, LIBUSB_TRANSFER_TYPE_INTERRUPT);
 }

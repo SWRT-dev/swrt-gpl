@@ -1,9 +1,9 @@
 ﻿@font-face{
-	font-family: Roboto-Regular, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Regular;
 	src: url(/fonts/Roboto-Regular.ttf) format("opentype");
 }
 @font-face{
-	font-family: Roboto-Light, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Light;
 	src: url(/fonts/Roboto-Light.ttf) format("opentype");
 }
 #jstree{
@@ -99,7 +99,7 @@
 	float: right;
 	padding: 2% 1% 2% 1%;
 	background-color: #424E55;
-	font-family: Roboto-Regular, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Regular, "Microsoft JhengHei";
 }
 .card_block_bg{
 	width: 100%;
@@ -264,6 +264,18 @@
 	background-size: contain;
 	background-position: 50%;
 }
+.model_icon_exchange{
+	background-image: url(/images/New_ui/amesh/icon_exchange.svg);
+	background-repeat: no-repeat;
+	background-size: contain;
+	background-position: 50%;
+	position: absolute;
+	bottom: -8px;
+	right: 0px;
+	width: 30px;
+	height: 30px;
+	cursor: pointer;
+}
 .location_dropdown_icon:before{
 	background-image: url('/images/New_ui/amesh/location_dropdown.svg');
 	background-size: 850%;
@@ -375,7 +387,7 @@
 	z-index: 20;
 	color: #ffffff;
 	font-size: 14px;
-	font-family: Roboto-Light, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Light, "Microsoft JhengHei";
 	background: transparent;
 }
 .location_info_bg span.location_hint{
@@ -392,7 +404,7 @@
 	background-color: rgba(33,44,49,0.7);
 	border-radius: 4px 4px 0px 0px;
 	font-size: 14px;
-	font-family: Roboto-Light, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Light, "Microsoft JhengHei";
 	height: 21px;
 }
 /*style the arrow inside the select element:*/
@@ -480,7 +492,7 @@
 	height: 185px;
 	overflow-y: scroll;
 	border-radius: 0px 0px 4px 4px;
-	font-family: Roboto-Light, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Light, "Microsoft JhengHei";
 }
 .custom_select_items div:hover{
 	background-color: #3C474B;
@@ -554,7 +566,7 @@
 .signal_text_bg.signal{
 	font-size: 30px;
 	margin-left: 18px;
-	font-family: Roboto-Light, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Light, "Microsoft JhengHei";
 	height: 30px;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -588,7 +600,7 @@
 }
 .signal_hint_text{
 	margin-left: 18px;
-	font-family: Roboto-Regular, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Regular, "Microsoft JhengHei";
 	font-size: 12px;
 	color: #7F8FA4;
 }
@@ -613,7 +625,7 @@
 .fw_version_text{
 	color: #FFFFFF;
 	font-size: 14px;
-	font-family: Roboto-Light, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Light, "Microsoft JhengHei";
 	text-decoration: underline;
 	position: relative;
 }
@@ -681,7 +693,8 @@
 .category_bg.clicked > div.manage:before{
 	background-position: -99px -136.8px;
 }
-.connect_type_status_bg > div, .manage_settings_bg > div{
+.connect_type_status_bg.uplink > div, .manage_settings_bg > div,
+.connect_type_status_bg .fronthaul_title, .connect_type_status_bg .fronthaul_info > div{
 	height: 60px;
 	position: relative;
 }
@@ -692,6 +705,19 @@
 .connect_type_status_bg div.common_separate_bg.horizontal_line.phy_rate{
 	height: 58px;
 	position: relative;
+}
+.connect_type_status_bg .as_backhaul_info > div{
+	height: auto;
+	min-height: 25px;
+	font-size: 14px;
+	color: #FC0;
+	padding: 0 22px 0px 22px;
+	margin-top: -16px;
+}
+.connect_type_status_bg .as_backhaul_info .faq-link{
+	text-decoration: underline !important;
+	cursor: pointer;
+	color: #33ACFF;
 }
 .wan_status_bg:not(:last-child){
 	margin-bottom: 18px;
@@ -705,12 +731,23 @@
 }
 .connect_type_status_bg .uplink_type_bg{
 	margin-bottom: 6px;
+	min-height: 60px;
+	height: auto;
+	display: flex;
+	align-items: flex-end;
+}
+.uplink_type_bg .uplink_connect_info_bg{
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	max-width: 245px;
 }
 .connect_type_status_bg .uplink_type_title{
-	line-height: 36px;
-	font-family: Roboto-Light, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	line-height: 110%;
+	font-family: Roboto-Light, "Microsoft JhengHei";
 	font-size: 24px;
 	margin-left: 22px;
+	margin-bottom: 10px;
 }
 .connect_type_status_bg .uplink_type_title.great, .signal_text_bg.signal.great{
 	color: #4EF81C;
@@ -725,10 +762,9 @@
 	color: #627681;
 }
 .connect_type_status_bg .uplink_type_ip, .connect_type_status_bg .uplink_type_mode_title{
-	font-family: Roboto-Regular, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Regular, "Microsoft JhengHei";
 	font-size: 14px;
 	color: #CDEBFF;
-	position: absolute;
 	margin-left: 22px;
 }
 .connect_type_status_bg .uplink_type_mode_title{
@@ -833,7 +869,7 @@
 .card_block_bg span.connect_title{
 	top: 24px;
 	line-height: initial;
-	font-family: Roboto-Regular, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Regular, "Microsoft JhengHei";
 }
 .card_block_bg span.connect_title.vertical{
 	top: 18px;
@@ -911,7 +947,7 @@
 }
 .wan_status_bg span.connect_status{
 	font-size: 20px;
-	font-family: Roboto-Light, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Light, "Microsoft JhengHei";
 }
 .wan_status_bg span.connect_status.connected{
 	color: #00FCFF;
@@ -1017,7 +1053,7 @@
 	margin: 7px 0px 0px 22px;
 }
 .common_content_text{
-	font-family: Roboto-Light, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Light, "Microsoft JhengHei";
 	font-size: 14px;
 	color: #FFFFFF;
 	letter-spacing: 3px;
@@ -1070,7 +1106,7 @@
 }
 .common_separate_bg span{
 	position: absolute;
-	font-family: Roboto-Regular, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Regular, "Microsoft JhengHei";
 	font-size: 12px;
 	color: #A4B7C3;
 }
@@ -1079,7 +1115,7 @@
 	top: -4px;
 }
 .common_separate_bg span.transmit_value{
-	font-family: Roboto-Light, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Light, "Microsoft JhengHei";
 	font-size: 20px;
 	color: #00FCFF;
 	bottom: 6px;
@@ -1092,7 +1128,7 @@
 .common_separate_bg span.transmit_unit{
 	bottom: 3px;
 	left: 120px;
-	font-family: Roboto-Light, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Light, "Microsoft JhengHei";
 }
 .common_separate_bg.horizontal_line:before,
 .item_bg.signal:before,.item_bg.location:before,
@@ -1177,7 +1213,7 @@
 	height: 56px !important
 }
 .manage_common_title{
-	font-family: Roboto-Regular, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Regular, "Microsoft JhengHei";
 	font-size: 14px;
 	color: #FFFFFF;
 }
@@ -1190,31 +1226,55 @@
 }
 .manage_common_separate_bg.left{
 	margin-left: 22px;
+	max-width: 265px;
+	word-break: break-word;
 }
 .manage_common_separate_bg.right{
 	margin-right: 22px;
 	right: 0;
 }
-.manage_settings_bg .dropdown_item_bg{
-	height: 92px;
+.manage_settings_bg .dropdown_item_bg, .manage_settings_bg .two_text_item_bg{
+	min-height: 92px;
+	height: auto;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-around;
 }
-.manage_settings_bg .dropdown_item_bg > div{
+.manage_settings_bg .two_text_item_bg{
+	min-height: 70px;
+}
+.manage_settings_bg .dropdown_item_bg > div, .manage_settings_bg .two_text_item_bg > div{
 	margin-left: 22px;
 }
-.manage_settings_bg .dropdown_item_bg > div:nth-child(1){
-	height: 30px;
-	line-height: 42px;
+.manage_settings_bg .dropdown_item_bg > div:nth-child(1), .manage_settings_bg .two_text_item_bg > div:nth-child(1){
+	min-height: 42px;
+	height: auto;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+.manage_settings_bg .dropdown_item_bg .manage_common_title > div:nth-child(1),
+.manage_settings_bg .two_text_item_bg .manage_common_title > div:nth-child(1){
+	width: 85%;
+	display: flex;
+	min-height: 42px;
+	align-items: center;
 }
 .manage_settings_bg .dropdown_item_bg > div:nth-child(2){
-	height: 36px;
-	margin-top: 12px;
+	height: 42px;
+}
+.manage_settings_bg .two_text_item_bg > div:nth-child(2){
+	height: 30px;
+	display: flex;
+	align-items: center;
+	margin-bottom: 2px;
 }
 .manage_settings_bg .dropdown_item_bg .dropdown_select{
 	background: #2B353C;
 	border: 1px solid #4C5B65;
 	border-radius: 4px;
 	color: #FFFFFF;
-	font-family: Roboto-Regular, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Regular, "Microsoft JhengHei";
 	font-size: 14px;
 	color: #FFFFFF;
 	line-height: 36px;
@@ -1223,9 +1283,9 @@
 	padding-left: 6px;
 	outline: none;
 }
-.manage_settings_bg .dropdown_item_bg .bubble_icon{
+.manage_settings_bg .dropdown_item_bg .bubble_icon, .manage_settings_bg .two_text_item_bg .bubble_icon{
 	position: relative;
-	top: 7px;
+	right: 16px;
 }
 .manage_settings_bg .sub_item_bg{
 	height: auto;
@@ -1360,15 +1420,10 @@
 .managment_icon.preferable_backhaul_icon{
 	background-position: 2px -206px;
 }
-.managment_icon.preferable_backhaul_icon.float_right{
-	float: right;
-}
 .preferable_backhaul_text{
 	color: #A4B7C3;
 	font-size: 12px;
-	float: left;
-	margin-top: 3px;
-	margin-right: 6px;
+	margin-left: 6px;
 }
 .arrow_icon{
 	position: relative;
@@ -1403,7 +1458,7 @@
 	right: 6px;
 }
 .client_num_bg{
-	font-family: Roboto-Regular, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Regular, "Microsoft JhengHei";
 	font-size: 14px;
 	color: #FFFFFF;
 	margin: 24px 22px 18px 22px;
@@ -1411,7 +1466,7 @@
 .client_num_bg div.left{
 	float: left;
 	position: relative;
-	font-family: Roboto-Regular, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Regular, "Microsoft JhengHei";
 	font-size: 16px;
 }
 .client_num_bg div.left span:before{
@@ -1433,8 +1488,9 @@
 	background: #253238;
 	border: 1px solid #364752;
 	border-radius: 4px;
-	height: 36px;
 	line-height: 36px;
+	min-height: 36px;
+	height: auto;
 	width: 95%;
 	margin: 0 auto;
 }
@@ -1447,6 +1503,9 @@
 	cursor: pointer;
 	position: relative;
 	width: 33%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
 }
 .client_tab_bg div:nth-child(2){
 	width: 34%;
@@ -1541,7 +1600,7 @@
 	position: relative;
 }
 .client_list_bg .client_content_bg > .client_content_name{
-	font-family: Roboto-Light, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Light, "Microsoft JhengHei";
 	font-size: 16px;
 	color: #FFFFFF;
 	height: 60%;
@@ -1623,7 +1682,7 @@
 	border-radius: 4px;
 	position: absolute;
 	padding: 18px;
-	font-family: Roboto-Regular, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Regular, "Microsoft JhengHei";
 	font-size: 16px;
 	left: 12%;
 	z-index: 500;
@@ -1738,13 +1797,21 @@
 	box-shadow: 0 2px 4px 0 rgba(0,0,0,0.20), 0 1px 4px 0 rgba(60,60,60,0.30);
 	border-radius: 4px;
 	padding: 18px;
-	font-family: Roboto-Regular, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Regular, "Microsoft JhengHei";
 	font-size: 16px;
 	color: #FFFFFF;
 	z-index: 500;
 	display: none;
 }
-.hover_pop_hint_bg.conn_priority_icon, .hover_pop_hint_bg.lacp_icon{
+.hover_pop_hint_bg.conn_priority_icon{
+	top: -90px;
+	left: -18px;
+}
+.hover_pop_hint_bg.prefer_ap_icon{
+	top: -130px;
+	left: -18px;
+}
+.hover_pop_hint_bg.lacp_icon{
 	top: 40px;
 	left: 16px;
 }
@@ -1762,7 +1829,7 @@
 	top: 7px;
 	left: 0px;
 }
-.hover_pop_hint_bg.conn_priority_icon > span.conn_priority_content{
+.hover_pop_hint_bg.conn_priority_icon > span.conn_priority_content, .hover_pop_hint_bg.prefer_ap_icon > span.prefer_ap_content{
 	color: #A4B7C3;
 	font-size: 13px;
 	line-height: 140%;
@@ -1770,7 +1837,7 @@
 .hover_pop_hint_bg.conn_priority_icon > span.conn_priority_content.text_yellow{
 	color: #FC0;
 }
-.hover_pop_hint_bg.conn_priority_icon .height_space{
+.hover_pop_hint_bg.conn_priority_icon .height_space, .hover_pop_hint_bg.prefer_ap_icon .height_space{
 	height: 12px;
 }
 .hover_pop_hint_bg.fw_icon{
@@ -1789,10 +1856,15 @@
 	top: 32px;
 	left: 0px;
 }
-.hover_pop_hint_bg.node_feature_notice .list_item{
+.hover_pop_hint_bg.node_feature_notice .list_item, .hover_pop_hint_bg.prefer_ap_icon .list_item{
 	margin: 0;
 	padding: 0 18px;
 	color: #33ACFF;
+}
+.hover_pop_hint_bg.prefer_ap_icon .list_item{
+	color: #A4B7C3;
+	font-size: 13px;
+	line-height: 140%;
 }
 .hover_pop_hint:hover::before{
 	content: '';
@@ -1809,6 +1881,15 @@
 .hover_pop_hint.node_feature_notice:hover::before{
 	right: -27px;
 	left: initial;
+}
+.hover_pop_hint.conn_priority_icon:hover::before, .hover_pop_hint.prefer_ap_icon:hover::before{
+	top: 5px;
+	left: -16px;
+	-o-transform: rotate(90deg);
+	-ms-transform: rotate(90deg);
+	-moz-transform: rotate(90deg);
+	-webkit-transform: rotate(90deg);
+	transform: rotate(90deg);
 }
 .bubble_icon.info:hover + .hover_pop_hint_bg,
 .bubble_icon.fw_icon:hover + .hover_pop_hint_bg,
@@ -2164,7 +2245,7 @@
 	line-height: initial;
 	margin-left: 0px;
 	width: 160px;
-	font-family: Roboto-Regular, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Regular, "Microsoft JhengHei";
 }
 .topology_node_info > div{
 	line-height: 180%;
@@ -2209,7 +2290,7 @@
 	height: 24%;
 }
 .topology_node_info > div:nth-child(3) > span:nth-child(2){
-	font-family: Roboto-Light, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Light, "Microsoft JhengHei";
 	font-size: 16px;
 	color: #33ACFF;
 	margin-left: 6px;
@@ -2252,7 +2333,7 @@
 	border: 1px solid #425057;
 	box-shadow: 0 1px 2px 0 rgba(0,0,0,0.30);
 	border-radius: 4px;
-	font-family: Roboto-Regular, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Regular, "Microsoft JhengHei";
 	font-size: 14px;
 	color: #FFFFFF;
 	display: inline-block;
@@ -2311,7 +2392,7 @@
 	top: 36px;
 }
 .aimesh_intro_text > div:nth-child(1){
-	font-family: Roboto-Light, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Light, "Microsoft JhengHei";
 	font-size: 24px;
 }
 .aimesh_intro_text > div:nth-child(2):before{
@@ -2327,7 +2408,7 @@
 	height: 1px;
 }
 .aimesh_intro_text > div:nth-child(2){
-	font-family: Roboto-light, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Light, "Microsoft JhengHei";
 	font-size: 12px;
 	position: relative;
 	margin-top: 18px;
@@ -2426,14 +2507,14 @@
 	margin-top: 12px !important;
 	margin-bottom: 12px !important;
 }
-.connect_type_status_bg.backhaul .wired_hide{
+.connect_type_status_bg.backhaul .wired_hide, .connect_type_status_bg.backhaul .phy_rate_bg{
 	height: auto !important;
 }
 .connect_type_status_bg.backhaul .spacing{
 	margin-top: 12px !important;
 }
 .aimesh_tab{
-	font-family: Roboto-Regular, MS UI Gothic, MS P Gothic, "Microsoft JhengHei";
+	font-family: Roboto-Regular, "Microsoft JhengHei";
 	font-size: 16px;
 	color: #FFFFFF;
 	height: 24px;

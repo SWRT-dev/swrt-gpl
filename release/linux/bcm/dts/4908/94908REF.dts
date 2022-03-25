@@ -1,0 +1,228 @@
+#include "4908.dtsi"
+
+/ {
+    memory_controller {
+        memcfg = <(BP_DDR_SPEED_800_11_11_11 | \
+                   BP_DDR_TOTAL_SIZE_1024MB  | \
+                   BP_DDR_DEVICE_WIDTH_16    | \
+                   BP_DDR_TOTAL_WIDTH_32BIT  | \
+                   BP_DDR_SSC_CONFIG_1)>;
+    };
+
+	buttons {
+		compatible = "brcm,buttons";
+		reset_button {
+			ext_irq = <&bca_extintr 30 BCA_GPIO_ACTIVE_LOW (BCA_EXTINTR_TYPE_LOW_LEVEL | BCA_EXTINTR_TYPE_SENSE_LEVEL)>;
+			press {
+				print = "Button Press -- Hold for 5s to do restore to default";
+			};
+			hold {
+				rst_to_dflt = <5>;
+			};
+			release {
+				reset = <0>;
+			};	
+		};
+		ses_button {
+			ext_irq = <&bca_extintr 29 BCA_GPIO_ACTIVE_LOW (BCA_EXTINTR_TYPE_LOW_LEVEL | BCA_EXTINTR_TYPE_SENSE_LEVEL)>;
+			release {
+				ses_short_period = <0>;
+				ses_long_period = <3>;
+			};
+		};
+	};
+};
+
+/ {
+	compatible = "brcm,brcm94908ref", "brcm,brcm-v8A";
+	model = "94908REF";
+
+};
+
+&mdio_sf2 {
+	/* PHYs directly connected to SF2 */
+	gphy8:8 {
+		status = "okay";
+	};
+	gphy9:9 {
+		status = "okay";
+	};
+	gphya:a {
+		status = "okay";
+	};
+	gphyb:b {
+		status = "okay";
+	};
+
+	/* PHYs connected to crossbar */
+	gphyc:c {
+		status = "okay";
+	};
+
+	/* Crossbar groups */
+	xbar_grp1:1 {
+		phy-handle = <&gphyc>;
+		status = "okay";
+	};
+};
+
+&switch_sf2 {
+	ports {
+		sf2_port0@0 {
+			network-leds = <&led0 &led1>;
+			phy-handle = <&gphy8>;
+			status = "okay";
+		};
+
+		sf2_port1@1 {
+			network-leds = <&led2 &led3>;
+			phy-handle = <&gphy9>;
+			status = "okay";
+		};
+
+		sf2_port2@2 {
+			network-leds = <&led4 &led5>;
+			phy-handle = <&gphya>;
+			status = "okay";
+		};
+
+		sf2_port3@3 {
+			network-leds = <&led6 &led7>;
+			phy-handle = <&gphyb>;
+			status = "okay";
+		};
+
+	};
+};
+
+&switch0 {
+	ports {
+		
+		port3@3 {
+			network-leds = <&led8 &led9>;
+			phy-handle = <&xbar_grp1>;
+			phy-mode = "gmii";
+			status = "okay";
+		};
+	};
+};
+
+&legacy_leds {
+	voip1-ok-led = <&led12>;
+	voip2-ok-led = <&led13>;
+};
+&led_ctrl {
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&ser_led_clk_pin_1 &ser_led_data_pin_0 &ser_led_mask_pin_2>;
+    serial-shifters-installed= <3>;
+    serial-data-polarity-high;
+
+    led0: port_0-led_0-bit_0 {
+        active_high;
+	link = <(LED_SPEED_10|LED_SPEED_100)>;
+        status = "okay";
+    };
+    led1: port_0-led_1-bit_1 {
+        active_high;
+	link = <(LED_SPEED_100|LED_SPEED_1G)>;
+        status = "okay";
+    };
+    led2: port_1-led_0-bit_2 {
+        active_high;
+	link = <(LED_SPEED_10|LED_SPEED_100)>;
+        status = "okay";
+    };
+    led3: port_1-led_1-bit_3 {
+        active_high;
+	link = <(LED_SPEED_100|LED_SPEED_1G)>;
+        status = "okay";
+    };
+    led4: port_2-led_0-bit_4 {
+        active_high;
+	link = <(LED_SPEED_10|LED_SPEED_100)>;
+        status = "okay";
+    };
+    led5: port_2-led_1-bit_5 {
+        active_high;
+	link = <(LED_SPEED_100|LED_SPEED_1G)>;
+        status = "okay";
+    };
+    led6: port_3-led_0-bit_6 {
+        active_high;
+	link = <(LED_SPEED_10|LED_SPEED_100)>;
+        status = "okay";
+    };
+    led7: port_3-led_1-bit_7 {
+        active_high;
+	link = <(LED_SPEED_100|LED_SPEED_1G)>;
+        status = "okay";
+    };
+    led8: port_4-led_0-bit_8 {
+        active_high;
+	link = <(LED_SPEED_10|LED_SPEED_100)>;
+        status = "okay";
+    };
+    led9: port_4-led_1-bit_9 {
+        active_high;
+	link = <(LED_SPEED_100|LED_SPEED_1G)>;
+        status = "okay";
+    };
+    led10:sw_led-bit_12 {
+        active_high;
+        status = "okay";
+    };
+    led11:sw_led-bit_16 {
+        active_high;
+        status = "okay";
+    };
+    led12:sw_led-bit_18 {
+        active_high;
+        status = "okay";
+    };
+    led13:sw_led-bit_19 {
+        active_high;
+        status = "okay";
+    };
+    led14:wan-led_0-bit_22 {
+        active_high;
+        status = "okay";
+    };
+    led15: wan-led_1-bit_23 {
+        active_high;
+        status = "okay";
+    };
+    led16:wan-led_2-bit_21 {
+        active_high;
+        status = "okay";
+    };
+    led17:aggregate_link-bit_24 {
+        active_high;
+        status = "okay";
+    };
+    led18:aggregate_activity-bit_25 {
+        active_high;
+        status = "okay";
+    };
+    led19: port_0-led_3-bit_26 {
+        active_high;
+        status = "okay";
+    };
+
+    led20: port_1-led_3-bit_27 {
+        active_high;
+        status = "okay";
+    };
+    led21: port_2-led_3-bit_28 {
+        active_high;
+        status = "okay";
+    };
+    led22: port_3-led_3-bit_29 {
+        active_high;
+        status = "okay";
+    };
+    led23: port_4-led_3-bit_30 {
+        active_high;
+        status = "okay";
+    };
+};

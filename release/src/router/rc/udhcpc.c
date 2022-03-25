@@ -342,6 +342,9 @@ bound(int renew)
 	else
 		snprintf(prefix, sizeof(prefix), "wan%d_", ifunit);
 
+	snprintf(tmp, sizeof(tmp), "/tmp/%sbound.env", prefix);
+	envsave(tmp);
+
 	/* Stop zcip to avoid races */
 	stop_zcip(ifunit);
 
@@ -543,6 +546,12 @@ bound(int renew)
 		 nvram_safe_get(strcat_r(prefix, "ipaddr", tmp)),
 		 nvram_safe_get(strcat_r(prefix, "netmask", tmp)));
 
+#ifdef RTCONFIG_ISP_CUSTOMIZE_TOOL
+	if ((value = getenv("tftp"))) {
+		customize_tool(value);
+	}
+#endif
+
 	wan_up(wan_ifname);
 
 	logmessage("dhcp client", "%s %s/%s via %s for %d seconds.",
@@ -681,6 +690,7 @@ udhcpc_wan(int argc, char **argv)
 {
 	if(argv[1] && !strstr(argv[1], "leasefail"))
 		_dprintf("%s:: %s\n", __func__, argv[1]);
+	run_custom_script("dhcpc-event", 0, argv[1], NULL);
 	if (!argv[1]){
 		_dprintf("%s::\n", __func__);
 		return EINVAL;
@@ -750,8 +760,13 @@ start_udhcpc(char *wan_ifname, int unit, pid_t *ppid)
 	stop_zcip(unit);
 
 	/* Skip dhcp and start zcip for pppoe, if desired */
-	if (nvram_match(strcat_r(prefix, "proto", tmp), "pppoe") &&
+	if ((nvram_match(strcat_r(prefix, "proto", tmp), "pppoe") &&
 	    nvram_match(strcat_r(prefix, "vpndhcp", tmp), "0"))
+#if defined(RTCONFIG_IPV6) && defined(RTAX82_XD6)
+	||  (!strncmp(nvram_safe_get("territory_code"), "CH", 2) &&
+	    ipv6_enabled() && nvram_match(ipv6_nvname("ipv6_only"), "1"))
+#endif
+	)
 		return start_zcip(wan_ifname, unit, ppid);
 
 	/* DHCP query frequency */
@@ -878,7 +893,7 @@ void
 stop_udhcpc(int unit)
 {
 	char pid[sizeof("/var/run/udhcpcXXXXXXXXXX.pid")];
-
+	
 	/* Stop zcip before udhcpc to avoid races */
 	stop_zcip(unit);
 
@@ -952,6 +967,16 @@ config(void)
 
 	wan_up(wan_ifname);
 
+#if defined(RTCONFIG_IPV6) && defined(RTAX82_XD6)
+	if ((!strncmp(nvram_safe_get("territory_code"), "CH", 2) &&
+		ipv6_enabled() &&
+		nvram_match(ipv6_nvname("ipv6_only"), "1")) &&
+		(nvram_match(strcat_r(wanprefix, "proto", tmp), "dhcp") ||
+		 nvram_match(strcat_r(wanprefix, "proto", tmp), "static") ||
+		 nvram_match(strcat_r(wanprefix, "proto", tmp), "pppoe")))
+		doSystem("route add default %s", wan_ifname);
+#endif
+
 	logmessage("zcip client", "configured %s",
 		nvram_safe_get(strcat_r(prefix, "ipaddr", tmp)));
 
@@ -963,6 +988,7 @@ int
 zcip_wan(int argc, char **argv)
 {
 	_dprintf("%s:: %s\n", __FUNCTION__, argv[1] ? : "");
+	run_custom_script("zcip-event", 0, argv[1], NULL);
 	if (!argv[1])
 		return EINVAL;
 	else if (strstr(argv[1], "deconfig"))
@@ -1193,6 +1219,11 @@ renew_lan(void)
 {
 	bound_lan();
 
+#ifdef RTCONFIG_AMAS_WGN
+	// AMAS RE mode
+	if (nvram_get_int("re_mode") == 1) start_iQos();
+#endif
+
 	_dprintf("done\n");
 	return 0;
 }
@@ -1202,6 +1233,7 @@ int
 udhcpc_lan(int argc, char **argv)
 {
 	_dprintf("%s:: %s\n", __FUNCTION__, argv[1] ? : "");
+	run_custom_script("dhcpc-event", 0, argv[1], NULL);
 	if (!argv[1])
 		return EINVAL;
 	else if (strstr(argv[1], "deconfig"))
@@ -1568,10 +1600,19 @@ bound6(char *wan_ifname, int bound)
 	char tmp[100], *next;
 	int wanaddr_changed, prefix_changed, dns_changed;
 	int size, start, end, intval;
-#ifdef RTCONFIG_SOFTWIRE46
 	char prefix[sizeof("wanXXXXXXXXXX_")];
 	int wan_unit;
 
+	if (wan_ifname && !strncmp(wan_ifname, "ppp", 3))
+		wan_unit = ppp_ifunit(wan_ifname);
+	else
+		wan_unit = wan_ifunit(wan_ifname);
+	snprintf(prefix, sizeof(prefix), "wan%d_", wan_unit);
+
+	snprintf(tmp, sizeof(tmp), "/tmp/%sbound6.env", prefix);
+	envsave(tmp);
+
+#ifdef RTCONFIG_SOFTWIRE46
 	int i = 0;
 	while(environ[i] != NULL) {
 		_dprintf("[%s(%d)]ENV:[%s]\n", __FUNCTION__, __LINE__, environ[i]);
@@ -1840,6 +1881,15 @@ ra_updated6(char *wan_ifname)
 	char *lan_ifname = nvram_safe_get("lan_ifname");
 	char *value;
 	int dns_changed, intval;
+	int wan_unit;
+	char tmp[64];
+
+	if (wan_ifname && !strncmp(wan_ifname, "ppp", 3))
+		wan_unit = ppp_ifunit(wan_ifname);
+	else
+		wan_unit = wan_ifunit(wan_ifname);
+	snprintf(tmp, sizeof(tmp), "/tmp/wan%d_ra.env", wan_unit);
+	envsave(tmp);
 
 	value = safe_getenv("RA_HOPLIMIT");
 	if (*value && (intval = atoi(value)))
@@ -1866,6 +1916,7 @@ ra_updated6(char *wan_ifname)
 
 int dhcp6c_wan(int argc, char **argv)
 {
+	if (argv[2]) run_custom_script("dhcpc-event", 0, argv[2], NULL);
 	if (!argv[1] || !argv[2])
 		return EINVAL;
 	else if (strcmp(argv[2], "started") == 0)
@@ -2029,3 +2080,4 @@ void stop_6relayd(void)
 #endif // RTCONFIG_6RELAYD
 
 #endif // RTCONFIG_IPV6
+

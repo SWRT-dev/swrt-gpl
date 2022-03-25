@@ -1,5 +1,4 @@
 include ../common.mak
-include $(SRCBASE)/.config
 
 OBJ = main.o feature_def.o signature.o utility.o protect_name.o
 OBJ += blockfile.o chknvram.o misc.o
@@ -29,14 +28,17 @@ endif
 
 LDFLAGS += -lpthread -lm
 LDFLAGS += $(LIBS) -L$(TOP)/shared -lshared -L$(TOP)/nvram -lnvram
+ifeq ($(RTCONFIG_BCM_502L07P2),y)
+LDFLAGS += -L$(TOP_PLATFORM)/ethctl_lib -lethctl
+endif
 LDFLAGS += -L$(TOP)/curl/lib/.libs -lcurl -L$(TOP)/
 LDFLAGS += -L$(TOP)/openssl -lcrypto -lssl
 LDFLAGS += -L$(TOP)/libasc -lasc
 LDFLAGS += -L$(TOP)/json-c/.libs -ljson-c
 
-ifeq ($(RTCONFIG_QTN),y)
-CFLAGS += -I$(TOP)/libqcsapi_client -I$(TOP)/httpd -I./sysdeps/qtn
-LDFLAGS += -L$(TOP)/libqcsapi_client -lqcsapi_client
+ifeq ($(RTCONFIG_TR069),y)
+CFLAGS += -I$(TOP)/libssh2-1.9.0/include -I$(TOP)/zlib/include
+LDFLAGS += -L$(TOP)/libssh2-1.9.0/src/.libs -lssh2 -L$(TOP)/zlib -lz
 endif
 
 TARGET = asd
@@ -62,6 +64,4 @@ clean:
 	-rm *.o $(TARGET)
 
 .PHONY: all clean
-
-
 

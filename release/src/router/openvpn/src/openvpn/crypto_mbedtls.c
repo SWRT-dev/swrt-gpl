@@ -519,7 +519,6 @@ cipher_ctx_new(void)
 void
 cipher_ctx_free(mbedtls_cipher_context_t *ctx)
 {
-    mbedtls_cipher_free(ctx);
     free(ctx);
 }
 
@@ -543,6 +542,12 @@ cipher_ctx_init(mbedtls_cipher_context_t *ctx, const uint8_t *key, int key_len,
 
     /* make sure we used a big enough key */
     ASSERT(ctx->key_bitlen <= key_len*8);
+}
+
+void
+cipher_ctx_cleanup(mbedtls_cipher_context_t *ctx)
+{
+    mbedtls_cipher_free(ctx);
 }
 
 int

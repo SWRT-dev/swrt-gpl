@@ -1,0 +1,42 @@
+#
+# Intel Clock driver configuration
+#
+config COMMON_CLK_INTEL
+	depends on COMMON_CLK
+	select MFD_SYSCON
+	bool "Intel clock controller support"
+
+config INTEL_CLK_REGULATOR
+	depends on COMMON_CLK_INTEL
+	bool "Intel Clock Regulator"
+	default y
+
+	help
+	  Function to only allowed reasonable clock setting
+
+choice
+	prompt "SoC platform selection"
+	depends on COMMON_CLK_INTEL
+	default GRX500_CLK
+
+config PRX300_CLK
+	bool "PRX300 CLK"
+	help
+	  Clock driver for PRX300 platform.
+
+config GRX500_CLK
+	bool "GRX500 CLK"
+	help
+	  Clock driver for GRX500 platform.
+
+config GRX330_CLK
+	bool "GRX330 CLK"
+	help
+	  Clock driver of GRX330 platform.
+
+config GRX200_CLK
+	bool "GRX200 CLK"
+	help
+	  Clock driver of GRX200 platform.
+
+endchoice

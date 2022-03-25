@@ -292,6 +292,64 @@ function tryParseJSON (jsonString){
     return false;
 };
 
+var htmlEnDeCode = (function() {
+	var charToEntityRegex,
+		entityToCharRegex,
+		charToEntity,
+		entityToChar;
+
+	function resetCharacterEntities() {
+		charToEntity = {};
+		entityToChar = {};
+		// add the default set
+		addCharacterEntities({
+			'&amp;'	 :   '&',
+			'&gt;'	  :   '>',
+			'&lt;'	  :   '<',
+			'&quot;'	:   '"',
+			'&#39;'	 :   "'"
+		});
+	}
+
+	function addCharacterEntities(newEntities) {
+		var charKeys = [],
+			entityKeys = [],
+			key, echar;
+		for (key in newEntities) {
+			echar = newEntities[key];
+			entityToChar[key] = echar;
+			charToEntity[echar] = key;
+			charKeys.push(echar);
+			entityKeys.push(key);
+		}
+		charToEntityRegex = new RegExp('(' + charKeys.join('|') + ')', 'g');
+		entityToCharRegex = new RegExp('(' + entityKeys.join('|') + '|&#[0-9]{1,5};' + ')', 'g');
+	}
+
+	function htmlEncode(value){
+		var htmlEncodeReplaceFn = function(match, capture) {
+			return charToEntity[capture];
+		};
+
+		return (!value) ? value : String(value).replace(charToEntityRegex, htmlEncodeReplaceFn);
+	}
+
+	function htmlDecode(value) {
+		var htmlDecodeReplaceFn = function(match, capture) {
+			return (capture in entityToChar) ? entityToChar[capture] : String.fromCharCode(parseInt(capture.substr(2), 10));
+		};
+
+		return (!value) ? value : String(value).replace(entityToCharRegex, htmlDecodeReplaceFn);
+	}
+
+	resetCharacterEntities();
+
+	return {
+		htmlEncode: htmlEncode,
+		htmlDecode: htmlDecode
+	};
+})();
+
 var login_info =  tryParseJSON('<% login_error_info(); %>');
 var isIE8 = navigator.userAgent.search("MSIE 8") > -1; 
 var isIE9 = navigator.userAgent.search("MSIE 9") > -1; 
@@ -301,10 +359,10 @@ var remaining_time_sec;
 var remaining_time_show;
 var countdownid, rtime_obj;
 var redirect_page = login_info.page;
-var isRouterMode = ('<% nvram_get("sw_mode"); %>' == '1') ? true : false;
+var isRouterMode = (htmlEnDeCode.htmlEncode(decodeURIComponent('<% nvram_char_to_ascii("","sw_mode"); %>')) == '1') ? true : false;
 
 var header_info = [<% get_header_info(); %>][0];
-var ROUTERHOSTNAME = '<% nvram_get("local_domain"); %>';
+var ROUTERHOSTNAME = htmlEnDeCode.htmlEncode(decodeURIComponent('<% nvram_char_to_ascii("","local_domain"); %>'));
 var domainNameUrl = header_info.protocol+"://"+ROUTERHOSTNAME+":"+header_info.port;
 var chdom = function(){window.location.href=domainNameUrl};
 (function(){
@@ -320,11 +378,17 @@ function isSupport(_ptn){
 	return (ui_support[_ptn]) ? ui_support[_ptn] : 0;
 }
 var captcha_support = isSupport("captcha");
-var captcha_enable = '<% nvram_get("captcha_enable"); %>';
+var captcha_enable = htmlEnDeCode.htmlEncode(decodeURIComponent('<% nvram_char_to_ascii("", "captcha_enable"); %>'));
 if(captcha_support && captcha_enable != "0")
 	var captcha_on = (login_info.error_num >= 2 && login_info.error_status != "7")? true : false;
 else
 	var captcha_on = false;
+//territory_code sku
+function in_territory_code(_ptn){
+        return (ttc.search(_ptn) == -1) ? false : true;
+}
+var ttc = '<% nvram_get("territory_code"); %>';
+var is_CN = (in_territory_code("CN") || in_territory_code("CT") || in_territory_code("GD") || in_territory_code("TC"));
 
 function initial(){
 	var flag = login_info.error_status;
@@ -333,6 +397,9 @@ function initial(){
 		document.getElementById("password_title_ie").style.display ="";
 	}
 
+	if(is_CN){
+		$(document.body).append('<style>*{font-family:"Microsoft Yahei UI", "Arial", "MS UI Gothic", "MS P Gothic", "sans-serif";}</style>');
+	}
 	if(flag != ""){
 		document.getElementById("error_status_field").style.display ="";
 

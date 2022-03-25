@@ -1,0 +1,352 @@
+#include "63158.dtsi"
+#include "../bcm_voice.dtsi"
+
+/ {
+    memory_controller {
+        memcfg = <(BP_DDR_SPEED_1067_14_14_14 | \
+                   BP_DDR_TOTAL_SIZE_1024MB   | \
+                   BP_DDR_DEVICE_WIDTH_16     | \
+                   BP_DDR_TOTAL_WIDTH_32BIT   | \
+                   BP_DDR_SSC_CONFIG_1)>;
+    };
+
+	buttons {
+		compatible = "brcm,buttons";
+		reset_button {
+			ext_irq = <&bca_extintr 46 BCA_GPIO_ACTIVE_LOW (BCA_EXTINTR_TYPE_LOW_LEVEL | BCA_EXTINTR_TYPE_SENSE_EDGE)>;
+			press {
+				print = "Button Press -- Hold for 5s to do restore to default";
+			};
+			hold {
+				rst_to_dflt = <5>;
+			};
+			release {
+				reset = <0>;
+			};	
+		};
+		ses_button {
+			ext_irq = <&bca_extintr 38 BCA_GPIO_ACTIVE_LOW (BCA_EXTINTR_TYPE_LOW_LEVEL | BCA_EXTINTR_TYPE_SENSE_EDGE)>;
+			release {
+				ses_short_period = <0>;
+				ses_long_period = <3>;
+			};
+		};
+	};
+
+	pmd: pmd {
+		compatible = "brcm,pmd";
+		pinctrl-names = "state_ewake";
+		pinctrl-0 = <&a_wan_early_txen_pin_39>;
+		ewake-gpio = <&gpioc 39 GPIO_ACTIVE_HIGH>;
+		rstn-gpio = <&gpioc 5 GPIO_ACTIVE_LOW>;
+		alarm = <&bca_extintr 40 GPIO_ACTIVE_HIGH (BCA_EXTINTR_TYPE_HIGH_LEVEL | BCA_EXTINTR_TYPE_SENSE_EDGE)>;
+		apd-boost;
+		i2c-bus = <&i2c0>;
+	};
+
+	pstn_relay:pstn_relay {
+		compatible = "brcm,voice-pstn-relay";
+		pstnrelay-gpio = <&gpioc 13 GPIO_ACTIVE_HIGH>;
+	};
+};
+
+&i2c0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&b0_i2c_scl_0_pin_25 &b0_i2c_sda_0_pin_24>;
+	status = "okay";
+};
+
+&usb_ctrl {
+	pinctrl-names="default";
+	pinctrl-0 = <&usb0a_pwr_pins &usb1a_pwr_pins>;
+	status = "okay";
+	xhci-enable;
+};
+
+&usb0_ehci {
+	status = "okay";
+};
+&usb1_ehci {
+	status = "okay";
+};
+
+&usb0_ohci {
+	status = "okay";
+};
+&usb1_ohci {
+	status = "okay";
+};
+
+&usb0_xhci {
+	status = "okay";
+};
+
+&mdio_sf2 {
+	/* PHYs directly connected to SF2 */
+	gphy8:8 {
+		status = "okay";
+	};
+	gphy9:9 {
+		status = "okay";
+	};
+	gphya:a {
+		status = "okay";
+	};
+	gphyb:b {
+		status = "okay";
+	};
+
+	/* PHYs connected to crossbar */
+	gphyc:c {
+		status = "okay";
+	};
+	phy_serdes1:serdes1 {
+		status = "okay";
+	};
+
+	/* Crossbar groups */
+	xbar_grp2:2 {
+		phy-handle = <&gphyc &phy_serdes1>;
+		status = "okay";
+	};
+};
+
+&switch_sf2 {
+	ports {
+		sf2_port0@0 {
+			phy-handle = <&gphy8>;
+			network-leds = <&led0 &led1>;
+			status = "okay";
+		};
+
+		sf2_port1@1 {
+			phy-handle = <&gphy9>;
+			network-leds = <&led2 &led3>;
+			status = "okay";
+		};
+
+		sf2_port2@2 {
+			phy-handle = <&gphya>;
+			network-leds = <&led4 &led5>;
+			status = "okay";
+		};
+
+		sf2_port3@3 {
+			phy-handle = <&gphyb>;
+			network-leds = <&led6 &led7>;
+			status = "okay";
+		};
+
+	};
+};
+
+&switch0 {
+	ports {
+		
+		port5@5 {
+			phy-handle = <&xbar_grp2>;
+			status = "okay";
+		};
+
+	};
+};
+
+&legacy_leds {
+        adsl-led = <&led18>;
+        sec-adsl-led = <&led19>;
+};
+
+&led_ctrl {
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&a_ser_led_clk_pin_1 &a_ser_led_data_pin_0 &a_ser_led_mask_pin_2>;
+    serial-shifters-installed = <3>;
+    serial-data-polarity-high;
+    led0: port_0-led_0-bit_0 {
+        active_high;
+        link = <(LED_SPEED_10|LED_SPEED_100)>;
+        status = "okay";
+    };
+    led1: port_0-led_1-bit_1 {
+        active_high;
+        link = <(LED_SPEED_100|LED_SPEED_1G)>;
+        status = "okay";
+    };
+    led2: port_1-led_0-bit_2 {
+        active_high;
+        link = <(LED_SPEED_10|LED_SPEED_100)>;
+        status = "okay";
+    };
+    led3: port_1-led_1-bit_3 {
+        active_high;
+        link = <(LED_SPEED_100|LED_SPEED_1G)>;
+        status = "okay";
+    };
+    led4: port_2-led_0-bit_4 {
+        active_high;
+        link = <(LED_SPEED_10|LED_SPEED_100)>;
+        status = "okay";
+    };
+    led5: port_2-led_1-bit_5 {
+        active_high;
+        link = <(LED_SPEED_100|LED_SPEED_1G)>;
+        status = "okay";
+    };
+    led6: port_3-led-0-pin_6 {
+        active_high;
+        link = <(LED_SPEED_10|LED_SPEED_100)>;
+        status = "okay";
+    };
+    led7: port_3-led-1-pin_7 {
+        active_high;
+        link = <(LED_SPEED_100|LED_SPEED_1G)>;
+        status = "okay";
+    };
+    led8: port_4-led_0-bit_8 {
+        active_high;
+        link = <(LED_SPEED_10|LED_SPEED_100)>;
+        status = "okay";
+    };
+    led9: port_4-led_1-bit_9 {
+        active_high;
+        link = <(LED_SPEED_100|LED_SPEED_1G)>;
+        status = "okay";
+    };
+    led10: port_5-led_0-bit_10 {
+        active_high;
+        link = <(LED_SPEED_10|LED_SPEED_100)>;
+        status = "okay";
+    };
+    led11: port_5-led_1-bit_11 {
+        active_high;
+        link = <(LED_SPEED_100|LED_SPEED_1G)>;
+        status = "okay";
+    };
+    led12: port_5-led_2-bit_12 {
+        active_high;
+        activity = <LED_SPEED_GBE>;
+        status = "okay";
+    };
+    led13: port_6-led_0-bit_13 {
+        active_high;
+        link = <(LED_SPEED_10|LED_SPEED_100)>;
+        status = "okay";
+    };
+    led14: port_6-led_1-bit_14 {
+        active_high;
+        link = <(LED_SPEED_100|LED_SPEED_1G)>;
+        status = "okay";
+    };
+    led15: port_6-led_2-bit_15 {
+        active_high;
+        link = <(LED_SPEED_100|LED_SPEED_1G)>;
+        status = "okay";
+    };
+    led16: port_7-led_0-bit_16 {
+        active_high;
+        link = <(LED_SPEED_10|LED_SPEED_100)>;
+        status = "okay";
+    };
+    led17: port_7-led_1-bit_17 {
+        active_high;
+        link = <(LED_SPEED_100|LED_SPEED_1G)>;
+        status = "okay";
+    };
+    led18: sw_led_18-pin_18 {
+        active_high;
+        status = "okay";
+    };
+    led19: dsl-2-led_1-bit_19 {
+        active_high;
+        status = "okay";
+    };
+    led20: port_0-led_3-bit_20 {
+        active_high;
+        activity = <LED_SPEED_GBE>;
+        status = "okay";
+    };
+    led21: port_1-led_3-bit_21 {
+        active_high;
+        activity = <LED_SPEED_GBE>;
+        status = "okay";
+    };
+    led22: port_2-led_3-bit_22 {
+        active_high;
+        activity = <LED_SPEED_GBE>;
+        status = "okay";
+    };
+    led23: port_3-led-3-pin_23 {
+        active_high;
+        activity = <LED_SPEED_GBE>;
+        status = "okay";
+    };
+    led24: port_4-led_3-bit_24 {
+        active_high;
+        activity = <LED_SPEED_GBE>;
+        status = "okay";
+    };
+    led25: port_5-led_3-bit_25 {
+        active_high;
+        activity = <LED_SPEED_GBE>;
+        status = "okay";
+    };
+    led26: port_6-led_3-bit_26 {
+        active_high;
+        activity = <LED_SPEED_GBE>;
+        status = "okay";
+    };
+    led27: port_7-led_3-bit_27 {
+        active_high;
+        activity = <LED_SPEED_GBE>;
+        status = "okay";
+    };
+    led28: sw_led_28-pin_28 {
+        active_low;
+        status = "okay";
+    };
+    led29: sw_led_29-pin_29 {
+        active_low;
+        status = "okay";
+    };
+    led30: inet-led-0-pin_30 {
+        active_high;
+        status = "okay";
+    };
+    led31: inet-led-1-pin_31 {
+        active_high;
+        status = "okay";
+    };
+};
+&bcm_voice{
+	sliclist = SLICSLAC_LIST_COMMON_NOFXO;
+ };
+
+&hsspi {
+	voice0 {
+		pinctrl-0 = <&spim_ss1_b_pin_112>;
+		pinctrl-names = "default";
+		compatible = "bcm-spi-voice";
+		reg = <1>; /* chip select 1 */
+		spi-max-frequency = <1024000>;
+		reset-gpio = <&gpioc 4 GPIO_ACTIVE_LOW>;
+		spi-index = <0>;/* voice header index */
+	};
+	/* reset not connected to 963158D piggyback board */
+	voice1 { 
+		pinctrl-0 = <&spim_ss0_b_pin_111>;
+		pinctrl-names = "default";
+		compatible = "bcm-spi-voice";
+		reg = <0>; 
+		spi-max-frequency = <1024000>;
+		reset-gpio = <&gpioc 14 GPIO_ACTIVE_LOW>;
+		spi-index = <1>;
+	};
+
+};
+
+
+&vreg_sync {
+		pinctrl-0 = <&a_vreg_sync_pin_19>;
+		pinctrl-names = "default";
+		power_sync-gpio =  <&gpioc 8 GPIO_ACTIVE_LOW>;
+};

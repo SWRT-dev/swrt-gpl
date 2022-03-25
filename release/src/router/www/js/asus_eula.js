@@ -76,20 +76,17 @@ var ASUS_EULA = {
 	},
 
 	"show": function(eula_type){
-		var body = document.body, html = document.documentElement;
-		var pageHeight = Math.max(body.scrollHeight, body.offsetHeight, html.clientHeight, html.scrollHeight, html.offsetHeight);
-
-		$("#loadingBlock")
-			.css({"visibility": "hidden"})
-
-		$("#Loading")
-			.css({"visibility": "visible"})
-			.height(pageHeight)
+		$("#loadingBlock").css({"visibility": "hidden"})
+		$("#Loading").css({"visibility": "visible"})
 
 		$("<div>")
 			.attr({
 				"id": "alert_" + eula_type + "_EULA",
 				"class": "eula_panel_container border-container"
+			})
+			.css({
+				"width": "600px",
+				"position": "fixed"
 			})
 			.load(eula_type + "_eula.htm", function(data){
 				$("#cancelBtn").click(function(){
@@ -102,7 +99,5 @@ var ASUS_EULA = {
 			})
 			.prependTo($(".banner1"))
 			.fadeIn(300)
-
-		$(document.documentElement).scrollTop(0)
 	}
 }

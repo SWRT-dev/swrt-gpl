@@ -16,14 +16,12 @@ INSTALL = install
 ifeq ($(RTCONFIG_QTN),y)
 LDFLAGS += -L$(TOP)/libqcsapi_client -lqcsapi_client
 endif
-LDFLAGS += -L$(TOP)/json-c/.libs -ljson-c
-
 
 OBJS = sysstate.o dumplog.o respipc.o cpuusage.o cputemp.o ramusage.o
 
-ifneq ($(wildcard ./prebuild),)
+ifneq ($(wildcard ./prebuild/$(BUILD_NAME)),)
 all:
-	@-cp -f ./prebuild/sysstate .
+	@-cp -f ./prebuild/$(BUILD_NAME)/sysstate .
 else
 all: sysstate
 endif

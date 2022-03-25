@@ -24,7 +24,6 @@
 <script type="text/javascript" src="js/httpApi.js"></script>
 <style>
 .noUSBHint, .storeUSBHint {
-	color: #FC0;
 	margin-left: 10px;
 	display: none;
 }
@@ -653,7 +652,7 @@ function applyRule(){
 
 		if(document.form.fb_pdesc.value == "tech_ASUS"){
 
-			var re_asus = new RegExp("^[a-zA-Z][0-9]{8,11}-[0-9]{4}","gi");
+			var re_asus = new RegExp("^[a-zA-Z][0-9]{8,11}","gi");
 			var re_crs = new RegExp("^[0-9]{5}","gi");
 			var re_valid = 0;
 			document.form.fb_tech_account.disabled = "";
@@ -932,13 +931,19 @@ function diag_create_duration_option() {
 		sec = _hours*60*60;
 		return sec;
 	};
-	var selectOption = "";
+	var selectOption = {};
+	var baseOption = {};
+	if(hnd_ax_675x_support) {
+		selectOption = {"1 <#Hour#>" : hour_to_sec(1)};
+	}
 	if(usb_support && $("input[name=dblog_tousb_cb]").prop("checked")) {
-		selectOption = { "12 <#Hour#>" : hour_to_sec(12), "1 <#Day#>" : hour_to_sec(24), "2 <#Day#>" : hour_to_sec(48), "3 <#Day#>" : hour_to_sec(72) };
+		baseOption = { "12 <#Hour#>" : hour_to_sec(12), "1 <#Day#>" : hour_to_sec(24), "2 <#Day#>" : hour_to_sec(48), "3 <#Day#>" : hour_to_sec(72) };
 	}
 	else {
-		selectOption = { "6 <#Hour#>" : hour_to_sec(6), "12 <#Hour#>" : hour_to_sec(12), "24 <#Hour#>" : hour_to_sec(24) };
+		baseOption = { "6 <#Hour#>" : hour_to_sec(6), "12 <#Hour#>" : hour_to_sec(12), "24 <#Hour#>" : hour_to_sec(24) };
 	}
+
+	Object.assign(selectOption, baseOption);
 
 	$.each(selectOption, function(item, value) {
 		$("select[name=dblog_duration]")
@@ -948,11 +953,48 @@ function diag_create_duration_option() {
 	});
 }
 function diag_change_service_list_all() {
+	var gen_appendix_option = function(_value, _text, _class) {
+		var $labelHtml2 = $("<label>");
+		$labelHtml2.addClass("dblog_service_item");
+		$labelHtml2.addClass(_class);
+
+		var $inputHtml2 = $('<input/>');
+		$inputHtml2.attr({"type" : "checkbox"});
+		$inputHtml2.attr({"name" : "dblog_service_list"});
+		$inputHtml2.val(_value);
+		$inputHtml2.click(function() {
+			if(this.checked) {
+				if(!confirm("This WiFi DHD Log capture requires system reboot after the feedback is sent, would you like to continue?")){	//Untranslated
+					$(".dblog_service_item.dhd").children().prop("checked", false);
+				}
+				diag_change_service_list();
+			}
+		});
+
+		$labelHtml2.append($inputHtml2);
+		$labelHtml2.append(_text);
+
+		return $labelHtml2;
+	};
+
 	if($("input[name=dblog_service_list_all]").prop("checked")) {
+		if(dhdlog_support && $(".dblog_service_item.wifi").length > 0 && $(".dblog_service_item.dhd").length == 0){
+			$(".dblog_service_item.wifi").after(gen_appendix_option(16, "Additional WiFi DHD Log", "dhd"));		//Untranslated
+		}
 		$("input[name=dblog_service_list]").prop("checked", true);
+
+		if(dhdlog_support && $(".dblog_service_item.dhd").children().prop("checked")) {
+			if(!confirm("This WiFi DHD Log capture requires system reboot after the feedback is sent, would you like to continue?")){	//Untranslated
+				$(".dblog_service_item.all").children().prop("checked", false);
+				$(".dblog_service_item.dhd").children().prop("checked", false);
+			}
+		}
 	}
 	else {
 		$("input[name=dblog_service_list]").prop("checked", false);
+		if(dhdlog_support && $(".dblog_service_item.dhd").length > 0)
+			$(".dblog_service_item.dhd").remove();
+
 	}
 }
 function diag_change_service_list() {
@@ -974,13 +1016,46 @@ function diag_tune_service_option() {
 		$inputHtml.attr({"name" : "dblog_service_list"});
 		$inputHtml.val(_value);
 		$inputHtml.click(function() {
+			if(dhdlog_support && _text=="WiFi"){
+				if(this.checked) {
+					$(".dblog_service_item.wifi").after(gen_appendix_option(16, "Additional WiFi DHD Log", "dhd"));		//Untranslated
+				}else{
+					$(".dblog_service_item.dhd").remove();
+				}
+			}
 			diag_change_service_list();
 		});
+
 		$labelHtml.append($inputHtml);
 		$labelHtml.append(_text);
 
 		return $labelHtml;
 	};
+
+	var gen_appendix_option = function(_value, _text, _class) {
+		var $labelHtml2 = $("<label>");
+		$labelHtml2.addClass("dblog_service_item");
+		$labelHtml2.addClass(_class);
+
+		var $inputHtml2 = $('<input/>');
+		$inputHtml2.attr({"type" : "checkbox"});
+		$inputHtml2.attr({"name" : "dblog_service_list"});
+		$inputHtml2.val(_value);
+		$inputHtml2.click(function() {
+			if(this.checked) {
+				if(!confirm("This WiFi DHD Log capture requires system reboot after the feedback is sent, would you like to continue?")){	//Untranslated
+					$(".dblog_service_item.dhd").children().prop("checked", false);
+				}
+			}
+			diag_change_service_list();
+		});
+
+		$labelHtml2.append($inputHtml2);
+		$labelHtml2.append(_text);
+
+		return $labelHtml2;
+	};
+
 	if(amesh_support && (isSwMode("rt") || isSwMode("ap")) && ameshRouter_support) {
 		if($(".dblog_service_item.AiMesh").length == 0)
 			$(".dblog_service_item.all").after(gen_service_option(8, "AiMesh", "AiMesh"));
@@ -1184,7 +1259,7 @@ function CheckFBSize(){
 <div style="margin:10px 0 10px 5px;" class="splitLine"></div>
 <div id="fb_desc0" class="formfontdesc" style="display:none;"><#Feedback_desc0#></div>
 <div id="fb_desc1" class="formfontdesc" style="display:none;"><#Feedback_desc1#></div>
-<div id="fb_desc_disconnect" class="formfontdesc" style="display:none;color:#FC0;"><#Feedback_desc_disconnect#> <a href="mailto:router_feedback@asus.com?Subject=<%nvram_get("productid");%>" target="_top" style="color:#FFCC00;">router_feedback@asus.com</a></div>
+<div id="fb_desc_disconnect" class="formfontdesc hint-color" style="display:none;"><#Feedback_desc_disconnect#> <a class="hint-color" href="mailto:router_feedback@asus.com?Subject=<%nvram_get("productid");%>" target="_top">router_feedback@asus.com</a></div>
 <table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable">
 <tr>
 <th width="30%"><#feedback_country#> *</th>
@@ -1250,8 +1325,8 @@ function CheckFBSize(){
 		<input type="radio" name="dslx_diag_enable" class="input" value="1" onclick="change_dsl_diag_enable(1);"><#checkbox_Yes#>
 		<input type="radio" name="dslx_diag_enable" class="input" value="0" onclick="change_dsl_diag_enable(0);" checked><#checkbox_No#>
 		<br>	
-		<span id="storage_ready" style="display:none;color:#FC0">* <#USB_ready#></span>
-		<span id="be_lack_storage" style="display:none;color:#FC0">* <#no_usb_found#></span>
+		<span id="storage_ready" class="hint-color" style="display:none;">* <#USB_ready#></span>
+		<span id="be_lack_storage" class="hint-color" style="display:none;">* <#no_usb_found#></span>
 	</td>
 </tr>
 
@@ -1275,8 +1350,8 @@ function CheckFBSize(){
 		<div class="dblog_disabled_status">
 			<input type='radio' name='dblog_enable' id='dblog_status_en' value="1" onclick="diag_change_dblog_status();"><label for='dblog_status_en'><#checkbox_Yes#></label>
 			<input type='radio' name='dblog_enable' id='dblog_status_dis' value="0" onclick="diag_change_dblog_status();" checked><label for='dblog_status_dis'><#checkbox_No#></label>
-			<label class="storeUSBHint"><input type="checkbox" name="dblog_tousb_cb" value="1" onclick="diag_change_storeUSB();" checked><#feedback_debug_log_inDisk#></label>
-			<span class="noUSBHint">* <#no_usb_found#></span>
+			<label class="storeUSBHint hint-color"><input type="checkbox" name="dblog_tousb_cb" value="1" onclick="diag_change_storeUSB();" checked><#feedback_debug_log_inDisk#></label>
+			<span class="noUSBHint hint-color">* <#no_usb_found#></span>
 		</div>
 		<div class="dblog_enabled_status">
 			<span>* <#feedback_current_capturing#></span>
@@ -1354,8 +1429,8 @@ function CheckFBSize(){
 	<select class="input_option" name="fb_when_occur" onChange="">
 		
 	</select>
-	<span id="occur_hint" style="color:#FC0;display:none;"></span>
-	<span id="occur_hint2" style="color:#FC0;display:none;"></span>
+	<span id="occur_hint" class="hint-color" style="display:none;"></span>
+	<span id="occur_hint2" class="hint-color" style="display:none;"></span>
 </td>
 </tr>
 
@@ -1388,7 +1463,7 @@ function CheckFBSize(){
 	</th>
 	<td>
 		<textarea name="fb_comment" maxlength="2000" cols="55" rows="8" class="textarea_ssh_table" style="font-family:'Courier New', Courier, mono; font-size:13px;" onKeyDown="textCounter(this,document.form.msglength,2000);" onKeyUp="textCounter(this,document.form.msglength,2000)"></textarea>
-		<span style="color:#FC0"><#feedback_max_counts#> : </span>
+		<span class="hint-color"><#feedback_max_counts#> : </span>
 		<input type="text" class="input_6_table" name="msglength" id="msglength" maxlength="4" value="2000" autocorrect="off" autocapitalize="off" readonly>
 	</td>
 </tr>

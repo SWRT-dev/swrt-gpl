@@ -1,0 +1,32 @@
+#
+# Phy driver for intel platforms
+#
+
+config PHY_INTEL_WAN_XPCS
+	tristate "Intel WAN XPCS PHY driver"
+	depends on OF
+	depends on SOC_GRX500
+	select GENERIC_PHY
+	help
+	  Enable this to support Intel WAN XPCS PHY
+
+config PHY_INTEL_COMBO
+	bool "Intel Combo PHY driver"
+	depends on OF && HAS_IOMEM
+	depends on SOC_GRX500
+	select MFD_SYSCON
+	select GENERIC_PHY
+	help
+	  Enable this to support Intel Combo-PHY.
+	  Intel Combo-PHY support two separate PCIe,
+	  PCIe x2, two separate ethernet PHYs,
+	  ethernet PHY x2, or PCIe/Ethernet PHY mixed mode.
+
+config PHY_INTEL_SLIM
+	bool "Intel Slim driver"
+	depends on OF
+	depends on SOC_GRX500
+	select MFD_SYSCON
+	select GENERIC_PHY
+	help
+	  Enable this to support Intel GRX500 platform for PCIe PHY.

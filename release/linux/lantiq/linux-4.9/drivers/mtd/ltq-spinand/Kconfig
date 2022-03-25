@@ -1,0 +1,7 @@
+menuconfig MTD_LTQ_SPINAND
+	tristate "Lantiq Generic SPI-Nand device support"
+	depends on MTD_NAND && SPI
+	help
+	  Enable support for SPI NAND Flash chips on Lantiq SoCs.
+	  The SPI NAND driver is still attached to NAND MTD Framework
+

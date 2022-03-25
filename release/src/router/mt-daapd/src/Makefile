@@ -7,16 +7,14 @@ OBJS = configfile.o main.o mp3-scanner.o query.o \
 
 CFLAGS += -DWITH_GDBM 
 CFLAGS += -DNOT_HAVE_SA_LEN -DSETPGRP_VOID -DVERSION=\"0.2.4.2\" -DPACKAGE=\"mt-daapd\" -I./
-
+ifeq ($(RTCONFIG_MUSL_LIBC),y)
+CFLAGS += -DHAVE_STRCASESTR
+endif
 ifneq ($(MSIPK),y)
 CFLAGS += -I$(TOP)/libgdbm -I$(TOP)/libid3tag -I$(TOP)/zlib
 ifeq ($(HND_ROUTER),y)
 CFLAGS := $(shell echo $(CFLAGS)| sed 's/-O2//g')
 CFLAGS += -DHAVE_CONFIG_H
-endif
-ifeq ($(MUSL_LIBC),y)
-CFLAGS := $(shell echo $(CFLAGS)| sed 's/-O2//g')
-CFLAGS += -DHAVE_CONFIG_H -DHAVE_STRCASESTR
 endif
 else
 CFLAGS += -I$(SRCDIR)/libgdbm -I$(SRCDIR)/libid3tag -I$(SRCDIR)/zlib

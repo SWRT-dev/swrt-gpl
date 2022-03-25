@@ -523,8 +523,25 @@ function check_upnp(){
 			document.getElementById('upnp_service').className = "status_yes";
 		}
 		else{
-			risk_count++
-			document.getElementById('upnp_service').innerHTML = "<a href='Advanced_WAN_Content.asp' target='_blank'><#checkbox_No#></a>";
+			risk_count++;
+
+			document.getElementById('upnp_service').onclick = function(){
+				function change_wan_unit(unit){
+					FormActions("apply.cgi", "change_wan_unit", "", "");
+					document.form.wan_unit.value = unit;
+					document.form.wan_unit.disabled = false;
+					document.form.current_page.value="Advanced_WAN_Content.asp";
+					document.form.target = "";
+					document.form.submit();
+				}
+
+				if(wan0_upnp_enable == "1")
+					change_wan_unit(0);
+				else
+					change_wan_unit(1);
+			}
+
+			document.getElementById('upnp_service').innerHTML = "<a><#checkbox_No#></a>";
 			document.getElementById('upnp_service').className = "status_no_risk";
 			document.getElementById('upnp_service').onmouseover = function(){overHint(13);}
 			document.getElementById('upnp_service').onmouseout = function(){nd();}
@@ -1069,6 +1086,7 @@ function shadeHandle(flag){
 <input type="hidden" name="wrs_vp_enable" value="<% nvram_get("wrs_vp_enable"); %>">
 <input type="hidden" name="wan0_upnp_enable" value="<% nvram_get("wan0_upnp_enable"); %>" disabled>
 <input type="hidden" name="wan1_upnp_enable" value="<% nvram_get("wan1_upnp_enable"); %>" disabled>
+<input type="hidden" name="wan_unit" value="<% nvram_get("wan_unit"); %>" disabled>
 <input type="hidden" name="misc_http_x" value="<% nvram_get("misc_http_x"); %>" disabled>
 <input type="hidden" name="misc_ping_x" value="<% nvram_get("misc_ping_x"); %>" disabled>
 <input type="hidden" name="dmz_ip" value="<% nvram_get("dmz_ip"); %>" disabled>

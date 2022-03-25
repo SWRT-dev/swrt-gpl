@@ -33,7 +33,7 @@ body{
 	background-size: cover;
 }
 a{
-	color: #F8B942 !important;
+	color: rgb(5,252,238) !important;
 }
 /*
 .nonROG{
@@ -57,7 +57,8 @@ a{
 }
 .desktop_applyBtn{
 	border: 2px solid #92650F;
-	background: #92650F;
+	background: rgb(255,165,35);
+	color: #000000;
 }
 .desktop_abortBtn{
 	color: #92650F;
@@ -66,7 +67,7 @@ a{
 	border-color: #92650F;
 }
 #welcome_button{
-	background-color: #92650F;
+	background-color: rgb(255,165,35);
 	border:1px solid #92650F;
 }
 #aimesh_welcome_button{
@@ -101,9 +102,15 @@ a{
 }
 
 .icon_logo{
-	width: 530px;
-	height: 90px;
+	width: 450px;
+	height: 96px;
 	margin-left: -40px;
 	background-image: url("/images/New_ui/logo_TUF.png");
 	background-repeat: no-repeat;
+}
+.cssload-circle .cssload-inner{
+	border: 5px solid rgba(255,193,7,0.7);
+	box-shadow: inset 0px 0px 10px rgb(255,193,7,0.1);
+	border-right: none;
+	border-top: none;
 }

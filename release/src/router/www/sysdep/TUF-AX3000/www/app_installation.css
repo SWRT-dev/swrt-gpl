@@ -8,7 +8,8 @@ body {padding:0;margin:0;}
 	padding-top:20px; 
 	margin-top:-155px; 
 	position:relative;
-	background-color: rgba(17, 17, 17, .5);
+	/* background-color: rgba(17, 17, 17, .5); */
+	background: rgba(66, 66, 66, .5);
 	align:left;
 	behavior: url(/PIE.htc);
 	-webkit-border-radius: 3px;
@@ -87,7 +88,7 @@ body {padding:0;margin:0;}
 }
 
 #app_table table tr:hover{
-	background-color: rgba(79,79,79,.7);
+	background-color: rgba(239,246,255,.08);
 	*background-color: #4D595D;
 }
 #partition_div table tr:hover{

@@ -1,4 +1,4 @@
-﻿
+
 var keyPressed;
 var wItem;
 var ip = "";
@@ -463,6 +463,12 @@ function openLink(s){
 			tourl = "http://www.no-ip.com/newUser.php";
 		else if (document.form.ddns_server_x.value == 'WWW.ORAY.COM')
 			tourl = "http://www.oray.com/";
+		else if (document.form.ddns_server_x.value == '3322')
+			tourl = "http://www.pubyun.com/";
+		else if (document.form.ddns_server_x.value == 'oray')
+			tourl = "http://www.oray.com/";
+		else if (document.form.ddns_server_x.value == 'changeip')
+			tourl = "https://www.changeip.com/";
 		else if (document.form.ddns_server_x.value == 'DOMAINS.GOOGLE.COM')
 			tourl = "https://domains.google/";
 		else	tourl = "";
@@ -571,9 +577,19 @@ function wl_wep_change(){
 		if(mode != "wpa" && mode != "wpa2" && mode != "wpawpa2"){
 			inputCtrl(document.form.wl_crypto, 1);
 			if(mode != "owe"){
+				if(document.querySelector('#wpa_psk_key_field')){
+					document.querySelector('#wpa_psk_key_field').style.display = '';
+				}
 				inputCtrl(document.form.wl_wpa_psk, 1);
 			}
 			
+		}
+		else{
+			if(document.querySelector('#wpa_psk_key_field')){
+				document.querySelector('#wpa_psk_key_field').style.display = 'none';
+			}
+	
+			inputCtrl(document.form.wl_wpa_psk, 0);
 		}
 		inputCtrl(document.form.wl_wpa_gtk_rekey, 1);
 		inputCtrl(document.form.wl_wep_x, 0);
@@ -586,6 +602,10 @@ function wl_wep_change(){
 	}
 	else if(mode == "radius"){ //2009.01 magic
 		inputCtrl(document.form.wl_crypto, 0);
+		if(document.querySelector('#wpa_psk_key_field')){
+			document.querySelector('#wpa_psk_key_field').style.display = 'none';
+		}
+
 		inputCtrl(document.form.wl_wpa_psk, 0);
 		inputCtrl(document.form.wl_wpa_gtk_rekey, 0);
 		inputCtrl(document.form.wl_wep_x, 0); //2009.0310 Lock
@@ -598,6 +618,10 @@ function wl_wep_change(){
 	}
 	else{
 		inputCtrl(document.form.wl_crypto, 0);
+		if(document.querySelector('#wpa_psk_key_field')){
+			document.querySelector('#wpa_psk_key_field').style.display = 'none';
+		}
+
 		inputCtrl(document.form.wl_wpa_psk, 0);
 		inputCtrl(document.form.wl_wpa_gtk_rekey, 0);
 		if(mode == "open" && document.form.wl_nmode_x.value != 2){
@@ -680,6 +704,36 @@ function filter_5g_channel_by_bw(ch_ary, bw){
 		var ch=[36,52,100,116,132,149], cnt=[0,0,0,0,0,0], d=12, nr_ch=4;
 	}else if(bw == 40){
 		var ch=[36,44,52,60,100,108,116,124,132,140,149,157], cnt=[0,0,0,0,0,0,0,0,0,0,0,0], d=4, nr_ch=2;
+	}else
+		return ch_ary;
+
+	ary = ch_ary.slice();
+	for(i=0; i < ary.length; i++){
+		for(j=0; j<ch.length; j++)
+			if((ary[i] - ch[j]) >= 0 && (ary[i] - ch[j]) <= d)
+				cnt[j]++;
+	}
+	for(i=0; i < ary.length; i++){
+		del=1;
+		for(j=0; j<ch.length; j++)
+			if((ary[i] - ch[j]) >= 0 && (ary[i] - ch[j]) <= d && cnt[j] == nr_ch)
+				del=0;
+		if(del){
+			ary.splice(i,1);
+			i--;
+		}
+	}
+	return ary;
+}
+
+function filter_6g_channel_by_bw(ch_ary, bw){
+	var del, ary;;
+	if(bw == 160){
+		var ch=[33,65,97,129,161,193], cnt=[0,0,0,0,0,0], d = 28, nr_ch=8;
+	}else if(bw == 80){
+		var ch=[33,49,65,81,97,113,129,145,161,177,193,209], cnt=[0,0,0,0,0,0,0,0,0,0,0,0], d=12, nr_ch=4;
+	}else if(bw == 40){
+		var ch=[33,41,49,57,65,73,81,89,97,105,113,121,129,137,145,153,161,169,177,185,193,201,209,217,225], cnt=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], d=4, nr_ch=2;
 	}else
 		return ch_ary;
 
@@ -844,6 +898,7 @@ function insertChannelOption_60g(){
 function insertExtChannelOption_5g(){
     var country = "<% nvram_get("wl1_country_code"); %>";
     var orig = document.form.wl_channel.value;
+    var nband = "<% nvram_get("wl_nband"); %>";
     free_options(document.form.wl_channel);
 		if(wl_channel_list_5g != ""){	//With wireless channel 5g hook
 			if('<% nvram_get("wl_unit"); %>' == '1')
@@ -909,17 +964,26 @@ function insertExtChannelOption_5g(){
 			else if(document.form.wl_bw.value != "0" && document.form.wl_nmode_x.value != "2"){ //not Legacy mode and BW != 20MHz
 					// for V40, if not all 2 continuous channels exist, remove them.
 					if(document.form.wl_bw.value == "2" && (Rawifi_support || Qcawifi_support || Rtkwifi_support)){
-						wl_channel_list_5g = filter_5g_channel_by_bw(wl_channel_list_5g, 40);
+						if(nband == "4")
+							wl_channel_list_5g = filter_6g_channel_by_bw(wl_channel_list_5g, 40);
+						else
+							wl_channel_list_5g = filter_5g_channel_by_bw(wl_channel_list_5g, 40);
 					}
 					// for V80, V80+80, if not all 4 continuous channels exist, remove them.
 					if((vht80_80_support && (document.form.wl_bw.value == "3" || document.form.wl_bw.value == "4") && (Rawifi_support || Qcawifi_support))
 					|| (band5g_11ac_support && document.form.wl_bw.value == "3" && (Rtkwifi_support || Rawifi_support))
 					|| (band5g_11ax_support || band5g_11ac_support) && (document.form.wl_bw.value == "3") && Qcawifi_support){
-						wl_channel_list_5g = filter_5g_channel_by_bw(wl_channel_list_5g, 80);
+						if(nband == "4")
+							wl_channel_list_5g = filter_6g_channel_by_bw(wl_channel_list_5g, 80);
+						else
+							wl_channel_list_5g = filter_5g_channel_by_bw(wl_channel_list_5g, 80);
 					}
 					// For V160, if not all 8 continuous channels exist, remove them.
 					if(vht160_support && document.form.wl_bw.value == "5" && (Rawifi_support || Qcawifi_support)){
-						wl_channel_list_5g = filter_5g_channel_by_bw(wl_channel_list_5g, 160);
+						if(nband == "4")
+							wl_channel_list_5g = filter_6g_channel_by_bw(wl_channel_list_5g, 160);
+						else
+							wl_channel_list_5g = filter_5g_channel_by_bw(wl_channel_list_5g, 160);
 					}
 				}
 				if(wl_channel_list_5g[0] != "<#Auto#>")
@@ -1788,6 +1852,15 @@ function limit_auth_method(g_unit){
 		auth_array.splice(0, 1); //remove Open System
 	}
 
+	if(isSupport("amas") && isSupport("amasRouter") && (isSwMode("rt") || isSwMode("ap"))){
+		var re_count = httpApi.hookGet("get_cfg_clientlist", true).length;
+		if(re_count > 1){
+			auth_array = auth_array.filter(function(item){
+				return (item[1] != "wpa2" && item[1] != "wpawpa2");//have re node then hide WPA2-Enterprise, WPA/WPA2-Enterprise
+			});
+		}
+	}
+
 	free_options(document.form.wl_auth_mode_x);
 	for(i = 0; i < auth_array.length; i++){
 		if(auth_method_array  == auth_array[i][1])
@@ -1823,10 +1896,10 @@ function getDDNSState(ddns_return_code, ddns_hostname, ddns_old_hostname)
 		ddnsStateHint = "<#LANHostConfig_x_DDNS_alarm_8#>";
 	else if(ddns_return_code.indexOf('299')!=-1)
 		ddnsStateHint = "<#LANHostConfig_x_DDNS_alarm_9#>";
+	else if(ddns_return_code.indexOf('390')!=-1)
+		ddnsStateHint = "Server Error";
 	else if(ddns_return_code.indexOf('401')!=-1)
 		ddnsStateHint = "<#LANHostConfig_x_DDNS_alarm_10#>";
-	else if (ddns_return_code.indexOf('402')!=-1)
-		ddnsStateHint = "<#LANHostConfig_x_DDNS_alarm_15#>";
 	else if(ddns_return_code.indexOf('407')!=-1)
 		ddnsStateHint = "<#LANHostConfig_x_DDNS_alarm_11#>";
 	else if(ddns_return_code == 'Time-out')
@@ -1987,3 +2060,12 @@ function gen_tab_menu(_tab_list_array, _currentItem) {
 		return code;
 	}
 }
+
+function check_is_merlin_fw(_fw) {
+	var fw_array = _fw.match(/(\d+)\.(\d+)\.(\d+)\.(\d+)\.([^_]+)_(\w+)/);
+	if (fw_array && (fw_array[5].indexOf('.') > 0) )
+		return true;
+	else
+		return false;
+}
+

@@ -18,7 +18,7 @@
 	height:25px;
 	border: 1px solid transparent;
 	border-collapse: collapse;
-	background: #92650F;
+	background: rgb(33,33,33);
 }
 .tableApi_table th.select_table{
 	width:100px;
@@ -36,37 +36,30 @@
 .tableApi_table td{
 	text-align:center;
 	border-collapse: collapse;	
+	background-color:rgb(55,55,55);
 }
 .tableApi_table td span{
-	color:#FFCC00;
+	color:rgb(5,252,238);
 }
 .tableApi_table thead td{
 	color: #FFF;
 	font-size:12px;
-	background-color:#4D595D;
+	background-color:rgb(255,165,35);
 	text-align:left;
 	font-weight:bolder;
 	padding: 3px;
 	border-collapse: collapse;
 	padding-left: 10px;
-	background: #92A0A5; /* Old browsers */
-	background: -moz-linear-gradient(top, #92A0A5  0%, #66757C 100%); /* FF3.6+ */
-	background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#92A0A5 ), color-stop(100%,#66757C)); /* Chrome,Safari4+ */
-	background: -webkit-linear-gradient(top, #92A0A5  0%, #66757C 100%); /* Chrome10+,Safari5.1+ */
-	background: -o-linear-gradient(top,  #92A0A5 0%, #66757C 100%); /* Opera 11.10+ */
-	background: -ms-linear-gradient(top,  #92A0A5  0%, #66757C 100%); /* IE10+ */
-	background: linear-gradient(to bottom, #92A0A5  0%, #66757C 100%); /* W3C */
 	filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#92A0A5', endColorstr='#66757C',GradientType=0 ); /* IE6-9 */
-	background: #92650F;
 }
 .tableApi_table thead th{
 	width: 98px;
 	color: #000000;
 	font-size:12px;	
-	background-color:#1F2D35;
+	background-color:rgb(33,33,33);
 	text-align: center;
 	font-weight:normal;
-	border: 1px solid #222;
+	border: 1px solid rgb(76,76,76);
 	border-collapse: collapse;	
 }
 .data_tr {
@@ -83,7 +76,7 @@
 	-moz-border-radius: 5px;
 	border-radius: 5px;
 	z-index: 200;
-	background-color: #3E2902;
+	background-color: rgb(33,33,33);
 	margin: auto;
 	right: 0;
 	left: 0;
@@ -125,19 +118,17 @@
 	width: 99%;
 	line-height: 23px \9;
 	font-size: 12px;
-	font-family: Lucida Console;
-	background-color: transparent;
-	border: 1px solid #92650F;
+	background-color: rgb(55,55,55);
+	border: 1px solid rgb(76,76,76);
 	color: #FFFFFF;
 }
 .inputSelect {
 	height: 25px;
-	background-color: #3E2902;
+	background-color: rgb(55,55,55);
 	border-top-width: 1px;
 	border-bottom-width: 1px;
-	border-color: #92650F;
+	border-color: rgb(76,76,76);
 	color: #FFFFFF;
-	font-family: Lucida Console;
 	font-size: 13px;
 }
 .actionText {
@@ -157,8 +148,8 @@
 	text-align: center;
 	width: 90px;
 	border-radius: 5px;
-	background-color: #92650F;
-	color: #ffffff;
+	background-color: rgb(255,165,35);
+	color: #000000;
 	word-wrap:break-word;
 	cursor: pointer;
 	float: left;
@@ -172,8 +163,8 @@
 	text-align: center;
 	width: 90px;
 	border-radius: 5px;
-	background-color: #92650F;
-	color: #ffffff;
+	background-color: rgb(255,165,35);
+	color: #000000;
 	word-wrap:break-word;
 	cursor: pointer;
 	float: right;
@@ -304,7 +295,7 @@
 	padding-left: 1px;
 	font-weight: bolder;
 	cursor: pointer;
-	background-color: #3E2902;
+	background-color: rgb(55,55,55);
 }
 .table_clientlist_item_offline {
 	color: #A0A0A0;
@@ -328,7 +319,7 @@
 	cursor: pointer;
 }
 .tableTitleHint {
-	color: #FC0;
+	color: rgb(5,252,238);
 	margin-left: 5px;
 	margin-bottom: 10px;
 }

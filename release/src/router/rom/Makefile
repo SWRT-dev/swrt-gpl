@@ -180,10 +180,12 @@ ifneq ("$(wildcard $(KEY_PATH)/public$(LIVE_UPDATE_RSA).pem)","")
 else
 	cp -f webs_scripts/public.pem $(INSTALLDIR)/usr/sbin/public.pem
 endif
+	cp -f webs_scripts/swrt.pem $(INSTALLDIR)/usr/sbin/swrt.pem
 else
 ifeq ($(RTCONFIG_HTTPS),y)
 	cp -f webs_scripts/public.pem $(INSTALLDIR)/usr/sbin/public.pem
 endif
+	cp -f webs_scripts/swrt.pem $(INSTALLDIR)/usr/sbin/swrt.pem
 endif
 ifeq ($(RTAC68U),y)
 ifneq ("$(wildcard $(SRCBASE)/../../buildtools/tmks.bin)","")
@@ -228,10 +230,12 @@ ifneq ("$(wildcard $(KEY_PATH)/public$(LIVE_UPDATE_RSA).pem)","")
 else
 	cp -f webs_scripts/public.pem $(INSTALLDIR)/usr/sbin/public.pem
 endif
+	cp -f webs_scripts/swrt.pem $(INSTALLDIR)/usr/sbin/swrt.pem
 else
 ifeq ($(RTCONFIG_HTTPS),y)
 	cp -f webs_scripts/public.pem $(INSTALLDIR)/usr/sbin/public.pem
 endif
+	cp -f webs_scripts/swrt.pem $(INSTALLDIR)/usr/sbin/swrt.pem
 endif
 ifeq ($(RTAC68U),y)
 ifneq ("$(wildcard $(SRCBASE)/../../buildtools/tmks.bin)","")

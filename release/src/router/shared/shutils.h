@@ -581,6 +581,7 @@ extern int generate_wireless_key(unsigned char *key);
 
 extern int strArgs(int argc, char **argv, char *fmt, ...);
 extern char *trimNL(char *str);
+extern char *trimWS(char *str);
 extern int get_char_count(char *str, int ch);
 extern pid_t get_pid_by_name(char *name);
 extern pid_t get_pid_by_thrd_name(char *name);
@@ -592,5 +593,8 @@ extern int hex2str(unsigned char *hex, char *str, int hex_len);
 extern void reset_stacksize(int new_stacksize);
 extern int arpcache(char *tgmac, char *tgip);
 extern int ether_inc(unsigned char *e, const unsigned char n);
+extern char *ether_cal(const char *e, char *a, int i);
+extern char *ether_cal_b(const unsigned char *e, char *a, int i);
 
 #endif /* _shutils_h_ */
+

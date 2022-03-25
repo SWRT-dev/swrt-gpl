@@ -1,15 +1,6 @@
 #ifndef __UTILS_H__
 #define __UTILS_H__ 1
 
-#if defined(MUSL_LIBC)
-#include <stdio.h>
-#include <limits.h>
-#include <sys/types.h>
-#include <asm-generic/param.h>
-#define MIN(X,Y) (((X) < (Y)) ? (X) : (Y))
-#define MAX(X,Y) (((X) > (Y)) ? (X) : (Y))
-#endif  // MUSL_LIBC
-
 #include <asm/types.h>
 #include <resolv.h>
 #include <stdlib.h>

@@ -88,12 +88,12 @@ function getVariable(){
 	if(system.band2gSupport){
 		var _element = new Array();
 		if(isSwMode('re') && (concurrep_support || wlc_band == '0')){
-			_element = ['wl0.1_nmode_x', 'wl0.1_auth_mode_x', 'wl0.1_crypto', 'wl0.1_wpa_psk', 'wl0.1_mfp', 'wl0.1_wep_x', 'wl0.1_key', 'wl0.1_key1', 'wl0.1_key2', 'wl0.1_key3', 'wl0.1_key4'];
+			_element = ['wl0.1_nmode_x', 'wl0.1_auth_mode_x', 'wl0.1_crypto', 'wl0.1_mfp', 'wl0.1_wep_x', 'wl0.1_key', 'wl0.1_key1', 'wl0.1_key2', 'wl0.1_key3', 'wl0.1_key4'];
 			_ssid.push('wl0.1_ssid');
 			_ssid.push('wl0.1_wpa_psk');
 		}
 		else{
-			_element = ['wl0_nmode_x', 'wl0_auth_mode_x', 'wl0_crypto', 'wl0_wpa_psk', 'wl0_mfp', 'wl0_wep_x', 'wl0_key', 'wl0_key1', 'wl0_key2', 'wl0_key3', 'wl0_key4'];
+			_element = ['wl0_nmode_x', 'wl0_auth_mode_x', 'wl0_crypto', 'wl0_mfp', 'wl0_wep_x', 'wl0_key', 'wl0_key1', 'wl0_key2', 'wl0_key3', 'wl0_key4'];
 			_ssid.push('wl0_ssid');
 			_ssid.push('wl0_wpa_psk');
 		}
@@ -108,12 +108,12 @@ function getVariable(){
 	if(system.band5gSupport){
 		var _element = new Array();
 		if(isSwMode('re') && (concurrep_support || wlc_band == '1')){
-			_element = ['wl1.1_nmode_x', 'wl1.1_auth_mode_x', 'wl1.1_crypto', 'wl1.1_wpa_psk', 'wl1.1_mfp', 'wl1.1_wep_x', 'wl1.1_key', 'wl1.1_key1', 'wl1.1_key2', 'wl1.1_key3', 'wl1.1_key4'];
+			_element = ['wl1.1_nmode_x', 'wl1.1_auth_mode_x', 'wl1.1_crypto', 'wl1.1_mfp', 'wl1.1_wep_x', 'wl1.1_key', 'wl1.1_key1', 'wl1.1_key2', 'wl1.1_key3', 'wl1.1_key4'];
 			_ssid.push('wl1.1_ssid');
 			_ssid.push('wl1.1_wpa_psk');
 		}
 		else{
-			_element = ['wl1_nmode_x', 'wl1_auth_mode_x', 'wl1_crypto', 'wl1_wpa_psk', 'wl1_mfp', 'wl1_wep_x', 'wl1_key', 'wl1_key1', 'wl1_key2', 'wl1_key3', 'wl1_key4'];
+			_element = ['wl1_nmode_x', 'wl1_auth_mode_x', 'wl1_crypto', 'wl1_mfp', 'wl1_wep_x', 'wl1_key', 'wl1_key1', 'wl1_key2', 'wl1_key3', 'wl1_key4'];
 			_ssid.push('wl1_ssid');
 			_ssid.push('wl1_wpa_psk');
 		}
@@ -128,12 +128,12 @@ function getVariable(){
 	if(system.band5g2Support){
 		var _element = new Array();
 		if(isSwMode('re') && (concurrep_support || wlc_band == '2')){
-			_element = ['wl2.1_nmode_x', 'wl2.1_auth_mode_x', 'wl2.1_crypto', 'wl2.1_wpa_psk', 'wl2.1_mfp', 'wl2.1_wep_x', 'wl2.1_key', 'wl2.1_key1', 'wl2.1_key2', 'wl2.1_key3', 'wl2.1_key4'];
+			_element = ['wl2.1_nmode_x', 'wl2.1_auth_mode_x', 'wl2.1_crypto', 'wl2.1_mfp', 'wl2.1_wep_x', 'wl2.1_key', 'wl2.1_key1', 'wl2.1_key2', 'wl2.1_key3', 'wl2.1_key4'];
 			_ssid.push('wl2.1_ssid');
 			_ssid.push('wl2.1_wpa_psk');
 		}
 		else{
-			_element = ['wl2_nmode_x', 'wl2_auth_mode_x', 'wl2_crypto', 'wl2_wpa_psk', 'wl2_mfp', 'wl2_wep_x', 'wl2_key', 'wl2_key1', 'wl2_key2', 'wl2_key3', 'wl2_key4'];
+			_element = ['wl2_nmode_x', 'wl2_auth_mode_x', 'wl2_crypto', 'wl2_mfp', 'wl2_wep_x', 'wl2_key', 'wl2_key1', 'wl2_key2', 'wl2_key3', 'wl2_key4'];
 			_ssid.push('wl2_ssid');
 			_ssid.push('wl2_wpa_psk');
 		}
@@ -163,12 +163,12 @@ function getInterface(){
 	wlInterface = [];	// initialize
 	var _temp = new Array();
 	var typeObj = {
-		'triBandSmartConnect': [['0', 'Tri-Band Smart Connect', '0']],
+		'triBandSmartConnect': [['0', '<#smart_connect_tri#>', '0']],
 		'dualBand6GHzSmartConnect': [['0', '2.4 / 5 GHz', '0'], ['2', '6 GHz', '2']],
-		'dualBandSmartConnect': [['0', 'Dual-Band Smart Connect', '0']],
+		'dualBandSmartConnect': [['0', '<#smart_connect_dual#>', '0']],
 		'triBand5GHzSmartConnect': [['0', '2.4 GHz', '0'], ['1', '5GHz Smart Connect', '1']],
-		'triBandMeshSmartConnect': [['0', 'Dual-Band Smart Connect', '0'], ['2', '5 GHz-2', '2']],
-		'triBand6GHzMeshSmartConnect': [['0', 'Dual-Band Smart Connect', '0'], ['2', '6 GHz', '2']],
+		'triBandMeshSmartConnect': [['0', '<#smart_connect_dual#>', '0'], ['2', '5 GHz-2', '2']],
+		'triBand6GHzMeshSmartConnect': [['0', '<#smart_connect_dual#>', '0'], ['2', '6 GHz', '2']],
 		'lyraHide': [['0', 'Wireless', '0']],
 		'2.4G':  [['0', '2.4 GHz', '0']],
 		'5GDualBand': [['1', '5 GHz', '1']],
@@ -177,12 +177,14 @@ function getInterface(){
 		'60G': [['3', '60 GHz','3']]
 	}
 
+
 	if(system.smartConnectSupport && variable.smart_connect_x != '0'){		// Smart Connect
 		if(variable.smart_connect_x == '1'){	// Tri/Dual-Band Smart Connect		
 			if(system.band5g2Support){
 				if(dwb_info.mode == '1'){
 					if(system.band6gSupport){
-						_temp = typeObj['triBand6GHzMeshSmartConnect'];
+						//_temp = typeObj['triBand6GHzMeshSmartConnect'];
+						_temp = typeObj['triBandSmartConnect'];
 					}
 					else{
 						_temp = typeObj['triBandMeshSmartConnect'];
@@ -409,19 +411,24 @@ function genSmartConnect(){
 	var _smart_connect_x = variable['smart_connect_x']
 	if(system.band5g2Support){
 		if(dwb_info.mode == '1'){
-			_optionArray = [['<#wl_securitylevel_0#>', '0'], ['Dual-Band Smart Connect', '1']];
+			if(isSupport("wifi6e")){
+				_optionArray = [['<#wl_securitylevel_0#>', '0'], ['<#smart_connect_tri#>', '1'], ['<#smart_connect_dual#>', '3']];
+			}
+			else{
+				_optionArray = [['<#wl_securitylevel_0#>', '0'], ['<#smart_connect_dual#>', '1']];
+			}			
 		}
 		else{
 			if(isSupport("wifi6e")){
-				_optionArray = [['<#wl_securitylevel_0#>', '0'], ['Tri-Band Smart Connect', '1'], ['Dual-Band Smart Connect', '3']];
+				_optionArray = [['<#wl_securitylevel_0#>', '0'], ['<#smart_connect_tri#>', '1'], ['<#smart_connect_dual#>', '3']];
 			}				
 			else{
-				_optionArray = [['<#wl_securitylevel_0#>', '0'], ['Tri-Band Smart Connect', '1'], ['5GHz Smart Connect', '2']];
+				_optionArray = [['<#wl_securitylevel_0#>', '0'], ['<#smart_connect_tri#>', '1'], ['5GHz Smart Connect', '2']];
 			}				
 		}		
 	}
 	else{
-		_optionArray = [['<#wl_securitylevel_0#>', '0'], ['Dual-Band Smart Connect', '1']];
+		_optionArray = [['<#wl_securitylevel_0#>', '0'], ['<#smart_connect_dual#>', '1']];
 	}
 
 	for(var i=0; i<_optionArray.length; i++){
@@ -543,6 +550,15 @@ function genAuthMethod(unit, id, nmode_x, auth_mode_x){
 		}
 		else{
 			auth_array = authObj['normalWithoutWPA3'];
+		}
+	}
+
+	if(isSupport("amas") && isSupport("amasRouter") && (isSwMode("rt") || isSwMode("ap"))){
+		var re_count = httpApi.hookGet("get_cfg_clientlist", true).length;
+		if(re_count > 1){
+			auth_array = auth_array.filter(function(item){
+				return (item[1] != "wpa2" && item[1] != "wpawpa2");//have re node then hide WPA2-Enterprise, WPA/WPA2-Enterprise
+			});
 		}
 	}
 
@@ -723,6 +739,9 @@ function apply(rc_flag){
 	}
 
 	if(validateInput()){
+		if(system.triBandSupport && dwb_info.mode && variable['smart_connect_x'] == "1"){
+			variable["wl" + dwb_info.band + "_closed"] = "1";
+		}
 		postObj = Object.assign(postObj, variable);
 		httpApi.nvramSet(postObj, function(){
 			parent.showLoading(rc_time);
@@ -738,6 +757,44 @@ function updateVariable(id, value, flag){
 	variable[id] = value;
 	var prefix = id.split('_')[0];
 	var wpsEnable = variable['wps_enable'];
+	
+	if(band6g_support && (id == "smart_connect_x")){
+		if(value == '0' || value == '3'){
+			if(variable['wl0_auth_mode_x'] == 'psk2sae'){
+				variable['wl0_auth_mode_x'] = 'psk2';
+				variable['wl0_crypto'] = 'aes';
+				if(mbo_support && nvram['wl0_mbo_enable'] == '1' && nvram['wl0_mfp'] == '0'){
+					variable['wl0_mfp'] = '1';
+				}
+				else{
+					variable['wl0_mfp'] = '0';
+				}
+			}
+
+			if(variable['wl1_auth_mode_x'] == 'psk2sae'){
+				variable['wl1_auth_mode_x'] = 'psk2';
+				variable['wl1_crypto'] = 'aes';
+				if(mbo_support && nvram['wl1_mbo_enable'] == '1' && nvram['wl1_mfp'] == '0'){
+					variable['wl1_mfp'] = '1';
+				}
+				else{
+					variable['wl1_mfp'] = '0';
+				}
+			}
+		}
+		else if(value == '1'){
+			variable['wl0_auth_mode_x'] = 'psk2sae';
+			variable['wl0_crypto'] = 'aes';
+			variable['wl0_mfp'] = '1';
+			variable['wl1_auth_mode_x'] = 'psk2sae';
+			variable['wl1_crypto'] = 'aes';
+			variable['wl1_mfp'] = '1';
+			variable['wl2_auth_mode_x'] = 'sae';
+			variable['wl2_crypto'] = 'aes';
+			variable['wl2_mfp'] = '2';
+		}
+	}
+
 	// variable padding
 	if(value == 'sae' || value == 'owe' || value == 'openowe'){
 		variable[prefix + '_mfp'] = '2';
@@ -822,28 +879,27 @@ function validateInput(){
 				obj.focus();
 				return false;
 			}
-		}
+			if(system.triBandSupport && dwb_info.mode){
+				var jsonPara = {};
+				jsonPara["edit_wl_unit"] = unit;
+				jsonPara["edit_wl_ssid"] = obj.value;
+				jsonPara["dwb_unit"] = dwb_info.band;
+				jsonPara["smart_connect"] = variable['smart_connect_x'];
+				var ssid_array = [];
+				ssid_array.push(variable["wl0_ssid"]);
+				if(system.band5gSupport){
+					ssid_array.push(variable["wl1_ssid"]);
+				}
+				if(system.band5g2Support){
+					ssid_array.push(variable["wl2_ssid"]);
+				}
 
-		if(system.triBandSupport && dwb_info.mode){
-			var jsonPara = {};
-			jsonPara["edit_wl_unit"] = unit;
-			jsonPara["edit_wl_ssid"] = obj.value;
-			jsonPara["dwb_unit"] = dwb_info.band;
-			jsonPara["smart_connect"] = variable['smart_connect_x'];
-			var ssid_array = [];
-			ssid_array.push(variable["wl0_ssid"]);
-			if(system.band5gSupport){
-				ssid_array.push(variable["wl1_ssid"]);
-			}
-			if(system.band5g2Support){
-				ssid_array.push(variable["wl2_ssid"]);
-			}
-
-			jsonPara["current_ssid"] = ssid_array;
-			if(!validator.dwb_check_wl_setting(jsonPara)) {
-				alert("The fronthaul SSID is the same as the backhaul SSID.");/* untranslated */
-				obj.focus();
-				return false;
+				jsonPara["current_ssid"] = ssid_array;
+				if(!validator.dwb_check_wl_setting(jsonPara)) {
+					alert("The fronthaul SSID is the same as the backhaul SSID.");/* untranslated */
+					obj.focus();
+					return false;
+				}
 			}
 		}
 
@@ -887,8 +943,7 @@ function validateInput(){
 
 		if(system.AMESHSupport && (parent.isSwMode("rt") || parent.isSwMode("ap"))){
 			id = prefix + '_auth_mode_x';
-			var auth_mode = variable[id];
-			if(!check_wl_auth_support(auth_mode, $('#'+ id + ' option:selected')))
+			if(!check_wl_auth_support($('#'+ id + ' option:selected'), unit))
 				return false;
 			else {
 				var wl_parameter = {

@@ -482,8 +482,14 @@ a{
 .plug{
 	background: url('../../images/modem_plug.png') no-repeat, url('../../images/modem_background.png') no-repeat;
 }
+.plug-ax86s{
+	background: url('../../images/modem_plug_rt-ax86s.png') no-repeat, url('../../images/modem_background.png') no-repeat;
+}
 .unplug{
 	background: url('../../images/modem_unplug.png') no-repeat, url('../../images/modem_background.png') no-repeat;
+}
+.unplug-ax86s{
+	background: url('../../images/modem_unplug_rt-ax86s.png') no-repeat, url('../../images/modem_background.png') no-repeat;
 }
 .hint{
 	color: #F00;

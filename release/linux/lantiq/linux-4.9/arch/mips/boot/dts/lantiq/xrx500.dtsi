@@ -1,0 +1,1025 @@
+
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	compatible = "lantiq,grx500","lantiq,xrx500"; 
+
+	aliases {
+		serial0 = &asc0;
+		serial1 = &asc1;
+		dma0    = &dma0;
+		dma1    = &dma1tx;
+		dma2    = &dma1rx;
+		dma3    = &dma2tx;
+		dma4    = &dma2rx;
+		dma5    = &dma3;
+		dma6    = &dma4;
+		pcie0   = &pcie0;
+		pcie1   = &pcie1;
+		pcie2   = &pcie2;
+		usb0	= &usb0;
+		usb1	= &usb1;
+		spi1 	= &ssc1;
+		timer0  = &gptc0;
+		timer1  = &gptc1;
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu: cpu@0 {
+			device_type = "cpu";
+			compatible = "mips,InterAptiv";
+			default-OS = "LINUX";
+			clocks = <&cpuclk>;
+			reg = <0>;
+		};
+
+		cpu1: cpu@1 {
+			device_type = "cpu";
+			compatible = "mips,InterAptiv";
+			default-OS = "LINUX";
+			reg = <1>;
+		};
+
+		cpu2: cpu@2 {
+			device_type = "cpu";
+			compatible = "mips,InterAptiv";
+			default-OS = "LINUX";
+			reg = <2>;
+		};
+
+		cpu3: cpu@3 {
+			device_type = "cpu";
+			compatible = "mips,InterAptiv";
+			default-OS = "LINUX";
+			reg = <3>;
+		};
+	};
+
+	cpu_intc: interrupt-controller {
+		#address-cells = <0>; 
+		#interrupt-cells = <1>;
+		interrupt-controller; 
+		compatible = "mti,cpu-interrupt-controller"; 
+	};
+
+	ssx0@1E000000{ 
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "lantiq,ssx", "simple-bus";
+		reg = <0x1E000000 0x2000000>;
+		ranges = <0x0 0x1E000000 0x02000000>;
+
+		pmi@1100000 {
+			compatible = "lantiq,pmi-xrx500";
+			reg = <0x1100000 0x100>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 94 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
+		eip97@100000 {
+			compatible = "lantiq,crypto-xrx500";
+			reg = <0x100000 0x100000>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 89 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 90 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 91 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkgate1 GATE_EIP97_CLK>;
+		};
+
+		dma3: dma@300000 {
+			compatible = "lantiq,dma-grx500";
+			reg = <0x300000 0x100000>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 69 IRQ_TYPE_LEVEL_HIGH>;
+			lantiq,dma-pkt-arb = <2>; /* 0 - burst, 1 - mulitburst, 2 - pkt */
+			lantiq,dma-burst = <16>; /* 2, 4, 8, 16 */
+			lantiq,dma-polling-cnt = <24>;
+			lantiq,dma-chan-fc = <0>;
+			lantiq,dma-desc-fod = <0>;
+			lantiq,dma-desc-in-sram = <1>;
+			lantiq,dma-drb = <0>;
+			lantiq,dma-byte-en = <1>;
+			lantiq,budget = <20>;
+			clocks = <&clkgate1 GATE_TOE_CLK>;
+		};
+
+		dma4: dma@400000 {
+			status = "disabled";
+			compatible = "lantiq,dma-grx500";
+			reg = <0x400000 0x100000>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 70 IRQ_TYPE_LEVEL_HIGH>;
+			lantiq,dma-pkt-arb = <2>; /* 0 - burst, 1 - mulitburst, 2 - pkt */
+			lantiq,dma-burst = <16>; /* 2, 4, 8, 16 */
+			lantiq,dma-polling-cnt = <24>;
+			lantiq,dma-chan-fc = <0>;
+			lantiq,dma-desc-fod = <0>;
+			lantiq,dma-desc-in-sram = <0>;
+			lantiq,dma-drb = <0>;
+		};
+
+		cbm: cbm@700000{ 
+			status = "ok";
+			compatible = "lantiq,cbm-xrx500";
+			reg = < 0x700000 0x1000   /*TMU*/
+				0x710000 0x10000 /*CBM*/
+				0x720000 0x4000 /*QIDT*/
+				0x730000 0x14000 /*SBIM*/
+				0x750000 0x400 /*QEQCNTR*/
+				0x750800 0x400 /*QDQCNTR*/
+				0x760000 0x10000 /*LS*/
+				0x780000 0x20000 /*CBM EQM*/
+				0x7C0000 0x30000 /*CBM DQM*/
+				0x800000 0x100000 /*FSQM0*/
+				0x900000 0x100000 /*FSQM1*/
+				0x500000 0x100000 /*CBM DMA DESC*/
+				>;
+				interrupt-parent = <&gic>;
+				interrupts = <GIC_SHARED 174 IRQ_TYPE_LEVEL_HIGH>,
+					<GIC_SHARED 178 IRQ_TYPE_LEVEL_HIGH>,
+					<GIC_SHARED 179 IRQ_TYPE_LEVEL_HIGH>,
+					<GIC_SHARED 180 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&pll0aclk CBM_CLK>, <&clkgate1 GATE_CBM_CLK>;
+				clock-names = "freq", "cbm";
+		};
+
+		mps@1107000 { 
+			compatible = "lantiq,mps-xrx500","lantiq,mps-xrx100" ; /* Extend compatible to xrx500*/
+			reg = <0x1107000 0x400>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 146 IRQ_TYPE_LEVEL_HIGH>, <GIC_SHARED 147 IRQ_TYPE_LEVEL_HIGH>;
+			lantiq,mbx = <&mpsmbx>;
+		};
+
+		mpsmbx: mpsmbx@1200000 {
+			reg = <0x1200000 0x200>;
+		};
+
+		eth:eth@a00000{
+			#address-cells = <1>;
+			#size-cells = <0>;
+			compatible = "lantiq,xrx500-net";
+			lantiq,eth-rx-csum-offload = <1>;
+		};
+
+		mdio@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			compatible = "lantiq,xrx500-mdio";
+
+			phy2: ethernet-phy@2 {
+				reg = <2>;
+				compatible = "lantiq,phy11g", "ethernet-phy-ieee802.3-c22";
+			};
+
+			phy3: ethernet-phy@3 {
+				reg = <3>;
+				compatible = "lantiq,phy11g", "ethernet-phy-ieee802.3-c22";
+			};
+
+			phy4: ethernet-phy@4 {
+				reg = <4>;
+				compatible = "lantiq,phy11g", "ethernet-phy-ieee802.3-c22";
+			};
+
+			phy5: ethernet-phy@5 {
+				reg = <5>;
+				compatible = "lantiq,phy11g", "ethernet-phy-ieee802.3-c22";
+			};
+		};
+
+		mdio@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			compatible = "lantiq,xrx500-mdio-pae";
+
+			phy1: ethernet-phy@1 {
+				reg = <1>;
+				compatible = "lantiq,phy11g", "ethernet-phy-ieee802.3-c22";
+			};
+		};
+	};
+
+	ssx1@1c000000 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "lantiq,ssx", "simple-bus"; 
+		reg = <0x1c000000 0x2000000>;
+		ranges = <0x0 0x1c000000 0x02000000>;
+
+		gswl: gswitch@000000 {
+			compatible = "lantiq,xrx500-gswapi", "lantiq,xway-gswapi"; 
+			reg = <0x000000 0x3000>;
+			lantiq,gsw-devid = <0>;
+			clocks = <&pll0bclk GSWIP_CLK>, <&clkgate1 GATE_GSWIP_CLK>;
+			clock-names = "freq", "gate";
+		};
+
+		dma2tx: dma@100000 {
+			compatible = "lantiq,dma-grx500";
+			reg = <0x100000 0x100000>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 67 IRQ_TYPE_LEVEL_HIGH>;
+			lantiq,dma-pkt-arb = <2>; /* 0 - burst, 1 - mulitburst, 2 - pkt */
+			lantiq,dma-burst = <16>; /* 2, 4, 8, 16 */
+			lantiq,dma-polling-cnt = <24>;
+			lantiq,dma-chan-fc = <1>;
+			lantiq,dma-desc-fod = <1>;
+			lantiq,dma-desc-in-sram = <0>;
+			lantiq,dma-drb = <0>;
+			lantiq,dma-byte-en = <1>;
+			lantiq,budget = <20>;
+		};
+
+		dma2rx: dma@200000 {
+			compatible = "lantiq,dma-grx500";
+			reg = <0x200000 0x100000>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 68 IRQ_TYPE_LEVEL_HIGH>;
+			lantiq,dma-pkt-arb = <2>; /* 0 - burst, 1 - mulitburst, 2 - pkt */
+			lantiq,dma-burst = <16>; /* 2, 4, 8, 16 */
+			lantiq,dma-polling-cnt = <24>;
+			lantiq,dma-chan-fc = <0>;
+			lantiq,dma-desc-fod = <1>;
+			lantiq,dma-desc-in-sram = <0>;
+			lantiq,dma-drb = <0>;
+			lantiq,dma-byte-en = <1>;
+			lantiq,budget = <20>;
+		};
+	};
+
+	ssx2@1a000000 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "lantiq,ssx", "simple-bus";
+		reg = <0x1a000000 0x2000000>;
+		ranges = <0x0 0x1a000000 0x02000000>;
+
+		gswr: gswitch@000000 {
+			compatible =  "lantiq,xrx500-gswapi","lantiq,xway-gswapi"; 
+			reg = <0x000000 0x3000>;
+			lantiq,gsw-devid = <1>;
+			clocks = <&pll0bclk PAE_CLK>, <&clkgate1 GATE_PAE_CLK>;
+			clock-names = "freq", "gate";
+		};
+
+		dma1tx: dma@100000 {
+			compatible = "lantiq,dma-grx500";
+			reg = <0x100000 0x100000>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 65 IRQ_TYPE_LEVEL_HIGH>;
+			lantiq,dma-pkt-arb = <2>; /* 0 - burst, 1 - mulitburst, 2 - pkt */
+			lantiq,dma-burst = <16>; /* 2, 4, 8, 16 */
+			lantiq,dma-polling-cnt = <24>;
+			lantiq,dma-chan-fc = <1>;
+			lantiq,dma-desc-fod = <1>;
+			lantiq,dma-desc-in-sram = <0>; /* A11 - 0, A21 - 1*/
+			lantiq,dma-drb = <0>;
+			lantiq,dma-byte-en = <1>;
+			lantiq,budget = <20>;
+			lantiq,dma-lab-cnt = <2>; /* 0, 1, 2, 3 */
+		};
+
+		dma1rx: dma@200000 {
+			compatible = "lantiq,dma-grx500";
+			reg = <0x200000 0x100000>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 66 IRQ_TYPE_LEVEL_HIGH>;
+			lantiq,dma-pkt-arb = <2>; /* 0 - burst, 1 - mulitburst, 2 - pkt */
+			lantiq,dma-burst = <16>; /* 2, 4, 8, 16 */
+			lantiq,dma-polling-cnt = <24>;
+			lantiq,dma-chan-fc = <0>;
+			lantiq,dma-desc-fod = <1>;
+			lantiq,dma-desc-in-sram = <0>;
+			lantiq,dma-drb = <0>;
+			lantiq,dma-byte-en = <0>;
+			lantiq,budget = <20>;
+		};
+
+		usb0:usb@300000 {
+			compatible = "lantiq,dwc3-core";
+			reg = <0x300000 0x100000>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 54 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkgate1 GATE_USB0_CLK>;
+		};
+
+		usb1:usb@500000 {
+			
+			compatible = "lantiq,dwc3-xrx500","lantiq,dwc3-core";
+			reg = <0x500000 0x100000>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 83 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkgate1 GATE_USB1_CLK>;
+		};
+	};
+
+	ssx3@18000000 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "lantiq,ssx", "simple-bus";
+		reg = <0x18000000 0xa8000000>;
+		ranges = <0x0 0x18000000 0xa8000000>;
+		
+		pcie0:pcie@900000 {
+			status = "disabled";
+			compatible = "lantiq,pcie-xrx500";
+			device_type = "pci";
+			#address-cells = <3>;
+			#size-cells = <2>;
+			reg = < 
+				0x900000 0x100000 /* RC controller */
+				0xA3000000 0x800000 /* Cfg*/
+				0x800000 0x100000 /* App logic */
+				0x500000 0x100000 /* PCIe PHY Reg */
+				0x600000 0x100000 /* MSI addr space */
+				0x700000 0x100000 /* MSI PIC */
+			>;
+			reg-names = "csr", "cfg", "app", "phy", "msi", "pic";
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 128 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 129 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 130 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 131 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 132 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 133 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 134 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 135 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 152 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "msi0", "msi1", "msi2", "msi3", "msi4", "msi5", "msi6", "msi7", "ir";
+			#interrupt-cells = <1>;
+			interrupt-map-mask = <0 0 0 0x7>;
+			interrupt-map = <0 0 0 1 &gic  GIC_SHARED 136 IRQ_TYPE_LEVEL_HIGH>,
+					<0 0 0 2 &gic  GIC_SHARED 137 IRQ_TYPE_LEVEL_HIGH>,
+					<0 0 0 3 &gic  GIC_SHARED 138 IRQ_TYPE_LEVEL_HIGH>,
+					<0 0 0 4 &gic  GIC_SHARED 139 IRQ_TYPE_LEVEL_HIGH>;
+			ranges = <0x02000000 0 0xa0000000 0xa0000000 0 0x03000000    /* Non-pretechable memory 32bit */
+				  0x01000000 0 0xa3800000 0xa3800000 0 0x00100000     /* Downsream I/O */ 
+				 >;
+
+			resets = <&rcu0 12>; 
+			reset-names = "phy";
+			lantiq,pcie-syscon = <&sysconf>;
+			lantiq,ssc-syscon = <&cgu0>;
+			lantiq,inbound-shift = <5>;
+			lantiq,outbound-shift = <4>;
+			lantiq,clkout = <22>;
+			clocks = <&clkgate2 GATE_PCIE0_CLK>;
+			clock-names ="ctl";
+		};
+
+		pcie1:pcie@400000 {
+			status = "disabled";
+			compatible = "lantiq,pcie-xrx500";
+			device_type = "pci";
+			#address-cells = <3>;
+			#size-cells = <2>;
+			reg = <
+				0x400000 0x100000 /* RC controller */
+				0x9f000000 0x800000 /* Cfg*/
+				0x300000 0x100000 /* App logic */
+				0x000000 0x100000 /* PCIe PHY Reg */
+				0x100000 0x100000 /* MSI phy space */
+				0x200000 0x100000 /* MSI PIC */
+				
+			>;
+			reg-names = "csr", "cfg", "app", "phy", "msi", "pic";
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 37 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 38 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 39 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 40 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 41 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 42 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 43 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 44 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 49 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "msi0", "msi1", "msi2", "msi3", "msi4", "msi5", "msi6", "msi7", "ir";
+			#interrupt-cells = <1>;
+			interrupt-map-mask = <0 0 0 0x7>;
+			interrupt-map = <0 0 0 1 &gic  GIC_SHARED 9 IRQ_TYPE_LEVEL_HIGH>,
+					<0 0 0 2 &gic  GIC_SHARED 10 IRQ_TYPE_LEVEL_HIGH>,
+					<0 0 0 3 &gic  GIC_SHARED 11 IRQ_TYPE_LEVEL_HIGH>,
+					<0 0 0 4 &gic  GIC_SHARED 12 IRQ_TYPE_LEVEL_HIGH>;
+			ranges = < 0x02000000 0 0x9c000000 0x9c000000 0 0x03000000    /* Non-pretechable memory 32bit */
+				   0x01000000 0 0x9f800000 0x9f800000 0 0x00100000    /* Downsream I/O */ 
+				 >;
+						
+			resets = <&rcu0 13>; 
+			reset-names = "phy";
+			lantiq,pcie-syscon = <&sysconf>;
+			lantiq,ssc-syscon = <&cgu0>;
+			lantiq,inbound-shift = <9>;
+			lantiq,outbound-shift = <8>;
+			lantiq,clkout = <23>;
+			clocks = <&clkgate2 GATE_PCIE1_CLK>;
+			clock-names ="ctl";
+		};
+
+		pcie2:pcie@E00000 {
+			status = "disabled";
+			compatible = "lantiq,pcie-xrx500";
+			#address-cells = <3>;
+			#size-cells = <2>;
+			device_type = "pci";
+			reg = <
+				0xe00000 0x100000 /* RC controller */
+				0xa7000000 0x800000 /* Cfg*/
+				0xd00000 0x100000 /* App logic */
+				0xa00000 0x100000 /* PCIe PHY Reg */
+				0xb00000 0x100000 /* MSI addr space */
+				0xc00000 0x100000 /* MSI PIC */
+			>;
+			reg-names = "csr", "cfg", "app", "phy", "msi", "pic";
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 24 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 25 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 26 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 27 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 28 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 29 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 30 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 31 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 55 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "msi0", "msi1", "msi2", "msi3", "msi4", "msi5", "msi6", "msi7", "ir";
+			#interrupt-cells = <1>;
+			interrupt-map-mask = <0 0 0 0x7>;
+			interrupt-map = <0 0 0 1 &gic  GIC_SHARED 155 IRQ_TYPE_LEVEL_HIGH>,
+					<0 0 0 2 &gic  GIC_SHARED 156 IRQ_TYPE_LEVEL_HIGH>,
+					<0 0 0 3 &gic  GIC_SHARED 157 IRQ_TYPE_LEVEL_HIGH>,
+					<0 0 0 4 &gic  GIC_SHARED 158 IRQ_TYPE_LEVEL_HIGH>;
+			ranges = < 0x02000000 0 0xa4000000 0xa4000000 0 0x03000000    /* Non-pretechable memory 32bit */
+				   0x01000000 0 0xa7800000 0xa7800000 0 0x00100000    /* Downsream I/O */ 
+				 >;
+			resets = <&rcu0 10>; 
+			reset-names = "phy";
+			lantiq,pcie-syscon = <&sysconf>;
+			lantiq,ssc-syscon = <&cgu0>;
+			lantiq,inbound-shift = <13>;
+			lantiq,outbound-shift = <12>;
+			lantiq,clkout = <24>;
+			clocks = <&clkgate2 GATE_PCIE2_CLK>;
+			clock-names ="ctl";
+		};
+	};
+
+	ssx4@16000000 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "lantiq,ssx", "simple-bus";
+		reg = <0x16000000 0x2000000>;
+		ranges = <0x0 0x16000000 0x02000000>;
+
+		localbus@0 {
+			#address-cells = <2>;
+			#size-cells = <1>;
+			ranges = <0 0 0x1400000 0xc00000 /* addrsel0 */
+			1 0 0x1c00000 0x100000>; /* addsel1 */
+			compatible = "lantiq,localbus", "simple-bus";
+		};
+
+		rcu0: reset-controller@00000000 {
+			compatible = "lantiq,rcu-grx500", "syscon"; 
+			reg = <0x000000 0x80000>;
+			#reset-cells = <1>; 
+		};
+
+		sysconf: chiptop@00080000 {
+			compatible = "syscon", "simple-mfd"; 
+			reg = <0x80000 0x1000>;
+			#reset-cells = <1>; 
+		};
+
+		ts: ts@080000 {
+			compatible = "lantiq,ts-grx500" , "lantiq,ts-xrx500"; 
+			reg = <0x080000 0x70000>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 19 IRQ_TYPE_LEVEL_HIGH>;
+			lantiq,numofsensors = <0x2>;
+		};
+
+		cgu0: cgu@200000 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "lantiq,cgu-grx500", "syscon";
+			reg = <0x200000 0x100000>;
+
+			clock {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				osc0: osc0 {
+					#clock-cells = <0>;
+					compatible = "fixed-clock";
+					clock-frequency = <40000000>;
+					clock-output-names = "osc40M";
+				};
+
+				pll0a: pll0a {
+					#clock-cells = <0>;
+					compatible = "fixed-factor-clock";
+					clock-mult = <0x3C>;
+					clock-div = <1>;
+					clocks = <&osc0>;
+					clock-output-names = "pll0a";
+				};
+
+				pll0b: pll0b {
+					#clock-cells = <0>;
+					compatible = "fixed-factor-clock";
+					clock-mult = <0x32>;
+					clock-div = <1>;
+					clocks = <&osc0>;
+					clock-output-names = "pll0b";
+				};			
+
+				pll3: pll3 {
+					#clock-cells = <0>;
+					compatible = "fixed-factor-clock";
+					clock-mult = <0x64>;
+					clock-div = <1>;
+					clocks = <&osc0>;
+					clock-output-names = "lcpll3";
+				};
+
+				pll0aclk: pll0aclk {
+					#clock-cells = <1>;
+					compatible = "lantiq, grx500-pll0a-output-clk";
+					clocks = <&pll0a>;
+					reg = <0x8>;
+					clock-output-names = "cbmclk", "ngiclk", "ssx4clk", "cpu0clk";  
+				};
+
+				pll0bclk: pll0bclk {
+					#clock-cells = <1>;
+					compatible = "lantiq, grx500-pll0b-output-clk";
+					clocks = <&pll0b>;
+					reg = <0x38>;
+					clock-output-names = "paeclk", "gswipclk", "ddrclk", "cpu1clk";  
+				};
+
+				pcieclk: pcieclk {
+					#clock-cells = <0>;
+					compatible = "lantiq, grx500-pcie-clk";
+					clocks = <&pll3>;
+					reg = <0x98>;
+					clock-output-names = "pcieclk";
+				};
+
+				cpuclk: cpuclk {
+					#clock-cells = <0>;
+					compatible = "lantiq, grx500-cpu-clk";
+					clocks = <&pll0aclk CPU0_CLK>, <&pll0bclk CPU1_CLK>;
+					reg = <0x8>;
+					clock-output-names = "cpu";
+				};
+
+				clkgate0: clkgate0 {
+					#clock-cells = <1>;
+					compatible = "lantiq, grx500-gate0-clk";
+					reg = <0x114>;
+					clock-output-names = "gate_xbar0", "gate_xbar1", "gate_xbar2",
+						"gate_xbar3", "gate_xbar6", "gate_xbar7";
+				};
+
+				clkgate1: clkgate1 {
+					#clock-cells = <1>;
+					compatible = "lantiq, grx500-gate1-clk";
+					reg = <0x120>;
+					clock-output-names = "gate_vcodec", "gate_dma0", "gate_usb0",
+						"gate_spi1", "gate_spi0", "gate_cbm", "gate_ebu",
+						"gate_sso", "gate_gptc0", "gate_gptc1", "gate_gptc2",
+						"gate_urt", "gate_eip97", "gate_eip123", "gate_toe",
+						"gate_mpe", "gate_tdm", "gate_pae", "gate_usb1", "gate_gswip";
+				};
+
+				clkgate2: clkgate2 {
+					#clock-cells = <1>;
+					compatible = "lantiq, grx500-gate2-clk";
+					reg = <0x130>;
+					clock-output-names = "gate_pcie0", "gate_pcie1", "gate_pcie2";
+				};
+
+				voiceclk: voiceclk {
+					#clock-cells = <0>;
+					compatible = "lantiq, grx500-voice-clk";
+					clock-frequency = <8192000>;
+					reg = <0xc4>;
+					clock-output-names = "VOICE_CLK";
+				};
+
+				i2cclk: i2cclk {
+					#clock-cells = <0>;
+					compatible = "lantiq, grx500-gate-dummy-clk";
+					clock-output-names = "gate_i2c";
+				};
+			};
+		};
+
+		ebu0: ebu@f00000 {
+			compatible = "lantiq,ebu-grx500", "lantiq,ebu-xrx500"; 
+			reg = <0xf00000 0x100000>,
+				<0x1000000 0x100000>; 
+			reg-names = "ebunand_reg", "hsnand_reg";
+			clocks = <&clkgate1 GATE_EBU_CLK>;
+		};
+
+		asc0: serial@600000 {
+			compatible = "lantiq,asc";
+			reg = <0x600000 0x100000>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 103 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 105 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 106 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&pll0aclk SSX4_CLK>, <&clkgate1 GATE_URT_CLK>;
+			clock-names = "freq", "asc";
+		};
+
+		asc1: serial@700000 {
+			compatible = "lantiq,asc";
+			reg = <0x700000 0x100000>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 76 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 78 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 79 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&pll0aclk SSX4_CLK>, <&clkgate1 GATE_URT_CLK>;
+			clock-names = "freq", "asc";
+			status = "disabled";
+		};
+
+		ssc0: spi@800000 {
+			compatible = "lantiq,spi-grx500","lantiq,spi-lantiq-ssc";
+			reg = <0x800000 0x400>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 14 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 15 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 16 IRQ_TYPE_EDGE_RISING>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clocks = <&clkgate1 GATE_SPI0_CLK>;
+			sslic@5 {
+				compatible = "lantiq,sslic";
+				spi-max-frequency = <8000000>;
+				reg = <5>;
+				interrupt-parent = <&gic>;
+				interrupts = <GIC_SHARED 209 IRQ_TYPE_LEVEL_HIGH>;
+			};
+		};
+
+		ssc1: spi@900000 {
+			compatible = "lantiq,spi-ssc";
+			reg = <0x900000 0x400>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 99 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 100 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 101 IRQ_TYPE_EDGE_RISING>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			lantiq,ssc-port = <1>;
+			clocks = <&clkgate1 GATE_SPI1_CLK>;
+			status = "disabled";
+		};
+
+		i2c: i2c@a00000 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+			compatible = "lantiq,lantiq-i2c";
+			reg = <0xa00000 0x10000>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 23 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 32 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 33 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 36 IRQ_TYPE_LEVEL_HIGH>;
+			clock-frequency = <100000>;
+			clocks = <&i2cclk>;
+		};
+
+		clocksource: gptc-phandle {
+			#gptc-cells = <3>;
+		};
+
+		gptc0: gptc@b00000 {
+			compatible = "intel,gptc", "lantiq,gptc";
+			reg = <0xb00000 0x400>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 118 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 120 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 122 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "tc1a", "tc2a", "tc3a";
+			intel,clk = <&clocksource 1 0 1>, <&clocksource 0 2 0>;
+			clocks = <&pll0aclk SSX4_CLK>, <&clkgate1 GATE_GPTC0_CLK>;
+			clock-names = "freq", "gptc"; 
+		};
+
+		gptc1: gptc@300000 {
+			compatible = "intel,gptc", "lantiq,gptc";
+			reg = <0x300000 0x400>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 160 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 162 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 164 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "tc1a", "tc2a", "tc3a";
+			intel,clk = <&clocksource 1 0 0>, <&clocksource 1 1 2>, <&clocksource 1 2 3>;
+			clocks =<&pll0aclk SSX4_CLK>, <&clkgate1 GATE_GPTC1_CLK>;
+			clock-names = "freq", "gptc"; 
+		};
+
+		pad@c80000{
+			compatible = "lantiq,pad-xrx500";
+			lantiq,bank = <0>;
+			reg = <0xc80000 0x100>;
+		};
+
+		pad@c80100{
+			compatible = "lantiq,pad-xrx500";
+			lantiq,bank = <1>;
+			reg = <0xc80100 0x100>;
+			lantiq,bbspi-en = <0>;
+		};
+
+		dma0: dma@E00000 {
+			compatible = "lantiq,dma0-grx500", "lantiq,dma-xway";
+			reg = <0xE00000 0x100000>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 64 IRQ_TYPE_LEVEL_HIGH>;
+			lantiq,desc-num = <16>;
+			lantiq,dma-burst = <2>;
+			lantiq,dma-polling-cnt = <4>;
+			lantiq,dma-drb = <1>;
+			lantiq,budget = <20>;
+			clocks = <&clkgate1 GATE_DMA0_CLK>;
+		};
+
+		pinctrl: pinctrl {	/*Change the label form gpio to pinctrl*/
+			compatible = "lantiq,pinctrl-xrx500";
+			pinctrl-names = "default";
+			pinctrl-0 = <&state_default>;
+
+			/* default pinctrl setting*/
+			state_default: pinctrl {
+				pinctrl_ledc: ledc {
+					lantiq,groups = "ledc";
+					lantiq,function = "ledc";
+					status = "disabled";
+				};
+
+				pinctrl_i2c: i2c {
+					lantiq,groups = "i2c";
+					lantiq,function = "i2c";
+					status = "disabled";
+				};
+
+				pinctrl_spi0: spi0 {
+					lantiq,groups = "spi0", "spi0_cs1";
+					lantiq,function = "spi0";
+					status = "disabled";
+				};
+
+				pinctrl_spi1: spi1 {
+					lantiq,groups = "spi1", "spi1_cs0";
+					lantiq,function = "spi1";
+					status = "disabled";
+				};
+
+				pinctrl_nand: nand {
+					lantiq,groups = "nand cle", "nand ale", 
+						"nand rd", "nand rdy",
+						"nand d0", "nand d1",
+						"nand d2", "nand d3",
+						"nand d4", "nand d5",
+						"nand d6", "nand d7",
+						"nand cs1", "nand wr",
+						"nand wp", "nand se";
+					lantiq,function = "ebu";   
+					status = "disabled";   
+				};
+
+				pinctrl_mdio: mdio {
+					lantiq,groups = "mdio_l", "mdio_r";
+					lantiq,function = "mdio";
+					status = "disabled";   
+				};
+
+				pinctrl_vcodec: vcodec {
+					lantiq,groups = "vcodec", "clkout0";
+					lantiq,function = "vcodec";
+					status = "disabled";   
+				};
+
+				conf {
+					lantiq,pins = "io32", "io33", "io42", "io43";
+					lantiq,open-drain = <1>;
+				};
+
+				conf_pull {
+					lantiq,pins = "io35";
+					lantiq,pull = <0>;
+				};
+			};
+		};
+
+		gpio0: gpio@c00000 {
+			compatible = "lantiq,gpio-xrx500";
+			gpio-controller;
+			#gpio-cells = <2>;
+			reg = <0xc00000 0x80>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 172 IRQ_TYPE_LEVEL_HIGH>;
+			lantiq,bank = <0>;
+			sso_pins: sso_pins {
+				status = "disabled";
+				hog-as-output;
+				gpio = <4 5 6>;
+			};
+			nand_pins: nand_pins {
+				status = "disabled";
+				hog-as-output;
+				gpio = <24 13 49 50 51 52 53 54 55 56 57 23 59 60 61>;
+			};
+			
+		};
+
+		gpio1: gpio@c00100 {
+			compatible = "lantiq,gpio-xrx500";
+			gpio-controller;
+			#gpio-cells = <2>;
+			reg = <0xc00100 0x80>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 173 IRQ_TYPE_LEVEL_HIGH>;
+			lantiq,bank = <1>;
+			mdio_pins: mdio_pins {
+				status = "disabled";
+				hog-as-output;
+				gpio = <32 33 42 43>;
+			};
+		};
+
+		sso: sso@D00000 {
+			compatible = "lantiq,gpio-sso-xrx500";
+			reg = <0xD00000 0x2CC>;
+			#gpio-cells = <2>;
+			gpio-controller;
+		};
+	};
+
+	ssx6@12000000 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "lantiq,ssx", "simple-bus";
+		reg = <0x12000000 0x2000000>;
+		ranges = <0x0 0x12000000 0x02000000>;
+
+		gcr@300000 {
+			compatible = "lantiq,gcr-grx500";
+			reg = <0x300000 0x8000>;
+		};
+
+		cpc@310000 {
+			compatible = "lantiq,cpc-grx500";
+			reg = <0x310000 0x6000>;
+		};
+
+		gic: gic@320000 {
+			compatible = "mti,gic";
+			reg = <0x320000 0x20000>;
+			interrupt-controller;
+			#interrupt-cells = <3>;
+			/*
+			 * Declare the interrupt-parent even though the mti,gic
+			 * binding doesn't require it, such that the kernel can
+			 * figure out that cpu_intc is the root interrupt
+			 * controller & should be probed first.
+			 */
+			interrupt-parent = <&cpu_intc>;
+			mti,reserved-ipi-vectors = <56 8>;
+			timer {
+				compatible = "mti,gic-timer";
+				interrupts = <GIC_LOCAL 1 IRQ_TYPE_NONE>;
+				clocks = <&cpuclk>;
+				clock-names = "cpuclk";
+			};
+		};
+
+		gcrcus@3f0000 {
+			compatible = "lantiq,gcrcus-grx500";
+			reg = <0x3f0000 0x200>;
+		};
+
+		watchdog@0,0 {
+			#interrupt-cells = <1>;
+			compatible = "lantiq,grx500wdt";
+			reg = <0 0>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_LOCAL 0 IRQ_TYPE_NONE>;
+			timeout-sec = <5>;
+		};
+	};
+
+	ssx7@a0000000 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "lantiq,ssx", "simple-bus";
+		reg = <0xa0000000 0x20000000>;
+		ranges = <0x0 0xa0000000 0x20000000>;
+
+		mpe: mpe@0 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "lantiq,mpe-xrx500";
+			reg = <0x0 0x200000>;
+			dtlk_vpe_num = <1>;
+		};
+
+		toe: toe@2000000 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "lantiq,toe-xrx500";
+			reg = <0x2000000 0x800000>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 71 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 72 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 73 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 74 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 75 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 182 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 183 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 184 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 185 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 186 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 187 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 188 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 189 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 190 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 191 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
+		mcpy: mcpy@2800000 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "lantiq,mcpy-xrx500";
+			reg = <0x2800000 0x800000>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 192 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 193 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 194 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 195 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 196 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 197 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 198 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 199 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 200 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 201 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 202 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 203 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 204 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 205 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 206 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 207 IRQ_TYPE_LEVEL_HIGH>,
+				<GIC_SHARED 208 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "yld0", "yld1", "yld2", "yld3", "yld4", "yld5", "yld6", "yld7", "irq0", "irq1", "irq2", "irq3", "irq4", "irq5", "irq6", "irq7";
+			/* Prio (1 is high), reserved for which VPE. (-1 NO reserve), trank size, irq_interval,  Enable (1 is En) */
+			/* Trunk size:  -1 - Default Value, 0-"512B", 1-"1KB", 2-"2KB", 3-"4KB", 4-"8KB", 5-"16KB", 6-"32KB", 7-"64KB" */
+			/* IRQ interval: 0 - Default Value> */
+			/* mcpy ch id from 0 to 7, default setting please refer to the mcpy driver source code */
+			/* lantiq,mcpy-ch0 = <1 0 -1 0 1>;  set mcpy ch0 to high prio, reserved for vpe 0, defaut trunk size, default irq_interval, enable*/
+			lantiq,mcpy-minlen = <64>;
+			lantiq,umt0-dmacid = <7>;
+			lantiq,umt1-dmacid = <8>;
+			lantiq,umt2-dmacid = <9>;
+			lantiq,umt3-dmacid = <10>;
+		};
+	};
+
+	cpuclocks {
+		compatible = "lantiq,scaling-frequencies";
+
+		xrx350_cpuclocks: cpuclocks@0 {
+			status = "disabled";
+			lantiq,cpuclocks = <600000000 600000000 150000000 50000000>;
+			lantiq,ddrclocks = <333000000 333000000 166000000 166000000>;
+		};
+
+		xrx350_800_cpuclocks: cpuclocks@1 {
+			status = "disabled";
+			lantiq,cpuclocks = <800000000 600000000 150000000 50000000>;
+			lantiq,ddrclocks = <333000000 333000000 166000000 166000000>;
+		};
+
+		xrx500_cpuclocks: cpuclocks@2 {
+			status = "disabled";
+			lantiq,cpuclocks = <1200000000 800000000 150000000 50000000>;
+			lantiq,ddrclocks = <400000000 333000000 166000000 166000000>;
+		};
+
+		xrx500_800_cpuclocks: cpuclocks@3 {
+			status = "disabled";
+			lantiq,cpuclocks = <800000000 800000000 150000000 50000000>;
+			lantiq,ddrclocks = <333000000 333000000 166000000 166000000>;
+		};
+	};
+};

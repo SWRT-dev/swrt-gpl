@@ -270,10 +270,10 @@ start_pppd(int unit)
 	} else
 #endif
 	{
-	if (nvram_get_int(strcat_r(prefix, "dnsenable_x", tmp)))
-		fprintf(fp, "usepeerdns\n");
+		if (nvram_get_int(strcat_r(prefix, "dnsenable_x", tmp)))
+			fprintf(fp, "usepeerdns\n");
 
-	fprintf(fp, "ipcp-accept-remote ipcp-accept-local noipdefault\n");
+		fprintf(fp, "ipcp-accept-remote ipcp-accept-local noipdefault\n");
 	}
 	fprintf(fp, "ktune\n");
 

@@ -1,4 +1,3 @@
-ifneq ($(HND_ROUTER_AX),y)
 libnl/configure:
 	cd libnl && ./autogen.sh
 
@@ -24,4 +23,3 @@ libnl-install: libnl
 libnl-clean:
 	[ ! -f libnl/Makefile ] || $(MAKE) -C libnl distclean
 	@rm -f libnl/Makefile
-endif

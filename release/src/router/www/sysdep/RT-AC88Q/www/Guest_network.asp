@@ -531,7 +531,7 @@ function edit_guest_unit(_unit, _subunit) {
 	}
 
 	var interface_support =  decodeURIComponent(gn_array[idx][24]);
-	if(amesh_support && amesh_wgn_support && interface_support == "1"){
+	if(amesh_support && ameshRouter_support && amesh_wgn_support && interface_support == "1"){
 		$("#gnset_aimesh_sync").show();
 		$("#gnset_aimesh_sync select[name='wl_sync_node']").attr("disabled", false);
 		if(gn_array[idx][23] == undefined || gn_array[idx][23] == "")
@@ -1729,12 +1729,12 @@ function dis_qos_enable(_wl_idx, _form_obj, _control_item){
 		</div>
 		<div id="gnset_aimesh_sync" class="gnset_setting_item_bg">
 			<div class='gnset_setting_item_titleName'>
-			<#Guest_Network_On_AiMesh#>
+			<#sync_node#>
 			</div>
 			<div class='gnset_setting_item_content'>
 				<select name="wl_sync_node" class="gnset_setting_input_text_autoWidth">
 					<option class="content_input_fd" value="0" <% nvram_match("wl_sync_node", "0","selected"); %>><#Router_only#></option>
-					<option class="content_input_fd" value="1" <% nvram_match("wl_sync_node", "1","selected"); %>><#All_AiMesh_nodes#></option>
+					<option class="content_input_fd" value="1" <% nvram_match("wl_sync_node", "1","selected"); %>><#All#></option>
 				</select>
 			</div>
 		</div>

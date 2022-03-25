@@ -237,16 +237,8 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 				free(buffer);
 				sprintf(result, "%d", freq);
 			}
-#if defined(RTCONFIG_HND_ROUTER_AX_675X) && !defined(RTCONFIG_HND_ROUTER_AX_6710)
-			else if (
-#if defined(RTAX55) || defined(RTAX1800)
-					get_model() == MODEL_RTAX55
-#elif defined(RTAX56U)
-					get_model() == MODEL_RTAX56U
-#elif defined(RTAX58U) || defined(TUFAX3000) || defined(RTAX82U)
-					get_model() == MODEL_RTAX58U
-#endif
-					)
+#if (defined(RTCONFIG_HND_ROUTER_AX_675X) && !defined(RTCONFIG_HND_ROUTER_AX_6710)) || defined(RTCONFIG_HND_ROUTER_AX_6756)
+			else if (1)
 				strcpy(result, "1500");
 #endif
 			else
@@ -713,7 +705,7 @@ unsigned int get_phy_temperature(int radio)
 		interface = nvram_safe_get("wl0_ifname");
 	} else if (radio == 5) {
 		interface = nvram_safe_get("wl1_ifname");
-#if defined(RTAC3200) || defined(RTAC5300) || defined(GTAC5300) || defined(GTAX11000) || defined(RTAX92U)
+#if defined(RTAC3200) || defined(RTAC5300) || defined(GTAC5300) || defined(GTAX11000) || defined(RTAX92U) || defined(RTAX95Q)
 	} else if (radio == 52) {
 		interface = nvram_safe_get("wl2_ifname");
 #endif

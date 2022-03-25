@@ -70,7 +70,6 @@ verify_callback(int preverify_ok, X509_STORE_CTX *ctx)
     {
         /* get the X509 name */
         char *subject = x509_get_subject(current_cert, &gc);
-        char *serial = backend_x509_get_serial(current_cert, &gc);
 
         if (!subject)
         {
@@ -89,10 +88,10 @@ verify_callback(int preverify_ok, X509_STORE_CTX *ctx)
         }
 
         /* Remote site specified a certificate, but it's not correct */
-        msg(D_TLS_ERRORS, "VERIFY ERROR: depth=%d, error=%s: %s, serial=%s",
+        msg(D_TLS_ERRORS, "VERIFY ERROR: depth=%d, error=%s: %s",
             X509_STORE_CTX_get_error_depth(ctx),
             X509_verify_cert_error_string(X509_STORE_CTX_get_error(ctx)),
-            subject, serial ? serial : "<not available>");
+            subject);
 
         ERR_clear_error();
 

@@ -1,0 +1,60 @@
+Texas Instruments TPS65273 power regulator
+
+The TPS65273V is a monolithic dual synchronous buck regulator with wide 4.5V
+to 18-V operating input voltage. It has external feedback resistors that can
+be used for setting the initial start up voltage. The output voltage in each
+buck can be programmable from 0.68 V to 1.95 V in 10-mV steps with I2C
+Controlled 7-Bits VID.
+
+Two bucks in TPS65273V can be paralleled to deliver up to 10-A load current by
+floating the MODE pin.
+
+
+Required properties:
+
+- compatible: "ti,tps65273"
+- reg: I2C slave address
+- regulators: A node that houses a sub-node for each regulator within the
+  device. The tps65273V is a dual-synchronous DC-DC so it will create
+  two regulator devices on the system. Each sub-node is identified using
+  the node's name, with valid values listed below. The content of each
+  sub-node is defined by the standard binding for regulators found at
+  Documentation/devicetree/bindings/regulator/regulator.txt
+
+  The valid names for regulators are: dcdc1, dcdc2
+
+
+Optional properties:
+
+- vout_slew_rate: programmable slew rate control for output voltage.
+- vout_psm_mode: Pulse Skipping Mode to achieve high efficiency in light load.
+
+
+Example:
+
+tps:tps65273@62 {
+	compatible = "ti,tps65273";
+	reg = <0x62>;
+
+	regulators {
+		buck1_reg: BUCK1 {
+			regulator-name = "1V15VDD";
+			regulator-always-on;
+			regulator-boot-on;
+			regulator-min-microvolt = <900000>;
+			regulator-max-microvolt = <1200000>;
+			regulator-microvolt-offset = <0>;
+			vout-slew-rate = <0>;
+			vout-psm-mode  = <0>;
+		};
+
+		buck2_reg: BUCK2 {
+			regulator-name = "2V15VDD";
+			regulator-min-microvolt = <900000>;
+			regulator-max-microvolt = <1200000>;
+			regulator-microvolt-offset = <0>;
+			vout-slew-rate = <0>;
+			vout-psm-mode  = <0>;
+		};
+	};
+};

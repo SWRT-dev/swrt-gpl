@@ -205,6 +205,8 @@
 #define GENERAL_DEV_UPDATE                         0x70007
 #define GENERAL_DEV_DELETED                        0x70008
 #define GENERAL_DEV_ACCESS_CHANGE                  0x70009
+#define GENERAL_QOS_UPDATE                         0x7000A
+#define GENERAL_TOGGLE_STATES_UPDATE               0x7000B
 /* ------------------------------
     ### Hint Item ###
 ---------------------------------*/

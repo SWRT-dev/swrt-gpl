@@ -1,0 +1,41 @@
+Intel/Lantiq GPHY firmware loader
+
+This file documents the dt bindings for the Intel/Lantiq GPHY firmware
+loader, currently used in xrx500 and prx300 platform.
+
+Required properties:
+- compatible	: "lantiq,phy-xrx500" for xrx500 platform
+		  "intel,phy-prx300" for prx300 platform
+- firmware	: firmware file name
+- reg		: register address
+- resets	: list of phandle and reset specifier pairs.
+- reset-names	: list of reset signal names.
+  Reset and reset names are platform specific
+
+For prx300 platform:
+- intel,syscon	: phandle to syscon chiptop
+- intel,cgu-syscon	: phandle to syscon cgu
+
+Example:
+
+phy_fw: phy-xrx500@3c00 {
+	compatible = "lantiq,phy-xrx500";
+	reg = <0x3c00 0x400>;
+	firmware = "ltq_fw_PHY11G_IP_xRx5xx_A21.bin";
+	resets = <&rcu0 0x10 29>, <&rcu0 0x10 28>,
+		 <&rcu0 0x10 26>, <&rcu0 0x10 25>,
+		 <&rcu0 0x10 31>;
+	reset-names = "phy0", "phy1", "phy2", "phy3", "phy4";
+};
+
+phy_fw: phy-prx300@210100 {
+	compatible = "intel,phy-prx300";
+	reg = <0x210100 0x10>;
+	firmware = "ltq_fw_PHY31G_IP_prx3xx_A11.bin";
+	resets = <&rcu0 0x10 29>, <&rcu0 0x48 28>,
+		 <&rcu0 0x48 27>;
+	reset-names = "gphy", "gphy_cdb", "gphy_pwr_down";
+	intel,syscon = <&sysconf>; /* chiptop */
+	intel,cgu-syscon = <&cgu0>;
+};
+

@@ -135,8 +135,7 @@ typedef struct {
 	uint8_t   key;
 	char      pad[3];
 	uint32_t  en2;
-	uint32_t  sf;
-	char	  pad2[15];
+	char	  pad2[19];
 	uint8_t   flag;
 #else
 	char	  pad[32];
@@ -155,7 +154,7 @@ int create_asus(const char *optarg)
 	TAIL asus_tail;
 	uint32_t v1, v2, v3, v4;
 #ifdef TRX_NEW
-	char *sn, *en, *sf;
+	char *sn, *en;
 	char tmp[10];
 	uint8_t rand;
 	uint32_t offset;
@@ -186,9 +185,6 @@ int create_asus(const char *optarg)
 	en = strsep(&next, ",");
 	if(!en) return 0;
 
-	sf = strsep(&next, ",");
-	if(!sf) return 0;
-
 	sscanf(sn, "%d", &v1);
 	asus_tail.sn = (uint16_t)v1;
 
@@ -217,7 +213,6 @@ int create_asus(const char *optarg)
 	sscanf(en, "%d-%s", &v1, tmp);
 	asus_tail.en = (uint16_t)v1;
 	asus_tail.en2 = (uint32_t)v1;
-	asus_tail.sf = (uint32_t)atoi(sf);
 	asus_tail.flag = 1;
 #endif
 

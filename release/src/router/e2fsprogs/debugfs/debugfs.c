@@ -37,6 +37,10 @@ extern char *optarg;
 #include "../version.h"
 #include "jfs_user.h"
 
+#ifdef HAVE_SYS_SYSMACROS_H
+#include <sys/sysmacros.h>
+#endif
+
 #ifndef BUFSIZ
 #define BUFSIZ 8192
 #endif

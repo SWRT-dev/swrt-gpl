@@ -118,6 +118,8 @@ struct pnsInfo mapPushInfo[] =
 	{GENERAL_DEV_UPDATE                          ,0  ,"DeviceAddOrUpdate"                                       ,"" },
 	{GENERAL_DEV_DELETED                         ,0  ,"DeviceDelete"                                            ,"" },
 	{GENERAL_DEV_ACCESS_CHANGE                   ,0  ,"DeviceNetworkAccessChange"                               ,"" },
+	{GENERAL_QOS_UPDATE                          ,0  ,"QosModeUpdate"                                           ,"" },
+	{GENERAL_TOGGLE_STATES_UPDATE                ,0  ,"ToggleStateUpdate"                                       ,"" },
 	/* ------------------------------
 	   ### Hint Item ###
 	---------------------------------*/

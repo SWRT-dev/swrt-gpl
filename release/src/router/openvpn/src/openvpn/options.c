@@ -2228,7 +2228,7 @@ options_postprocess_verify_ce(const struct options *options, const struct connec
         }
         if (options->pull_filter_list)
         {
-            msg(M_WARN, "--pull-filter ignored for --mode server");
+            msg(M_USAGE, "--pull-filter cannot be used with --mode server");
         }
         if (!(proto_is_udp(ce->proto) || ce->proto == PROTO_TCP_SERVER))
         {
@@ -2832,24 +2832,6 @@ options_postprocess_mutate_ce(struct options *o, struct connection_entry *ce)
 #endif
     }
 
-    /* our socks code is not fully IPv6 enabled yet (TCP works, UDP not)
-     * so fall back to IPv4-only (trac #1221)
-     */
-    if (ce->socks_proxy_server && proto_is_udp(ce->proto) && ce->af != AF_INET)
-    {
-        if (ce->af == AF_INET6)
-        {
-            msg(M_INFO, "WARNING: '--proto udp6' is not compatible with "
-                "'--socks-proxy' today.  Forcing IPv4 mode." );
-        }
-        else
-        {
-            msg(M_INFO, "NOTICE: dual-stack mode for '--proto udp' does not "
-                "work correctly with '--socks-proxy' today.  Forcing IPv4." );
-        }
-        ce->af = AF_INET;
-    }
-
     /*
      * Set MTU defaults
      */
@@ -2981,15 +2963,6 @@ options_postprocess_mutate(struct options *o)
     helper_tcp_nodelay(o);
 
     options_postprocess_mutate_invariant(o);
-
-    if (o->ncp_enabled)
-    {
-        o->ncp_ciphers = mutate_ncp_cipher_list(o->ncp_ciphers, &o->gc);
-        if (o->ncp_ciphers == NULL)
-        {
-            msg(M_USAGE, "NCP cipher list contains unsupported ciphers or is too long.");
-        }
-    }
 
     if (o->remote_list && !o->connection_list)
     {
@@ -4446,8 +4419,7 @@ in_src_get(const struct in_src *is, char *line, const int size)
 }
 
 static char *
-read_inline_file(struct in_src *is, const char *close_tag,
-                 int *num_lines, struct gc_arena *gc)
+read_inline_file(struct in_src *is, const char *close_tag, struct gc_arena *gc)
 {
     char line[OPTION_LINE_SIZE];
     struct buffer buf = alloc_buf(8*OPTION_LINE_SIZE);
@@ -4456,7 +4428,6 @@ read_inline_file(struct in_src *is, const char *close_tag,
 
     while (in_src_get(is, line, sizeof(line)))
     {
-        (*num_lines)++;
         char *line_ptr = line;
         /* Remove leading spaces */
         while (isspace(*line_ptr))
@@ -4490,11 +4461,10 @@ read_inline_file(struct in_src *is, const char *close_tag,
     return ret;
 }
 
-static int
+static bool
 check_inline_file(struct in_src *is, char *p[], struct gc_arena *gc)
 {
-    int num_inline_lines = 0;
-
+    bool ret = false;
     if (p[0] && !p[1])
     {
         char *arg = p[0];
@@ -4506,15 +4476,16 @@ check_inline_file(struct in_src *is, char *p[], struct gc_arena *gc)
             p[1] = string_alloc(INLINE_FILE_TAG, gc);
             close_tag = alloc_buf(strlen(p[0]) + 4);
             buf_printf(&close_tag, "</%s>", p[0]);
-            p[2] = read_inline_file(is, BSTR(&close_tag), &num_inline_lines, gc);
+            p[2] = read_inline_file(is, BSTR(&close_tag), gc);
             p[3] = NULL;
             free_buf(&close_tag);
+            ret = true;
         }
     }
-    return num_inline_lines;
+    return ret;
 }
 
-static int
+static bool
 check_inline_file_via_fp(FILE *fp, char *p[], struct gc_arena *gc)
 {
     struct in_src is;
@@ -4523,7 +4494,7 @@ check_inline_file_via_fp(FILE *fp, char *p[], struct gc_arena *gc)
     return check_inline_file(&is, p, gc);
 }
 
-static int
+static bool
 check_inline_file_via_buf(struct buffer *multiline, char *p[], struct gc_arena *gc)
 {
     struct in_src is;
@@ -4593,9 +4564,8 @@ read_config_file(struct options *options,
                 if (parse_line(line + offset, p, SIZE(p)-1, file, line_num, msglevel, &options->gc))
                 {
                     bypass_doubledash(&p[0]);
-                    int lines_inline = check_inline_file_via_fp(fp, p, &options->gc);
+                    check_inline_file_via_fp(fp, p, &options->gc);
                     add_option(options, p, file, line_num, level, msglevel, permission_mask, option_types_found, es);
-                    line_num += lines_inline;
                 }
             }
             if (fp != stdin)
@@ -4639,9 +4609,8 @@ read_config_string(const char *prefix,
         if (parse_line(line, p, SIZE(p)-1, prefix, line_num, msglevel, &options->gc))
         {
             bypass_doubledash(&p[0]);
-            int lines_inline = check_inline_file_via_buf(&multiline, p, &options->gc);
+            check_inline_file_via_buf(&multiline, p, &options->gc);
             add_option(options, p, prefix, line_num, 0, msglevel, permission_mask, option_types_found, es);
-            line_num += lines_inline;
         }
         CLEAR(p);
     }

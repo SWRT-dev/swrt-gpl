@@ -1,0 +1,33 @@
+#
+# PPV4 QOS AND BM configuration
+#
+config LTQ_PPV4
+	bool "Buffer Manager and QOS Driver"
+	depends on SOC_GRX500
+	default n
+
+	---help---
+	Turn on this option to enable BM and QOS driver which is a special hardware
+	present in the FALCONMX series of SoCs to manage the network buffers
+	in HW.
+
+config LTQ_PPV4_QOS
+	tristate "QoS driver"
+	depends on LTQ_PPV4
+	---help---
+	  This is the driver for the PPv4 QoS hardware in Falcon Mountain.
+
+	  To compile this driver as a module, choose M here. The module
+	  will be called pp_qos_drv.
+
+config LTQ_PPV4_QOS_TEST
+	bool "Enable test code for QoS driver"
+	depends on LTQ_PPV4_QOS
+
+config LTQ_PPV4_BM
+	tristate "BM driver"
+	depends on LTQ_PPV4
+	---help---
+	  This is the driver for the PPv4 BM hardware in Falcon Mountain.
+	  To compile this driver as a module, choose M here. The module
+	  will be called pp_bm_drv.

@@ -1,0 +1,50 @@
+#include "63158.dtsi"
+
+/ {
+	memory_controller {
+		memcfg = <(BP_DDR_TYPE_DDR4 | \
+			BP_DDR_SPEED_1067_15_15_15 | \
+			BP_DDR_TOTAL_SIZE_4096MB   | \
+			BP_DDR_DEVICE_WIDTH_8      | \
+			BP_DDR_TOTAL_WIDTH_32BIT   | \
+			BP_DDR_SSC_CONFIG_1)>;
+	};
+};
+&mdio_sf2 {
+
+	/* PHYs connected to crossbar */
+	gphyc:c {
+		status = "okay";
+	};
+
+	/* PHY directly connected to Runner */
+	phy_serdes0:serdes0 {
+		status = "okay";
+	};
+
+	/* Crossbar groups */
+	xbar_grp0:0 {
+		phy-handle = <&gphyc>;
+		status = "okay";
+	};
+};
+
+&switch_sf2 {
+	ports {
+
+		sf2_port4@4 {
+			phy-handle = <&xbar_grp0>;
+			status = "okay";
+		};
+	};
+};
+
+&switch0 {
+	ports {
+		
+		port4@4 {
+			phy-handle = <&phy_serdes0>;
+			status = "okay";
+		};
+	};
+};

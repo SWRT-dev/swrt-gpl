@@ -1,0 +1,320 @@
+#include "4908.dtsi"
+
+/ {
+    compatible = "brcm,brcm94908ref", "brcm,brcm-v8A";
+    model="RAX220";
+
+    memory_controller {
+        memcfg = <(BP_DDR_SPEED_800_11_11_11 | \
+                   BP_DDR_TOTAL_SIZE_1024MB  | \
+                   BP_DDR_DEVICE_WIDTH_16    | \
+                   BP_DDR_TOTAL_WIDTH_32BIT  | \
+                   BP_DDR_SSC_CONFIG_1)>;
+    };
+
+	buttons {
+		compatible = "brcm,buttons";
+		reset_button {
+			ext_irq = <&bca_extintr 21 BCA_GPIO_ACTIVE_LOW (BCA_EXTINTR_TYPE_LOW_LEVEL | BCA_EXTINTR_TYPE_SENSE_LEVEL)>;
+			press {
+				print = "Button Press -- Hold for 5s to do restore to default";
+			};
+		};
+		ses_button {
+			ext_irq = <&bca_extintr 53 BCA_GPIO_ACTIVE_LOW (BCA_EXTINTR_TYPE_LOW_LEVEL | BCA_EXTINTR_TYPE_SENSE_LEVEL)>;
+            press {
+                print = "WPS Button Press";
+            };
+		};
+		led_button {
+			ext_irq = <&bca_extintr 12 BCA_GPIO_ACTIVE_LOW (BCA_EXTINTR_TYPE_BOTH_EDGE | BCA_EXTINTR_TYPE_SENSE_EDGE)>;
+			press {
+				print = "LED ON/OFF Button Press";
+			};
+		};
+		wifi_button {
+			ext_irq = <&bca_extintr 10 BCA_GPIO_ACTIVE_LOW (BCA_EXTINTR_TYPE_LOW_LEVEL | BCA_EXTINTR_TYPE_SENSE_LEVEL)>;
+			release {
+				print = "WiFi Radio ON/OFF Button";
+			};
+		};
+	};
+};
+
+&mdio_sf2 {
+    /* PHYs directly connected to SF2 */
+    gphy8:8 {
+        status = "okay";
+    };
+    gphy9:9 {
+        status = "okay";
+    };
+    gphya:a {
+        status = "okay";
+    };
+    gphyb:b {
+        status = "okay";
+    };
+
+    /* Cascade PHY */
+    phy_cascade0:cascade0 {
+        reg = <19>;
+        enet-phy-lane-swap;
+        phy-reset = <&gpioc 30 GPIO_ACTIVE_LOW>;
+        status = "okay";
+    };
+
+    /* PHYs connected to crossbar */
+    gphyc:c {
+        status = "okay";
+    };
+    phy_serdes0:serdes0 {
+        phy-handle = <&phy_cascade0>;
+        status = "okay";
+    };
+
+    /* Crossbar groups */
+    xbar_grp0:0 {
+        phy-handle = <&phy_serdes0>;
+        status = "okay";
+    };
+    xbar_grp1:1 {
+        phy-handle = <&gphyc>;
+        status = "okay";
+    };
+};
+
+&switch_sf2 {
+    ports {
+        sf2_port0@0 {
+            label = "eth4";
+            network-leds = <&led11 &led12>;
+            phy-handle = <&gphy8>;
+            status = "okay";
+        };
+
+        sf2_port1@1 {
+            label = "eth3";
+            network-leds = <&led13 &led14>;
+            phy-handle = <&gphy9>;
+            status = "okay";
+        };
+
+        sf2_port2@2 {
+            label = "eth2";
+            network-leds = <&led15 &led16>;
+            phy-handle = <&gphya>;
+            status = "okay";
+        };
+
+        sf2_port3@3 {
+            label = "eth1";
+            network-leds = <&led17 &led18>;
+            phy-handle = <&gphyb>;
+            status = "okay";
+        };
+
+        sf2_port7@7 {
+            phy-handle = <&xbar_grp0>;
+            status = "okay";
+        };
+
+    };
+};
+
+&switch0 {
+    ports {
+        port3@3 {
+            phy-handle = <&xbar_grp1>;
+            phy-mode = "gmii";
+            status = "okay";
+        };
+    };
+};
+
+&pincontroller {
+    pinctrl-names = "default";
+    pinctrl-0 = <&led_gpio_pin_54 &gpio_pin_52 &gpio_pin_55 &gpio_pin_56>;
+};
+
+&led_ctrl {
+    status="okay";
+
+	/* GPHY0_1G */
+	led11: port_0-led-0-pin_0 {
+		compatible = "brcm,parallel-led";
+		hardware_led;
+		active_low;
+		link = <LED_SPEED_1G>;
+        activity = <LED_SPEED_1G>;
+		status = "okay";
+	};
+	/* GPHY0_100/10M */
+	led12: port_0-led-1-pin_1 {
+		compatible = "brcm,parallel-led";
+		hardware_led;
+		active_low;
+		link = <(LED_SPEED_10|LED_SPEED_100)>;
+		activity = <(LED_SPEED_10|LED_SPEED_100)>;
+		status = "okay";
+	};
+	/* GPHY1_1G */
+	led13: port_1-led-0-pin_2 {
+		compatible = "brcm,parallel-led";
+		hardware_led;
+		active_low;
+		link = <LED_SPEED_1G>;
+        activity = <LED_SPEED_1G>;
+		status = "okay";
+	};
+	/* GPHY1_100/10M */
+	led14: port_1-led-1-pin_3 {
+		compatible = "brcm,parallel-led";
+		hardware_led;
+		active_low;
+		link = <(LED_SPEED_10|LED_SPEED_100)>;
+		activity = <(LED_SPEED_10|LED_SPEED_100)>;
+		status = "okay";
+	};
+	/* GPHY2_1G */
+	led15: port_2-led-0-pin_4 {
+		compatible = "brcm,parallel-led";
+		hardware_led;
+		active_low;
+		link = <LED_SPEED_1G>;
+        activity = <LED_SPEED_1G>;
+		status = "okay";
+	};
+	/* GPHY2_100/10M */
+	led16: port_2-led-1-pin_5 {
+		compatible = "brcm,parallel-led";
+		hardware_led;
+		active_low;
+		link = <(LED_SPEED_10|LED_SPEED_100)>;
+		activity = <(LED_SPEED_10|LED_SPEED_100)>;
+		status = "okay";
+	};
+	/* GPHY3_1G */
+	led17: port_3-led-0-pin_6 {
+		compatible = "brcm,parallel-led";
+		hardware_led;
+		active_high;
+		link = <LED_SPEED_1G>;
+        activity = <LED_SPEED_1G>;
+		status = "okay";
+	};
+	/* GPHY3_100/10M */
+	led18: port_3-led-1-pin_7 {
+		compatible = "brcm,parallel-led";
+		hardware_led;
+		active_high;
+		link = <(LED_SPEED_10|LED_SPEED_100)>;
+		activity = <(LED_SPEED_10|LED_SPEED_100)>;
+		status = "okay";
+	};
+
+	/* Wi-Fi_5G-1 */
+    led20:led_gpio_8 {
+		compatible = "brcm,gpio-led";
+		software_led;
+		pin = <8>;
+        active_high;
+		init_low;
+	};
+	/* Wi-Fi_5G-2 */
+	led21:led_gpio_9 {
+		compatible = "brcm,gpio-led";
+		software_led;
+		pin = <9>;
+		active_high;
+        init_low;
+	};
+	/* WPS */
+	led10:led_gpio_13 {
+		compatible = "brcm,gpio-led";
+		software_led;
+		pin = <13>;
+		active_high;
+        init_low;
+	};
+	/* 2.5GE */
+	led22:led_gpio_20 {
+		compatible = "brcm,gpio-led";
+		software_led;
+		pin = <20>;
+		active_low;
+        init_high;
+	};
+	/* 2.5GE_1000/100/10 */
+	led23:led_gpio_22 {
+		compatible = "brcm,gpio-led";
+		software_led;
+		pin = <22>;
+		active_low;
+        init_high;
+	};
+    /* WIFI_2.4G */
+	led19:led_gpio_25 {
+		compatible = "brcm,gpio-led";
+		software_led;
+		pin = <25>;
+		active_high;
+        init_low;
+	};
+    /* POWER_LED */
+	led1:led_gpio_26 {
+		compatible = "brcm,gpio-led";
+		software_led;
+		pin = <26>;
+		active_low;
+        init_high;
+	};
+    /* TEST_LED */
+	led2:led_gpio_27 {
+		compatible = "brcm,gpio-led";
+		software_led;
+		pin = <27>;
+		active_low;
+        init_high;
+	};
+    /* WAN_LED_W */
+	led3:led_gpio_28 {
+		compatible = "brcm,gpio-led";
+		software_led;
+		pin = <28>;
+		active_low;
+        init_high;
+	};
+    /* WAN_LED_A */
+	led4:led_gpio_29 {
+		compatible = "brcm,gpio-led";
+		software_led;
+		pin = <29>;
+		active_low;
+        init_high;
+	};
+    /* USB1_W */
+	led6:led_gpio_46 {
+		compatible = "brcm,gpio-led";
+		software_led;
+		pin = <46>;
+		active_low;
+        init_high;
+	};
+    /* USB0_W */
+	led5:led_gpio_47 {
+		compatible = "brcm,gpio-led";
+		software_led;
+		pin = <47>;
+		active_low;
+        init_high;
+	};
+    /* WiFi_ON_OFF */
+	led54:led_gpio_54 {
+		compatible = "brcm,gpio-led";
+		software_led;
+		pin = <54>;
+		active_high;
+        init_low;
+	};
+};

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <html xmlns:v>
 <head>
@@ -16,15 +16,25 @@
 <script type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" src="/help.js"></script>
 <script type="text/javascript" src="/js/jquery.js"></script>
+<script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script>
-	var label_mac = <% get_label_mac(); %>;
+var label_mac = <% get_label_mac(); %>;
+var modelname = "<% nvram_get("modelname"); %>";
+var swrtuu = "<% nvram_get("swrt_uu"); %>";
 function initial(){
 	show_menu();
 
 }
 function uuRegister(mac){
 	var _mac = mac.toLowerCase();
-	window.open('https://router.uu.163.com/asus/pc.html#/acce?gwSn=' + _mac + '&type=asuswrt', '_blank');
+	if(swrtuu == "1")
+		window.open('https://router.uu.163.com/asus/pc.html#/acce?gwSn=' + _mac + '&type=asuswrt-merlin', '_blank');
+	else
+		window.open('https://router.uu.163.com/asus/pc.html#/acce?gwSn=' + _mac + '&type=asuswrt', '_blank');
+}
+function applyRule() {
+	showLoading();
+	document.form.submit();
 }
 </script>
 </head>
@@ -36,9 +46,11 @@ function uuRegister(mac){
 <form method="post" name="form" action="/start_apply.htm" target="hidden_frame">
 <input type="hidden" name="preferred_lang" id="preferred_lang" value="<% nvram_get("preferred_lang"); %>">
 <input type="hidden" name="firmver" value="<% nvram_get("firmver"); %>">
-<input type="hidden" name="action_mode" value="">
+<input type="hidden" name="current_page" value="UUAccelerator.asp">
+<input type="hidden" name="action_mode" value="apply">
 <input type="hidden" name="action_script" value="">
-<input type="hidden" name="action_wait" value="">
+<input type="hidden" name="action_wait" value="2">
+<input type="hidden" name="uu_enable" value="<% nvram_get("uu_enable"); %>">
 </form>
 
 <div>
@@ -86,7 +98,20 @@ function uuRegister(mac){
 							<div style="color: #FC0;"><#UU_Accelerator_desc#></div>
 						</div>
 						<div style="width:1px;height: 120px;background-color: #929EA1"></div>
-						<div style="margin: auto;" onclick="uuRegister(label_mac);">
+                          <div style="width:0px;height: 70px;margin: 32px" id="radio_uu_enable"></div>
+                                <script type="text/javascript">
+                                    $('#radio_uu_enable').iphoneSwitch('<% nvram_get("uu_enable"); %>',
+                                        function(){
+                                            document.form.uu_enable.value = 1;
+                                            applyRule();
+                                        },
+										function(){
+											document.form.uu_enable.value = 0;
+											applyRule();
+										}
+                                    );
+								</script>
+						<div style="width:0px;height: 0px;margin: -50px" onclick="uuRegister(label_mac);">
 							<input type="button" class="button_gen" value="<#btn_go#>">
 						</div>
 					</div>

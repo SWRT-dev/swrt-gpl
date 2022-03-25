@@ -823,8 +823,7 @@ src: url(../fonts/xolonium.regular.woff) format("woff"),
 	background-position: 0px -180px;
 }
 .menu_ParentalControl{
-	background: url(images/New_ui/icon_indexes.png);
-	background-position: 0px -180px;
+	background: url(images/New_ui/icon_ParentalControl.png);
 }
 .menu_APP{
 	background: url(images/New_ui/icon_indexes.png);

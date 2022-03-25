@@ -469,7 +469,7 @@ int mtd_write_main(int argc, char *argv[])
 			break;
 		}
 	}
-	//_dprintf("===========[%s->%d]: iname[%s], dev[%s]\n", __FUNCTION__, __LINE__, iname, dev);
+
 	if ((iname == NULL) || (dev == NULL)) {
 		usage_exit(argv[0], "-i file -d part");
 	}
@@ -1434,4 +1434,5 @@ bca_sys_upgrade(const char *path)
 
 	return ret;
 }
+
 #endif

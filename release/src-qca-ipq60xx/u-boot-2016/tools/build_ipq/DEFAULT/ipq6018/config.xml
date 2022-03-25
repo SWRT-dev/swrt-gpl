@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+===========================================================================
+Copyright (c) 2017, 2019 Qualcomm Technologies, Inc.
+All Rights Reserved.
+Confidential and Proprietary - Qualcomm Technologies, Inc.
+===========================================================================
+-->
+
+<config>
+	<data type="ARCH">
+		<SOC>ipq6018</SOC>
+	</data>
+
+	<data type="NOR_PARAMETER">
+		<page_size>256</page_size>
+		<pages_per_block>256</pages_per_block>
+		<total_block>256</total_block>
+	</data>
+
+	<data type="NAND_PARAMETER">
+		<entry type="2k">
+			<page_size>2048</page_size>
+			<pages_per_block>64</pages_per_block>
+			<total_block>4096</total_block>
+		</entry>
+		<entry type="4k">
+			<page_size>4096</page_size>
+			<pages_per_block>64</pages_per_block>
+			<total_block>4096</total_block>
+		</entry>
+	</data>
+
+	<data type="EMMC_PARAMETER">
+		<total_block>7634944</total_block>
+		<partition_mbn>gpt_main0.bin</partition_mbn>
+		<partition_mbn_backup>gpt_backup0.bin</partition_mbn_backup>
+	</data>
+
+	<data type="NORPLUSNAND_PARAMETER">
+		<page_size>256</page_size>
+		<pages_per_block>256</pages_per_block>
+		<total_block>256</total_block>
+	</data>
+
+	<data type="NORPLUSEMMC_PARAMETER">
+		<page_size>256</page_size>
+		<page_size_flash>512</page_size_flash>
+		<pages_per_block>256</pages_per_block>
+		<total_block>256</total_block>
+		<partition_mbn>gpt_main1.bin</partition_mbn>
+		<partition_mbn_backup>gpt_backup1.bin</partition_mbn_backup>
+	</data>
+
+	<data type="MACH_ID_BOARD_MAP">
+		<entry>
+			<machid>0x8030200</machid>
+			<board>AP-CP03-C1</board>
+			<spi_nand>false</spi_nand>
+			<memory>256M16_DDR3</memory>
+		</entry>
+	</data>
+
+</config>

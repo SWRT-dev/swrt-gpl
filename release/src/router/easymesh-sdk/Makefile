@@ -7,6 +7,8 @@ endif
 all:
 ifeq ($(RTCONFIG_RALINK),y)
 ifneq ($(PREBUILT_BIN),1)
+	$(MAKE) -C mapfilter all
+	$(MAKE) -C mtfwd all
 	cd datconf && cmake -DCMAKE_INSTALL_PREFIX=/usr	-DCMAKE_BUILD_TYPE=Release -DBUILD_LUA=OFF && $(MAKE) CFLAGS="$(CFLAGS)"
 	cd 1905daemon && $(MAKE) CFLAGS="$(CFLAGS) -D_GNU_SOURCE -I$(LINUXDIR)/user_headers/include -I$(TOP)/libnl-tiny-0.1/include/ -I./1905daemon -I$(LINUXDIR)/drivers/net/ethernet/raeth -DCONFIG_SOC_MT7621=y -DCONFIG_SUPPORT_OPENWRT=y -DCONFIG_MT753X_GSW=y" LDFLAGS="$(LDFLAGS) -L$(TOP)/libnl-tiny-0.1/ -lnl-tiny -lm"
 	cd libmapd && $(MAKE) CFLAGS="$(CFLAGS) -D_GNU_SOURCE -I$(LINUXDIR)/user_headers/include -I$(TOP)/libnl-tiny-0.1/include/ -I./1905daemon -I$(LINUXDIR)/drivers/net/ethernet/raeth -DCONFIG_SOC_MT7621=y -DCONFIG_SUPPORT_OPENWRT=y -DCONFIG_MT753X_GSW=y -DSUPPORT_MULTI_AP"
@@ -37,11 +39,15 @@ else
 	cp prebuilt/map_config_agent.lua mapd/
 	cp prebuilt/map_cert_script.sh mapd/
 	cp prebuilt/fwdd fwdd/
+	cp prebuilt/mapfilter.ko mapfilter/src/
+	cp prebuilt/mtfwd.ko mtfwd/src/
 endif
 endif
 
 install:
 ifeq ($(RTCONFIG_RALINK),y)
+	$(MAKE) -C mapfilter install
+	$(MAKE) -C mtfwd install
 	install -d $(INSTALLDIR)/easymesh-sdk/usr/lib
 	install -d $(INSTALLDIR)/easymesh-sdk/rom/etc/wappd/
 	install -d $(INSTALLDIR)/easymesh-sdk/rom/etc/map/

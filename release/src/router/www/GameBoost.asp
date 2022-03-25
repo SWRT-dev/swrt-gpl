@@ -127,6 +127,9 @@ var fc_disable_orig = '<% nvram_get("fc_disable"); %>';
 var runner_disable_orig = '<% nvram_get("runner_disable"); %>';
 var ctf_disable = '<% nvram_get("ctf_disable"); %>';
 var ctf_fa_mode = '<% nvram_get("ctf_fa_mode"); %>';
+var outfox_code = httpApi.nvramGet(["outfox_code"], true).outfox_code;
+var outfox_site = 'https://getoutfox.com/asus?code='+ outfox_code +'&utm_source=asus&utm_medium=affiliate&utm_campaign=' + support_site_modelid + '&utm_content=router_cta';
+
 function initial(){
 	show_menu();
 
@@ -163,6 +166,12 @@ function initial(){
 		$('#qmacc_1').show();
 		$('#qmacc_2').show();
 		$('#qmacc_3').show();
+	}
+
+	if(outfox_support){
+		$('#outfox_1').show();
+		$('#outfox_2').show();
+		$('#outfox_3').show();
 	}
 
 	if(!ASUS_EULA.status("tm"))
@@ -472,6 +481,10 @@ function applyRule(){
 
 	document.form.submit();
 }
+
+function redirectSite(url){
+	window.open(url, '_blank');
+}
 </script>
 </head>
 <body onload="initial();" onunload="unload_body();">
@@ -532,7 +545,7 @@ function applyRule(){
 										<tr>
 											<td align="left">
 
-												<div style="display:table-cell;background:url('/images/New_ui/game.svg');width:77px;height:77px;"></div>
+												<div style="display:table-cell;background:url('/images/New_ui/game.svg');width:77px;height:77px;background-size: 100%;"></div>
 												<div class="formfonttitle" style="display:table-cell;font-size:26px;font-weight:bold;color:#EBE8E8;vertical-align:middle">Game</div>
 											</td>
 										</tr>
@@ -704,6 +717,31 @@ function applyRule(){
 												</td>
 												<td>
 													<div class="btn" style="margin:auto;width:100px;height:40px;text-align:center;line-height:40px;font-size:18px;cursor:pointer;border-radius:5px;" onclick="location.href='GameBoost_Tencent.asp';"><#btn_go#></div>
+												</td>
+											</tr>
+											<!-- Outfox -->
+											<tr id="outfox_1" style="margin-top: 50px; display: none;">
+												<td style="width:200px">
+													<div style="padding: 5px 0;font-size:20px;"><#Game_Boost_internet#></div>
+												</td>
+												<td colspan="2">
+													<div style="padding: 5px 10px;font-size:20px;color:#FFCC66">Outfox</div>
+												</td>
+											</tr>
+											<tr id="outfox_2" style="display: none;">
+												<td colspan="3">
+													<div style="width:100%;height:1px;background-color:#D30606"></div>
+												</td>
+											</tr>
+											<tr id="outfox_3" style="display: none;">
+												<td align="center">
+													<div style="height: 85px;background-image: url('images/outfox_dark.png');background-size: 90%;background-repeat: no-repeat; background-position: center;"></div>
+												</td>
+												<td style="width:400px;height:120px;">
+													<div style="font-size:16px;color:#949393;padding-left:10px; padding-top: 5px; padding-bottom: 10px;">An optimized gaming network that improves performance by routing your traffic to provide a faster, more stable path to your game’s server. To get an exclusive, free 90-day trial simply register for Outfox and download the application to your PC.</div>
+												</td>
+												<td>
+													<div class="btn" style="margin:auto;width:100px;height:40px;text-align:center;line-height:40px;font-size:18px;cursor:pointer;border-radius:5px;" onclick="redirectSite(outfox_site)"><#btn_go#></div>
 												</td>
 											</tr>
 										</tbody>

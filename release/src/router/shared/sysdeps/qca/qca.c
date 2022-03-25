@@ -23,7 +23,6 @@
 #include <shutils.h>
 #include <shared.h>
 #include <qca.h>
-
 extern int get_ap_mac(const char *ifname, struct iwreq *pwrq);
 extern int diff_current_bssid(int unit, char bssid_str[]);
 
@@ -501,7 +500,7 @@ static int __get_QCA_sta_info_by_ifname(const char *ifname, char subunit_id, int
 	if ((q = strstr(line_buf, "ACAPS")) != NULL) {
 		*(q - 1) = '\0';
 		l2 = q;
-#if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK)
+#if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK) || defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
 		init_sta_info_item(q, part2_tbl);
 #else
 		/* ILQ2.x ~ SPF10 */
@@ -760,7 +759,7 @@ void add_beacon_vsie_by_unit(int unit, int subunit, char *hexdata)
 	//_dprintf("%s: ifname=%s\n", __func__, ifname);
 
 	if (ifname && strlen(ifname)) {
-		snprintf(cmd, sizeof(cmd), "hostapd_cli set_vsie -i%s %d DD%02X%02X%02X%02X%s",
+		snprintf(cmd, sizeof(cmd), "hostapd_cli -i%s set_vsie %d DD%02X%02X%02X%02X%s",
 			ifname, pktflag, (uint8_t)len, (uint8_t)OUI_ASUS[0], (uint8_t)OUI_ASUS[1], (uint8_t)OUI_ASUS[2], hexdata);
 		_dprintf("%s: cmd=%s\n", __func__, cmd);
 		system(cmd);
@@ -839,6 +838,7 @@ void add_beacon_vsie(char *hexdata)
 		_dprintf("%s: cmd=%s\n", __func__, cmd);
 		system(cmd);
 	}
+
 #ifdef RTCONFIG_BHCOST_OPT
 		unit++;
 	}
@@ -889,7 +889,7 @@ void del_beacon_vsie_by_unit(int unit, int subunit, char *hexdata)
 	//_dprintf("%s: ifname=%s\n", __func__, ifname);
 
 	if (ifname && strlen(ifname)) {
-		snprintf(cmd, sizeof(cmd), "hostapd_cli del_vsie -i%s %d DD%02X%02X%02X%02X%s",
+		snprintf(cmd, sizeof(cmd), "hostapd_cli -i%s del_vsie %d DD%02X%02X%02X%02X%s",
 			ifname, pktflag, (uint8_t)len, (uint8_t)OUI_ASUS[0], (uint8_t)OUI_ASUS[1], (uint8_t)OUI_ASUS[2], hexdata);
 		_dprintf("%s: cmd=%s\n", __func__, cmd);
 		system(cmd);
@@ -1005,7 +1005,47 @@ char* get_all_lan_ifnames(void)
         }
 	result[strlen(result)-1] = '\0';
 	return strdup(result);
-}	
+}
+
+int check_vlan_invalid(char *word,char *iface)
+{
+        int ret = 0;
+        FILE *fp = NULL;
+        char buf[1024] = {0};
+        char vlan[20] = {0};
+        char dev[20] = {0};
+        int n = 2;
+        if ((fp = fopen("/proc/net/vlan/config", "r")) != NULL)
+	{
+                // skip rows
+		/* 
+		 * VLAN Dev name    | VLAN ID
+		 * Name-Type: VLAN_NAME_TYPE_PLUS_VID_NO_PAD
+		 */
+		while(n--)
+                	fgets(buf, sizeof(buf), fp);
+
+                // while loop
+                while (fgets(buf, sizeof(buf), fp))
+                {
+                        memset(vlan, 0, sizeof(vlan));
+                        memset(dev, 0, sizeof(dev));
+                        if (sscanf(buf, "%s %*s %*s %*s %s", vlan, dev) != 2) continue;
+                        if (!strcmp(vlan, word))
+			{
+				_dprintf("%s is a Vlan and we will use other names..\n",word);	
+				strcpy(iface,dev);
+				ret=1;	
+				break;
+                	}
+                }
+		fclose(fp);
+        }
+        else 
+                _dprintf("FAIL to open vlan config\n");
+        
+        return ret;
+}
 #endif
 
 /*
@@ -1072,11 +1112,15 @@ void Pty_start_wlc_connect(int band, char *bssid)
 	if (bssid != NULL) {
 		sta = get_staifname(band);
 		if (chk_assoc(sta)==0 || diff_current_bssid(band, bssid)) {	//Restart the network with configured BSSID
-			doSystem("wpa_cli -p /var/run/wpa_supplicant-%s disable_network 0", sta);
-			doSystem("wpa_cli -p /var/run/wpa_supplicant-%s set_network 0 bssid %s", sta, bssid);
-			doSystem("wpa_cli -p /var/run/wpa_supplicant-%s enable_network 0", sta);
+			doSystem("wpa_cli -i %s -p /var/run/wpa_supplicant-%s disable_network 0", sta, sta);
+			doSystem("wpa_cli -i %s -p /var/run/wpa_supplicant-%s set_network 0 bssid %s", sta, sta, bssid);
+			doSystem("wpa_cli -i %s -p /var/run/wpa_supplicant-%s enable_network 0", sta, sta);
 			logmessage("AMAS RE", "RE: wpacli set %s's bssid as %s\n", sta, bssid);
 		}
+		if (nvram_safe_get("amas_wlc_target_bssid")[0] == '\0')
+			doSystem("wpa_cli -i %s -p /var/run/wpa_supplicant-%s disable_network 1", sta, sta);
+		else
+			doSystem("wpa_cli -i %s -p /var/run/wpa_supplicant-%s enable_network 1", sta, sta);
 	}
 
 	set_wpa_cli_cmd(band, "reconnect", 0);
@@ -1231,9 +1275,15 @@ int get_wlan_service_status(int bssidx, int vifidx)
 	int ret;
 	char athfix[8],ifname[20];
 	int is_sta = 0;
+	char wl_radio[] = "wlXXXX_radio";
 
 	if (nvram_get_int("wlready") == 0)
 		return -1;
+
+	snprintf(wl_radio, sizeof(wl_radio), "wl%d_radio", bssidx);
+	if (nvram_get_int(wl_radio) == 0)
+		return -2;
+
 	if(bssidx < 0 || bssidx >= MAX_NR_WL_IF || vifidx < 0 || vifidx >= MAX_NO_MSSID)
 		return -1;
 
@@ -1282,8 +1332,15 @@ void set_wlan_service_status(int bssidx, int vifidx, int enabled)
 	char athfix[8];
         char tmp[20],tmp2[20];
 #endif // softdown support platform //
+	char wl_radio[] = "wlXXXX_radio";
+
 	if (nvram_get_int("wlready") == 0)
                 return;
+
+	snprintf(wl_radio, sizeof(wl_radio), "wl%d_radio", bssidx);
+	if (nvram_get_int(wl_radio) == 0)
+		return;
+
 	if(bssidx < 0 || bssidx >= MAX_NR_WL_IF || vifidx < 0 || vifidx >= MAX_NO_MSSID)
 		return;
 
@@ -1306,6 +1363,12 @@ void set_wlan_service_status(int bssidx, int vifidx, int enabled)
 		snprintf(prefix, sizeof(prefix), "wl%d_", swap_5g_band(bssidx));
 	strcpy(athfix, nvram_safe_get(strcat_r(prefix, "ifname", tmp)));
 	eval(IWPRIV, athfix, "softdown", enabled? "0":"1");
+#if defined(RTCONFIG_SOC_IPQ8074)
+	if (enabled) {
+		eval("hostapd_cli", "-i", athfix, "disable");
+		eval("hostapd_cli", "-i", athfix, "enable");
+	}
+#endif
 	led = get_wl_led_id(swap_5g_band(bssidx));
 	led_control(led, (inhibit_led_on() || !enabled)? LED_OFF : LED_ON);
 	// _dprintf("[%s %s softdown %s], enabled:%d\n", IWPRIV, athfix, enabled? "0":"1", enabled);
@@ -1332,20 +1395,181 @@ void set_wlan_service_status(int bssidx, int vifidx, int enabled)
 }
 
 /**
- * @brief Post sent action to amas_wlcconnect
+ *@brief update channel/bw/nctrlsb to 
  *
  */
-void post_sent_action() {}
+int resolv_bw_nctrlsb(const char *mode, int *bw, int *nctrlsb)
+{
+	char *p;
+	char *p2;
+	if(mode == NULL || bw == NULL || nctrlsb == NULL)
+		return -1;
 
-/**
- * @brief Backhaul changed sysdeps function
- *
- * @param iftype BH defif
- */
-void post_bh_changed(int iftype) {
+	*bw = 0;
+	*nctrlsb = -1;
 
+	if((p = strstr(mode, "11")) == NULL)
+	{	
+		*bw=20; /*based*/	
+		return -3;
+	}	
+	p += 2;
+
+	if((p2 = strstr(p, "HE")) != NULL) {	/* 11AHE, 11GHE */
+	}
+	else
+	if((p2 = strstr(p, "HT")) == NULL) {	/* 11A, 11B, 11G */
+		*bw = 20;
+		return *bw;
+	}
+	p = p2 + 2;
+
+	if(memcmp(p, "20", 2) == 0)		/* 11NGHT20, 11NAHT20, 11ACVHT20 */
+		*bw = 20;
+	else if(memcmp(p, "40", 2) == 0)	/* 11NGHT40, 11NAHT40, 11ACVHT40 */
+		*bw = 40;
+	else if(memcmp(p, "80_80", 5) == 0)	/* 11ACVHT80_80 */
+		*bw = 160;
+	else if(memcmp(p, "80", 2) == 0)	/* 11ACVHT80 */
+		*bw = 80;
+	else if(memcmp(p, "160", 3) == 0)	/* 11ACVHT160 */
+		*bw = 160;
+	else					/* 11A, 11B, 11G */
+		*bw = 20;
+
+	if (*bw == 40) {
+		if(strstr(p, "MINUS") != NULL)			/* HT40MINUS */
+			*nctrlsb = 1;	//extension channel is lower,  so the control SB is higher
+		else if(strstr(p, "PLUS") != NULL)		/* HT40PLUS */
+			*nctrlsb = 0;	//extension channel is higher, so the control SB is lower
+		else
+			return -4;
+	}
+	return 0;
 }
 
+char acs_string[2][20]={"acs_mode=","acs_ch="};
+#define IEEE80211_IOCTL_GETMODE         (SIOCIWFIRSTPRIV+17)
+#define IEEE80211_PARAM_ACS_RESULT 691	
+char ieee80211_phymode[33][40] ={
+    "IEEE80211_MODE_AUTO",    /* autoselect */
+    "IEEE80211_MODE_11A",    /* 5GHz, OFDM */
+    "IEEE80211_MODE_11B",    /* 2GHz, CCK */
+    "IEEE80211_MODE_11G",    /* 2GHz, OFDM */
+    "IEEE80211_MODE_FH",    /* 2GHz, GFSK */
+    "IEEE80211_MODE_TURBO_A",    /* 5GHz, OFDM, 2x clock dynamic turbo */
+    "IEEE80211_MODE_TURBO_G",    /* 2GHz, OFDM, 2x clock dynamic turbo */
+    "IEEE80211_MODE_11NA_HT20",    /* 5Ghz, HT20 */
+    "IEEE80211_MODE_11NG_HT20",    /* 2Ghz, HT20 */
+    "IEEE80211_MODE_11NA_HT40PLUS",    /* 5Ghz, HT40 (ext ch +1) */
+    "IEEE80211_MODE_11NA_HT40MINUS",   /* 5Ghz, HT40 (ext ch -1) */
+    "IEEE80211_MODE_11NG_HT40PLUS",   /* 2Ghz, HT40 (ext ch +1) */
+    "IEEE80211_MODE_11NG_HT40MINUS",   /* 2Ghz, HT40 (ext ch -1) */
+    "IEEE80211_MODE_11NG_HT40",   /* 2Ghz, Auto HT40 */
+    "IEEE80211_MODE_11NA_HT40",   /* 5Ghz, Auto HT40 */
+    "IEEE80211_MODE_11AC_VHT20",   /* 5Ghz, VHT20 */
+    "IEEE80211_MODE_11AC_VHT40PLUS",  /* 5Ghz, VHT40 (Ext ch +1) */
+    "IEEE80211_MODE_11AC_VHT40MINUS",   /* 5Ghz  VHT40 (Ext ch -1) */
+    "IEEE80211_MODE_11AC_VHT40",   /* 5Ghz, VHT40 */
+    "IEEE80211_MODE_11AC_VHT80",   /* 5Ghz, VHT80 */
+    "IEEE80211_MODE_11AC_VHT160",   /* 5Ghz, VHT160 */
+    "IEEE80211_MODE_11AC_VHT80_80",   /* 5Ghz, VHT80_80 */
+    "IEEE80211_MODE_11AXA_HE20",   /* 5GHz, HE20 */
+    "IEEE80211_MODE_11AXG_HE20",   /* 2GHz, HE20 */
+    "IEEE80211_MODE_11AXA_HE40PLUS",   /* 5GHz, HE40 (ext ch +1) */
+    "IEEE80211_MODE_11AXA_HE40MINUS",   /* 5GHz, HE40 (ext ch -1) */
+    "IEEE80211_MODE_11AXG_HE40PLUS",   /* 2GHz, HE40 (ext ch +1) */
+    "IEEE80211_MODE_11AXG_HE40MINUS",   /* 2GHz, HE40 (ext ch -1) */
+    "IEEE80211_MODE_11AXA_HE40",   /* 5GHz, HE40 */
+    "IEEE80211_MODE_11AXG_HE40",   /* 2GHz, HE40 */
+    "IEEE80211_MODE_11AXA_HE80",   /* 5GHz, HE80 */
+    "IEEE80211_MODE_11AXA_HE160",   /* 5GHz, HE160 */
+    "IEEE80211_MODE_11AXA_HE80_80",   /* 5GHz, HE80_80 */
+};
+
+int update_band_info(int unit)
+{
+        int i,bw=0,sb=0;
+	int nctrlsb=0; //otherwise
+	char prefix[16]="wlxxxxxx",tmp[128],wif[IFNAMSIZ];
+	u_int8_t buf[200],value[10];
+	char *pt1,*pt2;
+	struct iwreq wrq;
+	memset(buf,0,sizeof(buf));
+	memset(&wrq, 0, sizeof(wrq));
+	memset(wif,0,sizeof(wif));
+	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+        __get_wlifname(swap_5g_band(unit), 0, wif);
+
+	//if wlx_sel_xxx is unset
+   	if(strlen(nvram_safe_get(strcat_r(prefix, "sel_channel", tmp)))==0)
+                nvram_set_int(strcat_r(prefix, "sel_channel", tmp),0);
+        if(strlen(nvram_safe_get(strcat_r(prefix, "sel_bw", tmp)))==0)
+                nvram_set_int(strcat_r(prefix, "sel_bw", tmp),0);
+        if(strlen(nvram_safe_get(strcat_r(prefix, "sel_nctrlsb", tmp)))==0)
+                nvram_set_int(strcat_r(prefix, "sel_nctrlsb", tmp),0);
+
+	wrq.u.data.flags = IEEE80211_PARAM_ACS_RESULT;
+	wrq.u.data.pointer = buf;
+	wrq.u.data.length = sizeof(buf);
+
+	if( !strlen(wif) ) 
+                return -1;
+	if (wl_ioctl(wif, IEEE80211_IOCTL_GETMODE, &wrq) < 0)
+		return -1;
+	if (wrq.u.data.length <= 0)
+		return -1;
+
+	if(strlen(buf))
+	{
+		for(i=0;i<2;i++)
+		{	
+			pt1 = strstr(buf, acs_string[i]);
+			if (pt1)
+			{
+				pt2 = strstr(pt1, "]");
+				if(pt2)
+				{
+					memset(value,0,sizeof(value));
+					strncpy(value,pt1+strlen(acs_string[i]),pt2-pt1-strlen(acs_string[i]));
+					chomp((char*)value);
+					if(strstr(acs_string[i],"ch"))
+					{
+						if (nvram_get_int(strcat_r(prefix, "sel_channel", tmp))!=atoi(value))  //update ch
+						{
+							//_dprintf("update ch=%d ....\n",atoi(value));	
+							nvram_set_int(strcat_r(prefix, "sel_channel", tmp),atoi(value));
+						}	
+					}		
+					else if(strstr(acs_string[i],"mode"))
+					{
+						resolv_bw_nctrlsb(ieee80211_phymode[atoi(value)],&bw,&sb);
+						if(bw==40)
+						{
+							if(sb==0) //high	
+								nctrlsb=1;
+							else //lower 
+								nctrlsb=0;
+						}
+						if (nvram_get_int(strcat_r(prefix, "sel_bw", tmp))!=bw)  //update bw
+						{
+							//_dprintf("update bw=%d ....\n",bw);	
+							nvram_set_int(strcat_r(prefix, "sel_bw", tmp),bw);
+						}
+						if(nvram_get_int(strcat_r(prefix, "sel_nctrlsb", tmp))!=nctrlsb) //update side band
+						{
+							//_dprintf("update sb=%d ....\n",nctrlsb);	
+							nvram_set_int(strcat_r(prefix, "sel_nctrlsb", tmp),nctrlsb);
+						}	
+	
+					}	
+					
+				}
+			}
+		}	
+	}	
+	return 0;
+}	
 
 /*
  * get_radar_status()
@@ -1428,6 +1652,41 @@ int wl_get_bw(int unit)
 	get_bw_nctrlsb(athfix, &bw, &nctrlsb);
 	return bw;
 }
+
+/*
+ * wl_get_bw_cap(unit, *bwcap)
+ *
+ * bwcap
+ * 	0x01 = 20 MHz
+ * 	0x02 = 40 MHz
+ * 	0x04 = 80 MHz
+ * 	0x08 = 160 MHz
+ *
+ * 	ex: 5G support 20,40,80
+ * 	*bwcap = 0x01 | 0x02 | 0x04
+ */
+int wl_get_bw_cap(int unit, int *bwcap)
+{
+	if (bwcap == NULL)
+		return -1;
+	if (unit == 0)
+		*bwcap = 0x01 | 0x02;		/* 40MHz */
+	else if (unit == 1)
+		*bwcap = 0x01 | 0x02 | 0x04;	/* 11AC 80MHz */
+#ifdef RTCONFIG_HAS_5G_2
+	else if (unit == 2)
+		*bwcap = 0x01 | 0x02 | 0x04;	/* 11AC 80MHz */
+#endif
+	else
+		return -1;
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) && !defined(RTCONFIG_SOC_IPQ60XX)
+	if (unit != 0)
+		*bwcap |= 0x08;
+#endif
+
+	return 0;
+}
+
 #endif
 
 #ifdef RTCONFIG_CFGSYNC

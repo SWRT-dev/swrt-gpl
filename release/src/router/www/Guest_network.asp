@@ -513,7 +513,7 @@ function gen_gntable(){
 	};
 
 	if(gn_array_2g_tmp.length > 0){
-		htmlcode += '<table style="margin-left:20px;margin-top:25px;" width="95%" align="center" cellpadding="4" cellspacing="0" class="gninfo_head_table" id="gninfo_table_2g">';
+		htmlcode += '<table style="margin-left:20px;margin-bottom:25px;" width="95%" align="center" cellpadding="4" cellspacing="0" class="gninfo_head_table" id="gninfo_table_2g">';
 		htmlcode += '<tr id="2g_title"><td align="left" style="color:#5AD;font-size:16px; border-bottom:1px dashed #AAA;"><span>2.4 GHz</span>';
 		htmlcode += '<span id="2g_radio_hint" style="font-size: 14px;display:none;color:#FC0;margin-left:17px;">* <#GuestNetwork_Radio_Status#>	<a style="font-family:Lucida Console;color:#FC0;text-decoration:underline;cursor:pointer;" onclick="_change_wl_unit_status(0);"><#btn_go#></a></span></td></tr>';
 		while(gn_array_2g_tmp.length > 4){
@@ -533,7 +533,7 @@ function gen_gntable(){
 	}
 	
 	if(gn_array_5g_tmp.length > 0){
-		htmlcode5 += '<table style="margin-left:20px;margin-top:25px;" width="95%" align="center" cellpadding="4" cellspacing="0" class="gninfo_head_table" id="gninfo_table_5g">';
+		htmlcode5 += '<table style="margin-left:20px;margin-bottom:25px;" width="95%" align="center" cellpadding="4" cellspacing="0" class="gninfo_head_table" id="gninfo_table_5g">';
 		htmlcode5 += '<tr id="5g_title"><td align="left" style="color:#5AD; font-size:16px; border-bottom:1px dashed #AAA;">';
 		if(wl_info.band5g_2_support || wl_info.band6g_support){
 			if(band6g_support){
@@ -564,7 +564,7 @@ function gen_gntable(){
 	}
 
   	if((wl_info.band5g_2_support || wl_info.band6g_support)&& gn_array_5g_2_tmp.length > 0){
-		htmlcode5_2 += '<table style="margin-left:20px;margin-top:25px;" width="95%" align="center" cellpadding="4" cellspacing="0" class="gninfo_head_table" id="gninfo_table_5g_2">';
+		htmlcode5_2 += '<table style="margin-left:20px;margin-bottom:25px;" width="95%" align="center" cellpadding="4" cellspacing="0" class="gninfo_head_table" id="gninfo_table_5g_2">';
 		if(band6g_support){
 			htmlcode5_2 += '<tr id="5g_2_title"><td align="left" style="color:#5AD; font-size:16px; border-bottom:1px dashed #AAA;"><span>6 GHz</span>';
 		}
@@ -590,7 +590,7 @@ function gen_gntable(){
 	}
 
 	if(wl_info.band60g_support) {
-		htmlcode60 += '<table style="margin-left:20px;margin-top:25px;" width="95%" align="center" cellpadding="4" cellspacing="0" class="gninfo_head_table" id="gninfo_table_60g">';
+		htmlcode60 += '<table style="margin-left:20px;margin-bottom:25px;" width="95%" align="center" cellpadding="4" cellspacing="0" class="gninfo_head_table" id="gninfo_table_60g">';
 		htmlcode60 += '<tr id="60g_title"><td align="left" style="color:#5AD; font-size:16px; border-bottom:1px dashed #AAA;"><span>60 GHz</span></td></tr>';
 		htmlcode60 += '<tr><td><span style="font-size: 14px;color:#FC0;"><#CTL_nonsupported#></span></td></tr>';
 		htmlcode60 += '</table>';
@@ -1043,7 +1043,7 @@ function change_guest_unit(_unit, _subunit){
 	}
 
 	var interface_support =  decodeURIComponent(gn_array[idx][24]);
-	if(amesh_support && amesh_wgn_support && interface_support == "1"){
+	if(amesh_support && ameshRouter_support && amesh_wgn_support && interface_support == "1"){
 		$("#aimesh_sync_field").show();
 		$("#aimesh_sync_field select[name='wl_sync_node']").attr("disabled", false);
 		if(gn_array[idx][23] == undefined || gn_array[idx][23] == "")
@@ -1570,7 +1570,7 @@ function apply_amazon_wss(){
 						<div id="guest_table5_2" class="gn_info_table_bg"></div>
 						<div id="guest_table60" class="gn_info_table_bg"></div>
 						<div id="guest_tableFBWiFi" class="gn_info_table_bg">
-							<table style="margin-left:20px;margin-top:25px;" width="95%" align="center" cellpadding="4" cellspacing="0" class="gninfo_head_table" id="gninfo_table_FBWiFi">
+							<table style="margin-left:20px;margin-bottom:25px;" width="95%" align="center" cellpadding="4" cellspacing="0" class="gninfo_head_table" id="gninfo_table_FBWiFi">
 								<tr id="FBWiFi_title">
 									<td align="left" style="color:#5AD; font-size:16px; border-bottom:1px dashed #AAA;" colspan="2">
 										<span>Facebook WiFi</span>
@@ -1588,7 +1588,7 @@ function apply_amazon_wss(){
 							</table>
 						</div>
 						<div id="guest_tableAmazonWSS" class="gn_info_table_bg" style="display:none;">
-							<table style="margin-left:20px;margin-top:25px;" width="95%" align="center" cellpadding="4" cellspacing="0" class="gninfo_head_table">
+							<table style="margin-left:20px;margin-bottom:25px;" width="95%" align="center" cellpadding="4" cellspacing="0" class="gninfo_head_table">
 								<tr>
 									<td align="left" style="color:#5AD; font-size:16px; border-bottom:1px dashed #AAA;" colspan="2">
 										<span><#WSS_setup#></span>
@@ -1817,11 +1817,11 @@ function apply_amazon_wss(){
 								</td>
 							</tr>
 							<tr id="aimesh_sync_field" class="captive_portal_control_class">
-								<th><#Guest_Network_On_AiMesh#></th>
+								<th><#sync_node#></th>
 								<td>
 									<select name="wl_sync_node" class="input_option">
 										<option class="content_input_fd" value="0" <% nvram_match("wl_sync_node", "0","selected"); %>><#Router_only#></option>
-										<option class="content_input_fd" value="1" <% nvram_match("wl_sync_node", "1","selected"); %>><#All_AiMesh_nodes#></option>
+										<option class="content_input_fd" value="1" <% nvram_match("wl_sync_node", "1","selected"); %>><#All#></option>
 									</select>
 								</td>
 							</tr>

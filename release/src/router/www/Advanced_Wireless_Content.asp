@@ -83,10 +83,6 @@ function initial(){
 		$("#enable_160mhz").attr("checked", enable_bw_160);
 	}
 
-	if(mbo_support){
-		$('#mbo_field').show();
-	}
-
 	wireless_mode_change(document.form.wl_nmode_x);
 	regen_band(document.form.wl_unit);
 	regen_5G_mode(document.form.wl_nmode_x, wl_unit);
@@ -297,12 +293,6 @@ function initial(){
 		}
 	}
 
-	if(band5g_11ax_support){
-		if(based_modelid != 'RT-AX92U' || (wl_unit != '0' && wl_unit != '1')){
-			$("#twt_field").show();
-		}
-	}
-
 	$("<div>")
 		.attr({"id": "ssid_msg"})
 		.addClass("warning_msg")
@@ -318,7 +308,7 @@ function initial(){
 	chkPass(wl_wpa_psk_org, "");
 	$("input[name='wl_wpa_psk']").keyup(function(e){
 									chkPass(this.value, "");
-								});
+								})
 }
 
 function genBWTable(_unit){
@@ -393,17 +383,28 @@ function genBWTable(_unit){
 		}
 
 		if(document.form.wl_nmode_x.value == 8 || (_unit != 0 && document.form.wl_nmode_x.value == 0)){// N/AC mixed or 5G Auto
+			var nband = "<% nvram_get("wl_nband"); %>";
 			if(isArray(wl_channel_list_5g)){
-				array_80m = filter_5g_channel_by_bw(wl_channel_list_5g, 80);
-				array_160m = filter_5g_channel_by_bw(wl_channel_list_5g, 160);
+				if(nband == "4"){
+					array_80m = filter_6g_channel_by_bw(wl_channel_list_5g, 80);
+					array_160m = filter_6g_channel_by_bw(wl_channel_list_5g, 160);
+				}else{
+					array_80m = filter_5g_channel_by_bw(wl_channel_list_5g, 80);
+					array_160m = filter_5g_channel_by_bw(wl_channel_list_5g, 160);
+				}
 			}else{
 				start = wl_channel_list_5g.lastIndexOf("[");
 				end = wl_channel_list_5g.indexOf("]");
 				if (end == -1)
 					end = wl_channel_list_5g.length;
 				ch = wl_channel_list_5g.slice(start + 1, end);
-				array_80m = filter_5g_channel_by_bw(ch.split(","), 80);
-				array_160m = filter_5g_channel_by_bw(ch.split(","), 160);
+				if(nband == "4"){
+					array_80m = filter_6g_channel_by_bw(ch.split(","), 80);
+					array_160m = filter_6g_channel_by_bw(ch.split(","), 160);
+				}else{
+					array_80m = filter_5g_channel_by_bw(ch.split(","), 80);
+					array_160m = filter_5g_channel_by_bw(ch.split(","), 160);
+				}
 			}
 			
 			if(vht80_80_support && array_80m.length/4 >= 2){
@@ -536,7 +537,7 @@ function applyRule(){
 
 	if(validForm()){
 		if(amesh_support && (isSwMode("rt") || isSwMode("ap")) && ameshRouter_support) {
-			if(!check_wl_auth_support(auth_mode, $("select[name=wl_auth_mode_x] option:selected")))
+			if(!check_wl_auth_support($("select[name=wl_auth_mode_x] option:selected"), wl_unit))
 				return false;
 			else {
 				var wl_parameter = {
@@ -628,17 +629,11 @@ function applyRule(){
 			}
 		}
 
-		var mbo = document.form.wl_mbo_enable.value;
 		if(auth_mode == 'sae'){
 			document.form.wl_mfp.value = '2';
 		}
 		else if(auth_mode == 'psk2sae' && document.form.wl_mfp.value == '0'){
 			document.form.wl_mfp.value = '1';
-		}
-		else if(auth_mode == 'psk2' || auth_mode == 'pskpsk2' || auth_mode == 'wpa2' || auth_mode == 'wpawpa2'){
-			if(mbo_support && mbo == '1' && document.form.wl_mfp.value == '0'){
-				document.form.wl_mfp.value = '1';
-			}
 		}
 
 		if(Bcmwifi_support) {
@@ -670,6 +665,16 @@ function applyRule(){
 		}
 		else if (Rawifi_support) {
 			document.form.action_wait.value = "20";
+		}
+
+		if(smart_connect_support && (isSwMode("rt") || isSwMode("ap")) && document.form.smart_connect_x.value == "1"){
+			if(smart_connect_flag_t != document.form.smart_connect_x.value){//SC change to 1
+				if(dwb_info.mode && wl_unit != dwb_info.band){//current wl_unit maybe is 0 or 1
+					var nvramSet_obj = {"action_mode":"apply"};
+					nvramSet_obj["wl"+dwb_info.band+"_closed"] = "1"
+					httpApi.nvramSet(nvramSet_obj);
+				}
+			}
 		}
 
 		document.form.submit();
@@ -908,23 +913,23 @@ function enableSmartCon(val){
 	var desc = new Array();
 
 	if(isSupport("triband") && dwb_info.mode) {
-		desc = ["Dual-Band Smart Connect (2.4GHz and 5GHz)"];
+		desc = ["<#smart_connect_dual#> (2.4GHz and 5GHz)"];
 		value = ["1"];
 		add_options_x2(document.form.smart_connect_t, desc, value, val);
 	}
 	else {
 		if(based_modelid=="RT-AC5300" || based_modelid=="GT-AC5300"){
-			desc = ["Tri-Band Smart Connect (2.4GHz, 5GHz-1 and 5GHz-2)", "5GHz Smart Connect (5GHz-1 and 5GHz-2)"];
+			desc = ["<#smart_connect_tri#> (2.4GHz, 5GHz-1 and 5GHz-2)", "5GHz Smart Connect (5GHz-1 and 5GHz-2)"];
 			value = ["1", "2"];
 			add_options_x2(document.form.smart_connect_t, desc, value, val);
 		}
 		else if(based_modelid =="RT-AC3200" || based_modelid =="RT-AC95U"){
-			desc = ["Tri-Band Smart Connect (2.4GHz, 5GHz-1 and 5GHz-2)"];
+			desc = ["<#smart_connect_tri#> (2.4GHz, 5GHz-1 and 5GHz-2)"];
 			value = ["1"];
 			add_options_x2(document.form.smart_connect_t, desc, value, val);
 		}
 		else if(based_modelid == "RT-AC88U" || based_modelid == "RT-AC86U" || based_modelid == "GT-AC2900" || based_modelid == "RT-AC3100" || based_modelid == "BLUECAVE" || based_modelid == "MAP-AC1750" || based_modelid == "RT-AX89U" || based_modelid == "GT-AXY16000" || based_modelid.substring(0,7) == "RT-AC59"){
-			desc = ["Dual-Band Smart Connect (2.4GHz and 5GHz)"];
+			desc = ["<#smart_connect_dual#> (2.4GHz and 5GHz)"];
 			value = ["1"];
 			add_options_x2(document.form.smart_connect_t, desc, value, val);
 		}
@@ -955,7 +960,6 @@ function enableSmartCon(val){
 	if((val == 0 || (val == 2 && wl_unit == 0)) || (dwb_info.mode && wl_unit == dwb_info.band)){
 		document.getElementById("wl_unit_field").style.display = "";
 		document.form.wl_nmode_x.disabled = "";
-		document.getElementById("wl_optimizexbox_span").style.display = "";
 		if(document.form.wl_unit[0].selected == true){
 			document.getElementById("wl_gmode_checkbox").style.display = "";
 		}
@@ -971,7 +975,6 @@ function enableSmartCon(val){
 	}else{
 		document.getElementById("wl_unit_field").style.display = "none";
 		regen_auto_option(document.form.wl_nmode_x);
-		document.getElementById("wl_optimizexbox_span").style.display = "none";
 		document.getElementById("wl_gmode_checkbox").style.display = "none";
 		if (Qcawifi_support)
 			__regen_auto_option(document.form.wl_bw, 1);
@@ -983,6 +986,18 @@ function enableSmartCon(val){
 	
 	if(based_modelid=="RT-AC5300" || based_modelid=="GT-AC5300" || based_modelid=="RT-AC3200")
 		_change_smart_connect(val);
+
+	var wl_closed = httpApi.nvramGet(["wl_closed"]).wl_closed;
+	if(wl_closed != undefined && wl_closed != ""){
+		$('input:radio[name=wl_closed]').each(function(){$(this).prop('checked', false);});
+		$('input:radio[name=wl_closed][value="' + wl_closed + '"]').click();
+	}
+	if(dwb_info.mode && wl_unit == dwb_info.band){
+		if(smart_connect_flag_t != val && val == "1"){
+			$('input:radio[name=wl_closed]').each(function(){$(this).prop('checked', false);});
+			$('input:radio[name=wl_closed][value=1]').click();
+		}
+	}
 }
 
 function enable_160MHz(obj){
@@ -1123,15 +1138,6 @@ function ajax_wl_edmg_channel(){
 			setTimeout("ajax_wl_edmg_channel();", 5000);
 		}
 	});
-}
-
-function handleMFP(){
-	if(mbo_support && document.form.wl_mbo_enable.value == '1' && document.form.wl_mfp.value == '0'){
-		$('#mbo_notice').show();
-	}
-	else{
-		$('#mbo_notice').hide();
-	}
 }
 </script>
 </head>
@@ -1352,32 +1358,6 @@ function handleMFP(){
 						</div>
 					</td>
 				</tr>
-				<tr id="mbo_field" style="display:none">
-					<th>
-						<a class="hintstyle"><#WLANConfig11b_AgileMultiband_itemdesc#></a>
-					</th>
-					<td>
-						<div style="width:465px;display:flex;align-items: center;">
-							<select name="wl_mbo_enable" class="input_option" onChange="handleMFP();">
-								<option value="1" <% nvram_match("wl_mbo_enable", "1","selected"); %>><#WLANConfig11b_WirelessCtrl_button1name#></option>
-								<option value="0" <% nvram_match("wl_mbo_enable", "0","selected"); %>><#WLANConfig11b_WirelessCtrl_buttonname#></option>
-							</select>
-						</div>
-					</td>
-				</tr>
-				<tr id="twt_field" style="display:none">
-					<th>
-						<a class="hintstyle"><#WLANConfig11b_WakeTime_itemname#></a>
-					</th>
-					<td>
-						<div style="width:465px;display:flex;align-items: center;">
-							<select name="wl_twt" class="input_option">
-								<option value="1" <% nvram_match("wl_twt", "1","selected"); %>><#WLANConfig11b_WirelessCtrl_button1name#></option>
-								<option value="0" <% nvram_match("wl_twt", "0","selected"); %>><#WLANConfig11b_WirelessCtrl_buttonname#></option>
-							</select>
-						</div>
-					</td>
-				</tr>
 			 	<tr id="wl_bw_field">
 			   	<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(0, 14);"><#WLANConfig11b_ChannelBW_itemname#></a></th>
 			   	<td>				    			
@@ -1455,7 +1435,7 @@ function handleMFP(){
 					</td>
 			  	</tr>
 			  
-			  	<tr>
+			  	<tr id="wpa_psk_key_field">
 					<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(0, 7);"><#WLANConfig11b_x_PSKKey_itemname#></a></th>
 					<td>
 						<div class="wpa_psk_container">
@@ -1545,13 +1525,10 @@ function handleMFP(){
 					<th><#WLANConfig11b_x_mfp#></th>
 					<td>
 				  		<select name="wl_mfp" class="input_option" >
-							<option value="0" <% nvram_match("wl_mfp", "0", "selected"); %>><#WLANConfig11b_WirelessCtrl_buttonname#></option>
-							<option value="1" <% nvram_match("wl_mfp", "1", "selected"); %>><#WLANConfig11b_x_mfp_opt1#></option>
-							<option value="2" <% nvram_match("wl_mfp", "2", "selected"); %>><#WLANConfig11b_x_mfp_opt2#></option>
+								<option value="0" <% nvram_match("wl_mfp", "0", "selected"); %>><#WLANConfig11b_WirelessCtrl_buttonname#></option>
+								<option value="1" <% nvram_match("wl_mfp", "1", "selected"); %>><#WLANConfig11b_x_mfp_opt1#></option>
+								<option value="2" <% nvram_match("wl_mfp", "2", "selected"); %>><#WLANConfig11b_x_mfp_opt2#></option>
 				  		</select>
-						<span id="mbo_notice_wpa3" style="display:none">*If the Authentication Method is WPA3-Personal, the Protected Management Frames will be Required.</span>
-						<span id="mbo_notice_combo" style="display:none">*If the Authentication Method is WPA2/WPA3-Personal, the Protected Management Frames will be Capable.</span>
-						<span id="mbo_notice" style="display:none">*If the WiFi Agile Multiband is enabled, the Protected Management Frames will must be enabled.(Capable or Required)</span>
 					</td>
 			  	</tr>
 			  	<tr>

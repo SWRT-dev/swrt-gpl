@@ -12,12 +12,12 @@
 
 #ifndef CONFIG_SUPPORT_OPENWRT
 #ifndef CONFIG_GLIBC_2_20
-#if !defined(RTCONFIG_RALINK_MT7629) && !defined(RTCONFIG_RALINK_MT7622) && !defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#if !defined(RTCONFIG_RALINK_MT7629) && !defined(RTCONFIG_RALINK_MT7622) && !defined(RTCONFIG_WLMODULE_MT7915D_AP) && !defined(RTCONFIG_RALINK_MT7621)
 #include <linux/autoconf.h>
 #endif
 #endif
 #endif
-#if !defined(CONFIG_SUPPORT_OPENWRT) && !defined(RTCONFIG_RALINK_MT7629) && !defined(RTCONFIG_RALINK_MT7622)
+#if !defined(CONFIG_SUPPORT_OPENWRT) && !defined(RTCONFIG_RALINK_MT7629) && !defined(RTCONFIG_RALINK_MT7622) && !defined(RTCONFIG_RALINK_MT7621)
 #define ETH_DEVNAME "eth2"
 #else
 #define ETH_DEVNAME "eth0"

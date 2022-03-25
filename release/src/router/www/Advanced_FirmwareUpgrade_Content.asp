@@ -113,9 +113,7 @@ Downloadlink = get_Downloadlink();
 var faq_href1 = "https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Faq&lang="+ui_lang+"&kw=&num=131";
 var faq_href2 = "https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Faq&lang="+ui_lang+"&kw=&num=107";
 
-var dpi_engine_status = <%bwdpi_engine_status();%>;
-var sig_ver_ori = '<% nvram_get("bwdpi_sig_ver"); %>';
-var sig_update_t = '<% nvram_get("sig_update_t"); %>';
+var dpi_engine_status = <% bwdpi_engine_status(); %>;
 if(cfg_sync_support){
 	var cfg_check = '<% nvram_get("cfg_check"); %>';
 	var cfg_upgrade = '<% nvram_get("cfg_upgrade"); %>';
@@ -142,14 +140,6 @@ var extendno = '<% nvram_get("extendno"); %>';
 var FWString = '';
 FWString = firmver+"."+buildno;
 FWString += "_"+extendno;
-
-if(gobi_support){
-	var mobile_upgrade_md5 = "";
-	var mobile_upgrade_name = "";
-	var mobile_upgrade_process = "";
-	var mobile_upgrade_now = "";
-	var mobile_upgrade_status = "";
-}
 
 function showclock(){
 	JS_timeObj.setTime(systime_millsec);
@@ -274,7 +264,7 @@ function initial(){
 		html += "<#Web_Title2#>";
 		html += "</th>";
 		html += "</th>";
-		html += "<td id='amas_" + mac_id + "'>";
+		html += "<td id='amas_" + mac_id + "' current_online='1'>";
 		html += "<div id='current_version'><#ADSL_FW_item1#> : <span class='checkFWCurrent'>" + FWString + "</span></div>";
 		html += "<div id='amesh_manual_upload_fw'>";
 		html += "<#FW_manual_update#> : ";
@@ -293,6 +283,7 @@ function initial(){
 			if (get_cfg_clientlist.hasOwnProperty(idx)) {
 				if(idx == "0")
 					continue;//filter CAP
+				var frs_model_name = get_cfg_clientlist[idx].frs_model_name;
 				var model_name = get_cfg_clientlist[idx].model_name;
 				var ui_model_name = get_cfg_clientlist[idx].ui_model_name;
 				var fwver = get_cfg_clientlist[idx].fwver;
@@ -327,10 +318,11 @@ function initial(){
 				html += "<br>";
 				html += "<#AiMesh_NodeLocation#> : " + htmlEnDeCode.htmlEncode(alias);
 				html += "</th>";
-				html += "<td id='amas_" + mac_id + "'>";
+				html += "<td id='amas_" + mac_id + "' current_online='" + online + "'>";
 				html += "<div id='current_version'><#ADSL_FW_item1#> : <span class='checkFWCurrent'>" + fwver + "</span></div>";
 				html += "<div id='manual_firmware_update'>";
-				html += gen_AiMesh_fw_status(check_AiMesh_fw_version(fwver), ip, online);
+				var support_manual_fw = check_AiMesh_fw_version(fwver);
+				html += gen_AiMesh_fw_status(support_manual_fw, get_cfg_clientlist[idx]);
 				html += "</div>";
 				html += "<div id='checkNewFW' class='checkNewFW' style='display:none;'><#ADSL_FW_item3#> : <span class='checkFWResult'></span></div>";
 				html += "</td>";
@@ -341,8 +333,14 @@ function initial(){
 					$("#amas_" + mac_id + "").children().find(".checkFWCurrent").addClass("aimesh_fw_release_note");
 					$("#amas_" + mac_id + "").children().find(".checkFWCurrent").click({"model_name": ui_model_name, "fwver": fwver}, show_current_release_note);
 				}
+				if(support_manual_fw){
+					if(online == "1")
+						$("#amas_" + mac_id + "").children().find(".aimesh_fw_update_offline").click(get_cfg_clientlist[idx], open_AiMesh_node_fw_upgrade);
+					else
+						amesh_offline_flag = true;
+				}
 
-				if(SG_mode || is_CH_sku){	//No manual
+				if(SG_mode || is_CH_sku || isSupport("is_ax5400_i1n") || support_site_modelid == "GT-AC2900_SH"){	//No manual
 					$("div").remove("#manual_firmware_update");
 				}
 
@@ -360,15 +358,15 @@ function initial(){
 		else
 			document.getElementById("sig_ver_field").style.display="none";
 			
-		if(sig_ver_ori == "")
+		if(dpi_engine_status.bwdpi_sig_ver == "")
 			document.getElementById("sig_ver_word").innerHTML = "1.008";
 		else
-			document.getElementById("sig_ver_word").innerHTML = sig_ver_ori;
+			document.getElementById("sig_ver_word").innerHTML = dpi_engine_status.bwdpi_sig_ver;
 
-		if(sig_update_t == "" || sig_update_t == "0")
+		if(dpi_engine_status.sig_update_t == "" || dpi_engine_status.sig_update_t == "0")
 			document.getElementById("sig_update_date").innerHTML = "";
 		else
-			document.getElementById("sig_update_date").innerHTML = "&nbsp;&nbsp;"+transferTimeFormat(sig_update_t*1000);
+			document.getElementById("sig_update_date").innerHTML = "&nbsp;&nbsp;"+transferTimeFormat(dpi_engine_status.sig_update_t*1000);
 	}
 
 	if(cfg_sync_support){
@@ -433,9 +431,9 @@ function initial(){
 	}
 
 	if(amesh_support && (isSwMode("rt") || isSwMode("ap")) && ameshRouter_support) {
+		$(".aimesh_manual_fw_update_hint").css("display", "block");
 		$("#manually_upgrade_tr").css("display", "none");
 		$("#productid_tr").css("display", "none");
-		$(".aimesh_manual_fw_update_hint").css("display", "block");
 		document.form.file.onchange = function() {
 			submitForm();
 		}
@@ -450,19 +448,26 @@ function initial(){
 		$("#dsl_n55u_fwver").show();
 		$("#dsl_n55u_ras").show();
 	}
-	
-	if(!afwupg_support){
+
+	if(!afwupg_support || support_site_modelid == "GT-AC2900_SH"){
 		$("table").remove("#auto_upgrade_setting");
 	}
 	else{
 		showclock();
 	}
 
-	if(SG_mode || is_CH_sku){	//No manual
+	if(SG_mode || is_CH_sku || isSupport("is_ax5400_i1n") || support_site_modelid == "GT-AC2900_SH"){	//No manual
 		$("#fw_note3").hide();
 		$("div").remove("#amesh_manual_upload_fw");
 		$("tr").remove("#manually_upgrade_tr");
 		$(".aimesh_manual_fw_update_hint").css("display", "none");
+	}
+
+	if(isSupport("is_ax5400_i1"))
+	{
+		$("#fw_note2").hide();
+		$("#fw_note3").show();
+		$("#fw_note3").html("Firmware upgrade is only accessible through Optus server.");	//Untranslated
 	}
 
 	if(gobi_support && (usb_index != -1) && (sim_state != "")){
@@ -695,7 +700,7 @@ function isDownloading(){
 
     		},
     		success: function(){
-				
+				 
 				if(cfg_sync_support){
 
 					if(cfg_check == "7") {
@@ -1031,7 +1036,7 @@ function show_amas_fw_result() {
 			document.getElementById('update_scan').style.display = "none";
 			for (var idx in get_cfg_clientlist) {
 				if(get_cfg_clientlist.hasOwnProperty(idx)) {
-					var model_name = get_cfg_clientlist[idx].model_name;
+					var frs_model_name = get_cfg_clientlist[idx].frs_model_name;
 					var mac = get_cfg_clientlist[idx].mac;
 					var newfwver = get_cfg_clientlist[idx].newfwver;
 					var mac_id = mac.replace(/:/g, "");
@@ -1043,7 +1048,7 @@ function show_amas_fw_result() {
 						$("#amas_" + mac_id + "").children().find(".checkFWResult").addClass("aimesh_fw_release_note");
 						$("#amas_" + mac_id + "").children().find(".checkFWResult").html(ck_fw_result);
 						$("#amas_update").css("display", "");
-						$("#amas_" + mac_id + "").children().find(".checkFWResult").click({"model_name": model_name, "newfwver": newfwver}, show_fw_release_note);
+						$("#amas_" + mac_id + "").children().find(".checkFWResult").click({"model_name": frs_model_name, "newfwver": newfwver}, show_fw_release_note);
 					}
 					if(online == "1")
 						$("#amas_" + mac_id + "").children("#checkNewFW").css("display", "");
@@ -1167,8 +1172,8 @@ function show_fw_release_note_result(_status) {
 	else
 		$(".confirm_block").children().find("#status_iframe").contents().find("#amas_release_note_hint").val("Fail to grab release note");/* untranslated */
 }
-function open_AiMesh_node_fw_upgrade(_ip) {
-	var url = "http://" + _ip + "/AiMesh_Node_FirmwareUpgrade.asp";
+function open_AiMesh_node_fw_upgrade(event) {
+	var url = httpApi.aimesh_get_win_open_url(event.data, "AiMesh_Node_FirmwareUpgrade.asp");
 	var window_width = 550;
 	var window_height = 550;
 	var window_top = screen.availHeight / 2 - window_height / 2;
@@ -1183,36 +1188,54 @@ function update_AiMesh_fw() {
 		url: '/ajax_onboarding.asp',
 		dataType: 'script',
 		success: function(){
+			amesh_offline_flag = false;
 			for (var idx in get_cfg_clientlist) {
 				if(get_cfg_clientlist.hasOwnProperty(idx)) {
 					var model_name = get_cfg_clientlist[idx].model_name;
 					var mac = get_cfg_clientlist[idx].mac;
 					var fwver = get_cfg_clientlist[idx].fwver;
-					var ip = get_cfg_clientlist[idx].ip;
 					var online = get_cfg_clientlist[idx].online;
 					var mac_id = mac.replace(/:/g, "");
-					$("#amas_" + mac_id + "").children("#current_version").html("<#ADSL_FW_item1#> : <span class='checkFWCurrent'>" + fwver + "</span>");
+					var current_fwver = $("#amas_" + mac_id + "").find("#current_version .checkFWCurrent").html();
+					if(fwver != current_fwver){
+						$("#amas_" + mac_id + "").children("#current_version").html("<#ADSL_FW_item1#> : <span class='checkFWCurrent'>" + fwver + "</span>");
+					}
 					if(afwupg_support && online == 1 && webs_update_enable_orig == 1){
 						$("#amas_" + mac_id + "").children().find(".checkFWCurrent").addClass("aimesh_fw_release_note");
 						$("#amas_" + mac_id + "").children().find(".checkFWCurrent").click({"model_name": model_name, "fwver": fwver}, show_current_release_note);
 					}
-					$("#amas_" + mac_id + "").children("#manual_firmware_update").empty();
-					$("#amas_" + mac_id + "").children("#manual_firmware_update").html(gen_AiMesh_fw_status(check_AiMesh_fw_version(fwver), ip, online));
+					var support_manual_fw = check_AiMesh_fw_version(fwver);
+					if(support_manual_fw){
+						var last_online = $("#amas_" + mac_id + "").attr("current_online");
+						if(online != last_online){
+							$("#amas_" + mac_id + "").attr("current_online", online);
+							$("#amas_" + mac_id + "").children("#manual_firmware_update").empty();
+							$("#amas_" + mac_id + "").children("#manual_firmware_update").append(gen_AiMesh_fw_status(support_manual_fw, get_cfg_clientlist[idx]));
+							if(online == "1")
+								$("#amas_" + mac_id + "").children().find(".aimesh_fw_update_offline").click(get_cfg_clientlist[idx], open_AiMesh_node_fw_upgrade);
+						}
+						if(online == "0")
+							amesh_offline_flag = true;
+					}
+					else{
+						$("#amas_" + mac_id + "").children("#manual_firmware_update").empty();
+						$("#amas_" + mac_id + "").children("#manual_firmware_update").append(gen_AiMesh_fw_status(support_manual_fw, get_cfg_clientlist[idx]));
+					}
+
 				}
 			}
 		}
 	});
 }
-function gen_AiMesh_fw_status(_manual_status, _node_ip, _online) {
+function gen_AiMesh_fw_status(_manual_status, _node_info) {
 	var html = "";
 	if(_manual_status) {
 		html += "<#FW_manual_update#> : ";
-		if(_online == "0") {
+		if(_node_info.online == "0") {
 			html += "<span class='aimesh_fw_update_offline' style='margin-left:0px;' onclick='show_offline_msg(false);'><#Clientlist_OffLine#></span>";
-			amesh_offline_flag = true;
 		}
 		else {
-			html += "<span class='aimesh_fw_update_offline' style='margin-left:0px;' onclick='open_AiMesh_node_fw_upgrade(\"" + _node_ip + "\");'><#CTL_upload#></span>";
+			html += "<span class='aimesh_fw_update_offline' style='margin-left:0px;' ><#CTL_upload#></span>";
 		}
 	}
 	else {
@@ -1237,38 +1260,6 @@ function check_AiMesh_fw_version(_fw) {
 		manual_status = false;
 	}
 	return manual_status;
-}
-
-function upgrade_modem_fw(){
-	if(document.modem_form.file.value.length == 0){
-		alert("<#JS_Shareblanktest#>");
-		document.modem_form.focus();
-		return;
-	}
-	showLoading(300);
-	document.modem_form.submit();
-	setTimeout(get_mobile_fw_upgrade_status, 15000);
-	setTimeout("detect_httpd();", 272000);
-}
-
-
-function get_mobile_fw_upgrade_status(){
-	if(gobi_support){
-		var upgrade_status = httpApi.nvramGet(["mobile_upgrade_md5", "mobile_upgrade_name", "mobile_upgrade_process", "mobile_upgrade_now", "mobile_upgrade_status"]);
-
-		if(upgrade_status.mobile_upgrade_md5 != "1" && upgrade_status.mobile_upgrade_name != "1" && upgrade_status.mobile_upgrade_process != "100" && upgrade_status.mobile_upgrade_now != "1")
-			setTimeout(get_mobile_fw_upgrade_status, 1000);
-		else{
-			if(upgrade_status.mobile_upgrade_md5 == "1" || upgrade_status.mobile_upgrade_name == "1")
-				alert("You uploaded a wrong firmware to upgrade the module. Please select right one and upgrade again!");
-			else if(upgrade_status.mobile_upgrade_now == "1")
-				alert("Fail to upgrade 4G modem firmware. Please wait for a while until the router reboots.");
-			else if(upgrade_status.mobile_upgrade_status == "3")
-				alert("Please contact with customer service.");
-		}
-	}
-	else
-		return;
 }
 </script>
 </head>
@@ -1355,7 +1346,7 @@ function get_mobile_fw_upgrade_status(){
 			</tr>	
 			</thead>
 			<tr>
-				<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(11, 14);">Auto Firmware Upgrade</a></th>		<!-- untranslated -->
+				<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(11, 14);"><#FW_auto_upgrade#></a></th>
 				<td>
 					<div align="center" class="left" style="width:75px; float:left; cursor:pointer;" id="switch_webs_update_enable"></div>
 					<script type="text/javascript">
@@ -1452,32 +1443,7 @@ function get_mobile_fw_upgrade_status(){
 		</div>
 		
 </form>
-
-<form method="post" action="do_modem_fwupgrade.cgi" name="modem_form" target="hidden_frame" enctype="multipart/form-data">
-<input type="hidden" name="current_page" value="Advanced_FirmwareUpgrade_Content.asp">
-<input type="hidden" name="next_page" value="">
-<input type="hidden" name="action_mode" value="">
-<input type="hidden" name="action_script" value="">
-<input type="hidden" name="action_wait" value="">
-<input type="hidden" name="preferred_lang" value="<% nvram_get("preferred_lang"); %>">
-<input type="hidden" name="firmver" value="<% nvram_get("firmver"); %>">
-		<table id="modem_fw_upgrade" width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable" style="display: none;">
-			<thead>
-				<tr>
-					<td colspan="2">4G Modem Firmware</td>
-				</tr>
-			</thead>
-			<tr><th>Modem Firmware version</th><td><div id="usb_modem_act_swver"><% nvram_get("usb_modem_act_swver"); %></div></td></tr>
-			<tr>
-				<th>New Modem Firmware</th>
-				<td>
-					<input type="file" name="file" class="input" style="color:#FFCC00;*color:#000;width: 194px;">
-					<input type="button" name="upload" class="button_gen" onclick="upgrade_modem_fw()" value="<#CTL_upload#>" />
-				</td>
-			</tr>
-		</table>
-</form>
-
+		
 <form method="post" name="firmware_form" action="/start_apply.htm" target="hidden_frame">
 <input type="hidden" name="productid" value="<% nvram_get("productid"); %>">
 <input type="hidden" name="current_page" value="Advanced_FirmwareUpgrade_Content.asp">

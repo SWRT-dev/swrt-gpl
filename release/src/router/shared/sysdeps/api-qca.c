@@ -26,6 +26,8 @@
 #endif
 #include <linux_gpio.h>
 
+#include "flash_mtd.h"		//FRead()
+
 typedef uint32_t __u32;
 
 /////// copy from qca-wifi
@@ -33,6 +35,17 @@ typedef uint32_t __u32;
 #define IEEE80211_IOCTL_GETCHANINFO     (SIOCIWFIRSTPRIV+7)
 typedef unsigned int	u_int;
 
+#if defined(RTCONFIG_SPF11_4_QSDK)
+/* SPF11.4 or above */
+struct ieee80211_channel {
+    uint8_t ieee;
+    uint16_t ic_freq;
+    uint64_t flags;
+    uint32_t flags_ext;
+    uint8_t vhtop_ch_num_seg1;
+    uint8_t vhtop_ch_num_seg2;
+};
+#else
 struct ieee80211_channel {
     u_int16_t       ic_freq;        /* setting in Mhz */
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP) || defined(RTCONFIG_QSDK10CS)
@@ -55,6 +68,7 @@ struct ieee80211_channel {
     u_int8_t        ic_vhtop_ch_freq_seg2;         /* Channel Center frequency applicable
                                                   * for 80+80MHz mode of operation */ 
 };
+#endif
 
 struct ieee80211req_chaninfo {
 	u_int	ic_nchans;
@@ -79,6 +93,11 @@ ieee80211_mhz2ieee(u_int freq)
             return 15 + ((freq - 2512) / 20);
         }
     }
+#ifdef RTCONFIG_WIFI6E
+    if (freq >= 6115 && freq <= 7115) {
+	    return (freq - 5950) / 5;
+    }
+#endif
     if (freq >= 58320 && freq <= 69120) {	/* 802.11ad Wigig */
 	    return (freq - 58320) / 2160 + 1;
     }
@@ -140,13 +159,34 @@ const char WSUP_DRV[] = "nl80211";
 #else
 const char WSUP_DRV[] = "athr";
 #endif
+#elif defined(RTCONFIG_SOC_IPQ60XX)
+const char WIF_5G[] = "ath0";
+const char WIF_2G[] = "ath1";
+const char STA_5G[] = "sta0";
+const char STA_2G[] = "sta1";
+const char VPHY_5G[] = "wifi0";
+const char VPHY_2G[] = "wifi1";
+#if defined(RTCONFIG_CFG80211)
+const char WSUP_DRV[] = "nl80211";
+#else
+const char WSUP_DRV[] = "athr";
+#endif
 #elif defined(RTCONFIG_SOC_IPQ50XX)
+#if defined(ETJ)
+const char WIF_5G[] = "ath2";
+const char WIF_2G[] = "ath0";
+const char STA_5G[] = "sta2";
+const char STA_2G[] = "sta0";
+const char VPHY_5G[] = "wifi2";
+const char VPHY_2G[] = "wifi0";
+#else
 const char WIF_5G[] = "ath1";
 const char WIF_2G[] = "ath0";
 const char STA_5G[] = "sta1";
 const char STA_2G[] = "sta0";
 const char VPHY_5G[] = "wifi1";
 const char VPHY_2G[] = "wifi0";
+#endif
 #if defined(RTCONFIG_CFG80211)
 const char WSUP_DRV[] = "nl80211";
 #else
@@ -157,9 +197,15 @@ const char WSUP_DRV[] = "athr";
 #endif
 
 #if defined(RTCONFIG_HAS_5G_2)
+#if defined(ETJ)
+const char WIF_5G2[] = "ath1";
+const char STA_5G2[] = "sta1";
+const char VPHY_5G2[] = "wifi1";
+#else
 const char WIF_5G2[] = "ath2";
 const char STA_5G2[] = "sta2";
 const char VPHY_5G2[] = "wifi2";
+#endif
 #else
 const char WIF_5G2[] = "xxx";
 const char STA_5G2[] = "xxx";
@@ -236,6 +282,33 @@ uint32_t gpio_dir(uint32_t gpio, int dir)
 	__export_gpio(gpio);
 	snprintf(path, sizeof(path), "%s/gpio%d/direction", GPIOLIB_DIR, gpio);
 	f_write_string(path, dir_str, 0, 0);
+
+	return 0;
+}
+
+#define PWM_SYS_PREFIX	"/sys/class/pwm/pwmchip0"
+uint32_t pwm_export(uint8_t channel, uint32_t period, uint32_t duty_cycle)
+{
+	char path[PATH_MAX], tmpbuf[20];
+
+	if (!d_exists(PWM_SYS_PREFIX))
+		return -1;
+
+	snprintf(tmpbuf, sizeof(tmpbuf), "%u", channel);
+	f_write_string(PWM_SYS_PREFIX"/export", tmpbuf, 0, 0);
+
+	snprintf(path, sizeof(path), PWM_SYS_PREFIX"/pwm%u/period", channel);
+	snprintf(tmpbuf, sizeof(tmpbuf), "%u", period);
+	f_write_string(path, tmpbuf, 0, 0);
+
+	snprintf(path, sizeof(path), PWM_SYS_PREFIX"/pwm%u/duty_cycle", channel);
+	snprintf(tmpbuf, sizeof(tmpbuf), "%u", duty_cycle);
+	f_write_string(path, tmpbuf, 0, 0);
+
+	// toggle enable to make the status correct
+	snprintf(path, sizeof(path), PWM_SYS_PREFIX"/pwm%u/enable", channel);
+	f_write_string(path, "1", 0, 0);
+	f_write_string(path, "0", 0, 0);
 
 	return 0;
 }
@@ -2519,7 +2592,11 @@ void disassoc_sta(char *ifname, char *sta_addr)
 	if(ifname == NULL || *ifname == '\0' || sta_addr == NULL || *sta_addr == '\0')
 		return;
 
+#if defined(RTCONFIG_CFG80211)
+	eval("hostapd_cli", "-i", ifname, "disassociate", sta_addr);
+#else
 	eval(IWPRIV, ifname, "kickmac", sta_addr);
+#endif
 }
 
 
@@ -2735,6 +2812,7 @@ int get_wifi_temperature(enum wl_band_id band)
 #error "Defined the bt device!!"
 #endif
 #define BT_BSCP_CONF_PATH "/etc/bt_bscp_conf.psr"
+#define BT_UART_RATE "115200"
 
 #if !defined(PLAX56_XP4)
 #define BT_ACTIVE "0001 0001"
@@ -2847,6 +2925,10 @@ static int generate_bt_bscp_conf()
 	fprintf(fp, "&01fe = 6590\n");
 	fprintf(fp, "// # Set PSKEY_ANA_FTRIM for fine tunning Xtal frequency.\n");
 	fprintf(fp, "&01f6 = %s\n", bt_cal);
+	fprintf(fp, "//# PSKEY_LC_MAX_TX_POWER\n");
+	fprintf(fp, "&0017 = 0004\n");
+	fprintf(fp, "//# PSKEY_BLE_DEFAULT_TX_POWER\n");
+	fprintf(fp, "&22c8 = 0004\n");
 
 #if !defined(PLAX56_XP4)
 	fprintf(fp, "## Configure co-existence\n");
@@ -2863,16 +2945,17 @@ static int generate_bt_bscp_conf()
 	fprintf(fp, "&2489 = 0096 0011\n");
 #endif
 
-	fprintf(fp, "# #PSKEY_LC_DEFAULT_TX_POWER\n");
-	fprintf(fp, "#psset 0x0021 0x0014\n");
-	fprintf(fp, "#psset 0x00ef 0xffff 0xfe8f 0xffdb 0x875b\n");
+	fprintf(fp, "// # #PSKEY_LC_DEFAULT_TX_POWER\n");
+	fprintf(fp, "// #psset 0x0021 0x0004\n");
+	fprintf(fp, "// #psset 0x00ef 0xffff 0xfe8f 0xffdb 0x875b\n");
+
 	fclose(fp);
 
 	return 1;
 }
 void execute_bt_bscp()
 {
-	char *hciattach_argv[] = { "/usr/bin/hciattach", "-s", "115200", BTDEV, "bcsp", "115200", NULL };
+	char *hciattach_argv[] = { "/usr/bin/hciattach", "-s", BT_UART_RATE, BTDEV, "bcsp", BT_UART_RATE, NULL };
 
 	if (nvram_get_int("x_Setting")==1)
 		return;
@@ -2883,7 +2966,7 @@ void execute_bt_bscp()
 	}
 
 	if (generate_bt_bscp_conf()) {
-		doSystem("bccmd -t bcsp -b 115200 -d %s psload -r %s", BTDEV, BT_BSCP_CONF_PATH);
+		doSystem("bccmd -t bcsp -b %s -d %s psload -r %s", BT_UART_RATE, BTDEV, BT_BSCP_CONF_PATH);
 		sleep(1);
 		_eval(hciattach_argv, NULL, 0, NULL);
 	}

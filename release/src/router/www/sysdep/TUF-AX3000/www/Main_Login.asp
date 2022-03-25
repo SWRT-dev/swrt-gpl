@@ -8,6 +8,8 @@
 <meta HTTP-EQUIV="Expires" CONTENT="-1">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <link rel="icon" href="images/favicon.png">
+<script type="text/javascript" src="/js/jquery.js"></script>
+<script type="text/javascript" src="/js/https_redirect/https_redirect.js"></script>
 <title><#Web_Title#></title>
 <style>
 @font-face{
@@ -19,14 +21,14 @@ body, .p1, .form-input{
 }
 body{
 	font-family: Roboto, Arial, STHeiti, Microsoft JhengHei, sans-serif;
-	background-color: rgb(31, 31, 31) !important;
+	background-color: rgb(0, 0, 0) !important; 
 }
 .bg{
-	background: url(/images/New_ui/login_bg.png) no-repeat center center fixed;
-	-webkit-background-size: cover;
-	-moz-background-size: cover;
-	-o-background-size: cover;
-	background-size: cover;
+	background: url(/images/New_ui/login_bg.png) no-repeat top center fixed;
+	-webkit-background-size: contain;
+	-moz-background-size: contain;
+	-o-background-size: contain;
+	background-size: contain;
 	background:#283437\9;
 }
 .logo-container{
@@ -331,7 +333,7 @@ body{
 }
 </style>
 <script>
-var odm_support = ('<% nvram_get("rc_support"); %>'.indexOf('odm') != -1) ? true : false;
+var odm_support = ('<% nvram_get("rc_support"); %>'.indexOf(' odm') != -1) ? true : false;
 
 /* add Array.prototype.forEach() in IE8 */
 if(typeof Array.prototype.forEach != 'function'){

@@ -1,0 +1,28 @@
+#
+# Central Buffer Manager(CBM) configuration
+#
+
+menu "CBM_GRX500"
+
+config CBM_STD_BUF_POOL_SIZE
+	hex "CBM Standard Buffer pool size"
+	depends on LTQ_CBM
+	default 0x1200000
+
+config CBM_JBO_BUF_SIZE 
+	hex "CBM Jumbo Buffer pool size"
+	depends on LTQ_CBM
+	default 0x800000
+
+config CBM_JBO_PKT_SIZE 
+	hex "CBM Jumbo Packet size"
+	depends on LTQ_CBM
+	default 0x2000
+config CBM_LS_ENABLE
+	tristate "CBM loadspreader"
+	depends on LTQ_CBM
+	default n
+	---help---
+	Turn on this option to enable CBM LS and TCP packet Marking
+	in HW.
+endmenu

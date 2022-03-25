@@ -328,7 +328,7 @@ function submitForm(){
 		if((based_modelid == "GT-AXY16000" || based_modelid == "GT-AC9600" || based_modelid == "RT-AX89U") && (phy_port_state.portSpeed["WAN 1"] != "X" || phy_port_state.portSpeed["SFP+"] != "X")){
 			document.form.action = "/qis/QIS_wireless.htm";
 		}
-		else if((based_modelid == "GT-AX11000" || based_modelid == "GT-AXE11000" || based_modelid == "GT-AX11000_PRO") && phy_port_state.portSpeed["LAN 5"] != "X"){
+		else if((based_modelid == "GT-AX11000" || based_modelid == "GT-AXE11000" || based_modelid == "GT-AX11000_PRO" || based_modelid == "GT-AXE16000") && phy_port_state.portSpeed["LAN 5"] != "X"){
 			document.form.action = "/qis/QIS_wireless.htm";
 		}
 		else if(autodet_state == "6" || autodet_auxstate == "6"){

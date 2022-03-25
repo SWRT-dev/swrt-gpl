@@ -1,0 +1,7 @@
+/* Generated automatically. */
+static const char configuration_arguments[] = "/home/paldier/isdk/8.4/openwrt/build_dir/toolchain-mips_24kc+nomips16_gcc-8.3.0_musl/gcc-8.3.0/configure --with-bugurl=http://www.lede-project.org/bugs/ --with-pkgversion='OpenWrt GCC 8.3.0 19.x_intel' --prefix=/home/paldier/isdk/8.4/openwrt/staging_dir/toolchain-mips_24kc+nomips16_gcc-8.3.0_musl --build=x86_64-pc-linux-gnu --host=x86_64-pc-linux-gnu --target=mips-openwrt-linux-musl --with-gnu-ld --enable-target-optspace --disable-libgomp --disable-libmudflap --disable-multilib --disable-libmpx --disable-nls --without-isl --without-cloog --with-host-libstdcxx=-lstdc++ --with-float=soft --with-gmp=/home/paldier/isdk/8.4/openwrt/staging_dir/host --with-mpfr=/home/paldier/isdk/8.4/openwrt/staging_dir/host --with-mpc=/home/paldier/isdk/8.4/openwrt/staging_dir/host --disable-decimal-float --with-diagnostics-color=auto-if-env --with-mips-plt --disable-libssp --enable-__cxa_atexit --with-headers=/home/paldier/isdk/8.4/openwrt/staging_dir/toolchain-mips_24kc+nomips16_gcc-8.3.0_musl/include --disable-libsanitizer --enable-languages=c,c++ --enable-shared --enable-threads --with-slibdir=/home/paldier/isdk/8.4/openwrt/staging_dir/toolchain-mips_24kc+nomips16_gcc-8.3.0_musl/lib --enable-lto --with-libelf=/home/paldier/isdk/8.4/openwrt/staging_dir/host";
+static const char thread_model[] = "posix";
+
+static const struct {
+  const char *name, *value;
+} configure_default_options[] = { { "float", "soft" }, { "llsc", "llsc" }, { "mips-plt", "plt" } };

@@ -1,0 +1,25 @@
+#
+# TMU
+#
+
+menuconfig LTQ_TMU
+	bool "TMU QoS Support"
+	depends on SOC_GRX500 && LTQ_CBM && GRX500_CBM && LTQ_DATAPATH
+	default y
+	---help---
+	  TMU QoS HW Support
+	  It only support egress QoS
+	  It depends on CBM
+
+if LTQ_TMU
+
+config LTQ_TMU_DDR_SIMULATE_REG
+	default n
+	bool "Use DDR to Simulate TMU HW Register for testing purpose"
+	depends on LTQ_TMU
+	---help---
+	 Use DDR to Simulate TMU HW Register for testing purpose,
+	 especially for hierarchy queue/scheduler setup
+	 it is only for simulation purpose, not for real feature
+
+endif # LTQ_TMU

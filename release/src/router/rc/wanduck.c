@@ -359,6 +359,9 @@ void enable_wan_led()
 	led_control(LED_WAN_NORMAL, LED_ON);
 #endif
 #else
+#if defined(R8500) || defined(R7000P) || defined(XWR3100) || defined(EA6700) || defined(DIR868L)
+	led_control(LED_WAN, LED_ON);
+#endif
 	eval("et", "-i", "eth0", "robowr", "0", "0x18", "0x01ff");
 	eval("et", "-i", "eth0", "robowr", "0", "0x1a", "0x01ff");
 #endif
@@ -398,7 +401,7 @@ static void wan_led_control(int sig) {
 	}
 #elif defined(RTAC68U) ||  defined(RTAC87U) || defined(RTAC3200) || defined(RTCONFIG_BCM_7114) || defined(DSL_AC68U) || defined(HND_ROUTER) || defined(RTCONFIG_RALINK)
 	if(nvram_match("AllLED", "1")
-#ifdef RTAC68U
+#if defined(RTAC68U) && !defined(DIR868L) && !defined(F9K1118) && !defined(EA6700)
 		&& (is_ac66u_v2_series() || is_ac68u_v3_series())
 #endif
 	) {
@@ -1927,7 +1930,7 @@ _dprintf("# wanduck(%d): if_wan_phyconnected: x_Setting=%d, link_modem=%d, sim_s
 		}
 	}
 
-#if defined(RTCONFIG_LANWAN_LED) || defined(RTCONFIG_LAN4WAN_LED)
+#if defined(RTCONFIG_LANWAN_LED) || defined(RTCONFIG_LAN4WAN_LED) || defined(XWR3100)
 	LanWanLedCtrl();
 #endif
 
@@ -3529,7 +3532,7 @@ _dprintf("wanduck(%d)(first detect start): state %d, state_old %d, changed %d, w
 		led_control(LED_WAN, LED_ON);
 #elif defined(RTAC68U) || defined(RTAC87U) || defined(RTAC3200) || defined(RTCONFIG_BCM_7114) || (defined(HND_ROUTER) && !defined(RTCONFIG_HND_ROUTER_AX))
 		if(nvram_match("AllLED", "1")
-#ifdef RTAC68U
+#if defined(RTAC68U) && !defined(DIR868L) && !defined(F9K1118) && !defined(EA6700)
 				&& (is_ac66u_v2_series() || is_ac68u_v3_series())
 #endif
 				)
@@ -4644,7 +4647,7 @@ _dprintf("nat_rule: start_nat_rules 6.\n");
 					update_wan_leds(current_wan_unit, link_wan[current_wan_unit]);
 #elif defined(RTAC68U) || defined(RTAC87U) || defined(RTAC3200) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
 					if(
-#ifdef RTAC68U
+#if defined(RTAC68U) && !defined(DIR868L) && !defined(F9K1118) && !defined(EA6700)
 						(is_ac66u_v2_series() || is_ac68u_v3_series())
 #else
 						1
@@ -4731,7 +4734,7 @@ _dprintf("nat_rule: start_nat_rules 6.\n");
 				update_wan_leds(current_wan_unit, link_wan[current_wan_unit]);
 #elif defined(RTAC68U) || defined(RTAC87U) || defined(RTAC3200) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
 				if(nvram_match("AllLED", "1")
-#ifdef RTAC68U
+#if defined(RTAC68U) && !defined(DIR868L) && !defined(F9K1118) && !defined(EA6700)
 						&& (is_ac66u_v2_series() || is_ac68u_v3_series())
 #endif
 						)
@@ -4867,7 +4870,7 @@ _dprintf("nat_rule: stop_nat_rules 7.\n");
 #if defined(RTAC68U) || defined(RTAC87U) || defined(RTAC3200) || defined(RTCONFIG_BCM_7114) || (defined(HND_ROUTER) && !defined(RTCONFIG_HND_ROUTER_AX))
 		if (strcmp(dualwan_wans, "wan none")) {
 			if(nvram_match("AllLED", "1")
-#ifdef RTAC68U
+#if defined(RTAC68U) && !defined(DIR868L) && !defined(F9K1118) && !defined(EA6700)
 				&& (is_ac66u_v2_series() || is_ac68u_v3_series())
 #endif
 			){

@@ -814,6 +814,7 @@ function change_wan_proto_type(proto_type){
 		inputCtrl(document.form.wan_auth_x, 0);
 		inputCtrl(document.form.wan_pppoe_username, 1);
 		inputCtrl(document.form.wan_pppoe_passwd, 1);
+		inputCtrl(document.form.wan_pppoe_auth, 1);
 		inputCtrl(document.form.wan_pppoe_idletime, 1);
 		inputCtrl(document.form.wan_pppoe_idletime_check, 1);
 		inputCtrl(document.form.wan_pppoe_mtu, 1);
@@ -828,6 +829,9 @@ function change_wan_proto_type(proto_type){
 		showhide("PPPsetting",1);
 		inputCtrl(document.form.wan_ppp_echo, 1);
 		ppp_echo_control();
+		inputCtrl(document.form.wan_heartbeat_x, 0);
+		inputCtrl(document.form.wan_vpndhcp[0], 1);
+		inputCtrl(document.form.wan_vpndhcp[1], 1);
 		inputCtrl(document.form.wan_dhcp_qry, 0);
 	}
 	else if(proto_type == "pptp"){
@@ -841,6 +845,7 @@ function change_wan_proto_type(proto_type){
 		inputCtrl(document.form.wan_auth_x, 0);
 		inputCtrl(document.form.wan_pppoe_username, 1);
 		inputCtrl(document.form.wan_pppoe_passwd, 1);
+		inputCtrl(document.form.wan_pppoe_auth, 1);
 		inputCtrl(document.form.wan_pppoe_idletime, 1);
 		inputCtrl(document.form.wan_pppoe_idletime_check, 1);
 		inputCtrl(document.form.wan_pppoe_mtu, 0);
@@ -848,14 +853,15 @@ function change_wan_proto_type(proto_type){
 		inputCtrl(document.form.wan_pppoe_service, 0);
 		inputCtrl(document.form.wan_pppoe_ac, 0);
 		inputCtrl(document.form.wan_pppoe_hostuniq, 0);
+		inputCtrl(document.form.wan_heartbeat_x, 1);
+		inputCtrl(document.form.wan_vpndhcp[0], 0);
+		inputCtrl(document.form.wan_vpndhcp[1], 0);
 		inputCtrl(document.form.wan_dhcp_qry, 0);
 		
 		// 2008.03 James. patch for Oleg's patch. {
 		inputCtrl(document.form.wan_pppoe_options_x, 1);
 		inputCtrl(document.form.wan_pptp_options_x, 1);
 		// 2008.03 James. patch for Oleg's patch. }
-		inputCtrl(document.form.wan_heartbeat_x, 1);
-		document.getElementById("vpn_dhcp").style.display = "none";
 		inputCtrl(document.form.wan_ppp_echo, 1);
 		ppp_echo_control();
 	}
@@ -870,6 +876,7 @@ function change_wan_proto_type(proto_type){
 		inputCtrl(document.form.wan_auth_x, 0);
 		inputCtrl(document.form.wan_pppoe_username, 1);
 		inputCtrl(document.form.wan_pppoe_passwd, 1);
+		inputCtrl(document.form.wan_pppoe_auth, 1);
 		inputCtrl(document.form.wan_pppoe_idletime, 0);
 		inputCtrl(document.form.wan_pppoe_idletime_check, 0);
 		inputCtrl(document.form.wan_pppoe_mtu, 0);
@@ -877,14 +884,15 @@ function change_wan_proto_type(proto_type){
 		inputCtrl(document.form.wan_pppoe_service, 0);
 		inputCtrl(document.form.wan_pppoe_ac, 0);
 		inputCtrl(document.form.wan_pppoe_hostuniq, 0);
+		inputCtrl(document.form.wan_heartbeat_x, 1);
+		inputCtrl(document.form.wan_vpndhcp[0], 0);
+		inputCtrl(document.form.wan_vpndhcp[1], 0);
 		inputCtrl(document.form.wan_dhcp_qry, 0);
 		
 		// 2008.03 James. patch for Oleg's patch. {
 		inputCtrl(document.form.wan_pppoe_options_x, 1);
 		inputCtrl(document.form.wan_pptp_options_x, 0);
 		// 2008.03 James. patch for Oleg's patch. }
-		inputCtrl(document.form.wan_heartbeat_x, 1);
-		document.getElementById("vpn_dhcp").style.display = "none";
 		inputCtrl(document.form.wan_ppp_echo, 1);
 		ppp_echo_control();
 	}
@@ -899,6 +907,7 @@ function change_wan_proto_type(proto_type){
 		inputCtrl(document.form.wan_auth_x, 1);
 		inputCtrl(document.form.wan_pppoe_username, (document.form.wan_auth_x.value != ""));
 		inputCtrl(document.form.wan_pppoe_passwd, (document.form.wan_auth_x.value != ""));
+		inputCtrl(document.form.wan_pppoe_auth, 0);
 		inputCtrl(document.form.wan_pppoe_idletime, 0);
 		inputCtrl(document.form.wan_pppoe_idletime_check, 0);
 		inputCtrl(document.form.wan_pppoe_mtu, 0);
@@ -912,6 +921,9 @@ function change_wan_proto_type(proto_type){
 		showhide("PPPsetting",0);
 		inputCtrl(document.form.wan_ppp_echo, 0);
 		ppp_echo_control(0);
+		inputCtrl(document.form.wan_heartbeat_x, 0);
+		inputCtrl(document.form.wan_vpndhcp[0], 0);
+		inputCtrl(document.form.wan_vpndhcp[1], 0);
 		inputCtrl(document.form.wan_dhcp_qry, 0);
 	}
 	else if(proto_type == "dhcp"){
@@ -926,6 +938,7 @@ function change_wan_proto_type(proto_type){
 		inputCtrl(document.form.wan_auth_x, 1);
 		inputCtrl(document.form.wan_pppoe_username, (document.form.wan_auth_x.value != ""));
 		inputCtrl(document.form.wan_pppoe_passwd, (document.form.wan_auth_x.value != ""));
+		inputCtrl(document.form.wan_pppoe_auth, 0);
 		inputCtrl(document.form.wan_pppoe_idletime, 0);
 		inputCtrl(document.form.wan_pppoe_idletime_check, 0);
 		inputCtrl(document.form.wan_pppoe_mtu, 0);
@@ -940,6 +953,9 @@ function change_wan_proto_type(proto_type){
 		showhide("PPPsetting",0);
 		inputCtrl(document.form.wan_ppp_echo, 0);
 		ppp_echo_control(0);
+		inputCtrl(document.form.wan_heartbeat_x, 0);
+		inputCtrl(document.form.wan_vpndhcp[0], 0);
+		inputCtrl(document.form.wan_vpndhcp[1], 0);
 		inputCtrl(document.form.wan_dhcp_qry, 1);
 	}
 	else if(proto_type == "bridge") {
@@ -952,6 +968,7 @@ function change_wan_proto_type(proto_type){
 		inputCtrl(document.form.wan_auth_x, 0);
 		inputCtrl(document.form.wan_pppoe_username, 0);
 		inputCtrl(document.form.wan_pppoe_passwd, 0);
+		inputCtrl(document.form.wan_pppoe_auth, 0);
 		inputCtrl(document.form.wan_pppoe_idletime, 0);
 		inputCtrl(document.form.wan_pppoe_idletime_check, 0);
 		inputCtrl(document.form.wan_pppoe_mtu, 0);
@@ -966,6 +983,9 @@ function change_wan_proto_type(proto_type){
 		showhide("PPPsetting",0);
 		inputCtrl(document.form.wan_ppp_echo, 0);
 		ppp_echo_control(0);
+		inputCtrl(document.form.wan_heartbeat_x, 1);
+		inputCtrl(document.form.wan_vpndhcp[0], 1);
+		inputCtrl(document.form.wan_vpndhcp[1], 1);
 		inputCtrl(document.form.wan_dhcp_qry, 0);
 	}
 	else {
@@ -1701,6 +1721,18 @@ function showDiableDHCPclientID(clientid_enable){
 												<div style="margin-top:1px;"><input type="checkbox" name="show_pass_1" onclick="pass_checked(document.form.wan_pppoe_passwd);"><#QIS_show_pass#></div>
 											</td>
 										</tr>
+										<tr style="display:none">
+											<th>
+												<a class="hintstyle" href="javascript:void(0);" onClick="openHint(7,6);"><#WANPPPAuthText#></a>
+											</th>
+											<td>
+												<select class="input_option" name="wan_pppoe_auth">
+												<option value="" <% nvram_match("wan_pppoe_auth", "", "selected"); %>><#Auto#></option>
+												<option value="pap" <% nvram_match("wan_pppoe_auth", "pap", "selected"); %>>PAP</option>
+												<option value="chap" <% nvram_match("wan_pppoe_auth", "chap", "selected"); %>>CHAP</option>
+												</select>
+											</td>
+										</tr>
 										<tr>
 											<th>
 												<a class="hintstyle" href="javascript:void(0);" onClick="openHint(7,6);"><#PPPConnection_IdleDisconnectTime_itemname#></a>
@@ -1816,7 +1848,7 @@ function showDiableDHCPclientID(clientid_enable){
           								</td>
           									<!-- 2008.03 James. patch for Oleg's patch. } -->
         							</tr>
-									<tr id="vpn_dhcp">
+									<tr>
 										<th><#PPPConnection_x_vpn_dhcp_itemname#></th>
 										<td><input type="radio" name="wan_vpndhcp" class="input" value="1" onclick="return change_common_radio(this, 'IPConnection', 'wan_vpndhcp', 1)" <% nvram_match("wan_vpndhcp", "1", "checked"); %> /><#checkbox_Yes#>
 		    								<input type="radio" name="wan_vpndhcp" class="input" value="0" onclick="return change_common_radio(this, 'IPConnection', 'wan_vpndhcp', 0)" <% nvram_match("wan_vpndhcp", "0", "checked"); %> /><#checkbox_No#>
@@ -1892,7 +1924,7 @@ function showDiableDHCPclientID(clientid_enable){
 <input type="hidden" name="action_mode" value="apply">
 <input type="hidden" name="flag" value="chg_pvc">
 <input type="hidden" name="action_script" value="">
-<input type="hidden" name="action_wait" value="2">
+<input type="hidden" name="action_wait" value="">
 <input type="hidden" name="current_page" value="Advanced_WAN_Content.asp">
 <input type="hidden" name="wan_unit" value="">
 </form>

@@ -1001,7 +1001,7 @@ void set_rgbled(unsigned int mode)
 		{500,	"0 1"},		/* off:0.5s, on:0.5s */
 		{250,	"0 1 1 1"},	/* off:0.25s, on:0.75s */
 		{3000,	"0 1"},		/* off:3s, on:3s */
-		{NULL}
+		{0,		NULL}
 	};
 	int uidx = 0;
 	char *led_color[] = {
@@ -1023,36 +1023,97 @@ void set_rgbled(unsigned int mode)
 		led_control(LED_BLUE, LED_ON);
 		led_control(LED_GREEN, LED_ON);
 		led_control(LED_RED, LED_ON);
+#if defined(RTAC59_CD6R) || defined(RTAC59_CD6N) || defined(PLAX56_XP4) || defined(MR60) || defined(MS60)
 		if (RGBLED_WHITE & RGBLED_WLED)
 			led_control(LED_WHITE, LED_ON);
+#endif		
 		rgbled_udef_mode = 1;
 	}
 
 	switch (c) {
 	case RGBLED_BLUE:
 		udef_trigger = led_color[1];
+#if defined(RTCONFIG_SWRT_LED_RGB) && defined(RTCONFIG_HND_ROUTER_AX_675X)
+#if defined(MR60) || defined(MS60)
+		led_control(LED_BLUE, LED_ON);
+		led_control(LED_GREEN, LED_OFF);
+		led_control(LED_RED, LED_OFF);
+		led_control(LED_WHITE, LED_OFF);
+#endif
+#endif
 		break;
 	case RGBLED_GREEN:
 		udef_trigger = led_color[2];
+#if defined(RTCONFIG_SWRT_LED_RGB) && defined(RTCONFIG_HND_ROUTER_AX_675X)
+#if defined(MR60) || defined(MS60)
+		led_control(LED_BLUE, LED_OFF);
+		led_control(LED_GREEN, LED_ON);
+		led_control(LED_RED, LED_OFF);
+		led_control(LED_WHITE, LED_OFF);
+#endif
+#endif
 		break;
 	case RGBLED_RED:
 		udef_trigger = led_color[3];
+#if defined(RTCONFIG_SWRT_LED_RGB) && defined(RTCONFIG_HND_ROUTER_AX_675X)
+#if defined(MR60) || defined(MS60)
+		led_control(LED_BLUE, LED_OFF);
+		led_control(LED_GREEN, LED_OFF);
+		led_control(LED_RED, LED_ON);
+		led_control(LED_WHITE, LED_OFF);
+#endif
+#endif
 		break;
 	case RGBLED_NIAGARA_BLUE:
 		udef_trigger = led_color[4];
+#if defined(RTCONFIG_SWRT_LED_RGB) && defined(RTCONFIG_HND_ROUTER_AX_675X)
+#if defined(MR60) || defined(MS60)
+		led_control(LED_BLUE, LED_ON);
+		led_control(LED_GREEN, LED_ON);
+		led_control(LED_RED, LED_OFF);
+		led_control(LED_WHITE, LED_OFF);
+#endif
+#endif
 		break;
 	case RGBLED_YELLOW:
 		udef_trigger = led_color[5];
+#if defined(RTCONFIG_SWRT_LED_RGB) && defined(RTCONFIG_HND_ROUTER_AX_675X)
+#if defined(MR60) || defined(MS60)
+		led_control(LED_BLUE, LED_OFF);
+		led_control(LED_GREEN, LED_ON);
+		led_control(LED_RED, LED_OFF);
+		led_control(LED_WHITE, LED_OFF);
+#endif
+#endif
 		break;
 	case RGBLED_PURPLE:
 		udef_trigger = led_color[6];
+#if defined(RTCONFIG_SWRT_LED_RGB) && defined(RTCONFIG_HND_ROUTER_AX_675X)
+#if defined(MR60) || defined(MS60)
+		led_control(LED_BLUE, LED_ON);
+		led_control(LED_GREEN, LED_OFF);
+		led_control(LED_RED, LED_ON);
+		led_control(LED_WHITE, LED_OFF);
+#endif
+#endif
 		break;
 	case RGBLED_WHITE:
 		udef_trigger = led_color[7];
+#if defined(RTCONFIG_SWRT_LED_RGB) && defined(RTCONFIG_HND_ROUTER_AX_675X)
+#if defined(MR60) || defined(MS60)
+		led_control(LED_BLUE, LED_OFF);
+		led_control(LED_GREEN, LED_OFF);
+		led_control(LED_RED, LED_OFF);
+		led_control(LED_WHITE, LED_ON);
+#endif
+#endif
 		break;
 	default:
 		;
 	}
+#if defined(RTCONFIG_SWRT_LED_RGB) && defined(RTCONFIG_HND_ROUTER_AX_675X)
+	return;
+#endif
 	if ((c == RGBLED_CONNECTED || c == RGBLED_ETH_BACKHAUL)
 	  && b == 0
 #ifdef RTCONFIG_SW_CTRL_ALLLED

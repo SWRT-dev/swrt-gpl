@@ -1,0 +1,29 @@
+menuconfig INTEL_DATAPATH_HAL_GSWIP32
+	bool "Datapath HAL_GSWIP32"
+	default y
+	depends on INTEL_DATAPATH && X86_INTEL_LGM
+	---help---
+	  Datapath Lib is to provide common rx/tx wrapper Lib without taking
+	  care of much HW knowledge and also provide common interface for legacy
+	  devices and different HW like to CBM or LRO.
+	  Take note: All devices need to register to datapath Lib first
+
+if INTEL_DATAPATH_HAL_GSWIP32
+config INTEL_DATAPATH_HAL_GSWIP32_MIB
+	bool "Datapath aggregated mib support"
+	default n
+	---help---
+	  It is to aggregate GSWIP-O, PP and driver's MIB counter
+
+config INTEL_DATAPATH_HAL_GSWIP32_CPUFREQ
+	bool "Datapath DFS(COC) support"
+	depends on INTEL_DATAPATH && LTQ_CPUFREQ && LTQ_ETHSW_API
+	default y
+	---help---
+	  It is to support DFS(COC) in Datapath
+
+config INTEL_DATAPATH_QOS_HAL
+	bool "datapath QOS hal"
+	default y
+	depends on PPV4 || LTQ_PPV4
+endif

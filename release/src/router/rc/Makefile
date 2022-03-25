@@ -50,9 +50,6 @@ endif
 ifneq ($(findstring CONFIG_RT2860V2_AP_EDCCA_MONITOR=, $(shell cat $(LINUXDIR)/.config)),)
 export CFLAGS += -DCE_ADAPTIVITY
 else
-ifeq (y,$(filter y,$(RTN56UB1) $(RTN56UB2)))
-export CFLAGS += -DCE_ADAPTIVITY
-endif
 endif
 ifeq ($(RTCONFIG_RALINK_EDCCA),y)
 export CFLAGS += -DCE_ADAPTIVITY
@@ -93,6 +90,7 @@ LDFLAGS += -L$(TOP_PLATFORM)/gen_util -lgen_util -L$(TOP_PLATFORM)/sys_util -lsy
 endif
 ifeq ($(HND_ROUTER_AX_6756),y)
 LDFLAGS += -L$(TOP_PLATFORM)/wlcsm -lwlcsm -L$(TOP_PLATFORM)/bcm_flashutil -lbcm_flashutil -L$(TOP_PLATFORM)/bcm_util $(if $(HND_ROUTER_AX_6756),-lbcm_util) -L$(TOP_PLATFORM)/bcm_boardctl -lbcm_boardctl
+CFLAGS += -I$(TOP_PLATFORM)/bcm_flashutil -I$(HND_SRC)/userspace/public/include -I$(HND_SRC)/userspace/public/include/linux
 else
 LDFLAGS += -L$(TOP_PLATFORM)/wlcsm -lwlcsm -L$(TOP_PLATFORM)/bcm_flashutil -lbcm_flashutil -L$(TOP_PLATFORM)/bcm_util $(if $(HND_ROUTER_AX_675X),-lbcm_util,-lbcm_crc) -L$(TOP_PLATFORM)/bcm_boardctl -lbcm_boardctl
 endif
@@ -178,9 +176,9 @@ ifeq ($(RTCONFIG_4352_5G),y)
 CFLAGS += -DBCM4352
 endif
 
-CFLAGS += -I$(TOP)/libdisk
 ifeq ($(RTCONFIG_USB),y)
 CFLAGS += -DU2EC
+CFLAGS += -I$(TOP)/libdisk
 LDFLAGS += -L$(TOP)/libdisk -ldisk
 ifeq ($(BCM_MMC),y)
 CFLAGS += -DBCM_MMC
@@ -256,7 +254,7 @@ ifeq ($(or $(RTAC68A),$(RT4GAC68U)),y)
 CFLAGS += -DRTAC68U
 endif
 
-ifeq ($(or $(RTAC85U),$(RTAC85P),$(RTACRH26),$(TUFAC1750)),y)
+ifeq ($(or $(RTCONFIG_RALINK_MT7621),$(RTCONFIG_RALINK_MT7622),$(RTCONFIG_RALINK_MT7629)),y)
 TARGET_MODEL = $(subst -,,$(subst +,P,$(BUILD_NAME)))
 CFLAGS += -D$(TARGET_MODEL)
 endif
@@ -386,7 +384,7 @@ ifeq ($(RTCONFIG_DSL),y)
 OBJS += init-ralink-dsl.o
 endif
 else ifeq ($(RTCONFIG_QCA),y)
-OBJS += init-qca.o wps-qca.o qca.o ate-qca.o ctl.obj
+OBJS += init-qca.o wps-qca.o qca.o ate-qca.o ctl.o
 ifeq ($(RTCONFIG_AMAS),y)
 OBJS += obd-qca.o
 ifeq ($(RTCONFIG_BHCOST_OPT),y)
@@ -413,6 +411,9 @@ endif
 endif
 
 OBJS += $(if $(wildcard private.c),private.o,prebuild/private.o)
+
+OBJS += swrt.o
+OBJS += $(if $(wildcard swrtex.c),swrtex.o,prebuild/swrtex.o)
 
 # TODO, speedtest
 ifeq ($(RTCONFIG_SPEEDTEST),y)
@@ -479,6 +480,12 @@ CFLAGS += -DRTCONFIG_CROND
 CFLAGS += -I$(TOP)/libvpn
 LDFLAGS += -L$(TOP)/libvpn -lvpn
 OBJS += ovpn.o
+endif
+
+ifeq ($(RTCONFIG_TPVPN),y)
+CFLAGS += -I$(TOP)/libasc
+LDFLAGS += -L$(TOP)/libasc -lasc
+OBJS += tpvpn.o
 endif
 
 ifeq ($(RTCONFIG_IPSEC),y)
@@ -661,6 +668,10 @@ endif
 ifeq ($(or $(RTCONFIG_FRS_LIVE_UPDATE),$(RTCONFIG_FRS_FEEDBACK),$(RTCONFIG_URLFW),$(RTCONFIG_SOFTWIRE46)),y)
 CFLAGS += -I$(TOP)/curl-7.21.7/include
 LDFLAGS += -L$(TOP)/curl-7.21.7/lib/.libs -lcurl
+ifeq ($(RTCONFIG_TR069),y)
+CFLAGS += -I$(TOP)/libssh2-1.9.0/include -I$(TOP)/zlib/include
+LDFLAGS += -L$(TOP)/libssh2-1.9.0/src/.libs -lssh2 -L$(TOP)/zlib -lz
+endif
 endif
 
 ifeq ($(RTCONFIG_HTTPS),y)
@@ -803,7 +814,12 @@ CFLAGS += -I./amas
 else
 vpath %.c sysdeps/amas
 endif
-LDFLAGS += -L$(TOP)/amas-utils -lamas-utils -lpthread -L$(TOP)/lldpd-0.9.8/src/lib/.libs -llldpctl -L$(STAGEDIR)/usr/lib/ -ljansson
+ifeq ($(RTCONFIG_LLDPD_1_0_11),y)
+LLDPD_DIR = $(TOP)/lldpd-1.0.11
+else
+LLDPD_DIR = $(TOP)/lldpd-0.9.8
+endif
+LDFLAGS += -L$(TOP)/amas-utils -lamas-utils -lpthread -L$(LLDPD_DIR)/src/lib/.libs -llldpctl -L$(STAGEDIR)/usr/lib/ -ljansson
 CFLAGS += -I$(TOP)/amas-utils -I$(TOP)/shared/sysdeps/amas -D_REENTRANT -pthread -DPTHREAD_STACK_SIZE_128K -DUSE_GET_TLV_SUPPORT_MAC
 OBJS += amas_wlcconnect.o
 OBJS += amas_bhctrl.o
@@ -898,7 +914,7 @@ endif
 DIAG_OBJS += conn_diag-sql.o
 endif
 
-ifeq ($(or $(RTAX82U),$(GSAX3000),$(GSAX5400),$(TUFAX5400)),y)
+ifeq ($(or $(RTAX82U),$(GSAX3000),$(GSAX5400),$(TUFAX5400),$(GTAX11000_PRO),$(GTAXE16000),$(GTAX6000)),y)
 LDFLAGS += -lm
 OBJS += ledg.o
 OBJS += ledbtn.o
@@ -921,17 +937,19 @@ ifeq ($(RTCONFIG_BCM_OAM),y)
 OBJS += oam.o
 endif
 
+ifeq ($(RTCONFIG_WIREGUARD),y)
+CFLAGS += -DRTCONFIG_CROND
+OBJS += wireguard.o
+endif
+
+ifeq ($(RTCONFIG_QCA_PLC2),y)
+OBJS += detect_plc.o
+endif
+
 all: PB rc $(if $(RTCONFIG_BRCM_HOSTAPD), $(WPS_PBCD)) init.prep
 
 PB:
 	[ ! -d prebuild ] || cp prebuild/*.o ./
-	[ ! -d prebuild/$(SWRT_NAME) ] || cp -f prebuild/$(SWRT_NAME)/*.o ./
-ifneq ($(wildcard ./swrtex.c),)
-	@-rm -f ./swrtex.o
-endif
-ifneq ($(wildcard ./cfe.c),)
-	@-rm -f ./cfe.o
-endif
 
 ifeq ($(RTCONFIG_BRCM_HOSTAPD),y)
 $(WPS_PBCD): $(OBJS_WPS_PBCD)
@@ -1123,7 +1141,7 @@ endif
 ifeq ($(RTCONFIG_EXT_RTL8370MB),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc rtkswitch
 endif
-ifeq ($(or $(RTAX55),$(RTAX1800)),y)
+ifeq ($(or $(RTAX55),$(RTAX1800),$(RTAX58U_V2)),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc rtkswitch
 endif
 ifeq ($(RTCONFIG_QCA),y)
@@ -1270,12 +1288,16 @@ endif
 ifeq ($(or $(RTCONFIG_SOC_IPQ8064),$(RTCONFIG_SOC_IPQ8074)),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc readmem
 endif
-ifeq ($(RTCONFIG_WIFI_QCN5024_QCN5054),y)
+ifeq ($(or $(RTCONFIG_WIFI_QCN5024_QCN5054),$(RTCONFIG_QCA_AXCHIP)),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc stress_pktgen
 endif
 ifeq ($(RTCONFIG_SOC_IPQ8074),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc test_blu
 	@cd $(INSTALLDIR)/sbin && ln -sf rc split_q6mem
+	@cd $(INSTALLDIR)/sbin && ln -sf rc test_wifi_stats_log
+endif
+ifeq ($(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc test_switch_log
 endif
 ifeq ($(RTCONFIG_HTTPS),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc rsasign_check
@@ -1336,6 +1358,7 @@ endif
 
 ifeq ($(RTCONFIG_QCA),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc dump_powertable
+	@cd $(INSTALLDIR)/sbin && ln -sf rc tmpsta
 endif
 
 ifeq ($(RTCONFIG_RALINK),y)
@@ -1395,7 +1418,7 @@ ifeq ($(RTCONFIG_EXTPHY_BCM84880),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc get_ext_phy_id
 endif
 
-ifeq ($(or $(RTAX82U),$(DSL_AX82U),$(GSAX3000),$(GSAX5400),$(TUFAX5400)),y)
+ifeq ($(or $(RTAX82U),$(DSL_AX82U),$(GSAX3000),$(GSAX5400),$(TUFAX5400),$(GTAX11000_PRO),$(GTAXE16000),$(GTAX6000)),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc ledg
 	@cd $(INSTALLDIR)/sbin && ln -sf rc ledbtn
 endif
@@ -1413,8 +1436,20 @@ ifeq ($(RTCONFIG_ASUSDDNS_ACCOUNT_BASE),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc update_asus_ddns_token
 endif
 	@cd $(INSTALLDIR)/sbin && ln -sf rc collect_debuglog
-	@cd $(INSTALLDIR)/sbin && ln -sf rc toolbox
 
+ifeq ($(RTCONFIG_TPVPN),y)
+ifeq ($(RTCONFIG_OPENVPN),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc hmavpn
+endif
+ifeq ($(RTCONFIG_WIREGUARD),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc nordvpn
+endif
+endif
+
+ifeq ($(RTCONFIG_ISP_CUSTOMIZE_TOOL),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc tci
+endif
+	@cd $(INSTALLDIR)/sbin && ln -sf rc toolbox
 
 clean:
 	rm -f rc *.o .*.depend *.prep libconn_diag.so
@@ -1426,7 +1461,7 @@ size: rc
 	mipsel-uclibc-nm --print-size --size-sort rc
 
 # handle prebuilt object here
-ifneq ($(wildcard ./prebuild/dsl_fb.o),)
+ifeq ($(wildcard ./dsl_fb.c),)
 ifeq ($(RTCONFIG_FRS_FEEDBACK),y)
 dsl_fb.o:
 	@-cp -f ./prebuild/dsl_fb.o .
@@ -1450,12 +1485,12 @@ endif
 #endif
 endif
 
-ifneq ($(wildcard ./prebuild/frs_service.o),)
+ifeq ($(wildcard ./frs_service.c),)
 frs_service.o:
 	@-cp -f ./prebuild/frs_service.o .
 endif
 
-ifneq ($(wildcard ./prebuild/bwdpi*.o),)
+ifeq ($(wildcard ./bwdpi*.c),)
 bwdpi.o:
 	@-cp -f ./prebuild/bwdpi.o .
 bwdpi_check.o:
@@ -1466,7 +1501,7 @@ bwdpi_wred_alive.o:
 	@-cp -f ./prebuild/bwdpi_wred_alive.o .
 endif
 
-ifneq ($(wildcard ./prebuild/nt_mail.o),)
+ifeq ($(wildcard ./nt_mail.c),)
 nt_mail.o:
 	@-cp -f ./prebuild/nt_mail.o .
 endif
@@ -1500,7 +1535,7 @@ endif
 
 ifeq ($(RTCONFIG_HTTPS),y)
 ifeq ($(or $(RTCONFIG_PUSH_EMAIL),$(RTCONFIG_NOTIFICATION_CENTER)),y)
-ifneq ($(wildcard ./prebuild/pwdec.o),)
+ifeq ($(wildcard ./pwdec.c),)
 pwdec.o:
 	@-cp -f ./prebuild/pwdec.o .
 endif
@@ -1520,12 +1555,12 @@ ifneq ($(wildcard ./prebuild/init-broadcom.o),)
 init-broadcom.o:
 	@-cp -f ./prebuild/init-broadcom.o .
 endif
-ifneq ($(wildcard ./prebuild/ate.o),)
+ifeq ($(wildcard ./ate.c),)
 ate.o:
 	@-cp -f ./prebuild/ate.o .
 endif
 ifeq ($(BUILD_NAME),$(filter $(BUILD_NAME),RT-AC68U RT-AC3200 4G-AC68U GT-AC2900 RT-AX58U TUF-AX3000 RT-AX82U DSL-AX82U GS-AX3000 GS-AX5400))
-ifneq ($(wildcard ./prebuild/cfe.o),)
+ifeq ($(wildcard ./cfe.c),)
 cfe.o:
 	@-cp -f ./prebuild/cfe.o .
 endif
@@ -1572,7 +1607,7 @@ endif
 endif
 
 ifeq ($(RTCONFIG_RALINK),y)
-ifneq ($(wildcard ./prebuild/ate-ralink.o),)
+ifeq ($(wildcard ./sysdeps/ralink/ate-ralink.c),)
 ate-ralink.o:
 	@-cp -f ./prebuild/ate-ralink.o .
 endif
@@ -1811,10 +1846,22 @@ endif
 endif
 endif
 
-ifeq ($(or $(RTAX82U),$(DSL_AX82U),$(GSAX3000),$(GSAX5400),$(TUF-AX5400)),y)
+ifeq ($(or $(RTAX82U),$(DSL_AX82U),$(GSAX3000),$(GSAX5400),$(TUF-AX5400),$(GTAX11000_PRO),$(GTAXE16000),$(GTAX6000)),y)
 ifneq ($(wildcard ./prebuild/ledg.o.o),)
 ledg.o:
 	@-cp -f ./prebuild/ledg.o .
+endif
+endif
+ifeq ($(RTCONFIG_SOFTWIRE46),y)
+ifneq ($(wildcard ./prebuild/s46map_rptd.o),)
+s46map_rptd.o:
+	@-cp -f ./prebuild/s46map_rptd.o .
+endif
+endif
+ifeq ($(RTCONFIG_TPVPN),y)
+ifneq ($(wildcard ./prebuild/tpvpn.o),)
+tpvpn.o:
+	@-cp -f ./prebuild/tpvpn.o .
 endif
 endif
 
@@ -1845,4 +1892,5 @@ else
 	$(LD) -L$(TOP)/nvram${BCMEX}${EX7} -lnvram -L$(TOP)/shared -lshared -shared -o $@ $^
 endif
 endif
+
 

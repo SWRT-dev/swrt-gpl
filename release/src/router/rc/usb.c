@@ -35,6 +35,8 @@
 #include <disk_initial.h>
 #include <limits.h>		//PATH_MAX, LONG_MIN, LONG_MAX
 
+#include <swrt.h>
+
 char *usb_dev_file = "/proc/bus/usb/devices";
 
 #define ERR_DISK_FS_RDONLY "1"
@@ -249,10 +251,10 @@ fill_smbpasswd_input_file(const char *passwd)
 }
 #endif
 
-void add_usb_host_module(void)
+void add_usb_host_modules(void)
 {
 #if defined(RTCONFIG_USB_XHCI)
-#if defined(RTN65U) || defined(RTCONFIG_QCA) || defined(RTAC85U) || defined(RTAC85P) || defined(RTACRH26) || defined(TUFAC1750) || defined(RTACRH18) || defined(RT4GAC86U) || defined(RTAX53U) || defined(RT4GAX56)
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 	char *u3_param = "u3intf=0";
 #endif
 #endif
@@ -298,14 +300,14 @@ void add_usb_host_module(void)
 
 #if defined(RTCONFIG_USB_XHCI)
 	load_kmods(PRE_XHCI_KMODS);
-#if defined(RTN65U) || defined(RTCONFIG_QCA) || defined(RTAC85U) || defined(RTAC85P) || defined(RTACRH26) || defined(TUFAC1750) || defined(RTACRH18) || defined(RT4GAC86U) || defined(RTAX53U) || defined(RT4GAX56)
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 	if (nvram_get_int("usb_usb3") == 1)
 		u3_param = "u3intf=1";
 #if !defined(RTCONFIG_SOC_IPQ40XX)
 	modprobe(USB30_MOD, u3_param);
 #endif
 	load_kmods(POST_XHCI_KMODS);
-#if defined(RTACRH18) || defined(RT4GAC86U) || defined(RTAX53U) || defined(RT4GAX56)
+#if defined(RTCONFIG_RALINK)
 	modprobe("xhci-mtk");
 #endif
 #elif defined(RTCONFIG_XHCIMODE)
@@ -331,9 +333,6 @@ void add_usb_host_module(void)
 
 	/* if enabled, force USB2 before USB1.1 */
 	if (nvram_get_int("usb_usb2") == 1) {
-#if defined(RTN56UB1) || defined(RTN56UB2) || defined(RTAC1200GA1) || defined(RTAC1200GU)
-		modprobe(USB20_MOD);
-#else
 #ifdef RTCONFIG_HND_ROUTER
 		modprobe(USB20_MOD);
 		modprobe("ehci-platform");
@@ -346,7 +345,6 @@ void add_usb_host_module(void)
 			i = 0;
 		sprintf(param, "log2_irq_thresh=%d", i);
 		modprobe(USB20_MOD, param);
-#endif
 #endif
 	}
 
@@ -738,9 +736,10 @@ void start_usb(int mode)
 	tune_bdflush();
 
 	if (nvram_get_int("usb_enable")) {
+#if !defined(RTCONFIG_BT_CONN)
 		if(mode != 0)
-			add_usb_host_module();
-
+			add_usb_host_modules();
+#endif
 #ifdef RTCONFIG_USB_MODEM
 		if(mode == 1)
 			add_usb_modem_modules();
@@ -811,6 +810,9 @@ void start_usb(int mode)
 			}
 #ifdef RTCONFIG_NTFS
 			if(nvram_get_int("usb_fs_ntfs")){
+#if defined(RTCONFIG_NTFS3)
+				modprobe("ntfs3");
+#endif
 #ifdef RTCONFIG_TUXERA_NTFS
 #if defined(RTCONFIG_OPENPLUSTUXERA_NTFS)
 				if(nvram_match("usb_ntfs_mod", "tuxera"))
@@ -874,6 +876,10 @@ void start_usb(int mode)
 		}
 #endif
 #if defined(RTCONFIG_BT_CONN_USB)
+#if defined(BCM4912)
+		modprobe("btintel");
+		modprobe("btrtl");
+#endif
 		modprobe("btusb");
 		modprobe("ath3k");
 #endif	/* RTCONFIG_BT_CONN_USB */
@@ -881,7 +887,7 @@ void start_usb(int mode)
 		modprobe("btusbdrv");
 #endif
 
-#if defined(RTAX53U) || defined(RT4GAX56)
+#if defined(RTCONFIG_RALINK)
 		setup_smp(1); /* for adjust smp_affinity of cpu */
 #endif
 	}
@@ -937,6 +943,9 @@ void remove_usb_storage_module(void)
 #else
 	modprobe_r("vfat");
 	modprobe_r("fat");
+#endif
+#if defined(RTCONFIG_NTFS3)
+	modprobe_r("ntfs3");
 #endif
 #ifdef RTCONFIG_NTFS
 #ifdef RTCONFIG_TUXERA_NTFS
@@ -1022,6 +1031,10 @@ void remove_usb_host_module(void)
 #if defined(RTCONFIG_BT_CONN_USB)
 	modprobe_r("ath3k");
 	modprobe_r("btusb");
+#if defined(BCM4912)
+	modprobe_r("btintel");
+	modprobe_r("btrtl");
+#endif
 #endif
 #if defined(RTCONFIG_USB_XHCI)
 	remove_kmods(POST_XHCI_KMODS);
@@ -1188,8 +1201,8 @@ void stop_usb(int f_force)
 #endif
 
 #if defined(RTCONFIG_USB_XHCI)
-#if defined(RTN65U) || defined(RTCONFIG_QCA) || defined(RTAC85U) || defined(RTAC85P) || defined(RTACRH26) || defined(TUFAC1750) || defined(RTACRH18) || defined(RT4GAC86U) || defined(RTAX53U) || defined(RT4GAX56)
-if (disabled) {
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
+	if (disabled) {
 #if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074)
 		modprobe_r("dwc3-ipq");
 		modprobe_r("udc-core");
@@ -1212,6 +1225,10 @@ if (disabled) {
 #if defined(RTCONFIG_BT_CONN_USB)
 		modprobe_r("ath3k");
 		modprobe_r("btusb");
+#if defined(BCM4912)
+		modprobe_r("btintel");
+		modprobe_r("btrtl");
+#endif
 #endif	/* RTCONFIG_BT_CONN_USB */
 #if defined(RTCONFIG_USB_XHCI) && !defined(RTCONFIG_HND_ROUTER)
 #if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074)
@@ -1395,11 +1412,18 @@ int mount_r(char *mnt_dev, char *mnt_dir, char *_type)
 		}
 		else if (strncmp(type, "ntfs", 4) == 0) {
 			sprintf(options, "umask=0000,nodev");
-
+#if defined(RTCONFIG_NTFS3)
 			if (nvram_invmatch("smbd_cset", ""))
 				sprintf(options + strlen(options), "%snls=%s%s", options[0] ? "," : "",
 						isdigit(nvram_get("smbd_cset")[0]) ? "cp" : "",
 						nvram_get("smbd_cset"));
+			sprintf(options + strlen(options), "%s%s", options[0] ? "," : "", "force,prealloc,sparse");
+#else
+			if (nvram_invmatch("smbd_cset", ""))
+				sprintf(options + strlen(options), "%snls=%s%s", options[0] ? "," : "",
+						isdigit(nvram_get("smbd_cset")[0]) ? "cp" : "",
+						nvram_get("smbd_cset"));
+#endif
 #if defined(RTCONFIG_REALTEK) && defined(RTCONFIG_TUXERA_NTFS)
 			/* TUXERA module not support codepage options. */
 #else			
@@ -1521,6 +1545,10 @@ int mount_r(char *mnt_dev, char *mnt_dir, char *_type)
 			/* try ntfs-3g in case it's installed */
 			if (ret != 0 && strncmp(type, "ntfs", 4) == 0) {
 				if (nvram_get_int("usb_fs_ntfs")) {
+#if defined(RTCONFIG_NTFS3)
+					eval("ntfsfix", "-b", "-d", mnt_dev);// clean dirty flag
+					ret = eval("mount", "-t", "ntfs3", "-o", options, mnt_dev, mnt_dir);
+#else
 #ifdef RTCONFIG_OPEN_NTFS3G
 #if defined(RTCONFIG_OPENPLUSPARAGON_NTFS) || defined(RTCONFIG_OPENPLUSTUXERA_NTFS)
 					if(nvram_match("usb_ntfs_mod", "open"))
@@ -1544,7 +1572,7 @@ int mount_r(char *mnt_dev, char *mnt_dir, char *_type)
 							ret = eval("mount", "-t", "ufsd", "-o", options, "-o", "force", mnt_dev, mnt_dir);
 					}
 #endif
-
+#endif
 					if(ret != 0){
 						syslog(LOG_INFO, "USB %s(%s) failed to mount as NTFS!" , mnt_dev, type);
 						TRACE_PT("USB %s(%s) failed to mount as NTFS!\n", mnt_dev, type);
@@ -1774,7 +1802,9 @@ int umount_mountpoint(struct mntent *mnt, uint flags)
 {
 	int ret = 1, count;
 	char flagfn[128];
-
+#if defined(RTCONFIG_SOFTCENTER)
+	nvram_set("sc_unmount_sig", "1");
+#endif
 	snprintf(flagfn, sizeof(flagfn), "%s/.autocreated-dir", mnt->mnt_dir);
 
 	/* Run user pre-unmount scripts if any. It might be too late if
@@ -1880,6 +1910,7 @@ _dprintf("%s: stop_cloudsync.\n", __func__);
 		stop_usb_swap(mnt->mnt_dir);
 #endif	
 
+	run_custom_script("unmount", 120, mnt->mnt_dir, NULL);
 	for (count = 0; count < 35; count++) {
 		sync();
 		ret = umount(mnt->mnt_dir);
@@ -2060,6 +2091,7 @@ int mount_partition(char *dev_name, int host_num, char *dsc_name, char *pt_name,
 	}
 	if (type == NULL)
 		type = "unknown";
+	run_custom_script("pre-mount", 120, dev_name, type);
 
 	if (f_exists("/etc/fstab")) {
 		if (strcmp(type, "swap") == 0) {
@@ -2251,6 +2283,11 @@ _dprintf("usb_path: 4. don't set %s.\n", tmp);
 
 		if (nvram_get_int("usb_automount"))
 			run_nvscript("script_usbmount", mountpoint, 3);
+
+		run_custom_script("post-mount", 120, mountpoint, NULL);
+#if defined(RTCONFIG_SOFTCENTER)
+		nvram_set("sc_mount_sig", "1");
+#endif
 
 #if defined(RTCONFIG_APP_PREINSTALLED) && defined(RTCONFIG_CLOUDSYNC)
 		char word[PATH_MAX], *next_word;
@@ -2573,7 +2610,7 @@ void hotplug_usb(void)
 	char *scsi_host = getenv("SCSI_HOST");
 	char *usbport = getenv("USBPORT");
 
-#if defined(RTCONFIG_REALTEK) || defined(RTCONFIG_RALINK)
+#if defined(RTCONFIG_REALTEK)
 	char *devpath = getenv("DEVPATH");
 	//_dprintf("devpath: %s\n", devpath);
 	device = path_to_name(devpath);
@@ -2589,7 +2626,10 @@ void hotplug_usb(void)
 	}
 	//_dprintf("device: %s\n", device);
 #endif /* RTCONFIG_REALTEK */
-
+#if defined(RTCONFIG_RALINK)
+	if (!device)
+		return;
+#endif
 	_dprintf("%s hotplug INTERFACE=%s ACTION=%s USBPORT=%s HOST=%s DEVICE=%s\n",
 		subsystem ? : "USB", interface, action, usbport, scsi_host, device);
 
@@ -2890,7 +2930,11 @@ void write_ftpd_conf()
 #else
 	fprintf(fp, "ssl_enable=NO\n");
 #endif	// HTTPS
+	append_custom_config("vsftpd.conf", fp);
 	fclose(fp);
+
+	use_custom_config("vsftpd.conf", "/etc/vsftpd.conf");
+	run_postconf("vsftpd", "/etc/vsftpd.conf");
 }
 
 /*
@@ -3028,7 +3072,7 @@ void stop_tftpd(int force)
 	}
 
 	killall_tk("in.tftpd");
-	logmessage("TFTP-HPA Server", "daemon is stoped");
+	logmessage("TFTP-HPA Server", "daemon is stopped");
 }
 #endif	/* RTCONFIG_TFTP_SERVER */
 
@@ -3111,6 +3155,9 @@ void create_custom_passwd(void)
 	if (fps)
 		fclose(fps);
 
+	chmod("/etc/shadow.custom", 0600);
+	chmod("/etc/passwd.custom", 0644);
+
 	/* write /etc/group.custom & /etc/ghsadow.custom */
 	fps = fopen("/etc/gshadow.custom", "w+");
 	fpp = fopen("/etc/group.custom", "w+");
@@ -3160,6 +3207,9 @@ void create_custom_passwd(void)
 	if (fpp)
 		fclose(fpp);
 
+	chmod("/etc/gshadow.custom", 0600);
+	chmod("/etc/group.custom", 0644);
+
 	/* free list */
 	PMS_FreeAccInfo(&account_list, &group_list);
 }
@@ -3196,6 +3246,8 @@ void create_custom_passwd(void)
 	}
 	fclose(fp);
 
+	chmod("/etc/passwd.custom", 0644);
+
 	/* write /etc/group.custom  */
 	fp = fopen("/etc/group.custom", "w+");
 	is_first = 1;
@@ -3209,6 +3261,9 @@ void create_custom_passwd(void)
 		fprintf(fp, "%s:x:%d:\n", account_list[i], n);
 	}
 	fclose(fp);
+
+	chmod("/etc/group.custom", 0644);
+
 	free_2_dimension_list(&acc_num, &account_list);
 }
 #endif
@@ -3293,6 +3348,12 @@ extern void del_samba_rules(void);
 extern void add_samba_rules(void);
 #endif
 #endif
+
+void
+start_write_smb_conf(void)
+{
+	system("/sbin/write_smb_conf");
+}
 
 void
 start_samba(void)
@@ -3809,6 +3870,8 @@ void start_dms(void)
 			if (nv)
 				fprintf(f, "force_sort_criteria=%s\n", nv);
 
+			append_custom_config(MEDIA_SERVER_APP".conf",f);
+
 			fclose(f);
 		}
 
@@ -3819,6 +3882,8 @@ void start_dms(void)
 		if (nvram_get_int("dms_web"))
 			argv[index++] = "-W";
 #endif
+		use_custom_config(MEDIA_SERVER_APP".conf","/etc/"MEDIA_SERVER_APP".conf");
+		run_postconf(MEDIA_SERVER_APP, "/etc/"MEDIA_SERVER_APP".conf");
 
 		/* start media server if it's not already running */
 		if (pidof(MEDIA_SERVER_APP) <= 0) {
@@ -3880,12 +3945,10 @@ write_mt_daapd_conf(char *servername)
 	char *http_passwd = nvram_safe_get("http_passwd");
 #ifdef RTCONFIG_NVRAM_ENCRYPT
 	int declen = strlen(http_passwd);
-	char *dec_passwd = NULL;
-	dec_passwd = malloc(declen);
-	if(dec_passwd){
-		pw_dec(http_passwd, dec_passwd, declen);
-		http_passwd = dec_passwd;
-	}
+	char dec_passwd[declen];
+	memset(dec_passwd, 0, sizeof(dec_passwd));
+	pw_dec(http_passwd, dec_passwd, sizeof(dec_passwd));
+	http_passwd = dec_passwd;
 #endif
 	memset(dbdir, 0, sizeof(dbdir));
 	if (find_dms_dbdir_candidate(dbdir_t))
@@ -3923,9 +3986,6 @@ write_mt_daapd_conf(char *servername)
 	fprintf(fp, "process_playlists = 1\n");
 	fprintf(fp, "process_itunes = 1\n");
 	fprintf(fp, "process_m3u = 1\n");
-#endif
-#ifdef RTCONFIG_NVRAM_ENCRYPT
-	if(dec_passwd) free(dec_passwd);
 #endif
 	fclose(fp);
 }
@@ -4023,7 +4083,7 @@ stop_mt_daapd(int force)
 	if (check_if_dir_exist(nvram_safe_get("daapd_dbdir")))
 		eval("rm", "-rf", nvram_safe_get("daapd_dbdir"));
 
-	logmessage("iTunes", "daemon is stoped");
+	logmessage("iTunes", "daemon is stopped");
 }
 #endif
 #endif	// RTCONFIG_MEDIA_SERVER
@@ -4206,7 +4266,7 @@ void stop_webdav(void)
 		unlink("/tmp/lighttpd/lighttpd-arpping.pid");
 	}
 
-	logmessage("WEBDAV Server", "daemon is stoped");
+	logmessage("WEBDAV Server", "daemon is stopped");
 #endif
 
 /* Independent from AiCloud
@@ -4232,7 +4292,7 @@ void stop_all_webdav(void)
 		kill_pidfile_tk("/tmp/lighttpd/lighttpd-arpping.pid");
 		unlink("/tmp/lighttpd/lighttpd-arpping.pid");
 	}
-	logmessage("WEBDAV Server", "arpping daemon is stoped");
+	logmessage("WEBDAV Server", "arpping daemon is stopped");
 }
 #endif
 
@@ -4472,7 +4532,7 @@ void stop_cloudsync(int type)
 		if(pids("webdav_client"))
 			killall_tk("webdav_client");
 
-		logmessage("Webdav_client", "daemon is stoped");
+		logmessage("Webdav_client", "daemon is stopped");
 	}
 	else if(type == 2){
 		if(pids("inotify") && !pids("asuswebstorage") && !pids("dropbox_client") && !pids("webdav_client") && !pids("sambaclient") && !pids("usbclient")&& !pids("google_client"))
@@ -4481,7 +4541,7 @@ void stop_cloudsync(int type)
 		if(pids("ftpclient"))
 			killall_tk("ftpclient");
 
-		logmessage("ftp client", "daemon is stoped");
+		logmessage("ftp client", "daemon is stopped");
 	}
 	else if(type == 3){
 		if(pids("inotify") && !pids("asuswebstorage") && !pids("webdav_client") && !pids("ftpclient") && !pids("sambaclient") && !pids("usbclient")&& !pids("google_client"))
@@ -4490,7 +4550,7 @@ void stop_cloudsync(int type)
 		if(pids("dropbox_client"))
 			killall_tk("dropbox_client");
 
-		logmessage("dropbox_client", "daemon is stoped");
+		logmessage("dropbox_client", "daemon is stopped");
 	}
 	else if(type == 4){
 		if(pids("inotify") && !pids("asuswebstorage") && !pids("webdav_client") && !pids("ftpclient") && !pids("dropbox_client") && !pids("usbclient")&& !pids("google_client"))
@@ -4499,7 +4559,7 @@ void stop_cloudsync(int type)
 		if(pids("sambaclient"))
 			killall_tk("sambaclient");
 
-		logmessage("sambaclient", "daemon is stoped");
+		logmessage("sambaclient", "daemon is stopped");
 	}
 	else if(type == 5){
 		if(pids("inotify") && !pids("asuswebstorage") && !pids("webdav_client") && !pids("ftpclient") && !pids("dropbox_client") && !pids("sambaclient")&& !pids("google_client"))
@@ -4508,7 +4568,7 @@ void stop_cloudsync(int type)
 		if(pids("usbclient"))
 			killall_tk("usbclient");
 
-		logmessage("usbclient", "daemon is stoped");
+		logmessage("usbclient", "daemon is stopped");
 	}
 	else if(type == 6){
 
@@ -4520,7 +4580,7 @@ void stop_cloudsync(int type)
             killall_tk("google_client");
         }
 
-        logmessage("google_client", "daemon is stoped");
+        logmessage("google_client", "daemon is stopped");
 
     }
 	else if(type == 0){
@@ -4529,14 +4589,13 @@ void stop_cloudsync(int type)
 
 		if(pids("asuswebstorage"))
 			killall_tk("asuswebstorage");
-
 		logmessage("Cloudsync client", "daemon is stoped");
 	}
 	else{
-  	if(pids("inotify"))
+	if(pids("inotify"))
 			killall_tk("inotify");
 
-  	if(pids("webdav_client"))
+	if(pids("webdav_client"))
 			killall_tk("webdav_client");
 
 		if(pids("asuswebstorage"))
@@ -4560,7 +4619,7 @@ void stop_cloudsync(int type)
               //system("killall google_client");
     }
 
-		logmessage("Cloudsync client and Webdav_client and dropbox_client ftp_client sambaclient usb_client google_client", "daemon is stoped");
+		logmessage("Cloudsync client and Webdav_client and dropbox_client ftp_client sambaclient usb_client google_client", "daemon is stopped");
 	}
 }
 //#endif
@@ -5016,6 +5075,13 @@ static void start_diskformat(char *port_path)
 		char *tntfs_cmd[] = {"mkntfs", "-F", "-L", disk_label, "-v", devpath, NULL };
 		char *thfsplus_cmd[] = { "newfs_hfs", "-v", disk_label, devpath, NULL };
 #endif
+#if defined(RTCONFIG_EXT4FS)
+		char *ext4_cmd[] = { "mke2fs", "-t", "ext4", "-L", disk_label, "-T", "largefile", "-m", "1", "-pF", devpath, NULL };
+#endif
+#if defined(RTCONFIG_NTFS3)
+		char *ntfs3_cmd[] = {"mkntfs", "-F", "-f", "-L", disk_label, "-v", devpath, NULL };
+		char *vfat_cmd[] = { "mkfs.vfat", "-v", "-n", disk_label, devpath, NULL };
+#endif
 		// format partition.
 		snprintf(devpath, sizeof(devpath), "/dev/%s", di->device);
 		dbg("disk_format: prepare device %s ...\n", di->device);
@@ -5039,6 +5105,21 @@ static void start_diskformat(char *port_path)
 		}
 		else if(!strcmp(disk_system, "thfsplus") && nvram_match("usb_hfs_mod", "tuxera")) {
 			cmd = thfsplus_cmd;
+		}
+		else
+#endif
+#if defined(RTCONFIG_EXT4FS)
+		if(!strcmp(disk_system, "ext4")){
+			cmd = ext4_cmd;
+		}
+		else
+#endif
+#if defined(RTCONFIG_NTFS3)
+		if(!strcmp(disk_system, "ntfs3")){
+			cmd = ntfs3_cmd;
+		}
+		else if(!strcmp(disk_system, "vfat")){
+			cmd = vfat_cmd;
 		}
 		else
 #endif
@@ -5685,6 +5766,7 @@ void webdav_account_default(void)
 	}
 }
 //#endif
+
 void start_wsdd()
 {
 	unsigned char ea[ETHER_ADDR_LEN];

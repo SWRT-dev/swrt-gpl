@@ -1,6 +1,6 @@
 #ifndef _NFNETLINK_H
 #define _NFNETLINK_H
-#if defined(MUSL_LIBC)
+#if defined(MUSL_LIBC) || defined(RTCONFIG_MUSL_LIBC)
 #include <sys/types.h>
 #else
 #include <linux/types.h>

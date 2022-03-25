@@ -34,4 +34,8 @@ extern char *DoHardwareComponent(char *index);
 extern char *DoHardwareCheck(char *app_key);
 extern char *hw_auth_check(char *app_id, char *app_auth_code, time_t timestamp, char *out_buf, int out_buf_size);
 
+#if defined(SWRT_VER_MAJOR_R) || defined(SWRT_VER_MAJOR_X)
+extern int auth_code_check(char *mac, char *swrtid, int ver, char *rcode);
+#endif
+
 #endif /* _auth_common_h_ */

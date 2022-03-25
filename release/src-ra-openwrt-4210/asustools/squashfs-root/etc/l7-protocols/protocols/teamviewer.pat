@@ -1,2 +1,0 @@
-teamviewer
-^\x17

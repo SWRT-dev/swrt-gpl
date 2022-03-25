@@ -384,17 +384,17 @@ function initial(){
 			var desc = new Array();
 				
 			if(parent.based_modelid == "RT-AC5300" || parent.based_modelid == "GT-AC5300"){
-				desc = ["none", "Tri-Band Smart Connect", "5GHz Smart Connect"];
+				desc = ["none", "<#smart_connect_tri#>", "5GHz Smart Connect"];
 				value = ["0", "1", "2"];
 				add_options_x2(document.form.smart_connect_t, desc, value, smart_connect_x);
 			}
 			else if(parent.based_modelid == "RT-AC3200"){
-				desc = ["none", "Tri-Band Smart Connect"];
+				desc = ["none", "<#smart_connect_tri#>"];
 				value = ["0", "1"];
 				add_options_x2(document.form.smart_connect_t, desc, value, smart_connect_x);						
 			}
 			else if(parent.based_modelid == "RT-AC88U" || parent.based_modelid == "RT-AC86U" || parent.based_modelid == "GT-AC2900" || parent.based_modelid == "RT-AC3100" || parent.based_modelid == "BLUECAVE"){
-				desc = ["none", "Dual-Band Smart Connect"];
+				desc = ["none", "<#smart_connect_dual#>"];
 				value = ["0", "1"];
 				add_options_x2(document.form.smart_connect_t, desc, value, smart_connect_x);						
 			}
@@ -979,7 +979,7 @@ function submitForm(){
 	document.form.wsc_config_state.value = "1";
 
 	if(parent.amesh_support && (parent.isSwMode("rt") || parent.isSwMode("ap")) && parent.ameshRouter_support) {
-		if(!check_wl_auth_support(auth_mode, $("select[name=wl_auth_mode_x] option:selected")))
+		if(!check_wl_auth_support($("select[name=wl_auth_mode_x] option:selected"), wireless_unit))
 			return false;
 		else {
 			var wl_parameter = {
@@ -1181,7 +1181,16 @@ function limit_auth_method(){
 	if(is_KR_sku){	// MODELDEP by Territory_code
 		auth_array.splice(0, 1); //remove Open System
 	}	
-	
+
+	if(isSupport("amas") && isSupport("amasRouter") && (isSwMode("rt") || isSwMode("ap"))){
+		var re_count = httpApi.hookGet("get_cfg_clientlist", true).length;
+		if(re_count > 1){
+			auth_array = auth_array.filter(function(item){
+				return (item[1] != "wpa2" && item[1] != "wpawpa2");//have re node then hide WPA2-Enterprise, WPA/WPA2-Enterprise
+			});
+		}
+	}
+
 	free_options(document.form.wl_auth_mode_x);
 	for(i = 0; i < auth_array.length; i++){
 		if(auth_method_array  == auth_array[i][1])

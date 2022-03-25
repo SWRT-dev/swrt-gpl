@@ -50,14 +50,6 @@ enum {
 	LAN4_PORT=1,	/* unused */
 	WAN_PORT=5,	/* unused */
 	P6_PORT=5,
-#elif defined(RT4GAC56)
-	CPU_PORT=0,
-	LAN1_PORT=5,
-	LAN2_PORT=4,
-	LAN3_PORT=2,	/* unused */
-	LAN4_PORT=1,	/* unused */
-	WAN_PORT=3,	/* unused */
-	P6_PORT=5,
 #elif defined(RTAC82U)
 	CPU_PORT=0,
 	LAN1_PORT=1,
@@ -1607,7 +1599,7 @@ void ATE_port_status(phy_info_list *list)
 		}
 	}
 
-#if defined(RT4GAC53U) || defined(RT4GAC56)
+#if defined(RT4GAC53U)
 	sprintf(buf, "L1=%C;L2=%C;",
 		(pS.link[1] == 1) ? (pS.speed[1] == 2) ? 'G' : 'M': 'X',
 		(pS.link[2] == 1) ? (pS.speed[2] == 2) ? 'G' : 'M': 'X');
@@ -1647,7 +1639,7 @@ int led_ctrl(void)
                 led=LED_ID_MAX;
 		pS.link[i] = 0;
                 pS.speed[i] = 0;
-                get_ipq40xx_port_info(lan_id_to_port_nr(i), &pS.link[i], &pS.speed[i]);
+                get_ipq40xx_port_info(lan_id_to_port_nr(i), &pS.link[i], &pS.speed[i], NULL);
 		switch(i)
 		{
 			case 1: led=LED_LAN1;

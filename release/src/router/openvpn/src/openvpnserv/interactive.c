@@ -360,13 +360,14 @@ ReturnOpenvpnOutput(HANDLE pipe, HANDLE ovpn_output, DWORD count, LPHANDLE event
 /*
  * Validate options against a white list. Also check the config_file is
  * inside the config_dir. The white list is defined in validate.c
- * Returns true on success, false on error with reason set in errmsg.
+ * Returns true on success
  */
 static BOOL
-ValidateOptions(HANDLE pipe, const WCHAR *workdir, const WCHAR *options, WCHAR *errmsg, DWORD capacity)
+ValidateOptions(HANDLE pipe, const WCHAR *workdir, const WCHAR *options)
 {
     WCHAR **argv;
     int argc;
+    WCHAR buf[256];
     BOOL ret = FALSE;
     int i;
     const WCHAR *msg1 = L"You have specified a config file location (%s relative to %s)"
@@ -381,10 +382,8 @@ ValidateOptions(HANDLE pipe, const WCHAR *workdir, const WCHAR *options, WCHAR *
 
     if (!argv)
     {
-        swprintf(errmsg, capacity,
-	         L"Cannot validate options: CommandLineToArgvW failed with error = 0x%08x",
-	         GetLastError());
-        errmsg[capacity-1] = L'\0';
+        ReturnLastError(pipe, L"CommandLineToArgvW");
+        ReturnError(pipe, ERROR_STARTUP_DATA, L"Cannot validate options", 1, &exit_event);
         goto out;
     }
 
@@ -404,9 +403,10 @@ ValidateOptions(HANDLE pipe, const WCHAR *workdir, const WCHAR *options, WCHAR *
 
         if (!CheckOption(workdir, 2, argv_tmp, &settings))
         {
-            swprintf(errmsg, capacity, msg1, argv[0], workdir,
+            swprintf(buf, _countof(buf), msg1, argv[0], workdir,
                      settings.ovpn_admin_group);
-            errmsg[capacity-1] = L'\0';
+            buf[_countof(buf) - 1] = L'\0';
+            ReturnError(pipe, ERROR_STARTUP_DATA, buf, 1, &exit_event);
         }
         goto out;
     }
@@ -422,15 +422,18 @@ ValidateOptions(HANDLE pipe, const WCHAR *workdir, const WCHAR *options, WCHAR *
         {
             if (wcscmp(L"--config", argv[i]) == 0 && argc-i > 1)
             {
-                swprintf(errmsg, capacity, msg1, argv[i+1], workdir,
+                swprintf(buf, _countof(buf), msg1, argv[i+1], workdir,
                          settings.ovpn_admin_group);
+                buf[_countof(buf) - 1] = L'\0';
+                ReturnError(pipe, ERROR_STARTUP_DATA, buf, 1, &exit_event);
             }
             else
             {
-                swprintf(errmsg, capacity, msg2, argv[i],
+                swprintf(buf, _countof(buf), msg2, argv[i],
                          settings.ovpn_admin_group);
+                buf[_countof(buf) - 1] = L'\0';
+                ReturnError(pipe, ERROR_STARTUP_DATA, buf, 1, &exit_event);
             }
-            errmsg[capacity-1] = L'\0';
             goto out;
         }
     }
@@ -1349,7 +1352,7 @@ static DWORD WINAPI
 RunOpenvpn(LPVOID p)
 {
     HANDLE pipe = p;
-    HANDLE ovpn_pipe = NULL, svc_pipe = NULL;
+    HANDLE ovpn_pipe, svc_pipe;
     PTOKEN_USER svc_user = NULL, ovpn_user = NULL;
     HANDLE svc_token = NULL, imp_token = NULL, pri_token = NULL;
     HANDLE stdin_read = NULL, stdin_write = NULL;
@@ -1364,7 +1367,6 @@ RunOpenvpn(LPVOID p)
     WCHAR *cmdline = NULL;
     size_t cmdline_size;
     undo_lists_t undo_lists;
-    WCHAR errmsg[512] = L"";
 
     SECURITY_ATTRIBUTES inheritable = {
         .nLength = sizeof(inheritable),
@@ -1457,17 +1459,10 @@ RunOpenvpn(LPVOID p)
         goto out;
     }
 
-    /*
-     * Only authorized users are allowed to use any command line options or
-     * have the config file in locations other than the global config directory.
-     *
-     * Check options are white-listed and config is in the global directory
-     * OR user is authorized to run any config.
-     */
-    if (!ValidateOptions(pipe, sud.directory, sud.options, errmsg, _countof(errmsg))
-        && !IsAuthorizedUser(ovpn_user->User.Sid, imp_token, settings.ovpn_admin_group))
+    /* Check user is authorized or options are white-listed */
+    if (!IsAuthorizedUser(ovpn_user->User.Sid, imp_token, settings.ovpn_admin_group)
+        && !ValidateOptions(pipe, sud.directory, sud.options))
     {
-        ReturnError(pipe, ERROR_STARTUP_DATA, errmsg, 1, &exit_event);
         goto out;
     }
 

@@ -1,0 +1,18 @@
+config INTEL_CDMA
+	bool "intel Central DMA0 support"
+	select DMA_ENGINE
+	default y
+	---help---
+	  Enable support for the intel central DMA controller.  This controller
+	  provides DMA capabilities for a variety of on-chip devices such as SSC,
+	  HSNAND and etc.
+
+config INTEL_HDMA
+	bool "Intel high performance DMA support"
+	default y
+	help
+	  Enable support for the intel high performance DMA controller.
+	  The HDMA controller supports optimized buffer copies
+	  (user to kernel, kernel to kernel, etc.).  It supports
+	  memcpy, p2p interface. The core is not intended for general
+	  purpose slave DMA.

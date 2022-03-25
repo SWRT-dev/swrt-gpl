@@ -81,7 +81,7 @@
 
 
 var wans_caps = '<% nvram_get("wans_cap"); %>';
-if(based_modelid == "GT-AX11000" || based_modelid == "RT-AX86U" || based_modelid == "GT-AXE11000" || based_modelid == "GT-AX11000_PRO")
+if(based_modelid == "GT-AX11000" || productid == "RT-AX86U" || based_modelid == "GT-AXE11000")
 	wans_caps = wans_caps + " lan2";
 var wans_routing_rulelist_array = [];
 var wans_flag;
@@ -171,12 +171,12 @@ function initial(){
 	if(based_modelid == "RT-AC87U"){ //MODELDEP: RT-AC87 : Quantenna port
                 document.form.wans_lanport1.remove(0);   //Primary LAN1
                 document.form.wans_lanport2.remove(0);   //Secondary LAN1
-	}else if(based_modelid == "RT-N19"){
+	}else if(based_modelid == "RT-N19" || based_modelid =="PL-AX56_XP4"){
 		document.form.wans_lanport1.remove(3);
 		document.form.wans_lanport1.remove(2);
 		document.form.wans_lanport2.remove(3);
 		document.form.wans_lanport2.remove(2);
-	}else if(based_modelid == "RT-AC95U" || based_modelid == "RT-AX95Q" || based_modelid == "RT-AXE95Q" || based_modelid == "RT-AX82_XD6" || based_modelid == "RT-AX53U"){
+	}else if(based_modelid == "RT-AC95U" || based_modelid == "RT-AX95Q" || based_modelid == "XT8PRO" || based_modelid == "RT-AXE95Q" || based_modelid == "ET8PRO" || based_modelid == "RT-AX82_XD6"){
 		document.form.wans_lanport1.remove(3);
 		document.form.wans_lanport2.remove(3);
 	}
@@ -221,7 +221,7 @@ function form_show(v){
 		document.form.wans_routing_enable[0].disabled = true;
 		document.form.wans_routing_enable[1].disabled = true;
 		document.getElementById('Routing_rules_table').style.display = "none";
-		if(based_modelid == "GT-AX11000" || based_modelid == "RT-AX86U" || based_modelid == "GT-AXE11000" || based_modelid == "GT-AX11000_PRO"){
+		if(based_modelid == "GT-AX11000" || productid == "RT-AX86U" || based_modelid == "GT-AXE11000"){
 			if( wans_dualwan_array[0] == "wan" && document.form.wans_extwan.value == "1"){
 				document.form.wans_primary.value = "lan2";
 			}
@@ -242,7 +242,7 @@ function form_show(v){
 		show_watchdog_table();
 	}
 	else{ //DualWAN enabled
-		if(based_modelid == "GT-AX11000" || based_modelid == "RT-AX86U" || based_modelid == "GT-AXE11000" || based_modelid == "GT-AX11000_PRO"){
+		if(based_modelid == "GT-AX11000" || productid == "RT-AX86U" || based_modelid == "GT-AXE11000"){
 			if( (wans_dualwan_array[0] == "wan" && document.form.wans_extwan.value == "1") ||
 				(wans_dualwan_array[0] == "lan" && document.form.wans_lanport.value == "5") ){
 				document.form.wans_primary.value = "lan2";
@@ -295,7 +295,7 @@ function form_show(v){
 			}
 		}	
 		else{
-			if(based_modelid == "GT-AX11000" || based_modelid == "RT-AX86U" || based_modelid == "GT-AXE11000" || based_modelid == "GT-AX11000_PRO"){
+			if(based_modelid == "GT-AX11000" || productid == "RT-AX86U" || based_modelid == "GT-AXE11000"){
 				if( (wans_dualwan_array[1] == "wan" && document.form.wans_extwan.value == "1") ||
 					(wans_dualwan_array[1] == "lan" && document.form.wans_lanport.value == "5"))
 					document.form.wans_second.value = "lan2";
@@ -357,13 +357,8 @@ function applyRule(){
 			return confirm("Enable the LAN as WAN setting will cause (LAN > Switch Control > bonding) feature will be disabled, Are you sure to continue?");/*untranslated*/
 		};
 		if(wans_flag == 1) {
-			if( (primary_wan_type == "lan" || secondary_wan_type == "lan") && lan_trunk_type != "0" ) {
-				if(!confirmAction())
-					return false;
-			}
-		}
-		else {
-			if(primary_wan_type == "lan" && lan_trunk_type != "0") {
+			if ((primary_wan_type == "lan" || secondary_wan_type == "lan") && lan_trunk_type != "0"
+			 && (primary_wan_type == "wan" || primary_wan_type == "wan2" || secondary_wan_type == "wan" || secondary_wan_type == "wan2")) {
 				if(!confirmAction())
 					return false;
 			}
@@ -398,7 +393,7 @@ function applyRule(){
 			document.form.wans_dualwan.value = document.form.wans_primary.value +" "+ document.form.wans_second.value;
 		}
 
-		if(!dsl_support && (document.form.wans_dualwan.value == "usb lan" || document.form.wans_dualwan.value == "lan usb") && based_modelid != "GT-AX11000" && based_modelid != "RT-AX86U" && based_modelid != "GT-AXE11000" && based_modelid != "GT-AX11000_PRO"){
+		if(!dsl_support && based_modelid != "BRT-AC828" && (document.form.wans_dualwan.value == "usb lan" || document.form.wans_dualwan.value == "lan usb") && based_modelid != "GT-AX11000" && productid != "RT-AX86U" && based_modelid != "GT-AXE11000"){
 			alert("WAN port should be selected in Dual WAN.");
 			document.form.wans_primary.focus();
 			return;
@@ -485,7 +480,7 @@ function applyRule(){
 	else if(document.form.wans_second.value =="lan")
 		document.form.wans_lanport.value = document.form.wans_lanport2.value;
 	else{
-		if(based_modelid != "GT-AX11000" && based_modelid != "RT-AX86U" && based_modelid != "GT-AXE11000" && based_modelid != "GT-AX11000_PRO"){
+		if(based_modelid != "GT-AX11000" && productid != "RT-AX86U" && based_modelid != "GT-AXE11000"){
 			document.form.wans_lanport.disabled = true;
 		}
 	}
@@ -611,7 +606,7 @@ function addWANOption(obj, wanscapItem){
 				wanscapName = "Ethernet WAN";
 			else if(wanscapName == "LAN")
 				wanscapName = "Ethernet LAN";
-			else if(wanscapName == "USB" && based_modelid.substring(0,3) == "4G-")
+			else if(wanscapName == "USB" && (based_modelid == "4G-AC53U" || based_modelid == "4G-AC55U" || based_modelid == "4G-AC68U"))
 				wanscapName = "<#Mobile_title#>";
 			else if(wanscapName == "LAN2"){
 				wanscapName = "2.5G WAN";
@@ -1192,7 +1187,7 @@ function add_option_count(obj, obj_t, selected_flag){
 
 		free_options(obj_t);
 		for(var i = start; i <= end; i++){
-			if(based_modelid.substring(0,3) == "4G-" && obj_t.name != "wandog_fb_count")
+			if((based_modelid == "4G-AC53U" || based_modelid == "4G-AC55U" || based_modelid == "4G-AC68U") && obj_t.name != "wandog_fb_count")
 				str0= i;
 			else
 				str0 = i*parseInt(obj.value);
@@ -1228,7 +1223,7 @@ function update_consume_bytes(){
     var consume_bytes;
     var MBytes = 1024*1024;
 
-    if(based_modelid.substring(0,3) == "4G-"){
+    if(based_modelid == "4G-AC53U" || based_modelid == "4G-AC55U" || based_modelid == "4G-AC68U"){
     consume_bytes = 86400/interval_value*128*30;
 	consume_bytes = Math.ceil(consume_bytes/MBytes);
     consume_warning_str = "<#Detect_consume_warning1#> "+consume_bytes+" <#Detect_consume_warning2#>";

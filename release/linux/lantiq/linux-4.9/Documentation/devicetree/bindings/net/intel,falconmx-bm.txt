@@ -1,0 +1,13 @@
+Intel PRX300 BM driver Device Tree Bindings
+-------------------------------------------------------------
+
+ - compatible:          "intel,prx300-bm"
+ - reg:                 TODO:
+
+Examples:
+
+bm@0 {
+        compatible = "intel,prx300-bm";
+        reg = <0x00>;
+};
+

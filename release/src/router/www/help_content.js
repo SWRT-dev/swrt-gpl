@@ -28,6 +28,8 @@ helpcontent[0] = new Array("",
 			"<#Access_Intranet_desc#>",
 			"Smart Connect is the feature which could automatically steer clients to the most appropriate band (2.4GHz, 5GHz-1 and 5GHz-2)." /*untranslated*/
 			 );
+if ("<% nvram_get("wl2_band"); %>".length == 0)
+	helpcontent[0][27] = "Smart Connect is the feature which could automatically steer clients to the most appropriate band (2.4GHz and 5GHz)."; /*untranslated*/
 helpcontent[1] = new Array("",
 						   "<#WLANConfig11b_x_APMode_itemdesc#>",
 						   "<#WLANConfig11b_Channel_itemdesc#>",
@@ -139,10 +141,10 @@ helpcontent[7] = new Array("",
 							 "<#isp_profile#>",
 							 "<#PPPConnection_Authentication_itemdesc#>",
 							 "<#PPPConnection_Authentication_itemdesc2#>", //30
-							 "<#PPPConnection_x_InternetDetection_itemdesc#>",	//31
-							 "<#PPPConnection_x_PPPEcho_Interval_desc#>",
-							 "<#PPPConnection_x_PPPEcho_Max_Failure_desc#>",
-							 "<#PPPConnection_x_DNSProbe_Max_Failure_desc#>",
+							 "<b>PPP Echo:</b> Use Echo-Request and Echo-Reply message defined in PPP Link Control Protocol (LCP) to test the PPP connection. <b>DNS Probe:</b> Performs a DNS lookup request and resolved IP address to test DNS connection",	//31
+							 "Send an LCP Echo-Request frame to the peer every n seconds.",
+							 "Presume the peer to be dead if n LCP Echo-Requests are sent without receiving a valid LCP Echo-Reply. Use of this option requires a non-zero value for the Echo Interval parameter.",
+							 "If DNS resolution fails or returns the wrong address to n times, then it is assumed that the internet connection is completely unsuccessful",
 							 "You can configure your router to use a third party DNS server that supports encryption to prevent snooping on your DNS queries.  While this increases privacy, note that it might decrease general DNS performance.",
 							 "In strict mode, only allow the use of a DNS server if the identity of the remote server can be authenticated.  In opportunistic mode it will attempt to authenticate, but will still use that server if it fails to authenticate its identity, allowing name resolution to still work properly.",
 							 "The IP address of the nameserver.",
@@ -184,7 +186,7 @@ helpcontent[11] = new Array("",
 							"<#usb_HDD_Hibernation_Desc#>",
 							"If there is no client connection for more than 1 minute, the PLC will enter sleep mode (power saving). The PLC will not wake up until the client connects. (It takes about ten seconds to wake up the PLC)", /* untranslated */
 							"Enable Login CAPTCHA is to ensure only human users to pass through and prevent brute force login attack.", /* untranslated */
-							"By enabling auto firmware upgrade, the system will upgrade your router(s) automatically at a preferable time if newer version is available for download.");
+							"<#FW_auto_upgrade_desc#>");
 //Log
 helpcontent[12] = new Array("",
 							"<#General_x_SystemUpTime_itemdesc#>",
@@ -291,7 +293,7 @@ helpcontent[25] = new Array("",
 							"<#DSL_Stab_Adjustment#>",
 							"<#DSL_SRA_itemdesc#>",
 							"<#DSL_Bitswap_id#>",
-							"This item allows you to tweak the target SNR Margin of VDSL. For instance with a downstream SNR Margin at 8dB, you could set to 7dB or lower value to maximize the downstream performance, 2dB (Max.performance) but please note that the lower the value, DSL modem router will be weaker to defend the line noise, thus sync lost might occur, so please adjust with proper value. However if your VDSL connection is unstable or not able to establish a connection, for this case then set to a higher value such as 9dB ~ 30dB.",
+							"This item allows you to tweak the target SNR Margin of VDSL. For instance with a downstream SNR Margin at 8dB, you could set to 7dB or lower value to maximize the downstream performance, 2dB (Max.performance) but please note that the lower the value, DSL modem router will be weaker to defend the line noise, thus sync loss might occur, so please adjust with proper value. However, if your VDSL connection is unstable or not able to establish a connection, for this case then set to a higher value such as 9dB ~ 30dB.",
 							"This item allows you to tweak the Tx Power of VDSL. Reduce Tx Power(-1 dB ~ -7 dB) would increase the downstream performance(reduce more Tx Power leads to higher downstream data rate), but will impact upstream and vice versa.",
 							"This item configures Rx AGC(Auto Gain Control) GAIN for VDSL, if tweak the Stability Adjustment (VDSL) setting still could not get desired downstream speed, then could try to set Rx AGC GAIN Adjustment to High Performance mode. However if your VDSL connection is unstable and has some CRC then could set to Stable mode.",
 							"This item allows you to control whether to Enable/Disable UPBO(Upstream Power Back Off) for VDSL. DSLAM could use UPBO to reduce the Tx Power of your xDSL modem router, in some cases abnormal UPBO control from DSLAM could leads to sync up issue(such as not enough Tx Power to sync with minimum rate). Thus with this feature now you could disable UPBO and will not get affected by DSLAM setting.",
@@ -304,7 +306,9 @@ helpcontent[25] = new Array("",
 							"This item supports G.vector. With G.vector crosstalk among the signals in the same cable could be canceled, such as far-end crosstalk (FEXT). Which would significantly improve Signal-to-Noise Ratio (SNR) that leads to higher achievable bit rates. However CO must deploy Vectored VDSL2 DSLAM in order for this feature to work. If you find it doesn't work well or you know the G.vector of your ISP is non-standard, please enable both of this option and Non-standard G.vector.",
 							"This item supports Non-standard G.vector for specific countries. Please note that if your G.vector is standard, please do not enable this option for optimized performance.",
 							"This command is  helpful for some impulse noise environment to enhance line stability.",
-							"Enhancing the detection of impulse noise may improve certain lines with frequent noise fluctuations. If your DSL line supports G.INP and your connection is often unstable, then you can try to enable it."
+							"Enhancing the detection of impulse noise may improve certain lines with frequent noise fluctuations. If your DSL line supports G.INP and your connection is often unstable, then you can try to enable it.",
+							"This item allows you to tweak the target SNR Margin. You could set to negative value to maximize the downstream performance. But please note that the lower the value, DSL modem router will be weaker to defend the line noise. Sync loss might occur. So please adjust with proper value. However, if your xDSL connection is unstable or not able to establish a connection, setting to a postive value.",
+							""
 							);
 							
 //DualWAN
@@ -388,8 +392,7 @@ helpcontent[33] = new Array("",
 //Feedback
 helpcontent[34] = new Array("",
 							"This feature allows system to capture diagnostic System debug log in the background, duration depends on the “Diagnostic debug log capture duration” option, depends on the option selected, system might transmit single debug log automatically to ASUS Support Team for analysis after capture completed or transmit multiple debug logs over a period of time. Click on the yellow System icon could cancel the debug log capture.",/*untranslated*/
-							"<#Feedback_case_No_desc#>",
-							"<#feedback_tech_account_desc#>"
+							"<#Feedback_case_No_desc#>"
 							);
 
 helpcontent[35] = new Array("",

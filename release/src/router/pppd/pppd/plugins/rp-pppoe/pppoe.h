@@ -133,10 +133,7 @@ typedef unsigned long UINT32_t;
 #include <linux/if_ether.h>
 #endif
 
-#if defined(RTCONFIG_HND_ROUTER_AX_6756)
-#else
 #include <netinet/in.h>
-#endif
 
 #ifdef HAVE_NETINET_IF_ETHER_H
 #include <sys/types.h>

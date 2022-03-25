@@ -48,3 +48,4 @@ install:	all
 	# scsi-stop is a symbolic link to scsi-start
 	cd $(INSTALLDIR)/usr/sbin && \
 		ln -sf scsi-start scsi-stop
+

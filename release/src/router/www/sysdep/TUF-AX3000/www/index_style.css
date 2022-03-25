@@ -1,13 +1,13 @@
 ﻿/* CSS Document */
 body{
-/*	background-color: rgb(31, 31, 31) !important; */
+	background-color: rgb(0, 0, 0) !important; 
 }
 .bg{
-	background:url(/images/New_ui/login_bg.png) no-repeat center center fixed;
-	-webkit-background-size: cover;
-	-moz-background-size: cover;
-	-o-background-size: cover;
-	background-size: cover;
+	background:url(/images/New_ui/login_bg.png) no-repeat top center fixed;
+	-webkit-background-size: contain;
+	-moz-background-size: contain;
+	-o-background-size: contain;
+	background-size: contain;
 }
 .content{
 	width: 998px;
@@ -42,6 +42,7 @@ body{
 .banner1{
 	width:1064px;
 	height:70px;
+	background:url(images/New_ui/title_bg.png) 0 0 no-repeat;
 	margin:0px auto 30px auto;
 }	
 #banner3{
@@ -620,6 +621,7 @@ width:122px;
 	float:left;
 	margin: 20px 0 0 0;
 	text-shadow: 3px 2px #000;
+	font-weight: bold;
 }
 .cloud_main_radius{
 	-webkit-border-radius: 10px;
@@ -675,16 +677,13 @@ width:122px;
 }
 
 .block_filter{
-	background: #D0982C; /* Old browsers */
-	background: -moz-linear-gradient(top, #D0982C 0%, #92650F 36%, rgb(62,3,13) 100%); /* FF3.6+ */
-	background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#D0982C), color-stop(36%,#92650F), color-stop(100%,rgb(62,3,13))); /* Chrome,Safari4+ */
-	background: -webkit-linear-gradient(top, #D0982C 0%,rgb(21,1,4) 100%); /* Chrome10+,Safari5.1+ */
-	background: -o-linear-gradient(top, #D0982C 0%,#92650F 36%,rgb(62,3,13) 100%); /* Opera 11.10+ */
-	background: -ms-linear-gradient(top, #D0982C 0%,#92650F 36%,rgb(62,3,13) 100%); /* IE10+ */
-	background: linear-gradient(to bottom, #D0982C 0%,#92650F 36%,rgb(62,3,13) 100%); /* W3C */
-	border-color:#111;
-	border-width:1px;
-	border-style:solid;
+	background: #2A2A2A; /* Old browsers */
+	background: -moz-linear-gradient(top, rgba(255,255,255,0.80) 0%, rgba(255,255,255,0.10) 55%, rgba(0,0,0,0.10) 100%); /* FF3.6+ */
+	background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,rgba(255,255,255,0.80)), color-stop(55%,rgba(255,255,255,0.10)), color-stop(100%,rgba(0,0,0,0.10))); /* Chrome,Safari4+ */
+	background: -webkit-linear-gradient(top, rgba(255,255,255,0.80) 0%, rgba(255,255,255,0.10) 55%,rgba(0,0,0,0.10) 100%); /* Chrome10+,Safari5.1+ */
+	background: -o-linear-gradient(top, rgba(255,255,255,0.80) 0%,rgba(255,255,255,0.10) 55%,rgba(0,0,0,0.10) 100%); /* Opera 11.10+ */
+	background: -ms-linear-gradient(top, rgba(255,255,255,0.80) 0%,rgba(255,255,255,0.10) 55%,rgba(0,0,0,0.10) 100%); /* IE10+ */
+	background: linear-gradient(to bottom, rgba(255,255,255,0.80) 0%,rgba(255,255,255,0.10) 55%,rgba(0,0,0,0.10) 100%); /* W3C */
 }
 
 .block_filter_name{
@@ -699,7 +698,14 @@ width:122px;
 } 
 
 .block_filter_pressed{
-	background-color:#D0982C;
+	color: rgba(0,0,0,.87);
+	background-color:#FFE18B;
+	background: -moz-linear-gradient(top, #FFE18B 0%, #FFBB28 34%, #D97F00 100%); /* FF3.6+ */
+	background: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #FFE18B), color-stop(34%,#FFBB28), color-stop(100%,#D97F00)); /* Chrome,Safari4+ */
+	background: -webkit-linear-gradient(top, #FFE18B 0%, #FFBB28 34%,#D97F00 100%); /* Chrome10+,Safari5.1+ */
+	background: -o-linear-gradient(top, #FFE18B 0%,#FFBB28 34%,#D97F00 100%); /* Opera 11.10+ */
+	background: -ms-linear-gradient(top, #FFE18B 0%,#FFBB28 34%,#D97F00 100%); /* IE10+ */
+	background: linear-gradient(to bottom, #FFE18B 0%,#FFBB28 34%,#D97F00 100%); /* W3C */
 	border-color:#111;
 	border-width:1px;
 	border-style:inset;
@@ -707,7 +713,7 @@ width:122px;
 
 .block_filter_name_table{
 	text-align:center;
-	color:#CCCCCC;
+	color:#FFFFFF;
 	font-size:14px;
 	width: 100%;
 	height: 100%;
@@ -758,7 +764,7 @@ width:122px;
 	margin-top:10px;
 	width:188px;
 	font-family:Verdana;
-	color:#FFF; ;
+	color: rgb(255,165,35);
 	padding-top:0px;
 	position:relative;
 	border-radius:4px;
@@ -812,8 +818,8 @@ width:122px;
 	background-position: -0px -90px;
 }
 .menu_ParentalControl{
-	background-image: url(images/New_ui/icon_indexes.png);
-	background-position: -0px -90px;
+	background: url(images/New_ui/icon_ParentalControl.png);
+	background-size: cover;
 }
 .menu_APP{
 	background-image: url(images/New_ui/icon_indexes.png);
@@ -915,7 +921,7 @@ width:122px;
 }
 .tab{
 	cursor:pointer;
-	background: #92650F;
+	/* background: #92650F; */
 	color: White;
 	float: left;
 	padding: 6px;      
@@ -926,6 +932,8 @@ width:122px;
 	font-family: Verdana;
 	font-size: 12px;
 	border-radius: 4px;
+	border-radius: 0px;
+	height: 35px;
 }
 .tabClicked{
 	cursor:pointer;
@@ -941,6 +949,8 @@ width:122px;
 	font-family: Verdana;
 	font-size: 12px;
 	border-radius: 4px;
+	border-bottom: 3px rgb(255,165,35) solid;
+	border-radius: 0px;
 }
 .submenuBlock{
 	width:735px;

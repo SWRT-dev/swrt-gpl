@@ -531,9 +531,9 @@ function showpptpd_clientlist(){
 					if(pptpd_clientlist_col[0].length >28){
 						overlib_str0[i] += pptpd_clientlist_col[0];
 						pptpd_clientlist_col[0]=pptpd_clientlist_col[0].substring(0, 26)+"...";
-						code +='<td width="30%" title="'+htmlEnDeCode.htmlEncode(overlib_str0[i])+'">'+ htmlEnDeCode.htmlEncode(pptpd_clientlist_col[0]) +'</td>';
+						code +='<td width="30%" title="'+overlib_str0[i]+'">'+ pptpd_clientlist_col[0] +'</td>';
 					}else
-						code +='<td width="30%" title="'+htmlEnDeCode.htmlEncode(pptpd_clientlist_col[0])+'">'+ htmlEnDeCode.htmlEncode(pptpd_clientlist_col[0]) +'</td>';
+						code +='<td width="30%" title="'+pptpd_clientlist_col[0]+'">'+ pptpd_clientlist_col[0] +'</td>';
 				}
 				else if(j == 1){
 					if(pptpd_clientlist_col[1].length >28){

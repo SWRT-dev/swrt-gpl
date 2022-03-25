@@ -31,11 +31,6 @@
 #endif
 #include <linux/if_bridge.h>
 
-#if defined(MUSL_LIBC)
-#include <sys/time.h>
-#include <sys/types.h>
-#endif	// MUSL_LIBC
-
 struct bridge_id
 {
 	unsigned char prio[2];

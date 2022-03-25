@@ -37,7 +37,9 @@ extern int optind;
 #include <libgen.h>
 #include <limits.h>
 #include <blkid/blkid.h>
-
+#ifdef HAVE_SYS_SYSMACROS_H
+#include <sys/sysmacros.h>
+#endif
 #include "ext2fs/ext2_fs.h"
 #include "ext2fs/ext2fsP.h"
 #include "et/com_err.h"

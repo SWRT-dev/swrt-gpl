@@ -157,7 +157,7 @@ else
 RCSTRING:=
 RC_EXT_NO=0
 endif
-EXTENDNO1=$(shell git log --pretty=oneline asuswrt_$(KERNEL_VER).$(FS_VER).$(SERIALNO)..HEAD | wc -l)
+EXTENDNO1=$(shell git log --pretty=oneline asuswrt_$(KERNEL_VER).$(FS_VER).$(SERIALNO)$(RCSTRING) | wc -l)
 
 ifeq ($(BRANCH),)
 include ./router/extendno.conf
@@ -174,6 +174,7 @@ else
 export EXTENDNO := $(SWRTVER)-g$(shell git log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")$(EXSTRING)
 endif
 endif
+export SWRTEXTENDNO:= $(shell expr $(EXTENDNO1) + $(RC_EXT_NO))
 
 ifeq ($(EXTENDNO),)
 export EXTENDNO := $(SWRTVER)-g$(shell git log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")
@@ -335,7 +336,7 @@ else ifneq ($(CUSTOM_MODEL),)
 export IMGNAME := $(CUSTOM_MODEL)_$(KERNEL_VER).$(FS_VER)_$(SERIALNO)_$(SWPJVER)$(EXTENDNO)$(ISPCTRL_POSTFIX)
 else
 #export IMGNAME := $(BUILD_NAME)_$(KERNEL_VER).$(FS_VER)_$(SERIALNO)_$(SWPJVER)$(EXTENDNO)$(ISPCTRL_POSTFIX)
-export IMGNAME := $(EXTENDNO)
+export IMGNAME := $(SWRTVER)_$(SWRTEXTENDNO)-g$(shell git log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")$(EXSTRING)
 endif
 
 ifeq ($(OPDBG),y)
@@ -380,12 +381,14 @@ $(if $(CONFIG_UBOOT_CONFIG_LTQ_IMAGE_EXTRA_CHECKS), \
 endef
 
 ifneq ($(LIVE_UPDATE_RSA),)
-export KEY_PATH = $(SRC_ROOT)/../../../key
+export KEY_PATH = $(SRC_ROOT)/../../key
 ifneq ($(LIVE_UPDATE_RSA_GPL),)
 export LIVE_UPDATE_RSA_VER = 
 else
 export LIVE_UPDATE_RSA_VER = $(LIVE_UPDATE_RSA)
 endif
+else
+export KEY_PATH = $(SRC_ROOT)/../../key
 endif
 
 LANTIQ_LINUX_DIR=linux/linux-3.10.104
@@ -650,6 +653,7 @@ endif
 	@echo '$(BUILD_NAME)_$(KERNEL_VER).$(FS_VER) $(BUILD_TIME)' > router/shared/version
 	@echo 'EXTENDNO=$(EXTENDNO)' > router/extendno.conf
 	@echo '#define RT_FWVER "$(SWRT_VER_MINOR)"' >> router/shared/version.h
+	@echo '#define RT_FWEXTENDNO "$(SWRTEXTENDNO)"' >> router/shared/version.h
 	@-$(MAKE) -f model-desc.mak
 
 rt_ver_ntools:
@@ -3878,6 +3882,10 @@ define RouterOptions
 	sed -i "/RTCONFIG_SWRT_KVR/d" $(1); \
 	echo "RTCONFIG_SWRT_KVR=y" >>$(1); \
 	fi; \
+	if [ "$(SWRT_LED_RGB)" = "y" ]; then \
+	sed -i "/RTCONFIG_SWRT_LED_RGB/d" $(1); \
+	echo "RTCONFIG_SWRT_LED_RGB=y" >>$(1); \
+	fi; \
 	if [ "$(ENTWARE)" = "y" ]; then \
 	sed -i "/RTCONFIG_ENTWARE/d" $(1); \
 	echo "RTCONFIG_ENTWARE=y" >>$(1); \
@@ -5419,13 +5427,13 @@ fi; \
 		echo "CONFIG_TUN=m" >>$(1); \
 		if [ "$(IPV6SUPP)" = "y" -o "$(IPV6FULL)" = "y" ]; then \
 			sed -i "/CONFIG_NF_NAT_MASQUERADE_IPV6\>/d" $(1); \
-			echo "CONFIG_NF_NAT_MASQUERADE_IPV6=m" >>$(1); \
+			echo "CONFIG_NF_NAT_MASQUERADE_IPV6=y" >>$(1); \
 			sed -i "/CONFIG_IP6_NF_NAT\>/d" $(1); \
-			echo "CONFIG_IP6_NF_NAT=m" >>$(1); \
+			echo "CONFIG_IP6_NF_NAT=y" >>$(1); \
 			sed -i "/CONFIG_IP6_NF_TARGET_MASQUERADE\>/d" $(1); \
-			echo "CONFIG_IP6_NF_TARGET_MASQUERADE=m" >>$(1); \
+			echo "CONFIG_IP6_NF_TARGET_MASQUERADE=y" >>$(1); \
 			sed -i "/CONFIG_IP6_NF_TARGET_NPT\>/d" $(1); \
-			echo "CONFIG_IP6_NF_TARGET_NPT=m" >>$(1); \
+			echo "CONFIG_IP6_NF_TARGET_NPT=y" >>$(1); \
 		fi;\
 	fi;\
 	if [ "$(VPN_FUSION)" = "y" ]; then \

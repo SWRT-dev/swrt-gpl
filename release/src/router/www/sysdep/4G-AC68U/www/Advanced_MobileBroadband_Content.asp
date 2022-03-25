@@ -111,8 +111,9 @@ var modem_act_rsrq = '<% nvram_get("usb_modem_act_rsrq"); %>';
 var modem_act_cellid = '<% nvram_get("usb_modem_act_cellid"); %>';
 var modem_act_lac = '<% nvram_get("usb_modem_act_lac"); %>';
 var orig_modem_lte_band = '<% nvram_get("modem_lte_band"); %>';
+var modem_isp = '<% nvram_get("modem_isp"); %>';
 var modem_spn = '<% nvram_get("usb_modem_auto_spn"); %>';
-var modem_act_provider = '<% nvram_char_to_ascii("", "usb_modem_act_provider"); %>';
+var modem_act_provider = '<% nvram_get("usb_modem_act_provider"); %>';
 var g3err_pin = '<% nvram_get("g3err_pin"); %>';
 var pin_remaining_count = '<% nvram_get("usb_modem_act_auth_pin"); %>';
 var puk_remaining_count = '<% nvram_get("usb_modem_act_auth_puk"); %>';
@@ -185,7 +186,7 @@ function genWANSoption(){
 			wans_dualwan_NAME = "Ethernet WAN";
 		else if(wans_dualwan_NAME == "LAN")
 			wans_dualwan_NAME = "Ethernet LAN";
-		if(wans_dualwan_NAME == "USB" && based_modelid.substring(0,3) == "4G-")
+		if(wans_dualwan_NAME == "USB" && (based_modelid == "4G-AC53U" || based_modelid == "4G-AC55U" || based_modelid == "4G-AC68U"))
 			wans_dualwan_NAME = "<#Mobile_title#>";
 		document.form.wan_unit.options[i] = new Option(wans_dualwan_NAME, i);
 	}
@@ -975,7 +976,7 @@ function check_sim_details(){
 		
 			if(sim_state == '1'){
 				document.getElementById("msim_provider").innerHTML = modem_spn;
-				document.getElementById("misp").innerHTML = '&nbsp;'+ decodeURIComponent(modem_act_provider);
+				document.getElementById("misp").innerHTML = '&nbsp;'+ modem_act_provider;
 				switch(modem_operation)
 				{
 					case 'Edge':

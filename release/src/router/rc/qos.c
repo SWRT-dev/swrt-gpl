@@ -78,24 +78,6 @@ static void WGN_ifname(int i, int j, char *wl_if)
 	}
 }
 
-static void WGN_subnet(const char *wgn, char *net, int len)
-{
-	char *buf = NULL, *g = NULL, *p = NULL;
-	char *wif = NULL, *sub = NULL;
-
-	g = buf = strdup(nvram_safe_get("wgn_brif_rulelist"));
-	while (g) {
-	if ((p = strsep(&g, "<")) == NULL) break;
-		if ((vstrsep(p, ">", &wif, &sub)) != 2) continue;
-		if (!strcmp(wgn, wif)) {
-			snprintf(net, len, "%s", sub);
-			break;
-		}
-	}
-	if (buf) free(buf);
-	QOSDBG(" wgn=%s, net=%s, sub=%s\n", wgn, net, sub);
-}
-
 static void add_iptables_AMAS_WGN(FILE *fn, const char *action)
 {
 	/* Setup guest network's ebtables rules */
@@ -105,7 +87,6 @@ static void add_iptables_AMAS_WGN(FILE *fn, const char *action)
 	char mssid_mark[4] = {0};
 	int  i = 0;
 	int  j = 1;
-	char *wgn = NULL;
 	char net[20] = {0};
 
 	/*
@@ -121,8 +102,7 @@ static void add_iptables_AMAS_WGN(FILE *fn, const char *action)
 
 			if(nvram_get_int(strcat_r(wlv, "_bss_enabled", tmp)) && 
 			   nvram_get_int(strcat_r(wlv, "_bw_enabled" , tmp))) {
-				wgn = nvram_safe_get(strcat_r(wlv, "_brif", tmp));
-				WGN_subnet(wgn, net, sizeof(net));
+				wgn_subnet(wlv, net, sizeof(net)); // move API to shared/amas_wgn_shared.c
 				snprintf(mssid_mark, sizeof(mssid_mark), "%d", guest_mark);
 				if (!strcmp(net, "")) continue;
 				fprintf(fn, "-A PREROUTING -s %s -j %s %s\n", net, action, mssid_mark);
@@ -576,14 +556,22 @@ static int add_qos_rules(char *pcWANIF)
 		case MODEL_GTAX11000:
 		case MODEL_RTAX92U:
 		case MODEL_RTAX95Q:
+		case MODEL_XT8PRO:
 		case MODEL_RTAXE95Q:
+		case MODEL_ET8PRO:
 		case MODEL_RTAX56_XD4:
+		case MODEL_XD4PRO:
 		case MODEL_CTAX56_XD4:
 		case MODEL_RTAX58U:
+		case MODEL_RTAX58U_V2:
 		case MODEL_RTAX55:
 		case MODEL_RTAX56U:
 		case MODEL_GTAXE11000:
+		case MODEL_GTAX6000:
 		case MODEL_GTAX11000_PRO:
+		case MODEL_GTAXE16000:
+		case MODEL_ET12:
+		case MODEL_XT12:
 		case MODEL_RTAC1200G:
 		case MODEL_RTAC1200GP:
 #if defined(RTCONFIG_LANTIQ)
@@ -2109,14 +2097,22 @@ static int add_rog_qos_rules(char *pcWANIF)
 		case MODEL_GTAX11000:
 		case MODEL_RTAX92U:
 		case MODEL_RTAX95Q:
+		case MODEL_XT8PRO:
 		case MODEL_RTAXE95Q:
+		case MODEL_ET8PRO:
 		case MODEL_RTAX56_XD4:
+		case MODEL_XD4PRO:
 		case MODEL_CTAX56_XD4:
 		case MODEL_RTAX58U:
+		case MODEL_RTAX58U_V2:
 		case MODEL_RTAX55:
 		case MODEL_RTAX56U:
 		case MODEL_GTAXE11000:
+		case MODEL_GTAX6000:
 		case MODEL_GTAX11000_PRO:
+		case MODEL_GTAXE16000:
+		case MODEL_ET12:
+		case MODEL_XT12:
 		case MODEL_RTAC1200G:
 		case MODEL_RTAC1200GP:
 		case MODEL_BLUECAVE:

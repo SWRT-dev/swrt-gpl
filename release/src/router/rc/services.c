@@ -144,6 +144,8 @@ int init_x_Setting = -1;
 #include <amas_wgn_shared.h>
 #endif
 
+#include <swrt.h>
+
 extern char *crypt __P((const char *, const char *)); //should be defined in unistd.h with _XOPEN_SOURCE defined
 #define sin_addr(s) (((struct sockaddr_in *)(s))->sin_addr)
 
@@ -168,7 +170,8 @@ static const struct itimerval zombie_tv = { {0,0}, {307, 0} };
 static const char dmhosts[] = "/etc/hosts.dnsmasq";
 static const char dmresolv[] = "/tmp/resolv.conf";
 #if defined(RTCONFIG_SMARTDNS)
-static const char dmservers[] = "/tmp/resolv.smartdns";
+static const char dmservers[] = "/tmp/resolv.dnsmasq";
+static const char sdservers[] = "/tmp/resolv.smartdns";
 #else
 static const char dmservers[] = "/tmp/resolv.dnsmasq";
 #endif
@@ -178,10 +181,10 @@ static void start_toads(void);
 static void stop_toads(void);
 #endif
 
-#ifdef HND_ROUTER
+#if defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_RALINK)
 void start_jitterentropy(void);
 void stop_jitterentropy(void);
-#endif /* HND_ROUTER */
+#endif
 
 #ifndef MS_MOVE
 #define MS_MOVE		8192
@@ -1400,7 +1403,11 @@ void start_dnsmasq(void)
 			}
 		}
 #endif
+		append_custom_config("hosts", fp);
 		fclose(fp);
+		use_custom_config("hosts", "/etc/hosts");
+		run_postconf("hosts","/etc/hosts");
+		chmod("/etc/hosts", 0644);
 	} else
 		perror("/etc/hosts");
 
@@ -1545,7 +1552,11 @@ void start_dnsmasq(void)
 		    "no-negcache\n"		// don't cace nxdomain
 		    "cache-size=%u\n"		// dns cache size
 		    "min-port=%u\n",		// min port used for random src port
+#if defined(RTCONFIG_SMARTDNS)
+		nvram_match("smartdns_enable", "1") ? sdservers : dmservers, 1500, nvram_get_int("dns_minport") ? : 4096);
+#else
 		dmservers, 1500, nvram_get_int("dns_minport") ? : 4096);
+#endif
 
 	/* limit number of outstanding requests */
 	{
@@ -1905,13 +1916,11 @@ void start_dnsmasq(void)
 	chmod("/etc/dnsmasq.conf", 0644);
 	/* Create resolv.conf with empty nameserver list */
 	f_write(dmresolv, NULL, 0, FW_APPEND, 0666);
+
+	/* Create resolv.dnsmasq with empty server list */
+	f_write(dmservers, NULL, 0, FW_APPEND, 0666);
 #if defined(RTCONFIG_SMARTDNS)
-	/* Create resolv.dnsmasq with empty server list */
-	f_write(dmservers, NULL, 0, FW_APPEND, 0666);
-	f_write("/tmp/resolv.dnsmasq", NULL, 0, FW_APPEND, 0666);
-#else
-	/* Create resolv.dnsmasq with empty server list */
-	f_write(dmservers, NULL, 0, FW_APPEND, 0666);
+	f_write(sdservers, NULL, 0, FW_APPEND, 0666);
 #endif
 #ifdef RTCONFIG_DNSPRIVACY
 	start_stubby();
@@ -2377,6 +2386,9 @@ void start_s46_tunnel(int unit)
 
 	/* We are done configuration */
 	wan_up(wan_ifname);
+#ifdef RTCONFIG_TUNNEL
+	restart_mastiff();
+#endif
 }
 
 void stop_s46_tunnel(int unit, int unload)
@@ -3854,7 +3866,7 @@ ddns_updated_main(int argc, char *argv[])
  */
 static char *get_ddns_macaddr(void)
 {
-#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074)
+#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_RALINK)
 	static char mac_buf[6], mac_buf_str[18];
 #endif
 	int model = get_model();
@@ -3896,7 +3908,15 @@ static char *get_ddns_macaddr(void)
 	ether_etoa(mac_buf, mac_buf_str);
 	mac = mac_buf_str;
 #endif
-
+	if(is_swrt_mod())
+	{
+		ether_atoe(mac, mac_buf);
+		mac_buf[0] = 0x74;
+		mac_buf[1] = 0xD0;
+		mac_buf[2] = 0x2B;
+		ether_etoa(mac_buf, mac_buf_str);
+		mac = mac_buf_str;
+	}
 	return mac;
 }
 #endif	/* RTCONFIG_INADYN */
@@ -4233,6 +4253,10 @@ start_ddns(void)
 			logmessage("start_ddns", "Start Inadyn.\n");
 			ret = _eval(inadyn_argv, NULL, 0, &pid);
 		}
+	} else {	// Custom DDNS
+		// Block until it completes and updates the DDNS update results in nvram
+			run_custom_script("ddns-start", 120, wan_ip, NULL);
+			return 0;
 	}
 #endif
 
@@ -5710,6 +5734,8 @@ void start_smartdns(void)
 #ifdef RTCONFIG_DUALWAN
 	int primary_unit = wan_primary_ifunit();
 #endif
+	if(!nvram_match("smartdns_enable", "1"))
+		return;
 	if (pids("smartdns"))
 		killall_tk("smartdns");
 	if (f_exists("/etc/smartdns.conf"))
@@ -10054,9 +10080,9 @@ start_aura_rgb_sw(void)
 int
 start_services(void)
 {
-#ifdef HND_ROUTER
+#if defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_RALINK)
 	start_jitterentropy();
-#endif /* HND_ROUTER */
+#endif
 #if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX11000_PRO) || defined(GTAXE16000) || defined(GTAX6000)
 	start_ledg();
 	start_ledbtn();
@@ -10448,9 +10474,12 @@ start_services(void)
 #if defined(RTCONFIG_SOFTCENTER)
 	nvram_set("sc_services_start_sig", "1");
 #endif
-#if defined(RTCONFIG_SWRT_KVR) && defined(RTCONFIG_RALINK) && !defined(RTCONFIG_EASYMESH)
-	system("/usr/bin/iappd.sh restart");
+#if defined(RTCONFIG_EASYMESH) && defined(RTCONFIG_RALINK)
+	start_easymesh();
+#elif defined(RTCONFIG_SWRT_KVR) && defined(RTCONFIG_RALINK)
+	start_wapp();
 #endif
+
 	return 0;
 }
 
@@ -10734,12 +10763,12 @@ stop_services(void)
 #if defined(RTCONFIG_CFEZ) && defined(RTCONFIG_BCMARM)
 	stop_envrams();
 #endif
-#ifdef HND_ROUTER
+#if defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_RALINK)
 	stop_jitterentropy();
-#endif /* HND_ROUTER */
+#endif
 }
 
-#ifdef HND_ROUTER
+#if defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_RALINK)
 void start_jitterentropy()
 {
 	pid_t pid;
@@ -10755,7 +10784,7 @@ void stop_jitterentropy()
 	char *cmd_argv[] = { "killall", "jitterentropy-rngd", NULL};
 	_eval(cmd_argv, NULL, 0, &pid);
 }
-#endif /* HND_ROUTER */
+#endif
 
 #ifdef RTCONFIG_QCA
 int stop_wifi_service(void)
@@ -12130,11 +12159,13 @@ again:
 		eval("touch", "/jffs/remove_hidden_flag");
 #endif
 #ifdef HND_ROUTER
+		stop_jffs2(1);
 #ifdef RTCONFIG_ISP_CUSTOMIZE
 		if (!is_customized())
 #endif
 		mtd_erase_misc2();
 #elif defined(RTCONFIG_BCMARM)
+		stop_jffs2(1);
 #ifdef RTCONFIG_ISP_CUSTOMIZE
 		if (!is_customized())
 #endif
@@ -12149,7 +12180,7 @@ again:
 	{
 		factory_reset();
 	}
-#ifdef HND_ROUTER
+#if defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_RALINK)
 	else if(strcmp(script, "jitterentropy") == 0)
 	{
 		if(action & RC_SERVICE_STOP)
@@ -12161,7 +12192,7 @@ again:
 			start_jitterentropy();
 		}
 	}
-#endif /* HND_ROUTER */
+#endif
 	else if (strcmp(script, "all") == 0) {
 #ifdef RTCONFIG_WIFI_SON
 		if(sw_mode() != SW_MODE_REPEATER && nvram_match("wifison_ready", "1")) {
@@ -12598,9 +12629,9 @@ again:
 			stop_jffs2(1);
 			stop_misc();
 
-#ifdef HND_ROUTER
+#if defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_RALINK)
 			stop_jitterentropy();
-#endif /* HND_ROUTER */
+#endif
 			// TODO free necessary memory here
 		}
 		if(action & RC_SERVICE_START) {
@@ -12740,6 +12771,8 @@ again:
 						snprintf(header_size, sizeof(header_size)-1, "%d", get_imageheader_size());
 #if defined(RAX120)
 						system("dd if=/tmp/linux.trx of=/dev/mtdblock4 skip=1 bs=64 > /dev/null 2>&1");
+#elif defined(SWRT360V6)
+						eval("mtd-write", "-i", upgrade_file, "-d", "firmware", "-s", header_size);
 #else
 						eval("mtd-write", "-i", upgrade_file, "-d", "linux", "-s", header_size);
 #endif
@@ -13881,7 +13914,7 @@ check_ddr_done:
 		if (!nvram_contains_word("rc_support", "pwrctrl"))
 			dbG("\n\tDon't do this!\n\n");
 		else
-			set_wltxpower();
+			set_wltxpower_swrt();
 	}
 #endif
 #endif
@@ -18392,7 +18425,9 @@ void setup_leds()
 		setAllLedOff();
 		nvram_set("AllLED", "0");
 #ifdef RTCONFIG_USB
+#if !defined(RTCONFIG_NO_USBPORT)
 		stop_usbled();
+#endif
 #endif
 
 	} else {
@@ -18408,7 +18443,9 @@ void setup_leds()
 		led_control(LED_POWER, LED_ON);
 
 #ifdef RTCONFIG_USB
+#if !defined(RTCONFIG_NO_USBPORT)
 		start_usbled();
+#endif
 #endif
 #ifdef RTCONFIG_LED_ALL
 		led_control(LED_ALL, LED_ON);
@@ -18458,13 +18495,19 @@ void setup_leds()
 			eval("wl", "ledbh", "9", "7");
 #elif defined(RTAX88U) || defined(GTAX11000)
 			eval("wl", "-i", "eth6", "ledbh", "15", "7");
+#elif defined(RTAX55)
+			eval("wl", "-i", "eth2", "ledbh", "0", "25");
 #elif defined(RTAX58U) || defined(RTAX56U)
 			eval("wl", "-i", "eth5", "ledbh", "0", "25");
 #elif defined(RTAX86U)
 			eval("wl", "-i", "eth6", "ledbh", "7", "7");
+#elif defined(RTAX68U)
+			eval("wl", "-i", "eth5", "ledbh", "7", "7");
+#elif defined(RTAC68U_V4)
+			eval("wl", "-i", "eth5", "ledbh", "10", "7");
 #elif defined(GTAC2900)
 			eval("wl", "ledbh", "9", "1");
-#elif defined(GTAC5300) && !defined(R8000P)
+#elif defined(GTAC5300) || defined(GTAXE11000)
 			eval("wl", "-i", "eth6", "ledbh", "9", "7");
 #endif
 		}
@@ -18480,7 +18523,7 @@ void setup_leds()
 			eval("wl", "-i", "eth6", "ledbh", "9", "7");
 #elif defined(GTAC2900)
 			eval("wl", "-i", "eth6", "ledbh", "9", "1");
-#elif defined(GTAC5300) && !defined(R8000P)
+#elif defined(GTAC5300) || defined(GTAXE11000)
 			eval("wl", "-i", "eth7", "ledbh", "9", "7");
 #elif defined(RTCONFIG_BCM_7114)
 			eval("wl", "-i", "eth2", "ledbh", "9", "7");
@@ -18489,6 +18532,12 @@ void setup_leds()
 			qcsapi_led_set(1, 1);
 #elif defined(RTAX88U) || defined(RTAX86U) || defined(GTAX11000)
 			eval("wl", "-i", "eth7", "ledbh", "15", "7");
+#elif defined(RTAX55)
+			eval("wl", "-i", "eth3", "ledbh", "0", "25");
+#elif defined(RTAX68U)
+			eval("wl", "-i", "eth6", "ledbh", "7", "7");
+#elif defined(RTAC68U_V4)
+			eval("wl", "-i", "eth6", "ledbh", "10", "7");
 #elif defined(RTAX58U)
 			eval("wl", "-i", "eth6", "ledbh", "15", "7");
 #elif defined(RTAX56U)
@@ -18504,7 +18553,7 @@ void setup_leds()
 			eval("wl", "-i", "eth3", "ledbh", "9", "7");
 #elif defined(GTAX11000)
 			eval("wl", "-i", "eth8", "ledbh", "15", "7");
-#elif defined(GTAC5300) && !defined(R8000P)
+#elif defined(GTAC5300) || defined(GTAXE11000)
 			eval("wl", "-i", "eth8", "ledbh", "9", "7");
 #endif
 		}

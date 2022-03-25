@@ -230,9 +230,9 @@ input[type="checkbox"]:checked + label > div{
 .select-container > select{
     width: 245px;
     height: 36px;
-    border: 1px solid #92650F;
+    border: 1px solid rgb(76,76,76);
     border-radius: 4px;
-    background-color:#0C0C0D;
+    background-color:rgb(55,55,55);
     -webkit-appearance: none;
     -moz-appearance: none;
     -ms-appearance: none;
@@ -245,7 +245,7 @@ input[type="checkbox"]:checked + label > div{
     cursor: pointer;
 }
 .select-container > select:focus{
-    border: 1px solid #D0982C;
+    border: 1px solid rgb(76,76,76);
 }
 .select-arrow{
     width: 24px;
@@ -273,16 +273,16 @@ input[type="checkbox"]:checked + label > div{
     height: 36px;
     color: #FFF;
     padding: 8px;
-    border: 1px solid #92650F;
+    border: 1px solid rgb(76,76,76);
     border-radius: 4px;
-    background-color: #0C0C0D;
+    background-color: rgb(55,55,55);
     box-sizing: border-box;
     font-size: 14px;
     font-family: Roboto;
     outline: none;
 }
 .input-container:focus{
-    border: 1px solid #D0982C;
+    border: 1px solid rgb(76,76,76);
 }
 /* End input */
 .icon-button-container{
@@ -322,7 +322,7 @@ input[type="checkbox"]:checked + label > div{
 .hint{
     font-size: 12px;
     font-family: Roboto;
-    color:#f5a623;
+    color:rgb(5,252,238);
     margin-left: 8px;
 }
 

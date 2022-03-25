@@ -846,7 +846,6 @@ function change_channel(obj){
 	var smart_connect = document.form.smart_connect_x.value;
 	cur = '<% nvram_get("wl_chanspec"); %>';
 	cur_extend_channel = cur.slice(-1);			//current control channel
-
 	if(document.form.wl_bw.value != 1){   // 20/40 MHz or 40MHz
 		if(channel_length == 12){    // 1 ~ 11
 			if(selected_channel >= 1 && selected_channel <= 4){

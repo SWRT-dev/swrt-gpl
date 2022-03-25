@@ -1,6 +1,0 @@
-config CRYPTO_DEV_EIP93
-	tristate "Support for EIP93 crypto HW accelerators"
-	depends on SOC_MT7621 || COMPILE_TEST
-	help
-	  EIP93 have various crypto HW accelerators. Select this if
-	  you want to use the EIP93 modules for any of the crypto algorithms.

@@ -279,10 +279,10 @@ function showWlHint(updateFlag){
 				wlObj.length = 1;
 				if(parent.smart_connect_support){
 					if(parent.band5g2_support){
-						wlObj[0].band = "Tri-Band Smart Connect";
+						wlObj[0].band = "<#smart_connect_tri#>";
 					}
 					else{
-						wlObj[0].band = "Dual-Band Smart Connect";
+						wlObj[0].band = "<#smart_connect_dual#>";
 					}
 				}
 			}
@@ -297,10 +297,10 @@ function showWlHint(updateFlag){
 			wlObj.length = 1;
 			if(parent.smart_connect_support){
 				if(parent.band5g2_support){
-					wlObj[0].band = "Tri-Band Smart Connect";
+					wlObj[0].band = "<#smart_connect_tri#>";
 				}
 				else{
-					wlObj[0].band = "Dual-Band Smart Connect";
+					wlObj[0].band = "<#smart_connect_dual#>";
 				}
 			}
 		}
@@ -524,7 +524,7 @@ function initial(){
 
 		return false; //wired
 	};
-
+	
 	if(getflag == "finishQIS"){
 		if(isWLclient()){
 			if(action_script == "reboot" || action_script.search("restart_wireless") != -1 || action_script.search("restart_dsl_wireless") != -1 
@@ -534,14 +534,18 @@ function initial(){
 			}
 		}
 		
-		if(dsl_support){
-			if(action_script.search("restart_dsl_wireless") != -1){
+		if(action_script == "reboot"){
+            setTimeout(function(){
+                top.location.href = next_page;
+            }, restart_time*1000);
+        }
+        else if(dsl_support){
+			//if(action_script.search("restart_dsl_wireless") != -1){
 			setTimeout(parent.startLiveUpdate, 40000);
 			setTimeout("parent.parent.document.getElementById('btn_gotoindex').style.visibility = 'visible';", 40000);
-			}
+			//}
 		}
-
-		if(action_script.search("restart_subnet") !== -1 || action_script == "reboot"){
+		else if(action_script.search("restart_subnet") !== -1){
 			setTimeout(doDetect, restart_time*1000);
 		}
 

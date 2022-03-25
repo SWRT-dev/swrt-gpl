@@ -978,8 +978,8 @@ body {
 }
 
 .clientlist_dropdown {
-	border:1px outset #92650F;
-	background-color: #3E2902;
+	border:1px solid rgb(76,76,76);
+	background-color: rgb(55,55,55)2;
 	position:absolute;
 	*margin-top:26px;	
 	margin-left:159px;
@@ -993,19 +993,17 @@ body {
 	display:none;
 }
 .clientlist_dropdown div {
-	background-color: #3E2902;
+	background-color: rgb(55,55,55);
 	height:auto;
 	*height:20px;
 	line-height:20px;
 	text-decoration:none;
-	font-family: Lucida Console;
 }
 
 .clientlist_dropdown a {
 	background-color:#EFEFEF;
 	color:#FFF;
 	font-size:12px;
-	font-family:Arial, Helvetica, sans-serif;
 	text-decoration:none;	
 }
 .clientlist_dropdown strong {
@@ -1041,7 +1039,7 @@ body {
 	float: left;
 	color: #FFF;
 	list-style: none;
-	background: #3E2902;
+	background: rgb(55,55,55);
 	cursor:pointer;
 	width: 100%;
 }
@@ -1052,7 +1050,7 @@ body {
 	display: block;
 	padding: 6px;
 	color: #FFF;
-	border-bottom:solid 1px #666;
+	border-bottom:solid 1px rgb(55,55,55);
 	text-decoration: none;
 	cursor:pointer;
 } 

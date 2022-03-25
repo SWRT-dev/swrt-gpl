@@ -24,14 +24,6 @@
 <script type="text/javascript" src="/form.js"></script>
 <script type="text/javascript" src="/js/httpApi.js"></script>
 <style>
-.MainContent{
-	background-color: #4D595D;
-	width: 99%;
-	-webkit-border-radius: 3px;
-	-moz-border-radius: 3px;
-	border-radius:3px;
-}
-
 .nohover:hover{
 	background-color: #293438;
 	*background-color: #293438;
@@ -286,7 +278,7 @@ function applyRule(){
 									3. <#TimeMach_usage_limit#><br>
 									4. <#TimeMach_backup#> ( <a id="faq2" href="" target="_blank" style="text-decoration:underline;"><#TimeMach_AppleURL#></a> )<br>
 									5. <a id="faq" href="" target="_blank" style="text-decoration:underline;"><#TimeMach_FAQ#></a><br>
-									<span style="color:#FC0">
+									<span class="hint-color">
 										* <#TimeMach_recommand1#> <br>
 										* <#TimeMach_recommand2#> <br>
 										* <#TimeMach_recommand3#>

@@ -563,7 +563,7 @@
 	text-align: center;
 }
 .amesh_no_data {
-	color:#FC0;
+	color:rgb(5,252,238);
 	text-align:center;
 	height: 25px;
 	line-height: 25px;
@@ -603,7 +603,7 @@
 }
 .amesh_title.amesh_help {
 	font-size: 12px;
-	color: #FC0;
+	color: rgb(5,252,238);
 	margin-bottom: 0px;
 	text-decoration: underline;
 	cursor: pointer;

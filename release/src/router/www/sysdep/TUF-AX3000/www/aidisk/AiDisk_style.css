@@ -15,7 +15,7 @@
 	font-size:12px;	
 	text-align:right;
 	letter-spacing:1px;
-	background-color:#92650F;
+	background-color:rgb(33,33,33);
  	height:25px;
  	vertical-align:bottom;	
 }
@@ -196,7 +196,7 @@
 .AiDiskTable{
 	font-size:12px;
 	font-family:Arial, Helvetica, sans-serif;
-	border: 1px solid #92650F;
+	border: 1px solid rgb(76,76,76);
 	border-collapse: collapse;
 }
 .AiDiskTable th{

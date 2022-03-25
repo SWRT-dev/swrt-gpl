@@ -1165,11 +1165,26 @@ void __pre_config_switch(void)
 
 void __post_config_switch(void)
 {
+#if 1 /* disable ieee802.3az @ all support ports */
+	int i;
+	char port_id[6];
+	char *ssdk_8023az[] = { "ssdk_sh", "port", "ieee8023az", "set", port_id, "disable", NULL };
+	for (i = 0; i < NR_WANLAN_PORT; i++) {
+		if (vport_to_phy_addr[i] >= 0) {
+			snprintf(port_id, sizeof(port_id), "%d", vport_to_phy_addr[i]);
+			_eval(ssdk_8023az, DBGOUT, 0, NULL);
+		}
+	}
+#else
 #if defined(PLAX56_XP4)
 	char *ipq807x_p1_8023az[] = { "ssdk_sh", "port", "ieee8023az", "set", "2", "disable", NULL };
 
 	/* Always turn off IEEE 802.3az support on PLC port. */
 	_eval(ipq807x_p1_8023az, DBGOUT, 0, NULL);
+#endif
+#endif
+#if defined(PLAX56_XP4)
+	eval("devmem", "0x0009b794", "w", "0x7c7d"); // improve switch voltage (011 to 111) to avoid packet loss
 #endif
 }
 

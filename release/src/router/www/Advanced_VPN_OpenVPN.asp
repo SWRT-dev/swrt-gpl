@@ -71,11 +71,10 @@
 <script>
 window.onresize = function() {
 	if(document.getElementById("tlsKey_panel") != null){
-		if(document.getElementById("tlsKey_panel").style.display == "block") {
+		if(document.getElementById("tlsKey_panel").style.display == "block")
 			cal_panel_block("tlsKey_panel", 0.15);
-		}
 	}
-} 
+}
 
 <% wanlink(); %>
 <% vpn_server_get_parameter(); %>;
@@ -193,6 +192,33 @@ function initial(){
 	document.getElementById("faq_iPhone").href=faq_href_iPhone;
 	document.getElementById("faq_android").href=faq_href_android;
 
+	if(wan_proto=="v6plus" && array_ipv6_s46_ports.length > 1){
+		$(".setup_info_icon.basic").click(
+			function() {				
+				if($("#s46_ports_content").is(':visible'))
+					$("#s46_ports_content").fadeOut();
+				else{
+					var position = $(".setup_info_icon.basic").position();
+					pop_s46_ports(position);
+				}
+			}
+		);
+		$(".setup_info_icon.adv").click(
+			function() {				
+				if($("#s46_ports_content").is(':visible'))
+					$("#s46_ports_content").fadeOut();
+				else{
+					var position = $(".setup_info_icon.adv").position();
+					pop_s46_ports(position);
+				}
+			}
+		);
+		$(".setup_info_icon.basic").show();
+		$("#portSuggestionBasic").hide();
+		$(".setup_info_icon.adv").hide();
+		$("#portSuggestionAdvanced").hide();
+	}
+
 	updateVpnServerClientAccess();
 
 	$("#client_pwd_strength").append(Get_Component_PWD_Strength_Meter());
@@ -212,7 +238,7 @@ function initial(){
 var MAX_RETRY_NUM = 5;
 var external_ip_retry_cnt = MAX_RETRY_NUM;
 function show_warning_message(){
-	if(realip_support && (based_modelid == "BRT-AC828"|| wans_mode != "lb")){
+	if(realip_support && (based_modelid == "BRT-AC828" || wans_mode != "lb")){
 		if(realip_state != "2" && external_ip_retry_cnt > 0){
 			if( external_ip_retry_cnt == MAX_RETRY_NUM )
 				get_real_ip();
@@ -337,8 +363,17 @@ function applyRule(){
 				document.form.vpn_server_port_basic.focus();
 				return false;
 			}
-			else
+			else{
+				if(wan_proto=="v6plus" && array_ipv6_s46_ports.length > 1){
+					if (!validator.range_s46_ports(document.form.vpn_server_port_basic, "none")){
+						if(!confirm("The following port related settings may not work properly since the port is not available in current v6plus usable port range. Do you want to continue?")){
+							document.form.vpn_server_port_basic.focus();
+							return false;
+						}
+					}
+				}
 				document.form.vpn_server_port.value = document.form.vpn_server_port_basic.value;
+			}
 		}
 		else if(document.getElementById("selSwitchMode").value =="2"){
 			if(!validator.numberRange(document.form.vpn_server_port_adv, 1, 65535)) {
@@ -349,8 +384,17 @@ function applyRule(){
 				document.form.vpn_server_port_adv.focus();
 				return false;
 			}
-			else
+			else{
+				if(wan_proto=="v6plus" && array_ipv6_s46_ports.length > 1){
+					if (!validator.range_s46_ports(document.form.vpn_server_port_adv, "none")){
+						if(!confirm("The following port related settings may not work properly since the port is not available in current v6plus usable port range. Do you want to continue?")){
+							document.form.vpn_server_port_adv.focus();
+							return false;
+						}
+					}
+				}
 				document.form.vpn_server_port.value = document.form.vpn_server_port_adv.value;
+			}
 		}
 
 		/*!-- rm 2017/06/28 
@@ -879,6 +923,14 @@ function switchMode(mode){
 		}
 		document.getElementById("divAdvanced").style.display = "none";
 		updateVpnServerClientAccess();
+
+		if(wan_proto=="v6plus" && array_ipv6_s46_ports.length > 1){
+			if($("#s46_ports_content").is(':visible'))
+				$("#s46_ports_content").fadeOut();
+
+			$(".setup_info_icon.basic").show();
+			$(".setup_info_icon.adv").hide();
+		}
 	}	
 	else{
 		document.getElementById("trServerPortBasic").style.display = "none";
@@ -888,7 +940,15 @@ function switchMode(mode){
 		document.getElementById("openvpn_export").style.display = "none";
 		document.getElementById('openvpn_export_cert').style.display = "none";
 		document.getElementById('openvpn_import_cert').style.display = "none";
-		document.getElementById("divAdvanced").style.display = "";		
+		document.getElementById("divAdvanced").style.display = "";
+
+		if(wan_proto=="v6plus" && array_ipv6_s46_ports.length > 1){
+			if($("#s46_ports_content").is(':visible'))
+				$("#s46_ports_content").fadeOut();
+			
+			$(".setup_info_icon.basic").hide();
+			$(".setup_info_icon.adv").show();
+		}
 	}
 }
 
@@ -1440,7 +1500,9 @@ function callback_upload_cert(_flag) {
 											</td>
 										</tr>
 										<tr id="trServerPortBasic">
-											<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(32,6);"><#WLANAuthentication11a_ExAuthDBPortNumber_itemname#></a></th>
+											<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(32,6);"><#WLANAuthentication11a_ExAuthDBPortNumber_itemname#></a>
+												<div class="setup_info_icon basic" style="display:none;"></div>
+											</th>
 											<td>
 												<input type="text" maxlength="5" class="input_6_table" name="vpn_server_port_basic" onKeyPress="return validator.isNumber(this,event);" value="<% nvram_get("vpn_server_port"); %>" autocorrect="off" autocapitalize="off">
 												<div id="portSuggestionBasic" style="color: #FFCC00;"><#SSH_Port_Suggestion#></div>
@@ -1621,7 +1683,9 @@ function callback_upload_cert(_flag) {
 												</td>
 											</tr>
 											<tr>
-												<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(32,6);"><#WLANAuthentication11a_ExAuthDBPortNumber_itemname#></a></th>
+												<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(32,6);"><#WLANAuthentication11a_ExAuthDBPortNumber_itemname#></a>
+													<div class="setup_info_icon adv" style="display:none;"></div>
+												</th>
 												<td>
 													<input type="text" maxlength="5" class="input_6_table" name="vpn_server_port_adv" onKeyPress="return validator.isNumber(this,event);" value="<% nvram_get("vpn_server_port"); %>" autocorrect="off" autocapitalize="off">
 													<div id="portSuggestionAdvanced" style="color: #FFCC00;"><#SSH_Port_Suggestion#></div>
@@ -1646,14 +1710,14 @@ function callback_upload_cert(_flag) {
 												<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(32,17);"><#vpn_openvpn_Encrypt#></a></th>
 												<td>
 													<select name="vpn_server_cipher" class="input_option" onChange="update_cipher();"></select>
-													<span id="cipher_hint" style="color:#FC0">(Default : BF-CBC)</span>
+													<span id="cipher_hint" class="hint-color">(Default : BF-CBC)</span>
 												</td>
 											</tr>
 											<tr>
 												<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(32,26);"><#vpn_openvpn_AuthHMAC#></a></th>
 												<td>
 													<select name="vpn_server_digest" class="input_option" onChange="update_digest();"></select>
-													<span id="digest_hint" style="color:#FC0">(Not recommended)<!--untranslated--></span>
+													<span id="digest_hint" class="hint-color">(Not recommended)<!--untranslated--></span>
 												</td>
 											</tr>
 											<tr>
@@ -1719,7 +1783,7 @@ function callback_upload_cert(_flag) {
 														<option value="0" <% nvram_match("vpn_server_hmac","0","selected"); %> >Incoming (0)</option>
 														<option value="1" <% nvram_match("vpn_server_hmac","1","selected"); %> >Incoming (1)</option>
 													</select>
-													<span style="color:#FC0">(TLS-Auth)</span>
+													<span class="hint-color">(TLS-Auth)</span>
 												</td>
 											</tr>			
 											<tr id="server_snnm">
@@ -1776,7 +1840,7 @@ function callback_upload_cert(_flag) {
 												<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(32,19);"><#vpn_openvpn_TLSTime#></a></th>
 												<td>
 													<input type="text" maxlength="5" class="input_6_table" name="vpn_server_reneg" value="<% nvram_get("vpn_server_reneg"); %>" autocorrect="off" autocapitalize="off"> <#Second#>
-													<span style="color:#FC0">(<#Setting_factorydefault_value#> : -1)</span>
+													<span class="hint-color">(<#Setting_factorydefault_value#> : -1)</span>
 												</td>
 											</tr>
 											<tr id="server_ccd">
