@@ -356,7 +356,7 @@ int start_k3screen(void){
 }
 #endif
 
-#if defined(TUFAX3000) || defined(RTAX58U)
+#if defined(TUFAX3000) || defined(RTAX58U) || defined(RTAX82U)
 void enable_4t4r_ax58(void)
 {
 //ensure that the hardware support 4t4r
@@ -959,7 +959,7 @@ void start_entware(void)
 #define NETGEAR_BOARD_SSID 0x106	//20
 #define NETGEAR_BOARD_PASSWD 0x120	//64
 #define NETGEAR_BOARD_MODULE 0x200	//2
-void show_boraddata(void)
+void show_boarddata(void)
 {
 	FILE *fp = NULL;
 	int mtd_part = 0, mtd_size = 0, i;
@@ -975,7 +975,7 @@ void show_boraddata(void)
 		if(factory_var_buf[0] == 0x0 || factory_var_buf[0] == 0xff)
 			printf("mac is invalid, type 'toolbox fix MAC AA1122334455' to fix it, 17 bytes\n");
 		else
-			printf("mac:%s\n", factory_var_buf);
+			printf("mac:%02X%02X%02X%02X%02X%02X\n", factory_var_buf[0], factory_var_buf[1], factory_var_buf[2], factory_var_buf[3], factory_var_buf[4], factory_var_buf[5]);
 		memset(factory_var_buf, 0, sizeof(factory_var_buf));
 		fseek(fp, NETGEAR_BOARD_SN, SEEK_SET);
 		fread(factory_var_buf, 1, 42, fp);
@@ -1003,14 +1003,14 @@ void show_boraddata(void)
 		memset(factory_var_buf, 0, sizeof(factory_var_buf));
 		fseek(fp, NETGEAR_BOARD_DOMAIN, SEEK_SET);
 		fread(factory_var_buf, 1, 2, fp);
-		if(factory_var_buf[0] == 0x0 || factory_var_buf[0] == 0xff)
+		if(factory_var_buf[0] == 0xff)
 			printf("domain is invalid, type 'toolbox fix DOMAIN 11' to fix it, 2 bytes\n");
 		else{
 			for(i = 0; i < 2; i++){
 				if(factory_var_buf[i] == 0xff)
 					factory_var_buf[i] = 0x0;
 			}
-			printf("domain:%d%d\n", factory_var_buf[0], factory_var_buf[1]);
+			printf("domain:%d\n", factory_var_buf[1]);
 		}
 		memset(factory_var_buf, 0, sizeof(factory_var_buf));
 		fseek(fp, NETGEAR_BOARD_PCBA_SN, SEEK_SET);
@@ -1065,7 +1065,7 @@ void show_boraddata(void)
 		printf("can't open boarddata\n");
 }
 
-void fix_boraddata(char *key, char *value)
+void fix_boarddata(char *key, char *value)
 {
 	FILE *fp = NULL;
 	int mtd_part = 0, mtd_size = 0, i;

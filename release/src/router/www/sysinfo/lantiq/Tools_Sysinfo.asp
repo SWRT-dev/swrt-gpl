@@ -114,6 +114,9 @@ function update_temperatures(){
 			} else if (band5g_support) {
 				code += "&nbsp;&nbsp;-&nbsp;&nbsp;<b>5 GHz:</b> <span>" + curr_coreTmp_5_raw + "</span>";
 			}
+			if (wl_info.band6g_support) {
+				code += "&nbsp;&nbsp;-&nbsp;&nbsp;<b>6 GHz:</b> <span>" + curr_coreTmp_52_raw + "</span>";
+			}
 			if (curr_coreTmp_cpu != "" && curr_coreTmp_cpu != "0")
 				code +="&nbsp;&nbsp;-&nbsp;&nbsp;<b>CPU:</b> <span>" + parseInt(curr_coreTmp_cpu) +"&deg;C</span>";
 			else

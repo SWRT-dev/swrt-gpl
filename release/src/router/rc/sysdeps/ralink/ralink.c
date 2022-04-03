@@ -1380,6 +1380,12 @@ int gen_ralink_config(int band, int is_iNIC)
 	fprintf(fp, "ShortSlot=%d\n", 1);
 
 	//AutoChannelSelect
+/*
+0: Disable
+1: Old CSA (AP count)
+2: New CSA (CCA)
+3: MT7615/MT7915 CSA (Busy time)
+*/
 	{
 		str = nvram_safe_get(strcat_r(prefix, "channel", tmp));
 

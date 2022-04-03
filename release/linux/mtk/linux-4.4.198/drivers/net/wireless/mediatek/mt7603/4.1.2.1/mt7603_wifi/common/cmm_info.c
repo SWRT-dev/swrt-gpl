@@ -100,7 +100,8 @@ INT Set_DriverVersion_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 {
 #ifdef CONFIG_AP_SUPPORT
 	IF_DEV_CONFIG_OPMODE_ON_AP(pAd)
-		DBGPRINT(RT_DEBUG_OFF, ("Driver version-%s %s %s\n", AP_DRIVER_VERSION, __DATE__, __TIME__));
+		//DBGPRINT(RT_DEBUG_OFF, ("Driver version-%s %s %s\n", AP_DRIVER_VERSION, __DATE__, __TIME__));
+		DBGPRINT(RT_DEBUG_OFF, ("Driver version-%s\n", AP_DRIVER_VERSION));
 		DBGPRINT(RT_DEBUG_OFF, ("Driver Patch\n"));
 		DBGPRINT(RT_DEBUG_OFF, ("001 : 4AC + MGMT PSE queue pkt stuck detect & AP tr_entry is memory currupted\n"));
 		DBGPRINT(RT_DEBUG_OFF, ("002 : wifi_forward support\n"));

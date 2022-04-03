@@ -7,6 +7,14 @@ endif
 all:
 ifeq ($(RTCONFIG_RALINK),y)
 ifneq ($(PREBUILT_BIN),1)
+	ln -sf ../../../sdk/mtk/mt7621/1905daemon 1905daemon
+	ln -sf ../../../sdk/mtk/mt7621/datconf datconf
+	ln -sf ../../../sdk/mtk/mt7621/fwdd fwdd
+	ln -sf ../../../sdk/mtk/mt7621/libmapd libmapd
+	ln -sf ../../../sdk/mtk/mt7621/mapd mapd
+	ln -sf ../../../sdk/mtk/mt7621/mapfilter mapfilter
+	ln -sf ../../../sdk/mtk/mt7621/mtfwd mtfwd
+	ln -sf ../../../sdk/mtk/mt7621/wappd wappd
 	$(MAKE) -C mapfilter all
 	$(MAKE) -C mtfwd all
 	cd datconf && cmake -DCMAKE_INSTALL_PREFIX=/usr	-DCMAKE_BUILD_TYPE=Release -DBUILD_LUA=OFF && $(MAKE) CFLAGS="$(CFLAGS)"
@@ -18,39 +26,45 @@ else
 	mkdir -p 1905daemon datconf fwdd libmapd mapd mapfilter wappd
 	mkdir -p datconf/kvcutil datconf/datconf 1905daemon/ethernet/
 	mkdir -p wappd/src wappd/src/config_and_icon_files
-	cp prebuilt/kvcedit datconf/kvcutil/
-	cp prebuilt/datconf datconf/datconf/
-	cp -rf prebuilt/libkvcutil.so* datconf/kvcutil/
-	cp prebuilt/p1905_managerd 1905daemon/
-	cp prebuilt/1905ctrl 1905daemon/
-	cp prebuilt/tp_ts_switch.sh 1905daemon/
-	cp -rf prebuilt/libeth_1905ops.so 1905daemon/ethernet/
-	cp prebuilt/wappctrl wappd/src/
-	cp prebuilt/wapp wappd/src/
-	cp prebuilt/wifi_config_save.lua wappd/src/
-	cp prebuilt/mbo_nr.sh wappd/src/
-	cp -rf prebuilt/config_and_icon_files/* wappd/src/config_and_icon_files/
-	cp prebuilt/libmapd_interface_client.so libmapd/
-	cp prebuilt/mapd mapd/
-	cp prebuilt/mapd_cli mapd/
-	cp prebuilt/bs20 mapd/
-	cp prebuilt/mapd_user_iface mapd/
-	cp prebuilt/config_agent.lua mapd/
-	cp prebuilt/map_config_agent.lua mapd/
-	cp prebuilt/map_cert_script.sh mapd/
-	cp prebuilt/fwdd fwdd/
-	cp prebuilt/mapfilter.ko mapfilter/src/
-	cp prebuilt/mtfwd.ko mtfwd/src/
+	cp prebuilt/$(BUILD_NAME)/kvcedit datconf/kvcutil/
+	cp prebuilt/$(BUILD_NAME)/datconf datconf/datconf/
+	cp -rf prebuilt/$(BUILD_NAME)/libkvcutil.so* datconf/kvcutil/
+	cp prebuilt/$(BUILD_NAME)/p1905_managerd 1905daemon/
+	cp prebuilt/$(BUILD_NAME)/1905ctrl 1905daemon/
+	cp prebuilt/$(BUILD_NAME)/tp_ts_switch.sh 1905daemon/
+	cp -rf prebuilt/$(BUILD_NAME)/libeth_1905ops.so 1905daemon/ethernet/
+	cp prebuilt/$(BUILD_NAME)/wappctrl wappd/src/
+	cp prebuilt/$(BUILD_NAME)/wapp wappd/src/
+	cp prebuilt/$(BUILD_NAME)/wifi_config_save.lua wappd/src/
+	cp prebuilt/$(BUILD_NAME)/mbo_nr.sh wappd/src/
+	cp -rf prebuilt/$(BUILD_NAME)/config_and_icon_files/* wappd/src/config_and_icon_files/
+	cp prebuilt/$(BUILD_NAME)/libmapd_interface_client.so libmapd/
+	cp prebuilt/$(BUILD_NAME)/mapd mapd/
+	cp prebuilt/$(BUILD_NAME)/mapd_cli mapd/
+	cp prebuilt/$(BUILD_NAME)/bs20 mapd/
+	cp prebuilt/$(BUILD_NAME)/mapd_user_iface mapd/
+	cp prebuilt/$(BUILD_NAME)/config_agent.lua mapd/
+	cp prebuilt/$(BUILD_NAME)/map_config_agent.lua mapd/
+	cp prebuilt/$(BUILD_NAME)/map_cert_script.sh mapd/
+	cp prebuilt/$(BUILD_NAME)/fwdd fwdd/
+	cp prebuilt/$(BUILD_NAME)/mapfilter.ko mapfilter/src/
+	cp prebuilt/$(BUILD_NAME)/mtfwd.ko mtfwd/src/
 endif
 endif
 
 install:
 ifeq ($(RTCONFIG_RALINK),y)
-	$(MAKE) -C mapfilter install
-	$(MAKE) -C mtfwd install
 	install -d $(INSTALLDIR)/easymesh-sdk/usr/lib
 	install -d $(INSTALLDIR)/easymesh-sdk/rom/etc/wappd/
 	install -d $(INSTALLDIR)/easymesh-sdk/rom/etc/map/
+ifneq ($(PREBUILT_BIN),1)
+	$(MAKE) -C mapfilter install
+	$(MAKE) -C mtfwd install
+else
+	install -d $(INSTALLDIR)/lib/modules/4.4.198/extra
+	cp -rf mapfilter/src/mapfilter.ko $(INSTALLDIR)/easymesh-sdk/lib/modules/4.4.198/extra
+	cp -rf mtfwd/src/mtfwd.ko $(INSTALLDIR)/easymesh-sdk/lib/modules/4.4.198/extra
+endif
 	install -D 1905daemon/p1905_managerd $(INSTALLDIR)/easymesh-sdk/usr/sbin/p1905_managerd
 	install -D 1905daemon/1905ctrl $(INSTALLDIR)/easymesh-sdk/usr/sbin/1905ctrl
 	install -D 1905daemon/tp_ts_switch.sh $(INSTALLDIR)/easymesh-sdk/usr/sbin/tp_ts_switch.sh

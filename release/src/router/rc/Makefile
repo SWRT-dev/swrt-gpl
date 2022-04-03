@@ -950,6 +950,9 @@ all: PB rc $(if $(RTCONFIG_BRCM_HOSTAPD), $(WPS_PBCD)) init.prep
 
 PB:
 	[ ! -d prebuild ] || cp prebuild/*.o ./
+ifneq ($(wildcard ./sysdeps/ralink/ate-ralink.c),)
+	rm -f ate-ralink.o
+endif
 
 ifeq ($(RTCONFIG_BRCM_HOSTAPD),y)
 $(WPS_PBCD): $(OBJS_WPS_PBCD)

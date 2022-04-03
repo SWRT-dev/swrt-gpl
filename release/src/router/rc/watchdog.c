@@ -2662,7 +2662,7 @@ static inline void handle_eject_usb_button(void) { }
 #if defined(RMAC2100)
 void led_on_off(void)
 {
-	if (nvram_match("led_on_off", "1")) {
+	if (nvram_match("led_disable", "0")) {
 		led_control(LED_POWER, LED_ON);
 		led_control(LED_WAN, LED_ON);
 		led_control(LED_ALL, LED_ON);

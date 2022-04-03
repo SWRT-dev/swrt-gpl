@@ -55,7 +55,8 @@
 
 #if defined(CONFIG_SUPPORT_OPENWRT)
 #define FIRST_EEPROM_FILE_PATH	"/etc/wireless/mt7603e/mt7603.eeprom.dat"
-#define FIRST_AP_PROFILE_PATH		"/etc/wireless/mt7603e/mt7603.dat"
+//#define FIRST_AP_PROFILE_PATH		"/etc/wireless/mt7603e/mt7603.dat"
+#define FIRST_AP_PROFILE_PATH		"/etc/Wireless/RT2860/RT2860.dat"
 #else
 #define FIRST_EEPROM_FILE_PATH	"/etc_ro/Wireless/RT2860/"
 #define FIRST_AP_PROFILE_PATH		"/etc/Wireless/RT2860/RT2860.dat"
@@ -612,6 +613,7 @@ NDIS_STATUS load_dev_l1profile(RTMP_ADAPTER *pAd)
 					os_free_mem(NULL, tmpbuf);
 				if (buffer)
 					os_free_mem(NULL, buffer);
+				RtmpOSFSInfoChange(&osFSInfo, FALSE);
 				return retval;
 			}
 		}
@@ -647,7 +649,7 @@ INT get_dev_config_idx(RTMP_ADAPTER *pAd)
 	/* MT7615A (ra0) + MT7603(rai0) combination */
 	if (IS_MT7603E(pAd))
 		idx = 1;
-#endif /* defined(CONFIG_FIRST_IF_MT7603E) */
+#endif
 
 #endif /* defined(CONFIG_RT_FIRST_CARD) && defined(CONFIG_RT_SECOND_CARD) */
 
@@ -689,7 +691,12 @@ NDIS_STATUS	RTMPReadParametersHook(RTMP_ADAPTER *pAd)
 		{
 #ifndef OS_ABL_SUPPORT
 			// TODO: need to roll back when convert into OSABL code
-				 fsize = (ULONG)srcf->f_dentry->d_inode->i_size;
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4,4,0)
+				fsize = (ULONG)srcf->f_path.dentry->d_inode->i_size;
+#else
+				fsize = (ULONG)srcf->f_dentry->d_inode->i_size;
+#endif
+
 				if (buf_size < (fsize + 1))
 					buf_size = fsize + 1;
 #endif /* OS_ABL_SUPPORT */

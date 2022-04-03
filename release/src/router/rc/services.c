@@ -2741,6 +2741,7 @@ wl_wpsPincheck(char *pin_string)
 	return -1;
 }
 
+#if !defined(RTCONFIG_BCMARM)
 uint32
 wps_gen_pin(char *devPwd, int devPwd_len)
 {
@@ -2784,6 +2785,7 @@ wps_gen_pin(char *devPwd, int devPwd_len)
 
 	return 1;
 }
+#endif
 
 void
 check_wps_enable()
@@ -5748,8 +5750,13 @@ void start_smartdns(void)
 	fprintf(fp, "conf-file /etc/blacklist-ip.conf\n");
 	fprintf(fp, "conf-file /etc/whitelist-ip.conf\n");
 	fprintf(fp, "conf-file /etc/seconddns.conf\n");
+#if defined(RTCONFIG_IPV6)
 	fprintf(fp, "bind [::]:9053 -group master\n");
-	//fprintf(fp, "bind-tcp [::]:5353\n");
+	fprintf(fp, "bind-tcp [::]:9053 -group master\n");
+#else
+	fprintf(fp, "bind :9053 -group master\n");
+	fprintf(fp, "bind-tcp [::]:9053 -group master\n");
+#endif
 	fprintf(fp, "cache-size 9999\n");
 	if(nvram_match("smartdns_prefetch", "1"))
 		fprintf(fp, "prefetch-domain yes\n");
@@ -5773,9 +5780,9 @@ void start_smartdns(void)
 	//fprintf(fp, "rr-ttl-min 60\n");
 	//fprintf(fp, "rr-ttl-max 86400\n");
 	fprintf(fp, "log-level warn\n");
-	//fprintf(fp, "log-file /var/log/smartdns.log\n");
-	//fprintf(fp, "log-size 128k\n");
-	//fprintf(fp, "log-num 2\n");
+	fprintf(fp, "log-file /var/log/smartdns.log\n");
+	fprintf(fp, "log-size 64k\n");
+	fprintf(fp, "log-num 1\n");
 	if(nvram_get_int("smartdns_num") == 0){
 #if !defined(K3) && !defined(R8000P) && !defined(R7000P) && !defined(XWR3100)
 		if(!strncmp(nvram_safe_get("territory_code"), "CN",2)){
@@ -5829,8 +5836,6 @@ void start_smartdns(void)
 		if (unit != primary_unit && nvram_invmatch("wans_mode", "lb"))
 			continue;
 #endif
-		//if (!is_phy_connect(unit))
-			//continue;
 		snprintf(prefix, sizeof(prefix), "wan%d_", unit);
 		wan_dns = nvram_safe_get_r(strcat_r(prefix, "dns", tmp), wan_dns_buf, sizeof(wan_dns_buf));
 		wan_xdns = nvram_safe_get_r(strcat_r(prefix, "xdns", tmp), wan_xdns_buf, sizeof(wan_xdns_buf));

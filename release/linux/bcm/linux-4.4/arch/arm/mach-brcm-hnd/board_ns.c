@@ -381,6 +381,38 @@ void brcm_reset(enum reboot_mode mode, const char *cmd)
 	hnd_cpu_reset(sih);
 }
 
+static bool first_fault = true;
+
+static int bcm5301x_abort_handler(unsigned long addr, unsigned int fsr,
+				 struct pt_regs *regs)
+{
+	if ((fsr == 0x1406 || fsr == 0x1c06) && first_fault) {
+		first_fault = false;
+
+		/*
+		 * These faults with codes 0x1406 (BCM4709) or 0x1c06 happens
+		 * for no good reason, possibly left over from the CFE boot
+		 * loader.
+		 */
+		pr_warn("External imprecise Data abort at addr=%#lx, fsr=%#x ignored.\n",
+			addr, fsr);
+
+		/* Returning non-zero causes fault display and panic */
+		return 0;
+	}
+
+	/* Others should cause a fault */
+	return 1;
+}
+
+static void __init bcm5301x_init_early(void)
+{
+	/* Install our hook */
+	hook_fault_code(16 + 6, bcm5301x_abort_handler, SIGBUS, BUS_OBJERR,
+			"imprecise external abort");
+}
+
+
 MACHINE_START(BRCM_NS, "Northstar Prototype")
 //   .phys_io =                                         /* UART I/O mapping */
 //      IO_BASE_PA,
@@ -389,6 +421,7 @@ MACHINE_START(BRCM_NS, "Northstar Prototype")
     .smp = smp_ops(brcm_smp_ops),
     .fixup = board_fixup,	/* Opt. early setup_arch() */
     .map_io = board_map_io,	/* Opt. from setup_arch() */
+    .init_early = bcm5301x_init_early,
     .init_irq = board_init_irq,	/* main.c after setup_arch() */
     .init_time = board_init_timer,	/* main.c after IRQs */
     .init_machine = board_init,	/* Late archinitcall */
@@ -405,6 +438,7 @@ MACHINE_START(BRCM_NS_QT, "Northstar Emulation Model")
 //      (IO_BASE_VA >>18) & 0xfffc,
     .fixup = board_fixup,		/* Opt. early setup_arch() */
     .map_io = board_map_io,	/* Opt. from setup_arch() */
+    .init_early = bcm5301x_init_early,
     .init_irq = board_init_irq,	/* main.c after setup_arch() */
     .init_time = board_init_timer,	/* main.c after IRQs */
     .init_machine = board_init,	/* Late archinitcall */
@@ -1042,9 +1076,6 @@ struct mtd_partition *init_nflash_mtd_partitions(hndnand_t * nfl, struct mtd_inf
 	if (boardnum == 32 && nvram_match("boardtype", "0x0646") && nvram_match("boardrev", "0x1601") && nvram_match("et2phyaddr", "30")) {
 		bootossz = 0x4000000;
 	}
-	if (nvram_match("modelname", "K3")) {
-		nvsz = 0x100000;
-	}
 
 #ifdef CONFIG_FAILSAFE_UPGRADE
 	char *img_boot = nvram_get(BOOTPARTITION);
@@ -1113,15 +1144,7 @@ struct mtd_partition *init_nflash_mtd_partitions(hndnand_t * nfl, struct mtd_inf
 		else 
 		bcm947xx_nflash_parts[nparts].size = NFL_BOOT_SIZE - offset;
 		bcm947xx_nflash_parts[nparts].offset = offset;
-		if (nvram_match("modelname", "K3")) {
-			offset += bcm947xx_nflash_parts[nparts].size;
-			nparts++;
 
-			/* Setup phicomm partition */
-			bcm947xx_nflash_parts[nparts].name = "phicomm";
-			bcm947xx_nflash_parts[nparts].size = NFL_BOOT_SIZE - offset;
-			bcm947xx_nflash_parts[nparts].offset = offset;
-		}
 		offset = NFL_BOOT_SIZE;
 		nparts++;
 	}

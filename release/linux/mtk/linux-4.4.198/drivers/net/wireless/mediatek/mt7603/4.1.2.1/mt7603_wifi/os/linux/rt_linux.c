@@ -855,8 +855,14 @@ void RtmpOSFileSeek(RTMP_OS_FD osfd, int offset)
 int RtmpOSFileRead(RTMP_OS_FD osfd, char *pDataPtr, int readLen)
 {
 	/* The object must have a read method */
+#if (KERNEL_VERSION(3, 19, 0) > LINUX_VERSION_CODE)
 	if (osfd->f_op && osfd->f_op->read) {
 		return osfd->f_op->read(osfd, pDataPtr, readLen, &osfd->f_pos);
+#else
+
+	if (osfd->f_mode & FMODE_CAN_READ) {
+		return __vfs_read(osfd, pDataPtr, readLen, &osfd->f_pos);
+#endif
 	} else {
 		DBGPRINT(RT_DEBUG_ERROR, ("no file read method\n"));
 		return -1;
@@ -866,7 +872,13 @@ int RtmpOSFileRead(RTMP_OS_FD osfd, char *pDataPtr, int readLen)
 
 int RtmpOSFileWrite(RTMP_OS_FD osfd, char *pDataPtr, int writeLen)
 {
+#if (KERNEL_VERSION(4, 1, 0) > LINUX_VERSION_CODE)
 	return osfd->f_op->write(osfd, pDataPtr, (size_t) writeLen, &osfd->f_pos);
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+	return __kernel_write(osfd, pDataPtr, (size_t) writeLen, &osfd->f_pos);
+#else
+	return __vfs_write(osfd, pDataPtr, (size_t) writeLen, &osfd->f_pos);
+#endif
 }
 
 
@@ -1927,7 +1939,7 @@ VOID RtmpDrvAllMacPrint(
 			 ("-->2) %s: Error %ld opening %s\n", __FUNCTION__,
 			  -PTR_ERR(file_w), fileName));
 	} else {
-		if (file_w->f_op && file_w->f_op->write) {
+		if (file_w->f_op) {
 			file_w->f_pos = 0;
 			macAddr = AddrStart;
 
@@ -1937,12 +1949,22 @@ VOID RtmpDrvAllMacPrint(
 				sprintf(msg, "%04x = %08x\n", macAddr, macValue);
 
 				/* write data to file */
+#if (KERNEL_VERSION(4, 1, 0) > LINUX_VERSION_CODE)
+			if (file_w->f_op->write) {
 				file_w->f_op->write(file_w, msg, strlen(msg), &file_w->f_pos);
+			} else{
+				DBGPRINT(RT_DEBUG_ERROR, ("no file write method\n"));
+			}
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+			__kernel_write(file_w, msg, strlen(msg), &file_w->f_pos);
+#else
+			__vfs_write(file_w, msg, strlen(msg), &file_w->f_pos);
+#endif
 
 				printk("%s", msg);
 				macAddr += AddrStep;
 			}
-			sprintf(msg, "\nDump all MAC values to %s\n", fileName);
+			snprintf(msg, 1024, "\nDump all MAC values to %s\n", fileName);
 		}
 		filp_close(file_w, NULL);
 	}
@@ -1978,7 +2000,7 @@ VOID RtmpDrvAllE2PPrint(
 			 ("-->2) %s: Error %ld opening %s\n", __FUNCTION__,
 			  -PTR_ERR(file_w), fileName));
 	} else {
-		if (file_w->f_op && file_w->f_op->write) {
+		if (file_w->f_op) {
 			file_w->f_pos = 0;
 			eepAddr = 0x00;
 
@@ -1987,14 +2009,23 @@ VOID RtmpDrvAllE2PPrint(
 				sprintf(msg, "%08x = %04x\n", eepAddr, eepValue);
 
 				/* write data to file */
-				file_w->f_op->write(file_w, msg, strlen(msg), &file_w->f_pos);
-
+#if (KERNEL_VERSION(4, 1, 0) > LINUX_VERSION_CODE)
+				if (file_w->f_op->write) {
+					file_w->f_op->write(file_w, msg, strlen(msg), &file_w->f_pos);
+				} else{
+					DBGPRINT(RT_DEBUG_ERROR, ("no file write method\n"));
+				}
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+				__kernel_write(file_w, msg, strlen(msg), &file_w->f_pos);
+#else
+				__vfs_write(file_w, msg, strlen(msg), &file_w->f_pos);
+#endif
 				printk("%s", msg);
 				eepAddr += AddrStep;
 				pMacContent += (AddrStep >> 1);
 			}
-			sprintf(msg, "\nDump all EEPROM values to %s\n",
-				fileName);
+			snprintf(msg, 1024 ,"\nDump all EEPROM values to %s\n",
+					fileName);
 		}
 		filp_close(file_w, NULL);
 	}
@@ -2022,10 +2053,21 @@ VOID RtmpDrvAllRFPrint(
 			 ("-->2) %s: Error %ld opening %s\n", __FUNCTION__,
 			  -PTR_ERR(file_w), fileName));
 	} else {
-		if (file_w->f_op && file_w->f_op->write) {
+		if (file_w->f_op) {
 			file_w->f_pos = 0;
 			/* write data to file */
-			file_w->f_op->write(file_w, pBuf, BufLen, &file_w->f_pos);
+#if (KERNEL_VERSION(4, 1, 0) > LINUX_VERSION_CODE)
+			if (file_w->f_op->write) {
+				file_w->f_op->write(file_w, pBuf, BufLen, &file_w->f_pos);
+			} else{
+				DBGPRINT(RT_DEBUG_ERROR, ("no file write method\n"));
+			}
+#elif (KERNEL_VERSION(4, 19, 0) <= LINUX_VERSION_CODE)
+			__kernel_write(file_w, pBuf, BufLen, &file_w->f_pos);
+
+#else
+			__vfs_write(file_w, pBuf, BufLen, &file_w->f_pos);
+#endif
 		}
 		filp_close(file_w, NULL);
 	}

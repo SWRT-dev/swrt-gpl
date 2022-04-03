@@ -29,7 +29,7 @@
 #include <linux/kernel.h>
 #include <linux/types.h>
 #include <linux/proc_fs.h>
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 
 #include "rt_config.h"
 
@@ -61,7 +61,7 @@ int wl_proc_exit(void);
 #endif /* PROCREG_DIR */
 
 #ifdef CONFIG_PROC_FS
-extern struct proc_dir_entry *procRegDir;
+struct proc_dir_entry *procRegDir;
 
 #ifdef VIDEO_TURBINE_SUPPORT
 extern BOOLEAN UpdateFromGlobal;
