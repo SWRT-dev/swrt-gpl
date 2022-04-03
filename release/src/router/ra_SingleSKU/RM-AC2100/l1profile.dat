@@ -21,5 +21,5 @@ INDEX1_wds_ifname=wdsi
 INDEX1_apcli_ifname=apclii
 INDEX1_mesh_ifname=meshi
 INDEX1_nvram_zone=dev2
-INDEX1_single_sku_path=/etc_ro/Wireless/SingleSKU_mt7615e-sku.dat
-INDEX1_bf_sku_path=/etc_ro/Wireless/SingleSKU_mt7615e-sku-bf.dat
+INDEX1_single_sku_path=/ra_SKU/SingleSKU_mt7615e-sku.dat
+INDEX1_bf_sku_path=/ra_SKU/SingleSKU_mt7615e-sku-bf.dat

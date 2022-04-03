@@ -2627,8 +2627,10 @@ int gen_ralink_config(int band, int is_iNIC)
 		{
 			if (wl_bw == 2)	// 40 MHz					
 				fprintf(fp, "VHT_BW=%d\n", 0);
+#if defined(RTCONFIG_VHT160) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
 			else if (sw_mode != SW_MODE_REPEATER && (wl_bw == 5 || nvram_match(strcat_r(prefix, "bw_160", tmp), "1"))) // 20/40/80/160 MHz
 				fprintf(fp, "VHT_BW=%d\n", 2);
+#endif
 			else // wl_bw == 3 ==> 20/40/80 MHz
 				fprintf(fp, "VHT_BW=%d\n", 1);
 		}
