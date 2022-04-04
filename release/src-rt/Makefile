@@ -801,6 +801,12 @@ ifeq ($(CONFIG_RALINK),y)
 		$(CROSS_COMPILE)objcopy -O binary -R .reginfo -R .note -R .comment -R .mdebug -S $(LINUXDIR)/vmlinux $(PLATFORMDIR)/vmlinus ; \
 		asustools/patch-dtb $(PLATFORMDIR)/vmlinus $(DTS_DIR)/ralink/$(DTB) ; \
 		asustools/lzma_9k e $(PLATFORMDIR)/vmlinus $(PLATFORMDIR)/zImage.lzma -lc2 -lp2 -pb2 -mfbt2 ; \
+	elif [ "$(BUILD_NAME)" = "PGB-M1" ] ; then \
+		$(CROSS_COMPILE)cpp -nostdinc -x assembler-with-cpp -I$(DTS_DIR) -I$(DTS_DIR)/include -undef -D__DTS__ -o $(DTS_DIR)/ralink/$(DTB).tmp $(DTS_DIR)/ralink/mt7621-pgbm1.dts ; \
+		$(LINUXDIR)/scripts/dtc/dtc -O dtb -i$(DTS_DIR)/ralink -o $(DTS_DIR)/ralink/$(DTB) $(DTS_DIR)/ralink/$(DTB).tmp ; \
+		rm $(DTS_DIR)/ralink/$(DTB).tmp ; \
+		$(CROSS_COMPILE)objcopy -O binary -R .reginfo -R .note -R .comment -R .mdebug -S $(LINUXDIR)/vmlinux $(PLATFORMDIR)/vmlinus ; \
+		asustools/lzma_9k e $(PLATFORMDIR)/vmlinus $(PLATFORMDIR)/zImage.lzma -lc2 -lp2 -pb2 -mfbt2 ; \
 	else \
 		mipsel-linux-objcopy -O binary -R .reginfo -R .note -R .comment -R .mdebug -S $(LINUXDIR)/vmlinux $(PLATFORMDIR)/vmlinus ; \
 		asustools/lzma_9k e $(PLATFORMDIR)/vmlinus $(PLATFORMDIR)/zImage.lzma -lc2 -lp2 -pb2 -mfbt2 ; \
@@ -809,7 +815,7 @@ ifeq ($(CONFIG_RALINK),y)
 	
 	# padded kernel image size
 	@SIZE=`wc -c $(PLATFORMDIR)/zImage.img | awk '{print $$1}'`; \
-	if [ "`grep -c \"^CONFIG_ROOTFS_IN_FLASH_NO_PADDING\>\" $(LINUXDIR)/.config`" -eq 0 ] && [ "$(BUILD_NAME)" != "RT-ACRH18" ] && [ "$(BUILD_NAME)" != "4G-AC86U" ] && [ "$(BUILD_NAME)" != "RT-AX53U" ] && [ "$(BUILD_NAME)" != "4G-AX56" ] && [ "$(BUILD_NAME)" != "RT-AX54" ] && [ "$(BUILD_NAME)" != "RT-AC85P" ] && [ "$(BUILD_NAME)" != "RT-AC85U" ] && [ "$(BUILD_NAME)" != "R6800" ] && [ "$(BUILD_NAME)" != "RM-AC2100" ] ; then \
+	if [ "`grep -c \"^CONFIG_ROOTFS_IN_FLASH_NO_PADDING\>\" $(LINUXDIR)/.config`" -eq 0 ] && [ "$(BUILD_NAME)" != "RT-ACRH18" ] && [ "$(BUILD_NAME)" != "4G-AC86U" ] && [ "$(BUILD_NAME)" != "RT-AX53U" ] && [ "$(BUILD_NAME)" != "4G-AX56" ] && [ "$(BUILD_NAME)" != "RT-AX54" ] && [ "$(BUILD_NAME)" != "RT-AC85P" ] && [ "$(BUILD_NAME)" != "RT-AC85U" ] && [ "$(BUILD_NAME)" != "R6800" ] && [ "$(BUILD_NAME)" != "RM-AC2100" ] && [ "$(BUILD_NAME)" != "PGB-M1" ] ; then \
 		CONFIG_MTD_KERNEL_PART_SIZ=`grep "^CONFIG_MTD_KERNEL_PART_SIZ\>" $(LINUXDIR)/.config|sed -e "s,[^=]*=,," -e "s,^\(0x\)*,0x,"` ; \
 		MTD_KRN_PART_SIZE=`printf "%d" $${CONFIG_MTD_KERNEL_PART_SIZ}` ; \
 		PAD=`expr $${MTD_KRN_PART_SIZE} - 64 - $${SIZE}` ; \
@@ -838,6 +844,9 @@ ifeq ($(CONFIG_RALINK),y)
 		asustools/u-boot-2014.10/tools/mkimage -f image/MTK-AC2600-RFB1-kernel.bin.its $(PLATFORMDIR)/zImage.img ; \
 	elif [ "$(BUILD_NAME)" = "R6800" ] ; then \
 		cp $(PLATFORMDIR)/zImage.img $(PLATFORMDIR)/kernel.img ; \
+	elif [ "$(BUILD_NAME)" = "PGB-M1" ] ; then \
+		asustools/mkits.sh -D mt7621-pgbm1 -o image/mt7621-pgbm1.its -k $(PLATFORMDIR)/zImage.img -d $(DTS_DIR)/ralink/$(DTB) -C lzma -a 0x81001000 -e 0x81001000 -A mips -v 4.4.198 ; \
+		asustools/u-boot-2014.10/tools/mkimage -f image/mt7621-pgbm1.its $(PLATFORMDIR)/zImage.img ; \
 	fi ; \
 	if [ "$(BUILD_NAME)" = "R6800" ] || [ "$(BUILD_NAME)" = "RM-AC2100" ]; then \
 		SIZE=`wc -c $(PLATFORMDIR)/zImage.img | awk '{print $$1}'`; \
@@ -870,7 +879,7 @@ ifeq ($(CONFIG_RALINK),y)
 		asustools/u-boot-2014.10/tools/mkimage -A arm64 -O linux -T kernel -C lzma -a 0x41080000 -e 0x41080000 -r $${RFSOFFSET} \
 		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0"  \
                 -d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx ; \
-	elif [ "$(BUILD_NAME)" = "4G-AX56" ] || [ "$(BUILD_NAME)" = "RT-AX53U" ] || [ "$(BUILD_NAME)" = "RT-AX54" ] ; then \
+	elif [ "$(BUILD_NAME)" = "4G-AX56" ] || [ "$(BUILD_NAME)" = "RT-AX53U" ] || [ "$(BUILD_NAME)" = "RT-AX54" ] || [ "$(BUILD_NAME)" = "PGB-M1" ] ; then \
 		asustools/u-boot-2014.10/tools/mkimage -A mips -O linux -T kernel -C lzma -a 0x81001000 -e 0x81001000 -r $${RFSOFFSET} \
 		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0"  \
 		-d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx ; \
@@ -5585,6 +5594,8 @@ else
 			cp $(LINUXDIR)/config_base_rmac2100 $(LINUXDIR)/config_$(lowercase_B) ; \
 		elif [ "$(BUILD_NAME)" = "R6800" ]; then \
 			cp $(LINUXDIR)/config_base_r6800 $(LINUXDIR)/config_$(lowercase_B) ; \
+		elif [ "$(BUILD_NAME)" = "PGB-M1" ]; then \
+			cp $(LINUXDIR)/config_base_pgbm1 $(LINUXDIR)/config_$(lowercase_B) ; \
 		else \
 			cp $(LINUXDIR)/config_base $(LINUXDIR)/config_$(lowercase_B) ; \
 		fi ; \

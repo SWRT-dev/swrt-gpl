@@ -44,6 +44,10 @@ config  MODEL_RMAC2100
         bool "RMAC2100"
         default n
 
+config  MODEL_PGBM1
+        bool "PGBM1"
+        default n
+
 config  ASUS_EXT
         bool "ASUS_EXT"
         default n

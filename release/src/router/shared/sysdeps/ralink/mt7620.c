@@ -156,7 +156,7 @@ enum {
 	CPU_PORT=6,
 	P7_PORT=7,
 };
-#elif defined(RTAC85U)
+#elif defined(RTAC85U) || defined(PGBM1)
 enum {
 	WAN_PORT=4,
 	LAN1_PORT=0,

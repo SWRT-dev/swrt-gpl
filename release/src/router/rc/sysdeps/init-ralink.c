@@ -120,6 +120,7 @@ void generate_switch_para(void)
 		case MODEL_TUFAC1750:
 		case MODEL_RTAX53U:
 		case MODEL_RTAX54:
+		case MODEL_PGBM1:
 			nvram_unset("vlan3hwname");
 			if ((wans_cap && wanslan_cap) ||
 			    (wanslan_cap && (!nvram_match("switch_wantag", "none") && !nvram_match("switch_wantag", "")))
@@ -275,6 +276,7 @@ void config_switch()
 	case MODEL_TUFAC1750:
 	case MODEL_RTAX53U:
 	case MODEL_RTAX54:
+	case MODEL_PGBM1:
 		merge_wan_port_into_lan_ports = 1;
 		break;
 	default:
@@ -1506,6 +1508,7 @@ void set_wan_tag(char *interface) {
 	case MODEL_TUFAC1750:
 	case MODEL_RTAX53U:
 	case MODEL_RTAX54:
+	case MODEL_PGBM1:
 		ifconfig(interface, IFUP, 0, 0);
 		if(wan_vid) { /* config wan port */
 			eval("vconfig", "rem", "vlan2");

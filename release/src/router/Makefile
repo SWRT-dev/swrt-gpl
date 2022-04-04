@@ -2299,7 +2299,7 @@ endif
 	#install $(LIBDIR)/libm.so $(TARGETDIR)/lib/
 	#install $(LIBDIR)/libnsl.so $(TARGETDIR)/lib/
 	@mkdir -p $(TARGETDIR)/rom/etc/wireless/mediatek
-ifeq ($(or $(RTAX53U),$(RTAX54),$(RT4GAX56)),y)
+ifeq ($(or $(RTAX53U),$(RTAX54),$(RT4GAX56),$(PGBM1)),y)
 	@cp $(SRCBASE)/linux/vendors/Mediatek/MT7621/MT7915/* $(TARGETDIR)/rom/etc/wireless/mediatek/
 else ifeq ($(RTCONFIG_RALINK_MT7629),y)
 	@cp $(SRCBASE)/linux/vendors/Mediatek/MT7629/* $(TARGETDIR)/rom/etc/wireless/mediatek/
