@@ -18464,6 +18464,9 @@ void setup_leds()
 		eval("et", "-i", "eth0", "robowr", "0", "0x1a", "0x01ff");
 #elif defined(HND_ROUTER)
 #ifndef GTAC2900
+#if defined(RTAX58U_V2) || defined(GTAX6000)
+		wan_phy_led_pinmux(0);
+#endif
 		led_control(LED_WAN_NORMAL, LED_ON);
 #endif
 		setLANLedOn();
@@ -18471,7 +18474,9 @@ void setup_leds()
 		eval("et", "robowr", "0", "0x18", "0x01ff");
 		eval("et", "robowr", "0", "0x1a", "0x01ff");
 #endif
-
+#ifdef RTAX58U_V2
+		system("rtkswitch 43");
+#endif
 #if defined(GTAX11000) || defined(GTAXE11000)
 #ifdef RTCONFIG_EXTPHY_BCM84880
 		eval("ethctl", "phy", "ext", EXTPHY_ADDR_STR, "0x7fff0", "0x1");
@@ -18482,11 +18487,7 @@ void setup_leds()
 #ifdef RTCONFIG_LAN4WAN_LED
 		LanWanLedCtrl();
 #endif
-#ifdef RTAC87U
-		qcsapi_wifi_run_script("router_command.sh", "lan4_led_ctrl on");
-#endif
 		kill_pidfile_s("/var/run/wanduck.pid", SIGUSR2);
-
 
 /* Wifi */
 		if (nvram_match("wl0_radio", "1")) {
@@ -18500,20 +18501,40 @@ void setup_leds()
 			eval("wl", "ledbh", "9", "7");
 #elif defined(RTAX88U) || defined(GTAX11000)
 			eval("wl", "-i", "eth6", "ledbh", "15", "7");
-#elif defined(RTAX55)
+#elif defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2)
 			eval("wl", "-i", "eth2", "ledbh", "0", "25");
-#elif defined(RTAX58U) || defined(RTAX56U)
+#elif defined(RTAX56U)
 			eval("wl", "-i", "eth5", "ledbh", "0", "25");
-#elif defined(RTAX86U)
-			eval("wl", "-i", "eth6", "ledbh", "7", "7");
+#elif defined(RTAX86U) || defined(RTAX5700)
+			if(!strcmp(get_productid(), "RT-AX86S"))
+				eval("wl", "-i", "eth5", "ledbh", "7", "7");
+			else
+				eval("wl", "-i", "eth6", "ledbh", "7", "7");;
 #elif defined(RTAX68U)
 			eval("wl", "-i", "eth5", "ledbh", "7", "7");
-#elif defined(RTAC68U_V4)
-			eval("wl", "-i", "eth5", "ledbh", "10", "7");
 #elif defined(GTAC2900)
 			eval("wl", "ledbh", "9", "1");
 #elif defined(GTAC5300) || defined(GTAXE11000)
 			eval("wl", "-i", "eth6", "ledbh", "9", "7");
+#elif defined(GTAX6000) || defined(GTAX11000_PRO)
+			eval("wl", "-i", "eth6", "ledbh", "13", "7");
+#elif defined(GTAXE16000)
+			eval("wl", "-i", "eth7", "ledbh", "13", "7");
+#elif defined(ET12) || defined(XT12)
+			eval("wl", "-i", "eth4", "ledbh", "15", "7");
+#elif defined(RTAX92U) || defined(RTAC68U_V4)
+			eval("wl", "-i", "eth5", "ledbh", "10", "7");
+#elif defined(RTAX95Q) || defined(XT8PRO) || defined(RTAXE95Q) || defined(ET8PRO)
+			eval("wl", "-i", "eth4", "ledbh", "10", "7");
+#elif defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4)
+			eval("wl", "-i", "wl0", "ledbh", "10", "7");
+#elif defined(BCM6750)
+#if defined(RTAX82U) && !defined(RTCONFIG_BCM_MFG)
+			if (!nvram_get_int("LED_order"))
+				eval("wl", "-i", "eth5", "ledbh", "0", "1");
+			else
+#endif
+			eval("wl", "-i", "eth5", "ledbh", "0", "25");
 #endif
 		}
 
@@ -18532,40 +18553,104 @@ void setup_leds()
 			eval("wl", "-i", "eth7", "ledbh", "9", "7");
 #elif defined(RTCONFIG_BCM_7114)
 			eval("wl", "-i", "eth2", "ledbh", "9", "7");
-#elif defined(RTAC87U)
-			qcsapi_wifi_run_script("router_command.sh", "wifi_led_on");
-			qcsapi_led_set(1, 1);
-#elif defined(RTAX88U) || defined(RTAX86U) || defined(GTAX11000)
+#elif defined(RTAX88U) || defined(GTAX11000)
 			eval("wl", "-i", "eth7", "ledbh", "15", "7");
-#elif defined(RTAX55)
+#elif defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2)
 			eval("wl", "-i", "eth3", "ledbh", "0", "25");
 #elif defined(RTAX68U)
 			eval("wl", "-i", "eth6", "ledbh", "7", "7");
-#elif defined(RTAC68U_V4)
+#elif defined(RTAX86U) || defined(RTAX5700)
+			if(!strcmp(get_productid(), "RT-AX86S"))
+				eval("wl", "-i", "eth6", "ledbh", "15", "7");
+			else
+				eval("wl", "-i", "eth7", "ledbh", "15", "7");
+#elif defined(RTAC68U_V4) || defined(RTAX92U)
 			eval("wl", "-i", "eth6", "ledbh", "10", "7");
-#elif defined(RTAX58U)
-			eval("wl", "-i", "eth6", "ledbh", "15", "7");
 #elif defined(RTAX56U)
 			eval("wl", "-i", "eth6", "ledbh", "0", "25");
+#elif defined(RTAX95Q) || defined(XT8PRO) || defined(RTAXE95Q) || defined(ET8PRO)
+			eval("wl", "-i", "eth5", "ledbh", "10", "7");
+#elif defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4)
+			eval("wl", "-i", "wl1", "ledbh", "10", "7");
+#elif defined(GTAX6000) || defined(GTAX11000_PRO)
+			eval("wl", "-i", "eth7", "ledbh", "13", "7");
+#elif defined(GTAXE16000)
+			eval("wl", "-i", "eth8", "ledbh", "13", "7");
+#elif defined(ET12) || defined(XT12)
+			eval("wl", "-i", "eth5", "ledbh", "15", "7");
+#elif defined(BCM6750)
+#if defined(RTAX82U) && !defined(RTCONFIG_BCM_MFG)
+			if (!nvram_get_int("LED_order")) {
+				led_control(LED_5G, LED_ON);
+				kill_pidfile_s("/var/run/ledbtn.pid", SIGUSR1);
+			} else
+#endif
+			eval("wl", "-i", "eth6", "ledbh", "15", "7");
 #endif
 		}
 
-#if defined(RTAC3200) || defined(RTAC5300) || defined(GTAX11000) || defined(GTAC5300)
+#if defined(RTCONFIG_HAS_5G_2)
 		if (nvram_match("wl2_radio", "1")) {
-#if defined(RTAC3200)
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_RALINK)
+			led_control(LED_5G2, LED_ON);
+#elif defined(RTAC3200)
 			eval("wl", "-i", "eth3", "ledbh", "10", "7");
-#elif defined(RTAC5300)
-			eval("wl", "-i", "eth3", "ledbh", "9", "7");
-#elif defined(GTAX11000)
-			eval("wl", "-i", "eth8", "ledbh", "15", "7");
 #elif defined(GTAC5300) || defined(GTAXE11000)
 			eval("wl", "-i", "eth8", "ledbh", "9", "7");
+#elif defined(GTAX11000)
+			eval("wl", "-i", "eth8", "ledbh", "15", "7");
+#elif defined(RTAX92U)
+			eval("wl", "-i", "eth7", "ledbh", "15", "7");
+#elif defined(RTAX95Q) || defined(XT8PRO) || defined(RTAXE95Q) || defined(ET8PRO) ||  defined(ET12) || defined(XT12)
+			eval("wl", "-i", "eth6", "ledbh", "15", "7");
+#elif defined(RTAC5300)
+			eval("wl", "-i", "eth3", "ledbh", "9", "7");
+#elif defined(GTAX11000_PRO)
+			eval("wl", "-i", "eth8", "ledbh", "13", "7");
+#elif defined(GTAXE16000)
+			eval("wl", "-i", "eth9", "ledbh", "13", "7");
 #endif
 		}
 #endif
+#if defined(RTCONFIG_QUADBAND)
+		if (nvram_match("wl3_radio", "1")) {
+#if defined(GTAXE16000)
+			eval("wl", "-i", "eth10", "ledbh", "13", "7");
+#endif
+		}
+#endif
+#ifdef RTCONFIG_EXTPHY_BCM84880
+#if defined(RTAX86U) || defined(GTAX11000) || defined(GTAX6000)
+		int ext_phy_model = nvram_get_int("ext_phy_model");
 
+		if(!strcmp(get_productid(), "RT-AX86S")) ;
+		else if(ext_phy_model == EXT_PHY_GPY211)
+			eval("ethctl", "phy", "ext", EXTPHY_GPY_ADDR_STR, "0x1e0001", "0x3f0");
+		else if(ext_phy_model == EXT_PHY_RTL8226)
+			eval("ethctl", "phy", "ext", EXTPHY_RTL_ADDR_STR, "0x1fd032", "0x0027");	// RTL LCR2 LED Control Reg
+		else if(ext_phy_model == EXT_PHY_BCM54991){
+			eval("ethctl", "phy", "ext", EXTPHY_ADDR_STR, "0x1a832", "0x6");	// default. CTL LED3 MASK LOW
+			eval("ethctl", "phy", "ext", EXTPHY_ADDR_STR, "0x1a835", "0x40");	// default. CTL LED4 MASK LOW
+		}
+#endif
+#endif
 #ifdef RTCONFIG_LOGO_LED
 		led_control(LED_LOGO, LED_ON);
+#endif
+#if defined(RTAX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX11000_PRO) || defined(GTAXE16000) || defined(GTAX6000)
+		kill_pidfile_s("/var/run/ledg.pid", SIGTSTP);
+#endif
+#ifdef GTAX6000
+		AntennaGroupReset(LED_ON);
+		setAntennaGroupOn();
+		eval("sw", "0xff803140", "0x0000e002", "0x00c34a24", "0x00000a24", "0x00800080");
+		eval("sw", "0xff80301c", "0x00040000");
+		eval("sw", "0xff803150", "0x0000e002", "0x00c34a24", "0x00000a24", "0x00800080");
+		eval("sw", "0xff80301c", "0x00080000");
+		eval("sw", "0xff803160", "0x0000e002", "0x00c34a24", "0x00000a24", "0x00800080");
+		eval("sw", "0xff80301c", "0x00100000");
+		eval("sw", "0xff803170", "0x0000e002", "0x00c34a24", "0x00000a24", "0x00800080");
+		eval("sw", "0xff80301c", "0x00200000");
 #endif
 	}
 
