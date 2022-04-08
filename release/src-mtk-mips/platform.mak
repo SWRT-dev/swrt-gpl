@@ -1,5 +1,9 @@
 # OpenWRT SDK_4210
+ifeq ($(NEWKERNEL),y)
+export LINUXDIR := $(SRCBASE)/linux/linux-4.14
+else
 export LINUXDIR := $(SRCBASE)/linux/linux-4.4.198
+endif
 
 ifeq ($(EXTRACFLAGS),)
 export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -mips32 -mtune=mips32
