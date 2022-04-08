@@ -386,7 +386,7 @@ static int gigadevice_spinand_read_from_cache(struct spinand_device *spinand,
 }
 
 static int gigadevice_spinand_detect_nor_emu(struct spinand_device *spinand,
-					 u8 devid, int *enabled)
+					 u16 devid, int *enabled)
 {
 	struct device *dev = &spinand->spimem->spi->dev;
 	unsigned int i, num_ffs = 0, num_zeros = 0, len = 0;
@@ -486,16 +486,21 @@ static int gigadevice_spinand_detect(struct spinand_device *spinand)
 	struct device *dev = &spinand->spimem->spi->dev;
 	const struct spinand_info *table;
 	u8 *id = spinand->id.data;
+	u16 did;
 	int ret, nor_read = 0;
 
 	/*
 	 * GigaDevice SPI NAND read ID need a dummy byte,
 	 * so the first byte in raw_id is dummy.
 	 */
-	if (id[1] != SPINAND_MFR_GIGADEVICE)
+	if (id[1] == SPINAND_MFR_GIGADEVICE)
+		did = (id[1] << 8) + id[2];
+	else if (id[0] == 0 && id[1] == SPINAND_MFR_GIGADEVICE)
+		did = id[2];
+	else
 		return 0;
 
-	ret = gigadevice_spinand_detect_nor_emu(spinand, id[2], &nor_read);
+	ret = gigadevice_spinand_detect_nor_emu(spinand, did, &nor_read);
 	if (ret)
 		nor_read = 0;
 
@@ -507,7 +512,7 @@ static int gigadevice_spinand_detect(struct spinand_device *spinand)
 		table = gigadevice_spinand_table;
 	}
 
-	ret = spinand_match_and_init(spinand, table, TABLE_SZ, id[2]);
+	ret = spinand_match_and_init(spinand, table, TABLE_SZ, did);
 	if (ret)
 		return ret;
 
