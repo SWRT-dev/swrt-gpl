@@ -761,4 +761,6 @@ config CRYPTO_DEV_ARTPEC6
 
 source "drivers/crypto/al/Kconfig"
 
+source "drivers/crypto/mtk-eip93/Kconfig"
+
 endif # CRYPTO_HW
