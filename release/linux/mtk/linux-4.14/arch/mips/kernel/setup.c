@@ -378,6 +378,10 @@ static void __init bootmem_init(void)
 	bool bootmap_valid = false;
 	int i;
 
+#if defined(CONFIG_MIPS_L2_CACHE_ER35)
+	unsigned long kernel_load_paddr;
+#endif
+
 	/*
 	 * Sanity check any INITRD first. We don't take it into account
 	 * for bootmem setup initially, rely on the end-of-kernel-code
@@ -592,6 +596,14 @@ static void __init bootmem_init(void)
 		free_bootmem(PFN_PHYS(start), size << PAGE_SHIFT);
 		memory_present(0, start, end);
 	}
+
+#if defined(CONFIG_MIPS_L2_CACHE_ER35)
+	/* Free memory up to start of kernel image */
+	kernel_load_paddr = CPHYSADDR((unsigned long) &_text);
+	if (kernel_load_paddr > CONFIG_ZONE_DMA_SIZE)
+		free_bootmem(kernel_load_paddr - CONFIG_ZONE_DMA_SIZE,
+			     CONFIG_ZONE_DMA_SIZE);
+#endif	/* CONFIG_MIPS_L2_CACHE_ER35 */
 
 	/*
 	 * Reserve the bootmap memory.
@@ -1056,3 +1068,4 @@ static int __init debugfs_mips(void)
 }
 arch_initcall(debugfs_mips);
 #endif
+

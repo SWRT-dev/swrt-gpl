@@ -30,5 +30,5 @@ cflags-$(CONFIG_SOC_MT7620)	+= -I$(srctree)/arch/mips/include/asm/mach-ralink/mt
 
 # Ralink MT7621
 #
-load-$(CONFIG_SOC_MT7621)	+= 0xffffffff80001000
+load-$(CONFIG_SOC_MT7621)	+= 0xffffffff80001000+$(CONFIG_ZONE_DMA_SIZE)
 cflags-$(CONFIG_SOC_MT7621)	+= -I$(srctree)/arch/mips/include/asm/mach-ralink/mt7621 -mtune=1004kc

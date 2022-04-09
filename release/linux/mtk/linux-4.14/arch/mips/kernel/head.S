@@ -23,6 +23,7 @@
 #include <asm/regdef.h>
 #include <asm/mipsregs.h>
 #include <asm/stackframe.h>
+#include <asm/cacheops.h>
 
 #include <kernel-entry-init.h>
 
@@ -98,6 +99,48 @@ NESTED(kernel_entry, 16, sp)			# kernel entry point
 	kernel_entry_setup			# cpu specific setup
 
 	setup_c0_status_pri
+
+#ifdef CONFIG_MIPS_L2_CACHE_ER35
+	/* Set L2 CCA Override to WT on lowest 256MB */
+
+	/* Jump to KSEG1 so that we can perform cache related operations */
+	PTR_LA	t0, 0f
+	li	t1, 5
+	ins	t0, t1, 29, 3
+	jr	t0
+	nop
+0:
+
+	/* Flush L2 Cache before setting CCA overrides */
+	/* Define L2 Cache Line Size 32 */
+#define L2_LINE_SIZE	32
+	/* Define L2 Size 256K */
+#define L2_SIZE		(256 << 10)
+	li	t0, L2_SIZE
+	move	t1, zero
+
+1:
+	cache	Index_Writeback_Inv_SD, 0(t1)
+	addiu	t1, t1, L2_LINE_SIZE    /* Increase Index */
+	bne	t1, t0, 1b
+	nop
+
+	sync
+
+	/* Override bottom half of DDR to uncached (DMA zone) */
+	PTR_LI	t0, 0xbfbf8000
+
+	lui	t1, (~((CONFIG_ZONE_DMA_SIZE - 1) >> 16)) & 0xffff
+	ori	t1, t1, 0x0051
+	sw	t1, 0xb8(t0)
+
+	/* Base */
+	sw	zero, 0xb0(t0)
+
+	/* Set default override to WT */
+	PTR_LI	t1, 0x1fbf8010
+	sw	t1, 0x08(t0)
+#endif
 
 	/* We might not get launched at the address the kernel is linked to,
 	   so we jump there.  */
@@ -184,3 +227,4 @@ NESTED(smp_bootstrap, 16, sp)
 	j	start_secondary
 	END(smp_bootstrap)
 #endif /* CONFIG_SMP */
+

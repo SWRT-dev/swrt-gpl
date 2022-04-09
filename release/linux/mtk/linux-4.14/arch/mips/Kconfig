@@ -3437,6 +3437,15 @@ config ZONE_DMA
 config ZONE_DMA32
 	bool
 
+config MIPS_L2_CACHE_ER35
+	bool
+	default n
+
+config ZONE_DMA_SIZE
+	hex
+	default 0x1000000 if MIPS_L2_CACHE_ER35
+	default 0x0
+
 source "drivers/pcmcia/Kconfig"
 
 config RAPIDIO
@@ -3550,3 +3559,4 @@ source "arch/mips/kvm/Kconfig"
 
 # ASUS_EXT
 source "ralink/Kconfig.misc"
+

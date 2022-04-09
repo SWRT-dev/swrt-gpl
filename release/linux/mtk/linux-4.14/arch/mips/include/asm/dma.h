@@ -87,6 +87,9 @@
 #if defined(CONFIG_SGI_IP22) || defined(CONFIG_SGI_IP28)
 /* don't care; ISA bus master won't work, ISA slave DMA supports 32bit addr */
 #define MAX_DMA_ADDRESS		PAGE_OFFSET
+#elif defined(CONFIG_MIPS_L2_CACHE_ER35)
+/* Allocate low memory to DMA */
+#define MAX_DMA_ADDRESS		(PAGE_OFFSET + CONFIG_ZONE_DMA_SIZE)
 #else
 #define MAX_DMA_ADDRESS		(PAGE_OFFSET + 0x01000000)
 #endif

@@ -60,6 +60,7 @@ choice
 		select HW_HAS_PCI
 		select WEAK_REORDERING_BEYOND_LLSC
 		select GENERIC_CLOCKEVENTS_BROADCAST
+		select MIPS_L2_CACHE_ER35
 endchoice
 
 choice
@@ -104,3 +105,4 @@ choice
 endchoice
 
 endif
+

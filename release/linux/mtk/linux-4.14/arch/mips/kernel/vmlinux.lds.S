@@ -54,6 +54,7 @@ SECTIONS
 	/* read-only */
 	_text = .;	/* Text and read-only data */
 	.text : {
+		/*. = . + 0x8000; */
 		TEXT_TEXT
 		SCHED_TEXT
 		CPUIDLE_TEXT
@@ -237,3 +238,4 @@ SECTIONS
 		*(.eh_frame)
 	}
 }
+
