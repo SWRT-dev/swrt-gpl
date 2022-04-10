@@ -869,6 +869,12 @@ void start_usb(int mode)
 		}
 #endif
 
+#if defined(RTCONFIG_APFS) && !defined(RTCONFIG_TUXERA_APFS)
+		if(nvram_get_int("usb_fs_apfs")){
+			modprobe("apfs");
+		}
+#endif
+
 #ifdef RTCONFIG_USB_PRINTER
 		if (nvram_get_int("usb_printer")) {
 			symlink("/dev/usb", "/dev/printers");
@@ -946,6 +952,9 @@ void remove_usb_storage_module(void)
 #endif
 #if defined(RTCONFIG_NTFS3)
 	modprobe_r("ntfs3");
+#endif
+#if defined(RTCONFIG_APFS) && !defined(RTCONFIG_TUXERA_APFS)
+	modprobe_r("apfs");
 #endif
 #ifdef RTCONFIG_NTFS
 #ifdef RTCONFIG_TUXERA_NTFS
@@ -1619,6 +1628,14 @@ int mount_r(char *mnt_dev, char *mnt_dir, char *_type)
 #if defined(RTCONFIG_TUXERA_APFS)
 				if(ret != 0 && nvram_get_int("usb_fs_apfs")){
 					ret = eval("tapfs-u", mnt_dev, mnt_dir);
+					if(ret != 0){
+						syslog(LOG_INFO, "USB %s(%s) failed to mount as APFS!" , mnt_dev, type);
+						TRACE_PT("USB %s(%s) failed to mount as APFS!\n", mnt_dev, type);
+					}
+				}
+#else
+				if(ret != 0 && !strncmp(type, "apfs", 4) && nvram_get_int("usb_fs_apfs")){
+					ret = eval("mount", "-t", "apfs", "-o", options, mnt_dev, mnt_dir);
 					if(ret != 0){
 						syslog(LOG_INFO, "USB %s(%s) failed to mount as APFS!" , mnt_dev, type);
 						TRACE_PT("USB %s(%s) failed to mount as APFS!\n", mnt_dev, type);
@@ -5082,6 +5099,9 @@ static void start_diskformat(char *port_path)
 		char *ntfs3_cmd[] = {"mkntfs", "-F", "-f", "-L", disk_label, "-v", devpath, NULL };
 		char *vfat_cmd[] = { "mkfs.vfat", "-v", "-n", disk_label, devpath, NULL };
 #endif
+#if defined(RTCONFIG_APFS) && !defined(RTCONFIG_TUXERA_APFS)
+		char *apfs_cmd[] = { "mkfs.apfs", "-s", "-L", disk_label, devpath, NULL };
+#endif
 		// format partition.
 		snprintf(devpath, sizeof(devpath), "/dev/%s", di->device);
 		dbg("disk_format: prepare device %s ...\n", di->device);
@@ -5120,6 +5140,12 @@ static void start_diskformat(char *port_path)
 		}
 		else if(!strcmp(disk_system, "vfat")){
 			cmd = vfat_cmd;
+		}
+		else
+#endif
+#if defined(RTCONFIG_APFS) && !defined(RTCONFIG_TUXERA_APFS)
+		if(!strcmp(disk_system, "apfs")){
+			cmd = apfs_cmd;
 		}
 		else
 #endif

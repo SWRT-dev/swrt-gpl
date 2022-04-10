@@ -185,6 +185,174 @@ static char *probe_hfs(struct volume_id *id, char *dev)
 }
 #endif
 
+#if defined(RTCONFIG_APFS) && !defined(RTCONFIG_TUXERA_APFS)
+struct apfs_prange {
+	unsigned long long pr_start_paddr;
+	unsigned long long pr_block_count;
+}  __attribute__((packed));
+
+struct apfs_obj_phys {
+						/*00*/ unsigned long long o_cksum;
+						/* Fletcher checksum */
+	unsigned long long o_oid;	/* Object-id */
+						/*10*/ unsigned long long o_xid;
+						/* Transaction ID */
+	unsigned int o_type;	/* Object type */
+	unsigned int o_subtype;	/* Object subtype */
+}  __attribute__((packed));
+
+/* Indexes into a container superblock's array of counters */
+enum {
+	APFS_NX_CNTR_OBJ_CKSUM_SET = 0,
+	APFS_NX_CNTR_OBJ_CKSUM_FAIL = 1,
+
+	APFS_NX_NUM_COUNTERS = 32
+};
+#define APFS_NX_EPH_INFO_COUNT			4
+
+#define APFS_NX_MAX_FILE_SYSTEMS		100
+
+/*
+ * On-disk representation of the container superblock
+ */
+struct apfs_nx_superblock {
+/*00*/ struct apfs_obj_phys nx_o;
+/*20*/ unsigned int nx_magic;
+	unsigned int nx_block_size;
+	unsigned long long nx_block_count;
+
+/*30*/ unsigned long long nx_features;
+	unsigned long long nx_readonly_compatible_features;
+	unsigned long long nx_incompatible_features;
+
+/*48*/ char nx_uuid[16];
+
+/*58*/ unsigned long long nx_next_oid;
+	unsigned long long nx_next_xid;
+
+/*68*/ unsigned int nx_xp_desc_blocks;
+	unsigned int nx_xp_data_blocks;
+/*70*/ unsigned long long nx_xp_desc_base;
+	unsigned long long nx_xp_data_base;
+	unsigned int nx_xp_desc_next;
+	unsigned int nx_xp_data_next;
+/*88*/ unsigned int nx_xp_desc_index;
+	unsigned int nx_xp_desc_len;
+	unsigned int nx_xp_data_index;
+	unsigned int nx_xp_data_len;
+
+/*98*/ unsigned long long nx_spaceman_oid;
+	unsigned long long nx_omap_oid;
+	unsigned long long nx_reaper_oid;
+
+/*B0*/ unsigned int nx_test_type;
+
+	unsigned int nx_max_file_systems;
+/*B8*/ unsigned long long nx_fs_oid[APFS_NX_MAX_FILE_SYSTEMS];
+/*3D8*/ unsigned long long nx_counters[APFS_NX_NUM_COUNTERS];
+/*4D8*/ struct apfs_prange nx_blocked_out_prange;
+	unsigned long long nx_evict_mapping_tree_oid;
+/*4F0*/ unsigned long long nx_flags;
+	unsigned long long nx_efi_jumpstart;
+/*500*/ char nx_fusion_uuid[16];
+	struct apfs_prange nx_keylocker;
+/*520*/ unsigned long long nx_ephemeral_info[APFS_NX_EPH_INFO_COUNT];
+
+/*540*/ unsigned long long nx_test_oid;
+
+	unsigned long long nx_fusion_mt_oid;
+/*550*/ unsigned long long nx_fusion_wbc_oid;
+	struct apfs_prange nx_fusion_wbc;
+}  __attribute__((packed));
+
+struct apfs_wrapped_meta_crypto_state {
+	unsigned short major_version;
+	unsigned short minor_version;
+	unsigned int cpflags;
+	unsigned int persistent_class;
+	unsigned int key_os_version;
+	unsigned short key_revision;
+	unsigned short unused;
+}  __attribute__((packed));
+
+#define APFS_MODIFIED_NAMELEN	      32
+
+/*
+ * Structure containing information about a program that modified the volume
+ */
+struct apfs_modified_by {
+	char id[APFS_MODIFIED_NAMELEN];
+	unsigned long long timestamp;
+	unsigned long long last_xid;
+}  __attribute__((packed));
+
+#define APFS_MAX_HIST				8
+#define APFS_VOLNAME_LEN			256
+
+struct apfs_superblock {
+/*00*/ struct apfs_obj_phys apfs_o;
+
+/*20*/ unsigned int apfs_magic;
+	unsigned int apfs_fs_index;
+
+/*28*/ unsigned long long apfs_features;
+	unsigned long long apfs_readonly_compatible_features;
+	unsigned long long apfs_incompatible_features;
+
+/*40*/ unsigned long long apfs_unmount_time;
+
+	unsigned long long apfs_fs_reserve_block_count;
+	unsigned long long apfs_fs_quota_block_count;
+	unsigned long long apfs_fs_alloc_count;
+
+/*60*/ struct apfs_wrapped_meta_crypto_state apfs_meta_crypto;
+
+/*74*/ unsigned int apfs_root_tree_type;
+	unsigned int apfs_extentref_tree_type;
+	unsigned int apfs_snap_meta_tree_type;
+
+/*80*/ unsigned long long apfs_omap_oid;
+	unsigned long long apfs_root_tree_oid;
+	unsigned long long apfs_extentref_tree_oid;
+	unsigned long long apfs_snap_meta_tree_oid;
+
+/*A0*/ unsigned long long apfs_revert_to_xid;
+	unsigned long long apfs_revert_to_sblock_oid;
+
+/*B0*/ unsigned long long apfs_next_obj_id;
+
+/*B8*/ unsigned long long apfs_num_files;
+	unsigned long long apfs_num_directories;
+	unsigned long long apfs_num_symlinks;
+	unsigned long long apfs_num_other_fsobjects;
+	unsigned long long apfs_num_snapshots;
+
+/*E0*/ unsigned long long apfs_total_blocks_alloced;
+	unsigned long long apfs_total_blocks_freed;
+
+/*F0*/ char apfs_vol_uuid[16];
+/*100*/ unsigned long long apfs_last_mod_time;
+
+	unsigned long long apfs_fs_flags;
+
+/*110*/ struct apfs_modified_by apfs_formatted_by;
+/*140*/ struct apfs_modified_by apfs_modified_by[APFS_MAX_HIST];
+
+/*2C0*/ char apfs_volname[APFS_VOLNAME_LEN];
+/*3C0*/ unsigned int apfs_next_doc_id;
+
+	unsigned short apfs_role;
+	unsigned short reserved;
+
+/*3C8*/ unsigned long long apfs_root_to_xid;
+	unsigned long long apfs_er_state_oid;
+}  __attribute__((packed));
+
+#define FIRST_VOL_BNO 20002
+#define APPLE_NX_DEFAULT_BLOCKSIZE 4096
+#define APFS_NX_MAGIC				0x4253584E
+#endif
+
 #ifdef RTCONFIG_APFS
 static char *probe_apfs(struct volume_id *id, char *dev)
 {
@@ -207,6 +375,33 @@ static char *probe_apfs(struct volume_id *id, char *dev)
 			else if(!strncmp(buf, "Name", 4))
 				sscanf(buf, "Name: %s %*s", id->label);
 		}
+		fclose(fp);
+	}
+
+	return *(id->label) || *(id->uuid) ? "apfs" : NULL;
+#else
+	FILE *fp;
+	struct apfs_superblock *sb;
+	struct apfs_nx_superblock *nxsb;
+
+	memset(id->uuid, 0, sizeof(id->uuid));
+	memset(id->label, 0, sizeof(id->label));
+	if((fp = fopen(dev, "rb")) != NULL){
+		nxsb = (struct apfs_nx_superblock *) malloc(sizeof(struct apfs_nx_superblock));
+		fseek(fp, 0, SEEK_SET);
+		fread(nxsb, 1, sizeof(struct apfs_nx_superblock), fp);
+		if(le32toh(nxsb->nx_magic) == APFS_NX_MAGIC){
+			strlcpy(id->uuid, nxsb->nx_uuid, strlen(nxsb->nx_uuid));
+			sb = (struct apfs_superblock *) malloc(sizeof(struct apfs_superblock));
+			fseek(fp, FIRST_VOL_BNO * le32toh(nxsb->nx_block_size), SEEK_SET);
+			fread(sb, 1, sizeof(struct apfs_superblock), fp);
+			if(le32toh(sb->apfs_magic) == 0x42535041){
+				strlcpy(id->label, sb->apfs_volname, strlen(sb->apfs_volname));
+				strlcpy(id->uuid, sb->apfs_vol_uuid, strlen(sb->apfs_vol_uuid));
+			}
+			free(sb);
+		}
+		free(nxsb);
 		fclose(fp);
 	}
 

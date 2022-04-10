@@ -1497,6 +1497,11 @@ obj-$(RTCONFIG_NFCM) += libnetfilter_cttimeout-1.0.0
 
 obj-$(RTCONFIG_BLINK_LED) += bled
 obj-$(RTCONFIG_SWRT_I2CLED) += i2cled i2c-tools-3.1.2
+ifeq ($(RTCONFIG_APFS),y)
+ifneq ($(RTCONFIG_TUXERA_APFS),y)
+obj-y += apfs apfsprogs
+endif
+endif
 ifeq ($(RTCONFIG_SWRT_KVR),y)
 ifneq ($(RTCONFIG_EASYMESH),y)
 #obj-$(RTCONFIG_RALINK) += ralinkiappd
@@ -1769,6 +1774,7 @@ ifeq ($(RTCONFIG_RALINK),y)
 		cp $(LINUX_ARCH_ASM_INCL_DIR)/rt2880/rt_mmap.h $@/include/asm/rt2880/ ; \
 	fi
 ifeq ($(RTCONFIG_RALINK),y)
+	mkdir -p $@/include/uapi
 	cp -fr $(LINUXDIR)/include/uapi/* $@/include/uapi/
 	mkdir -p $@/include/net
 	cp $(LINUXDIR)/include/uapi/linux/can/error.h $@/include/
@@ -7205,6 +7211,20 @@ tuxera:
 tuxera-install:
 	@echo [tuxera-install]
 	@[ ! -d tuxera ] || $(MAKE) -C tuxera install INSTALLDIR=$(INSTALLDIR)/tuxera
+
+apfsprogs:
+	@$(MAKE) -C	apfsprogs all
+
+apfsprogs-install:
+	install  -D apfsprogs/apfsck/apfsck $(INSTALLDIR)/apfsprogs/bin/apfsck
+	install  -D apfsprogs/mkapfs/mkapfs $(INSTALLDIR)/apfsprogs/bin/mkapfs
+	$(STRIP) -s $(INSTALLDIR)/apfsprogs/bin/apfsck
+	$(STRIP) -s $(INSTALLDIR)/apfsprogs/bin/mkapfs
+	cd $(INSTALLDIR)/apfsprogs/bin/ && ln -fs -T apfsck fsck.apfs
+	cd $(INSTALLDIR)/apfsprogs/bin/ && ln -fs -T mkapfs mkfs.apfs
+
+apfsprogs-clean:
+	-@$(MAKE) -C apfsprogs clean
 
 netstat-nat-clean:
 	-@$(MAKE) -C netstat-nat clean

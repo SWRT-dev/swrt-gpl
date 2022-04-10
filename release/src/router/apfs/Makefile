@@ -1,19 +1,13 @@
-# SPDX-License-Identifier: GPL-2.0
-#
-# Makefile for the out-of-tree Linux APFS module.
-#
-KERNEL_VERSION := $(shell cat $(LINUXDIR)/include/config/kernel.release 2> /dev/null)
-IDIR := $(INSTALLDIR)/lib/modules/$(KERNEL_VERSION)/net/sched
-#CFLAGS_EXTRA += 
+PWD=$(shell pwd)
 
-obj-m = apfs.o
-apfs-y = btree.o dir.o extents.o file.o inode.o key.o message.o compress.o \
-	 namei.o node.o object.o super.o symlink.o unicode.o xattr.o xfield.o transaction.o spaceman.o
-
-default:
-	make -C $(LINUXDIR) M=$(shell pwd) EXTRA_CFLAGS="$(CFLAGS_EXTRA)"
-clean:
-	make -C $(LINUXDIR) M=$(shell pwd) clean
+all:
+	$(MAKE) -C $(LINUXDIR) EXTRA_CFLAGS=-I$(TOP)/shared SUBDIRS=$(PWD)/src modules
 
 install:
-	install -v -m 644 -D apfs.ko $(IDIR)/apfs.ko
+	$(MAKE) -C $(LINUXDIR) EXTRA_CFLAGS=-I$(TOP)/shared SUBDIRS=$(PWD)/src INSTALL_MOD_PATH=$(INSTALLDIR) modules_install
+	@find $(INSTALLDIR) -name "modules.*" | xargs rm -f
+	@find $(INSTALLDIR) -name "*.ko" | xargs $(STRIPX)
+
+clean:
+	$(RM) *.o *.ko src/*.o src/*.ko src/*.mod.*
+
