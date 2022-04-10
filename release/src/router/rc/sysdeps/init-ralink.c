@@ -1648,7 +1648,7 @@ void gen_wapp_config(void)
 		fprintf(fp, "\n");
 		fclose(fp);
 	}else
-		_dprintf("Can't open /etc/wapp_ap.conf");
+		_dprintf("Can't open /etc/wapp_ap.conf\n");
 	if((fp = fopen("/etc/wapp_main_inf.conf", "w")))
 	{
 		fprintf(fp, "conf_list=");
@@ -1659,7 +1659,7 @@ void gen_wapp_config(void)
 			fprintf(fp, "\n");
 		fclose(fp);
 	}else
-		_dprintf("Can't open /etc/wapp_main_inf.conf");
+		_dprintf("Can't open /etc/wapp_main_inf.conf\n");
 }
 
 void start_wapp(void)
@@ -1758,7 +1758,7 @@ void gen_1905d_config(void)
 //		fprintf(fp, "discovery_cnt=\n");
 		fclose(fp);
 	}else
-		_dprintf("Can't open /etc/map/1905d.cfg");
+		_dprintf("Can't open /etc/map/1905d.cfg\n");
 }
 
 void gen_mapd_strng(void)
@@ -1789,7 +1789,7 @@ void gen_mapd_strng(void)
 		fprintf(fp, "MetricPolicyRcpi_5GH=100\n");
 		fclose(fp);
 	}else
-		_dprintf("Can't open /etc/mapd_strng.conf");
+		_dprintf("Can't open /etc/mapd_strng.conf\n");
 }
 
 void gen_mapd_config(void)
@@ -1882,13 +1882,13 @@ void gen_mapd_config(void)
 		fclose(fp);
 		system("ln -sf /etc/map/mapd_default.cfg /etc/map/mapd_cfg");
 	}else
-		_dprintf("Can't open /etc/map/mapd_default.cfg");
+		_dprintf("Can't open /etc/map/mapd_default.cfg\n");
 	if((fp = fopen("/etc/map/mapd_user.cfg", "w")))
 	{
 		fprintf(fp, "###!UserConfigs!!!\n");
 		fclose(fp);
 	}else
-		_dprintf("Can't open /etc/map/mapd_user.cfg");
+		_dprintf("Can't open /etc/map/mapd_user.cfg\n");
 	gen_mapd_strng();
 }
 
@@ -1996,9 +1996,9 @@ void start_mapd(void)
 	}
 
 	if(mode == MAP_DISABLED){
-		_dprintf("dhcp starting...");
+		_dprintf("dhcp starting...\n");
 		if(lastmode == 1){
-			_dprintf("default dhcp server enable...");
+			_dprintf("default dhcp server enable...\n");
 			if(dhcpctl == 1 && nvram_match("dhcp_enable_x", "0")){
 				nvram_set("dhcp_enable_x", "1");
 				stop_dnsmasq();
@@ -2120,7 +2120,7 @@ void start_mapd(void)
 		eval("iwpriv", (char*) WIF_5G, "set", "mapTSEnable=1");
 		doSystem("ulimit -c unlimited");
 //Controller
-		_dprintf("dhcp starting...");
+		_dprintf("dhcp starting...\n");
 		if(dhcpctl == 1){
 			if(tpcon == 1 && role == 1){
 				nvram_set("dhcp_enable_x", "0");
@@ -2159,15 +2159,15 @@ void start_mapd(void)
 	} else if(mode == MAP_BS_2_0){
 		if(module_loaded("mapfilter"))
 			modprobe_r("mapfilter");
-		_dprintf("BS2.0 mode");
+		_dprintf("BS2.0 mode\n");
 		eval("iwpriv", (char*) WIF_2G, "set", "mapEnable=2");
 		eval("iwpriv", (char*) WIF_5G, "set", "mapEnable=2");
 		start_wapp();
-		_dprintf("BS2.0 Daemon starting...");
+		_dprintf("BS2.0 Daemon starting...\n");
 		doSystem("bs20 &");
 		eval("iwpriv", (char*) WIF_2G, "set", "DisConnectAllSta=");
 		eval("iwpriv", (char*) WIF_5G, "set", "DisConnectAllSta=");
-		_dprintf("Stand Alone BS2.0 is ready");
+		_dprintf("Stand Alone BS2.0 is ready\n");
 		if(!module_loaded("mtfwd"))
 			modprobe("mtfwd");
 		if(pids("fwdd"))
@@ -2180,11 +2180,11 @@ void start_mapd(void)
 				killall_tk("fwdd");
 		if(module_loaded("mtfwd"))
 			modprobe_r("mtfwd");
-		_dprintf("Certification");
+		_dprintf("Certification\n");
 // GMAC1 need to config swith vlan
 // platform mt7621(only for certification mode use)
 #if defined(RTCONFIG_RALINK_MT7621)
-		_dprintf("mapmode is certification mode, config switch");
+		_dprintf("mapmode is certification mode, config switch\n");
 		//init_switch();
 		doSystem("switch reg w 34 8160816");
 		doSystem("switch reg w 4 60");
