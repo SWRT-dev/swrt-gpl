@@ -365,7 +365,8 @@ OBJS += amas-ssd-realtek.o
 endif
 endif
 else ifeq ($(RTCONFIG_RALINK),y)
-OBJS += init-ralink.o wps-ralink.o ralink.o ate-ralink.o
+OBJS += init-ralink.o wps-ralink.o ralink.o
+OBJS += $(if $(wildcard sysdeps/ralink/ate-ralink.c),ate-ralink.o,prebuild/ate-ralink.o)
 ifeq ($(RTACRH18),y)
 OBJS += swlib.o
 CFLAGS += -I$(TOP)/libnl-tiny-0.1/include
@@ -946,13 +947,22 @@ ifeq ($(RTCONFIG_QCA_PLC2),y)
 OBJS += detect_plc.o
 endif
 
+ifeq ($(RTCONFIG_EASYMESH),y)
+ifeq ($(RTCONFIG_RALINK),y)
+OBJS += $(if $(wildcard sysdeps/ralink/easymesh-ralink.c),easymesh-ralink.o,prebuild/easymesh-ralink.o)
+else ifeq ($(RTCONFIG_QCA),y)
+OBJS += $(if $(wildcard sysdeps/qca/easymesh-qca.c),easymesh-qca.o,prebuild/easymesh-qca.o)
+else ifeq ($(RTCONFIG_LANTIQ),y)
+OBJS += $(if $(wildcard sysdeps/lantiq/easymesh-lantiq.c),easymesh-lantiq.o,prebuild/easymesh-lantiq.o)
+else ifeq ($(RTCONFIG_BCMARM),y)
+OBJS += $(if $(wildcard sysdeps/broadcom/easymesh-broadcom.c),easymesh-broadcom.o,prebuild/easymesh-broadcom.o)
+endif
+endif
+
 all: PB rc $(if $(RTCONFIG_BRCM_HOSTAPD), $(WPS_PBCD)) init.prep
 
 PB:
 	[ ! -d prebuild ] || cp prebuild/*.o ./
-ifneq ($(wildcard ./sysdeps/ralink/ate-ralink.c),)
-	rm -f ate-ralink.o
-endif
 
 ifeq ($(RTCONFIG_BRCM_HOSTAPD),y)
 $(WPS_PBCD): $(OBJS_WPS_PBCD)
@@ -1452,6 +1462,11 @@ endif
 ifeq ($(RTCONFIG_ISP_CUSTOMIZE_TOOL),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc tci
 endif
+ifeq ($(RTCONFIG_EASYMESH),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc easymesh
+	@cd $(INSTALLDIR)/sbin && ln -sf rc easymesh_agent
+	@cd $(INSTALLDIR)/sbin && ln -sf rc easymesh_agentctrl
+endif
 	@cd $(INSTALLDIR)/sbin && ln -sf rc toolbox
 
 clean:
@@ -1610,10 +1625,6 @@ endif
 endif
 
 ifeq ($(RTCONFIG_RALINK),y)
-ifeq ($(wildcard ./sysdeps/ralink/ate-ralink.c),)
-ate-ralink.o:
-	@-cp -f ./prebuild/ate-ralink.o .
-endif
 ifneq ($(wildcard ./prebuild/air_monitor.o),)
 air_monitor.o:
 	@-cp -f ./prebuild/air_monitor.o .

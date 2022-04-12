@@ -96,4 +96,11 @@ extern int rtk_check_nvram_partation(void);
 int fa_mode;
 void fa_mode_init();
 #endif
+
+/* sysdeps/easymesh-PLATFORM.c */
+#if defined(RTCONFIG_EASYMESH)
+extern int config_agent_main(int argc, char *argv[]);
+extern int connect_agent(char *ip, int port, char *cmd);
+extern int easymesh_agentctrl_main(int argc, char *argv[]);
+#endif
 #endif

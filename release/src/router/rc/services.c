@@ -5862,6 +5862,30 @@ void stop_smartdns(void)
 }
 #endif
 
+#if defined(RTCONFIG_EASYMESH)
+void start_easymesh_agent(void)
+{
+	char *easymesh_agent_argv[] = { "easymesh_agent", NULL };
+	pid_t pid;
+	if(nvram_match("easymesh_enable", "0"))
+		return;
+	if (getpid() != 1) {
+		notify_rc("start_easymesh_agent");
+		return;
+	}
+	stop_easymesh_agent();
+	_eval(easymesh_agent_argv, NULL, 0, &pid);
+}
+
+void stop_easymesh_agent(void)
+{
+	connect_agent("127.0.0.1", 9008, "close_config_agent");
+	if (pids("easymesh_agent")){
+		killall_tk("easymesh_agent");
+	}
+}
+#endif
+
 #ifdef RTCONFIG_SOFTCENTER
 void
 start_skipd(void)
@@ -15105,6 +15129,13 @@ check_ddr_done:
 	{
 		if(action & RC_SERVICE_STOP) stop_smartdns();
 		if(action & RC_SERVICE_START) start_smartdns();
+	}
+#endif
+#if defined(RTCONFIG_EASYMESH)
+	else if (strcmp(script, "easymesh_agent") == 0)
+	{
+		if(action & RC_SERVICE_STOP) stop_easymesh_agent();
+		if(action & RC_SERVICE_START) start_easymesh_agent();
 	}
 #endif
 #ifdef RTCONFIG_DNSPRIVACY

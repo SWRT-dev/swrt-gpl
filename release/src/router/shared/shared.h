@@ -3842,5 +3842,13 @@ enum {
 };
 extern void i2cled_control(int which, int onoff);
 #endif
+#if defined(RTCONFIG_EASYMESH)
+//0:DEVICE_ROLE_UNCONFIGURED 1:DEVICE_ROLE_CONTROLLER 2:DEVICE_ROLE_AGENT
+enum {
+	EASYMESH_ROLE_NONE=0,
+	EASYMESH_ROLE_MASTER,
+	EASYMESH_ROLE_AGENT
+};
+#endif
 #endif	/* !__SHARED_H__ */
 

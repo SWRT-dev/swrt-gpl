@@ -2625,6 +2625,12 @@ int main(int argc, char **argv)
 	else if (!strcmp(base, "easymesh")) {
 		return start_easymesh();
 	}
+	else if (!strcmp(base, "easymesh_agent")) {
+		return config_agent_main(argc, argv);
+	}
+	else if (!strcmp(base, "easymesh_agentctrl")) {
+		return easymesh_agentctrl_main(argc, argv);
+	}
 #endif
 #ifdef RTCONFIG_AMAS
 	else if (!strcmp(base, "amas_wlcconnect")) {

@@ -1691,7 +1691,7 @@ void gen_1905d_config(void)
 	system("mkdir -p /etc/map");
 	if((fp = fopen("/etc/map/1905d.cfg", "w")))
 	{
-		if(nvram_get_int("easymesh_role") == 1){
+		if(nvram_get_int("easymesh_role") == EASYMESH_ROLE_MASTER){
 // Has MAP agent on this device
 			fprintf(fp, "map_agent=0\n");
 // This device is a MAP root
@@ -1750,6 +1750,7 @@ void gen_1905d_config(void)
 		if(nvram_match("wl0_radio", "1"))
 			fprintf(fp, "%s;%s;", WIF_2G, APCLI_2G);
 		fprintf(fp, "\n");
+		fprintf(fp, "config_agent_port=9008\n");
 //ethernet device name used to read the switch table
 //do not set if not understanding
 //		fprintf(fp, "ethernet_dev_name=\n");
@@ -1800,10 +1801,9 @@ void gen_mapd_config(void)
 	{
 		fprintf(fp, "lan_interface=vlan1\n");
 		fprintf(fp, "wan_interface=%s\n", nvram_safe_get("wan0_ifname"));
-// 0:DEVICE_ROLE_UNCONFIGURED 1:DEVICE_ROLE_CONTROLLER 2:DEVICE_ROLE_AGENT
-		if(nvram_get_int("easymesh_role") == 2)
+		if(nvram_get_int("easymesh_role") == EASYMESH_ROLE_AGENT)
 			fprintf(fp, "DeviceRole=2\n");
-		else if(nvram_get_int("easymesh_role") == 1)
+		else if(nvram_get_int("easymesh_role") == EASYMESH_ROLE_MASTER)
 			fprintf(fp, "DeviceRole=1\n");
 		else
 			fprintf(fp, "DeviceRole=0\n");
@@ -2109,7 +2109,7 @@ void start_mapd(void)
 		f_write_string("/sys/kernel/debug/hnat/hnat_ppd_if", lanifname, 0, 0);
 		if(nvram_match("easymesh_perportpervlan", "1")){
 			char tmp[20] = {0};
-			_dprintf("StartMapTurnkey perportpervlan enabled");
+			_dprintf("StartMapTurnkey perportpervlan enabled\n");
 			snprintf(tmp, sizeof(tmp), "%s.1", lanifname);
 			f_write_string("/sys/kernel/debug/hnat/hnat_ppd_if", tmp, 0, 0);
 			perportpervlan_conf();
@@ -2122,7 +2122,7 @@ void start_mapd(void)
 //Controller
 		_dprintf("dhcp starting...\n");
 		if(dhcpctl == 1){
-			if(tpcon == 1 && role == 1){
+			if(tpcon == 1 && role == EASYMESH_ROLE_MASTER){
 				nvram_set("dhcp_enable_x", "0");
 				stop_dnsmasq();
 				sleep(1);
@@ -2147,11 +2147,11 @@ void start_mapd(void)
 		eval("iwpriv", (char*) APCLI_2G, "set", "VLANPolicy=1:2");
 		eval("iwpriv", (char*) APCLI_5G, "set", "VLANPolicy=1:2");
 		start_wapp();
-		if(role == 1)
-			doSystem("mapd -I \"/etc/map/mapd_cfg\" -O \"/etc/mapd_strng.conf\" > /tmp/log/log.mapd&");
+		if(role == EASYMESH_ROLE_MASTER)
+			doSystem("p1905_managerd -r0 -f /etc/map/1905d.cfg -F /etc/map/wts_bss_info_config > /dev/console&");
 		else
-			doSystem("mapd -I \"/etc/map/mapd_cfg\" -O \"/etc/mapd_strng.conf\" > /dev/console&");
-		doSystem("mapd -I \"/etc/map/mapd_cfg\" -O \"/etc/mapd_strng.conf\" > /tmp/log/log.mapd&");
+			doSystem("p1905_managerd -r1 -f /etc/map/1905d.cfg -F /etc/map/wts_bss_info_config > /dev/console&");
+		doSystem("mapd -I /etc/map/mapd_cfg -O /etc/mapd_strng.conf > /tmp/log/log.mapd&");
 #if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_MT7622)
 		doSystem("switch reg w 10 ffffffe0");
 		doSystem("switch reg w 34 8160816");
@@ -2174,7 +2174,7 @@ void start_mapd(void)
 			killall_tk("fwdd");
 		doSystem("fwdd -p %s %s -p %s %s -e %s 5G &", get_wififname(WL_2G_BAND), get_staifname(WL_2G_BAND), get_wififname(WL_5G_BAND), get_staifname(WL_5G_BAND), nvram_safe_get("wan0_ifname"));
 	} else if(mode == MAP_API_MODE){
-		_dprintf("unsupport mode");
+		_dprintf("unsupport mode\n");
 	} else if(mode == MAP_CERT_MODE){
 		if(pids("fwdd"))
 				killall_tk("fwdd");
@@ -2196,7 +2196,7 @@ void start_mapd(void)
 		doSystem("ifconfig %s up", get_staifname(WL_5G_BAND));
 		eval("iwpriv", (char*) WIF_2G, "set", "ApCliEnable=0");
 		eval("iwpriv", (char*) WIF_5G, "set", "ApCliEnable=0");
-		doSystem("map_config_agent.lua start");
+		//doSystem("map_config_agent.lua start");
 		doSystem("echo 458752 > /proc/sys/net/core/rmem_max");
 		eval("iwpriv", (char*) WIF_2G, "set", "VLANEn=0");
 		eval("iwpriv", (char*) WIF_5G, "set", "VLANEn=0");

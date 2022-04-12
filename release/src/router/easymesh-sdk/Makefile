@@ -36,7 +36,7 @@ else
 	cp prebuilt/$(BUILD_NAME)/wappctrl wappd/src/
 	cp prebuilt/$(BUILD_NAME)/wapp wappd/src/
 	cp prebuilt/$(BUILD_NAME)/wifi_config_save.lua wappd/src/
-	cp prebuilt/$(BUILD_NAME)/mbo_nr.sh wappd/src/
+#	cp prebuilt/$(BUILD_NAME)/mbo_nr.sh wappd/src/
 	cp -rf prebuilt/$(BUILD_NAME)/config_and_icon_files/* wappd/src/config_and_icon_files/
 	cp prebuilt/$(BUILD_NAME)/libmapd_interface_client.so libmapd/
 	cp prebuilt/$(BUILD_NAME)/mapd mapd/
@@ -56,7 +56,6 @@ install:
 ifeq ($(RTCONFIG_RALINK),y)
 	install -d $(INSTALLDIR)/easymesh-sdk/usr/lib
 	install -d $(INSTALLDIR)/easymesh-sdk/rom/etc/wappd/
-	install -d $(INSTALLDIR)/easymesh-sdk/rom/etc/map/
 ifneq ($(PREBUILT_BIN),1)
 	$(MAKE) -C mapfilter install
 	$(MAKE) -C mtfwd install
@@ -75,7 +74,7 @@ endif
 	install -D wappd/src/wappctrl $(INSTALLDIR)/easymesh-sdk/usr/sbin/wappctrl
 	install -D wappd/src/wapp $(INSTALLDIR)/easymesh-sdk/usr/sbin/wapp
 	install -D wappd/src/wifi_config_save.lua $(INSTALLDIR)/easymesh-sdk/usr/sbin/wifi_config_save
-	install -D wappd/src/mbo_nr.sh $(INSTALLDIR)/easymesh-sdk/usr/sbin/mbo_nr.sh
+#	install -D wappd/src/mbo_nr.sh $(INSTALLDIR)/easymesh-sdk/usr/sbin/mbo_nr.sh
 	cp -rf wappd/src/config_and_icon_files/* $(INSTALLDIR)/easymesh-sdk/rom/etc/wappd/
 	cp -rf libmapd/libmapd_interface_client.so $(INSTALLDIR)/easymesh-sdk/usr/lib/
 	install -D mapd/mapd $(INSTALLDIR)/easymesh-sdk/usr/sbin/mapd
