@@ -293,9 +293,7 @@ int getCountryRegion5G(const char *countryCode, int *warning, int IEEE80211H)
 
 	if ((!strcasecmp(countryCode, "AE")) ||
 			(!strcasecmp(countryCode, "AL")) ||
-#ifdef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "AR")) ||
-#endif
 			(!strcasecmp(countryCode, "AU")) ||
 			(!strcasecmp(countryCode, "BH")) ||
 			(!strcasecmp(countryCode, "BY")) ||
@@ -310,45 +308,33 @@ int getCountryRegion5G(const char *countryCode, int *warning, int IEEE80211H)
 			(!strcasecmp(countryCode, "HK")) ||
 			(!strcasecmp(countryCode, "HN")) ||
 			(!strcasecmp(countryCode, "IL")) ||
-#ifndef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "IN")) ||
-#endif
 			(!strcasecmp(countryCode, "JO")) ||
 			(!strcasecmp(countryCode, "KW")) ||
 			(!strcasecmp(countryCode, "KZ")) ||
 			(!strcasecmp(countryCode, "LB")) ||
 			(!strcasecmp(countryCode, "MA")) ||
 			(!strcasecmp(countryCode, "MK")) ||
-#ifndef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "MO")) ||
 			(!strcasecmp(countryCode, "MX")) ||
-#endif
 			(!strcasecmp(countryCode, "MY")) ||
-#ifndef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "NO")) ||
-#endif
 			(!strcasecmp(countryCode, "NZ")) ||
 			(!strcasecmp(countryCode, "OM")) ||
 			(!strcasecmp(countryCode, "PA")) ||
 			(!strcasecmp(countryCode, "PK")) ||
 			(!strcasecmp(countryCode, "PR")) ||
 			(!strcasecmp(countryCode, "QA")) ||
-#ifndef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "RO")) ||
 			(!strcasecmp(countryCode, "RU")) ||
-#endif
 			(!strcasecmp(countryCode, "SA")) ||
 			(!strcasecmp(countryCode, "SG")) ||
 			(!strcasecmp(countryCode, "SV")) ||
 			(!strcasecmp(countryCode, "SY")) ||
 			(!strcasecmp(countryCode, "TH")) ||
-#ifndef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "UA")) ||
-#endif
 			(!strcasecmp(countryCode, "US")) ||
-#ifdef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "UY")) ||
-#endif
 			(!strcasecmp(countryCode, "VN")) ||
 			(!strcasecmp(countryCode, "YE")) ||
 			(!strcasecmp(countryCode, "ZW")) ||
@@ -362,75 +348,49 @@ int getCountryRegion5G(const char *countryCode, int *warning, int IEEE80211H)
 		return 0;
 	}
 	else if (
-#ifdef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "AM")) ||
-#endif
 			(!strcasecmp(countryCode, "AT")) ||
-#ifdef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "AZ")) ||
-#endif
 			(!strcasecmp(countryCode, "BE")) ||
 			(!strcasecmp(countryCode, "BG")) ||
-#ifndef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "BR")) ||
-#endif
 			(!strcasecmp(countryCode, "CH")) ||
 			(!strcasecmp(countryCode, "CY")) ||
-#ifdef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "CZ")) ||
-#endif
 			(!strcasecmp(countryCode, "DE")) ||
 			(!strcasecmp(countryCode, "DK")) ||
 			(!strcasecmp(countryCode, "EE")) ||
-#ifdef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "EG")) ||
-#endif
 			(!strcasecmp(countryCode, "ES")) ||
 			(!strcasecmp(countryCode, "FI")) ||
-#ifdef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "FR")) ||
-#endif
 			(!strcasecmp(countryCode, "GB")) ||
-#ifdef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "GE")) ||
-#endif
 			(!strcasecmp(countryCode, "GR")) ||
-#ifdef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "HR")) ||
-#endif
 			(!strcasecmp(countryCode, "HU")) ||
 			(!strcasecmp(countryCode, "IE")) ||
 			(!strcasecmp(countryCode, "IS")) ||
 			(!strcasecmp(countryCode, "IT")) ||
-#ifdef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "JP")) ||
 			(!strcasecmp(countryCode, "KP")) ||
 			(!strcasecmp(countryCode, "KR")) ||
-#endif
 			(!strcasecmp(countryCode, "LI")) ||
 			(!strcasecmp(countryCode, "LT")) ||
 			(!strcasecmp(countryCode, "LU")) ||
 			(!strcasecmp(countryCode, "LV")) ||
-#ifdef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "MC")) ||
-#endif
 			(!strcasecmp(countryCode, "NL")) ||
-#ifdef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "NO")) ||
-#endif
 			(!strcasecmp(countryCode, "PL")) ||
 			(!strcasecmp(countryCode, "PT")) ||
-#ifdef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "RO")) ||
-#endif
 			(!strcasecmp(countryCode, "SE")) ||
 			(!strcasecmp(countryCode, "SI")) ||
 			(!strcasecmp(countryCode, "SK")) ||
-#ifdef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "TN")) ||
 			(!strcasecmp(countryCode, "TR")) ||
 			(!strcasecmp(countryCode, "TT")) ||
-#endif
 			(!strcasecmp(countryCode, "UZ")) ||
 			(!strcasecmp(countryCode, "ZA")) ||
 			0
@@ -438,88 +398,39 @@ int getCountryRegion5G(const char *countryCode, int *warning, int IEEE80211H)
 	{
 		return 1;
 	}
-	else if (
-#ifndef RTCONFIG_LOCALE2012
-			(!strcasecmp(countryCode, "AM")) ||
-			(!strcasecmp(countryCode, "AZ")) ||
-			(!strcasecmp(countryCode, "CZ")) ||
-			(!strcasecmp(countryCode, "EG")) ||
-			(!strcasecmp(countryCode, "FR")) ||
-			(!strcasecmp(countryCode, "GE")) ||
-			(!strcasecmp(countryCode, "HR")) ||
-			(!strcasecmp(countryCode, "MC")) ||
-			(!strcasecmp(countryCode, "TN")) ||
-			(!strcasecmp(countryCode, "TR")) ||
-			(!strcasecmp(countryCode, "TT"))
-#else
-			(!strcasecmp(countryCode, "IN")) ||
-			(!strcasecmp(countryCode, "MX"))
-#endif
-	)
+	else if ((!strcasecmp(countryCode, "IN")) || (!strcasecmp(countryCode, "MX")))
 	{
 		return 2;
 	}
-	else if (
-#ifndef RTCONFIG_LOCALE2012
-			(!strcasecmp(countryCode, "AR")) ||
-#endif
-			(!strcasecmp(countryCode, "TW")) ||
-			0
-	)
+	else if ((!strcasecmp(countryCode, "TW")))
 	{
 		return 3;
 	}
 	else if (
-#ifdef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "BR")) ||
-#endif
 			(!strcasecmp(countryCode, "BZ")) ||
 			(!strcasecmp(countryCode, "BO")) ||
 			(!strcasecmp(countryCode, "BN")) ||
 //			(!strcasecmp(countryCode, "CN")) ||
 			(!strcasecmp(countryCode, "ID")) ||
 			(!strcasecmp(countryCode, "IR")) ||
-#ifdef RTCONFIG_LOCALE2012
 			(!strcasecmp(countryCode, "MO")) ||
-#endif
 			(!strcasecmp(countryCode, "PE")) ||
-			(!strcasecmp(countryCode, "PH"))
-#ifdef RTCONFIG_LOCALE2012
-						 ||
+			(!strcasecmp(countryCode, "PH")) ||
 			(!strcasecmp(countryCode, "VE"))
-#endif
-						 ||
-			0
 	)
 	{
 		return 4;
 	}
-#ifndef RTCONFIG_LOCALE2012
-	else if (	(!strcasecmp(countryCode, "KP")) ||
-			(!strcasecmp(countryCode, "KR")) ||
-			(!strcasecmp(countryCode, "UY")) ||
-			(!strcasecmp(countryCode, "VE"))
-	)
-	{
-		return 5;
-	}
-#else
 	else if (!strcasecmp(countryCode, "RU"))
 	{
 		return 6;
 	}
-#endif
 	else if (!strcasecmp(countryCode, "DB"))
 	{
 		return 7;
 	}
-	else if (
-#ifndef RTCONFIG_LOCALE2012
-			(!strcasecmp(countryCode, "JP"))
-#else
-			(!strcasecmp(countryCode, "UA"))
-#endif
-	)
+	else if ((!strcasecmp(countryCode, "UA")))
 	{
 		return 9;
 	}
@@ -698,7 +609,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	fprintf(fp, "#The word of \"Default\" must not be removed\n");
 	fprintf(fp, "Default\n");
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RALINK_DBDC_MODE)
 	fprintf(fp, "DBDC_MODE=1\n");
 #endif
 	snprintf(prefix, sizeof(prefix), "wl%d_", band);
@@ -1329,7 +1240,11 @@ int gen_ralink_config(int band, int is_iNIC)
 		}
 		fprintf(fp, "NoForwarding=%s\n", tmpstr);
 		fprintf(fp, "NoForwardingMBCast=%s\n", tmpstr);
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RALINK_DBDC_MODE)
+		fprintf(fp, "NoForwardingBTNBSSID=0\n");
+#else
 		fprintf(fp, "NoForwardingBTNBSSID=%d\n", atoi(str));
+#endif
 	}
 	else
 	{
@@ -2627,7 +2542,7 @@ int gen_ralink_config(int band, int is_iNIC)
 		{
 			if (wl_bw == 2)	// 40 MHz					
 				fprintf(fp, "VHT_BW=%d\n", 0);
-#if defined(RTCONFIG_VHT160) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#if defined(RTCONFIG_VHT160) && !defined(RALINK_DBDC_MODE)
 			else if (sw_mode != SW_MODE_REPEATER && (wl_bw == 5 || nvram_match(strcat_r(prefix, "bw_160", tmp), "1"))) // 20/40/80/160 MHz
 				fprintf(fp, "VHT_BW=%d\n", 2);
 #endif

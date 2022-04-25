@@ -3184,6 +3184,8 @@ INT multi_profile_check(struct _RTMP_ADAPTER *ad, CHAR *final)
 	profile_path = get_dev_l2profile(ad);
 #endif
 
+	printk("%s: buf1: %s\n", __func__, profile_path);
+
 	if (multi_profile_read(profile_path, buf1) != NDIS_STATUS_SUCCESS)
 		goto end1;
 
@@ -3198,6 +3200,8 @@ INT multi_profile_check(struct _RTMP_ADAPTER *ad, CHAR *final)
 #else
 	profile_path = multi_profile_fname_get(ad, MTB_EXT_PROFILE);
 #endif
+
+	printk("%s: buf2: %s\n", __func__, profile_path);
 
 	if (multi_profile_read(profile_path, buf2) != NDIS_STATUS_SUCCESS)
 		goto end2;
@@ -3323,3 +3327,4 @@ UCHAR multi_profile_get_pf2_num(struct _RTMP_ADAPTER *ad)
 }
 
 #endif /*MULTI_PROFILE*/
+

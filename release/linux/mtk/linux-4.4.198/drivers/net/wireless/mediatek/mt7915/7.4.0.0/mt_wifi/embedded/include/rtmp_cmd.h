@@ -164,6 +164,8 @@ typedef enum _CMD_RTPRIV_IOCTL_AP {
 	/* Phy State commands */
 	CMD_RTPRIV_IOCTL_PHY_STATE,
 
+	CMD_RTPRIV_IOCTL_ASUSCMD,
+
 	/* can not exceed 0x5000 */
 } CMD_RTPRIV_IOCTL_AP;
 
@@ -1115,3 +1117,4 @@ typedef struct __RT_CMD_AP_IOCTL_UPDATE_PMKID {
 #endif /*HOSTAPD_PMKID_IN_DRIVER_SUPPORT*/
 
 #endif /* __RTMP_CMD_H__ */
+

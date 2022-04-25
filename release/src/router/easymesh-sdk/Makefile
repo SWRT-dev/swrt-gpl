@@ -43,8 +43,8 @@ else
 	cp prebuilt/$(BUILD_NAME)/mapd_cli mapd/
 	cp prebuilt/$(BUILD_NAME)/bs20 mapd/
 	cp prebuilt/$(BUILD_NAME)/mapd_user_iface mapd/
-	cp prebuilt/$(BUILD_NAME)/config_agent.lua mapd/
-	cp prebuilt/$(BUILD_NAME)/map_config_agent.lua mapd/
+#	cp prebuilt/$(BUILD_NAME)/config_agent.lua mapd/
+#	cp prebuilt/$(BUILD_NAME)/map_config_agent.lua mapd/
 	cp prebuilt/$(BUILD_NAME)/map_cert_script.sh mapd/
 	cp prebuilt/$(BUILD_NAME)/fwdd fwdd/
 	cp prebuilt/$(BUILD_NAME)/mapfilter.ko mapfilter/src/
@@ -81,8 +81,8 @@ endif
 	install -D mapd/mapd_cli $(INSTALLDIR)/easymesh-sdk/usr/sbin/mapd_cli
 	install -D mapd/bs20 $(INSTALLDIR)/easymesh-sdk/usr/sbin/bs20
 	install -D mapd/mapd_user_iface $(INSTALLDIR)/easymesh-sdk/usr/sbin/mapd_user_iface
-	install -D mapd/config_agent.lua $(INSTALLDIR)/easymesh-sdk/usr/sbin/config_agent.lua
-	install -D mapd/map_config_agent.lua $(INSTALLDIR)/easymesh-sdk/usr/sbin/map_config_agent.lua
+#	install -D mapd/config_agent.lua $(INSTALLDIR)/easymesh-sdk/usr/sbin/config_agent.lua
+#	install -D mapd/map_config_agent.lua $(INSTALLDIR)/easymesh-sdk/usr/sbin/map_config_agent.lua
 	install -D mapd/map_cert_script.sh $(INSTALLDIR)/easymesh-sdk/usr/sbin/map_cert_script.sh
 	install -D fwdd/fwdd $(INSTALLDIR)/easymesh-sdk/usr/sbin/fwdd
 	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/p1905_managerd

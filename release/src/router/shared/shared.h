@@ -2359,6 +2359,7 @@ extern int get_channel_info(const char *ifname, int *channel, int *bw, int *nctr
 extern char *get_wififname(int band);
 extern char *get_staifname(int band);
 #if defined(RTCONFIG_EASYMESH)
+extern char *get_wdsifname(int band);
 extern char *get_meshifname(int band);
 #endif
 #elif defined(RTCONFIG_QCA)

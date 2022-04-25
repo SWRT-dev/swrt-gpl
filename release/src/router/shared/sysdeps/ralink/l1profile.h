@@ -65,8 +65,8 @@ INDEX0_wds_ifname=wds;wdsi\n\
 INDEX0_apcli_ifname=apcli;apclii\n\
 INDEX0_mesh_ifname=mesh;meshi\n\
 INDEX0_nvram_zone=dev1;dev3\n\
-INDEX0_single_sku_path=/rom/etc/wireless/mediatek/mt7615e-sku.dat\n\
-INDEX0_bf_sku_path=/rom/etc/wireless/mediatek/mt7615e-sku-bf.dat\n"
+INDEX0_single_sku_path=/ra_SKU/SingleSKU_mt7615e-sku.dat\n\
+INDEX0_bf_sku_path=/ra_SKU/SingleSKU_mt7615e-sku-bf.dat\n"
 #elif defined(RTCONFIG_WLMODULE_MT7615E_AP)
 "Default\n\
 INDEX0=MT7615\n\
@@ -80,6 +80,8 @@ INDEX0_wds_ifname=wds\n\
 INDEX0_apcli_ifname=apcli\n\
 INDEX0_mesh_ifname=mesh\n\
 INDEX0_nvram_zone=dev1\n\
+INDEX0_single_sku_path=/ra_SKU/SingleSKU_mt7615e-sku.dat\n\
+INDEX0_bf_sku_path=/ra_SKU/SingleSKU_mt7615e-sku-bf.dat\n\
 INDEX1=MT7615\n\
 INDEX1_profile_path=/etc/Wireless/iNIC/iNIC_ap.dat\n\
 INDEX1_EEPROM_offset=0x8000\n\

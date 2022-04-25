@@ -1203,6 +1203,16 @@ char *get_staifname(int band)
 }
 
 #if defined(RTCONFIG_EASYMESH)
+char *get_wdsifname(int band)
+{
+	const char *wds[] = { WDSIF_2G, WDSIF_5G };
+	if (band < 0 || band >= ARRAY_SIZE(wds)) {
+		printf("%s: Invalid wl%d band!\n", __func__, band);
+		band = 0;
+	}
+	return (char*) wds[band];
+}
+
 char *get_meshifname(int band)
 {
 	const char *wif[] = { MESH_2G, MESH_5G };

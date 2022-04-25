@@ -2348,7 +2348,7 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 		return 0;
 	}
 #endif
-#if defined(RTCONFIG_RALINK_MT7621)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 	else if (!strcmp(command, "Set_DisableStp")) {
 		FWrite("1", OFFSET_BR_STP, 1);
 		puts("1");

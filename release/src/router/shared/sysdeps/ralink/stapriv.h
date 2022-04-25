@@ -351,7 +351,10 @@ enum WIFI_MODE{
 	WMODE_GN = 1 << 3,
 	WMODE_AN = 1 << 4,
 	WMODE_AC = 1 << 5,
-	WMODE_COMP = 6, /* total types of supported wireless mode, add this value once yow add new type */
+	WMODE_AX_24G = 1 << 6,
+	WMODE_AX_5G = 1 << 7,
+	WMODE_AX_6G = 1 << 8,
+	WMODE_COMP = 9, /* total types of supported wireless mode, add this value once yow add new type */
 };
 
 

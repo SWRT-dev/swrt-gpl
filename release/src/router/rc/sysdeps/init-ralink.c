@@ -52,6 +52,9 @@ void init_devs(void)
 		int status;
 		if((status = WEXITSTATUS(modprobe("nvram_linux"))))	printf("## modprove(nvram_linux) fail status(%d)\n", status);
 	}
+#if defined(RMAC2100) || defined(R6800) || defined(JCGQ10PRO)
+	patch_Factory();
+#endif
 }
 
 void init_others(void)
@@ -121,6 +124,7 @@ void generate_switch_para(void)
 		case MODEL_RTAX53U:
 		case MODEL_RTAX54:
 		case MODEL_PGBM1:
+		case MODEL_JCGQ10PRO:
 			nvram_unset("vlan3hwname");
 			if ((wans_cap && wanslan_cap) ||
 			    (wanslan_cap && (!nvram_match("switch_wantag", "none") && !nvram_match("switch_wantag", "")))
@@ -277,6 +281,7 @@ void config_switch()
 	case MODEL_RTAX53U:
 	case MODEL_RTAX54:
 	case MODEL_PGBM1:
+	case MODEL_JCGQ10PRO:
 		merge_wan_port_into_lan_ports = 1;
 		break;
 	default:
@@ -764,12 +769,17 @@ void init_wl(void)
 		modprobe("mt_wifi_7615E");
 #endif
 #if defined(RTCONFIG_WLMODULE_MT7915D_AP)
-	system("dd if=/dev/mtdblock3 of=/lib/firmware/e2p bs=131072 skip=0 count=1");
-	system("ln -sf /rom/etc/wireless/mediatek /etc/wireless/");
+	int mtd_part = 0, mtd_size = 0;
+	if (mtd_getinfo("Factory", &mtd_part, &mtd_size)){
+		snprintf(cmd, sizeof(cmd), "dd if=/dev/mtdblock%d of=/lib/firmware/e2p bs=131072 skip=0 count=1", mtd_part);
+		system(cmd);
+		system("ln -sf /rom/etc/wireless/mediatek /etc/wireless/");
+	}else
+		printf("init_devs: can't find Factory MTD partition\n");
+	//if (!module_loaded("mt_wifi"))
+		//modprobe("mt_wifi", tmpStr1, tmpStr2, tmpStr3);
 	if (!module_loaded("mt_wifi"))
-		modprobe("mt_wifi", tmpStr1, tmpStr2, tmpStr3);
-	//if (!module_loaded("mt_wifi_7915D"))
-		//modprobe("mt_wifi_7619D");
+		modprobe("mt_wifi");
 	snprintf(cmd, sizeof(cmd), "iwpriv %s set RuntimePara_%s\n", get_wifname(0), tmpStr1);
 	system(cmd);
 	snprintf(cmd, sizeof(cmd), "iwpriv %s set RuntimePara_%s\n", get_wifname(0), tmpStr2);
@@ -921,8 +931,12 @@ void init_syspara(void)
 	{
 		if (buffer[0]!=0xff)
 			ether_etoa(buffer, macaddr2);
+#if defined(JCGQ10PRO)
+		ether_cal_b(buffer, macaddr, 4);
+#endif
 	}
 
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 	brstp='0';
 	FRead(&brstp, OFFSET_BR_STP, 1);
 	if(brstp=='1')
@@ -930,6 +944,7 @@ void init_syspara(void)
 		_dprintf("Disable br0's STP\n");
 		nvram_set("lan_stp","0");
 	} 
+#endif
 
 	FRead(value_str, REGSPEC_ADDR, MAX_REGSPEC_LEN);
 	for(i = 0; i < MAX_REGSPEC_LEN && value_str[i] != '\0'; i++) {
@@ -948,7 +963,7 @@ void init_syspara(void)
 		nvram_set("wl_mssid", "0");
 	else
 		nvram_set("wl_mssid", "1");
-#if defined(R6800) || defined(RMAC2100)
+#if defined(R6800) || defined(RMAC2100) || defined(JCGQ10PRO)
 	nvram_set("wl_mssid", "1");//fix guest wifi
 #endif
 
@@ -1509,6 +1524,7 @@ void set_wan_tag(char *interface) {
 	case MODEL_RTAX53U:
 	case MODEL_RTAX54:
 	case MODEL_PGBM1:
+	case MODEL_JCGQ10PRO:
 		ifconfig(interface, IFUP, 0, 0);
 		if(wan_vid) { /* config wan port */
 			eval("vconfig", "rem", "vlan2");

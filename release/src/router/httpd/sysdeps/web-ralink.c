@@ -289,10 +289,11 @@ char* GetBW(int BW)
 #if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
 		case BW_80:
 			return "80M";
+#if !defined(RALINK_DBDC_MODE)
 		case BW_160:
 			return "160M";
 #endif
-
+#endif
 		default:
 			return "N/A";
 	}

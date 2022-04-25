@@ -89,7 +89,7 @@ extern void k3c_lan_led(void);
 extern void k3c_init_led(void);
 extern void init_mtd8(void);
 extern void swrt_patch_nvram(void);
-#elif defined(RMAC2100) || defined(R6800) || defined(RAX120) || defined(SWRT360V6)
+#elif defined(RMAC2100) || defined(R6800) || defined(RAX120) || defined(SWRT360V6) || defined(JCGQ10PRO)
 extern void patch_Factory(void);
 #elif defined(RTAX82U) || defined(RTAX86U) || defined(RTAX88U) || defined(GTAX11000) || defined(GTAXE11000)
 extern void swrt_patch_nvram(void);

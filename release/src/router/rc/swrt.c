@@ -214,6 +214,10 @@ void swrt_init()
 		nvram_set("modelname", "RMAC2100");
 #elif defined(R6800)
 		nvram_set("modelname", "R6800");
+#elif defined(PGBM1)
+		nvram_set("modelname", "PGBM1");
+#elif defined(JCGQ10PRO)
+		nvram_set("modelname", "JCGQ10PRO");
 #elif defined(TUFAC1750)
 		nvram_set("modelname", "TUFAC1750");
 #elif defined(RTAC95U)
