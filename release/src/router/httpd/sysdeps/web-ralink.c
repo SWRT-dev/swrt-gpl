@@ -292,6 +292,8 @@ char* GetBW(int BW)
 #if !defined(RALINK_DBDC_MODE)
 		case BW_160:
 			return "160M";
+		case BW_8080:
+			return "80M+80M";
 #endif
 #endif
 		default:
@@ -318,7 +320,16 @@ char* GetPhyMode(int Mode)
 		case MODE_VHT:
 			return "VHT";
 #endif
-
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+		case MODE_HE:
+		case MODE_HE_5G:
+		case MODE_HE_24G:
+		case MODE_HE_SU:
+		case MODE_HE_EXT_SU:
+		case MODE_HE_TRIG:
+		case MODE_HE_MU:
+			return "HE";
+#endif
 		default:
 			return "N/A";
 	}
@@ -406,6 +417,50 @@ int MCSMappingRateTable_5G[] = {
 	20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37
 }; /* 3*3 */
 
+int he_mcs_phyrate_mapping_table[4][4][12] = {
+	{ /*20 Mhz*/
+		/* 1 SS */
+		{/* DCM 0 */ 8, 17, 25, 34, 51, 68, 77, 86, 103, 114, 129, 143 },
+		/* 2 SS */
+		{/* DCM 0 */ 17, 34, 51, 68, 103, 137, 154, 172, 206, 229, 258, 286 },
+		/* 3 SS */
+		{/* DCM 0 */ 25, 51, 77, 103, 154, 206, 232, 258, 309, 344, 387, 430 },
+		/* 4 SS */
+		{/* DCM 0 */ 34, 68, 103, 137, 206, 275, 309, 344, 412, 458, 516, 573 }
+	},
+	{ /*40 Mhz*/
+		/* 1 SS */
+		{/* DCM 0 */ 17, 34, 51, 68, 103, 137, 154, 172, 206, 229, 258, 286 },
+		/* 2 SS */
+		{/* DCM 0 */ 34, 68, 103, 137, 206, 275, 309, 344, 412, 458, 516, 573 },
+		/* 3 SS */
+		{/* DCM 0 */ 51, 103, 154, 206, 309, 412, 464, 516, 619, 688, 774, 860 },
+		/* 4 SS */
+		{/* DCM 0 */ 68, 137, 206, 275, 412, 550, 619, 688, 825, 917, 1032, 1147 }
+	},
+	{ /*80 Mhz*/
+		/* 1 SS */
+		{/* DCM 0 */ 36, 72, 108, 144, 216, 288, 324, 360, 432, 480, 540, 600 },
+		/* 2 SS */
+		{/* DCM 0 */ 72, 144, 216, 288, 432, 576, 648, 720, 864, 960, 1080, 1201 },
+		/* 3 SS */
+		{/* DCM 0 */ 108, 216, 324, 432, 648, 864, 972, 1080, 1297, 1441, 1621, 1801 },
+		/* 4 SS */
+		{/* DCM 0 */ 144, 288, 432, 576, 864, 1152, 1297, 1141, 1729, 1921, 2161, 2401 }
+	},
+	{ /*160 Mhz*/
+		/* 1 SS */
+		{/* DCM 0 */ 72, 144, 216, 288, 432, 576, 648, 720, 864, 960, 1080, 1201 },
+		/* 2 SS */
+		{/* DCM 0 */ 144, 288, 432, 576, 864, 1152, 1297, 1441, 1729, 1921, 2161, 2401 },
+		/* 3 SS */
+		{/* DCM 0 */ 216, 432, 648, 864, 1297, 1729, 1945, 2161, 2594, 2882, 3242, 3602 },
+		/* 4 SS */
+		{/* DCM 0 */ 288, 576, 864, 1152, 1729, 2305, 2594, 2882, 3458, 3843, 4323, 4803 },
+	}
+};
+
+
 #define FN_GETRATE(_fn_, _st_, _if, _mcstbl)						\
 _fn_(_st_ HTSetting)							\
 {									\
@@ -414,57 +469,58 @@ _fn_(_st_ HTSetting)							\
 	int rate_count = sizeof(_mcstbl)/sizeof(int);	\
 	int rate_index = 0;						\
 	int value = 0;	\
-									\
-	if (HTSetting.field.MODE >= MODE_VHT)				\
-	{								\
-		if(_if == 1) {	\
-			MCS = HTSetting.field.MCS & 0xf;	\
-			Antenna = (HTSetting.field.MCS >> 4) + 1;	\
 														\
-			if (HTSetting.field.BW == BW_20) {	\
-				rate_index = 112 + ((Antenna - 1) * 10) + ((unsigned char)HTSetting.field.ShortGI * 160) + ((unsigned char)MCS);	\
-			} else if (HTSetting.field.BW == BW_40) {	\
-				rate_index = 152 + ((Antenna - 1) * 10) + ((unsigned char)HTSetting.field.ShortGI * 160) + ((unsigned char)MCS);	\
-			} else if (HTSetting.field.BW == BW_80) {	\
-				rate_index = 192 + ((Antenna - 1) * 10) + ((unsigned char)HTSetting.field.ShortGI * 160) + ((unsigned char)MCS);	\
-			} else if (HTSetting.field.BW == BW_160) {	\
-				rate_index = 232 + ((Antenna - 1) * 10) + ((unsigned char)HTSetting.field.ShortGI * 160) + ((unsigned char)MCS);	\
-			}	\
-		}	\
-		else	\
-		if (HTSetting.field.BW == BW_20) {			\
-			rate_index = 108 +				\
-			((unsigned char)HTSetting.field.ShortGI * 29) +	\
-			((unsigned char)HTSetting.field.MCS);		\
-		}							\
-		else if (HTSetting.field.BW == BW_40) {			\
-			rate_index = 117 +				\
-			((unsigned char)HTSetting.field.ShortGI * 29) +	\
-			((unsigned char)HTSetting.field.MCS);		\
-		}							\
-		else if (HTSetting.field.BW == BW_80) {			\
-			rate_index = 127 +				\
-			((unsigned char)HTSetting.field.ShortGI * 29) +	\
-			((unsigned char)HTSetting.field.MCS);		\
-		}							\
-	}								\
-	else								\
+	if (HTSetting.field.MODE >= MODE_HE)				\
+	{													\
+		int bw = BW_20;										\
+		MCS = HTSetting.field.MCS & 0xf;				\
+		Antenna = (HTSetting.field.MCS >> 4) + 1;		\
+		if(Antenna == 0)								\
+			Antenna = 1;								\
+		else if(Antenna > 4)							\
+			Antenna = 4;								\
+		Antenna -= 1;									\
+		if(MCS >= 12)									\
+			MCS -= 1;									\
+		if (HTSetting.field.BW == BW_20)				\
+			bw = BW_20;									\
+		else if (HTSetting.field.BW == BW_40)			\
+			bw = BW_40;									\
+		else if (HTSetting.field.BW == BW_80)			\
+			bw = BW_80;									\
+		else if (HTSetting.field.BW == BW_160)			\
+			bw = BW_160;								\
+		value = he_mcs_phyrate_mapping_table[bw][Antenna][MCS];	\
+		return value;									\
+	}													\
+	else if (HTSetting.field.MODE == MODE_VHT)			\
+	{													\
+		MCS = HTSetting.field.MCS & 0xf;				\
+		Antenna = (HTSetting.field.MCS >> 4) + 1;		\
+														\
+		if (HTSetting.field.BW == BW_20) {				\
+			rate_index = 112 + ((Antenna - 1) * 10) + ((unsigned char)HTSetting.field.ShortGI * 160) + ((unsigned char)MCS);	\
+		} else if (HTSetting.field.BW == BW_40) {		\
+			rate_index = 152 + ((Antenna - 1) * 10) + ((unsigned char)HTSetting.field.ShortGI * 160) + ((unsigned char)MCS);	\
+		} else if (HTSetting.field.BW == BW_80) {		\
+			rate_index = 192 + ((Antenna - 1) * 10) + ((unsigned char)HTSetting.field.ShortGI * 160) + ((unsigned char)MCS);	\
+		} else if (HTSetting.field.BW == BW_160) {		\
+			rate_index = 232 + ((Antenna - 1) * 10) + ((unsigned char)HTSetting.field.ShortGI * 160) + ((unsigned char)MCS);	\
+		}												\
+	}													\
+	else												\
 	if (HTSetting.field.MODE >= MODE_HTMIX)				\
 	{								\
-		if(_if == 1)	\
-		{	\
-			MCS = HTSetting.field.MCS;	\
-			\
-			if ((HTSetting.field.MODE == MODE_HTMIX) || (HTSetting.field.MODE == MODE_HTGREENFIELD))	\
-				Antenna = (MCS >> 3) + 1;	\
-			\
-			/* map back to 1SS MCS , multiply by antenna numbers later */		\
-			if (MCS > 7)		\
-				MCS %= 8;		\
-			\
-			rate_index = 16 + ((unsigned char)HTSetting.field.BW * 24) + ((unsigned char)HTSetting.field.ShortGI * 48) + ((unsigned char)MCS);		\
-		}else	\
-			rate_index = 12 + ((unsigned char)HTSetting.field.BW *24) + ((unsigned char)HTSetting.field.ShortGI *48) + ((unsigned char)HTSetting.field.MCS);	\
+		MCS = HTSetting.field.MCS;	\
+		\
+		if ((HTSetting.field.MODE == MODE_HTMIX) || (HTSetting.field.MODE == MODE_HTGREENFIELD))	\
+			Antenna = (MCS >> 3) + 1;	\
+		\
+		/* map back to 1SS MCS , multiply by antenna numbers later */		\
+		if (MCS > 7)		\
+			MCS %= 8;		\
+		\
+		rate_index = 16 + ((unsigned char)HTSetting.field.BW * 24) + ((unsigned char)HTSetting.field.ShortGI * 48) + ((unsigned char)MCS);		\
 	}								\
 	else								\
 		if (HTSetting.field.MODE == MODE_OFDM)				\
@@ -478,13 +534,12 @@ _fn_(_st_ HTSetting)							\
 	if (rate_index >= rate_count)					\
 		rate_index = rate_count-1;				\
 	\
-	if(_if == 1)	{		\
-		if (HTSetting.field.MODE != MODE_VHT)	\
-			value = (_mcstbl[rate_index] * 5) / 10;	\
-		else	\
-			value =  _mcstbl[rate_index];	\
-	}else		\
+	if (HTSetting.field.MODE < MODE_VHT)	\
 		value = (_mcstbl[rate_index] * 5) / 10;	\
+	else	\
+		value =  _mcstbl[rate_index];	\
+	if (HTSetting.field.MODE >= MODE_HTMIX && HTSetting.field.MODE < MODE_VHT)	\
+		value *= Antenna;	\
 	\
 	return value;		\
 }
@@ -818,7 +873,11 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	RT_802_11_MAC_TABLE_2G* mp2=(RT_802_11_MAC_TABLE_2G*)wrq3.u.data.pointer;
 	int i;
 
-	ret+=websWrite(wp, "\nStations List			   \n");
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RALINK_DBDC_MODE)
+	ret+=websWrite(wp, "\nStations List -- DBDC Mode		   \n");
+#else
+	ret+=websWrite(wp, "\nStations List		   \n");
+#endif
 	ret+=websWrite(wp, "----------------------------------------\n");
 	ret+=websWrite(wp, "%-18s%-4s%-8s%-4s%-4s%-5s%-7s%-12s\n",
 			   "MAC", "PSM", "PhyMode", "BW", "SGI", "STBC", "TxRate", "Connect Time");

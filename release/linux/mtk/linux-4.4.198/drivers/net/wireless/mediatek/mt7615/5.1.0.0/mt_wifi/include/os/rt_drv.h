@@ -84,7 +84,7 @@ typedef VOID	pregs;
 
 
 #ifdef SINGLE_SKU_V2
-#define SINGLE_SKU_TABLE_FILE_NAME	"/etc/Wireless/RT2870STA/SingleSKU.dat"
+#define SINGLE_SKU_TABLE_FILE_NAME	"/ra_SKU/SingleSKU_mt7615e-sku.dat"
 #endif /* SINGLE_SKU_V2 */
 
 

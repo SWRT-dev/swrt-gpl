@@ -2777,7 +2777,7 @@ static BOOLEAN wpa_check_rsn_cap(
 
 	sec_cfg_entry->ocv_support = (sec_cfg_self->ocv_support && rsn_cap.field.ocvc) ? TRUE : FALSE;
 
-	MTWF_LOG(DBG_CAT_SEC, CATSEC_OCV, DBG_LVL_OFF,
+	MTWF_LOG(DBG_CAT_SEC, CATSEC_OCV, DBG_LVL_TRACE,
 		("%s : ocv support %d\n", __func__, sec_cfg_entry->ocv_support)); /* todo: change to trace */
 
 	return TRUE;
@@ -6110,7 +6110,7 @@ skip_ptk:
 	/* Change state*/
 	pHandshake4Way->WpaState = AS_PTKINIT_NEGOTIATING;
 	WPABuildPairMsg3(pAd, pSecConfig, pEntry);
-	log_time_end(LOG_TIME_CONNECTION, "peer_msg2", DBG_LVL_OFF, &tl);
+	log_time_end(LOG_TIME_CONNECTION, "peer_msg2", DBG_LVL_TRACE, &tl);
 }
 
 
@@ -6535,7 +6535,7 @@ VOID PeerPairMsg4Action(
 			MboIndicateStaBssidInfo(pAd, &pAd->ApCfg.MBSSID[pEntry->func_tb_idx].wdev, pEntry->Addr);
 #endif /* MBO_SUPPORT */
 
-		MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+		MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 				 ("AP SETKEYS DONE(%s) - AKMMap=%s, PairwiseCipher=%s, GroupCipher=%s, wcid=%d from %02X:%02X:%02X:%02X:%02X:%02X\n\n",
 				  RTMP_OS_NETDEV_GET_DEVNAME(pEntry->wdev->if_dev),
 				  GetAuthModeStr(pSecConfig->AKMMap),
@@ -6558,7 +6558,7 @@ VOID PeerPairMsg4Action(
 		/* 5. init Group 2-way handshake if necessary.*/
 		RTMPSetTimer(&pEntry->SecConfig.StartFor2WayTimer, ENQUEUE_EAPOL_2WAY_START_TIMER);
 	}
-	log_time_end(LOG_TIME_CONNECTION, "peer_msg4", DBG_LVL_OFF, &tl);
+	log_time_end(LOG_TIME_CONNECTION, "peer_msg4", DBG_LVL_TRACE, &tl);
 }
 
 VOID PeerGroupMsg1Action(
@@ -6818,7 +6818,7 @@ static VOID WpaEAPOLStartAction(
 		WPABuildPairMsg1(pAd, &pEntry->SecConfig, pEntry);
 	}
 
-	log_time_end(LOG_TIME_CONNECTION, "eapol_start", DBG_LVL_OFF, &tl);
+	log_time_end(LOG_TIME_CONNECTION, "eapol_start", DBG_LVL_TRACE, &tl);
 }
 
 

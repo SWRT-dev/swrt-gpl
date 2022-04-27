@@ -20826,10 +20826,19 @@ INT RTMP_AP_IoctlHandle(
 			if (subcmd == RT_OID_GET_PHY_MODE) {
 				if (pData != NULL) {
 					UINT modetmp = 0;
-
+#ifdef DBDC_MODE
+					if (pAd->CommonCfg.dbdc_mode == TRUE) {
+						POS_COOKIE pObj = (POS_COOKIE) pAd->OS_Cookie;
+						UINT8 band_idx = pObj->ioctl_if;
+						MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("Query::Get phy mode (%02X)\n",
+								 pAd->ApCfg.MBSSID[band_idx].wdev.PhyMode));
+						modetmp = (UINT) pAd->ApCfg.MBSSID[band_idx].wdev.PhyMode;
+					}
+#else
 					MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("Query::Get phy mode (%02X)\n",
 							 pAd->ApCfg.MBSSID[MAIN_MBSSID].wdev.PhyMode));
 					modetmp = (UINT) pAd->ApCfg.MBSSID[MAIN_MBSSID].wdev.PhyMode;
+#endif
 					wrq->u.data.length = 1;
 
 					/**(ULONG *)pData = (ULONG)pAd->ApCfg.MBSS[MAIN_MBSSID].wdev.PhyMode; */
@@ -21244,16 +21253,18 @@ INT RTMP_AP_IoctlHandle(
 				Status = -EFAULT;
 		} else if ( subcmd == ASUS_SUBCMD_CONN_STATUS ) {
 			UINT32 pCurrState = 0;
-			UCHAR i;
-			PREPEATER_CLIENT_ENTRY pReptCliEntry;
-			RTMP_CHIP_CAP *pChipCap = hc_get_chip_cap(pAd->hdev_ctrl);
-			UCHAR MaxNumChipRept = GET_MAX_REPEATER_ENTRY_NUM(pChipCap);
-			for (i = 0; i < MaxNumChipRept; i++) {
-				pReptCliEntry = &pAd->ApCfg.pRepeaterCliPool[i];
-				if(pReptCliEntry->CliEnable == TRUE){
-					if(pReptCliEntry->CliConnectState == 2)
+			INT i = 0;
+			POS_COOKIE pObj = (POS_COOKIE) pAd->OS_Cookie;
+			struct wifi_dev *wdev = &pAd->StaCfg[pObj->ioctl_if].wdev;
+			struct tx_rx_ctl *tr_ctl = &pAd->tr_ctl;
+			if (pObj->ioctl_if_type == INT_APCLI && wdev && ((GetAssociatedAPByWdev(pAd, wdev)) != NULL) && (pAd->StaCfg[pObj->ioctl_if].SsidLen != 0)){
+				for (i = 0; VALID_UCAST_ENTRY_WCID(pAd, i); i++) {
+					PMAC_TABLE_ENTRY pEntry = &pAd->MacTab.Content[i];
+					STA_TR_ENTRY *tr_entry = &tr_ctl->tr_entry[i];
+					if (IS_ENTRY_PEER_AP(pEntry) && (pEntry->Sst == SST_ASSOC) && (tr_entry->PortSecured == WPA_802_1X_PORT_SECURED) && (pEntry->wdev == &pAd->StaCfg[pObj->ioctl_if].wdev)) {
 						pCurrState = 6;
-					break;
+						break;
+					}
 				}
 			}
 			wrq->u.data.length = sizeof(UINT32);

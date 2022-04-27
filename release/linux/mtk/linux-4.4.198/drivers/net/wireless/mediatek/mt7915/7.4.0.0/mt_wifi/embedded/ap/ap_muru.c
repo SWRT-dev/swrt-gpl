@@ -4484,7 +4484,7 @@ INT32 set_muru_cert_muedca_override(RTMP_ADAPTER *ad, UINT8 capi_override)
 	struct _CMD_ATTRIBUTE attr = {0};
 	UINT8 override = (capi_override) ? TRUE : FALSE;
 
-	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 				 ("%s: override = %d\n", __func__, override));
 
 	/* Allocate memory for msg */

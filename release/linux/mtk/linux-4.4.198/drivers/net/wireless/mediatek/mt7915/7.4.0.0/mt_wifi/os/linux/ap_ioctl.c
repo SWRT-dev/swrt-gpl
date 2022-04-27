@@ -794,11 +794,40 @@ INT rt28xx_ap_ioctl(void *net_dev_obj, void *data_obj, int cmd) /* snowpin for a
 	case SIOCGIWTXPOW:  /*get transmit power (dBm) */
 	case SIOCSIWTXPOW:  /*set transmit power (dBm) */
 
-	case SIOCGIWRANGE:	/*Get range of parameters */
+	/*case SIOCGIWRANGE:	//Get range of parameters */
 	case SIOCGIWRETRY:	/*get retry limits and lifetime */
 	case SIOCSIWRETRY:	/*set retry limits and lifetime */
 		Status = RTMP_IO_EOPNOTSUPP;
 		break;
+
+	case SIOCGIWRANGE: {	/*Get range of parameters */
+		/*				struct iw_range range; */
+		struct iw_range *prange = NULL;
+		UINT32 len;
+		/* allocate memory */
+		os_alloc_mem(NULL, (UCHAR **)&prange, sizeof(struct iw_range));
+
+		if (prange == NULL) {
+			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s: Allocate memory fail!!!\n", __func__));
+			break;
+		}
+
+		memset(prange, 0, sizeof(struct iw_range));
+		prange->we_version_compiled = WIRELESS_EXT;
+		prange->we_version_source = 14;
+		/*
+		 *	what is correct max? This was not
+		 *	documented exactly. At least
+		 *	69 has been observed.
+		 */
+		prange->max_qual.qual = 100;
+		prange->max_qual.level = 0; /* dB */
+		prange->max_qual.noise = 0; /* dB */
+		len = copy_to_user(wrq->u.data.pointer, prange, sizeof(struct iw_range));
+		os_free_mem(prange);
+	}
+	break;
+
 	case RT_PRIV_IOCTL:
 	case RT_PRIV_IOCTL_EXT: {
 		subcmd = wrqin->u.data.flags;

@@ -103,6 +103,7 @@
 &hnat {
         mtketh-wan = "eth1";
         mtketh-ppd = "vlan1";
+		mtketh-lan = "vlan1";
         ext-devices = "rai0", "ra0", "rai1", "ra1", "rai2", "ra2", "rai3", "ra3", "apclii0", "apcli0";
         mtketh-max-gmac = <2>;
         status = "okay";

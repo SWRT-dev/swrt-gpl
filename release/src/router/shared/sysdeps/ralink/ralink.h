@@ -36,11 +36,21 @@ extern const char MESH_2G[];
 #endif
 #define MAX_NUMBER_OF_MAC	64
 
-#define MODE_CCK		0
-#define MODE_OFDM		1
-#define MODE_HTMIX		2
+#define MODE_CCK			0
+#define MODE_OFDM			1
+#define MODE_HTMIX			2
 #define MODE_HTGREENFIELD	3
-#define MODE_VHT		4
+#define MODE_VHT			4
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#define MODE_HE 			5
+#define MODE_HE_SU			8
+#define MODE_HE_24G 		7
+#define MODE_HE_5G 			6
+#define MODE_HE_EXT_SU		9
+#define MODE_HE_TRIG		10
+#define MODE_HE_MU			11
+#endif
+#define MODE_UNKNOWN 		255
 
 #define BW_20			0
 #define BW_40			1
@@ -48,6 +58,8 @@ extern const char MESH_2G[];
 #define BW_80			2
 #define BW_160			3
 #define BW_10			4
+#define BW_5            5
+#define BW_8080	        6
 
 #if defined(RTCONFIG_RALINK_MT7622) || defined(RTCONFIG_WLMODULE_MT7629_AP)
 #define RT_802_11_MAC_ENTRY_for_5G			RT_802_11_MAC_ENTRY

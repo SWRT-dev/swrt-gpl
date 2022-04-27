@@ -128,11 +128,11 @@
  ******************************************************************************/
 
 #if defined(MT7615) || defined(MT7622)
-#define SINGLE_SKU_TABLE_FILE_NAME	"/etc_ro/Wireless/RT2860AP/SingleSKU.dat"
-#define BF_SKU_TABLE_FILE_NAME		"/etc_ro/Wireless/RT2860AP/SingleSKU_BF.dat"
+#define SINGLE_SKU_TABLE_FILE_NAME	"/ra_SKU/SingleSKU_mt7615e-sku.dat"
+#define BF_SKU_TABLE_FILE_NAME		"/ra_SKU/SingleSKU_mt7615e-sku-bf.dat"
 #else
-#define SINGLE_SKU_TABLE_FILE_NAME	"/etc/wireless/mediatek/mt7615e-sku.dat"
-#define BF_SKU_TABLE_FILE_NAME		"/etc/wireless/mediatek/mt7615e-sku-bf.dat"
+#define SINGLE_SKU_TABLE_FILE_NAME	"/ra_SKU/SingleSKU_mt7615e-sku.dat"
+#define BF_SKU_TABLE_FILE_NAME		"/ra_SKU/SingleSKU_mt7615e-sku-bf.dat"
 #endif /* defined(MT7615) || defined(MT7622) */
 
 /*******************************************************************************

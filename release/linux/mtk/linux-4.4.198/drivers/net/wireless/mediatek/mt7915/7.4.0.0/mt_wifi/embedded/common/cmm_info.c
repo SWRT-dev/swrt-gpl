@@ -4863,7 +4863,8 @@ RTMP_STRING *GetAuthMode(CHAR auth)
 			3.) UI needs to prepare at least 4096bytes to get the results
     ==========================================================================
 */
-#define	LINE_LEN	(4+33+20+23+9+7+7+3)	/* Channel+SSID+Bssid+Security+Signal+WiressMode+ExtCh+NetworkType*/
+//#define	LINE_LEN	(4+33+20+23+9+7+7+3)	/* Channel+SSID+Bssid+Security+Signal+WiressMode+ExtCh+NetworkType*/
+#define	LINE_LEN	(4+33+20+23+9+12+7+3)	/* Channel+SSID+Bssid+Security+Signal+WiressMode+ExtCh+NetworkType*/
 
 #ifdef CONFIG_STA_SUPPORT
 #ifdef WSC_STA_SUPPORT
@@ -4930,43 +4931,43 @@ VOID RTMPCommSiteSurveyData(
 
 	if (wireless_mode == Ndis802_11FH ||
 		wireless_mode == Ndis802_11DS)
-		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-11s", "11b");
+		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-12s", "11b");
 	else if (wireless_mode == Ndis802_11OFDM5)
-		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-11s", "11a");
+		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-12s", "11a");
 	else if (wireless_mode == Ndis802_11OFDM5_N)
-		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-11s", "11a/n");
+		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-12s", "11a/n");
 	else if (wireless_mode == Ndis802_11OFDM5_AC)
-		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-11s", "11a/n/ac");
+		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-12s", "11a/n/ac");
 	else if (wireless_mode == Ndis802_11OFDM24)
-		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-11s", "11b/g");
+		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-12s", "11b/g");
 	else if (wireless_mode == Ndis802_11OFDM24_N)
-		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-11s", "11b/g/n");
+		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-12s", "11b/g/n");
 	else if (wireless_mode == Ndis802_11OFDM24_HE)
-		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-11s", "11b/g/n/ax");
+		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-12s", "11b/g/n/ax");
 	else if (wireless_mode == Ndis802_11OFDM5_HE)
-		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-11s", "11a/n/ac/ax");
+		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-12s", "11a/n/ac/ax");
 	else
-		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-11s", "unknow");
+		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-12s", "unknow");
 
 	/* Ext Channel*/
 	if (HAS_HT_OP_EXIST(pBss->ie_exists)) {
 		if (pBss->AddHtInfo.AddHtInfo.ExtChanOffset == EXTCHA_ABOVE)
-			snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-7s", " ABOVE");
+			snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-7s", "ABOVE ");
 		else if (pBss->AddHtInfo.AddHtInfo.ExtChanOffset == EXTCHA_BELOW)
-			snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-7s", " BELOW");
+			snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-7s", "BELOW ");
 		else
-			snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-7s", " NONE");
+			snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-7s", "NONE ");
 	} else
-		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-7s", " NONE");
+		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-7s", "NONE ");
 
 	/*Network Type		*/
 	if (pBss->BssType == BSS_ADHOC)
-		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-3s", " Ad");
+		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-3s", "Ad ");
 	else
-		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-3s", " In");
+		snprintf(msg + strlen(msg), MsgLen - strlen(msg), "%-3s", "In ");
 
 	/* SSID Length */
-	snprintf(msg + strlen(msg), MsgLen - strlen(msg), " %-8d", pBss->SsidLen);
+//	snprintf(msg + strlen(msg), MsgLen - strlen(msg), " %-8d", pBss->SsidLen);
 
 	snprintf(msg + strlen(msg), MsgLen - strlen(msg), "\n");
 	return;
@@ -5031,7 +5032,7 @@ VOID RTMPIoctlGetSiteSurvey(
 	max_len += WPS_LINE_LEN;
 #endif /* WSC_STA_SUPPORT */
 #ifdef DOT11R_FT_SUPPORT
-	max_len += DOT11R_LINE_LEN;
+//	max_len += DOT11R_LINE_LEN;
 #endif /* DOT11R_FT_SUPPORT */
 	if (wdev->wdev_type == WDEV_TYPE_STA) {
 		pApCliEntry = &pAdapter->StaCfg[wdev->func_idx];
@@ -5095,20 +5096,22 @@ VOID RTMPIoctlGetSiteSurvey(
 	}
 
 	snprintf(msg, TotalLen, "%s", "\n");
-	snprintf(msg + strlen(msg), TotalLen - strlen(msg), "Total=%-4d", ScanTab->BssNr);
-	snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%s", "\n");
-	snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-4s%-4s%-33s%-20s%-23s%-9s%-7s%-11s%-3s%-8s\n",
-			"No", "Ch", "SSID", "BSSID", "Security", "Siganl(%)", "W-Mode", " ExtCH", " NT", " SSID_Len");
+//	snprintf(msg + strlen(msg), TotalLen - strlen(msg), "Total=%-4d", ScanTab->BssNr);
+//	snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%s", "\n");
+//	snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-4s%-4s%-33s%-20s%-23s%-9s%-7s%-11s%-3s%-8s\n",
+//			"No", "Ch", "SSID", "BSSID", "Security", "Siganl(%)", "W-Mode", " ExtCH", " NT", " SSID_Len");
+	snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-4s%-33s%-20s%-23s%-9s%-12s%-7s%-3s\n",
+			"Ch", "SSID", "BSSID", "Security", "Signal(%)", "W-Mode", " ExtCH", " NT");
 #ifdef WSC_INCLUDED
 	snprintf(msg + strlen(msg) - 1, TotalLen - strlen(msg), "%-4s%-5s\n", " WPS", " DPID");
 #endif /* WSC_INCLUDED */
-	snprintf(msg + strlen(msg) - 1, TotalLen - strlen(msg), "%-10s\n", " BcnRept");
+//	snprintf(msg + strlen(msg) - 1, TotalLen - strlen(msg), "%-10s\n", " BcnRept");
 #ifdef MWDS
-	snprintf(msg + strlen(msg) - 1, TotalLen - strlen(msg), "%-8s\n", " MWDSCap");
+//	snprintf(msg + strlen(msg) - 1, TotalLen - strlen(msg), "%-8s\n", " MWDSCap");
 #endif /* MWDS */
 #ifdef CONFIG_STA_SUPPORT
 #ifdef DOT11R_FT_SUPPORT
-	snprintf(msg + strlen(msg) - 1, TotalLen - strlen(msg), "%-5s%-9s%-10s\n", " MDId", " FToverDS", " RsrReqCap");
+//	snprintf(msg + strlen(msg) - 1, TotalLen - strlen(msg), "%-5s%-9s%-10s\n", " MDId", " FToverDS", " RsrReqCap");
 #endif /* DOT11R_FT_SUPPORT */
 #endif /* CONFIG_STA_SUPPORT */
 	WaitCnt = 0;
@@ -5143,55 +5146,56 @@ VOID RTMPIoctlGetSiteSurvey(
 			break;
 
 		/*No*/
-		snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-4d", i);
+//		snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-4d", i);
 		RTMPCommSiteSurveyData(msg, pBss, TotalLen);
 #ifdef WSC_INCLUDED
 
 		/*WPS*/
 		if (pBss->WpsAP & 0x01)
-			snprintf(msg + strlen(msg) - 1, TotalLen - strlen(msg), "%-4s", " YES");
+			snprintf(msg + strlen(msg) - 1, TotalLen - strlen(msg), "%-4s", "YES ");
 		else
-			snprintf(msg + strlen(msg) - 1, TotalLen - strlen(msg), "%-4s", "  NO");
+			snprintf(msg + strlen(msg) - 1, TotalLen - strlen(msg), "%-4s", "NO  ");
 
 		if (pBss->WscDPIDFromWpsAP == DEV_PASS_ID_PIN)
-			snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-5s", " PIN");
+			snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-5s", "PIN ");
 		else if (pBss->WscDPIDFromWpsAP == DEV_PASS_ID_PBC)
-			snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-5s", " PBC");
+			snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-5s", "PBC ");
 		else
 			snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-5s", " ");
 
 #endif /* WSC_INCLUDED */
 #ifndef MWDS
-		snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-7s\n", pBss->FromBcnReport ? " YES" : " NO");
+//		snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-7s\n", pBss->FromBcnReport ? " YES" : " NO");
 #else
-		snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-7s", pBss->FromBcnReport ? " YES" : " NO");
+//		snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-7s", pBss->FromBcnReport ? " YES" : " NO");
 
-		if (pBss->bSupportMWDS)
-			snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-4s\n", " YES");
-		else
-			snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-4s\n", " NO");
+//		if (pBss->bSupportMWDS)
+//			snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-4s\n", " YES");
+//		else
+//			snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-4s\n", " NO");
 
 #endif /* MWDS */
 #ifdef CONFIG_STA_SUPPORT
 #ifdef DOT11R_FT_SUPPORT
 
-		if (pBss->bHasMDIE) {
-			snprintf(msg + strlen(msg) - 1, TotalLen - strlen(msg), " %02x%02x", pBss->FT_MDIE.MdId[0], pBss->FT_MDIE.MdId[1]);
+//		if (pBss->bHasMDIE) {
+//			snprintf(msg + strlen(msg) - 1, TotalLen - strlen(msg), " %02x%02x", pBss->FT_MDIE.MdId[0], pBss->FT_MDIE.MdId[1]);
 
-			if (pBss->FT_MDIE.FtCapPlc.field.FtOverDs)
-				snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-9s", " TRUE");
-			else
-				snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-9s", " FALSE");
+//			if (pBss->FT_MDIE.FtCapPlc.field.FtOverDs)
+//				snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-9s", " TRUE");
+//			else
+//				snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-9s", " FALSE");
 
-			if (pBss->FT_MDIE.FtCapPlc.field.RsrReqCap)
-				snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-10s\n", " TRUE");
-			else
-				snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-10s\n", " FALSE");
-		}
+//			if (pBss->FT_MDIE.FtCapPlc.field.RsrReqCap)
+//				snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-10s\n", " TRUE");
+//			else
+//				snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-10s\n", " FALSE");
+//		}
 
 #endif /* DOT11R_FT_SUPPORT */
 #endif /* CONFIG_STA_SUPPORT */
 	}
+	snprintf(msg + strlen(msg), TotalLen - strlen(msg), "\n");
 
 #ifdef CONFIG_STA_SUPPORT
 	if (wdev->wdev_type == WDEV_TYPE_STA) {

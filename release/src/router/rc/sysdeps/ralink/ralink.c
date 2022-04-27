@@ -868,6 +868,11 @@ int gen_ralink_config(int band, int is_iNIC)
 	{
 		if (str && *str)
 		{
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+			if(nvram_match("wl0_11ax", "1"))
+				fprintf(fp, "WirelessMode=%d\n", 16);		// B + G + N +AX mixed
+			else
+#endif
 			if (atoi(str) == 0)       // B,G,N
 				fprintf(fp, "WirelessMode=%d\n", 9);
 			else if (atoi(str) == 2)  // B,G
@@ -878,10 +883,6 @@ int gen_ralink_config(int band, int is_iNIC)
 //				fprintf(fp, "WirelessMode=%d\n", 4);
 //			else if (atoi(str) == 0)  // B
 //				fprintf(fp, "WirelessMode=%d\n", 1);
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
-			else if(nvram_match("wl0_11ax", "1"))
-				fprintf(fp, "WirelessMode=%d\n", 16);		// B + G + N +AX mixed
-#endif
 			else			// B,G,N
 				fprintf(fp, "WirelessMode=%d\n", 9);
 		}
@@ -889,9 +890,9 @@ int gen_ralink_config(int band, int is_iNIC)
 		{
 			warning = 7;
 #if defined(RTCONFIG_WLMODULE_MT7915D_AP)
-				if(nvram_match("wl0_11ax", "1"))
-					fprintf(fp, "WirelessMode=%d\n", 16);		// B + G + N +AX mixed
-				else
+			if(nvram_match("wl0_11ax", "1"))
+				fprintf(fp, "WirelessMode=%d\n", 16);		// B + G + N +AX mixed
+			else
 #endif
 			fprintf(fp, "WirelessMode=%d\n", 9);
 		}
@@ -3973,12 +3974,10 @@ int getSiteSurvey(int band, char* ofile)
 						fprintf(fp, "\"%s\",", "ax");
 					else if(strncmp(ssap->SiteSurvey[i].wmode, "11ax", 4) == 0)
 						fprintf(fp, "\"%s\",", "ax");
-					else if(strncmp(ssap->SiteSurvey[i].wmode, "11a/n/ac", 8) == 0 || strncmp(ssap->SiteSurvey[i].wmode, "11ac", 4) == 0)
-						fprintf(fp, "\"%s\",", "ac");
-#else
+					else
+#endif
 					if(strncmp(ssap->SiteSurvey[i].wmode, "11a/n/ac", 8) == 0 || strncmp(ssap->SiteSurvey[i].wmode, "11ac", 4) == 0)
 						fprintf(fp, "\"%s\",", "ac");
-#endif
 					else if(strncmp(ssap->SiteSurvey[i].wmode, "11b/g/n", 7) == 0)
 						fprintf(fp, "\"%s\",", "bgn");
 					else if(strncmp(ssap->SiteSurvey[i].wmode, "11a/n", 5) == 0)
@@ -5255,7 +5254,9 @@ void apcli_start(void)
 		ch = site_survey_for_channel(wlc_band, aif, &ht_ext);
 		if(ch != -1)
 		{
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 			doSystem("iwpriv %s set Channel=%d", aif, ch);
+#endif
 			doSystem("iwpriv %s set ApCliEnable=1", aif);
 			fprintf(stderr, "##set channel=%d, enable apcli ..#\n", ch);
 		}
@@ -5701,12 +5702,13 @@ int getPapState(int band)
 		ch = site_survey_for_channel(band, aif, &ht_ext);
 		if(ch != -1)
 		{
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 			doSystem("iwpriv %s set Channel=%d", aif, ch);
+#endif
 			doSystem("iwpriv %s set ApCliEnable=1", aif);
 			doSystem("ifconfig %s up", aif);
 			dbg("set pap's channel=%d, enable apcli ..#\n",ch);
-			if(band == 0)
-				doSystem("iwpriv %s set ApCliAutoConnect=1", aif);
+			doSystem("iwpriv %s set ApCliAutoConnect=1", aif);
 
 			lastUptime[band] = Uptime;
 		}
@@ -5807,7 +5809,9 @@ int wlcconnect_core(void)
 		ch = site_survey_for_channel(band, aif, &ht_ext);
 		if(ch != -1)
 		{
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 			doSystem("iwpriv %s set Channel=%d", aif, ch);
+#endif
 			doSystem("iwpriv %s set ApCliEnable=1", aif);
 			doSystem("ifconfig %s up", aif);
 			dbg("set pap's channel=%d, enable apcli ..#\n",ch);

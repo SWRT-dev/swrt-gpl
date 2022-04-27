@@ -4673,24 +4673,24 @@ VOID RTMPCommSiteSurveyData(
 	/* Ext Channel*/
 	if (pBss->AddHtInfoLen > 0) {
 		if (pBss->AddHtInfo.AddHtInfo.ExtChanOffset == EXTCHA_ABOVE)
-			sprintf(msg + strlen(msg), "%-7s", " ABOVE");
+			sprintf(msg + strlen(msg), "%-7s", "ABOVE ");
 		else if (pBss->AddHtInfo.AddHtInfo.ExtChanOffset == EXTCHA_BELOW)
-			sprintf(msg + strlen(msg), "%-7s", " BELOW");
+			sprintf(msg + strlen(msg), "%-7s", "BELOW ");
 		else
-			sprintf(msg + strlen(msg), "%-7s", " NONE");
+			sprintf(msg + strlen(msg), "%-7s", "NONE ");
 	} else
-		sprintf(msg + strlen(msg), "%-7s", " NONE");
+		sprintf(msg + strlen(msg), "%-7s", "NONE ");
 
 	/*Network Type		*/
 	if (pBss->BssType == BSS_ADHOC)
-		sprintf(msg + strlen(msg), "%-3s", " Ad");
+		sprintf(msg + strlen(msg), "%-3s", "Ad ");
 	else
-		sprintf(msg + strlen(msg), "%-3s", " In");
+		sprintf(msg + strlen(msg), "%-3s", "In ");
 
 	/* SSID Length */
 //	sprintf(msg + strlen(msg), " %-8d", pBss->SsidLen);
 
-//	sprintf(msg + strlen(msg), "\n");
+	sprintf(msg + strlen(msg), "\n");
 
 	return;
 }
@@ -5088,14 +5088,14 @@ max_len += WPS_LINE_LEN;
 
 		/*WPS*/
 		if (pBss->WpsAP & 0x01)
-			sprintf(msg + strlen(msg) - 1, "%-4s", " YES");
+			sprintf(msg + strlen(msg) - 1, "%-4s", "YES ");
 		else
-			sprintf(msg + strlen(msg) - 1, "%-4s", "  NO");
+			sprintf(msg + strlen(msg) - 1, "%-4s", "NO  ");
 
 		if (pBss->WscDPIDFromWpsAP == DEV_PASS_ID_PIN)
-			sprintf(msg + strlen(msg), "%-5s", " PIN");
+			sprintf(msg + strlen(msg), "%-5s", "PIN ");
 		else if (pBss->WscDPIDFromWpsAP == DEV_PASS_ID_PBC)
-			sprintf(msg + strlen(msg), "%-5s", " PBC");
+			sprintf(msg + strlen(msg), "%-5s", "PBC ");
 		else
 			sprintf(msg + strlen(msg), "%-5s", " ");
 
