@@ -5258,6 +5258,7 @@ void apcli_start(void)
 			doSystem("iwpriv %s set Channel=%d", aif, ch);
 #endif
 			doSystem("iwpriv %s set ApCliEnable=1", aif);
+			doSystem("iwpriv %s set ApCliAutoConnect=1", aif);
 			fprintf(stderr, "##set channel=%d, enable apcli ..#\n", ch);
 		}
 		else
