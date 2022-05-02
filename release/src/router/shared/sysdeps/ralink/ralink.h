@@ -41,7 +41,6 @@ extern const char MESH_2G[];
 #define MODE_HTMIX			2
 #define MODE_HTGREENFIELD	3
 #define MODE_VHT			4
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
 #define MODE_HE 			5
 #define MODE_HE_SU			8
 #define MODE_HE_24G 		7
@@ -49,7 +48,6 @@ extern const char MESH_2G[];
 #define MODE_HE_EXT_SU		9
 #define MODE_HE_TRIG		10
 #define MODE_HE_MU			11
-#endif
 #define MODE_UNKNOWN 		255
 
 #define BW_20			0

@@ -780,6 +780,18 @@ void setup_conntrack(void)
 		}
 	}
 #endif
+#if defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_RALINK)
+	snprintf(p, sizeof(p), "30");
+	f_write_string("/proc/sys/net/netfilter/nf_conntrack_tcp_timeout_fin_wait", p, 0, 0);
+	f_write_string("/proc/sys/net/netfilter/nf_conntrack_tcp_timeout_time_wait", p, 0, 0);
+	f_write_string("/proc/sys/net/netfilter/nf_conntrack_tcp_timeout_close_wait", p, 0, 0);
+	f_write_string("/proc/sys/net/ipv4/netfilter/ip_conntrack_tcp_timeout_fin_wait", p, 0, 0);
+	f_write_string("/proc/sys/net/ipv4/netfilter/ip_conntrack_tcp_timeout_time_wait", p, 0, 0);
+	f_write_string("/proc/sys/net/ipv4/netfilter/ip_conntrack_tcp_timeout_close_wait", p, 0, 0);
+	snprintf(p, sizeof(p), "300");
+	f_write_string("/proc/sys/net/netfilter/nf_conntrack_tcp_timeout_established", p, 0, 0);
+	f_write_string("/proc/sys/net/ipv4/netfilter/ip_conntrack_tcp_timeout_established", p, 0, 0);
+#endif
 #if 0
 	if (!nvram_match("nf_rtsp", "0")) {
 		ct_modprobe("rtsp");
