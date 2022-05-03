@@ -52,7 +52,7 @@ void init_devs(void)
 		int status;
 		if((status = WEXITSTATUS(modprobe("nvram_linux"))))	printf("## modprove(nvram_linux) fail status(%d)\n", status);
 	}
-#if defined(RMAC2100) || defined(R6800) || defined(JCGQ10PRO)
+#if defined(RMAC2100) || defined(R6800) || defined(JCGQ10PRO) || defined(H3CTX1801)
 	patch_Factory();
 #endif
 }
@@ -125,6 +125,7 @@ void generate_switch_para(void)
 		case MODEL_RTAX54:
 		case MODEL_PGBM1:
 		case MODEL_JCGQ10PRO:
+		case MODEL_H3CTX1801:
 			nvram_unset("vlan3hwname");
 			if ((wans_cap && wanslan_cap) ||
 			    (wanslan_cap && (!nvram_match("switch_wantag", "none") && !nvram_match("switch_wantag", "")))
@@ -282,6 +283,7 @@ void config_switch()
 	case MODEL_RTAX54:
 	case MODEL_PGBM1:
 	case MODEL_JCGQ10PRO:
+	case MODEL_H3CTX1801:
 		merge_wan_port_into_lan_ports = 1;
 		break;
 	default:
@@ -931,7 +933,7 @@ void init_syspara(void)
 	{
 		if (buffer[0]!=0xff)
 			ether_etoa(buffer, macaddr2);
-#if defined(JCGQ10PRO)
+#if defined(JCGQ10PRO) || defined(H3CTX1801)
 		ether_cal_b(buffer, macaddr, 4);
 #endif
 	}
@@ -963,7 +965,7 @@ void init_syspara(void)
 		nvram_set("wl_mssid", "0");
 	else
 		nvram_set("wl_mssid", "1");
-#if defined(R6800) || defined(RMAC2100) || defined(JCGQ10PRO)
+#if defined(R6800) || defined(RMAC2100) || defined(JCGQ10PRO) || defined(H3CTX1801)
 	nvram_set("wl_mssid", "1");//fix guest wifi
 #endif
 
@@ -1525,6 +1527,7 @@ void set_wan_tag(char *interface) {
 	case MODEL_RTAX54:
 	case MODEL_PGBM1:
 	case MODEL_JCGQ10PRO:
+	case MODEL_H3CTX1801:
 		ifconfig(interface, IFUP, 0, 0);
 		if(wan_vid) { /* config wan port */
 			eval("vconfig", "rem", "vlan2");
@@ -1960,10 +1963,10 @@ void start_mapd(void)
 {
 	int enable = nvram_get_int("easymesh_enable");
 	int mode = nvram_get_int("easymesh_mode");
-	int role = nvram_get_int("easymesh_role");
+	int role = nvram_get_int("easymesh_role"); /* GW:1, AP:1/2, RP:1 */
 	int lastmode = nvram_get_int("easymesh_lastmode");
-	int dhcpctl = nvram_get_int("easymesh_dhcpctl");
-	int tpcon = nvram_get_int("easymesh_tpcon");
+	int dhcpctl = nvram_get_int("easymesh_dhcpctl"); /* AP/RP:1, GW:0 */
+	int tpcon = nvram_get_int("easymesh_tpcon"); /* AP/RP:1, GW:0 */
 
 	if(enable == 0){
 		eval("iwpriv", (char*) WIF_2G, "set", "mapEnable=0");
@@ -2192,6 +2195,8 @@ void start_mapd(void)
 	} else if(mode == MAP_API_MODE){
 		_dprintf("unsupport mode\n");
 	} else if(mode == MAP_CERT_MODE){
+		pid_t pid;
+		char *agent_argv[] = { "easymesh_agent", NULL };
 		if(pids("fwdd"))
 				killall_tk("fwdd");
 		if(module_loaded("mtfwd"))
@@ -2212,7 +2217,7 @@ void start_mapd(void)
 		doSystem("ifconfig %s up", get_staifname(WL_5G_BAND));
 		eval("iwpriv", (char*) WIF_2G, "set", "ApCliEnable=0");
 		eval("iwpriv", (char*) WIF_5G, "set", "ApCliEnable=0");
-		//doSystem("map_config_agent.lua start");
+		_eval(agent_argv, NULL, 0, &pid);
 		doSystem("echo 458752 > /proc/sys/net/core/rmem_max");
 		eval("iwpriv", (char*) WIF_2G, "set", "VLANEn=0");
 		eval("iwpriv", (char*) WIF_5G, "set", "VLANEn=0");
@@ -2225,7 +2230,11 @@ void start_mapd(void)
 
 int start_easymesh(void)
 {
+	pid_t pid;
+	char *agent_argv[] = { "easymesh_agent", NULL };
 	start_mapd();
+	if(nvram_match("easymesh_enable", "1") && nvram_get_int("easymesh_role") == EASYMESH_ROLE_AGENT)
+		_eval(agent_argv, NULL, 0, &pid);
 	return 0;
 }
 

@@ -43,6 +43,8 @@ sudo apt-get -y install build-essential asciidoc binutils bzip2 gawk gettext git
 
 	jcg-q10pro : `make swrt-jcg-q10pro`
 
+	h3c-tx1801 : `make swrt-h3c-tx1801`
+
 8. The firmware is in rtax53u/release/src-ra-openwrt-4210/image
 
 ## Donate

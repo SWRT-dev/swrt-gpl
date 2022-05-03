@@ -52,6 +52,10 @@ config  MODEL_JCGQ10PRO
         bool "JCG-Q10PRO"
         default n
 
+config  MODEL_H3CTX1801
+        bool "H3C-TX1801"
+        default n
+
 config  ASUS_EXT
         bool "ASUS_EXT"
         default n
