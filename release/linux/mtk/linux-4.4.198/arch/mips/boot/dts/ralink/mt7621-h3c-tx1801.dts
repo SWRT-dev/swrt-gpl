@@ -44,7 +44,7 @@
 				read-only;
 			};
 
-			partition@0 {
+			partition@80000 {
 				label = "u-boot-env";
 				reg = <0x80000 0x80000>;
 				read-only;
