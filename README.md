@@ -31,7 +31,7 @@ sudo apt-get -y install build-essential asciidoc binutils bzip2 gawk gettext git
 
 	`tar xvJf libc.a.tar.xz`
 
-6. 然后 `cd ../rtax53u/release/src-ra-openwrt-4210` 进入目录
+6. 然后 `cd ../rtax53u/release/src-mtk-mips` 进入目录
 
 7. 输入 `make rt-ax53u` 即可开始编译你要的固件了。
 
@@ -45,7 +45,7 @@ sudo apt-get -y install build-essential asciidoc binutils bzip2 gawk gettext git
 
 	h3c-tx1801 : `make swrt-h3c-tx1801`
 
-8. 编译完成后输出固件路径：rtax53u/release/src-ra-openwrt-4210/image
+8. 编译完成后输出固件路径：rtax53u/release/src-mtk-mips/image
 
 ## Donate
 

@@ -31,11 +31,32 @@ function initial(){
 		document.getElementById("natAccelDesc").innerHTML = "<#NAT_Acceleration_ctf_disable#>";
 	}
 	show_menu();
+	if(based_modelid == "RT-N14U" || based_modelid == "RT-N11P" || based_modelid == "RT-N300" ||
+	   based_modelid == "RT-AC52U" || based_modelid == "RT-AC51U" || based_modelid == "RT-N54U")
+	{
+		inputCtrl(document.form.switch_ctrlrate_unknown_unicast, 0);
+		inputCtrl(document.form.switch_ctrlrate_unknown_multicast, 0);
+		inputCtrl(document.form.switch_ctrlrate_multicast, 0);
+		inputCtrl(document.form.switch_ctrlrate_broadcast, 0);
+	}
 }
 
 function applyRule(){
-	showLoading();
-	document.form.submit();	
+		if(valid_form()){
+				showLoading();
+				document.form.submit();	
+		}
+}
+
+function valid_form(){
+	if(!validator.range(document.form.switch_ctrlrate_unknown_unicast, 0, 1024) ||
+	   !validator.range(document.form.switch_ctrlrate_unknown_multicast, 0, 1024) ||
+	   !validator.range(document.form.switch_ctrlrate_multicast, 0, 1024) ||
+	   !validator.range(document.form.switch_ctrlrate_broadcast, 0, 1024)){
+			return false;
+	}
+
+	return true;
 }
 
 </script>
@@ -101,6 +122,34 @@ function applyRule(){
       <div class="formfontdesc"><#SwitchCtrl_desc#></div>
 		  
 		  <table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3"  class="FormTable">
+		  	
+			<tr>
+					<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(6, 7);"><#RouterConfig_GWMulticast_unknownUni_itemname#></a></th>
+        	<td><!-- valid_muliticast(); -->
+          	<input type="text" maxlength="4" class="input_6_table" id="switch_ctrlrate_unknown_unicast" name="switch_ctrlrate_unknown_unicast" value="<% nvram_get("switch_ctrlrate_unknown_unicast"); %>" onkeypress="return validator.isNumber(this, event);" autocorrect="off" autocapitalize="off">
+          </td>
+			</tr>
+
+				<tr>
+					<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(6, 7);"><#RouterConfig_GWMulticast_unknownMul_itemname#></a></th>
+        	<td>
+          	<input type="text" maxlength="4" class="input_6_table" id="switch_ctrlrate_unknown_multicast" name="switch_ctrlrate_unknown_multicast" value="<% nvram_get("switch_ctrlrate_unknown_multicast"); %>" onkeypress="return validator.isNumber(this, event);" autocorrect="off" autocapitalize="off">
+          </td>
+				</tr>
+
+				<tr>
+					<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(6, 7);"><#RouterConfig_GWMulticast_Multicast_itemname#></a></th>
+        	<td>
+          	<input type="text" maxlength="4" class="input_6_table" id="switch_ctrlrate_multicast" name="switch_ctrlrate_multicast" value="<% nvram_get("switch_ctrlrate_multicast"); %>" onkeypress="return validator.isNumber(this, event);" autocorrect="off" autocapitalize="off">
+          </td>
+				</tr>
+
+				<tr>
+					<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(6, 7);"><#RouterConfig_GWMulticast_Broadcast_itemname#></a></th>
+        	<td>
+          	<input type="text" maxlength="4" class="input_6_table" id="switch_ctrlrate_broadcast" name="switch_ctrlrate_broadcast" value="<% nvram_get("switch_ctrlrate_broadcast"); %>" onkeypress="return validator.isNumber(this, event);" autocorrect="off" autocapitalize="off">
+          </td>
+				</tr>
       	<tr>
       		<th><#NAT_Acceleration#></th>
           <td>
