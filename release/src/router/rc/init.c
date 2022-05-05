@@ -4252,6 +4252,7 @@ int init_nvram(void)
 
 #if defined(RTAX53U)
 	case MODEL_RTAX53U:
+		swrt_init();
 		nvram_set("boardflags", "0x100"); // although it is not used in ralink driver, set for vlan
 		nvram_set("vlan1hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
 		nvram_set("vlan2hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
@@ -4298,6 +4299,7 @@ int init_nvram(void)
 
 #if defined(PGBM1)
 	case MODEL_PGBM1:
+		swrt_init();
 		nvram_set("boardflags", "0x100"); // although it is not used in ralink driver, set for vlan
 		nvram_set("vlan1hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
 		nvram_set("vlan2hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
@@ -4348,6 +4350,7 @@ int init_nvram(void)
 
 #if defined(JCGQ10PRO)
 	case MODEL_JCGQ10PRO:
+		swrt_init();
 		nvram_set("boardflags", "0x100"); // although it is not used in ralink driver, set for vlan
 		nvram_set("vlan1hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
 		nvram_set("vlan2hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
@@ -4387,6 +4390,7 @@ int init_nvram(void)
 
 #if defined(H3CTX1801)
 	case MODEL_H3CTX1801:
+		swrt_init();
 		nvram_set("boardflags", "0x100"); // although it is not used in ralink driver, set for vlan
 		nvram_set("vlan1hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
 		nvram_set("vlan2hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
@@ -4854,6 +4858,7 @@ int init_nvram(void)
 
 #if defined(RTAC85U)
 	case MODEL_RTAC85U:
+		swrt_init();
 		nvram_set("boardflags", "0x100"); // although it is not used in ralink driver, set for vlan
 		nvram_set("vlan1hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
 		nvram_set("vlan2hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
@@ -4913,6 +4918,7 @@ int init_nvram(void)
 
 #if defined(RTAC85P)
 	case MODEL_RTAC85P:
+		swrt_init();
 		nvram_set("boardflags", "0x100"); // although it is not used in ralink driver, set for vlan
 		nvram_set("vlan1hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
 		nvram_set("vlan2hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
