@@ -13,7 +13,7 @@
 <title>ASUS Login</title>
 <style>
 body{
-	font-family: Arial, MS UI Gothic, MS P Gothic, Microsoft Yahei UI, sans-serif;
+	font-family: Microsoft Yahei UI, Arial, MS UI Gothic, MS P Gothic, sans-serif;
 }
 .wrapper{
 	background:url(images/New_ui/login_bg.png) #283437 no-repeat;
@@ -383,12 +383,6 @@ if(captcha_support && captcha_enable != "0")
 	var captcha_on = (login_info.error_num >= 2 && login_info.error_status != "7")? true : false;
 else
 	var captcha_on = false;
-//territory_code sku
-function in_territory_code(_ptn){
-        return (ttc.search(_ptn) == -1) ? false : true;
-}
-var ttc = '<% nvram_get("territory_code"); %>';
-var is_CN = (in_territory_code("CN") || in_territory_code("CT") || in_territory_code("GD") || in_territory_code("TC"));
 
 function initial(){
 	var flag = login_info.error_status;
@@ -397,9 +391,6 @@ function initial(){
 		document.getElementById("password_title_ie").style.display ="";
 	}
 
-	if(is_CN){
-		$(document.body).append('<style>*{font-family:"Microsoft Yahei UI", "Arial", "MS UI Gothic", "MS P Gothic", "sans-serif";}</style>');
-	}
 	if(flag != ""){
 		document.getElementById("error_status_field").style.display ="";
 
