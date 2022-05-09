@@ -3628,6 +3628,8 @@ int init_nvram(void)
 	}
 #endif 
 
+	swrt_init();
+
 	switch (model) {
 #ifdef RTCONFIG_RALINK
 	case MODEL_EAN66:
@@ -4252,7 +4254,6 @@ int init_nvram(void)
 
 #if defined(RTAX53U)
 	case MODEL_RTAX53U:
-		swrt_init();
 		nvram_set("boardflags", "0x100"); // although it is not used in ralink driver, set for vlan
 		nvram_set("vlan1hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
 		nvram_set("vlan2hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
@@ -4299,7 +4300,6 @@ int init_nvram(void)
 
 #if defined(PGBM1)
 	case MODEL_PGBM1:
-		swrt_init();
 		nvram_set("boardflags", "0x100"); // although it is not used in ralink driver, set for vlan
 		nvram_set("vlan1hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
 		nvram_set("vlan2hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
@@ -4350,7 +4350,6 @@ int init_nvram(void)
 
 #if defined(JCGQ10PRO)
 	case MODEL_JCGQ10PRO:
-		swrt_init();
 		nvram_set("boardflags", "0x100"); // although it is not used in ralink driver, set for vlan
 		nvram_set("vlan1hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
 		nvram_set("vlan2hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
@@ -4390,7 +4389,6 @@ int init_nvram(void)
 
 #if defined(H3CTX1801)
 	case MODEL_H3CTX1801:
-		swrt_init();
 		nvram_set("boardflags", "0x100"); // although it is not used in ralink driver, set for vlan
 		nvram_set("vlan1hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
 		nvram_set("vlan2hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
@@ -4858,7 +4856,6 @@ int init_nvram(void)
 
 #if defined(RTAC85U)
 	case MODEL_RTAC85U:
-		swrt_init();
 		nvram_set("boardflags", "0x100"); // although it is not used in ralink driver, set for vlan
 		nvram_set("vlan1hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
 		nvram_set("vlan2hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
@@ -4918,7 +4915,6 @@ int init_nvram(void)
 
 #if defined(RTAC85P)
 	case MODEL_RTAC85P:
-		swrt_init();
 		nvram_set("boardflags", "0x100"); // although it is not used in ralink driver, set for vlan
 		nvram_set("vlan1hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
 		nvram_set("vlan2hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
@@ -4980,7 +4976,6 @@ int init_nvram(void)
 
 #if defined(RMAC2100)
 	case MODEL_RMAC2100:
-		swrt_init();
 		nvram_set("boardflags", "0x100"); // although it is not used in ralink driver, set for vlan
 		nvram_set("vlan1hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
 		nvram_set("vlan2hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
@@ -5026,7 +5021,6 @@ int init_nvram(void)
 
 #if defined(R6800) 
 	case MODEL_R6800:
-		swrt_init();
 		nvram_set("boardflags", "0x100"); // although it is not used in ralink driver, set for vlan
 		nvram_set("vlan1hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
 		nvram_set("vlan2hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
@@ -6445,7 +6439,6 @@ int init_nvram(void)
 #if defined(PLAX56_XP4)
 //#define XP4_OLD
 	case MODEL_PLAX56XP4:
-		swrt_init();
 		{ // XP4
 			/* NEED to sync with the default HwVer in flash image */
 			int xp4_old = (nvram_get_int("HwVer") < 1);
@@ -9046,7 +9039,6 @@ int init_nvram(void)
 
 #if defined(GTAC5300)
 	case MODEL_GTAC5300:
-		swrt_init();
 		model_patch();
 		if (is_router_mode()) {
 			nvram_set("lan_ifnames", "eth1 eth2 eth3 eth4 eth5 eth6 eth7 eth8");
@@ -9180,7 +9172,6 @@ int init_nvram(void)
 
 #if defined(RTAC86U) || defined(GTAC2900)
 	case MODEL_RTAC86U:
-		swrt_init();
 		if (is_router_mode()) {
 			nvram_set("lan_ifnames", "eth1 eth2 eth3 eth4 eth5 eth6");
 			nvram_set("wan_ifnames", "eth0");
@@ -11154,7 +11145,6 @@ int init_nvram(void)
 		nvram_set_int("comfw_type", CF_RTAX58U);
 #endif
 #endif
-		swrt_init();
 		nvram_set("lan_ifname", "br0");
 		if (is_router_mode()) {
 #ifdef RTAX82_XD6
@@ -11804,7 +11794,6 @@ int init_nvram(void)
 
 #if defined(RTAX56U)
 	case MODEL_RTAX56U:
-		swrt_init();
 		nvram_set("lan_ifname", "br0");
 		if (is_router_mode()) {
 			nvram_set("lan_ifnames", "eth4 eth3 eth2 eth1 eth5 eth6");
@@ -12246,7 +12235,6 @@ int init_nvram(void)
 		{
 		char productid[16];
 		snprintf(productid, sizeof(productid), "%s", get_productid());
-		swrt_init();
 
 		nvram_unset("dhd0_rnr_flowring_physize");
 		nvram_unset("dhd1_rnr_flowring_physize");
@@ -13711,9 +13699,6 @@ int init_nvram(void)
 	case MODEL_RTAC88U:
 	case MODEL_RTAC3100:
 		ldo_patch();
-#if defined(RTCONFIG_SWRT)
-		swrt_init();
-#endif
 		set_tcode_misc();
 #if defined(RTAC88U) || defined(RTAC3100)
 		//if(nvram_match("lazy_et", "1"))
