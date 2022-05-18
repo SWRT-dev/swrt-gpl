@@ -71,29 +71,25 @@ extern void ac1900p_patch_cfe(void);
 extern void ac3200p_patch_cfe(void);
 #elif defined(R7000P)
 extern void r7000p_nvram_patch(void);
-#elif defined(SWRT_VER_MAJOR_X) && (defined(RTAC86U) || defined(RTAC88U) || defined(RTAC5300))
+#elif defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA)
+extern void patch_Factory(void);
+#else
 extern void swrt_patch_nvram(void);
-#elif defined(R8000P)
-extern void r8000p_nvram_patch(void);
-#elif defined(RAX70)
+#endif
+
+#if defined(RAX70)
 extern void rax70_sys_hack(void);
-extern void rax70_nvram_patch(void);
 #elif defined(MR60) || defined(MS60)
 extern void ntgr_sys_hack(void);
-extern void ntgr_nvram_patch(void);
-#elif defined(TUFAX3000) || defined(RTAX58U)
+#elif defined(TUFAX3000) || defined(RTAX58U) || defined(RTAX82U)
 extern void enable_4t4r_ax58(void);
 extern void enable_4t4r(void);
 #elif defined(K3C)
 extern void k3c_lan_led(void);
 extern void k3c_init_led(void);
 extern void init_mtd8(void);
-extern void swrt_patch_nvram(void);
-#elif defined(RMAC2100) || defined(R6800) || defined(RAX120) || defined(SWRT360V6) || defined(JCGQ10PRO) || defined(H3CTX1801)
-extern void patch_Factory(void);
-#elif defined(RTAX82U) || defined(RTAX86U) || defined(RTAX88U) || defined(GTAX11000) || defined(GTAXE11000)
-extern void swrt_patch_nvram(void);
 #endif
+
 #ifdef RTCONFIG_UUPLUGIN
 extern void start_uu(void);
 extern void stop_uu(void);

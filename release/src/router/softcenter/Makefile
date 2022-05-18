@@ -55,18 +55,18 @@ ifeq ($(RTCONFIG_LANTIQ),y)
 else ifeq ($(RTCONFIG_RALINK_MT7621),y)
 	install -m 0755 softcenter/bin_arch/mipsle/jq $(INSTALLDIR)/rom/etc/softcenter/bin
 	install -m 0755 softcenter/bin_arch/mipsle/sc_auth $(INSTALLDIR)/rom/etc/softcenter/bin
-else ifeq ($(RTCONFIG_SOC_IPQ50XX),y)
+else ifeq ($(BRCM_CHIP),$(filter $(BRCM_CHIP),4908 4912))
 	install -m 0755 softcenter/bin_arch/arm64/jq $(INSTALLDIR)/rom/etc/softcenter/bin
 	install -m 0755 softcenter/bin_arch/arm64/sc_auth $(INSTALLDIR)/rom/etc/softcenter/bin
-else ifeq ($(or $(RTCONFIG_HND_ROUTER_AX_6756),$(RTCONFIG_HND_ROUTER_AX_675X),$(RTCONFIG_QCA),$(RTCONFIG_RALINK_MT7622)),y)
-	install -m 0755 softcenter/bin_arch/armng/jq $(INSTALLDIR)/rom/etc/softcenter/bin
-	install -m 0755 softcenter/bin_arch/armng/sc_auth $(INSTALLDIR)/rom/etc/softcenter/bin
-else ifeq ($(HND_ROUTER),y)
+else ifeq ($(or $(RTCONFIG_SOC_IPQ50XX),$(RTCONFIG_RALINK_MT7986),$(AARCH64)),y)
 	install -m 0755 softcenter/bin_arch/arm64/jq $(INSTALLDIR)/rom/etc/softcenter/bin
 	install -m 0755 softcenter/bin_arch/arm64/sc_auth $(INSTALLDIR)/rom/etc/softcenter/bin
-else
+else ifeq ($(RTCONFIG_BCMARM),y)
 	install -m 0755 softcenter/bin_arch/arm/jq $(INSTALLDIR)/rom/etc/softcenter/bin
 	install -m 0755 softcenter/bin_arch/arm/sc_auth $(INSTALLDIR)/rom/etc/softcenter/bin
+else
+	install -m 0755 softcenter/bin_arch/armng/jq $(INSTALLDIR)/rom/etc/softcenter/bin
+	install -m 0755 softcenter/bin_arch/armng/sc_auth $(INSTALLDIR)/rom/etc/softcenter/bin
 endif
 	install -m 0755 softcenter/bin/softcenter.sh $(INSTALLDIR)/rom/etc/softcenter/bin
 	install -m 0755 softcenter/bin/softcenter-mount.sh $(INSTALLDIR)/rom/etc/softcenter/bin
@@ -102,15 +102,15 @@ endif
 	install -m 0755 softcenter/ROG/res/softcenter.css $(INSTALLDIR)/rom/etc/softcenter/ROG/res
 	install -m 0755 jffsinit.sh $(INSTALLDIR)/usr/sbin
 ifeq ($(SWRT_NAME), $(filter $(SWRT_NAME), K3))
-	install -m 0755 uhmiMsg $(INSTALLDIR)/usr/sbin
+	install -m 0755 mcu/uhmiMsg $(INSTALLDIR)/usr/sbin
 	install -m 0644 mcu/app.2.2.120.bin $(INSTALLDIR)/mcu
 	install -m 0644 mcu/app.1.2.116.hex $(INSTALLDIR)/mcu
 	install -m 0644 mcu/app.1.1.116.hex $(INSTALLDIR)/mcu
-	install -m 0755 phi_speed $(INSTALLDIR)/usr/sbin
-	install -m 0755 libwlcr.so $(INSTALLDIR)/usr/share
-	install -m 0755 uhmi $(INSTALLDIR)/usr/sbin
-	install -m 0755 weather $(INSTALLDIR)/usr/sbin
-	install -m 0755 wl_cr $(INSTALLDIR)/usr/sbin
+	install -m 0755 mcu/phi_speed $(INSTALLDIR)/usr/sbin
+	install -m 0755 mcu/libwlcr.so $(INSTALLDIR)/usr/share
+	install -m 0755 mcu/uhmi $(INSTALLDIR)/usr/sbin
+	install -m 0755 mcu/weather $(INSTALLDIR)/usr/sbin
+	install -m 0755 mcu/wl_cr $(INSTALLDIR)/usr/sbin
 endif
 	install -m 0755 plugin.sh $(INSTALLDIR)/usr/sbin
 	install -m 0755 helper.sh $(INSTALLDIR)/usr/sbin
@@ -133,6 +133,10 @@ ifeq ($(HND_ROUTER), y)
 else
 	install -m 0755 key.asp $(INSTALLDIR)/www
 endif
+endif
+ifeq ($(SWRT_NAME), $(filter $(SWRT_NAME), RAX120))
+	install -m 0755 fw_printenv $(INSTALLDIR)/usr/sbin
+	cd $(INSTALLDIR)/usr/sbin && ln -s fw_printenv fw_setenv
 endif
 
 clean:

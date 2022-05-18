@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2021 SWRTdev
+# Copyright (C) 2021-2022 SWRTdev
 
 source /jffs/softcenter/scripts/base.sh
 eval $(dbus export soft)
@@ -17,6 +17,12 @@ else
 fi
 #base model, not odmpid
 MODEL=$(nvram get productid)
+ARCH_SUFFIX=$softcenter_arch
+if [ "$ARCH_SUFFIX" == "armv7l" ]; then
+	ARCH_SUFFIX="arm"
+elif [ "$ARCH_SUFFIX" == "aarch64" ]; then
+	ARCH_SUFFIX="arm64"
+fi
 if [ "${MODEL:0:3}" == "GT-" ] || [ "$(nvram get swrt_rog)" == "1" ];then
 	ROG=1
 elif [ "${MODEL:0:3}" == "TUF" ] || [ "$(nvram get swrt_tuf)" == "1" ];then
@@ -149,7 +155,16 @@ install_tar(){
 			INSTALL_SCRIPT_NU=$(find /tmp -name "install.sh"|wc -l) 2>/dev/null
 			[ "$INSTALL_SCRIPT_NU" == "1" ] && INSTALL_SCRIPT=$(find /tmp -name "install.sh") || INSTALL_SCRIPT=""
 		fi
-
+		if [ -f /tmp/${MODULE_PREFIX}/.arch ];then
+			local module_arch=$(cat /tmp/${MODULE_PREFIX}/.arch)
+			if [ "${module_arch}" != "$ARCH_SUFFIX" ] && [ "$(echo ${module_arch} | grep $ARCH_SUFFIX)" == "" ];then
+				echo_date "插件架构不符！"
+				echo_date "插件:${module_arch}"
+				echo_date "路由器:${ARCH_SUFFIX}"
+				echo_date "删除相关文件并退出..."
+				clean 1
+			fi
+		fi
 		if [ -n "${INSTALL_SCRIPT}" -a -f "${INSTALL_SCRIPT}" ];then
 			SCRIPT_AB_DIR=$(dirname ${INSTALL_SCRIPT})
 			MODULE_NAME=${SCRIPT_AB_DIR##*/}
@@ -228,3 +243,4 @@ else
 	http_response "$1"
 	install_tar > /tmp/upload/soft_log.txt
 fi
+

@@ -52,9 +52,7 @@ void init_devs(void)
 		int status;
 		if((status = WEXITSTATUS(modprobe("nvram_linux"))))	printf("## modprove(nvram_linux) fail status(%d)\n", status);
 	}
-#if defined(RMAC2100) || defined(R6800) || defined(JCGQ10PRO) || defined(H3CTX1801)
 	patch_Factory();
-#endif
 }
 
 void init_others(void)

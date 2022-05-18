@@ -1,10 +1,14 @@
 # OpenWRT SDK_4210
-export LINUXDIR := $(SRCBASE)/linux/linux-4.4.198
+export LINUXDIR := $(SRCBASE)/linux/linux-5.4
 
 ifeq ($(EXTRACFLAGS),)
-export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -mips32 -mtune=mips32
+#export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -mips32 -mtune=mips32
 #export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -marm -march=armv7-a -msoft-float -mfloat-abi=soft -mtune=cortex-a7
-#export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -marm -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=softfp
+ifeq ($(MT7986),y)
+export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -marm -march=armv8 -mfpu=neon -mfloat-abi=softfp
+else
+export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -marm -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=softfp
+endif
 endif
 
 export RTVER := 0.9.30.1
@@ -15,7 +19,8 @@ export OPENSSL11=y
 
 export BUILD := $(shell (gcc -dumpmachine))
 export KERNEL_BINARY=$(LINUXDIR)/vmlinux
-ifeq ($(RTAX53U)$(RTAX54)$(RT4GAX56),y)
+ifeq ($(MT7621),y)
+export MUSL32=y
 export PLATFORM := mipsel-musl
 export PLATFORM_ARCH := mipsel-musl
 export TOOLS :=/opt/toolchain-mipsel_24kc_gcc-5.4.0_musl-1.1.24
@@ -31,6 +36,7 @@ export KERNELLD := $(TOOLS)/bin/mipsel-openwrt-linux-musl-ld
 export STAGING_DIR := $(TOOLS)
 else ifeq ($(RT4GAC86U),y)
 export EXTRACFLAGS += -DRT4GAC86U
+export MUSL64=y
 export PLATFORM := arm-glibc
 export PLATFORM_ARCH := arm-glibc
 export TOOLS := /opt/toolchain-aarch64_cortex-a53+neon-vfpv4_gcc-5.4.0_glibc-2.24
@@ -44,7 +50,22 @@ export ARCH := arm64
 export HOST := arm-linux
 export CONFIGURE := ./configure --host=arm-linux --build=$(BUILD)
 export HOSTCONFIG := linux-aarch64
+else ifeq ($(MT7986),y)
+export PLATFORM := arm-glibc
+export PLATFORM_ARCH := arm-glibc
+export TOOLS := /opt/toolchain-aarch64_cortex-a53_gcc-8.4.0_glibc
+export CROSS_COMPILE := $(TOOLS)/bin/aarch64-openwrt-linux-gnu-
+export CROSS_COMPILER := $(CROSS_COMPILE)
+export READELF := $(TOOLS)/bin/aarch64-openwrt-linux-gnu-readelf
+export KERNELCC := $(TOOLS)/bin/aarch64-openwrt-linux-gnu-gcc
+export KERNELLD := $(TOOLS)/bin/aarch64-openwrt-linux-gnu-ld
+export STAGING_DIR := $(TOOLS)
+export ARCH := arm64
+export HOST := arm-linux
+export CONFIGURE := ./configure --host=arm-linux --build=$(BUILD)
+export HOSTCONFIG := linux-aarch64
 else
+export MUSL32=y
 export PLATFORM := arm-musl
 export PLATFORM_ARCH := arm-musl
 export TOOLS := /opt/lede-toolchain-mediatek-mt7629_gcc-5.4.0_musl-1.1.24_eabi.Linux-x86_64/toolchain-arm_cortex-a7_gcc-5.4.0_musl-1.1.24_eabi
@@ -75,6 +96,9 @@ endif
 ifeq ($(RT4GAC86U),y)
 EXTRA_CFLAGS += -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__
 endif
+ifeq ($(MT7986),y)
+EXTRA_CFLAGS += -Os -mcpu=cortex-a53 -march=armv8 -mfpu=vfpv3-d16 -mfloat-abi=softfp -D_GNU_SOURCE -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__
+endif
 
 export CONFIG_LINUX26=y
 export CONFIG_RALINK=y
@@ -89,6 +113,10 @@ define platformRouterOptions
 		echo "RTCONFIG_RALINK=y" >>$(1); \
 		sed -i "/CONFIG_RA_HW_NAT_IPV6/d" $(1); \
 		echo "# CONFIG_RA_HW_NAT_IPV6 is not set" >>$(1); \
+		if [ "$(PMF)" = "y" ]; then \
+			sed -i "/RTCONFIG_MFP/d" $(1); \
+			echo "RTCONFIG_MFP=y" >>$(1); \
+		fi; \
 		if [ "$(RT3883)" = "y" ]; then \
 			sed -i "/RTCONFIG_RALINK_RT3883/d" $(1); \
 			echo "RTCONFIG_RALINK_RT3883=y" >>$(1); \
@@ -117,27 +145,34 @@ define platformRouterOptions
 			sed -i "/RTCONFIG_RALINK_MT7621/d" $(1); \
 			echo "# RTCONFIG_RALINK_MT7621 is not set" >>$(1); \
 		fi; \
-                if [ "$(MT7628)" = "y" ]; then \
-                        sed -i "/RTCONFIG_RALINK_MT7628/d" $(1); \
-                        echo "RTCONFIG_RALINK_MT7628=y" >>$(1); \
-                else \
-                        sed -i "/RTCONFIG_RALINK_MT7628/d" $(1); \
-                        echo "# RTCONFIG_RALINK_MT7628 is not set" >>$(1); \
-                fi; \
-                if [ "$(MT7629)" = "y" ]; then \
-                        sed -i "/RTCONFIG_RALINK_MT7629/d" $(1); \
-                        echo "RTCONFIG_RALINK_MT7629=y" >>$(1); \
-                else \
-                        sed -i "/RTCONFIG_RALINK_MT7629/d" $(1); \
-                        echo "# RTCONFIG_RALINK_MT7629 is not set" >>$(1); \
-                fi; \
-                if [ "$(MT7622)" = "y" ]; then \
-                        sed -i "/RTCONFIG_RALINK_MT7622/d" $(1); \
-                        echo "RTCONFIG_RALINK_MT7622=y" >>$(1); \
-                else \
-                        sed -i "/RTCONFIG_RALINK_MT7622/d" $(1); \
-                        echo "# RTCONFIG_RALINK_MT7622 is not set" >>$(1); \
-                fi; \
+		if [ "$(MT7628)" = "y" ]; then \
+			sed -i "/RTCONFIG_RALINK_MT7628/d" $(1); \
+			echo "RTCONFIG_RALINK_MT7628=y" >>$(1); \
+		else \
+			sed -i "/RTCONFIG_RALINK_MT7628/d" $(1); \
+			echo "# RTCONFIG_RALINK_MT7628 is not set" >>$(1); \
+		fi; \
+		if [ "$(MT7629)" = "y" ]; then \
+			sed -i "/RTCONFIG_RALINK_MT7629/d" $(1); \
+			echo "RTCONFIG_RALINK_MT7629=y" >>$(1); \
+		else \
+			sed -i "/RTCONFIG_RALINK_MT7629/d" $(1); \
+			echo "# RTCONFIG_RALINK_MT7629 is not set" >>$(1); \
+		fi; \
+		if [ "$(MT7622)" = "y" ]; then \
+			sed -i "/RTCONFIG_RALINK_MT7622/d" $(1); \
+			echo "RTCONFIG_RALINK_MT7622=y" >>$(1); \
+		else \
+			sed -i "/RTCONFIG_RALINK_MT7622/d" $(1); \
+			echo "# RTCONFIG_RALINK_MT7622 is not set" >>$(1); \
+		fi; \
+		if [ "$(MT7986)" = "y" ]; then \
+			sed -i "/RTCONFIG_RALINK_MT7986/d" $(1); \
+			echo "RTCONFIG_RALINK_MT7986=y" >>$(1); \
+		else \
+			sed -i "/RTCONFIG_RALINK_MT7986/d" $(1); \
+			echo "# RTCONFIG_RALINK_MT7986 is not set" >>$(1); \
+		fi; \
 	fi; \
 	)
 endef
@@ -859,7 +894,7 @@ define platformKernelConfig
 			sed -i "/CONFIG_RT2860V2_AP_CARRIER/d" $(1); \
 			echo "CONFIG_RT2860V2_AP_CARRIER=y" >>$(1); \
 	fi; \
-	if [ "$(RTAC85P)" = "y" ] ; then \
+	if [ "$(MT7621)" = "y" ] ; then \
 		sed -i "/CONFIG_NF_CT_NETLINK/d" $(1); \
 		echo "CONFIG_NF_CT_NETLINK=m" >>$(1); \
 		sed -i "/CONFIG_NF_CT_NETLINK_TIMEOUT/d" $(1); \
@@ -1030,3 +1065,6 @@ define platformKernelConfig
 	fi; \
 	)
 endef
+
+export PARALLEL_BUILD := -j$(shell grep -c '^processor' /proc/cpuinfo)
+

@@ -1,12 +1,17 @@
 include ../common.mak
 include $(SRCBASE)/.config
 ifeq ($(RTCONFIG_RALINK),y)
+ifeq ($(RTCONFIG_RALINK_MT7621),y)
 PREBUILT_BIN=$(shell if [ ! -f "$(SRCBASE)/../sdk/mtk/mt7621/1905daemon/Makefile" ]; then echo 1; else echo 0; fi)
+else ifeq ($(RTCONFIG_RALINK_MT7986),y)
+PREBUILT_BIN=$(shell if [ ! -f "$(SRCBASE)/../sdk/mtk/mt7986/1905daemon/Makefile" ]; then echo 1; else echo 0; fi)
+endif
 endif
 
 all:
 ifeq ($(RTCONFIG_RALINK),y)
 ifneq ($(PREBUILT_BIN),1)
+ifeq ($(RTCONFIG_RALINK_MT7621),y)
 	ln -sf ../../../sdk/mtk/mt7621/1905daemon 1905daemon
 	ln -sf ../../../sdk/mtk/mt7621/datconf datconf
 	ln -sf ../../../sdk/mtk/mt7621/fwdd fwdd
@@ -15,11 +20,21 @@ ifneq ($(PREBUILT_BIN),1)
 	ln -sf ../../../sdk/mtk/mt7621/mapfilter mapfilter
 	ln -sf ../../../sdk/mtk/mt7621/mtfwd mtfwd
 	ln -sf ../../../sdk/mtk/mt7621/wappd wappd
+else ifeq ($(RTCONFIG_RALINK_MT7986),y)
+	ln -sf ../../../sdk/mtk/mt7986/1905daemon 1905daemon
+	ln -sf ../../../sdk/mtk/mt7986/datconf datconf
+	ln -sf ../../../sdk/mtk/mt7986/fwdd fwdd
+	ln -sf ../../../sdk/mtk/mt7986/libmapd libmapd
+	ln -sf ../../../sdk/mtk/mt7986/mapd mapd
+	ln -sf ../../../sdk/mtk/mt7986/mapfilter mapfilter
+	ln -sf ../../../sdk/mtk/mt7986/mtfwd mtfwd
+	ln -sf ../../../sdk/mtk/mt7986/wappd wappd
+endif
 	$(MAKE) -C mapfilter all
 	$(MAKE) -C mtfwd all
 	cd datconf && cmake -DCMAKE_INSTALL_PREFIX=/usr	-DCMAKE_BUILD_TYPE=Release -DBUILD_LUA=OFF && $(MAKE) CFLAGS="$(CFLAGS)"
-	cd 1905daemon && $(MAKE) CFLAGS="$(CFLAGS) -D_GNU_SOURCE -I$(LINUXDIR)/user_headers/include -I$(TOP)/libnl-tiny-0.1/include/ -I./1905daemon -I$(LINUXDIR)/drivers/net/ethernet/raeth -DCONFIG_SOC_MT7621=y -DCONFIG_SUPPORT_OPENWRT=y -DCONFIG_MT753X_GSW=y" LDFLAGS="$(LDFLAGS) -L$(TOP)/libnl-tiny-0.1/ -lnl-tiny -lm"
-	cd libmapd && $(MAKE) CFLAGS="$(CFLAGS) -D_GNU_SOURCE -I$(LINUXDIR)/user_headers/include -I$(TOP)/libnl-tiny-0.1/include/ -I./1905daemon -I$(LINUXDIR)/drivers/net/ethernet/raeth -DCONFIG_SOC_MT7621=y -DCONFIG_SUPPORT_OPENWRT=y -DCONFIG_MT753X_GSW=y -DSUPPORT_MULTI_AP"
+	cd 1905daemon && $(MAKE) CFLAGS="$(CFLAGS) -D_GNU_SOURCE -I$(LINUXDIR)/user_headers/include -I$(TOP)/libnl-tiny-0.1/include/ -I./1905daemon -I$(LINUXDIR)/drivers/net/ethernet/raeth -DCONFIG_SUPPORT_OPENWRT=y -DCONFIG_MT753X_GSW=y" LDFLAGS="$(LDFLAGS) -L$(TOP)/libnl-tiny-0.1/ -lnl-tiny -lm"
+	cd libmapd && $(MAKE) CFLAGS="$(CFLAGS) -D_GNU_SOURCE -I$(LINUXDIR)/user_headers/include -I$(TOP)/libnl-tiny-0.1/include/ -I./1905daemon -I$(LINUXDIR)/drivers/net/ethernet/raeth -DCONFIG_SUPPORT_OPENWRT=y -DCONFIG_MT753X_GSW=y -DSUPPORT_MULTI_AP"
 	cd mapd && $(MAKE) CFLAGS="$(CFLAGS) -D_GNU_SOURCE -I./1905daemon -DCONFIG_SUPPORT_OPENWRT=y" LDFLAGS="$(LDFLAGS)"
 	cd fwdd && $(MAKE) CFLAGS="$(CFLAGS) -D_GNU_SOURCE -I./1905daemon -DCONFIG_SUPPORT_OPENWRT=y" LDFLAGS="$(LDFLAGS)"
 else

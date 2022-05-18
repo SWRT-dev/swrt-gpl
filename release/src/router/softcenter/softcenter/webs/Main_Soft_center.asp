@@ -554,22 +554,22 @@ $(function() {
 			}
 			else
 				db_softcenter_["softcenter_home_url"] = "https://sc.paldier.com";
-			if(db_softcenter_["softcenter_arch"] == "mips"){//for grx500
+			if(db_softcenter_["softcenter_arch"] == "mips"){
 				scarch="mips";
 				giturl="softcenter";
-			} else if (db_softcenter_["softcenter_arch"] == "armv7l"){//for bcm470x
+			} else if (db_softcenter_["softcenter_arch"] == "armv7l"){
 				scarch="arm";
 				giturl="softcenterarm";
-			} else if (db_softcenter_["softcenter_arch"] == "armng"){//for bcm675x ipq4/5/6/80xx mt7622/3/9
+			} else if (db_softcenter_["softcenter_arch"] == "armng"){
 				scarch="armng";
 				giturl="softcenterarmng";
-			} else if (db_softcenter_["softcenter_arch"] == "aarch64"){//for bcm490x
+			} else if (db_softcenter_["softcenter_arch"] == "aarch64"){
 				scarch="arm64";
 				giturl="softcenterarm64";
-			} else if (db_softcenter_["softcenter_arch"] == "mipsle"){//for mtk7621
+			} else if (db_softcenter_["softcenter_arch"] == "mipsle"){
 				scarch="mipsle";
 				giturl="softcentermipsle";
-			} else {//bug?
+			} else {
 				scarch="arm";
 				giturl="softcenterarm";
 			}
