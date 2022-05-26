@@ -51,7 +51,7 @@ var totalSize = simpleNum(usbDevicesList[i].partition[j].size);
 sctype=usbDevicesList[i].partition[j].format || "";
 if(usbDevicesList[i].partition[j].status == "unmounted")
 continue;
-if((usbDevicesList[i].partition[j].partName==sc_disk)&&((usbDevicesList[i].partition[j].format.indexOf("ext") != -1)||(usbDevicesList[i].partition[j].format.indexOf("ntfs") != -1)))
+if((usbDevicesList[i].partition[j].partName==sc_disk)&&((usbDevicesList[i].partition[j].format.indexOf("ext") != -1)||((usbDevicesList[i].partition[j].format.indexOf("ntfs") != -1) && (usbDevicesList[i].partition[j].format.indexOf("ntfs3") == -1))))
 code +='<option value="'+ usbDevicesList[i].partition[j].partName+'" selected="selected">'+ usbDevicesList[i].partition[j].partName+'(' + free +':'+accessableSize+' GB ' + sctype + ')</option>';
 else if(usbDevicesList[i].partition[j].format.indexOf("fat") != -1)
 code +='<option value="0">' + Unsupportfat + '</option>';

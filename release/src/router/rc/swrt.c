@@ -247,6 +247,8 @@ void swrt_init()
 #elif defined(ETJ)
 		nvram_set("modelname", "ZENWIFIETJ");
 #endif
+	if(!nvram_get("swrt_beta"))
+		nvram_set("swrt_beta", "0");
 }
 
 #if defined(K3)
@@ -534,11 +536,13 @@ size_t wirtefunc(void *ptr, size_t size, size_t nmemb, FILE *stream)
 	return fwrite(ptr, size, nmemb, stream);
 }
 
-int curl_download_swrt(const char *url, const char *file_path, long timeout)
+int curl_download_swrt(const char *url, const char *file_path, long timeout, const int feature)
 {
 	FILE *fp;
 	CURL *curl = NULL;
 	CURLcode ret;
+	struct curl_httppost *post = NULL;
+	struct curl_httppost *last = NULL;
 
 	if(url == NULL || file_path == NULL)
 		return -1;
@@ -553,6 +557,12 @@ int curl_download_swrt(const char *url, const char *file_path, long timeout)
 	if ((fp = fopen(file_path, "wb")) == NULL)
 		return -2;
 
+	if(feature == CURL_FIRMWARE){
+		curl_formadd(&post, &last, CURLFORM_COPYNAME, "modelname", CURLFORM_COPYCONTENTS, nvram_safe_get("modelname"), CURLFORM_END);
+		curl_formadd(&post, &last, CURLFORM_COPYNAME, "beta", CURLFORM_COPYCONTENTS, nvram_safe_get("swrt_beta"), CURLFORM_END);
+	}
+	if(post != NULL)
+		curl_easy_setopt(curl, CURLOPT_HTTPPOST, post);
 	curl_easy_setopt(curl, CURLOPT_URL, url);
 	curl_easy_setopt(curl, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
 	curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, timeout);
@@ -575,22 +585,17 @@ int curl_download_swrt(const char *url, const char *file_path, long timeout)
 
 int swrt_firmware_check_update_main(int argc, char *argv[])
 {
-	//char notetxt[]="/tmp/release_note.txt";
-	//char downloadphp[]="download.php";
-	//char sqdownloadphp[]="SQ_download.php";
-	//char wlanutdatetxt[]="/tmp/wlan_utdate.txt";
-	//char wlan_update_mrflag1[]="wlan_update_mrflag1.zip";
-	FILE *fpupdate;
 	int download;
 	char url[100];
 	char log[200];
 	char serverurl[]="https://update.paldier.com";
-	char serverupdate[]="wlan_update_v2.zip";
+	char serverupdate[]="firmware.php";
 	char localupdate[]="/tmp/wlan_update.txt";
 	char releasenote[]="/tmp/release_note0.txt";
-	char model[20], modelname[20], fsver[10], fwver[10], tag[10];
+	char fwver[10], commitnum[10], tag[10];
 	char cur_fwver[10];
 	char info[100];
+	char *modelname = nvram_safe_get("modelname");
 	nvram_set("webs_state_update", "0");
 	nvram_set("webs_state_flag", "0");
 	nvram_set("webs_state_error", "0");
@@ -609,55 +614,63 @@ int swrt_firmware_check_update_main(int argc, char *argv[])
 	snprintf(url, sizeof(url), "%s/%s", serverurl, serverupdate);
 
 	FWUPDATE_DBG("---- update dl_path_info for general %s/%s ----", serverurl, serverupdate);
-	download=curl_download_swrt(url, localupdate, 8);
+	download=curl_download_swrt(url, localupdate, 8, CURL_FIRMWARE);
 	if(!download)
 	{
-		fpupdate = fopen(localupdate, "r");
-		if (!fpupdate)
-			goto GODONE;
-		//BLUECAVE#K3C#3004384#R7.0#g13e704e
-		char buffer[1024];
-		while(NULL != fgets(buffer, sizeof(buffer), fpupdate)){
-			sscanf(buffer, "%[A-Z0-9-]#%[A-Z0-9]#%[0-9]#%[A-Z0-9.]#%[a-z0-9]", model, modelname, fsver, fwver, tag);
-			_dprintf("%s#%s#%s#%s\n", model, modelname, fsver, fwver);
-			if(!strcmp(model, nvram_get("productid")) && !strcmp(modelname, nvram_safe_get("modelname"))){
+		char md5[33] = {0}, fwname[100] = {0};
+		char *buffer = read_whole_file(localupdate);
+		//1aae93b2b84bf87ba000125740ec4397  GTAX11000_R5.1.8_30041-gab7352c_cferom_ubi.w 
+		if(NULL != buffer){
+			sscanf(buffer, "%s %s", md5, fwname);
+			free(buffer);
+			if(!strncmp(fwname, "beta/", 5)){
+				buffer = &fwname[5 + strlen(modelname) + 1];
+			}else{
+				buffer = &fwname[strlen(modelname) + 1];
+			}
+			sscanf(buffer, "%[BRX0-9.]_%[0-9]-%[a-z0-9]", fwver, commitnum, tag);
+			_dprintf("%s#%s#%s#%s\n", modelname, fwver, commitnum, tag);
+			if(!strcmp(modelname, nvram_safe_get("modelname")) && ((nvram_match("swrt_beta", "0") && !strstr(buffer, "beta")) 
+				|| (nvram_match("swrt_beta", "1") && strstr(buffer, "beta")))){
 				if(strstr(fwver, "B") || strstr(fwver, "R") || strstr(fwver, "X")){
-					_dprintf("%s#%s\n",fwver,cur_fwver);
-					if(versioncmp((cur_fwver),(fwver+1)) == 1){
+					_dprintf("%s#%s\n", fwver, cur_fwver);
+					if(versioncmp(cur_fwver, fwver + 1) == 1 || versioncmp(RT_FWEXTENDNO, commitnum) == 1){
 						nvram_set("webs_state_url", "");
 						if(!strcmp(nvram_get("firmver"), "3.0.0.4"))
-							snprintf(info, sizeof(info), "3004_%s_%s_%s-%s", nvram_get("buildno"), modelname, fwver, tag);
+							snprintf(info, sizeof(info), "3004_%s_%s_%s_%s-%s", nvram_get("buildno"), modelname, fwver, commitnum, tag);
 						else if(!strcmp(nvram_get("firmver"), "4.0.0.4"))
-							snprintf(info, sizeof(info), "4004_%s_%s_%s-%s", nvram_get("buildno"), modelname, fwver, tag);
+							snprintf(info, sizeof(info), "4004_%s_%s_%s_%s-%s", nvram_get("buildno"), modelname, fwver, commitnum, tag);
 						else
-							snprintf(info, sizeof(info), "5004_%s_%s_%s-%s", nvram_get("buildno"), modelname, fwver, tag);
+							snprintf(info, sizeof(info), "5004_%s_%s_%s_%s-%s", nvram_get("buildno"), modelname, fwver, commitnum, tag);
 						FWUPDATE_DBG("---- current version : %s ----", nvram_get("extendno"));
-						FWUPDATE_DBG("---- productid : %s_%s-%s ----", modelname, fwver, tag);
+						FWUPDATE_DBG("---- productid : %s_%s_%s-%s ----", modelname, fwver, commitnum, tag);
 						nvram_set("webs_state_info", info);
 						nvram_set("webs_state_REQinfo", info);
 						nvram_set("webs_state_flag", "1");
 						nvram_set("webs_state_update", "1");
+						nvram_set("swrt_fw_name", fwname);
+						nvram_set("swrt_fw_md5", md5);
 #ifdef RTCONFIG_AMAS
 //						nvram_set("cfg_check", "9");
 //						nvram_set("cfg_upgrade", "0");
 #endif
-						memset(url,'\0',sizeof(url));
-						memset(log,'\0',sizeof(log));
+						memset(url, 0, sizeof(url));
+						memset(log, 0, sizeof(log));
 						char releasenote_file[100];
-						snprintf(releasenote_file, sizeof(releasenote_file), "%s_%s_%s_note.zip", nvram_get("productid"), nvram_get("webs_state_info"),nvram_get("preferred_lang"));
+						snprintf(releasenote_file, sizeof(releasenote_file), "%s_%s_%s_note.zip", nvram_safe_get("productid"), nvram_get("webs_state_info"), nvram_safe_get("preferred_lang"));
 						snprintf(url, sizeof(url), "%s/%s", serverurl, releasenote_file);
 						//snprintf(log, sizeof(log), "echo \"[FWUPDATE]---- download real release note %s/%s ----\" >> /tmp/webs_upgrade.log", serverurl, releasenote_file);
 						//system(log);
 						FWUPDATE_DBG("---- download real release note %s/%s ----", serverurl, releasenote_file);
-						download=curl_download_swrt(url, releasenote, 8);
-						if(download ==0 ){
-							memset(url,'\0',sizeof(url));
-							snprintf(releasenote_file, sizeof(releasenote_file), "%s_%s_US_note.zip", nvram_get("productid"), nvram_get("webs_state_info"));
+						download = curl_download_swrt(url, releasenote, 8, CURL_OTHER);
+						if(download != 0 ){
+							memset(url, 0, sizeof(url));
+							snprintf(releasenote_file, sizeof(releasenote_file), "%s_%s_US_note.zip", nvram_safe_get("productid"), nvram_get("webs_state_info"));
 							snprintf(url, sizeof(url), "%s/%s", serverurl, releasenote_file);
 							//snprintf(log, sizeof(log), "echo \"[FWUPDATE]---- download real release note %s/%s ----\" >> /tmp/webs_upgrade.log", serverurl, releasenote_file);
 							//system(log);
 							FWUPDATE_DBG("---- download real release note %s/%s ----", serverurl, releasenote_file);
-							curl_download_swrt(url, releasenote, 8);
+							curl_download_swrt(url, releasenote, 8, CURL_OTHER);
 						}
 						FWUPDATE_DBG("---- firmware check update finish ----");
 						return 0;
@@ -675,7 +688,6 @@ int swrt_firmware_check_update_main(int argc, char *argv[])
 		}
 	}
 
-GODONE:
 	if(!strcmp(nvram_get("firmver"), "3.0.0.4"))
 		snprintf(info, sizeof(info), "3004_%s_%s_%s-%s", nvram_get("buildno"), modelname, fwver, tag);
 	else if(!strcmp(nvram_get("firmver"), "4.0.0.4"))
@@ -683,8 +695,8 @@ GODONE:
 	else
 		snprintf(info, sizeof(info), "5004_%s_%s_%s-%s", nvram_get("buildno"), modelname, fwver, tag);
 	nvram_set("webs_state_url", "");
-	nvram_set("webs_state_flag", "0");
-	nvram_set("webs_state_error", "1");
+	nvram_set("webs_state_flag", "3");
+	nvram_set("webs_state_error", "2");
 	nvram_set("webs_state_odm", "0");
 	nvram_set("webs_state_update", "1");
 	nvram_set("webs_state_info", info);
@@ -694,6 +706,8 @@ GODONE:
 	nvram_set("cfg_check", "9");
 	nvram_set("cfg_upgrade", "0");
 #endif
+	nvram_unset("swrt_fw_name");
+	nvram_unset("swrt_fw_md5");
 	FWUPDATE_DBG("---- firmware check update finish ----");
 	return 0;
 }

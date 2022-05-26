@@ -42,7 +42,11 @@ extern void swrt_init_model(void);
 extern void swrt_init_done(void);
 extern void gen_swrtid(void);
 extern int swrt_toolbox(int argc, char **argv);
-extern int curl_download_swrt(const char *url, const char *file_path, long timeout);
+enum {
+	CURL_FIRMWARE=0,
+	CURL_OTHER
+};
+extern int curl_download_swrt(const char *url, const char *file_path, long timeout, const int feature);
 #if defined(RTAC68U)
 extern int swrt_set(const char *name, const char *value);
 extern int swrt_unset(const char *name);
