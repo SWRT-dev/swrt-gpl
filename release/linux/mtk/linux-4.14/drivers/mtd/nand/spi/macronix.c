@@ -373,6 +373,8 @@ static int macronix_spinand_detect_nor_emu(struct spinand_device *spinand,
 		dev_err(dev, "failed to read NOR read configuration\n");
 		goto cleanup;
 	}
+
+	*enabled = 1;
 #if 0
 	if (!ret) {
 		for (i = 0; i < len; i++) {
