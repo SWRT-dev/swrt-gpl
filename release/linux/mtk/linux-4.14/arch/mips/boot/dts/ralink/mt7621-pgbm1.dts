@@ -46,21 +46,6 @@
 		};
 */
 	};
-	jffs2-concat {
-		compatible = "mtd-concat";
-		devices = <&jffsconcat0 &jffsconcat1>;
-
-		partitions {
-			compatible = "fixed-partitions";
-			#address-cells = <1>;
-			#size-cells = <1>;
-
-			partition@0 {
-				label = "jffs2";
-				reg = <0x0 0x3600000>;
-			};
-		};
-	};
 };
 
 &bch {
@@ -146,12 +131,15 @@
         status = "okay";
 };
 
-&nand {
+&spi0 {
 	status = "okay";
-
-	nandflash: flash@0 {
+	num-cs = <2>;
+	spi-nand@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "spi-nand";
+		spi-max-frequency = <20000000>;
 		reg = <0>;
-		nand-ecc-mode = "hw";
 		partitions {
 			compatible = "fixed-partitions";
 			#address-cells = <1>;
@@ -159,42 +147,38 @@
 
 			partition@0 {
 				label = "Bootloader";
-				reg = <0x00000 0xe0000>;
+				reg = <0x00000 0xc0000>;
 			};
 
-			partition@E0000 {
+			partition@c0000 {
+				label = "u-boot-env";
+				reg = <0xc0000 0x40000>;
+			};
+
+			partition@100000 {
 				label = "nvram";
-				reg = <0xE0000 0x100000>;
+				reg = <0x100000 0x100000>;
 			};
 
-			factory: partition@1E00000 {
+			factory: partition@200000 {
 				label = "Factory";
-				reg = <0x1E0000 0x100000>;
+				reg = <0x200000 0x100000>;
 			};
 
-			factory2: partition@2E0000  {
+			factory2: partition@300000  {
 				label = "Factory2";
-				reg = <0x2E0000 0x100000>;
+				reg = <0x300000 0x100000>;
 			};
-			partition@3E0000 {
-				label = "Kernel";
-				reg = <0x3E0000 0x2300000>;
-			};
-
-			jffsconcat0: partition@26E0000 {
-				label = "jffsconcat0";
-				reg = <0x26E0000 0xF00000>;
+			partition@400000 {
+				label = "firmware";
+				reg = <0x400000 0x3c00000>;
 			};
 
-			partition@35E0000 {
-				label = "Kernel2";
-				reg = <0x35E0000 0x2300000>;
+			partition@4000000 {
+				label = "jffs2";
+				reg = <0x4000000 0x3f00000>;
 			};
 
-			jffsconcat1: partition@58E0000 {
-				label = "jffsconcat1";
-				reg = <0x58E0000 0x2700000>;
-			};
 		};
 	};
 };

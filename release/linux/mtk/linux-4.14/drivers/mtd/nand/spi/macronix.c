@@ -173,6 +173,51 @@ static const struct spinand_info macronix_spinand_table[] = {
 		     0 /*SPINAND_HAS_QE_BIT*/,
 		     SPINAND_ECCINFO(&mx35lfxge4ab_ooblayout,
 				     mx35lf1ge4ab_ecc_get_status)),
+	SPINAND_INFO("MX35UF4GE4AD", 0xb7,
+		     NAND_MEMORG(1, 4096, 256, 64, 2048, 1, 1, 1),
+		     NAND_ECCREQ(8, 512),
+		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
+					      &write_cache_variants,
+					      &update_cache_variants),
+		     0,
+		     SPINAND_ECCINFO(&mx35lfxge4ab_ooblayout,
+				     mx35lf1ge4ab_ecc_get_status)),
+	SPINAND_INFO("MX35UF2GE4AD", 0xa6,
+		     NAND_MEMORG(1, 2048, 128, 64, 2048, 1, 1, 1),
+		     NAND_ECCREQ(8, 512),
+		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
+					      &write_cache_variants,
+					      &update_cache_variants),
+		     0,
+		     SPINAND_ECCINFO(&mx35lfxge4ab_ooblayout,
+				     mx35lf1ge4ab_ecc_get_status)),
+	SPINAND_INFO("MX35UF2GE4AC", 0xa2,
+		     NAND_MEMORG(1, 2048, 64, 64, 2048, 1, 1, 1),
+		     NAND_ECCREQ(4, 512),
+		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
+					      &write_cache_variants,
+					      &update_cache_variants),
+		     0,
+		     SPINAND_ECCINFO(&mx35lfxge4ab_ooblayout,
+				     mx35lf1ge4ab_ecc_get_status)),
+	SPINAND_INFO("MX35UF1GE4AD", 0x96,
+		     NAND_MEMORG(1, 2048, 128, 64, 1024, 1, 1, 1),
+		     NAND_ECCREQ(8, 512),
+		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
+					      &write_cache_variants,
+					      &update_cache_variants),
+		     0,
+		     SPINAND_ECCINFO(&mx35lfxge4ab_ooblayout,
+				     mx35lf1ge4ab_ecc_get_status)),
+	SPINAND_INFO("MX35UF1GE4AC", 0x92,
+		     NAND_MEMORG(1, 2048, 64, 64, 1024, 1, 1, 1),
+		     NAND_ECCREQ(4, 512),
+		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
+					      &write_cache_variants,
+					      &update_cache_variants),
+		     0,
+		     SPINAND_ECCINFO(&mx35lfxge4ab_ooblayout,
+				     mx35lf1ge4ab_ecc_get_status)),
 	SPINAND_INFO("MX31UF1GE4BC", 0x9e,
 		     NAND_MEMORG(1, 2048, 64, 64, 1024, 1, 1, 1),
 		     NAND_ECCREQ(8, 512),
@@ -204,7 +249,7 @@ static void macronix_spinand_generate_nor_emu_table(void)
 static int macronix_spinand_read_cfg_reg(struct spinand_device *spinand, u8 *buf,
 				       u8 *val)
 {
-	struct spi_mem_op op = SPINAND_GET_FEATURE_OP(REG_CFG, buf);
+	struct spi_mem_op op = SPINAND_GET_FEATURE_OP(0x60, buf);
 	int ret;
 
 	ret = spi_mem_exec_op(spinand->spimem, &op);
@@ -218,7 +263,7 @@ static int macronix_spinand_read_cfg_reg(struct spinand_device *spinand, u8 *buf
 static int macronix_spinand_write_cfg_reg(struct spinand_device *spinand, u8 *buf,
 					u8 val)
 {
-	struct spi_mem_op op = SPINAND_SET_FEATURE_OP(REG_CFG, buf);
+	struct spi_mem_op op = SPINAND_SET_FEATURE_OP(0x60, buf);
 
 	buf[0] = val;
 	return spi_mem_exec_op(spinand->spimem, &op);
@@ -297,10 +342,7 @@ static int macronix_spinand_detect_nor_emu(struct spinand_device *spinand,
 		dev_err(dev, "failed to read configuration\n");
 		goto cleanup;
 	}
-
-	cfg &= ~0xc2;
-	cfg |= 0x82;
-
+	cfg |= 0x2;
 	ret = macronix_spinand_write_cfg_reg(spinand, buf, cfg);
 	if (ret) {
 		dev_err(dev, "failed to write configuration\n");
@@ -313,7 +355,7 @@ static int macronix_spinand_detect_nor_emu(struct spinand_device *spinand,
 		goto cleanup;
 	}
 
-	if ((cfg & 0xc2) != 0x82) {
+	if ((cfg & 0x2) != 0x2) {
 		dev_info(dev,
 			 "flash chip does not support NOR read emulation\n");
 		ret = -ENOTSUPP;
@@ -331,7 +373,7 @@ static int macronix_spinand_detect_nor_emu(struct spinand_device *spinand,
 		dev_err(dev, "failed to read NOR read configuration\n");
 		goto cleanup;
 	}
-
+#if 0
 	if (!ret) {
 		for (i = 0; i < len; i++) {
 			if (buf[i] == 0xff)
@@ -350,9 +392,9 @@ static int macronix_spinand_detect_nor_emu(struct spinand_device *spinand,
 			ret = -EINVAL;
 		}
 	}
-
+#endif
 cleanup:
-	if (macronix_spinand_write_cfg_reg(spinand, buf, cfg & (~0xc2)))
+	if (macronix_spinand_write_cfg_reg(spinand, buf, cfg & (~0x2)))
 		dev_err(dev, "failed to leave NOR read configuration\n");
 
 	kfree(buf);
