@@ -139,6 +139,8 @@ void swrt_init()
 		nvram_set("modelname", "TY6201_RTK");
 #elif defined(TY6202)
 		nvram_set("modelname", "TY6202");
+#elif defined(TYAX5400)
+		nvram_set("modelname", "TYAX5400");
 #elif defined(K3C)
 		nvram_set("modelname", "K3C");
 #elif defined(MR60)
@@ -1200,3 +1202,8 @@ void fix_boarddata(char *key, char *value)
 	}
 }
 #endif
+#if defined(PGBM1)
+int check_bwdpi_nvram_setting(){ return 0; }
+int check_wrs_switch(){ return 0; }
+#endif
+

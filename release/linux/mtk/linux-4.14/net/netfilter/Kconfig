@@ -92,6 +92,15 @@ config NF_CONNTRACK_SECMARK
 
 	  If unsure, say 'N'.
 
+config NF_CONNTRACK_CHAIN_EVENTS
+	bool "Register multiple callbacks to ct events"
+	depends on NF_CONNTRACK_EVENTS
+	default y
+	help
+	  Support multiple registrations.
+
+	  If unsure, say `N'.
+
 config NF_CONNTRACK_CUSTOM
 	int "Number of custom extend"
 	range 0 8

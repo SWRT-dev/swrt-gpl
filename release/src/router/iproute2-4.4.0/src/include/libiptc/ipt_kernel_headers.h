@@ -5,7 +5,7 @@
 
 #include <limits.h>
 
-#if defined(__GLIBC__) && __GLIBC__ == 2
+#if (defined(__GLIBC__) && __GLIBC__ == 2) || defined(MUSL_LIBC)
 #include <netinet/ip.h>
 #include <netinet/in.h>
 #include <netinet/ip_icmp.h>

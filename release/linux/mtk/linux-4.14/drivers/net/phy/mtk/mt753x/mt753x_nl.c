@@ -17,6 +17,8 @@
 #include "mt753x.h"
 #include "mt753x_nl.h"
 
+#define GENL_ID_GENERATE	0
+
 struct mt753x_nl_cmd_item {
 	enum mt753x_cmd cmd;
 	bool require_dev;
@@ -362,6 +364,25 @@ static const struct genl_ops mt753x_nl_ops[] = {
 		.flags = GENL_ADMIN_PERM,
 	},
 };
+
+#define genl_register_family_with_ops(family, ops)			\
+	_genl_register_family_with_ops_grps((family),			\
+					    (ops), ARRAY_SIZE(ops),	\
+					    NULL, 0)
+
+static inline int
+_genl_register_family_with_ops_grps(struct genl_family *family,
+				    const struct genl_ops *ops, size_t n_ops,
+				    const struct genl_multicast_group *mcgrps,
+				    size_t n_mcgrps)
+{
+	family->module = THIS_MODULE;
+	family->ops = ops;
+	family->n_ops = n_ops;
+	family->mcgrps = mcgrps;
+	family->n_mcgrps = n_mcgrps;
+	return genl_register_family(family);
+}
 
 int __init mt753x_nl_init(void)
 {

@@ -10,6 +10,7 @@
 #include <linux/mtd/spinand.h>
 
 #define SPINAND_MFR_MACRONIX		0xC2
+#define MACRONIX_ECCSR_MASK			0x0F
 
 #define SPINAND_PAGE_READ_FROM_CACHE_OP_NOR_EMU(fast, addr, ndummy, buf, len)	\
 	SPI_MEM_OP(SPI_MEM_OP_CMD(fast ? 0x0b : 0x03, 1),		\
@@ -66,8 +67,11 @@ static int mx35lf1ge4ab_get_eccsr(struct spinand_device *spinand, u8 *eccsr)
 					  SPI_MEM_OP_NO_ADDR,
 					  SPI_MEM_OP_DUMMY(1, 1),
 					  SPI_MEM_OP_DATA_IN(1, eccsr, 1));
-
-	return spi_mem_exec_op(spinand->spimem, &op);
+	int ret = spi_mem_exec_op(spinand->spimem, &op);
+	if (ret)
+		return ret;
+	*eccsr &= MACRONIX_ECCSR_MASK;
+	return 0;
 }
 
 static int mx35lf1ge4ab_ecc_get_status(struct spinand_device *spinand,
@@ -362,6 +366,8 @@ static int macronix_spinand_detect_nor_emu(struct spinand_device *spinand,
 		goto cleanup;
 	}
 
+	*enabled = 1;
+#if 0
 	ret = macronix_spinand_load_page(spinand, 0);
 	if (ret) {
 		dev_err(dev, "failed to load NOR read configuration\n");
@@ -374,8 +380,6 @@ static int macronix_spinand_detect_nor_emu(struct spinand_device *spinand,
 		goto cleanup;
 	}
 
-	*enabled = 1;
-#if 0
 	if (!ret) {
 		for (i = 0; i < len; i++) {
 			if (buf[i] == 0xff)

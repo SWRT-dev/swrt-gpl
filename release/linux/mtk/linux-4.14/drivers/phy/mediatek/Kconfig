@@ -3,7 +3,7 @@
 #
 config PHY_MTK_TPHY
     tristate "MediaTek T-PHY Driver"
-    depends on ARCH_MEDIATEK && OF
+    depends on (ARCH_MEDIATEK || SOC_MT7621) && OF
     select GENERIC_PHY
     help
       Say 'Y' here to add support for MediaTek T-PHY driver,

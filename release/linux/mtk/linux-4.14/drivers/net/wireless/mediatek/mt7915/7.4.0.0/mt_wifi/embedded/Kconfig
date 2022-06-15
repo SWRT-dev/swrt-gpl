@@ -13,66 +13,7 @@ config MT_WIFI_PATH
 
 if MT_WIFI
 menu "WiFi Generic Feature Options"
-choice
-		prompt "EEPROM Type of 1st Card"
-		depends on ! FIRST_IF_NONE
 
-		config FIRST_IF_EEPROM_FLASH
-		bool "FLASH"
-
-		config FIRST_IF_EEPROM_EFUSE
-		bool "EFUSE"
-endchoice
-
-config RT_FIRST_CARD_EEPROM
-		string
-		depends on ! FIRST_IF_NONE
-		default "flash" if FIRST_IF_EEPROM_FLASH
-
-choice
-		prompt "EEPROM Type of 2nd Card"
-		depends on ! SECOND_IF_NONE
-
-		config SECOND_IF_EEPROM_FLASH
-		bool "FLASH"
-
-		config SECOND_IF_EEPROM_PROM
-		bool "EEPROM"
-
-		config SECOND_IF_EEPROM_EFUSE
-		bool "EFUSE"
-
-endchoice
-
-config RT_SECOND_CARD_EEPROM
-		string
-		depends on ! SECOND_IF_NONE
-		default "prom" if SECOND_IF_EEPROM_PROM
-		default "efuse" if SECOND_IF_EEPROM_EFUSE
-		default "flash" if SECOND_IF_EEPROM_FLASH
-
-choice
-		prompt "EEPROM Type of 3th Card"
-		depends on ! THIRD_IF_NONE
-
-		config THIRD_IF_EEPROM_FLASH
-		bool "FLASH"
-
-		config THIRD_IF_EEPROM_PROM
-		bool "EEPROM"
-
-		config THIRD_IF_EEPROM_EFUSE
-		bool "EFUSE"
-
-endchoice
-
-config RT_THIRD_CARD_EEPROM
-		string
-		depends on ! THIRD_IF_NONE
-		default "prom" if THIRD_IF_EEPROM_PROM
-		default "efuse" if THIRD_IF_EEPROM_EFUSE
-		default "flash" if THIRD_IF_EEPROM_FLASH
-	
 config MULTI_INF_SUPPORT
 		bool
 		default y if !FIRST_IF_NONE && !SECOND_IF_NONE
@@ -203,17 +144,17 @@ config MTK_OFFCHANNEL_SCAN_FEATURE
 
 config HDR_TRANS_TX_SUPPORT
     bool "Tx Header Translation"
-    depends on CHIP_MT7615E || CHIP_MT7622 || CHIP_MT7663E || CHIP_MT7626
+    depends on CHIP_MT7615E || CHIP_MT7622 || CHIP_MT7663E || CHIP_MT7626 || CHIP_MT7915
     default y
 
 config HDR_TRANS_RX_SUPPORT
     bool "Rx Header Translation"
-    depends on CHIP_MT7615E || CHIP_MT7622 || CHIP_MT7663E || CHIP_MT7626
+    depends on CHIP_MT7615E || CHIP_MT7622 || CHIP_MT7663E || CHIP_MT7626 || CHIP_MT7915
     default y
 
 config DBDC_MODE
 	bool "dbdc mode support"
-	depends on CHIP_MT7615E || CHIP_MT7626
+	depends on CHIP_MT7615E || CHIP_MT7626 || CHIP_MT7915
 	select MULTI_PROFILE_SUPPORT
 	#select DEFAULT_5G_PROFILE
 	default y
@@ -225,7 +166,7 @@ config MULTI_PROFILE_SUPPORT
 
 config DEFAULT_5G_PROFILE
 	bool "5G default profile for DBDC"
-	depends on CHIP_MT7615E
+	depends on CHIP_MT7615E || CHIP_MT7915
 	depends on DBDC_MODE
 	default y
 
@@ -403,6 +344,11 @@ config LINK_TEST_SUPPORT
 	depends on WIFI_DRIVER
 	default y
 
+config WIFI_EAP_FEATURE
+	bool "EAP Feature Support"
+	depends on WIFI_DRIVER
+	default y
+
 config WIFI_GPIO_CTRL
 	bool "GPIO Control Support"
 	depends on WIFI_DRIVER
@@ -471,47 +417,6 @@ config FDB_SUPPORT
        depends on WIFI_DRIVER
        default n
 
-choice
-        prompt "PA LNA Type of 1st Card"
-		depends on ! FIRST_IF_NONE
-		
-		config FIRST_IF_EPAELNA
-		bool "ePAeLNA"
-		config FIRST_IF_IPAILNA
-		bool "iPAiLNA"		
-		config FIRST_IF_IPAELNA
-		bool "iPAeLNA"
-#		config FIRST_IF_EPAILNA
-#		bool "ePAiLNA"
-endchoice
-choice
-        prompt "PA LNA Type of 2nd Card"
-		depends on ! SECOND_IF_NONE
-		
-		config SECOND_IF_EPAELNA
-		bool "ePAeLNA"
-		config SECOND_IF_IPAILNA
-		bool "iPAiLNA"		
-		config SECOND_IF_IPAELNA
-		bool "iPAeLNA"
-#		config SECOND_IF_EPAILNA
-#		bool "ePAiLNA"
-endchoice
-choice
-        prompt "PA LNA Type of 3rd Card"
-		depends on ! THIRD_IF_NONE
-		
-		config THIRD_IF_EPAELNA
-		bool "ePAeLNA"
-		config THIRD_IF_IPAILNA
-		bool "iPAiLNA"		
-		config THIRD_IF_IPAELNA
-		bool "iPAeLNA"
-#		config THIRD_IF_EPAILNA
-#		bool "ePAiLNA"
-endchoice
-#### PA_LNA_Type choice END 
-
 #
 # Section for chip architectures
 #
@@ -554,24 +459,6 @@ config RTMP_RBUS_SUPPORT
 endmenu
 
 menu "WiFi Operation Modes"
-	choice
-		prompt "Main Mode"
-		default WIFI_MODE_AP
-
-		config WIFI_MODE_AP
-				tristate "AP"
-				select MT_AP_SUPPORT
-
-		config WIFI_MODE_STA
-				tristate "STA"
-				select MT_STA_SUPPORT
-
-		config WIFI_MODE_BOTH
-				tristate "APSTA"
-				select MT_AP_SUPPORT
-				select MT_STA_SUPPORT
-    endchoice
-
     if WIFI_MODE_AP || WIFI_MODE_BOTH
 		source "drivers/net/wireless/mediatek/mt7915d/mt_wifi_ap/Kconfig"
     endif
@@ -594,9 +481,6 @@ if WIFI_RTMP_MAC
 		bool
 		default y
 endif
-
-config WIFI_MT_MAC
-        bool
 
 if WIFI_MT_MAC
 	config MT_MAC

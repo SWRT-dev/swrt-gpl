@@ -185,3 +185,6 @@ obj-$(CONFIG_FPGA)		+= fpga/
 obj-$(CONFIG_FSI)		+= fsi/
 obj-$(CONFIG_TEE)		+= tee/
 obj-$(CONFIG_MULTIPLEXER)	+= mux/
+
+# ASUS_EXT
+obj-$(CONFIG_ASUS_NVRAM_API)    += nvram/

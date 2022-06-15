@@ -383,7 +383,7 @@ void phy_ethtool_ksettings_get(struct phy_device *phydev,
 }
 EXPORT_SYMBOL(phy_ethtool_ksettings_get);
 
-static int phy_ethtool_gset(struct phy_device *phydev, struct ethtool_cmd *cmd)
+int phy_ethtool_gset(struct phy_device *phydev, struct ethtool_cmd *cmd)
 {
 	cmd->supported = phydev->supported;
 
@@ -405,6 +405,7 @@ static int phy_ethtool_gset(struct phy_device *phydev, struct ethtool_cmd *cmd)
 
 	return 0;
 }
+EXPORT_SYMBOL(phy_ethtool_gset);
 
 int phy_ethtool_ioctl(struct phy_device *phydev, void *useraddr)
 {

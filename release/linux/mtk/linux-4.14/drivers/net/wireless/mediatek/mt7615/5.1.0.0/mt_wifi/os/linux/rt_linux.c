@@ -67,9 +67,6 @@
 #define RT_CONFIG_IF_OPMODE_ON_STA(__OpMode)
 #endif
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 999)
-ssize_t __vfs_write(struct file *file, const char __user *p, size_t count, loff_t *pos);
-#endif
 
 #if (KERNEL_VERSION(2, 6, 0) <= LINUX_VERSION_CODE)
 #if (KERNEL_VERSION(2, 6, 3) > LINUX_VERSION_CODE)
@@ -1971,6 +1968,7 @@ VOID RtmpDrvAllMacPrint(
 			}
 #elif (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
 			__kernel_write(file_w, msg, strlen(msg), &file_w->f_pos);
+
 #else
 			__vfs_write(file_w, msg, strlen(msg), &file_w->f_pos);
 #endif
@@ -2033,6 +2031,7 @@ VOID RtmpDrvAllE2PPrint(
 				}
 #elif (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
 				__kernel_write(file_w, msg, strlen(msg), &file_w->f_pos);
+
 #else
 				__vfs_write(file_w, msg, strlen(msg), &file_w->f_pos);
 #endif
@@ -2083,6 +2082,7 @@ VOID RtmpDrvAllRFPrint(
 			}
 #elif (KERNEL_VERSION(4, 19, 0) <= LINUX_VERSION_CODE)
 			__kernel_write(file_w, pBuf, BufLen, &file_w->f_pos);
+
 #else
 			__vfs_write(file_w, pBuf, BufLen, &file_w->f_pos);
 #endif

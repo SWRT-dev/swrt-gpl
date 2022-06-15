@@ -76,6 +76,191 @@ static void dns_help(void) {
            "[!] --maxsize qname max size \n");
 }
 
+#if defined(MUSL_LIBC)
+static const char        digits[] = "0123456789";
+
+static int labellen (const unsigned char *lp)
+{
+  if (*lp <= 63)
+    return *lp;
+  return -1;
+}
+
+static int special(int ch) {
+        switch (ch) {
+        case 0x22: /*%< '"' */
+        case 0x2E: /*%< '.' */
+        case 0x3B: /*%< ';' */
+        case 0x5C: /*%< '\\' */
+        case 0x28: /*%< '(' */
+        case 0x29: /*%< ')' */
+        /* Special modifiers in zone files. */
+        case 0x40: /*%< '@' */
+        case 0x24: /*%< '$' */
+                return (1);
+        default:
+                return (0);
+        }
+}
+
+static int printable(int ch) {
+        return (ch > 0x20 && ch < 0x7f);
+}
+
+static int ns_name_ntop(const u_char *src, char *dst, size_t dstsiz)
+{
+        const u_char *cp;
+        char *dn, *eom;
+        u_char c;
+        u_int n;
+        int l;
+        cp = src;
+        dn = dst;
+        eom = dst + dstsiz;
+        while ((n = *cp++) != 0) {
+                if ((n & NS_CMPRSFLGS) == NS_CMPRSFLGS) {
+                        /* Some kind of compression pointer. */
+                        return (-1);
+                }
+                if (dn != dst) {
+                        if (dn >= eom) {
+                                return (-1);
+                        }
+                        *dn++ = '.';
+                }
+                if ((l = labellen(cp - 1)) < 0) {
+                        return(-1);
+                }
+                if (dn + l >= eom) {
+                        return (-1);
+                }
+                for ((void)NULL; l > 0; l--) {
+                        c = *cp++;
+                        if (special(c)) {
+                                if (dn + 1 >= eom) {
+                                        return (-1);
+                                }
+                                *dn++ = '\\';
+                                *dn++ = (char)c;
+                        } else if (!printable(c)) {
+                                if (dn + 3 >= eom) {
+                                        return (-1);
+                                }
+                                *dn++ = '\\';
+                                *dn++ = digits[c / 100];
+                                *dn++ = digits[(c % 100) / 10];
+                                *dn++ = digits[c % 10];
+                        } else {
+                                if (dn >= eom) {
+                                        return (-1);
+                                }
+                                *dn++ = (char)c;
+                        }
+                }
+        }
+        if (dn == dst) {
+                if (dn >= eom) {
+                        return (-1);
+                }
+                *dn++ = '.';
+        }
+        if (dn >= eom) {
+                return (-1);
+        }
+        *dn++ = '\0';
+        return (dn - dst);
+}
+
+static int ns_name_pton(const char *src, u_char *dst, size_t dstsiz)
+{
+        u_char *label, *bp, *eom;
+        int c, n, escaped;
+        char *cp;
+        escaped = 0;
+        bp = dst;
+        eom = dst + dstsiz;
+        label = bp++;
+        while ((c = *src++) != 0) {
+                if (escaped) {
+                        if ((cp = strchr(digits, c)) != NULL) {
+                                n = (cp - digits) * 100;
+                                if ((c = *src++) == 0 ||
+                                    (cp = strchr(digits, c)) == NULL) {
+                                        return (-1);
+                                }
+                                n += (cp - digits) * 10;
+                                if ((c = *src++) == 0 ||
+                                    (cp = strchr(digits, c)) == NULL) {
+                                        return (-1);
+                                }
+                                n += (cp - digits);
+                                if (n > 255) {
+                                        return (-1);
+                                }
+                                c = n;
+                        }
+                        escaped = 0;
+                } else if (c == '\\') {
+                        escaped = 1;
+                        continue;
+                } else if (c == '.') {
+                        c = (bp - label - 1);
+                        if ((c & NS_CMPRSFLGS) != 0) {        /*%< Label too big. */
+                                return (-1);
+                        }
+                        if (label >= eom) {
+                                return (-1);
+                        }
+                        *label = c;
+                        /* Fully qualified ? */
+                        if (*src == '\0') {
+                                if (c != 0) {
+                                        if (bp >= eom) {
+                                                return (-1);
+                                        }
+                                        *bp++ = '\0';
+                                }
+                                if ((bp - dst) > MAXCDNAME) {
+                                        return (-1);
+                                }
+                                return (1);
+                        }
+                        if (c == 0 || *src == '.') {
+                                return (-1);
+                        }
+                        label = bp++;
+                        continue;
+                }
+                if (bp >= eom) {
+                        return (-1);
+                }
+                *bp++ = (u_char)c;
+        }
+        if (escaped) {
+                /* Trailing backslash.  */
+                return -1;
+        }
+        c = (bp - label - 1);
+        if ((c & NS_CMPRSFLGS) != 0) {                /*%< Label too big. */
+                return (-1);
+        }
+        if (label >= eom) {
+                return (-1);
+        }
+        *label = c;
+        if (c != 0) {
+                if (bp >= eom) {
+                        return (-1);
+                }
+                *bp++ = 0;
+        }
+        if ((bp - dst) > MAXCDNAME) {        /*%< src too big */
+                return (-1);
+        }
+        return (0);
+}
+#endif
+
 static void dns_init(struct xt_entry_match *m) {
     struct xt_dns *data = (struct xt_dns *)m->data;
 

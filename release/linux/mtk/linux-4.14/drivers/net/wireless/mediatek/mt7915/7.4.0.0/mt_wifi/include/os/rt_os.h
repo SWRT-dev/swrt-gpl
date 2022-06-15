@@ -133,7 +133,7 @@
 #endif
 
 #define RTPRIV_IOCTL_GET_DRIVER_INFO				(SIOCIWFIRSTPRIV + 0x1D)
-
+#define RTPRIV_IOCTL_ASUSCMD		(SIOCIWFIRSTPRIV + 0x1E)
 #ifdef DYNAMIC_VLAN_SUPPORT
 #define RTPRIV_IOCTL_STA_VLAN						(SIOCIWFIRSTPRIV + 0x1E)
 #endif
@@ -173,3 +173,4 @@ enum {
 #endif
 
 #endif /* _RT_OS_H_ */
+

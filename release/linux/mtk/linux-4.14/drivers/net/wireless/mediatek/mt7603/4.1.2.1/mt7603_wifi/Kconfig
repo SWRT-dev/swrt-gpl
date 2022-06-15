@@ -1,7 +1,3 @@
-config CHIP_MT7603E
-	bool
-	default y
-
 if FIRST_IF_MT7603E || SECOND_IF_MT7603E
 config MT7603E_RLT_WIFI
 	tristate "RLT 7603 WIFI Driver"

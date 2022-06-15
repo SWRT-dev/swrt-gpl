@@ -1,7 +1,8 @@
 #ifndef _LINUX_XFRM_H
 #define _LINUX_XFRM_H
-
+#if !defined(MUSL_LIBC)
 #include <linux/in6.h>
+#endif
 #include <linux/types.h>
 
 /* All of the structures in this file may not change size as they are

@@ -330,6 +330,28 @@ GCR_CX_ACCESSOR_RW(32, 0x030, reset_ext_base)
 #define CM_GCR_Cx_RESET_EXT_BASE_BEVEXCPA	GENMASK(7, 1)
 #define CM_GCR_Cx_RESET_EXT_BASE_PRESENT	BIT(0)
 
+/* GCR_CONFIG register fields */
+#define CM_GCR_CONFIG_NUMIOCU_SHF		8
+#define CM_GCR_CONFIG_NUMIOCU_MSK		(_ULCAST_(0xf) << 8)
+#define CM_GCR_CONFIG_PCORES_SHF		0
+#define CM_GCR_CONFIG_PCORES_MSK		(_ULCAST_(0xff) << 0)
+
+
+/**
+ * mips_cm_numiocu - return the number of IOCUs present in the system
+ *
+ * Returns the value of the NUMIOCU field of the GCR_CONFIG register, or zero
+ * if no Coherence Manager is present.
+ */
+static inline unsigned mips_cm_numiocu(void)
+{
+	if (!mips_cm_present())
+		return 0;
+
+	return (read_gcr_config() & CM_GCR_CONFIG_NUMIOCU_MSK)
+		>> CM_GCR_CONFIG_NUMIOCU_SHF;
+}
+
 /**
  * mips_cm_l2sync - perform an L2-only sync operation
  *

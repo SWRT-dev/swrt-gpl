@@ -21,6 +21,7 @@
 #include <linux/of_gpio.h>
 #include <linux/of_net.h>
 #include <linux/of_irq.h>
+#include <linux/interrupt.h>
 #if defined(CONFIG_MODEL_R6800)
 #include <linux/fs.h>
 #include <linux/proc_fs.h>
@@ -544,7 +545,7 @@ static int mt753x_mdio_write(struct mii_bus *bus, int addr, int reg, u16 val)
 static const struct net_device_ops mt753x_dummy_netdev_ops = {
 };
 
-static const char *phy_speed_to_str(int speed)
+static const char *mtk_phy_speed_to_str(int speed)
 {
 	switch (speed) {
 	case SPEED_10:
@@ -612,7 +613,7 @@ static void mt753x_phy_link_handler(struct net_device *dev)
 	if (phydev->link) {
 		dev_info(gsw->dev,
 			 "Port %d Link is Up - %s/%s - flow control %s\n",
-			 port, phy_speed_to_str(phydev->speed),
+			 port, mtk_phy_speed_to_str(phydev->speed),
 			 (phydev->duplex == DUPLEX_FULL) ? "Full" : "Half",
 			 phydev->pause ? "rx/tx" : "off");
 	} else {
@@ -699,7 +700,7 @@ static int mt753x_mdio_register(struct gsw_mt753x *gsw)
 	gsw->gphy_bus->priv = gsw;
 	gsw->gphy_bus->parent = gsw->dev;
 	gsw->gphy_bus->phy_mask = BIT(MT753X_NUM_PHYS) - 1;
-	gsw->gphy_bus->irq = gsw->phy_irqs;
+	memcpy(gsw->gphy_bus->irq, gsw->phy_irqs, sizeof(gsw->phy_irqs));
 
 	for (i = 0; i < PHY_MAX_ADDR; i++)
 		gsw->gphy_bus->irq[i] = PHY_POLL;

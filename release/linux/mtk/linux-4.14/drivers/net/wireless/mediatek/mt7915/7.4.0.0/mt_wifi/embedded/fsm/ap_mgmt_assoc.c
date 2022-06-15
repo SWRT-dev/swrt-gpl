@@ -2288,7 +2288,7 @@ SendAssocResponse:
 		UINT32 offset = 0;
 
 		offset = add_assoc_rsp_he_ies(wdev, (UINT8 *)pOutBuffer, FrameLen);
-		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 				("add he assoc_rsp, len=%d\n", offset));
 		FrameLen += offset;
 #ifdef WIFI_TWT_SUPPORT

@@ -10,6 +10,7 @@
 
 #include <linux/kernel.h>
 #include <linux/delay.h>
+#include <linux/interrupt.h>
 
 #include "mt753x.h"
 #include "mt753x_regs.h"

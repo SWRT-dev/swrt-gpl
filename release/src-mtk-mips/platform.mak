@@ -871,7 +871,7 @@ define platformKernelConfig
 			echo "CONFIG_RT2860V2_AP_CARRIER=y" >>$(1); \
 	fi; \
 	if [ "$(MT7621)" = "y" ] ; then \
-		sed -i "/CONFIG_NF_CT_NETLINK/d" $(1); \
+		sed -i "/CONFIG_NF_CT_NETLINK\>/d" $(1); \
 		echo "CONFIG_NF_CT_NETLINK=m" >>$(1); \
 		sed -i "/CONFIG_NF_CT_NETLINK_TIMEOUT/d" $(1); \
 		echo "CONFIG_NF_CT_NETLINK_TIMEOUT=m" >>$(1); \
@@ -941,6 +941,9 @@ define platformKernelConfig
 			echo "CONFIG_UBIFS_FS_ZLIB=y" >>$(1); \
 			sed -i "/CONFIG_UBIFS_FS_DEBUG/d" $(1); \
 			echo "# CONFIG_UBIFS_FS_DEBUG is not set" >>$(1); \
+			echo "# CONFIG_UBIFS_ATIME_SUPPORT is not set" >>$(1); \
+			echo "# CONFIG_UBIFS_FS_ENCRYPTION is not set" >>$(1); \
+			echo "# CONFIG_UBIFS_FS_SECURITY is not set" >>$(1); \
 		else \
 			sed -i "/CONFIG_UBIFS_FS/d" $(1); \
 			echo "# CONFIG_UBIFS_FS is not set" >>$(1); \

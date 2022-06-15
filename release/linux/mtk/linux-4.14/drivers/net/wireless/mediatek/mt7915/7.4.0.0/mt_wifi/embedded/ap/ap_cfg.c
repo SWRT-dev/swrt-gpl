@@ -20826,10 +20826,19 @@ INT RTMP_AP_IoctlHandle(
 			if (subcmd == RT_OID_GET_PHY_MODE) {
 				if (pData != NULL) {
 					UINT modetmp = 0;
-
+#ifdef DBDC_MODE
+					if (pAd->CommonCfg.dbdc_mode == TRUE) {
+						POS_COOKIE pObj = (POS_COOKIE) pAd->OS_Cookie;
+						UINT8 band_idx = pObj->ioctl_if;
+						MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("Query::Get phy mode (%02X)\n",
+								 pAd->ApCfg.MBSSID[band_idx].wdev.PhyMode));
+						modetmp = (UINT) pAd->ApCfg.MBSSID[band_idx].wdev.PhyMode;
+					}
+#else
 					MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("Query::Get phy mode (%02X)\n",
 							 pAd->ApCfg.MBSSID[MAIN_MBSSID].wdev.PhyMode));
 					modetmp = (UINT) pAd->ApCfg.MBSSID[MAIN_MBSSID].wdev.PhyMode;
+#endif
 					wrq->u.data.length = 1;
 
 					/**(ULONG *)pData = (ULONG)pAd->ApCfg.MBSS[MAIN_MBSSID].wdev.PhyMode; */
@@ -21195,6 +21204,97 @@ INT RTMP_AP_IoctlHandle(
 
 	case CMD_RTPRIV_IOCTL_PHY_STATE:
 		Status = RTMPPhyState(pAd, wrq);
+		break;
+
+	case CMD_RTPRIV_IOCTL_ASUSCMD:
+		//RTMPIoctlAsusHandle(pAd, wrq, subcmd, pData, Data);
+		if ( subcmd == ASUS_SUBCMD_CHLIST) {
+			UCHAR BandIdx = 0, ChIdx;
+			CHANNEL_CTRL *pChCtrl;
+			RTMP_STRING Channel[256], Tmp[4];
+			memset(Channel, 0, 256);
+			pChCtrl = hc_get_channel_ctrl(pAd->hdev_ctrl, BandIdx);
+			if (pChCtrl->ChListNum > 0) {
+				for (ChIdx = 0; ChIdx < pChCtrl->ChListNum; ChIdx++) {
+					if(ChIdx > 0)
+						strcat(Channel,",");
+					snprintf(Tmp, sizeof(Tmp), "%d", pChCtrl->ChList[ChIdx].Channel);
+					strcat(Channel,Tmp);
+				}
+			}
+			wrq->u.data.length = strlen(Channel);
+			//Channel[wrq->u.data.length] = '\0';
+			if (copy_to_user(wrq->u.data.pointer, Channel, wrq->u.data.length))
+				Status = -EFAULT;
+		} else if ( subcmd == ASUS_SUBCMD_DRIVERVER ) {
+			RTMP_STRING driverVersion[16];
+			wrq->u.data.length = strlen(AP_DRIVER_VERSION);
+			snprintf(&driverVersion[0], sizeof(driverVersion), "%s", AP_DRIVER_VERSION);
+			driverVersion[wrq->u.data.length] = '\0';
+			if (copy_to_user(wrq->u.data.pointer, &driverVersion, wrq->u.data.length))
+				Status = -EFAULT;
+		} else if ( subcmd == ASUS_SUBCMD_RADIO_STATUS ) {
+			UINT32 Enable = 0;
+			if(pAd->Flags & fRTMP_ADAPTER_RADIO_OFF)
+				Enable = 0;
+			else
+				Enable = 1;
+			if (copy_to_user(wrq->u.data.pointer, &Enable, wrq->u.data.length))
+				Status = -EFAULT;
+		} else if ( subcmd == ASUS_SUBCMD_RADIO_TEMPERATURE ) {
+			UINT32 temperature = 0;
+			POS_COOKIE pObj = (POS_COOKIE) pAd->OS_Cookie;
+			struct wifi_dev *wdev = get_wdev_by_ioctl_idx_and_iftype(pAd, pObj->ioctl_if, pObj->ioctl_if_type);
+			UINT8 ucBand = BAND0;
+			ucBand = HcGetBandByWdev(wdev);
+			RTMP_GET_TEMPERATURE(pAd, ucBand, &temperature);
+			wrq->u.data.length = sizeof(UINT32);
+			if (copy_to_user(wrq->u.data.pointer, &temperature, wrq->u.data.length))
+				Status = -EFAULT;
+		} else if ( subcmd == ASUS_SUBCMD_CONN_STATUS ) {
+			UINT32 pCurrState = 0;
+			INT i = 0;
+			POS_COOKIE pObj = (POS_COOKIE) pAd->OS_Cookie;
+			struct wifi_dev *wdev = &pAd->StaCfg[pObj->ioctl_if].wdev;
+			struct tx_rx_ctl *tr_ctl = &pAd->tr_ctl;
+			if (pObj->ioctl_if_type == INT_APCLI && wdev && ((GetAssociatedAPByWdev(pAd, wdev)) != NULL) && (pAd->StaCfg[pObj->ioctl_if].SsidLen != 0)){
+				for (i = 0; VALID_UCAST_ENTRY_WCID(pAd, i); i++) {
+					PMAC_TABLE_ENTRY pEntry = &pAd->MacTab.Content[i];
+					STA_TR_ENTRY *tr_entry = &tr_ctl->tr_entry[i];
+					if (IS_ENTRY_PEER_AP(pEntry) && (pEntry->Sst == SST_ASSOC) && (tr_entry->PortSecured == WPA_802_1X_PORT_SECURED) && (pEntry->wdev == &pAd->StaCfg[pObj->ioctl_if].wdev)) {
+						pCurrState = 6;
+						break;
+					}
+				}
+			}
+			wrq->u.data.length = sizeof(UINT32);
+			if (copy_to_user(wrq->u.data.pointer, &pCurrState, wrq->u.data.length))
+				Status = -EFAULT;
+		} else if ( subcmd == ASUS_SUBCMD_GSTAINFO ) {
+		} else if ( subcmd == ASUS_SUBCMD_GSTAT ) {
+		} else if ( subcmd == ASUS_SUBCMD_GRSSI ) {
+		} else if ( subcmd == ASUS_SUBCMD_GROAM ) {
+		} else if ( subcmd == ASUS_SUBCMD_GETSKUTABLE ) {
+		} else if ( subcmd == ASUS_SUBCMD_GETSKUTABLE_TXBF ) {
+		} else if ( subcmd == ASUS_SUBCMD_CLIQ ) {
+			RTMP_STRING tmp[20];
+			PMAC_TABLE_ENTRY mac;
+			POS_COOKIE pObj = (POS_COOKIE) pAd->OS_Cookie;
+			memset(tmp, 0, sizeof(tmp));
+			mac = &pAd->MacTab.Content[pAd->StaCfg[pObj->ioctl_if].MacTabWCID];
+			snprintf(tmp, sizeof(tmp), "%lu", mac->ChannelQuality);
+			wrq->u.data.length = strlen(tmp);
+			if (copy_to_user(wrq->u.data.pointer, tmp, wrq->u.data.length))
+				Status = -EFAULT;
+		} else if ( subcmd == ASUS_SUBCMD_CLRSSI ) {
+		} else if ( subcmd == ASUS_SUBCMD_GMONITOR_RSSI ) {
+		} else if ( subcmd == ASUS_SUBCMD_MACMODE ) {
+		} else if ( subcmd == ASUS_SUBCMD_MACLIST ) {
+		} else if ( subcmd == ASUS_SUBCMD_GDFSNOPCHANNEL ) {
+		} else if ( subcmd == ASUS_SUBCMD_GCHANNELINFO ) {
+		} else if ( subcmd == ASUS_SUBCMD_GETSITESURVEY_VSIE ) {
+		} else if ( subcmd == ASUS_SUBCMD_GETAPCLIENABLE ) {
+		}
 		break;
 
 	default:

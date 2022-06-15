@@ -829,8 +829,8 @@ obj-$(RTCONFIG_DSL_REMOTE) += dsl_drv_tool
 obj-$(RTCONFIG_DSL_HOST) += dsl_diag
 obj-$(RTCONFIG_DSL_HOST) += dsl_autodet
 
-ifneq ($(RTCONFIG_LANTIQ),y)
-ifeq ($(KPATH_2636_OR_3X)$(RTCONFIG_RALINK),y)
+ifneq ($(or $(RTCONFIG_LANTIQ),$(RTCONFIG_RALINK)),y)
+ifeq ($(KPATH_2636_OR_3X),y)
 IPTABLES := iptables-1.4.x
 IPTC_LIBDIR := $(TOP)/$(IPTABLES)/libiptc/.libs
 IPTC_LIBS := -lip4tc $(if $(RTCONFIG_IPV6),-lip6tc,) -liptc
@@ -841,21 +841,24 @@ else
 obj-y += iproute2-3.x
 endif
 else
-IPTABLES := iptables
-IPTC_LIBDIR := $(TOP)/$(IPTABLES)
-IPTC_LIBS := -liptc
-CFLAGS += -DIPTABLES_LEGACY
-obj-y += iptables
-obj-y += iproute2
-endif
-endif
-
-ifeq ($(RTCONFIG_ALPINE)$(RTCONFIG_LANTIQ),y)
 IPTABLES := iptables-1.4.21
 IPTC_LIBDIR := $(TOP)/$(IPTABLES)/libiptc/.libs
 IPTC_LIBS := -lip4tc $(if $(RTCONFIG_IPV6),-lip6tc,) -liptc
 obj-y += iptables-1.4.21
+obj-y += iproute2-3.x
+endif
+endif
+
+ifeq ($(RTCONFIG_ALPINE)$(RTCONFIG_LANTIQ)$(RTCONFIG_RALINK),y)
+IPTABLES := iptables-1.4.21
+IPTC_LIBDIR := $(TOP)/$(IPTABLES)/libiptc/.libs
+IPTC_LIBS := -lip4tc $(if $(RTCONFIG_IPV6),-lip6tc,) -liptc
+obj-y += iptables-1.4.21
+ifeq ($(RTCONFIG_RALINK),y)
+obj-y += iproute2-4.4.0
+else
 obj-y += iproute2-3.15.0
+endif
 endif
 
 obj-$(RTCONFIG_CONNTRACK) += conntrack

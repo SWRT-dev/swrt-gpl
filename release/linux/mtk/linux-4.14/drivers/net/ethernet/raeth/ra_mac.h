@@ -1,29 +1,30 @@
+/* Copyright  2016 MediaTek Inc.
+ * Author: Nelson Chang <nelson.chang@mediatek.com>
+ * Author: Carlos Huang <carlos.huang@mediatek.com>
+ * Author: Harry Huang <harry.huang@mediatek.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
 #ifndef RA_MAC_H
 #define RA_MAC_H
 
-void ra2880stop(END_DEVICE *ei_local);
-void ra2880MacAddressSet(unsigned char p[6]);
-void ra2880Mac2AddressSet(unsigned char p[6]);
-void ethtool_init(struct net_device *dev);
-
-void ra2880EnableInterrupt(void);
-
-void dump_qos(void);
-void dump_reg(void);
-void dump_cp0(void);
-
-int debug_proc_init(void);
-void debug_proc_exit(void);
-
-void enable_auto_negotiate(int ge);
-void rt2880_gmac_hard_reset(void);
-
-int TsoLenUpdate(int tso_len);
-int NumOfTxdUpdate(int num_of_txd);
-
-#ifdef CONFIG_RAETH_LRO
-int LroStatsUpdate(struct net_lro_mgr *lro_mgr, bool all_flushed);
-#endif
-int getnext(const char *src, int separator, char *dest);
+void ra2880stop(struct END_DEVICE *ei_local);
+void set_mac_address(unsigned char p[6]);
+void set_mac2_address(unsigned char p[6]);
 int str_to_ip(unsigned int *ip, const char *str);
+void enable_auto_negotiate(struct END_DEVICE *ei_local);
+void set_ge1_force_1000(void);
+void set_ge2_force_1000(void);
+void set_ge1_an(void);
+void set_ge2_an(void);
+void set_ge2_gmii(void);
+void set_ge0_gmii(void);
+void set_ge2_force_link_down(void);
 #endif

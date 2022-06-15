@@ -209,4 +209,7 @@ source "drivers/tee/Kconfig"
 
 source "drivers/mux/Kconfig"
 
+# ASUS_EXT
+source "drivers/nvram/Kconfig"
+
 endmenu

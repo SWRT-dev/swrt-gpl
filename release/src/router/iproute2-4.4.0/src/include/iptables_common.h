@@ -1,5 +1,8 @@
 #ifndef _IPTABLES_COMMON_H
 #define _IPTABLES_COMMON_H
+#if defined(MUSL_LIBC)
+#include <sys/types.h>
+#endif
 /* Shared definitions between ipv4 and ipv6. */
 
 enum exittype {

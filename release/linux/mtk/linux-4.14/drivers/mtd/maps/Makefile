@@ -57,6 +57,7 @@ obj-$(CONFIG_MTD_AR531X)	+= ar531x_flash.o
 obj-$(CONFIG_MTD_EOC5610)	+= eoc5610_flash.o
 obj-$(CONFIG_MTD_BCM947XX)	+= bcm947xx-flash.o
 ifneq ($(CONFIG_BCM47XX),y)
+ifneq ($(CONFIG_ASUS_NVRAM_API),y)
 obj-y				+= nvram.o 
 obj-$(CONFIG_MACH_AR7100)	+= nvram_kernel.o
 ifeq ($(CONFIG_RB2011),y)
@@ -90,5 +91,5 @@ obj-$(CONFIG_ATHEROS)		+= nvram_kernel.o
 obj-$(CONFIG_ARCH_ALPINE)		+= nvram_kernel.o
 obj-$(CONFIG_MTD_RALINK)        += ralink-flash.o
 obj-$(CONFIG_CAVIUM_OCTEON_SOC) += nvram_kernel.o
-
+endif
 endif

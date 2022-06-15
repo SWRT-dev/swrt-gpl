@@ -808,6 +808,7 @@ ifeq ($(CONFIG_RALINK),y)
 		$(LINUXDIR)/scripts/dtc/dtc -O dtb -i$(DTS_DIR)/ralink -o $(DTS_DIR)/ralink/$(DTB) $(DTS_DIR)/ralink/$(DTB).tmp ; \
 		rm $(DTS_DIR)/ralink/$(DTB).tmp ; \
 		$(CROSS_COMPILE)objcopy -O binary -R .reginfo -R .note -R .comment -R .mdebug -S $(LINUXDIR)/vmlinux $(PLATFORMDIR)/vmlinus ; \
+		asustools/patch-dtb $(PLATFORMDIR)/vmlinus $(DTS_DIR)/ralink/$(DTB) ; \
 		asustools/lzma_9k e $(PLATFORMDIR)/vmlinus $(PLATFORMDIR)/zImage.lzma -lc2 -lp2 -pb2 -mfbt2 ; \
 	elif [ "$(BUILD_NAME)" = "JCG-Q10PRO" ] ; then \
 		$(CROSS_COMPILE)cpp -nostdinc -x assembler-with-cpp -I$(DTS_DIR) -I$(DTS_DIR)/include -undef -D__DTS__ -o $(DTS_DIR)/ralink/$(DTB).tmp $(DTS_DIR)/ralink/mt7621-jcg-q10pro.dts ; \
@@ -860,11 +861,8 @@ ifeq ($(CONFIG_RALINK),y)
 		asustools/u-boot-2014.10/tools/mkimage -f image/MTK-AC2600-RFB1-kernel.bin.its $(PLATFORMDIR)/zImage.img ; \
 	elif [ "$(BUILD_NAME)" = "R6800" ] ; then \
 		cp $(PLATFORMDIR)/zImage.img $(PLATFORMDIR)/kernel.img ; \
-	elif [ "$(BUILD_NAME)" = "PGB-M1" ] ; then \
-		asustools/mkits.sh -D mt7621-pgbm1 -o image/mt7621-pgbm1.its -k $(PLATFORMDIR)/zImage.img -d $(DTS_DIR)/ralink/$(DTB) -C lzma -a 0x81001000 -e 0x81001000 -A mips -v 4.4.198 ; \
-		asustools/u-boot-2014.10/tools/mkimage -f image/mt7621-pgbm1.its $(PLATFORMDIR)/zImage.img ; \
 	fi ; \
-	if [ "$(BUILD_NAME)" = "R6800" ] || [ "$(BUILD_NAME)" = "RM-AC2100" ] || [ "$(BUILD_NAME)" = "JCG-Q10PRO" ] || [ "$(BUILD_NAME)" = "H3C-TX1801" ]; then \
+	if [ "$(BUILD_NAME)" = "R6800" ] || [ "$(BUILD_NAME)" = "RM-AC2100" ] || [ "$(BUILD_NAME)" = "PGB-M1" ] || [ "$(BUILD_NAME)" = "JCG-Q10PRO" ] || [ "$(BUILD_NAME)" = "H3C-TX1801" ]; then \
 		SIZE=`wc -c $(PLATFORMDIR)/zImage.img | awk '{print $$1}'`; \
 		PAD=`expr 4194304 - $${SIZE} - 64` ; \
 		dd if=/dev/zero count=1 bs=$${PAD} 2> /dev/null | tr \\000 \\377 >> $(PLATFORMDIR)/zImage.img ; \
@@ -878,7 +876,7 @@ ifeq ($(CONFIG_RALINK),y)
 	RSIZE=`wc -c $(PLATFORMDIR)/target.image | awk '{print $$1}'` ; \
 	PAD2=`expr $${ISIZE} - $${KSIZE} - $${RSIZE}` ; \
 	RFSOFFSET=`expr 64 + $${KSIZE} + $${PAD2}` ; \
-	if [ "$(BUILD_NAME)" = "RT-AC85U" ] || [ "$(BUILD_NAME)" = "RT-AC85P" ] || [ "$(BUILD_NAME)" = "RT-AC65U" ] || [ "$(BUILD_NAME)" = "RT-ACRH26" ] || [ "$(BUILD_NAME)" = "TUF-AC1750" ] || [ "$(BUILD_NAME)" = "RM-AC2100" ] || [ "$(BUILD_NAME)" = "R6800" ] || [ "$(BUILD_NAME)" = "JCG-Q10PRO" ] || [ "$(BUILD_NAME)" = "H3C-TX1801" ]; then \
+	if [ "$(BUILD_NAME)" = "RT-AC85U" ] || [ "$(BUILD_NAME)" = "RT-AC85P" ] || [ "$(BUILD_NAME)" = "RT-AC65U" ] || [ "$(BUILD_NAME)" = "RT-ACRH26" ] || [ "$(BUILD_NAME)" = "TUF-AC1750" ] || [ "$(BUILD_NAME)" = "RM-AC2100" ] || [ "$(BUILD_NAME)" = "R6800" ] || [ "$(BUILD_NAME)" = "PGB-M1" ] || [ "$(BUILD_NAME)" = "JCG-Q10PRO" ] || [ "$(BUILD_NAME)" = "H3C-TX1801" ]; then \
 		asustools/u-boot-2014.10/tools/mkimage -A mips -O linux -T kernel -C lzma -a 0x81001000 -e 0x81001000 -r $${RFSOFFSET} \
 		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0"  \
 		-d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx ; \
@@ -5144,13 +5142,13 @@ fi; \
 		echo "CONFIG_LINUX_MTD=$(LINUX_MTD)" >>$(1); \
 	fi; \
 	sed -i "/CONFIG_NF_CONNTRACK_EVENTS/d" $(1); \
-	if [ "$(BWDPI)" = "y" ] || [ "$(HND_ROUTER)" = "y" -o "$(CONNTRACK)" = "y" ] || [ "$(PARENTAL2)" = "y" -o "$(PARENTAL)" = "y" ] && [ "$(CONFIG_BCMWL5)" = "y" ] && [ "$(ARM)" = "y" ]; then \
+	if [ "$(BWDPI)" = "y" ] || [ "$(HND_ROUTER)" = "y" -o "$(CONNTRACK)" = "y" ] || [ "$(PARENTAL2)" = "y" -o "$(PARENTAL)" = "y" ] && [ "$(CONFIG_BCMWL5)" = "y" ] && [ "$(ARM)" = "y" ] || [ "$(CONNTRACK)" = "y" ]; then \
 		echo "CONFIG_NF_CONNTRACK_EVENTS=y" >>$(1); \
 	else \
 		echo "# CONFIG_NF_CONNTRACK_EVENTS is not set" >>$(1); \
 	fi; \
 	if [ "$(CONNTRACK)" = "y" ] || [ "$(PARENTAL2)" = "y" -o "$(PARENTAL)" = "y" ] && [ "$(CONFIG_BCMWL5)" = "y" ] && [ "$(ARM)" = "y" ]; then \
-		sed -i "/CONFIG_NF_CT_NETLINK/d" $(1); \
+		sed -i "/CONFIG_NF_CT_NETLINK\>/d" $(1); \
 		echo "CONFIG_NF_CT_NETLINK=y" >>$(1); \
 		if [ "$(HND_ROUTER_AX_675X)" = "y" ] || [ "$(HND_ROUTER_AX_6756)" = "y" ]; then \
 			sed -i "/CONFIG_NF_CT_NETLINK_TIMEOUT/d" $(1); \
@@ -5158,7 +5156,7 @@ fi; \
 		fi; \
 	fi; \
 	if [ "$(NFCM)" = "y" ]; then \
-		sed -i "/CONFIG_NF_CT_NETLINK/d" $(1); \
+		sed -i "/CONFIG_NF_CT_NETLINK\>/d" $(1); \
 		echo "CONFIG_NF_CT_NETLINK=y" >> $(1); \
 		sed -i "/CONFIG_NETFILTER_NETLINK_GLUE_CT/d" $(1); \
 		echo "# CONFIG_NETFILTER_NETLINK_GLUE_CT is not set" >> $(1); \
@@ -5167,7 +5165,7 @@ fi; \
 		sed -i "/CONFIG_NETFILTER_NETLINK_QUEUE_CT/d" $(1); \
 		echo "# CONFIG_NETFILTER_NETLINK_QUEUE_CT is not set" >> $(1); \
 	elif [ "$(NFCM)" = "n" ] ; then \
-		sed -i "/CONFIG_NF_CT_NETLINK/d" $(1); \
+		sed -i "/CONFIG_NF_CT_NETLINK\>/d" $(1); \
 		echo "# CONFIG_NF_CT_NETLINK is not set" >> $(1); \
 		sed -i "/CONFIG_NF_CT_NETLINK_TIMEOUT/d" $(1); \
 		echo "# CONFIG_NF_CT_NETLINK_TIMEOUT is not set" >> $(1); \
@@ -5175,10 +5173,6 @@ fi; \
 		echo "# CONFIG_NETFILTER_NETLINK_QUEUE_CT is not set" >> $(1); \
 	else \
 		echo "# CONFIG_NFCM is not set" >> $(1); \
-	fi; \
-	if [ "$(BWDPI)" = "y" ] && [ "$(LANTIQ)" = "y" ]; then \
-		sed -i "/CONFIG_NF_CONNTRACK_EVENTS/d" $(1); \
-		echo "CONFIG_NF_CONNTRACK_EVENTS=y" >>$(1); \
 	fi; \
 	if [ "$(BWDPI)" = "y" ] && [ "$(LANTIQ)" = "y" ]; then \
 		sed -i "/CONFIG_NF_CONNTRACK_EVENTS/d" $(1); \

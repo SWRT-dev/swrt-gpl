@@ -191,8 +191,8 @@ typedef struct usb_ctrlrequest devctrlrequest;
 #define BF_GAIN_TABLE_FILE_NAME     "/tmp/.mt7615_SingleSKU_BF_Gain.dat"
 #define BF_SKU_TABLE_FILE_NAME      "/tmp/.mt7615_SingleSKU_BF.dat"
 #else
-#define SINGLE_SKU_TABLE_FILE_NAME	"/etc_ro/Wireless/RT2860AP/SingleSKU.dat"
-#define BF_SKU_TABLE_FILE_NAME      "/etc_ro/Wireless/RT2860AP/SingleSKU_BF.dat"
+#define SINGLE_SKU_TABLE_FILE_NAME	"/ra_SKU/SingleSKU_mt7615e-sku.dat"
+#define BF_SKU_TABLE_FILE_NAME      "/ra_SKU/SingleSKU_mt7615e-sku-bf.dat"
 #endif
 #endif /* SINGLE_SKU_V2 */
 

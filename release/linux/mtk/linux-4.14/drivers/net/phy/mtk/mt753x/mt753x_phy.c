@@ -214,6 +214,7 @@ int ge_cal_rext(struct gsw_mt753x *gsw, u8 phyaddr, u32 delay)
 	tc_phy_write_dev_reg(gsw, phyaddr, 0x1e, 0x00db, 0x0000);
 	tc_phy_write_dev_reg(gsw, PHY0, 0x1e, 0x00dc, 0x0000);
 	tc_phy_write_dev_reg(gsw, phyaddr, 0x1e, 0x00dc, 0x0000);
+	return 0;
 }
 
 //-----------------------------------------------------------------
@@ -344,6 +345,7 @@ int ge_cal_r50(struct gsw_mt753x *gsw, u8 phyaddr, u32 delay)
 	tc_phy_write_dev_reg(gsw, phyaddr, 0x1e, 0x00db, 0x0000);
 	tc_phy_write_dev_reg(gsw, PHY0, 0x1e, 0x00dc, 0x0000);
 	tc_phy_write_dev_reg(gsw, phyaddr, 0x1e, 0x00dc, 0x0000);
+	return 0;
 }
 
 int ge_cal_tx_offset(struct gsw_mt753x *gsw,  u8 phyaddr, u32 delay)
@@ -470,6 +472,7 @@ int ge_cal_tx_offset(struct gsw_mt753x *gsw,  u8 phyaddr, u32 delay)
 	tc_phy_write_dev_reg(gsw, phyaddr, 0x1e, 0x00dc, 0x0000);	// disable Tx offset calibration circuit
 	tc_phy_write_dev_reg(gsw, phyaddr, 0x1e, 0x003e, 0x0000);	// disable Tx VLD force mode
 	tc_phy_write_dev_reg(gsw, phyaddr, 0x1e, 0x00dd, 0x0000);	// disable Tx offset/amplitude calibration circuit	
+	return 0;
 }
 
 int ge_cal_tx_amp(struct gsw_mt753x *gsw, u8 phyaddr, u32 delay)
@@ -836,6 +839,7 @@ int ge_cal_tx_amp(struct gsw_mt753x *gsw, u8 phyaddr, u32 delay)
 	/* Restore CR to default */
 	tc_phy_write_dev_reg(gsw, phyaddr, 0x1e, 0x11, orig_1e_11);
 	tc_phy_write_dev_reg(gsw, phyaddr, 0x1f, 0x300, orig_1f_300);
+	return 0;
 }
 
 //-----------------------------------------------------------------
@@ -946,6 +950,7 @@ int phy_calibration(struct gsw_mt753x *gsw, u8 phyaddr)
 	tc_phy_write_dev_reg(gsw, phyaddr, 0x1e, 0x11, orig_1e_11);
 	tc_phy_write_dev_reg(gsw, PHY0, 0x1e, 0x00e1, orig_1e_e1);
 #endif
+	return 0;
 }
 
 void rx_dc_offset(struct gsw_mt753x *gsw, u8 phyaddr)

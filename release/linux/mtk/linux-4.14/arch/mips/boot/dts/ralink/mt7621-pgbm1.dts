@@ -23,6 +23,7 @@
 			linux,code = <KEY_RESTART>;
 		};
 	};
+/*
 	gpio_export {
 		compatible = "gpio-export";
 		#size-cells = <0>;
@@ -38,22 +39,72 @@
 			gpio-export,output = <1>;
 			gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
 		};
-/*
+
 		power_nvme {
 			gpio-export,name = "power_nvme";
 			gpio-export,output = <1>;
 			gpios = <&gpio0 0 GPIO_ACTIVE_HIGH>;
 		};
-*/
 	};
+*/
 };
 
-&bch {
+&spi0 {
 	status = "okay";
+	num-cs = <2>;
+	spi-nand@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "spi-nand";
+		spi-max-frequency = <20000000>;
+		reg = <0>;
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			partition@0 {
+				label = "Bootloader";
+				reg = <0x00000 0xc0000>;
+			};
+
+			partition@c0000 {
+				label = "u-boot-env";
+				reg = <0xc0000 0x40000>;
+			};
+
+			partition@100000 {
+				label = "nvram";
+				reg = <0x100000 0x100000>;
+			};
+
+			factory: partition@200000 {
+				label = "Factory";
+				reg = <0x200000 0x100000>;
+			};
+
+			factory2: partition@300000  {
+				label = "Factory2";
+				reg = <0x300000 0x100000>;
+			};
+			partition@400000 {
+				label = "Kernel";
+				reg = <0x400000 0x3c00000>;
+			};
+
+			partition@4000000 {
+				label = "jffs2";
+				reg = <0x4000000 0x3f00000>;
+			};
+
+		};
+	};
 };
 
 &eth {
         status = "okay";
+		pinctrl-names = "default";
+		pinctrl-0 = <&rgmii1_pins &rgmii2_pins &mdio_pins>;
 
         gmac0: mac@0 {
                 compatible = "mediatek,eth-mac";
@@ -126,61 +177,10 @@
 &hnat {
         mtketh-wan = "eth1";
         mtketh-ppd = "vlan1";
+		mtketh-lan = "vlan1";
         ext-devices = "rai0", "ra0", "rai1", "ra1", "rai2", "ra2", "rai3", "ra3", "apclii0", "apcli0";
         mtketh-max-gmac = <2>;
         status = "okay";
-};
-
-&spi0 {
-	status = "okay";
-	num-cs = <2>;
-	spi-nand@0 {
-		#address-cells = <1>;
-		#size-cells = <1>;
-		compatible = "spi-nand";
-		spi-max-frequency = <20000000>;
-		reg = <0>;
-		partitions {
-			compatible = "fixed-partitions";
-			#address-cells = <1>;
-			#size-cells = <1>;
-
-			partition@0 {
-				label = "Bootloader";
-				reg = <0x00000 0xc0000>;
-			};
-
-			partition@c0000 {
-				label = "u-boot-env";
-				reg = <0xc0000 0x40000>;
-			};
-
-			partition@100000 {
-				label = "nvram";
-				reg = <0x100000 0x100000>;
-			};
-
-			factory: partition@200000 {
-				label = "Factory";
-				reg = <0x200000 0x100000>;
-			};
-
-			factory2: partition@300000  {
-				label = "Factory2";
-				reg = <0x300000 0x100000>;
-			};
-			partition@400000 {
-				label = "firmware";
-				reg = <0x400000 0x3c00000>;
-			};
-
-			partition@4000000 {
-				label = "jffs2";
-				reg = <0x4000000 0x3f00000>;
-			};
-
-		};
-	};
 };
 
 &i2c {
@@ -195,38 +195,14 @@
 
 &pinctrl {
 	state_default: pinctrl0 {
-
-		uart2 {
-			mtk,group = "uart2";
-			mtk,function = "gpio";
-		};
-
-		uart3 {
-			mtk,group = "uart3";
-			mtk,function = "gpio";
-		};
-
-		jtag {
-			mtk,group = "jtag";
-			mtk,function = "gpio";
-		};
-
-		wdt {
-			mtk,group = "wdt";
-			mtk,function = "gpio";
+		gpio {
+			ralink,group = "uart3", "uart2", "jtag", "wdt";
+			ralink,function = "gpio";
 		};
 	};
 };
 
-&uartfull1 {
-	status = "okay";
-};
-
 &pcie {
-	status = "okay";
-};
-
-&u3phy1 {
 	status = "okay";
 };
 

@@ -599,9 +599,15 @@ static int mt7621_pci_probe(struct platform_device *pdev)
 	*(unsigned int *)(0xbe000060) &= ~(0x3<<10 | 0x3<<3);
 	*(unsigned int *)(0xbe000060) |= 0x1<<10 | 0x1<<3;
 	mdelay(100);
+#if defined(CONFIG_MODEL_PGBM1)
+	*(unsigned int *)(0xbe000600) |= 0x1<<19;
+	mdelay(100);
+	*(unsigned int *)(0xbe000620) &= ~(0x1<<19);
+#else
 	*(unsigned int *)(0xbe000600) |= 0x1<<19 | 0x1<<8 | 0x1<<7; // use GPIO19/GPIO8/GPIO7 (PERST_N/UART_RXD3/UART_TXD3)
 	mdelay(100);
 	*(unsigned int *)(0xbe000620) &= ~(0x1<<19 | 0x1<<8 | 0x1<<7);		// clear DATA
+#endif
 
 	mdelay(100);
 #else
@@ -649,7 +655,11 @@ static int mt7621_pci_probe(struct platform_device *pdev)
 	
 
 #if defined GPIO_PERST /* add GPIO control instead of PERST_N */  /*chhung*/
+#if defined(CONFIG_MODEL_PGBM1)
+	*(unsigned int *)(0xbe000620) |= 0x1<<19;		// set DATA
+#else
 	*(unsigned int *)(0xbe000620) |= 0x1<<19 | 0x1<<8 | 0x1<<7;		// set DATA
+#endif
 	mdelay(100);
 #else
 	RALINK_PCI_PCICFG_ADDR &= ~(1<<1); //de-assert PERST

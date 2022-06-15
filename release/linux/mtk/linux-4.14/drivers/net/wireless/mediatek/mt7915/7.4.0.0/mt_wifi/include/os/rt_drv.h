@@ -63,7 +63,7 @@ typedef VOID	pregs;
 /*#endif */
 
 #ifdef SINGLE_SKU_V2
-#define SINGLE_SKU_TABLE_FILE_NAME	"/etc/wireless/mediatek/mt7615e-sku.dat"
+#define SINGLE_SKU_TABLE_FILE_NAME	"/ra_SKU/SingleSKU_mt7615e-sku.dat"
 #endif /* SINGLE_SKU_V2 */
 
 

@@ -21,6 +21,9 @@
 
 #include <asm/types.h>
 #include <linux/rtnetlink.h>
+#if defined(MUSL_LIBC)
+#include <limits.h>
+#endif
 
 #include "rt_names.h"
 

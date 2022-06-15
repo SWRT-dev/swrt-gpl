@@ -4,8 +4,10 @@
 #include <linux/types.h>
 
 #include <linux/sysctl.h>
+#if !defined(MUSL_LIBC)
 #include <linux/in.h>
 #include <linux/in6.h>
+#endif
 
 /* Responses from hook functions. */
 #define NF_DROP 0

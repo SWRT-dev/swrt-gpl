@@ -222,7 +222,7 @@ static NTSTATUS hw_ctrl_flow_v2_connt_act(struct WIFI_SYS_CTRL *wsys)
 	struct _STA_REC_CTRL_T *sta_rec = &wsys->StaRecCtrl;
 	struct _RTMP_CHIP_CAP *cap = hc_get_chip_cap(ad->hdev_ctrl);
 
-	MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s: wdev_idx=%d\n", __func__, wsys->wdev->wdev_idx));
+	MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s: wdev_idx=%d\n", __func__, wsys->wdev->wdev_idx));
 	/* check starec is exist should not add new starec for this wcid */
 	/* skip starec check when certification */
 	if (!ad->CommonCfg.wifi_cert && get_starec_by_wcid(ad, sta_rec->WlanIdx))
@@ -279,7 +279,7 @@ static NTSTATUS hw_ctrl_flow_v2_peer_update(struct WIFI_SYS_CTRL *wsys)
 #ifdef RACTRL_FW_OFFLOAD_SUPPORT
 	UINT32 featues = 0;
 
-	MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s: wdev_idx=%d\n", __func__, wsys->wdev->wdev_idx));
+	MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s: wdev_idx=%d\n", __func__, wsys->wdev->wdev_idx));
 	/*update ra rate*/
 	if ((sta_rec->EnableFeature & STA_REC_RA_UPDATE_FEATURE) && wsys->priv) {
 		AsicRaParamStaRecUpdate(ad,

@@ -931,7 +931,7 @@ void init_syspara(void)
 	{
 		if (buffer[0]!=0xff)
 			ether_etoa(buffer, macaddr2);
-#if defined(JCGQ10PRO) || defined(H3CTX1801)
+#if defined(JCGQ10PRO) || defined(H3CTX1801) || defined(PGBM1)
 		ether_cal_b(buffer, macaddr, 4);
 #endif
 	}
@@ -963,7 +963,7 @@ void init_syspara(void)
 		nvram_set("wl_mssid", "0");
 	else
 		nvram_set("wl_mssid", "1");
-#if defined(R6800) || defined(RMAC2100) || defined(JCGQ10PRO) || defined(H3CTX1801)
+#if defined(R6800) || defined(RMAC2100) || defined(JCGQ10PRO) || defined(H3CTX1801) || defined(PGBM1)
 	nvram_set("wl_mssid", "1");//fix guest wifi
 #endif
 

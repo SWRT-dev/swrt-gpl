@@ -24,8 +24,6 @@
 #endif
 #ifdef CONFIG_NF_CONNTRACK_CHAIN_EVENTS
 #include <linux/notifier.h>
-#elif LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 999)
-#include <linux/notifier.h>
 #endif
 #include <linux/netfilter.h>
 #include <linux/netfilter_ipv4.h>
@@ -95,8 +93,6 @@ struct tuple_list {
 };
 
 #ifdef CONFIG_NF_CONNTRACK_CHAIN_EVENTS
-struct notifier_block ct_event_notifier;
-#elif LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 999)
 struct notifier_block ct_event_notifier;
 #else
 struct nf_ct_event_notifier ct_event_notifier;
@@ -349,9 +345,6 @@ static void gc_worker(struct work_struct *work) {
 
 /* conntrack destroy event callback function */
 #ifdef CONFIG_NF_CONNTRACK_CHAIN_EVENTS
-static int ct_event_cb(struct notifier_block *this, unsigned long events, void *ptr) {
-  struct nf_ct_event *item = ptr;
-#elif LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 999)
 static int ct_event_cb(struct notifier_block *this, unsigned long events, void *ptr) {
   struct nf_ct_event *item = ptr;
 #else
@@ -728,8 +721,6 @@ static int fullconenat_tg_check(const struct xt_tgchk_param *par)
   if (tg_refer_count == 1) {
     nf_ct_netns_get(par->net, par->family);
 #ifdef CONFIG_NF_CONNTRACK_CHAIN_EVENTS
-    ct_event_notifier.notifier_call = ct_event_cb;
-#elif LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 999)
     ct_event_notifier.notifier_call = ct_event_cb;
 #else
     ct_event_notifier.fcn = ct_event_cb;

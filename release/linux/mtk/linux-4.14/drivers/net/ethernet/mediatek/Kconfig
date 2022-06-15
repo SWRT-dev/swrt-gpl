@@ -1,70 +1,44 @@
 config NET_VENDOR_MEDIATEK
-	tristate "Mediatek/Ralink ethernet driver"
-	depends on RALINK
-	help
-	  This driver supports the ethernet mac inside the Mediatek and Ralink WiSoCs
+	bool "MediaTek ethernet driver"
+	depends on ARCH_MEDIATEK || RALINK
+	---help---
+	  If you have a Mediatek SoC with ethernet, say Y.
+
+if NET_VENDOR_MEDIATEK
 
 config NET_MEDIATEK_SOC
-	def_tristate NET_VENDOR_MEDIATEK
+	tristate "MediaTek SoC Gigabit Ethernet support"
+	depends on NET_VENDOR_MEDIATEK
+	select PHYLIB
+	---help---
+	  This driver supports the gigabit ethernet MACs in the
+	  MediaTek SoC family.
 
-if NET_MEDIATEK_SOC
-choice
-	prompt "MAC type"
+config NET_MEDIATEK_DBG
+	bool "Mediatek Ethernet debug interface"
+	depends on NET_MEDIATEK_SOC
 
-config NET_MEDIATEK_RT2880
-	bool "RT2882"
-	depends on MIPS && SOC_RT288X
-
-config NET_MEDIATEK_RT3050
-	bool "RT3050/MT7628"
-	depends on MIPS && (SOC_RT305X || SOC_MT7620)
-
-config NET_MEDIATEK_RT3883
-	bool "RT3883"
-	depends on MIPS && SOC_RT3883
-
-config NET_MEDIATEK_MT7620
-	bool "MT7620"
-	depends on MIPS && SOC_MT7620
-
-config NET_MEDIATEK_MT7621
-	bool "MT7621"
-	depends on MIPS && SOC_MT7621
-
-endchoice
-
-config NET_MEDIATEK_OFFLOAD
-	def_bool NET_MEDIATEK_SOC
-	depends on NET_MEDIATEK_MT7621
+config NET_MEDIATEK_HNAT
+	tristate "MediaTek HW NAT support"
+	depends on NET_MEDIATEK_SOC && NF_CONNTRACK && NF_CONNTRACK_IPV4 && IP_NF_NAT
+	---help---
+	  This driver supports the hardward
+	  Network Address Translation in the
+	  MediaTek MT2701/MT7622/MT7629/MT7621
+	  chipset family
 
 config NET_MEDIATEK_HW_QOS
-	def_bool NET_MEDIATEK_SOC
-	depends on NET_MEDIATEK_MT7623
+	bool "Mediatek HW QoS support"
+	depends on NET_MEDIATEK_HNAT
+	default n
+	---help---
+	  This driver supports the hardward
+	  quality of service (QoS) control
+	  for the hardware NAT in the
+	  MediaTek chipset family.
 
-config NET_MEDIATEK_MDIO
-	def_bool NET_MEDIATEK_SOC
-	depends on (NET_MEDIATEK_RT2880 || NET_MEDIATEK_RT3883 || NET_MEDIATEK_MT7620 || NET_MEDIATEK_MT7621)
-	select PHYLIB
+config ARCH_MT7622_WIFI_HW_NAT
+	bool
+	default y if NET_MEDIATEK_HNAT=m && RA_HW_NAT=n && MTK_EMI_7622=y
 
-config NET_MEDIATEK_MDIO_RT2880
-	def_bool NET_MEDIATEK_SOC
-	depends on (NET_MEDIATEK_RT2880 || NET_MEDIATEK_RT3883)
-	select NET_MEDIATEK_MDIO
-
-config NET_MEDIATEK_MDIO_MT7620
-	def_bool NET_MEDIATEK_SOC
-	depends on (NET_MEDIATEK_MT7620 || NET_MEDIATEK_MT7621)
-	select NET_MEDIATEK_MDIO
-
-config NET_MEDIATEK_ESW_RT3050
-	def_tristate NET_MEDIATEK_SOC
-	depends on NET_MEDIATEK_RT3050
-
-config NET_MEDIATEK_GSW_MT7620
-	def_tristate NET_MEDIATEK_SOC
-	depends on NET_MEDIATEK_MT7620
-
-config NET_MEDIATEK_GSW_MT7621
-	def_tristate NET_MEDIATEK_SOC
-	depends on NET_MEDIATEK_MT7621
-endif
+endif #NET_VENDOR_MEDIATEK
