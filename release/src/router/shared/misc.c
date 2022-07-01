@@ -2163,6 +2163,68 @@ int ubi_getinfo(const char *ubiname, int *dev, int *part, int *size)
 }
 #endif
 
+#if defined(RTCONFIG_EXT4FS) || defined(RTCONFIG_UBIFS)
+#define BLOCK_SYSFS_DIR	"/sys/class/block/mmcblk0/"
+int block_getinfo(const char *partname, int *dev, int *part, unsigned long long int *size)
+{
+	DIR *dir;
+	int d, p, ret = 1;
+	int logical_block_size = 512;
+	char *s1, path[PATH_MAX], name[100] = {0};
+	struct dirent *ent;
+
+	if (!partname || *partname == '\0' || !dev || !part || !size)
+		return -1;
+
+	if ((dir = opendir(BLOCK_SYSFS_DIR)) == NULL)
+		return -2;
+	snprintf(path, sizeof(path), "%s/queue/logical_block_size", BLOCK_SYSFS_DIR);
+	if ((s1 = file2str(path))){
+		logical_block_size = atoi(s1);
+		free(s1);
+	}
+	while (ret && (ent = readdir(dir)) != NULL) {
+		if (!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || strncmp(ent->d_name, "mmcblk0p", 8))
+			continue;
+		if (sscanf(ent->d_name, "mmcblk%dp%d", &d, &p) != 2)
+			continue;
+#if 0
+//kernel > 5.0
+		snprintf(path, sizeof(path), "%s/mmcblk%dp%d/name", BLOCK_SYSFS_DIR, d, p);
+		if (!(s1 = file2str(path)))
+			continue;
+		if (sscanf(s1, "%s", name) != 1 || strcmp(name, partname)){
+			free(s1);
+			continue;
+		}
+#else
+		snprintf(path, sizeof(path), "%s/mmcblk%dp%d/uevent", BLOCK_SYSFS_DIR, d, p);
+		if (!(s1 = file2str(path)))
+			continue;
+		if (sscanf(s1, "%*s\n%*s\n%*s\n%*s\n%*s\nPARTNAME=%s", name) != 1 || strcmp(name, partname)){
+			free(s1);
+			continue;
+		}
+#endif
+		free(s1);
+
+		snprintf(path, sizeof(path), "%s/mmcblk%dp%d/size", BLOCK_SYSFS_DIR, d, p);
+		if (!(s1 = file2str(path)))
+			continue;
+		*size = strtoull(s1, NULL, 10);
+		//it is the number of blocks on emmc/hd/sd. defalut:512
+		*size = *size * logical_block_size;
+		*dev = d;
+		*part = p;
+		free(s1);
+		ret = 0;
+	}
+	closedir(dir);
+
+	return ret;
+}
+#endif
+
 // -----------------------------------------------------------------------------
 
 /* 

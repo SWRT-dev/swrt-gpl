@@ -85,6 +85,8 @@ extern void swrt_patch_nvram(void);
 extern void rax70_sys_hack(void);
 #elif defined(MR60) || defined(MS60)
 extern void ntgr_sys_hack(void);
+#elif defined(TYAX5400)
+extern void swrt_sys_hack(void);
 #elif defined(TUFAX3000) || defined(RTAX58U) || defined(RTAX82U)
 extern void enable_4t4r_ax58(void);
 extern void enable_4t4r(void);

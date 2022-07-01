@@ -186,3 +186,6 @@ obj-$(CONFIG_SIOX)		+= siox/
 obj-$(CONFIG_GNSS)		+= gnss/
 obj-$(CONFIG_INTERCONNECT)	+= interconnect/
 obj-$(CONFIG_COUNTER)		+= counter/
+
+# ASUS_EXT
+obj-$(CONFIG_ASUS_NVRAM_API)    += nvram/

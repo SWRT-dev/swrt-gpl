@@ -151,6 +151,8 @@ void swrt_init()
 		nvram_set("modelname", "360V6");
 #elif defined(GLAX1800)
 		nvram_set("modelname", "GLAX1800");
+#elif defined(JDCAX1800)
+		nvram_set("modelname", "JDCAX1800");
 //asus
 #elif defined(RTAC68U)
 		nvram_set("modelname", "RTAC68U");

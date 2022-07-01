@@ -449,6 +449,10 @@ ifeq ($(RTCONFIG_UBIFS),y)
 OBJS += ubifs.o
 endif
 
+ifeq ($(RTCONFIG_EMMC),y)
+OBJS += ext4.o
+endif
+
 ifeq ($(RTCONFIG_YAFFS),y)
 OBJS += yaffs.o
 endif
@@ -1336,7 +1340,7 @@ ifeq ($(RTCONFIG_SPEEDTEST),y)
 endif
 ifeq ($(RTCONFIG_USB_MODEM),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc write_3g_ppp_conf
-ifeq ($(or $(RTCONFIG_JFFS2),$(RTCONFIG_BRCM_NAND_JFFS2),$(RTCONFIG_UBIFS)),y)
+ifeq ($(or $(RTCONFIG_JFFS2),$(RTCONFIG_BRCM_NAND_JFFS2),$(RTCONFIG_UBIFS),$(RTCONFIG_EMMC)),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc modem_data
 	@cd $(INSTALLDIR)/sbin && ln -sf rc lplus
 	@cd $(INSTALLDIR)/sbin && ln -sf rc lminus
@@ -1906,5 +1910,4 @@ else
 	$(LD) -L$(TOP)/nvram${BCMEX}${EX7} -lnvram -L$(TOP)/shared -lshared -shared -o $@ $^
 endif
 endif
-
 

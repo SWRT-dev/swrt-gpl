@@ -3220,3 +3220,6 @@ endmenu
 source "drivers/firmware/Kconfig"
 
 source "arch/mips/kvm/Kconfig"
+
+# ASUS_EXT
+source "ralink/Kconfig.misc"

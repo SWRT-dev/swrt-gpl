@@ -856,6 +856,9 @@ extern int mtd_getinfo(const char *mtdname, int *part, int *size);
 #if defined(RTCONFIG_UBIFS)
 extern int ubi_getinfo(const char *ubiname, int *dev, int *part, int *size);
 #endif
+#if defined(RTCONFIG_EXT4FS) || defined(RTCONFIG_UBIFS)
+extern int block_getinfo(const char *partname, int *dev, int *part, unsigned long long int *size);
+#endif
 extern int foreach_wif(int include_vifs, void *param,
 	int (*func)(int idx, int unit, int subunit, void *param));
 
@@ -3337,6 +3340,7 @@ static inline int add_gpio_to_bled(__attribute__ ((unused)) const char *main_led
 extern int check_wrs_switch();
 extern int check_bwdpi_nvram_setting();
 #endif
+
 extern void erase_symbol(char *old, char *sym);
 extern void StampToDate(unsigned long timestamp, char *date);
 extern int check_filesize_over(char *path, long int size);

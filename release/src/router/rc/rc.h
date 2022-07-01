@@ -1669,8 +1669,15 @@ extern FILE *url_fopen(const char *path, const char *mode);
 #if defined(RTCONFIG_UBIFS)
 extern void start_ubifs(void);
 extern void stop_ubifs(int stop);
+#if defined(RTCONFIG_EMMC)
+extern void start_ext4(void);
+extern void stop_ext4(int stop);
+static inline void start_jffs2(void) { start_ext4(); }
+static inline void stop_jffs2(int stop) { stop_ext4(stop); }
+#else
 static inline void start_jffs2(void) { start_ubifs(); }
 static inline void stop_jffs2(int stop) { stop_ubifs(stop); }
+#endif
 #elif defined(RTCONFIG_YAFFS)
 extern void start_yaffs(void);
 extern void stop_yaffs(int stop);

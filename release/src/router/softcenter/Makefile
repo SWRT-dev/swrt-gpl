@@ -1,5 +1,18 @@
 include ../common.mak
 
+SC_ARCH=armng
+ifeq ($(RTCONFIG_LANTIQ),y)
+SC_ARCH=mips
+else ifeq ($(RTCONFIG_RALINK_MT7621),y)
+SC_ARCH=mipsle
+else ifeq ($(or $(RTCONFIG_SOC_IPQ50XX),$(RTCONFIG_RALINK_MT7986),$(AARCH64)),y)
+SC_ARCH=arm64
+else ifeq ($(BRCM_CHIP),$(or 4908,4912))
+SC_ARCH=arm64
+else ifeq ($(BUILD_NAME), $(filter $(BUILD_NAME), RT-AC68U RT-AC88U RT-AC3100 RT-AC3200 RT-AC5300))
+SC_ARCH=arm
+endif
+
 #export SC_BUILD=y
 all: versioncmp base64_encode resolveip
 
@@ -49,25 +62,8 @@ endif
 	install -m 0755 base64_encode $(INSTALLDIR)/usr/sbin
 	install -m 0755 resolveip $(INSTALLDIR)/usr/sbin
 	install -m 0755 softcenter/automount.sh $(INSTALLDIR)/rom/etc/softcenter
-ifeq ($(RTCONFIG_LANTIQ),y)
-	install -m 0755 softcenter/bin_arch/mips/jq $(INSTALLDIR)/rom/etc/softcenter/bin
-	install -m 0755 softcenter/bin_arch/mips/sc_auth $(INSTALLDIR)/rom/etc/softcenter/bin
-else ifeq ($(RTCONFIG_RALINK_MT7621),y)
-	install -m 0755 softcenter/bin_arch/mipsle/jq $(INSTALLDIR)/rom/etc/softcenter/bin
-	install -m 0755 softcenter/bin_arch/mipsle/sc_auth $(INSTALLDIR)/rom/etc/softcenter/bin
-else ifeq ($(BRCM_CHIP),$(filter $(BRCM_CHIP),4908 4912))
-	install -m 0755 softcenter/bin_arch/arm64/jq $(INSTALLDIR)/rom/etc/softcenter/bin
-	install -m 0755 softcenter/bin_arch/arm64/sc_auth $(INSTALLDIR)/rom/etc/softcenter/bin
-else ifeq ($(or $(RTCONFIG_SOC_IPQ50XX),$(RTCONFIG_RALINK_MT7986),$(AARCH64)),y)
-	install -m 0755 softcenter/bin_arch/arm64/jq $(INSTALLDIR)/rom/etc/softcenter/bin
-	install -m 0755 softcenter/bin_arch/arm64/sc_auth $(INSTALLDIR)/rom/etc/softcenter/bin
-else ifeq ($(RTCONFIG_BCMARM),y)
-	install -m 0755 softcenter/bin_arch/arm/jq $(INSTALLDIR)/rom/etc/softcenter/bin
-	install -m 0755 softcenter/bin_arch/arm/sc_auth $(INSTALLDIR)/rom/etc/softcenter/bin
-else
-	install -m 0755 softcenter/bin_arch/armng/jq $(INSTALLDIR)/rom/etc/softcenter/bin
-	install -m 0755 softcenter/bin_arch/armng/sc_auth $(INSTALLDIR)/rom/etc/softcenter/bin
-endif
+	install -m 0755 softcenter/bin_arch/$(SC_ARCH)/jq $(INSTALLDIR)/rom/etc/softcenter/bin
+	install -m 0755 softcenter/bin_arch/$(SC_ARCH)/sc_auth $(INSTALLDIR)/rom/etc/softcenter/bin
 	install -m 0755 softcenter/bin/softcenter.sh $(INSTALLDIR)/rom/etc/softcenter/bin
 	install -m 0755 softcenter/bin/softcenter-mount.sh $(INSTALLDIR)/rom/etc/softcenter/bin
 	install -m 0755 softcenter/bin/softcenter-net.sh $(INSTALLDIR)/rom/etc/softcenter/bin
@@ -127,7 +123,7 @@ else
 	install -m 0755 scTW.json $(INSTALLDIR)/www/res
 	install -m 0755 Softcenter.asp $(INSTALLDIR)/www
 endif
-ifeq ($(SWRT_NAME), $(filter $(SWRT_NAME), SBRAC1900P SBRAC3200P K3 R8500 XWR3100 TY6201_RTK TY6201_BCM TY6202 SWRT360V6))
+ifeq ($(SWRT_NAME), $(filter $(SWRT_NAME), SBRAC1900P SBRAC3200P K3 R8500 XWR3100 TY6201_RTK TY6201_BCM TY6202 SWRT360V6 TYAX5400 JDCAX1800))
 ifeq ($(HND_ROUTER), y)
 	install -m 0755 key.asp $(INSTALLDIR)/www/www
 else

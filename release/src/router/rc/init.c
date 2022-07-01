@@ -15926,6 +15926,9 @@ NO_USB_CAP:
 #if defined(RTCONFIG_SWRT_KVR)
 	add_rc_support("swrt_kvr");
 #endif
+#if defined(RTCONFIG_EMMC)
+	add_rc_support("emmc");
+#endif
 
 	return 0;
 }
