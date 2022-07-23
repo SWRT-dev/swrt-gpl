@@ -17767,6 +17767,28 @@ void stop_bsd(void)
 }
 #endif /* LANTIQ_BSD */
 
+#if defined(RTCONFIG_RALINK_BSD)
+int start_bsd(void)
+{
+	int ret = 0;
+
+	stop_bsd();
+	if (!nvram_get_int("smart_connect_x"))
+		ret = -1;
+	else{
+		gen_bsd_conf();
+		ret = eval("/usr/sbin/bndstrg2");
+	}
+
+	return ret;
+}
+
+void stop_bsd(void)
+{
+	killall_tk("bndstrg2");
+}
+#endif
+
 #ifdef BCM_APPEVENTD
 int start_appeventd(void)
 {

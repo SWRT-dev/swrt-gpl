@@ -3383,12 +3383,22 @@ next_mrate:
 	fprintf(fp, "WirelessEvent=1\n");
 
 #if defined(RTCONFIG_SWRT_KVR)
-	fprintf(fp, "WNMEnable=1\n");
-	fprintf(fp, "RRMEnable=1\n");
-	if(nvram_get("swrt_ftenable")){
+	if(nvram_match(strcat_r(prefix, "kvr_kv", tmp), "1")){
+		fprintf(fp, "WNMEnable=1\n");
+		fprintf(fp, "RRMEnable=1\n");
+	}
+	if(nvram_match(strcat_r(prefix, "kvr_ft", tmp), "1")){
 		fprintf(fp, "FtSupport=1\n");
-		fprintf(fp, "FtOtd=0\n");
-		fprintf(fp, "FtRic=1\n");
+		fprintf(fp, "FtOtd=1;1;1;1\n");
+		fprintf(fp, "FtRic=1;1;1;1\n");
+		fprintf(fp, "FtMdId1=A1\n");
+		fprintf(fp, "FtMdId2=A2\n");
+		fprintf(fp, "FtMdId3=A3\n");
+		fprintf(fp, "FtMdId4=A4\n");
+		fprintf(fp, "FtR0khId1=4f577274\n");
+		fprintf(fp, "FtR0khId2=4f577276\n");
+		fprintf(fp, "FtR0khId3=4f577278\n");
+		fprintf(fp, "FtR0khId4=4f57727A\n");
 	}
 #endif
 
@@ -6148,4 +6158,39 @@ void exec_uu()
 }
 #endif
 
-
+#if defined(RTCONFIG_RALINK_BSD)
+void gen_bsd_conf(void)
+{
+	FILE *fp = NULL;
+	if((fp = fopen("/etc/bndstrg.conf", "w"))){
+		fprintf(fp, "Default\n");
+		fprintf(fp, "AssocTh=15\n");
+		fprintf(fp, "DwellTime=300\n");
+		fprintf(fp, "RSSICheckCount=10\n");
+		fprintf(fp, "IdleTxByteCount=30\n");
+		fprintf(fp, "IdleRxByteCount=30\n");
+		fprintf(fp, "SteerTimeWindow=7200\n");
+		fprintf(fp, "MaxSteerCount=10\n");
+		fprintf(fp, "AgeTime=0\n");
+		fprintf(fp, "CheckTime=30\n");
+		fprintf(fp, "HoldTime=50\n");
+		fprintf(fp, "RssiLow=-70\n");
+		fprintf(fp, "RSSILowDownSteer=-70\n");
+		fprintf(fp, "RSSIHighUpSteer=-60\n");
+		fprintf(fp, "MinRssi2G=-65\n");
+		fprintf(fp, "MinRssi5GL=-55\n");
+		fprintf(fp, "MinRssi5GH=-55\n");
+		fprintf(fp, "BtmMode=4\n");
+		fprintf(fp, "CndPriority=9;13;16\n");
+		fprintf(fp, "NVRAMReset=0\n");
+		fprintf(fp, "RSSIDisconnect=-75\n");
+		fprintf(fp, "BlackListTime=10\n");
+		fprintf(fp, "NVRAMTableSize=128\n");
+		fprintf(fp, "EthIface=br0\n");
+		fprintf(fp, "EthPort=2107\n");
+		fprintf(fp, "IappSendTimer=10\n");
+		fprintf(fp, "RoamingEntryTimeout=120\n");
+		fclose(fp);
+	}
+}
+#endif

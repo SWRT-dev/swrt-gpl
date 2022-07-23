@@ -3917,6 +3917,10 @@ define RouterOptions
 	sed -i "/RTCONFIG_EASYMESH/d" $(1); \
 	echo "RTCONFIG_EASYMESH=y" >>$(1); \
 	fi; \
+	if [ "$(RALINK_BSD)" = "y" ]; then \
+	sed -i "/RTCONFIG_RALINK_BSD/d" $(1); \
+	echo "RTCONFIG_RALINK_BSD=y" >>$(1); \
+	fi; \
 	)
 	$(call platformRouterOptions, $(1))
 endef

@@ -1969,8 +1969,14 @@ static INT multi_profile_merge_ft(
 {
 	/*merge FtMdId*/
 	multi_profile_merge_increase(data, 1, "FtMdId", buf1, buf2, final);
+	/*merge FtR0khId*/
+	multi_profile_merge_increase(data, 1, "FtR0khId", buf1, buf2, final);
 	/*merge FtSupport */
 	multi_profile_merge_separate("FtSupport", buf1, buf2, final);
+	/*merge FtRic */
+	multi_profile_merge_separate("FtRic", buf1, buf2, final);
+	/*merge FtOtd */
+	multi_profile_merge_separate("FtOtd", buf1, buf2, final);
 	return NDIS_STATUS_SUCCESS;
 }
 #endif

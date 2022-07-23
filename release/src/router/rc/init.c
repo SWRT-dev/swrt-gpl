@@ -15924,7 +15924,10 @@ NO_USB_CAP:
 	add_rc_support("easymesh");
 #endif
 #if defined(RTCONFIG_SWRT_KVR)
-	add_rc_support("swrt_kvr");
+	add_rc_support("swrt_kv");
+#if defined(RTCONFIG_RALINK)
+	add_rc_support("swrt_ft");
+#endif
 #endif
 #if defined(RTCONFIG_EMMC)
 	add_rc_support("emmc");

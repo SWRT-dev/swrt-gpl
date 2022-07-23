@@ -781,6 +781,10 @@ function initial(){
 
 		}
 	}
+	if(swrt_kv_support)
+		document.getElementById("swrt_kv_tr").style.display = "";
+	if(swrt_ft_support)
+		document.getElementById("swrt_ft_tr").style.display = "";
 }
 
 function generate_country_selection(){
@@ -2065,7 +2069,24 @@ function checkWLReady(){
 							</select>
 						</td>
 					</tr>
-
+					<tr id="swrt_kv_tr" style="display:none">
+						<th>802.11kv</th>
+						<td>
+							<select name="wl_kvr_kv" class="input_option">
+									<option value="0" <% nvram_match("wl_kvr_kv", "0","selected"); %> ><#WLANConfig11b_WirelessCtrl_buttonname#></option>
+									<option value="1" <% nvram_match("wl_kvr_kv", "1","selected"); %> ><#WLANConfig11b_WirelessCtrl_button1name#></option>
+							</select>
+						</td>
+					</tr>
+					<tr id="swrt_ft_tr" style="display:none">
+						<th>802.11r</th>
+						<td>
+							<select name="wl_kvr_ft" class="input_option">
+									<option value="0" <% nvram_match("wl_kvr_ft", "0","selected"); %> ><#WLANConfig11b_WirelessCtrl_buttonname#></option>
+									<option value="1" <% nvram_match("wl_kvr_ft", "1","selected"); %> ><#WLANConfig11b_WirelessCtrl_button1name#></option>
+							</select>
+						</td>
+					</tr>
 					<tr id="region_tr" style="display:none" class="rept ew">
 						<th><a class="hintstyle"><#WLANConfig11b_x_Region#></a></th>
 						<td><div id="region_div"></div></td>

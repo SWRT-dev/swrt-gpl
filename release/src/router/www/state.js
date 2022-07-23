@@ -624,6 +624,8 @@ var softcenter_support = isSupport('softcenter');
 var entware_support = isSupport('entware');
 var swrt_fullcone_support = isSupport('swrt_fullcone');
 var smartdns_support = isSupport('smartdns');
+var swrt_kv_support = isSupport('swrt_kv');
+var swrt_ft_support = isSupport('swrt_ft');
 var QISWIZARD = "QIS_wizard.htm";
 
 var wl_version = "<% nvram_get("wl_version"); %>";

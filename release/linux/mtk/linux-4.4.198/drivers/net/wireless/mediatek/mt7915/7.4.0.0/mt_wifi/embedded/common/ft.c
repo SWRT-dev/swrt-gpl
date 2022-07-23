@@ -3360,7 +3360,7 @@ void FT_rtmp_read_parameters_from_file(
 			pAd->ApCfg.MBSSID[PF_TO_BSS_IDX(pAd, Loop++)].wdev.FtCfg.FtCapFlag.FtOverDs = FALSE;
 	}
 
-	for (Loop = 0; Loop < MAX_MBSSID_NUM(pAd); Loop++) {
+	for (Loop = 0; Loop < pAd->ApCfg.BssidNum/*MAX_MBSSID_NUM(pAd) == 32*/; Loop++) {
 		RTMP_STRING tok_str[16];
 		/*
 			FtMdId:
@@ -3412,6 +3412,7 @@ void FT_rtmp_read_parameters_from_file(
 			if (strlen(tmpbuf) <= FT_ROKH_ID_LEN) {
 				NdisMoveMemory(pAd->ApCfg.MBSSID[PF_TO_BSS_IDX(pAd, Loop)].wdev.FtCfg.FtR0khId, tmpbuf, strlen(tmpbuf));
 				pAd->ApCfg.MBSSID[PF_TO_BSS_IDX(pAd, Loop)].wdev.FtCfg.FtR0khId[strlen(tmpbuf)] = '\0';
+				pAd->ApCfg.MBSSID[PF_TO_BSS_IDX(pAd, Loop)].wdev.FtCfg.FtR0khIdLen = strlen(tmpbuf);
 				MTWF_LOG(DBG_CAT_PROTO, CATPROTO_FT, DBG_LVL_TRACE, ("%s::FtR0khId(%d)=%s\n", __func__, Loop,
 						 pAd->ApCfg.MBSSID[PF_TO_BSS_IDX(pAd, Loop)].wdev.FtCfg.FtR0khId));
 			} else {
