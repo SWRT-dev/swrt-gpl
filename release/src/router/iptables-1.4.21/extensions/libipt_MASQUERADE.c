@@ -7,10 +7,15 @@
 #include <limits.h> /* INT_MAX in ip_tables.h */
 #include <linux/netfilter_ipv4/ip_tables.h>
 #include <linux/netfilter/nf_nat.h>
+#define NF_NAT_RANGE_PROTO_PSID (1 << 7)
 
 enum {
 	O_TO_PORTS = 0,
 	O_RANDOM,
+#ifdef BCM_KF_NETFILTER
+	O_MODE,
+#endif
+	O_PSID,
 };
 
 static void MASQUERADE_help(void)
@@ -19,13 +24,25 @@ static void MASQUERADE_help(void)
 "MASQUERADE target options:\n"
 " --to-ports <port>[-<port>]\n"
 "				Port (range) to map to.\n"
+" --psid <offset,length,psid>\n"
+"				Port Set to map to.\n"
 " --random\n"
+#ifndef BCM_KF_NETFILTER
 "				Randomize source port.\n");
+#else
+"				Randomize source port.\n"
+" --mode <fullcone|symmetric>\n"
+"				NAT mode.\n");
+#endif
 }
 
 static const struct xt_option_entry MASQUERADE_opts[] = {
 	{.name = "to-ports", .id = O_TO_PORTS, .type = XTTYPE_STRING},
 	{.name = "random", .id = O_RANDOM, .type = XTTYPE_NONE},
+#ifdef BCM_KF_NETFILTER
+	{.name = "mode", .id = O_MODE, .type = XTTYPE_STRING},
+#endif
+	{.name = "psid", .id = O_PSID, .type = XTTYPE_STRING},
 	XTOPT_TABLEEND,
 };
 
@@ -71,6 +88,33 @@ parse_ports(const char *arg, struct nf_nat_ipv4_multi_range_compat *mr)
 	xtables_param_act(XTF_BAD_VALUE, "MASQUERADE", "--to-ports", arg);
 }
 
+static void
+parse_psid(const char *arg, int portok, struct nf_nat_ipv4_multi_range_compat *mr)
+{
+	char *end;
+	unsigned int offset, length, psid;
+
+	if (!portok)
+		xtables_error(PARAMETER_PROBLEM,
+			   "Need TCP, UDP, ICMP, SCTP or DCCP with port specification");
+
+	if (!xtables_strtoui(arg, &end, &offset, 0, 16) || *end++ != ',' ||
+	    !xtables_strtoui(end, &end, &length, 0, 16) || *end++ != ',' ||
+	    !xtables_strtoui(end, &end, &psid, 0, UINT16_MAX))
+		xtables_error(PARAMETER_PROBLEM,
+			   "Invalid --psid syntax\n");
+
+	if (offset + length > 16 ||
+	    (1 << (16 - length)) - (!!offset << (16 - offset - length)) <= 0)
+		xtables_error(PARAMETER_PROBLEM,
+			   "Invalid --psid range\n");
+
+	mr->range[0].flags |= NF_NAT_RANGE_PROTO_PSID;
+	mr->range[0].min.psid.offset = offset;
+	mr->range[0].min.psid.length = length;
+	mr->range[0].max.psid.psid = psid & ((1 << length) - 1);
+}
+
 static void MASQUERADE_parse(struct xt_option_call *cb)
 {
 	const struct ipt_entry *entry = cb->xt_entry;
@@ -86,6 +130,11 @@ static void MASQUERADE_parse(struct xt_option_call *cb)
 	else
 		portok = 0;
 
+	/* Borrow this field as mode value. The default is symmetric */
+#ifdef BCM_KF_NETFILTER
+	mr->range[0].min_ip = 0;
+#endif
+
 	xtables_option_parse(cb);
 	switch (cb->entry->id) {
 	case O_TO_PORTS:
@@ -96,6 +145,20 @@ static void MASQUERADE_parse(struct xt_option_call *cb)
 		break;
 	case O_RANDOM:
 		mr->range[0].flags |=  NF_NAT_RANGE_PROTO_RANDOM;
+		break;
+#ifdef BCM_KF_NETFILTER
+	case O_MODE:
+		if (strcasecmp(cb->arg, "fullcone") == 0)
+			mr->range[0].min_ip = 1;
+		else if (strcasecmp(cb->arg, "symmetric") == 0)
+			mr->range[0].min_ip = 0;
+		else
+			xtables_error(PARAMETER_PROBLEM,
+				   "Unknown mode %s", cb->arg);
+      break;
+#endif
+	case O_PSID:
+		parse_psid(cb->arg, portok, mr);
 		break;
 	}
 }
@@ -114,8 +177,19 @@ MASQUERADE_print(const void *ip, const struct xt_entry_target *target,
 			printf("-%hu", ntohs(r->max.tcp.port));
 	}
 
+	if (r->flags & NF_NAT_RANGE_PROTO_PSID) {
+		printf(" psid: offset %d, length %d, 0x%x",
+			    r->min.psid.offset,
+			    r->min.psid.length,
+			    r->max.psid.psid);
+	}
+
 	if (r->flags & NF_NAT_RANGE_PROTO_RANDOM)
 		printf(" random");
+#ifdef BCM_KF_NETFILTER
+	if (r->min_ip == 1)
+		printf(" mode: fullcone ");
+#endif
 }
 
 static void
@@ -130,8 +204,19 @@ MASQUERADE_save(const void *ip, const struct xt_entry_target *target)
 			printf("-%hu", ntohs(r->max.tcp.port));
 	}
 
+	if (r->flags & NF_NAT_RANGE_PROTO_PSID) {
+		printf(" --psid %d,%d,0x%x",
+			    r->min.psid.offset,
+			    r->min.psid.length,
+			    r->max.psid.psid);
+	}
+
 	if (r->flags & NF_NAT_RANGE_PROTO_RANDOM)
 		printf(" --random");
+#ifdef BCM_KF_NETFILTER
+	if (r->min_ip == 1)
+		printf(" --mode fullcone ");
+#endif
 }
 
 static struct xtables_target masquerade_tg_reg = {
@@ -152,3 +237,4 @@ void _init(void)
 {
 	xtables_register_target(&masquerade_tg_reg);
 }
+

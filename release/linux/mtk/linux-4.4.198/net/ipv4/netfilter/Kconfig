@@ -122,6 +122,12 @@ config NF_NAT_MASQUERADE_IPV4
 	  This is the kernel functionality to provide NAT in the masquerade
 	  flavour (automatic source address selection).
 
+config SWRT_FULLCONE
+	tristate "IPv4 fullcone support"
+	depends on NF_NAT_MASQUERADE_IPV4
+	help
+	  Porting from broadcom.
+
 config NFT_MASQ_IPV4
 	tristate "IPv4 masquerading support for nf_tables"
 	depends on NF_TABLES_IPV4
