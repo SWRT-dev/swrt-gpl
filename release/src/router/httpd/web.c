@@ -32243,9 +32243,8 @@ ej_get_wl_channel_list_2g(int eid, webs_t wp, int argc, char **argv)
 			return ej_get_wl_channel_list(eid, wp, argc, argv, unit);
 		}
 	}
-#else
-	return 0;
 #endif
+	return 0;
 }
 
 static int
@@ -32260,9 +32259,8 @@ ej_get_wl_channel_list_5g(int eid, webs_t wp, int argc, char **argv) {
 			return ej_get_wl_channel_list(eid, wp, argc, argv, unit);
 		}
 	}
-#else
-	return 0;
 #endif
+	return 0;
 }
 
 static int
@@ -32282,9 +32280,8 @@ ej_get_wl_channel_list_5g_2(int eid, webs_t wp, int argc, char **argv) {
 			return ej_get_wl_channel_list(eid, wp, argc, argv, unit);
 		}
 	}
-#else
-	return 0;
 #endif
+	return 0;
 }
 
 static int
@@ -32299,9 +32296,8 @@ ej_get_wl_channel_list_6g(int eid, webs_t wp, int argc, char **argv) {
 			return ej_get_wl_channel_list(eid, wp, argc, argv, unit);
 		}
 	}
-#else
-	return 0;
 #endif
+	return 0;
 }
 
 static int ej_get_sw_mode(int eid, webs_t wp, int argc, char **argv) {

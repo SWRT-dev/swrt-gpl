@@ -883,8 +883,13 @@ obj-$(RTCONFIG_TRAFFIC_LIMITER) += traffic_limiter
 obj-$(RTCONFIG_OOKLA) += ookla_speedtest
 obj-$(RTCONFIG_OOKLA_LITE) += ookla_speedtest
 ifeq ($(or $(RTCONFIG_RALINK),$(RTCONFIG_QCA),$(RTCONFIG_LANTIQ)),y)
-obj-$(RTCONFIG_EASYMESH) += easymesh-sdk
-obj-$(RTCONFIG_EASYMESH_OPEN) += EasyMesh
+ifeq ($(RTCONFIG_EASYMESH),y)
+ifeq ($(RTCONFIG_EASYMESH_OPEN),y)
+obj-y += libubox libubus libnl-bf openssl EasyMesh
+else
+obj-y += easymesh-sdk
+endif
+endif
 endif
 
 obj-$(RTCONFIG_LETSENCRYPT) += openssl
@@ -4245,7 +4250,7 @@ libusb-0.1.12-clean:
 	@rm -f libusb-0.1.12/stamp-h1
 
 libubox: json-c
-	$(MAKE) -C $@ EXTRACFLAGS="$(EXTRACFLAGS)" JSONC=$(TOP)/json-c
+	$(MAKE) -C $@ EXTRACFLAGS="$(EXTRACFLAGS)" JSONC=$(TOP)/json-c && $(MAKE) $@-stage
 
 libubox-install: libubox
 	install -D $</libubox.so $(INSTALLDIR)/$</usr/lib/libubox.so
@@ -4253,9 +4258,10 @@ libubox-install: libubox
 	$(STRIP) $(INSTALLDIR)/$</usr/lib/*
 
 libuci/Makefile:
-	cd libuci && cmake -G "Unix Makefiles"
+	cd libuci && cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr
 
 libuci: libuci/Makefile
+	$(MAKE) $@-stage
 
 libuci-install: libuci
 	install -D $</libuci.so $(INSTALLDIR)/$</usr/lib/libuci.so
@@ -9260,6 +9266,16 @@ easymesh-sdk:libnl-tiny-0.1 openssl
 
 easymesh-sdk-install: 
 	$(MAKE) -C easymesh-sdk install
+
+libubus:libubox json-c
+	cd libubus && cmake -DABIVERSION="2021-06-03" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_LUA=0 -DBUILD_EXAMPLES=0 -Djson=$(STAGEDIR)/usr/lib/libjson-c.so -Dubox_include_dir=$(STAGEDIR)/usr/include -Dubox_library=$(TOP)/libubox/libubox.so -Dblob_library=$(TOP)/libubox/libblobmsg_json.so
+	$(MAKE) -C libubus all && $(MAKE) $@-stage
+
+libubus-install:
+	install -d $(INSTALLDIR)/libubus/usr/lib
+	install -D libubus/build/libubus.so.20210603 $(INSTALLDIR)/libubus/usr/lib/libubus.so.20210603
+	cd $(INSTALLDIR)/libubus/usr/lib && ln -sf libubus.so.20210603 libubus.so
+	$(STRIP) $(INSTALLDIR)/libubus/usr/lib/libubus.so.20210603
 endif
 
 #

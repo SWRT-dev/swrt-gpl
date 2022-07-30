@@ -21209,17 +21209,22 @@ INT RTMP_AP_IoctlHandle(
 	case CMD_RTPRIV_IOCTL_ASUSCMD:
 		//RTMPIoctlAsusHandle(pAd, wrq, subcmd, pData, Data);
 		if ( subcmd == ASUS_SUBCMD_CHLIST) {
-			UCHAR BandIdx = 0, ChIdx;
+			UINT8 ucBand = BAND0, ChIdx;
 			CHANNEL_CTRL *pChCtrl;
 			RTMP_STRING Channel[256], Tmp[4];
+#ifdef DBDC_MODE
+			POS_COOKIE pObj = (POS_COOKIE) pAd->OS_Cookie;
+			struct wifi_dev *wdev = get_wdev_by_ioctl_idx_and_iftype(pAd, pObj->ioctl_if, pObj->ioctl_if_type);
+			ucBand = HcGetBandByWdev(wdev);
+#endif
 			memset(Channel, 0, 256);
-			pChCtrl = hc_get_channel_ctrl(pAd->hdev_ctrl, BandIdx);
+			pChCtrl = hc_get_channel_ctrl(pAd->hdev_ctrl, ucBand);
 			if (pChCtrl->ChListNum > 0) {
 				for (ChIdx = 0; ChIdx < pChCtrl->ChListNum; ChIdx++) {
 					if(ChIdx > 0)
-						strcat(Channel,",");
+						strcat(Channel, ",");
 					snprintf(Tmp, sizeof(Tmp), "%d", pChCtrl->ChList[ChIdx].Channel);
-					strcat(Channel,Tmp);
+					strcat(Channel, Tmp);
 				}
 			}
 			wrq->u.data.length = strlen(Channel);

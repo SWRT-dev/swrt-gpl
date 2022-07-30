@@ -912,7 +912,7 @@ MAC_TABLE_ENTRY *MacTableInsertEntry(
 		NdisReleaseSpinLock(&pAd->MacTabLock);
 		return NULL;
 	}
-	MTWF_LOG(DBG_CAT_MLME, CATMLME_WTBL, DBG_LVL_ERROR,
+	MTWF_LOG(DBG_CAT_MLME, CATMLME_WTBL, DBG_LVL_TRACE,
 			 ("%s(): wcid %d EntryType:%d =====\n", __func__, i, pAd->MacTab.Content[i].EntryType));
 	MTWF_LOG(DBG_CAT_MLME, CATMLME_WTBL, DBG_LVL_TRACE,
 			 ("\t(caller:%pS)\n", OS_TRACE));
