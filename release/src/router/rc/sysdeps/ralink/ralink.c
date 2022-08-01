@@ -970,9 +970,9 @@ int gen_ralink_config(int band, int is_iNIC)
 		for (i = 0; i < ssid_num; i++)
 		{
 			if (i)
-				sprintf(tmpstr, "%s;", tmpstr);
+				strlcat(tmpstr, ";", sizeof(tmpstr));
 
-			sprintf(tmpstr, "%s%s", tmpstr, "0");
+			strlcat(tmpstr, "0", sizeof(tmpstr));
 		}
 		fprintf(fp, "TxRate=%s\n", tmpstr);
 	}
@@ -1171,9 +1171,9 @@ int gen_ralink_config(int band, int is_iNIC)
 	for (i = 0; i < ssid_num; i++)
 	{
 		if (i)
-			sprintf(tmpstr, "%s;", tmpstr);
+			strlcat(tmpstr, ";", sizeof(tmpstr));
 
-		sprintf(tmpstr, "%s%s", tmpstr, wmm_enable);
+		strlcat(tmpstr, wmm_enable, sizeof(tmpstr));
 	}
 	fprintf(fp, "WmmCapable=%s\n", tmpstr);
 
@@ -1235,9 +1235,9 @@ int gen_ralink_config(int band, int is_iNIC)
 		for (i = 0; i < ssid_num; i++)
 		{
 			if (i)
-				sprintf(tmpstr, "%s;", tmpstr);
+				strlcat(tmpstr, ";", sizeof(tmpstr));
 
-			sprintf(tmpstr, "%s%s", tmpstr, str);
+			strlcat(tmpstr, str, sizeof(tmpstr));
 		}
 		fprintf(fp, "NoForwarding=%s\n", tmpstr);
 		fprintf(fp, "NoForwardingMBCast=%s\n", tmpstr);
@@ -1254,9 +1254,9 @@ int gen_ralink_config(int band, int is_iNIC)
 		for (i = 0; i < ssid_num; i++)
 		{
 			if (i)
-				sprintf(tmpstr, "%s;", tmpstr);
+				strlcat(tmpstr, ";", sizeof(tmpstr));
 
-			sprintf(tmpstr, "%s%s", tmpstr, "0");
+			strlcat(tmpstr, "0", sizeof(tmpstr));
 		}
 		fprintf(fp, "NoForwarding=%s\n", tmpstr);
 		fprintf(fp, "NoForwardingMBCast=%s\n", tmpstr);
@@ -1275,7 +1275,7 @@ int gen_ralink_config(int band, int is_iNIC)
 			if (!nvram_match(strcat_r(prefix_mssid, "bss_enabled", temp), "1"))
 				continue;
 
-			sprintf(tmpstr, "%s;", tmpstr);
+			strlcat(tmpstr, ";", sizeof(tmpstr));
 		}
 		else
 			sprintf(prefix_mssid, "wl%d_", band);
@@ -1284,11 +1284,11 @@ int gen_ralink_config(int band, int is_iNIC)
 
 		if (sw_mode == SW_MODE_REPEATER){
 			if(i == 1)
-			sprintf(tmpstr, "%s", str);
+				sprintf(tmpstr, "%s", str);
 			else if (i > 1)
-			sprintf(tmpstr, "%s%s", tmpstr, str);
+				strlcat(tmpstr, str, sizeof(tmpstr));
 		}else
-			sprintf(tmpstr, "%s%s", tmpstr, str);
+			strlcat(tmpstr, str, sizeof(tmpstr));
 	}
 	fprintf(fp, "HideSSID=%s\n", tmpstr);
 
@@ -1358,16 +1358,20 @@ int gen_ralink_config(int band, int is_iNIC)
 							if(!nvram_match("reg_spec", "EAC"))
 							{
 								if(!strncmp(nvram_safe_get("territory_code"), "JP", 2))
-									sprintf(tmpstr,"%s;%d;%d;%d", tmpstr ,132,136,140);	//skip 132 136 140 under auto mode					
+									strlcat(tmpstr, ";132;136;140", sizeof(tmpstr));
+//									sprintf(tmpstr,"%s;%d;%d;%d", tmpstr ,132,136,140);	//skip 132 136 140 under auto mode					
 								else
-									sprintf(tmpstr,"%s;%d;%d;%d;%d",tmpstr,116,132,136,140);	//skip 116 132 136 140 under auto mode					
+									strlcat(tmpstr, ";116;132;136;140", sizeof(tmpstr));
+//									sprintf(tmpstr,"%s;%d;%d;%d;%d",tmpstr,116,132,136,140);	//skip 116 132 136 140 under auto mode					
 							}				
 						}
 						else if(nvram_get_int(strcat_r(prefix, "bw", tmp))==2){
 							if(!strncmp(nvram_safe_get("territory_code"), "JP", 2))
-								sprintf(tmpstr,"%s;%d",tmpstr,140);	//skip 140 under auto mode					
+								strlcat(tmpstr, ";140", sizeof(tmpstr));
+//								sprintf(tmpstr,"%s;%d",tmpstr,140);	//skip 140 under auto mode					
 							else
-							sprintf(tmpstr,"%s;%d;%d",tmpstr,116,140);	//skip 116 140 under auto mode					
+								strlcat(tmpstr, ";116;140", sizeof(tmpstr));
+//							sprintf(tmpstr,"%s;%d;%d",tmpstr,116,140);	//skip 116 140 under auto mode					
 						}
 					}
 #endif	/* RTCONFIG_RALINK_DFS */
@@ -1377,7 +1381,7 @@ int gen_ralink_config(int band, int is_iNIC)
 				if(band)
 				{
 					if(strlen(tmpstr))
-						sprintf(tmpstr,"%s;",tmpstr);
+						strlcat(tmpstr, ";", sizeof(tmpstr));
 					//autochannel selection  but skip 5G band1 & band2, TW only
 					if(
 #if defined(RTCONFIG_TCODE)
@@ -1395,8 +1399,7 @@ int gen_ralink_config(int band, int is_iNIC)
 					    nvram_match(strcat_r(prefix, "country_code", tmp), "Z3"))
 #endif
 					 )
-						sprintf(tmpstr,"%s%d;%d;%d;%d;%d;%d;%d;%d",tmpstr,36,40,44,48,52,56,60,64);
-
+						strlcat(tmpstr, "36;40;44;48;52;56;60;64", sizeof(tmpstr));
 				}
 #endif
 #if defined(RTCONFIG_NO_SELECT_CHANNEL)
@@ -1480,10 +1483,12 @@ int gen_ralink_config(int band, int is_iNIC)
 								else if(IEEE80211H)
 								{
 									if((nvram_get_int(strcat_r(prefix, "bw", tmp))==1) || (nvram_get_int(strcat_r(prefix, "bw", tmp))==3)){
-										sprintf(tmpstr,"%s;%d;%d;%d;%d",tmpstr,116,132,136,140);	//skip 116 132 136 140 under auto mode					
+										strlcat(tmpstr, ";116;132;136;140", sizeof(tmpstr));
+//										sprintf(tmpstr,"%s;%d;%d;%d;%d",tmpstr,116,132,136,140);	//skip 116 132 136 140 under auto mode					
 									}
 									else if(nvram_get_int(strcat_r(prefix, "bw", tmp))==2){
-										sprintf(tmpstr,"%s;%d;%d",tmpstr,116,140);	//skip 116 140 under auto mode					
+										strlcat(tmpstr, ";116;140", sizeof(tmpstr));
+//										sprintf(tmpstr,"%s;%d;%d",tmpstr,116,140);	//skip 116 140 under auto mode					
 									}
 									fprintf(fp,"AutoChannelSkipList=%s\n",tmpstr);
 									nvram_set("skip_channel_5g", "band23");
@@ -1510,12 +1515,12 @@ int gen_ralink_config(int band, int is_iNIC)
 									sprintf(tmpstr,"%s;%d;%d;%d;%d", tmpstr, 116, 132, 136, 140);
 								}
 								else if(nvram_get_int(strcat_r(prefix, "bw", tmp)) == 2){
-									sprintf(tmpstr,"%s;%d;%d", tmpstr, 116, 140);
+									strlcat(tmpstr, ";116;140", sizeof(tmpstr));
 								}
 							}
 							else
 							{
-								sprintf(tmpstr,"%s;%d;%d;%d;%d;%d", tmpstr, 116, 120, 124, 128, 165);
+								strlcat(tmpstr, ";116;120;124;128;165", sizeof(tmpstr));
 							}
 						}
 					}
@@ -1529,12 +1534,14 @@ int gen_ralink_config(int band, int is_iNIC)
 				{
 					if (strchr(nvram_safe_get("wl_reg_5g"), '4')) {	//check band4 support?
 						if (strchr(nvram_safe_get("wl_reg_5g"), '1')){	//skip band 1
-				     		if(strlen(tmpstr)) sprintf(tmpstr,"%s;",tmpstr);
-								sprintf(tmpstr,"%s%d;%d;%d;%d",tmpstr,36,40,44,48);
+				     		if(strlen(tmpstr))
+								strlcat(tmpstr, ";", sizeof(tmpstr));
+							strlcat(tmpstr, "36;40;44;48", sizeof(tmpstr));
 						}
 						if (strchr(nvram_safe_get("wl_reg_5g"), '2')) {	//skip band 2
-              				if(strlen(tmpstr)) sprintf(tmpstr,"%s;",tmpstr);
-								sprintf(tmpstr,"%s%d;%d;%d;%d",tmpstr,52,56,60,64);
+              				if(strlen(tmpstr))
+								strlcat(tmpstr, ";", sizeof(tmpstr));
+							strlcat(tmpstr, "52;56;60;64", sizeof(tmpstr));
 						}
 					}
 				}
@@ -1581,9 +1588,9 @@ int gen_ralink_config(int band, int is_iNIC)
 			sprintf(prefix_mssid, "wl%d_", band);
 
 		if (nvram_match(strcat_r(prefix_mssid, "auth_mode_x", temp), "radius"))
-			sprintf(tmpstr, "%s%s", tmpstr, "1;");
+			strlcat(tmpstr, "1;", sizeof(tmpstr));
 		else
-			sprintf(tmpstr, "%s%s", tmpstr, "0;");
+			strlcat(tmpstr, "0;", sizeof(tmpstr));
 	}
 	if ((i = strlen(tmpstr)) > 0)
 	{
@@ -1697,9 +1704,8 @@ int gen_ralink_config(int band, int is_iNIC)
 			snprintf(prefix_mssid, sizeof(prefix_mssid), "wl%d_", band);
 
 		if (i)
-			sprintf(tmpstr, "%s;", tmpstr);
-
-		sprintf(tmpstr, "%s%s", tmpstr, strstr(nvram_safe_get(strcat_r(prefix_mssid, "auth_mode_x", temp)), "wpa") ? "1" : "0");
+			strlcat(tmpstr, ";", sizeof(tmpstr));
+		strlcat(tmpstr, strstr(nvram_safe_get(strcat_r(prefix_mssid, "auth_mode_x", temp)), "wpa") ? "1" : "0", sizeof(tmpstr));
 	}
 	fprintf(fp, "PreAuth=%s\n", tmpstr);
 
@@ -1723,10 +1729,8 @@ int gen_ralink_config(int band, int is_iNIC)
 			if (!nvram_match(strcat_r(prefix_mssid, "bss_enabled", temp), "1"))
 				continue;
 
-			if(strlen(tmpstr)==0)
-				sprintf(tmpstr, "%s", tmpstr);
-			else
-				sprintf(tmpstr, "%s;", tmpstr);
+			if(strlen(tmpstr))
+				strlcat(tmpstr, ";", sizeof(tmpstr));
 		}
 		else
 			sprintf(prefix_mssid, "wl%d_", band);
@@ -1736,66 +1740,66 @@ int gen_ralink_config(int band, int is_iNIC)
 		{
 			if (!strcmp(str, "open"))
 			{
-				sprintf(tmpstr, "%s%s", tmpstr, "OPEN");
+				strlcat(tmpstr, "OPEN", sizeof(tmpstr));
 			}
 			else if (!strcmp(str, "shared"))
 			{
-				sprintf(tmpstr, "%s%s", tmpstr, "SHARED");
+				strlcat(tmpstr, "SHARED", sizeof(tmpstr));
 			}
 			else if (!strcmp(str, "psk"))
 			{
-				sprintf(tmpstr, "%s%s", tmpstr, "WPAPSK");
+				strlcat(tmpstr, "WPAPSK", sizeof(tmpstr));
 			}
 			else if (!strcmp(str, "psk2"))
 			{
-				sprintf(tmpstr, "%s%s", tmpstr, "WPA2PSK");
+				strlcat(tmpstr, "WPA2PSK", sizeof(tmpstr));
 			}
 			else if (!strcmp(str, "pskpsk2"))
 			{
-				sprintf(tmpstr, "%s%s", tmpstr, "WPAPSKWPA2PSK");
+				strlcat(tmpstr, "WPAPSKWPA2PSK", sizeof(tmpstr));
 			}
 			else if (!strcmp(str, "wpa"))
 			{
-				sprintf(tmpstr, "%s%s", tmpstr, "WPA");
+				strlcat(tmpstr, "WPA", sizeof(tmpstr));
 				flag_8021x = 1;
 			}
 			else if (!strcmp(str, "wpa2"))
 			{
-				sprintf(tmpstr, "%s%s", tmpstr, "WPA2");
+				strlcat(tmpstr, "WPA2", sizeof(tmpstr));
 				flag_8021x = 1;
 			}
 			else if (!strcmp(str, "wpawpa2"))
 			{
-				sprintf(tmpstr, "%s%s", tmpstr, "WPA1WPA2");
+				strlcat(tmpstr, "WPA1WPA2", sizeof(tmpstr));
 				flag_8021x = 1;
 			}
 #if defined(RTCONFIG_WLMODULE_MT7915D_AP)
 			else if (!strcmp(str, "sae"))
 			{
-				sprintf(tmpstr, "%s%s", tmpstr, "WPA3PSK");
+				strlcat(tmpstr, "WPA3PSK", sizeof(tmpstr));
 				flag_8021x = 1;
 			}
 			else if (!strcmp(str, "psk2sae"))
 			{
-				sprintf(tmpstr, "%s%s", tmpstr, "WPA2PSKWPA3PSK");
+				strlcat(tmpstr, "WPA2PSKWPA3PSK", sizeof(tmpstr));
 				flag_8021x = 1;
 			}
 #endif
 			else if ((!strcmp(str, "radius")))
 			{
-				sprintf(tmpstr, "%s%s", tmpstr, "OPEN");
+				strlcat(tmpstr, "OPEN", sizeof(tmpstr));
 				flag_8021x = 1;
 			}
 			else
 			{
 				warning = 23;
-				sprintf(tmpstr, "%s%s", tmpstr, "OPEN");
+				strlcat(tmpstr, "OPEN", sizeof(tmpstr));
 			}
 		}
 		else
 		{
 			warning = 24;
-			sprintf(tmpstr, "%s%s", tmpstr, "OPEN");
+			strlcat(tmpstr, "OPEN", sizeof(tmpstr));
 		}
 	}
 	fprintf(fp, "AuthMode=%s\n", tmpstr);
@@ -1819,38 +1823,36 @@ int gen_ralink_config(int band, int is_iNIC)
 
 			if (!nvram_match(strcat_r(prefix_mssid, "bss_enabled", temp), "1"))
 				continue;
-			if(strlen(tmpstr)==0)
-				sprintf(tmpstr, "%s", tmpstr);
-			else
-				sprintf(tmpstr, "%s;", tmpstr);
+			if(strlen(tmpstr))
+				strlcat(tmpstr, ";", sizeof(tmpstr));
 		}
 		else
 			sprintf(prefix_mssid, "wl%d_", band);
 
 		if ((nvram_match(strcat_r(prefix_mssid, "auth_mode_x", temp), "open")
 			&& nvram_match(strcat_r(prefix_mssid, "wep_x", temp), "0")))
-			sprintf(tmpstr, "%s%s", tmpstr, "NONE");
+			strlcat(tmpstr, "NONE", sizeof(tmpstr));
 		else if ((nvram_match(strcat_r(prefix_mssid, "auth_mode_x", temp), "open")
 			&& nvram_invmatch(strcat_r(prefix_mssid, "wep_x", temp), "0")) ||
 				nvram_match(strcat_r(prefix_mssid, "auth_mode_x", temp), "shared") ||
 				nvram_match(strcat_r(prefix_mssid, "auth_mode_x", temp), "radius"))
-			sprintf(tmpstr, "%s%s", tmpstr, "WEP");
+			strlcat(tmpstr, "WEP", sizeof(tmpstr));
 		else if (nvram_match(strcat_r(prefix_mssid, "crypto", temp), "tkip"))
 		{
-			sprintf(tmpstr, "%s%s", tmpstr, "TKIP");
+			strlcat(tmpstr, "TKIP", sizeof(tmpstr));
 		}
 		else if (nvram_match(strcat_r(prefix_mssid, "crypto", temp), "aes"))
 		{
-			sprintf(tmpstr, "%s%s", tmpstr, "AES");
+			strlcat(tmpstr, "AES", sizeof(tmpstr));
 		}
 		else if (nvram_match(strcat_r(prefix_mssid, "crypto", temp), "tkip+aes"))
 		{
-			sprintf(tmpstr, "%s%s", tmpstr, "TKIPAES");
+			strlcat(tmpstr, "TKIPAES", sizeof(tmpstr));
 		}
 		else
 		{
 			warning = 25;
-			sprintf(tmpstr, "%s%s", tmpstr, "NONE");
+			strlcat(tmpstr, "NONE", sizeof(tmpstr));
 		}
 	}
 	fprintf(fp, "EncrypType=%s\n", tmpstr);
@@ -2030,9 +2032,11 @@ int gen_ralink_config(int band, int is_iNIC)
 	for (i = 0; i < ssid_num; i++)
 	{
 		if (i)
-			sprintf(tmpstr, "%s;", tmpstr);
-
-		sprintf(tmpstr, "%s%d", tmpstr, wl_key_type[i]);
+			strlcat(tmpstr, ";", sizeof(tmpstr));
+		if(wl_key_type[i] == 1)
+			strlcat(tmpstr, "1", sizeof(tmpstr));
+		else
+			strlcat(tmpstr, "0", sizeof(tmpstr));
 	}
 	fprintf(fp, "Key1Type=%s\n", tmpstr);
 
@@ -2084,9 +2088,12 @@ int gen_ralink_config(int band, int is_iNIC)
 	for (i = 0; i < ssid_num; i++)
 	{
 		if (i)
-			sprintf(tmpstr, "%s;", tmpstr);
+			strlcat(tmpstr, ";", sizeof(tmpstr));
 
-		sprintf(tmpstr, "%s%d", tmpstr, wl_key_type[i]);
+		if(wl_key_type[i] == 1)
+			strlcat(tmpstr, "1", sizeof(tmpstr));
+		else
+			strlcat(tmpstr, "0", sizeof(tmpstr));
 	}
 	fprintf(fp, "Key2Type=%s\n", tmpstr);
 
@@ -2137,9 +2144,12 @@ int gen_ralink_config(int band, int is_iNIC)
 	for (i = 0; i < ssid_num; i++)
 	{
 		if (i)
-			sprintf(tmpstr, "%s;", tmpstr);
+			strlcat(tmpstr, ";", sizeof(tmpstr));
 
-		sprintf(tmpstr, "%s%d", tmpstr, wl_key_type[i]);
+		if(wl_key_type[i] == 1)
+			strlcat(tmpstr, "1", sizeof(tmpstr));
+		else
+			strlcat(tmpstr, "0", sizeof(tmpstr));
 	}
 	fprintf(fp, "Key3Type=%s\n", tmpstr);
 
@@ -2190,9 +2200,12 @@ int gen_ralink_config(int band, int is_iNIC)
 	for (i = 0; i < ssid_num; i++)
 	{
 		if (i)
-			sprintf(tmpstr, "%s;", tmpstr);
+			strlcat(tmpstr, ";", sizeof(tmpstr));
 
-		sprintf(tmpstr, "%s%d", tmpstr, wl_key_type[i]);
+		if(wl_key_type[i] == 1)
+			strlcat(tmpstr, "1", sizeof(tmpstr));
+		else
+			strlcat(tmpstr, "0", sizeof(tmpstr));
 	}
 	fprintf(fp, "Key4Type=%s\n", tmpstr);
 
@@ -2308,19 +2321,37 @@ int gen_ralink_config(int band, int is_iNIC)
 	{
 		if (Channel != 0)
 		{
-			if ((Channel == 36) || (Channel == 44) || (Channel == 52) || (Channel == 60) || (Channel == 100) || (Channel == 108) ||
-			    (Channel == 116) || (Channel == 124) || (Channel == 132) || (Channel == 149) || (Channel == 157))
+			switch (Channel)
 			{
+			case 36:
+			case 44:
+			case 52:
+			case 60:
+			case 100:
+			case 108:
+			case 116:
+			case 124:
+			case 132:
+			case 149:
+			case 157:
 				EXTCHA = 1;
-			}
-			else if ((Channel == 40) || (Channel == 48) || (Channel == 56) || (Channel == 64) || (Channel == 104) || (Channel == 112) ||
-					(Channel == 120) || (Channel == 128) || (Channel == 136) || (Channel == 153) || (Channel == 161))
-			{
+				break;
+			case 40:
+			case 48:
+			case 56:
+			case 64:
+			case 104:
+			case 112:
+			case 120:
+			case 128:
+			case 136:
+			case 153:
+			case 161:
 				EXTCHA = 0;
-			}
-			else
-			{
+				break;
+			default:
 				HTBW_MAX = 0;
+				break;
 			}
 		}
 	}
@@ -2456,32 +2487,21 @@ int gen_ralink_config(int band, int is_iNIC)
 	if (str && *str)
 	{
 		fprintf(fp, "HT_GI=%d\n", atoi(str));
-#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 		if(band)
-#endif
 			fprintf(fp, "VHT_SGI=%d\n", atoi(str));
-
-
 	}
 	else
 	{
 		warning = 39;
 		fprintf(fp, "HT_GI=%d\n", 1);
-#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 		if(band)
-#endif
 			fprintf(fp, "VHT_SGI=%d\n", 1);
-
 	}
 
-#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 	if(band){
-#endif
 		fprintf(fp, "VHT_STBC=%d\n",1);
 		fprintf(fp, "VHT_LDPC=%d\n",1);
-#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 	}
-#endif
 
 	//HT_STBC
 	str = nvram_safe_get(strcat_r(prefix, "HT_STBC", tmp));
@@ -2692,8 +2712,10 @@ int gen_ralink_config(int band, int is_iNIC)
 					if (strlen(b)==0) continue;
 					if (list[0]==0)
 						sprintf(list, "%s", b);
-					else
-						sprintf(list, "%s;%s", list, b);
+					else{
+						strlcat(list, ";", sizeof(list));
+						strlcat(list, b, sizeof(list));
+					}
 				}
 				free(nv);
 			}
@@ -2783,8 +2805,10 @@ int gen_ralink_config(int band, int is_iNIC)
 					if (strlen(b)==0) continue;
 					if (list[0]==0)
 						sprintf(list, "%s", b);
-					else
-						sprintf(list, "%s;%s", list, b);
+					else{
+						strlcat(list, ";", sizeof(list));
+						strlcat(list, b, sizeof(list));
+					}
 				}
 				free(nv);
 			}
@@ -2864,9 +2888,12 @@ int gen_ralink_config(int band, int is_iNIC)
 			{
 				fprintf(fp, "RADIUS_Key%d=%s\n", j, radius_key);
 			}
-
-			sprintf(RADIUS_Server, "%s%s;", RADIUS_Server, radius_server);	//cannot be empty ";"
-			sprintf(RADIUS_Port  , "%s%s;", RADIUS_Port  , radius_port);	//cannot be empty ";"
+			strlcat(RADIUS_Server, radius_server, sizeof(RADIUS_Server));
+			strlcat(RADIUS_Server, ";", sizeof(RADIUS_Server));
+			strlcat(RADIUS_Port, radius_port, sizeof(RADIUS_Port));
+			strlcat(RADIUS_Port, ";", sizeof(RADIUS_Port));
+//			sprintf(RADIUS_Server, "%s%s;", RADIUS_Server, radius_server);	//cannot be empty ";"
+//			sprintf(RADIUS_Port  , "%s%s;", RADIUS_Port  , radius_port);	//cannot be empty ";"
 			j++;
 		}
 		for( ;j < MAX_NO_MSSID +1; j++)
