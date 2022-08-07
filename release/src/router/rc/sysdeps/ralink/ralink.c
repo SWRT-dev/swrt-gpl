@@ -6220,4 +6220,34 @@ void gen_bsd_conf(void)
 		fclose(fp);
 	}
 }
+
+void bandstr_sync_wl_settings(void)
+{
+	char tmp[100], tmp2[100], prefix[16] = "wlXXXXXXXXXX_", wlprefix[16] = "wlXXXXXXXXXX_";
+	int i, n;
+	memset(tmp, 0, sizeof(tmp));
+	memset(tmp2, 0, sizeof(tmp2));
+	n = num_of_wl_if();
+	snprintf(prefix, sizeof(prefix), "wl%d_", 0);
+	for(i = 1; i < n; i++){
+		snprintf(wlprefix, sizeof(wlprefix), "wl%d_", i);
+		nvram_set(strcat_r(wlprefix, "ssid", tmp), nvram_safe_get(strcat_r(prefix, "ssid", tmp2)));
+		nvram_set(strcat_r(wlprefix, "auth_mode_x", tmp), nvram_safe_get(strcat_r(prefix, "auth_mode_x", tmp2)));
+		nvram_set(strcat_r(wlprefix, "wep_x", tmp), nvram_safe_get(strcat_r(prefix, "wep_x", tmp2)));
+		nvram_set(strcat_r(wlprefix, "key", tmp), nvram_safe_get(strcat_r(prefix, "key", tmp2)));
+		nvram_set(strcat_r(wlprefix, "key1", tmp), nvram_safe_get(strcat_r(prefix, "key1", tmp2)));
+		nvram_set(strcat_r(wlprefix, "key2", tmp), nvram_safe_get(strcat_r(prefix, "key2", tmp2)));
+		nvram_set(strcat_r(wlprefix, "key3", tmp), nvram_safe_get(strcat_r(prefix, "key3", tmp2)));
+		nvram_set(strcat_r(wlprefix, "key4", tmp), nvram_safe_get(strcat_r(prefix, "key4", tmp2)));
+		nvram_set(strcat_r(wlprefix, "phrase_x", tmp), nvram_safe_get(strcat_r(prefix, "phrase_x", tmp2)));
+		nvram_set(strcat_r(wlprefix, "crypto", tmp), nvram_safe_get(strcat_r(prefix, "crypto", tmp2)));
+		nvram_set(strcat_r(wlprefix, "wpa_psk", tmp), nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp2)));
+		nvram_set(strcat_r(wlprefix, "radius_ipaddr", tmp), nvram_safe_get(strcat_r(prefix, "radius_ipaddr", tmp2)));
+		nvram_set(strcat_r(wlprefix, "radius_key", tmp), nvram_safe_get(strcat_r(prefix, "radius_key", tmp2)));
+		nvram_set(strcat_r(wlprefix, "radius_port", tmp), nvram_safe_get(strcat_r(prefix, "radius_port", tmp2)));
+		nvram_set(strcat_r(wlprefix, "closed", tmp), nvram_safe_get(strcat_r(prefix, "closed", tmp2)));
+	}
+	stop_bsd();
+	start_bsd();
+}
 #endif

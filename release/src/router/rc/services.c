@@ -5517,7 +5517,7 @@ stop_misc(void)
 #ifdef BCM_CEVENTD
 	stop_ceventd();
 #endif
-#ifdef BCM_BSD
+#if defined(BCM_BSD)
 	stop_bsd();
 #endif
 	stop_igmp_proxy();
@@ -5533,6 +5533,9 @@ stop_misc(void)
 	stop_eth_obd();
 #endif
 #endif
+#endif
+#if defined(RTCONFIG_RALINK_BSD)
+	stop_bsd();
 #endif
 #if defined(RTCONFIG_WLCEVENTD)
 	stop_wlceventd();
@@ -10169,7 +10172,7 @@ start_services(void)
 	start_hspotap();
 #endif
 	start_igmp_proxy();
-#ifdef BCM_BSD
+#if defined(BCM_BSD)
 	start_bsd();
 #endif
 #ifdef BCM_APPEVENTD
@@ -10282,6 +10285,9 @@ start_services(void)
 #endif
 #if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
 	start_psta_monitor();
+#endif
+#if defined(RTCONFIG_RALINK_BSD)
+	start_bsd();
 #endif
 #if defined(RTCONFIG_AMAS) && (defined(RTCONFIG_BCMWL6) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_QCA) || defined(RTCONFIG_REALTEK) || defined(RTCONFIG_RALINK))
 	start_obd();
@@ -10687,13 +10693,16 @@ stop_services(void)
 #ifdef BCM_CEVENTD
 	stop_ceventd();
 #endif
-#ifdef BCM_BSD
+#if defined(BCM_BSD)
 	stop_bsd();
 #endif
 	stop_igmp_proxy();
 #ifdef RTCONFIG_HSPOT
 	stop_hspotap();
 #endif
+#endif
+#if defined(RTCONFIG_RALINK_BSD)
+	stop_bsd();
 #endif
 #if defined(RTCONFIG_WLCEVENTD)
 	stop_wlceventd();
@@ -10933,7 +10942,7 @@ stop_services_mfg(void)
 #ifdef BCM_CEVENTD
 	stop_ceventd();
 #endif
-#ifdef BCM_BSD
+#if defined(BCM_BSD)
 	stop_bsd();
 #endif
 	stop_igmp_proxy();
@@ -12945,7 +12954,7 @@ script_allnet:
 #ifdef BCM_CEVENTD
 			stop_ceventd();
 #endif
-#ifdef BCM_BSD
+#if defined(BCM_BSD)
 			stop_bsd();
 #endif
 			stop_igmp_proxy();
@@ -13098,6 +13107,9 @@ script_allnet:
 			start_aspmd();
 #endif
 #endif
+#if defined(RTCONFIG_RALINK_BSD)
+			start_bsd();
+#endif
 			start_snooper();
 			start_lltd();
 			/* Link-up LAN ports after DHCP server ready. */
@@ -13192,7 +13204,7 @@ script_allnet:
 #ifdef BCM_CEVENTD
 			stop_ceventd();
 #endif
-#ifdef BCM_BSD
+#if defined(BCM_BSD)
 			stop_bsd();
 #endif
 			stop_igmp_proxy();
@@ -13315,6 +13327,9 @@ script_allnet:
 #ifdef BCM_ASPMD
 			start_aspmd();
 #endif
+#endif
+#if defined(RTCONFIG_RALINK_BSD)
+			start_bsd();
 #endif
 			start_snooper();
 			start_lltd();
@@ -16643,7 +16658,7 @@ start_write_smb_conf();
 		}
 	}
 #endif
-#if defined(BCM_BSD) || defined(LANTIQ_BSD) 
+#if defined(BCM_BSD) || defined(LANTIQ_BSD) || defined(RTCONFIG_RALINK_BSD)
 	else if (strcmp(script,"bsd") == 0)
 	{
 		if(action&RC_SERVICE_STOP) stop_bsd();

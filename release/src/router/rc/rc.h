@@ -2629,6 +2629,10 @@ extern void stop_netool(void);
 extern int start_bsd(void);
 extern void stop_bsd(void);
 #endif
+#if defined(RTCONFIG_RALINK_BSD)
+extern int start_bsd(void);
+extern void stop_bsd(void);
+#endif
 #if defined(RTCONFIG_QCA_PLC_UTILS) || defined(RTCONFIG_QCA_PLC2)
 extern int restart_plc_main(int argc, char *argv[]);
 extern int detect_plc_main(int argc, char *argv[]);

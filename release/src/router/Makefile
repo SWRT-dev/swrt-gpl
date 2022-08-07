@@ -511,6 +511,10 @@ ifeq ($(RTCONFIG_QCA_LBD),y)
 export CFLAGS += -DQCA_BSD
 endif
 
+ifeq ($(RTCONFIG_RALINK_BSD),y)
+export CFLAGS += -DRALINK_BSD
+endif
+
 ifeq ($(RTCONFIG_BCMSSD),y)
 export CFLAGS += -DBCM_SSD
 endif
@@ -1409,7 +1413,7 @@ endif
 endif
 obj-$(RTCONFIG_BCM_APPEVENTD) += appeventd
 obj-$(RTCONFIG_BCM_MEVENTD) += meventd
-
+obj-$(RTCONFIG_RALINK_BSD) += bndstrg_plus
 obj-$(RTCONFIG_BCMSSD) += ssd
 
 ifeq ($(RTCONFIG_WLCEVENTD),y)
@@ -9276,6 +9280,14 @@ libubus-install:
 	install -D libubus/build/libubus.so.20210603 $(INSTALLDIR)/libubus/usr/lib/libubus.so.20210603
 	cd $(INSTALLDIR)/libubus/usr/lib && ln -sf libubus.so.20210603 libubus.so
 	$(STRIP) $(INSTALLDIR)/libubus/usr/lib/libubus.so.20210603
+endif
+
+ifeq ($(RTCONFIG_RALINK_BSD),y)
+bndstrg_plus:
+	$(MAKE) -C bndstrg_plus all
+	
+bndstrg_plus-install:
+	$(MAKE) -C bndstrg_plus install
 endif
 
 #

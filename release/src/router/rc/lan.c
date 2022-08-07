@@ -5573,6 +5573,12 @@ void restart_wireless(void)
 	trigger_wave_monitor(__func__, __LINE__, WAVE_ACTION_WEB);
 	_dprintf("[%s][%d] call wave_monitor()-05\n", __func__, __LINE__);
 #endif
+#if defined(RTCONFIG_RALINK_BSD)
+	if (nvram_get_int("smart_connect_x") == 1) {
+		_dprintf("band steering is enabled, sync wireless settings...\n");
+		bandstr_sync_wl_settings();
+	}
+#endif
 #ifdef RTCONFIG_BCMWL6
 #ifdef RTCONFIG_AMAS
 	stop_obd();
@@ -5694,7 +5700,7 @@ void restart_wireless(void)
 	start_hspotap();
 #endif
 	start_igmp_proxy();
-#ifdef BCM_BSD
+#if defined(BCM_BSD) || defined(RTCONFIG_RALINK_BSD)
 	start_bsd();
 #endif
 #ifdef BCM_APPEVENTD
@@ -5929,7 +5935,7 @@ void stop_wl_bcm(void)
 #ifdef BCM_APPEVENTD
 	stop_appeventd();
 #endif
-#ifdef BCM_BSD
+#if defined(BCM_BSD) || defined(RTCONFIG_RALINK_BSD)
 	stop_bsd();
 #endif
 	stop_igmp_proxy();

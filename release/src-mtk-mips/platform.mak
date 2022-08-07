@@ -1,14 +1,20 @@
 # OpenWRT SDK_4210
 ifeq ($(NEWKERNEL),y)
 export LINUXDIR := $(SRCBASE)/linux/linux-4.14
+else ifeq ($(MT7986),y)
+export LINUXDIR := $(SRCBASE)/linux/linux-5.4
 else
 export LINUXDIR := $(SRCBASE)/linux/linux-4.4.198
 endif
 
 ifeq ($(EXTRACFLAGS),)
+ifeq ($(MT7986),y)
+export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -marm -march=armv8 -mfpu=vfpv3-d16 -mfloat-abi=softfp -mcpu=cortex-a53
+else
 export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -mips32 -mtune=mips32
 #export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -marm -march=armv7-a -msoft-float -mfloat-abi=soft -mtune=cortex-a7
 #export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -marm -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=softfp
+endif
 endif
 
 export RTVER := 0.9.30.1
@@ -36,7 +42,6 @@ export KERNELLD := $(TOOLS)/bin/mipsel-openwrt-linux-musl-ld
 export STAGING_DIR := $(TOOLS)
 else ifeq ($(RT4GAC86U),y)
 export EXTRACFLAGS += -DRT4GAC86U
-export MUSL64=y
 export PLATFORM := arm-glibc
 export PLATFORM_ARCH := arm-glibc
 export TOOLS := /opt/toolchain-aarch64_cortex-a53+neon-vfpv4_gcc-5.4.0_glibc-2.24
@@ -49,6 +54,21 @@ export STAGING_DIR := $(TOOLS)
 export ARCH := arm64
 export HOST := arm-linux
 export CONFIGURE := ./configure --host=arm-linux --build=$(BUILD)
+export HOSTCONFIG := linux-aarch64
+else ifeq ($(MT7986),y)
+export MUSL64=y
+export PLATFORM := arm-musl
+export PLATFORM_ARCH := arm-musl
+export TOOLS := /opt/toolchain-aarch64_cortex-a53_gcc-8.4.0_musl
+export CROSS_COMPILE := $(TOOLS)/bin/aarch64-openwrt-linux-
+export CROSS_COMPILER := $(CROSS_COMPILE)
+export READELF := $(TOOLS)/bin/aarch64-openwrt-linux-readelf
+export KERNELCC := $(TOOLS)/bin/aarch64-openwrt-linux-gcc
+export KERNELLD := $(TOOLS)/bin/aarch64-openwrt-linux-ld
+export STAGING_DIR := $(TOOLS)
+export ARCH := arm64
+export HOST := aarch64-linux
+export CONFIGURE := ./configure --host=aarch64-linux --build=$(BUILD)
 export HOSTCONFIG := linux-aarch64
 else
 export MUSL32=y
@@ -74,13 +94,15 @@ export DTS_DIR := $(LINUXDIR)/arch/$(ARCH)/boot/dts
 EXTRA_CFLAGS := -DLINUX26 -DCONFIG_RALINK -pipe -DDEBUG_NOISY -DDEBUG_RCTEST
 #else
 #EXTRA_CFLAGS := -DLINUX26 -DCONFIG_RALINK -pipe -DDEBUG_NOISY -DDEBUG_RCTEST -mfpu=vfpv3-d16 -mfloat-abi=softfp
-
 #endif
 ifeq ($(RTACRH18),y)
 EXTRA_CFLAGS += -march=armv7-a -D_GNU_SOURCE -DMUSL_LIBC -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__
 endif
 ifeq ($(RT4GAC86U),y)
 EXTRA_CFLAGS += -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__
+endif
+ifeq ($(MT7986),y)
+EXTRA_CFLAGS += -Os -mcpu=cortex-a53 -march=armv8 -mfpu=vfpv3-d16 -mfloat-abi=softfp -D_GNU_SOURCE -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__ -DMUSL_LIBC
 endif
 
 export CONFIG_LINUX26=y
@@ -148,6 +170,13 @@ define platformRouterOptions
 		else \
 			sed -i "/RTCONFIG_RALINK_MT7622/d" $(1); \
 			echo "# RTCONFIG_RALINK_MT7622 is not set" >>$(1); \
+		fi; \
+		if [ "$(MT7986)" = "y" ]; then \
+			sed -i "/RTCONFIG_RALINK_MT7986/d" $(1); \
+			echo "RTCONFIG_RALINK_MT7986=y" >>$(1); \
+		else \
+			sed -i "/RTCONFIG_RALINK_MT7986/d" $(1); \
+			echo "# RTCONFIG_RALINK_MT7986 is not set" >>$(1); \
 		fi; \
 	fi; \
 	)

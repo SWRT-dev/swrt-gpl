@@ -15932,6 +15932,9 @@ NO_USB_CAP:
 #if defined(RTCONFIG_EMMC)
 	add_rc_support("emmc");
 #endif
+#if defined(RTCONFIG_RALINK_BSD)
+	add_rc_support("bandstr");
+#endif
 
 	return 0;
 }

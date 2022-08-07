@@ -928,7 +928,7 @@ function enableSmartCon(val){
 			value = ["1"];
 			add_options_x2(document.form.smart_connect_t, desc, value, val);
 		}
-		else if(based_modelid == "RT-AC88U" || based_modelid == "RT-AC86U" || based_modelid == "GT-AC2900" || based_modelid == "RT-AC3100" || based_modelid == "BLUECAVE" || based_modelid == "MAP-AC1750" || based_modelid == "RT-AX89U" || based_modelid == "GT-AXY16000" || based_modelid.substring(0,7) == "RT-AC59"){
+		else if(based_modelid == "RT-AC88U" || based_modelid == "RT-AC86U" || based_modelid == "GT-AC2900" || based_modelid == "RT-AC3100" || based_modelid == "BLUECAVE" || based_modelid == "MAP-AC1750" || based_modelid == "RT-AX89U" || based_modelid == "GT-AXY16000" || based_modelid.substring(0,7) == "RT-AC59" || Rawifi_support){
 			desc = ["<#smart_connect_dual#> (2.4GHz and 5GHz)"];
 			value = ["1"];
 			add_options_x2(document.form.smart_connect_t, desc, value, val);
@@ -948,7 +948,7 @@ function enableSmartCon(val){
 		based_modelid.substring(0,7) == "RT-AC59" ||
 		based_modelid == "RT-AX89U" ||
 		based_modelid == "GT-AXY16000" ||
-		based_modelid == "BLUECAVE"){
+		based_modelid == "BLUECAVE" || Rawifi_support){
 		document.getElementById("smartcon_rule_link").style.display = "none";
 		if(val == 0){
 			document.getElementById("smart_connect_field").style.display = "none";
@@ -1262,7 +1262,7 @@ function ajax_wl_edmg_channel(){
 
 										$('#radio_smartcon_enable').iphoneSwitch( smart_connect_flag_t > 0, 
 										 function() {
-											if(based_modelid != "RT-AC5300" && based_modelid != "GT-AC5300" && based_modelid !="RT-AC3200" && based_modelid != "RT-AC88U" && based_modelid != "RT-AC86U" && based_modelid != "GT-AC2900" && based_modelid != "RT-AC3100" && based_modelid != "BLUECAVE" && based_modelid != "MAP-AC1750"  && based_modelid != "RT-AC95U" && based_modelid != "RT-AX89U" && based_modelid != "GT-AXY16000")
+											if(based_modelid != "RT-AC5300" && based_modelid != "GT-AC5300" && based_modelid !="RT-AC3200" && based_modelid != "RT-AC88U" && based_modelid != "RT-AC86U" && based_modelid != "GT-AC2900" && based_modelid != "RT-AC3100" && based_modelid != "BLUECAVE" && based_modelid != "MAP-AC1750"  && based_modelid != "RT-AC95U" && based_modelid != "RT-AX89U" && based_modelid != "GT-AXY16000" && !Rawifi_support)
 												enableSmartCon(1);
 											else{
 												if(document.form.smart_connect_t.value)
