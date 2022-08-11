@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: ISC */
 /*
  * Copyright (c) 2012-2017 Qualcomm Atheros, Inc.
- * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
  */
 
 #ifndef __WIL6210_H__
@@ -790,11 +790,6 @@ struct wil_sta_info {
 	u8 aid; /* 1-254; 0 if unknown/not reported */
 	bool fst_link_loss;
 	bool net_queue_stopped; /* used when q_per_sta enabled */
-
-	/* amsdu frame related info to check if the frame is valid */
-	int amsdu_drop_sn;
-	int amsdu_drop_tid;
-	u8 amsdu_drop;
 };
 
 enum {
@@ -1619,5 +1614,4 @@ void update_supported_bands(struct wil6210_priv *wil);
 void wil_clear_fw_log_addr(struct wil6210_priv *wil);
 int wmi_lo_power_calib_from_otp(struct wil6210_priv *wil, u8 index);
 
-void wil_sta_info_amsdu_init(struct wil_sta_info *sta);
 #endif /* __WIL6210_H__ */

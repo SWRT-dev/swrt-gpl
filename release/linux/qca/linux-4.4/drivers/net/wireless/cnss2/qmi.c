@@ -475,7 +475,7 @@ int cnss_wlfw_tgt_cap_send_sync(struct cnss_plat_data *plat_priv)
 	struct wlfw_cap_resp_msg_v01 *resp;
 	struct qmi_txn txn;
 	char *fw_build_timestamp;
-	int i, ret = 0;
+	int ret = 0;
 	int resp_error_msg = 0;
 
 	cnss_pr_dbg("Sending target capability message, state: 0x%lx\n",
@@ -569,18 +569,6 @@ int cnss_wlfw_tgt_cap_send_sync(struct cnss_plat_data *plat_priv)
 		plat_priv->eeprom_caldata_read_timeout =
 			resp->eeprom_caldata_read_timeout;
 
-	if (resp->dev_mem_info_valid) {
-		for (i = 0; i < QMI_WLFW_MAX_DEV_MEM_NUM_V01; i++) {
-			plat_priv->dev_mem_info[i].start =
-				resp->dev_mem_info[i].start;
-			plat_priv->dev_mem_info[i].size =
-				resp->dev_mem_info[i].size;
-			cnss_pr_info("Device memory info[%d]: start = 0x%llx, size = 0x%llx\n",
-				     i, plat_priv->dev_mem_info[i].start,
-				     plat_priv->dev_mem_info[i].size);
-		}
-	}
-
 	cnss_pr_info("Target capability: chip_id: 0x%x, chip_family: 0x%x, board_id: 0x%x, soc_id: 0x%x, fw_version: 0x%x, fw_build_timestamp: %s, otp_version: 0x%x eeprom_caldata_read_timeout %ds\n",
 		     plat_priv->chip_info.chip_id,
 		     plat_priv->chip_info.chip_family,
@@ -627,9 +615,6 @@ static int cnss_wlfw_load_bdf(struct wlfw_bdf_download_req_msg_v01 *req,
 		break;
 	case QCN6122_DEVICE_ID:
 		folder = "qcn6122/";
-		break;
-	case QCA9574_DEVICE_ID:
-		folder = "IPQ9574/";
 		break;
 	default:
 		folder = "IPQ8074/";
@@ -841,8 +826,7 @@ int cnss_wlfw_bdf_dnld_send_sync(struct cnss_plat_data *plat_priv,
 		    plat_priv->device_id == QCA8074V2_DEVICE_ID ||
 		    plat_priv->device_id == QCA5018_DEVICE_ID ||
 		    plat_priv->device_id == QCN6122_DEVICE_ID ||
-		    plat_priv->device_id == QCA6018_DEVICE_ID ||
-		    plat_priv->device_id == QCA9574_DEVICE_ID) {
+		    plat_priv->device_id == QCA6018_DEVICE_ID) {
 			temp = filename;
 			remaining = MAX_BDF_FILE_NAME;
 			goto bypass_bdf;
@@ -866,8 +850,7 @@ int cnss_wlfw_bdf_dnld_send_sync(struct cnss_plat_data *plat_priv,
 		    plat_priv->device_id == QCA8074V2_DEVICE_ID ||
 		    plat_priv->device_id == QCA5018_DEVICE_ID ||
 		    plat_priv->device_id == QCN6122_DEVICE_ID ||
-		    plat_priv->device_id == QCA6018_DEVICE_ID ||
-		    plat_priv->device_id == QCA9574_DEVICE_ID) {
+		    plat_priv->device_id == QCA6018_DEVICE_ID) {
 			temp = filename;
 			remaining = MAX_BDF_FILE_NAME;
 			goto bypass_bdf;
@@ -934,7 +917,6 @@ bypass_bdf:
 		    plat_priv->device_id == QCA8074V2_DEVICE_ID ||
 		    plat_priv->device_id == QCA5018_DEVICE_ID ||
 		    plat_priv->device_id == QCN6122_DEVICE_ID ||
-		    plat_priv->device_id == QCA9574_DEVICE_ID ||
 		    plat_priv->device_id == QCA6018_DEVICE_ID) {
 			cnss_wlfw_load_bdf(req, plat_priv,
 					   MAX_BDF_FILE_NAME,
@@ -2645,8 +2627,7 @@ int cnss_qmi_init(struct cnss_plat_data *plat_priv)
 	    plat_priv->device_id == QCA8074V2_DEVICE_ID ||
 	    plat_priv->device_id == QCA5018_DEVICE_ID ||
 	    plat_priv->device_id == QCN6122_DEVICE_ID ||
-	    plat_priv->device_id == QCA6018_DEVICE_ID ||
-	    plat_priv->device_id == QCA9574_DEVICE_ID) {
+	    plat_priv->device_id == QCA6018_DEVICE_ID) {
 		if (qca8074_fw_mem_mode != 0xFF) {
 			plat_priv->tgt_mem_cfg_mode = qca8074_fw_mem_mode;
 			pr_info("Using qca8074_fw_mem_mode 0x%x\n",

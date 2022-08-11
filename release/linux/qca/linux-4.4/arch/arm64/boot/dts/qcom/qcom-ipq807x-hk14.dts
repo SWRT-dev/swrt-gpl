@@ -858,17 +858,10 @@
 #endif
 
 #if !defined(__CNSS2__)
-#ifdef __IPQ_MEM_PROFILE_512_MB__
-		base-addr = <0x4E900000>;
-		m3-dump-addr = <0x4FD00000>;
-		etr-addr = <0x4FE00000>;
-		qcom,caldb-addr = <0x4FF00000>;
-#else
 		base-addr = <0x51100000>;
 		m3-dump-addr = <0x53400000>;
 		etr-addr = <0x53500000>;
 		qcom,caldb-addr = <0x53600000>;
-#endif
 		mhi,max-channels = <30>;
 		mhi,timeout = <10000>;
 		qcom,board_id= <0xa4>;

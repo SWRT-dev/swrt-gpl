@@ -80,6 +80,11 @@
 #include <linux/netlink.h>
 #include <linux/tcp.h>
 
+#ifdef PGB_QUICK_PATH
+#include <linux/swrt_fastpath/fast_path.h>
+#endif
+
+
 int sysctl_ip_default_ttl __read_mostly = IPDEFTTL;
 EXPORT_SYMBOL(sysctl_ip_default_ttl);
 
@@ -104,7 +109,11 @@ int __ip_local_out(struct net *net, struct sock *sk, struct sk_buff *skb)
 	ip_send_check(iph);
 
 	skb->protocol = htons(ETH_P_IP);
-
+#ifdef PGB_QUICK_PATH
+	if (SWRT_FASTPATH(skb))
+		return dst_output(net, sk, skb);
+	else 
+#endif 
 	return nf_hook(NFPROTO_IPV4, NF_INET_LOCAL_OUT,
 		       net, sk, skb, NULL, skb_dst(skb)->dev,
 		       dst_output);
@@ -343,7 +352,11 @@ int ip_mc_output(struct net *net, struct sock *sk, struct sk_buff *skb)
 				net, sk, newskb, NULL, newskb->dev,
 				dev_loopback_xmit);
 	}
-
+#ifdef PGB_QUICK_PATH
+	if (SWRT_FASTPATH(skb))
+		return ip_finish_output(net, sk, skb);
+	else 
+#endif 
 	return NF_HOOK_COND(NFPROTO_IPV4, NF_INET_POST_ROUTING,
 			    net, sk, skb, NULL, skb->dev,
 			    ip_finish_output,
@@ -358,7 +371,11 @@ int ip_output(struct net *net, struct sock *sk, struct sk_buff *skb)
 
 	skb->dev = dev;
 	skb->protocol = htons(ETH_P_IP);
-
+#ifdef PGB_QUICK_PATH
+	if (SWRT_FASTPATH(skb))
+		return ip_finish_output(net, sk, skb);
+	else 
+#endif 
 	return NF_HOOK_COND(NFPROTO_IPV4, NF_INET_POST_ROUTING,
 			    net, sk, skb, NULL, dev,
 			    ip_finish_output,
@@ -1624,3 +1641,4 @@ void __init ip_init(void)
 	igmp_mc_init();
 #endif
 }
+

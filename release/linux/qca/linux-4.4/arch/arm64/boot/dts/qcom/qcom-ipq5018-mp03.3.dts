@@ -972,7 +972,7 @@
 	board_id = <0xa4>;
 	status = "ok";
 	qrtr_node_id = <0x21>;
-#if defined(__IPQ_MEM_PROFILE_256_MB__) || defined(__IPQ_FLASH_16M_PROFILE__)
+#ifdef __IPQ_MEM_PROFILE_256_MB__ || __IPQ_FLASH_16M_PROFILE__
 			/* QCN9000 tgt-mem-mode=2 layout - 17MB
 			 * +=========+==============+=========+
 			 * |  Region | Start Offset |   Size  |

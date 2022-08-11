@@ -5,6 +5,7 @@
 # Rewritten to use lists instead of if-statements.
 #
 KBUILD_CFLAGS += -Werror
+obj-$(CONFIG_ASUS_NVRAM_API)    += nvram/
 obj-y				+= irqchip/
 obj-y				+= bus/
 

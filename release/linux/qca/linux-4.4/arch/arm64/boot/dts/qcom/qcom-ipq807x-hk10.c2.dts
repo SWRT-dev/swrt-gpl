@@ -1000,17 +1000,10 @@
 #endif
 
 #if !defined(__CNSS2__)
-#ifdef __IPQ_MEM_PROFILE_512_MB__
-		base-addr = <0x4B000000>;
-		m3-dump-addr = <0x4C400000>;
-		etr-addr = <0x4C500000>;
-		qcom,caldb-addr = <0x4C600000>;
-#else
 		base-addr = <0x4B000000>;
 		m3-dump-addr = <0x4D300000>;
 		etr-addr = <0x4D400000>;
 		qcom,caldb-addr = <0x4D500000>;
-#endif
 		mhi,max-channels = <30>;
 		mhi,timeout = <10000>;
 		qcom,board_id= <0xa0>;
@@ -1035,17 +1028,10 @@
 #endif
 
 #if !defined(__CNSS2__)
-#ifdef __IPQ_MEM_PROFILE_512_MB__
-		base-addr = <0x4CE00000>;
-		m3-dump-addr = <0x4E200000>;
-		etr-addr = <0x4E300000>;
-		qcom,caldb-addr = <0x4E400000>;
-#else
 		base-addr = <0x4DD00000>;
 		m3-dump-addr = <0x50000000>;
 		etr-addr = <0x50100000>;
 		qcom,caldb-addr = <0x50200000>;
-#endif
 		mhi,max-channels = <30>;
 		mhi,timeout = <10000>;
 		qcom,board_id= <0xa1>;

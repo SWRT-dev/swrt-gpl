@@ -81,3 +81,4 @@ obj-y				+= l3mdev/
 endif
 obj-$(CONFIG_RMNET_DATA) += rmnet_data/
 obj-$(CONFIG_QRTR)		+= qrtr/
+obj-$(PGB_QUICK_PATH)		+= swrt_fastpath/

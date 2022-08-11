@@ -29,10 +29,6 @@
 	qcom,board-id = <0x8 0x0>;
 	qcom,pmic-id = <0x0 0x0 0x0 0x0>;
 
-	srd_trace: srd_trace {
-		compatible = "srd";
-	};
-
 	soc: soc {
 		#address-cells = <0x1>;
 		#size-cells = <0x1>;
@@ -2233,13 +2229,6 @@
 		wifi1: wifi1@f00000 {
 			compatible  = "qcom,cnss-qcn9000";
 			qrtr_node_id = <0x20>;
-			qca,auto-restart;
-			status = "disabled";
-		};
-
-		wifi2: wifi2@f00000 {
-			compatible  = "qcom,cnss-qcn9000";
-			qrtr_node_id = <0x21>;
 			qca,auto-restart;
 			status = "disabled";
 		};

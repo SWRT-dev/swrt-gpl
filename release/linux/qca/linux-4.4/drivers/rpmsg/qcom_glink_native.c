@@ -233,14 +233,6 @@ struct rpm_cmd_log {
 
 unsigned int glinkintrindex;
 unsigned int glinksendindex;
-unsigned int glinkworkindex;
-
-struct work_queue_timelog {
-	u64 timestamp;
-} glinkwork_schedule[RPMLOG_SIZE], glinkwork_cancel[RPMLOG_SIZE];
-
-unsigned int glinkwork_sche_index;
-unsigned int glinkwork_cancel_index;
 
 static struct glink_channel *qcom_glink_alloc_channel(struct qcom_glink *glink,
 						      const char *name)
@@ -311,9 +303,7 @@ static void qcom_glink_channel_release(struct kref *ref)
 	memset(glinksend, 0, sizeof(struct rpm_cmd_log) * RPMLOG_SIZE);
 	glinkintrindex = 0;
 	glinksendindex = 0;
-	glinkworkindex = 0;
-	glinkwork_sche_index = 0;
-	glinkwork_cancel_index = 0;
+
 }
 
 static size_t qcom_glink_rx_avail(struct qcom_glink *glink)
@@ -875,10 +865,6 @@ static int qcom_glink_rx_defer(struct qcom_glink *glink, size_t extra)
 	spin_unlock(&glink->rx_lock);
 
 	schedule_work(&glink->rx_work);
-	/* It log's the work queue schedule timestamp */
-	glinkwork_schedule[glinkwork_sche_index++].timestamp =
-				ktime_to_ms(ktime_get());
-	glinkwork_sche_index &= (RPMLOG_SIZE - 1);
 	atomic_set(&glink->id_advance, 1);
 	qcom_glink_rx_advance(glink, sizeof(dcmd->msg) + extra);
 
@@ -1666,6 +1652,8 @@ struct glinkwork {
 	unsigned int param2;
 } glink_work[RPMLOG_SIZE];
 
+unsigned int glinkworkindex;
+
 static void qcom_glink_work(struct work_struct *work)
 {
 	struct qcom_glink *glink = container_of(work, struct qcom_glink,
@@ -1734,11 +1722,6 @@ static void qcom_glink_cancel_rx_work(struct qcom_glink *glink)
 
 	/* cancel any pending deferred rx_work */
 	cancel_work_sync(&glink->rx_work);
-
-	/* It log's work queue cancelled timestamp */
-	glinkwork_cancel[glinkwork_cancel_index++].timestamp =
-					ktime_to_ms(ktime_get());
-	glinkwork_cancel_index &= (RPMLOG_SIZE - 1);
 
 	list_for_each_entry_safe(dcmd, tmp, &glink->rx_queue, node)
 		kfree(dcmd);

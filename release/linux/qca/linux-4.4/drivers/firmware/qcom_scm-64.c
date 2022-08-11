@@ -1192,19 +1192,12 @@ int __qcom_fuseipq_scm_call(struct device *dev, u32 svc_id, u32 cmd_id,
 	struct arm_smccc_res res;
 	struct qcom_scm_desc desc = {0};
 	uint64_t *status;
-	struct fuse_blow *fuse_blow = cmd_buf;
 
-	desc.args[0] = fuse_blow->address;
-	if (fuse_blow->size) {
-		desc.arginfo = SCM_ARGS(2, SCM_RO, SCM_VAL);
-		desc.args[1] = (uint32_t) fuse_blow->size;
-	} else {
-		desc.arginfo = SCM_ARGS(1, SCM_RO);
-	}
+	desc.arginfo = SCM_ARGS(1, SCM_RO);
+	desc.args[0] = *((uint64_t *)cmd_buf);
 	ret = qcom_scm_call(dev, ARM_SMCCC_OWNER_SIP, svc_id,
 			    cmd_id, &desc, &res);
-	status = (uint64_t *)fuse_blow->status;
-
+	status = (uint64_t *)(((uint64_t *)cmd_buf) + 1);
 	*status = res.a1;
 	return ret ? : res.a1;
 }

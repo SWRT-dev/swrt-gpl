@@ -621,6 +621,29 @@ KBUILD_CFLAGS	+= $(call cc-option,-fno-delete-null-pointer-checks,)
 KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
 KBUILD_CFLAGS	+= $(call cc-disable-warning,frame-address,)
 
+MODEL = $(subst -,,$(BUILD_NAME))
+KBUILD_CFLAGS += -D$(MODEL)
+KBUILD_CFLAGS += -D$(SWRT_NAME)
+ifeq ($(CONFIG_ARCH_IPQ40XX),y)
+FPFILE = ipq4019.obj
+else ifeq ($(CONFIG_ARCH_IPQ5018),y)
+FPFILE = ipq5018.obj
+else ifeq ($(CONFIG_ARCH_IPQ6018),y)
+FPFILE = ipq6018.obj
+else ifeq ($(CONFIG_ARCH_IPQ807x),y)
+FPFILE = ipq8074.obj
+else
+FPFILE = ipq9574.obj
+endif
+ifneq ($(wildcard ./net/swrt_fastpath/*.c),)
+KBUILD_CFLAGS += -DPGB_QUICK_PATH
+export PGB_QUICK_PATH=y
+else ifneq ($(wildcard ./net/swrt_fastpath/$(FPFILE)),)
+KBUILD_CFLAGS += -DPGB_QUICK_PATH
+export PGB_QUICK_PATH=y
+endif
+
+
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= -Os $(EXTRA_OPTIMIZATION)
 else

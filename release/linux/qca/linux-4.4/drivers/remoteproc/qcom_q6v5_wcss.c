@@ -1613,7 +1613,7 @@ static int q6v5_wcss_userpd_stop(struct rproc *rproc)
 		ret = qcom_q6v5_request_stop(&wcss->q6v5);
 		if (ret) {
 			dev_err(&rproc->dev, "%s not stopped\n", rproc->name);
-			BUG_ON(ret);
+			return ret;
 		}
 	}
 

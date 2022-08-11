@@ -46,7 +46,6 @@
 #define SW_TYPE_APDP				0x200
 
 static int gl_version_enable;
-static int fuse_blow_size_required;
 
 static ssize_t
 qfprom_show_authenticate(struct device *dev,
@@ -435,7 +434,10 @@ store_sec_dat(struct device *dev, struct device_attribute *attr,
 	struct file *fptr = NULL;
 	struct kstat st;
 	void *ptr = NULL;
-	struct fuse_blow fuse_blow;
+	struct fuse_blow {
+		dma_addr_t address;
+		unsigned long *status;
+	} fuse_blow;
 	dma_addr_t dma_req_addr = 0;
 	size_t req_order = 0;
 	struct page *req_page = NULL;
@@ -493,10 +495,6 @@ store_sec_dat(struct device *dev, struct device_attribute *attr,
 		goto file_close;
 	}
 	fuse_blow.address = dma_req_addr;
-	if (fuse_blow_size_required)
-		fuse_blow.size = size;
-	else
-		fuse_blow.size = 0;
 	fuse_blow.status = &fuse_status;
 
 	ret = qcom_fuseipq_scm_call(dev, QCOM_SCM_SVC_FUSE,
@@ -691,8 +689,6 @@ static int qfprom_probe(struct platform_device *pdev)
 			}
 		}
 	}
-
-	err = of_property_read_u32(np, "fuse-blow-size-required", &fuse_blow_size_required);
 
 	/* sysfs entry for fusing QFPROM */
 	err = device_create_file(&device_qfprom, &sec_dat_attr);

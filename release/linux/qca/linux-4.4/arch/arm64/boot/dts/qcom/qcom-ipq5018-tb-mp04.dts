@@ -24,15 +24,15 @@
 
 	soc {
 		lpass: lpass@0xA000000{
-			status = "disabled";
+			status = "ok";
 		};
 
 		pcm: pcm@0xA3C0000{
-			status = "disabled";
+			status = "ok";
 		};
 
 		pcm_lb: pcm_lb@0 {
-			status = "disabled";
+			status = "ok";
 		};
 	};
 

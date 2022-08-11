@@ -432,7 +432,7 @@
 };
 
 &tlmm {
-	pinctrl-0 = <&blsp0_uart_pins &phy_led_pins &pcie_x2_perst>;
+	pinctrl-0 = <&blsp0_uart_pins &phy_led_pins>;
 	pinctrl-names = "default";
 
 	blsp0_uart_pins: blsp0_uart_pins {
@@ -589,12 +589,6 @@
 			drive-strength = <8>;
 			bias-pull-down;
 		};
-	};
-
-	pcie_x2_perst: pcie_x2_perst {
-		pins = "gpio15";
-		function = "gpio";
-		drive-strength = <8>;
 	};
 };
 

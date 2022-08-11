@@ -12,7 +12,6 @@ Required properties:
 		= "qcom,cnss-qcn9000"; for qcn9000 device
 		= "qcom,cnss-qcn9100"; for qcn9100 device
 		= "qcom,cnss-qcn6122"; for qcn6122 device
-		= "qcom,cnss-qca9574"; for IPQ9574 device
 		= "qcom,ipq8074-wifi"; for Ath11k IPQ8074 device
 		= "qcom,qcn9100-wifi"; for Ath11k qcn9100 device
   - reg = <baseaddr length>

@@ -1,0 +1,14 @@
+menu "ASUS NVRAM"
+
+config	ASUS_NVRAM_API
+	tristate "ASUS NVRAM R/W API"
+	default m
+	---help---
+	ASUS NVRAM R/W API
+
+config NVRAM_SIZE
+	hex "Specify nvram size on Ralink/MTK/QCA platform. First 4KB is reserved to U-Boot environment."
+	depends on ASUS_NVRAM_API
+	default 0x10000
+
+endmenu

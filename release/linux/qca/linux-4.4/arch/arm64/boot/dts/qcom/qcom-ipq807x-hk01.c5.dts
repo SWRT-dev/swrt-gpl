@@ -1264,7 +1264,7 @@
 
 			mhi_qrtr {
 				mhi,chan = "IPCR";
-				qcom,net-id = <1>;
+				qcom,net-id = <3>;
 			};
 		};
 

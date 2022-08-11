@@ -445,7 +445,7 @@
 };
 
 &tlmm {
-	pinctrl-0 = <&blsp0_uart_pins &blsp1_uart_pins &phy_led_pins &pcie_x2_perst>;
+	pinctrl-0 = <&blsp0_uart_pins &blsp1_uart_pins &phy_led_pins>;
 	pinctrl-names = "default";
 
 	blsp0_uart_pins: blsp0_uart_pins {
@@ -474,12 +474,6 @@
 	};
 
 	qspi_nand_pins: qspi_nand_pins {
-		qspi_clock {
-			pins = "gpio9";
-			function = "qspi_clk";
-			drive-strength = <8>;
-			bias-disable;
-		};
 		qspi_cs {
 				pins = "gpio8";
 				function = "qspi_cs";
@@ -588,11 +582,6 @@
 		};
 	};
 
-	pcie_x2_perst: pcie_x2_perst {
-		pins = "gpio15";
-		function = "gpio";
-		drive-strength = <8>;
-	};
 };
 
 &usb3 {

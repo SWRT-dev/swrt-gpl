@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* Copyright (c) 2018-2021, The Linux Foundation. All rights reserved. */
+/* Copyright (c) 2018-2019, The Linux Foundation. All rights reserved. */
 
-#include <linux/delay.h>
 #include <linux/debugfs.h>
 #include <linux/device.h>
 #include <linux/dma-direction.h>
@@ -55,36 +54,12 @@ int __must_check mhi_read_reg_field(struct mhi_controller *mhi_cntrl,
 	return 0;
 }
 
-int __must_check mhi_poll_reg_field(struct mhi_controller *mhi_cntrl,
-				    void __iomem *base, u32 offset,
-				    u32 mask, u32 shift, u32 val, u32 delayus)
-{
-	int ret;
-	u32 out, retry = (mhi_cntrl->timeout_ms * 1000) / delayus;
-
-	while (retry--) {
-		ret = mhi_read_reg_field(mhi_cntrl, base, offset, mask, shift,
-					 &out);
-		if (ret)
-			return ret;
-
-		if (out == val)
-			return 0;
-
-		fsleep(delayus);
-	}
-
-	return -ETIMEDOUT;
-}
-
 int mhi_get_capability_offset(struct mhi_controller *mhi_cntrl,
 			      u32 capability,
 			      u32 *offset)
 {
 	u32 cur_cap, next_offset;
 	int ret;
-
-	return -ENXIO;
 
 	/* get the 1st supported capability offset */
 	ret = mhi_read_reg_field(mhi_cntrl, mhi_cntrl->regs, MISC_OFFSET,

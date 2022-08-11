@@ -277,12 +277,6 @@ struct mem_prot_info {
 	u64 size;
 };
 
-struct fuse_blow {
-	dma_addr_t address;
-	size_t size;
-	unsigned long *status;
-};
-
 #define MEM_PROT_ASSIGN_ID		0x16
 #define MEM_PROTECT_LOCK_ID2		0x0A
 #define MEM_PROTECT_LOCK_ID2_FLAT	0x11

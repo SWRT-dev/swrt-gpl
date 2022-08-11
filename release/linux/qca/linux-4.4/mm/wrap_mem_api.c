@@ -127,7 +127,7 @@ void *__wrap___kmalloc_node(size_t size, gfp_t flags, int node)
 	void *stack[9] = {0};
 	void *addr = (void *)__kmalloc_node(size, flags, node);
 
-	if (addr && debug_mem_usage_enabled) {
+	if (addr) {
 		get_stacktrace(stack);
 		debug_object_trace_init(addr, stack, size);
 	}
@@ -141,7 +141,7 @@ void *__wrap_kmalloc_node(size_t size, gfp_t flags, int node)
 	void *stack[9] = {0};
 	void *addr = (void *)kmalloc_node(size, flags, node);
 
-	if (addr && debug_mem_usage_enabled) {
+	if (addr) {
 		get_stacktrace(stack);
 		debug_object_trace_init(addr, stack, size);
 	}
@@ -223,7 +223,7 @@ struct page *__wrap___alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order,
 	void *stack[9] = {0};
 	struct page *page = __alloc_pages_nodemask(gfp_mask, order, zonelist, nodemask);
 
-	if (page && debug_mem_usage_enabled) {
+	if (page) {
 		get_stacktrace(stack);
 		debug_object_trace_init(page_address(page), stack,
 					(1 << order) * PAGE_SIZE);
@@ -341,7 +341,7 @@ void *__wrap_kmem_cache_alloc_node(struct kmem_cache *s, gfp_t gfpflags, int nod
 	void *stack[9] = {0};
 	void *addr = (void *)kmem_cache_alloc_node(s, gfpflags, node);
 
-	if (addr && debug_mem_usage_enabled) {
+	if (addr) {
 		get_stacktrace(stack);
 		debug_object_trace_init(addr, stack, s->size);
 	}
@@ -354,7 +354,7 @@ void *__wrap_kmem_cache_alloc_node_trace(struct kmem_cache *s, gfp_t gfpflags, i
 {
 	void *stack[9] = {0};
 	void *addr = (void *)kmem_cache_alloc_node_trace(s, gfpflags, node, size);
-	if (addr && debug_mem_usage_enabled) {
+	if (addr) {
 		get_stacktrace(stack);
 		debug_object_trace_init(addr, stack, s->size);
 	}
@@ -367,7 +367,7 @@ void *__wrap_kmem_cache_alloc_trace(struct kmem_cache *s, gfp_t gfpflags, size_t
 {
 	void *stack[9] = {0};
 	void *addr = (void *)kmem_cache_alloc_trace(s, gfpflags, size);
-	if (addr && debug_mem_usage_enabled) {
+	if (addr) {
 		get_stacktrace(stack);
 		debug_object_trace_init(addr, stack, s->size);
 	}
@@ -476,7 +476,7 @@ void *__wrap_kmalloc_order_trace(size_t size, gfp_t flags, unsigned int order)
 	void *stack[9] = {0};
 	void *addr = kmalloc_order_trace(size, flags, order);
 
-	if (addr && debug_mem_usage_enabled) {
+	if (addr) {
 		get_stacktrace(stack);
 		debug_object_trace_init(addr, stack, (1 << order) * PAGE_SIZE);
 	}
@@ -538,9 +538,7 @@ EXPORT_SYMBOL(__wrap_mempool_free);
 
 void __wrap_free_pages(unsigned long addr, unsigned int order)
 {
-	if (debug_mem_usage_enabled)
-		debug_object_trace_free((void *)addr);
-
+	debug_object_trace_free((void *)addr);
 	free_pages(addr, order);
 
 	return;

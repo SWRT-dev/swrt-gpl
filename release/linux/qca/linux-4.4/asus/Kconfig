@@ -1,0 +1,13 @@
+choice
+	prompt "Choose Product"
+	help
+	   Choose specific product for different hardware layout
+
+config RTAC82U
+	bool "RT-AC82U (IPQ4019 + QCA9984)"
+
+config RTAC95U
+	bool "RT-AC95U (IPQ4019 + QCA9984)"
+
+endchoice
+

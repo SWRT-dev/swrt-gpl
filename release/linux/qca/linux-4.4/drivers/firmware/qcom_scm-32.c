@@ -1995,21 +1995,15 @@ int __qcom_fuseipq_scm_call(struct device *dev, u32 svc_id, u32 cmd_id,
 {
 	int ret;
 	uint32_t *status;
-	struct fuse_blow *fuse_blow = cmd_buf;
 
 	if (is_scm_armv8()) {
 
 		struct scm_desc desc = {0};
-		desc.args[0] = fuse_blow->address;
-		if (fuse_blow->size) {
-			desc.args[1] = fuse_blow->size;
-			desc.arginfo = SCM_ARGS(2, SCM_RO, SCM_VAL);
-		} else
-			desc.arginfo = SCM_ARGS(1, SCM_RO);
+		desc.arginfo = SCM_ARGS(1, SCM_RO);
+		desc.args[0] = *((uint32_t *)cmd_buf);
 
 		ret = qcom_scm_call2(SCM_SIP_FNID(svc_id, cmd_id), &desc);
-		status = (uint32_t *)fuse_blow->status;
-
+		status = (uint32_t *)(((uint32_t *)cmd_buf) + 1);
 		*status = desc.ret[0];
 
 		if (!ret)
