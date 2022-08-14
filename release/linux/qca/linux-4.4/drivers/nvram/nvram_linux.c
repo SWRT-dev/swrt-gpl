@@ -24,7 +24,9 @@
 #include <linux/bootmem.h>
 #include <linux/sched.h>
 
-#include "../../../../include/bcmnvram.h"
+#ifdef ASUS_NVRAM
+#include <nvram/bcmnvram.h>
+#endif
 
 /* If UBOOT_CFG_ENV_SIZE is defined as non-zero value,
  * we have to skip first UBOOT_CFG_ENV_SIZE bytes of MTD partition.

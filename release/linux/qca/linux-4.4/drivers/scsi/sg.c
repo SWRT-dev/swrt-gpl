@@ -982,7 +982,7 @@ sg_ioctl(struct file *filp, unsigned int cmd_in, unsigned long arg)
 		val = min_t(int, val,
 			    max_sectors_bytes(sdp->device->request_queue));
 		if (val != sfp->reserve.bufflen) {
-			if (sg_res_in_use(sfp) || sfp->mmap_called)
+			if (sg_res_in_use(sfp) || sfp->mmap_called) {
 				return -EBUSY;
 			}
 			mutex_lock(&sfp->parentdp->open_rel_lock);

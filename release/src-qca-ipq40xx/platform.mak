@@ -7,6 +7,7 @@ endif
 export PLATFORM_ROUTER := ipq40xx
 export BUILD := $(shell (gcc -dumpmachine))
 export KERNEL_BINARY=$(LINUXDIR)/vmlinux
+export MUSL32 :=y
 export PLATFORM := arm-musl
 export TOOLS := /opt/openwrt-gcc520_musl.arm
 export CROSS_COMPILE := $(TOOLS)/bin/arm-openwrt-linux-muslgnueabi-
@@ -49,8 +50,8 @@ define platformRouterOptions
 		echo "# RTCONFIG_GLOBAL_INI is not set" >>$(1); \
 		sed -i "/RTCONFIG_WIFI_QCN5024_QCN5054/d" $(1); \
 		echo "# RTCONFIG_WIFI_QCN5024_QCN5054 is not set" >>$(1); \
-		sed -i "/RTCONFIG_SPF11_QSDK/d" $(1); \
-		echo "RTCONFIG_SPF11_QSDK=y" >>$(1); \
+		sed -i "/RTCONFIG_SPF10_QSDK/d" $(1); \
+		echo "RTCONFIG_SPF10_QSDK=y" >>$(1); \
 		sed -i "/RTCONFIG_SINGLE_HOSTAPD\>/d" $(1); \
 		echo "RTCONFIG_SINGLE_HOSTAPD=y" >>$(1); \
 		sed -i "/RTCONFIG_QCA_ARM/d" $(1); \

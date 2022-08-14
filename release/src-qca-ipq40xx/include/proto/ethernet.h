@@ -21,7 +21,10 @@
 
 #ifndef __NET_ETHERNET_H
 #define __NET_ETHERNET_H 1
-
+#include <stdio.h>
+#if !(defined(__GLIBC__) || defined(__UCLIBC__))
+#include <netinet/ether.h>	//use the struct in tool chain
+#else
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #include <linux/if_ether.h>     /* IEEE 802.3 Ethernet constants */
@@ -81,4 +84,5 @@ struct ether_header
 
 __END_DECLS
 
+#endif	/* (__GLIBC__ || __UCLIBC__) */
 #endif	/* net/ethernet.h */

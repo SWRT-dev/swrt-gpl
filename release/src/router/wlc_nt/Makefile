@@ -40,8 +40,8 @@ vpath %.c $(SRCBASE)/shared $(WLAN_ComponentSrcDirs)
 
 ifeq ($(wildcard $(SRCBASE)/router/wlc_nt/*.c),)
 all:
-	-cp -f prebuild/wlc_nt ./
-	-cp -f prebuild/libwlc_nt_client.so ./
+	-cp -f prebuild/$(BUILD_NAME)/wlc_nt ./
+	-cp -f prebuild/$(BUILD_NAME)/libwlc_nt_client.so ./
 else
 all: wlc_nt libwlc_nt_client.so
 endif

@@ -3868,7 +3868,7 @@ ddns_updated_main(int argc, char *argv[])
  */
 static char *get_ddns_macaddr(void)
 {
-#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_RALINK)
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 	static char mac_buf[6], mac_buf_str[18];
 #endif
 	int model = get_model();

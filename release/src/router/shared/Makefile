@@ -368,7 +368,7 @@ endif
 OBJS += private.o
 vpath %.c sysdeps/ralink
 else ifeq ($(RTCONFIG_QCA),y)
-CFLAGS += $(if $(IPQ40XX),,-DTRX_NEW)
+CFLAGS += -DTRX_NEW
 OBJS += private.o
 vpath %.c sysdeps/qca
 else ifeq ($(RTCONFIG_LANTIQ),y)

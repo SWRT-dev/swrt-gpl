@@ -57,7 +57,7 @@ vpath %.c $(SRCBASE)/shared $(WLAN_ComponentSrcDirs)
 
 ifeq ($(wildcard $(SRCBASE)/router/hapdevent/*.c),)
 all:
-	-cp -f prebuild/hapdevent hapdevent
+	-cp -f prebuild/$(BUILD_NAME)/hapdevent hapdevent
 else
 all: hapdevent
 endif

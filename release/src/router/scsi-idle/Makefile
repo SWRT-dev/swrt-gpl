@@ -26,7 +26,6 @@ ifeq ($(CONFIG_LANTIQ),y)
 CFLAGS += -DRTCONFIG_LANTIQ
 endif
 
-
 TARGETS = scsi-start
 
 all: $(TARGETS)

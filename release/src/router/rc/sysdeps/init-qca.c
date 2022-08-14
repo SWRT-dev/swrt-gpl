@@ -2133,6 +2133,10 @@ static int update_daemon_coldboot_qdss_support_variables(int *cold_boot, int *da
 #elif defined(RTCONFIG_SOC_IPQ60XX)
 	snprintf(board_name, sizeof(board_name), "ap-cp03-c1");
 	fw_ini_file = "/lib/firmware/IPQ6018/firmware_rdp_feature.ini";
+#elif defined(RTCONFIG_SOC_IPQ40XX)
+	*cold_boot = 0;
+	*daemon = 0;
+	return 0;
 #else
 #error Define board_name!
 #endif
@@ -2195,6 +2199,9 @@ static int update_daemon_coldboot_qdss_support_variables(int *cold_boot, int *da
  * 	-1:	invalid parameter.
  * 	-2:	can't judge daemon_support of cnss2 driver is enabled or not.
  */
+#if defined(RTCONFIG_SOC_IPQ40XX)
+static int do_cold_boot_calibration(char *mod, int is_ftm){ return 0; }
+#else
 static int do_cold_boot_calibration(char *mod, int is_ftm)
 {
 #if defined(RTCONFIG_GLOBAL_INI)
@@ -2312,6 +2319,7 @@ static int do_cold_boot_calibration(char *mod, int is_ftm)
 
 	return 0;
 }
+#endif
 #endif
 #endif	/* RTCONFIG_SPF8_QSDK || RTCONFIG_SPF10_QSDK || RTCONFIG_SPF11_QSDK || RTCONFIG_SPF11_1_QSDK */
 
@@ -2509,6 +2517,7 @@ static int adjust_ring_buffer_in_ini(int total_mem)
  *  otherwise:	error
  */
 #if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK)
+#if !defined(RTCONFIG_SOC_IPQ40XX)
 static int get_nss_buf_size(int total_mem, int olcfg, const char **extra_pbuf_core0, const char **n2h_high_water_core0, const char **n2h_wifi_pool_buf)
 {
 	unsigned int hk_ol_num;
@@ -2595,6 +2604,7 @@ static int get_nss_buf_size(int total_mem, int olcfg, const char **extra_pbuf_co
 
 	return 0;
 }
+#endif
 #elif defined(RTCONFIG_SPF10_QSDK)
 static int get_nss_buf_size(int total_mem, int olcfg, const char **extra_pbuf_core0, const char **n2h_high_water_core0, const char **n2h_wifi_pool_buf)
 {

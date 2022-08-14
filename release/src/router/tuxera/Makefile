@@ -31,7 +31,7 @@ SRCFILE = qca_ipq40xx_ILQ6101CS
 else ifeq ($(QSDK_VER),SPF10CS)
 SRCFILE = qca_ipq40xx_SPF10CS
 else # IPQ40XX
-SRCFILE = qca_ipq40xx
+SRCFILE = qca_ipq60xx
 endif # IPQ40XX
 else ifeq ($(RTCONFIG_SOC_IPQ60XX),y)
 SRCFILE = qca_ipq60xx

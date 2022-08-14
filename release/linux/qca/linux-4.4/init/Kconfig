@@ -1478,6 +1478,20 @@ config PRINTK
 	  very difficult to diagnose system problems, saying N here is
 	  strongly discouraged.
 
+config DUMP_PREV_OOPS_MSG
+	default n
+	bool "Dump previous kernel oops message" if PRINTK
+
+config DUMP_PREV_OOPS_MSG_BUF_ADDR
+	hex "Buffer start address to store previous kernel oops message."
+	depends on DUMP_PREV_OOPS_MSG
+	default "0x01810000" if RALINK_RT3883
+
+config DUMP_PREV_OOPS_MSG_BUF_LEN
+	hex "Buffer length to store previous kernel oops message."
+	depends on DUMP_PREV_OOPS_MSG
+	default "0x2000" if RALINK_RT3883
+
 config BUG
 	bool "BUG() support" if EXPERT
 	default y

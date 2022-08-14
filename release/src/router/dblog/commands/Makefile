@@ -19,9 +19,9 @@ endif
 
 OBJS = dblogcmd.o
 
-ifneq ($(wildcard ./prebuild),)
+ifneq ($(wildcard ./prebuild/$(BUILD_NAME)),)
 all:
-	@-cp -f ./prebuild/dblogcmd .
+	@-cp -f ./prebuild/$(BUILD_NAME)/dblogcmd .
 else
 all: dblogcmd
 endif

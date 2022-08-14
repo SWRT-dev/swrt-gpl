@@ -98,6 +98,9 @@ export CFLAGS += -DRALINK_DBDC_MODE
 endif
 else ifeq ($(or $(RTCONFIG_QCA),$(RTCONFIG_REALTEK)),y)
 export CFLAGS += $(EXTRACFLAGS)
+ifeq ($(RTCONFIG_MUSL_LIBC),y)
+export CFLAGS += -DRTCONFIG_MUSL_LIBC -D_GNU_SOURCE
+endif
 else
 # Broadcom
 export CFLAGS += -DBCMWPA2
@@ -155,11 +158,11 @@ KPATH_2636X_OR_3X = $(if $(or $(findstring linux-2.6.36.x,$(LINUXDIR)),$(findstr
 KPATH_3X = $(if $(or $(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR))),y)
 
 KPATH_37_OR_ABOVE = $(if $(or $(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR))),y)
-KPATH_314_OR_ABOVE = $(if $(or $(findstring linux-3.14,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR))),y)
+KPATH_314_OR_ABOVE = $(if $(or $(findstring linux-3.14,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4,$(LINUXDIR))),y)
 
 export KPATH_37_OR_ABOVE KPATH_314_OR_ABOVE
 
-INCLUDE_LINUX_VERSION_H = $(if $(or $(RTCONFIG_LANTIQ),$(KPATH_314_OR_ABOVE)),include/generated/uapi/linux/version.h,include/linux/version.h)
+INCLUDE_LINUX_VERSION_H = $(if $(or $(RTCONFIG_LANTIQ),$(RTCONFIG_QCA),$(KPATH_314_OR_ABOVE)),include/generated/uapi/linux/version.h,include/linux/version.h)
 
 ifneq ($(BASE_MODEL),)
 ifneq ($(findstring 4G-,$(BASE_MODEL)),)
@@ -1150,7 +1153,6 @@ obj-$(RTCONFIG_USB_SMS_MODEM) += libiconv-1.14
 obj-$(RTCONFIG_USB_SMS_MODEM) += smspdu
 
 # temporary
-RTCONFIG_EXT4FS := n
 obj-$(RTCONFIG_E2FSPROGS) += e2fsprogs # including libuuid
 obj-$(RTCONFIG_EXT4FS) += e2fsprogs
 
@@ -1730,17 +1732,17 @@ ifneq ($(RTCONFIG_HND_ROUTER_AX_675X),y)
 version: $(SRCBASE)/include/epivers.h
 	$(SEP)
 endif
+endif
 
 EPIVERS_OPTION =
 
-ifeq ($(RTCONFIG_HND_ROUTER_AX_675X),y)
+ifeq ($(RTCONFIG_HND_ROUTER_AX_6710)$(RTCONFIG_HND_ROUTER_AX_675X),y)
 version:  $(SRCBASE)/include/epivers.h
 	$(MAKE) -C $(SRCBASE)/include $(EPIVERS_OPTION) REUSE_VERSION=1
 ifeq ($(RTCONFIG_DHDAP),y)
 	$(MAKE) pciefd-version
 endif
 endif
-endif # RTCONFIG_HND_ROUTER_AX_6710
 
 $(SRCBASE)/include/epivers.h:
 	$(MAKE) -C $(SRCBASE)/include $(EPIVERS_OPTION)
@@ -1748,8 +1750,14 @@ ifeq ($(RTCONFIG_DHDAP),y)
 	$(MAKE) -C $(SRCBASE_DHD)/include
 	$(MAKE) -C $(SRCBASE_FW)/include
 endif
-	+$(MAKE) $(MAKE_ARGS) post_preplibs
+endif
 
+
+ifeq ($(RTCONFIG_BCMARM),y)
+	+$(MAKE) $(MAKE_ARGS) post_preplibs
+endif
+
+ifeq ($(RTCONFIG_BCMARM),y)
 list_obj_prelibs:
 	@echo obj-prelibs:
 	@( \
@@ -1795,11 +1803,7 @@ ifeq ($(RTCONFIG_RALINK),y)
 endif
 endif
 ifeq ($(RTCONFIG_QCA),y)
-ifeq ($(KPATH_37_OR_ABOVE),y)
 	cp -fr $(LINUXDIR)/include/uapi/* $@/include/uapi/
-else
-	cp $(LINUXDIR)/include/net/switch.h $@/include/linux/
-endif
 endif
 	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) prepare scripts
 	find $(LINUXDIR)/include -name autoconf.h -exec cp {} $@/include/linux/ \;
@@ -3665,6 +3669,9 @@ iptables-1.4.21/remove_configure:
 	rm -f iptables-1.4.21/configure
 endif
 
+ifeq ($(RTCONFIG_MUSL_LIBC),y)
+MUSL_CFLAG=-DRTCONFIG_MUSL_LIBC
+endif
 ifeq ($(RTCONFIG_ALPINE)$(RTCONFIG_LANTIQ),y)
 iptables-1.4.21/Makefile: iptables-1.4.21/remove_configure iptables-1.4.21/configure
 else
@@ -3676,11 +3683,11 @@ endif
 		--libdir=/usr/lib \
 		--with-kernel=$(LINUXDIR) \
 		$(if $(RTCONFIG_IPV6),--enable-ipv6,--disable-ipv6) \
-		CFLAGS="-Os $(EXTRACFLAGS) -U CONFIG_NVRAM_SIZE"
+		CFLAGS="-Os $(EXTRACFLAGS) -U CONFIG_NVRAM_SIZE $(MUSL_CFLAG)"
 
 iptables-1.4.21: iptables-1.4.21/Makefile
 	@$(SEP)
-	$(MAKE) -C $@ KERNEL_DIR=$(LINUXDIR) COPT_FLAGS="-Os $(EXTRACFLAGS) -U CONFIG_NVRAM_SIZE"
+	$(MAKE) -C $@ KERNEL_DIR=$(LINUXDIR) COPT_FLAGS="-Os $(EXTRACFLAGS) -U CONFIG_NVRAM_SIZE $(MUSL_CFLAG)"
 
 iptables-1.4.21-install: iptables-1.4.21
 	install -D iptables-1.4.21/iptables/.libs/xtables-multi $(INSTALLDIR)/iptables-1.4.21/usr/sbin/xtables-multi
@@ -4590,7 +4597,7 @@ else
 	touch $@
 endif
 else ifeq ($(MUSL_LIBC),y)
-	cd rp-pppoe/src && CFLAGS="-g -O2 $(EXTRACFLAGS) -idirafter $(KDIR)/include" \
+	cd rp-pppoe/src && CFLAGS="-g -O2 $(EXTRACFLAGS) -I$(TOP)/pppd/include -idirafter $(KDIR)/include" \
         $(CONFIGURE) --prefix=/usr --enable-plugin=$(TOP)/pppd \
         ac_cv_linux_kernel_pppoe=yes \
 	rpppoe_cv_pack_bitfields=rev \

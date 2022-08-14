@@ -19,7 +19,9 @@ release/src/router/rc/tcode_rc.c
 release/src/router/rc/pwdec
 release/src/router/rc/roamast.c
 release/src/router/rc/sysdeps/*/ate-*.c
+release/src/router/rc/sysdeps/*/ctl.c
 release/src/router/rc/sysdeps/*/easymesh-*.c
+release/src/router/rc/sysdeps/*/fw*
 release/src/router/rc/sysdeps/*/roamast-*.c
 release/src/router/shared/notify_ahs.c
 release/src/router/shared/notify_rc.c

@@ -1,0 +1,21 @@
+--- a/nl80211.h
++++ b/nl80211.h
+@@ -2299,6 +2299,9 @@ enum nl80211_commands {
+  *	This is also used for capability advertisement in the wiphy information,
+  *	with the appropriate sub-attributes.
+  *
++ * @NL80211_ATTR_WIPHY_ANTENNA_GAIN: Configured antenna gain. Used to reduce
++ *	transmit power to stay within regulatory limits. u32, dBi.
++ *
+  * @NUM_NL80211_ATTR: total number of nl80211_attrs available
+  * @NL80211_ATTR_MAX: highest attribute number currently defined
+  * @__NL80211_ATTR_AFTER_LAST: internal use
+@@ -2748,6 +2751,8 @@ enum nl80211_attrs {
+ 
+ 	NL80211_ATTR_PEER_MEASUREMENTS,
+ 
++	NL80211_ATTR_WIPHY_ANTENNA_GAIN,
++
+ 	/* add attributes here, update the policy in nl80211.c */
+ 
+ 	__NL80211_ATTR_AFTER_LAST,

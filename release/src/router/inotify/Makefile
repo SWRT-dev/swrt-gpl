@@ -5,7 +5,7 @@
 #***********************************************************************
 
 all:
-	-cp prebuild/inotify inotify
+	-cp prebuild/$(BUILD_NAME)/inotify inotify
 
 .PHONY: clean
 clean:

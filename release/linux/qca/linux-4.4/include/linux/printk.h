@@ -141,6 +141,14 @@ int printk_emit(int facility, int level,
 asmlinkage __printf(1, 2) __cold
 int printk(const char *fmt, ...);
 
+#ifdef CONFIG_DUMP_PREV_OOPS_MSG
+extern void enable_oopsbuf(int onoff);
+extern int __init prepare_and_dump_previous_oops(void);
+#else
+static inline void enable_oopsbuf(int onoff) { }
+static inline int prepare_and_dump_previous_oops(void) { return 0; }
+#endif
+
 /*
  * Special printk facility for scheduler/timekeeping use only, _DO_NOT_USE_ !
  */

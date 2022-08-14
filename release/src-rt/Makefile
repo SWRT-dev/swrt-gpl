@@ -3482,6 +3482,11 @@ define RouterOptions
 			sed -i "/RTCONFIG_MAX_RE/d" $(1); \
 			echo "RTCONFIG_MAX_RE=$(MAX_RE)" >>$(1); \
 		fi; \
+	else \
+		if [ "$(QCA)" = "y" ]; then \
+			sed -i "/RTCONFIG_PTHSAFE_POPEN/d" $(1); \
+			echo "RTCONFIG_PTHSAFE_POPEN=y" >>$(1); \
+		fi; \
 	fi; \
 	sed -i "/RTCONFIG_BATMAN_ADV/d" $(1); \
 	if [ "$(BATMAN)" = "y" ]; then \
@@ -5587,6 +5592,8 @@ endif
 else
 	@cp $(LINUXDIR)/config_base.6a $(LINUXDIR)/config_$(lowercase_B)
 endif
+else ifeq ($(IPQ40XX),y)
+	@cp $(LINUXDIR)/config_base_ipq4019 $(LINUXDIR)/config_$(lowercase_B)
 else
 	@if [ "$(RALINK)" = "y" ]; then \
 		if [ "$(BUILD_NAME)" = "RT-AC1200" ] || [ "$(BUILD_NAME)" = "RT-N600" ] ; then \

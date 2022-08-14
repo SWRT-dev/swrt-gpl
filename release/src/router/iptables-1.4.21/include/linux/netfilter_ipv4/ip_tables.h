@@ -15,7 +15,7 @@
 #ifndef _IPTABLES_H
 #define _IPTABLES_H
 
-#if defined(MUSL_LIBC)
+#if defined(MUSL_LIBC) || defined(RTCONFIG_MUSL_LIBC)
 #include <sys/types.h>
 #endif
 

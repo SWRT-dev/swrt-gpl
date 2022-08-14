@@ -1,0 +1,33 @@
+From 4974a10452e8c5f1fef834a98c2415793f51aaa9 Mon Sep 17 00:00:00 2001
+From: John Crispin <john@phrozen.org>
+Date: Thu, 23 May 2019 12:50:50 +0200
+Subject: [PATCH] iw: add HE support to station dump call
+
+	
+Signed-off-by: Shashidhar Lakkavalli <slakkavalli@datto.com>
+Signed-off-by: John Crispin <john@phrozen.org>
+---
+ station.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+--- a/station.c
++++ b/station.c
+@@ -243,6 +243,18 @@ void parse_bitrate(struct nlattr *bitrat
+ 	if (rinfo[NL80211_RATE_INFO_VHT_NSS])
+ 		pos += snprintf(pos, buflen - (pos - buf),
+ 				" VHT-NSS %d", nla_get_u8(rinfo[NL80211_RATE_INFO_VHT_NSS]));
++	if (rinfo[NL80211_RATE_INFO_HE_MCS])
++		pos += snprintf(pos, buflen - (pos - buf),
++				" HE-MCS %d", nla_get_u8(rinfo[NL80211_RATE_INFO_HE_MCS]));
++	if (rinfo[NL80211_RATE_INFO_HE_NSS])
++		pos += snprintf(pos, buflen - (pos - buf),
++				" HE-NSS %d", nla_get_u8(rinfo[NL80211_RATE_INFO_HE_NSS]));
++	if (rinfo[NL80211_RATE_INFO_HE_GI])
++		pos += snprintf(pos, buflen - (pos - buf),
++				" HE-GI %d", nla_get_u8(rinfo[NL80211_RATE_INFO_HE_GI]));
++	if (rinfo[NL80211_RATE_INFO_HE_DCM])
++		pos += snprintf(pos, buflen - (pos - buf),
++				" HE-DCM %d", nla_get_u8(rinfo[NL80211_RATE_INFO_HE_DCM]));
+ }
+ 
+ static char *get_chain_signal(struct nlattr *attr_list)

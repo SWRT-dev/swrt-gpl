@@ -1,24 +1,14 @@
 /*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * Copyright 2021, ASUS
+ * Copyright 2021-2022, SWRTdev
+ * Copyright 2021-2022, paldier <paldier@hotmail.com>.
+ * Copyright 2021-2022, lostlonger<lostlonger.g@gmail.com>.
+ * All Rights Reserved.
  */
 
 #include <rc.h>
-#ifdef RTCONFIG_QCA
 #include <stdio.h>
-#include <fcntl.h>		//      for restore175C() from Ralink src
+#include <fcntl.h>
 #include <qca.h>
 #include <asm/byteorder.h>
 #include <bcmnvram.h>
@@ -26,7 +16,11 @@
 #include <linux/sockios.h>
 #include <net/if_arp.h>
 #include <shutils.h>
+#if defined(RTCONFIG_MUSL_LIBC)
+#include <signal.h>
+#else
 #include <sys/signal.h>
+#endif
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -40,6 +34,11 @@
 #include <shared.h>
 #include "flash_mtd.h"
 #include "ate.h"
+#ifdef RTCONFIG_CFGSYNC
+#include <json.h>
+#include <cfg_slavelist.h>
+#include <cfg_string.h>
+#endif
 
 #define MAX_FRW 64
 #define MACSIZE 12
@@ -56,20 +55,16 @@
 
 #define APSCAN_WLIST	"/tmp/apscan_wlist"
 
-#define LED_CONTROL(led, flag) ralink_gpio_write_bit(led, flag)
+int bg = 0;
 
 #ifdef RTCONFIG_WIRELESSREPEATER
 char *wlc_nvname(char *keyword);
 #endif
 
-#if defined(RTCONFIG_QCA)
-#define VHT_SUPPORT		/* 11AC */
-#endif
-
 /* For more information to nawds repeater caps definition,
  * reference to struct ieee80211_nawds_repeater of qca-wifi driver.
  */
-#if defined(RTCONFIG_WIFI_QCA9990_QCA9990) || defined(RTCONFIG_WIFI_QCA9994_QCA9994) || defined(RTCONFIG_QCN550X) || defined(RTCONFIG_SOC_IPQ40XX) || defined(RPAC51)
+#if defined(RTCONFIG_WIFI_QCA9990_QCA9990) || defined(RTCONFIG_WIFI_QCA9994_QCA9994) || defined(RTCONFIG_SOC_IPQ40XX)
 /* 10.4 qca-wifi driver */
 #define CAP_DS              0x01
 #define CAP_TS              0x02	/* Not support in VHT80_80 or VHT160 */
@@ -82,25 +77,11 @@ char *wlc_nvname(char *keyword);
 #define CAP_11ACVHT80_80    0x2000
 #define CAP_11ACVHT160      0x4000
 #define CAP_TXBF            0x010000
-#elif defined(RTCONFIG_WIFI_QCA9557_QCA9882) || defined(RTCONFIG_QCA953X) || defined(RTCONFIG_QCA956X)
-/* 10.2 qca-wifi driver */
-#define CAP_HT20            0x01
-#define CAP_HT2040          0x02
-#define CAP_DS              0x04
-#define CAP_TS              0x08
-#define CAP_TXBF            0x10
-#define CAP_11ACVHT20       0x20
-#define CAP_11ACVHT40       0x40
-#define CAP_11ACVHT80       0x80
-
-#define CAP_4S              0
-#define CAP_11ACVHT80_80    0
-#define CAP_11ACVHT160      0
-#elif defined(RTCONFIG_WIFI_QCN5024_QCN5054)
-/* 11.4 qca-wifi driver */
+#elif defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+/* 11.4/12.0 qca-wifi driver */
 #define CAP_DS              0x01
-#define CAP_TS              0x02	/* Not support in VHT80_80 or VHT160 */
-#define CAP_4S              0x04	/* Not support in VHT80_80 or VHT160 */
+#define CAP_TS              0x02
+#define CAP_4S              0x04
 #define CAP_5S              0x08
 #define CAP_6S              0x10
 #define CAP_7S              0x20
@@ -137,6 +118,127 @@ int g_wsc_configured = 0;
 int g_isEnrollee[MAX_NR_WL_IF] = { 0, };
 
 int getCountryRegion5G(const char *countryCode, int *warning);
+
+
+static int bw40cap2g = 1;
+static int bw40cap[28] = {0};//14 * 2
+static int bw80cap[14] = {0};//7 * 2
+static int bw160cap[6] = {0};//3 * 2
+static int bw4320cap[4] = {0};
+static int bw6480cap[3] = {0};
+static int bw8640cap[2] = {0};
+
+struct chattr_s {
+	int channel;
+	int isupper;
+	char *ht_str;
+	int chan_low;
+	int chan_high;
+	int chan_cen;
+	int bw40cap;
+	int bw80cap;
+	int bw160cap;
+	int pad1;
+	int bw4320cap;
+	int bw6480cap;
+	int bw8640cap;
+	int pad2;
+};
+
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+struct bandx_defval_s {
+	char *handler;
+	short qam;
+	short intop;
+	short shortgi;
+	short stbc;
+	short txbf;
+	short mumimo;
+	short sumimo;
+	short he_mumimo;
+	short he_sumimo;
+	short he_dl_ofdma;
+	short he_ul_ofdma;
+	short he_ul_mimo;
+	short ldpc;
+	short unhide_ssid;
+	short beacon;
+	short protmode;
+	short shpreamble;
+	short pad;
+	short frag;
+	short dtim_period;
+	short beacon_int;
+	short pad2;
+	short pad3;
+	short pad4;
+	short pad5;
+	short pad6;
+	short uapsd;
+	short ap_bridge;
+	short mcastenhance;
+};
+
+struct bandx_defval_s bandx_defval[] = {
+	{ "/sbin/vap_evhandler", 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 3, 0, 0, 1, 1, 2347, 2346, 1, 100, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0 }
+};
+
+char *wldefval_tbl[] = { bandx_defval, bandx_defval, bandx_defval, bandx_defval };
+#endif
+
+char *get_vap_bridge()
+{
+	static char br_if[16];
+	char *ifname = nvram_default_get("lan_ifname");
+	if(ifname)
+		strlcpy(br_if, ifname, sizeof(br_if));
+	else
+		strlcpy(br_if, "br0", sizeof(br_if));
+	return br_if;
+}
+
+int calculate_bw_of_each_5g_channel(int band)
+{
+	char chList[256], word[128];
+	char *next;
+	int i, j, k;
+	int bw1 = 0, bw2 = 0;
+	uint8_t chlist40[] = { 36, 0, 44, 0, 52, 0, 60, 0, 100, 0, 108, 0, 116, 0, 124, 0, 132, 0, 140, 0, 149, 0, 157, 0};
+	uint8_t chlist80[] = { 36, 0, 52, 0, 100, 0, 116, 0, 132, 0, 149, 0};
+
+	if(band > 2)
+		return -1;
+
+	if(get_channel_list_via_driver(band, chList, sizeof(chList)) > 0)
+	{
+		foreach_44(word, chList, next){
+			i = safe_atoi(word);
+			for(j = 0; j < sizeof(chlist40); j += 2){
+				k = i - chlist40[j];
+				if(k < 5)
+					chlist40[j + 1] += 1;
+			}
+			for(j = 0; j < sizeof(chlist80); j += 2){
+				k = i - chlist80[j];
+				if(k < 13)
+					chlist80[j + 1] += 1;
+			}
+			if((i - 36) < 29)
+				bw1++;
+			if((i - 100) < 29)
+				bw2++;
+		}
+		for(i = 0; i < 12; i++)
+			bw40cap[14 * (band - 1) + i] = chlist40[2 * i + 1] == 2;
+		for(i = 0; i < 6; i++)
+			bw80cap[7 * (band - 1) + i] = chlist80[2 * i + 1] == 4;
+		bw160cap[(band - 1)] = bw1 == 8;
+		bw160cap[(band - 1) + 1] = bw2 == 8;
+		return 0;
+	}
+	dbg("%s: can't get channel list of band %d\n", __func__, band);
+	return -2;
+}
 
 char *get_wscd_pidfile(void)
 {
@@ -537,12 +639,874 @@ int get_bw_via_channel(int band, int channel)
 	return wl_bw;
 }
 
+char * conv_iwconfig_essid(char *ssid_in, char *ssid_out)
+{
+	int i, len;
+	if (ssid_out == NULL)
+		return NULL;
 
-int gen_ath_config(int band, int is_iNIC,int subnet)
+	*ssid_out = '\0';
+	if(ssid_in != NULL && (len = strlen(ssid_in)) <= 32) {
+		char *p = ssid_out;
+		for (i = 0; i < len; i++) {
+			p += sprintf(p, "\\%c", ssid_in[i]);
+		}
+		return ssid_out;
+	}
+	return NULL;
+}
+
+#ifdef RTCONFIG_WIRELESSREPEATER
+int create_tmp_sta_part(int unit, char *sta, char *ssid_prefix)
+{
+	FILE *fp;
+	int shortgi;
+	char tmp[64], prefix[128];
+	char pidfile[32];
+	char *lan_ifname = nvram_safe_get("lan_ifname");
+	get_wpa_supplicant_pidfile(sta, pidfile, 29);
+	snprintf(tmp, sizeof(tmp), "/etc/Wireless/conf/wpa_supplicant-%s.conf", sta);
+	if(!ssid_prefix)
+	{
+		if((fp = fopen(tmp, "w+")) == NULL)
+		{
+			_dprintf("%s: Can't open %s\n", __func__, tmp);
+			return -1;
+		}
+		fprintf(fp, "ctrl_interface=/var/run/wpa_supplicant-%s\nupdate_config=1\nnetwork={\n}\n", sta);
+		fclose(fp);
+	}
+	_dprintf("==>wps enrollee: create %s vap\n", sta);
+	create_vap(sta, unit, "sta");
+	sleep(1);
+	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+	if(nvram_pf_get_int(prefix, "nmode_x") == 2)
+		shortgi = 0;
+	else
+		shortgi = nvram_pf_get_int(prefix, "HT_GI") != 0;
+	doSystem("cfg80211tool %s shortgi %d\n", sta, shortgi);
+	doSystem("cfg80211tool %s mode %s", sta, "AUTO");
+	doSystem("cfg80211tool %s extap 1", sta);
+	if(!*lan_ifname)
+		lan_ifname = "br0";
+	eval("/usr/bin/wpa_supplicant", "-B", "-P", pidfile, "-D", get_wsup_drvname(unit), "-i", sta, "-b", lan_ifname, "-c", tmp);
+	if(ssid_prefix)
+	{
+		conv_iwconfig_essid(nvram_pf_safe_get(ssid_prefix, "ssid"), prefix);
+		doSystem("iwconfig %s essid -- %s", sta, prefix);
+	}
+	ifconfig(sta, IFUP, NULL, NULL);
+	return 0;
+}
+
+int copy_rpt_params_to_wl(char *wl_prefix, char *wlc_prefix)
+{
+	int i;
+	char tmp[128];
+	char *str, *auth_mode;
+	str = nvram_get(strcat_r(wlc_prefix, "ssid", tmp));
+	if(str && *str)
+		nvram_set("wl_ssid", str);
+	nvram_pf_set(wl_prefix, "ssid", nvram_safe_get(strcat_r(wlc_prefix, "ssid", tmp)));
+	nvram_set("wl_ssid", nvram_pf_safe_get(wlc_prefix, "ssid"));
+	if(wlc_prefix && !strncmp(wlc_prefix, "wlc", 3))
+	{
+		nvram_pf_set(wl_prefix, "auth_mode_x", nvram_pf_safe_get(wlc_prefix, "auth_mode"));
+		auth_mode = "wep";
+	}
+	else
+	{
+		nvram_pf_set(wl_prefix, "auth_mode_x", nvram_pf_safe_get(wlc_prefix, "auth_mode"));
+		auth_mode = "wep_x";
+	}
+	nvram_pf_set(wl_prefix, "wep_x", nvram_pf_safe_get(wlc_prefix, auth_mode));
+	nvram_pf_set(wl_prefix, "key", nvram_pf_safe_get(wlc_prefix, "key"));
+	for(i = 1; i < 5; i++) {
+		char prekey[16];
+		if(nvram_pf_get_int(wlc_prefix, "key") != i)
+		{
+			snprintf(prekey, sizeof(prekey), "key%d", i);
+			nvram_pf_set(wl_prefix, prekey, nvram_pf_get(wlc_prefix, "wep_key"));
+		}
+	}
+	nvram_pf_set(wl_prefix, "crypto", nvram_safe_get(strcat_r(wlc_prefix, "crypto", tmp)));
+	nvram_pf_set(wl_prefix, "wpa_psk", nvram_safe_get(strcat_r(wlc_prefix, "wpa_psk", tmp)));
+	str = nvram_get(strcat_r(wlc_prefix, "nbw_cap", tmp));
+	if(str && *str)
+		nvram_pf_set(wl_prefix, "bw", str);
+	nvram_pf_set(wl_prefix, "radius_ipaddr", nvram_safe_get(strcat_r(wlc_prefix, "radius_ipaddr", tmp)));
+	nvram_pf_set(wl_prefix, "radius_key", nvram_safe_get(strcat_r(wlc_prefix, "radius_key", tmp)));
+	nvram_pf_set(wl_prefix, "radius_port", nvram_safe_get(strcat_r(wlc_prefix, "radius_port", tmp)));
+	return 0;
+}
+
+/*
+ * write_rpt_wpa_supplicant_conf()
+ *
+ * copy wifi nvram variable from prefix_wlc"xxx" to prefix_mssid"xxx"
+ * and generate wpa_supplicant configure file
+ */
+void write_rpt_wpa_supplicant_conf(int band, const char *prefix_mssid, const char *prefix_wlc, const char *addition)
+{
+	FILE *fp_wpa;
+	char tmp[128];
+	char *str;
+	int flag_wep = 0;
+	int i;
+
+	snprintf(tmp, sizeof(tmp), "/etc/Wireless/conf/wpa_supplicant-%s.conf", get_staifname(band));
+	if (!(fp_wpa = fopen(tmp, "w+")))
+		return;
+
+	if ((str = nvram_get(strcat_r(prefix_wlc, "ssid", tmp))) && strcmp(str, ""))
+		nvram_set("wl_ssid", str);
+	nvram_pf_set(prefix_mssid, "ssid", nvram_safe_get(strcat_r(prefix_wlc, "ssid", tmp)));
+	nvram_pf_set(prefix_mssid, "auth_mode_x", nvram_safe_get(strcat_r(prefix_wlc, "auth_mode", tmp)));
+
+	nvram_pf_set(prefix_mssid, "wep_x", nvram_safe_get(strcat_r(prefix_wlc, "wep", tmp)));
+	nvram_pf_set(prefix_mssid, "key", nvram_safe_get(strcat_r(prefix_wlc, "key", tmp)));
+	for(i = 1; i <= 4; i++) {
+		char prekey[16];
+		if(nvram_get_int(strcat_r(prefix_wlc, "key", tmp))!=i)
+			continue;
+
+		snprintf(prekey, sizeof(prekey), "key%d", i);
+		nvram_pf_set(prefix_mssid, prekey, nvram_safe_get(strcat_r(prefix_wlc, "wep_key", tmp)));
+	}
+
+	nvram_pf_set(prefix_mssid, "crypto", nvram_safe_get(strcat_r(prefix_wlc, "crypto", tmp)));
+	nvram_pf_set(prefix_mssid, "wpa_psk", nvram_safe_get(strcat_r(prefix_wlc, "wpa_psk", tmp)));
+	nvram_pf_set(prefix_mssid, "bw", nvram_safe_get(strcat_r(prefix_wlc, "nbw_cap", tmp)));
+
+
+	fprintf(fp_wpa,
+		"ctrl_interface=/var/run/wpa_supplicant-%s\n"
+		"%s\n"
+		"network={\n"
+		"ssid=\"%s\"\n",
+		get_staifname(band),
+		(addition?:""),
+		((str = nvram_get(strcat_r(prefix_wlc, "ssid", tmp))) && strcmp(str, "")) ?
+			str : "8f3610e3c9feabed953a6");
+
+	fprintf(fp_wpa,"\tscan_ssid=1\n");
+
+	str = nvram_safe_get(strcat_r(prefix_wlc, "auth_mode", tmp));
+	if (str && *str != '\0') {
+		if (!strcmp(str, "open") && nvram_match(strcat_r(prefix_wlc, "wep", tmp), "0")) {
+			fprintf(fp_wpa,"\tkey_mgmt=NONE\n");		//open/none
+		}
+		else if (!strcmp(str, "open")) {
+			flag_wep = 1;
+			fprintf(fp_wpa,"\tkey_mgmt=NONE\n");		//open
+			fprintf(fp_wpa,"\tauth_alg=OPEN\n");
+		}
+		else if (!strcmp(str, "shared")) {
+			flag_wep = 1;
+			fprintf(fp_wpa,"\tkey_mgmt=NONE\n");		//shared
+			fprintf(fp_wpa,"\tauth_alg=SHARED\n");
+		}
+		else if (!strcmp(str, "psk") || !strcmp(str, "psk2")) {
+			fprintf(fp_wpa,"\tkey_mgmt=WPA-PSK\n");
+			if (!strcmp(str, "psk"))
+				fprintf(fp_wpa,"\tproto=WPA\n");	//wpapsk
+			else
+				fprintf(fp_wpa,"\tproto=RSN\n");	//wpa2psk
+
+			//EncrypType
+			if (nvram_match(strcat_r(prefix_wlc, "crypto", tmp), "tkip")) {
+				fprintf(fp_wpa, "\tpairwise=TKIP\n");
+				fprintf(fp_wpa, "\tgroup=TKIP\n");
+			}
+			else if (nvram_match(strcat_r(prefix_wlc, "crypto", tmp), "aes")) {
+				char *aes_type = "CCMP TKIP";
+				if(band == WL_60G_BAND)
+					aes_type = "GCMP";
+				fprintf(fp_wpa, "\tpairwise=%s\n", aes_type);
+				fprintf(fp_wpa, "\tgroup=%s\n", aes_type);
+			}
+
+			//key
+			fprintf(fp_wpa, "\tpsk=\"%s\"\n",nvram_safe_get(strcat_r(prefix_wlc, "wpa_psk", tmp)));
+		}
+		else
+			fprintf(fp_wpa,"\tkey_mgmt=NONE\n");		//open/none
+	}
+	else
+		fprintf(fp_wpa,"\tkey_mgmt=NONE\n");			//open/none
+
+	//EncrypType
+	if (flag_wep)
+	{
+		int len;
+		for(i = 1 ; i <= 4; i++)
+		{
+			if(nvram_get_int(strcat_r(prefix_wlc, "key", tmp))!=i)
+				continue;
+
+			str = nvram_safe_get(strcat_r(prefix_wlc, "wep_key", tmp));
+			len = strlen(str);
+			if(len == 5 || len == 13) {
+				fprintf(fp_wpa, "\twep_tx_keyidx=%d\n", i - 1);
+				fprintf(fp_wpa, "\twep_key%d=\"%s\"\n", i - 1, str);
+			}
+			else if(len == 10 || len == 26)	{
+				fprintf(fp_wpa, "\twep_tx_keyidx=%d\n", i - 1);
+				fprintf(fp_wpa, "\twep_key%d=%s\n", i - 1, str);
+			}
+			else {
+				fprintf(fp_wpa, "\twep_tx_keyidx=%d\n", i - 1);
+				fprintf(fp_wpa, "\twep_key%d=0\n", i - 1);
+			}
+		}
+	}
+	fprintf(fp_wpa, "}\n");
+	fclose(fp_wpa);
+}
+#endif	/* RTCONFIG_WIRELESSREPEATER */
+
+int calculate_bw_of_each_channel(int band)
+{
+	int result;
+	switch(band)
+	{
+		case WL_2G_BAND:
+#ifdef RTCONFIG_WIFI6E
+		case WL_6G_BAND:
+#else
+		case WL_60G_BAND:
+#endif
+			result = 0;
+			break;
+		case WL_5G_BAND:
+			result = calculate_bw_of_each_5g_channel(WL_5G_BAND);
+			break;
+		case WL_5G_2_BAND:
+			result = calculate_bw_of_each_5g_channel(WL_5G_2_BAND);
+			break;
+		default:
+			dbg("%s: Unknown band %d\n", __func__, band);
+			result = -1;
+			break;
+	}
+	return result;
+}
+
+void gen_hostapd_wps_config(FILE *fp_h, int band, int subnet, char *br_if)
+{
+	char *p;
+	char prefix[8];
+	snprintf(prefix, sizeof(prefix), "wl%d_", band);
+
+	fprintf(fp_h, "# Wi-Fi Protected Setup (WPS)\n");
+
+	if(!subnet && nvram_pf_match(prefix, "auth_mode_x", "sae") && nvram_pf_match(prefix, "auth_mode_x", "wpa3")){
+		char *uuid = nvram_safe_get("uuid");
+		if(nvram_pf_match(prefix, "mode_x", "1")){
+			fprintf(fp_h, "wps_state=0\n");
+		}else{
+			if (nvram_match("w_Setting", "0")) {
+				fprintf(fp_h, "wps_state=1\n");
+			} else {
+				fprintf(fp_h, "wps_state=2\n");
+				fprintf(fp_h, "ap_setup_locked=1\n");
+			}
+		}
+		if (uuid && strlen(uuid) == 36)
+			fprintf(fp_h, "uuid=%s\n", uuid);
+	} else {
+		/* Turn off WPS on guest network. */
+		fprintf(fp_h, "wps_state=0\n");
+	}
+
+	fprintf(fp_h, "wps_independent=1\n");
+	fprintf(fp_h, "device_name=ASUS Router\n");
+	fprintf(fp_h, "manufacturer=ASUSTek Computer Inc.\n");
+	fprintf(fp_h, "model_name=%s\n", nvram_safe_get("productid"));
+	fprintf(fp_h, "model_number=%s\n", ((p = nvram_safe_get("odmpid")) && *p != '\0')? p : nvram_safe_get("productid"));
+	fprintf(fp_h, "serial_number=%s\n", get_lan_hwaddr());
+	fprintf(fp_h, "device_type=6-0050F204-1\n");
+	fprintf(fp_h, "config_methods=push_button display virtual_display virtual_push_button physical_push_button label\n");
+	fprintf(fp_h, "pbc_in_m1=1\n");
+	fprintf(fp_h, "ap_pin=%s\n", nvram_safe_get("secret_code"));
+	fprintf(fp_h, "upnp_iface=%s\n",br_if);
+	fprintf(fp_h, "friendly_name=WPS Access Point\n");
+	fprintf(fp_h, "manufacturer_url=http://www.asus.com\n");
+	fprintf(fp_h, "model_description=ASUS Router\n");
+	fprintf(fp_h, "model_url=http://www.asus.com\n");
+	//fprintf(fp_h, "wps_rf_bands=ag\n"); /* according to spec */
+	fprintf(fp_h, "wps_rf_bands=%c\n",band?'a':'g');
+
+	//fprintf(fp_h, "ieee80211w=0\n");
+}
+
+void qca_wif_up(const char* wif)
+{
+	if( nvram_get("sw_mode") && nvram_get_int("sw_mode") == 2)
+	{
+		if(!strncmp(wif, "sta", 3))
+			ifconfig(wif, IFUP, NULL, NULL);
+	}
+}
+
+void
+gen_qca_wifi_cfgs(void)
+{
+	pid_t pid;
+	char *argv[]={"/sbin/delay_exec","1","/tmp/postwifi.sh",NULL};
+	char path2[50];
+	char wif[256], *next, lan_ifnames[512];
+	FILE *fp,*fp2;
+	char tmp[100], prefix[sizeof("wlXXXXXXX_")], main_prefix[sizeof("wlXXXXX_")];
+	int led_onoff[4] = { LED_ON, LED_ON, LED_ON, LED_ON }, unit = -1, sunit = 0, max_sunit;
+	int sidx = 0;
+	/* Array index: 0 -> 2G, 1 -> 5G, 2 -> 5G2, 3 -> 802.11ad Wigig
+	 * bit: MBSSID index
+	 */
+	unsigned int m, wl_mask[4];
+	char conf_path[sizeof("/etc/Wireless/conf/hostapd_athXXX.confYYYYYY")];
+	char pid_path[sizeof("/var/run/hostapd_athXXX.pidYYYYYY")];
+	char entropy_path[sizeof("/var/run/entropy_athXXX.binYYYYYY")];
+	char path[sizeof("/sys/class/net/ath001XXXXXX")];
+	char path1[sizeof(NAWDS_SH_FMT) + 6];
+	int i;
+#ifdef RTCONFIG_WIRELESSREPEATER
+	int wlc_band = nvram_get_int("wlc_band");
+#endif
+
+	if (!(fp = fopen("/tmp/prewifi.sh", "w+")))
+		return;
+	if (!(fp2 = fopen("/tmp/postwifi.sh", "w+")))
+		return;
+
+	fprintf(fp, "#!/bin/sh -p\n");
+	fprintf(fp2, "#!/bin/sh -p\n");
+	deinit_all_vaps(0);
+	memset(wl_mask, 0, sizeof(wl_mask));
+
+#ifdef RTCONFIG_CAPTIVE_PORTAL
+#define CP_IFINDEX 2
+	int start_idx;
+	char lanifnames[16]={0};
+	for(start_idx=0; start_idx<=CP_IFINDEX; start_idx++){
+		if(start_idx == 0){
+			snprintf(lanifnames, sizeof(lanifnames), "lan_ifnames");
+		}else{
+			if (!nvram_match("cp_enable", "1") && !nvram_match("chilli_enable", "1"))
+				break;
+			snprintf(lanifnames, sizeof(lanifnames), "lan%d_ifnames", start_idx);
+		}
+		strlcpy(lan_ifnames, nvram_safe_get(lanifnames), sizeof(lan_ifnames));
+#else
+	strlcpy(lan_ifnames, nvram_safe_get("lan_ifnames"), sizeof(lan_ifnames));
+#endif
+	foreach (wif, lan_ifnames, next) {
+		SKIP_ABSENT_FAKE_IFACE(wif);
+
+		if (!guest_wlif(wif) && (unit = get_wifi_unit(wif)) >= 0 && unit < ARRAY_SIZE(led_onoff)) {
+			snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+			if (nvram_match(strcat_r(prefix, "radio", tmp), "0"))
+				led_onoff[unit] = LED_OFF;
+#if defined(RTCONFIG_WIRELESSREPEATER)
+			if (unit == wlc_band && repeater_mode())
+				led_onoff[unit] = LED_ON;
+#endif
+		}
+
+		if (!strncmp(wif, WIF_2G, strlen(WIF_2G))) {
+			if (!guest_wlif(wif)) {
+				/* 2.4G */
+				wl_mask[0] |= 1;
+				gen_ath_config(0, 0);
+			} else {
+				/* 2.4G guest */
+				sunit = get_wlsubnet(0, wif);
+				if (sunit > 0) {
+					sidx = atoi(wif + strlen(WIF_2G));
+					wl_mask[0] |= 1 << sunit;
+					gen_ath_config(0, sidx);
+				}
+			}
+		} else if (!strncmp(wif, WIF_5G, strlen(WIF_5G))) {
+			if (!guest_wlif(wif)) {
+				/* 5G */
+				wl_mask[1] |= 1;
+				gen_ath_config(1, 0);
+			} else {
+				/* 5G guest */
+				sunit = get_wlsubnet(1, wif);
+				if (sunit > 0) {
+					sidx = atoi(wif + strlen(WIF_5G));
+					wl_mask[1] |= 1 << sunit;
+					gen_ath_config(1, sidx);
+				}
+			}
+		} else if (!strncmp(wif, WIF_5G2, strlen(WIF_5G2))) {
+			if (!guest_wlif(wif)) {
+				/* 5G2 */
+				wl_mask[2] |= 1;
+				gen_ath_config(2, 0);
+			} else {
+				/* 5G2 guest */
+				sunit = get_wlsubnet(2, wif);
+				if (sunit > 0) {
+					sidx = atoi(wif + strlen(WIF_5G2));
+					wl_mask[2] |= 1 << sunit;
+					gen_ath_config(2, sidx);
+				}
+			}
+#if defined(RTCONFIG_WIGIG)
+		} else if (!strncmp(wif, WIF_60G, strlen(WIF_60G))) {
+			if (!guest_wlif(wif)) {
+				/* 802.11ad Wigig */
+				wl_mask[3] |= 1;
+				gen_nl80211_config(3, 1, 0);
+			} else {
+				/* 802.11ad Wigig guest, driver doesn't support. */
+				sunit = get_wlsubnet(2, wif);
+				if (sunit > 0) {
+					sidx = atoi(wif + strlen(WIF_60G));
+					wl_mask[3] |= 1 << sunit;
+					gen_nl80211_config(3, 1, sidx);
+				}
+			}
+#endif
+		} else
+
+			continue;
+
+#ifdef RTCONFIG_WIRELESSREPEATER
+		if (strcmp(wif, STA_2G) && strcmp(wif, STA_5G) && strcmp(wif, STA_5G2))
+#endif
+		{
+#if defined(RTCONFIG_CONCURRENTREPEATER)
+			if ((!strcmp(wif, WIF_2G) && nvram_get_int("wlc_express") == 1) ||
+					(!strcmp(wif, WIF_5G) && nvram_get_int("wlc_express") == 2))
+			{
+#if defined(RPAC51) /* 5G chain 2x2 nss 1 */
+				if (!strcmp(wif, WIF_5G) && nvram_get_int("wlc_express") == 2) {
+					doSystem("iwpriv sta1 nss 1");
+				}
+					doSystem("iwpriv ath1 nss 1");
+#endif
+				continue;
+			}
+			else
+#endif
+			{
+				fprintf(fp, "/etc/Wireless/sh/prewifi_%s.sh %s\n",wif,bg?"&":"");
+				fprintf(fp2, "/etc/Wireless/sh/postwifi_%s.sh %s\n",wif,bg?"&":"");
+#if defined(RTCONFIG_QCA) && defined(RTCONFIG_SOC_IPQ40XX)
+				if (!strcmp(wif, WIF_5G)) {	// 5G
+#if defined(RTAC82U) || defined(RTAC95U)
+					fprintf(fp2, "echo d > /sys/class/net/ath1/queues/rx-0/rps_cpus\n");
+#endif
+					fprintf(fp2, "ethtool -K eth0 gro off\n");
+					fprintf(fp2, "ethtool -K eth0 tso off\n");
+					fprintf(fp2, "ethtool -K eth1 gro off\n");
+					fprintf(fp2, "ethtool -K eth1 tso off\n");
+#if defined(RTAC82U) || defined(RTAC95U)
+					fprintf(fp2, "ethtool -K ath0 gro off\n");
+					fprintf(fp2, "ethtool -K ath0 tso off\n");
+					fprintf(fp2, "ethtool -K ath1 gro off\n");
+					fprintf(fp2, "ethtool -K ath1 tso off\n");
+#endif
+				}
+#endif
+
+			}
+		}
+	}
+#ifdef RTCONFIG_CAPTIVE_PORTAL
+	}
+#endif
+	if ((wl_mask[0]&0xfe) || (wl_mask[1]&0xfe) || (wl_mask[2]&0xfe))
+			fprintf(fp2, "sleep 4\n");
+
+	for (i = 0; i < MAX_NR_WL_IF; ++i) {
+		SKIP_ABSENT_BAND(i);
+		if(sw_mode() == SW_MODE_REPEATER){
+			snprintf(main_prefix, sizeof(main_prefix), "wl%d.1_", i);
+		}else{
+			snprintf(main_prefix, sizeof(main_prefix), "wl%d_", i);
+		}
+		if (i != WL_60G_BAND && nvram_pf_match(main_prefix, "channel", "0"))
+			fprintf(fp2, "iwconfig %s channel auto\n", __get_wlifname(i, 0, wif));
+	}
+
+#if defined(RTCONFIG_SOC_IPQ8064)
+	fprintf(fp2, "echo 90 > /proc/sys/vm/pagecache_ratio\n");
+	fprintf(fp2, "echo -1 > /proc/net/skb_recycler/max_skbs\n");
+#endif
+
+#if !defined(RTCONFIG_CONCURRENTREPEATER)
+#if defined(RTCONFIG_WPS_ALLLED_BTN)
+	if (nvram_match("AllLED", "1")) {
+#endif
+#if defined(PLN12)
+		fprintf(fp2, "[ -e /sys/class/net/%s ] && led_ctrl %d %d\n", WIF_2G, LED_2G_RED, led_onoff[0]);
+#elif defined(PLAC56)
+		fprintf(fp2, "[ -e /sys/class/net/%s ] && led_ctrl %d %d\n", WIF_2G, LED_2G_GREEN, led_onoff[0]);
+#elif defined(MAPAC1750)
+#else
+		fprintf(fp2, "[ -e /sys/class/net/%s ] && led_ctrl %d %d\n", WIF_2G, LED_2G, led_onoff[0]);
+#endif
+#if defined(RTCONFIG_HAS_5G)
+#if defined(PLAC56)
+		fprintf(fp2, "[ -e /sys/class/net/%s ] && led_ctrl %d %d\n", WIF_5G, LED_5G_GREEN, led_onoff[1]);
+#elif defined(MAPAC1750)
+#else
+		fprintf(fp2, "[ -e /sys/class/net/%s ] && led_ctrl %d %d\n", WIF_5G, LED_5G, led_onoff[1]);
+#endif
+#if defined(RTCONFIG_HAS_5G_2)
+		fprintf(fp2, "[ -e /sys/class/net/%s ] && led_ctrl %d %d\n", WIF_5G2, LED_5G2, led_onoff[2]);
+#endif
+#endif
+#if defined(RTCONFIG_WIGIG)
+		fprintf(fp2, "[ -e /sys/class/net/%s ] && led_ctrl %d %d\n", WIF_60G, LED_60G, led_onoff[3]);
+#endif
+#if defined(RTCONFIG_WPS_ALLLED_BTN)
+	}
+#endif
+	fprintf(fp2, "if [ -e /sys/class/net/%s ] ", WIF_2G);
+#if defined(RTCONFIG_HAS_5G)
+	fprintf(fp2, "&& [ -e /sys/class/net/%s ] ", WIF_5G);
+#endif
+#if defined(RTCONFIG_HAS_5G_2)
+	fprintf(fp2, "&& [ -e /sys/class/net/%s ] ", WIF_5G2);
+#endif
+#if defined(RTCONFIG_WIGIG)
+	fprintf(fp2, "&& [ -e /sys/class/net/%s ] ", WIF_60G);
+#endif
+	fprintf(fp2, "; then\n");
+	fprintf(fp2, "    nvram set wlready=1\n");
+	fprintf(fp2, "else\n");
+	fprintf(fp2, "    logger Wireless not ready!\n");
+	fprintf(fp2, "fi\n");
+#else
+#if defined(RPAC51)
+	fprintf(fp2, "iwpriv wifi1 dl_loglevel 5\n"); // disable log from target firmware
+#endif
+ 	fprintf(fp2, "nvram set wlready=1\n");
+#endif	/* !defined(RTCONFIG_CONCURRENTREPEATER) */
+#if defined(RTCONFIG_NOTIFICATION_CENTER) || defined(RTCONFIG_CFGSYNC)
+	fprintf(fp2, "weventd &\n");
+#endif
+
+#if defined(RTAC58U) || defined(RT4GAC53U) /* for RAM 128MB */
+	if (get_meminfo_item("MemTotal") <= 131072) {
+		fprintf(fp2, "iwpriv wifi1 fc_buf_max 4096\n");
+		fprintf(fp2, "iwpriv wifi1 fc_q_max 512\n");
+		fprintf(fp2, "iwpriv wifi1 fc_q_min 32\n");
+		fprintf(fp2, "iwpriv wifi0 fc_buf_max 4096\n");
+		fprintf(fp2, "iwpriv wifi0 fc_q_max 512\n");
+		fprintf(fp2, "iwpriv wifi0 fc_q_min 32\n");
+	}
+#endif
+
+	fclose(fp);
+	fclose(fp2);
+	chmod("/tmp/prewifi.sh",0777);
+	chmod("/tmp/postwifi.sh",0777);
+
+	for (unit = 0; unit < ARRAY_SIZE(wl_mask); ++unit) {
+		max_sunit = num_of_mssid_support(unit);
+		for (sunit = 0; sunit <= max_sunit; ++sunit) {
+			__get_wlifname(unit, sunit, wif);
+			sprintf(path, "/sys/class/net/%s", wif);
+			if (d_exists(path))
+				ifconfig(wif, 0, NULL, NULL);
+			sprintf(pid_path, "/var/run/hostapd_%s.pid", wif);
+			if (!f_exists(pid_path))
+				continue;
+
+			kill_pidfile_tk(pid_path);
+		}
+	}
+
+#if defined(RTCONFIG_NOTIFICATION_CENTER)
+	killall_tk("weventd");
+#endif
+	doSystem("/tmp/prewifi.sh");
+
+#ifdef RTCONFIG_WIRELESSREPEATER
+#ifdef RTCONFIG_AMAS
+	if(sw_mode() == SW_MODE_REPEATER || (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1")))
+#else
+	if(sw_mode() == SW_MODE_REPEATER)
+#endif
+	{
+		for (i = 0; i < MAX_NR_WL_IF; ++i) {
+			int nmode, shortgi;
+			char prefix[16];
+			char lan_if[16];
+			char *sta = get_staifname(i);
+			char pid_file[sizeof("/var/run/wifi-staX.pidXXXXXX")];
+			char conf[sizeof("/etc/Wireless/conf/wpa_supplicant-STAX.confXXXXXX")];
+#if defined(RTCONFIG_CONCURRENTREPEATER)
+			char wlc_prefix[16];
+			char wpa_sup[sizeof("/var/run/wpa_supplicant-staXXXXXXX")];
+#endif
+
+			SKIP_ABSENT_BAND(i);
+#if !defined(RTCONFIG_CONCURRENTREPEATER)
+#ifdef RTCONFIG_AMAS
+			if(sw_mode() != SW_MODE_AP)
+#endif
+			if (i != wlc_band)
+				continue;
+#endif
+
+			snprintf(lan_if, sizeof(lan_if), "%s", nvram_get("lan_ifname")? nvram_get("lan_ifname") : "br0");
+
+			snprintf(prefix, sizeof(prefix), "wl%d_", i);
+			nmode = nvram_pf_get_int(prefix, "nmode_x");
+			shortgi = (nmode != 2)? !!nvram_pf_get_int(prefix, "HT_GI") : 0;
+			doSystem("iwpriv %s shortgi %d\n", sta, shortgi);
+			doSystem("iwpriv %s mode AUTO", sta);
+			doSystem("iwpriv %s extap 1", sta);
+
+			get_wpa_supplicant_pidfile(sta, pid_file, sizeof(pid_file));
+			if(kill_pidfile(pid_file) == 0)
+				cprintf("## WARNING: %s is alive ##\n", pid_file);
+			sprintf(conf, "/etc/Wireless/conf/wpa_supplicant-%s.conf", sta);
+			eval("/usr/bin/wpa_supplicant", "-B", "-P", pid_file, "-D", get_wsup_drvname(i), "-i", sta, "-b", lan_if, "-c", conf);
+			{
+				extern char * conv_iwconfig_essid(char *ssid_in, char *ssid_out);
+				char prefix_wlc[16];
+				if (sw_mode() == SW_MODE_REPEATER)
+#if defined(RTCONFIG_CONCURRENTREPEATER)
+					snprintf(prefix_wlc, sizeof(prefix_wlc), "wlc%d_", i);
+#else
+					snprintf(prefix_wlc, sizeof(prefix_wlc), "wlc_");
+#endif
+#if defined(RTCONFIG_AMAS)
+				else if (nvram_match("re_mode", "1"))
+					snprintf(prefix_wlc, sizeof(prefix_wlc), "wlc%d_", i);
+#endif
+				if (conv_iwconfig_essid(nvram_pf_get(prefix_wlc, "ssid"), tmp) != NULL) {
+					doSystem("iwconfig %s essid -- %s", sta, tmp);
+				}
+			}
+			ifconfig(sta, IFUP, NULL, NULL);
+
+#if defined(RTCONFIG_CONCURRENTREPEATER)
+			sprintf(wlc_prefix, "wlc%d_", i);
+			if (nvram_pf_match(wlc_prefix, "ssid", "")) {
+				sprintf(wpa_sup, "/var/run/wpa_supplicant-%s", sta);
+				eval("wpa_cli", "-p", wpa_sup, "-i", sta, "disconnect");
+			}
+#endif
+		}
+	}
+#endif
+#ifdef RTCONFIG_PROXYSTA
+	if (!mediabridge_mode())
+#endif
+	{
+		/* Router, access-point, and repeater mode.
+		 * Run postwifi.sh 4 seconds later.
+		 */
+		for (unit = 0; unit < ARRAY_SIZE(wl_mask); ++unit) {
+			snprintf(main_prefix, sizeof(main_prefix), "wl%d_", unit);
+			m = wl_mask[unit];
+			for (sunit = 0, sidx = 0; m > 0; ++sunit, ++sidx, m >>= 1) {
+#if defined(RTCONFIG_CONCURRENTREPEATER)
+			if (sw_mode() == SW_MODE_REPEATER) {
+				sunit++;
+			}
+#endif
+				snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, sunit);
+#if defined(RTCONFIG_CONCURRENTREPEATER)
+			if (sw_mode() == SW_MODE_REPEATER) {
+					if (((nvram_get_int("wlc_express") - 1) == unit && sunit == 1) || sunit > 1)
+						continue;
+			}
+			else if (sw_mode() == SW_MODE_AP) {
+				/* only take care primary 2G/5G, not guest */
+				if (sunit > 0)
+				continue;
+			}
+			else
+#endif
+				if (sidx > 0 && !nvram_match(wl_nvname("bss_enabled", unit, sunit), "1"))
+				{
+					sidx--;
+					continue;
+				}
+
+				__get_wlifname(unit, sidx, wif);
+				tweak_wifi_ps(wif);
+
+#ifdef RTCONFIG_WIRELESSREPEATER
+				if(sw_mode() == SW_MODE_REPEATER) {
+					doSystem("iwpriv %s athnewind 1", wif);
+#if defined(RTCONFIG_CONCURRENTREPEATER)
+					/* workaround for default to avoid 2G can't connect */
+					if (!strcmp(wif, WIF_2G) && nvram_match("x_Setting", "0"))
+						doSystem("iwpriv %s extap 1", wif);
+#endif	/* RTCONFIG_CONCURRENTREPEATER */
+				}
+#endif
+
+				sprintf(path2, "/etc/Wireless/sh/postwifi_%s.sh", wif);
+
+				if (nvram_match("skip_gen_ath_config", "1") && f_exists(path2))
+					continue;
+
+				if (!f_exists(path2))
+					continue;
+				if (!(fp = fopen(path2, "a")))
+					continue;
+
+				/* hostapd of QCA Wi-Fi 10.2 and 10.4 driver is not required if
+				 * 1. Open system and WPS is disabled.
+				 *    a. primary 2G/5G and WPS is disabled
+				 *    b. guest 2G/5G
+				 * 2. WEP
+				 * But 802.11ad Wigig driver, nl80211 based, always need it due
+				 * to some features are implemented by hostapd.
+				 */
+
+					if (unit == WL_60G_BAND) {
+						/* Do nothing, just skip continuous statment below for
+						 * 802.11ad Wigig driver.  Maybe we need to do same
+						 * thing for newer nl80211 based 2.4G/5G driver too.
+						 */
+					}
+					else if (!strcmp(nvram_safe_get(wl_nvname("auth_mode_x", unit, sunit)), "shared")) {
+						fclose(fp);
+						continue;
+					}
+					else if (!strcmp(nvram_safe_get(wl_nvname("auth_mode_x", unit, sunit)), "open") &&
+							((!sunit && !nvram_get_int("wps_enable")) || sunit)) {
+						fclose(fp);
+						continue;
+					}
+
+
+				sprintf(conf_path, "/etc/Wireless/conf/hostapd_%s.conf", wif);
+				sprintf(pid_path, "/var/run/hostapd_%s.pid", wif);
+				sprintf(entropy_path, "/var/run/entropy_%s.bin", wif);
+				if (unit == WL_60G_BAND) {
+					if (!nvram_pf_match(main_prefix, "radio", "0")) {
+						fprintf(fp, "hostapd -d -B %s -P %s -e %s\n", conf_path, pid_path, entropy_path);
+					}
+				} else {
+					fprintf(fp, "hostapd -d -B %s -P %s -e %s\n", conf_path, pid_path, entropy_path);
+				}
+#ifdef RTCONFIG_AMAS
+				if(unit == 0) {
+					/* TODO need to kill old one? */
+					fprintf(fp, "delay_exec 5 hostapd_cli -i%s -a/usr/sbin/qca_hostapd_event_handler.sh -B &\n", wif);
+				}
+#endif	/* RTCONFIG_AMAS */
+
+				/* Hostapd will up VAP interface automatically.
+				 * So, down VAP interface if radio is not on and
+				 * not to up VAP interface anymore.
+				 */
+				if (nvram_pf_match(main_prefix, "radio", "0")) {
+					fprintf(fp, "ifconfig %s down\n", wif);
+				}
+
+				/* Connect to peer WDS AP after VAP up */
+				sprintf(path1, NAWDS_SH_FMT, wif);
+				if (!sunit && nvram_pf_invmatch(main_prefix, "radio", "0") && f_exists(path1)) {
+					fprintf(fp, "%s\n", path1);
+				}
+
+				/* WPS-OOB not work if wps_ap_pin disabled. */
+				if (!nvram_match("w_Setting", "0"))
+					fprintf(fp, "hostapd_cli -i %s wps_ap_pin disable\n", wif);
+
+#if defined(RTCONFIG_CONCURRENTREPEATER)
+#if defined(RPAC51)
+					/* workaround for default to avoid 2G can't connect */
+					if (strcmp(wif, WIF_2G)==0)
+					{
+						fprintf(fp, "ifconfig %s down up\n", wif);
+					}
+#endif
+#endif	/* RTCONFIG_CONCURRENTREPEATER */
+				fclose(fp);
+			}
+		}
+
+		argv[1]="4";
+		_eval(argv, NULL, 0, &pid);
+
+		//system("/tmp/postwifi.sh");
+		//sleep(1);
+	} /* !mediabridge_mode() */
+
+#if defined(RTCONFIG_WIRELESSREPEATER)
+	if (repeater_mode() || mediabridge_mode())
+		update_wifi_led_state_in_wlcmode();
+#endif
+}
+
+
+void set_wlpara_qca(const char* wif, int band)
+{
+/* TBD.fill some eraly init here
+	char tmp[100], prefix[]="wlXXXXXXX_";
+
+	snprintf(prefix, sizeof(prefix), "wl%d_", band);
+
+	if (nvram_match(strcat_r(prefix, "radio", tmp), "0"))
+		radio_ra(wif, band, 0);
+	else
+	{
+		int txpower = atoi(nvram_safe_get(strcat_r(prefix, "TxPower", tmp)));
+		if ((txpower >= 0) && (txpower <= 100))
+			doSystem("iwpriv %s set TxPower=%d",wif, txpower);
+	}
+	eval("iwpriv", (char *)wif, "set", "IgmpAdd=01:00:5e:7f:ff:fa");
+	eval("iwpriv", (char *)wif, "set", "IgmpAdd=01:00:5e:00:00:09");
+	eval("iwpriv", (char *)wif, "set", "IgmpAdd=01:00:5e:00:00:fb");
+*/
+}
+
+int wlconf_qca(const char* wif)
+{
+	int unit = 0;
+	char word[256], *next;
+	char tmp[128], prefix[] = "wlXXXXXXXXXX_";
+	char *p;
+
+	foreach (word, nvram_safe_get("wl_ifnames"), next) {
+		SKIP_ABSENT_BAND_AND_INC_UNIT(unit);
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+
+		if (!strcmp(word, wif))
+		{
+			p = get_hwaddr(wif);
+			if (p)
+			{
+				nvram_set(strcat_r(prefix, "hwaddr", tmp), p);
+				free(p);
+			}
+#if 0
+			if (!strcmp(word, WIF_2G))
+				set_wlpara_qca(wif, 0);
+			else if (!strcmp(word, WIF_5G))
+				set_wlpara_qca(wif, 1);
+			else if (!strcmp(word, WIF_5G2))
+				set_wlpara_qca(wif, 2);
+			else if (!strcmp(word, WIF_60G))
+				set_wlpara_qca(wif, 2);
+#endif
+		}
+
+		unit++;
+	}
+	return 0;
+}
+
+int gen_ath_config(int band, int subnet)
 {
 #ifdef RTCONFIG_WIRELESSREPEATER
-	FILE *fp4 = NULL;
-	char path4[50];
 	int wlc_band = nvram_get_int("wlc_band");
 #endif
 	FILE *fp, *fp2, *fp3, *fp5;
@@ -563,7 +1527,7 @@ int gen_ath_config(int band, int is_iNIC,int subnet)
 	int mcast_phy = 0, mcast_mcs = 0;
 	int mac_filter[MAX_NO_MSSID];
 	char t_mode[30],t_bw[10],t_ext[10],mode_cmd[100];
-	int bg_prot,ban, wmm, legacy = 0;
+	int bg_prot, ban, wmm, legacy = 0;
 	int sw_mode = sw_mode();
 	int wpapsk;
 	int val,rate,caps;
@@ -571,24 +1535,127 @@ int gen_ath_config(int band, int is_iNIC,int subnet)
 	char path1[50],path2[50],path3[50];
 	char path5[sizeof(NAWDS_SH_FMT) + 6] = "";
 	int rep_mode, nmode, shortgi, stbc;
-	char *uuid = nvram_safe_get("uuid");
-#if defined(RTCONFIG_WIFI_QCA9990_QCA9990) || \
-    defined(RTCONFIG_WIFI_QCA9994_QCA9994) || \
-    defined(RTCONFIG_SOC_IPQ40XX)
+	int isax;
+#if defined(RTCONFIG_WIFI_QCA9990_QCA9990) || defined(RTCONFIG_WIFI_QCA9994_QCA9994) || defined(RTCONFIG_SOC_IPQ40XX) || defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
 	int fc_buf_min = 1000;
 	int txbf, mumimo, ldpc = 3, tqam, tqam_intop;
 	unsigned int maxsta = 511;
-#elif defined(RTCONFIG_PCIE_QCA9888)
-	int txbf, mumimo, ldpc = 3;
-	unsigned int maxsta = 127;
 #else
 	unsigned int maxsta = 127;
 #endif
 #if defined(RTCONFIG_CONCURRENTREPEATER)
-	char prefix_wlc[] = "wlcXXXXXX_";
-	char tmp1[128];
 	int wlc_express = nvram_get_int("wlc_express");
 #endif
+	char br_if[IFNAMSIZ];
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+	FILE *fp4;
+	char path4[50];
+	int acs_dfs = nvram_get_int("acs_dfs");
+	int memtotal = get_meminfo_item("MemTotal");
+	int nss_en = nss_wifi_offloading();
+	struct bandx_defval_s *wldefval = &wldefval_tbl[band];
+#endif
+	char iwphy[16];
+
+	struct chattr_s chattr_2g[] = {
+		{ 1, 1, "[HT40+]", 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0, 0, 0 },
+		{ 2, 1, "[HT40+]", 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0, 0, 0 },
+		{ 3, 1, "[HT40+]", 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0, 0, 0 },
+		{ 4, 1, "[HT40+]", 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0, 0, 0 },
+		{ 5, 1, "[HT40+]", 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0, 0, 0 },
+		{ 6, 1, "[HT40+]", 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0, 0, 0 },
+		{ 7, 1, "[HT40+]", 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0, 0, 0 },
+		{ 8, -1, "[HT40-]", 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0, 0, 0 },
+		{ 9, -1, "[HT40-]", 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0, 0, 0 },
+		{ 10, -1, "[HT40-]", 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0, 0, 0 },
+		{ 11, -1, "[HT40-]", 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0, 0, 0 },
+		{ 12, -1, "[HT40-]", 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0, 0, 0 },
+		{ 13, -1, "[HT40-]", 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0, 0, 0 },
+		{ 14, -1, "[HT40-]", 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0, 0, 0 },
+		{ -1, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+	};
+
+	struct chattr_s chattr_5g[] = {
+		{ 36, 1, "[HT40+]", 38, 42, 50, bw40cap[0], bw80cap[0], bw160cap[0], 0, 0, 0, 0, 0 },
+		{ 40, -1, "[HT40-]", 38, 42, 50, bw40cap[0], bw80cap[0], bw160cap[0], 0, 0, 0, 0, 0 },
+		{ 44, 1, "[HT40+]", 38, 42, 50, bw40cap[1], bw80cap[0], bw160cap[0], 0, 0, 0, 0, 0 },
+		{ 48, -1, "[HT40-]", 46, 42, 50, bw40cap[1], bw80cap[0], bw160cap[0], 0, 0, 0, 0, 0 },
+		{ 52, 1, "[HT40+]", 54, 58, 50, bw40cap[2], bw80cap[1], bw160cap[0], 0, 0, 0, 0, 0 },
+		{ 56, -1, "[HT40-]", 54, 58, 50, bw40cap[2], bw80cap[1], bw160cap[0], 0, 0, 0, 0, 0 },
+		{ 60, 1, "[HT40+]", 62, 58, 50, bw40cap[3], bw80cap[1], bw160cap[0], 0, 0, 0, 0, 0 },
+		{ 64, -1, "[HT40-]", 62, 58, 50, bw40cap[3], bw80cap[1], bw160cap[0], 0, 0, 0, 0, 0 },
+		{ 100, 1, "[HT40+]", 102, 106, 114, bw40cap[4], bw80cap[2], bw160cap[1], 0, 0, 0, 0, 0 },
+		{ 104, -1, "[HT40-]", 102, 106, 114, bw40cap[4], bw80cap[2], bw160cap[1], 0, 0, 0, 0, 0 },
+		{ 108, 1, "[HT40+]", 110, 106, 114, bw40cap[5], bw80cap[2], bw160cap[1], 0, 0, 0, 0, 0 },
+		{ 112, -1, "[HT40-]", 110, 106, 114, bw40cap[5], bw80cap[2], bw160cap[1], 0, 0, 0, 0, 0 },
+		{ 116, 1, "[HT40+]", 118, 106, 114, bw40cap[6], bw80cap[3], bw160cap[1], 0, 0, 0, 0, 0 },
+		{ 120, -1, "[HT40-]", 118, 106, 114, bw40cap[6], bw80cap[3], bw160cap[1], 0, 0, 0, 0, 0 },
+		{ 124, 1, "[HT40+]", 126, 106, 114, bw40cap[7], bw80cap[3], bw160cap[1], 0, 0, 0, 0, 0 },
+		{ 128, -1, "[HT40-]", 126, 106, 114, bw40cap[7], bw80cap[3], bw160cap[1], 0, 0, 0, 0, 0 },
+		{ 132, 1, "[HT40+]", 134, 138, 0, bw40cap[8], bw80cap[4], 0, 0, 0, 0, 0, 0 },
+		{ 136, -1, "[HT40-]", 134, 138, 0, bw40cap[8], bw80cap[4], 0, 0, 0, 0, 0, 0 },
+		{ 140, 1, "[HT40+]", 142, 138, 0, bw40cap[9], bw80cap[4], 0, 0, 0, 0, 0, 0 },
+		{ 144, -1, "[HT40-]", 142, 138, 0, bw40cap[9], bw80cap[4], 0, 0, 0, 0, 0, 0 },
+		{ 149, 1, "[HT40+]", 151, 155, 163, bw40cap[10], bw80cap[5], bw160cap[2], 0, 0, 0, 0, 0 },
+		{ 153, -1, "[HT40-]", 151, 155, 163, bw40cap[10], bw80cap[5], bw160cap[2], 0, 0, 0, 0, 0 },
+		{ 157, 1, "[HT40+]", 159, 155, 163, bw40cap[11], bw80cap[5], bw160cap[2], 0, 0, 0, 0, 0 },
+		{ 161, -1, "[HT40-]", 159, 155, 163, bw40cap[11], bw80cap[5], bw160cap[2], 0, 0, 0, 0, 0 },
+		{ 165, 1, "[HT40+]", 167, 171, 163, bw40cap[12], bw80cap[6], bw160cap[2], 0, 0, 0, 0, 0 },
+		{ 169, -1, "[HT40-]", 167, 171, 163, bw40cap[12], bw80cap[6], bw160cap[2], 0, 0, 0, 0, 0 },
+		{ 173, 1, "[HT40+]", 175, 171, 163, bw40cap[13], bw80cap[6], bw160cap[2], 0, 0, 0, 0, 0 },
+		{ 177, -1, "[HT40-]", 175, 171, 163, bw40cap[13], bw80cap[6], bw160cap[2], 0, 0, 0, 0, 0 },
+		{ -1, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+	};
+
+	struct chattr_s chattr_5g2[] = {
+		{ 36, 1, "[HT40+]", 38, 42, 50, bw40cap[14], bw80cap[7], bw160cap[3], 0, 0, 0, 0, 0 },
+		{ 40, -1, "[HT40-]", 38, 42, 50, bw40cap[14], bw80cap[7], bw160cap[3], 0, 0, 0, 0, 0 },
+		{ 44, 1, "[HT40+]", 38, 42, 50, bw40cap[15], bw80cap[7], bw160cap[3], 0, 0, 0, 0, 0 },
+		{ 48, -1, "[HT40-]", 46, 42, 50, bw40cap[15], bw80cap[7], bw160cap[3], 0, 0, 0, 0, 0 },
+		{ 52, 1, "[HT40+]", 54, 58, 50, bw40cap[16], bw80cap[8], bw160cap[3], 0, 0, 0, 0, 0 },
+		{ 56, -1, "[HT40-]", 54, 58, 50, bw40cap[16], bw80cap[8], bw160cap[3], 0, 0, 0, 0, 0 },
+		{ 60, 1, "[HT40+]", 62, 58, 50, bw40cap[17], bw80cap[8], bw160cap[3], 0, 0, 0, 0, 0 },
+		{ 64, -1, "[HT40-]", 62, 58, 50, bw40cap[17], bw80cap[8], bw160cap[3], 0, 0, 0, 0, 0 },
+		{ 100, 1, "[HT40+]", 102, 106, 114, bw40cap[18], bw80cap[9], bw160cap[4], 0, 0, 0, 0, 0 },
+		{ 104, -1, "[HT40-]", 102, 106, 114, bw40cap[18], bw80cap[9], bw160cap[4], 0, 0, 0, 0, 0 },
+		{ 108, 1, "[HT40+]", 110, 106, 114, bw40cap[19], bw80cap[9], bw160cap[4], 0, 0, 0, 0, 0 },
+		{ 112, -1, "[HT40-]", 110, 106, 114, bw40cap[19], bw80cap[9], bw160cap[4], 0, 0, 0, 0, 0 },
+		{ 116, 1, "[HT40+]", 118, 106, 114, bw40cap[20], bw80cap[10], bw160cap[4], 0, 0, 0, 0, 0 },
+		{ 120, -1, "[HT40-]", 118, 106, 114, bw40cap[20], bw80cap[10], bw160cap[4], 0, 0, 0, 0, 0 },
+		{ 124, 1, "[HT40+]", 126, 106, 114, bw40cap[21], bw80cap[10], bw160cap[4], 0, 0, 0, 0, 0 },
+		{ 128, -1, "[HT40-]", 126, 106, 114, bw40cap[21], bw80cap[10], bw160cap[4], 0, 0, 0, 0, 0 },
+		{ 132, 1, "[HT40+]", 134, 138, 0, bw40cap[22], bw80cap[11], 0, 0, 0, 0, 0, 0 },
+		{ 136, -1, "[HT40-]", 134, 138, 0, bw40cap[22], bw80cap[11], 0, 0, 0, 0, 0, 0 },
+		{ 140, 1, "[HT40+]", 142, 138, 0, bw40cap[23], bw80cap[11], 0, 0, 0, 0, 0, 0 },
+		{ 144, -1, "[HT40-]", 142, 138, 0, bw40cap[23], bw80cap[11], 0, 0, 0, 0, 0, 0 },
+		{ 149, 1, "[HT40+]", 151, 155, 163, bw40cap[24], bw80cap[12], bw160cap[5], 0, 0, 0, 0, 0 },
+		{ 153, -1, "[HT40-]", 151, 155, 163, bw40cap[24], bw80cap[12], bw160cap[5], 0, 0, 0, 0, 0 },
+		{ 157, 1, "[HT40+]", 159, 155, 163, bw40cap[25], bw80cap[12], bw160cap[5], 0, 0, 0, 0, 0 },
+		{ 161, -1, "[HT40-]", 159, 155, 163, bw40cap[25], bw80cap[12], bw160cap[5], 0, 0, 0, 0, 0 },
+		{ 165, 1, "[HT40+]", 167, 171, 163, bw40cap[26], bw80cap[13], bw160cap[5], 0, 0, 0, 0, 0 },
+		{ 169, -1, "[HT40-]", 167, 171, 163, bw40cap[26], bw80cap[13], bw160cap[5], 0, 0, 0, 0, 0 },
+		{ 173, 1, "[HT40+]", 175, 171, 163, bw40cap[27], bw80cap[13], bw160cap[5], 0, 0, 0, 0, 0 },
+		{ 177, -1, "[HT40-]", 175, 171, 163, bw40cap[27], bw80cap[13], bw160cap[5], 0, 0, 0, 0, 0 },
+		{ -1, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+	};
+
+	struct chattr_s chattr_60g[] = {
+		{ 9, 0, NULL, 0, 0, 0, 0, 0, 0, 6, bw4320cap[0], 0, 0, 0 },
+		{ 10, 0, NULL, 0, 0, 0, 0, 0, 0, 12, bw4320cap[1], 0, 0, 0 },
+		{ 11, 0, NULL, 0, 0, 0, 0, 0, 0, 24, bw4320cap[2], 0, 0, 0 },
+		{ 12, 0, NULL, 0, 0, 0, 0, 0, 0, 48, bw4320cap[3], 0, 0, 0 },
+		{ 13, 0, NULL, 0, 0, 0, 0, 0, 0, 96, bw4320cap[4], 0, 0, 0 },
+		{ 17, 0, NULL, 0, 0, 0, 0, 0, 0, 14, 0, bw6480cap[0], 0, 0 },
+		{ 18, 0, NULL, 0, 0, 0, 0, 0, 0, 28, 0, bw6480cap[1], 0, 0 },
+		{ 19, 0, NULL, 0, 0, 0, 0, 0, 0, 56, 0, bw6480cap[2], 0, 0 },
+		{ 20, 0, NULL, 0, 0, 0, 0, 0, 0, 112, 0, bw6480cap[3], 0, 0 },
+		{ 25, 0, NULL, 0, 0, 0, 0, 0, 0, 30, 0, 0, bw8640cap[0], 0 },
+		{ 26, 0, NULL, 0, 0, 0, 0, 0, 0, 60, 0, 0, bw8640cap[1], 0 },
+		{ 27, 0, NULL, 0, 0, 0, 0, 0, 0, 120, 0, 0, bw8640cap[2], 0 },
+		{ -1, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+	};
+
+	struct chattr_s *chattr_tbl[] = { chattr_2g, chattr_5g, chattr_5g2, chattr_60g };
 
 	rep_mode=0;
 	bg_prot=0;
@@ -598,7 +1665,16 @@ int gen_ath_config(int band, int is_iNIC,int subnet)
 	memset(t_bw,0,sizeof(t_bw));
 	memset(t_ext,0,sizeof(t_ext));
 	max_subnet = num_of_mssid_support(band);
-	
+
+	if(max_subnet < subnet)
+		return -1;
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+	if(!wldefval)
+	{
+		dbg("%s: default value of band %d is not defined!\n", __func__, band);
+		return -1;
+	}
+#endif
 	__get_wlifname(band, subnet, wif);
 	strcpy(vphy, get_vphyifname(band));
 
@@ -621,11 +1697,23 @@ int gen_ath_config(int band, int is_iNIC,int subnet)
 	if (!(fp3 = fopen(path3, "w+")))
 		return 0;
 
-	fprintf(fp2, "#!/bin/sh\n");
-	fprintf(fp3, "#!/bin/sh\n");
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+	if(subnet==0){
+		snprintf(path4, sizeof(path4), "/etc/Wireless/sh/prewifi_%s.sh", vphy);
+		if (!(fp4 = fopen(path4, "w+")))
+			return 0;
+	}
+	fprintf(fp2, "#!/bin/sh -p\n");
+	fprintf(fp3, "#!/bin/sh -p\n");
+	if(mediabridge_mode()){
+		fclose(fp2);
+		if (!(fp2 = fopen("/dev/null", "w+")))
+			return 0;
+	}
+#endif
+
 #ifdef RTCONFIG_WIRELESSREPEATER
 #if defined(RTCONFIG_CONCURRENTREPEATER)
-	snprintf(prefix_wlc, sizeof(prefix_wlc), "wlc%d_", band);
 	if (sw_mode == SW_MODE_REPEATER //&& (wlc_express == 0 || (wlc_express - 1) == band) 
 //			&& nvram_invmatch(strcat_r(prefix_wlc, "ssid", tmp), "")&& subnet==0)
 			&& subnet==0)
@@ -634,23 +1722,45 @@ int gen_ath_config(int band, int is_iNIC,int subnet)
 #endif
 	{  
 	   	rep_mode=1;
-		snprintf(path4, sizeof(path4), "/etc/Wireless/conf/wpa_supplicant-%s.conf", get_staifname(band));
-		if (!(fp4 = fopen(path4, "w+")))
-			return 0;
 	}	
 #endif
-
-
+#if defined(RTCONFIG_CFG80211)
+	get_iwphy_name(band, iwphy, sizeof(iwphy));
+#endif
 	fprintf(fp, "#The word of \"Default\" must not be removed\n");
 	fprintf(fp, "#Default\n");
 
 	snprintf(main_prefix, sizeof(main_prefix), "wl%d_", band);
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+	if(nvram_match("x_Setting", "0") && band == 1)
+		channel = 36;
+	else{
+		j = nvram_pf_get_int(main_prefix, "channel");
+		if(j > 0){
+			struct chattr_s *pchattr = (struct chattr_s *)&chattr_tbl[band];
+			while(pchattr->channel > 0){
+				if(pchattr->channel == j){
+					channel = pchattr->channel;
+					break;
+				}else
+					channel = 0;
+			}
+		}else{
+			channel = 0;
+		}
+	}
+#endif
 	if(subnet==0)
 		snprintf(prefix, sizeof(prefix), "wl%d_", band);
 	else
 	{
 	   	j=0;
 		for (i = 1;i <= max_subnet; i++) {
+#if defined(RTCONFIG_AMAS)
+			if(sw_mode == SW_MODE_AP && nvram_match("re_mode", "1") && i == 1){
+				i = 2;
+			}
+#endif
 			snprintf(prefix_mssid, sizeof(prefix_mssid), "wl%d.%d_", band, i);
 			if (nvram_match(strcat_r(prefix_mssid, "bss_enabled", temp), "1"))
 			{   
@@ -663,271 +1773,96 @@ int gen_ath_config(int band, int is_iNIC,int subnet)
 	}
 
 #ifdef RTCONFIG_WIRELESSREPEATER
-	if(rep_mode==1)
-	    snprintf(prefix, sizeof(prefix), "wl%d.1_", band);
-
+	if(rep_mode)
+		snprintf(prefix, sizeof(prefix), "wl%d.1_", band);
 #if defined(RTCONFIG_CONCURRENTREPEATER)
 	if (sw_mode == SW_MODE_REPEATER && (wlc_express == 0 || (wlc_express - 1) == band) 
 //			&& nvram_invmatch(strcat_r(prefix_wlc, "ssid", tmp), "")&& subnet==0)
 			&& subnet==0)
 	{
-		int flag_wep = 0;
-		int p;	
+		char prefix_wlc[32];
+		snprintf(prefix_wlc, sizeof(prefix_wlc), "wlc%d_", band);
 	    	snprintf(prefix_mssid, sizeof(prefix_mssid), "wl%d_", band);
-	// convert wlc_xxx to wlX_ according to wlc_band == band
 		nvram_set("ure_disable", "0");
-
-		nvram_set("wl_ssid", nvram_safe_get(strcat_r(prefix_wlc, "ssid", tmp)));
-		if (nvram_invmatch(strcat_r(prefix_wlc, "ssid", tmp), ""))
-			nvram_set(strcat_r(prefix_mssid, "ssid", tmp), nvram_safe_get(strcat_r(prefix_wlc, "ssid", tmp1)));
-		nvram_set(strcat_r(prefix_mssid, "auth_mode_x", tmp), nvram_safe_get(strcat_r(prefix_wlc, "auth_mode", tmp1)));
-
-		nvram_set(strcat_r(prefix_mssid, "wep_x", tmp), nvram_safe_get(strcat_r(prefix_wlc, "wep", tmp1)));
-
-		nvram_set(strcat_r(prefix_mssid, "key", tmp), nvram_safe_get(strcat_r(prefix_wlc, "key", tmp1)));
-		for(p = 1; p <= 4; p++)
-		{   
-			char prekey[16];
-			snprintf(prekey, sizeof(prekey), "key%d", p);	
-			if(nvram_get_int(strcat_r(prefix_wlc, "key", tmp))==p)
-				nvram_set(strcat_r(prefix_mssid, prekey, tmp), nvram_safe_get(strcat_r(prefix_wlc, "wep_key", tmp1)));
-		}
-
-		nvram_set(strcat_r(prefix_mssid, "crypto", tmp), nvram_safe_get(strcat_r(prefix_wlc, "crypto", tmp1)));
-		nvram_set(strcat_r(prefix_mssid, "wpa_psk", tmp), nvram_safe_get(strcat_r(prefix_wlc, "wpa_psk", tmp1)));
-		nvram_set(strcat_r(prefix_mssid, "bw", tmp), nvram_safe_get(strcat_r(prefix_wlc, "nbw_cap", tmp1)));
-
-
-		fprintf(fp4,
-		      "ctrl_interface=/var/run/wpa_supplicant-sta%d\n"
-#ifdef RTCONFIG_CONCURRENTREPEATER 
-		      "update_config=1\n"
-#endif
-		      "network={\n"
-		      		"ssid=\"%s\"\n",
-//			band,nvram_safe_get(strcat_r(prefix_wlc, "ssid", tmp)));
-			band, nvram_invmatch(strcat_r(prefix_wlc, "ssid", tmp), "") ? 
-					nvram_safe_get(strcat_r(prefix_wlc, "ssid", tmp)) : "8f3610e3c9feabed953a6");
-		fprintf(fp4,"       scan_ssid=1\n");
-
-		str = nvram_safe_get(strcat_r(prefix_wlc, "auth_mode", tmp));
-		if (str && strlen(str))
-		{
-			if (!strcmp(str, "open") && nvram_match(strcat_r(prefix_wlc, "wep", tmp), "0"))
-			{
-				fprintf(fp4,"       key_mgmt=NONE\n");    //open/none	
-			}
-			else if (!strcmp(str, "open"))
-			{
-				flag_wep = 1;
-				fprintf(fp4,"       key_mgmt=NONE\n"); //open 
-				fprintf(fp4,"       auth_alg=OPEN\n");
-			}
-			else if (!strcmp(str, "shared"))
-			{
-				flag_wep = 1;
-				fprintf(fp4,"       key_mgmt=NONE\n"); //shared
-				fprintf(fp4,"       auth_alg=SHARED\n");
-			}      
-			else if (!strcmp(str, "psk") || !strcmp(str, "psk2"))
-			{
-			   	fprintf(fp4,"       key_mgmt=WPA-PSK\n"); 
-#if 0
-				fprintf(fp4,"       proto=RSN\n"); 
-#else
-				if (!strcmp(str, "psk"))
-				 	fprintf(fp4,"       proto=WPA\n");  //wpapsk
-				else
-				 	fprintf(fp4,"       proto=RSN\n");  //wpa2psk
-#endif
-				//EncrypType
-				if (nvram_match(strcat_r(prefix_wlc, "crypto", tmp), "tkip"))
-				{
-					fprintf(fp4, "       pairwise=TKIP\n"); 
-					fprintf(fp4, "       group=TKIP\n");
-				}   
-				else if (nvram_match(strcat_r(prefix_wlc, "crypto", tmp), "aes")) 
-				{
-					fprintf(fp4, "       pairwise=CCMP TKIP\n");
-					fprintf(fp4, "       group=CCMP TKIP\n");
-				}
-
-				//key
-				fprintf(fp4, "       psk=\"%s\"\n",nvram_safe_get(strcat_r(prefix_wlc, "wpa_psk", tmp)));
-			}
-			else
-				fprintf(fp4,"       key_mgmt=NONE\n");    //open/none	
-		}
-		else
-			fprintf(fp4,"       key_mgmt=NONE\n");   //open/none
-
-		//EncrypType
-		if (flag_wep)
-		{
-			for(p = 1 ; p <= 4; p++)
-			{
-				if(nvram_get_int(strcat_r(prefix_wlc, "key", tmp))==p)
-				{   
-				   	if((strlen(nvram_safe_get(strcat_r(prefix_wlc, "wep_key", tmp)))==5)||(strlen(nvram_safe_get(strcat_r(prefix_wlc, "wep_key", tmp1)))==13))
-					{
-
-						fprintf(fp4, "       wep_tx_keyidx=%d\n",p-1);
-					   	fprintf(fp4, "       wep_key%d=\"%s\"\n",p-1,nvram_safe_get(strcat_r(prefix_wlc, "wep_key", tmp)));
-					 
-					}	
-					else if((strlen(nvram_safe_get(strcat_r(prefix_wlc, "wep_key", tmp)))==10)||(strlen(nvram_safe_get(strcat_r(prefix_wlc, "wep_key", tmp1)))==26))
-					{   
-						fprintf(fp4, "       wep_tx_keyidx=%d\n",p-1);
-					   	fprintf(fp4, "       wep_key%d=%s\n",p-1,nvram_safe_get(strcat_r(prefix_wlc, "wep_key", tmp)));
-					}
-					else
-					{   
-						fprintf(fp4, "       wep_tx_keyidx=%d\n",p-1);
-					   	fprintf(fp4, "       wep_key%d=0\n",p-1);
-					}	
-
-				}
-			}  
-
-		}
-		fprintf(fp4, "}\n");
+		// convert wlc%d_xxx to wlX_
+		write_rpt_wpa_supplicant_conf(band, prefix_mssid, prefix_wlc, "update_config=1\n");
 	}
 
 #else	/* RTCONFIG_CONCURRENTREPEATER */
+#ifdef RTCONFIG_AMAS
+	if((nvram_match("x_Setting", "0") && !rep_mode) || (!rep_mode && __aimesh_re_node(sw_mode)))
+		acs_dfs = 0;
+	if (sw_mode == SW_MODE_AP && subnet == 0 && nvram_match("re_mode", "1"))
+	{
+		char prefix_wlc[32];
+		snprintf(prefix_wlc, sizeof(prefix_wlc), "wl%d.1_", band);
+		snprintf(prefix_mssid, sizeof(prefix_mssid), "wl%d_", band);
+		nvram_pf_set(prefix_mssid, "closed", nvram_safe_get(strcat_r(prefix_wlc, "closed", tmp))));
+		nvram_set("ure_disable", "0");
+		nvram_pf_set(prefix_wlc, "nbw_cap", nvram_safe_get(strcat_r(prefix_mssid, "bw", tmp)));	//preset "nbw_cap" before restore
+		copy_rpt_params_to_wl(prefix_mssid, prefix_wlc);
+		if(strstr(nvram_safe_get("sta_ifnames"), get_staifname(band))){
+			if(!strstr(nvram_safe_get("skip_ifnames"), get_staifname(band))){
+				snprintf(prefix_wlc, sizeof(prefix_wlc), "wlc%d_", band);
+				if(en_multi_profile() && band == 1){
+					snprintf(prefix_wlc, sizeof(prefix_wlc), "wsbh_");
+					snprintf(prefix_mssid, sizeof(prefix_mssid), "wsfh_");
+				}else{
+					snprintf(prefix_wlc, sizeof(prefix_wlc), "");
+					snprintf(prefix_mssid, sizeof(prefix_mssid), "");
+				}
+				// convert wlc%d_xxx to wlX_ 
+				write_rpt_wpa_supplicant_conf(band, prefix_mssid, prefix_wlc, "INIT_DISABLE");
+				rep_mode=1;	/* set here to avoid changing prefix */
+			}
+		}
+	}
+	else
+#endif	/* RTCONFIG_AMAS */
 	if (sw_mode == SW_MODE_REPEATER && wlc_band == band && nvram_invmatch("wlc_ssid", "") && subnet ==0)
 	{
-		int flag_wep = 0;
-		int p;	
-	    	snprintf(prefix_mssid, sizeof(prefix_mssid), "wl%d_", band);
-	// convert wlc_xxx to wlX_ according to wlc_band == band
+		char prefix_wlc[32];
+		snprintf(prefix_wlc, sizeof(prefix_wlc), "wlc_");
+		snprintf(prefix_mssid, sizeof(prefix_mssid), "wl%d_", band);
 		nvram_set("ure_disable", "0");
-
-		nvram_set("wl_ssid", nvram_safe_get("wlc_ssid"));
-		nvram_set(strcat_r(prefix_mssid, "ssid", tmp), nvram_safe_get("wlc_ssid"));
-		nvram_set(strcat_r(prefix_mssid, "auth_mode_x", tmp), nvram_safe_get("wlc_auth_mode"));
-
-		nvram_set(strcat_r(prefix_mssid, "wep_x", tmp), nvram_safe_get("wlc_wep"));
-
-		nvram_set(strcat_r(prefix_mssid, "key", tmp), nvram_safe_get("wlc_key"));
-		for(p = 1; p <= 4; p++)
-		{   
-			char prekey[16];
-			snprintf(prekey, sizeof(prekey), "key%d", p);	
-			if(nvram_get_int("wlc_key")==p)
-				nvram_set(strcat_r(prefix_mssid, prekey, tmp), nvram_safe_get("wlc_wep_key"));
-		}
-
-		nvram_set(strcat_r(prefix_mssid, "crypto", tmp), nvram_safe_get("wlc_crypto"));
-		nvram_set(strcat_r(prefix_mssid, "wpa_psk", tmp), nvram_safe_get("wlc_wpa_psk"));
-		nvram_set(strcat_r(prefix_mssid, "bw", tmp), nvram_safe_get("wlc_nbw_cap"));
-
-
-		fprintf(fp4,
-		      "ctrl_interface=/var/run/wpa_supplicant-%s\n"
-		      "network={\n"
-		      		"ssid=\"%s\"\n",
-		      get_staifname(band), nvram_safe_get(strcat_r(prefix_mssid, "ssid", tmp)));
-		fprintf(fp4,"       scan_ssid=1\n");
-		str = nvram_safe_get("wlc_auth_mode");
-		if (str && strlen(str))
-		{
-			if (!strcmp(str, "open") && nvram_match("wlc_wep", "0"))
-			{
-				fprintf(fp4,"       key_mgmt=NONE\n");    //open/none	
-			}
-			else if (!strcmp(str, "open"))
-			{
-				flag_wep = 1;
-				fprintf(fp4,"       key_mgmt=NONE\n"); //open 
-				fprintf(fp4,"       auth_alg=OPEN\n");
-			}
-			else if (!strcmp(str, "shared"))
-			{
-				flag_wep = 1;
-				fprintf(fp4,"       key_mgmt=NONE\n"); //shared
-				fprintf(fp4,"       auth_alg=SHARED\n");
-			}      
-			else if (!strcmp(str, "psk") || !strcmp(str, "psk2"))
-			{
-			   	fprintf(fp4,"       key_mgmt=WPA-PSK\n"); 
-#if 0
-				fprintf(fp4,"       proto=RSN\n"); 
-#else
-				if (!strcmp(str, "psk"))
-				 	fprintf(fp4,"       proto=WPA\n");  //wpapsk
-				else
-				 	fprintf(fp4,"       proto=RSN\n");  //wpa2psk
-#endif
-				//EncrypType
-				if (nvram_match("wlc_crypto", "tkip"))
-				{
-					fprintf(fp4, "       pairwise=TKIP\n"); 
-					fprintf(fp4, "       group=TKIP\n");
-				}   
-				else if (nvram_match("wlc_crypto", "aes")) 
-				{
-					fprintf(fp4, "       pairwise=CCMP TKIP\n");
-					fprintf(fp4, "       group=CCMP TKIP\n");
-				}
-
-				//key
-				fprintf(fp4, "       psk=\"%s\"\n",nvram_safe_get("wlc_wpa_psk"));
-			}
-			else
-				fprintf(fp4,"       key_mgmt=NONE\n");    //open/none	
-		}
-		else
-			fprintf(fp4,"       key_mgmt=NONE\n");   //open/none
-
-		//EncrypType
-		if (flag_wep)
-		{
-			for(p = 1 ; p <= 4; p++)
-			{
-				if(nvram_get_int("wlc_key")==p)
-				{   
-				   	if((strlen(nvram_safe_get("wlc_wep_key"))==5)||(strlen(nvram_safe_get("wlc_wep_key"))==13))
-					{
-
-						fprintf(fp4, "       wep_tx_keyidx=%d\n",p-1);
-					   	fprintf(fp4, "       wep_key%d=\"%s\"\n",p-1,nvram_safe_get("wlc_wep_key"));
-					 
-					}	
-					else if((strlen(nvram_safe_get("wlc_wep_key"))==10)||(strlen(nvram_safe_get("wlc_wep_key"))==26))
-					{   
-						fprintf(fp4, "       wep_tx_keyidx=%d\n",p-1);
-					   	fprintf(fp4, "       wep_key%d=%s\n",p-1,nvram_safe_get("wlc_wep_key"));
-					}
-					else
-					{   
-						fprintf(fp4, "       wep_tx_keyidx=%d\n",p-1);
-					   	fprintf(fp4, "       wep_key%d=0\n",p-1);
-					}	
-
-				}
-			}  
-		}
-		fprintf(fp4, "}\n");
+		// convert wlc_xxx to wlX_ according to wlc_band == band
+		write_rpt_wpa_supplicant_conf(band, prefix_mssid, prefix_wlc, NULL);
 	}
 #endif	/* !RTCONFIG_CONCURRENTREPEATER */
 #endif	/* RTCONFIG_WIRELESSREPEATER */
 
+#ifdef RTCONFIG_AMAS
+	if (!_aimesh_re_node(sw_mode) && !nvram_pf_get_int(main_prefix, "radio"))
+		nvram_pf_set(main_prefix, "radio", "1");
+#endif
 
 	fprintf(fp, "interface=%s\n",wif);
 	fprintf(fp, "ctrl_interface=/var/run/hostapd\n");
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+	fprintf(fp, "send_probe_response=0\n");
+	fprintf(fp, "driver=nl80211\n");
+#else
 	fprintf(fp, "dump_file=/tmp/hostapd.dump\n");
 	fprintf(fp, "driver=atheros\n");
+#endif
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+	if(subnet && subnet <= wgn_guest_ifcount(band) && guest_wlif(wif) != 0)
+		fprintf(fp, "bridge=%s\n", find_brX(wif));
+	else
+		fprintf(fp, "bridge=%s\n", get_vap_bridge());
+#else
+	strlcpy(br_if, nvram_get("lan_ifname")? : nvram_default_get("lan_ifname"), sizeof(br_if));
 #if defined(RTCONFIG_TAGGED_BASED_VLAN) || defined(RTCONFIG_CAPTIVE_PORTAL)
-	char br_if[16]={0};
 	find_brifname_by_wlifname(wif,br_if,16);
 #ifdef RTCONFIG_CAPTIVE_PORTAL
 	FindBrifByWlif(wif, br_if, 16);
 #endif
-	if(strlen(br_if))
-		fprintf(fp, "bridge=%s\n",br_if);
-	else
-		fprintf(fp, "bridge=br0\n");
 #endif
+	if(*br_if == '\0')
+		strcpy(br_if, "br0");
+	fprintf(fp, "bridge=%s\n",br_if);
+#endif
+
 	fprintf(fp, "logger_syslog=-1\n");
 	fprintf(fp, "logger_syslog_level=2\n");
 	fprintf(fp, "logger_stdout=-1\n");
@@ -935,107 +1870,108 @@ int gen_ath_config(int band, int is_iNIC,int subnet)
 	fprintf(fp, "ctrl_interface_group=0\n");
 	fprintf(fp, "max_num_sta=255\n");
 	fprintf(fp, "macaddr_acl=0\n");
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+#else
 	fprintf(fp, "ignore_broadcast_ssid=0\n");
-
-	
+#endif
 	fprintf(fp, "eapol_key_index_workaround=0\n");
 	flag_8021x=0;
 
-	str = nvram_safe_get(strcat_r(prefix, "auth_mode_x", tmp));
+	str = nvram_pf_get(prefix, "auth_mode_x");
 	if (str && (!strcmp(str, "radius") || !strcmp(str, "wpa") 
-	    ||!strcmp(str, "wpa2")|| !strcmp(str, "wpawpa2")))
+	    || !strcmp(str, "wpa2") || !strcmp(str, "wpawpa2")
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+	    || !strcmp(str, "wpa3") || !strcmp(str, "wpa2wpa3") || !strcmp(str, "wpawpa2wpa3")
+#endif
+		))
 	{
-	        flag_8021x=1;
+		flag_8021x=1;
 		fprintf(fp, "ieee8021x=1\n");
 		fprintf(fp, "eap_server=0\n");
 	}
-     	else
-        {	   
+	else
+	{	   
 		fprintf(fp, "ieee8021x=0\n");
 		fprintf(fp, "eap_server=1\n");
 	}	
 
 	//SSID Num. [MSSID Only]
-	fprintf(fp,"ssid=%s\n",nvram_safe_get(strcat_r(prefix, "ssid", tmp)));
+	fprintf(fp, "ssid=%s\n", nvram_pf_get(prefix, "ssid"));
 
 	snprintf(tmpfix, sizeof(tmpfix), "wl%d_", band);
 	//Network Mode
-	str = nvram_safe_get(strcat_r(tmpfix, "nmode_x", tmp));
+	val = nvram_pf_get_int(tmpfix, "nmode_x");
 	//5G
 	if (band) {
-		if (str && strlen(str)) {
-			if (safe_atoi(str) == 0)	// Auto
-			{
-#if defined(VHT_SUPPORT)
-				snprintf(t_mode, sizeof(t_mode), "iwpriv %s mode 11ACV" ,wif);	// A + AN + AC mixed
+		if (val == 8)
+		{
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+			strlcpy(t_mode, max_5g_ax_mode, sizeof(t_mode));
 #else
-				fprintf(fp, "hw_mode=a\n");			// A + AN mixed
+			strlcpy(t_mode, max_5g_ac_mode, sizeof(t_mode));
 #endif
-			} else if (safe_atoi(str) == 1)	// N only
-			{
-#if defined(VHT_SUPPORT)
-				snprintf(t_mode, sizeof(t_mode), "iwpriv %s mode 11NA" ,wif);	// N in 5G
-				puren = 1;
-#else
-				fprintf(fp, "hw_mode=a\n");
-#endif
-			} else if (safe_atoi(str) == 8)  // AN/AC Mixed
-			{
-#if defined(VHT_SUPPORT)
-				snprintf(t_mode, sizeof(t_mode), "iwpriv %s mode 11ACV" ,wif);	// AN + AC mixed
-				puren = 1;
-#else
-				fprintf(fp, "hw_mode=a\n");
-#endif
-			} else if (safe_atoi(str) == 2)	// A
-			{
-				snprintf(t_mode, sizeof(t_mode), "iwpriv %s mode 11A" ,wif);
-				legacy = 1;
-				//ban=1;
-			}
-			else	// A,N[,AC]
-			{
-#if defined(VHT_SUPPORT)
-				snprintf(t_mode, sizeof(t_mode), "iwpriv %s mode 11ACV" ,wif);
-#else
-				fprintf(fp, "hw_mode=a\n");
-#endif
-			}
-		} else {
-			warning = 6;
-			fprintf(fp, "hw_mode=a\n");
+			puren = 1;
 		}
+		else if (val == 1)
+		{
+			strlcpy(t_mode, "11NA", sizeof(t_mode));
+			puren = 1;
+		}
+		else if (val == 2)
+		{
+			strlcpy(t_mode, "11A", sizeof(t_mode));
+			legacy = 1;
+		}
+		else
+		{
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+			if(nvram_pf_get_int(main_prefix, "11ax") == 1)
+				strlcpy(t_mode, max_5g_ax_mode, sizeof(t_mode));
+			else
+#endif
+			strlcpy(t_mode, max_5g_ac_mode, sizeof(t_mode));
+
+			puren = 1;
+		}
+		isax = strstr(t_mode, "11AHE") != NULL;
 	}
 	else //2.4G
 	{
-		if (str && strlen(str)) {
-			if (safe_atoi(str) == 0)	// B,G,N
-			{
-				snprintf(t_mode, sizeof(t_mode), "iwpriv %s mode 11NG", wif);
-				bg_prot=1;
-			}
-			else if (safe_atoi(str) == 2)	// B,G
-			{
-				snprintf(t_mode, sizeof(t_mode), "iwpriv %s mode 11G", wif);
-				bg_prot=1;
-				ban=1;
-				legacy = 1;
-			}
-			else if (safe_atoi(str) == 1)	// N
-			{
-				snprintf(t_mode, sizeof(t_mode), "iwpriv %s mode 11NG", wif);
-				puren = 1;
-			}
-			else	// B,G,N
-			{
-				snprintf(t_mode, sizeof(t_mode), "iwpriv %s mode 11NG", wif);
-				bg_prot=1;
-			}
-		} else {
-			warning = 7;
-			snprintf(t_mode, sizeof(t_mode), "iwpriv %s 11NG", wif);
-			bg_prot=1;
+		if (val == 8)
+		{
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+			strlcpy(t_mode, max_2g_ax_mode, sizeof(t_mode));
+#else
+			strlcpy(t_mode, max_2g_n_mode, sizeof(t_mode));
+#endif
+			bg_prot = 1;
 		}
+		else if (val == 2)
+		{
+			strlcpy(t_mode, "11G", sizeof(t_mode));
+			bg_prot = 1;
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+#else
+			ban = 1;
+#endif
+			legacy = 1;
+		}
+		else if (val == 1)
+		{
+			strlcpy(t_mode, max_2g_n_mode, sizeof(t_mode));
+			puren = 1;
+		}
+		else
+		{
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+			if(nvram_pf_get_int(main_prefix, "11ax") == 1)
+				strlcpy(t_mode, max_2g_ax_mode, sizeof(t_mode));
+			else
+#endif
+			strlcpy(t_mode, max_2g_n_mode, sizeof(t_mode));
+			bg_prot = 1;
+		}
+		isax = strstr(t_mode, "11GHE") != NULL;
 	}
 
 	/* WME, hostapd part. */
@@ -1052,14 +1988,14 @@ int gen_ath_config(int band, int is_iNIC,int subnet)
 		wmm = 1;
 	fprintf(fp, "wmm_enabled=%d\n", wmm);
 
-	nmode = nvram_get_int(strcat_r(tmpfix, "nmode_x", tmp));
+	nmode = nvram_pf_get_int(tmpfix, "nmode_x");
 #if defined(RTCONFIG_WIFI_QCA9990_QCA9990) || defined(RTCONFIG_WIFI_QCA9994_QCA9994) || defined(RTCONFIG_SOC_IPQ40XX)
 	// 2.4GHz 256 QAM
 	if (!band) {
 		/* 256-QAM can't be enabled, if HT mode is not enabled. */
-		tqam = (nmode != 2)? !!nvram_get_int(strcat_r(tmpfix, "turbo_qam", tmp)) : 0;
+		tqam = (nmode != 2)? !!nvram_pf_get_int(tmpfix, "turbo_qam") : 0;
 		fprintf(fp2, "iwpriv %s vht_11ng %d\n", wif, tqam);
-		tqam_intop = tqam? !!nvram_get_int(strcat_r(tmpfix, "turbo_qam_brcm_intop", tmp)) : 0;
+		tqam_intop = tqam? !!nvram_pf_get_int(tmpfix, "turbo_qam_brcm_intop") : 0;
 		fprintf(fp2, "iwpriv %s 11ngvhtintop %d\n", wif, tqam_intop);
 	}
 #endif
@@ -1073,43 +2009,28 @@ int gen_ath_config(int band, int is_iNIC,int subnet)
 	fprintf(fp2, "iwpriv %s tx_stbc %d\n", wif, stbc);
 	fprintf(fp2, "iwpriv %s rx_stbc %d\n", wif, stbc);
 
-#if defined(RTCONFIG_WIFI_QCA9990_QCA9990) || \
-    defined(RTCONFIG_WIFI_QCA9994_QCA9994) || \
-    defined(RTCONFIG_PCIE_QCA9888) || \
-    defined(RTCONFIG_SOC_IPQ40XX)
-#if defined(RTCONFIG_QCA953X) || \
-    defined(RTCONFIG_SOC_QCA9557) || \
-    defined(RTCONFIG_QCA956X) || \
-    defined(RTCONFIG_QCN550X)
-	if (band) { /* 5G only */
-#endif
-		// TX BeamForming, must be set before association with the station.
-		txbf = (nmode != 2)? !!nvram_get_int(strcat_r(tmpfix, "txbf", tmp)) : 0;
-		mumimo = (nmode != 2)? !!(nvram_get_int(strcat_r(tmpfix, "mumimo", tmp))) : 0;
-		if (!repeater_mode() && !mediabridge_mode()) {
-			fprintf(fp2, "iwpriv %s vhtmubfer %d\n", wif, mumimo);	/* Multiple-user beam former, AP only */
-		} else {
-			fprintf(fp2, "iwpriv %s vhtmubfee %d\n", wif, mumimo);	/* Multiple-user beam formee, STA only */
-		}
-		fprintf(fp2, "iwpriv %s vhtsubfer %d\n", wif, txbf);	/* Single-user beam former */
-		fprintf(fp2, "iwpriv %s vhtsubfee %d\n", wif, txbf);	/* Single-user beam formee */
+#if defined(RTCONFIG_WIFI_QCA9990_QCA9990) || defined(RTCONFIG_WIFI_QCA9994_QCA9994) || defined(RTCONFIG_SOC_IPQ40XX) || defined(RPAC51)
+	// TX BeamForming, must be set before association with the station.
+	txbf = (nmode != 2)? !!nvram_get_int(strcat_r(tmpfix, "txbf", tmp)) : 0;
+	mumimo = (nmode != 2)? !!(nvram_get_int(strcat_r(tmpfix, "mumimo", tmp))) : 0;
+	if (!repeater_mode() && !mediabridge_mode()) {
+		fprintf(fp2, "iwpriv %s vhtmubfer %d\n", wif, mumimo);	/* Multiple-user beam former, AP only */
+	} else {
+		fprintf(fp2, "iwpriv %s vhtmubfee %d\n", wif, mumimo);	/* Multiple-user beam formee, STA only */
+	}
+	fprintf(fp2, "iwpriv %s vhtsubfer %d\n", wif, txbf);	/* Single-user beam former */
+	fprintf(fp2, "iwpriv %s vhtsubfee %d\n", wif, txbf);	/* Single-user beam formee */
 
-		if (mumimo)
-			fprintf(fp2, "wifitool %s beeliner_fw_test 2 0\n", wif);	/* Improve Multiple-user mimo performance */
+	if(mumimo)	
+		fprintf(fp2, "wifitool %s beeliner_fw_test 2 0\n", wif);	/* Improve Multiple-user mimo performance */
 
-		fprintf(fp2, "iwpriv %s implicitbf %d\n", wif,nvram_get_int(strcat_r(tmpfix, "implicitxbf", tmp)));
+	fprintf(fp2, "iwpriv %s implicitbf %d\n", wif,nvram_get_int(strcat_r(tmpfix, "implicitxbf", tmp)));
 
 #ifdef RTCONFIG_OPTIMIZE_XBOX
-		// LDPC
-		if (nvram_match(strcat_r(prefix, "optimizexbox", tmp), "1"))
-			ldpc = 0;
-		fprintf(fp2, "iwpriv %s ldpc %d\n", wif, ldpc? 3 : 0);
-#endif
-#if defined(RTCONFIG_QCA953X) || \
-    defined(RTCONFIG_SOC_QCA9557) || \
-    defined(RTCONFIG_QCA956X) || \
-    defined(RTCONFIG_QCN550X)
-	}
+	// LDPC
+	if (nvram_match(strcat_r(prefix, "optimizexbox", tmp), "1"))
+		ldpc = 0;
+	fprintf(fp2, "iwpriv %s ldpc %d\n", wif, ldpc? 3 : 0);
 #endif
 
 #if defined(RPAC51)
@@ -1131,11 +2052,7 @@ int gen_ath_config(int band, int is_iNIC,int subnet)
 	fprintf(fp2,"iwpriv %s hide_ssid %d\n",wif,nvram_get_int(strcat_r(prefix, "closed", tmp)));
 	strlcpy(tmp, nvram_pf_safe_get(prefix, "ssid"), sizeof(tmp));
 	//replace SSID each char to "\char"
-	*buf = '\0';
-	for (i = 0; i < strlen(tmp); i++) {
-		sprintf(temp, "\\%c", tmp[i]);
-		strlcat(buf, temp, sizeof(buf));
-	}
+	conv_iwconfig_essid(tmp, buf);
 	fprintf(fp2, "iwconfig %s essid -- %s\n", wif, buf);
 	
 	if (!rep_mode)
@@ -1265,6 +2182,17 @@ int gen_ath_config(int band, int is_iNIC,int subnet)
 		fprintf(fp2,"iwpriv %s ap_bridge %d\n",wif,nvram_get_int("wl0_ap_isolate")?0:1);
 	else
 		fprintf(fp2,"iwpriv %s ap_bridge %d\n",wif,nvram_get_int("wl1_ap_isolate")?0:1);
+
+#ifdef AMAZON_WSS
+	if (amazon_wss_ap_isolate_support(prefix))
+	{
+		/* ap isolate */
+		fprintf(fp2, "iwpriv %s ap_bridge %d\n", wif, nvram_pf_get_int(prefix, "ap_isolate") ? 0 : 1);
+
+		/* only QCA need to enable arping isolate when amazon_wss is enabled*/
+		fprintf(fp2, "echo %d > /sys/devices/virtual/net/%s/brport/isolate_mode\n", nvram_pf_get_int(prefix, "ap_isolate"), wif);
+	}
+#endif
 
 	//AuthMode
 	memset(tmpstr, 0x0, sizeof(tmpstr));
@@ -1488,7 +2416,7 @@ int gen_ath_config(int band, int is_iNIC,int subnet)
 				if (!only_20m && *t_bw == '\0') {
 					sprintf(t_bw,"HT40");	
 
-#if !defined(RTCONFIG_QCN550X) && !defined(RTCONFIG_SOC_IPQ40XX) && !defined(MAPAC1750)
+#if !defined(RTCONFIG_SOC_IPQ40XX) && !defined(MAPAC1750)
 					//ext ch
 					str = nvram_safe_get(strcat_r(tmpfix, "nctrlsb", tmp));
 					if(!strcmp(str,"lower"))
@@ -1514,7 +2442,7 @@ int gen_ath_config(int band, int is_iNIC,int subnet)
 
 	if (band) //only 5G
 	{
-#if defined(RTCONFIG_WIFI_QCA9557_QCA9882) || defined(RTCONFIG_QCA953X) || defined(RTCONFIG_QCA956X) || defined(RTCONFIG_QCN550X)
+#if defined(RTCONFIG_WIFI_QCA9557_QCA9882) || defined(RTCONFIG_QCA953X) || defined(RTCONFIG_QCA956X)
 		if (subnet==0)
 			fprintf(fp3,"iwpriv %s enable_ol_stats %d\n", get_vphyifname(band), nvram_get_int("traffic_5g")==1? 1:0);
 #endif
@@ -1622,14 +2550,23 @@ int gen_ath_config(int band, int is_iNIC,int subnet)
 	}
 #endif
 
-//#if defined(RPAC51) /* 5G chain 2x2 nss 1 */
-//	if (band == 1) {
-//		fprintf(fp3, "iwpriv ath1 nss 1\n");
-//		fprintf(fp3, "iwpriv sta1 nss 1\n");
-//	}
-//#endif
+#if defined(RTCONFIG_AMAS)
+	if (sw_mode == SW_MODE_AP && nvram_match("re_mode", "1")) {
+		fprintf(fp3, "iwpriv %s dbdc_enable 0\n", get_vphyifname(band));	//disable dbdc to avoid traffic suppression in sta interfaces such as sta0 and sta1.
+	}
+#endif	/* RTCONFIG_AMAS */
 
 	//AccessPolicy0
+    {
+#ifdef RTCONFIG_AMAS	/* reset prefix locally */
+	char prefix[16];
+	if (subnet <= 0 && nvram_get_int("re_mode") == 1)
+		snprintf(prefix, sizeof(prefix), "wl%d.1_", band);
+	else if(subnet > 0)
+		snprintf(prefix, sizeof(prefix), "wl%d.%d", band, subnet);
+	else
+		snprintf(prefix, sizeof(prefix), "wl%d_", band);
+#endif
 	gen_macmode(mac_filter, band, prefix);	//Ren
 	__get_wlifname(band, subnet, athfix);
 	str = nvram_safe_get(strcat_r(prefix, "macmode", tmp));
@@ -1654,9 +2591,18 @@ int gen_ath_config(int band, int is_iNIC,int subnet)
 			free(nv);
 		}
 	}
+    }
 
-	if (rep_mode)
-		goto next;
+	if(rep_mode){
+#if defined(RTCONFIG_AMAS)
+		if(nvram_match("re_mode", "1"))
+			gen_hostapd_wps_config(fp, band, subnet, br_if);
+#endif
+		if((nvram_match(strcat_r(prefix_mssid, "auth_mode_x", temp), "shared") || nvram_match(strcat_r(prefix_mssid, "auth_mode_x", temp), "open")) && !nvram_get_int("wps_enable")){
+			fprintf(fp2, "ifconfig %s up\n", wif);
+		}
+	   goto next;
+	}	
 		
 	int WdsEnable=0;
         int WdsEncrypType=0;
@@ -1816,9 +2762,6 @@ int gen_ath_config(int band, int is_iNIC,int subnet)
 				if(WdsEnable!=2 || nvram_match(strcat_r(prefix, "wdsapply_x", tmp),"1"))
 					fprintf(fp2,"wlanconfig %s nawds mode %d\n",wif,(WdsEnable==2)?4:3);
 
-				/* To increase WDS compatibility, if WDS VHT is not enabled, fallback to 11A. */
-				if (band && !nvram_match("wl1_wds_vht", "1"))
-					caps = 0;
 				for(i=0;i<4;i++)
 					if(strlen(wds_mac[i]) && nvram_match(strcat_r(prefix, "wdsapply_x", tmp),"1"))
 						fprintf(fp5, "wlanconfig %s nawds add-repeater %s 0x%x\n", wif, wds_mac[i], caps);
@@ -1964,48 +2907,7 @@ next_mrate:
 	if (band && mcast_phy == 1)
 		goto next_mrate;
 
-#ifdef RTCONFIG_WPS
-	fprintf(fp, "# Wi-Fi Protected Setup (WPS)\n");
-
-	if (!subnet && nvram_get_int("wps_enable")) {
-		if (nvram_match("w_Setting", "0")) {
-			fprintf(fp, "wps_state=1\n");
-		} else {
-			fprintf(fp, "wps_state=2\n");
-			fprintf(fp, "ap_setup_locked=1\n");
-		}
-		if (uuid && strlen(uuid) == 36)
-			fprintf(fp, "uuid=%s\n", uuid);
-	} else {
-		/* Turn off WPS on guest network. */
-		fprintf(fp, "wps_state=0\n");
-	}
-
-	fprintf(fp, "wps_independent=1\n");
-	fprintf(fp, "device_name=ASUS Router\n");
-	fprintf(fp, "manufacturer=ASUSTek Computer Inc.\n");
-	fprintf(fp, "model_name=%s\n", nvram_safe_get("productid"));
-	fprintf(fp, "model_number=%s\n", ((p = nvram_safe_get("odmpid")) && *p != '\0')? p : nvram_safe_get("productid"));
-	fprintf(fp, "serial_number=%s\n", get_lan_hwaddr());
-	fprintf(fp, "device_type=6-0050F204-1\n");
-	fprintf(fp, "config_methods=push_button display virtual_display virtual_push_button physical_push_button label\n");
-	fprintf(fp, "pbc_in_m1=1\n");
-	fprintf(fp, "ap_pin=%s\n", nvram_safe_get("secret_code"));
-#ifdef RTCONFIG_TAGGED_BASED_VLAN
-	if(strlen(br_if))
-		fprintf(fp, "upnp_iface=%s\n",br_if);
-	else
-		fprintf(fp, "upnp_iface=br0\n");
-#endif
-	fprintf(fp, "friendly_name=WPS Access Point\n");
-	fprintf(fp, "manufacturer_url=http://www.asus.com\n");
-	fprintf(fp, "model_description=ASUS Router\n");
-	fprintf(fp, "model_url=http://www.asus.com\n");
-	//fprintf(fp, "wps_rf_bands=ag\n"); /* according to spec */
-	fprintf(fp, "wps_rf_bands=%c\n",band?'a':'g');
-
-	fprintf(fp, "ieee80211w=0\n");
-#endif
+	gen_hostapd_wps_config(fp, band, subnet, br_if);
 
 #if RTCONFIG_AIR_TIME_FAIRNESS
 	if (nvram_get_int(strcat_r(prefix, "atf", tmp)) && subnet == 0) {
@@ -2063,16 +2965,6 @@ next:
 	fclose(fp);
 	fclose(fp2);
 	fclose(fp3);
-#ifdef RTCONFIG_WIRELESSREPEATER
-#if defined(RTCONFIG_CONCURRENTREPEATER)
-	if (sw_mode == SW_MODE_REPEATER //&& (wlc_express == 0 || (wlc_express - 1) == band)
-//			&& nvram_invmatch(strcat_r(prefix_wlc, "ssid", tmp), "")&& subnet==0)
-			&& subnet==0)
-#else	/* RTCONFIG_CONCURRENTREPEATER */
-	if (sw_mode == SW_MODE_REPEATER && wlc_band == band && nvram_invmatch("wlc_ssid", "")&& subnet==0)
-#endif
-		fclose(fp4);
-#endif
 	chmod(path2, 0777);	/* postwifi_athX.sh */
 	chmod(path3, 0777);	/* prewifi_athX.sh */
 	chmod(path5, 0777);	/* nawds_athX.sh */
@@ -2316,9 +3208,7 @@ int gen_nl80211_config(int band, int is_iNIC, int subnet)
 	unsigned int maxsta = 127;
 #endif
 #ifdef RTCONFIG_WIRELESSREPEATER
-	FILE *fp_wpa = NULL;
-	char wpa_path[50];
-	int flag_wep = 0, wlc_band = nvram_get_int("wlc_band");
+	int wlc_band = nvram_get_int("wlc_band");
 #endif
 	char br_if[IFNAMSIZ];
 
@@ -2413,14 +3303,9 @@ int gen_nl80211_config(int band, int is_iNIC, int subnet)
 	if (!(fp_pre = fopen(prewifi_path, "w+")))
 		return 0;
 
-	fprintf(fp_post, "#!/bin/sh\n");
-	fprintf(fp_re, "#!/bin/sh\n");
 #ifdef RTCONFIG_WIRELESSREPEATER
 	if (sw_mode == SW_MODE_REPEATER && wlc_band == band && nvram_invmatch("wlc_ssid", "") && !subnet) {
 		rep_mode = 1;
-		snprintf(wpa_path, sizeof(wpa_path), "/etc/Wireless/conf/wpa_supplicant-%s.conf", get_staifname(band));
-		if (!(fp_wpa = fopen(wpa_path, "w+")))
-			return 0;
 	}
 #endif
 
@@ -2429,88 +3314,13 @@ int gen_nl80211_config(int band, int is_iNIC, int subnet)
 
 #ifdef RTCONFIG_WIRELESSREPEATER
 	if (rep_mode == 1) {
+		char prefix_wlc[32];
 		snprintf(prefix, sizeof(prefix), "wl%d.1_", band);
+		snprintf(prefix_wlc, sizeof(prefix_wlc), "wlc_");
 		snprintf(prefix_mssid, sizeof(prefix_mssid), "wl%d_", band);
 		// convert wlc_xxx to wlX_ according to wlc_band == band
 		nvram_set("ure_disable", "0");
-
-		nvram_set("wl_ssid", nvram_safe_get("wlc_ssid"));
-		nvram_pf_set(prefix_mssid, "ssid", nvram_safe_get("wlc_ssid"));
-		nvram_pf_set(prefix_mssid, "auth_mode_x", nvram_safe_get("wlc_auth_mode"));
-		nvram_pf_set(prefix_mssid, "wep_x", nvram_safe_get("wlc_wep"));
-		nvram_pf_set(prefix_mssid, "key", nvram_safe_get("wlc_key"));
-		for (i = 1; i <= 4; i++) {
-			char prekey[16];
-
-			if (nvram_get_int("wlc_key") != i)
-				continue;
-
-			snprintf(prekey, sizeof(prekey), "key%d", i);
-			nvram_pf_set(prefix_mssid, prekey, nvram_safe_get("wlc_wep_key"));
-		}
-
-		nvram_pf_set(prefix_mssid, "crypto", nvram_safe_get("wlc_crypto"));
-		nvram_pf_set(prefix_mssid, "wpa_psk", nvram_safe_get("wlc_wpa_psk"));
-		nvram_pf_set(prefix_mssid, "bw", nvram_safe_get("wlc_nbw_cap"));
-
-		fprintf(fp_wpa,
-			"ctrl_interface=/var/run/wpa_supplicant-%s\n"
-			"network={\n"
-			"ssid=\"%s\"\n",
-			get_staifname(band), nvram_pf_safe_get(prefix_mssid, "ssid"));
-
-		str = nvram_safe_get("wlc_auth_mode");
-		if (str && *str != '\0') {
-			if (!strcmp(str, "open") && nvram_match("wlc_wep", "0")) {
-				fprintf(fp_wpa, "\tkey_mgmt=NONE\n");		//open/none
-			} else if (!strcmp(str, "open")) {
-				flag_wep = 1;
-				fprintf(fp_wpa, "\tkey_mgmt=NONE\n");		//open
-				fprintf(fp_wpa, "\tauth_alg=OPEN\n");
-			} else if (!strcmp(str, "shared")) {
-				flag_wep = 1;
-				fprintf(fp_wpa, "\tkey_mgmt=NONE\n");		//shared
-				fprintf(fp_wpa, "\tauth_alg=SHARED\n");
-			} else if (!strcmp(str, "psk") || !strcmp(str, "psk2")) {
-				fprintf(fp_wpa, "\tkey_mgmt=WPA-PSK\n");
-				if (!strcmp(str, "psk"))
-					fprintf(fp_wpa, "\tproto=WPA\n");	//wpapsk
-				else
-					fprintf(fp_wpa, "\tproto=RSN\n");	//wpa2psk
-				//EncrypType
-				if (nvram_match("wlc_crypto", "tkip")) {
-					fprintf(fp_wpa, "\tpairwise=TKIP\n");
-					fprintf(fp_wpa, "\tgroup=TKIP\n");
-				} else if (nvram_match("wlc_crypto", "aes")) {
-					fprintf(fp_wpa, "\tpairwise=%s\n", (band == WL_60G_BAND)? "GCMP" : "CCMP TKIP");
-					fprintf(fp_wpa, "\tgroup=%s\n", (band == WL_60G_BAND)? "GCMP" : "CCMP TKIP");
-				}
-				//key
-				fprintf(fp_wpa, "\tpsk=\"%s\"\n", nvram_safe_get("wlc_wpa_psk"));
-			} else
-				fprintf(fp_wpa, "\tkey_mgmt=NONE\n");		//open/none
-		} else {
-			fprintf(fp_wpa, "\tkey_mgmt=NONE\n");			//open/none
-		}
-
-		//EncrypType
-		for (i = 1; flag_wep && i <= 4; i++) {
-			if (nvram_get_int("wlc_key") != i)
-				continue;
-			if ((strlen(nvram_safe_get("wlc_wep_key")) == 5) ||
-			    (strlen(nvram_safe_get("wlc_wep_key")) == 13)) {
-				fprintf(fp_wpa, "\twep_tx_keyidx=%d\n", i - 1);
-				fprintf(fp_wpa, "\twep_key%d=\"%s\"\n", i - 1, nvram_safe_get("wlc_wep_key"));
-			} else if ((strlen(nvram_safe_get("wlc_wep_key")) == 10) ||
-				   (strlen(nvram_safe_get("wlc_wep_key")) == 26)) {
-				fprintf(fp_wpa, "\twep_tx_keyidx=%d\n", i - 1);
-				fprintf(fp_wpa, "\twep_key%d=%s\n", i - 1, nvram_safe_get("wlc_wep_key"));
-			} else {
-				fprintf(fp_wpa, "\twep_tx_keyidx=%d\n", i - 1);
-				fprintf(fp_wpa, "\twep_key%d=0\n", i - 1);
-			}
-		}
-		fprintf(fp_wpa, "}\n");
+		write_rpt_wpa_supplicant_conf(band, prefix_mssid, prefix_wlc, NULL);
 	}
 #endif /* RTCONFIG_WIRELESSREPEATER */
 
@@ -2524,7 +3334,9 @@ int gen_nl80211_config(int band, int is_iNIC, int subnet)
 	FindBrifByWlif(wif, br_if, 16);
 #endif
 #endif
-	fprintf(fp_h, "bridge=%s\n", *br_if? br_if : "br0");
+	if(*br_if == '\0')
+		strcpy(br_if, "br0");
+	fprintf(fp_h, "bridge=%s\n", br_if);
 	fprintf(fp_h, "logger_syslog=-1\n");
 	fprintf(fp_h, "logger_syslog_level=2\n");
 	fprintf(fp_h, "logger_stdout=-1\n");
@@ -3052,45 +3864,7 @@ next_mrate:
 		goto next_mrate;
 #endif
 
-#ifdef RTCONFIG_WPS
-	fprintf(fp_h, "# Wi-Fi Protected Setup (WPS)\n");
-
-	if (!subnet && nvram_get_int("wps_enable")) {
-		if (nvram_match("w_Setting", "0")) {
-			fprintf(fp_h, "wps_state=1\n");
-		} else {
-			fprintf(fp_h, "wps_state=2\n");
-			fprintf(fp_h, "ap_setup_locked=1\n");
-		}
-		if (uuid && strlen(uuid) == 36)
-			fprintf(fp_h, "uuid=%s\n", uuid);
-	} else {
-		/* Turn off WPS on guest network. */
-		fprintf(fp_h, "wps_state=0\n");
-	}
-
-	fprintf(fp_h, "wps_independent=1\n");
-	fprintf(fp_h, "device_name=ASUS Router\n");
-	fprintf(fp_h, "manufacturer=ASUSTek Computer Inc.\n");
-	fprintf(fp_h, "model_name=%s\n", nvram_safe_get("productid"));
-	fprintf(fp_h, "model_number=123\n");	/* FIXME */
-	fprintf(fp_h, "serial_number=12345\n");	/* FIXME */
-	fprintf(fp_h, "device_type=6-0050F204-1\n");
-	fprintf(fp_h, "config_methods=push_button display virtual_display virtual_push_button physical_push_button label\n");
-	fprintf(fp_h, "pbc_in_m1=1\n");
-	fprintf(fp_h, "ap_pin=%s\n", nvram_safe_get("secret_code"));
-#ifdef RTCONFIG_TAGGED_BASED_VLAN
-	fprintf(fp_h, "upnp_iface=%s\n", *br_if? br_if : "br0");
-#endif
-	fprintf(fp_h, "friendly_name=WPS Access Point\n");
-	fprintf(fp_h, "manufacturer_url=http://www.asus.com\n");
-	fprintf(fp_h, "model_description=ASUS Router\n");
-	fprintf(fp_h, "model_url=http://www.asus.com\n");
-	//fprintf(fp_h, "wps_rf_bands=ag\n"); /* according to spec */
-	fprintf(fp_h, "wps_rf_bands=%s\n", wps_band);
-
-	fprintf(fp_h, "ieee80211w=0\n");
-#endif
+	gen_hostapd_wps_config(fp, band, subnet, br_if);
 
 
 next:
@@ -3098,10 +3872,6 @@ next:
 	fclose(fp_mac);
 	fclose(fp_post);
 	fclose(fp_pre);
-#ifdef RTCONFIG_WIRELESSREPEATER
-	if (rep_mode)
-		fclose(fp_wpa);
-#endif
 	chmod(postwifi_path, 0777);	/* postwifi_athX.sh */
 	chmod(prewifi_path, 0777);	/* prewifi_athX.sh */
 	chmod(wds_path, 0777);		/* nawds_athX.sh */
@@ -3206,10 +3976,15 @@ int __need_to_start_wps_band(char *prefix)
 	     && !nvram_match(strcat_r(prefix, "wep_x", tmp), "0"))
 	    || !strcmp(p, "shared") || !strcmp(p, "psk") || !strcmp(p, "wpa")
 	    || !strcmp(p, "wpa2") || !strcmp(p, "wpawpa2")
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+	    || !strcmp(p, "wpawpa2wpa3") || !strcmp(p, "wpa2wpa3") || !strcmp(p, "wpa3")
+#endif
 	    || !strcmp(p, "radius")
 	    || nvram_match(strcat_r(prefix, "radio", tmp), "0")
-	    || !((sw_mode() == SW_MODE_ROUTER)
-		 || (sw_mode() == SW_MODE_AP)))
+		|| nvram_match(strcat_r(prefix, "closed", tmp), "1")
+//	    || !((sw_mode() == SW_MODE_ROUTER)
+//		|| (sw_mode() == SW_MODE_AP))
+		)
 		return 0;
 
 	return 1;
@@ -3222,13 +3997,16 @@ int need_to_start_wps_band(int wps_band)
 
 	switch (wps_band) {
 #if defined(RTCONFIG_HAS_5G_2)
-	case 2:		/* fall through */
+	case WL_5G_2_BAND:
+#endif
+#if defined(RTCONFIG_WIFI6E)
+	case WL_6G_BAND:
 #endif
 #if defined(RTCONFIG_WIGIG)
-	case 3:		/* fall through  */
+	case WL_60G_BAND:
 #endif
-	case 0:		/* fall through */
-	case 1:
+	case WL_2G_BAND:
+	case WL_5G_BAND:
 		snprintf(prefix, sizeof(prefix), "wl%d_", wps_band);
 		ret = __need_to_start_wps_band(prefix);
 		break;
@@ -3251,15 +4029,6 @@ int wps_pin(int pincode)
 		if (i >= MAX_NR_WL_IF)
 			break;
 
-#ifdef RTCONFIG_WIFI_SON
-#ifndef RTCONFIG_DUAL_BACKHAUL
-		if(i==0)
-		{	
-			i++;
-			continue;
-		}
-#endif
-#endif
 		if (!multiband && wps_band != i) {
 			++i;
 			continue;
@@ -3295,16 +4064,6 @@ static int __wps_pbc(int multiband)
 	foreach(word, ifnames, next) {
 		if (i >= MAX_NR_WL_IF)
 			break;
-
-#ifdef RTCONFIG_WIFI_SON
-#ifndef RTCONFIG_DUAL_BACKHAUL
-		if(i==0)
-		{	
-			i++;
-			continue;
-		}
-#endif
-#endif
 
 		if (!multiband && wps_band != i) {
 			++i;
@@ -3354,16 +4113,6 @@ void __wps_oob(const int multiband)
 	foreach(word, ifnames, next) {
 		if (i >= MAX_NR_WL_IF)
 			break;
-
-#ifdef RTCONFIG_WIFI_SON
-#ifndef RTCONFIG_DUAL_BACKHAUL
-		if(i==0)
-		{	
-			i++;
-			continue;
-		}
-#endif
-#endif
 
 		if (!multiband && wps_band != i) {
 			++i;
@@ -3447,10 +4196,13 @@ void start_wsc(void)
 	foreach(word, ifnames, next) {
 		if (i >= MAX_NR_WL_IF)
 			break;
-
+#ifdef RTCONFIG_AMAS
+		if (i != 0)
+			continue;	/* allow only band 0 when AiMesh setup is running */
+#endif
 #ifdef RTCONFIG_WIFI_SON
 #ifndef RTCONFIG_DUAL_BACKHAUL
-		if(i==0)
+		if(sw_mode() != SW_MODE_REPEATER && i==0)
 		{	
 			i++;
 			continue;
@@ -3501,15 +4253,6 @@ static void __stop_wsc(int multiband)
 		if (i >= MAX_NR_WL_IF)
 			break;
 
-#ifdef RTCONFIG_WIFI_SON
-#ifndef RTCONFIG_DUAL_BACKHAUL
-		if(i==0)
-		{	
-			i++;
-			continue;
-		}
-#endif
-#endif
 		if (!multiband && wps_band != i) {
 			++i;
 			continue;
@@ -3538,13 +4281,55 @@ void stop_wsc_both(void)
 #endif
 }
 
+int create_tmp_sta(int unit, char *sta, char *ssid_prefix)
+{
+	if(is_intf_up(sta) < 0)
+		return create_tmp_sta_part(unit, sta, ssid_prefix);
+	return 0;
+}
+
+void destroy_tmp_sta(char *sta)
+{
+	char fpath[64];
+
+	snprintf(fpath, sizeof(fpath), "/var/run/wifi-%s.pid", sta);
+	kill_pidfile_tk(fpath);
+	unlink(fpath);
+	snprintf(fpath, sizeof(fpath), "/etc/Wireless/conf/wpa_supplicant-%s.conf", sta);
+	unlink(fpath);
+
+#ifdef RTCONFIG_WIFI_SON
+	if(nvram_get_int("x_Setting") && (sw_mode()==SW_MODE_AP && !nvram_match("cfg_master", "1")))
+		_dprintf("==>wps enrollee: do not destroy original %s vap\n",sta);
+	else
+#endif
+	{
+		_dprintf("==>wps enrollee: destroy %s vap\n",sta);
+		ifconfig(sta, 0, NULL, NULL);
+		//doSystem("wlanconfig %s destroy", sta);
+		destroy_vap(sta);
+	}
+}
+
 #ifdef RTCONFIG_WPS_ENROLLEE
+void start_wsc_enrollee_band(int band)
+{
+	char sta[64];
+
+	dbg("%s: start wsc enrollee(%d)\n", __func__, band);
+	strcpy(sta, get_staifname(band));
+	if (sw_mode() == SW_MODE_ROUTER
+			|| sw_mode() == SW_MODE_AP) {
+		create_tmp_sta(band, sta, NULL);
+	}
+
+	set_wpa_cli_cmd(band, "wps_pbc", NULL);
+}
+
 void start_wsc_enrollee(void)
 {
 	int i;
 	char word[256], *next, ifnames[128];
-	char conf[64], sta[64];
-	FILE *fp;
 
 	i = 0;
 	strcpy(ifnames, nvram_safe_get("wl_ifnames"));
@@ -3559,46 +4344,27 @@ void start_wsc_enrollee(void)
 #endif
 #ifdef RTCONFIG_WIFI_SON
 #ifndef RTCONFIG_DUAL_BACKHAUL
-		if(i==0)
+		if(sw_mode() != SW_MODE_REPEATER && i==0)
 		{	
 			i++;
 			continue;
 		}
 #endif
 #endif
-		dbg("%s: start wsc enrollee(%d)\n", __func__, i);
-
-		strcpy(sta, get_staifname(i));
-		if (sw_mode() == SW_MODE_ROUTER
-				|| sw_mode() == SW_MODE_AP) {
-			char *lan_if = nvram_get("lan_ifname")? nvram_get("lan_ifname") : "br0";
-			char pid_file[sizeof("/var/run/wifi-staX.pidXXXXXX")];
-
-			snprintf(pid_file, sizeof(pid_file), "/var/run/wifi-%s.pid", sta);
-			snprintf(conf, sizeof(conf), "/etc/Wireless/conf/wpa_supplicant-%s.conf", sta);
-			if (!(fp = fopen(conf, "w+"))) {
-				_dprintf("%s: Can't open %s\n", __func__, conf);
-				continue;
-			}
-			fprintf(fp, "ctrl_interface=/var/run/wpa_supplicant\n");
-			fprintf(fp, "update_config=1\n");
-			fclose(fp);
-#ifdef RTCONFIG_WIFI_SON
-			if(nvram_get_int("x_Setting") && (sw_mode()==SW_MODE_AP && !nvram_match("cfg_master", "1")))
-				_dprintf("==>wps enrollee: using original sta%d vap\n",i);
-			else
-#endif
-			{
-				_dprintf("==>wps enrollee: create sta%d vap\n",i);
-				doSystem("wlanconfig %s create wlandev %s wlanmode sta nosbeacon", sta, get_vphyifname(i));
-			}
-			sleep(1);
-			ifconfig(sta, IFUP, NULL, NULL);
-			eval("/usr/bin/wpa_supplicant", "-B", "-P", pid_file, "-D", get_wsup_drvname(i), "-i", sta, "-b", lan_if, "-c", conf);
-		}
-
-		doSystem("wpa_cli -i %s wps_pbc", sta);
+		start_wsc_enrollee_band(i);
 		i++;
+	}
+}
+
+void stop_wsc_enrollee_band(int band)
+{
+	char sta[64];
+	strlcpy(sta, get_staifname(band), sizeof(sta));
+	set_wpa_cli_cmd(band, "wps_cancel", NULL);
+
+	if (sw_mode() == SW_MODE_ROUTER
+			|| sw_mode() == SW_MODE_AP) {
+		destroy_tmp_sta(sta);
 	}
 }
 
@@ -3606,7 +4372,6 @@ void stop_wsc_enrollee(void)
 {
 	int i;
 	char word[256], *next, ifnames[128];
-	char fpath[64], sta[64];
 
 	i = 0;
 	strcpy(ifnames, nvram_safe_get("wl_ifnames"));
@@ -3621,7 +4386,7 @@ void stop_wsc_enrollee(void)
 
 #ifdef RTCONFIG_WIFI_SON
 #ifndef RTCONFIG_DUAL_BACKHAUL
-		if(i==0)
+		if(sw_mode() != SW_MODE_REPEATER && i==0)
 		{	
 			i++;
 			continue;
@@ -3629,41 +4394,212 @@ void stop_wsc_enrollee(void)
 #endif
 #endif
 
-		strcpy(sta, get_staifname(i));
-		doSystem("wpa_cli -i %s wps_cancel", sta);
-
-		if (sw_mode() == SW_MODE_ROUTER
-				|| sw_mode() == SW_MODE_AP) {
-			snprintf(fpath, sizeof(fpath), "/var/run/wifi-%s.pid", sta);
-			kill_pidfile_tk(fpath);
-			unlink(fpath);
-			snprintf(fpath, sizeof(fpath), "/etc/Wireless/conf/wpa_supplicant-%s.conf", sta);
-			unlink(fpath);
-
-#ifdef RTCONFIG_WIFI_SON
-			if(nvram_get_int("x_Setting") && (sw_mode()==SW_MODE_AP && !nvram_match("cfg_master", "1")))
-				_dprintf("==>wps enrollee: do not destroy original sta%d vap\n",i);
-			else
-#endif
-			{
-	
-				_dprintf("==>wps enrollee: destroy sta%d vap\n",i);
-				ifconfig(sta, 0, NULL, NULL);
-				doSystem("wlanconfig %s destroy", sta);
-			}
-		}
-
+		stop_wsc_enrollee_band(i);
 		i++;
 	}
 }
 
-#ifdef RTCONFIG_WIFI_CLONE
-void wifi_clone(int unit)
+int wps_ascii_to_char_with_utf8(const char *output, const char *input, int outsize)
+{
+	char dest[28];
+	char *instr = input;
+	char *word;
+	char *end = output + outsize - 1;
+
+	if(!output || outsize <= 0 || !input)
+		return 0;
+
+	for(word = output; *instr && word != end; ++word)
+	{
+		memset(dest, 0, sizeof(dest));
+		strncpy(dest, instr, 2);
+		instr += 2;
+		*word = strtol(dest, NULL, 16);
+	}
+	if(word != end)
+		*word = 0;
+	return 0;
+}
+
+int getting_wps_enroll_conf(int unit, char *ssid, char *psk)
 {
 	char buf[512];
 	FILE *fp;
 	int len;
 	char *pt1, *pt2;
+
+	if(unit < 0 || ssid == NULL || psk == NULL)
+		return -1;
+
+	ssid[0] = '\0';
+	psk[0] = '\0';
+	snprintf(buf, sizeof(buf), "/etc/Wireless/conf/wpa_supplicant-%s.conf", get_staifname(unit));
+	fp = fopen(buf, "r");
+	if (fp) {
+		len = fread(buf, 1, sizeof(buf), fp);
+		fclose(fp);
+		if (len > 1) {
+			buf[len-1] = '\0';
+			//SSID
+			pt1 = strstr(buf, "ssid=\"");
+			if (pt1) {
+				pt2 = pt1 + strlen("ssid=\"");
+				pt1 = strstr(pt2, "\"");
+				if (pt1) {
+					*pt1 = '\0';
+					chomp(pt2);
+					strcpy(ssid, pt2);
+				}
+			}else{
+				pt1 = strstr(buf, "ssid=");
+				if (pt1) {
+					pt2 = pt1 + strlen("ssid=");
+					pt1 = strchr(pt2, '\n');
+					if (pt1) {
+						*pt1 = '\0';
+						chomp(pt2);
+						wps_ascii_to_char_with_utf8(ssid, pt2, 33);
+					}
+				}
+			}
+			//PSK
+			pt2 = pt1 + 1;
+			pt1 = strstr(pt2, "psk=\"");
+			if (pt1) {	//WPA-PSK
+				pt2 = pt1 + strlen("psk=\"");
+				pt1 = strstr(pt2, "\"");
+				if (pt1) {
+					*pt1 = '\0';
+					chomp(pt2);
+					strcpy(psk, pt2);
+				}
+			}
+			else {		//OPEN
+			}
+			return 0;
+		}
+	}
+	return -1;
+}
+
+#if defined(RTCONFIG_AMAS)
+int getting_wps_result(int unit, char *bssid, char *ssid, char *key_mgmt) {
+	char buf[512];
+	FILE *fp;
+	int len;
+	char *pt1, *pt2;
+	char ctrl_sk[32];
+
+	get_wpa_ctrl_sk(unit, ctrl_sk, sizeof(ctrl_sk));
+	sprintf(buf, "wpa_cli -p %s -i%s status", ctrl_sk, get_staifname(unit));
+	fp = PS_popen(buf, "r");
+	if (fp) {
+		len = fread(buf, 1, sizeof(buf), fp);
+		PS_pclose(fp);
+		if (len > 1) {
+			buf[len-1] = '\0';
+
+			// ap_mac
+			pt1 = strstr(buf, "bssid=");
+			if (pt1) {
+				pt2 = pt1 + strlen("bssid=");
+				pt1 = strstr(pt2, "freq=");
+				if (pt1 && bssid) {
+					*pt1 = '\0';
+					chomp(pt2);
+					strcpy(bssid, pt2);
+				}
+			}
+
+			// ssid
+			pt2 = pt1 + 1;
+			pt1 = strstr(pt2, "ssid=");
+			if (pt1) {
+				pt2 = pt1 + strlen("ssid=");
+				pt1 = strstr(pt2, "id=");
+				if (pt1 && ssid) {
+					*pt1 = '\0';
+					chomp(pt2);
+					strcpy(ssid, pt2);
+				}
+			}
+
+			// auth_mode and crypto
+			pt2 = pt1 + 1;
+			pt1 = strstr(pt2, "key_mgmt=");
+			if (pt1) {
+				pt2 = pt1 + strlen("key_mgmt=");
+				pt1 = strstr(pt2, "wpa_state=");
+				if (pt1 && key_mgmt) {
+					*pt1 = '\0';
+					chomp(pt2);
+					strcpy(key_mgmt, pt2);
+				}
+			}
+		return 0;
+		}
+	}
+	return -1;
+}
+
+void amas_save_wifi_para(void)
+{
+	char psk[65];
+	char ssid[33];
+	char key_mgmt[16];
+	char tmp[128], prefix[] = "wlcXXXXXXXXX_", prefix2[] = "wlcXXXXXXXXX_";
+	char word[256], *next;
+	char ifnames[128];
+	int i;
+
+	if(getting_wps_enroll_conf(0, ssid, psk) != 0)
+		return;
+	if(getting_wps_result(0, NULL, NULL, key_mgmt) != 0)
+		return;
+
+	i = 0;
+	strcpy(ifnames, nvram_safe_get("wl_ifnames"));
+	foreach(word, ifnames, next) {
+		snprintf(prefix, sizeof(prefix), "wlc%d_", i);
+		snprintf(prefix2, sizeof(prefix2), "wl%d.1_", i);
+		//ssid
+		if(ssid[0] != '\0')
+			nvram_set(strcat_r(prefix, "ssid", tmp), ssid);
+		//auth_mode and crypto
+		if(psk[0] != '\0') {
+			if(strncmp(key_mgmt, "WPA-", 4) == 0) {
+				nvram_set(strcat_r(prefix, "auth_mode", tmp), "psk");
+				nvram_set(strcat_r(prefix2, "auth_mode_x", tmp), "psk");
+				nvram_set(strcat_r(prefix, "crypto", tmp), "aes+tkip");
+				nvram_set(strcat_r(prefix2, "crypto", tmp), "aes+tkip");
+			}
+			else {
+				nvram_set(strcat_r(prefix, "auth_mode", tmp), "psk2");
+				nvram_set(strcat_r(prefix2, "auth_mode_x", tmp), "psk2");
+				nvram_set(strcat_r(prefix, "crypto", tmp), "aes");
+				nvram_set(strcat_r(prefix2, "crypto", tmp), "aes");
+			}
+			nvram_set(strcat_r(prefix2, "wpa_psk", tmp), psk);
+		}
+		else {
+			nvram_set(strcat_r(prefix, "auth_mode", tmp), "open");
+			nvram_set(strcat_r(prefix2, "auth_mode_x", tmp), "open");
+			nvram_set(strcat_r(prefix, "wep", tmp), "0");
+			nvram_set(strcat_r(prefix2, "wep_x", tmp), "0");
+		}
+		++i;
+	}
+
+	nvram_set("obd_Setting", "1");
+	nvram_commit();
+}
+#endif	/* RTCONFIG_AMAS */
+
+#if defined(RTCONFIG_WIFI_CLONE)
+void wifi_clone(int unit)
+{
+	char psk[65];
+	char ssid[33];
 	char tmp[128], prefix[] = "wlXXXXXXXXXX_";
 #ifdef RTCONFIG_WIFI_SON
 	char stmp[128], sprefix[] = "wlXXXXXXXXXX_";
@@ -3675,62 +4611,38 @@ void wifi_clone(int unit)
 	}
 #endif
 #endif
-	snprintf(buf, sizeof(buf), "/etc/Wireless/conf/wpa_supplicant-%s.conf", get_staifname(unit));
-	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-	fp = fopen(buf, "r");
-	if (fp) {
-		memset(buf, 0, sizeof(buf));
-		len = fread(buf, 1, sizeof(buf), fp);
-		pclose(fp);
-		if (len > 1) {
-			buf[len-1] = '\0';
-			//SSID
-			pt1 = strstr(buf, "ssid=\"");
-			if (pt1) {
-				pt2 = pt1 + strlen("ssid=\"");
-				pt1 = strstr(pt2, "\"\n");
-				if (pt1) {
-					*pt1 = '\0';
-					chomp(pt2);
-					nvram_set(strcat_r(prefix, "ssid", tmp), pt2);
-				}
-			}
-					nvram_set(strcat_r(prefix, "crypto", tmp), "aes");
-			//PSK
-			pt2 = pt1 + 1;
-			pt1 = strstr(pt2, "psk=\"");
-			if (pt1) {	//WPA2-PSK
-				pt2 = pt1 + strlen("psk=\"");
-				pt1 = strstr(pt2, "\"");
-				if (pt1) {
-					*pt1 = '\0';
-					chomp(pt2);
-					nvram_set(strcat_r(prefix, "wpa_psk", tmp), pt2);
-					nvram_set(strcat_r(prefix, "auth_mode_x", tmp), "psk2");
-					nvram_set(strcat_r(prefix, "crypto", tmp), "aes");
-				}
-			}
-			else {		//OPEN
-				nvram_set(strcat_r(prefix, "auth_mode_x", tmp), "open");
-				nvram_set(strcat_r(prefix, "wep_x", tmp), "0");
-			}
-			nvram_set("x_Setting", "1");
-			nvram_commit();
+
+	if(getting_wps_enroll_conf(unit, ssid, psk) == 0) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if(ssid[0] != '\0')
+			nvram_set(strcat_r(prefix, "ssid", tmp), ssid);
+		if(psk[0] != '\0') {
+			nvram_set(strcat_r(prefix, "crypto", tmp), "aes");
+			nvram_set(strcat_r(prefix, "auth_mode_x", tmp), "psk2");
+			nvram_set(strcat_r(prefix, "wpa_psk", tmp), psk);
+		}
+		else {
+			nvram_set(strcat_r(prefix, "auth_mode_x", tmp), "open");
+			nvram_set(strcat_r(prefix, "wep_x", tmp), "0");
 		}
 	}
 #ifdef RTCONFIG_WIFI_SON
-	snprintf(sprefix, sizeof(sprefix), "wl%d_", unit);
-	snprintf(prefix, sizeof(prefix), "wl%d_", unit?0:1);
-	nvram_set(strcat_r(prefix, "ssid", tmp), nvram_get(strcat_r(sprefix, "ssid", stmp)));
-	nvram_set(strcat_r(prefix, "wpa_psk", tmp), nvram_get(strcat_r(sprefix, "wpa_psk", stmp)));
-	nvram_set(strcat_r(prefix, "crypto", tmp), nvram_get(strcat_r(sprefix, "crypto", stmp)));
-	nvram_set(strcat_r(prefix, "auth_mode_x", tmp), nvram_get(strcat_r(sprefix, "auth_mode_x", stmp)));
+	if(sw_mode() != SW_MODE_REPEATER) {
+		snprintf(sprefix, sizeof(sprefix), "wl%d_", unit);
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit?0:1);
+		nvram_set(strcat_r(prefix, "ssid", tmp), nvram_get(strcat_r(sprefix, "ssid", stmp)));
+		nvram_set(strcat_r(prefix, "wpa_psk", tmp), nvram_get(strcat_r(sprefix, "wpa_psk", stmp)));
+		nvram_set(strcat_r(prefix, "crypto", tmp), nvram_get(strcat_r(sprefix, "crypto", stmp)));
+		nvram_set(strcat_r(prefix, "auth_mode_x", tmp), nvram_get(strcat_r(sprefix, "auth_mode_x", stmp)));
+		_dprintf("=> wifi clone ok! duplicate %s wifi-setting to %s\n",unit?"5G":"2G",unit?"2G":"5G");
 #if defined(MAPAC2200)
-        duplicate_5g2();
+		duplicate_5g2();
 #endif
+	}
+#endif
+
+	nvram_set("x_Setting", "1");
 	nvram_commit();
-	_dprintf("=> wifi clone ok! duplicate %s wifi-setting to %s\n",unit?"5G":"2G",unit?"2G":"5G");
-#endif
 }
 #endif
 
@@ -3740,13 +4652,15 @@ char *getWscStatus_enrollee(int unit)
 	FILE *fp;
 	int len;
 	char *pt1, *pt2;
+	char ctrl_sk[32];
 
-	snprintf(buf, sizeof(buf), "wpa_cli -i %s status", get_staifname(unit));
-	fp = popen(buf, "r");
+	get_wpa_ctrl_sk(unit, ctrl_sk, sizeof(ctrl_sk));
+	snprintf(buf, sizeof(buf), "wpa_cli -p %s -i %s status", ctrl_sk, get_staifname(unit));
+	fp = PS_popen(buf, "r");
 	if (fp) {
 		memset(buf, 0, sizeof(buf));
 		len = fread(buf, 1, sizeof(buf), fp);
-		pclose(fp);
+		PS_pclose(fp);
 		if (len > 1) {
 			buf[len-1] = '\0';
 			pt1 = strstr(buf, "wpa_state=");
@@ -3766,19 +4680,19 @@ char *getWscStatus_enrollee(int unit)
 }
 #endif
 
-char *getWscStatus(int unit)
+char *getWscStatus(int unit, char *buf, int buflen)
 {
-	char buf[512];
+	char cmd[512];
 	FILE *fp;
 	int len;
 	char *pt1,*pt2;
 
-	snprintf(buf, sizeof(buf), "hostapd_cli -i%s wps_get_status", get_wifname(unit));
-	fp = popen(buf, "r");
+	snprintf(cmd, sizeof(cmd), "hostapd_cli -i%s wps_get_status", get_wififname(unit));
+	fp = PS_popen(buf, "r");
 	if (fp) {
-		memset(buf, 0, sizeof(buf));
-		len = fread(buf, 1, sizeof(buf), fp);
-		pclose(fp);
+		memset(buf, 0, buflen);
+		len = fread(buf, 1, buflen, fp);
+		PS_pclose(fp);
 		if (len > 1) {
 			buf[len-1] = '\0';
 			pt1 = strstr(buf, "Last WPS result: ");
@@ -3848,54 +4762,79 @@ void ate_commit_bootlog(char *err_code)
 
 	FWrite(fail_buffer, OFFSET_FAIL_RET, sizeof(fail_buffer));
 }
-#endif  //RTCONFIG_QCA
 
 #ifdef RTCONFIG_USER_LOW_RSSI
-struct rssi_check_unit_priv_s {
-	int rssi_th;
-	char *wif;
-};
-
-/* Helper of rssi_check_unit()
- * @src:	pointer to WLANCONFIG_LIST
- * @arg:
- * @return:
- * 	0:	success
- *  otherwise:	error
- */
-static int handle_rssi_check_unit(const WLANCONFIG_LIST *src, void *arg)
-{
-	struct rssi_check_unit_priv_s *priv = arg;
-	char cmd[sizeof("iwpriv XXXXXX kickmac XX:XX:XX:XX:XX:XX") + IFNAMSIZ];
-
-	if (!src || !arg)
-		return -1;
-
-	if (priv->rssi_th < src->rssi)
-		return 0;
-
-	snprintf(cmd, sizeof(cmd), "iwpriv %s kickmac %s", priv->wif, src->addr);
-	doSystem(cmd);
-	dbg("=====>Roaming with %s:Disconnect Station: %s  RSSI: %d\n", priv->wif, src->addr, src->rssi);
-
-	return 0;
-}
+typedef struct _WLANCONFIG_LIST {
+         char addr[18];
+         unsigned int aid;
+         unsigned int chan;
+         char txrate[6];
+         char rxrate[6];
+         unsigned int rssi;
+         unsigned int idle;
+         unsigned int txseq;
+         unsigned int rcseq;
+         char caps[12];
+         char acaps[10];
+         char erp[7];
+         char state_maxrate[20];
+         char wps[4];
+         char rsn[4];
+         char wme[4];
+         char mode[31];
+} WLANCONFIG_LIST;
 
 void rssi_check_unit(int unit)
 {
-	int rssi_th;
-	char wif[IFNAMSIZ], prefix[sizeof("wlXXXXXXXXXX_")], tmp[128];
-	struct rssi_check_unit_priv_s priv;
+	#define STA_LOW_RSSI_PATH "/tmp/low_rssi"
+	int rssi_th, channf;
+	FILE *fp;
+	char line_buf[300],cmd[300],tmp[128],wif[8]; // max 14x
+	char prefix[sizeof("wlXXXXXXXXXX_")];
+	WLANCONFIG_LIST *result;
 
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 	if (!(rssi_th= nvram_get_int(strcat_r(prefix, "user_rssi", tmp))))
 		return;
 
+	result=malloc(sizeof(WLANCONFIG_LIST));
+	memset(result, 0, sizeof(WLANCONFIG_LIST));
 	__get_wlifname(unit, 0, wif);
+	channf = QCA_DEFAULT_NOISE_FLOOR;
+	doSystem("wlanconfig %s list > %s", wif, STA_LOW_RSSI_PATH);
+	if (!(fp = fopen(STA_LOW_RSSI_PATH, "r")))
+		return;
+	fgets(line_buf, sizeof(line_buf), fp); // ignore header
+	while ( fgets(line_buf, sizeof(line_buf), fp) ) {
+		sscanf(line_buf, "%s%u%u%s%s%u%u%u%u%s%s%s%s%s%s%s%s",
+					result->addr,
+					&result->aid,
+					&result->chan,
+					result->txrate,
+					result->rxrate,
+					&result->rssi,
+					&result->idle,
+					&result->txseq,
+					&result->rcseq,
+					result->caps,
+					result->acaps,
+					result->erp,
+					result->state_maxrate,
+					result->wps,
+					result->rsn,
+					result->wme,
+					result->mode);
 
-	priv.rssi_th = rssi_th;
-	priv.wif = wif;
-	__get_qca_sta_info_by_ifname(wif, 0, handle_rssi_check_unit, &priv);
+		if (rssi_th <= (result->rssi + channf)) {
+			snprintf(cmd, sizeof(cmd), IWPRIV " %s kickmac %s", wif, result->addr);
+			doSystem(cmd);
+			dbg("=====>Roaming with %s:Disconnect Station: %s  RSSI: %d\n",
+				wif, result->addr, (result->rssi + channf));
+		}
+	}
+	free(result);
+	fclose(fp);
+	unlink(STA_LOW_RSSI_PATH);
 }
 #endif
 
@@ -3904,46 +4843,11 @@ void platform_start_ate_mode(void)
 	int model = get_model();
 
 	switch (model) {
-#if defined(RTAC55U) || defined(RTAC55UHP)
-	case MODEL_RTAC55U:
-	case MODEL_RTAC55UHP:
-		gpio_dir(13, GPIO_DIR_OUT);	/* Configure 2G LED as GPIO */
-#ifndef RTCONFIG_ATEUSB3_FORCE
-		// this way is unstable
-		if(nvram_get_int("usb_usb3") == 0) {
-			eval("ejusb", "-1");
-			modprobe_r(USBOHCI_MOD);
-			modprobe_r(USB20_MOD);
-#ifdef USB30_MOD
-			modprobe_r(USB30_MOD);
-#endif
-			nvram_set("xhci_ports", "2-1");
-			nvram_set("ehci_ports", "1-1 3-1");
-			nvram_set("ohci_ports", "1-1 4-1");
-			modprobe(USB20_MOD);
-			modprobe(USBOHCI_MOD);
-#ifdef USB30_MOD
-			modprobe(USB30_MOD, "u3intf=1");
-#endif
-		}
-#endif
-		break;
-#endif	/* RTAC55U || RTAC55UHP */
-
-#ifdef RT4GAC55U
-	case MODEL_RT4GAC55U:
-		break;
-#endif	/* RT4GAC55U */
-
-#if defined(RTAC88N) || defined(BRTAC828) || defined(RTAD7200) || defined(RTAC88S) || defined(RTAC58U) || defined(RT4GAC53U) || defined(RTAC82U) || defined(MAPAC3000)
-	case MODEL_RTAC88N:
-	case MODEL_BRTAC828:
-	case MODEL_RTAD7200:
-	case MODEL_RTAC88S:
+#if defined(RTAC58U) || defined(RT4GAC53U) || defined(RTAC82U) || defined(RTAC95U)
 	case MODEL_RTAC58U:
 	case MODEL_RT4GAC53U:
 	case MODEL_RTAC82U:
-	case MODEL_MAPAC3000:
+	case MODEL_RTAC95U:
 #ifndef RTCONFIG_ATEUSB3_FORCE
 		// this way is unstable
 		if(nvram_get_int("usb_usb3") == 0) {
@@ -3976,7 +4880,7 @@ void platform_start_ate_mode(void)
 		}
 #endif
 		break;
-#endif	/* RTAC88N || BRTAC828 || RTAD7200 || RTAC88S */
+#endif
 	default:
 		_dprintf("%s: model %d\n", __func__, model);
 	}
@@ -4022,41 +4926,16 @@ static int do_sitesurvey(char *ssv_if)
 }
 
 
-enum {
-	TARGET_ID_ADDRESS = 0,
-	TARGET_ID_ESSID,
-	TARGET_ID_FREQUENCY,
-	TARGET_ID_QUALITY,
-	TARGET_ID_ENCRYPTION,
-	TARGET_ID_IE,
-	TARGET_ID_IE2,
-	TARGET_ID_AUTH,
-	TARGET_ID_CIPHERS,
-	TARGET_ID_PHYMODE,
-	TARGET_ID_TotalCount
-};
-
-char *target_str[TARGET_ID_TotalCount] = {
-	[TARGET_ID_ADDRESS]	= "Address:",
-	[TARGET_ID_ESSID]	= "ESSID:",
-	[TARGET_ID_FREQUENCY]	= "Frequency:",
-	[TARGET_ID_QUALITY]	= "Quality=",
-	[TARGET_ID_ENCRYPTION]	= "Encryption key:",
-	[TARGET_ID_IE]		= "IE:",
-	[TARGET_ID_IE2]		= "IE:",
-	[TARGET_ID_AUTH]	= "Authentication Suites",
-	[TARGET_ID_CIPHERS]	= "Pairwise Ciphers",
-	[TARGET_ID_PHYMODE]	= "phy_mode=",
-};
-
+#define target 9
+char str[target][40]={"Address:","ESSID:","Frequency:","Quality=","Encryption key:","IE:","Authentication Suites","Pairwise Ciphers","phy_mode="};
 int
 getSiteSurvey(int band,char* ofile)
 {
    	int apCount=0;
 	char header[128];
 	FILE *fp,*ofp;
-	char buf[TARGET_ID_TotalCount][200],set_flag[TARGET_ID_TotalCount];
-	int i, ssv_ok = 0, radio, is_sta = 0;
+	char buf[target][200],set_flag[target];
+	int i, ssv_ok = 0, radio, is_sta = 0, bitrate;
 	char *pt1,*pt2;
 	char a1[10],a2[10];
 	char ssid_str[256], ssv_if[10];
@@ -4078,22 +4957,32 @@ getSiteSurvey(int band,char* ofile)
 	int is_ready, wlc_band = -1;
 	char temp1[200];
 	char prefix_header[]="Cell xx - Address:";
-
+#if defined(RTCONFIG_AMAS)
+	int start_ldb = 0;
+#endif
 	dbG("site survey...\n");
 	if (band < 0 || band >= MAX_NR_WL_IF)
 		return 0;
 
 #ifdef RTCONFIG_WIFI_SON
-	sig_tmp=0;
-	sig_bk=0;
-	memset(addr_tmp,0,sizeof(addr_tmp));
-	goto skip_init;
+	if(sw_mode() != SW_MODE_REPEATER) {
+		sig_tmp=0;
+		sig_bk=0;
+		memset(addr_tmp,0,sizeof(addr_tmp));
+		goto skip_init;
+	}
 #endif
 #if defined(RTCONFIG_WIRELESSREPEATER)
 	if (nvram_get("wlc_band") && (repeater_mode() || mediabridge_mode()))
 		wlc_band = nvram_get_int("wlc_band");
 #endif
 
+#if defined(RTCONFIG_AMAS)
+	if(nvram_match("smart_connect_x", "1") && pids("lbd")){
+		stop_qca_lbd();
+		start_ldb = 1;
+	}
+#endif
 	/* Router/access-point/repeater mode
 	 * 1. If VAP i/f is UP, radio on, use VAP i/f to site-survey.
 	 * 2. If VAP i/f is DOWN, radio off, create new STA i/f to site-survey.
@@ -4105,7 +4994,8 @@ getSiteSurvey(int band,char* ofile)
 	 */
 	__get_wlifname(band, 0, ssv_if);
 	radio = get_radio_status(ssv_if);
-	if (!radio || (mediabridge_mode() && band != wlc_band))
+	bitrate = get_bitrate(ssv_if);
+	if (!radio || bitrate || (mediabridge_mode() && band != wlc_band))
 		strcpy(ssv_if, get_staifname(band));
 	if (!strncmp(ssv_if, "sta", 3))
 		is_sta = 1;
@@ -4130,20 +5020,28 @@ getSiteSurvey(int band,char* ofile)
 
 #ifdef RTCONFIG_WIFI_SON
 skip_init:
-        lock = file_lock("sitesurvey");
-        strcpy(ssv_if, get_staifname(band));
-        ifconfig(ssv_if, IFUP, NULL, NULL);
-        ssv_ok = do_sitesurvey(ssv_if);
+	if(sw_mode() != SW_MODE_REPEATER) {
+		lock = file_lock("sitesurvey");
+		strcpy(ssv_if, get_staifname(band));
+		ifconfig(ssv_if, IFUP, NULL, NULL);
+		ssv_ok = do_sitesurvey(ssv_if);
+	}
 #endif
 	file_unlock(lock);
-	
+
+#if defined(RTCONFIG_AMAS)
+	if(start_ldb)
+		start_qca_lbd();
+#endif
+
 	if (!(fp= fopen(APSCAN_WLIST, "r")))
 		return 0;
 	
 	snprintf(header, sizeof(header), "%-4s%-33s%-18s%-9s%-16s%-9s%-8s\n", "Ch", "SSID", "BSSID", "Enc", "Auth", "Siganl(%)", "W-Mode");
 
 #ifndef RTCONFIG_WIFI_SON
-	dbg("\n%s", header);
+	if(sw_mode() != SW_MODE_REPEATER)
+		dbg("\n%s", header);
 #endif
 	if ((ofp = fopen(ofile, "a")) == NULL)
 	{
@@ -4180,10 +5078,10 @@ skip_init:
 			}
 			if(is_ready)
 	   		{		   
-				for(i=0;i<TARGET_ID_TotalCount;i++)
+				for(i=0;i<target;i++)
 				{
-					if(strstr(temp1,target_str[i])!=NULL && set_flag[i]==0)
-					{
+					if(strstr(temp1,str[i])!=NULL && set_flag[i]==0)
+				  	{   
 						set_flag[i]=1;
 					     	memcpy(buf[i],temp1,sizeof(temp1));
 						break;
@@ -4200,12 +5098,13 @@ skip_init:
 #endif
 
 #ifndef RTCONFIG_WIFI_SON
-		dbg("\napCount=%d\n",apCount);
+		if(sw_mode() != SW_MODE_REPEATER)
+			dbg("\napCount=%d\n",apCount);
 #endif
 		apCount++;
 
 		//ch
-	        pt1 = strstr(buf[TARGET_ID_FREQUENCY], "Channel ");
+	        pt1 = strstr(buf[2], "Channel ");	
 		if(pt1)
 		{
 
@@ -4215,30 +5114,30 @@ skip_init:
 		}   
 
 		//ssid
-	        pt1 = strstr(buf[TARGET_ID_ESSID], "ESSID:");
+	        pt1 = strstr(buf[1], "ESSID:");	
 		if(pt1)
 		{
 		   	memset(ssid,0,sizeof(ssid));
-			strncpy(ssid,pt1+strlen("ESSID:")+1,strlen(buf[TARGET_ID_ESSID])-2-(pt1+strlen("ESSID:")+1-buf[TARGET_ID_ESSID]));
+			strncpy(ssid,pt1+strlen("ESSID:")+1,strlen(buf[1])-2-(pt1+strlen("ESSID:")+1-buf[1]));
 		}   
 
 
 		//bssid
-	        pt1 = strstr(buf[TARGET_ID_ADDRESS], "Address: ");
+	        pt1 = strstr(buf[0], "Address: ");	
 		if(pt1)
 		{
 		   	memset(address,0,sizeof(address));
-			strncpy(address,pt1+strlen("Address: "),strlen(buf[TARGET_ID_ADDRESS])-(pt1+strlen("Address: ")-buf[TARGET_ID_ADDRESS])-1);
+			strncpy(address,pt1+strlen("Address: "),strlen(buf[0])-(pt1+strlen("Address: ")-buf[0])-1);
 		}   
 	
 
 		//enc
-		pt1=strstr(buf[TARGET_ID_ENCRYPTION],"Encryption key:");
+		pt1=strstr(buf[4],"Encryption key:");
 		if(pt1)
 		{   
 			if(strstr(pt1+strlen("Encryption key:"),"on"))
 			{
-				pt2=strstr(buf[TARGET_ID_CIPHERS],"Pairwise Ciphers");
+				pt2=strstr(buf[7],"Pairwise Ciphers");
 				if(pt2)
 	  			{
 					if(strstr(pt2,"CCMP TKIP") || strstr(pt2,"TKIP CCMP"))
@@ -4258,46 +5157,25 @@ skip_init:
 
 		//auth
 		memset(auth,0,sizeof(auth));
-		pt1=strstr(buf[TARGET_ID_IE],"IE:");
-		if(pt1 && strstr(buf[TARGET_ID_IE],"Unknown")==NULL)
+		pt1=strstr(buf[5],"IE:");
+		if(pt1 && strstr(buf[5],"Unknown")==NULL)
 		{   			 
-			int wpa_seen = 0;
-			if (strstr(pt1+strlen("IE:"),"WPA2")!=NULL)
-				wpa_seen |= 2;
-			else if (strstr(pt1+strlen("IE:"),"WPA")!=NULL)
-				wpa_seen |= 1;
-			else
-				_dprintf("%s:%d WARNING!! unknown AUTH in 1st IE:[%s]\n", __func__, __LINE__, pt1);
-
-			if (set_flag[TARGET_ID_IE2]) {
-				pt1=strstr(buf[TARGET_ID_IE2],"IE:");
-				if(pt1 && strstr(buf[TARGET_ID_IE2],"Unknown")==NULL) {
-					if (strstr(pt1+strlen("IE:"),"WPA2")!=NULL)
-						wpa_seen |= 2;
-					else if (strstr(pt1+strlen("IE:"),"WPA")!=NULL)
-						wpa_seen |= 1;
-					else
-						_dprintf("%s:%d WARNING!! unknown AUTH in 2nd IE:[%s]\n", __func__, __LINE__, pt1);
-				}
-			}
-			switch (wpa_seen) {
-				case 3 : strlcpy(auth, "WPA-WPA2-", sizeof(auth));
-					 break;
-				case 2 : strlcpy(auth, "WPA2-", sizeof(auth));
-					 break;
-				case 1 : strlcpy(auth, "WPA-", sizeof(auth));
-					 break;
-				default : // 0
-					_dprintf("%s:%d ERROR!! NO AUTH TYPE Set!!\n", __func__, __LINE__);
-			}
-			if (wpa_seen) {
-				pt2=strstr(buf[TARGET_ID_AUTH],"Authentication Suites");
-				if(pt2) {
-					if(strstr(pt2+strlen("Authentication Suites"),"PSK")!=NULL)
-						strcat(auth,"Personal");
-					else //802.1x
-						strcat(auth,"Enterprise");
-				}
+			if(strstr(pt1+strlen("IE:"),"WPA2")!=NULL)
+				strlcpy(auth, "WPA2-", sizeof(auth));
+			else if(strstr(pt1+strlen("IE:"),"WPA")!=NULL) 
+				strlcpy(auth, "WPA-", sizeof(auth));
+		
+			pt2=strstr(buf[6],"Authentication Suites");
+			if(pt2)
+	  		{
+				if(strstr(pt2+strlen("Authentication Suites"),"SAE")!=NULL)
+			   		strcat(auth,"WPA3-Personal");
+				else if(strstr(pt2+strlen("Authentication Suites"),"PSK")!=NULL)
+			   		strcat(auth,"Personal");
+				else if(strstr(pt2+strlen("Authentication Suites"),"802.1x")!=NULL)
+				   	strcat(auth,"Enterprise");
+				else
+					_dprintf("%s:%d ERROR!! NO AKM TYPE Set!!\n", __func__, __LINE__);
 			}
 		}
 		else
@@ -4311,7 +5189,7 @@ skip_init:
 		}
 		   		  
 		//sig
-	        pt1 = strstr(buf[TARGET_ID_QUALITY], "Quality=");
+	        pt1 = strstr(buf[3], "Quality=");	
 		pt2 = NULL;
 		if (pt1 != NULL)
 			pt2 = strstr(pt1,"/");
@@ -4324,29 +5202,36 @@ skip_init:
 			strncpy(a2,pt2+1,strstr(pt2," ")-(pt2+1));
 			sprintf(sig,"%d",100*(atoi(a1)+6)/(atoi(a2)+6));
 #ifdef RTCONFIG_WIFI_SON
-			memset(siglv,0,sizeof(siglv));
-			memset(a3,0,sizeof(a3));
-			pt3=strstr(pt2,"Signal level=-");
-			if(pt3)
-			{
-				pt4=strstr(pt3," dBm");
-				if(pt3 && pt4)
+			if(sw_mode() != SW_MODE_REPEATER) {
+				memset(siglv,0,sizeof(siglv));
+				memset(a3,0,sizeof(a3));
+				pt3=strstr(pt2,"Signal level=-");
+				if(pt3)
 				{
-				 	strncpy(a3,pt3+strlen("Signal level=-"),pt4-pt3-strlen("Signal level=-"));
-					sprintf(siglv,"%s",a3);
-				}	
+					pt4=strstr(pt3," dBm");
+					if(pt3 && pt4)
+					{
+						strncpy(a3,pt3+strlen("Signal level=-"),pt4-pt3-strlen("Signal level=-"));
+						sprintf(siglv,"%s",a3);
+					}	
+				}
 			}
 #endif
 		}   
 
 		//wmode
 		memset(wmode,0,sizeof(wmode));
-		pt1=strstr(buf[TARGET_ID_PHYMODE],"phy_mode=");
+		pt1=strstr(buf[8],"phy_mode=");
 		if(pt1)
 		{   
 
 			if((pt2=strstr(pt1+strlen("phy_mode="),"IEEE80211_MODE_11AC_VHT"))!=NULL)
 				strlcpy(wmode, "ac", sizeof(wmode));
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+			else if((pt2=strstr(pt1+strlen("phy_mode="),"IEEE80211_MODE_11AXA_HE"))!=NULL
+					|| (pt2=strstr(pt1+strlen("phy_mode="),"IEEE80211_MODE_11AXG_HE"))!=NULL)
+				strlcpy(wmode, "ax", sizeof(wmode));
+#endif
 			else if((pt2=strstr(pt1+strlen("phy_mode="),"IEEE80211_MODE_11A"))!=NULL
 			        || (pt2=strstr(pt1+strlen("phy_mode="),"IEEE80211_MODE_TURBO_A"))!=NULL)
 				strlcpy(wmode, "a", sizeof(wmode));
@@ -4577,28 +5462,27 @@ char *wlc_nvname(char *keyword)
 }
 #endif
 
-char *getStaMAC(void)
+char *getStaMAC(char *buf, int buflen)
 {
-	char buf[512];
 	FILE *fp;
-	int len,unit;
+	int len;
 	char *pt1,*pt2;
-	unit=nvram_get_int("wlc_band");
+	char cmd[512];
 
-	snprintf(buf, sizeof(buf), "ifconfig %s", get_staifname(unit));
+	snprintf(cmd, sizeof(cmd), "ifconfig %s", get_staifname(nvram_get_int("wlc_band")));
 
-	fp = popen(buf, "r");
+	fp = PS_popen(buf, "r");
 	if (fp) {
-		memset(buf, 0, sizeof(buf));
-		len = fread(buf, 1, sizeof(buf), fp);
-		pclose(fp);
+		memset(buf, 0, buflen);
+		len = fread(buf, 1, buflen, fp);
+		PS_pclose(fp);
 		if (len > 1) {
-			buf[len-1] = '\0';
+			buf[len - 1] = 0x0;
 			pt1 = strstr(buf, "HWaddr ");
 			if (pt1) 
 			{
+				pt1[24] = 0x0;
 				pt2 = pt1 + strlen("HWaddr ");
-				chomp(pt2);
 				return pt2;
 			}
 		}
@@ -4615,11 +5499,11 @@ unsigned int getStaXRssi(int unit)
 
 	strcpy(sta, get_staifname(unit));
 	snprintf(buf, sizeof(buf), "iwconfig %s", sta);
-	fp = popen(buf, "r");
+	fp = PS_popen(buf, "r");
 	if (fp) {
 		memset(buf, 0, sizeof(buf));
 		len = fread(buf, 1, sizeof(buf), fp);
-		pclose(fp);
+		PS_pclose(fp);
 		if (len > 1) {
 			buf[len-1] = '\0';
 			pt1 = strstr(buf, "Signal level=");
@@ -4639,13 +5523,16 @@ char *get_qca_iwpriv(char *name, char *command)
 	FILE *fp;
 	int len;
 	char *pt1, *pt2;
-
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+	sprintf(buf, "cfg80211tool %s %s", name, command);
+#else
 	sprintf(buf, "iwpriv %s %s", name, command);
-	fp = popen(buf, "r");
+#endif
+	fp = PS_popen(buf, "r");
 	if (fp) {
 		memset(buf, 0, sizeof(buf));
 		len = fread(buf, 1, sizeof(buf), fp);
-		pclose(fp);
+		PS_pclose(fp);
 		if (len > 1) {
 			buf[len-1] = '\0';
 			pt1 = strstr(buf, command);
@@ -4672,13 +5559,16 @@ unsigned int getPapState(int unit)
 #if defined(RTCONFIG_CONCURRENTREPEATER)	
 	if (!nvram_get_int("wlready") && !mediabridge_mode()) return 0;
 #endif
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+	if(!nvram_get_int("wlready")) return 0;
+#endif
 	strcpy(sta, get_staifname(unit));
 	snprintf(buf, sizeof(buf), "iwconfig %s", sta);
-	fp = popen(buf, "r");
+	fp = PS_popen(buf, "r");
 	if (fp) {
 		memset(buf, 0, sizeof(buf));
 		len = fread(buf, 1, sizeof(buf), fp);
-		pclose(fp);
+		PS_pclose(fp);
 		if (len > 1) {
 			buf[len-1] = '\0';
 			pt1 = strstr(buf, "Access Point:");
@@ -4688,12 +5578,12 @@ unsigned int getPapState(int unit)
 				if (pt1) 
 				{
 					snprintf(buf, sizeof(buf), "ifconfig | grep %s", sta);
-				     	fp = popen(buf, "r");
+				     	fp = PS_popen(buf, "r");
 					if(fp)
 				   	{
 						 memset(buf, 0, sizeof(buf));
 						 len = fread(buf, 1, sizeof(buf), fp);
-						 pclose(fp);
+						 PS_pclose(fp);
 						 if(len>=1)
 						    return 0;
 						 else
@@ -4707,7 +5597,9 @@ unsigned int getPapState(int unit)
 				{
 					char buf2[64] = {0};
 					char *wpa_state;
-					snprintf(buf2, sizeof(buf2), "wpa_cli -p /var/run/wpa_supplicant-sta%d -i sta%d status", unit, unit);
+					char ctrl_sk[32];
+					get_wpa_ctrl_sk(unit, ctrl_sk, sizeof(ctrl_sk));
+					snprintf(buf2, sizeof(buf2), "wpa_cli -p %s -i sta%d status", ctrl_sk, unit);
 					FILE *fp2 = NULL;
 					fp2 = popen(buf2, "r");
 					if (fp2) {
@@ -4766,43 +5658,6 @@ unsigned int get_conn_link_quality(int unit)
 					return 0; /* not connected to PAP */	
 			}
 
-#if defined(RPAC51)
-
-			/* get Signal level */
-			pt1 = strstr(buf, "Signal level=-");
-			if (pt1) {
-				pt2 = pt1 + strlen("Signal level=-");
-				pt1 = strchr(pt2, 'd');
-				if (pt1) {
-					*pt1 = 0;
-					if(safe_atoi(pt2)>=65)
-					{
-						link_quality =69;
-					}
-					else if(safe_atoi(pt2)<=20){
-						link_quality =80;
-					}
-					else{
-						link_quality =75;
-					}
-				}
-			}
-
-			/* get link quality */
-			pt1 = strstr(buf, "Link Quality=");
-			if (pt1) {
-				pt2 = pt1 + strlen("Link Quality=");
-				pt1 = strchr(pt2, '/');
-				if (pt1) {
-					*pt1 = 0;
-					//dbG("Link Quality(%d)=%s\n", unit, pt2);
-					if(safe_atoi(pt2)==0)
-					{
-						link_quality=0;
-					}
-				}
-			}
-#else
 			/* get link quality */
 			pt1 = strstr(buf, "Link Quality=");
 			if (pt1) {
@@ -4814,7 +5669,6 @@ unsigned int get_conn_link_quality(int unit)
 					link_quality = safe_atoi(pt2);
 				}
 			}
-#endif
 		}
 	}
 	
@@ -4847,13 +5701,18 @@ int select_wlc_band()
 #endif
 
 // TODO: wlcconnect_main
-// TODO: wlcconnect_main
 //	wireless ap monitor to connect to ap
 //	when wlc_list, then connect to it according to priority
 #define FIND_CHANNEL_INTERVAL	15
 int wlcconnect_core(void)
 {
 	int unit, ret;
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+	static int reconnected;
+	int shortgi = -1, i;
+	char buf[18] = {0};
+	char ifname[16] = {0}, ifname2[16] = {0}, prefix[8];
+#endif
 
 #ifdef RTCONFIG_CONCURRENTREPEATER
 	int sw_mode = sw_mode();
@@ -4914,8 +5773,35 @@ int wlcconnect_core(void)
 	unit=nvram_get_int("wlc_band");
 	ret=getPapState(unit);
 #endif
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+	if(ret!=2){
+		dbG("check..wlconnect=%d \n",ret);
+		reconnected = 0;
+	}else{
+		memset(buf, 0, sizeof(buf));
+		strlcpy(ifname, get_staifname(unit), sizeof(ifname));
+		strlcpy(buf, iwpriv_get(ifname, "get_mode") ? : "", sizeof(buf))
+		if(!strncmp(buf, "11GHE", 5) || !strncmp(s, "11AHE", 5)){
+			snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+			for(i = 0; i < num_of_mssid_support(); i++){
+				get_wlxy_ifname(unit, 0, ifname2);
+				if(iface_exist(ifname2)){
+					strlcpy(buf, iwpriv_get(ifname2, "get_mode") ? : "", sizeof(buf));
+					if((!strncmp(buf, "11GHE", 5) || !strncmp(buf, "11AHE", 5)) && iwpriv_get_int(ifname2, "get_shortgi", &shortgi) >= 0 && shortgi == 1){
+						eval("cfg80211tool", ifname2, "shortgi", "0");
+					}
+				}
+			}
+		}
+		if(!reconnected && nvram_match(strcat_r(prefix, "nband", buf), "1")){
+			doSystem("cfg80211tool %s mode %s", ifname, "AUTO");
+			reconnected = 1;
+		}
+	}
+#else
 	if(ret!=2) //connected
 		dbG("check..wlconnect=%d \n",ret);
+#endif
 	return ret;
 }
 
@@ -4936,80 +5822,21 @@ int wlcscan_ssid_rssi(int band, char *ssid)
 
 	nvram_set_int("wlcscan_ssid_rssi_state", 1);
 
-	int retval = 0;
-	char buf[8192];
-	FILE *fp;
-	int len;
-	char *pt1, *pt2;
-	int link_quality = 0;
-	char tmp[100] = {0};
+	int ret, i, k;
+	int retval = 0, ap_count = 0, count = 0;
+	unsigned char bssid[6];
+	wl_scan_results_t *result;
+	wl_scan_params_t *params;
+	int params_size = WL_SCAN_PARAMS_FIXED_SIZE + NUMCHANS * sizeof(uint16);
+	char wif[8] = {0}, prefix[] = "wlXXXXXXXXXX_", tmp[100] = {0};
 
-	if (!nvram_get_int("wlready") && !mediabridge_mode()) return 0;
+	snprintf(prefix, sizeof(prefix), "wl%d_", band);
+	strncpy(wif, nvram_safe_get(strcat_r(prefix, "ifname", tmp)), sizeof(wif));
 
-	snprintf(buf, sizeof(buf), "iwconfig %s", get_staifname(band));
-	fp = popen(buf, "r");
-	if (fp) {
-		memset(buf, 0, sizeof(buf));
-		len = fread(buf, 1, sizeof(buf), fp);
-		pclose(fp);
-		if (len > 1) {
-			buf[len-1] = '\0';
-			/* no need check whether connected to PAP */
-#if 0
-			pt1 = strstr(buf, "Access Point:");
-			if (pt1) {
-				pt2 = pt1 + strlen("Access Point:");
-				pt1 = strstr(pt2, "Not-Associated");
-				if (pt1)
-					return 0; /* not connected to PAP */	
-			}
-#endif
+	retval = 0;
 
-			/* get Signal level */
-			pt1 = strstr(buf, "Signal level=-");
-			if (pt1) {
-				pt2 = pt1 + strlen("Signal level=-");
-				pt1 = strchr(pt2, 'd');
-				if (pt1) {
-					*pt1 = 0;
-					if(safe_atoi(pt2)>=65)
-					{
-						link_quality =69;
-					}
-					else if(safe_atoi(pt2)<=20){
-						link_quality =80;
-					}
-					else{
-						link_quality =75;
-					} 
-				}
-			}
-
-			/* get link quality */
-			pt1 = strstr(buf, "Link Quality=");
-			if (pt1) {
-				pt2 = pt1 + strlen("Link Quality=");
-				pt1 = strchr(pt2, '/');
-				if (pt1) {
-					*pt1 = 0;
-					//dbG("Link Quality(%d)=%s\n", unit, pt2);
-					if(safe_atoi(pt2)==0)
-					{
-						snprintf(tmp, sizeof(tmp), "wlc%d_scan_rssi", band);
-						nvram_set_int(tmp, 0);
-						nvram_set_int("wlcscan_ssid_rssi_state", -1);
-						return retval;
-					}
-				}
-			}
-
-
-		}
-	}
-	
 	snprintf(tmp, sizeof(tmp), "wlc%d_scan_rssi", band);
-	nvram_set_int(tmp, link_quality);
-
+	nvram_set_int(tmp, 50);
 	nvram_set_int("wlcscan_ssid_rssi_state", 2);
 	return retval;
 }
@@ -5030,16 +5857,26 @@ int wlcscan_core(char *ofile, char *wif)
 	return 0;
 }
 
-#ifdef RTCONFIG_LAN4WAN_LED
 int LanWanLedCtrl(void)
 {
+#ifdef RTCONFIG_LANWAN_LED
+	if(get_lanports_status()
+#if defined(RTCONFIG_WPS_ALLLED_BTN) || defined(RTCONFIG_WPS_RST_BTN)
+			&& nvram_match("AllLED", "1")
+#endif
+			)
+		led_control(LED_LAN, LED_ON);
+	else
+		led_control(LED_LAN, LED_OFF);
+#elif defined(RTCONFIG_LAN4WAN_LED)
 #ifdef RTCONFIG_WPS_ALLLED_BTN
 	if (nvram_match("AllLED", "1"))
 #endif
 	led_ctrl();
+#endif
+
 	return 1;
 }
-#endif	/* LAN4WAN_LED*/
 
 #if defined(MAPAC1300) || defined(VZWAC1300)
 int get_wifi_thermal(int band)
@@ -5193,6 +6030,30 @@ void gen_spcmd(char *cmd)
 }
 #endif
 
+struct acs_chweight_t {
+	int model;
+	char *country;
+	const char *band;
+	char *chanlist;
+}; 
+/*	
+ *	channel initial: "0"
+ *	2.4G channel list: "10", "20", "30", "40", "50", "60", "70", "80", "90", "100", "110", "120", "130", "140"
+ *	5G channel list:
+		  "360", "400", "440", "480"
+		, "520", "560", "600", "640"
+		, "1000", "1040", "1080", "1120", "1160", "1200", "1240", "1280", "1320", "1360", "1400"
+		, "1490", "1530", "1570", "1610", "1650"
+ *	channel weight: units digit
+ */
+struct acs_chweight_t acs_chweight[] = {
+#if defined(VZWAC1300)
+	{ MODEL_VZWAC1300, "US", VPHY_2G, "0 12 112" },
+	{ MODEL_VZWAC1300, "US", VPHY_5G, "0 364 1652" },
+#endif
+	{ MODEL_UNKNOWN, NULL, NULL, NULL }
+};
+
 /*
  * chan + weight = chanweight.
  * weight: 0 ~ 9
@@ -5201,27 +6062,299 @@ void gen_spcmd(char *cmd)
  * */
 void acs_ch_weight_param()
 {
-/*	2.4G channel list: "10", "20", "30", "40", "50", "60", "70", "80", "90", "100", "110", "120", "130", "140" */
-	char *chw_2G[]= {
-		  "0"
-	};
-/*	5G channel list:
-		  "360", "400", "440", "480"
-		, "520", "560", "600", "640"
-		, "1000", "1040", "1080", "1120", "1160", "1200", "1240", "1280", "1320", "1360", "1400"
-		, "1490", "1530", "1570", "1610", "1650" */
-	char *chw_5G[]= {
-		  "0"
-	};
+	struct acs_chweight_t *acs_chweight_p=acs_chweight; 
+	char *country=nvram_safe_get("wl0_country_code");
+	char *band, *buf;
+	char *delim=" ", tmp[256];
+
+	for (; acs_chweight_p->model!=0; acs_chweight_p++) {
+		if (!strncmp(country, acs_chweight_p->country, strlen(country))) {
+			memset(tmp, '\0', sizeof(tmp));
+			band = strdup(acs_chweight_p->band);
+			strncpy(tmp, acs_chweight_p->chanlist, sizeof(tmp));
+
+			buf = strtok(tmp, delim);
+			while (buf!=NULL) {
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+				eval("cfg80211tool", band, "acs_weight", buf);
+#else
+				eval("iwpriv", band, "acs_weight", buf);
+#endif
+				buf = strtok(NULL, delim);
+			}
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+			eval("cfg80211tool", band, "g_acs_weight", "");
+#else
+			eval("iwpriv", band, "g_acs_weight", "");
+#endif
+		}
+	}
+
+}
+
+#ifdef RTCONFIG_AMAS
+int get_psta_rssi(int unit)
+{
+	return Pty_get_upstream_rssi(unit);
+}
+
+extern int g_upgrade;
+
+int no_need_obd(void)
+{
+	if ((getAmasSupportMode() & 2) == 0 || g_reboot || g_upgrade)
+		return -1;
+
+	if (IS_ATE_FACTORY_MODE())
+		return -1;
+
+	if (!is_router_mode() || (nvram_get_int("obd_Setting") == 1) || (nvram_get_int("x_Setting") == 1))
+		return -1;
+
+	if (nvram_get_int("wlready") == 0)
+		return -1;
+
+	return pids("obd");
+}
+
+int no_need_obdeth(void)
+{
+	if ((getAmasSupportMode() & 2) == 0 || g_reboot || g_upgrade)
+		return -1;
+
+	if (IS_ATE_FACTORY_MODE())
+		return -1;
+
+	if (!is_router_mode() || (nvram_get_int("obd_Setting") == 1) || (nvram_get_int("x_Setting") == 1))
+		return -1;
+
+	if (nvram_get_int("wlready") == 0)
+		return -1;
+
+	return pids("obdeth");
+}
+
+void amas_wait_wifi_ready(void)
+{
+	while( !nvram_get_int("wlready") )
+		sleep(5);
+}
+
+int en_multi_profile()
+{
+	if(nvram_match("re_mode", "1"))
+	{
+		if(nvram_get_int("dwb_mode") != 1)
+      		return nvram_get_int("dwb_mode") == 3;
+	}
+	return 0;
+}
+
+
+int __fastcall write_wpa_supplicant_network(int result, int a2, char *src, int a4, char *a5, const char *a6, int a7)
+
+#ifdef RTCONFIG_BHCOST_OPT
+void apply_config_to_driver(int band)
+#else
+void apply_config_to_driver()
+#endif
+{
+}
+
+int check_gn()
+{
+}
+
+#ifdef RTCONFIG_AMAS_WGN
+void wgn_sysdep_swtich_unset(int vid)
+{
+	if(&__wgn_sysdep_swtich_unset)
+		_wgn_sysdep_swtich_unset(vid);
+	else
+		doSystem("ssdk_sh vlan entry del %d", vid);
+}
+
+void wgn_sysdep_swtich_set(int vid)
+{
 	int i;
+	if(&__wgn_sysdep_swtich_set)
+		return __wgn_sysdep_swtich_set();
 
-	for (i=0; i<sizeof(chw_2G)/sizeof(*chw_2G); i++)
-		eval("iwpriv", VPHY_2G, "acs_chweight", chw_2G[i]);
+	doSystem("ssdk_sh vlan entry create %d", vid);
+	for(i = 0; i < 6; i++)
+		doSystem("ssdk_sh vlan member add %d %d unmodified", vid, i);
+}
+#endif
+char *find_brX(const char *br)
+{
+	int id;
+	static char br_if[16];
+	char *wgn_if = nvram_safe_get("wgn_ifnames");
+	char *next, *p;
+	char dest[32], buf[80];
+	memset(br_if, 0, sizeof(br_if));
+	if(*wgn_if)
+	{
+		foreach(dest, wgn_if, next)
+		{
+			if(sscanf(dest, "br%d", &id) == 1)
+			{
+				memset(buf, 0, sizeof(buf));
+				snprintf(buf, sizeof(buf), "br%d_ifnames", id);
+				p = nvram_get(buf);
+				if(p && *p && strstr(p, br))
+					strlcpy(br_if, dest, sizeof(br_if));
+			}
+		}
+	}
+	if(!br_if[0])
+		strlcpy(br_if, nvram_safe_get("lan_ifname"), sizeof(br_if));
+	return br_if;
+}
+#endif
 
-	for (i=0; i<sizeof(chw_5G)/sizeof(*chw_5G); i++)
-		eval("iwpriv", VPHY_5G, "acs_chweight", chw_5G[i]);
+void post_wlc_connected()
+{
+	;
+}
 
-	eval("iwpriv", VPHY_2G, "get_acs_chweight", "");
-	eval("iwpriv", VPHY_5G, "get_acs_chweight", "");
+void pre_addif_bridge(int iftype)
+{
+	;
+}
+
+void post_sent_action(void)
+{
+	;
+}
+
+void post_update_status(void)
+{
+	;
+}
+
+void post_bh_changed(int iftype)
+{
+	int if_type;
+	char s[64], tmp[64];
+	char *next, *next2, *p;
+	char dest[32], dest2[32];
+	char *ifname = "lan";
+	if(nvram_get_int("wgn_enabled") && nvram_get_int("re_mode"))
+	{
+		memset(s, 0, sizeof(s));
+		strlcpy(s, nvram_safe_get("amas_ifname"), sizeof(s));
+		if(s[0])
+		{
+			foreach(dest, nvram_safe_get("wgn_ifnames"), next){
+				memset(tmp, 0, sizeof(tmp));
+				snprintf(tmp, sizeof(tmp), "wgn_%s_lan_ifnames", dest);
+				foreach(dest2, nvram_safe_get(tmp), next2)
+					eval("brctl", "delif", dest2);
+				memset(tmp, 0, sizeof(tmp));
+				snprintf(tmp, sizeof(tmp), "wgn_%s_sta_ifnames", dest);
+				foreach(dest2, nvram_safe_get(tmp), next2)
+					eval("brctl", "delif", dest2);
+			}
+			if_type = iftype - 1;
+			if(if_type >= 0x8000)
+				ifname = "sta";
+			foreach(dest, nvram_safe_get("wgn_ifnames"), next){
+				memset(tmp, 0, sizeof(tmp));
+				snprintf(tmp, sizeof(tmp), "wgn_%s_%s_ifnames", dest, ifname);
+				if(if_type >= 0x8000)
+				{
+					p = strstr(s, ".0");
+					if(p)
+						*p = 0x0;
+					foreach(dest2, nvram_safe_get(tmp), next2){
+						if(strstr(s, dest2))
+							eval("brctl", "addif", dest, dest2);
+					}
+				}else{
+					foreach(dest2, nvram_safe_get(tmp), next2){
+						if(strstr(s, dest2))
+							eval("brctl", "addif", dest, dest2);
+					}
+				}
+			}
+		}else{
+			foreach(dest, nvram_safe_get("wgn_ifnames"), next){
+				memset(tmp, 0, sizeof(tmp));
+				snprintf(tmp, sizeof(tmp), "wgn_%s_lan_ifnames", dest);
+				foreach(dest2, nvram_safe_get(tmp), next2){
+					eval("brctl", "delif", dest2);
+				}
+				memset(tmp, 0, sizeof(tmp));
+				snprintf(tmp, sizeof(tmp), "wgn_%s_sta_ifnames", dest);
+				foreach(dest2, nvram_safe_get(tmp), next2){
+					eval("brctl", "delif", dest2);
+				}
+			}
+		}
+	}
+}
+
+void post_addif_bridge(int iftype)
+{
+	;
+}
+
+void pre_delif_bridge(int iftype)
+{
+	;
+}
+
+void post_delif_bridge(int iftype)
+{
+	;
+}
+
+void duplicate_wl_ifaces(void)
+{
+	int unit = 1;
+	char prefix[] = "wlXXXXXXX_", prefix2[] = "wlXXXXXXX_";
+	char tmp[128], tmp2[128];
+
+	snprintf(prefix, sizeof(prefix), "wl%d_", 0);
+	while(unit < num_of_wl_if())
+	{
+		if((nvram_get_int("dwb_mode") == 1 || nvram_get_int("dwb_mode") == 3) && nvram_get_int("dwb_band") > 0 && unit == nvram_get_int("dwb_band"))
+		{
+			snprintf(prefix2, sizeof(prefix2), "wl%d_", unit);
+			if(!nvram_get("sw_mode") || nvram_get_int("sw_mode") == 1)
+			{
+				if(strstr(nvram_safe_get(strcat_r(prefix2, "ssid", tmp2)), "dwb"))
+				{
+					dbg("Don't apply wl0 to wl%d in smart_connect function, if enabled DWB mode.\n", unit);
+					continue;
+				}
+			}
+			nvram_set_int("dwb_mode", 0);
+		}
+		snprintf(prefix2, sizeof(prefix2), "wl%d_", unit);
+		nvram_set(strcat_r(prefix2, "ssid", tmp2), nvram_safe_get(strcat_r(prefix, "ssid", tmp)));
+		nvram_set(strcat_r(prefix2, "auth_mode_x", tmp2), nvram_safe_get(strcat_r(prefix, "auth_mode_x", tmp)));
+		nvram_set(strcat_r(prefix2, "wep_x", tmp2), nvram_safe_get(strcat_r(prefix, "wep_x", tmp)));
+		nvram_set(strcat_r(prefix2, "key", tmp2), nvram_safe_get(strcat_r(prefix, "key", tmp)));
+		nvram_set(strcat_r(prefix2, "key1", tmp2), nvram_safe_get(strcat_r(prefix, "key1", tmp)));
+		nvram_set(strcat_r(prefix2, "key2", tmp2), nvram_safe_get(strcat_r(prefix, "key2", tmp)));
+		nvram_set(strcat_r(prefix2, "key3", tmp2), nvram_safe_get(strcat_r(prefix, "key3", tmp)));
+		nvram_set(strcat_r(prefix2, "key4", tmp2), nvram_safe_get(strcat_r(prefix, "key4", tmp)));
+		nvram_set(strcat_r(prefix2, "phrase_x", tmp2), nvram_safe_get(strcat_r(prefix, "phrase_x", tmp)));
+		nvram_set(strcat_r(prefix2, "crypto", tmp2), nvram_safe_get(strcat_r(prefix, "crypto", tmp)));
+		nvram_set(strcat_r(prefix2, "wpa_psk", tmp2), nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp)));
+		nvram_set(strcat_r(prefix2, "radius_ipaddr", tmp2), nvram_safe_get(strcat_r(prefix, "radius_ipaddr", tmp)));
+		nvram_set(strcat_r(prefix2, "radius_key", tmp2), nvram_safe_get(strcat_r(prefix, "radius_key", tmp)));
+		nvram_set(strcat_r(prefix2, "radius_port", tmp2), nvram_safe_get(strcat_r(prefix, "radius_port", tmp)));
+		nvram_set(strcat_r(prefix2, "closed", tmp2), nvram_safe_get(strcat_r(prefix, "closed", tmp)));
+		nvram_set(strcat_r(prefix2, "11ax", tmp2), nvram_safe_get(strcat_r(prefix, "11ax", tmp)));
+	}
+	nvram_commit();
+}
+
+int get_wifi_country_code_tmp(char *ccode, char *ccode_str, int len)
+{
+	return -1;
 }
 

@@ -87,6 +87,9 @@
 #include <asm/setup.h>
 #include <asm/sections.h>
 #include <asm/cacheflush.h>
+#if defined(CONFIG_PLAX56XP4)
+#include <asm/gpio.h>
+#endif
 
 static int kernel_init(void *);
 
@@ -157,6 +160,44 @@ static int __init set_reset_devices(char *str)
 }
 
 __setup("reset_devices", set_reset_devices);
+
+uint32_t *gl_tmp_otp_value;
+EXPORT_SYMBOL(gl_tmp_otp_value);
+
+char mid_str[30];
+EXPORT_SYMBOL(mid_str);
+static int __init mid_setup(char *str)
+{
+	strncpy(mid_str, str, sizeof(mid_str));
+	printk("MID is [%s]\n", mid_str);
+	return 1;
+}
+__setup("mid=", mid_setup);
+
+long int rfs_offset;
+EXPORT_SYMBOL(rfs_offset);
+static int __init rfs_setup(char *str)
+{
+	ssize_t	status;
+
+	status = kstrtol(str, 16, &rfs_offset);
+	return 1;
+}
+__setup("root_rfs=", rfs_setup);
+
+int is_norplusnand;
+EXPORT_SYMBOL(is_norplusnand);
+static int __init ftype_setup(char *str)
+{
+	if (!strcmp(str,"nand"))
+		is_norplusnand=2;
+	else if (!strcmp(str,"norplusnand"))
+		is_norplusnand=1;
+	else
+		is_norplusnand=0;
+	return 1;
+}
+__setup("flash_type=", ftype_setup);
 
 static const char *argv_init[MAX_INIT_ARGS+2] = { "init", NULL, };
 const char *envp_init[MAX_INIT_ENVS+2] = { "HOME=/", "TERM=linux", NULL, };
@@ -582,6 +623,10 @@ asmlinkage __visible void __init start_kernel(void)
 	trap_init();
 	mm_init();
 
+#ifdef CONFIG_DUMP_PREV_OOPS_MSG
+	prepare_and_dump_previous_oops();
+#endif
+
 	/*
 	 * Set up the scheduler prior starting any interrupts (such as the
 	 * timer interrupt). Full topology setup happens at smp_init()
@@ -967,6 +1012,10 @@ static int __ref kernel_init(void *unused)
 	numa_default_policy();
 
 	flush_delayed_fput();
+#if defined(CONFIG_PLAX56XP4)
+	// turn off green LED
+	gpio_set_value(32, 0);
+#endif
 
 	if (ramdisk_execute_command) {
 		ret = run_init_process(ramdisk_execute_command);
@@ -989,7 +1038,7 @@ static int __ref kernel_init(void *unused)
 		panic("Requested init %s failed (error %d).",
 		      execute_command, ret);
 	}
-	if (!try_to_run_init_process("/etc/preinit") ||
+	if (/*!try_to_run_init_process("/etc/preinit") ||*/
 	    !try_to_run_init_process("/sbin/init") ||
 	    !try_to_run_init_process("/etc/init") ||
 	    !try_to_run_init_process("/bin/init") ||
@@ -1032,6 +1081,10 @@ static noinline void __init kernel_init_freeable(void)
 	page_alloc_init_late();
 
 	do_basic_setup();
+	gl_tmp_otp_value=kzalloc(sizeof(uint32_t), GFP_KERNEL);
+	if (!gl_tmp_otp_value) {
+		pr_err("Warning: unable to allocate tmp_otp.\n");
+	}
 
 	/* Open the /dev/console on the rootfs, this should never fail */
 	if (sys_open((const char __user *) "/dev/console", O_RDWR, 0) < 0)
@@ -1064,3 +1117,4 @@ static noinline void __init kernel_init_freeable(void)
 	integrity_load_keys();
 	load_default_modules();
 }
+

@@ -19,19 +19,9 @@ sudo apt-get -y install build-essential asciidoc binutils bzip2 gawk gettext git
 
 5. 分别执行 `cd mtk-toolchains`
 
-	`sudo ln -sf $(pwd)/toolchain-aarch64_cortex-a53+neon-vfpv4_gcc-5.4.0_glibc-2.24 /opt/`
+	`sudo ln -sf $(pwd)/toolchain-aarch64_cortex-a53_gcc-8.4.0_musl /opt/`
 
 	`sudo ln -sf $(pwd)/lede-toolchain-mediatek-mt7629_gcc-5.4.0_musl-1.1.24_eabi.Linux-x86_64 /opt/`
-
-	`sudo ln -sf $(pwd)/toolchain-mipsel_24kc_gcc-5.4.0_musl-1.1.24 /opt/`
-
-	`sudo ln -sf $(pwd)/toolchain-aarch64_cortex-a53_gcc-8.4.0_glibc /opt/`
-	
-	mt7622继续执行
-
-	`cd toolchain-aarch64_cortex-a53+neon-vfpv4_gcc-5.4.0_glibc-2.24/lib`
-
-	`tar xvJf libc.a.tar.xz`
 
 6. 然后 `cd ../rtax53u/release/src-mtk-mips` 进入目录
 

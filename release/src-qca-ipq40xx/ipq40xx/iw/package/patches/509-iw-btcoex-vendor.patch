@@ -1,0 +1,170 @@
+From 65846803ea5b2eb6d38eff89014acc5a45bc9b4b Mon Sep 17 00:00:00 2001
+From: Tamizh chelvam <tamizhr@codeaurora.org>
+Date: Tue, 28 May 2019 18:01:44 +0530
+Subject: [PATCH] iw btcoex vendor
+
+Signed-off-by: Tamizh chelvam <tamizhr@codeaurora.org>
+---
+ vendor.c |   39 ++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 38 insertions(+), 1 deletion(-)
+
+--- a/vendor.c
++++ b/vendor.c
+@@ -78,9 +78,15 @@ static int handle_vendor(struct nl80211_
+ {
+ 	unsigned int oui;
+ 	unsigned int subcmd;
++	struct nlattr *params;
+ 	char buf[2048] = {};
+-	int res, count = 0;
++	int res, count = 0, i = 0;
+ 	FILE *file = NULL;
++	char *end;
++	unsigned int coex, prio_mask, weight;
++	bool wlan_prio_config = false;
++	struct nlattr *wlan_prio;
++	struct nl_msg *prio_msg;
+ 
+ 	if (argc < 3)
+ 		return 1;
+@@ -105,6 +111,9 @@ static int handle_vendor(struct nl80211_
+ 	NLA_PUT_U32(msg, NL80211_ATTR_VENDOR_ID, oui);
+ 	NLA_PUT_U32(msg, NL80211_ATTR_VENDOR_SUBCMD, subcmd);
+ 
++	if (subcmd == 0xb6)
++		goto coex_config;
++
+ 	if (file) {
+ 		count = read_file(file, buf, sizeof(buf));
+ 		fclose(file);
+@@ -117,6 +126,83 @@ static int handle_vendor(struct nl80211_
+ 	if (count > 0)
+ 		NLA_PUT(msg, NL80211_ATTR_VENDOR_DATA, count, buf);
+ 
++coex_config:
++	argc -= 2;
++	argv += 2;
++
++	if (!argc)
++		return 1;
++
++	params = nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA);
++
++	if (!strcmp(argv[0], "coex")) {
++		if (argc < 2)
++			return 1;
++		coex = strtol(argv[1], &end, 10);
++		if (*end) {
++			return 2;
++		}
++		NLA_PUT_U8(msg, QCA_WLAN_VENDOR_ATTR_BTCOEX_CONFIG_ENABLE,
++			   coex);
++		argv += 2;
++		argc -= 2;
++	}
++
++	if (!argc) {
++		nla_nest_end(msg, params);
++		return 0;
++	}
++
++	prio_msg = nlmsg_alloc();
++	if (!prio_msg)
++		return -ENOMEM;
++
++	if (!strcmp(argv[0], "wlan_prio")) {
++		argc--;
++		argv++;
++
++		while(argc) {
++			wlan_prio = nla_nest_start(prio_msg, i);
++			if (!wlan_prio)
++				goto nla_put_failure;
++
++			prio_mask = strtol(argv[0], &end, 10);
++			if (*end) {
++				return 2;
++			}
++
++			NLA_PUT_U8(prio_msg, QCA_WLAN_VENDOR_ATTR_WLAN_PRIO_MASK,
++				   prio_mask);
++			wlan_prio_config = true;
++			argc--;
++			argv++;
++			if (!argc) {
++				nla_nest_end(prio_msg, wlan_prio);
++				goto out;
++			}
++
++			weight = strtol(argv[0], &end, 10);
++			if (*end)
++				return 2;
++
++			if (weight > 255)
++				return 1;
++
++			NLA_PUT_U8(prio_msg, QCA_WLAN_VENDOR_ATTR_WLAN_PRIO_WEIGHT,
++				   weight);
++			nla_nest_end(prio_msg, wlan_prio);
++			i++;
++			argc--;
++			argv++;
++		}
++	}
++
++out:
++	if (wlan_prio_config)
++		nla_put_nested(msg, QCA_WLAN_VENDOR_ATTR_BTCOEX_CONFIG_WLAN_PRIORITY,
++			       prio_msg);
++	nla_nest_end(msg, params);
++
+ 	return 0;
+ 
+ nla_put_failure:
+--- a/iw.h
++++ b/iw.h
+@@ -62,6 +62,44 @@ enum id_input {
+ 	II_WDEV,
+ };
+ 
++/**
++ * enum qca_wlan_vendor_attr_wlan_prio - Used to configure
++ * WLAN priority mask and its respective weight value.
++ * @QCA_WLAN_VENDOR_ATTR_WLAN_PRIO_MASK - This is u8 attribute
++ * used to pass traffic type mask value see %qca_wlan_priority_type
++ * @QCA_WLAN_VENDOR_ATTR_WLAN_PRIO_WEIGHT - This is u8 attribute
++ * used to configure weight for traffic type mentioned in
++ * %QCA_WLAN_VENDOR_ATTR_WLAN_PRIO_MASK.
++ */
++enum qca_wlan_vendor_attr_wlan_prio {
++	QCA_WLAN_VENDOR_ATTR_WLAN_PRIO_INVALID = 0,
++	QCA_WLAN_VENDOR_ATTR_WLAN_PRIO_MASK = 1,
++	QCA_WLAN_VENDOR_ATTR_WLAN_PRIO_WEIGHT = 2,
++
++	QCA_WLAN_VENDOR_ATTR_WLAN_PRIO_LAST,
++	QCA_WLAN_VENDOR_ATTR_WLAN_PRIO_MAX =
++		QCA_WLAN_VENDOR_ATTR_WLAN_PRIO_LAST - 1,
++};
++
++/**
++ * enum qca_wlan_vendor_attr_btcoex_config - Used by the vendor command
++ * The use can enable/disable BTCOEX and configure WLAN priority for
++ * different traffic type over BT.
++ * @QCA_WLAN_VENDOR_ATTR_BTCOEX_CONFIG_ENABLE: enable/disable BTCOEX
++ * QCA_WLAN_VENDOR_ATTR_BTCOEX_CONFIG_WLAN_PRIORITY, This is a nested
++ * attribute pass the attributes in %qca_wlan_vendor_attr_wlan_prio.
++ */
++enum qca_wlan_vendor_attr_btcoex_config {
++	QCA_WLAN_VENDOR_ATTR_BTCOEX_CONFIG_INVALID = 0,
++	QCA_WLAN_VENDOR_ATTR_BTCOEX_CONFIG_ENABLE = 1,
++	QCA_WLAN_VENDOR_ATTR_BTCOEX_CONFIG_WLAN_PRIORITY = 2,
++
++	/* keep last */
++	QCA_WLAN_VENDOR_ATTR_BTCOEX_CONFIG_LAST,
++	QCA_WLAN_VENDOR_ATTR_BTCOEX_CONFIG_MAX =
++		QCA_WLAN_VENDOR_ATTR_BTCOEX_CONFIG_LAST - 1
++};
++
+ #define HANDLER_RET_USAGE 1
+ #define HANDLER_RET_DONE 3
+ 

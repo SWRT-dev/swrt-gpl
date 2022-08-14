@@ -23,6 +23,13 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#if defined(RTCONFIG_MUSL_LIBC) || defined(MUSL_LIBC)
+#include <stdbool.h>
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned int u32;
+typedef unsigned long long u64;
+#endif
 #include <linux/major.h>
 #include <linux/kdev_t.h>
 #include <scsi/scsi_ioctl.h>
@@ -36,7 +43,7 @@
 #endif
 #endif
 
-#if defined(MUSL_LIBC) || defined(RT4GAC86U)
+#if defined(MUSL_LIBC) || defined(RT4GAC86U) || defined(RTCONFIG_MUSL_LIBC)
 #ifndef SCSI_DISK_MAJOR
 #define SCSI_DISK_MAJOR(M) ((M) == SCSI_DISK0_MAJOR || \
   ((M) >= SCSI_DISK1_MAJOR && (M) <= SCSI_DISK7_MAJOR) || \

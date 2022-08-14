@@ -2411,7 +2411,7 @@ extern unsigned int rtkswitch_lanPorts_phyStatus(void);
 #endif
 
 extern int checkcrc(char *fname);
-#if defined(RTCONFIG_QCA) && !defined(RTCONFIG_SOC_IPQ40XX)
+#if defined(RTCONFIG_QCA)
 extern int get_firmware_length(void *ptr);
 #else
 static inline int get_firmware_length(void *ptr) { return 0; }
