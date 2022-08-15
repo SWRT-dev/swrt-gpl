@@ -19,9 +19,7 @@ sudo apt-get -y install build-essential asciidoc binutils bzip2 gawk gettext git
 
 5. Enter the following commands step by step `cd mtk-toolchains`
 
-	`sudo ln -sf $(pwd)/toolchain-aarch64_cortex-a53_gcc-8.4.0_musl /opt/`
-
-	`sudo ln -sf $(pwd)/lede-toolchain-mediatek-mt7629_gcc-5.4.0_musl-1.1.24_eabi.Linux-x86_64 /opt/`
+	`sudo ln -sf $(pwd)/toolchain-mipsel_24kc_gcc-5.4.0_musl-1.1.24 /opt/`
 
 6. Then enter `cd ../rtax53u/release/src-mtk-mips` to enter folder
 
