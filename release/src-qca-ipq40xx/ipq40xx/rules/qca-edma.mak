@@ -11,8 +11,8 @@ ifneq ($(wildcard qca-edma/Makefile),)
 else
 	install -D qca-edma/prebuild/essedma.ko $(INSTALLKMODDIR)
 endif
-	@find $(INSTALLDIR) -name "modules.*" | xargs rm -f
-	@find $(INSTALLDIR) -name "*.ko" | xargs $(STRIPX)
+	@find $(INSTALLKMODDIR) -name "modules.*" | xargs rm -f
+	@find $(INSTALLKMODDIR) -name "*.ko" | xargs $(STRIPX)
 
 qca-edma-clean:
 	$(RM) $(PLATFORM_ROUTER_SRCBASE)/qca-edma/*.o $(PLATFORM_ROUTER_SRCBASE)/qca-edma/*.ko $(PLATFORM_ROUTER_SRCBASE)/qca-edma/*.mod.*

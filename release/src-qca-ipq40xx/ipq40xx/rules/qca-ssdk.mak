@@ -44,8 +44,8 @@ ifneq ($(wildcard qca-ssdk/Makefile),)
 else
 	install -D qca-ssdk/prebuild/qca-ssdk.ko $(INSTALLKMODDIR)
 endif
-	@find $(INSTALLDIR) -name "modules.*" | xargs rm -f
-	@find $(INSTALLDIR) -name "*.ko" | xargs $(STRIPX)
+	@find $(INSTALLKMODDIR) -name "modules.*" | xargs rm -f
+	@find $(INSTALLKMODDIR) -name "*.ko" | xargs $(STRIPX)
 
 qca-ssdk-clean:
 	$(MAKE) -C qca-ssdk clean
