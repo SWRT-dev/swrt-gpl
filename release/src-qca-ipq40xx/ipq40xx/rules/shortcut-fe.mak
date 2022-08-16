@@ -7,7 +7,7 @@ shortcut-fe-stage:
 shortcut-fe:
 ifneq ($(wildcard shortcut-fe/shortcut-fe/Makefile),)
 	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) EXTRA_CFLAGS="-I$(PLATFORM_ROUTER_SRCBASE)/shortcut-fe/shortcut-fe -DSFE_SUPPORT_IPV6" SUBDIRS=$(PLATFORM_ROUTER_SRCBASE)/shortcut-fe/shortcut-fe SFE_SUPPORT_IPV6=1 modules
-	$(MAKE) ipq40xx/shortcut-fe-stage
+	$(MAKE) shortcut-fe-stage
 	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) EXTRA_CFLAGS="-I$(PLATFORM_ROUTER_SRCBASE)/shortcut-fe/fast-classifier -DSFE_SUPPORT_IPV6" SUBDIRS=$(PLATFORM_ROUTER_SRCBASE)/shortcut-fe/fast-classifier SFE_SUPPORT_IPV6=y CONFIG_FAST_CLASSIFIER=m modules
 endif
 

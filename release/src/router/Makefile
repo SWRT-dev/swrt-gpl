@@ -750,18 +750,8 @@ OLD_QCA :=
 obj-y += wireless_tools
 obj-y += libnl-tiny-0.1
 
-obj-$(RPAC51) += shortcut-fe.collard qca-wifi.collard-10.4 qca-hostap-collard.10.4 libnl-bf qcmbr.collard qca-wifi-fw-qca9888
-#obj-$(RPAC51) += qca-ssdk.collard
-#obj-$(RPAC51) += qca-ssdk-shell.collard
-
-obj-$(or $(MAPAC1750),$(QCN550X)) += libnl-bf
-
 ifeq ($(RTCONFIG_SOC_IPQ40XX),y)
-ifneq ($(QSDK_VER),SPF10CS)
-ifneq ($(PLATFORM_ROUTER),ipq50xx)
-obj-y += libnl-bf
-endif
-endif
+#obj-y += libnl-bf
 endif
 
 # IPQ8064.ILQ 1.3, IPQ8064.ILQ 3.0, IPQ8074.ILQ 7.0
@@ -7532,67 +7522,6 @@ batctl-2016.0-install:
 	install -D batctl-2016.0/batctl $(INSTALLDIR)/batctl-2016.0/usr/sbin/batctl
 	$(STRIP) $(INSTALLDIR)/batctl-2016.0/usr/sbin/batctl
 
-qca-wifi-fw-qca9888/stamp-h1:
-	touch $@
-
-qca-wifi-fw-qca9888: qca-wifi-fw-qca9888/stamp-h1
-	$(MAKE) -C $@
-
-qca-wifi-fw-qca9888-install:
-	$(MAKE) -C qca-wifi-fw-qca9888 install
-
-qca-wifi.collard-10.4: iproute2-3.x
-	$(MAKE) -C $@ && $(MAKE) $@-stage
-
-qca-wifi.collard-10.4-install: qca-wifi.collard-10.4
-	$(MAKE) -C $< INSTALLDIR=$(INSTALLDIR)/$< install
-
-qca-wifi.collard-10.4-clean:
-	$(MAKE) -C qca-wifi.collard-10.4 clean
-	$(RM) -f qca-wifi.collard-10.4/source/lsdk_flags
-
-qca-wifi.collard-10.4-stage:
-	$(MAKE) -C qca-wifi.collard-10.4 stage
-
-qca-wifi-qca9990: qca-nss-drv
-	$(MAKE) -C $@ && $(MAKE) $@-stage
-
-qca-wifi-qca9990-install: qca-wifi-qca9990
-	$(MAKE) -C $< INSTALLDIR=$(INSTALLDIR)/$< install
-
-qca-wifi-qca9990-clean:
-	$(MAKE) -C qca-wifi-qca9990 clean
-	$(RM) -f qca-wifi-qca9990/lsdk_flags
-
-qca-wifi-qca9990-stage:
-	$(MAKE) -C qca-wifi-qca9990 stage
-
-qca-hostap-collard.10.4: qca-wifi.collard-10.4 libnl-bf openssl
-	$(MAKE) -C $@ && $(MAKE) $@-stage
-
-qca-ssdk.collard:
-	$(MAKE) -C $@ && $(MAKE) $@-stage
-
-qca-ssdk.collard-stage:
-	$(MAKE) -C qca-ssdk.collard stage
-
-qca-ssdk-shell.collard:
-	$(MAKE) -C $@
-
-qca-hostap-qca9990: qca-wifi-qca9990
-	$(MAKE) -C $@ && $(MAKE) $@-stage
-
-qca-ssdk:
-	$(MAKE) -C $@ && $(MAKE) $@-stage
-
-qca-ssdk-stage:
-	$(MAKE) -C qca-ssdk stage
-
-qca-ssdk30:
-	$(MAKE) -C $@ && $(MAKE) $@-stage
-
-qca-ssdk30-stage:
-	$(MAKE) -C qca-ssdk30 stage
 
 .PHONY: lm-sensors-master btconfig ethtool-3.7 i2c-tools-3.1.2 i2c-tools-2013-12-15 bluez-5.41
 ethtool-3.7/configure:

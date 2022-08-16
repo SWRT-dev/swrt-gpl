@@ -34,7 +34,7 @@ qca-ssdk:
 ifneq ($(wildcard qca-ssdk/Makefile),)
 #	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) EXTRA_CFLAGS=-I$(PLATFORM_ROUTER_SRCBASE)/qca-ssdk SUBDIRS=$(PLATFORM_ROUTER_SRCBASE)/qca-ssdk $(QCASSDK_CONFIG_OPTS) modules
 	$(MAKE) -C qca-ssdk $(QCASSDK_CONFIG_OPTS)
-	$(MAKE) ipq40xx/qca-ssdk-stage
+	$(MAKE) qca-ssdk-stage
 endif
 
 qca-ssdk-install:

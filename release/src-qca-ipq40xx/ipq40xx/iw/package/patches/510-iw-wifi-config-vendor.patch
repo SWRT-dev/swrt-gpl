@@ -1,0 +1,71 @@
+Index: iw-5.0.1/iw.h
+===================================================================
+--- iw-5.0.1.orig/iw.h
++++ iw-5.0.1/iw.h
+@@ -100,6 +100,19 @@ enum qca_wlan_vendor_attr_btcoex_config
+ 		QCA_WLAN_VENDOR_ATTR_BTCOEX_CONFIG_LAST - 1
+ };
+ 
++/* Attributes for data used by
++ * QCA_NL80211_VENDOR_SUBCMD_SET_WIFI_CONFIGURATION and
++ * QCA_NL80211_VENDOR_SUBCMD_GET_WIFI_CONFIGURATION subcommands.
++ */
++enum qca_wlan_vendor_attr_config {
++	QCA_WLAN_VENDOR_ATTR_CONFIG_GTX = 57,
++
++	/* keep last */
++	QCA_WLAN_VENDOR_ATTR_CONFIG_AFTER_LAST,
++	QCA_WLAN_VENDOR_ATTR_CONFIG_MAX =
++		QCA_WLAN_VENDOR_ATTR_CONFIG_AFTER_LAST - 1,
++};
++
+ #define HANDLER_RET_USAGE 1
+ #define HANDLER_RET_DONE 3
+ 
+Index: iw-5.0.1/vendor.c
+===================================================================
+--- iw-5.0.1.orig/vendor.c
++++ iw-5.0.1/vendor.c
+@@ -83,7 +83,7 @@ static int handle_vendor(struct nl80211_
+ 	int res, count = 0, i = 0;
+ 	FILE *file = NULL;
+ 	char *end;
+-	unsigned int coex, prio_mask, weight;
++	unsigned int coex, prio_mask, weight, ap_ps;
+ 	bool wlan_prio_config = false;
+ 	struct nlattr *wlan_prio;
+ 	struct nl_msg *prio_msg;
+@@ -114,6 +114,33 @@ static int handle_vendor(struct nl80211_
+ 	if (subcmd == 0xb6)
+ 		goto coex_config;
+ 
++	if (subcmd == 0x4a) {
++		argc -= 2;
++		argv += 2;
++
++		if (!argc)
++			return 1;
++
++		params = nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA);
++
++		if (!strcmp(argv[0], "ap-ps")) {
++			if (argc < 2)
++				return 1;
++			ap_ps = strtol(argv[1], &end, 10);
++			if (*end)
++				return 2;
++
++			if (ap_ps > 1)
++				return -EINVAL;
++
++			if (ap_ps)
++				NLA_PUT_FLAG(msg, QCA_WLAN_VENDOR_ATTR_CONFIG_GTX);
++		}
++
++		nla_nest_end(msg, params);
++		return 0;
++	}
++
+ 	if (file) {
+ 		count = read_file(file, buf, sizeof(buf));
+ 		fclose(file);

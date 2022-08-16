@@ -1,0 +1,123 @@
+--- a/nl80211.h
++++ b/nl80211.h
+@@ -2744,6 +2744,7 @@ enum nl80211_attrs {
+ 
+ 	NL80211_ATTR_NSS,
+ 	NL80211_ATTR_ACK_SIGNAL,
++	NL80211_ATTR_MAP,
+ 
+ 	NL80211_ATTR_CONTROL_PORT_OVER_NL80211,
+ 
+@@ -2765,6 +2766,7 @@ enum nl80211_attrs {
+ 	NL80211_ATTR_TID_CONFIG,
+ 	NL80211_ATTR_MAX_RETRY_COUNT,
+ 
++	NL80211_ATTR_AIRTIME_WEIGHT,
+ 	NL80211_ATTR_WIPHY_ANTENNA_GAIN,
+ 
+ 	/* add attributes here, update the policy in nl80211.c */
+@@ -3187,6 +3189,8 @@ enum nl80211_sta_info {
+ 	NL80211_STA_INFO_RX_MPDUS,
+ 	NL80211_STA_INFO_FCS_ERROR_COUNT,
+ 	NL80211_STA_INFO_CONNECTED_TO_GATE,
++	NL80211_STA_INFO_TX_DURATION,
++	NL80211_STA_INFO_AIRTIME_WEIGHT,
+ 
+ 	/* keep last */
+ 	__NL80211_STA_INFO_AFTER_LAST,
+--- a/station.c
++++ b/station.c
+@@ -311,6 +311,8 @@ static int print_sta_handler(struct nl_m
+ 		[NL80211_STA_INFO_RX_DURATION] = { .type = NLA_U64 },
+ 		[NL80211_STA_INFO_ACK_SIGNAL] = {.type = NLA_U8 },
+ 		[NL80211_STA_INFO_ACK_SIGNAL_AVG] = { .type = NLA_U8 },
++		[NL80211_STA_INFO_TX_DURATION] = {.type = NLA_U64},
++		[NL80211_STA_INFO_AIRTIME_WEIGHT] = {.type = NLA_U16},
+ 	};
+ 	char *chain;
+ 
+@@ -419,7 +421,12 @@ static int print_sta_handler(struct nl_m
+ 	if (sinfo[NL80211_STA_INFO_ACK_SIGNAL_AVG])
+ 		printf("\n\tavg ack signal:\t%d dBm",
+ 			(int8_t)nla_get_u8(sinfo[NL80211_STA_INFO_ACK_SIGNAL_AVG]));
+-
++	if (sinfo[NL80211_STA_INFO_TX_DURATION])
++		printf("\n\ttx duration:\t%lld us",
++		       (unsigned long long)nla_get_u64(sinfo[NL80211_STA_INFO_TX_DURATION]));
++	if (sinfo[NL80211_STA_INFO_AIRTIME_WEIGHT])
++		printf("\n\tairtime weight:\t%d us",
++		       nla_get_u16(sinfo[NL80211_STA_INFO_AIRTIME_WEIGHT]));
+ 	if (sinfo[NL80211_STA_INFO_EXPECTED_THROUGHPUT]) {
+ 		uint32_t thr;
+ 
+@@ -650,6 +657,7 @@ COMMAND(station, del, "<MAC address> [su
+ 
+ static const struct cmd *station_set_plink;
+ static const struct cmd *station_set_vlan;
++static const struct cmd *station_set_airtime;
+ static const struct cmd *station_set_mesh_power_mode;
+ 
+ static const struct cmd *select_station_cmd(int argc, char **argv)
+@@ -660,6 +668,8 @@ static const struct cmd *select_station_
+ 		return station_set_plink;
+ 	if (strcmp(argv[1], "vlan") == 0)
+ 		return station_set_vlan;
++	if (strcmp(argv[1], "airtime") == 0)
++		return station_set_airtime;
+ 	if (strcmp(argv[1], "mesh_power_mode") == 0)
+ 		return station_set_mesh_power_mode;
+ 	return NULL;
+@@ -761,6 +771,53 @@ COMMAND_ALIAS(station, set, "<MAC addres
+ 	"Set an AP VLAN for this station.",
+ 	select_station_cmd, station_set_vlan);
+ 
++static int handle_station_set_airtime(struct nl80211_state *state,
++				   struct nl_msg *msg,
++				   int argc, char **argv,
++				   enum id_input id)
++{
++	unsigned char mac_addr[ETH_ALEN];
++	unsigned long airtime_weight = 0;
++	char *err = NULL;
++
++	if (argc < 3)
++		return 1;
++
++	if (mac_addr_a2n(mac_addr, argv[0])) {
++		fprintf(stderr, "invalid mac address\n");
++		return 2;
++	}
++	argc--;
++	argv++;
++
++	if (strcmp("airtime", argv[0]) != 0)
++		return 1;
++	argc--;
++	argv++;
++
++	airtime_weight = strtoul(argv[0], &err, 0);
++	if ((err && *err) || airtime_weight <= 0) {
++		fprintf(stderr, "invalid airtime weight\n");
++		return 2;
++	}
++	argc--;
++	argv++;
++
++	if (argc)
++		return 1;
++
++	NLA_PUT(msg, NL80211_ATTR_MAC, ETH_ALEN, mac_addr);
++	NLA_PUT_U32(msg, NL80211_ATTR_AIRTIME_WEIGHT, airtime_weight);
++
++	return 0;
++ nla_put_failure:
++	return -ENOBUFS;
++}
++COMMAND_ALIAS(station, set, "<MAC address> airtime <airtime in usecs>",
++	NL80211_CMD_SET_STATION, 0, CIB_NETDEV, handle_station_set_airtime,
++	"Set airtime weight for this station.",
++	select_station_cmd, station_set_airtime);
++
+ static int handle_station_set_mesh_power_mode(struct nl80211_state *state,
+ 					      struct nl_msg *msg,
+ 					      int argc, char **argv,

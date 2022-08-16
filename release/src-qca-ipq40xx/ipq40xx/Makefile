@@ -21,8 +21,8 @@ export CFLAGS+=$(EXTRACFLAGS)
 export LDFLAGS+=$(EXTRALDFLAGS)
 
 # Package dependence
-PKGDEP_QCA_HOSTAP	:= qca-wifi-10.4i libnl openssl
-PKGDEP_QCA_WIFI		:= iproute2-4.4.0 libxml2 libnl
+PKGDEP_QCA_HOSTAP	:= qca-wifi-10.4 libnl openssl
+PKGDEP_QCA_WIFI		:= iproute2-4.4.0 libxml2 libnl qca-wifi-fw-10.4
 
 #
 # software package selection
@@ -39,7 +39,8 @@ pobj-y += qca-wifi-fw.ipq40xx
 ifeq ($(RTCONFIG_PCIE_QCA9984),y)
 pobj-y += qca-wifi-fw.qca9984
 endif
-pobj-y += qca-hostap $(PKGDEP_QCA_HOSTAP)
+pobj-y += qca-hostap-10.4 $(PKGDEP_QCA_HOSTAP)
+pobj-y += qca-wrapd-10.4
 
 
 pobj-clean := $(foreach pobj, $(pobj-y) $(pobj-n) $(pobj-), $(pobj)-clean)
