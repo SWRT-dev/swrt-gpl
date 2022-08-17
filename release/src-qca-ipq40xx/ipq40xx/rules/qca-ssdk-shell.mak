@@ -1,9 +1,9 @@
-QCASSDK_CONFIG_OPTS:= TOOL_PATH=$(STAGING_DIR)/bin SYS_PATH=$(LINUXDIR) TOOLPREFIX=arm-openwrt-linux-muslgnueabi-
-QCASSDK_CONFIG_OPTS += KVER=$(LINUX_KERNEL) ARCH=$(ARCH) CFLAGS=-I$(STAGEDIR)/usr/include
+QCASSDKSHELL_CONFIG_OPTS:= TOOL_PATH=$(STAGING_DIR)/bin SYS_PATH=$(LINUXDIR) TOOLPREFIX=arm-openwrt-linux-muslgnueabi-
+QCASSDKSHELL_CONFIG_OPTS += KVER=$(LINUX_KERNEL) ARCH=$(ARCH) CFLAGS=-I$(STAGEDIR)/usr/include
 
 qca-ssdk-shell:
 ifneq ($(wildcard qca-ssdk-shell/Makefile),)
-	$(MAKE) -C qca-ssdk-shell $(QCASSDK_CONFIG_OPTS)
+	$(MAKE) -C qca-ssdk-shell $(QCASSDKSHELL_CONFIG_OPTS)
 endif
 
 qca-ssdk-shell-install:

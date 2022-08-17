@@ -47,6 +47,7 @@ else
 #bcm470x?
 HWCHIP=UNSUPPORTED
 endif
+endif
 
 ifneq ($(ARM64CC),)
 all: version.h

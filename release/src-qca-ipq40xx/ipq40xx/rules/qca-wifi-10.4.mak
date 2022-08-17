@@ -50,15 +50,13 @@ ifneq ($(wildcard qca-wifi-10.4/Makefile),)
 	install -d  $(STAGEDIR)/usr/include/qca-wifi
 	$(MAKE) -C qca-wifi-10.4 INSTALL_DEST="$(STAGEDIR)/usr/include/" install_headers
 	cp -f $(SRCBASE)/$(PLATFORM_ROUTER)/qca-hostap-10.4/src/drivers/nl80211_copy.h $(STAGEDIR)/usr/include
-	cp -f $(SRCBASE)/$(PLATFORM_ROUTER)/qca-wifi-10.4/component_dev/qca_mscs/inc/qca_mscs_if.h $(STAGEDIR)/usr/include/qca-wifi
-	cp -f $(SRCBASE)/$(PLATFORM_ROUTER)/qca-wifi-10.4/component_dev/qca_mesh_latency/inc/qca_mesh_latency_if.h $(STAGEDIR)/usr/include/qca-wifi
-	cp -f $(SRCBASE)/$(PLATFORM_ROUTER)/qca-wifi-10.4/component_dev/tools/linux/cfg80211_ven_cmd.h $(STAGEDIR)/usr/include
 endif
 
 qca-wifi-10.4: qca-wifi-fw-10.4
 ifneq ($(wildcard qca-wifi-10.4/Makefile),)
-	$(MAKE) -C qca-wifi-10.4 src_prepare all_build
+	[ -f qca-wifi-10.4/stamp-h1 ] || $(MAKE) -C qca-wifi-10.4 src_prepare all_build
 	$(MAKE) qca-wifi-10.4-stage
+	touch qca-wifi-10.4/stamp-h1
 endif
 
 qca-wifi-10.4-install:
@@ -87,5 +85,6 @@ endif
 qca-wifi-10.4-clean:
 ifneq ($(wildcard qca-wifi-10.4/Makefile),)
 	$(MAKE) -C qca-wifi-10.4 clean
+	rm -f qca-wifi-10.4/stamp-h1
 endif
 
