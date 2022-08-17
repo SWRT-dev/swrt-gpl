@@ -620,6 +620,8 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	qcom-ipq807x-oak03.dtb \
 	qcom-ipq807x-db.hk01.dtb \
 	qcom-ipq807x-db.hk02.dtb
+dtb-$(CONFIG_RTAC82U) += qcom-ipq4019-rt-ac82u.dtb
+dtb-$(CONFIG_RTAC95U) += qcom-ipq4019-rt-ac95u.dtb
 endif
 dtb-$(CONFIG_ARCH_REALVIEW) += \
 	arm-realview-pb1176.dtb

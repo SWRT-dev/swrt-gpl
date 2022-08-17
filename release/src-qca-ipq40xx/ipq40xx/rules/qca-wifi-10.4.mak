@@ -18,7 +18,7 @@ export LINUX_DIR:=$(LINUXDIR)
 export LINUX_SRC_DIR:=$(LINUXDIR)
 export BUILD_VARIANT:=unified-perf
 export TARGET_CROSS:=$(CROSS_COMPILE)
-export TARGET_CFLAGS:=$(EXTRA_CFLAGS) -I$(STAGEDIR)/usr/include/ $(addprefix -idirafter, -I$(LINUXDIR)/include/) $(addprefix -idirafter, -I$(LINUXDIR)/arch/arm/include/) -DRTCONFIG_MUSL_LIBC
+export TARGET_CFLAGS:=$(EXTRA_CFLAGS) -I$(STAGEDIR)/usr/include/ -I$(TOP)/kernel_header/include/ -DRTCONFIG_MUSL_LIBC
 export TARGET_LDFLAGS:= -lpthread -ldl -L$(STAGEDIR)/usr/lib/
 export QCA_NSS_WIFI_OFFLOAD_SUPPORT:=0
 export CONFIG_WIFI_IPQ_MEM_PROFILE:=n
@@ -62,24 +62,16 @@ endif
 qca-wifi-10.4-install:
 ifneq ($(wildcard qca-wifi-10.4/Makefile),)
 	$(MAKE) -C qca-wifi-10.4 QCAWLAN_TOOL_LIST="$(QCAWLAN_TOOL_LIST)" INSTALL_ROOT_DRV="$(INSTALLKMODDIR)" driver_installonly
+	install -d $(INSTALLDIR)/qca-wifi-10.4/usr/sbin
+	install -d $(INSTALLDIR)/qca-wifi-10.4/usr/lib
 	$(MAKE) -C qca-wifi-10.4 QCAWLAN_MODULE_LIST="$(QCAWLAN_MODULE_LIST)" INSTALL_BIN_DEST="$(INSTALLDIR)/qca-wifi-10.4/usr/sbin" INSTALL_LIB_DEST="$(INSTALLDIR)/qca-wifi-10.4/usr/lib" tools_installonly
-	install -D qca-wifi-10.4/asf/asf.ko $(INSTALLKMODDIR)/asf.ko
-	install -D qca-wifi-10.4/lmac/ath_pktlog/ath_pktlog.ko $(INSTALLKMODDIR)/ath_pktlog.ko
-	install -D qca-wifi-10.4/os/linux/mem/mem_manager.ko $(INSTALLKMODDIR)/mem_manager.ko
-	install -D qca-wifi-10.4/qca_ol/qca_ol.ko $(INSTALLKMODDIR)/qca_ol.ko
-	install -D qca-wifi-10.4/cmn_dev/spectral/qca_spectral.ko $(INSTALLKMODDIR)/qca_spectral.ko
-	install -D qca-wifi-10.4/cmn_dev/qdf/qdf.ko $(INSTALLKMODDIR)/qdf.ko
-	install -D qca-wifi-10.4/smartantenna/smart_antenna.ko $(INSTALLKMODDIR)/smart_antenna.ko
-	install -D qca-wifi-10.4/umac/umac.ko $(INSTALLKMODDIR)/umac.ko
-	install -D qca-wifi-10.4/qca_ol/wifi3.0/wifi_3_0.ko $(INSTALLKMODDIR)/wifi_3_0.ko
-	install -D qca-wifi-10.4/qca_ol/wifi2.0/wifi_2_0.ko $(INSTALLKMODDIR)/wifi_2_0.ko
 else
 	@for i in $(QCAWIFI_KMOD); do install -D qca-wifi-10.4/prebuild/$$i $(INSTALLKMODDIR) ; done
-	@for i in $(QCAWIFI_LIBS); do install -D qca-wifi-10.4/prebuild/$$i $(INSTALLDIR)/usr/lib ; done
-	@for i in $(QCAWIFI_USR_SBIN); do install -D qca-wifi-10.4/prebuild/$$i $(INSTALLDIR)/usr/sbin ; done
+	@for i in $(QCAWIFI_LIBS); do install -D qca-wifi-10.4/prebuild/$$i $(INSTALLDIR)/qca-wifi-10.4/usr/lib ; done
+	@for i in $(QCAWIFI_USR_SBIN); do install -D qca-wifi-10.4/prebuild/$$i $(INSTALLDIR)/qca-wifi-10.4/usr/sbin ; done
 endif
-	$(STRIP) $(INSTALLDIR)/usr/sbin/*
-	$(STRIP) $(INSTALLDIR)/usr/lib/*
+	$(STRIP) $(INSTALLDIR)/qca-wifi-10.4/usr/sbin/*
+	$(STRIP) $(INSTALLDIR)/qca-wifi-10.4/usr/lib/*
 	$(STRIPX) $(INSTALLKMODDIR)/*.ko
 
 qca-wifi-10.4-clean:

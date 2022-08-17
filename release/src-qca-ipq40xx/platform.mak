@@ -4,6 +4,7 @@ ifeq ($(EXTRACFLAGS),)
 export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -marm -march=armv7-a -msoft-float -mfloat-abi=soft -mtune=cortex-a7
 endif
 
+export DAKOTA_DTS :=ipq4019
 export PLATFORM_ROUTER := ipq40xx
 export BUILD := $(shell (gcc -dumpmachine))
 export KERNEL_BINARY=$(LINUXDIR)/vmlinux

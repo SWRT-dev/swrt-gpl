@@ -1,0 +1,177 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ */
+
+#include "qcom-ipq4019-ap.dk04.1.dtsi"
+
+/ {
+	model = "ASUS. RT-AC95U";
+
+	memory {
+		device_type = "memory";
+		reg = <0x80000000 0x10000000>; /* 256MB */
+	};
+
+	soc {
+		qcom,nand@7980000 {
+			status = "ok";
+		};
+
+		pcie0 {
+			status = "ok";
+			perst-gpio = <&tlmm 38 0>;
+			wake-gpio = <&tlmm 50 0>;
+			clkreq-gpio = <&tlmm 39 0>;
+		};
+
+		gpio_keys {
+			status = "disabled";
+		};
+
+		serial@78b0000 {
+			status = "disabled";
+		};
+
+		pinctrl@0x01000000 {
+			spi_0_pins: spi_0_pinmux {
+				status = "disabled";
+			};
+
+			i2c_0_pins: i2c_0_pinmux {
+				status = "disabled";
+			};
+
+			i2c_1_pins: i2c_1_pinmux {
+				mux {
+					pins = "gpio12", "gpio13";
+					function = "blsp_i2c1";
+					bias-disable;
+				};
+			};
+		};
+
+		uart1:uart@78b0000 {
+/*
+			compatible = "qcom,msm-hsuart-v14";
+			reg = <0x78b0000 0x200>,
+				<0x7884000 0x23000>;
+			reg-names = "core_mem", "bam_mem";
+			interrupt-names = "core_irq", "bam_irq";
+			#address-cells = <0>;
+			interrupt-parent = <&uart1>;
+			interrupts = <0 1 2>;
+			#interrupt-cells = <1>;
+			interrupt-map-mask = <0xffffffff>;
+			interrupt-map = <0 &intc 0 108 0
+				1 &intc 0 238 0>;
+			qcom,bam-tx-ep-pipe-index = <2>;
+			qcom,bam-rx-ep-pipe-index = <3>;
+			qcom,master-id = <86>;
+			clocks = <&gcc GCC_BLSP1_AHB_CLK>,
+				<&gcc GCC_BLSP1_UART2_APPS_CLK>;
+			clock-names = "iface_clk", "core_clk";
+			status = "ok";
+*/
+			status = "disabled";
+		};
+
+		spi_0: spi@78b5000 { /* BLSP1 QUP1 */
+			status = "disabled";
+		};
+
+		i2c_0: i2c@78b7000 { /* BLSP1 QUP2 */
+			status = "disabled";
+		};
+
+		i2c_1: i2c@78b8000 { /* BLSP1 QUP4 */
+			pinctrl-0 = <&i2c_1_pins>;
+			pinctrl-1 = <&i2c_1_pins>;
+			pinctrl-names = "i2c_active", "i2c_sleep";
+			status = "ok";
+
+			lp55231@32 {
+				compatible = "national,lp5523";
+				reg = <0x32>;
+				clock-mode = /bits/ 8 <1>;
+
+				chan0 {
+					chan-name = "blue1";
+					led-cur = /bits/ 8 <0xfa>;
+					max-cur = /bits/ 8 <0xff>;
+				};
+
+				chan1 {
+					chan-name = "blue2";
+					led-cur = /bits/ 8 <0xfa>;
+					max-cur = /bits/ 8 <0xff>;
+				};
+
+				chan2 {
+					chan-name = "blue3";
+					led-cur = /bits/ 8 <0xfa>;
+					max-cur = /bits/ 8 <0xff>;
+				};
+
+				chan3 {
+					chan-name = "green1";
+					led-cur = /bits/ 8 <0xfa>;
+					max-cur = /bits/ 8 <0xff>;
+				};
+
+				chan4 {
+					chan-name = "green2";
+					led-cur = /bits/ 8 <0xfa>;
+					max-cur = /bits/ 8 <0xff>;
+				};
+
+				chan5 {
+					chan-name = "green3";
+					led-cur = /bits/ 8 <0xfa>;
+					max-cur = /bits/ 8 <0xff>;
+				};
+
+				chan6 {
+					chan-name = "red1";
+					led-cur = /bits/ 8 <0xfa>;
+					max-cur = /bits/ 8 <0xff>;
+				};
+
+				chan7 {
+					chan-name = "red2";
+					led-cur = /bits/ 8 <0xfa>;
+					max-cur = /bits/ 8 <0xff>;
+				};
+
+				chan8 {
+					chan-name = "red3";
+					led-cur = /bits/ 8 <0xfa>;
+					max-cur = /bits/ 8 <0xff>;
+				};
+			};
+		};
+
+		edma@c080000 {
+			qcom,num-gmac = <2>;
+			gmac0 {
+				qcom,poll-required = <0>;
+				qcom,poll-required-dynamic = <0>;
+			};
+			gmac1 {
+				qcom,poll-required = <0>;
+				qcom,poll-required-dynamic = <0>;
+			};
+		};
+	};
+};

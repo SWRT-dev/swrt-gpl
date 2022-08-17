@@ -8,6 +8,8 @@ ifneq ($(wildcard qca-wifi-fw-10.4/src/include/dbglog.h),)
 endif
 
 qca-wifi-fw-10.4-clean:
+	@true
 
 qca-wifi-fw-10.4-install:
+	@true
 

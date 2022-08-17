@@ -29,7 +29,7 @@
 			status = "ok";
 		};
 
-		pcie0: qcom,pcie@80000 {
+		pcie0 {
 			status = "ok";
 			perst-gpio = <&tlmm 38 0>;
 			wake-gpio = <&tlmm 50 0>;
