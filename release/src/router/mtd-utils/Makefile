@@ -49,13 +49,7 @@ endif
 
 ifeq ($(UBI),y)
 #Override default UBI binary list
-UBI_BINS = ubinfo mtdinfo
-ifeq ($(MTK_NAND),y)
-UBI_BINS += ubiformat ubiattach ubimkvol ubidetach ubiupdatevol ubirmvol
-endif
-ifeq ($(ALPINE)$(LANTIQ),y)
-UBI_BINS += ubiformat ubiattach ubimkvol ubidetach ubiupdatevol ubirmvol
-endif
+UBI_BINS = ubinfo mtdinfo ubiformat ubiattach ubimkvol ubidetach ubiupdatevol ubirmvol
 BINS += $(addprefix ubi-utils/,$(UBI_BINS))
 endif
 

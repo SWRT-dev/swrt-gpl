@@ -1,4 +1,3 @@
-INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
 QCASSDK_CONFIG_OPTS:= PTP_FEATURE=disable HNAT_FEATURE=enable TOOL_PATH=$(STAGING_DIR)/bin SYS_PATH=$(LINUXDIR) TOOLPREFIX=arm-openwrt-linux-muslgnueabi-
 QCASSDK_CONFIG_OPTS += KVER=$(LINUX_KERNEL) ARCH=$(ARCH) TARGET_SUFFIX=muslgnueabi GCC_VERSION=$(TOOLCHAIN_TARGET_GCCVER) CFLAGS=-I$(STAGEDIR)/usr/include
 QCASSDK_CONFIG_OPTS += MINI_SSDK=disable OS_VER=4_4
@@ -32,20 +31,18 @@ endif
 
 qca-ssdk:
 ifneq ($(wildcard qca-ssdk/Makefile),)
-#	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) EXTRA_CFLAGS=-I$(PLATFORM_ROUTER_SRCBASE)/qca-ssdk SUBDIRS=$(PLATFORM_ROUTER_SRCBASE)/qca-ssdk $(QCASSDK_CONFIG_OPTS) modules
 	$(MAKE) -C qca-ssdk $(QCASSDK_CONFIG_OPTS)
 	$(MAKE) qca-ssdk-stage
 endif
 
 qca-ssdk-install:
 ifneq ($(wildcard qca-ssdk/Makefile),)
-	#$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) EXTRA_CFLAGS=-I$(PLATFORM_ROUTER_SRCBASE)/qca-ssdk SUBDIRS=$(PLATFORM_ROUTER_SRCBASE)/qca-ssdk INSTALL_MOD_PATH=$(INSTALLDIR) modules_install
-	install -D qca-ssdk/build/bin/qca-ssdk.ko $(INSTALLKMODDIR)
+	install -D qca-ssdk/build/bin/qca-ssdk.ko $(INSTALLDIR)/qca-ssdk/lib/modules/$(LINUX_KERNEL)/qca-ssdk.ko
 else
-	install -D qca-ssdk/prebuild/qca-ssdk.ko $(INSTALLKMODDIR)
+	install -D qca-ssdk/prebuild/qca-ssdk.ko $(INSTALLDIR)/qca-ssdk/lib/modules/$(LINUX_KERNEL)/qca-ssdk.ko
 endif
-	@find $(INSTALLKMODDIR) -name "modules.*" | xargs rm -f
-	@find $(INSTALLKMODDIR) -name "*.ko" | xargs $(STRIPX)
+	@find $(INSTALLDIR)/qca-ssdk/lib/modules/$(LINUX_KERNEL)/ -name "modules.*" | xargs rm -f
+	@find $(INSTALLDIR)/qca-ssdk/lib/modules/$(LINUX_KERNEL)/ -name "*.ko" | xargs $(STRIPX)
 
 qca-ssdk-clean:
 	$(MAKE) -C qca-ssdk clean

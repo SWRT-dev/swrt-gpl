@@ -1,4 +1,3 @@
-INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
 
 shortcut-fe-stage:
 	install -d $(STAGEDIR)/usr/include/shortcut-fe
@@ -13,16 +12,16 @@ endif
 
 shortcut-fe-install:
 ifneq ($(wildcard shortcut-fe/shortcut-fe/Makefile),)
-	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) EXTRA_CFLAGS="-I$(PLATFORM_ROUTER_SRCBASE)/shortcut-fe/shortcut-fe -DSFE_SUPPORT_IPV6" SUBDIRS=$(PLATFORM_ROUTER_SRCBASE)/shortcut-fe/shortcut-fe SFE_SUPPORT_IPV6=1 INSTALL_MOD_PATH=$(INSTALLDIR) modules_install
-	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) EXTRA_CFLAGS="-I$(PLATFORM_ROUTER_SRCBASE)/shortcut-fe/fast-classifier -DSFE_SUPPORT_IPV6" SUBDIRS=$(PLATFORM_ROUTER_SRCBASE)/shortcut-fe/fast-classifier SFE_SUPPORT_IPV6=y CONFIG_FAST_CLASSIFIER=m INSTALL_MOD_PATH=$(INSTALLDIR) modules_install
+	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) EXTRA_CFLAGS="-I$(PLATFORM_ROUTER_SRCBASE)/shortcut-fe/shortcut-fe -DSFE_SUPPORT_IPV6" SUBDIRS=$(PLATFORM_ROUTER_SRCBASE)/shortcut-fe/shortcut-fe SFE_SUPPORT_IPV6=1 INSTALL_MOD_PATH=$(INSTALLDIR)/shortcut-fe/ modules_install
+	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) EXTRA_CFLAGS="-I$(PLATFORM_ROUTER_SRCBASE)/shortcut-fe/fast-classifier -DSFE_SUPPORT_IPV6" SUBDIRS=$(PLATFORM_ROUTER_SRCBASE)/shortcut-fe/fast-classifier SFE_SUPPORT_IPV6=y CONFIG_FAST_CLASSIFIER=m INSTALL_MOD_PATH=$(INSTALLDIR)/shortcut-fe/ modules_install
 else
-	install -D shortcut-fe/prebuild/shortcut-fe.ko $(INSTALLKMODDIR)
-	install -D shortcut-fe/prebuild/shortcut-fe-ipv6.ko $(INSTALLKMODDIR)
-	install -D shortcut-fe/prebuild/shortcut-fe-cm.ko $(INSTALLKMODDIR)
-	install -D shortcut-fe/prebuild/fast-classifier.ko $(INSTALLKMODDIR)
+	install -D shortcut-fe/prebuild/shortcut-fe.ko $(INSTALLDIR)/shortcut-fe/lib/modules/$(LINUX_KERNEL)/shortcut-fe.ko
+	install -D shortcut-fe/prebuild/shortcut-fe-ipv6.ko $(INSTALLDIR)/shortcut-fe/lib/modules/$(LINUX_KERNEL)/shortcut-fe-ipv6.ko
+	install -D shortcut-fe/prebuild/shortcut-fe-cm.ko $(INSTALLDIR)/shortcut-fe/lib/modules/$(LINUX_KERNEL)/shortcut-fe-cm.ko
+	install -D shortcut-fe/prebuild/fast-classifier.ko $(INSTALLDIR)/shortcut-fe/lib/modules/$(LINUX_KERNEL)/fast-classifier.ko
 endif
-	@find $(INSTALLKMODDIR) -name "modules.*" | xargs rm -f
-	@find $(INSTALLKMODDIR) -name "*.ko" | xargs $(STRIPX)
+	@find $(INSTALLDIR)/shortcut-fe/lib/modules/$(LINUX_KERNEL)/ -name "modules.*" | xargs rm -f
+	@find $(INSTALLDIR)/shortcut-fe/lib/modules/$(LINUX_KERNEL)/ -name "*.ko" | xargs $(STRIPX)
 
 shortcut-fe-clean:
 	$(RM) $(PLATFORM_ROUTER_SRCBASE)/shortcut-fe/shortcut-fe/*.o $(PLATFORM_ROUTER_SRCBASE)/shortcut-fe/shortcut-fe/*.ko $(PLATFORM_ROUTER_SRCBASE)/shortcut-fe/shortcut-fe/*.mod.*

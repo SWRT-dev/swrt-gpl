@@ -970,7 +970,7 @@ endif
 		TRANS_ARCH=`if [ "$(ARCH)" = "arm64" ]; then echo -n arm; else echo -n $(ARCH); fi` ; \
 		echo "PAD2: $${PAD2}" ; \
 	asustools/mkimage -A $${TRANS_ARCH} -O linux -T kernel -C lzma -a $(LOADADDR) -e $(ENTRYADDR) -r $${RFSOFFSET} \
-			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(EXTENDNO)" "0" "0" "0" "0" "0" "0" \
+			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0" \
 			-d image/$(IMGNAME).img image/$(IMGNAME).trx
 else
 	@if [ -n "$(DTB)" -a ! -e $(LINUXDIR)/arch/$(ARCH)/boot/dts/$(DTB) ] ; then \

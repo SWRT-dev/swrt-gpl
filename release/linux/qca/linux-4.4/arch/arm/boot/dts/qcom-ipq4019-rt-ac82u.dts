@@ -19,6 +19,10 @@
 / {
 	model = "ASUS. RT-AC82U";
 
+	chosen {
+		bootargs-append = " ubi.mtd=UBI_DEV";
+	};
+
 	memory {
 		device_type = "memory";
 		reg = <0x80000000 0x08000000>; /* 128MB */
@@ -29,7 +33,7 @@
 			status = "ok";
 		};
 
-		pcie0 {
+		pcie0: pci@40000000 {
 			status = "ok";
 			perst-gpio = <&tlmm 38 0>;
 			wake-gpio = <&tlmm 50 0>;
@@ -38,6 +42,28 @@
 
 		gpio_keys {
 			status = "disabled";
+		};
+	};
+};
+
+&nand {
+	status = "okay";
+
+	nand@0 {
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			partition@0 {
+				label = "Bootloader";
+				reg = <0x000000000000 0x000000400000>;
+				read-only;
+			};
+			partition@400000 {
+				label = "UBI_DEV";
+				reg = <0x000000400000 0x000007C00000>;
+			};
 		};
 	};
 };

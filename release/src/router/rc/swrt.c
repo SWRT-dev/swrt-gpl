@@ -38,6 +38,10 @@
 #define MNT_DETACH	0x00000002
 #endif
 
+#if defined(RTAC82U)
+void fix_jffs_size(void);
+#endif
+
 #if defined(RTCONFIG_SOFTCENTER)
 static void firmware_ver(void)
 {
@@ -86,6 +90,9 @@ void swrt_init()
 #if defined(RTCONFIG_ENTWARE)
 	nvram_set("entware_wan_sig", "0");
 	nvram_set("entware_stop_sig", "0");
+#endif
+#if defined(RTAC82U)
+	fix_jffs_size();
 #endif
 #if defined(RTCONFIG_AMAS) && defined(RTCONFIG_SMARTDNS)
 	if(aimesh_re_node())
@@ -1207,5 +1214,23 @@ void fix_boarddata(char *key, char *value)
 #if defined(PGBM1)
 int check_bwdpi_nvram_setting(){ return 0; }
 int check_wrs_switch(){ return 0; }
+#endif
+
+#if defined(RTAC82U)
+//fix jffs rebuilt by pb-boot is too large
+void fix_jffs_size(void)
+{
+#define JFFS_SIZE_MAX 39*1024*1024 //asus:27MB
+	FILE *fp = NULL;
+	char buf[10] = {0};
+	if((fp = fopen("/sys/devices/virtual/ubi/ubi0/ubi0_5/data_bytes", "r"))){
+		fread(buf, 1, 9, fp);
+		fclose(fp);
+		if(JFFS_SIZE_MAX < strtol(buf, NULL, 10)){
+			eval("ubirmvol", "/dev/ubi0", "-N", "jffs2");
+			eval("ubimkvol", "/dev/ubi0", "-s", "38MiB", "-N", "jffs2");
+		}
+	}
+}
 #endif
 

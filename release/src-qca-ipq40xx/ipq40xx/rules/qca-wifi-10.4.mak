@@ -1,4 +1,3 @@
-INSTALLKMODDIR := $(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
 QCAWIFI_KMOD := asf.ko ath_hal.ko ath_spectral.ko qca_da.ko smart_antenna.ko ath_dev.ko ath_pktlog.ko hst_tx99.ko qca_ol.ko tm.ko
 QCAWIFI_KMOD += ath_dfs.ko ath_rate_atheros.ko mem_manager.ko qdf.ko umac.ko
 QCAWIFI_LIBS := libwlanstats.so libtlvtemplate.so libtlvutil.so libtlvcmdrsp.so libtlvencoder.so libtlvparser.so
@@ -61,18 +60,21 @@ endif
 
 qca-wifi-10.4-install:
 ifneq ($(wildcard qca-wifi-10.4/Makefile),)
-	$(MAKE) -C qca-wifi-10.4 QCAWLAN_TOOL_LIST="$(QCAWLAN_TOOL_LIST)" INSTALL_ROOT_DRV="$(INSTALLKMODDIR)" driver_installonly
+	install -d $(INSTALLDIR)/qca-wifi-10.4/lib/modules/$(LINUX_KERNEL)
 	install -d $(INSTALLDIR)/qca-wifi-10.4/usr/sbin
 	install -d $(INSTALLDIR)/qca-wifi-10.4/usr/lib
+	$(MAKE) -C qca-wifi-10.4 QCAWLAN_TOOL_LIST="$(QCAWLAN_TOOL_LIST)" INSTALL_ROOT_DRV="$(INSTALLDIR)/qca-wifi-10.4/lib/modules/$(LINUX_KERNEL)" driver_installonly
 	$(MAKE) -C qca-wifi-10.4 QCAWLAN_MODULE_LIST="$(QCAWLAN_MODULE_LIST)" INSTALL_BIN_DEST="$(INSTALLDIR)/qca-wifi-10.4/usr/sbin" INSTALL_LIB_DEST="$(INSTALLDIR)/qca-wifi-10.4/usr/lib" tools_installonly
+	install -D qca-wifi-10.4/testmodule/tm.ko $(INSTALLDIR)/qca-wifi-10.4/lib/modules/$(LINUX_KERNEL)/tm.ko
+	install -D qca-wifi-10.4/os/linux/tools/wnm-app $(INSTALLDIR)/qca-wifi-10.4/usr/sbin/wnm-app
 else
-	@for i in $(QCAWIFI_KMOD); do install -D qca-wifi-10.4/prebuild/$$i $(INSTALLKMODDIR) ; done
-	@for i in $(QCAWIFI_LIBS); do install -D qca-wifi-10.4/prebuild/$$i $(INSTALLDIR)/qca-wifi-10.4/usr/lib ; done
-	@for i in $(QCAWIFI_USR_SBIN); do install -D qca-wifi-10.4/prebuild/$$i $(INSTALLDIR)/qca-wifi-10.4/usr/sbin ; done
+	@for i in $(QCAWIFI_KMOD); do install -D qca-wifi-10.4/prebuild/$$i $(INSTALLDIR)/qca-wifi-10.4/lib/modules/$(LINUX_KERNEL)/$$i ; done
+	@for i in $(QCAWIFI_LIBS); do install -D qca-wifi-10.4/prebuild/$$i $(INSTALLDIR)/qca-wifi-10.4/usr/lib/$$i ; done
+	@for i in $(QCAWIFI_USR_SBIN); do install -D qca-wifi-10.4/prebuild/$$i $(INSTALLDIR)/qca-wifi-10.4/usr/sbin/$$i ; done
 endif
 	$(STRIP) $(INSTALLDIR)/qca-wifi-10.4/usr/sbin/*
 	$(STRIP) $(INSTALLDIR)/qca-wifi-10.4/usr/lib/*
-	$(STRIPX) $(INSTALLKMODDIR)/*.ko
+	$(STRIPX) $(INSTALLDIR)/qca-wifi-10.4/lib/modules/$(LINUX_KERNEL)/*.ko
 
 qca-wifi-10.4-clean:
 ifneq ($(wildcard qca-wifi-10.4/Makefile),)

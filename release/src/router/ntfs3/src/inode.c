@@ -821,8 +821,11 @@ static ssize_t ntfs_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
 
 		if (uaddr == ~0ul)
 			goto fix_error;
-
+#if defined(CONFIG_ARCH_QCOM)
+		npages = get_user_pages_unlocked(current, current->mm, uaddr, 1, 1, 0, &page);
+#else
 		npages = get_user_pages_unlocked(current, current->mm, uaddr, 1, &page, FOLL_WRITE);
+#endif
 		if (npages <= 0)
 			goto fix_error;
 
