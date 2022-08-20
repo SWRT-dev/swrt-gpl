@@ -29,15 +29,45 @@
 	};
 
 	soc {
-		qcom,nand@7980000 {
+		rng@22000 {
+			status = "ok";
+		};
+
+		ess-psgmii@98000 {
+			status = "ok";
+		};
+
+		wifi_glb_tcsr: tcsr@1949000 {
+			status = "ok";
+		};
+
+		tcsr: tcsr@194b000 {
+			status = "ok";
+		};
+
+		ess_tcsr: ess_tcsr@1953000 {
+			status = "ok";
+		};
+
+		wifi_noc_memtype_m0_m2_tcsr: tcsr@1957000 {
+			status = "ok";
+		};
+
+		ess-switch@c000000 {
+			status = "ok";
+		};
+
+		edma@c080000 {
 			status = "ok";
 		};
 
 		pcie0: pci@40000000 {
 			status = "ok";
-			perst-gpio = <&tlmm 38 0>;
-			wake-gpio = <&tlmm 50 0>;
-			clkreq-gpio = <&tlmm 39 0>;
+			perst-gpio = <&tlmm 38 GPIO_ACTIVE_LOW>;
+		};
+
+		wifi1: wifi@a800000 {
+			status = "disabled";
 		};
 
 		gpio_keys {
@@ -47,7 +77,7 @@
 };
 
 &nand {
-	status = "okay";
+	status = "ok";
 
 	nand@0 {
 		partitions {
@@ -67,3 +97,4 @@
 		};
 	};
 };
+

@@ -140,21 +140,16 @@ void get_ext_phy_id();
 #define PRE_XHCI_KMODS	"phy-qca-m31 phy-qca-uniphy dwc3-qcom dbm"
 #define POST_XHCI_KMODS	"xhci-plat-hcd dwc3"
 #elif defined(RTCONFIG_SOC_IPQ40XX)
-#if defined(RTCONFIG_QSDK10CS) /*DK SPF10*/
-#define PRE_XHCI_KMODS	"phy-qca-baldur phy-qca-uniphy phy-qcom-hsusb phy-qcom-ssusb dwc3-of-simple dwc3"
+#define PRE_XHCI_KMODS	"phy-qca-baldur phy-qca-uniphy dwc3-of-simple dwc3"
 #define POST_XHCI_KMODS	"xhci-pci xhci-plat-hcd"
-#else
-#define PRE_XHCI_KMODS	"phy-qca-baldur phy-qca-uniphy dwc3-ipq40xx dwc3"
-#define POST_XHCI_KMODS	""
-#endif /* RTCONFIG_QSDK10CS */
 #else
 #define PRE_XHCI_KMODS	""
 #define POST_XHCI_KMODS	""
 #endif
 
-#if defined(RTCONFIG_SOC_IPQ40XX) && !defined(RTCONFIG_QSDK10CS) /*DK SPF10*/
+#if defined(RTCONFIG_SOC_IPQ40XX)
 #define USB_DWC3	"dwc3"
-#define USB_DWC3_IPQ	"dwc3-ipq40xx"
+#define USB_DWC3_IPQ	"dwc3-of-simple"
 #define USB_PHY1        "phy-qca-baldur"
 #define USB_PHY2        "phy-qca-uniphy"
 #endif

@@ -370,12 +370,9 @@ void add_usb_host_modules(void)
 	load_kmods(PRE_XHCI_KMODS);
 #if defined(RTCONFIG_USB_XHCI)
 	modprobe(USB30_MOD, u3_param);
-
-#if !defined(RTCONFIG_QSDK10CS) /*DK SPF10*/
 	/* workaround for some USB dongle */
 	modprobe_r(USB_DWC3_IPQ);
 	modprobe(USB_DWC3_IPQ);
-#endif /* RTCONFIG_QSDK10CS */
 #endif
 #endif
 
@@ -723,14 +720,10 @@ void start_usb(int mode)
 
 #if defined(RTCONFIG_SOC_IPQ40XX)
 	_dprintf("insmod dakota usb module....\n");
-#if defined(RTCONFIG_QSDK10CS) /*DK SPF10*/
-	load_kmods(PRE_XHCI_KMODS);
-#else
 	modprobe(USB_PHY1);
 	modprobe(USB_PHY2);
 	modprobe(USB_DWC3_IPQ);
 	modprobe(USB_DWC3);
-#endif /* RTCONFIG_QSDK10CS */
 #endif
 
 	tune_bdflush();
@@ -902,14 +895,10 @@ void start_usb(int mode)
 #ifdef RTCONFIG_SOC_IPQ40XX
 void remove_dakota_usb_modules(void)
 {
-#if defined(RTCONFIG_QSDK10CS) /*DK SPF10*/
-	remove_kmods(PRE_XHCI_KMODS);
-#else
 	modprobe_r(USB_DWC3);
 	modprobe_r(USB_DWC3_IPQ);
 	modprobe_r(USB_PHY2);
 	modprobe_r(USB_PHY1);
-#endif /* RTCONFIG_QSDK10CS */
 }
 #endif
 

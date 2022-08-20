@@ -62,11 +62,7 @@ static const char *global_ini_params[] = {
 #endif
 
 #if !defined(RTCONFIG_QCA_WLAN_SCRIPTS)
-#if defined(RTCONFIG_SOC_IPQ8074) || \
-    defined(RTCONFIG_SOC_IPQ40XX) || \
-    defined(RTCONFIG_SOC_IPQ60XX) || \
-    defined(RTCONFIG_QCN550X) || \
-    defined(RPAC51) || defined(MAPAC1750)
+#if defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ40XX) || defined(RTCONFIG_SOC_IPQ50XX) || defined(RTCONFIG_SOC_IPQ60XX)
 /* SPF4.0 (kernel v3.14) or above, including SPF5.2 (kernel v4.4) */
 static const char *umac_params[] = {
 	/*"atf_mode",*/ "atf_msdu_desc", "atf_peers", "atf_max_vdevs",
@@ -76,7 +72,7 @@ static const char *umac_params[] = {
 	NULL
 },
 *qca_ol_params[] = {
-#if defined(RTCONFIG_GLOBAL_INI) && !defined(RTCONFIG_QSDK10CS) /*DK SPF10*/
+#if defined(RTCONFIG_GLOBAL_INI)
 	"allocram_track_max", "ar900b_20_targ_clk",
 	"bmi", "cfg_iphdr_pad", "dfs_disable", "emu_type",
 	"enable_mesh_support", "enable_tx_tcp_cksum", "frac",
@@ -187,8 +183,7 @@ static void qdf_tmode_param_hook(char ***pv, char **ps, int *plen);
 
 #if defined(RTCONFIG_SOC_IPQ40XX) || \
     defined(RTCONFIG_WIFI_QCN5024_QCN5054) || \
-    defined(RTCONFIG_QCN550X) || \
-    defined(RPAC51) || defined(MAPAC1750)
+    defined(RTCONFIG_QCN550X)
 static void qca_ol_param_hook(char ***pv, char **ps, int *plen);
 static void qca_ol_tmode_param_hook(char ***pv, char **ps, int *plen);
 #endif
@@ -216,8 +211,7 @@ static struct load_wifi_kmod_seq_s {
 } load_wifi_kmod_seq[] = {
 #if defined(RTCONFIG_SOC_IPQ40XX) \
  || defined(RTCONFIG_WIFI_QCN5024_QCN5054) \
- || defined(RTCONFIG_QCN550X) \
- || defined(RPAC51) || defined(MAPAC1750)
+ || defined(RTCONFIG_QCN550X)
 	/* /lib/wifi/qca-wifi-modules
 	 * SPF3.0, kernel 3.14.x, 10.4 WiFi driver
 	 * SPF5.2, kernel 4.4.x, 10.4 WiFi driver
@@ -254,7 +248,7 @@ static struct load_wifi_kmod_seq_s {
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QSDK10CS) /*DK SPF10*/
 	{ .kmod_name = "qca_spectral" },
 #endif
-#if !defined(RTCONFIG_QSDK10CS) /*DK SPF10*/ && !defined(RTCONFIG_SOC_IPQ60XX)
+#if !defined(RTCONFIG_SOC_IPQ60XX)
 	{ .kmod_name = "ath_hal", .flags = QWIFI_DA,
 		.mission_mode_param_hook_fn = ath_hal_param_hook
 	},
@@ -843,6 +837,15 @@ void init_devs(void)
 		printf("init_devs: can't find Factory MTD partition\n");
 #else
 	eval("ln", "-sf", "/dev/mtdblock3", "/dev/caldata");	/* mtdblock3 = cal in NAND flash, Factory MTD partition */
+#if defined(RTCONFIG_SOC_IPQ40XX)
+	doSystem("dd if=/dev/mtdblock3 of=/tmp/wifi0.caldata bs=1 count=%d skip=4096", QC98XX_EEPROM_SIZE_LARGEST);
+#if defined(RTCONFIG_HAS_5G_2)
+	doSystem("dd if=/dev/mtdblock3 of=/tmp/wifi1.caldata bs=1 count=%d skip=20480", QC98XX_EEPROM_SIZE_LARGEST);
+	doSystem("dd if=/dev/mtdblock3 of=/tmp/wifi2.caldata bs=1 count=%d skip=36864", QC98XX_EEPROM_SIZE_LARGEST);
+#else
+	doSystem("dd if=/dev/mtdblock3 of=/tmp/wifi1.caldata bs=1 count=%d skip=36864", QC98XX_EEPROM_SIZE_LARGEST);
+#endif
+#endif
 #endif
 #endif
 
