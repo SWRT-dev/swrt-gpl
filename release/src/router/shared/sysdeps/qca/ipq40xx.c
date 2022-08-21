@@ -1832,3 +1832,36 @@ rtkswitch_Port_phyLinkRate(unsigned int port_mask)
 
 	return speed;
 }
+
+char* get_all_lan_ifnames(void)
+{
+	char *wgn_ifnames = NULL, *lan_ifnames=NULL;
+        char word[64], *next = NULL;
+        char ath[64], *tmp = NULL;
+	char br[20],result[200];
+        if (!(wgn_ifnames = nvram_safe_get("wgn_ifnames")))
+                return NULL;
+	memset(result,0,sizeof(result));
+	strlcat(result,nvram_safe_get("lan_ifnames"),sizeof(result));
+	strlcat(result," ",sizeof(result));
+        foreach (word, wgn_ifnames, next)
+        {
+		memset(br,0,sizeof(br));
+		snprintf(br, sizeof(br), "%s_ifnames", word);
+		if((lan_ifnames = nvram_safe_get(br)) != NULL)
+		{
+        		foreach (ath, lan_ifnames, tmp)
+			{
+				if(strstr(ath,"ath"))
+				{		
+				 	if(!strncmp(ath, "ath0.", 5) || !strncmp(ath, "ath1.", 5) || !strncmp(ath, "ath2.", 5))
+						continue;
+					strlcat(result,ath,sizeof(result));
+					strlcat(result," ",sizeof(result));
+				}	
+			}	
+		}	
+        }
+	result[strlen(result)-1] = '\0';
+	return strdup(result);
+}

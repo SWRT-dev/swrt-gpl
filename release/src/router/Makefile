@@ -751,6 +751,7 @@ obj-y += wireless_tools
 obj-y += libnl-tiny-0.1
 
 ifeq ($(RTCONFIG_SOC_IPQ40XX),y)
+obj-y += jansson-2.7 lldpd-0.9.8 amas-utils #for networkmap
 #obj-y += libnl-bf
 endif
 
