@@ -1,6 +1,6 @@
 #ifndef _LINUX_XFRM_H
 #define _LINUX_XFRM_H
-#if !defined(MUSL_LIBC)
+#if !defined(MUSL_LIBC) && !defined(RTCONFIG_MUSL_LIBC)
 #include <linux/in6.h>
 #endif
 #include <linux/types.h>

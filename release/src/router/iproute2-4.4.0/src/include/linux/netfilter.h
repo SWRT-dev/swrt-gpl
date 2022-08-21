@@ -4,7 +4,7 @@
 #include <linux/types.h>
 
 #include <linux/sysctl.h>
-#if !defined(MUSL_LIBC)
+#if !defined(MUSL_LIBC) && !defined(RTCONFIG_MUSL_LIBC)
 #include <linux/in.h>
 #include <linux/in6.h>
 #endif

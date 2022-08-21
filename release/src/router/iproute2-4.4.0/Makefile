@@ -19,6 +19,9 @@ YACCFLAGS=-d -t -v
 LDLIBS+= $(LIBNETLINK)
 export LIBNETLINK ADDLIB YACCFLAGS LDLIBS
 
+IPROUTE2_HDRS= \
+	src/include/libnetlink.h
+
 all:
 	[ -f $(SOURCEDIR)/Config ] || touch $(SOURCEDIR)/Config
 	cd $(SOURCEDIR) && for i in $(DIRS); do make -C $$i $@ || exit $?; done
@@ -30,3 +33,8 @@ romfs:
 	$(ROMFSINST) $(SOURCEDIR)/ip/ip /bin/
 	$(ROMFSINST) $(SOURCEDIR)/tc/tc /bin/
 	$(ROMFSINST) $(SOURCEDIR)/bridge/bridge /bin/
+
+stage: $(IPROUTE2_HDRS)
+	@mkdir -p $(STAGEDIR)/usr/include
+	install -m 644 $(foreach h,$^,$(h)) $(STAGEDIR)/usr/include
+	@touch $@

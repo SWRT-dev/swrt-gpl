@@ -149,15 +149,15 @@ endif
 export comma=","
 
 # New Broadcom/Ralink/MTK/QCA/RTK platform.
-KPATH_2636_OR_3X = $(if $(or $(findstring linux-2.6.36,$(LINUXDIR)),$(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-4.1,$(LINUXDIR)),$(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR))),y)
+KPATH_2636_OR_3X = $(if $(or $(findstring linux-2.6.36,$(LINUXDIR)),$(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-4.1,$(LINUXDIR)),$(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4,$(LINUXDIR))),y)
 
 # New Ralink/MTK/QCA platform.
-KPATH_2636X_OR_3X = $(if $(or $(findstring linux-2.6.36.x,$(LINUXDIR)),$(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR))),y)
+KPATH_2636X_OR_3X = $(if $(or $(findstring linux-2.6.36.x,$(LINUXDIR)),$(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4,$(LINUXDIR))),y)
 
 # New Ralink/MTK/QCA/RTK platform.
-KPATH_3X = $(if $(or $(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR))),y)
+KPATH_3X = $(if $(or $(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4,$(LINUXDIR))),y)
 
-KPATH_37_OR_ABOVE = $(if $(or $(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR))),y)
+KPATH_37_OR_ABOVE = $(if $(or $(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4,$(LINUXDIR))),y)
 KPATH_314_OR_ABOVE = $(if $(or $(findstring linux-3.14,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4,$(LINUXDIR))),y)
 
 export KPATH_37_OR_ABOVE KPATH_314_OR_ABOVE
@@ -826,7 +826,7 @@ obj-$(RTCONFIG_DSL_REMOTE) += dsl_drv_tool
 obj-$(RTCONFIG_DSL_HOST) += dsl_diag
 obj-$(RTCONFIG_DSL_HOST) += dsl_autodet
 
-ifneq ($(or $(RTCONFIG_LANTIQ),$(RTCONFIG_RALINK)),y)
+ifneq ($(or $(RTCONFIG_LANTIQ),$(RTCONFIG_RALINK),$(RTCONFIG_QCA)),y)
 ifeq ($(KPATH_2636_OR_3X),y)
 IPTABLES := iptables-1.4.x
 IPTC_LIBDIR := $(TOP)/$(IPTABLES)/libiptc/.libs
@@ -844,14 +844,12 @@ IPTC_LIBS := -lip4tc $(if $(RTCONFIG_IPV6),-lip6tc,) -liptc
 obj-y += iptables-1.4.21
 obj-y += iproute2-3.x
 endif
-endif
-
-ifeq ($(RTCONFIG_ALPINE)$(RTCONFIG_LANTIQ)$(RTCONFIG_RALINK),y)
+else
 IPTABLES := iptables-1.4.21
 IPTC_LIBDIR := $(TOP)/$(IPTABLES)/libiptc/.libs
 IPTC_LIBS := -lip4tc $(if $(RTCONFIG_IPV6),-lip6tc,) -liptc
 obj-y += iptables-1.4.21
-ifeq ($(RTCONFIG_RALINK),y)
+ifeq ($(or $(RTCONFIG_RALINK),$(RTCONFIG_QCA)),y)
 obj-y += iproute2-4.4.0
 else
 obj-y += iproute2-3.15.0
@@ -5243,9 +5241,9 @@ iproute2-4.3-clean:
 	-@$(MAKE) -C iproute2-4.3 clean
 	-rm -f iproute2-4.3/iproute2-4.3.0/Config
 
-iproute2-4.4.0:
+iproute2-4.4.0: kernel_header iptables-1.4.21
 	touch iproute2-4.4.0/src/configure
-	$(MAKE) -C iproute2-4.4.0
+	$(MAKE) -C iproute2-4.4.0 && $(MAKE) -C $@ stage
 
 iproute2-4.4.0-install:
 	install -D iproute2-4.4.0/src/tc/tc $(INSTALLDIR)/iproute2-4.4.0/usr/sbin/tc

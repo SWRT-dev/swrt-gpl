@@ -21,7 +21,7 @@
 
 #include <asm/types.h>
 #include <linux/rtnetlink.h>
-#if defined(MUSL_LIBC)
+#if defined(MUSL_LIBC) || defined(RTCONFIG_MUSL_LIBC)
 #include <limits.h>
 #endif
 

@@ -15,7 +15,7 @@
 
 #include <linux/types.h>
 #include <linux/if_ether.h>
-#if !defined(MUSL_LIBC)
+#if !defined(MUSL_LIBC) && !defined(RTCONFIG_MUSL_LIBC)
 #include <linux/in6.h>
 #endif
 

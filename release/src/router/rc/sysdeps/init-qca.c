@@ -181,9 +181,7 @@ static void qdf_param_hook(char ***pv, char **ps, int *plen);
 static void qdf_tmode_param_hook(char ***pv, char **ps, int *plen);
 #endif
 
-#if defined(RTCONFIG_SOC_IPQ40XX) || \
-    defined(RTCONFIG_WIFI_QCN5024_QCN5054) || \
-    defined(RTCONFIG_QCN550X)
+#if defined(RTCONFIG_SOC_IPQ40XX) || defined(RTCONFIG_SOC_IPQ50XX) || defined(RTCONFIG_SOC_IPQ60XX) || defined(RTCONFIG_SOC_IPQ8074)
 static void qca_ol_param_hook(char ***pv, char **ps, int *plen);
 static void qca_ol_tmode_param_hook(char ***pv, char **ps, int *plen);
 #endif
@@ -209,14 +207,7 @@ static struct load_wifi_kmod_seq_s {
 	/* module-specific post hook function. */
 	void (*post_fn)(void);
 } load_wifi_kmod_seq[] = {
-#if defined(RTCONFIG_SOC_IPQ40XX) \
- || defined(RTCONFIG_WIFI_QCN5024_QCN5054) \
- || defined(RTCONFIG_QCN550X)
-	/* /lib/wifi/qca-wifi-modules
-	 * SPF3.0, kernel 3.14.x, 10.4 WiFi driver
-	 * SPF5.2, kernel 4.4.x, 10.4 WiFi driver
-	 * SPF8.0, kernel 4.4.x, 11.0 WiFi driver
-	 */
+#if defined(RTCONFIG_SOC_IPQ40XX) || defined(RTCONFIG_SOC_IPQ50XX) || defined(RTCONFIG_SOC_IPQ60XX) || defined(RTCONFIG_SOC_IPQ8074)
 	{ .kmod_name = "mem_manager", .flags = QWIFI_STICK },	/* If QCA WiFi configuration file has WIFI_MEM_MANAGER_SUPPORT=1 */
 #if (defined(RTCONFIG_WIFI_QCN5024_QCN5054)||defined(RTCONFIG_SOC_IPQ40XX)) && defined(RTCONFIG_GLOBAL_INI)
 	/* IPQ8074A SPF10 */
@@ -229,23 +220,19 @@ static struct load_wifi_kmod_seq_s {
 	},
 	{ .kmod_name = "asf" },
 #else
-	/* IPQ8074 SPF8 */
 	{ .kmod_name = "asf" },
-	{ .kmod_name = "adf", .flags = QWIFI_ADF },
 	{ .kmod_name = "qdf", .flags = QWIFI_QDF,
 		.params = qdf_params
 	},
 #endif
-#if !defined(RTCONFIG_WIFI_QCN5024_QCN5054) && !defined(RTCONFIG_QSDK10CS) /*DK SPF10*/
 	{ .kmod_name = "ath_dfs" },
 	{ .kmod_name = "ath_spectral" },
-#endif
 	{ .kmod_name = "umac",
 		.remove_sleep = 2, .params = umac_params,
 		.mission_mode_param_hook_fn = umac_param_hook,
 		.test_mode_param_hook_fn = umac_tmode_param_hook
 	},
-#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QSDK10CS) /*DK SPF10*/
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054)
 	{ .kmod_name = "qca_spectral" },
 #endif
 #if !defined(RTCONFIG_SOC_IPQ60XX)
@@ -255,7 +242,7 @@ static struct load_wifi_kmod_seq_s {
 	{ .kmod_name = "ath_rate_atheros", .flags = QWIFI_DA },
 	{ .kmod_name = "hst_tx99", .flags = QWIFI_DA  },
 	{ .kmod_name = "ath_dev", .flags = QWIFI_DA },
-	{ .kmod_name = "qca_da", .flags = QWIFI_DA },
+//	{ .kmod_name = "qca_da", .flags = QWIFI_DA },
 #endif
 	{ .kmod_name = "qca_ol", .flags = QWIFI_OL,
 		.params = qca_ol_params,
@@ -268,34 +255,11 @@ static struct load_wifi_kmod_seq_s {
 	},
 	{ .kmod_name = "wifi_2_0" },
 #endif
-#else
-	/* QCA9558 ILQ2.0, kernel 3.3.x, 10.2 WiFi driver
-	 * IPQ8064 ILQ3.1, kernel 3.4.x, 10.4 WiFi driver
-	 */
-	{ .kmod_name = "asf" },
-	{ .kmod_name = "adf",
-		.params = adf_params
-	},
-	{ .kmod_name = "ath_hal",
-		.mission_mode_param_hook_fn = ath_hal_param_hook
-	},
-	{ .kmod_name = "ath_rate_atheros" },
-	{ .kmod_name = "ath_dfs" },
-	{ .kmod_name = "ath_spectral" },
-	{ .kmod_name = "hst_tx99" },
-	{ .kmod_name = "ath_dev" },
-	{ .kmod_name = "umac",
-		.remove_sleep = 2,
-		.params = umac_params,
-		.mission_mode_param_hook_fn = umac_param_hook,
-		.test_mode_param_hook_fn = umac_tmode_param_hook
-	},
 #endif
 
-//	{ "ath_pktlog", 0, 0, 0, NULL },
-#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QSDK10CS) /*DK SPF10*/
+	{ .kmod_name = "ath_pktlog" },
 	{ .kmod_name = "smart_antenna" },
-#endif
+
 #if defined(RTCONFIG_WIGIG)
 	{ .kmod_name = "wil6210",
 #if defined(GTAXY16000)
@@ -310,16 +274,13 @@ static struct load_wifi_kmod_seq_s {
  * If a model uses new Wi-Fi driver, e.g., 10.4 and kernel v3.14 or above, specify all type of Wi-Fi of all band here.
  */
 static unsigned int qca_wifi_type =
-#if defined(RTCONFIG_WIFI_QCA9990_QCA9990) \
- || defined(RTCONFIG_WIFI_QCA9994_QCA9994)
+#if defined(RTCONFIG_WIFI_QCA9990_QCA9990) || defined(RTCONFIG_WIFI_QCA9994_QCA9994)
 	QWIFI_OL | QWIFI_ADF
-#elif defined(RTCONFIG_SOC_IPQ40XX) \
-   || defined(RTCONFIG_WIFI_QCN5024_QCN5054)
+#elif defined(RTCONFIG_SOC_IPQ40XX)
+	QWIFI_DA | QWIFI_OL | QWIFI_QDF
+#elif defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_SOC_IPQ50XX) || defined(RTCONFIG_SOC_IPQ60XX)
 	QWIFI_OL | QWIFI_QDF	/* All Wi-Fi unit are offload. */
-#elif defined(RPAC51)
-	QWIFI_DA | QWIFI_ADF	/* qca_ol is not loaded on RP-AC51.  It should use Direct-Attach Wi-Fi modules only. */
-#elif defined(MAPAC1750) \
-   || (defined(RTCONFIG_QCN550X) && defined(RTCONFIG_HAS_5G))
+#elif defined(MAPAC1750) || (defined(RTCONFIG_QCN550X) && defined(RTCONFIG_HAS_5G))
 	QWIFI_DA | QWIFI_OL | QWIFI_QDF
 #elif defined(RTCONFIG_QCN550X)
 	QWIFI_DA | QWIFI_QDF
@@ -4032,7 +3993,7 @@ void generate_wl_para(int unit, int subunit)
 {
 }
 
-#if defined(RTCONFIG_SOC_QCA9557) || defined(RTCONFIG_QCA953X) || defined(RTCONFIG_QCA956X) || defined(RTCONFIG_QCN550X) || defined(RTCONFIG_SOC_IPQ40XX)
+#if defined(RTCONFIG_SOC_IPQ40XX)
 // only qca solution can reload it dynamically
 // only happened when qca_sfe=1
 // only loaded when unloaded, and unloaded when loaded

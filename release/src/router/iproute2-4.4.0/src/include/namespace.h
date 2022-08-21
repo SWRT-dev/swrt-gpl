@@ -31,7 +31,7 @@
 #define MS_SHARED	(1 << 20)
 #endif
 
-#if !defined(MUSL_LIBC)
+#if !defined(MUSL_LIBC) && !defined(RTCONFIG_MUSL_LIBC)
 #ifndef HAVE_SETNS
 static inline int setns(int fd, int nstype)
 {

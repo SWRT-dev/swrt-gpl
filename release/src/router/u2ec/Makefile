@@ -75,7 +75,7 @@ CFLAGS += $(DEBFLAGS)
 
 all: $(PROG)
 
-ifeq ($(wildcard ./*.c),)
+ifneq ($(wildcard ./prebuild/$(BUILD_NAME)/$(PROG)),)
 $(PROG):
 	cp prebuild/$(BUILD_NAME)/$(PROG) .
 else
