@@ -1,7 +1,7 @@
 ﻿/*
  * Non-physical true random number generator based on timing jitter.
  *
- * Copyright Stephan Mueller <smueller@chronox.de>, 2014 - 2021
+ * Copyright Stephan Mueller <smueller@chronox.de>, 2014 - 2022
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -64,7 +64,7 @@
 #define MINVERSION 2 /* API compatible, ABI may change, functional
 		      * enhancements only, consumer can be left unchanged if
 		      * enhancements are not considered */
-#define PATCHLEVEL 2 /* API / ABI compatible, no functional changes, no
+#define PATCHLEVEL 7 /* API / ABI compatible, no functional changes, no
 		      * enhancements, bug fixes only */
 
 static int Verbosity = 0;
@@ -99,10 +99,12 @@ static int Pidfile_fd = -1;
 static char *Pidfile = NULL;
 
 static int Entropy_avail_fd = -1;
+static int Entropy_thresh_fd = -1;
+static unsigned int jent_flags = 0;
+static unsigned int jent_osr = 1;
 
 #define ENTROPYBYTES 32
 #define OVERSAMPLINGFACTOR 2
-#define ENTROPYTHRESH 1024
 /*
  * After FORCE_RESEED_WAKEUPS, the installed alarm handler will unconditionally
  * trigger a reseed irrespective of the seed level. This ensures that new
@@ -111,6 +113,7 @@ static int Entropy_avail_fd = -1;
  */
 #define FORCE_RESEED_WAKEUPS	120
 #define ENTROPYAVAIL "/proc/sys/kernel/random/entropy_avail"
+#define ENTROPYTHRESH "/proc/sys/kernel/random/write_wakeup_threshold"
 #define LRNG_FILE "/proc/lrng_type"
 
 static void install_alarm(void);
@@ -218,7 +221,9 @@ static void usage(void)
 	fprintf(stderr, "\t\t\tVerbose logging implies running in foreground\n");
 	fprintf(stderr, "\t-p --pid\tWrite daemon PID to file\n");
 	fprintf(stderr, "\t-s --sp800-90b\tForce SP800-90B compliance\n");
-	fprintf(stderr, "LRNG presence %sdetected\n",
+	fprintf(stderr, "\t-f --flags\tInteger with flags used to allocate Jitter RNG\n");
+	fprintf(stderr, "\t-o --osr\tInteger with OSR used to allocate Jitter RNG\n");
+	fprintf(stderr, "\nLRNG presence %sdetected\n",
 		lrng_present() ? "" : "not ");
 	exit(1);
 }
@@ -236,9 +241,11 @@ static void parse_opts(int argc, char *argv[])
 			{"help", 0, 0, 0},
 			{"version", 0, 0, 0},
 			{"sp800-90b", 0, 0, 0},
+			{"flags", 1, 0, 0},
+			{"osr", 1, 0, 0},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "svp:h", opts, &opt_index);
+		c = getopt_long(argc, argv, "svp:hf:o:", opts, &opt_index);
 		if (-1 == c)
 			break;
 		switch (c) {
@@ -262,6 +269,26 @@ static void parse_opts(int argc, char *argv[])
 			case 4:
 				force_sp80090b = 1;
 				break;
+			case 5:
+			{
+				unsigned long val = strtoul(optarg, NULL, 10);
+
+				if (val > UINT_MAX)
+					usage();
+				jent_flags = (unsigned int)val;
+
+				break;
+			}
+			case 6:
+			{
+				unsigned long val = strtoul(optarg, NULL, 10);
+
+				if (val > UINT_MAX)
+					usage();
+				jent_osr = (unsigned int)val;
+
+				break;
+			}
 			default:
 				usage();
 			}
@@ -425,42 +452,12 @@ static size_t write_random_90B(struct kernel_rng *rng, char *buf, size_t len,
 
 static ssize_t read_jent(struct kernel_rng *rng, char *buf, size_t buflen)
 {
-	unsigned int i;
-	ssize_t ret = jent_read_entropy(rng->ec, buf, buflen);
+	ssize_t ret = jent_read_entropy_safe(&rng->ec, buf, buflen);
 
 	if (ret >= 0)
 		return ret;
 
 	dolog(LOG_WARN, "Cannot read entropy");
-
-	/* Only catch the FIPS test failures in the loop below */
-	if (ret != -2 && ret != -3)
-		return ret;
-
-	for (i = 1; i <= 10; i++) {
-		dolog(LOG_WARN,
-		      "Re-allocation attempt %u to clear permanent Jitter RNG error",
-		      i);
-
-		jent_entropy_collector_free(rng->ec);
-		rng->ec = jent_entropy_collector_alloc(1, 0);
-		if (!rng->ec) {
-			dolog(LOG_WARN,
-			      "Allocation of entropy collector failed");
-		} else {
-			ret = jent_read_entropy(rng->ec, buf, buflen);
-			if (ret >= 0)
-				return ret;
-
-			dolog(LOG_WARN, "Cannot read entropy");
-
-			if (ret != -2 && ret != -3)
-				return ret;
-		}
-	}
-
-	dolog(LOG_ERR,
-	      "Failed to allocate new Jitter RNG instance and obtain entropy");
 
 	return -EFAULT;
 }
@@ -547,7 +544,7 @@ static size_t gather_entropy(struct kernel_rng *rng, int init)
 	return ret;
 }
 
-static int read_entropy_avail(int fd)
+static int read_entropy_value(int fd)
 {
 	ssize_t data = 0;
 	char buf[5];
@@ -557,18 +554,18 @@ static int read_entropy_avail(int fd)
 	lseek(fd, 0, SEEK_SET);
 
 	if (0 > data) {
-		dolog(LOG_WARN, "Error reading data from entropy_avail: %s",
+		dolog(LOG_WARN, "Error reading data from entropy fd: %s",
 		      strerror(errno));
 		return 0;
 	}
 	if (0 == data) {
-		dolog(LOG_WARN, "Could not read data from entropy_avail");
+		dolog(LOG_WARN, "Could not read data from entropy fd");
 		return 0;
 	}
 
 	entropy = atoi(buf);
 	if (0 > entropy || 4096 < entropy) {
-		dolog(LOG_WARN, "Entropy read from entropy_avail (%d) is outsize of range", entropy);
+		dolog(LOG_WARN, "Entropy read from entropy fd (%d) is outsize of range", entropy);
 		return 0;
 	}
 
@@ -585,7 +582,7 @@ static int read_entropy_avail(int fd)
  */
 static void sig_entropy_avail(int sig)
 {
-	int entropy = 0;
+	int entropy = 0, thresh = 0;
 	size_t written = 0;
 	static unsigned int force_reseed = FORCE_RESEED_WAKEUPS;
 
@@ -601,11 +598,12 @@ static void sig_entropy_avail(int sig)
 		goto out;
 	}
 
-	entropy = read_entropy_avail(Entropy_avail_fd);
+	entropy = read_entropy_value(Entropy_avail_fd);
+	thresh = read_entropy_value(Entropy_thresh_fd);
 
-	if (0 == entropy)
+	if (0 == entropy || 0 == thresh)
 		goto out;
-	if (ENTROPYTHRESH < entropy) {
+	if (entropy < thresh) {
 		dolog(LOG_DEBUG, "Sufficient entropy %d available", entropy);
 		goto out;
 	}
@@ -710,7 +708,10 @@ static void dealloc(void)
 		close(Entropy_avail_fd);
 		Entropy_avail_fd = -1;
 	}
-
+	if (-1 != Entropy_thresh_fd) {
+		close(Entropy_thresh_fd);
+		Entropy_thresh_fd = -1;
+	}
 	if (-1 != Pidfile_fd) {
 		close(Pidfile_fd);
 		Pidfile_fd = -1;
@@ -721,7 +722,7 @@ static void dealloc(void)
 
 static int alloc_rng(struct kernel_rng *rng)
 {
-	rng->ec = jent_entropy_collector_alloc(1, 0);
+	rng->ec = jent_entropy_collector_alloc(jent_osr, jent_flags);
 	if (!rng->ec) {
 		dolog(LOG_ERR, "Allocation of entropy collector failed");
 		return -EAGAIN;
@@ -752,7 +753,7 @@ static int alloc(void)
 	int ret = 0;
 	size_t written = 0;
 
-	ret = jent_entropy_init();
+	ret = jent_entropy_init_ex(jent_osr, jent_flags);
 	if (ret) {
 		dolog(LOG_ERR, "The initialization of CPU Jitter RNG failed with error code %d\n", ret);
 		return ret;
@@ -770,6 +771,16 @@ static int alloc(void)
 		dealloc();
 		return -errsv;
 	}
+
+	Entropy_thresh_fd = open(ENTROPYTHRESH, O_RDONLY);
+	if (-1 == Entropy_thresh_fd) {
+		int errsv = errno;
+
+		dolog(LOG_ERR, "Open of %s failed: %s", ENTROPYTHRESH, strerror(errno));
+		dealloc();
+		return -errsv;
+	}
+
 
 	written = gather_entropy(&Random, 1);
 	dolog(LOG_VERBOSE, "%lu bytes written to /dev/random", written);
@@ -792,7 +803,7 @@ static void create_pid_file(const char *pid_file)
 			exit(1);
 		} else
 			dolog(LOG_ERR, "Cannot lock pid file\n");
-		}
+	}
 
 	if (ftruncate(Pidfile_fd, 0) == -1) {
 		dolog(LOG_ERR, "Cannot truncate pid file\n");
@@ -811,7 +822,7 @@ static void create_pid_file(const char *pid_file)
 static void daemonize(void)
 {
 	pid_t pid;
-
+	
 	/* already a daemon */
 	if (1 == getppid())
 	       return;
@@ -835,21 +846,17 @@ static void daemonize(void)
 	 * directory from being locked; hence not being able to remove it. */
 	if ((chdir("/")) < 0)
 		dolog(LOG_ERR, "Cannot change directory\n");
-
+	
 	if (Pidfile && strlen(Pidfile))
 		create_pid_file(Pidfile);
 
 	/* Redirect standard files to /dev/null */
-#if defined(__GNUC__) && __GNUC__ >= 5
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-result"
-#endif /* if __GNUC__ >= 5 */
 	freopen( "/dev/null", "r", stdin);
 	freopen( "/dev/null", "w", stdout);
 	freopen( "/dev/null", "w", stderr);
-#if defined(__GNUC__) && __GNUC__ >= 5
 #pragma GCC diagnostic pop
-#endif /* if __GNUC__ >= 5 */
 }
 
 

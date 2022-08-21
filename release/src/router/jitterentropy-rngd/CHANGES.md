@@ -1,3 +1,20 @@
+1.2.7:
+ * enhancement: use Jitter RNG library 3.4.0
+
+1.2.6:
+ * enhancement: use Jitter RNG library 3.3.1
+
+1.2.5:
+ * enhancement: use Jitter RNG library 3.3.0
+ * enhancement: add --flags command line option to allow specifying the integer value used as flags field to allocate the Jitter RNG - see jitterentropy(3) for details
+ * enhancement: add --osr command line option
+
+1.2.4:
+ * enhancement: use Jitter RNG library 3.2.0
+
+1.2.3:
+ * enhancement: use Jitter RNG library 3.1.0
+
 1.2.2:
  * enhancement: Add SP800-90B compliant entropy injection
  * fix: proper use of the RNDRESEEDCRNG IOCTL which otherwise causes an

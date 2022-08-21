@@ -2,9 +2,8 @@
 
 CC ?= $(CROSS_COMPILE)gcc
 STRIP ?= $(CROSS_COMPILE)strip
-CFLAGS +=-Wextra -Wall -pedantic -fwrapv --param ssp-buffer-size=4 -fvisibility=hidden -fPIE -Wcast-align -Wmissing-field-initializers -Wshadow -Wswitch-enum -O0
+CFLAGS ?=-Wextra -Wall -pedantic -fwrapv --param ssp-buffer-size=4 -fvisibility=hidden -fPIE -Wcast-align -Wmissing-field-initializers -Wshadow -Wswitch-enum -O0
 LDFLAGS ?=-Wl,-z,relro,-z,now -pie
-LDFLAGS += $(if $(QCA),$(EXTRALDFLAGS))
 
 GCCVERSIONFORMAT := $(shell echo `$(CC) -dumpversion | sed 's/\./\n/g' | wc -l`)
 ifeq "$(GCCVERSIONFORMAT)" "3"
@@ -14,9 +13,9 @@ else
 endif
 
 ifeq "$(GCC_GTEQ_490)" "1"
-  CFLAGS += -fstack-protector-strong
+  override CFLAGS += -fstack-protector-strong
 else
-  CFLAGS += -fstack-protector-all
+  override CFLAGS += -fstack-protector-all
 endif
 
 # Change as necessary
@@ -26,26 +25,38 @@ PREFIX := /usr/local
 UNITDIR ?= $(shell pkg-config --variable=systemdsystemunitdir systemd 2>/dev/null || echo /usr/lib/systemd/system)
 
 NAME := jitterentropy-rngd
-#C_SRCS := $(wildcard *.c)
-C_SRCS := jitterentropy-base.c jitterentropy-rngd.c
+C_SRCS := $(sort $(wildcard lib/*.c))
+C_SRCS += jitterentropy-rngd.c
 C_OBJS := ${C_SRCS:.c=.o}
 OBJS := $(C_OBJS)
 
-INCLUDE_DIRS :=
+INCLUDE_DIRS := . lib/
 LIBRARY_DIRS :=
 LIBRARIES := rt pthread
 
-CFLAGS += $(foreach includedir,$(INCLUDE_DIRS),-I$(includedir))
-LDFLAGS += $(foreach librarydir,$(LIBRARY_DIRS),-L$(librarydir))
-LDFLAGS += $(foreach library,$(LIBRARIES),-l$(library))
+override CFLAGS += $(foreach includedir,$(INCLUDE_DIRS),-I$(includedir))
+override LDFLAGS += $(foreach librarydir,$(LIBRARY_DIRS),-L$(librarydir))
+override LDFLAGS += $(foreach library,$(LIBRARIES),-l$(library))
 
-.PHONY: all clean distclean
+analyze_srcs = $(filter %.c, $(sort $(C_SRCS)))
+analyze_plists = $(analyze_srcs:%.c=%.plist)
+
+.PHONY: all scan clean distclean
 
 all: $(NAME)
 
 $(NAME): $(OBJS)
 #	scan-build --use-analyzer=/usr/bin/clang $(CC) $(OBJS) -o $(NAME) $(LDFLAGS)
 	$(CC) $(OBJS) -o $(NAME) $(LDFLAGS)
+
+$(analyze_plists): %.plist: %.c
+	@echo "  CCSA  " $@
+	clang --analyze $(CFLAGS) $< -o $@
+
+scan: $(analyze_plists)
+
+cppcheck:
+	cppcheck --force -q --enable=performance --enable=warning --enable=portability *.h *.c
 
 strip: $(NAME)
 	$(STRIP) --strip-unneeded $(NAME)
@@ -61,5 +72,6 @@ clean:
 	@- $(RM) $(NAME)
 	@- $(RM) $(OBJS)
 	@- $(RM) jitterentropy.service
+	@- $(RM) $(analyze_plists)
 
 distclean: clean
