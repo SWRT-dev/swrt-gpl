@@ -2378,7 +2378,7 @@ int gen_ath_config(int band, int subnet)
 					switch (bw) {
 #if defined(RTCONFIG_VHT160)
 					case 5:	/* 160Mhz */
-						if (validate_bw_160_support())
+						if (validate_bw_160_support() && nvram_get_int(strcat_r(tmpfix, "bw", tmp)) == 5)
 							strlcpy(t_bw, "HT160", sizeof(t_bw));
 						else {
 							dbg("%s: Can't enable 160MHz support!\n", __func__);
@@ -2388,7 +2388,7 @@ int gen_ath_config(int band, int subnet)
 #endif
 #if defined(RTCONFIG_VHT80_80)
 					case 4:	/* 80+80MHz */
-						if (validate_bw_80_80_support(band))
+						if (validate_bw_80_80_support(band) && nvram_get_int(strcat_r(tmpfix, "bw", tmp)) == 4)
 							strlcpy(t_bw, "HT80_80", sizeof(t_bw));
 						else {
 							dbg("%s: Can't enable 80+80MHz support!\n", __func__);
@@ -2437,7 +2437,7 @@ int gen_ath_config(int band, int subnet)
 	}
 
 	snprintf(mode_cmd, sizeof(mode_cmd), "%s%s%s", t_mode, t_bw, t_ext);
-	fprintf(fp3,"%s\n",mode_cmd);
+	fprintf(fp3,"iwpriv %s mode %s\n", wif, mode_cmd);
 	fprintf(fp3, "iwpriv %s puren %d\n", wif, puren);
 
 	if (band) //only 5G
