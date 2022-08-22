@@ -2439,7 +2439,6 @@ int gen_ath_config(int band, int subnet)
 	snprintf(mode_cmd, sizeof(mode_cmd), "%s%s%s", t_mode, t_bw, t_ext);
 	fprintf(fp3,"iwpriv %s mode %s\n", wif, mode_cmd);
 	fprintf(fp3, "iwpriv %s puren %d\n", wif, puren);
-	fprintf(fp3, "iwpriv %s qwrap_enable 0\n", wif);
 
 	if (band) //only 5G
 	{
@@ -5011,8 +5010,12 @@ getSiteSurvey(int band,char* ofile)
 
 	lock = file_lock("sitesurvey");
 	if (band != wlc_band && is_sta) {
+#if defined(RTCONFIG_SOC_IPQ40XX)
+		doSystem("echo 1 > /sys/module/qca_ol/parameters/qwrap_enable");
+		eval("wlanconfig", ssv_if, "create", "wlandev", get_vphyifname(band), "wlanmode", "wrap", "nosbeacon");
+#else
 		eval("wlanconfig", ssv_if, "create", "wlandev", get_vphyifname(band), "wlanmode", "sta", "nosbeacon");
-		doSystem("iwpriv %s qwrap_enable 0", get_wififname(band));
+#endif
 		ifconfig(ssv_if, IFUP, NULL, NULL);
 	}
 	ssv_ok = do_sitesurvey(ssv_if);
@@ -5020,7 +5023,9 @@ getSiteSurvey(int band,char* ofile)
 	if (band != wlc_band && is_sta) {
 		ifconfig(ssv_if, 0, NULL, NULL);
 		eval("wlanconfig", ssv_if, "destroy");
-//		doSystem("iwpriv %s qwrap_enable 1", get_wififname(band));
+#if defined(RTCONFIG_SOC_IPQ40XX)
+		doSystem("echo 0 > /sys/module/qca_ol/parameters/qwrap_enable");
+#endif
 	}
 	if (ssv_ok <= 0 && !radio && is_sta) {
 		__get_wlifname(band, 0, ssv_if);
