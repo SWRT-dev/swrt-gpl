@@ -15553,10 +15553,6 @@ NO_USB_CAP:
 #endif
 #if defined(RTCONFIG_VHT160)
 	add_rc_support("vht160");
-#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
-	nvram_set("wl_bw_160", "1");
-	nvram_set("wl1_bw_160", "1");
-#endif
 #endif
 #ifdef RTCONFIG_BCMWL6
 	add_rc_support("wl6");

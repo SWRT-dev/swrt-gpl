@@ -10815,7 +10815,9 @@ void start_jitterentropy()
 	char *cmd_argv[] = { "/usr/sbin/jitterentropy-rngd",
 								"-p", "/var/run/jitterentropy-rngd.pid",
 								NULL};
+#if !defined(RTCONFIG_SOC_IPQ40XX)
 	_eval(cmd_argv, NULL, 0, &pid);
+#endif
 }
 
 void stop_jitterentropy()
