@@ -500,7 +500,9 @@ static int __get_QCA_sta_info_by_ifname(const char *ifname, char subunit_id, int
 	if ((q = strstr(line_buf, "ACAPS")) != NULL) {
 		*(q - 1) = '\0';
 		l2 = q;
-#if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK) || defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
+#if defined(RTCONFIG_SOC_IPQ40XX)
+		init_sta_info_item(q + strlen("ACAPS"), part2_tbl);	/* skip ACAPS due to it doesn't have data. */
+#elif defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK) || defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
 		init_sta_info_item(q, part2_tbl);
 #else
 		/* ILQ2.x ~ SPF10 */
