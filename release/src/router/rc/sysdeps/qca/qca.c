@@ -2454,12 +2454,16 @@ int gen_ath_config(int band, int subnet)
 			/* if bw = 80+80, set central frequency of 2-nd 80MHz segment. */
 			if (cfreq2)
 				fprintf(fp3, "iwpriv %s cfreq2 %d\n", wif, cfreq2);
+			fprintf(fp3, "iwpriv %s emiwar80p80 1\n", wif);
 		}
 #endif
 #if defined(RTCONFIG_VHT80_80) || defined(RTCONFIG_VHT160)
 		if(!strcmp(mode_cmd, "11ACVHT160") || !strcmp(mode_cmd, "11ACVHT80_80"))
 			fprintf(fp3,"iwpriv %s assocwar160 1\n", wif);
 #endif
+	}else{
+		if(!strcmp(mode_cmd, "11G"))
+			fprintf(fp3,"iwpriv %s pureg 1\n", wif);
 	}
 
 	if(sw_mode() == SW_MODE_REPEATER){
