@@ -699,11 +699,7 @@ int create_tmp_sta_part(int unit, char *sta, char *ssid_prefix)
 	if(ssid_prefix)
 	{
 		conv_iwconfig_essid(nvram_pf_safe_get(ssid_prefix, "ssid"), prefix);
-#if defined(RTCONFIG_SOC_IPQ40XX)
-		doSystem("iwconfig %s essid %s", sta, prefix);
-#else
 		doSystem("iwconfig %s essid -- %s", sta, prefix);
-#endif
 	}
 	ifconfig(sta, IFUP, NULL, NULL);
 	return 0;
@@ -1407,10 +1403,10 @@ gen_qca_wifi_cfgs(void)
 				sprintf(entropy_path, "/var/run/entropy_%s.bin", wif);
 				if (unit == WL_60G_BAND) {
 					if (!nvram_pf_match(main_prefix, "radio", "0")) {
-						fprintf(fp, "hostapd -d -B %s -P %s -e %s\n", conf_path, pid_path, entropy_path);
+						fprintf(fp, "hostapd -B -P %s -e %s %s\n", pid_path, entropy_path, conf_path);
 					}
 				} else {
-					fprintf(fp, "hostapd -d -B %s -P %s -e %s\n", conf_path, pid_path, entropy_path);
+					fprintf(fp, "hostapd -B -P %s -e %s %s\n", pid_path, entropy_path, conf_path);
 				}
 #ifdef RTCONFIG_AMAS
 				if(unit == 0) {
@@ -2456,6 +2452,7 @@ int gen_ath_config(int band, int subnet)
 	snprintf(mode_cmd, sizeof(mode_cmd), "%s%s%s", t_mode, t_bw, t_ext);
 	fprintf(fp3,"iwpriv %s mode %s\n", wif, mode_cmd);
 	fprintf(fp3, "iwpriv %s puren %d\n", wif, puren);
+	fprintf(fp3, "iwpriv %s extap 1\n", wif);//support ap + (sta|wrap)
 
 	if (band) //only 5G
 	{

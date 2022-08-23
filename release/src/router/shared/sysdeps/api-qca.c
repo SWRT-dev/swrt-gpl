@@ -2976,3 +2976,110 @@ void execute_bt_bscp()
 		_dprintf("%s, Generate bt_bscp_conf fail.\n", __func__);
 }
 #endif
+
+
+static void update_leds_gpio(char *ledname, char *trigger, int port_mask, char *device_name, char *mode)
+{
+	char path[256] = {0};
+	if(ledname == NULL)
+		return;
+	if(trigger){
+		snprintf(path, sizeof(path), "/sys/class/leds/%s/trigger", ledname);
+		f_write_string(path, trigger, 0, 0);
+	}
+	if(port_mask){
+		char buf[5] = {0};
+		snprintf(path, sizeof(path), "/sys/class/leds/%s/port_mask", ledname);
+		snprintf(buf, sizeof(buf), "0x%X", port_mask);
+		f_write_string(path, buf, 0, 0);
+	}
+	if(device_name){
+		snprintf(path, sizeof(path), "/sys/class/leds/%s/device_name", ledname);
+		f_write_string(path, device_name, 0, 0);
+	}
+	if(mode){
+		snprintf(path, sizeof(path), "/sys/class/leds/%s/mode", ledname);
+		f_write_string(path, mode, 0, 0);
+	}
+}
+
+uint32_t set_leds_gpio(int which, int mode)
+{
+#if defined(RTCONFIG_SOC_IPQ40XX)
+#define LANPORTS_MASK	((1U << LAN1_PORT) | (1U << LAN2_PORT) | (1U << LAN3_PORT) | (1U << LAN4_PORT))
+#elif defined(RTCONFIG_SOC_IPQ50XX) || defined(RTCONFIG_SOC_IPQ60XX)
+#define LANPORTS_MASK	((1U << LAN1_PORT) | (1U << LAN2_PORT) | (1U << LAN3_PORT) | (1U << LAN4_PORT))
+#elif defined(RTCONFIG_SOC_IPQ8074)
+#define LANPORTS_MASK	((1U << LAN1_PORT) | (1U << LAN2_PORT) | (1U << LAN3_PORT) | (1U << LAN4_PORT) | \
+	(1U << LAN5_PORT) | (1U << LAN6_PORT) | (1U << LAN7_PORT) | (1U << LAN8_PORT)
+#endif
+	switch(which){
+		case LED_WAN:
+			if(mode)
+				update_leds_gpio("wan", "switch0", 1 << WAN_PORT, NULL, NULL);
+			else
+				update_leds_gpio("wan", "none", 0, NULL, NULL);
+			break;
+		case LED_WAN_RED:
+			if(mode)
+				update_leds_gpio("red:wan", "switch0", 1 << WAN_PORT, NULL, NULL);
+			else
+				update_leds_gpio("red:wan", "none", 0, NULL, NULL);
+			break;
+#ifdef RTCONFIG_LAN4WAN_LED
+		case LED_LAN1:
+			if(mode)
+				update_leds_gpio("lan1", "switch0", 1 << LAN1_PORT, NULL, NULL);
+			else
+				update_leds_gpio("lan1", "none", 0, NULL, NULL);
+			break;
+		case LED_LAN2:
+			if(mode)
+				update_leds_gpio("lan2", "switch0", 1 << LAN2_PORT, NULL, NULL);
+			else
+				update_leds_gpio("lan2", "none", 0, NULL, NULL);
+			break;
+		case LED_LAN3:
+			if(mode)
+				update_leds_gpio("lan3", "switch0", 1 << LAN3_PORT, NULL, NULL);
+			else
+				update_leds_gpio("lan3", "none", 0, NULL, NULL);
+			break;
+		case LED_LAN4:
+			if(mode)
+				update_leds_gpio("lan4", "switch0", 1 << LAN4_PORT, NULL, NULL);
+			else
+				update_leds_gpio("lan4", "none", 0, NULL, NULL);
+			break;
+#else
+		case LED_LAN:
+			if(mode)
+				update_leds_gpio("lan", "switch0", LANPORTS_MASK, NULL, NULL);
+			else
+				update_leds_gpio("lan", "none", 0, NULL, NULL);
+			break;
+#endif
+		case LED_2G:
+			if(mode)
+				update_leds_gpio("wlan2g", "netdev", 0, WIF_2G, "link tx rx");
+			else
+				update_leds_gpio("wlan2g", "none", 0, NULL, NULL);
+			break;
+		case LED_5G:
+			if(mode)
+				update_leds_gpio("wlan5g", "netdev", 0, WIF_5G, "link tx rx");
+			else
+				update_leds_gpio("wlan5g", "none", 0, NULL, NULL);
+			break;
+#if defined(RTCONFIG_HAS_5G_2)
+		case LED_5G2:
+			if(mode)
+				update_leds_gpio("wlan5g2", "netdev", 0, WIF_5G2, "link tx rx");
+			else
+				update_leds_gpio("wlan5g2", "none", 0, NULL, NULL);
+			break;
+#endif
+	}
+	return 0;
+}
+

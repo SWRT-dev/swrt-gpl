@@ -2036,6 +2036,7 @@ extern uint32_t gpio_dir(uint32_t gpio, int dir);
 extern uint32_t gpio_dir2(uint32_t gpio, int dir);
 #endif
 extern uint32_t set_gpio(uint32_t gpio, uint32_t value);
+extern uint32_t set_leds_gpio(int which, int mode);
 extern uint32_t get_gpio(uint32_t gpio);
 #if defined(RTCONFIG_HND_ROUTER_AX_6710) || defined(BCM6750) || defined(BCM6756) || defined(GTAX6000)
 extern uint32_t get_gpio2(uint32_t gpio);

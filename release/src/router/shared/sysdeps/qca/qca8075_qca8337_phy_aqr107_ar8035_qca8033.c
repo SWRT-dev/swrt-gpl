@@ -38,7 +38,6 @@
 #include <qca.h>
 #include <flash_mtd.h>
 
-#define NR_WANLAN_PORT	11
 #define DBGOUT		NULL			/* "/dev/console" */
 #define QCA8337_IFACE	"eth0"
 #define QCA8337_CPUPORT	"0"
@@ -50,29 +49,6 @@ enum {
 
 	VLAN_TYPE_MAX
 };
-
-#if defined(GTAXY16000) || defined(RTAX89U)
-/* GT-AXY16000 virtual port mapping
- * Assume LAN port closed to 1G WAN port is LAN1.
- */
-enum {
-	LAN1_PORT=0,
-	LAN2_PORT,
-	LAN3_PORT,
-	LAN4_PORT,
-	LAN5_PORT,
-	LAN6_PORT,	/* 5 */
-	LAN7_PORT,
-	LAN8_PORT,
-	WAN_PORT=8,
-	WAN10GR_PORT,
-	WAN10GS_PORT,	/* 10 */
-
-	MAX_WANLAN_PORT
-};
-#else
-#error Define WAN/LAN ports!
-#endif
 
 static const char *upstream_iptv_ifaces[16] = {
 #if defined(GTAXY16000) || defined(RTAX89U)

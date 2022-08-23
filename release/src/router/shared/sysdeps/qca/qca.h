@@ -21,6 +21,95 @@
 
 #include "rtconfig.h"
 
+#if defined(RTCONFIG_SOC_IPQ40XX) || defined(RTCONFIG_SOC_IPQ50XX) || defined(RTCONFIG_SOC_IPQ60XX)
+#define MAX_WANLAN_PORT	5
+#elif defined(RTCONFIG_SOC_IPQ8074)
+#define MAX_WANLAN_PORT	11
+#endif
+
+enum {
+#if defined(RTCONFIG_SOC_IPQ40XX)
+#if defined(RTAC58U) || defined(RTAC95U)
+	CPU_PORT=0,
+	LAN1_PORT=4,
+	LAN2_PORT=3,
+	LAN3_PORT=2,
+	LAN4_PORT=1,
+	WAN_PORT=5,
+	P6_PORT=5,
+#elif defined(RT4GAC53U)
+	CPU_PORT=0,
+	LAN1_PORT=3,
+	LAN2_PORT=4,
+	LAN3_PORT=2,	/* unused */
+	LAN4_PORT=1,	/* unused */
+	WAN_PORT=5,	/* unused */
+	P6_PORT=5,
+#elif defined(RTAC82U)
+	CPU_PORT=0,
+	LAN1_PORT=1,
+	LAN2_PORT=2,
+	LAN3_PORT=3,
+	LAN4_PORT=4,
+	WAN_PORT=5,
+	P6_PORT=5,
+#elif defined(MAPAC1300) || defined(MAPAC2200) || defined(VZWAC1300) || defined(SHAC1300)
+	CPU_PORT=0,
+	LAN1_PORT=1,
+	LAN2_PORT=2,
+	LAN3_PORT=3,
+	LAN4_PORT=4,
+	WAN_PORT=5,
+	P6_PORT=5,
+#else
+	CPU_PORT=0,
+	LAN1_PORT=1,
+	LAN2_PORT=2,
+	LAN3_PORT=3,
+	LAN4_PORT=4,
+	WAN_PORT=5,
+	P6_PORT=5,
+#endif
+#elif defined(RTCONFIG_SOC_IPQ50XX)
+	LAN1_PORT=0,
+	LAN2_PORT,
+	LAN3_PORT,
+	LAN4_PORT,
+	WAN_PORT,
+	MAX_WANLAN_PORT
+#elif defined(RTCONFIG_SOC_IPQ60XX)
+	LAN1_PORT=0,
+	LAN2_PORT,
+	LAN3_PORT,
+	LAN4_PORT,
+	WAN_PORT,
+	MAX_WANLAN_PORT
+#elif defined(RTCONFIG_SOC_IPQ8074)
+#if defined(GTAXY16000) || defined(RTAX89U)
+	LAN1_PORT=0,
+	LAN2_PORT,
+	LAN3_PORT,
+	LAN4_PORT,
+	LAN5_PORT,
+	LAN6_PORT,	/* 5 */
+	LAN7_PORT,
+	LAN8_PORT,
+	WAN_PORT=8,
+	WAN10GR_PORT,
+	WAN10GS_PORT,	/* 10 */
+
+	MAX_WANLAN_PORT
+#else
+	LAN1_PORT=0,
+	LAN2_PORT,
+	LAN3_PORT,
+	LAN4_PORT,
+	WAN_PORT,
+	MAX_WANLAN_PORT
+#endif
+#endif
+};
+
 #define MAX_INI_PARM_NAME_LEN	128
 #define MAX_INI_PARM_VAL_LEN	128
 #define MAX_INI_PARM_LINE_LEN	(MAX_INI_PARM_NAME_LEN + 1 + MAX_INI_PARM_VAL_LEN + 1)
@@ -818,7 +907,7 @@ extern int get_integer_parameter_from_ini_file(const char *param_name, int *para
 extern int get_channf(int band, const char *ifname);
 extern int __get_qca_sta_info_by_ifname(const char *ifname, char subunit_id, int (*handler)(const WLANCONFIG_LIST *rptr, void *arg), void *arg);
 extern int get_qca_sta_info_by_ifname(const char *ifname, char subunit_id, WIFI_STA_TABLE *sta_info);
-#if defined(RTCONFIG_AMAS_WGN)
+#if defined(RTCONFIG_AMAS_WGN) || defined(RTCONFIG_SOC_IPQ40XX)
 extern char* get_all_lan_ifnames(void);
 extern int check_vlan_invalid(char *word,char *iface);
 #endif

@@ -2673,7 +2673,7 @@ skip_br:
 	init_nvram();	// init nvram lan_ifnames
 	wl_defaults();	// init nvram wlx_ifnames & lan_ifnames
 #if defined(RTCONFIG_SOC_IPQ40XX)
-	init_nvram3();
+//	init_nvram3();
 #endif
 
 	update_lan_state(LAN_STATE_STOPPED, 0);

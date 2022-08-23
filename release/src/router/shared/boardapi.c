@@ -926,6 +926,16 @@ int do_led_control(int which, int mode)
 		return 0;
 	}
 #endif
+#if defined(RTCONFIG_SOC_IPQ40XX)
+#if defined(RTAC82U)
+	if(which != LED_POWER && which != LED_WPS){
+#else
+	if(which != LED_POWER){
+#endif
+		set_leds_gpio(which, mode);
+		return 0;
+	}
+#endif
 
 	get_gpio_values_once(0);
 	use_gpio = led_gpio_table[which];

@@ -6990,16 +6990,42 @@ int init_nvram(void)
 		nvram_set_int("btn_wps_gpio", 11|GPIO_ACTIVE_LOW);
 		nvram_set_int("led_pwr_gpio", 40|GPIO_ACTIVE_LOW);
 		nvram_set_int("led_wps_gpio", 40|GPIO_ACTIVE_LOW);
-		nvram_set_int("led_2g_gpio", 52|GPIO_ACTIVE_LOW);
-		nvram_set_int("led_5g_gpio", 54|GPIO_ACTIVE_LOW);
-		nvram_set_int("led_wan_gpio", 61);
-		nvram_set_int("led_wan_red_gpio", 68);
+		if(nvram_match("AllLED", "1")){
+			f_write_string("/sys/class/leds/wan/trigger", "switch0", 0, 0);
+			f_write_string("/sys/class/leds/wan/port_mask", "0x20", 0, 0);
+			f_write_string("/sys/class/leds/lan1/trigger", "switch0", 0, 0);
+			f_write_string("/sys/class/leds/lan1/port_mask", "0x02", 0, 0);
+			f_write_string("/sys/class/leds/lan2/trigger", "switch0", 0, 0);
+			f_write_string("/sys/class/leds/lan2/port_mask", "0x04", 0, 0);
+			f_write_string("/sys/class/leds/lan3/trigger", "switch0", 0, 0);
+			f_write_string("/sys/class/leds/lan3/port_mask", "0x08", 0, 0);
+			f_write_string("/sys/class/leds/lan4/trigger", "switch0", 0, 0);
+			f_write_string("/sys/class/leds/lan4/port_mask", "0x10", 0, 0);
+			f_write_string("/sys/class/leds/wlan2g/trigger", "netdev", 0, 0);
+			f_write_string("/sys/class/leds/wlan2g/device_name", "ath0", 0, 0);
+			f_write_string("/sys/class/leds/wlan2g/mode", "link tx rx", 0, 0);
+			f_write_string("/sys/class/leds/wlan5g/trigger", "netdev", 0, 0);
+			f_write_string("/sys/class/leds/wlan5g/device_name", "ath1", 0, 0);
+			f_write_string("/sys/class/leds/wlan5g/mode", "link tx rx", 0, 0);
+		} else {
+			f_write_string("/sys/class/leds/wan/trigger", "none", 0, 0);
+			f_write_string("/sys/class/leds/lan1/trigger", "none", 0, 0);
+			f_write_string("/sys/class/leds/lan2/trigger", "none", 0, 0);
+			f_write_string("/sys/class/leds/lan3/trigger", "none", 0, 0);
+			f_write_string("/sys/class/leds/lan4/trigger", "none", 0, 0);
+			f_write_string("/sys/class/leds/wlan2g/trigger", "none", 0, 0);
+			f_write_string("/sys/class/leds/wlan5g/trigger", "none", 0, 0);
+		}
+//		nvram_set_int("led_2g_gpio", 52|GPIO_ACTIVE_LOW);
+//		nvram_set_int("led_5g_gpio", 54|GPIO_ACTIVE_LOW);
+//		nvram_set_int("led_wan_gpio", 61);
+//		nvram_set_int("led_wan_red_gpio", 68);
 
 #ifdef RTCONFIG_LAN4WAN_LED
-		nvram_set_int("led_lan1_gpio", 45|GPIO_ACTIVE_LOW);
-		nvram_set_int("led_lan2_gpio", 43|GPIO_ACTIVE_LOW);
-		nvram_set_int("led_lan3_gpio", 42|GPIO_ACTIVE_LOW);
-		nvram_set_int("led_lan4_gpio", 49|GPIO_ACTIVE_LOW);
+//		nvram_set_int("led_lan1_gpio", 45|GPIO_ACTIVE_LOW);
+//		nvram_set_int("led_lan2_gpio", 43|GPIO_ACTIVE_LOW);
+//		nvram_set_int("led_lan3_gpio", 42|GPIO_ACTIVE_LOW);
+//		nvram_set_int("led_lan4_gpio", 49|GPIO_ACTIVE_LOW);
 #endif
 #if 0
 		//nvram_set_int("led_usb_gpio", 0);
@@ -16167,7 +16193,7 @@ int init_nvram2(void)
 }
 
 
-#if defined(RTCONFIG_SOC_IPQ40XX)
+#if 0//defined(RTCONFIG_SOC_IPQ40XX)
 int init_nvram3(void)
 {
 
@@ -17557,7 +17583,7 @@ static void sysinit(void)
 #if defined(RTCONFIG_BLINK_LED)
 	modprobe("bled");
 #endif
-	init_nvram3();
+	//init_nvram3();
 #endif
 
 #if defined(RTCONFIG_QCA)
