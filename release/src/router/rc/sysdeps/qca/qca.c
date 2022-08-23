@@ -664,7 +664,7 @@ int create_tmp_sta_part(int unit, char *sta, char *ssid_prefix)
 	char tmp[64], prefix[128];
 	char pidfile[32];
 	char *lan_ifname = nvram_safe_get("lan_ifname");
-	get_wpa_supplicant_pidfile(sta, pidfile, 29);
+	get_wpa_supplicant_pidfile(sta, pidfile, sizeof(pidfile));
 	snprintf(tmp, sizeof(tmp), "/etc/Wireless/conf/wpa_supplicant-%s.conf", sta);
 	if(!ssid_prefix)
 	{
@@ -684,16 +684,26 @@ int create_tmp_sta_part(int unit, char *sta, char *ssid_prefix)
 		shortgi = 0;
 	else
 		shortgi = nvram_pf_get_int(prefix, "HT_GI") != 0;
+#if defined(RTCONFIG_SOC_IPQ40XX)
+	doSystem("iwpriv %s shortgi %d\n", sta, shortgi);
+	doSystem("iwpriv %s mode %s", sta, "AUTO");
+	doSystem("iwpriv %s extap 1", sta);
+#else
 	doSystem("cfg80211tool %s shortgi %d\n", sta, shortgi);
 	doSystem("cfg80211tool %s mode %s", sta, "AUTO");
 	doSystem("cfg80211tool %s extap 1", sta);
+#endif
 	if(!*lan_ifname)
 		lan_ifname = "br0";
 	eval("/usr/bin/wpa_supplicant", "-B", "-P", pidfile, "-D", get_wsup_drvname(unit), "-i", sta, "-b", lan_ifname, "-c", tmp);
 	if(ssid_prefix)
 	{
 		conv_iwconfig_essid(nvram_pf_safe_get(ssid_prefix, "ssid"), prefix);
+#if defined(RTCONFIG_SOC_IPQ40XX)
+		doSystem("iwconfig %s essid %s", sta, prefix);
+#else
 		doSystem("iwconfig %s essid -- %s", sta, prefix);
+#endif
 	}
 	ifconfig(sta, IFUP, NULL, NULL);
 	return 0;
@@ -819,6 +829,13 @@ void write_rpt_wpa_supplicant_conf(int band, const char *prefix_mssid, const cha
 				fprintf(fp_wpa, "\tgroup=TKIP\n");
 			}
 			else if (nvram_match(strcat_r(prefix_wlc, "crypto", tmp), "aes")) {
+				char *aes_type = "CCMP";
+				if(band == WL_60G_BAND)
+					aes_type = "GCMP";
+				fprintf(fp_wpa, "\tpairwise=%s\n", aes_type);
+				fprintf(fp_wpa, "\tgroup=%s\n", aes_type);
+			}
+			else if (nvram_match(strcat_r(prefix_wlc, "crypto", tmp), "tkip+aes")) {
 				char *aes_type = "CCMP TKIP";
 				if(band == WL_60G_BAND)
 					aes_type = "GCMP";

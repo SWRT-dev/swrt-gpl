@@ -2131,7 +2131,9 @@ int create_vap(char *ifname, int unit, char *mode)
 #if defined(RTCONFIG_CFG80211)
 		strlcpy(iwmode, "managed", sizeof(iwmode));
 #endif
+#if !defined(RTCONFIG_SOC_IPQ40XX)
 		*v++ = "nosbeacon";
+#endif
 	} else
 		return -1;
 
