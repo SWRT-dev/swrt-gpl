@@ -2287,8 +2287,14 @@ ej_wl_channel_list_60g(int eid, webs_t wp, int argc, char_t **argv)
 
 static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 {
+#if defined(RTCONFIG_SOC_IPQ40XX)
+	FILE *fp = NULL;
+	char *pt1 = NULL, *pt2 = NULL;
+	int len;
+#else
 #define ASUS_IOCTL_GET_STA_DATARATE (SIOCDEVPRIVATE+15) /* from qca-wifi/os/linux/include/ieee80211_ioctl.h */
         struct iwreq wrq;
+#endif
 	int retval = 0;
 	char tmp[256], prefix[sizeof("wlXXXXXXXXXX_")];
 	char *name;
@@ -2324,7 +2330,24 @@ static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	snprintf(prefix, sizeof(prefix), "wl%d.1_", unit);
 	name = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
 #endif
-
+#if defined(RTCONFIG_SOC_IPQ40XX)
+	snprintf(tmp, sizeof(tmp), "iwconfig %s | grep Rate", name);
+	fp = PS_popen(tmp, "r");
+	if (fp) {
+		memset(tmp, 0, sizeof(tmp));
+		len = fread(tmp, 1, sizeof(tmp), fp);
+		PS_pclose(fp);
+		if (len > 1) {
+			tmp[len-1] = '\0';
+			pt1 = strstr(tmp, "Bit Rate:");
+			if (pt1) {
+				pt2 = pt1 + strlen("Bit Rate:");
+				pt1 = strtok(pt2, " ");
+				snprintf(rate_buf, sizeof(rate_buf), "%s Mbps", pt1);
+			}
+		}
+	}
+#else
 	wrq.u.data.pointer = rate;
 	wrq.u.data.length = sizeof(rate);
 
@@ -2338,7 +2361,7 @@ static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 		snprintf(rate_buf, sizeof(rate_buf), "%d Mbps", rate[0]);
 	else
 		snprintf(rate_buf, sizeof(rate_buf), "%d Mbps", rate[1]);
-
+#endif
 ERROR:
 	if(from_app == 0)
 		retval += websWrite(wp, "%s", rate_buf);
