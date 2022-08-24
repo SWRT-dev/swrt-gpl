@@ -113,3 +113,14 @@ all.config
 
 # Kdevelop4
 *.kdev4
+!/brcm/arm/bcmcrypto/*
+!/brcm/arm/ctf/linux/*
+!/brcm/arm/dhd/src/dhd/*
+!/brcm/arm/dhd/src/dhd/linux/*
+!/brcm/arm/dhd/src/dhd/sys/*
+!/brcm/arm/dhd/src/shared/*
+!/brcm/arm/shared/*
+!/brcm/arm/wl/*
+!/brcm/arm/wl/*/*
+!/brcm/arm/wl/*/*/*
+!/drivers/char/rtl8365mb/*

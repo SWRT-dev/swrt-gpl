@@ -22,6 +22,7 @@
 
 #include <linux/percpu.h>
 #include <asm/module.h>
+#include <linux/types.h>
 
 /* In stripped ARM and x86-64 modules, ~ is surprisingly rare. */
 #define MODULE_SIG_STRING "~Module signature appended~\n"
@@ -159,8 +160,8 @@ extern void cleanup_module(void);
 struct exception_table_entry;
 
 const struct exception_table_entry *
-search_extable(const struct exception_table_entry *first,
-	       const struct exception_table_entry *last,
+search_extable(const struct exception_table_entry *base,
+	       const size_t num,
 	       unsigned long value);
 void sort_extable(struct exception_table_entry *start,
 		  struct exception_table_entry *finish);
@@ -792,7 +793,7 @@ static inline void module_bug_finalize(const Elf_Ehdr *hdr,
 static inline void module_bug_cleanup(struct module *mod) {}
 #endif	/* CONFIG_GENERIC_BUG */
 
-#ifdef RETPOLINE
+#ifdef CONFIG_RETPOLINE
 extern bool retpoline_module_ok(bool has_retpoline);
 #else
 static inline bool retpoline_module_ok(bool has_retpoline)
