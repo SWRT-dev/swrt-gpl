@@ -351,7 +351,7 @@ _nvram_read(char *buf)
 	int offset = 0;
 
 	if (nvram_mtd) {
-#ifdef CONFIG_MTD_NFLASH
+#if defined(CONFIG_MTD_NFLASH) && !defined(DIR868L) && !defined(F9K1118)
 		if (nvram_mtd->type == MTD_NANDFLASH)
 			offset = 0;
 		else
@@ -424,7 +424,7 @@ int
 nvram_set(const char *name, const char *value)
 {
 	unsigned long flags;
-	int ret;
+	int ret = 0;
 	struct nvram_header *header;
 
 	spin_lock_irqsave(&nvram_lock, flags);
@@ -557,7 +557,7 @@ nvram_commit(void)
 		return -EINVAL;
 	}
 
-#ifdef CONFIG_MTD_NFLASH
+#if  defined(CONFIG_MTD_NFLASH) && !defined(DIR868L) && !defined(F9K1118)
 	if (nvram_mtd->type == MTD_NANDFLASH)
 		return nvram_nflash_commit();
 #endif
@@ -1054,3 +1054,4 @@ char *nvram_safe_get(const char *name)
 * -LR
 */
 late_initcall(dev_nvram_init);
+

@@ -191,9 +191,17 @@ static int __init rootfs_mtdblock(void)
 		if (img_boot && simple_strtol(img_boot, NULL, 10))
 			return 5;
 		else
+#if defined(R6300V2) || defined(K3)
+			return 4;
+#else
 			return 3;
+#endif
+#else
+#if defined(R6300V2) || defined(K3)
+		return 4;
 #else
 		return 3;
+#endif
 #endif
 	}
 
@@ -216,7 +224,11 @@ static int __init rootfs_mtdblock(void)
 		block += 2;
 #endif
 	/* Boot from norflash and kernel in nandflash */
+#if defined(DIR868L) || defined(R6300V2)
+	return block + 4;
+#else
 	return block + 3;
+#endif
 }
 
 #define WATCHDOG_MIN    3000	/* milliseconds */
@@ -625,7 +637,7 @@ struct mtd_partition *init_mtd_partitions(hndsflash_t * sfl_info, struct mtd_inf
 
 	}
 #endif				/* CONFIG_FAILSAFE_UPGRADE */
-
+#if 0
 	if (nvram_match("boardnum", "24") && nvram_match("boardtype", "0x0646")
 	    && nvram_match("boardrev", "0x1110")
 	    && nvram_match("gpio7", "wps_button") && !nvram_match("gpio6", "wps_led")) {
@@ -694,7 +706,7 @@ struct mtd_partition *init_mtd_partitions(hndsflash_t * sfl_info, struct mtd_inf
 	if (nvram_match("boardtype", "0x0665") && nvram_match("boardrev", "0x1102") && nvram_match("boardnum", "001")) {
 		extraspace = 0x100000 - 0x10000;
 	}
-
+#endif
 	bootdev = soc_boot_dev((void *)sih);
 	knldev = soc_knl_dev((void *)sih);
 
@@ -836,6 +848,15 @@ struct mtd_partition *init_mtd_partitions(hndsflash_t * sfl_info, struct mtd_inf
 	bcm947xx_flash_parts[nparts].offset = size - (ROUNDUP(nvram_space, mtd->erasesize) + ROUNDUP(0x1000, mtd->erasesize));
 	nparts++;
 #endif
+
+#if defined(DIR868L)
+	/* Setup devdata MTD partition */
+	bcm947xx_flash_parts[nparts].name = "devdata";
+	bcm947xx_flash_parts[nparts].size = 0x10000;
+	bcm947xx_flash_parts[nparts].offset = 0x50000;
+	nparts++;
+#endif
+
 	if (rootfssize) {
 		bcm947xx_flash_parts[nparts].name = "ddwrt";
 		bcm947xx_flash_parts[nparts].offset = bcm947xx_flash_parts[2].offset + bcm947xx_flash_parts[2].size;
@@ -853,6 +874,7 @@ struct mtd_partition *init_mtd_partitions(hndsflash_t * sfl_info, struct mtd_inf
 	}
 	
 	/* Setup nvram MTD partition */
+#if 0
 	bcm947xx_flash_parts[nparts].name = "nvram_cfe";
 	bcm947xx_flash_parts[nparts].size = ROUNDUP(nvram_space, mtd->erasesize);
 	if (maxsize)
@@ -862,7 +884,7 @@ struct mtd_partition *init_mtd_partitions(hndsflash_t * sfl_info, struct mtd_inf
 	if(!is_ex6200 && !nobackup)//skip on ex6200
 		nparts++;
 	
-
+#endif
 	bcm947xx_flash_parts[nparts].name = "nvram";
 	bcm947xx_flash_parts[nparts].size = ROUNDUP(nvram_space, mtd->erasesize);
 	if (maxsize){
@@ -873,7 +895,7 @@ struct mtd_partition *init_mtd_partitions(hndsflash_t * sfl_info, struct mtd_inf
 	}else{
 		bcm947xx_flash_parts[nparts].offset = size - bcm947xx_flash_parts[nparts].size;
 	}
-	bcm947xx_flash_parts[nparts].offset-=bcm947xx_flash_parts[nparts].size;
+//	bcm947xx_flash_parts[nparts].offset-=bcm947xx_flash_parts[nparts].size;
 	nparts++;
 
 	return bcm947xx_flash_parts;
@@ -915,7 +937,7 @@ static uint lookup_nflash_rootfs_offset(hndnand_t * nfl, struct mtd_info *mtd, i
 	/* Look at every block boundary till 16MB; higher space is reserved for application data. */
 
 	rbsize = blocksize = mtd->erasesize;	//65536;
-
+#if 0
 	if (nvram_match("boardnum", "24") && nvram_match("boardtype", "0x0646")
 	    && nvram_match("boardrev", "0x1110")
 	    && nvram_match("gpio7", "wps_button")) {
@@ -949,7 +971,7 @@ static uint lookup_nflash_rootfs_offset(hndnand_t * nfl, struct mtd_info *mtd, i
 		printk(KERN_INFO "DIR-868LC Hack for detecting filesystems\n");
 		blocksize = 65536;
 	}
-
+#endif
 
 	printk("lookup_nflash_rootfs_offset: offset = 0x%x size = 0x%x, 0x%x\n", offset, size, blocksize);
 	for (off = offset; off < offset + size; off += blocksize) {
@@ -1023,6 +1045,10 @@ struct mtd_partition *init_nflash_mtd_partitions(hndnand_t * nfl, struct mtd_inf
 	int isbufdual = 0;
 	int isbufvxdual = 0;
 	int istew = 0;
+#if defined(K3)
+	nvsz = 0x100000;
+#endif
+#if 0
 	uint boardnum = bcm_strtoul(nvram_safe_get("boardnum"), NULL, 0);
 	if ((!strncmp(nvram_safe_get("boardnum"),"2013",4) || !strncmp(nvram_safe_get("boardnum"),"2014",4)) && nvram_match("boardtype", "0x0646")
 	    && nvram_match("boardrev", "0x1110")) {
@@ -1076,7 +1102,7 @@ struct mtd_partition *init_nflash_mtd_partitions(hndnand_t * nfl, struct mtd_inf
 	if (boardnum == 32 && nvram_match("boardtype", "0x0646") && nvram_match("boardrev", "0x1601") && nvram_match("et2phyaddr", "30")) {
 		bootossz = 0x4000000;
 	}
-
+#endif
 #ifdef CONFIG_FAILSAFE_UPGRADE
 	char *img_boot = nvram_get(BOOTPARTITION);
 	char *imag_1st_offset = nvram_get(IMAGE_FIRST_OFFSET);
@@ -1144,12 +1170,53 @@ struct mtd_partition *init_nflash_mtd_partitions(hndnand_t * nfl, struct mtd_inf
 		else 
 		bcm947xx_nflash_parts[nparts].size = NFL_BOOT_SIZE - offset;
 		bcm947xx_nflash_parts[nparts].offset = offset;
-
+#if defined(K3)
+		offset += bcm947xx_nflash_parts[nparts].size;
+		nparts++;
+		/* Setup phicomm partition */
+		bcm947xx_nflash_parts[nparts].name = "phicomm";
+		bcm947xx_nflash_parts[nparts].size = NFL_BOOT_SIZE - offset;
+		bcm947xx_nflash_parts[nparts].offset = offset;
+#endif
 		offset = NFL_BOOT_SIZE;
 		nparts++;
 	}
 
 	if (knldev == SOC_KNLDEV_NANDFLASH) {
+#if defined(R6300V2)
+		bcm947xx_nflash_parts[nparts].name = "board_data";
+		bcm947xx_nflash_parts[nparts].size = 0x180000;
+		bcm947xx_nflash_parts[nparts].offset = offset;
+		//bcm947xx_nflash_parts[nparts].mask_flags = MTD_WRITEABLE; /* forces on read only */
+
+		offset += bcm947xx_nflash_parts[nparts].size;
+		nparts++;
+
+#if 0
+		fprobe.flash_parts[j].fp_size = 0x20000;
+		fprobe.flash_parts[j++].fp_name = "POT1";
+		fprobe.flash_parts[j].fp_size = 0x20000;
+		fprobe.flash_parts[j++].fp_name = "POT2";
+		fprobe.flash_parts[j].fp_size = 0x20000;
+		fprobe.flash_parts[j++].fp_name = "T_Meter1";
+		fprobe.flash_parts[j].fp_size = 0x20000;
+		fprobe.flash_parts[j++].fp_name = "T_Meter2";
+		fprobe.flash_parts[j].fp_size = 0x20000;
+		fprobe.flash_parts[j++].fp_name = "ML1";
+		fprobe.flash_parts[j].fp_size = 0x20000;
+		fprobe.flash_parts[j++].fp_name = "ML2";
+		fprobe.flash_parts[j].fp_size = 0x20000;
+		fprobe.flash_parts[j++].fp_name = "ML3";
+		fprobe.flash_parts[j].fp_size = 0x20000;
+		fprobe.flash_parts[j++].fp_name = "ML4";
+		fprobe.flash_parts[j].fp_size = 0x20000;
+		fprobe.flash_parts[j++].fp_name = "ML5";
+		fprobe.flash_parts[j].fp_size = 0x20000;
+		fprobe.flash_parts[j++].fp_name = "ML6";
+		fprobe.flash_parts[j].fp_size = 0x20000;
+		fprobe.flash_parts[j++].fp_name = "ML7";
+#endif
+#endif
 		/* Setup kernel MTD partition */
 #ifdef CONFIG_FAILSAFE_UPGRADE
 		if (dual_image_on) {
@@ -1162,8 +1229,15 @@ struct mtd_partition *init_nflash_mtd_partitions(hndnand_t * nfl, struct mtd_inf
 #endif
 		{
 			bcm947xx_nflash_parts[nparts].name = "linux";
+#if defined(R6300V2)
+			bcm947xx_nflash_parts[nparts].size = (nparts > 1) ?
+				(bootossz - NFL_BOOT_SIZE - 0x180000) :
+				(bootossz - 0x180000);
+#else
 			bcm947xx_nflash_parts[nparts].size = nparts ? (bootossz - NFL_BOOT_SIZE) : bootossz;
+#endif
 		}
+#if 0
 		/* fix linux offset for this unit */
 		if (nvram_match("boardnum","679") && nvram_match("boardtype", "0x0646") && (nvram_match("boardrev", "0x1110"))) {
 			offset += 0x180000;
@@ -1177,7 +1251,7 @@ struct mtd_partition *init_nflash_mtd_partitions(hndnand_t * nfl, struct mtd_inf
 		if (nvram_match("boardnum", "32") && nvram_match("boardtype", "0x0665") && nvram_match("boardrev", "0x1101")) {
 			bcm947xx_nflash_parts[nparts].size += 0x600000;
 		}
-		
+#endif
 		bcm947xx_nflash_parts[nparts].offset = offset;
 
 		shift = lookup_nflash_rootfs_offset(nfl, mtd, offset, bcm947xx_nflash_parts[nparts].size);
@@ -1208,7 +1282,7 @@ struct mtd_partition *init_nflash_mtd_partitions(hndnand_t * nfl, struct mtd_inf
 		}
 		bcm947xx_nflash_parts[nparts].offset = shift;
 		bcm947xx_nflash_parts[nparts].mask_flags = MTD_WRITEABLE;
-		
+#if 0
 		if (nvram_match("boardnum", "32") && nvram_match("boardtype", "0x0665") && nvram_match("boardrev", "0x1301")) {			
 			bcm947xx_nflash_parts[nparts].size += 0x200000;
 		}
@@ -1216,9 +1290,9 @@ struct mtd_partition *init_nflash_mtd_partitions(hndnand_t * nfl, struct mtd_inf
 		if (nvram_match("boardnum", "32") && nvram_match("boardtype", "0x0665") && nvram_match("boardrev", "0x1101")) {
 			bcm947xx_nflash_parts[nparts].size += 0x600000;
 		}
-
+#endif
 		nparts++;
-
+#if 0
 		if ((nvram_match("boardnum", "32") && nvram_match("boardtype", "0x072F") && nvram_match("boardrev", "0x1101")) || nvram_match("board_id", "U12H270T20_NETGEAR")) {
 			
 			bcm947xx_nflash_parts[nparts].name = "board_data";
@@ -1258,7 +1332,7 @@ struct mtd_partition *init_nflash_mtd_partitions(hndnand_t * nfl, struct mtd_inf
 			bcm947xx_nflash_parts[nparts].offset = 0x200000;
 			nparts++;
 		}
-
+#endif
 #ifdef CONFIG_FAILSAFE_UPGRADE
 		/* Setup 2nd kernel MTD partition */
 		if (dual_image_on) {
@@ -1317,3 +1391,4 @@ struct mtd_partition *init_nflash_mtd_partitions(hndnand_t * nfl, struct mtd_inf
 
 EXPORT_SYMBOL(init_nflash_mtd_partitions);
 #endif				/* CONFIG_MTD_NFLASH */
+

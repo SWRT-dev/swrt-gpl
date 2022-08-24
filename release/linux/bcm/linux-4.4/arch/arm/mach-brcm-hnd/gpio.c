@@ -30,20 +30,23 @@ static int gpio_major;
 static struct {
 	char *name;
 } gpio_file[] = {
-	{
-	"in"}, {
-	"out"}, {
-	"outen"}, {
-	"control"}, {
-	"hc595"}
+	{"in"
+	} ,{"out"
+	} ,{"outen"
+	} ,{"control"
+#if 0
+	} ,{"hc595"
+#endif
+	}
 };
 
 static int gpio_init_flag = 0;
 static int __init gpio_init(void);
+#if 0
 void set_hc595(uint32 pin, uint32 value);
 void set_hc595_reset(void);
 void set_hc595_core(si_t *sih);
-
+#endif
 
 static int gpio_open(struct inode *inode, struct file *file)
 {
@@ -132,8 +135,10 @@ static ssize_t gpio_write(struct file *file, const char *buf, size_t count, loff
 	case 3:
 		si_gpiocontrol(gpio_sih, ~0, val, GPIO_HI_PRIORITY);
 		break;
+#if 0
 	case 4:
 		set_hc595(val >> 4, val & 0xf);
+#endif
 		break;
 	default:
 		return -ENODEV;
@@ -167,11 +172,13 @@ static int __init gpio_init(void)
 		return -ENODEV;
 
 	si_gpiosetcore(gpio_sih);
+#if 0
 	set_hc595_core(gpio_sih);
+#endif
 	if ((gpio_major = register_chrdev(127, "gpio", &gpio_fops)) < 0) {
 		return gpio_major;
 	}
-
+#if 0
 	uint boardnum = bcm_strtoul(nvram_safe_get("boardnum"), NULL, 0);
 
 	if (boardnum == 00 && nvram_match("boardtype", "0xF646")
@@ -267,7 +274,15 @@ static int __init gpio_init(void)
 		printk(KERN_EMERG " Init Asus RT-AC1200G+\n");
 		isdefault = 1;
 	}	
-	
+#endif
+#if defined(RTAC68U)
+	isac68 = 1;
+#endif
+#if defined(R7000P) || defined(R8500)
+	gpios = 1<<0 | 1<<1 | 1<<2 | 1<<3 | 1<<4 | 1<<5 | 1<<6 | 1<<7 | 1<<8 | 1<<9 | 1<<10 | 1<<11 | 1<<12 | 1<<13 | 1<<14 | 1<<15 | 1<<16 | 1<<17 | 1<<18 | 1<<19 | 1<<20 | 1<<21 | 1<<22 | 1<<23 | 1<<24;
+#elif defined(R7000) || defined(R8000) || defined(R6400)
+	gpios = 1<<0 | 1<<1 | 1<<2 | 1<<3 | 1<<4 | 1<<5 | 1<<6 | 1<<7 | 1<<8 | 1<<9 | 1<<10 | 1<<11 | 1<<15;
+#endif
 
 	for (i = 0; i < 32; i++) {
 		if (gpios & (1<<i)) {
