@@ -103,7 +103,10 @@ export CFLAGS += -DRTCONFIG_MUSL_LIBC -D_GNU_SOURCE
 endif
 else
 # Broadcom
-export CFLAGS += -DBCMWPA2
+ifeq ($(RTCONFIG_MUSL_LIBC),y)
+export CFLAGS += -DRTCONFIG_MUSL_LIBC -D_GNU_SOURCE
+endif
+export CFLAGS += -DBCMWPA2 -DCONFIG_BCMWL5
 ifeq ($(RTCONFIG_BCMWL6),y)
 export CFLAGS += -DBCMQOS
 export CFLAGS += -DD11AC_IOTYPES
@@ -226,7 +229,7 @@ ifeq ($(RTCONFIG_BCM7),y)
 export BCMSRC=src-rt-7.x.main/src
 export OLD_SRC=$(SRCBASE)/../../src
 export BUILD_MFG := 0
-export EX7 := _7
+export EX7 := 
 else ifeq ($(HND_ROUTER_AX),y)
 export BCMSRC=src-rt-5.02axhnd
 export OLD_SRC=$(HND_SRC)/../src
@@ -247,13 +250,13 @@ else ifeq ($(RTCONFIG_BCM_7114),y)
 export BCMSRC=src-rt-7.14.114.x/src
 export OLD_SRC=$(SRCBASE)/../../src
 export BUILD_MFG := 0
-export EX7 := _7114
+export EX7 := 
 export DHD_MONITOR := dhd_monitor
 else ifeq ($(RTCONFIG_BCM9),y)
 export BCMSRC=src-rt-9.x/src
 export OLD_SRC=$(SRCBASE)/../../src
 export BUILD_MFG := 0
-export EX7 := _9
+export EX7 := 
 else
 WLAN_ComponentsInUse := bcmwifi clm ppr olpc
 export BCMSRC=src-rt-6.x.4708
@@ -275,13 +278,15 @@ export BASEDIR := $(SRCBASE)/../
 else
 include $(SRCBASE)/makefiles/WLAN_Common.mk
 export BASEDIR := $(WLAN_TreeBaseA)
-export LINUXDIR := $(SRCBASE)/linux/linux-2.6.36
+ifeq ($(LINUXDIR),)
+export LINUXDIR := $(SRCBASE)/linux/linux-4.4
+endif
 
 export EXTRALDFLAGS = -lgcc_s
 export EXTRALDFLAGS2 = -L$(TOP_PLATFORM)/nvram$(BCMEX)$(EX7) -lnvram -L$(TOP)/shared -lshared
 
 
-export LD_LIBRARY_PATH := $(SRCBASE)/toolchains/hndtools-arm-linux-2.6.36-uclibc-4.5.3/lib
+export LD_LIBRARY_PATH := $(TOOLS)/lib
 endif
 ifeq (2_6_36,$(LINUX_VERSION))
 export BUILD_MFG := 0
@@ -351,8 +356,10 @@ else
 export PATH:=$(PATH):/opt/toolchains/crosstools-aarch64-gcc-5.3-linux-4.1-glibc-2.22-binutils-2.25/usr/bin
 endif
 else
-KDIR=$(LINUXDIR)
-KERNEL_HEADER_DIR=$(LINUXDIR)/include
+#KDIR=$(LINUXDIR)
+#KERNEL_HEADER_DIR=$(LINUXDIR)/include
+KDIR=$(TOP)/kernel_header
+KERNEL_HEADER_DIR=$(TOP)/kernel_header/include
 endif
 endif
 
@@ -906,7 +913,11 @@ obj-$(RTCONFIG_AHS) += ahs
 obj-$(RTCONFIG_ASD) += asd
 
 obj-$(RTCONFIG_OPENVPN) += openssl
+ifeq ($(RTCONFIG_BCMARM),y)
+obj-$(RTCONFIG_OPENVPN) += libovpn
+else
 obj-$(RTCONFIG_OPENVPN) += libvpn
+endif
 
 obj-y += rc
 obj-y += rom
@@ -978,7 +989,7 @@ obj-y += hostapd-2.6
 obj-y += libfapi-0.1
 obj-y += taskset
 else
-obj-y += libbcmcrypto
+#obj-y += libbcmcrypto
 ifneq ($(HND_ROUTER_AX_6756),y)
 obj-y += utils$(BCMEX)$(EX7)
 endif
@@ -988,22 +999,23 @@ obj-y += wlconf$(BCMEX)$(EX7)
 ifneq ($(RTCONFIG_BRCM_HOSTAPD),y)
 obj-y += nas$(BCMEX)$(EX7)
 endif
-obj-$(RTCONFIG_HSPOT) += hspot_ap$(BCMEX)$(EX7)
-obj-y += eapd$(BCMEX)$(EX7)/linux
-ifneq ($(RTCONFIG_BRCM_HOSTAPD),y)
-obj-$(RTCONFIG_WPS) += wps$(BCMEX)$(EX7)
-endif
-obj-$(RTCONFIG_WLEXE) += wlexe
-obj-$(CONFIG_LIBBCM) += libbcm
-obj-$(CONFIG_LIBUPNP) += libupnp$(BCMEX)$(EX7)
+#obj-$(RTCONFIG_HSPOT) += hspot_ap$(BCMEX)$(EX7)
+#obj-y += eapd$(BCMEX)$(EX7)/linux
+obj-y += hostapd2
+#ifneq ($(RTCONFIG_BRCM_HOSTAPD),y)
+#obj-$(RTCONFIG_WPS) += wps$(BCMEX)$(EX7)
+#endif
+#obj-$(RTCONFIG_WLEXE) += wlexe
+#obj-$(CONFIG_LIBBCM) += libbcm
+#obj-$(CONFIG_LIBUPNP) += libupnp$(BCMEX)$(EX7)
 ifeq ($(RTCONFIG_BCMWL6),y)
 ifneq ($(HND_ROUTER_AX),y)
-obj-y += acsd$(BCMEX)$(EX7)
+#obj-y += acsd$(BCMEX)$(EX7)
 endif
 endif
-obj-$(RTCONFIG_BCMARM) += wl$(BCMEX)$(EX7)
+#obj-$(RTCONFIG_BCMARM) += wl$(BCMEX)$(EX7)
 ifneq ($(HND_ROUTER),y)
-obj-$(RTCONFIG_BCMARM) += et_arm$(EX7)
+#obj-$(RTCONFIG_BCMARM) += et_arm$(EX7)
 endif
 ifeq ($(HND_ROUTER_AX),y)
 obj-y += acsdv2
@@ -1799,7 +1811,10 @@ endif
 	cp $(LINUXDIR)/Makefile $@/
 else
 kernel_header: $(LINUXDIR)/.config
-
+	$(MAKE) -C $(LINUXDIR) ARCH=$(ARCH) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) headers_install INSTALL_HDR_PATH=$(TOP)/$@
+	cp -fr $(LINUXDIR)/include/uapi/* $@/include/uapi/
+	find $(LINUXDIR)/include -name autoconf.h -exec cp {} $@/include/linux/ \;
+	cp $(LINUXDIR)/Makefile $@/
 endif
 
 kernel: $(LINUXDIR)/.config
@@ -7884,6 +7899,10 @@ ncurses-6.0-install: ncurses-6.0
 		ln -sf libpanel.so.6.0 libpanel.so
 
 # Start merlin components
+libovpn: shared nvram$(BCMEX)$(EX7)
+	@$(SEP)
+	$(MAKE) -C libovpn
+
 jitterentropy-rngd:
 	@$(SEP)
 	$(MAKE) CFLAGS+="-fPIC -O0" -C $@
@@ -9224,6 +9243,16 @@ bndstrg_plus:
 bndstrg_plus-install:
 	$(MAKE) -C bndstrg_plus install
 endif
+
+hostapd2: 
+	$(MAKE) -C hostapd2/hostapd clean
+	$(MAKE) -C hostapd2/hostapd $(PARALLEL_BUILD)
+
+hostapd2-clean:
+	$(MAKE) -C hostapd2/hostapd clean
+
+hostapd2-install:
+	$(MAKE) -C hostapd2/hostapd install
 
 #
 # Generic rules

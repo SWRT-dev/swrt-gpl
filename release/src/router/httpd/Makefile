@@ -228,8 +228,13 @@ LIBS += -L$(TOP)/openssl -lssl -lcrypto -ldl
 endif
 
 ifeq ($(RTCONFIG_OPENVPN),y)
+ifeq ($(RTCONFIG_BCMARM),y)
+CFLAGS += -I$(TOP)/libovpn
+LIBS += -L$(TOP)/libovpn -lovpn
+else
 CFLAGS += -I$(TOP)/libvpn
 LIBS += -L$(TOP)/libvpn -lvpn
+endif
 LIBS += -L$(TOP)/openssl -lssl -lcrypto -ldl
 endif
 

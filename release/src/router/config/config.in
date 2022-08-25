@@ -1783,7 +1783,7 @@ config RTCONFIG_NOTIFICATION_CENTER
 
 config RTCONFIG_PROTECTION_SERVER
 	bool "Security Protection Mechanism"
-	default y
+	default n
 
 config RTCONFIG_WLCEVENTD
 	bool "Get event from Wi-Fi driver"

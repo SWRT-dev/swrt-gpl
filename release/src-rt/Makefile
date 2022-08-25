@@ -90,11 +90,11 @@ export BUSYBOX := busybox-1.24.1
 export BUSYBOX_DIR := $(SRCBASE)/router/busybox-1.24.1/busybox-1.24.1
 else # non-hnd
 export SRCBASE := $(shell pwd)
-ifeq ($(or $(BCM7),$(BCM_7114),$(BCM9)),y)
-export SRC_ROOT := $(SRCBASE)/../../src
-else
+#ifeq ($(or $(BCM7),$(BCM_7114),$(BCM9)),y)
+#export SRC_ROOT := $(SRCBASE)/../../src
+#else
 export SRC_ROOT := $(SRCBASE)/../src
-endif
+#endif
 export BUSYBOX := busybox
 export BUSYBOX_DIR := $(SRCBASE)/router/$(BUSYBOX)
 endif # HND_ROUTER
@@ -132,7 +132,7 @@ export SWRT_VER := $(SWRT_VER_MAJOR)$(SWRT_VER_MINOR)
 export SWRTVER := $(SWRT_NAME)_$(SWRT_VER)
 
 # tmp depend on busybox
-E2FSPROGS := $(if $(filter $(BUSYBOX),busybox-1.17.4),n,y)
+E2FSPROGS := y
 
 ifeq ($(ASUSWRTTARGETMAKDIR),)
 include ./target.mak
@@ -893,7 +893,7 @@ ifeq ($(CONFIG_RALINK),y)
 		asustools/u-boot-2014.10/tools/mkimage -A arm64 -O linux -T kernel -C lzma -a 0x41080000 -e 0x41080000 -r $${RFSOFFSET} \
 		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0"  \
                 -d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx ; \
-	elif [ "$(BUILD_NAME)" = "4G-AX56" ] || [ "$(BUILD_NAME)" = "RT-AX53U" ] || [ "$(BUILD_NAME)" = "RT-AX54" ] || [ "$(BUILD_NAME)" = "PGB-M1" ] ; then \
+	elif [ "$(BUILD_NAME)" = "4G-AX56" ] || [ "$(BUILD_NAME)" = "RT-AX53U" ] || [ "$(BUILD_NAME)" = "RT-AX54" ] ; then \
 		asustools/u-boot-2014.10/tools/mkimage -A mips -O linux -T kernel -C lzma -a 0x81001000 -e 0x81001000 -r $${RFSOFFSET} \
 		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0"  \
 		-d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx ; \
@@ -5094,6 +5094,7 @@ fi; \
 			sed -i "/CONFIG_DHDAP/d" $(1); \
 			echo "CONFIG_DHDAP=m" >>$(1); \
 		fi; \
+		if [ "$(BUILD_NAME)" != "R7000P" ]; then \
 		sed -i "/CONFIG_WL=m/d" $(1); \
 		echo "# CONFIG_WL is not set" >>$(1); \
 		sed -i "/CONFIG_WL_USE_APSTA/d" $(1); \
@@ -5119,6 +5120,7 @@ fi; \
 		echo "# CONFIG_DPSTA is not set" >>$(1); \
 		sed -i "/CONFIG_PLC/d" $(1); \
 		echo "# CONFIG_PLC is not set" >>$(1); \
+		fi; \
 	else \
 		sed -i "/CONFIG_DHDAP/d" $(1); \
 		echo "# CONFIG_DHDAP is not set" >>$(1); \
@@ -5590,49 +5592,52 @@ ifneq (,$(wildcard bootloaders/build/configs/options_$(CUR_CHIP_PROFILE)_nand.co
 	-cp bootloaders/build/configs/options_$(CUR_CHIP_PROFILE)_nand.conf.$(BUILD_NAME) bootloaders/build/configs/options_$(CUR_CHIP_PROFILE)_nand.conf
 endif
 else
-	@cp $(LINUXDIR)/config_base.6a $(LINUXDIR)/config_$(lowercase_B)
+	@cp $(LINUXDIR)/config_base $(LINUXDIR)/config_$(lowercase_B)
 endif
 else ifeq ($(IPQ40XX),y)
 	@cp $(LINUXDIR)/config_base_ipq4019 $(LINUXDIR)/config_$(lowercase_B)
-else
-	@if [ "$(RALINK)" = "y" ]; then \
-		if [ "$(BUILD_NAME)" = "RT-AC1200" ] || [ "$(BUILD_NAME)" = "RT-N600" ] ; then \
-			cp $(LINUXDIR)/ralink/Kconfig_$(lowercase_B) $(LINUXDIR)/ralink/Kconfig ; \
-			cp $(LINUXDIR)/config_base.MT7628 $(LINUXDIR)/config_$(lowercase_B) ; \
-		elif [ "$(BUILD_NAME)" = "RT-AC1200V2" ] ||[ "$(BUILD_NAME)" = "RT-AC53" ]; then \
-			cp $(LINUXDIR)/ralink/Kconfig_$(lowercase_B) $(LINUXDIR)/ralink/Kconfig ; \
-		elif [ "$(BUILD_NAME)" = "RT-AC85P" ]; then \
-			cp $(LINUXDIR)/config_base_rtac85p $(LINUXDIR)/config_$(lowercase_B) ; \
-		elif [ "$(BUILD_NAME)" = "RP-AC87" ] || [ "$(BUILD_NAME)" = "RT-AC85U" ] || [ "$(BUILD_NAME)" = "RT-AC65U" ] || [ "$(BUILD_NAME)" = "RT-ARCH26" ] || [ "$(BUILD_NAME)" = "TUF-AC1750" ]; then \
-			cp $(LINUXDIR)/config_base $(LINUXDIR)/config_$(lowercase_B) ; \
-		elif [ "$(BUILD_NAME)" = "RT-ACRH18" ]; then \
-			cp $(LINUXDIR)/config_base.MT7629 $(LINUXDIR)/config_$(lowercase_B) ; \
-		elif [ "$(BUILD_NAME)" = "4G-AC86U" ]; then \
-			cp $(LINUXDIR)/config_base.MT7622 $(LINUXDIR)/config_$(lowercase_B) ; \
-		elif [ "$(BUILD_NAME)" = "RT-AX53U" ] || [ "$(BUILD_NAME)" = "RT-AX54" ] || [ "$(BUILD_NAME)" = "4G-AX56" ] ; then \
-			cp $(LINUXDIR)/config_base.MT7621 $(LINUXDIR)/config_$(lowercase_B) ; \
-		elif [ "$(BUILD_NAME)" = "RM-AC2100" ]; then \
-			cp $(LINUXDIR)/config_base_rmac2100 $(LINUXDIR)/config_$(lowercase_B) ; \
-		elif [ "$(BUILD_NAME)" = "R6800" ]; then \
-			cp $(LINUXDIR)/config_base_r6800 $(LINUXDIR)/config_$(lowercase_B) ; \
-		elif [ "$(BUILD_NAME)" = "PGB-M1" ]; then \
-			cp $(LINUXDIR)/config_base_pgbm1 $(LINUXDIR)/config_$(lowercase_B) ; \
-		elif [ "$(BUILD_NAME)" = "JCG-Q10PRO" ]; then \
-			cp $(LINUXDIR)/config_base_jcgq10pro $(LINUXDIR)/config_$(lowercase_B) ; \
-		elif [ "$(BUILD_NAME)" = "H3C-TX1801" ]; then \
-			cp $(LINUXDIR)/config_base_h3ctx1801 $(LINUXDIR)/config_$(lowercase_B) ; \
-		else \
-			cp $(LINUXDIR)/config_base $(LINUXDIR)/config_$(lowercase_B) ; \
-		fi ; \
-	elif [ "$(MUSL64)" = "y" ] && [ -f $(LINUXDIR)/config_base64 ] ; then \
-		cp $(LINUXDIR)/config_base64 $(LINUXDIR)/config_$(lowercase_B) ; \
+else ifeq ($(IPQ50XX),y)
+	@cp $(LINUXDIR)/config_base_ipq5018 $(LINUXDIR)/config_$(lowercase_B)
+else ifeq ($(IPQ60XX),y)
+	@cp $(LINUXDIR)/config_base_ipq6018 $(LINUXDIR)/config_$(lowercase_B)
+else ifeq ($(IPQ8074),y)
+	@cp $(LINUXDIR)/config_base_ipq8074 $(LINUXDIR)/config_$(lowercase_B)
+else ifeq ($(MT7621),y)
+	@if [ "$(BUILD_NAME)" = "RT-AC1200" ] || [ "$(BUILD_NAME)" = "RT-N600" ] ; then \
+		cp $(LINUXDIR)/ralink/Kconfig_$(lowercase_B) $(LINUXDIR)/ralink/Kconfig ; \
+		cp $(LINUXDIR)/config_base.MT7628 $(LINUXDIR)/config_$(lowercase_B) ; \
+	elif [ "$(BUILD_NAME)" = "RT-AC1200V2" ] ||[ "$(BUILD_NAME)" = "RT-AC53" ]; then \
+		cp $(LINUXDIR)/ralink/Kconfig_$(lowercase_B) $(LINUXDIR)/ralink/Kconfig ; \
+	elif [ "$(BUILD_NAME)" = "RT-AC85P" ]; then \
+		cp $(LINUXDIR)/config_base_rtac85p $(LINUXDIR)/config_$(lowercase_B) ; \
+	elif [ "$(BUILD_NAME)" = "RP-AC87" ] || [ "$(BUILD_NAME)" = "RT-AC85U" ] || [ "$(BUILD_NAME)" = "RT-AC65U" ] || [ "$(BUILD_NAME)" = "RT-ARCH26" ] || [ "$(BUILD_NAME)" = "TUF-AC1750" ]; then \
+		cp $(LINUXDIR)/config_base $(LINUXDIR)/config_$(lowercase_B) ; \
+	elif [ "$(BUILD_NAME)" = "RT-ACRH18" ]; then \
+		cp $(LINUXDIR)/config_base.MT7629 $(LINUXDIR)/config_$(lowercase_B) ; \
+	elif [ "$(BUILD_NAME)" = "4G-AC86U" ]; then \
+		cp $(LINUXDIR)/config_base.MT7622 $(LINUXDIR)/config_$(lowercase_B) ; \
+	elif [ "$(BUILD_NAME)" = "RT-AX53U" ] || [ "$(BUILD_NAME)" = "RT-AX54" ] || [ "$(BUILD_NAME)" = "4G-AX56" ] ; then \
+		cp $(LINUXDIR)/config_base.MT7621 $(LINUXDIR)/config_$(lowercase_B) ; \
+	elif [ "$(BUILD_NAME)" = "RM-AC2100" ]; then \
+		cp $(LINUXDIR)/config_base_rmac2100 $(LINUXDIR)/config_$(lowercase_B) ; \
+	elif [ "$(BUILD_NAME)" = "R6800" ]; then \
+		cp $(LINUXDIR)/config_base_r6800 $(LINUXDIR)/config_$(lowercase_B) ; \
+	elif [ "$(BUILD_NAME)" = "PGB-M1" ]; then \
+		cp $(LINUXDIR)/config_base_pgbm1 $(LINUXDIR)/config_$(lowercase_B) ; \
+	elif [ "$(BUILD_NAME)" = "JCG-Q10PRO" ]; then \
+		cp $(LINUXDIR)/config_base_jcgq10pro $(LINUXDIR)/config_$(lowercase_B) ; \
+	elif [ "$(BUILD_NAME)" = "H3C-TX1801" ]; then \
+		cp $(LINUXDIR)/config_base_h3ctx1801 $(LINUXDIR)/config_$(lowercase_B) ; \
 	else \
 		cp $(LINUXDIR)/config_base $(LINUXDIR)/config_$(lowercase_B) ; \
-	fi ;
+	fi
+else
+	cp $(LINUXDIR)/config_base $(LINUXDIR)/config_$(lowercase_B)
+endif
 	@if [ -f $(LINUXDIR)/config_base_$(lowercase_B) ]; then \
 		cp $(LINUXDIR)/config_base_$(lowercase_B) $(LINUXDIR)/config_$(lowercase_B); \
 	fi
-endif
+
 	@echo "" >> router/config_$(lowercase_B)
 	$(call RouterOptions, router/config_$(lowercase_B))
 	$(call KernelConfig, $(LINUXDIR)/config_$(lowercase_B))
@@ -5727,6 +5732,10 @@ ETJ etj:
 
 ET12 et12 XT12 xt12 XD4PRO xd4pro XT8PRO xt8pro ET8PRO et8pro:
 	$(call save_src_config, $@,_CFG)
+	$(MAKE) bin
+
+NETGEAR-% netgear-%:
+	$(call save_src_config, $@)
 	$(MAKE) bin
 
 ifeq ($(LANTIQ),y)

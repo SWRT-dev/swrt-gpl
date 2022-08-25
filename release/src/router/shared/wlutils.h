@@ -30,7 +30,7 @@
 #include <wlioctl.h>
 extern int wl_ioctl(char *name, int cmd, void *buf, int len);
 #endif //RTCONFIG_REALTEK
-#ifdef CONFIG_BCMWL5
+#ifdef RTCONFIG_BCMARM
 #include <typedefs.h>
 #ifdef RTCONFIG_HND_ROUTER_AX
 #include <ethernet.h>
@@ -244,5 +244,5 @@ extern int wl_iovar_xtlv_getint(char *ifname, char *iovar, uint16 version, uint1
 #ifdef __CONFIG_DHDAP__
 extern int dhd_probe(char *name);
 #endif
-#endif /* CONFIG_BCMWL5 */
+#endif /* RTCONFIG_BCMARM */
 #endif /* _wlutils_h_ */

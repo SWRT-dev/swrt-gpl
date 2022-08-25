@@ -32,7 +32,7 @@ typedef u_int8_t u8;
 #endif
 #include <linux/types.h>
 #include <linux/sockios.h>
-#if !defined(__GLIBC__) && !defined(__UCLIBC__) /* musl */
+#if !defined(__GLIBC__) && !defined(__UCLIBC__) && !defined(RTCONFIG_BCMARM) /* musl */
 #include <netinet/if_ether.h>		//have to in front of <linux/ethtool.h> to avoid redefinition of 'struct ethhdr'
 #endif
 #include <linux/ethtool.h>

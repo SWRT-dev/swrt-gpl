@@ -1003,10 +1003,17 @@ brcmnand_command(struct mtd_info *mtd, unsigned int command, int column, int pag
 #ifdef CONFIG_MTD
 struct mtd_partition brcmnand_parts[] = {
 	{
-		.name = "ddwrt",
+		.name = "brcmnand",
 		.size = 0,
 		.offset = 0
 	},
+#if defined(R8500) || defined(R7000P)
+	{
+		.name = "board_data",
+		.size = 0,
+		.offset = 0
+	},
+#endif
 	{
 		.name = 0,
 		.size = 0,
@@ -1021,13 +1028,15 @@ init_brcmnand_mtd_partitions(struct mtd_info *mtd, size_t size)
 	int offset = 0;
 	struct nand_chip *chip = mtd->priv;
 	struct brcmnand_mtd *brcmnand = chip->priv;
+#if 0
 	int isbufdual=0;
 	uint boardnum = bcm_strtoul(nvram_safe_get("boardnum"), NULL, 0);
+#endif
 
 	knldev = soc_knl_dev((void *)brcmnand->sih);
 	if (knldev == SOC_KNLDEV_NANDFLASH)
 		offset = NFL_BOOT_OS_SIZE;
-
+#if 0
 	if ((!strncmp(nvram_safe_get("boardnum"),"2013",4) || !strncmp(nvram_safe_get("boardnum"),"2014",4)) && nvram_match("boardtype", "0x0646")
 	    && nvram_match("boardrev", "0x1110")) {
 		printk(KERN_EMERG "Buffalo WZR-900DHP dualboot\n");
@@ -1069,8 +1078,9 @@ init_brcmnand_mtd_partitions(struct mtd_info *mtd, size_t size)
 	if (boardnum == 32 && nvram_match("boardtype", "0x0665") && nvram_match("boardrev", "0x1101")) {
 		offset = 0x2680000;
 	}
+#endif
 	ASSERT(size > offset);
-
+#if 0
 	if (boardnum == 00 && nvram_match("boardtype", "0x0665")
 	    && nvram_match("boardrev", "0x1103")
 	    && nvram_match("melco_id", "RD_BB13049")) {
@@ -1090,9 +1100,25 @@ init_brcmnand_mtd_partitions(struct mtd_info *mtd, size_t size)
 	if (boardnum == 32 && nvram_match("boardtype", "0x072F") && nvram_match("boardrev", "0x1101")) {
 		size   -= 0x1000000;
 	}
+#endif
+#if defined(R8500)
+	brcmnand_parts[0].offset = offset;
+	brcmnand_parts[0].size = size - offset - 0xC00000;
 
+	//netgear data block 
+	brcmnand_parts[1].offset = size - 0xC00000;
+	brcmnand_parts[1].size = 0xC00000;
+#elif defined(R7000P)
+	brcmnand_parts[0].offset = offset;
+	brcmnand_parts[0].size = 0x7400000 - offset;
+
+	//netgear data block 
+	brcmnand_parts[1].offset = 0x7400000;
+	brcmnand_parts[1].size = size - offset;//0x80000
+#else
 	brcmnand_parts[0].offset = offset;
 	brcmnand_parts[0].size = size - offset;
+#endif
 
 	return brcmnand_parts;
 }

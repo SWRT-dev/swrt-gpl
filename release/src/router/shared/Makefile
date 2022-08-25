@@ -10,7 +10,8 @@ ifneq ($(RTCONFIG_BCMARM),y)
 CFLAGS += -I$(TOP)/kernel_header/include
 else
 ifneq ($(HND_ROUTER),y)
-CFLAGS += -I$(LINUXDIR)/include
+#CFLAGS += -I$(LINUXDIR)/include
+CFLAGS += -I$(TOP)/kernel_header/include
 else
 CFLAGS += -DHND_ROUTER -DLINUX26 -DCONFIG_BCMWL5
 CFLAGS += -I$(HND_SRC)/bcmdrivers/opensource/include/bcm963xx
@@ -314,7 +315,7 @@ endif
 
 OBJS += spwenc.o
 
-ifeq ($(CONFIG_BCMWL5),y)
+ifeq ($(RTCONFIG_BCMARM),y)
 ifneq ($(RTCONFIG_DSL_REMOTE)$(HND_ROUTER),y)
 CFLAGS += -DTRX_NEW
 endif

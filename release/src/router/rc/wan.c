@@ -56,7 +56,7 @@
 #include <sys/wait.h>
 
 #include <linux/types.h>
-#if !defined(__GLIBC__) && !defined(__UCLIBC__) /* musl */
+#if !defined(__GLIBC__) && !defined(__UCLIBC__) && !defined(RTCONFIG_BCMARM) /* musl */
 #include <netinet/if_ether.h>		//have to in front of <linux/ethtool.h> to avoid redefinition of 'struct ethhdr'
 #endif
 #include <linux/ethtool.h>
