@@ -177,35 +177,10 @@ define platformKernelConfig
 			echo "CONFIG_NF_CONNTRACK_CHAIN_EVENTS=y" >>$(1); \
 		fi; \
 		if [ "$(LP5523)" = "y" ] ; then \
-			sed -i "/CONFIG_NEW_LEDS/d" $(1); \
-			echo "CONFIG_NEW_LEDS=y" >>$(1); \
-			sed -i "/CONFIG_LEDS_CLASS/d" $(1); \
-			echo "CONFIG_LEDS_CLASS=y" >>$(1); \
 			sed -i "/CONFIG_LEDS_LP55XX_COMMON/d" $(1); \
 			echo "CONFIG_LEDS_LP55XX_COMMON=y" >>$(1); \
 			sed -i "/CONFIG_LEDS_LP5523/d" $(1); \
 			echo "CONFIG_LEDS_LP5523=y" >>$(1); \
-			echo "# CONFIG_LEDS_LM3530 is not set" >>$(1); \
-			echo "# CONFIG_LEDS_LM3642 is not set" >>$(1); \
-			echo "# CONFIG_LEDS_GPIO is not set" >>$(1); \
-			echo "# CONFIG_LEDS_LP3944 is not set" >>$(1); \
-			echo "# CONFIG_LEDS_LP5521 is not set" >>$(1); \
-			echo "# CONFIG_LEDS_LP5562 is not set" >>$(1); \
-			echo "# CONFIG_LEDS_LP8501 is not set" >>$(1); \
-			echo "# CONFIG_LEDS_PCA955X is not set" >>$(1); \
-			echo "# CONFIG_LEDS_PCA963X is not set" >>$(1); \
-			echo "# CONFIG_LEDS_PCA9685 is not set" >>$(1); \
-			echo "# CONFIG_LEDS_DAC124S085 is not set" >>$(1); \
-			echo "# CONFIG_LEDS_REGULATOR is not set" >>$(1); \
-			echo "# CONFIG_LEDS_BD2802 is not set" >>$(1); \
-			echo "# CONFIG_LEDS_LT3593 is not set" >>$(1); \
-			echo "# CONFIG_LEDS_TCA6507 is not set" >>$(1); \
-			echo "# CONFIG_LEDS_TLC591XX is not set" >>$(1); \
-			echo "# CONFIG_LEDS_LM355x is not set" >>$(1); \
-			echo "# CONFIG_LEDS_OT200 is not set" >>$(1); \
-			echo "# CONFIG_LEDS_BLINKM is not set" >>$(1); \
-			echo "# CONFIG_LEDS_IPQ40XX is not set" >>$(1); \
-			echo "# CONFIG_LEDS_TRIGGERS is not set" >>$(1); \
 		fi; \
 		if [ "$(BT_CONN)" != "" ] ; then \
 			sed -i "/CONFIG_BT/d" $(1); \
@@ -241,6 +216,7 @@ define platformKernelConfig
 			echo "# CONFIG_BT_HCIBTSDIO is not set" >>$(1); \
 			sed -i "/CONFIG_BT_BNEP_PROTO_FILTER/d" $(1); \
 			echo "CONFIG_BT_BNEP_PROTO_FILTER=y" >>$(1); \
+			echo "# CONFIG_BT_HIDP is not set" >>$(1); \
 			sed -i "/CONFIG_BT_HCIUART/d" $(1); \
 			if [ "$(RTAC95U)" = "y" ]; then \
 				echo "CONFIG_BT_HCIUART=y" >>$(1); \
@@ -275,6 +251,7 @@ define platformKernelConfig
 			echo "# CONFIG_BT_HCIBFUSB is not set" >>$(1); \
 			echo "# CONFIG_BT_HCIVHCI is not set" >>$(1); \
 			echo "# CONFIG_BT_MRVL is not set" >>$(1); \
+			echo "# CONFIG_BT_WILINK is not set" >>$(1); \
 			echo "# CONFIG_BTRFS_FS is not set" >>$(1); \
 		fi; \
 		if [ "$(IPQ40XX)" = "y" ]; then \

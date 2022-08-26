@@ -1118,10 +1118,10 @@ ifneq (,$(wildcard $(SRC_ROOT)/../../buildtools/private.pem))
 endif
 endif
 endif
-	ln -sf $(IMGNAME).trx image/$(BUILD_NAME).trx
+#	ln -sf $(IMGNAME).trx image/$(BUILD_NAME).trx
 ifeq ($(ARM),y)
-	ln -sf $(LINUXDIR)/vmlinux image/vmlinux
-	ln -sf $(LINUXDIR)/vmlinux.o image/vmlinux.o
+#	ln -sf $(LINUXDIR)/vmlinux image/vmlinux
+#	ln -sf $(LINUXDIR)/vmlinux.o image/vmlinux.o
 endif
 ifeq ($(R6800),y)
 	gcc asustools/mksercommfw.c -o asustools/mksercommfw
@@ -5403,6 +5403,8 @@ fi; \
 		echo "CONFIG_INET_XFRM_MODE_TRANSPORT=y" >>$(1); \
 		sed -i "/CONFIG_INET_XFRM_MODE_TUNNEL is not set/d" $(1); \
 		echo "CONFIG_INET_XFRM_MODE_TUNNEL=y" >>$(1); \
+		sed -i "/CONFIG_NET_IPVTI/d" $(1); \
+		echo "# CONFIG_NET_IPVTI is not set" >>$(1); \
 		sed -i "/CONFIG_NETFILTER is not set/d" $(1); \
 		echo "CONFIG_NETFILTER=y" >>$(1); \
 		sed -i "/CONFIG_NETFILTER_XTABLES is not set/d" $(1); \
@@ -5434,6 +5436,8 @@ fi; \
 			echo "CONFIG_INET_XFRM_MODE_BEET=y" >>$(1); \
 			sed -i "/CONFIG_INET6_XFRM_MODE_BEET is not set/d" $(1); \
 			echo "CONFIG_INET6_XFRM_MODE_BEET=y" >>$(1); \
+			sed -i "/CONFIG_IPV6_VTI/d" $(1); \
+			echo "# CONFIG_IPV6_VTI is not set" >>$(1); \
 		fi; \
 		sed -i "/CONFIG_CRYPTO_NULL is not set/d" $(1); \
 		echo "CONFIG_CRYPTO_NULL=y" >>$(1); \

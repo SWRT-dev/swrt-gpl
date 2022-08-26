@@ -14,10 +14,18 @@
  *
  */
 
-#include "qcom-ipq4019-ap.dk04.1.dtsi"
+#include "qcom-ipq4019.dtsi"
+#include "qcom-ipq4019-mhi.dtsi"
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/gpio/gpio.h>
 
 / {
 	model = "ASUS. RT-AC95U";
+	compatible = "qcom,ipq4019";
+
+	chosen {
+		bootargs-append = " ubi.mtd=UBI_DEV";
+	};
 
 	memory {
 		device_type = "memory";
@@ -25,22 +33,86 @@
 	};
 
 	soc {
-		qcom,nand@7980000 {
+		rng@22000 {
 			status = "ok";
 		};
 
-		pcie0 {
+		mdio@90000 {
 			status = "ok";
-			perst-gpio = <&tlmm 38 0>;
-			wake-gpio = <&tlmm 50 0>;
-			clkreq-gpio = <&tlmm 39 0>;
+		};
+
+		ess-psgmii@98000 {
+			status = "ok";
+		};
+
+		wifi_glb_tcsr: tcsr@1949000 {
+			status = "ok";
+		};
+
+		tcsr: tcsr@194b000 {
+			status = "ok";
+		};
+
+		ess_tcsr: ess_tcsr@1953000 {
+			status = "ok";
+		};
+
+		wifi_noc_memtype_m0_m2_tcsr: tcsr@1957000 {
+			status = "ok";
+		};
+
+		ess-switch@c000000 {
+			status = "ok";
+		};
+
+		edma@c080000 {
+			status = "ok";
+		};
+
+		pcie0: pci@40000000 {
+			status = "ok";
+			perst-gpio = <&tlmm 38 GPIO_ACTIVE_LOW>;
+		};
+
+		usb3_ss_phy: ssphy@0 {
+			status = "ok";
+		};
+
+		usb3_hs_phy: hsphy@a6000 {
+			status = "ok";
+		};
+
+		usb2_hs_phy: hsphy@a8000 {
+			status = "ok";
+		};
+
+		usb3: usb3@8a00000 {
+			status = "ok";
+		};
+
+		usb2: usb2@6000000 {
+			status = "ok";
+		};
+
+		qpic_bam: dma@7984000{
+			status = "ok";
+		};
+
+		qcom_mdss_qpic@7980000 {
+			status = "ok";
+		};
+
+		qcom_mdss_qpic_panel {
+			status = "ok";
+		};
+
+		serial@78af000 {
+			pinctrl-0 = <&serial_pins>;
+			pinctrl-names = "default";
+			status = "ok";
 		};
 
 		gpio_keys {
-			status = "disabled";
-		};
-
-		serial@78b0000 {
 			status = "disabled";
 		};
 
@@ -108,70 +180,120 @@
 
 				chan0 {
 					chan-name = "blue1";
+					label = "blue:chan0";
 					led-cur = /bits/ 8 <0xfa>;
 					max-cur = /bits/ 8 <0xff>;
 				};
 
 				chan1 {
 					chan-name = "blue2";
+					label = "blue:chan1";
 					led-cur = /bits/ 8 <0xfa>;
 					max-cur = /bits/ 8 <0xff>;
 				};
 
 				chan2 {
 					chan-name = "blue3";
+					label = "blue:chan2";
 					led-cur = /bits/ 8 <0xfa>;
 					max-cur = /bits/ 8 <0xff>;
 				};
 
 				chan3 {
 					chan-name = "green1";
+					label = "green:chan0";
 					led-cur = /bits/ 8 <0xfa>;
 					max-cur = /bits/ 8 <0xff>;
 				};
 
 				chan4 {
 					chan-name = "green2";
+					label = "green:chan1";
 					led-cur = /bits/ 8 <0xfa>;
 					max-cur = /bits/ 8 <0xff>;
 				};
 
 				chan5 {
 					chan-name = "green3";
+					label = "green:chan2";
 					led-cur = /bits/ 8 <0xfa>;
 					max-cur = /bits/ 8 <0xff>;
 				};
 
 				chan6 {
 					chan-name = "red1";
+					label = "red:chan0";
 					led-cur = /bits/ 8 <0xfa>;
 					max-cur = /bits/ 8 <0xff>;
 				};
 
 				chan7 {
 					chan-name = "red2";
+					label = "blue:red2";
 					led-cur = /bits/ 8 <0xfa>;
 					max-cur = /bits/ 8 <0xff>;
 				};
 
 				chan8 {
 					chan-name = "red3";
+					label = "red:chan2";
 					led-cur = /bits/ 8 <0xfa>;
 					max-cur = /bits/ 8 <0xff>;
 				};
 			};
 		};
+	};
+};
 
-		edma@c080000 {
-			qcom,num-gmac = <2>;
-			gmac0 {
-				qcom,poll-required = <0>;
-				qcom,poll-required-dynamic = <0>;
+&nand {
+	pinctrl-0 = <&nand_pins>;
+	pinctrl-names = "default";
+	status = "ok";
+
+	nand@0 {
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			partition@0 {
+				label = "Bootloader";
+				reg = <0x000000000000 0x000000400000>;
+				read-only;
 			};
-			gmac1 {
-				qcom,poll-required = <0>;
-				qcom,poll-required-dynamic = <0>;
+			partition@400000 {
+				label = "UBI_DEV";
+				reg = <0x000000400000 0x000007C00000>;
 			};
+		};
+	};
+};
+
+&tlmm {
+	serial_pins: serial_pinmux {
+		mux {
+			pins = "gpio16", "gpio17";
+			function = "blsp_uart0";
+			bias-disable;
+		};
+	};
+
+	nand_pins: nand_pins {
+		pullups {
+			pins = "gpio53", "gpio58",
+				 "gpio59";
+			function = "qpic";
+			bias-pull-up;
+		};
+
+		pulldowns {
+			pins = "gpio55", "gpio56",
+				 "gpio57", "gpio60",
+				 "gpio62", "gpio63", "gpio64",
+				 "gpio65", "gpio66", "gpio67",
+				 "gpio69";
+			function = "qpic";
+			bias-pull-down;
 		};
 	};
 };

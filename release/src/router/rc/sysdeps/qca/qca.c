@@ -4668,20 +4668,20 @@ void wifi_clone(int unit)
 }
 #endif
 
-char *getWscStatus_enrollee(int unit)
+char *getWscStatus_enrollee(int unit, char *buf, int buflen)
 {
-	char buf[512];
+	char cmd[512];
 	FILE *fp;
 	int len;
 	char *pt1, *pt2;
 	char ctrl_sk[32];
 
 	get_wpa_ctrl_sk(unit, ctrl_sk, sizeof(ctrl_sk));
-	snprintf(buf, sizeof(buf), "wpa_cli -p %s -i %s status", ctrl_sk, get_staifname(unit));
-	fp = PS_popen(buf, "r");
+	snprintf(cmd, sizeof(cmd), "wpa_cli -p %s -i %s status", ctrl_sk, get_staifname(unit));
+	fp = PS_popen(cmd, "r");
 	if (fp) {
-		memset(buf, 0, sizeof(buf));
-		len = fread(buf, 1, sizeof(buf), fp);
+		memset(buf, 0, buflen);
+		len = fread(buf, 1, buflen, fp);
 		PS_pclose(fp);
 		if (len > 1) {
 			buf[len-1] = '\0';
