@@ -291,11 +291,16 @@ incoming_push_message(struct context *c, const struct buffer *buffer)
     {
         if (c->options.mode == MODE_SERVER)
         {
+            struct frame *frame_fragment = NULL;
+#ifdef ENABLE_FRAGMENT
+            if (c->options.ce.fragment)
+            {
+                frame_fragment = &c->c2.frame_fragment;
+            }
+#endif
             struct tls_session *session = &c->c2.tls_multi->session[TM_ACTIVE];
-            /* Do not regenerate keys if client send a second push request */
-            if (!session->key[KS_PRIMARY].crypto_options.key_ctx_bi.initialized
-                && !tls_session_update_crypto_params(session, &c->options,
-                                                     &c->c2.frame))
+            if (!tls_session_update_crypto_params(session, &c->options,
+                                                  &c->c2.frame, frame_fragment))
             {
                 msg(D_TLS_ERRORS, "TLS Error: initializing data channel failed");
                 goto error;
@@ -651,6 +656,7 @@ int
 process_incoming_push_request(struct context *c)
 {
     int ret = PUSH_MSG_ERROR;
+    struct key_state *ks = &c->c2.tls_multi->session[TM_ACTIVE].key[KS_PRIMARY];
 
 #ifdef ENABLE_ASYNC_PUSH
     c->c2.push_request_received = true;
@@ -661,7 +667,12 @@ process_incoming_push_request(struct context *c)
         send_auth_failed(c, client_reason);
         ret = PUSH_MSG_AUTH_FAILURE;
     }
-    else if (!c->c2.push_reply_deferred && c->c2.context_auth == CAS_SUCCEEDED)
+    else if (!c->c2.push_reply_deferred && c->c2.context_auth == CAS_SUCCEEDED
+             && ks->authenticated
+ #ifdef ENABLE_DEF_AUTH
+             && !ks->auth_deferred
+ #endif
+             )
     {
         time_t now;
 

@@ -884,6 +884,15 @@ static void ping(len_and_sockaddr *lsa)
 	}
 }
 
+static int start_dns = 0;
+static void noresp(int ign UNUSED_PARAM)
+{
+	if (start_dns) {
+		printf("No response from %s\n", hostname);
+		exit(EXIT_FAILURE);
+	}
+}
+
 static int common_ping_main(int opt, char **argv)
 {
 	len_and_sockaddr *lsa;
@@ -919,6 +928,10 @@ static int common_ping_main(int opt, char **argv)
 
 	myid = (uint16_t) getpid();
 	hostname = argv[optind];
+	signal(SIGALRM, noresp);
+	/* If "-w X" is specified and X > 3, wait X seconds. otherwise, wait three seconds. */
+	alarm((deadline > 3)? deadline : 3);
+	start_dns = 1;
 #if ENABLE_PING6
 	{
 		sa_family_t af = AF_UNSPEC;
@@ -931,6 +944,7 @@ static int common_ping_main(int opt, char **argv)
 #else
 	lsa = xhost_and_af2sockaddr(hostname, 0, AF_INET);
 #endif
+	start_dns = 0;
 
 	if (source_lsa && source_lsa->u.sa.sa_family != lsa->u.sa.sa_family)
 		/* leaking it here... */

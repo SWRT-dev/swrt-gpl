@@ -368,10 +368,13 @@ function loadData()
 							t = "USB Modem";
 					}
 					else if(wans_dualwan_array[0] == "wan"){
-						if (nvram.bond_wan == '1' && nvram.rc_support.indexOf("wanbonding") != -1)
-							t = "Bond";
-						else
-							t = "WAN";
+						t = "WAN";
+						if (based_modelid == "TUF-AX4200")
+							t = "2.5G WAN";
+						if (based_modelid == "GT-AXY16000" || based_modelid == "RT-AX89U" || based_modelid == "TUF-AX4200") {
+							if (nvram.bond_wan == '1' && nvram.rc_support.indexOf("wanbonding") != -1)
+								t = "Bond";
+						}
 					}
 					else if(wans_dualwan_array[0] == "wan2"){
 						if (based_modelid == "GT-AXY16000" || based_modelid == "RT-AX89U")
@@ -379,8 +382,13 @@ function loadData()
 						else
 							t = "WAN2";
 					}		
-					else if(wans_dualwan_array[0] == "lan")
-						t = "LAN";
+					else if(wans_dualwan_array[0] == "lan") {
+						t = "LAN Port " + nvram.wans_lanport;
+						if (based_modelid == "TUF-AX4200") {
+							if (nvram.wans_lanport == '5')
+								t = "2.5G LAN";
+						}
+					}
 					else if(wans_dualwan_array[0] == "dsl")
 						t = "DSL WAN";
 					else if(wans_dualwan_array[0] == "sfp+")
@@ -398,10 +406,13 @@ function loadData()
 						t = "USB Modem";
 				}
 				else if(wans_dualwan_array[1] == "wan"){
-					if (nvram.bond_wan == '1' && nvram.rc_support.indexOf("wanbonding") != -1)
-						t = "Bond";
-					else
-						t = "WAN";
+					t = "WAN";
+					if (based_modelid == "TUF-AX4200")
+						t = "2.5G WAN";
+					if (based_modelid == "GT-AXY16000" || based_modelid == "RT-AX89U" || based_modelid == "TUF-AX4200") {
+						if (nvram.bond_wan == '1' && nvram.rc_support.indexOf("wanbonding") != -1)
+							t = "Bond";
+					}
 				}
 				else if(wans_dualwan_array[1] == "wan2"){
 					if (based_modelid == "GT-AXY16000" || based_modelid == "RT-AX89U")
@@ -409,8 +420,13 @@ function loadData()
 					else
 						t = "WAN2";
 				}
-				else if(wans_dualwan_array[1] == "lan")
-					t = "LAN";
+				else if(wans_dualwan_array[1] == "lan") {
+					t = "LAN Port " + nvram.wans_lanport;
+					if (based_modelid == "TUF-AX4200") {
+						if (nvram.wans_lanport == '5')
+							t = "2.5G LAN";
+					}
+				}
 				else if(wans_dualwan_array[1] == "sfp+")
 					t = "10G SFP+";
 				else
@@ -423,7 +439,7 @@ function loadData()
 				if (bs_port_id == 0)
 					t = "bond-slave (WAN)";
 				else if (bs_port_id >= 1 && bs_port_id <= 8)
-					t = "bond-slave (LAN"+bs_port_id+")";
+					t = "bond-slave (LAN Port "+bs_port_id+")";
 				else if (bs_port_id == 30)
 					t = "bond-slave (10G base-T)";
 				else if (bs_port_id == 31)
@@ -437,7 +453,7 @@ function loadData()
 			}
 			else if (i.search("LACP") > -1){
 				var num = i.substr(4);
-				t = "bond-slave (LAN"+num+")";
+				t = "bond-slave (LAN Port "+num+")";
 			}
 			else
 				t = i;			
@@ -464,7 +480,7 @@ function loadData()
 		
 		//Sort tab by Viz 2014.06
 		var tabsort = [
-			"speed-tab-INTERNET,<#Internet#>", 
+			"speed-tab-INTERNET,<#Internet#>",
 			"speed-tab-INTERNET,<#dualwan_primary#>",
 			"speed-tab-INTERNET1,<#dualwan_secondary#>",
 			"speed-tab-INTERNET,DSL WAN",
@@ -472,46 +488,67 @@ function loadData()
 			"speed-tab-INTERNET,WAN2",
 			"speed-tab-INTERNET,10G base-T",
 			"speed-tab-INTERNET,10G SFP+",
+			"speed-tab-INTERNET,2.5G WAN",
 			"speed-tab-INTERNET,Bond",
 			"speed-tab-INTERNET,LAN",
+			"speed-tab-INTERNET,LAN Port 1",
+			"speed-tab-INTERNET,LAN Port 2",
+			"speed-tab-INTERNET,LAN Port 3",
+			"speed-tab-INTERNET,LAN Port 4",
+			"speed-tab-INTERNET,LAN Port 5",
+			"speed-tab-INTERNET,LAN Port 6",
+			"speed-tab-INTERNET,LAN Port 7",
+			"speed-tab-INTERNET,LAN Port 8",
+			"speed-tab-INTERNET,2.5G LAN",
 			"speed-tab-INTERNET,USB Modem",
 			"speed-tab-INTERNET,<#Mobile_title#>",
 			"speed-tab-INTERNET1,WAN",
 			"speed-tab-INTERNET1,WAN2",
 			"speed-tab-INTERNET1,10G base-T",
 			"speed-tab-INTERNET1,10G SFP+",
+			"speed-tab-INTERNET1,2.5G WAN",
 			"speed-tab-INTERNET1,Bond",
 			"speed-tab-INTERNET1,LAN",
+			"speed-tab-INTERNET1,LAN Port 1",
+			"speed-tab-INTERNET1,LAN Port 2",
+			"speed-tab-INTERNET1,LAN Port 3",
+			"speed-tab-INTERNET1,LAN Port 4",
+			"speed-tab-INTERNET1,LAN Port 5",
+			"speed-tab-INTERNET1,LAN Port 6",
+			"speed-tab-INTERNET1,LAN Port 7",
+			"speed-tab-INTERNET1,LAN Port 8",
+			"speed-tab-INTERNET1,2.5G LAN",
 			"speed-tab-INTERNET1,<#Mobile_title#>",
 			"speed-tab-INTERNET1,USB Modem",
 			"speed-tab-WAGGR0,bond-slave (WAN)",
-			"speed-tab-WAGGR1,bond-slave (LAN1)",
-			"speed-tab-WAGGR2,bond-slave (LAN2)",
-			"speed-tab-WAGGR3,bond-slave (LAN3)",
-			"speed-tab-WAGGR4,bond-slave (LAN4)",
-			"speed-tab-WAGGR5,bond-slave (LAN5)",
-			"speed-tab-WAGGR6,bond-slave (LAN6)",
-			"speed-tab-WAGGR7,bond-slave (LAN7)", 
-			"speed-tab-WAGGR8,bond-slave (LAN8)", 
-			"speed-tab-WAGGR30,bond-slave (10G base-T)", 
-			"speed-tab-WAGGR31,bond-slave (10G SFP+)", 
-			"speed-tab-WIRED,<#tm_wired#>", 
+			"speed-tab-WAGGR0,bond-slave (2.5G WAN)",
+			"speed-tab-WAGGR1,bond-slave (LAN Port 1)",
+			"speed-tab-WAGGR2,bond-slave (LAN Port 2)",
+			"speed-tab-WAGGR3,bond-slave (LAN Port 3)",
+			"speed-tab-WAGGR4,bond-slave (LAN Port 4)",
+			"speed-tab-WAGGR5,bond-slave (LAN Port 5)",
+			"speed-tab-WAGGR6,bond-slave (LAN Port 6)",
+			"speed-tab-WAGGR7,bond-slave (LAN Port 7)",
+			"speed-tab-WAGGR8,bond-slave (LAN Port 8)",
+			"speed-tab-WAGGR30,bond-slave (10G base-T)",
+			"speed-tab-WAGGR31,bond-slave (10G SFP+)",
+			"speed-tab-WIRED,<#tm_wired#>",
 			"speed-tab-LACPW1,bond-slave (WAN1)",
 			"speed-tab-LACPW2,bond-slave (WAN2)",
-			"speed-tab-LACP1,bond-slave (LAN1)", 
-			"speed-tab-LACP2,bond-slave (LAN2)", 
-			"speed-tab-LACP3,bond-slave (LAN3)", 
-			"speed-tab-LACP4,bond-slave (LAN4)", 
-			"speed-tab-LACP5,bond-slave (LAN5)", 
-			"speed-tab-LACP6,bond-slave (LAN6)", 
-			"speed-tab-LACP7,bond-slave (LAN7)", 
-			"speed-tab-LACP8,bond-slave (LAN8)", 
+			"speed-tab-LACP1,bond-slave (LAN Port 1)",
+			"speed-tab-LACP2,bond-slave (LAN Port 2)",
+			"speed-tab-LACP3,bond-slave (LAN Port 3)",
+			"speed-tab-LACP4,bond-slave (LAN Port 4)",
+			"speed-tab-LACP5,bond-slave (LAN Port 5)",
+			"speed-tab-LACP6,bond-slave (LAN Port 6)",
+			"speed-tab-LACP7,bond-slave (LAN Port 7)",
+			"speed-tab-LACP8,bond-slave (LAN Port 8)",
 			"speed-tab-WIRELESS0,<#tm_wireless#> (2.4GHz)",
-			"speed-tab-WIRELESS1,<#tm_wireless#> (5GHz)", 
-			"speed-tab-WIRELESS1,<#tm_wireless#> (5GHz-1)", 
-			"speed-tab-WIRELESS2,<#tm_wireless#> (5GHz-2)", 
-			"speed-tab-WIRELESS2,<#tm_wireless#> (6GHz)", 
-			"speed-tab-WIRELESS3,<#tm_wireless#> (60GHz)", 
+			"speed-tab-WIRELESS1,<#tm_wireless#> (5GHz)",
+			"speed-tab-WIRELESS1,<#tm_wireless#> (5GHz-1)",
+			"speed-tab-WIRELESS2,<#tm_wireless#> (5GHz-2)",
+			"speed-tab-WIRELESS2,<#tm_wireless#> (6GHz)",
+			"speed-tab-WIRELESS3,<#tm_wireless#> (60GHz)",
 			"speed-tab-BRIDGE,LAN"
 		];
 		

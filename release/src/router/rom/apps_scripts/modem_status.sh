@@ -595,8 +595,8 @@ elif [ "$1" == "fullsignal" ]; then
 		echo "rssi=$rssi."
 		echo "sinr=$sinr."
 
-		nvram set ${prefix}act_operation=$operation
-		nvram set ${prefix}act_band=$band
+		#nvram set ${prefix}act_operation=$operation
+		#nvram set ${prefix}act_band=$band
 		nvram set ${prefix}act_cellid=$cellid
 		nvram set ${prefix}act_lac=$lac
 		nvram set ${prefix}act_rsrp=$rsrp
@@ -739,6 +739,11 @@ elif [ "$1" == "operation" ]; then
 		nvram set ${prefix}act_operation="$operation"
 		nvram set ${prefix}act_band="$band"
 		nvram set ${prefix}act_channel="$channel"
+
+		lte=`echo -n "$band" |grep LTE`
+		if [ -z "$lte" ]; then
+			nvram set ${prefix}act_scc=
+		fi
 
 		echo "done."
 	elif [ "$modem_model" == "2" ]; then
@@ -931,8 +936,12 @@ elif [ "$1" == "setmode" ]; then
 		fi
 
 		sleep 1
+		if [ "$modem_model" == "2" ]; then
+			at_ret=`/usr/sbin/modem_at.sh '+COPS=0' "180" 2>&1`
+		else
+			at_ret=`/usr/sbin/modem_at.sh '+COPS=0' "$modem_reg_time" 2>&1`
+		fi
 
-		at_ret=`/usr/sbin/modem_at.sh '+COPS=0' "$modem_reg_time" 2>&1`
 		ret=`echo -n $at_ret |grep "OK" 2>/dev/null`
 		if [ -z "$ret" ]; then
 			echo "Fail to set COPS=0 from $modem_act_node."
@@ -994,7 +1003,7 @@ elif [ "$1" == "getmode" ]; then
 	elif [ "$modem_model" == "2" ]; then
 		mode=
 
-		at_ret=`/usr/sbin/modem_at.sh '+GTRAT?' 2>&1`
+		at_ret=`/usr/sbin/modem_at.sh '+GTRAT?' "$modem_reg_time" 2>&1`
 		ret=`echo -n "$at_ret" |grep "GTRAT: " |awk 'BEGIN{FS=" "}{print $2}' |awk 'BEGIN{FS=","}{print $1}' 2>/dev/null`
 		if [ -z "$ret" ]; then
 			echo "Fail to get the modem mode from $modem_act_node."
@@ -1176,51 +1185,55 @@ elif [ "$1" == "rate" ]; then
 		echo "done."
 	fi
 elif [ "$1" == "hwver" ]; then
-	if [ "$modem_model" == "1" ]; then
-		ver=`/usr/sbin/modem_at.sh +QGMR 1 2>&1 | grep "EM12"`
-	elif [ "$modem_model" == "2" ]; then
+	if [ "$modem_model" == "1" ] || [ "$modem_model" == "2" ]; then
 		at_ret=`/usr/sbin/modem_at.sh I 1 2>&1 | grep "Revision:"`
 		ver=`echo -n "$at_ret" |awk '{print $2}' 2>/dev/null`
+		if [ -z "$ver" ]; then
+			echo "Fail to get the hwver information from $modem_act_node."
+			exit 3
+		fi
+
+		echo "hwver=$ver."
+
+		nvram set ${prefix}act_hwver=$ver
+
+		echo "done."
 	elif [ "$is_gobi" -eq "1" ]; then
 		at_ret=`/usr/sbin/modem_at.sh '$HWVER' 1 2>&1`
-		ver=`echo -n "$at_ret" |grep "^[0-9].*$" 2>/dev/null`
+		ret=`echo -n "$at_ret" |grep "^[0-9].*$" 2>/dev/null`
+		if [ -z "$ret" ]; then
+			nvram set ${prefix}act_hwver=
+			echo "Fail to get the hardware version from $modem_act_node."
+			exit 15
+		fi
+
+		echo "hwver=$ret."
+
+		nvram set ${prefix}act_hwver=$ret
+
+		echo "done."
 	fi
-
-	if [ -z "$ver" ]; then
-		nvram set ${prefix}act_hwver=
-		echo "Fail to get the hardware version from $modem_act_node."
-		exit 15
-	fi
-
-	echo "hwver=$ver."
-
-	nvram set ${prefix}act_hwver=$ver
-
-	echo "done."
 elif [ "$1" == "swver" ]; then
-	if [ "$modem_model" == "1" ]; then
-		ver=`/usr/sbin/modem_at.sh +QGMR 1 2>&1 | grep "EM12"`
-	elif [ "$is_gobi" -eq "1" ] || [ "$modem_model" == "2" ]; then
-		if [ "$model" == "4G-AC53U" ] || [ "$model" == "4G-AX56" ]; then
+	if [ "$is_gobi" -eq "1" ] || [ "$modem_model" == "1" ] || [ "$modem_model" == "2" ]; then
+		if [ "$model" == "4G-AC53U" ] || [ "$model" == "4G-AC86U" ] || [ "$model" == "4G-AX56" ]; then
 			at_ret=`/usr/sbin/modem_at.sh I 1 2>&1 | grep Revision:`
-			ver=`echo -n "$at_ret" |awk '{print $2}' 2>/dev/null`
+			ret=`echo -n "$at_ret" |awk '{print $2}' 2>/dev/null`
 		else
 			at_ret=`/usr/sbin/modem_at.sh I 1 2>&1`
-			ver=`echo -n "$at_ret" |grep "^WW" 2>/dev/null`
+			ret=`echo -n "$at_ret" |grep "^WW" 2>/dev/null`
 		fi
+		if [ -z "$ret" ]; then
+			nvram set ${prefix}act_swver=
+			echo "Fail to get the software version from $modem_act_node."
+			exit 15
+		fi
+
+		echo "swver=$ret."
+
+		nvram set ${prefix}act_swver=$ret
+
+		echo "done."
 	fi
-
-	if [ -z "$ver" ]; then
-		nvram set ${prefix}act_swver=
-		echo "Fail to get the software version from $modem_act_node."
-		exit 15
-	fi
-
-	echo "swver=$ver."
-
-	nvram set ${prefix}act_swver=$ver
-
-	echo "done."
 elif [ "$1" == "caband" ]; then
 	if [ "$modem_model" == "1" ]; then
 		at_ret=`/usr/sbin/modem_at.sh +QCAINFO 2>&1`
@@ -1238,11 +1251,13 @@ elif [ "$1" == "caband" ]; then
 		echo "scc=$scc_band."
 
 		nvram set ${prefix}act_pcc="$pcc_band"
-		nvram set ${prefix}act_scc="$scc_band"
+		if [ -n "$scc_band" ]; then
+			nvram set ${prefix}act_scc="$scc_band"
+		fi
 
 		echo "done."
 	elif [ "$modem_model" == "2" ]; then
-		at_ret=`/usr/sbin/modem_at.sh +GTCAINFO? 2>&1`
+		at_ret=`/usr/sbin/modem_at.sh +GTCAINFO? "$modem_reg_time" 2>&1`
 		ret=`echo -n "$at_ret" |grep "OK" 2>/dev/null`
 		if [ -z "$ret" ]; then
 			echo "Fail to get the CA band from $modem_act_node."
@@ -1357,7 +1372,7 @@ elif [ "$1" == "setband" ]; then
 		fi
 		echo "bandnum=$bandnum"
 
-		at_ret=`/usr/sbin/modem_at.sh '+GTACT='$bandnum 2>&1`
+		at_ret=`/usr/sbin/modem_at.sh '+GTACT='$bandnum "$modem_reg_time" 2>&1`
 		ret=`echo -n "$at_ret" |grep "OK" 2>/dev/null`
 		if [ -z "$ret" ]; then
 			echo "Fail to set the band from $modem_act_node."
@@ -2204,6 +2219,26 @@ elif [ "$1" == "ip" ]; then
 		else
 			wait_time=1
 		fi
+		if [ "$modem_model" == "2" ]; then
+			at_ret=`/usr/sbin/modem_at.sh '+CEREG?' $wait_time 2>&1`
+			ret=`echo -n "$at_ret" |grep "OK" 2>/dev/null`
+			if [ -z "$ret" ]; then
+				echo "49: Fail to get the CEREG from $modem_act_node."
+				exit 49
+			fi
+			at_ret=`/usr/sbin/modem_at.sh '+GTRNDIS?' $wait_time 2>&1`
+			ret=`echo -n "$at_ret" |grep "+GTRNDIS: 1,1" 2>/dev/null`
+			if [ -z "$ret" ]; then
+				echo "Fail to get the GTRNDIS from $modem_act_node. Try to re-connect"
+				at_ret=`/usr/sbin/modem_at.sh '+GTRNDIS=1,1' "$modem_reg_time" 2>&1`
+				ret=`echo -n "$at_ret" |grep "OK" 2>/dev/null`
+				if [ -z "$ret" ]; then
+					echo "50: Fail to re-connect the network from $modem_act_node."
+					exit 50
+				fi
+			fi
+		fi
+
 		at_ret=`/usr/sbin/modem_at.sh '+CGPADDR=1' $wait_time 2>&1`
 		ret=`echo -n "$at_ret" |grep "+CGPADDR: 1," 2>/dev/null`
 		if [ -z "$ret" ]; then
@@ -2260,5 +2295,32 @@ elif [ "$1" == "cmee" ]; then
 	fi
 
 	echo "done."
+elif [ "$1" == "reconnect" ]; then
+	if [ "$modem_model" == "2" ]; then
+		at_ret=`/usr/sbin/modem_at.sh '+GTRNDIS?' "$modem_reg_time" 2>&1`
+		#echo $at_ret >> /tmp/syslog.log
+		ret=`echo -n "$at_ret" |grep "GTRNDIS: 1," |awk 'BEGIN{FS=","}{print $3}' |awk 'BEGIN{RS="\""}{print $1}' | grep "\." 2>/dev/null`
+		#echo "ret="$ret
+		if [ -z "$ret" ]; then
+			echo "excute disconnect to connect script..."
+			at_ret=`/usr/sbin/modem_at.sh '+CEREG?' $wait_time 2>&1`
+			ret=`echo -n "$at_ret" |grep "OK" 2>/dev/null`
+			if [ -z "$ret" ]; then
+				echo "49: Fail to get the CEREG from $modem_act_node."
+				exit 49
+			fi
+			at_ret=`/usr/sbin/modem_at.sh '+GTRNDIS?' $wait_time 2>&1`
+			ret=`echo -n "$at_ret" |grep "+GTRNDIS: 1,1" 2>/dev/null`
+			if [ -z "$ret" ]; then
+				echo "Fail to get the GTRNDIS from $modem_act_node. Try to re-connect"
+				at_ret=`/usr/sbin/modem_at.sh '+GTRNDIS=1,1' "$modem_reg_time" 2>&1`
+				ret=`echo -n "$at_ret" |grep "OK" 2>/dev/null`
+				if [ -z "$ret" ]; then
+					echo "50: Fail to re-connect the network from $modem_act_node."
+					exit 50
+				fi
+			fi
+		fi
+	fi
+	echo "done."
 fi
-

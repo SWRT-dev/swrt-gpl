@@ -89,6 +89,10 @@
 #include <asm/sections.h>
 #include <asm/cacheflush.h>
 
+#if defined(CONFIG_MODEL_XD4S)
+#include <linux/gpio.h>
+#endif
+
 static int kernel_init(void *);
 
 extern void init_IRQ(void);
@@ -989,8 +993,13 @@ static int __ref kernel_init(void *unused)
 	    !try_to_run_init_process("/etc/init") ||
 	    !try_to_run_init_process("/bin/init") ||
 	    !try_to_run_init_process("/bin/sh"))
+	{
+#if defined(CONFIG_MODEL_XD4S)
+ 	      // turn off green LED
+	       	__gpio_set_value(16, 1);
+#endif
 		return 0;
-
+	}
 	panic("No working init found.  Try passing init= option to kernel. "
 	      "See Linux Documentation/init.txt for guidance.");
 }

@@ -75,6 +75,7 @@ ifeq ($(LINUX_KERNEL),)
 $(error Empty LINUX_KERNEL variable)
 endif
 export LINUX_KERNEL
+export LINUX_KERNEL_VERSION
 
 
 include $(SRCBASE)/target.mak
@@ -95,7 +96,8 @@ export PKG_CONFIG_SYSROOT_DIR := $(STAGEDIR)
 export PKG_CONFIG_PATH := $(STAGEDIR)/usr/lib/pkgconfig:$(STAGEDIR)/etc/lib/pkgconfig
 export PKG_CONFIG_LIBDIR := $(STAGEDIR)/usr/lib/pkgconfig:$(STAGEDIR)/usr/local/lib/pkgconfig:$(STAGEDIR)/etc/lib/pkgconfig
 
-export EXTRACFLAGS += -DLINUX_KERNEL_VERSION=$(LINUX_KERNEL_VERSION) $(if $(STAGING_DIR),--sysroot=$(STAGING_DIR))
+export EXTRACFLAGS += -DLINUX_KERNEL_VERSION=$(LINUX_KERNEL_VERSION) $(if $(STAGING_DIR),--sysroot=$(STAGING_DIR)) \
+	$(if $(MT798X),-Wno-format-truncation -Wno-format-overflow -Wno-stringop-truncation -Wno-stringop-overflow)
 export EXTRALDFLAGS += $(if $(STAGING_DIR),--sysroot=$(STAGING_DIR))
 
 #ifeq ($(RTCONFIG_BCMARM),y)
@@ -114,6 +116,8 @@ endif
 ifeq ($(HND_ROUTER),y)
 ifeq ($(BRCM_CHIP),$(filter $(BRCM_CHIP),63178 47622 6756 4912))
 HND_RT_PLATFORM_EXT_CFLAGS := 
+else ifeq ($(BRCM_CHIP),$(filter $(BRCM_CHIP),6855))
+HND_RT_PLATFORM_EXT_CFLAGS := -DCHIP_6855 -DCONFIG_BCM96855
 else
 HND_RT_PLATFORM_EXT_CFLAGS := -DCHIP_4908    -DCONFIG_BCM94908
 endif

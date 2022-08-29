@@ -1,31 +1,30 @@
  /*
- * Copyright 2020, ASUSTeK Inc.
+ * Copyright 2022, ASUSTeK Inc.
  * All Rights Reserved.
  *
  * THIS SOFTWARE IS OFFERED "AS IS", AND ASUS GRANTS NO WARRANTIES OF ANY
- * KIND, EXPRESS OR IMPLIED, BY STATUTE, COMMUNICATION OR OTHERWISE. BROADCOM
+ * KIND, EXPRESS OR IMPLIED, BY STATUTE, COMMUNICATION OR OTHERWISE. ASUS
  * SPECIFICALLY DISCLAIMS ANY IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS
  * FOR A SPECIFIC PURPOSE OR NONINFRINGEMENT CONCERNING THIS SOFTWARE.
  *
  */
- 
+
 /*
 	feature implement:
 	1. traditaional qos
 	2. bandwdith limiter (also for guest network)
 	3. facebook wifi     (already EOL in the end of 2017)
+	4. GeForceNow qos
 
 	NOTE:
 	qos mark bit 8~31 : TrendMicro adaptive qos usage, so ASUS only can use bit 0~7 for different applications
-	ex. Traditional qos / bandwidth limiter / Facebook wifi
+	ex. Traditional qos / bandwidth limiter / Facebook wifi / GeForceNow QoS
 */
 
 #include "rc.h"
 #include <arpa/inet.h>
 #include <sys/socket.h>
-#ifdef RTCONFIG_FBWIFI
-#include <fbwifi.h>
-#endif
+#include <sys/stat.h>
 #ifdef RTCONFIG_BWDPI
 #include <bwdpi.h>
 #endif
@@ -84,6 +83,14 @@ static unsigned int ipv6_qos_applied = 0;
 
 int etable_flag = 0;
 int manual_return = 0;
+
+static int qos_action_manual()
+{
+	int ret;
+	ret = 1;
+
+	return ret;
+}
 
 #ifdef RTCONFIG_AMAS_WGN
 static void WGN_ifname(int i, int j, char *wl_if)
@@ -344,6 +351,14 @@ static void address_format_checker(int *type, char *old, char *new, int len)
 	// mac format
 	g = buf = strdup(old);
 	if (sscanf(g, "%02X:%02X:%02X:%02X:%02X:%02X",&s[0],&s[1],&s[2],&s[3],&s[4],&s[5]) == 6) {
+#ifdef RTCONFIG_AMAS
+		QOSLOG("address_format_checker");
+		if (amas_lib_device_ip_query(old, new)) {
+			*type = TYPE_IP;
+			QOSLOG("is_ip=%d, is_mac=%d, is_range=%d, type=%d, new=%s", is_ip, is_mac, is_range, *type, new);
+			return;
+		} else
+#endif
 		is_mac = 1;
 		goto end;
 	}
@@ -414,7 +429,7 @@ static void set_fbwifi_mark(void)
 
 	snprintf(mark, sizeof(mark), "0x%x", FBWIFI_MARK_SET(1));
 	snprintf(inv_mask, sizeof(inv_mask), "0x%x", FBWIFI_MARK_INV_MASK);
-	for (band = 0; band < min(MAX_NR_WL_IF, ARRAYSIZE(fbwifi_iface)); ++band) {
+	for (band = 0; band < min(MAX_NR_WL_IF, (sizeof(fbwifi_iface)/sizeof(fbwifi_iface[0]))); ++band) {
 		SKIP_ABSENT_BAND(band);
 
 		if (nvram_match(fbwifi_iface[band], "off"))
@@ -455,7 +470,7 @@ void add_EbtablesRules(void)
 	}
 
 	// for MultiSSID
-	int UnitNum = 2; 	// wl0.x, wl1.x
+	int UnitNum = 2; 			// wl0.x, wl1.x
 	int GuestNum = MAX_NO_MSSID - 1;	// wlx.0, wlx.1, wlx.2
 	char mssid_if[32];
 	char mssid_enable[32];
@@ -472,11 +487,11 @@ void add_EbtablesRules(void)
 		}
 	}
 
- #ifdef RTCONFIG_FBWIFI
-	if(sw_mode() == SW_MODE_AP){
+#ifdef RTCONFIG_FBWIFI
+	if(sw_mode() == SW_MODE_ROUTER){
 		set_fbwifi_mark();
 	}
- #endif
+#endif
 
 	etable_flag = 1;
 }
@@ -649,22 +664,14 @@ static int add_qos_rules(char *pcWANIF)
 	int lock;
 	int evalRet;
 	char *action = NULL;
-	int model = get_model();
 
-	switch (model) {
-		case MODEL_DSLAX82U:
-			action = "--set-mark";
-			manual_return = 1;
-			break;
-		default:
-#if defined(RTCONFIG_QCA)
-			action = "--set-mark";
-			manual_return = 1;
-#else
-			action = "--set-return";
-			manual_return = 0;
-#endif
-			break;
+	if (qos_action_manual() == 0) {
+		action = "--set-return";
+		manual_return = 0;
+	}
+	else if (qos_action_manual() == 1) {
+		action = "--set-mark";
+		manual_return = 1;
 	}
 
 	del_iQosRules(); // flush related rules in mangle table
@@ -838,7 +845,7 @@ static int add_qos_rules(char *pcWANIF)
 			char *tmp_trans, *q_min, *q_max;
 			long min = 0, max =0;
 
-			sprintf(tmp, "%s", transferred);
+			strlcpy(tmp, transferred, sizeof(tmp));
 			tmp_trans = tmp;
 			q_min = strsep(&tmp_trans, "~");
 			q_max = tmp_trans;
@@ -847,18 +854,16 @@ static int add_qos_rules(char *pcWANIF)
 				sprintf(conn, "%s", "");
 			}
 			else{
-				sprintf(tmp, "%s", q_min);
-				min = atol(tmp);
+				min = atol(q_min);
 
-				if(strcmp(q_max,"") == 0) // q_max == NULL
+				if (strcmp(q_max,"") == 0) // q_max == NULL
 					sprintf(conn, "-m connbytes --connbytes %ld:%s --connbytes-dir both --connbytes-mode bytes", min*1024, q_max);
-				else{// q_max != NULL
-					sprintf(tmp, "%s", q_max);
-					max = atol(tmp);
+				else { // q_max != NULL
+					max = atol(q_max);
 					sprintf(conn, "-m connbytes --connbytes %ld:%ld --connbytes-dir both --connbytes-mode bytes", min*1024, max*1024-1);
 				}
 			}
-			QOSLOG("[qos] tmp=%s, transferred=%s, min=%ld, max=%ld, q_max=%s, conn=%s", tmp, transferred, min*1024, max*1024-1, q_max, conn);
+			QOSLOG("[qos] transferred=%s, min=%ld, max=%ld, q_max=%s, conn=%s", transferred, min*1024, max*1024-1, q_max, conn);
 
 			/*************************************************/
 			/*                      proto                    */
@@ -1018,8 +1023,6 @@ static int add_qos_rules(char *pcWANIF)
 		}
 #endif
 			fprintf(fn, "-A %s -j CONNMARK %s 0x%x/0x%x\n", chain, action, class_num, QOS_MASK);
-			if(manual_return)
-				fprintf(fn , "-A %s -j RETURN\n", chain);
 			fprintf(fn, "-A FORWARD -o %s -j %s\n", wan, chain);
 			fprintf(fn, "-A OUTPUT -o %s -j %s\n", wan, chain);
 
@@ -1052,8 +1055,6 @@ static int add_qos_rules(char *pcWANIF)
 			}
 #endif
 			fprintf(fn_ipv6, "-A %s -j CONNMARK %s 0x%x/0x%x\n", chain, action, class_num, QOS_MASK);
-			if(manual_return)
-				fprintf(fn_ipv6, "-A %s -j RETURN\n", chain);
 			fprintf(fn_ipv6, "-A FORWARD -o %s -j %s\n", wan6face, chain);
 			fprintf(fn_ipv6, "-A OUTPUT -o %s -j %s\n", wan6face, chain);
 		}
@@ -1335,7 +1336,7 @@ static int start_tqos(void)
 			fprintf(f, "# egress %d: %u-%u%%\n", i, rate, ceil);
 			fprintf(f, "\t$TCA parent 1:1 classid 1:%d htb rate %ukbit %s %s prio %d quantum %u\n", x, calc(bw, rate), s, burst_leaf, (i >= 6) ? 7 : (i + 1), mtu);
 			fprintf(f, "\t$TQA parent 1:%d handle %d: $SCH\n", x, x);
-			fprintf(f, "\t$TFA parent 1: prio %d protocol ip u32 match mark %d 0x%x flowid 1:%d\n", x, i + 1, QOS_MASK, x);
+			fprintf(f, "\t$TFA parent 1: prio %d u32 match mark %d 0x%x flowid 1:%d\n", x, i + 1, QOS_MASK, x);
 		}
 		free(buf);
 
@@ -1508,17 +1509,13 @@ static int add_bandwidth_limiter_rules(char *pcWANIF)
 	if ((fn = fopen(mangle_fn, "w")) == NULL) return -2;
 
 	lock = file_lock(qos_ipt_lock);
-	switch (get_model()){
-		case MODEL_DSLN55U:
-		case MODEL_RTN13U:
-		case MODEL_RTN56U:
-			action = "CONNMARK --set-return";
-			manual_return = 1;
-			break;
-		default:
-			action = "MARK --set-mark";
-			manual_return = 2;
-			break;
+	if (qos_action_manual() == 0) {
+		action = "CONNMARK --set-return";
+		manual_return = 1;
+	}
+	else if (qos_action_manual() == 1) {
+		action = "MARK --set-mark";
+		manual_return = 2;
 	}
 
 	/* ASUSWRT
@@ -1989,17 +1986,14 @@ static int add_rog_qos_rules(char *pcWANIF)
 	int lock;
 	int evalRet;
 	char *action = NULL;
-	int model = get_model();
 
-	switch (model) {
-		case MODEL_DSLAX82U:
-			action = "--set-mark";
-			manual_return = 1;
-			break;
-		default:
-			action = "--set-return";
-			manual_return = 0;
-			break;
+	if (qos_action_manual() == 0) {
+		action = "--set-return";
+		manual_return = 0;
+	}
+	else if (qos_action_manual() == 1) {
+		action = "--set-mark";
+		manual_return = 1;
 	}
 
 	del_iQosRules(); // flush related rules in mangle table

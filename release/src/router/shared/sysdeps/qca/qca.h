@@ -200,6 +200,45 @@ extern const char *bw80_80_tbl[2], *bw160_tbl[2];
 #define INIC_VLAN_ID_START	4 //first vlan id used for RT3352 iNIC MII
 #define INIC_VLAN_IDX_START	2 //first available index to set vlan id and its group.
 
+/* copied from _ieee80211.h of qca-wifi */
+enum ieee80211_phymode {
+    IEEE80211_MODE_AUTO             = 0,    /* autoselect */
+    IEEE80211_MODE_11A              = 1,    /* 5GHz, OFDM */
+    IEEE80211_MODE_11B              = 2,    /* 2GHz, CCK */
+    IEEE80211_MODE_11G              = 3,    /* 2GHz, OFDM */
+    IEEE80211_MODE_FH               = 4,    /* 2GHz, GFSK */
+    IEEE80211_MODE_TURBO_A          = 5,    /* 5GHz, OFDM, 2x clock dynamic turbo */
+    IEEE80211_MODE_TURBO_G          = 6,    /* 2GHz, OFDM, 2x clock dynamic turbo */
+    IEEE80211_MODE_11NA_HT20        = 7,    /* 5Ghz, HT20 */
+    IEEE80211_MODE_11NG_HT20        = 8,    /* 2Ghz, HT20 */
+    IEEE80211_MODE_11NA_HT40PLUS    = 9,    /* 5Ghz, HT40 (ext ch +1) */
+    IEEE80211_MODE_11NA_HT40MINUS   = 10,   /* 5Ghz, HT40 (ext ch -1) */
+    IEEE80211_MODE_11NG_HT40PLUS    = 11,   /* 2Ghz, HT40 (ext ch +1) */
+    IEEE80211_MODE_11NG_HT40MINUS   = 12,   /* 2Ghz, HT40 (ext ch -1) */
+    IEEE80211_MODE_11NG_HT40        = 13,   /* 2Ghz, Auto HT40 */
+    IEEE80211_MODE_11NA_HT40        = 14,   /* 5Ghz, Auto HT40 */
+    IEEE80211_MODE_11AC_VHT20       = 15,   /* 5Ghz, VHT20 */
+    IEEE80211_MODE_11AC_VHT40PLUS   = 16,   /* 5Ghz, VHT40 (Ext ch +1) */
+    IEEE80211_MODE_11AC_VHT40MINUS  = 17,   /* 5Ghz  VHT40 (Ext ch -1) */
+    IEEE80211_MODE_11AC_VHT40       = 18,   /* 5Ghz, VHT40 */
+    IEEE80211_MODE_11AC_VHT80       = 19,   /* 5Ghz, VHT80 */
+    IEEE80211_MODE_11AC_VHT160      = 20,   /* 5Ghz, VHT160 */
+    IEEE80211_MODE_11AC_VHT80_80    = 21,   /* 5Ghz, VHT80_80 */
+    IEEE80211_MODE_11AXA_HE20       = 22,   /* 5GHz, HE20 */
+    IEEE80211_MODE_11AXG_HE20       = 23,   /* 2GHz, HE20 */
+    IEEE80211_MODE_11AXA_HE40PLUS   = 24,   /* 5GHz, HE40 (ext ch +1) */
+    IEEE80211_MODE_11AXA_HE40MINUS  = 25,   /* 5GHz, HE40 (ext ch -1) */
+    IEEE80211_MODE_11AXG_HE40PLUS   = 26,   /* 2GHz, HE40 (ext ch +1) */
+    IEEE80211_MODE_11AXG_HE40MINUS  = 27,   /* 2GHz, HE40 (ext ch -1) */
+    IEEE80211_MODE_11AXA_HE40       = 28,   /* 5GHz, HE40 */
+    IEEE80211_MODE_11AXG_HE40       = 29,   /* 2GHz, HE40 */
+    IEEE80211_MODE_11AXA_HE80       = 30,   /* 5GHz, HE80 */
+    IEEE80211_MODE_11AXA_HE160      = 31,   /* 5GHz, HE160 */
+    IEEE80211_MODE_11AXA_HE80_80    = 32,   /* 5GHz, HE80_80 */
+
+    IEEE80211_MODE_MAX
+};
+
 typedef struct _WLANCONFIG_LIST {
 	char addr[18];
 	unsigned int aid;
@@ -835,6 +874,13 @@ typedef struct {
 #define BD_2G_HW_DIR	"hw.1"
 #define BD_5G_CHIP_DIR	"IPQ4019"
 #define BD_5G_HW_DIR	"hw.1"
+#elif defined(RT4GAC56)
+#define BD_2G_PREFIX	"boardData_1_0_IPQ4019_DK04_2G"
+#define BD_5G_PREFIX	"boardData_1_0_IPQ4019_DK04_5G"
+#define BD_2G_CHIP_DIR	"IPQ4019"
+#define BD_2G_HW_DIR	"hw.1"
+#define BD_5G_CHIP_DIR	"IPQ4019"
+#define BD_5G_HW_DIR	"hw.1"
 #elif defined(RTAC82U)
 #define BD_2G_PREFIX	"boardData_1_0_IPQ4019_DK04_2G"
 #define BD_5G_PREFIX	"boardData_QCA9984_CUS238_5G_v1_003"
@@ -921,3 +967,4 @@ static inline int nss_wifi_offloading(void) { return 0; }
 #endif
 
 #endif	/* _QCA_H_ */
+

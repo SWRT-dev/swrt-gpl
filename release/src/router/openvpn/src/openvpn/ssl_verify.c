@@ -152,6 +152,8 @@ set_common_name(struct tls_session *session, const char *common_name)
         }
 #endif
     }
+    /* update common name in env */
+    setenv_str(session->opt->es, "common_name", common_name);
 }
 
 /*
@@ -632,7 +634,8 @@ cleanup:
  * check peer cert against CRL directory
  */
 static result_t
-verify_check_crl_dir(const char *crl_dir, openvpn_x509_cert_t *cert)
+verify_check_crl_dir(const char *crl_dir, openvpn_x509_cert_t *cert,
+                     const char *subject, int cert_depth)
 {
     result_t ret = FAILURE;
     char fn[256];
@@ -640,6 +643,12 @@ verify_check_crl_dir(const char *crl_dir, openvpn_x509_cert_t *cert)
     struct gc_arena gc = gc_new();
 
     char *serial = backend_x509_get_serial(cert, &gc);
+    if (!serial)
+    {
+        msg(D_HANDSHAKE, "VERIFY CRL: depth=%d, %s, serial number is not available",
+            cert_depth, subject);
+        goto cleanup;
+    }
 
     if (!openvpn_snprintf(fn, sizeof(fn), "%s%c%s", crl_dir, OS_SPECIFIC_DIRSEP, serial))
     {
@@ -649,7 +658,8 @@ verify_check_crl_dir(const char *crl_dir, openvpn_x509_cert_t *cert)
     fd = platform_open(fn, O_RDONLY, 0);
     if (fd >= 0)
     {
-        msg(D_HANDSHAKE, "VERIFY CRL: certificate serial number %s is revoked", serial);
+        msg(D_HANDSHAKE, "VERIFY CRL: depth=%d, %s, serial=%s is revoked",
+            cert_depth, subject, serial);
         goto cleanup;
     }
 
@@ -791,7 +801,7 @@ verify_cert(struct tls_session *session, openvpn_x509_cert_t *cert, int cert_dep
     {
         if (opt->ssl_flags & SSLF_CRL_VERIFY_DIR)
         {
-            if (SUCCESS != verify_check_crl_dir(opt->crl_file, cert))
+            if (SUCCESS != verify_check_crl_dir(opt->crl_file, cert, subject, cert_depth))
             {
                 goto cleanup;
             }

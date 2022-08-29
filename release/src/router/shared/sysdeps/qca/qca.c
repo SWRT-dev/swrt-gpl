@@ -147,7 +147,8 @@ int get_parameter_from_ini_file(const char *param_name, char *param_val, size_t 
 	return 0;
 }
 
-#if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK)
+#if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK) \
+ || defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
 /* Get one board/default parameter from .ini file and return it's value in string format.
  * If board-specific parameter absent, return default parameter instead.
  * If @param_name is replicated multi-times, first one is returned.
@@ -164,16 +165,43 @@ int get_board_or_default_parameter_from_ini_file(const char *board_name, const c
 {
 	int c, r;
 	char key_name[256];
+	char *p, prefix[2][64];
+#if defined(RTCONFIG_SOC_IPQ8074)
+	unsigned char soc_ver = get_soc_version_major();
+	char ver[sizeof("_v?XXX")];
+#endif
 
 	if (!board_name || !param_name || !param_val || !param_val_size || !ini_fn)
 		return -1;
 
+	strlcpy(prefix[0], board_name, 64);
+	strlcpy(prefix[1], board_name, 64);
+	for (p = prefix[1]; *p != '\0'; ++p) {
+		if (!isdigit(*p))
+			continue;
+
+		*p = '\0';
+		break;
+	}
+#if defined(RTCONFIG_SOC_IPQ8074)
+	snprintf(ver, sizeof(ver), "_v%d", (soc_ver == 1)? 1 : 2);
+	strlcat(prefix[1], ver, 64);
+#endif
+	strlcat(prefix[1], "_default", 64);
+
+	/* INI file has strings with the below format
+	 * <board_name>_<feature>=0/1   or
+	 * <board_name>_<PCI_device_id>_<PCI_Slot_number>_<feature>=0/1
+	 * Append a "_" to the board_name here so that grep would be able to
+	 * differentiate boards with similar names like ap-mp03.1 and
+	 * ap-mp03.1-c2
+	 */
 	for (c = 0; c <= 1; ++c) {
-		/* e.g.
-		 * ap-hk06_v2_enable_daemon_support=0
-		 * ap-hk_v1_default_enable_daemon_support=1
+		/* 1st run: ap-hk01-c2_XXX
+		 * 2nd run: ap-hk_v?_default_XXX (Hawkeye only)
+		 *          ap-cp_default_XXX    (Another SOC)
 		 */
-		snprintf(key_name, sizeof(key_name), "%s_%s%s", board_name, (c == 0)? "" : "default_", param_name);
+		snprintf(key_name, sizeof(key_name), "%s_%s", (c == 0)? prefix[0] : prefix[1], param_name);
 
 		*param_val = '\0';
 		r = get_parameter_from_ini_file(key_name, param_val, param_val_size, ini_fn);
@@ -183,7 +211,7 @@ int get_board_or_default_parameter_from_ini_file(const char *board_name, const c
 
 	return 0;
 }
-#endif	/* RTCONFIG_SPF11_QSDK || RTCONFIG_SPF11_1_QSDK */
+#endif	/* RTCONFIG_SPF11_QSDK || RTCONFIG_SPF11_1_QSDK || RTCONFIG_SPF11_3_QSDK || defined(RTCONFIG_SPF11_4_QSDK) */
 
 /* Get one parameter from .ini file and return it's value in integer format.
  * If @param_name is replicated multi-times, first one is returned.
@@ -761,7 +789,7 @@ void add_beacon_vsie_by_unit(int unit, int subunit, char *hexdata)
 	//_dprintf("%s: ifname=%s\n", __func__, ifname);
 
 	if (ifname && strlen(ifname)) {
-		snprintf(cmd, sizeof(cmd), "hostapd_cli -i%s set_vsie %d DD%02X%02X%02X%02X%s",
+		snprintf(cmd, sizeof(cmd), "hostapd_cli set_vsie -i%s %d DD%02X%02X%02X%02X%s",
 			ifname, pktflag, (uint8_t)len, (uint8_t)OUI_ASUS[0], (uint8_t)OUI_ASUS[1], (uint8_t)OUI_ASUS[2], hexdata);
 		_dprintf("%s: cmd=%s\n", __func__, cmd);
 		system(cmd);
@@ -891,7 +919,7 @@ void del_beacon_vsie_by_unit(int unit, int subunit, char *hexdata)
 	//_dprintf("%s: ifname=%s\n", __func__, ifname);
 
 	if (ifname && strlen(ifname)) {
-		snprintf(cmd, sizeof(cmd), "hostapd_cli -i%s del_vsie %d DD%02X%02X%02X%02X%s",
+		snprintf(cmd, sizeof(cmd), "hostapd_cli del_vsie -i%s %d DD%02X%02X%02X%02X%s",
 			ifname, pktflag, (uint8_t)len, (uint8_t)OUI_ASUS[0], (uint8_t)OUI_ASUS[1], (uint8_t)OUI_ASUS[2], hexdata);
 		_dprintf("%s: cmd=%s\n", __func__, cmd);
 		system(cmd);
@@ -1573,6 +1601,23 @@ int update_band_info(int unit)
 	return 0;
 }	
 
+
+/**
+ * @brief Post sent action to amas_wlcconnect
+ *
+ */
+void post_sent_action() {}
+
+/**
+ * @brief Backhaul changed sysdeps function
+ *
+ * @param iftype BH defif
+ */
+void post_bh_changed(int iftype) {
+
+}
+
+
 /*
  * get_radar_status()
  *
@@ -1655,6 +1700,242 @@ int wl_get_bw(int unit)
 	return bw;
 }
 
+/* Return bitmask, CFG_BW_XXM, of @bw
+ * @bw:		one of 20/40/80/160
+ * @return:	bitmask of one of CFG_BW_XXM
+ */
+int get_cfg_bw_mask_by_bw(int bw)
+{
+	int ret = 0;
+	if (bw == 20)
+		ret = CFG_BW_20M;
+	else if (bw == 40)
+		ret = CFG_BW_40M;
+	else if (bw == 80)
+		ret = CFG_BW_80M;
+	else if (bw == 160)
+		ret = CFG_BW_160M;
+	else {
+		dbg("%s: Unknown bandwidth %d\n", __func__, bw);
+	}
+
+	return ret;
+}
+
+/* Get supported bandwidth without checking /proc/athX/iv_config.
+ * @bwcap:	pointer to store bitmask of CFG_BW_XXM, e.g., CFG_BW_20M | CFG_BW_40M
+ * @return:
+ * 	0:	success
+ *     -1:	error
+ */
+int __wl_get_bw_cap(int unit, int *bwcap)
+{
+	if (unit < 0 || unit >= WL_NR_BANDS || !bwcap)
+		return -1;
+
+	if (unit == WL_2G_BAND)
+		*bwcap = CFG_BW_20M | CFG_BW_40M;		/* 40MHz */
+	else if (unit == WL_5G_BAND)
+		*bwcap = CFG_BW_20M | CFG_BW_40M | CFG_BW_80M;	/* 11AC 80MHz */
+#ifdef RTCONFIG_HAS_5G_2
+	else if (unit == WL_5G_2_BAND)
+		*bwcap = CFG_BW_20M | CFG_BW_40M | CFG_BW_80M;	/* 11AC 80MHz */
+#endif
+	else {
+		dbg("%s: unit %d is not supported yet!\n", __func__, unit);
+		return -1;
+	}
+#ifdef RTCONFIG_BW160M
+	if (unit == WL_5G_BAND || unit == WL_5G_2_BAND)
+		*bwcap |= CFG_BW_160M;
+#endif
+
+	return 0;
+}
+
+/* Return mode string that is used by "iwpriv athX mode XXX" command by bandwidth.
+ * @unit:	enum wl_band_id
+ * @bw:
+ * @nctrlsb:	40MHz only, specify direction of ext. channel
+ * 	1:	ext. ch. on lower channel
+ *  otherwise:	ext. ch. on higher channel
+ * @return:	pointer to internal buffer that contain string for private mode command.
+ */
+char *get_mode_str_by_bw(int unit, int channel, int bw, int nctrlsb)
+{
+	static char mode[32] = "";
+	char *p = mode;
+
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+	/* FIXME: Because user is capable to turn on/off 802.11ax support. We should select ax/ac,n by setting. */
+	if (unit == 0)
+		p += sprintf(p, "11GHE%d", bw);
+	else
+		p += sprintf(p, "11AHE%d", bw);
+#else
+	int bwcap = 0;
+
+	if (__wl_get_bw_cap(unit, &bwcap) < 0) {
+		if (unit == WL_2G_BAND)
+			bwcap = CFG_BW_20M | CFG_BW_40M;
+		else if (unit == WL_5G_BAND || unit == WL_5G_2_BAND)
+			bwcap = CFG_BW_20M | CFG_BW_40M | CFG_BW_80M;
+	}
+
+	if (bwcap & (0x08 | 0x04)) {				/* support BW160 || BW80 for AC */
+		p += sprintf(p, "11ACVHT%d", bw);
+	}
+	else if (bwcap & (0x02)) {				/* support  BW40 for NG OR NA */
+		if(unit == 0)
+			p += sprintf(p, "11NGHT%d", bw);
+		else
+			p += sprintf(p, "11NAHT%d", bw);
+	}
+	else {							/* support  BW20 for A OR G */
+		if(unit == 0)
+			p += sprintf(p, "11G");
+		else
+			p += sprintf(p, "11A");
+	}
+#endif
+
+	/* set extension channel when bw==40 and valid nctrlsb */
+	if (bw == 40 && nctrlsb >= 0) {
+		if(nctrlsb == 1)
+			p += sprintf(p, "MINUS");
+		else
+			p += sprintf(p, "PLUS");
+	}
+
+	return mode;
+}
+
+/* Reference to ieee80211_phymode and ieee80211_convert_mode() in qca-wifi. */
+static const char *phymode_str_tbl[IEEE80211_MODE_MAX] = {
+	"AUTO", "11A", "11B", "11G", "FH",
+	"TA", "TG", "11NAHT20", "11NGHT20", "11NAHT40PLUS",
+	"11NAHT40MINUS", "11NGHT40PLUS", "11NGHT40MINUS", "11NGHT40", "11NAHT40",
+	"11ACVHT20", "11ACVHT40PLUS", "11ACVHT40MINUS", "11ACVHT40", "11ACVHT80",
+	"11ACVHT160", "11ACVHT80_80", "11AHE20", "11GHE20", "11AHE40PLUS",
+	"11AHE40MINUS", "11GHE40PLUS", "11GHE40MINUS", "11AHE40", "11GHE40",
+	"11AHE80", "11AHE160", "11AHE80_80",
+};
+
+/* Get mode string of @phymode.
+ * @return:	pointer to mode string or "unknown phymode %d".
+ */
+const char *phymode_str(int phymode)
+{
+	static char mode[sizeof("Unknown phymode XXXXXX")];
+	const char *ret = mode;
+
+	if (phymode >= 0 && phymode < ARRAY_SIZE(phymode_str_tbl)) {
+		ret = phymode_str_tbl[phymode];
+	} else {
+		snprintf(mode, sizeof(mode), "Unknown phymode %d", phymode);
+	}
+	return ret;
+}
+
+/* Get bandwidth of @mode
+ * @mode:	parameter of private mode command, e.g., 11GHE20
+ * @return:	one of 20/40/80/160
+ */
+int get_bw_by_mode_str(char *mode)
+{
+	int r = 20;
+	if (!mode)
+		return r;
+
+	if (strstr(mode, "HE160") || strstr(mode, "HT160"))
+		r = 160;
+	else if (strstr(mode, "HE80") || strstr(mode, "HT80"))
+		r = 80;
+	else if (strstr(mode, "HE40") || strstr(mode, "HT40"))
+		r = 40;
+	else if (strstr(mode, "HE20") || strstr(mode, "HT20"))
+		r = 20;
+	else {
+		r = 20;
+		//dbg("%s: unknown mode [%s]\n", __func__, mode);
+	}
+
+	return r;
+}
+
+/* Get bandwidth of enum ieee80211_phymode
+ * @unit:	enum wl_band_id, not used unless phymode is auto.
+ * @phymode:	IEEE80211_MODE_11NA_XXX, e.g. IEEE80211_MODE_11NA_HT40PLUS
+ * @return:	one of 20/40/80/160
+ */
+int get_bw_by_phymode(int unit, int phymode)
+{
+	int ret = 20;
+
+	if (phymode == IEEE80211_MODE_AUTO && unit >= 0 && unit < WL_NR_BANDS) {
+		if (unit == WL_2G_BAND) {
+			return 40;
+		}
+		else if (unit == WL_5G_BAND || unit == WL_5G_2_BAND) {
+#if defined(RTCONFIG_BW160M)
+			return 160;
+#else
+			return 80;
+#endif
+		}
+	}
+
+	switch (phymode) {
+	case IEEE80211_MODE_11AC_VHT160:	/* fall-through */
+	case IEEE80211_MODE_11AXA_HE160:	/* fall-through */
+		ret = 160;
+		break;
+	case IEEE80211_MODE_11AC_VHT80:		/* fall-through */
+	case IEEE80211_MODE_11AC_VHT80_80:	/* fall-through */
+	case IEEE80211_MODE_11AXA_HE80:		/* fall-through */
+	case IEEE80211_MODE_11AXA_HE80_80:	/* fall-through */
+		ret = 80;
+		break;
+
+	case IEEE80211_MODE_11NA_HT40PLUS:	/* fall-through */
+	case IEEE80211_MODE_11NA_HT40MINUS:	/* fall-through */
+	case IEEE80211_MODE_11NG_HT40PLUS:	/* fall-through */
+	case IEEE80211_MODE_11NG_HT40MINUS:	/* fall-through */
+	case IEEE80211_MODE_11NG_HT40:		/* fall-through */
+	case IEEE80211_MODE_11NA_HT40:		/* fall-through */
+	case IEEE80211_MODE_11AC_VHT40PLUS:	/* fall-through */
+	case IEEE80211_MODE_11AC_VHT40MINUS:	/* fall-through */
+	case IEEE80211_MODE_11AC_VHT40:		/* fall-through */
+	case IEEE80211_MODE_11AXA_HE40PLUS:	/* fall-through */
+	case IEEE80211_MODE_11AXA_HE40MINUS:	/* fall-through */
+	case IEEE80211_MODE_11AXG_HE40PLUS:	/* fall-through */
+	case IEEE80211_MODE_11AXG_HE40MINUS:	/* fall-through */
+	case IEEE80211_MODE_11AXA_HE40:		/* fall-through */
+	case IEEE80211_MODE_11AXG_HE40:		/* fall-through */
+		ret = 40;
+		break;
+
+	case IEEE80211_MODE_AUTO:		/* fall-through */
+	case IEEE80211_MODE_11A:		/* fall-through */
+	case IEEE80211_MODE_11B:		/* fall-through */
+	case IEEE80211_MODE_11G:		/* fall-through */
+	case IEEE80211_MODE_FH:			/* fall-through */
+	case IEEE80211_MODE_TURBO_A:		/* fall-through */
+	case IEEE80211_MODE_TURBO_G:		/* fall-through */
+	case IEEE80211_MODE_11NA_HT20:		/* fall-through */
+	case IEEE80211_MODE_11NG_HT20:		/* fall-through */
+	case IEEE80211_MODE_11AC_VHT20:		/* fall-through */
+	case IEEE80211_MODE_11AXA_HE20:		/* fall-through */
+	case IEEE80211_MODE_11AXG_HE20:		/* fall-through */
+		ret = 20;
+		break;
+	default:
+		dbg("%s: Unknown phymode %d\n", __func__, phymode);
+	}
+
+	return ret;
+}
+
 /*
  * wl_get_bw_cap(unit, *bwcap)
  *
@@ -1669,22 +1950,35 @@ int wl_get_bw(int unit)
  */
 int wl_get_bw_cap(int unit, int *bwcap)
 {
-	if (bwcap == NULL)
-		return -1;
-	if (unit == 0)
-		*bwcap = 0x01 | 0x02;		/* 40MHz */
-	else if (unit == 1)
-		*bwcap = 0x01 | 0x02 | 0x04;	/* 11AC 80MHz */
-#ifdef RTCONFIG_HAS_5G_2
-	else if (unit == 2)
-		*bwcap = 0x01 | 0x02 | 0x04;	/* 11AC 80MHz */
-#endif
-	else
-		return -1;
-#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) && !defined(RTCONFIG_SOC_IPQ60XX)
-	if (unit != 0)
-		*bwcap |= 0x08;
-#endif
+	int r, iv_des_hw_mode = 0, iv_cur_mode = 0, exp_bw, cur_bw;
+	char mode[32] = "", cmd[sizeof("cat /proc/XXX/iv_config") + IFNAMSIZ];
+
+	if ((r = __wl_get_bw_cap(unit, bwcap)) != 0)
+		return r;
+
+	/* Channel/bandwidth checking is executed per 30 seconds. Don't run full check if possible. */
+	if (unit != WL_2G_BAND || !nvram_match(WLREADY, "1"))
+		return 0;
+
+	strlcpy(mode, iwpriv_get(get_wififname(unit), "get_mode"), sizeof(mode));
+	if (strstr(mode, "HT40") || strstr(mode, "HE40")) {
+		return 0;
+	}
+
+	/* 2G is not 40MHz, remove 40MHz capability if it's failed to set as 40MHz. */
+	snprintf(cmd, sizeof(cmd), "cat /proc/%s/iv_config", get_wififname(unit));
+	if (exec_and_parse(cmd, "iv_des_hw_mode", "%*[^:]:%d", 1, &iv_des_hw_mode) || !iv_des_hw_mode
+	 || exec_and_parse(cmd, "iv_cur_mode", "%*[^:]:%d", 1, &iv_cur_mode) || !iv_cur_mode) {
+		dbg("%s: Failed to parse iv_des_hw_mode %d or iv_cur_mode %d from %s\n",
+			__func__, iv_des_hw_mode, iv_cur_mode, cmd + 4);
+		return 0;
+	}
+	if (iv_cur_mode == iv_des_hw_mode)
+		return 0;
+	exp_bw = get_bw_by_phymode(unit, iv_des_hw_mode);
+	cur_bw = get_bw_by_phymode(unit, iv_cur_mode);
+	if (exp_bw > cur_bw)
+		*bwcap &= ~(get_cfg_bw_mask_by_bw(exp_bw));
 
 	return 0;
 }
@@ -1705,7 +1999,6 @@ void update_macfilter_relist(void)
 	char *reMac, *maclist2g, *maclist5g, *timestamp;
 	char stamac2g[18] = {0};
 	char stamac5g[18] = {0};
-	char *cfg_relist;
 	FILE *fp;
 	char qca_mac[32];
 	char *sec = "";
@@ -1722,10 +2015,10 @@ void update_macfilter_relist(void)
 
 	fprintf(fp, "#!/bin/sh\n");
 	set_macfilter_all(fp);
-	if ((cfg_relist = nvram_get("cfg_relist")) && *cfg_relist != '\0') {
+	if (is_cfg_relist_exist()) {
 #ifdef RTCONFIG_AMAS
 		if (nvram_get_int("re_mode") == 1) {
-			nv = nvp = strdup(cfg_relist);
+			nv = nvp = get_cfg_relist(0);
 			if (nv) {
 				while ((b = strsep(&nvp, "<")) != NULL) {
 					if ((vstrsep(b, ">", &reMac, &maclist2g, &maclist5g, &timestamp) != 4))
@@ -1775,7 +2068,7 @@ void update_macfilter_relist(void)
 			__get_wlifname(swap_5g_band(unit), 0, athfix);
 
 			if (nvram_match(strcat_r(prefix, "macmode", tmp), "allow")) {
-				nv = nvp = strdup(nvram_safe_get("cfg_relist"));
+				nv = nvp = get_cfg_relist(0);
 				if (nv) {
 					while ((b = strsep(&nvp, "<")) != NULL) {
 						if ((vstrsep(b, ">", &reMac, &maclist2g, &maclist5g, &timestamp) != 4))
@@ -1972,3 +2265,23 @@ fail:
 	return got_buf;
 }
 #endif
+
+#ifdef RTCONFIG_AMAS
+double get_wifi_maxpower(int band_type)
+{
+	return 0;
+} 
+double get_wifi_5G_maxpower()
+{
+	return 0;
+}
+double get_wifi_5GH_maxpower()
+{
+	return 0;
+}
+double get_wifi_6G_maxpower()
+{
+	return 0;
+}
+#endif
+

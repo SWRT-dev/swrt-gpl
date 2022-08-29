@@ -15,6 +15,18 @@
 #include "eloop.h"
 #include "ieee802_1x.h"
 #include "radius.h"
+#include "eapol_sm.h"
+
+struct sta_info* Ap_get_sta_instance(rtapd *apd, u8 *sa)
+{
+	struct sta_info *s;
+
+	s = apd->sta_hash[STA_HASH(sa)];
+	while (s != NULL && memcmp(s->addr, sa, 6) != 0)
+		s = s->hnext;
+
+	return s;
+}
 
 struct sta_info* Ap_get_sta(rtapd *apd, u8 *sa, u8 *apidx, u16 ethertype, int sock)
 {
@@ -23,7 +35,7 @@ struct sta_info* Ap_get_sta(rtapd *apd, u8 *sa, u8 *apidx, u16 ethertype, int so
 	s = apd->sta_hash[STA_HASH(sa)];
 	while (s != NULL && memcmp(s->addr, sa, 6) != 0)
 		s = s->hnext;
-	
+
 	if (s == NULL)
 	{
 		if (apd->num_sta >= MAX_STA_COUNT)
@@ -39,7 +51,7 @@ struct sta_info* Ap_get_sta(rtapd *apd, u8 *sa, u8 *apidx, u16 ethertype, int so
 			DBGPRINT(RT_DEBUG_ERROR,"Malloc failed\n");
 			return NULL;
 		}
-		
+
 		memset(s, 0, sizeof(struct sta_info));
 		s->radius_identifier = -1;
 
@@ -51,7 +63,7 @@ struct sta_info* Ap_get_sta(rtapd *apd, u8 *sa, u8 *apidx, u16 ethertype, int so
 
 		if (s->ApIdx == 0)
 		{
-			DBGPRINT(RT_DEBUG_TRACE,"Create a new STA(in %s%d)\n", apd->main_wlan_name);
+			DBGPRINT(RT_DEBUG_TRACE,"Create a new STA(in %s%d)\n", apd->main_wlan_name, s->ApIdx);
 		}
 		else
 		{
@@ -68,6 +80,7 @@ struct sta_info* Ap_get_sta(rtapd *apd, u8 *sa, u8 *apidx, u16 ethertype, int so
 			DBGPRINT(RT_DEBUG_ERROR,"IOCTL ERROR with OID_802_DOT1X_QUERY_STA_AID\n");
 		}
 		s->aid = qStaAid.aid;
+		s->wcid = qStaAid.wcid;
 		DBGPRINT(RT_DEBUG_TRACE,"STA:" MACSTR " AID: %d\n", MAC2STR(sa), s->aid);
 
 		DOT1X_QUERY_STA_RSN sta_rsn;
@@ -89,10 +102,14 @@ struct sta_info* Ap_get_sta(rtapd *apd, u8 *sa, u8 *apidx, u16 ethertype, int so
 		s->SockNum = sock;
 		memcpy(s->addr, sa, ETH_ALEN);
 		s->next = apd->sta_list;
+		s->priv = apd;
 		apd->sta_list = s;
 		apd->num_sta++;
 		Ap_sta_hash_add(apd, s);
 		ieee802_1x_new_station(apd, s);
+#if HOTSPOT_R3
+		hotspot_ioctl_query_sta_info(apd, s);
+#endif /* HOTSPOT_R3 */
 		return s;
 	}
 	else
@@ -105,8 +122,8 @@ struct sta_info* Ap_get_sta(rtapd *apd, u8 *sa, u8 *apidx, u16 ethertype, int so
 		{
 			DBGPRINT(RT_DEBUG_TRACE,"A STA has existed(in %s%d)\n", apd->prefix_wlan_name, s->ApIdx);
 		}
-	}	
-	
+	}
+
 	return s;
 }
 
@@ -175,7 +192,7 @@ static void Ap_sta_hash_del(rtapd *apd, struct sta_info *sta)
 /*
 	========================================================================
 	Routine Description:
-	   remove the specified input-argumented sta from linked list.. 
+	   remove the specified input-argumented sta from linked list..
 	Arguments:
 		*sta	to-be-removed station.
 	Return Value:
@@ -183,7 +200,11 @@ static void Ap_sta_hash_del(rtapd *apd, struct sta_info *sta)
 */
 void Ap_free_sta(rtapd *apd, struct sta_info *sta)
 {
-	DBGPRINT(RT_DEBUG_TRACE," AP_free_sta \n")
+	struct sta_sec_info *sta_sec_info = NULL;
+	sta_sec_info = &sta->sta_sec_info;
+
+	DBGPRINT(RT_DEBUG_TRACE," AP_free_sta" MACSTR " \n",
+		MAC2STR(sta->addr))
 
 	Ap_sta_hash_del(apd, sta);
 	Ap_sta_list_del(apd, sta);
@@ -197,6 +218,9 @@ void Ap_free_sta(rtapd *apd, struct sta_info *sta)
 
 	if (sta->last_assoc_req)
 		free(sta->last_assoc_req);
+
+	if (sta_sec_info->wpa_ie)
+		free(sta_sec_info->wpa_ie);
 
 	free(sta);
 }
@@ -229,13 +253,13 @@ void Ap_handle_session_timer(void *eloop_ctx, void *timeout_ctx)
 	size_t len;
 	struct ieee8023_hdr *hdr3;
 	struct sta_info *sta = timeout_ctx;
-	
-	DBGPRINT(RT_DEBUG_TRACE,"AP_HANDLE_SESSION_TIMER \n");	  
+
+	DBGPRINT(RT_DEBUG_TRACE,"AP_HANDLE_SESSION_TIMER \n");
 	len = sizeof(*hdr3) + 2;
 	buf = (char *) malloc(len);
 	if (buf == NULL)
 	{
-		DBGPRINT(RT_DEBUG_ERROR,"malloc() failed for ieee802_1x_send(len=%d)\n", len);
+		DBGPRINT(RT_DEBUG_ERROR,"malloc() failed for ieee802_1x_send(len=%lu)\n", len);
 		return;
 	}
 
@@ -244,10 +268,10 @@ void Ap_handle_session_timer(void *eloop_ctx, void *timeout_ctx)
 	memcpy(hdr3->dAddr, sta->addr, ETH_ALEN);
 	memcpy(hdr3->sAddr, apd->own_addr[sta->ApIdx], ETH_ALEN);
 	// send deauth
-	DBGPRINT(RT_DEBUG_TRACE,"AP_HANDLE_SESSION_TIMER : Send Deauth \n");	  
-	if (RT_ioctl(apd->ioctl_sock, 
-				 RT_PRIV_IOCTL, buf, len, 
-				 apd->prefix_wlan_name, sta->ApIdx, 
+	DBGPRINT(RT_DEBUG_TRACE,"AP_HANDLE_SESSION_TIMER : Send Deauth \n");
+	if (RT_ioctl(apd->ioctl_sock,
+				 RT_PRIV_IOCTL, buf, len,
+				 apd->prefix_wlan_name, sta->ApIdx,
 				 RT_OID_802_DOT1X_RADIUS_DATA))
 	{
 		DBGPRINT(RT_DEBUG_ERROR," ioctl \n");
@@ -269,3 +293,59 @@ void Ap_sta_no_session_timeout(rtapd *apd, struct sta_info *sta)
 {
 	eloop_cancel_timeout(Ap_handle_session_timer, apd, sta);
 }
+
+void Ap_sta_skip_eap_sm(rtapd *apd, struct sta_info *sta)
+{
+
+ 	if (sta && sta->eapol_sm) {
+		DBGPRINT(RT_DEBUG_TRACE,
+					   "" MACSTR " PMK from FILS - skip IEEE 802.1X/EAP\n",
+					   MAC2STR(sta->addr));
+
+		/* Setup EAPOL state machines to already authenticated state
+		 * because of existing FILS information. */
+		//sta->eapol_sm->keyRun = TRUE;
+		sta->eapol_sm->keyAvailable = TRUE;
+		sta->eapol_sm->auth_pae.state = AUTH_PAE_AUTHENTICATING;
+		sta->eapol_sm->be_auth.state = BE_AUTH_SUCCESS;
+		sta->eapol_sm->authSuccess = TRUE;
+		sta->eapol_sm->authFail = FALSE;
+		sta->eapol_sm->portValid = TRUE;
+		//if (sta->eapol_sm->eap)
+		 // 	  eap_sm_notify_cached(sta->eapol_sm->eap);
+	} else {
+		DBGPRINT(RT_DEBUG_TRACE,
+					   "PMK from FILS - skip IEEE 802.1X/EAP\n");
+
+	}
+}
+
+#if HOTSPOT_R3
+void hotspot_ioctl_query_sta_info(rtapd *apd, struct sta_info *sta)
+{
+	STA_HS_CONSORTIUM_OI hs_consortium;
+
+	if (sta) {
+		memset(&hs_consortium, 0, sizeof(STA_HS_CONSORTIUM_OI));
+		hs_consortium.sta_wcid = sta->wcid;
+		DBGPRINT(RT_DEBUG_TRACE, "sta->wcid = %d\n", sta->wcid);
+		if (RT_ioctl(apd->ioctl_sock,
+					RT_PRIV_IOCTL, (char *)&hs_consortium, sizeof(STA_HS_CONSORTIUM_OI),
+					apd->prefix_wlan_name, sta->ApIdx,
+					OID_802_11_GET_STA_HSINFO))
+		{
+			DBGPRINT(RT_DEBUG_OFF,"IOCTL ERROR with OID_802_11_GET_STA_HSINFO\n");
+		}
+		DBGPRINT(RT_DEBUG_TRACE, "hs_consortium.sta_wcid = %d, len = %d \n", hs_consortium.sta_wcid, hs_consortium.oi_len);
+		if (hs_consortium.sta_wcid) {
+			sta->hs_roaming_oi.sta_wcid = hs_consortium.sta_wcid;
+			sta->hs_roaming_oi.oi_len = hs_consortium.oi_len;
+			memcpy(sta->hs_roaming_oi.selected_roaming_consortium_oi, hs_consortium.selected_roaming_consortium_oi,
+												hs_consortium.oi_len);
+		}
+		DBGPRINT(RT_DEBUG_TRACE, "hs consortium oi:-> %2x, %2x, %2x, %2x, %2x\n", sta->hs_roaming_oi.selected_roaming_consortium_oi[0],
+						sta->hs_roaming_oi.selected_roaming_consortium_oi[1], sta->hs_roaming_oi.selected_roaming_consortium_oi[2],
+						sta->hs_roaming_oi.selected_roaming_consortium_oi[3], sta->hs_roaming_oi.selected_roaming_consortium_oi[4]);
+	}
+}
+#endif /* HOTSPOT_R3 */

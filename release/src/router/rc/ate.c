@@ -25,13 +25,20 @@
 #define MULTICAST_BIT  0x0001
 #define UNIQUE_OUI_BIT 0x0002
 
-#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAXE11000_PRO) || defined(GTAXE16000) || defined(GTAX6000)
-extern int cled_gpio[];
+#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(GTAXE11000_PRO) || defined(GTAXE16000) || defined(GTAX6000)
+#if defined(GSAX3000) || defined(GSAX5400)
+extern int cled_gpio[15];
+#else
+extern int cled_gpio[12];
+#endif
 #endif
 
 static int setAllSpecificColorLedOn(enum ate_led_color color)
 {
 	int i, model = get_model();
+#if defined(TUFAX4200) || defined(TUFAX6000)
+	enum ate_led_color switch_led_color = LED_COLOR_MAX;
+#endif
 #if defined(RTCONFIG_SWITCH_RTL8370M_PHY_QCA8033_X2) || \
     defined(RTCONFIG_SWITCH_RTL8370MB_PHY_QCA8033_X2)
 	enum ate_led_color rtk_switch_led_color = LED_COLOR_MAX;
@@ -191,6 +198,28 @@ static int setAllSpecificColorLedOn(enum ate_led_color color)
 		}
 		break;
 #endif
+#if defined(TUFAX4200) || defined(TUFAX6000)
+	case MODEL_TUFAX4200:
+	case MODEL_TUFAX6000:
+		{
+			static enum led_id white_led[] = {
+				LED_POWER,
+				LED_WAN, 	/* GPY211 */
+				LED_LAN, 	/* LAN1~4: MT7531, configed together; LAN5: GPY211 */
+				LED_2G, LED_5G,	/* MT7986 WiFi LED */
+				LED_ID_MAX
+			};
+			static enum led_id red_led[] = {
+				LED_WAN_RED,
+				LED_ID_MAX
+			};
+
+			all_led[LED_COLOR_WHITE] = white_led;
+			all_led[LED_COLOR_RED] = red_led;
+			switch_led_color = LED_COLOR_WHITE;
+		}
+		break;
+#endif	/* TUFAX4200, TUFAX6000 */
 #if defined(RTAC82U)
 	case MODEL_RTAC82U:
 		{
@@ -428,61 +457,9 @@ static int setAllSpecificColorLedOn(enum ate_led_color color)
 			static enum led_id white_led[] = {
 				LED_POWER,
 				LED_LAN,
-				LED_WPS,
-				LED_WAN_RGB_RED,
-				LED_WAN_RGB_GREEN,
-				LED_WAN_RGB_BLUE,
-				LED_10G_RGB_RED,
-				LED_10G_RGB_GREEN,
-				LED_10G_RGB_BLUE,
-                                LED_ID_MAX
-                        };
-			static enum led_id red_led[] = {
-				LED_WAN_RGB_RED,
-				LED_10G_RGB_RED,
-                                LED_ID_MAX
-                        };
-			static enum led_id green_led[] = {
-				LED_WAN_RGB_GREEN,
-				LED_10G_RGB_GREEN,
-				LED_ID_MAX
-			};
-			static enum led_id blue_led[] = {
-				LED_WAN_RGB_BLUE,
-				LED_10G_RGB_BLUE,
-				LED_ID_MAX
-			};
-
-                        all_led[LED_COLOR_WHITE] = white_led;
-			if(color != LED_COLOR_WHITE) {
-				all_led[LED_COLOR_RED] = red_led;
-				all_led[LED_COLOR_GREEN] = green_led;
-				all_led[LED_COLOR_BLUE] = blue_led;
-			}
-			LEDGroupColor(color);
-
-			if(color == LED_COLOR_WHITE) {
-				eval("wl", "-i", "eth6", "ledbh", "13", "1"); // wl 2.4G
-				eval("wl", "-i", "eth7", "ledbh", "13", "1"); // wl 5G
-				eval("wl", "-i", "eth8", "ledbh", "13", "1"); // wl 5G-2
-			}
-			else {
-				eval("wl", "-i", "eth6", "ledbh", "13", "0"); // wl 2.4G
-				eval("wl", "-i", "eth7", "ledbh", "13", "0"); // wl 5G
-				eval("wl", "-i", "eth8", "ledbh", "13", "0"); // wl 5G-2
-			}
-		}
-		break;
-#endif
-
-#if defined(GTAXE16000)
-	case MODEL_GTAXE16000:
-		{
-			static enum led_id white_led[] = {
-				LED_POWER,
-				LED_LAN,
 				LED_10G_WHITE,
 				LED_WAN_NORMAL,
+				LED_WPS,
                                 LED_ID_MAX
                         };
 			static enum led_id red_led[] = {
@@ -504,13 +481,52 @@ static int setAllSpecificColorLedOn(enum ate_led_color color)
 
 			if(color == LED_COLOR_WHITE) {
 				LEDGroupReset(LED_OFF);
+				eval("wl", "-i", "eth6", "ledbh", "13", "1"); // wl 5GL
+				eval("wl", "-i", "eth7", "ledbh", "13", "1"); // wl 5GH
+				eval("wl", "-i", "eth8", "ledbh", "13", "1"); // wl 6G
+			}
+			else {
+				LEDGroupColor(color);
+				eval("wl", "-i", "eth6", "ledbh", "13", "0"); // wl 5GL
+				eval("wl", "-i", "eth7", "ledbh", "13", "0"); // wl 5GH
+				eval("wl", "-i", "eth8", "ledbh", "13", "0"); // wl 6G
+			}
+		}
+		break;
+#endif
+
+#if defined(GTAXE16000)
+	case MODEL_GTAXE16000:
+		{
+			static enum led_id white_led[] = {
+				LED_POWER,
+				LED_LAN,
+                                LED_ID_MAX
+                        };
+			static enum led_id red_led[] = {
+				LED_ID_MAX
+			};
+			static enum led_id green_led[] = {
+				LED_ID_MAX
+			};
+			static enum led_id blue_led[] = {
+				LED_ID_MAX
+			};
+			all_led[LED_COLOR_WHITE] = white_led;
+			if(color != LED_COLOR_WHITE) {
+				all_led[LED_COLOR_RED] = red_led;
+				all_led[LED_COLOR_GREEN] = green_led;
+				all_led[LED_COLOR_BLUE] = blue_led;
+			}
+			LEDGroupColor(color);
+
+			if(color == LED_COLOR_WHITE) {
 				eval("wl", "-i", "eth7", "ledbh", "13", "1"); // wl 5GL
 				eval("wl", "-i", "eth8", "ledbh", "13", "1"); // wl 5GH
 				eval("wl", "-i", "eth9", "ledbh", "13", "1"); // wl 6G
 				eval("wl", "-i", "eth10", "ledbh", "13", "1"); // wl 2.4G
 			}
 			else {
-				LEDGroupColor(color);
 				eval("wl", "-i", "eth7", "ledbh", "13", "0"); // wl 5GL
 				eval("wl", "-i", "eth8", "ledbh", "13", "0"); // wl 5GH
 				eval("wl", "-i", "eth9", "ledbh", "13", "0"); // wl 6G
@@ -565,9 +581,10 @@ static int setAllSpecificColorLedOn(enum ate_led_color color)
 		}
 		return;
 #endif
-#if defined(RTAX95Q) || defined(XT8PRO) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4)
+#if defined(RTAX95Q) || defined(XT8PRO) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4)
 	case MODEL_RTAX95Q:
 	case MODEL_XT8PRO:
+	case MODEL_XT8_V2:
 	case MODEL_RTAXE95Q:
 	case MODEL_ET8PRO:
 	case MODEL_RTAX56_XD4:
@@ -677,6 +694,31 @@ static int setAllSpecificColorLedOn(enum ate_led_color color)
 		}
 		break;
 #endif
+
+#ifdef RTAX82_XD6S
+	case MODEL_RTAX82_XD6S:
+		{
+			if (color == LED_COLOR_RED) {
+				setAllRedLedOn();
+			} else if (color == LED_COLOR_GREEN) {
+				setAllGreenLedOn();
+			} else if (color == LED_COLOR_BLUE) {
+				setAllBlueLedOn();
+			} else
+				bcm_cled_ctrl(BCM_CLED_OFF, BCM_CLED_STEADY_NOBLINK);
+
+			if (color == LED_COLOR_WHITE) {
+				eval("wl", "-i", "eth5", "ledbh", "0", "1");	// wl 2.4G
+				eval("wl", "-i", "eth6", "ledbh", "15", "1");	// wl 5G
+			}
+			else {
+				eval("wl", "-i", "eth5", "ledbh", "0", "21");	// wl 2.4G
+				eval("wl", "-i", "eth6", "ledbh", "15", "0");	// wl 5G
+			}
+		}
+		break;
+#endif
+
 #ifdef RTAX58U_V2
 	case MODEL_RTAX58U_V2:
 		{
@@ -708,6 +750,74 @@ static int setAllSpecificColorLedOn(enum ate_led_color color)
 				system("rtkswitch 41");
 				eval("wl", "-i", "eth2", "ledbh", "0", "21");	// wl 2.4G
 				eval("wl", "-i", "eth3", "ledbh", "0", "21");	// wl 5G
+			}
+		}
+		break;
+#endif
+#if defined(RTAXE7800)
+	case MODEL_RTAXE7800:
+		{
+			static enum led_id white_led[] = {
+				LED_POWER,
+				LED_LAN, LED_WPS,
+				LED_WAN_NORMAL,
+				LED_ID_MAX
+			};
+			static enum led_id red_led[] = {
+				LED_WAN,
+				LED_ID_MAX
+			};
+
+			all_led[LED_COLOR_WHITE] = white_led;
+			all_led[LED_COLOR_RED] = red_led;
+
+			if (color == LED_COLOR_WHITE) {
+				eval("wl", "-i", "eth5", "ledbh", "0", "1");	// wl 2.4G
+				eval("wl", "-i", "eth7", "ledbh", "15", "1");	// wl 5G
+				eval("wl", "-i", "eth6", "ledbh", "0", "1");	// wl 6G
+#ifdef RTCONFIG_EXTPHY_BCM84880
+				eval("ethctl", "phy", "ext", EXTPHY_GPY_ADDR_STR, "0x1e0001", "0xf0");
+#endif
+			} else {
+				eval("wl", "-i", "eth5", "ledbh", "0", "0");	// wl 2.4G
+				eval("wl", "-i", "eth7", "ledbh", "15", "0");	// wl 5G
+				eval("wl", "-i", "eth6", "ledbh", "0", "0");	// wl 6G
+#ifdef RTCONFIG_EXTPHY_BCM84880
+				eval("ethctl", "phy", "ext", EXTPHY_GPY_ADDR_STR, "0x1e0001", "0x0");
+#endif
+			}
+		}
+		break;
+#endif
+#if defined(TUFAX3000_V2)
+	case MODEL_TUFAX3000_V2:
+		{
+			static enum led_id white_led[] = {
+				LED_POWER,
+				LED_LAN, LED_WPS,
+				LED_WAN_NORMAL,
+				LED_ID_MAX
+			};
+			static enum led_id red_led[] = {
+				LED_WAN,
+				LED_ID_MAX
+			};
+
+			all_led[LED_COLOR_WHITE] = white_led;
+			all_led[LED_COLOR_RED] = red_led;
+
+			if (color == LED_COLOR_WHITE) {
+				eval("wl", "-i", "eth5", "ledbh", "0", "1"); // wl 2.4G
+				eval("wl", "-i", "eth6", "ledbh", "0", "1"); // wl 5G
+#ifdef RTCONFIG_EXTPHY_BCM84880
+				eval("ethctl", "phy", "ext", EXTPHY_GPY_ADDR_STR, "0x1e0001", "0xf0");
+#endif
+			} else {
+				eval("wl", "-i", "eth5", "ledbh", "0", "0"); // wl 2.4G
+				eval("wl", "-i", "eth6", "ledbh", "0", "0"); // wl 5G
+#ifdef RTCONFIG_EXTPHY_BCM84880
+				eval("ethctl", "phy", "ext", EXTPHY_GPY_ADDR_STR, "0x1e0001", "0x0");
+#endif
 			}
 		}
 		break;
@@ -955,6 +1065,7 @@ static int setAllSpecificColorLedOn(enum ate_led_color color)
 	case MODEL_RTAC59CD6R:
 	case MODEL_RTAC59CD6N:
 	case MODEL_PLAX56XP4:
+	case MODEL_XD4S:
 		{
 			static enum led_id blue_led[] = {
 				LED_BLUE,
@@ -968,7 +1079,7 @@ static int setAllSpecificColorLedOn(enum ate_led_color color)
 				LED_RED,
 				LED_ID_MAX
 			};
-#if defined(RTAC59_CD6R) || defined(RTAC59_CD6N) || defined(PLAX56_XP4)
+#if defined(RTAC59_CD6R) || defined(RTAC59_CD6N) || defined(PLAX56_XP4) || defined(XD4S)
 			static enum led_id white_led[] = {
 				LED_WHITE,
 				LED_ID_MAX
@@ -990,6 +1101,20 @@ static int setAllSpecificColorLedOn(enum ate_led_color color)
 			led_control(*p++, v);
 		}
 	}
+
+#if defined(TUFAX4200) || defined(TUFAX6000)
+	if (switch_led_color >= 0 && switch_led_color < LED_COLOR_MAX) {
+		if (color == switch_led_color) {
+			force_gpy211_led_onoff(5, 1);	/* 2.5G LAN LED */
+			force_gpy211_led_onoff(6, 1);	/* 2.5G WAN LED, active-low */
+			force_mt7531_led_onoff(1);	/* LAN1~LAN4 LED */
+		} else {
+			force_gpy211_led_onoff(5, 0);	/* 2.5G LAN LED */
+			force_gpy211_led_onoff(6, 0);	/* 2.5G WAN LED, active-low */
+			force_mt7531_led_onoff(0);	/* LAN1~LAN4 LED */
+		}
+	}
+#endif
 
 #if defined(RTCONFIG_SWITCH_RTL8370M_PHY_QCA8033_X2) || \
     defined(RTCONFIG_SWITCH_RTL8370MB_PHY_QCA8033_X2)
@@ -2059,16 +2184,27 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 		return 0;
 	}
 #if defined(RTCONFIG_BCMARM) && defined(RTCONFIG_HAS_5G_2)
-#if defined(RTCONFIG_WIFI6E)
-	else if (!strcmp(command, "Set_RegulationDomain_6G")) {
-#else
 	else if (!strcmp(command, "Set_RegulationDomain_5G_2")) {
-#endif
 #if defined(RTCONFIG_CFEZ) && defined(RTCONFIG_BCMARM)
 		if (!chk_envrams_proc())
 			return EINVAL;
 #endif
 		if (!setCountryCode_5G_2(value))
+		{
+			puts("ATE_ERROR_INCORRECT_PARAMETER");
+			return EINVAL;
+		}
+		return 0;
+	}
+#endif
+
+#if defined(RTCONFIG_BCMARM) && defined(RTCONFIG_WIFI6E)
+	else if (!strcmp(command, "Set_RegulationDomain_6G")) {
+#if defined(RTCONFIG_CFEZ) && defined(RTCONFIG_BCMARM)
+		if (!chk_envrams_proc())
+			return EINVAL;
+#endif
+		if (!setCountryCode_6G(value))
 		{
 			puts("ATE_ERROR_INCORRECT_PARAMETER");
 			return EINVAL;
@@ -2107,16 +2243,11 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 		return 0;
 	}
 #if defined(RTCONFIG_BCMARM) && defined(RTCONFIG_HAS_5G_2)
-#if defined(RTCONFIG_WIFI6E)
-	else if (!strcmp(command, "Set_Regrev_6G")) {
-#else
 	else if (!strcmp(command, "Set_Regrev_5G_2")) {
-#endif
 #if defined(RTCONFIG_CFEZ) && defined(RTCONFIG_BCMARM)
 		if (!chk_envrams_proc())
 			return EINVAL;
 #endif
-
 		if (!setRegrev_5G_2(value))
 		{
 			puts("ATE_ERROR_INCORRECT_PARAMETER");
@@ -2125,6 +2256,22 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 		return 0;
 	}
 #endif
+
+#if defined(RTCONFIG_BCMARM) && defined(RTCONFIG_WIFI6E)
+	else if (!strcmp(command, "Set_Regrev_6G")) {
+#if defined(RTCONFIG_CFEZ) && defined(RTCONFIG_BCMARM)
+		if (!chk_envrams_proc())
+			return EINVAL;
+#endif
+		if (!setRegrev_6G(value))
+		{
+			puts("ATE_ERROR_INCORRECT_PARAMETER");
+			return EINVAL;
+		}
+		return 0;
+	}
+#endif
+
 	else if (!strcmp(command, "Set_Commit")) {
 #if defined(RTCONFIG_CFEZ) && defined(RTCONFIG_BCMARM)
 		if (!chk_envrams_proc())
@@ -2236,6 +2383,9 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 #endif	/* RTCONFIG_HAS_5G */
 	else if (!strcmp(command, "Set_RestoreDefault")) {
 		int ret_reset;
+#if defined(RTCONFIG_JFFS2) || defined(RTCONFIG_BRCM_NAND_JFFS2) || defined(RTCONFIG_UBIFS)
+		eval("touch", "/jffs/remove_hidden_flag");
+#endif
 #ifndef HND_ROUTER
 		nvram_set("restore_defaults", "1");
 		nvram_set(ASUS_STOP_COMMIT, "1");
@@ -2323,11 +2473,8 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 	}
 	else if (!strcmp(command, "Set_WanToLan")) {
 	   	set_wantolan();
-#ifndef RTCONFIG_RALINK_MT7622
-		modprobe_r("mtkhnat");
-#endif
-		modprobe("mtkhnat");
-
+		modprobe_r(MTK_HNAT_MOD);
+		modprobe(MTK_HNAT_MOD);
 		stop_wanduck();
 		stop_udhcpc(-1);
 		return 0;
@@ -2504,25 +2651,40 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 	}
 #endif
 	else if (!strcmp(command, "Get_SSID_2G")) {
+#ifdef GTAXE16000
+		puts(nvram_safe_get("wl3_ssid"));
+#else
 		puts(nvram_safe_get("wl0_ssid"));
+#endif
 		return 0;
 	}
 	else if (!strcmp(command, "Get_SSID_5G")) {
 #ifdef RPAX56
 		puts(nvram_safe_get("wl1.1_ssid"));
 #else
+#ifdef GTAXE16000
+		puts(nvram_safe_get("wl0_ssid"));
+#else
 		puts(nvram_safe_get("wl1_ssid"));
+#endif
+#endif
+		return 0;
+	}
+	else if (!strcmp(command, "Get_SSID_5G_2")) {
+#ifdef GTAXE16000
+		puts(nvram_safe_get("wl1_ssid"));
+#else
+		puts(nvram_safe_get("wl2_ssid"));
 #endif
 		return 0;
 	}
 #if defined(RTCONFIG_WIFI6E)
 	else if (!strcmp(command, "Get_SSID_6G")) {
-#else
-	else if (!strcmp(command, "Get_SSID_5G_2")) {
-#endif
 		puts(nvram_safe_get("wl2_ssid"));
 		return 0;
 	}
+#endif
+
 #ifdef RTCONFIG_SWMODE_SWITCH
 #if defined(PLAC66U)
 	else if (!strcmp(command, "Get_SwitchStatus")) {
@@ -2623,15 +2785,18 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 		return 0;
 	}
 #if defined(RTCONFIG_BCMARM) && defined(RTCONFIG_HAS_5G_2)
-#if defined(RTCONFIG_WIFI6E)
-	else if (!strcmp(command, "Get_RegulationDomain_6G")) {
-#else
 	else if (!strcmp(command, "Get_RegulationDomain_5G_2")) {
-#endif
 		getCountryCode_5G_2();
 		return 0;
 	}
 #endif
+#if defined(RTCONFIG_BCMARM) && defined(RTCONFIG_WIFI6E)
+	else if (!strcmp(command, "Get_RegulationDomain_6G")) {
+		getCountryCode_6G();
+		return 0;
+	}
+#endif
+
 	else if (!strcmp(command, "Get_Regrev_2G")) {
 		getRegrev_2G();
 		return 0;
@@ -2646,15 +2811,19 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 		return 0;
 	}
 #if defined(RTCONFIG_BCMARM) && defined(RTCONFIG_HAS_5G_2)
-#if defined(RTCONFIG_WIFI6E)
-	else if (!strcmp(command, "Get_Regrev_6G")) {
-#else
 	else if (!strcmp(command, "Get_Regrev_5G_2")) {
-#endif
 		getRegrev_5G_2();
 		return 0;
 	}
 #endif
+
+#if defined(RTCONFIG_BCMARM) && defined(RTCONFIG_WIFI6E)
+	else if (!strcmp(command, "Get_Regrev_6G")) {
+		getRegrev_6G();
+		return 0;
+	}
+#endif
+
 #endif	/* RTCONFIG_HAS_5G */
 #endif
 	else if (!strcmp(command, "Get_SerialNumber")) {
@@ -2718,17 +2887,20 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 		return 0;
 	}
 #ifdef RTCONFIG_HAS_5G_2
-#if defined(RTCONFIG_WIFI6E)
-	else if (!strcmp(command, "Get_ChannelList_6G")) {
-#else
 	else if (!strcmp(command, "Get_ChannelList_5G_2")) {
-#endif
 		if (!Get_ChannelList_5G_2())
 			puts("ATE_ERROR");
 		return 0;
 	}
 #endif
 #endif	/* RTCONFIG_HAS_5G */
+#if defined(RTCONFIG_WIFI6E)
+	else if (!strcmp(command, "Get_ChannelList_6G")) {
+		if (!Get_ChannelList_6G())
+			puts("ATE_ERROR");
+		return 0;
+	}
+#endif
 #if defined(RTCONFIG_WIGIG)
 	else if (!strcmp(command, "Get_ChannelList_60G")) {
 		if (!Get_ChannelList_60G())
@@ -2748,7 +2920,7 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 		Get_fail_dev_log();
 		return 0;
 	}
-#ifdef RTCONFIG_RALINK
+#if defined(RTCONFIG_RALINK) && !defined(RTCONFIG_MT798X) // obsoleted error code?
 #if !defined(RTCONFIG_RALINK_MT7629) && !defined(RTCONFIG_RALINK_MT7622) && !defined(RTCONFIG_RALINK_MT7621) && !defined(RTCONFIG_WLMODULE_MT7615E_AP) && !defined(RTCONFIG_WLMODULE_MT7915D_AP)
 	else if (!strcmp(command, "Ra_FWRITE")) {
 		return FWRITE(value, value2);
@@ -3149,21 +3321,35 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 #endif
 #ifdef CONFIG_BCMWL5
 	else if (!strcmp(command, "Get_SSID_2G")) {
+#ifdef GTAXE16000
+		getSSID(3);
+#else
 		getSSID(0);
+#endif
 		return 0;
 	}
 	else if (!strcmp(command, "Get_SSID_5G")) {
+#ifdef GTAXE16000
+		getSSID(0);
+#else
 		getSSID(1);
+#endif
+		return 0;
+	}
+	else if (!strcmp(command, "Get_SSID_5G_2")) {
+#ifdef GTAXE16000
+		getSSID(1);
+#else
+		getSSID(2);
+#endif
 		return 0;
 	}
 #if defined(RTCONFIG_WIFI6E)
 	else if (!strcmp(command, "Get_SSID_6G")) {
-#else
-	else if (!strcmp(command, "Get_SSID_5G_2")) {
-#endif
 		getSSID(2);
 		return 0;
 	}
+#endif
 #endif
 #ifdef RTCONFIG_USB
 	else if (!strcmp(command, "Get_Usb2p0_Port1_Infor") || !strcmp(command, "Get_Usb_Port1_Infor")) {
@@ -3639,7 +3825,7 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 		return 0;
 	}
 #endif
-#ifdef CONFIG_BCMWL5
+#if defined(CONFIG_BCMWL5) || defined(RTCONFIG_COBRAND)
 	else if (!strcmp(command, "Set_CoBrand")) {
 		int n = atoi(value);
 		if ((n >= 0) && (n <= 100))
@@ -3701,10 +3887,16 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 	}
 #endif
 	else if (!strcmp(command, "Get_ModelDesc")) {
-		if (rt_modeldesc && strlen(rt_modeldesc))
-			puts(rt_modeldesc);
-		else
-			puts("NONE");
+		char ispctrl_desc[128];
+		snprintf(ispctrl_desc, sizeof(ispctrl_desc), "%s", nvram_safe_get("ispctrl_desc"));
+		if (strlen(ispctrl_desc))
+			puts(ispctrl_desc);
+		else {
+			if (rt_modeldesc && strlen(rt_modeldesc))
+				puts(rt_modeldesc);
+			else
+				puts("NONE");
+		}
 		return 0;
 	}
 #if defined(RTCONFIG_ASUSCTRL) && (defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK))
@@ -3859,7 +4051,7 @@ int ate_dev_status(void)
 				have_bt_device = 0;
 		}
 #endif
-#if defined(RTCONFIG_LANTIQ) || defined(RTAX95Q) || defined(XT8PRO) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(RTAX82_XD6) || defined(ET12) || defined(XT12)
+#if defined(RTCONFIG_LANTIQ) || defined(RTAX95Q) || defined(XT8PRO) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(RTAX82_XD6) || defined(RTAX82_XD6S) || defined(ET12) || defined(XT12)
 		if(have_bt_device == 1){
 			system("killall bluetoothd");
 			system("hciconfig hci0 down");
@@ -3904,7 +4096,7 @@ int ate_dev_status(void)
 		if(
 #if defined(ET12) || defined(XT12)
 			ethctl_get_link_status("eth3") == -1
-#elif defined(GTAX6000)
+#elif defined(GTAX6000) || defined(GTAX11000_PRO)
 			ethctl_get_link_status("eth5") == -1
 #elif defined(GTAXE16000)
 			ethctl_get_link_status("eth5") == -1 || ethctl_get_link_status("eth6") == -1

@@ -38,6 +38,7 @@
 #include <qca.h>
 #include <flash_mtd.h>
 
+#define NR_WANLAN_PORT	11
 #define DBGOUT		NULL			/* "/dev/console" */
 #define QCA8337_IFACE	"eth0"
 #define QCA8337_CPUPORT	"0"
@@ -49,6 +50,29 @@ enum {
 
 	VLAN_TYPE_MAX
 };
+
+#if defined(GTAXY16000) || defined(RTAX89U)
+/* GT-AXY16000 virtual port mapping
+ * Assume LAN port closed to 1G WAN port is LAN1.
+ */
+enum {
+	LAN1_PORT=0,
+	LAN2_PORT,
+	LAN3_PORT,
+	LAN4_PORT,
+	LAN5_PORT,
+	LAN6_PORT,	/* 5 */
+	LAN7_PORT,
+	LAN8_PORT,
+	WAN_PORT=8,
+	WAN10GR_PORT,
+	WAN10GS_PORT,	/* 10 */
+
+	MAX_WANLAN_PORT
+};
+#else
+#error Define WAN/LAN ports!
+#endif
 
 static const char *upstream_iptv_ifaces[16] = {
 #if defined(GTAXY16000) || defined(RTAX89U)
@@ -844,7 +868,7 @@ static void build_wan_lan_mask(int stb, int stb_bitmask)
 	if (sw_mode == SW_MODE_AP || sw_mode == SW_MODE_REPEATER)
 		wanscap_lan = 0;
 
-	if (wanscap_lan && (wans_lanport < 0 || wans_lanport > 4)) {
+	if (wanscap_lan && (wans_lanport < 1 || wans_lanport > 4)) {
 		_dprintf("%s: invalid wans_lanport %d!\n", __func__, wans_lanport);
 		wanscap_lan = 0;
 	}
@@ -887,7 +911,7 @@ static void build_wan_lan_mask(int stb, int stb_bitmask)
 
 	/* One of LAN port is acting as WAN. */
 	if (wanscap_lan) {
-		wans_lan_mask = 1U << lan_id_to_vport_nr(wans_lanport);
+		wans_lan_mask = 1U << lan_id_to_vport_nr(wans_lanport -1);
 		lan_mask &= ~wans_lan_mask;
 	}
 
@@ -1158,6 +1182,7 @@ static void create_Vlan(int bitmask)
 	strlcpy(upstream_if, get_wan_base_if(), sizeof(upstream_if));
 	qca8075_8337_8035_8033_aqr107_vlan_set(vtype, upstream_if, vid, prio, mbr_qca, untag_qca);
 }
+
 
 int qca8075_8337_8035_8033_aqr107_ioctl(int val, int val2)
 {
@@ -1478,6 +1503,58 @@ static int brvx_filter(const struct dirent *d)
 	return 1;
 }
 
+void upgrade_aqr113c_fw(void)
+{
+#if defined(RTAX89U)
+	char *fw_name = "/lib/firmware/RT-AX89U_aqr113c.cld";
+#elif defined(GTAXY16000)
+	char *fw_name = "/lib/firmware/GT-AXY16000_aqr113c.cld";
+#endif
+	int id1, id2, fw, build, r, aqr_addr = aqr_phy_addr();
+	char addr[sizeof("32XX")], ver[sizeof("255.255.15XXX")];
+	time_t t1;
+
+	if (!is_aqr_phy_exist() || aqr_addr < 0 || pidof("aq-fw-download") > 0)
+		return;
+
+	id1 = read_phy_reg(aqr_addr, 0x40070002);
+	id2 = read_phy_reg(aqr_addr, 0x40070003);
+	if (id1 != 0x31c3 || (id2 & 0xFFF0) != 0x1c10)
+		return;
+
+	nvram_set("aqr_act_swver", "");
+	snprintf(addr, sizeof(addr), "%d", aqr_addr);
+	eval("aq-fw-download", "-w", fw_name, "miireg", addr);
+
+	t1 = uptime();
+	do {
+		fw = read_phy_reg(aqr_addr, 0x401e0020);
+		build = read_phy_reg(aqr_addr, 0x401ec885);
+		if (fw < 0  || build < 0) {
+			dbg("%s: Can't get AQR PHY firmware version.\n", __func__);
+			sleep(1);
+			continue;
+		} else if (fw == 0xFFFF || build == 0xFFFF) {
+			dbg("wait 1s\n");
+			sleep(1);
+			continue;
+		}
+		break;
+
+	} while ((uptime() - t1) < 5);
+
+	r = read_phy_reg(aqr_addr, 0x40010009);
+	if (r >= 0 && (r & 1)) {
+		r &= ~(1U);
+		write_phy_reg(aqr_addr, 0x40010009, r);
+	}
+
+	dbg("AQR PHY @ %d firmware %d.%d build %X.%X\n", aqr_addr,
+		(fw >> 8) & 0xFF, fw & 0xFF, (build >> 4) & 0xF, build & 0xF);
+	snprintf(ver, sizeof(ver), "%d.%d.%X", (fw >> 8) & 0xFF, fw & 0xFF, (build >> 4) & 0xF);
+	nvram_set("aqr_act_swver", ver);
+}
+
 void __pre_config_switch(void)
 {
 	const int *paddr;
@@ -1507,7 +1584,9 @@ void __pre_config_switch(void)
 		logmessage("system", "AQR PHY firmware: N/A");
 
 	} else {
-		int aqr_addr = aqr_phy_addr();
+		int id1, id2, aqr_addr = aqr_phy_addr();
+		char id_str[sizeof("0xXXXXXXXXYYY")];
+
 		/* 10G link status is shown on LED2 (GREEN, closed to WAN) of AQR107.
 		 * Don't show 10G link status on same set of LED, LED1 (YELLOW, closed to WAN),
 		 * due to YELLOW and GREEN are mixed and GREEN basically disappear.
@@ -1524,6 +1603,13 @@ void __pre_config_switch(void)
 			write_phy_reg(aqr_addr, 0x401EC432, 0x00);
 		}
 
+		id1 = read_phy_reg(aqr_addr, 0x40070002);
+		id2 = read_phy_reg(aqr_addr, 0x40070003);
+		if (id1 >= 0 && id2 >= 0) {
+			snprintf(id_str, sizeof(id_str), "0x%08x", (id1 & 0xFFFF) << 16 | (id2 & 0xFFF0));
+			nvram_set("aqr_chip_id", id_str);
+		}
+
 		/* Print AQR firmware version. */
 		for (i = 0, paddr = vport_to_phy_addr; i < MAX_WANLAN_PORT; ++i, ++paddr) {
 			int fw, build;
@@ -1535,10 +1621,14 @@ void __pre_config_switch(void)
 			fw = read_phy_reg(*paddr & 0xFF, 0x401e0020);
 			build = read_phy_reg(*paddr & 0xFF, 0x401ec885);
 			if (fw < 0  || build < 0) {
-				dbg("Can't get AQR PHY firmware version.\n");
+				dbg("%s: Can't get AQR PHY firmware version.\n", __func__);
 			} else {
-				dbg("AQR PHY @ %d firmware %d.%d build %d.%d\n", *paddr & 0xFF,
+				char ver[sizeof("255.255.15XXX")];
+				dbg("AQR PHY @ %d firmware %d.%d build %X.%X\n", *paddr & 0xFF,
 					(fw >> 8) & 0xFF, fw & 0xFF, (build >> 4) & 0xF, build & 0xF);
+				snprintf(ver, sizeof(ver), "%d.%d.%X",
+					(fw >> 8) & 0xFF, fw & 0xFF, (build >> 4) & 0xF);
+				nvram_set("aqr_act_swver", ver);
 			}
 		}
 	}
@@ -1611,11 +1701,16 @@ void __pre_config_switch(void)
 
 void __post_config_switch(void)
 {
-	int i;
-	char port[sizeof("1XX")];
+	int i, speed, r, ipg = 0;
+	char *aqr_ssdk_port = "6"; /* GMAC5, AQR107 */
+	char port[sizeof("1XX")], speed_str[sizeof("10000XXX")], adv_str[sizeof("0xVVVVXXX")];
 	char *ipq807x_p1_8023az[] = { "ssdk_sh", SWID_IPQ807X, "port", "ieee8023az", "set", "1", "disable", NULL };
 	char *qca8337_px_8023az[] = { "ssdk_sh", SWID_QCA8337, "port", "ieee8023az", "set", port, "disable", NULL };
 	char *p0_vegress[] = { "ssdk_sh", SWID_QCA8337, "portVlan", "egress", "set", QCA8337_CPUPORT, "untouched", NULL };
+	char *autoadv[] = { "ssdk_sh", SWID_IPQ807X, "port", "autoAdv", "set", aqr_ssdk_port, adv_str, NULL };
+	char *fix_aqr_speed[] = { "ssdk_sh", SWID_IPQ807X, "port", "speed", "set", aqr_ssdk_port, speed_str, NULL };
+	char read_ipg_cmd[] = "ssdk_sh " SWID_IPQ807X " debug reg get 0x7000 4";
+	char write_ipg_cmd[sizeof("ssdk_sh sw0 debug reg set 0x7000 0xXXXXXXXX 4XXX")];
 #if defined(GTAXY16000) || defined(RTAX89U)
 	unsigned int rx_afe_2 = 0xf67;
 	char rx_afe_2_str[sizeof("0x00000000XXX")] = "0xf67";
@@ -1636,10 +1731,136 @@ void __post_config_switch(void)
 		_eval(qca8337_px_8023az, DBGOUT, 0, NULL);
 	}
 
+	/* Fixed 10G base-T link-speed. */
+	speed = nvram_get_int("aqr_link_speed");
+	if (speed == 1000)
+		snprintf(adv_str, sizeof(adv_str), "0x%x", 1U << 9);
+	else if (speed == 2500)
+		snprintf(adv_str, sizeof(adv_str), "0x%x", 1U << 12);
+	else if (speed == 5000)
+		snprintf(adv_str, sizeof(adv_str), "0x%x", 1U << 13);
+	else if (speed == 10000)
+		snprintf(adv_str, sizeof(adv_str), "0x%x", 1U << 14);
+	else
+		*adv_str = '\0';
+
+	if (*adv_str) {
+		_eval(autoadv, DBGOUT, 0, NULL);
+
+		snprintf(speed_str, sizeof(speed_str), "%d", speed);
+		_eval(fix_aqr_speed, DBGOUT, 0, NULL);
+		dbg("Fixed 10G base-T link-speed as %dMbps, advertise mask %s!\n", speed, adv_str);
+	}
+
+	/* Set IPG of port 6 that is wired to Aquantia 10G. */
+	if (!(r = parse_ssdk_sh(read_ipg_cmd, "%*[^:]:%x", 1, &ipg))) {
+		if (nvram_match("aqr_ipg", "128"))
+			ipg = (ipg & 0xFFFFF0FF) | 0x900;	/* 128 bit times */
+		else {
+			ipg &= 0xFFFFF0FF;			/*  96 bit times */
+			if (!nvram_match("aqr_ipg", "96"))
+				nvram_set("aqr_ipg", "96");
+		}
+
+		snprintf(write_ipg_cmd, sizeof(write_ipg_cmd), "ssdk_sh " SWID_IPQ807X " debug reg set 0x7000 0x%x 4", ipg);
+		if ((r = parse_ssdk_sh(write_ipg_cmd, NULL, 0)) != 0) {
+			dbg("%s: write IPG failed, cmd [%s], return %d\n", __func__, write_ipg_cmd, r);
+		}
+	}
+
 	if (sw_mode() != SW_MODE_ROUTER || !iptv_enabled())
 		return;
 
 	_eval(p0_vegress, DBGOUT, 0, NULL);
+}
+
+/* Set acceleration type of 10G base-T/10G SFP+ as "PPE + NSS" or "NSS only"
+ * by setting MAC learning/packet action as "ENABLE"/"FORWARD" or "DISABLE"/"RDTCPU".
+ * When hardware NAT ON, 1Gbps LAN may get unstable download throughput, about 600Mbps,
+ * upload throughput is stable at 940Mbps at same time. Wireless TPT seems okay at same time.
+ * Some environment get stable 940Mbps download throughput after enable flowcontrol (pause-frame)
+ * manually after negotiation done. Another environment do need to change acceleration type of
+ * XGMAC from "PPE + NSS" to "NSS only".
+ */
+void __post_ecm(void)
+{
+	const char *enable_ppe_str[] = { "ENABLE", "FORWARD" };
+	const char *disable_ppe_str[] = { "DISABLE", "RDTCPU" };
+	int flush = 0, act, enable_ppe;
+	char xgmac_port[4], mac_learn[sizeof("DISABLEXXX")], pkt_act[sizeof("FORWARDXXX")];
+	char mac_learn_result[sizeof("DISABLEXXX")], pkt_act_result[sizeof("FORWARDXXX")];
+	char *set_cmd[] = { "ssdk_sh", SWID_IPQ807X, "fdb", "ptLearnCtrl", "set", xgmac_port, mac_learn, pkt_act, NULL };
+	char *flush_cmd[] = { "ssdk_sh", SWID_IPQ807X, "fdb", "entry", "flush", "1", NULL };
+	char get_cmd[sizeof("ssdk_sh " SWID_IPQ807X " fdb ptLearnCtrl get XXX")];
+	struct xgmac_defs_s {
+		int xgmac_port;
+		int wanscap;
+		char *nv;
+		int (*exist_func)(void);
+	} xgmac_defs_tbl[] = {
+		{ 6, WANSCAP_WAN2, "aqr_hwnat_type", is_aqr_phy_exist },
+		{ 5, WANSCAP_SFPP, "sfpp_hwnat_type", NULL },
+
+		{ -1, 0, NULL, NULL }
+	}, *p;
+
+	if (nvram_match("qca_sfe", "0"))
+		return;
+
+	for (p = &xgmac_defs_tbl[0]; p->nv != NULL; ++p) {
+		if (p->exist_func && !p->exist_func())
+			continue;
+
+		enable_ppe = act = nvram_get_int(p->nv);
+		if (act < 0 || act > 2) {
+			act = 0;
+			nvram_set_int(p->nv, act);
+		}
+		if (act == 2)
+			enable_ppe = 0;
+
+		if (!act) {
+			/* If 10G base-T/10G SFP+ is one of WAN port and acceleration type is auto, select "NSS only". */
+			if ((get_wans_dualwan() & p->wanscap) != 0)
+				enable_ppe = 0;
+			else
+				enable_ppe = 1;
+		}
+
+		/* Example:
+		 * SSDK Init OK![Learn Ctrl]:ENABLE[Action]:FORWARD
+		 *operation done.
+		 *
+		 * SSDK Init OK![Learn Ctrl]:DISABLE[Action]:RDTCPU
+		 *operation done.
+		 */
+		*mac_learn_result = *pkt_act_result = '\0';
+		snprintf(get_cmd, sizeof(get_cmd), "ssdk_sh " SWID_IPQ807X " fdb ptLearnCtrl get %d", p->xgmac_port);
+		if (parse_ssdk_sh(get_cmd, "%*[^:]:%[^[]%*[^:]:%s", 2, mac_learn_result, pkt_act_result)) {
+			dbg("%s: Execute and parse [%s] failed. (mac_learn_result [%s] pkt_act_result [%s])\n",
+				__func__, mac_learn_result, pkt_act_result);
+			continue;
+		}
+
+		snprintf(xgmac_port, sizeof(xgmac_port), "%d", p->xgmac_port);
+		if (enable_ppe) {
+			strlcpy(mac_learn, enable_ppe_str[0], sizeof(mac_learn));
+			strlcpy(pkt_act, enable_ppe_str[1], sizeof(pkt_act));
+		} else {
+			strlcpy(mac_learn, disable_ppe_str[0], sizeof(mac_learn));
+			strlcpy(pkt_act, disable_ppe_str[1], sizeof(pkt_act));
+		}
+
+		/* Don't set setting if it same as current. */
+		if (!strcmp(mac_learn, mac_learn_result) && !strcmp(pkt_act, pkt_act_result))
+			continue;
+
+		_eval(set_cmd, DBGOUT, 0, NULL);
+		flush++;
+	}
+
+	if (flush > 0)
+		_eval(flush_cmd, DBGOUT, 0, NULL);
 }
 
 void __post_start_lan(void)
@@ -2053,6 +2274,7 @@ static int parse_sfpp_eeprom_a0(FILE *fp, unsigned char a0[256])
 	parse_sfpp_eeprom_a0_val(fp, 0, *a0);
 	parse_sfpp_eeprom_bits(fp, 3, *(a0 + 3));
 	parse_sfpp_eeprom_bits(fp, 6, *(a0 + 6));
+	fprintf(fp, "Byte %2X: %2X, %d Mbps\n", 12, *(a0 + 12), *(a0 + 12) * 100);
 	parse_sfpp_eeprom_bits(fp, 7, *(a0 + 7));
 	parse_sfpp_eeprom_bits(fp, 8, *(a0 + 8));
 	parse_sfpp_eeprom_bits(fp, 9, *(a0 + 9));
@@ -2269,9 +2491,9 @@ static int dump_aqr_regs(FILE *fp)
 	fw = read_phy_reg(phy, 0x401e0020);
 	build = read_phy_reg(phy, 0x401ec885);
 	if (fw < 0  || build < 0) {
-		fprintf(fp, "Can't get AQR PHY firmware version.\n");
+		fprintf(fp, "%s: Can't get AQR PHY firmware version.\n", __func__);
 	} else {
-		fprintf(fp, "AQR PHY @ %d firmware %d.%d build %d.%d\n", phy,
+		fprintf(fp, "AQR PHY @ %d firmware %d.%d build %X.%X\n", phy,
 			(fw >> 8) & 0xFF, fw & 0xFF, (build >> 4) & 0xF, build & 0xF);
 	}
 
@@ -2883,10 +3105,105 @@ static int dump_qca_nss_drv_stats(FILE *fp)
 	return 0;
 }
 
+/* Dump @fn content to @fp.
+ * @fp:	FILE pointer
+ * @fn: filename
+ * @return:
+ * 	0:	success
+ *  otherwise:	error
+ */
+static int dump_file(FILE *fp, const char *fn)
+{
+	FILE *fp_res;
+	char line[512];
+
+	if (!fp || !fn)
+		return -1;
+
+	if (!(fp_res = fopen(fn, "r")))
+		return -2;
+
+	while (fgets(line, sizeof(line), fp_res) != NULL) {
+		fprintf(fp, "%s", line);
+	}
+	fprintf(fp, "\n");
+	fclose(fp_res);
+
+	return 0;
+}
+
+/* Exec @cmd and dump output to @fp
+ * @fp:	FILE pointer
+ * @cmd: command
+ * @return:
+ * 	0:	success
+ *  otherwise:	error
+ */
+static int exec_and_dump(FILE *fp, const char *cmd)
+{
+	FILE *fp_res;
+	char line[512];
+
+	if (!fp || !cmd || *cmd == '\0')
+		return -1;
+
+	if (!(fp_res = popen(cmd, "r")))
+		return -2;
+
+	while (fgets(line, sizeof(line), fp_res) != NULL) {
+		fprintf(fp, "%s", line);
+	}
+	fprintf(fp, "\n");
+	pclose(fp_res);
+
+	return 0;
+}
+
+struct sw_port_name_s {
+	const char *sw;
+	int port;
+	const char *name;
+};
+
+static struct sw_port_name_s sw_port_name[] = {
+	{ SWID_IPQ807X, 4, "WAN" },
+	{ SWID_IPQ807X, 6, "10G base-T" },
+	{ SWID_IPQ807X, 5, "10G SFP+" },
+	{ SWID_IPQ807X, 3, "LAN1" },
+	{ SWID_IPQ807X, 2, "LAN2" },
+	{ SWID_QCA8337, 4, "LAN3" },
+	{ SWID_QCA8337, 3, "LAN4" },
+	{ SWID_QCA8337, 2, "LAN5" },
+	{ SWID_QCA8337, 1, "LAN6" },
+	{ SWID_QCA8337, 0, "LAN7" },
+	{ SWID_QCA8337, 6, "LAN8" },
+
+	{ NULL, -1, NULL }
+};
+
 void __gen_switch_log(char *fn)
 {
+#if defined(RTCONFIG_SOC_IPQ8064)
+	const char *v4_stop_fn = "/sys/kernel/debug/ecm/ecm_nss_ipv4/stop", *v6_stop_fn = "/sys/kernel/debug/ecm/ecm_nss_ipv6/stop";
+#elif defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ60XX) || defined(RTCONFIG_SOC_IPQ50XX)
+	const char *v4_stop_fn = "/sys/kernel/debug/ecm/front_end_ipv4_stop", *v6_stop_fn = "/sys/kernel/debug/ecm/front_end_ipv6_stop";
+#endif
+	int r, ipg = 0;
+	char *ipg_str, read_ipg_cmd[] = "ssdk_sh " SWID_IPQ807X " debug reg get 0x7000 4";
+	char fc_state[sizeof("DISABLEXXXXXX")], fc_cmd[sizeof("ssdk_sh sw0 port flowctrl get XYYY")];
 	char path[64], *ate_cmd[] = { "ATE", "Get_WanLanStatus", NULL };
 	FILE *fp;
+	struct sw_port_name_s *swp;
+	struct xgmac_def_s {
+		char *name;
+		int xgmac_port;
+		char *nv;		/* nvram that is used to specify acceleration type. */
+	} xgmac_def_tbl[] = {
+		{ "10G base-T", 6, "aqr_hwnat_type" },
+		{ "10G SFP+", 5, "sfpp_hwnat_type" },
+
+		{ NULL, -1, NULL }
+	}, *pxgmac;
 
 	if (!fn || *fn == '\0')
 		return;
@@ -2896,6 +3213,66 @@ void __gen_switch_log(char *fn)
 
 	if (!(fp = fopen(fn, "a")))
 		return;
+
+	fprintf(fp, "\n\n######## IPG of 10G base-T port ########\n");
+	if (!(r = parse_ssdk_sh(read_ipg_cmd, "%*[^:]:%x", 1, &ipg))) {
+		if ((ipg & 0xF00) == 0x900)
+			ipg_str = "128";
+		else if ((ipg & 0xF00) == 0)
+			ipg_str = "96";
+		else
+			ipg_str = "unknown";
+		fprintf(fp, "Reg 0x7000 = 0x%08x, IPG %s bit times\n", ipg, ipg_str);
+	} else {
+		fprintf(fp, "Read IPG failed, cmd [%s], return %d\n", read_ipg_cmd, r);
+	}
+
+	/* ssdk_sh sw0 port flowctrl get 6
+	 *
+	 *   SSDK Init OK![Flow control]:ENABLE
+	 *  operation done.
+	 */
+	fprintf(fp, "\n\n######## Flow control ########\n");
+	for (swp = &sw_port_name[0]; swp->sw != NULL; ++swp) {
+		snprintf(fc_cmd, sizeof(fc_cmd), "ssdk_sh %s port flowctrl get %d", swp->sw, swp->port);
+		strlcpy(fc_state, "READ FAIL", sizeof(fc_state));
+		parse_ssdk_sh(fc_cmd, "%*[^:]:%13s", 1, fc_state);
+		fprintf(fp, "%10s: %7s (%s port %d)\n", swp->name, fc_state, swp->sw, swp->port);
+	}
+
+#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074)
+	/* Check run-time status of ecm. */
+	fprintf(fp, "\n\n######## ecm stopped? ########\n");
+	fprintf(fp, "IPv4: ");
+	dump_file(fp, v4_stop_fn);
+	fprintf(fp, "IPv6: ");
+	dump_file(fp, v6_stop_fn);
+#endif
+
+	/* Check hardware NAT acceleration type of XGMAC
+	 *          MAC learning	Packet action
+	 * PPE+NSS: ENABLE		FORWARD
+	 * NSS:     DISABLE		RDTCPU
+	 */
+	fprintf(fp, "\n\n######## acceleration type of XGMAC ports? ########\n");
+	fprintf(fp, "PPE + NSS: ENABLE, FORWARD\n");
+	fprintf(fp, "NSS      : DISABLE, RDTCPU\n");
+	fprintf(fp, "wans_dualwan: [%s]\n", nvram_get("wans_dualwan")? : "NULL");
+	for (pxgmac = &xgmac_def_tbl[0]; pxgmac->name != NULL; ++pxgmac) {
+		char mac_learn_result[sizeof("DISABLEXXX")], pkt_act_result[sizeof("FORWARDXXX")];
+		char get_cmd[sizeof("ssdk_sh " SWID_IPQ807X " fdb ptLearnCtrl get XXX")];
+
+		strlcpy(mac_learn_result, "READ FAIL", sizeof(mac_learn_result));
+		strlcpy(pkt_act_result, "READ FAIL", sizeof(pkt_act_result));
+		snprintf(get_cmd, sizeof(get_cmd), "ssdk_sh " SWID_IPQ807X " fdb ptLearnCtrl get %d", pxgmac->xgmac_port);
+		parse_ssdk_sh(get_cmd, "%*[^:]:%[^[]%*[^:]:%s", 2, mac_learn_result, pkt_act_result);
+		fprintf(fp, "%10s: MAC learning: [%s], Packet action: [%s], %s=%s\n",
+			pxgmac->name, mac_learn_result, pkt_act_result, pxgmac->nv, nvram_get(pxgmac->nv)? : "NULL");
+	}
+
+	/* Check ebtables* kernel modules is loaded or not. */
+	fprintf(fp, "\n\n######## ebtables status ########\n");
+	exec_and_dump(fp, "lsmod|grep ebtable");
 
 	/* EEPROM in SFP+ module */
 	dump_sfpp_eeprom(fp);

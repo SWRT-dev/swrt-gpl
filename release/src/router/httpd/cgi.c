@@ -26,6 +26,7 @@
  *
  */
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -48,7 +49,9 @@
 #if defined(__GLIBC__) || defined(__UCLIBC__)
 #define __USE_GNU
 #else
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE	//musl
+#endif
 #endif	/* ! (__GLIBC__ || __UCLIBC__) */
 #include <search.h>
 #elif defined(vxworks)
@@ -63,16 +66,17 @@ static struct hsearch_data htab;
 void
 unescape(char *s)
 {
-	char s_tmp[65535];
 	unsigned int c;
 
 	while ((s = strpbrk(s, "%+"))) {
 		/* Parse %xx */
 		if (*s == '%') {
-			sscanf(s + 1, "%02x", &c);
-			*s++ = (char) c;
-			strlcpy(s_tmp, s + 2, sizeof(s_tmp));
-			strncpy(s, s_tmp, strlen(s) + 1);
+			if(isxdigit(s[1]) && isxdigit(s[2])){
+				sscanf(s + 1, "%02x", &c);
+				*s++ = (char) c;
+				memmove(s, s+2, strlen(s+2)+1);	//including the '\0'
+			}else
+				s++;
 		}
 		/* Space is special */
 		else if (*s == '+')
@@ -242,25 +246,25 @@ void webcgi_set(char *name, char *value)
 
 void webcgi_init(char *query)
 {
-       int nel;
-       char *q, *end, *name, *value;
+	int nel;
+	char *q, *end, *name, *value;
  
 #if !(defined(__GLIBC__) || defined(__UBLIBC__))
 	if (!htab.__tab)
 #else
-       if (htab.table)
+	if (htab.table)
 #endif
-	       hdestroy_r(&htab);
-       if (query == NULL) return;
+		hdestroy_r(&htab);
+	if (query == NULL) return;
  
 //    cprintf("query = %s\n", query);
        
-       end = query + strlen(query);
-       q = query;
-       nel = 1;
-       while (strsep(&q, "&;")) {
-               nel++;
-       }
+	end = query + strlen(query);
+	q = query;
+	nel = 1;
+	while (strsep(&q, "&;")) {
+		nel++;
+	}
        hcreate_r(nel, &htab);
  
        for (q = query; q < end; ) {

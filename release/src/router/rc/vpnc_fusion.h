@@ -9,8 +9,6 @@
 #define L2TP_VPNC_CTRL	"/var/run/l2tpctrl-vpnc%d"
 #define L2TP_VPNC_CONF	"/tmp/l2tp-vpnc%d.conf"
 
-#define SAFE_FREE(x)	if(x) {free(x); x=NULL;}
-
 #define PROTO_PPTP "PPTP"
 #define PROTO_L2TP "L2TP"
 #define PROTO_OVPN "OpenVPN"
@@ -19,7 +17,7 @@
 #define PROTO_HMA "HMA"
 #define PROTO_NORDVPN "NordVPN"
 
-#define MAX_VPNC_DATA_LEN	68
+#define MAX_VPNC_DATA_LEN	256
 #define MAX_VPNC_PROFILE	16
 #define MAX_DEV_POLICY		64
 #define MAX_VPNC_CONN		4

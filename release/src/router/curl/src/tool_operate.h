@@ -7,7 +7,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 1998 - 2022, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -19,6 +19,8 @@
  *
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
 #include "tool_setup.h"
@@ -56,6 +58,9 @@ struct per_transfer {
   time_t startat; /* when doing parallel transfers, this is a retry transfer
                      that has been set to sleep until this time before it
                      should get started (again) */
+  bool abort; /* when doing parallel transfers and this is TRUE then a critical
+                 error (eg --fail-early) has occurred in another transfer and
+                 this transfer will be aborted in the progress callback */
 
   /* for parallel progress bar */
   curl_off_t dltotal;
@@ -66,8 +71,6 @@ struct per_transfer {
   bool ultotal_added;
 
   /* NULL or malloced */
-  char *separator_err;
-  char *separator;
   char *uploadfile;
 };
 

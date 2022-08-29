@@ -762,7 +762,7 @@ start_udhcpc(char *wan_ifname, int unit, pid_t *ppid)
 	/* Skip dhcp and start zcip for pppoe, if desired */
 	if ((nvram_match(strcat_r(prefix, "proto", tmp), "pppoe") &&
 	    nvram_match(strcat_r(prefix, "vpndhcp", tmp), "0"))
-#if defined(RTCONFIG_IPV6) && defined(RTAX82_XD6)
+#if defined(RTCONFIG_IPV6) && (defined(RTAX82_XD6) || defined(RTAX82_XD6S))
 	||  (!strncmp(nvram_safe_get("territory_code"), "CH", 2) &&
 	    ipv6_enabled() && nvram_match(ipv6_nvname("ipv6_only"), "1"))
 #endif
@@ -967,7 +967,7 @@ config(void)
 
 	wan_up(wan_ifname);
 
-#if defined(RTCONFIG_IPV6) && defined(RTAX82_XD6)
+#if defined(RTCONFIG_IPV6) && (defined(RTAX82_XD6) || defined(RTAX82_XD6S))
 	if ((!strncmp(nvram_safe_get("territory_code"), "CH", 2) &&
 		ipv6_enabled() &&
 		nvram_match(ipv6_nvname("ipv6_only"), "1")) &&
@@ -1236,13 +1236,23 @@ udhcpc_lan(int argc, char **argv)
 	run_custom_script("dhcpc-event", 0, argv[1], NULL);
 	if (!argv[1])
 		return EINVAL;
-	else if (strstr(argv[1], "deconfig"))
+	else if (strstr(argv[1], "deconfig")) {
+#if defined(RTCONFIG_AMAS)
+		if (nvram_get_int("re_mode") == 1)
+			logmessage("dhcp client", "deconfig");
+#endif
 		return deconfig_lan();
+	}
 	else if (strstr(argv[1], "bound"))
 		return bound_lan();
 	else if (strstr(argv[1], "renew"))
 		return renew_lan();
-/*	else if (strstr(argv[1], "leasefail")) */
+#if defined(RTCONFIG_AMAS)
+	else if (strstr(argv[1], "leasefail")) {
+		if (nvram_get_int("re_mode") == 1)
+			logmessage("dhcp client", "leasefail");
+	}
+#endif
 /*	else if (strstr(argv[1], "nak")) */
 
 	return EINVAL;
@@ -1297,7 +1307,7 @@ deconfig6(char *wan_ifname, const int mode)
 	case WAN_V6PLUS:
 		if (nvram_get_int("s46_hgw_case") != S46_CASE_MAP_HGW_ON) {
 			stop_s46_tunnel(wan_primary_ifunit(), 1);
-			_dprintf("[%s(%d)]STOP_S46_TUNNEL\n", __FUNCTION__, __LINE__);
+			S46_DBG("STOP_S46_TUNNEL\n");
 		}
 		break;
 	}
@@ -1305,7 +1315,8 @@ deconfig6(char *wan_ifname, const int mode)
 #ifdef RTCONFIG_INADYN
 	if(mode == 1)
 	{
-		notify_rc("restart_ddns");
+		if (nvram_get_int("ddns_enable_x"))
+			notify_rc("restart_ddns");
 	}
 #endif
 	return 0;
@@ -1416,7 +1427,7 @@ int s46_mapcalc(char *rules, char *peerbuf, size_t peerbufsz,
 		int lw4o6 = 0, fmr = 0, err = 0;
 		uint16_t psid16 = 0;
 
-		_dprintf("[%s(%d)]rule:[%s]\n", __FUNCTION__, __LINE__, rule);
+		S46_DBG("[rule]:[%s]\n", rule);
 		for (item = strtok_r(rule, ",", &next); item; item = strtok_r(NULL, ",", &next)) {
 			value = item;
 			name = strsep(&value, "=");
@@ -1470,9 +1481,9 @@ int s46_mapcalc(char *rules, char *peerbuf, size_t peerbufsz,
 				snprintf(addrbuf, sizeof(addrbuf), "%s/%d",
 					 nvram_safe_get(ipv6_nvname("ipv6_prefix")),
 					 nvram_get_int(ipv6_nvname("ipv6_prefix_length")));
-				_dprintf("[%s(%d)][addrbuf]%s\n", __FUNCTION__, __LINE__, addrbuf);
+				S46_DBG("[addrbuf]:%s\n", addrbuf);
 				s46_match_prefix(&pd, &pdlen, addrbuf, &prefix6, prefix6len, lw4o6);
-				_dprintf("[%s(%d)][pdlen:%d]\n", __FUNCTION__, __LINE__, pdlen);
+				S46_DBG("[pdlen]:%d\n", pdlen);
 			} else {
 				if (nvram_invmatch(ipv6_nvname("ipv6_ra_addr"), "") &&
 				    nvram_invmatch(ipv6_nvname("ipv6_ra_length"), "")) {
@@ -1495,7 +1506,7 @@ int s46_mapcalc(char *rules, char *peerbuf, size_t peerbufsz,
 		}
 
 		if (ealen < 0 || psidlen > 16 || ealen < psidlen) {
-			_dprintf("[%s(%d)][skip 1] ealen(%d) < 0 || psidlen(%d) > 16 || ealen(%d) < psidlen(%d)\n", __FUNCTION__, __LINE__,
+			S46_DBG("[skip] ealen(%d) < 0 || psidlen(%d) > 16 || ealen(%d) < psidlen(%d)\n",
 				ealen, psidlen, ealen, psidlen);
 			continue;
 		}
@@ -1503,10 +1514,10 @@ int s46_mapcalc(char *rules, char *peerbuf, size_t peerbufsz,
 		if (psid < 0 && psidlen >= 0 && pdlen >= 0) {
 			bmemcpys64(&psid16, &pd, prefix6len + ealen - psidlen, psidlen);
 			psid = ntohs(psid16) >> (16 - psidlen);
-			_dprintf("[%s(%d)][psid]%d\n", __FUNCTION__, __LINE__, psid);
+			S46_DBG("[psid]:%d\n", psid);
 		} else if (psidlen >= 0) {
 			psid &= 0xffff >> (16 - psidlen);
-			_dprintf("[%s(%d)][psid]%d\n", __FUNCTION__, __LINE__, psid);
+			S46_DBG("[psid]:%d\n", psid);
 		}
 
 		if (pdlen >= 0 || ealen == psidlen) {
@@ -1533,12 +1544,12 @@ int s46_mapcalc(char *rules, char *peerbuf, size_t peerbufsz,
 			*poffset = offset;
 			*ppsidlen = psidlen;
 			*ppsid = psid;
-			_dprintf("[%s(%d)][peerbuf]%s\n", __FUNCTION__, __LINE__, peerbuf);
-			_dprintf("[%s(%d)][addr6buf]%s\n", __FUNCTION__, __LINE__, addr6buf);
-			_dprintf("[%s(%d)][addrbuf]%s\n", __FUNCTION__, __LINE__, addrbuf);
-			_dprintf("[%s(%d)][psidlen]%d\n", __FUNCTION__, __LINE__, psidlen);
-			_dprintf("[%s(%d)][psid]%d\n", __FUNCTION__, __LINE__, psid);
-			_dprintf("[%s(%d)][offset]%d\n", __FUNCTION__, __LINE__, offset);
+			S46_DBG("[peerbuf]:%s\n", peerbuf);
+			S46_DBG("[addr6buf]:%s\n", addr6buf);
+			S46_DBG("[addrbuf]:%s\n", addrbuf);
+			S46_DBG("[psidlen]:%d\n", psidlen);
+			S46_DBG("[psid]:%d\n", psid);
+			S46_DBG("[offset]:%d\n", offset);
 			ret = 1;
 		}
 
@@ -1581,7 +1592,7 @@ static char *get_s46_ra_prefx(char *str)
 				if (sscanf(ra_prefix, "%[^/]/%d", addr, &size) != 2)
 					break;
 				else {
-					_dprintf("[%s(%d)]ra_prefix:[%s]\n", __FUNCTION__, __LINE__, ra_prefix);
+					S46_DBG("ra_prefix:[%s]\n", ra_prefix);
 					return item;
 				}
 			}
@@ -1613,28 +1624,30 @@ bound6(char *wan_ifname, int bound)
 	envsave(tmp);
 
 #ifdef RTCONFIG_SOFTWIRE46
-	int i = 0;
-	while(environ[i] != NULL) {
-		_dprintf("[%s(%d)]ENV:[%s]\n", __FUNCTION__, __LINE__, environ[i]);
-		i++;
-	}
+	wan_unit = wan_primary_ifunit();
+	snprintf(prefix, sizeof(prefix), "wan%d_", wan_unit);
 
-	if (get_ipv6_service() == IPV6_NATIVE_DHCP) {
-		wan_unit = wan_primary_ifunit();
-		snprintf(prefix, sizeof(prefix), "wan%d_", wan_unit);
-		switch (get_wan_proto(prefix)) {
-			char rbuf[32];
-		case WAN_V6PLUS:
+	switch (get_wan_proto(prefix)) {
+		int i;
+		char rbuf[32];
+	case WAN_MAPE:
+	case WAN_V6PLUS:
+		i = 0;
+		while(environ[i] != NULL) {
+			S46_DBG("ENV:[%s]\n", environ[i]);
+			i++;
+		}
+		if (get_ipv6_service() == IPV6_NATIVE_DHCP) {
 			value = safe_getenv("RA_ADDRESSES");
 			if (*value == '\0') {
 				snprintf(rbuf, sizeof(rbuf), "restart_wan_if %d", 0);
-				_dprintf("[%s(%d)]Exe:[%s]\n", __FUNCTION__, __LINE__, rbuf);
+				S46_DBG("[CMD]:[%s]\n", rbuf);
 				notify_rc_and_wait(rbuf);
 				return 0;
 			}
-		default:
-			break;
 		}
+	default:
+		break;
 	}
 #endif
 
@@ -1784,19 +1797,19 @@ skip:
 		if (sscanf(value, "%[^/]/%d", addr, &size) == 2) {
 			nvram_set(ipv6_nvname("ipv6_ra_addr"), addr);
 			nvram_set_int(ipv6_nvname("ipv6_ra_length"), size);
-			_dprintf("[%s(%d)][RA_ADDR]ipv6_ra_addr:[%s/%d]\n", __FUNCTION__, __LINE__, addr, size);
+			S46_DBG("[RA_ADDR]ipv6_ra_addr:[%s/%d]\n", addr, size);
 		} else { //Workaround for system boot case.
 			snprintf(cmdbuf, sizeof(cmdbuf), "ip a s %s | grep \"scope global mngtmpaddr dynamic\" | awk -F \" \" '{printf $2}' 2>/dev/null", wan_ifname);
-			 _dprintf("[%s(%d)]cmd:[%s]\n", __FUNCTION__, __LINE__, cmdbuf);
+			S46_DBG("[CMD]:[%s]\n", cmdbuf);
 			if ((fp = popen(cmdbuf, "r")) != NULL) {
 				if (fscanf(fp, "%[^/]/%d", addr, &size) == 2) {
 					nvram_set(ipv6_nvname("ipv6_ra_addr"), addr);
 					nvram_set_int(ipv6_nvname("ipv6_ra_length"), size);
-					_dprintf("[%s(%d)]ipv6_ra_addr:[%s/%d]\n", __FUNCTION__, __LINE__, addr, size);
+					S46_DBG("ipv6_ra_addr:[%s/%d]\n", addr, size);
 				} else {
 					nvram_unset(ipv6_nvname("ipv6_ra_addr"));
 					nvram_unset(ipv6_nvname("ipv6_ra_length"));
-					_dprintf("[%s(%d)]ipv6_ra_addr:[NULL]\n", __FUNCTION__, __LINE__);
+					S46_DBG("ipv6_ra_addr:[NULL]\n");
 				}
 				pclose(fp);
 			}
@@ -1823,7 +1836,7 @@ skip:
 							if (*addr6) {
 								snprintf(ipbuf, sizeof(ipbuf), "%s/%d", addr6, nvram_get_int(ipv6_nvname("ipv6_ra_prefix_length")) ? : 64);
 								eval("ip", "-6", "addr", "add", ipbuf, "dev", nvram_safe_get("lan_ifname"));
-								_dprintf("[%s(%d)][LAN:%s]:[%s]\n", __FUNCTION__, __LINE__, nvram_safe_get("lan_ifname"), ipbuf);
+								S46_DBG("[LAN:%s]:[%s]\n", nvram_safe_get("lan_ifname"), ipbuf);
 							}
 					}
 				}
@@ -1836,7 +1849,7 @@ skip:
 		draft = 1;
 		//start map_rptd mechanism
 		if (check_s46map_rptd()) {
-			_dprintf("[%s(%d)][START] s46map_rptd\n", __FUNCTION__, __LINE__);
+			S46_DBG("[START] s46map_rptd\n");
 		} else {
 			kill_pidfile_s("/var/run/s46map_rptd.pid", SIGUSR1);
 		}
@@ -1870,7 +1883,8 @@ skip:
 #endif
 
 #ifdef RTCONFIG_INADYN
-	notify_rc("restart_ddns");
+	if (nvram_get_int("ddns_enable_x"))
+		notify_rc("restart_ddns");
 #endif
 	return 0;
 }

@@ -1589,11 +1589,6 @@ int rtkswitch_Reset_Storm_Control(void)
 	return 0;
 }
 
-typedef struct {
-	unsigned int link[5];
-	unsigned int speed[5];
-} phyState;
-
 int rtkswitch_AllPort_phyState(void)
 {
     char buf[32];

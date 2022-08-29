@@ -317,6 +317,8 @@ int ftpgetput_main(int argc UNUSED_PARAM, char **argv)
 {
 	const char *port = "ftp";
 	/* socket to ftp server */
+	if(asus_check_caller())
+		return EXIT_FAILURE;
 
 #if ENABLE_FTPPUT && !ENABLE_FTPGET
 # define ftp_action ftp_send

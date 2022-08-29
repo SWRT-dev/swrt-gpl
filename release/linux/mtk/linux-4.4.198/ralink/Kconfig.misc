@@ -16,6 +16,10 @@ config  MODEL_RT4GAX56
         bool "RT-4GAX56"
         default n
 
+config  MODEL_XD4S
+        bool "XD4S"
+       default n
+
 config  MODEL_RTAX53U
         bool "RT-AX53U"
         default n

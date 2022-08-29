@@ -18,7 +18,7 @@ else
 	HTTP_VERSION=3.1.0.97
 	OPENSSL_VERSION=1.0.2j.v001
 endif
-else ifeq ($(or $(RTCONFIG_QCA),$(RTCONFIG_LANTIQ)),y)
+else ifeq ($(or $(RTCONFIG_QCA),$(RTCONFIG_LANTIQ),$(RTCONFIG_RALINK_MT7622),$(RTCONFIG_MT798X)),y)
 ifeq ($(RTCONFIG_NEW_APP_ARM),y)
 	pkg_type=arm
 	DM_VERSION=9.1.0.101
@@ -85,7 +85,7 @@ certs-install: certs/ca-bundle.crt
 
 install:
 	mkdir -p $(INSTALLDIR)
-	( tar --exclude=.svn --exclude=*.bak -cpf - rom ) | ( cd $(INSTALLDIR) && tar -xpf - )
+	( tar --exclude=.svn --exclude=*.bak -cpf - rom bin ) | ( cd $(INSTALLDIR) && tar -xpf - )
 
 	$(MAKE) certs-install
 ifeq ($(RTCONFIG_LETSENCRYPT),y)
@@ -139,6 +139,9 @@ endif
 endif
 
 	mkdir -p $(INSTALLDIR)/usr/sbin
+ifeq ($(RTCONFIG_RALINK_MT7622),y)
+	install -m 0755 apps_scripts/mtketh_reset.sh $(INSTALLDIR)/usr/sbin
+endif
 ifeq ($(RTCONFIG_USB),y)
 ifneq ($(APP),none)
 	install -m 0755 apps_scripts/asusrouter $(INSTALLDIR)/rom/.asusrouter
@@ -213,6 +216,15 @@ endif
 
 ifeq ($(RTCONFIG_URLFW),y)
 	cp -f webs_scripts/urlfw_webs_upgrade.sh $(INSTALLDIR)/usr/sbin/webs_upgrade.sh
+endif
+
+ifeq ($(RTCONFIG_REVERTFW),y)
+	cp -f webs_scripts/ssl_revert_note.sh $(INSTALLDIR)/usr/sbin/revert_note.sh
+ifeq ($(RTCONFIG_URLFW),y)
+	cp -f webs_scripts/urlfw_revert_upgrade.sh $(INSTALLDIR)/usr/sbin/revert_upgrade.sh
+else
+	cp -f webs_scripts/ssl_revert_upgrade.sh $(INSTALLDIR)/usr/sbin/revert_upgrade.sh
+endif
 endif
 
 ifeq ($(RTAC68U),y)
@@ -303,6 +315,12 @@ ifeq ($(BUILD_NAME), RT-AX82U)
 	install -m 0755 dlna/icon_lrg.rt-ax82u_gd.jpg $(INSTALLDIR)/rom/dlna/icon_gd_lrg.jpg
 	install -m 0755 dlna/icon_lrg.rt-ax82u_gd.png $(INSTALLDIR)/rom/dlna/icon_gd_lrg.png
 endif
+ifeq ($(BUILD_NAME), GTAX6000)
+	install -m 0755 dlna/icon_sm.gt-ax6000_eva.jpg $(INSTALLDIR)/rom/dlna/icon_eva_sm.jpg
+	install -m 0755 dlna/icon_sm.gt-ax6000_eva.png $(INSTALLDIR)/rom/dlna/icon_eva_sm.png
+	install -m 0755 dlna/icon_lrg.gt-ax6000_eva.jpg $(INSTALLDIR)/rom/dlna/icon_eva_lrg.jpg
+	install -m 0755 dlna/icon_lrg.gt-ax6000_eva.png $(INSTALLDIR)/rom/dlna/icon_eva_lrg.png
+endif
 ifeq ($(and $(LJPG),$(SJPG),$(LPNG),$(SPNG)),)
 	$(warning Add media server icon for $(BUILD_NAME) !!!!!!!!!!!!)
 else
@@ -334,6 +352,20 @@ ifeq ($(HND_ROUTER),y)
 	mv -f $(INSTALLDIR)/rom/etc/profile.hnd $(INSTALLDIR)/rom/etc/profile
 else
 	rm -f $(INSTALLDIR)/rom/etc/profile.hnd
+endif
+
+ifeq ($(RTCONFIG_TPVPN),y)
+	mkdir -p $(INSTALLDIR)/rom/vpn
+	install -m 0644 vpn/HMA_TCP.JSON $(INSTALLDIR)/rom/vpn/HMA_TCP.JSON
+	install -m 0644 vpn/HMA_UDP.JSON $(INSTALLDIR)/rom/vpn/HMA_UDP.JSON
+endif
+
+ifeq ($(RTCONFIG_HND_ROUTER_AX_6756), y)
+	install -m 0755 apps_scripts/brcm_cled.sh $(INSTALLDIR)/usr/sbin
+endif
+
+ifeq ($(RTCONFIG_FSMD),y)
+	sed '/#/d' ../.config > $(INSTALLDIR)/rom/rtconfig
 endif
 
 .PHONY: dummy

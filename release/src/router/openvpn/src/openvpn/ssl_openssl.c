@@ -71,12 +71,13 @@ int mydata_index; /* GLOBAL */
 void
 tls_init_lib(void)
 {
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER))
     SSL_library_init();
 #ifndef ENABLE_SMALL
     SSL_load_error_strings();
 #endif
     OpenSSL_add_all_algorithms();
-
+#endif
     mydata_index = SSL_get_ex_new_index(0, "struct session *", NULL, NULL, NULL);
     ASSERT(mydata_index >= 0);
 }
@@ -84,9 +85,11 @@ tls_init_lib(void)
 void
 tls_free_lib(void)
 {
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER))
     EVP_cleanup();
 #ifndef ENABLE_SMALL
     ERR_free_strings();
+#endif
 #endif
 }
 
@@ -107,6 +110,11 @@ tls_ctx_server_new(struct tls_root_ctx *ctx)
     {
         crypto_msg(M_FATAL, "SSL_CTX_new SSLv23_server_method");
     }
+    if (ERR_peek_error() != 0)
+    {
+        crypto_msg(M_WARN, "Warning: TLS server context initialisation "
+                   "has warnings.");
+    }
 }
 
 void
@@ -119,6 +127,11 @@ tls_ctx_client_new(struct tls_root_ctx *ctx)
     if (ctx->ctx == NULL)
     {
         crypto_msg(M_FATAL, "SSL_CTX_new SSLv23_client_method");
+    }
+    if (ERR_peek_error() != 0)
+    {
+        crypto_msg(M_WARN, "Warning: TLS client context initialisation "
+                   "has warnings.");
     }
 }
 
@@ -206,7 +219,7 @@ info_callback(INFO_CALLBACK_SSL_CONST SSL *s, int where, int ret)
 int
 tls_version_max(void)
 {
-#if defined(TLS1_3_VERSION)
+#if defined(TLS1_3_VERSION) && !defined(OPENSSL_NO_TLS1_3)
     return TLS_VER_1_3;
 #elif defined(TLS1_2_VERSION) || defined(SSL_OP_NO_TLSv1_2)
     return TLS_VER_1_2;
@@ -233,7 +246,7 @@ openssl_tls_version(int ver)
     {
         return TLS1_2_VERSION;
     }
-#if defined(TLS1_3_VERSION)
+#if defined(TLS1_3_VERSION) && !defined(OPENSSL_NO_TLS1_3)
     else if (ver == TLS_VER_1_3)
     {
         return TLS1_3_VERSION;
@@ -459,8 +472,8 @@ tls_ctx_restrict_ciphers_tls13(struct tls_root_ctx *ctx, const char *ciphers)
         return;
     }
 
-#if (OPENSSL_VERSION_NUMBER < 0x1010100fL)
-        crypto_msg(M_WARN, "Not compiled with OpenSSL 1.1.1 or higher. "
+#if (OPENSSL_VERSION_NUMBER < 0x1010100fL) || !defined(TLS1_3_VERSION) || defined(OPENSSL_NO_TLS1_3)
+        crypto_msg(M_WARN, "Not compiled with OpenSSL 1.1.1 or higher, or without TLS 1.3 support. "
                        "Ignoring TLS 1.3 only tls-ciphersuites '%s' setting.",
                         ciphers);
 #else
@@ -534,7 +547,7 @@ tls_ctx_check_cert_time(const struct tls_root_ctx *ctx)
         goto cleanup; /* Nothing to check if there is no certificate */
     }
 
-    ret = X509_cmp_time(X509_get_notBefore(cert), NULL);
+    ret = X509_cmp_time(X509_get0_notBefore(cert), NULL);
     if (ret == 0)
     {
         msg(D_TLS_DEBUG_MED, "Failed to read certificate notBefore field.");
@@ -544,7 +557,7 @@ tls_ctx_check_cert_time(const struct tls_root_ctx *ctx)
         msg(M_WARN, "WARNING: Your certificate is not yet valid!");
     }
 
-    ret = X509_cmp_time(X509_get_notAfter(cert), NULL);
+    ret = X509_cmp_time(X509_get0_notAfter(cert), NULL);
     if (ret == 0)
     {
         msg(D_TLS_DEBUG_MED, "Failed to read certificate notAfter field.");
@@ -626,9 +639,15 @@ tls_ctx_load_ecdh_params(struct tls_root_ctx *ctx, const char *curve_name
     else
     {
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER))
+
         /* OpenSSL 1.0.2 and newer can automatically handle ECDH parameter
          * loading */
         SSL_CTX_set_ecdh_auto(ctx->ctx, 1);
+
+        /* OpenSSL 1.1.0 and newer have always ecdh auto loading enabled,
+         * so do nothing */
+#endif
         return;
 #else
         /* For older OpenSSL we have to extract the curve from key on our own */
@@ -831,24 +850,36 @@ tls_ctx_load_cryptoapi(struct tls_root_ctx *ctx, const char *cryptoapi_cert)
 #endif /* ENABLE_CRYPTOAPI */
 
 static void
-tls_ctx_add_extra_certs(struct tls_root_ctx *ctx, BIO *bio)
+tls_ctx_add_extra_certs(struct tls_root_ctx *ctx, BIO *bio, bool optional)
 {
     X509 *cert;
-    for (;; )
+    while (true)
     {
         cert = NULL;
-        if (!PEM_read_bio_X509(bio, &cert, NULL, NULL)) /* takes ownership of cert */
+        if (!PEM_read_bio_X509(bio, &cert, NULL, NULL))
         {
-            break;
-        }
-        if (!cert)
-        {
+            /*  a PEM_R_NO_START_LINE "Error" indicates that no certificate
+             *  is found in the buffer.  If loading more certificates is
+             *  optional, break without raising an error
+             */
+            if (optional
+                && ERR_GET_REASON(ERR_peek_error()) == PEM_R_NO_START_LINE)
+            {
+                /* remove that error from error stack */
+                (void)ERR_get_error();
+                break;
+            }
+
+            /* Otherwise, bail out with error */
             crypto_msg(M_FATAL, "Error reading extra certificate");
         }
+        /* takes ownership of cert like a set1 method */
         if (SSL_CTX_add_extra_chain_cert(ctx->ctx, cert) != 1)
         {
             crypto_msg(M_FATAL, "Error adding extra certificate");
         }
+        /* We loaded at least one certificate, so loading more is optional */
+        optional = true;
     }
 }
 
@@ -898,7 +929,7 @@ tls_ctx_load_cert_file_and_copy(struct tls_root_ctx *ctx,
     ret = SSL_CTX_use_certificate(ctx->ctx, x);
     if (ret)
     {
-        tls_ctx_add_extra_certs(ctx, in);
+        tls_ctx_add_extra_certs(ctx, in, true);
     }
 
 end:
@@ -912,6 +943,10 @@ end:
         {
             crypto_msg(M_FATAL, "Cannot load certificate file %s", cert_file);
         }
+    }
+    else
+    {
+        crypto_print_openssl_errors(M_DEBUG);
     }
 
     if (in != NULL)
@@ -966,12 +1001,7 @@ tls_ctx_load_priv_file(struct tls_root_ctx *ctx, const char *priv_key_file,
     pkey = PEM_read_bio_PrivateKey(in, NULL,
                                    SSL_CTX_get_default_passwd_cb(ctx->ctx),
                                    SSL_CTX_get_default_passwd_cb_userdata(ctx->ctx));
-    if (!pkey)
-    {
-        goto end;
-    }
-
-    if (!SSL_CTX_use_PrivateKey(ssl_ctx, pkey))
+    if (!pkey || !SSL_CTX_use_PrivateKey(ssl_ctx, pkey))
     {
 #ifdef ENABLE_MANAGEMENT
         if (management && (ERR_GET_REASON(ERR_peek_error()) == EVP_R_BAD_DECRYPT))
@@ -1006,7 +1036,6 @@ void
 backend_tls_ctx_reload_crl(struct tls_root_ctx *ssl_ctx, const char *crl_file,
                            const char *crl_inline)
 {
-    X509_CRL *crl = NULL;
     BIO *in = NULL;
 
     X509_STORE *store = SSL_CTX_get_cert_store(ssl_ctx->ctx);
@@ -1047,21 +1076,39 @@ backend_tls_ctx_reload_crl(struct tls_root_ctx *ssl_ctx, const char *crl_file,
         goto end;
     }
 
-    crl = PEM_read_bio_X509_CRL(in, NULL, NULL, NULL);
-    if (crl == NULL)
+    int num_crls_loaded = 0;
+    while (true)
     {
-        msg(M_WARN, "CRL: cannot read CRL from file %s", crl_file);
-        goto end;
-    }
+        X509_CRL *crl = PEM_read_bio_X509_CRL(in, NULL, NULL, NULL);
+        if (crl == NULL)
+        {
+            /*
+             * PEM_R_NO_START_LINE can be considered equivalent to EOF.
+             */
+            bool eof = ERR_GET_REASON(ERR_peek_error()) == PEM_R_NO_START_LINE;
+            /* but warn if no CRLs have been loaded */
+            if (num_crls_loaded > 0 && eof)
+            {
+                /* remove that error from error stack */
+                (void)ERR_get_error();
+                break;
+            }
 
-    if (!X509_STORE_add_crl(store, crl))
-    {
-        msg(M_WARN, "CRL: cannot add %s to store", crl_file);
-        goto end;
-    }
+            crypto_msg(M_WARN, "CRL: cannot read CRL from file %s", crl_file);
+            break;
+        }
 
+        if (!X509_STORE_add_crl(store, crl))
+        {
+            X509_CRL_free(crl);
+            crypto_msg(M_WARN, "CRL: cannot add %s to store", crl_file);
+            break;
+        }
+        X509_CRL_free(crl);
+        num_crls_loaded++;
+    }
+    msg(M_INFO, "CRL: loaded %d CRLs from file %s", num_crls_loaded, crl_file);
 end:
-    X509_CRL_free(crl);
     BIO_free(in);
 }
 
@@ -1428,7 +1475,7 @@ tls_ctx_load_extra_certs(struct tls_root_ctx *ctx, const char *extra_certs_file,
     }
     else
     {
-        tls_ctx_add_extra_certs(ctx, in);
+        tls_ctx_add_extra_certs(ctx, in, false);
     }
 
     BIO_free(in);
@@ -1846,7 +1893,7 @@ show_available_tls_ciphers_list(const char *cipher_list,
         crypto_msg(M_FATAL, "Cannot create SSL_CTX object");
     }
 
-#if (OPENSSL_VERSION_NUMBER >= 0x1010100fL)
+#if (OPENSSL_VERSION_NUMBER >= 0x1010100fL) && defined(TLS1_3_VERSION) && !defined(OPENSSL_NO_TLS1_3)
     if (tls13)
     {
         SSL_CTX_set_min_proto_version(tls_ctx.ctx, TLS1_3_VERSION);

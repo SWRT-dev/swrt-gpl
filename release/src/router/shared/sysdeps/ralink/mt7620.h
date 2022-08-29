@@ -337,6 +337,10 @@ typedef struct {
 #define REG_ESW_PORT_BSR_P0		0x201c
 #define REG_ESW_MAC_PMSR_P0		0x3008
 #define REG_ESW_MAC_PMCR_P6		0x3600
+
+#define REG_PCR_EG_TAG_OFFT		(28)
+#define REG_PCR_EG_TAG_RELMASK		(0x00000003)
+#define REG_PCR_EG_TAG_MASK		(REG_PCR_EG_TAG_RELMASK << REG_PCR_EG_TAG_OFFT)
 #if defined(RTCONFIG_RALINK_MT7620)
 #define REG_ESW_PORT_TGOCN_P0		0x4018
 #define REG_ESW_PORT_RGOCN_P0		0x4028
@@ -346,18 +350,5 @@ typedef struct {
 #else
 #error
 #endif
-
-/* for ATE Get_WanLanStatus command */
-
-#if defined(RTCONFIG_RALINK_MT7620) 
-#define MAX_PORT 5
-#elif defined(RTCONFIG_RALINK_MT7621)
-#define MAX_PORT 6
 #endif
-typedef struct {
-	unsigned int link[MAX_PORT];
-	unsigned int speed[MAX_PORT];
-} phyState;
-#endif
-
 #endif

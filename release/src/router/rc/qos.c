@@ -1,5 +1,5 @@
  /*
- * Copyright 2020, ASUSTeK Inc.
+ * Copyright 2022, ASUSTeK Inc.
  * All Rights Reserved.
  *
  * THIS SOFTWARE IS OFFERED "AS IS", AND ASUS GRANTS NO WARRANTIES OF ANY
@@ -25,9 +25,6 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
-#ifdef RTCONFIG_FBWIFI
-#include <fbwifi.h>
-#endif
 #ifdef RTCONFIG_BWDPI
 #include <bwdpi.h>
 #endif
@@ -59,6 +56,14 @@ static const char *mangle_fn_ipv6 = "/tmp/mangle_rules_ipv6";
 
 int etable_flag = 0;
 int manual_return = 0;
+
+static int qos_action_manual()
+{
+	int ret;
+	ret = 1;
+
+	return ret;
+}
 
 #ifdef RTCONFIG_AMAS_WGN
 static void WGN_ifname(int i, int j, char *wl_if)
@@ -366,7 +371,7 @@ void del_EbtablesRules(void)
 
 #ifdef CONFIG_BCMWL5 // TODO: it is only for the case, eth0 as wan, vlanx as lan
 
-#ifdef RTCONFIG_FBWIFI
+#if defined(RTCONFIG_FBWIFI)
 static void set_fbwifi_mark(void)
 {
 	int band, j, max_mssid;
@@ -379,12 +384,8 @@ static void set_fbwifi_mark(void)
 
 	snprintf(mark, sizeof(mark), "0x%x", FBWIFI_MARK_SET(1));
 	snprintf(inv_mask, sizeof(inv_mask), "0x%x", FBWIFI_MARK_INV_MASK);
-	for (band = 0; band < ARRAYSIZE(fbwifi_iface); ++band) {
-#ifndef RTCONFIG_HAS_5G_2
-		/* Skip band 2, 5G-2, if DUT not support 2-nd 5G band. */
-		if (band == 2)
-			continue;
-#endif
+	for (band = 0; band < min(MAX_NR_WL_IF, (sizeof(fbwifi_iface)/sizeof(fbwifi_iface[0]))); ++band) {
+		SKIP_ABSENT_BAND(band);
 
 		if (nvram_match(fbwifi_iface[band], "off"))
 			continue;
@@ -404,6 +405,8 @@ static void set_fbwifi_mark(void)
 		eval("ebtables", "-A", "INPUT", "-i", wl_if, "-j", "mark", "--mark-or", mark, "--mark-target", "ACCEPT");
 	}
 }
+#else
+static inline void set_fbwifi_mark(void) { };
 #endif
 
 void add_EbtablesRules(void)
@@ -413,6 +416,7 @@ void add_EbtablesRules(void)
 	nv = g = strdup(nvram_safe_get("wl_ifnames"));
 	if(nv){
 		while ((p = strsep(&g, " ")) != NULL){
+			SKIP_ABSENT_FAKE_IFACE(p);
 			QOSLOG("p=%s", p);
 			eval("ebtables", "-t", "nat", "-A", "PREROUTING", "-i", p, "-j", "mark", "--mark-or", "6", "--mark-target", "ACCEPT");
 			eval("ebtables", "-t", "nat", "-A", "POSTROUTING", "-o", p, "-j", "mark", "--mark-or", "6", "--mark-target", "ACCEPT");
@@ -421,8 +425,8 @@ void add_EbtablesRules(void)
 	}
 
 	// for MultiSSID
-	int UnitNum = 2; 	// wl0.x, wl1.x
-	int GuestNum = 3;	// wlx.0, wlx.1, wlx.2
+	int UnitNum = 2; 			// wl0.x, wl1.x
+	int GuestNum = MAX_NO_MSSID - 1;	// wlx.0, wlx.1, wlx.2
 	char mssid_if[32];
 	char mssid_enable[32];
 	int i, j;
@@ -538,57 +542,15 @@ static int add_qos_rules(char *pcWANIF)
 
 	/* action and manual_return */
 	char *action = NULL;
-	int model = get_model();
 	int evalRet;
 
-	switch (model) {
-		case MODEL_RTAC56S:
-		case MODEL_RTAC68U:
-		case MODEL_RTAC87U:
-		case MODEL_RTAC3200:
-		case MODEL_DSLAC68U:
-		case MODEL_RTAC88U:
-		case MODEL_RTAC5300:
-		case MODEL_RTAC3100:
-		case MODEL_GTAC5300:
-		case MODEL_RTAC86U:
-		case MODEL_RTAX88U:
-		case MODEL_GTAX11000:
-		case MODEL_RTAX92U:
-		case MODEL_RTAX95Q:
-		case MODEL_XT8PRO:
-		case MODEL_RTAXE95Q:
-		case MODEL_ET8PRO:
-		case MODEL_RTAX56_XD4:
-		case MODEL_XD4PRO:
-		case MODEL_CTAX56_XD4:
-		case MODEL_RTAX58U:
-		case MODEL_RTAX58U_V2:
-		case MODEL_RTAX55:
-		case MODEL_RTAX56U:
-		case MODEL_GTAXE11000:
-		case MODEL_GTAX6000:
-		case MODEL_GTAX11000_PRO:
-		case MODEL_GTAXE16000:
-		case MODEL_ET12:
-		case MODEL_XT12:
-		case MODEL_RTAC1200G:
-		case MODEL_RTAC1200GP:
-#if defined(RTCONFIG_LANTIQ)
-		case MODEL_BLUECAVE:
-#endif
-			action = "--set-mark";
-			manual_return = 1;
-			break;
-		default:
-#if defined(RTCONFIG_QCA)
-			action = "--set-mark";
-			manual_return = 1;
-#else
-			action = "--set-return";
-			manual_return = 0;
-#endif
-			break;
+	if (qos_action_manual() == 0) {
+		action = "--set-return";
+		manual_return = 0;
+	}
+	else if (qos_action_manual() == 1) {
+		action = "--set-mark";
+		manual_return = 1;
 	}
 
 	if(nvram_match("qos_sticky", "0"))
@@ -721,7 +683,7 @@ static int add_qos_rules(char *pcWANIF)
 		char *tmp_trans, *q_min, *q_max;
 		long min = 0, max =0;
 
-		snprintf(tmp, sizeof(tmp), "%s", transferred);
+		strlcpy(tmp, transferred, sizeof(tmp));
 		tmp_trans = tmp;
 		q_min = strsep(&tmp_trans, "~");
 		q_max = tmp_trans;
@@ -730,18 +692,16 @@ static int add_qos_rules(char *pcWANIF)
 			snprintf(conn, sizeof(conn), "%s", "");
 		}
 		else{
-			snprintf(tmp, sizeof(tmp), "%s", q_min);
-			min = atol(tmp);
+			min = atol(q_min);
 
-			if(strcmp(q_max,"") == 0) // q_max == NULL
+			if (strcmp(q_max,"") == 0) // q_max == NULL
 				snprintf(conn, sizeof(conn), "-m connbytes --connbytes %ld:%s --connbytes-dir both --connbytes-mode bytes", min*1024, q_max);
-			else{// q_max != NULL
-				snprintf(tmp, sizeof(tmp), "%s", q_max);
-				max = atol(tmp);
+			else { // q_max != NULL
+				max = atol(q_max);
 				snprintf(conn, sizeof(conn), "-m connbytes --connbytes %ld:%ld --connbytes-dir both --connbytes-mode bytes", min*1024, max*1024-1);
 			}
 		}
-		QOSLOG("[qos] tmp=%s, transferred=%s, min=%ld, max=%ld, q_max=%s, conn=%s", tmp, transferred, min*1024, max*1024-1, q_max, conn);
+		QOSLOG("[qos] transferred=%s, min=%ld, max=%ld, q_max=%s, conn=%s", transferred, min*1024, max*1024-1, q_max, conn);
 
 		/*************************************************/
 		/*                      proto                    */
@@ -905,8 +865,6 @@ static int add_qos_rules(char *pcWANIF)
 			"-A FORWARD -o %s -j QOSO\n"
 			"-A OUTPUT -o %s -j QOSO\n",
 				action, class_num, pcWANIF, pcWANIF);
-		if(manual_return)
-			fprintf(fn , "-A QOSO -j RETURN\n");
 
 #ifdef RTCONFIG_IPV6
 	if (fn_ipv6 && ipv6_enabled() && *wan6face) {
@@ -941,8 +899,6 @@ static int add_qos_rules(char *pcWANIF)
 			"-A FORWARD -o %s -j QOSO\n"
 			"-A OUTPUT -o %s -j QOSO\n",
 				action, class_num, wan6face, wan6face);
-		if(manual_return)
-			fprintf(fn_ipv6, "-A QOSO -j RETURN\n");
 	}
 #endif
 
@@ -1106,7 +1062,7 @@ static int start_tqos(void)
 		"# 1:60 ALL Download for BCM\n"
 		"\t$TCA parent 1:2 classid 1:60 htb rate 10240000kbit ceil 10240000kbit burst 10000 cburst 10000 prio 6\n"
 		"\t$TQA parent 1:60 handle 60: pfifo\n"
-		"\t$TFA parent 1: prio 6 protocol %s handle 6 fw flowid 1:60\n", protocol
+		"\t$TFA parent 1: prio 6 protocol %s u32 match mark 6 0x%x flowid 1:60\n", protocol, QOS_MASK
 		);
 #endif
 
@@ -1131,15 +1087,10 @@ static int start_tqos(void)
 			else s[0] = 0;
 		x = (i + 1) * 10;
 
-		fprintf(f,
-			"# egress %d: %u-%u%%\n"
-			"\t$TCA parent 1:1 classid 1:%d htb rate %ukbit %s %s prio %d quantum %u\n"
-			"\t$TQA parent 1:%d handle %d: $SCH\n"
-			"\t$TFA parent 1: prio %d protocol ip handle %d fw flowid 1:%d\n",
-				i, rate, ceil,
-				x, calc(bw, rate), s, burst_leaf, (i >= 6) ? 7 : (i + 1), mtu,
-				x, x,
-				x, i + 1, x);
+		fprintf(f, "# egress %d: %u-%u%%\n", i, rate, ceil);
+		fprintf(f, "\t$TCA parent 1:1 classid 1:%d htb rate %ukbit %s %s prio %d quantum %u\n", x, calc(bw, rate), s, burst_leaf, (i >= 6) ? 7 : (i + 1), mtu);
+		fprintf(f, "\t$TQA parent 1:%d handle %d: $SCH\n", x, x);
+		fprintf(f, "\t$TFA parent 1: prio %d u32 match mark %d 0x%x flowid 1:%d\n", x, i + 1, QOS_MASK, x);
 	}
 	free(buf);
 
@@ -1301,17 +1252,13 @@ static int add_bandwidth_limiter_rules(char *pcWANIF)
 	if ((fn = fopen(mangle_fn, "w")) == NULL) return -2;
 	del_iQosRules(); // flush all rules in mangle table
 
-	switch (get_model()){
-		case MODEL_DSLN55U:
-		case MODEL_RTN13U:
-		case MODEL_RTN56U:
-			action = "CONNMARK --set-return";
-			manual_return = 0;
-			break;
-		default:
-			action = "MARK --set-mark";
-			manual_return = 1;
-			break;
+	if (qos_action_manual() == 0) {
+		action = "CONNMARK --set-return";
+		manual_return = 0;
+	}
+	else if (qos_action_manual() == 1) {
+		action = "MARK --set-mark";
+		manual_return = 1;
 	}
 
 	/* ASUSWRT
@@ -1938,7 +1885,7 @@ static int start_GeForce_QoS(void)
 	/* fixed ports */
 	fprintf(f, "$TFA parent 1: prio 10 protocol ip u32 match ip protocol 17 0xff match ip dport %d 0xffff flowid 1:10\n", nvfgn_GetQoSChannelPort("audio"));
 	fprintf(f, "$TFA parent 1: prio 10 protocol ip u32 match ip protocol 17 0xff match ip dport %d 0xffff flowid 1:10\n", nvfgn_GetQoSChannelPort("mic"));
-	fprintf(f, "$TFA parent 1: prio 10 protocol ip u32 match ip protocol 17 0xff match ip dport %d 0xffff flowid 1:10\n", nvfgn_GetQoSChannelPort("vedio"));
+	fprintf(f, "$TFA parent 1: prio 10 protocol ip u32 match ip protocol 17 0xff match ip dport %d 0xffff flowid 1:10\n", nvfgn_GetQoSChannelPort("video"));
 	fprintf(f, "$TFA parent 1: prio 10 protocol ip u32 match ip protocol 17 0xff match ip dport %d 0xffff flowid 1:10\n", nvfgn_GetQoSChannelPort("control"));
 	fprintf(f, "$TFA parent 1: prio 10 protocol ip u32 match ip protocol  6 0xff match ip dport %d 0xffff flowid 1:10\n", nvfgn_GetQoSChannelPort("control"));
 
@@ -1991,7 +1938,7 @@ static int start_GeForce_QoS(void)
 	/* fixed ports */
 	fprintf(f, "$TFAU parent 2: prio 10 protocol ip u32 match ip protocol 17 0xff match ip sport %d 0xffff flowid 2:10\n", nvfgn_GetQoSChannelPort("audio"));
 	fprintf(f, "$TFAU parent 2: prio 10 protocol ip u32 match ip protocol 17 0xff match ip sport %d 0xffff flowid 2:10\n", nvfgn_GetQoSChannelPort("mic"));
-	fprintf(f, "$TFAU parent 2: prio 10 protocol ip u32 match ip protocol 17 0xff match ip sport %d 0xffff flowid 2:10\n", nvfgn_GetQoSChannelPort("vedio"));
+	fprintf(f, "$TFAU parent 2: prio 10 protocol ip u32 match ip protocol 17 0xff match ip sport %d 0xffff flowid 2:10\n", nvfgn_GetQoSChannelPort("video"));
 	fprintf(f, "$TFAU parent 2: prio 10 protocol ip u32 match ip protocol 17 0xff match ip sport %d 0xffff flowid 2:10\n", nvfgn_GetQoSChannelPort("control"));
 	fprintf(f, "$TFAU parent 2: prio 10 protocol ip u32 match ip protocol  6 0xff match ip sport %d 0xffff flowid 2:10\n", nvfgn_GetQoSChannelPort("control"));
 
@@ -2080,50 +2027,14 @@ static int add_rog_qos_rules(char *pcWANIF)
 	int v4v6_ok;
 	int evalRet;
 	char *action = NULL;
-	int model = get_model();
 
-	switch (model) {
-		case MODEL_RTAC56S:
-		case MODEL_RTAC68U:
-		case MODEL_RTAC87U:
-		case MODEL_RTAC3200:
-		case MODEL_DSLAC68U:
-		case MODEL_RTAC88U:
-		case MODEL_RTAC5300:
-		case MODEL_RTAC3100:
-		case MODEL_GTAC5300:
-		case MODEL_RTAC86U:
-		case MODEL_RTAX88U:
-		case MODEL_GTAX11000:
-		case MODEL_RTAX92U:
-		case MODEL_RTAX95Q:
-		case MODEL_XT8PRO:
-		case MODEL_RTAXE95Q:
-		case MODEL_ET8PRO:
-		case MODEL_RTAX56_XD4:
-		case MODEL_XD4PRO:
-		case MODEL_CTAX56_XD4:
-		case MODEL_RTAX58U:
-		case MODEL_RTAX58U_V2:
-		case MODEL_RTAX55:
-		case MODEL_RTAX56U:
-		case MODEL_GTAXE11000:
-		case MODEL_GTAX6000:
-		case MODEL_GTAX11000_PRO:
-		case MODEL_GTAXE16000:
-		case MODEL_ET12:
-		case MODEL_XT12:
-		case MODEL_RTAC1200G:
-		case MODEL_RTAC1200GP:
-		case MODEL_BLUECAVE:
-		case MODEL_DSLAX82U:
-			action = "--set-mark";
-			manual_return = 1;
-			break;
-		default:
-			action = "--set-return";
-			manual_return = 0;
-			break;
+	if (qos_action_manual() == 0) {
+		action = "--set-return";
+		manual_return = 0;
+	}
+	else if (qos_action_manual() == 1) {
+		action = "--set-mark";
+		manual_return = 1;
 	}
 
 	del_iQosRules(); // flush related rules in mangle table

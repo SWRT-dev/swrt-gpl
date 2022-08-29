@@ -38,6 +38,13 @@ const char APCLI_2G[]	= "apcli0";
 const char MESH_5G[]	= "meshi0";
 const char MESH_2G[]	= "mesh0";
 #endif
+#elif defined(RTCONFIG_MT798X)
+const char WIF_5G[]	= "rax0";
+const char WIF_2G[]	= "ra0";
+const char WDSIF_5G[]	= "wdsx";
+const char WDSIF_2G[]	= "wds";
+const char APCLI_5G[]	= "apclix0";
+const char APCLI_2G[]	= "apcli0";
 #else
 const char WIF_5G[]	= "ra0";
 const char WIF_2G[]	= "rai0";
@@ -46,7 +53,7 @@ const char APCLI_5G[]	= "apcli0";
 const char APCLI_2G[]	= "apclii0";
 #endif
 
-typedef struct channel_info {
+struct channel_info {
 	unsigned char channel;
 	unsigned char bandwidth;
 	unsigned char extrach;
@@ -55,9 +62,9 @@ typedef struct channel_info {
 #if defined(RA_ESW)
 /* Read TX/RX byte count information from switch's register. */
 #if defined(RTCONFIG_RALINK_MT7620)
-int get_mt7620_wan_unit_bytecount(int unit, unsigned long *tx, unsigned long *rx)
+int get_mt7620_wan_unit_bytecount(int unit, unsigned long long *tx, unsigned long long *rx)
 #elif defined(RTCONFIG_RALINK_MT7621)
-int get_mt7621_wan_unit_bytecount(int unit, unsigned long *tx, unsigned long *rx)
+int get_mt7621_wan_unit_bytecount(int unit, unsigned long long *tx, unsigned long long *rx)
 #endif
 {
 #if defined(RTCONFIG_RALINK_MT7620)
@@ -67,6 +74,75 @@ int get_mt7621_wan_unit_bytecount(int unit, unsigned long *tx, unsigned long *rx
 #endif
 }
 #endif
+
+#if defined(RTCONFIG_MT798X)
+#include <limits.h>		//PATH_MAX, LONG_MIN, LONG_MAX
+#define GPIOLIB_DIR	"/sys/class/gpio"
+/* Export specified GPIO
+ * @return:
+ * 	0:	success
+ *  otherwise:	fail
+ */
+static int __export_gpio(uint32_t gpio)
+{
+	char gpio_path[PATH_MAX], export_path[PATH_MAX], gpio_str[] = "999XXX";
+
+	if (!d_exists(GPIOLIB_DIR)) {
+		_dprintf("%s does not exist!\n", __func__);
+		return -1;
+	}
+	snprintf(gpio_path, sizeof(gpio_path),"%s/gpio%d", GPIOLIB_DIR, gpio);
+	if (d_exists(gpio_path))
+		return 0;
+
+	snprintf(export_path, sizeof(export_path), "%s/export", GPIOLIB_DIR);
+	snprintf(gpio_str, sizeof(gpio_str), "%d", gpio);
+	f_write_string(export_path, gpio_str, 0, 0);
+
+	return 0;
+}
+
+uint32_t gpio_dir(uint32_t gpio, int dir)
+{
+	char path[PATH_MAX], v[10], *dir_str = "in";
+
+	if (dir == GPIO_DIR_OUT) {
+		dir_str = "out";		/* output, low voltage */
+		*v = '\0';
+		snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio);
+		if (f_read_string(path, v, sizeof(v)) > 0 && safe_atoi(v) == 1)
+			dir_str = "high";	/* output, high voltage */
+	}
+
+	__export_gpio(gpio);
+	snprintf(path, sizeof(path), "%s/gpio%d/direction", GPIOLIB_DIR, gpio);
+	f_write_string(path, dir_str, 0, 0);
+
+	return 0;
+}
+
+uint32_t get_gpio(uint32_t gpio)
+{
+	char path[PATH_MAX], value[10];
+
+	snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio);
+	f_read_string(path, value, sizeof(value));
+
+	return safe_atoi(value);
+}
+
+uint32_t set_gpio(uint32_t gpio, uint32_t value)
+{
+	char path[PATH_MAX], val_str[10];
+
+	snprintf(val_str, sizeof(val_str), "%d", !!value);
+	snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio);
+	f_write_string(path, val_str, 0, 0);
+
+	return 0;
+}
+
+#else // of RTCONFIG_MT798X
 uint32_t gpio_dir(uint32_t gpio, int dir)
 {
 	return ralink_gpio_init(gpio, dir);
@@ -88,6 +164,7 @@ uint32_t set_gpio(uint32_t gpio, uint32_t value)
 	ralink_gpio_write_bit(gpio, value);
 	return 0;
 }
+#endif // of RTCONFIG_MT798X
 
 int get_switch_model(void)
 {
@@ -120,6 +197,13 @@ uint32_t set_phy_ctrl(uint32_t portmask, int ctrl)
 	// TODO
 	return 1;
 }
+
+#if defined(RTCONFIG_FITFDT)
+int get_imageheader_size(void)
+{
+	return sizeof(image_header_t);
+}
+#endif	/* RTCONFIG_FITFDT */
 
 #define SWAP_LONG(x) \
 	((__u32)( \
@@ -218,7 +302,7 @@ char *wif_to_vif(char *wif)
 	for (unit = 0; unit < MAX_NR_WL_IF; unit++)
 	{
 		SKIP_ABSENT_BAND(unit);
-		for (subunit = 1; subunit < 4; subunit++)
+		for (subunit = 1; subunit < MAX_NO_MSSID; subunit++)
 		{
 			snprintf(prefix, sizeof(prefix), "wl%d.%d", unit, subunit);
 			
@@ -748,6 +832,11 @@ char *get_wan_base_if(void)
 {
 	//static char wan_base_if[IFNAMSIZ] = "";
 
+	if (__get_wan_base_if) {
+		__get_wan_base_if(wan_base_if);
+		return wan_base_if;
+	}
+
 #if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7628) /* RT-N14U, RT-AC52U, RT-AC51U, RT-N11P, RT-N54U, RT-AC1200HP, RT-AC54U */
 	strlcpy(wan_base_if, "eth2", sizeof(wan_base_if));
 #elif (defined(RTCONFIG_RALINK_MT7621) && !defined(RTCONFIG_WLMODULE_MT7915D_AP) && !defined(RTCONFIG_WLMODULE_MT7615E_AP)) /* RT-N56UB1, RT-N56UB2 */
@@ -832,15 +921,14 @@ char *get_wlifname(int unit, int subunit, int subunit_x, char *buf)
 			sprintf(buf, "%s", APCLI_5G);
 		else
 			sprintf(buf, "%s", APCLI_2G);
+		return buf;
 	}	
 	else
 #endif /* RTCONFIG_WIRELESSREPEATER */
 #if defined(RTCONFIG_AMAS)
-	if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1")) {
-		if (subunit <= 1) {
-			strcpy(buf, "");
-			return buf;
-		}
+	if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1") && (subunit <= 1)) {
+		strcpy(buf, "");
+		return buf;
 	}
 #endif  /* RTCONFIG_AMAS */
 	{
@@ -853,11 +941,18 @@ char *get_wlifname(int unit, int subunit, int subunit_x, char *buf)
 
 		snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, subunit);
 		if (nvram_match(strcat_r(prefix, "bss_enabled", tmp), "1"))
+		{
 #if defined(RTCONFIG_RALINK_BUILDIN_WIFI)
+#if defined(RTCONFIG_AMAS)
+			if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1") && subunit >=2) {
+				sprintf(buf, "%s%d", wifbuf, subunit-1);
+			} else
+#endif
 			sprintf(buf, "%s%d", wifbuf, subunit);
 #else
 			sprintf(buf, "%s%d", wifbuf, subunit_x);
 #endif
+		}
 		else
 			sprintf(buf, "%s", "");
 	}	
@@ -1182,6 +1277,30 @@ int get_channel_info(const char *ifname, int *channel, int *bw, int *nctrlsb)
         return 0;
 }
 
+int get_regular_class(const char* ifname)
+{
+	char data[32];
+	struct iwreq wrq;
+
+	memset(data, 0x00, sizeof(data));
+	wrq.u.data.length = strlen(data) + 1;
+	wrq.u.data.pointer = (caddr_t) data;
+	wrq.u.data.flags = ASUS_SUBCMD_GET_RCLASS;
+
+	if (wl_ioctl(ifname, RTPRIV_IOCTL_ASUSCMD, &wrq) < 0)
+	{
+		dbg("errors in getting rclass result\n");
+		return 0;
+	}
+
+	if (wrq.u.data.length > 0)
+	{
+		return atoi(wrq.u.data.pointer);
+	}
+
+	return 0;
+}
+
 char *get_wififname(int band)
 {
 	const char *wif[] = { WIF_2G, WIF_5G };
@@ -1201,6 +1320,64 @@ char *get_staifname(int band)
 	}
 	return (char*) sta[band];
 }
+int get_sta_ifname_unit(const char *ifname)
+{
+        int band;
+#if defined(RTCONFIG_HAS_5G_2)	
+	const char *sta[] = { APCLI_2G, APCLI_5G, APCLI_5G2};
+#else	
+	const char *sta[] = { APCLI_2G, APCLI_5G };
+#endif
+        if (!ifname)
+                return -1;
+        for (band = 0; band < min(MAX_NR_WL_IF, ARRAY_SIZE(sta)); ++band) {
+                SKIP_ABSENT_BAND(band);
+                if (!strncmp(ifname, sta[band], strlen(sta[band])))
+                        return band;
+        }
+        return -1;
+}
+
+#ifdef RTCONFIG_BONDING_WAN
+/** Return speed of a bonding interface.
+ * @bond_if:	name of bonding interface. LAN bond_if = bond0; WAN bond_if = bond1.
+ * @return:
+ *  <= 0	error
+ *  otherwise	link speed
+ */
+int get_bonding_speed(char *bond_if)
+{
+	int speed;
+	char confbuf[sizeof(SYS_CLASS_NET) + IFNAMSIZ + sizeof("/speedXXXXXX")];
+	char buf[32] = { 0 };
+
+	snprintf(confbuf, sizeof(confbuf), SYS_CLASS_NET "/%s/speed", bond_if);
+	if (f_read_string(confbuf, buf, sizeof(buf)) <= 0)
+		return 0;
+
+	speed = safe_atoi(buf);
+	if (speed <= 0)
+		speed = 0;
+
+	return speed;
+}
+
+/** Return link speed of a bonding slave port if it's connected or 0 if it's disconnected.
+ * @port:	0: WAN, 1~8: LAN1~8, 30: 10G base-T (RJ-45), 31: 10G SFP+
+ * @return:
+ *  <= 0:	disconnected
+ *  otherwise:	link speed
+ */
+int get_bonding_port_status(int port)
+{
+	int ret = 0;
+
+	if (__get_bonding_port_status)
+		ret = __get_bonding_port_status(port);
+
+	return ret;
+}
+#endif /* RTCONFIG_BONDING_WAN */
 
 #if defined(RTCONFIG_EASYMESH)
 char *get_wdsifname(int band)
@@ -1223,3 +1400,4 @@ char *get_meshifname(int band)
 	return (char*) wif[band];
 }
 #endif
+

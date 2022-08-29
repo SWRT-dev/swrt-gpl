@@ -1,6 +1,16 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#if HOTSPOT_R3
+#define TC_FILENAME_LEN 128
+#define TC_SERVER_URL_LEN
+#define HS_CONFIG_FILE_RA "/etc/wapp_ap_ra0.conf"
+#define HS_CONFIG_FILE_RAX "/etc/wapp_ap_rax0.conf"
+#endif
+
+#include "utils/list.h"
+#include "ip_addr.h"
+
 typedef u8 macaddr[ETH_ALEN];
 
 struct hostapd_radius_server {
@@ -69,6 +79,26 @@ struct rtapd_config {
 
 	u8		nasId[MAX_MBSSID_NUM][32];
 	int		nasId_len[MAX_MBSSID_NUM];
+
+#ifdef CONFIG_FILS
+    struct dl_list fils_realms; /* list of struct fils_realm */
+    struct hostapd_ip_addr dhcp_server;
+    int dhcp_rapid_commit_proxy;
+    unsigned int fils_hlp_wait_time;
+    u16 dhcp_server_port;
+    u16 dhcp_relay_port;
+#endif /* CONFIG_FILS */
+
+#if HOTSPOT_R3
+#ifdef RADIUS_DAS_SUPPORT
+    struct radius_das_data radius_das;
+#endif /* RADIUS_DAS_SUPPORT */
+	char *hs_TandC_filename;
+	int hs_TandC_filename_len;
+	char *hs_TandC_server_url;
+	int hs_TandC_server_url_len;
+	char *hs_TandC_timestamp;
+#endif /* HOTSPOT_R3 */
 };
 
 

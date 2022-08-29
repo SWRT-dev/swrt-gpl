@@ -293,7 +293,6 @@ time_t turn_off_auth_timestamp = 0;
 int temp_turn_off_auth = 0;	// for QISxxx.htm pages
 
 int amas_support = 0;
-int HTS = 0;	//HTTP Transport Security
 
 struct timeval alarm_tv;
 time_t alarm_timestamp = 0;
@@ -357,26 +356,40 @@ void Debug2File(const char *path, const char *fmt, ...)
 }
 #endif
 
-void sethost(char *host)
+void sethost(const char *host)
 {
-	char *cp;
+	char *p = host_name;
+	size_t len;
 
-	if(!host) return;
+	if (!host || *host == '\0')
+		goto error;
 
-	memset(host_name, 0, sizeof(host_name));
-	strlcpy(host_name, host, sizeof(host_name));
+	while (*host == '.') host++;
 
-	cp = host_name;
-	for ( cp = cp + 7; *cp && *cp != '\r' && *cp != '\n'; cp++ );
-	*cp = '\0';
+	len = strcspn(host, "\r\n");
+	while (len > 0 && strchr(" \t", host[len - 1]) != NULL)
+		len--;
+	if (len > sizeof(host_name) - 1)
+		goto error;
+
+	while (len-- > 0) {
+		int c = *host++;
+		if (((c | 0x20) < 'a' || (c | 0x20) > 'z') &&
+		    ((c < '0' || c > '9')) &&
+		    strchr(".-_:[]", c) == NULL) {
+			p = host_name;
+			break;
+		}
+		*p++ = c;
+	}
+
+error:
+	*p = '\0';
 }
 
 char *gethost(void)
 {
-	if(strlen(host_name)) {
-		return host_name;
-	}
-	else return(nvram_safe_get("lan_ipaddr"));
+	return host_name[0] ? host_name : nvram_safe_get("lan_ipaddr");
 }
 
 #include <sys/sysinfo.h>
@@ -765,36 +778,6 @@ int web_write(const char *buffer, int len, FILE *stream)
 	return r;
 }
 
-int check_user_agent(char* user_agent){
-
-	int fromapp = 0;
-
-	if(user_agent != NULL){
-		char *cp1=NULL, *app_router=NULL, *app_platform=NULL, *app_framework=NULL, *app_verison=NULL;
-		cp1 = strdup(user_agent);
-
-		vstrsep(cp1, "-", &app_router, &app_platform, &app_framework, &app_verison);
-
-		if(app_router != NULL && app_framework != NULL && strcmp( app_router, "asusrouter") == 0){
-				fromapp=FROM_ASUSROUTER;
-			if(strcmp( app_framework, "DUTUtil") == 0)
-				fromapp=FROM_DUTUtil;
-			else if(strcmp( app_framework, "ASSIA") == 0)
-				fromapp=FROM_ASSIA;
-			else if(strcmp( app_framework, "IFTTT") == 0)
-				fromapp=FROM_IFTTT;
-			else if(strcmp( app_framework, "Alexa") == 0)
-				fromapp=FROM_ALEXA;
-			else if(strcmp( app_framework, "WebView") == 0)
-				fromapp=FROM_WebView;
-			else
-				fromapp=FROM_UNKNOWN;
-		}
-		if(cp1) free(cp1);
-	}
-	return fromapp;
-}
-
 #if defined(RTCONFIG_IFTTT) || defined(RTCONFIG_ALEXA) || defined(RTCONFIG_GOOGLE_ASST)
 void add_ifttt_flag(void){
 
@@ -1014,7 +997,7 @@ handle_request(void)
 	auth_result = 1;
 	url_do_auth = 0;
 	authorization = boundary = cookies = referer = useragent = NULL;
-	host_name[0] = 0;
+	host_name[0] = '\0';
 	bzero( line, sizeof line );
 
 	/* Parse the first line of the request. */
@@ -1199,12 +1182,6 @@ handle_request(void)
 	len = strlen( file );
 	if ( file[0] == '/' || strcmp( file, ".." ) == 0 || strncmp( file, "../", 3 ) == 0 || strstr( file, "/../" ) != (char*) 0 || strcmp( &(file[len-3]), "/.." ) == 0 ) {
 		send_error( 400, "Bad Request", (char*) 0, "Illegal filename." );
-		return;
-	}
-
-	if(HTS == 1 && strcmp(inet_ntoa(login_usa_tmp.sa_in.sin_addr), "127.0.0.1")){ //allow tunnel pass
-		snprintf(inviteCode, sizeof(inviteCode), "<meta http-equiv=\"refresh\" content=\"0; https://%s:%d\">\r\n", gethost(), nvram_get_int("https_lanport"));
-		send_page( 307, "Temporary Redirect", (char*) 0, inviteCode, 0);
 		return;
 	}
 
@@ -1425,7 +1402,7 @@ handle_request(void)
 			}
 			if (handler->auth) {
 				url_do_auth = 1;
-#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400)
+#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX6000) || defined(GTAXE16000) || defined(GTAX11000_PRO)
 				switch_ledg(LEDG_QIS_FINISH);
 #endif
 				if ((mime_exception&MIME_EXCEPTION_NOAUTH_FIRST)&&!x_Setting) {
@@ -2189,7 +2166,7 @@ load_dictionary (char *lang, pkw_t pkw)
 #endif  // RELOAD_DICT
 
 //	gettimeofday (&tv1, NULL);
-	if (lang == NULL || (lang != NULL && strlen (lang) == 0)) {
+	if(lang == NULL || strlen(lang) != 2 || !strstr(ALL_LANGS, lang)){
 		// if "lang" is invalid, use English as default
 		snprintf (dfn, sizeof (dfn), eng_dict);
 	} else {
@@ -2334,22 +2311,6 @@ void check_alive()
 	alarm(20);
 }
 
-int enabled_http_ifname()
-{
-#ifdef DSL_AX82U
-	if (nvram_get_int("http_enable") == 1 && http_port == SERVER_PORT && is_ax5400_i1()){
-		HTS = 1; //HTTP Transport Security
-		return 1;
-	}
-#endif
-#ifdef RTCONFIG_AIHOME_TUNNEL
-	if (nvram_get_int("http_enable") == 1 && http_port == SERVER_PORT)
-		return 0;
-#endif
-
-	return 1;
-}
-
 int main(int argc, char **argv)
 {
 	usockaddr usa;
@@ -2432,14 +2393,18 @@ int main(int argc, char **argv)
 	for (i = 0; i < ARRAY_SIZE(listen_fd); i++)
 		listen_fd[i] = -1;
 	i = 0;
-
+#ifdef RTCONFIG_AIHOME_TUNNEL
+	if (nvram_get_int("http_enable") == 1 && http_port == SERVER_PORT) {
+		//httpd listen lo 80 port for tunnel but unused ifname in https only
+	} else
+#endif
 	{
-		if (enabled_http_ifname() && (listen_fd[i++] = initialize_listen_socket(AF_INET, &usa, http_ifname)) < 0) {
+		if ((listen_fd[i++] = initialize_listen_socket(AF_INET, &usa, http_ifname)) < 0) {
 			fprintf(stderr, "can't bind to %s ipv4 address\n", http_ifname ? : "any");
 			return errno;
 		}
 #ifdef RTCONFIG_IPV6
-		if (ipv6_enabled() && enabled_http_ifname() &&
+		if (ipv6_enabled() &&
 		    (listen_fd[i++] = initialize_listen_socket(AF_INET6, &usa, http_ifname)) < 0) {
 			fprintf(stderr, "can't bind to %s ipv6 address\n", http_ifname ? : "any");
 			return errno;

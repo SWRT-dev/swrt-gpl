@@ -4110,7 +4110,7 @@ int getSiteSurvey(int band, char* ofile)
 	return 1;
 }
 
-int getSiteSurveyVSIE(int band, char *buf)
+int getSiteSurveyVSIE(int band, struct _SITESURVEY_VSIE *result, int length)
 {
 	char data[8192];
 	struct iwreq wrq;
@@ -4146,7 +4146,7 @@ int getSiteSurveyVSIE(int band, char *buf)
 
 	if (wrq.u.data.length > 0 && strlen(wrq.u.data.pointer) > 0)
 	{
-		memcpy(buf, wrq.u.data.pointer, wrq.u.data.length);
+		memcpy(result, wrq.u.data.pointer, wrq.u.data.length);
 	}
 	else
 	{
@@ -5194,7 +5194,7 @@ void set_wlpara_ra(const char* wif, int band)
 	eval("iwpriv", (char *)wif, "set", "IgmpAdd=01:00:5e:00:00:fb");
 }
 
-void set_wlpara_ra_down()
+void set_wlpara_ra_down(const char* wif, int band)
 {
 
 }
@@ -5209,7 +5209,7 @@ int wlconf_ra_down(const char* wif)
 	foreach (word, nvram_safe_get("wl_ifnames"), next) {
 		SKIP_ABSENT_BAND_AND_INC_UNIT(unit);
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-#if 0
+#if 1
 		if (!strcmp(word, wif))
 		{
 			if (!strcmp(word, WIF_2G))
@@ -6208,7 +6208,8 @@ void gen_bsd_conf(void)
 		fprintf(fp, "MinRssi5GL=-55\n");
 		fprintf(fp, "MinRssi5GH=-55\n");
 		fprintf(fp, "BtmMode=4\n");
-		fprintf(fp, "CndPriority=9;13;16\n");
+		fprintf(fp, "CndPriority=9;13;16\n");//RSSI
+//		fprintf(fp, "CndPriority=10;13;16\n");//MCS
 		fprintf(fp, "NVRAMReset=0\n");
 		fprintf(fp, "RSSIDisconnect=-75\n");
 		fprintf(fp, "BlackListTime=10\n");
@@ -6251,3 +6252,8 @@ void bandstr_sync_wl_settings(void)
 	start_bsd();
 }
 #endif
+
+int get_wifi_country_code_tmp(char *ori_countrycode, char *output, int len)
+{
+	return -1;
+}

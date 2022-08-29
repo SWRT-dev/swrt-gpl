@@ -30,7 +30,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <netdb.h>		/* gethostbyname, getnetbyname */
+#ifndef MUSL_LIBC
 #include <net/ethernet.h>	/* struct ether_addr */
+#endif	// !MUSL_LIBC
 #include <sys/time.h>		/* struct timeval */
 #include <unistd.h>
 
@@ -46,6 +48,7 @@
 #include <sys/socket.h>		/* For AF_INET & struct sockaddr */
 #include <netinet/in.h>         /* For struct sockaddr_in */
 #include <netinet/if_ether.h>
+
 /* Fixup to be able to include kernel includes in userspace.
  * Basically, kill the sparse annotations... Jean II */
 #ifndef __user

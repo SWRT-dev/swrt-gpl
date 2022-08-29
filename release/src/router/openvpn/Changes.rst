@@ -321,6 +321,223 @@ Maintainer-visible changes
   i386/i686 builds on RHEL5.
 
 
+Version 2.4.12
+==============
+This is primarily a maintenance release with minor bugfixes and improvements.
+
+As of this release, OpenVPN 2.4 will from now only receive security and 
+critical bug fixes for the next 12 months. This is also the last 
+OpenVPN 2.4 Windows release provided by the project.  Please consider 
+to upgrade to the latest OpenVPN 2.5 release. For more details, see
+https://community.openvpn.net/openvpn/wiki/SupportedVersions
+
+Bug fixes
+---------
+- CVE-2022-0547
+  see https://community.openvpn.net/openvpn/wiki/SecurityAnnouncements
+
+  If openvpn is configured with multiple authentication plugins and
+  more than one plugin tries to do deferred authentication, the result
+  is not well-defined - creating a possible authentication bypass.
+
+  In this situation the server process will now abort itself with a clear
+  log message.  Only one plugin is allowed to do deferred authentication.
+
+- Fix "--mtu-disc maybe|yes" on Linux
+
+  Due to configure/syshead.h/#ifdef confusion, the code in question was
+  not compiled-in since a long time.  Fixed.  Trac: #1452
+
+- Fix $common_name variable passed to scripts when username-as-common-name
+  is in effect.
+
+  This was not consistently set - sometimes, OpenVPN exported the username,
+  sometimes the common name from the client cert.  Fixed.  Trac: #1434
+
+- Fix potential memory leaks in add_route() and add_route_ipv6().
+
+- Apply connect-retry backoff only to one side of the connection in
+  p2p mode.  Without that fix/enhancement, two sides could end up
+  only sending packets when the other end is not ready.  Trac: #1010, #1384
+
+
+Enhancements
+------------
+- documentation improvements related to DynDNS.  Trac: #1417
+
+
+Version 2.4.11
+==============
+This is primarily a maintenance release with minor bugfixes and improvements.
+
+Bug fixes
+---------
+- CVE-2020-15078
+  see https://community.openvpn.net/openvpn/wiki/SecurityAnnouncements
+
+  This bug allows - under very specific circumstances - to trick a
+  server using delayed authentication (plugin or management) into
+  returning a PUSH_REPLY before the AUTH_FAILED message, which can
+  possibly be used to gather information about a VPN setup.
+
+  In combination with "--auth-gen-token" or an user-specific token auth
+  solution it can be possible to get access to a VPN with an
+  otherwise-invalid account.
+
+- Fix potential NULL ptr crash if compiled with DMALLOC
+
+Enhancements
+------------
+ - multiple patches to improve "sample defer plugin" + documentation
+
+
+Version 2.4.10
+=============
+This is primarily a maintenance release with minor bugfixes and improvements.
+
+New features
+------------
+ - OpenVPN client will now announce the acceptable ciphers to the server
+   (IV_CIPHER=...), so NCP cipher negotiation works better
+
+ - Parse static challenge response in auth-pam plugin
+
+ - Accept empty password and/or response in auth-pam plugin
+
+ - Log serial number of revoked certificate
+
+
+User visible changes
+--------------------
+ - Windows: Swap the order of checks for validating interactive service user
+   (faster start if connection to the DC is slow, but local information is
+   sufficient to determine privileges)
+
+
+Bug fixes
+---------
+ - Fix tls_ctx_client/server_new leaving error on OpenSSL error stack
+
+ - Fix auth-token not being updated if auth-nocache is set
+   (this should fix all remaining client-side bugs for the combination
+   "auth-nocache in client-config" + "auth-token in use on the server")
+
+ - Fix stack overflow in OpenSolaris and *BSD NEXTADDR()
+
+ - Fix error detection / abort in --inetd corner case (#350)
+
+ - Fix TUNSETGROUP compatibility with very old Linux systems (#1152)
+
+ - Fix handling of 'route remote_host' for IPv6 transport case
+   (#1247 and #1332)
+
+ - Fix --show-gateway for IPv6 on NetBSD/i386 (#734)
+
+ - A number of documentation improvements / clarification fixes.
+
+ - Fix line number reporting on config file errors after <inline> segments
+   (#1325)
+
+ - Fix fatal error at switching remotes (#629)
+
+ - socks.c: fix alen for DOMAIN type addresses, bump up buffer sizes (#848)
+
+ - Switch "ks->authenticated" assertion failure to returning false (#1270)
+
+
+
+Version 2.4.9
+=============
+This is primarily a maintenance release with minor bugfixes and improvements.
+
+New features
+------------
+- Allow unicode search string in --cryptoapicert option (Windows)
+
+User visible changes
+--------------------
+- Skip expired certificates in Windows certificate store (Windows) (trac #966)
+
+- OpenSSL: Fix --crl-verify not loading multiple CRLs in one file (trac #623)
+
+- When using "--auth-user-pass file" with just a username and no password
+  in the file, OpenVPN now queries the management interface (if active)
+  for the credentials.  Previously it would query the console for the 
+  password, and fail if no console available (normal case on Windows)
+  (trac #757)
+
+- Swap the order of checks for validating interactive service user
+  (Windows: check config location before querying domain controller for
+  group membership, which can be slow)
+
+
+Bug fixes
+---------
+- fix condition where a client's session could "float" to a new IP address
+  that is not authorized ("fix illegal client float").
+
+  This can be used to disrupt service to a freshly connected client (no
+  session keys negotiated yet).  It can not be used to inject or steal 
+  VPN traffic.  CVE-2020-11810, trac #1272).
+
+- fix combination of async push (deferred auth) and NCP (trac #1259)
+
+- Fix OpenSSL 1.1.1 not using auto elliptic curve selection (trac #1228)
+
+- Fix OpenSSL error stack handling of tls_ctx_add_extra_certs
+
+- mbedTLS: Make sure TLS session survives move (trac #880)
+
+- Fix OpenSSL private key passphrase notices
+
+- Fix building with --enable-async-push in FreeBSD (trac #1256)
+
+- Fix broken fragmentation logic when using NCP (trac #1140)
+
+
+
+Version 2.4.8
+=============
+This is primarily a maintenance release with minor bugfixes and improvements.
+
+New features
+------------
+- Support compiling with OpenSSL 1.1 without deprecated APIs
+
+- handle PSS padding in cryptoapicert (necessary for TLS >= 1.2)
+
+
+User visible changes
+--------------------
+- do not abort when hitting the combination of "--pull-filter" and
+  "--mode server" (this got hit when starting OpenVPN servers using
+  the windows GUI which installs a pull-filter to force ip-win32)
+
+- increase listen() backlog queue to 32  (improve response behaviour
+  on openvpn servers using TCP that get portscanned)
+
+- fix and enhance documentation (INSTALL, man page, ...)
+
+
+Bug fixes
+---------
+- the combination "IPv6 and proto UDP and SOCKS proxy" did not work - as
+  a workaround, force IPv4 in this case until a full implementation for
+  IPv6-UDP-SOCKS can be made.
+
+- fix IPv6 routes on tap interfaces on OpenSolaris/OpenIndiana
+
+- fix building with LibreSSL
+
+- do not set pkcs11-helper 'safe fork mode' (should fix PIN querying in
+  systemd environments)
+
+- repair windows builds
+
+- repair Darwin builds (remove -no-cpp-precomp flag)
+
+
+
 Version 2.4.7
 =============
 This is primarily a maintenance release with minor bugfixes and improvements.

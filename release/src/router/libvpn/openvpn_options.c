@@ -13,6 +13,206 @@
 #include <openvpn_config.h>
 #include "openvpn_options.h"
 
+char* ovpn_client_option_list[] = {
+	"local",
+	"remote",
+	"remote-random",
+	"remote-random-hostname",
+	"mode",
+	"proto",
+	"proto-force",
+	"connect-retry",
+	"connect-retry-max",
+	"http-proxy",
+	"http-proxy-user-pass",
+	"http-proxy-option",
+	"socks-proxy",
+	"resolv-retry",
+	"float",
+	"ipchange",
+	"port",
+	"lport",
+	"rport",
+	"bind",
+	"nobind",
+	"dev",
+	"dev-type",
+	"dev-node",
+	"lladdr",
+	"topology",
+	"ifconfig",
+	"ifconfig-ipv6",
+	"ifconfig-noexec",
+	"ifconfig-nowarn",
+	"route",
+	"route-ipv6",
+	"route-gateway",
+	"route-metric",
+	"route-delay",
+	"route-up",
+	"route-pre-down",
+	"route-noexec",
+	"route-up",
+	"route-nopull",
+	"allow-pull-fqdn",
+	"ifconfig,",
+	"redirect-gateway",
+	"redirect-private",
+	"client-nat",
+	"push-peer-info",
+	"setenv",
+	"setenv-safe",
+	"ignore-unknown-option",
+	"script-security",
+	"shaper",
+	"keepalive",
+	"inactive",
+	"ping-exit",
+	"ping-restart",
+	"ping-timer-rem",
+	"ping",
+	"multihome",
+	"fast-io",
+	"remap-usr1",
+	"persist-tun",
+	"persist-remote-ip",
+	"persist-local-ip",
+	"persist-key",
+	"passtos",
+	"tun-mtu",
+	"tun-mtu-extra",
+	"link-mtu", "udp-mtu",
+	"mtu-disc",
+	"mtu-test",
+	"fragment",
+	"mssfix",
+	"sndbuf",
+	"rcvbuf",
+	"mark",
+	"socket-flags",
+	"txqueuelen",
+	"memstats",
+	"mlock",
+	"up",
+	"up-delay",
+	"down",
+	"down-pre",
+	"up-restart",
+	"user",
+	"group",
+	"dhcp-option",
+	"route-method",
+	"chroot",
+	"cd",
+	"daemon",
+	"syslog",
+	"inetd",
+	"log",
+	"log-append",
+	"suppress-timestamps",
+	"machine-readable-output",
+	"writepid",
+	"nice",
+	"echo",
+	"parameter",
+	"verb",
+	"mute",
+	"errors-to-stderr",
+	"status",
+	"status-version",
+	"disable-occ",
+	"compress",
+	"comp-lzo",
+	"comp-noadapt",
+	"management",
+	"management-client",
+	"management-query-passwords",
+	"management-query-proxy",
+	"management-query-remote",
+	"management-hold",
+	"management-signal",
+	"management-forget-disconnect",
+	"management-up-down",
+	"management-log-cache",
+	"management-client-user",
+	"management-client-group",
+	"management-client-auth",
+	"management-client-pf",
+	"plugin",
+	"client",
+	"pull",
+	"pull-filter",
+	"push-continuation",
+	"auth-user-pass",
+	"auth-retry",
+	"static-challenge",
+	"connect-timeout", "server-poll-timeout",
+	"allow-recursive-routing",
+	"explicit-exit-notify",
+	"key-direction",
+	"secret",
+	"auth",
+	"cipher",
+	"ncp-ciphers",
+	"ncp-disable",
+	"prng",
+	"keysize",
+	"ecdh-curves",
+	"engine",
+	"no-replay",
+	"mute-replay-warnings",
+	"replay-window",
+	"no-iv",
+	"replay-persist",
+	"test-crypto",
+	"tls-server",
+	"tls-client",
+	"key-method",
+	"ca",
+	"capath",
+	"dh",
+	"cert",
+	"extra-certs",
+	"key",
+	"tls-version-min",
+	"tls-version-max",
+	"pkcs12",
+	"verify-hash",
+	"tls-cipher",
+	"tls-cert-profile",
+	"tls-ciphersuites",
+	"tls-timeout",
+	"reneg-bytes",
+	"reneg-pkts",
+	"reneg-sec",
+	"hand-window",
+	"tran-window",
+	"single-session:",
+	"tls-exit",
+	"tls-auth",
+	"tls-crypt",
+	"askpass",
+	"auth-nocache",
+	"crl-verify",
+	"tls-verify",
+	"tls-export-cert",
+	"verify-x509-name",
+	"ns-cert-type",
+	"x509-track",
+	"keying-material-exporter",
+	"remote-cert-ku",
+	"remote-cert-eku",
+	"remote-cert-tls",
+	"pkcs11-providers",
+	"pkcs11-protected-authentication",
+	"pkcs11-private-mode",
+	"pkcs11-cert-private",
+	"pkcs11-pin-cache",
+	"pkcs11-id-management",
+	"pkcs11-id",
+	NULL
+};
+
 struct buffer
 alloc_buf (size_t size)
 {
@@ -596,6 +796,22 @@ add_option (char *p[], int line, int unit)
 	return 0;
 }
 
+static int
+check_valid_option(const char* data)
+{
+	int i = 0;
+
+	if (!*data)
+		return 0;
+
+	while (ovpn_client_option_list[i]) {
+		if (!strcmp(ovpn_client_option_list[i], data))
+			return 1;
+		i++;
+	}
+	return 0;
+}
+
 int
 read_config_file (const char *file, int unit)
 {
@@ -622,6 +838,13 @@ read_config_file (const char *file, int unit)
 			{
 				bypass_doubledash (&p[0]);
 				check_inline_file_via_fp (fp, p);
+				if (!check_valid_option(p[0]))
+				{
+					_dprintf("Unrecoginzed or unsupported option: [%s]\n", p[0]);
+					logmessage ("OVPN", "Unrecoginzed or unsupported option: [%s]", p[0]);
+					ret = -1;
+					break;
+				}
 				ret |= add_option (p, line_num, unit);
 			}
 		}
@@ -651,6 +874,11 @@ void parse_openvpn_status(int unit)
 	char buf[512];
 	char *token;
 	ovpn_sconf_t conf;
+	char word[64] = {0};
+	char *next = NULL;
+	int i = 0, count = 0;
+	int i_raddr = 0, i_vaddr = 0, i_user = 0;
+	char raddr[64] = {0}, vaddr[64] = {0}, user[64] = {0};
 
 	snprintf(buf, sizeof(buf), "/etc/openvpn/server%d/status", unit);
 	fpi = fopen(buf, "r");
@@ -665,35 +893,53 @@ void parse_openvpn_status(int unit)
 			CLEAR(buf);
 			if (!fgets(buf, sizeof(buf), fpi))
 				break;
-			if(!strncmp(buf, "CLIENT_LIST", 11) && conf.auth_mode == OVPN_AUTH_TLS) {
-				//printf("%s", buf);
-				token = strtok(buf, ",");	//CLIENT_LIST
-				token = strtok(NULL, ",");	//Common Name
-				token = strtok(NULL, ",");	//Real Address
-				if(token)
-					fprintf(fpo, "%s ", token);
-				else
-					fprintf(fpo, "NoRealAddress ");
+			if(!strncmp(buf, "HEADER,CLIENT_LIST", 18) && conf.auth_mode == OVPN_AUTH_TLS) {
+				i = 0;
+				foreach_44(word, buf, next) {
+					if (!strcmp(word, "Real Address"))
+						i_raddr = i - 1;
+					else if (!strcmp(word, "Virtual Address"))
+						i_vaddr = i - 1;
+					else if (!strcmp(word, "Username"))
+						i_user = i - 1;
+					i++;
+				}
+			}
+			else if(!strncmp(buf, "CLIENT_LIST", 11) && conf.auth_mode == OVPN_AUTH_TLS) {
+				i = 0;
+				foreach_44_keep_empty_string(count, word, buf, next) {
+					if (i == i_raddr)
+						strlcpy(raddr, word, sizeof(raddr));
+					else if (i == i_vaddr)
+						strlcpy(vaddr, word, sizeof(vaddr));
+					else if (i == i_user)
+						strlcpy(user, word, sizeof(user));
+					i++;
+				}
 
+				//Real Address
+				if (raddr[0] == '\0')
+					fprintf(fpo, "NoRealAddress ");
+				else
+					fprintf(fpo, "%s ", raddr);
+
+				//Virtual Address
 				if( conf.if_type == OVPN_IF_TAP && conf.dhcp == 1) {
 					fprintf(fpo, "VirtualAddressAssignedByDhcp ");
 				}
 				else {
-					token = strtok(NULL, ",");	//Virtual Address
-					if(token)
-						fprintf(fpo, "%s ", token);
-					else
+					if (vaddr[0] == '\0')
 						fprintf(fpo, "NoVirtualAddress ");
+					else
+						fprintf(fpo, "%s ", vaddr);
 				}
-				token = strtok(NULL, ",");	//Bytes Received
-				token = strtok(NULL, ",");	//Bytes Sent
-				token = strtok(NULL, ",");	//Connected Since
-				token = strtok(NULL, ",");	//Connected Since (time_t)
-				token = strtok(NULL, ",");	//Username
-				if(token)
-					fprintf(fpo, "%s", token);
-				else
+
+				//Username
+				if (user[0] == '\0')
 					fprintf(fpo, "NoUsername");
+				else
+					fprintf(fpo, "%s", user);
+
 				fprintf(fpo, "\n");
 			}
 			else if(!strncmp(buf, "REMOTE", 6) && conf.auth_mode == OVPN_AUTH_STATIC) {

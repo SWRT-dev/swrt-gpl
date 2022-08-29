@@ -599,6 +599,12 @@ int setsockopt_broadcast(int fd) FAST_FUNC;
 int setsockopt_bindtodevice(int fd, const char *iface) FAST_FUNC;
 /* NB: returns port in host byte order */
 unsigned bb_lookup_port(const char *port, const char *protocol, unsigned default_port) FAST_FUNC;
+//#if ENABLE_FEATURE_ETC_SERVICES
+#if 0
+# define bb_lookup_std_port(portstr, protocol, portnum) bb_lookup_port(portstr, protocol, portnum)
+#else
+# define bb_lookup_std_port(portstr, protocol, portnum) (portnum)
+#endif
 typedef struct len_and_sockaddr {
 	socklen_t len;
 	union {
@@ -685,6 +691,90 @@ struct hostent *xgethostbyname(const char *name) FAST_FUNC;
 // Also mount.c and inetd.c are using gethostbyname(),
 // + inet_common.c has additional IPv4-only stuff
 
+/* dmalloc will redefine these to it's own implementation. It is safe
+ * to have the prototypes here unconditionally.  */
+void bb_die_memory_exhausted(void);
+void *malloc_or_warn(size_t size) FAST_FUNC RETURNS_MALLOC;
+void *xmalloc(size_t size) FAST_FUNC RETURNS_MALLOC;
+void *xzalloc(size_t size) FAST_FUNC RETURNS_MALLOC;
+void *xrealloc(void *old, size_t size) FAST_FUNC;
+/* After v = xrealloc_vector(v, SHIFT, idx) it's ok to use
+ * at least v[idx] and v[idx+1], for all idx values.
+ * SHIFT specifies how many new elements are added (1:2, 2:4, ..., 8:256...)
+ * when all elements are used up. New elements are zeroed out.
+ * xrealloc_vector(v, SHIFT, idx) *MUST* be called with consecutive IDXs -
+ * skipping an index is a bad bug - it may miss a realloc!
+ */
+#define xrealloc_vector(vector, shift, idx) \
+        xrealloc_vector_helper((vector), (sizeof((vector)[0]) << 8) + (shift), (idx))
+void* xrealloc_vector_helper(void *vector, unsigned sizeof_and_shift, int idx) FAST_FUNC;
+
+struct tls_aes {
+        uint32_t key[60];
+        unsigned rounds;
+};
+#define TLS_MAX_MAC_SIZE 32
+#define TLS_MAX_KEY_SIZE 32
+#define TLS_MAX_IV_SIZE   4
+struct tls_handshake_data; /* opaque */
+
+typedef struct tls_state {
+        unsigned flags;
+
+        int ofd;
+        int ifd;
+
+        unsigned min_encrypted_len_on_read;
+        uint16_t cipher_id;
+        unsigned MAC_size;
+        unsigned key_size;
+        unsigned IV_size;
+
+        uint8_t *outbuf;
+        int     outbuf_size;
+
+        int     inbuf_size;
+        int     ofs_to_buffered;
+        int     buffered_size;
+        uint8_t *inbuf;
+
+        struct tls_handshake_data *hsd;
+
+        // RFC 5246
+        // sequence number
+        //   Each connection state contains a sequence number, which is
+        //   maintained separately for read and write states.  The sequence
+        //   number MUST be set to zero whenever a connection state is made the
+        //   active state.  Sequence numbers are of type uint64 and may not
+        //   exceed 2^64-1.
+        /*uint64_t read_seq64_be;*/
+        uint64_t write_seq64_be;
+        /*uint8_t *server_write_MAC_key;*/
+        uint8_t *client_write_key;
+        uint8_t *server_write_key;
+        uint8_t *client_write_IV;
+        uint8_t *server_write_IV;
+        uint8_t client_write_MAC_key[TLS_MAX_MAC_SIZE];
+        uint8_t server_write_MAC_k__[TLS_MAX_MAC_SIZE];
+        uint8_t client_write_k__[TLS_MAX_KEY_SIZE];
+        uint8_t server_write_k__[TLS_MAX_KEY_SIZE];
+        uint8_t client_write_I_[TLS_MAX_IV_SIZE];
+        uint8_t server_write_I_[TLS_MAX_IV_SIZE];
+
+        struct tls_aes aes_encrypt;
+        struct tls_aes aes_decrypt;
+        uint8_t H[16]; //used by AES_GCM
+} tls_state_t;
+
+static inline tls_state_t *new_tls_state(void)
+{
+        tls_state_t *tls = (tls_state_t *)xzalloc(sizeof(*tls));
+        return tls;
+}
+void tls_handshake(tls_state_t *tls, const char *sni) FAST_FUNC;
+#define TLSLOOP_EXIT_ON_LOCAL_EOF (1 << 0)
+void tls_run_copy_loop(tls_state_t *tls, unsigned flags) FAST_FUNC;
+
 
 void socket_want_pktinfo(int fd) FAST_FUNC;
 ssize_t send_to_from(int fd, void *buf, size_t len, int flags,
@@ -697,6 +787,7 @@ ssize_t recv_from_to(int fd, void *buf, size_t len, int flags,
 		socklen_t sa_size) FAST_FUNC;
 
 uint16_t inet_cksum(uint16_t *addr, int len) FAST_FUNC;
+int parse_pasv_epsv(char *buf) FAST_FUNC;
 
 char *xstrdup(const char *s) FAST_FUNC RETURNS_MALLOC;
 char *xstrndup(const char *s, int n) FAST_FUNC RETURNS_MALLOC;
@@ -732,7 +823,8 @@ typedef struct uni_stat_t {
 } uni_stat_t;
 /* Returns a string with unprintable chars replaced by '?' or
  * SUBST_WCHAR. This function is unicode-aware. */
-const char* FAST_FUNC printable_string(uni_stat_t *stats, const char *str);
+const char* FAST_FUNC printable_string(const char *str);
+const char* FAST_FUNC printable_string2(uni_stat_t *stats, const char *str);
 /* Prints unprintable char ch as ^C or M-c to file
  * (M-c is used only if ch is ORed with PRINTABLE_META),
  * else it is printed as-is (except for ch = 0x9b) */
@@ -745,24 +837,6 @@ enum {
 	VISIBLE_SHOW_TABS = 1 << 1,
 };
 void visible(unsigned ch, char *buf, int flags) FAST_FUNC;
-
-/* dmalloc will redefine these to it's own implementation. It is safe
- * to have the prototypes here unconditionally.  */
-void *malloc_or_warn(size_t size) FAST_FUNC RETURNS_MALLOC;
-void *xmalloc(size_t size) FAST_FUNC RETURNS_MALLOC;
-void *xzalloc(size_t size) FAST_FUNC RETURNS_MALLOC;
-void *xrealloc(void *old, size_t size) FAST_FUNC;
-/* After v = xrealloc_vector(v, SHIFT, idx) it's ok to use
- * at least v[idx] and v[idx+1], for all idx values.
- * SHIFT specifies how many new elements are added (1:2, 2:4, ..., 8:256...)
- * when all elements are used up. New elements are zeroed out.
- * xrealloc_vector(v, SHIFT, idx) *MUST* be called with consecutive IDXs -
- * skipping an index is a bad bug - it may miss a realloc!
- */
-#define xrealloc_vector(vector, shift, idx) \
-	xrealloc_vector_helper((vector), (sizeof((vector)[0]) << 8) + (shift), (idx))
-void* xrealloc_vector_helper(void *vector, unsigned sizeof_and_shift, int idx) FAST_FUNC;
-
 
 extern ssize_t safe_read(int fd, void *buf, size_t count) FAST_FUNC;
 extern ssize_t nonblock_immune_read(int fd, void *buf, size_t count) FAST_FUNC;
@@ -1156,6 +1230,8 @@ extern void xfunc_die(void) NORETURN FAST_FUNC;
 extern void bb_show_usage(void) NORETURN FAST_FUNC;
 extern void bb_error_msg(const char *s, ...) __attribute__ ((format (printf, 1, 2))) FAST_FUNC;
 extern void bb_error_msg_and_die(const char *s, ...) __attribute__ ((noreturn, format (printf, 1, 2))) FAST_FUNC;
+extern void bb_simple_error_msg(const char *s);
+extern void bb_simple_error_msg_and_die(const char *s);
 extern void bb_perror_msg(const char *s, ...) __attribute__ ((format (printf, 1, 2))) FAST_FUNC;
 extern void bb_simple_perror_msg(const char *s) FAST_FUNC;
 extern void bb_perror_msg_and_die(const char *s, ...) __attribute__ ((noreturn, format (printf, 1, 2))) FAST_FUNC;
@@ -1732,10 +1808,10 @@ typedef struct sha3_ctx_t {
 } sha3_ctx_t;
 void md5_begin(md5_ctx_t *ctx) FAST_FUNC;
 void md5_hash(md5_ctx_t *ctx, const void *buffer, size_t len) FAST_FUNC;
-void md5_end(md5_ctx_t *ctx, void *resbuf) FAST_FUNC;
+unsigned md5_end(md5_ctx_t *ctx, void *resbuf) FAST_FUNC;
 void sha1_begin(sha1_ctx_t *ctx) FAST_FUNC;
 #define sha1_hash md5_hash
-void sha1_end(sha1_ctx_t *ctx, void *resbuf) FAST_FUNC;
+unsigned sha1_end(sha1_ctx_t *ctx, void *resbuf) FAST_FUNC;
 void sha256_begin(sha256_ctx_t *ctx) FAST_FUNC;
 #define sha256_hash md5_hash
 #define sha256_end  sha1_end
@@ -1745,6 +1821,11 @@ void sha512_end(sha512_ctx_t *ctx, void *resbuf) FAST_FUNC;
 void sha3_begin(sha3_ctx_t *ctx) FAST_FUNC;
 void sha3_hash(sha3_ctx_t *ctx, const void *buffer, size_t len) FAST_FUNC;
 void sha3_end(sha3_ctx_t *ctx, void *resbuf) FAST_FUNC;
+
+/* TLS benefits from knowing that sha1 and sha256 share these. Give them "agnostic" names too */
+typedef struct md5_ctx_t md5sha_ctx_t;
+#define md5sha_hash md5_hash
+#define sha_end sha1_end
 
 extern uint32_t *global_crc32_table;
 uint32_t *crc32_filltable(uint32_t *tbl256, int endian) FAST_FUNC;
@@ -2013,6 +2094,8 @@ struct bbunit_listelem {
 void bbunit_registertest(struct bbunit_listelem* test);
 void bbunit_settestfailed(void);
 
+
+int asus_check_caller(void);
 #define BBUNIT_DEFINE_TEST(NAME) \
 	static void bbunit_##NAME##_test(void); \
 	static struct bbunit_listelem bbunit_##NAME##_elem = { \

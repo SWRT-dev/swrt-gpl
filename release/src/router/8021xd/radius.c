@@ -114,7 +114,7 @@ void Radius_msg_finish(struct radius_msg *msg, u8 *secret, size_t secret_len)
 
 	if (msg->buf_used > 0xffff)
 	{
-		DBGPRINT(RT_DEBUG_ERROR,"WARNING: too long RADIUS messages (%d)\n", msg->buf_used);
+		DBGPRINT(RT_DEBUG_ERROR,"WARNING: too long RADIUS messages (%lu)\n", msg->buf_used);
 	}
 }
 
@@ -146,7 +146,7 @@ struct radius_attr_hdr *Radius_msg_add_attr(struct radius_msg *msg, u8 type, u8 
 
 	if (data_len > RADIUS_MAX_ATTR_LEN)
 	{
-		DBGPRINT(RT_DEBUG_ERROR,"radius_msg_add_attr: too long attribute (%d bytes)\n", data_len);
+		DBGPRINT(RT_DEBUG_ERROR,"radius_msg_add_attr: too long attribute (%lu bytes)\n", data_len);
 		return NULL;
 	}
 
@@ -167,7 +167,7 @@ struct radius_attr_hdr *Radius_msg_add_attr(struct radius_msg *msg, u8 type, u8 
 		diff = nbuf - msg->buf;
 		msg->buf = nbuf;
 		msg->hdr = (struct radius_hdr *) msg->buf;
-		
+
 		/* adjust attr pointers to match with the new buffer */
 		for (i = 0; i < msg->attr_used; i++)
 			msg->attrs[i] = (struct radius_attr_hdr *) (((u8 *) msg->attrs[i]) + diff);
@@ -211,7 +211,7 @@ struct radius_msg *Radius_msg_parse(const u8 *data, size_t len)
 
 	if (msg_len < len)
 	{
-		DBGPRINT(RT_DEBUG_INFO,"Ignored %d extra bytes after RADIUS message\n", len - msg_len);
+		DBGPRINT(RT_DEBUG_INFO,"Ignored %lu extra bytes after RADIUS message\n", len - msg_len);
 	}
 
 	msg = (struct radius_msg *) malloc(sizeof(*msg));
@@ -369,10 +369,12 @@ int Radius_msg_verify(struct radius_msg *msg, u8 *secret, size_t secret_len, str
 	}
 
 	/* ResponseAuth = MD5(Code+ID+Length+RequestAuth+Attributes+Secret) */
+	NdisZeroMemory(&context, sizeof(context));
 	MD5Init(&context);
 	MD5Update(&context, (u8 *) msg->hdr, 1 + 1 + 2);
 	MD5Update(&context, sent_msg->hdr->authenticator, MD5_MAC_LEN);
-	MD5Update(&context, (u8 *) (msg->hdr + 1), msg->buf_used - sizeof(*msg->hdr));
+	if (msg->buf_used >= sizeof(*msg->hdr))
+		MD5Update(&context, (u8 *) (msg->hdr + 1), msg->buf_used - sizeof(*msg->hdr));
 	MD5Update(&context, secret, secret_len);
 	MD5Final(hash, &context);
 	if (memcmp(hash, msg->hdr->authenticator, MD5_MAC_LEN) != 0)
@@ -390,6 +392,7 @@ int Radius_msg_verify_acct(struct radius_msg *msg, u8 *secret,
 	MD5_CTX context;
 	u8 hash[MD5_MAC_LEN];
 
+	NdisZeroMemory(&context, sizeof(context));
 	MD5Init(&context);
 	MD5Update(&context, msg->buf, 4);
 	MD5Update(&context, sent_msg->hdr->authenticator, MD5_MAC_LEN);
@@ -429,6 +432,36 @@ int Radius_msg_copy_attr(struct radius_msg *dst, struct radius_msg *src, u8 type
 	return 1;
 }
 
+
+#if HOTSPOT_R3
+#ifdef RADIUS_DAS_SUPPORT
+int Radius_msg_finish_das_rsp(struct radius_msg *msg, u8 *secret,
+                               size_t secret_len,
+                               const struct radius_hdr *req_hdr)
+{
+        u8 auth[MD5_MAC_LEN];
+        struct radius_attr_hdr *attr;
+
+        memset(auth, 0, MD5_MAC_LEN);
+        attr = Radius_msg_add_attr(msg, RADIUS_ATTR_MESSAGE_AUTHENTICATOR,
+                                   auth, MD5_MAC_LEN);
+        if (attr == NULL) {
+                DBGPRINT(RT_DEBUG_ERROR,"Could not add Message-Authenticator");
+                return -1;
+        }
+
+        msg->hdr->length = htons(msg->buf_used);
+        memcpy(msg->hdr->authenticator, req_hdr->authenticator, 16);
+        hmac_md5(secret, secret_len, msg->buf, msg->buf_used, (u8 *) (attr + 1));
+        if (msg->buf_used > 0xffff)
+                DBGPRINT(RT_DEBUG_ERROR,"WARNING: too long RADIUS messages (%lu)\n", msg->buf_used);
+
+        return 0;
+}
+#endif /* RADIUS_DAS_SUPPORT */
+#endif /* HOTSPOT_R3 */
+
+
 /* Create Request Authenticator. The value should be unique over the lifetime
  * of the shared secret between authenticator and authentication server.
  * Use one-way MD5 hash calculated from current timestamp and some data given
@@ -437,10 +470,11 @@ void Radius_msg_make_authenticator(struct radius_msg *msg, u8 *data, size_t len)
 {
 	struct timeval tv;
 	MD5_CTX context;
-	long int l;
+	unsigned long l;
 
 	gettimeofday(&tv, NULL);
-	l = random();
+	l = os_random();
+	NdisZeroMemory(&context, sizeof(context));
 	MD5Init(&context);
 	MD5Update(&context, (u8 *) &tv, sizeof(tv));
 	MD5Update(&context, data, len);
@@ -517,7 +551,10 @@ static u8 *Radius_msg_get_ms_attr(struct radius_msg *msg, u8 ms_type, size_t *al
 static u8 * decrypt_ms_key(u8 *key, size_t len, struct radius_msg *sent_msg,
 			   u8 *secret, size_t secret_len, size_t *reslen)
 {
-	u8 *pos, *plain, *ppos, *res;
+	u8 *pos = NULL;
+	u8 *plain = NULL;
+	u8 *ppos = NULL;
+	u8 *res = NULL;
 	size_t left, plen;
 	u8 hash[MD5_MAC_LEN];
 	MD5_CTX context;
@@ -540,12 +577,14 @@ static u8 * decrypt_ms_key(u8 *key, size_t len, struct radius_msg *sent_msg,
 	ppos = plain = malloc(plen);
 	if (plain == NULL)
 		return NULL;
+	memset(plain, 0, plen);
 
 	while (left > 0)
 	{
 		/* b(1) = MD5(Secret + Request-Authenticator + Salt)
 		 * b(i) = MD5(Secret + c(i - 1)) for i > 1 */
 
+		NdisZeroMemory(&context, sizeof(context));
 		MD5Init(&context);
 		MD5Update(&context, secret, secret_len);
 		if (first)
@@ -606,7 +645,7 @@ Radius_msg_get_ms_keys(struct radius_msg *msg, struct radius_msg *sent_msg,
 		keys->send = decrypt_ms_key(key, keylen, sent_msg, secret, secret_len, &keys->send_len);
 		free(key);
 	}
-    DBGPRINT(RT_DEBUG_INFO," secret_len = %d, secret= %s\n",secret_len,secret);
+	DBGPRINT(RT_DEBUG_INFO," secret_len = %lu, secret= %s\n", secret_len, secret);
 	key = Radius_msg_get_ms_attr(msg, RADIUS_VENDOR_ATTR_MS_MPPE_RECV_KEY, &keylen);
 	if (key)
 	{
@@ -629,7 +668,7 @@ Radius_msg_add_attr_user_password(struct radius_msg *msg,
 	size_t buf_len;
 	u8 hash[16];
 
-	if (data_len > 128)
+	if (data_len + 16 > 128)
 		return NULL;
 
 	memcpy(buf, data, data_len);
@@ -643,6 +682,7 @@ Radius_msg_add_attr_user_password(struct radius_msg *msg,
 		buf_len += padlen;
 	}
 
+	NdisZeroMemory(&context, sizeof(context));
 	MD5Init(&context);
 	MD5Update(&context, secret, secret_len);
 	MD5Update(&context, msg->hdr->authenticator, 16);

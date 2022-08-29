@@ -327,8 +327,6 @@ case "$host" in
 		AC_DEFINE([TARGET_DARWIN], [1], [Are we running on Mac OS X?])
 		AC_DEFINE_UNQUOTED([TARGET_PREFIX], ["M"], [Target prefix])
 		have_tap_header="yes"
-		dnl some Mac OS X tendering (we use vararg macros...)
-		CPPFLAGS="$CPPFLAGS -no-cpp-precomp"
 		ac_cv_type_struct_in_pktinfo=no
 		;;
 	*-mingw*)
@@ -443,7 +441,7 @@ AC_CHECK_HEADERS([ \
 	unistd.h signal.h libgen.h stropts.h \
 	syslog.h pwd.h grp.h \
 	sys/sockio.h sys/uio.h linux/sockios.h \
-	linux/types.h sys/poll.h sys/epoll.h err.h \
+	linux/types.h linux/errqueue.h sys/poll.h sys/epoll.h err.h \
 ])
 
 SOCKET_INCLUDES="
@@ -501,12 +499,6 @@ AC_CHECK_TYPES(
 AC_CHECK_TYPE(
 	[struct iphdr],
 	[AC_DEFINE([HAVE_IPHDR], [1], [struct iphdr needed for IPv6 support])],
-	,
-	[[${SOCKET_INCLUDES}]]
-)
-AC_CHECK_TYPE(
-	[struct sock_extended_err],
-	[AC_DEFINE([HAVE_SOCK_EXTENDED_ERR], [1], [struct sock_extended_err needed for extended socket error support])],
 	,
 	[[${SOCKET_INCLUDES}]]
 )
@@ -905,9 +897,12 @@ if test "${enable_crypto}" = "yes" -a "${with_crypto_library}" = "openssl"; then
 			EVP_MD_CTX_new \
 			EVP_MD_CTX_free \
 			EVP_MD_CTX_reset \
+			EVP_CIPHER_CTX_reset \
 			SSL_CTX_get_default_passwd_cb \
 			SSL_CTX_get_default_passwd_cb_userdata \
 			SSL_CTX_set_security_level \
+			X509_get0_notBefore \
+			X509_get0_notAfter \
 			X509_get0_pubkey \
 			X509_STORE_get0_objects \
 			X509_OBJECT_free \
@@ -1327,11 +1322,25 @@ if test "${enable_plugin_auth_pam}" = "yes"; then
 fi
 
 if test "${enable_async_push}" = "yes"; then
-	AC_CHECK_HEADERS(
-		[sys/inotify.h],
-		AC_DEFINE([ENABLE_ASYNC_PUSH], [1], [Enable async push]),
-		AC_MSG_ERROR([inotify.h not found.])
-	)
+	case "$host" in
+		*-*-freebsd*)
+			PKG_CHECK_MODULES(
+				[OPTIONAL_INOTIFY],
+				[libinotify],
+				[
+					AC_DEFINE([HAVE_SYS_INOTIFY_H])
+					AC_DEFINE([ENABLE_ASYNC_PUSH], [1], [Enable async push])
+				]
+			)
+		;;
+		*)
+			AC_CHECK_HEADERS(
+				[sys/inotify.h],
+				AC_DEFINE([ENABLE_ASYNC_PUSH], [1], [Enable async push]),
+				AC_MSG_ERROR([inotify.h not found.])
+			)
+		;;
+	esac
 fi
 
 CONFIGURE_DEFINES="`set | grep '^enable_.*=' ; set | grep '^with_.*='`"
@@ -1358,6 +1367,8 @@ AC_SUBST([OPTIONAL_LZ4_LIBS])
 AC_SUBST([OPTIONAL_SYSTEMD_LIBS])
 AC_SUBST([OPTIONAL_PKCS11_HELPER_CFLAGS])
 AC_SUBST([OPTIONAL_PKCS11_HELPER_LIBS])
+AC_SUBST([OPTIONAL_INOTIFY_CFLAGS])
+AC_SUBST([OPTIONAL_INOTIFY_LIBS])
 
 AC_SUBST([PLUGIN_AUTH_PAM_CFLAGS])
 AC_SUBST([PLUGIN_AUTH_PAM_LIBS])
@@ -1376,15 +1387,8 @@ AC_SUBST([sampledir])
 AC_SUBST([systemdunitdir])
 AC_SUBST([tmpfilesdir])
 
-VENDOR_SRC_ROOT="\$(abs_top_srcdir)/vendor/"
-VENDOR_DIST_ROOT="\$(abs_top_builddir)/vendor/dist"
-VENDOR_BUILD_ROOT="\$(abs_top_builddir)/vendor/.build"
-AC_SUBST([VENDOR_SRC_ROOT])
-AC_SUBST([VENDOR_BUILD_ROOT])
-AC_SUBST([VENDOR_DIST_ROOT])
-
-TEST_LDFLAGS="-lcmocka -L\$(abs_top_builddir)/vendor/dist/lib -Wl,-rpath,\$(abs_top_builddir)/vendor/dist/lib"
-TEST_CFLAGS="-I\$(top_srcdir)/include -I\$(abs_top_builddir)/vendor/dist/include"
+TEST_LDFLAGS="${OPTIONAL_CRYPTO_LIBS} ${OPTIONAL_PKCS11_HELPER_LIBS} -lcmocka -L\$(top_builddir)/vendor/dist/lib -Wl,-rpath,\$(top_builddir)/vendor/dist/lib"
+TEST_CFLAGS="${OPTIONAL_CRYPTO_CFLAGS} ${OPTIONAL_PKCS11_HELPER_CFLAGS} -I\$(top_srcdir)/include -I\$(top_builddir)/vendor/dist/include"
 
 AC_SUBST([TEST_LDFLAGS])
 AC_SUBST([TEST_CFLAGS])
@@ -1412,8 +1416,6 @@ AC_CONFIG_FILES([
 	build/msvc/Makefile
 	build/msvc/msvc-generate/Makefile
 	distro/Makefile
-	distro/rpm/Makefile
-	distro/rpm/openvpn.spec
 	distro/systemd/Makefile
 	include/Makefile
 	src/Makefile

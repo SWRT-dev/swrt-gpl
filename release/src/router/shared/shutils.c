@@ -121,9 +121,9 @@ void dbgprintf (const char * format, ...)
 		}
 		else
 		{
-		close(nfd);
+			close(nfd);
+		}
 	}
-}
 }
 
 void dbg(const char * format, ...)
@@ -409,13 +409,16 @@ static int get_cmds_size(char *const *cmds)
 int _cpu_eval(int *ppid, char *cmds[])
 {
         int ncmds=0, n=0, i;
+	int ret;
         int maxn = get_cmds_size(cmds)
 #if defined (SMP) || defined(RTCONFIG_ALPINE) || defined(RTCONFIG_LANTIQ)
                 + 4;
 #else
                 +1;
 #endif
-        char *cpucmd[maxn];
+        char **cpucmd = (char **)malloc(maxn * sizeof(char *));
+	if (!cpucmd)
+		return -ENOMEM;
 
         for(i=0; i<maxn; ++i)
                 cpucmd[i]=NULL;
@@ -439,16 +442,23 @@ int _cpu_eval(int *ppid, char *cmds[])
 #endif
         for(; cmds[n]; cpucmd[ncmds++]=cmds[n++]);
 
-        return _eval(cpucmd, NULL, 0, ppid);;
+	ret = _eval(cpucmd, NULL, 0, ppid);;
+	free(cpucmd);
+	return ret;
 }
 
 int _cpu_mask_eval(char *const argv[], const char *path, int timeout, int *ppid, unsigned int mask)
 {
 	int maxn = get_cmds_size(argv) + 3;
-	char *cpuargv[maxn];
+	char **cpuargv;
+	int ret;
 	int argc = 0;
 	int i;
 	char mask_str[16] = {0};
+
+	cpuargv = (char **)malloc(maxn * sizeof(char *));
+	if (!cpuargv)
+		return -ENOMEM;
 
 	for (i = 0;i < maxn; i++)
 		cpuargv[i] = NULL;
@@ -460,7 +470,9 @@ int _cpu_mask_eval(char *const argv[], const char *path, int timeout, int *ppid,
 		cpuargv[argc++] = argv[i];
 
 	//_dprintf("\n=====\n"); for(i = 0; cpuargv[i]; i++) _dprintf("%s ", cpuargv[i]); _dprintf("\n=====\n");
-	return _eval(cpuargv, path, timeout, ppid);
+	ret = _eval(cpuargv, path, timeout, ppid);
+	free(cpuargv);
+	return ret;
 }
 
 /*
@@ -567,7 +579,7 @@ get_pid_by_name(char *name)
 
 	while ((next = readdir(dir)) != NULL) {
 		FILE *fp;
-		char filename[256];
+		char filename[sizeof("/proc/%s/cmdline") + 256];
 		char buffer[256];
 
 		/* If it isn't a number, we don't want it */
@@ -608,7 +620,7 @@ get_pid_by_thrd_name(char *name)
 
         while ((next = readdir(dir)) != NULL) {
                 FILE *fp;
-                char filename[256];
+		char filename[sizeof("/proc/%s/cmdline") + 256];
                 char buffer[256];
 
                 /* If it isn't a number, we don't want it */
@@ -2007,7 +2019,7 @@ wl_ether_etoa(const struct ether_addr *n)
 	for (i = 0; i < ETHER_ADDR_LEN; i++) {
 		if (i)
 			*c++ = ':';
-#if defined(RTCONFIG_LANTIQ)|| defined(RTCONFIG_LANTIQ)|| defined(RTCONFIG_QCA)			
+#if defined(RTCONFIG_LANTIQ)|| defined(RTCONFIG_LANTIQ)|| defined(RTCONFIG_QCA) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_RALINK)
 		c += snprintf(c, sizeof(etoa_buf) - (c - etoa_buf), "%02X", n->ether_addr_octet[i] & 0xff);
 #else
 		c += snprintf(c, sizeof(etoa_buf) - (c - etoa_buf), "%02X", n->octet[i] & 0xff);
@@ -2448,8 +2460,32 @@ int num_of_wl_if()
 	return count;
 }
 
+int num_of_wan_if()
+{
+	char word[256], *next;
+	int count = 0;
+	char wan_ifnames[32] = { 0 };
+
+	strlcpy(wan_ifnames, nvram_safe_get("wan_ifnames"), sizeof(wan_ifnames));
+	foreach (word, wan_ifnames, next)
+		count++;
+
+	return count;
+}
+
 int num_of_5g_if()
 {
+#if !defined(CONFIG_BCMWL5)
+	char prefix[] = "wlXXXXXXXXXXXX_";
+	int band, count = 0;
+
+	for (band = WL_2G_BAND; band < MAX_NR_WL_IF; band++) {
+		SKIP_ABSENT_BAND(band);
+		snprintf(prefix, sizeof(prefix), "wl%d_", band);
+		if (nvram_pf_match(prefix, "nband", "1"))
+			count++;
+	}
+#else
 	char word[256], *next;
 	int count = 0;
 	char wl_ifnames[32] = { 0 };
@@ -2461,20 +2497,7 @@ int num_of_5g_if()
 		if(band == WLC_BAND_5G)
 			count++;
 	}
-
-	return count;
-}
-
-int num_of_wan_if()
-{
-	char word[256], *next;
-	int count = 0;
-	char wan_ifnames[32] = { 0 };
-
-	strlcpy(wan_ifnames, nvram_safe_get("wan_ifnames"), sizeof(wan_ifnames));
-	foreach (word, wan_ifnames, next)
-		count++;
-
+#endif
 	return count;
 }
 
@@ -2639,134 +2662,6 @@ found_next:
         return NULL;
 }
 
-#ifdef CONFIG_BCMWL5
-void retrieve_static_maclist_from_nvram(int idx,struct maclist *maclist,int maclist_buf_size)
-{
-	char prefix[16]={0};
-	struct ether_addr *ea;
-	char *buf = maclist;
-	char tmp[100];
-	char var[80], *next;
-	unsigned char sta_ea[6] = {0};
-	char *nv, *nvp, *b;
-#ifdef RTCONFIG_AMAS
-	char mac2g[32], mac5g[32], *next_mac;
-	char *reMac, *maclist2g, *maclist5g, *timestamp;
-	char stamac2g[18] = {0};
-	char stamac5g[18] = {0};
-#endif
-
-	if(!maclist) return;
-
-#ifdef RTCONFIG_AMAS
-	if (nvram_get_int("re_mode") == 1)
-		snprintf(prefix, sizeof(prefix), "wl%d.1_", idx);
-	else
-#endif
-	snprintf(prefix,16,"wl%d_",idx);
-
-#ifdef RTCONFIG_AMAS
-	if (is_cfg_relist_exist())
-	{
-		if (nvram_get_int("re_mode") == 1) {
-			nv = nvp = get_cfg_relist(0);
-			if (nv) {
-				while ((b = strsep(&nvp, "<")) != NULL) {
-					if ((vstrsep(b, ">", &reMac, &maclist2g, &maclist5g, &timestamp) != 4))
-						continue;
-					/* first mac for sta 2g of dut */
-					foreach_44 (mac2g, maclist2g, next_mac)
-						break;
-					/* first mac for sta 5g of dut */
-					foreach_44 (mac5g, maclist5g, next_mac)
-						break;
-
-					if (strcmp(reMac, get_lan_hwaddr()) == 0) {
-						snprintf(stamac2g, sizeof(stamac2g), "%s", mac2g);
-						//dbg("dut 2g sta (%s)\n", stamac2g);
-						snprintf(stamac5g, sizeof(stamac5g), "%s", mac5g);
-						//dbg("dut 5g sta (%s)\n", stamac5g);
-						break;
-					}
-				}
-				free(nv);
-			}
-		}
-	}
-#endif
-
-	maclist->count = 0;
-	if (!nvram_match(strcat_r(prefix, "macmode", tmp), "disabled")) {
-		memset(maclist, 0, sizeof(maclist_buf_size));
-		ea = &(maclist->ea[0]);
-
-		nv = nvp = strdup(nvram_safe_get(strcat_r(prefix, "maclist_x", tmp)));
-		if (nv) {
-			while ((b = strsep(&nvp, "<")) != NULL) {
-				if (strlen(b) == 0) continue;
-
-#ifdef RTCONFIG_AMAS
-				if(nvram_match(strcat_r(prefix, "macmode", tmp), "allow")){
-					if (nvram_get_int("re_mode") == 1) {
-						if (strcmp(b, stamac2g) == 0 ||
-							strcmp(b, stamac5g) == 0)
-							continue;
-					}
-				}
-#endif
-				//dbg("maclist sta (%s) in %s\n", b, wlif_name);
-				ether_atoe(b, sta_ea);
-				memcpy(ea, sta_ea, sizeof(struct ether_addr));
-				maclist->count++;
-				ea++;
-			}
-			free(nv);
-		}
-#ifdef RTCONFIG_AMAS
-		if (nvram_match(strcat_r(prefix, "macmode", tmp), "allow"))
-		{
-			nv = nvp = get_cfg_relist(0);
-			if (nv) {
-				while ((b = strsep(&nvp, "<")) != NULL) {
-					if ((vstrsep(b, ">", &reMac, &maclist2g, &maclist5g, &timestamp) != 4))
-						continue;
-
-					if (strcmp(reMac, get_lan_hwaddr()) == 0)
-						continue;
-
-					if (idx == 0) {
-						foreach_44 (mac2g, maclist2g, next_mac) {
-							if (check_re_in_macfilter(idx, mac2g))
-								continue;
-							//dbg("relist sta (%s) in %s\n", mac2g, wlif_name);
-							ether_atoe(mac2g, sta_ea);
-							memcpy(ea, sta_ea, sizeof(struct ether_addr));
-							maclist->count++;
-							ea++;
-						}
-					}
-					else
-					{
-						foreach_44 (mac5g, maclist5g, next_mac) {
-							if (check_re_in_macfilter(idx, mac5g))
-								continue;
-							//dbg("relist sta (%s) in %s\n", mac5g, wlif_name);
-							ether_atoe(mac5g, sta_ea);
-							memcpy(ea, sta_ea, sizeof(struct ether_addr));
-							maclist->count++;
-							ea++;
-						}
-					}
-				}
-				free(nv);
-			}
-		}
-#endif
-
-	}
-}
-#endif
-
 /* Compare two space-separated/null-terminated lists(str1 and str2)
  * NOTE : The individual names in the list should not exceed NVRAM_MAX_VALUE_LEN
  *
@@ -2801,4 +2696,20 @@ compare_lists(char *str1, char *str2)
 
        return 0;
 }
+#ifdef RTCONFIG_AMAS
+int check_if_exist_ifnames(char *need_check_ifname, char *ifname)
+{
+	char check_ifname[8] = {}, *next = NULL;
+	if(need_check_ifname && ifname){
+		if(nvram_safe_get(need_check_ifname)){
+			 foreach(check_ifname, nvram_safe_get(need_check_ifname), next) { // find target port interface name
+				if (!strncmp(check_ifname, ifname, strlen(check_ifname))) {
+				    return 1;
+				}
+			}
+		}
+        }
+	return 0;
+}
+#endif
 

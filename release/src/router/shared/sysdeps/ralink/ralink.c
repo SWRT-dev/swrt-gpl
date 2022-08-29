@@ -7,16 +7,97 @@
 #include "shared.h"
 
 #ifdef RTCONFIG_AMAS 
-char *get_pap_bssid(int unit)
+char *get_pap_bssid(int unit, char bssid_str[])
 {
-	//TODO
-        return "";
+	const char *ifname;
+	char data[12];
+	struct iwreq wrq;
+
+	ifname = get_staifname(unit);
+
+	memset(data, 0x00, sizeof(data));
+	wrq.u.data.length = sizeof(data);
+	wrq.u.data.pointer = (caddr_t) data;
+	wrq.u.data.flags = OID_802_11_BSSID;
+
+	if (wl_ioctl(ifname, RT_PRIV_IOCTL, &wrq) < 0) {
+		dbg("errors in getting %s bssid\n", ifname);
+		return "";
+	}
+
+	ether_etoa(data, bssid_str);
+	return bssid_str;
 }
+
+struct channel_info {
+	unsigned char channel;
+	unsigned char bandwidth;
+	unsigned char extrach;
+};
 
 int wl_get_bw(int unit)
 {
-	//TODO
+	struct iwreq wrq;
+	struct channel_info info;
+
+	memset(&info, 0, sizeof(struct channel_info));
+	wrq.u.data.length = sizeof(struct channel_info);
+	wrq.u.data.pointer = (caddr_t) &info;
+	wrq.u.data.flags = ASUS_SUBCMD_GCHANNELINFO;
+
+	if (wl_ioctl(get_staifname(unit), RTPRIV_IOCTL_ASUSCMD, &wrq) < 0) {
+		dbg("wl_ioctl failed on %s (%d)\n", __FUNCTION__, __LINE__);
+		return -1;
+	}
+
+	switch (info.bandwidth) {
+		case 0:
+			return 20;
+			break;
+		case 1:
+			return 40;
+			break;
+		case 2:
+			return 80;
+			break;
+		case 3:
+			return 160;
+			break;
+		default:
+			break;
+	}
+
 	return 20;
+}
+
+/*
+ * wl_get_bw_cap(unit, *bwcap)
+ *
+ * bwcap
+ * 	0x01 = 20 MHz
+ * 	0x02 = 40 MHz
+ * 	0x04 = 80 MHz
+ * 	0x08 = 160 MHz
+ *
+ * 	ex: 5G support 20,40,80
+ * 	*bwcap = 0x01 | 0x02 | 0x04
+ */
+int wl_get_bw_cap(int unit, int *bwcap)
+{
+	if (bwcap == NULL)
+		return -1;
+	if (unit == 0)
+		*bwcap = 0x01 | 0x02;		/* 40MHz */
+	else if (unit == 1)
+		*bwcap = 0x01 | 0x02 | 0x04;	/* 11AC 80MHz */
+#ifdef RTCONFIG_HAS_5G_2
+	else if (unit == 2)
+		*bwcap = 0x01 | 0x02 | 0x04;	/* 11AC 80MHz */
+#endif
+	else
+		return -1;
+
+	return 0;
 }
 
 int get_psta_status(int unit)
@@ -110,12 +191,11 @@ void add_beacon_vsie_guest(char *hexdata)
         else  // CAP/Router
             subunit = 2;
         for (; subunit <= num_of_mssid_support(unit); subunit++) {
-            char buf[] = "wlXX.XX_ifname";
-            memset(buf, 0, sizeof(buf));
-            snprintf(buf, sizeof(buf), "wl%d.%d_ifname", unit, subunit);
-            if (is_intf_up(nvram_safe_get(buf)) != -1)  // interface exist
+            char ifname[16];
+            __get_wlifname(unit, subunit, ifname);
+            if (is_intf_up(ifname) != -1)  // interface exist
 		    	vsie_operation(unit, subunit, VSIE_BEACON | VSIE_PROBE_RESP, 1, hexdata);
-        }
+       }
         unit++;
     }
 }
@@ -163,10 +243,9 @@ void del_beacon_vsie_guest(char *hexdata)
         else  // CAP/Router
             subunit = 2;
         for (; subunit <= num_of_mssid_support(unit); subunit++) {
-            char buf[] = "wlXX.XX_ifname";
-            memset(buf, 0, sizeof(buf));
-            snprintf(buf, sizeof(buf), "wl%d.%d_ifname", unit, subunit);
-            if (is_intf_up(nvram_safe_get(buf)) != -1)  // interface exist
+            char ifname[16];
+            __get_wlifname(unit, subunit, ifname);
+            if (is_intf_up(ifname) != -1)  // interface exist
 		    	vsie_operation(unit, subunit, VSIE_BEACON | VSIE_PROBE_RESP, 3, hexdata);
         }
         unit++;
@@ -211,14 +290,62 @@ void wait_connection_finished(int band)
     }
 }
 
+int get_wlan_service_status(int bssidx, int vifidx)
+{
+    if (nvram_get_int("wlready") == 0) return -1;
+
+    char *ifname = NULL;
+    char tmp[128] = {0}, prefix[] = "wlXXXXXXXXXX_";
+    char wl_radio[] = "wlXXXX_radio";
+
+    snprintf(wl_radio, sizeof(wl_radio), "wl%d_radio", bssidx);
+    if (nvram_get_int(wl_radio) == 0)
+        return -2;
+
+    if (vifidx > 0)
+        snprintf(prefix, sizeof(prefix), "wl%d.%d_", bssidx, vifidx);
+    else
+        snprintf(prefix, sizeof(prefix), "wl%d", bssidx);
+
+    ifname = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+
+    if (is_intf_up(ifname) > 0) return get_radio(bssidx, vifidx);
+
+    return 0;
+}
+
+void set_wlan_service_status(int bssidx, int vifidx, int enabled)
+{
+    if (nvram_get_int("wlready") == 0) return;
+
+    char *ifname = NULL;
+    char tmp[128] = {0}, prefix[] = "wlXXXXXXXXXX_";
+    char wl_radio[] = "wlXXXX_radio";
+
+    snprintf(wl_radio, sizeof(wl_radio), "wl%d_radio", bssidx);
+    if (nvram_get_int(wl_radio) == 0)
+        return;
+
+    if (vifidx > 0)
+        snprintf(prefix, sizeof(prefix), "wl%d.%d_", bssidx, vifidx);
+    else
+        snprintf(prefix, sizeof(prefix), "wl%d", bssidx);
+
+    ifname = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+	eval("ifconfig", ifname, enabled? "up":"down");
+}
+
+
 #ifdef RTCONFIG_BHCOST_OPT
 unsigned int get_uplinkports_linkrate(char *ifname)
 {
-	unsigned int link_rate = 1000;
-
-	//TODO for getting link rate
-
-	return link_rate;
+	int speed;
+	char *eth=NULL;
+	speed=0;
+	eth=nvram_safe_get("eth_ifnames");
+	if(eth && strstr(eth,ifname))
+		speed = rtkswitch_WanPort_phySpeed();
+	return speed;
 }
 #endif	/* RTCONFIG_BHCOST_OPT */
 #endif
@@ -236,11 +363,11 @@ void update_macfilter_relist(void)
 	char stamac2g[18] = {0};
 	char stamac5g[18] = {0};
 
-	if (nvram_get("cfg_relist"))
+	if (is_cfg_relist_exist())
 	{
 #ifdef RTCONFIG_AMAS
 		if (nvram_get_int("re_mode") == 1) {
-			nv = nvp = strdup(nvram_safe_get("cfg_relist"));
+			nv = nvp = get_cfg_relist(0);
 			if (nv) {
 				while ((b = strsep(&nvp, "<")) != NULL) {
 					if ((vstrsep(b, ">", &reMac, &maclist2g, &maclist5g, &timestamp) != 4))
@@ -278,7 +405,7 @@ void update_macfilter_relist(void)
 			wlif_name = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
 
 			if (nvram_match(strcat_r(prefix, "macmode", tmp), "allow")) {
-				nv = nvp = strdup(nvram_safe_get("cfg_relist"));
+				nv = nvp = get_cfg_relist(0);
 				if (nv) {
 					while ((b = strsep(&nvp, "<")) != NULL) {
 						if ((vstrsep(b, ">", &reMac, &maclist2g, &maclist5g, &timestamp) != 4))
@@ -342,5 +469,24 @@ phy_port_mapping get_phy_port_mapping(void)
 #endif
 	};
 	return port_mapping;
+}
+#endif
+
+#ifdef RTCONFIG_AMAS
+double get_wifi_maxpower(int band_type)
+{
+	return 0;
+} 
+double get_wifi_5G_maxpower()
+{
+	return 0;
+}
+double get_wifi_5GH_maxpower()
+{
+	return 0;
+}
+double get_wifi_6G_maxpower()
+{
+	return 0;
 }
 #endif

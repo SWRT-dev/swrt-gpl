@@ -276,16 +276,6 @@ int _ifconfig(const char *name, int flags, const char *addr, const char *netmask
 	}
 
 	close(s);
-
-//Andrew add
-#ifdef RTCONFIG_CONNTRACK 
-	if(flags & IFUP)
-		conntrack_check(CONNTRACK_START); 
-	else if (flags & IFFDOWN)
-		conntrack_check(CONNTRACK_STOP); 
-#endif
-//Andrew end
-
 	return 0;
 
  ERROR:
@@ -417,6 +407,45 @@ int route_add(char *name, int metric, char *dst, char *gateway, char *genmask)
 int route_del(char *name, int metric, char *dst, char *gateway, char *genmask)
 {
 	return route_manip(SIOCDELRT, name, metric, dst, gateway, genmask);
+}
+
+int route_exist(const char *name, int metric, const char *dst, const char *gateway, const char *mask)
+{
+	FILE *fp = fopen("/proc/net/route", "r");
+	in_addr_t addr_dst, addr_gate, addr_mask;
+	in_addr_t rtr_dst, rtr_gate, rtr_mask;
+	int rtr_metric;
+	char buf[256], iface[16];
+	int i;
+	int ret = -1;
+
+	if (!name || !dst || !gateway || !mask)
+		return -1;
+	if (inet_pton(AF_INET, dst, &addr_dst) < 0
+	 || inet_pton(AF_INET, gateway, &addr_gate) < 0
+	 || inet_pton(AF_INET, mask, &addr_mask) < 0)
+		return -1;
+
+	if(fp) {
+		while(fgets(buf, sizeof(buf), fp)) {
+			if(!strncmp(buf, "Iface", 5))
+				continue;
+
+			i = sscanf(buf, "%s %x %x %*s %*s %*s %d %x",
+					iface, &rtr_dst, &rtr_gate, &rtr_metric, &rtr_mask);
+			if (i != 4)
+				break;
+
+			if( !strcmp(name, iface) && rtr_metric == metric && addr_dst == rtr_dst
+			 && addr_gate == rtr_gate && addr_mask == rtr_mask) {
+				ret = 1;
+			}
+		}
+		if (ret != 1)
+			ret = 0;
+		fclose(fp);
+	}
+	return (ret);
 }
 
 /* configure loopback interface */
@@ -617,7 +646,7 @@ int start_vlan(void)
 	close(s);
 #endif
 
-#if (defined(RTCONFIG_QCA) || (defined(RTCONFIG_RALINK) && (defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7621))))
+#if (defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK))
 	if(!nvram_match("switch_wantag", "none")&&!nvram_match("switch_wantag", "")&&!nvram_match("switch_wantag", "hinet"))
 	{
 		char wan_base_if[IFNAMSIZ] = "";
@@ -653,22 +682,14 @@ int start_vlan(void)
 #endif
 
 #if defined(HND_ROUTER)
-	if(!nvram_match("switch_wantag", "") && (nvram_get_int("switch_stb_x") > 0 || nvram_match("switch_wantag", "unifi_biz") || 
-		nvram_match("switch_wantag", "stuff_fibre") || nvram_match("switch_wantag", "spark") ||
-		nvram_match("switch_wantag", "2degrees") || nvram_match("switch_wantag", "slingshot") ||
-		nvram_match("switch_wantag", "orcon") || nvram_match("switch_wantag", "voda_nz") ||
-		nvram_match("switch_wantag", "tpg") || nvram_match("switch_wantag", "iinet") ||
-		nvram_match("switch_wantag", "aapt") || nvram_match("switch_wantag", "intronode") ||
-		nvram_match("switch_wantag", "amaysim") || nvram_match("switch_wantag", "dodo") ||
-		nvram_match("switch_wantag", "iprimus") || nvram_match("switch_wantag", "manual") ||
-		nvram_match("switch_wantag", "iprimus") || nvram_match("switch_wantag", "centurylink") ||
-		nvram_match("switch_wantag", "actrix") || nvram_match("switch_wantag", "jastel") ||
-		nvram_match("switch_wantag", "kpn_nl") || nvram_match("switch_wantag", "meo_iptv") ||
-		nvram_match("switch_wantag", "meo_br") ||
-		nvram_match("switch_wantag", "hinet_mesh") ||
-		nvram_match("switch_wantag", "google_fiber"))) {
-		ifconfig(WAN_IF_ETH, IFUP, NULL, NULL);
-		set_wan_tag(WAN_IF_ETH);
+	if (!nvram_match("switch_wantag", "")
+		&& (nvram_get_int("switch_stb_x") > 0 || (nvram_get_int("switch_stb_x") == 0 && nvram_get_int("switch_wan0tagid") > 0))) {
+		/*
+			case 1: STB != 0
+			case 2: STB == 0 && wan tag != 0
+		*/
+		ifconfig(wan_if_eth(), IFUP, NULL, NULL);
+		set_wan_tag(wan_if_eth());
 	}
 #elif defined(BLUECAVE)
 	if(!nvram_match("switch_wantag", "") && (nvram_get_int("switch_stb_x") > 0 || nvram_match("switch_wantag", "unifi_biz") || 
@@ -677,8 +698,10 @@ int start_vlan(void)
 		nvram_match("switch_wantag", "orcon") || nvram_match("switch_wantag", "voda_nz") ||
 		nvram_match("switch_wantag", "tpg") || nvram_match("switch_wantag", "iinet") ||
 		nvram_match("switch_wantag", "aapt") || nvram_match("switch_wantag", "intronode") ||
-		nvram_match("switch_wantag", "amaysim") || nvram_match("switch_wantag", "dodo") ||
-		nvram_match("switch_wantag", "iprimus") || nvram_match("switch_wantag", "manual"))) {
+		nvram_match("switch_wantag", "iprimus") || nvram_match("switch_wantag", "manual") ||
+		nvram_match("switch_wantag", "kpn_nl") || nvram_match("switch_wantag", "centurylink") ||
+		nvram_match("switch_wantag", "actrix") || nvram_match("switch_wantag", "jastel") ||
+		nvram_match("switch_wantag", "google_fiber"))) {
 		char *wan_base_if = "eth1";
 		ifconfig(wan_base_if, IFUP, NULL, NULL);
 		set_wan_tag(wan_base_if);
@@ -712,4 +735,3 @@ int stop_vlan(void)
 
 	return 0;
 }
-

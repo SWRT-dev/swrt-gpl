@@ -261,10 +261,4 @@ typedef struct {
 #define REG_ESW_VUB0		0x100	/* VLAN Untag Block 0 */
 #define REG_ESW_POA_LINK_STATUS_SHIFT		25
 
-/* for ATE Get_WanLanStatus command */
-typedef struct {
-	unsigned int link[5];
-	unsigned int speed[5];
-} phyState;
-
 #endif

@@ -29,6 +29,7 @@
 #endif
 #if defined(RTCONFIG_BCM_502L07P2)
 #include "ethernet.h"
+#include <wpsdefs.h>
 #else
 #include "bcm_usched.h"
 #include "proto/ethernet.h"
@@ -43,7 +44,9 @@
 #define ETHER_ADDR_LEN 6
 #endif
 
-#ifdef RTCONFIG_AMAS_WGN
+#if defined(RTCONFIG_BCM_502L07P2)
+#define WLIFU_MAX_NO_BRIDGE		16
+#elif defined(RTCONFIG_AMAS_WGN)
 #define WLIFU_MAX_NO_BRIDGE		8
 #else
 #define WLIFU_MAX_NO_BRIDGE		2
@@ -173,9 +176,14 @@ extern unsigned char *get_wlmacstr_by_unit(char *unit);
 #define WLIF_SSID_MAX_SZ		32
 #define WLIF_PSK_MAX_SZ			64
 
-#ifdef RTCONFIG_HND_ROUTER_AX
 #define WLIF_DPP_PARAMS_MAX_SIZE	512
-#endif
+
+#define DPP_AKM		"dpp"
+#define PSK_AKM		"psk"
+#define SAE_AKM		"sae"
+#define PSK_SAE_AKM	"psk+sae"
+#define DPP_SAE_AKM	"dpp+sae"
+#define DPP_PSK_SAE_AKM	"dpp+psk+sae"
 
 // WPS states to update the UI
 typedef enum wlif_wps_ui_status_code_id {
@@ -232,7 +240,6 @@ typedef struct wlif_wps_nw_settings {
 	bool invalid;		// Check for the validity of credentials
 } wlif_wps_nw_creds_t;
 
-#ifdef RTCONFIG_HND_ROUTER_AX
 // Structure to hold the network settings received in DPP config response.
 typedef struct wlif_dpp_config_settings {
 	char ssid[WLIF_SSID_MAX_SZ + /* '\0' */ 1];		// SSID
@@ -240,8 +247,10 @@ typedef struct wlif_dpp_config_settings {
 	char dpp_connector[WLIF_DPP_PARAMS_MAX_SIZE];		// DPP connector
 	char dpp_csign[WLIF_DPP_PARAMS_MAX_SIZE];		// DPP C-sign
 	char dpp_netaccess_key[WLIF_DPP_PARAMS_MAX_SIZE];	// DPP Net access key
+	char dpp_pp_key[WLIF_DPP_PARAMS_MAX_SIZE];		// DPP PP key
+	unsigned char dpp_psk[WLIF_PSK_MAX_SZ + /* '\0' */ 1];	// PSK
+	char dpp_pass[2*WLIF_PSK_MAX_SZ + /* '\0' */ 1];	// PASS
 } wlif_dpp_creds_t;
-#endif
 
 /* Struct to store the bss info */
 typedef struct wlif_bss {
@@ -257,6 +266,10 @@ void wl_wlif_set_ap_as_configured(char *ifname);
 int wl_wlif_get_wps_status_code();
 /* Updates the nvram value of wps_proc_status which is used to update ui */
 void wl_wlif_update_wps_ui(wlif_wps_ui_status_code_id_t idx);
+#if defined(RTCONFIG_BCM_502L07P2)
+/* Updates the nvram value of dpp_status which is used to update ui */
+void wl_wlif_update_dpp_ui(DPP_UI_SCSTATE idx, char *ifname);
+#endif
 /* Function to parse the hostapd config file */
 int wl_wlif_parse_hapd_config(char *ifname, wlif_wps_nw_creds_t *creds);
 /* Function to parse the  wpa_supplicant config file */
@@ -266,7 +279,7 @@ int wl_wlif_apply_creds(wlif_bss_t *bss, wlif_wps_nw_creds_t *creds);
 /* Invokes the hostapd/wpa_supplicant wps session */
 int wl_wlif_wps_pbc_hdlr(char *wps_ifname, char *bh_ifname);
 /* Stops the hostapd/wpa_supplicant wps session */
-#if defined(RTCONFIG_WIFI6E)
+#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_BCM_502L07P2)
 int wl_wlif_wps_stop_session(char *wps_ifname, bool bUpdateUI);
 #else
 int wl_wlif_wps_stop_session(char *wps_ifname);
@@ -286,7 +299,19 @@ int wl_wlif_wps_map_timeout();
 #ifdef RTCONFIG_HND_ROUTER_AX
 /* Applies DPP credentials to the interface provided in bss */
 int wl_wlif_apply_dpp_creds(wlif_bss_t *bss, wlif_dpp_creds_t *dpp_creds);
+#if defined(RTCONFIG_BCM_502L07P2)
+/* convert ascii string to hex string */
+void wl_ascii_str_to_hex_str(char *ascii_str, uint16 ascii_len, char *hex_str, uint16 hex_len);
+/* convert hex string to ascii */
+int wl_wlif_hexstr2ascii(const char *hex_str, unsigned char *buf, size_t len);
+
+int get_all_lanifname_sz(void);
+int get_all_lanifname(char *ifnames, int ifnames_sz);
+int get_all_lanifnames_listsz(void);
+int get_all_lanifnames_list(char *ifnames_list, int ifnames_listsz);
 #endif
+#endif
+
 /* wps session timeout */
 #define WLIF_WPS_TIMEOUT		120
 
@@ -304,7 +329,7 @@ void wl_wlif_wps_gpio_cleanup(int board_fp);
 #endif	/* BCA_HNDROUTER */
 #endif	/* CONFIG_HOSTAPD */
 
-#if defined(RTCONFIG_HND_ROUTER_AX_6756)
+#if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_BCM_502L07P2)
 #if !defined(RTCONFIG_SDK504L02_188_1303)
 /* LGI supported rate bitmap control feature */
 typedef enum _bits {
@@ -332,6 +357,16 @@ typedef union wl_rateset_args_u {
 
 #define WLIF_NVRAM_SUPPORT_RATE_BITMAP	"support_rate_bitmap"
 
+#if defined(RTCONFIG_BCM_502L07P2)
+int wl_rateset_get_bitmap_index(bit2rate_map_t *tbl, int tbl_sz, int i, int *l);
+void wl_rateset_init_fields(wl_rateset_args_u_t* rs, int rsver);
+void wl_rateset_get_fields(wl_rateset_args_u_t *rs, int rsver, uint32 **rscount, uint8 **rsrates,
+		uint8 **rsmcs, uint16 **rsvht_mcs, uint16 **rshe_mcs);
+int wl_rateset_get_args_info(void *wl, int *rs_len, int *rs_ver);
+#endif
+bool rateset_overwrite_by_supportedRatesBitmap(char *name, char *prefix);
+double wl_get_txpwr_target_max(char *name);
+double get_wifi_maxpower(int target_unit);
 #endif
 #endif
 #endif /* _wlif_utils_h_ */

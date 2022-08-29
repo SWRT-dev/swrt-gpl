@@ -37,6 +37,7 @@
 #include <utils.h>
 #include <qca.h>
 
+#define NR_WANLAN_PORT	5
 #define DBGOUT		NULL			/* "/dev/console" */
 
 enum {
@@ -45,6 +46,15 @@ enum {
 	VLAN_TYPE_WAN_NO_VLAN,	/* Used to bridge WAN/STB for Hinet MOD. */
 
 	VLAN_TYPE_MAX
+};
+
+enum {
+	LAN1_PORT=0,
+	LAN2_PORT,
+	LAN3_PORT,
+	LAN4_PORT,
+	WAN_PORT,
+	MAX_WANLAN_PORT
 };
 
 static const char *upstream_iptv_ifaces[16] = {

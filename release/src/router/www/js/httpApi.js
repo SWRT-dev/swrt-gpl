@@ -227,6 +227,7 @@ var httpApi ={
 			url: '/applyapp.cgi',
 			dataType: 'json',
 			data: postData,
+			type: 'POST',
 			error: function(){},
 			success: function(response){
 				if(handler) handler.call(response);
@@ -242,6 +243,33 @@ var httpApi ={
 
 		$.ajax({
 			url: 'upload.cgi',
+			dataType: 'multipart/form-data',
+			data: formData,
+			contentType: false,
+			processData: false,
+			type: 'POST',
+			error: function(response){
+				if(handler) handler.call(response);
+			},
+			success: function(response){
+				if(handler) handler.call(response);
+			}
+		 });
+	},
+
+
+	"uploadOvpnFile": function(postData, handler){
+		delete postData.isError;
+
+		var formData = new FormData();
+		for(var key in postData){
+			if(postData.hasOwnProperty(key)){
+				formData.append(key, postData[key]);
+			}
+		}
+
+		$.ajax({
+			url: '/vpnupload.cgi',
 			dataType: 'multipart/form-data',
 			data: formData,
 			contentType: false,
@@ -343,6 +371,9 @@ var httpApi ={
 										 "link_internet", "x_Setting", "usb_modem_act_sim", "link_wan"], true);
 		var tcode = httpApi.nvramGet(["territory_code"], true).territory_code;
 
+		var sessionId = (typeof systemVariable != "undefined") ? systemVariable.qisSession : ""; 
+		httpApi.log("httpApi.detwanGetRet", JSON.stringify(wanInfo), sessionId);
+
 		var wanTypeList = {
 			"dhcp": "DHCP",
 			"static": "STATIC",
@@ -423,7 +454,7 @@ var httpApi ={
 		else if(wanInfo.link_wan == ""){
 			retData.wanType = wanTypeList.check;
 		}
-		else if(wanInfo.link_wan == "0" && (isSupport("gobi") || !hadPlugged("modem"))){
+		else if(wanInfo.link_wan == "0"){
 			retData.wanType = wanTypeList.noWan;
 		}
 		else if(
@@ -443,6 +474,18 @@ var httpApi ={
 			}
 			else{
 				retData.wanType = (iCanUsePPPoE) ? wanTypeList.pppoe : wanTypeList.dhcp;
+			}
+		}
+		else if(wanInfo.autodet_state == ""){
+			retData.wanType = wanTypeList.check;
+			if(this.detRetryCnt > 0){
+				this.detRetryCnt --;
+			}
+			else{
+				this.startAutoDet();
+				retData.isIPConflict = false;
+				retData.isError = false;
+				this.detRetryCnt = this.detRetryCnt_MAX;
 			}
 		}
 		else if(iCanUsePPPoE){
@@ -1523,5 +1566,55 @@ var httpApi ={
 		})
 
 		return statusCode;
+	},
+
+	"log": function(funcName, content, sessionId){
+		var deviceId = httpApi.nvramGet(["extendno", "productid"]);
+
+		if(typeof window.localStorage === 'undefined') return false;
+		if(!sessionId) sessionId = deviceId.productid + "#" + deviceId.extendno;
+
+		try{
+			window.localStorage.setItem(Date.now(), "[" + sessionId + "][" + funcName + "] " + content);
+		}catch(err){
+			localStorage.clear();
+			window.localStorage.setItem(Date.now(), "[" + sessionId + "][" + funcName + "] " + content);
+		}
+	},
+	
+	"getLog": function(){
+		if(typeof window.localStorage === 'undefined') return false;
+
+		function _download(filename, text) {
+			var element = document.createElement('a');
+			element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+			element.setAttribute('download', filename);
+			element.style.display = 'none';
+			document.body.appendChild(element);
+			element.click();
+			document.body.removeChild(element);
+		}
+
+		var logContent = [];
+		var logContentArray = [];
+
+		for(var key in window.localStorage){
+			if(typeof window.localStorage[key] !== "function" && key !== "length"){
+				logContentArray.push([key, window.localStorage[key]])
+			}
+		};
+
+		logContentArray.sort(function(a, b){
+			return a[0] - b[0];
+		});
+
+		logContentArray.forEach(function(data){
+			var logTime = new Date(parseInt(data[0])).toString().split(" ")
+			var logTimeArray = []
+			logTimeArray.push(logTime[1], logTime[2], logTime[4])
+			logContent.push("[" + logTimeArray.join(" ") + "]" + data[1])
+		})
+
+		_download("uiLog.txt", logContent.join("\n"));
 	}
 }

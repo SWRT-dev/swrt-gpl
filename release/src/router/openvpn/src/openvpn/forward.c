@@ -873,6 +873,9 @@ process_incoming_link_part1(struct context *c, struct link_socket_info *lsi, boo
                 if (is_hard_reset(opcode, c->options.key_method))
                 {
                     c->c2.frame = c->c2.frame_initial;
+#ifdef ENABLE_FRAGMENT
+                    c->c2.frame_fragment = c->c2.frame_fragment_initial;
+#endif
                 }
 
                 interval_action(&c->c2.tmp_int);
@@ -1037,7 +1040,7 @@ read_incoming_tun(struct context *c)
 
     c->c2.buf = c->c2.buffers->read_tun_buf;
 #ifdef TUN_PASS_BUFFER
-    read_tun_buffered(c->c1.tuntap, &c->c2.buf, MAX_RW_SIZE_TUN(&c->c2.frame));
+    read_tun_buffered(c->c1.tuntap, &c->c2.buf);
 #else
     ASSERT(buf_init(&c->c2.buf, FRAME_HEADROOM(&c->c2.frame)));
     ASSERT(buf_safe(&c->c2.buf, MAX_RW_SIZE_TUN(&c->c2.frame)));

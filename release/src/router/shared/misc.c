@@ -19,9 +19,9 @@
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <sys/sysinfo.h>
+#include <time.h>
 #if defined(HND_ROUTER) || defined(RTACRH18) || defined(RT4GAC86U)
 #include <limits.h>
-#include <time.h>
 #elif !defined (__GLIBC__) && !defined(__UCLIBC__)
 #include <limits.h>		//PATH_MAX, LONG_MIN, LONG_MAX
 #endif
@@ -42,6 +42,7 @@
 #include "shutils.h"
 #include "shared.h"
 #include "wlif_utils.h"
+#include "iboxcom.h"
 
 #ifndef ETHER_ADDR_LEN
 #define	ETHER_ADDR_LEN		6
@@ -62,6 +63,59 @@
 #if defined(RTCONFIG_COOVACHILLI)
 #define MAC_FMT "%.2X:%.2X:%.2X:%.2X:%.2X:%.2X"
 #define MAC_ARG(x) (x)[0],(x)[1],(x)[2],(x)[3],(x)[4],(x)[5]
+#endif
+
+
+char *server_table[][2] = {
+	{ "", "" },			/* 0: Unfiltered */
+	{ "208.67.222.222", "" },	/* 1: OpenDNS */
+	{ "", "" },			/* 2: Discontinued Norton Connect Safe */
+	{ "", "" },			/* 3: Discontinued Norton Connect Safe */
+	{ "", "" },			/* 4: Discontinued Norton Connect Safe */
+	{ "77.88.8.88", "" },		/* 5: Secure Mode safe.dns.yandex.ru */
+	{ "77.88.8.7", "" },		/* 6: Family Mode family.dns.yandex.ru */
+	{ "208.67.222.123", "" },	/* 7: OpenDNS Family Shield */
+	{ "", "" },			/* 8: Custom1 */
+	{ "", "" },			/* 9: Custom2 */
+	{ "", "" },			/* 10: Custom3 */
+	{ "", "" },			/* 11: Router */
+	{ "8.26.56.26", "" },		/* 12: Comodo Secure DNS */
+	{ "9.9.9.9", "" },		/* 13: Quad9 */
+	{ "185.228.168.9", "" },	/* 14: CleanBrowsing Security */
+	{ "185.228.168.10", "" },	/* 15: CleanBrowsing Adult */
+	{ "185.228.168.168", "" },	/* 16: CleanBrowsing Family */
+	{ "1.1.1.2", "" },	/* 17: Cloudflare Secure Mode */
+	{ "1.1.1.3", "" },	/* 18: Cloudflare Secure and Family */
+	{ "94.140.14.14", "" },	/* 19: ADGUARD AD block mode*/
+	{ "94.140.14.15", "" },	/* 20: ADGUARD AD block and Family mode*/
+	{ NULL, NULL}	/* End of the table*/
+};
+
+#ifdef RTCONFIG_IPV6
+char *server6_table[][2] = {
+	{"", ""},		/* 0: Unfiltered */
+	{"", ""},		/* 1: OpenDNS */
+	{"", ""},		/* 2: Discontinued Norton Connect Safe */
+	{"", ""},		/* 3: Discontinued Norton Connect Safe */
+	{"", ""},		/* 4: Discontinued Norton Connect Safe */
+	{"2a02:6b8::feed:bad","2a02:6b8:0:1::feed:bad"},		/* 5: Secure Mode safe.dns.yandex.ru */
+	{"2a02:6b8::feed:a11","2a02:6b8:0:1::feed:a11"},		/* 6: Family Mode family.dns.yandex.ru */
+	{"", ""},		/* 7: OpenDNS Family Shield */
+	{"", ""},		/* 8: Custom1 - not supported yet */
+	{"", ""},		/* 9: Custom2 - not supported yet */
+	{"", ""},		/* 10: Custom3 - not supported yet */
+	{"", ""},		/* 11: Router  - semi-supported, refer dnsfilter_setup_dnsmasq() */
+	{"", ""},		/* 12: Comodo Secure DNS */
+	{"2620:fe::fe", "2620:fe::9"},	/* 13: Quad9 */
+	{"2a0d:2a00:1::2", "2a0d:2a00:2::2"},	/* 14: CleanBrowsing Security */
+	{"2a0d:2a00:1::1", "2a0d:2a00:2::1"},	/* 15: CleanBrowsing Adult */
+	{"2a0d:2a00:1::", "2a0d:2a00:2::"},	/* 16: CleanBrowsing Family */
+	{"2606:4700:4700::1112", "2606:4700:4700::1002" },	/* 17: Cloudflare Secure Mode */
+	{"2606:4700:4700::1113", "2606:4700:4700::1003" },	/* 18: Cloudflare Secure and Family */
+	{"2a10:50c0::ad1:ff", "2a10:50c0::ad2:ff" },	/* 19: ADGUARD AD block mode*/
+	{"2a10:50c0::bad1:ff", "2a10:50c0::bad2:ff" },	/* 20: ADGUARD AD block and Family mode*/
+	{ NULL, NULL}	/* End of the table*/
+};
 #endif
 
 extern char *read_whole_file(const char *target){
@@ -2000,11 +2054,19 @@ const char *getifaddr(const char *ifname, int family, int flags)
 	return _getifaddr(ifname, family, flags, buf, sizeof(buf));
 }
 
+/**
+ *  1: interface exist and up
+ *  0: interface exist and down
+ * -1: interface not exist, NULL or empty
+ */
 int is_intf_up(const char* ifname)
 {
 	struct ifreq ifr;
 	int sfd;
 	int ret = 0;
+
+	if (!ifname || !strlen(ifname))
+		return -1;
 
 	if (!((sfd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) < 0))
 	{
@@ -2800,7 +2862,7 @@ unsigned int netdev_calc(char *ifname, char *ifname_desc, unsigned long long *rx
 			return 0;
 	}
 
-#if defined(RTCONFIG_QCA)
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_SWITCH_MT7986_MT7531)
 #if defined(RTCONFIG_SWITCH_RTL8370M_PHY_QCA8033_X2) || \
     defined(RTCONFIG_SWITCH_RTL8370MB_PHY_QCA8033_X2)
 	/* Handle LAN aggregation interfaces.
@@ -2841,7 +2903,8 @@ unsigned int netdev_calc(char *ifname, char *ifname_desc, unsigned long long *rx
 	if (nvram_match("lacp_enabled", "1")) {
 		int b;
 		const char *q;
-#if defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033)
+#if defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033) \
+ || defined(RTCONFIG_SWITCH_MT7986_MT7531)
 		uint32_t m = BS_LAN1_PORT_MASK | BS_LAN2_PORT_MASK;
 #else
 #error	FIXME
@@ -2965,8 +3028,8 @@ unsigned int netdev_calc(char *ifname, char *ifname_desc, unsigned long long *rx
 
 				*rx2 = backup_rx;
 				*tx2 = backup_tx;				
-				/* Cherry Cho modified for RT-AC3200 Bug#202 in 2014/11/4. */	
-				unit = get_wan_unit(WAN_IF_ETH);
+				/* Cherry Cho modified for RT-AC3200 Bug#202 in 2014/11/4. */
+				unit = get_wan_unit(wan_if_eth());
 
 				if ((unit == wan_primary_ifunit())
 #ifdef RTCONFIG_DUALWAN
@@ -3216,17 +3279,9 @@ int is_dpsta(int unit)
 
 int is_dpsr(int unit)
 {
-	char ifname[32];
-
 	if (dpsr_mode()) {
 		if ((num_of_wl_if() == 2) || !unit || unit == nvram_get_int("dpsta_band"))
 			return 1;
-
-		if (strlen(nvram_safe_get("dpsr_ifnames"))) {
-			snprintf(ifname, sizeof(ifname), "wl%d_ifname", unit);
-			if (find_in_list(nvram_safe_get("dpsr_ifnames"), nvram_safe_get(ifname)))
-				return 1;
-		}
 	}
 
 	return 0;
@@ -4356,7 +4411,7 @@ char *get_wl_led_gpio_nv(int band)
 	return gpio_nv;
 }
 
-/* Convert 2G @ch to a bit-number of 32-bit mask.
+/* Convert 2G @ch to a bit-number of 64-bit mask.
  * @ch:	legal 2G channel
  * @return:
  * 	>= 0:	bit-number of @ch. ch1 ~ ch13 use bit 0~12
@@ -4373,21 +4428,21 @@ int ch2g2bit(int ch)
 	return b;
 }
 
-/* Convert 2G @ch to a 32-bit mask.
+/* Convert 2G @ch to a 64-bit mask.
  * @ch:	legal 2G channel
  * @return:
  * 	> 0:	bit mask of @ch. ch1 ~ ch13 use bit 0~12
  * 	= 0:	invalid @ch
  */
-unsigned int ch2g2bitmask(int ch)
+uint64_t ch2g2bitmask(int ch)
 {
 	int b = ch2g2bit(ch);
 
-	return (b >= 0)? 1U << b : 0;
+	return (b >= 0)? 1L << b : 0;
 }
 
 /* Convert @bit to 2G channel.
- * @bit:	bit number. (0~9 = ch1 ~ ch13)
+ * @bit:	bit number. (0~12 = ch1 ~ ch13)
  * @return:
  * 	>  0:	2G channel number of @bit
  * 	<= 0:	invalid @bit
@@ -4411,9 +4466,9 @@ int bit2ch2g(int bit)
  * 	0:	error or none of any legal 2G channel in @ch_list
  *  otherwise:	bit-mask of @ch_list
  */
-unsigned int chlist2g2bitmask(char *ch_list, char *sep)
+uint64_t chlist2g2bitmask(char *ch_list, char *sep)
 {
-	unsigned int m = 0;
+	uint64_t m = 0;
 	char ch[4], *next;
 	int bit;
 
@@ -4424,7 +4479,7 @@ unsigned int chlist2g2bitmask(char *ch_list, char *sep)
 		if ((bit = ch2g2bit(safe_atoi(ch))) < 0)
 			continue;
 
-		m |= (1U << bit);
+		m |= (1L << bit);
 	}
 	return m;
 }
@@ -4436,17 +4491,17 @@ unsigned int chlist2g2bitmask(char *ch_list, char *sep)
  * @ch_list_len: length of @ch_list
  * @return:	pointer to converted string.
  */
-char *__bitmask2chlist2g(unsigned int mask, char *sep, char *ch_list, size_t ch_list_len)
+char *__bitmask2chlist2g(uint64_t mask, char *sep, char *ch_list, size_t ch_list_len)
 {
 	int b, c;
 	char ch[4];
-	unsigned int m = mask;
+	uint64_t m = mask;
 
 	if (!ch_list || !ch_list_len || !sep || strlen(sep) > 1)
 		return "";
 
 	*ch_list = '\0';
-	while ((b = ffs(m)) > 0) {
+	while ((b = ffsl(m)) > 0) {
 		b--;
 		if ((c = bit2ch2g(b)) <= 0)
 			continue;
@@ -4455,7 +4510,7 @@ char *__bitmask2chlist2g(unsigned int mask, char *sep, char *ch_list, size_t ch_
 			strlcat(ch_list, sep, ch_list_len);
 		strlcat(ch_list, ch, ch_list_len);
 
-		m &= ~(1U << b);
+		m &= ~(1L << b);
 	}
 
 	return ch_list;
@@ -4465,14 +4520,14 @@ char *__bitmask2chlist2g(unsigned int mask, char *sep, char *ch_list, size_t ch_
  * @mask:	bit-mask of 2G channels
  * @return:	pointer to converted string.
  */
-char *bitmask2chlist2g(unsigned int mask, char *sep)
+char *bitmask2chlist2g(uint64_t mask, char *sep)
 {
 	static char ch_list[9 * 3 + 4 * 3 + 4];
 
 	return __bitmask2chlist2g(mask, sep, ch_list, sizeof(ch_list));
 }
 
-/* Convert 5G @ch to a bit-number of 32-bit mask.
+/* Convert 5G @ch to a bit-number of 64-bit mask.
  * @ch:	legal 5G channel
  * @return:
  * 	>= 0:	bit-number of @ch. ch32 ~ ch68 use bit 0~9, ch96 ~ ch177 use bit 10~30.
@@ -4499,17 +4554,17 @@ int ch5g2bit(int ch)
 	return b;
 }
 
-/* Convert 5G @ch to a 32-bit mask.
+/* Convert 5G @ch to a 64-bit mask.
  * @ch:	legal 5G channel
  * @return:
- * 	> 0:	bit-number of @ch. ch32 ~ ch68 use bit 0~9, ch96 ~ ch177 use bit 10~30.
+ * 	> 0:	bit mask of @ch. ch32 ~ ch68 use bit 0~9, ch96 ~ ch177 use bit 10~30.
  * 	= 0:	invalid @ch
  */
-unsigned int ch5g2bitmask(int ch)
+uint64_t ch5g2bitmask(int ch)
 {
 	int b = ch5g2bit(ch);
 
-	return (b >= 0)? 1U << b : 0;
+	return (b >= 0)? 1L << b : 0;
 }
 
 /* Convert @bit to 5G channel.
@@ -4543,9 +4598,9 @@ int bit2ch5g(int bit)
  * 	0:	error or none of any legal 5G channel in @ch_list
  *  otherwise:	bit-mask of @ch_list
  */
-unsigned int chlist5g2bitmask(char *ch_list, char *sep)
+uint64_t chlist5g2bitmask(char *ch_list, char *sep)
 {
-	unsigned int m = 0;
+	uint64_t m = 0;
 	char ch[4], *next;
 	int bit;
 
@@ -4556,7 +4611,7 @@ unsigned int chlist5g2bitmask(char *ch_list, char *sep)
 		if ((bit = ch5g2bit(safe_atoi(ch))) < 0)
 			continue;
 
-		m |= (1U << bit);
+		m |= (1L << bit);
 	}
 	return m;
 }
@@ -4567,17 +4622,17 @@ unsigned int chlist5g2bitmask(char *ch_list, char *sep)
  * @ch_list_len: length of @ch_list
  * @return:	pointer to converted string.
  */
-char *__bitmask2chlist5g(unsigned int mask, char *sep, char *ch_list, size_t ch_list_len)
+char *__bitmask2chlist5g(uint64_t mask, char *sep, char *ch_list, size_t ch_list_len)
 {
 	int b, c;
 	char ch[4];
-	unsigned int m = mask;
+	uint64_t m = mask;
 
 	if (!ch_list || !ch_list_len || !sep || strlen(sep) > 1)
 		return "";
 
 	*ch_list = '\0';
-	while ((b = ffs(m)) > 0) {
+	while ((b = ffsl(m)) > 0) {
 		b--;
 		if ((c = bit2ch5g(b)) <= 0)
 			continue;
@@ -4586,7 +4641,7 @@ char *__bitmask2chlist5g(unsigned int mask, char *sep, char *ch_list, size_t ch_
 			strlcat(ch_list, sep, ch_list_len);
 		strlcat(ch_list, ch, ch_list_len);
 
-		m &= ~(1U << b);
+		m &= ~(1L << b);
 	}
 
 	return ch_list;
@@ -4596,42 +4651,172 @@ char *__bitmask2chlist5g(unsigned int mask, char *sep, char *ch_list, size_t ch_
  * @mask:	bit-mask of 5G channels
  * @return:	pointer to converted string.
  */
-char *bitmask2chlist5g(unsigned int mask, char *sep)
+char *bitmask2chlist5g(uint64_t mask, char *sep)
 {
 	static char ch_list[11 * 3 + 20 * 4 + 4];
 
 	return __bitmask2chlist5g(mask, sep, ch_list, sizeof(ch_list));
 }
 
-/* Convert @ch to a bit-number of 32-bit mask.
+#if defined(RTCONFIG_WIFI6E)
+/* Convert 6G @ch to a bit-number of 64-bit mask.
+ * @ch:	legal 6G channel
+ * @return:
+ * 	>= 0:	bit-number of @ch. ch33 ~ ch233 use bit 0~50
+ * 	<  0:	invalid @ch
+ */
+int ch6g2bit(int ch)
+{
+	int b = -1;
+
+	if (ch >= 33 && ch <= 233) {
+		if (!((ch - 1) & 3U))
+			b = ((ch - 33) >> 2);
+	}
+
+	return b;
+}
+
+/* Convert 6G @ch to a 64-bit mask.
+ * @ch:	legal 6G channel
+ * @return:
+ * 	> 0:	bit mask of @ch. ch33 ~ ch233 use bit 0~50
+ * 	= 0:	invalid @ch
+ */
+uint64_t ch6g2bitmask(int ch)
+{
+	int b = ch6g2bit(ch);
+
+	return (b >= 0)? 1L << b : 0;
+}
+
+/* Convert @bit to 6G channel.
+ * @bit:	bit number. (0~50 = ch33 ~ ch233)
+ * @return:
+ * 	>  0:	6G channel number of @bit
+ * 	<= 0:	invalid @bit
+ */
+int bit2ch6g(int bit)
+{
+	int ch = 0;
+
+	if (bit >= 0 && bit <= 50) {
+		/* ch33 ~ ch233 */
+		ch = (bit << 2) + 33;
+	}
+
+	return ch;
+}
+
+/* Convert 6G channel list @ch_list that is seperate by @sep to bit-mask.
+ * @ch_list:	channel list string, seperated by @sep
+ * @sep:	character that is used to seperate channel
+ * @return:
+ * 	0:	error or none of any legal 6G channel in @ch_list
+ *  otherwise:	bit-mask of @ch_list
+ */
+uint64_t chlist6g2bitmask(char *ch_list, char *sep)
+{
+	uint64_t m = 0;
+	char ch[4], *next;
+	int bit;
+
+	if (!ch_list || !sep || strlen(sep) > 1)
+		return 0;
+
+	__foreach (ch, ch_list, next, sep) {
+		if ((bit = ch6g2bit(safe_atoi(ch))) < 0)
+			continue;
+
+		m |= (1L << bit);
+	}
+	return m;
+}
+
+/* Convert bit-mask to 6G channel list that is seperated by @sep.
+ * @mask:	bit-mask of 6G channels
+ * @ch_list:	channel list buffer
+ * @ch_list_len: length of @ch_list
+ * @return:	pointer to converted string.
+ */
+char *__bitmask2chlist6g(uint64_t mask, char *sep, char *ch_list, size_t ch_list_len)
+{
+	int b, c;
+	char ch[4];
+	uint64_t m = mask;
+
+	if (!ch_list || !ch_list_len || !sep || strlen(sep) > 1)
+		return "";
+
+	*ch_list = '\0';
+	while ((b = ffsl(m)) > 0) {
+		b--;
+		if ((c = bit2ch6g(b)) <= 0)
+			continue;
+		snprintf(ch, sizeof(ch), "%d", bit2ch6g(b));
+		if (*ch_list != '\0')
+			strlcat(ch_list, sep, ch_list_len);
+		strlcat(ch_list, ch, ch_list_len);
+
+		m &= ~(1L << b);
+	}
+
+	return ch_list;
+}
+
+/* Convert bit-mask to 6G channel list that is seperated by @sep.
+ * @mask:	bit-mask of 6G channels
+ * @return:	pointer to converted string.
+ */
+char *bitmask2chlist6g(uint64_t mask, char *sep)
+{
+	static char ch_list[17 * 3 + 34 * 4 + 4];
+
+	return __bitmask2chlist6g(mask, sep, ch_list, sizeof(ch_list));
+}
+#endif
+
+/* Convert @ch to a bit-number of 64-bit mask.
  * @band:	specific wireless band
  * @ch:		legal channel of @band
  * @return:
- * 	>= 0:	bit-number of @ch. (2G: ch1 ~ ch13 use bit 0~12, 5G: ch32 ~ ch68 use bit 0~9, ch96 ~ ch177 use bit 10~30)
+ * 	>= 0:	bit-number of @ch. (2G: ch1 ~ ch13 use bit 0~12
+ * 				    5G: ch32 ~ ch68 use bit 0~9, ch96 ~ ch177 use bit 10~30
+ * 				    6G: ch33 ~ ch233 use bit 0~50)
  * 	<  0:	invalid @ch
  */
 int ch2bit(enum wl_band_id band, int ch)
 {
 	if (band < 0 || band >= WL_NR_BANDS)
 		return -1;
-	else if (band == WL_5G_BAND || WL_5G_2_BAND)
+#if defined(RTCONFIG_WIFI6E)
+	else if (is_6g(band))
+		return ch6g2bit(ch);
+#endif
+	else if (band == WL_5G_BAND || band == WL_5G_2_BAND)
 		return ch5g2bit(ch);
 	else
 		return ch2g2bit(ch);
 }
 
-/* Convert @ch to a 32-bit mask.
+/* Convert @ch to a 64-bit mask.
  * @band:	specific wireless band
  * @ch:		legal channel of @band
  * @return:
- * 	> 0:	bit-number of @ch. (2G: ch1 ~ ch13 use bit 0~12, 5G: ch32 ~ ch68 use bit 0~9, ch96 ~ ch177 use bit 10~30)
+ * 	> 0:	bit-number of @ch. (2G: ch1 ~ ch13 use bit 0~12
+ * 				    5G: ch32 ~ ch68 use bit 0~9, ch96 ~ ch177 use bit 10~30
+ * 				    6G: ch33 ~ ch233 use bit 0~50)
  * 	= 0:	invalid @ch
  */
-unsigned int ch2bitmask(enum wl_band_id band, int ch)
+uint64_t ch2bitmask(enum wl_band_id band, int ch)
 {
 	if (band < 0 || band >= WL_NR_BANDS)
 		return 0;
-	else if (band == WL_5G_BAND || WL_5G_2_BAND)
+#if defined(RTCONFIG_WIFI6E)
+	else if (is_6g(band))
+		return ch6g2bitmask(ch);
+#endif
+	else if (band == WL_5G_BAND || band == WL_5G_2_BAND)
 		return ch5g2bitmask(ch);
 	else
 		return ch2g2bitmask(ch);
@@ -4639,7 +4824,9 @@ unsigned int ch2bitmask(enum wl_band_id band, int ch)
 
 /* Convert @bit to channel.
  * @band:	specific wireless band
- * @bit:	bit number. (2G: 0~12 = ch1~13, 5G: 0~9 = ch32 ~ ch68, 10 ~ 30 = ch96 ~ ch177)
+ * @bit:	bit number. (2G: 0~12 = ch1~13
+ * 			     5G: 0~9 = ch32 ~ ch68, 10 ~ 30 = ch96 ~ ch177
+ * 			     6G: 0~50 = ch33 ~ ch233)
  * @return:
  * 	>  0:	channel number of @bit
  * 	<= 0:	invalid @bit
@@ -4648,7 +4835,11 @@ int bit2ch(enum wl_band_id band, int bit)
 {
 	if (band < 0 || band >= WL_NR_BANDS)
 		return -1;
-	else if (band == WL_5G_BAND || WL_5G_2_BAND)
+#if defined(RTCONFIG_WIFI6E)
+	else if (is_6g(band))
+		return bit2ch6g(bit);
+#endif
+	else if (band == WL_5G_BAND || band == WL_5G_2_BAND)
 		return bit2ch5g(bit);
 	else
 		return bit2ch2g(bit);
@@ -4662,41 +4853,53 @@ int bit2ch(enum wl_band_id band, int bit)
  * 	0:	error or none of any legal channel in @ch_list
  *  otherwise:	bit-mask of @ch_list
  */
-unsigned int chlist2bitmask(enum wl_band_id band, char *ch_list, char *sep)
+uint64_t chlist2bitmask(enum wl_band_id band, char *ch_list, char *sep)
 {
 	if (band < 0 || band >= WL_NR_BANDS)
 		return 0;
-	else if (band == WL_5G_BAND || WL_5G_2_BAND)
+#if defined(RTCONFIG_WIFI6E)
+	else if (is_6g(band))
+		return chlist6g2bitmask(ch_list, sep);
+#endif
+	else if (band == WL_5G_BAND || band == WL_5G_2_BAND)
 		return chlist5g2bitmask(ch_list, sep);
 	else
 		return chlist2g2bitmask(ch_list, sep);
 }
 
 /* Convert bit-mask to channel list that is seperated by @sep.
- * @mask:	bit-mask of 5G channels
+ * @mask:	bit-mask of channels
  * @ch_list:	channel list buffer
  * @ch_list_len: length of @ch_list
  * @return:	pointer to converted string.
  */
-char *__bitmask2chlist(enum wl_band_id band, unsigned int mask, char *sep, char *ch_list, size_t ch_list_len)
+char *__bitmask2chlist(enum wl_band_id band, uint64_t mask, char *sep, char *ch_list, size_t ch_list_len)
 {
 	if (band < 0 || band >= WL_NR_BANDS)
 		return "";
-	else if (band == WL_5G_BAND || WL_5G_2_BAND)
+#if defined(RTCONFIG_WIFI6E)
+	else if (is_6g(band))
+		return __bitmask2chlist6g(mask, sep, ch_list, ch_list_len);
+#endif
+	else if (band == WL_5G_BAND || band == WL_5G_2_BAND)
 		return __bitmask2chlist5g(mask, sep, ch_list, ch_list_len);
 	else
 		return __bitmask2chlist2g(mask, sep, ch_list, ch_list_len);
 }
 
 /* Convert bit-mask to channel list that is seperated by @sep.
- * @mask:	bit-mask of 5G channels
+ * @mask:	bit-mask of channels
  * @return:	pointer to converted string.
  */
-char *bitmask2chlist(enum wl_band_id band, unsigned int mask, char *sep)
+char *bitmask2chlist(enum wl_band_id band, uint64_t mask, char *sep)
 {
 	if (band < 0 || band >= WL_NR_BANDS)
 		return "";
-	else if (band == WL_5G_BAND || WL_5G_2_BAND)
+#if defined(RTCONFIG_WIFI6E)
+	else if (is_6g(band))
+		return bitmask2chlist6g(mask, sep);
+#endif
+	else if (band == WL_5G_BAND || band == WL_5G_2_BAND)
 		return bitmask2chlist5g(mask, sep);
 	else
 		return bitmask2chlist2g(mask, sep);
@@ -4866,7 +5069,7 @@ void deauth_guest_sta(char *wlif_name, char *mac_addr)
 #endif
 }
 
-int FindBrifByWlif(char *wl_ifname, char *brif_name, int size)
+int FindBrifByWlif(const char *wl_ifname, char *brif_name, int size)
 {
 	char word[32]={0}, *next=NULL;
 
@@ -4922,7 +5125,7 @@ char *if_nametoalias(char *name, char *alias, int alias_len)
 	char ifname[IFNAMSIZ] = { 0 };
 	int found = 0;
 	char band_prefix[8];
-	char nband = 0;
+	char nband = 0, num5g = 0;
 
 	if (!strncmp(name, CFG_WL_STR_2G, 2) || !strncmp(name, CFG_WL_STR_5G, 2) ||
 		!strncmp(name, CFG_WL_STR_6G, 2)) {
@@ -4938,16 +5141,19 @@ char *if_nametoalias(char *name, char *alias, int alias_len)
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 		strlcpy(ifname, nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp))), sizeof(ifname));
 		subunit = 0;
-		nband = nvram_get_int(strcat_r(prefix, "nband", tmp));
+		nband = nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp)));
 
 		if (nband == 2)
 			strlcpy(band_prefix, CFG_WL_STR_2G, sizeof(band_prefix));
 		else if (nband == 1)
+		{
+			num5g++;
 #if defined(RTCONFIG_LYRA_5G_SWAP)
 			strlcpy(band_prefix, swap_5g_band(unit) == 2 ? CFG_WL_STR_5G1 : CFG_WL_STR_5G, sizeof(band_prefix));
 #else
-			strlcpy(band_prefix, unit == 2 ? CFG_WL_STR_5G1 : CFG_WL_STR_5G, sizeof(band_prefix));
+			strlcpy(band_prefix, num5g == 1 ? CFG_WL_STR_5G : CFG_WL_STR_5G1, sizeof(band_prefix));
 #endif
+		}
 		else if (nband == 4)
 			strlcpy(band_prefix, CFG_WL_STR_6G, sizeof(band_prefix));
 
@@ -5773,5 +5979,163 @@ int is_passwd_default(){
 		return 1;
 	else
 	return 0;
+}
+
+#if defined(RTCONFIG_AMAS) && defined(RTCONFIG_PSR_GUEST)
+void update_wlx_psr_mbss(void)
+{
+	int unit = 0, subunit = 0, wlx_psr_mbss = 0;
+	char nv[64];
+
+	if (nvram_get_int("re_mode") == 0)
+		return;
+
+	for (unit=0; unit<num_of_wl_if(); unit++) {
+		wlx_psr_mbss = 0;
+		for (subunit=2; subunit<=num_of_mssid_support(unit); subunit++) {
+			memset(nv, 0, sizeof(nv));
+			snprintf(nv, sizeof(nv), "wl%d.%d_bss_enabled", unit, subunit);
+			if (nvram_get_int(nv) == 1) {
+				wlx_psr_mbss = 1;
+				break;
+			}
+		}
+
+		memset(nv, 0, sizeof(nv));
+		snprintf(nv, sizeof(nv), "wl%d_psr_mbss", unit);
+		if (nvram_get_int(nv) != wlx_psr_mbss) {
+			nvram_set_int(nv, wlx_psr_mbss);
+			nvram_commit();
+		}
+	}
+
+	return;
+}
+#endif	// #if defined(RTCONFIG_AMAS) && defined(RTCONFIG_PSR_GUEST)
+
+int get_ispctrl()
+{
+#if defined(RTCONFIG_ELINK)
+	if (nvram_get_int("elink_enable") && nvram_get_int("amas_disable"))
+		return 1;
+#endif
+#if defined(RTCONFIG_XLN_WIFI)
+	return 1;
+#endif
+	return 0;
+}
+
+unsigned short get_extend_cap()
+{
+	unsigned short extend_cap = 0;
+
+#ifdef RTCONFIG_WEBDAV
+	extend_cap |= __cpu_to_le16(EXTEND_CAP_WEBDAV);
+#else
+	extend_cap = 0;
+	if(check_if_file_exist("/opt/etc/init.d/S50aicloud"))
+		extend_cap |= __cpu_to_le16(EXTEND_CAP_WEBDAV);
+#endif
+
+#ifdef RTCONFIG_TUNNEL
+	extend_cap |= __cpu_to_le16(EXTEND_CAP_AAE_BASIC);
+#endif
+
+	extend_cap |= __cpu_to_le16(EXTEND_CAP_SWCTRL);
+
+#ifdef RTCONFIG_AMAS
+#ifdef RTCONFIG_SW_HW_AUTH
+	if (getAmasSupportMode() != 0)
+	{
+#endif
+		if (!repeater_mode()
+#if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
+			&& !psr_mode()
+#endif
+#ifdef RTCONFIG_DPSTA
+			&& !(dpsta_mode() && nvram_get_int("re_mode") == 0)
+#endif
+		)
+			extend_cap |= __cpu_to_le16(EXTEND_CAP_AMAS);
+#ifdef RTCONFIG_SW_HW_AUTH
+	}
+#endif
+	if (nvram_get_int("amas_bdl"))
+		extend_cap |= __cpu_to_le16(EXTEND_CAP_AMAS_BDL);
+#endif
+#if defined(RTCONFIG_CFGSYNC) && defined(RTCONFIG_MASTER_DET)
+	if (nvram_get_int("cfg_master"))
+		extend_cap |= __cpu_to_le16(EXTEND_CAP_MASTER);
+#endif
+
+	if (get_ispctrl())
+		extend_cap |= __cpu_to_le16(EXTEND_CAP_ISPCTRL_LOGIN);
+
+       return extend_cap;
+}
+
+void wl_vif_to_subnet(const char *ifname, char *net, int len)
+{
+	int i, found = 0;
+	char word[64];
+	char *next = NULL;
+	char nv[64];
+	char br_name[64];
+	char *br_ifnames = NULL;
+	char ipaddr[32], ipmask[32];
+
+ 	int fd;
+	struct ifreq ifr;
+	
+
+	if (!ifname || strlen(ifname) <= 0)
+		return;
+
+	if (!net || len <= 0)
+		return;
+
+	for (found=0, i=0; i<256; i++) {
+		memset(nv, 0, sizeof(nv));
+		snprintf(nv, sizeof(nv), "br%d_ifnames", i);
+		if ((br_ifnames = strdup(nvram_safe_get(nv)))) {
+			foreach (word, br_ifnames, next) {
+				if ((found = !strcmp(word, ifname)))
+					break;
+			}
+			
+			free(br_ifnames);
+		}
+
+		if (found)
+			break;
+	}
+
+	if (found) {
+		memset(nv, 0, sizeof(nv));
+		snprintf(nv, sizeof(nv), "br%d_ifname", i);
+		memset(br_name, 0, sizeof(br_name));
+		strlcpy(br_name, nvram_safe_get(nv), sizeof(br_name));
+
+		memset(&ifr, 0, sizeof(struct ifreq));
+		if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) >= 0) {
+			ifr.ifr_addr.sa_family = AF_INET;
+			strlcpy(ifr.ifr_name, br_name, IFNAMSIZ-1);
+
+			memset(ipaddr, 0, sizeof(ipaddr));
+			if (ioctl(fd, SIOCGIFADDR, &ifr) >= 0)
+				snprintf(ipaddr, sizeof(ipaddr)-1, "%s", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+
+			memset(ipmask, 0, sizeof(ipmask));
+			if (ioctl(fd, SIOCGIFNETMASK, &ifr) >= 0)
+				snprintf(ipmask, sizeof(ipmask)-1, "%s", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+
+			if (strlen(ipaddr)>0 && strlen(ipmask)>0)
+				snprintf(net, len, "%s/%s", ipaddr, ipmask);
+			close(fd);
+		}
+	}
+
+	return;
+
 }
 

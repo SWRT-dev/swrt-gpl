@@ -133,6 +133,7 @@
 							else return "RT";
 						})();
 					}
+					systemVariable.qisSession = "qis"+Date.now();
 					systemVariable.opMode = systemVariable.originOpMode;
 					systemVariable.wirelessBand = initNvram.wl_ifnames.split(" ").length;
 					systemVariable.sdkVersion = initNvram.wl_version.split(".")[0];
@@ -148,12 +149,15 @@
 					systemVariable.linkLnternet = httpApi.isConnected();
 					systemVariable.maxPasswordLen = getSupportNum("MaxLen_http_passwd");
 
+					httpApi.log("tcode", systemVariable.territoryCode, systemVariable.qisSession)
+
 					if(isSupport("2p5G_LWAN"))
 						systemVariable.originWansExtwan = httpApi.nvramGet(["wans_extwan"]).wans_extwan;
 					if(isSupport("10G_LWAN") || isSupport("10GS_LWAN"))
 						systemVariable.originWansDualwan = httpApi.nvramGet(["wans_dualwan"]).wans_dualwan;
 					$("#switchWanTagContainer").append(Get_Component_ISPSelect);
 					$("#switch_wantag").attr("class", "optionInput");
+					getCloudProfiles();
 
 					var allWlArray =  getAllWlArray();
 					for(var i = 0; i < allWlArray.length; i += 1){
@@ -1503,11 +1507,11 @@
 					</div>
 				</div>
 				<div class="table_td">
-					<div class="pageDesc">DHCP option settings</div>
+					<div class="pageDesc"><#ipv6_6rd_dhcp_option#></div>
 					<div>
 						<div>
 							<div class="inputTitleContainer">
-								<div class="inputTitle">Class-identifier (option 60)</div>
+								<div class="inputTitle"><#DHCPoption_Class#> (<#NetworkTools_option#> 60)</div>
 							</div>
 							<div class="inputContainer">
 								<input id="wan_vendorid" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" maxlength="126" class="textInput pppInput" data-role="none" value="" data-clear-btn="true" />
@@ -1516,7 +1520,7 @@
 
 						<div>
 							<div class="inputTitleContainer">
-								<div class="inputTitle">Client-identifier (option 61)</div>
+								<div class="inputTitle"><#DHCPoption_Client#> (<#NetworkTools_option#> 61)</div>
 							</div>
 							<div class="inputContainer">
 								<input type="checkbox" id="wan_clientid_type" name="wan_clientid_type" onclick="showDiableDHCPclientID(this);" class="labelInput"><label for="wan_clientid_type" class="labelInput">IAID/DUID</label><br>

@@ -3,6 +3,9 @@
 # U-Boot 2018.09 Configuration
 #
 CONFIG_ASUS_PRODUCT=y
+# CONFIG_TFTPD is not set
+# CONFIG_TRX is not set
+# CONFIG_XD4S is not set
 # CONFIG_RTAX53U is not set
 CONFIG_4GAX56=y
 # CONFIG_RTAX54 is not set

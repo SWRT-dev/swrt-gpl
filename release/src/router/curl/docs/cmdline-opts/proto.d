@@ -1,9 +1,12 @@
+c: Copyright (C) 1998 - 2022, Daniel Stenberg, <daniel@haxx.se>, et al.
+SPDX-License-Identifier: curl
 Long: proto
 Arg: <protocols>
 Help: Enable/disable PROTOCOLS
 See-also: proto-redir proto-default
 Added: 7.20.2
 Category: connection curl
+Example: --proto =http,https,sftp $URL
 ---
 Tells curl to limit what protocols it may use for transfers. Protocols are
 evaluated left to right, are comma separated, and are each a protocol name or

@@ -249,6 +249,7 @@ var modemObj = {
 }
 
 var systemVariable = {
+	"qisSession": "",
 	"originWanType": "", /* ToDo: Secondary WAN support */
 	"originPppAccount":{
 		"username": "",
@@ -290,7 +291,10 @@ var systemVariable = {
 	"onboardingInfo": {},
 	"skipAiMeshOptionPage": false,
 	"amas_newWindow_addNode": false,
-	"authModePostData": {}
+	"authModePostData": {},
+	"ispProfiles": [],
+	"ispPortDefinitions": {},
+	"cloudIspProfiles": []
 }
 
 var aimeshObj = {

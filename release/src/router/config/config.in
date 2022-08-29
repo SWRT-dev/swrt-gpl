@@ -84,10 +84,15 @@ config RTCONFIG_HND_ROUTER_AX_6710
 
 config RTCONFIG_SDK502L07P1_121_37
 	bool "SDK 5.02L.07p1_17.10.121.37"
+	depends on RTCONFIG_HND_ROUTER_AX_675X || RTCONFIG_HND_ROUTER_AX_6710
 	default n
 
 config RTCONFIG_SDK504L02_188_1303
 	bool "SDK 5.04L.02_17.10.188.1303"
+	default n
+
+config RTCONFIG_BCM_502L07P2
+	bool "Broadcom SDK 5.02L.07p2"
 	default n
 
 config RTCONFIG_HND_WL
@@ -130,7 +135,7 @@ config RTCONFIG_DHDAP
 
 config RTCONFIG_BW160M
 	bool "Bandwidth 160MHz support"
-	depends on RTCONFIG_DHDAP || RTCONFIG_QCA
+	depends on RTCONFIG_DHDAP || RTCONFIG_QCA || RTCONFIG_MT798X
 	default n
 
 config RTCONFIG_WLEXE
@@ -280,6 +285,10 @@ config RTCONFIG_EMF
 
 config RTCONFIG_BCMBSD
 	bool "Brcm Band Steer Selection"
+	default n
+
+config RTCONFIG_BCMBSD_V2
+	bool "Brcm Band Steer Selection V2"
 	default n
 
 config RTCONFIG_BCMSSD
@@ -866,10 +875,6 @@ config RTCONFIG_NEWSSID_REV5
 	bool "RT-V5 SSID rule"
 	default n
 
-config RTCONFIG_NEWSSID_REV6
-	bool "RT-V6 SSID rule"
-	default n
-
 config RTCONFIG_RP_NEWSSID_REV3
 	bool "RP-V3 SSID rule"
 	default n
@@ -895,6 +900,16 @@ config RTCONFIG_SPF11_QSDK
 
 config RTCONFIG_SPF11_1_QSDK
 	bool "SPF11.1 QSDK"
+	depends on RTCONFIG_QCA
+	default n
+
+config RTCONFIG_SPF11_3_QSDK
+	bool "SPF11.3 QSDK"
+	depends on RTCONFIG_QCA
+	default n
+
+config RTCONFIG_SPF11_4_QSDK
+	bool "SPF11.4 QSDK"
 	depends on RTCONFIG_QCA
 	default n
 
@@ -972,7 +987,7 @@ config RTCONFIG_CFG80211
 
 config RTCONFIG_GLOBAL_INI
 	bool "Qualcomm globa.ini support. (SPF9 or above)"
-	depends on RTCONFIG_QCA && (RTCONFIG_SPF10_QSDK || RTCONFIG_SPF11_QSDK || RTCONFIG_SPF11_1_QSDK || RTCONFIG_QSDK10CS || RTCONFIG_SOC_IPQ60XX)
+	depends on RTCONFIG_QCA && (RTCONFIG_SPF10_QSDK || RTCONFIG_SPF11_QSDK || RTCONFIG_SPF11_1_QSDK || RTCONFIG_SPF11_3_QSDK || RTCONFIG_SPF11_4_QSDK || RTCONFIG_QSDK10CS || RTCONFIG_SOC_IPQ60XX)
 	default n
 
 config RTCONFIG_SINGLE_HOSTAPD
@@ -1629,12 +1644,16 @@ config RTCONFIG_TR181
 	bool "Support TR-181 data model"
 	default n
 
-config RTCONFIG_TR143_110
-	bool "Support TR-143-1-1-0 data model"
-	default n
-
 config RTCONFIG_ISP_OPTUS
 	bool "Support ISP OPTUS Customize"
+	default n
+
+config RTCONFIG_ACS_SUBNET
+	bool "Support ACS SUBNET Customize"
+	default n
+
+config RTCONFIG_ISP_XLNPROVU
+	bool "Support ISP XLN/PROVU Customize"
 	default n
 
 config RTCONFIG_STAINFO
@@ -1730,8 +1749,16 @@ config RTCONFIG_CP_ADVANCED
 	default n
 
 config RTCONFIG_UPNPC
-	bool "UPNP client support"
-	default y
+	bool "UPNP client support for networkmap"
+	default n
+
+config RTCONFIG_UPNPC_NEW
+	bool "New UPNP client support"
+	default n
+
+config RTCONFIG_AUPNPC
+	bool "AUPNPC support"
+	default n
 
 config RTCONFIG_MULTICAST_IPTV
 	bool "Multicsat IPTV"
@@ -1899,6 +1926,24 @@ config RTCONFIG_CONNTRACK
 config RTCONFIG_PERMISSION_MANAGEMENT
 	bool "Permission management support"
 	default n
+
+config RTCONFIG_DNSSEC
+	bool "dnsmasq: Enable DNSSEC support"
+	default n
+
+choice
+	prompt "dnsmasq: DNSSEC crypto library"
+	default RTCONFIG_DNSSEC_NETTLE
+
+config RTCONFIG_DNSSEC_OPENSSL
+	bool "OpenSSL"
+	depends on RTCONFIG_DNSSEC
+
+config RTCONFIG_DNSSEC_NETTLE
+	bool "Nettle"
+	depends on RTCONFIG_DNSSEC
+
+endchoice
 
 config RTCONFIG_DNSFILTER
 	bool "DNS-based filtering Support"
@@ -2200,8 +2245,20 @@ config RTCONFIG_QCA_LBD
 	bool "qca lbd support"
 	default n
 
-config RTCONFIG_AMAS_QCA_WDS
-	bool "qca amas wds support"
+config RTCONFIG_AMAS_WDS
+	bool "amas wds support"
+	default n
+
+config RTCONFIG_AMAS_MTK_EZWDS
+	bool "mtk ezmesh's wds support"
+	default n
+
+config RTCONFIG_MTK_BSD
+	bool "mtk smart-connect support"
+	default n
+
+config RTCONFIG_COBRAND
+	bool "cobrand support"
 	default n
 
 config RTCONFIG_GEFORCENOW
@@ -2218,10 +2275,6 @@ config RTCONFIG_ISP_CUSTOMIZE
 
 config RTCONFIG_IPERF3
 	bool "Iperf3"
-	default n
-
-config RTCONFIG_NFCM
-	bool "Network Filter Conntrack Monitor"
 	default n
 
 config RTCONFIG_ASUSCTRL
@@ -2265,6 +2318,14 @@ config RTCONFIG_FRS_LIVE_UPDATE
 
 config RTCONFIG_AUTO_FW_UPGRADE
 	bool "RTCONFIG_AUTO_FW_UPGRADE support"
+	default n
+
+config RTCONFIG_BETA_UPGRADE
+	bool "RTCONFIG_BETA_UPGRADE support"
+	default n
+
+config RTCONFIG_REVERTFW
+	bool "RTCONFIG_REVERTFW support"
 	default n
 
 config RTCONFIG_ASD
@@ -2395,6 +2456,9 @@ config RTCONFIG_BH_SWITCH_ETH_FIRST
 	bool "enable wifi backhaul switch on ethernet first"
 	default n
 
+config RTCONFIG_CAPTCHA
+	bool "Web UI supprts captcha"
+
 config RTCONFIG_MULTISERVICE_WAN
 	bool "setup multiple subunit wan"
 	default n
@@ -2403,12 +2467,8 @@ config RTCONFIG_VIF_ONBOARDING
 	bool "onboarding via virtual interface"
 	default n
 
-config RTCONFIG_OUTFOX
-	bool "Outfox game acceleration support"
-	default n
-
-config RTCONFIG_CAPTCHA
-	bool "Web UI supports captcha"
+config RTCONFIG_WIFI6E
+	bool "WiFi 6E"
 	default n
 
 config RTCONFIG_SYSCLASSGPIO
@@ -2423,8 +2483,12 @@ config RTCONFIG_SWCONFIG
 	bool "using swconfig for configure switch"
 	default n
 
-config RTCONFIG_WIFI6E
-	bool "WiFi 6E"
+config RTCONFIG_MTK_NAND_BLOCK2
+	bool "For MTK nand using 2 block"
+	default n
+
+config RTCONFIG_QCA_PLC2
+	bool "QCA PLC2"
 	default n
 
 config RTCONFIG_VAR_NVRAM
@@ -2433,10 +2497,6 @@ config RTCONFIG_VAR_NVRAM
 
 config RTCONFIG_BCM_OAM
 	bool "Broadcom OAM"
-	default n
-
-config RTCONFIG_QCA_PLC2
-	bool "QCA PLC2"
 	default n
 
 config RTCONFIG_NEW_PHYMAP
@@ -2459,23 +2519,17 @@ config RTCONFIG_PREFERAP_RE_SELFOPT
 	bool "Notify RE do self optimization based on prefer ap condition"
 	default n
 
-config RTCONFIG_MAX_RE
-	int "Support the maximum number of RE"
-	default 9
-
-config RTCONFIG_SPF11_3_QSDK
-	bool "SPF11.3 QSDK"
-	depends on RTCONFIG_QCA
-	default n
-
-config RTCONFIG_SPF11_4_QSDK
-	bool "SPF11.4 QSDK"
-	depends on RTCONFIG_QCA
+config RTCONFIG_SYSCLASSGPIO
+	bool "enable sys class gpio"
 	default n
 
 config RTCONFIG_MTK_NAND_BLOCK2
 	bool "For MTK nand using 2 block"
 	default n
+
+config RTCONFIG_MAX_RE
+	int "Support the maximum number of RE"
+	default 9
 
 config RTCONFIG_FRONTHAUL_DBG
 	bool "enable AiMesh RE fronthaul for debug purpose"
@@ -2491,6 +2545,16 @@ config RTCONFIG_DLOADER
 
 config RTCONFIG_FIBOCOM_FG621
 	bool "LTE module FIBOCOM FG621"
+	default n
+
+config RTCONFIG_SPF11_3_QSDK
+	bool "SPF11.3 QSDK"
+	depends on RTCONFIG_QCA
+	default n
+
+config RTCONFIG_SPF11_4_QSDK
+	bool "SPF11.4 QSDK"
+	depends on RTCONFIG_QCA
 	default n
 
 config RTCONFIG_QCA_WLAN_SCRIPTS
@@ -2558,8 +2622,53 @@ config RTCONFIG_LLDPD_1_0_11
 	bool "lldpd-1.0.11"
 endchoice
 
+config RTCONFIG_FSMD
+	bool "Filesystem monitor support"
+	default n
+
 config RTCONFIG_3LANPORT_DEVICE
 	bool "3 LAN Port device"
+	default n
+
+config RTCONFIG_HW_DOG
+	bool "CPU hardward watchdog daemon"
+	default n
+
+config RTCONFIG_AMAS_CENTRAL_CONTROL
+        bool "AiMesh central control"
+        default n
+
+config RTCONFIG_BANDINDEX_NEW
+        bool " Bandindex version greater than 1"
+        default n
+
+config RTCONFIG_MT798X
+        bool " MTK MT798X platform"
+        default n
+
+config RTCONFIG_SOC_MT7986A
+	bool "MTK SoC MT7986A"
+	depends on RTCONFIG_MT798X
+	default n
+
+config RTCONFIG_SOC_MT7986B
+	bool "MTK SoC MT7986B"
+	depends on RTCONFIG_MT798X
+	default n
+
+config RTCONFIG_SOC_MT7986C
+	bool "MTK SoC MT7986C"
+	depends on RTCONFIG_MT798X
+	default n
+
+config RTCONFIG_SOC_MT7981
+	bool "MTK SoC MT7981
+	depends on RTCONFIG_MT798X
+	default n
+
+config RTCONFIG_SWITCH_MT7986_MT7531
+	bool "MTK SoC MT7986 + MT7531"
+	depends on RTCONFIG_MT798X
 	default n
 
 config RTCONFIG_SOFTCENTER
@@ -2619,5 +2728,5 @@ config RTCONFIG_EASYMESH
 
 config RTCONFIG_RALINK_BSD
 	bool "mtk bndstrg"
-	depends on RTCONFIG_RALINK && (RTCONFIG_WLMODULE_MT7615E_AP || RTCONFIG_WLMODULE_MT7915D_AP || RTCONFIG_WLMODULE_MT7986_AP)
+	depends on RTCONFIG_RALINK && (RTCONFIG_WLMODULE_MT7615E_AP || RTCONFIG_WLMODULE_MT7915D_AP || RTCONFIG_MT798X)
 	default n

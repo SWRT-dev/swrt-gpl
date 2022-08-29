@@ -176,7 +176,7 @@ static int do_cold_boot_calibration(char *mod, int is_ftm);
 static void ath_hal_param_hook(char ***pv, char **ps, int *plen);
 static void umac_param_hook(char ***pv, char **ps, int *plen);
 static void umac_tmode_param_hook(char ***pv, char **ps, int *plen);
-#if defined(RTCONFIG_SPF11_1_QSDK)
+#if defined(RTCONFIG_SPF11_1_QSDK) || defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
 static void qdf_param_hook(char ***pv, char **ps, int *plen);
 static void qdf_tmode_param_hook(char ***pv, char **ps, int *plen);
 #endif
@@ -213,7 +213,7 @@ static struct load_wifi_kmod_seq_s {
 	/* IPQ8074A SPF10 */
 	{ .kmod_name = "qdf", .flags = QWIFI_QDF,
 		.params = qdf_params,
-#if defined(RTCONFIG_SPF11_1_QSDK)
+#if defined(RTCONFIG_SPF11_1_QSDK) || defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
 		.mission_mode_param_hook_fn = qdf_param_hook,
 		.test_mode_param_hook_fn = qdf_tmode_param_hook
 #endif
@@ -584,7 +584,9 @@ static void umac_tmode_param_hook(char ***pv, char **ps, int *plen)
 #endif
 }
 
-#if defined(RTCONFIG_SPF11_1_QSDK)
+#if defined(RTCONFIG_SOC_IPQ8074) \
+ && (defined(RTCONFIG_SPF11_1_QSDK) || defined(RTCONFIG_SPF11_3_QSDK) \
+  || defined(RTCONFIG_SPF11_4_QSDK))
 /* Generate parameters for qdf in mission mode. */
 static void qdf_param_hook(char ***pv, char **ps, int *plen)
 {
@@ -592,6 +594,14 @@ static void qdf_param_hook(char ***pv, char **ps, int *plen)
 		return;
 
 	// *(*pv)++ = "mem_debug_disabled=1";	// Only available if MEMORY_DEBUG is enabled in config_XXX.wlan.unified.profile
+#if defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
+	/* is_cnss_diag_logging_enabled() = 0 */
+	*(*pv)++ = "qdf_log_dump_at_kernel_enable=0";
+#if defined(RTCONFIG_SPF11_4_QSDK)
+	*(*pv)++ = "qdf_log_flush_timer_period=0";
+#endif
+	update_ini_file(GLOBAL_INI, "logger_enable_mask=0");	/* 14 or another value if is_cnss_diag_logging_enabled() = 1 */
+#endif
 }
 
 /* Generate parameters for qdf in test mode. */
@@ -601,8 +611,16 @@ static void qdf_tmode_param_hook(char ***pv, char **ps, int *plen)
 		return;
 
 	// *(*pv)++ = "mem_debug_disabled=1";	// Only available if MEMORY_DEBUG is enabled in config_XXX.wlan.unified.profile
+#if defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
+	/* is_cnss_diag_logging_enabled() = 0 */
+	*(*pv)++ = "qdf_log_dump_at_kernel_enable=0";
+#if defined(RTCONFIG_SPF11_4_QSDK)
+	*(*pv)++ = "qdf_log_flush_timer_period=0";
+#endif
+	update_ini_file(GLOBAL_INI, "logger_enable_mask=0");	/* 14 or another value if is_cnss_diag_logging_enabled() = 1 */
+#endif
 }
-#endif	/* RTCONFIG_SPF11_1_QSDK */
+#endif	/* RTCONFIG_SPF11_1_QSDK || RTCONFIG_SPF11_3_QSDK || defined(RTCONFIG_SPF11_4_QSDK) */
 
 #if defined(RTCONFIG_SOC_IPQ40XX) || \
     defined(RTCONFIG_WIFI_QCN5024_QCN5054) || \
@@ -630,12 +648,10 @@ static void qca_ol_param_hook(char ***pv, char **ps, int *plen)
 	*(*pv)++ = "rx_hash=0";
 	*(*pv)++ = "intr_mitigation_enabled=1";		/* SPF10 obsoleted it */
 #endif
-
-
-#if defined(RTCONFIG_CFG80211)
+#endif	/* !RTCONFIG_GLOBAL_INI */
+#if defined(RTCONFIG_CFG80211) && defined(RTCONFIG_SPF8_QSDK)
 	*(*pv)++ = "cfg80211_config=1";
 #endif
-#endif	/* !RTCONFIG_GLOBAL_INI */
 
 
 #if defined(RTCONFIG_SOC_IPQ40XX)
@@ -664,7 +680,8 @@ static void qca_ol_tmode_param_hook(char ***pv, char **ps, int *plen)
 	*(*pv)++ = "hw_mode_id=1";
 	*(*pv)++ = "testmode=1";
 	*(*pv)++ = "cfg80211_config=1";
-#elif defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK)
+#elif defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK) \
+   || defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
 	*(*pv)++ = "hw_mode_id=1";
 	*(*pv)++ = "testmode=1";
 	*(*pv)++ = "cfg80211_config=1";
@@ -1021,7 +1038,7 @@ static void init_switch_qca(void)
 #elif defined(RTCONFIG_SOC_IPQ8074)
 		"qca-nss-bridge-mgr",
 		"qca-nss-l2tpv2", "qca-nss-lag-mgr", "qca-nss-map-t",
-		"qca-nss-pptp", "qca-nss-vlan-mgr",
+		"qca-nss-pppoe", "qca-nss-pptp", "qca-nss-vlan-mgr",
 
 		/* 52-diag-char */
 		"diagchar",
@@ -1341,6 +1358,7 @@ void config_switch(void)
 	case MODEL_RTAC59CD6N:	/* fall through */
 	case MODEL_RTAC58U:	/* fall through */
 	case MODEL_RT4GAC53U:	/* fall through */
+	case MODEL_RT4GAC56:	/* fall through */
 	case MODEL_RTAC82U:	/* fall through */
 	case MODEL_MAPAC1300:	/* fall through */
 	case MODEL_VZWAC1300:	/* fall through */
@@ -1501,6 +1519,36 @@ void config_switch(void)
 				/* VoIP:	untag: N/A;  port: P1, P4 */
 				//VoIP Port: P1 tag
 				__setup_vlan(14, 0, 0x00000012);
+			}
+			else if (!strcmp(nvram_safe_get("switch_wantag"), "maxis_cts")) {
+				//VoIP: P1 tag. Cherry Cho added in 2012/11/6.
+				system("rtkswitch 40 1");			/* admin all frames on all ports */
+				system("rtkswitch 38 2");			/* VoIP: P1  2 = 0x10 */
+				/* Internet:	untag: P9;   port: P4, P9 */
+				__setup_vlan(41, 0, 0x02000210);
+				/* VoIP:	untag: N/A;  port: P1, P4 */
+				//VoIP Port: P1 tag
+				__setup_vlan(44, 0, 0x00000012);
+			}
+			else if (!strcmp(nvram_safe_get("switch_wantag"), "maxis_sacofa")) {
+				//VoIP: P1 tag. Cherry Cho added in 2012/11/6.
+				system("rtkswitch 40 1");			/* admin all frames on all ports */
+				system("rtkswitch 38 2");			/* VoIP: P1  2 = 0x10 */
+				/* Internet:	untag: P9;   port: P4, P9 */
+				__setup_vlan(31, 0, 0x02000210);
+				/* VoIP:	untag: N/A;  port: P1, P4 */
+				//VoIP Port: P1 tag
+				__setup_vlan(34, 0, 0x00000012);
+			}
+			else if (!strcmp(nvram_safe_get("switch_wantag"), "maxis_tnb")) {
+				//VoIP: P1 tag. Cherry Cho added in 2012/11/6.
+				system("rtkswitch 40 1");			/* admin all frames on all ports */
+				system("rtkswitch 38 2");			/* VoIP: P1  2 = 0x10 */
+				/* Internet:	untag: P9;   port: P4, P9 */
+				__setup_vlan(51, 0, 0x02000210);
+				/* VoIP:	untag: N/A;  port: P1, P4 */
+				//VoIP Port: P1 tag
+				__setup_vlan(54, 0, 0x00000012);
 			}
 #ifdef RTCONFIG_MULTICAST_IPTV
 			else if (!strcmp(nvram_safe_get("switch_wantag"), "movistar")) {
@@ -2019,10 +2067,10 @@ int switch_exist(void)
 		fw = read_phy_reg(aqr_addr, 0x401e0020);
 		build = read_phy_reg(aqr_addr, 0x401ec885);
 		if (fw < 0 || build < 0) {
-			dbg("Can't get AQR PHY firmware version.\n");
+			dbg("%s: Can't get AQR PHY firmware version.\n", __func__);
 			ret = 0;
 		} else {
-			dbg("AQR PHY @ %d firmware %d.%d build %d.%d\n", aqr_addr,
+			dbg("AQR PHY @ %d firmware %d.%d build %X.%X\n", aqr_addr,
 				(fw >> 8) & 0xFF, fw & 0xFF, (build >> 4) & 0xF, build & 0xF);
 		}
 	}
@@ -2067,8 +2115,9 @@ int switch_exist(void)
 #endif
 }
 
-#if defined(RTCONFIG_SPF8_QSDK) || defined(RTCONFIG_SPF10_QSDK) || defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK)
-#if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK)
+#if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK) \
+ || defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
+/* SPF11.3, SPF11.4 update_global_daemon_coldboot_qdss_support_variables(). */
 static int update_daemon_coldboot_qdss_support_variables(int *cold_boot, int *daemon)
 {
 	const char *fw_ini_file = NULL;
@@ -2083,20 +2132,39 @@ static int update_daemon_coldboot_qdss_support_variables(int *cold_boot, int *da
 	if (!cold_boot || !daemon)
 		return -1;
 
-	/* Low Mem 256 profile does not support these */
 	total_mem = get_meminfo_item("MemTotal");
+#if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK)
+	/* Low Mem 256 profile does not support these */
 	if (total_mem <= (256 * 1024))
 		return -2;
+#endif
 
-#if defined(RTCONFIG_SOC_IPQ8074)
-	snprintf(board_name, sizeof(board_name), "ap-hk_v%d", (soc_ver == 1)? 1 : 2);
+#if defined(RTCONFIG_SOC_IPQ60XX)
+	snprintf(board_name, sizeof(board_name), "ap-cp03-c1");
+	fw_ini_file = "/lib/firmware/IPQ6018/firmware_rdp_feature.ini";
+#elif defined(RTCONFIG_SOC_IPQ8074)
+	strlcpy(board_name, "ap-hk01-c2", sizeof(board_name));
+#if defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
+	if (total_mem <= (512 * 1024)) {
+		/* 256MB profile will use the same file as 512MB profile,
+		 * but coldboot calibration support will be skipped.
+		 */
+		if (soc_ver == 2)
+			fw_ini_file = "/lib/firmware/IPQ8074A/firmware_rdp_feature_512P.ini";
+		else if (soc_ver == 1)
+			fw_ini_file = "/lib/firmware/IPQ8074/firmware_rdp_feature_512P.ini";
+	} else {
+		if (soc_ver == 2)
+			fw_ini_file = "/lib/firmware/IPQ8074A/firmware_rdp_feature.ini";
+		else if (soc_ver == 1)
+			fw_ini_file = "/lib/firmware/IPQ8074/firmware_rdp_feature.ini";
+	}
+#else
 	if (soc_ver == 2)
 		fw_ini_file = "/lib/firmware/IPQ8074A/firmware_rdp_feature.ini";
 	else if (soc_ver == 1)
 		fw_ini_file = "/lib/firmware/IPQ8074/firmware_rdp_feature.ini";
-#elif defined(RTCONFIG_SOC_IPQ60XX)
-	snprintf(board_name, sizeof(board_name), "ap-cp03-c1");
-	fw_ini_file = "/lib/firmware/IPQ6018/firmware_rdp_feature.ini";
+#endif	/* RTCONFIG_SPF11_3_QSDK || RTCONFIG_SPF11_4_QSDK */
 #elif defined(RTCONFIG_SOC_IPQ40XX)
 	*cold_boot = 0;
 	*daemon = 0;
@@ -2113,6 +2181,14 @@ static int update_daemon_coldboot_qdss_support_variables(int *cold_boot, int *da
 		if (*val != '\0')
 			*daemon = safe_atoi(val);
 	}
+
+#if defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
+	/* Force disable Coldboot Calibration for 256MB profile.
+	 * Daemon support and QDSS are only supported.
+	 */
+	if (total_mem <= (256 * 1024))
+		*cold_boot = 0;
+#endif
 
 	return 0;
 }
@@ -2157,15 +2233,134 @@ static int update_daemon_coldboot_qdss_support_variables(int *cold_boot, int *da
 }
 #endif
 #if !defined(RTCONFIG_QCA_WLAN_SCRIPTS)
+#if defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
+static void update_daemon_cold_boot_support_to_plat_priv(int cold_boot, int daemon)
+{
+	int total_mem = get_meminfo_item("MemTotal");
+
+	if (daemon == 1) {
+		eval("cnsscli", "-i", "integrated", "--enable_daemon_support", "1");
+	}
+
+	/* 256MB profile does not support Coldboot Calibration, return here */
+	if (total_mem <= (256 * 1024))
+		return;
+
+	if (cold_boot == 1) {
+		eval("cnsscli", "-i", "integrated", "--enable_cold_boot_support", "1");
+	}
+
+	return;
+}
+#else
+static inline void update_daemon_cold_boot_support_to_plat_priv(int cold_boot, int daemon) { }
+#endif
+
+#if defined(RTCONFIG_SOC_IPQ40XX)
+static int do_cold_boot_calibration(char *mod, int is_ftm){ return 0; }
+#elif defined(RTCONFIG_SOC_IPQ8074) && defined(RTCONFIG_SPF11_4_QSDK)
 /* Implementation cold boot calibration.
  * @mod:	module name that can handle cold boot calibration.
  * @return:
  * 	-1:	invalid parameter.
  * 	-2:	can't judge daemon_support of cnss2 driver is enabled or not.
  */
-#if defined(RTCONFIG_SOC_IPQ40XX)
-static int do_cold_boot_calibration(char *mod, int is_ftm){ return 0; }
-#else
+static int do_cold_boot_calibration(char *mod, int is_ftm)
+{
+#define CNSSDAEMON_OOM_SCORE_ADJ	"-1000"				/* SPF10 */
+	char val[4] = {0};
+	char testmode[] = "7", ftm_testmode[] = "10";
+	char testmode_param[] = "testmode=7", ftm_testmode_param[] = "testmode=10";
+	int cold_boot = 0, daemon = 0;
+
+	if (!mod || *mod == '\0')
+		return -1;
+
+	update_daemon_coldboot_qdss_support_variables(&cold_boot, &daemon);
+
+	strlcpy(val, cold_boot? "1" : "0", sizeof(val));
+	strlcpy(val, daemon? "1" : "0", sizeof(val));
+	/* update_daemon_cold_boot_support_to_plat_priv() is incharge of enabling
+	 * cold_boot/daemon and must be executed after cnssdaemon started.
+	 */
+
+	if (daemon) {
+		/* /etc/init.d/qrtr */
+		if (!pids("qrtr-ns")) {
+			eval("qrtr-cfg", "1");
+			eval("qrtr-ns");
+		}
+
+		/* start_cnssdaemon() */
+		/* Daemon User Socket uses loopback interface, make sure it is up */
+		_ifconfig("lo", IFUP, NULL, NULL, NULL, 0);;
+
+		eval("mkdir", "-p", "/tmp/wifi");	/* /data/vendor/wifi ==> /tmp/wifi */
+		if (!pids("cnssdaemon")) {
+			pid_t *pidList, *p;
+			char oom_score_adj[sizeof("/proc/XXXXX/oom_score_adjXXX")];
+			char *cnssdaemon_argv[] = { "cnssdaemon"
+				, "-s"
+				, "-i", "integraded"
+				, "-dddd", "-f", "/tmp/cnssdaemon.log"
+				, NULL };
+
+			_eval(cnssdaemon_argv, NULL, 0, NULL);
+			/* cnssdaemon opens up sockets which is required for cnsscli.
+			 * sleep here is to ensure the sockets are open before cnsscli is used.
+			 */
+			sleep(1);
+			pidList = find_pid_by_name("cnssdaemon");
+			for (p = pidList; *p; p++) {
+				snprintf(oom_score_adj, sizeof(oom_score_adj), "/proc/%d/oom_score_adj", *p);
+				f_write_string(oom_score_adj, CNSSDAEMON_OOM_SCORE_ADJ, 0, 0);
+			}
+			free(pidList);
+		}
+
+		update_daemon_cold_boot_support_to_plat_priv(cold_boot, daemon);
+	}	/* daemon */
+
+	if (!cold_boot) {
+		dbg("No cold_boot_support\b");
+		return 0;
+	}
+
+	if (f_exists(WLFW_CAL_01_BIN))
+		return 0;
+
+	if (module_loaded(mod))
+		return -3;
+
+	/* Set driver_mode as coldboot to the kernel */
+	f_write_string("/sys/module/cnss2/parameters/driver_mode", is_ftm? ftm_testmode : testmode, 0, 0);
+
+	/* Set Cold boot mode to 10 for FTM Mode, 7 otherwise */
+	eval("modprobe", "-s", mod, is_ftm? ftm_testmode_param : testmode_param);
+
+	if (!module_loaded(mod))
+		return -4;
+	eval("modprobe", "-s", "wifi_3_0");
+	eval("rmmod", "wifi_3_0");
+	eval("rmmod",  mod);
+
+	/* Reset driver_mode to 0 for mission mode */
+	f_write_string("/sys/module/cnss2/parameters/driver_mode", "0", 0, 0);
+
+	if (module_loaded(mod))
+		return -5;
+
+	return 0;
+}
+#elif defined(RTCONFIG_SPF8_QSDK) || defined(RTCONFIG_SPF10_QSDK) \
+ || defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK) \
+ || defined(RTCONFIG_SPF11_3_QSDK)
+/* Implementation cold boot calibration.
+ * @mod:	module name that can handle cold boot calibration.
+ * @return:
+ * 	-1:	invalid parameter.
+ * 	-2:	can't judge daemon_support of cnss2 driver is enabled or not.
+ */
 static int do_cold_boot_calibration(char *mod, int is_ftm)
 {
 #if defined(RTCONFIG_GLOBAL_INI)
@@ -2173,19 +2368,34 @@ static int do_cold_boot_calibration(char *mod, int is_ftm)
 	char val[4] = {0};
 #else
 #endif
-#if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK)
-	char testmode[] = "testmode=7", ftm_testmode[] = "testmode=10";
+#if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK) \
+ || defined(RTCONFIG_SPF11_3_QSDK)
+	char testmode[] = "7", ftm_testmode[] = "10";
+	char testmode_param[] = "testmode=7", ftm_testmode_param[] = "testmode=10";
 #endif
 	int cold_boot = 0, daemon = 0;
 
 	if (!mod || *mod == '\0')
 		return -1;
 
-#if defined(RTCONFIG_SPF8_QSDK) || defined(RTCONFIG_SPF10_QSDK) || defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK)
+#if defined(RTCONFIG_SPF8_QSDK) || defined(RTCONFIG_SPF10_QSDK) \
+ || defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK) \
+ || defined(RTCONFIG_SPF11_3_QSDK)
 	update_daemon_coldboot_qdss_support_variables(&cold_boot, &daemon);
 #endif
 
-#if defined(RTCONFIG_SPF11_1_QSDK)
+#if defined(RTCONFIG_SPF11_3_QSDK)
+	if (!cold_boot) {
+		dbg("No cold_boot_support\b");
+		return 0;
+	}
+
+	strlcpy(val, cold_boot? "1" : "0", sizeof(val));
+	strlcpy(val, daemon? "1" : "0", sizeof(val));
+	/* update_daemon_cold_boot_support_to_plat_priv() is incharge of enabling
+	 * cold_boot/daemon and must be executed after cnssdaemon started.
+	 */
+#elif defined(RTCONFIG_SPF11_1_QSDK)
 	if (!cold_boot) {
 		dbg("No cold_boot_support\b");
 		return 0;
@@ -2231,7 +2441,7 @@ static int do_cold_boot_calibration(char *mod, int is_ftm)
 	if (!daemon)
 		return 0;
 
-#if defined(RTCONFIG_SPF11_1_QSDK) \
+#if (defined(RTCONFIG_SPF11_1_QSDK) || defined(RTCONFIG_SPF11_3_QSDK)) \
  && defined(RTCONFIG_SOC_IPQ8074)
 	/* /etc/init.d/qrtr */
 	if (!pids("qrtr-ns")) {
@@ -2240,23 +2450,40 @@ static int do_cold_boot_calibration(char *mod, int is_ftm)
 	}
 #endif
 
+	/* start_cnssdaemon() */
+#if defined(RTCONFIG_SPF11_3_QSDK)
+	/* Daemon User Socket uses loopback interface, make sure it is up */
+	_ifconfig("lo", IFUP, NULL, NULL, NULL, 0);;
+#endif
+
 	eval("mkdir", "-p", "/tmp/wifi");	/* /data/vendor/wifi ==> /tmp/wifi */
 	if (!pids("cnssdaemon")) {
 #if defined(RTCONFIG_GLOBAL_INI)
 		pid_t *pidList, *p;
 		char oom_score_adj[sizeof("/proc/XXXXX/oom_score_adjXXX")];
+		char *cnssdaemon_argv[] = { "cnssdaemon",
+#if defined(RTCONFIG_SPF11_3_QSDK)
+			"-i", "integraded", /* "-dddd", "-f", "/tmp/cnssdaemon.log", */
+#endif
+			NULL };
 
-		eval("cnssdaemon");
+		_eval(cnssdaemon_argv, NULL, 0, NULL);
+		/* cnssdaemon opens up sockets which is required for cnsscli.
+		 * sleep here is to ensure the sockets are open before cnsscli is used.
+		 */
+		sleep(1);
 		pidList = find_pid_by_name("cnssdaemon");
 		for (p = pidList; *p; p++) {
 			snprintf(oom_score_adj, sizeof(oom_score_adj), "/proc/%d/oom_score_adj", *p);
 			f_write_string(oom_score_adj, CNSSDAEMON_OOM_SCORE_ADJ, 0, 0);
 		}
 		free(pidList);
-#else
+#else	/* !RTCONFIG_GLOBAL_INI */
 		eval("cnssdaemon");
-#endif
+#endif	/* RTCONFIG_GLOBAL_INI */
 	}
+
+	update_daemon_cold_boot_support_to_plat_priv(cold_boot, daemon);
 
 	if (f_exists(WLFW_CAL_01_BIN))
 		return 0;
@@ -2264,9 +2491,15 @@ static int do_cold_boot_calibration(char *mod, int is_ftm)
 	if (module_loaded(mod))
 		return -3;
 
-#if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK)
+#if defined(RTCONFIG_SPF11_3_QSDK)
+	/* Set driver_mode as coldboot to the kernel */
+	f_write_string("/sys/module/cnss2/parameters/driver_mode", is_ftm? ftm_testmode : testmode, 0, 0);
+#endif
+
+#if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK) \
+ || defined(RTCONFIG_SPF11_3_QSDK)
 	/* Set Cold boot mode to 10 for FTM Mode, 7 otherwise */
-	eval("modprobe", "-s", mod, is_ftm? ftm_testmode : testmode);
+	eval("modprobe", "-s", mod, is_ftm? ftm_testmode_param : testmode_param);
 #elif defined(RTCONFIG_SPF10_QSDK)
 	eval("modprobe", "-s", mod, "testmode=7");
 #endif
@@ -2278,16 +2511,73 @@ static int do_cold_boot_calibration(char *mod, int is_ftm)
 	eval("rmmod", "wifi_3_0");
 #endif
 	eval("rmmod",  mod);
+
+#if defined(RTCONFIG_SPF11_3_QSDK)
+	/* Reset driver_mode to 0 for mission mode */
+	f_write_string("/sys/module/cnss2/parameters/driver_mode", "0", 0, 0);
+#endif
+
 	if (module_loaded(mod))
 		return -5;
 
 	return 0;
 }
-#endif
-#endif
-#endif	/* RTCONFIG_SPF8_QSDK || RTCONFIG_SPF10_QSDK || RTCONFIG_SPF11_QSDK || RTCONFIG_SPF11_1_QSDK */
+#endif	/* RTCONFIG_SPF8_QSDK || RTCONFIG_SPF10_QSDK || RTCONFIG_SPF11_QSDK || RTCONFIG_SPF11_1_QSDK || RTCONFIG_SPF11_3_QSDK || defined(RTCONFIG_SPF11_4_QSDK) */
+#endif	/* !RTCONFIG_QCA_WLAN_SCRIPTS */
 
 #if defined(RTCONFIG_GLOBAL_INI)
+#if defined(RTCONFIG_SOC_IPQ8074) && defined(RTCONFIG_SPF11_4_QSDK)
+static void update_ini_dp_rings_sbs_for_nss_offload()
+{
+	char *dp_rings_sbs[] = {
+		"dp_nss_tcl_data_rings=3",
+		"dp_nss_reo_dest_rings=3",
+		NULL
+	};
+
+	__update_ini_file(QCA8074V2_I_INI, dp_rings_sbs);
+}
+
+static void update_ini_dp_rings_dbs_for_nss_offload()
+{
+	char *dp_rings_dbs[] = {
+		"dp_nss_tcl_data_rings=2",
+		"dp_nss_reo_dest_rings=2",
+		NULL
+	};
+
+	__update_ini_file(QCA8074_I_INI, dp_rings_dbs);
+	__update_ini_file(QCA8074V2_I_INI, dp_rings_dbs);
+}
+
+static void update_ini_dp_rings_for_nss_mode(void)
+{
+	int dynamic_hw_mode = 0, num_radio = 2;
+	char val[4] = { 0 }, hw_mode_str[64] = { 0 };
+
+	if (get_soc_version_major() != 2)
+		return;
+
+	if (!get_parameter_from_ini_file("dynamic_hw_mode", val, sizeof(val), GLOBAL_I_INI)) {
+		if (*val != '\0')
+			dynamic_hw_mode = safe_atoi(val);
+	}
+
+	if (f_read_string(SYS_CLASS_NET "/soc0/hw_modes", hw_mode_str, sizeof(hw_mode_str)) > 0) {
+		if (strstr(hw_mode_str, "DBS_SBS:"))
+			num_radio = 2;
+	}
+
+	if (num_radio > 2 || dynamic_hw_mode) {
+		update_ini_dp_rings_sbs_for_nss_offload();
+	} else {
+		update_ini_dp_rings_dbs_for_nss_offload();
+	}
+}
+#else
+static inline void update_ini_dp_rings_for_nss_mode(void) { }
+#endif
+
 static void update_ini_nss_info(int hk_ol_num)
 {
 	int total_mem, ring_size;
@@ -2325,7 +2615,7 @@ static void update_ini_nss_info(int hk_ol_num)
  * 	0:	success
  *  otherwise:	error
  */
-#if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK)
+#if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK) || defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
 static int adjust_ring_buffer_in_ini(int total_mem)
 {
 	/* detect_qcawifi() */
@@ -2336,7 +2626,7 @@ static int adjust_ring_buffer_in_ini(int total_mem)
 			"dp_rxdma_monitor_dst_ring=128",
 			"dp_rxdma_monitor_desc_ring=128",
 			"dp_rxdma_monitor_status_ring=512",
-#if defined(RTCONFIG_SPF11_1_QSDK)
+#if defined(RTCONFIG_SPF11_1_QSDK) || defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
 			"num_vdevs_pdev0=9",
 			"num_vdevs_pdev1=9",
 			"num_vdevs_pdev2=9",
@@ -2346,6 +2636,9 @@ static int adjust_ring_buffer_in_ini(int total_mem)
 			"num_monitor_pdev0=0",
 			"num_monitor_pdev1=0",
 			"num_monitor_pdev2=0",
+#endif
+#if defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
+			"full_mon_mode=0",
 #endif
 			NULL
 		};
@@ -2409,7 +2702,7 @@ static int adjust_ring_buffer_in_ini(int total_mem)
 			"dp_rxdma_monitor_dst_ring=128",
 			"dp_rxdma_monitor_desc_ring=4096",
 			"dp_rxdma_monitor_status_ring=512",
-#if defined(RTCONFIG_SPF11_1_QSDK)
+#if defined(RTCONFIG_SPF11_1_QSDK) || defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
 			"num_vdevs_pdev0=9",
 			"num_vdevs_pdev1=9",
 			"num_vdevs_pdev2=9",
@@ -2480,8 +2773,8 @@ static int adjust_ring_buffer_in_ini(int total_mem)
  * 	0:	success
  *  otherwise:	error
  */
-#if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK)
-#if !defined(RTCONFIG_SOC_IPQ40XX)
+#if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK) \
+ || defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
 static int get_nss_buf_size(int total_mem, int olcfg, const char **extra_pbuf_core0, const char **n2h_high_water_core0, const char **n2h_wifi_pool_buf)
 {
 	unsigned int hk_ol_num;
@@ -2568,7 +2861,6 @@ static int get_nss_buf_size(int total_mem, int olcfg, const char **extra_pbuf_co
 
 	return 0;
 }
-#endif
 #elif defined(RTCONFIG_SPF10_QSDK)
 static int get_nss_buf_size(int total_mem, int olcfg, const char **extra_pbuf_core0, const char **n2h_high_water_core0, const char **n2h_wifi_pool_buf)
 {
@@ -2721,6 +3013,13 @@ static void __load_wifi_driver(int testmode)
 	const char *n2h_high_water_core0 = "8704", *n2h_wifi_pool_buf = "0";
 	int r, r0, r1, r2, l0, l1, l2;
 #endif
+#if defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
+	char *spf11_3_fixed_ini_params[] = { "max_peers=0", "wds_ext=0",
+		"nss_wifi_radio_scheme_enable=1",	/* Enable the radio scheme flag */
+		"externalacs_enable=0",			/* icm_enable */
+		NULL };
+	char nss_wifi_radio_pri_map[sizeof("nss_wifi_radio_pri_map=XXXXXXXXXXXX")];
+#endif
 
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054)
 	hk_ol_num = bitCount(olcfg);
@@ -2744,16 +3043,30 @@ static void __load_wifi_driver(int testmode)
 
 	/* load_qcawifi() */
 	*v++ = "qwrap_enable=0";	/* SPF10.0 FC */
+#if defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
+	DPARM(v, s, len, "nss_wifi_olcfg=%d", olcfg);
+	if (olcfg) {
+		*v++ = "dp_rx_hash=0";
+	} else {
+		*v++ = "dp_rx_hash=1";
+	}
+#else
+	DPARM(v, s, len, "nss_wifi_olcfg=%d", olcfg);
+	if (olcfg) {
+		*v++ = "rx_hash=0";
+	}
+#endif	/* RTCONFIG_SPF11_3_QSDK || RTCONFIG_SPF11_4_QSDK */
+#endif	/* RTCONFIG_WIFI_QCN5024_QCN5054 */
 #if defined(RTCONFIG_SOC_IPQ60XX)
 	DPARM(v, s, len, "nss_wifi_olcfg=%d", olcfg);
 	DPARM(v, s, len, "allow_mon_vaps_in_sr=");
 #else
 	DPARM(v, s, len, "nss_wifi_olcfg=%d", !!olcfg);
 #endif
-	if (olcfg) {
-		*v++ = "rx_hash=0";
-	}
-#endif	/* RTCONFIG_WIFI_QCN5024_QCN5054 */
+
+#if defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
+	__update_ini_file(GLOBAL_I_INI, spf11_3_fixed_ini_params);
+#endif
 
 	for (up = global_ini_params; up != NULL && *up != NULL; up++) {
 		snprintf(qca_nv, sizeof(qca_nv), "qca_%s", *up);
@@ -2764,6 +3077,23 @@ static void __load_wifi_driver(int testmode)
 	__update_ini_file(GLOBAL_INI, &argv[2]);
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054)
 	update_ini_file(GLOBAL_I_INI, "ap_bss_color_collision_detection=0");
+#endif
+
+	update_ini_dp_rings_for_nss_mode();
+
+#if defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
+#if defined(RTCONFIG_SOC_IPQ8074)
+	update_ini_file(QCA8074_I_INI, "dp_tx_allow_per_pkt_vdev_id_check=0");
+	update_ini_file(QCA8074V2_I_INI, "dp_tx_allow_per_pkt_vdev_id_check=0");
+#endif
+	/* Each radio is mapped to 4 bit priority. Higher value has high priority.
+	 * Based on number of radios in board, priority is aggregated and
+	 * populated into global ini.
+	 * Eg: Board ap-hk10-c2 - 0x01. First radio is higher priority than second.
+	 * config_nss_wifi_radio_pri_map()
+	 */
+	snprintf(nss_wifi_radio_pri_map, sizeof(nss_wifi_radio_pri_map), "nss_wifi_radio_pri_map=%d", 0x1101);
+	update_ini_file(GLOBAL_I_INI, nss_wifi_radio_pri_map);
 #endif
 
 	/* update the ini nss info */
@@ -2928,11 +3258,10 @@ static void __load_wifi_driver(int testmode)
 #if defined(RTCONFIG_WIFI_SON)
 			if (sw_mode()!=SW_MODE_REPEATER && nvram_match("wifison_ready", "1")) {
 #if defined(RTCONFIG_HIDDEN_BACKHAUL)
-		        	if(strlen(nvram_safe_get("cfg_group")))
+		        	if(strlen(nvram_safe_get("cfg_group"))){
 #else
-				if(nvram_get_int("x_Setting"))
+				if(nvram_get_int("x_Setting")) {
 #endif
-				{
 				eval(IWPRIV, (char*) VPHY_2G, "no_vlan", "1");
 				eval(IWPRIV, (char*) VPHY_5G, "no_vlan", "1");
 				//send RCSA to uplink/CAP/PAP when detect radar
@@ -2970,7 +3299,10 @@ static void __load_wifi_driver(int testmode)
 
 void load_wifi_driver(void)
 {
-#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074)
+#if defined(RTCONFIG_SOC_IPQ8074)
+	f_write_string("/proc/sys/vm/pagecache_ratio", "25", 0, 0);
+	f_write_string("/proc/net/skb_recycler/flush", "1", 0, 0);	/* remove skb and pause skb recycler. */
+#elif defined(RTCONFIG_SOC_IPQ8064)
 	f_write_string("/proc/sys/vm/pagecache_ratio", "25", 0, 0);
 	f_write_string("/proc/net/skb_recycler/max_skbs", "2176", 0, 0);
 #elif defined(RTCONFIG_SOC_IPQ40XX)
@@ -3244,7 +3576,7 @@ void init_wl(void)
 				if(nvram_get_int("x_Setting"))
 				{
 					_dprintf("=>init_wl: create sta vaps\n");
-					create_vap(get_staifname(1), 1, "sta");
+					create_vap(get_staifname(unit), 1, "sta");
 					sleep(1);
 					ifconfig(get_staifname(1), IFUP, NULL, NULL);
 				}
@@ -3268,7 +3600,7 @@ void init_wl(void)
 			}
 			free(sta_ifnames);
 			free(skip_ifnames);
-#if defined(RTCONFIG_AMAS_QCA_WDS) && defined(RTCONFIG_BHCOST_OPT)
+#if defined(RTCONFIG_AMAS_WDS) && defined(RTCONFIG_BHCOST_OPT)
 			//restart or boot
 			nvram_set("amas_wds","0");
 			nvram_set("amas_qca_mode","-1");
@@ -3627,14 +3959,14 @@ void init_syspara(void)
 		{ NULL, 0, 0, NULL }
 	}, *pfv;
 
+#if defined(RTCONFIG_ASUSCTRL)
+	fix_location_code();
+#endif
+
 #if defined(RT4GAC53U) || defined(MAPAC1750)
 	boot_version_ck();
 #endif
 	set_basic_fw_name();
-
-#if defined(RTCONFIG_ASUSCTRL)
-	asus_ctrl_sku_check();
-#endif
 
 	/* /dev/mtd/2, RF parameters, starts from 0x40000 */
 	dst = buffer;
@@ -3835,6 +4167,10 @@ void init_syspara(void)
 		}
 	}
 
+#if defined(RTCONFIG_ASUSCTRL)
+	asus_ctrl_sku_check();
+#endif
+
 	/* PSK */
 	memset(buffer, 0, sizeof(buffer));
 	if (FRead(buffer, OFFSET_PSK, 14) < 0) {
@@ -4006,9 +4342,7 @@ void reinit_sfe(int unit)
 	int act = 1,i;	/* -1/0/otherwise: ignore/remove sfe/load sfe */
 	struct load_nat_accel_kmod_seq_s *p = &load_nat_accel_kmod_seq[0];
 #if defined(RTCONFIG_DUALWAN)
-	int nat_x = -1, l, t, link_wan = 1, link_wans_lan = 1;
-	int wans_cap = get_wans_dualwan() & WANSCAP_WAN;
-	int wanslan_cap = get_wans_dualwan() & WANSCAP_LAN;
+	int nat_x = -1;
 	char nat_x_str[] = "wanX_nat_xXXXXXX";
 #endif
 	int sfe_dev;
@@ -4018,12 +4352,6 @@ void reinit_sfe(int unit)
 #endif
 
 	act = nvram_get_int("qca_sfe");	
-
-	if(nvram_get_int("url_enable_x")==1 && strlen(nvram_get("url_rulelist"))!=0)
-		act = 0;
-
-	if(nvram_get_int("keyword_enable_x")==1 && strlen(nvram_get("keyword_rulelist"))!=0)
-		act = 0;
 
 	/* If non-A.QoS is enabled, disable sfe. */
 	if (IS_NON_AQOS())
@@ -4044,25 +4372,28 @@ void reinit_sfe(int unit)
 
 	if (act > 0) {
 #if defined(RTCONFIG_DUALWAN)
-		if (unit < 0 || unit > WAN_UNIT_SECOND) {
-			if ((wans_cap && wanslan_cap) /* ||
-			    (wanslan_cap && (!nvram_match("switch_wantag", "none") && !nvram_match("switch_wantag", ""))) */
-			   )
-				act = 0;
-		} else {
+		/* Load Balance */
+		if (nvram_match("wans_mode", "lb"))
+			act = 0;
+#if !defined(RT4GAC53U) && !defined(RT4GAC56) /* for Gobi */
+		/* Fail Over to 3G/4G */
+		else if (/*(unit == -1 && get_wans_dualwan() & WANSCAP_USB) ||*/
+			 (unit == prim_unit && get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_USB))
+			act = 0;
+#endif
+		/* Enable NAT */
+		else {
 			snprintf(nat_x_str, sizeof(nat_x_str), "wan%d_nat_x", unit);
 			nat_x = nvram_get_int(nat_x_str);
 			if (unit == prim_unit && !nat_x)
-				act = 0;
-			else if ((wans_cap && wanslan_cap) /* ||
-				 (wanslan_cap && (!nvram_match("switch_wantag", "none") && !nvram_match("switch_wantag", ""))) */
-				)
 				act = 0;
 			else if (unit != prim_unit)
 				act = -1;
 		}
 #else
 		if (!is_nat_enabled())
+			act = 0;
+		if (dualwan_unit__usbif(prim_unit))
 			act = 0;
 #endif
 	}
@@ -4072,64 +4403,11 @@ void reinit_sfe(int unit)
 	   ((sw_mode() != SW_MODE_ROUTER) && !nvram_match("cfg_master", "1")))
 		act = 0;
 #endif
-#if !defined(RT4GAC53U) /* for Gobi */
-	if (act > 0) {
-#if defined(RTCONFIG_DUALWAN)
-		if (unit < 0 || unit > WAN_UNIT_SECOND || nvram_match("wans_mode", "lb")) {
-			if (get_wans_dualwan() & WANSCAP_USB)
-				act = 0;
-		} else {
-			if (unit == prim_unit && get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_USB)
-				act = 0;
-		}
-#else
-		if (dualwan_unit__usbif(prim_unit))
-			act = 0;
-#endif
-	}
-#endif
 
 #if defined(RTCONFIG_DUALWAN)
-	if (act != 0 &&
-	    ((wans_cap && wanslan_cap) || (wanslan_cap && (!nvram_match("switch_wantag", "none") && !nvram_match("switch_wantag", ""))))
-	   )
-	{
-		/* If WANS_LAN and WAN is enabled, WANS_LAN is link-up and WAN is not link-up, hw_nat MUST be removed.
-		 * If hw_nat exists in such scenario, LAN PC can't connect to Internet through WANS_LAN correctly.
-		 *
-		 * FIXME:
-		 * If generic IPTV feature is enabled, STB port and VoIP port are recognized as WAN port(s).
-		 * In such case, we don't know whether real WAN port is link-up/down.
-		 * Thus, if WAN is link-up and primary unit is not WAN, assume WAN is link-down.
-		 */
-		for (i = WAN_UNIT_FIRST; i < WAN_UNIT_MAX; ++i) {
-			if ((t = get_dualwan_by_unit(i)) == WANS_DUALWAN_IF_USB)
-				continue;
-
-			l = wanport_status(i);
-			switch (t) {
-			case WANS_DUALWAN_IF_WAN:
-				link_wan = l && (i == prim_unit);
-				break;
-			case WANS_DUALWAN_IF_DSL:
-				link_wan = l;
-				break;
-			case WANS_DUALWAN_IF_LAN:
-				link_wans_lan = l;
-				break;
-			default:
-				_dprintf("%s: Unknown WAN type %d\n", __func__, t);
-			}
-		}
-
-		if (!link_wan && link_wans_lan)
-			act = 0;
-	}
-
-	_dprintf("%s:DUALWAN: unit %d,%d type %d iptv [%s] nat_x %d qos %d wans_mode %s link %d,%d: action %d.\n",
-		__func__, unit, prim_unit, get_dualwan_by_unit(unit), nvram_safe_get("switch_wantag"), nat_x,
-		nvram_get_int("qos_enable"), nvram_safe_get("wans_mode"),
-		link_wan, link_wans_lan, act);
+	_dprintf("%s:DUALWAN: unit %d,%d type %d nat_x %d qos %d wans_mode %s: action %d.\n",
+		__func__, unit, prim_unit, get_dualwan_by_unit(unit),
+		nat_x, nvram_get_int("qos_enable"), nvram_safe_get("wans_mode"), act);
 #else
 	_dprintf("%s:WAN: unit %d,%d type %d nat_x %d qos %d: action %d.\n",
 		__func__, unit, prim_unit, get_dualwan_by_unit(unit),
@@ -4166,16 +4444,7 @@ void reinit_sfe(int unit)
 #endif
 			/* load sfe */
 			if (module_loaded(p->kmod_name))
-			{
-
-#if defined(RTCONFIG_SOC_IPQ40XX)
-				if(nvram_get_int("MULTIFILTER_ENABLE")==1 &&
-				   !strcmp(p->kmod_name,"shortcut_fe_cm"))
-					modprobe_r("shortcut_fe_cm");
-				else				
-#endif
-					continue;
-			}
+				continue;
 			
 #if defined(RTCONFIG_SOC_IPQ40XX) && defined(RTCONFIG_BWDPI)
 			if (!strcmp(p->kmod_name,"shortcut_fe_cm") && handle_bwdpi) {
@@ -4347,6 +4616,9 @@ void post_ecm(void)
 		f_write_string("/sys/kernel/debug/ecm/ecm_nss_ipv6/db_limit_mode", "1", 0, 0);
 	}
 #endif
+
+	if (__post_ecm)
+		__post_ecm();
 }
 #endif	/* RTCONFIG_SOC_IPQ8064 || RTCONFIG_SOC_IPQ8074 */
 
@@ -4431,6 +4703,7 @@ set_wan_tag(char *interface)
 	case MODEL_RTAC59CD6N:
 	case MODEL_RTAC58U:
 	case MODEL_RT4GAC53U:
+	case MODEL_RT4GAC56:
 	case MODEL_RTAC82U:
 	case MODEL_RTAC88N:
 	case MODEL_MAPAC1750:

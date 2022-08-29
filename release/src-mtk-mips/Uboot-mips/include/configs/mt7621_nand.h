@@ -19,7 +19,6 @@
 #if defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_SERIAL_SUPPORT)
 #define CONFIG_SYS_NS16550_COM1		0xbe000c00
 #endif
-
 #if defined(CONFIG_ASUS_PRODUCT)
 /* NVRAM */
 #define NAND_NVRAM_OFFSET            0xe0000   /* NVRAM offset */
@@ -51,7 +50,7 @@
 #define COUNTRY_CODE_OFFSET          0x2ff78
 
 #define DUAL_TRX
-
+#define MAX_TRX_IMAGE_SIZE 0x280000
 #endif
 
 /* NAND */
@@ -68,10 +67,20 @@
 
 /* Network */
 #define CONFIG_IPADDR			192.168.1.1
-#define CONFIG_SERVERIP			192.168.1.2
+#define CONFIG_SERVERIP			192.168.1.70
 #define CONFIG_NETMASK			255.255.255.0
 
-#if defined(CONFIG_RTAX53U) || defined(CONFIG_RTAX54)
+#if defined(CONFIG_XD4S)
+#define WPS_BTN                 8 
+#define RST_BTN                 15
+#define SYS_GLED		16 
+#define SYS_BLED		13 
+#define SYS_RLED		14
+#define ASUS_BL			"u-boot-mt7621.bin"
+#define ASUS_FW			"XD4S.trx"
+#endif 
+
+#if defined(CONFIG_RTAX53U) || defined(CONFIG_RTAX54) 
 #define WPS_BTN                 15
 #define RST_BTN                 16
 #define PWR_LED                 13

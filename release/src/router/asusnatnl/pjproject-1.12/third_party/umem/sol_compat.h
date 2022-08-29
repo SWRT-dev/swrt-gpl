@@ -9,7 +9,7 @@
 #include "umem_config.h"
 
 #if defined(MIPS)
-#if !defined(MUSL_LIBC)
+#if !defined(RTCONFIG_MUSL_LIBC) && !defined(MUSL_LIBC)
   #include <atomic.h>
 #endif
 #elif defined(ARM)
@@ -206,7 +206,7 @@ static INLINE uint_t ec_atomic_inc(uint_t *mem)
 #ifdef _WIN32
 #define issetugid()		  0
 #elif !HAVE_ISSETUGID
-#if !defined(UCLIBC_NG) && !defined(PJ_ANDROID) && !defined(PJ_CONFIG_IPHONE) || (defined(PJ_ANDROID) && defined(ARM64))
+#if !defined(UCLIBC_NG) && !defined(PJ_ANDROID) && !defined(PJ_CONFIG_IPHONE) && !defined(MUSL_LIBC) || (defined(PJ_ANDROID) && defined(ARM64))
 #define issetugid()       (geteuid() == 0)
 #endif
 #endif

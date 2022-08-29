@@ -59,11 +59,60 @@ void gpio_init(void)
 	printf("%s ......\n", __func__);
 	gpio_input(WPS_BTN);
 	gpio_input(RST_BTN);
+#if defined(CONFIG_XD4S)
+	gpio_output(SYS_RLED,0);
+	gpio_output(SYS_GLED,0);
+	gpio_output(SYS_BLED,0);
+#else	
 	gpio_output(PWR_LED,0);
 	gpio_output(WIFI_2G_LED,0);
 	gpio_output(WIFI_5G_LED,0);
+#endif
 }
 
+
+#if defined(CONFIG_XD4S)
+void PWR_LEDON(void)
+{
+
+}
+void RESCUE_LED(void)
+{
+	gpio_output(SYS_RLED,0);
+	gpio_output(SYS_BLED,0);
+}
+
+void GREEN_LEDON(void)
+{
+	gpio_output(SYS_GLED,0);
+}
+
+void GREEN_LEDOFF(void)
+{
+	gpio_output(SYS_GLED,1);
+}
+
+void LEDON(void)
+{
+	gpio_output(SYS_RLED,0);
+}
+
+void LEDOFF(void)
+{
+	gpio_output(SYS_RLED,1);
+	gpio_output(SYS_GLED,1);
+	gpio_output(SYS_BLED,1);
+}
+#else	
+void GREEN_LEDON(void)
+{
+}
+void GREEN_LEDOFF(void)
+{
+}
+void RESCUE_LED(void)
+{
+}
 void LEDON(void)
 {
 	gpio_output(PWR_LED,1);
@@ -73,8 +122,6 @@ void LEDOFF(void)
 {
 	gpio_output(PWR_LED,0);
 }
-
-
 void PWR_LEDON(void)
 {
 #if defined(CONFIG_RTAX53U) || defined(CONFIG_RTAX54)
@@ -83,6 +130,7 @@ void PWR_LEDON(void)
 	gpio_output(PWR_LED,1);
 #endif
 }
+#endif //XD4S
 
 unsigned long DETECT(void)
 {

@@ -118,6 +118,9 @@ var wanports_bond = '<% nvram_get("wanports_bond"); %>';
 if(wan_bonding_support)
 	var orig_bond_wan = httpApi.nvramGet(["bond_wan"], true).bond_wan;
 
+var stbPortMappings = [<% get_stbPortMappings();%>][0];
+var iptv_port_settings = '<%nvram_get("iptv_port_settings"); %>';
+
 var faq_href1 = "https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Faq&lang="+ui_lang+"&kw=&num=129";
 var faq_href2 = "https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Faq&lang="+ui_lang+"&kw=&num=130";
 
@@ -125,13 +128,15 @@ function initial(){
 	show_menu();
 	wans_flag = (wans_dualwan_orig.search("none") != -1 || !parent.dualWAN_support) ? 0 : 1;
 	if(wan_bonding_support){
-		if(orig_bond_wan == 1 && (based_modelid == "RT-AX89U" || based_modelid == "GT-AXY16000")){
-			// Remove 10G base-T if it's aggregated w/ WAN port
-			var i = wans_caps.split(" ").indexOf("wan2");
-			if(i != -1 && wanports_bond.split(" ").indexOf("30") != -1){
-				var new_wans_cap = wans_caps.split(" ");
-				new_wans_cap.splice(i, 1);
-				wans_caps = new_wans_cap.toString().replace(/,/g," ");
+		if(orig_bond_wan == 1) {
+			if (based_modelid == "RT-AX89U" || based_modelid == "GT-AXY16000"){
+				// Remove 10G base-T if it's aggregated w/ WAN port
+				var i = wans_caps.split(" ").indexOf("wan2");
+				if(i != -1 && wanports_bond.split(" ").indexOf("30") != -1){
+					var new_wans_cap = wans_caps.split(" ");
+					new_wans_cap.splice(i, 1);
+					wans_caps = new_wans_cap.toString().replace(/,/g," ");
+				}
 			}
 		}
 	}
@@ -176,7 +181,7 @@ function initial(){
 		document.form.wans_lanport1.remove(2);
 		document.form.wans_lanport2.remove(3);
 		document.form.wans_lanport2.remove(2);
-	}else if(based_modelid == "RT-AC95U" || based_modelid == "RT-AX95Q" || based_modelid == "XT8PRO" || based_modelid == "RT-AXE95Q" || based_modelid == "ET8PRO" || based_modelid == "RT-AX82_XD6"){
+	}else if(based_modelid == "RT-AC95U" || based_modelid == "RT-AX95Q" || based_modelid == "XT8PRO" || based_modelid == "XT8_V2" || based_modelid == "RT-AXE95Q" || based_modelid == "ET8PRO" || based_modelid == "RT-AX82_XD6" || based_modelid == "RT-AX82_XD6S" || based_modelid == "XD4S" || based_modelid == "RT-AX53U"){
 		document.form.wans_lanport1.remove(3);
 		document.form.wans_lanport2.remove(3);
 	}
@@ -199,6 +204,21 @@ function initial(){
 		}
 		add_options_x2(document.form.wans_lanport1, arr, varr, <% nvram_get("wans_lanport"); %>);
 		add_options_x2(document.form.wans_lanport2, arr, varr, <% nvram_get("wans_lanport"); %>);
+	}
+
+	if(based_modelid == "XT12" || based_modelid == "ET12"){
+		var name = ["LAN Port 1", "LAN Port 2", "2.5G/1G LAN"];
+		var value = ["1", "2", "3"];
+
+		add_options_x2(document.form.wans_lanport1, name, value, <% nvram_get("wans_lanport"); %>);
+		add_options_x2(document.form.wans_lanport2, name, value, <% nvram_get("wans_lanport"); %>);
+	}
+
+	if (based_modelid == "TUF-AX4200") {
+		var desc = [ "LAN Port 1", "LAN Port 2", "LAN Port 3", "LAN Port 4", "2.5G LAN" ];
+		var value = [ "1", "2", "3", "4", "5" ];
+		add_options_x2(document.form.wans_lanport1, desc, value, <% nvram_get("wans_lanport"); %>);
+		add_options_x2(document.form.wans_lanport2, desc, value, <% nvram_get("wans_lanport"); %>);
 	}
 
 	if(wan_bonding_support)
@@ -462,8 +482,14 @@ function applyRule(){
 		document.form.wandog_enable.value = "0";
 	}
 
-	if(document.form.wandog_enable_chk.checked)
+	if(document.form.wandog_enable_chk.checked){
+		if(document.form.wandog_target.value == "" || document.form.wandog_target.value.trim().length==0){
+			alert("<#JS_fieldblank#>");
+			document.form.wandog_target.focus();
+			return false;
+		}
 		document.form.wandog_enable.value = "1";
+	}
 	else
 		document.form.wandog_enable.value = "0";
 
@@ -489,12 +515,36 @@ function applyRule(){
 		var port_conflict = false;
 		var lan_port_num = document.form.wans_lanport.value;
 		
-		if(switch_stb_x == lan_port_num)
-			port_conflict = true;
-		else if (switch_stb_x == '5' && (lan_port_num == '1' || lan_port_num == '2')) 
-			port_conflict = true;
-		else if ((switch_stb_x == '6' || switch_stb_x == '8') && (lan_port_num == '3' || lan_port_num == '4'))
-			port_conflict = true;
+		if(based_modelid == "GT-AC5300"){
+			/* Dual WAN: "LAN Port 1" (lan_port_num: 2), "LAN Port 2" (lan_port_num:1), "LAN Port 5" (lan_port_num:4), "LAN Port 6" (lan_port_num:3) */
+			if(iptv_port_settings == "56"){// LAN Port 5 (switch_stb_x: 3)  LAN Port 6 (switch_stb_x: 4)
+				if((lan_port_num == "4" && switch_stb_x == "3") || (lan_port_num == "3" && switch_stb_x == "4"))
+					port_conflict = true;
+				else if((switch_stb_x == "6" || switch_stb_x == "8") && (lan_port_num == '4' || lan_port_num == "3"))
+					port_conflict = true;
+			}
+			else{// LAN Port 1 (switch_stb_x: 3)  LAN Port 2 (switch_stb_x: 4)
+				if((lan_port_num == "2" && switch_stb_x == "3") || (lan_port_num == "1" && switch_stb_x == "4")) //LAN 1, LAN2
+					port_conflict = true;
+				else if((switch_stb_x == "6" || switch_stb_x == "8") && (lan_port_num == "2" || lan_port_num == "1"))
+					port_conflict = true;
+			}
+		}
+		else{
+			if(switch_stb_x == lan_port_num)
+				port_conflict = true;
+				else{
+					for(var i = 0; i < stbPortMappings.length; i++){
+						if(switch_stb_x == stbPortMappings[i].value && stbPortMappings[i].comboport_value_list.length != 0){
+							var value_list = stbPortMappings[i].comboport_value_list.split(" ");
+							for(var j = 0; j < value_list.length; j++){
+								if(lan_port_num == value_list[j])
+									port_conflict = true;
+							}
+						}
+					}
+				}
+		}
 
 		if (port_conflict) {
 			alert("<#RouterConfig_IPTV_conflict#>");
@@ -508,6 +558,8 @@ function applyRule(){
 				var bonding_port_settings = [{"val": "4", "text": "LAN5"}, {"val": "3", "text": "LAN6"}];
 			else if(based_modelid == "RT-AC86U" || based_modelid == "GT-AC2900")
 				var bonding_port_settings = [{"val": "4", "text": "LAN1"}, {"val": "3", "text": "LAN2"}];
+			else if(based_modelid == "XT8PRO")
+				var bonding_port_settings = [{"val": "2", "text": "LAN2"}, {"val": "3", "text": "LAN3"}];
 			else
 				var bonding_port_settings = [{"val": "1", "text": "LAN1"}, {"val": "2", "text": "LAN2"}];
 			
@@ -580,9 +632,18 @@ function applyRule(){
 		return;
 	}
 
-	showLoading();
-	document.form.submit();
+	if(document.form.action_script.value == "reboot"){
 
+		if(confirm("<#AiMesh_Node_Reboot#>")){
+			showLoading();
+			document.form.submit();
+		}
+	}
+	else{
+		
+		showLoading();
+		document.form.submit();
+	}
 }
 
 function addWANOption(obj, wanscapItem){
@@ -606,7 +667,7 @@ function addWANOption(obj, wanscapItem){
 				wanscapName = "Ethernet WAN";
 			else if(wanscapName == "LAN")
 				wanscapName = "Ethernet LAN";
-			else if(wanscapName == "USB" && (based_modelid == "4G-AC53U" || based_modelid == "4G-AC55U" || based_modelid == "4G-AC68U"))
+			else if(wanscapName == "USB" && based_modelid.substring(0,3) == "4G-")
 				wanscapName = "<#Mobile_title#>";
 			else if(wanscapName == "LAN2"){
 				wanscapName = "2.5G WAN";
@@ -617,6 +678,9 @@ function addWANOption(obj, wanscapItem){
 					wanscapName = "10G base-T";
 				else if(wanscapName == "SFP+")
 					wanscapName = "10G SFP+";
+			} else if (based_modelid == "TUF-AX4200") {
+				if (wanscapName == "WAN")
+					wanscapName = "2.5G WAN";
 			}
 
 			obj.options[i] = new Option(wanscapName, wanscapItem[i]);
@@ -924,7 +988,7 @@ function show_watchdog_table(){
 	else{
 		var new_str = "When the current WAN fails $WANDOG_MAXFAIL continuous times, it is deemed a disconnection.";//untranslated
 		new_html_str = new_str.replace("$WANDOG_MAXFAIL", replace_html);
-		$("#fo_detection_count_hd").html("Internet Connection Diagnosis");//untranslated
+		$("#fo_detection_count_hd").html("<#NetworkTools_Diagnose#>");
 		$("#wandog_maxfail_setting").html(new_html_str);
 	}
 
@@ -985,14 +1049,14 @@ function show_wans_rules(){
 					"title" : "<#FirewallConfig_LanWanSrcIP_itemname#>",
 					"maxlength" : "18",
 					"validator" : "dualWanRoutingRules",
-					"placeholder" : "Please input IP Address or IP Address/Netmask or all." //untranslated
+					"placeholder" : "<#FirewallConfig_LanWanIP_hint#>"
 				},
 				{
 					"editMode" : "text",
 					"title" : "<#FirewallConfig_LanWanDstIP_itemname#>",
 					"maxlength" : "18",
 					"validator" : "dualWanRoutingRules",
-					"placeholder" : "Please input IP Address or IP Address/Netmask or all." //untranslated
+					"placeholder" : "<#FirewallConfig_LanWanIP_hint#>"
 				},
 				{
 					"editMode" : "select",
@@ -1187,7 +1251,7 @@ function add_option_count(obj, obj_t, selected_flag){
 
 		free_options(obj_t);
 		for(var i = start; i <= end; i++){
-			if((based_modelid == "4G-AC53U" || based_modelid == "4G-AC55U" || based_modelid == "4G-AC68U") && obj_t.name != "wandog_fb_count")
+			if(based_modelid.substring(0,3) == "4G-" && obj_t.name != "wandog_fb_count")
 				str0= i;
 			else
 				str0 = i*parseInt(obj.value);
@@ -1223,7 +1287,7 @@ function update_consume_bytes(){
     var consume_bytes;
     var MBytes = 1024*1024;
 
-    if(based_modelid == "4G-AC53U" || based_modelid == "4G-AC55U" || based_modelid == "4G-AC68U"){
+    if(based_modelid.substring(0,3) == "4G-"){
     consume_bytes = 86400/interval_value*128*30;
 	consume_bytes = Math.ceil(consume_bytes/MBytes);
     consume_warning_str = "<#Detect_consume_warning1#> "+consume_bytes+" <#Detect_consume_warning2#>";

@@ -222,6 +222,7 @@ int issyspara(char *p)
 	// skip checking for wl[]_, wan[], lan[]_
 	if(strstr(p, "wl") || strstr(p, "wan") || strstr(p, "lan")
 		|| strstr(p, "vpn_server") || strstr(p, "vpn_client")
+		|| !strncmp(p, "wgs", 3) || !strncmp(p, "wgc", 3)
 	)
 		return 1;
 

@@ -473,17 +473,21 @@ void tls_update_remote_addr(struct tls_multi *multi,
 
 /**
  * Update TLS session crypto parameters (cipher and auth) and derive data
- * channel keys based on the supplied options.
+ * channel keys based on the supplied options. Does nothing if keys are already
+ * generated.
  *
- * @param session       The TLS session to update.
- * @param options       The options to use when updating session.
- * @param frame         The frame options for this session (frame overhead is
- *                      adjusted based on the selected cipher/auth).
+ * @param session         The TLS session to update.
+ * @param options         The options to use when updating session.
+ * @param frame           The frame options for this session (frame overhead is
+ *                        adjusted based on the selected cipher/auth).
+ * @param frame_fragment  The fragment frame options.
  *
- * @return true if updating succeeded, false otherwise.
+ * @return true if updating succeeded or keys are already generated, false otherwise.
  */
 bool tls_session_update_crypto_params(struct tls_session *session,
-                                      struct options *options, struct frame *frame);
+                                      struct options *options,
+                                      struct frame *frame,
+                                      struct frame *frame_fragment);
 
 /**
  * "Poor man's NCP": Use peer cipher if it is an allowed (NCP) cipher.
@@ -523,6 +527,29 @@ bool tls_check_ncp_cipher_list(const char *list);
  */
 bool tls_item_in_cipher_list(const char *item, const char *list);
 
+/**
+ * Check whether the ciphers in the supplied list are supported.
+ *
+ * @param list          Colon-separated list of ciphers
+ * @parms gc            gc_arena to allocate the returned string
+ *
+ * @returns             colon separated string of normalised (via
+ *                      translate_cipher_name_from_openvpn) and
+ *                      zero terminated string iff all ciphers
+ *                      in list are supported and the total length
+ *                      is short than MAX_NCP_CIPHERS_LENGTH. NULL
+ *                      otherwise.
+ */
+char *
+mutate_ncp_cipher_list(const char *list, struct gc_arena *gc);
+
+/**
+ * The maximum length of a ncp-cipher string that is accepted.
+ *
+ * Since this list needs to be pushed as IV_CIPHERS, we are conservative
+ * about its length.
+ */
+#define MAX_NCP_CIPHERS_LENGTH 127
 
 /*
  * inline functions
@@ -600,7 +627,10 @@ void extract_x509_field_test(void);
  */
 bool is_hard_reset(int op, int key_method);
 
-void delayed_auth_pass_purge(void);
+/**
+ * Cleans the saved user/password unless auth-nocache is in use.
+ */
+void ssl_clean_user_pass(void);
 
 
 /*

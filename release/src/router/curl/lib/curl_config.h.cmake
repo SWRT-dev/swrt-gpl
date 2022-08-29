@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 1998 - 2022, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -17,6 +17,8 @@
  *
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
 /* lib/curl_config.h.in.  Generated somehow by cmake.  */
@@ -33,61 +35,91 @@
 /* Location of default ca path */
 #cmakedefine CURL_CA_PATH "${CURL_CA_PATH}"
 
-/* to disable cookies support */
+/* disables alt-svc */
+#cmakedefine CURL_DISABLE_ALTSVC 1
+
+/* disables cookies support */
 #cmakedefine CURL_DISABLE_COOKIES 1
 
-/* to disable cryptographic authentication */
+/* disables cryptographic authentication */
 #cmakedefine CURL_DISABLE_CRYPTO_AUTH 1
 
-/* to disable DICT */
+/* disables DICT */
 #cmakedefine CURL_DISABLE_DICT 1
 
-/* to disable FILE */
+/* disables DNS-over-HTTPS */
+#cmakedefine CURL_DISABLE_DOH 1
+
+/* disables FILE */
 #cmakedefine CURL_DISABLE_FILE 1
 
-/* to disable FTP */
+/* disables FTP */
 #cmakedefine CURL_DISABLE_FTP 1
 
-/* to disable GOPHER */
+/* disables GOPHER */
 #cmakedefine CURL_DISABLE_GOPHER 1
 
-/* to disable IMAP */
-#cmakedefine CURL_DISABLE_IMAP 1
+/* disables HSTS support */
+#cmakedefine CURL_DISABLE_HSTS 1
 
-/* to disable HTTP */
+/* disables HTTP */
 #cmakedefine CURL_DISABLE_HTTP 1
 
-/* to disable LDAP */
+/* disables IMAP */
+#cmakedefine CURL_DISABLE_IMAP 1
+
+/* disables LDAP */
 #cmakedefine CURL_DISABLE_LDAP 1
 
-/* to disable LDAPS */
+/* disables LDAPS */
 #cmakedefine CURL_DISABLE_LDAPS 1
 
-/* to disable MQTT */
+/* disables --libcurl option from the curl tool */
+#cmakedefine CURL_DISABLE_LIBCURL_OPTION 1
+
+/* disables MIME support */
+#cmakedefine CURL_DISABLE_MIME 1
+
+/* disables MQTT */
 #cmakedefine CURL_DISABLE_MQTT 1
 
-/* to disable POP3 */
+/* disables netrc parser */
+#cmakedefine CURL_DISABLE_NETRC 1
+
+/* disables NTLM support */
+#cmakedefine CURL_DISABLE_NTLM 1
+
+/* disables date parsing */
+#cmakedefine CURL_DISABLE_PARSEDATE 1
+
+/* disables POP3 */
 #cmakedefine CURL_DISABLE_POP3 1
 
-/* to disable proxies */
+/* disables built-in progress meter */
+#cmakedefine CURL_DISABLE_PROGRESS_METER 1
+
+/* disables proxies */
 #cmakedefine CURL_DISABLE_PROXY 1
 
-/* to disable RTSP */
+/* disables RTSP */
 #cmakedefine CURL_DISABLE_RTSP 1
 
-/* to disable SMB */
+/* disables SMB */
 #cmakedefine CURL_DISABLE_SMB 1
 
-/* to disable SMTP */
+/* disables SMTP */
 #cmakedefine CURL_DISABLE_SMTP 1
 
-/* to disable TELNET */
+/* disables use of socketpair for curl_multi_poll */
+#cmakedefine CURL_DISABLE_SOCKETPAIR 1
+
+/* disables TELNET */
 #cmakedefine CURL_DISABLE_TELNET 1
 
-/* to disable TFTP */
+/* disables TFTP */
 #cmakedefine CURL_DISABLE_TFTP 1
 
-/* to disable verbose strings */
+/* disables verbose strings */
 #cmakedefine CURL_DISABLE_VERBOSE_STRINGS 1
 
 /* to make a symbol visible */
@@ -126,6 +158,9 @@
 
 /* Define to 1 if you have the <assert.h> header file. */
 #cmakedefine HAVE_ASSERT_H 1
+
+/* Define to 1 if you have the `fchmod' function. */
+#cmakedefine HAVE_FCHMOD 1
 
 /* Define to 1 if you have the `basename' function. */
 #cmakedefine HAVE_BASENAME 1
@@ -353,6 +388,12 @@
 /* Define to 1 if you have the `socket' library (-lsocket). */
 #cmakedefine HAVE_LIBSOCKET 1
 
+/* Define to 1 if you have the `psl' library (-lpsl). */
+#cmakedefine HAVE_LIBPSL 1
+
+/* Define to 1 if you have the <libpsl.h> header file. */
+#cmakedefine HAVE_LIBPSL_H 1
+
 /* Define to 1 if you have the `ssh2' library (-lssh2). */
 #cmakedefine HAVE_LIBSSH2 1
 
@@ -521,12 +562,6 @@
 /* Define to 1 if you have the sigsetjmp function or macro. */
 #cmakedefine HAVE_SIGSETJMP 1
 
-/* Define to 1 if sig_atomic_t is an available typedef. */
-#cmakedefine HAVE_SIG_ATOMIC_T 1
-
-/* Define to 1 if sig_atomic_t is already defined as volatile. */
-#cmakedefine HAVE_SIG_ATOMIC_T_VOLATILE 1
-
 /* Define to 1 if struct sockaddr_in6 has the sin6_scope_id member */
 #cmakedefine HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID 1
 
@@ -685,9 +720,6 @@
 
 /* Define to 1 if you have the winsock2.h header file. */
 #cmakedefine HAVE_WINSOCK2_H 1
-
-/* Define to 1 if you have the winsock.h header file. */
-#cmakedefine HAVE_WINSOCK_H 1
 
 /* Define this symbol if your OS supports changing the contents of argv */
 #cmakedefine HAVE_WRITABLE_ARGV 1
@@ -894,6 +926,9 @@ ${SIZEOF_TIME_T_CODE}
 /* if libSSH2 is in use */
 #cmakedefine USE_LIBSSH2 1
 
+/* if libPSL is in use */
+#cmakedefine USE_LIBPSL 1
+
 /* If you want to build curl with the built-in manual */
 #cmakedefine USE_MANUAL 1
 
@@ -928,11 +963,11 @@ ${SIZEOF_TIME_T_CODE}
 /* Define to 1 if you have the quiche_conn_set_qlog_fd function. */
 #cmakedefine HAVE_QUICHE_CONN_SET_QLOG_FD 1
 
+/* to enable msh3 */
+#cmakedefine USE_MSH3 1
+
 /* if Unix domain sockets are enabled  */
 #cmakedefine USE_UNIX_SOCKETS
-
-/* to disable alt-svc */
-#cmakedefine CURL_DISABLE_ALTSVC 1
 
 /* Define to 1 if you are building a Windows target with large file support. */
 #cmakedefine USE_WIN32_LARGE_FILES 1

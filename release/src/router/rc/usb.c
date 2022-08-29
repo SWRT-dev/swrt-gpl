@@ -292,10 +292,13 @@ void add_usb_host_modules(void)
 	modprobe(USBCORE_MOD);
 
 #ifdef RTCONFIG_HND_ROUTER_AX
-	if(nvram_get_int("usb_usb3") == 1)
-		eval("insmod", "bcm_usb", "usb3_enable=1");
-	else
-		eval("insmod", "bcm_usb", "usb3_enable=0");
+	eval("insmod",
+#if defined(BCM4912) || defined(BCM6756)
+		"bcm_bca_usb"
+#else
+		"bcm_usb"
+#endif
+		, (nvram_get_int("usb_usb3") == 1) ? "usb3_enable=1" : "usb3_enable=0");
 #endif
 
 #if defined(RTCONFIG_USB_XHCI)
@@ -317,7 +320,9 @@ void add_usb_host_modules(void)
 #elif defined(RTCONFIG_ALPINE)
 	modprobe(USB30_MOD);
 #else
+#if !defined(BCM4912) && !defined(BCM6756)
 	if (nvram_get_int("usb_usb3") == 1) {
+#endif
 #ifdef RTCONFIG_HND_ROUTER
 		modprobe(USB30_MOD);
 		modprobe("xhci-plat-hcd");
@@ -327,7 +332,9 @@ void add_usb_host_modules(void)
 #else
 		modprobe(USB30_MOD);
 #endif
+#if !defined(BCM4912) && !defined(BCM6756)
 	}
+#endif
 #endif
 #endif // RTCONFIG_USB_XHCI
 
@@ -1204,6 +1211,9 @@ void stop_usb(int f_force)
 #if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074)
 		modprobe_r("dwc3-ipq");
 		modprobe_r("udc-core");
+#endif
+#if defined(RTCONFIG_MT798X)
+		modprobe_r("xhci-mtk");
 #endif
 		modprobe_r(USB30_MOD);
 	}
@@ -2500,7 +2510,7 @@ void remove_storage_main(int shutdn)
 	exec_for_host(-1, 0x02, shutdn ? EFH_SHUTDN : 0, umount_partition);
 }
 
-#if defined(RTCONFIG_REALTEK) || defined(RTCONFIG_RALINK)
+#if defined(RTCONFIG_REALTEK) || (defined(RTCONFIG_RALINK) && !defined(RTCONFIG_MT798X))
 static const char *path_to_name(const char *path) {
 	const char *s = path, *tmp;
 	//_dprintf("%s(1)\n", __func__);
@@ -2616,7 +2626,7 @@ void hotplug_usb(void)
 	char *scsi_host = getenv("SCSI_HOST");
 	char *usbport = getenv("USBPORT");
 
-#if defined(RTCONFIG_REALTEK)
+#if defined(RTCONFIG_REALTEK) || (defined(RTCONFIG_RALINK) && !defined(RTCONFIG_MT798X))
 	char *devpath = getenv("DEVPATH");
 	//_dprintf("devpath: %s\n", devpath);
 	device = path_to_name(devpath);
@@ -3544,10 +3554,15 @@ start_samba(void)
 
 #if defined(SMP)
 #if defined(RTCONFIG_BCMARM) || defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074)
-#if defined(RTCONFIG_HND_ROUTER_AX_675X) && !defined(RTCONFIG_HND_ROUTER_AX_6710)
+#if defined(RTCONFIG_HND_ROUTER_AX_675X)
 	taskset_ret = -1;
 #else
 	if(!nvram_match("stop_taskset", "1")){
+#if defined(RTCONFIG_HND_ROUTER_AX_6756)
+#if defined(BCM6756)
+		cpu_num = 3;
+#endif
+#endif
 		if(cpu_num > 1)
 		{
 #ifndef RTCONFIG_BCMARM
@@ -3951,10 +3966,12 @@ write_mt_daapd_conf(char *servername)
 	char *http_passwd = nvram_safe_get("http_passwd");
 #ifdef RTCONFIG_NVRAM_ENCRYPT
 	int declen = strlen(http_passwd);
-	char dec_passwd[declen];
-	memset(dec_passwd, 0, sizeof(dec_passwd));
-	pw_dec(http_passwd, dec_passwd, sizeof(dec_passwd));
-	http_passwd = dec_passwd;
+	char *dec_passwd = NULL;
+	dec_passwd = malloc(declen);
+	if(dec_passwd){
+		pw_dec(http_passwd, dec_passwd, declen);
+		http_passwd = dec_passwd;
+	}
 #endif
 	memset(dbdir, 0, sizeof(dbdir));
 	if (find_dms_dbdir_candidate(dbdir_t))
@@ -3992,6 +4009,9 @@ write_mt_daapd_conf(char *servername)
 	fprintf(fp, "process_playlists = 1\n");
 	fprintf(fp, "process_itunes = 1\n");
 	fprintf(fp, "process_m3u = 1\n");
+#endif
+#ifdef RTCONFIG_NVRAM_ENCRYPT
+	if(dec_passwd) free(dec_passwd);
 #endif
 	fclose(fp);
 }

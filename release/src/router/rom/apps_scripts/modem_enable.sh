@@ -452,7 +452,7 @@ if [ "$modem_type" == "tty" -o "$modem_type" == "qmi" -o "$modem_type" == "mbim"
 				nvram unset ${prefix}act_reboot
 				nvram commit
 			fi
-		elif [ "$modem_model" == "1" ]; then
+		elif [ "$modem_model" == "1" ] || [ "$modem_model" == "2" ]; then
 			ret=`echo -n $at_ret |grep "+CFUN: 4" 2>/dev/null`
 			if [ -z "$ret" ]; then
 				echo "Quectel: let the modem unregister the network."
@@ -653,6 +653,13 @@ if [ "$modem_type" == "tty" -o "$modem_type" == "qmi" -o "$modem_type" == "mbim"
 	elif [ "$modem_model" == "2" ]; then
 		/usr/sbin/modem_stop.sh
 
+		echo "Fibocom: let the modem register the network again."
+		at_ret=`/usr/sbin/modem_at.sh '+CFUN=1' "$modem_reg_time" 2>&1`
+		ret=`echo -n $at_ret |grep "OK" 2>/dev/null`
+		if [ -z "$ret" ]; then
+			echo "Fibocom: Fail to set +CFUN=1."
+		fi
+
 		at_ret=`/usr/sbin/modem_at.sh '+GTAUTOCONNECT?' "$modem_reg_time" 2>&1`
 		ret=`echo -n $at_ret |grep "+GTAUTOCONNECT: 0" 2>/dev/null`
 		if [ -z "$ret" ]; then
@@ -690,7 +697,13 @@ if [ "$modem_type" == "tty" -o "$modem_type" == "qmi" -o "$modem_type" == "mbim"
 			exit 0
         fi
 
-		at_ret=`/usr/sbin/modem_at.sh '+GTRNDIS=1,1' 2>&1`
+		wait_time=`expr $modem_reg_time + 10`
+		at_ret=`/usr/sbin/modem_at.sh '+GTRNDIS=1,1' "$wait_time" 2>&1`
+		ret=`echo -n $at_ret |grep "OK" 2>/dev/null`
+		if [ -z "$ret" ]; then
+			echo "$modem_type: Fail to set +GTRNDIS=1,1 to connect."
+			exit 0
+		fi
 		
 		at_ret=`/usr/sbin/modem_at.sh '+GTRNDIS?' "$modem_reg_time" 2>&1`
 		ret=`echo -n "$at_ret" |grep "GTRNDIS: 1," |awk 'BEGIN{FS=","}{print $3}' |awk 'BEGIN{RS="\""}{print $1}' | grep "\." 2>/dev/null`

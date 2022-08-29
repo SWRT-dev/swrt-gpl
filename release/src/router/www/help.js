@@ -4,9 +4,7 @@
 	ASUSGATE_note6 : "Your DSL (Digital Suscriber Line) seems unstable. We strongly recommend that you submit feedback to our support team.",
 	ASUSGATE_note7 : "If you are experiencing any DSL related issues or you have any comments, please feel free to inform our support team.",
 	ASUSGATE_act_feedback : "Feedback now",
-	ASUSGATE_DSL_setting : "Go setting DSL",
-	filter_lw_date_valid : 'Please select at least one day or disable this feature.',
-	ctf_fa_hint : 'System will reboot automatically after enable AiProtection for function working fine. Please click apply to enable this function or click cancel to back to page.'
+	ASUSGATE_DSL_setting : "Go setting DSL"
 };
 
 var rc_support = '<% nvram_get("rc_support"); %>';
@@ -212,7 +210,7 @@ function upated_sim_record(){ //delete the oldest record and save the current da
 var debug_end_time = parseInt("<% nvram_get("dslx_diag_end_uptime"); %>");
 var wans_mode = '<%nvram_get("wans_mode");%>';
 var wans_lanport = '<% nvram_get("wans_lanport"); %>';
-var orig_wnaports_bond = '<% nvram_get("wanports_bond"); %>';
+var orig_wanports_bond = '<% nvram_get("wanports_bond"); %>';
 
 function overHint(itemNum){
 	var statusmenu = "";
@@ -224,7 +222,7 @@ function overHint(itemNum){
 		statusmenu ="<span><#WANAggregation_help_WAN#></span>";
 	}
 	else if(itemNum == 102){
-		statusmenu ="<span><#WANAggregation_help_LAN#></span>".replace(/LAN-*\D* 4/, wanAggr_p2_name(orig_wnaports_bond));
+		statusmenu ="<span><#WANAggregation_help_LAN#></span>".replace(/LAN-*\D* 4/, wanAggr_p2_name(orig_wanports_bond));
 	}
 
 	if(itemNum == 50){
@@ -283,7 +281,7 @@ function overHint(itemNum){
 			statusmenu += "<div class='StatusHint'><#Mobile_no_signal#></div>";
 		}
 		else if(usb_state == 2 && usb_sbstate == 0 && usb_auxstate != 1){
-			statusmenu += "<div class='StatusHint'><#Connected#> <#HSDPAConfig_ISP_itemname#>: </div><span>" + modem_act_provider + "</span>";
+			statusmenu += "<div class='StatusHint'><#Connected#> <#HSDPAConfig_ISP_itemname#>: </div><span>" + decodeURIComponent(modem_act_provider) + "</span>";
 		}
 		else{
 			statusmenu += "<div class='StatusHint'><#Disconnected#></div>";
@@ -1066,7 +1064,7 @@ function openHint(hint_array_id, hint_show_id, flag){
 		statusmenu = "<div>";
 		statusmenu += "<#WANAggregation_help_desc#>";
 		statusmenu += "<ol>";
-		statusmenu += "<li><#WANAggregation_help_step1#></li>".replace(/LAN-*\D* 4/, wanAggr_p2_name(orig_wnaports_bond));
+		statusmenu += "<li><#WANAggregation_help_step1#></li>".replace("LAN 4", wanAggr_p2_name(orig_wanports_bond));
 		statusmenu += "<li><#WANAggregation_help_step2#></li>";
 		statusmenu += "<li><#WANAggregation_help_step3#></li>";
 		statusmenu += "<li><#WANAggregation_help_step4#></li>";
@@ -1297,7 +1295,7 @@ var docRoot = 'document.body';
 if (olNs4) {
 	var oW = window.innerWidth;
 	var oH = window.innerHeight;
-	window.onresize = function() { if (oW != window.innerWidth || oH != window.innerHeight) location.href = location.href; }
+	window.onresize = function() { if (oW != window.innerWidth || oH != window.innerHeight) location.reload(); }
 }
 
 // Microsoft Stupidity Check(tm).

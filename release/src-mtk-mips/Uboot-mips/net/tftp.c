@@ -29,6 +29,9 @@ extern void LEDON(void);
 extern void LEDOFF(void);
 extern void PWR_LEDON(void);
 extern int ra_flash_init_layout(void);
+extern void GREEN_LEDON(void);
+extern void GREEN_LEDOFF(void);
+extern void RESCUE_LED(void);
 #endif  // CONFIG_ASUS_PRODUCT
 
 /* Well known TFTP port # */
@@ -388,7 +391,7 @@ void rescue_done(int ok)
 }
 
 int boot_write_img(ulong buf_addr, ulong addr, ulong size);
-static void SolveTRX(void)
+void SolveTRX(void)
 {
     char s[256];
     ulong size;
@@ -465,8 +468,11 @@ int boot_write_img(ulong buf_addr, ulong addr, ulong size)
 
     int rc = 0;
     char s[256];
-
+#if defined(CONFIG_TRX)
+    if (buf_addr <= 0 || addr < 0 || size <= 0)
+#else	    
     if (buf_addr <= 0 || addr <= 0 || size <= 0)
+#endif	    
     {
         puts("invalid arg !!\n");
         return 1;
@@ -538,7 +544,43 @@ int boot_read_img(ulong buf_addr, ulong addr)
     sprintf(file_size, "0x%08x", img_file_size);
 
     // nmbm nmbm0 read ${loadaddr} 0x3e0000 ${file_size}
+#if 1  //for zenwifi model , blink green led   
+    int i=0;
+    #define THREE_SECONDS_BYTES     0x500000
+    while(1)
+    {
+    	sprintf(kern_addr, "0x%lx", addr+THREE_SECONDS_BYTES*i);
+    	sprintf(mem_addr, "0x%lx", buf_addr+THREE_SECONDS_BYTES*i);
+    	sprintf(file_size, "0x%08x", THREE_SECONDS_BYTES);
+	if(img_file_size<THREE_SECONDS_BYTES*i)
+	{
+    		sprintf(file_size, "0x%08x", img_file_size-THREE_SECONDS_BYTES*(i-1));
+    		sprintf(kern_addr, "0x%lx", addr+THREE_SECONDS_BYTES*(i-1));
+    		sprintf(mem_addr, "0x%lx", buf_addr+THREE_SECONDS_BYTES*(i-1));
+		printf("remaining file size =%x\n",file_size);
+	}
+
+    	rc = do_nmbm(NULL, 0, ARRAY_SIZE(nmbm_read_argv2), nmbm_read_argv2);
+	if(i%2) //first block
+		GREEN_LEDOFF();
+	else
+		GREEN_LEDON();
+
+	if(rc!=0) //read nmbm error
+	{	
+        	sprintf(s, "nmbm nmbm0 read %s %s %s, error !!\n", mem_addr, kern_addr, file_size);
+		break;
+	}	
+	if(THREE_SECONDS_BYTES*i > img_file_size)
+	{
+		printf("nmbm nmbm0 read done!\n");
+		break;
+	}	
+	i++;
+    }
+#else    
     rc = do_nmbm(NULL, 0, ARRAY_SIZE(nmbm_read_argv2), nmbm_read_argv2);
+#endif
     if (rc != 0)
     {
         memset(s, 0, sizeof(s));
@@ -563,8 +605,14 @@ int do_tftpd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
     if(DETECT() > 0)        /* Reset to default button */
     {
+	RESCUE_LED();
         puts("\n## Enter Rescue Mode ##\n");
+#if defined(CONFIG_TFTPD)	
+	env_set("autostart", "no");
+        if (net_loop(TFTPD) < 0)
+#else		
         if (net_loop(TFTPSRV) < 0)
+#endif		
             return 1;
     }
     else if (DETECT_WPS() > 0)  /* WPS button */
@@ -599,6 +647,7 @@ int do_tftpd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
         trx_len = 0;
         rc = boot_read_img(load_addr, NAND_LINUX_OFFSET);
+
         if (rc == 0) trx_len = check_trx(load_addr);
 
         if (trx_len <= 0)
@@ -611,7 +660,12 @@ int do_tftpd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
             {
                 puts("\n## Both firmware damaged ...\n");
                 puts("\n## Enter Rescue Mode ##\n");
+#if defined(CONFIG_TFTPD)	
+		env_set("autostart", "no");
+		if (net_loop(TFTPD) < 0)
+#else		
                 if (net_loop(TFTPSRV) < 0)
+#endif			
                     return 1;
             }
             else

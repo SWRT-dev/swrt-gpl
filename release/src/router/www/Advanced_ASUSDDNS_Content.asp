@@ -18,7 +18,6 @@
 <script type="text/javascript" language="JavaScript" src="/validator.js"></script>
 <script type="text/javaScript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/js/httpApi.js"></script>
-<script type="text/javascript" src="/form.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/asus_eula.js"></script>
 <style type="text/css">
 *{
@@ -88,10 +87,10 @@ var deregister_fail = 0;
 var cur_wan_ipaddr = wanlink_ipaddr();
 var inadyn = isSupport("inadyn");
 
+var faq_href = "https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Faq&lang="+ui_lang+"&kw=&num=105";
 var le_sbstate_t = '<% nvram_get("le_sbstate_t"); %>';
 var le_auxstate_t = '<% nvram_get("le_auxstate_t"); %>';
 var le_re_ddns = '<% nvram_get("le_re_ddns"); %>';
-var faq_href = "https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Faq&lang="+ui_lang+"&kw=&num=105";
 
 function init(){
 	show_menu();
@@ -238,6 +237,7 @@ function ddns_load_body(){
             else
                 document.getElementById("ddns_hostname_x").value = "<#asusddns_inputhint#>";
         }
+        showhide("ddns_ipcheck_tr", 1);
 		
         change_ddns_setting(document.form.ddns_server_x.value);
         if(letsencrypt_support){
@@ -262,6 +262,7 @@ function ddns_load_body(){
         document.form.ddns_wildcard_x[0].disabled= 1;
         document.form.ddns_wildcard_x[1].disabled= 1;
         showhide("wildcard_field",0);
+        showhide("ddns_ipcheck_tr", 0);
         if(letsencrypt_support)
             show_cert_settings(0);
     }
@@ -905,6 +906,15 @@ function check_unregister_result(){
 					<option class="content_input_fd" value="-1" <% nvram_match("ddns_wan_unit", "-1","selected"); %>><#Auto#></option>
 					<option class="content_input_fd" value="0" <% nvram_match("ddns_wan_unit", "0","selected"); %>><#dualwan_primary#></option>
 					<option class="content_input_fd" value="1"<% nvram_match("ddns_wan_unit", "1","selected"); %>><#dualwan_secondary#></option>
+				</select>
+				</td>
+			</tr>
+			<tr id="ddns_ipcheck_tr">
+				<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(5,17);">Method to retrieve WAN IP</a></th>
+                                <td>
+				<select name="ddns_realip_x" class="input_option">
+					<option class="content_input_fd" value="0" <% nvram_match("ddns_realip_x", "0","selected"); %>><#IPConnection_VSList_Internal#></option>
+					<option class="content_input_fd" value="1" <% nvram_match("ddns_realip_x", "1","selected"); %>><#IPConnection_VSList_External#></option>
 				</select>
 				</td>
 			</tr>

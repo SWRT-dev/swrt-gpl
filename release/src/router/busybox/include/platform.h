@@ -224,6 +224,7 @@ typedef uint64_t bb__aliased_uint64_t FIX_ALIASING;
 # define move_from_unaligned32(v, u32p) ((v) = *(bb__aliased_uint32_t*)(u32p))
 # define move_to_unaligned16(u16p, v)   (*(bb__aliased_uint16_t*)(u16p) = (v))
 # define move_to_unaligned32(u32p, v)   (*(bb__aliased_uint32_t*)(u32p) = (v))
+# define move_to_unaligned64(u64p, v)   (*(bb__aliased_uint64_t*)(u64p) = (v))
 /* #elif ... - add your favorite arch today! */
 #else
 # define BB_UNALIGNED_MEMACCESS_OK 0
@@ -240,8 +241,22 @@ typedef uint64_t bb__aliased_uint64_t FIX_ALIASING;
 	uint32_t __t = (v); \
 	memcpy((u32p), &__t, 4); \
 } while (0)
+# define move_to_unaligned64(u64p, v) do { \
+        uint64_t __t = (v); \
+        memcpy((u64p), &__t, 8); \
+} while (0)
 #endif
 
+/* Unaligned, fixed-endian accessors */
+#define get_unaligned_le32(buf) ({ uint32_t v; move_from_unaligned32(v, buf); SWAP_LE32(v); })
+#define get_unaligned_be32(buf) ({ uint32_t v; move_from_unaligned32(v, buf); SWAP_BE32(v); })
+#define put_unaligned_le32(val, buf) move_to_unaligned32(buf, SWAP_LE32(val))
+#define put_unaligned_be32(val, buf) move_to_unaligned32(buf, SWAP_BE32(val))
+
+/* unxz needs an aligned fixed-endian accessor.
+ * (however, the compiler does not realize it's aligned, the cast is still necessary)
+ */
+#define get_le32(u32p) ({ uint32_t v = *(bb__aliased_uint32_t*)(u32p); SWAP_LE32(v); })
 
 /* ---- Size-saving "small" ints (arch-dependent) ----------- */
 

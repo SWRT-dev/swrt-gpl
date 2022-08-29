@@ -555,8 +555,7 @@ setenv_stats(struct context *c)
 }
 
 static void
-multi_client_disconnect_setenv(struct multi_context *m,
-                               struct multi_instance *mi)
+multi_client_disconnect_setenv(struct multi_instance *mi)
 {
     /* setenv client real IP address */
     setenv_trusted(mi->context.c2.es, get_link_socket_info(&mi->context));
@@ -572,13 +571,12 @@ multi_client_disconnect_setenv(struct multi_context *m,
 }
 
 static void
-multi_client_disconnect_script(struct multi_context *m,
-                               struct multi_instance *mi)
+multi_client_disconnect_script(struct multi_instance *mi)
 {
     if ((mi->context.c2.context_auth == CAS_SUCCEEDED && mi->connection_established_flag)
         || mi->context.c2.context_auth == CAS_PARTIAL)
     {
-        multi_client_disconnect_setenv(m, mi);
+        multi_client_disconnect_setenv(mi);
 
         if (plugin_defined(mi->context.plugins, OPENVPN_PLUGIN_CLIENT_DISCONNECT))
         {
@@ -685,7 +683,7 @@ multi_close_instance(struct multi_context *m,
     set_cc_config(mi, NULL);
 #endif
 
-    multi_client_disconnect_script(m, mi);
+    multi_client_disconnect_script(mi);
 
     if (mi->did_open_context)
     {
@@ -1112,7 +1110,7 @@ multi_learn_addr(struct multi_context *m,
 
         if (oldroute) /* route already exists? */
         {
-            if (route_quota_test(m, mi) && learn_address_script(m, mi, "update", &newroute->addr))
+            if (route_quota_test(mi) && learn_address_script(m, mi, "update", &newroute->addr))
             {
                 learn_succeeded = true;
                 owner = mi;
@@ -1129,7 +1127,7 @@ multi_learn_addr(struct multi_context *m,
         }
         else
         {
-            if (route_quota_test(m, mi) && learn_address_script(m, mi, "add", &newroute->addr))
+            if (route_quota_test(mi) && learn_address_script(m, mi, "add", &newroute->addr))
             {
                 learn_succeeded = true;
                 owner = mi;
@@ -1579,7 +1577,7 @@ multi_select_virtual_addr(struct multi_context *m, struct multi_instance *mi)
  * Set virtual address environmental variables.
  */
 static void
-multi_set_virtual_addr_env(struct multi_context *m, struct multi_instance *mi)
+multi_set_virtual_addr_env(struct multi_instance *mi)
 {
     setenv_del(mi->context.c2.es, "ifconfig_pool_local_ip");
     setenv_del(mi->context.c2.es, "ifconfig_pool_remote_ip");
@@ -1658,7 +1656,7 @@ multi_client_connect_post(struct multi_context *m,
          * directory or any --ifconfig-pool dynamic address.
          */
         multi_select_virtual_addr(m, mi);
-        multi_set_virtual_addr_env(m, mi);
+        multi_set_virtual_addr_env(mi);
     }
 }
 
@@ -1702,7 +1700,7 @@ multi_client_connect_post_plugin(struct multi_context *m,
          * directory or any --ifconfig-pool dynamic address.
          */
         multi_select_virtual_addr(m, mi);
-        multi_set_virtual_addr_env(m, mi);
+        multi_set_virtual_addr_env(mi);
     }
 }
 
@@ -1742,7 +1740,7 @@ multi_client_connect_mda(struct multi_context *m,
          * directory or any --ifconfig-pool dynamic address.
          */
         multi_select_virtual_addr(m, mi);
-        multi_set_virtual_addr_env(m, mi);
+        multi_set_virtual_addr_env(mi);
     }
 }
 
@@ -1761,7 +1759,7 @@ multi_client_connect_setenv(struct multi_context *m,
     setenv_trusted(mi->context.c2.es, get_link_socket_info(&mi->context));
 
     /* setenv client virtual IP address */
-    multi_set_virtual_addr_env(m, mi);
+    multi_set_virtual_addr_env(mi);
 
     /* setenv connection time */
     {
@@ -2134,8 +2132,30 @@ multi_process_file_closed(struct multi_context *m, const unsigned int mpp_flags)
         {
             if (mi)
             {
-                /* continue authentication and send push_reply */
+                /* continue authentication, perform NCP negotiation and send push_reply */
                 multi_process_post(m, mi, mpp_flags);
+
+                /* With NCP and deferred authentication, we perform cipher negotiation and
+                 * data channel keys generation on incoming push request, assuming that auth
+                 * succeeded. When auth succeeds in between push requests and async push is used,
+                 * we send push reply immediately. Above multi_process_post() call performs
+                 * NCP negotiation and here we do keys generation. */
+
+                struct context *c = &mi->context;
+                struct frame *frame_fragment = NULL;
+#ifdef ENABLE_FRAGMENT
+                if (c->options.ce.fragment)
+                {
+                    frame_fragment = &c->c2.frame_fragment;
+                }
+#endif
+                struct tls_session *session = &c->c2.tls_multi->session[TM_ACTIVE];
+                if (!tls_session_update_crypto_params(session, &c->options,
+                                                      &c->c2.frame, frame_fragment))
+                {
+                    msg(D_TLS_ERRORS, "TLS Error: initializing data channel failed");
+                    register_signal(c, SIGUSR1, "init-data-channel-failed");
+                }
             }
             else
             {
@@ -2542,7 +2562,8 @@ multi_process_incoming_link(struct multi_context *m, struct multi_instance *inst
             orig_buf = c->c2.buf.data;
             if (process_incoming_link_part1(c, lsi, floated))
             {
-                if (floated)
+                /* nonzero length means that we have a valid, decrypted packed */
+                if (floated && c->c2.buf.len > 0)
                 {
                     multi_process_float(m, m->pending);
                 }
@@ -2919,7 +2940,7 @@ multi_process_drop_outgoing_tun(struct multi_context *m, const unsigned int mpp_
  */
 
 void
-route_quota_exceeded(const struct multi_context *m, const struct multi_instance *mi)
+route_quota_exceeded(const struct multi_instance *mi)
 {
     struct gc_arena gc = gc_new();
     msg(D_ROUTE_QUOTA, "MULTI ROUTE: route quota (%d) exceeded for %s (see --max-routes-per-client option)",
@@ -3353,12 +3374,6 @@ init_management_callback_multi(struct multi_context *m)
         management_set_callback(management, &cb);
     }
 #endif /* ifdef ENABLE_MANAGEMENT */
-}
-
-void
-uninit_management_callback_multi(struct multi_context *m)
-{
-    uninit_management_callback();
 }
 
 /*

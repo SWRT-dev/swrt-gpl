@@ -1,6 +1,7 @@
 #!/bin/sh
 
 IS_BCMHND=`nvram get rc_support|grep -i bcmhnd`
+betaupg_support=`nvram get rc_support|grep -i betaupg`
 
 #wget_options="-q -t 2 -T 30 --no-check-certificate"
 
@@ -57,6 +58,12 @@ fi
 firmware_file=`echo $get_productid`_`nvram get webs_state_info`_un.zip
 #firmware_rsasign=`echo $get_productid`_`nvram get webs_state_info`_rsa.zip
 
+# for beta path
+forbeta=0
+if [ "$betaupg_support" != "" ]; then
+	forbeta=`nvram get webs_update_beta`
+fi
+
 # for sq
 forsq=`nvram get apps_sq`
 if [ -z "$forsq" ]; then
@@ -81,6 +88,10 @@ if [ "$update_url" != "" ]; then
 	echo "---- wget fw nvram webs_state_url ${update_url}/$firmware_file ----" >> /tmp/webs_upgrade.log
 	logger -t AUTO_UPGRADE "wget fw nvram webs_state_url $firmware_file"
 	hnd-write ${update_url}/$firmware_file
+elif [ "$betaupg_support" != "" ] && [ "$forbeta" == "1" ]; then
+	echo "---- wget fw beta ${dl_path_SQ}/$firmware_file ----" >> /tmp/webs_upgrade.log
+	logger -t AUTO_UPGRADE "wget fw beta $firmware_file"
+	hnd-write ${dl_path_SQ}/$firmware_file
 elif [ "$forsq" -ge 2 ] && [ "$forsq" -le 9 ]; then
 	echo "---- wget fw sq beta_user ${dl_path_SQ_beta}${forsq}/$firmware_file ----" >> /tmp/webs_upgrade.log
 	logger -t AUTO_UPGRADE "wget fw sq beta_user ${forsq}/$firmware_file"
@@ -108,6 +119,11 @@ if [ "$hndwr_status" != "99" ] && [ "$hndwr_status" != "-100" ]; then
 	logger -t AUTO_UPGRADE "download fw failure"
 
 	nvram set $record=1	# fail to download the firmware
+	echo "---- URLFW To download fw/rsa, End ----" >> /tmp/webs_upgrade.log
+	logger -t AUTO_UPGRADE "URLFW To download fw/rsa, End"
+	rc rc_service stop_logger
+	rc rc_service "stop_jffs2 0"
+	sleep 1
 	if [ "$cfg_trigger" != "1" ]; then	# cfg_mnt skip
 		if [ "$force_upgrade" == "1" ]; then
 			webs_state_dl_error_count=$((webs_state_dl_error_count+1))
@@ -123,16 +139,18 @@ else
 
 	/sbin/ejusb -1 0
 	nvram set fwpath=2
+	echo "---- URLFW To download fw/rsa, End ----" >> /tmp/webs_upgrade.log
+	logger -t AUTO_UPGRADE "URLFW To download fw/rsa, End"
+	rc rc_service stop_logger
+	rc rc_service "stop_jffs2 0"
+	sleep 1
 	if [ "$cfg_trigger" != "1" ]; then	# cfg_mnt skip
 		nvram set auto_upgrade=0
 		nvram set webs_state_dl=0
 		nvram commit
 		reboot
-		#rc rc_service restart_upgrade
 	fi # cfg_trigger!=1
 fi
 
-echo "---- URLFW To download fw/rsa, End ----" >> /tmp/webs_upgrade.log
-logger -t AUTO_UPGRADE "URLFW To download fw/rsa, End"
 nvram set webs_state_upgrade=1
 nvram commit

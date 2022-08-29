@@ -49,7 +49,6 @@
 #include <regex.h>
 #include <fnmatch.h>
 #include <sys/wait.h>
-
 #ifndef linux
 #define __BYTE_ORDER BYTE_ORDER
 #define __BIG_ENDIAN BIG_ENDIAN
@@ -112,6 +111,9 @@
 #include "pseudo.h"
 #include "compressor.h"
 #include "xattr.h"
+#include <sys/sysmacros.h>
+
+
 
 int delete = FALSE;
 int fd;

@@ -1,5 +1,4 @@
 include ../common.mak
-include $(SRCBASE)/.config
 
 CFLAGS += -Wall -Os $(EXTRACFLAGS)
 CFLAGS += -I. -I$(TOP)/shared -I$(SRCBASE)/include -I$(TOP)/networkmap
@@ -43,7 +42,7 @@ ifneq ($(findstring CONFIG_RTL_USERSPACE_WTDOG=, $(shell cat $(LINUXDIR)/.config
 export CFLAGS += -DRTL_WTDOG
 endif
 else ifeq ($(RTCONFIG_RALINK),y)
-CFLAGS += -I$(TOP)/shared/sysdeps/ralink -I$(TOP)/wireless_tools
+CFLAGS += -I$(TOP)/shared/sysdeps/ralink -I$(TOP)/wireless_tools$(WTOOL_SUFFIX)
 ifneq ($(findstring MAC_REPEATER=, $(shell cat $(LINUXDIR)/.config)),)
 export CFLAGS += -DMAC_REPEATER
 endif
@@ -57,7 +56,7 @@ endif
 endif
 
 ifeq ($(RTCONFIG_QCA),y)
-CFLAGS += -I$(TOP)/shared/sysdeps/qca -I$(TOP)/wireless_tools
+CFLAGS += -I$(TOP)/shared/sysdeps/qca -I$(TOP)/wireless_tools$(WTOOL_SUFFIX)
 CFLAGS += $(if $(or $(RTCONFIG_SOC_IPQ8064),$(RTCONFIG_SOC_IPQ8074)),-DSMP)
 endif
 ifeq ($(RTCONFIG_WBD),y)
@@ -65,11 +64,11 @@ CFLAGS += -D__CONFIG_WBD__
 endif
 
 ifeq ($(RTCONFIG_ALPINE),y)
-CFLAGS += -I$(TOP)/shared/sysdeps/alpine -I$(TOP)/wireless_tools -I$(TOP)/mtd-utils/include/
+CFLAGS += -I$(TOP)/shared/sysdeps/alpine -I$(TOP)/wireless_tools$(WTOOL_SUFFIX) -I$(TOP)/mtd-utils/include/
 endif
 
 ifeq ($(RTCONFIG_LANTIQ),y)
-CFLAGS += -I$(TOP)/shared/sysdeps/lantiq -I$(TOP)/wireless_tools -I$(TOP)/fapi_wlan_common-05.04.00.131/include -I$(TOP)/libhelper-1.4.0.2/include -DPACKAGE_ID=\"fapi_wlan_common\" -DLOGGING_ID="fapi_wlan_common"
+CFLAGS += -I$(TOP)/shared/sysdeps/lantiq -I$(TOP)/wireless_tools$(WTOOL_SUFFIX) -I$(TOP)/fapi_wlan_common-05.04.00.131/include -I$(TOP)/libhelper-1.4.0.2/include -DPACKAGE_ID=\"fapi_wlan_common\" -DLOGGING_ID="fapi_wlan_common"
 CFLAGS  += -I$(TOP)/wlc_nt
 endif
 
@@ -82,17 +81,17 @@ endif
 ifeq ($(HND_ROUTER),y)
 CFLAGS += -I$(HND_SRC)/userspace/public/include -I$(HND_SRC)/userspace/public/include/linux -I$(HND_SRC)/userspace/private/include
 CFLAGS += -I$(HND_SRC)/shared/opensource/include/$(BRCM_BOARD)
-ifeq ($(HND_ROUTER_AX_675X),y)
-LDFLAGS += -L$(TOP_PLATFORM)/gen_util -lgen_util -L$(TOP_PLATFORM)/sys_util -lsys_util
+ifeq ($(RTCONFIG_BCM_502L07P2),y)
+LDFLAGS += -L$(TOP_PLATFORM)/ethctl_lib -lethctl
 endif
-ifeq ($(HND_ROUTER_AX_6756),y)
+ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6756),$(HND_ROUTER_AX_6710),$(BCM_502L07P2)),y)
 LDFLAGS += -L$(TOP_PLATFORM)/gen_util -lgen_util -L$(TOP_PLATFORM)/sys_util -lsys_util
 endif
 ifeq ($(HND_ROUTER_AX_6756),y)
 LDFLAGS += -L$(TOP_PLATFORM)/wlcsm -lwlcsm -L$(TOP_PLATFORM)/bcm_flashutil -lbcm_flashutil -L$(TOP_PLATFORM)/bcm_util $(if $(HND_ROUTER_AX_6756),-lbcm_util) -L$(TOP_PLATFORM)/bcm_boardctl -lbcm_boardctl
 CFLAGS += -I$(TOP_PLATFORM)/bcm_flashutil -I$(HND_SRC)/userspace/public/include -I$(HND_SRC)/userspace/public/include/linux
 else
-LDFLAGS += -L$(TOP_PLATFORM)/wlcsm -lwlcsm -L$(TOP_PLATFORM)/bcm_flashutil -lbcm_flashutil -L$(TOP_PLATFORM)/bcm_util $(if $(HND_ROUTER_AX_675X),-lbcm_util,-lbcm_crc) -L$(TOP_PLATFORM)/bcm_boardctl -lbcm_boardctl
+LDFLAGS += -L$(TOP_PLATFORM)/wlcsm -lwlcsm -L$(TOP_PLATFORM)/bcm_flashutil -lbcm_flashutil -L$(TOP_PLATFORM)/bcm_util $(if $(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6710),$(BCM_502L07P2)),-lbcm_util,-lbcm_crc) -L$(TOP_PLATFORM)/bcm_boardctl -lbcm_boardctl
 endif
 endif
 ifeq ($(HND_ROUTER_AX),y)
@@ -106,8 +105,9 @@ CFLAGS += -I$(HND_SRC)/bcmdrivers/opensource/include/bcm963xx -I$(HND_SRC)/share
 CFLAGS += -I$(WPA_SUPPLICANT_DIR)/src/common
 LDFLAGS += -L$(WPA_SUPPLICANT_DIR)/wpa_supplicant -L$(INSTALLDIR)/wpa_supplicant/usr/lib
 WPS_PBCD := wps_pbcd
-ifeq ($(RTCONFIG_WIFI6E),y)
-OBJS_WPS_PBCD := $(if $(wildcard sysdeps/broadcom/wps_pbcd_6e.c),wps_pbcd_6e.o,prebuild/wps_pbcd_6e.o) $(if $(wildcard sysdeps/broadcom/hostapd_config_6e.c),hostapd_config_6e.o,prebuild/hostapd_config_6e.o)
+ifeq ($(or $(RTCONFIG_WIFI6E),$(HND_ROUTER_AX_6756),$(RTCONFIG_BCM_502L07P2)),y)
+OBJS_WPS_PBCD := $(if $(wildcard sysdeps/broadcom/wps_pbcd_6e.c),wps_pbcd_6e.o,prebuild/wps_pbcd_6e.o)
+OBJS_WPS_PBCD += $(if $(wildcard sysdeps/broadcom/hostapd_config_6e.c),hostapd_config_6e.o,prebuild/hostapd_config_6e.o)
 ifeq ($(RTCONFIG_AMAS_WGN), y)
 OBJS_WPS_PBCD += $(if $(wildcard amas_wgn.c),amas_wgn.o,prebuild/amas_wgn.o)
 endif
@@ -115,7 +115,7 @@ else
 OBJS_WPS_PBCD := $(if $(wildcard sysdeps/broadcom/wps_pbcd.c),wps_pbcd.o,prebuild/wps_pbcd.o)
 endif
 LDFLAGS += -lwpa_client
-ifeq ($(RTCONFIG_WIFI6E),y)
+ifeq ($(or $(RTCONFIG_WIFI6E),$(RTCONFIG_BCM_502L07P2)),y)
 # For now, enable HAPD_WDS only for router builds
 # CFLAGS += -DHAPD_WDS_DRAFT
 # For now, enable HAPD_WDS_HOTPLUG only for router builds
@@ -206,7 +206,6 @@ endif
 endif
 
 ifeq ($(RTCONFIG_FBWIFI),y)
-CFLAGS  += -I$(TOP)/fb_wifi
 LDFLAGS += -L$(TOP)/fb_wifi -lfbwifi
 endif
 
@@ -219,6 +218,10 @@ CFLAGS  += -I$(TOP)/sqlite
 CFLAGS  += -I$(TOP)/nt_center/lib
 CFLAGS  += -I$(TOP)/nt_center/actMail
 CFLAGS  += -DASUSWRT_SDK
+endif
+
+ifeq ($(RTCONFIG_ASD),y)
+CFLAGS  += -I$(TOP)/asd
 endif
 
 ifeq ($(RTCONFIG_PROTECTION_SERVER),y)
@@ -341,7 +344,7 @@ ifeq ($(BUILD_NAME),$(filter $(BUILD_NAME),RT-AC68U RT-AC3200 4G-AC68U GT-AC2900
 OBJS += cfe.o
 endif
 else
-ifeq ($(BUILD_NAME),$(filter $(BUILD_NAME),RT-AC68U RT-AC3200 4G-AC68U GT-AC2900 RT-AX58U TUF-AX3000 RT-AX82U DSL-AX82U GS-AX3000 GS-AX5400))
+ifeq ($(BUILD_NAME),$(filter $(BUILD_NAME),RT-AC68U RT-AC3200 4G-AC68U GT-AC2900 RT-AX58U TUF-AX3000 RT-AX82U DSL-AX82U GS-AX3000 GS-AX5400 RP-AX56 RP-AX58))
 OBJS += cfe.o
 endif
 endif
@@ -852,7 +855,7 @@ CFLAGS += -I$(TOP)/libasuslog
 endif
 
 ifeq ($(RTCONFIG_BRCM_HOSTAPD),y)
-ifeq ($(RTCONFIG_WIFI6E),y)
+ifeq ($(or $(RTCONFIG_WIFI6E),$(HND_ROUTER_AX_6756),$(RTCONFIG_BCM_502L07P2)),y)
 OBJS += $(if $(wildcard sysdeps/broadcom/hostapd_config_6e.c),hostapd_config_6e.o,prebuild/hostapd_config_6e.o)
 else
 OBJS += $(if $(wildcard sysdeps/broadcom/hostapd_config.c),hostapd_config.o,prebuild/hostapd_config.o)
@@ -892,6 +895,10 @@ ifeq ($(BUILD_NAME), 4G-AC86U)
 CFLAGS += -DRT4GAC86U
 endif
 
+ifeq ($(BUILD_NAME), XD4S)
+CFLAGS += -DXD4S
+endif
+
 ifeq ($(RTCONFIG_ISP_CUSTOMIZE),y)
 OBJS += $(if $(wildcard customize_rc.c),customize_rc.o,prebuild/customize_rc.o)
 endif
@@ -900,7 +907,7 @@ ifeq ($(RTCONFIG_CONNDIAG),y)
 ifeq ($(RTCONFIG_BCMBSD),y)
 CFLAGS += -I$(TOP)/bsd
 endif
-ifeq ($(or $(RTCONFIG_LANTIQ),$(RTAC59_CD6R),$(RTAC59_CD6N)),y)
+ifeq ($(or $(RTCONFIG_LANTIQ),$(RTAC59_CD6R),$(RTAC59_CD6N),$(TUFAX4200),$(TUFAX6000),$(RTAX59U)),y)
 CFLAGS += -fPIC
 endif
 ifeq ($(RTCONFIG_HND_ROUTER_AX),y)
@@ -918,6 +925,8 @@ else ifeq ($(RTCONFIG_LANTIQ),y)
 OBJS += conn_diag-lantiq.o
 else ifeq ($(RTCONFIG_QCA),y)
 OBJS += conn_diag-qca.o
+else ifeq ($(RTCONFIG_RALINK),y)
+OBJS += conn_diag-ralink.o
 endif
 DIAG_OBJS += conn_diag-sql.o
 endif
@@ -1210,6 +1219,9 @@ endif
 endif
 	@cd $(INSTALLDIR)/sbin && ln -sf rc restart_wireless
 
+ifeq ($(RTCONFIG_HW_DOG), y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc hwdog
+endif
 ifeq ($(RTCONFIG_PTHSAFE_POPEN), y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc PS_pod
 endif
@@ -1251,6 +1263,25 @@ ifeq ($(RTCONFIG_RALINK),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc asuscfe_5g
 	@cd $(INSTALLDIR)/sbin && ln -sf rc stainfo_2g
 	@cd $(INSTALLDIR)/sbin && ln -sf rc stainfo_5g
+ifeq ($(RTCONFIG_AMAS),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc gstat
+	@cd $(INSTALLDIR)/sbin && ln -sf rc groam
+	@cd $(INSTALLDIR)/sbin && ln -sf rc gApCliStatus
+	@cd $(INSTALLDIR)/sbin && ln -sf rc gcliq
+	@cd $(INSTALLDIR)/sbin && ln -sf rc gclrssi
+	@cd $(INSTALLDIR)/sbin && ln -sf rc gMonitorRssi
+	@cd $(INSTALLDIR)/sbin && ln -sf rc gMacList
+	@cd $(INSTALLDIR)/sbin && ln -sf rc gdfsChannel
+	@cd $(INSTALLDIR)/sbin && ln -sf rc gdfsStatus
+	@cd $(INSTALLDIR)/sbin && ln -sf rc gChannelInfo
+	@cd $(INSTALLDIR)/sbin && ln -sf rc apclien
+	@cd $(INSTALLDIR)/sbin && ln -sf rc send_bcnreq
+	@cd $(INSTALLDIR)/sbin && ln -sf rc get_rrm_bcnrep
+	@cd $(INSTALLDIR)/sbin && ln -sf rc get_rclass
+ifeq ($(RTCONFIG_BTM_11V),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc send_11v
+endif
+endif
 ifeq ($(RTCONFIG_DSL),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc gen_ralink_config
 endif
@@ -1468,6 +1499,16 @@ endif
 
 ifeq ($(RTCONFIG_ISP_CUSTOMIZE_TOOL),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc tci
+	@rm -rf $(INSTALLDIR)/../rom/${EX_ROM}/ict/
+	@if [ -f $(TOP)/rom/ict/settings.ini ] ; then \
+		install -D $(TOP)/rom/ict/settings.ini $(INSTALLDIR)/../rom/${EX_ROM}/ict/settings.ini ; \
+	fi;
+	@if [ -f $(TOP)/rom/ict/settings.cfg ] ; then \
+		install -D $(TOP)/rom/ict/settings.cfg $(INSTALLDIR)/../rom/${EX_ROM}/ict/settings.cfg ; \
+	fi;
+	@if [ -f $(TOP)/rom/ict/package.tar.gz ] ; then \
+		install -D $(TOP)/rom/ict/package.tar.gz $(INSTALLDIR)/../rom/${EX_ROM}/ict/package.tar.gz ; \
+	fi;
 endif
 ifeq ($(RTCONFIG_EASYMESH),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc easymesh

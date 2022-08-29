@@ -310,9 +310,10 @@ function change_common_radio(o, s, v, r){
 	if(v == "ddns_enable_x"){
 		var hostname_x = '<% nvram_get("ddns_hostname_x"); %>';
 		var ddns_updated = '<% nvram_get("ddns_updated"); %>';
+		var ddns_server_x = '<% nvram_get("ddns_server_x"); %>';
 		if(r == 1){
 			inputCtrl(document.form.ddns_server_x, 1);
-			if('<% nvram_get("ddns_server_x"); %>' == 'WWW.ASUS.COM'){
+			if(ddns_server_x == 'WWW.ASUS.COM'){
 				document.form.DDNSName.disabled = false;
 				document.form.DDNSName.parentNode.parentNode.parentNode.style.display = "";
 				if(hostname_x != ''){
@@ -326,7 +327,10 @@ function change_common_radio(o, s, v, r){
 				}
 				showhide("wildcard_field",0);
 			}else{
-				if(document.form.ddns_server_x.value == "WWW.ORAY.COM"){
+				if(is_CN && ddns_server_x == ""){
+					$("#ddns_server_x").val("WWW.ASUS.COM.CN");
+				}
+				else if(document.form.ddns_server_x.value == "WWW.ORAY.COM"){
 					if(ddns_updated == "1")
 						document.getElementById("ddns_hostname_info_tr").style.display = "";
 				}
@@ -341,6 +345,7 @@ function change_common_radio(o, s, v, r){
 				show_cert_settings(1);
 
 			change_ddns_setting(document.form.ddns_server_x.value);
+			showhide("ddns_ipcheck_tr", 1);
 		}else{
 			if(document.form.ddns_server_x.value == "WWW.ASUS.COM"){
 				document.form.DDNSName.parentNode.parentNode.parentNode.style.display = "none";
@@ -359,6 +364,7 @@ function change_common_radio(o, s, v, r){
 			document.form.ddns_regular_check.value = 0;
 			showhide("check_ddns_field", 0);
 			inputCtrl(document.form.ddns_regular_period, 0);
+			showhide("ddns_ipcheck_tr", 0);
 
 			document.getElementById("ddns_status_tr").style.display = "none";
 			document.getElementById("ddns_result_tr").style.display = "none";
@@ -387,7 +393,7 @@ function change_common_radio(o, s, v, r){
 						showhide("WPS_hideSSID_hint",0);
 			}
 	}
-	else if(v=="bond_wan" && (based_modelid == "RT-AX89U" || based_modelid == "GT-AXY16000")){
+	else if(v=="bond_wan" && (based_modelid == "RT-AX89U" || based_modelid == "GT-AXY16000" || based_modelid == "TUF-AX4200" || based_modelid == "TUF-AX6000")){
 		if(r==1){
 			document.getElementById("wanports_bond_menu").style.display = "";
 			document.form.wanports_bond.disabled = false;
@@ -903,10 +909,24 @@ function insertExtChannelOption_5g(){
     var nband = "<% nvram_get("wl_nband"); %>";
     free_options(document.form.wl_channel);
 		if(wl_channel_list_5g != ""){	//With wireless channel 5g hook
-			if('<% nvram_get("wl_unit"); %>' == '1')
+			if('<% nvram_get("wl_unit"); %>' == '1'){
 				wl_channel_list_5g = eval('<% channel_list_5g(); %>');
-			else
+				if(amesh_support && httpApi.hasAiMeshNode() && !wl_info.band5g_2_support){
+					try{
+						var mesh_5g = JSON.parse('<% get_wl_channel_list_5g(); %>');
+						if(mesh_5g.auto.chanlist[0] === '0'){
+							mesh_5g.auto.chanlist.shift();
+						}
+		
+						wl_channel_list_5g = mesh_5g.auto.chanlist.slice(0);
+					}catch(e){
+						var mesh_5g = {};
+					}            
+				}      
+			}
+			else{
 				wl_channel_list_5g = eval('<% channel_list_5g_2(); %>');
+			}
 
 			if(lantiq_support){
 				if(document.form.wl_bw.value == "0" || document.form.wl_bw.value == "1"	){	// 20MHz, 20/40/80
@@ -1902,6 +1922,8 @@ function getDDNSState(ddns_return_code, ddns_hostname, ddns_old_hostname)
 		ddnsStateHint = "Server Error";
 	else if(ddns_return_code.indexOf('401')!=-1)
 		ddnsStateHint = "<#LANHostConfig_x_DDNS_alarm_10#>";
+	else if (ddns_return_code.indexOf('402')!=-1)
+		ddnsStateHint = "<#LANHostConfig_x_DDNS_alarm_15#>";
 	else if(ddns_return_code.indexOf('407')!=-1)
 		ddnsStateHint = "<#LANHostConfig_x_DDNS_alarm_11#>";
 	else if(ddns_return_code == 'Time-out')
@@ -1912,8 +1934,8 @@ function getDDNSState(ddns_return_code, ddns_hostname, ddns_old_hostname)
 		ddnsStateHint = "<#qis_fail_desc7#>";
 	else if(ddns_return_code =='no_change')
 		ddnsStateHint = "<#LANHostConfig_x_DDNS_alarm_nochange#>";
-	/*else if(ddns_return_code =='ddns_query')
-		ddnsStateHint = "<#LANHostConfig_x_DDNSHostnameCheck_buttonname#>";*/
+	else if(ddns_return_code =='ddns_query')
+		ddnsStateHint = "<#Main_alert_processing#>";
 	else if(ddns_return_code =='auth_fail')
 		ddnsStateHint = "<#qis_fail_desc1#>";
 	else if(ddns_return_code !='')

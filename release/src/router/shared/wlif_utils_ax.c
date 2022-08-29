@@ -102,7 +102,6 @@ get_wlname_by_mac(unsigned char *mac, char *wlname)
 {
 	char eabuf[18];
 	char tmptr[] = "wlXXXXX_hwaddr";
-	char bss_en[] = "wlXXX_bss_enabled";
 	char *wl_hw;
 	int i, j;
 
@@ -111,22 +110,18 @@ get_wlname_by_mac(unsigned char *mac, char *wlname)
 	for (i = 0; i < MAX_NVPARSE; i++) {
 		sprintf(wlname, "wl%d", i);
 		sprintf(tmptr, "wl%d_hwaddr", i);
-		sprintf(bss_en, "wl%d_bss_enabled", i);
 		wl_hw = nvram_get(tmptr);
 		if (wl_hw) {
-			if (!strncasecmp(wl_hw, eabuf, sizeof(eabuf)) &&
-				nvram_match(bss_en, "1"))
+			if (!strncasecmp(wl_hw, eabuf, sizeof(eabuf)))
 				return 0;
 		}
 
 		for (j = 1; j < WL_MAXBSSCFG; j++) {
 			sprintf(wlname, "wl%d.%d", i, j);
 			sprintf(tmptr, "wl%d.%d_hwaddr", i, j);
-			sprintf(bss_en, "wl%d.%d_bss_enabled", i, j);
 			wl_hw = nvram_get(tmptr);
 			if (wl_hw) {
-				if (!strncasecmp(wl_hw, eabuf, sizeof(eabuf)) &&
-					nvram_match(bss_en, "1"))
+				if (!strncasecmp(wl_hw, eabuf, sizeof(eabuf)))
 					return 0;
 			}
 		}
@@ -223,8 +218,7 @@ void get_ifname_by_wlmac_prep(void)
 char *
 get_ifname_by_wlmac(unsigned char *mac, char *name)
 {
-	char nv_name[16], os_name[16];
-	static char if_name[16];
+	char nv_name[16], os_name[16], if_name[16];
 	char tmptr[] = "lanXX_ifnames";
 	char *ifnames, *ifname;
 	int i;
@@ -248,31 +242,6 @@ get_ifname_by_wlmac(unsigned char *mac, char *name)
 
 	if (osifname_to_nvifname(os_name, nv_name, sizeof(nv_name)) < 0)
 		return 0;
-
-	/* find for dpsta */
-	if (wl_wlif_is_psta(os_name))
-		return name;
-
-	/* find LAN ifname for wlmac which is in dpsta */
-	ifnames = nvram_get("dpsta_ifnames");
-	if (ifnames && (find_in_list(ifnames, nv_name) || find_in_list(ifnames, os_name))) {
-		/* find dpsta in which bridge */
-		for (i = 0; i < WLIFU_MAX_NO_BRIDGE; i++) {
-			sprintf(tmptr, "br%d_ifnames", i);
-			sprintf(if_name, "br%d", i);
-			ifnames = nvram_get(tmptr);
-			if (!ifnames && !i)
-			ifnames = nvram_get("lan_ifnames");
-			ifname = if_name;
-
-			if (ifnames) {
-				/* the name in ifnames may nvifname or osifname */
-				if (find_in_list(ifnames, nv_name) ||
-					find_in_list(ifnames, os_name))
-					return ifname;
-			}
-		}
-	}
 
 	/* find for lan */
 	for (i = 0; i < WLIFU_MAX_NO_BRIDGE; i++) {
@@ -717,6 +686,24 @@ wl_wlif_update_wps_ui(wlif_wps_ui_status_code_id_t idx)
 	nvram_set("wps_proc_status", wlif_wps_ui_status_arr[idx].val);
 }
 
+#if defined(RTCONFIG_BCM_502L07P2)
+/* Updates the dpp_status nvram to reflect the dpp status in dpp.asp page */
+void
+wl_wlif_update_dpp_ui(DPP_UI_SCSTATE idx, char *ifname)
+{
+	char nv_name[WLIF_MIN_BUF] = {0};
+	char buffer[32] = {0};
+
+	if (idx < 0 || idx > DPP_UI_DISASSOCIATED) {
+		return;
+	}
+
+	snprintf(nv_name, sizeof(nv_name), "%s_dpp_status", ifname);
+	snprintf(buffer, sizeof(buffer), "%d", idx);
+	nvram_set(nv_name, buffer);
+}
+#endif
+
 /* Gets the status code from the wps_proc_status nvram value */
 int
 wl_wlif_get_wps_status_code()
@@ -781,6 +768,65 @@ wl_wlif_save_wpa_settings(char *type, char *val, wlif_wps_nw_creds_t *creds)
 	}
 }
 
+#if defined(RTCONFIG_BCM_502L07P2)
+/* convert ascii string to hex string */
+void wl_ascii_str_to_hex_str(char *ascii_str, uint16 ascii_len, char *hex_str, uint16 hex_len)
+{
+	int i = 0;
+
+	if (!ascii_str || !hex_str || !ascii_len || !hex_len) {
+		return;
+	}
+
+	while (ascii_str[i] != '\0' && i < (ascii_len - 1) && (i * 2) < (hex_len - 1)) {
+		sprintf((hex_str + i*2), "%02X", ascii_str[i]);
+		i = i + 1;
+	}
+	hex_str[hex_len - 1] = '\0';
+	return;
+}
+
+static int wl_wlif_hexstr2number(char ch)
+{
+	if (ch >= 'a' && ch <= 'f')
+		return ch - 'a' + 10;
+	if (ch >= 'A' && ch <= 'F')
+		return ch - 'A' + 10;
+	if (ch >= '0' && ch <= '9')
+		return ch - '0';
+	return -1;
+}
+
+int wl_wlif_hexstr2byte(const char *hex)
+{
+	int x, y;
+	x = wl_wlif_hexstr2number(*hex++);
+	if (x < 0)
+		return -1;
+	y = wl_wlif_hexstr2number(*hex++);
+	if (y < 0)
+		return -1;
+	return (x << 4) | y;
+}
+
+int wl_wlif_hexstr2ascii(const char *hex_str, unsigned char *buf, size_t len)
+{
+	size_t i;
+	int x;
+	unsigned char *buf_ptr = buf;
+	const char *hex_ptr = hex_str;
+
+	for (i = 0; i < len; i++) {
+		x = wl_wlif_hexstr2byte(hex_ptr);
+		if (x < 0)
+			return -1;
+		*buf_ptr++ = x;
+		hex_ptr += 2;
+	}
+	return 0;
+}
+#endif
+
 /* Apply the DPP credentials to radio interface received from the wps session */
 int
 wl_wlif_apply_dpp_creds(wlif_bss_t *bss, wlif_dpp_creds_t *dpp_creds)
@@ -814,17 +860,13 @@ wl_wlif_apply_dpp_creds(wlif_bss_t *bss, wlif_dpp_creds_t *dpp_creds)
 	// akm
 	memset(nv_name, 0, sizeof(nv_name));
 	snprintf(nv_name, sizeof(nv_name), "%s_akm", prefix);
-	/* For STA, DPP_EVENT_CONFOBJ_AKM is not received, so dpp_creds->akm is not populated.
-	 * For AP, DPP_EVENT_CONFOBJ_AKM is received as part of DPP configuration response,
-	 * so use the akm received in the event.
-	 */
-	if (ap && !nvram_match(nv_name, dpp_creds->akm)) {
+	if (!nvram_match(nv_name, dpp_creds->akm)) {
 		nvram_set(nv_name, dpp_creds->akm);
 		ret = 0;
 	}
 
 	// If akm is dpp, set dpp specific nvrams.
-	if (nvram_match(nv_name, "dpp")) {
+	if (!strcmp(dpp_creds->akm, DPP_AKM)) {
 		/* crypto */
 		memset(nv_name, 0, sizeof(nv_name));
 		snprintf(nv_name, sizeof(nv_name), "%s_crypto", prefix);
@@ -850,6 +892,56 @@ wl_wlif_apply_dpp_creds(wlif_bss_t *bss, wlif_dpp_creds_t *dpp_creds)
 		snprintf(nv_name, sizeof(nv_name), "%s_dpp_netaccess_key", prefix);
 		nvram_set(nv_name, dpp_creds->dpp_netaccess_key);
 
+		if (!ap) {
+			/* dpp_pp_key */
+			memset(nv_name, 0, sizeof(nv_name));
+			snprintf(nv_name, sizeof(nv_name), "%s_dpp_pp_key", prefix);
+			nvram_set(nv_name, dpp_creds->dpp_pp_key);
+		}
+
+		ret = 0;
+	}
+	else if (!strcmp(dpp_creds->akm, PSK_AKM) ||
+			!strcmp(dpp_creds->akm, SAE_AKM) ||
+			!strcmp(dpp_creds->akm, PSK_SAE_AKM) ||
+			!strcmp(dpp_creds->akm, DPP_SAE_AKM) ||
+			!strcmp(dpp_creds->akm, DPP_PSK_SAE_AKM)) {
+		if (!strcmp(dpp_creds->akm, DPP_PSK_SAE_AKM)) {
+			// adjust the akm
+			memset(nv_name, 0, sizeof(nv_name));
+			snprintf(nv_name, sizeof(nv_name), "%s_akm", prefix);
+			nvram_set(nv_name, "psk2 psk2sha256 sae dpp");
+		} else if (!strcmp(dpp_creds->akm, DPP_SAE_AKM)) {
+			// adjust the akm
+			memset(nv_name, 0, sizeof(nv_name));
+			snprintf(nv_name, sizeof(nv_name), "%s_akm", prefix);
+			nvram_set(nv_name, "sae dpp");
+		} else if (!strcmp(dpp_creds->akm, PSK_SAE_AKM)) {
+			// adjust the akm
+			memset(nv_name, 0, sizeof(nv_name));
+			snprintf(nv_name, sizeof(nv_name), "%s_akm", prefix);
+			nvram_set(nv_name, "psk2 psk2sha256 sae");
+		} else if (!strcmp(dpp_creds->akm, PSK_AKM)) { /* psk */
+			// adjust the akm
+			memset(nv_name, 0, sizeof(nv_name));
+			snprintf(nv_name, sizeof(nv_name), "%s_akm", prefix);
+			nvram_set(nv_name, "psk2 psk2sha256");
+		}
+
+		/* crypto */
+		memset(nv_name, 0, sizeof(nv_name));
+		snprintf(nv_name, sizeof(nv_name), "%s_crypto", prefix);
+		nvram_set(nv_name, "aes");
+
+		/* wpa_psk */
+		memset(nv_name, 0, sizeof(nv_name));
+		snprintf(nv_name, sizeof(nv_name), "%s_wpa_psk", prefix);
+		nvram_set(nv_name, dpp_creds->dpp_psk);
+
+		/* mfp */
+		memset(nv_name, 0, sizeof(nv_name));
+		snprintf(nv_name, sizeof(nv_name), "%s_mfp", prefix);
+		nvram_set(nv_name, "1");
 		ret = 0;
 	}
 
@@ -1419,7 +1511,7 @@ end:
 
 // Stops the ongoing wps session for the interface provided in wps_ifname
 int
-#ifdef RTCONFIG_WIFI6E
+#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_BCM_502L07P2)
 wl_wlif_wps_stop_session(char *wps_ifname, bool bUpdateUI)
 #else
 wl_wlif_wps_stop_session(char *wps_ifname)
@@ -1454,7 +1546,7 @@ wl_wlif_wps_stop_session(char *wps_ifname)
 		dprintf("Info: shared %s cli cmd %s failed for interface %s ret = %d\n", __func__,
 			cmd, wps_ifname, ret);
 	}
-#ifdef RTCONFIG_WIFI6E
+#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_BCM_502L07P2)
 	if (bUpdateUI)
 #endif
 	{
@@ -1593,8 +1685,16 @@ bool
 wl_wlif_is_map_onboarding(char *prefix)
 {
 	char map[WLIF_MIN_BUF] = {0}, *ptr = NULL;
-	uint16 map_val = 0;
+	uint16 map_val = 0, multiap_mode = 0;
 	bool ret;
+
+	ptr = nvram_safe_get("multiap_mode");
+	if (ptr[0] != '\0') {
+		multiap_mode = (uint16)strtoul(ptr, NULL, 0);
+	}
+	if (multiap_mode == 0) {
+		return FALSE;
+	}
 
 	snprintf(map, sizeof(map), "%s_map", prefix);
 	ptr = nvram_safe_get(map);
@@ -1656,14 +1756,14 @@ wl_wlif_get_channel_from_scanresults(char *ifname, char *ssid)
 
 	ret = wl_ioctl(ifname, WLC_SCAN_RESULTS, list, WLIF_DUMP_BUF_LEN);
 	if (ret) {
-		dprintf("Err: shared %s ifname %s iovar call to get scan results failed ret = %d\n",
+		cprintf("Err: shared %s ifname %s iovar call to get scan results failed ret = %d\n",
 			__func__, ifname, ret);
 		goto end;
 	}
 
 	list->count = dtoh32(list->count);
 	if (list->count == 0) {
-		dprintf("Info: shared %s ifname %s scan did not find any results for ssid %s \n",
+		cprintf("Info: shared %s ifname %s scan did not find any results for ssid %s \n",
 			__func__, ifname, ssid);
 		goto end;
 	}
@@ -1758,7 +1858,7 @@ wl_wlif_select_bhsta_from_bsslist(wlif_bss_list_t *bss_list, char *bh_ssid,
 			system(cmd);
 
 			if (wl_wlif_scan(bss->ifname, bh_ssid)) {
-				sleep(4);
+				sleep(WLIF_SCAN_WAIT);
 				continue;
 			}
 
@@ -1768,7 +1868,7 @@ wl_wlif_select_bhsta_from_bsslist(wlif_bss_list_t *bss_list, char *bh_ssid,
 				 */
 				sleep(WLIF_SCAN_WAIT_6G);
 			} else {
-				sleep(3);
+				sleep(WLIF_SCAN_WAIT);
 			}
 			channel = wl_wlif_get_channel_from_scanresults(bss->ifname, bh_ssid);
 			if (channel > 0) {
@@ -1949,6 +2049,7 @@ int
 wl_wlif_map_configure_backhaul_sta_interface(wlif_bss_t *bss_in, wlif_wps_nw_creds_t *creds)
 {
 	char *list = nvram_safe_get("lan_ifnames");
+	char *bh_sta_list = nvram_safe_get("map_bhsta_ifnames");
 	wlif_bss_list_t	bss_list;
 	wlif_bss_t *bss = NULL;
 	int idx = 0, ret = -1;
@@ -1972,13 +2073,16 @@ wl_wlif_map_configure_backhaul_sta_interface(wlif_bss_t *bss_in, wlif_wps_nw_cre
 	}
 
 	wl_wlif_map_get_candidate_bhsta_bsslist(list, &bss_list, skip_ifname);
-	wl_wlif_select_bhsta_from_bsslist(&bss_list, creds->ssid, bh_ifname, sizeof(bh_ifname));
-	if (bh_ifname[0] != '\0') {
-		cprintf("Info: shared %s selected backhaul station ifname "
-			" %s for backhaul ssid %s\n", __func__, bh_ifname, creds->ssid);
+
+	/* If the backhaul STA list is present, just apply the backhaul STA credentials in all the
+	 * interfaces in the list
+	 */
+	if (strlen(bh_sta_list) > 0) {
+		cprintf("Info: shared %s apply backhaul SSID %s in ifnames %s\n", __func__,
+			creds->ssid, bh_sta_list);
 		for (idx = 0; idx < bss_list.count; idx++) {
 			bss = &bss_list.bss[idx];
-			if (!strcmp(bss->ifname, bh_ifname)) {
+			if (find_in_list(bh_sta_list, bss->ifname)) {
 				// apply the settings received from wps;
 				wl_wlif_apply_map_backhaul_creds(bss, creds);
 				nvram_set("map_onboarded", "1");
@@ -1991,12 +2095,34 @@ wl_wlif_map_configure_backhaul_sta_interface(wlif_bss_t *bss_in, wlif_wps_nw_cre
 		}
 		ret = 0;
 	} else {
-		cprintf("Err: shared %s multiap backhaul ifname not found for "
-			"backhaul ssid = %s \n", __func__, creds->ssid);
-		// In case of failure restore ap_scan parameter to 1 in supplicant.
-		for (idx = 0; idx < bss_list.count; idx++) {
-			bss = &bss_list.bss[idx];
-			wl_wlif_wpa_supplicant_update_ap_scan(bss->ifname, bss->nvifname, 1);
+		wl_wlif_select_bhsta_from_bsslist(&bss_list, creds->ssid, bh_ifname,
+			sizeof(bh_ifname));
+		if (bh_ifname[0] != '\0') {
+			cprintf("Info: shared %s selected backhaul station ifname "
+				" %s for backhaul ssid %s\n", __func__, bh_ifname, creds->ssid);
+			for (idx = 0; idx < bss_list.count; idx++) {
+				bss = &bss_list.bss[idx];
+				if (!strcmp(bss->ifname, bh_ifname)) {
+					// apply the settings received from wps;
+					wl_wlif_apply_map_backhaul_creds(bss, creds);
+					nvram_set("map_onboarded", "1");
+					nvram_unset("wps_on_sta");
+				} else {
+					// uneset  the map settings and change mode from sta to AP
+					nvram_set(strcat_r(bss->nvifname, "_mode", tmp), "ap");
+					nvram_unset(strcat_r(bss->nvifname, "_map", tmp));
+				}
+			}
+			ret = 0;
+		} else {
+			cprintf("Err: shared %s multiap backhaul ifname not found for "
+				"backhaul ssid = %s \n", __func__, creds->ssid);
+			// In case of failure restore ap_scan parameter to 1 in supplicant.
+			for (idx = 0; idx < bss_list.count; idx++) {
+				bss = &bss_list.bss[idx];
+				wl_wlif_wpa_supplicant_update_ap_scan(bss->ifname, bss->nvifname,
+					1);
+			}
 		}
 	}
 
@@ -2062,8 +2188,13 @@ end:
 #endif	/* MULTIAP */
 #endif	/* CONFIG_HOSTAPD */
 
-#if defined(RTCONFIG_HND_ROUTER_AX_6756)
+#if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_BCM_502L07P2)
 #if !defined(RTCONFIG_SDK504L02_188_1303)
+/* Supported rate bitmap control feature initially requested by LGI, but make it a common feature
+ * Supported rate bitmap definition
+ * b19b18b17b16b15b14b13b12b11b10b9b8b1b7b6b5b4b3b2b1b0
+ * mcs7mcs6mcs5mcs4mcs3mcs2mcs1mcs054Mbps48Mbps36Mbps24Mbps18Mbps12Mpbs9Mbps6Mbps11Mbps5.5Mbps2Mps1Mbps
+ */
 
 static bit2rate_map_t tbl_2g[] = {
 	{BIT0, 2},      /* 1 Mbps */
@@ -2112,6 +2243,7 @@ static bit2rate_map_t tbl_5g[] = {
 #define SUPPORTED_RATES_BITS_COUNT_2G	20	/* 12 legacy rates + 8 ht rates */
 #define SUPPORTED_RATES_BITS_COUNT_5G	16	/* 8 legacy rate + 8 ht rates */
 
+#if defined(RTCONFIG_BCM_502L07P2)
 int
 wl_rateset_get_bitmap_index(bit2rate_map_t *tbl, int tbl_sz, int i, int *l)
 {
@@ -2227,6 +2359,7 @@ wl_rateset_get_args_info(void *wl, int *rs_len, int *rs_ver)
 
 	return err;
 }
+#endif
 
 bool
 rateset_overwrite_by_supportedRatesBitmap(char *name, char *prefix)
@@ -2338,4 +2471,99 @@ rateset_overwrite_by_supportedRatesBitmap(char *name, char *prefix)
 	return TRUE;
 }
 #endif
+#endif
+
+#if defined(CONFIG_BCMWL5)
+#define DIV_QUO(num, div) ((num)/div)  /* Return the quotient of division to avoid floats */
+#define DIV_REM(num, div) (((num%div) * 100)/div) /* Return the remainder of division */
+
+double wl_get_txpwr_target_max(char *name)
+{
+        int err;
+        txpwr_target_max_t target_pwr;
+        int i;
+	double ab;
+	int test_val;
+
+        if ((err = wl_iovar_get(name, "txpwr_target_max", (void *)&target_pwr,  sizeof(target_pwr))) < 0) {
+                fprintf(stderr, "Error: txpwr_target failed. Make sure interface is up.\n");
+                return err;
+        }
+
+        if (target_pwr.version != TXPWR_TARGET_VERSION) {
+                fprintf(stderr, "Error: version [%d] mismatch Driver version:%d\n",
+                        TXPWR_TARGET_VERSION, target_pwr.version);
+                return err;
+        }
+
+  test_val = nvram_get_int("tx_test_val");
+  if(test_val > 0) {
+        printf("maximum tx Power Target (chanspec:0x%x):\t", target_pwr.chanspec);
+        for (i = 0; i < target_pwr.rf_cores; i++)
+                printf("%2d.%02d  ",
+                       DIV_QUO(test_val, 4),
+                       DIV_REM(test_val, 4));
+        printf("\n");
+
+	ab = (double)(DIV_QUO(test_val, 4)) + (double)((double)(DIV_REM(test_val, 4))/100);
+	printf("chk ab=%f, txpwr-0=%d\n", ab, test_val);
+
+  } else {
+
+        printf("chk Maximum Tx Power Target (chanspec:0x%x):\t", target_pwr.chanspec);
+        for (i = 0; i < target_pwr.rf_cores; i++)
+                printf("%2d.%02d  ",
+                       DIV_QUO(target_pwr.txpwr[i], 4),
+                       DIV_REM(target_pwr.txpwr[i], 4));
+        printf("\n");
+
+	ab = (double)(DIV_QUO(target_pwr.txpwr[0], 4)) + (double)((double)(DIV_REM(target_pwr.txpwr[0], 4))/100);
+	printf("chk ab=%f, txpwr-0=%d\n", ab, target_pwr.txpwr[0]);
+  }
+
+        return ab;
+}
+
+double get_wifi_maxpower(int target_unit)
+{
+	int unit;
+	char word[100], *next;
+
+	foreach (word, nvram_safe_get("wl_ifnames"), next) {
+		unit = -1;
+		wl_ioctl(word, WLC_GET_INSTANCE, &unit, sizeof(unit));
+		if(unit < 0) {
+			printf("%s get unit fail\n", word);
+			continue;
+		}
+		if(unit == target_unit) {
+			printf("get wifi maxpower of wlif:%s\n", word);
+			return wl_get_txpwr_target_max(word);
+		}
+	}
+}
+
+double get_wifi_5G_maxpower()
+{
+	return get_wifi_maxpower(WL_5G_BAND);
+}
+
+double get_wifi_5GH_maxpower()
+{
+#if defined(RTCONFIG_HAS_5G_2)
+	return get_wifi_maxpower(WL_5G_2_BAND);
+#else
+	return 0;
+#endif
+}
+
+double get_wifi_6G_maxpower()
+{
+#if defined(RTCONFIG_WIFI6E)
+	return get_wifi_maxpower(WL_6G_BAND);
+#else
+	return 0;
+#endif
+}
+
 #endif

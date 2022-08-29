@@ -56,6 +56,29 @@ void eloop_init(void *user_data)
 	eloop.user_data = user_data;
 }
 
+void eloop_unregister_read_sock(int sock)
+{
+	int i;
+
+	if (eloop.reader_count == 0)
+			return;
+
+	for (i = 0; i < eloop.reader_count; i++) {
+			if (eloop.readers[i].sock == sock)
+					break;
+	}
+	if (i == eloop.reader_count)
+			return;
+
+	if (i != eloop.reader_count - 1) {
+			memmove(&eloop.readers[i], &eloop.readers[i + 1],
+					   (eloop.reader_count - i - 1) *
+					   sizeof(struct eloop_sock));
+	}
+
+	eloop.reader_count--;
+
+}
 
 int eloop_register_read_sock(int sock, void (*handler)(int sock, void *eloop_ctx, void *sock_ctx),
                              void *eloop_data, void *user_data)
@@ -144,7 +167,7 @@ int eloop_cancel_timeout(void (*handler)(void *eloop_ctx, void *sock_ctx),
     {
 		next = timeout->next;
 
-		if (timeout->handler == handler && (timeout->eloop_data == eloop_data || eloop_data == ELOOP_ALL_CTX) 
+		if (timeout->handler == handler && (timeout->eloop_data == eloop_data || eloop_data == ELOOP_ALL_CTX)
             && (timeout->user_data == user_data || user_data == ELOOP_ALL_CTX))
         {
 			if (prev == NULL)
@@ -188,7 +211,7 @@ int eloop_register_signal(int sig, void (*handler)(int sig, void *eloop_ctx, voi
 	tmp[eloop.signal_count].handler = handler;
 	eloop.signal_count++;
 	eloop.signals = tmp;
-	signal(sig, eloop_handle_signal);
+	(void)signal(sig, eloop_handle_signal);
 
 	return 0;
 }
@@ -235,8 +258,8 @@ void eloop_run(void)
 				free(tmp);
 			}
 
-		}  
-        
+		}
+
 		if (res <= 0)
 			continue;
 

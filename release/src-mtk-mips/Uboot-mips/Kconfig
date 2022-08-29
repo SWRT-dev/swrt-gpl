@@ -485,6 +485,12 @@ config ASUS_PRODUCT
 	help
 	  Enable ASUS PRODUCT.
 
+config XD4S
+	bool "Enable XD4S"
+	default n
+	help
+	  Enable XD4S.
+
 config RTAX53U
 	bool "Enable RTAX53U"
 	default n
@@ -501,7 +507,19 @@ config 4GAX56
 	bool "Enable 4GAX56"
 	default n
 	help
-	  Enable 4GAX56.
+  Enable 4GAX56.
+
+config TFTPD
+	bool "Enable tfptd service"
+	default n
+	help
+  Enable Tftpd.
+
+config TRX
+	bool "Make Trx file"
+	default n
+	help
+  Make Trx file.
 
 source "api/Kconfig"
 

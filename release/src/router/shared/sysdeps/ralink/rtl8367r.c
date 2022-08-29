@@ -376,11 +376,6 @@ rtl8367r_AllPort_linkDown()
 
 
 
-typedef struct {
-        unsigned int link[5];
-        unsigned int speed[5];
-} phyState;
-
 // DSLTODO
 // move to other file
 void
@@ -599,11 +594,6 @@ rtl8367r_AllPort_linkDown()
 }
 
 
-
-typedef struct {
-        unsigned int link[5];
-        unsigned int speed[5];
-} phyState;
 
 
 void

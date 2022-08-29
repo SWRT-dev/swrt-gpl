@@ -471,6 +471,12 @@ restart:
 			fastboot_start_server();
 			break;
 #endif
+#if defined(CONFIG_TFTPD)
+                case TFTPD:
+                        printf("tftpd start\n");
+                        TftpdStart();
+                        break;
+#endif
 #if defined(CONFIG_CMD_DHCP)
 		case DHCP:
 			bootp_reset();

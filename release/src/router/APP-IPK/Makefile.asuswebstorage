@@ -43,6 +43,7 @@ clean:
 	@$(MAKE) -C $(CURRENT)/curl-7.21.7 clean
 	rm -rf ASUSWebStorage-ipk/CONTROL/control
 	rm -rf ASUSWebStorage-ipk/opt/tmp/bin/*
+	rm -rf ASUSWebStorage-ipk/opt/tmp/lib/*
 	rm -rf asuswebstorage*.ipk
 
 mkdir:
@@ -50,7 +51,7 @@ mkdir:
 
 
 zlib/stamp-h1: 
-		cd $(CURRENT)/zlib \
+		cd $(CURRENT)/zlib &&\
 		touch stamp-h1;	
 
 zlib: zlib/stamp-h1
@@ -65,7 +66,7 @@ zlib: zlib/stamp-h1
 
 
 libxml2/stamp-h1: 
-		cd $(CURRENT)/libxml2 \
+		cd $(CURRENT)/libxml2 &&\
 		touch stamp-h1;	
 
 libxml2: libxml2/stamp-h1
@@ -79,7 +80,7 @@ libxml2: libxml2/stamp-h1
 
 
 openssl/stamp-h1: 
-		cd $(CURRENT)/openssl-ipk \
+		cd $(CURRENT)/openssl-ipk &&\
 		touch stamp-h1;	
 
 
@@ -92,7 +93,7 @@ openssl: openssl/stamp-h1
 	$(MAKE) install
 
 curl/stamp-h1: 
-		cd $(CURRENT)/curl-7.21.7 \
+		cd $(CURRENT)/curl-7.21.7 &&\
 		touch stamp-h1;	
 
 curl: curl/stamp-h1
@@ -111,10 +112,11 @@ asuswebstorage/stamp-h1:
 asuswebstorage: asuswebstorage/stamp-h1
 	@$(MAKE) -C $(CURRENT)/asuswebstorage -f Makefile.ipk OLEG_ARM_D=1
 	cp -rf $(CURRENT)/asuswebstorage/asuswebstorage ASUSWebStorage-ipk/opt/tmp/bin/
-
+	cp -rf $(CURRENT)/asuswebstorage/libspwenc.so ASUSWebStorage-ipk/opt/tmp/lib/
 
 
 asuswebstorage-ipk:
 	cp -rf AiCloud-tmp/CONTROL/control-asuswebstorage-arm ASUSWebStorage-ipk/CONTROL/control
 	$(STRIP) ASUSWebStorage-ipk/opt/tmp/bin/*
+	$(STRIP) ASUSWebStorage-ipk/opt/tmp/lib/*
 	@$(IPKG_TOOLS)/ipkg-build ASUSWebStorage-ipk ./

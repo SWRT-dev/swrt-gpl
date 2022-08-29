@@ -99,44 +99,57 @@ save_inetd_socket_descriptor(void)
 }
 
 /*
- * Print an error message based on the status code returned by system().
+ * Generate an error message based on the status code returned by openvpn_execve().
  */
 const char *
 system_error_message(int stat, struct gc_arena *gc)
 {
     struct buffer out = alloc_buf_gc(256, gc);
+
+    switch (stat)
+    {
+        case OPENVPN_EXECVE_NOT_ALLOWED:
+            buf_printf(&out, "disallowed by script-security setting");
+            break;
+
 #ifdef _WIN32
-    if (stat == -1)
-    {
-        buf_printf(&out, "external program did not execute -- ");
-    }
-    buf_printf(&out, "returned error code %d", stat);
+        case OPENVPN_EXECVE_ERROR:
+            buf_printf(&out, "external program did not execute -- ");
+        /* fall through */
+
+        default:
+            buf_printf(&out, "returned error code %d", stat);
+            break;
 #else  /* ifdef _WIN32 */
-    if (stat == -1)
-    {
-        buf_printf(&out, "external program fork failed");
-    }
-    else if (!WIFEXITED(stat))
-    {
-        buf_printf(&out, "external program did not exit normally");
-    }
-    else
-    {
-        const int cmd_ret = WEXITSTATUS(stat);
-        if (!cmd_ret)
-        {
-            buf_printf(&out, "external program exited normally");
-        }
-        else if (cmd_ret == 127)
-        {
-            buf_printf(&out, "could not execute external program");
-        }
-        else
-        {
-            buf_printf(&out, "external program exited with error status: %d", cmd_ret);
-        }
-    }
+
+        case OPENVPN_EXECVE_ERROR:
+            buf_printf(&out, "external program fork failed");
+            break;
+
+        default:
+            if (!WIFEXITED(stat))
+            {
+                buf_printf(&out, "external program did not exit normally");
+            }
+            else
+            {
+                const int cmd_ret = WEXITSTATUS(stat);
+                if (!cmd_ret)
+                {
+                    buf_printf(&out, "external program exited normally");
+                }
+                else if (cmd_ret == OPENVPN_EXECVE_FAILURE)
+                {
+                    buf_printf(&out, "could not execute external program");
+                }
+                else
+                {
+                    buf_printf(&out, "external program exited with error status: %d", cmd_ret);
+                }
+            }
+            break;
 #endif /* ifdef _WIN32 */
+    }
     return (const char *)out.data;
 }
 
@@ -186,12 +199,14 @@ openvpn_execve_allowed(const unsigned int flags)
  * Run execve() inside a fork().  Designed to replicate the semantics of system() but
  * in a safer way that doesn't require the invocation of a shell or the risks
  * assocated with formatting and parsing a command line.
+ * Returns the exit status of child, OPENVPN_EXECVE_NOT_ALLOWED if openvpn_execve_allowed()
+ * returns false, or OPENVPN_EXECVE_ERROR on other errors.
  */
 int
 openvpn_execve(const struct argv *a, const struct env_set *es, const unsigned int flags)
 {
     struct gc_arena gc = gc_new();
-    int ret = -1;
+    int ret = OPENVPN_EXECVE_ERROR;
     static bool warn_shown = false;
 
     if (a && a->argv[0])
@@ -208,7 +223,7 @@ openvpn_execve(const struct argv *a, const struct env_set *es, const unsigned in
             if (pid == (pid_t)0) /* child side */
             {
                 execve(cmd, argv, envp);
-                exit(127);
+                exit(OPENVPN_EXECVE_FAILURE);
             }
             else if (pid < (pid_t)0) /* fork failed */
             {
@@ -218,14 +233,18 @@ openvpn_execve(const struct argv *a, const struct env_set *es, const unsigned in
             {
                 if (waitpid(pid, &ret, 0) != pid)
                 {
-                    ret = -1;
+                    ret = OPENVPN_EXECVE_ERROR;
                 }
             }
         }
-        else if (!warn_shown && (script_security < SSEC_SCRIPTS))
+        else
         {
-            msg(M_WARN, SCRIPT_SECURITY_WARNING);
-            warn_shown = true;
+            ret = OPENVPN_EXECVE_NOT_ALLOWED;
+            if (!warn_shown && (script_security < SSEC_SCRIPTS))
+            {
+                msg(M_WARN, SCRIPT_SECURITY_WARNING);
+                warn_shown = true;
+            }
         }
 #else  /* if defined(ENABLE_FEATURE_EXECVE) */
         msg(M_WARN, "openvpn_execve: execve function not available");
@@ -272,7 +291,7 @@ openvpn_popen(const struct argv *a,  const struct env_set *es)
                     close(pipe_stdout[0]);         /* Close read end */
                     dup2(pipe_stdout[1],1);
                     execve(cmd, argv, envp);
-                    exit(127);
+                    exit(OPENVPN_EXECVE_FAILURE);
                 }
                 else if (pid > (pid_t)0)       /* parent side */
                 {
@@ -861,6 +880,43 @@ absolute_pathname(const char *pathname)
     }
 }
 
+#ifdef ENABLE_MANAGEMENT
+
+/* Get username/password from the management interface */
+static bool
+auth_user_pass_mgmt(struct user_pass *up, const char *prefix, const unsigned int flags,
+                    const char *auth_challenge)
+{
+    const char *sc = NULL;
+
+    if (flags & GET_USER_PASS_PREVIOUS_CREDS_FAILED)
+    {
+        management_auth_failure(management, prefix, "previous auth credentials failed");
+    }
+
+#ifdef ENABLE_CLIENT_CR
+    if (auth_challenge && (flags & GET_USER_PASS_STATIC_CHALLENGE))
+    {
+        sc = auth_challenge;
+    }
+#endif
+
+    if (!management_query_user_pass(management, up, prefix, flags, sc))
+    {
+        if ((flags & GET_USER_PASS_NOFATAL) != 0)
+        {
+            return false;
+        }
+        else
+        {
+            msg(M_FATAL, "ERROR: could not read %s username/password/ok/string from management interface", prefix);
+        }
+    }
+    return true;
+}
+
+#endif /* ifdef ENABLE_MANAGEMENT */
+
 /*
  * Get and store a username/password
  */
@@ -894,30 +950,10 @@ get_user_pass_cr(struct user_pass *up,
             && (!from_authfile && (flags & GET_USER_PASS_MANAGEMENT))
             && management_query_user_pass_enabled(management))
         {
-            const char *sc = NULL;
             response_from_stdin = false;
-
-            if (flags & GET_USER_PASS_PREVIOUS_CREDS_FAILED)
+            if (!auth_user_pass_mgmt(up, prefix, flags, auth_challenge))
             {
-                management_auth_failure(management, prefix, "previous auth credentials failed");
-            }
-
-#ifdef ENABLE_CLIENT_CR
-            if (auth_challenge && (flags & GET_USER_PASS_STATIC_CHALLENGE))
-            {
-                sc = auth_challenge;
-            }
-#endif
-            if (!management_query_user_pass(management, up, prefix, flags, sc))
-            {
-                if ((flags & GET_USER_PASS_NOFATAL) != 0)
-                {
-                    return false;
-                }
-                else
-                {
-                    msg(M_FATAL, "ERROR: could not read %s username/password/ok/string from management interface", prefix);
-                }
+                return false;
             }
         }
         else
@@ -994,6 +1030,22 @@ get_user_pass_cr(struct user_pass *up,
             {
                 strncpy(up->password, password_buf, USER_PASS_LEN);
             }
+            /* The auth-file does not have the password: get both username
+             * and password from the management interface if possible.
+             * Otherwise set to read password from console.
+             */
+#if defined(ENABLE_MANAGEMENT)
+            else if (management
+                     && (flags & GET_USER_PASS_MANAGEMENT)
+                     && management_query_user_pass_enabled(management))
+            {
+                msg(D_LOW, "No password found in %s authfile '%s'. Querying the management interface", prefix, auth_file);
+                if (!auth_user_pass_mgmt(up, prefix, flags, auth_challenge))
+                {
+                    return false;
+                }
+            }
+#endif
             else
             {
                 password_from_stdin = 1;
@@ -1272,10 +1324,15 @@ void
 set_auth_token(struct user_pass *up, struct user_pass *tk, const char *token)
 {
 
-    if (token && strlen(token) && up && up->defined)
+    if (strlen(token) && (up->defined || tk->defined))
     {
+        /* auth-token has no password, so it needs the username
+         * either already set or copied from up */
         strncpynt(tk->password, token, USER_PASS_LEN);
-        strncpynt(tk->username, up->username, USER_PASS_LEN);
+        if (up->defined)
+        {
+            strncpynt(tk->username, up->username, USER_PASS_LEN);
+        }
         tk->defined = true;
     }
 

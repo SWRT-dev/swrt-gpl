@@ -15,6 +15,8 @@
 #define OVPN_CLIENT_BASE 10
 #define OVPN_SERVER_BASE 20
 
+#define OVPN_SUBNET_BASE 0x1110
+
 #if defined(RTCONFIG_JFFS2) || defined(RTCONFIG_BRCM_NAND_JFFS2) || defined(RTCONFIG_UBIFS)
 #define OVPN_DIR_SAVE	"/jffs/openvpn"
 #endif
@@ -88,6 +90,8 @@ typedef struct ovpn_sconf {
 	char if_name[8];	//interface name
 	char local[16];
 	char remote[16];
+	char local6[64];
+	char remote6[64];
 	int verb;	//verbosity
 	char comp[16];	//LZO compression: "yes", "no", or "adaptive"
 	ovpn_auth_t auth_mode;	//authentication mode: static, tls
@@ -96,6 +100,7 @@ typedef struct ovpn_sconf {
 //Server mode
 	char network[16];
 	char netmask[16];
+	char network6[64];
 	int dhcp;	//DHCP-proxy mode
 	char pool_start[16];	//--server-bridge gateway netmask pool-start-IP pool-end-IP
 	char pool_end[16];
@@ -122,6 +127,9 @@ typedef struct ovpn_sconf {
 	int poll;	//polling interval of cron job in seconds
 	char lan_ipaddr[16];
 	char lan_netmask[16];
+	int ipv6_enable;
+	int nat6;
+	char wan6_ifname[16];
 
 	char custom[4096];
 }ovpn_sconf_t;
@@ -153,7 +161,7 @@ typedef struct ovpn_cconf {
 	int userauth;	//username, password
 	int useronly;	//client certificte not required
 	char username[64];
-	char password[64];
+	char password[256];
 
 //Data Channel Encryption Options:
 	int direction;	//key-direction of secret or tls-auth (hmac)
@@ -200,7 +208,7 @@ typedef enum ovpn_errno{
 typedef struct ovpn_accnt
 {
 	char username[128];
-	char password[128];
+	char password[256];
 } ovpn_accnt_t;
 
 
@@ -227,10 +235,11 @@ extern char* get_ovpn_sconf_remote(char* buf, size_t len);
 extern void update_ovpn_status(ovpn_type_t type, int unit, ovpn_status_t status_type, ovpn_errno_t err_no);
 extern ovpn_status_t get_ovpn_status(ovpn_type_t type, int unit);
 extern ovpn_errno_t get_ovpn_errno(ovpn_type_t type, int unit);
-extern void wait_time_sync(int max);
+extern int wait_time_sync(int max);
 extern unsigned int adjust_smp_affinity(ovpn_type_t type, int unit);
 
 extern ovpn_accnt_info_t* get_ovpn_accnt(ovpn_accnt_info_t *accnt_info);
 
 extern void reset_ovpn_setting(ovpn_type_t type, int unit);
+extern void ovpn_defaults();
 #endif

@@ -1,5 +1,8 @@
 #ifndef _RC_SYSDEPS_H_
 #define _RC_SYSDEPS_H_
+#if !defined(__GLIBC__) && !defined(__UCLIBC__) /* musl */
+#include <net/ethernet.h>
+#endif
 #include <rtconfig.h>
 
 /* sysdeps/init-PLATFORM.c */
@@ -78,6 +81,16 @@ extern void config_switch_dsl(void);
 extern void config_switch_dsl_set_lan(void);
 #endif
 
+// init-ralink.c
+#if defined(RTCONFIG_RALINK)
+extern int is_if_up(char *ifname);
+extern void config_hwctl_led(void);
+extern void gen_ra_sku(const char *reg_spec);
+extern void generate_wl_para(int unit, int subunit);
+extern void reset_ra_sku(const char *location, const char *country, const char *reg_spec);
+extern void setup_smp(int interface);
+#endif
+
 #if defined(RTCONFIG_REALTEK)
 #if defined(RTCONFIG_BT_CONN) || defined(RPAC55)
 extern void gen_rtlbt_fw_config(void);
@@ -97,6 +110,33 @@ int fa_mode;
 void fa_mode_init();
 #endif
 
+/* conn_diag-PLATFORM.c */
+extern int check_wifi_channel_by_idx(char *output, int len, int i, char *node, char *lan_ipaddr, char *lan_hwaddr);
+extern int get_wifi_ssid(int idx, char *output, int outputlen);
+extern int get_wifi_subif_info(int idx, char *output, int outputlen);
+extern int get_wifi_status(char *ifname, char *output, int len);
+extern int get_wifi_dfs_status(char *output, int len, char *node, char *lan_ipaddr, char *lan_hwaddr);
+extern void init_check_wifi_channel(void);
+
+/* roamast-PLATFORM.c */
+extern void rast_send_beacon_request(int bssidx, int vifidx, struct ether_addr *sta);
+
+/* wps-PLATFORM.c */
+extern int start_wps_method_ob(void);
+extern int stop_wps_method_ob(void);
+
+/* amas-ssd-cd-PLATFORM.c */
+extern void stop_site_survey_cd();
+
+/* AiMesh sysdeps */
+#if defined(RTCONFIG_AMAS_WGN)
+extern void wgn_sysdep_swtich_unset(int vid);
+extern void wgn_sysdep_swtich_set(int vid);
+extern void wl_vlan_set(char* ifname, int allow);
+extern void wgn_sysdep_wl_unset(int vid);
+extern void wgn_sysdep_wl_set(int vid);
+extern int is_wlif( char *ifname);
+#endif
 /* sysdeps/easymesh-PLATFORM.c */
 #if defined(RTCONFIG_EASYMESH)
 extern int config_agent_main(int argc, char *argv[]);
@@ -104,3 +144,4 @@ extern int connect_agent(char *ip, int port, char *cmd);
 extern int easymesh_agentctrl_main(int argc, char *argv[]);
 #endif
 #endif
+

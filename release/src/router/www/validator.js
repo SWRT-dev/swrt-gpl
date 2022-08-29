@@ -844,7 +844,7 @@ var validator = {
 		}	
 	},
 
-	isLegal_ipv6: function(obj) {
+	isLegal_ipv6: function(obj, flag) {
 		
 		var rangere=new RegExp("^((([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){6}:[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){5}:([0-9A-Fa-f]{1,4}:)?[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){4}:([0-9A-Fa-f]{1,4}:){0,2}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){3}:([0-9A-Fa-f]{1,4}:){0,3}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){2}:([0-9A-Fa-f]{1,4}:){0,4}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){6}((\\b((25[0-5])|(1\\d{2})|(2[0-4]\\d)|(\\d{1,2}))\\b)\\.){3}(\\b((25[0-5])|(1\\d{2})|(2[0-4]\\d)|(\\d{1,2}))\\b))|(([0-9A-Fa-f]{1,4}:){0,5}:((\\b((25[0-5])|(1\\d{2})|(2[0-4]\\d)|(\\d{1,2}))\\b)\\.){3}(\\b((25[0-5])|(1\\d{2})|(2[0-4]\\d)|(\\d{1,2}))\\b))|(::([0-9A-Fa-f]{1,4}:){0,5}((\\b((25[0-5])|(1\\d{2})|(2[0-4]\\d)|(\\d{1,2}))\\b)\\.){3}(\\b((25[0-5])|(1\\d{2})|(2[0-4]\\d)|(\\d{1,2}))\\b))|([0-9A-Fa-f]{1,4}::([0-9A-Fa-f]{1,4}:){0,5}[0-9A-Fa-f]{1,4})|(::([0-9A-Fa-f]{1,4}:){0,6}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){1,7}:))$", "gi");
 
@@ -852,9 +852,11 @@ var validator = {
 			return true;
 		}
 		else{
-			alert(obj.value+" <#JS_validip#>");
-			obj.focus();
-			obj.select();
+			if(flag != 1){	//1: mute
+				alert(obj.value+" <#JS_validip#>");
+				obj.focus();
+				obj.select();
+			}
 			return false;
 		}
 	},
@@ -1088,11 +1090,12 @@ var validator = {
 						return false;
 					}
 					else{
-						alert(o.value+" <#JS_validip#>");
-						
-						o.value = "";
-						o.focus();
-						o.select();
+						if(noAlert != 1){
+							alert(o.value+" <#JS_validip#>");
+							o.value = "";
+							o.focus();
+							o.select();
+						}
 						return false;
 					}
 				}
@@ -1114,10 +1117,12 @@ var validator = {
 				return false;
 			}
 			else{
-				alert(o.value + " <#JS_validip#>");
-				o.value = "";
-				o.focus();
-				o.select();
+				if(noAlert != 1){
+					alert(o.value + " <#JS_validip#>");
+					o.value = "";
+					o.focus();
+					o.select();
+				}
 				return false;
 			}
 		}
@@ -2108,11 +2113,16 @@ var validator = {
 	validIPForm: function(obj, flag){
 		if(obj.value == ""){
 			return true;
-		}else if(flag==0){	//without netMask
+		}else if(flag==0){	//0:without netMask
 			if(!this.ipAddrFinal(obj, obj.name)){
 				obj.focus();
-				obj.select();		
-				return false;	
+				obj.select();
+				return false;
+			}else
+				return true;
+		}else if(flag==3){	//3:mute
+			if(!this.ipAddrFinal(obj, obj.name, 1)){
+				return false;
 			}else
 				return true;
 		}else if(flag==1){	//with netMask and generate netmask
@@ -2185,19 +2195,33 @@ var validator = {
 	},
 
 	wlKey: function(key_obj){
-		var wep_type = document.form.wl_wep_x.value;
+		var wep_type = "";
+		if (document.form === undefined) {
+			var wep_type_id = key_obj.id.slice(0, 8) + "x";
+			wep_type = document.getElementById(wep_type_id).value;
+		} else {
+			wep_type = document.form.wl_wep_x.value;
+		}
+
 		var iscurrect = true;
 		var str = "<#JS_wepkey#>";
+		var wl_key_type = '<% nvram_get("wl_key_type"); %>';
 
 		if(wep_type == "0")
 			iscurrect = true;	// do nothing
 		else if(wep_type == "1"){
 			if(key_obj.value.length == 5 && this.string(key_obj)){
-				document.form.wl_key_type.value = 1; /*Lock Add 11.25 for ralink platform*/
+				if (wl_key_type !== "") {
+					document.form.wl_key_type.value = 1; /*Lock Add 11.25 for ralink platform*/
+				}
+
 				iscurrect = true;
 			}
 			else if(key_obj.value.length == 10 && this.hex(key_obj)){
-				document.form.wl_key_type.value = 0; /*Lock Add 11.25 for ralink platform*/
+				if (wl_key_type !== "") {
+					document.form.wl_key_type.value = 0; /*Lock Add 11.25 for ralink platform*/
+				}
+
 				iscurrect = true;
 			}
 			else{
@@ -2208,11 +2232,17 @@ var validator = {
 		}
 		else if(wep_type == "2"){
 			if(key_obj.value.length == 13 && this.string(key_obj)){
-				document.form.wl_key_type.value = 1; /*Lock Add 11.25 for ralink platform*/
+				if (wl_key_type !== "") {
+  					document.form.wl_key_type.value = 1; /*Lock Add 11.25 for ralink platform*/
+				}
+
 				iscurrect = true;
 			}
 			else if(key_obj.value.length == 26 && this.hex(key_obj)){
-				document.form.wl_key_type.value = 0; /*Lock Add 11.25 for ralink platform*/
+				if (wl_key_type !== "") {
+					document.form.wl_key_type.value = 0; /*Lock Add 11.25 for ralink platform*/
+				}
+
 				iscurrect = true;
 			}
 			else{
@@ -2326,5 +2356,14 @@ var validator = {
 			}
 		}
 		return status;
+	},
+
+	isMobileNumber: function(_value){
+		var re = /^(\+?[1-9]{1}[0-9]{7,14}|[0-9]{7,14})$/g;
+		if(re.test(_value))
+			return true;
+		else{
+			return false;
+		}
 	}
 };

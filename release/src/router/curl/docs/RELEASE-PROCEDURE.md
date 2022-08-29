@@ -95,17 +95,12 @@ Coming dates
 Based on the description above, here are some planned release dates (at the
 time of this writing):
 
-- March 31, 2021 (7.76.0)
-- May 26, 2021
-- July 21, 2021
-- September 15, 2021
-- November 10, 2021
-- January 5, 2022
-- March 2, 2022
-- April 27, 2022
-- June 22, 2022
-- August 17, 2022
-
-The above (and more) curl-related dates are published in
-[iCalendar format](https://calendar.google.com/calendar/ical/c9u5d64odop9js55oltfarjk6g%40group.calendar.google.com/public/basic.ics)
-as well.
+- May 11, 2022 (7.83.1)
+- July 1, 2022
+- August 31, 2022
+- October 25, 2022
+- December 21, 2022
+- February 15, 2023 (last version 7 release, no feature window after)
+- March 20, 2023 (8.0.0 - curl 25 years)
+- April 17, 2023
+- July 12, 2023

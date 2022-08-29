@@ -215,6 +215,7 @@ define(function(){
 					{url: "Advanced_VPNClient_Content.asp", tabName: (vpn_fusion_support) ? "<#VPN_Fusion#>" : "<#vpnc_title#>"},
 					{url: "Advanced_TOR_Content.asp", tabName: "TOR"},
 					{url: "Advanced_Instant_Guard.asp", tabName: "<#Instant_Guard_title#>"},
+					{url: "Advanced_WireguardServer_Content.asp", tabName: "WireGuard Server"},/*untranslated*/
 					{url: "NULL", tabName: "__INHERIT__"}
 				]
 			},		
@@ -495,7 +496,7 @@ define(function(){
 					retArray.push("Advanced_Notification_Content.asp");
 				}
 
-				if(!smart_connect_support || Qcawifi_support){
+				if(!smart_connect_support || Qcawifi_support || Rawifi_support){
 					retArray.push("Advanced_Smart_Connect.asp");
 				}
 				
@@ -607,6 +608,10 @@ define(function(){
 
 				if(!dnsfilter_support)
 					retArray.push("DNSFilter.asp");
+
+				if(!wireguard_support) {
+					retArray.push("Advanced_WireguardServer_Content.asp");
+				}
 
 				/* Operation Mode */
 				if(isSwMode("re")){

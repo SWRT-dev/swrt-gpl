@@ -691,6 +691,9 @@ int tftp_main(int argc UNUSED_PARAM, char **argv)
 
 	INIT_G();
 
+	if(asus_check_caller())
+		return EXIT_FAILURE;
+
 	/* -p or -g is mandatory, and they are mutually exclusive */
 	opt_complementary = "" IF_FEATURE_TFTP_GET("g:") IF_FEATURE_TFTP_PUT("p:")
 			IF_GETPUT("g--p:p--g:");

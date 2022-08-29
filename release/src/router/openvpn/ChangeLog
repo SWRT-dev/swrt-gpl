@@ -1,6 +1,190 @@
 OpenVPN Change Log
 Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
 
+2022.03.16 -- Version 2.4.12
+
+Arne Schwabe (1):
+      Remove always enabled USE_64_BIT_COUNTERS define
+
+David Korczynski (1):
+      Fix argv leaks in add_route() and add_route_ipv6()
+
+David Sommerseth (1):
+      plug-ins: Disallow multiple deferred authentication plug-ins
+
+Gert Doering (2):
+      Revert "Remove always enabled USE_64_BIT_COUNTERS define"
+      Fix --mtu-disc maybe|yes on Linux.
+
+Richard T Bonhomme (1):
+      doc openvpn.8: Use free open-source dynamic-DNS provider URL
+
+Selva Nair (2):
+      Apply the connect-retry backoff to only one side of a connection
+      Ensure the current common_name is in the environment for scripts
+
+
+2021.04.20 -- Version 2.4.11
+
+Arne Schwabe (1):
+      Ensure key state is authenticated before sending push reply
+
+Gert Doering (2):
+      clean up / rewrite sample-plugins/defer/simple.c
+      Fix potential NULL ptr crash if compiled with DMALLOC
+
+Greg Cox (5):
+      Fix naming error in sample-plugins/defer/simple.c
+      Documentation fixes around openvpn_plugin_func_v3 in openvpn-plugin.h.in
+      Update openvpn_plugin_func_v2 to _v3 in sample-plugins/defer/simple.c
+      More explicit versioning compatibility in sample-plugins/defer/simple.c
+      Explain structver usage in sample defer plugin.
+
+
+2020.12.09 -- Version 2.4.10
+
+Antonio Quartulli (1):
+      pool: prevent IPv6 pools to be larger than 2^16 addresses
+
+Arne Schwabe (5):
+      Fix tls_ctx_client/server_new leaving error on OpenSSL error stack
+      Normalise ncp-ciphers option and restrict it to 127 bytes
+      Also announce IV_CIPHERS as client in OpenVPN 2.4
+      Fix auth-token not being updated if auth-nocache is set
+      Remove auth_user_pass.wait_for_push variable
+
+David Sommerseth (1):
+      compat/lz4: Update to v1.9.2
+
+Gert Doering (12):
+      Fix stack overflow in OpenSolaris NEXTADDR()
+      Document that --push-remove is generally more suitable than --push-reset
+      Fix error detection / abort in --inetd corner case.
+      Fix TUNSETGROUP compatibility with very old Linux systems.
+      Fix handling of 'route remote_host' for IPv6 transport case.
+      Fix description of --client-disconnect calling convention in manpage.
+      Handle NULL returns from calloc() in sample plugins.
+      Fix --show-gateway for IPv6 on NetBSD/i386.
+      socks.c: fix alen for DOMAIN type addresses, bump up buffer sizes
+      Fix redirecting of IPv4 default gateway if connecting over IPv6.
+      Change travis build scripts to use https when fetching prerequisites.
+      Fix line number reporting on config file errors after <inline> segments
+
+Jeremy Evans (1):
+      Switch assertion failure to returning false
+
+Matthias Andree (1):
+      Fix stack buffer overruns in NEXTADDR() macro:
+
+Selva Nair (3):
+      Parse static challenge response in auth-pam plugin
+      Accept empty password and/or response in auth-pam plugin
+      Persist management-query-remote and proxy prompts
+
+Vladislav Grishenko (2):
+      Log serial number of revoked certificate
+      Fix fatal error at switching remotes (#629)
+
+
+
+2020.04.16 -- Version 2.4.9
+Antonio Quartulli (1):
+      socks: use the right function when printing struct openvpn_sockaddr
+
+Arne Schwabe (3):
+      Fetch OpenSSL versions via source/old links
+      Fix OpenSSL error stack handling of tls_ctx_add_extra_certs
+      Fix OpenSSL 1.1.1 not using auto elliptic curve selection
+
+Lev Stipakov (4):
+      Fix broken fragmentation logic when using NCP
+      Fix building with --enable-async-push in FreeBSD
+      Fix broken async push with NCP is used
+      Fix illegal client float (CVE-2020-11810)
+
+Maxim Plotnikov (1):
+      OpenSSL: Fix --crl-verify not loading multiple CRLs in one file
+
+Santtu Lakkala (1):
+      Fix OpenSSL private key passphrase notices
+
+Selva Nair (7):
+      Swap the order of checks for validating interactive service user
+      Move querying username/password from management interface to a function
+      When auth-user-pass file has no password query the management interface (if available).
+      Fix possibly uninitialized return value in GetOpenvpnSettings()
+      Fix possible access of uninitialized pipe handles
+      Skip expired certificates in Windows certificate store
+      Allow unicode search string in --cryptoapicert option
+
+Tom van Leeuwen (1):
+      mbedTLS: Make sure TLS session survives move
+
+WGH (1):
+      docs: Add reference to X509_LOOKUP_hash_dir(3)
+
+
+2019.10.30 -- Version 2.4.8
+Antonio Quartulli (1):
+      mbedtls: fix segfault by calling mbedtls_cipher_free() in cipher_ctx_free()
+
+Arne Schwabe (1):
+      Remove -no-cpp-precomp flag from Darwin builds
+
+David Sommerseth (3):
+      cleanup: Remove RPM openvpn.spec build approach
+      docs: Update INSTALL
+      build: Package missing mock_msg.h
+
+Gert Doering (4):
+      repair windows builds (2.4)
+      Increase listen() backlog queue to 32
+      Force combinationation of --socks-proxy and --proto UDP to use IPv4.
+      Fix IPv6 routes on tap interfaces on OpenSolaris/OpenIndiana
+
+Gisle Vanem (1):
+      Wrong FILETYPE in .rc files
+
+Hilko Bengen (1):
+      Do not set pkcs11-helper 'safe fork mode'
+
+Ilya Shipitsin (2):
+      travis-ci: add "linux-ppc64le" to build matrix, change trusty image to xenial, update osx to xcode9.4 and modernize brew management
+      travis-ci: fix osx builds
+
+Kyle Evans (1):
+      tests/t_lpback.sh: Switch sed(1) to POSIX-compatible regex.
+
+Lev Stipakov (1):
+      Fix various compiler warnings
+
+Matthias Andree (1):
+      Fix regression, reinstate LibreSSL support.
+
+Michal Soltys (1):
+      man: correct the description of --capath and --crl-verify regarding CRLs
+
+Mykola Baibuz (1):
+      Fix typo in NTLM proxy debug message
+
+Richard Bonhomme (1):
+      Ignore --pull-filter for --mode server
+
+Rosen Penev (1):
+      openssl: Fix compilation without deprecated OpenSSL 1.1 APIs
+
+Selva Nair (3):
+      Better error message when script fails due to script-security setting
+      Correct the return value of cryptoapi RSA signature callbacks
+      Handle PSS padding in cryptoapicert
+
+Steffan Karger (1):
+      cmocka: use relative paths
+
+Thomas Quinot (1):
+      Fix documentation of tls-verify script argument
+
+
 2019.02.18 -- Version 2.4.7
 Adam Ciarcin?ski (1):
       Fix subnet topology on NetBSD (2.4).

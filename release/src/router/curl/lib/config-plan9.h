@@ -7,7 +7,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 1998 - 2022, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -19,6 +19,8 @@
  *
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
 
@@ -149,7 +151,6 @@
 #define HAVE_SIGNAL 1
 #define HAVE_SIGNAL_H 1
 #define HAVE_SIGSETJMP 1
-#define HAVE_SIG_ATOMIC_T 1
 #define HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID 1
 #define HAVE_SOCKET 1
 #define HAVE_SSL_GET_SHUTDOWN 1

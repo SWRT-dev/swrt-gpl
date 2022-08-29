@@ -138,15 +138,15 @@ elif [ "$modem_model" == "1" ]; then
 
 	killall quectel-CM
 elif [ "$modem_model" == "2" ]; then
-	/usr/sbin/modem_at.sh '+GTRNDIS=0,1' "$modem_reg_time"
-
-	sleep 1
-	at_ret=`/usr/sbin/modem_at.sh '+GTRNDIS?' "$modem_reg_time" 2>&1`
-	ret=`echo -n $at_ret |grep "+GTRNDIS: 0" 2>/dev/null`
-
+	at_ret=`/usr/sbin/modem_at.sh '+CFUN?' "$modem_reg_time" 2>&1`
+	ret=`echo -n $at_ret |grep "+CFUN: 4,0" 2>/dev/null`
 	if [ -z "$ret" ]; then
-		echo "$modem_type: Fail to stop network."
-		exit 0
+			echo "CFUN: Unregister the network(4)."
+			at_ret=`/usr/sbin/modem_at.sh '+CFUN=4' "$modem_reg_time" 2>&1`
+			ret=`echo -n $at_ret |grep "OK" 2>/dev/null`
+			if [ -z "$ret" ]; then
+					echo "CFUN: Fail to set +CFUN=4."
+			fi
 	fi
 elif [ "$modem_type" == "qmi" ]; then
 	wdm=`_get_wdm_by_usbnet $modem_dev`

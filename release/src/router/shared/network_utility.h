@@ -13,4 +13,5 @@ extern int is_valid_ip4(const char* addr);
 extern int is_valid_ip6(const char* addr);
 extern int is_ip4_in_use(const char* addr);
 
+extern int validate_ip(char *ip);
 #endif

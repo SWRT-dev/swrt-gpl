@@ -23,6 +23,7 @@ pb-y				+= regs
 ifeq ($(RTCONFIG_PARAGON_NTFS),y)
 pb-y				+= ufsd
 endif
+pb-$(CONFIG_RALINK)		+= iwevent
 
 all: $(pb-y) $(pb-m)
 
@@ -115,5 +116,8 @@ regs:
 
 ufsd:
 	$(call inst,$(S),$(D),ufsd.ko)
+
+iwevent:
+	$(call inst,$(S),$(D),wlceventd)
 
 .PHONY: all $(pb-y) $(pb-m)

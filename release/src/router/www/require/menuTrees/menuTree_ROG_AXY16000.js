@@ -1,4 +1,4 @@
-/* menuTree_ROG.js */
+﻿/* menuTree_ROG.js */
 define(function(){
 	var menuTree = {
 		list: [
@@ -128,6 +128,7 @@ define(function(){
 					{url: "Advanced_VPNClient_Content.asp", tabName: (vpn_fusion_support) ? "<#VPN_Fusion#>" : "<#vpnc_title#>"},
 					{url: "Advanced_TOR_Content.asp", tabName: "TOR"},
 					{url: "Advanced_Instant_Guard.asp", tabName: "<#Instant_Guard_title#>"},
+					{url: "Advanced_WireguardServer_Content.asp", tabName: "WireGuard Server"},/*untranslated*/
 					{url: "NULL", tabName: "__INHERIT__"}
 				]
 			},
@@ -197,7 +198,6 @@ define(function(){
 					{url: "Advanced_GWStaticRoute_Content.asp", tabName: "<#menu5_2_3#>"},
 					{url: "Advanced_IPTV_Content.asp", tabName: "IPTV"},
 					{url: "Advanced_SwitchCtrl_Content.asp", tabName: "<#Switch_itemname#>"},
-					{url: "Advanced_SmartDNS_Content.asp", tabName: "SmartDNS"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
@@ -243,15 +243,6 @@ define(function(){
 					{url: "cloud_router_sync.asp", tabName: "<#Server_Sync#>"},
 					{url: "cloud_settings.asp", tabName: "<#Settings#>"},
 					{url: "cloud_syslog.asp", tabName: "<#Log#>"},
-					{url: "NULL", tabName: "__INHERIT__"}
-				] 
-			},
-			{
-				menuName: "<#Softcenter_tool#>",
-				index: "menu_Tools",
-				tab: [
-					{url: "Tools_Sysinfo.asp", tabName: "Sysinfo"},
-					{url: "Softcenter.asp", tabName: "<#Softcenter_tool#>"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
@@ -328,45 +319,16 @@ define(function(){
 					{url: "Advanced_Smart_Connect.asp", tabName: "<#smart_connect_rule#>"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				]
-			},
-			{
-				menuName: "Entware",
-				index: "menu_Split",
-				tab: [
-					{url: "NULL", tabName: "__HIDE__"}
-				]
-			},
-			{
-				menuName: "Entware",
-				index: "menu_Entware",
-				tab: [
-					{url: "Entware_start.asp", tabName: "<#Entware_home#>"},
-					{url: "Entware_installed.asp", tabName: "<#Entware_installed#>"},
-					{url: "Entware_list.asp", tabName: "<#Entware_list#>"},
-					{url: "NULL", tabName: "__INHERIT__"}
-				] 
-			},
-			{
-				menuName: "<#Softcenter#>",
-				index: "menu_Split",
-				tab: [
-					{url: "NULL", tabName: "__HIDE__"}
-				]
-			},
-			{
-				menuName: "<#Softcenter#>",
-				index: "menu_Softcenter",
-				tab: [
-					{url: "Main_Soft_center.asp", tabName: "<#Softcenter#>"},
-					{url: "Main_Soft_setting.asp", tabName: "ManualInstall"},
-					{url: "NULL", tabName: "__INHERIT__"}
-				]
 			}
 		],
 
 		exclude: {
 			menus: function(){
 				var retArray = [];
+
+				if(!wifiRadar_support){
+					retArray.push("menu_WifiRadar");
+				}
 
 				if(!multissid_support){
 					retArray.push("menu_GuestNetwork");
@@ -474,16 +436,6 @@ define(function(){
 					retArray.push("menu_Firewall");
 					retArray.push("menu_ParentalControl");
 				}
-				if (!softcenter_support || '<% nvram_get("sc_installed"); %>' != '1'){
-					retArray.push("menu_Softcenter");
-				}
-				if (!entware_support){
-					retArray.push("menu_Entware");
-					for(i=0; i<menuTree.list.length; i++){
-						if(menuTree.list[i].menuName == 'Entware')
-							menuTree.list.splice(i,1);
-					}
-				}
 
 				/*MODEL DEPENDENT*/
 				if(based_modelid == "GT-AXY16000" || based_modelid == "RT-AX89U"){
@@ -496,9 +448,6 @@ define(function(){
 			tabs: function(){
 				var retArray = [];
 
-				if (!smartdns_support){
-					retArray.push("Advanced_SmartDNS_Content.asp");
-				}
 				/* By RC Support */
 				if(!bwdpi_support){
 					retArray.push("AdaptiveQoS_Bandwidth_Monitor.asp");
@@ -597,7 +546,7 @@ define(function(){
 					retArray.push("Advanced_Notification_Content.asp");
 				}
 
-				if(!smart_connect_support || Qcawifi_support){
+				if(!smart_connect_support || Qcawifi_support || Rawifi_support){
 					retArray.push("Advanced_Smart_Connect.asp");
 				}
 				
@@ -692,6 +641,10 @@ define(function(){
 
 				if(!dnsfilter_support)
 					retArray.push("DNSFilter.asp");
+
+				if(!wireguard_support) {
+					retArray.push("Advanced_WireguardServer_Content.asp");
+				}
 
 				/* Operation Mode */
 				if(isSwMode("re")){
@@ -788,4 +741,3 @@ define(function(){
 
 	return menuTree;
 });
-

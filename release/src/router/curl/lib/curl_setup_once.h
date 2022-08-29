@@ -7,7 +7,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 1998 - 2022, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -19,6 +19,8 @@
  *
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
 
@@ -306,6 +308,14 @@ struct timeval {
 #  define HAVE_BOOL_T
 #endif
 
+/* the type we use for storing a single boolean bit */
+#ifdef _MSC_VER
+typedef bool bit;
+#define BIT(x) bool x
+#else
+typedef unsigned int bit;
+#define BIT(x) bit x:1
+#endif
 
 /*
  * Redefine TRUE and FALSE too, to catch current use. With this
@@ -322,26 +332,6 @@ struct timeval {
 #endif
 
 #include "curl_ctype.h"
-
-/*
- * Typedef to 'int' if sig_atomic_t is not an available 'typedefed' type.
- */
-
-#ifndef HAVE_SIG_ATOMIC_T
-typedef int sig_atomic_t;
-#define HAVE_SIG_ATOMIC_T
-#endif
-
-
-/*
- * Convenience SIG_ATOMIC_T definition
- */
-
-#ifdef HAVE_SIG_ATOMIC_T_VOLATILE
-#define SIG_ATOMIC_T static sig_atomic_t
-#else
-#define SIG_ATOMIC_T static volatile sig_atomic_t
-#endif
 
 
 /*

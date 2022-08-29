@@ -1,9 +1,15 @@
+c: Copyright (C) 1998 - 2022, Daniel Stenberg, <daniel@haxx.se>, et al.
+SPDX-License-Identifier: curl
 Long: proxy-header
 Arg: <header/@file>
 Help: Pass custom header(s) to proxy
 Protocols: HTTP
 Added: 7.37.0
 Category: proxy
+Example: --proxy-header "X-First-Name: Joe" -x http://proxy $URL
+Example: --proxy-header "User-Agent: surprise" -x http://proxy $URL
+Example: --proxy-header "Host:" -x http://proxy $URL
+See-also: proxy
 ---
 Extra header to include in the request when sending HTTP to a proxy. You may
 specify any number of extra headers. This is the equivalent option to --header

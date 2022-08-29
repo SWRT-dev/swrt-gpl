@@ -99,11 +99,14 @@ static int env_update(const char *varname, const char *defval,
 static int load_tftp(size_t addr, uint32_t *data_size, const char *env_name)
 {
 	char file_name[CONFIG_SYS_CBSIZE + 1];
+#if defined(CONFIG_XD4S) 
+	char def_name[CONFIG_SYS_CBSIZE + 1];
+#endif	
 	const char *save_tftp_info;
 	uint32_t size;
 
 	if (env_update("ipaddr", __stringify(CONFIG_IPADDR),
-		       "Input U-Boot's IP address:", NULL, 0))
+		       "Input device IP address:", NULL, 0))
 		return CMD_RET_FAILURE;
 
 	if (env_update("serverip", __stringify(CONFIG_SERVERIP),
@@ -113,9 +116,18 @@ static int load_tftp(size_t addr, uint32_t *data_size, const char *env_name)
 	if (env_update("netmask", __stringify(CONFIG_NETMASK),
 		       "Input IP netmask:", NULL, 0))
 		return CMD_RET_FAILURE;
+#if defined(CONFIG_XD4S) 
+	if(!strcmp(env_name,"bootfile.bootloader"))
+		strcpy(def_name,ASUS_BL);
+	else	
+		strcpy(def_name,ASUS_FW);
 
-	if (env_update(env_name, "", "Input file name:",
+	if (env_update(env_name,def_name, "Input file name:",				
 		       file_name, sizeof(file_name)))
+#else
+	if (env_update(env_name, "", "Input file name:",
+                       file_name, sizeof(file_name)))
+#endif		
 		return CMD_RET_FAILURE;
 
 	printf("\n");

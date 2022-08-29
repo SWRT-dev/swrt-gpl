@@ -60,7 +60,10 @@ var orig_wan_vpndhcp = '<% nvram_get("wan_vpndhcp"); %>';
 var orig_ttl_inc_enable = '<% nvram_get("ttl_inc_enable"); %>';
 var iptv_profiles = [<% get_iptvSettings();%>][0];
 var isp_profiles = iptv_profiles.isp_profiles;
-var orig_wnaports_bond = '<% nvram_get("wanports_bond"); %>';
+var port_definitions = iptv_profiles.port_definitions;
+var stbPortMappings = [<% get_stbPortMappings();%>][0];
+var orig_wanports_bond = '<% nvram_get("wanports_bond"); %>';
+var cloud_isp_profiles = [];
 
 if(wan_bonding_support)
 	var orig_bond_wan = httpApi.nvramGet(["bond_wan"], true).bond_wan;
@@ -78,7 +81,7 @@ for(var i = 1; i < MSWAN_List_Pri.length; i++){
 
 function initial(){
 	show_menu();
-
+	get_cloud_profiles();
 	create_stb_select(original_switch_stb_x);
 	if(mswan_support){
 		update_mr_mswan_idx();
@@ -87,18 +90,12 @@ function initial(){
 	create_mr_select(orig_mr_enable);
 	if(dsl_support) {
 		document.form.action_wait.value = 20;
-		if( based_modelid == "DSL-AC68U"){
-			$("#dsl_vlan_check").show();
-			document.form.action_script.value = "reboot";
-			document.form.action_wait.value = "<% get_default_reboot_time(); %>";
-		}
 		$("#isp_profile_tr").hide();
 		$("#mr_enable_field").show();
 		$("#enable_eff_multicast_forward").show();
 	}
 	else{	//DSL not support
 		create_ISP_select();
-		ISP_Profile_Selection(original_switch_wantag);
 	}
 	
 	if(vdsl_support) {
@@ -127,6 +124,89 @@ function initial(){
 		document.form.iptv_port_settings.disabled = false;
 		change_port_settings(iptv_port_settings_orig);
 	}
+}
+
+function get_cloud_profiles(){
+	$.getJSON("https://nw-dlcdnet.asus.com/plugin/js/iptv_profile.json",
+		function(data){
+			Object.keys(data).forEach(function(profile_name) {
+				var newProfile = {};
+				if(!is_duplicate_profile(data[profile_name].switch_wantag)){
+					cloud_isp_profiles.push(data[profile_name]);
+					newProfile.profile_name = profile_name;
+					if(data[profile_name].iptv_port == "IPTV_PORT")
+						newProfile.iptv_port = port_definitions.IPTV_PORT;
+					else if(data[profile_name].iptv_port == "MSTB_PORT")
+						newProfile.iptv_port = port_definitions.MSTB_PORT;
+					else
+						newProfile.iptv_port = "";
+
+					if(data[profile_name].voip_port == "VOIP_PORT")
+						newProfile.voip_port = port_definitions.VOIP_PORT;
+					else
+						newProfile.voip_port = "";
+
+					if(data[profile_name].bridge_port == "IPTV_PORT")
+						newProfile.bridge_port = port_definitions.IPTV_PORT;
+					else if(data[profile_name].bridge_port == "VOIP_PORT")
+						newProfile.bridge_port = port_definitions.VOIP_PORT;
+					else
+						newProfile.bridge_port = "";
+					newProfile.iptv_config = data[profile_name].iptv_config;
+					newProfile.voip_config = data[profile_name].voip_config;
+					newProfile.switch_wantag = data[profile_name].switch_wantag;
+					newProfile.switch_stb_x = data[profile_name].switch_stb_x;
+					newProfile.mr_enable_x = data[profile_name].mr_enable_x;
+					newProfile.emf_enable = data[profile_name].emf_enable;
+					isp_profiles.push(newProfile);
+				}
+			});
+
+			isp_profiles.sort(function(a, b){
+									if(a.switch_wantag == "none" || b.switch_wantag == "manual")
+										return -1;
+									else if(b.switch_wantag == "none" || a.switch_wantag == "manual")
+										return 1;
+									else if(a.switch_wantag < b.switch_wantag)
+										return -1;
+									else if(a.switch_wantag > b.switch_wantag)
+										return 1;
+
+									return 0;
+								});
+			create_ISP_select();
+		}
+	);
+}
+
+function is_duplicate_profile(isp){
+	for(var i = 0; i < isp_profiles.length; i++){
+		if(isp == isp_profiles[i].switch_wantag)
+			return 1;
+	}
+
+	return 0;
+}
+
+function is_cloud_profile(isp){
+	for(var i = 0; i < cloud_isp_profiles.length; i++){
+		if(isp == cloud_isp_profiles[i].switch_wantag){
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+function get_cloud_settings(isp){
+	var cloud_profile = {};
+	for(var i = 0; i < cloud_isp_profiles.length; i++){
+		if(isp == cloud_isp_profiles[i].switch_wantag){
+			cloud_profile = cloud_isp_profiles[i];
+		}
+	}
+
+	return cloud_profile;
 }
 
 function create_stb_select(switch_stb_x){
@@ -158,6 +238,7 @@ function create_ISP_select(){
 	var select = document.getElementById("switch_wantag");
 	var text = "";
 	var selected = false;
+	var found = false;
 
 	if(isp_profiles.length > 0){
 		select.length = 0;
@@ -170,16 +251,25 @@ function create_ISP_select(){
 			else if(text == "manual")
 				text = "<#Manual_Setting_btn#>";
 
-			if(isp_profiles[i].switch_wantag == original_switch_wantag)
+			if(isp_profiles[i].switch_wantag == original_switch_wantag){
+				found = true;
 				selected = true;
+			}
 
 			var option = new Option(text, isp_profiles[i].switch_wantag, false, selected);
 			select.options.add(option);
 		}
 	}
 
-	if(select.selectedIndex < 0)
-		select.selectedIndex = 0;
+	if(!found){
+		if(original_switch_wantag != ""){
+			$('#switch_wantag').val("manual");
+		}
+		else
+			$('#switch_wantag').val("none");
+	}
+
+	ISP_Profile_Selection(original_switch_wantag);
 }
 
 function set_manual_items(){
@@ -198,49 +288,43 @@ function set_manual_items(){
 	document.form.switch_wan2tagid.disabled = false;
 	document.form.switch_wan2prio.disabled = false;
 
-	if(original_switch_wantag == "manual"){
-		document.form.switch_wan0tagid.value = original_switch_wan0tagid;
-		document.form.switch_wan0prio.value = original_switch_wan0prio;
-		document.form.switch_wan1tagid.value = original_switch_wan1tagid;
-		document.form.switch_wan1prio.value = original_switch_wan1prio;
-		document.form.switch_wan2tagid.value = original_switch_wan2tagid;
-		document.form.switch_wan2prio.value = original_switch_wan2prio;
-	}
-	else{
-		document.form.switch_wan0tagid.value = "";
-		document.form.switch_wan0prio.value = "0";
-		document.form.switch_wan1tagid.value = "";
-		document.form.switch_wan1prio.value = "0";
-		document.form.switch_wan2tagid.value = "";
-		document.form.switch_wan2prio.value = "0";
-	}
-
+	document.form.switch_wan0tagid.value = original_switch_wan0tagid;
+	document.form.switch_wan0prio.value = original_switch_wan0prio;
+	document.form.switch_wan1tagid.value = original_switch_wan1tagid;
+	document.form.switch_wan1prio.value = original_switch_wan1prio;
+	document.form.switch_wan2tagid.value = original_switch_wan2tagid;
+	document.form.switch_wan2prio.value = original_switch_wan2prio;
 
 	if(manual_settings.iptv_port != ""){
-		if(manual_settings.iptv_port.substr(0, 3) == "LAN")
-			port_name = "LAN Port " + manual_settings.iptv_port.substr(3);
+		if(port_definitions.IPTV_PORT.substr(0, 3) == "LAN")
+			port_name = "LAN Port " + port_definitions.IPTV_PORT.substr(3);
 		else
-			port_name = manual_settings.iptv_port;
+			port_name = port_definitions.IPTV_PORT;
+
 		document.getElementById("wan_iptv_port4_x").style.display = "";
 		document.getElementById("iptv_port4").innerHTML = port_name;
 	}
 
 	if(manual_settings.voip_port != ""){
-		if(manual_settings.voip_port.substr(0, 3) == "LAN")
-			port_name = "LAN Port " + manual_settings.voip_port.substr(3);
+		if(port_definitions.VOIP_PORT.substr(0, 3) == "LAN")
+			port_name = "LAN Port " + port_definitions.VOIP_PORT.substr(3);
 		else
-			port_name = manual_settings.voip_port;
+			port_name =port_definitions.VOIP_PORT;
 		document.getElementById("wan_voip_port3_x").style.display = "";
 		document.getElementById("voip_port3").innerHTML = port_name;
 	}
 }
 
 function get_isp_settings(isp){
+	var profile = {};
+
 	for(var i = 0; i < isp_profiles.length; i++){
 		if( isp == isp_profiles[i].switch_wantag ){
-			return isp_profiles[i];
+			profile = isp_profiles[i];
 		}
 	}
+
+	return profile;
 }
 
 function control_wans_primary(switch_stb_x) {
@@ -265,6 +349,15 @@ function control_wans_primary(switch_stb_x) {
 	}
 }
 
+function isEmpty(obj)
+{
+	for (var name in obj){
+		return false;
+	}
+
+	return true;
+};
+
 function ISP_Profile_Selection(isp){
 	var isp_settings = get_isp_settings(isp);
 
@@ -275,9 +368,7 @@ function ISP_Profile_Selection(isp){
 	else
 		document.getElementById("wan_stb_x").style.display = "none";
 
-
-
-	if(isp == "manual"){
+	if(isp == "manual" || isEmpty(isp_settings)){
 		set_manual_items();
 	}
 	else{
@@ -285,12 +376,22 @@ function ISP_Profile_Selection(isp){
 		document.getElementById("wan_iptv_port4_x").style.display = "none";
 		document.getElementById("wan_voip_port3_x").style.display = "none";
 		document.form.switch_stb_x.value = isp_settings.switch_stb_x;
-		document.form.switch_wan0tagid.disabled = true;
-		document.form.switch_wan0prio.disabled = true;
-		document.form.switch_wan1tagid.disabled = true;
-		document.form.switch_wan1prio.disabled = true;
-		document.form.switch_wan2tagid.disabled = true;
-		document.form.switch_wan2prio.disabled = true;
+		if(is_cloud_profile(isp)){
+			document.form.switch_wan0tagid.disabled = false;
+			document.form.switch_wan0prio.disabled = false;
+			document.form.switch_wan1tagid.disabled = false;
+			document.form.switch_wan1prio.disabled = false;
+			document.form.switch_wan2tagid.disabled = false;
+			document.form.switch_wan2prio.disabled = false;
+		}
+		else{
+			document.form.switch_wan0tagid.disabled = true;
+			document.form.switch_wan0prio.disabled = true;
+			document.form.switch_wan1tagid.disabled = true;
+			document.form.switch_wan1prio.disabled = true;
+			document.form.switch_wan2tagid.disabled = true;
+			document.form.switch_wan2prio.disabled = true;
+		}
 		if(isp_settings.iptv_port != "" || isp_settings.iptv_config == "1")
 			document.getElementById("wan_iptv_x").style.display = "";
 		else
@@ -385,6 +486,7 @@ function ISP_Profile_Selection(isp){
 	/*--*/
 }
 
+
 function validForm(){
 	if (!dsl_support){
         if(document.form.switch_wantag.value == "manual"){
@@ -423,6 +525,17 @@ function validForm(){
 		else{
 			var isp_profile = get_isp_settings(document.form.switch_wantag.value);
 			document.form.switch_stb_x.value = isp_profile.switch_stb_x;
+			if(is_cloud_profile(document.form.switch_wantag.value)){
+				var cloud_profile = get_cloud_settings(document.form.switch_wantag.value);
+
+				document.form.switch_stb_x.disabled = false;
+				document.form.switch_wan0tagid.value = cloud_profile.switch_wan0tagid;
+				document.form.switch_wan0prio.value = cloud_profile.switch_wan0prio;
+				document.form.switch_wan1tagid.value = cloud_profile.switch_wan1tagid;
+				document.form.switch_wan1prio.value = cloud_profile.switch_wan1prio;
+				document.form.switch_wan2tagid.value = cloud_profile.switch_wan2tagid;
+				document.form.switch_wan2prio.value = cloud_profile.switch_wan2prio;
+			}
 		}
 	}
 	else{
@@ -436,17 +549,51 @@ function validForm(){
 		if (tmp_pri_if == 'LAN' || tmp_sec_if == 'LAN'){
 			var port_conflict = false;
 			var iptv_port = document.form.switch_stb_x.value;
-			if(wans_lanport == iptv_port)
-				port_conflict = true;
-			else if( (wans_lanport == 1 || wans_lanport == 2) && iptv_port == 5)
-				port_conflict = true;
-			else if( (wans_lanport == 3 || wans_lanport == 4) && (iptv_port == 6 || iptv_port == 8) )
-				port_conflict = true;
+			var iptv_port_settings = document.form.iptv_port_settings.value;
+
+			if(based_modelid == "GT-AC5300"){
+				/* Dual WAN: "LAN Port 1" (wans_lanport: 2), "LAN Port 2" (wans_lanport:1), "LAN Port 5" (wans_lanport:4), "LAN Port 6" (wans_lanport:3) */
+				if(iptv_port_settings == "56"){// LAN Port 5 (switch_stb_x: 3)  LAN Port 6 (switch_stb_x: 4)
+					if((wans_lanport == "4" && iptv_port == "3") || (wans_lanport == "3" && iptv_port == "4"))
+						port_conflict = true;
+					else if((iptv_port == "6" || iptv_port == "8") && (wans_lanport == '4' || wans_lanport == "3"))
+						port_conflict = true;
+				}
+				else{// LAN Port 1 (switch_stb_x: 3)  LAN Port 2 (switch_stb_x: 4)
+					if((wans_lanport == "2" && iptv_port == "3") || (wans_lanport == "1" && iptv_port == "4")) //LAN 1, LAN2
+						port_conflict = true;
+					else if((iptv_port == "6" || iptv_port == "8") && (wans_lanport == "2" || wans_lanport == "1"))
+						port_conflict = true;
+				}
+			}
+			else{
+				if(iptv_port == wans_lanport)
+					port_conflict = true;
+					else{
+						for(var i = 0; i < stbPortMappings.length; i++){
+							if(iptv_port == stbPortMappings[i].value && stbPortMappings[i].comboport_value_list.length != 0){
+								var value_list = stbPortMappings[i].comboport_value_list.split(" ");
+								for(var j = 0; j < value_list.length; j++){
+									if(wans_lanport == value_list[j])
+										port_conflict = true;
+								}
+							}
+						}
+					}
+			}
 
 			if (port_conflict) {
 				alert("<#RouterConfig_IPTV_conflict#>");
 				return false;
 			}
+		}
+	}
+
+	if(document.form.udpxy_enable_x.value != 0 && document.form.udpxy_enable_x.value != ""){	//validate UDP Proxy
+		if(!validator.range(document.form.udpxy_enable_x, 1024, 65535)){
+			document.form.udpxy_enable_x.focus();
+			document.form.udpxy_enable_x.select();
+			return false;
 		}
 	}
 
@@ -459,35 +606,42 @@ function turn_off_lacp_if_conflicts(){
 
 	if((based_modelid == "RT-AX89U" || based_modelid == "GT-AXY16000")){
 		// LAN1 and/or LAN2.
-		if(document.form.switch_wantag.value == "none" && (document.form.switch_stb_x0.value == 1 || document.form.switch_stb_x0.value == 2 || document.form.switch_stb_x0.value == 5)){
+		if(document.form.switch_wantag.value == "none" && (document.form.switch_stb_x0.value == "1" || document.form.switch_stb_x0.value == "2" || document.form.switch_stb_x0.value == "5")){
+			document.form.lacp_enabled.disabled = false;
+			document.form.lacp_enabled.value = "0";
+		}
+	}
+	else if(based_modelid == "XT8PRO"){
+		//LAN 2 and/or LAN3
+		if((document.form.switch_wantag.value == "none" && (document.form.switch_stb_x0.value == "2" || document.form.switch_stb_x0.value == "3" || document.form.switch_stb_x0.value == "5" || document.form.switch_stb_x0.value == "6"))){
 			document.form.lacp_enabled.disabled = false;
 			document.form.lacp_enabled.value = "0";
 		}
 	}
 }
 
+var reboot_confirm=0;
 function applyRule(){
-	if(!dsl_support){
-		if( (original_switch_stb_x != document.form.switch_stb_x0.value)
-			|| (original_switch_wantag != document.form.switch_wantag.value)
-			|| ((document.form.switch_wantag.value == "manual") && ((original_switch_wan0tagid != document.form.switch_wan0tagid.value)
+	if(validForm()){
+
+		if(!dsl_support){
+			if( (original_switch_stb_x != document.form.switch_stb_x0.value)
+				|| (original_switch_wantag != document.form.switch_wantag.value)
+				|| ((document.form.switch_wantag.value == "manual") && ((original_switch_wan0tagid != document.form.switch_wan0tagid.value)
 																	|| (original_switch_wan0prio != document.form.switch_wan0prio.value)
 																	|| (original_switch_wan1tagid != document.form.switch_wan1tagid.value)
 																	|| (original_switch_wan1prio != document.form.switch_wan1prio.value)
 																	|| (original_switch_wan2tagid != document.form.switch_wan2tagid.value)
 																	|| (original_switch_wan2prio != document.form.switch_wan2prio.value)) )
 			){
-			turn_off_lacp_if_conflicts();
-			FormActions("start_apply.htm", "apply", "reboot", "<% get_default_reboot_time(); %>");
+				turn_off_lacp_if_conflicts();
+				reboot_confirm=1;
+			}
 		}
-	}
-
-	if(validForm()){
-		if(document.form.udpxy_enable_x.value != 0 && document.form.udpxy_enable_x.value != ""){	//validate UDP Proxy
-			if(!validator.range(document.form.udpxy_enable_x, 1024, 65535)){
-				document.form.udpxy_enable_x.focus();
-				document.form.udpxy_enable_x.select();
-				return false;
+		else{
+			if( based_modelid == "DSL-AC68U"){
+				$("#dsl_vlan_check").show();
+				reboot_confirm=1;
 			}
 		}
 
@@ -510,7 +664,7 @@ function applyRule(){
 					}
 					document.form.wans_dualwan.value = wans_dualwan_temp;
 					document.form.wans_lanport.value = document.form.wans_lanport1.value;
-					FormActions("start_apply.htm", "apply", "reboot", "<% get_default_reboot_time(); %>");
+					reboot_confirm=1;
 					alert("Please make sure the internet wire already plug in 'Port LAN " + document.form.wans_lanport.value + "' as primary WAN.");/*untranslated*/
 				}
 			}
@@ -527,8 +681,8 @@ function applyRule(){
 		}
 
 		if(wan_bonding_support && orig_bond_wan == "1"){
-			if(wanAggr_p2_conflicts_w_stb_port(document.form.switch_stb_x.value, wanAggr_p2_num(orig_wnaports_bond))){
-				var msg = "<#WANAggregation_PortConflict_hint1#>".replace(/LAN-*\D* 4/, wanAggr_p2_name(orig_wnaports_bond));
+			if(wanAggr_p2_conflicts_w_stb_port(document.form.switch_stb_x.value, wanAggr_p2_num(orig_wanports_bond))){
+				var msg = "<#WANAggregation_PortConflict_hint1#>".replace(/LAN-*\D* 4/, wanAggr_p2_name(orig_wanports_bond));
 				if(confirm(msg)){
 					document.form.bond_wan.disabled = false;
 					document.form.bond_wan.value = "0";
@@ -542,8 +696,20 @@ function applyRule(){
 		}
 
 		turn_off_lacp_if_conflicts();
-		showLoading();
-		document.form.submit();
+
+		if(reboot_confirm==1){
+        	
+			if(confirm("<#AiMesh_Node_Reboot#>")){
+				FormActions("start_apply.htm", "apply", "reboot", "<% get_default_reboot_time(); %>");
+				showLoading();
+				document.form.submit();
+	        	}
+        	}
+		else{
+
+			showLoading();
+			document.form.submit();
+		}
 	}
 }
 

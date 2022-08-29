@@ -1571,7 +1571,7 @@ This option is useful in cases
 where the remote peer has a dynamic IP address and
 a low\-TTL DNS name is used to track the IP address using
 a service such as
-.I http://dyndns.org/
+.I https://www.nsupdate.info/
 + a dynamic DNS client such
 as
 .B ddclient.
@@ -2805,6 +2805,19 @@ function (such as tls\-verify, auth\-user\-pass\-verify, or
 client\-connect), then
 every module and script must return success (0) in order for
 the connection to be authenticated.
+
+.INDENT 7.0
+.TP
+.B \fBWARNING\fP:
+Plug\-ins may do deferred execution, meaning the plug\-in will
+return the control back to the main OpenVPN process and provide
+the plug\-in result later on via a different thread or process.
+OpenVPN does \fBNOT\fP support multiple authentication plug\-ins
+\fBwhere more than one plugin\fP tries to do deferred authentication.
+If this behaviour is detected, OpenVPN will shut down upon first
+authentication.
+.UNINDENT
+.UNINDENT
 .\"*********************************************************
 .TP
 .B \-\-keying\-material\-exporter label len
@@ -3014,6 +3027,19 @@ as with a
 configuration file.  This option will ignore
 .B \-\-push
 options at the global config file level.
+
+NOTE:
+.B \-\-push\-reset
+is very thorough: it will remove almost all options from the list of
+to-be-pushed options.  In many cases, some of these options will need
+to be re-configured afterwards - specifically,
+.B \-\-topology subnet
+and
+.B \-\-route-gateway
+will get lost and this will break client configs in many cases.  Thus,
+for most purposes,
+.B \-\-push-remove
+is better suited to selectively remove push options for individual clients.
 .\"*********************************************************
 .TP
 .B \-\-push\-remove opt
@@ -3361,11 +3387,10 @@ an error status.
 
 The
 .B \-\-client\-disconnect
-command is passed the same pathname as the corresponding
-.B \-\-client\-connect
-command as its last argument. (after any arguments specified in
+command is not passed any extra arguments
+(only those arguments specified in
 .B cmd
-).
+if any).
 .B 
 .\"*********************************************************
 .TP
@@ -4273,6 +4298,8 @@ NCP server (v2.4+) with "\-\-cipher BF\-CBC" and "\-\-ncp\-ciphers
 AES\-256\-GCM:AES\-256\-CBC" set can either specify "\-\-cipher BF\-CBC" or
 "\-\-cipher AES\-256\-CBC" and both will work.
 
+This list is restricted to be 127 chars long after conversion to OpenVPN
+ciphers.
 .\"*********************************************************
 .TP
 .B \-\-ncp\-disable
@@ -4625,11 +4652,8 @@ they are distributed with OpenVPN, they are totally insecure.
 Directory containing trusted certificates (CAs and CRLs).
 Not available with mbed TLS.
 
-When using the
-.B \-\-capath
-option, you are required to supply valid CRLs for the CAs too.  CAs in the
-capath directory are expected to be named <hash>.<n>.  CRLs are expected to
-be named <hash>.r<n>.  See the
+CAs in the capath directory are expected to be named <hash>.<n>. CRLs are
+expected to be named <hash>.r<n>. See the
 .B \-CApath
 option of
 .B openssl verify
@@ -4637,9 +4661,16 @@ option of
 .B \-hash
 option of
 .B openssl x509
-and
+,
 .B openssl crl
+and
+.BR X509_LOOKUP_hash_dir (3)
 for more information.
+
+Similarly to the
+.B \-\-crl\-verify
+option CRLs are not mandatory \- OpenVPN will log the usual warning in the logs
+if the relevant CRL is missing, but the connection will be allowed.
 .\"*********************************************************
 .TP
 .B \-\-dh file
@@ -5374,7 +5405,7 @@ is executed two arguments are appended after any arguments specified in
 .B cmd certificate_depth subject
 
 These arguments are, respectively, the current certificate depth and
-the X509 common name (cn) of the peer.
+the X509 subject distinguished name (dn) of the peer.
 
 This feature is useful if the peer you want to trust has a certificate
 which was signed by a certificate authority who also signed many
@@ -5610,6 +5641,10 @@ overall integrity of the PKI.
 
 The only time when it would be necessary to rebuild the entire PKI from scratch would be
 if the root certificate key itself was compromised.
+
+The option is not mandatory \- if the relevant CRL is missing, OpenVPN will log
+a warning in the logs \- e.g. "\fIVERIFY WARNING: depth=0, unable to get
+certificate CRL\fR" \- but the connection will be allowed.
 
 If the optional
 .B dir

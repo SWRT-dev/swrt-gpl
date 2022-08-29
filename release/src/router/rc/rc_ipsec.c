@@ -1155,7 +1155,6 @@ void rc_ipsec_psk_xauth_rw_init()
 void rc_ipsec_secrets_set()
 {
 	char ipsec_client_list_name[SZ_MIN] = {0}, buf[SZ_MAX] = {0}, s_tmp[SZ_MAX] = {0};
-	char auth2meth[SZ_MIN] = {0};
 #ifdef RTCONFIG_INSTANT_GUARD
 	char ig_client_list[1024] = {0}, ig_client_buf[128] = {0};
 	char *desc = NULL, *ts = NULL, *active = NULL;
@@ -1613,6 +1612,9 @@ void rc_ipsec_topology_set()
         	}
 			else	{
 				fprintf(fp,"  ike=%s-%s-%s\n", encryp[ENCRYPTION_TYPE_AES256], hash[HASH_TYPE_SHA1], dh_group[DH_GROUP_2]);
+#ifdef RTCONFIG_HND_ROUTER_AX_6756
+				fprintf(fp,"  esp=%s-%s,%s-%s!\n", encryp[ENCRYPTION_TYPE_AES256], hash[HASH_TYPE_SHA512], encryp[ENCRYPTION_TYPE_AES256], hash[HASH_TYPE_SHA256]);
+#endif
 				fprintf(fp,"  dpdtimeout=30s\n");	
 			}
 			if(DPD_CLEAR == prof[prof_count][i].dead_peer_detection)
@@ -2667,6 +2669,7 @@ void rc_ipsec_set(ipsec_conn_status_t conn_status, ipsec_prof_type_t prof_type)
 	_eval(argv, NULL, 0, NULL);
 	DBG(("rc_ipsec_down_stat<<<< CLI: 0x%x, SVR: 0x%x\n", cur_bitmap_en_p[PROF_CLI],cur_bitmap_en_p[PROF_SVR]));
 	run_ipsec_firewall_scripts();
+
 #ifdef RTCONFIG_UPNPC_NEW
 	add_upnp_port(UPNPC_TYPE_UDP);
 #endif /* RTCONFIG_UPNPC_NEW */

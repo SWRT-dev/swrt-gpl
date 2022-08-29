@@ -46,6 +46,7 @@ if(IPv6_Only_support){
 	var ipv6_only_orig = '<% nvram_get("ipv6_only"); %>';
 }
 
+var enable_ftp_orig = httpApi.nvramGet(["enable_ftp"]).enable_ftp;
 var faq_href = "https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Faq&lang="+ui_lang+"&kw=&num=108";
 
 var ipv6_unit = '0';
@@ -952,9 +953,12 @@ function applyRule(){
 				&& (document.form.ipv6_service.value == "6in4" || ipv6_proto_orig == "6in4"))
     		FormActions("start_apply.htm", "apply", "reboot", "<% get_default_reboot_time(); %>");
 		}*/
-	
-		showLoading();		
 
+		if(enable_ftp_orig==1){
+			document.form.action_script.value += ";restart_ftpd";
+		}
+
+		showLoading();
 		setTimeout(function(){
 			document.form.submit();
 		},1500);
@@ -1029,6 +1033,11 @@ function genWANSoption(){
 				document.form.wan_selection.options[i] = new Option("10G base-T", i);
 			else if(wans_dualwan_NAME == "SFP+")
 				document.form.wan_selection.options[i] = new Option("10G SFP+", i);
+		} else if (based_modelid == "TUF-AX4200" || based_modelid == "TUF-AX6000") {
+			if (wans_dualwan_NAME == "WAN")
+				document.form.wan_selection.options[i] = new Option("2.5G WAN", i);
+			else if (wans_dualwan_NAME == "LAN Port 5")
+				document.form.wan_selection.options[i] = new Option("2.5G LAN", i);
 		}
 	}
 

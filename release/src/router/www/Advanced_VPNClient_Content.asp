@@ -202,7 +202,7 @@ function initial(){
 					.attr("href", faq_href1);
 	}
 
-	$("#ip_conflict_hint").html("<#vpn_openvpn_conflict#>: Please change your router LAN subnet, please refer to this <a target='_blank'>FAQ</a> for detail");/* untranslated */
+	$("#ip_conflict_hint").html("<#vpn_openvpn_conflict#>: <#vpnc_ip_conflict_hint#>");
 	$("#ip_conflict_hint a").attr("href", faq_href2);
 }
 var add_profile_flag = false;
@@ -1264,6 +1264,10 @@ function ovpnFileChecker(){
 			if(vpn_upload_state == "init"){
 				setTimeout("ovpnFileChecker();",1000);
 			}
+			else if(vpn_upload_state == "err"){
+				document.getElementById("importOvpnFile").innerHTML = "<#Setting_upload_hint#>";
+				document.getElementById("manualCRList").style.color = "#FC0";
+			}
 			else{
 				setManualTable(document.vpnclientForm.vpnc_openvpn_unit_edit.value);
 				
@@ -1895,7 +1899,7 @@ function save_ipsec_profile_panel() {
 		else if(getRadioItemCheck(document.ipsec_form.ipsec_remote_gateway_method) == "1") {
 			if(!validator.domainName_flag(document.ipsec_form.ipsec_remote_gateway.value)) {
 				document.ipsec_form.ipsec_remote_gateway.focus();
-				alert(document.ipsec_form.ipsec_remote_gateway.value + " is invalid Domain Name");/*untranslated*/
+				alert(document.ipsec_form.ipsec_remote_gateway.value + "<#JS_invalid_domain#>");
 				return false;
 			}
 			if(!validator.isEmpty(document.ipsec_form.ipsec_remote_id))
@@ -2014,8 +2018,8 @@ function save_ipsec_profile_panel() {
 
 					var subnetIP = existSubnetObj.value.split("/")[0];
 					var maskCIDR = parseInt(existSubnetObj.value.split("/")[1], 10);
-					if (isNaN(maskCIDR) || (maskCIDR != 24 && maskCIDR != 23)){
-						alert("Mask address must be 23 or 24.");/*untranslated*/
+					if (isNaN(maskCIDR) || maskCIDR < 8 || maskCIDR > 32){
+						alert("Mask address must be 8 ~ 32.");/*untranslated*/
 						existSubnetObj.focus();
 						existSubnetObj.select();
 						return false;

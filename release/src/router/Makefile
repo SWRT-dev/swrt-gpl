@@ -21,8 +21,19 @@ endif
 ifeq ($(origin HND_ROUTER_AX_6756), undefined)
 export HND_ROUTER_AX_6756 := $(if $(shell pwd | grep -e 'src-rt-5.04[^/]*axhnd.675x'),y,)
 endif
+ifeq ($(origin HND_ROUTER_AX_6710), undefined)
+export HND_ROUTER_AX_6710 := $(if $(shell pwd | grep -e 'src-rt-5.02[^/]*p1axhnd.675x'),y,)
+endif
+ifeq ($(origin BCM_502L07P2), undefined)
+export BCM_502L07P2 := $(if $(shell pwd | grep -e 'src-rt-5.02L.07p2[^/]*axhnd'),y,)
+endif
 
-ifeq ($(HND_ROUTER_AX_675X),y)
+ifeq ($(HND_ROUTER_AX_6710),y)
+HND_ROUTER_AX_675X=
+unexport HND_ROUTER_AX_675X
+endif
+
+ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6710)),y)
 ifeq ($(CUR_CHIP_PROFILE),)
 export CHIP_CONFIG_DIR := $(shell pwd | sed 's/\(.*src-rt-5.02.*hnd.*\).*/\1/')
 include $(CHIP_CONFIG_DIR)/chip_profile.tmp
@@ -36,9 +47,16 @@ include $(CHIP_CONFIG_DIR)/chip_profile.tmp
 endif
 endif
 
+ifeq ($(BCM_502L07P2),y)
+ifeq ($(CUR_CHIP_PROFILE),)
+export CHIP_CONFIG_DIR := $(shell pwd | sed 's/\(.*src-rt-5.02L.07p2.*hnd.*\).*/\1/')
+include $(CHIP_CONFIG_DIR)/chip_profile.tmp
+endif
+endif
+
 ifeq ($(HND_ROUTER),y)
 export HND_SRC := $(shell pwd | sed 's/\(.*src-rt-.*hnd.*\).*/\1/' | sed 's|\/router-sysdep|\/|g' | sed 's|\/router|\/|g')
-ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6756)),y)
+ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6756),$(HND_ROUTER_AX_6710),$(BCM_502L07P2)),y)
 export PROFILE ?= 9$(CUR_CHIP_PROFILE)GW
 include $(HND_SRC)/targets/$(PROFILE)/$(PROFILE)
 export BCM_WLIMPL
@@ -60,7 +78,7 @@ include $(SRCBASE)/.config
 ifeq ($(BCM_FSBUILD_DIR),)
 include $(HND_SRC)/make.common
 endif
-ifneq ($(and $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6756)),y)
+ifneq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6756),$(HND_ROUTER_AX_6710),$(BCM_502L07P2)),y)
 include $(HND_SRC)/targets/$(PROFILE)/$(PROFILE).$(BUILD_NAME)
 endif
 BUILD_DIR:=$(HND_SRC)
@@ -96,7 +114,7 @@ endif
 ifeq ($(RALINK_DBDC_MODE),y)
 export CFLAGS += -DRALINK_DBDC_MODE
 endif
-else ifeq ($(or $(RTCONFIG_QCA),$(RTCONFIG_REALTEK)),y)
+else ifeq ($(or $(RTCONFIG_QCA),$(RTCONFIG_REALTEK),$(RTCONFIG_MT798X)),y)
 export CFLAGS += $(EXTRACFLAGS)
 ifeq ($(RTCONFIG_MUSL_LIBC),y)
 export CFLAGS += -DRTCONFIG_MUSL_LIBC -D_GNU_SOURCE
@@ -152,20 +170,20 @@ endif
 export comma=","
 
 # New Broadcom/Ralink/MTK/QCA/RTK platform.
-KPATH_2636_OR_3X = $(if $(or $(findstring linux-2.6.36,$(LINUXDIR)),$(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-4.1,$(LINUXDIR)),$(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4,$(LINUXDIR))),y)
+KPATH_2636_OR_3X = $(if $(or $(findstring linux-2.6.36,$(LINUXDIR)),$(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-4.1,$(LINUXDIR)),$(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
 
 # New Ralink/MTK/QCA platform.
-KPATH_2636X_OR_3X = $(if $(or $(findstring linux-2.6.36.x,$(LINUXDIR)),$(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4,$(LINUXDIR))),y)
+KPATH_2636X_OR_3X = $(if $(or $(findstring linux-2.6.36.x,$(LINUXDIR)),$(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
 
 # New Ralink/MTK/QCA/RTK platform.
-KPATH_3X = $(if $(or $(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4,$(LINUXDIR))),y)
+KPATH_3X = $(if $(or $(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
 
-KPATH_37_OR_ABOVE = $(if $(or $(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4,$(LINUXDIR))),y)
-KPATH_314_OR_ABOVE = $(if $(or $(findstring linux-3.14,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4,$(LINUXDIR))),y)
+KPATH_37_OR_ABOVE = $(if $(or $(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
+KPATH_314_OR_ABOVE = $(if $(or $(findstring linux-3.14,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
 
 export KPATH_37_OR_ABOVE KPATH_314_OR_ABOVE
 
-INCLUDE_LINUX_VERSION_H = $(if $(or $(RTCONFIG_LANTIQ),$(RTCONFIG_QCA),$(KPATH_314_OR_ABOVE)),include/generated/uapi/linux/version.h,include/linux/version.h)
+INCLUDE_LINUX_VERSION_H = $(if $(or $(RTCONFIG_LANTIQ),$(KPATH_314_OR_ABOVE)),include/generated/uapi/linux/version.h,include/linux/version.h)
 
 ifneq ($(BASE_MODEL),)
 ifneq ($(findstring 4G-,$(BASE_MODEL)),)
@@ -200,7 +218,7 @@ ifeq ($(RTCONFIG_BCMARM),y)
 ifeq ($(HND_ROUTER),y)
 export LINUX_VERSION=4_1_0
 ifeq ($(HND_ROUTER_AX),y)
-ifeq ($(HND_ROUTER_AX_675X),y)
+ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6710),$(BCM_502L07P2)),y)
 export LINUX_KERNEL=4.1.52
 else
 ifeq ($(HND_ROUTER_AX_6756),y)
@@ -263,7 +281,7 @@ export BCMSRC=src-rt-6.x.4708
 endif
 ifeq ($(HND_ROUTER_AX_6756),y)
 ifeq ($(RPAX58),y)
-export JFFS2_UBI_VOLUME_SIZE := 2
+export JFFS2_UBI_VOLUME_SIZE := 10
 else ifeq ($(XD4PRO),y)
 export JFFS2_UBI_VOLUME_SIZE := 20
 else
@@ -283,7 +301,11 @@ export LINUXDIR := $(SRCBASE)/linux/linux-4.4
 endif
 
 export EXTRALDFLAGS = -lgcc_s
+ifeq ($(BCM_502L07P2),y)
+export EXTRALDFLAGS2 = -L$(TOP_PLATFORM)/nvram$(BCMEX)$(EX7) -lnvram -L$(TOP)/shared -lshared -L$(TOP_PLATFORM)/ethctl_lib -lethctl
+else
 export EXTRALDFLAGS2 = -L$(TOP_PLATFORM)/nvram$(BCMEX)$(EX7) -lnvram -L$(TOP)/shared -lshared
+endif
 
 
 export LD_LIBRARY_PATH := $(TOOLS)/lib
@@ -322,7 +344,7 @@ KERNEL_HEADER_DIR=$(TOP)/kernel_header/include
 else ifeq ($(RTCONFIG_RALINK),y)
 KDIR=$(TOP)/kernel_header
 KERNEL_HEADER_DIR=$(TOP)/kernel_header/include
-else ifneq ($(RTCONFIG_BCMARM),y)
+else ifeq ($(RTCONFIG_QCA),y)
 KDIR=$(TOP)/kernel_header
 KERNEL_HEADER_DIR=$(TOP)/kernel_header/include
 else
@@ -363,7 +385,7 @@ KERNEL_HEADER_DIR=$(TOP)/kernel_header/include
 endif
 endif
 
-ifeq ($(HND_ROUTER_AX_6756),y)
+ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6756)),y)
 export PATH:=$(PATH):$(BUILD_DIR)/bcmdrivers/broadcom/net/wl/bcm9$(BRCM_CHIP)/main/tools/
 endif
 
@@ -391,7 +413,7 @@ export SRCBASE_FW := $(SRCBASE)/../../43684/src
 export SRCBASE_SYS := $(SRCBASE_DHD)
 export DHDAP_BUILD_TYPE := ram
 export CONFIG_MBO_AP=y
-ifeq ($(BUILD_NAME), $(filter $(BUILD_NAME), GT-AX11000 GT-AXE11000))
+ifeq ($(BUILD_NAME), $(filter $(BUILD_NAME), GT-AX11000 GT-AXE11000 RT-AX95Q))
 export BUILD_43684_COMBO := y
 else ifeq ($(BUILD_NAME), $(filter $(BUILD_NAME), RT-AX86U))
 export BUILD_43684b0 := y
@@ -507,6 +529,7 @@ ifeq ($(HND_ROUTER_AX),y)
 APPEVENTD_BASE_DIR := $(BASEDIR)/components/apps/appeventd
 endif
 export CFLAGS += -DBCM_APPEVENTD
+export CONFIG_BCM_APPEVENTD=y
 endif
 
 ifeq ($(RTCONFIG_BCMBSD),y)
@@ -550,13 +573,8 @@ endif
 
 ifeq ($(RTCONFIG_WBD),y)
 export CFLAGS += -DBCM_WBD
-ifeq ($(RTCONFIG_PLCWBD), y)
-export PLC_WBD := 1
-endif # PLC_WBD
-endif
-
-ifeq ($(RTCONFIG_WBD),y)
-export CFLAGS += -DBCM_WBD
+export CFLAGS += -DMULTIAP
+export CONFIG_WBD=y
 ifeq ($(RTCONFIG_PLCWBD), y)
 export PLC_WBD := 1
 endif # PLC_WBD
@@ -689,7 +707,7 @@ obj-$(RTCONFIG_NOTIFICATION_CENTER) += sqlite
 obj-$(RTCONFIG_NOTIFICATION_CENTER) += nt_center
 obj-$(RTCONFIG_NOTIFICATION_CENTER) += email-3.1.3
 obj-$(RTCONFIG_NOTIFICATION_CENTER) += wlc_nt
-
+obj-$(RTCONFIG_NOTIFICATION_CENTER) += libxml2
 obj-$(RTCONFIG_PROTECTION_SERVER) += protect_srv
 
 
@@ -702,7 +720,7 @@ endif
 endif
 obj-$(RTCONFIG_DHDAP) += dhd
 ifeq ($(wildcard $(SRCBASE_DHD)/dongle/sysdeps),)
-obj-$(RTCONFIG_DHDAP) += $(if $(or $(RTCONFIG_BCM7),$(RTCONFIG_HND_ROUTER_AX),$(RTCONFIG_HND_ROUTER_AX_675X),$(RTCONFIG_HND_ROUTER_AX_6756)),pciefd)
+obj-$(RTCONFIG_DHDAP) += $(if $(or $(RTCONFIG_BCM7),$(RTCONFIG_HND_ROUTER_AX)),pciefd)
 endif
 
 ifeq ($(or $(RTCONFIG_BCM_7114),$(HND_ROUTER)),y)
@@ -725,17 +743,16 @@ ifeq ($(RTCONFIG_RALINK),y)
 #################################################################################
 # Ralink/MTK-specific packages
 #################################################################################
-obj-y += wireless_tools
+obj-y += wireless_tools$(WTOOL_SUFFIX)
 
 obj-y += $(if $(RTN65U),rt2880_app,flash)
-ifeq ($(RTN65U),)
-#obj-y += $(if $(or $(RTAC85U),$(RTAC85P),$(RTACRH26),$(TUFAC1750),$(RTAC1200V2)),reg,hw_nat)
+ifeq ($(RTCONFIG_RALINK_MT7621),y)
 obj-y += $(if $(RTCONFIG_ATED122),ated_1.2.2,$(if $(ATEVER), ated_$(ATEVER), ated))
 endif
 obj-y += $(if $(RTCONFIG_MII_MGR),mii_mgr)
 
 
-ifeq ($(RTCONFIG_RALINK),y)
+ifeq ($(RTCONFIG_RALINK_MT7621),y)
 obj-y += regs
 obj-y += switch
 obj-y += mii_mgr
@@ -754,7 +771,7 @@ else ifeq ($(RTCONFIG_QCA),y)
 # QCA-specific packages
 #################################################################################
 OLD_QCA :=
-obj-y += wireless_tools
+obj-y += wireless_tools$(WTOOL_SUFFIX)
 obj-y += libnl-tiny-0.1
 
 ifeq ($(RTCONFIG_SOC_IPQ40XX),y)
@@ -782,12 +799,12 @@ endif
 # Alpine-specific packages
 #################################################################################
 else ifeq ($(RTCONFIG_ALPINE),y)
-obj-y += wireless_tools
+obj-y += wireless_tools$(WTOOL_SUFFIX)
 #################################################################################
 # Lantiq-specific packages
 #################################################################################
 else ifeq ($(RTCONFIG_LANTIQ),y)
-obj-y += wireless_tools
+obj-y += wireless_tools$(WTOOL_SUFFIX)
 else
 #################################################################################
 # Broadcom-specific packages
@@ -962,7 +979,7 @@ else
 ifeq ($(RTCONFIG_MTK_8021XD3000),y)	
 obj-y += 8021xd
 endif
-ifneq ($(or $(RTCONFIG_WLMODULE_MT7615E_AP),$(RTCONFIG_WLMODULE_MT7629_AP),$(RTCONFIG_WLMODULE_MT7622_AP),$(RTCONFIG_WLMODULE_MT7915D_AP)), y)
+ifneq ($(or $(RTCONFIG_WLMODULE_MT7615E_AP),$(RTCONFIG_WLMODULE_MT7629_AP),$(RTCONFIG_WLMODULE_MT7622_AP),$(RTCONFIG_WLMODULE_MT7915D_AP),$(RTCONFIG_MT798X)), y)
 obj-y += 802.1x
 endif
 endif
@@ -991,7 +1008,9 @@ obj-y += taskset
 else
 #obj-y += libbcmcrypto
 ifneq ($(HND_ROUTER_AX_6756),y)
+ifneq ($(BCM_502L07P2),y)
 obj-y += utils$(BCMEX)$(EX7)
+endif
 endif
 obj-$(RTCONFIG_EMF) += emf$(BCMEX)$(EX7)
 obj-$(RTCONFIG_EMF) += igs$(BCMEX)$(EX7)
@@ -1048,6 +1067,11 @@ obj-$(RTCONFIG_BATMAN_ADV) += batctl-2016.0
 
 obj-$(RTCONFIG_BCMEVENTD) += eventd
 obj-$(RTCONFIG_BCMASPMD) += aspmd
+obj-$(RTCONFIG_WBD) += bshared
+obj-$(RTCONFIG_WBD) += bsd
+obj-$(RTCONFIG_WBD) += appeventd
+obj-$(RTCONFIG_WBD) += cevent_app
+obj-$(RTCONFIG_WBD) += ethswctl_lib
 obj-$(RTCONFIG_WBD) += json-c ieee1905 wbd
 obj-$(RTCONFIG_WLCLMLOAD) += clmb
 
@@ -1351,11 +1375,10 @@ obj-$(RTCONFIG_HTTPS) += zlib
 obj-$(RTCONFIG_HTTPS) += curl
 obj-$(RTCONFIG_SSH) += dropbear
 obj-$(RTCONFIG_WTFAST) += wtfast
-obj-$(RTCONFIG_TCPLUGIN) += qmacc
 #obj-$(RTCONFIG_ZEBRA) += zebra
 obj-$(RTCONFIG_QUAGGA) += quagga
 #obj-$(RTCONFIG_IPP2P) += ipp2p
-ifeq ($(HND_ROUTER_AX_6756),y)
+ifeq ($(or $(HND_ROUTER_AX_6756),$(RTCONFIG_MT798X)),y)
 LZO_VER := -2.10
 else
 LZO_VER :=
@@ -1363,6 +1386,7 @@ endif
 obj-$(RTCONFIG_LZO) += lzo$(LZO_VER)
 obj-$(RTCONFIG_OPENVPN) += lz4
 obj-$(RTCONFIG_OPENVPN) += openpam
+obj-$(RTCONFIG_OPENVPN) += easy-rsa
 obj-$(RTCONFIG_OPENVPN) += openssl openvpn
 
 obj-$(CONFIG_LINUX26) += hotplug2
@@ -1384,6 +1408,9 @@ obj-$(RTCONFIG_IXIAEP) += ixia_endpoint$(BCMEX)
 
 # Add for ASUS Components
 obj-$(RTCONFIG_UPNPC) += miniupnpc
+obj-$(RTCONFIG_UPNPC_NEW) += miniupnpc-new
+obj-$(RTCONFIG_AUPNPC) += aupnpc
+
 obj-y += miniupnpd$(MUVER)
 obj-$(if $(RTCONFIG_IMPROXY),,y) += igmpproxy
 obj-$(RTCONFIG_IMPROXY) += improxy
@@ -1490,7 +1517,6 @@ ifneq ($(RTCONFIG_4M_SFP),y)
 obj-y += netstat-nat
 endif
 
-obj-$(RTCONFIG_TCPDUMP) += openssl-1.0
 obj-$(RTCONFIG_TCPDUMP) += libpcap
 obj-$(RTCONFIG_TCPDUMP) += tcpdump-4.4.0
 obj-$(RTCONFIG_DUMP4000) += libpcap
@@ -1500,15 +1526,6 @@ obj-$(RTCONFIG_TRACEROUTE) += traceroute-2.1.0
 obj-$(RTCONFIG_FPROBE) += libpcap
 obj-$(RTCONFIG_FPROBE) += fprobe-1.1
 obj-$(RTCONFIG_FPROBE) += tcpdump-4.4.0
-
-obj-$(RTCONFIG_NFCM) += libev-4.33
-obj-$(RTCONFIG_NFCM) += sqlite
-obj-$(RTCONFIG_NFCM) += json-c
-obj-$(RTCONFIG_NFCM) += nfcm
-obj-$(RTCONFIG_NFCM) += libnfnetlink-1.0.1
-obj-$(RTCONFIG_NFCM) += libmnl-1.0.4
-obj-$(RTCONFIG_NFCM) += libnetfilter_conntrack-1.0.7
-obj-$(RTCONFIG_NFCM) += libnetfilter_cttimeout-1.0.0
 
 obj-$(RTCONFIG_BLINK_LED) += bled
 obj-$(RTCONFIG_SWRT_I2CLED) += i2cled i2c-tools-3.1.2
@@ -1533,6 +1550,7 @@ obj-$(RTCONFIG_GEOIP) += GeoIP-1.6.2
 obj-$(RTCONFIG_TRANSMISSION) += Transmission curl libevent-2.0.21
 
 # Begin merlin add-ons
+obj-$(RTCONFIG_DNSSEC) += $(if $(RTCONFIG_DNSSEC_OPENSSL),openssl,) $(if $(RTCONFIG_DNSSEC_NETTLE),nettle,)
 ifeq ($(or $(RTCONFIG_HND_ROUTER),$(RTCONFIG_QCA),$(RTCONFIG_LANTIQ),$(RTCONFIG_RALINK)),y)
 obj-y += jitterentropy-rngd
 endif
@@ -1567,12 +1585,14 @@ obj-$(RTCONFIG_WIREGUARD) += qrencode
 obj-$(HND_ROUTER) += wlcsm
 obj-$(HND_ROUTER) += wlan
 #obj-$(HND_ROUTER) += websockets
-ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6756)),y)
+ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6756),$(HND_ROUTER_AX_6710),$(BCM_502L07P2)),y)
 obj-$(HND_ROUTER) += sys_util
 obj-$(HND_ROUTER) += gen_util
 ifneq ($(BRCM_CHIP),4908)
 obj-$(HND_ROUTER) += archer_lib
 obj-$(HND_ROUTER) += archerctl
+obj-$(HND_ROUTER) += blogctl_lib
+obj-$(HND_ROUTER) += blogctl
 endif
 endif
 obj-$(HND_ROUTER) += bcm_util
@@ -1658,7 +1678,7 @@ obj-$(DSL_BCM) += dsldiagd
 ifeq ($(CONFIG_CSIMOND),y)
 obj-y += csimond
 endif
-ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6756)),y)
+ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6756),$(HND_ROUTER_AX_6710),$(BCM_502L07P2)),y)
 obj-$(RTCONFIG_BCM_OAM) += tmsctl
 endif
 ifeq ($(HND_ROUTER_AX_6756),y)
@@ -1683,7 +1703,7 @@ obj-y += nuc029ctrl
 endif
 
 ifeq ($(RTCONFIG_BCMARM),y)
-obj-prelibs =$(filter busybox% nvram$(BCMEX)$(EX7) libbcmcrypto shared netconf libupnp$(BCMEX)$(EX7) libz libbcm pciefd, $(obj-y))
+obj-prelibs =$(filter busybox% nvram$(BCMEX)$(EX7) libbcmcrypto shared $(if $(BCM_502L07P2),ethctl_lib) netconf libupnp$(BCMEX)$(EX7) libz libbcm pciefd, $(obj-y))
 obj-postlibs := $(filter-out $(obj-prelibs), $(obj-y))
 endif
 
@@ -1699,6 +1719,8 @@ endif
 obj-$(RTCONFIG_HD_SPINDOWN) += sd-idle
 
 obj-$(HND_ROUTER) += dhcpfwd
+
+obj-$(RTCONFIG_FSMD) += fsmd
 
 # Last rule: append openssl dir if used
 ifneq ($(filter openssl, $(obj-y)),)
@@ -1733,17 +1755,17 @@ ifneq ($(RTCONFIG_HND_ROUTER_AX_675X),y)
 version: $(SRCBASE)/include/epivers.h
 	$(SEP)
 endif
-endif
 
 EPIVERS_OPTION =
 
-ifeq ($(RTCONFIG_HND_ROUTER_AX_6710)$(RTCONFIG_HND_ROUTER_AX_675X),y)
+ifeq ($(RTCONFIG_HND_ROUTER_AX_675X),y)
 version:  $(SRCBASE)/include/epivers.h
 	$(MAKE) -C $(SRCBASE)/include $(EPIVERS_OPTION) REUSE_VERSION=1
 ifeq ($(RTCONFIG_DHDAP),y)
 	$(MAKE) pciefd-version
 endif
 endif
+endif # RTCONFIG_HND_ROUTER_AX_6710
 
 $(SRCBASE)/include/epivers.h:
 	$(MAKE) -C $(SRCBASE)/include $(EPIVERS_OPTION)
@@ -1751,14 +1773,8 @@ ifeq ($(RTCONFIG_DHDAP),y)
 	$(MAKE) -C $(SRCBASE_DHD)/include
 	$(MAKE) -C $(SRCBASE_FW)/include
 endif
-endif
-
-
-ifeq ($(RTCONFIG_BCMARM),y)
 	+$(MAKE) $(MAKE_ARGS) post_preplibs
-endif
 
-ifeq ($(RTCONFIG_BCMARM),y)
 list_obj_prelibs:
 	@echo obj-prelibs:
 	@( \
@@ -1790,11 +1806,14 @@ ifneq ($(RTCONFIG_BCMARM),y)
 kernel_header: $(LINUXDIR)/.config
 	$(MAKE) -C $(LINUXDIR) ARCH=$(ARCH) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) headers_install INSTALL_HDR_PATH=$(TOP)/$@
 ifeq ($(RTCONFIG_RALINK),y)
+ifeq ($(MT798X),y)
+	mkdir $@/include/uapi
+	cp -fr $(LINUXDIR)/include/uapi/* $@/include/uapi/
+else
 	@if [ -e $(LINUX_ARCH_ASM_INCL_DIR)/rt2880/rt_mmap.h ] ; then \
 		mkdir -p $@/include/asm/rt2880 ; \
 		cp $(LINUX_ARCH_ASM_INCL_DIR)/rt2880/rt_mmap.h $@/include/asm/rt2880/ ; \
 	fi
-ifeq ($(RTCONFIG_RALINK),y)
 	mkdir -p $@/include/uapi
 	cp -fr $(LINUXDIR)/include/uapi/* $@/include/uapi/
 	mkdir -p $@/include/net
@@ -1821,7 +1840,13 @@ kernel: $(LINUXDIR)/.config
 	$(SEP)
 
 ifneq ($(RTCONFIG_BCMARM),y)
-ifeq ($(RTCONFIG_RALINK),y)
+ifeq ($(RTCONFIG_MT798X),y)
+	$(MAKE) $(PARALLEL_BUILD) -C $(LINUXDIR) vmlinux CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) CC=$(KERNELCC) LD=$(KERNELLD)
+	if grep -q "CONFIG_MODULES=y" $(LINUXDIR)/.config ; then \
+	    $(MAKE) $(PARALLEL_BUILD) -C $(LINUXDIR) modules CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) CC=$(KERNELCC) LD=$(KERNELLD); \
+	fi
+	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) dtbs
+else ifeq ($(RTCONFIG_RALINK),y)
 	@if ! grep -q "CONFIG_EMBEDDED_RAMDISK=y" $(LINUXDIR)/.config ; then \
 		$(MAKE) $(PARALLEL_BUILD) -C $(LINUXDIR) vmlinux CC=$(KERNELCC) LD=$(KERNELLD); \
 	fi
@@ -2055,6 +2080,7 @@ endif # RTCONFIG_BCMARM
 
 ifeq ($(RTCONFIG_RALINK),y)
 else ifeq ($(RTCONFIG_QCA),y)
+else ifeq ($(RTCONFIG_MT798X),y)
 else ifneq ($(RTCONFIG_BCMARM),y)
 lzma-loader:
 	@[ ! -d $(SRCBASE)/lzma-loader ] || \
@@ -2310,13 +2336,18 @@ else ifeq ($(MUSL_LIBC),y)
 	echo "TOOLCHAIN : " $(TOOLCHAIN)
 	#install $(LIBDIR)/libcrypt.so $(TARGETDIR)/lib/
 	#install $(LIBDIR)/libpthread.so $(TARGETDIR)/lib/
-	install $(LIBDIR)/libgcc_s.so.1 $(TARGETDIR)/lib/
+	install -m 0755 $(LIBDIR)/libgcc_s.so.1 $(TARGETDIR)/lib/
 	#$(STRIP) $(TARGETDIR)/lib/libgcc_s.so.1
-	install $(LIBDIR)/libc.so $(TARGETDIR)/lib/
+	install -m 0755 $(LIBDIR)/libc.so $(TARGETDIR)/lib/
 	@cd $(TARGETDIR)/lib/ && ln -sf libc.so libc.so.0
 	@cd $(TARGETDIR)/lib/ && ln -sf libc.so libcrypt.so.0
 	@cd $(TARGETDIR)/lib/ && ln -sf libc.so libpthread.so.0
-ifeq ($(RTCONFIG_RALINK_MT7621),y)
+ifeq ($(RTCONFIG_MT798X),y)
+	$(STRIP) $(TARGETDIR)/lib/libgcc_s.so.1
+	$(STRIP) $(TARGETDIR)/lib/libc.so
+	cd $(TARGETDIR)/lib/ && ln -sf libc.so ld-musl-aarch64.so.1
+	cd $(TARGETDIR)/lib/ && ln -sf libgcc_s.so.1 libgcc_s.so
+else ifeq ($(RTCONFIG_RALINK_MT7621),y)
 	@cd $(TARGETDIR)/lib/ && ln -sf libc.so ld-musl-mipsel-sf.so.1
 else
 	@cd $(TARGETDIR)/lib/ && ln -sf libc.so ld-musl-arm.so.1
@@ -2325,8 +2356,10 @@ endif
 	#install $(LIBDIR)/libm.so $(TARGETDIR)/lib/
 	#install $(LIBDIR)/libnsl.so $(TARGETDIR)/lib/
 	@mkdir -p $(TARGETDIR)/rom/etc/wireless/mediatek
-ifeq ($(or $(RTAX53U),$(RTAX54),$(RT4GAX56),$(PGBM1)),y)
+ifeq ($(or $(RTAX53U),$(RTAX54),$(RT4GAX56),$(RTCONFIG_WLMODULE_MT7915D_AP)),y)
 	@cp $(SRCBASE)/linux/vendors/Mediatek/MT7621/MT7915/* $(TARGETDIR)/rom/etc/wireless/mediatek/
+else ifeq ($(RTCONFIG_MT798X),y)
+	# TBD.
 else ifeq ($(RTCONFIG_RALINK_MT7629),y)
 	@cp $(SRCBASE)/linux/vendors/Mediatek/MT7629/* $(TARGETDIR)/rom/etc/wireless/mediatek/
 endif
@@ -2433,7 +2466,7 @@ endif
 endif
 else ifeq ($(RTCONFIG_LANTIQ),y)
 	#FIXME
-else ifeq ($(or $(RTAX53U),$(RTAX54),$(RT4GAX56),$(RTCONFIG_RALINK_MT7621)),y)
+else ifeq ($(or $(RTAX53U),$(RTAX54),$(RT4GAX56),$(RTCONFIG_RALINK_MT7621),$(RTCONFIG_MT798X)),y)
 	# do nothibg #
 else ifeq ($(or $(RTACRH18),$(RT4GAC86U)),y)
 	install -D zlib/libz.so.1 $(TARGETDIR)/usr/lib/
@@ -2765,7 +2798,7 @@ endif
 	$(call platformGen_Target,$(TARGETDIR),$(TARGETDIR)/lib/modules/$(LINUX_KERNEL))
 
 gen_gpl_excludes_router:
-	@[ ! -d ../../../buildtools/ ] || ../../../buildtools/gpl_excludes_router.sh $(SRCBASE) "$(obj-y) $(released_dir)"
+	@[ ! -e ../../../buildtools/gpl_excludes_router.sh ] || ../../../buildtools/gpl_excludes_router.sh $(SRCBASE) "$(obj-y) $(released_dir)"
 
 image:
 	@rm -f $(PLATFORMDIR)/target.image
@@ -2974,14 +3007,12 @@ busybox-config:
 busybox-%-config:
 	$(MAKE) -C $(BUSYBOX_DIR) menuconfig
 
-infosvr: shared nvram${BCMEX}$(EX7)
+infosvr: shared $(if $(BCM_502L07P2),ethctl_lib) nvram${BCMEX}$(EX7)
 
 infosvr-install:
 	$(MAKE) -C infosvr INSTALLDIR=$(INSTALLDIR)/infosvr install
 
-#libdisk: shared nvram$(BCMEX)$(EX7)
-
-httpd: shared nvram$(BCMEX)$(EX7) rc libdisk $(if $(RTCONFIG_HTTPS),mssl) $(if $(RTCONFIG_BWDPI),bwdpi_source) json-c $(if $(RTCONFIG_CFGSYNC), $(CFGSYNC_PKG)) libpasswd
+httpd: shared $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX)$(EX7) rc libdisk $(if $(RTCONFIG_HTTPS),mssl) $(if $(RTCONFIG_BWDPI),bwdpi_source) json-c $(if $(RTCONFIG_CFGSYNC), $(CFGSYNC_PKG)) libpasswd
 	@$(SEP)
 ifeq ($(HND_ROUTER),y)
 ifeq ($(HND_ROUTER_AX),y)
@@ -2996,7 +3027,7 @@ endif
 httpd-install:
 	$(MAKE) -C httpd INSTALLDIR=$(INSTALLDIR)/httpd install
 
-httpd_uam: shared nvram$(BCMEX)$(EX7) libdisk $(if $(RTCONFIG_HTTPS),mssl) $(if $(RTCONFIG_FBWIFI),fb_wifi)
+httpd_uam: shared $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX)$(EX7) libdisk $(if $(RTCONFIG_HTTPS),mssl) $(if $(RTCONFIG_FBWIFI),fb_wifi)
 	@$(SEP)
 	@$(MAKE) -C httpd_uam
 
@@ -3255,6 +3286,7 @@ openssl-1.1/Makefile:
 	-ffunction-sections -fdata-sections -Wl,--gc-sections \
 	shared $(OPENSSL_CIPHERS) --api=1.0.0 \
 	    no-aria no-sm2 no-sm3 no-sm4 no-tests enable-devcryptoeng \
+	    $(if $(filter y,$(RTCONFIG_WTFAST)),-DRTCONFIG_WTFAST,) \
 	    $(if $(filter y,$(HND_ROUTER)),,-DOPENSSL_PREFER_CHACHA_OVER_GCM) -I$(TOP)/cryptodev-linux/src
 	@$(MAKE) -C openssl-1.1 depend
 	@$(MAKE) -C openssl-1.1 clean
@@ -3297,6 +3329,7 @@ openssl-1.0/Makefile:
 	./Configure $(HOSTCONFIG) --prefix=/usr --openssldir=/etc --cross-compile-prefix=' ' \
 	$(if $(filter y,$(RTCONFIG_SFP) $(RTCONFIG_4M_SFP) $(RTCONFIG_8M_SFP)),-Os,-O2) \
 	-ffunction-sections -fdata-sections -Wl,--gc-sections -Wa,--noexecstack \
+	$(if $(filter y,$(RTCONFIG_WTFAST)),-DRTCONFIG_WTFAST,) \
 	shared $(OPENSSL_CIPHERS)
 	@$(MAKE) -C openssl-1.0 depend
 	@$(MAKE) -C openssl-1.0 clean
@@ -3394,7 +3427,7 @@ wb: json-c openssl libxml2 curl
 wb-install:
 	$(MAKE) -C wb INSTALLDIR=$(INSTALLDIR)/wb install
 
-rc: shared nvram$(BCMEX)$(EX7) libdisk $(if $(RTCONFIG_FBWIFI),fb_wifi) $(if $(RTCONFIG_QTN),libqcsapi_client) $(if $(CONFIG_LIBBCM),libbcm) $(if $(RTCONFIG_BWDPI),bwdpi_source) $(if $(RTCONFIG_USB_SMS_MODEM),smspdu) $(if $(RTCONFIG_HND_ROUTER),bcm_flashutil bcm_util bcm_boardctl) $(if $(RTCONFIG_OPENVPN),libvpn) $(if $(RTCONFIG_LANTIQ),libfapi-0.1) $(if $(RTCONFIG_CFGSYNC), $(CFGSYNC_PKG) $(if $(RTCONFIG_AMAS), amas-utils) $(if $(RTCONFIG_LANTIQ),hostapd-2.6)) json-c $(if $(or $(RTCONFIG_FRS_LIVE_UPDATE),$(RTCONFIG_FRS_FEEDBACK),$(RTCONFIG_URLFW),$(RTCONFIG_SOFTWIRE46)), curl) $(if $(and $(RTCONFIG_HND_ROUTER_AX_675X),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(and $(RTCONFIG_HND_ROUTER_AX_6756),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(RTCONFIG_BRCM_HOSTAPD),wpa_supplicant-2.7)
+rc: shared $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX)$(EX7) libdisk $(if $(RTCONFIG_FBWIFI),fb_wifi) $(if $(RTCONFIG_QTN),libqcsapi_client) $(if $(CONFIG_LIBBCM),libbcm) $(if $(RTCONFIG_BWDPI),bwdpi_source) $(if $(RTCONFIG_USB_SMS_MODEM),smspdu) $(if $(RTCONFIG_HND_ROUTER),bcm_flashutil bcm_util bcm_boardctl) $(if $(RTCONFIG_OPENVPN),libvpn) $(if $(RTCONFIG_LANTIQ),libfapi-0.1) $(if $(RTCONFIG_CFGSYNC), $(CFGSYNC_PKG) $(if $(RTCONFIG_AMAS), amas-utils) $(if $(RTCONFIG_LANTIQ),hostapd-2.6)) json-c $(if $(or $(RTCONFIG_FRS_LIVE_UPDATE),$(RTCONFIG_FRS_FEEDBACK),$(RTCONFIG_URLFW),$(RTCONFIG_SOFTWIRE46)), curl) $(if $(and $(RTCONFIG_HND_ROUTER_AX_675X),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(and $(RTCONFIG_HND_ROUTER_AX_6756),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(and $(RTCONFIG_HND_ROUTER_AX_6710),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(and $(RTCONFIG_BCM_502L07P2),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(RTCONFIG_BRCM_HOSTAPD),wpa_supplicant-2.7)
 	@$(SEP)
 	@-rm -f rc/prebuild/*.o || true
 	@-cp -f rc/prebuild/$(BUILD_NAME)/* rc/prebuild/
@@ -3403,7 +3436,7 @@ rc: shared nvram$(BCMEX)$(EX7) libdisk $(if $(RTCONFIG_FBWIFI),fb_wifi) $(if $(R
 rc-install:
 	$(MAKE) -C rc INSTALLDIR=$(INSTALLDIR)/rc install
 
-networkmap: shared json-c
+networkmap: shared $(if $(BCM_502L07P2),ethctl_lib) json-c
 
 networkmap-install:
 	$(MAKE) -C networkmap INSTALLDIR=$(INSTALLDIR)/networkmap install
@@ -3421,6 +3454,9 @@ aura_sw-install:
 	$(MAKE) -C aura_sw INSTALLDIR=$(INSTALLDIR)/aura_sw install
 
 bridge/stamp-h1:
+	echo "KPATH_37_OR_ABOVE=" $(KPATH_37_OR_ABOVE)
+	echo "KDIR" $(KDIR)
+	echo "LINUX_INC_DIR" $(LINUX_INC_DIR)
 	cd bridge && CFLAGS="-Os -g $(EXTRACFLAGS)" \
 	$(CONFIGURE) --prefix="" --with-linux-headers=$(if $(KPATH_37_OR_ABOVE),$(KDIR)/include,$(LINUX_INC_DIR)/include)
 	touch $@
@@ -3542,7 +3578,7 @@ endif
 
 .PHONY: dhd_monitor
 
-dhd_monitor: shared nvram$(BCMEX)$(EX7)
+dhd_monitor: shared $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX)$(EX7)
 ifeq ($(or $(RTCONFIG_DHDAP),$(HND_ROUTER_AX)),y)
 	@$(eval TOPX_DIR:=$(firstword $(wildcard $(TOP_PLATFORM)/$@) $(wildcard $@)))
 	+$(MAKE) LINUXDIR=$(LINUX_INC_DIR) EXTRA_LDFLAGS=$(EXTRA_LDFLAGS) -C $(TOPX_DIR) $(DHD_MONITOR)
@@ -3561,16 +3597,22 @@ ifeq ($(or $(RTCONFIG_DHDAP),$(HND_ROUTER_AX)),y)
 endif
 endif
 
-dnsmasq:
+dnsmasq:  $(if $(RTCONFIG_DNSSEC_OPENSSL),openssl,) $(if $(RTCONFIG_DNSSEC_NETTLE),nettle,)
 	@$(SEP)
-	@$(MAKE) -C dnsmasq \
+	$(MAKE) -C dnsmasq \
 	COPTS="-DHAVE_BROKEN_RTC -DHAVE_LEASEFILE_EXPIRE -DEDNS_PKTSZ=1280 \
-		-DNO_ID -DNO_AUTH -DNO_LOOP -DNO_INOTIFY -DNO_DUMPFILE \
+		-DNO_ID -DNO_AUTH -DNO_INOTIFY -DNO_DUMPFILE -DNO_GMP \
 		$(if $(RTCONFIG_IPV6),-DUSE_IPV6,-DNO_IPV6) \
 		$(if $(RTCONFIG_USB_EXTRAS)||$(RTCONFIG_TR069),,-DNO_SCRIPT) \
-		$(if $(RTCONFIG_USB_EXTRAS),,-DNO_TFTP)" \
+		$(if $(RTCONFIG_USB_EXTRAS),,-DNO_TFTP) \
+		$(if $(RTCONFIG_DNSSEC_OPENSSL),-I$(TOP)/openssl/include -DHAVE_DNSSEC,) \
+		$(if $(RTCONFIG_DNSSEC_NETTLE),-I$(TOP)/nettle/include -I$(TOP)/gmp -DHAVE_DNSSEC -DHAVE_DNSSEC_STATIC -DNO_GOST,)" \
 	CFLAGS="-Os -ffunction-sections -fdata-sections $(EXTRACFLAGS)" \
-	LDFLAGS="-ffunction-sections -fdata-sections -Wl,--gc-sections $(EXTRALDFLAGS)"
+	LDFLAGS="-ffunction-sections -fdata-sections -Wl,--gc-sections $(EXTRALDFLAGS) \
+		$(if $(RTCONFIG_DNSSEC_OPENSSL),-pthread -L$(TOP)/openssl,) \
+		$(if $(RTCONFIG_DNSSEC_NETTLE),-L$(TOP)/nettle/lib -L$(TOP)/gmp/.libs,)" \
+	$(if $(RTCONFIG_DNSSEC_OPENSSL),PKG_CONFIG_PATH="$(TOP)/openssl" CRYPTO=openssl,) \
+	$(if $(RTCONFIG_DNSSEC_NETTLE),PKG_CONFIG_PATH="$(TOP)/nettle/lib/pkgconfig",)
 
 dnsmasq-install:
 	install -D dnsmasq/src/dnsmasq $(INSTALLDIR)/dnsmasq/usr/sbin/dnsmasq
@@ -3980,9 +4022,9 @@ miniupnpd: $(IPTABLES) miniupnpd/config.h
 	PKG_CONFIG=false ARCH=$(PLATFORM_ARCH) \
 	$(MAKE) $(PARALLEL_BUILD) -C $@ -f Makefile \
 		IPTABLESPATH=$(TOP)/$(IPTABLES) \
-		EXTRACFLAGS="-Os $(EXTRACFLAGS) -idirafter$(KERNEL_HEADER_DIR) $(if $(or $(RTCONFIG_AURASYNC), $(RTCONFIG_GEFORCENOW)), -I$(TOP)/shared) -ffunction-sections -fdata-sections" \
+		EXTRACFLAGS="-Os $(EXTRACFLAGS) -idirafter$(KERNEL_HEADER_DIR) $(if $(or $(RTCONFIG_AURASYNC), $(RTCONFIG_GEFORCENOW)), -I$(TOP)/shared) -ffunction-sections -fdata-sections $(if $(RTCONFIG_AUPNPC),-DASUSWRT)" \
 		LDFLAGS="$(EXTRALDFLAGS) -ffunction-sections -fdata-sections -Wl,--gc-sections -L$(IPTC_LIBDIR)" \
-		LDLIBS="-Wl,--as-needed $(if $(or $(RTCONFIG_AURASYNC), $(RTCONFIG_GEFORCENOW)),-L$(TOP)/shared -lshared -L$(TOP_PLATFORM)/nvram$(BCMEX)$(EX7) -lnvram,) -lrt $(IPTC_LIBS) $(if $(RTCONFIG_HND_ROUTER),-L$(TOP_PLATFORM)/wlcsm$(EXHND) -lwlcsm,)"
+		LDLIBS="-Wl,--as-needed $(if $(or $(RTCONFIG_AURASYNC), $(RTCONFIG_GEFORCENOW)),-L$(TOP)/shared -lshared -L$(TOP_PLATFORM)/nvram$(BCMEX)$(EX7) -lnvram $(if $(BCM_502L07P2),-L$(TOP_PLATFORM)/ethctl_lib -lethctl)) -lrt $(IPTC_LIBS) $(if $(RTCONFIG_HND_ROUTER),-L$(TOP_PLATFORM)/wlcsm$(EXHND) -lwlcsm)"
 
 miniupnpd-clean:
 	-@$(MAKE) -C miniupnpd -f Makefile clean
@@ -4013,14 +4055,38 @@ miniupnpc-install:
 	install -D miniupnpc/upnpc-static $(INSTALLDIR)/miniupnpc/usr/sbin/miniupnpc
 	$(STRIP) $(INSTALLDIR)/miniupnpc/usr/sbin/miniupnpc
 
+
+miniupnpc-new:
+	$(MAKE) -C miniupnpc-new
+
+miniupnpc-new-clean:
+	-@$(MAKE) -C miniupnpc-new clean
+
+miniupnpc-new-install:
+	install -D miniupnpc-new/upnpc-static $(INSTALLDIR)/miniupnpc-new/usr/sbin/miniupnpc-new
+	$(STRIP) $(INSTALLDIR)/miniupnpc-new/usr/sbin/miniupnpc-new
+
+aupnpc:
+	$(MAKE) -C aupnpc
+
+aupnpc-install:
+	install -D aupnpc/aupnpc $(INSTALLDIR)/aupnpc/usr/bin/aupnpc
+	install -D aupnpc/aupnpc-ipc $(INSTALLDIR)/aupnpc/usr/bin/aupnpc-ipc
+	$(STRIP) $(INSTALLDIR)/aupnpc/usr/bin/aupnpc
+	$(STRIP) $(INSTALLDIR)/aupnpc/usr/bin/aupnpc-ipc
+
+aupnpc-clean:
+	$(MAKE) -C aupnpc clean
+
+
 # !!TB
 #shared:
-shared: $(if $(RTCONFIG_HTTPS),openssl) $(if $(RTCONFIG_SW_HW_AUTH),sw-hw-auth)
+shared: $(if $(RTCONFIG_HTTPS),openssl) $(if $(RTCONFIG_SW_HW_AUTH),sw-hw-auth) $(if $(BCM_502L07P2),ethctl_lib)
 # Dig into our collection of prebuilt objects based on model.
 	@-rm -f shared/prebuild/*.o || true
 	@-cp -f shared/prebuild/$(BUILD_NAME)/* shared/prebuild/
 ifeq ($(RTCONFIG_RALINK)$(RTCONFIG_QCA)$(RTCONFIG_LANTIQ),y)
-	make -C wireless_tools wireless.h
+	make -C wireless_tools$(WTOOL_SUFFIX) wireless.h
 endif
 	$(MAKE) -C shared
 
@@ -4032,7 +4098,7 @@ ftp_dep=openssl
 else
 ftp_dep=
 endif
-vsftpd: nvram$(BCMEX)$(EX7) shared libdisk $(ftp_dep)
+vsftpd: nvram$(BCMEX)$(EX7) shared $(if $(BCM_502L07P2),ethctl_lib) libdisk $(ftp_dep)
 	@$(SEP)
 	$(MAKE) -C vsftpd
 
@@ -4513,9 +4579,9 @@ envram_bin:
 	$(SEP)
 
 envram_bin-install:
-ifeq ($(HND_ROUTER_AX_6756),y)
-	install -D $(TOP_PLATFORM)/envram_bin/envram/envrams_saved-$(CUR_CHIP_PROFILE)-arm $(INSTALLDIR)/usr/sbin/envrams
-	install -D $(TOP_PLATFORM)/envram_bin/envram/envram_saved-$(CUR_CHIP_PROFILE)-arm $(INSTALLDIR)/usr/sbin/envram
+ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6756),$(HND_ROUTER_AX_6710),$(BCM_502L07P2)),y)
+	install -D $(TOP_PLATFORM)/envram_bin/envram/envrams_saved-$(BRCM_CHIP)-arm $(INSTALLDIR)/usr/sbin/envrams
+	install -D $(TOP_PLATFORM)/envram_bin/envram/envram_saved-$(BRCM_CHIP)-arm $(INSTALLDIR)/usr/sbin/envram
 else
 	install -D $(TOP_PLATFORM)/envram_bin/envram$(BCMEX)$(EX7)/envrams $(INSTALLDIR)/usr/sbin/envrams
 	install -D $(TOP_PLATFORM)/envram_bin/envram$(BCMEX)$(EX7)/envram $(INSTALLDIR)/usr/sbin/envram
@@ -4536,7 +4602,7 @@ nvram$(BCMEX)$(EX7)-install:
 	$(MAKE) -C nvram$(BCMEX)$(EX7) INSTALLDIR=$(INSTALLDIR)/nvram$(BCMEX)$(EX7) install
 endif
 
-prebuilt: shared
+prebuilt: shared $(if $(BCM_502L07P2),ethctl_lib)
 
 vlan:
 	@$(SEP)
@@ -4584,7 +4650,7 @@ pptpd-clean:
 rp-pppoe/src/stamp-h1:
 ifeq ($(HND_ROUTER),y)
 ifeq ($(HND_ROUTER_AX_6756),y)
-	cd rp-pppoe/src && CFLAGS="-g -O2 -DRTCONFIG_HND_ROUTER_AX_6756 -I $(TOP)/pppd -idirafter $(KDIR)/include -I$(TOP)/shared" \
+	cd rp-pppoe/src && CFLAGS="-g -O2 $(if $(HND_ROUTER_AX_6756),-DRTCONFIG_HND_ROUTER_AX_6756) -I $(TOP)/pppd -idirafter $(KDIR)/include -I$(TOP)/shared" \
 	$(CONFIGURE) --prefix=/usr --enable-plugin=$(TOP)/pppd \
 	ac_cv_linux_kernel_pppoe=yes rpppoe_cv_pack_bitfields=rev \
 	PPPD_INCDIR=$(TOOLCHAIN)/include \
@@ -4592,7 +4658,7 @@ ifeq ($(HND_ROUTER_AX_6756),y)
 	ac_cv_pluginpath=$(TOOLCHAIN)/include
 	touch $@
 else
-	cd rp-pppoe/src && CFLAGS="-g -O2 -I $(TOP)/pppd -idirafter $(KDIR)/include -I$(TOP)/shared" \
+	cd rp-pppoe/src && CFLAGS="-g -O2 -I $(TOP)/pppd -idirafter $(KDIR)/include" \
 	$(CONFIGURE) --prefix=/usr --enable-plugin=$(TOP)/pppd \
 	ac_cv_linux_kernel_pppoe=yes rpppoe_cv_pack_bitfields=rev \
 	PPPD_INCDIR=$(TOOLCHAIN)/include \
@@ -4662,7 +4728,7 @@ pptp-client-install:
 	install -D pptp-client/pptp $(INSTALLDIR)/pptp-client/usr/sbin/pptp
 	$(STRIP) $(INSTALLDIR)/pptp-client/usr/sbin/pptp
 
-accel-pptp/stamp-h1: kernel_header $(LINUX_INC_DIR)/$(INCLUDE_LINUX_VERSION_H)
+accel-pptp/stamp-h1: kernel_header $(LINUXDIR)/$(INCLUDE_LINUX_VERSION_H)
 	cd accel-pptp && CFLAGS="-g -O2 $(EXTRACFLAGS) $(if $(RTCONFIG_MUSL_LIBC), -I$(TOP)/pppd/include) -idirafter $(KDIR)/include" \
 	$(CONFIGURE) --prefix=/usr --build=i686-linux KDIR=$(KDIR) PPPDIR=$(TOP)/pppd
 	touch $@
@@ -4740,13 +4806,13 @@ inadyn/Makefile: inadyn/configure
 		confuse_LIBS="-L$(STAGEDIR)/usr/lib -lconfuse" \
 		OpenSSL_CFLAGS="-I$(STAGEDIR)/usr/include" \
 		OpenSSL_LIBS="-L$(STAGEDIR)/usr/lib -lcrypto -lssl $(if $(RTCONFIG_OPENSSL11),-lpthread,)" \
-		CFLAGS="-Wall -Os -I$(TOP)/shared -I$(SRCBASE)/include -DASUSWRT $(if $(RTCONFIG_IPV6),-DUSE_IPV6,) $(if $(RTCONFIG_LETSENCRYPT),-DASUSWRT_LE,) \
+		CFLAGS="-Wall -Os -I$(TOP)/shared -I$(SRCBASE)/include -DASUSWRT $(if $(RTCONFIG_IPV6),-DUSE_IPV6,) $(if $(RTCONFIG_LETSENCRYPT),-DASUSWRT_LE,) $(if $(RTCONFIG_ASUSDDNS_ACCOUNT_BASE),-DRTCONFIG_ASUSDDNS_ACCOUNT_BASE,) \
 			-I$(STAGEDIR)/usr/include  -ffunction-sections -fdata-sections $(EXTRACFLAGS)" \
-		LDFLAGS="-L$(TOP_PLATFORM)/nvram$(BCMEX)$(EX7) -L$(TOP)/shared $(EXTRA_NV_LDFLAGS) \
+		LDFLAGS="-L$(TOP_PLATFORM)/nvram$(BCMEX)$(EX7) -L$(TOP)/shared $(EXTRA_NV_LDFLAGS) $(if $(BCM_502L07P2),-L$(TOP_PLATFORM)/ethctl_lib) \
 			 -L$(STAGEDIR)/usr/lib -Wl,--gc-sections $(LDFLAGS) $(EXTRALDFLAGS)" \
-		LIBS="-lnvram -lshared $(if $(RTCONFIG_QTN),-L$(TOP)/libqcsapi_client -lqcsapi_client) -ldl"
+		LIBS="-lnvram -lshared $(if $(BCM_502L07P2),-lethctl) $(if $(RTCONFIG_QTN),-L$(TOP)/libqcsapi_client -lqcsapi_client) -ldl"
 
-inadyn: shared nvram$(BCMEX)$(EX7) libconfuse inadyn/Makefile
+inadyn: shared $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX)$(EX7) libconfuse inadyn/Makefile
 	$(MAKE) -C $@
 
 inadyn-install:
@@ -4798,6 +4864,8 @@ else
 ifeq ($(HND_ROUTER_AX),y)
 ifeq ($(HND_ROUTER_AX_6756),y)
 	install -D $(TOOLCHAIN)/arm-buildroot-linux-gnueabi/sysroot/lib/librt-2.30.so $(INSTALLDIR)/lib/librt.so.1
+else ifeq ($(BCM_502L07P2),y)
+	install -D $(TOOLCHAIN)/arm-buildroot-linux-gnueabi/sysroot/lib/librt-2.26.so $(INSTALLDIR)/lib/librt.so.1
 else
 	install -D $(TOOLCHAIN)/arm-buildroot-linux-gnueabi/sysroot/lib/librt-2.24.so $(INSTALLDIR)/lib/librt.so.1
 endif
@@ -4847,7 +4915,7 @@ wpa_supplicant-install: wpa_supplicant
 wpa_supplicant-clean:
 	-@$(MAKE) -C wpa_supplicant/wpa_supplicant clean
 
-tr069: shared nvramnvram$(BCMEX)$(EX7) $(if $(RTCONFIG_HND_ROUTER), wlcsm)
+tr069: shared $(if $(BCM_502L07P2),ethctl_lib) nvramnvram$(BCMEX)$(EX7) $(if $(RTCONFIG_HND_ROUTER), wlcsm)
 ifeq ($(wildcard tr069/prebuild/*),)
 	cp tr069/Makefile.ASUSWRT tr069/Makefile
 
@@ -4868,17 +4936,9 @@ tr069-install: tr069
 	install -D tr069/test/udpclient $(INSTALLDIR)/tr069/sbin/udpclient
 ifeq ($(RTCONFIG_TR181),y)
 ifeq ($(RTCONFIG_DSL),y)
-ifeq ($(RTCONFIG_ISP_OPTUS),y)
-	install -D tr069/conf/ASUSWRT/tr_181.xml.dsl.optus $(INSTALLDIR)/tr069/usr/tr/tr.xml
-else
 	install -D tr069/conf/ASUSWRT/tr_181.xml.dsl $(INSTALLDIR)/tr069/usr/tr/tr.xml
-endif
-else
-ifeq ($(RTCONFIG_ISP_OPTUS),y)
-	install -D tr069/conf/ASUSWRT/tr_181.xml.dsl.optus $(INSTALLDIR)/tr069/usr/tr/tr.xml
 else
 	install -D tr069/conf/ASUSWRT/tr_181.xml $(INSTALLDIR)/tr069/usr/tr/tr.xml
-endif
 endif
 else
 ifeq ($(RTCONFIG_DSL),y)
@@ -4926,7 +4986,7 @@ protect_srv-stage:
 	install -D -m 644 -p protect_srv/include/protect_srv.h $(STAGEDIR)/usr/include/protect_srv.h
 	install -D -m 644 -p protect_srv/include/libptcsrv.h $(STAGEDIR)/usr/include/libptcsrv.h
 
-protect_srv: protect_srv/stamp-h1 shared nvram $(if $(RTCONFIG_HND_ROUTER), wlcsm)
+protect_srv: protect_srv/stamp-h1 shared $(if $(BCM_502L07P2),ethctl_lib) nvram $(if $(RTCONFIG_HND_ROUTER), wlcsm)
 	$(MAKE) -C $@ && $(MAKE) $@-stage
 
 protect_srv-install: protect_srv
@@ -4971,7 +5031,7 @@ socat-install:
 #		@-mkdir -p libnet/lib
 #		@$(MAKE) -C libnet CC=$(CC) AR=$(AR) RANLIB=$(RANLIB)
 
-fprobe-1.1:
+fprobe-1.1: libpcap
 	@$(SEP)
 	@$(MAKE) -C fprobe-1.1 CC=$(CC) AR=$(AR) RANLIB=$(RANLIB)
 
@@ -5016,39 +5076,47 @@ nfcm-clean:
 	@$(MAKE) -C nfcm clean QCA=$(if $(QCA),y,n) HND=$(if $(HND_ROUTER),y,n)
 	rm -rf nfcm/stamp-h1
 
-libpcap/stamp-h1:
-	cd libpcap && $(CONFIGURE) --with-pcap=linux
-	touch $@
+libpcap/Makefile:
+	cd libpcap && \
+	$(CONFIGURE) --prefix=/usr --disable-shared --enable-static \
+		--disable-bluetooth --disable-canusb --disable-can \
+		--with-pcap=linux --without-dag \
+		CFLAGS="-Os -Wall -ffunction-sections -fdata-sections $(EXTRACFLAGS)" \
+		LDFLAGS="-Wl,--gc-sections $(EXTRALDFLAGS)"
 
-libpcap: libpcap/stamp-h1
+libpcap: libpcap/Makefile
 	@$(SEP)
-	@$(MAKE) -C libpcap CC=$(CC) AR=$(AR) RANLIB=$(RANLIB)
+	@$(MAKE) -C $@
 
-libpcap-install: libpcap
-	@echo "do nothing"
-	#install -D libpcap/libpcap.so.1.4.0 $(INSTALLDIR)/libpcap/usr/lib/libpcap.so.1.4.0
-	#$(STRIP) $(INSTALLDIR)/libpcap/usr/lib/libpcap.so.1.4.0
-	#cd $(INSTALLDIR)/libpcap/usr/lib && ln -sf libpcap.so.1.4.0 libpcap.so
+libpcap-install:
+	# do nothing
+	@true
 
 libpcap-clean:
-	[ ! -f libpcap/Makefile ] || $(MAKE) -C libpcap clean
-	@rm -f libpcap/stamp-h1
+	[ ! -f libpcap/Makefile ] || $(MAKE) -C libpcap distclean
+	@rm -f libpcap/Makefile
 
-tcpdump-4.4.0/stamp-h1:
-	cd tcpdump-4.4.0 && $(CONFIGURE) ac_cv_linux_vers=2
-	touch $@
+tcpdump-4.4.0/Makefile:
+	cd tcpdump-4.4.0 && \
+	$(CONFIGURE) --prefix=/usr \
+		$(if $(RTCONFIG_IPV6),--enable-ipv6,--disable-ipv6) \
+		--without-crypto \
+		CFLAGS="-Os -Wall -ffunction-sections -fdata-sections $(EXTRACFLAGS)" \
+		LDFLAGS="-Wl,--gc-sections $(EXTRALDFLAGS)" \
+		td_cv_buggygetaddrinfo="no" \
+		ac_cv_linux_vers=2
 
-tcpdump-4.4.0: libpcap tcpdump-4.4.0/stamp-h1
+tcpdump-4.4.0: libpcap tcpdump-4.4.0/Makefile
 	@$(SEP)
-	@$(MAKE) -C tcpdump-4.4.0 CC=$(CC) AR=$(AR) RANLIB=$(RANLIB)
+	@$(MAKE) -C $@
 
 tcpdump-4.4.0-install: tcpdump-4.4.0
 	install -D tcpdump-4.4.0/tcpdump $(INSTALLDIR)/tcpdump-4.4.0/usr/sbin/tcpdump
 	$(STRIP) $(INSTALLDIR)/tcpdump-4.4.0/usr/sbin/tcpdump
 
 tcpdump-4.4.0-clean:
-	[ ! -f tcpdump-4.4.0/Makefile ] || $(MAKE) -C tcpdump-4.4.0 clean
-	@rm -f tcpdump-4.4.0/stamp-h1
+	[ ! -f tcpdump-4.4.0/Makefile ] || $(MAKE) -C tcpdump-4.4.0 distclean
+	@rm -f tcpdump-4.4.0/Makefile
 
 traceroute-2.1.0/stamp-h1:
 	touch $@
@@ -5251,7 +5319,7 @@ iproute2-4.3:
 iproute2-4.3-install:
 	install -D iproute2-4.3/iproute2-4.3.0/tc/tc $(INSTALLDIR)/iproute2-4.3/usr/sbin/tc
 	install -D iproute2-4.3/iproute2-4.3.0/ip/ip $(INSTALLDIR)/iproute2-4.3/usr/sbin/ip
-	$(STRIP) $(INSTALLDIR)/iproute2-4.3/usr/sbin/*
+	-$(STRIP) $(INSTALLDIR)/iproute2-4.3/usr/sbin/*
 
 iproute2-4.3-clean:
 	-@$(MAKE) -C iproute2-4.3 clean
@@ -5270,7 +5338,7 @@ iproute2-4.4.0-clean:
 	-@$(MAKE) -C iproute2-4.4.0 clean
 	-rm -f iproute2-4.4.0/src/Config
 
-ntpclient: nvram$(BCMEX)$(EX7) shared
+ntpclient: nvram$(BCMEX)$(EX7) shared $(if $(BCM_502L07P2),ethctl_lib)
 
 ntpclient-install:
 	$(MAKE) -C ntpclient INSTALLDIR=$(INSTALLDIR)/ntpclient install
@@ -5296,7 +5364,7 @@ ntp-4.2.8p15-install:
 ntp-4.2.8p15-clean:
 	[ ! -f ntp-4.2.8p15/Makefile ] || $(MAKE) -C ntp-4.2.8p15 distclean || rm -f ntp-4.2.8p15/Makefile
 endif
-rstats: nvram$(BCMEX)$(EX7) shared
+rstats: nvram$(BCMEX)$(EX7) shared $(if $(BCM_502L07P2),ethctl_lib)
 
 rstats-install:
 	$(MAKE) -C rstats INSTALLDIR=$(INSTALLDIR)/rstats install
@@ -5365,7 +5433,7 @@ endif
 
 # Media libraries
 
-sqlite/stamp-h1:
+sqlite/Makefile:
 	cd sqlite && autoreconf -i -f && \
 	CC=$(CC) CFLAGS="-Os $(EXTRACFLAGS) -ffunction-sections -fdata-sections -fPIC" \
 		LDFLAGS="-ffunction-sections -fdata-sections -Wl,--gc-sections -lpthread -ldl" \
@@ -5374,12 +5442,12 @@ sqlite/stamp-h1:
 		--disable-dependency-tracking
 	touch $@
 
-sqlite: sqlite/stamp-h1
+sqlite: sqlite/Makefile
 	@$(MAKE) -C sqlite all
 
 sqlite-clean:
-	-@$(MAKE) -C sqlite clean
-	@cd sqlite && rm -rf stamp-h1 Makefile autom4te.cache config.log config.status libtool sqlite3.pc
+	[ ! -f sqlite/Makefile ] || $(MAKE) -C sqlite distclean
+	@rm -f sqlite/Makefile
 
 sqlite-install: sqlite
 	@$(SEP)
@@ -5789,7 +5857,7 @@ igmp-install: netconf
 igmp-clean:
 	$(MAKE) -C igmp clean
 
-wps$(BCMEX)$(EX7): nvram$(BCMEX)$(EX7) shared libupnp$(BCMEX)$(EX7)
+wps$(BCMEX)$(EX7): nvram$(BCMEX)$(EX7) shared $(if $(BCM_502L07P2),ethctl_lib) libupnp$(BCMEX)$(EX7)
 	@$(eval TOPX_DIR:=$(firstword $(wildcard $(TOP_PLATFORM)/$@) $(wildcard $@)))
 ifeq ($(RTCONFIG_WPS),y)
 	-rm -rf $(OLD_SRC)/wps
@@ -5990,8 +6058,11 @@ endif
 else
 	[ -d wlexe ] || install -d wlexe
 	install $(SRC_PRE_WLEXE)/prebuilt/wl wlexe
-ifeq ($(HND_ROUTER_AX_675X),y)
+	-install $(SRC_PRE_WLEXE)/prebuilt/wl_server_socket wlexe
+ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6710),$(BCM_502L07P2)),y)
 	install $(SRCBASE)/router-sysdep/hnd_extra/prebuilt/wl_server_socket wlexe
+else
+	-install $(SRCBASE)/router/hnd_extra/prebuilt/wl_server_socket wlexe
 endif
 
 endif
@@ -6053,7 +6124,9 @@ endif
 wlexe-install:
 ifeq ($(RTCONFIG_WLEXE),y)
 	[ ! -d wlexe ] || install -D -m 755 wlexe/wl $(INSTALLDIR)/wlexe/usr/sbin/wl
+	[ ! -d wlexe ] || install -D -m 755 wlexe/wl_server_socket $(INSTALLDIR)/wlexe/usr/sbin/wl_server_socket
 	[ ! -d wlexe ] || $(STRIP) $(INSTALLDIR)/wlexe/usr/sbin/wl
+	[ ! -d wlexe ] || $(STRIP) $(INSTALLDIR)/wlexe/usr/sbin/wl_server_socket
 endif
 	@true
 
@@ -6173,6 +6246,9 @@ hotplug-e2-helper-clean:
 
 emf$(BCMEX)$(EX7):
 	@$(eval TOPX_DIR:=$(firstword $(wildcard $(TOP_PLATFORM)/$@) $(wildcard $@)))
+ifeq ($(BCM_502L07P2),y)
+	-cp $(TOPX_DIR)/emfconf/prebuilt/emf_saved-$(BCM_CHIP)-arm $(TOPX_DIR)/emfconf/prebuilt/emf
+endif
 	$(MAKE) -C $(TOPX_DIR)/emfconf CROSS=$(CROSS_COMPILE) PREBUILT_TAIL=$(PREBUILT_TAIL)
 
 emf$(BCMEX)$(EX7)-install:
@@ -6188,6 +6264,9 @@ emf$(BCMEX)$(EX7)-clean:
 
 igs$(BCMEX)$(EX7):
 	@$(eval TOPX_DIR:=$(firstword $(wildcard $(TOP_PLATFORM)/emf$(BCMEX)$(EX7)) $(wildcard emf$(BCMEX)$(EX7))))
+ifeq ($(BCM_502L07P2),y)
+	-cp $(TOPX_DIR)/igsconf/prebuilt/igs_saved-$(BCM_CHIP)-arm $(TOPX_DIR)/igsconf/prebuilt/igs
+endif
 	$(MAKE) -C $(TOPX_DIR)/igsconf CROSS=$(CROSS_COMPILE) PREBUILT_TAIL=$(PREBUILT_TAIL)
 
 igs$(BCMEX)$(EX7)-install:
@@ -6213,7 +6292,7 @@ endif
 
 ebtables: kernel_header dummy
 	$(MAKE) -C ebtables $(if $(filter 4908 4912,$(BRCM_CHIP)),CC=$(CROSS_COMPILE_64)gcc LD=$(CROSS_COMPILE_64)ld CURRENT_ARCH=aarch64,CC=$(CC) LD=$(LD)) \
-	CFLAGS="-Os -Wall -Wunused $(if $(RTCONFIG_HND_ROUTER),-DHND_ROUTER,) $(if $(MUSL_LIBC),-DMUSL_LIBC,)" \
+	CFLAGS="-Os -Wall -Wunused $(if $(RTCONFIG_HND_ROUTER),-DHND_ROUTER,) $(if $(MUSL_LIBC),-DMUSL_LIBC,) $(if $(RTCONFIG_HND_ROUTER_AX_6756),-DHND_ROUTER_AX_6756,)" \
 	BINDIR="/usr/sbin" LIBDIR="/usr/lib/ebtables" KERNEL_INCLUDES=$(EBK_INC) $(if $(RTCONFIG_IPV6),DO_IPV6=1,) $(if $(OLD_QCA),USE_ARPNAT=1,)
 
 ebtables-install: ebtables
@@ -6259,9 +6338,9 @@ lzo$(LZO_VER)-clean:
 	@rm -f lzo$(LZO_VER)/stamp-h1
 
 lzo$(LZO_VER)-install: lzo$(LZO_VER)
-	install -D lzo$(LZO_VER)/src/.libs/liblzo2.so $(INSTALLDIR)/lzo/usr/lib/liblzo2.so.2
-	$(STRIP) $(INSTALLDIR)/lzo/usr/lib/liblzo2.so.2
-	cd $(INSTALLDIR)/lzo/usr/lib && ln -sf liblzo2.so.2 liblzo2.so
+	install -D lzo$(LZO_VER)/src/.libs/liblzo2.so $(INSTALLDIR)/lzo$(LZO_VER)/usr/lib/liblzo2.so.2
+	$(STRIP) $(INSTALLDIR)/lzo$(LZO_VER)/usr/lib/liblzo2.so.2
+	cd $(INSTALLDIR)/lzo$(LZO_VER)/usr/lib && ln -sf liblzo2.so.2 liblzo2.so
 
 .PHONY: lzo$(LZO_VER)
 
@@ -6300,10 +6379,21 @@ openpam-clean:
 	[ ! -f openpam/Makefile ] || $(MAKE) -C openpam distclean
 	@rm -f openpam/Makefile
 
+easy-rsa:
+	@$(SEP)
+
+easy-rsa-clean:
+	@$(SEP)
+
+easy-rsa-install:
+	@$(SEP)
+	mkdir -p $(TARGETDIR)/rom/$(EX_ROM)/easy-rsa
+	install easy-rsa/2.0/* $(TARGETDIR)/rom/$(EX_ROM)/easy-rsa
+
 openvpn/dh2048.pem:
 	openssl dhparam -dsaparam -out $@ 2048
 
-openvpn: shared openssl lzo$(LZO_VER) openpam zlib openvpn/dh2048.pem openvpn/Makefile
+openvpn: shared $(if $(BCM_502L07P2),ethctl_lib) openssl lzo$(LZO_VER) openpam zlib openvpn/dh2048.pem openvpn/Makefile
 	$(MAKE) $(PARALLEL_BUILD) -C $@
 
 openvpn/Makefile:
@@ -6341,8 +6431,6 @@ openvpn-install:
 		chmod 0500 $(INSTALLDIR)/openvpn/usr/sbin/openvpn ; \
 		install -D openvpn/src/plugins/auth-pam/.libs/openvpn-plugin-auth-pam.so $(INSTALLDIR)/openvpn/usr/lib/openvpn-plugin-auth-pam.so ; \
 		$(STRIP) -s $(INSTALLDIR)/openvpn/usr/lib/openvpn-plugin-auth-pam.so ; \
-		mkdir -p $(TARGETDIR)/rom/$(EX_ROM)/easy-rsa ; \
-		install easy-rsa/2.0/* $(TARGETDIR)/rom/$(EX_ROM)/easy-rsa ; \
 		install -D openvpn/dh2048.pem $(INSTALLDIR)/openvpn/rom/dh2048.pem ; \
 	fi
 
@@ -6427,7 +6515,7 @@ nas$(BCMEX)$(EX7): nvram$(BCMEX)$(EX7) libbcmcrypto
 
 wlconf$(BCMEX)$(EX7): nvram$(BCMEX)$(EX7)
 
-hspot_ap$(BCMEX)$(EX7): shared nvram$(BCMEX)$(EX7)
+hspot_ap$(BCMEX)$(EX7): shared $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX)$(EX7)
 ifeq ($(HND_ROUTER_AX),y)
 	+$(MAKE) -C $(PASSPOINT_AP_DIR) EXTRA_LDFLAGS="$(EXTRA_LDFLAGS)"
 else
@@ -6468,7 +6556,7 @@ else
 endif
 	@touch $@
 
-lighttpd-1.4.39: shared nvram$(BCMEX)$(EX7) libpasswd libdisk samba-3.5.8 pcre-8.31 libxml2 sqlite libexif openssl curl $(if $(RTCONFIG_PERMISSION_MANAGEMENT),PMS_DBapis) lighttpd-1.4.39/stamp-h1
+lighttpd-1.4.39: shared $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX)$(EX7) libpasswd libdisk samba-3.5.8 pcre-8.31 libxml2 sqlite libexif openssl curl $(if $(RTCONFIG_PERMISSION_MANAGEMENT),PMS_DBapis) lighttpd-1.4.39/stamp-h1
 
 lighttpd-1.4.39-install:
 	if [ -f lighttpd-1.4.39/Makefile ] ; then \
@@ -6676,7 +6764,7 @@ strongswan/configure:
 
 strongswan/Makefile: strongswan/configure
 	cd strongswan && \
-	$(CONFIGURE) CC=$(CC) \
+	ac_cv_prog_cc_c99=no $(CONFIGURE) CC=$(CC) \
 	--prefix=/usr/ --bindir=/usr/sbin --sysconfdir=/etc/ --localstatedir=/var/ --libexecdir=/usr/lib \
 	--enable-silent-rules \
 	--disable-gmp --enable-openssl \
@@ -6688,6 +6776,7 @@ strongswan/Makefile: strongswan/configure
 	--with-ipsecdir=/usr/lib/ipsec \
 	--with-strongswan-conf=/etc/strongswan.conf \
 	--with-user=admin \
+	$(if $(filter y,$(HND_ROUTER_AX_6756)),--enable-kernel-pfkey,) \
 	CFLAGS="-O0 -Wall -Wno-format -Wno-format-security -Wno-pointer-sign -I$(STAGEDIR)/usr/include $(EXTRACFLAGS) \
 		$(if $(filter y,$(HND_ROUTER)),$(if $(filter 4908,$(BRCM_CHIP)),-DHND_ROUTER,),)" \
 	LDFLAGS="-L$(STAGEDIR)/usr/lib $(EXTRALDFLAGS)" \
@@ -6861,11 +6950,11 @@ curl: $(if $(RTCONFIG_OPENSSL11)$(RTCONFIG_OPENSSL10),openssl,) $(if $(RTCONFIG_
 
 curl-install:
 	@$(SEP)
-	install -D curl/lib/.libs/libcurl.so.4.7.0 $(INSTALLDIR)/curl/usr/lib/libcurl.so.4.7.0
-	$(STRIP) $(INSTALLDIR)/curl/usr/lib/libcurl.so.4.7.0
+	install -D curl/lib/.libs/libcurl.so.4.8.0 $(INSTALLDIR)/curl/usr/lib/libcurl.so.4.8.0
+	$(STRIP) $(INSTALLDIR)/curl/usr/lib/libcurl.so.4.8.0
 	cd $(INSTALLDIR)/curl/usr/lib && \
-		ln -sf libcurl.so.4.7.0 libcurl.so && \
-		ln -sf libcurl.so.4.7.0 libcurl.so.4
+		ln -sf libcurl.so.4.8.0 libcurl.so && \
+		ln -sf libcurl.so.4.8.0 libcurl.so.4
 ifeq ($(or $(RTCONFIG_SPEEDTEST),$(RTCONFIG_LETSENCRYPT)),y)
 	# for speedtest
 	install -D curl/src/.libs/curl $(INSTALLDIR)/curl/usr/sbin/curl
@@ -6880,7 +6969,7 @@ curl-clean:
 
 #snmp with asus mib and openssl 1.0.0
 net-snmp-5.7.2/stamp-h1:
-	cd $(TOP)/net-snmp-5.7.2 && $(CONFIGURE) --prefix=/usr --disable-embedded-perl --with-perl-modules=no --disable-debugging --enable-mini-agent --with-transports=UDP --without-kmem-usage --disable-applications --disable-mib-loading --disable-scripts --disable-mibs --disable-manuals --with-openssl=$(TOP)/openssl --with-ldflags="-L$(TOP)/openssl -L$(TOP_PLATFORM)/nvram$(BCMEX)$(EX7) -L$(TOP)/shared -L$(TOP)/libnmp" --with-libs="-lnvram -lshared -lnmp $(EXTRA_FLAG)" --with-cflags="$(SNMPD_CFLAGS) -I$(TOP)/libnmp" --with-default-snmp-version="3" --with-sys-location=Unknown --with-logfile=/var/log/snmpd.log --with-persistent-directory=/var/net-snmp --with-sys-contact=root@localhost --enable-static=no --with-mib-modules="asus-mib/wireless,$(MIB_MODULE_PASSPOINT),asus-mib/lan,asus-mib/wan,asus-mib/ipv6,asus-mib/vpn,asus-mib/firewall,asus-mib/administration,asus-mib/systemLog,asus-mib/guestNetwork,asus-mib/trafficManager,asus-mib/parentalControl,asus-mib/quickInternetSetup"
+	cd $(TOP)/net-snmp-5.7.2 && $(CONFIGURE) --prefix=/usr --disable-embedded-perl --with-perl-modules=no --disable-debugging --enable-mini-agent --with-transports=UDP --without-kmem-usage --disable-applications --disable-mib-loading --disable-scripts --disable-mibs --disable-manuals --with-openssl=$(TOP)/openssl --with-ldflags="-L$(TOP)/openssl -L$(TOP_PLATFORM)/nvram$(BCMEX)$(EX7) -L$(TOP)/shared $(if $(BCM_502L07P2),-L$(TOP_PLATFORM)/ethctl_lib) -L$(TOP)/libnmp" --with-libs="-lnvram -lshared $(if $(BCM_502L07P2),-lethctl) -lnmp $(EXTRA_FLAG)" --with-cflags="$(SNMPD_CFLAGS) -I$(TOP)/libnmp" --with-default-snmp-version="3" --with-sys-location=Unknown --with-logfile=/var/log/snmpd.log --with-persistent-directory=/var/net-snmp --with-sys-contact=root@localhost --enable-static=no --with-mib-modules="asus-mib/wireless,$(MIB_MODULE_PASSPOINT),asus-mib/lan,asus-mib/wan,asus-mib/ipv6,asus-mib/vpn,asus-mib/firewall,asus-mib/administration,asus-mib/systemLog,asus-mib/guestNetwork,asus-mib/trafficManager,asus-mib/parentalControl,asus-mib/quickInternetSetup"
 	@touch net-snmp-5.7.2/stamp-h1
 
 net-snmp-5.7.2: net-snmp-5.7.2/stamp-h1
@@ -7074,6 +7163,7 @@ netaconfig netatalk-3.0.5/stamp-h1:
 		--with-dtrace=no \
 		--with-ssl-dir=$(TOP)/openssl \
 		--with-libgcrypt-dir=$(TOP)/libgcrypt-1.5.1 \
+		$(if $(RTCONFIG_HND_ROUTER),,--with-ld-library-path=$(SRCBASE)/toolchains/hndtools-arm-linux-2.6.36-uclibc-4.5.3/lib) \
 		--with-libevent=no \
 		--with-libevent-header=$(TOP)/libevent-2.0.21/include ;\
 		touch stamp-h1 ; \
@@ -7158,13 +7248,14 @@ avahi/Makefile: avahi/configure
 		--prefix=/usr --sysconfdir=/tmp localstatedir=/var --with-distro=none \
 		--disable-nls --disable-glib --disable-gobject \
 		--enable-introspection=no \
-		--disable-qt3 --disable-qt4 --disable-gtk --disable-gtk3 \
+		--disable-qt3 --disable-qt4 --disable-qt5 --disable-gtk --disable-gtk3 \
 		--disable-dbus \
 		--disable-gdbm \
 		--disable-python --disable-pygtk --disable-python-dbus \
 		--disable-mono --disable-monodoc \
 		--disable-autoipd \
 		--disable-doxygen-doc --disable-manpages --disable-xmltoman \
+		$(if $(findstring libevent,$(obj-y)),,--disable-libevent) \
 		--with-xml=expat \
 		--with-avahi-user="admin" --with-avahi-group="root" \
 		--disable-dependency-tracking \
@@ -7176,20 +7267,20 @@ avahi/Makefile: avahi/configure
 
 avahi-install: avahi
 	install -D avahi/avahi-daemon/.libs/avahi-daemon $(INSTALLDIR)/avahi/usr/sbin/avahi-daemon
-	install -D avahi/avahi-common/.libs/libavahi-common.so.3.5.3 $(INSTALLDIR)/avahi/usr/lib/libavahi-common.so.3.5.3
-	install -D avahi/avahi-core/.libs/libavahi-core.so.7.0.2 $(INSTALLDIR)/avahi/usr/lib/libavahi-core.so.7.0.2
+	install -D avahi/avahi-common/.libs/libavahi-common.so.3.5.4 $(INSTALLDIR)/avahi/usr/lib/libavahi-common.so.3.5.4
+	install -D avahi/avahi-core/.libs/libavahi-core.so.7.1.0 $(INSTALLDIR)/avahi/usr/lib/libavahi-core.so.7.1.0
 	$(STRIP) $(INSTALLDIR)/avahi/usr/sbin/avahi-daemon
-	$(STRIP) $(INSTALLDIR)/avahi/usr/lib/libavahi-common.so.3.5.3
-	$(STRIP) $(INSTALLDIR)/avahi/usr/lib/libavahi-core.so.7.0.2
-	cd $(INSTALLDIR)/avahi/usr/lib && ln -sf libavahi-common.so.3.5.3 libavahi-common.so.3
-	cd $(INSTALLDIR)/avahi/usr/lib && ln -sf libavahi-core.so.7.0.2 libavahi-core.so.7
+	$(STRIP) $(INSTALLDIR)/avahi/usr/lib/libavahi-common.so.3.5.4
+	$(STRIP) $(INSTALLDIR)/avahi/usr/lib/libavahi-core.so.7.1.0
+	cd $(INSTALLDIR)/avahi/usr/lib && ln -sf libavahi-common.so.3.5.4 libavahi-common.so.3
+	cd $(INSTALLDIR)/avahi/usr/lib && ln -sf libavahi-core.so.7.1.0 libavahi-core.so.7
 
 avahi-clean:
 	[ ! -f avahi/Makefile ] || $(MAKE) -C avahi distclean
 	@rm -f avahi/Makefile
 
 #avahi-0.6.31
-avahi-0.6.31: shared nvram$(BCMEX)$(EX7) expat-2.0.1 libdaemon avahi-0.6.31/Makefile
+avahi-0.6.31: shared $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX)$(EX7) expat-2.0.1 libdaemon avahi-0.6.31/Makefile
 	@$(SEP)
 	@$(MAKE) $(PARALLEL_BUILD) -C avahi-0.6.31
 
@@ -7202,7 +7293,7 @@ avahi-0.6.31/Makefile:
 		--disable-pygtk --disable-python-dbus --disable-mono --disable-monodoc \
 		--disable-gtk3 --with-xml=expat \
 		--disable-silent-rules \
-		LIBDAEMON_LIBS="-L$(STAGEDIR)/usr/lib -ldaemon -L$(TOP_PLATFORM)/nvram$(BCMEX)${EX7} ${EXTRA_NV_LDFLAGS} -lnvram -L$(TOP)/shared -lshared $(if $(RTCONFIG_QTN),-L$(TOP)/libqcsapi_client -lqcsapi_client)" \
+		LIBDAEMON_LIBS="-L$(STAGEDIR)/usr/lib -ldaemon -L$(TOP_PLATFORM)/nvram$(BCMEX)${EX7} ${EXTRA_NV_LDFLAGS} -lnvram -L$(TOP)/shared -lshared $(if $(BCM_502L07P2),-L$(TOP_PLATFORM)/ethctl_lib -lethctl) $(if $(RTCONFIG_QTN),-L$(TOP)/libqcsapi_client -lqcsapi_client)" \
 		LIBDAEMON_CFLAGS="-I$(STAGEDIR)/usr/include" --disable-autoipd --disable-stack-protector --with-avahi-user="admin" --with-avahi-group="root" \
 	)
 	touch $@
@@ -7308,7 +7399,7 @@ tftp-hpa-install: tftp-hpa
 tftp-hpa-clean:
 	[ ! -f tftp-hpa/Makefile ] || $(MAKE) -C tftp-hpa distclean
 
-bwdpi_source: sqlite $(if $(RTCONFIG_HND_ROUTER),bcm_flashutil bcm_util bcm_boardctl) $(if $(and $(RTCONFIG_HND_ROUTER_AX_675X),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(and $(RTCONFIG_HND_ROUTER_AX_6756),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util)
+bwdpi_source: sqlite $(if $(RTCONFIG_HND_ROUTER),bcm_flashutil bcm_util bcm_boardctl) $(if $(and $(RTCONFIG_HND_ROUTER_AX_675X),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(and $(RTCONFIG_HND_ROUTER_AX_6756),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(and $(RTCONFIG_HND_ROUTER_AX_6710),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(and $(BCM_502L07P2),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util)
 	cd bwdpi_source && CC=$(CC) && $(MAKE) all
 
 bwdpi_source-clean:
@@ -7332,10 +7423,10 @@ coovachilli/Makefile:
 	$(MAKE) coovachilli-configure
 
 coovachilli-configure:
-	cd coovachilli && autoreconf -fi && \
+	cd coovachilli && mkdir -p m4 && autoreconf -fi && \
 	$(CONFIGURE) CC=$(CC) --prefix="" --exec_prefix=/usr --enable-shared=no --with-openssl --enable-multilan --with-ipv6 \
 	CFLAGS="$(EXTRACFLAGS) -g -Os -pipe -funit-at-a-time -Drpl_malloc=malloc -I$(SRCBASE) -I$(SRCBASE)/include -I. -I$(TOP)/shared $(if $(RTCONFIG_BCMARM),-I$(SRCBASE)/shared/bcmwifi/include) -I$(SRCBASE)/router/openssl/include" \
-	LDFLAGS="-lgcc_s -L$(TOP)/nvram${BCMEX} -L$(TOP)/shared -lshared -lcrypt -lpthread -L$(SRCBASE)/router/openssl" \
+	LDFLAGS="-lgcc_s -L$(TOP_PLATFORM)/nvram${BCMEX}${EXT} -L$(TOP)/shared -lshared $(if $(BCM_502L07P2),-L$(TOP_PLATFORM)/ethctl_lib -lethctl) -lcrypt -lpthread -L$(SRCBASE)/router/openssl" \
 	LIBS="-lnvram -lcrypto -lssl"
 
 coovachilli-install:coovachilli
@@ -7505,8 +7596,8 @@ wget/Makefile: wget/Makefile.in
 		--disable-rpath --disable-dependency-tracking \
 		--without-libpsl --without-libiconv-prefix --without-libintl-prefix \
 		--without-included-regex --without-libuuid \
-		CFLAGS="-Os -Wall $(EXTRACFLAGS) -ffunction-sections -fdata-sections -I$(STAGEDIR)/usr/include $(if $(RTCONFIG_PIPEFW),-I$(TOP)/shared -DHAVE_PIPEFW)" \
-		LDFLAGS="$(EXTRALDFLAGS) -Wl,--gc-sections -L$(STAGEDIR)/usr/lib -pthread" \
+		CFLAGS="-Os -Wall $(EXTRACFLAGS) -ffunction-sections -fdata-sections -I$(STAGEDIR)/usr/include $(if $(RTCONFIG_PIPEFW),-I$(TOP)/shared -DHAVE_PIPEFW) -DASUSWRT" \
+		LDFLAGS="$(EXTRALDFLAGS) -Wl,--gc-sections -L$(STAGEDIR)/usr/lib -pthread"
 
 wget: openssl zlib wget/Makefile
 	$(MAKE) $(PARALLEL_BUILD) -C $@
@@ -7678,7 +7769,7 @@ ifeq ($(wildcard bluez-5.41/prebuild),)
 			-lglib-2.0 -lical -licalvcal \
 			-L$(TOP)/openssl -lssl -lcrypto \
 			-L$(TOP_PLATFORM)/nvram$(BCMEX)$(EX7) -L$(TOP)/nvram -L$(INSTALLDIR)/nvram/usr/lib -lnvram \
-			-L$(TOP)/shared -L$(INSTALLDIR)/shared/usr/lib -lshared \
+			-L$(TOP)/shared -L$(INSTALLDIR)/shared/usr/lib -lshared $(if $(BCM_502L07P2),-L$(TOP_PLATFORM)/ethctl_lib -lethctl) \
 			-L$(INSTALLDIR)/zlib/usr/lib -lz -lm -lc -ljson-c $(BLUEZ_5.41_LDFLAGS_EXT)"
 		touch $@
 endif
@@ -7899,6 +7990,24 @@ ncurses-6.0-install: ncurses-6.0
 		ln -sf libpanel.so.6.0 libpanel.so
 
 # Start merlin components
+nettle/stamp-h1:
+	@cd nettle && \
+	CPPFLAGS="-I$(TOP)/gmp" \
+	CFLAGS="-O2 -Wall $(EXTRACFLAGS) -fPIC -ffunction-sections -fdata-sections" \
+	LDFLAGS="-L$(TOP)/gmp/.libs -ffunction-sections -fdata-sections -Wl,--gc-sections -fPIC" \
+	$(CONFIGURE) prefix=$(TOP)/nettle --enable-mini-gmp --disable-documentation --disable-shared
+	@touch nettle/stamp-h1
+
+nettle: nettle/stamp-h1
+	@$(SEP)
+	@$(MAKE) -C nettle $(PARALLEL_BUILD)
+	@$(MAKE) -C nettle install
+
+nettle-clean:
+	-@$(MAKE) -C nettle clean
+	@rm -f nettle/stamp-h1
+	@rm -rf nettle/include nettle/lib
+
 libovpn: shared nvram$(BCMEX)$(EX7)
 	@$(SEP)
 	$(MAKE) -C libovpn
@@ -8045,7 +8154,7 @@ sysstat-10.0.3-install:
 	mv $(INSTALLDIR)/sysstat-10.0.3/etc $(INSTALLDIR)/sysstat-10.0.3/etc_sysstat
 	rm -rf $(INSTALLDIR)/sysstat-10.0.3/var
 
-asd: shared nvram$(BCMEX)$(EX7) curl openssl libasc
+asd: shared $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX)$(EX7) curl openssl libasc
 	$(MAKE) -C $@
 
 asd-install:
@@ -8078,7 +8187,7 @@ asusnatnl-install:
 		$(STRIP) -s $(INSTALLDIR)/asusnatnl/usr/lib/libasusnatnl.so ; \
 	fi
 
-mastiff: shared nvram${BCMEX}$(EX7) wb
+mastiff: shared $(if $(BCM_502L07P2),ethctl_lib) nvram${BCMEX}$(EX7) wb
 	cd aaews && \
 	CC=$(CC) AR=$(AR) RANLIB=$(RANLIB) LD=$(LD) CFLAGS="-Os -Wall $(EXTRACFLAGS)" \
 	$(MAKE) mastiff
@@ -8107,7 +8216,7 @@ lantiq_cmd-clean:
 
 #aaews: wb
 
-#wb: shared nvram curl openssl libxml2 asusnatnl
+#wb: shared $(if $(BCM_502L07P2),ethctl_lib) nvram curl openssl libxml2 asusnatnl
 aaews: wb
 	cd aaews && \
 	CC=$(CC) CXX=$(CXX) AR=$(AR) RANLIB=$(RANLIB) LD=$(LD) CFLAGS="-Os -Wall $(EXTRACFLAGS)" \
@@ -8147,7 +8256,7 @@ aaews-clean:
 	cd aaews && make clean
 
 
-uploader: openssl curl libxml2 json-c shared nvram$(BCMEX)$(EX7)
+uploader: openssl curl libxml2 json-c shared $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX)$(EX7)
 	$(MAKE) -C $@ $(shell if [[ "$(HND_ROUTER)" = "y" ]] ; then echo "LD="""; else echo ""; fi)
 
 uploader-clean:
@@ -8209,8 +8318,8 @@ phddns/stamp-h1:
 ifeq ($(HND_ROUTER),y)
 	cd phddns && $(CONFIGURE) --prefix="" \
 		CFLAGS="-Os -I$(SRCBASE)/include -I$(TOP)/shared $(EXTRACFLAGS)" \
-		LDFLAGS="-L$(TOP_PLATFORM)/nvram$(BCMEX)$(EX7) -L$(TOP_PLATFORM)/wlcsm -L$(TOP)/shared $(if $(RTCONFIG_QTN),-L$(TOP)/libqcsapi_client) $(EXTRALDFLAGS)" \
-		LIBS="-lnvram -lwlcsm -lshared $(if $(RTCONFIG_QTN),-lqcsapi_client)"
+		LDFLAGS="-L$(TOP_PLATFORM)/nvram$(BCMEX)$(EX7) -L$(TOP_PLATFORM)/wlcsm -L$(TOP)/shared $(if $(BCM_502L07P2),-L$(TOP_PLATFORM)/ethctl_lib) $(if $(RTCONFIG_QTN),-L$(TOP)/libqcsapi_client) $(EXTRALDFLAGS)" \
+		LIBS="-lnvram -lwlcsm -lshared $(if $(BCM_502L07P2),-lethctl) $(if $(RTCONFIG_QTN),-lqcsapi_client)"
 	@touch $@
 else
 	cd phddns && $(CONFIGURE) --prefix="" \
@@ -8283,6 +8392,9 @@ endif
 visdcoll-install:
 ifeq ($(RTCONFIG_VISUALIZATION),y)
 	install -d $(INSTALLDIR)/visdcoll/usr/sbin
+	if [ -f $(VISSOURCE_BASE_DIR)/prebuilt/installbin/bin/vis-datacollector ]; then \
+		cp -rf $(VISSOURCE_BASE_DIR)/prebuilt/installbin/bin/vis-datacollector $(VISSOURCE_BASE_DIR)/installbin/bin/vis-datacollector ; \
+	fi
 	cp -rf $(VISSOURCE_BASE_DIR)/installbin/bin/vis-datacollector $(INSTALLDIR)/visdcoll/usr/sbin
 endif
 
@@ -8338,6 +8450,9 @@ endif
 visdcon-install:
 ifeq ($(RTCONFIG_VISUALIZATION),y)
 	install -d $(INSTALLDIR)/visdcon/usr/sbin
+	if [ -f $(VISSOURCE_BASE_DIR)/prebuilt/installbin/bin/vis-dcon ]; then \
+		cp -rf $(VISSOURCE_BASE_DIR)/prebuilt/installbin/bin/vis-dcon $(VISSOURCE_BASE_DIR)/installbin/bin/vis-dcon ; \
+	fi
 	cp -rf $(VISSOURCE_BASE_DIR)/installbin/bin/vis-dcon $(INSTALLDIR)/visdcon/usr/sbin
 endif
 
@@ -8369,6 +8484,7 @@ ifneq ($(HND_ROUTER_AX_6756),y)
 ifneq ($(wildcard $(CEVENT_APP_DIR)/prebuilt/ceventd),)
 	cp -f $(CEVENT_APP_DIR)/prebuilt/ceventd $(CEVENT_APP_DIR)/
 	cp -f $(CEVENT_APP_DIR)/prebuilt/ceventc $(CEVENT_APP_DIR)/
+	-cp -f $(CEVENT_APP_DIR)/prebuilt/libceshared.so $(CEVENT_APP_DIR)/
 else
 	+$(MAKE) -C $(CEVENT_APP_DIR) all EXTRA_LDFLAGS=$(EXTRA_LDFLAGS)
 endif
@@ -8391,6 +8507,17 @@ appeventd-install:
 appeventd-clean:
 	+$(MAKE) -C $(APPEVENTD_BASE_DIR) clean EXTRA_LDFLAGS=$(EXTRA_LDFLAGS)
 endif
+
+ifeq ($(RTCONFIG_WBD),y)
+BSD_BASE_DIR := $(BASEDIR)/components/apps/bsd
+bsd:
+	+$(MAKE) -C $(BSD_BASE_DIR) EXTRA_LDFLAGS=$(EXTRA_LDFLAGS)
+bsd-install:
+	+$(MAKE) -C $(BSD_BASE_DIR) INSTALLDIR=$(INSTALLDIR)/bsd install EXTRA_LDFLAGS=$(EXTRA_LDFLAGS)
+bsd-clean:
+	+$(MAKE) -C $(BSD_BASE_DIR) clean EXTRA_LDFLAGS=$(EXTRA_LDFLAGS)
+endif
+
 endif
 
 .PHONY: appeventd appeventd-install appeventd-clean
@@ -8515,7 +8642,7 @@ tmctl-install:
 
 
 ifneq ($(PREBUILT_BCMBIN),1)
-tmctl_lib: ethswctl rdpactl bcmtm bdmf_lib
+tmctl_lib: ethswctl rdpactl bcmtm bdmf_lib $(if $(or $(DSL_BCM)), atmctl_lib)
 else
 tmctl_lib:
 endif
@@ -8874,7 +9001,7 @@ httpdshared:
 
 mdk:
 	@$(eval TOPX_DIR:=$(firstword $(wildcard $(TOP_PLATFORM)/$@) $(wildcard $@)))
-	$(MAKE) -C $(TOPX_DIR) $(if $(HND_ROUTER_AX_675X),$(if $(RTCONFIG_HND_ROUTER_AX_6710),,all),)
+	$(MAKE) -C $(TOPX_DIR) $(if $(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6710)),all)
 
 .PHONY : mdk
 
@@ -9257,6 +9384,11 @@ hostapd2-install:
 #
 # Generic rules
 #
+
+%-nodep:
+	@echo "$* (nodep)"
+	@$(eval TOPX_DIR:=$(firstword $(wildcard $(TOP_PLATFORM)/$*) $(wildcard $*)))
+	@[ ! -d "$(TOPX_DIR)" ] || $(MAKE) -C $(TOPX_DIR)
 
 %:
 	@$(eval TOPX_DIR:=$(firstword $(wildcard $(TOP_PLATFORM)/$*) $(wildcard $*)))

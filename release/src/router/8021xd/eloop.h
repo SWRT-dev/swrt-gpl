@@ -9,6 +9,15 @@
  * as eloop_ctx to signal handlers. */
 void eloop_init(void *user_data);
 
+/**
+ * eloop_unregister_read_sock - Unregister handler for read events
+ * @sock: File descriptor number for the socket
+ *
+ * Unregister a read socket notifier that was previously registered with
+ * eloop_register_read_sock().
+ */
+void eloop_unregister_read_sock(int sock);
+
 /* Register handler for read event */
 int eloop_register_read_sock(int sock,
 			     void (*handler)(int sock, void *eloop_ctx,

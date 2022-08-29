@@ -5,7 +5,7 @@
 .\" *                            | (__| |_| |  _ <| |___
 .\" *                             \___|\___/|_| \_\_____|
 .\" *
-.\" * Copyright (C) 1998 - 2019, Daniel Stenberg, <daniel@haxx.se>, et al.
+.\" * Copyright (C) 1998 - 2022, Daniel Stenberg, <daniel@haxx.se>, et al.
 .\" *
 .\" * This software is licensed as described in the file COPYING, which
 .\" * you should have received as part of this distribution. The terms
@@ -18,17 +18,21 @@
 .\" * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
 .\" * KIND, either express or implied.
 .\" *
+.\" * SPDX-License-Identifier: curl
+.\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_TRAILERDATA 3 "November 04, 2020" "libcurl 7.78.0" "curl_easy_setopt options"
+.TH CURLOPT_TRAILERDATA 3 "May 17, 2022" "libcurl 7.84.0" "curl_easy_setopt options"
 
 .SH NAME
-CURLOPT_TRAILERDATA \- Custom pointer passed to the trailing headers callback
+CURLOPT_TRAILERDATA \- pointer passed to trailing headers callback
 .SH SYNOPSIS
+.nf
 #include <curl.h>
 
 CURLcode curl_easy_setopt(CURL *handle, CURLOPT_TRAILERDATA, void *userdata);
-.SH DESCRIPTION:
+.fi
+.SH DESCRIPTION
 Data pointer to be passed to the HTTP trailer callback function.
 .SH DEFAULT
 NULL
@@ -46,5 +50,7 @@ curl_easy_setopt(hndl, CURLOPT_TRAILERDATA, &data);
 A more complete example can be found in examples/http_trailers.html
 .SH AVAILABILITY
 This option was added in curl 7.64.0 and is present if HTTP support is enabled
+.SH RETURN VALUE
+Returns CURLE_OK.
 .SH "SEE ALSO"
 .BR CURLOPT_TRAILERFUNCTION "(3), "

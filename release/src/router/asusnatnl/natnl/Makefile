@@ -3,7 +3,7 @@ include ../version.mak
 #RTSRCBASE=../../..
 PJBASE=../pjproject-1.12
 RTSHAREDBASE=$(TOP)/shared
-RTNVARMBASE=$(TOP)/nvram$(BCMEX)$(EX7)
+RTNVARMBASE=$(TOP_PLATFORM)/nvram$(BCMEX)$(EX7)
 UMEMBASE=../umem-1.0.1
 UDTBASE=../udt
 LIB_UDT=udt
@@ -48,6 +48,10 @@ LDLIBS += -lshared
 LDLIBS += -lnvram
 LDFLAGS += -L$(RTSHAREDBASE)
 LDFLAGS += -L$(RTNVARMBASE)
+ifeq ($(RTCONFIG_BCM_502L07P2),y)
+LDLIBS += -lethctl
+LDFLAGS += -L$(TOP_PLATFORM)/ethctl_lib
+endif
 endif
 
 #check if make goal is android-lib or linux-lib
@@ -59,18 +63,21 @@ ifeq ("$(MAKECMDGOALS)", $(filter "$(MAKECMDGOALS)", "android-lib"))
 ifeq ($(findstring i686, $(PJ_CC)), i686)
 ARCH=i686
 STL_DIR=x86
-LDLIBS +=~/android-toolchain-x86/i686-linux-android/lib/libstdc++.a
+LDFLAGS +=-static-libstdc++
+LDLIBS +=/opt/android-toolchain/x86/sysroot/usr/lib/i686-linux-android/libc++_static.a
 endif
 ifeq ($(findstring aarch64, $(PJ_CC)), aarch64)
 ARCH=aarch64
 STL_DIR=arm64
-LDLIBS +=~/android-toolchain-arm64/aarch64-linux-android/lib/libstdc++.a
+LDFLAGS +=-static-libstdc++
+LDLIBS +=/opt/android-toolchains/arm64/sysroot/usr/lib/aarch64-linux-android/libc++_static.a
 endif
 ifeq ($(findstring arm, $(PJ_CC)), arm)
 ARCH=arm
 EABI=eabi
 STL_DIR=arm
-LDLIBS += ~/android-toolchain-arm/arm-linux-androideabi/lib/libstdc++.a
+LDFLAGS +=-static-libstdc++
+LDLIBS +=/opt/android-toolchains/arm/sysroot/usr/lib/arm-linux-androideabi/libc++_static.a
 endif
 ANDROID_CROSS=$(ARCH)-linux-android$(EABI)
 ANDROID_GCC=$(ANDROID_CROSS)-gcc

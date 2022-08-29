@@ -324,14 +324,25 @@ enum {
 #define MAX_USB_TTY_NUM 10
 #endif	// RTCONFIG_USB
 
+#ifdef RTCONFIG_BROOP
+enum {
+	BROOP_IDLE,
+	BROOP_DETECT
+};
+
+#endif
+
 #ifdef RTCONFIG_ASUSCTRL
+/* Always append new definition to end of enumeration. */
 enum {
 	ASUSCTRL_DFS_BAND2 = 1,
-	ASUSCTRL_DFS_BAND3,
-	ASUSCTRL_CHG_PWR,
-	ASUSCTRL_CHG_SKU,
-	ASUSCTRL_EG_MODE,
-	ASUSCTRL_SG_MODE,
+	ASUSCTRL_DFS_BAND3 = 2,
+	ASUSCTRL_CHG_PWR = 3,
+	ASUSCTRL_CHG_SKU = 4,
+	ASUSCTRL_EG_MODE = 5,
+	ASUSCTRL_SG_MODE = 6,
+	ASUSCTRL_ACS_IGNORE_BAND2 = 7,
+	ASUSCTRL_ACS_IGNORE_BAND3 = 8,
 	ASUSCTRL_MAX
 };
 #endif
@@ -455,11 +466,5 @@ int get_ms_wan_unit(int base_wan_unit, int idx);
 int get_ms_idx_by_wan_unit(int wan_unit);
 #endif
 
-#ifdef RTCONFIG_BROOP
-enum {
-	BROOP_IDLE,
-	BROOP_DETECT
-};
-#endif
-
 #endif	/* !__RTSTATE_H__ */
+

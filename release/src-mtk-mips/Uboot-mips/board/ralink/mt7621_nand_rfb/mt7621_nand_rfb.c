@@ -70,7 +70,9 @@ int board_nmbm_init(void)
 int last_stage_init(void)
 {
 	gpio_init();
+	LEDOFF();
 	PWR_LEDON();
+	GREEN_LEDON();
 	return 0;
 }
 #endif

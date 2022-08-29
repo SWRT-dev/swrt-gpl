@@ -86,10 +86,18 @@ typedef struct {
 }bcm_cled_x_led_s;
 #endif
 
+#if defined(ET12) || defined(XT12)
+typedef struct {
+	char RED[BCM_CLED_MODE_END][20];
+	char GREEN[BCM_CLED_MODE_END][20];
+	char BLUE[BCM_CLED_MODE_END][20];
+}bcm_cled_color_blend;
+#endif
+
 int read_cled_value(bcm_cled_rgb_led_s *cur_led)
 {
 	int i = 0;
-#if defined(BCM4912) || defined(RPAX58)
+#if defined(BCM4912) || defined(RPAX58) || defined(GT10)
 	FILE *fp = NULL;
 	char *ptr, *saveptr, *val;
 	char cmd[64], buf[128];
@@ -150,7 +158,7 @@ int read_cled_value(bcm_cled_rgb_led_s *cur_led)
 #if defined(RPAX56) || defined(RPAX58) || defined(ET12) || defined(XT12)
 int read_cled_value_x(bcm_cled_x_led_s *cur_led)
 {
-#if defined(BCM4912) || defined(RPAX58)
+#if defined(BCM4912) || defined(RPAX58) || defined(GT10)
 	FILE *fp = NULL;
 	char *ptr, *saveptr, *val;
 	char cmd[64], buf[128];
@@ -210,7 +218,7 @@ int read_cled_value_x(bcm_cled_x_led_s *cur_led)
 
 int is_cled_value_correct(bcm_cled_rgb_led_s *cur_led, int rgb_id, char *val0, char *val1, char *val2, char *val3)
 {
-#if defined(BCM4912) || defined(RPAX58)
+#if defined(BCM4912) || defined(RPAX58) || defined(GT10)
 	if(strtoul(cur_led->config0_val[rgb_id], NULL, 16) != strtoul(val0, NULL, 16) ||
 	   strtoul(cur_led->config1_val[rgb_id], NULL, 16) != strtoul(val1, NULL, 16) ||
 	   strtoul(cur_led->config2_val[rgb_id], NULL, 16) != strtoul(val2, NULL, 16) ||
@@ -234,7 +242,7 @@ int is_cled_value_correct(bcm_cled_rgb_led_s *cur_led, int rgb_id, char *val0, c
 
 int set_cled_value(bcm_cled_rgb_led_s *cur_led, int rgb_id, char *val0, char *val1, char *val2, char *val3)
 {
-#if defined(BCM4912) || defined(RPAX58)
+#if defined(BCM4912) || defined(RPAX58) || defined(GT10)
 	eval("sw", cur_led->config0_path[rgb_id], val0, val1, val2, val3);
 #else
 	f_write_string(cur_led->config0_path[rgb_id], val0, 0, 0);
@@ -247,7 +255,7 @@ int set_cled_value(bcm_cled_rgb_led_s *cur_led, int rgb_id, char *val0, char *va
 #if defined(RPAX56) || defined(RPAX58) || defined(ET12) || defined(XT12)
 int is_cled_value_correct_x(bcm_cled_x_led_s *cur_led, char *val0, char *val1, char *val2, char *val3)
 {
-#if defined(BCM4912) || defined(RPAX58)
+#if defined(BCM4912) || defined(RPAX58) || defined(GT10)
 	if(strtoul(cur_led->config0_val, NULL, 16) != strtoul(val0, NULL, 16) ||
 	   strtoul(cur_led->config1_val, NULL, 16) != strtoul(val1, NULL, 16) ||
 	   strtoul(cur_led->config2_val, NULL, 16) != strtoul(val2, NULL, 16) ||
@@ -271,7 +279,7 @@ int is_cled_value_correct_x(bcm_cled_x_led_s *cur_led, char *val0, char *val1, c
 
 int set_cled_value_x(bcm_cled_x_led_s *cur_led, char *val0, char *val1, char *val2, char *val3)
 {
-#if defined(BCM4912) || defined(RPAX58)
+#if defined(BCM4912) || defined(RPAX58) || defined(GT10)
 #ifdef RPAX58
 	strlcpy(cur_led->config0_val, val0, sizeof(cur_led->config0_val));
 	strlcpy(cur_led->config1_val, val1, sizeof(cur_led->config0_val));
@@ -298,11 +306,39 @@ int _bcm_cled_ctrl(int rgb, int cled_mode)
 {
 	int index;
 	int state_changed = 0;
+#if defined(XT12) || defined(ET12)
+	bcm_cled_color_blend LED_BEHAVIOR[BCM_CLED_END] = {
+			//BCM_CLED_RED
+			{{"0x0003ffc0", "0x0003d000", "0x0003c400", "0x0003ffd8", "0x0003ffc2", "0x0003fff8"},
+			 {"0x00000000", "0x00000000", "0x00000000", "0x00000000", "0x00000000", "0x00000000"},
+			 {"0x00000000", "0x00000000", "0x00000000", "0x00000000", "0x00000000", "0x00000000"}},
+			//BCM_CLED_GREEN
+			{{"0x0003c883", "0x0003c400", "0x0003c100", "0x0003c89b", "0x0003c883", "0x0003c8bb"},
+			 {"0x0003ffc0", "0x0003efc0", "0x0003dfc0", "0x0003ffd8", "0x0003ffc2", "0x0003fff8"},
+			 {"0x00000000", "0x00000000", "0x00000000", "0x00000000", "0x00000000", "0x00000000"}},
+			//BCM_CLED_BLUE
+			{{"0x00000000", "0x00000000", "0x00000000", "0x00000000", "0x00000000", "0x00000000"},
+			 {"0x0003c800", "0x0003c400", "0x0003c100", "0x0003c818", "0x0003c802", "0x0003c838"},
+			 {"0x0003ffc0", "0x0003efc0", "0x0003dfc0", "0x0003ffd8", "0x0003ffc2", "0x0003fff8"}},
+			//BCM_CLED_YELLOW
+			{{"0x0003ffc0", "0x0003efc0", "0x0003dfc0", "0x0003ffd8", "0x0003ffc2", "0x0003fff8"},
+			 {"0x0003f400", "0x0003e400", "0x0003d400", "0x0003f418", "0x0003f402", "0x0003f438"},
+			 {"0x00000000", "0x00000000", "0x00000000", "0x00000000", "0x00000000", "0x00000000"}},
+			//BCM_CLED_WHITE
+			{{"0x0003ee00", "0x0003de00", "0x0003ce00", "0x0003ee18", "0x0003ee02", "0x0003ee38"},
+			 {"0x0003ffc0", "0x0003efc0", "0x0003dfc0", "0x0003ffd8", "0x0003ffc2", "0x0003fff8"},
+			 {"0x0003ffc0", "0x0003efc0", "0x0003dfc0", "0x0003ffd8", "0x0003ffc2", "0x0003fff8"}},
+			//BCM_CLED_OFF
+			{{"0x00000000", "0x00000000", "0x00000000", "0x00000000", "0x00000000", "0x00000000"},
+			 {"0x00000000", "0x00000000", "0x00000000", "0x00000000", "0x00000000", "0x00000000"},
+			 {"0x00000000", "0x00000000", "0x00000000", "0x00000000", "0x00000000", "0x00000000"}}
+	};
+#else
 	char LED_BEHAVIOR_WRITE[BCM_CLED_MODE_END][20] =
 			{"0x0003e000", "0x0003d000", "0x0003c400", "0x0003e018", "0x0003e002", "0x0003e038", ""};
 	char LED_BEHAVIOR_READ[BCM_CLED_MODE_END][20] =
 			{"3e000\n", "3d000\n", "3c400\n", "3e018\n", "3e002\n", "3e038\n", ""};
-
+#endif
 	bcm_cled_rgb_led_s led[CLED_RGB_NUM] = {
 #ifdef RTAX82_XD6
 		{"/proc/bcm_cled/led7/config0", "/proc/bcm_cled/led8/config0", "/proc/bcm_cled/led9/config0",
@@ -312,6 +348,15 @@ int _bcm_cled_ctrl(int rgb, int cled_mode)
 		"/proc/bcm_cled/led7/config2", "/proc/bcm_cled/led8/config2", "/proc/bcm_cled/led9/config2",
 		"0x00000000", "0x00000000", "0x00000000",
 		"/proc/bcm_cled/led7/config3", "/proc/bcm_cled/led8/config3", "/proc/bcm_cled/led9/config3",
+		"0x00000000", "0x00000000", "0x00000000"}
+#elif defined(RTAX82_XD6S)
+		{"/proc/bcm_cled/led12/config0", "/proc/bcm_cled/led13/config0", "/proc/bcm_cled/led20/config0",
+		"0x00000000", "0x00000000", "0x00000000",
+		"/proc/bcm_cled/led12/config1", "/proc/bcm_cled/led13/config1", "/proc/bcm_cled/led20/config1",
+		"0x00000000", "0x00000000", "0x00000000",
+		"/proc/bcm_cled/led12/config2", "/proc/bcm_cled/led13/config2", "/proc/bcm_cled/led20/config2",
+		"0x00000000", "0x00000000", "0x00000000",
+		"/proc/bcm_cled/led12/config3", "/proc/bcm_cled/led13/config3", "/proc/bcm_cled/led20/config3",
 		"0x00000000", "0x00000000", "0x00000000"}
 #elif defined(RPAX56)
                 {"/proc/bcm_cled/led5/config0", "/proc/bcm_cled/led7/config0", "/proc/bcm_cled/led11/config0",
@@ -333,32 +378,32 @@ int _bcm_cled_ctrl(int rgb, int cled_mode)
                 "0x00000000", "0x00000000", "0x00000000"}
 #elif defined(ET12) || defined(XT12)
 		// LED1 [cled21 - cled17 - cled16]
-		{"0xff803170", "0xff803130", "0xff803120",
-                "0x00000000", "0x00000000", "0x00000000",
-                "0xff803174", "0xff803134", "0xff803124",
-                "0x00000000", "0x00000000", "0x00000000",
-                "0xff803178", "0xff803138", "0xff803128",
-                "0x00000000", "0x00000000", "0x00000000",
-                "0xff80317c", "0xff80313c", "0xff80312c",
-                "0x00000000", "0x00000000", "0x00000000"},
+		{{"0xff803170", "0xff803130", "0xff803120"},
+		 {"0x00000000", "0x00000000", "0x00000000"},
+		 {"0xff803174", "0xff803134", "0xff803124"},
+		 {"0x00000000", "0x00000000", "0x00000000"},
+		 {"0xff803178", "0xff803138", "0xff803128"},
+		 {"0x00000000", "0x00000000", "0x00000000"},
+		 {"0xff80317c", "0xff80313c", "0xff80312c"},
+		 {"0x00000000", "0x00000000", "0x00000000"}},
 		// LED2 [cled18 - cled1 - cled13]
-		{"0xff803140", "0xff803030", "0xff8030f0",
-                "0x00000000", "0x00000000", "0x00000000",
-                "0xff803144", "0xff803034", "0xff8030f4",
-                "0x00000000", "0x00000000", "0x00000000",
-                "0xff803148", "0xff803038", "0xff8030f8",
-                "0x00000000", "0x00000000", "0x00000000",
-                "0xff80314c", "0xff80303c", "0xff8030fc",
-                "0x00000000", "0x00000000", "0x00000000"},
+		{{"0xff803140", "0xff803030", "0xff8030f0"},
+		 {"0x00000000", "0x00000000", "0x00000000"},
+		 {"0xff803144", "0xff803034", "0xff8030f4"},
+		 {"0x00000000", "0x00000000", "0x00000000"},
+		 {"0xff803148", "0xff803038", "0xff8030f8"},
+		 {"0x00000000", "0x00000000", "0x00000000"},
+		 {"0xff80314c", "0xff80303c", "0xff8030fc"},
+		 {"0x00000000", "0x00000000", "0x00000000"}},
 		// LED3 [cled2 - cled14 - cled15]
-		{"0xff803040", "0xff803100", "0xff803110",
-                "0x00000000", "0x00000000", "0x00000000",
-                "0xff803044", "0xff803104", "0xff803114",
-                "0x00000000", "0x00000000", "0x00000000",
-                "0xff803048", "0xff803108", "0xff803118",
-                "0x00000000", "0x00000000", "0x00000000",
-                "0xff80304c", "0xff80310c", "0xff80311c",
-                "0x00000000", "0x00000000", "0x00000000"}
+		{{"0xff803040", "0xff803100", "0xff803110"},
+		 {"0x00000000", "0x00000000", "0x00000000"},
+		 {"0xff803044", "0xff803104", "0xff803114"},
+		 {"0x00000000", "0x00000000", "0x00000000"},
+		 {"0xff803048", "0xff803108", "0xff803118"},
+		 {"0x00000000", "0x00000000", "0x00000000"},
+		 {"0xff80304c", "0xff80310c", "0xff80311c"},
+		 {"0x00000000", "0x00000000", "0x00000000"}}
 #else
 		{"/proc/bcm_cled/led14/config0", "/proc/bcm_cled/led15/config0", "/proc/bcm_cled/led16/config0",
                 "0x00000000", "0x00000000", "0x00000000",
@@ -424,13 +469,22 @@ int _bcm_cled_ctrl(int rgb, int cled_mode)
 	for(index = 0; index < CLED_RGB_NUM; index++) {
 		read_cled_value(&led[index]);
 
+#if defined(XT12) || defined(ET12)
+		if(is_cled_value_correct(&led[index], BCM_CLED_RED, LED_BEHAVIOR[rgb].RED[cled_mode], "a34a32\n", "c34\n", "0\n") == 0 ||
+		   is_cled_value_correct(&led[index], BCM_CLED_GREEN, LED_BEHAVIOR[rgb].GREEN[cled_mode], "a34a32\n", "c34\n", "0\n") == 0 ||
+		   is_cled_value_correct(&led[index], BCM_CLED_BLUE, LED_BEHAVIOR[rgb].BLUE[cled_mode], "a34a32\n", "c34\n", "0\n") == 0) {
+				 set_cled_value(&led[index], BCM_CLED_RED, LED_BEHAVIOR[rgb].RED[cled_mode], "0x00a34a32", "0x00000c34", "0x00000000");
+				 set_cled_value(&led[index], BCM_CLED_GREEN, LED_BEHAVIOR[rgb].GREEN[cled_mode], "0x00a34a32", "0x00000c34", "0x00000000");
+				 set_cled_value(&led[index], BCM_CLED_BLUE, LED_BEHAVIOR[rgb].BLUE[cled_mode], "0x00a34a32", "0x00000c34", "0x00000000");
+				 state_changed = 1;
+		}
+#else
 		if(rgb == BCM_CLED_RED ){
 			if(is_cled_value_correct(&led[index], BCM_CLED_RED, LED_BEHAVIOR_READ[cled_mode], "a34a32\n", "c34\n", "0\n") == 0 ||
 				strtoul(led[index].config0_val[BCM_CLED_GREEN], NULL, 16) != 0 ||
 				strtoul(led[index].config0_val[BCM_CLED_BLUE], NULL, 16) != 0) {
-
 				set_cled_value(&led[index], BCM_CLED_RED, LED_BEHAVIOR_WRITE[cled_mode], "0x00a34a32", "0x00000c34", "0x00000000");
-#if defined(BCM4912) || defined(RPAX58)
+#if defined(BCM4912) || defined(RPAX58) || defined(GT10)
 				eval("sw", led[index].config0_path[BCM_CLED_GREEN], "0x00000000");
 				eval("sw", led[index].config0_path[BCM_CLED_BLUE], "0x00000000");
 #else
@@ -461,7 +515,7 @@ int _bcm_cled_ctrl(int rgb, int cled_mode)
 				strtoul(led[index].config0_val[BCM_CLED_BLUE], NULL, 16) != 0){
 
 				set_cled_value(&led[index], BCM_CLED_GREEN, LED_BEHAVIOR_WRITE[cled_mode], "0x00a34a32", "0x00000c34", "0x00000000");
-#if defined(BCM4912) || defined(RPAX58)
+#if defined(BCM4912) || defined(RPAX58) || defined(GT10)
 				eval("sw", led[index].config0_path[BCM_CLED_RED], "0x00000000");
 				eval("sw", led[index].config0_path[BCM_CLED_BLUE], "0x00000000");
 #else
@@ -492,7 +546,7 @@ int _bcm_cled_ctrl(int rgb, int cled_mode)
 				strtoul(led[index].config0_val[BCM_CLED_GREEN], NULL, 16) != 0){
 
 				set_cled_value(&led[index], BCM_CLED_BLUE, LED_BEHAVIOR_WRITE[cled_mode], "0x00a34a32", "0x00000c34", "0x00000000");
-#if defined(BCM4912) || defined(RPAX58)
+#if defined(BCM4912) || defined(RPAX58) || defined(GT10)
 				eval("sw", led[index].config0_path[BCM_CLED_RED], "0x00000000");
 				eval("sw", led[index].config0_path[BCM_CLED_GREEN], "0x00000000");
 #else
@@ -631,6 +685,7 @@ int _bcm_cled_ctrl(int rgb, int cled_mode)
 			}
 #endif
 		}
+#endif
 	}
 
 	return state_changed;
@@ -647,11 +702,13 @@ int bcm_cled_ctrl(int rgb, int cled_mode)
 		return 0;
 	}
 #endif
-#if defined(RTAX95Q) || defined(XT8PRO) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4) || defined(RTAX82_XD6) || defined(RPAX56) || defined(RPAX58) || defined(ET12) || defined(XT12)
+#if defined(RTAX95Q) || defined(XT8PRO) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4) || defined(RTAX82_XD6) || defined(RTAX82_XD6S) || defined(RPAX56) || defined(RPAX58) || defined(ET12) || defined(XT12)
 	state_changed = _bcm_cled_ctrl(rgb, cled_mode);
 	if(state_changed == 1){
 #ifdef RTAX82_XD6
 		f_write_string("/proc/bcm_cled/activate", "0x00000380", 0, 0);
+#elif defined(RTAX82_XD6S)
+		f_write_string("/proc/bcm_cled/activate", "0x00103000", 0, 0);
 #elif defined(RPAX56)
                 f_write_string("/proc/bcm_cled/activate", "0x000058a0", 0, 0);
 #elif defined(RPAX58)
@@ -1041,7 +1098,7 @@ int phy_ioctl(int fd, int write, int phy, int reg, uint32_t *value)
 	struct ifreq ifr;
 	int ret, vecarg[2];
 
-#if defined(RTAX95Q) || defined(XT8PRO) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX56U) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4) || defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2)
+#if defined(RTAX95Q) || defined(XT8PRO) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX56U) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4) || defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2)
 	return 1;
 #endif
 	memset(&ifr, 0, sizeof(ifr));
@@ -1281,7 +1338,7 @@ uint32_t set_ex53134_ctrl(uint32_t portmask, int ctrl)
 	int i=0;
 	uint32_t value;
 
-#if defined(RTAX95Q) || defined(XT8PRO) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX56U) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4)
+#if defined(RTAX95Q) || defined(XT8PRO) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX56U) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4)
 	return 1;
 #endif
 	for (i = 0; i < 4 && (portmask >> i); i++) {
@@ -1303,7 +1360,7 @@ uint32_t set_phy_ctrl(uint32_t portmask, int ctrl)
 	int fd, i, model;
 	uint32_t value;
 
-#if defined(RTAX95Q) || defined(XT8PRO) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX56U) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4) || defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2)
+#if defined(RTAX95Q) || defined(XT8PRO) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX56U) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4) || defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2)
 	return 1;
 #endif
 	model = get_switch();
@@ -1766,8 +1823,8 @@ int get_bonding_speed(char *bond_if)
 			"/sys/class/net/%s/speed", bond_if);
 	f_read_string(confbuf, buf, sizeof(buf));
 
-	if(strcmp(buf, "2000\n")==0) return 2000;
-	else if(strcmp(buf, "1000\n") == 0) return 1000;
+	if(strlen(buf) && strstr(buf, "00\n") != NULL)
+	    return atoi(buf);
 	else return 0;
 }
 
@@ -1780,7 +1837,7 @@ int get_bonding_port_status(int port)
 #ifdef RTCONFIG_BONDING_WAN
 	int port_status = 0;
 	int ret;
-#if !RTCONFIG_HND_ROUTER_AX_6710 && !RTCONFIG_HND_ROUTER_AX_675X && !defined(RTCONFIG_HND_ROUTER_AX_6756)
+#if !defined(RTCONFIG_HND_ROUTER_AX_6710) && !defined(RTCONFIG_HND_ROUTER_AX_675X) && !defined(RTCONFIG_HND_ROUTER_AX_6756)
 	int extra_p0=0;
 	unsigned int regv=0, pmdv=0, regv2=0, pmdv2=0;
 #endif
@@ -1793,11 +1850,16 @@ int get_bonding_port_status(int port)
 	int ports[lan_ports+1];
 	/* 7 3 2 1 0	W0 L1 L2 L3 L4 */
 	ports[0]=7; ports[1]=3; ports[2]=2; ports[3]=1; ports[4]=0;
-#elif defined(RTAX95Q) || defined(XT8PRO) || defined(RTAXE95Q) || defined(ET8PRO)
-	int lan_ports=4;
+#elif defined(RTAX95Q) || defined(RTAXE95Q)
+	int lan_ports=3;
 	int ports[lan_ports+1];
 	/* 7 3 2 1 0	W0 L1 L2 L3 L4 */
-	ports[0]=7; ports[1]=3; ports[2]=2; ports[3]=1; ports[4]=0;
+	ports[0]=0; ports[1]=1; ports[2]=2; ports[3]=3;
+#elif defined(XT8PRO) || defined(XT8_V2) || defined(ET8PRO)
+	int lan_ports=3;
+	int ports[lan_ports+1];
+	/* 7 3 2 1 0	W0 L1 L2 L3 L4 */
+	ports[0]=0; ports[1]=1; ports[2]=2; ports[3]=3;
 #elif defined(RTAX56_XD4)
 	int lan_ports=1;
 
@@ -1831,11 +1893,21 @@ int get_bonding_port_status(int port)
 	int ports[lan_ports+1];
 	/* 4 3 2 1 0	W0 L1 L2 L3 L4 */
 	ports[0]=4; ports[1]=3; ports[2]=2; ports[3]=1; ports[4]=0;
+#elif defined(TUFAX3000_V2) || defined(RTAXE7800)
+	int lan_ports=4;
+	int ports[lan_ports+1];
+	/* 0 1 2 3 4    W0 L1 L2 L3 L4 */
+	ports[0]=0; ports[1]=1; ports[2]=2; ports[3]=3; ports[4]=4;
 #elif defined(RTAX82_XD6)
 	int lan_ports=3;
 	int ports[lan_ports+1];
 	/* 4 2 1 0    W0 L1 L2 L3 */
 	ports[0]=4; ports[1]=2; ports[2]=1; ports[3]=0;
+#elif defined(RTAX82_XD6S)
+        int lan_ports=1;
+        int ports[lan_ports+1];
+        /* 1 0    W0 L1 */
+        ports[0]=1; ports[1]=0;;
 #elif defined(RTAX56U)
 	int lan_ports=4;
 	int ports[lan_ports+1];
@@ -1857,9 +1929,9 @@ int get_bonding_port_status(int port)
 	/* 6 5 3 2 1 0  L5(2.5G) W0 L1 L2 L3 L4 */
 	char *ports[6] = { "eth5", "eth0", "eth1", "eth2", "eth3", "eth4" };
 #elif defined(GTAX11000_PRO)
-	char *ports[6] = { "eth5", "eth0", "eth1", "eth2", "eth3", "eth4" };
+	char *ports[6] = { "eth0", "eth1", "eth2", "eth3", "eth4", "eth5" };
 #elif defined(GTAXE16000)
-	char *ports[7] = { "eth6", "eth5", "eth0", "eth1", "eth2", "eth3", "eth4" };
+	char *ports[7] = { "eth0", "eth1", "eth2", "eth3", "eth4", "eth5", "eth6" };
 #elif defined(ET12) || defined(XT12)
 	char *ports[4] = { "eth0", "eth1", "eth2", "eth3" };
 #elif defined(RTCONFIG_EXTPHY_BCM84880) /* GT-AX11000 */
@@ -1872,20 +1944,17 @@ int get_bonding_port_status(int port)
 	ports[5]=7;
 #endif
 
+#if !defined(RTCONFIG_HND_ROUTER_AX_6710) && !defined(RTCONFIG_HND_ROUTER_AX_675X) && !defined(RTCONFIG_HND_ROUTER_AX_6756)
 #ifdef RTCONFIG_EXT_BCM53134
 	extra_p0 = S_53134;
 #endif
-
-#ifdef HND_ROUTER
-#if !RTCONFIG_HND_ROUTER_AX_6710 && !RTCONFIG_HND_ROUTER_AX_675X && !defined(RTCONFIG_HND_ROUTER_AX_6756)
-		regv = hnd_ethswctl(REGACCESS, 0x0100, 2, 0, 0);
+	regv = hnd_ethswctl(REGACCESS, 0x0100, 2, 0, 0);
 #ifdef RTCONFIG_EXT_BCM53134
-		pmdv = hnd_ethswctl(PMDIOACCESS, 0x0100, 2, 0, 0);
+	pmdv = hnd_ethswctl(PMDIOACCESS, 0x0100, 2, 0, 0);
 #endif
-		regv2 = hnd_ethswctl(REGACCESS, 0x0104, 4, 0, 0);
+	regv2 = hnd_ethswctl(REGACCESS, 0x0104, 4, 0, 0);
 #ifdef RTCONFIG_EXT_BCM53134
-		pmdv2 = hnd_ethswctl(PMDIOACCESS, 0x0104, 4, 0, 0);
-#endif
+	pmdv2 = hnd_ethswctl(PMDIOACCESS, 0x0104, 4, 0, 0);
 #endif
 #endif
 
@@ -1932,7 +2001,7 @@ int wl_max_no_vifs(int unit)
 {
 	char nv_interface[NVRAM_MAX_PARAM_LEN];
 	char cap[WLC_IOCTL_SMLEN];
-	char caps[WLC_IOCTL_SMLEN * 2];
+	char caps[WLC_IOCTL_MEDLEN];
 	char *name = NULL;
 	char *next = NULL;
 	int max_no_vifs = 0;
@@ -2095,3 +2164,237 @@ fail:
 }
 #endif
 
+#ifdef RTCONFIG_BCMBSD_V2
+
+typedef struct {
+	unsigned int sel_val;
+	char steering[WLIF_MAX][32];
+	char sta_select[WLIF_MAX][40];
+	char if_qualify[WLIF_MAX][20];
+}bcmbsd_policy;
+
+bcmbsd_policy bcmbsd_def_policy[BCMBSD_SELIF_MAX] = {
+			// reserved 
+			{0, {"","","",""},
+			 {"","","",""},
+			 {"","","",""}},
+			// 2G_5G1_5G2_6G (1)
+			{ 0xf, 
+			 {"0 5 3 -62 0 0 0x20",
+			  "0 5 3 -82 0 0 0x820",
+			  "0 5 3 -82 0 0 0x420",
+			  "0 5 3 -82 0 0 0x20"},
+			 {"30 -62 0 0 0 1 1 0 0 0 0x20",
+			  "30 -82 0 0 0 1 1 0 0 0 0x8020",
+			  "30 -82 0 0 0 1 1 0 0 0 0x4020",
+			  "30 -82 0 0 0 1 1 0 0 0 0x20"},
+			 {"0 0x0 -100",
+			  "0 0x400 -100",
+			  "0 0x200 -100",
+			  "0 0x0 -100"}},
+			// 2G_5G1_6G (2)
+			{ 0xb,
+			 {"0 5 3 -62 0 0 0x20",
+			  "0 5 3 -82 0 0 0x20",
+			  "",
+			  "0 5 3 -82 0 0 0x20"},
+			 {"30 -62 0 0 0 1 1 0 0 0 0x20",
+			  "30 -82 0 0 0 1 1 0 0 0 0x20",
+			  "",
+			  "30 -82 0 0 0 1 1 0 0 0 0x20"},
+			 {"0 0x0 -100",
+			  "0 0x0 -100",
+			  "",
+			  "0 0x0 -100"}},
+			// 2G_5G1_5G2 (3:QIS)
+			{ 0x7,
+			 {"0 5 3 -62 0 0 0x20",
+			  "0 5 3 -82 0 0 0x820",
+			  "0 5 3 -82 0 0 0x420",
+			  ""},
+			 {"30 -62 0 0 0 1 1 0 0 0 0x20",
+			  "30 -82 0 0 0 1 1 0 0 0 0x8020",
+			  "30 -82 0 0 0 1 1 0 0 0 0x4020",
+			  ""},
+			 {"0 0x0 -100",
+			  "0 0x400 -100",
+			  "0 0x200 -100",
+			  ""}},
+			// 2G_5G1 (4)
+			{ 0x3,
+			 {"0 5 3 -62 0 0 0x20",
+			  "0 5 3 -82 0 0 0x20",
+			  "",
+			  ""},
+			 {"30 -62 0 0 0 1 1 0 0 0 0x20",
+			  "30 -82 0 0 0 1 1 0 0 0 0x20",
+			  "",
+			  ""},
+			 {"0 0x0 -100",
+			  "0 0x0 -100",
+			  "",
+			  ""}},
+			// 2G_5G2_6G (5)
+			{ 0xd,
+			 {"0 5 3 -62 0 0 0x20",
+			  "",
+			  "0 5 3 -82 0 0 0x20",
+			  "0 5 3 -82 0 0 0x20"},
+			 {"30 -62 0 0 0 1 1 0 0 0 0x20",
+			  "",
+			  "30 -82 0 0 0 1 1 0 0 0 0x20",
+			  "30 -82 0 0 0 1 1 0 0 0 0x20"},
+			 {"0 0x0 -100",
+			  "",
+			  "0 0x0 -100",
+			  "0 0x0 -100"}},
+			// 2G_6G (6) 
+			{ 0x9, 
+			 {"0 5 3 -62 0 0 0x20",
+			  "",
+			  "",
+			  "0 5 3 -82 0 0 0x20"},
+			 {"30 -62 0 0 0 1 1 0 0 0 0x20",
+			  "",
+			  "",
+			  "30 -82 0 0 0 1 1 0 0 0 0x20"},
+			 {"0 0x0 -100",
+			  "",
+			  "",
+			  "0 0x0 -100"}},
+			// 5G1_5G2_6G (7) 
+			{ 0xe,
+			 {"",
+			  "0 5 3 -82 0 0 0x820",
+			  "0 5 3 -82 0 0 0x420",
+			  "0 5 3 -82 0 0 0x20"},
+			 {"",
+			  "30 -82 0 0 0 1 1 0 0 0 0x8020",
+			  "30 -82 0 0 0 1 1 0 0 0 0x4020",
+			  "30 -82 0 0 0 1 1 0 0 0 0x20"},
+			 {"",
+			  "0 0x400 -100",
+			  "0 0x200 -100",
+			  "0 0x0 -100"}},
+			// 5G1_6G (8) 
+			{ 0xa,
+			 {"",
+			  "0 5 3 -82 0 0 0x20",
+			  "",
+			  "0 5 3 -82 0 0 0x20"},
+			 {"",
+			  "30 -82 0 0 0 1 1 0 0 0 0x20",
+			  "",
+			  "30 -82 0 0 0 1 1 0 0 0 0x20"},
+			 {"",
+			  "0 0x0 -100",
+			  "",
+			  "0 0x0 -100"}},
+			// 2G_5G2 (9) 
+			{ 0x5,
+			 {"0 5 3 -62 0 0 0x20",
+			  "",
+			  "0 5 3 -82 0 0 0x20",
+			  ""},
+			 {"30 -62 0 0 0 1 1 0 0 0 0x20",
+			  "",
+			  "30 -82 0 0 0 1 1 0 0 0 0x20",
+			  ""},
+			 {"0 0x0 -100",
+			  "",
+			  "0 0x0 -100",
+			  ""}},
+			// 5G1_5G2 (10)
+			{ 0x6, 
+			 {"",
+			  "0 5 3 -82 0 0 0x820",
+			  "0 5 3 -82 0 0 0x420",
+			  ""},
+			 {"",
+			  "30 -82 0 0 0 1 1 0 0 0 0x8020",
+			  "30 -82 0 0 0 1 1 0 0 0 0x4020",
+			  ""},
+			 {"",
+			  "0 0x400 -100",
+			  "0 0x200 -100",
+			  ""}},
+			// 5G2_6G (11)
+			{ 0xc, 
+			 {"",
+			  "",
+			  "0 5 3 -82 0 0 0x20",
+			  "0 5 3 -82 0 0 0x20"},
+			 {"",
+			  "",
+			  "30 -82 0 0 0 1 1 0 0 0 0x20",
+			  "30 -82 0 0 0 1 1 0 0 0 0x20"},
+			 {"",
+			  "",
+			  "0 0x0 -100",
+			  "0 0x0 -100"}},
+	};
+
+int bcmbsd_tblidx(int selif_val)
+{
+	int i;
+
+	for(i=1; i<BCMBSD_SELIF_MAX; ++i) {
+		if(bcmbsd_def_policy[i].sel_val == selif_val)
+			return i;
+	}
+
+	return -1;
+}
+
+int get_ifid(int wl_seq)
+{
+	char wlif[16];
+
+	sprintf(wlif, "wl%d_ifname", wl_seq);
+
+	if(!*nvram_safe_get(wlif))
+		return -1;
+
+	switch(wl_seq) {
+		case 0:
+			return WLIF_2G;
+		case 1:
+			return WLIF_5G1;
+		case 2:
+			return WLIF_5G2;
+		case 3:
+			return WLIF_6G;
+	}
+
+	return -1;
+}
+
+void gen_bcmbsd_def_policy(int sel)
+{
+	int i, tbi, ifid;
+	char namebuf[32];
+
+	tbi = bcmbsd_tblidx(sel);
+	if(tbi < 0)
+		return;
+
+	_dprintf("%s: select %d(tb_%d)\n", __func__, sel, tbi);
+	for(i=0; i<WLIF_MAX; ++i) {
+		ifid = get_ifid(i);
+		if(ifid < 0)
+			continue;
+		sprintf(namebuf, "wl%d_bsd_steering_policy_def", ifid);
+		nvram_set(namebuf, bcmbsd_def_policy[tbi].steering[i]);
+		_dprintf("%s, set defnv [%s]=[%s]\n", __func__, namebuf, bcmbsd_def_policy[tbi].steering[i]);
+
+		sprintf(namebuf, "wl%d_bsd_sta_select_policy_def", ifid);
+		nvram_set(namebuf, bcmbsd_def_policy[tbi].sta_select[i]);
+		_dprintf("%s, set defnv [%s]=[%s]\n", __func__, namebuf, bcmbsd_def_policy[tbi].sta_select[i]);
+
+		sprintf(namebuf, "wl%d_bsd_if_qualify_policy_def", ifid);
+		nvram_set(namebuf, bcmbsd_def_policy[tbi].if_qualify[i]);
+		_dprintf("%s, set defnv [%s]=[%s]\n", __func__, namebuf, bcmbsd_def_policy[tbi].if_qualify[i]);
+	}	
+}
+
+#endif

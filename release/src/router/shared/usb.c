@@ -174,13 +174,17 @@ int exec_for_host(int host, int obsolete, uint flags, host_exec func)
 		    !strcmp(dp->d_name, "..")
 		   )
 			continue;
-#if LINUX_KERNEL_VERSION >= KERNEL_VERSION(3,3,0)
+
 		snprintf(device_path, sizeof(device_path), "/sys/block/%s", dp->d_name);
-#else
-		snprintf(device_path, sizeof(device_path), "/sys/block/%s/device", dp->d_name);
-#endif
-		if (readlink(device_path, linkbuf, sizeof(linkbuf)) == -1)
-			continue;
+                len = readlink(device_path, linkbuf, sizeof(linkbuf) - 1);
+                if (len == -1) {
+                        snprintf(device_path, sizeof(device_path), "/sys/block/%s/device", dp->d_name);
+                        len = readlink(device_path, linkbuf, sizeof(linkbuf) - 1);
+                        if (len == -1)
+                                continue;
+                }
+                linkbuf[len] = '\0';
+
 		h = strstr(linkbuf, "/host");
 		if (!h)	continue;
 		if ((ret = sscanf(h, "/host%*d/target%*d:%*d:%*d/%d:%*d:%*d:%*d", &host_no)) != 1) {

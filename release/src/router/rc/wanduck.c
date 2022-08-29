@@ -422,9 +422,8 @@ static void wan_led_control(int sig) {
 		update_wan_leds(unit, link_wan[unit]);
 #endif
 	}
-#endif // RTCONFIG_HND_ROUTER_AX
-
-#if defined(RTCONFIG_QCA) && (defined(RTCONFIG_LED_BTN) || defined(RTCONFIG_TURBO_BTN))
+#elif (defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)) \
+   && (defined(RTCONFIG_LED_BTN) || defined(RTCONFIG_TURBO_BTN) || defined(RTCONFIG_WPS_ALLLED_BTN))
 	if (!inhibit_led_on()) {
 		int unit;
 
@@ -848,7 +847,7 @@ static void getaddrinfo_alarm(int sig)
 }
 
 /* Return values:
-    -1: dns probe is disabled
+    -1: error or disable
      0: dns probe has failed
      1: dns probe ok
 */
@@ -863,6 +862,9 @@ int do_dns_detect(int wan_unit)
 	char status, word[64], *next, host[PATH_MAX], content[PATH_MAX];
 	int timeout, size, ret, pipefd[2];
 	int debug = nvram_get_int("dns_probe_debug");
+#ifdef RTCONFIG_DUALWAN
+	int backup_det = (wan_unit != wan_primary_ifunit() && wan_unit != WAN_UNIT_NONE) ? 1 : 0;
+#endif
 
 #if defined(RTCONFIG_IPV6) && defined(RTCONFIG_USB_MODEM)
 	if(dualwan_unit__usbif(wan_unit) && modem_pdp == 2)
@@ -946,6 +948,31 @@ int do_dns_detect(int wan_unit)
 	getaddrinfo_jmpset = 1;
 	alarm(timeout);
 
+#ifdef RTCONFIG_DUALWAN
+	if (backup_det) {
+		// use first dns server of wanX_dns
+		struct in_addr dns_server;
+		struct sockaddr_in dns_server_sock;
+		char nv[16], wan_dns[16];
+		char *p;
+		snprintf(nv, sizeof(nv), "wan%d_dns", wan_unit);
+		nvram_safe_get_r(nv, wan_dns, sizeof(wan_dns));
+		p = strchr(wan_dns, ' ');
+		if (p) *p = '\0';
+		if (inet_pton(AF_INET, wan_dns, &dns_server) != 1) {
+			_dprintf("dns server %s is error\n", wan_dns);
+			return -1;
+		}
+		dns_server_sock.sin_family = AF_INET;
+		dns_server_sock.sin_port = htons(53);
+		dns_server_sock.sin_addr = dns_server;
+		if (!(_res.options & RES_INIT))
+			res_init();
+		_res.nscount = 1;
+		_res.nsaddr_list[0] = dns_server_sock;
+	}
+#endif
+
 	ret = getaddrinfo(host, NULL, &hints, &res);
 	getaddrinfo_jmpset = 0;
 
@@ -972,8 +999,8 @@ int do_dns_detect(int wan_unit)
 			}
 
 			foreach(word, content, next) {
-				if ((strcmp(word, "*") == 0 && inet_pton(ai->ai_family, "10.0.0.1", &target) > 0 && memcmp(addr, &target, size) != 0) ||
-					(inet_pton(ai->ai_family, word, &target) > 0 && memcmp(addr, &target, size) == 0)) {
+				if ((strcmp(word, "*") == 0) ||
+				    (inet_pton(ai->ai_family, word, &target) > 0 && memcmp(addr, &target, size) == 0)) {
 					status = 1;
 					break;
 				}
@@ -1084,11 +1111,11 @@ int detect_internet(int wan_unit)
 #ifdef DETECT_INTERNET_MORE
 	else if(!get_packets_of_net_dev(wan_ifname, &rx_packets, &tx_packets) || rx_packets <= RX_THRESHOLD)
 		link_internet = DISCONN;
-	else if(!isFirstUse && (dns_ret <= 0 && !do_tcp_dns_detect(wan_unit) && !wanduck_ping_detect(wan_unit)))
+	else if(!isFirstUse && (!dns_ret && !do_tcp_dns_detect(wan_unit) && !wanduck_ping_detect(wan_unit)))
 		link_internet = DISCONN;
 #endif
 #if defined(RTCONFIG_IPV6) && defined(RTCONFIG_INTERNAL_GOBI)
-	else if(dualwan_unit__usbif(wan_unit) && modem_pdp == 2 && ping_ret <= 0)
+	else if(dualwan_unit__usbif(wan_unit) && modem_pdp == 2 && !ping_ret)
 		link_internet = DISCONN;
 #endif
 #ifdef RTCONFIG_DUALWAN
@@ -1102,9 +1129,9 @@ int detect_internet(int wan_unit)
 			nat_state = stop_nat_rules();
 	}
 #else
-	else if((wandog_enable && ping_ret <= 0 && !dnsprobe_enable)
-			|| (dnsprobe_enable && dns_ret <= 0 && !wandog_enable)
-			|| (wandog_enable && ping_ret <= 0 && dnsprobe_enable && dns_ret <= 0)
+	else if((wandog_enable && !ping_ret && !dnsprobe_enable)
+			|| (dnsprobe_enable && !dns_ret && !wandog_enable)
+			|| (wandog_enable && !ping_ret && dnsprobe_enable && !dns_ret)
 			){
 		link_internet = DISCONN;
 
@@ -1114,14 +1141,14 @@ int detect_internet(int wan_unit)
 	}
 #endif
 #endif
-	else if(dns_ret <= 0 && /* PPP connections with DNS detection */
+	else if(!dns_ret && /* PPP connections with DNS detection */
 			wan_ppp && nvram_get_int(strcat_r(prefix, "ppp_echo", tmp)) == 2)
 		link_internet = DISCONN;
 	else
 		link_internet = CONNED;
 
 	/* Set no DNS state even if connected for WEB UI */
-	if(link_internet == DISCONN || dns_ret <= 0){
+	if(link_internet == DISCONN){
 		if(nvram_get_int("web_redirect") & WEBREDIRECT_FLAG_NOINTERNET)
 			set_link_internet(wan_unit, 1);
 		else{
@@ -1807,6 +1834,7 @@ _dprintf("# wanduck: if_wan_phyconnected: x_Setting=%d, link_modem=%d, sim_state
 								&& strcmp(buf, act_ip)){
 							_dprintf("wanduck: renew IP...(%s)\n", act_ip);
 							logmessage("wanduck", "renew IP...(%s)\n", act_ip);
+							eval("/usr/sbin/modem_status.sh", "reconnect");
 							nvram_set(tmp, "0.0.0.0");
 							snprintf(tmp, sizeof(tmp), "/var/run/udhcpc%d.pid", wan_unit);
 							kill_pidfile_s(tmp, SIGUSR1);
@@ -1815,7 +1843,7 @@ _dprintf("# wanduck: if_wan_phyconnected: x_Setting=%d, link_modem=%d, sim_state
 
 					if(is_wan_connect(wan_unit))
 #if 1 // +CGCELLI seems to cause the Input/Output errors of ttyACM.
-#if defined(RT4GAC86U)
+#if defined(RT4GAC86U) || defined(RT4GAX56)
 						eval("/usr/sbin/modem_status.sh", "operation");
 #endif
 #if defined(RT4GAC86U) || defined(RT4GAX56)
@@ -2494,6 +2522,108 @@ int op_resolve(char *name, struct addrinfo **res) {
 	return 0;
 }
 
+#ifdef RTCONFIG_DUALWAN
+int do_backup_ping_detect(int wan_unit)
+{
+	char target[128] = {0};
+	char wan_prefix[8] = {0};
+	char wan_ifname[16] = {0};
+	char wan_gateway[16] = {0};
+	struct addrinfo *res, *p;
+	char addr[64] = {0};
+	const char* paddr = NULL;
+	FILE *fp;
+	char cmd[128];
+	int route = 0;
+	int count = 0;
+	int ret = 0;
+
+	strlcpy(target, nvram_safe_get("wandog_target"), sizeof(target));
+	snprintf(wan_prefix, sizeof(wan_prefix), "wan%d_", wan_unit);
+
+	if (op_resolve(target, &res) < 0)
+		return -1;
+	for(p = res; p != NULL; p = p->ai_next) {
+		// if (p->ai_family == AF_INET6)
+			// paddr = inet_ntop(AF_INET6, &(((struct sockaddr_in6 *)(p->ai_addr))->sin6_addr), addr, INET6_ADDRSTRLEN);
+		// else
+			paddr = inet_ntop(AF_INET, &(((struct sockaddr_in *)(p->ai_addr))->sin_addr), addr, INET_ADDRSTRLEN);
+		if (paddr)
+			break;
+	}
+
+	if (paddr) {
+		// add route
+		strlcpy(wan_ifname, get_wan_ifname(wan_unit), sizeof(wan_ifname));
+		strlcpy(wan_gateway, nvram_pf_safe_get(wan_prefix, "gateway"), sizeof(wan_gateway));
+		route = route_exist(wan_ifname, 0, addr, wan_gateway, "255.255.255.255");
+		if (route == 0)
+			route_add(wan_ifname, 0, addr, wan_gateway, "255.255.255.255");
+		//ping
+		snprintf(cmd, sizeof(cmd), "ping -c1 -w2 -s32 -Mdont -I %s '%s' 2>/dev/null", wan_ifname, addr);
+		if ((fp = popen(cmd, "r")) != NULL) {
+			while (fgets(cmd, sizeof(cmd), fp) != NULL) {
+				if (sscanf(cmd, "%*s %*s transmitted, %d %*s received", &count) == 1) {
+					ret = (count > 0);
+					break;
+				}
+			}
+			pclose(fp);
+		}
+		// del route
+		if (route == 0)
+			route_del(wan_ifname, 0, addr, wan_gateway, "255.255.255.255");
+		return (ret);
+	}
+	return 0;
+}
+
+int detect_backup_internet(int wan_unit)
+{
+	int dns_ret, ping_ret;
+
+	dns_ret = (dnsprobe_enable) ? do_dns_detect(wan_unit) : -1;
+	ping_ret = (wandog_enable) ? do_backup_ping_detect(wan_unit) : -1;
+	if ((dnsprobe_enable && dns_ret > 0 && !wandog_enable)
+	 || (wandog_enable && ping_ret > 0 && !dnsprobe_enable)
+	 || (dnsprobe_enable && dns_ret > 0 && wandog_enable && ping_ret > 0)
+	) {
+		_dprintf("Detect WAN(%d) internet success.\n", wan_unit);
+		return 1;
+	}
+	else {
+		_dprintf("Detect WAN(%d) internet failed.\n", wan_unit);
+		return 0;
+	}
+}
+
+int switch_backup_line(int wan_unit, int restart_other)
+{
+	char wan_ifname[16] = {0};
+	int unit = 0;
+	char buf[32] = {0};
+
+	strlcpy(wan_ifname, get_wan_ifname(wan_unit), sizeof(wan_ifname));
+
+	_dprintf("%s: switch to WAN %d\n", __FUNCTION__, wan_unit);
+
+	set_wan_primary_ifunit(wan_unit);
+	wan_up(wan_ifname);
+
+	if (restart_other) {
+		for(unit = WAN_UNIT_FIRST; unit < WAN_UNIT_MAX; ++unit){
+			if(unit == wan_unit)
+				continue;
+
+			_dprintf("wanduck: restart_wan_if %d.\n", unit);
+			snprintf(buf, sizeof(buf), "restart_wan_if %d", unit);
+			notify_rc(buf);
+		}
+	}
+
+	return 0;
+}
+#endif
 
 void handle_dns_req(int sfd, unsigned char *request, int maxlen, struct sockaddr *pcliaddr, int clen){
 #if !defined(RTCONFIG_FINDASUS)
@@ -2606,8 +2736,8 @@ void handle_dns_req(int sfd, unsigned char *request, int maxlen, struct sockaddr
 			d_reply->answer_rrs = htons(1);
 			answer.addr = htonl(0xc0a87947);
 #endif
-#ifdef DSL_AX82U
-		} else if (is_ax5400_i1() && op_is_whitelist_url(queries.name)) { // Optus comstomization
+#ifdef RTCONFIG_ISP_OPTUS
+		} else if (op_is_whitelist_url(queries.name)) { // Optus comstomization
 			struct addrinfo *res;
 			struct addrinfo *p;
 			//char command[255];
@@ -2984,6 +3114,33 @@ int get_last_unit(int wan_unit){
 	return last;
 }
 
+#if defined(RTCONFIG_SOC_QCA9557) \
+ || defined(RTCONFIG_QCA953X) \
+ || defined(RTCONFIG_QCA956X) \
+ || defined(RTCONFIG_QCN550X) \
+ || defined(RTCONFIG_SOC_IPQ40XX)
+static void clear_nf_conntrack(const char *prefix)
+{
+	int flags;
+	char tmp[64], wan_gw_ifname[8], wan_proto[8];
+
+	snprintf(wan_gw_ifname, sizeof(wan_gw_ifname), "%s", nvram_safe_get(strcat_r(prefix, "gw_ifname", tmp)));
+	snprintf(wan_proto, sizeof(wan_proto), "%s", nvram_safe_get(strcat_r(prefix, "proto", tmp)));
+
+	if (_ifconfig_get(wan_gw_ifname, &flags, NULL, NULL, NULL, NULL) == 0
+	&& (flags & IFF_UP)
+	&& (!strcmp(wan_proto, "pptp") || !strcmp(wan_proto, "l2tp"))) {
+		_dprintf("%s: ignore\n", __func__);
+		return;
+	}
+
+	f_write_string("/proc/net/nf_conntrack", "f", 0, 0);
+	_dprintf("%s: done\n", __func__);
+}
+#else
+static void clear_nf_conntrack(__attribute__ ((unused)) const char *prefix) { return; }
+#endif
+
 int switch_wan_line(const int wan_unit, const int restart_other){
 #if defined(RTCONFIG_DUALWAN) || defined(RTCONFIG_USB_MODEM)
 	char tmp[100] = "";
@@ -3016,6 +3173,8 @@ int switch_wan_line(const int wan_unit, const int restart_other){
 	_dprintf("%s: wan(%d) Starting...\n", __FUNCTION__, wan_unit);
 	// Set the modem to be running.
 	set_wan_primary_ifunit(wan_unit);
+
+	clear_nf_conntrack(prefix);
 
 #ifdef RTCONFIG_USB_MODEM
 	if (nvram_invmatch("modem_enable", "4") && dualwan_unit__usbif(wan_unit)) {
@@ -3339,6 +3498,15 @@ int wanduck_main(int argc, char *argv[]){
 
 		current_wan_unit = wan_primary_ifunit();
 		other_wan_unit = get_next_unit(current_wan_unit);
+
+		/* [Vocus]: set modem_stop(cfun=4) when wans_mode=fb/fo at start-up */
+		if(!strcmp(nvram_safe_get("startup_cfun4"), "1")) {
+			if(!strcmp(get_wan_ifname(other_wan_unit), "usb0") && conn_state[other_wan_unit] == PHY_RECONN){
+				char *const modem_argv[] = {"/usr/sbin/modem_stop.sh", NULL};
+				_eval(modem_argv, ">>/tmp/usb.log", 0, NULL);
+			}
+		}
+
 if(test_log)
 _dprintf("wanduck(%d)(first detect start): state %d, state_old %d, changed %d, wan_state %d.\n"
 		, current_wan_unit, conn_state[current_wan_unit], conn_state_old[current_wan_unit], conn_changed_state[current_wan_unit], current_state[current_wan_unit]);
@@ -3411,19 +3579,9 @@ _dprintf("wanduck(%d)(first detect start): state %d, state_old %d, changed %d, w
 			record_conn_status(current_wan_unit);
 #endif
 
-#ifdef RTCONFIG_REALTEK
-/* [MUST]: Need to disscuss to add new mode for Media Bridge */
-		if(access_point_mode()
-#ifdef RTCONFIG_AMAS
-		|| re_mode()
-#endif
-		)
-#else
-		if(sw_mode == SW_MODE_AP)
-#endif
-		{
+		if(sw_mode == SW_MODE_AP){
 #ifdef RTCONFIG_REDIRECT_DNAME
-			if (nvram_invmatch("redirect_dname", "0")) {
+			if (nvram_invmatch("redirect_dname", "0") && access_point_mode()) {
 
 			if(cross_state == DISCONN){
 				int evalRet;
@@ -3442,14 +3600,6 @@ _dprintf("wanduck(%d)(first detect start): state %d, state_old %d, changed %d, w
 			}
 #ifdef RTCONFIG_WIFI_SON
 			else if(!nvram_match("cfg_master", "1") && nvram_match("wifison_ready", "1"))
-				; // do nothing.
-#endif
-#if (defined(RTCONFIG_QCA) || defined(RTCONFIG_REALTEK)) && defined(RTCONFIG_AMAS)
-			else if(nvram_match("re_mode", "1"))
-				; // do nothing.
-#endif
-#if defined(RTCONFIG_QCA) && defined(RTCONFIG_AMAS)
-			else if(nvram_match("re_mode", "1"))
 				; // do nothing.
 #endif
 			else if(cross_state == CONNED){
@@ -4561,19 +4711,9 @@ _dprintf("nat_rule: start_nat_rules 6.\n");
 		}
 		else
 #endif // RTCONFIG_WIRELESSREPEATER
-#ifdef RTCONFIG_REALTEK
-/* [MUST]: Need to disscuss to add new mode for Media Bridge */
-		if(access_point_mode()
-#ifdef RTCONFIG_AMAS
-		|| re_mode()
-#endif
-		)
-#else
-		if(sw_mode == SW_MODE_AP)
-#endif
-		{
+		if(sw_mode == SW_MODE_AP){
 #ifdef RTCONFIG_REDIRECT_DNAME
-			if (nvram_invmatch("redirect_dname", "0")) {
+			if (nvram_invmatch("redirect_dname", "0") && access_point_mode()) {
 
 			if (conn_changed_state[current_wan_unit] == C2D) {
 				int evalRet;
@@ -4843,6 +4983,13 @@ _dprintf("nat_rule: stop_nat_rules 7.\n");
 
 #ifdef RTCONFIG_DUALWAN
 		if(!strcmp(dualwan_mode, "fb") && other_wan_unit == WAN_FB_UNIT){
+#if 1
+			if(conn_state[other_wan_unit] == CONNED) {
+				_dprintf("# wanduck: try to detect the fail-back WAN line(%d)...\n", other_wan_unit);
+				if (detect_backup_internet(other_wan_unit))
+					switch_backup_line(other_wan_unit, nvram_get_int("wandog_fb_restart"));
+			}
+#else
 			if(conn_state[other_wan_unit] == CONNED
 					&& get_disconn_count(other_wan_unit) >= max_fb_count
 					){
@@ -4852,6 +4999,7 @@ _dprintf("nat_rule: stop_nat_rules 7.\n");
 				handle_wan_line(other_wan_unit, rule_setup);
 				switch_wan_line(other_wan_unit, 0);
 			}
+#endif
 			else if(conn_state[other_wan_unit] == PHY_RECONN){
 				_dprintf("\n# wanduck(fail-back): Try to prepare the backup line.\n");
 				snprintf(cmd, sizeof(cmd), "restart_wan_if %d", other_wan_unit);

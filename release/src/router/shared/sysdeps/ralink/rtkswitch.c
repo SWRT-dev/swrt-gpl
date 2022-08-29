@@ -27,7 +27,7 @@
 #include <utils.h>
 #include <shutils.h>
 #include <shared.h>
-#if defined (RTACRH18) || defined (RT4GAC86U)
+#if defined (RTACRH18) || defined (RT4GAC86U) || defined (RTCONFIG_MT798X)
 #include <linux/autoconf.h>
 #else
 #include <linux/config.h>
@@ -51,6 +51,11 @@ static void config_rtl_esw_LANWANPartition(int type)
     eval("swconfig", "dev", MII_IFNAME, "set", "apply");    // apply changes
 
     return;
+}
+#elif defined(RTCONFIG_MT798X)
+static void config_rtl_esw_LANWANPartition(int type)
+{
+// TBD.
 }
 #endif
 struct trafficCount_t
@@ -412,11 +417,6 @@ int rtkswitch_Reset_Storm_Control(void)
 
 	return 0;
 }
-
-typedef struct {
-	unsigned int link[5];
-	unsigned int speed[5];
-} phyState;
 
 int rtkswitch_AllPort_phyState(void)
 {

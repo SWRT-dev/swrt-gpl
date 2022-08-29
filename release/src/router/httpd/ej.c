@@ -37,6 +37,10 @@
 #include <bcmnvram.h>
 #include <shutils.h>
 #include <shared.h>
+#include <json.h>
+
+extern void do_json_decode(struct json_object **root);
+extern char *get_cgi_json(char *name, json_object *root);
 
 #ifdef TRANSLATE_ON_FLY
 #include <json_object.h>
@@ -166,6 +170,7 @@ process_asp (char *s, char *e, FILE *f)
 extern void replace_productid(char *GET_PID_STR, char *RP_PID_STR, int len){
 
 	struct REPLACE_PRODUCTID_S *p;
+	char *p_temp;
 
 	for(p = &replace_productid_t[0]; p->org_name; p++){
 		if(!strcmp(GET_PID_STR, p->org_name)){
@@ -180,8 +185,15 @@ extern void replace_productid(char *GET_PID_STR, char *RP_PID_STR, int len){
 	if(strlen(RP_PID_STR))
 		return;
 
+	if ((p_temp = strstr(GET_PID_STR, "ZenWiFi")) && !strncmp(nvram_safe_get("preferred_lang"), "CN", 2)) {
+		p_temp += strlen("ZenWiFi");
+		snprintf(RP_PID_STR, len, "灵耀%s", p_temp);
+	}
+	else{
+		strlcpy(RP_PID_STR, GET_PID_STR, len);
+	}
+
 	/* general  replace underscore with space */
-	strlcpy(RP_PID_STR, GET_PID_STR, len);
 	for (; *RP_PID_STR; ++RP_PID_STR)
 	{
 		if (*RP_PID_STR == '_')
@@ -471,3 +483,4 @@ ejArgs(int argc, char **argv, char *fmt, ...)
 
 	return arg;
 }
+

@@ -82,8 +82,9 @@ static int mtketh_debug_show(struct seq_file *m, void *private)
 		mac = eth->mac[i];
 
 		while (j < 30) {
+			mutex_lock(&eth->mii_bus->mdio_lock);
 			d =  _mtk_mdio_read(eth, mac->phy_dev->addr, j);
-
+			mutex_unlock(&eth->mii_bus->mdio_lock);
 			seq_printf(m, "phy=%d, reg=0x%08x, data=0x%08x\n",
 				   mac->phy_dev->addr, j, d);
 			j++;
@@ -287,11 +288,13 @@ static ssize_t mtketh_debugfs_write(struct file *file, const char __user *ptr,
 	pr_info("%s:phy=%d, reg=0x%x, val=0x%x\n", __func__,
 		phy, reg, value);
 
+	mutex_lock(&eth->mii_bus->mdio_lock);
 	_mtk_mdio_write(eth, phy,  reg, value);
 
 	pr_info("%s:phy=%d, reg=0x%x, val=0x%x confirm..\n", __func__,
 		phy, reg, _mtk_mdio_read(eth, phy, reg));
 
+	mutex_unlock(&eth->mii_bus->mdio_lock);
 	return len;
 }
 

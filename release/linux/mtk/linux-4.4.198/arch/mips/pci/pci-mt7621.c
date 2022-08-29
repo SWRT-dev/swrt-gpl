@@ -510,6 +510,10 @@ static void mt7621_pcie_init(struct mt7621_pci_controller *mpc)
 	}
 
 	mdelay(100);
+#if defined(CONFIG_MODEL_XD4S)
+       // turn on green LED
+       __gpio_set_value(16, 0);
+#endif
 
 	/* PCIe RC reset deassert */
 	for (i = 0; i < 3; i++)

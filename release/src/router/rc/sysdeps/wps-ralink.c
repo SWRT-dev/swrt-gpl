@@ -42,6 +42,8 @@ start_wps_method(void)
 		return 0;
 	}
 
+	nvram_set("wps_proc_status", "0");
+
 #if defined(RTN11P_B1)
 	system("reg s 0xB0000000; reg w 0x64 0x30035555"); // Set WLED GPIO mode.
 #endif
@@ -68,8 +70,10 @@ start_wps_method(void)
 		start_re_wpsc();
     }
     else
-#endif
 	start_wsc();
+#else
+    start_wsc();
+#endif
 
 	return 0;
 }
@@ -77,8 +81,12 @@ start_wps_method(void)
 int
 stop_wps_method(void)
 {
-	char prefix[] = "wlXXXXXXXXXX_", word[256], *next, ifnames[128];
-	int i, wps_band = nvram_get_int("wps_band_x"), multiband = get_wps_multiband();
+	char prefix[] = "wlXXXXXXXXXX_", word[256] __attribute__((unused)), *next, ifnames[128];
+	int i, wps_band = nvram_get_int("wps_band_x"), multiband __attribute__((unused)) = get_wps_multiband();
+#ifdef RTCONFIG_VIF_ONBOARDING
+	char prefix_vif[] = "wlXXXXXXXXXX_";
+	int wps_via_vif = nvram_get_int("wps_via_vif");
+#endif
 
 	if(getpid()!=1) {
 		notify_rc("stop_wps_method");
@@ -103,23 +111,44 @@ stop_wps_method(void)
     if (nvram_get_int("wps_enrollee") == 1)
         wlc_express = 1; // Force use 2.4G only.
 #endif
+#ifdef RTCONFIG_VIF_ONBOARDING
+	if (wps_via_vif) {
+		snprintf(prefix_vif, sizeof(prefix_vif), "wl%d.%d_ifname", wps_band,
+			(!nvram_get_int("re_mode")) ? nvram_get_int("obvif_cap_subunit"): nvram_get_int("obvif_re_subunit"));
+	}
+#endif
 
 	foreach(wif, nvram_safe_get("wl_ifnames"), next) {
 		SKIP_ABSENT_BAND_AND_INC_UNIT(i);
 		sprintf(prefix, "wl%d_", i);
-		aif = nvram_safe_get(strcat_r(prefix, "vifs", tmp));
+#if defined(RTCONFIG_AMAS)
+		if (wps_band == i)
+		{
+#ifdef RTCONFIG_VIF_ONBOARDING
+			if (wps_via_vif)
+				doSystem("iwpriv %s set WscStop=%d", nvram_safe_get(prefix_vif), 1);	// WPS disabled
+			else
+#endif
+				doSystem("iwpriv %s set WscStop=%d", wif, 1);	// WPS disabled
+		}
+
+		if (nvram_get_int("wps_enrollee") == 1)
+#endif
+		{
+			aif = nvram_safe_get(strcat_r(prefix, "vifs", tmp));
 			/* Make sure WPS on all band are turned off */
-			if (wlc_express == 0 || (wlc_express == 1  && i == 0) || (wlc_express == 2  && i == 1)){
+			if ((wlc_express == 0 || (wlc_express == 1  && i == 0) || (wlc_express == 2  && i == 1)) && (strcmp(aif, "") != 0)){
 				doSystem("iwpriv %s set WscStop=%d", aif, 1);	// WPS disabled
 				doSystem("ifconfig %s up", aif);
 			}
+		}
 		i++;
 	}
 	if(nvram_match("wps_ign_btn", "1")) {
 		nvram_unset("wps_ign_btn");
 		kill_pidfile_s("/var/run/watchdog.pid", SIGUSR2);
 	}
-#else
+#else	/* !(RTCONFIG_CONCURRENTREPEATER || RTCONFIG_AMAS) */
 	i = 0;
 	strcpy(ifnames, nvram_safe_get("wl_ifnames"));
 	foreach (word, ifnames, next) {
@@ -157,7 +186,7 @@ stop_wps_method(void)
 #if defined(RTCONFIG_HAS_5G)
 	doSystem("iwpriv %s set WscConfMode=%d", get_wifname(1), 7);	// trigger Windows OS to give a popup about WPS PBC AP
 #endif
-#endif
+#endif	/* RTCONFIG_CONCURRENTREPEATER || RTCONFIG_AMAS */
 	return 0;
 }
 
@@ -175,7 +204,7 @@ int is_wps_stopped(void)
         return ret;
     }
 #endif    
-    int i, status;
+    int i, status = 0;
 	char tmp[128], prefix[] = "wlXXXXXXXXXX_", word[256], *next, ifnames[128];
 	int wps_band = nvram_get_int("wps_band_x"), multiband = get_wps_multiband();
 
@@ -233,6 +262,8 @@ int is_wps_stopped(void)
 		++i;
 	}
 
+	nvram_set_int("wps_proc_status", status);
+
 	return ret;
 	// TODO: handle enrollee
 }
@@ -245,5 +276,60 @@ int is_wps_success(void)
             return 1;
     }
 #endif
+	return 0;
+}
+
+void runtime_onoff_wps(int onoff)
+{
+	int unit = 0;
+	char wif[8], *next, prefix[] = "wlXXXXXXXXXX_";
+	int wps_band = nvram_get_int("wps_band_x");
+#ifdef RTCONFIG_VIF_ONBOARDING
+	char prefix_vif[] = "wlXXXXXXXXXX_";
+	if (nvram_get_int("wps_via_vif")) {
+		snprintf(prefix_vif, sizeof(prefix_vif), "wl%d.%d_ifname", wps_band,
+			(!nvram_get_int("re_mode")) ? nvram_get_int("obvif_cap_subunit"): nvram_get_int("obvif_re_subunit"));
+	}
+#endif
+
+	foreach(wif, nvram_safe_get("wl_ifnames"), next) {
+		if (wps_band == unit)
+		{
+			snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+			if (!nvram_pf_match(prefix, "auth_mode_x", "sae")
+			&& !nvram_pf_match(prefix, "auth_mode_x", "wpa3")) {
+				if (onoff)
+					doSystem("iwpriv %s set WscConfMode=%d", wif, 7);
+				else
+					doSystem("iwpriv %s set WscConfMode=%d", wif, 0);
+			}
+#ifdef RTCONFIG_VIF_ONBOARDING
+			else{
+				if (onoff)
+					doSystem("iwpriv %s set WscConfMode=%d", nvram_safe_get(prefix_vif), 7);
+				else
+					doSystem("iwpriv %s set WscConfMode=%d", nvram_safe_get(prefix_vif), 0);
+			}
+#endif
+		}
+		unit++;
+	}
+}
+
+int
+start_wps_method_ob(void)
+{
+	if (nvram_get_int("wps_enable") == 0)
+		runtime_onoff_wps(1);
+	start_wps_method();
+	return 0;
+}
+
+int
+stop_wps_method_ob(void)
+{
+	stop_wps_method();
+	if (nvram_get_int("wps_enable") == 0)
+		runtime_onoff_wps(0);
 	return 0;
 }

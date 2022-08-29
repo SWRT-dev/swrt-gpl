@@ -2390,10 +2390,10 @@
 		getSegmentsAtEvent : function(e){
 			var segmentsArray = [];
 
-			var location = helpers.getRelativePosition(e);
+			var helpers_location = helpers.getRelativePosition(e);
 
 			helpers.each(this.segments,function(segment){
-				if (segment.inRange(location.x,location.y)) segmentsArray.push(segment);
+				if (segment.inRange(helpers_location.x,helpers_location.y)) segmentsArray.push(segment);
 			},this);
 			return segmentsArray;
 		},
@@ -2986,10 +2986,10 @@
 		getSegmentsAtEvent : function(e){
 			var segmentsArray = [];
 
-			var location = helpers.getRelativePosition(e);
+			var helpers_location = helpers.getRelativePosition(e);
 
 			helpers.each(this.segments,function(segment){
-				if (segment.inRange(location.x,location.y)) segmentsArray.push(segment);
+				if (segment.inRange(helpers_location.x,helpers_location.y)) segmentsArray.push(segment);
 			},this);
 			return segmentsArray;
 		},

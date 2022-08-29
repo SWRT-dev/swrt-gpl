@@ -19,19 +19,6 @@
 #define usb_dbg _dprintf
 #endif
 
-#define foreach_58(word, wordlist, next) \
-	for (next = &wordlist[strspn(wordlist, ":")], \
-	     strncpy(word, next, sizeof(word)), \
-	     word[strcspn(word, ":")] = '\0', \
-	     word[sizeof(word) - 1] = '\0', \
-	     next = strchr(next, ':'); \
-	     strlen(word); \
-	     next = next ? &next[strspn(next, ":")] : "", \
-	     strncpy(word, next, sizeof(word)), \
-	     word[strcspn(word, ":")] = '\0', \
-	     word[sizeof(word) - 1] = '\0', \
-	     next = strchr(next, ':'))
-
 #define MAX_WAIT_FILE 5
 
 #define SYS_MODULE "/sys/module"

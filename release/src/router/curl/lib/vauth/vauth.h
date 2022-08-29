@@ -7,7 +7,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 2014 - 2021, Steve Holme, <steve_holme@hotmail.com>.
+ * Copyright (C) 2014 - 2022, Steve Holme, <steve_holme@hotmail.com>.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -19,6 +19,8 @@
  *
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
 
@@ -194,6 +196,7 @@ CURLcode Curl_auth_create_gssapi_user_message(struct Curl_easy *data,
 /* This is used to generate a base64 encoded GSSAPI (Kerberos V5) security
    token message */
 CURLcode Curl_auth_create_gssapi_security_message(struct Curl_easy *data,
+                                                  const char *authzid,
                                                   const struct bufref *chlg,
                                                   struct kerberos5data *krb5,
                                                   struct bufref *out);
@@ -218,8 +221,7 @@ CURLcode Curl_auth_decode_spnego_message(struct Curl_easy *data,
 
 /* This is used to generate a base64 encoded SPNEGO (Negotiate) response
    message */
-CURLcode Curl_auth_create_spnego_message(struct Curl_easy *data,
-                                         struct negotiatedata *nego,
+CURLcode Curl_auth_create_spnego_message(struct negotiatedata *nego,
                                          char **outptr, size_t *outlen);
 
 /* This is used to clean up the SPNEGO specifiec data */

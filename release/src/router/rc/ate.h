@@ -50,6 +50,11 @@ static inline int setAllLedOn2(void)
 extern int setgobi_imei(const char *imei);
 #endif
 
+/* ate-ralink.c */
+#if defined(RTCONFIG_RALINK)
+extern int _dump_txbftable(void);
+#endif
+
 #if defined(RTCONFIG_TCODE)
 extern int getTerritoryCode(void);
 extern int setTerritoryCode(const char *tcode);

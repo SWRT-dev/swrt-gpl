@@ -146,6 +146,10 @@ define platformRouterOptions
 		if [ "$(MT7621)" = "y" ]; then \
 			sed -i "/RTCONFIG_RALINK_MT7621/d" $(1); \
 			echo "RTCONFIG_RALINK_MT7621=y" >>$(1); \
+			if [ "$(BUILD_NAME)" = "XD4S" ]; then \
+				sed -i "/RTCONFIG_FIXED_BRIGHTNESS_RGBLED\>/d" $(1); \
+                		echo "RTCONFIG_FIXED_BRIGHTNESS_RGBLED=y" >>$(1); \
+			fi; \
 		else \
 			sed -i "/RTCONFIG_RALINK_MT7621/d" $(1); \
 			echo "# RTCONFIG_RALINK_MT7621 is not set" >>$(1); \
@@ -1070,6 +1074,10 @@ define platformKernelConfig
 		sed -i "/CONFIG_RAETH_HW_VLAN_TX/d" $(1); \
 		echo "# CONFIG_RAETH_HW_VLAN_TX is not set" >>$(1); \
 		echo "# CONFIG_RA_HW_NAT_PPTP_L2TP is not set" >>$(1); \
+	fi; \
+	if [ "$(AMAS_WDS)" = "y" ]; then \
+		sed -i "/CONFIG_ASUS_FORCE4/d" $(1); \
+		echo "CONFIG_ASUS_FORCE4=y" >>$(1); \
 	fi; \
 	)
 endef
