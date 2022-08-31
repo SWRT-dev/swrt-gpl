@@ -6243,7 +6243,7 @@ char *find_brX(const char *br)
 }
 #endif
 
-void post_wlc_connected()
+void post_wlc_connected(int band)
 {
 	;
 }

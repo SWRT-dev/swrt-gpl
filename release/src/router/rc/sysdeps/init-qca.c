@@ -2775,6 +2775,7 @@ static int adjust_ring_buffer_in_ini(int total_mem)
  */
 #if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK) \
  || defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
+#if !defined(RTCONFIG_SOC_IPQ40XX)
 static int get_nss_buf_size(int total_mem, int olcfg, const char **extra_pbuf_core0, const char **n2h_high_water_core0, const char **n2h_wifi_pool_buf)
 {
 	unsigned int hk_ol_num;
@@ -2861,6 +2862,7 @@ static int get_nss_buf_size(int total_mem, int olcfg, const char **extra_pbuf_co
 
 	return 0;
 }
+#endif
 #elif defined(RTCONFIG_SPF10_QSDK)
 static int get_nss_buf_size(int total_mem, int olcfg, const char **extra_pbuf_core0, const char **n2h_high_water_core0, const char **n2h_wifi_pool_buf)
 {

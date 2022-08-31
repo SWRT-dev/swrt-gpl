@@ -5477,8 +5477,7 @@ void lanaccess_wl(void)
 				if (!nvram_pf_get_int(prefix, "ap_isolate"))
 					continue;
 
-#if defined(RTCONFIG_BCMARM) \
- || (defined(RTCONFIG_QCA) && LINUX_KERNEL_VERSION >= KERNEL_VERSION(3,14,0))
+#if defined(RTCONFIG_BCMARM)
 				config_mssid_isolate(ifname, 0);
 #else
 				
@@ -5558,7 +5557,7 @@ void lanaccess_wl(void)
 #endif	/* PLAX56_XP4 */
 				continue;
 			}
-			config_mssid_isolate(ifname, 1);
+//			config_mssid_isolate(ifname, 1);
 #else
 			if (guest_wlif(ifname))
 				;

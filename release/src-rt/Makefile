@@ -3581,6 +3581,10 @@ define RouterOptions
 			fi; \
 		fi; \
 	fi; \
+	if [ "$(QCA)" = "y" ]; then \
+		sed -i "/RTCONFIG_PTHSAFE_POPEN/d" $(1); \
+		echo "RTCONFIG_PTHSAFE_POPEN=y" >>$(1); \
+	fi; \
 	sed -i "/RTCONFIG_BATMAN_ADV/d" $(1); \
 	if [ "$(BATMAN)" = "y" ]; then \
 		echo "RTCONFIG_BATMAN_ADV=y" >>$(1); \
