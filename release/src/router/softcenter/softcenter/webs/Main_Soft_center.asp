@@ -549,9 +549,6 @@ $(function() {
 			if(db_softcenter_["softcenter_server_tcode"] == "CN") {
 				db_softcenter_["softcenter_home_url"] = "https://sc.softcenter.site";
 			}
-			else if(db_softcenter_["softcenter_server_tcode"] == "ALI") {
-				db_softcenter_["softcenter_home_url"] = "https://wufan.softcenter.site";
-			}
 			else
 				db_softcenter_["softcenter_home_url"] = "https://sc.paldier.com";
 			if(db_softcenter_["softcenter_arch"] == "mips"){

@@ -102,8 +102,6 @@ install_module() {
 
 	if [ "$softcenter_server_tcode" == "CN" ]; then
 		HOME_URL="https://sc.softcenter.site/$ARCH_SUFFIX"
-	elif [ "$softcenter_server_tcode" == "ALI" ]; then
-		HOME_URL="https://wufan.softcenter.site/$ARCH_SUFFIX"
 	else
 		HOME_URL="https://sc.paldier.com/$ARCH_SUFFIX"
 	fi
