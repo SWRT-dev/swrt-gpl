@@ -37,6 +37,7 @@
 	`sudo ln -sf $(pwd)/openwrt-gcc520_musl.arm /opt/`
 6. 然后 `cd ../swrt-gpl/release/src-qca-ipq40xx` 进入目录
 7. 输入 `make rt-ac82u` 即可开始编译你要的固件了。
+	rt-ac95u : `make rt-ac95u`
 8. 编译完成后输出固件路径：swrt-gpl/release/src-qca-ipq40xx/image
 
 

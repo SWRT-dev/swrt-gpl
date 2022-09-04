@@ -40,6 +40,7 @@ NOTE：
 	`sudo ln -sf $(pwd)/openwrt-gcc520_musl.arm /opt/`
 6. Then enter `cd ../swrt-gpl/release/src-qca-ipq40xx` to enter folder
 7. Enter `make rt-ac82u` to start compiling the firmware
+	rt-ac95u : `make rt-ac95u`
 8. The firmware is in swrt-gpl/release/src-qca-ipq40xx/image
 
 ## Donate
