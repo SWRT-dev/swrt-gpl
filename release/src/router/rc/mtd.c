@@ -452,6 +452,9 @@ int mtd_write_main(int argc, char *argv[])
 #ifdef DEBUG_SIMULATE
 	FILE *of;
 #endif
+#if defined(RTCONFIG_RALINK) && !defined(SUPPORT_NMBM)
+	size_t badblock_size;
+#endif
 
 	while ((c = getopt(argc, argv, "i:d:s:c:")) != -1) {
 		switch (c) {
@@ -697,6 +700,9 @@ int mtd_write_main(int argc, char *argv[])
 	     ofs += n, ei.start += unit_len)
 	{
 		wlen = n = MIN(unit_len, filelen - ofs);
+#if defined(RTCONFIG_RALINK) && !defined(SUPPORT_NMBM)
+		badblock_size = 0;
+#endif
 #if !defined(RTCONFIG_MTK_NAND)
 		if (mi.type == MTD_UBIVOLUME)
 #endif
@@ -728,7 +734,14 @@ int mtd_write_main(int argc, char *argv[])
 			break;
 		}
 #else
+#if defined(RTCONFIG_RALINK) && !defined(SUPPORT_NMBM)
+		if (ei.start % ei.length == 0) {
+			loff_t offset = ei.start;
+			for(offset = ei.start; ioctl(mf, MEMGETBADBLOCK, &offset) > 0; badblock_size += ei.length, ei.start += ei.length, offset = ei.start)
+				printf("Skipping bad block at 0x%08x\n", ei.start);
+#else
 		if (ei.start == ofs) {
+#endif
 			ioctl(mf, MEMUNLOCK, &ei);
 			if (ioctl(mf, MEMERASE, &ei) != 0) {
 				snprintf(msg_buf, sizeof(msg_buf), "Error erasing MTD block. (errno %d (%s))", errno, strerror(errno));
@@ -742,6 +755,9 @@ int mtd_write_main(int argc, char *argv[])
 #endif
 			}
 		}
+#if defined(RTCONFIG_RALINK) && !defined(SUPPORT_NMBM)
+		lseek(mf, badblock_size, SEEK_CUR);
+#endif
 		if (write(mf, p, wlen) != wlen) {
 			snprintf(msg_buf, sizeof(msg_buf), "Error writing to MTD device. (errno %d (%s))", errno, strerror(errno));
 			error = msg_buf;

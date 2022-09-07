@@ -53,6 +53,9 @@ endif
 ifeq ($(RTCONFIG_RALINK_EDCCA),y)
 export CFLAGS += -DCE_ADAPTIVITY
 endif
+ifneq ($(findstring CONFIG_NMBM_MTD=, $(shell cat $(LINUXDIR)/.config)),)
+export CFLAGS += -DSUPPORT_NMBM
+endif
 endif
 
 ifeq ($(RTCONFIG_QCA),y)
