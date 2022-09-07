@@ -3656,6 +3656,10 @@ int init_nvram(void)
         nvram_unset("wgn_wloff_vifs");
 #endif  // RTCONFIG_AMAS_WGN
 
+#if defined(RTCONFIG_SWRT)
+	swrt_init_pre();
+#endif
+
 	switch (model) {
 #ifdef RTCONFIG_RALINK
 	case MODEL_EAN66:
@@ -20120,7 +20124,7 @@ _dprintf("%s %d turnning on power on ethernet here\n", __func__, __LINE__);
 			extern int start_misc_services(void);
 			start_misc_services();
 #if defined(RTCONFIG_SWRT)
-			swrt_init_done();
+			swrt_init_post();
 #endif
 #ifdef RTCONFIG_AMAS
 			nvram_set("start_service_ready", "1");

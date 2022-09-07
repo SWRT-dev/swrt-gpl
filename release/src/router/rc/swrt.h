@@ -37,9 +37,9 @@ enum {
 
 extern void softcenter_trigger(int sig);
 #endif
-extern void swrt_init(void);
+extern void swrt_init_pre(void);
 extern void swrt_init_model(void);
-extern void swrt_init_done(void);
+extern void swrt_init_post(void);
 extern void gen_swrtid(void);
 extern int swrt_toolbox(int argc, char **argv);
 enum {
@@ -81,11 +81,7 @@ extern void patch_Factory(void);
 extern void swrt_patch_nvram(void);
 #endif
 
-#if defined(RAX70)
-extern void rax70_sys_hack(void);
-#elif defined(MR60) || defined(MS60)
-extern void ntgr_sys_hack(void);
-#elif defined(TYAX5400)
+#if defined(RAX70) || defined(RGMA2820A) || defined(RGMA2820B) || defined(MR60) || defined(MS60) || defined(RAC2V1S)
 extern void swrt_sys_hack(void);
 #elif defined(TUFAX3000) || defined(RTAX58U) || defined(RTAX82U)
 extern void enable_4t4r_ax58(void);
@@ -116,6 +112,7 @@ extern void swrt_ledon(void);
 extern void start_entware(void);
 extern void stop_entware(void);
 extern void init_entware(void);
+extern void gen_arch_conf(void);
 #endif
 #if defined(R6800)
 extern void show_boraddata(void);
