@@ -995,7 +995,7 @@ void gen_arch_conf(void)
 	struct utsname uts;
 	if(nvram_match("entware_arch", "") && uname(&uts) == 0){
 		if(!strcmp(uts.machine, "armv7l")){
-			if(!strcmp(uts.release, "2.6.36.4brcmarm")
+			if(!strcmp(uts.release, "2.6.36.4brcmarm"))
 				nvram_set("entware_arch", "armv7sf-k2.6");
 			else
 				nvram_set("entware_arch", "armv7sf-k3.2");
