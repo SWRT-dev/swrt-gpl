@@ -1,14 +1,14 @@
 # OpenWRT SDK_4210
 ifeq ($(NEWKERNEL),y)
 export LINUXDIR := $(SRCBASE)/linux/linux-4.14
-else ifeq ($(MT7986),y)
-export LINUXDIR := $(SRCBASE)/linux/linux-5.4
+else ifeq ($(MT798X),y)
+export LINUXDIR := $(SRCBASE)/linux/linux-5.4.x
 else
 export LINUXDIR := $(SRCBASE)/linux/linux-4.4.198
 endif
 
 ifeq ($(EXTRACFLAGS),)
-ifeq ($(MT7986),y)
+ifeq ($(MT798X),y)
 export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -marm -march=armv8 -mfpu=vfpv3-d16 -mfloat-abi=softfp -mcpu=cortex-a53
 else
 export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -mips32 -mtune=mips32
@@ -55,7 +55,7 @@ export ARCH := arm64
 export HOST := arm-linux
 export CONFIGURE := ./configure --host=arm-linux --build=$(BUILD)
 export HOSTCONFIG := linux-aarch64
-else ifeq ($(MT7986),y)
+else ifeq ($(MT798X),y)
 export MUSL64=y
 export PLATFORM := arm-musl
 export PLATFORM_ARCH := arm-musl
@@ -101,7 +101,7 @@ endif
 ifeq ($(RT4GAC86U),y)
 EXTRA_CFLAGS += -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__
 endif
-ifeq ($(MT7986),y)
+ifeq ($(MT798X),y)
 EXTRA_CFLAGS += -Os -mcpu=cortex-a53 -march=armv8 -mfpu=vfpv3-d16 -mfloat-abi=softfp -D_GNU_SOURCE -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__ -DMUSL_LIBC
 endif
 
@@ -171,12 +171,26 @@ define platformRouterOptions
 			sed -i "/RTCONFIG_RALINK_MT7622/d" $(1); \
 			echo "# RTCONFIG_RALINK_MT7622 is not set" >>$(1); \
 		fi; \
-		if [ "$(MT7986)" = "y" ]; then \
-			sed -i "/RTCONFIG_RALINK_MT7986/d" $(1); \
-			echo "RTCONFIG_RALINK_MT7986=y" >>$(1); \
+		if [ "$(MT798X)" = "y" ]; then \
+			sed -i "/RTCONFIG_RALINK_MT798X/d" $(1); \
+			echo "RTCONFIG_RALINK_MT798X=y" >>$(1); \
 		else \
-			sed -i "/RTCONFIG_RALINK_MT7986/d" $(1); \
-			echo "# RTCONFIG_RALINK_MT7986 is not set" >>$(1); \
+			sed -i "/RTCONFIG_RALINK_MT798X/d" $(1); \
+			echo "# RTCONFIG_RALINK_MT798X is not set" >>$(1); \
+		fi; \
+		if [ "$(MT7986A)" = "y" ]; then \
+			sed -i "/RTCONFIG_RALINK_MT7986A/d" $(1); \
+			echo "RTCONFIG_RALINK_MT7986A=y" >>$(1); \
+		else \
+			sed -i "/RTCONFIG_RALINK_MT7986A/d" $(1); \
+			echo "# RTCONFIG_RALINK_MT7986A is not set" >>$(1); \
+		fi; \
+		if [ "$(MT7986B)" = "y" ]; then \
+			sed -i "/RTCONFIG_RALINK_MT7986B/d" $(1); \
+			echo "RTCONFIG_RALINK_MT7986B=y" >>$(1); \
+		else \
+			sed -i "/RTCONFIG_RALINK_MT7986B/d" $(1); \
+			echo "# RTCONFIG_RALINK_MT7986B is not set" >>$(1); \
 		fi; \
 	fi; \
 	)
@@ -981,95 +995,6 @@ define platformKernelConfig
 	if [ "$(FIBOCOM_FG621)" = "y" ]; then \
 		sed -i "/CONFIG_FIBOCOM_FG621/d" $(1); \
 		echo "CONFIG_FIBOCOM_FG621=y" >>$(1); \
-	fi; \
-	if [ "$(DSL)" = "y" ]; then \
-		sed -i "/CONFIG_RTL8367M/d" $(1); \
-		echo "# CONFIG_RTL8367M is not set" >>$(1); \
-		sed -i "/CONFIG_RTL8367R/d" $(1); \
-		echo "CONFIG_RTL8367R=y" >>$(1); \
-		sed -i "/CONFIG_RAETH_GMAC2/d" $(1); \
-		echo "# CONFIG_RAETH_GMAC2 is not set" >>$(1); \
-		sed -i "/CONFIG_GE2_RGMII_FORCE_1000/d" $(1); \
-		echo "# CONFIG_GE2_RGMII_FORCE_1000 is not set" >>$(1); \
-		sed -i "/CONFIG_RAETH_DSL/d" $(1); \
-		echo "CONFIG_RAETH_DSL=y" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_AUTO_BIND/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_AUTO_BIND is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_MANUAL_BIND/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_MANUAL_BIND is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_SPEEDUP_UPSTREAM/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_SPEEDUP_UPSTREAM is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_SPEEDUP_DOWNSTREAM/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_SPEEDUP_DOWNSTREAM is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_SPEEDUP_BIDIRECTION/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_SPEEDUP_BIDIRECTION is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_LAN_VLANID/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_LAN_VLANID is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_WAN_VLANID/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_WAN_VLANID is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_BINDING_THRESHOLD/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_BINDING_THRESHOLD is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_QURT_LMT/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_QURT_LMT is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_HALF_LMT/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_HALF_LMT is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_FULL_LMT/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_FULL_LMT is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_TBL_1K/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_TBL_1K is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_TBL_2K/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_TBL_2K is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_TBL_4K/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_TBL_4K is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_TBL_8K/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_TBL_8K is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_TBL_16K/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_TBL_16K is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_HASH0/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_HASH0 is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_HASH1/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_HASH1 is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_PRE_ACL_SIZE/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_PRE_ACL_SIZE is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_PRE_MTR_SIZE/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_PRE_MTR_SIZE is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_PRE_AC_SIZE/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_PRE_AC_SIZE is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_POST_MTR_SIZE/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_POST_MTR_SIZE is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_POST_AC_SIZE/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_POST_AC_SIZE is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_TCP_KA/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_TCP_KA is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_UDP_KA/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_UDP_KA is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_ACL_DLTA/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_ACL_DLTA is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_UNB_DLTA/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_UNB_DLTA is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_UNB_MNP/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_UNB_MNP is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_UDP_DLTA/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_UDP_DLTA is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_TCP_DLTA/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_TCP_DLTA is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_FIN_DLTA/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_FIN_DLTA is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_IPV6/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_IPV6 is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_ACL2UP_HELPER/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_ACL2UP_HELPER is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_DSCP2UP_HELPER/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_DSCP2UP_HELPER is not set" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_NONE2UP/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_NONE2UP is not set" >>$(1); \
-	fi; \
-	if [ "$(RTN14U)" = "y" ] || [ "$(RTAC52U)" = "y" ] || [ "$(RTAC51U)" = "y" ] || [ "$(RTN11P)" = "y" ] || [ "$(RTAC54U)" = "y" ] || [ "$(RTN54U)" = "y" ] || [ "$(RTAC1200HP)" = "y" ]; then \
-		sed -i "/CONFIG_RAETH_HW_VLAN_TX/d" $(1); \
-		echo "# CONFIG_RAETH_HW_VLAN_TX is not set" >>$(1); \
-		echo "# CONFIG_RA_HW_NAT_PPTP_L2TP is not set" >>$(1); \
 	fi; \
 	)
 endef
