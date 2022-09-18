@@ -91,6 +91,10 @@ struct page *__dma_direct_alloc_pages(struct device *dev, size_t size,
 	struct page *page = NULL;
 	u64 phys_mask;
 
+#ifdef CONFIG_MIPS_ER35_WORKAROUNDS
+	gfp |= __GFP_DMA;
+#endif
+
 	if (attrs & DMA_ATTR_NO_WARN)
 		gfp |= __GFP_NOWARN;
 

@@ -380,6 +380,7 @@ struct phy_device {
 	unsigned suspended_by_mdio_bus:1;
 	unsigned sysfs_links:1;
 	unsigned loopback_enabled:1;
+	unsigned no_auto_carrier_off:1;
 
 	unsigned autoneg:1;
 	/* The most recently read link state */

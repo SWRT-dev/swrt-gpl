@@ -22,6 +22,7 @@
 #include <asm/irqflags.h>
 #include <asm/regdef.h>
 #include <asm/mipsregs.h>
+#include <asm/cacheops.h>
 #include <asm/stackframe.h>
 
 #include <kernel-entry-init.h>
@@ -92,6 +93,67 @@ NESTED(kernel_entry, 16, sp)			# kernel entry point
 	kernel_entry_setup			# cpu specific setup
 
 	setup_c0_status_pri
+
+#ifdef CONFIG_MIPS_ER35_WORKAROUNDS
+	/* Jump to KSEG1 so that we can perform cache related operations */
+	PTR_LA	t0, 0f
+	li	t1, 5
+	ins	t0, t1, 29, 3
+	jr	t0
+	nop
+0:
+
+	/* Calculate L2 Cache size */
+	MFC0	t0, CP0_CONFIG, 2
+	ext	t1, t0, 4, 4
+	li	t2, 2
+	sllv	t1, t2, t1		/* Cache line size */
+
+	ext	t2, t0, 8, 4
+	li	t3, 64
+	sllv	t2, t3, t2		/* Sets per way */
+
+	ext	t3, t0, 0, 4
+	addiu	t3, 1			/* Number of ways */
+
+	mul	t2, t2, t3		/* Number of sets */
+
+
+	/* Flush L2 Cache before setting CCA overrides */
+	move	t3, zero
+1:
+	cache	Index_Writeback_Inv_SD, 0(t3)
+	sub	t2, 1
+	add	t3, t3, t1
+	bne	t2, zero, 1b
+	nop
+
+	sync
+
+	/*
+	 * Override bottom CONFIG_MIPS_ER35_RESERVED_SPACE of DDR to
+	 * Uncached (which will be reserved as DMA zone)
+	 */
+	MFC0	t0, CP0_CMGCRBASE
+	PTR_SLL	t0, t0, 4
+	li	t1, 5
+	ins	t0, t1, 29, 3
+
+	/* GCR_REG2_MASK */
+	lui	t1, (~((CONFIG_MIPS_ER35_RESERVED_SPACE - 1) >> 16)) & 0xffff
+	ori	t1, t1, 0x0051
+	sw	t1, 0xb8(t0)
+
+	/* GCR_REG2_BASE */
+	sw	zero, 0xb0(t0)
+
+	/* Set default override to Write-through */
+	lw	t1, 0x08(t0)
+	li	t2, 0xffff8000
+	and	t1, t1, t2
+	ori	t1, 0x10
+	sw	t1, 0x08(t0)
+#endif
 
 	/* We might not get launched at the address the kernel is linked to,
 	   so we jump there.  */

@@ -549,7 +549,10 @@ static int phy_check_link_status(struct phy_device *phydev)
 		phy_link_up(phydev);
 	} else if (!phydev->link && phydev->state != PHY_NOLINK) {
 		phydev->state = PHY_NOLINK;
-		phy_link_down(phydev, true);
+		if (!phydev->no_auto_carrier_off)
+			phy_link_down(phydev, true);
+		else
+			phy_link_down(phydev, false);
 	}
 
 	return 0;
@@ -947,7 +950,10 @@ void phy_state_machine(struct work_struct *work)
 	case PHY_HALTED:
 		if (phydev->link) {
 			phydev->link = 0;
-			phy_link_down(phydev, true);
+			if (!phydev->no_auto_carrier_off)
+				phy_link_down(phydev, true);
+			else
+				phy_link_down(phydev, false);
 		}
 		do_suspend = true;
 		break;

@@ -629,6 +629,7 @@ config RALINK
 	select SYS_SUPPORTS_32BIT_KERNEL
 	select SYS_SUPPORTS_LITTLE_ENDIAN
 	select SYS_SUPPORTS_MIPS16
+	select SYS_SUPPORTS_ZBOOT
 	select SYS_HAS_EARLY_PRINTK
 	select CLKDEV_LOOKUP
 	select ARCH_HAS_RESET_CONTROLLER
@@ -2471,6 +2472,17 @@ config SB1_PASS_2_1_WORKAROUNDS
 	bool
 	depends on CPU_SB1 && CPU_SB1_PASS_2
 	default y
+
+config MIPS_ER35_WORKAROUNDS
+	bool
+	depends on SYS_SUPPORTS_MIPS_CPS
+	select ZONE_DMA
+	default y
+
+config MIPS_ER35_RESERVED_SPACE
+	hex
+	default 0x1000000
+	depends on MIPS_ER35_WORKAROUNDS
 
 choice
 	prompt "SmartMIPS or microMIPS ASE support"

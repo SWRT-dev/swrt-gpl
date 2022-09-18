@@ -208,6 +208,8 @@ void swrt_init_pre()
 		nvram_set("modelname", "RTAX82U");
 #elif defined(RTAX86U)
 		nvram_set("modelname", "RTAX86U");
+#elif defined(RTAX86U_PRO)
+		nvram_set("modelname", "RTAX86UPRO");
 #elif defined(RTAX88U)
 		nvram_set("modelname", "RTAX88U");
 #elif defined(GTAX6000)
@@ -264,6 +266,8 @@ void swrt_init_pre()
 		nvram_set("modelname", "ZENWIFIXP4");
 #elif defined(ETJ)
 		nvram_set("modelname", "ZENWIFIETJ");
+#elif defined(XT12)
+		nvram_set("modelname", "XT12");
 #endif
 	if(!nvram_get("swrt_beta"))
 		nvram_set("swrt_beta", "0");
@@ -1815,3 +1819,64 @@ void fix_jffs_size(void)
 }
 #endif
 
+#if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTAX86U)
+char __attribute__((weak)) *hnd_check_macaddr(const char *mac)
+{
+	unsigned char mac_binary[6];
+	unsigned char mac_binary2[6];
+	char buf[32];
+	char path[] = "/proc/nvram/BaseMacAddr";
+
+	if(f_read_string(path, buf, sizeof(buf)) <= 0)
+		return "ATE_ERROR";
+	memset(mac_binary, 0, sizeof(mac_binary));
+	memset(mac_binary2, 0, sizeof(mac_binary2));
+	if(sscanf(buf, "%02X:%02X:%02X:%02X:%02X:%02X", &mac_binary[0], &mac_binary[1], &mac_binary[2], &mac_binary[3], &mac_binary[4], &mac_binary[5]) != 6 || 
+		sscanf(mac, "%02X:%02X:%02X:%02X:%02X:%02X", &mac_binary2[0], &mac_binary2[1], &mac_binary2[2], &mac_binary2[3], &mac_binary2[4], &mac_binary2[5]) != 6)
+		return "ATE_ERROR";
+	if(mac_binary[0] != mac_binary2[0] || mac_binary[1] != mac_binary2[1] || mac_binary[2] != mac_binary2[2] ||
+		mac_binary[3] != mac_binary2[3] || mac_binary[4] != mac_binary2[4] || mac_binary[5] != mac_binary2[5])
+		return "ATE_ERROR";
+	return mac;
+}
+
+void __attribute__((weak)) hnd_set_macaddr(const char *mac)
+{
+	char path[] = "/tmp/BaseMacAddr_tmp";
+	char cmd[64];
+
+	sprintf(cmd, "echo \"%s\" > %s", mac, path);
+	system(cmd);
+}
+
+void __attribute__((weak)) hnd_commit_macaddr()
+{
+	struct stat stat_mac;
+	char path[] = "/proc/nvram/BaseMacAddr";
+	char path2[] = "/tmp/BaseMacAddr_tmp";
+	char cmd[64];
+
+	if(!stat(path2, &stat_mac)){
+		snprintf(cmd, sizeof(cmd), "cat %s > %s", path2, path);
+		system(cmd);
+		unlink(path2);
+	}
+}
+
+void __attribute__((weak)) sync_cfe_mac()
+{
+	unsigned char mac_binary[6];
+	char mac[18];
+
+	snprintf(mac, sizeof(mac), "%s", cfe_nvram_safe_get_raw("et0macaddr"));
+	if(!ether_atoe(mac,mac_binary)){
+		strcpy(mac, "20:CF:30:00:00:00");
+		ATE_BRCM_SET("et0macaddr", "20:CF:30:00:00:00");
+		ATE_BRCM_COMMIT();
+	}
+	if(strlen(hnd_check_macaddr(mac)) != 17){
+		hnd_set_macaddr(mac);
+		hnd_commit_macaddr();
+	}
+}
+#endif
