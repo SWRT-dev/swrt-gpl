@@ -983,7 +983,7 @@ INT wifi_sys_disconn_act(struct wifi_dev *wdev, struct _MAC_TABLE_ENTRY *entry)
 #endif /* CONFIG_AP_SUPPORT */
 	}	else if (ad->wf_lock_op & WDEV_LOCK_OP_CONN_DISCONN) {
 		/* add to handle wifi_sys operation race condition */
-		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s: Not enqueue!! entry->EntryState=%d\n", 
+		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s: Not enqueue!! entry->EntryState=%d\n", 
 		__func__, entry->EntryState));
 		if (ad->wf_link_lock_flag) {
 			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s(%d): release wf_link_lock.\n", __func__, wdev->wdev_idx));

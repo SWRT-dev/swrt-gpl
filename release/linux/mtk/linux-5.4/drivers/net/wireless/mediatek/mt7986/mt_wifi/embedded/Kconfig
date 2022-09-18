@@ -295,11 +295,11 @@ config WIFI_DBG_TXCMD
 	depends on MT_MAC
 	default y
 
-#config LLTD_SUPPORT
-#	bool "LLTD (Link Layer Topology Discovery Protocol)"
-#	depends on WIFI_DRIVER
-#	depends on MT_AP_SUPPORT
-#	default n
+config LLTD_SUPPORT
+	bool "LLTD (Link Layer Topology Discovery Protocol)"
+	depends on WIFI_DRIVER
+	depends on MT_AP_SUPPORT
+	default n
 
 #config QOS_DLS_SUPPORT
 #	bool "802.11e DLS ((Direct-Link Setup) Support"

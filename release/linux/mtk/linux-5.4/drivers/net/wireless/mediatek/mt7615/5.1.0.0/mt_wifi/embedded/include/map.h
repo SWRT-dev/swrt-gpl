@@ -4,7 +4,7 @@
 
 #include "rtmp_type.h"
 #include "rtmp.h"
-#define ASSOC_REQ_LEN       154
+#define ASSOC_REQ_LEN       512 //154
 #define ASSOC_REQ_LEN_MAX	512
 #define BLOCK_LIST_NUM      128
 #define VENDOR_SPECIFIC_LEN 128

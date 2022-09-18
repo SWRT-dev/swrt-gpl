@@ -12,7 +12,7 @@ config WLAN_VENDOR_MEDIATEK
 
 if WLAN_VENDOR_MEDIATEK
 source "drivers/net/wireless/mediatek/mt7601u/Kconfig"
-source "drivers/net/wireless/mediatek/mt76/Kconfig"
+#source "drivers/net/wireless/mediatek/mt76/Kconfig"
 
 menuconfig WIFI_DRIVER
 	bool "WiFi Driver Support"

@@ -757,7 +757,14 @@ BOOLEAN PeerBeaconAndProbeRspSanity(
 			break;
 
 		case IE_EXT_SUPP_RATES:
-			parse_support_ext_rate_ie((struct dev_rate_info *)&ie_list->ExtRate[0], pEid);
+//			parse_support_ext_rate_ie((struct dev_rate_info *)&ie_list->ExtRate[0], pEid);
+			{
+				int i;
+				ie_list->ExtRateLen = pEid->Len;
+				for (i = 0; i < pEid->Len; i++) {
+					ie_list->ExtRate[i] = pEid->Octet[i];
+				}
+			}
 			break;
 
 		case IE_ERP:
