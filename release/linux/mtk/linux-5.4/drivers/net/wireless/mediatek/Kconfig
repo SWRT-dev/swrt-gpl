@@ -175,8 +175,8 @@ config RT_THIRD_CARD_EEPROM
 		default "flash" if THIRD_IF_EEPROM_FLASH
 
 
-if (FIRST_IF_MT7615E || SECOND_IF_MT7615E || FIRST_IF_MT7915)
-menu "MT7615/MT7915 common configs"
+if (FIRST_IF_MT7615E || SECOND_IF_MT7615E || FIRST_IF_MT7915 || FIRST_IF_MT7986)
+menu "MT7615/MT7915/MT7986 common configs"
 
 choice
 	prompt "PA LNA Type of 1st Card"

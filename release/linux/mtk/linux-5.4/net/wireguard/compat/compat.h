@@ -1040,7 +1040,7 @@ static inline void skb_reset_redirect(struct sk_buff *skb)
 #define pre_exit exit
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0) && !defined(CONFIG_ARCH_MEDIATEK) && !defined(CONFIG_RALINK)
 #include <linux/skbuff.h>
 #include <linux/ip.h>
 #include <linux/ipv6.h>

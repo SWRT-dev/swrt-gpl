@@ -19,6 +19,16 @@
 #include "rtmp_osabl.h"
 #include "rt_os_util.h"
 
+#if (KERNEL_VERSION(5, 4, 0) < LINUX_VERSION_CODE)
+static inline void *dma_zalloc_coherent(struct device *dev, size_t size,
+										dma_addr_t *dma_handle, gfp_t flag)
+{
+	void *ret = dma_alloc_coherent(dev, size, dma_handle,
+								   flag | __GFP_ZERO);
+	return ret;
+}
+#endif
+
 #ifdef RTMP_MAC_PCI
 VOID *alloc_rx_buf_1k(void *hif_resource);
 

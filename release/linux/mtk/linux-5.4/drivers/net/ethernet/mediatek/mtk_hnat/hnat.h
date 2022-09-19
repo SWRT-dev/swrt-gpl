@@ -918,6 +918,7 @@ static inline u32 hnat_dsa_fill_stag(const struct net_device *netdev,
 				     struct flow_offload_hw_path *hw_path,
 				     u16 eth_proto, int mape)
 {
+	return 0;
 }
 
 static inline bool hnat_dsa_is_enable(struct mtk_hnat *priv)

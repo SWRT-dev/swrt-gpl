@@ -962,7 +962,7 @@ define platformKernelConfig
 			echo "# CONFIG_MTD_UBI_DEBUG is not set" >>$(1); \
 		fi; \
 		if [ "$(UBIFS)" = "y" ]; then \
-			sed -i "/CONFIG_UBIFS_FS/d" $(1); \
+			sed -i "/CONFIG_UBIFS_FS\>/d" $(1); \
 			echo "CONFIG_UBIFS_FS=y" >>$(1); \
 			sed -i "/CONFIG_UBIFS_FS_XATTR/d" $(1); \
 			echo "# CONFIG_UBIFS_FS_XATTR is not set" >>$(1); \

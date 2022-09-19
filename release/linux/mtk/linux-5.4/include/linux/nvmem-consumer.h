@@ -145,7 +145,7 @@ static inline int nvmem_cell_read_variable_le_u32(struct device *dev,
 }
 
 static inline int nvmem_cell_read_variable_le_u64(struct device *dev,
-						const char *cell_id, u64 *val);
+						const char *cell_id, u64 *val)
 {
 	return -ENOSYS;
 }

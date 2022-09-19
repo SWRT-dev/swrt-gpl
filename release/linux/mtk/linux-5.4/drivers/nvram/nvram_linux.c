@@ -36,7 +36,7 @@
 #include <linux/interrupt.h>
 #include <linux/spinlock.h>
 #include <linux/slab.h>
-#include <linux/bootmem.h>
+#include <linux/memblock.h>
 #include <linux/sched.h>
 
 #ifdef ASUS_NVRAM
@@ -655,7 +655,7 @@ _nvram_read(char *buf)
 	t1 = jiffies;
 	valid_h->magic = 0;
 //#ifdef CONFIG_MTK_MTD_NAND
-#if defined(CONFIG_MTK_MTD_NAND) || defined(CONFIG_MTD_NAND_MTK)
+#if defined(CONFIG_MTD_NAND_MT7621) || defined(CONFIG_MTD_NAND_MTK) || defined(CONFIG_MTK_SPI_NAND)
 	for (valid_offset = i = rsv_blk_size; i < nvram_mtd->erasesize; i = ni)
 #else
 	for (valid_offset = i = rsv_blk_size; i < nvram_mtd->size; i = ni)
@@ -713,7 +713,7 @@ _nvram_read(char *buf)
 			g_wlnv.cur_offset = valid_offset;
 			g_wlnv.next_offset = ROUNDUP(valid_offset + rlen, step_unit);
 //#ifdef CONFIG_MTK_MTD_NAND
-#if defined(CONFIG_MTK_MTD_NAND) || defined(CONFIG_MTD_NAND_MTK)
+#if defined(CONFIG_MTD_NAND_MT7621) || defined(CONFIG_MTD_NAND_MTK) || defined(CONFIG_MTK_SPI_NAND)
 			g_wlnv.may_erase_nexttime = ((g_wlnv.next_offset + g_wlnv.avg_len) >= nvram_mtd->erasesize)?1:0;
 #else
 			g_wlnv.may_erase_nexttime = ((g_wlnv.next_offset + g_wlnv.avg_len) >= nvram_mtd->size)?1:0;
@@ -723,7 +723,7 @@ _nvram_read(char *buf)
 		/* try to read last unit (size: NVRAM_SPACE). for compatible */
 		g_wlnv.cur_offset = rsv_blk_size;
 //#ifdef CONFIG_MTK_MTD_NAND
-#if defined(CONFIG_MTK_MTD_NAND) || defined(CONFIG_MTD_NAND_MTK)
+#if defined(CONFIG_MTD_NAND_MT7621) || defined(CONFIG_MTD_NAND_MTK) || defined(CONFIG_MTK_SPI_NAND)
 		if ((ret = MTD_READ(nvram_mtd, nvram_mtd->erasesize - NVRAM_SPACE, NVRAM_SPACE, &len, buf)) ||
 		    len != NVRAM_SPACE || header->magic != NVRAM_MAGIC)
 #else
@@ -737,7 +737,7 @@ _nvram_read(char *buf)
 			g_wlnv.last_commit_times = 0;
 			g_wlnv.next_offset = ROUNDUP(rsv_blk_size + valid_h->len, step_unit);
 //#ifdef CONFIG_MTK_MTD_NAND
-#if defined(CONFIG_MTK_MTD_NAND) || defined(CONFIG_MTD_NAND_MTK)
+#if defined(CONFIG_MTD_NAND_MT7621) || defined(CONFIG_MTD_NAND_MTK) || defined(CONFIG_MTK_SPI_NAND)
 			g_wlnv.may_erase_nexttime = ((g_wlnv.next_offset + valid_h->len) >= nvram_mtd->erasesize)?1:0;
 #else
 			g_wlnv.may_erase_nexttime = ((g_wlnv.next_offset + valid_h->len) >= nvram_mtd->size)?1:0;
@@ -883,13 +883,6 @@ nvram_unset(const char *name)
 	return ret;
 }
 
-static void
-erase_callback(struct erase_info *done)
-{
-	wait_queue_head_t *wait_q = (wait_queue_head_t *) done->priv;
-	wake_up(wait_q);
-}
-
 int
 nvram_commit(void)
 {
@@ -899,7 +892,6 @@ nvram_commit(void)
 	unsigned long flags;
 	u_int32_t offset;
 	DECLARE_WAITQUEUE(wait, current);
-	wait_queue_head_t wait_q;
 	struct erase_info erase;
 #ifdef WL_NVRAM
 	int need_erase = 0, restore_reserved_block = 0;
@@ -936,7 +928,7 @@ nvram_commit(void)
 	spin_unlock_irqrestore(&nvram_lock, flags);
 
 //#ifdef CONFIG_MTK_MTD_NAND
-#if defined(CONFIG_MTK_MTD_NAND) || defined(CONFIG_MTD_NAND_MTK)
+#if defined(CONFIG_MTD_NAND_MT7621) || defined(CONFIG_MTD_NAND_MTK) || defined(CONFIG_MTK_SPI_NAND)
 	if ((g_wlnv.next_offset + header->len) > (nvram_mtd->erasesize))
 #else
 	if ((g_wlnv.next_offset + header->len) > nvram_mtd->size)
@@ -950,7 +942,7 @@ nvram_commit(void)
 	erase_offset = ROUNDDOWN(unit_offset, erasesize);	/* align to lower erasesize boundary */
 	hdr_shift = unit_offset - erase_offset;
 
-#if !defined(CONFIG_MTD_NAND_MTK) && !defined(CONFIG_MTK_MTD_NAND)
+#if !defined(CONFIG_MTD_NAND_MTK) && !defined(CONFIG_MTD_NAND_MT7621) && !defined(CONFIG_MTK_SPI_NAND)
 	/* check ECC bytes page by page if MTD device is NAND Flash. */
 	if (nvram_mtd->type == MTD_NANDFLASH) {
 		int i;
@@ -1022,9 +1014,8 @@ nvram_commit(void)
 			}
 		}
 
-		init_waitqueue_head(&wait_q);
 //#ifdef CONFIG_MTK_MTD_NAND
-#if defined(CONFIG_MTK_MTD_NAND) || defined(CONFIG_MTD_NAND_MTK)
+#if defined(CONFIG_MTD_NAND_MT7621) || defined(CONFIG_MTD_NAND_MTK) || defined(CONFIG_MTK_SPI_NAND)
         for (offset = 0; offset < nvram_mtd->size; offset += nvram_mtd->erasesize)
 #else
 		for (offset = erase_offset;
@@ -1032,34 +1023,22 @@ nvram_commit(void)
 		     offset += nvram_mtd->erasesize)
 #endif
 		{
-			erase.mtd = nvram_mtd;
 			erase.addr = offset;
 			erase.len = nvram_mtd->erasesize;
-			erase.callback = erase_callback;
-			erase.priv = (u_long) &wait_q;
-
-			set_current_state(TASK_INTERRUPTIBLE);
-			add_wait_queue(&wait_q, &wait);
 
 			/* Unlock sector blocks */
 			if (nvram_mtd->_unlock)
 				nvram_mtd->_unlock(nvram_mtd, offset, nvram_mtd->erasesize);
 
 			if ((ret = MTD_ERASE(nvram_mtd, &erase))) {
-				set_current_state(TASK_RUNNING);
-				remove_wait_queue(&wait_q, &wait);
 //#ifdef CONFIG_MTK_MTD_NAND
-#if defined(CONFIG_MTK_MTD_NAND) || defined(CONFIG_MTD_NAND_MTK)
+#if defined(CONFIG_MTD_NAND_MT7621) || defined(CONFIG_MTD_NAND_MTK) || defined(CONFIG_MTK_SPI_NAND)
 				continue;
 #else
 				printk("nvram_commit: erase error\n");
 				goto done;
 #endif
 			}
-
-			/* Wait for erase to finish */
-			schedule();
-			remove_wait_queue(&wait_q, &wait);
 		}
 	}
 
@@ -1091,7 +1070,7 @@ nvram_commit(void)
 	else
 		g_wlnv.avg_len = header->len;
 //#ifdef CONFIG_MTK_MTD_NAND
-#if defined(CONFIG_MTK_MTD_NAND) || defined(CONFIG_MTD_NAND_MTK)
+#if defined(CONFIG_MTD_NAND_MT7621) || defined(CONFIG_MTD_NAND_MTK) || defined(CONFIG_MTK_SPI_NAND)
 	g_wlnv.may_erase_nexttime = ((g_wlnv.next_offset + g_wlnv.avg_len) >= nvram_mtd->erasesize)? 1:0;
 #else
 	g_wlnv.may_erase_nexttime = ((g_wlnv.next_offset + g_wlnv.avg_len) >= nvram_mtd->size)? 1:0;
@@ -1124,31 +1103,18 @@ nvram_commit(void)
 		goto done;
 
 	/* Erase sector blocks */
-	init_waitqueue_head(&wait_q);
 	for (; offset < nvram_mtd->size - NVRAM_SPACE + header->len; offset += nvram_mtd->erasesize) {
-		erase.mtd = nvram_mtd;
 		erase.addr = offset;
 		erase.len = nvram_mtd->erasesize;
-		erase.callback = erase_callback;
-		erase.priv = (u_long) &wait_q;
-
-		set_current_state(TASK_INTERRUPTIBLE);
-		add_wait_queue(&wait_q, &wait);
 
 		/* Unlock sector blocks */
 		if (nvram_mtd->unlock)
 			nvram_mtd->unlock(nvram_mtd, offset, nvram_mtd->erasesize);
 
 		if ((ret = MTD_ERASE(nvram_mtd, &erase))) {
-			set_current_state(TASK_RUNNING);
-			remove_wait_queue(&wait_q, &wait);
 			printk("nvram_commit: erase error\n");
 			goto done;
 		}
-
-		/* Wait for erase to finish */
-		schedule();
-		remove_wait_queue(&wait_q, &wait);
 	}
 
 	/* Write partition up to end of data area */
@@ -1535,7 +1501,7 @@ dev_nvram_init(void)
 		{
 			if (!strcmp(nvram_mtd->name, MTD_NVRAM_NAME) &&
 //#ifdef CONFIG_MTK_MTD_NAND
-#if defined(CONFIG_MTK_MTD_NAND) || defined(CONFIG_MTD_NAND_MTK)
+#if defined(CONFIG_MTD_NAND_MT7621) || defined(CONFIG_MTD_NAND_MTK) || defined(CONFIG_MTK_SPI_NAND)
 			    nvram_mtd->erasesize >= NVRAM_SPACE
 #else
 			    nvram_mtd->size >= NVRAM_SPACE
@@ -1779,7 +1745,6 @@ void cfe_update(char *keyword, char *value)
 int cfe_commit(void)
 {
         DECLARE_WAITQUEUE(wait, current);
-        wait_queue_head_t wait_q;
         struct erase_info erase;
         unsigned int i;
         int ret;
@@ -1799,30 +1764,18 @@ int cfe_commit(void)
         erasesize = ROUNDUP(CFE_NVRAM_SPACE, cfe_mtd->erasesize);
 
         /* Erase sector blocks */
-        init_waitqueue_head(&wait_q);
         for (offset=CFE_NVRAM_START;offset <= CFE_NVRAM_END;offset += cfe_mtd->erasesize) {
-           erase.mtd = cfe_mtd;
            erase.addr = offset;
            erase.len = cfe_mtd->erasesize;
-           erase.callback = erase_callback;
-           erase.priv = (u_long) &wait_q;
 
-           set_current_state(TASK_INTERRUPTIBLE);
-           add_wait_queue(&wait_q, &wait);
            /* Unlock sector blocks */
            if (cfe_mtd->unlock)
                    cfe_mtd->unlock(cfe_mtd, offset, cfe_mtd->erasesize);
 
            if ((ret = MTD_ERASE(cfe_mtd, &erase))) {
-                set_current_state(TASK_RUNNING);
-                remove_wait_queue(&wait_q, &wait);
                 printk("cfe_commit: erase error\n");
                 goto done;
            }
-
-           /* Wait for erase to finish */
-           schedule();
-           remove_wait_queue(&wait_q, &wait);
         }
 
         ret = MTD_WRITE(cfe_mtd, CFE_NVRAM_START, erasesize, &len, cfe_buf);
