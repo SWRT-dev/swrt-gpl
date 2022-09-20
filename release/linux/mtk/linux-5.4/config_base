@@ -1354,7 +1354,7 @@ CONFIG_MTD_SPLIT_SUPPORT=y
 #
 # Rootfs partition parsers
 #
-CONFIG_MTD_SPLIT_SQUASHFS_ROOT=y
+# CONFIG_MTD_SPLIT_SQUASHFS_ROOT is not set
 
 #
 # Firmware partition parsers
@@ -1363,7 +1363,7 @@ CONFIG_MTD_SPLIT_SQUASHFS_ROOT=y
 # CONFIG_MTD_SPLIT_SEAMA_FW is not set
 # CONFIG_MTD_SPLIT_WRGG_FW is not set
 # CONFIG_MTD_SPLIT_UIMAGE_FW is not set
-CONFIG_MTD_SPLIT_FIT_FW=y
+# CONFIG_MTD_SPLIT_FIT_FW is not set
 # CONFIG_MTD_SPLIT_LZMA_FW is not set
 # CONFIG_MTD_SPLIT_TPLINK_FW is not set
 # CONFIG_MTD_SPLIT_TRX_FW is not set
@@ -1372,6 +1372,7 @@ CONFIG_MTD_SPLIT_FIT_FW=y
 # CONFIG_MTD_SPLIT_MINOR_FW is not set
 # CONFIG_MTD_SPLIT_JIMAGE_FW is not set
 # CONFIG_MTD_SPLIT_ELF_FW is not set
+CONFIG_MTD_SPLIT_ASUS_FW=y
 # end of OpenWrt specific MTD options
 
 # CONFIG_MTD_TESTS is not set
@@ -1476,7 +1477,7 @@ CONFIG_MTD_NAND_MTK=y
 # CONFIG_MTD_NAND_NANDSIM is not set
 # CONFIG_MTD_NAND_RICOH is not set
 # CONFIG_MTD_NAND_DISKONCHIP is not set
-CONFIG_MTD_SPI_NAND=y
+# CONFIG_MTD_SPI_NAND is not set
 
 #
 # LPDDR & LPDDR2 PCM memory drivers
@@ -4737,3 +4738,32 @@ CONFIG_ARCH_HAS_DEVMEM_IS_ALLOWED=y
 # CONFIG_ARM64_RELOC_TEST is not set
 # CONFIG_CORESIGHT is not set
 # end of Kernel hacking
+
+#
+# ASUS NVRAM
+#
+CONFIG_ASUS_NVRAM_API=m
+# CONFIG_NVRAM_64K is not set
+# end of ASUS NVRAM
+
+#
+# ASUS Miscellaneous options
+#
+CONFIG_SINGLE_SKU_IN_DRIVER=y
+# CONFIG_MODEL_RTACRH18 is not set
+# CONFIG_MODEL_RT4GAX56 is not set
+# CONFIG_MODEL_RTAX53U is not set
+# CONFIG_MODEL_RTAX54 is not set
+# CONFIG_MODEL_RT4GAC86U is not set
+# CONFIG_MODEL_RTAC85U is not set
+# CONFIG_MODEL_RTAC85P is not set
+# CONFIG_MODEL_R6800 is not set
+# CONFIG_MODEL_RMAC2100 is not set
+# CONFIG_MODEL_PGBM1 is not set
+# CONFIG_MODEL_JCGQ10PRO is not set
+# CONFIG_MODEL_H3CTX1801 is not set
+# CONFIG_MODEL_RMAX6000 is not set
+CONFIG_ASUS_EXT=y
+# CONFIG_MTK_NAND_BLOCK2 is not set
+# CONFIG_FIBOCOM_FG621 is not set
+# end of ASUS Miscellaneous options

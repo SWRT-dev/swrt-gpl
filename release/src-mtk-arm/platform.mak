@@ -1,6 +1,6 @@
 # OpenWRT SDK_4210
 ifeq ($(NEWKERNEL),y)
-export LINUXDIR := $(SRCBASE)/linux/linux-4.14
+export LINUXDIR := $(SRCBASE)/linux/linux-5.4.x
 else ifeq ($(MT798X),y)
 export LINUXDIR := $(SRCBASE)/linux/linux-5.4.x
 else
@@ -25,22 +25,7 @@ export OPENSSL11=y
 
 export BUILD := $(shell (gcc -dumpmachine))
 export KERNEL_BINARY=$(LINUXDIR)/vmlinux
-ifeq ($(MT7621),y)
-export MUSL32=y
-export PLATFORM := mipsel-musl
-export PLATFORM_ARCH := mipsel-musl
-export TOOLS :=/opt/toolchain-mipsel_24kc_gcc-5.4.0_musl-1.1.24
-export CROSS_COMPILE := $(TOOLS)/bin/mipsel-openwrt-linux-musl-
-export CROSS_COMPILER := $(CROSS_COMPILE)
-export READELF := $(TOOLS)/bin/mipsel-openwrt-linux-musl-readelf
-export CONFIGURE := ./configure --host=mipsel-linux --build=$(BUILD)
-export HOSTCONFIG := linux-mipsel
-export ARCH := mips
-export HOST := mipsel-linux
-export KERNELCC := $(TOOLS)/bin/mipsel-openwrt-linux-musl-gcc
-export KERNELLD := $(TOOLS)/bin/mipsel-openwrt-linux-musl-ld
-export STAGING_DIR := $(TOOLS)
-else ifeq ($(RT4GAC86U),y)
+ifeq ($(RT4GAC86U),y)
 export EXTRACFLAGS += -DRT4GAC86U
 export PLATFORM := arm-glibc
 export PLATFORM_ARCH := arm-glibc
@@ -198,20 +183,6 @@ endef
 
 define platformBusyboxOptions
 endef
-
-BOOT_FLASH_TYPE_POOL =	\
-	"NOR"		\
-	"SPI"		\
-	"NAND"
-
-DRAM_POOL = 		\
-	"8M"		\
-	"16M"		\
-	"32M"		\
-	"64M"		\
-	"128M"		\
-	"256M"		\
-	"512M"		
 
 FIRST_IF_POOL =		\
 	"NONE"	\
@@ -506,340 +477,19 @@ define platformKernelConfig
                         echo "CONFIG_MT7622_ASIC=y" >>$(1); \
                 fi;     \
 	fi; \
-	for bftype in $(BOOT_FLASH_TYPE_POOL) ; do \
-		sed -i "/CONFIG_MTD_$${bftype}_RALINK\>/d" $(1); \
-		if [ "$(BOOT_FLASH_TYPE)" = "$${bftype}" ] ; then \
-			echo "CONFIG_MTD_$${bftype}_RALINK=y" >> $(1); \
-		else \
-			echo "# CONFIG_MTD_$${bftype}_RALINK is not set" >> $(1); \
-		fi; \
-		if [ "$${bftype}" = "NAND" ] ; then \
-			sed -i "/CONFIG_MTK_MTD_NAND\>/d" $(1); \
-			if [ "$(BOOT_FLASH_TYPE)" = "$${bftype}" ] ; then \
-				echo "CONFIG_MTK_MTD_NAND=y" >> $(1); \
-			else \
-				echo "# CONFIG_MTK_MTD_NAND is not set" >> $(1); \
-			fi; \
-		fi; \
-	done; \
-	sed -i "/CONFIG_MTD_ANY_RALINK/d" $(1); \
-	echo "# CONFIG_MTD_ANY_RALINK is not set" >>$(1); \
-	for dram in $(DRAM_POOL) ; do \
-		sed -i "/CONFIG_RT2880_DRAM_$${dram}\>/d" $(1); \
-		if [ "$(DRAM)" = "$${dram}" ] ; then \
-			echo "CONFIG_RT2880_DRAM_$${dram}=y" >> $(1); \
-		else \
-			echo "# CONFIG_RT2880_DRAM_$${dram} is not set" >> $(1); \
-		fi; \
-	done; \
 	for sec_if in $(SECOND_IF_POOL) ; do \
-		sed -i "/CONFIG_MTD_$${sec_if}_RALINK\>/d" $(1); \
+		sed -i "/CONFIG_SECOND_IF_$${sec_if}\>/d" $(1); \
 		if [ "$(SECOND_IF)" = "$${sec_if}" ] ; then \
 			echo "CONFIG_SECOND_IF_$${sec_if}=y" >> $(1); \
 		else \
 			echo "# CONFIG_SECOND_IF_$${sec_if} is not set" >> $(1); \
 		fi; \
 	done; \
-	if [ "$(SECOND_IF)" = "MT7610E" ] ; then \
-		sed -i "/CONFIG_MT7610_AP\>/d" $(1); \
-		echo "CONFIG_MT7610_AP=m" >>$(1); \
-		sed -i "/CONFIG_MT7610_AP_V24_DATA_STRUCTURE/d" $(1); \
-		echo "CONFIG_MT7610_AP_V24_DATA_STRUCTURE=y" >>$(1); \
-		sed -i "/CONFIG_MT7610_AP_LED/d" $(1); \
-		echo "CONFIG_MT7610_AP_LED=y" >>$(1); \
-		sed -i "/CONFIG_MT7610_AP_WSC/d" $(1); \
-		echo "CONFIG_MT7610_AP_WSC=y" >>$(1); \
-		sed -i "/CONFIG_MT7610_AP_WSC_V2/d" $(1); \
-		echo "CONFIG_MT7610_AP_WSC_V2=y" >>$(1); \
-		sed -i "/CONFIG_MT7610_AP_LLTD/d" $(1); \
-		echo "CONFIG_MT7610_AP_LLTD=y" >>$(1); \
-		sed -i "/CONFIG_MT7610_AP_WDS/d" $(1); \
-		echo "CONFIG_MT7610_AP_WDS=y" >>$(1); \
-		sed -i "/CONFIG_MT7610_AP_MBSS/d" $(1); \
-		echo "CONFIG_MT7610_AP_MBSS=y" >>$(1); \
-		sed -i "/CONFIG_MT7610_AP_APCLI/d" $(1); \
-		echo "# CONFIG_MT7610_AP_APCLI is not set" >>$(1); \
-		sed -i "/CONFIG_MT7610_AP_IGMP_SNOOP/d" $(1); \
-		echo "CONFIG_MT7610_AP_IGMP_SNOOP=y" >>$(1); \
-		sed -i "/CONFIG_MT7610_AP_DFS/d" $(1); \
-		echo "# CONFIG_MT7610_AP_DFS is not set" >>$(1); \
-		sed -i "/CONFIG_MT7610_AP_CARRIER/d" $(1); \
-		echo "# CONFIG_MT7610_AP_CARRIER is not set" >>$(1); \
-		sed -i "/CONFIG_MT7610_AP_80211N_DRAFT3/d" $(1); \
-		echo "CONFIG_MT7610_AP_80211N_DRAFT3=y" >>$(1); \
-		sed -i "/CONFIG_BAND_STEERING/d" $(1); \
-		echo "# CONFIG_BAND_STEERING is not set" >>$(1); \
-		sed -i "/CONFIG_MT7610_AP_ATE/d" $(1); \
-		echo "CONFIG_MT7610_AP_ATE=y" >>$(1); \
-		sed -i "/CONFIG_MT7610_AP_QA/d" $(1); \
-		echo "CONFIG_MT7610_AP_QA=y" >>$(1); \
-		sed -i "/CONFIG_MT7610_AP_FLASH/d" $(1); \
-		echo "CONFIG_MT7610_AP_FLASH=y" >>$(1); \
-		sed -i "/CONFIG_MT7610_AP_BIG_ENDIAN/d" $(1); \
-		echo "# CONFIG_MT7610_AP_BIG_ENDIAN is not set" >>$(1); \
-		sed -i "/CONFIG_MT7610_AP_TSSI_COMPENSATION/d" $(1); \
-		echo "# CONFIG_MT7610_AP_TSSI_COMPENSATION is not set" >>$(1); \
-		sed -i "/CONFIG_RTMP_TEMPERATURE_COMPENSATION/d" $(1); \
-		echo "CONFIG_RTMP_TEMPERATURE_COMPENSATION=y" >>$(1); \
-		sed -i "/CONFIG_MT7610_AP_SINGLE_SKU/d" $(1); \
-		echo "# CONFIG_MT7610_AP_SINGLE_SKU is not set" >>$(1); \
-		sed -i "/CONFIG_MT7610_AP_CFG80211/d" $(1); \
-		echo "# CONFIG_MT7610_AP_CFG80211 is not set" >>$(1); \
-		sed -i "/CONFIG_MT7610_MCAST_RATE_SPECIFIC/d" $(1); \
-		echo "CONFIG_MT7610_MCAST_RATE_SPECIFIC=y" >>$(1); \
-		sed -i "/CONFIG_MT7610_ED_MONITOR/d" $(1); \
-		echo "CONFIG_MT7610_ED_MONITOR=y" >>$(1); \
-	fi; \
-	if [ "$(FIRST_IF)" = "MT7603E" ] ; then \
-		sed -i "/CONFIG_WIFI_MT7603E/d" $(1); \
-		echo "CONFIG_WIFI_MT7603E=m" >>$(1); \
-		sed -i "/CONFIG_UAPSD/d" $(1); \
-		echo "CONFIG_UAPSD=y" >>$(1); \
-		sed -i "/CONFIG_MT_MAC/d" $(1); \
-		echo "CONFIG_MT_MAC=y" >>$(1); \
-		sed -i "/CONFIG_RLT_MAC/d" $(1); \
-		echo "#CONFIG_RLT_MAC is not set" >>$(1); \
-		sed -i "/CONFIG_RLT_AP_SUPPORT/d" $(1); \
-		echo "#CONFIG_RLT_AP_SUPPORT is not set" >>$(1); \
-		sed -i "/CONFIG_SNIFFER_SUPPORT/d" $(1); \
-		echo "CONFIG_SNIFFER_SUPPORT=y" >>$(1); \
-		sed -i "/CONFIG_ACL_V2_SUPPORT/d" $(1); \
-		echo "CONFIG_ACL_V2_SUPPORT=y" >>$(1); \
-		sed -i "/CONFIG_SNIFFER_MIB_CMD/d" $(1); \
-		echo "# CONFIG_SNIFFER_MIB_CMD is not set" >>$(1); \
-		sed -i "/CONFIG_ALL_NET_EVENT/d" $(1); \
-		echo "# CONFIG_ALL_NET_EVENT is not set" >>$(1); \
-		sed -i "/CONFIG_MCAST_RATE_SPECIFIC/d" $(1); \
-		echo "# CONFIG_MCAST_RATE_SPECIFIC is not set" >>$(1); \
-		sed -i "/CONFIG_BTCOEX_CONCURRENT/d" $(1); \
-		echo "# CONFIG_BTCOEX_CONCURRENT is not set" >>$(1); \
-		if [ "$(RTN56UB1)" = "y" ] || [ "$(RTN56UB2)" = "y" ] ; then \
-			if [ "$(MT7603_INTERNAL_PA_EXTERNAL_LNA)" = "y" ] ; then \
-				sed -i "/CONFIG_MT7603E_INTERNAL_PA_EXTERNAL_LNA/d" $(1); \
-				echo "CONFIG_MT7603E_INTERNAL_PA_EXTERNAL_LNA=y" >>$(1); \
-			else \
-				sed -i "/CONFIG_MT7603E_INTERNAL_PA_EXTERNAL_LNA/d" $(1); \
-				echo "# CONFIG_MT7603E_INTERNAL_PA_EXTERNAL_LNA is not set" >>$(1); \
-			fi; \
-			if [ "$(MT7603_EXTERNAL_PA_EXTERNAL_LNA)" = "y" ] ; then \
-				sed -i "/CONFIG_MT7603E_EXTERNAL_PA_EXTERNAL_LNA/d" $(1); \
-				echo "CONFIG_MT7603E_EXTERNAL_PA_EXTERNAL_LNA=y" >>$(1); \
-			else \
-				sed -i "/CONFIG_MT7603E_EXTERNAL_PA_EXTERNAL_LNA/d" $(1); \
-				echo "# CONFIG_MT7603E_EXTERNAL_PA_EXTERNAL_LNA is not set" >>$(1); \
-			fi; \
-		fi; \
-	fi; \
-	if [ "$(SECOND_IF)" = "MT7612E" ] ; then \
-		sed -i "/CONFIG_RLT_WIFI/d" $(1); \
-		echo "CONFIG_RLT_WIFI=m" >>$(1); \
-		sed -i "/CONFIG_WIFI_MT7612E/d" $(1); \
-		echo "CONFIG_WIFI_MT7612E=m" >>$(1); \
-		sed -i "/CONFIG_FIRST_IF_EEPROM_PROM/d" $(1); \
-		echo "# CONFIG_FIRST_IF_EEPROM_PROM is not set" >>$(1); \
-		sed -i "/CONFIG_FIRST_IF_EEPROM_EFUSE/d" $(1); \
-		echo "# CONFIG_FIRST_IF_EEPROM_EFUSE is not set" >>$(1); \
-		sed -i "/CONFIG_FIRST_IF_EEPROM_FLASH/d" $(1); \
-		echo "CONFIG_FIRST_IF_EEPROM_FLASH=y" >>$(1); \
-		sed -i "/CONFIG_RT_FIRST_CARD_EEPROM/d" $(1); \
-		echo "CONFIG_RT_FIRST_CARD_EEPROM=\"flash\"" >>$(1); \
-		sed -i "/CONFIG_SECOND_IF_EEPROM_PROM/d" $(1); \
-		echo "# CONFIG_SECOND_IF_EEPROM_PROM is not set" >>$(1); \
-		sed -i "/CONFIG_SECOND_IF_EEPROM_EFUSE/d" $(1); \
-		echo "# CONFIG_SECOND_IF_EEPROM_EFUSE is not set" >>$(1); \
-		sed -i "/CONFIG_SECOND_IF_EEPROM_FLASH/d" $(1); \
-		echo "CONFIG_SECOND_IF_EEPROM_FLASH=y" >>$(1); \
-		sed -i "/CONFIG_RT_SECOND_CARD_EEPROM/d" $(1); \
-		echo "CONFIG_RT_SECOND_CARD_EEPROM=\"flash\"" >>$(1); \
-		sed -i "/CONFIG_MULTI_INF_SUPPORT/d" $(1); \
-		echo "CONFIG_MULTI_INF_SUPPORT=y" >>$(1); \
-		sed -i "/CONFIG_WIFI_BASIC_FUNC/d" $(1); \
-		echo "CONFIG_WIFI_BASIC_FUNC=y" >>$(1); \
-		sed -i "/CONFIG_WSC_INCLUDED/d" $(1); \
-		echo "CONFIG_WSC_INCLUDED=y" >>$(1); \
-		sed -i "/CONFIG_WSC_V2_SUPPORT/d" $(1); \
-		echo "CONFIG_WSC_V2_SUPPORT=y" >>$(1); \
-		sed -i "/CONFIG_WSC_NFC_SUPPORT/d" $(1); \
-		echo "# CONFIG_WSC_NFC_SUPPORT is not set" >>$(1); \
-		sed -i "/CONFIG_DOT11N_DRAFT3/d" $(1); \
-		echo "CONFIG_DOT11N_DRAFT3=y" >>$(1); \
-		sed -i "/CONFIG_DOT11_VHT_AC/d" $(1); \
-		echo "CONFIG_DOT11_VHT_AC=y" >>$(1); \
-		sed -i "/CONFIG_DOT11W_PMF_SUPPORT/d" $(1); \
-		echo "# CONFIG_DOT11W_PMF_SUPPORT is not set" >>$(1); \
-		sed -i "/CONFIG_TXBF_SUPPORT/d" $(1); \
-		echo "# CONFIG_TXBF_SUPPORT is not set" >>$(1); \
-		sed -i "/CONFIG_LLTD_SUPPORT/d" $(1); \
-		echo "CONFIG_LLTD_SUPPORT=y" >>$(1); \
-		sed -i "/CONFIG_QOS_DLS_SUPPORT/d" $(1); \
-		echo "CONFIG_QOS_DLS_SUPPORT=y" >>$(1); \
-		sed -i "/CONFIG_WAPI_SUPPORT/d" $(1); \
-		echo "# CONFIG_WAPI_SUPPORT is not set" >>$(1); \
-		if [ "$(RTAC1200HP)" = "y" ] ; then \
-			sed -i "/CONFIG_CARRIER_DETECTION_SUPPORT/d" $(1); \
-			echo "CONFIG_CARRIER_DETECTION_SUPPORT=y" >>$(1); \
-		else \
-			sed -i "/CONFIG_CARRIER_DETECTION_SUPPORT/d" $(1); \
-			echo "# CONFIG_CARRIER_DETECTION_SUPPORT is not set" >>$(1); \
-		fi; \
-		sed -i "/CONFIG_ED_MONITOR_SUPPORT/d" $(1); \
-		echo "# CONFIG_ED_MONITOR_SUPPORT is not set" >>$(1); \
-		sed -i "/CONFIG_IGMP_SNOOP_SUPPORT/d" $(1); \
-		echo "CONFIG_IGMP_SNOOP_SUPPORT=y" >>$(1); \
-		sed -i "/CONFIG_BLOCK_NET_IF/d" $(1); \
-		echo "CONFIG_BLOCK_NET_IF=y" >>$(1); \
-		sed -i "/CONFIG_RATE_ADAPTION/d" $(1); \
-		echo "CONFIG_RATE_ADAPTION=y" >>$(1); \
-		sed -i "/CONFIG_NEW_RATE_ADAPT_SUPPORT/d" $(1); \
-		echo "CONFIG_NEW_RATE_ADAPT_SUPPORT=y" >>$(1); \
-		sed -i "/CONFIG_AGS_SUPPORT/d" $(1); \
-		echo "# CONFIG_AGS_SUPPORT is not set" >>$(1); \
-		sed -i "/CONFIG_IDS_SUPPORT/d" $(1); \
-		echo "# CONFIG_IDS_SUPPORT is not set" >>$(1); \
-		sed -i "/CONFIG_WIFI_WORK_QUEUE/d" $(1); \
-		echo "# CONFIG_WIFI_WORK_QUEUE is not set" >>$(1); \
-		sed -i "/CONFIG_WIFI_SKB_RECYCLE/d" $(1); \
-		echo "# CONFIG_WIFI_SKB_RECYCLE is not set " >>$(1); \
-		sed -i "/CONFIG_RTMP_FLASH_SUPPORT/d" $(1); \
-		echo "CONFIG_RTMP_FLASH_SUPPORT=y" >>$(1); \
-		sed -i "/CONFIG_LED_CONTROL_SUPPORT/d" $(1); \
-		echo "CONFIG_LED_CONTROL_SUPPORT=y" >>$(1); \
-		sed -i "/CONFIG_SINGLE_SKU_V2/d" $(1); \
-		echo "CONFIG_SINGLE_SKU_V2=y" >>$(1); \
-		sed -i "/CONFIG_ATE_SUPPORT/d" $(1); \
-		echo "CONFIG_ATE_SUPPORT=y" >>$(1); \
-		sed -i "/CONFIG_RT2860V2_AP_32B_DESC/d" $(1); \
-		echo "# CONFIG_RT2860V2_AP_32B_DESC is not set " >>$(1); \
-		sed -i "/CONFIG_HOTSPOT/d" $(1); \
-		echo "# CONFIG_HOTSPOT is not set" >>$(1); \
-		sed -i "/CONFIG_CO_CLOCK_SUPPORT/d" $(1); \
-		echo "# CONFIG_CO_CLOCK_SUPPORT is not set" >>$(1); \
-		if [ "$(RTN56UB1)" = "y" ] || [ "$(RTN56UB2)" = "y" ] ; then \
-			if [ "$(MT7603_EXTERNAL_PA_EXTERNAL_LNA)" = "y" ] ; then \
-				sed -i "/CONFIG_FIRST_CARD_EXTERNAL_PA/d" $(1); \
-				echo "CONFIG_FIRST_CARD_EXTERNAL_PA=y" >>$(1); \
-				sed -i "/CONFIG_FIRST_CARD_EXTERNAL_LNA/d" $(1); \
-				echo "CONFIG_FIRST_CARD_EXTERNAL_LNA=y" >>$(1); \
-			else \
-				sed -i "/CONFIG_FIRST_CARD_EXTERNAL_PA/d" $(1); \
-				echo "# CONFIG_FIRST_CARD_EXTERNAL_PA is not set" >>$(1); \
-				sed -i "/CONFIG_FIRST_CARD_EXTERNAL_LNA/d" $(1); \
-				echo "# CONFIG_FIRST_CARD_EXTERNAL_LNA is not set " >>$(1); \
-			fi; \
-		else \
-				sed -i "/CONFIG_FIRST_CARD_EXTERNAL_PA/d" $(1); \
-				echo "# CONFIG_FIRST_CARD_EXTERNAL_PA is not set" >>$(1); \
-				sed -i "/CONFIG_FIRST_CARD_EXTERNAL_LNA/d" $(1); \
-				echo "# CONFIG_FIRST_CARD_EXTERNAL_LNA is not set " >>$(1); \
-		fi; \
-		if [ "$(RTAC1200HP)" = "y" ] ; then \
-			sed -i "/CONFIG_SECOND_CARD_EXTERNAL_PA/d" $(1); \
-			echo "CONFIG_SECOND_CARD_EXTERNAL_PA=y" >>$(1); \
-			sed -i "/CONFIG_SECOND_CARD_EXTERNAL_LNA/d" $(1); \
-			echo "CONFIG_SECOND_CARD_EXTERNAL_LNA=y" >>$(1); \
-			sed -i "/CONFIG_RLT_MAC/d" $(1); \
-			echo "CONFIG_RLT_MAC=y" >>$(1); \
-		else \
-			sed -i "/CONFIG_SECOND_CARD_EXTERNAL_PA/d" $(1); \
-			echo "# CONFIG_SECOND_CARD_EXTERNAL_PA is not set " >>$(1); \
-			sed -i "/CONFIG_SECOND_CARD_EXTERNAL_LNA/d" $(1); \
-			echo "# CONFIG_SECOND_CARD_EXTERNAL_LNA is not set" >>$(1); \
-			sed -i "/CONFIG_RLT_MAC/d" $(1); \
-			echo "#CONFIG_RLT_MAC is not set" >>$(1); \
-		fi; \
-		if [ "$(RTN56UB1)" = "y" ] ||  [ "$(RTN56UB2)" = "y" ] ; then \
-			sed -i "/CONFIG_RA_HW_NAT_IPV6/d" $(1); \
-			echo "CONFIG_RA_HW_NAT_IPV6=y" >>$(1); \
-			sed -i "/CONFIG_RAETH_8023AZ_EEE/d" $(1); \
-			echo "CONFIG_RAETH_8023AZ_EEE=y" >>$(1); \
-			sed -i "/CONFIG_DFS_SUPPORT/d" $(1); \
-			echo "CONFIG_DFS_SUPPORT=y" >>$(1); \
-		else \
-			sed -i "/CONFIG_DFS_SUPPORT/d" $(1); \
-			echo "# CONFIG_DFS_SUPPORT is not set" >>$(1); \
-			sed -i "/CONFIG_RAETH_8023AZ_EEE/d" $(1); \
-			echo "# CONFIG_RAETH_8023AZ_EEE is not set" >>$(1); \
-		fi; \
-		sed -i "/CONFIG_MEMORY_OPTIMIZATION/d" $(1); \
-		echo "# CONFIG_MEMORY_OPTIMIZATION is not set" >>$(1); \
-		sed -i "/CONFIG_RTMP_MAC/d" $(1); \
-		echo "CONFIG_RTMP_MAC=y" >>$(1); \
-		sed -i "/CONFIG_WIFI_MODE_AP/d" $(1); \
-		echo "# CONFIG_WIFI_MODE_AP is not set" >>$(1); \
-		sed -i "/CONFIG_RTMP_PCI_SUPPORT/d" $(1); \
-		echo "CONFIG_RTMP_PCI_SUPPORT=y " >>$(1); \
-		sed -i "/CONFIG_WIFI_MODE_AP/d" $(1); \
-		echo "CONFIG_WIFI_MODE_AP=y " >>$(1); \
-		sed -i "/CONFIG_WIFI_MODE_STA/d" $(1); \
-		echo "# CONFIG_WIFI_MODE_STA is not set" >>$(1); \
-		sed -i "/CONFIG_WIFI_MODE_BOTH/d" $(1); \
-		echo "# CONFIG_WIFI_MODE_BOTH is not set" >>$(1); \
-		sed -i "/CONFIG_RLT_AP_SUPPORT/d" $(1); \
-		echo "CONFIG_RLT_AP_SUPPORT=m" >>$(1); \
-		sed -i "/CONFIG_WDS_SUPPORT/d" $(1); \
-		echo "CONFIG_WDS_SUPPORT=y" >>$(1); \
-		sed -i "/CONFIG_MBSS_SUPPORT/d" $(1); \
-		echo "CONFIG_MBSS_SUPPORT=y" >>$(1); \
-		sed -i "/CONFIG_APCLI_SUPPORT/d" $(1); \
-		echo "# CONFIG_APCLI_SUPPORT is not set" >>$(1); \
-		sed -i "/CONFIG_NINTENDO_AP/d" $(1); \
-		echo "# CONFIG_NINTENDO_AP is not set" >>$(1); \
-		sed -i "/CONFIG_COC_SUPPORT/d" $(1); \
-		echo "CONFIG_COC_SUPPORT=y " >>$(1); \
-		sed -i "/CONFIG_DELAYED_TCP_ACK_SUPPORT/d" $(1); \
-		echo "# CONFIG_DELAYED_TCP_ACK_SUPPORT is not set" >>$(1); \
-		sed -i "/CONFIG_RALINK_RT28XX/d" $(1); \
-		echo "# CONFIG_RALINK_RT28XX is not set" >>$(1); \
-		sed -i "/CONFIG_RALINK_RT3092/d" $(1); \
-		echo "# CONFIG_RALINK_RT3092 is not set" >>$(1); \
-		sed -i "/CONFIG_RALINK_RT3572/d" $(1); \
-		echo "# CONFIG_RALINK_RT3572 is not set" >>$(1); \
-		sed -i "/CONFIG_RALINK_RT5392/d" $(1); \
-		echo "# CONFIG_RALINK_RT5392 is not set " >>$(1); \
-		sed -i "/CONFIG_RALINK_RT5572/d" $(1); \
-		echo "# CONFIG_RALINK_RT5572 is not set" >>$(1); \
-		sed -i "/CONFIG_RALINK_RT5592/d" $(1); \
-		echo "# CONFIG_RALINK_RT5592 is not set" >>$(1); \
-		sed -i "/CONFIG_RALINK_RT6352/d" $(1); \
-		echo "# CONFIG_RALINK_RT6352 is not set" >>$(1); \
-		sed -i "/CONFIG_RALINK_MT7610E/d" $(1); \
-		echo "# CONFIG_RALINK_MT7610E is not set" >>$(1); \
-		sed -i "/CONFIG_RALINK_MT7610U/d" $(1); \
-		echo "# CONFIG_RALINK_MT7610U is not set" >>$(1); \
-		sed -i "/CONFIG_RALINK_RT8592/d" $(1); \
-		echo "# CONFIG_RALINK_RT8592 is not set" >>$(1); \
-		sed -i "/CONFIG_RALINK_MT7612E/d" $(1); \
-		echo "CONFIG_RALINK_MT7612E=y" >>$(1); \
-		sed -i "/CONFIG_RALINK_MT7612U/d" $(1); \
-		echo "# CONFIG_RALINK_MT7612U is not set" >>$(1); \
-		sed -i "/CONFIG_RTDEV/d" $(1); \
-		echo "CONFIG_RTDEV=y" >>$(1); \
-		sed -i "/CONFIG_RA_NAT_NONE/d" $(1); \
-		echo "# CONFIG_RA_NAT_NONE is not set" >>$(1); \
-		sed -i "/CONFIG_RA_NAT_HW/d" $(1); \
-		echo "CONFIG_RA_NAT_HW=y" >>$(1); \
-	fi; \
 	if [ "$(REPEATER)" = "y" ] ; then \
 			sed -i "/CONFIG_RT2860V2_AP_APCLI/d" $(1); \
 			echo "CONFIG_RT2860V2_AP_APCLI=y" >>$(1); \
 			sed -i "/CONFIG_RT2860V2_AP_MAC_REPEATER/d" $(1); \
 			echo "CONFIG_RT2860V2_AP_MAC_REPEATER=y" >>$(1); \
-		if [ "$(SECOND_IF)" = "MT7610E" ] ; then \
-			sed -i "/CONFIG_MT7610_AP_APCLI/d" $(1); \
-			echo "CONFIG_MT7610_AP_APCLI=y" >>$(1); \
-			sed -i "/CONFIG_MT7610_AP_MAC_REPEATER/d" $(1); \
-			echo "CONFIG_MT7610_AP_MAC_REPEATER=y" >>$(1); \
-			sed -i "/CONFIG_M7610_CON_WPS_SUPPORT/d" $(1); \
-			echo "# CONFIG_M7610_CON_WPS_SUPPORT is not set" >>$(1); \
-		fi; \
-		if [ "$(SECOND_IF)" = "MT7612E" ] ; then \
-			sed -i "/CONFIG_APCLI_SUPPORT/d" $(1); \
-			echo "CONFIG_APCLI_SUPPORT=y" >>$(1); \
-			sed -i "/CONFIG_MAC_REPEATER_SUPPORT/d" $(1); \
-			echo "# CONFIG_MAC_REPEATER_SUPPORT is not set" >>$(1); \
-			sed -i "/CONFIG_APCLI_CERT_SUPPORT/d" $(1); \
-			echo "# CONFIG_APCLI_CERT_SUPPORT is not set" >>$(1); \
-		fi; \
 		if [ "$(FIRST_IF)" = "MT7615E" ] || [ "$(SECOND_IF)" = "MT7615E" ] ; then \
 			sed -i "/CONFIG_APCLI_SUPPORT/d" $(1); \
 			echo "CONFIG_APCLI_SUPPORT=y" >>$(1); \
@@ -848,78 +498,14 @@ define platformKernelConfig
 			sed -i "/CONFIG_APCLI_CERT_SUPPORT/d" $(1); \
 			echo "CONFIG_APCLI_CERT_SUPPORT=y" >>$(1); \
 		fi; \
-		if [ "$(RPAC87)" = "y" ] ; then \
-			sed -i "/CONFIG_RA_NAT_HW/d" $(1); \
-			echo "# CONFIG_RA_NAT_HW is not set" >>$(1); \
-			sed -i "/CONFIG_RAETH_GMAC2/d" $(1); \
-			echo "# CONFIG_RAETH_GMAC2 is not set" >>$(1); \
-			sed -i "/CONFIG_SCSI_PROC_FS/d" $(1); \
-			echo "# CONFIG_SCSI_PROC_FS is not set" >>$(1); \
-			sed -i "/CONFIG_BLK_DEV_SD/d" $(1); \
-			echo "# CONFIG_BLK_DEV_SD is not set" >>$(1); \
-			sed -i "/CONFIG_BLK_DEV_SR/d" $(1); \
-			echo "# CONFIG_BLK_DEV_SR is not set" >>$(1); \
-			sed -i "/CONFIG_CHR_DEV_SG/d" $(1); \
-			echo "# CONFIG_CHR_DEV_SG is not set" >>$(1); \
-			sed -i "/CONFIG_SCSI_MULTI_LUN/d" $(1); \
-			echo "# CONFIG_SCSI_MULTI_LUN is not set" >>$(1); \
-			sed -i "/CONFIG_SCSI_CONSTANTS/d" $(1); \
-			echo "# CONFIG_SCSI_CONSTANTS is not set" >>$(1); \
-			sed -i "/CONFIG_SCSI_LOWLEVEL/d" $(1); \
-			echo "# CONFIG_SCSI_LOWLEVEL is not set" >>$(1); \
-			sed -i "/CONFIG_PPP/d" $(1); \
-			echo "# CONFIG_PPP is not set" >>$(1); \
-			sed -i "/CONFIG_USB_USBNET/d" $(1); \
-			echo "# CONFIG_USB_USBNET is not set" >>$(1); \
-			sed -i "/CONFIG_USB_HSO/d" $(1); \
-			echo "# CONFIG_USB_HSO is not set" >>$(1); \
-			sed -i "/CONFIG_RALINK_SPDIF/d" $(1); \
-			echo "# CONFIG_RALINK_SPDIF is not set" >>$(1); \
-			sed -i "/CONFIG_USB_DEVICEFS/d" $(1); \
-			echo "# CONFIG_USB_DEVICEFS is not set" >>$(1); \
-			sed -i "/CONFIG_USB_BUS_STATS/d" $(1); \
-			echo "# CONFIG_USB_BUS_STATS is not set" >>$(1); \
-			sed -i "/CONFIG_USB_XHCI_HCD_DEBUGGING/d" $(1); \
-			echo "# CONFIG_USB_XHCI_HCD_DEBUGGING is not set" >>$(1); \
-			sed -i "/CONFIG_USB_ACM/d" $(1); \
-			echo "# CONFIG_USB_ACM is not set" >>$(1); \
-			sed -i "/CONFIG_USB_PRINTER/d" $(1); \
-			echo "# CONFIG_USB_PRINTER is not set" >>$(1); \
-			sed -i "/CONFIG_USB_WDM/d" $(1); \
-			echo "# CONFIG_USB_WDM is not set" >>$(1); \
-			sed -i "/CONFIG_USB_SERIAL/d" $(1); \
-			echo "# CONFIG_USB_SERIAL is not set" >>$(1); \
-			sed -i "/CONFIG_DMADEVICES/d" $(1); \
-			echo "# CONFIG_DMADEVICES is not set" >>$(1); \
-		fi; \
 	fi; \
 	if [ "$(RA_SKU)" = "y" ] || [ "$(RA_SKU_IN_DRV)" = "y" ] ; then \
 			sed -i "/CONFIG_RT2860V2_SINGLE_SKU/d" $(1); \
 			echo "CONFIG_RT2860V2_SINGLE_SKU=y" >>$(1); \
-		if [ "$(SECOND_IF)" = "MT7610E" ] ; then \
-			sed -i "/CONFIG_MT7610_AP_SINGLE_SKU/d" $(1); \
-			echo "CONFIG_MT7610_AP_SINGLE_SKU=y" >>$(1); \
-		fi; \
-		if [ "$(MT7628)" = "y" ] ; then \
-			sed -i "/CONFIG_MT_SINGLE_SKU_V2/d" $(1); \
-			echo "CONFIG_MT_SINGLE_SKU_V2=y" >>$(1); \
-		fi; \
 		if [ "$(RA_SKU_IN_DRV)" = "y" ] ; then \
 			sed -i "/CONFIG_SINGLE_SKU_IN_DRIVER/d" $(1); \
 			echo "CONFIG_SINGLE_SKU_IN_DRIVER=y" >>$(1); \
 		fi; \
-	fi; \
-	if [ "$(RTAC1200HP)" = "y" ] ; then \
-			sed -i "/CONFIG_RT2860V2_AP_CARRIER/d" $(1); \
-			echo "CONFIG_RT2860V2_AP_CARRIER=y" >>$(1); \
-	fi; \
-	if [ "$(MT7621)" = "y" ] ; then \
-		sed -i "/CONFIG_NF_CT_NETLINK\>/d" $(1); \
-		echo "CONFIG_NF_CT_NETLINK=m" >>$(1); \
-		sed -i "/CONFIG_NF_CT_NETLINK_TIMEOUT/d" $(1); \
-		echo "CONFIG_NF_CT_NETLINK_TIMEOUT=m" >>$(1); \
-		sed -i "/CONFIG_NETFILTER_TPROXY/d" $(1); \
-		echo "CONFIG_NETFILTER_TPROXY=m" >>$(1); \
 	fi; \
 	if [ "$(UBI)" = "y" ]; then \
 		sed -i "/CONFIG_MTD_UBI\>/d" $(1); \
@@ -972,7 +558,7 @@ define platformKernelConfig
 			echo "# CONFIG_MTD_UBI_DEBUG is not set" >>$(1); \
 		fi; \
 		if [ "$(UBIFS)" = "y" ]; then \
-			sed -i "/CONFIG_UBIFS_FS/d" $(1); \
+			sed -i "/CONFIG_UBIFS_FS\>/d" $(1); \
 			echo "CONFIG_UBIFS_FS=y" >>$(1); \
 			sed -i "/CONFIG_UBIFS_FS_XATTR/d" $(1); \
 			echo "# CONFIG_UBIFS_FS_XATTR is not set" >>$(1); \

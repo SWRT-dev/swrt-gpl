@@ -56,6 +56,10 @@ config  MODEL_H3CTX1801
         bool "H3C-TX1801"
         default n
 
+config  MODEL_RMAX6000
+        bool "Redmi AX6000"
+        default n
+
 config  ASUS_EXT
         bool "ASUS_EXT"
         default n

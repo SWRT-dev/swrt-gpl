@@ -572,17 +572,10 @@ hndcrc8(
 
 #define NVRAM_DRIVER_VERSION	"0.05"
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,14)
-static int nvram_proc_version_read(struct file *file, __user char *buffer, size_t count, loff_t *data)
-#else
-static int nvram_proc_version_read(char *buf, char **start, off_t offset, int count, int *eof, void *data)
-#endif
+static int 
+nvram_proc_show(struct seq_file *m, void *v)
 {
-	int len = 0;
 	char type[32];
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,14)
-       char buf[512];
-#endif
 
 	if (nvram_mtd->type == MTD_NORFLASH)
 		strcpy(type, "NORFLASH");
@@ -595,32 +588,38 @@ static int nvram_proc_version_read(char *buf, char **start, off_t offset, int co
 	else
 		sprintf(type, "Unknown type(%d)", nvram_mtd->type);
 
-	len += snprintf (buf+len, count-len, "nvram driver : v" NVRAM_DRIVER_VERSION "\n");
-	len += snprintf (buf+len, count-len, "nvram space  : 0x%x\n", NVRAM_SPACE);
-	len += snprintf (buf+len, count-len, "major number : %d\n", nvram_major);
-	len += snprintf (buf+len, count-len, "MTD            \n");
-	len += snprintf (buf+len, count-len, "  name       : %s\n", nvram_mtd->name);
-	len += snprintf (buf+len, count-len, "  index      : %d\n", nvram_mtd->index);
-	len += snprintf (buf+len, count-len, "  type       : %s\n", type);
-	len += snprintf (buf+len, count-len, "  flags      : 0x%x\n", nvram_mtd->flags);
-	len += snprintf (buf+len, count-len, "  size       : 0x%x\n", (unsigned int)nvram_mtd->size);
-	len += snprintf (buf+len, count-len, "  erasesize  : 0x%x\n", nvram_mtd->erasesize);
-	len += snprintf (buf+len, count-len, "  writesize  : 0x%x\n", nvram_mtd->writesize);
+	seq_printf(m, "nvram driver : v" NVRAM_DRIVER_VERSION "\n");
+	seq_printf(m, "nvram space  : 0x%x\n", NVRAM_SPACE);
+	seq_printf(m, "major number : %d\n", nvram_major);
+	seq_printf(m, "MTD            \n");
+	seq_printf(m, "  name       : %s\n", nvram_mtd->name);
+	seq_printf(m, "  index      : %d\n", nvram_mtd->index);
+	seq_printf(m, "  type       : %s\n", type);
+	seq_printf(m, "  flags      : 0x%x\n", nvram_mtd->flags);
+	seq_printf(m, "  size       : 0x%x\n", (unsigned int)nvram_mtd->size);
+	seq_printf(m, "  erasesize  : 0x%x\n", nvram_mtd->erasesize);
+	seq_printf(m, "  writesize  : 0x%x\n", nvram_mtd->writesize);
 #ifdef WL_NVRAM
-	len += snprintf (buf+len, count-len, "private      : 0x%x, 0x%x -> 0x%x +0x%x, 0x%x %d\n",
+	seq_printf(m, "private      : 0x%x, 0x%x -> 0x%x +0x%zx, 0x%x %d\n",
 			g_wlnv.last_commit_times, g_wlnv.cur_offset, g_wlnv.next_offset, step_unit,
 			g_wlnv.avg_len, g_wlnv.may_erase_nexttime);
-	len += snprintf (buf+len, count-len, "rsv_blk_size : 0x%x\n", rsv_blk_size);
+	seq_printf(m, "rsv_blk_size : 0x%zx\n", rsv_blk_size);
 #endif	/* WL_NVRAM */
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,14)
-       copy_to_user(buffer, buf, len);
-#else
-	*eof = 1;
-#endif
-	return len;
+	return 0;
 }
 
+static int nvram_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, nvram_proc_show, NULL);
+}
+
+static const struct file_operations nvram_file_ops = {
+	.open		= nvram_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
 #endif	// ASUS_NVRAM
 
 
@@ -1454,13 +1453,6 @@ dev_nvram_exit(void)
 	_nvram_exit();
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,14)
-static struct file_operations nvram_version_read_proc_operations =
-{
-		.read		= nvram_proc_version_read,
-};
-#endif
-
 static int __init
 dev_nvram_init(void)
 {
@@ -1603,11 +1595,7 @@ dev_nvram_init(void)
 #endif	// ASUS_NVRAM
 
 #ifdef ASUS_NVRAM
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,14)
-	g_pdentry = proc_create(NVRAM_DRV_NAME, 0444, NULL, &nvram_version_read_proc_operations);
-#else
-	g_pdentry = create_proc_read_entry(NVRAM_DRV_NAME, 0444, NULL, nvram_proc_version_read, NULL);
-#endif
+	g_pdentry = proc_create(NVRAM_DRV_NAME, S_IRUGO, NULL, &nvram_file_ops);
 	if (g_pdentry == NULL) {
 		printk(KERN_ERR "%s(): Create /proc/nvram fail!\n", __func__);
 		ret  = -ENOMEM;

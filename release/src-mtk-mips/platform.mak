@@ -1,8 +1,8 @@
 # OpenWRT SDK_4210
 ifeq ($(NEWKERNEL),y)
-export LINUXDIR := $(SRCBASE)/linux/linux-4.14
+export LINUXDIR := $(SRCBASE)/linux/linux-5.4.x
 else ifeq ($(MT7986),y)
-export LINUXDIR := $(SRCBASE)/linux/linux-5.4
+export LINUXDIR := $(SRCBASE)/linux/linux-5.4.x
 else
 export LINUXDIR := $(SRCBASE)/linux/linux-4.4.198
 endif

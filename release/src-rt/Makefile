@@ -5536,6 +5536,8 @@ fi; \
 			echo "CONFIG_INET6_AH=y" >>$(1); \
 			sed -i "/CONFIG_INET6_ESP is not set/d" $(1); \
 			echo "CONFIG_INET6_ESP=y" >>$(1); \
+			sed -i "/CONFIG_INET6_ESP_OFFLOAD is not set/d" $(1); \
+			echo "CONFIG_INET6_ESP_OFFLOAD=y" >>$(1); \
 			sed -i "/CONFIG_INET6_IPCOMP is not set/d" $(1); \
 			echo "CONFIG_INET6_IPCOMP=y" >>$(1); \
 			sed -i "/CONFIG_INET6_XFRM_TUNNEL is not set/d" $(1); \
