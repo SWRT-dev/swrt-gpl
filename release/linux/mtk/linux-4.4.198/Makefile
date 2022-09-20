@@ -646,6 +646,17 @@ KBUILD_CFLAGS	+= $(call cc-disable-warning, int-in-bool-context)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, address-of-packed-member)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, attribute-alias)
 
+MODEL = $(subst -,,$(BUILD_NAME))
+KBUILD_CFLAGS += -D$(MODEL)
+KBUILD_CFLAGS += -D$(SWRT_NAME)
+ifneq ($(wildcard ./net/swrt_fastpath/*.c),)
+KBUILD_CFLAGS += -DPGB_QUICK_PATH
+export PGB_QUICK_PATH=y
+else ifneq ($(wildcard ./net/swrt_fastpath/*.obj),)
+KBUILD_CFLAGS += -DPGB_QUICK_PATH
+export PGB_QUICK_PATH=y
+endif
+
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= -Os $(EXTRA_OPTIMIZATION)
 else
