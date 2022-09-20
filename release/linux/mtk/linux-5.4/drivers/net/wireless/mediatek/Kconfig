@@ -66,6 +66,11 @@ choice
 	select WIFI_MT_MAC
 	select MULTI_INF_SUPPORT
 
+	config SECOND_IF_MT7986
+	bool "MT7986"
+	select WIFI_MT_MAC
+	select MULTI_INF_SUPPORT
+
 endchoice
 
 choice
@@ -93,6 +98,7 @@ config RT_SECOND_CARD
 	int
 	depends on !SECOND_IF_NONE
 	default 7615 if SECOND_IF_MT7615E
+	default 7986 if FIRST_IF_MT7986
 
 config RT_THIRD_CARD
 	int
@@ -175,7 +181,7 @@ config RT_THIRD_CARD_EEPROM
 		default "flash" if THIRD_IF_EEPROM_FLASH
 
 
-if (FIRST_IF_MT7615E || SECOND_IF_MT7615E || FIRST_IF_MT7915 || FIRST_IF_MT7986)
+if (FIRST_IF_MT7615E || SECOND_IF_MT7615E || FIRST_IF_MT7915 || FIRST_IF_MT7986 || SECOND_IF_MT7986)
 menu "MT7615/MT7915/MT7986 common configs"
 
 choice
@@ -252,7 +258,7 @@ source "drivers/net/wireless/mediatek/mt7915/7.4.0.0/mt_wifi/embedded/Kconfig"
 endmenu
 endif
 
-if (FIRST_IF_MT7986)
+if (FIRST_IF_MT7986 || SECOND_IF_MT7986)
 menu "MediaTek MT7986/MT7981 Wireless driver"
 source "drivers/net/wireless/mediatek/mt7986/mt_wifi/embedded/Kconfig"
 endmenu

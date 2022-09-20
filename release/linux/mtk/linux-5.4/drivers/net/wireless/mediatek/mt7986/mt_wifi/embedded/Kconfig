@@ -162,12 +162,12 @@ config MTK_OFFCHANNEL_SCAN_FEATURE
 
 config HDR_TRANS_TX_SUPPORT
     bool "Tx Header Translation"
-    depends on CHIP_MT7615E || CHIP_MT7622 || CHIP_MT7663E || CHIP_MT7626
+    depends on CHIP_MT7615E || CHIP_MT7622 || CHIP_MT7663E || CHIP_MT7626 || CHIP_MT7915
     default y
 
 config HDR_TRANS_RX_SUPPORT
     bool "Rx Header Translation"
-    depends on CHIP_MT7615E || CHIP_MT7622 || CHIP_MT7663E || CHIP_MT7626
+    depends on CHIP_MT7615E || CHIP_MT7622 || CHIP_MT7663E || CHIP_MT7626 || CHIP_MT7915
     default y
 
 config DBDC_MODE
