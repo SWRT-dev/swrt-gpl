@@ -833,7 +833,7 @@ static inline void tfm_info_to_alg_info(struct alg_info *dst, struct crypto_tfm 
 			"%s", crypto_tfm_alg_driver_name(tfm));
 }
 
-#if defined(QCANSS) || defined(QCA) || defined(MT7621) || defined(MT7622) || defined(LANTIQ) || defined(BCM675X) || defined(BCM49XX)
+#if defined(QCANSS) || defined(QCA) || defined(MT7621) || defined(MT7622) || defined(LANTIQ) || defined(BCM675X) || defined(BCM49XX) || defined(MT798X)
 static unsigned int is_known_accelerated(struct crypto_tfm *tfm)
 {
 	const char *name = crypto_tfm_alg_driver_name(tfm);
@@ -853,6 +853,9 @@ static unsigned int is_known_accelerated(struct crypto_tfm *tfm)
 		return 1;
 #elif defined(MT7622)
 	if (strstr(name, "mtk"))
+		return 1;
+#elif defined(MT798X)
+	if (strstr(name, "safexcel-"))
 		return 1;
 #elif defined(LANTIQ)
 	if (strstr(name, "ltq-crypto"))
@@ -885,7 +888,7 @@ static int get_session_info(struct fcrypt *fcr, struct session_info_op *siop)
 		else
 			tfm = crypto_aead_tfm(ses_ptr->cdata.async.as);
 		tfm_info_to_alg_info(&siop->cipher_info, tfm);
-#if defined(QCANSS) || defined(QCA) || defined(MT7621) || defined(MT7622) || defined(LANTIQ) || defined(BCM675X) || defined(BCM49XX)
+#if defined(QCANSS) || defined(QCA) || defined(MT7621) || defined(MT7622) || defined(LANTIQ) || defined(BCM675X) || defined(BCM49XX) || defined(MT798X)
 		if (is_known_accelerated(tfm))
 			siop->flags |= SIOP_FLAG_KERNEL_DRIVER_ONLY;
 #else
@@ -896,7 +899,7 @@ static int get_session_info(struct fcrypt *fcr, struct session_info_op *siop)
 	if (ses_ptr->hdata.init) {
 		tfm = crypto_ahash_tfm(ses_ptr->hdata.async.s);
 		tfm_info_to_alg_info(&siop->hash_info, tfm);
-#if defined(QCANSS) || defined(QCA) || defined(MT7621) || defined(MT7622) || defined(LANTIQ) || defined(BCM675X) || defined(BCM49XX)
+#if defined(QCANSS) || defined(QCA) || defined(MT7621) || defined(MT7622) || defined(LANTIQ) || defined(BCM675X) || defined(BCM49XX) || defined(MT798X)
 		if (is_known_accelerated(tfm))
 			siop->flags |= SIOP_FLAG_KERNEL_DRIVER_ONLY;
 #else

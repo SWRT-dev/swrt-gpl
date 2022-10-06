@@ -2,7 +2,7 @@ include ../common.mak
 include $(SRCBASE)/.config
 ifeq ($(RTCONFIG_RALINK_MT7621),y)
 PREBUILT_BIN=$(shell if [ ! -f "$(SRCBASE)/../sdk/mtk/mt7621/bndstrg_plus/Makefile" ]; then echo 1; else echo 0; fi)
-else ifeq ($(RTCONFIG_RALINK_MT7986),y)
+else ifeq ($(RTCONFIG_MT798X),y)
 PREBUILT_BIN=$(shell if [ ! -f "$(SRCBASE)/../sdk/mtk/mt7986/bndstrg_plus/Makefile" ]; then echo 1; else echo 0; fi)
 endif
 
@@ -10,7 +10,7 @@ all:
 ifneq ($(PREBUILT_BIN),1)
 ifeq ($(RTCONFIG_RALINK_MT7621),y)
 	ln -sf ../../../sdk/mtk/mt7621/bndstrg_plus bndstrg_plus
-else ifeq ($(RTCONFIG_RALINK_MT7986),y)
+else ifeq ($(RTCONFIG_MT798X),y)
 	ln -sf ../../../sdk/mtk/mt7986/bndstrg_plus bndstrg_plus
 endif
 	$(MAKE) -C bndstrg_plus all

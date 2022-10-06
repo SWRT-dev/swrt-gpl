@@ -318,9 +318,9 @@ typedef double		float64;
 #if defined(FLOAT32)
 typedef float32 float_t;
 #else /* default to double precision floating point */
-#if !defined(RT4GAC86U)
+#if !defined(RT4GAC86U) && !defined(MUSL_LIBC)
 typedef float64 float_t;
-#endif
+#endif // !RT4GAC86U && !MUSL_LIBC
 #endif
 
 #endif /* TYPEDEF_FLOAT_T */

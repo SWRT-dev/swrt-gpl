@@ -4,6 +4,7 @@ release/sdk
 release/src/router/httpd/pwenc.c
 release/src/router/httpd/web_hook.c
 release/src/router/httpd/sysdeps/*_private.c
+release/src/router/aaews/*.c
 release/src/router/asd/*.c
 release/src/router/asd/*.h
 release/src/router/ahs/*.c
@@ -12,6 +13,9 @@ release/src/router/eapd/*.c
 release/src/router/eapd/*.h
 release/src/router/libasc/*.c
 release/src/router/i2cled/driver/*.c
+release/src/router/networkmap/*.c
+release/src/router/nt_center/*.c
+release/src/router/nt_center/*/*.c
 release/src/router/rc/frs.c
 release/src/router/rc/private.c
 release/src/router/rc/swrtex.c
@@ -36,4 +40,6 @@ release/src/router/shared/sysdeps/*/bcmutils.c
 release/src/router/shared/sysdeps/*/private.c
 release/src/router/shared/tcode.c
 release/src/router/sw-hw-auth/*.c
+release/src/router/wb/*.c
+release/src/router/wb/ws_src/*.c
 release/linux/*/linux-*/net/swrt_fastpath/*.c

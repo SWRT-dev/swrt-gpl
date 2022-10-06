@@ -950,7 +950,7 @@ ifneq ($(RTCONFIG_BCM_OAM), y)
 	rm -rf $(INSTALLDIR)/www/Advanced_OAM_Content.asp
 endif
 
-ifeq ($(BUILD_NAME),$(filter $(BUILD_NAME), TUF-AX3000 TUF-AX3000_V2 TUF-AX5400 TUF-AX4200 TUF-AX6000))
+ifeq ($(BUILD_NAME),$(filter $(BUILD_NAME), TUF-AX3000 TUF-AX3000_V2 TUF-AX5400 TUF-AX4200 TUF-AX6000 RM-AX6000))
 	cp -rf $(INSTALLDIR)/www/css/TUF/* $(INSTALLDIR)/www/css/
 	rm -rf $(INSTALLDIR)/www/css/TUF
 endif

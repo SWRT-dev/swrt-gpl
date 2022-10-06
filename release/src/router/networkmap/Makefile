@@ -112,7 +112,7 @@ CFLAGS += -DHND_ROUTER
 endif
 
 ifneq ($(AC2900),y)
-ifeq ($(wildcard $(SRCBASE)/router/networkmap/*.c),)
+ifneq ($(wildcard prebuild/$(BUILD_NAME)/networkmap),)
 all: 
 	-cp -f prebuild/$(BUILD_NAME)/networkmap networkmap
 	-cp -f prebuild/$(BUILD_NAME)/asusdiscovery asusdiscovery

@@ -105,6 +105,9 @@
 /*
  * Structure of a 10Mb/s Ethernet header.
  */
+#if 1
+#include <netinet/ether.h>      //use the struct in tool chain
+#else
 struct	ether_header {
 	uint8	ether_dhost[ETHER_ADDR_LEN];
 	uint8	ether_shost[ETHER_ADDR_LEN];
@@ -117,6 +120,7 @@ struct	ether_header {
 struct	ether_addr {
 	uint8 octet[ETHER_ADDR_LEN];
 } PACKED;
+#endif
 #endif	/* !__INCif_etherh Quick and ugly hack for VxWorks */
 
 /*

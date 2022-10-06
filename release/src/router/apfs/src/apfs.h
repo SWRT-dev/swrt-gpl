@@ -28,8 +28,8 @@
 #define EFSBADCRC	EBADMSG		/* Bad CRC detected */
 #define EFSCORRUPTED	EUCLEAN		/* Filesystem is corrupted */
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0)
 #define vma_fault_t int
-
 static inline void noop_invalidatepage(struct page *page, unsigned int offset,
 		unsigned int length)
 {
@@ -39,7 +39,9 @@ static inline void noop_invalidatepage(struct page *page, unsigned int offset,
 	 * block_invalidatepage() in do_invalidatepage().
 	 */
 }
-
+#else
+#define vma_fault_t unsigned int
+#endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0) /* SB_RDONLY came in 4.14 */
 #define SB_RDONLY MS_RDONLY
 #define SB_ACTIVE MS_ACTIVE
@@ -812,8 +814,11 @@ extern int apfs_setattr(struct dentry *dentry, struct iattr *iattr);
 extern int apfs_setattr(struct user_namespace *mnt_userns,
 			struct dentry *dentry, struct iattr *iattr);
 #endif
-
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0)
 extern int apfs_update_time(struct inode *inode, struct timespec *time, int flags);
+#else
+extern int apfs_update_time(struct inode *inode, struct timespec64 *time, int flags);
+#endif
 long apfs_dir_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
 long apfs_file_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
 

@@ -378,6 +378,9 @@ ifeq ($(RTCONFIG_RALINK),y)
 ifneq ($(RTCONFIG_DSL_REMOTE),y)
 CFLAGS += $(if $(MT798X),,-DTRX_NEW)
 endif
+ifeq ($(RMAX6000),y)
+CFLAGS += -DTRX_NEW
+endif
 OBJS += private.o
 vpath %.c sysdeps/ralink
 else ifeq ($(RTCONFIG_QCA),y)

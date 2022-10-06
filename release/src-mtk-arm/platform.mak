@@ -9,7 +9,7 @@ endif
 
 ifeq ($(EXTRACFLAGS),)
 ifeq ($(MT798X),y)
-export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -marm -march=armv8 -mfpu=vfpv3-d16 -mfloat-abi=softfp -mcpu=cortex-a53
+export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -march=armv8-a -mfpu=vfpv3-d16 -mfloat-abi=softfp -mcpu=cortex-a53
 else
 export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -mips32 -mtune=mips32
 #export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -marm -march=armv7-a -msoft-float -mfloat-abi=soft -mtune=cortex-a7
@@ -42,6 +42,7 @@ export CONFIGURE := ./configure --host=arm-linux --build=$(BUILD)
 export HOSTCONFIG := linux-aarch64
 else ifeq ($(MT798X),y)
 export MUSL64=y
+export PLATFORM_ROUTER := mt7986
 export PLATFORM := arm-musl
 export PLATFORM_ARCH := arm-musl
 export TOOLS := /opt/toolchain-aarch64_cortex-a53_gcc-8.4.0_musl
@@ -55,6 +56,8 @@ export ARCH := arm64
 export HOST := aarch64-linux
 export CONFIGURE := ./configure --host=aarch64-linux --build=$(BUILD)
 export HOSTCONFIG := linux-aarch64
+export ENTRYADDR := 48080000
+export LOADADDR := $(ENTRYADDR)
 else
 export MUSL32=y
 export PLATFORM := arm-musl
@@ -157,25 +160,45 @@ define platformRouterOptions
 			echo "# RTCONFIG_RALINK_MT7622 is not set" >>$(1); \
 		fi; \
 		if [ "$(MT798X)" = "y" ]; then \
-			sed -i "/RTCONFIG_RALINK_MT798X/d" $(1); \
-			echo "RTCONFIG_RALINK_MT798X=y" >>$(1); \
+			sed -i "/RTCONFIG_MT798X/d" $(1); \
+			echo "RTCONFIG_MT798X=y" >>$(1); \
+			sed -i "/RTCONFIG_SWITCH_MT7986_MT7531/d" $(1); \
+			echo "RTCONFIG_SWITCH_MT7986_MT7531=y" >>$(1); \
+			sed -i "/RTCONFIG_32BYTES_ODMPID/d" $(1); \
+			echo "RTCONFIG_32BYTES_ODMPID=y" >>$(1); \
+			sed -i "/RTCONFIG_FITFDT/d" $(1); \
+			echo "RTCONFIG_FITFDT=y" >>$(1); \
 		else \
 			sed -i "/RTCONFIG_RALINK_MT798X/d" $(1); \
 			echo "# RTCONFIG_RALINK_MT798X is not set" >>$(1); \
 		fi; \
 		if [ "$(MT7986A)" = "y" ]; then \
-			sed -i "/RTCONFIG_RALINK_MT7986A/d" $(1); \
-			echo "RTCONFIG_RALINK_MT7986A=y" >>$(1); \
+			sed -i "/RTCONFIG_SOC_MT7986A/d" $(1); \
+			echo "RTCONFIG_SOC_MT7986A=y" >>$(1); \
 		else \
-			sed -i "/RTCONFIG_RALINK_MT7986A/d" $(1); \
-			echo "# RTCONFIG_RALINK_MT7986A is not set" >>$(1); \
+			sed -i "/RTCONFIG_SOC_MT7986A/d" $(1); \
+			echo "# RTCONFIG_SOC_MT7986A is not set" >>$(1); \
 		fi; \
 		if [ "$(MT7986B)" = "y" ]; then \
-			sed -i "/RTCONFIG_RALINK_MT7986B/d" $(1); \
-			echo "RTCONFIG_RALINK_MT7986B=y" >>$(1); \
+			sed -i "/RTCONFIG_SOC_MT7986B/d" $(1); \
+			echo "RTCONFIG_SOC_MT7986B=y" >>$(1); \
 		else \
-			sed -i "/RTCONFIG_RALINK_MT7986B/d" $(1); \
-			echo "# RTCONFIG_RALINK_MT7986B is not set" >>$(1); \
+			sed -i "/RTCONFIG_SOC_MT7986B/d" $(1); \
+			echo "# RTCONFIG_SOC_MT7986B is not set" >>$(1); \
+		fi; \
+		if [ "$(MT7986C)" = "y" ]; then \
+			sed -i "/RTCONFIG_SOC_MT7986C/d" $(1); \
+			echo "RTCONFIG_SOC_MT7986C=y" >>$(1); \
+		else \
+			sed -i "/RTCONFIG_SOC_MT7986C/d" $(1); \
+			echo "# RTCONFIG_SOC_MT7986C is not set" >>$(1); \
+		fi; \
+		if [ "$(MT7981)" = "y" ]; then \
+			sed -i "/RTCONFIG_SOC_MT7981/d" $(1); \
+			echo "RTCONFIG_SOC_MT7981=y" >>$(1); \
+		else \
+			sed -i "/RTCONFIG_SOC_MT7981/d" $(1); \
+			echo "# RTCONFIG_SOC_MT7981 is not set" >>$(1); \
 		fi; \
 	fi; \
 	)
@@ -581,6 +604,10 @@ define platformKernelConfig
 	if [ "$(FIBOCOM_FG621)" = "y" ]; then \
 		sed -i "/CONFIG_FIBOCOM_FG621/d" $(1); \
 		echo "CONFIG_FIBOCOM_FG621=y" >>$(1); \
+	fi; \
+	if [ "$(RMAX6000)" = "y" ]; then \
+		sed -i "/CONFIG_MODEL_RMAX6000/d" $(1); \
+		echo "CONFIG_MODEL_RMAX6000=y" >>$(1); \
 	fi; \
 	)
 endef

@@ -1163,13 +1163,13 @@ static bool ntfs_xattr_user_list(struct dentry *dentry)
 static size_t ntfs_xattr_user_list(const struct xattr_handler *handler,
 		     struct dentry *dentry, char *list, size_t list_size,
 		     const char *name, size_t name_len)
-#endif
 {
 	const size_t prefix_len = XATTR_USER_PREFIX_LEN;
 	const size_t total_len = prefix_len + name_len + 1;
 
 	return total_len;
 }
+#endif
 
 static const struct xattr_handler ntfs_xattr_handler = {
 	.prefix = "",

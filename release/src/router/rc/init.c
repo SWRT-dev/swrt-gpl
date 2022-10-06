@@ -3399,7 +3399,7 @@ int init_nvram(void)
 #if defined(RTCONFIG_SWITCH_MT7986_MT7531)
 	char *dw_lan;
 #endif
-#if defined(RTCONFIG_WANPORT2) || defined(PLAX56_XP4) || defined(TUFAX4200) || defined(TUFAX6000) || defined(RTAX59U)
+#if defined(RTCONFIG_WANPORT2) || defined(PLAX56_XP4) || defined(TUFAX4200) || defined(TUFAX6000) || defined(RTAX59U) || defined(RMAX6000)
 	char *wan0, *wan1 __attribute__((unused)), *lan_1, *lan_2, lan_ifs[IFNAMSIZ * 4];
 #endif
 #ifdef RTCONFIG_GMAC3
@@ -5428,6 +5428,178 @@ int init_nvram(void)
 #endif
 		break;
 #endif	/* RTAX59U */
+
+#if defined(RMAX6000)
+	case MODEL_RMAX6000:
+		nvram_set("boardflags", "0x100"); // although it is not used in ralink driver, set for vlan
+		nvram_set("lan_ifname", "br0");
+
+		wan0 = "swan"; // switch wan
+		lan_1 = "lan1 lan2";	/* LAN ifaces could be enslaved to LAN LACP. */
+		lan_2 = "lan3 lan4";
+#if defined(RTCONFIG_LACP)
+#if defined(RTCONFIG_BONDING_WAN)
+		if (sw_mode == SW_MODE_ROUTER && bond_wan_enabled()
+		 && find_word(nvram_safe_get("wans_dualwan"), "wan"))
+		{
+			static char lan_ifaces[IFNAMSIZ * 5];
+			int i, b, c = 0;
+			const char *p;
+			uint32_t m, wmask;
+			char wans_dualwan[7 * WAN_UNIT_MAX], new[7 * WAN_UNIT_MAX] = { 0 };
+			char word[IFNAMSIZ], *next, wan_bifaces[IFNAMSIZ * 5] = { 0 };
+
+			wmask = nums_str_to_u32_mask(nvram_safe_get("wanports_bond"));
+			/* If LAN1 or LAN2 is aggregated with WAN, disable LAN aggregation. */
+			if ((wmask & (BS_LAN1_PORT_MASK | BS_LAN2_PORT_MASK))
+			 && nvram_match("lacp_enabled", "1")) {
+				nvram_set("lacp_enabled", "0");
+			}
+
+			/* Reset wans_lanport to default if it's invalid value. */
+			if (nvram_get_int("wans_lanport") < 0
+			 || nvram_get_int("wans_lanport") >= BS_MAX_PORT_ID)
+				nvram_set("wans_lanport", "1");
+
+			/* If one of LAN1~5 is used as 2-nd port of WAN aggregation and it's LAN as WAN port, disable LAN as WAN. */
+			if ((wmask & (1U << nvram_get_int("wans_lanport")))
+			 && find_word(nvram_safe_get("wans_dualwan"), "lan"))
+			{
+				strlcpy(wans_dualwan, nvram_safe_get("wans_dualwan"), sizeof(wans_dualwan));
+				if (*wans_dualwan == '\0')
+					strlcpy(wans_dualwan, nvram_default_get("wans_dualwan"), sizeof(wans_dualwan));
+				foreach (word, wans_dualwan, next) {
+					if (!strcmp(word, "lan")) {
+						c++;
+						continue;
+					}
+					if (*new != '\0')
+						strlcat(new, " ", sizeof(new));
+					strlcat(new, word, sizeof(new));
+				}
+				for (i = 0; i < c; ++i) {
+					strlcat(new, " ", sizeof(new));
+					strlcat(new, "none", sizeof(new));
+				}
+				nvram_set("wans_dualwan", new);
+			}
+
+			/* List slave interfaces of WAN aggregation. */
+			m = wmask;
+			while ((b = ffs(m)) > 0) {
+				b--;
+				if ((p = bs_port_id_to_iface(b)) != NULL) {
+					if (*wan_bifaces != '\0')
+						strlcat(wan_bifaces, " ", sizeof(wan_bifaces));
+					strlcat(wan_bifaces, p, sizeof(wan_bifaces));
+				}
+				m &= ~(1U << b);
+			}
+
+			if (wmask & (BS_WAN_PORT_MASK | BS_LAN5_PORT_MASK))
+				nvram_set("bond1_params", "miimon=2000 use_carrier=0");
+
+			if (*wan_bifaces != '\0') {
+				nvram_set("bond1_ifnames", wan_bifaces);
+				wan0 = "bond1";
+			}
+
+			/* If LAN1 and/or LAN2 is not aggregated with WAN, added to LAN. */
+			*lan_ifaces = '\0';
+			m = (BS_LAN1_PORT_MASK | BS_LAN2_PORT_MASK) & ~wmask;
+			while ((b = ffs(m)) > 0) {
+				b--;
+				if ((p = bs_port_id_to_iface(b)) != NULL) {
+					if (*lan_ifaces != '\0')
+						strlcat(lan_ifaces, " ", sizeof(lan_ifaces));
+					strlcat(lan_ifaces, p, sizeof(lan_ifaces));
+				}
+				m &= ~(1U << b);
+			}
+			lan_1 = lan_ifaces;
+		} else {
+			nvram_unset("bond1_ifnames");
+			nvram_unset("bond1_params");
+		}
+#endif	/* RTCONFIG_BONDING_WAN */
+		if (nvram_match("lacp_enabled", "1")) {
+			nvram_set("bond0_ifnames", lan_1);
+			lan_1 = "bond0";
+		} else {
+			nvram_unset("bond0_ifnames");
+		}
+#endif	/* RTCONFIG_LACP */
+
+		wan_ifaces[WAN_IFACE_ID] = wan0;
+		wl_ifaces[WL_2G_BAND] = "ra0";
+		wl_ifaces[WL_5G_BAND] = "rax0";
+		snprintf(lan_ifs, sizeof(lan_ifs), "%s %s", lan_1, lan_2);
+
+		/* Remove iface from lan_ifs if it's WAN aggregation port. */
+		if (nvram_get("bond1_ifnames")) {
+			char word[IFNAMSIZ], *next, bond_ifaces[IFNAMSIZ * 2];
+
+			strlcpy(bond_ifaces, nvram_safe_get("bond1_ifnames"), sizeof(bond_ifaces));
+			foreach (word, bond_ifaces, next) {
+				if (!find_word(lan_ifs, word))
+					continue;
+				remove_word(lan_ifs, word);
+			}
+		}
+
+		/* Remove iface from lan_ifs if it's LANx as WAN. */
+		if (get_wans_dualwan() & WANSCAP_LAN
+		 && nvram_get_int("wans_lanport") >= 1
+		 && nvram_get_int("wans_lanport") <= 5
+		) {
+			static char dw_lan_buf[IFNAMSIZ] = "";
+
+			snprintf(dw_lan_buf, sizeof(dw_lan_buf), "lan%d", nvram_get_int("wans_lanport"));
+			dw_lan = dw_lan_buf;
+			remove_word(lan_ifs, dw_lan_buf);
+		}
+
+		set_basic_ifname_vars(wan_ifaces, lan_ifs, wl_ifaces, "usb", NULL, NULL, dw_lan, 0);
+		// button
+		nvram_set_int("btn_wps_gpio", 1|GPIO_ACTIVE_LOW);
+		nvram_set_int("btn_rst_gpio", 0|GPIO_ACTIVE_LOW);
+		// led
+		nvram_set_int("led_pwr_gpio", 69|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_wps_gpio", 86|GPIO_ACTIVE_LOW);
+
+		nvram_set("ct_max", "300000"); // force
+#ifdef RTCONFIG_XHCIMODE
+		nvram_set("xhci_ports", "2-1");
+		nvram_set("ehci_ports", "1-1 1-2");
+#else
+		if(usb_usb3 == 1){
+			nvram_set("xhci_ports", "2-1");
+			nvram_set("ehci_ports", "1-1 1-2");
+		} else{
+			nvram_set("ehci_ports", "1-1 1-2");
+		}
+#endif
+		nvram_set("ohci_ports", "");
+
+		if (nvram_get("wl_mssid") && nvram_match("wl_mssid", "1"))
+			add_rc_support("mssid");
+		add_rc_support("2.4G 5G update");
+		add_rc_support("usbX2");
+		add_rc_support("rawifi");
+		add_rc_support("switchctrl");
+		add_rc_support("manual_stb");
+		add_rc_support("11AC");
+		add_rc_support("11AX mbo ofdma");
+		add_rc_support("wpa3");
+		//either txpower or singlesku supports rc.
+		add_rc_support("pwrctrl");
+		// the following values is model dep. so move it from default.c to here
+		nvram_set("wl0_HT_TxStream", "2");
+		nvram_set("wl0_HT_RxStream", "2");
+		nvram_set("wl1_HT_TxStream", "3");
+		nvram_set("wl1_HT_RxStream", "3");
+		break;
+#endif
 
 #if defined(RT4GAX56)
 	case MODEL_RT4GAX56:

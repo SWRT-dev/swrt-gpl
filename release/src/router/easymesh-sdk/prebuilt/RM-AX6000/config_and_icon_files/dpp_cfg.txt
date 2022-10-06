@@ -1,0 +1,4 @@
+//dpp config file
+curve_name=prime256v1
+allowed_role=1
+map_support=1

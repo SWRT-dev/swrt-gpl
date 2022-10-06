@@ -1123,8 +1123,8 @@ typedef struct wl_po {
 
 /* MAC list modes */
 #define WLC_MACMODE_DISABLED	0	/* MAC list disabled */
-#define WLC_MACMODE_DENY	1	/* Deny specified (i.e. allow unspecified) */
-#define WLC_MACMODE_ALLOW	2	/* Allow specified (i.e. deny unspecified) */
+#define WLC_MACMODE_DENY	2	/* Deny specified (i.e. allow unspecified) */
+#define WLC_MACMODE_ALLOW	1	/* Allow specified (i.e. deny unspecified) */
 
 /*
  *

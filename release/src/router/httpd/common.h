@@ -65,13 +65,23 @@
 		asusdebuglog(LOG_INFO, HTTPD_DEBUG_FILE, LOG_CUSTOM, LOG_SHOWTIME, 0, "[%s(%d)]:"fmt"\n", __FUNCTION__, __LINE__ , ##arg); \
 	errno = save_errno; \
 }while(0)
-#else
+#elif defined(RTCONFIG_NOTIFICATION_CENTER)
 extern void Debug2File(const char *path, const char *fmt, ...);
 #define HTTPD_DBG(fmt, args...) ({ \
 	int save_errno = errno; \
 	if (f_exists(HTTPD_DEBUG) > 0 || nvram_get_int("HTTPD_DBG") > 0) \
 		Debug2File(HTTPD_DEBUG_FILE, "[%s:(%d)]: "fmt, __FUNCTION__, __LINE__, ##args); \
 	errno = save_errno; \
+})
+#else
+#define HTTPD_DBG(fmt, args...) ({ \
+	if (f_exists(HTTPD_DEBUG) > 0 || nvram_get_int("HTTPD_DBG") > 0){ \
+		char info[1024]; \
+        char msg[1024]; \
+		snprintf(msg, sizeof(msg), "[%s:(%d)]: "fmt, __FUNCTION__, __LINE__, ##args); \
+		snprintf(info, sizeof(info), "echo \"%s\" >> %s", msg, IFTTT_DEBUG_FILE); \
+		system(info); \
+	} \
 })
 #endif
 

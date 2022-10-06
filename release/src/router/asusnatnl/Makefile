@@ -3,7 +3,7 @@ include ../common.mak
 ifeq ($(or $(RTCONFIG_BCMARM),$(RTCONFIG_QCA_ARM),$(RTCONFIG_ALPINE)),y)
 CONFIGURE=configure-router-arm
 ARCH=ARM
-else ifeq ($(RTCONFIG_RALINK_MT7622),y)
+else ifeq ($(or $(RTCONFIG_RALINK_MT7622),$(RTCONFIG_MT798X)),y)
 CONFIGURE=configure-router-arm64
 ARCH=ARM64
 else

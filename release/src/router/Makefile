@@ -745,8 +745,8 @@ ifeq ($(RTCONFIG_RALINK),y)
 #################################################################################
 obj-y += wireless_tools$(WTOOL_SUFFIX)
 
-obj-y += $(if $(RTN65U),rt2880_app,flash)
 ifeq ($(RTCONFIG_RALINK_MT7621),y)
+obj-y += flash
 obj-y += $(if $(RTCONFIG_ATED122),ated_1.2.2,$(if $(ATEVER), ated_$(ATEVER), ated))
 endif
 obj-y += $(if $(RTCONFIG_MII_MGR),mii_mgr)
@@ -757,6 +757,14 @@ obj-y += regs
 obj-y += switch
 obj-y += mii_mgr
 obj-y += libnl-tiny-0.1
+obj-y += libubox
+obj-y += libuci
+obj-y += swconfig
+else ifeq ($(RTCONFIG_MT798X),y)
+obj-y += libnl-tiny-0.1
+obj-y += mt7986/regs
+obj-y += mt7986/switch
+obj-y += mt7986/mii_mgr
 obj-y += libubox
 obj-y += libuci
 obj-y += swconfig
@@ -917,8 +925,8 @@ obj-$(RTCONFIG_LETSENCRYPT) += acme.sh
 obj-$(RTCONFIG_LETSENCRYPT) += libletsencrypt
 obj-$(RTCONFIG_LETSENCRYPT) += socat
 
-#obj-$(RTCONFIG_SYSSTATE) += sysstate
-obj-y += sysstate
+obj-$(RTCONFIG_SYSSTATE) += sysstate
+#obj-y += sysstate
 
 obj-$(RTCONFIG_LIBASC) += libasc
 

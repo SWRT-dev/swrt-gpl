@@ -3699,7 +3699,7 @@ void btn_check(void)
 			else
 				nvram_set_int("led_val", nvram_get_int("AllLED"));
 			nvram_commit();
-
+#ifdef RTCONFIG_CFGSYNC
 			char msg[256], config[128];
 
 			if (nvram_get_int("re_mode") == 1) {
@@ -3707,6 +3707,7 @@ void btn_check(void)
 				snprintf(msg, sizeof(msg), RC_CONFIG_CHANGED_MSG, EID_RC_CONFIG_CHANGED, config);
 				(void)send_cfgmnt_event(msg);
 			}
+#endif
 #endif
 
 			return;

@@ -148,6 +148,7 @@ static const struct model_s model_list[] = {
 	{ "PGB-M1", 		MODEL_PGBM1 		},
 	{ "JCG-Q10PRO", 	MODEL_JCGQ10PRO 	},
 	{ "H3C-TX1801", 	MODEL_H3CTX1801 	},
+	{ "RM-AX6000", 		MODEL_RMAX6000 		},
 	{ NULL, 0 },
 };
 
@@ -300,6 +301,7 @@ static const struct model_s modelname_list[] = {
 	{ "PGBM1", 		SWRT_MODEL_PGBM1 },
 	{ "JCGQ10PRO", 	SWRT_MODEL_JCGQ10PRO },
 	{ "H3CTX1801", 	SWRT_MODEL_H3CTX1801 },
+	{ "RM-AX6000", 	SWRT_MODEL_RMAX6000 },
 	{ NULL, 0 },
 };
 

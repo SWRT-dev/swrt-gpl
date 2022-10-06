@@ -46,6 +46,8 @@
 #define NR_WANLAN_PORT	6
 #elif defined(RTAX59U)
 #define NR_WANLAN_PORT	4
+#elif defined(RMAX6000)
+#define NR_WANLAN_PORT	4
 #else
 #define NR_WANLAN_PORT	5
 #endif
@@ -80,6 +82,11 @@ enum {
 	LAN2_PORT,
 	LAN1_PORT,
 	WAN_PORT,
+#elif defined(RMAX6000)
+	LAN3_PORT=0,
+	LAN2_PORT,
+	LAN1_PORT,
+	WAN_PORT,
 #else /* PANTHERB */
 	LAN4_PORT=0,
 	LAN3_PORT,
@@ -91,7 +98,7 @@ enum {
 };
 
 static const char *upstream_iptv_ifaces[16] = {
-#if defined(RTAX59U)
+#if defined(RTAX59U) || defined(RMAX6000)
 	[WANS_DUALWAN_IF_WAN] = "wan",
 #else
 	[WANS_DUALWAN_IF_WAN] = "eth1",
@@ -132,6 +139,15 @@ static const int lan_wan_partition[9][NR_WANLAN_PORT] = {
 	{0,0,1,0}, // IPTV STB port = LAN1 & LAN2
 	{1,0,0,0}, // IPTV STB port = LAN2 & LAN3
 	{1,1,1,1}  // ALL
+#elif defined(RMAX6000)
+	/* L1, L2, L3, W1G */
+	{1,1,1,0}, // Normal
+	{0,1,1,0}, // IPTV STB port = LAN1
+	{1,0,1,0}, // IPTV STB port = LAN2
+	{1,1,0,0}, // IPTV STB port = LAN3
+	{0,0,1,0}, // IPTV STB port = LAN1 & LAN2
+	{1,0,0,0}, // IPTV STB port = LAN2 & LAN3
+	{1,1,1,1}  // ALL
 #else /* PANTHERB */
 	/* L1, L2, L3, L4, W1G */
 	{1,1,1,1,0}, // Normal
@@ -153,7 +169,7 @@ static const int lan_wan_partition[9][NR_WANLAN_PORT] = {
  */
 static const int bsport_to_vport[MAX_WANLAN_PORT] = {
 	WAN_PORT, LAN1_PORT, LAN2_PORT, LAN3_PORT
-#if !defined(RTAX59U)
+#if !defined(RTAX59U) && !defined(RMAX6000)
 	, LAN4_PORT
 #endif
 #if defined(PANTHERA)
@@ -180,6 +196,8 @@ static const int vport_to_phy_addr[MAX_WANLAN_PORT] = {
 	5, 1, 2, 3, 4, 6				/* LAN5~1, WAN */
 #elif defined(RTAX59U)
 	4, 3, 2, 1					/* LAN3~1, WAN */
+#elif defined(RMAX6000)
+	4, 3, 2, 1					/* LAN3~1, WAN */
 #else /* PANTHERB */
 	0, 1, 2, 3, 4					/* LAN4~1, WAN */
 #endif
@@ -203,10 +221,12 @@ static const char *vport_to_iface[MAX_WANLAN_PORT] = {
 	"lan5", "lan4", "lan3", "lan2", "lan1",			/* LAN5~1 */
 #elif defined(RTAX59U)
 	"lan3", "lan2", "lan1",					/* LAN3~1 */
+#elif defined(RMAX6000)
+	"lan3", "lan2", "lan1",					/* LAN3~1 */
 #else /* PANTHERB */
 	"lan0", "lan1", "lan2", "lan3",				/* LAN4~1 */
 #endif
-#if defined(RTAX59U)
+#if defined(RTAX59U) || defined(RMAX6000)
 	"wan"							/* WAN */
 #else
 	"eth1"							/* WAN */
@@ -220,11 +240,11 @@ static const unsigned int stb_to_mask[7] = { 0,
 	(1U << LAN1_PORT),
 	(1U << LAN2_PORT),
 	(1U << LAN3_PORT),
-#if !defined(RTAX59U)
+#if !defined(RTAX59U) && !defined(RMAX6000)
 	(1U << LAN4_PORT),
 #endif
 	(1U << LAN1_PORT) | (1U << LAN2_PORT),
-#if !defined(RTAX59U)
+#if !defined(RTAX59U) && !defined(RMAX6000)
 	(1U << LAN3_PORT) | (1U << LAN4_PORT)
 #else
 	(1U << LAN2_PORT) | (1U << LAN3_PORT)
@@ -238,6 +258,8 @@ static unsigned int wanlanports_mask =
 #elif defined(TUFAX4200) || defined(TUFAX6000)
 					(1U << WAN_PORT) | (1U << LAN1_PORT) | (1U << LAN2_PORT) | (1U << LAN3_PORT) | (1U << LAN4_PORT) | (1U << LAN5_PORT);
 #elif defined(RTAX59U)
+					(1U << WAN_PORT) | (1U << LAN1_PORT) | (1U << LAN2_PORT) | (1U << LAN3_PORT);
+#elif defined(RMAX6000)
 					(1U << WAN_PORT) | (1U << LAN1_PORT) | (1U << LAN2_PORT) | (1U << LAN3_PORT);
 #else /* PANTHERB */
 					(1U << WAN_PORT) | (1U << LAN1_PORT) | (1U << LAN2_PORT) | (1U << LAN3_PORT) | (1U << LAN4_PORT);
@@ -258,7 +280,7 @@ int esw_fd;
  * array value:	Model-specific virtual port number
  */
 static int n56u_to_model_port_mapping[] = {
-#if !defined(RTAX59U)
+#if !defined(RTAX59U) && !defined(RMAX6000)
 	LAN4_PORT,	//0000 0000 0001 LAN4
 #endif
 	LAN3_PORT,	//0000 0000 0010 LAN3
@@ -277,7 +299,7 @@ const int lan_id_to_vport[NR_WANLAN_PORT] = {
 	LAN1_PORT,
 	LAN2_PORT,
 	LAN3_PORT,
-#if !defined(RTAX59U)
+#if !defined(RTAX59U) && !defined(RMAX6000)
 	LAN4_PORT,
 #endif
 #if defined(PANTHERA)

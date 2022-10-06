@@ -787,6 +787,17 @@ void init_wl(void)
 	snprintf(cmd, sizeof(cmd), "iwpriv %s set RuntimePara_%s\n", get_wifname(0), tmpStr3);
 	system(cmd);
 #endif
+#if defined(RTCONFIG_MT798X)
+	int mtd_part = 0, mtd_size = 0;
+	if (mtd_getinfo("Factory", &mtd_part, &mtd_size)){
+		snprintf(cmd, sizeof(cmd), "dd if=/dev/mtdblock%d of=/lib/firmware/e2p bs=655360 skip=0 count=1", mtd_part);
+		system(cmd);
+		system("ln -sf /rom/etc/wireless/mediatek /etc/wireless/");
+	}else
+		printf("init_devs: can't find Factory MTD partition\n");
+	if (!module_loaded("mt_wifi"))
+		modprobe("mt_wifi");
+#endif
 	sleep(1);
 }
 
@@ -981,15 +992,23 @@ void init_syspara(void)
 				FWrite(ea, OFFSET_MAC_GMAC0, 6);
 		}
 	}
-
+#if defined(CONFIG_RALINK_MT7621)
 	if (FRead(dst, OFFSET_MAC_GMAC2, bytes)<0)
 		dbg("READ MAC address GMAC2: Out of scope\n");
+#elif defined(RTCONFIG_MT798X)
+	if (FRead(dst, OFFSET_MAC_GMAC1, bytes)<0)
+		dbg("READ MAC address GMAC1: Out of scope\n");
+#endif
 	else
 	{
 		if (buffer[0]==0xff)
 		{
 			if (ether_atoe(macaddr2, ea))
+#if defined(CONFIG_RALINK_MT7621)
 				FWrite(ea, OFFSET_MAC_GMAC2, 6);
+#elif defined(RTCONFIG_MT798X)
+				FWrite(ea, OFFSET_MAC_GMAC1, 6);
+#endif
 		}
 	}
 	{
@@ -1227,7 +1246,7 @@ void init_syspara(void)
 	_dprintf("bootloader version: %s\n", nvram_safe_get("blver"));
 	_dprintf("firmware version: %s\n", nvram_safe_get("firmver"));
 
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
 	dst = txbf_para;
 	int count_0xff = 0;
 	if (FRead(dst, OFFSET_TXBF_PARA, 33) < 0)
@@ -1673,7 +1692,7 @@ void gen_wapp_config(void)
 			fprintf(fp, "wapp_ap_%s.conf;", WIF_2G);
 		if(nvram_match("wl1_radio", "1"))
 			fprintf(fp, "wapp_ap_%s.conf;", WIF_5G);
-			fprintf(fp, "\n");
+		fprintf(fp, "\n");
 		fclose(fp);
 	}else
 		_dprintf("Can't open /etc/wapp_main_inf.conf\n");

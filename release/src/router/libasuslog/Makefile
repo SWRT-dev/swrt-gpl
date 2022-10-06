@@ -25,7 +25,7 @@ endif
 #SHARE_STATIC=y
 
 
-ifeq ($(wildcard $(TOP)/libasuslog/*.c),)
+ifneq ($(wildcard prebuild/$(BUILD_NAME)/libasuslog.so),)
 all:
 	-cp -f $(TOP)/libasuslog/prebuild/$(BUILD_NAME)/libasuslog.so libasuslog.so
 else

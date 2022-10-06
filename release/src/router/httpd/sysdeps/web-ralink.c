@@ -894,7 +894,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	else
 		ret+=websWrite(wp, "OP Mode		: AP\n");
 
-#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
 	if (unit == 1 || unit == 0)
 	{
 		char *p = tmp;
@@ -931,7 +931,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 			p += 3;
 			len -= 3;
 		}
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
 		if(phy_mode & WMODE_AX_24G) {
 			strlcat(p, "/ax", len);
 			p += 3;

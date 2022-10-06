@@ -12,10 +12,6 @@
 
     aliases {
         serial0 = &uart0;
-        led-boot = &led_power_amber;
-        led-failsafe = &led_power_amber;
-        led_running = &led_power_blue;
-        led-upgrade = &led_power_blue;
     };
 
 	chosen {
@@ -218,13 +214,9 @@
     };
 };
 
-&pcie {
+&pcie0 {
     pinctrl-names = "default";
     pinctrl-0 = <&pcie_pins>;
-    status = "okay";
-};
-
-&pcie_phy {
     status = "okay";
 };
 

@@ -5,8 +5,8 @@ else ifeq ($(MT7621),y)
 EXTRACFLAGS := -DLINUX26 -DCONFIG_RALINK -DMUSL_LIBC -DDEBUG_NOISY -DDEBUG_RCTEST -D_GNU_SOURCE -D__UAPI_DEF_ETHHDR -pipe -funit-at-a-time -Wno-pointer-sign -mtune=mips32 -mips32
 else ifeq ($(RT4GAC86U),y)
 EXTRACFLAGS := -DLINUX26 -DCONFIG_RALINK -DDEBUG_NOISY -DDEBUG_RCTEST -D__UAPI_DEF_ETHHDR -pipe -funit-at-a-time -Wno-pointer-sign
-else ifeq ($(MT7986),y)
-EXTRACFLAGS := -DLINUX26 -DCONFIG_RALINK -DDEBUG_NOISY -DDEBUG_RCTEST -D__UAPI_DEF_ETHHDR -pipe -funit-at-a-time -Wno-pointer-sign
+else ifeq ($(MT798X),y)
+EXTRACFLAGS := -DLINUX26 -DCONFIG_RALINK -DMUSL_LIBC -DDEBUG_NOISY -DDEBUG_RCTEST -D__UAPI_DEF_ETHHDR -pipe -funit-at-a-time -Wno-pointer-sign -march=armv8-a -mcpu=cortex-a53
 else
 EXTRACFLAGS := -DLINUX26 -DCONFIG_RALINK -DMUSL_LIBC -DDEBUG_NOISY -DDEBUG_RCTEST -D_GNU_SOURCE -D__UAPI_DEF_ETHHDR -DRALINK_DBDC_MODE -pipe -funit-at-a-time -Wno-pointer-sign -marm
 endif

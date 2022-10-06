@@ -45,6 +45,10 @@ const char WDSIF_5G[]	= "wdsx";
 const char WDSIF_2G[]	= "wds";
 const char APCLI_5G[]	= "apclix0";
 const char APCLI_2G[]	= "apcli0";
+#if defined(RTCONFIG_EASYMESH)
+const char MESH_5G[]	= "meshx0";
+const char MESH_2G[]	= "mesh0";
+#endif
 #else
 const char WIF_5G[]	= "ra0";
 const char WIF_2G[]	= "rai0";
