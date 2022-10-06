@@ -42,13 +42,13 @@
 
         reset {
             label = "reset";
-            //gpios = <&pio 0 GPIO_ACTIVE_LOW>;
+            //gpios = <&pio 9 GPIO_ACTIVE_LOW>;
             linux,code = <KEY_RESTART>;
         };
         
         wps {
             label = "wps";
-            //gpios  = <&pio 1 GPIO_ACTIVE_LOW>;
+            //gpios  = <&pio 10 GPIO_ACTIVE_LOW>;
             linux,code = <BTN_9>;
             linux,input-type = <EV_SW>;
         };
@@ -113,10 +113,15 @@
                 reg = <0x5c0000 0x40000>;
                 read-only;
             };
-
+			/* ubi, ubi1 + overlay */
             partition@600000 {
+                label = "ubi_kernel";
+                reg = <0x600000 0x1e00000>;
+            };
+
+            partition@2400000 {
                 label = "ubi";
-                reg = <0x600000 0x6e00000>;
+                reg = <0x2400000 0x5000000>;
             };
         };
     };
@@ -148,30 +153,30 @@
             #interrupt-cells = <1>;
             interrupt-parent = <&pio>;
             interrupts = <53 IRQ_TYPE_LEVEL_HIGH>;
-            reset-gpios = <&pio 54 GPIO_ACTIVE_HIGH>;
+            reset-gpios = <&pio 5 GPIO_ACTIVE_HIGH>;
 
             ports {
                 #address-cells = <1>;
                 #size-cells = <0>;
 
-                wan: port@1 {
+                port@1 {
                     reg = <1>;
-                    label = "wan";
+                    label = "lan1";
                 };
 
                 port@2 {
                     reg = <2>;
-                    label = "lan1";
+                    label = "lan2";
                 };
                 
                 port@3 {
                     reg = <3>;
-                    label = "lan2";
+                    label = "lan3";
                 };
 
                 port@4 {
                     reg = <4>;
-                    label = "lan3";
+                    label = "wan";
                 };
 
                 port@6 {
