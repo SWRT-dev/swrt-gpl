@@ -5436,7 +5436,7 @@ int init_nvram(void)
 
 		wan0 = "swan"; // switch wan
 		lan_1 = "lan1 lan2";	/* LAN ifaces could be enslaved to LAN LACP. */
-		lan_2 = "lan3 lan4";
+		lan_2 = "lan3";
 #if defined(RTCONFIG_LACP)
 #if defined(RTCONFIG_BONDING_WAN)
 		if (sw_mode == SW_MODE_ROUTER && bond_wan_enabled()
@@ -5561,11 +5561,9 @@ int init_nvram(void)
 
 		set_basic_ifname_vars(wan_ifaces, lan_ifs, wl_ifaces, "usb", NULL, NULL, dw_lan, 0);
 		// button
-		nvram_set_int("btn_wps_gpio", 1|GPIO_ACTIVE_LOW);
-		nvram_set_int("btn_rst_gpio", 0|GPIO_ACTIVE_LOW);
-		// led
-		nvram_set_int("led_pwr_gpio", 69|GPIO_ACTIVE_LOW);
-		nvram_set_int("led_wps_gpio", 86|GPIO_ACTIVE_LOW);
+		nvram_set_int("btn_wps_gpio", 10|GPIO_ACTIVE_LOW);
+		nvram_set_int("btn_rst_gpio", 9|GPIO_ACTIVE_LOW);
+		// rgb led
 
 		nvram_set("ct_max", "300000"); // force
 #ifdef RTCONFIG_XHCIMODE
@@ -5584,7 +5582,7 @@ int init_nvram(void)
 		if (nvram_get("wl_mssid") && nvram_match("wl_mssid", "1"))
 			add_rc_support("mssid");
 		add_rc_support("2.4G 5G update");
-		add_rc_support("usbX2");
+		//add_rc_support("usbX2");
 		add_rc_support("rawifi");
 		add_rc_support("switchctrl");
 		add_rc_support("manual_stb");

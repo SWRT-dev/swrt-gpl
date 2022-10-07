@@ -5305,7 +5305,7 @@ fi; \
 		sed -i "/CONFIG_NF_CONNTRACK_EVENTS/d" $(1); \
 		echo "CONFIG_NF_CONNTRACK_EVENTS=y" >>$(1); \
 	fi; \
-	if [ "$(BWDPI)" = "y" ]; then \
+	if [ "$(BWDPI)" = "y" ] || [ "$(SWRT)" = "y" ]; then \
 		sed -i "/CONFIG_NET_SCH_HTB/d" $(1); \
 		echo "CONFIG_NET_SCH_HTB=y" >>$(1); \
 		sed -i "/CONFIG_NET_SCH_SFQ/d" $(1); \

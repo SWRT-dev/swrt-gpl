@@ -5,6 +5,7 @@
 #include <dt-bindings/gpio/gpio.h>
 
 #include "mt7986a.dtsi"
+#include "mt7986a-pinctrl.dtsi"
 
 / {
 	model = "Xiaomi Redmi Router AX6000";
@@ -15,28 +16,13 @@
     };
 
 	chosen {
-		bootargs = "console=ttyS0,115200n1 loglevel=8  \
-				earlycon=uart8250,mmio32,0x11002000";
+		bootargs = "serial0:115200n8";
 	};
 
 	memory {
-		reg = <0 0x40000000 0 0x10000000>;
+		reg = <0 0x40000000 0 0x20000000>;
 	};
 /*
-    leds {
-        compatible = "gpio-leds";
-
-        led_power_blue: blue {
-            label = "blue:power";
-            //gpios = <&pio 69 GPIO_ACTIVE_HIGH>;
-        };
-
-        led_power_amber: amber {
-            label = "amber:power";
-            //gpios = <&pio 86 GPIO_ACTIVE_HIGH>;
-        };
-    };
-
     keys {
         compatible = "gpio-keys";
 
@@ -54,15 +40,14 @@
         };
     };
 */
-    nmbm_snfi {
+    nmbm_spim_nand {
 		compatible = "generic,nmbm";
 
 		#address-cells = <1>;
 		#size-cells = <1>;
 
-		lower-mtd-device = <&snand>;
+		lower-mtd-device = <&spi_nand>;
 		forced-create;
-		empty-page-ecc-protected;
 
         partitions {
             compatible = "fixed-partitions";
@@ -115,12 +100,12 @@
             };
 			/* ubi, ubi1 + overlay */
             partition@600000 {
-                label = "ubi_kernel";
+                label = "ubi";
                 reg = <0x600000 0x1e00000>;
             };
 
             partition@2400000 {
-                label = "ubi";
+                label = "UBI_DEV";
                 reg = <0x2400000 0x5000000>;
             };
         };
@@ -204,29 +189,83 @@
 };
 
 &pio {
-    pcie_pins: pcie-pins {
-        mux {
-            function = "pcie";
-            groups = "pcie_clk", "pcie_pereset";
-        };
-    };
-
-    uart0_pins: uart0-pins {
-        mux {
-            function = "uart";
-            groups = "uart0";
-        };
-    };
+	spi_flash_pins: spi-flash-pins-33-to-38 {
+		mux {
+			function = "flash";
+			groups = "spi0", "spi0_wp_hold";
+		};
+		conf-pu {
+			pins = "SPI2_CS", "SPI2_HOLD", "SPI2_WP";
+			drive-strength = <8>;
+			mediatek,pull-up-adv = <0>; /* bias-disable */
+		};
+		conf-pd {
+			pins = "SPI2_CLK", "SPI2_MOSI", "SPI2_MISO";
+			drive-strength = <8>;
+			mediatek,pull-down-adv = <0>; /* bias-disable */
+		};
+	};
 };
 
 &pcie0 {
     pinctrl-names = "default";
-    pinctrl-0 = <&pcie_pins>;
+    pinctrl-0 = <&pcie0_pins>;
     status = "okay";
 };
 
 &uart0 {
-    pinctrl-names = "default";
-    pinctrl-0 = <&uart0_pins>;
     status = "okay";
+};
+
+&spi0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&spi_flash_pins>;
+	status = "okay";
+	cs-gpios = <0>, <0>;
+	spi_nand: spi_nand@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "spi-nand";
+		reg = <1>;
+		spi-max-frequency = <20000000>;
+		spi-tx-buswidth = <4>;
+		spi-rx-buswidth = <4>;
+	};
+};
+
+&spi1 {
+	pinctrl-names = "default";
+    pinctrl-0 = <&spic_pins_g2>;
+/*	status = "okay";*/
+	miwifi-hm0807a-led@0 {
+		compatible = "xiaomi,HM0807A";
+		reg = <0x00>;
+		spi-max-frequency = <3000000>;
+		chip-num = <0x05>;
+		led@0 {
+			label = "led_red";
+			default-state = "off";
+			color = [ ff 00 00 ];
+		};
+		led@1 {
+			label = "led_blue";
+			default-state = "on";
+			color = [ 00 00 ff ];
+		};
+		led@2 {
+			label = "led_yellow";
+			default-state = "off";
+			color = [ ff 46 00 ];
+		};
+		led@3 {
+			label = "led_white";
+			default-state = "off";
+			color = [ c0 ff c0 ];
+		};
+		led@4 {
+			label = "led_green";
+			default-state = "off";
+			color = [ 00 ff 00 ];
+		};
+	};
 };
