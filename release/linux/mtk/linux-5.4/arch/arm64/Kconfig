@@ -1620,6 +1620,14 @@ config CMDLINE_FORCE
 	  This is useful if you cannot or don't want to change the
 	  command-line options your boot loader passes to the kernel.
 
+config CMDLINE_OVERRIDE
+	bool "Use alternative cmdline from device tree"
+	help
+	  Some bootloaders may have uneditable bootargs. While CMDLINE_FORCE can
+	  be used, this is not a good option for kernels that are shared across
+	  devices. This setting enables using "chosen/cmdline-override" as the
+	  cmdline if it exists in the device tree.
+
 config EFI_STUB
 	bool
 

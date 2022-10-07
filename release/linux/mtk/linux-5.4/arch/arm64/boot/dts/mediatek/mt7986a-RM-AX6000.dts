@@ -16,7 +16,8 @@
     };
 
 	chosen {
-		bootargs = "serial0:115200n8";
+		/*bootargs = "serial0:115200n8";*/
+		bootargs-override = "serial0:115200n8 ubi.mtd=UBI_DEV root=mtd:rootfs rootfstype=squashfs";
 	};
 
 	memory {

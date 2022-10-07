@@ -608,6 +608,8 @@ define platformKernelConfig
 	if [ "$(RMAX6000)" = "y" ]; then \
 		sed -i "/CONFIG_MODEL_RMAX6000/d" $(1); \
 		echo "CONFIG_MODEL_RMAX6000=y" >>$(1); \
+		sed -i "/CONFIG_CMDLINE_OVERRIDE/d" $(1); \
+		echo "CONFIG_CMDLINE_OVERRIDE=y" >>$(1); \
 	fi; \
 	)
 endef

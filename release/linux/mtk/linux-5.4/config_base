@@ -413,6 +413,7 @@ CONFIG_ARM64_SVE=y
 #
 CONFIG_CMDLINE=""
 # CONFIG_CMDLINE_FORCE is not set
+# CONFIG_CMDLINE_OVERRIDE is not set
 # CONFIG_EFI is not set
 # end of Boot options
 
