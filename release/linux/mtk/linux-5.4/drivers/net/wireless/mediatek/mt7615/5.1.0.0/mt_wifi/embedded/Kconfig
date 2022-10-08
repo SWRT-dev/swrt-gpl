@@ -140,7 +140,7 @@ config TXBF_SUPPORT
 
 config FAST_NAT_SUPPORT
        bool "Fast-NAT support"
-       depends on RA_HW_NAT_WIFI
+#       depends on RA_HW_NAT_WIFI
        default n
 
 config WHNAT_SUPPORT
