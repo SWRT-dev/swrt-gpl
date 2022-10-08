@@ -21,4 +21,18 @@ config WED_HW_RRO_SUPPORT
         bool "WED HW RRO Support"
         default n
 
+config WARP_CHIPSET
+		string "WARP target chipset"
+		default mt7986 if FIRST_IF_MT7986
+
+config WARP_MEMORY_LEAK_DBG
+		bool "Memory leak debug"
+		depends on !MTK_MEMORY_SHRINK && WARP_DBG_SUPPORT
+        default y
+
+config WARP_WO_EMBEDDED_LOAD
+		bool "Emebedded MCU firmware support"
+		default n
+		help
+			Once enabled, firmware download flow try embedded version once externel version being invalid.
 

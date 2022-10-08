@@ -1,4 +1,4 @@
-ccflags-y += $(MODULE_FLAGS) -Inet/nat -I$(PKG_BUILD_DIR)../warp -I$(PKG_BUILD_DIR)../warp/mcu -DCONFIG_WARP_VERSION=$(CONFIG_WARP_VERSION)
+ccflags-y += $(MODULE_FLAGS) -Inet/nat -Idrivers/net/wireless/mediatek/mt7986/warp_driver/warp -Idrivers/net/wireless/mediatek/mt7986/warp_driver/warp/mcu -DCONFIG_WARP_VERSION=$(CONFIG_WARP_VERSION)
 
 ifeq ($(CONFIG_WARP_ATC_SUPPORT), y)
 ccflags-y += -DCONFIG_WARP_ATC_SUPPORT
@@ -65,22 +65,22 @@ OBJS+= mcu/warp_fwdl.o
 OBJS+= mcu/warp_woif.o
 OBJS+= mcu/warp_wo.o
 OBJS+= mcu/warp_woctrl.o
-ifeq ($(CONFIG_WARP_CHIPSET), colgin)
+ifeq ($(CONFIG_WARP_CHIPSET), "colgin")
 OBJS+= $(REG_DIR)/reg_v2/warp_mt6890.o
 endif
-ifeq ($(CONFIG_WARP_CHIPSET), mt7915)
+ifeq ($(CONFIG_WARP_CHIPSET), "mt7915")
 OBJS+= $(REG_DIR)/reg_v2/warp_mt7915.o
 endif
-ifeq ($(CONFIG_WARP_CHIPSET), mt7986)
+ifeq ($(CONFIG_WARP_CHIPSET), "mt7986")
 OBJS+= $(REG_DIR)/reg_v2/warp_mt7986.o
 endif
-ifeq ($(CONFIG_WARP_CHIPSET), mt7916)
+ifeq ($(CONFIG_WARP_CHIPSET), "mt7916")
 OBJS+= $(REG_DIR)/reg_v2/warp_mt7916.o
 endif
-ifeq ($(CONFIG_WARP_CHIPSET), mt7981)
+ifeq ($(CONFIG_WARP_CHIPSET), "mt7981")
 OBJS+= $(REG_DIR)/reg_v2/warp_mt7981.o
 endif
-ifeq ($(CONFIG_WARP_CHIPSET), mt6990)
+ifeq ($(CONFIG_WARP_CHIPSET), "mt6990")
 OBJS+= $(REG_DIR)/reg_v2/warp_mt6990.o
 endif
 OBJS+= warp_bm_v2.o

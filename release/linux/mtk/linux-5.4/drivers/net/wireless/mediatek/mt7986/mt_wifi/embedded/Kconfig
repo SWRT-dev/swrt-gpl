@@ -38,33 +38,33 @@ config DOT11_HE_AX
 	bool "802.11AX support"
 	depends on WIFI_DRIVER
 	depends on DOT11_VHT_AC
-	depends on CHIP_AXE || CHIP_MT7915 || CHIP_MT7986
+	depends on CHIP_AXE || CHIP_MT7915 || CHIP_MT7986 || CHIP_MT7916 || CHIP_MT7981
 	default y
 
 config CFG_SUPPORT_FALCON_MURU
 	bool "MURU support"
 	depends on WIFI_DRIVER
 	depends on DOT11_VHT_AC
-	depends on CHIP_AXE || CHIP_MT7915 || CHIP_MT7986
+	depends on CHIP_AXE || CHIP_MT7915 || CHIP_MT7986 || CHIP_MT7916 || CHIP_MT7981
 	default y
 
 config CFG_SUPPORT_FALCON_TXCMD_DBG
 	bool "TXCMD DBG support"
 	depends on WIFI_DRIVER
 	depends on DOT11_VHT_AC
-	depends on CHIP_AXE || CHIP_MT7915 || CHIP_MT7986
+	depends on CHIP_AXE || CHIP_MT7915 || CHIP_MT7986 || CHIP_MT7916 || CHIP_MT7981
 	default y
 
 config CFG_SUPPORT_FALCON_SR
 	bool "SR(Spatial Reuse) support"
 	depends on WIFI_DRIVER
-	depends on CHIP_MT7915 || CHIP_MT7986
+	depends on CHIP_MT7915 || CHIP_MT7986 || CHIP_MT7916 || CHIP_MT7981
 	default y
 
 config CFG_SUPPORT_FALCON_PP
         bool "PP(Preamble Puncture) support"
         depends on WIFI_DRIVER
-        depends on CHIP_MT7915 || CHIP_MT7986
+        depends on CHIP_MT7915 || CHIP_MT7986 || CHIP_MT7916 || CHIP_MT7981
         default y
 
 config SINGLE_SKU
@@ -76,7 +76,7 @@ config WIFI_TWT_SUPPORT
 	bool "TWT(Target Wake Time) support"
 	depends on WIFI_DRIVER
 	depends on DOT11_HE_AX
-	depends on CHIP_AXE || CHIP_MT7915 || CHIP_MT7986
+	depends on CHIP_AXE || CHIP_MT7915 || CHIP_MT7986 || CHIP_MT7916 || CHIP_MT7981
 	default y
 
 config G_BAND_256QAM_SUPPORT
@@ -140,21 +140,31 @@ config DYNAMIC_WMM_SUPPORT
 	default y
 
 config MT_DFS_SUPPORT
-        bool "Dynamic Frequency Selection Support"	
+        bool "Dynamic Frequency Selection Support"
         depends on WIFI_DRIVER
         default y
-config MTK_OFFCHANNEL_SCAN_FEATURE
-	bool "Channel Quality Monitor"
-	depends on MTK_WIFI_DRIVER
-	depends on MTK_MT_AP_SUPPORT
-	default n
 
-#config MTK_DPP_SUPPORT
-#	bool "DPP Support"
-#	depends on MTK_WIFI_DRIVER
-#	depends on MTK_MT_AP_SUPPORT
-#	select DOT11W_PMF_SUPPORT
-#	default n
+config DBDC_MODE
+        bool "dbdc mode support"
+        depends on CHIP_MT7626 || CHIP_MT7615E || CHIP_MT7915 || CHIP_MT7986 || CHIP_MT7916 || CHIP_MT7981
+        default y
+
+config MULTI_PROFILE_SUPPORT
+    bool "Multi Profile Support"
+    depends on DBDC_MODE
+    default n
+
+config DEFAULT_5G_PROFILE
+    bool "5G default profile for DBDC"
+    depends on DBDC_MODE
+    #depends on MULTI_PROFILE_SUPPORT
+    default y
+
+config OFFCHANNEL_SCAN_FEATURE
+	bool "Channel Quality Monitor"
+	depends on WIFI_DRIVER
+	depends on MT_AP_SUPPORT
+	default n
 #config WFA_VHT_R2_PF
 #    bool "WFA VHT R2 Plugfest"
 #    depends on DOT11_VHT_AC
@@ -162,31 +172,13 @@ config MTK_OFFCHANNEL_SCAN_FEATURE
 
 config HDR_TRANS_TX_SUPPORT
     bool "Tx Header Translation"
-    depends on CHIP_MT7615E || CHIP_MT7622 || CHIP_MT7663E || CHIP_MT7626 || CHIP_MT7915
+    depends on CHIP_MT7626 || CHIP_MT7615E || CHIP_MT7622 || CHIP_MT7663U || CHIP_AXE || CHIP_MT7915 || CHIP_MT7986 || CHIP_MT7916 || CHIP_MT7981
     default y
 
 config HDR_TRANS_RX_SUPPORT
     bool "Rx Header Translation"
-    depends on CHIP_MT7615E || CHIP_MT7622 || CHIP_MT7663E || CHIP_MT7626 || CHIP_MT7915
+    depends on CHIP_MT7626 || CHIP_MT7615E || CHIP_MT7622 || CHIP_MT7663U || CHIP_AXE || CHIP_MT7915 || CHIP_MT7986 || CHIP_MT7916 || CHIP_MT7981
     default y
-
-config DBDC_MODE
-	bool "dbdc mode support"
-	depends on CHIP_MT7615E || CHIP_MT7626
-	select MULTI_PROFILE_SUPPORT
-	#select DEFAULT_5G_PROFILE
-	default y
-
-config MULTI_PROFILE_SUPPORT
-    bool "Multi Profile Support"
-    depends on DBDC_MODE
-	default y
-
-config DEFAULT_5G_PROFILE
-	bool "5G default profile for DBDC"
-	depends on CHIP_MT7615E
-	depends on DBDC_MODE
-	default y
 
 config WSC_INCLUDED
 	bool "WSC (WiFi Simple Config)"
@@ -219,15 +211,21 @@ config VHT_TXBF_2G_EPIGRAM_IE_SUPPORT
 
 config FAST_NAT_SUPPORT
 	bool "Fast-NAT support"
-	depends on RA_HW_NAT_WIFI
+#	depends on RA_HW_NAT_WIFI
 	default n
 
 config WHNAT_SUPPORT
 	tristate "Wifi Hardware NAT support"
-	depends on CHIP_MT7615E || CHIP_MT7915 || CHIP_MT7986
+	depends on CHIP_MT7615E || CHIP_MT7915 || CHIP_MT7986 || CHIP_MT7916 || CHIP_MT7981
 	depends on WLAN_HOOK
 	depends on FAST_NAT_SUPPORT
 	default n
+
+config WARP_V2
+	bool "Warp driver version 2 support"
+	depends on WHNAT_SUPPORT
+	default n
+
 
 config WIFI_SYSDVT
 	bool "Wifi DVT framework"
@@ -271,7 +269,6 @@ config MBO_SUPPORT
 	select DOT11K_RRM_SUPPORT
 	select DOT11R_FT_SUPPORT
 	select DOT11W_PMF_SUPPORT
-	select WAPP_SUPPORT
 	default n
 
 #config CARRIER_DETECTION_SUPPORT
@@ -283,11 +280,6 @@ config IGMP_SNOOP_SUPPORT
 	bool "IGMP snooping"
 	depends on WIFI_DRIVER
 	depends on MT_AP_SUPPORT
-	default y
-
-config MEMORY_SHRINK
-	bool "Memory Shrink"
-	depends on WIFI_DRIVER && CHIP_MT7626
 	default n
 
 #config RATE_ADAPTION
@@ -337,33 +329,15 @@ config RTMP_FLASH_SUPPORT
 config PRE_CAL_TRX_SET1_SUPPORT
     bool "Calibration To Flash/BinFile Support"
     depends on WIFI_DRIVER
-    depends on CHIP_MT7615E
-    default y
+    default n
 
 config RLM_CAL_CACHE_SUPPORT
 	bool "RlmCalibrationCache Support"
 	depends on WIFI_DRIVER
-	depends on CHIP_MT7615E
 	default y
-
-config PRE_CAL_TRX_SET2_SUPPORT
-    bool "Pre-calibration to Flash Support"
-    depends on WIFI_DRIVER
-    depends on CHIP_MT7615E
-    default y
 
 config CAL_BIN_FILE_SUPPORT
 	bool "Calibration to BinFile Support"
-	depends on WIFI_DRIVER
-	default y
-
-config LINK_TEST_SUPPORT
-	bool "Link Test Support"
-	depends on WIFI_DRIVER
-	default y
-
-config WIFI_GPIO_CTRL
-	bool "GPIO Control Support"
 	depends on WIFI_DRIVER
 	default y
 
@@ -376,23 +350,24 @@ config WIFI_GPIO_CTRL
 config ATE_SUPPORT
 	bool "ATE/QA Support"
 	depends on WIFI_DRIVER
-	default y	
+	default y
 
 config WLAN_SERVICE
-       bool "Wlan Service Library Support"
-       depends on WIFI_DRIVER
-       default n
-
-config MEMORY_OPTIMIZATION
-	bool "Memory Optimization"
+	bool "Wlan Service Library Support"
 	depends on WIFI_DRIVER
-	default n
+	depends on ATE_SUPPORT
+	depends on CHIP_MT7915 || CHIP_MT7986 || CHIP_MT7916 || CHIP_MT7981
+	default y
+
+#config MEMORY_OPTIMIZATION
+#	bool "Memory Optimization"
+#	depends on WIFI_DRIVER
+#	default n
 
 config PASSPOINT_R2
 	bool "Passpoint Release-2 Support"
 	depends on WIFI_DRIVER
 	select DOT11W_PMF_SUPPORT
-	select WAPP_SUPPORT
 	depends on MT_AP_SUPPORT
 	default n
 
@@ -407,15 +382,10 @@ config UAPSD
 	depends on MT_AP_SUPPORT || MT_STA_SUPPORT
 	default y
 
-config TCP_RACK_SUPPORT
-	bool "TCP Reduced ACK  support"
-	depends on WIFI_DRIVER
-	default n
-
-config HE_TXCMD_DBG_SUPPORT
-        bool "11ax TXCMD debug mode"
-        depends on WIFI_DRIVER
-        default n
+#config TCP_RACK_SUPPORT
+#	bool "TCP Reduced ACK  support"
+#	depends on WIFI_DRIVER
+#	default n
 
 #### PA_LNA_Type choice
 
@@ -425,10 +395,12 @@ config RED_SUPPORT
 	depends on MT_AP_SUPPORT || MT_STA_SUPPORT
         default y
 
-config FDB_SUPPORT
-       bool "FW Debug Port"
-       depends on WIFI_DRIVER
-       default n
+config FQ_SCH_SUPPORT
+	bool "Fair Queueing support"
+	depends on WIFI_DRIVER
+	depends on MT_AP_SUPPORT && VOW_SUPPORT
+	depends on CHIP_MT7622
+	default y
 
 #
 # Section for chip architectures
@@ -532,9 +504,15 @@ if WIFI_MT_MAC
 	config CHIP_MT7986
 		bool
 		default n
+	config CHIP_MT7916
+		bool
+		default n
+	config CHIP_MT7981
+		bool
+		default n
 endif
 
-if CHIP_MT7615E || CHIP_MT7622 || CHIP_MT7626 || CHIP_AXE || CHIP_MT7915 || CHIP_MT7986
+if CHIP_MT7615E || CHIP_MT7622 || CHIP_MT7626 || CHIP_AXE || CHIP_MT7915 || CHIP_MT7986 || CHIP_MT7916 || CHIP_MT7981
 	config MT_MAC
 		bool
 		default y
@@ -545,4 +523,9 @@ if CHIP_MT7615E || CHIP_MT7622 || CHIP_MT7626 || CHIP_AXE || CHIP_MT7915 || CHIP
 		select HDR_TRANS_TX_SUPPORT
 		select HDR_TRANS_RX_SUPPORT
 endif
+
+config CTXD_MEM_CPY_SUPPORT
+	bool "Cascade TXD support"
+	depends on WIFI_DRIVER
+	default n
 

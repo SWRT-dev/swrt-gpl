@@ -5434,7 +5434,7 @@ int init_nvram(void)
 		nvram_set("boardflags", "0x100"); // although it is not used in ralink driver, set for vlan
 		nvram_set("lan_ifname", "br0");
 
-		wan0 = "swan"; // switch wan
+		wan0 = "wan"; // switch wan
 		lan_1 = "lan1 lan2";	/* LAN ifaces could be enslaved to LAN LACP. */
 		lan_2 = "lan3";
 #if defined(RTCONFIG_LACP)
