@@ -1488,7 +1488,7 @@ CONFIG_MTD_SPLIT_FIT_FW=y
 # CONFIG_MTD_SPLIT_MINOR_FW is not set
 # CONFIG_MTD_SPLIT_JIMAGE_FW is not set
 # CONFIG_MTD_SPLIT_ELF_FW is not set
-CONFIG_MTD_SPLIT_ASUS_FW=y
+# CONFIG_MTD_SPLIT_ASUS_FW is not set
 # end of OpenWrt specific MTD options
 
 # CONFIG_MTD_TESTS is not set

@@ -19,7 +19,7 @@ obj-$(CONFIG_MODEL_RMAC2100) += mt7603/4.1.2.1/mt7603_wifi_ap/
 obj-$(CONFIG_MODEL_PGBM1) += mt7915/7.4.0.0/mt_wifi_ap/
 obj-$(CONFIG_MODEL_JCGQ10PRO) += mt7915/7.4.0.0/mt_wifi_ap/
 obj-$(CONFIG_MODEL_H3CTX1801) += mt7915/7.4.0.0/mt_wifi_ap/
-ifeq ($(wildcard mt7986/mt_wifi/chips/mt7986.c),)
+ifeq ($(wildcard drivers/net/wireless/mediatek/mt7986/mt_wifi/chips/mt7986.c),)
 obj-$(CONFIG_MODEL_RMAX6000) += mt7986_prebuild/
 else
 obj-$(CONFIG_MODEL_RMAX6000) += mt7986/mt_wifi_ap/
