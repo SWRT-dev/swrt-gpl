@@ -68,13 +68,9 @@ function initial(){
 	show_menu();
 	showbootTime();
 
-	if (odmpid != "") {
-        if(modelname == productid)
-		    document.getElementById("model_id").innerHTML = "<span>" + modelname + "</span>";
-        else
-		    document.getElementById("model_id").innerHTML = "<span>" + odmpid + "</span>";
-		if (odmpid != based_modelid)
-			document.getElementById("model_id").innerHTML += " (base model: <span>" + based_modelid + "</span>)";
+	if ((odmpid != "") && (odmpid.toUpperCase() != based_modelid.toUpperCase())) {
+		document.getElementById("model_id").innerHTML = "<span>" + odmpid + "</span>";
+		document.getElementById("model_id").innerHTML += " (base model: <span>" + based_modelid + "</span>)";
 	}
 	else
 		document.getElementById("model_id").innerHTML = productid;
@@ -107,7 +103,14 @@ function update_temperatures(){
 			update_temperatures();
 		},
 		success: function(response){
-			code = "<b>2.4 GHz:</b><span> " + curr_coreTmp_2_raw + "</span>";
+			curr_coreTmp_24_raw = curr_coreTmp_wl0_raw;
+			if (band5g_support)
+				curr_coreTmp_5_raw = curr_coreTmp_wl1_raw;
+			if (wl_info.band5g_2_support)
+			curr_coreTmp_52_raw = curr_coreTmp_wl2_raw;
+			else if (wl_info.band6g_support)
+				curr_coreTmp_6_raw = curr_coreTmp_wl2_raw;
+			code = "<b>2.4 GHz:</b><span> " + curr_coreTmp_24_raw + "</span>";
 			if (wl_info.band5g_2_support) {
 				code += "&nbsp;&nbsp;-&nbsp;&nbsp;<b>5 GHz-1:</b> <span>" + curr_coreTmp_5_raw + "</span>";
 				code += "&nbsp;&nbsp;-&nbsp;&nbsp;<b>5 GHz-2:</b> <span>" + curr_coreTmp_52_raw + "</span>";
@@ -115,12 +118,10 @@ function update_temperatures(){
 				code += "&nbsp;&nbsp;-&nbsp;&nbsp;<b>5 GHz:</b> <span>" + curr_coreTmp_5_raw + "</span>";
 			}
 			if (wl_info.band6g_support) {
-				code += "&nbsp;&nbsp;-&nbsp;&nbsp;<b>6 GHz:</b> <span>" + curr_coreTmp_52_raw + "</span>";
+				code += "&nbsp;&nbsp;-&nbsp;&nbsp;<b>6 GHz:</b> <span>" + curr_coreTmp_6_raw + "</span>";
 			}
-			if (curr_coreTmp_cpu != "" && curr_coreTmp_cpu != "0")
-				code +="&nbsp;&nbsp;-&nbsp;&nbsp;<b>CPU:</b> <span>" + parseInt(curr_coreTmp_cpu) +"&deg;C</span>";
-			else
-				code +="&nbsp;&nbsp;-&nbsp;&nbsp;<b>CPU:</b> <span><i>disabled</i></span>";
+			if (curr_cpuTemp != "")
+				code +="&nbsp;&nbsp;-&nbsp;&nbsp;<b>CPU:</b> <span>" + parseInt(curr_cpuTemp) +"&deg;C</span>";
 			document.getElementById("temp_td").innerHTML = code;
 			setTimeout("update_temperatures();", 3000);
 		}

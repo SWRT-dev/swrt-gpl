@@ -82,13 +82,9 @@ function initial(){
 	}
 	showbootTime();
 
-	if (odmpid != "") {
-        if(modelname == productid)
-		    document.getElementById("model_id").innerHTML = "<span>" + modelname + "</span>";
-        else
-		    document.getElementById("model_id").innerHTML = "<span>" + odmpid + "</span>";
-		if (odmpid != based_modelid)
-			document.getElementById("model_id").innerHTML += " (base model: <span>" + based_modelid + "</span>)";
+	if ((odmpid != "") && (odmpid.toUpperCase() != based_modelid.toUpperCase())) {
+		document.getElementById("model_id").innerHTML = "<span>" + odmpid + "</span>";
+		document.getElementById("model_id").innerHTML += " (base model: <span>" + based_modelid + "</span>)";
 	}
 	else
 		document.getElementById("model_id").innerHTML = productid;
@@ -120,7 +116,23 @@ function update_temperatures(){
 			update_temperatures();
 		},
 		success: function(response){
-			code = "<b>2.4 GHz:</b><span> " + curr_coreTmp_2_raw + "</span>";
+			if (based_modelid === 'GT-AXE16000') {
+				curr_coreTmp_24_raw = curr_coreTmp_wl3_raw;
+				curr_coreTmp_5_raw = curr_coreTmp_wl0_raw;
+				curr_coreTmp_52_raw = curr_coreTmp_wl1_raw;
+				curr_coreTmp_6_raw = curr_coreTmp_wl2_raw;
+			} else {
+				curr_coreTmp_24_raw = curr_coreTmp_wl0_raw;
+				if (band5g_support)
+					curr_coreTmp_5_raw = curr_coreTmp_wl1_raw;
+				if (wl_info.band5g_2_support)
+					curr_coreTmp_52_raw = curr_coreTmp_wl2_raw;
+				else if (wl_info.band6g_support)
+					curr_coreTmp_6_raw = curr_coreTmp_wl2_raw;
+			}
+
+			code = "<b>2.4 GHz:</b><span> " + curr_coreTmp_24_raw + "</span>";
+
 			if (wl_info.band5g_2_support) {
 				code += "&nbsp;&nbsp;-&nbsp;&nbsp;<b>5 GHz-1:</b> <span>" + curr_coreTmp_5_raw + "</span>";
 				code += "&nbsp;&nbsp;-&nbsp;&nbsp;<b>5 GHz-2:</b> <span>" + curr_coreTmp_52_raw + "</span>";
@@ -128,10 +140,10 @@ function update_temperatures(){
 				code += "&nbsp;&nbsp;-&nbsp;&nbsp;<b>5 GHz:</b> <span>" + curr_coreTmp_5_raw + "</span>";
 			}
 			if (wl_info.band6g_support) {
-				code += "&nbsp;&nbsp;-&nbsp;&nbsp;<b>6 GHz:</b> <span>" + curr_coreTmp_52_raw + "</span>";
+				code += "&nbsp;&nbsp;-&nbsp;&nbsp;<b>6 GHz:</b> <span>" + curr_coreTmp_6_raw + "</span>";
 			}
-			if (curr_coreTmp_cpu != "")
-				code +="&nbsp;&nbsp;-&nbsp;&nbsp;<b>CPU:</b> <span>" + parseInt(curr_coreTmp_cpu) +"&deg;C</span>";
+			if (curr_cpuTemp != "")
+				code +="&nbsp;&nbsp;-&nbsp;&nbsp;<b>CPU:</b> <span>" + parseInt(curr_cpuTemp) +"&deg;C</span>";
 			document.getElementById("temp_td").innerHTML = code;
 			setTimeout("update_temperatures();", 3000);
 		}
@@ -349,6 +361,20 @@ function show_etherstate_hnd(){
 }
 function show_connstate(){
 	document.getElementById("conn_td").innerHTML = conn_stats_arr[0] + " / <% sysinfo("conn.max"); %>&nbsp;&nbsp;-&nbsp;&nbsp;" + conn_stats_arr[1] + " active";
+	if (based_modelid === 'GT-AXE16000') {
+		wlc_24_arr = wlc_3_arr;
+		wlc_51_arr = wlc_0_arr;
+		wlc_52_arr = wlc_1_arr;
+		wlc_6_arr = wlc_2_arr;
+	} else {
+		wlc_24_arr = wlc_0_arr;
+		if (band5g_support)
+			wlc_51_arr = wlc_1_arr;
+		if (wl_info.band5g_2_support)
+			wlc_52_arr = wlc_2_arr;
+		else if (wl_info.band6g_support)
+			wlc_6_arr = wlc_2_arr;
+	}
 	document.getElementById("wlc_24_td").innerHTML = "Associated: <span>" + wlc_24_arr[0] + "</span>&nbsp;&nbsp;-&nbsp;&nbsp;" +
 	                                                 "Authorized: <span>" + wlc_24_arr[1] + "</span>&nbsp;&nbsp;-&nbsp;&nbsp;" +
 	                                                 "Authenticated: <span>" + wlc_24_arr[2] + "</span>";
@@ -367,9 +393,9 @@ function show_connstate(){
 		                                                 "Authenticated: <span>" + wlc_52_arr[2] + "</span>";
 	}
 	if (wl_info.band6g_support) {
-		document.getElementById("wlc_6_td").innerHTML = "Associated: <span>" + wlc_52_arr[0] + "</span>&nbsp;&nbsp;-&nbsp;&nbsp;" +
-		                                                "Authorized: <span>" + wlc_52_arr[1] + "</span>&nbsp;&nbsp;-&nbsp;&nbsp;" +
-		                                                "Authenticated: <span>" + wlc_52_arr[2] + "</span>";
+		document.getElementById("wlc_6_td").innerHTML = "Associated: <span>" + wlc_6_arr[0] + "</span>&nbsp;&nbsp;-&nbsp;&nbsp;" +
+		                                                "Authorized: <span>" + wlc_6_arr[1] + "</span>&nbsp;&nbsp;-&nbsp;&nbsp;" +
+		                                                "Authenticated: <span>" + wlc_6_arr[2] + "</span>";
 	}
 }
 function show_memcpu(){
