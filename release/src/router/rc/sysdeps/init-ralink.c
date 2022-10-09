@@ -767,6 +767,10 @@ void init_wl(void)
 	if (!module_loaded("mt_wifi_7615E"))
 		//modprobe("mt_wifi_7615E", tmpStr1, tmpStr2, tmpStr3);
 		modprobe("mt_wifi_7615E");
+#if !defined(CONFIG_RALINK_MT7621)
+	if (!module_loaded("mt_whnat"))
+		modprobe("mt_whnat");
+#endif
 #endif
 #if defined(RTCONFIG_WLMODULE_MT7915D_AP)
 	int mtd_part = 0, mtd_size = 0;
@@ -780,6 +784,10 @@ void init_wl(void)
 		//modprobe("mt_wifi", tmpStr1, tmpStr2, tmpStr3);
 	if (!module_loaded("mt_wifi"))
 		modprobe("mt_wifi");
+#if !defined(CONFIG_RALINK_MT7621)
+	if (!module_loaded("mt_whnat"))
+		modprobe("mt_whnat");
+#endif
 	snprintf(cmd, sizeof(cmd), "iwpriv %s set RuntimePara_%s\n", get_wifname(0), tmpStr1);
 	system(cmd);
 	snprintf(cmd, sizeof(cmd), "iwpriv %s set RuntimePara_%s\n", get_wifname(0), tmpStr2);
@@ -797,6 +805,10 @@ void init_wl(void)
 		printf("init_devs: can't find Factory MTD partition\n");
 	if (!module_loaded("mt_wifi"))
 		modprobe("mt_wifi");
+	if (!module_loaded("mtk_warp"))
+		modprobe("mtk_warp");
+	if (!module_loaded("mtk_warp_proxy"))
+		modprobe("mtk_warp_proxy");
 #endif
 	sleep(1);
 }

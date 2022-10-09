@@ -136,7 +136,7 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 				char model[64];
 #if defined(BCM4912)
 					strcpy(model, "BCM4912 - Cortex A53 ARMv8");
-#if defined(RTCONFIG_BCMARM) || defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK_MT7622) || defined(RTCONFIG_MT798X)
+#elif defined(RTCONFIG_BCMARM) || defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK_MT7622) || defined(RTCONFIG_MT798X)
 					char impl[8], arch[8], variant[8], part[10], revision[4];
 					impl[0]='\0'; arch[0]='\0'; variant[0]='\0'; part[0]='\0';
 					strcpy(revision,"0");
@@ -180,18 +180,24 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 					if (!strcmp(impl, "0x41")//kernel:32/64
 					    && !strcmp(variant, "0x0")
 					    && !strcmp(part, "0xd03")
-					    && (!strcmp(arch, "7") || !strcmp(arch, "8")))
+					    && (!strcmp(arch, "7") || !strcmp(arch, "8"))){
 #if defined(RTCONFIG_RALINK_MT7622)
 						sprintf(model, "MT7622 - Cortex A53 ARMv8 revision %s", revision);
-#elif defined(RTCONFIG_SOC_MT7986A)
-						sprintf(model, "MT7986A - Cortex A53 ARMv8 revision %s", revision);
-#elif defined(RTCONFIG_SOC_MT7986B)
-						sprintf(model, "MT7986B - Cortex A53 ARMv8 revision %s", revision);
-#elif defined(RTCONFIG_SOC_MT7986C)
-						sprintf(model, "MT7986C - Cortex A53 ARMv8 revision %s", revision);
-#elif defined(RTCONFIG_SOC_MT7981)
-						sprintf(model, "MT7981 - Cortex A53 ARMv8 revision %s", revision);
+#elif defined(RTCONFIG_MT798X)
+						char *buffer;
+						doSystem("devmem 0x8000000 16 > /tmp/mtk_chip");
+						buffer = read_whole_file("/tmp/mtk_chip");
+						if(buffer){
+							if(strstr(buffer, "7986"))
+								sprintf(model, "MT7986X - Cortex A53 ARMv8 revision %s", revision);
+							else if(strstr(buffer, "7981"))
+								sprintf(model, "MT7981 - Cortex A53 ARMv8 revision %s", revision);
+							else
+								sprintf(model, "MT%s - Cortex A53 ARMv8 revision %s", buffer + 2, revision);
+							free(buffer);
+						}
 #endif
+					}
 #else
 					if (!strcmp(impl, "0x42")
 					    && !strcmp(variant, "0x0")
@@ -343,7 +349,7 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 
 			buf = malloc(MAX_NVRAM_SPACE);
 			if (buf) {
-#ifdef HND_ROUTER
+#if defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 				nvram_getall(buf, MAX_NVRAM_SPACE);
 #else
 				dev_nvram_getall(buf, MAX_NVRAM_SPACE);
