@@ -1053,6 +1053,13 @@ static int gluebi_create(struct ubi_device_info *di,
 		printk(KERN_INFO "%s: skip jffs2 volume\n", __func__);
 		return 0;
 	}
+//#define SWRT_DEBUG
+#if defined(SWRT_DEBUG)
+	if (!strcmp(vi->name, "kernel") || !strcmp(vi->name, "rootfs")) {
+		printk(KERN_INFO "%s: skip %s volume\n", __func__, vi->name);
+		return 0;
+	}
+#endif
 #endif
 
 	gluebi = kzalloc(sizeof(struct gluebi_device), GFP_KERNEL);

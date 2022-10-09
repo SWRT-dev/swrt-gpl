@@ -2438,6 +2438,9 @@ int nf_conntrack_init_start(void)
 		 * we use the old value of 8 to avoid reducing the max.
 		 * entries. */
 		max_factor = 4;
+#if defined(CONFIG_NETFILTER_XT_TARGET_FULLCONENAT) || defined(CONFIG_SWRT_FULLCONE)
+		nf_conntrack_htable_size = 16384;
+#endif
 	}
 
 	nf_conntrack_hash = nf_ct_alloc_hashtable(&nf_conntrack_htable_size, 1);

@@ -453,6 +453,12 @@ config NF_TABLES
 
 	  To compile it as a module, choose M here.
 
+config SWRT_FULLCONE
+	tristate "IPv4 fullcone support"
+	depends on NF_NAT_MASQUERADE
+	help
+	  Porting from broadcom.
+
 if NF_TABLES
 
 config NF_TABLES_SET
