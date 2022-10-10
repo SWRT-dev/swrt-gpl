@@ -47,23 +47,17 @@
             partition@100000 {
                 label = "Nvram";
                 reg = <0x100000 0x40000>;
-                read-only;
             };
 
             partition@140000 {
                 label = "Bdata";
                 reg = <0x140000 0x40000>;
-                read-only;
             };
 
             factory: partition@0x180000 {
                 label = "factory";
                 reg = <0x180000 0x200000>;
                 read-only;
-
-                compatible = "nvmem-cells";
-                #address-cells = <1>;
-                #size-cells = <1>;
             };
 
             partition@380000 {
@@ -74,13 +68,11 @@
             partition@580000 {
                 label = "crash";
                 reg = <0x580000 0x40000>;
-                read-only;
             };
 
             partition@5c0000 {
                 label = "crash_log";
                 reg = <0x5c0000 0x40000>;
-                read-only;
             };
 			/* ubi, ubi1 + overlay */
             partition@600000 {

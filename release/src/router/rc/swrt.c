@@ -477,6 +477,11 @@ void swrt_init_post(){
 #if defined(RTCONFIG_ENTWARE)
 	gen_arch_conf();
 #endif
+#if defined(MS60)
+	if(aimesh_re_node() && !d_exists("/sys/class/net/br0/brif/eth0")){
+		eval("brctl", "addif", "br0", "eth0");
+	}
+#endif
 }
 
 
