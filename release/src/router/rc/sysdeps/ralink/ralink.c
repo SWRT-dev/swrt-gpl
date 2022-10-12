@@ -5157,7 +5157,7 @@ void gen_ra_config(const char* wif)
 					gen_ralink_config(0, 1);
 				else{
 					gen_ralink_config(0, 0);
-#if defined(RALINK_DBDC_MODE)
+#if defined(RALINK_DBDC_MODE) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
 					gen_ralink_config(1, 1);
 #endif
 				}

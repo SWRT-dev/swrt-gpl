@@ -189,7 +189,7 @@
 
 &hnat {
 	mtketh-wan = "wan";
-	mtketh-lan = "vlan1";
+	mtketh-lan = "br0";
 	mtketh-max-gmac = <2>;
 	status = "okay";
 };
@@ -211,6 +211,7 @@
 			mediatek,pull-down-adv = <0>; /* bias-disable */
 		};
 	};
+/*
 	wf_2g_5g_pins: wf_2g_5g-pins {
 		mux {
 			function = "wifi";
@@ -243,6 +244,7 @@
 			drive-strength = <MTK_DRIVE_4mA>;
 		};
 	};
+*/
 };
 
 &pcie0 {
@@ -274,9 +276,11 @@
 &wbsys {
 	status = "okay";
 	mediatek,mtd-eeprom = <&factory 0x0000>;
+/*
 	pinctrl-names = "default", "dbdc";
 	pinctrl-0 = <&wf_2g_5g_pins>;
 	pinctrl-1 = <&wf_dbdc_pins>;
+*/
 };
 
 &spi1 {
@@ -317,5 +321,20 @@
 };
 
 &watchdog {
+	status = "okay";
+};
+
+&i2c0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c_pins>;
+	status = "okay";
+
+	wm8960: wm8960@1a {
+		compatible = "wlf,wm8960";
+		reg = <0x1a>;
+	};
+};
+
+&auxadc {
 	status = "okay";
 };
