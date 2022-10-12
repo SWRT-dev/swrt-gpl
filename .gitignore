@@ -16,6 +16,8 @@ release/src/router/i2cled/driver/*.c
 release/src/router/networkmap/*.c
 release/src/router/nt_center/*.c
 release/src/router/nt_center/*/*.c
+release/src/router/rc/cfe.c
+release/src/router/rc/dsl_fb.c
 release/src/router/rc/frs.c
 release/src/router/rc/private.c
 release/src/router/rc/swrtex.c

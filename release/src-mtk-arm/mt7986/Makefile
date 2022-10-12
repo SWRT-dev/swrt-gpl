@@ -13,7 +13,7 @@ export LDFLAGS+=$(EXTRALDFLAGS)
 #
 pobj-y:=
 
-pobj-y += mii_mgr regs switch
+pobj-y += mii_mgr regs switch wifi-fw
 
 
 pobj-clean := $(foreach pobj, $(pobj-y) $(pobj-n) $(pobj-), $(pobj)-clean)

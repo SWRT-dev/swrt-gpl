@@ -529,3 +529,8 @@ config CTXD_MEM_CPY_SUPPORT
 	depends on WIFI_DRIVER
 	default n
 
+config MBSS_DTIM_SUPPORT
+	bool "MBSS DTIM SUPPORT"
+	depends on MT_AP_SUPPORT
+	default n
+

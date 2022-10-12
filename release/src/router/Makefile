@@ -1502,6 +1502,7 @@ obj-$(UBIFS) += e2fsprogs lzo$(LZO_VER) zlib
 ifeq ($(RTCONFIG_RALINK),y)
 obj-$(RA_SKU) += ra_SingleSKU
 obj-$(RA_SKU_IN_DRV) += ra_SingleSKU
+obj-$(MT798X) += ra_SingleSKU
 endif
 
 ifeq ($(HND_ROUTER),y)

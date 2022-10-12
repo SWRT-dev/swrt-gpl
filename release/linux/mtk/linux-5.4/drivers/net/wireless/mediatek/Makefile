@@ -24,4 +24,5 @@ obj-$(CONFIG_MODEL_RMAX6000) += mt7986_prebuild/
 else
 obj-$(CONFIG_MODEL_RMAX6000) += mt7986/mt_wifi_ap/
 obj-$(CONFIG_MODEL_RMAX6000) += mt7986/warp_driver/warp/
+obj-$(CONFIG_MODEL_RMAX6000) += conninfra/
 endif

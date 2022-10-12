@@ -112,7 +112,7 @@ config FACTORY_CHECKSUM
 config FACTORY_NR_LEB
 	int "Number of LEBs of a set of Factory"
 	default 1
-	range 1 3
+	range 1 10
 	depends on FACTORY_CHECKSUM
 
 endif # MTD_UBI

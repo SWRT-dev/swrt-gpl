@@ -13033,8 +13033,6 @@ again:
 #elif defined(SWRT360V6)
 						eval("mtd-write", "-i", upgrade_file, "-d", "firmware", "-s", header_size);
 #elif defined(RMAX6000)
-						eval("ubirmvol", "/dev/ubi0", "-N", "kernel");
-						eval("ubimkvol", "/dev/ubi0", "-N", "kernel", "-s", "28520KiB");
 						eval("mtd-write", "-i", upgrade_file, "-d", "kernel", "-s", header_size);
 #else
 						_dprintf("mtd-write and skip header_size(%s)\n", header_size);

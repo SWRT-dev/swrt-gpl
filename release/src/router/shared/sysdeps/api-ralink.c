@@ -82,6 +82,8 @@ int get_mt7621_wan_unit_bytecount(int unit, unsigned long long *tx, unsigned lon
 #if defined(RTCONFIG_MT798X)
 #include <limits.h>		//PATH_MAX, LONG_MIN, LONG_MAX
 #define GPIOLIB_DIR	"/sys/class/gpio"
+#define GPIOBASE 411
+
 /* Export specified GPIO
  * @return:
  * 	0:	success
@@ -95,12 +97,12 @@ static int __export_gpio(uint32_t gpio)
 		_dprintf("%s does not exist!\n", __func__);
 		return -1;
 	}
-	snprintf(gpio_path, sizeof(gpio_path),"%s/gpio%d", GPIOLIB_DIR, gpio);
+	snprintf(gpio_path, sizeof(gpio_path),"%s/gpio%d", GPIOLIB_DIR, gpio + GPIOBASE);
 	if (d_exists(gpio_path))
 		return 0;
 
 	snprintf(export_path, sizeof(export_path), "%s/export", GPIOLIB_DIR);
-	snprintf(gpio_str, sizeof(gpio_str), "%d", gpio);
+	snprintf(gpio_str, sizeof(gpio_str), "%d", gpio + GPIOBASE);
 	f_write_string(export_path, gpio_str, 0, 0);
 
 	return 0;
@@ -113,13 +115,13 @@ uint32_t gpio_dir(uint32_t gpio, int dir)
 	if (dir == GPIO_DIR_OUT) {
 		dir_str = "out";		/* output, low voltage */
 		*v = '\0';
-		snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio);
+		snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio + GPIOBASE);
 		if (f_read_string(path, v, sizeof(v)) > 0 && safe_atoi(v) == 1)
 			dir_str = "high";	/* output, high voltage */
 	}
 
 	__export_gpio(gpio);
-	snprintf(path, sizeof(path), "%s/gpio%d/direction", GPIOLIB_DIR, gpio);
+	snprintf(path, sizeof(path), "%s/gpio%d/direction", GPIOLIB_DIR, gpio + GPIOBASE);
 	f_write_string(path, dir_str, 0, 0);
 
 	return 0;
@@ -129,7 +131,7 @@ uint32_t get_gpio(uint32_t gpio)
 {
 	char path[PATH_MAX], value[10];
 
-	snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio);
+	snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio + GPIOBASE);
 	f_read_string(path, value, sizeof(value));
 
 	return safe_atoi(value);
@@ -140,7 +142,7 @@ uint32_t set_gpio(uint32_t gpio, uint32_t value)
 	char path[PATH_MAX], val_str[10];
 
 	snprintf(val_str, sizeof(val_str), "%d", !!value);
-	snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio);
+	snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio + GPIOBASE);
 	f_write_string(path, val_str, 0, 0);
 
 	return 0;

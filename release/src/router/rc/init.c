@@ -5592,10 +5592,10 @@ int init_nvram(void)
 		//either txpower or singlesku supports rc.
 		add_rc_support("pwrctrl");
 		// the following values is model dep. so move it from default.c to here
-		nvram_set("wl0_HT_TxStream", "2");
-		nvram_set("wl0_HT_RxStream", "2");
-		nvram_set("wl1_HT_TxStream", "3");
-		nvram_set("wl1_HT_RxStream", "3");
+		nvram_set("wl0_HT_TxStream", "4");
+		nvram_set("wl0_HT_RxStream", "4");
+		nvram_set("wl1_HT_TxStream", "4");
+		nvram_set("wl1_HT_RxStream", "4");
 		break;
 #endif
 

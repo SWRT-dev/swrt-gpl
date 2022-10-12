@@ -33,6 +33,7 @@
 #include "ibm.h"
 #include "ultrix.h"
 #include "efi.h"
+#include "fit.h"
 #include "karma.h"
 #include "sysv68.h"
 #include "cmdline.h"
@@ -72,6 +73,9 @@ static int (*check_part[])(struct parsed_partitions *) = {
 #endif
 #ifdef CONFIG_EFI_PARTITION
 	efi_partition,		/* this must come before msdos */
+#endif
+#ifdef CONFIG_FIT_PARTITION
+	fit_partition,
 #endif
 #ifdef CONFIG_SGI_PARTITION
 	sgi_partition,

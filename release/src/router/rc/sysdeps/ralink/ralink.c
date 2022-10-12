@@ -609,7 +609,7 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	fprintf(fp, "#The word of \"Default\" must not be removed\n");
 	fprintf(fp, "Default\n");
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RALINK_DBDC_MODE)
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RALINK_DBDC_MODE) || defined(RTCONFIG_MT798X)
 	fprintf(fp, "DBDC_MODE=1\n");
 #endif
 	snprintf(prefix, sizeof(prefix), "wl%d_", band);
@@ -1241,7 +1241,7 @@ int gen_ralink_config(int band, int is_iNIC)
 		}
 		fprintf(fp, "NoForwarding=%s\n", tmpstr);
 		fprintf(fp, "NoForwardingMBCast=%s\n", tmpstr);
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RALINK_DBDC_MODE)
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RALINK_DBDC_MODE) || defined(RTCONFIG_MT798X)
 		fprintf(fp, "NoForwardingBTNBSSID=0\n");
 #else
 		fprintf(fp, "NoForwardingBTNBSSID=%d\n", atoi(str));
@@ -1608,6 +1608,8 @@ int gen_ralink_config(int band, int is_iNIC)
 			fprintf(fp, "DfsEnable=%d\n", 1);
 		else
 			fprintf(fp, "DfsEnable=%d\n", 0);
+		fprintf(fp, "DfsFalseAlarmPrevent=%d\n", 1);
+		fprintf(fp, "DfsZeroWaitCacTime=255\n");
 	}
 #endif
 #endif
@@ -1636,9 +1638,11 @@ int gen_ralink_config(int band, int is_iNIC)
 	fprintf(fp, "PhyRateLimit=%d\n", 0);
 	fprintf(fp, "DebugFlags=%d\n", 0);
 	fprintf(fp, "FineAGC=%d\n", 0);
+#if !defined(RTCONFIG_MT798X)
 	if(band)
 		fprintf(fp, "StreamMode=%d\n", 3);
 	else
+#endif
 		fprintf(fp, "StreamMode=%d\n", 0);
 	fprintf(fp, "StreamModeMac0=\n");
 	fprintf(fp, "StreamModeMac1=\n");
@@ -2979,6 +2983,9 @@ int gen_ralink_config(int band, int is_iNIC)
 		fprintf(fp, "ApCliEnable=1\n");
 		fprintf(fp, "ApCliSsid%d=%s\n", 1, nvram_safe_get(strcat_r(prefix_wlc, "ssid", tmp1)));
 		fprintf(fp, "ApCliBssid=\n");
+#if defined(RTCONFIG_MT798X)
+		fprintf(fp, "ApCliBcnProt=0\n");
+#endif
 		fprintf(fp, "MACRepeaterEn=%s\n", nvram_safe_get(strcat_r(prefix_wlc, "wifipxy", tmp1)));
 
 		str = nvram_safe_get(strcat_r(prefix_wlc, "auth_mode", tmp));
@@ -3380,7 +3387,11 @@ next_mrate:
 	fprintf(fp, "EfuseBufferMode=0\n");
 	fprintf(fp, "E2pAccessMode=2\n");
 	fprintf(fp, "VOW_RX_En=%d\n", 1);
+#if defined(RTCONFIG_MT798X)
+	fprintf(fp, "AMSDU_NUM=%d\n", 8);
+#else
 	fprintf(fp, "AMSDU_NUM=%d\n", 4);
+#endif
 	fprintf(fp, "CP_SUPPORT=%d\n", 2);
 	fprintf(fp, "RED_Enable=%d\n", 1);
 #if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
@@ -3408,6 +3419,27 @@ next_mrate:
 	else
 		fprintf(fp, "SKUenable=0\n");
 	fprintf(fp, "WirelessEvent=1\n");
+
+#if defined(RTCONFIG_MT798X)
+	fprintf(fp, "SREnable=1\n");
+	fprintf(fp, "SRMode=0\n");
+	fprintf(fp, "SRDPDEnable=0\n");
+	fprintf(fp, "SRSDEnable=1\n");
+	fprintf(fp, "PPEnable=1\n");
+	fprintf(fp, "WHNAT=1\n");
+	fprintf(fp, "IsICAPFW=0\n");
+	fprintf(fp, "KernelRps=1\n");
+	fprintf(fp, "BSSColorValue=255\n");
+	fprintf(fp, "BcnProt=0\n");
+#if defined(RTCONFIG_EASYMESH)
+	fprintf(fp, "QoSR1Enable=1\n");
+#endif
+	fprintf(fp, "DscpPriMapEnable=1\n");
+	fprintf(fp, "ScsEnable=0\n");
+	fprintf(fp, "QoSMgmtCapa=0\n");
+	fprintf(fp, "ApMWDS=0;0;0\n");
+	fprintf(fp, "ApCliMWDS=0\n");
+#endif
 
 #if defined(RTCONFIG_SWRT_KVR)
 	if(nvram_match(strcat_r(prefix, "kvr_kv", tmp), "1")){
@@ -5117,18 +5149,26 @@ void gen_ra_config(const char* wif)
 		{
 			if (!strcmp(word, nvram_safe_get("wl0_ifname"))) // 2.4G
 			{
+#if defined(RTCONFIG_MT798X)
+				if (!strncmp(word, "rax", 3))	// iNIC
+#else
 				if (!strncmp(word, "rai", 3))	// iNIC
+#endif
 					gen_ralink_config(0, 1);
 				else{
 					gen_ralink_config(0, 0);
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
-					gen_ralink_config(1, 1); //why? 5g always on? ax53u only?
+#if defined(RALINK_DBDC_MODE)
+					gen_ralink_config(1, 1);
 #endif
 				}
 			}
 			else if (!strcmp(word, nvram_safe_get("wl1_ifname"))) // 5G
 			{
+#if defined(RTCONFIG_MT798X)
+				if (!strncmp(word, "rax", 3))	// iNIC
+#else
 				if (!strncmp(word, "rai", 3))	// iNIC
+#endif
 					gen_ralink_config(1, 1);
 				else
 					gen_ralink_config(1, 0);
@@ -5313,8 +5353,13 @@ void stop_wds_ra(const char* lan_ifname, const char* wif)
 	if (strcmp(wif, WIF_2G) && strcmp(wif, WIF_5G))
 		return;
 
+#if defined(RTCONFIG_MT798X)
+	if (!strncmp(wif, "rax", 3))
+		snprintf(prefix, sizeof(prefix), "wdsx");
+#else
 	if (!strncmp(wif, "rai", 3))
 		snprintf(prefix, sizeof(prefix), "wdsi");
+#endif
 	else
 		snprintf(prefix, sizeof(prefix), "wds");
 
@@ -5633,14 +5678,18 @@ unsigned int get_conn_link_quality(int unit)
 	char data[16];
 	struct iwreq wrq;
 
-#if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7621)
+#if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_MT798X)
 	if(unit == 0)
 #else
 	if(unit == 1)
 #endif
 		aif = "apcli0";
 	else
+#if defined(RTCONFIG_MT798X)
+		aif = "apclix0";
+#else
 		aif = "apclii0";
+#endif
 
 	memset(data, 0x00, sizeof(data));
 	wrq.u.data.length = sizeof(data);
@@ -5728,14 +5777,18 @@ int getPapState(int band)
 		   || (Uptime < lastUptime[band] && Uptime < FIND_CHANNEL_INTERVAL))
 			return ret;
 
-#if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7621)
+#if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_MT798X)
 		if(band == 0)
 #else
 		if(band == 1)
 #endif
 			aif = "apcli0";
 		else
+#if defined(RTCONFIG_MT798X)
+			aif = "apclix0";
+#else
 			aif = "apclii0";
+#endif
 
 		ch = site_survey_for_channel(band, aif, &ht_ext);
 		if(ch != -1)
@@ -5835,14 +5888,18 @@ int wlcconnect_core(void)
 			return ret;
 
 		band = nvram_get_int("wlc_band");
-#if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_MT7628)
+#if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_MT7628) || defined(RTCONFIG_MT798X)
 		if(band == 0)
 #else
 		if(band == 1)
 #endif
 			aif = "apcli0";
 		else
+#if defined(RTCONFIG_MT798X)
+			aif = "apclix0";
+#else
 			aif = "apclii0";
+#endif
 
 		ch = site_survey_for_channel(band, aif, &ht_ext);
 		if(ch != -1)

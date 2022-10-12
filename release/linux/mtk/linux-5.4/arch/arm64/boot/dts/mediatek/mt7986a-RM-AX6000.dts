@@ -17,11 +17,29 @@
 
 	chosen {
 		/*bootargs = "serial0:115200n8";*/
-		bootargs-override = "serial0:115200n8 ubi.mtd=ubi ubi.mtd=UBI_DEV root=mtd:rootfs rootfstype=squashfs";
+		bootargs-override = "console=ttyS0,115200n8 loglevel=8 ubi.mtd=ubi ubi.mtd=UBI_DEV rootfstype=squashfs";
+		/*bootargs-override = "console=ttyS0,115200n8 loglevel=8 ubi.mtd=ubi ubi.mtd=UBI_DEV root=/dev/ram0 rw";*/
 	};
 
 	memory {
 		reg = <0 0x40000000 0 0x20000000>;
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		reset {
+			label = "reset";
+			gpios = <&pio 9 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_RESTART>;
+		};
+
+		wps {
+			label = "wps";
+			gpios = <&pio 10 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_WPS_BUTTON>;
+			linux,input-type = <EV_SW>;
+		};
 	};
 
     nmbm_spim_nand {
@@ -193,6 +211,38 @@
 			mediatek,pull-down-adv = <0>; /* bias-disable */
 		};
 	};
+	wf_2g_5g_pins: wf_2g_5g-pins {
+		mux {
+			function = "wifi";
+			groups = "wf_2g", "wf_5g";
+		};
+		conf {
+			pins = "WF0_HB1", "WF0_HB2", "WF0_HB3", "WF0_HB4",
+			       "WF0_HB0", "WF0_HB0_B", "WF0_HB5", "WF0_HB6",
+			       "WF0_HB7", "WF0_HB8", "WF0_HB9", "WF0_HB10",
+			       "WF0_TOP_CLK", "WF0_TOP_DATA", "WF1_HB1",
+			       "WF1_HB2", "WF1_HB3", "WF1_HB4", "WF1_HB0",
+			       "WF1_HB5", "WF1_HB6", "WF1_HB7", "WF1_HB8",
+			       "WF1_TOP_CLK", "WF1_TOP_DATA";
+			drive-strength = <MTK_DRIVE_4mA>;
+		};
+	};
+	wf_dbdc_pins: wf_dbdc-pins {
+		mux {
+			function = "wifi";
+			groups = "wf_dbdc";
+		};
+		conf {
+			pins = "WF0_HB1", "WF0_HB2", "WF0_HB3", "WF0_HB4",
+			       "WF0_HB0", "WF0_HB0_B", "WF0_HB5", "WF0_HB6",
+			       "WF0_HB7", "WF0_HB8", "WF0_HB9", "WF0_HB10",
+			       "WF0_TOP_CLK", "WF0_TOP_DATA", "WF1_HB1",
+			       "WF1_HB2", "WF1_HB3", "WF1_HB4", "WF1_HB0",
+			       "WF1_HB5", "WF1_HB6", "WF1_HB7", "WF1_HB8",
+			       "WF1_TOP_CLK", "WF1_TOP_DATA";
+			drive-strength = <MTK_DRIVE_4mA>;
+		};
+	};
 };
 
 &pcie0 {
@@ -219,6 +269,14 @@
 		spi-tx-buswidth = <4>;
 		spi-rx-buswidth = <4>;
 	};
+};
+
+&wbsys {
+	status = "okay";
+	mediatek,mtd-eeprom = <&factory 0x0000>;
+	pinctrl-names = "default", "dbdc";
+	pinctrl-0 = <&wf_2g_5g_pins>;
+	pinctrl-1 = <&wf_dbdc_pins>;
 };
 
 &spi1 {
@@ -256,4 +314,8 @@
 			color = [ 00 ff 00 ];
 		};
 	};
+};
+
+&watchdog {
+	status = "okay";
 };

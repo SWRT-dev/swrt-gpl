@@ -801,8 +801,11 @@ void init_wl(void)
 		snprintf(cmd, sizeof(cmd), "dd if=/dev/mtdblock%d of=/lib/firmware/e2p bs=655360 skip=0 count=1", mtd_part);
 		system(cmd);
 		system("ln -sf /rom/etc/wireless/mediatek /etc/wireless/");
+		doSystem("cp -s /rom/firmware/* /lib/firmware/");
 	}else
 		printf("init_devs: can't find Factory MTD partition\n");
+	if (!module_loaded("conninfra"))
+		modprobe("conninfra");
 	if (!module_loaded("mt_wifi"))
 		modprobe("mt_wifi");
 	if (!module_loaded("mtk_warp"))
@@ -1683,8 +1686,13 @@ void gen_wapp_config(void)
 	FILE *fp = NULL;
 	if(!f_exists("/etc/wapp_ap_ra0.conf"))
 		system("cp /etc/wappd/wapp_ap_ra0_default.conf /etc/wapp_ap_ra0.conf");
+#if defined(RTCONFIG_MT798X)
+	if(!f_exists("/etc/wapp_ap_rax0.conf"))
+		system("cp /etc/wappd/wapp_ap_rax0_default.conf /etc/wapp_ap_rax0.conf");
+#else
 	if(!f_exists("/etc/wapp_ap_rai0.conf"))
 		system("cp /etc/wappd/wapp_ap_rai0_default.conf /etc/wapp_ap_rai0.conf");
+#endif
 	system("rm -rf /tmp/wapp*");
 	if((fp = fopen("/etc/wapp_ap.conf", "w")))
 	{
@@ -1720,7 +1728,11 @@ void start_wapp(void)
 	if(nvram_match("wl0_radio", "1"))
 		wapp_argv[if_index++] = "cra0";
 	if(nvram_match("wl1_radio", "1"))
+#if defined(RTCONFIG_MT798X)
+		wapp_argv[if_index++] = "crax0";
+#else
 		wapp_argv[if_index++] = "crai0";
+#endif
 	if(pids("wapp"))
 		killall_tk("wapp");
 	_eval(wapp_argv, NULL, 0, &pid);

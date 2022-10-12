@@ -194,6 +194,15 @@ ifeq ("$(BUILD_NAME)","RT-AC52U")
 	@install $(BUILD_NAME)/$(SKU_5G_CE_V2) $(SKUDIR)/SingleSKU_5G_CE_0002.dat
 endif
 
+	@install $(BUILD_NAME)/l1profile.dat $(SKUDIR)/l1profile.dat
+ifeq ($(or $(MT7986A),$(MT7986B),$(MT7986C)),y)
+	@install $(BUILD_NAME)/mt7986-sku.dat $(SKUDIR)/mt7986-sku.dat
+	@install $(BUILD_NAME)/mt7986-sku-bf.dat $(SKUDIR)/mt7986-sku-bf.dat
+else ifeq ($(MT7981),y)
+	@install $(BUILD_NAME)/mt7981-sku.dat $(SKUDIR)/mt7981-sku.dat
+	@install $(BUILD_NAME)/mt7981-sku-bf.dat $(SKUDIR)/mt7981-sku-bf.dat
+endif
+
 endif	#RA_SKU_IN_DRV == y
 
 

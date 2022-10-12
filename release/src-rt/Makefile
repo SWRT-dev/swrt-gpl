@@ -781,7 +781,7 @@ endif
 	# create empty tail
 	@echo -n "" > image/tail_info
 ifeq ($(TRX_TAIL_INFO),y)
-	asustools/mktail -o image/tail_info -t 1 -f 0 -b $(SERIALNO) -e $(EXTENDNO) -r 0 -r $(SFINFO)
+	asustools/mktail -o image/tail_info -t 1 -f 0 -b $(SERIALNO) -e $(SWRTEXTENDNO) -r 0 -r $(SFINFO)
 	cat image/tail_info >> image/$(IMGNAME).img
 endif
 	#generate ASUS Image
@@ -792,7 +792,7 @@ endif
 		PAD2=`expr $${ISIZE} - $${KSIZE} - $${RSIZE} - $${TSIZE}` ; \
 		echo "PAD2: $${PAD2}" ; \
 	asustools/mkimage -A $(ARCH) -O linux -T kernel -C lzma -a $(LOADADDR) -e $(ENTRYADDR)\
-			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(EXTENDNO)" "0" "0" "0" "0" "0" "0" \
+			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(SWRTEXTENDNO)" "0" "0" "0" "0" "0" "0" \
 			-d image/$(IMGNAME).img image/$(IMGNAME).trx
 else ifeq ($(CONFIG_RALINK),y)
 # MTK/Ralink platform

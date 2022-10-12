@@ -396,7 +396,7 @@ int ubiblock_create(struct ubi_volume_info *vi)
 	dev->leb_size = vi->usable_leb_size;
 
 	/* Initialize the gendisk of this ubiblock device */
-	gd = alloc_disk(1);
+	gd = alloc_disk(0);
 	if (!gd) {
 		pr_err("UBI: block: alloc_disk failed\n");
 		ret = -ENODEV;
@@ -413,6 +413,7 @@ int ubiblock_create(struct ubi_volume_info *vi)
 		goto out_put_disk;
 	}
 	gd->private_data = dev;
+	gd->flags |= GENHD_FL_EXT_DEVT;
 	sprintf(gd->disk_name, "ubiblock%d_%d", dev->ubi_num, dev->vol_id);
 	set_capacity(gd, disk_capacity);
 	dev->gd = gd;

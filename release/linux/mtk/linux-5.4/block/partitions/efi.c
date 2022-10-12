@@ -89,6 +89,9 @@
 #include <linux/slab.h>
 #include "check.h"
 #include "efi.h"
+#ifdef CONFIG_FIT_PARTITION
+#include "fit.h"
+#endif
 
 /* This allows a kernel command line option 'gpt' to override
  * the test for invalid PMBR.  Not __initdata because reloading
@@ -681,6 +684,9 @@ int efi_partition(struct parsed_partitions *state)
 	gpt_entry *ptes = NULL;
 	u32 i;
 	unsigned ssz = bdev_logical_block_size(state->bdev) / 512;
+#ifdef CONFIG_FIT_PARTITION
+	u32 extra_slot = 64;
+#endif
 
 	if (!find_valid_gpt(state, &gpt, &ptes) || !gpt || !ptes) {
 		kfree(gpt);
@@ -722,6 +728,11 @@ int efi_partition(struct parsed_partitions *state)
 			label_count++;
 		}
 		state->parts[i + 1].has_info = true;
+#ifdef CONFIG_FIT_PARTITION
+		/* If this is a U-Boot FIT volume it may have subpartitions */
+		if (!efi_guidcmp(ptes[i].partition_type_guid, PARTITION_LINUX_FIT_GUID))
+			(void) parse_fit_partitions(state, start * ssz, size * ssz, &extra_slot, 1);
+#endif
 	}
 	kfree(ptes);
 	kfree(gpt);
