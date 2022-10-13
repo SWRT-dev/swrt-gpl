@@ -1488,7 +1488,7 @@ function showDiableDHCPclientID(clientid_enable){
 }
 
 function change_nat(state) {
-	if (isSupport("bcm_kf_netfilter")) {
+	if (isSupport("bcm_kf_netfilter") || swrt_fullcone_support) {
 		document.getElementById("nat_type_tr").style.display = (state ? "" : "none");
 	}
 }
