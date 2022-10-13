@@ -16,6 +16,8 @@ EXTRA_CFLAGS = -I$(WIFI_DRV_PATH)/mt_wifi/include \
 				-I$(WIFI_DRV_PATH)/warp_driver/warp \
 				-I$(WIFI_DRV_PATH)/warp_driver/warp/mcu
 
+EXTRA_CFLAGS += -DSYSTEM_LOG_SUPPORT #iweventd
+
 ifeq ($(CONFIG_SUPPORT_OPENWRT),y)
 GLOBAL_DEFINES = include/uapi/linux/wapp
 EXTRA_CFLAGS +=	-I$(GLOBAL_DEFINES)

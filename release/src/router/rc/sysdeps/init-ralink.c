@@ -1668,10 +1668,14 @@ void reset_ra_sku(const char *location, const char *country, const char *reg_spe
 
 void setup_smp(int which)
 {
+#if defined(RTCONFIG_MT798X)
+	eval("/sbin/smp.sh");
+#else
 	if(which == 1)
 		eval("/sbin/smp.sh", "usb0", NULL);
 	else
 		eval("/sbin/smp.sh", "wifi", NULL);
+#endif
 	//nas or auto
 	//doSystem("pbr-optimizer -m 1 -o &");
 	//nat

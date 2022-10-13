@@ -48,5 +48,8 @@ ifeq ($(RTACRH18)$(RT4GAC86U),y)
 	install smp_openwr_4200.sh $(INSTALLDIR)/sbin/smp.sh
 endif
 endif
+ifeq ($(RTCONFIG_MT798X),y)
+	install smp_mt798x.sh $(INSTALLDIR)/sbin/smp.sh
+endif
 endif
 clean:

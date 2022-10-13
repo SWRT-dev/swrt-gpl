@@ -139,11 +139,11 @@
 
         switch@0 {
             compatible = "mediatek,mt7531";
-            reg = <0>;
+            reg = <31>;
             interrupt-controller;
             #interrupt-cells = <1>;
             interrupt-parent = <&pio>;
-            interrupts = <53 IRQ_TYPE_LEVEL_HIGH>;
+            interrupts = <66 IRQ_TYPE_LEVEL_HIGH>;
             reset-gpios = <&pio 5 GPIO_ACTIVE_HIGH>;
 
             ports {
@@ -189,8 +189,8 @@
 
 &hnat {
 	mtketh-wan = "wan";
-	mtketh-lan = "br0";
-	mtketh-max-gmac = <2>;
+	mtketh-lan = "eth0";
+	mtketh-max-gmac = <1>;
 	status = "okay";
 };
 
