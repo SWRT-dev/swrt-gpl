@@ -594,7 +594,6 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 					}
 				}
 			}
-#if defined(RTCONFIG_BCMARM) || defined(RTCONFIG_HND_ROUTER)
 		} else if(strcmp(type,"ethernet.rtk") == 0 ) {
 #ifdef RTCONFIG_EXT_RTL8365MB
 			int states[4];
@@ -613,7 +612,6 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 			                                 8, states[3]);
 #else
 			strcpy(result, "[]");
-#endif
 #endif
 		} else if(strcmp(type,"ethernet") == 0 ) {
 #if defined(RTCONFIG_BCMARM) || defined(RTCONFIG_HND_ROUTER)

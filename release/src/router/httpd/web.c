@@ -6743,7 +6743,7 @@ static int get_fanctrl_info(int eid, webs_t wp, int argc, char_t **argv)
 #if defined(RTCONFIG_BCMARM) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 static int get_cpu_temperature(int eid, webs_t wp, int argc, char_t **argv)
 {
-#ifdef HND_ROUTER
+#if defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_MT798X)
 	FILE *fp;
 	int temperature;
 
@@ -6755,13 +6755,16 @@ static int get_cpu_temperature(int eid, webs_t wp, int argc, char_t **argv)
 	return websWrite(wp, "%3.3f", (double) temperature / 1000);
 #elif defined(RTCONFIG_QCA)
 #if defined(RTCONFIG_SOC_IPQ40XX)
-	return websWrite(wp, "0");//ipq401x not support
+	return websWrite(wp, "0");//not support
 #else
-	char temperature[6] = { 0 };
+	FILE *fp;
+	int temperature;
 
-	if (f_read_string("/sys/class/thermal/thermal_zone0/temp", temperature, sizeof(temperature)) <= 0)
-		*temperature = '\0';
-	return websWrite(wp, "%d", safe_atoi(temperature));
+	if ((fp = fopen("/sys/class/thermal/thermal_zone0/temp", "r")) != NULL) {
+		fscanf(fp, "%d", &temperature);
+		fclose(fp);
+	}
+	return websWrite(wp, "%d", temperature);
 #endif
 #elif defined(RTCONFIG_LANTIQ)
 	FILE *fp;
@@ -6774,7 +6777,7 @@ static int get_cpu_temperature(int eid, webs_t wp, int argc, char_t **argv)
 	return websWrite(wp, "%d", (temperature/1000));
 #elif defined(RTCONFIG_RALINK)
 #if defined(RTCONFIG_RALINK_MT7621)
-	return websWrite(wp, "0");//mtk not support
+	return websWrite(wp, "0");//support
 #else
 	char temperature[6] = { 0 };
 
