@@ -751,7 +751,7 @@ unsigned int get_phy_temperature(int radio)
 		interface = nvram_safe_get("wl0_ifname");
 	} else if (radio == 1) {
 		interface = nvram_safe_get("wl1_ifname");
-#if defined(RTCONFIG_HAS_5G_2) || defined (RTCONFIG_WIFI6E)
+#if defined(RTCONFIG_HAS_5G_2) || defined(RTCONFIG_WIFI6E)
 	} else if (radio == 2) {
 		interface = nvram_safe_get("wl2_ifname");
 #endif
@@ -806,9 +806,11 @@ unsigned int get_phy_temperature(int radio)
         case 1:
             band = 1;
             break;
+#if defined(RTCONFIG_HAS_5G_2) || defined(RTCONFIG_WIFI6E)
         case 2:
             band = 2;
             break;
+#endif
         default:
             band = 0;
             break;
@@ -827,13 +829,17 @@ unsigned int get_phy_temperature(int radio)
 	char temp[18];
 	char *interface = NULL;
 
-	if (radio == 0) {
-		interface = nvram_safe_get("wl0_ifname");
-	} else if (radio == 1) {
-		interface = nvram_safe_get("wl1_ifname");
-	} else if (radio == 2) {
-		interface = nvram_safe_get("wl2_ifname");
-	}
+	if (radio == 0)
+		interface = nvram_get("wl0_ifname");
+	else if (radio == 1)
+		interface = nvram_get("wl1_ifname");
+#if defined(RTCONFIG_HAS_5G_2) || defined(RTCONFIG_WIFI6E)
+	else if (radio == 2)
+		interface = nvram_get("wl2_ifname");
+#endif
+
+	if(interface == NULL || *interface == 0)
+		return 0;
 	memset(temp, 0, 18);
 	memset(&wrq, 0, sizeof(wrq));
 	wrq.u.data.pointer = &temp;

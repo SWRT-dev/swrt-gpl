@@ -1089,7 +1089,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	RT_802_11_MAC_TABLE_2G* mp2=(RT_802_11_MAC_TABLE_2G*)wrq3.u.data.pointer;
 	int i;
 
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RALINK_DBDC_MODE)
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RALINK_DBDC_MODE) || defined(RTCONFIG_MT798X)
 	ret+=websWrite(wp, "\nStations List -- DBDC Mode		   \n");
 #else
 	ret+=websWrite(wp, "\nStations List		   \n");
