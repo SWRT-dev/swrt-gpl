@@ -2512,7 +2512,7 @@ ifeq ($(RTCONFIG_WLMODULE_MT7663E_AP),y)
 	@ln -s /tmp/lib/firmware $(TARGETDIR)/lib/firmware
 endif
 
-ifeq ($(or $(RTCONFIG_WLMODULE_MT7629_AP),$(RTCONFIG_WLMODULE_MT7622_AP),$(RTCONFIG_WLMODULE_MT7915D_AP),$(RTCONFIG_WLMODULE_MT7615E_AP)),y)
+ifeq ($(or $(RTCONFIG_WLMODULE_MT7629_AP),$(RTCONFIG_WLMODULE_MT7622_AP),$(RTCONFIG_WLMODULE_MT7915D_AP),$(RTCONFIG_WLMODULE_MT7615E_AP),$(RTCONFIG_MT798X)),y)
 	rm -rf $(TARGETDIR)/lib/firmware
 	ln -s /tmp/lib/firmware $(TARGETDIR)/lib/firmware
 endif
@@ -6964,7 +6964,7 @@ curl-install:
 	cd $(INSTALLDIR)/curl/usr/lib && \
 		ln -sf libcurl.so.4.8.0 libcurl.so && \
 		ln -sf libcurl.so.4.8.0 libcurl.so.4
-ifeq ($(or $(RTCONFIG_SPEEDTEST),$(RTCONFIG_LETSENCRYPT)),y)
+ifeq ($(or $(RTCONFIG_SPEEDTEST),$(RTCONFIG_LETSENCRYPT),$(RTCONFIG_SWRT)),y)
 	# for speedtest
 	install -D curl/src/.libs/curl $(INSTALLDIR)/curl/usr/sbin/curl
 	$(STRIP) $(INSTALLDIR)/curl/usr/sbin/curl

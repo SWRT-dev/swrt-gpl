@@ -4117,7 +4117,7 @@ define BusyboxOptions
 				echo "CONFIG_E2FSCK=y" >>$(1); \
 			fi; \
 		fi; \
-		if [ "$(USBEXTRAS)" = "y" ]; then \
+		if [ "$(USBEXTRAS)" = "y" ] || [ "$(SWRT)" = "y" ]; then \
 			sed -i "/CONFIG_FSCK_MINIX/d" $(1); \
 			echo "CONFIG_FSCK_MINIX=y" >>$(1); \
 			sed -i "/CONFIG_MKSWAP/d" $(1); \
