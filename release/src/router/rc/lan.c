@@ -1837,7 +1837,7 @@ void start_lan(void)
 #endif
 #if defined(RTCONFIG_RALINK) && defined(RTCONFIG_PROXYSTA)
 						if (mediabridge_mode()) {
-#if !defined(RALINK_DBDC_MODE)
+#if !defined(RALINK_DBDC_MODE) && !defined(RTCONFIG_MT798X)
 							ifconfig(ifname, 0, NULL, NULL);
 #endif
 							match = 1;
@@ -2071,7 +2071,7 @@ gmac3_no_swbr:
 	}
 
 #ifdef RTCONFIG_RALINK
-#if defined(RTCONFIG_PROXYSTA) && defined(RALINK_DBDC_MODE)
+#if defined(RTCONFIG_PROXYSTA) && (defined(RALINK_DBDC_MODE) || defined(RTCONFIG_MT798X))
 	if (mediabridge_mode()) {
         foreach (word, nvram_safe_get("wl_ifnames"), next) {
 			ifconfig(word, 0, NULL, NULL);
@@ -2828,8 +2828,11 @@ void hotplug_net(void)
 
 	if (add_event) {
 #ifdef RTCONFIG_RALINK
+#if !defined(RTCONFIG_MT798X)
+//
 		if (sw_mode() == SW_MODE_REPEATER)
 			return;
+#endif
 
 		if (strncmp(interface, WDSIF_5G, strlen(WDSIF_5G)) == 0 && isdigit(interface[strlen(WDSIF_5G)]))
 		{
@@ -4383,7 +4386,7 @@ gmac3_no_swbr:
 		free(wl_ifnames);
 	}
 #if defined(RTCONFIG_AMAS_WGN)
-#if defined(RTCONFIG_RALINK) && defined(RALINK_DBDC_MODE)
+#if defined(RTCONFIG_RALINK) && (defined(RALINK_DBDC_MODE) || defined(RTCONFIG_MT798X))
 	/* for DBDC mode, need all wireless interface down that driver profile will be update */
 	char word[8], *next = NULL;
 	char nv[32], vif[8];
@@ -4899,7 +4902,7 @@ void start_lan_wl(void)
 #endif
 #if defined(RTCONFIG_RALINK) && defined(RTCONFIG_PROXYSTA)
 						if (mediabridge_mode()) {
-#if !defined(RALINK_DBDC_MODE)
+#if !defined(RALINK_DBDC_MODE) && !defined(RTCONFIG_MT798X)
 							ifconfig(ifname, 0, NULL, NULL);
 #endif
 							match = 1;

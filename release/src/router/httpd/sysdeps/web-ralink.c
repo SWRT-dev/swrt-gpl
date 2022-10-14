@@ -2255,6 +2255,11 @@ static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 
 	name = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
 
+#if defined(RTCONFIG_MT798X)
+	if(*name == 0)
+		name = get_staifname(unit);
+#endif
+
 	wrq.u.bitrate.value=-1;
 	if (wl_ioctl(name, SIOCGIWRATE, &wrq))
 	{

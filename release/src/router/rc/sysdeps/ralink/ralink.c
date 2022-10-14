@@ -5328,6 +5328,10 @@ void apcli_start(void)
 #else /* RTCONFIG_CONCURRENTREPEATER */
 		int wlc_band = nvram_get_int("wlc_band");
 		aif = get_staifname(wlc_band);
+#if defined(RTCONFIG_MT798X)
+		ifconfig(aif, IFUP, NULL, NULL);//up ifname
+		eval("brctl", "addif", "br0", aif);//add to bridge
+#endif
 		ch = site_survey_for_channel(wlc_band, aif, &ht_ext);
 		if(ch != -1)
 		{
@@ -5460,147 +5464,6 @@ void Gen_fail_log(const char *logStr, int max, struct FAIL_LOG *log)
 #endif //RTCONFIG_RALINK
 
 #ifdef RTCONFIG_WIRELESSREPEATER
-#if 0
-#define for1each(n, word, wordlist, next) \
-         for (n = 0, \
-              next = &wordlist[strspn(wordlist, " ")], \
-              strncpy(word, next, sizeof(word)), \
-              word[strcspn(word, " ")] = '\0', \
-              word[sizeof(word) - 1] = '\0', \
-              next = strchr(next, ' '); \
-              strlen(word); \
-              next = next ? &next[strspn(next, " ")] : "", \
-              strncpy(word, next, sizeof(word)), \
-              word[strcspn(word, " ")] = '\0', \
-              word[sizeof(word) - 1] = '\0', \
-              next = strchr(next, ' '), \
-              n++)
-
-int pap_exist[2] = {0, 0};
-int need_manually_bridge = 1;
-int apcli_connStatus[2] = {0, 0};
-int _sw_mode;
-#define no_connected_PAP()      ((nvram_match("sta_freq", "2.4") && n == 0 && !apcli_connStatus[1]) \
-                                  || (nvram_match("sta_freq", "5") && n == 1 && !apcli_connStatus[0]))
-int
-get_info(int			skfd,
-	 char *			ifname,
-	 struct wireless_info *	info)
-{
-  struct iwreq		wrq;
-
-  memset((char *) info, 0, sizeof(struct wireless_info));
-
-  /* Get basic information */
-  if(iw_get_basic_config(skfd, ifname, &(info->b)) < 0)
-    {
-      /* If no wireless name : no wireless extensions */
-      /* But let's check if the interface exists at all */
-      struct ifreq ifr;
-
-      strncpy(ifr.ifr_name, ifname, IFNAMSIZ);
-      if(ioctl(skfd, SIOCGIFFLAGS, &ifr) < 0)
-	return(-ENODEV);
-      else
-	return(-ENOTSUP);
-    }
-
-  /* Get AP address */
-  if(iw_get_ext(skfd, ifname, SIOCGIWAP, &wrq) >= 0)
-    {
-      info->has_ap_addr = 1;
-      memcpy(&(info->ap_addr), &(wrq.u.ap_addr), sizeof (sockaddr));
-    }
-  else
-    return -1;
-
-  return(0);
-}
-
-int get_apcli_status(void)
-{
-	int n;
-	char aif[8], *next;
-	char tmp[128],temp[]="wlXXXXXXXXXX_", prefix[] = "staXXXXXXXXXX_";
-	//apcli interface
-	for1each(n, aif, nvram_safe_get("wl0.1_ifname"), next) {
-		int skfd;/* generic raw socket desc. */
-		int rc;
-		struct wireless_info info;
-		char buffer[128];
-
-		snprintf(prefix, sizeof(prefix), "sta%d_", n);
-		snprintf(temp, sizeof(temp), "wl%d_", n);
-		if (nvram_match(strcat_r(temp, "ssid", tmp), ""))
-			continue;
-
-		/* Create a channel to the NET kernel. */
-		if ((skfd = iw_sockets_open()) < 0) {
-			perror("socket");
-			return 0;
-		}
-		rc = get_info(skfd, aif, &info);
-		/* Close the socket. */
-		close(skfd);
-
-		//dbg("%sG ", n==1?"5":"2.4");
-		if (!rc && info.b.has_essid
-				&& info.b.essid_on
-				&& info.has_ap_addr
-				&& strlen(info.b.essid)
-				&& !strcmp(info.b.essid, nvram_safe_get(strcat_r(temp, "ssid", tmp)))) {
-			if (nvram_match(strcat_r(temp, "auth_mode_x", tmp), "psk")||nvram_match(strcat_r(temp, "auth_mode_x", tmp), "psk2")) {
-				if (nvram_match(strcat_r(prefix, "connected", tmp), "1")
-						&& (nvram_match(strcat_r(prefix, "authorized", tmp), "1")
-						|| nvram_match(strcat_r(prefix, "authorized", tmp), "2"))) {
-			//		dbg("[1]Connected with: \"%s\" (%s)\n", info.b.essid, iw_sawap_ntop(&info.ap_addr, buffer));
-					nvram_set(strcat_r(prefix, "connStatus", tmp), "2");
-					apcli_connStatus[n] = 2;
-				}
-				else {
-			//		dbg("[1]Connecting to \"%s\" (%s)\n", info.b.essid, iw_sawap_ntop(&info.ap_addr, buffer));
-					nvram_set(strcat_r(prefix, "connStatus", tmp), "3");
-					apcli_connStatus[n] = 1;
-				}
-			}
-			else {
-				if (nvram_match(strcat_r(prefix, "connected", tmp), "1")) {
-			//		dbg("[2]Connected with: \"%s\" (%s)\n",info.b.essid, iw_sawap_ntop(&info.ap_addr, buffer));
-					nvram_set(strcat_r(prefix, "connStatus", tmp), "2");
-					apcli_connStatus[n] = 2;
-				}
-				else {
-			//		dbg("[2]Connecting to \"%s\" (%s)\n", info.b.essid, iw_sawap_ntop(&info.ap_addr, buffer));
-					nvram_set(strcat_r(prefix, "connStatus", tmp), "1");
-					apcli_connStatus[n] = 1;
-				}
-			}
-		}
-		else {
-			//dbg("Disconnected...\n");
-
-			if (pap_exist[n] == 1 && (nvram_match(strcat_r(temp, "auth_mode_x", tmp), "open")
-						|| nvram_match(strcat_r(temp, "auth_mode_x", tmp), "shared")))
-				nvram_set(strcat_r(prefix, "connStatus", tmp), "1");
-			else
-				nvram_set(strcat_r(prefix, "connStatus", tmp), "0");
-			apcli_connStatus[n] = 0;
-		}
-	}
-
-#if 1
-	return apcli_connStatus[0];
-
-#else
-	if (nvram_invmatch("wl0_ssid", "") && nvram_match("wl1_ssid", ""))
-		return !apcli_connStatus[0];
-	else if (nvram_match("wl0_ssid", "") && nvram_invmatch("wl1_ssid", ""))
-		return !apcli_connStatus[1];
-	else
-		return (!apcli_connStatus[0] || !apcli_connStatus[1]);
-#endif
-}
-#else
 #if defined(RTCONFIG_CONCURRENTREPEATER)
 int get_apcli_status(int wlc_band)
 #else
@@ -5647,7 +5510,6 @@ int get_apcli_status(void)
 		return WLC_STATE_CONNECTING;
 	return WLC_STATE_INITIALIZING;
 }
-#endif
 
 char *wlc_nvname(char *keyword)
 {

@@ -2035,7 +2035,11 @@ void start_mapd(void)
 		if(sw_mode() == SW_MODE_ROUTER)
 			doSystem("fwdd -p %s %s -p %s %s -e %s 5G &", get_wififname(WL_2G_BAND), get_staifname(WL_2G_BAND), get_wififname(WL_5G_BAND), get_staifname(WL_5G_BAND), nvram_safe_get("wan0_ifname"));
 		else
+#if defined(RTCONFIG_MT798X)
+			doSystem("fwdd -p %s %s -p %s %s -e %s 5G &", get_wififname(WL_2G_BAND), get_staifname(WL_2G_BAND), get_wififname(WL_5G_BAND), get_staifname(WL_5G_BAND), "br0");
+#else
 			doSystem("fwdd -p %s %s -p %s %s -e %s 5G &", get_wififname(WL_2G_BAND), get_staifname(WL_2G_BAND), get_wififname(WL_5G_BAND), get_staifname(WL_5G_BAND), "vlan1");
+#endif
 		return;
 	}else{
 		doSystem("rm -rf /tmp/wapp_ctrl");
