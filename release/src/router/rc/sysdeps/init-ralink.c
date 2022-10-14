@@ -1192,7 +1192,9 @@ void init_syspara(void)
 		else
 			nvram_set("secret_code", "12345670");
 	}
-
+#if defined(RTCONFIG_MT798X)
+	strlcpy(productid, rt_buildname, sizeof(productid));
+#else
 	dst = buffer;
 	bytes = 16;
 	if (linuxRead(dst, 0x20, bytes)<0)	/* The "linux" MTD partition, offset 0x20. */
@@ -1209,7 +1211,7 @@ void init_syspara(void)
 		nvram_set("productid", trim_r(productid));
 		nvram_set("firmver", trim_r(fwver));
 	}
-
+#endif
 #if defined(RTCONFIG_TCODE)
 	/* Territory code */
 	memset(buffer, 0, sizeof(buffer));

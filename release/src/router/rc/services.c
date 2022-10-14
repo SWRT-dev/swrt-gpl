@@ -488,7 +488,7 @@ static int build_temp_rootfs(const char *newroot)
 #endif
 #if defined(RTCONFIG_HTTPS) || defined(RTCONFIG_PUSH_EMAIL) || defined(RTCONFIG_FRS_FEEDBACK)
 			     " libssl* libmssl*"
-#if defined(RTCONFIG_FRS_FEEDBACK)
+#if defined(RTCONFIG_FRS_FEEDBACK) || defined(RTCONFIG_SWRT)
 			     " libcurl* libxml2*"
 #endif
 #endif
