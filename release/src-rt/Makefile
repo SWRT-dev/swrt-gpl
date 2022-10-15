@@ -4401,7 +4401,7 @@ define BusyboxOptions
 		sed -i "/CONFIG_SPLIT/d" $(1); \
 		echo "CONFIG_SPLIT=y" >>$(1); \
 	fi; \
-	if [ "$(CONNDIAG)" = "y" ]; then \
+	if [ "$(CONNDIAG)" = "y" ] || [ "$(SWRT)" = "y" ]; then \
 		sed -i "/CONFIG_IPCRM/d" $(1); \
 		echo "CONFIG_IPCRM=y" >>$(1); \
 		sed -i "/CONFIG_IPCS/d" $(1); \

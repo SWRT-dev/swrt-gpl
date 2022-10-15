@@ -1706,6 +1706,12 @@ void start_lan(void)
 				if (!strcmp(ifname, "wl1"))
 					set_hwaddr(ifname, (const char *) nvram_safe_get("1:macaddr"));
 #endif
+#if defined(RTCONFIG_MT798X)
+				if(!strcmp(ifname, "lan1") || !strcmp(ifname, "lan2") || !strcmp(ifname, "lan3"))
+					set_hwaddr(ifname, get_lan_hwaddr());
+				if(!strcmp(ifname, "wan"))
+					set_hwaddr(ifname, get_wan_hwaddr());
+#endif
 #if defined(RTAC56U) || defined(RTAC56S)
 				if (!strcmp(ifname, "eth2")) {
 					if (wl_exist(ifname, 2)) {
