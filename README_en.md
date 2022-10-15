@@ -12,7 +12,7 @@ NOTE：
 `
 3. Enter `git clone https://github.com/SWRT-dev/swrt-gpl` to download source code 
    
-#### MTK
+#### MTK7621
 
 4. Enter `git clone https://github.com/SWRT-dev/mtk-toolchains` to download toolchains
 5. Enter the following commands step by step `cd mtk-toolchains`
@@ -32,11 +32,24 @@ NOTE：
 
 8. The firmware is in swrt-gpl/release/src-mtk-mips/image
 
+#### MTK7986
+
+4. Enter `git clone https://github.com/SWRT-dev/mtk-toolchains` to download toolchains
+5. Enter the following commands step by step 
+
+	`cd mtk-toolchains`
+
+   `sudo ln -sf $(pwd)/toolchain-aarch64_cortex-a53_gcc-8.4.0_musl /opt/`
+6. Then enter `cd ../swrt-gpl/release/src-mtk-arm` to enter folder
+7. Enter `make swrt-rm-ax6000` to start compiling the firmware
+8. The firmware is in swrt-gpl/release/src-mtk-arm/image
+
 #### QCA
 
 4. Enter `git clone https://github.com/SWRT-dev/qca-toolchains` to download toolchains
 
 5. Enter the following commands step by step `cd qca-toolchains`
+
 	`sudo ln -sf $(pwd)/openwrt-gcc520_musl.arm /opt/`
 6. Then enter `cd ../swrt-gpl/release/src-qca-ipq40xx` to enter folder
 7. Enter `make rt-ac82u` to start compiling the firmware
