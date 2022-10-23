@@ -82,9 +82,13 @@ function initial(){
 	}
 	showbootTime();
 
-	if ((odmpid != "") && (odmpid.toUpperCase() != based_modelid.toUpperCase())) {
-		document.getElementById("model_id").innerHTML = "<span>" + odmpid + "</span>";
-		document.getElementById("model_id").innerHTML += " (base model: <span>" + based_modelid + "</span>)";
+	if (odmpid != "") {
+        if(modelname == productid)
+			document.getElementById("model_id").innerHTML = "<span>" + productid + "</span>";
+		else
+			document.getElementById("model_id").innerHTML = "<span>" + odmpid + "</span>";
+		if(odmpid.toUpperCase() != based_modelid.toUpperCase())
+			document.getElementById("model_id").innerHTML += " (base model: <span>" + based_modelid + "</span>)";
 	}
 	else
 		document.getElementById("model_id").innerHTML = productid;

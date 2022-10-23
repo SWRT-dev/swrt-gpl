@@ -113,12 +113,13 @@ export TOP_PLATFORM := $(SRCBASE)/router-sysdep
 else
 export TOP_PLATFORM := $(SRCBASE)/router
 endif
+ifneq (,$(wildcard $(SRCBASE)/../sdk))
 export SDK_DIR := $(shell (cd $(shell pwd)/../sdk && pwd -P))
 ifeq ($(MT7621),y)
 export SDK_DIR_PLATFORM := $(SDK_DIR)/mtk/mt7621
 else ifeq ($(MT7622),y)
 export SDK_DIR_PLATFORM := $(SDK_DIR)/mtk/mt7622
-else ifeq ($(MT7986),y)
+else ifeq ($(MT798X),y)
 export SDK_DIR_PLATFORM := $(SDK_DIR)/mtk/mt7986
 else ifeq ($(IPQ40XX),y)
 export SDK_DIR_PLATFORM := $(SDK_DIR)/qca/ipq40xx
@@ -132,6 +133,7 @@ else ifeq ($(IPQ807X),y)
 export SDK_DIR_PLATFORM := $(SDK_DIR)/qca/ipq807x
 else ifeq ($(GRX500),y)
 export SDK_DIR_PLATFORM := $(SDK_DIR)/lantiq/grx500
+endif
 endif
 
 export SWRT_VER := $(SWRT_VER_MAJOR)$(SWRT_VER_MINOR)

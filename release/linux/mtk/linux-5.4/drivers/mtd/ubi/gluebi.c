@@ -1007,7 +1007,7 @@ static int create_rootfs_partition(struct mtd_info *mtd,
 	}
 #else
 #if defined(CONFIG_ARCH_MEDIATEK) && defined(CONFIG_ASUS_EXT)//mt7986
-	for(rootfs_offset = 0x300000; rootfs_offset < 0x400000; rootfs_offset += 0x40) {
+	for(rootfs_offset = 0x390000; rootfs_offset < 0x400000; rootfs_offset += 0x4) {
 		ret = mtd_read(mtd, rootfs_offset, sizeof(magic), &retlen, (unsigned char *) &magic);
 		if (le32_to_cpu(magic) == SQUASHFS_MAGIC){
 			ret = 0;
@@ -1055,7 +1055,7 @@ static int gluebi_create(struct ubi_device_info *di,
 	}
 //#define SWRT_DEBUG
 #if defined(SWRT_DEBUG)
-	if (!strcmp(vi->name, "kernel") || !strcmp(vi->name, "rootfs")) {
+	if (vi->name) {
 		printk(KERN_INFO "%s: skip %s volume\n", __func__, vi->name);
 		return 0;
 	}
