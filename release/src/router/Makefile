@@ -9414,8 +9414,10 @@ htop-clean:
 	$(MAKE) -C htop clean
 
 htop-install:
+	install -d $(INSTALLDIR)/htop/usr/share/terminfo
 	install -D htop/htop $(INSTALLDIR)/htop/usr/sbin/htop
 	$(STRIP) $(INSTALLDIR)/htop/usr/sbin/htop
+	cp -rf $(STAGEDIR)/usr/share/terminfo/* $(INSTALLDIR)/htop/usr/share/terminfo/
 
 #
 # Generic rules
