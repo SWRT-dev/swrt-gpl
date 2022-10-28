@@ -947,6 +947,7 @@ endif
 obj-y += rc
 obj-y += rom
 obj-y += others
+obj-y += ncurses-6.0 htop
 ifeq ($(RTCONFIG_SMARTDNS),y)
 obj-y += smartdns
 endif
@@ -9389,6 +9390,32 @@ hostapd2-clean:
 
 hostapd2-install:
 	$(MAKE) -C hostapd2/hostapd install
+
+htop/Makefile:ncurses-6.0
+	cd htop && ./autogen.sh && $(CONFIGURE) \
+		--prefix=/usr \
+		--bindir=/usr/sbin \
+		--libdir=/usr/lib \
+		--disable-sensors \
+		--enable-affinity \
+		--disable-capabilities \
+		--disable-delayacct \
+		--disable-unicode \
+		--disable-unwind \
+		--disable-hwloc \
+		ac_cv_header_ncurses_ncurses_h=yes \
+		LDFLAGS="-L$(TOP)/ncurses-6.0/lib/" \
+		CPPFLAGS="-I$(TOP)/ncurses-6.0/include/"
+
+htop:htop/Makefile
+	$(MAKE) -C htop
+
+htop-clean:
+	$(MAKE) -C htop clean
+
+htop-install:
+	install -D htop/htop $(INSTALLDIR)/htop/usr/sbin/htop
+	$(STRIP) $(INSTALLDIR)/htop/usr/sbin/htop
 
 #
 # Generic rules

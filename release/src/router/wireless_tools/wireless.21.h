@@ -669,7 +669,11 @@
  */
 struct	iw_param
 {
+#if defined(RTCONFIG_MT798X)
+  __u64		value;		/* The value of the parameter itself */
+#else
   __s32		value;		/* The value of the parameter itself */
+#endif
   __u8		fixed;		/* Hardware should not use auto select */
   __u8		disabled;	/* Disable the feature */
   __u16		flags;		/* Various specifc flags (if any) */
@@ -1005,7 +1009,11 @@ struct	iw_range
 
 	/* Rates */
 	__u8		num_bitrates;	/* Number of entries in the list */
+#if defined(RTCONFIG_MT798X)
+	__u64		bitrate[IW_MAX_BITRATES];	/* list, in bps */
+#else
 	__s32		bitrate[IW_MAX_BITRATES];	/* list, in bps */
+#endif
 
 	/* RTS threshold */
 	__s32		min_rts;	/* Minimal RTS threshold */

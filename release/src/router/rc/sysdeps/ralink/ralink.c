@@ -1,15 +1,15 @@
 /*
  * Copyright 2021, ASUS
- * Copyright 2021, SWRTdev
- * Copyright 2021, paldier <paldier@hotmail.com>.
- * Copyright 2021, lostlonger<lostlonger.g@gmail.com>.
+ * Copyright 2021-2022, SWRTdev
+ * Copyright 2021-2022, paldier <paldier@hotmail.com>.
+ * Copyright 2021-2022, lostlonger<lostlonger.g@gmail.com>.
  * All Rights Reserved.
  */
 
 #include <rc.h>
 #ifdef RTCONFIG_RALINK
 #include <stdio.h>
-#include <fcntl.h>		//	for restore175C() from Ralink src
+#include <fcntl.h>
 #include <ralink.h>
 #include <bcmnvram.h>
 //#include <linux/ethtool.h>
@@ -444,20 +444,12 @@ int getCountryRegion5G(const char *countryCode, int *warning, int IEEE80211H)
 
 int check_macmode(const char *str)
 {
-	if((!str)||(!strcmp(str, ""))||(!strcmp(str, "disabled")))
-	{
+	if(str == NULL || !strcmp(str, "") || !strcmp(str, "disabled"))
 		return 0;
-	}
-
-	if(strcmp(str, "allow")==0)
-	{
+	else if(!strcmp(str, "allow"))
 		return 1;
-	}
-
-	if(strcmp(str, "deny")==0)
-	{
+	else if(!strcmp(str, "deny"))
 		return 2;
-	}
 	return 0;
 }
 
@@ -3248,9 +3240,8 @@ int gen_ralink_config(int band, int is_iNIC)
 	fprintf(fp, "Key4Str=\n");
 
 	/* Wireless IGMP Snooping */
-	fprintf(fp, "IgmpSnEnable=%d\n",
-		nvram_get_int(strcat_r(prefix, "igs", tmp)) ? 1 : 0);
-
+	fprintf(fp, "IgmpSnEnable=%d\n", nvram_get_int(strcat_r(prefix, "igs", tmp)) ? 1 : 0);
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
 	/*	McastPhyMode, PHY mode for Multicast frames
 	 *	McastMcs, MCS for Multicast frames
 	 *
@@ -3352,6 +3343,7 @@ next_mrate:
 		goto next_mrate;
 	fprintf(fp, "McastPhyMode=%d\n", mcast_phy);
 	fprintf(fp, "McastMcs=%d\n", mcast_mcs);
+#endif
 
 	/* Set WSC/WPS variables */
 	if(band)
@@ -3366,7 +3358,7 @@ next_mrate:
 
 	fprintf(fp, "WscV2Support=%d\n", 0);	// WPS/WSC v2 feature allows client to create connection via the PinCode of AP.
 						// Disable this feature causes longer detection time (click AP till show dialog box) on WIN7 client when WSC disabled either.
-
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
 	/* Set number of clients of guest network. */
 	for (i = 0; i < ssid_num; i++) {
 		int maxsta;
@@ -3385,6 +3377,7 @@ next_mrate:
 	fprintf(fp, "\n");
 
 	fprintf(fp, "EfuseBufferMode=0\n");
+#endif
 	fprintf(fp, "E2pAccessMode=2\n");
 	fprintf(fp, "VOW_RX_En=%d\n", 1);
 #if defined(RTCONFIG_MT798X)
@@ -5998,7 +5991,8 @@ int LanWanLedCtrl(void)
 {
 	if(get_lanports_status() && nvram_match("AllLED", "1"))
 		led_control(LED_LAN, LED_ON);
-	led_control(LED_LAN, LED_OFF);
+	else
+		led_control(LED_LAN, LED_OFF);
 	return 1;
 }
 #endif

@@ -1122,7 +1122,7 @@ void init_syspara(void)
 		dst[i] = 0;
 		nvram_set("wl_reg_5g", dst);
 		nvram_set("wl1_IEEE80211H", "0");
-		if      (strcmp(dst, "5G_BAND1") == 0)
+		if (strcmp(dst, "5G_BAND1") == 0)
 			nvram_set("wl1_country_code", "GB");
 		else if (strcmp(dst, "5G_BAND123") == 0)
 		{
