@@ -133,6 +133,10 @@ else ifeq ($(IPQ807X),y)
 export SDK_DIR_PLATFORM := $(SDK_DIR)/qca/ipq807x
 else ifeq ($(GRX500),y)
 export SDK_DIR_PLATFORM := $(SDK_DIR)/lantiq/grx500
+else ifeq ($(EN7561),y)
+export SDK_DIR_PLATFORM := $(SDK_DIR)/econet/en7561
+else ifeq ($(EN7562),y)
+export SDK_DIR_PLATFORM := $(SDK_DIR)/econet/en7562
 endif
 endif
 
