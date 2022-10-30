@@ -3622,13 +3622,8 @@ int exec_8021x_start(int band)
 
 #if defined(RTCONFIG_RALINK_MT7629) 
 		return xstart("rtinicapd", "-p", ifname_prefix, "-i", ifname);
-#elif defined(RTCONFIG_MT798X) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
-		return xstart("8021xd", "-p", ifname_prefix, "-i", ifname);
 #else
-		if (!strncmp(ifname, "rai", 3))
-			return xstart("rtinicapd");
-		else
-			return xstart("rt2860apd");
+		return xstart("8021xd", "-p", ifname_prefix, "-i", ifname);
 #endif
 	}
 	return 0;
@@ -3651,16 +3646,8 @@ int exec_8021x_stop(int band)
 {
 #if defined(RTCONFIG_RALINK_MT7629)
 	return killall("rtinicapd", SIGTERM);
-#elif defined(RTCONFIG_MT798X) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
-	return killall("8021xd", SIGTERM);
 #else
-	char ifname[8];
-
-	snprintf(ifname, sizeof(ifname), "%s", get_wififname(band));
-	if (!strncmp(ifname, "rai", 3))
-		return killall("rtinicapd", SIGTERM);
-	else
-		return killall("rt2860apd", SIGTERM);
+	return killall("8021xd", SIGTERM);
 #endif
 }
 
