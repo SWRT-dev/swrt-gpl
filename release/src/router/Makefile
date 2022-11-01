@@ -988,9 +988,6 @@ else
 ifeq ($(RTCONFIG_MTK_8021XD3000),y)	
 obj-y += 8021xd
 endif
-ifneq ($(or $(RTCONFIG_WLMODULE_MT7615E_AP),$(RTCONFIG_WLMODULE_MT7629_AP),$(RTCONFIG_WLMODULE_MT7622_AP),$(RTCONFIG_WLMODULE_MT7915D_AP),$(RTCONFIG_MT798X)), y)
-obj-y += 802.1x
-endif
 endif
 obj-y += libupnp-1.3.1
 obj-y += wsc_upnp

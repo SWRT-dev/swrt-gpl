@@ -767,7 +767,7 @@ void init_wl(void)
 	if (!module_loaded("mt_wifi_7615E"))
 		//modprobe("mt_wifi_7615E", tmpStr1, tmpStr2, tmpStr3);
 		modprobe("mt_wifi_7615E");
-#if !defined(CONFIG_RALINK_MT7621)
+#if !defined(RTCONFIG_RALINK_MT7621)
 	if (!module_loaded("mt_whnat"))
 		modprobe("mt_whnat");
 #endif
@@ -784,7 +784,7 @@ void init_wl(void)
 		//modprobe("mt_wifi", tmpStr1, tmpStr2, tmpStr3);
 	if (!module_loaded("mt_wifi"))
 		modprobe("mt_wifi");
-#if !defined(CONFIG_RALINK_MT7621)
+#if !defined(RTCONFIG_RALINK_MT7621)
 	if (!module_loaded("mt_whnat"))
 		modprobe("mt_whnat");
 #endif
@@ -1007,7 +1007,7 @@ void init_syspara(void)
 				FWrite(ea, OFFSET_MAC_GMAC0, 6);
 		}
 	}
-#if defined(CONFIG_RALINK_MT7621)
+#if defined(RTCONFIG_RALINK_MT7621)
 	if (FRead(dst, OFFSET_MAC_GMAC2, bytes)<0)
 		dbg("READ MAC address GMAC2: Out of scope\n");
 #elif defined(RTCONFIG_MT798X)
@@ -1019,7 +1019,7 @@ void init_syspara(void)
 		if (buffer[0]==0xff)
 		{
 			if (ether_atoe(macaddr2, ea))
-#if defined(CONFIG_RALINK_MT7621)
+#if defined(RTCONFIG_RALINK_MT7621)
 				FWrite(ea, OFFSET_MAC_GMAC2, 6);
 #elif defined(RTCONFIG_MT798X)
 				FWrite(ea, OFFSET_MAC_GMAC1, 6);

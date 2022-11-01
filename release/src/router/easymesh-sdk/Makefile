@@ -39,7 +39,6 @@ endif
 	$(MAKE) -C wappd all
 	$(MAKE) -C mapd all
 	$(MAKE) -C fwdd all
-#	cd fwdd && $(MAKE) CFLAGS="$(CFLAGS) -D_GNU_SOURCE -I./1905daemon -DCONFIG_SUPPORT_OPENWRT=y" LDFLAGS="$(LDFLAGS)"
 else
 	mkdir -p 1905daemon datconf fwdd libmapd mapd mapfilter wappd
 	mkdir -p datconf/kvcutil datconf/datconf 1905daemon/ethernet/

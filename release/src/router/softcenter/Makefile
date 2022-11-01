@@ -3,9 +3,9 @@ include ../common.mak
 SC_ARCH=armng
 ifeq ($(RTCONFIG_LANTIQ),y)
 SC_ARCH=mips
-else ifeq ($(RTCONFIG_RALINK_MT7621),y)
+else ifeq ($(or $(RTCONFIG_RALINK_MT7621),$(RTCONFIG_RALINK_EN7561)),y)
 SC_ARCH=mipsle
-else ifeq ($(or $(RTCONFIG_SOC_IPQ50XX),$(RTCONFIG_RALINK_MT7986),$(AARCH64)),y)
+else ifeq ($(or $(RTCONFIG_SOC_IPQ50XX),$(RTCONFIG_MT798X),$(AARCH64),$(MUSL64)),y)
 SC_ARCH=arm64
 else ifeq ($(BRCM_CHIP),$(or 4908,4912))
 SC_ARCH=arm64
