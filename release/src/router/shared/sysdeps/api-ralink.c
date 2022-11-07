@@ -35,8 +35,8 @@ const char WDSIF_2G[]	= "wds";
 const char APCLI_5G[]	= "apclii0";
 const char APCLI_2G[]	= "apcli0";
 #if defined(RTCONFIG_EASYMESH)
-const char MESH_5G[]	= "meshi0";
-const char MESH_2G[]	= "mesh0";
+const char MESHBH_5G[]	= "rai1";
+const char MESHBH_2G[]	= "ra1";
 #endif
 #elif defined(RTCONFIG_MT798X)
 const char WIF_5G[]	= "rax0";
@@ -46,8 +46,8 @@ const char WDSIF_2G[]	= "wds";
 const char APCLI_5G[]	= "apclix0";
 const char APCLI_2G[]	= "apcli0";
 #if defined(RTCONFIG_EASYMESH)
-const char MESH_5G[]	= "meshx0";
-const char MESH_2G[]	= "mesh0";
+const char MESHBH_5G[]	= "rax1";
+const char MESHBH_2G[]	= "ra1";
 #endif
 #else
 const char WIF_5G[]	= "ra0";
@@ -1396,9 +1396,9 @@ char *get_wdsifname(int band)
 	return (char*) wds[band];
 }
 
-char *get_meshifname(int band)
+char *get_meshbhifname(int band)
 {
-	const char *wif[] = { MESH_2G, MESH_5G };
+	const char *wif[] = { MESHBH_2G, MESHBH_5G };
 	if (band < 0 || band >= ARRAY_SIZE(wif)) {
 		printf("%s: Invalid wl%d band!\n", __func__, band);
 		band = 0;

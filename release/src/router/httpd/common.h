@@ -79,7 +79,7 @@ extern void Debug2File(const char *path, const char *fmt, ...);
 		char info[1024]; \
         char msg[1024]; \
 		snprintf(msg, sizeof(msg), "[%s:(%d)]: "fmt, __FUNCTION__, __LINE__, ##args); \
-		snprintf(info, sizeof(info), "echo \"%s\" >> %s", msg, IFTTT_DEBUG_FILE); \
+		snprintf(info, sizeof(info), "echo \"%s\" >> %s", msg, HTTPD_DEBUG_FILE); \
 		system(info); \
 	} \
 })

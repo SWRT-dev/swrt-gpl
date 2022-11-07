@@ -1887,3 +1887,56 @@ void __attribute__((weak)) sync_cfe_mac()
 	}
 }
 #endif
+
+#if defined(RAX200)
+void fan_watchdog(void)
+{
+	FILE *fp;
+	int temperature, status;
+	static int gpio_init = 0;
+	const uint32_t gpio1 = 52;
+	const uint32_t gpio2 = 55;
+	const uint32_t gpio3 = 56;
+	if ((fp = fopen("/sys/class/thermal/thermal_zone0/temp", "r")) != NULL) {
+		fscanf(fp, "%d", &temperature);
+		fclose(fp);
+	}
+	temperature = temperature / 1000;
+	if(gpio_init == 0){
+		set_gpio(gpio1, 0);
+		set_gpio(gpio2, 0);
+		set_gpio(gpio3, 0);
+		gpio_init = 1;
+	}
+	if((status = get_gpio(gpio1)) < 0)
+		return;
+	if(nvram_get("fan_en") == NULL || nvram_match("fan_en", "1")){
+		if(temperature > 65 || nvram_match("fan_lv", "1")){
+			printf("Turn on FAN with level 1");
+			set_gpio(gpio1, 1);
+			set_gpio(gpio2, 0);
+			set_gpio(gpio3, 0);
+		}else if(temperature > 75 || nvram_match("fan_lv", "2")){
+			printf("Turn on FAN with level 2");
+			set_gpio(gpio1, 1);
+			set_gpio(gpio2, 0);
+			set_gpio(gpio3, 1);
+		}else if(temperature > 85 || nvram_match("fan_lv", "3")){
+			printf("Turn on FAN with level 3");
+			set_gpio(gpio1, 1);
+			set_gpio(gpio2, 1);
+			set_gpio(gpio3, 0);
+		}else if(temperature > 95 || nvram_match("fan_lv", "4")){
+			printf("Turn on FAN with level 4");
+			set_gpio(gpio1, 1);
+			set_gpio(gpio2, 1);
+			set_gpio(gpio3, 1);
+		}
+	}else if(nvram_match("fan_en", "0") && status == 1){
+		printf("Turn off FAN");
+		set_gpio(gpio1, 0);
+		set_gpio(gpio2, 0);
+		set_gpio(gpio3, 0);
+	}
+}
+#endif

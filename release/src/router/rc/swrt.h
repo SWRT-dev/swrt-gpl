@@ -81,7 +81,7 @@ extern void patch_Factory(void);
 extern void swrt_patch_nvram(void);
 #endif
 
-#if defined(RAX70) || defined(RGMA2820A) || defined(RGMA2820B) || defined(MR60) || defined(MS60) || defined(RAC2V1S) || defined(RMAX6000)
+#if defined(RAX70) || defined(RGMA2820A) || defined(RGMA2820B) || defined(MR60) || defined(MS60) || defined(RAC2V1S) || defined(RMAX6000) || defined(RAX200)
 extern void swrt_sys_hack(void);
 #elif defined(TUFAX3000) || defined(RTAX58U) || defined(RTAX82U)
 extern void enable_4t4r_ax58(void);
@@ -117,6 +117,9 @@ extern void gen_arch_conf(void);
 #if defined(R6800)
 extern void show_boraddata(void);
 extern void fix_boraddata(char *key, char *value);
+#endif
+#if defined(RAX200)
+void fan_watchdog(void);
 #endif
 #endif
 

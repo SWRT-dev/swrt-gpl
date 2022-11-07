@@ -13,6 +13,7 @@ export BUILD := $(shell (gcc -dumpmachine))
 export KERNEL_BINARY=$(LINUXDIR)/vmlinux
 ifeq ($(EN7561),y)
 export MUSL32=y
+export PLATFORM_ROUTER := en7561
 export PLATFORM := mipsel-musl
 export PLATFORM_ARCH := mipsel-musl
 export TOOLS :=/opt/toolchain-mipsel_24kc_gcc-5.4.0_musl-1.1.24
@@ -51,65 +52,9 @@ define platformRouterOptions
 			sed -i "/RTCONFIG_MFP/d" $(1); \
 			echo "RTCONFIG_MFP=y" >>$(1); \
 		fi; \
-		if [ "$(RT3883)" = "y" ]; then \
-			sed -i "/RTCONFIG_RALINK_RT3883/d" $(1); \
-			echo "RTCONFIG_RALINK_RT3883=y" >>$(1); \
-		else \
-			sed -i "/RTCONFIG_RALINK_RT3883/d" $(1); \
-			echo "# RTCONFIG_RALINK_RT3883 is not set" >>$(1); \
-		fi; \
-		if [ "$(RT3052)" = "y" ]; then \
-			sed -i "/RTCONFIG_RALINK_RT3052/d" $(1); \
-			echo "RTCONFIG_RALINK_RT3052=y" >>$(1); \
-		else \
-			sed -i "/RTCONFIG_RALINK_RT3052/d" $(1); \
-			echo "# RTCONFIG_RALINK_RT3052 is not set" >>$(1); \
-		fi; \
-		if [ "$(MT7620)" = "y" ]; then \
-			sed -i "/RTCONFIG_RALINK_MT7620/d" $(1); \
-			echo "RTCONFIG_RALINK_MT7620=y" >>$(1); \
-		else \
-			sed -i "/RTCONFIG_RALINK_MT7620/d" $(1); \
-			echo "# RTCONFIG_RALINK_MT7620 is not set" >>$(1); \
-		fi; \
-		if [ "$(MT7621)" = "y" ]; then \
-			sed -i "/RTCONFIG_RALINK_MT7621/d" $(1); \
-			echo "RTCONFIG_RALINK_MT7621=y" >>$(1); \
-			if [ "$(BUILD_NAME)" = "XD4S" ]; then \
-				sed -i "/RTCONFIG_FIXED_BRIGHTNESS_RGBLED\>/d" $(1); \
-                		echo "RTCONFIG_FIXED_BRIGHTNESS_RGBLED=y" >>$(1); \
-			fi; \
-		else \
-			sed -i "/RTCONFIG_RALINK_MT7621/d" $(1); \
-			echo "# RTCONFIG_RALINK_MT7621 is not set" >>$(1); \
-		fi; \
-		if [ "$(MT7628)" = "y" ]; then \
-			sed -i "/RTCONFIG_RALINK_MT7628/d" $(1); \
-			echo "RTCONFIG_RALINK_MT7628=y" >>$(1); \
-		else \
-			sed -i "/RTCONFIG_RALINK_MT7628/d" $(1); \
-			echo "# RTCONFIG_RALINK_MT7628 is not set" >>$(1); \
-		fi; \
-		if [ "$(MT7629)" = "y" ]; then \
-			sed -i "/RTCONFIG_RALINK_MT7629/d" $(1); \
-			echo "RTCONFIG_RALINK_MT7629=y" >>$(1); \
-		else \
-			sed -i "/RTCONFIG_RALINK_MT7629/d" $(1); \
-			echo "# RTCONFIG_RALINK_MT7629 is not set" >>$(1); \
-		fi; \
-		if [ "$(MT7622)" = "y" ]; then \
-			sed -i "/RTCONFIG_RALINK_MT7622/d" $(1); \
-			echo "RTCONFIG_RALINK_MT7622=y" >>$(1); \
-		else \
-			sed -i "/RTCONFIG_RALINK_MT7622/d" $(1); \
-			echo "# RTCONFIG_RALINK_MT7622 is not set" >>$(1); \
-		fi; \
-		if [ "$(MT7986)" = "y" ]; then \
-			sed -i "/RTCONFIG_RALINK_MT7986/d" $(1); \
-			echo "RTCONFIG_RALINK_MT7986=y" >>$(1); \
-		else \
-			sed -i "/RTCONFIG_RALINK_MT7986/d" $(1); \
-			echo "# RTCONFIG_RALINK_MT7986 is not set" >>$(1); \
+		if [ "$(EN7561)" = "y" ]; then \
+			sed -i "/RTCONFIG_RALINK_EN7561/d" $(1); \
+			echo "RTCONFIG_RALINK_EN7561=y" >>$(1); \
 		fi; \
 	fi; \
 	)
@@ -143,7 +88,8 @@ FIRST_IF_POOL =		\
 	"MT7612E"	\
 	"MT7603E"	\
 	"MT7602E"	\
-	"MT7615E"
+	"MT7615E"	\
+	"MT7915"
 
 SECOND_IF_POOL = 	\
 	"NONE"		\
@@ -998,15 +944,6 @@ define platformKernelConfig
 		echo "# CONFIG_RA_HW_NAT_DSCP2UP_HELPER is not set" >>$(1); \
 		sed -i "/CONFIG_RA_HW_NAT_NONE2UP/d" $(1); \
 		echo "# CONFIG_RA_HW_NAT_NONE2UP is not set" >>$(1); \
-	fi; \
-	if [ "$(RTN14U)" = "y" ] || [ "$(RTAC52U)" = "y" ] || [ "$(RTAC51U)" = "y" ] || [ "$(RTN11P)" = "y" ] || [ "$(RTAC54U)" = "y" ] || [ "$(RTN54U)" = "y" ] || [ "$(RTAC1200HP)" = "y" ]; then \
-		sed -i "/CONFIG_RAETH_HW_VLAN_TX/d" $(1); \
-		echo "# CONFIG_RAETH_HW_VLAN_TX is not set" >>$(1); \
-		echo "# CONFIG_RA_HW_NAT_PPTP_L2TP is not set" >>$(1); \
-	fi; \
-	if [ "$(AMAS_WDS)" = "y" ]; then \
-		sed -i "/CONFIG_ASUS_FORCE4/d" $(1); \
-		echo "CONFIG_ASUS_FORCE4=y" >>$(1); \
 	fi; \
 	)
 endef

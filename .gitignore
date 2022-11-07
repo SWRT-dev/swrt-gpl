@@ -42,6 +42,13 @@ release/src/router/shared/sysdeps/*/bcmutils.c
 release/src/router/shared/sysdeps/*/private.c
 release/src/router/shared/tcode.c
 release/src/router/sw-hw-auth/*.c
+release/src/router/swrtmesh/*.c
 release/src/router/wb/*.c
 release/src/router/wb/ws_src/*.c
 release/linux/*/linux-*/net/swrt_fastpath/*.c
+release/src-econet-mips/bootrom/
+release/src-econet-mips/econettools/
+release/src-econet-mips/en7561/app_bsp
+release/src-econet-mips/en7561/apps
+release/src-econet-mips/en7561/global_inc
+

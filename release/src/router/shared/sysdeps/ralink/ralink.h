@@ -26,8 +26,8 @@ extern const char WDSIF_5G[];
 extern const char APCLI_5G[];
 extern const char APCLI_2G[];
 #if defined(RTCONFIG_EASYMESH)
-extern const char MESH_5G[];
-extern const char MESH_2G[];
+extern const char MESHBH_5G[];
+extern const char MESHBH_2G[];
 #endif
 #define URE	"apcli0"
 

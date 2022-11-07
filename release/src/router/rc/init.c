@@ -945,6 +945,30 @@ wl_defaults(void)
 #if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
 	reset_psr_hwaddr();
 #endif
+#if defined(RTCONFIG_EASYMESH)
+	if(nvram_match("easymesh_enable", "1")){
+		nvram_set("wl0.4_bss_enabled", "1");
+		nvram_set("wl0.4_ssid", "SWRT-MESH");
+		nvram_set("wl0.4_auth_mode_x", "psk2");
+		nvram_set("wl0.4_crypto", "aes");
+		nvram_set("wl0.4_wpa_psk", "swrtmesh");
+		nvram_set("wl0.4_closed", "1");
+		nvram_set("wl1.4_bss_enabled", "1");
+		nvram_set("wl1.4_ssid", "SWRT-MESH-5G");
+		nvram_set("wl1.4_auth_mode_x", "psk2");
+		nvram_set("wl1.4_crypto", "aes");
+		nvram_set("wl1.4_wpa_psk", "swrtmesh");
+		nvram_set("wl1.4_closed", "1");
+#if defined(RTCONFIG_HAS_5G_2)
+		nvram_set("wl2.4_bss_enabled", "1");
+		nvram_set("wl2.4_ssid", "SWRT-MESH-5G2");
+		nvram_set("wl2.4_auth_mode_x", "psk2");
+		nvram_set("wl2.4_crypto", "aes");
+		nvram_set("wl2.4_wpa_psk", "swrtmesh");
+		nvram_set("wl2.4_closed", "1");
+#endif
+	}
+#endif
 }
 
 /* for WPS Reset */
@@ -2829,6 +2853,9 @@ static int set_basic_ifname_vars(char *wan_ifaces[MAX_WAN_IFACE_ID], char *lan, 
 	int enable_dw_wan __attribute__((unused)) = 0;
 #endif
 	int wans_dualwan = get_wans_dualwan();
+#if defined(RTCONFIG_EASYMESH)
+	char *wl2gbh, *wl5gbh, *wl5g2bh;
+#endif
 #if defined(RTCONFIG_RALINK)
 	set_wan_base_if(wan_ifaces[WAN_IFACE_ID]);
 #endif
@@ -2855,13 +2882,25 @@ static int set_basic_ifname_vars(char *wan_ifaces[MAX_WAN_IFACE_ID], char *lan, 
 	wl5g2 = wl_ifaces[WL_5G_2_BAND];
 	wl60g = wl_ifaces[WL_60G_BAND];
 
+#if defined(RTCONFIG_EASYMESH)
+	wl2gbh = wl_ifaces[WL_2GBH_BAND];
+	wl5gbh = wl_ifaces[WL_5GBH_BAND];
+	wl5g2bh = wl_ifaces[WL_5G2BH_BAND];
+	nvram_set("wl0_vifnames", "wl0.1 wl0.2 wl0.3 wl0.4");//wl0.1 is bh radio
+#else
 	nvram_set("wl0_vifnames", "wl0.1 wl0.2 wl0.3");
+#endif
 	/* wl[01]_vifnames are virtual id only for ui control */
 #if defined(RTCONFIG_HAS_5G)
 	if (wl5g) {
 		snprintf(buf, sizeof(buf), "%s %s", wl2g, wl5g);
+#if defined(RTCONFIG_EASYMESH)
+		nvram_set("wl0_vifnames", "wl0.1 wl0.2 wl0.3 wl0.4");
+		nvram_set("wl1_vifnames", "wl1.1 wl1.2 wl1.3 wl1.4");
+#else
 		nvram_set("wl0_vifnames", "wl0.1 wl0.2 wl0.3");
 		nvram_set("wl1_vifnames", "wl1.1 wl1.2 wl1.3");
+#endif
 	} else {
 		strlcpy(buf, wl2g, sizeof(buf));
 		nvram_set("wl1_vifnames", "");
@@ -2874,7 +2913,11 @@ static int set_basic_ifname_vars(char *wan_ifaces[MAX_WAN_IFACE_ID], char *lan, 
 	if (wl5g2) {
 		strlcat(buf, " ", sizeof(buf));
 		strlcat(buf, wl5g2, sizeof(buf));
+#if defined(RTCONFIG_EASYMESH)
+		nvram_set("wl2_vifnames", "wl2.1 wl2.2 wl2.3 wl2.4");
+#else
 		nvram_set("wl2_vifnames", "wl2.1 wl2.2 wl2.3");
+#endif
 	} else {
 		nvram_set("wl2_vifnames", "");
 	}
@@ -2900,6 +2943,14 @@ static int set_basic_ifname_vars(char *wan_ifaces[MAX_WAN_IFACE_ID], char *lan, 
 	}
 #else
 	nvram_set("wl3_vifnames", "");
+#endif
+#if defined(RTCONFIG_EASYMESH)
+	if(wl2gbh)
+		strlcat(buf, wl2gbh, sizeof(buf));
+	if(wl5gbh)
+		strlcat(buf, wl5gbh, sizeof(buf));
+	if(wl5g2bh)
+		strlcat(buf, wl5g2bh, sizeof(buf));
 #endif
 	nvram_set("wl_ifnames", buf);
 
@@ -4291,6 +4342,10 @@ int init_nvram(void)
 		wan_ifaces[WAN_IFACE_ID] = "eth1";
 		wl_ifaces[WL_2G_BAND] = "ra0";
 		wl_ifaces[WL_5G_BAND] = "rai0";
+#if defined(RTCONFIG_EASYMESH)
+		wl_ifaces[WL_2GBH_BAND] = "ra1";
+		wl_ifaces[WL_5GBH_BAND] = "rai1";
+#endif
 #ifdef RTCONFIG_AMAS
 		if(nvram_match("re_mode", "1")) //RE mode.
 			set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "eth1 vlan1", NULL, "vlan3", 0);
@@ -4360,6 +4415,10 @@ int init_nvram(void)
 		wan_ifaces[WAN_IFACE_ID] = "eth1";
 		wl_ifaces[WL_2G_BAND] = "ra0";
 		wl_ifaces[WL_5G_BAND] = "rai0";
+#if defined(RTCONFIG_EASYMESH)
+		wl_ifaces[WL_2GBH_BAND] = "ra1";
+		wl_ifaces[WL_5GBH_BAND] = "rai1";
+#endif
 		set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "vlan1", NULL, "vlan3", 0);
 
 		nvram_set_int("btn_rst_gpio",  7|GPIO_ACTIVE_LOW);
@@ -4410,6 +4469,10 @@ int init_nvram(void)
 		wan_ifaces[WAN_IFACE_ID] = "eth1";
 		wl_ifaces[WL_2G_BAND] = "ra0";
 		wl_ifaces[WL_5G_BAND] = "rai0";
+#if defined(RTCONFIG_EASYMESH)
+		wl_ifaces[WL_2GBH_BAND] = "ra1";
+		wl_ifaces[WL_5GBH_BAND] = "rai1";
+#endif
 		set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "vlan1", NULL, "vlan3", 0);
 
 		nvram_set_int("btn_rst_gpio",  18|GPIO_ACTIVE_LOW);
@@ -4449,6 +4512,10 @@ int init_nvram(void)
 		wan_ifaces[WAN_IFACE_ID] = "eth1";
 		wl_ifaces[WL_2G_BAND] = "ra0";
 		wl_ifaces[WL_5G_BAND] = "rai0";
+#if defined(RTCONFIG_EASYMESH)
+		wl_ifaces[WL_2GBH_BAND] = "ra1";
+		wl_ifaces[WL_5GBH_BAND] = "rai1";
+#endif
 		set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "vlan1", NULL, "vlan3", 0);
 
 		nvram_set_int("btn_rst_gpio",  13|GPIO_ACTIVE_LOW);
@@ -5533,6 +5600,10 @@ int init_nvram(void)
 		wan_ifaces[WAN_IFACE_ID] = wan0;
 		wl_ifaces[WL_2G_BAND] = "ra0";
 		wl_ifaces[WL_5G_BAND] = "rax0";
+#if defined(RTCONFIG_EASYMESH)
+		wl_ifaces[WL_2GBH_BAND] = "ra1";
+		wl_ifaces[WL_5GBH_BAND] = "rax1";
+#endif
 		snprintf(lan_ifs, sizeof(lan_ifs), "%s %s", lan_1, lan_2);
 
 		/* Remove iface from lan_ifs if it's WAN aggregation port. */
@@ -5990,6 +6061,10 @@ int init_nvram(void)
 		wan_ifaces[WAN_IFACE_ID] = "eth3";
 		wl_ifaces[WL_2G_BAND] = "ra0";
 		wl_ifaces[WL_5G_BAND] = "rai0";
+#if defined(RTCONFIG_EASYMESH)
+		wl_ifaces[WL_2GBH_BAND] = "ra1";
+		wl_ifaces[WL_5GBH_BAND] = "rai1";
+#endif
 		set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "vlan1", NULL, "vlan3", 0);
 
 		nvram_set_int("btn_rst_gpio",  16|GPIO_ACTIVE_LOW);
@@ -6049,6 +6124,10 @@ int init_nvram(void)
 		wan_ifaces[WAN_IFACE_ID] = "eth1";
 		wl_ifaces[WL_2G_BAND] = "ra0";
 		wl_ifaces[WL_5G_BAND] = "rai0";
+#if defined(RTCONFIG_EASYMESH)
+		wl_ifaces[WL_2GBH_BAND] = "ra1";
+		wl_ifaces[WL_5GBH_BAND] = "rai1";
+#endif
 		set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "vlan1", NULL, "vlan3", 0);
 
 		nvram_set_int("btn_rst_gpio",  3|GPIO_ACTIVE_LOW);
@@ -6110,6 +6189,8 @@ int init_nvram(void)
 		wan_ifaces[WAN_IFACE_ID] = "eth1";
 		wl_ifaces[WL_2G_BAND] = "ra0";
 		wl_ifaces[WL_5G_BAND] = "rai0";
+		wl_ifaces[WL_2GBH_BAND] = "ra1";
+		wl_ifaces[WL_5GBH_BAND] = "rai1";
 		set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "vlan1", NULL, "vlan3", 0);
 
 		nvram_set_int("btn_rst_gpio",  18|GPIO_ACTIVE_LOW);
@@ -6155,6 +6236,8 @@ int init_nvram(void)
 		wan_ifaces[WAN_IFACE_ID] = "eth1";
 		wl_ifaces[WL_2G_BAND] = "ra0";
 		wl_ifaces[WL_5G_BAND] = "rai0";
+		wl_ifaces[WL_2GBH_BAND] = "ra1";
+		wl_ifaces[WL_5GBH_BAND] = "rai1";
 		set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "vlan1", NULL, "vlan3", 0);
 
 		nvram_set_int("btn_rst_gpio",  12|GPIO_ACTIVE_LOW);

@@ -1424,6 +1424,9 @@ static inline int max_no_mssid(void)
 #endif
 		max_no_mssid++;
 #endif
+#if defined(RTCONFIG_EASYMESH)
+	max_no_mssid++;
+#endif
 
 	return max_no_mssid;
 }
@@ -1461,6 +1464,11 @@ enum wl_band_id {
 #endif
 #endif
 	WL_60G_BAND,
+#if defined(RTCONFIG_EASYMESH)
+	WL_2GBH_BAND,
+	WL_5GBH_BAND,
+	WL_5G2BH_BAND,
+#endif
 	WL_NR_BANDS				/* Maximum number of Wireless bands of all models. */
 };
 
@@ -1601,7 +1609,7 @@ static inline int absent_band(enum wl_band_id band)
 #define SKIP_ABSENT_BAND(u)			if (absent_band(u)) { continue; }
 #define SKIP_ABSENT_BAND_AND_INC_UNIT(u)	if (absent_band(u)) { ++u; continue; }
 
-#if defined(RTCONFIG_AMAS)
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
 static inline int __aimesh_re_node(int sw_mode)
 {
 	return (sw_mode == SW_MODE_AP && nvram_get_int("re_mode") == 1);
@@ -1644,7 +1652,7 @@ static inline char *sta_default_mode(int __attribute__((__unused__)) band) { ret
 static inline int __access_point_mode(int sw_mode)
 {
 	return (sw_mode == SW_MODE_AP
-#if defined(RTCONFIG_AMAS)
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
 		&& !nvram_get_int("re_mode")
 #endif
 #if defined(RTCONFIG_PROXYSTA) && defined(RTCONFIG_LANTIQ)

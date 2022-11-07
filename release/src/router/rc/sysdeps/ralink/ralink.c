@@ -712,35 +712,22 @@ int gen_ralink_config(int band, int is_iNIC)
 	fprintf(fp, "MacAddress=%s\n", macaddr);
 	memset(tmp, 0, sizeof(tmp));
 	strncpy(tmp, macaddr, strlen(macaddr));
-	for(i = 1; i < 4; i++)
+	for(i = 1; i < MAX_NO_MSSID; i++)
 	{
 //fix me
 		ether_cal(macaddr, macaddr2, i);
 		fprintf(fp, "MacAddress%d=%s\n", i, macaddr2);
 	}
-	if (!mssid_mac_validate(tmp))
-#else
-	//SSID Num. [MSSID Only]
-	if (!mssid_mac_validate(nvram_safe_get(strcat_r(prefix, "hwaddr", tmp))))
 #endif
+	for (i = 0; i < MAX_NO_MSSID; i++)
 	{
-		dbG("Main BSSID is not multiple of 4s!");
-		ssid_num = 1;
+		if (i)
+			snprintf(prefix_mssid, sizeof(prefix_mssid), "wl%d.%d_", band, i);
+		else
+			snprintf(prefix_mssid, sizeof(prefix_mssid), "wl%d_", band);
+		if (i && (nvram_match(strcat_r(prefix_mssid, "bss_enabled", temp), "1")))
+			ssid_num++;
 	}
-	else
-		for (i = 0; i < MAX_NO_MSSID; i++)
-		{
-			if (i)
-				snprintf(prefix_mssid, sizeof(prefix_mssid), "wl%d.%d_", band, i);
-			else
-				snprintf(prefix_mssid, sizeof(prefix_mssid), "wl%d_", band);
-
-			if ((!i) ||
-				(i && (nvram_match(strcat_r(prefix_mssid, "bss_enabled", temp), "1"))))
-			{
-				if (i) ssid_num++;
-			}
-		}
 
 	if ((ssid_num < 1) || (ssid_num > MAX_NO_MSSID))
 	{
@@ -761,7 +748,7 @@ int gen_ralink_config(int band, int is_iNIC)
 			sprintf(tmpstr, "SSID1=%s\n",  nvram_safe_get("wl0.1_ssid"));
 		else
 			sprintf(tmpstr, "SSID1=%s\n",  nvram_safe_get("wl1.1_ssid"));
-		fprintf(fp, "%s", tmpstr);				
+		fprintf(fp, "%s", tmpstr);	
 	}
 	else
 #endif	/* RTCONFIG_WIRELESSREPEATER */
@@ -784,7 +771,6 @@ int gen_ralink_config(int band, int is_iNIC)
 			}
 			else
 				sprintf(prefix_mssid, "wl%d_", band);
-
 			if (strlen(nvram_safe_get(strcat_r(prefix_mssid, "ssid", temp))))
 				sprintf(tmpstr, "SSID%d=%s\n", j + 1, nvram_safe_get(strcat_r(prefix_mssid, "ssid", temp)));
 			else

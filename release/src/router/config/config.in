@@ -2730,3 +2730,13 @@ config RTCONFIG_RALINK_BSD
 	bool "mtk bndstrg"
 	depends on RTCONFIG_RALINK && (RTCONFIG_WLMODULE_MT7615E_AP || RTCONFIG_WLMODULE_MT7915D_AP || RTCONFIG_MT798X)
 	default n
+
+config RTCONFIG_RALINK_EN7561
+	bool "econet en7561du/en7561g support"
+	depends on RTCONFIG_RALINK
+	default n
+
+config RTCONFIG_EASYMESH_R3
+	bool "easymesh r3 support"
+	depends on RTCONFIG_EASYMESH && RTCONFIG_MT798X
+	default n
