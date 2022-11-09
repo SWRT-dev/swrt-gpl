@@ -4037,8 +4037,14 @@ define RouterOptions
 	echo "RTCONFIG_ENTWARE=y" >>$(1); \
 	fi; \
 	if [ "$(EASYMESH)" = "y" ]; then \
-	sed -i "/RTCONFIG_EASYMESH/d" $(1); \
-	echo "RTCONFIG_EASYMESH=y" >>$(1); \
+		sed -i "/RTCONFIG_EASYMESH/d" $(1); \
+		echo "RTCONFIG_EASYMESH=y" >>$(1); \
+		if [ "$(MSSID_PRELINK)" = "y" ]; then \
+			sed -i "/RTCONFIG_PRELINK/d" $(1); \
+			echo "RTCONFIG_PRELINK=y" >>$(1); \
+			sed -i "/RTCONFIG_MSSID_PRELINK/d" $(1); \
+			echo "RTCONFIG_MSSID_PRELINK=y" >>$(1); \
+		fi; \
 	fi; \
 	if [ "$(RALINK_BSD)" = "y" ]; then \
 	sed -i "/RTCONFIG_RALINK_BSD/d" $(1); \

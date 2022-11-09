@@ -877,7 +877,7 @@ static void build_wan_lan_mask(int stb, int stb_bitmask)
 		m = 0;	/* In AP/RP/MB mode, all WAN ports are bridged to LAN. */
 
 		if (sw_mode == SW_MODE_ROUTER
-#ifdef RTCONFIG_AMAS
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
 		 ||(sw_mode == SW_MODE_AP && nvram_match("re_mode", "1"))
 #endif	/* RTCONFIG_AMAS */
 		 ) {

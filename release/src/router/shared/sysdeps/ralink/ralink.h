@@ -25,10 +25,6 @@ extern const char WIF_5G[];
 extern const char WDSIF_5G[];
 extern const char APCLI_5G[];
 extern const char APCLI_2G[];
-#if defined(RTCONFIG_EASYMESH)
-extern const char MESHBH_5G[];
-extern const char MESHBH_2G[];
-#endif
 #define URE	"apcli0"
 
 #ifndef ETHER_ADDR_LEN

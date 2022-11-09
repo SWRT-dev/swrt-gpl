@@ -526,7 +526,7 @@ wl_defaults(void)
 	char wlx_vifnames[128], wl_vifnames[128], lan_ifnames[128];
 	char wlx_vifnames2[128], wl_vifnames2[128];
 	int subunit_x = 0;
-#if defined(RTCONFIG_AMAS)
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
 	char sta_ifnames[64]={0};
 #endif
 	int i;
@@ -688,7 +688,7 @@ wl_defaults(void)
 			else if (is_psr(unit) && (subunit == 1))
 				nvram_set(strcat_r(prefix, "bss_enabled", tmp), "1");
 #endif
-#if (defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)) && defined(RTCONFIG_AMAS)	/* handle wlX.1_ in AiMesh RE mode */
+#if (defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)) && (defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH))	/* handle wlX.1_ in AiMesh RE mode */
 			if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1") && subunit == 1) {
 				char wlifname[8];
 #if defined(RTCONFIG_QCA)
@@ -702,11 +702,11 @@ wl_defaults(void)
 			}
 #endif
 
-#if defined(RTCONFIG_AMAS) && defined(RTCONFIG_VIF_ONBOARDING)
+#if (defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)) && defined(RTCONFIG_VIF_ONBOARDING)
 			set_onboarding_vif_bss_enabled(unit, subunit);
 #endif
 
-#if defined(RTCONFIG_AMAS) && defined(RTCONFIG_MSSID_PRELINK)
+#if (defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)) && defined(RTCONFIG_MSSID_PRELINK)
 			set_mssid_prelink_bss_enabled(unit, subunit);
 #endif
 
@@ -884,7 +884,7 @@ wl_defaults(void)
 			int len;
 
 			nvram_set(strcat_r(prefix, "vifs", tmp), wlx_vifnames);
-#if defined(RTCONFIG_AMAS)
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
 			len = strlen(sta_ifnames);
 			sprintf(sta_ifnames + len, "%s%s", len?" ":"", wlx_vifnames);
 #endif
@@ -916,7 +916,7 @@ wl_defaults(void)
 		subunit_x = 0;
 	}
 
-#if defined(RTCONFIG_AMAS)
+#if (defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH))
 #if defined(RTCONFIG_CONCURRENTREPEATER) && !defined(RTCONFIG_REALTEK)
 	nvram_set("sta_ifnames", sta_ifnames);
 	nvram_set("sta_phy_ifnames", sta_ifnames);
@@ -944,30 +944,6 @@ wl_defaults(void)
 
 #if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
 	reset_psr_hwaddr();
-#endif
-#if defined(RTCONFIG_EASYMESH)
-	if(nvram_match("easymesh_enable", "1")){
-		nvram_set("wl0.4_bss_enabled", "1");
-		nvram_set("wl0.4_ssid", "SWRT-MESH");
-		nvram_set("wl0.4_auth_mode_x", "psk2");
-		nvram_set("wl0.4_crypto", "aes");
-		nvram_set("wl0.4_wpa_psk", "swrtmesh");
-		nvram_set("wl0.4_closed", "1");
-		nvram_set("wl1.4_bss_enabled", "1");
-		nvram_set("wl1.4_ssid", "SWRT-MESH-5G");
-		nvram_set("wl1.4_auth_mode_x", "psk2");
-		nvram_set("wl1.4_crypto", "aes");
-		nvram_set("wl1.4_wpa_psk", "swrtmesh");
-		nvram_set("wl1.4_closed", "1");
-#if defined(RTCONFIG_HAS_5G_2)
-		nvram_set("wl2.4_bss_enabled", "1");
-		nvram_set("wl2.4_ssid", "SWRT-MESH-5G2");
-		nvram_set("wl2.4_auth_mode_x", "psk2");
-		nvram_set("wl2.4_crypto", "aes");
-		nvram_set("wl2.4_wpa_psk", "swrtmesh");
-		nvram_set("wl2.4_closed", "1");
-#endif
-	}
 #endif
 }
 
@@ -1073,7 +1049,7 @@ restore_defaults_wifi(int all)
 	int unit, subunit;
 	unsigned int max_mssid;
 	char prefix[]="wlXXXXXX_", tmp[100];
-#if defined(RTCONFIG_AMAS) && defined(RTCONFIG_PRELINK)
+#if (defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)) && defined(RTCONFIG_PRELINK)
 	int prelink = nvram_invmatch("amas_bdlkey", "");
 	int unit_total = num_of_wl_if();
 #endif
@@ -1105,7 +1081,7 @@ restore_defaults_wifi(int all)
 			nvram_set(strcat_r(prefix, "wpa_psk", tmp), nvram_safe_get("wifi_psk"));
 		}
 
-#if defined(RTCONFIG_AMAS) && defined(RTCONFIG_PRELINK) && !defined(RTCONFIG_MSSID_PRELINK)
+#if (defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)) && defined(RTCONFIG_PRELINK) && !defined(RTCONFIG_MSSID_PRELINK)
 		/* set prelink config on main */
 		if (prelink && unit_total == (unit +1))
 			set_prelink_config(prefix);
@@ -1133,7 +1109,7 @@ restore_defaults_wifi(int all)
 				nvram_set(strcat_r(prefix, "wpa_psk", tmp), nvram_safe_get("wifi_psk"));
 			}
 
-#if defined(RTCONFIG_AMAS) && defined(RTCONFIG_PRELINK) && defined(RTCONFIG_MSSID_PRELINK)
+#if (defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)) && defined(RTCONFIG_PRELINK) && defined(RTCONFIG_MSSID_PRELINK)
 			/* set prelink config on max mssid */
 			if (prelink && unit_total == (unit +1) && nvram_get_int("plk_cap_subunit") == subunit) {
 #ifdef RTCONFIG_FRONTHAUL_DWB
@@ -3201,19 +3177,19 @@ static int set_basic_ifname_vars(char *wan_ifaces[MAX_WAN_IFACE_ID], char *lan, 
 		/* If wan2 or wan is not used as WAN, bridge it to LAN. */
 		if (wan2_orig && !(wans_dualwan & WANSCAP_WAN2)) {
 			add_lan_phy(wan2_orig);
-#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC)
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC) || defined(RTCONFIG_EASYMESH)
 			add_nv_val("wired_ifnames", ' ', wan2_orig);
 #endif
 		}
 		if (wan && !(wans_dualwan & WANSCAP_WAN)) {
 			add_lan_phy(wan);
-#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC)
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC) || defined(RTCONFIG_EASYMESH)
 			add_nv_val("wired_ifnames", ' ', wan);
 #endif
 		}
 		if (wan_ifaces[SFPP_IFACE_ID] && !(wans_dualwan & WANSCAP_SFPP)) {
 			add_lan_phy(wan_ifaces[SFPP_IFACE_ID]);
-#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC)
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC) || defined(RTCONFIG_EASYMESH)
 			add_nv_val("wired_ifnames", ' ', wan_ifaces[SFPP_IFACE_ID]);
 #endif
 		}
@@ -3243,7 +3219,7 @@ static int set_basic_ifname_vars(char *wan_ifaces[MAX_WAN_IFACE_ID], char *lan, 
 #endif
 
 	_dprintf("%s: WAN %s LAN %s [%s] "
-#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC)
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC) || defined(RTCONFIG_EASYMESH)
 		"WIRED [%s] "
 		"ETH_IFNAMES [%s] "
 #endif
@@ -3254,7 +3230,7 @@ static int set_basic_ifname_vars(char *wan_ifaces[MAX_WAN_IFACE_ID], char *lan, 
 		"60G %s "
 		"USB %s AP_LAN %s DW_WAN %s DW_LAN %s force_dwlan %d, sw_mode %d\n",
 		__func__, wan, lan, nvram_safe_get("lan_ifnames"),
-#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC)
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC) || defined(RTCONFIG_EASYMESH)
 		nvram_safe_get("wired_ifnames"),
 		nvram_safe_get("eth_ifnames"),
 #endif
@@ -3693,7 +3669,7 @@ int init_nvram(void)
 #endif	/* RTCONFIG_AMAS */
 #endif
 
-#if defined(RTCONFIG_AMAS)
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
 #if defined(RTCONFIG_PRELINK)
 	if (!nvram_get_int("x_Setting"))
 		nvram_set("amas_bdl_wanstate", "0");
@@ -4342,11 +4318,7 @@ int init_nvram(void)
 		wan_ifaces[WAN_IFACE_ID] = "eth1";
 		wl_ifaces[WL_2G_BAND] = "ra0";
 		wl_ifaces[WL_5G_BAND] = "rai0";
-#if defined(RTCONFIG_EASYMESH)
-		wl_ifaces[WL_2GBH_BAND] = "ra1";
-		wl_ifaces[WL_5GBH_BAND] = "rai1";
-#endif
-#ifdef RTCONFIG_AMAS
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
 		if(nvram_match("re_mode", "1")) //RE mode.
 			set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "eth1 vlan1", NULL, "vlan3", 0);
 		else
@@ -4385,7 +4357,7 @@ int init_nvram(void)
 		nvram_set("wl0_HT_RxStream", "2");
 		nvram_set("wl1_HT_TxStream", "2");
 		nvram_set("wl1_HT_RxStream", "2");
-#if defined(RTCONFIG_AMAS)
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
 		if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1")) {
 			_dprintf("[%s][%d] sw mode = %d, repeater=%d, ap= %d ",
 						__func__, __LINE__,
@@ -4400,7 +4372,7 @@ int init_nvram(void)
 			nvram_set("sta_priority", "2 0 3 1" " 5 1 2 1"); /* 2G priority:3, 5G priority:2 */
 		}
 #endif
-#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC)
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC) || defined(RTCONFIG_EASYMESH)
 		nvram_set("wired_ifnames", "vlan1");
 #endif
 		break;
@@ -4415,9 +4387,10 @@ int init_nvram(void)
 		wan_ifaces[WAN_IFACE_ID] = "eth1";
 		wl_ifaces[WL_2G_BAND] = "ra0";
 		wl_ifaces[WL_5G_BAND] = "rai0";
-#if defined(RTCONFIG_EASYMESH)
-		wl_ifaces[WL_2GBH_BAND] = "ra1";
-		wl_ifaces[WL_5GBH_BAND] = "rai1";
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
+		if(nvram_match("re_mode", "1")) //RE mode.
+			set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "eth1 vlan1", NULL, "vlan3", 0);
+		else
 #endif
 		set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "vlan1", NULL, "vlan3", 0);
 
@@ -4457,6 +4430,24 @@ int init_nvram(void)
 		nvram_set("wl0_HT_RxStream", "2");
 		nvram_set("wl1_HT_TxStream", "2");
 		nvram_set("wl1_HT_RxStream", "2");
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
+		if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1")) {
+			_dprintf("[%s][%d] sw mode = %d, repeater=%d, ap= %d ",
+						__func__, __LINE__,
+						sw_mode(),SW_MODE_REPEATER,SW_MODE_AP);
+			add_lan_phy((char *)APCLI_2G);
+			add_lan_phy((char *)APCLI_5G);
+			nvram_set("eth_ifnames", "eth1"); /* WAN(eth1)*/
+			nvram_set("amas_ethif_type", "4"); /* 1G */
+			nvram_set("eth_priority", "0 1 1"); /* eth1: 1G(idx:0,prio:1,used:1) */
+			nvram_set("sta_phy_ifnames", "apcli0 apclii0"); /* 2G name, 5G name */
+			nvram_set("sta_ifnames", "apcli0 apclii0"); /* 2G name, 5G name */
+			nvram_set("sta_priority", "2 0 3 1" " 5 1 2 1"); /* 2G priority:3, 5G priority:2 */
+		}
+#endif
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC) || defined(RTCONFIG_EASYMESH)
+		nvram_set("wired_ifnames", "vlan1");
+#endif
 		break;
 #endif
 
@@ -4469,9 +4460,10 @@ int init_nvram(void)
 		wan_ifaces[WAN_IFACE_ID] = "eth1";
 		wl_ifaces[WL_2G_BAND] = "ra0";
 		wl_ifaces[WL_5G_BAND] = "rai0";
-#if defined(RTCONFIG_EASYMESH)
-		wl_ifaces[WL_2GBH_BAND] = "ra1";
-		wl_ifaces[WL_5GBH_BAND] = "rai1";
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
+		if(nvram_match("re_mode", "1")) //RE mode.
+			set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "eth1 vlan1", NULL, "vlan3", 0);
+		else
 #endif
 		set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "vlan1", NULL, "vlan3", 0);
 
@@ -4500,6 +4492,24 @@ int init_nvram(void)
 		nvram_set("wl0_HT_RxStream", "2");
 		nvram_set("wl1_HT_TxStream", "2");
 		nvram_set("wl1_HT_RxStream", "2");
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
+		if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1")) {
+			_dprintf("[%s][%d] sw mode = %d, repeater=%d, ap= %d ",
+						__func__, __LINE__,
+						sw_mode(),SW_MODE_REPEATER,SW_MODE_AP);
+			add_lan_phy((char *)APCLI_2G);
+			add_lan_phy((char *)APCLI_5G);
+			nvram_set("eth_ifnames", "eth1"); /* WAN(eth1)*/
+			nvram_set("amas_ethif_type", "4"); /* 1G */
+			nvram_set("eth_priority", "0 1 1"); /* eth1: 1G(idx:0,prio:1,used:1) */
+			nvram_set("sta_phy_ifnames", "apcli0 apclii0"); /* 2G name, 5G name */
+			nvram_set("sta_ifnames", "apcli0 apclii0"); /* 2G name, 5G name */
+			nvram_set("sta_priority", "2 0 3 1" " 5 1 2 1"); /* 2G priority:3, 5G priority:2 */
+		}
+#endif
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC) || defined(RTCONFIG_EASYMESH)
+		nvram_set("wired_ifnames", "vlan1");
+#endif
 		break;
 #endif
 
@@ -4512,9 +4522,10 @@ int init_nvram(void)
 		wan_ifaces[WAN_IFACE_ID] = "eth1";
 		wl_ifaces[WL_2G_BAND] = "ra0";
 		wl_ifaces[WL_5G_BAND] = "rai0";
-#if defined(RTCONFIG_EASYMESH)
-		wl_ifaces[WL_2GBH_BAND] = "ra1";
-		wl_ifaces[WL_5GBH_BAND] = "rai1";
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
+		if(nvram_match("re_mode", "1")) //RE mode.
+			set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "eth1 vlan1", NULL, "vlan3", 0);
+		else
 #endif
 		set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "vlan1", NULL, "vlan3", 0);
 
@@ -4543,6 +4554,24 @@ int init_nvram(void)
 		nvram_set("wl0_HT_RxStream", "2");
 		nvram_set("wl1_HT_TxStream", "2");
 		nvram_set("wl1_HT_RxStream", "2");
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
+		if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1")) {
+			_dprintf("[%s][%d] sw mode = %d, repeater=%d, ap= %d ",
+						__func__, __LINE__,
+						sw_mode(),SW_MODE_REPEATER,SW_MODE_AP);
+			add_lan_phy((char *)APCLI_2G);
+			add_lan_phy((char *)APCLI_5G);
+			nvram_set("eth_ifnames", "eth1"); /* WAN(eth1)*/
+			nvram_set("amas_ethif_type", "4"); /* 1G */
+			nvram_set("eth_priority", "0 1 1"); /* eth1: 1G(idx:0,prio:1,used:1) */
+			nvram_set("sta_phy_ifnames", "apcli0 apclii0"); /* 2G name, 5G name */
+			nvram_set("sta_ifnames", "apcli0 apclii0"); /* 2G name, 5G name */
+			nvram_set("sta_priority", "2 0 3 1" " 5 1 2 1"); /* 2G priority:3, 5G priority:2 */
+		}
+#endif
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC) || defined(RTCONFIG_EASYMESH)
+		nvram_set("wired_ifnames", "vlan1");
+#endif
 		break;
 #endif
 
@@ -5600,10 +5629,6 @@ int init_nvram(void)
 		wan_ifaces[WAN_IFACE_ID] = wan0;
 		wl_ifaces[WL_2G_BAND] = "ra0";
 		wl_ifaces[WL_5G_BAND] = "rax0";
-#if defined(RTCONFIG_EASYMESH)
-		wl_ifaces[WL_2GBH_BAND] = "ra1";
-		wl_ifaces[WL_5GBH_BAND] = "rax1";
-#endif
 		snprintf(lan_ifs, sizeof(lan_ifs), "%s %s", lan_1, lan_2);
 
 		/* Remove iface from lan_ifs if it's WAN aggregation port. */
@@ -5629,7 +5654,9 @@ int init_nvram(void)
 			dw_lan = dw_lan_buf;
 			remove_word(lan_ifs, dw_lan_buf);
 		}
-
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC) || defined(RTCONFIG_EASYMESH)
+		nvram_set("wired_ifnames", lan_ifs);
+#endif
 		set_basic_ifname_vars(wan_ifaces, lan_ifs, wl_ifaces, "usb", NULL, NULL, dw_lan, 0);
 		// button
 		nvram_set_int("btn_wps_gpio", 10|GPIO_ACTIVE_LOW);
@@ -5667,6 +5694,21 @@ int init_nvram(void)
 		nvram_set("wl0_HT_RxStream", "4");
 		nvram_set("wl1_HT_TxStream", "4");
 		nvram_set("wl1_HT_RxStream", "4");
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
+		if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1")) {
+			_dprintf("[%s][%d] sw mode = %d, repeater=%d, ap= %d ",
+						__func__, __LINE__,
+						sw_mode(),SW_MODE_REPEATER,SW_MODE_AP);
+			add_lan_phy((char *)APCLI_2G);
+			add_lan_phy((char *)APCLI_5G);
+			nvram_set("eth_ifnames", "wan");			/* WAN(swan)*/
+			nvram_set("amas_ethif_type", "4");			/* 1G */
+			nvram_set("eth_priority", "0 1 1");			/* eth1: 1G(idx:0,prio:1,used:1) */
+			nvram_set("sta_phy_ifnames", "apcli0 apclix0");		/* 2G name, 5G name */
+			nvram_set("sta_ifnames", "apcli0 apclix0");		/* 2G name, 5G name */
+			nvram_set("sta_priority", "2 0 3 1" " 5 1 2 1");	/* 2G priority:3, 5G priority:2 */
+		}
+#endif
 		break;
 #endif
 
@@ -6061,10 +6103,6 @@ int init_nvram(void)
 		wan_ifaces[WAN_IFACE_ID] = "eth3";
 		wl_ifaces[WL_2G_BAND] = "ra0";
 		wl_ifaces[WL_5G_BAND] = "rai0";
-#if defined(RTCONFIG_EASYMESH)
-		wl_ifaces[WL_2GBH_BAND] = "ra1";
-		wl_ifaces[WL_5GBH_BAND] = "rai1";
-#endif
 		set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "vlan1", NULL, "vlan3", 0);
 
 		nvram_set_int("btn_rst_gpio",  16|GPIO_ACTIVE_LOW);
@@ -6124,11 +6162,12 @@ int init_nvram(void)
 		wan_ifaces[WAN_IFACE_ID] = "eth1";
 		wl_ifaces[WL_2G_BAND] = "ra0";
 		wl_ifaces[WL_5G_BAND] = "rai0";
-#if defined(RTCONFIG_EASYMESH)
-		wl_ifaces[WL_2GBH_BAND] = "ra1";
-		wl_ifaces[WL_5GBH_BAND] = "rai1";
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
+		if(nvram_match("re_mode", "1")) //RE mode.
+			set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "eth1 vlan1", NULL, "vlan3", 0);
+		else
 #endif
-		set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "vlan1", NULL, "vlan3", 0);
+			set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "vlan1", NULL, "vlan3", 0);
 
 		nvram_set_int("btn_rst_gpio",  3|GPIO_ACTIVE_LOW);
 		nvram_set_int("btn_wps_gpio",  6|GPIO_ACTIVE_LOW);
@@ -6162,7 +6201,7 @@ int init_nvram(void)
 		nvram_set("wl0_HT_RxStream", "4");
 		nvram_set("wl1_HT_TxStream", "4");
 		nvram_set("wl1_HT_RxStream", "4");
-#if defined(RTCONFIG_AMAS)
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
 		if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1")) {
 			_dprintf("[%s][%d] sw mode = %d, repeater=%d, ap= %d ",
 						__func__, __LINE__,
@@ -6174,7 +6213,7 @@ int init_nvram(void)
 			nvram_set("sta_ifnames", "apcli0 apclii0");
 		}
 #endif
-#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC)
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC) || defined(RTCONFIG_EASYMESH)
 		nvram_set("wired_ifnames", "vlan1");
 #endif
 		break;
@@ -6189,9 +6228,12 @@ int init_nvram(void)
 		wan_ifaces[WAN_IFACE_ID] = "eth1";
 		wl_ifaces[WL_2G_BAND] = "ra0";
 		wl_ifaces[WL_5G_BAND] = "rai0";
-		wl_ifaces[WL_2GBH_BAND] = "ra1";
-		wl_ifaces[WL_5GBH_BAND] = "rai1";
-		set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "vlan1", NULL, "vlan3", 0);
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
+		if(nvram_match("re_mode", "1")) //RE mode.
+			set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "eth1 vlan1", NULL, "vlan3", 0);
+		else
+#endif
+			set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "vlan1", NULL, "vlan3", 0);
 
 		nvram_set_int("btn_rst_gpio",  18|GPIO_ACTIVE_LOW);
 		nvram_set_int("led_lan_gpio", 14|GPIO_ACTIVE_LOW);
@@ -6224,6 +6266,21 @@ int init_nvram(void)
 		nvram_set("wl0_HT_RxStream", "2");
 		nvram_set("wl1_HT_TxStream", "4");
 		nvram_set("wl1_HT_RxStream", "4");
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
+		if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1")) {
+			_dprintf("[%s][%d] sw mode = %d, repeater=%d, ap= %d ",
+						__func__, __LINE__,
+						sw_mode(),SW_MODE_REPEATER,SW_MODE_AP);
+			add_lan_phy((char *)APCLI_2G);
+			add_lan_phy((char *)APCLI_5G);
+			nvram_set("eth_ifnames", "eth1");
+			nvram_set("sta_phy_ifnames", "apcli0 apclii0");
+			nvram_set("sta_ifnames", "apcli0 apclii0");
+		}
+#endif
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC) || defined(RTCONFIG_EASYMESH)
+		nvram_set("wired_ifnames", "vlan1");
+#endif
 		break;
 #endif
 
@@ -6236,9 +6293,12 @@ int init_nvram(void)
 		wan_ifaces[WAN_IFACE_ID] = "eth1";
 		wl_ifaces[WL_2G_BAND] = "ra0";
 		wl_ifaces[WL_5G_BAND] = "rai0";
-		wl_ifaces[WL_2GBH_BAND] = "ra1";
-		wl_ifaces[WL_5GBH_BAND] = "rai1";
-		set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "vlan1", NULL, "vlan3", 0);
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
+		if(nvram_match("re_mode", "1")) //RE mode.
+			set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "eth1 vlan1", NULL, "vlan3", 0);
+		else
+#endif
+			set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "vlan1", NULL, "vlan3", 0);
 
 		nvram_set_int("btn_rst_gpio",  12|GPIO_ACTIVE_LOW);
 		nvram_set_int("btn_wps_gpio",  18|GPIO_ACTIVE_LOW);
@@ -6288,7 +6348,7 @@ int init_nvram(void)
 		nvram_set("wl0_HT_RxStream", "4");
 		nvram_set("wl1_HT_TxStream", "4");
 		nvram_set("wl1_HT_RxStream", "4");
-#if defined(RTCONFIG_AMAS)
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
 		if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1")) {
 			_dprintf("[%s][%d] sw mode = %d, repeater=%d, ap= %d ",
 						__func__, __LINE__,
@@ -6300,7 +6360,7 @@ int init_nvram(void)
 			nvram_set("sta_ifnames", "apcli0 apclii0");
 		}
 #endif
-#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC)
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC) || defined(RTCONFIG_EASYMESH)
 		nvram_set("wired_ifnames", "vlan1");
 #endif
 		break;
@@ -16665,8 +16725,8 @@ int init_nvram(void)
 		nvram_set_int("ct_expect_max", 150);
 #endif
 
-#if defined(RTCONFIG_AMAS)
-#if defined(RTCONFIG_FRONTHAUL_DWB) || defined(RTCONFIG_MSSID_PRELINK) || defined(RTCONFIG_FRONTHAUL_DBG) || defined(RTCONFIG_VIF_ONBOARDING)
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
+#if defined(RTCONFIG_FRONTHAUL_DWB) || defined(RTCONFIG_FRONTHAUL_DBG) || defined(RTCONFIG_VIF_ONBOARDING)
 	init_amas_subunit();
 #if defined(RTCONFIG_FRONTHAUL_DWB)
 	if (nvram_get_int("fh_ap_enabled") >= 0)
@@ -17714,7 +17774,7 @@ NO_USB_CAP:
 	add_rc_support("smartdns");
 #endif
 #if defined(RTCONFIG_EASYMESH)
-	add_rc_support("easymesh");
+	add_rc_support("swrtmesh");
 #endif
 #if defined(RTCONFIG_SWRT_KVR)
 	add_rc_support("swrt_kv");

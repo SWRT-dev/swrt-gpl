@@ -34,10 +34,6 @@ const char WDSIF_5G[]	= "wdsi";
 const char WDSIF_2G[]	= "wds";
 const char APCLI_5G[]	= "apclii0";
 const char APCLI_2G[]	= "apcli0";
-#if defined(RTCONFIG_EASYMESH)
-const char MESHBH_5G[]	= "rai1";
-const char MESHBH_2G[]	= "ra1";
-#endif
 #elif defined(RTCONFIG_MT798X)
 const char WIF_5G[]	= "rax0";
 const char WIF_2G[]	= "ra0";
@@ -45,10 +41,6 @@ const char WDSIF_5G[]	= "wdsx";
 const char WDSIF_2G[]	= "wds";
 const char APCLI_5G[]	= "apclix0";
 const char APCLI_2G[]	= "apcli0";
-#if defined(RTCONFIG_EASYMESH)
-const char MESHBH_5G[]	= "rax1";
-const char MESHBH_2G[]	= "ra1";
-#endif
 #else
 const char WIF_5G[]	= "ra0";
 const char WIF_2G[]	= "rai0";
@@ -931,7 +923,7 @@ char *get_wlifname(int unit, int subunit, int subunit_x, char *buf)
 	}	
 	else
 #endif /* RTCONFIG_WIRELESSREPEATER */
-#if defined(RTCONFIG_AMAS)
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
 	if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1") && (subunit <= 1)) {
 		strcpy(buf, "");
 		return buf;
@@ -948,8 +940,8 @@ char *get_wlifname(int unit, int subunit, int subunit_x, char *buf)
 		snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, subunit);
 		if (nvram_match(strcat_r(prefix, "bss_enabled", tmp), "1"))
 		{
-#if defined(RTCONFIG_RALINK_BUILDIN_WIFI)
-#if defined(RTCONFIG_AMAS)
+#if defined(RTCONFIG_RALINK_BUILDIN_WIFI) || defined(RTCONFIG_EASYMESH)
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
 			if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1") && subunit >=2) {
 				sprintf(buf, "%s%d", wifbuf, subunit-1);
 			} else
@@ -1384,26 +1376,4 @@ int get_bonding_port_status(int port)
 	return ret;
 }
 #endif /* RTCONFIG_BONDING_WAN */
-
-#if defined(RTCONFIG_EASYMESH)
-char *get_wdsifname(int band)
-{
-	const char *wds[] = { WDSIF_2G, WDSIF_5G };
-	if (band < 0 || band >= ARRAY_SIZE(wds)) {
-		printf("%s: Invalid wl%d band!\n", __func__, band);
-		band = 0;
-	}
-	return (char*) wds[band];
-}
-
-char *get_meshbhifname(int band)
-{
-	const char *wif[] = { MESHBH_2G, MESHBH_5G };
-	if (band < 0 || band >= ARRAY_SIZE(wif)) {
-		printf("%s: Invalid wl%d band!\n", __func__, band);
-		band = 0;
-	}
-	return (char*) wif[band];
-}
-#endif
 

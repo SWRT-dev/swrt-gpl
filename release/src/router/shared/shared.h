@@ -1424,9 +1424,6 @@ static inline int max_no_mssid(void)
 #endif
 		max_no_mssid++;
 #endif
-#if defined(RTCONFIG_EASYMESH)
-	max_no_mssid++;
-#endif
 
 	return max_no_mssid;
 }
@@ -1609,7 +1606,7 @@ static inline int absent_band(enum wl_band_id band)
 #define SKIP_ABSENT_BAND(u)			if (absent_band(u)) { continue; }
 #define SKIP_ABSENT_BAND_AND_INC_UNIT(u)	if (absent_band(u)) { ++u; continue; }
 
-#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
+#if defined(RTCONFIG_AMAS)
 static inline int __aimesh_re_node(int sw_mode)
 {
 	return (sw_mode == SW_MODE_AP && nvram_get_int("re_mode") == 1);
@@ -1622,6 +1619,21 @@ static inline int aimesh_re_node(void)
 #else
 static inline int __aimesh_re_node(int __attribute__((__unused__)) sw_mode) { return 0; }
 static inline int aimesh_re_node(void) { return 0; }
+#endif
+
+#if defined(RTCONFIG_EASYMESH)
+static inline int __mesh_re_node(int sw_mode)
+{
+	return (sw_mode == SW_MODE_AP && nvram_get_int("re_mode") == 1);
+}
+
+static inline int mesh_re_node(void)
+{
+	return __mesh_re_node(sw_mode());
+}
+#else
+static inline int __mesh_re_node(int __attribute__((__unused__)) sw_mode) { return 0; }
+static inline int mesh_re_node(void) { return 0; }
 #endif
 
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054) && !defined(RTCONFIG_SOC_IPQ60XX)
@@ -2510,10 +2522,6 @@ extern char *get_wififname(int band);
 extern char *get_staifname(int band);
 extern int get_regular_class(const char* ifname);
 extern int check_trx(char *buf);
-#if defined(RTCONFIG_EASYMESH)
-extern char *get_wdsifname(int band);
-extern char *get_meshifname(int band);
-#endif
 #elif defined(RTCONFIG_QCA)
 extern int rtkswitch_ioctl(int val, int *val2);
 extern unsigned int rtkswitch_wanPort_phyStatus(int wan_unit);

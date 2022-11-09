@@ -48,7 +48,7 @@ else
 	cp -rf prebuilt/$(BUILD_NAME)/libkvcutil.so* datconf/kvcutil/
 	cp prebuilt/$(BUILD_NAME)/p1905_managerd 1905daemon/
 	cp prebuilt/$(BUILD_NAME)/1905ctrl 1905daemon/
-	cp prebuilt/$(BUILD_NAME)/tp_ts_switch.sh 1905daemon/
+#	cp prebuilt/$(BUILD_NAME)/tp_ts_switch.sh 1905daemon/
 	cp -rf prebuilt/$(BUILD_NAME)/libeth_1905ops.so 1905daemon/ethernet/
 	cp prebuilt/$(BUILD_NAME)/wappctrl wappd/
 	cp prebuilt/$(BUILD_NAME)/wapp wappd/
@@ -62,7 +62,7 @@ else
 	cp prebuilt/$(BUILD_NAME)/mapd_user_iface mapd/
 #	cp prebuilt/$(BUILD_NAME)/config_agent.lua mapd/
 #	cp prebuilt/$(BUILD_NAME)/map_config_agent.lua mapd/
-	cp prebuilt/$(BUILD_NAME)/map_cert_script.sh mapd/
+#	cp prebuilt/$(BUILD_NAME)/map_cert_script.sh mapd/
 	cp prebuilt/$(BUILD_NAME)/fwdd fwdd/
 	cp prebuilt/$(BUILD_NAME)/mapfilter.ko mapfilter/src/
 	cp prebuilt/$(BUILD_NAME)/mtfwd.ko mtfwd/src/
@@ -83,7 +83,7 @@ else
 endif
 	install -D 1905daemon/p1905_managerd $(INSTALLDIR)/easymesh-sdk/usr/sbin/p1905_managerd
 	install -D 1905daemon/1905ctrl $(INSTALLDIR)/easymesh-sdk/usr/sbin/1905ctrl
-	install -D 1905daemon/tp_ts_switch.sh $(INSTALLDIR)/easymesh-sdk/usr/sbin/tp_ts_switch.sh
+#	install -D 1905daemon/tp_ts_switch.sh $(INSTALLDIR)/easymesh-sdk/usr/sbin/tp_ts_switch.sh
 	install -D datconf/kvcutil/kvcedit $(INSTALLDIR)/easymesh-sdk/usr/sbin/kvcedit
 	install -D datconf/datconf/datconf $(INSTALLDIR)/easymesh-sdk/usr/bin/datconf
 	cp -rf datconf/kvcutil/libkvcutil.so* $(INSTALLDIR)/easymesh-sdk/usr/lib/
@@ -100,7 +100,7 @@ endif
 	install -D mapd/mapd_user_iface $(INSTALLDIR)/easymesh-sdk/usr/sbin/mapd_user_iface
 #	install -D mapd/config_agent.lua $(INSTALLDIR)/easymesh-sdk/usr/sbin/config_agent.lua
 #	install -D mapd/map_config_agent.lua $(INSTALLDIR)/easymesh-sdk/usr/sbin/map_config_agent.lua
-	install -D mapd/map_cert_script.sh $(INSTALLDIR)/easymesh-sdk/usr/sbin/map_cert_script.sh
+#	install -D mapd/map_cert_script.sh $(INSTALLDIR)/easymesh-sdk/usr/sbin/map_cert_script.sh
 	install -D fwdd/fwdd $(INSTALLDIR)/easymesh-sdk/usr/sbin/fwdd
 	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/p1905_managerd
 	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/1905ctrl

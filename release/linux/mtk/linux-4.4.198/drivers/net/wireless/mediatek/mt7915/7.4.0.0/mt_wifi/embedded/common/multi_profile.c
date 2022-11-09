@@ -2867,6 +2867,19 @@ static INT multi_profile_merge_rrm(
 }
 #endif
 
+#ifdef CONFIG_DOT11V_WNM
+static INT multi_profile_merge_wnm(
+	struct mpf_data *data,
+	CHAR *buf1,
+	CHAR *buf2,
+	CHAR *final)
+{
+	/*merge WNMEnable */
+	multi_profile_merge_separate("WNMEnable", buf1, buf2, final);
+	return NDIS_STATUS_SUCCESS;
+}
+#endif
+
 #ifdef DSCP_PRI_SUPPORT
 INT multi_profile_merge_dscp_pri(
 	struct mpf_data *data,
@@ -3132,6 +3145,11 @@ static INT multi_profile_merge(
 
 #ifdef DOT11K_RRM_SUPPORT
 	if (multi_profile_merge_rrm(data, buf1, buf2, final) != NDIS_STATUS_SUCCESS)
+		return retval;
+#endif
+
+#ifdef CONFIG_DOT11V_WNM
+	if (multi_profile_merge_wnm(data, buf1, buf2, final) != NDIS_STATUS_SUCCESS)
 		return retval;
 #endif
 

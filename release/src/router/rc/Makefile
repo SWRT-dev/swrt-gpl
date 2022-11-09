@@ -967,6 +967,7 @@ OBJS += detect_plc.o
 endif
 
 ifeq ($(RTCONFIG_EASYMESH),y)
+CFLAGS += -I$(TOP)/shared/sysdeps/swrtmesh
 ifeq ($(RTCONFIG_RALINK),y)
 OBJS += $(if $(wildcard sysdeps/ralink/easymesh-ralink.c),easymesh-ralink.o,prebuild/easymesh-ralink.o)
 else ifeq ($(RTCONFIG_QCA),y)

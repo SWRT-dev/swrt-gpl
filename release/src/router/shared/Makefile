@@ -369,6 +369,12 @@ endif
 vpath %.c sysdeps/amas
 endif
 
+ifeq ($(RTCONFIG_EASYMESH),y)
+CFLAGS += -I$(TOP)/shared/sysdeps/swrtmesh
+OBJS += api-mesh.o
+vpath %.c sysdeps/swrtmesh
+endif
+
 ifeq ($(RTCONFIG_SCHED_V2),y)
 OBJS += sched_v2.o
 endif

@@ -1159,7 +1159,7 @@ static void config_mt7621_esw_LANWANPartition(int type)
 	mt7621_vlan_set(0, 1, portmap, 0);
 #endif	
 	if (sw_mode == SW_MODE_ROUTER
-#ifdef RTCONFIG_AMAS
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
 		|| (sw_mode == SW_MODE_AP && nvram_match("re_mode", "1"))
 #endif
 	) {
