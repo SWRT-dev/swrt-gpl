@@ -19,6 +19,10 @@
 #include <swrtmesh.h>
 #include <shared.h>
 
+char bh2gifname[] = "ra11";
+char bh5gifname[] = "rai11";
+char bh5g2ifname[] = "rai11";
+
 int get_easymesh_max_ver(void)
 {
 #if defined(RTCONFIG_MT798X)
@@ -46,7 +50,7 @@ char *get_mesh_bh_ifname(int band)
 {
 #if defined(RTCONFIG_RALINK)
 	int i, index = 0;
-	char tmp[18], ifname[6];
+	char tmp[18];
 //skip main ap and guest wifi
 	for(i = 0; i < MAX_NO_MSSID; i++){
 		snprintf(tmp, sizeof(tmp), "wl%d.%d_bss_enabled", band, i);
@@ -54,20 +58,22 @@ char *get_mesh_bh_ifname(int band)
 			index++;
 	}
 
-	if(band)
+	if(band){
 #if defined(RTCONFIG_MT798X)
-		snprintf(ifname, sizeof(ifname), "rax%d", index);
+		snprintf(bh5gifname, sizeof(bh5gifname), "rax%d", index);
 #else
-		snprintf(ifname, sizeof(ifname), "rai%d", index);
+		snprintf(bh5gifname, sizeof(bh5gifname), "rai%d", index);
 #endif
-	else
-		snprintf(ifname, sizeof(ifname), "ra%d", index);
+		return bh5gifname;
+	}else{
+		snprintf(bh2gifname, sizeof(bh2gifname), "ra%d", index);
+		return bh2gifname;
+	}
 #elif defined(RTCONFIG_QCA)
 #error fixme
 #elif defined(RTCONFIG_LANTIQ)
 #error fixme
 #endif
-	return ifname;
 }
 
 void check_mssid_prelink_reset(uint32_t sf)

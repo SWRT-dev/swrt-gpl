@@ -2173,6 +2173,8 @@ void start_mapd(void)
 	int lastmode = nvram_get_int("easymesh_lastmode");
 	int dhcpctl = nvram_get_int("easymesh_dhcpctl"); /* AP/RP:1, GW:0 */
 	int tpcon = nvram_get_int("easymesh_tpcon"); /* AP/RP:1, GW:0 */
+	char *bh2gifname = get_mesh_bh_ifname(WL_2G_BAND);
+	char *bh5gifname = get_mesh_bh_ifname(WL_5G_BAND);
 
 	mkdir("/etc/map", 0777);
 	if(sw_mode == SW_MODE_AP || sw_mode == SW_MODE_ROUTER){
@@ -2237,11 +2239,21 @@ void start_mapd(void)
 		eval("iwpriv", (char*) WIF_5G, "set", "mapR3Enable=0");
 		eval("iwpriv", (char*) WIF_5G, "set", "DppEnable=0");
 		eval("iwpriv", (char*) WIF_5G, "set", "mapTSEnable=0");
+		eval("iwpriv", bh2gifname, "set", "mapR3Enable=0");
+		eval("iwpriv", bh5gifname, "set", "mapR3Enable=0");
+		eval("iwpriv", bh2gifname, "set", "DppEnable=0");
+		eval("iwpriv", bh5gifname, "set", "DppEnable=0");
+		eval("iwpriv", bh2gifname, "set", "mapTSEnable=0");
+		eval("iwpriv", bh5gifname, "set", "mapTSEnable=0");
 #else
 		eval("iwpriv", (char*) WIF_2G, "set", "mapR2Enable=0");
 		eval("iwpriv", (char*) WIF_2G, "set", "mapTSEnable=0");
 		eval("iwpriv", (char*) WIF_5G, "set", "mapR2Enable=0");
 		eval("iwpriv", (char*) WIF_5G, "set", "mapTSEnable=0");
+		eval("iwpriv", bh2gifname, "set", "mapR2Enable=0");
+		eval("iwpriv", bh5gifname, "set", "mapR2Enable=0");
+		eval("iwpriv", bh2gifname, "set", "mapTSEnable=0");
+		eval("iwpriv", bh5gifname, "set", "mapTSEnable=0");
 #endif
 		gen_1905d_config();
 		gen_mapd_config();
@@ -2249,6 +2261,10 @@ void start_mapd(void)
 		eval("iwpriv", (char*) WIF_5G, "set", "mapEnable=1");
 		eval("iwpriv", (char*) WIF_2G, "set", "mapTurnKey=1");
 		eval("iwpriv", (char*) WIF_5G, "set", "mapTurnKey=1");
+		eval("iwpriv", bh2gifname, "set", "mapEnable=1");
+		eval("iwpriv", bh5gifname, "set", "mapEnable=1");
+		eval("iwpriv", bh2gifname, "set", "mapTurnKey=1");
+		eval("iwpriv", bh5gifname, "set", "mapTurnKey=1");
 	}
 
 	if(mode == MAP_DISABLED){
@@ -2291,24 +2307,24 @@ void start_mapd(void)
 			modprobe("mapfilter");
 		doSystem("ifconfig %s up", get_staifname(WL_2G_BAND));
 		doSystem("ifconfig %s up", get_staifname(WL_5G_BAND));
-		doSystem("ifconfig %s up", get_mesh_bh_ifname(WL_2G_BAND));
-		doSystem("ifconfig %s up", get_mesh_bh_ifname(WL_5G_BAND));
+		doSystem("ifconfig %s up", bh2gifname);
+		doSystem("ifconfig %s up", bh5gifname);
 		eval("iwpriv", (char*) WIF_2G, "set", "ApCliEnable=0");
 		eval("iwpriv", (char*) WIF_5G, "set", "ApCliEnable=0");
 		eval("iwpriv", (char*) WIF_2G, "set", "mapEnable=1");
 		eval("iwpriv", (char*) WIF_5G, "set", "mapEnable=1");
-		eval("iwpriv", get_mesh_bh_ifname(WL_2G_BAND), "set", "ApCliEnable=0");
-		eval("iwpriv", get_mesh_bh_ifname(WL_5G_BAND), "set", "ApCliEnable=0");
-		eval("iwpriv", get_mesh_bh_ifname(WL_2G_BAND), "set", "mapEnable=1");
-		eval("iwpriv", get_mesh_bh_ifname(WL_5G_BAND), "set", "mapEnable=1");
+		eval("iwpriv", bh2gifname, "set", "ApCliEnable=0");
+		eval("iwpriv", bh5gifname, "set", "ApCliEnable=0");
+		eval("iwpriv", bh2gifname, "set", "mapEnable=1");
+		eval("iwpriv", bh5gifname, "set", "mapEnable=1");
 #if defined(RTCONFIG_EASYMESH_R3)
 		eval("iwpriv", (char*) WIF_2G, "set", "QoSR1Enable=0");
 		eval("iwpriv", (char*) WIF_5G, "set", "QoSR1Enable=0");
-		eval("iwpriv", get_mesh_bh_ifname(WL_2G_BAND), "set", "QoSR1Enable=0");
-		eval("iwpriv", get_mesh_bh_ifname(WL_5G_BAND), "set", "QoSR1Enable=0");
+		eval("iwpriv", bh2gifname, "set", "QoSR1Enable=0");
+		eval("iwpriv", bh5gifname, "set", "QoSR1Enable=0");
 #endif
-		eval("brctl", "addif", "br0", get_mesh_bh_ifname(WL_2G_BAND));
-		eval("brctl", "addif", "br0", get_mesh_bh_ifname(WL_5G_BAND));
+		eval("brctl", "addif", "br0", bh2gifname);
+		eval("brctl", "addif", "br0", bh5gifname);
 #if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_MT7622)
 //Rule 1:  P5 1905 multicast forwarding to WAN port(P4)
 //step 1: enable port 5 ACL function
@@ -2398,21 +2414,21 @@ void start_mapd(void)
 		eval("iwpriv", (char*) WIF_5G, "set", "DppEnable=1");
 		eval("iwpriv", (char*) WIF_5G, "set", "mapTSEnable=1");
 		eval("iwpriv", (char*) WIF_5G, "set", "cp_support=1");
-		eval("iwpriv", get_mesh_bh_ifname(WL_2G_BAND), "set", "mapR3Enable=1");
-		eval("iwpriv", get_mesh_bh_ifname(WL_5G_BAND), "set", "mapR3Enable=1");
-		eval("iwpriv", get_mesh_bh_ifname(WL_2G_BAND), "set", "mapTSEnable=1");
-		eval("iwpriv", get_mesh_bh_ifname(WL_5G_BAND), "set", "mapTSEnable=1");
-		eval("iwpriv", get_mesh_bh_ifname(WL_2G_BAND), "set", "cp_support=1");
-		eval("iwpriv", get_mesh_bh_ifname(WL_5G_BAND), "set", "cp_support=1");
+		eval("iwpriv", bh2gifname, "set", "mapR3Enable=1");
+		eval("iwpriv", bh5gifname, "set", "mapR3Enable=1");
+		eval("iwpriv", bh2gifname, "set", "mapTSEnable=1");
+		eval("iwpriv", bh5gifname, "set", "mapTSEnable=1");
+		eval("iwpriv", bh2gifname, "set", "cp_support=1");
+		eval("iwpriv", bh5gifname, "set", "cp_support=1");
 #else
 		eval("iwpriv", (char*) WIF_2G, "set", "mapR2Enable=1");
 		eval("iwpriv", (char*) WIF_2G, "set", "mapTSEnable=1");
 		eval("iwpriv", (char*) WIF_5G, "set", "mapR2Enable=1");
 		eval("iwpriv", (char*) WIF_5G, "set", "mapTSEnable=1");
-		eval("iwpriv", get_mesh_bh_ifname(WL_2G_BAND), "set", "mapR2Enable=1");
-		eval("iwpriv", get_mesh_bh_ifname(WL_5G_BAND), "set", "mapR2Enable=1");
-		eval("iwpriv", get_mesh_bh_ifname(WL_2G_BAND), "set", "mapTSEnable=1");
-		eval("iwpriv", get_mesh_bh_ifname(WL_5G_BAND), "set", "mapTSEnable=1");
+		eval("iwpriv", bh2gifname, "set", "mapR2Enable=1");
+		eval("iwpriv", bh5gifname, "set", "mapR2Enable=1");
+		eval("iwpriv", bh2gifname, "set", "mapTSEnable=1");
+		eval("iwpriv", bh5gifname, "set", "mapTSEnable=1");
 #endif
 		doSystem("ulimit -c unlimited");
 //Controller
@@ -2436,12 +2452,12 @@ void start_mapd(void)
 		eval("iwpriv", (char*) WIF_5G, "set", "VLANPolicy=0:4");
 		eval("iwpriv", (char*) WIF_2G, "set", "VLANPolicy=1:2");
 		eval("iwpriv", (char*) WIF_5G, "set", "VLANPolicy=1:2");
-		eval("iwpriv", get_mesh_bh_ifname(WL_2G_BAND), "set", "VLANTag=1");
-		eval("iwpriv", get_mesh_bh_ifname(WL_5G_BAND), "set", "VLANTag=1");
-		eval("iwpriv", get_mesh_bh_ifname(WL_2G_BAND), "set", "VLANPolicy=0:4");
-		eval("iwpriv", get_mesh_bh_ifname(WL_5G_BAND), "set", "VLANPolicy=0:4");
-		eval("iwpriv", get_mesh_bh_ifname(WL_2G_BAND), "set", "VLANPolicy=1:2");
-		eval("iwpriv", get_mesh_bh_ifname(WL_5G_BAND), "set", "VLANPolicy=1:2");
+		eval("iwpriv", bh2gifname, "set", "VLANTag=1");
+		eval("iwpriv", bh5gifname, "set", "VLANTag=1");
+		eval("iwpriv", bh2gifname, "set", "VLANPolicy=0:4");
+		eval("iwpriv", bh5gifname, "set", "VLANPolicy=0:4");
+		eval("iwpriv", bh2gifname, "set", "VLANPolicy=1:2");
+		eval("iwpriv", bh5gifname, "set", "VLANPolicy=1:2");
 		eval("iwpriv", (char*) APCLI_2G, "set", "VLANTag=1");
 		eval("iwpriv", (char*) APCLI_5G, "set", "VLANTag=1");
 		eval("iwpriv", (char*) APCLI_2G, "set", "VLANPolicy=0:4");
@@ -2453,8 +2469,9 @@ void start_mapd(void)
 			doSystem("p1905_managerd -r0 -f /etc/map/1905d.cfg -F /etc/map/wts_bss_info_config > /var/log/1905.log&");
 		else
 			doSystem("p1905_managerd -r1 -f /etc/map/1905d.cfg -F /etc/map/wts_bss_info_config > /var/log/1905.log&");
+		sleep(1);
 //		doSystem("mapd -I /etc/map/mapd_cfg -O /etc/mapd_strng.conf -c /jffs/client_db.txt -G /etc/map/wts_bss_info_config > /var/log/log.mapd&");
-		doSystem("mapd -I /etc/map/mapd_cfg -O /etc/mapd_strng.conf > /var/log/log.mapd&");
+		doSystem("mapd -I /etc/map/mapd_cfg -O /etc/mapd_strng.conf -c /jffs/client_db.txt > /var/log/log.mapd&");
 #if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_MT7622)
 		doSystem("switch reg w 10 ffffffe0");
 		doSystem("switch reg w 34 8160816");
