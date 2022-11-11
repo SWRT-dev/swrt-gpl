@@ -11,7 +11,7 @@ endif
 all:
 ifeq ($(RTCONFIG_RALINK),y)
 ifneq ($(PREBUILT_BIN),1)
-	rm -f 1905daemon datconf fwdd libmapd mapd mapfilter mtfwd wappd
+	rm -f 1905daemon datconf fwdd libmapd mapd mapfilter mtfwd wappd wificonf
 ifeq ($(RTCONFIG_RALINK_MT7621),y)
 	ln -sf ../../../sdk/mtk/mt7621/1905daemon 1905daemon
 	ln -sf ../../../sdk/mtk/mt7621/datconf datconf
@@ -21,6 +21,7 @@ ifeq ($(RTCONFIG_RALINK_MT7621),y)
 	ln -sf ../../../sdk/mtk/mt7621/mapfilter mapfilter
 	ln -sf ../../../sdk/mtk/mt7621/mtfwd mtfwd
 	ln -sf ../../../sdk/mtk/mt7621/wappd wappd
+	ln -sf ../../../sdk/mtk/mt7621/wificonf wificonf
 else ifeq ($(RTCONFIG_MT798X),y)
 	ln -sf ../../../sdk/mtk/mt7986/1905daemon 1905daemon
 	ln -sf ../../../sdk/mtk/mt7986/datconf datconf
@@ -30,6 +31,7 @@ else ifeq ($(RTCONFIG_MT798X),y)
 	ln -sf ../../../sdk/mtk/mt7986/mapfilter mapfilter
 	ln -sf ../../../sdk/mtk/mt7986/mtfwd mtfwd
 	ln -sf ../../../sdk/mtk/mt7986/wappd wappd
+	ln -sf ../../../sdk/mtk/mt7986/wificonf wificonf
 endif
 	$(MAKE) -C mapfilter all
 	$(MAKE) -C mtfwd all
@@ -39,10 +41,11 @@ endif
 	$(MAKE) -C wappd all
 	$(MAKE) -C mapd all
 	$(MAKE) -C fwdd all
+	$(MAKE) -C wificonf all
 else
 	mkdir -p 1905daemon datconf fwdd libmapd mapd mapfilter wappd
 	mkdir -p datconf/kvcutil datconf/datconf 1905daemon/ethernet/
-	mkdir -p wappd/config_and_icon_files
+	mkdir -p wappd/config_and_icon_files wificonf
 	cp prebuilt/$(BUILD_NAME)/kvcedit datconf/kvcutil/
 	cp prebuilt/$(BUILD_NAME)/datconf datconf/datconf/
 	cp -rf prebuilt/$(BUILD_NAME)/libkvcutil.so* datconf/kvcutil/
@@ -66,6 +69,7 @@ else
 	cp prebuilt/$(BUILD_NAME)/fwdd fwdd/
 	cp prebuilt/$(BUILD_NAME)/mapfilter.ko mapfilter/src/
 	cp prebuilt/$(BUILD_NAME)/mtfwd.ko mtfwd/src/
+	cp prebuilt/$(BUILD_NAME)/wificonf wificonf/
 endif
 endif
 
@@ -102,6 +106,7 @@ endif
 #	install -D mapd/map_config_agent.lua $(INSTALLDIR)/easymesh-sdk/usr/sbin/map_config_agent.lua
 #	install -D mapd/map_cert_script.sh $(INSTALLDIR)/easymesh-sdk/usr/sbin/map_cert_script.sh
 	install -D fwdd/fwdd $(INSTALLDIR)/easymesh-sdk/usr/sbin/fwdd
+	install -D wificonf/wificonf $(INSTALLDIR)/easymesh-sdk/usr/sbin/wificonf
 	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/p1905_managerd
 	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/1905ctrl
 	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/kvcedit
@@ -116,4 +121,5 @@ endif
 	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/bs20
 	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/mapd_user_iface
 	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/fwdd
+	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/wificonf
 endif
