@@ -79,3 +79,22 @@ char *get_mesh_bh_ifname(int band)
 void check_mssid_prelink_reset(uint32_t sf)
 {
 }
+
+void swrtmesh_autoconf(void)
+{
+	int sw_mode = nvram_get_int("sw_mode");
+	if(sw_mode == SW_MODE_AP || sw_mode == SW_MODE_ROUTER){
+		nvram_set("easymesh_enable", "1");
+		if(nvram_match("re_mode", "1")){
+			nvram_set("easymesh_role", "2");//agent
+		}else if(nvram_match("x_Setting", "0")/* || nvram_match("w_Setting", "0")*/){
+			nvram_set("easymesh_role", "0");//auto
+		}else{
+			nvram_set("easymesh_role", "1");//controller
+		}
+	}else{//same as aimesh, controller/agent only works in ap/router mode
+		nvram_set("easymesh_enable", "0");
+		nvram_set("easymesh_role", "0");
+		nvram_set("re_mode", "0");
+	}
+}

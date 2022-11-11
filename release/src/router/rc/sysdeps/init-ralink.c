@@ -1768,13 +1768,14 @@ void gen_1905d_config(void)
 	system("mkdir -p /etc/map");
 	if((fp = fopen("/etc/map/1905d.cfg", "w")))
 	{
-// Has MAP agent on this device
-		fprintf(fp, "map_agent=1\n");
 		if(nvram_get_int("easymesh_role") == EASYMESH_ROLE_MASTER){
 // This device is a MAP root
 			fprintf(fp, "map_root=1\n");
+// Has MAP agent on this device
+			fprintf(fp, "map_agent=0\n");
 		}else{
 			fprintf(fp, "map_root=0\n");
+			fprintf(fp, "map_agent=1\n");
 		}
 // Controller's ALID
 		fprintf(fp, "map_controller_alid=%s\n", get_lan_hwaddr());
@@ -1954,12 +1955,12 @@ void gen_mapd_config(void)
 		fprintf(fp, "bss_config_priority=");
 #if defined(RTCONFIG_HAS_5G_2)
 		if(nvram_match("wl2_radio", "1"))
-			fprintf(fp, "%s;%s;", WIF_5G2, APCLI_5G2);
+			fprintf(fp, "%s;", WIF_5G2);
 #endif
 		if(nvram_match("wl1_radio", "1"))
-			fprintf(fp, "%s;%s;", WIF_5G, APCLI_5G);
+			fprintf(fp, "%s;", WIF_5G);
 		if(nvram_match("wl0_radio", "1"))
-			fprintf(fp, "%s;%s;", WIF_2G, APCLI_2G);
+			fprintf(fp, "%s;", WIF_2G);
 		fprintf(fp, "\n");
 		fprintf(fp, "DualBH=\n");
 		fprintf(fp, "MetricRepIntv=60\n");
@@ -1990,15 +1991,19 @@ void gen_mapd_config(void)
 			fprintf(fp, "MaxHT_BW2G==1\n");//40
 		}
 		fclose(fp);
-		system("ln -sf /etc/map/mapd_default.cfg /etc/map/mapd_cfg");
+		symlink("/etc/map/mapd_default.cfg", "/etc/map/mapd_cfg");
 	}else
 		_dprintf("Can't open /etc/map/mapd_default.cfg\n");
-	if((fp = fopen("/etc/map/mapd_user.cfg", "w")))
-	{
-		fprintf(fp, "###!UserConfigs!!!\n");
-		fclose(fp);
-	}else
-		_dprintf("Can't open /etc/map/mapd_user.cfg\n");
+	if(!f_exists("/jffs/swrtmesh/mapd_user.cfg")){
+		eval("mkdir", "-p", "/jffs/swrtmesh");
+		if((fp = fopen("/jffs/swrtmesh/mapd_user.cfg", "w"))){
+			fprintf(fp, "###!UserConfigs!!!\n");
+			fclose(fp);
+		}
+	}
+	symlink("/jffs/swrtmesh/mapd_user.cfg", "/etc/map/mapd_user.cfg");
+	if(!f_exists("/jffs/swrtmesh/client_db.txt"))
+		doSystem("touch /jffs/swrtmesh/client_db.txt");
 	gen_mapd_strng();
 }
 
@@ -2148,13 +2153,13 @@ void gen_bhwifi_conf()
 	FILE *fp = NULL;
 	if((fp = fopen("/etc/map/wts_bss_info_config", "w"))){
 		fprintf(fp, "#ucc_bss_info\n");
-		fprintf(fp, "%d,%s 8x %s %s %s %s 1 1 hidden-N\n", index, nvram_safe_get("wl0_hwaddr"), nvram_safe_get("wl0_ssid"), getauthmode(WL_2G_BAND), getencrypttype(WL_2G_BAND, 0), getpsk(WL_2G_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 8x %s %s %s %s 1 1 hidden-N\n", index, nvram_safe_get("wl0_ssid"), getauthmode(WL_2G_BAND), getencrypttype(WL_2G_BAND, 0), getpsk(WL_2G_BAND));
 		index++;
 		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 8x %s %s %s %s 1 0 hidden-Y\n", index, nvram_safe_get("wl0.4_ssid"), getauthmode(WL_2GBH_BAND), getencrypttype(WL_2GBH_BAND, 0), getpsk(WL_2GBH_BAND));
 		index++;
-		fprintf(fp, "%d,%s 11x %s %s %s %s 1 1 hidden-N\n", index, nvram_safe_get("wl1_hwaddr"), nvram_safe_get("wl1_ssid"), getauthmode(WL_5G_BAND), getencrypttype(WL_5G_BAND, 0), getpsk(WL_5G_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 11x %s %s %s %s 1 1 hidden-N\n", index, nvram_safe_get("wl1_ssid"), getauthmode(WL_5G_BAND), getencrypttype(WL_5G_BAND, 0), getpsk(WL_5G_BAND));
 		index++;
-		fprintf(fp, "%d,%s 12x %s %s %s %s 1 1 hidden-N\n", index, nvram_safe_get("wl1_hwaddr"), nvram_safe_get("wl1_ssid"), getauthmode(WL_5G_BAND), getencrypttype(WL_5G_BAND, 0), getpsk(WL_5G_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 12x %s %s %s %s 1 1 hidden-N\n", index, nvram_safe_get("wl1_ssid"), getauthmode(WL_5G_BAND), getencrypttype(WL_5G_BAND, 0), getpsk(WL_5G_BAND));
 		index++;
 		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 11x %s %s %s %s 1 0 hidden-Y\n", index, nvram_safe_get("wl1.4_ssid"), getauthmode(WL_5GBH_BAND), getencrypttype(WL_5GBH_BAND, 0), getpsk(WL_5GBH_BAND));
 		index++;
@@ -2177,23 +2182,6 @@ void start_mapd(void)
 	char *bh5gifname = get_mesh_bh_ifname(WL_5G_BAND);
 
 	mkdir("/etc/map", 0777);
-	if(sw_mode == SW_MODE_AP || sw_mode == SW_MODE_ROUTER){
-		if(enable == 0){
-			nvram_set("easymesh_enable", "1");
-			nvram_set("easymesh_mode", "1");
-			nvram_set("easymesh_role", "0");
-			enable = 1;
-			mode = MAP_TURNKEY;
-			role = EASYMESH_ROLE_NONE;//auto
-		}
-		if(mesh_re_node()){
-			nvram_set("easymesh_role", "2");//agent
-			role = EASYMESH_ROLE_AGENT;
-		}
-	}else{//same as aimesh, controller/agent only works in ap/router mode
-		nvram_set("easymesh_enable", "0");
-		enable = 0;
-	}
 	if(enable == 0){
 		eval("iwpriv", (char*) WIF_2G, "set", "mapEnable=0");
 		eval("iwpriv", (char*) WIF_5G, "set", "mapEnable=0");
@@ -2211,7 +2199,7 @@ void start_mapd(void)
 			modprobe("mtfwd");
 		if(pids("fwdd"))
 			killall_tk("fwdd");
-		if(sw_mode() == SW_MODE_ROUTER)
+		if(sw_mode == SW_MODE_ROUTER)
 			doSystem("fwdd -p %s %s -p %s %s -e %s 5G &", get_wififname(WL_2G_BAND), get_staifname(WL_2G_BAND), get_wififname(WL_5G_BAND), get_staifname(WL_5G_BAND), nvram_safe_get("wan0_ifname"));
 		else
 #if defined(RTCONFIG_MT798X)
@@ -2470,8 +2458,7 @@ void start_mapd(void)
 		else
 			doSystem("p1905_managerd -r1 -f /etc/map/1905d.cfg -F /etc/map/wts_bss_info_config > /var/log/1905.log&");
 		sleep(1);
-//		doSystem("mapd -I /etc/map/mapd_cfg -O /etc/mapd_strng.conf -c /jffs/client_db.txt -G /etc/map/wts_bss_info_config > /var/log/log.mapd&");
-		doSystem("mapd -I /etc/map/mapd_cfg -O /etc/mapd_strng.conf -c /jffs/client_db.txt > /var/log/log.mapd&");
+		doSystem("mapd -I /etc/map/mapd_cfg -O /etc/mapd_strng.conf -c /jffs/swrtmesh/client_db.txt > /var/log/log.mapd&");
 #if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_MT7622)
 		doSystem("switch reg w 10 ffffffe0");
 		doSystem("switch reg w 34 8160816");
@@ -2546,10 +2533,28 @@ int start_easymesh(void)
 {
 	pid_t pid;
 	char *agent_argv[] = { "easymesh_agent", NULL };
+	if (getpid() != 1) {
+		notify_rc("start_easymesh");
+		return;
+	}
+	swrtmesh_autoconf();
 	start_mapd();
 	if(nvram_match("easymesh_enable", "1") && nvram_get_int("easymesh_role") == EASYMESH_ROLE_AGENT)
 		_eval(agent_argv, NULL, 0, &pid);
 	return 0;
+}
+
+void stop_easymesh(void)
+{
+	if (getpid() != 1) {
+		notify_rc("stop_easymesh");
+		return;
+	}
+
+	if (pids("mapd"))
+		killall_tk("mapd");
+	if (pids("p1905_managerd"))
+		killall_tk("p1905_managerd");
 }
 
 void easymesh_agent(void)

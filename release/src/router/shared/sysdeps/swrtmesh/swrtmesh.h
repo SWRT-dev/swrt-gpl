@@ -22,4 +22,5 @@ enum {
 extern int get_easymesh_max_ver(void);
 extern char *get_easymesh_ver_str(int ver);
 extern char *get_mesh_bh_ifname(int band);
+extern void swrtmesh_autoconf(void);
 #endif

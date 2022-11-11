@@ -10650,7 +10650,7 @@ start_services(void)
 #if defined(RTCONFIG_SOFTCENTER)
 	nvram_set("sc_services_start_sig", "1");
 #endif
-#if defined(RTCONFIG_EASYMESH) && defined(RTCONFIG_RALINK)
+#if defined(RTCONFIG_EASYMESH)
 	start_easymesh();
 #elif defined(RTCONFIG_SWRT_KVR) && defined(RTCONFIG_RALINK)
 	start_wapp();
@@ -10668,6 +10668,9 @@ stop_services(void)
 #endif
 #if defined(RTCONFIG_ENTWARE)
 	nvram_set_int("entware_stop_sig", 1);
+#endif
+#if defined(RTCONFIG_EASYMESH)
+	stop_easymesh();
 #endif
 #ifdef RTCONFIG_FSMD
 	killall_tk("fsmd");
@@ -15398,6 +15401,11 @@ check_ddr_done:
 	{
 		if(action & RC_SERVICE_STOP) stop_easymesh_agent();
 		if(action & RC_SERVICE_START) start_easymesh_agent();
+	}
+	else if (strcmp(script, "easymesh") == 0)
+	{
+		if(action & RC_SERVICE_STOP) stop_easymesh();
+		if(action & RC_SERVICE_START) start_easymesh();
 	}
 #endif
 #ifdef RTCONFIG_DNSPRIVACY
