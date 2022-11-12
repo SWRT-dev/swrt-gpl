@@ -44,7 +44,7 @@ export QCA_PLATFORM=ipq806x
 -include $(DRIVER_PATH)/config.mk
 
 qca-wifi-10.4-stage:
-ifneq ($(wildcard qca-wifi-10.4/Makefile),)
+ifneq ($(wildcard qca-wifi-10.4/config.mk),)
 	install -d $(STAGEDIR)/usr/include
 	install -d  $(STAGEDIR)/usr/include/qca-wifi
 	$(MAKE) -C qca-wifi-10.4 INSTALL_DEST="$(STAGEDIR)/usr/include/" install_headers
@@ -52,14 +52,14 @@ ifneq ($(wildcard qca-wifi-10.4/Makefile),)
 endif
 
 qca-wifi-10.4: qca-wifi-fw-10.4
-ifneq ($(wildcard qca-wifi-10.4/Makefile),)
+ifneq ($(wildcard qca-wifi-10.4/config.mk),)
 	[ -f qca-wifi-10.4/stamp-h1 ] || $(MAKE) -C qca-wifi-10.4 src_prepare all_build
 	$(MAKE) qca-wifi-10.4-stage
 	touch qca-wifi-10.4/stamp-h1
 endif
 
 qca-wifi-10.4-install:
-ifneq ($(wildcard qca-wifi-10.4/Makefile),)
+ifneq ($(wildcard qca-wifi-10.4/config.mk),)
 	install -d $(INSTALLDIR)/qca-wifi-10.4/lib/modules/$(LINUX_KERNEL)
 	install -d $(INSTALLDIR)/qca-wifi-10.4/usr/sbin
 	install -d $(INSTALLDIR)/qca-wifi-10.4/usr/lib
@@ -77,7 +77,7 @@ endif
 	$(STRIPX) $(INSTALLDIR)/qca-wifi-10.4/lib/modules/$(LINUX_KERNEL)/*.ko
 
 qca-wifi-10.4-clean:
-ifneq ($(wildcard qca-wifi-10.4/Makefile),)
+ifneq ($(wildcard qca-wifi-10.4/config.mk),)
 	$(MAKE) -C qca-wifi-10.4 clean
 	rm -f qca-wifi-10.4/stamp-h1
 endif

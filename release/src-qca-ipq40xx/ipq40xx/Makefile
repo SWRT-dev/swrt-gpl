@@ -16,6 +16,10 @@ include ../router/.config
 
 PLATFORM_ROUTER_SRCBASE:=$(shell pwd)
 export PLATFORM_ROUTER_SRCBASE
+export INSTALL_BIN:=install -m0755
+export INSTALL_DIR:=install -d -m0755
+export INSTALL_DATA:=install -m0644
+export INSTALL_CONF:=install -m0600
 
 export CFLAGS+=$(EXTRACFLAGS)
 export LDFLAGS+=$(EXTRALDFLAGS)
@@ -84,7 +88,7 @@ distclean: clean
 
 %:
 	@[ ! -d $* ] || [ -f $*/Makefile ] || $(MAKE) $*-configure
-	@[ ! -d $* ] || ( $(MAKE) -C $* )
+	@[ ! -d $* ] || [ -d $*/prebuild ] || ( $(MAKE) -C $* )
 
 
 %-clean:
