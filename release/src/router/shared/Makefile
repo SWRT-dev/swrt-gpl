@@ -151,7 +151,7 @@ endif
 OBJS = shutils.o defaults.o model.o rtstate.o boardapi.o
 OBJS += network_utility.o
 OBJS += misc.o version.o files.o strings.o process.o
-OBJS += bin_sem_asus.o semaphore.o pids.o notify_rc.o
+OBJS += bin_sem_asus.o semaphore.o pids.o
 OBJS += discover.o
 OBJS += base64.o
 OBJS += nvparse.o
@@ -159,6 +159,7 @@ OBJS += bwdpi_utils.o
 OBJS += bwdpi_utils.o
 OBJS += mac_name_tbl.o
 OBJS += stun.o
+OBJS += $(if $(wildcard notify_rc.c),notify_rc.o,prebuild/notify_rc.o)
 ifeq ($(RTCONFIG_AHS),y)
 OBJS += notify_ahs.o
 endif
@@ -330,7 +331,7 @@ ifeq ($(RTCONFIG_BCMARM),y)
 ifneq ($(RTCONFIG_DSL_REMOTE)$(HND_ROUTER),y)
 CFLAGS += -DTRX_NEW
 endif
-OBJS += private.o
+OBJS += $(if $(wildcard sysdeps/broadcom/private.c),private.o,prebuild/private.o)
 ifeq ($(RTCONFIG_HND_ROUTER_AX),y)
 OBJS += wlif_utils_ax.o linux_timer_ax.o
 else
@@ -387,11 +388,11 @@ endif
 ifeq ($(RMAX6000),y)
 CFLAGS += -DTRX_NEW
 endif
-OBJS += private.o
+OBJS	+= $(if $(wildcard sysdeps/ralink/private.c),private.o,prebuild/private.o)
 vpath %.c sysdeps/ralink
 else ifeq ($(RTCONFIG_QCA),y)
 CFLAGS += -DTRX_NEW
-OBJS += private.o
+OBJS	+= $(if $(wildcard sysdeps/qca/private.c),private.o,prebuild/private.o)
 vpath %.c sysdeps/qca
 else ifeq ($(RTCONFIG_LANTIQ),y)
 OBJS	+= $(if $(wildcard sysdeps/api-lantiq.c),api-lantiq.o,prebuild/api-lantiq.o)
@@ -443,32 +444,7 @@ ifneq ($(CUSTOM_MODEL),)
 CFLAGS += -DCUSTOM_MODEL
 endif
 
-
-.IGNORE:
-ifneq ($(wildcard prebuild/$(BUILD_NAME)/*.o),)
-	-cp -f prebuild/$(BUILD_NAME)/*.o .
-endif
-	-cp -f $(TOP)/wireless_tools/iwlib.c .
-ifneq ($(wildcard ./tcode.c),)
-	-rm -f ./tcode.o
-endif
-ifneq ($(wildcard ./sysdeps/ralink/private.c),)
-	-rm -f ./private.o
-endif
-ifneq ($(wildcard ./notify_ahs.c),)
-	-rm -f ./notify_ahs.o
-endif
-ifneq ($(wildcard ./notify_rc.c),)
-	-rm -f ./notify_rc.o
-endif
-ifneq ($(wildcard ./shutils_private.c),)
-	-rm -f ./shutils_private.o
-endif
-ifneq ($(wildcard ./spwenc.c),)
-	-rm -f ./spwenc.o
-endif
-
-all: .IGNORE libshared.so libshared.a
+all: libshared.so libshared.a
 
 libshared.so: $(OBJS)
 	@echo " [shared] LD $@"

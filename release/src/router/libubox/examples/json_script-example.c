@@ -14,7 +14,7 @@ static void handle_command(struct json_script_ctx *ctx, const char *name,
 	struct blob_attr *data, struct blob_attr *vars)
 {
 	struct blob_attr *cur;
-	int rem;
+	size_t rem;
 
 	fprintf(stdout, "%s", name);
 	blobmsg_for_each_attr(cur, data, rem)

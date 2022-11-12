@@ -87,6 +87,7 @@ static void ulog_defaults(void)
 	_ulog_initialized = 1;
 }
 
+__attribute__((format(printf, 2, 0)))
 static void ulog_kmsg(int priority, const char *fmt, va_list ap)
 {
 	FILE *kmsg;
@@ -102,6 +103,7 @@ static void ulog_kmsg(int priority, const char *fmt, va_list ap)
 	}
 }
 
+__attribute__((format(printf, 2, 0)))
 static void ulog_stdio(int priority, const char *fmt, va_list ap)
 {
 	FILE *out = stderr;
@@ -112,6 +114,7 @@ static void ulog_stdio(int priority, const char *fmt, va_list ap)
 	vfprintf(out, fmt, ap);
 }
 
+__attribute__((format(printf, 2, 0)))
 static void ulog_syslog(int priority, const char *fmt, va_list ap)
 {
 	vsyslog(priority, fmt, ap);

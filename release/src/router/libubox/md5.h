@@ -53,6 +53,6 @@ typedef struct md5_ctx {
 extern void md5_begin(md5_ctx_t *ctx);
 extern void md5_hash(const void *data, size_t length, md5_ctx_t *ctx);
 extern void md5_end(void *resbuf, md5_ctx_t *ctx);
-int md5sum(char *file, void *md5_buf);
+int md5sum(const char *file, void *md5_buf);
 
 #endif

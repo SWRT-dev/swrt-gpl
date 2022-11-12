@@ -41,6 +41,11 @@ OBJS = sw_auth.o hw_auth.o
 # $(TARGET) and $(TOOL) is for debug only, don't enable it
 all : clean hw_auth.o sw_auth.o
 
+ifeq ($(wildcard ./hw_auth.c),)
+$(OBJS):
+	-cp prebuild/$(BUILD_NAME)/$@ ./
+endif
+
 
 $(AUTHLIB): $(OBJS)
 	@echo "[sw-hw-auth] $(AUTHLIB)"

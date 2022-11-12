@@ -45,7 +45,7 @@ endif
 else
 	mkdir -p 1905daemon datconf fwdd libmapd mapd mapfilter wappd
 	mkdir -p datconf/kvcutil datconf/datconf 1905daemon/ethernet/
-	mkdir -p wappd/config_and_icon_files wificonf
+	mkdir -p wappd/config_and_icon_files wificonf mtfwd
 	cp prebuilt/$(BUILD_NAME)/kvcedit datconf/kvcutil/
 	cp prebuilt/$(BUILD_NAME)/datconf datconf/datconf/
 	cp -rf prebuilt/$(BUILD_NAME)/libkvcutil.so* datconf/kvcutil/
@@ -55,9 +55,9 @@ else
 	cp -rf prebuilt/$(BUILD_NAME)/libeth_1905ops.so 1905daemon/ethernet/
 	cp prebuilt/$(BUILD_NAME)/wappctrl wappd/
 	cp prebuilt/$(BUILD_NAME)/wapp wappd/
-	cp prebuilt/$(BUILD_NAME)/wifi_config_save.lua wappd/
+#	cp prebuilt/$(BUILD_NAME)/wifi_config_save.lua wappd/
 #	cp prebuilt/$(BUILD_NAME)/mbo_nr.sh wappd/src/
-	cp -rf prebuilt/$(BUILD_NAME)/config_and_icon_files/* wappd/src/config_and_icon_files/
+	cp -rf prebuilt/$(BUILD_NAME)/config_and_icon_files/* wappd/config_and_icon_files/
 	cp prebuilt/$(BUILD_NAME)/libmapd_interface_client.so libmapd/
 	cp prebuilt/$(BUILD_NAME)/mapd mapd/
 	cp prebuilt/$(BUILD_NAME)/mapd_cli mapd/
@@ -67,8 +67,8 @@ else
 #	cp prebuilt/$(BUILD_NAME)/map_config_agent.lua mapd/
 #	cp prebuilt/$(BUILD_NAME)/map_cert_script.sh mapd/
 	cp prebuilt/$(BUILD_NAME)/fwdd fwdd/
-	cp prebuilt/$(BUILD_NAME)/mapfilter.ko mapfilter/src/
-	cp prebuilt/$(BUILD_NAME)/mtfwd.ko mtfwd/src/
+	cp prebuilt/$(BUILD_NAME)/mapfilter.ko mapfilter/
+	cp prebuilt/$(BUILD_NAME)/mtfwd.ko mtfwd/
 	cp prebuilt/$(BUILD_NAME)/wificonf wificonf/
 endif
 endif
@@ -81,9 +81,9 @@ ifneq ($(PREBUILT_BIN),1)
 	$(MAKE) -C mapfilter install
 	$(MAKE) -C mtfwd install
 else
-	install -d $(INSTALLDIR)/lib/modules/4.4.198/extra
-	cp -rf mapfilter/src/mapfilter.ko $(INSTALLDIR)/easymesh-sdk/lib/modules/4.4.198/extra
-	cp -rf mtfwd/src/mtfwd.ko $(INSTALLDIR)/easymesh-sdk/lib/modules/4.4.198/extra
+	install -d $(INSTALLDIR)/easymesh-sdk/lib/modules/4.4.198/extra
+	cp -rf mapfilter/mapfilter.ko $(INSTALLDIR)/easymesh-sdk/lib/modules/4.4.198/extra
+	cp -rf mtfwd/mtfwd.ko $(INSTALLDIR)/easymesh-sdk/lib/modules/4.4.198/extra
 endif
 	install -D 1905daemon/p1905_managerd $(INSTALLDIR)/easymesh-sdk/usr/sbin/p1905_managerd
 	install -D 1905daemon/1905ctrl $(INSTALLDIR)/easymesh-sdk/usr/sbin/1905ctrl
@@ -94,7 +94,7 @@ endif
 	cp -rf 1905daemon/ethernet/libeth_1905ops.so $(INSTALLDIR)/easymesh-sdk/usr/lib/
 	install -D wappd/wappctrl $(INSTALLDIR)/easymesh-sdk/usr/sbin/wappctrl
 	install -D wappd/wapp $(INSTALLDIR)/easymesh-sdk/usr/sbin/wapp
-	install -D wappd/wifi_config_save.lua $(INSTALLDIR)/easymesh-sdk/usr/sbin/wifi_config_save
+#	install -D wappd/wifi_config_save.lua $(INSTALLDIR)/easymesh-sdk/usr/sbin/wifi_config_save
 #	install -D wappd/src/mbo_nr.sh $(INSTALLDIR)/easymesh-sdk/usr/sbin/mbo_nr.sh
 	cp -rf wappd/config_and_icon_files/* $(INSTALLDIR)/easymesh-sdk/rom/etc/wappd/
 	cp -rf libmapd/libmapd_interface_client.so $(INSTALLDIR)/easymesh-sdk/usr/lib/
@@ -123,3 +123,5 @@ endif
 	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/fwdd
 	$(STRIP) $(INSTALLDIR)/easymesh-sdk/usr/sbin/wificonf
 endif
+
+clean:

@@ -9,7 +9,7 @@ local udp = socket.udp()
 udp:settimeout(0)
 udp:setsockname('*', 8080)
 
--- timer example 1
+-- timer example 1 (will run repeatedly)
 local timer
 function t()
 	print("1000 ms timer run");
@@ -18,10 +18,10 @@ end
 timer = uloop.timer(t)
 timer:set(1000)
 
--- timer example 2
+-- timer example 2 (will run once)
 uloop.timer(function() print("2000 ms timer run"); end, 2000)
 
--- timer example 3
+-- timer example 3 (will never run)
 uloop.timer(function() print("3000 ms timer run"); end, 3000):cancel()
 
 -- process
@@ -46,6 +46,8 @@ uloop.timer(
 	end, 2000
 )
 
+-- Keep udp_ev reference, events will be gc'd, even if the callback is still referenced
+-- .delete will manually untrack.
 udp_ev = uloop.fd_add(udp, function(ufd, events)
 	local words, msg_or_ip, port_or_nil = ufd:receivefrom()
 	print('Recv UDP packet from '..msg_or_ip..':'..port_or_nil..' : '..words)

@@ -45,6 +45,7 @@
 #include <string.h>
 
 #include "avl.h"
+#include "assert.h"
 #include "list.h"
 
 /**
@@ -668,6 +669,7 @@ avl_delete_worker(struct avl_tree *tree, struct avl_node *node)
       return;
     }
 
+    assert(node->right);
     node->right->parent = parent;
 
     if (parent->left == node)

@@ -16,15 +16,21 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "utils.h"
+#include <sys/mman.h>
+#include <errno.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include "utils.h"
 
 #define foreach_arg(_arg, _addr, _len, _first_addr, _first_len) \
 	for (_addr = (_first_addr), _len = (_first_len); \
 		_addr; \
 		_addr = va_arg(_arg, void **), _len = _addr ? va_arg(_arg, size_t) : 0)
+
+#define C_PTR_ALIGN	(sizeof(size_t))
+#define C_PTR_MASK	(-C_PTR_ALIGN)
 
 void *__calloc_a(size_t len, ...)
 {
@@ -39,23 +45,26 @@ void *__calloc_a(size_t len, ...)
 
 	va_copy(ap1, ap);
 	foreach_arg(ap1, cur_addr, cur_len, &ret, len)
-		alloc_len += cur_len;
+		alloc_len += (cur_len + C_PTR_ALIGN - 1 ) & C_PTR_MASK;
 	va_end(ap1);
 
 	ptr = calloc(1, alloc_len);
-	if (!ptr)
+	if (!ptr) {
+		va_end(ap);
 		return NULL;
+	}
+
 	alloc_len = 0;
 	foreach_arg(ap, cur_addr, cur_len, &ret, len) {
 		*cur_addr = &ptr[alloc_len];
-		alloc_len += cur_len;
+		alloc_len += (cur_len + C_PTR_ALIGN - 1) & C_PTR_MASK;
 	}
 	va_end(ap);
 
 	return ret;
 }
 
-#ifdef __APPLE__
+#ifdef LIBUBOX_COMPAT_CLOCK_GETTIME
 #include <mach/mach_host.h>		/* host_get_clock_service() */
 #include <mach/mach_port.h>		/* mach_port_deallocate() */
 #include <mach/mach_init.h>		/* mach_host_self(), mach_task_self() */
@@ -103,3 +112,78 @@ out:
 }
 
 #endif
+
+void *cbuf_alloc(unsigned int order)
+{
+	char path[] = "/tmp/cbuf-XXXXXX";
+	unsigned long size = cbuf_size(order);
+	void *ret = NULL;
+	int fd;
+
+	fd = mkstemp(path);
+	if (fd < 0)
+		return NULL;
+
+	if (unlink(path))
+		goto close;
+
+	if (ftruncate(fd, cbuf_size(order)))
+		goto close;
+
+#ifndef MAP_ANONYMOUS
+#define MAP_ANONYMOUS MAP_ANON
+#endif
+
+	ret = mmap(NULL, size * 2, PROT_NONE, MAP_ANON | MAP_PRIVATE, -1, 0);
+	if (ret == MAP_FAILED) {
+		ret = NULL;
+		goto close;
+	}
+
+	if (mmap(ret, size, PROT_READ | PROT_WRITE, MAP_FIXED | MAP_SHARED,
+		 fd, 0) != ret ||
+	    mmap(ret + size, size, PROT_READ | PROT_WRITE,
+		 MAP_FIXED | MAP_SHARED, fd, 0) != ret + size) {
+		munmap(ret, size * 2);
+		ret = NULL;
+	}
+
+close:
+	close(fd);
+	return ret;
+}
+
+void cbuf_free(void *ptr, unsigned int order)
+{
+	munmap(ptr, cbuf_size(order) * 2);
+}
+
+int mkdir_p(char *dir, mode_t mask)
+{
+	char *l;
+	int ret;
+
+	ret = mkdir(dir, mask);
+	if (!ret || errno == EEXIST)
+		return 0;
+
+	if (ret && (errno != ENOENT))
+		return -1;
+
+	l = strrchr(dir, '/');
+	if (!l || l == dir)
+		return -1;
+
+	*l = '\0';
+
+	if (mkdir_p(dir, mask))
+		return -1;
+
+	*l = '/';
+
+	ret = mkdir(dir, mask);
+	if (!ret || errno == EEXIST)
+		return 0;
+	else
+		return -1;
+}

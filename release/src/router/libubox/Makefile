@@ -1,4 +1,4 @@
-PREFIX   = /usr/local
+PREFIX   = /usr
 LIBDIR   = $(PREFIX)/lib
 DESTDIR  = 
 CFLAGS   = -Os -Wall -Werror --std=gnu99 -g3 -Wmissing-declarations $(EXTRACFLAGS)
@@ -29,19 +29,22 @@ json_script_SRCS := json_script.c
 json_script_LIBS := -L. -lubox
 endif
 
+HEADER = assert.h blobmsg.h list.h usock.h vlist.h
+HEADER += avl-cmp.h blobmsg_json.h md5.h ustream.h
+HEADER += avl.h json_script.h runqueue.h ulog.h
+HEADER += blob.h kvlist.h safe_list.h uloop.h utils.h
+
 all: $(TARGETS)
 
 clean:
 	rm -f *.o *.a *.so $(TARGETS)
 
-install: all install-common
-	$(STRIP) $(DESTDIR)$(LIBDIR)/*
-
-install-common:
-	$(INSTALL) -d $(DESTDIR)$(LIBDIR)
-	for i in $(TARGETS); do \
-		$(INSTALL) -m 755 $i $(DESTDIR)$(LIBDIR) \
+install:
+	install -d $(DESTDIR)/usr/include/libubox
+	@for i in $(HEADER); do \
+		install -D -m 644 -p $$i $(DESTDIR)/usr/include/libubox/; \
 	done
+	install -D -m 644 libubox.so $(DESTDIR)/usr/lib; \
 
 .SECONDARY:
 %.o: %.c *.h Makefile
@@ -61,4 +64,4 @@ install-common:
 	@echo "[LD] $@"
 	@$(CC) -shared $(LDFLAGS) -o $@ $^ $($*_LIBS) $(LIBS)
 
-.PHONY : all clean install install-common dummy
+.PHONY : all clean install dummy

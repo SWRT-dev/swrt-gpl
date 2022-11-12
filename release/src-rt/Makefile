@@ -3962,7 +3962,7 @@ define RouterOptions
 		sed -i "/RTCONFIG_FSMD/d" $(1); \
 		echo "RTCONFIG_FSMD=y" >>$(1); \
 	fi; \
-	if [ "$(3LANPORT_DEVICE)" = "y" ]; then \
+	if [ "$(DEVICE_3LANPORT)" = "y" ]; then \
 		sed -i "/RTCONFIG_3LANPORT_DEVICE/d" $(1); \
 		echo "RTCONFIG_3LANPORT_DEVICE=y" >>$(1); \
 	fi; \

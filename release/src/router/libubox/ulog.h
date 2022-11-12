@@ -32,7 +32,8 @@ void ulog_close(void);
 
 void ulog_threshold(int threshold);
 
-void ulog(int priority, const char *fmt, ...);
+void ulog(int priority, const char *fmt, ...)
+	__attribute__ ((format (printf, 2, 3)));
 
 #define ULOG_INFO(fmt, ...) ulog(LOG_INFO, fmt, ## __VA_ARGS__)
 #define ULOG_NOTE(fmt, ...) ulog(LOG_NOTICE, fmt, ## __VA_ARGS__)
