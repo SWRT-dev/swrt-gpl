@@ -134,6 +134,8 @@ char cookies_buf[4096];
 int do_ssl = 0; 	// use Global for HTTPS upgrade judgment in web.c
 int ssl_stream_fd; 	// use Global for HTTPS stream fd in web.c
 int json_support = 0;
+char wl_band_list[8][8] = {{0}};
+char pidfile[32];
 
 #ifdef TRANSLATE_ON_FLY
 char Accept_Language[16];
@@ -260,6 +262,9 @@ int skip_auth = 0;
 char url[128];
 int http_port = 0;
 char *http_ifname = NULL;
+#ifdef RTCONFIG_IPV6
+int http_ipv6_only = 0;
+#endif
 time_t login_dt=0;
 char login_url[128];
 int login_error_status = 0;
@@ -293,6 +298,7 @@ time_t turn_off_auth_timestamp = 0;
 int temp_turn_off_auth = 0;	// for QISxxx.htm pages
 
 int amas_support = 0;
+int HTS = 0;	//HTTP Transport Security
 
 struct timeval alarm_tv;
 time_t alarm_timestamp = 0;
@@ -356,40 +362,26 @@ void Debug2File(const char *path, const char *fmt, ...)
 }
 #endif
 
-void sethost(const char *host)
+void sethost(char *host)
 {
-	char *p = host_name;
-	size_t len;
+	char *cp;
 
-	if (!host || *host == '\0')
-		goto error;
+	if(!host) return;
 
-	while (*host == '.') host++;
+	memset(host_name, 0, sizeof(host_name));
+	strlcpy(host_name, host, sizeof(host_name));
 
-	len = strcspn(host, "\r\n");
-	while (len > 0 && strchr(" \t", host[len - 1]) != NULL)
-		len--;
-	if (len > sizeof(host_name) - 1)
-		goto error;
-
-	while (len-- > 0) {
-		int c = *host++;
-		if (((c | 0x20) < 'a' || (c | 0x20) > 'z') &&
-		    ((c < '0' || c > '9')) &&
-		    strchr(".-_:[]", c) == NULL) {
-			p = host_name;
-			break;
-		}
-		*p++ = c;
-	}
-
-error:
-	*p = '\0';
+	cp = host_name;
+	for ( cp = cp + 7; *cp && *cp != '\r' && *cp != '\n'; cp++ );
+	*cp = '\0';
 }
 
 char *gethost(void)
 {
-	return host_name[0] ? host_name : nvram_safe_get("lan_ipaddr");
+	if(strlen(host_name)) {
+		return host_name;
+	}
+	else return(nvram_safe_get("lan_ipaddr"));
 }
 
 #include <sys/sysinfo.h>
@@ -560,7 +552,7 @@ send_login_page(int fromapp_flag, int error_status, char* url, char* file, int l
 	}else{
 		snprintf(inviteCode, sizeof(inviteCode), "\"error_status\":\"%d\"", error_status);
 		if(error_status == LOGINLOCK){
-			snprintf(buf, sizeof(buf), ",\"remaining_lock_time\":\"%ld\"", LOCKTIME - login_dt);
+			snprintf(buf, sizeof(buf), ",\"remaining_lock_time\":\"%ld\"", max_lock_time - login_dt);
 			strlcat(inviteCode, buf, sizeof(inviteCode));
 		}
 	}
@@ -997,7 +989,7 @@ handle_request(void)
 	auth_result = 1;
 	url_do_auth = 0;
 	authorization = boundary = cookies = referer = useragent = NULL;
-	host_name[0] = '\0';
+	host_name[0] = 0;
 	bzero( line, sizeof line );
 
 	/* Parse the first line of the request. */
@@ -1185,6 +1177,12 @@ handle_request(void)
 		return;
 	}
 
+	if(HTS == 1 && strcmp(inet_ntoa(login_usa_tmp.sa_in.sin_addr), "127.0.0.1")){ //allow tunnel pass
+		snprintf(inviteCode, sizeof(inviteCode), "<meta http-equiv=\"refresh\" content=\"0; https://%s:%d\">\r\n", gethost(), nvram_get_int("https_lanport"));
+		send_page( 307, "Temporary Redirect", (char*) 0, inviteCode, 0);
+		return;
+	}
+
 //2008.08 magic{
 #ifdef RTCONFIG_SOFTCENTER
 	if (file[0] == '\0' || (index(file, '?') == NULL && file[len-1] == '/' && file[0] != '_')){//_api,_temp
@@ -1283,7 +1281,7 @@ handle_request(void)
 	{
 		if(!check_if_file_exist(file)){
 			snprintf(scPath, sizeof(scPath), "/jffs/softcenter/webs/");
-			strcat(scPath, file);
+			strlcat(scPath, file, sizeof(scPath));
 			if(check_if_file_exist(scPath)){
 				file = scPath;
 			}
@@ -1293,7 +1291,7 @@ handle_request(void)
 	{
 		if(!check_if_file_exist(file)){
 			snprintf(scPath, sizeof(scPath), "/jffs/softcenter/");
-			strcat(scPath, file);
+			strlcat(scPath, file, sizeof(scPath));
 			if(check_if_file_exist(scPath)){
 				file = scPath;
 			}
@@ -2311,11 +2309,32 @@ void check_alive()
 	alarm(20);
 }
 
+void httpd_exit(int sig)
+{
+        remove(pidfile);
+        exit(0);
+}
+
+int enabled_http_ifname()
+{
+#ifdef DSL_AX82U
+	if (nvram_get_int("http_enable") == 1 && http_port == SERVER_PORT && is_ax5400_i1()){
+		HTS = 1; //HTTP Transport Security
+		return 1;
+	}
+#endif
+#ifdef RTCONFIG_AIHOME_TUNNEL
+	if (nvram_get_int("http_enable") == 1 && http_port == SERVER_PORT)
+		return 0;
+#endif
+
+	return 1;
+}
+
 int main(int argc, char **argv)
 {
 	usockaddr usa;
 	int listen_fd[3];
-	char pidfile[32];
 	fd_set active_rfds;
 	conn_list_t pool;
 	int i, c;
@@ -2352,6 +2371,11 @@ int main(int argc, char **argv)
 		case 'i':
 			http_ifname = optarg;
 			break;
+#ifdef RTCONFIG_IPV6
+		case '6':
+			http_ipv6_only = 1;
+			break;
+#endif
 		default:
 			fprintf(stderr, "ERROR: unknown option %c\n", c);
 			break;
@@ -2381,6 +2405,7 @@ int main(int argc, char **argv)
 	signal(SIGCHLD, chld_reap);
 	signal(SIGUSR1, update_wlan_log);
 	signal(SIGALRM, check_alive);
+	signal(SIGTERM, httpd_exit);
 
 	alarm(20);
 
@@ -2393,18 +2418,18 @@ int main(int argc, char **argv)
 	for (i = 0; i < ARRAY_SIZE(listen_fd); i++)
 		listen_fd[i] = -1;
 	i = 0;
-#ifdef RTCONFIG_AIHOME_TUNNEL
-	if (nvram_get_int("http_enable") == 1 && http_port == SERVER_PORT) {
-		//httpd listen lo 80 port for tunnel but unused ifname in https only
-	} else
-#endif
+
 	{
-		if ((listen_fd[i++] = initialize_listen_socket(AF_INET, &usa, http_ifname)) < 0) {
+		if (
+#ifdef RTCONFIG_IPV6
+			!http_ipv6_only &&
+#endif
+			enabled_http_ifname() && (listen_fd[i++] = initialize_listen_socket(AF_INET, &usa, http_ifname)) < 0) {
 			fprintf(stderr, "can't bind to %s ipv4 address\n", http_ifname ? : "any");
 			return errno;
 		}
 #ifdef RTCONFIG_IPV6
-		if (ipv6_enabled() &&
+		if (ipv6_enabled() && enabled_http_ifname() &&
 		    (listen_fd[i++] = initialize_listen_socket(AF_INET6, &usa, http_ifname)) < 0) {
 			fprintf(stderr, "can't bind to %s ipv6 address\n", http_ifname ? : "any");
 			return errno;
@@ -2422,7 +2447,7 @@ int main(int argc, char **argv)
 	if (http_port == SERVER_PORT)
 		strlcpy(pidfile, "/var/run/httpd.pid", sizeof(pidfile));
 	else
-		snprintf(pidfile, sizeof(pidfile), "/var/run/httpd-%d.pid", http_port);
+		snprintf(pidfile, sizeof(pidfile), "/var/run/httpd-%s-%d.pid", http_ifname, http_port);
 	if (!(pid_fp = fopen(pidfile, "w"))) {
 		perror(pidfile);
 		return errno;
@@ -2437,6 +2462,7 @@ int main(int argc, char **argv)
 
 	/* handler global variable */
 	get_index_page(indexpage, sizeof(indexpage));
+	get_wl_nband_list();
 #if defined(RTCONFIG_SW_HW_AUTH) && defined(RTCONFIG_AMAS)
 	amas_support = getAmasSupportMode();
 #endif
@@ -2444,6 +2470,9 @@ int main(int argc, char **argv)
 		save_ui_support_to_file();
 		save_iptvSettings_to_file();
 	}
+#ifdef RTCONFIG_JFFS2USERICON
+	renew_upload_icon();
+#endif
 
 	/* Loop forever handling requests */
 	for (;;) {

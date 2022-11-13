@@ -399,11 +399,11 @@ static int rctest_main(int argc, char *argv[])
 	else if (strcmp(argv[1], "GetExtPhyStatus")==0) {
 		printf("Get Ext Phy status:%d\n", GetPhyStatus(atoi(argv[2]), NULL));
 	}
+#ifdef CONFIG_BCMWL5
 	else if(strcmp(argv[1], "frdwa")==0){
 		printf("frdwa\n");
 		exe_eu_wa_rr();
 	}
-#ifdef CONFIG_BCMWL5
 #if defined(RTCONFIG_AMAS) && defined(RTCONFIG_BHCOST_OPT)
 	else if (strcmp(argv[1], "linkrate")==0) {
 		if(argv[2]) {
@@ -577,7 +577,7 @@ static int rctest_main(int argc, char *argv[])
 		//if ((ret = GetPhyStatus(1, &phy_list)) == 1) {
 			GetPhyStatus(1, &phy_list);
 			for(i=0;i<phy_list.count;i++) {
-				fprintf(stderr, " phy_port_id=%d, label_name=%s, cap_name=%s, state=%s, link_rate=%d, duplex=%s, tx_packets=%u, rx_packets=%u, tx_bytes=%" PRIu64 ", rx_bytes=%" PRIu64 ", crc_errors=%u\n",
+				fprintf(stderr, " phy_port_id=%d, label_name=%s, cap_name=%s, state=%s, link_rate=%d, duplex=%s, tx_packets=%u, rx_packets=%u, tx_bytes=%llu, rx_bytes=%llu, crc_errors=%u\n", 
 					phy_list.phy_info[i].phy_port_id,
 					phy_list.phy_info[i].label_name,
 					phy_list.phy_info[i].cap_name,
@@ -1557,7 +1557,7 @@ static const applets_t applets[] = {
 	{ "ddns_updated", 		ddns_updated_main		},
 	{ "ddns_custom_updated",	ddns_custom_updated_main	},
 	{ "radio",			radio_main			},
-	{ "udhcpc",			udhcpc_wan			},
+	{ "udhcpc_wan",			udhcpc_wan			},
 	{ "udhcpc_lan",			udhcpc_lan			},
 	{ "zcip",			zcip_wan			},
 #ifdef RTCONFIG_IPV6
@@ -1710,9 +1710,11 @@ static const applets_t applets[] = {
  ||  (defined(RTCONFIG_SOC_IPQ8074))
 	{ "erp_monitor",		erp_monitor_main		},
 #endif
+#ifdef RTCONFIG_WIFI_SON
 #if defined(MAPAC2200)
 	{ "dpdt_ant",			dpdt_ant_main		},
 #endif
+#endif	
 #if defined(MAPAC1300) || defined(VZWAC1300) || defined(SHAC1300)
 	{ "thermal_txpwr",		thermal_txpwr_main		},
 #endif
@@ -3126,8 +3128,17 @@ _dprintf("LED_NOMOBILE=%d, LED_2G_YELLOW=%d, LED_3G_BLUE=%d, LED_4G_WHITE=%d.\n"
 		char rules[4096], *fmrs;
 		int k, offset, psidlen, psid, start, end;
 		int draft = argv[1] && strcmp(argv[1], "draft") == 0;
+		int wan_proto = -1;
+
+		if (!strcmp(argv[2], "map-e"))
+			wan_proto = WAN_MAPE;
+		else if (!strcmp(argv[2], "lw4o6"))
+			wan_proto = WAN_LW4O6;
+		else
+			wan_proto = WAN_V6PLUS;
+
 		while (fgets(rules, sizeof(rules), stdin) != NULL) {
-			if (s46_mapcalc(rules, peerbuf, sizeof(peerbuf), addr6buf, sizeof(addr6buf),
+			if (s46_mapcalc(wan_proto, rules, peerbuf, sizeof(peerbuf), addr6buf, sizeof(addr6buf),
 					addr4buf, sizeof(addr4buf), &offset, &psidlen, &psid, &fmrs, draft) <= 0) {
 				peerbuf[0] = addr6buf[0] = addr4buf[0] = '\0';
 				offset = 0, psidlen = 0, psid = 0;
@@ -3176,6 +3187,7 @@ _dprintf("LED_NOMOBILE=%d, LED_2G_YELLOW=%d, LED_3G_BLUE=%d, LED_4G_WHITE=%d.\n"
 	return 0;
 }
 
+#if defined(CONFIG_BCMWL5)
 void exe_eu_wa_rr(void){
 	char cmd_cc_tmp[64];
 	char cmd_cc_ori[64];
@@ -3272,4 +3284,5 @@ void exe_eu_wa_rr(void){
 	notify_rc("restart_acsd");
 
 }
+#endif
 

@@ -416,6 +416,9 @@ extern void send_content_page( int status, char* title, char* extra_header, char
 extern char *get_referrer(char *referer, char *auth_referer, size_t length);
 extern int save_ui_support_to_file(void);
 extern int save_iptvSettings_to_file(void);
+#ifdef RTCONFIG_JFFS2USERICON
+extern int renew_upload_icon(void);
+#endif
 
 struct usockaddr;
 typedef struct usockaddr usockaddr;
@@ -484,6 +487,8 @@ extern char cookies_buf[4096];
 extern unsigned int login_ip_tmp; /* IPv6 compat */
 extern uaddr login_uip_tmp;
 extern time_t login_timestamp_cache;
+extern int hook_get_json;
+extern char wl_band_list[8][8];
 extern int check_user_agent(char* user_agent);
 #if defined(RTCONFIG_IFTTT) || defined(RTCONFIG_ALEXA) || defined(RTCONFIG_GOOGLE_ASST)
 extern void add_ifttt_flag(void);
@@ -571,5 +576,7 @@ extern void slowloris_check();
 extern void slow_post_read_check();
 extern int check_chpass_auth(char *cur_username, char *cur_passwd);
 extern int save_changed_param(json_object *cfg_root, char *param);
+extern void reg_default_final_token();
+extern int get_wl_nband_list();
 #endif /* _httpd_h_ */
 

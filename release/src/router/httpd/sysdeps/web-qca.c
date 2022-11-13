@@ -2409,6 +2409,12 @@ ej_wl_rate_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 		return 0;
 }
 
+int
+ej_wl_rate_6g(int eid, webs_t wp, int argc, char_t **argv)
+{
+   	return 0;
+}
+
 /* Check necessary kernel module only. */
 static struct nat_accel_kmod_s {
 	char *kmod_name;

@@ -3685,11 +3685,11 @@ void find_dms_dbdir(char *dbdir)
 	char dbdir_t[128], dbfile[128];
 	int found=0;
 
-  	strcpy(dbdir_t, nvram_safe_get("dms_dbdir"));
+	strlcpy(dbdir_t, nvram_safe_get("dms_dbdir"), sizeof(dbdir_t));
 
 	/* if previous dms_dbdir there, use it */
 	if(!strcmp(dbdir_t, nvram_default_get("dms_dbdir"))) {
-		sprintf(dbfile, "%s/file.db", dbdir_t);
+		snprintf(dbfile, sizeof(dbfile), "%s/file.db", dbdir_t);
 		if (check_if_file_exist(dbfile)) {
 			strcpy(dbdir, dbdir_t);
 			found = 1;
@@ -3963,19 +3963,23 @@ write_mt_daapd_conf(char *servername)
 		snprintf(dmsdir, sizeof(dmsdir), "%s", nvram_default_get("dms_dir"));
 
 #if 1
-	char *http_passwd = nvram_safe_get("http_passwd");
+	char http_passwd[128];
 #ifdef RTCONFIG_NVRAM_ENCRYPT
-	int declen = strlen(http_passwd);
+	int declen;
 	char *dec_passwd = NULL;
+
+	strlcpy(http_passwd, nvram_safe_get("http_passwd"), sizeof(http_passwd));
+	declen = strlen(http_passwd)+1;
 	dec_passwd = malloc(declen);
 	if(dec_passwd){
+		memset(dec_passwd, 0, declen);
 		pw_dec(http_passwd, dec_passwd, declen);
-		http_passwd = dec_passwd;
+		strlcpy(http_passwd, dec_passwd, sizeof(http_passwd));
 	}
 #endif
 	memset(dbdir, 0, sizeof(dbdir));
 	if (find_dms_dbdir_candidate(dbdir_t))
-		sprintf(dbdir, "%s/.mt-daapd", dbdir_t);
+		snprintf(dbdir, sizeof(dbdir), "%s/.mt-daapd", dbdir_t);
 
 	ptr = strlen(dbdir) ? dbdir : "/var/cache/mt-daapd";
 	nvram_set("daapd_dbdir", ptr);
@@ -5461,8 +5465,7 @@ int diskmon_main(int argc, char *argv[])
 			continue;
 		}
 
-		memset(nvram_name, 0, 32);
-		sprintf(nvram_name, "usb_path%d_diskmon_freq_time", (port_num+1));
+		snprintf(nvram_name, sizeof(nvram_name), "usb_path%d_diskmon_freq_time", (port_num+1));
 		nv = nvp = strdup(nvram_safe_get(nvram_name));
 		if(!nv || strlen(nv) <= 0){
 			cprintf("disk_monitor: Without setting the running time at the port %d!\n", (port_num+1));

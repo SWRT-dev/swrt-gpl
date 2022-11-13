@@ -1741,6 +1741,11 @@ void start_wapp(void)
 	pid_t pid;
 	int if_index = 3;
 
+	if (getpid() != 1) {
+		notify_rc("start_wapp");
+		return;
+	}
+
 	gen_wapp_config();
 	if(nvram_match("wl0_radio", "1"))
 		wapp_argv[if_index++] = "-cra0";
@@ -1755,6 +1760,17 @@ void start_wapp(void)
 	_eval(wapp_argv, NULL, 0, &pid);
 	_dprintf("###wapp start:%d\n", pid);
 }
+
+void stop_wapp(void)
+{
+	if (getpid() != 1) {
+		notify_rc("stop_wapp");
+		return;
+	}
+
+	if (pids("wapp"))
+		killall_tk("wapp");
+}
 #endif
 #if defined(RTCONFIG_EASYMESH)
 #define MAP_DISABLED		0
@@ -1764,11 +1780,12 @@ void start_wapp(void)
 #define MAP_CERT_MODE		4
 void gen_1905d_config(void)
 {
+	int sw_mode = sw_mode();
 	FILE *fp = NULL;
 	system("mkdir -p /etc/map");
 	if((fp = fopen("/etc/map/1905d.cfg", "w")))
 	{
-		if(nvram_get_int("easymesh_role") == EASYMESH_ROLE_MASTER){
+		if(nvram_get_int("easymesh_role") == EASYMESH_ROLE_MASTER && !mesh_re_node()){
 // This device is a MAP root
 			fprintf(fp, "map_root=1\n");
 // Has MAP agent on this device
@@ -1809,7 +1826,13 @@ void gen_1905d_config(void)
 			fprintf(fp, "lan=%s\n", lan3);
 			fprintf(fp, "lan=%s\n", lan4);
 			fprintf(fp, "lan_vid=1;2;3;4;\n");
-			fprintf(fp, "wan_vid=5;\n");
+			if(sw_mode != SW_MODE_ROUTER){
+				fprintf(fp, "wan_vid=\n");
+				fprintf(fp, "wan=\n");
+			}else{
+				fprintf(fp, "wan_vid=5;\n");
+				fprintf(fp, "wan=%s\n", nvram_safe_get("wan0_ifname"));
+			}
 		}else{
 #if defined(RTCONFIG_RALINK_MT7621)
 			fprintf(fp, "lan=vlan1\n");
@@ -1817,10 +1840,14 @@ void gen_1905d_config(void)
 			fprintf(fp, "lan=eth0\n");
 #endif
 			fprintf(fp, "lan_vid=1;\n");
-			fprintf(fp, "wan_vid=2;\n");
+			if(sw_mode != SW_MODE_ROUTER){
+				fprintf(fp, "wan_vid=\n");
+				fprintf(fp, "wan=\n");
+			}else{
+				fprintf(fp, "wan_vid=2;\n");
+				fprintf(fp, "wan=%s\n", nvram_safe_get("wan0_ifname"));
+			}
 		}
-//wan interface
-		fprintf(fp, "wan=%s\n", nvram_safe_get("wan0_ifname"));
 //		fprintf(fp, "veth=xxx\n");
 		fprintf(fp, "map_ver=%s\n", get_easymesh_ver_str(get_easymesh_max_ver()));
 //fixed al_mac of al_inf(only wifi inf) mac
@@ -1849,6 +1876,30 @@ void gen_1905d_config(void)
 		fclose(fp);
 	}else
 		_dprintf("Can't open /etc/map/1905d.cfg\n");
+	if((fp = fopen("/etc/map/ethernet_cfg.txt", "w")))
+	{
+//set the vid of the LAN group, the range is 1-4094, and not repeat with wan_vid
+		fprintf(fp, "lan_vid=1;\n");
+//set the vid of the WAN group, the range is 1-4094, and not repeat with lan_vid
+		if(sw_mode == SW_MODE_ROUTER)
+			fprintf(fp, "wan_vid=2;\n");
+//set the CPU port number, where the switch and CPU are connected.
+//The witch-7530 can be selected as 5 or 6.
+//The switch-7531 can only set one of 5 and 6, or you can set them at the same time
+//		fprintf(fp, "cpu_port=6;\n");
+#if defined(RTCONFIG_MT798X)
+//specify external phy port, used as lan port while bridge mode
+//panther with one 2.5G phy port, ext_phy_port=6
+//panther with two 2.5G phy port, ext_phy_port=5 6
+#if 0
+		fprintf(fp, "ext_phy_port=5 6\n");
+#else
+		fprintf(fp, "ext_phy_port=\n");
+#endif
+#endif
+		symlink("/etc/map/ethernet_cfg.txt", "/etc/ethernet_cfg.txt");
+	}else
+		_dprintf("Can't open /etc/map/ethernet_cfg.txt\n");
 }
 
 void gen_mapd_strng(void)
@@ -1884,13 +1935,17 @@ void gen_mapd_strng(void)
 
 void gen_mapd_config(void)
 {
+	int sw_mode = sw_mode();
 	FILE *fp = NULL;
 	if((fp = fopen("/etc/map/mapd_default.cfg", "w")))
 	{
 		if(get_easymesh_max_ver() > 2)
 			fprintf(fp, "mode=1\n");
 		fprintf(fp, "lan_interface=br0\n");
-		fprintf(fp, "wan_interface=%s\n", nvram_safe_get("wan0_ifname"));
+		if(sw_mode != SW_MODE_ROUTER)
+			fprintf(fp, "wan_interface=\n");
+		else
+			fprintf(fp, "wan_interface=%s\n", nvram_safe_get("wan0_ifname"));
 		if(nvram_get_int("easymesh_role") == EASYMESH_ROLE_AGENT)
 			fprintf(fp, "DeviceRole=2\n");
 		else if(nvram_get_int("easymesh_role") == EASYMESH_ROLE_MASTER)
@@ -2535,7 +2590,7 @@ int start_easymesh(void)
 	char *agent_argv[] = { "easymesh_agent", NULL };
 	if (getpid() != 1) {
 		notify_rc("start_easymesh");
-		return;
+		return 0;
 	}
 	swrtmesh_autoconf();
 	start_mapd();

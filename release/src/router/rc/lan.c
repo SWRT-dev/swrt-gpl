@@ -491,6 +491,45 @@ void stop_wl(void)
 {
 }
 
+int
+chk_inlan(char *chk_ip)
+{
+        char word[80], *next;
+        char *ipaddr, *netmask, *gateway, *metric;
+        char *buf;
+	int ret = 0;
+
+	if (!chk_ip)
+		return 0;
+
+        buf = strdup(nvram_safe_get("lan_route"));
+        if (buf == NULL)
+                return 0;
+
+        foreach(word, buf, next) {
+                netmask = word;
+                ipaddr = strsep(&netmask, ":");
+                if (!ipaddr || !netmask)
+                        continue;
+                gateway = netmask;
+                netmask = strsep(&gateway, ":");
+                if (!netmask || !gateway)
+                        continue;
+                metric = gateway;
+                gateway = strsep(&metric, ":");
+                if (!gateway || !metric)
+                        continue;
+
+                if (((inet_addr(chk_ip) & inet_addr(netmask)) == (inet_addr(ipaddr) & inet_addr(netmask)))) {
+			ret = 1;
+			break;
+		}
+        }
+        free(buf);
+
+        return ret;
+}
+
 static int
 add_lan_routes(char *lan_ifname)
 {

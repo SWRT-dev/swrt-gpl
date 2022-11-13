@@ -2314,6 +2314,12 @@ ej_wl_rate_5g(int eid, webs_t wp, int argc, char_t **argv)
 }
 
 int
+ej_wl_rate_6g(int eid, webs_t wp, int argc, char_t **argv)
+{
+   	return 0;
+}
+
+int
 ej_nat_accel_status(int eid, webs_t wp, int argc, char_t **argv)
 {
 	char val[4];
