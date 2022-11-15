@@ -5922,7 +5922,7 @@ void start_smartdns(void)
 #ifdef RTCONFIG_DUALWAN
 	int primary_unit = wan_primary_ifunit();
 #endif
-	if(!nvram_match("smartdns_enable", "1"))
+	if(!nvram_match("smartdns_enable", "1") || g_reboot)
 		return;
 	if (pids("smartdns"))
 		killall_tk("smartdns");
@@ -10848,6 +10848,7 @@ static void save_sys_time(void)
 	gettimeofday(&tv,NULL);
 	snprintf(tmp, sizeof(tmp), "%ld", tv.tv_sec);
 	nvram_set("sys_last_time", tmp);
+	nvram_commit();
 }
 
 void
@@ -10866,7 +10867,6 @@ stop_services(void)
 #if defined(RTCONFIG_EASYMESH)
 	stop_easymesh();
 #endif
-	save_sys_time();
 #ifdef RTCONFIG_FSMD
 	killall_tk("fsmd");
 #endif
@@ -12506,6 +12506,7 @@ again:
 #endif
 
 	if (strcmp(script, "reboot") == 0 || strcmp(script,"rebootandrestore")==0) {
+		save_sys_time();
 		if (wait_action_idle(10)) {
 			set_action(ACT_REBOOT);
 		}

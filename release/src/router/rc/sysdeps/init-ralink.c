@@ -821,21 +821,30 @@ void init_wl(void)
 
 void fini_wl(void)
 {
-#if 0 //3.10.x
-	if (module_loaded("hw_nat")) {
-#if defined (RTCONFIG_WLMODULE_MT7615E_AP)
-		doSystem("iwpriv %s set hw_nat_register=%d", get_wifname(0), 0);
-#ifdef RTCONFIG_HAS_5G
-		doSystem("iwpriv %s set hw_nat_register=%d", get_wifname(1), 0);
+#if defined(RTCONFIG_EASYMESH)
+	if (module_loaded("mapfilter"))
+		modprobe_r("mapfilter");
 #endif
-#endif
-		modprobe_r("hw_nat");
-	}
-#else //4.4.x
 	if (module_loaded("mtkhnat"))
 		modprobe_r("mtkhnat");
+#if defined (RTCONFIG_WLMODULE_MT7615E_AP)
+	if (module_loaded("mt_wifi_7615E"))
+		modprobe_r("mt_wifi_7615E");
 #endif
-
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+	if (module_loaded("mt_wifi"))
+		modprobe_r("mt_wifi");
+#endif
+#if defined(RTCONFIG_MT798X)
+	if (module_loaded("mtk_warp_proxy"))
+		modprobe_r("mtk_warp_proxy");
+	if (module_loaded("mtk_warp"))
+		modprobe_r("mtk_warp");
+	if (module_loaded("mt_wifi"))
+		modprobe_r("mt_wifi");
+	if (module_loaded("conninfra"))
+		modprobe_r("conninfra");
+#endif
 #if defined (RTCONFIG_WLMODULE_MT7610_AP)
 	if (module_loaded("MT7610_ap"))
 		modprobe_r("MT7610_ap");
@@ -2237,6 +2246,15 @@ void start_mapd(void)
 	int tpcon = nvram_get_int("easymesh_tpcon"); /* AP/RP:1, GW:0 */
 	char *bh2gifname = get_mesh_bh_ifname(WL_2G_BAND);
 	char *bh5gifname = get_mesh_bh_ifname(WL_5G_BAND);
+	char *ap2gifname = get_wififname(WL_2G_BAND);
+	char *ap5gifname = get_wififname(WL_5G_BAND);
+	char *apcli2gifname = get_staifname(WL_2G_BAND);
+	char *apcli5gifname = get_staifname(WL_5G_BAND);
+	char *fwdd_eth = NULL;
+	pid_t pid;
+	char *mapd_argv[] = { "/usr/sbin/mapd", "-I", "/etc/map/mapd_cfg", "-O", "/etc/mapd_strng.conf", "-c", "/jffs/swrtmesh/client_db.txt", NULL };
+	char *p1905_argv[] = { "/usr/sbin/p1905_managerd", "-r0", "-f", "/etc/map/1905d.cfg", "-F", "/etc/map/wts_bss_info_config", NULL };
+	char *fwdd_argv[] = { "/usr/sbin/fwdd", "-p", ap2gifname, apcli2gifname, "-p", ap5gifname, apcli5gifname, "-e", fwdd_eth, "5G", NULL };
 
 	mkdir("/etc/map", 0777);
 	if(enable == 0){
@@ -2257,13 +2275,14 @@ void start_mapd(void)
 		if(pids("fwdd"))
 			killall_tk("fwdd");
 		if(sw_mode == SW_MODE_ROUTER)
-			doSystem("fwdd -p %s %s -p %s %s -e %s 5G &", get_wififname(WL_2G_BAND), get_staifname(WL_2G_BAND), get_wififname(WL_5G_BAND), get_staifname(WL_5G_BAND), nvram_safe_get("wan0_ifname"));
+			fwdd_eth = nvram_safe_get("wan0_ifname");
 		else
 #if defined(RTCONFIG_MT798X)
-			doSystem("fwdd -p %s %s -p %s %s -e %s 5G &", get_wififname(WL_2G_BAND), get_staifname(WL_2G_BAND), get_wififname(WL_5G_BAND), get_staifname(WL_5G_BAND), "br0");
+			fwdd_eth = "eth0";
 #else
-			doSystem("fwdd -p %s %s -p %s %s -e %s 5G &", get_wififname(WL_2G_BAND), get_staifname(WL_2G_BAND), get_wififname(WL_5G_BAND), get_staifname(WL_5G_BAND), "vlan1");
+			fwdd_eth = "vlan1";
 #endif
+		_eval(fwdd_argv, NULL, 0, &pid);
 		return;
 	}else{
 		doSystem("rm -rf /tmp/wapp_ctrl");
@@ -2334,7 +2353,8 @@ void start_mapd(void)
 				modprobe("mtfwd");
 			if(pids("fwdd"))
 				killall_tk("fwdd");
-			doSystem("fwdd -p %s %s -p %s %s -e %s 5G &", get_wififname(WL_2G_BAND), get_staifname(WL_2G_BAND), get_wififname(WL_5G_BAND), get_staifname(WL_5G_BAND), nvram_safe_get("wan0_ifname"));
+			fwdd_eth = nvram_safe_get("wan0_ifname");
+			_eval(fwdd_argv, NULL, 0, &pid);
 		}
 	} else if(mode == MAP_TURNKEY){
 #if defined(RTCONFIG_RALINK_MT7621)
@@ -2345,7 +2365,7 @@ void start_mapd(void)
 		_dprintf("TurnKey mode");
 		gen_bhwifi_conf();
 		if(pids("fwdd"))
-				killall_tk("fwdd");
+			killall_tk("fwdd");
 		if(module_loaded("mtfwd"))
 			modprobe_r("mtfwd");
 		if(!module_loaded("mapfilter"))
@@ -2511,11 +2531,13 @@ void start_mapd(void)
 		eval("iwpriv", (char*) APCLI_5G, "set", "VLANPolicy=1:2");
 		start_wapp();
 		if(role == EASYMESH_ROLE_MASTER)
-			doSystem("p1905_managerd -r0 -f /etc/map/1905d.cfg -F /etc/map/wts_bss_info_config > /var/log/1905.log&");
-		else
-			doSystem("p1905_managerd -r1 -f /etc/map/1905d.cfg -F /etc/map/wts_bss_info_config > /var/log/1905.log&");
+			_eval(p1905_argv, "/var/log/1905.log", 0, &pid);
+		else{
+			p1905_argv[1] = "-r1";
+			_eval(p1905_argv, "/var/log/1905.log", 0, &pid);
+		}
 		sleep(1);
-		doSystem("mapd -I /etc/map/mapd_cfg -O /etc/mapd_strng.conf -c /jffs/swrtmesh/client_db.txt > /var/log/log.mapd&");
+			_eval(mapd_argv, "/var/log/log.mapd", 0, &pid);
 #if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_MT7622)
 		doSystem("switch reg w 10 ffffffe0");
 		doSystem("switch reg w 34 8160816");
@@ -2536,7 +2558,8 @@ void start_mapd(void)
 			modprobe("mtfwd");
 		if(pids("fwdd"))
 			killall_tk("fwdd");
-		doSystem("fwdd -p %s %s -p %s %s -e %s 5G &", get_wififname(WL_2G_BAND), get_staifname(WL_2G_BAND), get_wififname(WL_5G_BAND), get_staifname(WL_5G_BAND), nvram_safe_get("wan0_ifname"));
+		fwdd_eth = nvram_safe_get("wan0_ifname");
+		_eval(fwdd_argv, NULL, 0, &pid);
 	} else if(mode == MAP_API_MODE){
 		_dprintf("unsupport mode\n");
 	} else if(mode == MAP_CERT_MODE){
@@ -2612,6 +2635,10 @@ void stop_easymesh(void)
 		killall_tk("mapd");
 	if (pids("p1905_managerd"))
 		killall_tk("p1905_managerd");
+	doSystem("ifconfig %s down", get_staifname(WL_2G_BAND));
+	doSystem("ifconfig %s down", get_staifname(WL_5G_BAND));
+	doSystem("ifconfig %s down", get_mesh_bh_ifname(WL_2G_BAND));
+	doSystem("ifconfig %s down", get_mesh_bh_ifname(WL_5G_BAND));
 }
 
 void easymesh_agent(void)
