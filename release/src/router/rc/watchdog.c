@@ -4946,6 +4946,7 @@ end_of_wl_sched:
 						return;
 
 					logmessage("reboot scheduler", "[%s] The system is going down for reboot\n", __FUNCTION__);
+					save_sys_time();
 					kill(1, SIGTERM);
 				}
 			}
@@ -6745,6 +6746,9 @@ void networkmap_check()
 
 void httpd_check()
 {
+	if (nvram_get_int("wait_httpd"))
+		return;
+
 #ifdef RTCONFIG_HTTPS
 	int enable = nvram_get_int("http_enable");
 	if ((enable != 1 && !pids("httpd")) ||

@@ -3424,6 +3424,6 @@ int transform_wanlanstatus(wanlan_st_t *wlst);
 #define PLC_LOG_FILE	"plc.log"
 #define PLC_LOG_1_FILE	"plc.log-1"
 #endif /* RTCONFIG_QCA_PLC2 */
-
+extern void save_sys_time(void);
 #endif	/* __RC_H__ */
 

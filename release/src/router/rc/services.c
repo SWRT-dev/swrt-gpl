@@ -10841,7 +10841,7 @@ start_services(void)
 	return 0;
 }
 
-static void save_sys_time(void)
+void save_sys_time(void)
 {
 	struct timeval tv;
 	char tmp[12] = {0};
@@ -12978,6 +12978,7 @@ again:
 	}
 	else if(strcmp(script, "upgrade") == 0) {
 		int stop_commit;
+		save_sys_time();
 		restore_config_before_firmware_downgrade();
 		stop_commit = nvram_get_int(ASUS_STOP_COMMIT);
 		if(stop_commit == 0) {
