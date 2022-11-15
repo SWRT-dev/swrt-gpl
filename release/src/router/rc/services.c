@@ -10841,6 +10841,15 @@ start_services(void)
 	return 0;
 }
 
+static void save_sys_time(void)
+{
+	struct timeval tv;
+	char tmp[12] = {0};
+	gettimeofday(&tv,NULL);
+	snprintf(tmp, sizeof(tmp), "%ld", tv.tv_sec);
+	nvram_set("sys_last_time", tmp);
+}
+
 void
 stop_services(void)
 {
@@ -10857,6 +10866,7 @@ stop_services(void)
 #if defined(RTCONFIG_EASYMESH)
 	stop_easymesh();
 #endif
+	save_sys_time();
 #ifdef RTCONFIG_FSMD
 	killall_tk("fsmd");
 #endif

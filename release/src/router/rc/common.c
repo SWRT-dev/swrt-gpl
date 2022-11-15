@@ -1443,6 +1443,18 @@ setup_timezone(void)
 #endif
 
 	/* Setup sane start time */
+	if(nvram_get("sys_last_time")){
+		//We don't know the current time, but we know the last reboot time.
+		char tmp[12] = {0};
+		struct sysinfo info;
+		sysinfo(&info);
+		snprintf(tmp, sizeof(tmp), "%s", nvram_get("sys_last_time"));
+		tv.tv_sec = strtol(tmp, NULL, 10);
+		tv.tv_sec += info.uptime;
+		tvp = &tv;
+		nvram_unset("sys_last_time");
+	}
+	else
 	if (now < RC_BUILDTIME) {
 		struct sysinfo info;
 

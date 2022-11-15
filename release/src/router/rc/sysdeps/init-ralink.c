@@ -26,7 +26,9 @@
 #include <shared.h>
 #include <ralink.h>
 #include <flash_mtd.h>
+#if defined(RTCONFIG_EASYMESH)
 #include <swrtmesh.h>
+#endif
 
 void init_devs(void)
 {

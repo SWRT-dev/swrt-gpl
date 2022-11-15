@@ -66,6 +66,7 @@ static struct hsearch_data htab;
 void
 unescape(char *s)
 {
+	char s_tmp[65535];
 	unsigned int c;
 
 	while ((s = strpbrk(s, "%+"))) {
@@ -74,9 +75,10 @@ unescape(char *s)
 			if(isxdigit(s[1]) && isxdigit(s[2])){
 				sscanf(s + 1, "%02x", &c);
 				*s++ = (char) c;
-				memmove(s, s+2, strlen(s+2)+1);	//including the '\0'
+				strlcpy(s_tmp, s + 2, sizeof(s_tmp));
+				strncpy(s, s_tmp, strlen(s) + 1);
 			}else
-				s++;
+				*s++;
 		}
 		/* Space is special */
 		else if (*s == '+')
@@ -105,39 +107,47 @@ get_cgi(char *name)
 char *
 get_cgi_json(char *name, json_object *root)
 {
-	char *value;
+	char *value = NULL;
 
-	if(root == NULL){
-		value = get_cgi(name);
-		return value;
-	}else{
+	if(json_object_get_type(root) == json_type_object && json_object_object_length(root)){
 		struct json_object *json_value = NULL;
-		json_object_object_get_ex(root, name, &json_value);
+		if(json_object_object_get_ex(root, name, &json_value)){
 #ifdef RTCONFIG_CFGSYNC
-		if (json_object_is_type(json_value, json_type_object))
-			return (char *)json_object_to_json_string(json_value);
-		else
-			return (char *)json_object_get_string(json_value);
+			if (json_object_is_type(json_value, json_type_object))
+				value = (char *)json_object_to_json_string(json_value);
+			else
+				value = (char *)json_object_get_string(json_value);
 #else
-		return (char *)json_object_get_string(json_value);
+			value = (char *)json_object_get_string(json_value);
 #endif
-	}
+		}
+	}else
+		value = get_cgi(name);
+
+	return value;
 }
 
 char *
 safe_get_cgi_json(char *name, json_object *root)
 {
-	char *value;
+	char *value = NULL;
 
-	if(root == NULL){
-		value = get_cgi(name);
-
-	}else{
+	if(json_object_get_type(root) == json_type_object && json_object_object_length(root)){
 		struct json_object *json_value = NULL;
 		json_object_object_get_ex(root, name, &json_value);
+		if(json_object_get_type(json_value) == json_type_string){
+			value = (char *)json_object_get_string(json_value);
+		}
+		else if(json_object_get_type(json_value) == json_type_int){
+			char int2str[16] = {0};
+			snprintf(int2str, sizeof(int2str), "%d", json_object_get_int(json_value));
+			json_object_object_add(root, name, json_object_new_string(int2str));
+			json_object_object_get_ex(root, name, &json_value);
+			value = (char *)json_object_get_string(json_value);
+		}
+	}else
+		value = get_cgi(name);
 
-		value = (char *) json_object_get_string(json_value);
-	}
 	return value ? value : "";
 }
 
@@ -303,3 +313,4 @@ int web_read_x(void *buffer, int len)
 }
 */
 ////////^^^^^^^^^^^^^^^^^^^^^^^////////////Viz add 2010.08
+

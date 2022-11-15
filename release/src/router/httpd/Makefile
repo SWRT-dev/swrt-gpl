@@ -150,6 +150,10 @@ ifeq ($(RTCONFIG_GEOIP),y)
 OBJS += geoiplookup.o
 endif
 
+ifeq ($(RTCONFIG_EXT_RTL8365MB),y)
+CFLAGS += -I$(LINUXDIR)/drivers/char/rtl8365mb
+endif
+
 ifeq ($(and $(HND_ROUTER),$(RTCONFIG_VISUALIZATION)),y)
 OBJS += vis_gui.o
 endif
@@ -229,13 +233,8 @@ LIBS += -L$(TOP)/openssl -lssl -lcrypto -ldl
 endif
 
 ifeq ($(RTCONFIG_OPENVPN),y)
-ifeq ($(RTCONFIG_BCMARM),y)
-CFLAGS += -I$(TOP)/libovpn
-LIBS += -L$(TOP)/libovpn -lovpn
-else
 CFLAGS += -I$(TOP)/libvpn
 LIBS += -L$(TOP)/libvpn -lvpn
-endif
 LIBS += -L$(TOP)/openssl -lssl -lcrypto -ldl
 endif
 
