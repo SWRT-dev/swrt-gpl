@@ -1837,27 +1837,25 @@ void gen_1905d_config(void)
 			fprintf(fp, "lan=%s\n", lan3);
 			fprintf(fp, "lan=%s\n", lan4);
 			fprintf(fp, "lan_vid=1;2;3;4;\n");
-			if(sw_mode != SW_MODE_ROUTER){
-				fprintf(fp, "wan_vid=\n");
-				fprintf(fp, "wan=\n");
-			}else{
-				fprintf(fp, "wan_vid=5;\n");
-				fprintf(fp, "wan=%s\n", nvram_safe_get("wan0_ifname"));
-			}
+			fprintf(fp, "wan_vid=5;\n");
+			fprintf(fp, "wan=%s\n", nvram_safe_get("wan0_ifname"));
 		}else{
 #if defined(RTCONFIG_RALINK_MT7621)
 			fprintf(fp, "lan=vlan1\n");
 #else
-			fprintf(fp, "lan=eth0\n");
+			fprintf(fp, "lan=lan1\n");
+			fprintf(fp, "lan=lan2\n");
+			fprintf(fp, "lan=lan3\n");
+#if !defined(RMAX3000)
+			fprintf(fp, "lan=lan4\n");//1G
+#if 0
+			fprintf(fp, "lan=lan5\n");//2.5G
+#endif
+#endif
 #endif
 			fprintf(fp, "lan_vid=1;\n");
-			if(sw_mode != SW_MODE_ROUTER){
-				fprintf(fp, "wan_vid=\n");
-				fprintf(fp, "wan=\n");
-			}else{
-				fprintf(fp, "wan_vid=2;\n");
-				fprintf(fp, "wan=%s\n", nvram_safe_get("wan0_ifname"));
-			}
+			fprintf(fp, "wan_vid=2;\n");
+			fprintf(fp, "wan=%s\n", nvram_safe_get("wan0_ifname"));
 		}
 //		fprintf(fp, "veth=xxx\n");
 		fprintf(fp, "map_ver=%s\n", get_easymesh_ver_str(get_easymesh_max_ver()));
@@ -1891,9 +1889,22 @@ void gen_1905d_config(void)
 	{
 //set the vid of the LAN group, the range is 1-4094, and not repeat with wan_vid
 		fprintf(fp, "lan_vid=1;\n");
+#if defined(RTCONFIG_RALINK_MT7621)
+		fprintf(fp, "lan=vlan1;\n");
+#else
+		fprintf(fp, "lan=lan1");
+		fprintf(fp, " lan2");
+		fprintf(fp, " lan3");
+#if !defined(RMAX3000)
+		fprintf(fp, " lan4");//1G
+#if 0
+		fprintf(fp, " lan5");//2.5G
+#endif
+#endif
+		fprintf(fp, "\n");
+#endif
 //set the vid of the WAN group, the range is 1-4094, and not repeat with lan_vid
-		if(sw_mode == SW_MODE_ROUTER)
-			fprintf(fp, "wan_vid=2;\n");
+		fprintf(fp, "wan_vid=2;\n");
 //set the CPU port number, where the switch and CPU are connected.
 //The witch-7530 can be selected as 5 or 6.
 //The switch-7531 can only set one of 5 and 6, or you can set them at the same time
@@ -1908,6 +1919,7 @@ void gen_1905d_config(void)
 		fprintf(fp, "ext_phy_port=\n");
 #endif
 #endif
+		fclose(fp);
 		symlink("/etc/map/ethernet_cfg.txt", "/etc/ethernet_cfg.txt");
 	}else
 		_dprintf("Can't open /etc/map/ethernet_cfg.txt\n");
@@ -2219,13 +2231,13 @@ void gen_bhwifi_conf()
 	FILE *fp = NULL;
 	if((fp = fopen("/etc/map/wts_bss_info_config", "w"))){
 		fprintf(fp, "#ucc_bss_info\n");
-		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 8x %s %s %s %s 1 1 hidden-N\n", index, nvram_safe_get("wl0_ssid"), getauthmode(WL_2G_BAND), getencrypttype(WL_2G_BAND, 0), getpsk(WL_2G_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 8x %s %s %s %s 0 1 hidden-N\n", index, nvram_safe_get("wl0_ssid"), getauthmode(WL_2G_BAND), getencrypttype(WL_2G_BAND, 0), getpsk(WL_2G_BAND));
 		index++;
 		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 8x %s %s %s %s 1 0 hidden-Y\n", index, nvram_safe_get("wl0.4_ssid"), getauthmode(WL_2GBH_BAND), getencrypttype(WL_2GBH_BAND, 0), getpsk(WL_2GBH_BAND));
 		index++;
-		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 11x %s %s %s %s 1 1 hidden-N\n", index, nvram_safe_get("wl1_ssid"), getauthmode(WL_5G_BAND), getencrypttype(WL_5G_BAND, 0), getpsk(WL_5G_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 11x %s %s %s %s 0 1 hidden-N\n", index, nvram_safe_get("wl1_ssid"), getauthmode(WL_5G_BAND), getencrypttype(WL_5G_BAND, 0), getpsk(WL_5G_BAND));
 		index++;
-		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 12x %s %s %s %s 1 1 hidden-N\n", index, nvram_safe_get("wl1_ssid"), getauthmode(WL_5G_BAND), getencrypttype(WL_5G_BAND, 0), getpsk(WL_5G_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 12x %s %s %s %s 0 1 hidden-N\n", index, nvram_safe_get("wl1_ssid"), getauthmode(WL_5G_BAND), getencrypttype(WL_5G_BAND, 0), getpsk(WL_5G_BAND));
 		index++;
 		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 11x %s %s %s %s 1 0 hidden-Y\n", index, nvram_safe_get("wl1.4_ssid"), getauthmode(WL_5GBH_BAND), getencrypttype(WL_5GBH_BAND, 0), getpsk(WL_5GBH_BAND));
 		index++;
