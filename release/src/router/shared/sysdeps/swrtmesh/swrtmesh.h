@@ -23,6 +23,7 @@ extern int get_easymesh_max_ver(void);
 extern char *get_easymesh_ver_str(int ver);
 extern char *get_mesh_bh_ifname(int band);
 extern void swrtmesh_autoconf(void);
+extern char *mesh_format_ssid(char *ssid, size_t len);
 #if defined(RTCONFIG_RALINK)
 extern char *wificonf_get(char *key, char *path);
 extern int wificonf_set(char *key, char *value, char *path);

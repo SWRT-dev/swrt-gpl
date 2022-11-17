@@ -2133,92 +2133,82 @@ static inline void perportpervlan_conf(void)
 	eval("brctl", "addif", bridge_name, lan4);
 }
 
-char *getauthmode(int band)
+int getauthmode(int band)
 {
 	char prefix[] = "wlx_xxxxxxxxxxxxxxxx";
 	char *authmode = NULL;
-	if(band > WL_5G_2_BAND)
-		snprintf(prefix, sizeof(prefix), "wl%d.1_auth_mode_x", WL_5GBH_BAND ? 1 : 0);
+	if(band > WL_60G_BAND)
+		snprintf(prefix, sizeof(prefix), "wl%d.4_auth_mode_x", band == WL_2GBH_BAND ? 0 : 1);
 	else
 		snprintf(prefix, sizeof(prefix), "wl%d_auth_mode_x", band);
 	authmode = nvram_safe_get(prefix);
 	if(!strcmp(authmode, "open"))
-		return "0x0001";
+		return 0x1;
 	else if(!strcmp(authmode, "psk"))
-		return "0x0002";
+		return 0x2;
 	else if(!strcmp(authmode, "psk2"))
-		return "0x0020";
+		return 0x20;
 	else if(!strcmp(authmode, "pskpsk2"))
-		return "0x0022";
+		return 0x22;
 	else if(!strcmp(authmode, "sae"))
-		return "0x0040";
+		return 0x40;
 	else if(!strcmp(authmode, "psk2sae"))
-		return "0x0060";
+		return 0x60;
 #if defined(RTCONFIG_EASYMESH_R3)
 	else if(!strcmp(authmode, "dpp"))//dpp only
-		return "0x0080";
+		return 0x80;
 	else if(!strcmp(authmode, "dpppsk2"))//dpp + psk2
-		return "0x00A0";
+		return 0xA0;
 	else if(!strcmp(authmode, "dppsae"))//dpp + sae
-		return "0x00C0";
+		return 0xC0;
 	else if(!strcmp(authmode, "dpppsk2sae"))//dpp + psk2sae
-		return "0x00E0";
+		return 0xE0;
 #endif
 	else//bug
-		return "0x0020";
+		return 0x20;
 }
 
-char *getencrypttype(int band, int isbh)
+int getencrypttype(int band)
 {
 	char prefix[] = "wlx_xxxxxxxxxxxxxxxx";
 	char *authmode = NULL, *wep = NULL, *crypto = NULL;
-	if(band > WL_5G_2_BAND)
-		snprintf(prefix, sizeof(prefix), "wl%d.1_auth_mode_x", WL_5GBH_BAND ? 1 : 0);
+	if(band > WL_60G_BAND)
+		snprintf(prefix, sizeof(prefix), "wl%d.4_auth_mode_x", band == WL_2GBH_BAND ? 0 : 1);
 	else
 		snprintf(prefix, sizeof(prefix), "wl%d_auth_mode_x", band);
 	authmode = nvram_safe_get(prefix);
-	if(band > WL_5G_2_BAND)
-		snprintf(prefix, sizeof(prefix), "wl%d.1_wep_x", WL_5GBH_BAND ? 1 : 0);
+	if(band > WL_60G_BAND)
+		snprintf(prefix, sizeof(prefix), "wl%d.4_wep_x", band == WL_2GBH_BAND ? 0 : 1);
 	else
 		snprintf(prefix, sizeof(prefix), "wl%d_wep_x", band);
 	wep = nvram_safe_get(prefix);
-	if(band > WL_5G_2_BAND)
-		snprintf(prefix, sizeof(prefix), "wl%d.1_crypto", WL_5GBH_BAND ? 1 : 0);
+	if(band > WL_60G_BAND)
+		snprintf(prefix, sizeof(prefix), "wl%d.4_crypto", band == WL_2GBH_BAND ? 0 : 1);
 	else
 		snprintf(prefix, sizeof(prefix), "wl%d_crypto", band);
 	crypto = nvram_safe_get(prefix);
 	if(!strcmp(authmode, "open") && nvram_match(wep, "0"))
-		return "0x0001";
-	else if(!strcmp(crypto, "aes"))
-		return "0x0008";
-	else if(!strcmp(authmode, "sae"))
-		return "0x0008";
-	else if(!strcmp(authmode, "psk2sae"))
-		return "0x0008";
+		return 0x1;
+	else if(!strcmp(authmode, "sae") || !strcmp(authmode, "psk2sae") || !strcmp(crypto, "aes"))
+		return 0x8;
 #if !defined(RTCONFIG_EASYMESH_R3)
-	else if(!strcmp(authmode, "psk") && !strcmp(crypto, "tkip") && isbh == 0)
-		return "0x0004";
+	else if(!strcmp(authmode, "psk") && !strcmp(crypto, "tkip"))
+		return 0x4;
 	else if(!strcmp(crypto, "tkip+aes"))
-		return "0x000c";
+		return 0xc;
 #else
-	else if(!strcmp(authmode, "dpp") && isbh == 1)
-		return "0x0008";
-	else if(!strcmp(authmode, "dpppsk2") && isbh == 1)
-		return "0x0008";
-	else if(!strcmp(authmode, "dppsae") && isbh == 1)
-		return "0x0008";
-	else if(!strcmp(authmode, "dpppsk2sae") && isbh == 1)
-		return "0x0008";
+	else if(!strcmp(authmode, "dpp") || !strcmp(authmode, "dpppsk2") || !strcmp(authmode, "dppsae") || !strcmp(authmode, "dpppsk2sae"))
+		return 0x8;
 #endif
 	else//bug
-		return "0x0008";
+		return 8;
 }
 
 char *getpsk(int band)
 {
 	char prefix[] = "wlx_xxxxxxxxxxxxxxxx";
-	if(band > WL_5G_2_BAND)
-		snprintf(prefix, sizeof(prefix), "wl%d.1_wpa_psk", WL_5GBH_BAND ? 1 : 0);
+	if(band > WL_60G_BAND)
+		snprintf(prefix, sizeof(prefix), "wl%d.4_wpa_psk", band == WL_2GBH_BAND ? 0 : 1);
 	else
 		snprintf(prefix, sizeof(prefix), "wl%d_wpa_psk", band);
 	return nvram_safe_get(prefix);
@@ -2229,19 +2219,22 @@ void gen_bhwifi_conf()
 {
 	int index = 1;
 	FILE *fp = NULL;
+	char ssid[128] = {0};
 	if((fp = fopen("/etc/map/wts_bss_info_config", "w"))){
 		fprintf(fp, "#ucc_bss_info\n");
-		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 8x %s %s %s %s 0 1 hidden-N\n", index, nvram_safe_get("wl0_ssid"), getauthmode(WL_2G_BAND), getencrypttype(WL_2G_BAND, 0), getpsk(WL_2G_BAND));
+		snprintf(ssid, sizeof(ssid), "%s", nvram_safe_get("wl0_ssid"));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 8x %s 0x%04x 0x%04x %s 0 1 hidden-N\n", index, mesh_format_ssid(ssid, sizeof(ssid)), getauthmode(WL_2G_BAND), getencrypttype(WL_2G_BAND), getpsk(WL_2G_BAND));
 		index++;
-		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 8x %s %s %s %s 1 0 hidden-Y\n", index, nvram_safe_get("wl0.4_ssid"), getauthmode(WL_2GBH_BAND), getencrypttype(WL_2GBH_BAND, 0), getpsk(WL_2GBH_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 8x %s 0x%04x 0x%04x %s 1 0 hidden-Y\n", index, nvram_safe_get("wl0.4_ssid"), getauthmode(WL_2GBH_BAND), getencrypttype(WL_2GBH_BAND), getpsk(WL_2GBH_BAND));
 		index++;
-		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 11x %s %s %s %s 0 1 hidden-N\n", index, nvram_safe_get("wl1_ssid"), getauthmode(WL_5G_BAND), getencrypttype(WL_5G_BAND, 0), getpsk(WL_5G_BAND));
+		snprintf(ssid, sizeof(ssid), "%s", nvram_safe_get("wl1_ssid"));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 11x %s 0x%04x 0x%04x %s 0 1 hidden-N\n", index, mesh_format_ssid(ssid, sizeof(ssid)), getauthmode(WL_5G_BAND), getencrypttype(WL_5G_BAND), getpsk(WL_5G_BAND));
 		index++;
-		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 12x %s %s %s %s 0 1 hidden-N\n", index, nvram_safe_get("wl1_ssid"), getauthmode(WL_5G_BAND), getencrypttype(WL_5G_BAND, 0), getpsk(WL_5G_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 12x %s 0x%04x 0x%04x %s 0 1 hidden-N\n", index, mesh_format_ssid(ssid, sizeof(ssid)), getauthmode(WL_5G_BAND), getencrypttype(WL_5G_BAND), getpsk(WL_5G_BAND));
 		index++;
-		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 11x %s %s %s %s 1 0 hidden-Y\n", index, nvram_safe_get("wl1.4_ssid"), getauthmode(WL_5GBH_BAND), getencrypttype(WL_5GBH_BAND, 0), getpsk(WL_5GBH_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 11x %s 0x%04x 0x%04x %s 1 0 hidden-Y\n", index, nvram_safe_get("wl1.4_ssid"), getauthmode(WL_5GBH_BAND), getencrypttype(WL_5GBH_BAND), getpsk(WL_5GBH_BAND));
 		index++;
-		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 12x %s %s %s %s 1 0 hidden-Y\n", index, nvram_safe_get("wl1.4_ssid"), getauthmode(WL_5GBH_BAND), getencrypttype(WL_5GBH_BAND, 0), getpsk(WL_5GBH_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 12x %s 0x%04x 0x%04x %s 1 0 hidden-Y\n", index, nvram_safe_get("wl1.4_ssid"), getauthmode(WL_5GBH_BAND), getencrypttype(WL_5GBH_BAND), getpsk(WL_5GBH_BAND));
 		fclose(fp);
 	}else
 		printf("failed to open %s\n", "/etc/map/wts_bss_info_config");

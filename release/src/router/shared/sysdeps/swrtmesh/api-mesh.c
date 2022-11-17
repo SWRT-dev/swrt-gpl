@@ -6,6 +6,14 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <memory.h>
+#include <ctype.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <fcntl.h>
 #if defined(RTCONFIG_RALINK)
 #include <ralink.h>
@@ -18,6 +26,9 @@
 #include <shutils.h>
 #include <swrtmesh.h>
 #include <shared.h>
+
+#undef IS_SPACE
+#define IS_SPACE(c) ((c) == ' ' || (c) == '\t' || (c) == '\r' || (c) == '\n')
 
 char bh2gifname[] = "ra11";
 char bh5gifname[] = "rai11";
@@ -102,6 +113,28 @@ void swrtmesh_autoconf(void)
 	}
 }
 
+char *mesh_format_ssid(char *ssid, size_t len)
+{
+	int i;
+	char tmp[128] = {0};
+	char *pt = ssid;
+	for(i = 0; i < sizeof(tmp) && *pt; i++, pt++){
+		if(*pt == ' '){
+			tmp[i] = '\\';
+			i++;
+			tmp[i] = ' ';
+		}else if(*pt == '\\'){
+			tmp[i] = '\\';
+			i++;
+			tmp[i] = '\\';
+		}else
+			tmp[i] = *pt;
+	};
+    SWRTMESH_DBG("ssid=%s, mesh ssid=%s\n", ssid, tmp);
+	snprintf(ssid, len, "%s", tmp);
+	return ssid;
+}
+
 #if defined(RTCONFIG_RALINK)
 /* return it's line number, if not found, return -1 */
 static int __locate_key(FILE *fp, char *key)
@@ -179,7 +212,6 @@ int wificonf_set(char *key, char *value, char *path)
     FILE *fp = NULL;
     char *buffer = NULL;
     int nbytes = 0;
-    char *profile = NULL;
     char *p = NULL;
     struct stat sb;
     size_t len = strlen(value);
@@ -242,7 +274,6 @@ char *wificonf_token_get(char *key, int idx, char *path)
 }
 int wificonf_token_set(char *key, int idx, char *value, char *path, int base64)
 {
-    FILE *fp = NULL;
 	char cmd[128];
 	if(base64)
 		snprintf(cmd, sizeof(cmd), "wificonf -e -f %s set %s %d %s", path, key, idx, value);
