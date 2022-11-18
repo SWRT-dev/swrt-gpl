@@ -1293,7 +1293,9 @@ MAC_TABLE_ENTRY *MacTableInsertEntry(
 			while (pCurrEntry->pNext != NULL)
 				pCurrEntry = pCurrEntry->pNext;
 
-			pCurrEntry->pNext = pEntry;
+			if(pCurrEntry != pEntry) {
+				pCurrEntry->pNext = pEntry;
+			}
 		}
 
 #ifdef CONFIG_AP_SUPPORT
@@ -1628,8 +1630,12 @@ BOOLEAN MacTableDeleteEntry(RTMP_ADAPTER *pAd, USHORT wcid, UCHAR *pAddr)
 #ifdef IGMP_SNOOP_SUPPORT
 				IgmpGroupDelMembers(pAd, (PUCHAR)pEntry->Addr, wdev, pEntry->wcid);
 #endif /* IGMP_SNOOP_SUPPORT */
-				pAd->ApCfg.MBSSID[pEntry->func_tb_idx].StaCount--;
-				pAd->ApCfg.EntryClientCount--;
+				if(pAd->ApCfg.MBSSID[pEntry->func_tb_idx].StaCount > 0){
+					pAd->ApCfg.MBSSID[pEntry->func_tb_idx].StaCount--;
+				}
+				if(pAd->ApCfg.EntryClientCount > 0){
+					pAd->ApCfg.EntryClientCount--;
+				}
 #ifdef MAC_REPEATER_SUPPORT
 				if (pEntry->ProxySta) {
 					RepeaterDisconnectRootAP(pAd,
