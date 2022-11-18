@@ -5712,6 +5712,9 @@ void restart_wireless(void)
 		nvram_set_int("obd_allow_scan", 0);
 #endif
 #endif
+#if defined(RTCONFIG_EASYMESH)
+	stop_easymesh();
+#endif
 #ifdef RTCONFIG_LANTIQ
 #ifdef LANTIQ_BSD
 	if (nvram_get_int("smart_connect_x") == 1) {
@@ -5891,7 +5894,9 @@ void restart_wireless(void)
 		start_amas_bhctrl();
 	}
 #endif
-
+#if defined(RTCONFIG_EASYMESH)
+	start_easymesh();
+#endif
 #ifndef RTCONFIG_DHDAP
 	restart_wl();
 	lanaccess_wl();
@@ -6052,7 +6057,7 @@ void restart_wireless(void)
 #ifdef RTCONFIG_CFGSYNC
 	send_event_to_cfgmnt(EID_RC_RESTART_WIRELESS);
 #endif
-#if defined(RTCONFIG_SWRT_KVR) && defined(RTCONFIG_RALINK)
+#if defined(RTCONFIG_SWRT_KVR) && defined(RTCONFIG_RALINK) && !defined(RTCONFIG_EASYMESH)
 	start_wapp();
 #endif
 }
