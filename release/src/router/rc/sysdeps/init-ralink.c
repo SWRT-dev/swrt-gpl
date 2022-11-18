@@ -1001,13 +1001,10 @@ void init_syspara(void)
 	else
 	   nvram_set("JP_CS","0");
 
-	if (!mssid_mac_validate(macaddr) || !mssid_mac_validate(macaddr2))
-		nvram_set("wl_mssid", "0");
-	else
+//	if (!mssid_mac_validate(macaddr) || !mssid_mac_validate(macaddr2))
+//		nvram_set("wl_mssid", "0");
+//	else
 		nvram_set("wl_mssid", "1");
-#if defined(R6800) || defined(RMAC2100) || defined(JCGQ10PRO) || defined(H3CTX1801) || defined(PGBM1)
-	nvram_set("wl_mssid", "1");//fix guest wifi
-#endif
 
 	//TODO: separate for different chipset solution
 	nvram_set("et0macaddr", macaddr);
@@ -1846,7 +1843,7 @@ void gen_1905d_config(void)
 			fprintf(fp, "lan=lan1\n");
 			fprintf(fp, "lan=lan2\n");
 			fprintf(fp, "lan=lan3\n");
-#if !defined(RMAX3000)
+#if !defined(RMAX6000)
 			fprintf(fp, "lan=lan4\n");//1G
 #if 0
 			fprintf(fp, "lan=lan5\n");//2.5G
@@ -1887,24 +1884,25 @@ void gen_1905d_config(void)
 		_dprintf("Can't open /etc/map/1905d.cfg\n");
 	if((fp = fopen("/etc/map/ethernet_cfg.txt", "w")))
 	{
+#if defined(RTCONFIG_RALINK_MT7621)
 //set the vid of the LAN group, the range is 1-4094, and not repeat with wan_vid
 		fprintf(fp, "lan_vid=1;\n");
-#if defined(RTCONFIG_RALINK_MT7621)
 		fprintf(fp, "lan=vlan1;\n");
+//set the vid of the WAN group, the range is 1-4094, and not repeat with lan_vid
+		fprintf(fp, "wan_vid=2;\n");
 #else
 		fprintf(fp, "lan=lan1");
 		fprintf(fp, " lan2");
 		fprintf(fp, " lan3");
-#if !defined(RMAX3000)
+#if !defined(RMAX6000)
 		fprintf(fp, " lan4");//1G
 #if 0
 		fprintf(fp, " lan5");//2.5G
 #endif
 #endif
 		fprintf(fp, "\n");
+		fprintf(fp, "br_lan=br0\n");
 #endif
-//set the vid of the WAN group, the range is 1-4094, and not repeat with lan_vid
-		fprintf(fp, "wan_vid=2;\n");
 //set the CPU port number, where the switch and CPU are connected.
 //The witch-7530 can be selected as 5 or 6.
 //The switch-7531 can only set one of 5 and 6, or you can set them at the same time
@@ -2223,18 +2221,18 @@ void gen_bhwifi_conf()
 	if((fp = fopen("/etc/map/wts_bss_info_config", "w"))){
 		fprintf(fp, "#ucc_bss_info\n");
 		snprintf(ssid, sizeof(ssid), "%s", nvram_safe_get("wl0_ssid"));
-		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 8x %s 0x%04x 0x%04x %s 0 1 hidden-N\n", index, mesh_format_ssid(ssid, sizeof(ssid)), getauthmode(WL_2G_BAND), getencrypttype(WL_2G_BAND), getpsk(WL_2G_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 8x %s 0x%04x 0x%04x %s 0 1 hidden-N 4095 pvid 5\n", index, mesh_format_ssid(ssid, sizeof(ssid)), getauthmode(WL_2G_BAND), getencrypttype(WL_2G_BAND), getpsk(WL_2G_BAND));
 		index++;
-		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 8x %s 0x%04x 0x%04x %s 1 0 hidden-Y\n", index, nvram_safe_get("wl0.4_ssid"), getauthmode(WL_2GBH_BAND), getencrypttype(WL_2GBH_BAND), getpsk(WL_2GBH_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 8x %s 0x%04x 0x%04x %s 1 0 hidden-Y 4095 pvid 5\n", index, nvram_safe_get("wl0.4_ssid"), getauthmode(WL_2GBH_BAND), getencrypttype(WL_2GBH_BAND), getpsk(WL_2GBH_BAND));
 		index++;
 		snprintf(ssid, sizeof(ssid), "%s", nvram_safe_get("wl1_ssid"));
-		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 11x %s 0x%04x 0x%04x %s 0 1 hidden-N\n", index, mesh_format_ssid(ssid, sizeof(ssid)), getauthmode(WL_5G_BAND), getencrypttype(WL_5G_BAND), getpsk(WL_5G_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 11x %s 0x%04x 0x%04x %s 0 1 hidden-N 4095 pvid 5\n", index, mesh_format_ssid(ssid, sizeof(ssid)), getauthmode(WL_5G_BAND), getencrypttype(WL_5G_BAND), getpsk(WL_5G_BAND));
 		index++;
-		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 12x %s 0x%04x 0x%04x %s 0 1 hidden-N\n", index, mesh_format_ssid(ssid, sizeof(ssid)), getauthmode(WL_5G_BAND), getencrypttype(WL_5G_BAND), getpsk(WL_5G_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 12x %s 0x%04x 0x%04x %s 0 1 hidden-N 4095 pvid 5\n", index, mesh_format_ssid(ssid, sizeof(ssid)), getauthmode(WL_5G_BAND), getencrypttype(WL_5G_BAND), getpsk(WL_5G_BAND));
 		index++;
-		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 11x %s 0x%04x 0x%04x %s 1 0 hidden-Y\n", index, nvram_safe_get("wl1.4_ssid"), getauthmode(WL_5GBH_BAND), getencrypttype(WL_5GBH_BAND), getpsk(WL_5GBH_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 11x %s 0x%04x 0x%04x %s 1 0 hidden-Y 4095 pvid 5\n", index, nvram_safe_get("wl1.4_ssid"), getauthmode(WL_5GBH_BAND), getencrypttype(WL_5GBH_BAND), getpsk(WL_5GBH_BAND));
 		index++;
-		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 12x %s 0x%04x 0x%04x %s 1 0 hidden-Y\n", index, nvram_safe_get("wl1.4_ssid"), getauthmode(WL_5GBH_BAND), getencrypttype(WL_5GBH_BAND), getpsk(WL_5GBH_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 12x %s 0x%04x 0x%04x %s 1 0 hidden-Y 4095 pvid 5\n", index, nvram_safe_get("wl1.4_ssid"), getauthmode(WL_5GBH_BAND), getencrypttype(WL_5GBH_BAND), getpsk(WL_5GBH_BAND));
 		fclose(fp);
 	}else
 		printf("failed to open %s\n", "/etc/map/wts_bss_info_config");

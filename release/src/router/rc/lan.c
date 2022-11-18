@@ -4298,7 +4298,9 @@ void stop_lan_wl(void)
 		start_amas_lldpd();
 	}
 #endif	
-
+#if defined(RTCONFIG_EASYMESH)
+	stop_easymesh();
+#endif
 	snprintf(lan_ifname, sizeof(lan_ifname), "%s", nvram_safe_get("lan_ifname"));
 	if ((wl_ifnames = strdup(nvram_safe_get("lan_ifnames"))) != NULL) {
 		p = wl_ifnames;
@@ -5712,9 +5714,7 @@ void restart_wireless(void)
 		nvram_set_int("obd_allow_scan", 0);
 #endif
 #endif
-#if defined(RTCONFIG_EASYMESH)
-	stop_easymesh();
-#endif
+
 #ifdef RTCONFIG_LANTIQ
 #ifdef LANTIQ_BSD
 	if (nvram_get_int("smart_connect_x") == 1) {
