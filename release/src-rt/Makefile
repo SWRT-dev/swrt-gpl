@@ -4054,6 +4054,10 @@ define RouterOptions
 	sed -i "/RTCONFIG_EASYMESH_R3/d" $(1); \
 	echo "RTCONFIG_EASYMESH_R3=y" >>$(1); \
 	fi; \
+	if [ "$(SWRT_LEDDRV)" = "y" ]; then \
+	sed -i "/RTCONFIG_SWRT_LEDDRV\>/d" $(1); \
+	echo "RTCONFIG_SWRT_LEDDRV=y" >>$(1); \
+	fi; \
 	)
 	$(call platformRouterOptions, $(1))
 endef

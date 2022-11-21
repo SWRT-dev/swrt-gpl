@@ -285,3 +285,21 @@ int wificonf_token_set(char *key, int idx, char *value, char *path, int base64)
 	return 0;
 }
 #endif
+
+int mesh_get_chanlist(int unit, char *chList, size_t len)
+{
+	unsigned char countryCode[3];
+	char tmp[128], prefix[] = "wlXXXXXXXXXX_";
+
+	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+	memset(countryCode, 0, sizeof(countryCode));
+	strncpy(countryCode, nvram_safe_get(strcat_r(prefix, "country_code", tmp)), 2);
+
+	if(get_channel_list_via_driver(unit, chList, len) > 0)
+		return 1;
+	else if(countryCode[0] != 0xff && countryCode[1] != 0xff){
+		if(get_channel_list_via_country(unit, countryCode, chList, len) > 0)
+			return 1;
+	}
+	return 0;
+}

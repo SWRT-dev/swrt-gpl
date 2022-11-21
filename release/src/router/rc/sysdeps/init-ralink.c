@@ -1878,6 +1878,8 @@ void gen_1905d_config(void)
 		if(get_easymesh_max_ver() > 2){
 			fprintf(fp, "decrypt_fail_threshold=10\n");
 			fprintf(fp, "gtk_rekey_interval=3600\n");
+//Enable Ethernet Onboarding on WAN PORT only
+			fprintf(fp, "ob_wan_only=1\n");
 		}
 		fclose(fp);
 	}else
@@ -1957,11 +1959,17 @@ void gen_mapd_strng(void)
 void gen_mapd_config(void)
 {
 	int sw_mode = sw_mode();
+	char chList[256];
+	char *channel = NULL;
 	FILE *fp = NULL;
 	if((fp = fopen("/etc/map/mapd_default.cfg", "w")))
 	{
-		if(get_easymesh_max_ver() > 2)
-			fprintf(fp, "mode=1\n");
+		if(get_easymesh_max_ver() > 2){
+			if(sw_mode == SW_MODE_ROUTER)
+				fprintf(fp, "mode=1\n");
+			else
+				fprintf(fp, "mode=2\n");
+		}
 		fprintf(fp, "lan_interface=br0\n");
 		if(sw_mode != SW_MODE_ROUTER)
 			fprintf(fp, "wan_interface=\n");
@@ -1974,17 +1982,34 @@ void gen_mapd_config(void)
 		else//auto
 			fprintf(fp, "DeviceRole=0\n");
 		fprintf(fp, "APSteerRssiTh=-54\n");
+#if defined(RTCONFIG_WIFI6E)
+		fprintf(fp, "BhPriority6G=1\n");
+		fprintf(fp, "BhPriority2G=4\n");
+		fprintf(fp, "BhPriority5GL=2\n");
+		fprintf(fp, "BhPriority5GH=2\n");
+#else
 		fprintf(fp, "BhPriority2G=3\n");
 		fprintf(fp, "BhPriority5GL=1\n");
 		fprintf(fp, "BhPriority5GH=1\n");
-#if defined(RTCONFIG_WIFI6E)
-		fprintf(fp, "BhPriority6G=1\n");
 #endif
 		fprintf(fp, "ChPlanningIdleByteCount=\n");
 		fprintf(fp, "ChPlanningIdleTime=\n");
-		fprintf(fp, "ChPlanningUserPreferredChannel5G=\n");
-		fprintf(fp, "ChPlanningUserPreferredChannel5GH=\n");
-		fprintf(fp, "ChPlanningUserPreferredChannel2G=\n");
+		if(!nvram_match("wl1_channel", "0")){
+			if(nvram_get_int("wl1_channel") < 100){
+				fprintf(fp, "ChPlanningUserPreferredChannel5G=%s\n", nvram_get("wl1_channel"));
+				fprintf(fp, "ChPlanningUserPreferredChannel5GH=\n");
+			}else{
+				fprintf(fp, "ChPlanningUserPreferredChannel5G=\n");
+				fprintf(fp, "ChPlanningUserPreferredChannel5GH=%s\n", nvram_get("wl1_channel"));
+			}
+		}else{
+			fprintf(fp, "ChPlanningUserPreferredChannel5G=\n");
+			fprintf(fp, "ChPlanningUserPreferredChannel5GH=\n");
+		}
+		if(!nvram_match("wl0_channel", "0"))
+			fprintf(fp, "ChPlanningUserPreferredChannel2G=%s\n", nvram_get("wl0_channel"));
+		else
+			fprintf(fp, "ChPlanningUserPreferredChannel2G=\n");
 		fprintf(fp, "ChPlanningInitTimeout=120\n");
 		fprintf(fp, "NtwrkOptBootupWaitTime=45\n");
 		fprintf(fp, "NtwrkOptConnectWaitTime=45\n");
@@ -2253,11 +2278,23 @@ void start_mapd(void)
 	char *ap5gifname = get_wififname(WL_5G_BAND);
 	char *apcli2gifname = get_staifname(WL_2G_BAND);
 	char *apcli5gifname = get_staifname(WL_5G_BAND);
-	char *fwdd_eth = NULL;
+
 	pid_t pid;
 	char *mapd_argv[] = { "/usr/sbin/mapd", "-I", "/etc/map/mapd_cfg", "-O", "/etc/mapd_strng.conf", "-c", "/jffs/swrtmesh/client_db.txt", NULL };
 	char *p1905_argv[] = { "/usr/sbin/p1905_managerd", "-r0", "-f", "/etc/map/1905d.cfg", "-F", "/etc/map/wts_bss_info_config", NULL };
-	char *fwdd_argv[] = { "/usr/sbin/fwdd", "-p", ap2gifname, apcli2gifname, "-p", ap5gifname, apcli5gifname, "-e", fwdd_eth, "5G", NULL };
+#if defined(RTCONFIG_RALINK_MT7621)
+	char *fwdd_argv[] = { "/usr/sbin/fwdd", "-p", ap2gifname, apcli2gifname, "-p", ap5gifname, apcli5gifname, "-e", "vlan1", "5G", NULL };
+#else
+	char *fwdd_argv[] = { "/usr/sbin/fwdd", "-d1", "-e", "eth0", "5G", "-e", "lan1", "5G", "-e", "lan2", "5G", "-e", "lan3", "5G",
+#if !defined(RMAX6000)
+		"-e", "lan4", "5G",
+#if 0
+		"-e", "lan5", "5G",
+		"-e", "lan6", "5G",
+#endif
+#endif
+		NULL };
+#endif
 
 	mkdir("/etc/map", 0777);
 	if(enable == 0){
@@ -2277,14 +2314,6 @@ void start_mapd(void)
 			modprobe("mtfwd");
 		if(pids("fwdd"))
 			killall_tk("fwdd");
-		if(sw_mode == SW_MODE_ROUTER)
-			fwdd_eth = nvram_safe_get("wan0_ifname");
-		else
-#if defined(RTCONFIG_MT798X)
-			fwdd_eth = "eth0";
-#else
-			fwdd_eth = "vlan1";
-#endif
 		_eval(fwdd_argv, NULL, 0, &pid);
 		return;
 	}else{
@@ -2356,7 +2385,6 @@ void start_mapd(void)
 				modprobe("mtfwd");
 			if(pids("fwdd"))
 				killall_tk("fwdd");
-			fwdd_eth = nvram_safe_get("wan0_ifname");
 			_eval(fwdd_argv, NULL, 0, &pid);
 		}
 	} else if(mode == MAP_TURNKEY){
@@ -2561,7 +2589,6 @@ void start_mapd(void)
 			modprobe("mtfwd");
 		if(pids("fwdd"))
 			killall_tk("fwdd");
-		fwdd_eth = nvram_safe_get("wan0_ifname");
 		_eval(fwdd_argv, NULL, 0, &pid);
 	} else if(mode == MAP_API_MODE){
 		_dprintf("unsupport mode\n");

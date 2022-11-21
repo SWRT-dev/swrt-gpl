@@ -2696,7 +2696,7 @@ config RTCONFIG_SWRT_FULLCONE
 	default n
 
 config RTCONFIG_SWRT_I2CLED
-	bool "i2c led dirver"
+	bool "i2c/spi/gpio led dirver"
 	default n
 
 config RTCONFIG_SWRT_FASTPATH
@@ -2739,4 +2739,8 @@ config RTCONFIG_RALINK_EN7561
 config RTCONFIG_EASYMESH_R3
 	bool "easymesh r3 support"
 	depends on RTCONFIG_EASYMESH && RTCONFIG_MT798X
+	default n
+
+config RTCONFIG_SWRT_LEDDRV
+	bool "i2c/spi/gpio led dirver"
 	default n

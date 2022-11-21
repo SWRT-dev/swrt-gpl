@@ -19013,12 +19013,8 @@ static void sysinit(void)
 #if defined(R6800) || defined(RTAC85P)
 	modprobe("jffs_concat");
 #endif
-#if defined(RTCONFIG_SWRT_I2CLED)
-#if defined(R6800)
-	modprobe("sx150x-leds");
-#else
+#if defined(RTCONFIG_SWRT_I2CLED) || defined(RTCONFIG_SWRT_LEDDRV)
 	modprobe("i2cleds");
-#endif
 #endif
 #if defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_HND_ROUTER)
 #if defined(RTCONFIG_SOC_IPQ40XX)

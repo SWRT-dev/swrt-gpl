@@ -30,4 +30,5 @@ extern int wificonf_set(char *key, char *value, char *path);
 extern char *wificonf_token_get(char *key, int idx, char *path);
 extern int wificonf_token_set(char *key, int idx, char *value, char *path, int base64);
 #endif
+extern int mesh_get_chanlist(int unit, char *chList, size_t len);
 #endif

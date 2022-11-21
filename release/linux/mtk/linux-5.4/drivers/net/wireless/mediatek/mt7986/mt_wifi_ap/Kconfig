@@ -143,6 +143,11 @@ config MAP_R2_VER_SUPPORT
 	depends on MAP_SUPPORT
 	default n
 
+config MAP_R2_6E_SUPPORT
+	bool "Multi-AP R2 6E support"
+	depends on MAP_R2_VER_SUPPORT
+	default n
+
 config MAP_R3_VER_SUPPORT
 	bool "Multi-AP R3 version support"
 	depends on MT_AP_SUPPORT

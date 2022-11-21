@@ -14,7 +14,7 @@
 # MA 02111-1307 USA
 #
 # Copyright 2019, PandoraBox Team.
-# Copyright 2021, SWRTdev.
+# Copyright 2022, SWRTdev.
 # All Rights Reserved.
 # 
 # THIS SOFTWARE IS OFFERED "AS IS", AND (PandoraBox Team/SWRTdev) GRANTS NO WARRANTIES OF ANY
@@ -26,11 +26,18 @@ PWD=$(shell pwd)
 
 all:
 ifeq ($(RALINK),y)
-	@[ -f driver/gpio-sx1503-leds.c ] || cp -f $(PWD)/prebuild/sx150x-leds.ko $(PWD)/driver/
+ifeq ($(R6800),y)
+	@[ -f driver/gpio-sx1503-leds.c ] || cp -f $(PWD)/prebuild/R6800/i2cleds.ko $(PWD)/driver/
 	@[ -f driver/gpio-sx1503-leds.c ] && $(MAKE) -C $(LINUXDIR) EXTRA_CFLAGS=-I$(TOP)/shared SUBDIRS=$(PWD)/driver modules
+else ifeq ($(RMAX6000),y)
+	@[ -f driver/rmax6000-leds.c ] || cp -f $(PWD)/prebuild/RMAX6000/i2cleds.ko $(PWD)/driver/
+	@[ -f driver/rmax6000-leds.c ] && $(MAKE) -C $(LINUXDIR) EXTRA_CFLAGS=-I$(TOP)/shared SUBDIRS=$(PWD)/driver modules
+endif
 else ifeq ($(QCA),y)
-	@[ -f driver/rax120-leds.c ] || cp -f $(PWD)/prebuild/i2cleds.ko $(PWD)/driver/
+ifeq ($(RAX120),y)
+	@[ -f driver/rax120-leds.c ] || cp -f $(PWD)/prebuild/RAX120/i2cleds.ko $(PWD)/driver/
 	@[ -f driver/rax120-leds.c ] && $(MAKE) -C $(LINUXDIR) EXTRA_CFLAGS=-I$(TOP)/shared SUBDIRS=$(PWD)/driver modules
+endif
 endif
 
 install:

@@ -3410,6 +3410,8 @@ next_mrate:
 	fprintf(fp, "KernelRps=1\n");
 	fprintf(fp, "BSSColorValue=255\n");
 	fprintf(fp, "BcnProt=0\n");
+	fprintf(fp, "WiFiTest=0\n");
+	fprintf(fp, "CCKTxStream=4\n");
 #if defined(RTCONFIG_EASYMESH)
 	fprintf(fp, "QoSR1Enable=1\n");
 #endif

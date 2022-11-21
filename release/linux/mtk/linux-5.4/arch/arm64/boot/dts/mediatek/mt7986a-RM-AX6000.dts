@@ -287,12 +287,57 @@
 &spi1 {
 	pinctrl-names = "default";
     pinctrl-0 = <&spic_pins_g2>;
-/*	status = "okay";*/
+	cs-gpios = <0>, <0>;
+	status = "okay";
 	miwifi-hm0807a-led@0 {
 		compatible = "xiaomi,HM0807A";
 		reg = <0x00>;
 		spi-max-frequency = <3000000>;
-		chip-num = <0x05>;
+		led_group0@0 {
+			led@0 {
+				label = "left_red";
+				default-state = "off";
+			};
+			led@1 {
+				label = "left_blue";
+				default-state = "off";
+			};
+			led@2 {
+				label = "left_yellow";
+				default-state = "off";
+			};
+			led@3 {
+				label = "left_white";
+				default-state = "off";
+			};
+			led@4 {
+				label = "left_green";
+				default-state = "off";
+			};
+		};
+		led_group1@0 {
+			led@0 {
+				label = "right_red";
+				default-state = "off";
+			};
+			led@1 {
+				label = "right_blue";
+				default-state = "off";
+			};
+			led@2 {
+				label = "right_yellow";
+				default-state = "off";
+			};
+			led@3 {
+				label = "right_white";
+				default-state = "off";
+			};
+			led@4 {
+				label = "right_green";
+				default-state = "off";
+			};
+		};
+/*		chip-num = <0x05>;
 		led@0 {
 			label = "led_red";
 			default-state = "off";
@@ -318,6 +363,7 @@
 			default-state = "off";
 			color = [ 00 ff 00 ];
 		};
+*/
 	};
 };
 

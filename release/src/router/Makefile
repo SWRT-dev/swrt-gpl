@@ -1536,6 +1536,7 @@ obj-$(RTCONFIG_FPROBE) += tcpdump-4.4.0
 
 obj-$(RTCONFIG_BLINK_LED) += bled
 obj-$(RTCONFIG_SWRT_I2CLED) += i2cled i2c-tools-3.1.2
+obj-$(RTCONFIG_SWRT_LEDDRV) += i2cled
 ifeq ($(RTCONFIG_APFS),y)
 ifneq ($(RTCONFIG_TUXERA_APFS),y)
 obj-y += apfs apfsprogs
@@ -5326,6 +5327,7 @@ iproute2-4.3:
 iproute2-4.3-install:
 	install -D iproute2-4.3/iproute2-4.3.0/tc/tc $(INSTALLDIR)/iproute2-4.3/usr/sbin/tc
 	install -D iproute2-4.3/iproute2-4.3.0/ip/ip $(INSTALLDIR)/iproute2-4.3/usr/sbin/ip
+	install -D iproute2-4.3/iproute2-4.3.0/bridge/bridge $(INSTALLDIR)/iproute2-4.3/usr/sbin/bridge
 	-$(STRIP) $(INSTALLDIR)/iproute2-4.3/usr/sbin/*
 
 iproute2-4.3-clean:
@@ -5339,6 +5341,7 @@ iproute2-4.4.0: kernel_header iptables-1.4.21
 iproute2-4.4.0-install:
 	install -D iproute2-4.4.0/src/tc/tc $(INSTALLDIR)/iproute2-4.4.0/usr/sbin/tc
 	install -D iproute2-4.4.0/src/ip/ip $(INSTALLDIR)/iproute2-4.4.0/usr/sbin/ip
+	install -D iproute2-4.4.0/src/bridge/bridge $(INSTALLDIR)/iproute2-4.4.0/usr/sbin/bridge
 	$(STRIP) $(INSTALLDIR)/iproute2-4.4.0/usr/sbin/*
 
 iproute2-4.4.0-clean:
