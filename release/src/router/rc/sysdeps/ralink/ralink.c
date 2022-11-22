@@ -5952,7 +5952,7 @@ void set_default_psk()
 	}
 }
 
-#if defined(RTCONFIG_LANWAN_LED)
+#if defined(RTCONFIG_LANWAN_LED) && !defined(RTCONFIG_SWRT_LED)
 int update_wan_leds(int wan_unit, int link_wan_unit)
 {
 	if(nvram_get_int("x_Setting")) //normal use

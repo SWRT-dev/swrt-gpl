@@ -305,6 +305,8 @@ endif
 ifeq ($(RTCONFIG_BLINK_LED),y)
 CFLAGS	+= -I$(TOP)/bled
 OBJS	+= bled.o
+else ifeq ($(RTCONFIG_FIXED_BRIGHTNESS_RGBLED),y)
+OBJS	+= swrtrgb.o
 endif
 
 ifeq ($(RTCONFIG_SAVEJFFS),y)

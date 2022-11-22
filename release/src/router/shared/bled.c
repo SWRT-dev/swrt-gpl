@@ -1033,40 +1033,46 @@ void set_rgbled(unsigned int mode)
 	switch (c) {
 	case RGBLED_BLUE:
 		udef_trigger = led_color[1];
-#if defined(RTCONFIG_SWRT_LED_RGB) && defined(RTCONFIG_HND_ROUTER_AX_675X)
+#if defined(RTCONFIG_SWRT_LED_RGB)
 #if defined(MR60) || defined(MS60)
 		led_control(LED_BLUE, LED_ON);
 		led_control(LED_GREEN, LED_OFF);
 		led_control(LED_RED, LED_OFF);
 		led_control(LED_WHITE, LED_OFF);
+#elif defined(RMAX6000)
+		i2cled_control(LED_BLUE, LED_ON);
 #endif
 #endif
 		break;
 	case RGBLED_GREEN:
 		udef_trigger = led_color[2];
-#if defined(RTCONFIG_SWRT_LED_RGB) && defined(RTCONFIG_HND_ROUTER_AX_675X)
+#if defined(RTCONFIG_SWRT_LED_RGB)
 #if defined(MR60) || defined(MS60)
 		led_control(LED_BLUE, LED_OFF);
 		led_control(LED_GREEN, LED_ON);
 		led_control(LED_RED, LED_OFF);
 		led_control(LED_WHITE, LED_OFF);
+#elif defined(RMAX6000)
+		i2cled_control(LED_GREEN, LED_ON);
 #endif
 #endif
 		break;
 	case RGBLED_RED:
 		udef_trigger = led_color[3];
-#if defined(RTCONFIG_SWRT_LED_RGB) && defined(RTCONFIG_HND_ROUTER_AX_675X)
+#if defined(RTCONFIG_SWRT_LED_RGB)
 #if defined(MR60) || defined(MS60)
 		led_control(LED_BLUE, LED_OFF);
 		led_control(LED_GREEN, LED_OFF);
 		led_control(LED_RED, LED_ON);
 		led_control(LED_WHITE, LED_OFF);
+#elif defined(RMAX6000)
+		i2cled_control(LED_RED, LED_ON);
 #endif
 #endif
 		break;
 	case RGBLED_NIAGARA_BLUE:
 		udef_trigger = led_color[4];
-#if defined(RTCONFIG_SWRT_LED_RGB) && defined(RTCONFIG_HND_ROUTER_AX_675X)
+#if defined(RTCONFIG_SWRT_LED_RGB)
 #if defined(MR60) || defined(MS60)
 		led_control(LED_BLUE, LED_ON);
 		led_control(LED_GREEN, LED_ON);
@@ -1077,41 +1083,45 @@ void set_rgbled(unsigned int mode)
 		break;
 	case RGBLED_YELLOW:
 		udef_trigger = led_color[5];
-#if defined(RTCONFIG_SWRT_LED_RGB) && defined(RTCONFIG_HND_ROUTER_AX_675X)
+#if defined(RTCONFIG_SWRT_LED_RGB)
 #if defined(MR60) || defined(MS60)
 		led_control(LED_BLUE, LED_OFF);
 		led_control(LED_GREEN, LED_ON);
 		led_control(LED_RED, LED_OFF);
 		led_control(LED_WHITE, LED_OFF);
+#elif defined(RMAX6000)
+		i2cled_control(LED_GREEN|LED_RED, LED_ON);
 #endif
 #endif
 		break;
 	case RGBLED_PURPLE:
 		udef_trigger = led_color[6];
-#if defined(RTCONFIG_SWRT_LED_RGB) && defined(RTCONFIG_HND_ROUTER_AX_675X)
+#if defined(RTCONFIG_SWRT_LED_RGB)
 #if defined(MR60) || defined(MS60)
 		led_control(LED_BLUE, LED_ON);
 		led_control(LED_GREEN, LED_OFF);
 		led_control(LED_RED, LED_ON);
-		led_control(LED_WHITE, LED_OFF);
+		i2cled_control(LED_WHITE, LED_OFF);
 #endif
 #endif
 		break;
 	case RGBLED_WHITE:
 		udef_trigger = led_color[7];
-#if defined(RTCONFIG_SWRT_LED_RGB) && defined(RTCONFIG_HND_ROUTER_AX_675X)
+#if defined(RTCONFIG_SWRT_LED_RGB)
 #if defined(MR60) || defined(MS60)
 		led_control(LED_BLUE, LED_OFF);
 		led_control(LED_GREEN, LED_OFF);
 		led_control(LED_RED, LED_OFF);
 		led_control(LED_WHITE, LED_ON);
+#elif defined(RMAX6000)
+		i2cled_control(LED_WHITE, LED_ON);
 #endif
 #endif
 		break;
 	default:
 		;
 	}
-#if defined(RTCONFIG_SWRT_LED_RGB) && defined(RTCONFIG_HND_ROUTER_AX_675X)
+#if defined(RTCONFIG_SWRT_LED_RGB)
 	return;
 #endif
 	if ((c == RGBLED_CONNECTED || c == RGBLED_ETH_BACKHAUL)

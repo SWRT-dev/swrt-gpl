@@ -211,7 +211,7 @@ static const struct led_btn_table_s {
 	{ "led_blue_gpio",	&led_gpio_table[LED_BLUE] },
 	{ "led_green_gpio",	&led_gpio_table[LED_GREEN] },
 	{ "led_red_gpio",	&led_gpio_table[LED_RED] },
-#if defined(RTAC59_CD6R) || defined(RTAC59_CD6N) || defined(PLAX56_XP4)
+#if defined(RTAC59_CD6R) || defined(RTAC59_CD6N) || defined(PLAX56_XP4) || defined(RMAX6000)
 	{ "led_white_gpio",	&led_gpio_table[LED_WHITE] },
 #endif
 #endif
@@ -466,7 +466,7 @@ int init_gpio(void)
 		, "led_5g_green_gpio", "led_5g_orange_gpio", "led_5g_red_gpio"
 #elif defined(RTCONFIG_FIXED_BRIGHTNESS_RGBLED)
 		, "led_blue_gpio", "led_green_gpio", "led_red_gpio"
-#if defined(RTAC59_CD6R) || defined(RTAC59_CD6N) || defined(PLAX56_XP4)
+#if defined(RTAC59_CD6R) || defined(RTAC59_CD6N) || defined(PLAX56_XP4) || defined(RMAX6000)
 		, "led_white_gpio"
 #endif
 #endif
@@ -535,6 +535,11 @@ int init_gpio(void)
 			continue;
 		gpio_dir(gpio_pin, GPIO_DIR_IN);
 	}
+
+#if defined(RMAX6000)
+	_dprintf("RMAX6000: skip init_gpio()\n");
+	return 0;
+#endif
 
 	/* led output */
 	for(i = 0; i < ASIZE(led_list); i++)
@@ -925,6 +930,12 @@ int do_led_control(int which, int mode)
 	if (which < 0 || which >= LED_ID_MAX || mode < 0 || mode >= LED_FAN_MODE_MAX)
 		return -1;
 
+#if defined(RTCONFIG_SWRT_LED_RGB)
+#if defined(RMAX6000)
+	i2cled_control(which, mode);
+	return 0;
+#endif
+#endif
 #if defined(RTAX86U) || defined(RTAX5700)
 	if(which == LED_LAN){
 		config_ext_wan_led(mode);
@@ -1328,7 +1339,7 @@ int lanport_ctrl(int ctrl)
 }
 
 
-#if defined(RTCONFIG_SWRT_I2CLED)
+#if defined(RTCONFIG_SWRT_I2CLED) || defined(RTCONFIG_SWRT_LED_RGB)
 void i2cled_control(int which, int onoff)
 {
 #if defined(R6800)
@@ -1385,7 +1396,6 @@ void i2cled_control(int which, int onoff)
 			break;
 	}
 #elif defined(RAX120)
-//controlled by gpio-leds now
 	switch(which){
 		case I2CLED_PWR:
 			f_write_string("/sys/class/leds/netgear:power:white/trigger", onoff ? "default-on" : "none", 0, 0);
@@ -1396,20 +1406,32 @@ void i2cled_control(int which, int onoff)
 		case I2CLED_USB2:
 			f_write_string("/sys/class/leds/netgear:usb2:white/trigger", onoff ? "default-on" : "none", 0, 0);
 			break;
-#if 0
-		case I2CLED_WAN:
-			f_write_string("/sys/class/leds/netgear:internet:white/trigger", onoff ? "default-on" : "none", 0, 0);
+		default:
 			break;
-		case I2CLED_WAN2:
-			f_write_string("/sys/class/leds/netgear:wan2:white/trigger", onoff ? "default-on" : "none", 0, 0);
+	}
+#elif defined(RMAX6000)
+//all leds are one color, not a real leds, so when you turn on one of colors, it will automatically turns off others.
+	switch(which){
+		case LED_BLUE:
+			f_write_string("/sys/class/leds/left_blue/trigger", onoff ? "default-on" : "none", 0, 0);
+			f_write_string("/sys/class/leds/right_blue/trigger", onoff ? "default-on" : "none", 0, 0);
 			break;
-		case I2CLED_2G:
-			f_write_string("/sys/class/leds/netgear:2g:white/trigger", onoff ? "default-on" : "none", 0, 0);
+		case LED_GREEN:
+			f_write_string("/sys/class/leds/left_green/trigger", onoff ? "default-on" : "none", 0, 0);
+			f_write_string("/sys/class/leds/right_green/trigger", onoff ? "default-on" : "none", 0, 0);
 			break;
-		case I2CLED_5G:
-			f_write_string("/sys/class/leds/netgear:5g:white/trigger", onoff ? "default-on" : "none", 0, 0);
+		case LED_RED:
+			f_write_string("/sys/class/leds/left_red/trigger", onoff ? "default-on" : "none", 0, 0);
+			f_write_string("/sys/class/leds/right_red/trigger", onoff ? "default-on" : "none", 0, 0);
 			break;
-#endif
+		case LED_GREEN|LED_RED:
+			f_write_string("/sys/class/leds/left_yellow/trigger", onoff ? "default-on" : "none", 0, 0);
+			f_write_string("/sys/class/leds/right_yellow/trigger", onoff ? "default-on" : "none", 0, 0);
+			break;
+		case LED_WHITE:
+			f_write_string("/sys/class/leds/left_white/trigger", onoff ? "default-on" : "none", 0, 0);
+			f_write_string("/sys/class/leds/right_white/trigger", onoff ? "default-on" : "none", 0, 0);
+			break;
 		default:
 			break;
 	}

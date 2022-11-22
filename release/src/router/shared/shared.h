@@ -3302,7 +3302,7 @@ static inline int inhibit_led_on(void) { return 0; }
 #endif
 
 /* bled.c */
-#if defined(RTCONFIG_BLINK_LED)
+#if defined(RTCONFIG_BLINK_LED) || defined(RTCONFIG_FIXED_BRIGHTNESS_RGBLED)
 extern int __config_netdev_bled(const char *led_gpio, const char *ifname, unsigned int min_blink_speed, unsigned int interval);
 extern int config_netdev_bled(const char *led_gpio, const char *ifname);
 extern int set_bled_udef_pattern(const char *led_gpio, unsigned int interval, const char *pattern);
@@ -4072,6 +4072,8 @@ enum {
 	I2CLED_UNKNOWN
 #endif
 };
+#endif
+#if defined(RTCONFIG_SWRT_I2CLED) || defined(RTCONFIG_SWRT_LED_RGB)
 extern void i2cled_control(int which, int onoff);
 #endif
 #if defined(RTCONFIG_EASYMESH)

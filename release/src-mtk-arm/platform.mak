@@ -200,6 +200,10 @@ define platformRouterOptions
 			sed -i "/RTCONFIG_SOC_MT7981/d" $(1); \
 			echo "# RTCONFIG_SOC_MT7981 is not set" >>$(1); \
 		fi; \
+		if [ "$(BUILD_NAME)" = "RM-AX6000" ]; then \
+			sed -i "/RTCONFIG_FIXED_BRIGHTNESS_RGBLED\>/d" $(1); \
+			echo "RTCONFIG_FIXED_BRIGHTNESS_RGBLED=y" >>$(1); \
+		fi; \
 	fi; \
 	)
 endef

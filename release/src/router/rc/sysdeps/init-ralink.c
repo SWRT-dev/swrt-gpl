@@ -1879,7 +1879,7 @@ void gen_1905d_config(void)
 			fprintf(fp, "decrypt_fail_threshold=10\n");
 			fprintf(fp, "gtk_rekey_interval=3600\n");
 //Enable Ethernet Onboarding on WAN PORT only
-			fprintf(fp, "ob_wan_only=1\n");
+			fprintf(fp, "ob_wan_only=0\n");
 		}
 		fclose(fp);
 	}else
@@ -2246,18 +2246,18 @@ void gen_bhwifi_conf()
 	if((fp = fopen("/etc/map/wts_bss_info_config", "w"))){
 		fprintf(fp, "#ucc_bss_info\n");
 		snprintf(ssid, sizeof(ssid), "%s", nvram_safe_get("wl0_ssid"));
-		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 8x %s 0x%04x 0x%04x %s 0 1 hidden-N 4095 pvid 5\n", index, mesh_format_ssid(ssid, sizeof(ssid)), getauthmode(WL_2G_BAND), getencrypttype(WL_2G_BAND), getpsk(WL_2G_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 8x %s 0x%04x 0x%04x %s 0 1 hidden-N\n", index, mesh_format_ssid(ssid, sizeof(ssid)), getauthmode(WL_2G_BAND), getencrypttype(WL_2G_BAND), getpsk(WL_2G_BAND));
 		index++;
-		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 8x %s 0x%04x 0x%04x %s 1 0 hidden-Y 4095 pvid 5\n", index, nvram_safe_get("wl0.4_ssid"), getauthmode(WL_2GBH_BAND), getencrypttype(WL_2GBH_BAND), getpsk(WL_2GBH_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 8x %s 0x%04x 0x%04x %s 1 0 hidden-Y\n", index, nvram_safe_get("wl0.4_ssid"), getauthmode(WL_2GBH_BAND), getencrypttype(WL_2GBH_BAND), getpsk(WL_2GBH_BAND));
 		index++;
 		snprintf(ssid, sizeof(ssid), "%s", nvram_safe_get("wl1_ssid"));
-		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 11x %s 0x%04x 0x%04x %s 0 1 hidden-N 4095 pvid 5\n", index, mesh_format_ssid(ssid, sizeof(ssid)), getauthmode(WL_5G_BAND), getencrypttype(WL_5G_BAND), getpsk(WL_5G_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 11x %s 0x%04x 0x%04x %s 0 1 hidden-N\n", index, mesh_format_ssid(ssid, sizeof(ssid)), getauthmode(WL_5G_BAND), getencrypttype(WL_5G_BAND), getpsk(WL_5G_BAND));
 		index++;
-		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 12x %s 0x%04x 0x%04x %s 0 1 hidden-N 4095 pvid 5\n", index, mesh_format_ssid(ssid, sizeof(ssid)), getauthmode(WL_5G_BAND), getencrypttype(WL_5G_BAND), getpsk(WL_5G_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 12x %s 0x%04x 0x%04x %s 0 1 hidden-N\n", index, mesh_format_ssid(ssid, sizeof(ssid)), getauthmode(WL_5G_BAND), getencrypttype(WL_5G_BAND), getpsk(WL_5G_BAND));
 		index++;
-		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 11x %s 0x%04x 0x%04x %s 1 0 hidden-Y 4095 pvid 5\n", index, nvram_safe_get("wl1.4_ssid"), getauthmode(WL_5GBH_BAND), getencrypttype(WL_5GBH_BAND), getpsk(WL_5GBH_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 11x %s 0x%04x 0x%04x %s 1 0 hidden-Y\n", index, nvram_safe_get("wl1.4_ssid"), getauthmode(WL_5GBH_BAND), getencrypttype(WL_5GBH_BAND), getpsk(WL_5GBH_BAND));
 		index++;
-		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 12x %s 0x%04x 0x%04x %s 1 0 hidden-Y 4095 pvid 5\n", index, nvram_safe_get("wl1.4_ssid"), getauthmode(WL_5GBH_BAND), getencrypttype(WL_5GBH_BAND), getpsk(WL_5GBH_BAND));
+		fprintf(fp, "%d,ff:ff:ff:ff:ff:ff 12x %s 0x%04x 0x%04x %s 1 0 hidden-Y\n", index, nvram_safe_get("wl1.4_ssid"), getauthmode(WL_5GBH_BAND), getencrypttype(WL_5GBH_BAND), getpsk(WL_5GBH_BAND));
 		fclose(fp);
 	}else
 		printf("failed to open %s\n", "/etc/map/wts_bss_info_config");
@@ -2280,7 +2280,7 @@ void start_mapd(void)
 	char *apcli5gifname = get_staifname(WL_5G_BAND);
 
 	pid_t pid;
-	char *mapd_argv[] = { "/usr/sbin/mapd", "-I", "/etc/map/mapd_cfg", "-O", "/etc/mapd_strng.conf", "-c", "/jffs/swrtmesh/client_db.txt", NULL };
+	char *mapd_argv[] = { "/usr/sbin/mapd", "-I", "/etc/map/mapd_cfg", "-O", "/etc/mapd_strng.conf", "-c", "/jffs/swrtmesh/client_db.txt", NULL, NULL };
 	char *p1905_argv[] = { "/usr/sbin/p1905_managerd", "-r0", "-f", "/etc/map/1905d.cfg", "-F", "/etc/map/wts_bss_info_config", NULL };
 #if defined(RTCONFIG_RALINK_MT7621)
 	char *fwdd_argv[] = { "/usr/sbin/fwdd", "-p", ap2gifname, apcli2gifname, "-p", ap5gifname, apcli5gifname, "-e", "vlan1", "5G", NULL };
@@ -2568,11 +2568,16 @@ void start_mapd(void)
 			_eval(p1905_argv, "/var/log/1905.log", 0, &pid);
 		}
 		sleep(1);
+		if(nvram_match("easymesh_debug", "1")){
+			mapd_argv[7] = "-dddd";
 			_eval(mapd_argv, "/var/log/log.mapd", 0, &pid);
+		}else
+			_eval(mapd_argv, NULL, 0, &pid);
 #if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_MT7622)
 		doSystem("switch reg w 10 ffffffe0");
 		doSystem("switch reg w 34 8160816");
 #endif
+		nvram_set("easymesh_lastmode", "1");
 	} else if(mode == MAP_BS_2_0){
 		if(module_loaded("mapfilter"))
 			modprobe_r("mapfilter");

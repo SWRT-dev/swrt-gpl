@@ -7808,7 +7808,9 @@ static void auto_firmware_check()
 }
 
 
-#if defined(RTCONFIG_LP5523) || defined(RTCONFIG_FIXED_BRIGHTNESS_RGBLED)
+#if defined(MR60) || defined(MS60) || defined(RMAX6000)
+static void link_pap_status() { return; }
+#elif defined(RTCONFIG_LP5523) || defined(RTCONFIG_FIXED_BRIGHTNESS_RGBLED)
 #define FILE_LP5523 "/tmp/lp5523_log"
 static void link_pap_status()
 {

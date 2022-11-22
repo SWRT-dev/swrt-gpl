@@ -5662,6 +5662,10 @@ int init_nvram(void)
 		nvram_set_int("btn_wps_gpio", 10|GPIO_ACTIVE_LOW);
 		nvram_set_int("btn_rst_gpio", 9|GPIO_ACTIVE_LOW);
 		// rgb led
+		nvram_set_int("led_blue_gpio",  1);
+		nvram_set_int("led_green_gpio",  1);
+		nvram_set_int("led_red_gpio",  1);
+		nvram_set_int("led_white_gpio",  1);
 
 		nvram_set("ct_max", "300000"); // force
 #ifdef RTCONFIG_XHCIMODE
