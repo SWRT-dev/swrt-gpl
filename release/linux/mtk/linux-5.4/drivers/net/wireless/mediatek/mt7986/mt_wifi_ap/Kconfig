@@ -91,7 +91,6 @@ config MAC_REPEATER_SUPPORT
 
 config MWDS
     bool "Mixed WDS(MWDS)"
-    depends on CHIP_MT7615E || CHIP_MT7915
     depends on MT_AP_SUPPORT
     select APCLI_SUPPORT
     default n

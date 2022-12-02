@@ -116,7 +116,7 @@ config SPECTRUM_SUPPORT
 config PHY_ICS_SUPPORT
 	bool "PHY ICS Support"
 	depends on WIFI_DRIVER
-	depends on MTK_CHIP_MT7986 || MTK_CHIP_MT7916
+	depends on CHIP_MT7986 || CHIP_MT7916
 	default y
 
 config BACKGROUND_SCAN_SUPPORT
