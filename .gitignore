@@ -46,9 +46,10 @@ release/src/router/swrtmesh/*.c
 release/src/router/wb/*.c
 release/src/router/wb/ws_src/*.c
 release/linux/*/linux-*/net/swrt_fastpath/*.c
-release/src-econet-mips/bootrom/
-release/src-econet-mips/econettools/
-release/src-econet-mips/en7561/app_bsp
-release/src-econet-mips/en7561/apps
-release/src-econet-mips/en7561/global_inc
-
+release/src-econet-*/bootrom/
+release/src-econet-*/bootloader/
+release/src-econet-*/econettools/
+release/src-econet-*/en756*/app_bsp
+release/src-econet-*/en756*/apps
+release/src-econet-*/en756*/global_inc
+release/src-hisi-*/*

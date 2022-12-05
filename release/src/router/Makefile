@@ -1854,6 +1854,8 @@ ifeq ($(RTCONFIG_MT798X),y)
 	    $(MAKE) $(PARALLEL_BUILD) -C $(LINUXDIR) modules CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) CC=$(KERNELCC) LD=$(KERNELLD); \
 	fi
 	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) dtbs
+else ifeq ($(RTCONFIG_RALINK_EN7561),y)
+else ifeq ($(RTCONFIG_RALINK_EN7562),y)
 else ifeq ($(RTCONFIG_RALINK),y)
 	@if ! grep -q "CONFIG_EMBEDDED_RAMDISK=y" $(LINUXDIR)/.config ; then \
 		$(MAKE) $(PARALLEL_BUILD) -C $(LINUXDIR) vmlinux CC=$(KERNELCC) LD=$(KERNELLD); \
