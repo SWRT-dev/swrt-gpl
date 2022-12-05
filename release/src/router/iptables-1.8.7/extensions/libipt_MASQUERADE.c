@@ -8,10 +8,19 @@
 #include <linux/netfilter_ipv4/ip_tables.h>
 #include <linux/netfilter/nf_nat.h>
 
+#if defined(RTCONFIG_SWRT_FULLCONEV2)
+/* Temporarily defining here, need to be picked up from the
+ * new kernel header linux/netfilter/nf_nat.h */
+#define NF_NAT_RANGE_FULLCONE  (1 << 10)
+#endif
+
 enum {
 	O_TO_PORTS = 0,
 	O_RANDOM,
 	O_RANDOM_FULLY,
+#if defined(RTCONFIG_SWRT_FULLCONEV2)
+	O_FULLCONE
+#endif
 };
 
 static void MASQUERADE_help(void)
@@ -23,13 +32,22 @@ static void MASQUERADE_help(void)
 " --random\n"
 "				Randomize source port.\n"
 " --random-fully\n"
+#if defined(RTCONFIG_SWRT_FULLCONEV2)
+"				Fully randomize source port.\n"
+" --fullcone\n"
+"				Do fullcone NAT mapping.\n");
+#else
 "				Fully randomize source port.\n");
+#endif
 }
 
 static const struct xt_option_entry MASQUERADE_opts[] = {
 	{.name = "to-ports", .id = O_TO_PORTS, .type = XTTYPE_STRING},
 	{.name = "random", .id = O_RANDOM, .type = XTTYPE_NONE},
 	{.name = "random-fully", .id = O_RANDOM_FULLY, .type = XTTYPE_NONE},
+#if defined(RTCONFIG_SWRT_FULLCONEV2)
+	{.name = "fullcone", .id = O_FULLCONE, .type = XTTYPE_NONE},
+#endif
 	XTOPT_TABLEEND,
 };
 
@@ -104,6 +122,11 @@ static void MASQUERADE_parse(struct xt_option_call *cb)
 	case O_RANDOM_FULLY:
 		mr->range[0].flags |=  NF_NAT_RANGE_PROTO_RANDOM_FULLY;
 		break;
+#if defined(RTCONFIG_SWRT_FULLCONEV2)
+	case O_FULLCONE:
+		mr->range[0].flags |=  NF_NAT_RANGE_FULLCONE;
+		break;
+#endif
 	}
 }
 
@@ -126,6 +149,10 @@ MASQUERADE_print(const void *ip, const struct xt_entry_target *target,
 
 	if (r->flags & NF_NAT_RANGE_PROTO_RANDOM_FULLY)
 		printf(" random-fully");
+#if defined(RTCONFIG_SWRT_FULLCONEV2)
+	if (r->flags & NF_NAT_RANGE_FULLCONE)
+		printf(" fullcone");
+#endif
 }
 
 static void
@@ -145,6 +172,10 @@ MASQUERADE_save(const void *ip, const struct xt_entry_target *target)
 
 	if (r->flags & NF_NAT_RANGE_PROTO_RANDOM_FULLY)
 		printf(" --random-fully");
+#if defined(RTCONFIG_SWRT_FULLCONEV2)
+	if (r->flags & NF_NAT_RANGE_FULLCONE)
+		printf(" --fullcone");
+#endif
 }
 
 static int MASQUERADE_xlate(struct xt_xlate *xl,
@@ -165,6 +196,11 @@ static int MASQUERADE_xlate(struct xt_xlate *xl,
 	xt_xlate_add(xl, " ");
 	if (r->flags & NF_NAT_RANGE_PROTO_RANDOM)
 		xt_xlate_add(xl, "random ");
+
+#if defined(RTCONFIG_SWRT_FULLCONEV2)
+	if (r->flags & NF_NAT_RANGE_FULLCONE)
+		xt_xlate_add(xl, "fullcone ");
+#endif
 
 	return 1;
 }

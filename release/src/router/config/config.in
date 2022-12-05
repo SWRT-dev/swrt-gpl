@@ -2744,3 +2744,7 @@ config RTCONFIG_EASYMESH_R3
 config RTCONFIG_SWRT_LEDDRV
 	bool "i2c/spi/gpio led dirver"
 	default n
+
+config RTCONFIG_SWRT_FULLCONEV2
+	bool "kernel 5.x - fullcone v2 support"
+	default n

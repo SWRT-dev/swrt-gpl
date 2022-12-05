@@ -1,11 +1,4 @@
-# OpenWRT SDK_4210
-ifeq ($(NEWKERNEL),y)
 export LINUXDIR := $(SRCBASE)/linux/linux-5.4.x
-else ifeq ($(MT798X),y)
-export LINUXDIR := $(SRCBASE)/linux/linux-5.4.x
-else
-export LINUXDIR := $(SRCBASE)/linux/linux-4.4.198
-endif
 
 ifeq ($(EXTRACFLAGS),)
 ifeq ($(MT798X),y)
@@ -614,6 +607,15 @@ define platformKernelConfig
 		echo "CONFIG_MODEL_RMAX6000=y" >>$(1); \
 		sed -i "/CONFIG_CMDLINE_OVERRIDE/d" $(1); \
 		echo "CONFIG_CMDLINE_OVERRIDE=y" >>$(1); \
+	fi; \
+	if [ "$(SWRT_FULLCONEV2)" = "y" ]; then \
+		sed -i "/CONFIG_SWRT_FULLCONE/d" $(1); \
+		echo "# CONFIG_SWRT_FULLCONE is not set" >>$(1); \
+		echo "CONFIG_SWRT_FULLCONEV2=y" >>$(1); \
+	else \
+		sed -i "/CONFIG_SWRT_FULLCONE/d" $(1); \
+		echo "CONFIG_SWRT_FULLCONE=y" >>$(1); \
+		echo "# CONFIG_SWRT_FULLCONEV2 is not set" >>$(1); \
 	fi; \
 	)
 endef

@@ -9,6 +9,7 @@ release/src/router/asd/*.c
 release/src/router/asd/*.h
 release/src/router/ahs/*.c
 release/src/router/ahs/*.h
+release/src/router/cfg_sync/*.c
 release/src/router/eapd/*.c
 release/src/router/eapd/*.h
 release/src/router/libasc/*.c
@@ -43,6 +44,8 @@ release/src/router/shared/sysdeps/*/private.c
 release/src/router/shared/tcode.c
 release/src/router/sw-hw-auth/*.c
 release/src/router/swrtmesh/*.c
+release/src/router/swrtmesh/sysdeps/*.c
+release/src/router/swrtmesh/sysdeps/*/*.*
 release/src/router/wb/*.c
 release/src/router/wb/ws_src/*.c
 release/linux/*/linux-*/net/swrt_fastpath/*.c

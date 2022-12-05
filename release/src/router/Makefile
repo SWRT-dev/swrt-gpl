@@ -878,10 +878,15 @@ obj-y += iptables-1.4.21
 obj-y += iproute2-3.x
 endif
 else
+ifeq ($(RTCONFIG_SWRT_FULLCONEV2),y)
+IPTABLES := iptables-1.8.7
+obj-y += iptables-1.8.7
+else
 IPTABLES := iptables-1.4.21
+obj-y += iptables-1.4.21
+endif
 IPTC_LIBDIR := $(TOP)/$(IPTABLES)/libiptc/.libs
 IPTC_LIBS := -lip4tc $(if $(RTCONFIG_IPV6),-lip6tc,) -liptc
-obj-y += iptables-1.4.21
 ifeq ($(or $(RTCONFIG_RALINK),$(RTCONFIG_QCA)),y)
 obj-y += iproute2-4.4.0
 else
@@ -3717,6 +3722,64 @@ endif
 iptables-clean:
 	-@$(MAKE) -C iptables KERNEL_DIR=$(LINUX_INC_DIR) clean
 
+iptables-1.8.7/configure:
+	cd iptables-1.8.7 && ./autogen.sh
+
+ifeq ($(RTCONFIG_ALPINE)$(RTCONFIG_LANTIQ),y)
+iptables-1.8.7/remove_configure:
+	rm -f iptables-1.8.7/configure
+endif
+
+ifeq ($(RTCONFIG_MUSL_LIBC),y)
+MUSL_CFLAG=-DRTCONFIG_MUSL_LIBC
+endif
+ifeq ($(RTCONFIG_ALPINE)$(RTCONFIG_LANTIQ),y)
+iptables-1.8.7/Makefile: iptables-1.8.7/remove_configure iptables-1.8.7/configure
+else
+iptables-1.8.7/Makefile: iptables-1.8.7/configure
+endif
+	cd iptables-1.8.7 && $(CONFIGURE) \
+		--prefix=/usr \
+		--bindir=/usr/sbin \
+		--libdir=/usr/lib \
+		--with-kernel=$(LINUXDIR) \
+		$(if $(RTCONFIG_IPV6),--enable-ipv6,--disable-ipv6) \
+		CFLAGS="-Os $(EXTRACFLAGS) -U CONFIG_NVRAM_SIZE $(MUSL_CFLAG)"
+
+iptables-1.8.7: iptables-1.8.7/Makefile
+	@$(SEP)
+	$(MAKE) -C $@ KERNEL_DIR=$(LINUXDIR) COPT_FLAGS="-Os $(EXTRACFLAGS) -U CONFIG_NVRAM_SIZE $(MUSL_CFLAG)"
+
+iptables-1.8.7-install: iptables-1.8.7
+	install -D iptables-1.8.7/iptables/.libs/xtables-multi $(INSTALLDIR)/iptables-1.8.7/usr/sbin/xtables-multi
+	cd $(INSTALLDIR)/iptables-1.8.7/usr/sbin && \
+		ln -sf xtables-multi iptables-restore && \
+		ln -sf xtables-multi iptables-save && \
+		ln -sf xtables-multi iptables
+	install -d $(INSTALLDIR)/iptables-1.8.7/usr/lib/xtables
+	install -D iptables-1.8.7/libiptc/.libs/libiptc.so $(INSTALLDIR)/iptables-1.8.7/usr/lib/libiptc.so
+	install -D iptables-1.8.7/libiptc/.libs/libip4tc.so $(INSTALLDIR)/iptables-1.8.7/usr/lib/libip4tc.so
+	cd $(INSTALLDIR)/iptables-1.8.7/usr/lib && \
+		ln -sf libiptc.so  libiptc.so.0 && \
+		ln -sf libiptc.so  libiptc.so.0.0.0 && \
+		ln -sf libip4tc.so libip4tc.so.0 && \
+		ln -sf libip4tc.so libip4tc.so.0.0.0
+	install -D iptables-1.8.7/libxtables/.libs/lib*.so $(INSTALLDIR)/iptables-1.8.7/usr/lib/
+	cd $(INSTALLDIR)/iptables-1.8.7/usr/lib && \
+		ln -sf libxtables.so libxtables.so.12 && \
+		ln -sf libxtables.so libxtables.so.12.0.0
+	install -D iptables-1.8.7/extensions/*.so $(INSTALLDIR)/iptables-1.8.7/usr/lib/xtables
+ifeq ($(RTCONFIG_IPV6),y)
+	cd $(INSTALLDIR)/iptables-1.8.7/usr/sbin && \
+		ln -sf xtables-multi ip6tables-restore && \
+		ln -sf xtables-multi ip6tables-save && \
+		ln -sf xtables-multi ip6tables
+	install -D iptables-1.8.7/libiptc/.libs/libip6tc.so $(INSTALLDIR)/iptables-1.8.7/usr/lib/libip6tc.so
+	cd $(INSTALLDIR)/iptables-1.8.7/usr/lib && \
+		ln -sf libip6tc.so libip6tc.so.0 && \
+		ln -sf libip6tc.so libip6tc.so.0.0.0
+endif
+
 iptables-1.4.21/configure:
 	cd iptables-1.4.21 && ./autogen.sh
 
@@ -5304,7 +5367,7 @@ iproute2-3.x-clean:
 	-@$(MAKE) -C iproute2-3.x clean
 	-rm -f iproute2-3.x/Config
 
-iproute2-3.15.0: kernel_header iptables-1.4.21
+iproute2-3.15.0: kernel_header $(IPTABLES)
 	@$(SEP)
 	@$(MAKE) -C $@ IPTABLES_DIR=$(TOP)/iptables-1.4.21 KERNEL_INCLUDE=$(TOP)/kernel_header/include EXTRACFLAGS="$(EXTRACFLAGS) $(if $(RTCONFIG_IPV6),-DUSE_IPV6,-DNO_IPV6)"
 
@@ -5336,7 +5399,7 @@ iproute2-4.3-clean:
 	-@$(MAKE) -C iproute2-4.3 clean
 	-rm -f iproute2-4.3/iproute2-4.3.0/Config
 
-iproute2-4.4.0: kernel_header iptables-1.4.21
+iproute2-4.4.0: kernel_header $(IPTABLES)
 	touch iproute2-4.4.0/src/configure
 	$(MAKE) -C iproute2-4.4.0 && $(MAKE) -C $@ stage
 

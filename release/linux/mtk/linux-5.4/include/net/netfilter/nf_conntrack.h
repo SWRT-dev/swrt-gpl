@@ -85,6 +85,10 @@ struct nf_conn {
 
 #if IS_ENABLED(CONFIG_NF_NAT)
 	struct hlist_node	nat_bysource;
+#if defined(CONFIG_SWRT_FULLCONEV2)
+	/* To optionally ensure 3-tuple uniqueness on the translated source */
+	struct hlist_node       nat_by_manip_src;
+#endif
 #endif
 	/* all members below initialized via memset */
 	struct { } __nfct_init_offset;

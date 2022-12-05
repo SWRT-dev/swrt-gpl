@@ -17765,7 +17765,7 @@ NO_USB_CAP:
 	add_rc_support("qca_plc2");
 #endif
 
-#if defined(RTCONFIG_SWRT_FULLCONE)
+#if defined(RTCONFIG_SWRT_FULLCONE) ||  defined(RTCONFIG_SWRT_FULLCONEV2)
 	add_rc_support("swrt_fullcone");
 #endif
 #if defined(RTCONFIG_ENTWARE)
