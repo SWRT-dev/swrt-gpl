@@ -4013,7 +4013,7 @@ define RouterOptions
 	echo "RTCONFIG_SWRT_UU=y" >>$(1); \
 	fi; \
 	if [ "$(SWRT_FULLCONE)" = "y" ]; then \
-	sed -i "/RTCONFIG_SWRT_FULLCONE/d" $(1); \
+	sed -i "/RTCONFIG_SWRT_FULLCONE\>/d" $(1); \
 	echo "RTCONFIG_SWRT_FULLCONE=y" >>$(1); \
 	fi; \
 	if [ "$(SWRT_I2CLED)" = "y" ]; then \
