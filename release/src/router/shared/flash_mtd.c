@@ -25,7 +25,8 @@
 #endif	// !MUSL_LIBC
 #include <mtd/mtd-user.h>
 #else
-#include <linux/mtd/mtd.h>
+//#include <linux/mtd/mtd.h>
+#include <mtd/mtd-user.h>
 #endif
 #ifndef RTCONFIG_REALTEK
 #include "mtd-abi.h"

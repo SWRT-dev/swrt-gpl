@@ -1860,7 +1860,9 @@ ifeq ($(RTCONFIG_MT798X),y)
 	fi
 	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) dtbs
 else ifeq ($(RTCONFIG_RALINK_EN7561),y)
+	$(MAKE) -f $(SRCBASE)/$(PLATFORM_ROUTER)/build/kernel.mak ecnt_kernel
 else ifeq ($(RTCONFIG_RALINK_EN7562),y)
+	$(MAKE) -f $(SRCBASE)/$(PLATFORM_ROUTER)/build/kernel.mak ecnt_kernel
 else ifeq ($(RTCONFIG_RALINK),y)
 	@if ! grep -q "CONFIG_EMBEDDED_RAMDISK=y" $(LINUXDIR)/.config ; then \
 		$(MAKE) $(PARALLEL_BUILD) -C $(LINUXDIR) vmlinux CC=$(KERNELCC) LD=$(KERNELLD); \
@@ -2362,7 +2364,7 @@ ifeq ($(RTCONFIG_MT798X),y)
 	$(STRIP) $(TARGETDIR)/lib/libc.so
 	cd $(TARGETDIR)/lib/ && ln -sf libc.so ld-musl-aarch64.so.1
 	cd $(TARGETDIR)/lib/ && ln -sf libgcc_s.so.1 libgcc_s.so
-else ifeq ($(RTCONFIG_RALINK_MT7621),y)
+else ifeq ($(or $(RTCONFIG_RALINK_MT7621),$(RTCONFIG_RALINK_EN7561)),y)
 	@cd $(TARGETDIR)/lib/ && ln -sf libc.so ld-musl-mipsel-sf.so.1
 else
 	@cd $(TARGETDIR)/lib/ && ln -sf libc.so ld-musl-arm.so.1
@@ -2372,7 +2374,7 @@ endif
 	#install $(LIBDIR)/libnsl.so $(TARGETDIR)/lib/
 	@mkdir -p $(TARGETDIR)/rom/etc/wireless/mediatek
 ifeq ($(or $(RTAX53U),$(RTAX54),$(RT4GAX56),$(RTCONFIG_WLMODULE_MT7915D_AP)),y)
-	@cp $(SRCBASE)/linux/vendors/Mediatek/MT7621/MT7915/* $(TARGETDIR)/rom/etc/wireless/mediatek/
+#	@cp $(SRCBASE)/linux/vendors/Mediatek/MT7621/MT7915/* $(TARGETDIR)/rom/etc/wireless/mediatek/
 else ifeq ($(RTCONFIG_MT798X),y)
 	# TBD.
 else ifeq ($(RTCONFIG_RALINK_MT7629),y)
@@ -2481,7 +2483,7 @@ endif
 endif
 else ifeq ($(RTCONFIG_LANTIQ),y)
 	#FIXME
-else ifeq ($(or $(RTAX53U),$(RTAX54),$(RT4GAX56),$(RTCONFIG_RALINK_MT7621),$(RTCONFIG_MT798X)),y)
+else ifeq ($(or $(RTAX53U),$(RTAX54),$(RT4GAX56),$(RTCONFIG_RALINK_MT7621),$(RTCONFIG_MT798X),$(RTCONFIG_RALINK_EN7561)),y)
 	# do nothibg #
 else ifeq ($(or $(RTACRH18),$(RT4GAC86U)),y)
 	install -D zlib/libz.so.1 $(TARGETDIR)/usr/lib/
@@ -2818,8 +2820,12 @@ gen_gpl_excludes_router:
 image:
 	@rm -f $(PLATFORMDIR)/target.image
 ifneq (,$(filter y,$(RTCONFIG_RALINK) $(RTCONFIG_QCA) $(RTCONFIG_LANTIQ)))
+ifeq ($(RTCONFIG_RALINK_EN7561),y)
+	@$(SRCBASE)/econettools/$(MKSQUASHFS) $(TARGETDIR) $(PLATFORMDIR)/target.image -all-root -noappend -nopad
+else
 	@$(MAKE) -C $(LINUXDIR)/scripts/squashfs $(MKSQUASHFS_TARGET)
 	@$(LINUXDIR)/scripts/squashfs/$(MKSQUASHFS) $(TARGETDIR) $(PLATFORMDIR)/target.image -all-root -noappend -nopad
+endif
 else ifeq ($(RTCONFIG_BCMARM),y)
 	@$(SRCBASE)/ctools/mksquashfs $(TARGETDIR) $(PLATFORMDIR)/target.image -all-root -noappend
 else
@@ -5578,14 +5584,14 @@ FFMPEG_CONFIGURE_PROTOCOLS:=$(call FFMPEG_FILTER_CONFIG,enable-protocol,$(FFMPEG
 FFMPEG_DISABLED_DEMUXERS:=aa acm act adf adp ads adx afc aix amr amrnb amrwb apc ape apng aptx aptx_hd aqtitle asf_o ass ast avr bethsoftvid bfi bfstm bit bmv boa brstm c93 cdxl cine codec2 codec2raw concat data daud dcstr dfa dirac dnxhd dsf dsicin dss dtshd dvbsub dvbtxt dxa epaf ffmetadata fits frm fsb g722 g723_1 g726 g726le g729 gdv genh gif gsm gxf hevc hls hnm ico idcin idf iff ilbc image2 image2pipe image_bmp_pipe image_dds_pipe image_dpx_pipe image_exr_pipe image_j2k_pipe image_jpeg_pipe image_jpegls_pipe image_pam_pipe image_pbm_pipe image_pcx_pipe image_pgm_pipe image_pgmyuv_pipe image_pictor_pipe image_png_pipe image_ppm_pipe image_psd_pipe image_qdraw_pipe image_sgi_pipe image_sunrast_pipe image_svg_pipe image_tiff_pipe image_webp_pipe image_xpm_pipe ingenient ipmovie ircam ivf ivr jacosub jv live_flv lmlm4 loas lrc lvf lxf mgsts microdvd mjpeg_2000 mlv mm mmf mpjpeg mpl2 mpsub msf msnwc_tcp mtaf mtv musx mv mxf mxg nistsphere nsp nsv nut oma paf pjs pmp pva pvf rawvideo realtext redspark rl2 roq rpl rsd rso s337m sami sbc sbg scc sdr2 sds sdx segafilm shorten siff sln smacker smjpeg smush sol spdif srt stl str subviewer subviewer1 sup svag tak tedcaptions thp threedostr tiertexseq tta tty txd ty v210 v210x vag vivo vmd vobsub voc vpk vplayer wc3 webm_dash_manifest webvtt wsaud wsd wsvqa wtv wve xa xbin xmv xvag xwma yuv4mpegpipe
 FFMPEG_CONFIGURE_DEMUXERS:=$(call FFMPEG_FILTER_CONFIG,disable-demuxer,$(FFMPEG_DISABLED_DEMUXERS))
 
-ifeq ($(RTCONFIG_RALINK_MT7621),y)
+ifeq ($(or $(RTCONFIG_RALINK_MT7621),$(RTCONFIG_RALINK_EN7561)),y)
 REAL_CPU_TYPE:=mips32
 endif
 
 ffmpeg/stamp-h1: $(if $(FFMPEG_ZLIB_REQD),zlib,)
 	cd ffmpeg && symver_asm_label=no symver_gnu_asm=no symver=no CC=$(CC) LDFLAGS="-ldl"\
 		./configure --enable-cross-compile --arch=$(ARCH) $(if $(RTCONFIG_RALINK_MT7621),--cpu=$(REAL_CPU_TYPE),) --target_os=linux \
-		--cross-prefix=$(CROSS_COMPILE) --enable-gpl \
+		--cross-prefix=$(CROSS_COMPILE) --enable-gpl $(if $(RTCONFIG_RALINK_EN7561),--cpu=$(REAL_CPU_TYPE),) \
 		$(if $(MEDIA_SERVER_STATIC),,--disable-static --enable-shared) --enable-small \
 		--disable-runtime-cpudetect --disable-mipsfpu --disable-mipsdsp --disable-mipsdspr2 \
 		--disable-programs --disable-doc \
@@ -6367,7 +6373,7 @@ endif
 
 ebtables: kernel_header dummy
 	$(MAKE) -C ebtables $(if $(filter 4908 4912,$(BRCM_CHIP)),CC=$(CROSS_COMPILE_64)gcc LD=$(CROSS_COMPILE_64)ld CURRENT_ARCH=aarch64,CC=$(CC) LD=$(LD)) \
-	CFLAGS="-Os -Wall -Wunused $(if $(RTCONFIG_HND_ROUTER),-DHND_ROUTER,) $(if $(MUSL_LIBC),-DMUSL_LIBC,) $(if $(RTCONFIG_HND_ROUTER_AX_6756),-DHND_ROUTER_AX_6756,)" \
+	CFLAGS="-Os -Wall -Wunused $(if $(RTCONFIG_HND_ROUTER),-DHND_ROUTER,) $(if $(MUSL_LIBC),-DMUSL_LIBC,) $(if $(RTCONFIG_HND_ROUTER_AX_6756),-DHND_ROUTER_AX_6756,)  $(if $(RTCONFIG_RALINK_EN7561),-DTCSUPPORT_ORN_EBTABLES,)" \
 	BINDIR="/usr/sbin" LIBDIR="/usr/lib/ebtables" KERNEL_INCLUDES=$(EBK_INC) $(if $(RTCONFIG_IPV6),DO_IPV6=1,) $(if $(OLD_QCA),USE_ARPNAT=1,)
 
 ebtables-install: ebtables

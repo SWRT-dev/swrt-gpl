@@ -754,6 +754,9 @@ endif
 	md5sum $(IMAGEDIR)/$(COMBINE_NAME)_$(IMAGEVER).trx > $(IMAGEDIR)/$(COMBINE_NAME)_$(IMAGEVER).md5
 	openssl sha1 -sign $(SRC_ROOT)/../../buildtools/private.pem -out $(IMAGEDIR)/$(COMBINE_NAME)_$(IMAGEVER)_rsa.zip $(IMAGEDIR)/$(COMBINE_NAME)_$(IMAGEVER).trx
 
+ecnt_bootloader:
+	$(MAKE) -f $(TRUNK_DIR)/build/bootloader.mak ecnt_bootloader
+
 image:
 	@if [ -z "$(BUILD_NAME)" ]; then \
 		echo "No BUILD_NAME is assigned"; \
@@ -800,6 +803,29 @@ endif
 	asustools/mkimage -A $(ARCH) -O linux -T kernel -C lzma -a $(LOADADDR) -e $(ENTRYADDR)\
 			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(SWRTEXTENDNO)" "0" "0" "0" "0" "0" "0" \
 			-d image/$(IMGNAME).img image/$(IMGNAME).trx
+else ifeq ($(EN7561),y)
+	$(MAKE) -C econettools/trx all
+	@rm -rf $(PLATFORMDIR)/zImage.lzma ;
+	cp -f $(LINUXDIR)/linux.7z $(PLATFORMDIR)/zImage.img ; \
+	# padded kernel image size
+	@SIZE=`wc -c $(PLATFORMDIR)/zImage.img | awk '{print $$1}'`; \
+	PAD=`expr 64 - $${SIZE} % 64` ; \
+	dd if=/dev/zero count=1 bs=$${PAD} 2> /dev/null | tr \\000 \\377 >> $(PLATFORMDIR)/zImage.img
+	SIZE=`wc -c $(PLATFORMDIR)/zImage.img | awk '{print $$1}'`; \
+	PAD=`expr 4194304 - $${SIZE} - 64` ; \
+	dd if=/dev/zero count=1 bs=$${PAD} 2> /dev/null | tr \\000 \\377 >> $(PLATFORMDIR)/zImage.img ; \
+	cat $(PLATFORMDIR)/target.image >> $(PLATFORMDIR)/zImage.img ; \
+	mv $(PLATFORMDIR)/zImage.img $(PLATFORMDIR)/tclinux ; \
+	#generate ASUS Image
+	ISIZE=`wc -c $(PLATFORMDIR)/tclinux | awk '{print $$1}'` ; \
+	KSIZE=`wc -c $(LINUXDIR)/linux.7z | awk '{print $$1}'` ; \
+	RSIZE=`wc -c $(PLATFORMDIR)/target.image | awk '{print $$1}'` ; \
+	PAD2=`expr $${ISIZE} - $${KSIZE} - $${RSIZE}` ; \
+	RFSOFFSET=`expr 64 + $${KSIZE} + $${PAD2}` ; \
+	echo `econettools/trx/trx -k $${KSIZE} -r $${RSIZE} -u 0x80002000 -f $(PLATFORMDIR)/tclinux -o $(PLATFORMDIR)/tclinux.bin -c econettools/trx/trx_config` ; \
+	asustools/u-boot-2014.10/tools/mkimage -A mips -O linux -T kernel -C lzma -a 0x80002000 -e 0x80002000 -r $${RFSOFFSET} \
+		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0"  \
+		-d $(PLATFORMDIR)/tclinux.bin image/$(IMGNAME).trx
 else ifeq ($(CONFIG_RALINK),y)
 # MTK/Ralink platform
 	# generate kernel part
@@ -5882,8 +5908,13 @@ NETGEAR-% netgear-%:
 	$(call save_src_config, $@)
 	$(MAKE) bin
 
+econet_kernel_patch:
+	$(MAKE) -f $(PLATFORM_ROUTER)/build/kernel.mak ecnt_kernel_patch
+
 ifeq ($(LANTIQ),y)
 setprofile: prepare_toolchain kernel_patch
+else ifeq ($(EN7561),y)
+setprofile: econet_kernel_patch
 else
 setprofile:
 endif

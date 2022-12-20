@@ -8,7 +8,9 @@
 #include <netinet/if_ether.h>		//have to in front of <linux/ethtool.h> and <linux/mii.h> to avoid redefinition of 'struct ethhdr'
 #include <linux/mii.h>
 #include <bcmnvram.h>
+#if !defined(BB_SOC)
 #include <sys/sysinfo.h>
+#endif
 
 #include "utils.h"
 #include "shutils.h"

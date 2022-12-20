@@ -52,7 +52,5 @@ release/linux/*/linux-*/net/swrt_fastpath/*.c
 release/src-econet-*/bootrom/
 release/src-econet-*/bootloader/
 release/src-econet-*/econettools/
-release/src-econet-*/en756*/app_bsp
-release/src-econet-*/en756*/apps
-release/src-econet-*/en756*/global_inc
+release/src-econet-*/en756*/
 release/src-hisi-*/*

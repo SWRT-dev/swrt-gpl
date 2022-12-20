@@ -1209,6 +1209,180 @@ int mtd_read(struct mtd_info *mtd, loff_t from, size_t len, size_t *retlen,
 }
 EXPORT_SYMBOL_GPL(mtd_read);
 
+#if !defined(CONFIG_FACTORY_CHECKSUM)	//ASUS_EXT
+#include "crc32.c"
+#if defined(CONFIG_MTK_NAND_BLOCK2)
+#define FLASH_BLOCK_SIZE			(128 * 2 * 1024U)
+#else
+#define FLASH_BLOCK_SIZE			(128 * 1024U)
+#endif
+#define EEPROM_SET_HEADER_OFFSET	(FLASH_BLOCK_SIZE - 2 * 1024U)
+#define MAX_EEPROM_SET_LENGTH		EEPROM_SET_HEADER_OFFSET
+#define FACTORY_MTD_NAME	"Factory"
+#define FACTORY2_MTD_NAME	"Factory2"
+
+#define FACTORY_IMAGE_MAGIC	0x46545259	/* 'F', 'T', 'R', 'Y' */
+typedef struct eeprom_set_hdr_s {
+	uint32_t ih_magic;	/* Image Header Magic Number = 'F', 'T', 'R', 'Y' */
+	uint32_t ih_hcrc;	/* Image Header CRC Checksum    */
+	uint32_t ih_hdr_ver;	/* Image Header Version Number  */
+	uint32_t ih_write_ver;	/* Number of writes             */
+	uint32_t ih_dcrc;	/* Image Data CRC Checksum      */
+} eeprom_set_hdr_t;
+
+/* Update header checksum, data checksum, write times, etc.
+ * Caller must hold act_set->mutex
+ * @buf:	pointer to a EEPROM set
+ * @return:
+ * 	0:	Success
+ * 	-1:	Invalid parameter.
+ */
+static int __update_eeprom_checksum(unsigned char *buf)
+{
+	eeprom_set_hdr_t *hdr;
+	unsigned long checksum, dcrc;
+
+	if (!buf)
+		return -1;
+
+	/* calculate image checksum */
+	dcrc = crc32(0, buf, MAX_EEPROM_SET_LENGTH);
+
+	hdr = (eeprom_set_hdr_t *)(buf + EEPROM_SET_HEADER_OFFSET);
+	/* reset write version to 0 if header magic number is incorrect or wrap */
+	if (hdr->ih_magic != htonl(FACTORY_IMAGE_MAGIC) ||
+	    ntohl(hdr->ih_write_ver) >= 0x7FFFFFFFU)
+		hdr->ih_write_ver = htonl(0);
+
+	/* Build new header */
+	hdr->ih_magic = htonl(FACTORY_IMAGE_MAGIC);
+	hdr->ih_hcrc = 0;
+	hdr->ih_hdr_ver = htonl(1);
+	hdr->ih_write_ver = htonl(ntohl(hdr->ih_write_ver) + 1);
+	hdr->ih_dcrc = htonl(dcrc);
+
+	checksum = crc32(0, (const char *)hdr, sizeof(*hdr));
+	hdr->ih_hcrc = htonl(checksum);
+
+	printk(KERN_DEBUG "header/data checksum: 0x%08x/0x%08x (ver: %d)\n",
+		ntohl(hdr->ih_hcrc), ntohl(hdr->ih_dcrc), ntohl(hdr->ih_write_ver));
+
+	return 0;
+}
+
+/* Write EEPROM set in RAM to all factory volume except active EEPROM set.
+ * Caller must hod act_set->mutex
+ * @buf:	pointer to active EEPROM set in RAM
+ * @return:
+ *     >0:	number erase/write to EEPROM set is failed.
+ * 	0:	Success.
+ *     -1:	Invalid parameter.
+ *     -2:	Read header from active EEPROM set fail.
+ */
+static int __sync_factory2_eeprom(unsigned char *buf)
+{
+	int err = 0, err1 = 0, ret = 0;
+	size_t wrlen = 0;
+	struct mtd_info *mtd;
+	struct erase_info instr;
+	unsigned int erase_offset = 0;
+
+	if (!buf)
+		return -1;
+#if defined(CONFIG_MTK_NAND_BLOCK2)
+	mtd = get_mtd_device_nm(FACTORY_MTD_NAME);
+	if (IS_ERR(mtd)) {
+		printk("%s: Can't get mtd_info of %s\n", __func__, "Factory");
+	}
+
+	err1 = mtd_read(mtd, 0, FLASH_BLOCK_SIZE, &wrlen, buf);
+	if (err1 || wrlen != FLASH_BLOCK_SIZE) {
+		printk("%s: read to [%s] fail!. (err %d)\n",
+			__func__, mtd->name, err1);
+	}
+#endif
+	mtd = get_mtd_device_nm(FACTORY2_MTD_NAME);
+	if (IS_ERR(mtd)) {
+		printk("%s: Can't get mtd_info of %s\n", __func__, "Factory2");
+	}
+
+	for (erase_offset = 0; erase_offset < mtd->size; erase_offset += mtd->erasesize) {
+		memset(&instr, 0, sizeof(instr));
+		instr.addr = erase_offset;
+		instr.len = mtd->erasesize;
+		//printk("erase_offset(%x), erase_size(%x)\n", erase_offset, mtd->erasesize);
+		err = mtd_erase(mtd, &instr);
+		if (err) {
+			printk("%s: erase [%s] fail! (err %d)\n",
+				__func__, mtd->name, err);
+		}
+	}
+
+	err1 = mtd_write(mtd, 0, FLASH_BLOCK_SIZE, &wrlen, buf);
+	if (err1 || wrlen != FLASH_BLOCK_SIZE) {
+		printk("%s: write to [%s] fail!. (err %d)\n",
+			__func__, mtd->name, err1);
+	}
+
+	if (!err && !err1)
+		printk("Sync %s's EEPROM to [%s] OK.\n", FACTORY_MTD_NAME, mtd->name);
+
+	put_mtd_device(mtd);
+
+	return ret;
+}
+
+int mtd_write(struct mtd_info *mtd, loff_t to, size_t len, size_t *retlen,
+	      const u_char *buf)
+{
+	size_t ret_len = 0;
+
+	*retlen = 0;
+	if (to < 0 || to > mtd->size || len > mtd->size - to)
+		return -EINVAL;
+	if (!mtd->_write || !(mtd->flags & MTD_WRITEABLE))
+		return -EROFS;
+	if (!len)
+		return 0;
+
+	if (!strcmp(mtd->name, FACTORY_MTD_NAME) && to < EEPROM_SET_HEADER_OFFSET) {
+		int alloc_type = 0;
+		unsigned char *p = NULL;
+
+		//printk("%s: name-%s, to-0x%llx, len-0x%lx, erasesize %lx\n", __func__, mtd->name, to, len, FLASH_BLOCK_SIZE);
+
+		p = kmalloc(FLASH_BLOCK_SIZE, GFP_KERNEL);
+		if (!p) {
+			if ((p = vmalloc(FLASH_BLOCK_SIZE)) != NULL)
+				alloc_type = 1;
+			else {
+				printk(KERN_ERR "%s: allocate 0x%x bytes fail!\n",
+					__func__, mtd->erasesize);
+				return -ENOMEM;
+			}
+		}
+
+		memcpy(p, buf, len);
+
+		/* update checksum */
+		__update_eeprom_checksum(p);
+
+		ret_len = mtd->_write(mtd, to, len, retlen, p);
+
+		/* sync to factory2's EEPROM */
+		__sync_factory2_eeprom(p);
+
+		if (!alloc_type)
+			kfree(p);
+		else
+			vfree(p);
+	}
+	else
+		ret_len = mtd->_write(mtd, to, len, retlen, buf);
+
+	return ret_len;
+}
+#else
 int mtd_write(struct mtd_info *mtd, loff_t to, size_t len, size_t *retlen,
 	      const u_char *buf)
 {
@@ -1223,6 +1397,7 @@ int mtd_write(struct mtd_info *mtd, loff_t to, size_t len, size_t *retlen,
 
 	return ret;
 }
+#endif
 EXPORT_SYMBOL_GPL(mtd_write);
 
 /*

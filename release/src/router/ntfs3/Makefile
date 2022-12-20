@@ -1,16 +1,21 @@
-
+include $(TOP)/.config
 PWD=$(shell pwd)
+ifeq ($(or $(RTCONFIG_MT798X),$(RTCONFIG_RALINK_EN7561)),y)
+SRC=src1
+else
+SRC=src
+endif
 
 all:
-	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) EXTRA_CFLAGS="" SUBDIRS=$(PWD)/src modules
+	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) EXTRA_CFLAGS="" SUBDIRS=$(PWD)/$(SRC) modules
 
 clean:
-	$(RM) *.o *.ko src/*.o src/*.ko src/*.mod.*
+	$(RM) *.o *.ko $(SRC)/*.o $(SRC)/*.ko $(SRC)/*.mod.*
 
 .NOTPARALLEL:
 
 install:
-	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) EXTRA_CFLAGS="" SUBDIRS=$(PWD)/src INSTALL_MOD_PATH=$(INSTALLDIR) modules_install
+	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) EXTRA_CFLAGS="" SUBDIRS=$(PWD)/$(SRC) INSTALL_MOD_PATH=$(INSTALLDIR) modules_install
 	@find $(INSTALLDIR) -name "modules.*" | xargs rm -f
 	@find $(INSTALLDIR) -name "*.ko" | xargs $(STRIPX)
 

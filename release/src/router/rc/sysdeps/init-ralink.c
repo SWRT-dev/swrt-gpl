@@ -36,7 +36,7 @@ void init_devs(void)
 	MKNOD("/dev/video0", S_IFCHR | 0666, makedev(81, 0));
 	MKNOD("/dev/spiS0", S_IFCHR | 0666, makedev(217, 0));
 	MKNOD("/dev/i2cM0", S_IFCHR | 0666, makedev(218, 0));
-#if defined(RTCONFIG_RALINK_MT7621)
+#if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_EN7561)
 	MKNOD("/dev/rdm0", S_IFCHR | 0x666, makedev(253, 0));
 #else
 	MKNOD("/dev/rdm0", S_IFCHR | 0666, makedev(254, 0));
@@ -450,7 +450,7 @@ void config_switch()
 				else if (!strcmp(nvram_safe_get("switch_wantag"), "starhub")) {
 					//skip setting any lan port to IPTV port.
 					system("rtkswitch 38 0");
-#if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7621)
+#if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_EN7561)
 					__setup_vlan(2, 0, 0x02100210);
 #endif
 				}
@@ -515,7 +515,7 @@ void config_switch()
 
 						__setup_vlan(vlan_val, prio_val, 0x02000210);
 					}
-#if defined(RTCONFIG_RALINK_MT7621)
+#if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_EN7561)
 					else {
 						/* Internet: untag: P4, P9; port: P4, P9 */
 						__setup_vlan(2, 0, 0x02100210);
@@ -1026,7 +1026,7 @@ void init_syspara(void)
 				FWrite(ea, OFFSET_MAC_GMAC0, 6);
 		}
 	}
-#if defined(RTCONFIG_RALINK_MT7621)
+#if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_EN7561)
 	if (FRead(dst, OFFSET_MAC_GMAC2, bytes)<0)
 		dbg("READ MAC address GMAC2: Out of scope\n");
 #elif defined(RTCONFIG_MT798X)
@@ -1038,7 +1038,7 @@ void init_syspara(void)
 		if (buffer[0]==0xff)
 		{
 			if (ether_atoe(macaddr2, ea))
-#if defined(RTCONFIG_RALINK_MT7621)
+#if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_EN7561)
 				FWrite(ea, OFFSET_MAC_GMAC2, 6);
 #elif defined(RTCONFIG_MT798X)
 				FWrite(ea, OFFSET_MAC_GMAC1, 6);
@@ -1819,7 +1819,7 @@ void gen_1905d_config(void)
 		fprintf(fp, "br_inf=br0\n");
 //lan interface
 		if(nvram_match("easymesh_perportpervlan", "1")){
-#if defined(RTCONFIG_RALINK_MT7621)
+#if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_EN7561)
 			char *lan_ifname = "vlan1";
 #else
 			char *lan_ifname = "eth0";
@@ -1837,7 +1837,7 @@ void gen_1905d_config(void)
 			fprintf(fp, "wan_vid=5;\n");
 			fprintf(fp, "wan=%s\n", nvram_safe_get("wan0_ifname"));
 		}else{
-#if defined(RTCONFIG_RALINK_MT7621)
+#if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_EN7561)
 			fprintf(fp, "lan=vlan1\n");
 #else
 			fprintf(fp, "lan=lan1\n");
@@ -1886,7 +1886,7 @@ void gen_1905d_config(void)
 		_dprintf("Can't open /etc/map/1905d.cfg\n");
 	if((fp = fopen("/etc/map/ethernet_cfg.txt", "w")))
 	{
-#if defined(RTCONFIG_RALINK_MT7621)
+#if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_EN7561)
 //set the vid of the LAN group, the range is 1-4094, and not repeat with wan_vid
 		fprintf(fp, "lan_vid=1;\n");
 		fprintf(fp, "lan=vlan1;\n");
@@ -2282,7 +2282,7 @@ void start_mapd(void)
 	pid_t pid;
 	char *mapd_argv[] = { "/usr/sbin/mapd", "-I", "/etc/map/mapd_cfg", "-O", "/etc/mapd_strng.conf", "-c", "/jffs/swrtmesh/client_db.txt", NULL, NULL };
 	char *p1905_argv[] = { "/usr/sbin/p1905_managerd", "-r0", "-f", "/etc/map/1905d.cfg", "-F", "/etc/map/wts_bss_info_config", NULL };
-#if defined(RTCONFIG_RALINK_MT7621)
+#if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_EN7561)
 	char *fwdd_argv[] = { "/usr/sbin/fwdd", "-p", ap2gifname, apcli2gifname, "-p", ap5gifname, apcli5gifname, "-e", "vlan1", "5G", NULL };
 #else
 	char *fwdd_argv[] = { "/usr/sbin/fwdd", "-d1", "-e", "eth0", "5G", "-e", "lan1", "5G", "-e", "lan2", "5G", "-e", "lan3", "5G",
@@ -2388,7 +2388,7 @@ void start_mapd(void)
 			_eval(fwdd_argv, NULL, 0, &pid);
 		}
 	} else if(mode == MAP_TURNKEY){
-#if defined(RTCONFIG_RALINK_MT7621)
+#if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_EN7561)
 		char *lanifname = "vlan1"; //nvram_get("lan_ifname");
 #else
 		char *lanifname = "eth0"; //nvram_get("lan_ifname");
@@ -2421,7 +2421,7 @@ void start_mapd(void)
 #endif
 		eval("brctl", "addif", "br0", bh2gifname);
 		eval("brctl", "addif", "br0", bh5gifname);
-#if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_MT7622)
+#if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_MT7622) || defined(RTCONFIG_RALINK_EN7561)
 //Rule 1:  P5 1905 multicast forwarding to WAN port(P4)
 //step 1: enable port 5 ACL function
 		doSystem("switch reg w 2504 ff0403");
@@ -2573,7 +2573,7 @@ void start_mapd(void)
 			_eval(mapd_argv, "/var/log/log.mapd", 0, &pid);
 		}else
 			_eval(mapd_argv, NULL, 0, &pid);
-#if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_MT7622)
+#if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_MT7622) || defined(RTCONFIG_RALINK_EN7561)
 		doSystem("switch reg w 10 ffffffe0");
 		doSystem("switch reg w 34 8160816");
 #endif
@@ -2607,7 +2607,7 @@ void start_mapd(void)
 		_dprintf("Certification\n");
 // GMAC1 need to config swith vlan
 // platform mt7621(only for certification mode use)
-#if defined(RTCONFIG_RALINK_MT7621)
+#if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_EN7561)
 		_dprintf("mapmode is certification mode, config switch\n");
 		//init_switch();
 		doSystem("switch reg w 34 8160816");

@@ -5521,7 +5521,7 @@ unsigned int get_conn_link_quality(int unit)
 	char data[16];
 	struct iwreq wrq;
 
-#if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_RALINK_EN7561)
 	if(unit == 0)
 #else
 	if(unit == 1)
@@ -5620,7 +5620,7 @@ int getPapState(int band)
 		   || (Uptime < lastUptime[band] && Uptime < FIND_CHANNEL_INTERVAL))
 			return ret;
 
-#if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_RALINK_EN7561)
 		if(band == 0)
 #else
 		if(band == 1)
@@ -5731,7 +5731,7 @@ int wlcconnect_core(void)
 			return ret;
 
 		band = nvram_get_int("wlc_band");
-#if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_MT7628) || defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_MT7628) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_RALINK_EN7561)
 		if(band == 0)
 #else
 		if(band == 1)
