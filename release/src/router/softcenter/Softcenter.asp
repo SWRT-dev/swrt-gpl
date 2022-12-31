@@ -7,7 +7,7 @@
 <meta HTTP-EQUIV="Expires" CONTENT="-1"/>
 <link rel="shortcut icon" href="images/favicon.png"/>
 <link rel="icon" href="images/favicon.png"/>
-<title sclang>jffs extended settings</title>
+<title sclang>jffs advanced settings</title>
 <link rel="stylesheet" type="text/css" href="index_style.css"/>
 <link rel="stylesheet" type="text/css" href="form_style.css"/>
 <link rel="stylesheet" type="text/css" href="usp_style.css"/>
@@ -51,9 +51,9 @@ var totalSize = simpleNum(usbDevicesList[i].partition[j].size);
 sctype=usbDevicesList[i].partition[j].format || "";
 if(usbDevicesList[i].partition[j].status == "unmounted")
 continue;
-if((usbDevicesList[i].partition[j].partName==sc_disk)&&((usbDevicesList[i].partition[j].format.indexOf("ext") != -1)||((usbDevicesList[i].partition[j].format.indexOf("ntfs") != -1) && (usbDevicesList[i].partition[j].format.indexOf("ntfs3") == -1))))
+if((usbDevicesList[i].partition[j].partName==sc_disk)&&((usbDevicesList[i].partition[j].format.indexOf("ext") != -1)||(usbDevicesList[i].partition[j].format.indexOf("tntfs") != -1)))
 code +='<option value="'+ usbDevicesList[i].partition[j].partName+'" selected="selected">'+ usbDevicesList[i].partition[j].partName+'(' + free +':'+accessableSize+' GB ' + sctype + ')</option>';
-else if(usbDevicesList[i].partition[j].format.indexOf("fat") != -1)
+else if(usbDevicesList[i].partition[j].format.indexOf("fat") != -1 || usbDevicesList[i].partition[j].format.indexOf("ntfs3") != -1)
 code +='<option value="0">' + Unsupportfat + '</option>';
 else
 code +='<option value="'+ usbDevicesList[i].partition[j].partName+'" >'+ usbDevicesList[i].partition[j].partName+'(' + free +':'+accessableSize+' GB ' + sctype + ')</option>';
@@ -163,14 +163,14 @@ location.href = "/Softcenter.asp";
 								<tr>
 									<td bgcolor="#4D595D" colspan="3" valign="top">
 										<div>&nbsp;</div>
-										<div style="float:left;" class="formfonttitle" sclang>jffs extended settings</div>
+										<div style="float:left;" class="formfonttitle" sclang>jffs advanced settings</div>
 										<div style="margin:30px 0 10px 5px;" class="splitLine"></div>
-										<div class="formfontdesc" style="padding-top:5px;margin-top:0px;float: left;" id="cmdDesc" sclang>jffs extended settings</div>
+										<div class="formfontdesc" style="padding-top:5px;margin-top:0px;float: left;" id="cmdDesc" sclang>jffs advanced settings</div>
 										<div style="color:#FC0;padding-top:5px;margin-top:25px;margin-left:0px;float: left;" id="NoteBox" >
-                                                                                        <li style="margin-top:5px;" sclang>This function must be enabled when JFFS is less than 30MB.</li>
-                                                                                        <li style="margin-top:5px;" sclang>Support EXT/NTFS partitions.</li>
-                                                                                        <li style="margin-top:5px;" sclang>No less than 1GB of free space.</li>
-                                                                                        <li style="margin-top:5px;" sclang>Must unmount the current partition before mounting other partitions.</li>
+											<li style="margin-top:5px;" sclang>This feature is to mount some space to jffs for softcenter.</li>
+											<li style="margin-top:5px;" sclang>Support EXT/NTFS partition type.</li>
+											<li style="margin-top:5px;" sclang>Minimum 1GB of free space.</li>
+											<li style="margin-top:5px;" sclang>Must unmount the current partition before mounting other partitions.</li>
 										</div>
 										<table style="margin:10px 0px 0px 0px;" width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable" id="routing_table">
 											<thead>
