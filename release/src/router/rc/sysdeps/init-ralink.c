@@ -2263,6 +2263,39 @@ void gen_bhwifi_conf()
 		printf("failed to open %s\n", "/etc/map/wts_bss_info_config");
 }
 
+static void setup_wifi_vlan(void){
+	int i;
+	char ifname[16];
+	char path[256];
+	for(i = 0; i < MAX_NO_MSSID; i++){
+		snprintf(ifname, sizeof(ifname), "ra%d", i);
+		snprintf(path, sizeof(path), "/sys/class/net/ra%d/ifindex", i);
+		if(f_exists(path)){
+			eval("iwpriv", ifname, "set", "VLANTag=1");
+			eval("iwpriv", ifname, "set", "VLANPolicy=0:4");
+			eval("iwpriv", ifname, "set", "VLANPolicy=1:2");
+		}
+#if defined(RTCONFIG_MT798X)
+		snprintf(ifname, sizeof(ifname), "rax%d", i);
+		snprintf(path, sizeof(path), "/sys/class/net/rax%d/ifindex", i);
+#else
+		snprintf(ifname, sizeof(ifname), "rai%d", i);
+		snprintf(path, sizeof(path), "/sys/class/net/rai%d/ifindex", i);
+#endif
+		if(f_exists(path)){
+			eval("iwpriv", ifname, "set", "VLANTag=1");
+			eval("iwpriv", ifname, "set", "VLANPolicy=0:4");
+			eval("iwpriv", ifname, "set", "VLANPolicy=1:2");
+		}
+	}
+	eval("iwpriv", (char*) APCLI_2G, "set", "VLANTag=1");
+	eval("iwpriv", (char*) APCLI_5G, "set", "VLANTag=1");
+	eval("iwpriv", (char*) APCLI_2G, "set", "VLANPolicy=0:4");
+	eval("iwpriv", (char*) APCLI_5G, "set", "VLANPolicy=0:4");
+	eval("iwpriv", (char*) APCLI_2G, "set", "VLANPolicy=1:2");
+	eval("iwpriv", (char*) APCLI_5G, "set", "VLANPolicy=1:2");
+}
+
 void start_mapd(void)
 {
 	int sw_mode = nvram_get_int("sw_mode");
@@ -2542,24 +2575,7 @@ void start_mapd(void)
 				start_dnsmasq();
 			}
 		}
-		eval("iwpriv", (char*) WIF_2G, "set", "VLANTag=1");
-		eval("iwpriv", (char*) WIF_5G, "set", "VLANTag=1");
-		eval("iwpriv", (char*) WIF_2G, "set", "VLANPolicy=0:4");
-		eval("iwpriv", (char*) WIF_5G, "set", "VLANPolicy=0:4");
-		eval("iwpriv", (char*) WIF_2G, "set", "VLANPolicy=1:2");
-		eval("iwpriv", (char*) WIF_5G, "set", "VLANPolicy=1:2");
-		eval("iwpriv", bh2gifname, "set", "VLANTag=1");
-		eval("iwpriv", bh5gifname, "set", "VLANTag=1");
-		eval("iwpriv", bh2gifname, "set", "VLANPolicy=0:4");
-		eval("iwpriv", bh5gifname, "set", "VLANPolicy=0:4");
-		eval("iwpriv", bh2gifname, "set", "VLANPolicy=1:2");
-		eval("iwpriv", bh5gifname, "set", "VLANPolicy=1:2");
-		eval("iwpriv", (char*) APCLI_2G, "set", "VLANTag=1");
-		eval("iwpriv", (char*) APCLI_5G, "set", "VLANTag=1");
-		eval("iwpriv", (char*) APCLI_2G, "set", "VLANPolicy=0:4");
-		eval("iwpriv", (char*) APCLI_5G, "set", "VLANPolicy=0:4");
-		eval("iwpriv", (char*) APCLI_2G, "set", "VLANPolicy=1:2");
-		eval("iwpriv", (char*) APCLI_5G, "set", "VLANPolicy=1:2");
+		setup_wifi_vlan();
 		start_wapp();
 		if(role == EASYMESH_ROLE_MASTER)
 			_eval(p1905_argv, "/var/log/1905.log", 0, &pid);
