@@ -6993,6 +6993,121 @@ VOID RTMPIoctlGetDriverInfo(
 	os_free_mem(msg);
 }
 
+UINT32 get_sta_rxrate(RTMP_ADAPTER *pAd, MAC_TABLE_ENTRY *pEntry)
+{
+	ULONG datarate_rx = 0;
+#ifdef RACTRL_FW_OFFLOAD_SUPPORT
+	struct _RTMP_CHIP_CAP *cap = hc_get_chip_cap(pAd->hdev_ctrl);
+#endif
+
+	if (!pEntry) {
+		MTWF_DBG(pAd, DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR, "ERROR!! pEntry=%p\n", pEntry);
+		return datarate_rx;
+	}
+
+#ifdef RACTRL_FW_OFFLOAD_SUPPORT
+		if (cap->fgRateAdaptFWOffload == TRUE) {
+			UCHAR phy_mode_r, rate_r, bw_r, sgi_r, stbc_r;
+			UCHAR nss_r;
+			UINT32 lastRxRate = pEntry->LastRxRate;
+			UCHAR ucBand = HcGetBandByWdev(pEntry->wdev);
+
+			EXT_EVENT_PHY_STATE_RX_RATE rRxStatResult;
+			HTTRANSMIT_SETTING LastRxRate;
+
+			LastRxRate.word = (USHORT)lastRxRate;
+
+			os_zero_mem(&rRxStatResult, sizeof(EXT_EVENT_PHY_STATE_RX_RATE));
+			MtCmdPhyGetRxRate(pAd, CMD_PHY_STATE_CONTENTION_RX_PHYRATE, ucBand, pEntry->wcid, &rRxStatResult);
+			LastRxRate.field.MODE = rRxStatResult.u1RxMode;
+			LastRxRate.field.BW = rRxStatResult.u1BW;
+			LastRxRate.field.ldpc = rRxStatResult.u1Coding;
+			LastRxRate.field.ShortGI = rRxStatResult.u1Gi ? 1 : 0;
+			LastRxRate.field.STBC = rRxStatResult.u1Stbc;
+
+			if (LastRxRate.field.MODE >= MODE_VHT)
+				LastRxRate.field.MCS = ((rRxStatResult.u1RxNsts & 0x3) << 4) + rRxStatResult.u1RxRate;
+			else if (LastRxRate.field.MODE == MODE_OFDM)
+				LastRxRate.field.MCS = getLegacyOFDMMCSIndex(rRxStatResult.u1RxRate & 0xF);
+			else
+				LastRxRate.field.MCS = rRxStatResult.u1RxRate;
+
+			phy_mode_r = rRxStatResult.u1RxMode;
+			rate_r = rRxStatResult.u1RxRate & 0x3F;
+			bw_r = rRxStatResult.u1BW;
+			sgi_r = rRxStatResult.u1Gi;
+			stbc_r = rRxStatResult.u1Stbc;
+			nss_r = rRxStatResult.u1RxNsts + 1;
+
+	/*RX MCS*/
+#ifdef DOT11_VHT_AC
+			if (phy_mode_r >= MODE_VHT) {
+				rate_r = rate_r & 0xF;
+			} else
+#endif /* DOT11_VHT_AC */
+#if DOT11_N_SUPPORT
+			if (phy_mode_r >= MODE_HTMIX) {
+				MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
+					("[%s](%d):MODE_HTMIX(%d >= %d): MCS=%d\n",
+				__func__, __LINE__, phy_mode_r, MODE_HTMIX, rate_r));
+			} else
+#endif
+			if (phy_mode_r == MODE_OFDM) {
+				if (rate_r == TMI_TX_RATE_OFDM_6M)
+					LastRxRate.field.MCS = 0;
+				else if (rate_r == TMI_TX_RATE_OFDM_9M)
+					LastRxRate.field.MCS = 1;
+				else if (rate_r == TMI_TX_RATE_OFDM_12M)
+					LastRxRate.field.MCS = 2;
+				else if (rate_r == TMI_TX_RATE_OFDM_18M)
+					LastRxRate.field.MCS = 3;
+				else if (rate_r == TMI_TX_RATE_OFDM_24M)
+					LastRxRate.field.MCS = 4;
+				else if (rate_r == TMI_TX_RATE_OFDM_36M)
+					LastRxRate.field.MCS = 5;
+				else if (rate_r == TMI_TX_RATE_OFDM_48M)
+					LastRxRate.field.MCS = 6;
+				else if (rate_r == TMI_TX_RATE_OFDM_54M)
+					LastRxRate.field.MCS = 7;
+				else
+					LastRxRate.field.MCS = 0;
+
+				rate_r = LastRxRate.field.MCS;
+			} else if (phy_mode_r == MODE_CCK) {
+				if (rate_r == TMI_TX_RATE_CCK_1M_LP)
+					LastRxRate.field.MCS = 0;
+				else if (rate_r == TMI_TX_RATE_CCK_2M_LP)
+					LastRxRate.field.MCS = 1;
+				else if (rate_r == TMI_TX_RATE_CCK_5M_LP)
+					LastRxRate.field.MCS = 2;
+				else if (rate_r == TMI_TX_RATE_CCK_11M_LP)
+					LastRxRate.field.MCS = 3;
+				else if (rate_r == TMI_TX_RATE_CCK_2M_SP)
+					LastRxRate.field.MCS = 1;
+				else if (rate_r == TMI_TX_RATE_CCK_5M_SP)
+					LastRxRate.field.MCS = 2;
+				else if (rate_r == TMI_TX_RATE_CCK_11M_SP)
+					LastRxRate.field.MCS = 3;
+				else
+					LastRxRate.field.MCS = 0;
+
+				rate_r = LastRxRate.field.MCS;
+			}
+
+			if (phy_mode_r >= MODE_HE) {
+				/*ax rx */
+				get_rate_he((rate_r & 0xf), bw_r, nss_r, 0, &datarate_rx);
+				if (sgi_r == 1)
+					datarate_rx = (datarate_rx * 967) >> 10;
+				if (sgi_r == 2)
+					datarate_rx = (datarate_rx * 870) >> 10;
+			} else {
+				getRate(LastRxRate, &datarate_rx);
+			}
+		}
+#endif /* RACTRL_FW_OFFLOAD_SUPPORT */
+	return datarate_rx;
+}
 
 #define	MAC_LINE_LEN	(1+14+4+4+4+4+10+10+10+6+6)	/* "\n"+Addr+aid+psm+datatime+rxbyte+txbyte+current tx rate+last tx rate+"\n" */
 VOID RTMPIoctlGetMacTable(
@@ -7051,7 +7166,7 @@ VOID RTMPIoctlGetMacTable(
 #ifdef RTMP_RBUS_SUPPORT
 
 			if (IS_RBUS_INF(pAd))
-				pDst->LastRxRate = pEntry->LastRxRate;
+				pDst->LastRxRate = get_sta_rxrate(pAd, pEntry);
 
 #endif /* RTMP_RBUS_SUPPORT */
 			pMacTab->Num += 1;
