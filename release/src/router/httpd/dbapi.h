@@ -45,5 +45,6 @@ int dbclient_bulk(dbclient* client, const char* command, const char* key, int nk
 int dbclient_end(dbclient* client);
 int dbclient_list(dbclient* client, char* prefix, webs_t wp, fn_db_parse fn);
 int dbclient_list_json(dbclient* client, char* prefix, json_object *result, fn_db_parse_json fn);
+int dbclient_get(dbclient* client, const char* key, char* value, int len);
 #endif
 

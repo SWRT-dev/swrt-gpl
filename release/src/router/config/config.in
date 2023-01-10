@@ -2748,3 +2748,8 @@ config RTCONFIG_SWRT_LEDDRV
 config RTCONFIG_SWRT_FULLCONEV2
 	bool "kernel 5.x - fullcone v2 support"
 	default n
+
+config RTCONFIG_NLBWMON
+	bool "Simple conntrack netlink based traffic accounting"
+	depends on !RTCONFIG_BWDPI
+	default n

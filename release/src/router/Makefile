@@ -965,6 +965,9 @@ obj-y += skipdbv2 libev-4.33 softcenter libiconv-1.14
 #obj-y += httpdb mbedtls-2.6.0
 obj-y += ipset-7.6 libmnl-1.0.4 libnfnetlink-1.0.1
 endif
+ifeq ($(RTCONFIG_NLBWMON),y)
+obj-y += libnl-tiny-0.1 libubox zlib nlbwmon
+endif
 obj-y += readline-6.2
 obj-y += libpasswd
 obj-y += httpd json-c
@@ -985,7 +988,7 @@ obj-y += ntpclient
 ifeq ($(BUILD_NAME),RT-AX82_XD6)
 obj-y += ntp-4.2.8p15
 endif
-
+obj-y += rstats
 ifeq ($(RTCONFIG_RALINK),y)
 ifeq ($(RTCONFIG_MTK_8021X3000),y)	
 obj-y += 802.1x-3.0.0.0

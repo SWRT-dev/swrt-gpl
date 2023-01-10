@@ -359,11 +359,11 @@ static int parse_list_result_json(dbclient *client, char* prefix, json_object *r
 }
 
 int dbclient_list(dbclient* client, char* prefix, webs_t wp, fn_db_parse fn) {
-    int n1, n2;
+    int n1;
 
     n1 = strlen("list") + strlen(prefix) + 2;//list prefix\n
     check_buf(client, n1 + HEADER_PREFIX);
-    n2 = sprintf(client->buf, "%s%07d list %s\n", MAGIC, n1, prefix);
+    sprintf(client->buf, "%s%07d list %s\n", MAGIC, n1, prefix);
     if(0 != write_util(client, n1 + HEADER_PREFIX, 100)) {
         return -1;
     }
@@ -372,16 +372,78 @@ int dbclient_list(dbclient* client, char* prefix, webs_t wp, fn_db_parse fn) {
 }
 
 int dbclient_list_json(dbclient* client, char* prefix, json_object *result, fn_db_parse_json fn) {
-    int n1, n2;
+    int n1;
 
     n1 = strlen("list") + strlen(prefix) + 2;//list prefix\n
     check_buf(client, n1 + HEADER_PREFIX);
-    n2 = sprintf(client->buf, "%s%07d list %s\n", MAGIC, n1, prefix);
+    sprintf(client->buf, "%s%07d list %s\n", MAGIC, n1, prefix);
     if(0 != write_util(client, n1 + HEADER_PREFIX, 100)) {
         return -1;
     }
 
     return parse_list_result_json(client, prefix, result, fn);
+}
+
+int parse_get_result(dbclient *client, char *value, int len) {
+    int n1, n2;
+    char *p1, *p2, *magic = MAGIC;
+
+    do {
+        n1 = read_util(client, HEADER_PREFIX, 110);
+        if(n1 < 0) {
+            return n1;
+        }
+
+        if(0 != memcmp(client->buf, magic, MAGIC_LEN)) {
+            //message error
+            return -3;
+        }
+
+        client->buf[HEADER_PREFIX-1] = '\0';
+        if(S2ISUCCESS != str2int(&n2, client->buf+MAGIC_LEN, 10)) {
+            //message error
+            return -4;
+        }
+
+        n1 = read_util(client, n2, 510);
+        if(n1 < 0) {
+            return n1;
+        }
+
+        client->buf[n2] = '\0';
+        p1 = strstr(client->buf, " ");
+        if(NULL == p1) {
+            break;
+        }
+        p2 = strstr(p1+1, " ");
+        if(NULL == p2) {
+            break;
+        }
+        n2 -= (p2-client->buf);
+        if(!strcmp(p2+1, "none\n")) {
+            break;
+        }
+        if(p2[n2-1] == '\n')
+			p2[n2-1] = 0x0;
+		snprintf(value, len, "%s", p2+1);
+        return 0;
+    } while(0);
+
+    return -1;
+}
+
+int dbclient_get(dbclient* client, const char* key, char* value, int len)
+{
+    int n1;
+
+    n1 = strlen("get") + strlen(key) + 2;//list prefix\n
+    check_buf(client, n1 + HEADER_PREFIX);
+    sprintf(client->buf, "%s%07d get %s\n", MAGIC, n1, key);
+    if(0 != write_util(client, n1 + HEADER_PREFIX, 100)) {
+        return -1;
+    }
+
+    return parse_get_result(client, value, len);
 }
 
 int dbclient_end(dbclient* client) {

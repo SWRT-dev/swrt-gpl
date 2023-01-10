@@ -15,12 +15,12 @@ $(EXEC): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 install:
-	install -d $(INSTALLDIR)/nlbwmon/usr/sbin
-	install -d $(INSTALLDIR)/nlbwmon/usr/share/nlbwmon
-	install $(EXEC) -D $(INSTALLDIR)/nlbwmon/usr/sbin/$(EXEC)
-	install protocols.txt -D $(INSTALLDIR)/nlbwmon/usr/share/nlbwmon/protocols
-	$(STRIP) $(INSTALLDIR)/nlbwmon/usr/sbin/$(EXEC)
-	cd $(INSTALLDIR)/nlbwmon/usr/sbin/ && ln -sf $(EXEC) nlbw
+	install -d $(INSTALLDIR)/usr/sbin
+	install -d $(INSTALLDIR)/usr/share/nlbwmon
+	install $(EXEC) -D $(INSTALLDIR)/usr/sbin/$(EXEC)
+	install protocols.txt -D $(INSTALLDIR)/usr/share/nlbwmon/protocols
+	$(STRIP) $(INSTALLDIR)/usr/sbin/$(EXEC)
+	cd $(INSTALLDIR)/usr/sbin/ && ln -sf $(EXEC) nlbw
 	
 clean:
 	rm -f $(OBJS) $(EXEC)

@@ -82,6 +82,7 @@ typedef unsigned int __u32;   // 1225 ham
 //#include "etioctl.h"
 
 #include <shutils.h>
+#include <swrt.h>
 
 #ifdef RTCONFIG_HTTPS
 #include <syslog.h>

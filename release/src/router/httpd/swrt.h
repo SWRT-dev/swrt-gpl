@@ -14,14 +14,36 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  *
- * Copyright 2018-2021, paldier <paldier@hotmail.com>.
+ * Copyright 2018-2023, paldier <paldier@hotmail.com>.
  * All Rights Reserved.
  * 
  */
 
 #ifndef _swrt_h_
 #define _swrt_h_
+#include "httpd.h"
 extern int get_lang_num_swrt();
 extern int check_lang_support_swrt(char *lang);
 extern int change_preferred_lang_swrt(int finish);
+#if defined(RTCONFIG_SOFTCENTER)
+extern int ej_dbus_get(int eid, webs_t wp, int argc, char_t **argv);
+extern int ej_dbus_get_def(int eid, webs_t wp, int argc, char_t **argv);
+extern int ej_dbus_match(int eid, webs_t wp, int argc, char_t **argv);
+extern void do_ssupload_post(char *url, FILE *stream, int len, char *boundary);
+extern void do_ssupload_cgi(char *url, FILE *stream);
+extern void do_dbupload_post(char *url, FILE *stream, int len, char *boundary);
+extern void do_dbupload_cgi(char *url, FILE *stream);
+extern void do_applydb_cgi(char *url, FILE *stream);
+extern void do_dbconf(char *url, FILE *stream);
+extern void do_ss_status(char *url, FILE *stream);
+extern void do_logread_cgi(char *url, FILE *stream);
+extern void do_dbapi_cgi(char *url, FILE *stream);
+extern void do_dbtemp_cgi(char *url, FILE *stream);
+extern void do_dbroot_cgi(char *url, FILE *stream);
+extern void do_dbresp_cgi(char *url, FILE *stream);
+extern void do_result_cgi(char *url, FILE *stream);
+#endif
+#if defined(RTCONFIG_NLBWMON)
+extern void get_traffic_hook(char *mode, char *name, char *dura, char *date, int *retval, webs_t wp);
+#endif
 #endif

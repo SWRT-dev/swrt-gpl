@@ -220,6 +220,7 @@ extern int ssl_stream_fd;
 #ifdef RTCONFIG_SOFTCENTER
 #include "dbapi.h"
 #endif
+#include "swrt.h"
 
 #ifdef RTCONFIG_CONNDIAG
 #include <conn_diag-sql.h>
@@ -1324,100 +1325,6 @@ ej_nvram_match(int eid, webs_t wp, int argc, char_t **argv)
 
 	return 0;
 }
-
-/*
- * Example:
- * wan_proto=dhcp
- * <% nvram_match("wan_proto", "dhcp", "selected"); %> produces "selected"
- * <% nvram_match("wan_proto", "static", "selected"); %> does not produce
- */
-#ifdef RTCONFIG_SOFTCENTER
-static int
-ej_dbus_get(int eid, webs_t wp, int argc, char_t **argv)
-{
-	char *name, c[512];
-	int ret = 0;
-
-	if (ejArgs(argc, argv, "%s", &name) < 1) {
-		websError(wp, 400, "Insufficient args\n");
-		return -1;
-	}
-	doSystem("dbus get %s > /tmp/dbusxxx", name);
-	char *buffer = read_whole_file("/tmp/dbusxxx");
-	if (buffer) {
-		sscanf(buffer, "%[^\n]", c);
-		free(buffer);
-	} else {
-		strcpy(c, "");
-	}
-	unlink("/tmp/dbusxxx");
-
-	ret += websWrite(wp, c);
-
-	return ret;
-}
-
-
-static int
-ej_dbus_get_def(int eid, webs_t wp, int argc, char_t **argv)
-{
-	char *name, c[512], *output;
-	int ret = 0;
-//	char sid_dummy = "",
-
-	if (ejArgs(argc, argv, "%s %s", &name, &output) < 2) {
-		websError(wp, 400, "Insufficient args\n");
-		return -1;
-	}
-	doSystem("dbus get %s > /tmp/dbusxxx", name);
-	char *buffer = read_whole_file("/tmp/dbusxxx");
-	if (buffer) {
-		sscanf(buffer, "%[^\r]", c);
-		if (c[0]!='\n') {
-			c[strlen(c)-1]='\0';
-			ret += websWrite(wp, c);
-		} else
-			ret += websWrite(wp, output);
-		free(buffer);
-	} else {
-		ret += websWrite(wp, output);
-	}
-	unlink("/tmp/dbusxxx");
-	//doSystem("rm -rf /tmp/dbusxxx");
-	//for (; *c; c++) {
-			//ret += websWrite(wp, c);
-	//}
-
-	return ret;
-}
-
-static int
-ej_dbus_match(int eid, webs_t wp, int argc, char_t **argv)
-{
-	char c[512], *name, *match, *output;
-
-	if (ejArgs(argc, argv, "%s %s %s", &name, &match, &output) < 3) {
-		websError(wp, 400, "Insufficient args\n");
-		return -1;
-	}
-	doSystem("dbus get %s > /tmp/dbusxxx", name);
-	char *buffer = read_whole_file("/tmp/dbusxxx");
-	if (buffer) {
-		sscanf(buffer, "%[^\n]", c);
-		free(buffer);
-	} else {
-		strcpy(c, "");
-	}
-	unlink("/tmp/dbusxxx");
-	//doSystem("rm -rf /tmp/dbusxxx");
-	if (strcmp(c,match) == 0)
-	{
-		return websWrite(wp, output);
-	}
-
-	return 0;
-}
-#endif
 
 static int
 ej_nvram_match_x(int eid, webs_t wp, int argc, char_t **argv)
@@ -2989,10 +2896,15 @@ ej_vpn_crt_client(int eid, webs_t wp, int argc, char **argv) {
 // 2*5 fields + 2*4 fields = 18 fields total
 // Each field can have up to 3500 characters, for a potential
 // total of 63KB.  Going for 64KB to account for additional POST/GET data.
-
+#if defined(RTCONFIG_SOFTCENTER)
+char post_buf[65535] = { 0 };
+char post_buf_backup[65535] = { 0 };
+char post_json_buf[65535] = { 0 };
+#else
 static char post_buf[65535] = { 0 };
 static char post_buf_backup[65535] = { 0 };
 static char post_json_buf[65535] = { 0 };
+#endif
 
 static void do_html_post_and_get(char *url, FILE *stream, int len, char *boundary){
 	char *query = NULL;
@@ -3029,7 +2941,11 @@ static void do_html_post_and_get(char *url, FILE *stream, int len, char *boundar
 	init_cgi(post_buf);
 }
 
+#if defined(RTCONFIG_SOFTCENTER)
+void do_html_get(char *url, int len, char *boundary){
+#else
 static void do_html_get(char *url, int len, char *boundary){
+#endif
 	char *query = NULL;
 
 	init_cgi(NULL);
@@ -6936,7 +6852,7 @@ static int get_cpu_temperature(int eid, webs_t wp, int argc, char_t **argv)
 
 	return websWrite(wp, "%d", (temperature/1000));
 #elif defined(RTCONFIG_RALINK)
-#if defined(RTCONFIG_RALINK_MT7621)
+#if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_EN7561)
 	return websWrite(wp, "0");//support
 #else
 	char temperature[6] = { 0 };
@@ -15718,289 +15634,6 @@ do_download_cert_cgi(char *url, FILE *stream)//for browser
 	do_file("/tmp/cert.tar", stream);
 }
 
-#ifdef RTCONFIG_SOFTCENTER
-static int ssupload = 0;
-static void
-do_ssupload_post(char *url, FILE *stream, int len, char *boundary)
-{
-	do_html_get(url, len, boundary);
-	char *name = websGetVar(wp, "a","");
-	char upload_fifo[64];
-	memset(upload_fifo, 0, 64);
-	strlcpy(upload_fifo, name, sizeof(upload_fifo));
-	FILE *fifo = NULL;
-	char buf[4096];
-	int ch, ret = EINVAL;
-	int count, cnt;
-	long filelen;
-	int offset;
-
-	/* Look for our part */
-	while (len > 0)
-	{
-		if (!fgets(buf, MIN(len + 1, sizeof(buf)), stream))
-		{
-			goto err;
-		}
-
-		len -= strlen(buf);
-
-		if (!strncasecmp(buf, "Content-Disposition:", 20) && strstr(buf, "name=\"file\""))
-			break;
-	}
-
-	/* Skip boundary and headers */
-	while (len > 0) {
-		if (!fgets(buf, MIN(len + 1, sizeof(buf)), stream))
-		{
-			goto err;
-		}
-		len -= strlen(buf);
-		if (!strcmp(buf, "\n") || !strcmp(buf, "\r\n"))
-		{
-			break;
-		}
-	}
-
-
-	if (!(fifo = fopen(upload_fifo, "a+"))) goto err;
-	filelen = len;
-	cnt = 0;
-	offset = 0;
-
-	/* Pipe the rest to the FIFO */
-	while (len>0 && filelen>0)
-	{
-
-#ifdef RTCONFIG_HTTPS
-		if(do_ssl){
-			if (waitfor(ssl_stream_fd, (len >= 0x4000)? 3 : 1) <= 0)
-				break;
-		}
-		else{
-			if (waitfor (fileno(stream), 10) <= 0)
-			{
-				break;
-			}
-		}
-#else
-		if (waitfor (fileno(stream), 10) <= 0)
-		{
-			break;
-		}
-#endif
-
-		count = fread(buf + offset, 1, MIN(len, sizeof(buf)-offset), stream);
-
-		if(count <= 0)
-			goto err;
-
-		len -= count;
-
-		if(cnt==0) {
-			if(count + offset < 8)
-			{
-				offset += count;
-				continue;
-			}
-
-			count += offset;
-			offset = 0;
-			_dprintf("read from stream: %d\n", count);
-			cnt++;
-		}
-		filelen-=count;
-		fwrite(buf, 1, count, fifo);
-	}
-
-	/* Slurp anything remaining in the request */
-	while (len-- > 0)
-	{
-		if((ch = fgetc(stream)) == EOF)
-			break;
-
-		if (filelen>0)
-		{
-			fputc(ch, fifo);
-			filelen--;
-		}
-	}
-	fclose(fifo);
-	fifo = NULL;
-	ssupload = 1;
-err:
-	if (fifo)
-		fclose(fifo);
-
-	/* Slurp anything remaining in the request */
-	while (len-- > 0)
-		if((ch = fgetc(stream)) == EOF)
-			break;
-}
-
-
-static void
-do_ssupload_cgi(char *url, FILE *stream)
-{
-	int i;
-	for (i=0; i<10; i++)
-	{
-		if(ssupload == 1)
-		{
-			websWrite(stream,"<script>parent.upload_ok(1);</script>\n" );
-			break;
-		} else
-			sleep(1);
-	}
-	if (i == 10)
-		websWrite(stream,"<script>parent.upload_ok(0);</script>\n" );
-}
-
-
-static void
-do_dbupload_post(char *url, FILE *stream, int len, char *boundary)
-{
-	char upload_fifo[64];
-	memset(upload_fifo, 0, 64);
-	int ret = EINVAL;
-	FILE *fifo = NULL;
-	char buf[4096];
-	int ch;
-	int count, cnt;
-	long filelen;
-	int offset;
-	char org_file_name[64];
-	memset(org_file_name, 0, 64);
-	char file_name[64];
-	memset(file_name, 0, 64);
-	/* Look for our part */
-	while (len > 0)
-	{
-		if (!fgets(buf, MIN(len + 1, sizeof(buf)), stream))
-		{
-			goto err;
-		}
-
-		len -= strlen(buf);
-
-		if (!strncasecmp(buf, "Content-Disposition:", 20)){
-			if(strstr(post_buf, "name=\"file\"")) {
-				snprintf(org_file_name, sizeof(org_file_name), "%s", strstr(post_buf, "filename="));
-				substr(file_name, org_file_name, 10, (strlen(org_file_name)-13));
-				snprintf(file_name, sizeof(file_name), "/tmp/upload/%s", file_name);
-				strlcpy(upload_fifo, file_name, sizeof(upload_fifo));
-				break;
-			}
-		}
-	}
-
-	/* Skip boundary and headers */
-	while (len > 0) {
-		if (!fgets(buf, MIN(len + 1, sizeof(buf)), stream))
-		{
-			goto err;
-		}
-		len -= strlen(buf);
-		if (!strcmp(buf, "\n") || !strcmp(buf, "\r\n"))
-		{
-			break;
-		}
-	}
-
-
-	if (!(fifo = fopen(upload_fifo, "a+"))) goto err;
-	filelen = len;
-	cnt = 0;
-	offset = 0;
-
-	/* Pipe the rest to the FIFO */
-	while (len>0 && filelen>0)
-	{
-
-#ifdef RTCONFIG_HTTPS
-		if(do_ssl){
-			if (waitfor(ssl_stream_fd, (len >= 0x4000)? 3 : 1) <= 0)
-				break;
-		}
-		else{
-			if (waitfor (fileno(stream), 10) <= 0)
-			{
-				break;
-			}
-		}
-#else
-		if (waitfor (fileno(stream), 10) <= 0)
-		{
-			break;
-		}
-#endif
-
-		count = fread(buf + offset, 1, MIN(len, sizeof(buf)-offset), stream);
-
-		if(count <= 0)
-			goto err;
-
-		len -= count;
-
-		if(cnt==0) {
-			if(count + offset < 8)
-			{
-				offset += count;
-				continue;
-			}
-
-			count += offset;
-			offset = 0;
-			_dprintf("read from stream: %d\n", count);
-			cnt++;
-		}
-		filelen-=count;
-		fwrite(buf, 1, count, fifo);
-	}
-
-	/* Slurp anything remaining in the request */
-	while (len-- > 0)
-	{
-		if((ch = fgetc(stream)) == EOF)
-			break;
-
-		if (filelen>0)
-		{
-			fputc(ch, fifo);
-			filelen--;
-		}
-	}
-	ret=0;
-	fclose(fifo);
-	fifo = NULL;
-err:
-	if (fifo)
-		fclose(fifo);
-
-	/* Slurp anything remaining in the request */
-	while (len-- > 0)
-		if((ch = fgetc(stream)) == EOF)
-			break;
-
-	fcntl(fileno(stream), F_SETOWN, -ret);	
-}
-static void
-do_dbupload_cgi(char *url, FILE *stream)
-{
-	int ret;
-#ifdef RTCONFIG_HTTPS
-	if(do_ssl)
-		ret = fcntl(ssl_stream_fd , F_GETOWN, 0);
-	else
-#endif
-	ret = fcntl(fileno(stream), F_GETOWN, 0);
-
-	if (ret == 0)
-		websWrite(stream,"<script>parent.upload_ok(0);</script>\n" );
-}
-#endif
-
-
 // Viz 2010.08
 static void
 do_update_cgi(char *url, FILE *stream)
@@ -19762,394 +19395,6 @@ do_appGet_cgi(char *url, FILE *stream)
 	free(dup_pattern);
 	hook_get_json = 0;
 }
-
-#ifdef RTCONFIG_SOFTCENTER
-static int
-applydb_cgi(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
-		char_t *url, char_t *path, char_t *query)
-{
-	char *action_mode = NULL;
-	char *action_script = NULL;
-	char dbjson[100][9999];
-	char dbvar[2048];
-	char dbval[9999];
-	char notify_cmd[128];
-	char db_cmd[128];
-	int i, j;
-	char *result = NULL;
-	char *temp = NULL;
-	char *name = websGetVar(wp, "p","");
-	char *userm = websGetVar(wp, "use_rm", "");
-	char scPath[128];
-	char *post_db_buf = post_json_buf;
-
-	action_mode = websGetVar(wp, "action_mode", "");
-	action_script = websGetVar(wp, "action_script", "");
-	
-	dbclient client;
-	dbclient_start(&client);
-	if (strlen(name) <= 0) {
-		printf("No \"name\"!\n");
-	}
-	if ( !strcmp("", post_db_buf)){
-		//get
-		snprintf(post_db_buf, sizeof(post_json_buf), "%s", post_buf_backup + 1);
-		unescape(post_db_buf);
-		//logmessage("HTTPD", "url: %s,%s", post_db_buf, name);
-		strlcpy(post_json_buf, post_db_buf, sizeof(post_json_buf));
-		result = strtok( post_json_buf, "&" );
-		i =0;
-	while( result != NULL )
-	{
-		if (result!=NULL)
-		{
-		strlcpy(dbjson[i], result, sizeof(dbjson[i]));
-		i++;
-			result = strtok( NULL, "&" );
-		}
-	}
-	for (j =0; j < i; j++)
-	{
-		if(!strncasecmp(dbjson[j], name, strlen(name))){
-				memset(dbvar,'\0',sizeof(dbvar));
-				memset(dbval,'\0',sizeof(dbval));
-				temp=strstr(dbjson[j], "=");
-				strlcpy(dbval, temp+1, sizeof(dbval));
-				strncpy(dbvar, dbjson[j], strlen(dbjson[j])-strlen(temp));
-			//logmessage("HTTPD", "name: %s post: %s", dbvar, dbval);
-			if(*userm || dbval[0]=='\0')
-				dbclient_rm(&client, dbvar, strlen(dbvar));
-			else
-				dbclient_bulk(&client, "set", dbvar, strlen(dbvar), dbval, strlen(dbval));
-		}
-	}
-	} else {
-	//post
-	unescape(post_db_buf);
-	//logmessage("HTTPD", "name: %s post: %s", name, post_json_buf);
-	//logmessage("HTTPD", "name: %s post: %s", name, post_db_buf);
-	strlcpy(post_json_buf, post_db_buf, sizeof(post_json_buf));
-	result = strtok( post_json_buf, "&" );
-	i =0;
-	while( result != NULL )
-	{
-		if (result!=NULL)
-		{
-		strlcpy(dbjson[i], result, sizeof(dbjson[i]));
-		i++;
-			result = strtok( NULL, "&" );
-		}
-	}
-	for (j =0; j < i; j++)
-	{
-		if(!strncasecmp(dbjson[j], name, strlen(name))){
-				memset(dbvar,'\0',sizeof(dbvar));
-				memset(dbval,'\0',sizeof(dbval));
-				temp=strstr(dbjson[j], "=");
-				strlcpy(dbval, temp+1, sizeof(dbval));
-				strncpy(dbvar, dbjson[j], strlen(dbjson[j])-strlen(temp));
-			//logmessage("HTTPD", "dbvar: %s dbval: %s", dbvar, dbval);
-			if(*userm || dbval[0]=='\0')
-				dbclient_rm(&client, dbvar, strlen(dbvar));
-			else
-				dbclient_bulk(&client, "set", dbvar, strlen(dbvar), dbval, strlen(dbval));
-		}
-	}
-	}
-	dbclient_end(&client);
-	memset(db_cmd,'\0',sizeof(db_cmd));
-	if(!strcmp(action_mode, "toolscript") || !strcmp(action_mode, " Refresh ")){
-		snprintf(scPath, sizeof(scPath), "/jffs/softcenter/scripts/");
-		strncpy(notify_cmd, action_script, 128);
-		strlcat(scPath, notify_cmd, sizeof(scPath));
-		strlcpy(SystemCmd, scPath, sizeof(SystemCmd));
-		sys_script("syscmd.sh");
-	}
-	else if(!strcmp(action_mode, "dummy_script") || !strcmp(action_mode, "dummy")){
-		//dummy script
-	}
-	else if(*action_mode){
-		snprintf(scPath, sizeof(scPath), "/jffs/softcenter/scripts/");
-		strlcpy(notify_cmd, action_script, sizeof(notify_cmd));
-		strlcat(scPath, notify_cmd, sizeof(scPath));
-		snprintf(db_cmd, sizeof(db_cmd), " %s", action_mode);
-		strlcat(scPath, db_cmd, sizeof(scPath));
-		strlcpy(SystemCmd, scPath, sizeof(SystemCmd));
-		sys_script("syscmd.sh");
-	}
-	websWrite(wp,"<script>parent.done_validating('', '');</script>\n" );
-	return 0;
-}
-
-static void
-do_applydb_cgi(char *url, FILE *stream)
-{
-    applydb_cgi(stream, NULL, NULL, 0, url, NULL, NULL);
-}
-
-static int db_print(dbclient* client, webs_t wp, char* prefix, char* key, char* value) {
-	websWrite(wp,"o[\"%s\"]=\"%s\";\n", key, value);
-	return 0;
-}
-
-static void
-do_dbconf(char *url, FILE *stream)
-{
-	char *name = NULL;
-	char * delim = ",";
-	char *pattern = websGetVar(wp, "p","");
-	char *dup_pattern = strdup(pattern);
-	char *sepstr = dup_pattern;
-	dbclient client;
-	dbclient_start(&client);
-	if(strstr(sepstr,delim)) {
-		for(name = strsep(&sepstr, delim); name != NULL; name = strsep(&sepstr, delim)) {
-			websWrite(stream,"var db_%s=(function() {\nvar o={};\n", name);
-
-			dbclient_list(&client, name, stream, db_print);
-			websWrite(stream,"return o;\n})();\n" );
-		}
-	} else {
-		name= strdup(pattern);
-		websWrite(stream,"var db_%s=(function() {\nvar o={};\n", name);
-		dbclient_list(&client, name, stream, db_print);
-		websWrite(stream,"return o;\n})();\n" );
-	}
-	free(dup_pattern);
-	dbclient_end(&client);
-}
-
-static void
-do_ss_status(char *url, FILE *stream)
-{
-
-	if(check_if_file_exist("/jffs/softcenter/ss/cru/china.sh"))
-	{
-		doSystem("sh /jffs/softcenter/ss/cru/china.sh &");
-		doSystem("sh /jffs/softcenter/ss/cru/foreign.sh &");
-	}
-	else
-	{
-		nvram_set("ss_foreign_state", "USB Problem detected!");
-		nvram_set("ss_china_state", "USB Problem detected!");
-	}
-	sleep(1);
-	websWrite(stream,"[\"%s\", ", nvram_get("ss_foreign_state") );
-	websWrite(stream,"\"%s\"]", nvram_get("ss_china_state") );
-}
-
-static int
-do_logread(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
-		char_t *url, char_t *path, char_t *query)
-{
-	char buf[4096];
-	char logpath[128], scPath[128];
-	FILE *fp = NULL;
-	//char filename[100];
-	//sscanf(url, "logreaddb.cgi?%s", filename);
-	char *filename = websGetVar(wp, "p","");
-	char *script = websGetVar(wp, "script", "");
-	if(*script){
-		snprintf(scPath, sizeof(scPath), "/jffs/softcenter/scripts/%s", script);
-		strlcpy(SystemCmd, scPath, sizeof(SystemCmd));
-		sys_script("syscmd.sh");
-	}
-	snprintf(logpath, sizeof(logpath), "/tmp/%s", filename);
-	//logmessage("HTTPD", "logread: %s, url: %s", logpath, url);
-	//sleep(1);//
-	if(check_if_file_exist(logpath)){
-		if((fp = fopen(logpath, "r"))!= NULL){
-			while(fgets(buf, sizeof(buf),fp) != NULL){
-				websWrite(wp,"%s\n", buf);
-			}
-		}
-		fclose(fp);
-		//doSystem("rm -rf %s", path);
-	} else
-		websWrite(wp,"not found log file\n");
-	return 0;
-}
-static void
-do_logread_cgi(char *url, FILE *stream)
-{
-    do_logread(stream, NULL, NULL, 0, url, NULL, NULL);
-}
-//1.5
-static int db_print2(dbclient* client,  json_object *result, char* prefix, char* key, char* value) {
-	json_object_object_add(result, key, json_object_new_string(value));
-	return 0;
-}
-static int
-dbapi_cgi(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
-		char_t *url, char_t *path, char_t *query)
-{
-	int i, id=0, count;
-	char script[99], p[15], scPath[256];
-	char *post_db_buf = post_json_buf;
-	char *name = NULL;
-	FILE *fp;
-	char buf[4096];
-	dbclient client;
-	dbclient_start(&client);
-
-	if ( !strcmp("", post_db_buf)){//get
-		json_object *root = NULL;
-		json_object *result = NULL;
-		json_object *db = NULL;
-		char dbname[100];
-		sscanf(url, "_api/%s", dbname);
-		char * delim = ",";
-		char *dup_pattern = strdup(dbname);
-		char *sepstr = dup_pattern;
-		root = json_object_new_object();
-		result = json_object_new_array();
-
-		for(name = strsep(&sepstr, delim); name != NULL; name = strsep(&sepstr, delim)) {
-			db = json_object_new_object();
-			dbclient_list_json(&client, name, db, db_print2);
-			json_object_array_add(result, db);
-		}
-		json_object_object_add(root, "result", result);
-		websWrite(wp, "%s\n", json_object_to_json_string(root));
-		free(dup_pattern);
-		json_object_put(root);
-		dbclient_end(&client);
-	}else{//post
-		json_object *root = NULL;
-		json_object *idObj = NULL;
-		json_object *methodObj = NULL;
-		json_object *paramsObj = NULL;
-		json_object *fieldsObj = NULL;
-		json_object *arrayObj = NULL;
-		root = json_tokener_parse(post_db_buf);
-		//printf("%s\n",json_object_to_json_string(root));
-		if (root) {
-			json_object_object_get_ex(root,"id", &idObj);
-			id = json_object_get_int(idObj);
-			json_object_object_get_ex(root,"method", &methodObj);
-			memset(script, 0, sizeof(script));
-			snprintf(script, sizeof(script), "%s", json_object_get_string(methodObj));
-			json_object_object_get_ex(root,"params", &paramsObj);
-			count  = json_object_array_length(paramsObj);
-			memset(p, 0, sizeof(p));
-			for (i = 0; i < count; i++){
-				arrayObj = json_object_array_get_idx(paramsObj, i);
-				if (json_object_get_type(arrayObj) == json_type_int)
-					snprintf(p, sizeof(p), "%d", json_object_get_int(arrayObj));
-				else if (json_object_get_type(arrayObj) == json_type_string)
-					snprintf(p, sizeof(p), "%s", json_object_get_string(arrayObj));
-			}
-			json_object_object_get_ex(root,"fields", &fieldsObj);
-			if(json_object_get_type(fieldsObj)==json_type_object){
-				json_object_object_foreach(fieldsObj, key, val){
-					if(strlen(json_object_get_string(val)))
-						dbclient_bulk(&client, "set", key, strlen((char *)key), json_object_get_string(val), strlen(json_object_get_string(val)));
-					else
-						dbclient_rm(&client, key, strlen(key));
-				}
-			}
-			if(!check_if_dir_exist("/tmp/upload"))
-				mkdir("/tmp/upload", 0755);
-			memset(scPath, 0, sizeof(scPath));
-			if(*p){
-				snprintf(scPath, sizeof(scPath), "/jffs/softcenter/scripts/%s %d %s &", script, id, p);
-			} else {
-				snprintf(scPath, sizeof(scPath), "/jffs/softcenter/scripts/%s %d &", script, id);
-			}
-			doSystem(scPath);
-			json_object_put(idObj);
-			json_object_put(methodObj);
-			json_object_put(paramsObj);
-			json_object_put(fieldsObj);
-			json_object_put(arrayObj);
-			json_object_put(root);
-			dbclient_end(&client);
-			memset(scPath, 0, sizeof(scPath));
-			snprintf(scPath, sizeof(scPath), "/tmp/upload/%d",id);
-			for(i=0; i<10; i++){
-				usleep(100000);//wait for script
-				if(check_if_file_exist(scPath)){
-					if((fp = fopen(scPath, "r"))!= NULL){
-						while(fgets(buf, sizeof(buf),fp) != NULL){
-							buf[strlen(buf)-1]=0;
-							websWrite(wp,"{\"result\":\"%s\"}\n",buf);
-							unlink(scPath);
-							return 0;
-						}
-					}
-				}
-			}
-			websWrite(wp,"{\"result\":%d}\n",id);
-		}
-	}
-	return 0;
-}
-static void
-do_dbapi_cgi(char *url, FILE *stream)
-{
-	dbapi_cgi(stream, NULL, NULL, 0, url, NULL, NULL);
-}
-
-static void
-do_dbtemp_cgi(char *url, FILE *stream)
-{
-	char dbname[100];
-	char logpath[128];
-	sscanf(url, "_temp/%s", dbname);
-	memset(logpath, 0, sizeof(logpath));
-	snprintf(logpath, sizeof(logpath), "/tmp/upload/%s", dbname);
-	if(check_if_file_exist(logpath))
-		do_file(logpath, stream);
-}
-
-static void
-do_dbroot_cgi(char *url, FILE *stream)
-{
-	char dbname[100];
-	char logpath[128];
-	sscanf(url, "_root/%s", dbname);
-	memset(logpath, 0, sizeof(logpath));
-	snprintf(logpath, sizeof(logpath), "/jffs/softcenter/webs/%s", dbname);
-	if(check_if_file_exist(logpath))
-		do_file(logpath, stream);
-}
-
-static void
-do_dbresp_cgi(char *url, FILE *stream)
-{
-	int resultid;
-	char path[50];
-	FILE *fp = NULL;
-	sscanf(url, "_resp/%d", &resultid);
-	snprintf(path, sizeof(path), "/tmp/upload/%d", resultid);
-
-	if((fp = fopen(path, "w")) != NULL){
-		fprintf(fp, "%s", post_json_buf);
-      	fclose(fp);
-	}
-}
-
-static void
-do_result_cgi(char *url, FILE *stream)
-{
-	int resultid;
-	char path[50],buf[2048];
-	FILE *fp = NULL;
-	sscanf(url, "_result/%d", &resultid);
-	snprintf(path, sizeof(path), "/tmp/upload/%d",resultid);
-	if(check_if_file_exist(path)){
-		if((fp = fopen(path, "r"))!= NULL){
-			while(fgets(buf, sizeof(buf),fp) != NULL){
-				buf[strlen(buf)-1]=0;
-				websWrite(stream,"{\"result\":\"%s\"}\n",buf);
-				unlink(path);
-				return ;
-			}
-		}
-	}
-	websWrite(stream,"{\"result\":%d}\n",resultid);
-}
-#endif
 
 #if defined(RTCONFIG_ENTWARE)
 
@@ -26934,6 +26179,27 @@ ej_bwdpi_maclist_db(int eid, webs_t wp, int argc, char_t **argv)
 	return retval;
 }
 #else
+#if defined(RTCONFIG_NLBWMON)
+static int
+ej_nlbwmon_status(int eid, webs_t wp, int argc, char_t **argv)
+{
+	char *mode, *name, *dura, *date;
+	int retval = 0;
+
+	if (ejArgs(argc, argv, "%s %s %s %s", &mode, &name, &dura, &date) < 4) {
+		websError(wp, 400, "Insufficient args\n");
+		return -1;
+	}
+
+	// get real-time traffic of someone.
+	name = websGetVar(wp, "client", "");//name=mac
+
+	HTTPD_DBG("mode=%s, name=%s, dura=%s, date=%s.\n", mode, name, dura, date);
+	get_traffic_hook(mode, name, dura, date, &retval, wp);
+
+	return retval;
+}
+#endif
 static int
 ej_bwdpi_engine_status(int eid, webs_t wp, int argc, char_t **argv)
 {
@@ -33750,6 +33016,9 @@ struct ej_handler ej_handlers[] = {
 	{ "bwdpi_monitor_nonips", ej_bwdpi_monitor_nonips},
 	{ "bwdpi_maclist_db", ej_bwdpi_maclist_db},
 #else
+#if defined(RTCONFIG_NLBWMON)
+	{ "bwdpi_status", ej_nlbwmon_status},
+#endif
 	{ "bwdpi_engine_status", ej_bwdpi_engine_status},
 #endif
 #if defined(RTCONFIG_OOKLA) || defined(RTCONFIG_OOKLA_LITE)

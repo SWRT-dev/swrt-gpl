@@ -4088,6 +4088,12 @@ define RouterOptions
 	sed -i "/RTCONFIG_SWRT_FULLCONEV2/d" $(1); \
 	echo "RTCONFIG_SWRT_FULLCONEV2=y" >>$(1); \
 	fi; \
+	if [ "$(NLBWMON)" = "y" ]; then \
+	sed -i "/RTCONFIG_NLBWMON/d" $(1); \
+	echo "RTCONFIG_NLBWMON=y" >>$(1); \
+	sed -i "/RTCONFIG_CONNTRACK/d" $(1); \
+	echo "RTCONFIG_CONNTRACK=y" >>$(1); \
+	fi; \
 	)
 	$(call platformRouterOptions, $(1))
 endef
