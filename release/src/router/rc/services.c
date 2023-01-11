@@ -3588,7 +3588,7 @@ int start_netmonitor(void)
 #endif
 
 // -----------------------------------------------------------------------------
-#ifdef LINUX26
+#if defined(LINUX26) || defined(BB_SOC)
 
 static pid_t pid_hotplug2 = -1;
 
@@ -6078,6 +6078,8 @@ start_skipd(void)
 {
 	char *skipd_argv[] = { "skipd", NULL };
 	pid_t pid;
+	if (f_exists("/tmp/reboot") || f_exists("/tmp/upgrade"))
+		return;
 	if (getpid() != 1) {
 		notify_rc("start_skipd");
 		return;
@@ -13232,7 +13234,11 @@ again:
 						eval("mtd-write", "-i", upgrade_file, "-d", fwpart[0], "-s", nvram_safe_get("trx_skip"), "-c", nvram_safe_get("trx_count"));
 					else
 #endif
+#if defined(RTCONFIG_RALINK_EN7561)
+					eval("mtd-write", "-i", upgrade_file, "-d", "Kernel", "-s", "64");
+#else
 					eval("mtd-write", "-i", upgrade_file, "-d", fwpart[0]);
+#endif
 #endif /* RTCONFIG_QCA && RTCONFIG_FITFDT */
 #endif /* RTCONFIG_REALTEK */
 #endif // RTAC1200G

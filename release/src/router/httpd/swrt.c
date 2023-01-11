@@ -31,6 +31,7 @@
 #include <sys/types.h>
 #include <typedefs.h>
 #include <bcmutils.h>
+#include <httpd.h>
 #include <swrt.h>
 #if defined(RTCONFIG_SOFTCENTER)
 #include <shared.h>
@@ -782,6 +783,137 @@ void do_result_cgi(char *url, FILE *stream)
 
 #endif
 
+#if defined(RTCONFIG_ENTWARE)
+
+#define ENTWARE_ACT_INSTALL		1
+#define ENTWARE_ACT_UPDATE		2
+#define ENTWARE_ACT_REMOVE		4
+#define ENTWARE_ACT_START		8
+#define ENTWARE_ACT_STOP		16
+#define ENTWARE_ACT_ALL			(ENTWARE_ACT_INSTALL | ENTWARE_ACT_UPDATE | ENTWARE_ACT_REMOVE | ENTWARE_ACT_START | ENTWARE_ACT_STOP)
+void do_entware_cgi(char *url, FILE *stream){
+	struct json_object *root = NULL;
+	char *app = NULL, *action = NULL, *type = NULL, *mount = NULL, *disk = NULL;
+	char arg[128], buf[128];
+	struct dirent **dl;
+	FILE *fp;
+	char *pwrite;
+	int i, n, ent_act = 0;
+
+	do_json_decode(&root);
+	memset(arg, 0, sizeof(arg));
+	
+	app = get_cgi_json("entware_app", root);
+	if (!app)
+		app = "entware";
+	if (!strcmp(app, "entware"))
+	{
+		type = get_cgi_json("entware_type", root);
+		if (!type)
+			type = "generic";
+		snprintf(arg, sizeof(arg), "%s", type);
+		mount = get_cgi_json("entware_mount", root);
+		disk = get_cgi_json("entware_disk", root);
+	}
+	
+	action = get_cgi_json("entware_action", root);
+	if (!action)
+		action = "list_start";
+	if (!strcmp(action, "install"))
+		ent_act = ENTWARE_ACT_INSTALL;
+	else if (!strcmp(action, "update"))
+		ent_act = ENTWARE_ACT_UPDATE;
+	else if (!strcmp(action, "remove"))
+		ent_act = ENTWARE_ACT_REMOVE;
+	else if (!strcmp(action, "start"))
+		ent_act = ENTWARE_ACT_START;
+	else if (!strcmp(action, "stop"))
+		ent_act = ENTWARE_ACT_STOP;
+	
+	if (!strcmp(app, "entware") && !strcmp(action, "list_start"))
+	{
+		if (nvram_get_int("entware_busy"))
+			websWrite(stream, "{\"entware_is_install\":2,");//2 to do something
+		else if (f_exists("/opt/etc/entware_release"))
+			websWrite(stream, "{\"entware_is_install\":1,");//1 Installed
+		else
+			websWrite(stream, "{\"entware_is_install\":0,");//0 Not installed
+		websWrite(stream, "\"entware_start_list\":[");
+		n = scandir( "/opt/etc/init.d", &dl, NULL, alphasort );
+		if ( n < 0 )
+	    	websWrite(stream, "]");
+		else
+		{
+			for ( i = 0; i < n; ++i )
+				if (dl[i]->d_name[0] == 'S'){
+					websWrite(stream, "[\"%s\",\"%d\"],", dl[i]->d_name, pidof(dl[i]->d_name + 3) > 0 ? 1 : 0);
+				}
+			websWrite(stream, "[\"\",\"\"]]");
+			free(dl);
+		}
+		websWrite(stream, "}\n");
+	}
+	else if (!strcmp(app, "entware") && !strcmp(action, "list_installed"))
+	{
+		if (nvram_get_int("entware_busy"))
+			websWrite(stream, "{\"entware_is_install\":2,");//2 to do something
+		else if (f_exists("/opt/etc/entware_release"))
+			websWrite(stream, "{\"entware_is_install\":1,");//1 Installed
+		else
+			websWrite(stream, "{\"entware_is_install\":0,");//0 Not installed
+		websWrite(stream, "\"entware_app_list\":[");
+		system("opkg list-installed > /tmp/entwarelist");
+		if ((fp = fopen("/tmp/entwarelist", "r")))
+		{
+			memset(buf, 0, 128);
+			while (fgets(buf, 128, fp))
+				{
+					buf[strlen(buf)-1] = 0;
+					websWrite(stream, "\"%s\",", buf);
+				}
+			fclose(fp);
+		}
+		websWrite(stream, "\"\"],\"entware_update_list\":[");
+		system("opkg list-upgradable > /tmp/entware.upgradable");
+		if ((fp = fopen("/tmp/entware.upgradable", "r")))
+		{
+			memset(buf, 0, 128);
+			while (fgets(buf, 128, fp))
+				{
+					buf[strlen(buf)-1] = 0;
+					websWrite(stream, "\"%s\",", buf);
+				}
+			fclose(fp);
+		}
+		websWrite(stream, "\"\"]}\n");
+	}
+	else if (ent_act & ENTWARE_ACT_ALL)
+	{
+		if (nvram_get_int("entware_busy"))
+			websWrite(stream, "{\"entware_is_install\":3}");//3 doing something
+		else
+		{
+			if(mount && strcmp(mount, nvram_get("entware_mount"))){
+				nvram_set("entware_mount", mount);
+				nvram_set("entware_disk", disk);
+				system("entware.sh");
+			}
+			websWrite(stream, "{\"entware_is_install\":2}");//2 to do something
+			nvram_set_int("entware_busy", 1);
+			nvram_set("entware_app", app);
+			nvram_set_int("entware_action", ent_act);
+			nvram_set("entware_arg", arg);
+			notify_rc("start_entware");
+		}
+	}
+	else
+	{
+		websWrite(stream, "{\"entware_is_install\":4}");//4 unknown
+	}
+	if(root)
+		json_object_put(root);
+}
+#endif
 
 #if defined(RTCONFIG_NLBWMON)
 /*

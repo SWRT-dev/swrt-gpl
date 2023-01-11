@@ -182,7 +182,7 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 					    && !strcmp(part, "0xd03")
 					    && (!strcmp(arch, "7") || !strcmp(arch, "8"))){
 #if defined(RTCONFIG_RALINK_MT7622)
-						sprintf(model, "MT7622 - Cortex A53 ARMv8 revision %s", revision);
+					sprintf(model, "MT7622 - Cortex A53 ARMv8 revision %s", revision);
 #elif defined(RTCONFIG_MT798X)
 						char *buffer;
 						doSystem("devmem 0x8000000 16 > /tmp/mtk_chip");
@@ -196,6 +196,7 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 								sprintf(model, "MT%s - Cortex A53 ARMv8 revision %s", buffer + 2, revision);
 							free(buffer);
 						}
+						unlink("/tmp/mtk_chip");
 #endif
 					}
 #else
@@ -398,10 +399,10 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 
 		} else if(strcmp(type,"conn.total") == 0) {
 			FILE* fp;
-#if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_MT798X)
-			fp = fopen("/proc/sys/net/netfilter/nf_conntrack_count", "r");
+#if defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_LANTIQ)
+			fp = fopen("/proc/sys/net/netfilter/nf_conntrack_count", "r");//kernel3+
 #else
-			fp = fopen("/proc/sys/net/ipv4/netfilter/ip_conntrack_count", "r");
+			fp = fopen("/proc/sys/net/ipv4/netfilter/ip_conntrack_count", "r");//kernel2.6
 #endif
 			if (fp) {
 				if (fgets(result, sizeof(result), fp) == NULL)
@@ -427,10 +428,10 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 
 		} else if(strcmp(type,"conn.max") == 0) {
 			FILE* fp;
-#if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_MT798X)
-			fp = fopen("/proc/sys/net/netfilter/nf_conntrack_max", "r");
+#if defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_LANTIQ)
+			fp = fopen("/proc/sys/net/netfilter/nf_conntrack_max", "r");//kernel3+
 #else
-			fp = fopen("/proc/sys/net/ipv4/netfilter/ip_conntrack_max", "r");
+			fp = fopen("/proc/sys/net/ipv4/netfilter/ip_conntrack_max", "r");//kernel2.6
 #endif
 			if (fp) {
 				if (fgets(result, sizeof(result), fp) == NULL)
@@ -503,7 +504,7 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 				if(*buffer)
 					strcpy(result,buffer);
 			} else
-				strcpy(result,"5.0.4.0");
+				strcpy(result,"Unknow");
 #endif
 #ifdef RTCONFIG_QTN
                 } else if(strcmp(type,"qtn_version") == 0 ) {
@@ -643,7 +644,7 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 			strcpy(result, "[]");
 #endif
 #elif defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
-			strcpy(result,"<i>off</i>");
+			strcpy(result,"[]");
 #endif
 #if defined(RTCONFIG_BCMARM) || defined(RTCONFIG_HND_ROUTER)
 		} else if(strlen(type) > 8 && strncmp(type,"hwaccel", 7) == 0 ) {

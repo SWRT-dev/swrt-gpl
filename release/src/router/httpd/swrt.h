@@ -21,7 +21,6 @@
 
 #ifndef _swrt_h_
 #define _swrt_h_
-#include "httpd.h"
 extern int get_lang_num_swrt();
 extern int check_lang_support_swrt(char *lang);
 extern int change_preferred_lang_swrt(int finish);
