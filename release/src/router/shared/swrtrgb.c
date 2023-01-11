@@ -44,9 +44,28 @@ void set_rgbled(unsigned int mode)
 	unsigned int cmask = RGBLED_COLOR_MESK, bmask = RGBLED_BLINK_MESK;
 	unsigned int c = mode & cmask;
 	unsigned int b = mode & bmask;
-
+	struct udef_pattern {
+		char *delay_off;
+		char *delay_on;
+	} u[] = {
+		{"0", "0"},			/* on */
+		{"500", "500"},		/* off:0.5s, on:0.5s */
+		{"250",	"750"},		/* off:0.25s, on:0.75s */
+		{"3000", "3000"},	/* off:3s, on:3s */
+		{NULL, NULL}
+	};
 	int uidx = 0;
 	char *led_color[] = {
+#if defined(RMAX6000)
+		"0 0 0",		/* off: B G R W */
+		"0 0 255",		/* RGBLED_BLUE */
+		"0 255 0",		/* RGBLED_GREEN */
+		"255 0 0",		/* RGBLED_RED */
+		"0 255 255",	/* RGBLED_NIAGARA_BLUE */
+		"255 255 0",	/* RGBLED_YELLOW */
+		"255 0 255",	/* RGBLED_PURPLE */
+		"255 255 255"	/* RGBLED_WHITE */
+#else
 		"0 0 0 0",		/* off: B G R W */
 		"1 0 0 0",		/* RGBLED_BLUE */
 		"0 1 0 0",		/* RGBLED_GREEN */
@@ -55,6 +74,7 @@ void set_rgbled(unsigned int mode)
 		"0 1 1 0",		/* RGBLED_YELLOW */
 		"1 0 1 0",		/* RGBLED_PURPLE */
 		"1 1 1 1"		/* RGBLED_WHITE */
+#endif
 	};
 	char *udef_trigger = led_color[0];
 #ifdef RTCONFIG_SW_CTRL_ALLLED
@@ -62,17 +82,24 @@ void set_rgbled(unsigned int mode)
 #endif
 
 	if (rgbled_udef_mode == 0) {
+#if defined(RTAC59_CD6R) || defined(RTAC59_CD6N) || defined(PLAX56_XP4) || defined(MR60) || defined(MS60)
 		led_control(LED_BLUE, LED_ON);
 		led_control(LED_GREEN, LED_ON);
 		led_control(LED_RED, LED_ON);
-#if defined(RTAC59_CD6R) || defined(RTAC59_CD6N) || defined(PLAX56_XP4) || defined(MR60) || defined(MS60)
 		if (RGBLED_WHITE & RGBLED_WLED)
 			led_control(LED_WHITE, LED_ON);
+#elif defined(RMAX6000)
+		udef_trigger = led_color[6];
+		f_write_string("/sys/class/leds/rgb:status/trigger", "default-on", 0, 0);
+		f_write_string("/sys/class/leds/rgb:network/trigger", "default-on", 0, 0);
 #endif		
 		rgbled_udef_mode = 1;
 	}
 
 	switch (c) {
+	case RGBLED_OFF:
+		udef_trigger = led_color[0];
+		break;
 	case RGBLED_BLUE:
 		udef_trigger = led_color[1];
 #if defined(RTCONFIG_SWRT_LED_RGB)
@@ -81,8 +108,6 @@ void set_rgbled(unsigned int mode)
 		led_control(LED_GREEN, LED_OFF);
 		led_control(LED_RED, LED_OFF);
 		led_control(LED_WHITE, LED_OFF);
-#elif defined(RMAX6000)
-		i2cled_control(LED_BLUE, LED_ON);
 #endif
 #endif
 		break;
@@ -94,8 +119,6 @@ void set_rgbled(unsigned int mode)
 		led_control(LED_GREEN, LED_ON);
 		led_control(LED_RED, LED_OFF);
 		led_control(LED_WHITE, LED_OFF);
-#elif defined(RMAX6000)
-		i2cled_control(LED_GREEN, LED_ON);
 #endif
 #endif
 		break;
@@ -107,8 +130,6 @@ void set_rgbled(unsigned int mode)
 		led_control(LED_GREEN, LED_OFF);
 		led_control(LED_RED, LED_ON);
 		led_control(LED_WHITE, LED_OFF);
-#elif defined(RMAX6000)
-		i2cled_control(LED_RED, LED_ON);
 #endif
 #endif
 		break;
@@ -131,8 +152,6 @@ void set_rgbled(unsigned int mode)
 		led_control(LED_GREEN, LED_ON);
 		led_control(LED_RED, LED_OFF);
 		led_control(LED_WHITE, LED_OFF);
-#elif defined(RMAX6000)
-		i2cled_control(LED_GREEN|LED_RED, LED_ON);
 #endif
 #endif
 		break;
@@ -155,24 +174,15 @@ void set_rgbled(unsigned int mode)
 		led_control(LED_GREEN, LED_OFF);
 		led_control(LED_RED, LED_OFF);
 		led_control(LED_WHITE, LED_ON);
-#elif defined(RMAX6000)
-		i2cled_control(LED_WHITE, LED_ON);
 #endif
 #endif
 		break;
 	default:
 		;
 	}
-#if defined(RTCONFIG_SWRT_LED_RGB)
+#if defined(RTCONFIG_SWRT_LED_RGB) && !defined(RMAX6000)
 	return;
 #endif
-	if ((c == RGBLED_CONNECTED || c == RGBLED_ETH_BACKHAUL)
-	  && b == 0
-#ifdef RTCONFIG_SW_CTRL_ALLLED
-	  && ctrl_led_off
-#endif
-	)
-		udef_trigger = led_color[0];
 
 	switch (b) {
 	case RGBLED_SBLINK:
@@ -187,6 +197,23 @@ void set_rgbled(unsigned int mode)
 	default:
 		;
 	}
+#if defined(RMAX6000)
+	if(nvram_match("led_disable", "1"))
+		udef_trigger = led_color[0];
 
+	f_write_string("/sys/class/leds/rgb:status/multi_intensity", udef_trigger, 0, 0);
+	f_write_string("/sys/class/leds/rgb:network/multi_intensity", udef_trigger, 0, 0);
+	if (uidx != 0) {
+		f_write_string("/sys/class/leds/rgb:status/trigger", "timer", 0, 0);
+		f_write_string("/sys/class/leds/rgb:network/trigger", "timer", 0, 0);
+		f_write_string("/sys/class/leds/rgb:status/delay_off", u[uidx].delay_off, 0, 0);
+		f_write_string("/sys/class/leds/rgb:network/delay_off", u[uidx].delay_off, 0, 0);
+		f_write_string("/sys/class/leds/rgb:status/delay_on", u[uidx].delay_on, 0, 0);
+		f_write_string("/sys/class/leds/rgb:network/delay_on", u[uidx].delay_on, 0, 0);
+	}else{
+		f_write_string("/sys/class/leds/rgb:status/trigger", "default-on", 0, 0);
+		f_write_string("/sys/class/leds/rgb:network/trigger", "default-on", 0, 0);
+	}
+#endif
 }
 

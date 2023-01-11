@@ -1412,31 +1412,6 @@ void i2cled_control(int which, int onoff)
 			break;
 	}
 #elif defined(RMAX6000)
-//all leds are one color, not a real leds, so when you turn on one of colors, it will automatically turns off others.
-	switch(which){
-		case LED_BLUE:
-			f_write_string("/sys/class/leds/left_blue/trigger", onoff ? "default-on" : "none", 0, 0);
-			f_write_string("/sys/class/leds/right_blue/trigger", onoff ? "default-on" : "none", 0, 0);
-			break;
-		case LED_GREEN:
-			f_write_string("/sys/class/leds/left_green/trigger", onoff ? "default-on" : "none", 0, 0);
-			f_write_string("/sys/class/leds/right_green/trigger", onoff ? "default-on" : "none", 0, 0);
-			break;
-		case LED_RED:
-			f_write_string("/sys/class/leds/left_red/trigger", onoff ? "default-on" : "none", 0, 0);
-			f_write_string("/sys/class/leds/right_red/trigger", onoff ? "default-on" : "none", 0, 0);
-			break;
-		case LED_GREEN|LED_RED:
-			f_write_string("/sys/class/leds/left_yellow/trigger", onoff ? "default-on" : "none", 0, 0);
-			f_write_string("/sys/class/leds/right_yellow/trigger", onoff ? "default-on" : "none", 0, 0);
-			break;
-		case LED_WHITE:
-			f_write_string("/sys/class/leds/left_white/trigger", onoff ? "default-on" : "none", 0, 0);
-			f_write_string("/sys/class/leds/right_white/trigger", onoff ? "default-on" : "none", 0, 0);
-			break;
-		default:
-			break;
-	}
 #endif
 }
 #endif

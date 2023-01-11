@@ -5665,7 +5665,8 @@ int init_nvram(void)
 		nvram_set_int("led_blue_gpio",  1);
 		nvram_set_int("led_green_gpio",  1);
 		nvram_set_int("led_red_gpio",  1);
-		nvram_set_int("led_white_gpio",  1);
+//		nvram_set_int("led_white_gpio",  1);
+		set_rgbled(RGBLED_PURPLE);
 
 		nvram_set("ct_max", "300000"); // force
 #ifdef RTCONFIG_XHCIMODE

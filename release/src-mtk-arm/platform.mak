@@ -617,6 +617,10 @@ define platformKernelConfig
 		echo "CONFIG_SWRT_FULLCONE=y" >>$(1); \
 		echo "# CONFIG_SWRT_FULLCONEV2 is not set" >>$(1); \
 	fi; \
+	if [ "$(BUILD_NAME)" = "RM-AX6000" ]; then \
+		sed -i "/CONFIG_LEDS_CLASS_MULTICOLOR\>/d" $(1); \
+		echo "CONFIG_LEDS_CLASS_MULTICOLOR=y" >>$(1); \
+	fi; \
 	)
 endef
 

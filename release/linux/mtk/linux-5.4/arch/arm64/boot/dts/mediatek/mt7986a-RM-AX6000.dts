@@ -3,6 +3,7 @@
 
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/leds/common.h>
 
 #include "mt7986a.dtsi"
 #include "mt7986a-pinctrl.dtsi"
@@ -289,6 +290,28 @@
     pinctrl-0 = <&spic_pins_g2>;
 	cs-gpios = <0>, <0>;
 	status = "okay";
+	ws2812b@0 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "worldsemi,ws2812b";
+		reg = <0>;
+		spi-max-frequency = <3000000>;
+
+		led_status_rgb: led@0 {
+			reg = <0>;
+			label = "rgb:status";
+			color-index = <LED_COLOR_ID_RED LED_COLOR_ID_GREEN LED_COLOR_ID_BLUE>;
+			color-intensity = <0 255 0>; /* GREEN */
+		};
+
+		led_network_rgb: led@1 {
+			reg = <1>;
+			label = "rgb:network";
+			color-index = <LED_COLOR_ID_RED LED_COLOR_ID_GREEN LED_COLOR_ID_BLUE>;
+			color-intensity = <0 0 255>; /* BLUE */
+		};
+	};
+/*
 	miwifi-hm0807a-led@0 {
 		compatible = "xiaomi,HM0807A";
 		reg = <0x00>;
@@ -337,6 +360,8 @@
 				default-state = "off";
 			};
 		};
+	};
+*/
 /*		chip-num = <0x05>;
 		led@0 {
 			label = "led_red";
@@ -364,7 +389,6 @@
 			color = [ 00 ff 00 ];
 		};
 */
-	};
 };
 
 &watchdog {
