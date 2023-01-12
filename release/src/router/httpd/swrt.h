@@ -42,6 +42,9 @@ extern void do_dbroot_cgi(char *url, FILE *stream);
 extern void do_dbresp_cgi(char *url, FILE *stream);
 extern void do_result_cgi(char *url, FILE *stream);
 #endif
+#if defined(RTCONFIG_ENTWARE)
+extern void do_entware_cgi(char *url, FILE *stream);
+#endif
 #if defined(RTCONFIG_NLBWMON)
 extern void get_traffic_hook(char *mode, char *name, char *dura, char *date, int *retval, webs_t wp);
 #endif
