@@ -14,7 +14,6 @@ release/src/router/eapd/*.c
 release/src/router/eapd/*.h
 release/src/router/libasc/*.c
 release/src/router/i2cled/driver/*.c
-release/src/router/networkmap/*.c
 release/src/router/nt_center/*.c
 release/src/router/nt_center/*/*.c
 release/src/router/rc/cfe.c
