@@ -287,7 +287,8 @@ wed_ser_task(void *data)
 
 	while (!kthread_should_stop()) {
 		wed_ser_detect(wed);
-		msleep(ser_ctrl->period_time);
+//		msleep(ser_ctrl->period_time);
+		msleep_interruptible(ser_ctrl->period_time);//fix high load
 	}
 	warp_dbg(WARP_DBG_OFF, "%s(): wed_ser exist, wed->irq=%d!\n", __func__,
 		 wed->irq);
