@@ -1,6 +1,6 @@
 -include $(SRCBASE)/router/.config
 
-export LINUXDIR := $(SRCBASE)/linux/linux-4.4
+export LINUXDIR := $(SRCBASE)/linux/linux-4.4.x
 export BUILD := $(shell (gcc -dumpmachine))
 
 ifeq ($(EXTRACFLAGS),)
@@ -10,7 +10,7 @@ endif
 export KERNEL_BINARY=$(LINUXDIR)/arch/arm/boot/zImage
 export MUSL32 :=y
 export MUSL_LIBC :=y
-export TOOLS := $(SRCBASE)/../../toolchains/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi
+export TOOLS := $(SRCBASE)/../../toolchains/toolchain-arm_cortex-a7_gcc-5.2.0_musl-1.1.16_eabi
 export PLATFORM_ARCH := arm-musl
 export CROSS_COMPILE := $(TOOLS)/bin/arm-openwrt-linux-
 export CROSS_COMPILER := $(CROSS_COMPILE)

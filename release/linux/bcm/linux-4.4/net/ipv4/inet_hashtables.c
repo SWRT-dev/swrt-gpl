@@ -25,6 +25,14 @@
 #include <net/secure_seq.h>
 #include <net/ip.h>
 
+#ifdef CONFIG_BCM47XX
+#include <typedefs.h>
+#include <bcmdefs.h>
+#else
+#define BCMFASTPATH_HOST
+#define BCMFASTPATH
+#endif
+
 static u32 inet_ehashfn(const struct net *net, const __be32 laddr,
 			const __u16 lport, const __be32 faddr,
 			const __be16 fport)
@@ -281,7 +289,7 @@ void sock_edemux(struct sk_buff *skb)
 }
 EXPORT_SYMBOL(sock_edemux);
 
-struct sock *__inet_lookup_established(struct net *net,
+struct sock BCMFASTPATH_HOST *__inet_lookup_established(struct net *net,
 				  struct inet_hashinfo *hashinfo,
 				  const __be32 saddr, const __be16 sport,
 				  const __be32 daddr, const u16 hnum,
@@ -510,7 +518,7 @@ EXPORT_SYMBOL_GPL(inet_unhash);
  * give more isolation and privacy, at the expense of 256kB of kernel
  * memory.
  */
-#define INET_TABLE_PERTURB_SHIFT 16
+#define INET_TABLE_PERTURB_SHIFT 8
 #define INET_TABLE_PERTURB_SIZE (1 << INET_TABLE_PERTURB_SHIFT)
 static u32 *table_perturb;
 
@@ -597,16 +605,8 @@ ok:
 		 * it may be inexistent.
 		 */
 		i = max_t(int, i, (prandom_u32() & 7) * 2);
-		WRITE_ONCE(table_perturb[index], READ_ONCE(table_perturb[index]) + i + 2);
+		WRITE_ONCE(table_perturb[index], (READ_ONCE(table_perturb[index]) + i + 2) & ~1);
 		
-		/* If our first attempt found a candidate, skip next candidate
-		 * in 1/16 of cases to add some noise.
-		 */
-		if (!i && !(prandom_u32() % 16))
-			i = 2;
-
-		WRITE_ONCE(table_perturb[index], READ_ONCE(table_perturb[index]) + (i + 2) & ~1);
-
 		/* Head lock still held and bh's disabled */
 		inet_bind_hash(sk, tb, port);
 		if (sk_unhashed(sk)) {

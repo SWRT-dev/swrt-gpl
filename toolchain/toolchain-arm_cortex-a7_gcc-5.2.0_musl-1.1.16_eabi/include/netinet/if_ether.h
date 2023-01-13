@@ -130,5 +130,5 @@ do { \
 	(enaddr)[5] = ((uint8_t *)ipaddr)[3]; \
 } while(0)
 
-
+#define __UAPI_DEF_ETHHDR       0
 #endif
