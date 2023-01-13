@@ -4490,9 +4490,9 @@ int is_ap(int unit)
 {
 	if (unit < 0) return 0;
 
-	if (is_ure(unit) ||
+	if (is_ure(unit)
 #if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
-		is_psta(unit) || is_psr(unit)
+		|| is_psta(unit) || is_psr(unit)
 #endif
 	)
 		return 0;

@@ -28,11 +28,10 @@
 
 // --- move begin ---
 #ifdef GPIO_IOCTL
-
 #include <sys/ioctl.h>
 #include <linux_gpio.h>
 #include <time.h>
-
+#endif
 #ifdef RTCONFIG_AMAS
 #include "amas_path.h"
 #endif
@@ -44,141 +43,50 @@ typedef enum cmds_e {
 
 extern uint64_t hnd_ethswctl(ecmd_t act, unsigned int val, int len, int wr, unsigned long long regdata);
 
-static int _gpio_ioctl(int f, int gpioreg, unsigned int mask, unsigned int val)
+
+static void set_gpio_base(uint32_t pin, int value)
 {
-	struct gpio_ioctl gpio;
 
-	gpio.val = val;
-	gpio.mask = mask;
+	int gpioouten = open("/dev/gpio/outen", O_RDWR);
+	int gpioout = open("/dev/gpio/out", O_RDWR);
+	unsigned int gpio;
 
-	if (ioctl(f, gpioreg, &gpio) < 0) {
-		_dprintf("Invalid gpioreg %d\n", gpioreg);
-		return -1;
+	read(gpioouten, &gpio, sizeof(gpio));
+	gpio |= 1 << pin;
+	write(gpioouten, &gpio, sizeof(gpio));
+
+	read(gpioout, &gpio, sizeof(gpio));
+	if (value) {
+		gpio |= (1 << pin);
+	} else {
+		gpio &= ~(1 << pin);
 	}
-	return (gpio.val);
-}
-
-static int _gpio_open()
-{
-	int f = open("/dev/gpio", O_RDWR);
-	if (f < 0)
-		_dprintf ("Failed to open /dev/gpio\n");
-	return f;
-}
-
-int gpio_open(uint32_t mask)
-{
-	uint32_t bit;
-	int i;
-	int f = _gpio_open();
-
-	if ((f >= 0) && mask) {
-		for (i = 0; i <= 15; i++) {
-			bit = 1 << i;
-			if ((mask & bit) == bit) {
-				_gpio_ioctl(f, GPIO_IOC_RESERVE, bit, bit);
-				_gpio_ioctl(f, GPIO_IOC_OUTEN, bit, 0);
-			}
-		}
-		close(f);
-		f = _gpio_open();
-	}
-
-	return f;
+	write(gpioout, &gpio, sizeof(gpio));
+	close(gpioout);
+	close(gpioouten);
 }
 
 void gpio_write(uint32_t bitvalue, int en)
 {
-	int f;
-	uint32_t bit;
-
-	bit = 1<< bitvalue;
-
-	if ((f = gpio_open(0)) < 0) return;
-
-	_gpio_ioctl(f, GPIO_IOC_RESERVE, bit, bit);
-	_gpio_ioctl(f, GPIO_IOC_OUTEN, bit, bit);
-	_gpio_ioctl(f, GPIO_IOC_OUT, bit, en ? bit : 0);
-	close(f);
+	set_gpio_base(bitvalue, en);
 }
 
-uint32_t _gpio_read(int f)
+int gpio_read(int pin)
 {
-	uint32_t r;
-//	r = _gpio_ioctl(f, GPIO_IOC_IN, 0xFFFF, 0);
-	r = _gpio_ioctl(f, GPIO_IOC_IN, 0x07FF, 0);
-	if (r < 0) r = ~0;
-	return r;
+	unsigned int gpio;
+	int gpioouten = open("/dev/gpio/outen", O_RDWR);
+	int gpioin = open("/dev/gpio/in", O_RDWR);
+
+	read(gpioouten, &gpio, sizeof(gpio));
+	gpio &= ~(1 << pin);
+	write(gpioouten, &gpio, sizeof(gpio));
+	read(gpioin, &gpio, sizeof(gpio));
+	gpio = (gpio & (1 << pin)) ? 1 : 0;
+	close(gpioin);
+	close(gpioouten);
+	return gpio;
 }
 
-uint32_t gpio_read(void)
-{
-	int f;
-	uint32_t r;
-
-	if ((f = gpio_open(0)) < 0) return ~0;
-	r = _gpio_read(f);
-	close(f);
-	return r;
-}
-
-#else
-
-int gpio_open(uint32_t mask)
-{
-	int f = open(DEV_GPIO(in), O_RDONLY|O_SYNC);
-	if (f < 0)
-		_dprintf ("Failed to open %s\n", DEV_GPIO(in));
-	return f;
-}
-
-void gpio_write(uint32_t bitvalue, int en)
-{
-	int f;
-	uint32_t r;
-	uint32_t bit;
-
-	bit = 1<<bitvalue;
-
-	if ((f = open(DEV_GPIO(control), O_RDWR)) < 0) return;
-	read(f, &r, sizeof(r));
-	r &= ~bit;
-	write(f, &r, sizeof(r));
-	close(f);
-
-	if ((f = open(DEV_GPIO(outen), O_RDWR)) < 0) return;
-	read(f, &r, sizeof(r));
-	r |= bit;
-	write(f, &r, sizeof(r));
-	close(f);
-
-	if ((f = open(DEV_GPIO(out), O_RDWR)) < 0) return;
-	read(f, &r, sizeof(r));
-	if (en) r |= bit;
-		else r &= ~bit;
-	write(f, &r, sizeof(r));
-	close(f);
-}
-
-uint32_t _gpio_read(int f)
-{
-	uint32_t v;
-	return (read(f, &v, sizeof(v)) == sizeof(v)) ? v : ~0;
-}
-
-uint32_t gpio_read(void)
-{
-	int f;
-	uint32_t r;
-
-	if ((f = open(DEV_GPIO(in), O_RDONLY)) < 0) return ~0;
-	r = _gpio_read(f);
-	close(f);
-	return r;
-}
-
-
-#endif
 
 #ifdef RTCONFIG_AMAS
 static bool g_swap = FALSE;

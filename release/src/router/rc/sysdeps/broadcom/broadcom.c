@@ -102,25 +102,6 @@ int wlc_disassoc(char *wif)
 }
 #endif
 
-int soc_req(const char *name, int action, struct ifreq *ifr)
-{
-	int s, ret = 0;
-
-	if ( name ) {
-		/* open socket to kernel */
-		if ((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-			perror("socket");
-			return -1;
-		}
-
-		strncpy(ifr->ifr_name, name, sizeof(ifr->ifr_name) - 1);
-		ifr->ifr_name[sizeof(ifr->ifr_name) - 1] = '\0';
-		ret = ioctl(s, action, &ifr);
-		close(s);
-	}
-	return ret;
-}
-
 #if defined(RTCONFIG_HND_ROUTER)
 void config_eth_port_shaper(QOS_Q_PARAM *intf)
 {

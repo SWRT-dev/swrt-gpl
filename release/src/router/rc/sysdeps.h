@@ -1,6 +1,6 @@
 #ifndef _RC_SYSDEPS_H_
 #define _RC_SYSDEPS_H_
-#if !defined(__GLIBC__) && !defined(__UCLIBC__) /* musl */
+#if !defined(__GLIBC__) && !defined(__UCLIBC__) && !defined(RTCONFIG_BCMARM) /* musl */
 #include <net/ethernet.h>
 #endif
 #include <rtconfig.h>

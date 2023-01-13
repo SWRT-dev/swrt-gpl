@@ -133,7 +133,6 @@ CFLAGS += -I$(SRCBASE)/common/include
 ifneq ($(findstring CONFIG_DUMP_PREV_OOPS_MSG=, $(shell cat $(LINUXDIR)/.config)),)
 CFLAGS += -DDUMP_PREV_OOPS_MSG
 endif
-LDFLAGS += -L$(TOP)/libbcm -lbcm
 LDFLAGS += -lgcc_s
 ifeq ($(RTCONFIG_QTN),y)
 CFLAGS += -I$(TOP)/libqcsapi_client -I$(TOP)/shared/sysdeps/qtn

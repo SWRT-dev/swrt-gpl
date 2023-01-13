@@ -56,7 +56,7 @@ uint32_t gpio_dir(uint32_t gpio, int dir)
     *(unsigned int*)&(x) = data;            \
 }
 
-extern uint32_t gpio_read(void);
+extern int gpio_read(int pin);
 extern void gpio_write(uint32_t bitvalue, int en);
 
 #if defined(RTCONFIG_BCM_CLED)
@@ -824,13 +824,7 @@ uint32_t get_gpio(uint32_t gpio)
 	close(board_fp);
 	return ioctl_parms.offset;
 #else
-	uint32_t bit_value;
-	uint32_t bit_mask;
-
-	bit_mask = 1 << gpio;
-	bit_value = gpio_read()&bit_mask;
-
-	return bit_value == 0 ? 0 : 1;
+	return gpio_read(gpio);
 #endif
 }
 

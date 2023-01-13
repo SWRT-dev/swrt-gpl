@@ -294,10 +294,8 @@ export EXTRALDFLAGS = -lgcc_s
 export LD_LIBRARY_PATH := $(TOOLCHAIN)/lib
 export BASEDIR := $(SRCBASE)/../
 else
-include $(SRCBASE)/makefiles/WLAN_Common.mk
-export BASEDIR := $(WLAN_TreeBaseA)
 ifeq ($(LINUXDIR),)
-export LINUXDIR := $(SRCBASE)/linux/linux-4.4
+export LINUXDIR := $(SRCBASE)/linux/linux-4.4.x
 endif
 
 export EXTRALDFLAGS = -lgcc_s
@@ -859,25 +857,6 @@ obj-$(RTCONFIG_DSL_REMOTE) += dsl_drv_tool
 obj-$(RTCONFIG_DSL_HOST) += dsl_diag
 obj-$(RTCONFIG_DSL_HOST) += dsl_autodet
 
-ifneq ($(or $(RTCONFIG_LANTIQ),$(RTCONFIG_RALINK),$(RTCONFIG_QCA)),y)
-ifeq ($(KPATH_2636_OR_3X),y)
-IPTABLES := iptables-1.4.x
-IPTC_LIBDIR := $(TOP)/$(IPTABLES)/libiptc/.libs
-IPTC_LIBS := -lip4tc $(if $(RTCONFIG_IPV6),-lip6tc,) -liptc
-obj-y += iptables-1.4.x
-ifeq ($(HND_ROUTER),y)
-obj-y += iproute2-4.3
-else
-obj-y += iproute2-3.x
-endif
-else
-IPTABLES := iptables-1.4.21
-IPTC_LIBDIR := $(TOP)/$(IPTABLES)/libiptc/.libs
-IPTC_LIBS := -lip4tc $(if $(RTCONFIG_IPV6),-lip6tc,) -liptc
-obj-y += iptables-1.4.21
-obj-y += iproute2-3.x
-endif
-else
 ifeq ($(RTCONFIG_SWRT_FULLCONEV2),y)
 IPTABLES := iptables-1.8.7
 obj-y += iptables-1.8.7
@@ -887,11 +866,10 @@ obj-y += iptables-1.4.21
 endif
 IPTC_LIBDIR := $(TOP)/$(IPTABLES)/libiptc/.libs
 IPTC_LIBS := -lip4tc $(if $(RTCONFIG_IPV6),-lip6tc,) -liptc
-ifeq ($(or $(RTCONFIG_RALINK),$(RTCONFIG_QCA)),y)
-obj-y += iproute2-4.4.0
-else
+ifeq ($(RTCONFIG_LANTIQ),y)
 obj-y += iproute2-3.15.0
-endif
+else
+obj-y += iproute2-4.4.0
 endif
 
 obj-$(RTCONFIG_CONNTRACK) += conntrack
@@ -943,12 +921,7 @@ obj-$(RTCONFIG_AHS) += ahs
 obj-$(RTCONFIG_ASD) += asd
 
 obj-$(RTCONFIG_OPENVPN) += openssl
-ifeq ($(RTCONFIG_BCMARM),y)
-obj-$(RTCONFIG_OPENVPN) += libovpn
-else
 obj-$(RTCONFIG_OPENVPN) += libvpn
-endif
-
 obj-y += rc
 obj-y += rom
 obj-y += others

@@ -4003,9 +4003,7 @@ ddns_updated_main(int argc, char *argv[])
  */
 static char *get_ddns_macaddr(void)
 {
-#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 	static char mac_buf[6], mac_buf_str[18];
-#endif
 	int model = get_model();
 	char *mac = get_lan_hwaddr();
 
@@ -18394,8 +18392,9 @@ void stop_ssd(void)
 #if defined(RTCONFIG_DHDAP) || defined(RTCONFIG_HND_ROUTER_AX)
 int start_dhd_monitor(void)
 {
-	int ret = 0;
 
+	int ret = 0;
+#if 0
 #if defined(RTCONFIG_HND_ROUTER_AX)
 	char *crash_log_backup_dir;
 	crash_log_backup_dir = nvram_get("crash_log_backup_dir");
@@ -18419,7 +18418,7 @@ int start_dhd_monitor(void)
 #else
 	ret = eval("/usr/sbin/dhd_monitor");
 #endif
-
+#endif
 	return ret;
 }
 
