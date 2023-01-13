@@ -724,7 +724,7 @@ obj-$(RTCONFIG_DHDAP) += $(if $(or $(RTCONFIG_BCM7),$(RTCONFIG_HND_ROUTER_AX)),p
 endif
 
 ifeq ($(or $(RTCONFIG_BCM_7114),$(HND_ROUTER)),y)
-obj-y += dhd_monitor
+#obj-y += dhd_monitor
 endif
 #PCIe FD images in target file system
 ifeq ($(HND_ROUTER_AX),y)
