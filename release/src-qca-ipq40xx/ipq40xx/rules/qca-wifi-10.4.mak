@@ -68,9 +68,9 @@ ifneq ($(wildcard qca-wifi-10.4/config.mk),)
 	install -D qca-wifi-10.4/testmodule/tm.ko $(INSTALLDIR)/qca-wifi-10.4/lib/modules/$(LINUX_KERNEL)/tm.ko
 	install -D qca-wifi-10.4/os/linux/tools/wnm-app $(INSTALLDIR)/qca-wifi-10.4/usr/sbin/wnm-app
 else
-	@for i in $(QCAWIFI_KMOD); do install -D qca-wifi-10.4/prebuild/$$i $(INSTALLDIR)/qca-wifi-10.4/lib/modules/$(LINUX_KERNEL)/$$i ; done
-	@for i in $(QCAWIFI_LIBS); do install -D qca-wifi-10.4/prebuild/$$i $(INSTALLDIR)/qca-wifi-10.4/usr/lib/$$i ; done
-	@for i in $(QCAWIFI_USR_SBIN); do install -D qca-wifi-10.4/prebuild/$$i $(INSTALLDIR)/qca-wifi-10.4/usr/sbin/$$i ; done
+	@for i in $(QCAWIFI_KMOD); do install -D qca-wifi-10.4/prebuild/$(BUILD_NAME)/$$i $(INSTALLDIR)/qca-wifi-10.4/lib/modules/$(LINUX_KERNEL)/$$i ; done
+	@for i in $(QCAWIFI_LIBS); do install -D qca-wifi-10.4/prebuild/$(BUILD_NAME)/$$i $(INSTALLDIR)/qca-wifi-10.4/usr/lib/$$i ; done
+	@for i in $(QCAWIFI_USR_SBIN); do install -D qca-wifi-10.4/prebuild/$(BUILD_NAME)/$$i $(INSTALLDIR)/qca-wifi-10.4/usr/sbin/$$i ; done
 endif
 	$(STRIP) $(INSTALLDIR)/qca-wifi-10.4/usr/sbin/*
 	$(STRIP) $(INSTALLDIR)/qca-wifi-10.4/usr/lib/*

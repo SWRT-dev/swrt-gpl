@@ -1402,7 +1402,112 @@ void generate_switch_para(void)
 #endif
 			break;
 		}
+#if defined(R7000P)
+		case MODEL_R7000P:
+		{
+			char *hw_name = "et0";
+			int ports[SWPORT_COUNT] = { 0, 1, 2, 3, 4, 5 };
+			int wancfg = (!nvram_match("switch_wantag", "none")&&!nvram_match("switch_wantag", "")&&!nvram_match("switch_wantag", "hinet")) ? SWCFG_DEFAULT : cfg;
+			wan_phyid = ports[0];	// record the phy num of the wan port on the case
+#ifdef RTCONFIG_DUALWAN
+			if (get_wans_dualwan()&WANSCAP_WAN && get_wans_dualwan()&WANSCAP_LAN)
+				nvram_set("vlan3hwname", hw_name);
+			else
+				nvram_unset("vlan3hwname");
+			if (get_wans_dualwan()&WANSCAP_WAN || get_wans_dualwan()&WANSCAP_LAN)
+				nvram_set("vlan2hwname", hw_name);
+			nvram_set("vlan1hwname", hw_name);
 
+			if (cfg != SWCFG_BRIDGE) {
+				int wan1cfg = nvram_get_int("wans_lanport");
+
+				nvram_unset("vlan2ports");
+				nvram_unset("vlan3ports");
+
+				/* The first WAN port. */
+				if (get_wans_dualwan()&WANSCAP_WAN) {
+					switch_gen_config(wan, ports, wancfg, 1, (get_wans_dualwan()&WANSCAP_LAN && wan1cfg >= 1 && wan1cfg <= 4)?"":"u");
+					nvram_set("vlan2ports", wan);
+				}
+
+				/* The second WAN port. */
+				if (get_wans_dualwan()&WANSCAP_LAN && wan1cfg >= 1 && wan1cfg <= 4) {
+					wan1cfg += WAN1PORT1-1;
+					if (wancfg != SWCFG_DEFAULT) {
+						gen_lan_ports(lan, ports, wancfg, wan1cfg, "*");
+						nvram_set("vlan1ports", lan);
+						gen_lan_ports(lan, ports, wancfg, wan1cfg, NULL);
+						nvram_set("lanports", lan);
+					}
+					else {
+						switch_gen_config(lan, ports, wan1cfg, 0, "*");
+						nvram_set("vlan1ports", lan);
+						switch_gen_config(lan, ports, wan1cfg, 0, NULL);
+						nvram_set("lanports", lan);
+					}
+
+					switch_gen_config(wan, ports, wan1cfg, 1, (get_wans_dualwan()&WANSCAP_WAN)?"":"u");
+					if (get_wans_dualwan()&WANSCAP_WAN)
+						nvram_set("vlan3ports", wan);
+					else
+						nvram_set("vlan2ports", wan);
+				} else {
+					switch_gen_config(lan, ports, cfg, 0, "*");
+					nvram_set("vlan1ports", lan);
+					switch_gen_config(lan, ports, cfg, 0, NULL);
+					nvram_set("lanports", lan);
+				}
+
+				int unit;
+				char prefix[8], nvram_ports[16];
+
+				for (unit = WAN_UNIT_FIRST; unit < WAN_UNIT_MAX; ++unit) {
+					memset(prefix, 0, 8);
+					sprintf(prefix, "%d", unit);
+
+					memset(nvram_ports, 0, 16);
+					sprintf(nvram_ports, "wan%sports", (unit == WAN_UNIT_FIRST)?"":prefix);
+
+					if (get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_WAN) {
+						switch_gen_config(wan, ports, wancfg, 1, NULL);
+						nvram_set(nvram_ports, wan);
+					}
+					else if (get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_LAN) {
+						switch_gen_config(wan, ports, wan1cfg, 1, NULL);
+						nvram_set(nvram_ports, wan);
+					}
+					else
+						nvram_unset(nvram_ports);
+				}
+			}
+			else {
+				switch_gen_config(lan, ports, cfg, 0, "*");
+				switch_gen_config(wan, ports, wancfg, 1, "u");
+				nvram_set("vlan1ports", lan);
+				nvram_set("vlan2ports", wan);
+				switch_gen_config(lan, ports, cfg, 0, NULL);
+				switch_gen_config(wan, ports, wancfg, 1, NULL);
+				nvram_set("lanports", lan);
+				nvram_set("wanports", wan);
+				nvram_unset("wan1ports");
+			}
+#else	// RTCONFIG_DUALWAN
+			{
+			switch_gen_config(lan, ports, cfg, 0, "*");
+			switch_gen_config(wan, ports, wancfg, 1, "u");
+			nvram_set("vlan1ports", lan);
+			nvram_set("vlan1hwname", hw_name);
+			nvram_set("vlan2ports", wan);
+			nvram_set("vlan2hwname", hw_name);
+			switch_gen_config(lan, ports, cfg, 0, NULL);
+			switch_gen_config(wan, ports, wancfg, 1, NULL);
+			nvram_set("lanports", lan);
+			nvram_set("wanports", wan);
+			}
+#endif
+			break;
+		}
+#endif
 		case MODEL_RTAC3100:
 		case MODEL_RTAC88U:
 		{
@@ -3117,6 +3222,7 @@ reset_mssid_hwaddr(int unit)
 			case MODEL_RTAC88U:
 			case MODEL_RTAC86U:
 			case MODEL_RTAC3100:
+			case MODEL_R7000P:
 			case MODEL_RTAX95Q:
 			case MODEL_XT8PRO:
 			case MODEL_XT8_V2:
@@ -3567,6 +3673,7 @@ void init_wl(void)
 		case MODEL_RTAC1200G:
 		case MODEL_RTAC1200GP:
 		case MODEL_RTAC3100:
+		case MODEL_R7000P:
 		case MODEL_RTAC3200:
 		case MODEL_RTAC5300:
 		case MODEL_GTAC5300:
@@ -3611,6 +3718,9 @@ void init_wl(void)
 #else
 	eval("insmod", "dpsta");
 #endif
+#endif
+#if defined(R7000P)
+	eval("insmod", "wl");
 #endif
 #ifdef RTCONFIG_DHDAP
 	load_wl();
@@ -3719,6 +3829,7 @@ void init_wl_compact(void)
 		case MODEL_RTAC1200G:
 		case MODEL_RTAC1200GP:
 		case MODEL_RTAC3100:
+		case MODEL_R7000P:
 		case MODEL_RTAC3200:
 		case MODEL_RTAC5300:
 		case MODEL_GTAC5300:
@@ -3744,6 +3855,9 @@ void init_wl_compact(void)
 #endif
 #if !defined(RTCONFIG_HND_ROUTER_AX)
 	set_wltxpower();
+#endif
+#if defined(R7000P)
+	eval("insmod", "wl");
 #endif
 #ifdef RTCONFIG_DHDAP
 	load_wl();
@@ -3922,6 +4036,7 @@ void init_syspara(void)
 			break;
 
 		case MODEL_RTAC3100:
+		case MODEL_R7000P:
 		case MODEL_GTAC5300:
 		case MODEL_RTAC86U:
 		case MODEL_RTAX88U:
@@ -4450,6 +4565,9 @@ void init_others(void)
 #endif
 #ifdef RTAC68U
 	ac68u_cofs();
+#endif
+#if defined(R7000P)
+	r7000p_nvram_patch();
 #endif
 }
 #endif	// HND_ROUTER
@@ -5460,7 +5578,11 @@ void generate_wl_para(char *ifname, int unit, int subunit)
 					&& nvram_match(strcat_r(prefix, "phytype", tmp), "v")
 				) {
 #if defined(RTCONFIG_HND_ROUTER_AX) || defined(RTCONFIG_BW160M)
-					if (nvram_match(strcat_r(prefix, "bw_160", tmp), "1") || is_psta(unit) || is_psr(unit))
+					if (nvram_match(strcat_r(prefix, "bw_160", tmp), "1")
+#if defined(RTCONFIG_PROXYSTA)
+						|| is_psta(unit) || is_psr(unit)
+#endif
+					)
 						nvram_set(strcat_r(prefix, "bw_cap", tmp), hw_vht_cap() ? "15" : "3");	// 160M
 					else
 #endif
@@ -8484,6 +8606,7 @@ _dprintf("*** Multicast IPTV: config Singtel TR069 on wan port ***\n");
 		break;
 
 	case MODEL_RTAC3100:
+	case MODEL_R7000P:
 	case MODEL_RTAC88U:
 				/* If enable gmac3, CPU port is 8 */
 #ifdef RTCONFIG_RGMII_BRCM5301X

@@ -8,17 +8,11 @@
 
 #if defined(RTAC88U)
 #define MODEL_PROTECT "RT-AC88U"
-#endif
-
-#if defined(RTAC3100)
+#elif defined(RTAC3100)
 #define MODEL_PROTECT "RT-AC3100"
-#endif
-
-#if defined(RTAC5300)
+#elif defined(RTAC5300)
 #define MODEL_PROTECT "RT-AC5300"
-#endif
-
-#if defined(RTAC87U)
+#elif defined(RTAC87U)
 #define MODEL_PROTECT "RT-AC87U"
 // #define WANDEV_SING "vlan2 vlan3"	not supported now
 #define WANDEVS_DUAL "vlan3"
@@ -35,14 +29,10 @@
 #ifdef RTCONFIG_USB_MULTIMODEM
 #define WANIF_USB2	"usb2"
 #endif
-#endif
-
-#if defined(RTAC3200)
+#elif defined(RTAC3200)
 #define MODEL_PROTECT "RT-AC3200"
-#endif
-
-#if defined(RTN18U)
-#define MODEL_PROTECT "RT-N18U"
+#elif defined(R7000P)
+#define MODEL_PROTECT "R7000P"
 #endif
 
 #ifndef MODEL_PROTECT

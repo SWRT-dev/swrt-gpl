@@ -12,20 +12,8 @@
 #include <stdio.h>
 #include <netinet/in.h>
 #include <u2ec_list.h>
-
-#define SWAP8(x) \
-({ \
-        __u8 __x = (x); \
-        ((__u8)( \
-                (((__u8)(__x) & (__u8)0x80) >> 7) | \
-                (((__u8)(__x) & (__u8)0x40) >> 5) | \
-                (((__u8)(__x) & (__u8)0x20) >> 3) | \
-                (((__u8)(__x) & (__u8)0x10) >> 1) | \
-                (((__u8)(__x) & (__u8)0x08) << 1) | \
-                (((__u8)(__x) & (__u8)0x04) << 3) | \
-                (((__u8)(__x) & (__u8)0x02) << 5) | \
-                (((__u8)(__x) & (__u8)0x01) << 7) )); \
-})
+#include <syslog.h>
+#include <endian.h>
 
 #define SWAP16(x) \
 ({ \
@@ -186,9 +174,15 @@ typedef struct _IRP_SAVE
 	LONG			Size;		// size current buffer
 	LONG			NeedSize;	// need size buffer
 	LONG64			Device;		// Indefication of device
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 	BYTE			Is64:1;		// Detect 64
 	BYTE			IsIsoch:1;      // isoch data
 	BYTE			Res1:6;         // Reserv
+#else
+	BYTE			Res1:6;         // Reserv
+	BYTE			IsIsoch:1;      // isoch data
+	BYTE			Is64:1;		// Detect 64
+#endif
 	BYTE			empty[3];
 	LONG			Irp;		// Number Iro
 	NTSTATUS		Status;		// current status Irp
@@ -216,6 +210,18 @@ typedef struct _IRP_SAVE_SWAP
 	LONG			Reserv;
 	BYTE			Buffer [8];	// Data
 }__attribute((packed)) IRP_SAVE_SWAP, *PIRP_SAVE_SWAP;
+
+#ifdef	SUPPORT_LPRng
+#	define	semaphore_create()	semaphore_create()
+#	define	semaphore_wait()	semaphore_wait()
+#	define	semaphore_post()	semaphore_post()
+#	define	semaphore_close()	semaphore_close()
+#else
+#	define	semaphore_create()
+#	define	semaphore_wait()
+#	define	semaphore_post()
+#	define	semaphore_close()
+#endif
 
 // Print log on console or file or nothing.
 #ifdef	PDEBUG_SENDSECV
@@ -255,5 +261,12 @@ typedef struct _IRP_SAVE_SWAP
 #	define PDEBUG(fmt, args...)
 #	define PERROR perror
 #endif	// U2EC_DEBUG
+
+#undef PDEBUG_RET
+#define PDEBUG_RET(fmt, ret) \
+	do { \
+		if (ret < 0) \
+			syslog(LOG_ERR, fmt, ret); \
+	} while (0)
 
 #endif /*  __USBSOCK_H__ */

@@ -3349,7 +3349,7 @@ static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 			else
 				snprintf(rate_buf, sizeof(rate_buf), "%6.1f Mbps", (double) rate / 1000);
 		}
-#ifdef RTCONFIG_BCMWL6
+#if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
 	} else if (is_psta(unit) || is_psr(unit)) {
 #if 0
 		char eabuf[32];
@@ -3457,6 +3457,12 @@ ej_wl_rate_5g(int eid, webs_t wp, int argc, char_t **argv)
 
 int
 ej_wl_rate_5g_2(int eid, webs_t wp, int argc, char_t **argv)
+{
+	return ej_wl_rate(eid, wp, argc, argv, 2);
+}
+
+int
+ej_wl_rate_6g(int eid, webs_t wp, int argc, char_t **argv)
 {
 	return ej_wl_rate(eid, wp, argc, argv, 2);
 }
@@ -5820,7 +5826,11 @@ wl_get_scan_results_escan(char *ifname, chanspec_t chanspec, int ctl_ch, int ctl
 	memset(params, 0, params_size);
 	params->params.bss_type = DOT11_BSSTYPE_INFRASTRUCTURE;
 	memcpy(&params->params.bssid, &ether_bcast, ETHER_ADDR_LEN);
+#if defined(RTCONFIG_PROXYSTA)
 	params->params.scan_type = (nvram_match(strlcat_r(prefix, "reg_mode", tmp, sizeof(tmp)), "h") && !is_psta(unit)) ? WL_SCANFLAGS_PASSIVE : 0;
+#else
+	params->params.scan_type = (nvram_match(strlcat_r(prefix, "reg_mode", tmp, sizeof(tmp)), "h")) ? WL_SCANFLAGS_PASSIVE : 0;
+#endif
 	params->params.nprobes = -1;
 	params->params.active_time = -1;
 	params->params.passive_time = -1;
@@ -5932,7 +5942,11 @@ wl_get_scan_results(char *ifname, chanspec_t chanspec, int ctl_ch, int ctl_ch_tm
 	memset(params, 0, params_size);
 	params->bss_type = DOT11_BSSTYPE_INFRASTRUCTURE;
 	memcpy(&params->bssid, &ether_bcast, ETHER_ADDR_LEN);
+#if defined(RTCONFIG_PROXYSTA)
 	params->scan_type = (nvram_match(strlcat_r(prefix, "reg_mode", tmp, sizeof(tmp)), "h") && !is_psta(unit)) ? WL_SCANFLAGS_PASSIVE : 0;
+#else
+	params->scan_type = (nvram_match(strlcat_r(prefix, "reg_mode", tmp, sizeof(tmp)), "h")) ? WL_SCANFLAGS_PASSIVE : 0;
+#endif
 	params->nprobes = -1;
 	params->active_time = -1;
 	params->passive_time = -1;
@@ -6028,7 +6042,12 @@ wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 
 	ctl_ch = wl_control_channel(unit);
 #ifdef RTCONFIG_BCMWL6
-	if (nvram_match(strlcat_r(prefix, "reg_mode", tmp, sizeof(tmp)), "h") && !is_psta(unit)) {
+	if (nvram_match(strlcat_r(prefix, "reg_mode", tmp, sizeof(tmp)), "h")
+#if defined(RTCONFIG_PROXYSTA)
+		&& !is_psta(unit)
+#endif
+		) {
+
 		if (wl_iovar_get(ifname, "chanspec", &chspec_cur, sizeof(chanspec_t)) < 0) {
 			dbg("get current chanpsec failed\n");
 			return 0;
@@ -6267,10 +6286,10 @@ ej_wl_auth_psta(int eid, webs_t wp, int argc, char_t **argv)
 #endif
 
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-
+#if defined(RTCONFIG_PROXYSTA)
 	if (!is_psta(unit) && !is_psr(unit))
 		goto PSTA_ERR;
-
+#endif
 	strlcpy(ifname, nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp))), sizeof(ifname));
 
 	if (wl_ioctl(ifname, WLC_GET_SSID, &ssid, sizeof(ssid)))
@@ -6316,6 +6335,7 @@ ej_wl_auth_psta(int eid, webs_t wp, int argc, char_t **argv)
 
 	free(mac_list);
 PSTA_ERR:
+#if defined(RTCONFIG_PROXYSTA)
 	if (is_psta(unit) || is_psr(unit)) {
 		if (psta == 1)
 		{
@@ -6332,7 +6352,7 @@ PSTA_ERR:
 			if (psta_debug) dbg("disconnected\n");
 		}
 	}
-
+#endif
 	if(json_support){
 		retval += websWrite(wp, "{");
 		retval += websWrite(wp, "\"wlc_state\":\"%d\"", psta);

@@ -17,10 +17,9 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
+#include <shared.h>
 #include <usb.h>
-
-#include <nvram_linux.h>
-
+#include <bcmnvram.h>
 #include "typeconvert.h"
 #include "usbsock.h"
 
@@ -31,6 +30,7 @@ struct usb_bus *bus;
 struct usb_device *dev;
 char str_product[128];
 char str_vidpid[128];
+char str_mfg[128];
 int verbose = 1;
 char *EndpointType[4] = { "Control", "Isochronous", "Bulk", "Interrupt" };
 
@@ -189,15 +189,21 @@ int print_device(struct usb_device *dev, int level)
       			if (ret > 0)
 			{
 				snprintf(description, sizeof(description), "%s - ", string);
+				strcpy(str_mfg, string);
+				nvram_set("u2ec_mfg", str_mfg);
 			}
 			else
 			{
 				snprintf(description, sizeof(description), "%04X - ", dev->descriptor.idVendor);
+				sprintf(str_mfg, "USB Vendor %04X", dev->descriptor.idVendor);
+				nvram_set("u2ec_mfg", str_mfg);
 			}
     		}
     		else
 		{
       			snprintf(description, sizeof(description), "%04X - ", dev->descriptor.idVendor);
+			sprintf(str_mfg, "USB Vendor %04X", dev->descriptor.idVendor);
+			nvram_set("u2ec_mfg", str_mfg);
 		}
 
     		if (dev->descriptor.iProduct) 
@@ -207,20 +213,20 @@ int print_device(struct usb_device *dev, int level)
       			{
 				snprintf(description + strlen(description), sizeof(description) - strlen(description), "%s", string);
 				strcpy(str_product, string);
-				nvram_set_temp("u2ec_device", str_product);
+				nvram_set("u2ec_device", str_product);
 			}
 			else
 			{
 				snprintf(description + strlen(description), sizeof(description) - strlen(description), "%04X", dev->descriptor.idProduct);
 				sprintf(str_product, "USB Device %04x:%04x", dev->descriptor.idVendor, dev->descriptor.idProduct);
-				nvram_set_temp("u2ec_device", str_product);
+				nvram_set("u2ec_device", str_product);
 			}
 		}
 		else
 		{
       			snprintf(description + strlen(description), sizeof(description) - strlen(description), "%04X", dev->descriptor.idProduct);
       			sprintf(str_product, "USB Device %04x:%04x", dev->descriptor.idVendor, dev->descriptor.idProduct);
-      			nvram_set_temp("u2ec_device", str_product);
+      			nvram_set("u2ec_device", str_product);
       		}
 
 	} 
@@ -237,17 +243,17 @@ int print_device(struct usb_device *dev, int level)
 			if (ret > 0)
 			{
 				PDEBUG("%.*s  - Serial Number    : %s\n", level * 2, "                    ", string);
-				nvram_set_temp("u2ec_serial", string);
+				nvram_set("u2ec_serial", string);
 			}
 			else
-				nvram_set_temp("u2ec_serial", "");
+				nvram_set("u2ec_serial", "");
     		}
 
     		usb_close(udev);
 	}
 
 	sprintf(str_vidpid, "%04x%04x", dev->descriptor.idVendor, dev->descriptor.idProduct);
-	nvram_set_temp("u2ec_vidpid", str_vidpid);
+	nvram_set("u2ec_vidpid", str_vidpid);
 
 	PDEBUG("%.*s  - Length	   : %2d%s\n", level * 2, "                    ", dev->descriptor.bLength, dev->descriptor.bLength == USB_DT_DEVICE_SIZE ? "" : " (!!!)");
 	PDEBUG("%.*s  - DescriptorType   : %02x\n", level * 2, "                    ", dev->descriptor.bDescriptorType);
@@ -384,8 +390,9 @@ RETRY:
 	}
 
 	dev = NULL;
-	nvram_set_temp("u2ec_device", "");
-	nvram_set_temp("u2ec_serial", "");
-	nvram_set_temp("u2ec_vidpid", "");
+	nvram_set("u2ec_device", "");
+	nvram_set("u2ec_serial", "");
+	nvram_set("u2ec_vidpid", "");
+	nvram_set("u2ec_mfg", "");
 	return 1;
 }

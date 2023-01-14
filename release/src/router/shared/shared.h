@@ -1378,6 +1378,7 @@ static inline int have_usb3_led(int model)
 		case MODEL_RTAC5300:
 		case MODEL_GTAC5300:
 		case MODEL_RTAX88U:
+		case MODEL_R7000P:
 			return 1;
 	}
 	return 0;
@@ -3568,7 +3569,7 @@ static inline int is_m2ssd_port(__attribute__ ((unused)) char *usb_node) { retur
 #define WAN0DEV "vlan2"
 #endif
 
-#if defined(RTAC88U) || defined(RTAC3100)
+#if defined(RTAC88U) || defined(RTAC3100) || defined(R7000P)
 #ifdef RTCONFIG_EXT_RTL8365MB
 #define WAN0DEV "vlan2"
 #else

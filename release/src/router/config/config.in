@@ -2662,7 +2662,7 @@ config RTCONFIG_SOC_MT7986C
 	default n
 
 config RTCONFIG_SOC_MT7981
-	bool "MTK SoC MT7981
+	bool "MTK SoC MT7981"
 	depends on RTCONFIG_MT798X
 	default n
 

@@ -1,8 +1,8 @@
 /*
  * Copyright 2021, ASUS
- * Copyright 2021-2022, SWRTdev
- * Copyright 2021-2022, paldier <paldier@hotmail.com>.
- * Copyright 2021-2022, lostlonger<lostlonger.g@gmail.com>.
+ * Copyright 2021-2023, SWRTdev
+ * Copyright 2021-2023, paldier <paldier@hotmail.com>.
+ * Copyright 2021-2023, lostlonger<lostlonger.g@gmail.com>.
  * All Rights Reserved.
  */
 #include <stdio.h>
@@ -85,6 +85,8 @@ typedef u_int8_t __u8;
 
 //End
 char cmd[32];
+char dir[128];
+struct apinfo apinfos[MAX_NUMBER_OF_APINFO];
 
 #if defined(RTCONFIG_EXT_RTL8365MB) || defined(RTCONFIG_EXT_RTL8370MB)
 extern int ext_rtk_phyState(int v, char* BCMPorts);
@@ -410,7 +412,6 @@ int GetPhyStatus(int verbose, phy_info_list *list)
 		ext = 1;
 #endif
 		break;
-	case MODEL_DSLAC68U:
 	case MODEL_RTAC68U:
 		/* WAN L1 L2 L3 L4 */
 		ports[0]=0; ports[1]=1; ports[2]=2; ports[3]=3; ports[4]=4;
@@ -422,7 +423,9 @@ int GetPhyStatus(int verbose, phy_info_list *list)
 		ext = 1;
 #endif
 		break;
-
+	case MODEL_R7000P:
+		ports[0]=0; ports[1]=1; ports[2]=2; ports[3]=3; ports[4]=4;
+		break;
 	}
 
 #if defined(RTCONFIG_EXT_RTL8365MB) || defined(RTCONFIG_EXT_RTL8370MB)
@@ -572,8 +575,9 @@ int setAllLedOn(void)
 		case MODEL_RTAC5300:
 		case MODEL_RTAC88U:
 		case MODEL_RTAC3100:
+		case MODEL_R7000P:
 		{
-#if defined(RTAC68U) || defined(RTAC88U) || defined(RTAC3100) || defined(RTAC5300)
+#if defined(RTAC68U) || defined(RTAC88U) || defined(RTAC3100) || defined(RTAC5300) || defined(R7000P)
 			led_control(LED_USB, LED_ON);
 			led_control(LED_USB3, LED_ON);
 #endif
@@ -593,6 +597,14 @@ int setAllLedOn(void)
 #elif defined(RTAC88U) || defined(RTAC3100)
 			eval("wl", "ledbh", "9", "1");			// wl 2.4G
 			eval("wl", "-i", "eth2", "ledbh", "9", "1");	// wl 5G
+#elif defined(R7000P)
+			eval("et", "-i", "eth0", "robowr", "0", "0x18", "0x01ff");
+			eval("et", "-i", "eth0", "robowr", "0", "0x1a", "0x01ff");
+			eval("et", "-i", "eth0", "robowr", "0", "0x10", "0x3000");
+			eval("et", "-i", "eth0", "robowr", "0", "0x12", "0x78");
+			eval("et", "-i", "eth0", "robowr", "0", "0x14", "0x1");
+			led_control(LED_2G, LED_ON);
+			led_control(LED_5G, LED_ON);
 #else
 			eval("wl", "ledbh", "10", "1");			// wl 2.4G
 			eval("wl", "-i", "eth2", "ledbh", "10", "1");	// wl 5G
@@ -601,7 +613,7 @@ int setAllLedOn(void)
 #if defined(RTAC3200)
 			led_control(LED_WPS, LED_ON);
 			led_control(LED_WAN, LED_ON);
-#elif defined(RTAC88U) || defined(RTAC3100) || defined(RTAC5300)
+#elif defined(RTAC88U) || defined(RTAC3100) || defined(RTAC5300) || defined(R7000P)
 			led_control(LED_WPS, LED_ON);
 			led_control(LED_WAN, LED_ON);
 			led_control(LED_LAN, LED_ON);
@@ -658,17 +670,6 @@ setWlOffLed(void)
 
 	model = get_model();
 	switch(model) {
-		case MODEL_RTAC56S:
-		case MODEL_RTAC56U:
-		{
-			if (wlon_unit != 0) {
-				eval("wl", "ledbh", "3", "0");			// wl 2.4G
-			} else {
-				eval("wl", "-i", "eth2", "ledbh", "10", "0");	// wl 5G
-				led_control(LED_5G, LED_OFF);
-			}
-			break;
-		}
 		case MODEL_RPAC68U:
 		case MODEL_RTAC68U:
 			if (wlon_unit != 0) {
@@ -709,22 +710,10 @@ setWlOffLed(void)
 				eval("wl", "-i", "eth3", "ledbh", "10", "0");	// wl 5G high
 			break;
 		}
-		case MODEL_RTAC53U:
-		{
-			if (wlon_unit != 0) {
-				eval("wl", "-i", "eth1", "ledbh", "3", "0");	// wl 2.4G
-			} else {
-				eval("wl", "-i", "eth2", "ledbh", "9", "0");	// wl 5G
-			}
-			break;
-		}
-		case MODEL_RTAC1200G:
-		case MODEL_RTAC1200GP:
-		{
-			eval("wl", "ledbh", "10", "0"); // wl 2.4G
+		case MODEL_R7000P:
+			led_control(LED_2G, LED_OFF);
 			led_control(LED_5G, LED_OFF);
 			break;
-		}
 	}
 
 	return 0;
@@ -740,85 +729,14 @@ setAllLedOff(void)
 	// generate nvram nvram according to system setting
 	model = get_model();
 	switch(model) {
-		case MODEL_RTN16:
-		case MODEL_RTN66U:
-		{
-			/* LAN, WAN Led Off */
-			eval("et", "robowr", "0", "0x18", "0x01e0");
-			eval("et", "robowr", "0", "0x1a", "0x01e0");
-			eval("radio", "off"); /* wireless */
-			led_control(LED_USB, LED_OFF);
-			break;
-		}
-		case MODEL_RTAC56S:
-		case MODEL_RTAC56U:
-		{
-#ifdef RTCONFIG_LED_ALL
-			led_control(LED_ALL, LED_OFF);
-#endif
-			eval("et", "robowr", "0", "0x18", "0x01e0");	// lan/wan ethernet/giga led
-			eval("et", "robowr", "0", "0x1a", "0x01e0");
-			eval("wl", "ledbh", "3", "0");			// wl 2.4G
-			eval("wl", "-i", "eth2", "ledbh", "10", "0");
-			/* 4352's fake 5g led */
-			led_control(LED_5G, LED_OFF);
-			break;
-		}
-		case MODEL_RTN18U:
-		{
-			led_control(LED_USB, LED_OFF);
-			led_control(LED_USB3, LED_OFF);
-			led_control(LED_POWER, LED_OFF);
-			led_control(LED_WAN, LED_OFF);
-			led_control(LED_LAN, LED_OFF);
-			led_control(LED_2G, LED_OFF);
-			eval("wl", "-i", "eth1", "ledbh", "10", "0");
-			break;
-		}
-		case MODEL_DSLAC68U:
-		{
-			char *ledcmd_argv[] = {"adslate", "led", "off", NULL};
-			led_control(LED_USB3, LED_OFF);
-			led_control(LED_WAN, LED_OFF);
-			eval("et", "robowr", "0", "0x18", "0x01e0");	// lan/wan ethernet/giga led
-			eval("et", "robowr", "0", "0x1a", "0x01e0");
-			eval("wl", "ledbh", "10", "0");			// wl 2.4G
-			eval("wl", "-i", "eth2", "ledbh", "10", "0");
-			/* 4360's fake 5g led */
-			led_control(LED_5G, LED_OFF);
-			_eval(ledcmd_argv, NULL, 5, NULL);
-			break;
-		}
-		case MODEL_RTAC87U:
-		{
-			eval("et", "robowr", "0", "0x18", "0x01e0");	// lan/wan ethernet/giga led
-			eval("et", "robowr", "0", "0x1a", "0x01e0");
-			eval("wl", "ledbh", "10", "0");			// wl 2.4G
-			led_control(LED_WPS, LED_OFF);
-			led_control(LED_WAN, LED_OFF);
-#ifdef RTCONFIG_QTN
-			setAllLedOff_qtn();
-#endif
-			break;
-		}
-		case MODEL_RPAC68U:
-			eval("et", "robowr", "0", "0x18", "0x01e0");	// lan/wan ethernet/giga led
-			eval("et", "robowr", "0", "0x1a", "0x01e0");
-
-			eval("wl", "ledbh", "10", "0");			// wl 2.4G
-			eval("wl", "ledbh", "0", "0");			// wl 2.4G
-			eval("wl", "ledbh", "9", "0");			// wl 2.4G
-			eval("wl", "-i", "eth2", "ledbh", "10", "0");	// wl 5G
-			eval("wl", "-i", "eth2", "ledbh", "0", "0");	// wl 5G
-			eval("wl", "-i", "eth2", "ledbh", "9", "0");	// wl 5G
-			break;
 		case MODEL_RTAC68U:
 		case MODEL_RTAC3200:
 		case MODEL_RTAC5300:
 		case MODEL_RTAC88U:
 		case MODEL_RTAC3100:
+		case MODEL_R7000P:
 		{
-#if defined(RTAC68U) || defined(RTAC88U) || defined(RTAC3100) || defined(RTAC5300) || defined(RTAC5300R)
+#if defined(RTAC68U) || defined(RTAC88U) || defined(RTAC3100) || defined(RTAC5300) || defined(R7000P) 
 			led_control(LED_USB, LED_OFF);
 			led_control(LED_USB3, LED_OFF);
 #endif
@@ -844,13 +762,16 @@ setAllLedOff(void)
 			eval("wl", "ledbh", "10", "0");			// wl 5G low
 			eval("wl", "-i", "eth2", "ledbh", "10", "0");	// wl 2.4G
 			eval("wl", "-i", "eth3", "ledbh", "10", "0");	// wl 5G high
-#elif defined (RTAC5300) || defined(RTAC5300R)
+#elif defined (RTAC5300)
 			eval("wl", "ledbh", "9", "0");			// wl 5G low
 			eval("wl", "-i", "eth2", "ledbh", "9", "0");	// wl 2.4G
 			eval("wl", "-i", "eth3", "ledbh", "9", "0");	// wl 5G high
 #elif defined (RTAC88U) || defined (RTAC3100)
 			eval("wl", "ledbh", "9", "0");			// wl 2.4G
 			eval("wl", "-i", "eth2", "ledbh", "9", "0");	// wl 5G
+#elif defined(R7000P) 
+			led_control(LED_2G, LED_OFF);
+			led_control(LED_5G, LED_OFF);
 #else
 			eval("wl", "ledbh", "10", "0");			// wl 2.4G
 			eval("wl", "-i", "eth2", "ledbh", "10", "0");	// wl 5G
@@ -859,7 +780,7 @@ setAllLedOff(void)
 #if defined(RTAC3200)
 			led_control(LED_WPS, LED_OFF);
 			led_control(LED_WAN, LED_OFF);
-#elif defined (RTAC88U) || defined (RTAC3100) || defined (RTAC5300) || defined(RTAC5300R)
+#elif defined (RTAC88U) || defined (RTAC3100) || defined (RTAC5300) || defined(R7000P)
 			led_control(LED_WPS, LED_OFF);
 			led_control(LED_WAN, LED_OFF);
 			led_control(LED_LAN, LED_OFF);
@@ -885,100 +806,6 @@ setAllLedOff(void)
 			led_control(LED_USB, LED_OFF);
 			break;
 		}
-		case MODEL_RTN14UHP:
-		{
-			led_control(LED_POWER, LED_OFF);
-			/* convert from shared, boardapi.c */
-			led_control(LED_WPS, LED_OFF);
-			led_control(LED_USB, LED_OFF);
-			eval("radio", "off"); /* 2G led */
-			if (nvram_contains_word("rc_support", "lanwan_led2")) {
-				led_control(LED_WAN, LED_OFF);
-#ifdef RTCONFIG_LAN4WAN_LED
-				led_control(LED_LAN1, LED_OFF);
-				led_control(LED_LAN2, LED_OFF);
-				led_control(LED_LAN3, LED_OFF);
-				led_control(LED_LAN4, LED_OFF);
-#endif
-			} else {
-				eval("et", "robowr", "00", "0x12", "0xf800");
-			}
-			break;
-		}
-		case MODEL_APN12HP:
-		{
-			led_control(LED_POWER, LED_OFF);
-			/* convert from shared, boardapi.c */
-			nvram_set_int("led_2g_gpio", 4099);
-			led_control(LED_2G, LED_OFF);
-			led_control(LED_WAN, LED_OFF);
-			break;
-		}
-		case MODEL_RTN10P:
-		case MODEL_RTN10D1:
-		case MODEL_RTN10PV2:
-		{
-			led_control(LED_WPS, LED_OFF);
-		}
-		case MODEL_RTN12B1:
-		case MODEL_RTN12C1:
-		case MODEL_RTN12D1:
-		case MODEL_RTN12VP:
-		case MODEL_RTN12HP:
-		case MODEL_RTN12HP_B1:
-		{
-			eval("et", "robowr", "00", "0x12", "0xf800");
-			eval("radio", "off"); /* wireless */
-			break;
-		}
-		case MODEL_RTN10U:
-		{
-			led_control(LED_WPS, LED_OFF);
-			led_control(LED_USB, LED_OFF);
-			eval("et", "robowr", "00", "0x12", "0xf800");
-			eval("radio", "off"); /* wireless */
-			break;
-		}
-		case MODEL_RTN15U:
-		{
-			//LAN, WAN Led Off
-			led_control(LED_POWER, LED_OFF);
-			led_control(LED_LAN, LED_OFF);
-			led_control(LED_WAN, LED_OFF);
-			led_control(LED_USB, LED_OFF);
-			eval("radio", "off"); /* wireless */
-			break;
-		}
-		case MODEL_RTN53:
-		{
-			//LAN, WAN Led Off
-			led_control(LED_LAN, LED_OFF);
-			led_control(LED_WAN, LED_OFF);
-			led_control(LED_2G, LED_OFF);
-			led_control(LED_5G, LED_OFF);
-			break;
-		}
-		case MODEL_RTAC53U:
-		{
-			led_control(LED_POWER, LED_OFF);
-			led_control(LED_LAN, LED_OFF);
-			led_control(LED_WAN, LED_OFF);
-			led_control(LED_USB, LED_OFF);
-			eval("wl", "-i", "eth1", "ledbh", "3", "0");	// wl 2.4G
-			eval("wl", "-i", "eth2", "ledbh", "9", "0");	// wl 5G
-			break;
-		}
-		case MODEL_RTAC1200G:
-		case MODEL_RTAC1200GP:
-		{
-			eval("et", "robowr", "0", "0x18", "0x01e0");	// lan/wan ethernet/giga led
-			eval("et", "robowr", "0", "0x1a", "0x01e0");
-			eval("wl", "-i", "eth1", "ledbh", "3", "0");	// wl 2.4G
-			eval("wl", "-i", "eth2", "ledbh", "11", "0");	// wl 5G
-			led_control(LED_WPS, LED_OFF);
-			led_control(LED_USB, LED_OFF);
-			break;
-		}
 	}
 
 	puts("1");
@@ -993,42 +820,6 @@ setATEModeLedOn(void) {
 	model = get_model();
 
 	switch(model) {
-		case MODEL_RTN16:
-		case MODEL_RTN66U:
-		{
-			/* LAN, WAN Led On */
-			eval("et", "robowr", "0", "0x18", "0x01ff");
-			eval("et", "robowr", "0", "0x1a", "0x01e0");
-			led_control(LED_USB, LED_ON);
-			break;
-		}
-		case MODEL_RTN18U:
-		{
-			led_control(LED_USB, LED_ON);
-			led_control(LED_POWER, LED_ON);
-			eval("et", "robowr", "0", "0x18", "0x01ff");	// lan/wan ethernet/giga led
-			eval("et", "robowr", "0", "0x1a", "0x01e0");
-			break;
-		}
-		case MODEL_DSLAC68U:
-		{
-			led_control(LED_USB3, LED_ON);
-			led_control(LED_WAN, LED_ON);
-			eval("et", "robowr", "0", "0x18", "0x01ff");	// lan/wan ethernet/giga led
-			eval("et", "robowr", "0", "0x1a", "0x01e0");
-			eval("adslate", "led", "on");
-			break;
-		}
-		case MODEL_RTAC87U:
-		{
-			eval("et", "robowr", "0", "0x18", "0x01ff");	// lan/wan ethernet/giga led
-			eval("et", "robowr", "0", "0x1a", "0x01e0");
-			led_control(LED_WPS, LED_ON);
-#ifdef RTCONFIG_QTN
-			setAllLedOn_qtn();
-#endif
-			break;
-		}
 		case MODEL_RTAC68U:
 		case MODEL_RTAC3200:
 		{
@@ -1046,6 +837,7 @@ setATEModeLedOn(void) {
 		case MODEL_RTAC88U:
 		case MODEL_RTAC3100:
 		case MODEL_RTAC5300:
+		case MODEL_R7000P:
 		{
 			led_control(LED_WPS, LED_ON);
 			led_control(LED_WAN, LED_ON);
@@ -1055,96 +847,71 @@ setATEModeLedOn(void) {
 
 			eval("et", "-i", "eth0", "robowr", "0", "0x18", "0x01ff");	// lan/wan ethernet/giga led
 			eval("et", "-i", "eth0", "robowr", "0", "0x1a", "0x01e0");
-#if defined(RTAC5300) || defined(RTAC5300R)
+#if defined(RTAC5300)
 			eval("wl", "ledbh", "9", "1");			// wl 5G low
 			eval("wl", "-i", "eth2", "ledbh", "9", "1");	// wl 2.4G
 			eval("wl", "-i", "eth3", "ledbh", "9", "1");	// wl 5G high
 #elif defined(RTAC88U) || defined(RTAC3100)
 			eval("wl", "ledbh", "9", "1");			// wl 2.4G
 			eval("wl", "-i", "eth2", "ledbh", "9", "1");	// wl 5G
+#elif defined(R7000P)
+			eval("et", "-i", "eth0", "robowr", "0", "0x18", "0x01ff");
+			eval("et", "-i", "eth0", "robowr", "0", "0x1a", "0x01ff");
+			eval("et", "-i", "eth0", "robowr", "0", "0x10", "0x3000");
+			eval("et", "-i", "eth0", "robowr", "0", "0x12", "0x78");
+			eval("et", "-i", "eth0", "robowr", "0", "0x14", "0x1");
+			led_control(LED_2G, LED_ON);
+			led_control(LED_5G, LED_ON);
 #endif
-			break;
-		}
-		case MODEL_RTAC56S:
-		case MODEL_RTAC56U:
-		{
-#ifdef RTCONFIG_LED_ALL
-			led_control(LED_ALL, LED_ON);
-#endif
-			led_control(LED_USB, LED_ON);
-			led_control(LED_USB3, LED_ON);
-			led_control(LED_WAN, LED_ON);
-			led_control(LED_LAN, LED_ON);
-			eval("et", "robowr", "0", "0x18", "0x01ff");	// lan/wan ethernet/giga led
-			eval("et", "robowr", "0", "0x1a", "0x01e0");
-			break;
-		}
-		case MODEL_RTAC66U:
-		{
-			/* LAN, WAN Led On */
-			eval("et", "robowr", "0", "0x18", "0x01ff");
-			eval("et", "robowr", "0", "0x1a", "0x01e0");
-			led_control(LED_USB, LED_ON);
-			break;
-		}
-		case MODEL_RTN10P:
-		case MODEL_RTN10D1:
-		case MODEL_RTN10PV2:
-		{
-			led_control(LED_WPS, LED_ON);
-			break;
-		}
-		case MODEL_APN12HP:
-		{
-			led_control(LED_POWER, LED_ON);
-			/* convert from shared, boardapi.c */
-			led_control(LED_WAN, LED_ON);
-			break;
-		}
-		case MODEL_RTN12B1:
-		case MODEL_RTN12C1:
-		case MODEL_RTN12D1:
-		case MODEL_RTN12VP:
-		case MODEL_RTN12HP:
-		case MODEL_RTN12HP_B1:
-		{
-			eval("et", "robowr", "00", "0x12", "0xfd55");
-			break;
-		}
-		case MODEL_RTN10U:
-		{
-			led_control(LED_WPS, LED_ON);
-			led_control(LED_USB, LED_ON);
-			eval("et", "robowr", "00", "0x12", "0xfd55");
-			break;
-		}
-		case MODEL_RTN53:
-		{
-			/* LAN, WAN Led On */
-			led_control(LED_LAN, LED_ON);
-			led_control(LED_WAN, LED_ON);
-			break;
-		}
-		case MODEL_RTAC53U:
-		{
-			led_control(LED_POWER, LED_ON);
-			led_control(LED_LAN, LED_ON);
-			led_control(LED_WAN, LED_ON);
-			led_control(LED_USB, LED_ON);
-			break;
-		}
-		case MODEL_RTAC1200G:
-		case MODEL_RTAC1200GP:
-		{
-			eval("et", "robowr", "0", "0x18", "0x01ff");	// lan/wan ethernet/giga led
-			eval("et", "robowr", "0", "0x1a", "0x01e0");
-			led_control(LED_WPS, LED_ON);
-			led_control(LED_USB, LED_ON);
 			break;
 		}
 	}
 
 	return 0;
+}
+
+void setAllLedNormal(void) {
+	if(nvram_match("AllLED", "1")){
+		led_control(LED_POWER, LED_ON);
+		led_control(LED_WPS, LED_ON);
+		//lan&wan
+		eval("et", "-i", "eth0", "robowr", "0", "0x18", "0x01ff");
+		eval("et", "-i", "eth0", "robowr", "0", "0x1a", "0x01ff");
+#if defined(R7000P)
+		eval("et", "-i", "eth0", "robowr", "0", "0x10", "0x3000");
+		eval("et", "-i", "eth0", "robowr", "0", "0x12", "0x78");
+		eval("et", "-i", "eth0", "robowr", "0", "0x14", "0x1");
+#endif
+		kill_pidfile_s("/var/run/wanduck.pid", SIGUSR2);
+		//wifi
+		if (nvram_match("wl0_radio", "1"))
+#if defined(R7000P)
+			led_control(LED_2G, LED_ON);
+#elif defined(RTAC3100)
+			eval("wl", "ledbh", "9", "1");
+#endif
+		else
+#if defined(R7000P)
+			led_control(LED_2G, LED_OFF);
+#elif defined(RTAC3100)
+			eval("wl", "ledbh", "9", "0");
+#endif
+		if (nvram_match("wl1_radio", "1"))
+#if defined(R7000P)
+			led_control(LED_5G, LED_ON);
+#elif defined(RTAC3100)
+			eval("wl", "-i", "eth2", "ledbh", "9", "1");
+#endif
+		else
+#if defined(R7000P)
+			led_control(LED_5G, LED_OFF);
+#elif defined(RTAC3100)
+			eval("wl", "-i", "eth2", "ledbh", "9", "0");
+#endif
+		//usb
+		start_usbled();
+	} else
+		setAllLedOff();
 }
 
 #ifdef RTCONFIG_BCMARM
@@ -1159,6 +926,7 @@ setWanLedMode1(void)
 		case MODEL_RTAC5300:
 		case MODEL_RTAC88U:
 		case MODEL_RTAC3100:
+		case MODEL_R7000P:
 #ifdef RTAC68U
 			if (!is_ac66u_v2_series())
 				goto exit;
@@ -1187,6 +955,7 @@ setWanLedMode2(void)
 		case MODEL_RTAC5300:
 		case MODEL_RTAC88U:
 		case MODEL_RTAC3100:
+		case MODEL_R7000P:
 #ifdef RTAC68U
 			if (!is_ac66u_v2_series())
 				goto exit;
@@ -1312,7 +1081,7 @@ int Get_ChannelList_5G(void)
 	return Get_channel_list(1);
 }
 
-#if defined(RTAC3200) || defined(RTAC5300) || defined(RTAC5300R)
+#if defined(RTAC3200) || defined(RTAC5300)
 int Get_ChannelList_5G_2(void)
 {
 	return Get_channel_list(2);
@@ -1698,7 +1467,7 @@ int wlcscan_core(char *ofile, char *wif)
 	params->active_time = -1;
 	params->passive_time = -1;
 	params->home_time = -1;
-#if defined(RTAC88U) || defined(RTAC3100) || defined(RTAC5300) || defined(RTAC5300R)
+#if defined(RTAC88U) || defined(RTAC3100) || defined(RTAC5300) || defined(R7000P)
 	int band = WLC_BAND_ALL;
 	wl_ioctl(wif, WLC_GET_BAND, &band, sizeof(band));
 	if (band == WLC_BAND_5G)
@@ -1825,7 +1594,7 @@ int wlcscan_core(char *ofile, char *wif)
 	/* restore original scan channel time */
 	wl_ioctl(wif, WLC_SET_SCAN_CHANNEL_TIME, &org_scan_time, sizeof(org_scan_time));
 
-#if defined(RTAC88U) || defined(RTAC3100) || defined(RTAC5300) || defined(RTAC5300R)
+#if defined(RTAC88U) || defined(RTAC3100) || defined(RTAC5300) || defined(R7000P)
 	wait_time = 2;
 #endif
 	dbg("[rc] Please wait %d seconds ", wait_time);
@@ -2093,14 +1862,14 @@ next_info:
 		if ((fp = fopen(ofile, "a")) == NULL) {
 			printf("[wlcscan] Output %s error\n", ofile);
 		} else {
-#if defined(RTAC3200) || defined(RTAC5300) || defined(RTAC5300R)
+#if defined(RTAC3200) || defined(RTAC5300)
 			int unit = 0;
 			char prefix[] = "wlXXXXXXXXXX_", tmp[100];
 			wl_ioctl(wif, WLC_GET_INSTANCE, &unit, sizeof(unit));
 			snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 #endif
 			for (i = 0; i < ap_count; i++) {
-#if defined(RTAC3200) || defined(RTAC5300) || defined(RTAC5300R)
+#if defined(RTAC3200) || defined(RTAC5300)
 				if (!strcmp(wif, "eth1") && (apinfos[i].ctl_ch > 48))
 					continue;
 				if (!strcmp(wif, "eth3")) {
@@ -3305,7 +3074,7 @@ wl_check_5g_band_group()
 }
 #endif
 
-#if defined(RTAC88U) || defined(RTAC3100) || defined(RTAC5300) || defined(RTAC5300R)
+#if defined(RTAC88U) || defined(RTAC3100) || defined(RTAC5300) || defined(R7000P)
 int wl_channel_valid(char *wif, int channel)
 {
 	int channels[MAXCHANNEL+1];
@@ -4047,7 +3816,6 @@ void led_bh_prep(int post)
 		case MODEL_RTAC5300:
 		case MODEL_RTAC88U:
 		case MODEL_RTAC3100:
-
 			if(post)
 			{
 				wlon_unit = nvram_get_int("wlc_band");
@@ -4121,6 +3889,19 @@ void led_bh_prep(int post)
 				eval("wlconf", "eth3", "up");
 				eval("wl", "-i", "eth3", "maxassoc", "0");
 #endif
+			}
+			break;
+		case MODEL_R7000P:
+			if(post){
+				led_control(LED_2G, LED_ON);
+				led_control(LED_5G, LED_ON);
+			}else{
+				led_control(LED_2G, LED_ON);
+				led_control(LED_5G, LED_ON);
+				eval("wlconf", "eth1", "up");
+				eval("wlconf", "-i", "eth1", "maxassoc", "0");
+				eval("wlconf", "eth2", "up");
+				eval("wlconf", "-i", "eth2", "maxassoc", "0");
 			}
 			break;
 		default:
@@ -4238,3 +4019,59 @@ uint32 wps_gen_pin(char *devPwd, int devPwd_len)
 
 	return 1;
 }
+
+
+void config_mssid_isolate(char *ifname, int vif)
+{
+	int unit = -1, sw_mode;
+	char prefix[] = "wlXXXXXXXXXX_", tmp[32], path[64];
+
+	if(nvram_get("sw_mode"))
+		sw_mode = nvram_get_int("sw_mode");
+	else
+		sw_mode = atoi(nvram_default_get("sw_mode"));
+
+	if(sw_mode == 1 && ifname){
+		if(vif)
+			snprintf(prefix, sizeof(prefix), "%s_", ifname);
+		else{
+			if(wl_ioctl(ifname, WLC_GET_INSTANCE, &unit, sizeof(unit)))
+				return;
+			snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		}
+		if(nvram_get_int(strcat_r(prefix, "ap_isolate", tmp)))
+			vif = 1;
+		else if(vif)
+			vif = nvram_match(strcat_r(prefix, "lanaccess", tmp), "off");
+		snprintf(path, sizeof(path), "/sys/class/net/%s/brport/isolate_mode", ifname);
+		if(f_exists(path)){
+			if(vif)
+				f_write_string(path, "1", 0, 0);
+			else
+				f_write_string(path, "0", 0, 0);
+		}
+	}
+}
+
+void fw_check_pre(void)
+{
+}
+
+void setAllLedBrightness(void)
+{
+}
+
+#if defined(HND_ROUTER) || defined(RTCONFIG_BCM_7114) || defined(RTCONFIG_BCM4708)
+void dump_WlGetDriverStats(int fb, int count)
+{
+}
+
+void dump_WlGetDriverCfg()
+{
+}
+
+void wl_fail_db(int unit, int state, int count)
+{
+}
+#endif
+

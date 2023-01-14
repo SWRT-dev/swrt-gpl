@@ -401,6 +401,7 @@ misc_ioctrl(void)
 		case MODEL_RTAC88U:
 		case MODEL_RTAC86U:
 		case MODEL_RTAC3100:
+		case MODEL_R7000P:
 		case MODEL_RTAX88U:
 		case MODEL_GTAX11000:
 		case MODEL_RTAX92U:
@@ -1627,6 +1628,7 @@ misc_defaults(int restore_defaults)
 		case MODEL_RTAC5300:
 		case MODEL_RTAC88U:
 		case MODEL_RTAC3100:
+		case MODEL_R7000P:
 			nvram_set("reboot_time", "140");
 			break;
 		case MODEL_RTAC3200:
@@ -15763,7 +15765,133 @@ int init_nvram(void)
 			nvram_set("wifi_psk", cfe_nvram_safe_get_raw("secret_code"));
 		}
 		break;
+	case MODEL_R7000P:
+		set_tcode_misc();
+		//if(nvram_match("lazy_et", "1"))
+			nvram_set("et_rxlazy_timeout",  "1000");
+		//else
+		//	nvram_set("et_rxlazy_timeout",  "300");
+#ifdef RTCONFIG_RGMII_BRCM5301X
+		hw_name = "et1";
 
+		nvram_set("rgmii_port", "5");
+#else
+		nvram_unset("rgmii_port");
+#endif
+		nvram_set("landevs", "vlan1 wl0 wl1");
+
+#ifdef RTCONFIG_DUALWAN
+		if (is_router_mode()) {
+			if (get_wans_dualwan()&WANSCAP_WAN && get_wans_dualwan()&WANSCAP_LAN)
+				nvram_set("wandevs", "vlan2 vlan3");
+			set_lan_phy("vlan1");
+
+			if (!(get_wans_dualwan()&WANSCAP_2G))
+				add_lan_phy("eth1");
+			if (!(get_wans_dualwan()&WANSCAP_5G)) {
+				add_lan_phy("eth2");
+				if(model == MODEL_RTAC5300)
+					add_lan_phy("eth3");
+			}
+
+			if (nvram_get("wans_dualwan")) {
+				set_wan_phy("");
+				for(unit = WAN_UNIT_FIRST; unit < WAN_UNIT_MAX; ++unit) {
+					if (get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_LAN) {
+						if (get_wans_dualwan()&WANSCAP_WAN)
+							add_wan_phy("vlan3");
+						else
+							add_wan_phy(the_wan_phy());
+					}
+					else if (get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_2G)
+						add_wan_phy("eth1");
+					else if (get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_5G)
+						add_wan_phy("eth2");
+					else if (get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_WAN) {
+						if (nvram_get("switch_wantag") && !nvram_match("switch_wantag", "") && !nvram_match("switch_wantag", "none")) {
+							int wan_vid = nvram_get_int("switch_wan0tagid");
+							if (wan_vid) {
+								sprintf(wan_if, "vlan%d", wan_vid);
+								add_wan_phy(wan_if);
+							}
+							else
+								add_wan_phy(the_wan_phy());
+						}
+						else if (get_wans_dualwan()&WANSCAP_LAN)
+							add_wan_phy("vlan2");
+						else
+							add_wan_phy(the_wan_phy());
+					}
+					else if (get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_USB)
+						add_wan_phy("usb");
+#ifdef RTCONFIG_USB_MULTIMODEM
+					else if (get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_USB2)
+						add_wan_phy("usb2");
+#endif
+				}
+			}
+			else
+				nvram_set("wan_ifnames", "eth0 usb");
+		}
+		else{
+			nvram_set("lan_ifnames", "vlan1 eth1 eth2");
+			nvram_set("wan_ifnames", the_wan_phy());
+			nvram_unset("wan1_ifname");
+		}
+#else
+		nvram_set("lan_ifnames", "vlan1 eth1 eth2");
+		nvram_set("wan_ifnames", "eth0");
+#endif
+		nvram_set("wl_ifnames", "eth1 eth2");
+		nvram_set("wl0_vifnames", "wl0.1 wl0.2 wl0.3");
+		nvram_set("wl1_vifnames", "wl1.1 wl1.2 wl1.3");
+		/* gpio */
+		nvram_set_int("pwr_usb_gpio", 0);
+		nvram_set_int("led_pwr_gpio", 2|GPIO_ACTIVE_LOW);//2white 3red
+		nvram_set_int("btn_wltog_gpio", 4|GPIO_ACTIVE_LOW);
+		nvram_set_int("btn_wps_gpio", 5|GPIO_ACTIVE_LOW);
+		nvram_set_int("btn_rst_gpio", 6|GPIO_ACTIVE_LOW);
+		//nvram_set_int("led_wan_gpio", 7|GPIO_ACTIVE_LOW);//7white 8red
+		//nvram_set_int("led_wan_red_gpio", 8|GPIO_ACTIVE_LOW);//7white 8red
+		nvram_set_int("led_2g_gpio", 10|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_5g_gpio", 9|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_wps_gpio", 11|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_usb_gpio", 15|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_usb3_gpio", 14|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_lan_gpio", 13);
+
+#ifdef RTCONFIG_XHCIMODE
+		nvram_set("xhci_ports", "1-1");
+		nvram_set("ehci_ports", "2-1 2-2");
+		nvram_set("ohci_ports", "3-1 3-2");
+#else
+		if (usb_usb3 == 1) {
+			nvram_set("xhci_ports", "1-1");
+			nvram_set("ehci_ports", "2-1 2-2");
+			nvram_set("ohci_ports", "3-1 3-2");
+		}
+		else{
+			nvram_unset("xhci_ports");
+			nvram_set("ehci_ports", "1-1 1-2");
+			nvram_set("ohci_ports", "2-1 2-2");
+		}
+#endif
+
+		if (!nvram_get("ct_max"))
+			nvram_set("ct_max", "300000");
+		add_rc_support("mssid 2.4G 5G update usbX2");
+		add_rc_support("switchctrl"); // broadcom: for jumbo frame only
+		add_rc_support("manual_stb");
+		add_rc_support("pwrctrl");
+		add_rc_support("WIFI_LOGO");
+		add_rc_support("nandflash");
+		add_rc_support("meoVoda");
+		add_rc_support("movistarTriple");
+		add_rc_support("app");
+		nvram_set("ehci_irq", "111");
+		nvram_set("xhci_irq", "112");
+//		add_rc_support("smart_connect");//4360+4365
+		break;
 #endif
 
 #ifdef RTAC87U

@@ -334,6 +334,7 @@ void enable_wan_led()
 			case MODEL_RTAC88U:
 			case MODEL_RTAC86U:
 			case MODEL_RTAC3100:
+			case MODEL_R7000P:
 #ifdef HND_ROUTER
 #ifdef GTAC2900
 				eval("sw", "0x800c00a0", "0");	// disable event on tx/rx activity

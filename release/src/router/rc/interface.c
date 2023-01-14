@@ -666,6 +666,7 @@ int start_vlan(void)
 		case MODEL_RTAC88U:
 		case MODEL_RTAC3100:
 		case MODEL_RTAC5300:
+		case MODEL_R7000P:
 			break;
 		default:
 			// port 5 ??
