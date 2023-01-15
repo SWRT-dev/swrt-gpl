@@ -10,10 +10,11 @@ CFLAGS += -I$(SRCBASE)/include
 LDFLAGS += -L$(TOP)/shared -lshared -L$(TOP)/nvram${BCMEX}${EX7} -lnvram
 ifeq ($(HND_ROUTER),y)
 LDFLAGS += -L$(TOP)/wlcsm -lwlcsm
+LDFLAGS += -lgcc_s
 endif
 
 ifeq ($(RTCONFIG_BCMARM),y)
-LDFLAGS += -lgcc_s
+CFLAGS += -I$(SRCBASE)/shared/bcmwifi/include
 endif
 
 ifeq ($(RTCONFIG_QTN),y)

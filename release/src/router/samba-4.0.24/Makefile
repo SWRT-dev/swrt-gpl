@@ -27,12 +27,13 @@ endif
 
 TARGET_LDFLAGS = -ffunction-sections -fdata-sections -Wl,--gc-sections
 ifeq ($(RTCONFIG_BCMARM), y)
-TARGET_CFLAGS += -DNO_DEF_IFADDRS
-TARGET_LDFLAGS += -lgcc_s
-
-DEF_FCNTL = -DSHMEM_SIZE=524288 -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE=1 -D_LARGEFILE64_SOURCE=1 -D_LARGE_FILES=1
-FUNC_GETIFADDRS=no
-SHARED_MODULES=
+ifneq ($(RTCONFIG_HND_ROUTER), y)
+MSOFTFLOAT := -msoft-float
+TARGET_CFLAGS += -mfloat-abi=softfp
+endif
+TARGET_CFLAGS += -pipe -fhonour-copts $(MSOFTFLOAT) -D__location__=\\\"\\\"
+TARGET_CFLAGS += -Wl,-z,relro,-z,now -Wno-error=unused-but-set-variable
+MAKE_FLAGS = DYNEXP= PICFLAG= MODULES=
 endif
 
 ifeq ($(or $(RTCONFIG_RALINK),$(RTCONFIG_REALTEK)),y)
@@ -152,12 +153,9 @@ install:
 	ln -sf samba_multicall $(INSTALLDIR)/usr/sbin/smbpasswd
 	install -D $(PKG_BUILD_DIR)/codepages/lowcase.dat $(INSTALLDIR)/usr/share/samba/codepages/lowcase.dat
 	install -D $(PKG_BUILD_DIR)/codepages/upcase.dat $(INSTALLDIR)/usr/share/samba/codepages/upcase.dat
-ifeq ($(RTCONFIG_BCMARM), y)
+
 ifeq ($(HND_ROUTER),y)
 	install -D $(TOOLCHAIN)/arm-buildroot-linux-gnueabi/sysroot/lib/libresolv.so.2 $(INSTALLDIR)/usr/lib/libresolv.so.2
-else
-	install -D $(shell dirname $(shell which $(CXX)))/../lib/libresolv.so.0 $(INSTALLDIR)/usr/lib/libresolv.so.0
-endif
 endif
 
 clean:

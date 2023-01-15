@@ -56,6 +56,10 @@
 #include <lantiq.h>
 #elif defined(RTCONFIG_QCA)
 #include <qca.h>
+#elif defined(RTCONFIG_BCMARM)
+#include <wlutils.h>
+#include <wlioctl.h>
+#include <wlscan.h>
 #endif
 
 typedef struct sta_info_table STA_INFO_TABLE;
@@ -75,6 +79,10 @@ STA_INFO_TABLE *g_sta_info_tab = NULL;
 #include "mtk.c"
 #elif defined(RTCONFIG_QCA)
 #include "qca.c"
+#elif defined(RTCONFIG_HND_ROUTER)
+#include "hnd.c"
+#elif defined(RTCONFIG_BCMARM)
+#include "bcm.c"
 #endif
 
 void conn_debug_info()
@@ -108,6 +116,9 @@ void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 #endif
 	}else
 		g_show_sta_info = 0;
+#if defined(RTCONFIG_BCMARM)
+	BCM_stainfo();
+#else
 	foreach(word, nvram_safe_get("wl_ifnames"), next){
 		if(i < MAX_NR_WL_IF){
 			if(nvram_get(wl_nvname("nband", i, 0)))
@@ -116,12 +127,12 @@ void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 #elif defined(RTCONFIG_QCA)
 				QCA_stainfo(word);
 #elif defined(RTCONFIG_LANTIQ)
-#elif defined(RTCONFIG_BCMARM)
+				LANTIQ_stainfo(word);
 #endif
 		}
 		i++;
 	}
-
+#endif
 	if(offline == 0){
 		if(g_sta_info_tab){
 			detail_info_num = p_client_tab->detail_info_num;

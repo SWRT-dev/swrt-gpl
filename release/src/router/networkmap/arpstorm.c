@@ -25,7 +25,7 @@
 #include <linux/if_packet.h>
 #include <stdio.h>
 //#include <linux/in.h>
-#if !defined(RTCONFIG_MUSL_LIBC) && !defined(MUSL_LIBC)
+#if !defined(RTCONFIG_MUSL_LIBC) && !defined(MUSL_LIBC) || defined(CONFIG_BCMWL5)
 #include <linux/if_ether.h>
 #endif
 #include <net/if.h>
