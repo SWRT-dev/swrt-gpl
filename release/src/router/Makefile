@@ -2147,10 +2147,10 @@ ifeq ($(BRCM_CHIP),$(filter $(BRCM_CHIP),4908 4912))
 	install -D $(TOOLCHAIN_64)/aarch64-buildroot-linux-gnu/sysroot/lib/libnss_files.so.2 $(INSTALLDIR)/lib/aarch64/libnss_files.so.2
 endif
 
-#ifeq ($(RTCONFIG_CFEZ),y)
-	#install -D $(TOP_PLATFORM)/envram_bin/envram$(BCMEX)$(EX7)/envrams $(INSTALLDIR)/usr/sbin/envrams
-	#install -D $(TOP_PLATFORM)/envram_bin/envram$(BCMEX)$(EX7)/envram $(INSTALLDIR)/usr/sbin/envram
-#endif
+ifeq ($(RTCONFIG_CFEZ),y)
+	install -D $(TOP_PLATFORM)/envram_bin/envram$(BCMEX)$(EX7)/envrams $(INSTALLDIR)/usr/sbin/envrams
+	install -D $(TOP_PLATFORM)/envram_bin/envram$(BCMEX)$(EX7)/envram $(INSTALLDIR)/usr/sbin/envram
+endif
 
 	$(if $(KNM),NM=$(KNM),) \
 	$(BUSYBOX_DIR)/examples/depmod.pl -k $(LINUXDIR)/vmlinux -b $(TARGETDIR)/../modules/lib/modules/$(LINUX_KERNEL)
@@ -4632,6 +4632,7 @@ ifeq ($(RTCONFIG_BCMARM),y)
 ifeq ($(RTCONFIG_CFEZ),y)
 envram_bin:
 	$(SEP)
+	$(MAKE) -C envram_bin
 
 envram_bin-install:
 ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6756),$(HND_ROUTER_AX_6710),$(BCM_502L07P2)),y)

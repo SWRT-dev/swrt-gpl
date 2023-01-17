@@ -12,6 +12,8 @@ release/src/router/ahs/*.h
 release/src/router/cfg_sync/*.c
 release/src/router/eapd/*.c
 release/src/router/eapd/*.h
+release/src/router/envram/*.c
+release/src/router/envram/*.h
 release/src/router/libasc/*.c
 release/src/router/i2cled/driver/*.c
 release/src/router/nt_center/*.c

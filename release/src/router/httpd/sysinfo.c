@@ -191,7 +191,7 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 							if(strstr(buffer, "7986"))
 								sprintf(model, "MT7986X - Cortex A53 ARMv8 revision %s", revision);
 							else if(strstr(buffer, "7981"))
-								sprintf(model, "MT7981 - Cortex A53 ARMv8 revision %s", revision);
+								sprintf(model, "MT7981X - Cortex A53 ARMv8 revision %s", revision);
 							else
 								sprintf(model, "MT%s - Cortex A53 ARMv8 revision %s", buffer + 2, revision);
 							free(buffer);
@@ -287,8 +287,10 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 			}
 			else
 				strcpy(result, "0");//bug?
+#elif defined(RTCONFIG_SOC_MT7981)
+			strcpy(result, "1800");//1800/1300
 #elif defined(RTCONFIG_MT798X)
-			strcpy(result, "2000");
+			strcpy(result, "2000");//2000/1600
 #elif defined(RTCONFIG_RALINK)
 			int freq = 0;
 			char *buffer = read_whole_file("/sys/kernel/debug/clk/cpuclock/clk_rate");
