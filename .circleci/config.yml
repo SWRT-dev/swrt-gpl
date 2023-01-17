@@ -15,7 +15,7 @@ jobs:
           at: .
       - run:
           name: build mtk
-          shell: /bin/bash
+          shell: /bin/sh
           command: |
             git clone https://github.com/SWRT-dev/swrt-gpl mtk
             cd mtk/release/src-mtk-arm
@@ -33,7 +33,7 @@ jobs:
           at: .
       - run:
           name: build qca
-          shell: /bin/bash
+          shell: /bin/sh
           command: |
             git clone https://github.com/SWRT-dev/swrt-gpl qca
             cd qca/release/src-qca-ipq40xx
