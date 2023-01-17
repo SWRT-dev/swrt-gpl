@@ -1,0 +1,92 @@
+version: 2.1
+
+language: c
+
+os: linux
+
+compiler:
+  - gcc
+
+addons:
+  apt:
+    packages:
+      - build-essential
+      - asciidoc
+      - binutils
+      - bzip2
+      - gawk
+      - gettext
+      - git
+      - libncurses5-dev
+      - libz-dev
+      - patch
+      - python3.5
+      - python2.7
+      - unzip
+      - zlib1g-dev
+      - lib32gcc1
+      - libc6-dev-i386
+      - subversion
+      - flex
+      - uglifyjs
+      - git-core
+      - gcc-multilib
+      - p7zip
+      - p7zip-full
+      - msmtp
+      - libssl-dev
+      - texinfo
+      - libglib2.0-dev
+      - xmlto
+      - qemu-utils
+      - upx
+      - libelf-dev
+      - autoconf
+      - automake
+      - libtool
+      - autopoint
+      - device-tree-compiler
+      - g++-multilib
+      - antlr3
+      - gperf
+      - wget
+      - libncurses5:i386
+      - libelf1:i386
+      - lib32z1
+      - lib32stdc++6
+      - gtk-doc-tools
+      - intltool
+      - binutils-dev
+      - cmake
+      - lzma
+      - liblzma-dev
+      - lzma-dev
+      - uuid-dev
+      - liblzo2-dev
+      - xsltproc
+      - dos2unix
+      - libstdc++5
+      - docbook-xsl-*
+      - sharutils
+      - autogen
+      - shtool 
+      - gengetopt
+      - libltdl-dev
+      - libtool-bin
+      - lcov
+      - libjson-c-dev
+
+install:
+  - git clone https://github.com/SWRT-dev/swrt-gpl mtk
+  - git clone https://github.com/SWRT-dev/swrt-gpl qca
+  - git clone https://github.com/SWRT-dev/mtk-toolchains
+  - git clone https://github.com/SWRT-dev/qca-toolchains
+  - cd mtk-toolchains
+  - sudo ln -sf $(pwd)/toolchain-mipsel_24kc_gcc-5.4.0_musl-1.1.24 /opt/
+  - sudo ln -sf $(pwd)/toolchain-aarch64_cortex-a53_gcc-8.4.0_musl /opt/
+
+script:
+  - cd mtk/release/src-mtk-arm
+  - make swrt-rm-ax6000
+  - cd ../../../qca/release/src-qca-ipq40xx
+  - make rt-ac82u
