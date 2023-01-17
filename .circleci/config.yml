@@ -15,10 +15,11 @@ jobs:
           at: .
       - run:
           name: build mtk
-          shell: /bin/sh
+          shell: /bin/bash
           command: |
             git clone https://github.com/SWRT-dev/swrt-gpl mtk
             cd mtk/release/src-mtk-arm
+            ~/.profile
             sudo /home/docker/envs/toolchain.sh
             make swrt-rm-ax6000
   testqca:
@@ -33,10 +34,11 @@ jobs:
           at: .
       - run:
           name: build qca
-          shell: /bin/sh
+          shell: /bin/bash
           command: |
             git clone https://github.com/SWRT-dev/swrt-gpl qca
             cd qca/release/src-qca-ipq40xx
+            ~/.profile
             sudo /home/docker/envs/toolchain.sh
             make rt-ac82u
 
