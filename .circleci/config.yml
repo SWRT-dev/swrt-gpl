@@ -9,7 +9,7 @@ jobs:
         environment:
           PROJECT_DIR: "/home/docker/project"
           TERM: "xterm-256color"
-		resource_class: large
+    resource_class: large
     steps:
       - attach_workspace:
           at: .
@@ -27,7 +27,7 @@ jobs:
         environment:
           PROJECT_DIR: "/home/docker/project"
           TERM: "xterm-256color"
-		resource_class: large
+    resource_class: large
     steps:
       - attach_workspace:
           at: .
