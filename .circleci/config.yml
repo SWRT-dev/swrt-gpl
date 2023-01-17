@@ -1,0 +1,42 @@
+
+version: 2.1
+
+
+jobs:
+  testmtk:
+    docker:
+      - image: paldier/swrt-docker:latest
+        environment:
+          PROJECT_DIR: "/home/docker/project"
+          TERM: "xterm-256color"
+    steps:
+      - run:
+          name: build mtk
+          shell: /bin/bash
+          command: |
+            git clone https://github.com/SWRT-dev/swrt-gpl mtk
+            cd mtk/release/src-mtk-arm
+            make swrt-rm-ax6000
+  testqca:
+    docker:
+      - image: paldier/swrt-docker:latest
+        environment:
+          PROJECT_DIR: "/home/docker/project"
+          TERM: "xterm-256color"
+    steps:
+      - run:
+          name: build qca
+          shell: /bin/bash
+          command: |
+            git clone https://github.com/SWRT-dev/swrt-gpl qca
+            cd qca/release/src-qca-ipq40xx
+            make rt-ac82u
+
+workflows:
+  build-workflow:
+    jobs:
+      - buildenv
+      - testmtk
+      - testqca
+
+
