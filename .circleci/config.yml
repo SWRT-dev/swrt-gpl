@@ -9,13 +9,17 @@ jobs:
         environment:
           PROJECT_DIR: "/home/docker/project"
           TERM: "xterm-256color"
+		resource_class: large
     steps:
+      - attach_workspace:
+          at: .
       - run:
           name: build mtk
           shell: /bin/bash
           command: |
             git clone https://github.com/SWRT-dev/swrt-gpl mtk
             cd mtk/release/src-mtk-arm
+			source /home/docker/envs/toolchain.sh
             make swrt-rm-ax6000
   testqca:
     docker:
@@ -23,13 +27,17 @@ jobs:
         environment:
           PROJECT_DIR: "/home/docker/project"
           TERM: "xterm-256color"
+		resource_class: large
     steps:
+      - attach_workspace:
+          at: .
       - run:
           name: build qca
           shell: /bin/bash
           command: |
             git clone https://github.com/SWRT-dev/swrt-gpl qca
             cd qca/release/src-qca-ipq40xx
+			source /home/docker/envs/toolchain.sh
             make rt-ac82u
 
 workflows:
