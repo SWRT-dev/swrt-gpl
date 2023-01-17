@@ -260,6 +260,11 @@ endif
 
 if (FIRST_IF_MT7986 || SECOND_IF_MT7986)
 menu "MediaTek MT7986/MT7981 Wireless driver"
+config CONNINFRA_APSOC
+	bool "conninfra ap support"
+	depends on FIRST_IF_MT7986
+	default y
+
 source "drivers/net/wireless/mediatek/mt7986/mt_wifi/embedded/Kconfig"
 source "drivers/net/wireless/mediatek/mt7986/warp_driver/warp/Kconfig"
 endmenu

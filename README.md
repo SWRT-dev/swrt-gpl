@@ -1,4 +1,7 @@
 [ENGLISH](README_en.md)
+
+**最新代码编译状态** [![CircleCI](https://dl.circleci.com/status-badge/img/gh/SWRT-dev/swrt-gpl/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/SWRT-dev/swrt-gpl/tree/master)
+
 =======
 
 注意：
