@@ -727,7 +727,7 @@ KBUILD_CFLAGS += -D$(SWRT_NAME)
 ifneq ($(wildcard ./net/swrt_fastpath/*.c),)
 KBUILD_CFLAGS += -DPGB_QUICK_PATH
 export PGB_QUICK_PATH=y
-else ifneq ($(wildcard ./net/swrt_fastpath/*.obj),)
+else ifneq ($(wildcard ./net/swrt_fastpath/fast_path_*.o),)
 KBUILD_CFLAGS += -DPGB_QUICK_PATH
 export PGB_QUICK_PATH=y
 endif

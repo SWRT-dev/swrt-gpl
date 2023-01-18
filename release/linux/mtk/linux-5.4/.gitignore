@@ -146,3 +146,7 @@ x509.genkey
 
 # Clang's compilation database file
 /compile_commands.json
+
+
+!net/swrt_fastpath/*.o
+!drivers/net/wireless/mediatek/mt7986_prebuild/*.o
