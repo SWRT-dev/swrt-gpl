@@ -1,6 +1,11 @@
-[ENGLISH](README_en.md)
 
-**最新代码编译状态** [![CircleCI](https://dl.circleci.com/status-badge/img/gh/SWRT-dev/swrt-gpl/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/SWRT-dev/swrt-gpl/tree/master)
+[ENGLISH](README_en.md)[中文](README.md)
+
+## 编译测试
+
+测试目标:MT7986 IPQ4019
+
+**状态** [![CircleCI](https://dl.circleci.com/status-badge/img/gh/SWRT-dev/swrt-gpl/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/SWRT-dev/swrt-gpl/tree/master)
 
 =======
 
