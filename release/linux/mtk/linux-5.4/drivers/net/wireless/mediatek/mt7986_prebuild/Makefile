@@ -4,5 +4,5 @@ obj-m := conninfra.o
 #mt_wifi-objs := mt_wifi.obj
 #mtk_warp-objs := mtk_warp.obj
 #mtk_warp_proxy-objs := mtk_warp_proxy.obj
-conninfra-objs := conninfra-mt7986.obj
+conninfra-objs := conninfra_mt7986.obj
 
