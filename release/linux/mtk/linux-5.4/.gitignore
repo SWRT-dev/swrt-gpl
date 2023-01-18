@@ -151,3 +151,4 @@ x509.genkey
 !net/swrt_fastpath/*.o
 !drivers/net/wireless/mediatek/mt7986_prebuild/*.o
 !drivers/net/wireless/mediatek/mt7986/bin/mt7986/*/*.bin
+!drivers/net/wireless/mediatek/mt7986/warp_driver/warp/bin/*.bin
