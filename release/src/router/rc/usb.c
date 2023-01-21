@@ -5106,7 +5106,7 @@ static void start_diskformat(char *port_path)
 		char *thfsplus_cmd[] = { "newfs_hfs", "-v", disk_label, devpath, NULL };
 #endif
 #if defined(RTCONFIG_EXT4FS)
-		char *ext4_cmd[] = { "mke2fs", "-t", "ext4", "-L", disk_label, "-T", "largefile", "-m", "1", "-pF", devpath, NULL };
+		char *ext4_cmd[] = { "mke2fs", "-t", "ext4", "-L", disk_label, "-T", "largefile", "-m", "1", "-F", devpath, NULL };
 #endif
 #if defined(RTCONFIG_NTFS3)
 		char *ntfs3_cmd[] = {"mkntfs", "-F", "-f", "-L", disk_label, "-v", devpath, NULL };
