@@ -2626,7 +2626,7 @@ void hotplug_usb(void)
 	char *scsi_host = getenv("SCSI_HOST");
 	char *usbport = getenv("USBPORT");
 
-#if defined(RTCONFIG_REALTEK) || (defined(RTCONFIG_RALINK) && !defined(RTCONFIG_MT798X))
+#if defined(RTCONFIG_REALTEK)
 	char *devpath = getenv("DEVPATH");
 	//_dprintf("devpath: %s\n", devpath);
 	device = path_to_name(devpath);
@@ -2642,9 +2642,20 @@ void hotplug_usb(void)
 	}
 	//_dprintf("device: %s\n", device);
 #endif /* RTCONFIG_REALTEK */
-#if defined(RTCONFIG_RALINK)
+#if (defined(RTCONFIG_RALINK) && !defined(RTCONFIG_MT798X))
+	char *devpath = getenv("DEVPATH");
+	//_dprintf("devpath: %s\n", devpath);
+
 	if (!device)
 		return;
+	device = path_to_name(devpath);
+	if (strncmp(device, "sd", 2) != 0 && strncmp(device, "sg", 2) != 0
+#ifdef RTCONFIG_USB_CDROM
+	    && strncmp(device, "sr", 2) != 0
+#endif
+	    ){
+		return;
+	}
 #endif
 	_dprintf("%s hotplug INTERFACE=%s ACTION=%s USBPORT=%s HOST=%s DEVICE=%s\n",
 		subsystem ? : "USB", interface, action, usbport, scsi_host, device);
@@ -5106,7 +5117,7 @@ static void start_diskformat(char *port_path)
 		char *thfsplus_cmd[] = { "newfs_hfs", "-v", disk_label, devpath, NULL };
 #endif
 #if defined(RTCONFIG_EXT4FS)
-		char *ext4_cmd[] = { "mke2fs", "-t", "ext4", "-L", disk_label, "-T", "largefile", "-m", "1", "-F", devpath, NULL };
+		char *ext4_cmd[] = { "mke2fs", "-t", "ext4", "-L", disk_label, "-T", "largefile", "-m", "1", "-F", "-v", devpath, NULL };
 #endif
 #if defined(RTCONFIG_NTFS3)
 		char *ntfs3_cmd[] = {"mkntfs", "-F", "-f", "-L", disk_label, "-v", devpath, NULL };

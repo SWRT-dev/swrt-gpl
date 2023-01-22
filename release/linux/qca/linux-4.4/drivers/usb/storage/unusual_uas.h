@@ -182,3 +182,10 @@ UNUSUAL_DEV(0x4971, 0x8017, 0x0000, 0x9999,
 		"External HDD",
 		USB_SC_DEVICE, USB_PR_DEVICE, NULL,
 		US_FL_NO_REPORT_OPCODES),
+
+/* some ssd enclosures */
+UNUSUAL_DEV(0x0bda, 0x9210, 0x0000, 0x9999,
+		"SSD enclosure",
+		"External HDD",
+		USB_SC_DEVICE, USB_PR_DEVICE, NULL,
+		US_FL_IGNORE_UAS),
