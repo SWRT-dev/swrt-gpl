@@ -16,6 +16,8 @@
 
 #if defined(CONFIG_MODEL_R6800)
 extern void ports_set_status(int port, int status, int speed);
+#elif defined(CONFIG_MODEL_RTAC85P)
+extern int led_enable;
 #endif
 
 void mt753x_irq_enable(struct gsw_mt753x *gsw)
@@ -128,21 +130,7 @@ void mt753x_irq_worker(struct work_struct *work)
 		if (physts ^ laststs) {
 			gsw->phy_link_sts ^= BIT(i);
 			display_port_link_status(gsw, i);
-#if defined(CONFIG_MODEL_RTAC85P) && defined(ASUS_EXT)
-			if(i == 3)
-				led_value |= (0x1 << (i * 4));
-			else
-				led_value &= ~(0x1 << (i * 4));
-#endif
 		}
-#if defined(CONFIG_MODEL_RTAC85P) && defined(ASUS_EXT)
-		else{
-			if(i == 3)
-				led_value &= ~(0x1 << (i * 4));
-			else
-				led_value |= (0x1 << (i * 4));
-		}
-#endif
 	}
 
 #if defined(ASUS_EXT)
@@ -157,6 +145,20 @@ void mt753x_irq_worker(struct work_struct *work)
 		led_value &= ~0x1;
 	else
 		led_value |= 0x1;
+#elif defined(CONFIG_MODEL_RTAC85P)
+	led_value = 0x10111;//turn off
+	if(led_enable){
+		if(gsw->phy_link_sts & 0x10)//lan4
+			led_value &= 0x01111;
+		if(gsw->phy_link_sts & 0x8)//lan3
+			led_value |= 0x1000;
+		if(gsw->phy_link_sts & 0x4)//lan2
+			led_value &= 0x11011;
+		if(gsw->phy_link_sts & 0x2)//lan1
+			led_value &= 0x11101;
+		if(gsw->phy_link_sts & 0x1)//wan
+			led_value &= 0x11110;
+	}
 #endif
 
 	mt753x_reg_write(gsw, 0x7d00, led_en);
