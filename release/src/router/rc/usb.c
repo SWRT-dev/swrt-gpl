@@ -2530,6 +2530,21 @@ static const char *path_to_name(const char *path) {
 }
 #endif /* RTCONFIG_REALTEK */
 
+
+/* Optimize performance */
+#define READ_AHEAD_KB_BUF	"1024"
+#define READ_AHEAD_CONF	"/sys/block/%s/queue/read_ahead_kb"
+
+static void optimize_block_device(char *devname)
+{
+	char blkdev[8] = { 0 };
+	char read_ahead_conf[64] = { 0 };
+
+	strncpy(blkdev, devname, 3);//sda1->sda
+	snprintf(read_ahead_conf, sizeof(read_ahead_conf), READ_AHEAD_CONF, blkdev);
+	f_write_string(read_ahead_conf, READ_AHEAD_KB_BUF, 0, 0);
+}
+
 /*******
  * All the complex locking & checking code was removed when the kernel USB-storage
  * bugs were fixed.
@@ -2646,7 +2661,7 @@ void hotplug_usb(void)
 	char *devpath = getenv("DEVPATH");
 	//_dprintf("devpath: %s\n", devpath);
 
-	if (!device)
+	if (!device || !strcmp("device", device))
 		return;
 	device = path_to_name(devpath);
 	if (strncmp(device, "sd", 2) != 0 && strncmp(device, "sg", 2) != 0
@@ -2762,6 +2777,7 @@ _dprintf("restart_nas_services(%d): test 5.\n", getpid());
 					notify_rc_and_wait("restart_nasapps");
 				}
 				TRACE_PT(" end of mount\n");
+				optimize_block_device(device);
 			}
 		}
 		else {
