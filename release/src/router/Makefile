@@ -2148,8 +2148,8 @@ ifeq ($(BRCM_CHIP),$(filter $(BRCM_CHIP),4908 4912))
 endif
 
 ifeq ($(RTCONFIG_CFEZ),y)
-	install -D $(TOP_PLATFORM)/envram_bin/envram$(BCMEX)$(EX7)/envrams $(INSTALLDIR)/usr/sbin/envrams
-	install -D $(TOP_PLATFORM)/envram_bin/envram$(BCMEX)$(EX7)/envram $(INSTALLDIR)/usr/sbin/envram
+	install -D $(TOP_PLATFORM)/envram_bin/envrams $(INSTALLDIR)/usr/sbin/envrams
+	install -D $(TOP_PLATFORM)/envram_bin/envram $(INSTALLDIR)/usr/sbin/envram
 endif
 
 	$(if $(KNM),NM=$(KNM),) \
@@ -2773,8 +2773,8 @@ endif
 
 ifeq ($(RTCONFIG_BCMARM),y)
 ifeq ($(RTCONFIG_CFEZ),y)
-	install -D envram_bin/envram_arm_7114/envrams $(TARGETDIR)/usr/sbin/envrams
-	install -D envram_bin/envram_arm_7114/envram $(TARGETDIR)/usr/sbin/envram
+	install -D envram_bin/envrams $(TARGETDIR)/usr/sbin/envrams
+	install -D envram_bin/envram $(TARGETDIR)/usr/sbin/envram
 endif
 endif
 
@@ -4639,8 +4639,8 @@ ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6756),$(HND_ROUTER_AX_6710),$(B
 	install -D $(TOP_PLATFORM)/envram_bin/envram/envrams_saved-$(BRCM_CHIP)-arm $(INSTALLDIR)/usr/sbin/envrams
 	install -D $(TOP_PLATFORM)/envram_bin/envram/envram_saved-$(BRCM_CHIP)-arm $(INSTALLDIR)/usr/sbin/envram
 else
-	install -D $(TOP_PLATFORM)/envram_bin/envram$(BCMEX)$(EX7)/envrams $(INSTALLDIR)/usr/sbin/envrams
-	install -D $(TOP_PLATFORM)/envram_bin/envram$(BCMEX)$(EX7)/envram $(INSTALLDIR)/usr/sbin/envram
+	install -D $(TOP_PLATFORM)/envram_bin/envrams $(INSTALLDIR)/usr/sbin/envrams
+	install -D $(TOP_PLATFORM)/envram_bin/envram $(INSTALLDIR)/usr/sbin/envram
 endif
 
 PHONY: envram_bin
@@ -8212,7 +8212,7 @@ sysstat-10.0.3-install:
 	mv $(INSTALLDIR)/sysstat-10.0.3/etc $(INSTALLDIR)/sysstat-10.0.3/etc_sysstat
 	rm -rf $(INSTALLDIR)/sysstat-10.0.3/var
 
-asd: shared $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX)$(EX7) curl openssl libasc
+asd: shared $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX)$(EX7) curl openssl libasc json-c
 	$(MAKE) -C $@
 
 asd-install:

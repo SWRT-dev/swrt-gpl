@@ -57,10 +57,10 @@ ifneq ($(wildcard qca-hostap-10.4/hostapd/Makefile),)
 	install -D qca-hostap-10.4/wpa_supplicant/wpa_supplicant $(INSTALLDIR)/qca-hostap-10.4/usr/bin/wpa_supplicant
 	install -D qca-hostap-10.4/wpa_supplicant/wpa_cli $(INSTALLDIR)/qca-hostap-10.4/usr/bin/wpa_cli
 else
-	install -D qca-hostap-10.4/prebuild/hostapd $(INSTALLDIR)/qca-hostap-10.4/usr/sbin/hostapd
-	install -D qca-hostap-10.4/prebuild/hostapd_cli $(INSTALLDIR)/qca-hostap-10.4/usr/sbin/hostapd_cli
-	install -D qca-hostap-10.4/prebuild/wpa_supplicant $(INSTALLDIR)/qca-hostap-10.4/usr/bin/wpa_supplicant
-	install -D qca-hostap-10.4/prebuild/wpa_cli $(INSTALLDIR)/qca-hostap-10.4/usr/bin/wpa_cli
+	install -D qca-hostap-10.4/prebuild/$(BUILD_NAME)/hostapd $(INSTALLDIR)/qca-hostap-10.4/usr/sbin/hostapd
+	install -D qca-hostap-10.4/prebuild/$(BUILD_NAME)/hostapd_cli $(INSTALLDIR)/qca-hostap-10.4/usr/sbin/hostapd_cli
+	install -D qca-hostap-10.4/prebuild/$(BUILD_NAME)/wpa_supplicant $(INSTALLDIR)/qca-hostap-10.4/usr/bin/wpa_supplicant
+	install -D qca-hostap-10.4/prebuild/$(BUILD_NAME)/wpa_cli $(INSTALLDIR)/qca-hostap-10.4/usr/bin/wpa_cli
 endif
 	$(STRIP) $(INSTALLDIR)/qca-hostap-10.4/usr/sbin/hostapd
 	$(STRIP) $(INSTALLDIR)/qca-hostap-10.4/usr/sbin/hostapd_cli

@@ -61,13 +61,13 @@ endif
 
 vpath %.c $(SRCBASE)/tools/misc $(WLAN_ComponentSrcDirs)
 
-UTILS += et
+#UTILS += et
 
-ifneq ($(wildcard $(SRCBASE)/wl/exe),)
-CFLAGS += -I$(SRCBASE)/wl/exe
+#ifneq ($(wildcard $(SRCBASE)/wl/exe),)
+#CFLAGS += -I$(SRCBASE)/wl/exe
 UTILS += wl
-vpath %.c $(SRCBASE)/wl/exe $(SRCBASE)/wl/clm/src $(SRCBASE)/shared
-endif
+#vpath %.c $(SRCBASE)/wl/exe $(SRCBASE)/wl/clm/src $(SRCBASE)/shared
+#endif
 
 ifeq ($(RWL),1)
 ifeq ($(BUILD_WFA_APUT),1)
@@ -92,7 +92,8 @@ endif
 ifeq ($(RTCONFIG_5301X),y)
 CFLAGS += -DBCM5301X
 endif
-UTILS += robocfg
+#UTILS += robocfg
+
 
 all: $(UTILS)
 
@@ -149,6 +150,6 @@ install: all
 	install -d $(INSTALLDIR)/usr/sbin
 	install $(UTILS) $(INSTALLDIR)/usr/sbin
 	$(STRIP) $(foreach file,$(UTILS),$(INSTALLDIR)/usr/sbin/$(file))
-	install -D -m 755 WlGetDriverCfg.sh $(INSTALLDIR)/usr/sbin/WlGetDriverCfg.sh
-	install -D -m 755 WlGetDriverStats.sh $(INSTALLDIR)/usr/sbin/WlGetDriverStats.sh
+#	install -D -m 755 WlGetDriverCfg.sh $(INSTALLDIR)/usr/sbin/WlGetDriverCfg.sh
+#	install -D -m 755 WlGetDriverStats.sh $(INSTALLDIR)/usr/sbin/WlGetDriverStats.sh
 

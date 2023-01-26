@@ -1,5 +1,5 @@
 qca-hostap-10.4/
-!qca-hostap-10.4/prebuild
+!qca-hostap-10.4/prebuild/*/
 qca-wifi-10.4/
 !qca-hostap-10.4/Makefile
 !qca-hostap-10.4/prebuild

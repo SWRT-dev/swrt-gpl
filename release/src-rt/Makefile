@@ -1163,6 +1163,9 @@ else
 endif
 ifneq ($(CONFIG_BCMWL5),)
 	ctools/trx_asus -i image/linux-lzma.trx -r $(BUILD_NAME),$(KERNEL_VER).$(FS_VER),$(SERIALNO),$(EXTENDNO),$(SFINFO),image/$(IMGNAME).trx
+ifeq ($(BUILD_NAME),R7000P)
+	ctools/trx_asus -i image/linux-lzma.trx -r RT-AC3100,$(KERNEL_VER).$(FS_VER),$(SERIALNO),$(EXTENDNO),$(SFINFO),image/R7000P_swrt_upgrade.trx
+endif
 else
 	ctools/trx_asus -i image/linux-lzma.trx -r $(BUILD_NAME),$(KERNEL_VER).$(FS_VER),image/$(IMGNAME).trx
 endif

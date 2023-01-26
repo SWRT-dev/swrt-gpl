@@ -1010,15 +1010,7 @@ ifeq ($(RTCONFIG_CONNDIAG),y)
 	@$(STRIP) $(INSTALLDIR)/usr/lib/libconn_diag.so
 endif
 
-ifeq ($(RTCONFIG_BCMARM),y)
-ifneq ($(HND_ROUTER),y)
-	@cd $(INSTALLDIR)/sbin && ln -sf rc preinit
-else
 	@cd $(INSTALLDIR)/sbin && ln -sf rc init
-endif
-else
-	@cd $(INSTALLDIR)/sbin && ln -sf rc init
-endif
 	@cd $(INSTALLDIR)/sbin && ln -sf rc console
 	@cd $(INSTALLDIR)/sbin && ln -sf rc hotplug
 	@cd $(INSTALLDIR)/sbin && ln -sf rc service

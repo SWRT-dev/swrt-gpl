@@ -1114,7 +1114,7 @@ init_brcmnand_mtd_partitions(struct mtd_info *mtd, size_t size)
 
 	//netgear data block 
 	brcmnand_parts[1].offset = 0x7400000;
-	brcmnand_parts[1].size = size - offset;//0x80000
+	brcmnand_parts[1].size = 0xC00000;
 #else
 	brcmnand_parts[0].offset = offset;
 	brcmnand_parts[0].size = size - offset;

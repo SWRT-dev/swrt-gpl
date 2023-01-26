@@ -14,7 +14,7 @@ ifeq ($(TCONFIG_USB),y)
 endif
 ifeq ($(RTCONFIG_BCMARM),y)
 ifneq ($(RTCONFIG_HND_ROUTER),y)
-	install -m 0700 wlk $(INSTALLDIR)/usr/sbin
+#	install -m 0700 wlk $(INSTALLDIR)/usr/sbin
 endif
 endif
 ifeq ($(RTCONFIG_ENTWARE),y)
