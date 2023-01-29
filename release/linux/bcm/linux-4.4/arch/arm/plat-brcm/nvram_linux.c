@@ -911,18 +911,13 @@ dev_nvram_init(void)
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
 	/* Find associated MTD device */
 	for (i = 0; i < MAX_MTD_DEVICES; i++) {
-		nvram_mtd_temp = get_mtd_device(NULL, i);
-		if (!IS_ERR(nvram_mtd_temp)) {
-			if (!strcmp(nvram_mtd_temp->name, "nvram_cfe")) {
-				nvram_mtd_cfe = nvram_mtd_temp;
-				printk(KERN_EMERG "found cfe nvram\n");
-				continue;
+		nvram_mtd = get_mtd_device(NULL, i);
+		if (!IS_ERR(nvram_mtd)) {
+			if (!strcmp(nvram_mtd->name, "nvram") &&
+			    nvram_mtd->size >= nvram_space) {
+				break;
 			}
-			if (!strcmp(nvram_mtd_temp->name, "nvram") && nvram_mtd_temp->size >= nvram_space) {
-				nvram_mtd = nvram_mtd_temp;
-				continue;
-			}
-			put_mtd_device(nvram_mtd_temp);
+			put_mtd_device(nvram_mtd);
 		}
 	}
 
@@ -1054,4 +1049,3 @@ char *nvram_safe_get(const char *name)
 * -LR
 */
 late_initcall(dev_nvram_init);
-

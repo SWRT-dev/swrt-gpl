@@ -19374,7 +19374,7 @@ static void sysinit(void)
 	f_write_string("/proc/sys/kernel/panic_on_oops", "3", 0, 0);
 
 	// be precise about vm commit
-#ifdef CONFIG_BCMWL5
+#if 0 //#ifdef CONFIG_BCMWL5
 	f_write_string("/proc/sys/vm/overcommit_memory", "2", 0, 0);
 
 	if (model==MODEL_RTN53 ||

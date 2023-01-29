@@ -16,7 +16,9 @@
  * This file contains misc utility functions and wrappers to standard
  * functions, which throw exceptions upon failure.
  */
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h>

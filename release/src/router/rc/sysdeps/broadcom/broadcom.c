@@ -3977,50 +3977,6 @@ int get_wifi_country_code_tmp(char *ori_countrycode, char *output, int len)
 	return 0;
 }
 
-uint32 wps_gen_pin(char *devPwd, int devPwd_len)
-{
-	unsigned long PIN;
-	unsigned long int accum = 0;
-	unsigned char rand_bytes[8];
-	int digit;
-	char local_devPwd[32];
-
-	/*
-	 * buffer size needs to big enough to hold 8 digits plus the string terminition
-	 * character '\0'
-	*/
-	if (devPwd_len < 9)
-		return 0;
-
-	/* Generate random bytes and compute the checksum */
-	f_read("/dev/urandom", rand_bytes, sizeof(rand_bytes));
-	sprintf(local_devPwd, "%08u", *(uint32 *)rand_bytes);
-	local_devPwd[7] = '\0';
-	PIN = strtoul(local_devPwd, NULL, 10);
-
-	PIN *= 10;
-	accum += 3 * ((PIN / 10000000) % 10);
-	accum += 1 * ((PIN / 1000000) % 10);
-	accum += 3 * ((PIN / 100000) % 10);
-	accum += 1 * ((PIN / 10000) % 10);
-	accum += 3 * ((PIN / 1000) % 10);
-	accum += 1 * ((PIN / 100) % 10);
-	accum += 3 * ((PIN / 10) % 10);
-
-	digit = (accum % 10);
-	accum = (10 - digit) % 10;
-
-	PIN += accum;
-	sprintf(local_devPwd, "%08u", (unsigned int)PIN);
-	local_devPwd[8] = '\0';
-
-	/* Output result */
-	strncpy(devPwd, local_devPwd, devPwd_len);
-
-	return 1;
-}
-
-
 void config_mssid_isolate(char *ifname, int vif)
 {
 	int unit = -1, sw_mode;

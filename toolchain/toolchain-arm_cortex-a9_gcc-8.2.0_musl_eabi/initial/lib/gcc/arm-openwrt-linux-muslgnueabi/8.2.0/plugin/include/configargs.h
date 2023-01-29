@@ -1,7 +1,0 @@
-/* Generated automatically. */
-static const char configuration_arguments[] = "/home/paldier/release/openwrt/build_dir/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi/gcc-8.2.0/configure --with-bugurl=http://www.lede-project.org/bugs/ --with-pkgversion='OpenWrt GCC 8.2.0 r7885-2fb95f7142' --prefix=/home/paldier/release/openwrt/staging_dir/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi --build=x86_64-pc-linux-gnu --host=x86_64-pc-linux-gnu --target=arm-openwrt-linux-muslgnueabi --with-gnu-ld --enable-target-optspace --disable-libgomp --disable-libmudflap --disable-multilib --disable-libmpx --disable-nls --without-isl --without-cloog --with-host-libstdcxx=-lstdc++ --with-float=soft --with-gmp=/home/paldier/release/openwrt/staging_dir/host --with-mpfr=/home/paldier/release/openwrt/staging_dir/host --with-mpc=/home/paldier/release/openwrt/staging_dir/host --disable-decimal-float --with-diagnostics-color=auto-if-env --disable-libssp --enable-__cxa_atexit --with-newlib --with-sysroot=/home/paldier/release/openwrt/staging_dir/toolchain-arm_cortex-a9_gcc-8.2.0_musl_eabi --enable-languages=c --disable-shared --disable-threads";
-static const char thread_model[] = "single";
-
-static const struct {
-  const char *name, *value;
-} configure_default_options[] = { { "cpu", "arm10tdmi" }, { "float", "soft" }, { "tls", "gnu" } };

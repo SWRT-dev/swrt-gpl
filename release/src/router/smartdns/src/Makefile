@@ -36,19 +36,11 @@ CXXFLAGS +=-Iinclude
 LDFLAGS += -lssl -lcrypto -lpthread -ldl
 #endif
 
-ifeq ($(BUILD_NAME), $(filter $(BUILD_NAME), RT-AC88U RT-AC3100 RT-AC3200 RT-AC68U RT-AC5300))
-#toolchain is too old
-all:
-	cp ./smartdns_arm ./smartdns
-
-else
-
 all: $(BIN)
  
 $(BIN) : $(OBJS)
 	$(CC) $(OBJS) -o $@ $(LDFLAGS)
 
-endif
 
 clean:
 	$(RM) $(OBJS) $(BIN)

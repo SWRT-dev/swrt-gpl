@@ -4203,6 +4203,8 @@ define BusyboxOptions
 			fi; \
 			sed -i "/CONFIG_FDISK/d" $(1); \
 			echo "CONFIG_FDISK=y" >>$(1); \
+			sed -i "/CONFIG_FDISK_SUPPORT_LARGE_DISKS/d" $(1); \
+			echo "CONFIG_FDISK_SUPPORT_LARGE_DISKS=y" >>$(1); \
 			sed -i "/CONFIG_FEATURE_FDISK_WRITABLE/d" $(1); \
 			echo "CONFIG_FEATURE_FDISK_WRITABLE=y" >>$(1); \
 		fi; \

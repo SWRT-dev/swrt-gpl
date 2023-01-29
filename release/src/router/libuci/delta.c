@@ -16,7 +16,9 @@
  * This file contains the code for handling uci config delta files
  */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h>

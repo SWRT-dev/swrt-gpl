@@ -17,7 +17,7 @@ jobs:
           name: build mtk
           shell: /bin/sh
           command: |
-            git clone https://github.com/SWRT-dev/swrt-gpl mtk
+            git clone --depth=1 https://github.com/SWRT-dev/swrt-gpl mtk
             cd mtk/release/src-mtk-arm
             sudo /home/docker/envs/toolchain.sh
             make swrt-rm-ax6000
@@ -35,15 +35,37 @@ jobs:
           name: build qca
           shell: /bin/sh
           command: |
-            git clone https://github.com/SWRT-dev/swrt-gpl qca
+            git clone --depth=1 https://github.com/SWRT-dev/swrt-gpl qca
             cd qca/release/src-qca-ipq40xx
             sudo /home/docker/envs/toolchain.sh
             make rt-ac82u
+  testbcm470x:
+    docker:
+      - image: paldier/swrt-docker:latest
+        environment:
+          PROJECT_DIR: "/home/docker/project"
+          TERM: "xterm-256color"
+    resource_class: large
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: build bcm470x
+          shell: /bin/sh
+          command: |
+            git clone --depth=1 https://github.com/SWRT-dev/swrt-gpl bcm470x
+            cd bcm470x/release/src-bcm-470x
+            make netgear-r7000p
 
 workflows:
   build-workflow:
     jobs:
       - testmtk
       - testqca
+          requires:
+            - testmtk
+      - testbcm470x
+          requires:
+            - testqca
 
 

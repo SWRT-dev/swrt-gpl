@@ -2883,7 +2883,6 @@ wl_wpsPincheck(char *pin_string)
 	return -1;
 }
 
-#if !defined(RTCONFIG_BCMARM)
 uint32
 wps_gen_pin(char *devPwd, int devPwd_len)
 {
@@ -2927,7 +2926,6 @@ wps_gen_pin(char *devPwd, int devPwd_len)
 
 	return 1;
 }
-#endif
 
 void
 check_wps_enable()

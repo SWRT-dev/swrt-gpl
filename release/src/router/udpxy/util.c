@@ -48,7 +48,7 @@ extern const int   BUILDNUM;
 extern const char  BUILD_TYPE[];
 extern const int   PATCH;
 
-#if defined(KERNEL5_MUSL64)
+#if defined(MUSL_LIBC)
 static char s_sysinfo [200] = "\0";
 #else
 static char s_sysinfo [80] = "\0";

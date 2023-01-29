@@ -735,6 +735,9 @@ ifeq ($(RTCONFIG_BCMARM),y)
 ifeq ($(RTCONFIG_CFEZ),y)
 obj-y += envram_bin
 endif
+ifneq ($(RTCONFIG_HND_ROUTER),y)
+obj-y += libnl-tiny-0.1
+endif
 endif
 
 ifeq ($(RTCONFIG_RALINK),y)
@@ -1365,7 +1368,7 @@ obj-$(RTCONFIG_WTFAST) += wtfast
 #obj-$(RTCONFIG_ZEBRA) += zebra
 obj-$(RTCONFIG_QUAGGA) += quagga
 #obj-$(RTCONFIG_IPP2P) += ipp2p
-ifeq ($(or $(HND_ROUTER_AX_6756),$(RTCONFIG_MT798X)),y)
+ifeq ($(or $(HND_ROUTER_AX_6756),$(RTCONFIG_MT798X),$(RTCONFIG_BCMARM)),y)
 LZO_VER := -2.10
 else
 LZO_VER :=
