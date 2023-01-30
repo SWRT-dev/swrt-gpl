@@ -471,6 +471,10 @@ install: all
 	@install -d $(INSTALLDIR)/usr/lib
 	@install -m 755 libshared.so $(INSTALLDIR)/usr/lib
 	@$(STRIP) $(INSTALLDIR)/usr/lib/libshared.so
+ifeq ($(RTCONFIG_BCM5301X_TRAFFIC_MONITOR),y)
+#bcm470x to fix nas
+	@cd  $(INSTALLDIR)/usr/lib && ln -sf libshared.so libshutils.so && ln -sf libshared.so libwireless.so
+endif
 
 clean:
 	rm -f *.o *.so *.a .*.depend *.prep sysdeps/*.o sysdeps/broadcom/*.o sysdeps/ralink/*.o

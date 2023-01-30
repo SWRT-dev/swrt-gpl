@@ -2050,7 +2050,7 @@ void init_switch()
 		sleep(1);
 	}
 #endif
-
+	eval("insmod", "softdog");
 	// ctf must be loaded prior to any other modules
 	if (nvram_get_int("ctf_disable") == 0)
 		eval("insmod", "ctf");
@@ -2576,9 +2576,6 @@ _dprintf("load_wl(): starting...\n");
 #else
 	add_to_list("dhd", modules, sizeof(modules));
 #endif
-#ifdef RTCONFIG_BCM_7114
-	add_to_list("dhd24", modules, sizeof(modules));
-#endif
 #ifdef RTCONFIG_BRCM_HOSTAPD
 	{
 		struct utsname name;
@@ -2594,13 +2591,7 @@ _dprintf("load_wl(): starting...\n");
 #endif
 
 	foreach(module, modules, next) {
-#ifdef RTCONFIG_BCM_7114
-		if (strcmp(module, "dhd") == 0 && nvram_get_int("dhd24"))
-			continue;
-		else if (strcmp(module, "dhd24") == 0 && nvram_get_int("dhd24"))
-			eval("rmmod", "dhd");
-#endif
-		if (strcmp(module, "dhd") == 0 || strcmp(module, "dhd24") == 0 || strcmp(module, "wl") == 0) {
+		if (strcmp(module, "dhd") == 0 || strcmp(module, "wl") == 0) {
 #if defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4)
 			if(strcmp(module, "wl") == 0){
 				eval("insmod", "wl", "intf_name=wl%d instance_base=0");
@@ -2621,7 +2612,7 @@ _dprintf("load_wl(): starting...\n");
 			memset(instance_base, 0, sizeof(instance_base));
 			memset(instance_base2, 0, sizeof(instance_base2));
 #if defined(RTCONFIG_BCM7) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
-			if ((strcmp(module, "dhd") == 0) || (strcmp(module, "dhd24") == 0))
+			if (strcmp(module, "dhd") == 0)
 				snprintf(instance_base, sizeof(instance_base), "instance_base=%d dhd_msg_level=%d", maxunit + 1, nvram_get_int("dhd_msg_level"));
 			else
 #endif

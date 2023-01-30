@@ -2757,3 +2757,8 @@ double get_wifi_6G_maxpower()
 
 #endif
 
+int wl_bssid(char *name, unsigned char *hwaddr)
+{
+	wl_ioctl(name, WLC_GET_BSSID, hwaddr, ETHER_ADDR_LEN);
+	return 0;
+}

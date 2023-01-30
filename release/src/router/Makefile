@@ -1008,6 +1008,7 @@ obj-y += wlconf$(BCMEX)$(EX7)
 ifneq ($(RTCONFIG_BRCM_HOSTAPD),y)
 obj-y += nas$(BCMEX)$(EX7)
 endif
+obj-$(CONFIG_BCMWL5) += libutils
 #obj-$(RTCONFIG_HSPOT) += hspot_ap$(BCMEX)$(EX7)
 #obj-y += eapd$(BCMEX)$(EX7)/linux
 obj-y += hostapd2

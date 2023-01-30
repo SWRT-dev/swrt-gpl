@@ -2856,15 +2856,15 @@ int wlconf(char *name)
 		val = 11;
 
 	/* it is band-blind. try both band */
-	error_bg = wl_iovar_setint(name, "bg_mrate", val);
-	error_a = wl_iovar_setint(name, "a_mrate", val);
+	error_bg = wl_iovar_setint(name, "2g_mrate", val);
+	error_a = wl_iovar_setint(name, "5g_mrate", val);
 
 	if (error_bg && error_a) {
 		/* Try default rate (card may have changed) */
 		val = 0;
 
-		wl_iovar_setint(name, "bg_mrate", val);
-		wl_iovar_setint(name, "a_mrate", val);
+		WL_IOVAR_SETINT(name, "2g_mrate", val);
+		WL_IOVAR_SETINT(name, "5g_mrate", val);
 
 		snprintf(buf, sizeof(buf), "%d", val);
 		nvram_set(strcat_r(prefix, "mrate", tmp), buf);
@@ -3205,7 +3205,7 @@ int wlconf(char *name)
 			str = nvram_safe_get(strcat_r(prefix, "obss_coex", tmp));
 			if (!str) {
 				/* No nvram variable found, use the default */
-				str = nvram_safe_get(strcat_r(prefix, "obss_coex", tmp));
+				str = nvram_default_get(strcat_r(prefix, "obss_coex", tmp));
 			}
 			obss_coex = atoi(str);
 		} else {

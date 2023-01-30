@@ -2713,3 +2713,66 @@ int check_if_exist_ifnames(char *need_check_ifname, char *ifname)
 }
 #endif
 
+#if defined(CONFIG_BCMWL5)
+static void strcpyto(char *dest, char *src, char *delim, size_t max)
+{
+	int len = strlen(src);
+	char *to = strpbrk(src, delim);
+	if (to)
+		len = to - src;
+	if (max != sizeof(long) && max < len + 1) {
+		_dprintf("foreach is used in a improper way, target word is too small");
+		len = max - 1;
+	}
+	memcpy(dest, src, len);
+	dest[len] = '\0';
+}
+
+int dd_sprintf(char *str, const char *fmt, ...)
+{
+	va_list ap;
+	int n;
+	char *dest;
+	if (!str)
+		return 0;
+	va_start(ap, fmt);
+	n = vasprintf(&dest, fmt, ap);
+	va_end(ap);
+	strcpy(str, dest);
+	free(dest);
+
+	return n;
+}
+
+int dd_snprintf(char *str, int len, const char *fmt, ...)
+{
+	va_list ap;
+	int n;
+	char *dest;
+	if (len < 1)
+		return 0;
+	va_start(ap, fmt);
+	n = vasprintf(&dest, fmt, ap);
+	va_end(ap);
+	strncpy(str, dest, len - 1);
+	str[len - 1] = '\0';
+	free(dest);
+	return n;
+}
+
+char *foreach_first(char *foreachwordlist, char *word, char *delimiters, size_t len)
+{
+	char *next = &foreachwordlist[strspn(foreachwordlist, delimiters)];
+	strcpyto(word, next, delimiters, len);
+	next = strpbrk(next, delimiters);
+	return next;
+}
+
+char *foreach_last(char *next, char *word, char *delimiters, size_t len)
+{
+	next = next ? &next[strspn(next, delimiters)] : "";
+	strcpyto(word, next, delimiters, len);
+	next = strpbrk(next, delimiters);
+	return next;
+}
+#endif

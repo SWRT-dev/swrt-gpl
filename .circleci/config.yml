@@ -61,10 +61,10 @@ workflows:
   build-workflow:
     jobs:
       - testmtk
-      - testqca
+      - testqca:
           requires:
             - testmtk
-      - testbcm470x
+      - testbcm470x:
           requires:
             - testqca
 
