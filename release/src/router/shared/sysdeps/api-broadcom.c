@@ -1636,22 +1636,12 @@ void set_radio(int on, int unit, int subunit)
  */
 char *get_lan_mac_name(void)
 {
-#ifdef RTCONFIG_BCMARM
-#ifdef RTCONFIG_GMAC3
-	char *et2macaddr;
-	if (nvram_get_int("gmac3_enable") && (et2macaddr = nvram_get("et2macaddr")) &&
-		*et2macaddr && strcmp(et2macaddr, "00:00:00:00:00:00") != 0) {
-		return "et2macaddr";
-	}
-#endif
-
 	switch(get_model()) {
 		case MODEL_RTAC87U:
 		case MODEL_RTAC88U:
 		case MODEL_RTAC5300:
 			return "et1macaddr";
 	}
-#endif
 	return "et0macaddr";
 }
 
@@ -1660,22 +1650,7 @@ char *get_lan_mac_name(void)
  */
 char *get_wan_mac_name(void)
 {
-#ifdef RTCONFIG_BCMARM
-#ifdef RTCONFIG_GMAC3
-	char *et2macaddr;
-	if (nvram_get_int("gmac3_enable") && (et2macaddr = nvram_get("et2macaddr")) &&
-		*et2macaddr && strcmp(et2macaddr, "00:00:00:00:00:00") != 0) {
-		return "et2macaddr";
-	}
-#endif
-	switch(get_model()) {
-		case MODEL_RTAC87U:
-		case MODEL_RTAC88U:
-		case MODEL_RTAC5300:
-			return "et1macaddr";
-	}
-#endif
-	return "et0macaddr";
+	return "wan_hwaddr";
 }
 
 static char* mac_str_toupper(char *str)
@@ -1692,7 +1667,7 @@ static char* mac_str_toupper(char *str)
 
 char *get_label_mac()
 {
-	return mac_str_toupper(get_2g_hwaddr());
+	return mac_str_toupper(get_lan_hwaddr());
 }
 
 char *get_lan_hwaddr(void)
@@ -1702,7 +1677,14 @@ char *get_lan_hwaddr(void)
 
 char *get_2g_hwaddr(void)
 {
-	return mac_str_toupper(nvram_safe_get(get_lan_mac_name()));
+	char *macaddr = "0:macaddr";
+	switch(get_model()) {
+		case MODEL_RTAC3200:
+		case MODEL_SBRAC3200P:
+			macaddr = "1:macaddr";
+		break;
+	}
+	return mac_str_toupper(nvram_safe_get(macaddr));
 }
 
 char *get_wan_hwaddr(void)

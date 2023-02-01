@@ -26,7 +26,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#if !defined(RTCONFIG_MUSL_LIBC)
 #include <error.h>
+#endif
 #include <sys/ioctl.h>
 #include <dirent.h>
 

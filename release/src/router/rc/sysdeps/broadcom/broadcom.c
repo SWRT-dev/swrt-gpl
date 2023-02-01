@@ -3184,63 +3184,6 @@ getSSID(int unit)
 	return 0;
 }
 
-#if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_BCMARM)
-/* workaround for BCMWL6 only */
-static void set_mrate(const char* ifname, const char* prefix)
-{
-	float mrate = 0;
-	char tmp[100];
-
-	switch (nvram_get_int(strcat_r(prefix, "mrate_x", tmp))) {
-	case 0: /* Auto */
-		mrate = 0;
-		break;
-	case 1: /* Legacy CCK 1Mbps */
-		mrate = 1;
-		break;
-	case 2: /* Legacy CCK 2Mbps */
-		mrate = 2;
-		break;
-	case 3: /* Legacy CCK 5.5Mbps */
-		mrate = 5.5;
-		break;
-	case 4: /* Legacy OFDM 6Mbps */
-		mrate = 6;
-		break;
-	case 5: /* Legacy OFDM 9Mbps */
-		mrate = 9;
-		break;
-	case 6: /* Legacy CCK 11Mbps */
-		mrate = 11;
-		break;
-	case 7: /* Legacy OFDM 12Mbps */
-		mrate = 12;
-		break;
-	case 8: /* Legacy OFDM 18Mbps */
-		mrate = 18;
-		break;
-	case 9: /* Legacy OFDM 24Mbps */
-		mrate = 24;
-		break;
-	case 10: /* Legacy OFDM 36Mbps */
-		mrate = 36;
-		break;
-	case 11: /* Legacy OFDM 48Mbps */
-		mrate = 48;
-		break;
-	case 12: /* Legacy OFDM 54Mbps */
-		mrate = 54;
-		break;
-	default: /* Auto */
-		mrate = 0;
-		break;
-	}
-
-	sprintf(tmp, "wl -i %s mrate %.1f", ifname, mrate);
-	system(tmp);
-}
-#endif
-
 int wlconf(char *ifname, int unit, int subunit)
 {
 	int r;
@@ -3249,20 +3192,13 @@ int wlconf(char *ifname, int unit, int subunit)
 	int model = get_model();
 	char tmp[100], prefix[] = "wlXXXXXXXXXXXXXX";
 
-#ifdef RTCONFIG_QTN
-	if (!strcmp(ifname, "wifi0"))
-		unit = 1;
-#else
+	dbG("unit %d subunit %d\n", unit, subunit);
 	if (wl_probe(ifname)) return -1;
-#endif
+
 	if (unit < 0) return -1;
 
 	if (subunit < 0)
 	{
-#ifdef RTCONFIG_QTN
-		if (unit == 1)
-			goto GEN_CONF;
-#endif
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 
 #if 0
@@ -3276,9 +3212,6 @@ int wlconf(char *ifname, int unit, int subunit)
 #endif
 #endif
 
-#ifdef RTCONFIG_QTN
-GEN_CONF:
-#endif
 #ifdef RTCONFIG_BCMWL6
 		wl_check_chanspec();
 #endif
@@ -3294,19 +3227,6 @@ GEN_CONF:
 			return -1;
 		}
 	}
-
-#if 0
-	if (/* !wl_probe(ifname) && */ unit >= 0) {
-		// validate nvram settings foa wireless i/f
-		snprintf(wl, sizeof(wl), "--wl%d", unit);
-		eval("nvram", "validate", wl);
-	}
-#endif
-
-#ifdef RTCONFIG_QTN
-	if (unit == 1)
-		return -1;
-#endif
 
 	if (unit >= 0 && subunit < 0)
 	{
@@ -3351,14 +3271,6 @@ GEN_CONF:
 	r = eval("wlconf", ifname, "up");
 	if (r == 0) {
 		if (unit >= 0 && subunit < 0) {
-#ifdef REMOVE
-			// setup primary wl interface
-			nvram_set("rrules_radio", "-1");
-			eval("wl", "-i", ifname, "antdiv", nvram_safe_get(wl_nvname("antdiv", unit, 0)));
-			eval("wl", "-i", ifname, "txant", nvram_safe_get(wl_nvname("txant", unit, 0)));
-			eval("wl", "-i", ifname, "txpwr1", "-o", "-m", nvram_get_int(wl_nvname("txpwr", unit, 0)) ? nvram_safe_get(wl_nvname("txpwr", unit, 0)) : "-1");
-			eval("wl", "-i", ifname, "interference", nvram_safe_get(wl_nvname("interfmode", unit, 0)));
-#endif
 #ifndef RTCONFIG_BCMARM
 			switch (model) {
 				default:
@@ -3379,7 +3291,7 @@ GEN_CONF:
 				eval("wl", "-i", ifname, "maxassoc", "0");
 			}
 #endif
-			set_mrate(ifname, prefix);
+
 #ifdef RTCONFIG_BCMARM
 			if (nvram_match(strcat_r(prefix, "ampdu_rts", tmp), "0") &&
 				nvram_match(strcat_r(prefix, "nmode", tmp), "-1"))
@@ -3393,13 +3305,13 @@ GEN_CONF:
 
 			dbG("unit: %d, txpower: %d%\n", unit, txpower);
 
-			switch (model) {
-				default:
+//			switch (model) {
+//				default:
 
-					eval("wl", "-i", ifname, "txpwr1", "-1");
+					//eval("wl", "-i", ifname, "txpwr1", "-m", "-o", pwr);
 
-					break;
-			}
+//					break;
+//			}
 		}
 
 		if (wl_client(unit, subunit)) {
@@ -3412,6 +3324,7 @@ GEN_CONF:
 			}
 		}
 	}
+
 	return r;
 }
 

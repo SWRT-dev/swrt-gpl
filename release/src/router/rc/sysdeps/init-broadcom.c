@@ -2059,14 +2059,16 @@ void init_switch()
 	eval("insmod", "emf");
 	eval("insmod", "igs");
 #endif
-
-#if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA) && (defined(RTAC68U) || defined(RTAC56U) || defined(RTAC56S) || defined(RTN18U) || defined(DSL_AC68U) || defined(RT4GAC68U))
-	char psta[8];
-	snprintf(psta, sizeof(psta), "psta=%d", (psta_exist() || psr_exist()));
-	eval("insmod", "et", psta);
-#else
-	eval("insmod", "et");
+#ifdef RTCONFIG_5301X
+	/* Override wandevs to "vlan2" */
+	if(!strstr(nvram_safe_get("wandevs"), "vlan2"))
+		nvram_set("wandevs", "vlan2");
+	if(!strstr(nvram_safe_get("wan_ifnames"), "vlan2"))
+		nvram_set("wan_ifnames", "vlan2");
+	if (nvram_match("wan0_ifname", "eth0"))
+		nvram_set("wan0_ifname", "vlan2");
 #endif
+	eval("insmod", "et");
 #ifdef RTCONFIG_5301X
 	eval("insmod", "b5301x_common");
 	eval("insmod", "b5301x_srab");
@@ -2082,7 +2084,6 @@ void init_switch()
 	eval("swconfig", "dev", "switch0", "set", "enable_vlan", "1");
 	eval("swconfig", "dev", "switch0", "vlan", "1", "set", "ports", vlan1);
 	eval("swconfig", "dev", "switch0", "vlan", "2", "set", "ports", vlan2);
-	eval("swconfig", "dev", "switch0", "set", "igmp_v3", "1");
 	eval("swconfig", "dev", "switch0", "set", "apply");
 	enable_jumbo_frame();
 	ether_led();
@@ -2573,6 +2574,8 @@ _dprintf("load_wl(): starting...\n");
 #endif
 #if defined(RTCONFIG_BCM_7114) && defined(RTCONFIG_MFGFW)
 	add_to_list("dhdtest", modules, sizeof(modules));
+#elif !defined(RTCONFIG_HND_ROUTER)
+	add_to_list("wl", modules, sizeof(modules));
 #else
 	add_to_list("dhd", modules, sizeof(modules));
 #endif
@@ -2616,16 +2619,8 @@ _dprintf("load_wl(): starting...\n");
 				snprintf(instance_base, sizeof(instance_base), "instance_base=%d dhd_msg_level=%d", maxunit + 1, nvram_get_int("dhd_msg_level"));
 			else
 #endif
-			{
-				if (strtoul(nvram_safe_get("wl_msglevel"), NULL, 0))
-					snprintf(instance_base, sizeof(instance_base), "msglevel=%d", (int)strtoul(nvram_safe_get("wl_msglevel"), NULL, 0));
-				if (strtoul(nvram_safe_get("wl_msglevel2"), NULL, 0))
-					snprintf(instance_base2, sizeof(instance_base2), "%s msglevel2=%d", instance_base, (int)strtoul(nvram_safe_get("wl_msglevel2"), NULL, 0));
-				else
-					strncpy(instance_base2, instance_base, sizeof(instance_base2));
-				snprintf(instance_base, sizeof(instance_base), "instance_base=%d %s", maxunit + 1, instance_base2);
-			}
-_dprintf("load_wl(): insmod %s %s.\n", module, instance_base);
+				snprintf(instance_base, sizeof(instance_base), "intf_name=wl%d instance_base=0");
+			_dprintf("load_wl(): insmod %s %s.\n", module, instance_base);
 			eval("insmod", module, instance_base);
 		} else {
 			eval("insmod", module);
@@ -2729,9 +2724,6 @@ void init_wl(void)
 #else
 	eval("insmod", "dpsta");
 #endif
-#endif
-#if defined(R7000P)
-	eval("insmod", "wl");
 #endif
 #ifdef RTCONFIG_DHDAP
 	load_wl();
@@ -2867,9 +2859,6 @@ void init_wl_compact(void)
 #if !defined(RTCONFIG_HND_ROUTER_AX)
 	set_wltxpower();
 #endif
-#if defined(R7000P)
-	eval("insmod", "wl");
-#endif
 #ifdef RTCONFIG_DHDAP
 	load_wl();
 #else
@@ -2916,13 +2905,14 @@ void fini_wl(void)
 
 void init_syspara(void)
 {
-	char *ptr;
 	int model;
+	char macaddr[] = "00:11:22:33:44:55";
+	unsigned char mac_binary[6];
+	char *value, devPwd[9];
 
 	nvram_set("firmver", rt_version);
 	nvram_set("productid", rt_buildname);
 	set_basic_fw_name();
-	ptr = nvram_get("regulation_domain");
 
 #ifdef HND_ROUTER
 	refresh_cfe_nvram();
@@ -2952,9 +2942,25 @@ void init_syspara(void)
 				nvram_set("lan_hwaddr", cfe_nvram_safe_get("et1macaddr"));
 
 			break;
-
-		case MODEL_RTAC3100:
 		case MODEL_R7000P:
+			nvram_set("et2phyaddr", "30");
+			nvram_set("wl0_lbr_aggr_en_mask", "0");
+			nvram_set("wl1_lbr_aggr_en_mask", "0");
+			nvram_set("wl0_lbr_aggr_len", "16");
+			nvram_set("wl1_lbr_aggr_len", "16");
+			nvram_set("wl0_lbr_aggr_release_timeout", "10");
+			nvram_set("wl1_lbr_aggr_release_timeout", "10");
+			strcpy(macaddr, cfe_nvram_safe_get("et0macaddr"));
+			ether_atoe(macaddr, mac_binary);
+			nvram_set("lan_hwaddr", macaddr);
+			ether_cal_b(mac_binary, macaddr, 1);
+			nvram_set("wan_hwaddr", macaddr);
+			ether_cal_b(mac_binary, macaddr, 4);
+			nvram_set("0:macaddr", macaddr);
+			ether_cal_b(mac_binary, macaddr, 8);
+			nvram_set("1:macaddr", macaddr);
+			break;
+		case MODEL_RTAC3100:
 		case MODEL_GTAC5300:
 		case MODEL_RTAC86U:
 		case MODEL_RTAX88U:
@@ -3020,14 +3026,9 @@ void init_syspara(void)
 #ifdef RTCONFIG_ODMPID
 	char odmpid[32];
 	snprintf(odmpid, sizeof(odmpid), "%s", nvram_safe_get("odmpid"));
-	if(!strcmp(odmpid, "ASUS") ||
-			!is_valid_hostname(odmpid) ||
-			!strcmp(RT_BUILD_NAME, odmpid))
+	if(!strcmp(odmpid, "ASUS") || !is_valid_hostname(odmpid) || !strcmp(RT_BUILD_NAME, odmpid))
 		nvram_set("odmpid", "");
 #endif
-
-	char *value, devPwd[9];
-	extern uint32 wps_gen_pin(char *devPwd, int devPwd_len);
 
 	/* Validate wps_device_pin existance, embedded nvram can override it */
 	value = nvram_get("secret_code");
@@ -7000,7 +7001,7 @@ _dprintf("*** Multicast IPTV: config Singtel TR069 on wan port ***\n");
 			sprintf(port_id, "%d", wan_vid);
 			eval("vconfig", "add", interface, port_id);
 			sprintf(vlan_entry, "%d", wan_vid);
-			eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "0t 5t");
+			eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "0 5");
 			eval("swconfig", "dev", "switch0", "set", "apply");
 		}
 		/* Set Wan port PRIO */
@@ -7164,10 +7165,10 @@ _dprintf("*** Multicast IPTV: config Singtel TR069 on wan port ***\n");
 			eval("vconfig", "add", interface, port_id);
 			sprintf(vlan_entry, "%d", wan_vid);
 #ifdef RTCONFIG_RGMII_BRCM5301X
-			eval("swconfig", "dev", "switch0", "vlan", port_id, "set", "ports", "4t 7t");/* f: 4, 7 */
+			eval("swconfig", "dev", "switch0", "vlan", port_id, "set", "ports", "4 7");/* f: 4, 7 */
 
 #else
-			eval("swconfig", "dev", "switch0", "vlan", port_id, "set", "ports", "4t 5t");/* f: 4, 5 */
+			eval("swconfig", "dev", "switch0", "vlan", port_id, "set", "ports", "4 5");/* f: 4, 5 */
 #endif
 			eval("swconfig", "dev", "switch0", "set", "apply");
 

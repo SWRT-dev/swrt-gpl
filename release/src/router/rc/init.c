@@ -2689,6 +2689,10 @@ char *the_wan_phy()
 	if (FA_ON(fa_mode))
 		return "vlan2";
 	else
+#elif defined(RTCONFIG_5301X)
+	if (1)
+		return "vlan2";
+	else
 #endif
 		return WAN_IF_ETH;
 }
@@ -15771,13 +15775,7 @@ int init_nvram(void)
 			nvram_set("et_rxlazy_timeout",  "1000");
 		//else
 		//	nvram_set("et_rxlazy_timeout",  "300");
-#ifdef RTCONFIG_RGMII_BRCM5301X
-		hw_name = "et1";
-
-		nvram_set("rgmii_port", "5");
-#else
 		nvram_unset("rgmii_port");
-#endif
 		nvram_set("landevs", "vlan1 wl0 wl1");
 
 #ifdef RTCONFIG_DUALWAN
@@ -15790,8 +15788,6 @@ int init_nvram(void)
 				add_lan_phy("eth1");
 			if (!(get_wans_dualwan()&WANSCAP_5G)) {
 				add_lan_phy("eth2");
-				if(model == MODEL_RTAC5300)
-					add_lan_phy("eth3");
 			}
 
 			if (nvram_get("wans_dualwan")) {
@@ -19494,6 +19490,7 @@ static void sysinit(void)
 #if defined(RTCONFIG_FIXED_BRIGHTNESS_RGBLED)
 	nvram_set("success_start_service", "0");
 #endif
+
 	init_nvram();  // for system indepent part after getting model
 
 #ifdef RTCONFIG_JFFS_NVRAM
@@ -19552,7 +19549,7 @@ static void sysinit(void)
 #ifdef RTCONFIG_GMAC3
 	chk_gmac3_excludes();
 #else
-	gmac3_restore_nvram();
+//	gmac3_restore_nvram();
 #endif
 #endif
 	nvram_set("label_mac", get_label_mac());

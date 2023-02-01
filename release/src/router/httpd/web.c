@@ -25723,7 +25723,12 @@ ej_memory_usage(int eid, webs_t wp, int argc, char_t **argv){
 
 	if(fp == NULL)
 		return -1;
-
+#if defined(RTCONFIG_5301X)
+	//skip 3 lines
+	fgets(buf, sizeof(buf), fp);
+	fgets(buf, sizeof(buf), fp);
+	fgets(buf, sizeof(buf), fp);
+#endif
 	fscanf(fp, "MemTotal: %lu %s\n", &total, buf);
 	fscanf(fp, "MemFree: %lu %s\n", &mfree, buf);
 	fclose(fp);

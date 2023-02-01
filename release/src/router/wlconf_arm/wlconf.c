@@ -1678,11 +1678,11 @@ int wlconf(char *name)
 
 	unit += offset;
 #ifdef __CONFIG_DHDAP__
-	fprintf(stderr, "dhd probe eth1 %d\n", dhd_probe("eth1"));
-	fprintf(stderr, "dhd probe eth2 %d\n", dhd_probe("eth2"));
-	fprintf(stderr, "wl probe eth1 %d\n", wl_probe("eth1"));
-	fprintf(stderr, "wl probe eth2 %d\n", wl_probe("eth2"));
-	fprintf(stderr, "unit %d, offset %d\n", unit, offset);
+	cprintf("dhd probe eth1 %d\n", dhd_probe("eth1"));
+	cprintf("dhd probe eth2 %d\n", dhd_probe("eth2"));
+	cprintf("wl probe eth1 %d\n", wl_probe("eth1"));
+	cprintf("wl probe eth2 %d\n", wl_probe("eth2"));
+	cprintf("unit %d, offset %d\n", unit, offset);
 #endif
 	sprintf(tmp, "wl%d_mbss", unit);
 	if (mbsscap) {
