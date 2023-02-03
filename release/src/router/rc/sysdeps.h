@@ -36,6 +36,9 @@ extern void post_syspara(void);
 extern void generate_wl_para(int unit, int subunit);
 #else
 extern void generate_wl_para(char *ifname, int unit, int subunit);
+#if !defined(RTCONFIG_HND_ROUTER)
+extern char *brcm_to_swconfig(char *vlan, char *buf);
+#endif
 #endif
 #if defined(RTCONFIG_RALINK)
 extern void reinit_hwnat(int unit);

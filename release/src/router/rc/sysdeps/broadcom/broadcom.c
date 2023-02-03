@@ -3269,22 +3269,8 @@ int wlconf(char *ifname, int unit, int subunit)
 	}
 #endif
 	r = eval("wlconf", ifname, "up");
-
 	if (r == 0) {
 		if (unit >= 0 && subunit < 0) {
-#ifndef RTCONFIG_BCMARM
-			switch (model) {
-				default:
-					if ((unit == 0) &&
-						nvram_match(strcat_r(prefix, "noisemitigation", tmp), "1"))
-					{
-						eval("wl", "-i", ifname, "interference_override", "4");
-						eval("wl", "-i", ifname, "phyreg", "0x547", "0x4444");
-						eval("wl", "-i", ifname, "phyreg", "0xc33", "0x280");
-					}
-					break;
-			}
-#else
 #ifdef RTCONFIG_PROXYSTA
 			if (psta_exist_except(unit)/* || psr_exist_except(unit)*/)
 			{
@@ -3292,16 +3278,12 @@ int wlconf(char *ifname, int unit, int subunit)
 				eval("wl", "-i", ifname, "maxassoc", "0");
 			}
 #endif
-
-#ifdef RTCONFIG_BCMARM
-			if (nvram_match(strcat_r(prefix, "ampdu_rts", tmp), "0") &&
-				nvram_match(strcat_r(prefix, "nmode", tmp), "-1"))
-				eval("wl", "-i", ifname, "rtsthresh", "65535");
-#endif
+//			if (nvram_match(strcat_r(prefix, "ampdu_rts", tmp), "0") &&
+//				nvram_match(strcat_r(prefix, "nmode", tmp), "-1"))
+//				eval("wl", "-i", ifname, "rtsthresh", "65535");
 
 			wl_dfs_radarthrs_config(ifname, unit);
 
-#endif /* RTCONFIG_BCMWL6 */
 			txpower = nvram_get_int(wl_nvname("txpower", unit, 0));
 
 			dbG("unit: %d, txpower: %d%%\n", unit, txpower);

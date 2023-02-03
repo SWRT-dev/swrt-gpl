@@ -708,6 +708,19 @@ int start_vlan(void)
 		set_wan_tag(wan_base_if);
 	}
 #endif
+#if defined(RTCONFIG_5301X)
+	char *vlan1 = nvram_safe_get("vlan1ports");
+	char *vlan2 = nvram_safe_get("vlan2ports");
+	char vlan1buf[64];
+	char vlan2buf[64];
+	vlan1 = brcm_to_swconfig(vlan1, vlan1buf);
+	vlan2 = brcm_to_swconfig(vlan2, vlan2buf);
+	eval("swconfig", "dev", "switch0", "set", "reset", "1");
+	eval("swconfig", "dev", "switch0", "set", "enable_vlan", "1");
+	eval("swconfig", "dev", "switch0", "vlan", "1", "set", "ports", vlan1);
+	eval("swconfig", "dev", "switch0", "vlan", "2", "set", "ports", vlan2);
+	eval("swconfig", "dev", "switch0", "set", "apply");
+#endif
 	return 0;
 }
 

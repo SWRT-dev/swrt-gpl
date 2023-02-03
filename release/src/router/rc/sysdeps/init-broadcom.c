@@ -98,7 +98,7 @@ void smart_connect_sync_config(int unit);
 int wan_phyid = -1;
 
 #if !defined(RTCONFIG_HND_ROUTER)
-static char *brcm_to_swconfig(char *vlan, char *buf)
+char *brcm_to_swconfig(char *vlan, char *buf)
 {
 	strcpy(buf, vlan);
 	int i;
@@ -867,19 +867,10 @@ void ether_led()
 
 	model = get_model();
 	switch(model) {
-//	case MODEL_RTAC68U:
-	/* refer to 5301x datasheet page 2770 */
-	case MODEL_RTAC56S:
-	case MODEL_RTAC56U:
-		eval("et", "robowr", "0x00", "0x10", "0x3000");
-		break;
-	case MODEL_RTN16:
-		eval("et", "robowr", "0", "0x18", "0x01ff");
-		eval("et", "robowr", "0", "0x1a", "0x01ff");
-		break;
-	case MODEL_RTAC1200G:
-	case MODEL_RTAC1200GP:
-		eval("et", "robowr", "0", "0x12", "0x24");
+	case MODEL_R7000P:
+		eval("et", "-i", "eth0", "robowr", "0", "0x10", "0x3000");
+		eval("et", "-i", "eth0", "robowr", "0", "0x12", "0x78");
+		eval("et", "-i", "eth0", "robowr", "0", "0x14", "0x1");
 		break;
 	}
 }
@@ -2073,18 +2064,6 @@ void init_switch()
 	eval("insmod", "b5301x_common");
 	eval("insmod", "b5301x_srab");
 #endif
-
-	char *vlan1 = nvram_safe_get("vlan1ports");
-	char *vlan2 = nvram_safe_get("vlan2ports");
-	char vlan1buf[64];
-	char vlan2buf[64];
-	vlan1 = brcm_to_swconfig(vlan1, vlan1buf);
-	vlan2 = brcm_to_swconfig(vlan2, vlan2buf);
-	eval("swconfig", "dev", "switch0", "set", "reset", "1");
-	eval("swconfig", "dev", "switch0", "set", "enable_vlan", "1");
-	eval("swconfig", "dev", "switch0", "vlan", "1", "set", "ports", vlan1);
-	eval("swconfig", "dev", "switch0", "vlan", "2", "set", "ports", vlan2);
-	eval("swconfig", "dev", "switch0", "set", "apply");
 	enable_jumbo_frame();
 	ether_led();
 
@@ -2575,7 +2554,9 @@ _dprintf("load_wl(): starting...\n");
 #if defined(RTCONFIG_BCM_7114) && defined(RTCONFIG_MFGFW)
 	add_to_list("dhdtest", modules, sizeof(modules));
 #elif !defined(RTCONFIG_HND_ROUTER)
+#if defined(R7000P)
 	add_to_list("wl", modules, sizeof(modules));
+#endif
 	add_to_list("dhd", modules, sizeof(modules));
 #else
 	add_to_list("dhd", modules, sizeof(modules));
