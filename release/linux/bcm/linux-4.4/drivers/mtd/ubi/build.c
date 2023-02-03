@@ -1339,9 +1339,6 @@ static void __init ubi_auto_attach(void)
 	    mtd = open_mtd_device("ubi");
 	    if (IS_ERR(mtd))
 		mtd = open_mtd_device("data");
-	    if (IS_ERR(mtd))
-		mtd = open_mtd_device("linux");
-
 	}
 	if (!IS_ERR(mtd)) {
 		size_t len;

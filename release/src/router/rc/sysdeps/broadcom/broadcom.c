@@ -3192,7 +3192,7 @@ int wlconf(char *ifname, int unit, int subunit)
 	int model = get_model();
 	char tmp[100], prefix[] = "wlXXXXXXXXXXXXXX";
 
-	dbG("unit %d subunit %d\n", unit, subunit);
+	dbG("ifname %s unit %d subunit %d\n", ifname, unit, subunit);
 	if (wl_probe(ifname)) return -1;
 
 	if (unit < 0) return -1;
@@ -3227,7 +3227,7 @@ int wlconf(char *ifname, int unit, int subunit)
 			return -1;
 		}
 	}
-
+#if 0
 	if (unit >= 0 && subunit < 0)
 	{
 #ifdef RTCONFIG_OPTIMIZE_XBOX
@@ -3267,8 +3267,9 @@ int wlconf(char *ifname, int unit, int subunit)
 		eval("wl", "-i", ifname, "ampdu_density", "6");		// resolve IOT with Intel STA for BRCM SDK 5.110.27.20012
 #endif /* RTCONFIG_BCMWL6 */
 	}
-
+#endif
 	r = eval("wlconf", ifname, "up");
+
 	if (r == 0) {
 		if (unit >= 0 && subunit < 0) {
 #ifndef RTCONFIG_BCMARM
@@ -3303,7 +3304,7 @@ int wlconf(char *ifname, int unit, int subunit)
 #endif /* RTCONFIG_BCMWL6 */
 			txpower = nvram_get_int(wl_nvname("txpower", unit, 0));
 
-			dbG("unit: %d, txpower: %d%\n", unit, txpower);
+			dbG("unit: %d, txpower: %d%%\n", unit, txpower);
 
 //			switch (model) {
 //				default:
@@ -3322,7 +3323,8 @@ int wlconf(char *ifname, int unit, int subunit)
 				snprintf(wl, sizeof(wl), "%d", unit);
 				xstart("radio", "join", wl);
 			}
-		}
+		}else
+			ifconfig(ifname, IFUP | IFF_ALLMULTI, NULL, NULL);
 	}
 
 	return r;

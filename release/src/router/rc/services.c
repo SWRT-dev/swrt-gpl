@@ -19078,6 +19078,11 @@ void setup_leds()
 #elif defined(RTAC3200) || defined(RTCONFIG_BCM_7114)
 		eval("et", "-i", "eth0", "robowr", "0", "0x18", "0x01ff");
 		eval("et", "-i", "eth0", "robowr", "0", "0x1a", "0x01ff");
+#if defined(R7000P)
+		eval("et", "-i", "eth0", "robowr", "0", "0x10", "0x3000");
+		eval("et", "-i", "eth0", "robowr", "0", "0x12", "0x78");
+		eval("et", "-i", "eth0", "robowr", "0", "0x14", "0x1");
+#endif
 #elif defined(HND_ROUTER)
 #ifndef GTAC2900
 #if defined(RTAX58U_V2) || defined(GTAX6000)
@@ -19108,6 +19113,8 @@ void setup_leds()
 /* Wifi */
 		if (nvram_match("wl0_radio", "1")) {
 #if defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_RALINK)
+			led_control(LED_2G, LED_ON);
+#elif defined(R7000P)
 			led_control(LED_2G, LED_ON);
 #elif defined(RTAC68U)
 			eval("wl", "ledbh", "10", "7");
@@ -19156,6 +19163,8 @@ void setup_leds()
 
 		if (nvram_match("wl1_radio", "1")) {
 #if defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_RALINK)
+			led_control(LED_5G, LED_ON);
+#elif defined(R7000P)
 			led_control(LED_5G, LED_ON);
 #elif defined(RTAC68U)
 			eval("wl", "-i", "eth2", "ledbh", "10", "7");

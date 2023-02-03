@@ -2576,6 +2576,7 @@ _dprintf("load_wl(): starting...\n");
 	add_to_list("dhdtest", modules, sizeof(modules));
 #elif !defined(RTCONFIG_HND_ROUTER)
 	add_to_list("wl", modules, sizeof(modules));
+	add_to_list("dhd", modules, sizeof(modules));
 #else
 	add_to_list("dhd", modules, sizeof(modules));
 #endif
@@ -2619,7 +2620,7 @@ _dprintf("load_wl(): starting...\n");
 				snprintf(instance_base, sizeof(instance_base), "instance_base=%d dhd_msg_level=%d", maxunit + 1, nvram_get_int("dhd_msg_level"));
 			else
 #endif
-				snprintf(instance_base, sizeof(instance_base), "intf_name=wl%d instance_base=0");
+				snprintf(instance_base, sizeof(instance_base), "instance_base=%d", maxunit + 1);
 			_dprintf("load_wl(): insmod %s %s.\n", module, instance_base);
 			eval("insmod", module, instance_base);
 		} else {
