@@ -2553,12 +2553,10 @@ _dprintf("load_wl(): starting...\n");
 #endif
 #if defined(RTCONFIG_BCM_7114) && defined(RTCONFIG_MFGFW)
 	add_to_list("dhdtest", modules, sizeof(modules));
-#elif !defined(RTCONFIG_HND_ROUTER)
+#else
 #if defined(R7000P)
 	add_to_list("wl", modules, sizeof(modules));
 #endif
-	add_to_list("dhd", modules, sizeof(modules));
-#else
 	add_to_list("dhd", modules, sizeof(modules));
 #endif
 #ifdef RTCONFIG_BRCM_HOSTAPD
@@ -2925,7 +2923,6 @@ void init_syspara(void)
 
 			break;
 		case MODEL_R7000P:
-			nvram_set("et2phyaddr", "30");
 			nvram_set("wl0_lbr_aggr_en_mask", "0");
 			nvram_set("wl1_lbr_aggr_en_mask", "0");
 			nvram_set("wl0_lbr_aggr_len", "16");
@@ -2937,10 +2934,6 @@ void init_syspara(void)
 			nvram_set("lan_hwaddr", macaddr);
 			ether_cal_b(mac_binary, macaddr, 1);
 			nvram_set("wan_hwaddr", macaddr);
-			ether_cal_b(mac_binary, macaddr, 4);
-			nvram_set("0:macaddr", macaddr);
-			ether_cal_b(mac_binary, macaddr, 8);
-			nvram_set("1:macaddr", macaddr);
 			break;
 		case MODEL_RTAC3100:
 		case MODEL_GTAC5300:

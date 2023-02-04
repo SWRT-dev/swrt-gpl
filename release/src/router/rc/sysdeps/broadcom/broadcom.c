@@ -391,12 +391,13 @@ int GetPhyStatus(int verbose, phy_info_list *list)
 
 	return wanlan_staus;
 #else
-	int ports[5];
+	int allports = 5;
+	int ports[allports];
 #if defined(RTCONFIG_EXT_RTL8365MB) || defined(RTCONFIG_EXT_RTL8370MB)
 	int ext = 0;
 #endif
 	int i, ret, lret=0, model, mask;
-	char out_buf[30];
+	char out_buf[30], tmp[30];
 
 	model = get_model();
 	switch(model) {
@@ -431,16 +432,30 @@ int GetPhyStatus(int verbose, phy_info_list *list)
 #if defined(RTCONFIG_EXT_RTL8365MB) || defined(RTCONFIG_EXT_RTL8370MB)
 	char PStatus[5]="XXXXX";
 #endif
-
-	memset(out_buf, 0, 30);
-	for (i=0; i<5; i++) {
+	if(list) {
+		list->count = 0;
+	}
+	memset(out_buf, 0, sizeof(out_buf));
+	for (i=0; i < allports; i++) {
+		if(list) {
+			++list->count;
+			list->phy_info[i].phy_port_id = ports[i];
+			if (i==0) {
+				snprintf(list->phy_info[i].label_name, sizeof(list->phy_info[i].label_name), "W0");
+				snprintf(list->phy_info[i].cap_name, sizeof(list->phy_info[i].cap_name), "wan");
+			} else {
+				snprintf(list->phy_info[i].label_name, sizeof(list->phy_info[i].label_name), "L%d", i);
+				snprintf(list->phy_info[i].cap_name, sizeof(list->phy_info[i].cap_name), "lan");
+			}
+		}
 		mask = 0;
 		mask |= 0x0001<<ports[i];
 		if (get_phy_status(mask)==0) {/*Disconnect*/
 			if (i==0)
 				sprintf(out_buf, "W0=X;");
 			else {
-				sprintf(out_buf, "%sL%d=X;", out_buf, i);
+				sprintf(tmp, "%s", out_buf);//fix musl bug
+				sprintf(out_buf, "%sL%d=X;", tmp, i);
 			}
 		}
 		else { /*Connect, keep check speed*/
@@ -452,7 +467,21 @@ int GetPhyStatus(int verbose, phy_info_list *list)
 				sprintf(out_buf, "W0=%s;", (ret & 2)? "G":"M");
 			else {
 				lret = 1;
-				sprintf(out_buf, "%sL%d=%s;", out_buf, i, (ret & 2)? "G":"M");
+				sprintf(tmp, "%s", out_buf);
+				sprintf(out_buf, "%sL%d=%s;", tmp, i, (ret & 2)? "G":"M");
+			}
+			if(list) {
+				snprintf(list->phy_info[i].state, sizeof(list->phy_info[i].state), "up");
+				list->phy_info[i].link_rate = (ret & 2) ? 1000 : 100;
+				if(get_phy_duplex(mask))
+					snprintf(list->phy_info[i].duplex, sizeof(list->phy_info[i].duplex), "full");
+				else
+					snprintf(list->phy_info[i].duplex, sizeof(list->phy_info[i].duplex), "half");
+				list->phy_info[i].tx_bytes = get_phy_mib(ports[i], "tx_bytes");
+				list->phy_info[i].rx_bytes = get_phy_mib(ports[i], "rx_bytes");
+				list->phy_info[i].tx_packets = get_phy_mib(ports[i], "tx_packets");
+				list->phy_info[i].rx_packets = get_phy_mib(ports[i], "rx_packets");
+				list->phy_info[i].crc_errors = get_phy_mib(ports[i], "rx_crc_errors");
 			}
 		}
 	}

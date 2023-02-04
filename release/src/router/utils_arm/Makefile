@@ -46,7 +46,7 @@ UTILS += wl
 ifeq ($(RTCONFIG_5301X),y)
 CFLAGS += -DBCM5301X
 endif
-#UTILS += robocfg
+UTILS += robocfg
 
 
 all: $(UTILS)
@@ -57,6 +57,8 @@ wl:
 et:
 	@echo $(CFLAGS)
 	$(CC) $(CFLAGS) et.c -o $@ $(LDFLAGS)
+
+robocfg: robocfg.c etc53xx.h
 
 clean:
 	rm -f *.o *~ $(UTILS)

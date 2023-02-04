@@ -251,9 +251,9 @@ function show_etherstate(){
 				if (clientList[devicemac])
 					hostname = (clientList[devicemac].nickName == "") ? clientList[devicemac].name : clientList[devicemac].nickName;
 				if ((typeof hostname !== 'undefined') && (hostname != "")) {
-					devicename = '<span class="ClientName" onclick="oui_query_full_vendor(\'' + devicemac +'\');;overlib_str_tmp=\''+ overlib_str +'\';return overlib(\''+ overlib_str +'\');" onmouseout="nd();" style="cursor:pointer; text-decoration:underline;">'+ hostname +'</span>';
+					devicename = '<span class="ClientName" style="text-decoration:underline;">'+ hostname +'</span>';
 				} else {
-					devicename = '<span class="ClientName" onclick="oui_query_full_vendor(\'' + devicemac +'\');;overlib_str_tmp=\''+ overlib_str +'\';return overlib(\''+ overlib_str +'\');" onmouseout="nd();" style="cursor:pointer; text-decoration:underline;">'+ devicemac +'</span>'; 
+					devicename = '<span class="ClientName" style="text-decoration:underline;">'+ devicemac +'</span>'; 
 				}
 			}
 			port = line[1].replace(":","");

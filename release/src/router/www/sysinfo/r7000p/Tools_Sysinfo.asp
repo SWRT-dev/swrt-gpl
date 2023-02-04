@@ -225,7 +225,7 @@ function show_etherstate(){
 		return;
 	} else if ((based_modelid == "RT-N16") || (based_modelid == "RT-AC87U")
 	    || (based_modelid == "RT-AC3200") || (based_modelid == "RT-AC88U")
-	    || (based_modelid == "RT-AC3100"))
+	    || (based_modelid == "RT-AC3100")|| (based_modelid == "R7000P"))
 		reversed = true;
 	else
 		reversed = false;
@@ -251,9 +251,9 @@ function show_etherstate(){
 				if (clientList[devicemac])
 					hostname = (clientList[devicemac].nickName == "") ? clientList[devicemac].name : clientList[devicemac].nickName;
 				if ((typeof hostname !== 'undefined') && (hostname != "")) {
-					devicename = '<span class="ClientName" onclick="oui_query_full_vendor(\'' + devicemac +'\');;overlib_str_tmp=\''+ overlib_str +'\';return overlib(\''+ overlib_str +'\');" onmouseout="nd();" style="cursor:pointer; text-decoration:underline;">'+ hostname +'</span>';
+					devicename = '<span class="ClientName" style="text-decoration:underline;">'+ hostname +'</span>';
 				} else {
-					devicename = '<span class="ClientName" onclick="oui_query_full_vendor(\'' + devicemac +'\');;overlib_str_tmp=\''+ overlib_str +'\';return overlib(\''+ overlib_str +'\');" onmouseout="nd();" style="cursor:pointer; text-decoration:underline;">'+ devicemac +'</span>'; 
+					devicename = '<span class="ClientName" style="text-decoration:underline;">'+ devicemac +'</span>'; 
 				}
 			}
 			port = line[1].replace(":","");
@@ -269,7 +269,7 @@ function show_etherstate(){
 			} else {
 			if (port == "8") {		// CPU Port
 				continue;
-			} else if ((based_modelid == "RT-AC56U") || (based_modelid == "RT-AC56S") || (based_modelid == "RT-AC88U") || (based_modelid == "RT-AC3100")) {
+			} else if ((based_modelid == "RT-AC56U") || (based_modelid == "RT-AC56S") || (based_modelid == "RT-AC88U") || (based_modelid == "RT-AC3100") || (based_modelid == "R7000P")) {
 				port++;		// Port starts at 0
 				if (port == "5") port = 0;	// Last port is WAN
 			} else if (based_modelid == "RT-AC87U") {

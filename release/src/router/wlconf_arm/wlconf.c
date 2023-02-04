@@ -2375,13 +2375,21 @@ int wlconf(char *name)
 	}
 
 	WL_IOVAR_GETINT(name, "chanspec", &prev_chspec);
+	/* Use chanspec to set the channel */
+	if ((str = nvram_get(strcat_r(prefix, "chanspec", tmp))) != NULL) {
+		chanspec = wf_chspec_aton(str);
+
+		if (chanspec) {
+			WL_IOVAR_SETINT(name, "chanspec", (uint32)chanspec);
+		}
+	}
 
 	/* Set channel before setting gmode or rateset */
 	/* Manual Channel Selection - when channel # is not 0 */
 	cprintf("set channel %s\n", name);
 //fprintf(stderr, "set channel %s\n",name);
 	val = atoi(nvram_safe_get(strcat_r(prefix, "channel", tmp)));
-	if (val && !WLCONF_PHYTYPE_11N(phytype)) {
+	if ((chanspec == 0) && val && !WLCONF_PHYTYPE_11N(phytype)) {
 		WL_SETINT(name, WLC_SET_CHANNEL, val);
 		if (ret) {
 			/* Use current channel (card may have changed) */
@@ -2389,7 +2397,7 @@ int wlconf(char *name)
 			snprintf(buf, sizeof(buf), "%d", ci.target_channel);
 			nvram_set(strcat_r(prefix, "channel", tmp), buf);
 		}
-	} else if (val && WLCONF_PHYTYPE_11N(phytype)) {
+	} else if ((chanspec == 0) && val && WLCONF_PHYTYPE_11N(phytype)) {
 		uint channel;
 		uint nctrlsb = 0;
 		nmode = AUTO;	/* enable by default for NPHY */
@@ -3549,3 +3557,4 @@ int main(int argc, char *argv[])
 	}
 }
 #endif
+
