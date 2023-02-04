@@ -146,6 +146,7 @@ void get_ext_phy_id();
 #define PRE_XHCI_KMODS	"phy-qca-baldur phy-qca-uniphy dwc3-of-simple dwc3"
 #define POST_XHCI_KMODS	"xhci-pci xhci-plat-hcd"
 #elif defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER)
+#define PRE_XHCI_KMODS	""
 #define POST_XHCI_KMODS	"xhci-pci xhci-plat-hcd"
 #else
 #define PRE_XHCI_KMODS	""

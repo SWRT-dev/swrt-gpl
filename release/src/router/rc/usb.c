@@ -323,12 +323,10 @@ void add_usb_host_modules(void)
 #if !defined(BCM4912) && !defined(BCM6756)
 	if (nvram_get_int("usb_usb3") == 1) {
 #endif
-#ifdef RTCONFIG_HND_ROUTER
+#ifdef RTCONFIG_BCMARM
 		modprobe(USB30_MOD);
 		modprobe("xhci-plat-hcd");
-#ifdef RTCONFIG_HND_ROUTER_AX
 		modprobe("xhci-pci");
-#endif
 #else
 		modprobe(USB30_MOD);
 #endif
@@ -340,12 +338,10 @@ void add_usb_host_modules(void)
 
 	/* if enabled, force USB2 before USB1.1 */
 	if (nvram_get_int("usb_usb2") == 1) {
-#ifdef RTCONFIG_HND_ROUTER
+#ifdef RTCONFIG_BCMARM
 		modprobe(USB20_MOD);
 		modprobe("ehci-platform");
-#ifdef RTCONFIG_HND_ROUTER_AX
 		modprobe("ehci-pci");
-#endif
 #else
 		i = nvram_get_int("usb_irq_thresh");
 		if ((i < 0) || (i > 6))
@@ -361,12 +357,10 @@ void add_usb_host_modules(void)
 		modprobe(USBUHCI_MOD);
 	}
 	if (nvram_get_int("usb_ohci") == 1) {
-#ifdef RTCONFIG_HND_ROUTER
+#ifdef RTCONFIG_BCMARM
 		modprobe(USBOHCI_MOD);
 		modprobe("ohci-platform");
-#ifdef RTCONFIG_HND_ROUTER_AX
 		modprobe("ohci-pci");
-#endif
 #else
 		modprobe(USBOHCI_MOD);
 #endif
@@ -2510,7 +2504,7 @@ void remove_storage_main(int shutdn)
 	exec_for_host(-1, 0x02, shutdn ? EFH_SHUTDN : 0, umount_partition);
 }
 
-#if defined(RTCONFIG_REALTEK) || (defined(RTCONFIG_RALINK) && !defined(RTCONFIG_MT798X))
+#if defined(RTCONFIG_REALTEK) || (defined(RTCONFIG_RALINK) && !defined(RTCONFIG_MT798X)) || (defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER))
 static const char *path_to_name(const char *path) {
 	const char *s = path, *tmp;
 	//_dprintf("%s(1)\n", __func__);
@@ -2661,8 +2655,16 @@ void hotplug_usb(void)
 	char *devpath = getenv("DEVPATH");
 	//_dprintf("devpath: %s\n", devpath);
 
-	if (!device || !strcmp("device", device))
+	device = path_to_name(devpath);
+	if (strncmp(device, "sd", 2) != 0 && strncmp(device, "sg", 2) != 0
+#ifdef RTCONFIG_USB_CDROM
+	    && strncmp(device, "sr", 2) != 0
+#endif
+	    ){
 		return;
+	}
+#elif defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER)
+	char *devpath = getenv("DEVPATH");
 	device = path_to_name(devpath);
 	if (strncmp(device, "sd", 2) != 0 && strncmp(device, "sg", 2) != 0
 #ifdef RTCONFIG_USB_CDROM
