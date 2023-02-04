@@ -1,5 +1,5 @@
 swconfig.bcm470x:
-	$(MAKE) -C swconfig.bcm470x all
+	$(MAKE) -C swconfig.bcm470x all CFLAGS="-O2 -I$(PLATFORM_ROUTER_SRCBASE)/swconfig.bcm470x -I$(TOP)/libnl-tiny-0.1/include -I$(TOP)/kernel_header/include -DCONFIG_LIBNL20 -D_GNU_SOURCE" LDFLAGS="-L$(TOP)/libnl-tiny-0.1 -lnl-tiny" LIBS="-lm -lnl-tiny"
 
 swconfig.bcm470x-clean:
 	$(MAKE) -C swconfig.bcm470x clean
