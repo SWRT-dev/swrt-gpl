@@ -303,7 +303,7 @@ function initial(){
 		document.getElementById("wanAgg_faq").href=faq_href3;
 	}
 
-	$.getJSON("https://nw-dlcdnet.asus.com/plugin/js/dns_db.json",
+	$.getJSON("/ajax/dns_db.json",
 		function(data){
 			var dns_db_translation_mapping = [
 				{tag:"#ADGUARD_1",text:"<#IPConnection_x_DNS_DB_ADGUARD_1#>"},
@@ -1760,7 +1760,7 @@ function updatDNSListOnline(){
 		});
 		Update_DNS_status();
 
-		$.getJSON("https://nw-dlcdnet.asus.com/plugin/js/DNS_List.json",
+		$.getJSON("/ajax/DNS_List.json",
 			function(cloud_data){
 				if(JSON.stringify(local_data) != JSON.stringify(cloud_data)){
 					if(Object.keys(cloud_data).length > 0){

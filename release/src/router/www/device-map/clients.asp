@@ -404,7 +404,7 @@ function oui_query_full_vendor(mac){
 		if('<% nvram_get("x_Setting"); %>' == '1' && wanConnectStatus && clientList[mac].internetState) {
 			var queryStr = mac.replace(/\:/g, "").splice(6,6,"");
 			var overlibStrTmp = retOverLibStr(clientList[mac]);
-			$.getJSON("https://nw-dlcdnet.asus.com/plugin/js/ouiDB.json", function(data){
+			$.getJSON("/ajax/ouiDB.json", function(data){
 				if(data != "" && data[queryStr] != undefined){
 					if(overlib.isOut) return nd();
 					var vendor_name = data[queryStr].trim();

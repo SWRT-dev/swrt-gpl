@@ -968,3 +968,10 @@ ifneq ($(RTCONFIG_SMARTDNS),y)
 	rm -rf $(INSTALLDIR)/www/Advanced_SmartDNS_Content.asp
 endif
 
+update:
+	wget http://nw-dlcdnet.asus.com/plugin/js/dns_db.json -O ajax/dns_db.json
+	wget http://nw-dlcdnet.asus.com/plugin/js/ouiDB.json -O ajax/ouiDB.json
+	wget http://nw-dlcdnet.asus.com/plugin/js/gameList.json -O ajax/gameList.json
+	wget http://nw-dlcdnet.asus.com/plugin/js/pppIspList.json -O ajax/pppIspList.json
+	wget http://nw-dlcdnet.asus.com/plugin/js/DNS_List.json -O ajax/DNS_List.json
+
