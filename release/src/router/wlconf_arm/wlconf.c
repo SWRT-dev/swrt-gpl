@@ -2408,10 +2408,17 @@ int wlconf(char *name)
 
 		channel = val;
 		/* Get BW */
-		val = atoi(nvram_safe_get(strcat_r(prefix, "nbw", tmp)));
+		val = atoi(nvram_safe_get(strcat_r(prefix, "bw_cap", tmp)));
+		if(val == 1)
+			val = 20;
+		else if(val == 3)
+			val = 40;
+		else if(val == 7)
+			val = 80;
+		else if(val == 15)
+			val = 160;
 		fprintf(stderr, "nbw = %d\n", val);
-		if (nvram_match(strcat_r(prefix, "net_mode", tmp), "b-only") || nvram_match(strcat_r(prefix, "net_mode", tmp), "g-only") || nvram_match(strcat_r(prefix, "net_mode", tmp), "a-only")
-		    || nvram_match(strcat_r(prefix, "net_mode", tmp), "bg-mixed"))
+		if (nvram_match(strcat_r(prefix, "nmode_x", tmp), "2"))
 			val = 20;
 
 		fprintf(stderr, "channel %d, val %d\n", channel, val);
@@ -2433,7 +2440,6 @@ int wlconf(char *name)
 			break;
 		default:
 			val = WL_CHANSPEC_BW_20;
-			nvram_set(strcat_r(prefix, "nbw", tmp), "20");
 		}
 		nbw = val;
 
@@ -3543,6 +3549,235 @@ int wlconf_down(char *name)
 	return 0;
 }
 
+
+int
+wlconf_start(char *name)
+{
+	int i, ii, unit, val, ret = 0;
+	int wlunit = -1;
+	int wlsubunit = -1;
+	int ap, apsta, wds, sta = 0, wet = 0;
+	int wl_ap_build = 0; /* wl compiled with AP capabilities */
+	char buf[WLC_IOCTL_SMLEN];
+	struct maclist *maclist;
+	struct ether_addr *ea;
+	struct bsscfg_list *bclist = NULL;
+	struct bsscfg_info *bsscfg = NULL;
+	wlc_ssid_t ssid;
+	char cap[WLC_IOCTL_SMLEN], caps[WLC_IOCTL_MEDLEN];
+	char var[80], tmp[100], prefix[PREFIX_LEN], *str, *next;
+	int trf_mgmt_cap = 0, trf_mgmt_dwm_cap = 0;
+	bool dwm_supported = FALSE;
+#ifdef __CONFIG_DHDAP__
+	int is_dhd = 0;
+#endif
+
+	/* Check interface (fail silently for non-wl interfaces) */
+	if ((ret = wl_probe(name)))
+		return ret;
+
+	/* wlconf doesn't work for virtual i/f, so if we are given a
+	 * virtual i/f return 0 if that interface is in it's parent's "vifs"
+	 * list otherwise return -1
+	 */
+	memset(tmp, 0, sizeof(tmp));
+	if (get_ifname_unit(name, &wlunit, &wlsubunit) == 0) {
+		if (wlsubunit >= 0) {
+			/* we have been given a virtual i/f,
+			 * is it in it's parent i/f's virtual i/f list?
+			 */
+			sprintf(tmp, "wl%d_vifs", wlunit);
+
+			if (strstr(nvram_safe_get(tmp), name) == NULL)
+				return -1; /* config error */
+			else
+				return 0; /* okay */
+		}
+	}
+	else {
+		return -1;
+	}
+
+	/* because of ifdefs in wl driver,  when we don't have AP capabilities we
+	 * can't use the same iovars to configure the wl.
+	 * so we use "wl_ap_build" to help us know how to configure the driver
+	 */
+	if (wl_iovar_get(name, "cap", (void *)caps, sizeof(caps)))
+		return -1;
+
+	foreach(cap, caps, next) {
+		if (!strcmp(cap, "ap"))
+			wl_ap_build = 1;
+
+		if (!strcmp(cap, "traffic-mgmt"))
+			trf_mgmt_cap = 1;
+
+		if (!strcmp(cap, "traffic-mgmt-dwm"))
+			trf_mgmt_dwm_cap = 1;
+	}
+
+	/* Get instance */
+	WL_IOCTL(name, WLC_GET_INSTANCE, &unit, sizeof(unit));
+	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+
+
+	/* Get the list of BSS Configs */
+	if (!(bclist = wlconf_get_bsscfgs(name, prefix)))
+		return -1;
+
+	/* wlX_mode settings: AP, STA, WET, BSS/IBSS, APSTA */
+	str = nvram_safe_get(strcat_r(prefix, "mode", tmp));
+	ap = (!strcmp(str, "") || !strcmp(str, "ap"));
+	apsta = (!strcmp(str, "apsta") ||
+	         ((!strcmp(str, "sta") || !strcmp(str, "psr") || !strcmp(str, "wet")) &&
+	          bclist->count > 1));
+	sta = (!strcmp(str, "sta") && bclist->count == 1);
+	wds = !strcmp(str, "wds");
+	wet = !strcmp(str, "wet");
+	if (!strcmp(str, "mac_spoof") || !strcmp(str, "psta") || !strcmp(str, "psr"))
+		sta = 1;
+
+	/* Retain remaining WET effects only if not APSTA */
+	wet &= !apsta;
+
+	/* AP only config, code copied as-is from wlconf function */
+	if (ap || apsta || wds) {
+		/* Set lazy WDS mode */
+		val = atoi(nvram_safe_get(strcat_r(prefix, "lazywds", tmp)));
+		WL_IOCTL(name, WLC_SET_LAZYWDS, &val, sizeof(val));
+
+		/* Set the WDS list */
+		maclist = (struct maclist *) buf;
+		maclist->count = 0;
+		ea = maclist->ea;
+		foreach(var, nvram_safe_get(strcat_r(prefix, "wds", tmp)), next) {
+			if (((char *)(ea->octet)) > ((char *)(&buf[sizeof(buf)])))
+				break;
+			ether_atoe(var, ea->octet);
+			maclist->count++;
+			ea++;
+		}
+		WL_IOCTL(name, WLC_SET_WDSLIST, buf, sizeof(buf));
+
+		/* Set WDS link detection timeout */
+		val = atoi(nvram_safe_get(strcat_r(prefix, "wds_timeout", tmp)));
+		WL_IOVAR_SETINT(name, "wdstimeout", val);
+	}
+
+	/*
+	 * Finally enable BSS Configs or Join BSS
+	 * code copied as-is from wlconf function
+	 */
+	for (i = 0; i < bclist->count; i++) {
+		struct {int bsscfg_idx; int enable;} setbuf;
+
+		setbuf.bsscfg_idx = bclist->bsscfgs[i].idx;
+		setbuf.enable = 0;
+
+		bsscfg = &bclist->bsscfgs[i];
+		if (nvram_match(strcat_r(bsscfg->prefix, "bss_enabled", tmp), "1")) {
+			setbuf.enable = 1;
+		}
+
+		/*  bring up BSS  */
+		if (ap || apsta || sta || wet) {
+			for (ii = 0; ii < MAX_BSS_UP_RETRIES; ii++) {
+				if (wl_ap_build) {
+					WL_IOVAR_SET(name, "bss", &setbuf, sizeof(setbuf));
+				}
+				else {
+					strcat_r(prefix, "ssid", tmp);
+					ssid.SSID_len = strlen(nvram_safe_get(tmp));
+					if (ssid.SSID_len > sizeof(ssid.SSID))
+						ssid.SSID_len = sizeof(ssid.SSID);
+					strncpy((char *)ssid.SSID, nvram_safe_get(tmp),
+						ssid.SSID_len);
+					WL_IOCTL(name, WLC_SET_SSID, &ssid, sizeof(ssid));
+				}
+				if (apsta && (ret != 0))
+					sleep_ms(1000);
+				else
+					break;
+			}
+		}
+
+	}
+#if 0
+	if ((ap || apsta || sta) && (trf_mgmt_cap)) {
+		if (trf_mgmt_dwm_cap && ap)
+			dwm_supported = TRUE;
+		trf_mgmt_settings(prefix, dwm_supported);
+	}
+
+#ifdef TRAFFIC_MGMT_RSSI_POLICY
+	if ((ap || apsta) && (trf_mgmt_cap)) {
+		trf_mgmt_rssi_policy(prefix);
+	}
+#endif /* TRAFFIC_MGMT_RSSI_POLICY */
+#endif
+#ifdef __CONFIG_EMF__
+#ifdef __CONFIG_DHDAP__
+	/* WMF will be managed in DHD for FDAP */
+	/* Check if interface uses dhd adapter */
+	is_dhd = !dhd_probe(name);
+
+	if (is_dhd) {
+		if (nvram_match(strcat_r(bsscfg->prefix, "wmf_bss_enable", tmp), "1")) {
+			val = atoi(nvram_safe_get(strcat_r(prefix, "wmf_ucigmp_query", tmp)));
+			(void)dhd_iovar_setint(name, "wmf_ucast_igmp_query", val);
+			val = atoi(nvram_safe_get(strcat_r(prefix, "wmf_mdata_sendup", tmp)));
+			(void)dhd_iovar_setint(name, "wmf_mcast_data_sendup", val);
+			val = atoi(nvram_safe_get(strcat_r(prefix, "wmf_ucast_upnp", tmp)));
+			(void)dhd_iovar_setint(name, "wmf_ucast_upnp", val);
+			val = atoi(nvram_safe_get(strcat_r(prefix, "wmf_igmpq_filter", tmp)));
+			(void)dhd_iovar_setint(name, "wmf_igmpq_filter", val);
+		}
+	} else
+#endif /* __CONFIG_DHDAP__ */
+	for (i = 0; i < bclist->count; i++) {
+		if (nvram_match(strcat_r(bsscfg->prefix, "wmf_bss_enable", tmp), "1")) {
+			bsscfg = &bclist->bsscfgs[i];
+			strncpy(prefix, bsscfg->prefix, PREFIX_LEN - 1);
+			val = atoi(nvram_safe_get(strcat_r(prefix, "wmf_ucigmp_query", tmp)));
+			WL_BSSIOVAR_SETINT(name, "wmf_ucast_igmp_query", bsscfg->idx, val);
+			val = atoi(nvram_safe_get(strcat_r(prefix, "wmf_mdata_sendup", tmp)));
+			WL_BSSIOVAR_SETINT(name, "wmf_mcast_data_sendup", bsscfg->idx, val);
+			val = atoi(nvram_safe_get(strcat_r(prefix, "wmf_ucast_upnp", tmp)));
+			WL_BSSIOVAR_SETINT(name, "wmf_ucast_upnp", bsscfg->idx, val);
+			val = atoi(nvram_safe_get(strcat_r(prefix, "wmf_igmpq_filter", tmp)));
+			WL_BSSIOVAR_SETINT(name, "wmf_igmpq_filter", bsscfg->idx, val);
+		}
+	}
+#endif /* __CONFIG_EMF__ */
+
+#ifdef __CONFIG_DHDAP__
+#ifdef __CONFIG_LBR_AGGR__
+	/* Check if interface uses dhd adapter */
+	is_dhd = !dhd_probe(name);
+
+	if (is_dhd) {
+		val = atoi(nvram_safe_get(strcat_r(prefix, "lbr_aggr_en_mask", tmp)));
+		(void)dhd_iovar_setint(name, "lbr_aggr_en_mask", val);
+		val = atoi(nvram_safe_get(strcat_r(prefix, "lbr_aggr_release_timeout", tmp)));
+		if (val) {
+			(void)dhd_iovar_setint(name, "lbr_aggr_release_timeout", val);
+		}
+		val = atoi(nvram_safe_get(strcat_r(prefix, "lbr_aggr_len", tmp)));
+		if (val) {
+			(void)dhd_iovar_setint(name, "lbr_aggr_len", val);
+		}
+	}
+#endif /* __CONFIG_LBR_AGGR__ */
+#endif /* __CONFIG_DHDAP__ */
+
+	if (bclist != NULL)
+		free(bclist);
+
+	return ret;
+}
+
+
+
 #if defined(linux)
 int main(int argc, char *argv[])
 {
@@ -3551,6 +3786,8 @@ int main(int argc, char *argv[])
 		return wlconf(argv[1]);
 	else if (argc == 3 && !strcmp(argv[2], "down"))
 		return wlconf_down(argv[1]);
+	else if (argc == 3 && !strcmp(argv[2], "start"))
+	  return wlconf_start(argv[1]);
 	else {
 		fprintf(stderr, "Usage: wlconf <ifname> up|down\n");
 		return -1;
