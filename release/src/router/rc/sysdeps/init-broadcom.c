@@ -37,7 +37,6 @@
 #include <linux/major.h>
 
 #ifdef RTCONFIG_BCMWL6
-# ifdef RTCONFIG_BCM_7114
 /* phy types, PhyVersion:PhyType field */
 #define PHY_TYPE_A              0       /* A-Phy value */
 #define PHY_TYPE_B              1       /* B-Phy value */
@@ -50,10 +49,8 @@
 #define PHY_TYPE_LCNXN          9       /* LCNXN-Phy value */
 #define PHY_TYPE_LCN40          10      /* LCN40-Phy value */
 #define PHY_TYPE_AC             11      /* AC-Phy value */
+#define PHY_TYPE_AX				13
 #define PHY_TYPE_NULL           0xf     /* Invalid Phy value */
-#else
-#include <d11.h>
-#endif
 
 #ifdef RTCONFIG_HND_ROUTER_AX
 #define WLCONF_PHYTYPE2STR(phy)	((phy) == PHY_TYPE_A ? "a" : \
@@ -84,6 +81,7 @@
 #ifdef RTCONFIG_AMAS
 #include <amas-utils.h>
 #endif
+#include <swrt.h>
 
 #ifdef RTCONFIG_BCMARM
 #if defined(RTCONFIG_HND_ROUTER_AX) && defined(BCA_HNDROUTER) && (defined(RTCONFIG_HND_WL) || defined(BCM4912))

@@ -2966,6 +2966,50 @@ bsd_defaults(void)
 #endif
 
 #ifdef RTCONFIG_BCMWL6
+//workaround for acs only select 20m channel
+void hook_ddwrt_driver(char *ifname, char *prefix)
+{
+	int unit, ret = 0, count = 0, i;
+	char tmp[256], data_buf[WLC_IOCTL_MAXLEN];
+	char chanbuf[CHANSPEC_STR_LEN];
+	chanspec_t c;
+	wl_uint32_list_t *list;
+	unit = atoi(nvram_safe_get(strcat_r(prefix, "unit", tmp)));
+	ret = wl_iovar_getbuf(ifname, "chanspecs", &c, sizeof(chanspec_t), data_buf, WLC_IOCTL_MAXLEN);
+	if (ret < 0) {
+		dbg("failed to get valid chanspec list\n");
+		return;
+	}
+	list = (wl_uint32_list_t *)data_buf;
+	count = dtoh32(list->count);
+	for (i = 0; i < count; i++) {
+		wf_chspec_ntoa((chanspec_t)dtoh32(list->element[i]), chanbuf);
+		if(unit == 0 && (nvram_match(strcat_r(prefix, "bw", tmp), "0") || nvram_match(strcat_r(prefix, "bw", tmp), "2"))){
+			if(strstr(chanbuf, "l") || strstr(chanbuf, "u")){
+				nvram_set(strcat_r(prefix, "chanspec", tmp), chanbuf);
+				break;
+			}
+		}else if(unit == 1){
+			if((nvram_match(strcat_r(prefix, "bw", tmp), "0") && nvram_match(strcat_r(prefix, "bw_160", tmp), "0")) || nvram_match(strcat_r(prefix, "bw", tmp), "3")){
+				if(strstr(chanbuf, "/80")){
+					nvram_set(strcat_r(prefix, "chanspec", tmp), chanbuf);
+					break;
+				}
+			}else if(nvram_match(strcat_r(prefix, "bw", tmp), "2")){
+				if(strstr(chanbuf, "l") || strstr(chanbuf, "u")){
+					nvram_set(strcat_r(prefix, "chanspec", tmp), chanbuf);
+					break;
+				}
+			}else if(nvram_match(strcat_r(prefix, "bw", tmp), "5") || nvram_match(strcat_r(prefix, "bw_160", tmp), "1")){
+				if(strstr(chanbuf, "/160")){
+					nvram_set(strcat_r(prefix, "chanspec", tmp), chanbuf);
+					break;
+				}
+			}
+		}
+	}
+}
+
 int
 wl_check_chanspec()
 {
@@ -2990,8 +3034,10 @@ wl_check_chanspec()
 		match_ctrl_ch = 0;
 		match_40m_ch = 0;
 
-		if (!nvram_get_int(strcat_r(prefix, "chanspec", tmp)))
+		if (!nvram_get_int(strcat_r(prefix, "chanspec", tmp))){
+			hook_ddwrt_driver(word, prefix);
 			continue;
+		}
 
 		memset(data_buf, 0, WLC_IOCTL_MAXLEN);
 		ret = wl_iovar_getbuf(word, "chanspecs", &c, sizeof(chanspec_t),
