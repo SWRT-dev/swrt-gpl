@@ -338,6 +338,45 @@ typedef struct wl_bss_info {
 	/* variable length Information Elements */
 } wl_bss_info_t;
 
+typedef struct wl_bss_info_wl {
+	uint32		version;		/* version field */
+	uint32		length;			/* byte length of data in this record,
+						 * starting at version and including IEs
+						 */
+	struct ether_addr BSSID;
+	uint16		beacon_period;		/* units are Kusec */
+	uint16		capability;		/* Capability information */
+	uint8		SSID_len;
+	uint8		SSID[32];
+	struct {
+		uint	count;			/* # rates in this set */
+		uint8	rates[16];		/* rates in 500kbps units w/hi bit set if basic */
+	} rateset;				/* supported rates */
+	chanspec_t	chanspec;		/* chanspec for bss */
+	uint16		atim_window;		/* units are Kusec */
+	uint8		dtim_period;		/* DTIM period */
+	int16		RSSI;			/* receive signal strength (in dBm) */
+	int8		phy_noise;		/* noise (in dBm) */
+
+	uint8		n_cap;			/* BSS is 802.11N Capable */
+	uint32		nbss_cap;		/* 802.11N+AC BSS Capabilities */
+	uint8		ctl_ch;			/* 802.11N BSS control channel number */
+	uint8		padding1[3];		/* explicit struct alignment padding */
+	uint16		vht_rxmcsmap;	/* VHT rx mcs map (802.11ac IE, VHT_CAP_MCS_MAP_*) */
+	uint16		vht_txmcsmap;	/* VHT tx mcs map (802.11ac IE, VHT_CAP_MCS_MAP_*) */
+	uint8		flags;			/* flags */
+	uint8		vht_cap;		/* BSS is vht capable */
+	uint8		reserved[2];		/* Reserved for expansion of BSS properties */
+	uint8		basic_mcs[MCSSET_LEN];	/* 802.11N BSS required MCS set */
+
+	uint16		ie_offset;		/* offset at which IEs start, from beginning */
+	uint32		ie_length;		/* byte length of Information Elements */
+	int16		SNR;			/* average SNR of during frame reception */
+	/* Add new fields here */
+	/* variable length Information Elements */
+} wl_bss_info_wl_t;
+
+
 #ifndef LINUX_POSTMOGRIFY_REMOVAL
 
 typedef struct wl_bsscfg {
@@ -543,6 +582,13 @@ typedef struct wl_scan_results {
 	uint32 count;
 	wl_bss_info_t bss_info[1];
 } wl_scan_results_t;
+
+typedef struct wl_scan_results_wl {
+	uint32 buflen;
+	uint32 version;
+	uint32 count;
+	wl_bss_info_wl_t bss_info[1];
+} wl_scan_results_wl_t;
 
 #ifndef LINUX_POSTMOGRIFY_REMOVAL
 /* size of wl_scan_results not including variable length array */
@@ -1143,6 +1189,64 @@ typedef struct {
 
 	uint32			wnm_cap;	/* wnm capabilities */
 } sta_info_t;
+
+typedef struct {
+	uint16			ver;		/* version of this struct */
+	uint16			len;		/* length in bytes of this structure */
+	uint16			cap;		/* sta's advertised capabilities */
+	uint32			flags;		/* flags defined below */
+	uint32			idle;		/* time since data pkt rx'd from sta */
+	struct ether_addr	ea;		/* Station address */
+	wl_rateset_t		rateset;	/* rateset in use */
+	uint32			in;		/* seconds elapsed since associated */
+	uint32			listen_interval_inms; /* Min Listen interval in ms for this STA */
+	uint32			tx_pkts;	/* # of user packets transmitted (unicast) */
+	uint32			tx_failures;	/* # of user packets failed */
+	uint32			rx_ucast_pkts;	/* # of unicast packets received */
+	uint32			rx_mcast_pkts;	/* # of multicast packets received */
+	uint32			tx_rate;	/* Rate used by last tx frame */
+	uint32			rx_rate;	/* Rate of last successful rx frame */
+	uint32			rx_decrypt_succeeds;	/* # of packet decrypted successfully */
+	uint32			rx_decrypt_failures;	/* # of packet decrypted unsuccessfully */
+	uint32			tx_tot_pkts;	/* # of user tx pkts (ucast + mcast) */
+	uint32			rx_tot_pkts;	/* # of data packets recvd (uni + mcast) */
+	uint32			tx_mcast_pkts;	/* # of mcast pkts txed */
+	uint64			tx_tot_bytes;	/* data bytes txed (ucast + mcast) */
+	uint64			rx_tot_bytes;	/* data bytes recvd (ucast + mcast) */
+	uint64			tx_ucast_bytes;	/* data bytes txed (ucast) */
+	uint64			tx_mcast_bytes;	/* # data bytes txed (mcast) */
+	uint64			rx_ucast_bytes;	/* data bytes recvd (ucast) */
+	uint64			rx_mcast_bytes;	/* data bytes recvd (mcast) */
+	int8			rssi[WL_STA_ANT_MAX];	/* per antenna rssi */
+	int8			nf[WL_STA_ANT_MAX];	/* per antenna noise floor */
+	uint16			aid;			/* association ID */
+	uint16			ht_capabilities;	/* advertised ht caps */
+	uint16			vht_flags;		/* converted vht flags */
+	uint32			tx_pkts_retry_cnt;	/* # of frames where a retry was
+							 * necessary (obsolete)
+							 */
+	uint32			tx_pkts_retry_exhausted; /* # of user frames where a retry
+							  * was exhausted
+							  */
+	int8			rx_lastpkt_rssi[WL_STA_ANT_MAX]; /* Per antenna RSSI of last
+								  * received data frame.
+								  */
+	/* TX WLAN retry/failure statistics:
+	 * Separated for host requested frames and WLAN locally generated frames.
+	 * Include unicast frame only where the retries/failures can be counted.
+	 */
+	uint32			tx_pkts_total;		/* # user frames sent successfully */
+	uint32			tx_pkts_retries;	/* # user frames retries */
+	uint32			tx_pkts_fw_total;	/* # FW generated sent successfully */
+	uint32			tx_pkts_fw_retries;	/* # retries for FW generated frames */
+	uint32			tx_pkts_fw_retry_exhausted;	/* # FW generated where a retry
+								 * was exhausted
+								 */
+	uint32			rx_pkts_retried;	/* # rx with retry bit set */
+	uint32			tx_rate_fallback;	/* lowest fallback TX rate */
+	wl_rateset_args_t	rateset_adv;	/* rateset along with mcs index bitmap */
+} sta_info_wl_t;
+
 
 #define WL_OLD_STAINFO_SIZE	OFFSETOF(sta_info_t, tx_tot_pkts)
 

@@ -2281,7 +2281,7 @@ reset_mssid_hwaddr(int unit)
 		}
 
 		macaddr_strp = cfe_nvram_get(macaddr_str);
-
+		dbG("%s = %s\n", macaddr_str, macaddr_strp);
 		if (macaddr_strp)
 		{
 			if (!mssid_mac_validate(macaddr_strp))
@@ -4780,6 +4780,8 @@ void generate_wl_para(char *ifname, int unit, int subunit)
 		dbG("nctrlsb: %s\n", nvram_safe_get(strcat_r(prefix, "nctrlsb", tmp)));
 #endif
 		dbG("obss_coex: %s\n", nvram_safe_get(strcat_r(prefix, "obss_coex", tmp)));
+//		if(repeater_mode() && is_ure(unit))
+//			start_wl_wpa_supplicant(unit);
 	}
 	else
 	{

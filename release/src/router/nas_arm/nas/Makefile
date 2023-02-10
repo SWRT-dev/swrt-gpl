@@ -57,6 +57,7 @@ nas: $(NASOBJS) $(UTLOBJS)
 install: all
 	install -D nas $(INSTALLDIR)/usr/sbin/nas
 	$(STRIP) $(INSTALLDIR)/usr/sbin/nas
+	cd $(INSTALLDIR)/usr/sbin && ln -sf nas nas4not && ln -sf nas nas4wds
 
 # clean up mess
 clean:

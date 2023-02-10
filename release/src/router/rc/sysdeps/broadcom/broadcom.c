@@ -1110,12 +1110,67 @@ int Get_ChannelList_5G(void)
 	return Get_channel_list(1);
 }
 
-#if defined(RTAC3200) || defined(RTAC5300)
+#if defined(RTCONFIG_HAS_5G_2)
 int Get_ChannelList_5G_2(void)
 {
 	return Get_channel_list(2);
 }
 #endif
+
+int start_wl_wpa_supplicant(int unit)
+{
+	FILE *fp;
+	char tmp[64], prefix[128], ifname[6], akm[16];
+	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+	snprintf(ifname, sizeof(ifname), "%s", nvram_safe_get(strcat_r(prefix, "ifname", tmp)));
+	snprintf(akm, sizeof(akm), "%s", nvram_safe_get(strcat_r(prefix, "akm", tmp)));
+	snprintf(tmp, sizeof(tmp), "/tmp/wpa_supplicant-%s.conf", ifname);
+	if(strstr(akm, "psk") || strstr(akm, "psk2")){
+		if((fp = fopen(tmp, "w+")) == NULL){
+			_dprintf("%s: Can't open %s\n", __func__, tmp);
+			return -1;
+		}
+		fprintf(fp, "ap_scan=2\n");
+		fprintf(fp, "fast_reauth=1\n");
+		fprintf(fp, "eapol_version=1\n");
+		// fprintf (fp, "ctrl_interface_group=0\n");
+		// fprintf (fp, "ctrl_interface=/var/run/wpa_supplicant\n");
+
+		fprintf(fp, "network={\n");
+		fprintf(fp, "\tssid=\"%s\"\n", nvram_safe_get(strcat_r(prefix, "ssid", tmp)));
+		// fprintf (fp, "\tmode=0\n");
+		fprintf(fp, "\tscan_ssid=1\n");
+		fprintf(fp, "\tkey_mgmt=WPA-PSK\n");
+
+		if (nvram_match(strcat_r(prefix, "crypto", tmp), "aes")) {
+			fprintf(fp, "\tpairwise=CCMP\n");
+			fprintf(fp, "\tgroup=CCMP TKIP\n");
+		}
+		else if (nvram_match(strcat_r(prefix, "crypto", tmp), "tkip")) {
+			fprintf(fp, "\tpairwise=TKIP\n");
+			fprintf(fp, "\tgroup=TKIP\n");
+		}
+		else if (nvram_match(strcat_r(prefix, "crypto", tmp), "tkip+aes")) {
+			fprintf(fp, "\tpairwise=CCMP TKIP\n");
+			fprintf(fp, "\tgroup=CCMP TKIP\n");
+		}
+		if (nvram_match(akm, "psk"))
+			fprintf(fp, "\tproto=WPA\n");
+		if (nvram_match(akm, "psk2"))
+			fprintf(fp, "\tproto=RSN\n");
+		if (nvram_match(akm, "psk psk2"))
+			fprintf(fp, "\tproto=WPA RSN\n");
+
+		fprintf(fp, "\tpsk=\"%s\"\n", nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp)));
+		fprintf(fp, "}\n");
+		fclose(fp);
+		if (nvram_match(strcat_r(prefix, "mode", tmp), "wdssta") || nvram_match(strcat_r(prefix, "mode", tmp), "wet"))
+			eval("/usr/bin/wpa_supplicant", "-b", nvram_get("lan_ifname") ? : "br0", "-B", "-Dwext", "-i", ifname, "-c", tmp);
+		else
+			eval("/usr/bin/wpa_supplicant", "-B", "-Dwext", "-i", ifname, "-c", tmp);
+	}
+	return 0;
+}
 
 static const unsigned char WPA_OUT_TYPE[] = { 0x00, 0x50, 0xf2, 1 };
 
@@ -1475,7 +1530,6 @@ int wlcscan_core(char *ofile, char *wif)
 	wl_scan_params_t *params;
 	int params_size = WL_SCAN_PARAMS_FIXED_SIZE + NUMCHANS * sizeof(uint16);
 	FILE *fp;
-	int scanmode;
 	int org_scan_time = 20, scan_time = 40;
 	int wait_time = 3;
 
@@ -1483,129 +1537,16 @@ int wlcscan_core(char *ofile, char *wif)
 	if (params == NULL)
 		return retval;
 
-	scanmode = nvram_get_int("wlc_scan_mode");
-	if ((scanmode != DOT11_SCANTYPE_ACTIVE) && (scanmode != DOT11_SCANTYPE_PASSIVE))
-		scanmode = DOT11_SCANTYPE_ACTIVE;
-
 	memset(params, 0, params_size);
-	params->bss_type = DOT11_BSSTYPE_INFRASTRUCTURE;
+	memset(scan_result, 0, sizeof(scan_result));
+	params->bss_type = DOT11_BSSTYPE_ANY;
 	memcpy(&params->bssid, &ether_bcast, ETHER_ADDR_LEN);
-//	params->scan_type = -1;
-	params->scan_type = scanmode;
+	params->scan_type = 0;
 	params->nprobes = -1;
 	params->active_time = -1;
 	params->passive_time = -1;
 	params->home_time = -1;
-#if defined(RTAC88U) || defined(RTAC3100) || defined(RTAC5300) || defined(R7000P)
-	int band = WLC_BAND_ALL;
-	wl_ioctl(wif, WLC_GET_BAND, &band, sizeof(band));
-	if (band == WLC_BAND_5G)
-	{
-		if (wl_subband(wif, nvram_get_int("wlcscan_idx")+1) == 1)
-		{
-			params->channel_num = 4;
-			params->channel_list[0] = 36;
-			params->channel_list[1] = 40;
-			params->channel_list[2] = 44;
-			params->channel_list[3] = 48;
-		}
-		else if (wl_subband(wif, nvram_get_int("wlcscan_idx")+1) == 2)
-		{
-			params->channel_num = 4;
-			params->channel_list[0] = 52;
-			params->channel_list[1] = 56;
-			params->channel_list[2] = 60;
-			params->channel_list[3] = 64;
-		}
-		else if (wl_subband(wif, nvram_get_int("wlcscan_idx")+1) == 3)
-		{
-			if (wl_channel_valid(wif, 120))
-			{
-				params->channel_num = 11;
-				params->channel_list[0] = 100;
-				params->channel_list[1] = 104;
-				params->channel_list[2] = 108;
-				params->channel_list[3] = 112;
-				params->channel_list[4] = 116;
-				params->channel_list[5] = 120;
-				params->channel_list[6] = 124;
-				params->channel_list[7] = 128;
-				params->channel_list[8] = 132;
-				params->channel_list[9] = 136;
-				params->channel_list[10] = 140;
-			}
-			else
-			{
-				params->channel_num = 8;
-				params->channel_list[0] = 100;
-				params->channel_list[1] = 104;
-				params->channel_list[2] = 108;
-				params->channel_list[3] = 112;
-				params->channel_list[4] = 116;
-				params->channel_list[5] = 132;
-				params->channel_list[6] = 136;
-				params->channel_list[7] = 140;
-			}
-		}
-		else if (wl_subband(wif, nvram_get_int("wlcscan_idx")+1) == 4)
-		{
-			params->channel_num = 5;
-			params->channel_list[0] = 165;
-			params->channel_list[1] = 161;
-			params->channel_list[2] = 157;
-			params->channel_list[3] = 153;
-			params->channel_list[4] = 149;
-		}
-		else
-		{
-			free(params);
-			return retval;
-		}
-	}
-	else
-	{
-		if (nvram_get_int("wlcscan_idx") == 0)
-		{
-			params->channel_num = 6;
-			params->channel_list[0] = 1;
-			params->channel_list[1] = 2;
-			params->channel_list[2] = 3;
-			params->channel_list[3] = 4;
-			params->channel_list[4] = 5;
-			params->channel_list[5] = 6;
-		}
-		else if (nvram_get_int("wlcscan_idx") == 1)
-		{
-			if (wl_channel_valid(wif, 13))
-			{
-				params->channel_num = 7;
-				params->channel_list[0] = 7;
-				params->channel_list[1] = 8;
-				params->channel_list[2] = 9;
-				params->channel_list[3] = 10;
-				params->channel_list[4] = 11;
-				params->channel_list[5] = 12;
-				params->channel_list[6] = 13;
-			}
-			else
-			{
-				params->channel_num = 5;
-				params->channel_list[0] = 7;
-				params->channel_list[1] = 8;
-				params->channel_list[2] = 9;
-				params->channel_list[3] = 10;
-				params->channel_list[4] = 11;
-			}
-		}
-		else
-		{
-			free(params);
-			return retval;
-		}
-	}
-#else
 	params->channel_num = 0;
-#endif
 
 	/* extend scan channel time to get more AP probe resp */
 	wl_ioctl(wif, WLC_GET_SCAN_CHANNEL_TIME, &org_scan_time, sizeof(org_scan_time));
@@ -1623,7 +1564,7 @@ int wlcscan_core(char *ofile, char *wif)
 	/* restore original scan channel time */
 	wl_ioctl(wif, WLC_SET_SCAN_CHANNEL_TIME, &org_scan_time, sizeof(org_scan_time));
 
-#if defined(RTAC88U) || defined(RTAC3100) || defined(RTAC5300) || defined(R7000P)
+#if defined(RTCONFIG_BCM_7114)
 	wait_time = 2;
 #endif
 	dbg("[rc] Please wait %d seconds ", wait_time);
@@ -1715,13 +1656,25 @@ int wlcscan_core(char *ofile, char *wif)
 						apinfos[ap_count].RSSI_Quality = (int)(((info->RSSI + 90) * 26)/10);
 					else					// < -84 dbm
 						apinfos[ap_count].RSSI_Quality = 0;
-
-					if ((info->capability & 0x10) == 0x10)
-						apinfos[ap_count].wep = 1;
-					else
-						apinfos[ap_count].wep = 0;
+					apinfos[ap_count].wep = 0;
 					apinfos[ap_count].wpa = 0;
-
+					if (info->capability & DOT11_CAP_PRIVACY){
+						apinfos[ap_count].wep = 1;
+						if(info->ie_length){
+							ie = (struct bss_ie_hdr *) ((unsigned char *) info + sizeof(*info));
+							for (left = info->ie_length; left > 0; left -= (ie->len + 2), ie = (struct bss_ie_hdr *) ((unsigned char *) ie + 2 + ie->len))
+							{
+								if (ie->elem_id == DOT11_MNG_RSN_ID || ie->elem_id == DOT11_MNG_WPA_ID){
+									if (wpa_parse_wpa_ie(&ie->elem_id, ie->len + 2, &apinfos[ap_count].wid) == 0)
+									{
+										apinfos[ap_count].wep = 0;
+										apinfos[ap_count].wpa = 1;
+										break;
+									}
+								}
+							}
+						}
+					}
 /*
 					unsigned char *RATESET = &info->rateset;
 					for (k = 0; k < 18; k++)
@@ -1769,35 +1722,6 @@ int wlcscan_core(char *ofile, char *wif)
 					if (ap_count >= MAX_NUMBER_OF_APINFO)
 						break;
 				}
-
-				ie = (struct bss_ie_hdr *) ((unsigned char *) info + sizeof(*info));
-				for (left = info->ie_length; left > 0; // look for RSN IE first
-					left -= (ie->len + 2), ie = (struct bss_ie_hdr *) ((unsigned char *) ie + 2 + ie->len))
-				{
-					if (ie->elem_id != DOT11_MNG_RSN_ID)
-						continue;
-
-					if (wpa_parse_wpa_ie(&ie->elem_id, ie->len + 2, &apinfos[ap_count - 1].wid) == 0)
-					{
-						apinfos[ap_count-1].wpa = 1;
-						goto next_info;
-					}
-				}
-
-				ie = (struct bss_ie_hdr *) ((unsigned char *) info + sizeof(*info));
-				for (left = info->ie_length; left > 0; // then look for WPA IE
-					left -= (ie->len + 2), ie = (struct bss_ie_hdr *) ((unsigned char *) ie + 2 + ie->len))
-				{
-					if (ie->elem_id != DOT11_MNG_WPA_ID)
-						continue;
-
-					if (wpa_parse_wpa_ie(&ie->elem_id, ie->len + 2, &apinfos[ap_count-1].wid) == 0)
-					{
-						apinfos[ap_count-1].wpa = 1;
-						break;
-					}
-				}
-
 next_info:
 				info = (wl_bss_info_t *) ((unsigned char *) info + info->length);
 			}
@@ -1814,7 +1738,10 @@ next_info:
 		{
 			printf("%2d. ", k + 1);
 			printf("%3d ", apinfos[k].ctl_ch);
-			printf("%-33s", apinfos[k].SSID);
+			if(apinfos[k].SSID[0] == 0)
+				printf("%-33s", "hidden ssid");
+			else
+				printf("%-33s", apinfos[k].SSID);
 			printf("%-18s", apinfos[k].BSSID);
 
 			if (apinfos[k].wpa == 1)
@@ -2052,6 +1979,458 @@ next_info:
 
 	return retval;
 }
+
+#if defined(RTAC68U) || defined(R7000P)
+int wlcscan_core_wl(char *ofile, char *wif)
+{
+	int ret, i, k, left, ht_extcha;
+	int retval = 0, ap_count = 0, idx_same = -1, count = 0;
+	unsigned char *bssidp;
+	char *info_b;
+	unsigned char rate;
+	unsigned char bssid[6];
+	char macstr[18];
+	char ure_mac[18];
+	char ssid_str[256];
+	wl_scan_results_wl_t *result;
+	wl_bss_info_wl_t *info;
+	wl_bss_info_107_t *old_info;
+	struct bss_ie_hdr *ie;
+	NDIS_802_11_NETWORK_TYPE NetWorkType;
+	struct maclist *authorized;
+	int maclist_size;
+	int max_sta_count = 128;
+	int wl_authorized = 0;
+	wl_scan_params_t *params;
+	int params_size = WL_SCAN_PARAMS_FIXED_SIZE + NUMCHANS * sizeof(uint16);
+	FILE *fp;
+	int org_scan_time = 20, scan_time = 40;
+	int wait_time = 3;
+
+	params = (wl_scan_params_t*)malloc(params_size);
+	if (params == NULL)
+		return retval;
+
+	memset(params, 0, params_size);
+	memset(scan_result, 0, sizeof(scan_result));
+	params->bss_type = DOT11_BSSTYPE_ANY;
+	memcpy(&params->bssid, &ether_bcast, ETHER_ADDR_LEN);
+	params->scan_type = 0;
+	params->nprobes = -1;
+	params->active_time = -1;
+	params->passive_time = -1;
+	params->home_time = -1;
+	params->channel_num = 0;
+
+	/* extend scan channel time to get more AP probe resp */
+	wl_ioctl(wif, WLC_GET_SCAN_CHANNEL_TIME, &org_scan_time, sizeof(org_scan_time));
+	if (org_scan_time < scan_time)
+		wl_ioctl(wif, WLC_SET_SCAN_CHANNEL_TIME, &scan_time, sizeof(scan_time));
+
+	while ((ret = wl_ioctl(wif, WLC_SCAN, params, params_size)) < 0 &&
+				count++ < 2) {
+		dbg("[rc] set scan command failed, retry %d\n", count);
+		sleep(1);
+	}
+
+	free(params);
+
+	/* restore original scan channel time */
+	wl_ioctl(wif, WLC_SET_SCAN_CHANNEL_TIME, &org_scan_time, sizeof(org_scan_time));
+
+	dbg("[rc] Please wait %d seconds ", wait_time);
+	do {
+		sleep(1);
+		dbg(".");
+	} while (--wait_time > 0);
+	dbg("\n\n");
+
+	if (ret == 0) {
+		result = (wl_scan_results_wl_t *)scan_result;
+		result->buflen = htod32(WLC_SCAN_RESULT_BUF_LEN);
+
+		while ((ret = wl_ioctl(wif, WLC_SCAN_RESULTS, result, WLC_SCAN_RESULT_BUF_LEN)) < 0 && count++ < 2)
+		{
+			dbg("[rc] set scan results command failed, retry %d\n", count);
+			sleep(1);
+		}
+
+		if (ret == 0)
+		{
+			info = &(result->bss_info[0]);
+
+			/* Convert version 107 to 109 */
+			if (dtoh32(info->version) == LEGACY_WL_BSS_INFO_VERSION) {
+				old_info = (wl_bss_info_107_t *)info;
+				info->chanspec = CH20MHZ_CHSPEC(old_info->channel);
+				info->ie_length = old_info->ie_length;
+				info->ie_offset = sizeof(wl_bss_info_107_t);
+			}
+
+			info_b = (char *) info;
+
+			for (i = 0; i < result->count; i++)
+			{
+				if (info->SSID_len > 32/* || info->SSID_len == 0*/)
+					goto next_info;
+				bssidp = (unsigned char *)&info->BSSID;
+				sprintf(macstr, "%02X:%02X:%02X:%02X:%02X:%02X",
+										(unsigned char)bssidp[0],
+										(unsigned char)bssidp[1],
+										(unsigned char)bssidp[2],
+										(unsigned char)bssidp[3],
+										(unsigned char)bssidp[4],
+										(unsigned char)bssidp[5]);
+
+				idx_same = -1;
+				for (k = 0; k < ap_count; k++) {
+					/* deal with old version of Broadcom Multiple SSID
+						(share the same BSSID) */
+					if (strcmp(apinfos[k].BSSID, macstr) == 0 &&
+						strcmp(apinfos[k].SSID, (const char *) info->SSID) == 0) {
+						idx_same = k;
+						break;
+					}
+				}
+
+				if (idx_same != -1)
+				{
+					if (info->RSSI >= -50)
+						apinfos[idx_same].RSSI_Quality = 100;
+					else if (info->RSSI >= -80)	// between -50 ~ -80dbm
+						apinfos[idx_same].RSSI_Quality = (int)(24 + ((info->RSSI + 80) * 26)/10);
+					else if (info->RSSI >= -90)	// between -80 ~ -90dbm
+						apinfos[idx_same].RSSI_Quality = (int)(((info->RSSI + 90) * 26)/10);
+					else					// < -84 dbm
+						apinfos[idx_same].RSSI_Quality = 0;
+				}
+				else
+				{
+					strcpy(apinfos[ap_count].BSSID, macstr);
+//					strcpy(apinfos[ap_count].SSID, info->SSID);
+					memset(apinfos[ap_count].SSID, 0x0, 33);
+					memcpy(apinfos[ap_count].SSID, info->SSID, info->SSID_len);
+					apinfos[ap_count].channel = (uint8)(info->chanspec & WL_CHANSPEC_CHAN_MASK);
+					if (info->ctl_ch == 0)
+					{
+						apinfos[ap_count].ctl_ch = apinfos[ap_count].channel;
+					} else
+					{
+						apinfos[ap_count].ctl_ch = info->ctl_ch;
+					}
+
+					if (info->RSSI >= -50)
+						apinfos[ap_count].RSSI_Quality = 100;
+					else if (info->RSSI >= -80)	// between -50 ~ -80dbm
+						apinfos[ap_count].RSSI_Quality = (int)(24 + ((info->RSSI + 80) * 26)/10);
+					else if (info->RSSI >= -90)	// between -80 ~ -90dbm
+						apinfos[ap_count].RSSI_Quality = (int)(((info->RSSI + 90) * 26)/10);
+					else					// < -84 dbm
+						apinfos[ap_count].RSSI_Quality = 0;
+					apinfos[ap_count].wep = 0;
+					apinfos[ap_count].wpa = 0;
+					if (info->capability & DOT11_CAP_PRIVACY){
+						apinfos[ap_count].wep = 1;
+						if(info->ie_length){
+							ie = (struct bss_ie_hdr *) ((unsigned char *) info + sizeof(*info));
+							for (left = info->ie_length; left > 0; left -= (ie->len + 2), ie = (struct bss_ie_hdr *) ((unsigned char *) ie + 2 + ie->len))
+							{
+								if (ie->elem_id == DOT11_MNG_RSN_ID || ie->elem_id == DOT11_MNG_WPA_ID){
+									if (wpa_parse_wpa_ie(&ie->elem_id, ie->len + 2, &apinfos[ap_count].wid) == 0)
+									{
+										apinfos[ap_count].wep = 0;
+										apinfos[ap_count].wpa = 1;
+										break;
+									}
+								}
+							}
+						}
+					}
+/*
+					unsigned char *RATESET = &info->rateset;
+					for (k = 0; k < 18; k++)
+						dbg("%02x ", (unsigned char)RATESET[k]);
+					dbg("\n");
+*/
+
+					NetWorkType = Ndis802_11DS;
+					if ((uint8)(info->chanspec & WL_CHANSPEC_CHAN_MASK) <= 14)
+					{
+						for (k = 0; k < info->rateset.count; k++)
+						{
+							rate = info->rateset.rates[k] & 0x7f;	// Mask out basic rate set bit
+							if ((rate == 2) || (rate == 4) || (rate == 11) || (rate == 22))
+								continue;
+							else
+							{
+								NetWorkType = Ndis802_11OFDM24;
+								break;
+							}
+						}
+					}
+					else
+						NetWorkType = Ndis802_11OFDM5;
+
+					if (info->n_cap)
+					{
+						if (NetWorkType == Ndis802_11OFDM5)
+						{
+#ifdef RTCONFIG_BCMWL6
+							if (info->vht_cap)
+								NetWorkType = Ndis802_11OFDM5_VHT;
+							else
+#endif
+								NetWorkType = Ndis802_11OFDM5_N;
+						}
+						else
+							NetWorkType = Ndis802_11OFDM24_N;
+					}
+
+					apinfos[ap_count].NetworkType = NetWorkType;
+
+					ap_count++;
+
+					if (ap_count >= MAX_NUMBER_OF_APINFO)
+						break;
+				}
+next_info:
+				info = (wl_bss_info_wl_t *) ((unsigned char *) info + info->length);
+			}
+		}
+	}
+
+	/* Print scanning result to console */
+	if (ap_count == 0) {
+		dbg("[wlc] No AP found!\n");
+	} else {
+		printf("%-4s%4s%-33s%-18s%-9s%-16s%-9s%8s%3s%3s\n",
+				"idx", "CH ", "SSID", "BSSID", "Enc", "Auth", "Siganl(%)", "W-Mode", "CC", "EC");
+		for (k = 0; k < ap_count; k++)
+		{
+			printf("%2d. ", k + 1);
+			printf("%3d ", apinfos[k].ctl_ch);
+			if(apinfos[k].SSID[0] == 0)
+				printf("%-33s", "hidden ssid");
+			else
+				printf("%-33s", apinfos[k].SSID);
+			printf("%-18s", apinfos[k].BSSID);
+
+			if (apinfos[k].wpa == 1)
+				printf("%-9s%-16s", wpa_cipher_txt(apinfos[k].wid.pairwise_cipher), wpa_key_mgmt_txt(apinfos[k].wid.key_mgmt, apinfos[k].wid.proto));
+			else if (apinfos[k].wep == 1)
+				printf("WEP      Unknown         ");
+			else
+				printf("NONE     Open System     ");
+			printf("%9d ", apinfos[k].RSSI_Quality);
+
+			if (apinfos[k].NetworkType == Ndis802_11FH || apinfos[k].NetworkType == Ndis802_11DS)
+				printf("%-7s", "11b");
+			else if (apinfos[k].NetworkType == Ndis802_11OFDM5)
+				printf("%-7s", "11a");
+			else if (apinfos[k].NetworkType == Ndis802_11OFDM5_VHT)
+				printf("%-7s", "11ac");
+			else if (apinfos[k].NetworkType == Ndis802_11OFDM5_N)
+				printf("%-7s", "11a/n");
+			else if (apinfos[k].NetworkType == Ndis802_11OFDM24)
+				printf("%-7s", "11b/g");
+			else if (apinfos[k].NetworkType == Ndis802_11OFDM24_N)
+				printf("%-7s", "11b/g/n");
+			else
+				printf("%-7s", "unknown");
+
+			printf("%3d", apinfos[k].ctl_ch);
+
+			if (	((apinfos[k].NetworkType == Ndis802_11OFDM5_VHT) ||
+				 (apinfos[k].NetworkType == Ndis802_11OFDM5_N) ||
+				 (apinfos[k].NetworkType == Ndis802_11OFDM24_N)) &&
+					(apinfos[k].channel != apinfos[k].ctl_ch)) {
+				if (apinfos[k].ctl_ch < apinfos[k].channel)
+					ht_extcha = 1;
+				else
+					ht_extcha = 0;
+
+				printf("%3d", ht_extcha);
+			}
+
+			printf("\n");
+		}
+	}
+
+	ret = wl_ioctl(wif, WLC_GET_BSSID, bssid, sizeof(bssid));
+	memset(ure_mac, 0x0, 18);
+	if (!ret) {
+		if (!(!bssid[0] && !bssid[1] && !bssid[2] && !bssid[3] && !bssid[4] && !bssid[5])) {
+			sprintf(ure_mac, "%02X:%02X:%02X:%02X:%02X:%02X",
+										(unsigned char)bssid[0],
+										(unsigned char)bssid[1],
+										(unsigned char)bssid[2],
+										(unsigned char)bssid[3],
+										(unsigned char)bssid[4],
+										(unsigned char)bssid[5]);
+		}
+	}
+
+	if (strstr(nvram_safe_get(wlc_nvname("akm")), "psk")) {
+		maclist_size = sizeof(authorized->count) + max_sta_count * sizeof(struct ether_addr);
+		authorized = malloc(maclist_size);
+
+		// query wl for authorized sta list
+		strcpy((char*)authorized, "autho_sta_list");
+		if (!wl_ioctl(wif, WLC_GET_VAR, authorized, maclist_size)) {
+			if (authorized->count > 0) wl_authorized = 1;
+		}
+
+		if (authorized) free(authorized);
+	}
+
+	/* Print scanning result to web format */
+	if (ap_count > 0) {
+		/* write pid */
+		if ((fp = fopen(ofile, "a")) == NULL) {
+			printf("[wlcscan] Output %s error\n", ofile);
+		} else {
+			for (i = 0; i < ap_count; i++) {
+				/*if (apinfos[i].ctl_ch < 0 ) {
+					fprintf(fp, "\"ERR_BNAD\",");
+				} else */if (apinfos[i].ctl_ch > 0 &&
+							 apinfos[i].ctl_ch < 14) {
+					fprintf(fp, "\"2G\",");
+				} else if (apinfos[i].ctl_ch > 14 &&
+							 apinfos[i].ctl_ch < 166) {
+					fprintf(fp, "\"5G\",");
+				} else {
+					fprintf(fp, "\"ERR_BNAD\",");
+				}
+
+				if (strlen(apinfos[i].SSID) == 0) {
+					fprintf(fp, "\"\",");
+				} else {
+					memset(ssid_str, 0, sizeof(ssid_str));
+					char_to_ascii(ssid_str, apinfos[i].SSID);
+					fprintf(fp, "\"%s\",", ssid_str);
+				}
+
+				fprintf(fp, "\"%d\",", apinfos[i].ctl_ch);
+
+				if (apinfos[i].wpa == 1) {
+					if (apinfos[i].wid.key_mgmt == WPA_KEY_MGMT_IEEE8021X_)
+						fprintf(fp, "\"%s\",", "WPA-Enterprise");
+					else if (apinfos[i].wid.key_mgmt == WPA_KEY_MGMT_IEEE8021X2_)
+						fprintf(fp, "\"%s\",", "WPA2-Enterprise");
+					else if (apinfos[i].wid.key_mgmt == WPA_KEY_MGMT_PSK_)
+						fprintf(fp, "\"%s\",", "WPA-Personal");
+					else if (apinfos[i].wid.key_mgmt == WPA_KEY_MGMT_PSK2_)
+						fprintf(fp, "\"%s\",", "WPA2-Personal");
+					else if (apinfos[i].wid.key_mgmt == WPA_KEY_MGMT_NONE_)
+						fprintf(fp, "\"%s\",", "NONE");
+					else if (apinfos[i].wid.key_mgmt == WPA_KEY_MGMT_IEEE8021X_NO_WPA_)
+						fprintf(fp, "\"%s\",", "IEEE 802.1X");
+					else
+						fprintf(fp, "\"%s\",", "Unknown");
+				} else if (apinfos[i].wep == 1) {
+					fprintf(fp, "\"%s\",", "Unknown");
+				} else {
+					fprintf(fp, "\"%s\",", "Open System");
+				}
+
+				if (apinfos[i].wpa == 1) {
+					if (apinfos[i].wid.pairwise_cipher == WPA_CIPHER_NONE_)
+						fprintf(fp, "\"%s\",", "NONE");
+					else if (apinfos[i].wid.pairwise_cipher == WPA_CIPHER_WEP40_)
+						fprintf(fp, "\"%s\",", "WEP");
+					else if (apinfos[i].wid.pairwise_cipher == WPA_CIPHER_WEP104_)
+						fprintf(fp, "\"%s\",", "WEP");
+					else if (apinfos[i].wid.pairwise_cipher == WPA_CIPHER_TKIP_)
+						fprintf(fp, "\"%s\",", "TKIP");
+					else if (apinfos[i].wid.pairwise_cipher == WPA_CIPHER_CCMP_)
+						fprintf(fp, "\"%s\",", "AES");
+					else if (apinfos[i].wid.pairwise_cipher == (WPA_CIPHER_TKIP_|WPA_CIPHER_CCMP_))
+						fprintf(fp, "\"%s\",", "TKIP+AES");
+					else
+						fprintf(fp, "\"%s\",", "Unknown");
+				} else if (apinfos[i].wep == 1) {
+					fprintf(fp, "\"%s\",", "WEP");
+				} else {
+					fprintf(fp, "\"%s\",", "NONE");
+				}
+
+				fprintf(fp, "\"%d\",", apinfos[i].RSSI_Quality);
+				fprintf(fp, "\"%s\",", apinfos[i].BSSID);
+
+				if (apinfos[i].NetworkType == Ndis802_11FH || apinfos[i].NetworkType == Ndis802_11DS)
+					fprintf(fp, "\"%s\",", "b");
+				else if (apinfos[i].NetworkType == Ndis802_11OFDM5)
+					fprintf(fp, "\"%s\",", "a");
+				else if (apinfos[i].NetworkType == Ndis802_11OFDM5_N)
+					fprintf(fp, "\"%s\",", "an");
+				else if (apinfos[i].NetworkType == Ndis802_11OFDM5_VHT)
+					fprintf(fp, "\"%s\",", "ac");
+				else if (apinfos[i].NetworkType == Ndis802_11OFDM24)
+					fprintf(fp, "\"%s\",", "bg");
+				else if (apinfos[i].NetworkType == Ndis802_11OFDM24_N)
+					fprintf(fp, "\"%s\",", "bgn");
+				else
+					fprintf(fp, "\"%s\",", "");
+
+				if (strcmp(nvram_safe_get(wlc_nvname("ssid")), apinfos[i].SSID)) {
+					if (strcmp(apinfos[i].SSID, ""))
+						fprintf(fp, "\"%s\"", "0");				// none
+					else if (!strcmp(ure_mac, apinfos[i].BSSID)) {
+						// hidden AP (null SSID)
+						if (strstr(nvram_safe_get(wlc_nvname("akm")), "psk")) {
+							if (wl_authorized) {
+								// in profile, connected
+								fprintf(fp, "\"%s\"", "4");
+							} else {
+								// in profile, connecting
+								fprintf(fp, "\"%s\"", "5");
+							}
+						} else {
+							// in profile, connected
+							fprintf(fp, "\"%s\"", "4");
+						}
+					} else {
+						// hidden AP (null SSID)
+						fprintf(fp, "\"%s\"", "0");				// none
+					}
+				} else if (!strcmp(nvram_safe_get(wlc_nvname("ssid")), apinfos[i].SSID)) {
+					if (!strlen(ure_mac)) {
+						// in profile, disconnected
+						fprintf(fp, "\"%s\",", "1");
+					} else if (!strcmp(ure_mac, apinfos[i].BSSID)) {
+						if (strstr(nvram_safe_get(wlc_nvname("akm")), "psk")) {
+							if (wl_authorized) {
+								// in profile, connected
+								fprintf(fp, "\"%s\"", "2");
+							} else {
+								// in profile, connecting
+								fprintf(fp, "\"%s\"", "3");
+							}
+						} else {
+							// in profile, connected
+							fprintf(fp, "\"%s\"", "2");
+						}
+					} else {
+						fprintf(fp, "\"%s\"", "0");				// impossible...
+					}
+				} else {
+					// wl0_ssid is empty
+					fprintf(fp, "\"%s\"", "0");
+				}
+
+				if (i == ap_count - 1) {
+					fprintf(fp, "\n");
+				} else {
+					fprintf(fp, "\n");
+				}
+			}	/* for */
+			fclose(fp);
+		}
+	}	/* if */
+
+	return retval;
+}
+#endif
 
 #ifdef RTCONFIG_BCM_7114
 

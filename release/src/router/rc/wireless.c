@@ -131,8 +131,10 @@ static void start_nas_single(char *prefix)
 				 * 2: TKIP, 4: AES) */
 	char *iface = NULL;
 	char *mode = "-A";//ap:A, rp:S
+	char wif_mode[8] = {0};
 	pid_t pid;
-	if(sw_mode() != SW_MODE_AP && sw_mode() != SW_MODE_ROUTER)
+	snprintf(wif_mode, sizeof(wif_mode), "%s", strcat_r(prefix, "mode", tmp));
+	if(nvram_match(wif_mode, "wet") || nvram_match(wif_mode, "sta") || nvram_match(wif_mode, "apsta") || nvram_match(wif_mode, "apstawet"))
 		mode = "-S";
 	snprintf(pidfile, sizeof(pidfile), "/var/run/nas.%s.pid", nvram_safe_get(strcat_r(prefix, "ifname", tmp)));
 	sec_mode = getSecMode(prefix);
@@ -174,7 +176,7 @@ static void start_nas_single(char *prefix)
 int start_nas(void)
 {
 	int unit = 0, subunit = 1;
-//	int max_mssid;
+	int max_mssid;
 	char prefix[20] = { 0 }, word[128] = { 0 }, tmp[128] = { 0 };
 	char *next = NULL;
 
@@ -186,15 +188,15 @@ int start_nas(void)
 		if(nvram_match(strcat_r(prefix, "radio", tmp), "1"))
 			start_nas_single(prefix);
 		/* including primary ssid */
-//		max_mssid = num_of_mssid_support(unit);
+		max_mssid = num_of_mssid_support(unit);
 #if defined(RTCONFIG_PSR_GUEST) && !defined(HND_ROUTER)
 //		max_mssid++;
 #endif
-//		for (subunit = 1; subunit < max_mssid + 1; subunit++){
-//			snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, subunit);
-//			if(nvram_match(strcat_r(prefix, "bss_enabled", tmp), "1"))
-//				start_nas_single(prefix);
-//		}
+		for (subunit = 1; subunit < max_mssid + 1; subunit++){
+			snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, subunit);
+			if(nvram_match(strcat_r(prefix, "bss_enabled", tmp), "1"))
+				start_nas_single(prefix);
+		}
 		unit++;
 	}
 
@@ -344,14 +346,23 @@ int wlcscan_main(void)
 #endif
 	{	
 		SKIP_ABSENT_BAND_AND_INC_UNIT(i);
-#ifdef __CONFIG_DHDAP__
+#if defined(__CONFIG_DHDAP__) && defined(RTCONFIG_HND_ROUTER)
 		is_dhd = !dhd_probe(word);
 		snprintf(prefix, sizeof(prefix), "wl%d_", i);
 		if (is_dhd && !nvram_match(strcat_r(prefix, "mode", tmp), "wds"))
 			wlcscan_core_escan(APSCAN_INFO, word);
 		else
 #endif
+#if defined(RTAC68U)
+			wlcscan_core_wl(APSCAN_INFO, word);
+#elif defined(R7000P)
+			if(!strcmp(word, "eth1"))
+				wlcscan_core_wl(APSCAN_INFO, word);
+			else
+				wlcscan_core(APSCAN_INFO, word);
+#else
 			wlcscan_core(APSCAN_INFO, word);
+#endif
 
 		// suppose only two or less interface handled
 		nvram_set_int("wlc_scan_state", WLCSCAN_STATE_2G+i);

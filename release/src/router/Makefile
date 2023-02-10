@@ -1011,7 +1011,7 @@ endif
 obj-$(CONFIG_BCMWL5) += libutils
 #obj-$(RTCONFIG_HSPOT) += hspot_ap$(BCMEX)$(EX7)
 #obj-y += eapd$(BCMEX)$(EX7)/linux
-#obj-y += hostapd2
+obj-y += wpa_supplicant2
 #ifneq ($(RTCONFIG_BRCM_HOSTAPD),y)
 #obj-$(RTCONFIG_WPS) += wps$(BCMEX)$(EX7)
 #endif
@@ -9435,13 +9435,30 @@ endif
 
 hostapd2: 
 	$(MAKE) -C hostapd2/hostapd clean
+	$(MAKE) -C hostapd2/wpa_supplicant clean
 	$(MAKE) -C hostapd2/hostapd $(PARALLEL_BUILD)
+	$(MAKE) -C hostapd2/wpa_supplicant $(PARALLEL_BUILD)
 
 hostapd2-clean:
 	$(MAKE) -C hostapd2/hostapd clean
+	$(MAKE) -C hostapd2/wpa_supplicant clean
 
 hostapd2-install:
 	$(MAKE) -C hostapd2/hostapd install
+	$(MAKE) -C hostapd2/wpa_supplicant install
+
+wpa_supplicant2: hostapd2
+	$(MAKE) -C hostapd2/wpa_supplicant clean
+	$(MAKE) -C hostapd2/wpa_supplicant $(PARALLEL_BUILD)
+
+wpa_supplicant2-install: 
+	install -D hostapd2/wpa_supplicant/wpa_supplicant $(INSTALLDIR)/wpa_supplicant2/usr/bin/wpa_supplicant
+#	install -D hostapd2/wpa_supplicant/wpa_cli $(TARGETDIR)/wpa_supplicant2/usr/bin/wpa_cli
+	$(STRIP) $(INSTALLDIR)/wpa_supplicant2/usr/bin/wpa_supplicant
+#	$(STRIP) $(INSTALLDIR)/wpa_supplicant2/usr/bin/wpa_cli
+
+wpa_supplicant2-clean:
+	$(MAKE) -C hostapd2/wpa_supplicant clean
 
 htop/Makefile:ncurses-6.0
 	cd htop && ./autogen.sh && $(CONFIGURE) \
