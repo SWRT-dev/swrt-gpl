@@ -1,0 +1,85 @@
+include $(TOP)/.config
+
+CFLAGS	+= -Wsign-compare -I. -I$(SRCBASE)/common/include -I../httpd -I$(SRCBASE)/include ${WLAN_StdIncPathA} -Wall -fPIC
+#CFLAGS	+= -g -DDEBUG
+CFLAGS	+= -s
+LDFLAGS += -L.
+
+
+vpath %.c $(SRCBASE)/bcmcrypto
+ifeq ($(RTCONFIG_BCMARM),y)
+ifeq ($(HND_ROUTER),y)
+ ifeq ($(HND_ROUTER_AX),y)
+vpath %.o $(SRCBASE)/router/libbcmcrypto/prebuilt.hnd_ax
+ else
+vpath %.o $(SRCBASE)/router/libbcmcrypto/prebuilt.hnd
+ endif
+else
+vpath %.o $(SRCBASE)/router/libbcmcrypto/prebuilt.arm
+endif
+else ifeq ($(RTCONFIG_RALINK),y)
+vpath %.o $(SRCBASE)/router/libbcmcrypto/prebuilt.mipsel
+else ifeq ($(RTCONFIG_SOC_IPQ40XX),y)
+vpath %.o $(SRCBASE)/router/libbcmcrypto/prebuilt.qca_arm
+else ifeq ($(or $(RTCONFIG_SOC_IPQ8064),$(RTCONFIG_SOC_IPQ8074)),y)
+vpath %.o $(SRCBASE)/router/libbcmcrypto/prebuilt.qca.ipq806x
+else ifeq ($(RTCONFIG_QCA),y)
+vpath %.o $(SRCBASE)/router/libbcmcrypto/prebuilt.qca	# QCA MIPS
+else ifeq ($(RTCONFIG_ALPINE),y)
+vpath %.o $(SRCBASE)/router/libbcmcrypto/prebuilt.alpine
+else ifeq ($(RTCONFIG_LANTIQ),y)
+vpath %.o $(SRCBASE)/router/libbcmcrypto/prebuilt.lantiq
+else
+vpath %.o $(SRCBASE)/router/libbcmcrypto/prebuilt.mipsel
+endif
+
+ifeq ($(RTCONFIG_HND_ROUTER_AX),y)
+OBJS := aes.o aeskeywrap.o rijndael-alg-fst.o dh.o bn.o passhash.o md5.o rc4.o random.o sha2.o sha2x.o
+else
+OBJS := aes.o aeskeywrap.o rijndael-alg-fst.o dh.o bn.o sha1.o passhash.o prf.o md5.o hmac.o rc4.o random.o
+# For customer backwords compatibility, for now we keep CONFIG_WSCCMD here and can be removed when
+# all customers migrate to new SDK (no CONFIG_WSCCMD in configration files).
+#ifneq ($(RTCONFIG_WPS)$(CONFIG_WPS)$(CONFIG_WSCCMD)$(CONFIG_MFP),)
+#endif
+endif
+OBJS += sha256.o hmac_sha256.o
+
+# Find all ELF binaries (including extra libraries)
+BINARIES := $(shell find $(TARGETDIR) -path $(TARGETDIR)/lib -prune -o -type f -print | file -f - | grep ELF | cut -d':' -f1)
+MAP := .map
+UNR := .unresolved
+SYM := .symbols
+
+all: libbcmcrypto.so
+
+install: all
+	install -d $(INSTALLDIR)/usr/lib
+	install -m 755 libbcmcrypto.so $(INSTALLDIR)/usr/lib
+	$(STRIP) $(INSTALLDIR)/usr/lib/libbcmcrypto.so
+
+clean:
+	rm -f *.o *.so *.a $(MAP) $(UNR) $(SYM)
+
+libbcmcrypto.so: $(OBJS)
+	$(LD) -shared -o $@ $^
+
+# rule for removing unneeded symbols in the shared library
+optimize: libbcmcrypto.so
+	$(NM) -o --defined-only --no-sort libbcmcrypto.so | cut -d' ' -f3 > $(MAP)
+ifeq ($(MKSYM),)
+	$(NM) --dynamic -u --no-sort $(BINARIES) | sort -u > $(UNR)
+	rm -rf $(SYM)
+	for symbol in `cat $(UNR)` ; do \
+	if grep -q "^$${symbol}$$" $(MAP) ; then echo "-u $${symbol}" >> $(SYM) ;  \
+	fi ; done
+else
+	$(NM) --dynamic -u --no-sort $(BINARIES) | sort -u | $(MKSYM) $(MAP) > $(SYM)
+endif
+	# if no symbols are needed then delete the shared lib
+	if ls $(SYM) ; then \
+	$(AR) cr libbcmcrypto.a $(OBJS) ; \
+	xargs -t $(LD) -shared -o libbcmcrypto.so libbcmcrypto.a < $(SYM) ; \
+	install libbcmcrypto.so $(TARGETDIR)/usr/lib ; \
+	$(STRIP) $(TARGETDIR)/usr/lib/libbcmcrypto.so ; \
+	else \
+	rm $(TARGETDIR)/usr/lib/libbcmcrypto.so ; fi

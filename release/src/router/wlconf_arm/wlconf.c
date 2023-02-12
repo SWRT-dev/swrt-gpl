@@ -892,11 +892,11 @@ struct bsscfg_list *wlconf_get_bsscfgs(char *ifname, char *prefix)
 	bsscfg = &bclist->bsscfgs[0];
 	bsscfg->idx = 0;
 	strncpy(bsscfg->ifname, ifname, PREFIX_LEN - 1);
-	strcpy(bsscfg->prefix, prefix);
+	strncpy(bsscfg->prefix, prefix, sizeof(bsscfg->prefix) - 1);
 	bclist->count = 1;
 
 	/* additional virtual BSS Configs from wlX_vifs */
-	if (nvram_match(strcat_r(prefix, "mode", tmp), "ap") || nvram_match(strcat_r(prefix, "mode", tmp), "apsta") || nvram_match(strcat_r(prefix, "mode", tmp), "apstawet")) {
+//	if (nvram_match(strcat_r(prefix, "mode", tmp), "ap") || nvram_match(strcat_r(prefix, "mode", tmp), "apsta") || nvram_match(strcat_r(prefix, "mode", tmp), "apstawet")) {
 		foreach(var, nvram_safe_get(strcat_r(prefix, "vifs", tmp)), next) {
 			if (bclist->count == WL_MAXBSSCFG) {
 				fprintf(stderr, "wlconf(%s): exceeded max number of BSS Configs (%d)" "in nvram %s\n" "while configuring interface \"%s\"\n", ifname, WL_MAXBSSCFG, strcat_r(prefix, "vifs", tmp), var);
@@ -911,7 +911,7 @@ struct bsscfg_list *wlconf_get_bsscfgs(char *ifname, char *prefix)
 			snprintf(bsscfg->prefix, PREFIX_LEN, "%s_", bsscfg->ifname);
 			bclist->count++;
 		}
-	}
+//	}
 	fprintf(stderr, "total vif count %d\n", bclist->count);
 
 	return bclist;
@@ -933,11 +933,11 @@ static void wlconf_security_options(char *name, char *prefix, int bsscfg_idx, bo
 	cprintf("set security settings %s, idx %d\n", name, bsscfg_idx);
 	if (wlconf_set_wsec(name, prefix, bsscfg_idx)) {
 		/* change nvram only, code below will pass them on */
-//              wlconf_restore_var(prefix, "auth_mode");
-//              wlconf_restore_var(prefix, "auth");
+		nvram_restore_var(prefix, "auth_mode");
+		nvram_restore_var(prefix, "auth");
 		/* reset wep to default */
-//              wlconf_restore_var(prefix, "crypto");
-//              wlconf_restore_var(prefix, "wep");
+		nvram_restore_var(prefix, "crypto");
+		nvram_restore_var(prefix, "wep");
 		wlconf_set_wsec(name, prefix, bsscfg_idx);
 	}
 	cprintf("akm\n");
@@ -3776,9 +3776,29 @@ wlconf_start(char *name)
 	return ret;
 }
 
-
-
 #if defined(linux)
+static int
+wlconf_security(char *name)
+{
+	int unit, bsscfg_idx;
+	char prefix[PREFIX_LEN];
+	char tmp[100], *str;
+
+	/* Get the interface subunit */
+	if (get_ifname_unit(name, &unit, &bsscfg_idx) != 0) {
+		WLCONF_DBG("wlconfig(%s): unable to parse unit.subunit in interface "
+		           "name \"%s\"\n", name, name);
+		return -1;
+	}
+
+	/* Configure security parameters for the newly created interface */
+	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+	str = nvram_safe_get(strcat_r(prefix, "mode", tmp));
+	wlconf_security_options(name, prefix, bsscfg_idx, !strcmp(str, "wet"), FALSE);
+
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	/* Check parameters and branch based on action */
@@ -3788,6 +3808,8 @@ int main(int argc, char *argv[])
 		return wlconf_down(argv[1]);
 	else if (argc == 3 && !strcmp(argv[2], "start"))
 	  return wlconf_start(argv[1]);
+	else if (argc == 3 && !strcmp(argv[2], "security"))
+	  return wlconf_security(argv[1]);
 	else {
 		fprintf(stderr, "Usage: wlconf <ifname> up|down\n");
 		return -1;

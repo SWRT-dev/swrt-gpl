@@ -307,14 +307,14 @@ static int iface_get_id(int fd, const char *device)
 static int
 iface_bind(int fd, int ifindex)
 {
-	int err;
+	int err, flags = 1;;
 	socklen_t errlen = sizeof(err);
 
 	memset(&src_sockll, 0, sizeof(src_sockll));
 	src_sockll.sll_family          = AF_PACKET;
 	src_sockll.sll_ifindex         = ifindex;
 	src_sockll.sll_protocol        = htons(ETH_P_ARP);
-
+	setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char*)&flags, sizeof(flags));
 	if (bind(fd, (struct sockaddr *) &src_sockll, sizeof(src_sockll)) == -1) {
 		perror("bind device ERR:\n");
 		NMP_DEBUG("iface_bind ERROR");

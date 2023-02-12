@@ -1,7 +1,7 @@
 /*
  * md5.h, copied from src/router/ppp/pppd to src/include/bcmcrypto for general use
  *
- * $Id: md5.h 241182 2011-02-17 21:50:03Z $
+ * $Id: md5.h 523133 2014-12-27 05:50:30Z $
  *
  ***********************************************************************
  ** md5.h -- header file for implementation of MD5                    **
@@ -41,6 +41,9 @@
  ** These notices must be retained in any copies of any part of this  **
  ** documentation and/or software.                                    **
  ***********************************************************************
+ *
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
  */
 
 #ifndef __MD5_INCLUDE__
@@ -55,9 +58,9 @@ typedef struct {
   unsigned char digest[16];     /* actual digest after MD5Final call */
 } MD5_CTX;
 
-void BCMROMFN(MD5Init)(MD5_CTX *mdContext);
-void BCMROMFN(MD5Update)(MD5_CTX *mdContext, const unsigned char *inBuf, unsigned int inLen);
-void BCMROMFN(MD5Final)(unsigned char *hash, MD5_CTX *mdContext);
+void MD5Init(MD5_CTX *mdContext);
+void MD5Update(MD5_CTX *mdContext, const unsigned char *inBuf, unsigned int inLen);
+void MD5Final(unsigned char *hash, MD5_CTX *mdContext);
 
 #define __MD5_INCLUDE__
 #endif /* __MD5_INCLUDE__ */

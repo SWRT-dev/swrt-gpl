@@ -238,9 +238,10 @@ typedef BWL_PRE_PACKED_STRUCT struct bcm_event {
 #define WLC_E_RANGING_EVENT		161	/* Ranging event */
 #define WLC_E_INVALID_IE		162	/* Received invalid IE */
 #define WLC_E_MODE_SWITCH		163	/* Mode switch event */
-#define WLC_E_LAST			164	/* highest val + 1 for range checking */
-#if (WLC_E_LAST > 164)
-#error "WLC_E_LAST: Invalid value for last event; must be <= 164."
+#define WLC_E_AIRIQ_EVENT		172	/* AIRIQ driver event */
+#define WLC_E_LAST			173	/* highest val + 1 for range checking */
+#if (WLC_E_LAST > 173)
+#error "WLC_E_LAST: Invalid value for last event; must be <= 173."
 #endif /* WLC_E_LAST */
 
 /* define an API for getting the string name of an event */

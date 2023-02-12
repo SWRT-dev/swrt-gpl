@@ -1117,61 +1117,6 @@ int Get_ChannelList_5G_2(void)
 }
 #endif
 
-int start_wl_wpa_supplicant(int unit)
-{
-	FILE *fp;
-	char tmp[64], prefix[128], ifname[6], akm[16];
-	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-	snprintf(ifname, sizeof(ifname), "%s", nvram_safe_get(strcat_r(prefix, "ifname", tmp)));
-	snprintf(akm, sizeof(akm), "%s", nvram_safe_get(strcat_r(prefix, "akm", tmp)));
-	snprintf(tmp, sizeof(tmp), "/tmp/wpa_supplicant-%s.conf", ifname);
-	if(strstr(akm, "psk") || strstr(akm, "psk2")){
-		if((fp = fopen(tmp, "w+")) == NULL){
-			_dprintf("%s: Can't open %s\n", __func__, tmp);
-			return -1;
-		}
-		fprintf(fp, "ap_scan=2\n");
-		fprintf(fp, "fast_reauth=1\n");
-		fprintf(fp, "eapol_version=1\n");
-		// fprintf (fp, "ctrl_interface_group=0\n");
-		// fprintf (fp, "ctrl_interface=/var/run/wpa_supplicant\n");
-
-		fprintf(fp, "network={\n");
-		fprintf(fp, "\tssid=\"%s\"\n", nvram_safe_get(strcat_r(prefix, "ssid", tmp)));
-		// fprintf (fp, "\tmode=0\n");
-		fprintf(fp, "\tscan_ssid=1\n");
-		fprintf(fp, "\tkey_mgmt=WPA-PSK\n");
-
-		if (nvram_match(strcat_r(prefix, "crypto", tmp), "aes")) {
-			fprintf(fp, "\tpairwise=CCMP\n");
-			fprintf(fp, "\tgroup=CCMP TKIP\n");
-		}
-		else if (nvram_match(strcat_r(prefix, "crypto", tmp), "tkip")) {
-			fprintf(fp, "\tpairwise=TKIP\n");
-			fprintf(fp, "\tgroup=TKIP\n");
-		}
-		else if (nvram_match(strcat_r(prefix, "crypto", tmp), "tkip+aes")) {
-			fprintf(fp, "\tpairwise=CCMP TKIP\n");
-			fprintf(fp, "\tgroup=CCMP TKIP\n");
-		}
-		if (nvram_match(akm, "psk"))
-			fprintf(fp, "\tproto=WPA\n");
-		if (nvram_match(akm, "psk2"))
-			fprintf(fp, "\tproto=RSN\n");
-		if (nvram_match(akm, "psk psk2"))
-			fprintf(fp, "\tproto=WPA RSN\n");
-
-		fprintf(fp, "\tpsk=\"%s\"\n", nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp)));
-		fprintf(fp, "}\n");
-		fclose(fp);
-		if (nvram_match(strcat_r(prefix, "mode", tmp), "wdssta") || nvram_match(strcat_r(prefix, "mode", tmp), "wet"))
-			eval("/usr/bin/wpa_supplicant", "-b", nvram_get("lan_ifname") ? : "br0", "-B", "-Dwext", "-i", ifname, "-c", tmp);
-		else
-			eval("/usr/bin/wpa_supplicant", "-B", "-Dwext", "-i", ifname, "-c", tmp);
-	}
-	return 0;
-}
-
 static const unsigned char WPA_OUT_TYPE[] = { 0x00, 0x50, 0xf2, 1 };
 
 char *wlc_nvname(char *keyword)

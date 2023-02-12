@@ -4,7 +4,7 @@
  * Code copied from openssl distribution and
  * Modified just enough so that compiles and runs standalone
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -18,7 +18,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: bn.h 460158 2014-03-06 04:17:57Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: bn.h 523133 2014-12-27 05:50:30Z $
  */
 /* Copyright (C) 1995-1997 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
@@ -127,7 +130,6 @@ extern "C" {
  * unsigned long long is only 64 bits :-(, don't define
  * BN_LLONG for the DEC Alpha
  */
-
 #ifdef SIXTY_FOUR_BIT_LONG
 #define BN_ULLONG	unsigned long long
 #define BN_ULONG	unsigned long

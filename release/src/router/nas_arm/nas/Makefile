@@ -9,6 +9,7 @@ include ../../.config
 
 CFLAGS	+= -I.. -I$(SRCBASE)/include ${WLAN_StdIncPathA} -I$(SRCBASE)/common/include -I$(SRCBASE)/router/shared -Wall 
 CFLAGS	+= $(WLAN_ComponentIncPath)
+CFLAGS	+= -I$(SRCBASE)/shared/bcmwifi/include -I$(SRCBASE)/common/include/proto
 
 #CFLAGS	+= -g -DDEBUG
 CFLAGS += -DBCMDBG

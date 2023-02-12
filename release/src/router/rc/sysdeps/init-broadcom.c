@@ -4780,8 +4780,6 @@ void generate_wl_para(char *ifname, int unit, int subunit)
 		dbG("nctrlsb: %s\n", nvram_safe_get(strcat_r(prefix, "nctrlsb", tmp)));
 #endif
 		dbG("obss_coex: %s\n", nvram_safe_get(strcat_r(prefix, "obss_coex", tmp)));
-//		if(repeater_mode() && is_ure(unit))
-//			start_wl_wpa_supplicant(unit);
 	}
 	else
 	{

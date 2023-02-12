@@ -2,7 +2,7 @@
  * Code copied from openssl distribution and
  * Modified just enough so that compiles and runs standalone
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,7 +16,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: hmac_sha256.h 241182 2011-02-17 21:50:03Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: hmac_sha256.h 523133 2014-12-27 05:50:30Z $
  */
 /* ====================================================================
  * Copyright (c) 2004 The OpenSSL Project.  All rights reserved
@@ -34,6 +37,6 @@ void hmac_sha256_n(const void *key, int key_len,
 void sha256(const unsigned char *text, size_t text_len, unsigned char *digest,
             unsigned int digest_len);
 int
-KDF(unsigned char *key, int key_len, unsigned char *prefix,
+KDF(unsigned char *key, int key_len, const unsigned char *prefix,
               int prefix_len, unsigned char *data, int data_len,
               unsigned char *output, int len);

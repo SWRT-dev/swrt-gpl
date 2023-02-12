@@ -61,143 +61,23 @@ int wds_enable(void)
 #ifdef CONFIG_BCMWL5
 extern int restore_defaults_g;
 
-static char *getSecMode(char *prefix)
+int
+start_nas(void)
 {
-	char wep[32];
-	char crypto[32];
-
-	sprintf(wep, "%swep", prefix);
-	sprintf(crypto, "%scrypto", prefix);
-	/*
-	 * BugBug - should we bail when mode is wep ? 
-	 */
-	if (nvram_match(wep, "wep") || nvram_match(wep, "on") || nvram_match(wep, "restricted") || nvram_match(wep, "enabled"))
-		return "1";
-	else if (nvram_match(crypto, "tkip"))
-		return "2";
-	else if (nvram_match(crypto, "aes"))
-		return "4";
-	else if (nvram_match(crypto, "tkip+aes"))
-		return "6";
-	else
-		return "0";
-}
-
-static char *getAuthMode(char *prefix)
-{
-	char akm[32];
-
-	sprintf(akm, "%sakm", prefix);
-	if (!*(nvram_safe_get(akm)) || nvram_match(akm, "disabled") || nvram_match(akm, "wep"))
-		return NULL;
-	if (nvram_match(akm, "radius"))
-		return "32";
-	else if (nvram_match(akm, "wpa"))
-		return "2";
-	else if (nvram_match(akm, "psk"))
-		return "4";
-	else if (nvram_match(akm, "psk2"))
-		return "128";
-	else if (nvram_match(akm, "psk psk2"))
-		return "132";
-	else if (nvram_match(akm, "wpa2"))
-		return "64";
-	else if (nvram_match(akm, "wpa wpa2"))
-		return "66";
-	else
-		return "255";
-}
-
-static char *getKey(char *prefix)
-{
-	char akm[32], tmp[20];
-
-	sprintf(akm, "%sakm", prefix);
-	if (nvram_match(akm, "wpa") || nvram_match(akm, "wpa2") || nvram_match(akm, "radius")) {
-		return nvram_safe_get(strcat_r(prefix, "radius_key", tmp));
-	} else if (nvram_match(akm, "psk") || nvram_match(akm, "psk2")) {
-		return nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp));
-	} else
-		return "";
-}
-
-static void start_nas_single(char *prefix)
-{
-	char pidfile[64], tmp[128];
-	char *auth_mode = "255";	/* -m N = WPA authorization mode (N = 0:
-					 * none, 1: 802.1x, 2: WPA PSK, 255:
-					 * disabled) */
-	char *sec_mode = NULL;	/* -w N = security mode bitmask (N = 1: WEP,
-				 * 2: TKIP, 4: AES) */
-	char *iface = NULL;
-	char *mode = "-A";//ap:A, rp:S
-	char wif_mode[8] = {0};
+	char *nas_argv[] = { "nas", NULL };
 	pid_t pid;
-	snprintf(wif_mode, sizeof(wif_mode), "%s", strcat_r(prefix, "mode", tmp));
-	if(nvram_match(wif_mode, "wet") || nvram_match(wif_mode, "sta") || nvram_match(wif_mode, "apsta") || nvram_match(wif_mode, "apstawet"))
-		mode = "-S";
-	snprintf(pidfile, sizeof(pidfile), "/var/run/nas.%s.pid", nvram_safe_get(strcat_r(prefix, "ifname", tmp)));
-	sec_mode = getSecMode(prefix);
-	auth_mode = getAuthMode(prefix);
-	iface = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
-	if(iface == NULL || auth_mode == NULL)
-		return;
-	if(!strcmp(mode, "-S")){
-		//wisp + ap
-		//char *const argv[] = {"nas", "-P", pidfile, "-H", "34954", "-l", "wan0", "-i", iface, mode, "-m", auth_mode, "-k", getKey(prefix), 
-		//	"-s", nvram_safe_get(strcat_r(prefix, "ssid", tmp)), "-w", sec_mode, "-g", nvram_safe_get(strcat_r(prefix, "wpa_gtk_rekey", tmp)), NULL};
-		//repeater + ap
-		char *const argv[] = {"nas", "-P", pidfile, "-H", "34954", "-i", iface, mode, "-m", auth_mode, "-k", getKey(prefix), "-s", 
-			nvram_safe_get(strcat_r(prefix, "ssid", tmp)), "-w", sec_mode, "-g", nvram_safe_get(strcat_r(prefix, "wpa_gtk_rekey", tmp)), NULL};
-		_eval(argv, NULL, 0, &pid);
-	}else{
-		if(!strcmp(auth_mode, "2") || !strcmp(auth_mode, "64") || !strcmp(auth_mode, "66")){
-			char *const argv[] = {"nas", "-P", pidfile,	"-H", "34954", "-l", "br0", "-i", iface, mode, "-m", auth_mode, "-r", getKey(prefix), 
-				"-s", nvram_safe_get(strcat_r(prefix, "ssid", tmp)), "-w", sec_mode, "-g", nvram_safe_get(strcat_r(prefix, "wpa_gtk_rekey", tmp)), 
-				"-h", nvram_safe_get(strcat_r(prefix, "radius_ipaddr", tmp)), "-p", nvram_safe_get(strcat_r(prefix, "radius_port", tmp)), NULL};
-			_eval(argv, NULL, 0, &pid);
-		}else if(!strcmp(auth_mode, "32")){
-			int idx = nvram_get_int(strcat_r(prefix, "key", tmp));
-			char wepkey[32];
-			sprintf(wepkey, "%s_key%d", prefix, idx);
-			char *const argv[] = {"nas", "-P", pidfile, "-H", "34954", "-l", "br0", "-i", iface, mode, "-m", auth_mode, "-r", getKey(prefix), 
-				"-s", nvram_safe_get(strcat_r(prefix, "ssid", tmp)), "-w", sec_mode, "-I", nvram_safe_get(strcat_r(prefix, "key", tmp)), "-k",
-				nvram_safe_get(wepkey), "-h", nvram_safe_get(strcat_r(prefix, "radius_ipaddr", tmp)), "-p", 
-				nvram_safe_get(strcat_r(prefix, "radius_port", tmp)), NULL};
-			_eval(argv, NULL, 0, &pid);
-		}else{
-			char *const argv[] = {"nas", "-P", pidfile,	"-H", "34954", "-l", "br0", "-i", iface, mode, "-m", auth_mode, "-k", getKey(prefix), 
-				"-s", nvram_safe_get(strcat_r(prefix, "ssid", tmp)), "-w", sec_mode, "-g", nvram_safe_get(strcat_r(prefix, "wpa_gtk_rekey", tmp)), NULL};
-			_eval(argv, NULL, 0, &pid);
-		}
-	}
-}
-
-int start_nas(void)
-{
-	int unit = 0, subunit = 1;
-	int max_mssid;
-	char prefix[20] = { 0 }, word[128] = { 0 }, tmp[128] = { 0 };
-	char *next = NULL;
 
 	stop_nas();
-	foreach (word, nvram_safe_get("wl_ifnames"), next) {
-		SKIP_ABSENT_BAND_AND_INC_UNIT(unit);
-		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-//		if(nvram_match(strcat_r(prefix, "radio", tmp), "1") && (sw_mode() == SW_MODE_AP || sw_mode() == SW_MODE_ROUTER))
-		if(nvram_match(strcat_r(prefix, "radio", tmp), "1"))
-			start_nas_single(prefix);
-		/* including primary ssid */
-		max_mssid = num_of_mssid_support(unit);
-#if defined(RTCONFIG_PSR_GUEST) && !defined(HND_ROUTER)
-//		max_mssid++;
+
+	if (!restore_defaults_g)
+	{
+#ifdef RTCONFIG_BRCM_HOSTAPD
+		if (!nvram_match("hapd_enable", "0")) {
+			start_hapd_wpasupp(0);
+			return 0;
+		} else
 #endif
-		for (subunit = 1; subunit < max_mssid + 1; subunit++){
-			snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, subunit);
-			if(nvram_match(strcat_r(prefix, "bss_enabled", tmp), "1"))
-				start_nas_single(prefix);
-		}
-		unit++;
+		return _eval(nas_argv, NULL, 0, &pid);
 	}
 
 	return 0;
@@ -207,11 +87,12 @@ void
 stop_nas(void)
 {
 #ifdef RTCONFIG_BRCM_HOSTAPD
-        if (!nvram_match("hapd_enable", "0")) {
+	if (!nvram_match("hapd_enable", "0")) {
 		stop_hapd_wpasupp();
-        } else
+	} else
 #endif
-	killall_tk("nas");
+	if(pids("nas"))
+		killall_tk("nas");
 }
 
 #ifdef REMOVE
@@ -346,7 +227,7 @@ int wlcscan_main(void)
 #endif
 	{	
 		SKIP_ABSENT_BAND_AND_INC_UNIT(i);
-#if defined(__CONFIG_DHDAP__) && defined(RTCONFIG_HND_ROUTER)
+#if defined(__CONFIG_DHDAP__)
 		is_dhd = !dhd_probe(word);
 		snprintf(prefix, sizeof(prefix), "wl%d_", i);
 		if (is_dhd && !nvram_match(strcat_r(prefix, "mode", tmp), "wds"))

@@ -1,4 +1,4 @@
-/* $Id: rijndael-alg-fst.h 241182 2011-02-17 21:50:03Z $ */
+/* $Id: rijndael-alg-fst.h 523133 2014-12-27 05:50:30Z $ */
 
 /**
  * rijndael-alg-fst.h
@@ -25,7 +25,7 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -39,7 +39,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: rijndael-alg-fst.h 241182 2011-02-17 21:50:03Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: rijndael-alg-fst.h 523133 2014-12-27 05:50:30Z $
  */
 
 #ifndef __RIJNDAEL_ALG_FST_H
@@ -57,13 +60,13 @@
 #include <typedefs.h>
 
 
-int BCMROMFN(rijndaelKeySetupEnc)(uint32 rk[], const uint8 cipherKey[], int keyBits);
+int rijndaelKeySetupEnc(uint32 rk[], const uint8 cipherKey[], int keyBits);
 
-int BCMROMFN(rijndaelKeySetupDec)(uint32 rk[], const uint8 cipherKey[], int keyBits);
+int rijndaelKeySetupDec(uint32 rk[], const uint8 cipherKey[], int keyBits);
 
-void BCMROMFN(rijndaelEncrypt)(const uint32 rk[], int Nr, const uint8 pt[16], uint8 ct[16]);
+void rijndaelEncrypt(const uint32 rk[], int Nr, const uint8 pt[16], uint8 ct[16]);
 
-void BCMROMFN(rijndaelDecrypt)(const uint32 rk[], int Nr, const uint8 ct[16], uint8 pt[16]);
+void rijndaelDecrypt(const uint32 rk[], int Nr, const uint8 ct[16], uint8 pt[16]);
 
 
 #ifdef INTERMEDIATE_VALUE_KAT

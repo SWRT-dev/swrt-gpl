@@ -9832,6 +9832,12 @@ wdp:
 #if defined(SWRT_VER_MAJOR_R) || defined(SWRT_VER_MAJOR_X) || defined(SBRAC3200P)
 	check_auth_code();
 #endif
+#ifdef CONFIG_BCMWL5
+	if(!pids("eapd"))
+		start_eapd();
+	if(!pids("nas"))
+		start_nas();
+#endif
 }
 
 #if ! (defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK))

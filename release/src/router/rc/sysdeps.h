@@ -36,7 +36,6 @@ extern void post_syspara(void);
 extern void generate_wl_para(int unit, int subunit);
 #else
 extern void generate_wl_para(char *ifname, int unit, int subunit);
-extern int start_wl_wpa_supplicant(int unit);
 #if !defined(RTCONFIG_HND_ROUTER)
 extern char *brcm_to_swconfig(char *vlan, char *buf);
 #endif

@@ -996,7 +996,7 @@ obj-y += hostapd-2.6
 obj-y += libfapi-0.1
 obj-y += taskset
 else
-#obj-y += libbcmcrypto
+obj-y += libbcmcrypto
 ifneq ($(HND_ROUTER_AX_6756),y)
 ifneq ($(BCM_502L07P2),y)
 obj-y += utils$(BCMEX)$(EX7)
@@ -1008,10 +1008,9 @@ obj-y += wlconf$(BCMEX)$(EX7)
 ifneq ($(RTCONFIG_BRCM_HOSTAPD),y)
 obj-y += nas$(BCMEX)$(EX7)
 endif
-obj-$(CONFIG_BCMWL5) += libutils
 #obj-$(RTCONFIG_HSPOT) += hspot_ap$(BCMEX)$(EX7)
-#obj-y += eapd$(BCMEX)$(EX7)/linux
-obj-y += wpa_supplicant2
+obj-y += eapd$(BCMEX)$(EX7)
+#obj-y += wpa_supplicant2
 #ifneq ($(RTCONFIG_BRCM_HOSTAPD),y)
 #obj-$(RTCONFIG_WPS) += wps$(BCMEX)$(EX7)
 #endif
@@ -6598,6 +6597,11 @@ else
 	@echo "do nothing"
 endif
 
+eapd$(BCMEX)$(EX7):
+	-@cd eapd$(BCMEX)$(EX7)/linux && make
+
+eapd$(BCMEX)$(EX7)-install:
+	install -D eapd$(BCMEX)$(EX7)/linux/eapd $(INSTALLDIR)/eapd$(BCMEX)$(EX7)/bin/eapd
 
 eapd$(BCMEX)$(EX7)-clean:
 	-@cd eapd$(BCMEX)$(EX7)/linux && make clean
