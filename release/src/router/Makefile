@@ -937,7 +937,7 @@ obj-y += k3screenctrl
 obj-y += sw-auth-lite
 endif
 ifeq ($(RTCONFIG_SOFTCENTER),y)
-obj-y += skipdbv2 libev-4.33 softcenter libiconv-1.14
+obj-y += skipdbv2 libev-4.33 softcenter libiconv-1.14 lua
 #obj-y += httpdb mbedtls-2.6.0
 obj-y += ipset-7.6 libmnl-1.0.4 libnfnetlink-1.0.1
 endif
@@ -4028,7 +4028,20 @@ skipdbv2-install: skipdbv2
 	$(STRIP) $(INSTALLDIR)/skipdbv2/usr/sbin/skipd
 	$(STRIP) $(INSTALLDIR)/skipdbv2/usr/sbin/dbus
 
+lua:
+	$(MAKE) -C lua/src CFLAGS="$(CFLAGS) -DLUA_USE_LINUX -std=gnu99 -fPIC -I./ -DNO_TLS" PKG_VERSION="5.1.5" MYLDFLAGS="$(LDFLAGS)" linux
+
+lua-clean:
+	$(MAKE) -C lua/src clean
+
+lua-install:
+	install -D lua/src/lua $(INSTALLDIR)/lua/usr/sbin/lua
+	install -D lua/src/liblua.so.5.1.5 $(INSTALLDIR)/lua/usr/lib/liblua.so.5.1.5
+	cd $(INSTALLDIR)/lua/usr/lib/ && ln -sf liblua.so.5.1.5 liblua.so
+	$(STRIP) $(INSTALLDIR)/lua/usr/sbin/lua
+	$(STRIP) $(INSTALLDIR)/lua/usr/lib/liblua.so.5.1.5
 endif
+
 ifeq ($(SWRT_NAME),K3)
 sw-auth-lite:
 	cd sw-auth-lite && \
