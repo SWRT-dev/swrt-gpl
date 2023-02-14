@@ -4029,7 +4029,7 @@ skipdbv2-install: skipdbv2
 	$(STRIP) $(INSTALLDIR)/skipdbv2/usr/sbin/dbus
 
 lua:
-	$(MAKE) -C lua/src CFLAGS="$(CFLAGS) -DLUA_USE_LINUX -std=gnu99 -fPIC -I./ -DNO_TLS" PKG_VERSION="5.1.5" MYLDFLAGS="$(LDFLAGS)" linux
+	$(MAKE) -C lua/src CFLAGS="$(CFLAGS) -DLUA_USE_LINUX -std=gnu99 -fPIC -I./ -DNO_TLS" PKG_VERSION="5.1.5" MYLDFLAGS="$(LDFLAGS) $(if $(RTCONFIG_HND_ROUTER),-ldl -lm -lcrypt)" linux
 
 lua-clean:
 	$(MAKE) -C lua/src clean
@@ -9424,7 +9424,7 @@ dhcpfwd-install:
 	install -D dhcpfwd/dhcpfwd $(INSTALLDIR)/dhcpfwd/usr/sbin/dhcpfwd
 	$(STRIP) $(INSTALLDIR)/dhcpfwd/usr/sbin/dhcpfwd
 
-ifeq ($(RTCONFIG_EASYMESH),y)
+ifeq ($(or $(RTCONFIG_EASYMESH),$(RTCONFIG_SWRT_KVR),y)
 easymesh-sdk:libnl-tiny-0.1 openssl 
 	$(MAKE) -C easymesh-sdk all
 

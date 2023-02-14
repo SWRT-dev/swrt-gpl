@@ -40,7 +40,7 @@
    
    r6800 : `make swrt-r6800`
    
-   rm-ac2100 : `make rm-ac2100`
+   rm-ac2100 : `make swrt-rm-ac2100`
    
    jcg-q10pro : `make swrt-jcg-q10pro`
    
