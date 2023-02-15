@@ -9424,7 +9424,7 @@ dhcpfwd-install:
 	install -D dhcpfwd/dhcpfwd $(INSTALLDIR)/dhcpfwd/usr/sbin/dhcpfwd
 	$(STRIP) $(INSTALLDIR)/dhcpfwd/usr/sbin/dhcpfwd
 
-ifeq ($(or $(RTCONFIG_EASYMESH),$(RTCONFIG_SWRT_KVR),y)
+ifeq ($(or $(RTCONFIG_EASYMESH),$(RTCONFIG_SWRT_KVR)),y)
 easymesh-sdk:libnl-tiny-0.1 openssl 
 	$(MAKE) -C easymesh-sdk all
 

@@ -5890,7 +5890,7 @@ endef
 	$(call save_src_config, RT$@)
 	$(MAKE) bin
 
-brt-% BRT-% rt-% RT-% CT-% ct-% gt-% GT-% gx-% GX-% rp-% RP-% ea-% EA-% tm-% TM-% pl-% PL-% ac% map-% MAP-% vzw-% VZW-% sh-% SH-% tuf-% TUF-% gs-% GS-% swrt-% SWRT-%:
+brt-% BRT-% rt-% RT-% CT-% ct-% gt-% GT-% gx-% GX-% rp-% RP-% ea-% EA-% tm-% TM-% pl-% PL-% ac% map-% MAP-% vzw-% VZW-% sh-% SH-% tuf-% TUF-% gs-% GS-%:
 	$(call save_src_config, $@)
 	$(MAKE) bin
 
@@ -5915,7 +5915,7 @@ ET12 et12 XT12 xt12 XD4PRO xd4pro XT8PRO xt8pro ET8PRO et8pro:
 	$(call save_src_config, $@,_CFG)
 	$(MAKE) bin
 
-NETGEAR-% netgear-%:
+swrt-% SWRT-% NETGEAR-% netgear-%:
 	$(call save_src_config, $@)
 	$(MAKE) bin
 
