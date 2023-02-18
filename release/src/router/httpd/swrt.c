@@ -14,6 +14,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  *
+ * Copyright 2018-2023, SWRTdev.
  * Copyright 2018-2023, paldier <paldier@hotmail.com>.
  * All Rights Reserved.
  * 
@@ -268,8 +269,7 @@ void do_ssupload_cgi(char *url, FILE *stream)
 
 void do_dbupload_post(char *url, FILE *stream, int len, char *boundary)
 {
-	char upload_fifo[64];
-	memset(upload_fifo, 0, 64);
+	char upload_fifo[64] = {0};
 	int ret = EINVAL;
 	FILE *fifo = NULL;
 	char buf[4096];
@@ -295,8 +295,7 @@ void do_dbupload_post(char *url, FILE *stream, int len, char *boundary)
 			if(strstr(post_buf, "name=\"file\"")) {
 				snprintf(org_file_name, sizeof(org_file_name), "%s", strstr(post_buf, "filename="));
 				substr(file_name, org_file_name, 10, (strlen(org_file_name)-13));
-				snprintf(file_name, sizeof(file_name), "/tmp/upload/%s", file_name);
-				strlcpy(upload_fifo, file_name, sizeof(upload_fifo));
+				snprintf(upload_fifo, sizeof(upload_fifo), "/tmp/upload/%s", file_name);
 				break;
 			}
 		}

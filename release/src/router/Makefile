@@ -938,7 +938,7 @@ obj-y += sw-auth-lite
 endif
 ifeq ($(RTCONFIG_SOFTCENTER),y)
 obj-y += skipdbv2 libev-4.33 softcenter libiconv-1.14 lua
-#obj-y += httpdb mbedtls-2.6.0
+#obj-y += httpdb mbedtls
 obj-y += ipset-7.6 libmnl-1.0.4 libnfnetlink-1.0.1
 endif
 ifeq ($(RTCONFIG_NLBWMON),y)

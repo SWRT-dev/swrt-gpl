@@ -1,0 +1,3 @@
+[submodule "src/venders/libev"]
+	path = src/venders/libev
+	url = https://github.com/enki/libev.git

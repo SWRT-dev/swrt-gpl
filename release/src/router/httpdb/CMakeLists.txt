@@ -1,0 +1,24 @@
+PROJECT(httpdb)
+CMAKE_MINIMUM_REQUIRED (VERSION 2.8)
+#ADD_DEFINITIONS( -fno-inline -O0 -g -Wstrict-prototypes -std=gnu99 -Wall)
+ADD_DEFINITIONS( -Os -Wstrict-prototypes -std=gnu99 -Wall)
+
+set(CMAKE_SYSTEM_NAME Linux)
+set(CMAKE_BUILD_TYPE release)
+#set(CMAKE_EXE_LINKER_FLAGS "-static")
+
+SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
+SET(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
+set(MBEDTLS CACHE PATH "Path to the openssl library")
+#SET(MBEDTLS "/projects/arm/source/mbedtls/install")
+
+#INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/src)
+
+INCLUDE_DIRECTORIES(${MBEDTLS}/include)
+LINK_DIRECTORIES(${MBEDTLS}/library)
+
+INCLUDE_DIRECTORIES(${OPENSSL_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/include)
+FILE(GLOB_RECURSE HTTPDB_SRC ${PROJECT_SOURCE_DIR}/src/*.c)
+
+ADD_EXECUTABLE(httpdb ${HTTPDB_SRC})
+TARGET_LINK_LIBRARIES(httpdb m rt mbedx509 mbedtls mbedcrypto dl)
