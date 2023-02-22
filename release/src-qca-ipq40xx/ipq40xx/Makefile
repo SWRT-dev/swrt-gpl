@@ -13,6 +13,7 @@
 
 include ../router/common.mak
 include ../router/.config
+include qsdk.config
 
 PLATFORM_ROUTER_SRCBASE:=$(shell pwd)
 export PLATFORM_ROUTER_SRCBASE
@@ -27,6 +28,8 @@ export LDFLAGS+=$(EXTRALDFLAGS)
 # Package dependence
 PKGDEP_QCA_HOSTAP	:= qca-wifi-10.4 libnl openssl
 PKGDEP_QCA_WIFI		:= iproute2-4.4.0 libxml2 libnl qca-wifi-fw-10.4
+PKGDEP_QCA_EZMESH	:= libhyficommon libwifisoncfg libubus libubox libuci libwpa2 jansson bridge qti-autorole qca-libhyfi-bridge kmod-qca-hyfi-bridge qca-ssdk
+PKGDEP_QCA_EZMESH	+= qca-wifi-10.4
 
 #
 # software package selection
@@ -45,6 +48,9 @@ pobj-y += qca-wifi-fw.qca9984
 endif
 pobj-y += qca-hostap-10.4 $(PKGDEP_QCA_HOSTAP)
 pobj-y += qca-wrapd-10.4
+ifeq ($(RTCONFIG_EASYMESH),y)
+pobj-y += qca-ezmesh $(PKGDEP_QCA_EZMESH)
+endif
 
 
 pobj-clean := $(foreach pobj, $(pobj-y) $(pobj-n) $(pobj-), $(pobj)-clean)

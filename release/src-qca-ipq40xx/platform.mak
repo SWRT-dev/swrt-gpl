@@ -114,6 +114,11 @@ define platformBusyboxOptions
 		echo "CONFIG_FEATURE_TFTP_PUT=y" >>$(1); \
 		sed -i "/CONFIG_SEQ\>/d" $(1); \
 		echo "CONFIG_SEQ=y" >>$(1); \
+		if [ "$(RTCONFIG_EASYMESH)" = "y" ]; then \
+			sed -i "/CONFIG_STAT\>/d" $(1); \
+			echo "CONFIG_STAT=y" >>$(1); \
+			echo "CONFIG_FEATURE_STAT_FORMAT=y" >>$(1); \
+		fi; \
 	fi; \
 	)
 endef
