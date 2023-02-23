@@ -96,109 +96,75 @@ export CONFIG_LINUX30=y
 export CONFIG_SUPPORT_OPENWRT=y
 define platformRouterOptions
 	@( \
-	if [ "$(RALINK)" = "y" ]; then \
-		sed -i "/RTCONFIG_RALINK\>/d" $(1); \
-		echo "RTCONFIG_RALINK=y" >>$(1); \
-		sed -i "/CONFIG_RA_HW_NAT_IPV6/d" $(1); \
-		echo "# CONFIG_RA_HW_NAT_IPV6 is not set" >>$(1); \
-		if [ "$(PMF)" = "y" ]; then \
-			sed -i "/RTCONFIG_MFP/d" $(1); \
-			echo "RTCONFIG_MFP=y" >>$(1); \
-		fi; \
-		if [ "$(RT3883)" = "y" ]; then \
-			sed -i "/RTCONFIG_RALINK_RT3883/d" $(1); \
-			echo "RTCONFIG_RALINK_RT3883=y" >>$(1); \
-		else \
-			sed -i "/RTCONFIG_RALINK_RT3883/d" $(1); \
-			echo "# RTCONFIG_RALINK_RT3883 is not set" >>$(1); \
-		fi; \
-		if [ "$(RT3052)" = "y" ]; then \
-			sed -i "/RTCONFIG_RALINK_RT3052/d" $(1); \
-			echo "RTCONFIG_RALINK_RT3052=y" >>$(1); \
-		else \
-			sed -i "/RTCONFIG_RALINK_RT3052/d" $(1); \
-			echo "# RTCONFIG_RALINK_RT3052 is not set" >>$(1); \
-		fi; \
-		if [ "$(MT7620)" = "y" ]; then \
-			sed -i "/RTCONFIG_RALINK_MT7620/d" $(1); \
-			echo "RTCONFIG_RALINK_MT7620=y" >>$(1); \
-		else \
-			sed -i "/RTCONFIG_RALINK_MT7620/d" $(1); \
-			echo "# RTCONFIG_RALINK_MT7620 is not set" >>$(1); \
-		fi; \
-		if [ "$(MT7621)" = "y" ]; then \
-			sed -i "/RTCONFIG_RALINK_MT7621/d" $(1); \
-			echo "RTCONFIG_RALINK_MT7621=y" >>$(1); \
-		else \
-			sed -i "/RTCONFIG_RALINK_MT7621/d" $(1); \
-			echo "# RTCONFIG_RALINK_MT7621 is not set" >>$(1); \
-		fi; \
-		if [ "$(MT7628)" = "y" ]; then \
-			sed -i "/RTCONFIG_RALINK_MT7628/d" $(1); \
-			echo "RTCONFIG_RALINK_MT7628=y" >>$(1); \
-		else \
-			sed -i "/RTCONFIG_RALINK_MT7628/d" $(1); \
-			echo "# RTCONFIG_RALINK_MT7628 is not set" >>$(1); \
-		fi; \
-		if [ "$(MT7629)" = "y" ]; then \
-			sed -i "/RTCONFIG_RALINK_MT7629/d" $(1); \
-			echo "RTCONFIG_RALINK_MT7629=y" >>$(1); \
-		else \
-			sed -i "/RTCONFIG_RALINK_MT7629/d" $(1); \
-			echo "# RTCONFIG_RALINK_MT7629 is not set" >>$(1); \
-		fi; \
-		if [ "$(MT7622)" = "y" ]; then \
-			sed -i "/RTCONFIG_RALINK_MT7622/d" $(1); \
-			echo "RTCONFIG_RALINK_MT7622=y" >>$(1); \
-		else \
-			sed -i "/RTCONFIG_RALINK_MT7622/d" $(1); \
-			echo "# RTCONFIG_RALINK_MT7622 is not set" >>$(1); \
-		fi; \
-		if [ "$(MT798X)" = "y" ]; then \
-			sed -i "/RTCONFIG_MT798X/d" $(1); \
-			echo "RTCONFIG_MT798X=y" >>$(1); \
-			sed -i "/RTCONFIG_SWITCH_MT7986_MT7531/d" $(1); \
-			echo "RTCONFIG_SWITCH_MT7986_MT7531=y" >>$(1); \
-			sed -i "/RTCONFIG_32BYTES_ODMPID/d" $(1); \
-			echo "RTCONFIG_32BYTES_ODMPID=y" >>$(1); \
-			sed -i "/RTCONFIG_FITFDT/d" $(1); \
-			echo "RTCONFIG_FITFDT=y" >>$(1); \
-		else \
-			sed -i "/RTCONFIG_RALINK_MT798X/d" $(1); \
-			echo "# RTCONFIG_RALINK_MT798X is not set" >>$(1); \
-		fi; \
-		if [ "$(MT7986A)" = "y" ]; then \
-			sed -i "/RTCONFIG_SOC_MT7986A/d" $(1); \
-			echo "RTCONFIG_SOC_MT7986A=y" >>$(1); \
-		else \
-			sed -i "/RTCONFIG_SOC_MT7986A/d" $(1); \
-			echo "# RTCONFIG_SOC_MT7986A is not set" >>$(1); \
-		fi; \
-		if [ "$(MT7986B)" = "y" ]; then \
-			sed -i "/RTCONFIG_SOC_MT7986B/d" $(1); \
-			echo "RTCONFIG_SOC_MT7986B=y" >>$(1); \
-		else \
-			sed -i "/RTCONFIG_SOC_MT7986B/d" $(1); \
-			echo "# RTCONFIG_SOC_MT7986B is not set" >>$(1); \
-		fi; \
-		if [ "$(MT7986C)" = "y" ]; then \
-			sed -i "/RTCONFIG_SOC_MT7986C/d" $(1); \
-			echo "RTCONFIG_SOC_MT7986C=y" >>$(1); \
-		else \
-			sed -i "/RTCONFIG_SOC_MT7986C/d" $(1); \
-			echo "# RTCONFIG_SOC_MT7986C is not set" >>$(1); \
-		fi; \
-		if [ "$(MT7981)" = "y" ]; then \
-			sed -i "/RTCONFIG_SOC_MT7981/d" $(1); \
-			echo "RTCONFIG_SOC_MT7981=y" >>$(1); \
-		else \
-			sed -i "/RTCONFIG_SOC_MT7981/d" $(1); \
-			echo "# RTCONFIG_SOC_MT7981 is not set" >>$(1); \
-		fi; \
-		if [ "$(BUILD_NAME)" = "RM-AX6000" ]; then \
-			sed -i "/RTCONFIG_FIXED_BRIGHTNESS_RGBLED\>/d" $(1); \
-			echo "RTCONFIG_FIXED_BRIGHTNESS_RGBLED=y" >>$(1); \
-		fi; \
+	sed -i "/RTCONFIG_RALINK\>/d" $(1); \
+	echo "RTCONFIG_RALINK=y" >>$(1); \
+	sed -i "/RTCONFIG_FITFDT/d" $(1); \
+	echo "RTCONFIG_FITFDT=y" >>$(1); \
+	if [ "$(MT7628)" = "y" ]; then \
+		sed -i "/RTCONFIG_RALINK_MT7628/d" $(1); \
+		echo "RTCONFIG_RALINK_MT7628=y" >>$(1); \
+	else \
+		sed -i "/RTCONFIG_RALINK_MT7628/d" $(1); \
+		echo "# RTCONFIG_RALINK_MT7628 is not set" >>$(1); \
+	fi; \
+	if [ "$(MT7629)" = "y" ]; then \
+		sed -i "/RTCONFIG_RALINK_MT7629/d" $(1); \
+		echo "RTCONFIG_RALINK_MT7629=y" >>$(1); \
+	else \
+		sed -i "/RTCONFIG_RALINK_MT7629/d" $(1); \
+		echo "# RTCONFIG_RALINK_MT7629 is not set" >>$(1); \
+	fi; \
+	if [ "$(MT7622)" = "y" ]; then \
+		sed -i "/RTCONFIG_RALINK_MT7622/d" $(1); \
+		echo "RTCONFIG_RALINK_MT7622=y" >>$(1); \
+	else \
+		sed -i "/RTCONFIG_RALINK_MT7622/d" $(1); \
+		echo "# RTCONFIG_RALINK_MT7622 is not set" >>$(1); \
+	fi; \
+	if [ "$(MT798X)" = "y" ]; then \
+		sed -i "/RTCONFIG_MT798X/d" $(1); \
+		echo "RTCONFIG_MT798X=y" >>$(1); \
+		sed -i "/RTCONFIG_SWITCH_MT7986_MT7531/d" $(1); \
+		echo "RTCONFIG_SWITCH_MT7986_MT7531=y" >>$(1); \
+		sed -i "/RTCONFIG_QAM256_2G\>/d" $(1); \
+		echo "RTCONFIG_QAM256_2G=y" >>$(1); \
+		sed -i "/RTCONFIG_QAM1024_5G\>/d" $(1); \
+		echo "RTCONFIG_QAM1024_5G=y" >>$(1); \
+	else \
+		sed -i "/RTCONFIG_RALINK_MT798X/d" $(1); \
+		echo "# RTCONFIG_RALINK_MT798X is not set" >>$(1); \
+	fi; \
+	if [ "$(MT7986A)" = "y" ]; then \
+		sed -i "/RTCONFIG_SOC_MT7986A/d" $(1); \
+		echo "RTCONFIG_SOC_MT7986A=y" >>$(1); \
+	else \
+		sed -i "/RTCONFIG_SOC_MT7986A/d" $(1); \
+		echo "# RTCONFIG_SOC_MT7986A is not set" >>$(1); \
+	fi; \
+	if [ "$(MT7986B)" = "y" ]; then \
+		sed -i "/RTCONFIG_SOC_MT7986B/d" $(1); \
+		echo "RTCONFIG_SOC_MT7986B=y" >>$(1); \
+	else \
+		sed -i "/RTCONFIG_SOC_MT7986B/d" $(1); \
+		echo "# RTCONFIG_SOC_MT7986B is not set" >>$(1); \
+	fi; \
+	if [ "$(MT7986C)" = "y" ]; then \
+		sed -i "/RTCONFIG_SOC_MT7986C/d" $(1); \
+		echo "RTCONFIG_SOC_MT7986C=y" >>$(1); \
+	else \
+		sed -i "/RTCONFIG_SOC_MT7986C/d" $(1); \
+		echo "# RTCONFIG_SOC_MT7986C is not set" >>$(1); \
+	fi; \
+	if [ "$(MT7981)" = "y" ]; then \
+		sed -i "/RTCONFIG_SOC_MT7981/d" $(1); \
+		echo "RTCONFIG_SOC_MT7981=y" >>$(1); \
+	else \
+		sed -i "/RTCONFIG_SOC_MT7981/d" $(1); \
+		echo "# RTCONFIG_SOC_MT7981 is not set" >>$(1); \
+	fi; \
+	if [ "$(BUILD_NAME)" = "RM-AX6000" ]; then \
+		sed -i "/RTCONFIG_FIXED_BRIGHTNESS_RGBLED\>/d" $(1); \
+		echo "RTCONFIG_FIXED_BRIGHTNESS_RGBLED=y" >>$(1); \
 	fi; \
 	)
 endef

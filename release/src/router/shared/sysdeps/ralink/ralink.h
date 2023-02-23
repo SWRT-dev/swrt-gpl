@@ -832,6 +832,7 @@ struct GNU_PACKED wnm_command {
 #endif
 
 #if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#define OFFSET_EISN		0x6ff70	// 32 bytes
 #define OFFSET_TERRITORY_CODE	0x6ff90	/* 5 bytes, e.g., US/01, US/02, TW/01, etc. */
 #define OFFSET_DEV_FLAGS	0x6ffa0 //device dependent flags
 #define OFFSET_ODMPID		0x6ffb0 //the shown model name (for Bestbuy and others)
@@ -846,7 +847,11 @@ struct GNU_PACKED wnm_command {
 #define OFFSET_HW_BOM	0x6FE0C	// 32 bytes
 #define OFFSET_HW_DATE_CODE	0x6FE3E	// 8 bytes
 #define OFFSET_HW_COBRAND       0x6FE46 // 1 byte
+#ifdef RTCONFIG_32BYTES_ODMPID  
+#define OFFSET_32BYTES_ODMPID   0x6FE47 // 32 bytes
+#endif
 #elif defined(RT4GAC86U)
+#define OFFSET_EISN		0x5ff70	// 32 bytes
 #define OFFSET_TERRITORY_CODE	0x5ff90	/* 5 bytes, e.g., US/01, US/02, TW/01, etc. */
 #define OFFSET_DEV_FLAGS	0x5ffa0 //device dependent flags
 #define OFFSET_ODMPID		0x5ffb0 //the shown model name (for Bestbuy and others)
@@ -861,6 +866,7 @@ struct GNU_PACKED wnm_command {
 #define OFFSET_HW_BOM	0x5FE0C	// 32 bytes
 #define OFFSET_HW_DATE_CODE	0x5FE3E	// 8 bytes
 #else
+#define OFFSET_EISN		(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xff70)	// 32 bytes
 #define OFFSET_TERRITORY_CODE	(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xff90)	/* 5 bytes, e.g., US/01, US/02, TW/01, etc. */
 #define OFFSET_DEV_FLAGS	(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xffa0) //device dependent flags
 #define OFFSET_ODMPID		(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xffb0) //the shown model name (for Bestbuy and others)

@@ -34,7 +34,7 @@
 #include <stdint.h>
 
 #include <shared.h>
-
+#include <swrt.h>
 #ifdef RTCONFIG_QCA
 #include <qca.h>
 #include <flash_mtd.h>

@@ -26,6 +26,7 @@
 #include <shared.h>
 #include <ralink.h>
 #include <flash_mtd.h>
+#include <swrt.h>
 #if defined(RTCONFIG_EASYMESH)
 #include <swrtmesh.h>
 #endif
@@ -60,8 +61,14 @@ void init_devs(void)
 
 void init_others(void)
 {
-#if defined(RTAX53U)
-//mii_mgr -s -p [phy number] -r [register number] -v [0xvalue]
+#if defined(RTACRH18)
+    // mii_mgr_cl45 -s -p 0 -d 0x1f -r 21 -v 8009 --> WAN LED 0x21 LED Basic Control Register Set 0x8009
+    eval("mii_mgr_cl45", "-s", "-p", "0", "-d", "0x1f", "-r", "21", "-v", "8009");
+    // mii_mgr_cl45 -s -p 0 -d 0x1f -r 24 -v c007 --> WAN LED LED0 On Control Register
+    eval("mii_mgr_cl45", "-s", "-p", "0", "-d", "0x1f", "-r", "24", "-v", "c007");
+    // mii_mgr_cl45 -s -p 0 -d 0x1f -r 25 -v C13F --> WAN LED LED0 Blinking Control Register
+    eval("mii_mgr_cl45", "-s", "-p", "0", "-d", "0x1f", "-r", "25", "-v", "c13f");
+#elif defined(RTAX53U) || defined(RTAX54) || defined(XD4S)
 	eval("mii_mgr", "-s", "-p", "0", "-r", "13", "-v", "0x1f");
 	eval("mii_mgr", "-s", "-p", "0", "-r", "14", "-v", "0x24");
 	eval("mii_mgr", "-s", "-p", "0", "-r", "13", "-v", "0x401f");
@@ -72,6 +79,11 @@ void init_others(void)
 	eval("mii_mgr", "-s", "-p", "0", "-r", "14", "-v", "0x3f");
 #elif defined(RTAC85U) || defined(RTAC85P) || defined(R6800) || defined(RMAC2100)
 //fix me
+#endif
+#if defined(RTCONFIG_MT798X)
+	if (nvram_match("lacp_enabled", "1"))
+		f_write_string("/sys/kernel/no_dsa_offload", "1", 0, 0);
+	nvram_unset("wifidat_dbg");
 #endif
 }
 
@@ -184,6 +196,12 @@ static void init_switch_ralink(void)
 		restart_lfp();
 	}
 #endif
+#if defined(RTCONFIG_WLMODULE_MT7629_AP) || defined(RTCONFIG_SWITCH_MT7986_MT7531)
+	if(nvram_get_int("jumbo_frame_enable")==0)
+		eval("switch", "reg", "w", "30e0", "3e3d");		// MAX_RX_PKT_LEN: 1:1536 bytes
+	else
+		eval("switch", "reg", "w", "30e0", "3e3f");		// MAX_RX_PKT_LEN: 3:MAX_RX_JUMBO
+#endif
 //	reinit_hwnat(-1);
 
 }
@@ -195,6 +213,32 @@ void init_switch()
 	config_switch_dsl();	
 #else
 	init_switch_ralink();
+#endif
+}
+
+/* Configure LED controlled by hardware. Turn off LED by default. */
+void config_hwctl_led(void)
+{
+#if defined(TUFAX4200) || defined(TUFAX6000)
+	/* GPY211 PHY LED */
+	/* 2.5G LAN: LED0, port5, active high, disable LED function and turn it OFF */
+	eval("mii_mgr", "-s", "-p", "5", "-d", "0", "-r", "0x1b", "-v",  "0x000");	/* Reg 0.27 */
+	/* Blinks on TX/RX, ON on 10M/100M/1G/2.5G link */
+	eval("mii_mgr", "-s", "-p", "5", "-d", "0x1e", "-r", "1", "-v",  "0x3f0");	/* Reg 30.1 */
+
+	/* 2.5G WAN: LED0, port6, active low, disable LED function and turn it OFF */
+	eval("mii_mgr", "-s", "-p", "6", "-d", "0", "-r", "0x1b", "-v", "0x1000");	/* Reg 0.27 */
+	/* Blinks on TX/RX, ON on 10M/100M/1G/2.5G link */
+	eval("mii_mgr", "-s", "-p", "6", "-d", "0x1e", "-r", "1", "-v",  "0x3f0");	/* Reg 30.1 */
+
+	/* MT7531 switch LED */
+	eval("switch", "phy", "cl45", "w", "0", "0x1f", "0x21",    "0x8");	/* Use LED_MODE and disabled LED */
+	eval("switch", "phy", "cl45", "w", "0", "0x1f", "0x22",  "0xc00");	/* Link on duration */
+	eval("switch", "phy", "cl45", "w", "0", "0x1f", "0x23", "0x1400");	/* Blink duration */
+	eval("switch", "phy", "cl45", "w", "0", "0x1f", "0x24", "0x8000");	/* Enable LED0, active low, ON no events */
+	eval("switch", "phy", "cl45", "w", "0", "0x1f", "0x25",    "0x0");	/* LED0, none of any events blink */
+	eval("switch", "phy", "cl45", "w", "0", "0x1f", "0x26", "0xc007");	/* Enable LED1, active high, link 10M/100M/1G ON */
+	eval("switch", "phy", "cl45", "w", "0", "0x1f", "0x27",   "0x3f");	/* LED1, blinks on 10M/100M/1G TX/RX activity */
 #endif
 }
 
@@ -256,11 +300,45 @@ static int __setup_vlan(int vid, int prio, unsigned int mask)
 }
 
 int config_switch_for_first_time = 1;
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#if defined(RTCONFIG_3LANPORT_DEVICE)
 int lan_port_bit_shift = 1;
 #else
 int lan_port_bit_shift = 0;
 #endif
+
+static int stb_bitmask_shift(int input)
+{
+	int output = input << lan_port_bit_shift;
+#if defined(RTCONFIG_PORT2_DEVICE)
+	if(input!=0)
+		output=1<< lan_port_bit_shift; //match LAN1 of switch_port_mapping
+#endif	
+	return output;
+}
+
+static int vlan_bitmask_shift(unsigned int input)
+{
+#define NR_WANLAN_PORT 5	
+	unsigned int output = (input & 0xFFF0FFF0) | ((input & 0x000F000F) << lan_port_bit_shift);
+#if defined(RTCONFIG_PORT2_DEVICE)
+	int i;
+	int mask=input & 0xFFF0FFF0;
+	int lan_untag=(input & 0x000F0000)>>16;
+	int lan_mbr  =input & 0x0000000F;
+	for(i = 0; i < NR_WANLAN_PORT-1; i++) 
+	{
+		lan_untag=((input & 0x000F0000)>>(16+i)) & 0x1;
+		lan_mbr  =((input & 0x0000000F) >>i) & 0x1;
+		if(lan_mbr)
+		{
+			output=mask | ((lan_untag <<16) | lan_mbr) << lan_port_bit_shift;
+			return output;
+		}	
+	}	
+#endif
+	return output;
+}
+
 void config_switch()
 {
 	int model = get_model();
@@ -270,6 +348,9 @@ void config_switch()
 	int controlrate_multicast;
 	int controlrate_broadcast;
 	int merge_wan_port_into_lan_ports;
+	int stb_bitmask;
+	unsigned int vlan_bitmask;
+	char stb_bitmask_str[sizeof("0xXXXXXXXXYYY")];
 
 	dbG("link down all ports\n");
 	eval("rtkswitch", "17");	// link down all ports
@@ -299,6 +380,7 @@ void config_switch()
 		dbG("software reset\n");
 		eval("rtkswitch", "27");	// software reset
 	}
+	pre_config_switch();
 	system("rtkswitch 8 0"); //Barton add
 
 	if (is_routing_enabled())
@@ -307,6 +389,10 @@ void config_switch()
 
 		stbport = nvram_get_int("switch_stb_x");
 		if (stbport < 0 || stbport > 6) stbport = 0;
+#if defined(RTCONFIG_PORT2_DEVICE)
+		if(stbport!=0)
+			stbport=1;
+#endif			
 		dbG("ISP Profile/STB: %s/%d\n", nvram_safe_get("switch_wantag"), stbport);
 #if defined(RTCONFIG_RALINK_MT7628)
 		/* P0    P1    P2    P3    P4    P6  */
@@ -326,11 +412,25 @@ void config_switch()
 #endif
 		if(!nvram_match("switch_wantag", "none")&&!nvram_match("switch_wantag", ""))//2012.03 Yau modify
 		{
-			int voip_port = 0;
+			int voip_port __attribute__((unused))= 0;
 			int t, vlan_val = -1, prio_val = -1;
 			unsigned int mask = 0;
 
 #if defined(RTCONFIG_RALINK_MT7628)
+			/* Create WAN VLAN interface */
+			if (nvram_get_int("switch_wan0tagid") != 0) {
+				char wan_dev[10];
+				//eval("vconfig", "rem", "vlan2");
+				eval("vconfig", "add", "eth2", nvram_safe_get("switch_wan0tagid"));
+
+				snprintf(wan_dev, sizeof(wan_dev), "vlan%d", nvram_get_int("switch_wan0tagid"));
+
+				prio_val = nvram_get_int("switch_wan1prio");
+				if (prio_val >= 0 && prio_val <= 7)
+					eval("vconfig", "set_egress_map", wan_dev, "0", nvram_get("switch_wan0prio"));
+			}
+#endif
+#if defined(RTCONFIG_RALINK_MT7629)
 			/* Create WAN VLAN interface */
 			if (nvram_get_int("switch_wan0tagid") != 0) {
 				char wan_dev[10];
@@ -348,25 +448,37 @@ void config_switch()
 			default:
 
 				/* Fixed Ports Now*/
+#if defined(RTCONFIG_PORT2_DEVICE)
+				stbport= 1;
+#else
 				stbport = 4;	
+#endif				
 				voip_port = 3;
 
 				if(!strncmp(nvram_safe_get("switch_wantag"), "unifi", 5)) {
 					/* Added for Unifi. Cherry Cho modified in 2011/6/28.*/
 					if(strstr(nvram_safe_get("switch_wantag"), "home")) {
-						//system("rtkswitch 38 1");		/* IPTV: P0 */
-						snprintf(parm_buf, sizeof(parm_buf), "%d", 1 << lan_port_bit_shift);
-						eval("rtkswitch", "38", parm_buf);
+						stb_bitmask = stb_bitmask_shift(1);
+						snprintf(stb_bitmask_str, sizeof(stb_bitmask_str), "0x%x", stb_bitmask);
+						eval("rtkswitch", "38", stb_bitmask_str);	/* IPTV: P0 */
+
 						/* Internet:	untag: P9;   port: P4, P9 */
-						__setup_vlan(500, 0, 0x02000210);
+						vlan_bitmask = vlan_bitmask_shift(0x02000210);
+						__setup_vlan(500, 0, vlan_bitmask);
+
 						/* IPTV:	untag: P0;   port: P0, P4 */
-						__setup_vlan(600, 0, 0x00010011);
+						vlan_bitmask = vlan_bitmask_shift(0x00010011);
+						__setup_vlan(600, 0, vlan_bitmask);
 					}
 					else {
 						/* No IPTV. Business package */
 						/* Internet:	untag: P9;   port: P4, P9 */
-						system("rtkswitch 38 0");
-						__setup_vlan(500, 0, 0x02000210);
+						stb_bitmask = stb_bitmask_shift(0);
+						snprintf(stb_bitmask_str, sizeof(stb_bitmask_str), "0x%x", stb_bitmask);
+						eval("rtkswitch", "38", stb_bitmask_str);
+
+						vlan_bitmask = vlan_bitmask_shift(0x02000210);
+						__setup_vlan(500, 0, vlan_bitmask);
 					}
 				}
 				else if(!strncmp(nvram_safe_get("switch_wantag"), "singtel", 7)) {
@@ -374,68 +486,134 @@ void config_switch()
 					if(strstr(nvram_safe_get("switch_wantag"), "mio")) {
 						/* Connect Singtel MIO box to P3 */
 						system("rtkswitch 40 1");		/* admin all frames on all ports */
-						//system("rtkswitch 38 3");		/* IPTV: P0  VoIP: P1 */
-						snprintf(parm_buf, sizeof(parm_buf), "%d", 3 << lan_port_bit_shift);
-						eval("rtkswitch", "38", parm_buf);
+						stb_bitmask = stb_bitmask_shift(3);
+						snprintf(stb_bitmask_str, sizeof(stb_bitmask_str), "0x%x", stb_bitmask);
+						eval("rtkswitch", "38", stb_bitmask_str);	/* IPTV: P0  VoIP: P1 */
+
 						/* Internet:	untag: P9;   port: P4, P9 */
-						__setup_vlan(10, 0, 0x02000210);
+						vlan_bitmask = vlan_bitmask_shift(0x02000210);
+						__setup_vlan(10, 0, vlan_bitmask);
+
 						/* VoIP:	untag: N/A;  port: P1, P4 */
 						//VoIP Port: P1 tag
-						//__setup_vlan(30, 4, 0x00000012);
-						__setup_vlan(30, 4, ((2 << lan_port_bit_shift) | 0x10));
+						vlan_bitmask = vlan_bitmask_shift(0x00000012);
+						__setup_vlan(30, 4, vlan_bitmask);
 					}
 					else {
 						//Connect user's own ATA to lan port and use VoIP by Singtel WAN side VoIP gateway at voip.singtel.com
-						//system("rtkswitch 38 1");		/* IPTV: P0 */
-						snprintf(parm_buf, sizeof(parm_buf), "%d", 1 << lan_port_bit_shift);
-						eval("rtkswitch", "38", parm_buf);
-						/* Internet:	untag: P9;   port: P4, P9 */
-						__setup_vlan(10, 0, 0x02000210);
-					}
-					if(strstr(nvram_safe_get("switch_wantag"), "mstb"))
-						__setup_vlan(20, 4, ((0x30003 << lan_port_bit_shift) | 0x10));		/* untag: P0;   port: P0, P4 */
-					else
-						__setup_vlan(20, 4, ((0x10001 << lan_port_bit_shift) | 0x10));		/* untag: P0;   port: P0, P4 */
+						stb_bitmask = stb_bitmask_shift(1);
+						eval("rtkswitch", "38", stb_bitmask_str);	/* IPTV: P0 */
 
+						/* Internet:	untag: P9;   port: P4, P9 */
+						vlan_bitmask = vlan_bitmask_shift(0x02000210);
+						__setup_vlan(10, 0, vlan_bitmask);
+					}
+
+					/* IPTV */
+					if(strstr(nvram_safe_get("switch_wantag"), "mstb"))
+						vlan_bitmask = vlan_bitmask_shift(0x00030013);	/* untag: P0, P1;   port: P0, P1, P4 */
+					else
+						vlan_bitmask = vlan_bitmask_shift(0x00010011);	/* untag: P0;   port: P0, P4 */
+
+					__setup_vlan(20, 4, vlan_bitmask);
 				}
 				else if(!strcmp(nvram_safe_get("switch_wantag"), "m1_fiber")) {
 					//VoIP: P1 tag. Cherry Cho added in 2012/1/13.
 					system("rtkswitch 40 1");			/* admin all frames on all ports */
-					//system("rtkswitch 38 2");			/* VoIP: P1  2 = 0x10 */
-					snprintf(parm_buf, sizeof(parm_buf), "%d", 2 << lan_port_bit_shift);
-					eval("rtkswitch", "38", parm_buf);
+					stb_bitmask = stb_bitmask_shift(2);
+					snprintf(stb_bitmask_str, sizeof(stb_bitmask_str), "0x%x", stb_bitmask);
+					eval("rtkswitch", "38", stb_bitmask_str);		/* VoIP: P1  2 = 0x10 */
+
 					/* Internet:	untag: P9;   port: P4, P9 */
-					__setup_vlan(1103, 1, 0x02000210);
+					vlan_bitmask = vlan_bitmask_shift(0x02000210);
+					__setup_vlan(1103, 1, vlan_bitmask);
+
 					/* VoIP:	untag: N/A;  port: P1, P4 */
 					//VoIP Port: P1 tag
-					//__setup_vlan(1107, 1, 0x00000012);
-					__setup_vlan(1107, 1, ((2 << lan_port_bit_shift) | 0x10));
+					vlan_bitmask = vlan_bitmask_shift(0x00000012);
+					__setup_vlan(1107, 1, vlan_bitmask);
 				}
 				else if(!strcmp(nvram_safe_get("switch_wantag"), "maxis_fiber")) {
 					//VoIP: P1 tag. Cherry Cho added in 2012/11/6.
 					system("rtkswitch 40 1");			/* admin all frames on all ports */
-					//system("rtkswitch 38 2");			/* VoIP: P1  2 = 0x10 */
-					snprintf(parm_buf, sizeof(parm_buf), "%d", 2 << lan_port_bit_shift);
-					eval("rtkswitch", "38", parm_buf);
-					/* Internet:	untag: P9;   port: P4, P9 */
-					__setup_vlan(621, 0, 0x02000210);
-					/* VoIP:	untag: N/A;  port: P1, P4 */
-					__setup_vlan(821, 0, ((2 << lan_port_bit_shift) | 0x10));
+					stb_bitmask = stb_bitmask_shift(2);
+					snprintf(stb_bitmask_str, sizeof(stb_bitmask_str), "0x%x", stb_bitmask);
+					eval("rtkswitch", "38", stb_bitmask_str);		/* VoIP: P1  2 = 0x10 */
 
-					__setup_vlan(822, 0, ((2 << lan_port_bit_shift) | 0x10));		/* untag: N/A;  port: P1, P4 */ //VoIP Port: P1 tag
+					/* Internet:	untag: P9;   port: P4, P9 */
+					vlan_bitmask = vlan_bitmask_shift(0x02000210);
+					__setup_vlan(621, 0, vlan_bitmask);
+
+					/* VoIP:	untag: N/A;  port: P1, P4 */
+					vlan_bitmask = vlan_bitmask_shift(0x00000012);
+					__setup_vlan(821, 0, vlan_bitmask);
+
+					vlan_bitmask = vlan_bitmask_shift(0x00000012);
+					__setup_vlan(822, 0, vlan_bitmask);		/* untag: N/A;  port: P1, P4 */ //VoIP Port: P1 tag
 				}
 				else if(!strcmp(nvram_safe_get("switch_wantag"), "maxis_fiber_sp")) {
 					//VoIP: P1 tag. Cherry Cho added in 2012/11/6.
 					system("rtkswitch 40 1");			/* admin all frames on all ports */
-					//system("rtkswitch 38 2");			/* VoIP: P1  2 = 0x10 */
-					snprintf(parm_buf, sizeof(parm_buf), "%d", 2 << lan_port_bit_shift);
-					eval("rtkswitch", "38", parm_buf);
+					stb_bitmask = stb_bitmask_shift(2);
+					snprintf(stb_bitmask_str, sizeof(stb_bitmask_str), "0x%x", stb_bitmask);
+					eval("rtkswitch", "38", stb_bitmask_str);		/* VoIP: P1  2 = 0x10 */
+
 					/* Internet:	untag: P9;   port: P4, P9 */
-					__setup_vlan(11, 0, 0x02000210);
+					vlan_bitmask = vlan_bitmask_shift(0x02000210);
+					__setup_vlan(11, 0, vlan_bitmask);
+
 					/* VoIP:	untag: N/A;  port: P1, P4 */
 					//VoIP Port: P1 tag
-					//__setup_vlan(14, 0, 0x00000012);
-					__setup_vlan(14, 0, ((2 << lan_port_bit_shift) | 0x10));
+					vlan_bitmask = vlan_bitmask_shift(0x00000012);
+					__setup_vlan(14, 0, vlan_bitmask);
+				}
+				else if(!strcmp(nvram_safe_get("switch_wantag"), "maxis_cts")) {
+					//VoIP: P1 tag. Cherry Cho added in 2012/11/6.
+					system("rtkswitch 40 1");			/* admin all frames on all ports */
+					stb_bitmask = stb_bitmask_shift(2);
+					snprintf(stb_bitmask_str, sizeof(stb_bitmask_str), "0x%x", stb_bitmask);
+					eval("rtkswitch", "38", stb_bitmask_str);		/* VoIP: P1  2 = 0x10 */
+
+					/* Internet:	untag: P9;   port: P4, P9 */
+					vlan_bitmask = vlan_bitmask_shift(0x02000210);
+					__setup_vlan(41, 0, vlan_bitmask);
+
+					/* VoIP:	untag: N/A;  port: P1, P4 */
+					//VoIP Port: P1 tag
+					vlan_bitmask = vlan_bitmask_shift(0x00000012);
+					__setup_vlan(44, 0, vlan_bitmask);
+				}
+				else if(!strcmp(nvram_safe_get("switch_wantag"), "maxis_sacofa")) {
+					//VoIP: P1 tag. Cherry Cho added in 2012/11/6.
+					system("rtkswitch 40 1");			/* admin all frames on all ports */
+					stb_bitmask = stb_bitmask_shift(2);
+					snprintf(stb_bitmask_str, sizeof(stb_bitmask_str), "0x%x", stb_bitmask);
+					eval("rtkswitch", "38", stb_bitmask_str);		/* VoIP: P1  2 = 0x10 */
+
+					/* Internet:	untag: P9;   port: P4, P9 */
+					vlan_bitmask = vlan_bitmask_shift(0x02000210);
+					__setup_vlan(31, 0, vlan_bitmask);
+
+					/* VoIP:	untag: N/A;  port: P1, P4 */
+					//VoIP Port: P1 tag
+					vlan_bitmask = vlan_bitmask_shift(0x00000012);
+					__setup_vlan(34, 0, vlan_bitmask);
+				}
+				else if(!strcmp(nvram_safe_get("switch_wantag"), "maxis_tnb")) {
+					//VoIP: P1 tag. Cherry Cho added in 2012/11/6.
+					system("rtkswitch 40 1");			/* admin all frames on all ports */
+					stb_bitmask = stb_bitmask_shift(2);
+					snprintf(stb_bitmask_str, sizeof(stb_bitmask_str), "0x%x", stb_bitmask);
+					eval("rtkswitch", "38", stb_bitmask_str);			/* VoIP: P1  2 = 0x10 */
+
+					/* Internet:	untag: P9;   port: P4, P9 */
+					vlan_bitmask = vlan_bitmask_shift(0x02000210);
+					__setup_vlan(51, 0, vlan_bitmask);
+
+					/* VoIP:	untag: N/A;  port: P1, P4 */
+					//VoIP Port: P1 tag
+					vlan_bitmask = vlan_bitmask_shift(0x00000012);
+					__setup_vlan(54, 0, vlan_bitmask);
 				}
 #ifdef RTCONFIG_MULTICAST_IPTV
 			else if (!strcmp(nvram_safe_get("switch_wantag"), "movistar")) {
@@ -449,76 +627,96 @@ void config_switch()
 			}
 				else if (!strcmp(nvram_safe_get("switch_wantag"), "starhub")) {
 					//skip setting any lan port to IPTV port.
-					system("rtkswitch 38 0");
+					stb_bitmask = stb_bitmask_shift(0);
+					snprintf(stb_bitmask_str, sizeof(stb_bitmask_str), "0x%x", stb_bitmask);
+					eval("rtkswitch", "38", stb_bitmask_str);
 #if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_EN7561)
-					__setup_vlan(2, 0, 0x02100210);
+					vlan_bitmask = vlan_bitmask_shift(0x02100210);
+					__setup_vlan(2, 0, vlan_bitmask);
 #endif
 				}
 #endif
 				else if (!strcmp(nvram_safe_get("switch_wantag"), "meo")) {
 					system("rtkswitch 40 1");			/* admin all frames on all ports */
-					//system("rtkswitch 38 1");			/* VoIP: P0 */
-					snprintf(parm_buf, sizeof(parm_buf), "%d", 1 << lan_port_bit_shift);
-					eval("rtkswitch", "38", parm_buf);
+					stb_bitmask = stb_bitmask_shift(1);
+					snprintf(stb_bitmask_str, sizeof(stb_bitmask_str), "0x%x", stb_bitmask);
+					eval("rtkswitch", "38", stb_bitmask_str);			/* VoIP: P0 */
+
 					/* Internet/VoIP:	untag: P9;   port: P0, P4, P9 */
-					//__setup_vlan(12, 0, 0x02000211);
-					__setup_vlan(12, 0, ((1 << lan_port_bit_shift) | 0x2000210));
+					vlan_bitmask = vlan_bitmask_shift(0x02000211);
+					__setup_vlan(12, 0, vlan_bitmask);
 				}
 				else if (!strcmp(nvram_safe_get("switch_wantag"), "vodafone")) {
 					system("rtkswitch 40 1");			/* admin all frames on all ports */
-					//system("rtkswitch 38 3");			/* Vodafone: P0  IPTV: P1 */
-					snprintf(parm_buf, sizeof(parm_buf), "%d", 3 << lan_port_bit_shift);
-					eval("rtkswitch", "38", parm_buf);
+					stb_bitmask = stb_bitmask_shift(3);
+					snprintf(stb_bitmask_str, sizeof(stb_bitmask_str), "0x%x", stb_bitmask);
+					eval("rtkswitch", "38", stb_bitmask_str);		/* Vodafone: P0  IPTV: P1 */
+
 					/* Internet:	untag: P9;   port: P4, P9 */
-					//__setup_vlan(100, 1, 0x02000211);
-					__setup_vlan(100, 1, ((1 << lan_port_bit_shift) | 0x2000210));
+					vlan_bitmask = vlan_bitmask_shift(0x02000211);
+					__setup_vlan(100, 1, vlan_bitmask);
+
 					/* IPTV:	untag: N/A;  port: P0, P4 */
-					//__setup_vlan(101, 0, 0x00000011);
-					__setup_vlan(101, 0, ((1 << lan_port_bit_shift) | 0x10));
+					vlan_bitmask = vlan_bitmask_shift(0x00000011);
+					__setup_vlan(101, 0, vlan_bitmask);
+
 					/* Vodafone:	untag: P1;   port: P0, P1, P4 */
-					//__setup_vlan(105, 1, 0x00020013);
-					__setup_vlan(105, 1, ((0x20003 << lan_port_bit_shift) | 0x10));
+					vlan_bitmask = vlan_bitmask_shift(0x00020013);
+					__setup_vlan(105, 1, vlan_bitmask);
 				}
 				else if (!strcmp(nvram_safe_get("switch_wantag"), "hinet")) { /* Hinet MOD */
-#if defined(RTAX53U)
-					eval("rtkswitch", "8", "3");			/* LAN4 with WAN */
-#else
+					if (sw_bridge_iptv_different_switches()) {
+						/* Bridge:	untag: P0, P4, P9;	port: P0, P4, P9
+						 * WAN:		no VLAN (hacked in API for SW based IPTV)
+						 * STB:		Ctag, return value of get_sw_bridge_iptv_vid().
+						 */
+						__setup_vlan(get_sw_bridge_iptv_vid(), 0, 0x02110211);
+					} else {
+#if defined(RTCONFIG_3LANPORT_DEVICE)
+					eval("rtkswitch", "8", "3");			/* LAN3 with WAN */
+#elif defined(RTCONFIG_PORT2_DEVICE)
+					eval("rtkswitch", "8", "1");			/* LAN1 with WAN */
+#else					
 					eval("rtkswitch", "8", "4");			/* LAN4 with WAN */
 #endif
+					}
+				}
+				else if (!strcmp(nvram_safe_get("switch_wantag"), "hinet_mesh")) { /* Hinet MOD Mesh */
+					/* Nothing to do. */
 				}
 				else {
 					/* Cherry Cho added in 2011/7/11. */
 					/* Initialize VLAN and set Port Isolation */
-					if(strcmp(nvram_safe_get("switch_wan1tagid"), "") && strcmp(nvram_safe_get("switch_wan2tagid"), "")){
-						//system("rtkswitch 38 3");		// 3 = 0x11 IPTV: P0  VoIP: P1
-						snprintf(parm_buf, sizeof(parm_buf), "%d", 3 << lan_port_bit_shift);
-						eval("rtkswitch", "38", parm_buf);
-					}else if(strcmp(nvram_safe_get("switch_wan1tagid"), "")){
-						//system("rtkswitch 38 1");		// 1 = 0x01 IPTV: P0
-						snprintf(parm_buf, sizeof(parm_buf), "%d", 1 << lan_port_bit_shift);
-						eval("rtkswitch", "38", parm_buf);
-					}else if(strcmp(nvram_safe_get("switch_wan2tagid"), "")){
-						//system("rtkswitch 38 2");		// 2 = 0x10 VoIP: P1
-						snprintf(parm_buf, sizeof(parm_buf), "%d", 2 << lan_port_bit_shift);
-						eval("rtkswitch", "38", parm_buf);
-					}else
-						system("rtkswitch 38 0");		//No IPTV and VoIP ports
+					if(strcmp(nvram_safe_get("switch_wan1tagid"), "") && strcmp(nvram_safe_get("switch_wan2tagid"), ""))
+						stb_bitmask = stb_bitmask_shift(3);		// 3 = 0x11 IPTV: P0  VoIP: P1
+					else if(strcmp(nvram_safe_get("switch_wan1tagid"), ""))
+						stb_bitmask = stb_bitmask_shift(1);		// 1 = 0x01 IPTV: P0
+					else if(strcmp(nvram_safe_get("switch_wan2tagid"), ""))
+						stb_bitmask = stb_bitmask_shift(2);		// 2 = 0x10 VoIP: P1
+					else
+						stb_bitmask = stb_bitmask_shift(0);		//No IPTV and VoIP ports
+					snprintf(stb_bitmask_str, sizeof(stb_bitmask_str), "0x%x", stb_bitmask);
+					eval("rtkswitch", "38", stb_bitmask_str);
 
 					/*++ Get and set Vlan Information */
 					t = nvram_get_int("switch_wan0tagid") & 0x0fff;
 					if (t != 0) {
+
 						// Internet on WAN (port 4)
 						if (t >= 2 && t <= 4094)
 							vlan_val = t;
 
 						prio_val = nvram_get_int("switch_wan0prio") & 0x7;
 
-						__setup_vlan(vlan_val, prio_val, 0x02000210);
+						vlan_bitmask = vlan_bitmask_shift(0x02000210);
+
+						__setup_vlan(vlan_val, prio_val, vlan_bitmask);
 					}
-#if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_EN7561)
+#if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_EN7561)
 					else {
 						/* Internet: untag: P4, P9; port: P4, P9 */
-						__setup_vlan(2, 0, 0x02100210);
+						vlan_bitmask = vlan_bitmask_shift(0x02100210);
+						__setup_vlan(2, 0, vlan_bitmask);
 					}
 #endif
 	
@@ -534,8 +732,8 @@ void config_switch()
 							mask = 0x00030013;	//IPTV=VOIP
 						else
 							mask = 0x00010011;	//IPTV Port: P0 untag 65553 = 0x10 011
-						//__setup_vlan(vlan_val, prio_val, mask);
-						__setup_vlan(vlan_val, prio_val, (((mask & 0xf000f) << lan_port_bit_shift) | 0x10));
+						vlan_bitmask = vlan_bitmask_shift(mask);
+						__setup_vlan(vlan_val, prio_val, vlan_bitmask);
 					}
 
 					t = nvram_get_int("switch_wan2tagid") & 0x0fff;
@@ -551,17 +749,55 @@ void config_switch()
 						else
 							mask = 0x00020012;	//VoIP Port: P1 untag
 
-						//__setup_vlan(vlan_val, prio_val, mask);
-						__setup_vlan(vlan_val, prio_val, (((mask & 0xf000f) << lan_port_bit_shift) | 0x10));
+						vlan_bitmask = vlan_bitmask_shift(mask);
+						__setup_vlan(vlan_val, prio_val, vlan_bitmask);
 					}
 				}
 			}
 		}
-		else
+		else /* switch_wantag empty case */
 		{
-			sprintf(parm_buf, "%d", stbport);
-			if (stbport)
+			const int sw_br_vid = get_sw_bridge_iptv_vid();
+
+			if (stbport) {
+				sprintf(parm_buf, "%d", stbport);
 				eval("rtkswitch", "8", parm_buf);
+			}
+			if (sw_based_iptv()) {
+				/* WAN:	no VLAN (hacked in API for SW based IPTV)
+				 * STB:	according to switch_stb_x nvram variable.
+				 */
+				switch (stbport) {
+				case 0:	/* none */
+					break;
+				case 1:	/* LAN1 */
+					/* untag: P3, P4, P9;	port: P3, P4, P9 */
+					__setup_vlan(sw_br_vid, 0, 0x02180218);
+					break;
+				case 2:	/* LAN2 */
+					/* untag: P2, P4, P9;	port: P2, P4, P9 */
+					__setup_vlan(sw_br_vid, 0, 0x02140214);
+					break;
+				case 3:	/* LAN3 */
+					/* untag: P1, P4, P9;	port: P1, P4, P9 */
+					__setup_vlan(sw_br_vid, 0, 0x02120212);
+					break;
+				case 4:	/* LAN4 */
+					/* untag: P0, P4, P9;	port: P0, P4, P9 */
+					__setup_vlan(sw_br_vid, 0, 0x02110211);
+					break;
+				case 5:	/* LAN1 & LAN2 */
+					/* untag: P3, P2, P4, P9;	port: P3, P2, P4, P9 */
+					__setup_vlan(sw_br_vid, 0, 0x021C021C);
+					break;
+				case 6:	/* LAN3 & LAN4 */
+					/* untag: P1, P0, P4, P9;	port: P1, P0, P4, P9 */
+					__setup_vlan(sw_br_vid, 0, 0x02130213);
+					break;
+				default:
+					dbg("%s: unknown stb_stb_x %d\n", __func__, nvram_get_int("switch_stb_x"));
+				}
+			}
 		}
 
 		/* unknown unicast storm control */
@@ -637,6 +873,8 @@ void config_switch()
 	eval("rtkswitch", "114");	// link up wan port(s)
 #endif
 
+	post_config_switch();
+
 #if defined(RTCONFIG_BLINK_LED)
 	if (is_swports_bled("led_lan_gpio")) {
 		update_swports_bled("led_lan_gpio", nvram_get_int("lanports_mask"));
@@ -679,6 +917,7 @@ void init_wl(void)
 	memset(tmpStr1, 0, sizeof(tmpStr1));
 	memset(tmpStr2, 0, sizeof(tmpStr2));
 	memset(tmpStr3, 0, sizeof(tmpStr3));
+	memset(cmd, 0, sizeof(cmd));
 	dst = buffer;
 	memset(buffer, 0, sizeof(buffer));
 	memset(dst, 0, MAX_REGSPEC_LEN+1);
@@ -819,14 +1058,77 @@ void init_wl(void)
 	sleep(1);
 }
 
+
+void wl_ifdown(void)
+{
+	char *wl_ifnames;
+	char nv[32], vif[IFNAMSIZ];
+	int unit;
+	char word[8], *next = NULL;
+	int vidx;
+
+#if defined(RTCONFIG_AMAS) && defined(RTCONFIG_BLINK_LED)
+	if (aimesh_re_node()) {
+		for (unit = 0; unit < MAX_NR_WL_IF; ++unit) {
+			remove_netdev_bled_if(get_wl_led_gpio_nv(unit), get_staifname(unit));
+		}
+	}
+#endif
+
+	unit = 0;
+	wl_ifnames = strdup(nvram_safe_get("wl_ifnames"));
+	if (wl_ifnames) {
+		foreach (word, wl_ifnames, next)
+		{
+			ifconfig(word, 0, NULL, NULL);
+#if defined(RTCONFIG_AMAS_WGN)
+#if defined(RTCONFIG_RALINK) && defined(RALINK_DBDC_MODE)
+			for (vidx = 1; vidx < MAX_SUBIF_NUM; vidx++) {
+				snprintf(nv, sizeof(nv), "wl%d.%d_ifname", unit, vidx);
+				snprintf(vif, sizeof(vif), "%s", nvram_safe_get(nv));
+				if (strlen(vif))
+					ifconfig(vif, 0, NULL, NULL);
+			}
+#endif
+#endif	/* RTCONFIG_AMAS_WGN */
+			unit++;
+		}
+		free(wl_ifnames);
+	}
+
+#if defined(RTCONFIG_RALINK) && defined(RTCONFIG_AMAS)
+	for (unit = 0; unit < MAX_NR_WL_IF; unit++) {
+		snprintf(nv, sizeof(nv), "wl%d_vifs", unit);
+		snprintf(vif, sizeof(vif), "%s", nvram_safe_get(nv));
+		if (strlen(vif))
+			ifconfig(vif, 0, NULL, NULL);
+	}
+#endif
+
+#if defined(RTCONFIG_RALINK)
+	/* Turn off WDS interfaces. */
+	for (vidx = 0; vidx < 8; ++vidx) {
+		snprintf(vif, sizeof(vif), "wds%d", vidx);
+		if (iface_exist(vif))
+			ifconfig(vif, 0, NULL, NULL);
+		snprintf(vif, sizeof(vif), "wdsx%d", vidx);
+		if (iface_exist(vif))
+			ifconfig(vif, 0, NULL, NULL);
+	}
+#endif
+}
+
 void fini_wl(void)
 {
+	wl_ifdown();	/* all wireless interface down before rmmod wifi modules */
 #if defined(RTCONFIG_EASYMESH)
 	if (module_loaded("mapfilter"))
 		modprobe_r("mapfilter");
 #endif
-	if (module_loaded("mtkhnat"))
+	if (module_loaded("mtkhnat")){
+		unregister_hnat_wlifaces();
 		modprobe_r("mtkhnat");
+	}
 #if defined (RTCONFIG_WLMODULE_MT7615E_AP)
 	if (module_loaded("mt_wifi_7615E"))
 		modprobe_r("mt_wifi_7615E");
@@ -918,6 +1220,9 @@ void gen_ra_sku(const char *reg_spec)
 }
 #endif	/* RA_SINGLE_SKU */
 
+#if defined(TUFAX4200) || defined(TUFAX6000) // EEPROM runtime fix
+void eeprom_check(void);
+#endif
 void init_syspara(void)
 {
 	unsigned char buffer[16];
@@ -936,7 +1241,14 @@ void init_syspara(void)
 	char fwver[8];
 	char blver[20];
 	unsigned char txbf_para[33];
-	char ea[ETHER_ADDR_LEN];
+	char ea[ETHER_ADDR_LEN] __attribute__((unused));
+#ifdef RTCONFIG_ODMPID
+#ifdef RTCONFIG_32BYTES_ODMPID
+        char modelname[32];
+#else
+	char modelname[16];
+#endif
+#endif
 	const char *reg_spec_def;
 
 	char brstp;
@@ -1016,6 +1328,7 @@ void init_syspara(void)
 	nvram_set("bh1macaddr", macaddr2);
 #endif
 
+#if !defined(RTCONFIG_MT798X)
 	if (FRead(dst, OFFSET_MAC_GMAC0, bytes)<0)
 		dbg("READ MAC address GMAC0: Out of scope\n");
 	else
@@ -1026,38 +1339,39 @@ void init_syspara(void)
 				FWrite(ea, OFFSET_MAC_GMAC0, 6);
 		}
 	}
-#if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_EN7561)
 	if (FRead(dst, OFFSET_MAC_GMAC2, bytes)<0)
 		dbg("READ MAC address GMAC2: Out of scope\n");
-#elif defined(RTCONFIG_MT798X)
-	if (FRead(dst, OFFSET_MAC_GMAC1, bytes)<0)
-		dbg("READ MAC address GMAC1: Out of scope\n");
-#endif
 	else
 	{
 		if (buffer[0]==0xff)
 		{
 			if (ether_atoe(macaddr2, ea))
-#if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_EN7561)
 				FWrite(ea, OFFSET_MAC_GMAC2, 6);
-#elif defined(RTCONFIG_MT798X)
-				FWrite(ea, OFFSET_MAC_GMAC1, 6);
-#endif
 		}
 	}
-	{
+#endif
+
 #ifdef RTCONFIG_ODMPID
-		char modelname[16];
+#ifdef RTCONFIG_32BYTES_ODMPID
+        FRead(modelname, OFFSET_32BYTES_ODMPID, 32);
+        modelname[31] = '\0';
+	if (modelname[0] != 0 && (unsigned char)(modelname[0]) != 0xff && is_valid_hostname(modelname) && strcmp(modelname, "ASUS")) {
+                nvram_set("odmpid", modelname);
+        } else
+#endif
+        {
+
 		FRead(modelname, OFFSET_ODMPID, sizeof(modelname));
 		modelname[sizeof(modelname)-1] = '\0';
-		if(modelname[0] != 0 && (unsigned char)(modelname[0]) != 0xff && is_valid_hostname(modelname) && strcmp(modelname, "ASUS"))
-		{
-			nvram_set("odmpid", modelname);
-		}
-		else
+		if (modelname[0] != 0 && (unsigned char)(modelname[0]) != 0xff && is_valid_hostname(modelname) && strcmp(modelname, "ASUS")) {
+				nvram_set("odmpid", modelname);
+		
+                } else
+                        nvram_unset("odmpid");
+        }
+#else
+        nvram_unset("odmpid");
 #endif
-			nvram_unset("odmpid");
-	}
 
 	/* reserved for Ralink. used as ASUS country code. */
 #if !defined(RTCONFIG_NEW_REGULATION_DOMAIN)
@@ -1561,6 +1875,47 @@ int wl_exist(char *ifname, int band)
 	return !ret;
 }
 
+#ifdef RTCONFIG_SWCONFIG
+void set_wan_tag(char *interface)
+{
+	int model, wan_vid, iptv_vid, voip_vid, switch_stb;
+	char wan_dev[10], port_id[7], vid_dev[10];
+	
+	model = get_model();
+	wan_vid = nvram_get_int("switch_wan0tagid");
+	iptv_vid = nvram_get_int("switch_wan1tagid");
+	voip_vid = nvram_get_int("switch_wan2tagid");
+
+	switch_stb = nvram_get_int("switch_stb_x");
+
+	eval("vconfig", "set_name_type", "VLAN_PLUS_VID_NO_PAD");
+#ifdef RTCONFIG_MULTICAST_IPTV
+		if (switch_stb >= 7) {
+			if (iptv_vid) { /* config IPTV on wan port */
+_dprintf("*** Multicast IPTV: config IPTV on wan port ***\n");
+				/* Handle wan(IPTV) vlan traffic */
+				sprintf(port_id, "%d", iptv_vid);
+				eval("vconfig", "add", interface, port_id);
+				sprintf(vid_dev, "vlan%d", iptv_vid);
+				eval("ifconfig", vid_dev, "up");
+				nvram_set("wan10_ifname", vid_dev);
+			}
+		}
+		if (switch_stb >= 8) {
+			if (voip_vid) { /* config voip on wan port */
+_dprintf("*** Multicast IPTV: config VOIP on wan port ***\n");
+				/* Handle wan(VOIP) vlan traffic */
+				sprintf(port_id, "%d", voip_vid);
+				eval("vconfig", "add", interface, port_id);
+				sprintf(vid_dev, "vlan%d", voip_vid);
+				eval("ifconfig", vid_dev, "up");
+				nvram_set("wan11_ifname", vid_dev);
+			}
+		}
+#endif
+
+}
+#else	/* !RTCONFIG_SWCONFIG */
 void set_wan_tag(char *interface) {
 	int model, wan_vid; //, iptv_vid, voip_vid, wan_prio, iptv_prio, voip_prio;
 	char wan_dev[10], port_id[7];
@@ -1599,6 +1954,7 @@ void set_wan_tag(char *interface) {
 		int iptv_vid, voip_vid, iptv_prio, voip_prio, switch_stb;
 		int mang_vid, mang_prio;
 		char iptv_prio_str[4] = "4";
+		char voip_prio_str[4], mang_prio_str[4];
 
 		iptv_vid  = nvram_get_int("switch_wan1tagid") & 0x0fff;
 		voip_vid  = nvram_get_int("switch_wan2tagid") & 0x0fff;
@@ -1638,7 +1994,8 @@ void set_wan_tag(char *interface) {
 				__setup_vlan(voip_vid, voip_prio, 0x00000210);	/* config WAN & WAN_MAC port */
 
 				if (voip_prio) { /* config priority */
-					eval("vconfig", "set_egress_map", wan_dev, "0", (char *)voip_prio);
+					snprintf(voip_prio_str, sizeof(voip_prio_str), "%d", voip_prio);
+					eval("vconfig", "set_egress_map", wan_dev, "0", voip_prio_str);
 				}
 			}
 		}
@@ -1652,13 +2009,15 @@ void set_wan_tag(char *interface) {
 				__setup_vlan(mang_vid, mang_prio, 0x00000210);	/* config WAN & WAN_MAC port */
 
 				if (mang_prio) { /* config priority */
-					eval("vconfig", "set_egress_map", wan_dev, "0", (char *)iptv_prio);
+					snprintf(mang_prio_str, sizeof(mang_prio_str), "%d", mang_prio);
+					eval("vconfig", "set_egress_map", wan_dev, "0", mang_prio_str);
 				}
 			}
 		}
 	}
 #endif
 }
+#endif //RTCONFIG_SWCONFIG
 
 #ifdef RA_SINGLE_SKU
 void reset_ra_sku(const char *location, const char *country, const char *reg_spec)
@@ -1690,7 +2049,7 @@ void reset_ra_sku(const char *location, const char *country, const char *reg_spe
 void setup_smp(int which)
 {
 #if defined(RTCONFIG_MT798X)
-	eval("/sbin/smp.sh");
+	eval("/sbin/smp.sh", NULL);
 #else
 	if(which == 1)
 		eval("/sbin/smp.sh", "usb0", NULL);
@@ -2698,3 +3057,4 @@ void easymesh_agent(void)
 }
 
 #endif
+
