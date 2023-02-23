@@ -21,6 +21,7 @@ export KERNEL_BINARY=$(LINUXDIR)/vmlinux
 ifeq ($(RT4GAC86U),y)
 export EXTRACFLAGS += -DRT4GAC86U
 export PLATFORM := arm-glibc
+export PLATFORM_ROUTER := mt7622
 export PLATFORM_ARCH := arm-glibc
 export TOOLS := /opt/toolchain-aarch64_cortex-a53+neon-vfpv4_gcc-5.4.0_glibc-2.24
 export CROSS_COMPILE := $(TOOLS)/bin/aarch64-openwrt-linux-gnu-
@@ -35,7 +36,7 @@ export CONFIGURE := ./configure --host=arm-linux --build=$(BUILD)
 export HOSTCONFIG := linux-aarch64
 else ifeq ($(MT798X),y)
 export MUSL64=y
-export PLATFORM_ROUTER := mt7986
+export PLATFORM_ROUTER := mt798x
 export PLATFORM := arm-musl
 export PLATFORM_ARCH := arm-musl
 export TOOLS := /opt/toolchain-aarch64_cortex-a53_gcc-8.4.0_musl
@@ -53,6 +54,7 @@ export ENTRYADDR := 48080000
 export LOADADDR := $(ENTRYADDR)
 else
 export MUSL32=y
+export PLATFORM_ROUTER := mt7629
 export PLATFORM := arm-musl
 export PLATFORM_ARCH := arm-musl
 export TOOLS := /opt/lede-toolchain-mediatek-mt7629_gcc-5.4.0_musl-1.1.24_eabi.Linux-x86_64/toolchain-arm_cortex-a7_gcc-5.4.0_musl-1.1.24_eabi

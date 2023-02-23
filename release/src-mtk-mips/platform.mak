@@ -27,6 +27,7 @@ export BUILD := $(shell (gcc -dumpmachine))
 export KERNEL_BINARY=$(LINUXDIR)/vmlinux
 ifeq ($(MT7621),y)
 export MUSL32=y
+export PLATFORM_ROUTER := mt7621
 export PLATFORM := mipsel-musl
 export PLATFORM_ARCH := mipsel-musl
 export TOOLS :=/opt/toolchain-mipsel_24kc_gcc-5.4.0_musl-1.1.24

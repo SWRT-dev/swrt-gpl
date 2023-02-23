@@ -21,6 +21,24 @@ jobs:
             cd mtk/release/src-mtk-arm
             sudo /home/docker/envs/toolchain.sh
             make swrt-rm-ax6000
+  testmt7621:
+    docker:
+      - image: paldier/swrt-docker:latest
+        environment:
+          PROJECT_DIR: "/home/docker/project"
+          TERM: "xterm-256color"
+    resource_class: large
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: build mt7621
+          shell: /bin/sh
+          command: |
+            git clone --depth=1 https://github.com/SWRT-dev/swrt-gpl mt7621
+            cd mt7621/release/src-mtk-mips
+            sudo /home/docker/envs/toolchain.sh
+            make rt-ac85p
   testqca:
     docker:
       - image: paldier/swrt-docker:latest
@@ -61,11 +79,12 @@ workflows:
   build-workflow:
     jobs:
       - testmtk
+      - testmt7621
       - testqca:
           requires:
             - testmtk
       - testbcm470x:
           requires:
-            - testqca
+            - testmt7621
 
 

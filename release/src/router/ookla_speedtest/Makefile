@@ -8,16 +8,16 @@ OOKLA_PATH = OOKLA-$(OOKLA_VER)
 prebuild:
 	-@mkdir prebuild
 # QCA
-ifeq ($(or $(RTCONFIG_SOC_IPQ8064),$(RTCONFIG_SOC_IPQ8074),$(RTCONFIG_SOC_IPQ40XX)),y)
+ifeq ($(or $(RTCONFIG_SOC_IPQ8064),$(RTCONFIG_SOC_IPQ8074)),y)
 	-cp -f $(OOKLA_PATH)/ookla-IPQ807-401X  prebuild/ookla # IPQ80XX / IPQ40XX
-else ifeq ($(RTCONFIG_SOC_IPQ60XX),y)
-ifeq ($(RTCONFIG_QCA_PLC2),y)
+else ifeq ($(or $(RTCONFIG_SOC_IPQ60XX),$(RTCONFIG_SOC_IPQ40XX)),y)
 	-cp -f $(OOKLA_PATH)/ookla-IPQ60XX      prebuild/ookla # IPQ60XX
-endif
 else ifeq ($(or $(RTCONFIG_QCN550X),$(RTCONFIG_LANTIQ)),y)
 	-cp -f $(OOKLA_PATH)/ookla-QCN5502      prebuild/ookla # QCN550X (3.7.12.35)
 else ifeq ($(RTCONFIG_RALINK_MT7621),y)
 	-cp -f $(OOKLA_PATH)/ookla-mt7621      prebuild/ookla
+else ifeq ($(RTCONFIG_MT798X),y)
+	-cp -f $(OOKLA_PATH)/ookla-MT7986A  prebuild/ookla     # MT7986A
 else
 	# nothing
 endif
