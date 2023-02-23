@@ -614,14 +614,38 @@ define platformKernelConfig
 		sed -i "/CONFIG_SWRT_FULLCONE/d" $(1); \
 		echo "# CONFIG_SWRT_FULLCONE is not set" >>$(1); \
 		echo "CONFIG_SWRT_FULLCONEV2=y" >>$(1); \
-	else \
+	elif [ "$(SWRT_FULLCONE)" = "y" ]; then \
 		sed -i "/CONFIG_SWRT_FULLCONE/d" $(1); \
 		echo "CONFIG_SWRT_FULLCONE=y" >>$(1); \
+		echo "# CONFIG_SWRT_FULLCONEV2 is not set" >>$(1); \
+	else \
+		sed -i "/CONFIG_SWRT_FULLCONE/d" $(1); \
+		echo "# CONFIG_SWRT_FULLCONE is not set" >>$(1); \
 		echo "# CONFIG_SWRT_FULLCONEV2 is not set" >>$(1); \
 	fi; \
 	if [ "$(BUILD_NAME)" = "RM-AX6000" ]; then \
 		sed -i "/CONFIG_LEDS_CLASS_MULTICOLOR\>/d" $(1); \
 		echo "CONFIG_LEDS_CLASS_MULTICOLOR=y" >>$(1); \
+	fi; \
+	if [ "$(WIREGUARD)" = "y" ]; then \
+		echo "CONFIG_CRYPTO_SHA256_ARM64=y" >>$(1); \
+		echo "CONFIG_CRYPTO_SHA512_ARM64=y" >>$(1); \
+		echo "CONFIG_CRYPTO_SHA1_ARM64_CE=y" >>$(1); \
+		echo "CONFIG_CRYPTO_SHA2_ARM64_CE=y" >>$(1); \
+		echo "CONFIG_CRYPTO_SHA512_ARM64_CE=y" >>$(1); \
+		echo "CONFIG_CRYPTO_SHA3_ARM64=y" >>$(1); \
+		echo "CONFIG_CRYPTO_SM3_ARM64_CE=y" >>$(1); \
+		echo "CONFIG_CRYPTO_SM4_ARM64_CE=y" >>$(1); \
+		echo "CONFIG_CRYPTO_GHASH_ARM64_CE=y" >>$(1); \
+		echo "CONFIG_CRYPTO_AES_ARM64=y" >>$(1); \
+		echo "CONFIG_CRYPTO_AES_ARM64_CE=y" >>$(1); \
+		echo "CONFIG_CRYPTO_AES_ARM64_CE_CCM=y" >>$(1); \
+		echo "CONFIG_CRYPTO_AES_ARM64_CE_BLK=y" >>$(1); \
+		echo "CONFIG_CRYPTO_AES_ARM64_NEON_BLK=y" >>$(1); \
+		echo "CONFIG_CRYPTO_CHACHA20_NEON=y" >>$(1); \
+		echo "CONFIG_CRYPTO_POLY1305_NEON=y" >>$(1); \
+		echo "CONFIG_CRYPTO_NHPOLY1305_NEON=y" >>$(1); \
+		echo "CONFIG_CRYPTO_AES_ARM64_BS=y" >>$(1); \
 	fi; \
 	)
 endef
