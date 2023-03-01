@@ -827,7 +827,7 @@ function clickEvent(obj){
 		var gn_ssid_array = [gn_array_2g, gn_array_5g, gn_array_5g_2];
 		cookie.set("wireless_subunit", gn_index, 30);
 		for(var i = 0; i < wl_nband_title.length; i += 1) {
-			document.getElementById("wl_band_" + i + "").innerHTML = gn_ssid_array[i][gn_index - 1][1]; //array[2g/5g/5g-2][gn1/gn2/gn3][ssid]
+			document.getElementById("wl_band_" + i + "").innerHTML = decodeURIComponent(gn_ssid_array[i][gn_index - 1][1]); //array[2g/5g/5g-2][gn1/gn2/gn3][ssid]
 		}
 	}
 	else if(obj.id.indexOf("Client") > 0){
@@ -1209,6 +1209,8 @@ function edit_confirm(){
 					if(typeof app_group_tag != "undefined")	onEditClient[6] = app_group_tag;
 					var app_age_tag = originalCustomListArray[i].split('>')[7]; // for app age tag
 					if(typeof app_age_tag != "undefined")	onEditClient[7] = app_age_tag;
+					var app_groupid_tag = originalCustomListArray[i].split('>')[8]; // for app groupid tag
+					if(typeof app_groupid_tag != "undefined")	onEditClient[8] = app_groupid_tag;
 					originalCustomListArray.splice(i, 1); // remove the selected client from original list
 				}
 			}
@@ -2463,7 +2465,7 @@ function closeClientDetailView() {
 				</tr>
 				<tr>
 					<td id="clients_td" width="150" bgcolor="#444f53" align="center" valign="top" class="NM_radius" style="padding-bottom:15px;">
-						<div class="block_all_icon"><div>Blocked</div></div>
+						<div class="block_all_icon"><div><#Blocked#></div></div>
 						<script type="text/javascript">
 							$(".block_all_icon").unbind("click").click(function(e){
 								e = e || event;

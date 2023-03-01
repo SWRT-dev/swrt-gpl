@@ -434,7 +434,7 @@ static int applydb_cgi(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg, ch
 	if ( !strcmp("", post_db_buf)){
 		//get
 		snprintf(post_db_buf, sizeof(post_json_buf), "%s", post_buf_backup + 1);
-		unescape(post_db_buf);
+		unescape(post_db_buf, sizeof(post_json_buf));
 		//logmessage("HTTPD", "url: %s,%s", post_db_buf, name);
 		strlcpy(post_json_buf, post_db_buf, sizeof(post_json_buf));
 		result = strtok( post_json_buf, "&" );
@@ -465,7 +465,7 @@ static int applydb_cgi(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg, ch
 	}
 	} else {
 	//post
-	unescape(post_db_buf);
+	unescape(post_db_buf, sizeof(post_json_buf));
 	//logmessage("HTTPD", "name: %s post: %s", name, post_json_buf);
 	//logmessage("HTTPD", "name: %s post: %s", name, post_db_buf);
 	strlcpy(post_json_buf, post_db_buf, sizeof(post_json_buf));

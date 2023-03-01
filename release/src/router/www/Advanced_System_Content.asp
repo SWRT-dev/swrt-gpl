@@ -245,6 +245,7 @@ function initial(){
 		document.form.dns_probe_chk.checked = false;
 		document.form.wandog_enable_chk.checked = false;
 	}
+	updatDNSListOnline();
 	show_network_monitoring();
 
 	if(!HTTPS_support){
@@ -291,7 +292,7 @@ function initial(){
 	}
 	
 	if(sw_mode != 1){
-		document.getElementById('misc_http_x_tr').style.display = "none";
+		$("#accessfromwan_settings").hide();
 		hideport(0);
 		document.form.misc_http_x.disabled = true;
 		document.form.misc_httpsport_x.disabled = true;
@@ -300,7 +301,7 @@ function initial(){
 	}
 	else{
 
-		if(wan_proto=="v6plus" && array_ipv6_s46_ports.length > 1){
+		if(wan_proto=="v6plus" && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
 			$(".setup_info_icon.https").show();
 			$(".setup_info_icon.https").click(
 				function() {
@@ -312,6 +313,12 @@ function initial(){
 					}
 				}
 			);
+			$("#misc_httpsport_x").focus(
+				function() {
+					var position_text = $("#misc_httpsport_x").position();
+					pop_s46_ports(position_text);
+				}
+			);
 		}
 		hideport(document.form.misc_http_x[0].checked);
 	}
@@ -319,7 +326,7 @@ function initial(){
 	if(ssh_support){
 		check_sshd_enable('<% nvram_get("sshd_enable"); %>');
 
-		if(wan_proto=="v6plus" && array_ipv6_s46_ports.length > 1){
+		if(wan_proto=="v6plus" && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
 			$(".setup_info_icon.ssh").show();
 			$(".setup_info_icon.ssh").click(
 				function() {
@@ -329,6 +336,12 @@ function initial(){
 						var position = $(".setup_info_icon.ssh").position();
 						pop_s46_ports(position);
 					}
+				}
+			);
+			$("#sshd_port").focus(
+				function() {
+					var position_text = $("#sshd_port").position();
+					pop_s46_ports(position_text);
 				}
 			);
 		}
@@ -409,7 +422,7 @@ function applyRule(){
 		var isFromWAN = (function(){
 			var lanIpAddr = '<% nvram_get("lan_ipaddr"); %>';
 			if(location.hostname == lanIpAddr) return false;
-			else if(location.hostname == "router.asus.com") return false;
+			else if(location.hostname == "<#Web_DOMAIN_NAME#>") return false;
 			else if(location.hostname == "repeater.asus.com") return false;
 			else if(location.hostname == "cellspot.asus.com") return false;
 			else return true;
@@ -534,8 +547,8 @@ function applyRule(){
 			ncb_enable_option_flag = true;
 		}
 
-		if((document.form.sw_mode_radio.value==1 && sw_mode!=3) ||
-			(document.form.sw_mode_radio.value==0 && sw_mode==3) ){
+		if(document.getElementById("sw_mode_radio_tr").style.display != 'none' 
+		&& ((document.form.sw_mode_radio.value==1 && sw_mode!=3) || (document.form.sw_mode_radio.value==0 && sw_mode==3))){
 			if (sw_mode == 1) document.form.sw_mode.value = 3;
 			else if (sw_mode == 3) document.form.sw_mode.value = 1;
 
@@ -603,12 +616,19 @@ function applyRule(){
 			action_script_tmp += "pwrsave;";
 
 		if(needReboot){
+
 			action_script_tmp = "reboot";
 			document.form.action_wait.value = httpApi.hookGet("get_default_reboot_time");
+			if(confirm("<#AiMesh_Node_Reboot#>")){
+				document.form.action_script.value = action_script_tmp;
+				document.form.submit();
+			}
 		}
-
-		document.form.action_script.value = action_script_tmp;
-		document.form.submit();
+		else{
+			
+			document.form.action_script.value = action_script_tmp;
+			document.form.submit();
+		}
 	}
 }
 
@@ -648,7 +668,7 @@ function validForm(){
 			return false;
 		}
 
-		if(wan_proto=="v6plus" && array_ipv6_s46_ports.length > 1){
+		if(wan_proto=="v6plus" && s46_ports_check_flag && array_ipv6_s46_ports.length > 1 && document.form.sshd_enable.value == 1){
 			if (!validator.range_s46_ports(document.form.sshd_port, "none")){
 				if(!confirm("The following port related settings may not work properly since the port is not available in current v6plus usable port range. Do you want to continue?")){
 					document.form.sshd_port.focus();
@@ -664,7 +684,7 @@ function validForm(){
 	if (!validator.range(document.form.http_lanport, 1, 65535))
 		/*return false;*/ document.form.http_lanport = 80;
 
-	if (HTTPS_support && !document.form.https_lanport.disabled && !validator.range(document.form.https_lanport, 1025, 65535) && !tmo_support)
+	if (HTTPS_support && !document.form.https_lanport.disabled && !validator.range(document.form.https_lanport, 1024, 65535) && !tmo_support)
 		return false;
 
 	if (document.form.misc_http_x[0].checked) {
@@ -677,7 +697,7 @@ function validForm(){
 			if (!validator.range(document.form.misc_httpsport_x, 1024, 65535))
 				return false;
 
-			if (wan_proto=="v6plus" && array_ipv6_s46_ports.length > 1){
+			if (wan_proto=="v6plus" && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
 				if (!validator.range_s46_ports(document.form.misc_httpsport_x, "none")){
 					if(!confirm("The following port related settings may not work properly since the port is not available in current v6plus usable port range. Do you want to continue?")){
 						document.form.misc_httpsport_x.focus();
@@ -740,7 +760,7 @@ function validForm(){
 		!document.form.reboot_date_x_Thu.checked && !document.form.reboot_date_x_Fri.checked &&
 		!document.form.reboot_date_x_Sat.checked && document.form.reboot_schedule_enable_x[0].checked)
 		{
-			alert(Untranslated.filter_lw_date_valid);
+			alert("<#FirewallConfig_LanWan_SelectOne#>");
 			document.form.reboot_date_x_Sun.focus();
 			return false;
 		}
@@ -802,8 +822,8 @@ var timezones = [
 	["MST7_2",	"(GMT-07:00) <#TZ07#>"],
 	["MST7DST_3",	"(GMT-07:00) <#TZ08#>"],
 	["CST6_2",	"(GMT-06:00) <#TZ10#>"],
-	["CST6DST_3",	"(GMT-06:00) <#TZ11#>"],
-	["CST6DST_3_1",	"(GMT-06:00) <#TZ12#>"],
+	["CST6_3",	"(GMT-06:00) <#TZ11#>"],	//CST6DST_3
+	["CST6_3_1",	"(GMT-06:00) <#TZ12#>"],	//CST6DST_3_1
 	["UTC6DST",	"(GMT-06:00) <#TZ13#>"],
 	["EST5DST",	"(GMT-05:00) <#TZ14#>"],
 	["UTC5_1",	"(GMT-05:00) <#TZ15#>"],
@@ -812,6 +832,7 @@ var timezones = [
 	["UTC4_1",	"(GMT-04:00) <#TZ18#>"],
 	["UTC4_2",	"(GMT-04:00) <#TZ18_1#>"],
 	["UTC4DST_2",	"(GMT-04:00) <#TZ19#>"],
+	["UTC4DST_3",	"(GMT-04:00) <#TZ19_1#>"],
 	["NST3.30DST",	"(GMT-03:30) <#TZ20#>"],
 	["EBST3",	"(GMT-03:00) <#TZ21#>"],	//EBST3DST_1
 	["UTC3",	"(GMT-03:00) <#TZ22#>"],
@@ -889,7 +910,7 @@ var timezones = [
 	["UTC-11_3",	"(GMT+11:00) <#TZ86#>"],
 	["UTC-11_4",	"(GMT+11:00) <#TZ82_1#>"],
 	["UTC-12",      "(GMT+12:00) <#TZ82#>"],
-	["UTC-12DST",      "(GMT+12:00) <#TZ82_2#>"],
+	["UTC-12_3",      "(GMT+12:00) <#TZ82_2#>"],	//UTC-12DST
 	["UTC-12_2",      "(GMT+12:00) <#TZ85#>"],
 	["NZST-12DST",	"(GMT+12:00) <#TZ83#>"],
 	["UTC-13",	"(GMT+13:00) <#TZ84#>"]];
@@ -1007,10 +1028,12 @@ function hide_https_lanport(_value){
 		$("#https_download_cert").css("display", "");
 		if(orig_http_enable == "0"){
 			$("#download_cert_btn").css("display", "none");
+			$("#clear_cert_btn").css("display", "none");
 			$("#download_cert_desc").css("display", "");
 		}
 		else{
 			$("#download_cert_btn").css("display", "");
+			$("#clear_cert_btn").css("display", "");
 			$("#download_cert_desc").css("display", "none");
 		}
 	}
@@ -1257,12 +1280,14 @@ function change_url(num, flag){
 	if(flag == 'https_lan'){
 		var https_lanport_num_new = num;
 		document.getElementById("https_access_page").innerHTML = "<#https_access_url#> ";
-		document.getElementById("https_access_page").innerHTML += "<a href=\"https://"+theUrl+":"+https_lanport_num_new+"\" target=\"_blank\" style=\"color:#FC0;text-decoration: underline; font-family:Lucida Console;\">http<span>s</span>://"+theUrl+"<span>:"+https_lanport_num_new+"</span></a>";
+		document.getElementById("https_access_page").innerHTML += "<a href=\"https://"+htmlEnDeCode.htmlEncode(theUrl)+":"+https_lanport_num_new+"\" target=\"_blank\" style=\"color:#FC0;text-decoration: underline; font-family:Lucida Console;\">http<span>s</span>://"+htmlEnDeCode.htmlEncode(theUrl)+"<span>:"+https_lanport_num_new+"</span></a>";
 	}
 	else if(flag == 'https_wan'){
 		var https_wanport = num;
 		var host_addr = "";
-		if(check_ddns_status())
+		var ddns_server_x = httpApi.nvramGet(["ddns_server_x"]).ddns_server_x;
+
+		if(check_ddns_status() && ddns_server_x != "WWW.DNSOMATIC.COM")
 				host_addr = ddns_hostname_x_t;
 		else
 			host_addr = wan_ipaddr;
@@ -1476,7 +1501,7 @@ function show_network_monitoring(){
 
 	appendMonitorOption(document.form.dns_probe_chk);
 	appendMonitorOption(document.form.wandog_enable_chk);
-	setTimeout("showPingTargetList();", 500);
+	setTimeout("create_DNSlist_view();", 500);
 }
 
 function appendMonitorOption(obj){
@@ -1484,6 +1509,7 @@ function appendMonitorOption(obj){
 		if(obj.checked){
 			document.getElementById("ping_tr").style.display = "";
 			inputCtrl(document.form.wandog_target, 1);
+
 		}
 		else{
 			document.getElementById("ping_tr").style.display = "none";
@@ -1493,42 +1519,73 @@ function appendMonitorOption(obj){
 	else if(obj.name == "dns_probe_chk"){
 		if(obj.checked){
 			document.getElementById("probe_host_tr").style.display = "";
-			document.getElementById("probe_content_tr").style.display = "";
+			//document.getElementById("probe_content_tr").style.display = "";
 			inputCtrl(document.form.dns_probe_host, 1);
-			inputCtrl(document.form.dns_probe_content, 1);
+			//inputCtrl(document.form.dns_probe_content, 1);
 		}
 		else{
 			document.getElementById("probe_host_tr").style.display = "none";
-			document.getElementById("probe_content_tr").style.display = "none";
+			//document.getElementById("probe_content_tr").style.display = "none";
 			inputCtrl(document.form.dns_probe_host, 0);
-			inputCtrl(document.form.dns_probe_content, 0);
+			//inputCtrl(document.form.dns_probe_content, 0);
 		}
 	}
 }
 
 var isPingListOpen = 0;
-function showPingTargetList(){
+function create_DNSlist_view(){
+	//count ping_target
+	var array_ping=[], array_ping_CN=[];
+	for(var i=0;i<DNSService.length;i++){
+		//"ping_target" : "Yes"|"CN"|"No"
+		switch (DNSService[i].ping_target){
+			case "Yes":
+						array_ping.push(i);
+				break;
+			case "CN":
+						array_ping_CN.push(i);
+				break;
+			default:
+				break;
+		}
+	}
+
 	if(is_CN){
-		var APPListArray = [
-			["Baidu", "www.baidu.com"], ["QQ", "www.qq.com"], ["Taobao", "www.taobao.com"]
-		];
+		var APPListArray = array_ping_CN;
 	}
 	else{
-		var APPListArray = [
-			["Google ", "www.google.com"], ["Facebook", "www.facebook.com"], ["Youtube", "www.youtube.com"], ["Yahoo", "www.yahoo.com"],
-			["Baidu", "www.baidu.com"], ["Wikipedia", "www.wikipedia.org"], ["Windows Live", "www.live.com"], ["QQ", "www.qq.com"],
-			["Amazon", "www.amazon.com"], ["Twitter", "www.twitter.com"], ["Taobao", "www.taobao.com"], ["Blogspot", "www.blogspot.com"],
-			["Linkedin", "www.linkedin.com"], ["Sina", "www.sina.com"], ["eBay", "www.ebay.com"], ["MSN", "msn.com"], ["Bing", "www.bing.com"],
-			["Яндекс", "www.yandex.ru"], ["WordPress", "www.wordpress.com"], ["ВКонтакте", "www.vk.com"]
-		];
+		var APPListArray = array_ping;
 	}
 
 	var code = "";
-	for(var i = 0; i < APPListArray.length; i++){
-		code += '<a><div onclick="setPingTarget(\''+APPListArray[i][1]+'\');"><strong>'+APPListArray[i][0]+'</strong></div></a>';
+	for (var j = 0; j < APPListArray.length; j++){
+		code += '<a><div onclick="setPingTarget(\''+DNSService[APPListArray[j]].ServiceIP1+'\');">'+DNSService[APPListArray[j]].DNSService+' <strong>('+DNSService[APPListArray[j]].ServiceIP1+')</strong></div></a>';
 	}
 	code +='<!--[if lte IE 6.5]><iframe class="hackiframe2"></iframe><![endif]-->';
 	document.getElementById("TargetList_Block_PC").innerHTML = code;
+
+}
+
+var DNSService = new Object;
+function updatDNSListOnline(){
+
+	$.getJSON("/ajax/DNS_List.json", function(local_data){
+		DNSService = Object.keys(local_data).map(function(e){
+				return local_data[e];
+		});
+
+		$.getJSON("https://nw-dlcdnet.asus.com/plugin/js/DNS_List.json",
+			function(cloud_data){
+				if(JSON.stringify(local_data) != JSON.stringify(cloud_data)){
+					if(Object.keys(cloud_data).length > 0){
+						DNSService = Object.keys(cloud_data).map(function(e){
+							return cloud_data[e];
+						});
+					}
+				}
+			}
+		);
+	});
 }
 
 function setPingTarget(ipaddr){
@@ -1567,10 +1624,18 @@ function save_cert_key(){
 	location.href = "cert.tar";
 }
 
+function clear_cert_key(){
+	if(confirm("You will be automatically logged out for the renewal, are you sure you want to continue?")){
+		$.ajax({url: "clear_file.cgi?clear_file_name=cert.tgz"})
+		showLoading();
+		setTimeout(refreshpage, 1000);
+	}
+}
+
 var NTPListArray = [
-		["pool.ntp.org","pool.ntp.org"], ["time01.syd.optusnet.com.au", "time01.syd.optusnet.com.au"], 
-		["time01.mel.optusnet.com.au", "time01.mel.optusnet.com.au"], ["time02.mel.optusnet.com.au", "time02.mel.optusnet.com.au"], 
-		["au.pool.ntp.org", "au.pool.ntp.org"],	["time.nist.gov", "time.nist.gov"]
+		["time01.syd.optusnet.com.au", "time01.syd.optusnet.com.au"], ["time01.mel.optusnet.com.au", "time01.mel.optusnet.com.au"], 
+		["time02.mel.optusnet.com.au", "time02.mel.optusnet.com.au"], ["au.pool.ntp.org", "au.pool.ntp.org"],	["time.nist.gov", "time.nist.gov"],
+		["pool.ntp.org","pool.ntp.org"]
 	];
 
 function showNTPList(){
@@ -1985,6 +2050,7 @@ function check_password_length(obj){
 <input type="hidden" name="sw_mode" value="<% nvram_get("sw_mode"); %>">
 <input type="hidden" name="ncb_enable" value="<% nvram_get("ncb_enable"); %>">
 <input type="hidden" name="dns_probe" value="<% nvram_get("dns_probe"); %>">
+<input type="hidden" name="dns_probe_content" value="*">
 <input type="hidden" name="wandog_enable" value="<% nvram_get("wandog_enable"); %>">
 <table class="content" align="center" cellpadding="0" cellspacing="0">
   <tr>
@@ -2092,7 +2158,6 @@ function check_password_length(obj){
 						</select>
 						<script>
 							var needReboot = false;
-
 
 							if (isSupport("usb3")) {
 								$("#reduce_usb3_tr").show();
@@ -2207,16 +2272,16 @@ function check_password_length(obj){
 							<input type="text" class="input_32_table" name="dns_probe_host" maxlength="255" autocorrect="off" autocapitalize="off" value="<% nvram_get("dns_probe_host"); %>">
 					</td>
 				</tr>
-				<tr id="probe_content_tr" style="display: none;">
-					<th><#Respond_IP#></th>
+				<!-- tr id="probe_content_tr" style="display: none;">
+					<th><#Respond_IP#> (<#NetworkTools_option#>)</th>
 					<td>
 							<input type="text" class="input_32_table" name="dns_probe_content" maxlength="1024" autocorrect="off" autocapitalize="off" value="<% nvram_get("dns_probe_content"); %>">
 					</td>
-				</tr>
+				</tr -->
 				<tr id="ping_tr" style="display: none;">
 					<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(26,2);"><#Ping_Target#></a></th>
 					<td>
-							<input type="text" class="input_32_table" name="wandog_target" maxlength="100" value="<% nvram_get("wandog_target"); %>" placeholder="ex: www.google.com" autocorrect="off" autocapitalize="off">
+							<input type="text" class="input_25_table" name="wandog_target" maxlength="15" value="<% nvram_get("wandog_target"); %>" placeholder="ex: www.google.com (8.8.8.8)" autocorrect="off" autocapitalize="off">
 							<img id="ping_pull_arrow" class="pull_arrow" height="14px;" src="/images/arrow-down.gif" style="position:absolute;*margin-left:-3px;*margin-top:1px;" onclick="pullPingTargetList(this);" title="<#select_network_host#>">
 							<div id="TargetList_Block_PC" name="TargetList_Block_PC" class="clientlist_dropdown" style="margin-left: 2px; width: 348px;display: none;"></div>
 					</td>
@@ -2366,7 +2431,7 @@ function check_password_length(obj){
 					</td>
 				</tr>
 				<tr id="plc_sleep_tr" style="display:none;">
-					<th align="right"><a class="hintstyle" href="javascript:void(0);" onClick="openHint(11,12);">Enable PLC sleep automatically<!--untranslated--></a></th>
+					<th align="right"><a class="hintstyle" href="javascript:void(0);" onClick="openHint(11,12);"><#Powerline_PLCsleep_enable#></a></th>
 					<td>
 						<input type="radio" name="plc_sleep_enabled" value="1" <% nvram_match_x("","plc_sleep_enabled","1", "checked"); %> ><#checkbox_Yes#>
 						<input type="radio" name="plc_sleep_enabled" value="0" <% nvram_match_x("","plc_sleep_enabled","0", "checked"); %> ><#checkbox_No#>
@@ -2418,18 +2483,19 @@ function check_password_length(obj){
 					<th><#Local_access_certificate_download#></th>
 					<td>
 						<input id="download_cert_btn" class="button_gen" onclick="save_cert_key();" type="button" value="<#btn_Export#>" />
+						<input id="clear_cert_btn" class="button_gen" style="margin-left:10px" onclick="clear_cert_key();" type="button" value="<#CTL_renew#>" />
 						<span id="download_cert_desc"><#Local_access_certificate_desc#></span><a id="creat_cert_link" href="" style="font-family:Lucida Console;text-decoration:underline;color:#FFCC00; margin-left: 5px;" target="_blank">FAQ</a>
 					</td>
 				</tr>
 			</table>
 
-			<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3"  class="FormTable" style="margin-top:8px;">
+			<table id="accessfromwan_settings" width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3"  class="FormTable" style="margin-top:8px;">
 				<thead>
 					<tr>
 					  <td colspan="2"><#Remote_access_config#></td>
 					</tr>
 				</thead>
-				<tr id="misc_http_x_tr">
+				<tr>
 					<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(8,2);"><#FirewallConfig_x_WanWebEnable_itemname#></a></th>
 					<td>
 						<input type="radio" value="1" name="misc_http_x" onClick="hideport(1);enable_wan_access(1);" <% nvram_match("misc_http_x", "1", "checked"); %>><#checkbox_Yes#>
@@ -2447,7 +2513,7 @@ function check_password_length(obj){
 					</th>
 					<td>
 						<span style="margin-left:5px; display:none;" id="http_port"><input type="text" maxlength="5" name="misc_httpport_x" class="input_6_table" value="<% nvram_get("misc_httpport_x"); %>" onKeyPress="return validator.isNumber(this,event);" autocorrect="off" autocapitalize="off" disabled/>&nbsp;&nbsp;</span>
-						<span style="margin-left:5px; display:none;" id="https_port"><input type="text" maxlength="5" name="misc_httpsport_x" class="input_6_table" value="<% nvram_get("misc_httpsport_x"); %>" onKeyPress="return validator.isNumber(this,event);" onBlur="change_url(this.value, 'https_wan');" autocorrect="off" autocapitalize="off" disabled/></span>
+						<span style="margin-left:5px; display:none;" id="https_port"><input type="text" maxlength="5" id="misc_httpsport_x" name="misc_httpsport_x" class="input_6_table" value="<% nvram_get("misc_httpsport_x"); %>" onKeyPress="return validator.isNumber(this,event);" onBlur="change_url(this.value, 'https_wan');" autocorrect="off" autocapitalize="off" disabled/></span>
 						<span id="wan_access_url"></span>
 					</td>
 				</tr>

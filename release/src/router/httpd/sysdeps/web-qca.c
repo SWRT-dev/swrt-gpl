@@ -460,6 +460,9 @@ unsigned int getAPChannel(int unit)
 {
 	int r = 0;
 
+	if (__absent_band(unit))
+		return 0;
+
 	switch (unit) {
 	case WL_2G_BAND:	/* fall-through */
 	case WL_5G_BAND:	/* fall-through */
@@ -506,7 +509,7 @@ static int __getAPBitRate(const char *ifname, char *buf, size_t buf_len)
 {
 	int r;
 	FILE *fp;
-	char cmd[sizeof("iwconfig athXYYYYYY")], line[256], *rate, *unit;
+	char cmd[sizeof("iwconfig athXYYYYYY")], line[256], rate[16] = {0}, unit[16] = {0};
 
 	if (!ifname || *ifname == '\0' || !buf || !buf_len) {
 		dbg("%s: got invalid ifname,buf,buf_len %p,%p,%d\n",
@@ -534,7 +537,7 @@ static int __getAPBitRate(const char *ifname, char *buf, size_t buf_len)
 	while (fgets(line, sizeof(line), fp)) {
 		if (!strstr(line, "Bit Rate"))
 			continue;
-		if ((r = sscanf(line, "%*[^:]:%ms %ms", &rate, &unit)) != 2) {
+		if ((r = sscanf(line, "%*[^:]:%15s %15s", rate, unit)) != 2) {
 			_dprintf("%s: Unknown bit rate of ifname [%s]: [%s]\n",
 				__func__, ifname, line);
 			continue;
@@ -543,16 +546,11 @@ static int __getAPBitRate(const char *ifname, char *buf, size_t buf_len)
 	}
 	pclose(fp);
 
-	if (!rate || !unit) {
+	if (rate[0] == '\0' || unit[0] == '\0') {
 		*buf = '\0';
 	} else {
 		snprintf(buf, buf_len, "%s %s", rate, unit);
 	}
-
-	if (rate)
-		free(rate);
-	if (unit)
-		free(unit);
 
 	return 0;
 }
@@ -1300,12 +1298,13 @@ show_wliface_info(webs_t wp, int unit, char *ifname, char *op_mode)
 	uint64_t m = 0;
 	FILE *fp;
 	unsigned char mac_addr[ETHER_ADDR_LEN];
-	char tmpstr[1024], cmd[] = "iwconfig staXYYYYYY";
-	char *p, ap_bssid[] = "00:00:00:00:00:00XXX", vphy[IFNAMSIZ];
+	char tmpstr[1024], cmd[sizeof("iwconfig staXYYYYYY")], prefix[sizeof("wlX_XXX")];
+	char *p, ap_bssid[sizeof("00:00:00:00:00:00XXX")], vphy[IFNAMSIZ];
 
 	if (unit < 0 || !ifname || !op_mode)
 		return 0;
 
+	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 	memset(&mac_addr, 0, sizeof(mac_addr));
 	get_iface_hwaddr(ifname, mac_addr);
 	ret += websWrite(wp, "=======================================================================================\n"); // separator
@@ -1358,7 +1357,7 @@ show_wliface_info(webs_t wp, int unit, char *ifname, char *op_mode)
 		ret += websWrite(wp, ", %sMHz", tmpstr);
 	ret += websWrite(wp, "\n");
 	ret += websWrite(wp, "Channel		: %u", getAPChannel(unit));
-	if (radar_cnt > 0) {
+	if (m) {
 		ret += websWrite(wp, " (Radar: %s)", bitmask2chlist5g(m, ","));
 	}
 	ret += websWrite(wp, "\n");
@@ -1550,6 +1549,9 @@ static int ej_wl_sta_list(int unit, webs_t wp)
 
 	from_app = check_user_agent(user_agent);
 
+	if(hook_get_json == 1)
+		websWrite(wp, "{");
+
 	if ((sta_info = malloc(sizeof(*sta_info))) != NULL)
 	{
 		getSTAInfo(unit, sta_info);
@@ -1560,43 +1562,45 @@ static int ej_wl_sta_list(int unit, webs_t wp)
 			else
 				websWrite(wp, ", ");
 
-			if (from_app == 0)
+			if (from_app == 0 && hook_get_json == 0)
 				websWrite(wp, "[");
 
 			websWrite(wp, "\"%s\"", sta_info->Entry[i].addr);
 
-			if (from_app != 0) {
+			if (from_app != 0 || hook_get_json == 1) {
 				websWrite(wp, ":{");
 				websWrite(wp, "\"isWL\":");
 			}
 
 			value = "Yes";
-			if (from_app == 0)
+			if (from_app == 0 && hook_get_json == 0)
 				websWrite(wp, ", \"%s\"", value);
 			else
 				websWrite(wp, "\"%s\"", value);
 
 			value = "";
 
-			if (from_app == 0)
+			if (from_app == 0 && hook_get_json == 0)
 				websWrite(wp, ", \"%s\"", value);
 	
-			if (from_app != 0) {
+			if (from_app != 0 || hook_get_json == 1) {
 				websWrite(wp, ",\"rssi\":");
 			}
 
-			if (from_app == 0)
+			if (from_app == 0 && hook_get_json == 0)
 				websWrite(wp, ", \"%d\"", sta_info->Entry[i].rssi);
 			else
 				websWrite(wp, "\"%d\"", sta_info->Entry[i].rssi);
 
-			if (from_app == 0)
+			if (from_app == 0 && hook_get_json == 0)
 				websWrite(wp, "]");
 			else
 				websWrite(wp, "}");
 		}
 		free(sta_info);
 	}
+	if(hook_get_json == 1)
+		websWrite(wp, "}");
 	return 0;
 }
 
@@ -1618,6 +1622,8 @@ int ej_wl_sta_list_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 	/* FIXME: I think it's not good to report 2-nd 5G station list in 1-st 5G station list. */
 	ej_wl_sta_list(2, wp);
 #endif
+	if(hook_get_json == 1)
+		websWrite(wp, "{}");
 	return 0;
 }
 
@@ -1634,8 +1640,14 @@ static int wl_stainfo_list(int unit, webs_t wp)
 	char idx_str[8], s;
 	int i, firstRow = 1;
 
-	if ((sta_info = malloc(sizeof(*sta_info))) == NULL)
+	if ((sta_info = malloc(sizeof(*sta_info))) == NULL){
+		if(hook_get_json == 1)
+			websWrite(wp, "[]");
 		return 0 ;
+	}
+
+	if(hook_get_json == 1)
+		websWrite(wp, "[");
 
 	getSTAInfo(unit, sta_info);
 	for(i = 0, r = &sta_info->Entry[0]; i < sta_info->Num; i++, r++) {
@@ -1661,6 +1673,8 @@ static int wl_stainfo_list(int unit, webs_t wp)
 		websWrite(wp, ", \"%s\"", idx_str);
 		websWrite(wp, "]");
 	}
+	if(hook_get_json == 1)
+		websWrite(wp, "]");
 	free(sta_info);
 	return 0;
 }
@@ -2374,7 +2388,7 @@ static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 		snprintf(rate_buf, sizeof(rate_buf), "%d Mbps", rate[1]);
 #endif
 ERROR:
-	if(from_app == 0)
+	if(from_app == 0 && hook_get_json == 0)
 		retval += websWrite(wp, "%s", rate_buf);
 	else
 		retval += websWrite(wp, "\"%s\"", rate_buf);
@@ -2412,66 +2426,16 @@ ej_wl_rate_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 int
 ej_wl_rate_6g(int eid, webs_t wp, int argc, char_t **argv)
 {
-   	return 0;
+	if(sw_mode() == SW_MODE_REPEATER)
+		return ej_wl_rate(eid, wp, argc, argv, 3);
+	else
+		return 0;
 }
-
-/* Check necessary kernel module only. */
-static struct nat_accel_kmod_s {
-	char *kmod_name;
-} nat_accel_kmod[] = {
-#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074) || defined (RTCONFIG_SOC_IPQ60XX) || defined (RTCONFIG_SOC_IPQ50XX)
-	{ "ecm" },
-#elif defined(RTCONFIG_SOC_QCA9557) || defined(RTCONFIG_QCA953X) || defined(RTCONFIG_QCA956X) || defined(RTCONFIG_QCN550X) || defined(RTCONFIG_SOC_IPQ40XX)
-	{ "shortcut_fe" },
-#else
-#error Implement nat_accel_kmod[]
-#endif
-};
 
 int
 ej_nat_accel_status(int eid, webs_t wp, int argc, char_t **argv)
 {
-	int i, status = 1, retval = 0;
-	struct nat_accel_kmod_s *p = &nat_accel_kmod[0];
-
-	for (i = 0, p = &nat_accel_kmod[i]; status && i < ARRAY_SIZE(nat_accel_kmod); ++i, ++p) {
-		if (module_loaded(p->kmod_name))
-			continue;
-
-		status = 0;
-	}
-
-#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074)
-	/* Hardware NAT can be stopped via set non-zero value to below files.
-	 * Don't claim hardware NAT is enabled if one of them is non-zero value.
-	 */
-	if (status) {
-#if defined(RTCONFIG_SOC_IPQ8064)
-		const char *v4_stop_fn = "/sys/kernel/debug/ecm/ecm_nss_ipv4/stop", *v6_stop_fn = "/sys/kernel/debug/ecm/ecm_nss_ipv6/stop";
-#elif defined(RTCONFIG_SOC_IPQ8074)
-		const char *v4_stop_fn = "/sys/kernel/debug/ecm/front_end_ipv4_stop", *v6_stop_fn = "/sys/kernel/debug/ecm/front_end_ipv6_stop";
-#endif
-		int s1, s2;
-		char *str;
-
-		s1 = s2 = 0;
-		if((str = file2str(v4_stop_fn)) != NULL) {
-			s1 = safe_atoi(str);
-			free(str);
-		}
-		if((str = file2str(v6_stop_fn)) != NULL) {
-			s2 = safe_atoi(str);
-			free(str);
-		}
-
-		if (s1 != 0 || s2 != 0)
-			status = 0;
-	}
-#endif
-
-	retval += websWrite(wp, "%d", status);
-
-	return retval;
+	return websWrite(wp, "%d", nat_acceleration_status());
 }
 
 #ifdef RTCONFIG_PROXYSTA

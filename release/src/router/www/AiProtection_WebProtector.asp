@@ -570,6 +570,7 @@ function edit_table(){
 
 var ctf_disable = '<% nvram_get("ctf_disable"); %>';
 var ctf_fa_mode = '<% nvram_get("ctf_fa_mode"); %>';
+var reboot_confirm=0;
 function applyRule(){
 	document.form.action_script.value = "restart_wrs;restart_firewall";
 
@@ -653,12 +654,11 @@ function applyRule(){
 		document.form.wrs_rulelist.value = wrs_rulelist;
 		document.form.wrs_app_rulelist.value = apps_rulelist;
 		if(ctf_disable == 0 && ctf_fa_mode == 2){
-			if(!confirm(Untranslated.ctf_fa_hint)){
+			if(!confirm("<#ctf_fa_hint#>")){
 				return false;
 			}
 			else{
-				document.form.action_script.value = "reboot";
-				document.form.action_wait.value = "<% nvram_get("reboot_time"); %>";
+				reboot_confirm=1;
 			}
 		}
 
@@ -666,8 +666,19 @@ function applyRule(){
 			reset_wan_to_fo.change_wan_mode(document.form);
 	}
 	
-	showLoading();
-	document.form.submit();
+	if(reboot_confirm==1){
+        	
+		if(confirm("<#AiMesh_Node_Reboot#>")){
+			FormActions("start_apply.htm", "apply", "reboot", "<% get_default_reboot_time(); %>");
+			showLoading();
+			document.form.submit();
+		}
+	}
+	else{
+
+		showLoading();
+		document.form.submit();
+	}
 }
 
 function translate_category_id(){

@@ -667,12 +667,43 @@ void setup_ct_timeout(int connflag)
 			if (scan_icmp_unreplied_conntrack() > 0)
 			{
 //				write_ct_timeout("generic", NULL, 0);
-				write_ct_timeout("icmp", NULL, 0);
+#if defined(RTCONFIG_DUALWAN)
+				if(nvram_get_int("wandog_enable"))
+					write_ct_timeout("icmp", NULL, 1);
+				else
+#endif
+					write_ct_timeout("icmp", NULL, 0);
 				sleep(2);
 			}
 		}
 	}
 }
+
+#if defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_RALINK)
+void gen_conntrack_conf(void)
+{
+#define RAM_1GB 1024 *1024 *1024
+#define RAM_512M 512 *1024 *1024
+#define RAM_256M 256 *1024 *1024
+#define RAM_128M 128 *1024 *1024
+	struct sysinfo sys;
+	sysinfo(&sys);
+	nvram_set("ct_tcp_timeout", "300 300 120 60 30 30 30 10 30 30");
+	if(sys.totalram >= RAM_1GB){
+		nvram_set("ct_hashsize", "65536");
+		nvram_set("ct_expect_max", "16384");
+	}else if(sys.totalram >= RAM_512M && sys.freeram >= RAM_128M){
+		nvram_set("ct_hashsize", "32768");
+		nvram_set("ct_expect_max", "16384");
+	}else if(sys.totalram >= RAM_256M && sys.freeram >= RAM_128M){
+		nvram_set("ct_hashsize", "16384");
+		nvram_set("ct_expect_max", "16384");
+	}else{
+		nvram_set("ct_hashsize", "16384");
+		nvram_set("ct_expect_max", "8192");
+	}
+}
+#endif
 
 void setup_conntrack(void)
 {
@@ -684,13 +715,12 @@ void setup_conntrack(void)
 #ifdef RTCONFIG_CONCURRENTREPEATER
 	return;		/* don't need it for concurrent repeater */
 #endif
-
+#if defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_RALINK)
+	gen_conntrack_conf();
+#endif
 	snprintf(p, sizeof(p), "%s", nvram_safe_get("ct_tcp_timeout"));
 	if (strcmp(p,"0 0 0 0 0 0 0 0 0 0") && sscanf(p, "%u%u%u%u%u%u%u%u%u%u",
 		&v[0], &v[1], &v[2], &v[3], &v[4], &v[5], &v[6], &v[7], &v[8], &v[9]) == 10) {	// lightly verify
-#if defined(RTCONFIG_HND_ROUTER_AX_675X)
-		fprintf(stderr, "ct_tcp_timeout:[%s]\n", p);
-#endif
 		write_tcp_timeout("established", v[1]);
 		write_tcp_timeout("syn_sent", v[2]);
 		write_tcp_timeout("syn_recv", v[3]);
@@ -718,9 +748,6 @@ void setup_conntrack(void)
 
 	snprintf(p, sizeof(p), "%s", nvram_safe_get("ct_timeout"));
 	if (strcmp(p,"0 0") && sscanf(p, "%u%u", &v[0], &v[1]) == 2) {
-#if defined(RTCONFIG_HND_ROUTER_AX_675X)
-		fprintf(stderr, "ct_timeout:[%s]\n", p);
-#endif
 //		write_ct_timeout("generic", NULL, v[0]);
 		write_ct_timeout("icmp", NULL, v[1]);
 	}
@@ -774,16 +801,8 @@ void setup_conntrack(void)
 	}
 #endif
 #if defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_RALINK)
-	snprintf(p, sizeof(p), "30");
-	f_write_string("/proc/sys/net/netfilter/nf_conntrack_tcp_timeout_fin_wait", p, 0, 0);
-	f_write_string("/proc/sys/net/netfilter/nf_conntrack_tcp_timeout_time_wait", p, 0, 0);
-	f_write_string("/proc/sys/net/netfilter/nf_conntrack_tcp_timeout_close_wait", p, 0, 0);
-	f_write_string("/proc/sys/net/ipv4/netfilter/ip_conntrack_tcp_timeout_fin_wait", p, 0, 0);
-	f_write_string("/proc/sys/net/ipv4/netfilter/ip_conntrack_tcp_timeout_time_wait", p, 0, 0);
-	f_write_string("/proc/sys/net/ipv4/netfilter/ip_conntrack_tcp_timeout_close_wait", p, 0, 0);
-	snprintf(p, sizeof(p), "300");
-	f_write_string("/proc/sys/net/netfilter/nf_conntrack_tcp_timeout_established", p, 0, 0);
-	f_write_string("/proc/sys/net/ipv4/netfilter/ip_conntrack_tcp_timeout_established", p, 0, 0);
+	snprintf(p, sizeof(p), "%s", nvram_safe_get("ct_hashsize"));
+	f_write_string("/proc/sys/net/netfilter/nf_conntrack_buckets", p, 0, 0);
 #endif
 #if 0
 	if (!nvram_match("nf_rtsp", "0")) {
@@ -840,7 +859,7 @@ void setup_conntrack(void)
 		ct_modprobe_r("pptp");
 		ct_modprobe_r("proto_gre");
 	}
-#ifdef RTCONFIG_HND_ROUTER_AX_6756
+#if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_MT798X)
 	f_write_string("/proc/sys/net/netfilter/nf_conntrack_helper", "1", 0, 0);
 #endif
 
@@ -1196,8 +1215,8 @@ const zoneinfo_t tz_list[] = {
         {"MST7_2",	"US/Arizona"},		// (GMT-07:00) Arizona
 	{"MST7DST_3",	"America/Chihuahua"},	// (GMT-07:00) Chihuahua, La Paz, Mazatlan
         {"CST6_2",	"Canada/Saskatchewan"},	// (GMT-06:00) Saskatchewan
-        {"CST6DST_3",	"Mexico/General"},	// (GMT-06:00) Guadalajara, Mexico City
-        {"CST6DST_3_1",	"America/Monterrey"},	// (GMT-06:00) Monterrey
+        {"CST6_3",	"Mexico/General"},	// (GMT-06:00) Guadalajara, Mexico City
+        {"CST6_3_1",	"America/Monterrey"},	// (GMT-06:00) Monterrey
         {"UTC6DST",	"US/Central"},		// (GMT-06:00) Central Time (US & Canada)
         {"EST5DST",	"US/Eastern"},		// (GMT-05:00) Eastern Time (US & Canada)
         {"UTC5_1",	"US/East-Indiana"},	// (GMT-05:00) Indiana (East)    US Eastern
@@ -1282,7 +1301,7 @@ const zoneinfo_t tz_list[] = {
         {"UTC-11_1",    "Pacific/Noumea"},	// (GMT+11:00) New Caledonia
         {"UTC-11_3",    "Asia/Srednekolymsk"},	// (GMT+11:00) Chokurdakh, Srednekolymsk
 	{"UTC-12",      "Pacific/Majuro"},	// (GMT+12:00) Marshall IS.
-	{"UTC-12DST",	"Pacific/Fiji"},	// (GMT+12:00) Fiji
+	{"UTC-12_3",	"Pacific/Fiji"},	// (GMT+12:00) Fiji
 	{"UTC-12_2",	"Asia/Anadyr"},		// (GMT+12:00) Anadyr, Petropavlovsk-Kamchatsky
 	{"NZST-12DST",  "Pacific/Auckland"},	// (GMT+12:00) Auckland, Wellington
 	{"UTC-13",      "Pacific/Tongatapu"},	// (GMT+13:00) Nuku'alofa
@@ -1318,7 +1337,16 @@ void time_zone_x_mapping(void)
 #endif
 
 	/* pre mapping because time_zone area changed*/
-	if (nvram_match("time_zone", "KST-9KDT"))
+	if (nvram_match("time_zone", "UTC-12DST")){             /*Fiji*/
+                nvram_set("time_zone", "UTC-12_3");
+                nvram_set("time_zone_dst", "0");
+        }else if (nvram_match("time_zone", "CST6DST_3")){		/*Guadalajara, Mexico City*/
+		nvram_set("time_zone", "CST6_3");
+		nvram_set("time_zone_dst", "0");
+	}else if (nvram_match("time_zone", "CST6DST_3_1")){	/*Monterrey*/
+                nvram_set("time_zone", "CST6_3_1");
+		nvram_set("time_zone_dst", "0");
+	}else if (nvram_match("time_zone", "KST-9KDT"))
 		nvram_set("time_zone", "UCT-9_1");
 	else if (nvram_match("time_zone", "RFT-9RFTDST"))
 		nvram_set("time_zone", "UCT-9_2");
@@ -1406,6 +1434,13 @@ void time_zone_x_mapping(void)
 		fprintf(fp, "%s\n", tmpstr);
 		fclose(fp);
 	}
+#ifdef RTCONFIG_AVOID_TZ_ENV
+	/* add a "/tmp/TZ" as a hard link of /etc/TZ in process that run chroot() */
+	if ((fp = fopen("/tmp/TZ", "w")) != NULL) {
+		fprintf(fp, "%s\n", tmpstr);
+		fclose(fp);
+	}
+#endif
 }
 
 /* Get the timezone from NVRAM and set the timezone in the kernel
@@ -1427,7 +1462,9 @@ setup_timezone(void)
 	 * use.
 	 */
 	time_zone_x_mapping();
+#ifndef RTCONFIG_AVOID_TZ_ENV
 	setenv("TZ", nvram_get("time_zone_x"), 1);
+#endif
 
 	/* Update kernel timezone */
 	time(&now);
@@ -1628,6 +1665,67 @@ int rand_seed_by_time(void)
 	return rand();
 }
 
+//Andrew add
+#ifdef RTCONFIG_CONNTRACK
+void conntrack_check(int action)
+{
+	static unsigned int conntrack_times = 0;
+	char cmd[80];
+
+	if (!nvram_match("fb_conntrack_debug", "1"))
+		return;
+
+	int pid = pidof("conntrack");
+	/*
+	time_t now;
+	struct tm *info;
+	char t_str[10];
+
+	time(&now);
+	info = localtime(&now);
+	strftime(t_str, 10, "%H:%M:%S", info);
+	*/
+	switch (action) {
+	case CONNTRACK_START:
+		//_dprintf("%s conntrack_check, action=[%d][START], pid=[%d]\n", t_str, CONNTRACK_START, pid);
+		if (pid < 1) {
+			snprintf(cmd, sizeof(cmd), "conntrack -E -p tcp -v %s &", NF_CONNTRACK_FILE);
+			_dprintf("cmd=[%s]\n", cmd);
+			system(cmd);
+			conntrack_times = 0;
+		}
+		break;
+
+	case CONNTRACK_STOP:
+		//_dprintf("%s conntrack_check, action=[%d][STOP], pid=[%d]\n", t_str, CONNTRACK_STOP, pid);
+		if (pid >= 1) {
+			snprintf(cmd, sizeof(cmd), "kill -SIGTERM %d", pid);
+			_dprintf("cmd=[%s]\n", cmd);
+			system(cmd);
+			conntrack_times = 0;
+		}
+		break;
+
+	case CONNTRACK_ROTATE:
+		//_dprintf("%s conntrack_check, action=[%d][ROTATE], pid=[%d], times=[%d]\n", t_str, CONNTRACK_ROTATE, pid, conntrack_times);
+		conntrack_times++;
+		if (conntrack_times < ONEDAY)
+			return;
+
+		if (pid >= 1) {
+			snprintf(cmd, sizeof(cmd), "kill -SIGUSR1 %d", pid);
+			_dprintf("cmd=[%s]\n", cmd);
+			system(cmd);
+			conntrack_times = 0;
+		}
+		break;
+	}
+
+	return;
+}
+#endif //RTCONFIG_CONNTRACK
+//Andrew end
+
 #if defined(RTCONFIG_QCA)
 char *get_wpa_supplicant_pidfile(const char *ifname, char *buf, int size)
 {
@@ -1709,6 +1807,42 @@ void collect_debuglog(int type)
 		strlcat(cmd, buf, sizeof(cmd));
 		system(cmd);
 		delete_tmplog();
+	}
+}
+
+void remove_guillemets_form_str(char *str_in,int sizeofbuf)//sizeofbuf not strlen
+{
+	char *tmp;
+	int i,tmp_idx;
+	int len;
+
+	if(str_in == NULL)
+		return;
+
+	_dprintf("from [%s]\n",str_in);
+
+	len = sizeofbuf;
+
+	tmp=malloc(len+1);
+	if(tmp == NULL)
+	{ //make sure conn_diag will not crash
+		for(i=0;i<len;i++){
+			if(str_in[i]=='<' || str_in[i]=='>')
+				memset(str_in,0,len);
+		}
+		return;
+	} else {
+		tmp_idx=0;
+		//remove '<' or '>'
+		memset(tmp,0,len+1);
+		for(i=0;i<len;i++){
+			if(str_in[i]!='<' && str_in[i]!='>'){
+				tmp[tmp_idx] = str_in[i];
+				tmp_idx++;
+			}
+		}
+		strncpy(str_in,tmp,len);
+		_dprintf("to [%s]\n",str_in);
 	}
 }
 

@@ -70,7 +70,11 @@ window.updateIspList = function(ispProfile){
         });
 }
 
-$.getScript("ajax/pppIspList.json");
-setTimeout(function(){
-	$.getScript("https://nw-dlcdnet.asus.com/plugin/js/pppIspList.json");
-}, 1);
+$.getJSON("ajax/pppIspList_V2.json").always(function(local_data, status){
+    if(status == "success"){
+        updateIspList(local_data);
+    }
+    $.getJSON("https://nw-dlcdnet.asus.com/plugin/js/pppIspList_V2.json", function(cloud_data){
+        updateIspList(cloud_data);
+    });
+});

@@ -216,14 +216,10 @@ define(function(){
 				menuName: "VPN",
 				index: "menu_VPN", 
 				tab: [
-					{url: "Advanced_VPN_PPTP.asp", tabName: "<#BOP_isp_heart_item#>"},
-					{url: "Advanced_VPN_OpenVPN.asp", tabName: "__INHERIT__"},
-					{url: "Advanced_VPN_IPSec.asp", tabName: "__INHERIT__"},
+					{url: "Advanced_VPNServer_Content.asp", tabName: "<#BOP_isp_heart_item#>"},
 					{url: "Advanced_VPNClient_Content.asp", tabName: (vpn_fusion_support) ? "<#VPN_Fusion#>" : "<#vpnc_title#>"},
 					{url: "Advanced_TOR_Content.asp", tabName: "TOR"},
 					{url: "Advanced_Instant_Guard.asp", tabName: "<#Instant_Guard_title#>"},
-					{url: "Advanced_WireguardServer_Content.asp", tabName: "WireGuard Server"},/*untranslated*/
-					{url: "Advanced_WireguardClient_Content.asp", tabName: "WireGuard Client"},/*untranslated*/
 					{url: "NULL", tabName: "__INHERIT__"}
 				]
 			},		
@@ -322,6 +318,10 @@ define(function(){
 		exclude: {
 			menus: function(){
 				var retArray = [];
+
+				if(!dnsfilter_support){
+					retArray.push("DNSFilter.asp");
+				}
 
 				if(!multissid_support){
 					retArray.push("menu_GuestNetwork");
@@ -499,17 +499,9 @@ define(function(){
 					retArray.push("Main_ConnStatus_Content.asp");
 					retArray.push("Main_TrafficMonitor_realtime.asp");
 				}
-				
-				if(!pptpd_support){
-					retArray.push("Advanced_VPN_PPTP.asp");
-				}
 
-				if(!openvpnd_support){
-					retArray.push("Advanced_VPN_OpenVPN.asp");
-				}	
-
-				if(!ipsec_srv_support){
-					retArray.push("Advanced_VPN_IPSec.asp");
+				if(!pptpd_support && !openvpnd_support && !ipsec_srv_support){
+					retArray.push("Advanced_VPNServer_Content.asp");
 				}
 
 				if(!vpnc_support){
@@ -571,7 +563,7 @@ define(function(){
 					retArray.push("Advanced_Notification_Content.asp");
 				}
 
-				if(!smart_connect_support || Qcawifi_support){
+				if(!smart_connect_support || Qcawifi_support || Rawifi_support){
 					retArray.push("Advanced_Smart_Connect.asp");
 				}
 				
@@ -684,11 +676,6 @@ define(function(){
 
 				if(!dnsfilter_support)
 					retArray.push("DNSFilter.asp");
-
-				if(!wireguard_support) {
-					retArray.push("Advanced_WireguardServer_Content.asp");
-					retArray.push("Advanced_WireguardClient_Content.asp");
-				}
 
 				/* Operation Mode */
 				if(isSwMode("re") || isSwMode("ew")){

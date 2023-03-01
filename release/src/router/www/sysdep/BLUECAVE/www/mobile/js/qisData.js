@@ -125,7 +125,8 @@ var smartConnectObj = {
 }
 
 var fronthaulNetworkObj = {
-	"fh_ap_enabled": "2"
+	"fh_ap_enabled": "2",
+	"acs_unii4": "0"
 }
 
 var wlcObj = {
@@ -258,11 +259,12 @@ var systemVariable = {
 	"maxPasswordLen": 32,
 	"originWansExtwan": "",
 	"originWansDualwan": "",
+	"originWansMode": "",
 	"manualWanSetup": false,
 	"wanDnsenable": "",
 	"detwanResult": {
 		"wanType": "",
-		"isIPConflict": false,
+		"isIPConflict": false
 	},
 	"isNewFw": 0,
 	"newFwVersion": "",
@@ -292,9 +294,40 @@ var systemVariable = {
 	"skipAiMeshOptionPage": false,
 	"amas_newWindow_addNode": false,
 	"authModePostData": {},
+	"eth_wan_list":{},
 	"ispProfiles": [],
 	"ispPortDefinitions": {},
-	"cloudIspProfiles": []
+	"cloudIspProfiles": [],
+	"site2site_wl": {
+		"wl_2G": {
+			"ifname": "",
+			"ssid_new": "",
+			"key_new": "",
+			"ssid_ori": "",
+			"select": "",
+			"confirm": false
+		},
+		"wl_5G": {
+			"ifname": "",
+			"ssid_new": "",
+			"key_new": "",
+			"ssid_ori": "",
+			"select": "",
+			"confirm": false
+		}
+	},
+	"site2site_vpnc" : {
+		"model": "",
+		"domain": "",
+		"ticket": "",
+		"area": "",
+		"vpnc_wl_ifname": ""
+	},
+	"site2site_status" : {
+		"profile_maximum" : false,
+		"profile_maximum_type" : "",
+		"is_dut_self" : false
+	}
 }
 
 var aimeshObj = {
@@ -347,7 +380,7 @@ var dsl_wanObj = {
 		"dsl_unit": "8",
 		"dsl_proto": "",
 		"dsl_dot1q": "",
-		"dsl_vid": "",
+		"dsl_vid": ""
 	},
 
 	"dslDHCPObj" : {

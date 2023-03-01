@@ -1474,6 +1474,7 @@ void count_num_of_clients()
 /******************************************/
 int main(int argc, char *argv[])
 {
+	static int isfirst = 1;
 	int arp_sockfd, arp_getlen, i, wifi_num = 0;
 	struct sockaddr_in router_addr, router_netmask;
 	char router_ipaddr[16], router_mac[18], buffer[ARP_BUFFER_SIZE];
@@ -1619,7 +1620,10 @@ int main(int argc, char *argv[])
 					memset(scan_ipaddr, 0x00, 4);
 					memcpy(scan_ipaddr, &router_addr.sin_addr, 3);
 					arp_timeout.tv_sec = 0;
-					arp_timeout.tv_usec = 60000;
+					if(isfirst == 1){
+						arp_timeout.tv_usec = 5000;
+					}else
+						arp_timeout.tv_usec = 10000;
 					setsockopt(arp_sockfd, SOL_SOCKET, SO_RCVTIMEO, &arp_timeout, sizeof(arp_timeout));//set receive timeout
 				}
 				if(nvram_match("rescan_networkmap", "1")){
@@ -1642,11 +1646,14 @@ int main(int argc, char *argv[])
 					arp_parser_scan(G_CLIENT_TAB, INTERFACE);//scan arp cache again
 					nvram_set("networkmap_fullscan", "2");
 					NMP_DEBUG("Finish full scan!\n");
+					isfirst = 0;
 					break;
 				}
 			}// End of full scan
 			memset(buffer, 0, ARP_BUFFER_SIZE);
 			arp_getlen = recvfrom(arp_sockfd, buffer, ARP_BUFFER_SIZE, 0, NULL, NULL);
+			if(isfirst == 0)
+				usleep(50000);
 			if(arp_getlen == -1 || arp_getlen < (int)(sizeof(ARP_HEADER))){
 				if(scan_count >= MAX_NR_CLIENT_LIST)
 					break;

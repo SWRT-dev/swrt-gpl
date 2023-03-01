@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="shortcut icon" href="images/favicon.png" />
+        <title>GUI v4</title>
+
+        <script src="../js/jquery.js"></script>
+        <script src="../js/httpApi.js"></script>
+        <script src="./js/bootstrap.bundle.min.js"></script>
+        <script src="./js/asus.js"></script>
+        <script src="./js/main.js"></script>
+        <script src="./js/wireless.js"></script>
+        <script src="./js/chart.min.js"></script>
+
+        <!-- <link rel="stylesheet" href="./css/bootstrap.min.css" /> -->
+        <link rel="stylesheet" href="./css/bootstrap.css" />
+        <link rel="stylesheet" href="./css/main.css" />
+        <link rel="stylesheet" href="./css/networkmap.css" />
+    </head>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            genLanguageList();
+            httpApi.diag_ping.start();
+            setTimeout(getDnsPingData, 5000);
+
+            genClientData();
+            httpApi.get_diag_avg_data(
+                {
+                    ts: Date.now(),
+                    duration: '60',
+                    point: '15',
+                    db: 'sys_detect',
+                    content: 'cpu_usage;mem_usage',
+                    node_mac: system.labelMac,
+                },
+                genCpuRam
+            );
+
+            genPortStatus();
+        });
+
+        function changeLanguage(lang) {
+            httpApi.nvramSet(
+                { action_mode: 'apply', action_script: 'email_info', flag: 'set_language', preferred_lang: lang },
+                function () {
+                    setTimeout(function () {
+                        location.reload();
+                    }, 10);
+                }
+            );
+        }
+
+        function genLanguageList() {
+            let { currentLang, supportList } = system.language;
+            let code = `
+                <button
+                    class="btn dropdown-toggle p-1 lang-title"
+                    type="button"
+                    id="dropdownLangMenu"
+                    data-bs-toggle="dropdown"
+                >
+                    ${supportList[currentLang]}
+                </button>
+
+            `;
+
+            code += `<ul class="dropdown-menu text-center lang-menu" aria-labelledby="dropdownLangMenu">`;
+            for (let [key, value] of Object.entries(supportList)) {
+                if (key === currentLang) {
+                    continue;
+                }
+
+                code += `
+                    <li onclick="changeLanguage('${key}')">
+                        <a class="dropdown-item lang-item" href="#">${value}</a>
+                    </li>
+                `;
+            }
+
+            code += '</ul>';
+
+            document.querySelector('#language_menu').innerHTML = code;
+        }
+
+        function genClientData() {
+            const ctx1 = document.getElementById('chart_clients').getContext('2d');
+            const colorArray = ['rgb(255, 99, 132)', 'rgb(54, 162, 235)', 'rgb(255, 205, 86)'];
+            let wirelessAllCount = system.client.wirelessCount,
+                wireAllCount = system.client.wiredCount;
+            let _client = [wirelessAllCount, wireAllCount];
+            let code = '';
+            for (let [index, value] of Object.entries(system.wlBandSeq)) {
+                let { name } = value;
+                let _perCount = system.client.wireless[index].count;
+                let percentage = parseInt((_perCount / wirelessAllCount) * 100);
+                code += `
+                    <div class="row ps-4 pe-2">
+                        <div class="col-3">
+                            <div class="chart chart-color-${index} circle-percent-${percentage}">
+                                <div role="icon icon-inner" class="icon-size-20 icon-wifi icon-color-active-1"></div>
+                            </div>
+                        </div>
+                        <div class="col-9 d-flex d-sm-block d-md-flex align-items-center justify-content-between">
+                            <div class="me-3 chart-sub-content-title text-sm-end pt-sm-2 pt-md-0" >
+                                ${name}
+                            </div>
+                            <div class="me-3 chart-sub-content-text">${_perCount}</div>
+                        </div>
+                    </div>
+                    <div class="divide-line"></div>
+                `;
+            }
+
+            document.querySelector('#wifi_client_table').innerHTML = code;
+            document.querySelector('#client_all_count').innerHTML = system.client.activeCount;
+            document.querySelector('#wireless_count').innerHTML = wirelessAllCount;
+            document.querySelector('#wired_count').innerHTML = wireAllCount;
+
+            const data = {
+                labels: ['Wired', 'Wireless'],
+                datasets: [
+                    {
+                        data: _client,
+                        backgroundColor: [colorArray[0], colorArray[1]],
+                        hoverOffset: 4,
+                        borderColor: 'transparent',
+                    },
+                ],
+            };
+            const myChart = new Chart(ctx1, {
+                type: 'doughnut',
+                data: data,
+                options: {
+                    scales: {
+                        ticks: {
+                            display: false,
+                        },
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: 'white',
+                                display: false,
+                            },
+                        },
+                    },
+                    responsive: true,
+                    maintainAspectRatio: false,
+                },
+            });
+        }
+
+        function getDnsPingData() {
+            let data = httpApi.diag_ping.getResult();
+            let dns_ping = {};
+            if (data.status === 'PROCEEDING') {
+                setTimeout(getDnsPingData, 1000);
+            } else {
+                let item = Object.keys(data);
+
+                for (let i = 0; i < item.length; i++) {
+                    if (item[i] === 'status') {
+                        continue;
+                    }
+                    let target = data[item[i]];
+
+                    let index = target.alias;
+
+                    if (!dns_ping[index]) {
+                        dns_ping[index] = {
+                            alias: target.alias,
+                            avg: target.avg,
+                            time: target.data_time,
+                        };
+                    } else {
+                        if (target.data_time > dns_ping[index].time) {
+                            dns_ping[index].avg = target.avg;
+                            dns_ping[index].time = target.data_time;
+                        }
+                    }
+                }
+
+                getDnsPingTable(dns_ping);
+            }
+        }
+
+        function getDnsPingTable(obj) {
+            let ping_array = Object.values(obj);
+            ping_array.sort(function (a, b) {
+                return a.avg - b.avg;
+            });
+
+            let quota = 100;
+            quota = (Math.floor(ping_array[0].avg / quota) + 1) * quota;
+
+            let code = `
+                    <div class="d-flex justify-content-between pb-2 dns-title">
+                        <div>Name / Traffic</div>
+                        <div>Ping Time</div>
+                    </div>
+                `;
+
+            for (let i = 0; i < ping_array.length; i++) {
+                let name = ping_array[i].alias;
+                let avgTime = ping_array[i].avg;
+                percentage = parseInt((avgTime / quota) * 100);
+                let barWidth = percentage < 5 ? 5 : percentage;
+
+                code += `
+                    <div>
+                        <div class="row my-3">
+                            <div class="col-12 col-md-12 col-xl-4 text-truncate dns-text">${name}</div>
+                            <div class="col-8 col-xl-4 my-auto">
+                                <div class="progress">
+                                    <div class="progress-bar dns-progress" role="progressbar" style="width: ${barWidth}%"></div>
+                                 </div>
+                            </div>
+                            <div class="col-4 col-xl-4 text-end dns-text ps-0">${avgTime} ms</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            document.querySelector('#dns_ping_table').innerHTML = code;
+        }
+
+        function genCpuRam(rawData) {
+            let length = 15;
+            let cpuUsage = [],
+                ramUsage = [],
+                labelTag = [];
+
+            for (let i = 0; i < length; i++) {
+                cpuUsage.unshift(rawData.cpu_usage[i]);
+                ramUsage.unshift(rawData.mem_usage[i]);
+
+                if (i === 0) {
+                    labelTag.push('0');
+                } else if (i === length - 1) {
+                    labelTag.push(length + ' mins');
+                } else {
+                    labelTag.push('');
+                }
+            }
+
+            document.querySelector('#cpu_usage_value').innerHTML = cpuUsage[0] + '% Now';
+            document.querySelector('#ram_usage_value').innerHTML = ramUsage[0] + '% Now';
+
+            const ctx = document.getElementById('cpu_ram_chart').getContext('2d');
+            const myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labelTag,
+                    datasets: [
+                        {
+                            label: 'CPU',
+                            data: cpuUsage,
+                            backgroundColor: ['rgba(65, 255, 181, 1)'],
+
+                            borderWidth: 1,
+                            borderColor: 'rgba(65, 255, 181, 1)',
+                        },
+                        {
+                            label: 'RAM',
+                            data: ramUsage,
+                            backgroundColor: ['rgba(84, 204, 255, 1)'],
+
+                            borderWidth: 1,
+                            borderColor: 'rgba(84, 204, 255, 1)',
+                        },
+                    ],
+                },
+                options: {
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'white',
+                                font: {
+                                    size: 18,
+                                },
+                            },
+                        },
+                    },
+                    scales: {
+                        y: {
+                            ticks: {
+                                color: 'white',
+                                callback: function (value, index, ticks) {
+                                    return value + ' %';
+                                },
+
+                                beginAtZero: true,
+                                stepSize: 20,
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: 100,
+                        },
+                        x: {
+                            ticks: {
+                                color: 'white',
+                            },
+                        },
+                    },
+                    responsive: true,
+                    maintainAspectRatio: false,
+                },
+            });
+        }
+
+        function genPortStatus() {
+            let wanPort = system.portInfo.WAN;
+            let lanPort = system.portInfo.LAN;
+            let usbPort = system.portInfo.USB;
+            let code = '';
+            for (item of wanPort) {
+                let labelText = item.link_rate_text;
+                let active = (function () {
+                    if (item.is_on === '1') {
+                        return item.link_rate_status === 1 ? 'icon-ethernet-active' : 'icon-ethernet-warning';
+                    }
+
+                    return '';
+                })();
+
+                code += `
+                                        <div class="mx-2 text-center" style="width: 42px">
+                                            <div
+                                                role="icon icon-inner"
+                                                class="icon-size-36 icon-wan-RJ45 icon-ethernet-default m-auto ${active}"
+                                                title="${labelText}"
+                                            ></div>
+                                            <div style="font-size: 12px">${
+                                                labelText === '1 Gbps' ? '' : labelText
+                                            }</div>
+                                        </div>
+                                    `;
+            }
+
+            document.querySelector('#wan_port').innerHTML = code;
+            code = '';
+            for (item of lanPort) {
+                let labelText = item.link_rate_text;
+                let index = item.label_idx;
+                let active = (function () {
+                    if (item.is_on === '1') {
+                        return item.link_rate_status === 1 ? 'icon-ethernet-active' : 'icon-ethernet-warning';
+                    }
+
+                    return '';
+                })();
+
+                code += `
+                                        <div class="mx-2 text-center" style="width: 42px">
+                                            <div
+                                                role="icon icon-inner"
+                                                class="icon-size-36 icon-lan${index}-RJ45 icon-ethernet-default m-auto ${active}"
+                                                title="${labelText}"
+                                            ></div>
+                                            <div style="font-size: 12px">${
+                                                labelText === '1 Gbps' ? '' : labelText
+                                            }</div>
+                                        </div>
+
+                                    `;
+            }
+
+            document.querySelector('#lan_port').innerHTML = code;
+            code = '';
+            for (item of usbPort) {
+                if (item.devices === undefined) continue;
+
+                let labelText = (function () {
+                    return item.max_rate_text.slice(3);
+                })();
+
+                let active = (function () {
+                    //if (item.is_on === '1') {
+                    return item.link_rate_status === 1 ? 'icon-ethernet-active' : 'icon-ethernet-warning';
+                    // }
+
+                    //return '';
+                })();
+
+                code += `
+                                        <div class="mx-2 text-center" style="width: 42px">
+                                            <div
+                                                role="icon icon-inner"
+                                                class="icon-size-36 icon-usb m-auto ${active}"
+                                            ></div>
+                                            <div style="font-size: 12px">${labelText}</div>
+                                        </div>                                    
+                                    `;
+            }
+
+            document.querySelector('#usb_port').innerHTML = code;
+        }
+    </script>
+    <body>
+        <header class="container-fluid d-flex align-items-center p-3">
+            <!-- LOGO, MODEL NAME -->
+            <div class="d-flex align-items-center me-auto">
+                <div role="icon" class="icon-size-20 icon-menu me-3"></div>
+                <div role="icon" class="icon-size-logo icon-logo color-logo me-4"></div>
+                <div class="model-name mx-3" id="model_name">{{modelName}}</div>
+            </div>
+
+            <!-- LOGOUT -->
+            <div role="btn-logout" class="d-flex align-items-center mx-3" onclick="logout();">
+                <div role="icon" class="icon-size-20 icon-logout"></div>
+                <div role="info-text" class="ps-2 logout-title">Logout</div>
+            </div>
+
+            <!-- REBOOT -->
+            <div role="btn-reboot" class="d-flex align-items-center mx-3" onclick="reboot();">
+                <div role="icon" class="icon-size-20 icon-reboot"></div>
+                <div role="info-text" class="ps-2 reboot-title">Reboot</div>
+            </div>
+
+            <!-- LANGUAGE MENU -->
+            <div role="btn-language" class="d-flex align-items-center mx-3">
+                <div role="icon" class="icon-size-20 icon-language"></div>
+                <div class="dropdown ms-2" id="language_menu">
+                    <button
+                        class="btn dropdown-toggle p-1 lang-title"
+                        type="button"
+                        id="dropdownLangMenu"
+                        data-bs-toggle="dropdown"
+                    >
+                        Language
+                    </button>
+                    <ul class="dropdown-menu text-center lang-menu" aria-labelledby="dropdownLangMenu">
+                        <li>
+                            <a class="dropdown-item lang-item" href="#">English</a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item lang-item" href="#">繁體中文</a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item lang-item" href="#">简体中文</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+
+        <article class="container-fluid d-flex p-0">
+            <nav class="nav-menu-hide">
+                <div role="menu-close" class="d-flex justify-content-end">
+                    <div role="icon" class="icon-size-36 icon-close mt-2 mx-2"></div>
+                </div>
+
+                <ul class="list-unstyled">
+                    <li role="menu">
+                        <button class="btn btn-toggle menu-block ps-4 pe-2 py-3 w-100">
+                            <div role="icon" class="icon-size-24 icon-home color-menu"></div>
+                            <div role="menu-text" class="ms-3">Home</div>
+                        </button>
+                    </li>
+                </ul>
+                <div class="ms-4 divide-menu"></div>
+                <ul class="list-unstyled">
+                    <li role="menu">
+                        <button class="btn btn-toggle menu-block ps-4 pe-2 py-3 w-100">
+                            <div role="icon" class="icon-size-24 icon-dashboard color-menu"></div>
+                            <div role="menu-text" class="ms-3">Dashboard</div>
+                        </button>
+                    </li>
+
+                    <li role="menu">
+                        <button class="btn btn-toggle menu-block ps-4 pe-2 py-3 w-100 menu-clicked">
+                            <div role="icon" class="icon-size-24 icon-settings color-menu"></div>
+                            <div role="menu-text" class="ms-3">Settings</div>
+                        </button>
+                    </li>
+                </ul>
+                <div class="ms-4 divide-menu"></div>
+
+                <ul class="list-unstyled">
+                    <li role="menu">
+                        <button class="btn btn-toggle menu-block ps-4 pe-2 py-3 w-100">
+                            <div role="icon" class="icon-size-24 icon-help color-menu"></div>
+                            <div role="menu-text" class="ms-3">Help & Support</div>
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="mt-auto ps-4 pe-2 pb-4 copyright">2022 ASUSTeK Computer Inc. All rights reserved.</div>
+            </nav>
+
+            <section>
+                <!-- UPPER SIDE STATUS FIELD -->
+                <div role="info-banner" class="d-flex align-items-center flex-grow">
+                    <div role="time-banner" class="mx-2 my-1 px-2 py-1">
+                        <div class="ps-1 banner-title">Time</div>
+                        <!-- <div class="ps-1 banner-title">GMT+8</div> -->
+                        <div class="font-weight-bold banner-time" id="sys_time">
+                            16:32:54
+                            <small class="banner-time-meridiem">Fri</small>
+                        </div>
+                    </div>
+                    <div role="op-mode-banner" class="mx-2 my-1 p-1">
+                        <div class="border-left-3 ps-3 text-truncate banner-title"><#menu5_6_1_title#></div>
+                        <div class="font-weight-bold banner-text pt-2 ps-3 text-truncate" id="op_mode">
+                            {{operation_mode}}
+                        </div>
+                    </div>
+                    <div role="fw-ver-banner" class="mx-2 my-1 p-1">
+                        <div class="border-left-3 ps-3 text-truncate banner-title">
+                            <#General_x_FirmwareVersion_itemname#>
+                        </div>
+                        <div class="font-weight-bold banner-text pt-2 ps-3" id="firm_ver">{{firmware_ver}}</div>
+                    </div>
+
+                    <div role="ssid-banner" class="mx-2 my-1 p-1">
+                        <div class="border-left-3 ps-3 banner-title">SSID</div>
+                        <div class="font-weight-bold banner-text pt-2 ps-3 d-flex" id="ssid_banner">
+                            <!-- <span class="text-truncate px-2">{{SSID[0]}}</span>
+                            <span class="border-left-2 px-2 text-truncate">{{SSID[1]}}</span>
+                            <span class="border-left-2 px-2 text-truncate">{{SSID[2]}}</span> -->
+                        </div>
+                    </div>
+                    <div class="ms-auto d-flex align-items-center me-4">
+                        <div role="status_banner_out" class="px-2 py-3">
+                            <!-- <div
+                                role="icon state-banner"
+                                tabindex="0"
+                                class="icon-size-24 icon-notifications icon-default-color ms-4 icon-banner-active"
+                                data-bs-placement="bottom"
+                                data-bs-toggle="popover"
+                                data-bs-trigger="focus"
+                                title="Popover title"
+                                data-bs-content="And here's some amazing content. It's very engaging. Right?"
+                            ></div>
+                            <div
+                                role="icon state-banner"
+                                tabindex="0"
+                                class="icon-size-24 icon-multi-phone icon-default-color ms-4"
+                                data-bs-placement="bottom"
+                                data-bs-toggle="popover"
+                                data-bs-trigger="focus"
+                                title="Popover title"
+                                data-bs-content="And here's some amazing content. It's very engaging. Right?"
+                            ></div>
+                            <div
+                                role="icon state-banner"
+                                tabindex="0"
+                                class="icon-size-24 icon-guest-network-status icon-default-color ms-4"
+                                data-bs-placement="bottom"
+                                data-bs-toggle="popover"
+                                data-bs-trigger="focus"
+                                title="Popover title"
+                                data-bs-content="And here's some amazing content. It's very engaging. Right?"
+                            ></div>
+                            <div
+                                role="icon state-banner"
+                                tabindex="0"
+                                class="icon-size-24 icon-wan-status icon-default-color ms-4 icon-ethernet-active"
+                                data-bs-placement="bottom"
+                                data-bs-toggle="popover"
+                                data-bs-trigger="focus"
+                                title="Popover title"
+                                data-bs-content="And here's some amazing content. It's very engaging. Right?"
+                            ></div> -->
+
+                            <div
+                                id="usb_banner"
+                                role="icon state-banner"
+                                tabindex="0"
+                                class="icon-size-24 icon-usb-status icon-default-color ms-4 icon-ethernet-active"
+                                data-bs-placement="bottom"
+                                data-bs-toggle="popover"
+                                data-bs-trigger="focus"
+                            ></div>
+
+                            <div
+                                id="test"
+                                role="icon state-banner"
+                                class="icon-size-24 icon-app icon-default-color ms-4"
+                                data-bs-toggle="popover"
+                                data-bs-content="333333333333"
+                            ></div>
+                            <script></script>
+                            <button
+                                type="button"
+                                role="icon state-banner"
+                                class="icon-size-24 icon-app icon-default-color ms-4"
+                                data-bs-toggle="tooltip"
+                                data-bs-placement="top"
+                                title="Tooltip on top"
+                            ></button>
+                        </div>
+                    </div>
+                </div>
+                <script></script>
+                <main class="container-fluid">
+                    <div class="page-title py-3">Dashboard</div>
+                    <div class="row">
+                        <!-- Clients -->
+                        <div class="col-12 col-md-6 col-xl-4 mb-3">
+                            <div class="card pt-2 h-100">
+                                <h5 class="card-header">ACTIVE CLIENTS</h5>
+                                <div class="card-body">
+                                    <div class="row px-3">
+                                        <div class="col-12 col-sm-7 col-md-12 client-border">
+                                            <div class="d-flex">
+                                                <div class="col-8" style="height: 200px">
+                                                    <canvas id="chart_clients"></canvas>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex justify-content-around mt-2">
+                                                <div class="text-center mb-3">
+                                                    <div class="my-2 chart-content-title">ALL</div>
+                                                    <div class="my-2 chart-content-text" id="client_all_count"></div>
+                                                </div>
+
+                                                <div class="text-center mb-3">
+                                                    <div class="my-2 chart-content-title">WIRELESS</div>
+                                                    <div class="my-2 chart-content-text" id="wireless_count"></div>
+                                                </div>
+
+                                                <div class="text-center mb-3">
+                                                    <div class="my-2 chart-content-title">WIRED</div>
+                                                    <div class="my-2 chart-content-text" id="wired_count"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div
+                                            class="col-12 col-sm-4 col-md-12 mt-3 mt-sm-0 mt-md-3 ms-sm-auto p-0 client-detail"
+                                            id="wifi_client_table"
+                                        ></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PING Time -->
+                        <div class="col-12 col-md-6 col-xl-4 mb-3">
+                            <div class="card pt-2 h-100">
+                                <h5 class="card-header">DNS</h5>
+                                <div class="card-body" id="dns_ping_table"></div>
+                            </div>
+                        </div>
+
+                        <!-- System Line chart -->
+                        <div class="col-12 col-md-6 col-xl-4 mb-3">
+                            <div class="card pt-2 h-100">
+                                <h5 class="card-header">CROSS LINE CHART</h5>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div style="height: 300px">
+                                            <canvas id="cpu_ram_chart"></canvas>
+                                        </div>
+                                        <div class="col-12 col-sm-4 col-md-12 mt-2">
+                                            <div class="d-flex align-items-center py-2">
+                                                <div class="d-xl-flex">
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="me-2 system-state-cpu-tab"></div>
+                                                        <div class="ms-1 system-state-title">CPU</div>
+                                                    </div>
+                                                    <div class="ps-4 system-state-text-1">/ 100% Total</div>
+                                                </div>
+                                                <div class="ms-auto system-state-text-2" id="cpu_usage_value"></div>
+                                            </div>
+
+                                            <div class="divide-line"></div>
+                                            <div class="d-flex align-items-center py-2">
+                                                <div class="d-xl-flex">
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="me-2 system-state-ram-tab"></div>
+                                                        <div class="ms-1 system-state-title">RAM</div>
+                                                    </div>
+                                                    <div class="ps-4 system-state-text-1">/ 100% Total</div>
+                                                </div>
+                                                <div class="ms-auto system-state-text-2" id="ram_usage_value"></div>
+                                            </div>
+
+                                            <div class="divide-line"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 
+						    PHY PORTS
+					    -->
+                        <div class="col-12 col-md-6 col-xl-4 mb-3">
+                            <div class="card pt-2 h-100">
+                                <h5 class="card-header">PORTS STATUS</h5>
+                                <div class="card-body">
+                                    <div class="mx-2 my-3">
+                                        <div class="d-flex justify-content-start">
+                                            <div
+                                                class="d-flex justify-content-start col-4 flex-wrap"
+                                                id="wan_port"
+                                            ></div>
+
+                                            <div
+                                                class="d-flex justify-content-start col-8 flex-wrap"
+                                                id="lan_port"
+                                            ></div>
+                                        </div>
+                                    </div>
+                                    <div class="divide-line"></div>
+                                    <div class="mx-2 my-3">
+                                        <div class="d-flex justify-content-start" id="usb_port"></div>
+                                    </div>
+                                    <div class="divide-line"></div>
+                                    <div class="mx-2 my-3">
+                                        <div class="d-flex align-items-center mt-2">
+                                            <div class="me-2 port-state port-state-connected"></div>
+                                            <div class="port-state-text">Connected</div>
+                                        </div>
+                                        <div class="d-flex align-items-center mt-2">
+                                            <div class="me-2 port-state port-state-unplugged"></div>
+                                            <div class="port-state-text">Unplugged</div>
+                                        </div>
+                                        <div class="d-flex align-items-center mt-2">
+                                            <div class="me-2 port-state port-state-warning"></div>
+                                            <div class="port-state-text">Warning</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </section>
+            <aside></aside>
+        </article>
+        <footer></footer>
+    </body>
+</html>

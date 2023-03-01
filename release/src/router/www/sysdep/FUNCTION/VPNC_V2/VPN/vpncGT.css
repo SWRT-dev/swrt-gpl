@@ -36,15 +36,6 @@
 	border: 1px solid rgb(255, 0, 25);
 	background: rgba(255, 0, 25, 0.2);
 }
-.default_connect_container .default_wan_icon{
-	background-position: -429px 3px;
-}
-.default_connect_container .default_wan_icon:hover{
-	background-position: -429px -51px;
-}
-.default_connect_container .default_wan_icon.default_wan_selected{
-	background-position: -429px -105px;
-}
 .textInput:focus{
 	box-shadow: 0 0 3px rgb(255, 0, 25);
 	border: 1px solid rgb(255, 0, 25)

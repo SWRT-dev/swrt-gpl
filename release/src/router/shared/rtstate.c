@@ -292,6 +292,7 @@ int get_wan_unit(char *ifname)
 		case WAN_LW4O6:
 		case WAN_MAPE:
 		case WAN_V6PLUS:
+		case WAN_OCNVC:
 #endif
 			if (nvram_match(strlcat_r(prefix, "pppoe_ifname", tmp, sizeof(tmp)), ifname))
 				return unit;
@@ -362,8 +363,9 @@ char *get_wan_ifname(int unit)
 		break;
 #ifdef RTCONFIG_SOFTWIRE46
 	case WAN_V6PLUS:
+	case WAN_OCNVC:
 		if (nvram_get_int("s46_hgw_case") >= S46_CASE_MAP_HGW_OFF) {
-			wan_ifname = nvram_safe_get(strcat_r(prefix, "pppoe_ifname", tmp));
+			wan_ifname = nvram_safe_get(strlcat_r(prefix, "pppoe_ifname", tmp, sizeof(tmp)));
 			break;
 		}
 #endif
@@ -787,7 +789,7 @@ void add_wanscap_support(char *feature)
 	char features[128];
 	int len;
 
-	strcpy(features, nvram_safe_get("wans_cap"));
+	strlcpy(features, nvram_safe_get("wans_cap"), sizeof(features));
 
 	if((len = strlen(features))==0)
 		nvram_set("wans_cap", feature);
@@ -1318,10 +1320,12 @@ char *get_default_ssid(int unit, int subunit)
 		if (nvram_match("SSIDRULE", "RT-V5")){
 			strlcat(ssid, "_XD4", sizeof(ssid));
 		}
-#elif defined(XD4PRO)
+#elif defined(XD4PRO) || defined(XC5)
 		if (nvram_match("SSIDRULE", "RT-V5")){
 			if(nvram_match("odmpid","ZenWiFi_XD4_Pro")){
 				strlcat(ssid, "_XD4_Pro", sizeof(ssid));
+			}else if(nvram_match("odmpid","ZenWiFi_XC5")){
+                                strlcat(ssid, "_XC5", sizeof(ssid));
 			}else{ /* odmpid","ZenWiFi_XD5" */
 				strlcat(ssid, "_XD5", sizeof(ssid));
 			}
@@ -1331,10 +1335,18 @@ char *get_default_ssid(int unit, int subunit)
 		strlcat(ssid, nvram_safe_get("model"), sizeof(ssid));
 #elif defined(XT8PRO)
 		strlcat(ssid, "_XT9", sizeof(ssid));
+#elif defined(BM68)
+		strlcat(ssid, "_BM68", sizeof(ssid));
 #elif defined(XT8_V2)
 		strlcat(ssid, "_XT8", sizeof(ssid));
 #elif defined(XD4S)
-		strlcat(ssid, "_XD4S", sizeof(ssid));
+		if(nvram_match("odmpid","ZenWiFi_XD4_Plus"))
+			strlcat(ssid, "_XD4_Plus", sizeof(ssid));
+		else
+			strlcat(ssid, "_XD4S", sizeof(ssid));
+#else
+		strlcat(ssid, "_", sizeof(ssid));
+		strlcat(ssid, get_productid(), sizeof(ssid));
 #endif
 
 #endif

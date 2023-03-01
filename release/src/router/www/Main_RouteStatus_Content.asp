@@ -60,7 +60,7 @@
 									<textarea class="textarea_ssh_table" style="width:99%; font-family:'Courier New', Courier, mono; font-size:13px;" cols="63" rows="25" readonly="readonly" wrap=off><% nvram_dump("route.log",""); %></textarea><!--==magic 2008.11 del name ,if there are name, when the form was sent, the textarea also will be sent==-->
 								</div>
 								<div class="apply_gen">
-									<input type="button" onClick="location.href=location.href" value="<#CTL_refresh#>" class="button_gen">
+									<input type="button" onClick="location.reload();" value="<#CTL_refresh#>" class="button_gen">
 								</div>
 							</td>
 						</tr>

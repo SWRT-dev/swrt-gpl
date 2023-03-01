@@ -187,6 +187,7 @@ var ipsec_profile_client_5_ext = decodeURIComponent('<% nvram_char_to_ascii("","
 var all_profile_subnet_list = "";
 var control_profile_flag = true;
 var serverList_maxNum = 0;
+var vpnc_activate_maximum = ((isSupport("MaxRule_VPN_FUSION_Conn") == "0") ? 2 : parseInt(isSupport("MaxRule_VPN_FUSION_Conn")));
 var openvpnc_max = 5;
 
 var faq_href1 = "https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Faq&lang="+ui_lang+"&kw=&num=123";
@@ -927,6 +928,7 @@ function show_vpnc_rulelist(){
 									code += "<img title='<#usb_initializing#>' src='/images/InternetScan.gif'>";
 									break;
 								case "1" :
+								case "7" :
 									code += "<div title='<#vpn_openvpn_conflict#>' class='vpnc_ipconflict_icon'></div>";
 									$("#ip_conflict_hint").show();
 									break;
@@ -1077,7 +1079,7 @@ function connect_Row(rowdata) {
 		serverList_maxNum--;
 	}
 	else { //"vpnc" making connection
-		if(serverList_maxNum >= 4) {
+		if(serverList_maxNum >= vpnc_activate_maximum) {
 			alert("It reached the max number of concurrent active VPN connections, please deactivate one of active VPN profile before activate a new one.");
 			return;
 		}
@@ -2814,6 +2816,7 @@ function update_vpnc_profile_status(_vpnc_status_array) {
 							status_hint = "<img title='<#usb_initializing#>' src='/images/InternetScan.gif'>";
 							break;
 						case "1" :
+						case "7" :
 							status_hint = "<div title='<#vpn_openvpn_conflict#>' class='vpnc_ipconflict_icon'></div>";
 							$("#ip_conflict_hint").show();
 							break;

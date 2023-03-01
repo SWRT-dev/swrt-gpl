@@ -99,7 +99,7 @@ int read_cled_value(bcm_cled_rgb_led_s *cur_led)
 	int i = 0;
 #if defined(BCM4912) || defined(RPAX58) || defined(GT10)
 	FILE *fp = NULL;
-	char *ptr, *saveptr, *val;
+	char *ptr = NULL, *saveptr, *val;
 	char cmd[64], buf[128];
 	int found;
 
@@ -153,6 +153,7 @@ int read_cled_value(bcm_cled_rgb_led_s *cur_led)
 		f_read_string(cur_led->config3_path[i], cur_led->config3_val[i], sizeof(cur_led->config3_val[i]));
 	}
 #endif
+	return 0;
 }
 
 #if defined(RPAX56) || defined(RPAX58) || defined(ET12) || defined(XT12)
@@ -250,6 +251,7 @@ int set_cled_value(bcm_cled_rgb_led_s *cur_led, int rgb_id, char *val0, char *va
 	f_write_string(cur_led->config2_path[rgb_id], val2, 0, 0);
 	f_write_string(cur_led->config3_path[rgb_id], val3, 0, 0);
 #endif
+	return 0;
 }
 
 #if defined(RPAX56) || defined(RPAX58) || defined(ET12) || defined(XT12)
@@ -335,9 +337,9 @@ int _bcm_cled_ctrl(int rgb, int cled_mode)
 	};
 #else
 	char LED_BEHAVIOR_WRITE[BCM_CLED_MODE_END][20] =
-			{"0x0003e000", "0x0003d000", "0x0003c400", "0x0003e018", "0x0003e002", "0x0003e038", ""};
+			{"0x0003e000", "0x0003d000", "0x0003c400", "0x0003e018", "0x0003e002", "0x0003e038"};
 	char LED_BEHAVIOR_READ[BCM_CLED_MODE_END][20] =
-			{"3e000\n", "3d000\n", "3c400\n", "3e018\n", "3e002\n", "3e038\n", ""};
+			{"3e000\n", "3d000\n", "3c400\n", "3e018\n", "3e002\n", "3e038\n"};
 #endif
 	bcm_cled_rgb_led_s led[CLED_RGB_NUM] = {
 #ifdef RTAX82_XD6
@@ -376,6 +378,15 @@ int _bcm_cled_ctrl(int rgb, int cled_mode)
                 "0x00000000", "0x00000000", "0x00000000",
                 "0xff80307c", "0xff80309c", "0xff8030dc",
                 "0x00000000", "0x00000000", "0x00000000"}
+#elif defined(GT10)
+		{{"0xff803020", "0xff803030", "0xff803040"},
+		 {"0x00000000", "0x00000000", "0x00000000"},
+		 {"0xff803024", "0xff803034", "0xff803044"},
+		 {"0x00000000", "0x00000000", "0x00000000"},
+		 {"0xff803028", "0xff803038", "0xff803048"},
+		 {"0x00000000", "0x00000000", "0x00000000"},
+		 {"0xff80302c", "0xff80303c", "0xff80304c"},
+		 {"0x00000000", "0x00000000", "0x00000000"}}
 #elif defined(ET12) || defined(XT12)
 		// LED1 [cled21 - cled17 - cled16]
 		{{"0xff803170", "0xff803130", "0xff803120"},
@@ -464,6 +475,18 @@ int _bcm_cled_ctrl(int rgb, int cled_mode)
                 "0x00000000"
 	};
 	read_cled_value_x(&led_y);
+
+	bcm_cled_x_led_s led_p = {
+                "0xff803110",
+                "0x00000000",
+                "0xff803114",
+                "0x00000000",
+                "0xff803118",
+                "0x00000000",
+                "0xff80311c",
+                "0x00000000"
+	};
+	read_cled_value_x(&led_p);
 #endif
 
 	for(index = 0; index < CLED_RGB_NUM; index++) {
@@ -508,6 +531,13 @@ int _bcm_cled_ctrl(int rgb, int cled_mode)
 #endif
 				state_changed = 1;
 			}
+#ifdef RPAX58
+			if(is_cled_value_correct_x(&led_p, "0\n", "a34a32\n", "c34\n", "0\n") == 0){
+				set_cled_value_x(&led_p, "0x00000000", "0x00a34a32", "0x00000c34", "0x00000000");
+				eval("sw", led_p.config0_path, "0x00000000");
+				state_changed = 1;
+			}
+#endif
 #endif
 		}else if(rgb == BCM_CLED_GREEN){
 			if(is_cled_value_correct(&led[index], BCM_CLED_GREEN, LED_BEHAVIOR_READ[cled_mode], "a34a32\n", "c34\n", "0\n") == 0 ||
@@ -539,6 +569,13 @@ int _bcm_cled_ctrl(int rgb, int cled_mode)
 #endif
 				state_changed = 1;
 			}
+#ifdef RPAX58
+			if(is_cled_value_correct_x(&led_p, "0\n", "a34a32\n", "c34\n", "0\n") == 0){
+				set_cled_value_x(&led_p, "0x00000000", "0x00a34a32", "0x00000c34", "0x00000000");
+				eval("sw", led_p.config0_path, "0x00000000");
+				state_changed = 1;
+			}
+#endif
 #endif
 		}else if(rgb == BCM_CLED_BLUE){
 			if(is_cled_value_correct(&led[index], BCM_CLED_BLUE, LED_BEHAVIOR_READ[cled_mode], "a34a32\n", "c34\n", "0\n") == 0 ||
@@ -570,6 +607,13 @@ int _bcm_cled_ctrl(int rgb, int cled_mode)
 #endif
 				state_changed = 1;
 			}
+#ifdef RPAX58
+			if(is_cled_value_correct_x(&led_p, "0\n", "a34a32\n", "c34\n", "0\n") == 0){
+				set_cled_value_x(&led_p, "0x00000000", "0x00a34a32", "0x00000c34", "0x00000000");
+				eval("sw", led_p.config0_path, "0x00000000");
+				state_changed = 1;
+			}
+#endif
 #endif
 		}else if(rgb == BCM_CLED_YELLOW){
 #if defined(RPAX56) || defined(RPAX58)
@@ -580,6 +624,13 @@ int _bcm_cled_ctrl(int rgb, int cled_mode)
 #endif
 				state_changed = 1;
 			}
+#ifdef RPAX58
+			if(is_cled_value_correct_x(&led_p, "0\n", "a34a32\n", "c34\n", "0\n") == 0){
+				set_cled_value_x(&led_p, "0x00000000", "0x00a34a32", "0x00000c34", "0x00000000");
+				eval("sw", led_p.config0_path, "0x00000000");
+				state_changed = 1;
+			}
+#endif
 			if(is_cled_value_correct_x(&led_y, LED_BEHAVIOR_READ[cled_mode], "a34a32\n", "c34\n", "0\n") == 0){
 				set_cled_value_x(&led_y, LED_BEHAVIOR_READ[cled_mode], "0x00a34a32", "0x00000c34", "0x00000000");
 #ifdef RPAX58
@@ -647,6 +698,13 @@ int _bcm_cled_ctrl(int rgb, int cled_mode)
 #endif
 				state_changed = 1;
 			}
+#ifdef RPAX58
+			if(is_cled_value_correct_x(&led_p, "0\n", "a34a32\n", "c34\n", "0\n") == 0){
+				set_cled_value_x(&led_p, "0\n", "0x00a34a32", "0x00000c34", "0x00000000");
+				eval("sw", led_p.config0_path, "0");
+				state_changed = 1;
+			}
+#endif
 #else
 			if(is_cled_value_correct(&led[index], BCM_CLED_RED, LED_BEHAVIOR_READ[cled_mode], "a34a32\n", "c34\n", "0\n") == 0){
 				set_cled_value(&led[index], BCM_CLED_RED, LED_BEHAVIOR_WRITE[cled_mode], "0x00a34a32", "0x00000c34", "0x00000000");
@@ -658,6 +716,36 @@ int _bcm_cled_ctrl(int rgb, int cled_mode)
 			}
 			if(is_cled_value_correct(&led[index], BCM_CLED_BLUE, LED_BEHAVIOR_READ[cled_mode], "a34a32\n", "c34\n", "0\n") == 0){
 				set_cled_value(&led[index], BCM_CLED_BLUE, LED_BEHAVIOR_WRITE[cled_mode], "0x00a34a32", "0x00000c34", "0x00000000");
+				state_changed = 1;
+			}
+#endif
+#ifdef RPAX58
+		}else if(rgb == BCM_CLED_PURPLE){
+			if(is_cled_value_correct(&led[index], BCM_CLED_RED, LED_BEHAVIOR_READ[cled_mode], "a34a32\n", "c34\n", "0\n") == 0){
+				set_cled_value(&led[index], BCM_CLED_RED, LED_BEHAVIOR_WRITE[cled_mode], "0x00a34a32", "0x00000c34", "0x00000000");
+				state_changed = 1;
+			}
+			if(is_cled_value_correct(&led[index], BCM_CLED_BLUE, LED_BEHAVIOR_READ[cled_mode], "a34a32\n", "c34\n", "0\n") == 0){
+				set_cled_value(&led[index], BCM_CLED_BLUE, LED_BEHAVIOR_WRITE[cled_mode], "0x00a34a32", "0x00000c34", "0x00000000");
+				state_changed = 1;
+			}
+			if(is_cled_value_correct(&led[index], BCM_CLED_GREEN, "0\n", "a34a32\n", "c34\n", "0\n") == 0){
+				set_cled_value(&led[index], BCM_CLED_GREEN, "0x00000000", "0x00a34a32", "0x00000c34", "0x00000000");
+				state_changed = 1;
+			}
+			if(is_cled_value_correct_x(&led_p, LED_BEHAVIOR_READ[cled_mode], "a34a32\n", "c34\n", "0\n") == 0){
+				set_cled_value_x(&led_p, LED_BEHAVIOR_READ[cled_mode], "0x00a34a32", "0x00000c34", "0x00000000");
+				eval("sw", led_p.config0_path, led_p.config0_val);
+				state_changed = 1;
+			}
+			if(is_cled_value_correct_x(&led_y, "0\n", "a34a32\n", "c34\n", "0\n") == 0){
+				set_cled_value_x(&led_y, "0x00000000", "0x00a34a32", "0x00000c34", "0x00000000");
+				eval("sw", led_y.config0_path, "0x00000000");
+				state_changed = 1;
+			}
+			if(is_cled_value_correct_x(&led_w, "0\n", "a34a32\n", "c34\n", "0\n") == 0){
+				set_cled_value_x(&led_w, "0x00000000", "0x00a34a32", "0x00000c34", "0x00000000");
+				eval("sw", led_w.config0_path, "0x00000000");
 				state_changed = 1;
 			}
 #endif
@@ -683,6 +771,12 @@ int _bcm_cled_ctrl(int rgb, int cled_mode)
 				set_cled_value_x(&led_y, "0x00000000", "0x00a34a32", "0x00000c34", "0x00000000");
 				state_changed = 1;
 			}
+#ifdef RPAX58
+			if(is_cled_value_correct_x(&led_p, "0\n", "a34a32\n", "c34\n", "0\n") == 0){
+				set_cled_value_x(&led_p, "0x00000000", "0x00a34a32", "0x00000c34", "0x00000000");
+				state_changed = 1;
+			}
+#endif
 #endif
 		}
 #endif
@@ -702,7 +796,14 @@ int bcm_cled_ctrl(int rgb, int cled_mode)
 		return 0;
 	}
 #endif
-#if defined(RTAX95Q) || defined(XT8PRO) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4) || defined(RTAX82_XD6) || defined(RTAX82_XD6S) || defined(RPAX56) || defined(RPAX58) || defined(ET12) || defined(XT12)
+#if defined(GT10) && !defined(RTCONFIG_BCM_MFG)
+	if (nvram_get_int("asus_mfg") != 1) {
+		led_control(LED_WHITE, (rgb == BCM_CLED_WHITE) ? LED_ON : LED_OFF);
+		if (rgb == BCM_CLED_WHITE)
+			rgb = BCM_CLED_OFF;
+	}
+#endif
+#if defined(RTAX95Q) || defined(XT8PRO) || defined(BM68) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(ET8_V2) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4) || defined(RTAX82_XD6) || defined(RTAX82_XD6S) || defined(RPAX56) || defined(RPAX58) || defined(ET12) || defined(XT12) || defined(GT10) || defined(XC5)
 	state_changed = _bcm_cled_ctrl(rgb, cled_mode);
 	if(state_changed == 1){
 #ifdef RTAX82_XD6
@@ -712,9 +813,11 @@ int bcm_cled_ctrl(int rgb, int cled_mode)
 #elif defined(RPAX56)
                 f_write_string("/proc/bcm_cled/activate", "0x000058a0", 0, 0);
 #elif defined(RPAX58)
-		eval("sw", "0xff80301c", "0x000058a0");
+		eval("sw", "0xff80301c", "0x0000d8a0");
 #elif defined(ET12) || defined(XT12)
 		eval("sw", "0xff80301c", "0x0027E006");
+#elif defined(GT10)
+		eval("sw", "0xff80301c", "0x00000007");
 #else
 		f_write_string("/proc/bcm_cled/activate", "0x0001C000", 0, 0);
 #endif
@@ -733,7 +836,7 @@ int rc_bcm_cled_ctrl(int rgb, int cled_mode)
 #if defined(RPAX56)
                 f_write_string("/proc/bcm_cled/activate", "0x000058a0", 0, 0);
 #elif defined(RPAX58)
-		eval("sw", "0xff80301c", "0x000058a0");
+		eval("sw", "0xff80301c", "0x0000d8a0");
 #endif
 	}
 	return state_changed;
@@ -789,7 +892,7 @@ int bcm_cled_ctrl_single_white(int rgb, int cled_mode) {
 
 	if(state_changed)
 #if defined(RPAX58)
-		 eval("sw", "0xff80301c", "0x000058a0");
+		 eval("sw", "0xff80301c", "0x0000d8a0");
 #else
 		 eval("sw", "0xff80301c", "0x01C00000");
 #endif
@@ -828,7 +931,7 @@ uint32_t get_gpio(uint32_t gpio)
 #endif
 }
 
-#if defined(RTCONFIG_HND_ROUTER_AX_6710) || defined(BCM6750) || defined(BCM6756) || defined(GTAX6000)
+#if defined(RTCONFIG_HND_ROUTER_AX_6710) || defined(BCM6750) || defined(BCM6756) || defined(GTAX6000) || defined(RTAX86U_PRO) || defined(BCM6855)
 uint32_t get_gpio2(uint32_t gpio)
 {
 	int board_fp = open("/dev/brcmboard", O_RDWR);
@@ -1092,7 +1195,7 @@ int phy_ioctl(int fd, int write, int phy, int reg, uint32_t *value)
 	struct ifreq ifr;
 	int ret, vecarg[2];
 
-#if defined(RTAX95Q) || defined(XT8PRO) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX56U) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4) || defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2)
+#if defined(RTAX95Q) || defined(XT8PRO) || defined(BM68) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(ET8_V2) || defined(RTAX56U) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4) || defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2) || defined(RTAX3000N) || defined(XC5)
 	return 1;
 #endif
 	memset(&ifr, 0, sizeof(ifr));
@@ -1332,7 +1435,7 @@ uint32_t set_ex53134_ctrl(uint32_t portmask, int ctrl)
 	int i=0;
 	uint32_t value;
 
-#if defined(RTAX95Q) || defined(XT8PRO) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX56U) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4)
+#if defined(RTAX95Q) || defined(XT8PRO) || defined(BM68) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(ET8_V2) || defined(RTAX56U) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4) || defined(XC5)
 	return 1;
 #endif
 	for (i = 0; i < 4 && (portmask >> i); i++) {
@@ -1354,7 +1457,7 @@ uint32_t set_phy_ctrl(uint32_t portmask, int ctrl)
 	int fd, i, model;
 	uint32_t value;
 
-#if defined(RTAX95Q) || defined(XT8PRO) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX56U) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4) || defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2)
+#if defined(RTAX95Q) || defined(XT8PRO) || defined(BM68) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(ET8_V2) || defined(RTAX56U) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4) || defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2) || defined(RTAX3000N) || defined(XC5)
 	return 1;
 #endif
 	model = get_switch();
@@ -1831,7 +1934,7 @@ int get_bonding_port_status(int port)
 	int ports[lan_ports+1];
 	/* 7 3 2 1 0	W0 L1 L2 L3 L4 */
 	ports[0]=0; ports[1]=1; ports[2]=2; ports[3]=3;
-#elif defined(XT8PRO) || defined(XT8_V2) || defined(ET8PRO)
+#elif defined(XT8PRO) || defined(BM68) || defined(XT8_V2) || defined(ET8PRO) || defined(ET8_V2)
 	int lan_ports=3;
 	int ports[lan_ports+1];
 	/* 7 3 2 1 0	W0 L1 L2 L3 L4 */
@@ -1858,38 +1961,67 @@ int get_bonding_port_status(int port)
 	int ports[lan_ports+1];
 	/* 7 3	W0 L1 */
 	ports[0]=7; ports[1]=3;
+#elif defined(XC5)
+        int lan_ports=2;
+
+        int ports[lan_ports+1];
+        /* 5 0 1  W0 L1 L2 */
+        ports[0]=5; ports[1]=0; ports[1];
 #elif defined(CTAX56_XD4)
 	int lan_ports=1;
 
 	int ports[lan_ports+1];
 	/* 7 3	W0 L1 */
 	ports[0]=7; ports[1]=3;
-#elif defined(RTAX58U) || defined(TUFAX3000) || defined(TUFAX5400) || defined(RTAX82U) || defined(GSAX3000) || defined(GSAX5400)
+#elif defined(RTAX58U) || defined(TUFAX3000) || defined(TUFAX5400) || defined(RTAX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(RTAX82U_V2)
 	int lan_ports=4;
 	int ports[lan_ports+1];
 	/* 4 3 2 1 0	W0 L1 L2 L3 L4 */
 	ports[0]=4; ports[1]=3; ports[2]=2; ports[3]=1; ports[4]=0;
-#elif defined(TUFAX3000_V2) || defined(RTAXE7800)
+#elif defined(TUFAX3000_V2)
+	int lan_ports=4;
+	int ports[lan_ports+1];
+	/* 0 1 2 3    W0 L1 L2 L3 */
+	ports[0]=0; ports[1]=1; ports[2]=2; ports[3]=3;
+#elif defined(TUFAX3000_V2)
 	int lan_ports=4;
 	int ports[lan_ports+1];
 	/* 0 1 2 3 4    W0 L1 L2 L3 L4 */
 	ports[0]=0; ports[1]=1; ports[2]=2; ports[3]=3; ports[4]=4;
+#elif defined(RTAXE7800)
+	int lan_ports=4;
+	int ports[lan_ports+1];
+	if (!nvram_get_int("wans_extwan"))
+	/* 0 1 2 3 4    W0 L1 L2 L3 L4 */
+	ports[0]=0; ports[1]=1; ports[2]=2; ports[3]=3; ports[4]=4;
+	else
+	/* 1 0 2 3 4    W0 L1 L2 L3 L4 */
+	ports[0]=1; ports[1]=0; ports[2]=2; ports[3]=3; ports[4]=4;
+#elif defined(GT10)
+	int lan_ports=3;
+	int ports[lan_ports+1];
+	if (!nvram_get_int("wans_extwan"))
+	/* 0 1 2 3    W0 L1 L2 L3 */
+	ports[0]=0; ports[1]=1; ports[2]=2; ports[3]=3;
+	else
+	/* 1 0 2 3    W0 L1 L2 L3 */
+	ports[0]=1; ports[1]=0; ports[2]=2; ports[3]=3;
 #elif defined(RTAX82_XD6)
 	int lan_ports=3;
 	int ports[lan_ports+1];
 	/* 4 2 1 0    W0 L1 L2 L3 */
 	ports[0]=4; ports[1]=2; ports[2]=1; ports[3]=0;
 #elif defined(RTAX82_XD6S)
-        int lan_ports=1;
-        int ports[lan_ports+1];
-        /* 1 0    W0 L1 */
-        ports[0]=1; ports[1]=0;;
+	int lan_ports=1;
+	int ports[lan_ports+1];
+	/* 1 0    W0 L1 */
+	ports[0]=1; ports[1]=0;;
 #elif defined(RTAX56U)
 	int lan_ports=4;
 	int ports[lan_ports+1];
 	/* 4 3 2 1 0	W0 L1 L2 L3 L4 */
 	ports[0]=4; ports[1]=3; ports[2]=2; ports[3]=1; ports[4]=0;
-#elif defined(RTAX86U) || defined(RTAX5700) || defined(GTAXE11000)
+#elif defined(RTAX86U) || defined(GTAXE11000)
 	int lan_ports = 5;
 	char *ports[lan_ports+1];
 	/* 7 4 3 2 1 0	L5(2.5G) W0 L1 L2 L3 L4 */
@@ -1901,7 +2033,7 @@ int get_bonding_port_status(int port)
 	/* 4 3 2 1 0	W0 L1 L2 L3 L4 */
 	/* eth0 eth4 eth3 eth2 eth1 */
 	ports[0] = "eth0"; ports[1] = "eth4"; ports[2] = "eth3"; ports[3] = "eth2"; ports[4] = "eth1";
-#elif defined(GTAX6000)
+#elif defined(GTAX6000) || defined(RTAX86U_PRO)
 	/* 6 5 3 2 1 0  L5(2.5G) W0 L1 L2 L3 L4 */
 	char *ports[6] = { "eth5", "eth0", "eth1", "eth2", "eth3", "eth4" };
 #elif defined(GTAX11000_PRO)
@@ -1937,7 +2069,7 @@ int get_bonding_port_status(int port)
 	/* WAN port */
 #if defined(RTCONFIG_HND_ROUTER_AX_6710) || defined(BCM4912)
 	if (!hnd_get_phy_status(ports[port]))				/*Disconnect*/
-#elif defined(RTCONFIG_HND_ROUTER_AX_675X) || defined(BCM6756)
+#elif defined(RTCONFIG_HND_ROUTER_AX_675X) || defined(BCM6756) || defined(BCM6855) || defined(BCM6750)
 	if (!hnd_get_phy_status(ports[port]))				/*Disconnect*/
 #else
 	if (!hnd_get_phy_status(ports[port], extra_p0, regv, pmdv))	/*Disconnect*/
@@ -1947,7 +2079,7 @@ int get_bonding_port_status(int port)
 	}else{
 #if defined(RTCONFIG_HND_ROUTER_AX_6710) || defined(BCM4912)
 		ret = hnd_get_phy_speed(ports[port]);
-#elif defined(RTCONFIG_HND_ROUTER_AX_675X) || defined(BCM6756)
+#elif defined(RTCONFIG_HND_ROUTER_AX_675X) || defined(BCM6756) || defined(BCM6855) || defined(BCM6750)
 		ret = hnd_get_phy_speed(ports[port]);
 #else
 		ret = hnd_get_phy_speed(ports[port], extra_p0, regv2, pmdv2);
@@ -2144,9 +2276,9 @@ fail:
 
 typedef struct {
 	unsigned int sel_val;
-	char steering[WLIF_MAX][32];
-	char sta_select[WLIF_MAX][40];
-	char if_qualify[WLIF_MAX][20];
+	char steering[RULE_MAX][32];
+	char sta_select[RULE_MAX][40];
+	char if_qualify[RULE_MAX][20];
 }bcmbsd_policy;
 
 bcmbsd_policy bcmbsd_def_policy[BCMBSD_SELIF_MAX] = {
@@ -2156,11 +2288,11 @@ bcmbsd_policy bcmbsd_def_policy[BCMBSD_SELIF_MAX] = {
 			 {"","","",""}},
 			// 2G_5G1_5G2_6G (1)
 			{ 0xf, 
-			 {"0 5 3 -62 0 0 0x20",
+			 {"0 5 3 -62 0 0 0x22",
 			  "0 5 3 -82 0 0 0x820",
 			  "0 5 3 -82 0 0 0x420",
 			  "0 5 3 -82 0 0 0x20"},
-			 {"30 -62 0 0 0 1 1 0 0 0 0x20",
+			 {"30 -62 0 0 0 1 1 0 0 0 0x122",
 			  "30 -82 0 0 0 1 1 0 0 0 0x8020",
 			  "30 -82 0 0 0 1 1 0 0 0 0x4020",
 			  "30 -82 0 0 0 1 1 0 0 0 0x20"},
@@ -2170,11 +2302,11 @@ bcmbsd_policy bcmbsd_def_policy[BCMBSD_SELIF_MAX] = {
 			  "0 0x0 -100"}},
 			// 2G_5G1_6G (2)
 			{ 0xb,
-			 {"0 5 3 -62 0 0 0x20",
+			 {"0 5 3 -62 0 0 0x22",
 			  "0 5 3 -82 0 0 0x20",
 			  "",
 			  "0 5 3 -82 0 0 0x20"},
-			 {"30 -62 0 0 0 1 1 0 0 0 0x20",
+			 {"30 -62 0 0 0 1 1 0 0 0 0x122",
 			  "30 -82 0 0 0 1 1 0 0 0 0x20",
 			  "",
 			  "30 -82 0 0 0 1 1 0 0 0 0x20"},
@@ -2184,11 +2316,11 @@ bcmbsd_policy bcmbsd_def_policy[BCMBSD_SELIF_MAX] = {
 			  "0 0x0 -100"}},
 			// 2G_5G1_5G2 (3:QIS)
 			{ 0x7,
-			 {"0 5 3 -62 0 0 0x20",
+			 {"0 5 3 -62 0 0 0x22",
 			  "0 5 3 -82 0 0 0x820",
 			  "0 5 3 -82 0 0 0x420",
 			  ""},
-			 {"30 -62 0 0 0 1 1 0 0 0 0x20",
+			 {"30 -62 0 0 0 1 1 0 0 0 0x122",
 			  "30 -82 0 0 0 1 1 0 0 0 0x8020",
 			  "30 -82 0 0 0 1 1 0 0 0 0x4020",
 			  ""},
@@ -2198,11 +2330,11 @@ bcmbsd_policy bcmbsd_def_policy[BCMBSD_SELIF_MAX] = {
 			  ""}},
 			// 2G_5G1 (4)
 			{ 0x3,
-			 {"0 5 3 -62 0 0 0x20",
+			 {"0 5 3 -62 0 0 0x22",
 			  "0 5 3 -82 0 0 0x20",
 			  "",
 			  ""},
-			 {"30 -62 0 0 0 1 1 0 0 0 0x20",
+			 {"30 -62 0 0 0 1 1 0 0 0 0x122",
 			  "30 -82 0 0 0 1 1 0 0 0 0x20",
 			  "",
 			  ""},
@@ -2212,11 +2344,11 @@ bcmbsd_policy bcmbsd_def_policy[BCMBSD_SELIF_MAX] = {
 			  ""}},
 			// 2G_5G2_6G (5)
 			{ 0xd,
-			 {"0 5 3 -62 0 0 0x20",
+			 {"0 5 3 -62 0 0 0x22",
 			  "",
 			  "0 5 3 -82 0 0 0x20",
 			  "0 5 3 -82 0 0 0x20"},
-			 {"30 -62 0 0 0 1 1 0 0 0 0x20",
+			 {"30 -62 0 0 0 1 1 0 0 0 0x122",
 			  "",
 			  "30 -82 0 0 0 1 1 0 0 0 0x20",
 			  "30 -82 0 0 0 1 1 0 0 0 0x20"},
@@ -2226,11 +2358,11 @@ bcmbsd_policy bcmbsd_def_policy[BCMBSD_SELIF_MAX] = {
 			  "0 0x0 -100"}},
 			// 2G_6G (6) 
 			{ 0x9, 
-			 {"0 5 3 -62 0 0 0x20",
+			 {"0 5 3 -62 0 0 0x22",
 			  "",
 			  "",
 			  "0 5 3 -82 0 0 0x20"},
-			 {"30 -62 0 0 0 1 1 0 0 0 0x20",
+			 {"30 -62 0 0 0 1 1 0 0 0 0x122",
 			  "",
 			  "",
 			  "30 -82 0 0 0 1 1 0 0 0 0x20"},
@@ -2268,11 +2400,11 @@ bcmbsd_policy bcmbsd_def_policy[BCMBSD_SELIF_MAX] = {
 			  "0 0x0 -100"}},
 			// 2G_5G2 (9) 
 			{ 0x5,
-			 {"0 5 3 -62 0 0 0x20",
+			 {"0 5 3 -62 0 0 0x22",
 			  "",
 			  "0 5 3 -82 0 0 0x20",
 			  ""},
-			 {"30 -62 0 0 0 1 1 0 0 0 0x20",
+			 {"30 -62 0 0 0 1 1 0 0 0 0x12",
 			  "",
 			  "30 -82 0 0 0 1 1 0 0 0 0x20",
 			  ""},
@@ -2322,24 +2454,39 @@ int bcmbsd_tblidx(int selif_val)
 	return -1;
 }
 
-int get_ifid(int wl_seq)
+// wl_seq: rule-seq-id; return value(unit_id): which wlunit to set the rule[wl_seq] 
+int get_unitid(int wl_seq)
 {
-	char wlif[16];
+	char wlvar[16];
+	int nband = -1;
 
-	sprintf(wlif, "wl%d_ifname", wl_seq);
+	sprintf(wlvar, "wl%d_ifname", wl_seq);
 
-	if(!*nvram_safe_get(wlif))
+	if(!*nvram_safe_get(wlvar))
 		return -1;
 
+	sprintf(wlvar, "wl%d_nband", wl_seq);
+	nband = atoi(nvram_safe_get(wlvar));
+
 	switch(wl_seq) {
-		case 0:
-			return WLIF_2G;
-		case 1:
-			return WLIF_5G1;
-		case 2:
-			return WLIF_5G2;
-		case 3:
-			return WLIF_6G;
+		case RULE_2G:
+			return WLIF_2G;	// wl-unit-of-2G_xxx set 2G-rule
+		case RULE_5G1:
+			return WLIF_5G1; // wl-unit-of-5G1_xxx set 5G1 rule
+		case RULE_5G2:
+#if !defined(GTAXE16000)
+			if(nband == 4)
+				return WLIF_6G; // * wl-unit-of-6G_xxx should set 6G rule
+			else
+#endif
+				return WLIF_5G2; // wl-unit-of-5G2_xxx set 5G2 rule
+		case RULE_6G:
+#if !defined(GTAXE16000)
+			if(nband != 4)
+				return -1; // wl-unit-of-6G_xxx set 5G2 rule
+			else
+#endif			
+				return WLIF_6G; // wl-unit-of-6G_xxx set 6G rule
 	}
 
 	return -1;
@@ -2347,29 +2494,65 @@ int get_ifid(int wl_seq)
 
 void gen_bcmbsd_def_policy(int sel)
 {
-	int i, tbi, ifid;
+	int i, tbi, unit_id, ruleid;
 	char namebuf[32];
+	int smart_connect_x = nvram_get_int("smart_connect_x");
+	int o_sel = sel;
+	
+	if(!sel)
+		sel = nvram_get_int("smart_connect_selif");
 
 	tbi = bcmbsd_tblidx(sel);
 	if(tbi < 0)
 		return;
+	
+	_dprintf("%s: by selif val: %d(tbi_%d)(o_sel=%d)\n", __func__, sel, tbi, o_sel);
 
-	_dprintf("%s: select %d(tb_%d)\n", __func__, sel, tbi);
-	for(i=0; i<WLIF_MAX; ++i) {
-		ifid = get_ifid(i);
-		if(ifid < 0)
-			continue;
-		sprintf(namebuf, "wl%d_bsd_steering_policy_def", ifid);
-		nvram_set(namebuf, bcmbsd_def_policy[tbi].steering[i]);
-		_dprintf("%s, set defnv [%s]=[%s]\n", __func__, namebuf, bcmbsd_def_policy[tbi].steering[i]);
+	for(i=0; i<RULE_MAX; ++i) {
+		ruleid = i;
+		unit_id = get_unitid(ruleid);
 
-		sprintf(namebuf, "wl%d_bsd_sta_select_policy_def", ifid);
-		nvram_set(namebuf, bcmbsd_def_policy[tbi].sta_select[i]);
-		_dprintf("%s, set defnv [%s]=[%s]\n", __func__, namebuf, bcmbsd_def_policy[tbi].sta_select[i]);
+		if(unit_id < 0) {
+			_dprintf("%s fin due no more valid wl unit\n", __func__);
+			break;
+		}
+#if !defined(GTAXE16000)
+		if(ruleid==RULE_5G2 && unitid==WLIF_6G) {
+			_dprintf("%s: triband-2G/5G/6G Dut adjust its ruleid for seq-%d\n", __func__, i);
+			ruleid = RULE_6G;
+		}
+#endif
+		_dprintf("%s, wl%d set rule_idx=%d\n", __func__, unit_id, ruleid);
 
-		sprintf(namebuf, "wl%d_bsd_if_qualify_policy_def", ifid);
-		nvram_set(namebuf, bcmbsd_def_policy[tbi].if_qualify[i]);
-		_dprintf("%s, set defnv [%s]=[%s]\n", __func__, namebuf, bcmbsd_def_policy[tbi].if_qualify[i]);
+		sprintf(namebuf, "wl%d_bsd_steering_policy_def", unit_id);
+		nvram_set(namebuf, bcmbsd_def_policy[tbi].steering[ruleid]);
+		sprintf(namebuf, "wl%d_bsd_steering_policy", unit_id);
+		nvram_set(namebuf, bcmbsd_def_policy[tbi].steering[ruleid]);
+		if(smart_connect_x == 2) {
+			sprintf(namebuf, "wl%d_bsd_steering_policy_x", unit_id);
+			nvram_set(namebuf, bcmbsd_def_policy[tbi].steering[ruleid]);
+		}
+		_dprintf("%s, set defnv [%s]=[%s]\n", __func__, namebuf, bcmbsd_def_policy[tbi].steering[ruleid]);
+
+		sprintf(namebuf, "wl%d_bsd_sta_select_policy_def", unit_id);
+		nvram_set(namebuf, bcmbsd_def_policy[tbi].sta_select[ruleid]);
+		sprintf(namebuf, "wl%d_bsd_sta_select_policy", unit_id);
+		nvram_set(namebuf, bcmbsd_def_policy[tbi].sta_select[ruleid]);
+		if(smart_connect_x == 2) {
+			sprintf(namebuf, "wl%d_bsd_sta_select_policy_x", unit_id);
+			nvram_set(namebuf, bcmbsd_def_policy[tbi].sta_select[ruleid]);
+		}
+		_dprintf("%s, set defnv [%s]=[%s]\n", __func__, namebuf, bcmbsd_def_policy[tbi].sta_select[ruleid]);
+
+		sprintf(namebuf, "wl%d_bsd_if_qualify_policy_def", unit_id);
+		nvram_set(namebuf, bcmbsd_def_policy[tbi].if_qualify[ruleid]);
+		sprintf(namebuf, "wl%d_bsd_if_qualify_policy", unit_id);
+		nvram_set(namebuf, bcmbsd_def_policy[tbi].if_qualify[ruleid]);
+		if(smart_connect_x == 2) {
+			sprintf(namebuf, "wl%d_bsd_if_qualify_policy_x", unit_id);
+			nvram_set(namebuf, bcmbsd_def_policy[tbi].if_qualify[ruleid]);
+		}
+		_dprintf("%s, set defnv [%s]=[%s]\n", __func__, namebuf, bcmbsd_def_policy[tbi].if_qualify[ruleid]);
 	}	
 }
 

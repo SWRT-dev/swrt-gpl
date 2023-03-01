@@ -115,7 +115,7 @@ function initial(){
 	addWANOption(document.form.wans_primary, wans_caps_primary.split(" "));
 	addWANOption(document.form.wans_second, wans_caps_secondary.split(" "));
 
-    if(based_modelid == "4G-AC53U" || based_modelid == "4G-AC55U" || based_modelid == "4G-AC68U"){
+	if(based_modelid.substring(0,3) == "4G-"){
 		document.getElementById("fo_detection_count_hd").innerHTML = "<#Failover_retry_count#>";
 		document.getElementById("fo_seconds").style.display = "none";
 		document.getElementById("fo_tail_msg").style.display = "";
@@ -132,7 +132,7 @@ function initial(){
 	if(based_modelid == "RT-AC87U"){ //MODELDEP: RT-AC87 : Quantenna port
                 document.form.wans_lanport1.remove(0);   //Primary LAN1
                 document.form.wans_lanport2.remove(0);   //Secondary LAN1
-	}else if(based_modelid == "4G-AC53U"){
+	}else if(based_modelid == "4G-AC53U" || based_modelid == "4G-AC56"){
 		document.form.wans_lanport1.remove(3);
 		document.form.wans_lanport1.remove(2);
 		document.form.wans_lanport2.remove(3);
@@ -375,7 +375,7 @@ function addWANOption(obj, wanscapItem){
 				wanscapName = "Ethernet WAN";
 			else if(wanscapName == "LAN")
 				wanscapName = "Ethernet LAN";
-			else if(wanscapName == "USB" && (based_modelid == "4G-AC53U" || based_modelid == "4G-AC55U" || based_modelid == "4G-AC68U"))
+			else if(wanscapName == "USB" && based_modelid.substring(0,3) == "4G-")
 				wanscapName = "<#Mobile_title#>";
 			obj.options[i] = new Option(wanscapName, wanscapItem[i]);
 		}	
@@ -878,7 +878,7 @@ function add_option_count(obj, obj_t, selected_flag){
 
 		free_options(obj_t);
 		for(var i = start; i <= end; i++){
-			if((based_modelid == "4G-AC53U" || based_modelid == "4G-AC55U" || based_modelid == "4G-AC68U") && obj_t.name != "wandog_fb_count")
+			if(based_modelid.substring(0,3) == "4G-" && obj_t.name != "wandog_fb_count")
 				str0= i;
 			else
 				str0 = i*parseInt(obj.value);
@@ -920,7 +920,7 @@ function update_consume_bytes(){
     var consume_bytes;
     var MBytes = 1024*1024;
 
-    if(based_modelid == "4G-AC53U" || based_modelid == "4G-AC55U" || based_modelid == "4G-AC68U"){
+    if(based_modelid.substring(0,3) == "4G-"){
     consume_bytes = 86400/interval_value*128*30;
 	consume_bytes = Math.ceil(consume_bytes/MBytes);
     consume_warning_str = "<#Detect_consume_warning1#> "+consume_bytes+" <#Detect_consume_warning2#>";

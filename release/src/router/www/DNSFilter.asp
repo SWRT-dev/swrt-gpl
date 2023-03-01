@@ -39,9 +39,13 @@ var modes_array = [
 	[ "13", "<#Quad9#>" ],
 	[ "5",  "<#Yandex_Safe#>" ],
 	[ "6",  "<#Yandex_Family#>" ],
+	[ "17", "Cloudflare Safe" ],
+	[ "18", "Cloudflare Family" ],
+	[ "19", "AdGuard Ad block" ],
+	[ "20", "AdGuard Family" ],
 	[ "8",  "<#Custom#> 1" ],
 	[ "9",  "<#Custom#> 2" ],
-	[ "10", "<#Custom#> 3" ]
+	[ "10", "<#Custom#> 3" ],
 ];
 
 function initial(){

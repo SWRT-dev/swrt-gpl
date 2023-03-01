@@ -1,8 +1,8 @@
 /*
  * Copyright 2021, ASUS
- * Copyright 2021-2022, SWRTdev
- * Copyright 2021-2022, paldier <paldier@hotmail.com>.
- * Copyright 2021-2022, lostlonger<lostlonger.g@gmail.com>.
+ * Copyright 2021-2023, SWRTdev
+ * Copyright 2021-2023, paldier <paldier@hotmail.com>.
+ * Copyright 2021-2023, lostlonger<lostlonger.g@gmail.com>.
  * All Rights Reserved.
  */
 
@@ -80,6 +80,12 @@ void init_others(void)
 #elif defined(RTAC85U) || defined(RTAC85P) || defined(R6800) || defined(RMAC2100)
 //fix me
 #endif
+#if defined(TUFAX4200)
+	if (nvram_match("HwId", "B")) {
+		mount("overlay", "/www/images", "overlay", MS_MGC_VAL, "lowerdir=/TUF-AX4200Q/images:/www/images");
+		mount("/rom/dlna.TUF-AX4200Q", "/rom/dlna", "none", MS_BIND, NULL);
+	}
+#endif
 #if defined(RTCONFIG_MT798X)
 	if (nvram_match("lacp_enabled", "1"))
 		f_write_string("/sys/kernel/no_dsa_offload", "1", 0, 0);
@@ -145,6 +151,18 @@ void generate_switch_para(void)
 			   )
 				nvram_set("vlan3hwname", "et0");
 			break;
+
+		case MODEL_RT4GAC86U:
+			nvram_unset("vlan3hwname");
+			nvram_unset("vlan1hwname");
+			if ((wans_cap && wanslan_cap) ||
+				(wanslan_cap && (!nvram_match("switch_wantag", "none") && !nvram_match("switch_wantag", "")))
+				) {
+					nvram_set("vlan3hwname", "et0");
+					nvram_set("vlan1hwname", "et0");
+				}
+			break;
+
 		default:
 			nvram_unset("vlan3hwname");
 			if ((wans_cap && wanslan_cap) ||
@@ -165,11 +183,24 @@ static void init_switch_ralink(void)
 	eval("ifconfig", "eth0", "hw", "ether", get_lan_hwaddr());
 #endif
 #if !defined(RTCONFIG_CONCURRENTREPEATER)		
-	if(strlen(nvram_safe_get("wan0_ifname"))) {
-		if (!nvram_match("et1macaddr", ""))
-			eval("ifconfig", nvram_safe_get("wan0_ifname"), "hw", "ether", nvram_safe_get("et1macaddr"));
-		else
-			eval("ifconfig", nvram_safe_get("wan0_ifname"), "hw", "ether", nvram_safe_get("et0macaddr"));
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
+	if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1")) {
+		if(strlen(nvram_safe_get("eth_ifnames"))) {
+			if (!nvram_match("et1macaddr", ""))
+				eval("ifconfig", nvram_safe_get("eth_ifnames"), "hw", "ether", nvram_safe_get("et1macaddr"));
+			else
+				eval("ifconfig", nvram_safe_get("eth_ifnames"), "hw", "ether", nvram_safe_get("et0macaddr"));
+		}
+	}
+	else
+#endif
+	{
+		if(strlen(nvram_safe_get("wan0_ifname"))) {
+			if (!nvram_match("et1macaddr", ""))
+				eval("ifconfig", nvram_safe_get("wan0_ifname"), "hw", "ether", nvram_safe_get("et1macaddr"));
+			else
+				eval("ifconfig", nvram_safe_get("wan0_ifname"), "hw", "ether", nvram_safe_get("et0macaddr"));
+		}
 	}
 #endif
 //workaround, let network device initialize before config_switch()
@@ -242,6 +273,7 @@ void config_hwctl_led(void)
 #endif
 }
 
+#ifndef RTCONFIG_SWCONFIG
 /**
  * Setup a VLAN.
  * @vid:	VLAN ID
@@ -298,12 +330,58 @@ static int __setup_vlan(int vid, int prio, unsigned int mask)
 
 	return 0;
 }
+#endif
+
+#if defined(RT4GAC86U)
+/*set internal  vlan id and associated member on port 5/6/7*/
+static int _set_vlan_mbr(int vid)
+{
+	char vlan_str[] = "4096XXX";
+	char *set_vlan_argv[] = { "mtkswitch", "1", vlan_str , NULL };
+
+	if (vid > 4096) {
+		_dprintf("%s: invalid vid %d\n", __func__, vid);
+		return -1;
+	}
+
+	_dprintf("%s: vid %d \n", __func__, vid);
+
+	if (vid >= 0) {
+		sprintf(vlan_str, "%d", vid);
+		_eval(set_vlan_argv, NULL, 0, NULL);
+	}
+
+	return 0;
+}
+
+/*set port accept tag only frame type for VoIP */
+static int _set_portAcceptFrameType(int port)
+{
+	char port_str[] = "7XXX";
+	char *set_portAcceptFrameType_argv[] = { "rtkswitch", "35", port_str , NULL };
+
+	if (port >= 0) {
+		sprintf(port_str, "%d", port);
+		_eval(set_portAcceptFrameType_argv, NULL, 0, NULL);
+	}
+}
+#endif
 
 int config_switch_for_first_time = 1;
+#ifndef RTCONFIG_SWCONFIG
+
 #if defined(RTCONFIG_3LANPORT_DEVICE)
 int lan_port_bit_shift = 1;
 #else
+#if defined(RTCONFIG_PORT2_DEVICE)
+#if defined(XD4S)
+int lan_port_bit_shift = 3; //in order to specify LAN1 of switch_port_mapping
+#else
+//TBD
+#endif
+#else
 int lan_port_bit_shift = 0;
+#endif
 #endif
 
 static int stb_bitmask_shift(int input)
@@ -889,6 +967,7 @@ void config_switch()
 #endif
 #endif
 }
+#endif //RTCONFIG_SWCONFIG
 
 int
 switch_exist(void)
@@ -1226,7 +1305,7 @@ void eeprom_check(void);
 void init_syspara(void)
 {
 	unsigned char buffer[16];
-	unsigned char *dst;
+	unsigned char *dst, reg_spec[MAX_REGSPEC_LEN + 1] = { 0 }, reg_2g[MAX_REGDOMAIN_LEN + 1] = { 0 }, reg_5g[MAX_REGDOMAIN_LEN + 1] = { 0 };
 	unsigned int bytes;
 	int i;
 	char macaddr[]="00:11:22:33:44:55";
@@ -1250,11 +1329,23 @@ void init_syspara(void)
 #endif
 #endif
 	const char *reg_spec_def;
+	const int NEED_eu2cn = 0;
 
 	char brstp;
 	char value_str[MAX_REGSPEC_LEN+1];
 	memset(value_str, 0, sizeof(value_str));
 
+#if defined(RTCONFIG_ASUSCTRL)
+	fix_location_code();
+#endif
+
+#if defined(TUFAX4200) || defined(TUFAX6000)
+	config_hwctl_led();
+#endif
+#if defined(TUFAX4200) || defined(TUFAX6000) // EEPROM runtime fix
+	if (nvram_get_int("no_e2pfix") == 0)
+		eeprom_check();
+#endif
 	set_basic_fw_name();
 
 	/* /dev/mtd/2, RF parameters, starts from 0x40000 */
@@ -1318,9 +1409,18 @@ void init_syspara(void)
 //	else
 		nvram_set("wl_mssid", "1");
 
+#if defined(RTAC1200V2) || defined(RTACRH18) || defined(RT4GAC86U) || defined(RTAX53U) || defined(RT4GAX56) || defined(RTAX54) || defined(XD4S) || defined(RTCONFIG_MT798X)
+	/* set et1macaddr the same as et0macaddr for spec. */
+	strcpy(macaddr, macaddr2);
+#endif
+#if defined(RTAC1200) || defined(RTAC1200V2) || defined(RTAC53) || defined(RTACRH18) || defined(RT4GAC86U) || defined(RTAX53U) || defined(RT4GAX56) || defined(RTAX54) ||defined(XD4S)
+	nvram_set("et0macaddr", macaddr2);
+	nvram_set("et1macaddr", macaddr);
+#else
 	//TODO: separate for different chipset solution
 	nvram_set("et0macaddr", macaddr);
 	nvram_set("et1macaddr", macaddr2);
+#endif
 #if defined(RTCONFIG_EASYMESH)
 	ether_cal(macaddr, macaddrbh1, 14);
 	ether_cal(macaddr2, macaddrbh2, 14);
@@ -1373,6 +1473,54 @@ void init_syspara(void)
         nvram_unset("odmpid");
 #endif
 
+	if (FRead(reg_spec, REGSPEC_ADDR, MAX_REGSPEC_LEN) < 0)
+		*reg_spec = '\0';
+	if (FRead(reg_2g, REG2G_EEPROM_ADDR, MAX_REGDOMAIN_LEN) < 0)
+		*reg_2g = '\0';
+	if (FRead(reg_5g, REG5G_EEPROM_ADDR, MAX_REGDOMAIN_LEN) < 0)
+		*reg_5g = '\0';
+	trim_char(reg_spec, 0xFF);
+	trim_char(reg_2g, 0xFF);
+	trim_char(reg_5g, 0xFF);
+
+#if defined(RTCONFIG_TCODE)
+	/* Territory code */
+	memset(buffer, 0, sizeof(buffer));
+	if(NEED_eu2cn) {
+		nvram_set("territory_code", "CN/01");	/* RT-AC51U: FIX EU2CN */
+	} else {
+		if (FRead(buffer, OFFSET_TERRITORY_CODE, 5) < 0) {
+			_dprintf("READ ASUS territory code: Out of scope\n");
+			nvram_unset("territory_code");
+		} else {
+			/* [A-Z][A-Z]/[0-9][0-9] */
+			if (buffer[2] != '/' ||
+			    !isupper(buffer[0]) || !isupper(buffer[1]) ||
+			    !isdigit(buffer[3]) || !isdigit(buffer[4]))
+			{
+				nvram_unset("territory_code");
+			} else {
+				nvram_set("territory_code", buffer);
+			}
+		}
+	}
+
+#if defined(RTCONFIG_ASUSCTRL)
+	nvram_unset("ctl_reg_spec");
+	nvram_unset("ctl_wl_reg_2g");
+	nvram_unset("ctl_wl_reg_5g");
+
+	asus_ctrl_sku_check();
+
+	if (*nvram_safe_get("ctl_reg_spec") != '\0')
+		strlcpy(reg_spec, nvram_safe_get("ctl_reg_spec"), sizeof(reg_spec));
+	if (*nvram_safe_get("ctl_wl_reg_2g") != '\0')
+		strlcpy(reg_2g, nvram_safe_get("ctl_wl_reg_2g"), sizeof(reg_2g));
+	if (*nvram_safe_get("ctl_wl_reg_5g") != '\0')
+		strlcpy(reg_5g, nvram_safe_get("ctl_wl_reg_5g"), sizeof(reg_5g));
+#endif
+#endif	/* RTCONFIG_TCODE */
+
 	/* reserved for Ralink. used as ASUS country code. */
 #if !defined(RTCONFIG_NEW_REGULATION_DOMAIN)
 	dst = (unsigned char*) country_code;
@@ -1394,121 +1542,141 @@ void init_syspara(void)
 #else	/* ! RTCONFIG_NEW_REGULATION_DOMAIN */
 	dst = buffer;
 
-	reg_spec_def = "FCC";
-	bytes = MAX_REGSPEC_LEN;
-	memset(dst, 0, MAX_REGSPEC_LEN+1);
-
-	if(FRead(dst, REGSPEC_ADDR, bytes) < 0)
-		nvram_set("reg_spec", reg_spec_def); // DEFAULT
-	else
-	{
-		for (i=(MAX_REGSPEC_LEN-1);i>=0;i--) {
-			if ((dst[i]==0xff) || (dst[i]=='\0'))
-				dst[i]='\0';
-		}
-		if (dst[0]!=0x00)
-			nvram_set("reg_spec", dst);
-		else
-			nvram_set("reg_spec", reg_spec_def); // DEFAULT
-	}
-
-	if (FRead(dst, REG2G_EEPROM_ADDR, MAX_REGDOMAIN_LEN)<0 || memcmp(dst,"2G_CH", 5) != 0)
-	{
-		_dprintf("Read REG2G_EEPROM_ADDR fail or invalid value\n");
-		nvram_set("wl_country_code", "");
-		nvram_set("wl0_country_code", "DB");
-		nvram_set("wl_reg_2g", "2G_CH14");
-	}
-	else
-	{
-		for(i = 0; i < MAX_REGDOMAIN_LEN; i++)
-			if(dst[i] == 0xff || dst[i] == 0)
-				break;
-
-		dst[i] = 0;
-		nvram_set("wl_reg_2g", dst);
-		if (strcmp(dst, "2G_CH11") == 0)
-			nvram_set("wl0_country_code", "US");
-		else if (strcmp(dst, "2G_CH13") == 0)
-			nvram_set("wl0_country_code", "GB");
-#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
-		else if (strcmp(dst, "2G_CH14") == 0)
-			nvram_set("wl0_country_code", "DB");
-#endif
-		else
-			nvram_set("wl0_country_code", "DB");
-	}
-#ifdef RTCONFIG_HAS_5G
-	if (FRead(dst, REG5G_EEPROM_ADDR, MAX_REGDOMAIN_LEN)<0 || memcmp(dst,"5G_", 3) != 0)
-	{
-		_dprintf("Read REG5G_EEPROM_ADDR fail or invalid value\n");
-		nvram_set("wl_country_code", "");
-		nvram_set("wl1_country_code", "DB");
-		nvram_set("wl_reg_5g", "5G_ALL");
-	}
-	else
-	{
-		for(i = 0; i < MAX_REGDOMAIN_LEN; i++)
-			if(dst[i] == 0xff || dst[i] == 0)
-				break;
-
-		dst[i] = 0;
-		nvram_set("wl_reg_5g", dst);
-		nvram_set("wl1_IEEE80211H", "0");
-		if (strcmp(dst, "5G_BAND1") == 0)
-			nvram_set("wl1_country_code", "GB");
-		else if (strcmp(dst, "5G_BAND123") == 0)
-		{
-			nvram_set("wl1_country_code", "GB");
-#ifdef RTCONFIG_RALINK_DFS
-			nvram_set("wl1_IEEE80211H", "1");
-#endif	/* RTCONFIG_RALINK_DFS */
-		}
-		else if (strcmp(dst, "5G_BAND14") == 0)
-			nvram_set("wl1_country_code", "US");
-		else if (strcmp(dst, "5G_BAND12") == 0)
-			nvram_set("wl1_country_code", "IL");
-		else if (strcmp(dst, "5G_BAND24") == 0)
-			nvram_set("wl1_country_code", "TW");
-		else if (strcmp(dst, "5G_BAND4") == 0)
-			nvram_set("wl1_country_code", "CN");
-		else if (strcmp(dst, "5G_BAND124") == 0)
-			nvram_set("wl1_country_code", "IN");
-#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
-		else if (strcmp(dst, "5G_BAND12") == 0)	{
-			nvram_set("wl1_country_code", "IL");
-#ifdef RTCONFIG_RALINK_DFS
-			nvram_set("wl1_IEEE80211H", "1");
-#endif	/* RTCONFIG_RALINK_DFS */
-		}
-#endif
-		else if (strcmp(dst, "5G_ALL") == 0)	{
-#if defined(RTAC85P)
-			nvram_set("wl1_country_code", "RU");
+#if defined(RTCONFIG_MT798X)
+	reg_spec_def = "CE";
 #else
+	reg_spec_def = "FCC";
+#endif
+
+	if (NEED_eu2cn) {
+		nvram_set("reg_spec", "CN");	/* RT-AC51U: FIX EU2CN */
+	} else {
+		nvram_set("reg_spec", (*reg_spec)? (char*) reg_spec : reg_spec_def);
+	}
+
+	if (NEED_eu2cn) {
+		nvram_set("wl0_country_code", "CN");	/* RT-AC51U: FIX EU2CN */
+	} else {
+		if (*reg_2g == '\0' || memcmp(reg_2g, "2G_CH", 5) != 0) {
+			_dprintf("Read REG2G_EEPROM_ADDR fail or invalid value\n");
+			nvram_set("wl_country_code", "");
+			nvram_set("wl0_country_code", "DB");
+			nvram_set("wl_reg_2g", "2G_CH14");
+		} else {
+			nvram_set("wl_reg_2g", reg_2g);
+			if (strcmp(reg_2g, "2G_CH11") == 0)
+				nvram_set("wl0_country_code", "US");
+			else if (strcmp(reg_2g, "2G_CH13") == 0) {
+					nvram_set("wl0_country_code", "GB");
+			}
+			else if (strcmp(reg_2g, "2G_CH13") == 0) {
+				nvram_set("wl0_country_code", "GB");
+			}
+			else if (strcmp(reg_2g, "2G_CH14") == 0)
+				nvram_set("wl0_country_code", "DB");
+			else
+				nvram_set("wl0_country_code", "DB");
+		}
+	}
+
+#ifdef RTCONFIG_HAS_5G
+	if (NEED_eu2cn) {
+		nvram_set("wl1_country_code", "US");	/* RT-AC51U: FIX EU2CN */
+	} else {
+		if (*reg_5g == '\0' || memcmp(reg_5g, "5G_", 3) != 0) {
+			_dprintf("Read REG5G_EEPROM_ADDR fail or invalid value\n");
+			nvram_set("wl_country_code", "");
 			nvram_set("wl1_country_code", "DB");
+			nvram_set("wl_reg_5g", "5G_ALL");
+		} else {
+			nvram_set("wl_reg_5g", reg_5g);
+			nvram_set("wl1_IEEE80211H", "0");
+			if (strcmp(reg_5g, "5G_BAND1") == 0)
+				nvram_set("wl1_country_code", "GB");
+#if defined(RTCONFIG_MT798X)
+			else if (strcmp(reg_5g, "5G_ALL") == 0) {
+				if(strncmp(nvram_safe_get("territory_code"), "TW/01", 2) == 0) {
+					nvram_set("wl1_IEEE80211H", "1");
+					nvram_set("wl1_country_code", "TW");
+				}
+				else if(strncmp(nvram_safe_get("territory_code"), "US/01", 2) == 0) {
+					nvram_set("wl1_IEEE80211H", "1");
+					nvram_set("wl1_country_code", "US");
+				}
+				else if(strncmp(nvram_safe_get("territory_code"), "AA/01", 2) == 0) {
+					nvram_set("wl1_IEEE80211H", "1");
+					nvram_set("wl1_country_code", "AA");
+				}
+				else {
+					nvram_set("wl1_country_code", "DB");
+				}
+			}
+			else if (strcmp(reg_5g, "5G_BAND123") == 0) {
+				if(strncmp(nvram_safe_get("territory_code"), "JP/01", 2) == 0) {
+					nvram_set("wl1_IEEE80211H", "1");
+					nvram_set("wl1_country_code", "JP");
+				}
+				else {
+					nvram_set("wl1_IEEE80211H", "1");
+					nvram_set("wl1_country_code", "EU");
+				}
+			}
+			else if (strcmp(reg_5g, "5G_BAND124") == 0) {
+					nvram_set("wl1_IEEE80211H", "1");
+					nvram_set("wl1_country_code", "CN");
+			}
+#endif
+			else if (strcmp(reg_5g, "5G_BAND123") == 0) {
+				nvram_set("wl1_country_code", "GB");
+#ifdef RTCONFIG_RALINK_DFS
+				nvram_set("wl1_IEEE80211H", "1");
+#endif	/* RTCONFIG_RALINK_DFS */
+			}
+			else if (strcmp(reg_5g, "5G_BAND14") == 0)
+				nvram_set("wl1_country_code", "US");
+			else if (strcmp(reg_5g, "5G_BAND24") == 0)
+				nvram_set("wl1_country_code", "TW");
+			else if (strcmp(reg_5g, "5G_BAND4") == 0)
+				nvram_set("wl1_country_code", "CN");
+			else if (strcmp(reg_5g, "5G_BAND124") == 0)
+				nvram_set("wl1_country_code", "IN");
+			else if (strcmp(reg_5g, "5G_BAND12") == 0)	{
+				nvram_set("wl1_country_code", "IL");
+#ifdef RTCONFIG_RALINK_DFS
+				nvram_set("wl1_IEEE80211H", "1");
+#endif	/* RTCONFIG_RALINK_DFS */
+			}
+			else if (strcmp(reg_5g, "5G_ALL") == 0)	{
+#if defined(RTAC85P)
+				if(nvram_match("reg_spec","EAC"))
+					nvram_set("wl1_country_code", "RU");
+				else
+#elif defined(RT4GAX56)
+					nvram_set("wl1_country_code", "AA");
+#else
+					nvram_set("wl1_country_code", "DB");
 #endif
 #ifdef RTCONFIG_RALINK_DFS
-			nvram_set("wl1_IEEE80211H", "1");
+				nvram_set("wl1_IEEE80211H", "1");
 #endif	/* RTCONFIG_RALINK_DFS */
+			}
+			else
+				nvram_set("wl1_country_code", "DB");
 		}
-		else
-			nvram_set("wl1_country_code", "DB");
 	}
 #endif	/* RTCONFIG_HAS_5G */
 #endif	/* ! RTCONFIG_NEW_REGULATION_DOMAIN */
 #if defined(RTCONFIG_DSL)
-		if (nvram_match("wl_country_code", "BR"))
-		{
-			nvram_set("wl_country_code", "UZ");
-			nvram_set("wl0_country_code", "UZ");
+	if (nvram_match("wl_country_code", "BR")) {
+		nvram_set("wl_country_code", "UZ");
+		nvram_set("wl0_country_code", "UZ");
 #ifdef RTCONFIG_HAS_5G
-			nvram_set("wl1_country_code", "UZ");
+		nvram_set("wl1_country_code", "UZ");
 #endif	/* RTCONFIG_HAS_5G */
-		}
+	}
 #endif
-		if (nvram_match("wl_country_code", "HK") && nvram_match("preferred_lang", ""))
-			nvram_set("preferred_lang", "TW");
+	if (nvram_match("wl_country_code", "HK") && nvram_match("preferred_lang", ""))
+		nvram_set("preferred_lang", "TW");
 
 	/* reserved for Ralink. used as ASUS pin code. */
 	dst = (char*)pin;
@@ -1520,10 +1688,13 @@ void init_syspara(void)
 	}
 	else
 	{
-		if ((unsigned char)pin[0]!=0xff)
-			nvram_set("secret_code", pin);
+		if (((unsigned char)pin[0] == 0xff)
+		 || !strcmp(pin, "12345678")) {
+			char devPwd[9];
+			nvram_set("secret_code", wps_gen_pin(devPwd, sizeof(devPwd)) ? devPwd : "12345670");
+		}
 		else
-			nvram_set("secret_code", "12345670");
+			nvram_set("secret_code", pin);
 	}
 #if defined(RTCONFIG_MT798X)
 	strlcpy(productid, rt_buildname, sizeof(productid));
@@ -1546,23 +1717,6 @@ void init_syspara(void)
 	}
 #endif
 #if defined(RTCONFIG_TCODE)
-	/* Territory code */
-	memset(buffer, 0, sizeof(buffer));
-
-	if (FRead(buffer, OFFSET_TERRITORY_CODE, 5) < 0) {
-		_dprintf("READ ASUS territory code: Out of scope\n");
-		nvram_unset("territory_code");
-	} else {
-		/* [A-Z][A-Z]/[0-9][0-9] */
-		if (buffer[2] != '/' ||
-		    !isupper(buffer[0]) || !isupper(buffer[1]) ||
-		    !isdigit(buffer[3]) || !isdigit(buffer[4]))
-		{
-			nvram_unset("territory_code");
-		} else {
-			nvram_set("territory_code", buffer);
-		}
-	}
 	
 	/* PSK */
         memset(buffer, 0, sizeof(buffer));
@@ -1596,7 +1750,7 @@ void init_syspara(void)
 	_dprintf("bootloader version: %s\n", nvram_safe_get("blver"));
 	_dprintf("firmware version: %s\n", nvram_safe_get("firmver"));
 
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+#if !defined (RTCONFIG_WLMODULE_MT7615E_AP)
 	dst = txbf_para;
 	int count_0xff = 0;
 	if (FRead(dst, OFFSET_TXBF_PARA, 33) < 0)
@@ -1639,12 +1793,31 @@ void init_syspara(void)
 		}
 	}
 
+
+#if defined(RTCONFIG_COBRAND)
+        unsigned char color=0xff;
+        if (FRead(&color, OFFSET_HW_COBRAND, 1)<0)
+        {
+                _dprintf("Read COBRAND value fail\n");
+                nvram_set("CoBrand", "");
+        }
+        else
+        {
+                if(color!=0xff)
+                        nvram_set_int("CoBrand",color);
+                else
+                        nvram_unset("CoBrand");
+        }
+#endif
+
 	nvram_set("firmver", rt_version);
 	nvram_set("productid", rt_buildname);
 
 	_dprintf("odmpid: %s\n", nvram_safe_get("odmpid"));
 	_dprintf("current FW productid: %s\n", nvram_safe_get("productid"));
 	_dprintf("current FW firmver: %s\n", nvram_safe_get("firmver"));
+
+	getSN();
 }
 
 #ifdef RTCONFIG_ATEUSB3_FORCE
@@ -1711,14 +1884,19 @@ void reinit_hwnat(int unit)
 {
 	int prim_unit = wan_primary_ifunit();
 	int act = 1;	/* -1/0/otherwise: ignore/remove hwnat/load hwnat */
-#if defined(RTCONFIG_DUALWAN)
-	int nat_x = -1, i, l, t, link_wan = 1, link_wans_lan = 1;
+	int nat_x = -1;
+	char tmp[32], prefix[] = "wanXXX_";
+#if defined(RTCONFIG_DUALWAN) && !defined(RTCONFIG_MT798X)
+	int i, l, t, link_wan = 1, link_wans_lan = 1;
 	int wans_cap = get_wans_dualwan() & WANSCAP_WAN;
 	int wanslan_cap = get_wans_dualwan() & WANSCAP_LAN;
-	char nat_x_str[] = "wanX_nat_xXXXXXX";
 #endif
+
 	if (!nvram_get_int("hwnat"))
+	{
+		disable_hwnat();
 		return;
+	}
 
 	if(!is_wan_connect(prim_unit))
 		return;
@@ -1726,9 +1904,58 @@ void reinit_hwnat(int unit)
 	/* If QoS is enabled, disable hwnat. */
 	if (nvram_get_int("qos_enable") == 1)
 		act = 0;
-
-	if (act > 0 && !nvram_match("switch_wantag", "none") && !nvram_match("switch_wantag", ""))
+#if defined(RTCONFIG_MT798X) && defined(RTCONFIG_BWDPI)
+	/* MTK798X pure software for DPI */
+	else if (check_bwdpi_nvram_setting() == 1)
 		act = 0;
+#endif
+
+#if defined(RTCONFIG_MT798X)
+	if (act > 0) {
+		snprintf(prefix, sizeof(prefix), "wan%d_", prim_unit);
+		nat_x = nvram_get_int(strcat_r(prefix, "nat_x", tmp));
+
+#if defined(RTCONFIG_DUALWAN)
+		/* If secorand WAN up, ignore... */
+		if (unit != -1 && unit != prim_unit)
+			act = -1;
+		/* Load Balance */
+		else if (nvram_match("wans_mode", "lb") && (nvram_match("wan0_proto", "pptp")
+							 || nvram_match("wan0_proto", "l2tp")
+							 || nvram_match("wan1_proto", "pptp")
+							 || nvram_match("wan1_proto", "l2tp")))
+			act = 0;
+		else
+#endif
+		/* Enable NAT */
+		if (!nat_x)
+			act = 0;
+		/* Single WAN/Dual WAN Fail Over */
+		else if (nvram_match(strcat_r(prefix, "proto", tmp), "pptp")
+		      || nvram_match(strcat_r(prefix, "proto", tmp), "l2tp"))
+			act = 0;
+		/* If VPN server(PPTP) is enabled, disable hwnat. */
+		else if (nvram_get_int("pptpd_enable"))
+			act = 0;
+		/* If VPN client(PPTP/L2TP) activated, disable hwnat. */
+		else if (!nvram_match("vpnc_clientlist", "")) {
+			char *nv = NULL, *nvp = NULL, *b = NULL;
+			char *desc, *proto, *server, *username, *passwd, *active;
+
+			nv = nvp = strdup(nvram_safe_get("vpnc_clientlist"));
+			while (nv && (b = strsep(&nvp, "<")) != NULL) {
+				if (vstrsep(b, ">", &desc, &proto, &server, &username, &passwd, &active) < 6)
+					continue;
+				if (atoi(active) == 1 && (!strcmp(proto, "PPTP")
+						       || !strcmp(proto, "L2TP"))) {
+					act = 0;
+					break;
+				}
+			}
+			free(nv);
+		}
+	}
+#else /* RTCONFIG_MT798X */
 
 	if (act > 0) {
 #if defined(RTCONFIG_DUALWAN)
@@ -1738,8 +1965,9 @@ void reinit_hwnat(int unit)
 			   )
 				act = 0;
 		} else {
-			sprintf(nat_x_str, "wan%d_nat_x", unit);
-			nat_x = nvram_get_int(nat_x_str);
+			snprintf(prefix, sizeof(prefix), "wan%d_", unit);
+			nat_x = nvram_get_int(strcat_r(prefix, "nat_x", tmp));
+
 			if (unit == prim_unit && !nat_x)
 				act = 0;
 			else if ((wans_cap && wanslan_cap) ||
@@ -1750,7 +1978,8 @@ void reinit_hwnat(int unit)
 				act = -1;
 		}
 #else
-		if (!is_nat_enabled())
+		nat_x = is_nat_enabled();
+		if (!nat_x)
 			act = 0;
 #endif
 	}
@@ -1769,8 +1998,9 @@ void reinit_hwnat(int unit)
 			act = 0;
 #endif
 	}
+#endif /* RTCONFIG_MT798X */
 
-#if defined(RTCONFIG_DUALWAN)
+#if defined(RTCONFIG_DUALWAN) && !defined(RTCONFIG_RALINK_MT7622) && !defined(RTCONFIG_MT798X)
 	if (act != 0 &&
 	    ((wans_cap && wanslan_cap) || (wanslan_cap && (!nvram_match("switch_wantag", "none") && !nvram_match("switch_wantag", ""))))
 	   )
@@ -1814,7 +2044,7 @@ void reinit_hwnat(int unit)
 #else
 	_dprintf("%s:WAN: unit %d,%d type %d nat_x %d qos %d: action %d.\n",
 		__func__, unit, prim_unit, get_dualwan_by_unit(unit),
-		nvram_get_int("wan0_nat_x"), nvram_get_int("qos_enable"), act);
+		nat_x, nvram_get_int("qos_enable"), act);
 #endif
 
 	if (act < 0)
@@ -2063,6 +2293,184 @@ void setup_smp(int which)
 	//wifi
 	//doSystem("pbr-optimizer -m 3 -o &");
 }
+
+
+#ifdef RTCONFIG_SWCONFIG
+extern void default_LANWANPartition();
+void config_switch()
+{
+	char *switch_wantag = NULL;
+	int stbport = 0;
+
+	rtkswitch_AllPort_linkDown();
+
+	if (config_switch_for_first_time){
+			config_switch_for_first_time = 0;
+	}
+	else
+	{
+		dbG("software reset\n");
+		eval("swconfig", "dev", "switch0", "set", "reset");
+	}
+
+	if (is_routing_enabled())
+	{
+		switch_wantag = nvram_safe_get("switch_wantag");
+		stbport = nvram_get_int("switch_stb_x");
+
+	extern void config_esw_LANWANPartition(int type);
+	config_esw_LANWANPartition(0);
+//CPU PORT is 5, LAN4 is 0 LAN3 is 1
+
+		switch(stbport) {
+			case 1:
+				eval("swconfig", "dev", "switch0", "vlan","2","set", "ports", "3 4 5"); // set wan port
+				break;
+			case 2:
+				eval("swconfig", "dev", "switch0", "vlan","2","set", "ports", "2 4 5"); // set wan port
+				break;
+			case 3:
+				if (!strcmp(switch_wantag, "m1_fiber") || !strcmp(switch_wantag, "maxis_fiber_sp")) {
+					//VLAN for internet, untag in switch
+					eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan0tagid"), "set", "ports", "4t 5");
+					//PORT3 need to keep tag
+					eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan1tagid"), "set", "ports", "4t 1t");
+				} else 
+				if (!strcmp(switch_wantag, "maxis_fiber")) {
+					//VLAN for internet, untag in switch
+					eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan0tagid"), "set", "ports", "4t 5");
+					eval("swconfig", "dev", "switch0", "vlan", "821", "set", "ports", "4t 1t");
+					eval("swconfig", "dev", "switch0", "vlan", "822", "set", "ports", "4t 1t");
+				} else if (!strcmp(switch_wantag, "manual")) {
+					if((strlen(nvram_safe_get("switch_wan0tagid")) != 0)){
+						if(nvram_get_int("switch_wan0tagid") != nvram_get_int("switch_wan2tagid")) {
+							eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan0tagid"), "set", "ports", "4t 5");
+							eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan2tagid"), "set", "ports", "4t 0");
+						} else {
+							eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan0tagid"), "set", "ports", "4t 5 0");
+						}
+					}else {
+							eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan2tagid"), "set", "ports", "4t 0");
+							eval("swconfig", "dev", "switch0", "vlan", "2", "set", "ports", "4 5");
+					}
+
+				} else
+				if(!strcmp(switch_wantag, "vodafone")) {
+					//VLAN for internet, untag in switch
+					eval("swconfig", "dev", "switch0", "vlan", "1", "set", "ports", "2 3 6");
+					//PORT4
+					eval("swconfig", "dev", "switch0", "vlan", "100", "set", "ports", "4t 0t 5");
+					eval("swconfig", "dev", "switch0", "vlan", "101", "set", "ports", "4t 0t");
+					eval("swconfig", "dev", "switch0", "vlan", "105", "set", "ports", "4t 0t 1");
+				} else {
+					eval("swconfig", "dev", "switch0", "vlan","2","set", "ports", "1 4 5"); // set wan port
+				}
+
+				break;
+			case 4://LAN4 only
+				if(!strcmp(switch_wantag, "unifi_home") || !strcmp(switch_wantag, "singtel_others") || !strcmp(switch_wantag, "orange")) {
+					//VLAN for internet, untag in switch
+					eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan0tagid"), "set", "ports", "4t 5");
+					//PORT4 need to untag in switch
+					eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan1tagid"), "set", "ports", "4t 0");
+				} else 
+				if(!strcmp(switch_wantag, "meo")) {
+					//VLAN for internet, untag in switch
+					eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan0tagid"), "set", "ports", "4t 5");
+					//PORT4 need to keep tag
+					eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan1tagid"), "set", "ports", "4t 0t");
+					//PROT3 do nothing
+				} else if (!strcmp(switch_wantag, "manual")) {
+					if((strlen(nvram_safe_get("switch_wan0tagid")) != 0)){
+						if(nvram_get_int("switch_wan0tagid") != nvram_get_int("switch_wan1tagid")) {
+							eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan0tagid"), "set", "ports", "4t 5");
+							eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan1tagid"), "set", "ports", "4t 0");
+						} else {
+							eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan0tagid"), "set", "ports", "4t 5 0");
+						}
+					}else{
+							eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan1tagid"), "set", "ports", "4t 0");
+							eval("swconfig", "dev", "switch0", "vlan", "2", "set", "ports", "4 5");
+					}
+				} else {
+					eval("swconfig", "dev", "switch0", "vlan","2","set", "ports", "0 4 5"); // set wan port
+				}
+
+				break;
+			case 5://LAN1+LAN2
+				eval("swconfig", "dev", "switch0", "vlan","2","set", "ports", "2 3 4 5"); // set wan port
+				break;
+			case 6://LAN3+LAN4
+				if(!strcmp(switch_wantag, "singtel_mio")) {
+					//VLAN for internet, untag in switch
+					eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan0tagid"), "set", "ports", "4t 5");
+					//PORT4 need to untag in switch
+					eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan1tagid"), "set", "ports", "4t 0");
+					//PORT3 need to keep tag
+					eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan2tagid"), "set", "ports", "4t 1t");
+				} else
+				 if (!strcmp(switch_wantag, "manual")) {
+					if((strlen(nvram_safe_get("switch_wan0tagid")) != 0)){
+						if(nvram_get_int("switch_wan0tagid") != nvram_get_int("switch_wan1tagid") && nvram_get_int("switch_wan0tagid") != nvram_get_int("switch_wan2tagid")
+							&& nvram_get_int("switch_wan1tagid") != nvram_get_int("switch_wan2tagid")) {
+							eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan0tagid"), "set", "ports", "4t 5");
+							eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan1tagid"), "set", "ports", "4t 0");
+							eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan2tagid"), "set", "ports", "4t 1");
+						} else if(nvram_get_int("switch_wan0tagid") != nvram_get_int("switch_wan1tagid") && nvram_get_int("switch_wan1tagid") == nvram_get_int("switch_wan2tagid")){
+							eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan0tagid"), "set", "ports", "4t 5");
+							eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan1tagid"), "set", "ports", "4t 0 1");
+						}else if(nvram_get_int("switch_wan0tagid") == nvram_get_int("switch_wan2tagid") && nvram_get_int("switch_wan1tagid") != nvram_get_int("switch_wan2tagid")){
+							eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan0tagid"), "set", "ports", "4t 5 1");
+							eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan1tagid"), "set", "ports", "4t 0");
+						} else if(nvram_get_int("switch_wan0tagid") == nvram_get_int("switch_wan1tagid") && nvram_get_int("switch_wan1tagid") != nvram_get_int("switch_wan2tagid")){
+							eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan0tagid"), "set", "ports", "4t 5 0");
+							eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan2tagid"), "set", "ports", "4t 1");
+						} else {
+							eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan0tagid"), "set", "ports", "4t 5 0 1");
+						}
+					}else{
+						if(nvram_get_int("switch_wan1tagid") != nvram_get_int("switch_wan2tagid")) {
+							eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan1tagid"), "set", "ports", "4t 0");
+							eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan2tagid"), "set", "ports", "4t 1");
+							eval("swconfig", "dev", "switch0", "vlan", "2", "set", "ports", "4 5");
+						}else {
+							eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan1tagid"), "set", "ports", "4t 0 1");
+							eval("swconfig", "dev", "switch0", "vlan", "2", "set", "ports", "4 5");
+						}
+					}
+
+				} else
+					eval("swconfig", "dev", "switch0", "vlan","2","set", "ports", "0 1 4 5"); // set wan port
+
+				break;
+			default:
+				if(!strcmp(switch_wantag, "movistar")) {
+					eval("swconfig", "dev", "switch0", "vlan", "6", "set", "ports", "4t 5");
+					eval("swconfig", "dev", "switch0", "vlan", "3", "set", "ports", "4t 5t");
+					eval("swconfig", "dev", "switch0", "vlan", "2", "set", "ports", "4t 5t");
+#if defined(RT4GAC86U)
+					set_wan_tag("eth1");
+#endif
+				}
+				if(nvram_get_int("switch_wan0tagid"))
+					eval("swconfig", "dev", "switch0", "vlan", nvram_safe_get("switch_wan0tagid"), "set", "ports", "4t 5");
+				else
+					eval("swconfig", "dev", "switch0", "vlan","2","set", "ports", "4 5"); // set wan port
+				break;
+		}
+
+		eval("swconfig", "dev", "switch0", "port","4","set", "vlan_prio", nvram_safe_get("switch_wan0prio"));
+		eval("swconfig", "dev", "switch0", "port","0","set", "vlan_prio", nvram_safe_get("switch_wan1prio"));
+		eval("swconfig", "dev", "switch0", "port","1","set", "vlan_prio", nvram_safe_get("switch_wan2prio"));
+	}
+	else
+	{
+		default_LANWANPartition();
+	}
+
+	rtkswitch_AllPort_linkUp();
+}
+#endif	/* RTCONFIG_SWCONFIG */
 
 #if defined(RTCONFIG_SWRT_KVR)
 void gen_wapp_config(void)

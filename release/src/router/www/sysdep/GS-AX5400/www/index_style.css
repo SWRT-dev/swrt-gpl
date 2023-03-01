@@ -58,7 +58,7 @@ body {
 	text-shadow: 1px 1px 0px black;	
 	width:185px;
 	height:48px;
-	font-family: Verdana, Microsoft Yahei UI, MS UI Gothic, MS P Gothic, sans-serif;
+	font-family: Microsoft Yahei UI, Verdana, MS UI Gothic, MS P Gothic, sans-serif;
 	font-size:12px;
 	text-align:left;
 	position:relative;
@@ -72,7 +72,7 @@ body {
 	text-shadow: 1px 1px 0px black;	
 	width:185px;
 	height:48px;
-	font-family: Verdana, Microsoft Yahei UI, MS UI Gothic, MS P Gothic, sans-serif;
+	font-family: Microsoft Yahei UI, Verdana, MS UI Gothic, MS P Gothic, sans-serif;
 	font-size:12px;
 	text-align:left;
 	position:relative;
@@ -98,7 +98,7 @@ body {
 .menu_QIS_table {
 	width:185px;
 	height: 53px;
-	font-family: Verdana, Microsoft Yahei UI, MS UI Gothic, MS P Gothic, sans-serif;
+	font-family: Microsoft Yahei UI, Verdana, MS UI Gothic, MS P Gothic, sans-serif;
 	font-size: 12px;
 	color:#ffffff;
 	padding-left:0px;
@@ -139,7 +139,7 @@ body {
 	margin-top: -1px; 
 	width:185px;
 	height: 47px;
-	font-family: Verdana, Microsoft Yahei UI, MS UI Gothic, MS P Gothic, sans-serif;
+	font-family: Microsoft Yahei UI, Verdana, MS UI Gothic, MS P Gothic, sans-serif;
 	font-size : 12px;
 	color:#ffffff;
 	font-weight:bold;
@@ -187,7 +187,7 @@ body {
 	}	
 }
 
-.submenu {width:187px; font-family: Verdana, Microsoft Yahei UI, MS UI Gothic, MS P Gothic, sans-serif; font-size:11px; line-height:20px;}
+.submenu {width:187px; font-family: Microsoft Yahei UI, Verdana, MS UI Gothic, MS P Gothic, sans-serif; font-size:11px; line-height:20px;}
 .submenu a {height:26px; text-decoration:none; }
 .submenu a:link, .submenu a:visited {
 	color: #94ccf2;	display: block;
@@ -244,7 +244,7 @@ body {
 
 /*==========================Level 3 Tab Class=================================*/
 .Help thead{
-	font-family: Verdana, Microsoft Yahei UI, MS UI Gothic, MS P Gothic, sans-serif;
+	font-family: Microsoft Yahei UI, Verdana, MS UI Gothic, MS P Gothic, sans-serif;
 	font-size:12px;
 	line-height:19px;
 	font-weight:bold;
@@ -252,7 +252,7 @@ body {
 	background-image:url(images/title-bg-2.gif);
 	}
 .Help tbody{
-	font-family: Verdana, Microsoft Yahei UI, MS UI Gothic, MS P Gothic, sans-serif;
+	font-family: Microsoft Yahei UI, Verdana, MS UI Gothic, MS P Gothic, sans-serif;
 	font-size:12px;
 	background-color: #FFFFCC;
 	text-align:left;
@@ -260,7 +260,7 @@ body {
 }
 
 .AiHintTitle{
-	font-family : Verdana, Microsoft Yahei UI, MS UI Gothic, MS P Gothic, sans-serif;
+	font-family : Microsoft Yahei UI, Verdana, MS UI Gothic, MS P Gothic, sans-serif;
 	font-size:11px; 
 	font-weight:bold;
 	color:#000;
@@ -301,7 +301,7 @@ body {
 
 /**********AiHelp add by Lock*************/
 #helpicon{
-	font-family: Arial black, Arial, Helvetica, Microsoft Yahei UI, MS UI Gothic, MS P Gothic, sans-serif;
+	font-family: Arial black, Microsoft Yahei UI, Arial, Helvetica, MS UI Gothic, MS P Gothic, sans-serif;
 	font-size:12px;
 	color: #FF6600;
 	display:block;
@@ -367,7 +367,7 @@ body {
 /**************Add by kcol***************/
 
 .bottom-image {margin:0 auto; width:998px; background:url(images/New_ui/bottom_bg.png) no-repeat; height:30px; }
-.copyright {font-family: Verdana, Microsoft Yahei UI, MS UI Gothic, MS P Gothic, sans-serif;font-size : 11px;text-align:right;color:#FFFFFF;padding-right:10px; margin:0 auto; width:983px;}
+.copyright {font-family: Microsoft Yahei UI, Verdana, MS UI Gothic, MS P Gothic, sans-serif;font-size : 11px;text-align:right;color:#FFFFFF;padding-right:10px; margin:0 auto; width:983px;}
 
 .popup_bg{
 	position:absolute;	
@@ -436,7 +436,7 @@ body {
 	font-size:20px;
 	color:#FFFFFF;
 	background-color:#000000;
-	font-family: Arial, Helvetica, Microsoft Yahei UI, MS UI Gothic, MS P Gothic, sans-serif;
+	font-family: Microsoft Yahei UI, Arial, Helvetica, MS UI Gothic, MS P Gothic, sans-serif;
 	position:absolute;
 	margin:5px 35% 5px;
 }
@@ -449,7 +449,7 @@ body {
 	border: 0px;
 	width:450px;
 	font-size:12px;
-	font-family: Verdana, Arial, Helvetica, Microsoft Yahei UI, MS UI Gothic, MS P Gothic, sans-serif;
+	font-family: Verdana, Microsoft Yahei UI, Arial, Helvetica, MS UI Gothic, MS P Gothic, sans-serif;
 	color:#FFFFFF;
 	background-color:#000000;
 	position:absolute;
@@ -488,7 +488,7 @@ body {
 	margin-top:0px;
 	margin-left:-148px;
 	background-color:#FFFFFF;
-	font-family: Verdana, Arial, Helvetica, Microsoft Yahei UI, MS UI Gothic, MS P Gothic, sans-serif;
+	font-family: Verdana, Microsoft Yahei UI, Arial, Helvetica, MS UI Gothic, MS P Gothic, sans-serif;
 	font-size:11px;
 	width:120px;
 	border:1px solid #999;
@@ -659,12 +659,85 @@ src: url(../fonts/xolonium.regular.woff) format("woff"),
 	border-radius: 0 10px 10px 0;
 }
 
+.noti_s46_ports {
+	position: absolute;
+	padding: 30px;
+	-webkit-border-radius: 5px;
+	-moz-border-radius: 5px;
+	border-radius: 5px;
+	z-index: 300;
+	background-color:#232629;
+	/*margin-left: 920px;
+	margin-top: -310px;*/
+	width:425px;
+	height:auto;
+	line-height:20px;
+	box-shadow: 3px 3px 10px #000;
+	display:block;
+	overflow: auto;
+}
+.s46_ports {
+	position: absolute;
+	padding: 10px;
+	-webkit-border-radius: 5px;
+	-moz-border-radius: 5px;
+	border-radius: 5px;
+	z-index: 300;
+	background-color:#232629;
+	/*margin-left: 920px;
+	margin-top: -310px;*/
+	width:425px;
+	height:auto;
+	line-height:20px;
+	box-shadow: 3px 3px 10px #000;
+	display:block;
+	overflow: auto;
+}
+.s46_ports_pf {
+	position: absolute;
+	padding: 10px;
+	-webkit-border-radius: 5px;
+	-moz-border-radius: 5px;
+	border-radius: 5px;
+	z-index: 300;
+	background-color:#232629;
+	/*margin-left: 920px;
+	margin-top: -310px;*/
+	width:425px;
+	height:auto;
+	line-height:20px;
+	box-shadow: 3px 3px 10px #000;
+	display:inline;
+	overflow: auto;
+}
+.setup_info_icon{
+	cursor:pointer;
+	margin-left:225px;
+	margin-top:-18px;
+	background: url(images/New_ui/bottom_help.png);
+	background-position: -0px -0px; width: 19px; height: 19px;
+}
+.setup_info_icon_game{
+	cursor:pointer;
+	margin-left:155px;
+	margin-top:-18px;
+	background: url(images/New_ui/bottom_help.png);
+	background-position: -0px -0px; width: 19px; height: 19px;
+}
+.setup_info_icon_table{
+	cursor:pointer;
+	margin-left:88px;
+	margin-top:-18px;
+	background: url(images/New_ui/bottom_help.png);
+	background-position: -0px -0px; width: 19px; height: 19px;
+}
+
 #bottom_help_icon{
 	background: url(images/New_ui/bottom_help.png);
 	background-position: -0px -0px; width: 19px; height: 19px;
 }
 #bottom_help_title{
-	font-family: Arial, Helvetica, Microsoft Yahei UI, MS UI Gothic, MS P Gothic, sans-serif;
+	font-family: Microsoft Yahei UI, Arial, Helvetica, MS UI Gothic, MS P Gothic, sans-serif;
 	font-weight:bolder;
 	color: #569AC7;
 }
@@ -779,7 +852,7 @@ src: url(../fonts/xolonium.regular.woff) format("woff"),
 	margin-top: 10px;
 	border: 1px solid #6B7071;
 	text-align: center;
-	font-family: Verdana, Microsoft Yahei UI, MS UI Gothic, MS P Gothic, sans-serif;
+	font-family: Microsoft Yahei UI, Verdana, MS UI Gothic, MS P Gothic, sans-serif;
 	border-radius: 5px 5px 0px 0px;
 }
 .menu_Index{
@@ -924,7 +997,7 @@ src: url(../fonts/xolonium.regular.woff) format("woff"),
 	margin-right: 2px;
 	text-align:center;
 	text-decoration: none;
-	font-family: Verdana, Microsoft Yahei UI, MS UI Gothic, MS P Gothic, sans-serif;
+	font-family: Microsoft Yahei UI, Verdana, MS UI Gothic, MS P Gothic, sans-serif;
 	font-size: 12px;
 	border-radius: 5px;
 }
@@ -940,7 +1013,7 @@ src: url(../fonts/xolonium.regular.woff) format("woff"),
 	margin-right: 2px;
 	text-align:center;
 	text-decoration: none;
-	font-family: Verdana, Microsoft Yahei UI, MS UI Gothic, MS P Gothic, sans-serif;
+	font-family: Microsoft Yahei UI, Verdana, MS UI Gothic, MS P Gothic, sans-serif;
 	font-size: 12px;
 	border-radius: 5px;
 }
@@ -952,7 +1025,7 @@ src: url(../fonts/xolonium.regular.woff) format("woff"),
 .m_qis_r {
 	width:185px;
 	height: 53px;
-	font-family: Verdana, Microsoft Yahei UI, MS UI Gothic, MS P Gothic, sans-serif;
+	font-family: Microsoft Yahei UI, Verdana, MS UI Gothic, MS P Gothic, sans-serif;
 	font-size: 12px;
 	color:#ffffff;
 	padding-left:0px;
@@ -993,7 +1066,7 @@ src: url(../fonts/xolonium.regular.woff) format("woff"),
 .m_qis_r_blocked {
 	width:185px;
 	height: 53px;
-	font-family: Verdana, Microsoft Yahei UI, MS UI Gothic, MS P Gothic, sans-serif;
+	font-family: Microsoft Yahei UI, Verdana, MS UI Gothic, MS P Gothic, sans-serif;
 	font-size: 12px;
 	color:#ffffff;
 	padding-left:0px;

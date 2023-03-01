@@ -175,7 +175,7 @@ function submitForm(){
 		document.form.modem_isp.options[0] = new Option(valueStr, valueStr, false, true);
 	}
 
-	if((parent.based_modelid == "4G-AC53U" || parent.based_modelid == "4G-AC55U" || parent.based_modelid == "4G-AC68U") && parent.flag_manual){
+	if(parent.based_modelid.substring(0,3) == "4G-" && parent.flag_manual){
 		document.form.flag.value = "manual";
 	}
 

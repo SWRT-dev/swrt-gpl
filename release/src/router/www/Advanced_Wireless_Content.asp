@@ -580,10 +580,12 @@ function applyRule(){
 				}
 			}
 			else {
-				//if(!AiMesh_confirm_msg("Wireless_Hide", radio_value))
-					//return false;
-				confirm_flag=6;
-				confirm_content="<#AiMesh_confirm_msg6#>";
+				if(radio_value) {
+					//if(!AiMesh_confirm_msg("Wireless_Hide", radio_value))
+						//return false;
+					confirm_flag=6;
+					confirm_content="<#AiMesh_confirm_msg6#>";
+				}
 			}
 		}
 		else {
@@ -708,6 +710,11 @@ function applyRule(){
 			if($(".confirm_block").length > 0){
 				$(".confirm_block").remove();
 			}
+			if(window.scrollTo)
+				window.scrollTo(0,0);
+			htmlbodyforIE = document.getElementsByTagName("html");
+			htmlbodyforIE[0].style.overflow = "hidden";
+
 			$("#Loading").css('visibility', 'visible');
 			$("#loadingBlock").css('visibility', 'hidden');
 
@@ -721,6 +728,8 @@ function applyRule(){
 						document.form.wps_enable.value = "0";
 					}
 					confirm_cancel();
+					htmlbodyforIE = document.getElementsByTagName("html");
+					htmlbodyforIE[0].style.overflow = "";
 					$("#loadingBlock").css('visibility', 'visible');
 					showLoading();
 					document.form.submit();
@@ -729,6 +738,8 @@ function applyRule(){
 				right_button: "<#CTL_Cancel#>",
 				right_button_callback: function(){
 					confirm_cancel();
+					htmlbodyforIE = document.getElementsByTagName("html");
+					htmlbodyforIE[0].style.overflow = "";
 					$("#Loading").css('visibility', 'hidden');
 					return false;
 				},
@@ -739,7 +750,7 @@ function applyRule(){
 			});
 			$(".confirm_block").css( "zIndex", 10001 );
 			$("#ssid_hide_faq").attr('target', '_blank')
-							.attr('style', 'color:#FC0;text-decoration:underline;')
+							.attr('style', 'color:#FFCC00;text-decoration:underline;')
 							.attr("href", faq_href_hide_ssid);
 
 		}
@@ -997,13 +1008,17 @@ function enableSmartCon(val){
 			value = ["1"];
 			add_options_x2(document.form.smart_connect_t, desc, value, val);
 		}
-		else if(based_modelid == "RT-AC88U" || based_modelid == "RT-AC86U" || based_modelid == "GT-AC2900" || based_modelid == "RT-AC3100" || based_modelid == "BLUECAVE" || based_modelid == "MAP-AC1750" || based_modelid == "RT-AX89U" || based_modelid == "GT-AXY16000" || based_modelid.substring(0,7) == "RT-AC59" || Rawifi_support){
+		else if(based_modelid == "RT-AC88U" || based_modelid == "RT-AC86U" || based_modelid == "GT-AC2900" || based_modelid == "RT-AC3100" || based_modelid == "BLUECAVE" || based_modelid == "MAP-AC1750" || based_modelid == "RT-AX89U" || based_modelid == "GT-AXY16000" || based_modelid.substring(0,7) == "RT-AC59" || based_modelid == "XD4S"){
 			desc = ["<#smart_connect_dual#> (2.4GHz and 5GHz)"];
 			value = ["1"];
 			add_options_x2(document.form.smart_connect_t, desc, value, val);
 		}
 	}
 	
+	if (Qcawifi_support || Rawifi_support) {
+		document.getElementById("smartcon_rule_link").style.display = "none";
+		document.getElementById("smart_connect_field").style.display = "none";
+	}
 	
 	if(based_modelid=="RT-AC5300" || 
 		based_modelid=="GT-AC5300" || 
@@ -1017,7 +1032,8 @@ function enableSmartCon(val){
 		based_modelid.substring(0,7) == "RT-AC59" ||
 		based_modelid == "RT-AX89U" ||
 		based_modelid == "GT-AXY16000" ||
-		based_modelid == "BLUECAVE" || Rawifi_support){
+		based_modelid == "XD4S" || 
+		based_modelid == "BLUECAVE"){
 		document.getElementById("smartcon_rule_link").style.display = "none";
 		if(val == 0){
 			document.getElementById("smart_connect_field").style.display = "none";
@@ -1289,7 +1305,6 @@ function handleMFP(){
 <input type="hidden" name="wl_gmode_protection" value="<% nvram_get("wl_gmode_protection"); %>">
 <input type="hidden" name="wl_wme" value="<% nvram_get("wl_wme"); %>">
 <input type="hidden" name="wl_mode_x" value="<% nvram_get("wl_mode_x"); %>">
-<input type="hidden" name="wl_nmode" value="<% nvram_get("wl_nmode"); %>">
 <input type="hidden" name="wl_nctrlsb_old" value="<% nvram_get("wl_nctrlsb"); %>">
 <input type="hidden" name="wl_key_type" value='<% nvram_get("wl_key_type"); %>'> <!--Lock Add 2009.03.10 for ralink platform-->
 <input type="hidden" name="wl_channel_orig" value='<% nvram_get("wl_channel"); %>'>
@@ -1359,7 +1374,7 @@ function handleMFP(){
 
 										$('#radio_smartcon_enable').iphoneSwitch( smart_connect_flag_t > 0, 
 										 function() {
-											if(based_modelid != "RT-AC5300" && based_modelid != "GT-AC5300" && based_modelid !="RT-AC3200" && based_modelid != "RT-AC88U" && based_modelid != "RT-AC86U" && based_modelid != "GT-AC2900" && based_modelid != "RT-AC3100" && based_modelid != "BLUECAVE" && based_modelid != "MAP-AC1750"  && based_modelid != "RT-AC95U" && based_modelid != "RT-AX89U" && based_modelid != "GT-AXY16000" && !Rawifi_support)
+											if(based_modelid != "RT-AC5300" && based_modelid != "GT-AC5300" && based_modelid !="RT-AC3200" && based_modelid != "RT-AC88U" && based_modelid != "RT-AC86U" && based_modelid != "GT-AC2900" && based_modelid != "RT-AC3100" && based_modelid != "BLUECAVE" && based_modelid != "MAP-AC1750"  && based_modelid != "RT-AC95U" && based_modelid != "RT-AX89U" && based_modelid != "GT-AXY16000" && based_modelid != "R7000P")
 												enableSmartCon(1);
 											else{
 												if(document.form.smart_connect_t.value)
@@ -1649,14 +1664,14 @@ function handleMFP(){
 				<tr style="display:none">
 					<th><#WLANConfig11b_x_mfp#></th>
 					<td>
-				  		<select name="wl_mfp" class="input_option" >
+				  		<select name="wl_mfp" class="input_option" onchange="handleMFP();">
 							<option value="0" <% nvram_match("wl_mfp", "0", "selected"); %>><#WLANConfig11b_WirelessCtrl_buttonname#></option>
 							<option value="1" <% nvram_match("wl_mfp", "1", "selected"); %>><#WLANConfig11b_x_mfp_opt1#></option>
 							<option value="2" <% nvram_match("wl_mfp", "2", "selected"); %>><#WLANConfig11b_x_mfp_opt2#></option>
 				  		</select>
 						<span id="mbo_notice_wpa3" style="display:none">*If the Authentication Method is WPA3-Personal, the Protected Management Frames will be Required.</span>
 						<span id="mbo_notice_combo" style="display:none">*If the Authentication Method is WPA2/WPA3-Personal, the Protected Management Frames will be Capable.</span>
-						<span id="mbo_notice" style="display:none">*If the WiFi Agile Multiband is enabled, the Protected Management Frames will must be enabled.(Capable or Required)</span>
+						<span id="mbo_notice" style="display:none"><#WLANConfig11b_AgileMultiband_note#></span>
 					</td>
 			  	</tr>
 			  	<tr>

@@ -617,11 +617,15 @@ width:122px;
 }
 
 .modelName_top{
+	text-align: left;
 	font-size: 32px;
 	float:left;
-	margin: 20px 0 0 0;
+	margin: 5px 0 0 -210px;
 	text-shadow: 3px 2px #000;
 	font-weight: bold;
+	font-family: ROG;
+    word-break: break-all;
+    width: 420px;
 }
 .cloud_main_radius{
 	-webkit-border-radius: 10px;
@@ -637,6 +641,79 @@ width:122px;
 	-webkit-border-radius: 0 10px 10px 0;
 	-moz-border-radius: 0 10px 10px 0;	
 	border-radius: 0 10px 10px 0;
+}
+
+.noti_s46_ports {
+	position: absolute;
+	padding: 30px;
+	-webkit-border-radius: 5px;
+	-moz-border-radius: 5px;
+	border-radius: 5px;
+	z-index: 300;
+	background-color:#232629;
+	/*margin-left: 920px;
+	margin-top: -310px;*/
+	width:425px;
+	height:auto;
+	line-height:20px;
+	box-shadow: 3px 3px 10px #000;
+	display:block;
+	overflow: auto;
+}
+.s46_ports {
+	position: absolute;
+	padding: 10px;
+	-webkit-border-radius: 5px;
+	-moz-border-radius: 5px;
+	border-radius: 5px;
+	z-index: 300;
+	background-color:#232629;
+	/*margin-left: 920px;
+	margin-top: -310px;*/
+	width:425px;
+	height:auto;
+	line-height:20px;
+	box-shadow: 3px 3px 10px #000;
+	display:block;
+	overflow: auto;
+}
+.s46_ports_pf {
+	position: absolute;
+	padding: 10px;
+	-webkit-border-radius: 5px;
+	-moz-border-radius: 5px;
+	border-radius: 5px;
+	z-index: 300;
+	background-color:#232629;
+	/*margin-left: 920px;
+	margin-top: -310px;*/
+	width:425px;
+	height:auto;
+	line-height:20px;
+	box-shadow: 3px 3px 10px #000;
+	display:inline;
+	overflow: auto;
+}
+.setup_info_icon{
+	cursor:pointer;
+	margin-left:225px;
+	margin-top:-18px;
+	background: url(images/New_ui/bottom_help.png);
+	background-position: -0px -0px; width: 19px; height: 19px;
+}
+.setup_info_icon_game{
+	cursor:pointer;
+	margin-left:155px;
+	margin-top:-18px;
+	background: url(images/New_ui/bottom_help.png);
+	background-position: -0px -0px; width: 19px; height: 19px;
+}
+.setup_info_icon_table{
+	cursor:pointer;
+	margin-left:88px;
+	margin-top:-18px;
+	background: url(images/New_ui/bottom_help.png);
+	background-position: -0px -0px; width: 19px; height: 19px;
 }
 
 #bottom_help_icon{
@@ -659,8 +736,7 @@ width:122px;
 	font-family: Lucida Console;
 	background: #090909;
 	border: 1px solid #474747;
-	border-radius: 15px;
-	border-width:0;
+	border-radius: 12px;
 	color:#FFFFFF;
 }
 .bottom_help_FAQ_icon{
@@ -675,7 +751,30 @@ width:122px;
   background: url(images/New_ui/bottom_search.png);
   background-position: -0px -64px; width: 32px; height: 32px;
 }
-
+.faq-filter-block{
+	position: absolute;
+	margin: -200px 100px 0 0;
+	width: 300px;
+	border: 1px solid #474747;
+	height: 200px;
+	box-sizing: border-box;
+	text-align: left;
+	overflow: auto;
+	background-color: rgba(0,0,0,.8);
+	right: 0;
+}
+.faq-filter-block > div{
+	padding: 6px 12px;
+	border-bottom: 1px solid #474747;
+	line-height: 18px;
+	cursor: pointer;
+}
+.faq-filter-block > div > a{
+	display: block;
+}
+.faq-filter-block > div:hover{
+	background-color: #D97F00;
+}
 .block_filter{
 	background: #2A2A2A; /* Old browsers */
 	background: -moz-linear-gradient(top, rgba(255,255,255,0.80) 0%, rgba(255,255,255,0.10) 55%, rgba(0,0,0,0.10) 100%); /* FF3.6+ */
@@ -759,6 +858,8 @@ width:122px;
 	height:54px;
 }
 .menu_Desc{
+	word-break: keep-all;
+	font-weight: bold;
 }
 .menu_Split{
 	margin-top:10px;
@@ -934,6 +1035,8 @@ width:122px;
 	border-radius: 4px;
 	border-radius: 0px;
 	height: 35px;
+	display: flex;
+	align-items: center;
 }
 .tabClicked{
 	cursor:pointer;
@@ -951,10 +1054,12 @@ width:122px;
 	border-radius: 4px;
 	border-bottom: 3px rgb(255,165,35) solid;
 	border-radius: 0px;
+	display: flex;
+	align-items: center;
 }
 .submenuBlock{
 	width:735px;
-	margin-top:-140px;
+	margin-bottom: -3px;
 }
 /* used for QIS */
 .m_qis_r {

@@ -24,7 +24,9 @@ var classObj= {
 		return encodeURIComponent(str).replace(/%/g,"\\x").toLowerCase();
 	},
 	UnHexCode:function(str){
-		return decodeURIComponent(str.replace(/\\x/g, "%"));
+		return str.replace(/(?:\\x[\da-fA-F]{2})+/g, m =>
+decodeURIComponent(m.replace(/\\x/g, '%'))).replace(/\\n/g,
+'<br>');
 	}
 }
 
@@ -46,8 +48,9 @@ function GenContent(){
 		},
 
 		success: function(resp){
-			content = htmlEnDeCode.htmlEncode(resp);
+			content = decodeURIComponent(resp);
 			content = classObj.UnHexCode(content);
+			content = htmlEnDeCode.htmlEncode(content);
 			if(content.length > 10){
 				$("#wl_log").html(content);
 			}
@@ -107,7 +110,7 @@ function initial(){
 										<textarea id="wl_log" cols="63" rows="30" class="textarea_ssh_table" style="width:99%;font-family:'Courier New', Courier, mono; font-size:13px;" readonly="readonly" wrap="off"></textarea>
 									</div>
 									<div class="apply_gen">
-										<input type="button" onClick="location.href=location.href" value="<#CTL_refresh#>" class="button_gen" >
+										<input type="button" onClick="location.reload();" value="<#CTL_refresh#>" class="button_gen" >
 									</div>
 								</td>
 							</tr>		

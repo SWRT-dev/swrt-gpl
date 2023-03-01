@@ -17,23 +17,39 @@
 	width: 100%;
 	height: 100%;
 	background-image: url(/images/New_ui/light_effect/light_effect_mask.png);
-	background-size: 95vw 229px;
+	background-size: 100% 100%;
 	background-repeat: no-repeat;
 }
-.logo_aura_rgb {
-	background-image: url(/images/New_ui/light_effect/logo_aura_rgb.png);
+.light_effect_mask.rog {
+	background-image: url(/images/New_ui/light_effect/light_effect_mask_rog.png);
+}
+.logo_container {
 	background-repeat: no-repeat;
 	width: 22vw;
 	height: 100px;
 	position: absolute;
 	background-size: contain;
 	bottom: 16px;
-	left: 5vw;
+	left: 2vw;
 	background-position-y: 100%;
+}
+.logo_container.support_switch_mode {
+	top: 0;
+	bottom: 0;
+	margin: auto;
+}
+.logo_aura_rgb {
+	background-image: url(/images/New_ui/light_effect/logo_aura_rgb.png);
+}
+.logo_antenna {
+	background-image: url(/images/New_ui/light_effect/logo_antenna.png);
 }
 .light_effect_mask.prePage {
 	background-size: 100% 100%;
 	background-image: url(/images/New_ui/light_effect/light_effect_mask_pre.png);
+}
+.light_effect_mask.prePage.rog {
+	background-image: url(/images/New_ui/light_effect/light_effect_mask_pre_rog.png);
 }
 .light_effect_bg > span  {
 	position: absolute;
@@ -117,16 +133,18 @@
 	color: #FFFFFF;
 }
 .setting_enable_bg .switch {
-	background: rgba(0, 0, 0, 0.5);
+	background: rgba(127, 143, 164, 1);
 	border-radius: 50px;
-	width: 60px;
-	height: 30px;
+	width: 40px;
+	height: 20px;
 	position: absolute;
 	display: inline-block;
 	-webkit-transition: all 0.6s;
 	transition: all 0.6s;
 	cursor: pointer;
-	top: 20px;
+	top: 0;
+	bottom: 0;
+	margin: auto;
 	right: 5%;
 }
 .setting_enable_bg .switch:before {
@@ -134,23 +152,23 @@
 	display: block;
 	position: absolute;
 	content: "";
-	height: 24px;
-	width: 24px;
-	right: 3px;
-	top: 3px;
+	height: 12px;
+	width: 12px;
+	right: 4px;
+	top: 4px;
 	-webkit-transition: 0.6s;
 	transition: all 0.6s;
 	-webkit-transition-delay: 0.01s;
 	transition-delay: 0.01s;
+	background: rgb(48 61 67);
 }
 .setting_enable_bg .switch.off:before {
-	-webkit-transform: translateX(-30px);
-	-ms-transform: translateX(-30px);
-	transform: translateX(-30px);
-	background: #A4B7C3;
+	-webkit-transform: translateX(-20px);
+	-ms-transform: translateX(-20px);
+	transform: translateX(-20px);
 }
-.setting_enable_bg .switch.on:before {
-	background: #1EA2FF;
+.setting_enable_bg .switch.on {
+	background: rgba(16, 185, 129, 1);
 }
 .setting_enable_bg .schedule {
 	cursor: pointer;
@@ -300,6 +318,18 @@
 .setting_scheme #marquee.active .icon, .setting_scheme.support_hover #marquee:hover .icon {
 	background-image: url(/images/New_ui/light_effect/scheme-marquee_active.svg);
 }
+.setting_scheme.antenna #static .icon {
+	background-image: url(/images/New_ui/light_effect/antenna-scheme-static_resting.svg);
+}
+.setting_scheme.antenna #static.active .icon, .setting_scheme.antenna.support_hover #static:hover .icon {
+	background-image: url(/images/New_ui/light_effect/antenna-scheme-static_active.svg);
+}
+.setting_scheme.antenna #interaction .icon {
+	background-image: url(/images/New_ui/light_effect/antenna-scheme-interaction_resting.svg);
+}
+.setting_scheme.antenna #interaction.active .icon, .setting_scheme.antenna.support_hover #interaction:hover .icon {
+	background-image: url(/images/New_ui/light_effect/antenna-scheme-interaction_active.svg);
+}
 .setting_hue {
 	padding: 30px 0;
 	position: relative;
@@ -381,32 +411,39 @@
 	animation-direction: alternate;
 }
 @-moz-keyframes evolution_Cobrand_2 {
-	0%    { background: linear-gradient(to right, rgb(76,128,110) 40%, rgb(90,100,70) 55%, rgb(128,70,50) 70%, rgb(128,50,35) 85%); }
-	25%   { background: linear-gradient(to right, rgb(76,128,110) 40%, rgb(70,128,90) 55%, rgb(60,128,50) 70%, rgb(50,128,20) 85%); }
-	50%   { background: linear-gradient(to right, rgb(76,128,110) 40%, rgb(70,100,128) 55%, rgb(50,60,128) 70%, rgb(0,0,128) 85%); }
-	75%   { background: linear-gradient(to right, rgb(76,128,110) 40%, rgb(100,80,50) 55%, rgb(110,70,30) 70%, rgb(128,30,0) 85%); }
-	100%  { background: linear-gradient(to right, rgb(76,128,110) 40%, rgb(70,80,90) 55%, rgb(60,20,40) 70%, rgb(40,10,40) 85%); }
+	0%    { background: linear-gradient(to right, rgb(152,255,220) 40%, rgb(180,200,140) 55%, rgb(255,140,100) 70%, rgb(255,100,70) 85%); }
+	25%   { background: linear-gradient(to right, rgb(152,255,220) 40%, rgb(140,255,180) 55%, rgb(120,255,100) 70%, rgb(100,255,40) 85%); }
+	50%   { background: linear-gradient(to right, rgb(152,255,220) 40%, rgb(140,200,255) 55%, rgb(100,120,255) 70%, rgb(0,0,255) 85%); }
+	75%   { background: linear-gradient(to right, rgb(152,255,220) 40%, rgb(200,160,100) 55%, rgb(220,140,60) 70%, rgb(255,60,0) 85%); }
+	100%  { background: linear-gradient(to right, rgb(152,255,220) 40%, rgb(140,160,180) 55%, rgb(120,40,80) 70%, rgb(80,20,80) 85%); }
 }
 @-webkit-keyframes evolution_Cobrand_2 {
-	0%    { background: linear-gradient(to right, rgb(76,128,110) 40%, rgb(90,100,70) 55%, rgb(128,70,50) 70%, rgb(128,50,35) 85%); }
-	25%   { background: linear-gradient(to right, rgb(76,128,110) 40%, rgb(70,128,90) 55%, rgb(60,128,50) 70%, rgb(50,128,20) 85%); }
-	50%   { background: linear-gradient(to right, rgb(76,128,110) 40%, rgb(70,100,128) 55%, rgb(50,60,128) 70%, rgb(0,0,128) 85%); }
-	75%   { background: linear-gradient(to right, rgb(76,128,110) 40%, rgb(100,80,50) 55%, rgb(110,70,30) 70%, rgb(128,30,0) 85%); }
-	100%  { background: linear-gradient(to right, rgb(76,128,110) 40%, rgb(70,80,90) 55%, rgb(60,20,40) 70%, rgb(40,10,40) 85%); }
+	0%    { background: linear-gradient(to right, rgb(152,255,220) 40%, rgb(180,200,140) 55%, rgb(255,140,100) 70%, rgb(255,100,70) 85%); }
+	25%   { background: linear-gradient(to right, rgb(152,255,220) 40%, rgb(140,255,180) 55%, rgb(120,255,100) 70%, rgb(100,255,40) 85%); }
+	50%   { background: linear-gradient(to right, rgb(152,255,220) 40%, rgb(140,200,255) 55%, rgb(100,120,255) 70%, rgb(0,0,255) 85%); }
+	75%   { background: linear-gradient(to right, rgb(152,255,220) 40%, rgb(200,160,100) 55%, rgb(220,140,60) 70%, rgb(255,60,0) 85%); }
+	100%  { background: linear-gradient(to right, rgb(152,255,220) 40%, rgb(140,160,180) 55%, rgb(120,40,80) 70%, rgb(80,20,80) 85%); }
 }
 @-o-keyframes evolution_Cobrand_2 {
-	0%    { background: linear-gradient(to right, rgb(76,128,110) 40%, rgb(90,100,70) 55%, rgb(128,70,50) 70%, rgb(128,50,35) 85%); }
-	25%   { background: linear-gradient(to right, rgb(76,128,110) 40%, rgb(70,128,90) 55%, rgb(60,128,50) 70%, rgb(50,128,20) 85%); }
-	50%   { background: linear-gradient(to right, rgb(76,128,110) 40%, rgb(70,100,128) 55%, rgb(50,60,128) 70%, rgb(0,0,128) 85%); }
-	75%   { background: linear-gradient(to right, rgb(76,128,110) 40%, rgb(100,80,50) 55%, rgb(110,70,30) 70%, rgb(128,30,0) 85%); }
-	100%  { background: linear-gradient(to right, rgb(76,128,110) 40%, rgb(70,80,90) 55%, rgb(60,20,40) 70%, rgb(40,10,40) 85%); }
+	0%    { background: linear-gradient(to right, rgb(152,255,220) 40%, rgb(180,200,140) 55%, rgb(255,140,100) 70%, rgb(255,100,70) 85%); }
+	25%   { background: linear-gradient(to right, rgb(152,255,220) 40%, rgb(140,255,180) 55%, rgb(120,255,100) 70%, rgb(100,255,40) 85%); }
+	50%   { background: linear-gradient(to right, rgb(152,255,220) 40%, rgb(140,200,255) 55%, rgb(100,120,255) 70%, rgb(0,0,255) 85%); }
+	75%   { background: linear-gradient(to right, rgb(152,255,220) 40%, rgb(200,160,100) 55%, rgb(220,140,60) 70%, rgb(255,60,0) 85%); }
+	100%  { background: linear-gradient(to right, rgb(152,255,220) 40%, rgb(140,160,180) 55%, rgb(120,40,80) 70%, rgb(80,20,80) 85%); }
 }
 @keyframes evolution_Cobrand_2 {
-	0%    { background: linear-gradient(to right, rgb(76,128,110) 40%, rgb(90,100,70) 55%, rgb(128,70,50) 70%, rgb(128,50,35) 85%); }
-	25%   { background: linear-gradient(to right, rgb(76,128,110) 40%, rgb(70,128,90) 55%, rgb(60,128,50) 70%, rgb(50,128,20) 85%); }
-	50%   { background: linear-gradient(to right, rgb(76,128,110) 40%, rgb(70,100,128) 55%, rgb(50,60,128) 70%, rgb(0,0,128) 85%); }
-	75%   { background: linear-gradient(to right, rgb(76,128,110) 40%, rgb(100,80,50) 55%, rgb(110,70,30) 70%, rgb(128,30,0) 85%); }
-	100%  { background: linear-gradient(to right, rgb(76,128,110) 40%, rgb(70,80,90) 55%, rgb(60,20,40) 70%, rgb(40,10,40) 85%); }
+	0%    { background: linear-gradient(to right, rgb(152,255,220) 40%, rgb(180,200,140) 55%, rgb(255,140,100) 70%, rgb(255,100,70) 85%); }
+	25%   { background: linear-gradient(to right, rgb(152,255,220) 40%, rgb(140,255,180) 55%, rgb(120,255,100) 70%, rgb(100,255,40) 85%); }
+	50%   { background: linear-gradient(to right, rgb(152,255,220) 40%, rgb(140,200,255) 55%, rgb(100,120,255) 70%, rgb(0,0,255) 85%); }
+	75%   { background: linear-gradient(to right, rgb(152,255,220) 40%, rgb(200,160,100) 55%, rgb(220,140,60) 70%, rgb(255,60,0) 85%); }
+	100%  { background: linear-gradient(to right, rgb(152,255,220) 40%, rgb(140,160,180) 55%, rgb(120,40,80) 70%, rgb(80,20,80) 85%); }
+}
+.evolution.Cobrand_3 {
+	-moz-animation: evolution_Cobrand_3 10s infinite linear;
+	-webkit-animation: evolution_Cobrand_3 10s infinite linear;
+	-o-animation: evolution_Cobrand_3 10s infinite linear;
+	animation: evolution_Cobrand_3 10s infinite linear;
+	animation-direction: alternate;
 }
 .rainbow {
 	-moz-animation: rainbow 8s infinite linear;
@@ -464,4 +501,55 @@
 	font-size: 14px;
 	padding: 0px 10px 10px 10px;
 	display: none;
+}
+#default_set {
+	text-decoration: underline;
+	position: absolute;
+	right: 5%;
+	bottom: 1px;
+	cursor: pointer;
+	color: #FFF;
+}
+.switch_mode_list_bg {
+	width: 214px;
+	height: 40px;
+	position: absolute;
+	bottom: 0;
+	background-image: url(/images/New_ui/light_effect/tab_menu_bg.svg);
+}
+.switch_mode_list_bg .mode_list_bg {
+	display: flex;
+	height: 100%;
+	width: 170px;
+}
+.switch_mode_list_bg .mode_list_bg > div {
+	height: 100%;
+	width: 100%;
+	position: relative;
+	background-repeat: no-repeat;
+	background-position: 50%;
+	background-size: 100% 60%;
+	cursor: pointer;
+}
+.switch_mode_list_bg .mode_list_bg > div:not(:first-child):before {
+	position: absolute;
+	content: "";
+	height: 70%;
+	border-left: 1px solid rgba(255,255,255,0.08);
+	top: 15%;
+}
+.switch_mode_list_bg .mode_list_bg > div.panel {
+	background-size: 100% 80%;
+	background-image: url(/images/New_ui/light_effect/ic-roglogo-resting.svg);
+}
+.switch_mode_list_bg .mode_list_bg > div.panel.active,
+.switch_mode_list_bg .mode_list_bg > div.panel:hover {
+	background-image: url(/images/New_ui/light_effect/ic-roglogo-active.svg);
+}
+.switch_mode_list_bg .mode_list_bg > div.antenna {
+	background-image: url(/images/New_ui/light_effect/ic-antenna-resting.svg);
+}
+.switch_mode_list_bg .mode_list_bg > div.antenna.active,
+.switch_mode_list_bg .mode_list_bg > div.antenna:hover {
+	background-image: url(/images/New_ui/light_effect/ic-antenna-active.svg);
 }

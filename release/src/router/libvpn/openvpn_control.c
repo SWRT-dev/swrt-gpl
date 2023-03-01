@@ -18,8 +18,8 @@
 
 /*
  * Copyright 2021-2022, ASUS
- * Copyright 2022, SWRTdev
- * Copyright 2022, paldier <paldier@hotmail.com>.
+ * Copyright 2023, SWRTdev
+ * Copyright 2023, paldier <paldier@hotmail.com>.
  * All Rights Reserved.
  */
 
@@ -68,7 +68,7 @@ static int _ovpn_is_running(ovpn_type_t type, int unit)
 	else if(type == OVPN_TYPE_SERVER)
 		snprintf(name, sizeof(name), "vpnserver%d", unit);
 
-	if( pidof(name) > 0 )
+	if(pidof(name) > 0)
 		return 1;
 	return 0;
 }
@@ -85,7 +85,7 @@ static void _ovpn_check_dir(ovpn_type_t type, int unit)
 		snprintf(path, sizeof(path), "%s/client%d", OVPN_DIR_CONF, unit);
 	else if(type == OVPN_TYPE_SERVER)
 		snprintf(path, sizeof(path), "%s/server%d", OVPN_DIR_CONF, unit);
-	if(!d_exists(path)) {
+	if(!d_exists(path)){
 		mkdir(path, 0700);
 	}
 
@@ -100,17 +100,16 @@ static void _ovpn_check_dir(ovpn_type_t type, int unit)
 
 static void _ovpn_tunnel_create(ovpn_if_t if_type, char* if_name)
 {
-	char buf[128];
+	char path[128];
 
 	eval(OVPN_PRG_OPENVPN, "--mktun", "--dev", if_name);
 
-	snprintf(buf, sizeof(buf), "/sys/class/net/%s/ifindex", if_name);
-	f_wait_exists(buf, 3);
-	snprintf(buf, sizeof(buf), "/proc/sys/net/ipv6/conf/%s/disable_ipv6", if_name);
-	f_write_string(buf, "0", 0, 0);
-	if( if_type == OVPN_IF_TAP ) {
+	snprintf(path, sizeof(path), "/sys/class/net/%s/ifindex", if_name);
+	f_wait_exists(path, 3);
+	snprintf(path, sizeof(path), "/proc/sys/net/ipv6/conf/%s/disable_ipv6", if_name);
+	f_write_string(path, "0", 0, 0);
+	if(if_type == OVPN_IF_TAP)
 		eval("brctl", "addif", "br0", if_name);
-	}
 
 	eval("ifconfig", if_name, "up", "promisc");
 }
@@ -492,7 +491,7 @@ static void _ovpn_server_check_keys(int unit, ovpn_sconf_t *conf)
 		//generate certificate and key
 		snprintf(fpath, sizeof(fpath), "/tmp/genvpncert.sh");
 		fp = fopen(fpath, "w");
-		if(fp) {
+		if(fp){
 			fprintf(fp,
 				"#!/bin/sh\n"
 				"export OPENSSL=\"%s\"\n"	//openssl
@@ -525,6 +524,7 @@ static void _ovpn_server_check_keys(int unit, ovpn_sconf_t *conf)
 			chmod(fpath, 0700);
 			system(fpath);
 			unlink(fpath);
+			sync_profile_update_time(1);
 		}
 
 		//set certification and key to nvram or jffs
@@ -546,7 +546,7 @@ static void _ovpn_server_check_keys(int unit, ovpn_sconf_t *conf)
 
 	//DH
 	dh_valid = 0;
-	if ( get_ovpn_key(OVPN_TYPE_SERVER, unit, OVPN_SERVER_DH, buf, sizeof(buf)) ) {
+	if(get_ovpn_key(OVPN_TYPE_SERVER, unit, OVPN_SERVER_DH, buf, sizeof(buf))){
 		dh_valid = _ovpn_server_verify_dh(buf);
 	}
 	if(dh_valid == 0)
@@ -555,9 +555,8 @@ static void _ovpn_server_check_keys(int unit, ovpn_sconf_t *conf)
 		update_ovpn_status(OVPN_TYPE_SERVER, unit, OVPN_STS_ERROR, OVPN_ERRNO_DH);
 
 	//STATIC KEY
-	if( (conf->auth_mode == OVPN_AUTH_STATIC || (conf->auth_mode == OVPN_AUTH_TLS && conf->direction >= 0))
-		&& !ovpn_key_exists(OVPN_TYPE_SERVER, unit, OVPN_SERVER_STATIC)
-	) {
+	if((conf->auth_mode == OVPN_AUTH_STATIC || (conf->auth_mode == OVPN_AUTH_TLS && conf->direction >= 0))
+		&& !ovpn_key_exists(OVPN_TYPE_SERVER, unit, OVPN_SERVER_STATIC)){
 		snprintf(fpath, sizeof(fpath), "%s/static.key", OVPN_DIR_TMP);
 		snprintf(buf, sizeof(buf), "%s --genkey --secret %s", OVPN_PRG_OPENVPN, fpath);
 		system(buf);
@@ -668,19 +667,14 @@ static void _ovpn_server_fw_rule_add(int unit, ovpn_sconf_t *conf)
 
 	snprintf(fpath, sizeof(fpath), "/etc/openvpn/server%d/fw.sh", unit);
 	fp = fopen(fpath, "w");
-	if(fp) {
+	if(fp){
 		fprintf(fp, "#!/bin/sh\n\n");
 		fprintf(fp, "iptables -t nat -I PREROUTING -p %s --dport %d -j ACCEPT\n"
-			, strstr(conf->proto, "udp")?"udp":"tcp"
-			, conf->port
-		);
+			, strstr(conf->proto, "udp") ? "udp" : "tcp", conf->port);
 		fprintf(fp, "iptables -I OVPNSI -p %s --dport %d -j ACCEPT\n"
-			, strstr(conf->proto, "udp")?"udp":"tcp"
-			, conf->port
-		);
+			, strstr(conf->proto, "udp") ? "udp" : "tcp", conf->port);
 		fprintf(fp, "ip6tables -I OVPNSI -p %s --dport %d -j ACCEPT\n"
-			, strstr(conf->proto, "udp")?"udp":"tcp"
-			, conf->port
+			, strstr(conf->proto, "udp") ? "udp" : "tcp", conf->port
 		);
 		fprintf(fp, "iptables -I OVPNSI -i %s -j ACCEPT\n", conf->if_name);
 		fprintf(fp, "ip6tables -I OVPNSI -i %s -j ACCEPT\n", conf->if_name);
@@ -704,6 +698,8 @@ static void _ovpn_server_fw_rule_del(int unit)
 	if(f_exists(fpath)) {
 		eval("sed", "-i", "s/-I/-D/", fpath);
 		eval(fpath);
+		eval("sed", "-i", "s/-A/-D/", fpath);
+		eval(fpath);
 		unlink(fpath);
 	}
 }
@@ -715,7 +711,7 @@ static void _ovpn_client_fw_rule_add(int unit, ovpn_cconf_t *conf)
 
 	snprintf(fpath, sizeof(fpath), "/etc/openvpn/client%d/fw.sh", unit);
 	fp = fopen(fpath, "w");
-	if(fp) {
+	if(fp){
 		fprintf(fp, "#!/bin/sh\n\n");
 		fprintf(fp, "iptables -I OVPNCI -i %s -j ACCEPT\n", conf->if_name);
 		fprintf(fp, "iptables -I OVPNCF -i %s -j ACCEPT\n", conf->if_name);
@@ -741,27 +737,32 @@ static void _ovpn_client_fw_rule_del(int unit)
 	}
 }
 
-static void _ovpn_cron_job_add(ovpn_type_t type, int unit, ovpn_cconf_t *conf)
+static void _ovpn_cron_job_add(ovpn_type_t type, int unit, void *conf)
 {
 	char buf[256];
 	int min = OVPN_RETRY_MIN;
+	ovpn_sconf_t *sconf;
+	ovpn_cconf_t *cconf;
 
-	if(type == OVPN_TYPE_SERVER) {
-		if(conf)
-			min = conf->poll;
+	if(type == OVPN_TYPE_SERVER){
+		if(conf){
+			sconf = (ovpn_sconf_t *)conf;
+			min = sconf->poll;
+		}
 		snprintf(buf, sizeof(buf),
 			"%s a start_vpnserver%d \"*/%d * * * * service start_vpnserver%d\""
 			, OVPN_PRG_CROND_CRU, unit, min, unit);
-	}
-	else {
-		if(conf)
-			min = conf->poll;
+	}else{
+		if(conf){
+			cconf = (ovpn_cconf_t *)conf;
+			min = cconf->poll;
+		}
 		snprintf(buf, sizeof(buf),
 			"%s a start_vpnclient%d \"*/%d * * * * service start_vpnclient%d\""
 			, OVPN_PRG_CROND_CRU, unit, min, unit);
 	}
 
-	if( min > 0 )
+	if(min > 0)
 		system(buf);
 }
 
@@ -785,7 +786,6 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 	FILE *fp, *fp_client, *fp_cc;
 	int i;
 	int ret;
-	char *pch;
 
 	snprintf(buf, sizeof(buf), "%s/server%d/config.ovpn", OVPN_DIR_CONF, unit);
 	fp = fopen(buf, "w");
@@ -812,14 +812,13 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 	fprintf(fp_client, "nobind\n");
 
 	//protocol
-	if( strstr(conf->proto, "udp") ) {
+	if(strstr(conf->proto, "udp")){
 		fprintf(fp, "proto udp6\n");
 		fprintf(fp, "multihome\n");
 		fprintf(fp_client, "proto udp\n");// udp:v4 first, udp6:v6 first
-	}
-	else {
+	}else{
 		fprintf(fp, "proto tcp6-server\n");
-		fprintf(fp_client, "proto tcp-client\n");// tcp-client:v4 first, tcp6-client:v6 first
+		fprintf(fp_client, "proto tcp-client\n");// tcp-client:v4 first, tcp6-server:v6 first
 	}
 
 	//port
@@ -827,10 +826,9 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 
 	//dev
 	fprintf(fp, "dev %s\n", conf->if_name);
-	if( conf->if_type == OVPN_IF_TUN ) {
+	if(conf->if_type == OVPN_IF_TUN){
 		fprintf(fp_client, "dev tun\n");
-	}
-	else if( conf->if_type == OVPN_IF_TAP ) {
+	}else if(conf->if_type == OVPN_IF_TAP){
 		fprintf(fp_client,
 			"dev tap\n\n"
 			"# Windows needs the TAP-Win32 adapter name\n"
@@ -843,8 +841,8 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 	}
 
 	//ip
-	if(conf->auth_mode == OVPN_AUTH_STATIC) {
-		if( conf->if_type == OVPN_IF_TUN ) {
+	if(conf->auth_mode == OVPN_AUTH_STATIC){
+		if(conf->if_type == OVPN_IF_TUN){
 			fprintf(fp, "ifconfig %s %s\n", conf->local, conf->remote);
 			fprintf(fp_client, "ifconfig %s %s\n", conf->remote, conf->local);
 			if(conf->ipv6_enable){
@@ -853,7 +851,7 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 			}
 		}
 	}
-	if( conf->if_type == OVPN_IF_TUN && conf->ipv6_enable) {
+	if(conf->if_type == OVPN_IF_TUN && conf->ipv6_enable){
 		fprintf(fp, "tun-mtu-extra 20\n");
 		fprintf(fp_client, "tun-mtu-extra 20\n");
 	}
@@ -881,7 +879,7 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 	fprintf(fp, "daemon %s\n", conf->progname);
 	fprintf(fp, "script-security 2\n");
 	//log verbosity
-	if( conf->verb >= 0 )
+	if(conf->verb >= 0)
 		fprintf(fp, "verb %d\n", conf->verb);
 
 	//client status
@@ -889,7 +887,7 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 	fprintf(fp, "status status 10\n");
 
 	//compression
-	if( strlen(conf->comp) && strcmp(conf->comp, "-1") ) {
+	if(strlen(conf->comp) && strcmp(conf->comp, "-1")){
 		if(!strcmp(conf->comp, "adaptive")){
 			fprintf(fp, "comp-lzo adaptive\n");
 			fprintf(fp_client, "comp-lzo adaptive\n");
@@ -898,7 +896,7 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 			fprintf(fp_client, "\n# for OpenVPN 2.4 or older\ncomp-lzo no\n# for OpenVPN 2.4 or newer\n;compress\n\n");
 		}else if(!strcmp(conf->comp, "yes")){
 			fprintf(fp, "compress lzo\n");
-			fprintf(fp_client, "\n# for OpenVPN 2.4 or older\ncomp-lzo no\n# for OpenVPN 2.4 or newer\n;compress\n\n");
+			fprintf(fp_client, "\n# for OpenVPN 2.4 or older\ncomp-lzo yes\n# for OpenVPN 2.4 or newer\n;compress\n\n");
 		}else if(!strcmp(conf->comp, "lz4")){
 			fprintf(fp, "compress lz4\n");
 			fprintf(fp_client, "compress lz4\n");
@@ -906,23 +904,22 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 	}
 
 	//authentication
-	if( conf->auth_mode == OVPN_AUTH_TLS ) {
+	if(conf->auth_mode == OVPN_AUTH_TLS){
 		fprintf(fp, "plugin %s openvpn\n", OVPN_LIB_PAM);
 		fprintf(fp_client, "auth-user-pass\n");
 	}
 
 //Server Mode
 	fprintf(fp, "\n# Server Mode\n");
-	if( conf->auth_mode == OVPN_AUTH_TLS ) {
-		if( conf->if_type == OVPN_IF_TUN ) {
+	if(conf->auth_mode == OVPN_AUTH_TLS){
+		if(conf->if_type == OVPN_IF_TUN){
 			fprintf(fp, "server %s ", conf->network);
 			fprintf(fp, "%s\n", conf->netmask);
 			if(conf->ipv6_enable)
 				fprintf(fp, "server-ipv6 %s\n", conf->network6);
-		}
-		else if( conf->if_type == OVPN_IF_TAP ) {
+		}else if(conf->if_type == OVPN_IF_TAP){
 			fprintf(fp, "server-bridge");
-			if( conf->dhcp ) {
+			if(conf->dhcp){
 				//--server-bridge
 				//DHCP-proxy mode
 				//will push "route-gateway dhcp"
@@ -940,15 +937,15 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 	}
 
 	//route, push message
-	if( conf->auth_mode == OVPN_AUTH_TLS ) {
+	if(conf->auth_mode == OVPN_AUTH_TLS){
 		//client config dir
-		if ( conf->ccd ) {
+		if(conf->ccd){
 			fprintf(fp, "client-config-dir ccd\n");
 
-			if ( conf->c2c )
+			if(conf->c2c)
 				fprintf(fp, "client-to-client\n");
 
-			if ( conf->ccd_excl )
+			if(conf->ccd_excl)
 				fprintf(fp, "ccd-exclusive\n");
 			else
 				fprintf(fp, "duplicate-cn\n");
@@ -957,8 +954,8 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 			mkdir(buf, 0700);
 			chdir(buf);
 
-			for(i=0; i<conf->ccd_info.count; i++) {
-				if( conf->ccd_info.ccd_val[i].enable ) {
+			for(i=0; i<conf->ccd_info.count; i++){
+				if(conf->ccd_info.ccd_val[i].enable){
 					fp_cc = fopen(conf->ccd_info.ccd_val[i].name, "w");
 					if(fp_cc) {
 						fprintf(fp_cc, "iroute %s %s\n"
@@ -966,7 +963,7 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 						fprintf(fp, "route %s %s\n"
 							, conf->ccd_info.ccd_val[i].network, conf->ccd_info.ccd_val[i].netmask);
 
-						if( conf->c2c && conf->ccd_info.ccd_val[i].push ) {
+						if(conf->c2c && conf->ccd_info.ccd_val[i].push){
 							fprintf(fp, "push \"route %s %s\"\n"
 								, conf->ccd_info.ccd_val[i].network, conf->ccd_info.ccd_val[i].netmask);
 						}
@@ -982,12 +979,9 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 		}
 
 		//router LAN
-		if ( conf->push_lan && conf->if_type == OVPN_IF_TUN ) {
-			get_lan_cidr(buf, sizeof(buf));
-			pch = strchr(buf, '/');
-			*pch = '\0';
+		if(conf->push_lan && conf->if_type == OVPN_IF_TUN){
 			fprintf(fp, "push \"route %s %s vpn_gateway %d\"\n",
-				buf, conf->lan_netmask, PUSH_LAN_METRIC);
+				conf->lan_subnet, conf->lan_netmask, PUSH_LAN_METRIC);
 			if(conf->ipv6_enable){
 				get_lan_cidr6(buf, sizeof(buf));
 				if(strlen(buf) > 1)
@@ -996,16 +990,17 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 		}
 
 		//router as gateway
-		if ( conf->redirect_gateway ) {
-			fprintf(fp, "push \"redirect-gateway def1\"\n");
-			if(conf->ipv6_enable)
+		if(conf->redirect_gateway){
+			if(!conf->ipv6_enable || conf->if_type == OVPN_IF_TAP)
+				fprintf(fp, "push \"redirect-gateway def1\"\n");
+			else
 				fprintf(fp, "push \"redirect-gateway ipv6 def1\"\n");
 			//if ( conf->if_type == OVPN_IF_TAP )
 				//fprintf(fp, "push \"route-gateway %s\"\n", conf->lan_ipaddr);
 		}
 
 		//DNS
-		if ( conf->push_dns ) {
+		if(conf->push_dns){
 			fprintf(fp, "push \"dhcp-option DNS %s\"\n", conf->lan_ipaddr);
 			fprintf(fp, "push \"route %s\"\n", conf->lan_ipaddr);
 			if(conf->if_type == OVPN_IF_TUN)
@@ -1014,7 +1009,7 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 	}
 
 	//ignore client certificate
-	if ( conf->auth_mode == OVPN_AUTH_TLS && conf->useronly ) {
+	if(conf->auth_mode == OVPN_AUTH_TLS && conf->useronly){
 		fprintf(fp, "verify-client-cert none\n");
 		fprintf(fp, "username-as-common-name\n");
 	}
@@ -1023,23 +1018,24 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 	fprintf(fp, "\n# Data Channel Encryption Options\n");
 
 	//HMAC digest algorithm
-	if ( strlen(conf->digest) && strcmp(conf->digest, "default") ) {
+	if(strlen(conf->digest) && strcmp(conf->digest, "default")){
 		fprintf(fp, "auth %s\n", conf->digest);
 		fprintf(fp_client, "auth %s\n", conf->digest);
 	}
 
 	//cipher
-	if ( strlen(conf->cipher) && strcmp(conf->cipher, "default") ) {
+	if(strlen(conf->cipher) && strcmp(conf->cipher, "default")){
 		fprintf(fp, "cipher %s\n", conf->cipher);
 		fprintf(fp_client, "cipher %s\n", conf->cipher);
 	}
-
-	if ( conf->auth_mode == OVPN_AUTH_STATIC ) {
+	if(!conf->ncp_enable)
+		fprintf(fp, "ncp-disable\n");
+	if(conf->auth_mode == OVPN_AUTH_STATIC){
 		fprintf(fp, "secret static.key\n");
 	}
 
 //TLS Mode Options:
-	if ( conf->auth_mode == OVPN_AUTH_TLS ) {
+	if(conf->auth_mode == OVPN_AUTH_TLS){
 		fprintf(fp, "\n# TLS Mode Options\n");
 		//certificate and keys
 		fprintf(fp, "ca ca.crt\n");
@@ -1047,21 +1043,21 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 		fprintf(fp, "cert server.crt\n");
 		fprintf(fp, "key server.key\n");
 
-		if ( ovpn_key_exists(OVPN_TYPE_SERVER, unit, OVPN_SERVER_CRL) )
+		if(ovpn_key_exists(OVPN_TYPE_SERVER, unit, OVPN_SERVER_CRL))
 			fprintf(fp, "crl-verify crl.pem\n");
-		if ( ovpn_key_exists(OVPN_TYPE_SERVER, unit, OVPN_SERVER_EXTRA) )
+		if(ovpn_key_exists(OVPN_TYPE_SERVER, unit, OVPN_SERVER_EXTRA))
 			fprintf(fp, "extra-certs server_extra.crt\n");
 
 		//TLS-Auth, HMAC
-		if ( conf->direction >= 0 ) {
+		if(conf->direction >= 0){
 			fprintf(fp, "tls-auth static.key");
-			if ( conf->direction < 2 )
+			if(conf->direction < 2)
 				fprintf(fp, " %d", conf->direction);
 			fprintf(fp, "\n");
 		}
 
 		//TLS Renegotiation Time
-		if( conf->reneg >= 0 ) {
+		if(conf->reneg >= 0){
 			fprintf(fp, "reneg-sec %d\n", conf->reneg);
 			fprintf(fp_client, "reneg-sec %d\n", conf->reneg);
 		}
@@ -1076,15 +1072,15 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 	fclose(fp);
 
 	// Write client inline certification and key
-	if ( conf->auth_mode == OVPN_AUTH_TLS ) {
+	if(conf->auth_mode == OVPN_AUTH_TLS){
 		fprintf(fp_client, "<ca>\n%s\n</ca>\n\n"
 			, get_ovpn_key(OVPN_TYPE_SERVER, unit, OVPN_SERVER_CA, buf, sizeof(buf))
 		);
 
-		//if(!conf->useronly) {
+		if(!conf->useronly) {
 			ret = _ovpn_server_verify_client_crt(unit);
-			if( ret ) {
-				if(ret == 2) {
+			if(ret){
+				if(ret == 2){
 					fprintf(fp_client, "#\n# Update client certificate and key if necessary\n#\n");
 				}
 				fprintf(fp_client, "<cert>\n%s\n</cert>\n\n"
@@ -1093,14 +1089,14 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 				fprintf(fp_client, "<key>\n%s\n</key>\n\n"
 					, get_ovpn_key(OVPN_TYPE_SERVER, unit, OVPN_SERVER_CLIENT_KEY, buf, sizeof(buf))
 				);
-			} else {
+			}else{
 				fprintf(fp_client, "<cert>\n    paste client certificate data here\n</cert>\n\n"
 					"<key>\n    paste client key data here\n</key>\n\n"
 				);
 			}
-		//}
+		}
 
-		if ( conf->direction >= 0 ) {
+		if(conf->direction >= 0) {
 			fprintf(fp_client, "<tls-auth>\n%s\n</tls-auth>\n\n"
 				, get_ovpn_key(OVPN_TYPE_SERVER, unit, OVPN_SERVER_STATIC, buf, sizeof(buf))
 			);
@@ -1110,7 +1106,7 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 				fprintf(fp_client, "key-direction 1\n\n");
 		}
 	}
-	else if ( conf->auth_mode == OVPN_AUTH_STATIC ) {
+	else if(conf->auth_mode == OVPN_AUTH_STATIC){
 		fprintf(fp_client, "<secret>\n%s\n</secret>\n\n"
 			, get_ovpn_key(OVPN_TYPE_SERVER, unit, OVPN_SERVER_STATIC, buf, sizeof(buf))
 		);
@@ -1139,7 +1135,7 @@ static int _ovpn_client_gen_conf(int unit, ovpn_cconf_t *conf)
 	fprintf(fp, "remote %s\n", conf->addr);
 
 	//retry resolve hostname
-	if ( conf->retry >= 0 )
+	if(conf->retry >= 0)
 		fprintf(fp, "resolv-retry %d\n", conf->retry);
 	else
 		fprintf(fp, "resolv-retry infinite\n");
@@ -1157,25 +1153,19 @@ static int _ovpn_client_gen_conf(int unit, ovpn_cconf_t *conf)
 	fprintf(fp, "dev %s\n", conf->if_name);
 
 	//ip pool
-	if( conf->auth_mode == OVPN_AUTH_STATIC ) {
-		if( conf->if_type == OVPN_IF_TUN ) {
+	if(conf->auth_mode == OVPN_AUTH_STATIC){
+		if(conf->if_type == OVPN_IF_TUN){
 			fprintf(fp, "ifconfig %s %s\n", conf->local, conf->remote);
 		}
 		//else if( conf->if_type == OVPN_IF_TAP ) {
 			//fprintf(fp, "ifconfig %s %s\n", conf->remote, conf->netmask);
 		//}
 	}
-	snprintf(buf, sizeof(buf), "%s/ovpn-route-up", OVPN_DIR_CONF);
-	symlink("/sbin/rc", buf);
-	fprintf(fp, "route-up '%s'\n", buf);
-	snprintf(buf, sizeof(buf), "%s/ovpn-route-pre-down", OVPN_DIR_CONF);
-	symlink("/sbin/rc", buf);
-	fprintf(fp, "route-pre-down '%s'\n", buf);
 	fprintf(fp, "route-noexec\n");
 	//TODO: TLS recevie routing info, add/ignore rules for dual wan multi route table
 	// redirect gateway
-	if( conf->redirect_gateway ) {
-		if( conf->if_type == OVPN_IF_TAP && strlen(conf->gateway) )
+	if(conf->redirect_gateway){
+		if(conf->if_type == OVPN_IF_TAP && strlen(conf->gateway))
 			fprintf(fp, "route-gateway %s\n", conf->gateway);
 		fprintf(fp, "redirect-gateway def1\n");
 	}
@@ -1190,13 +1180,6 @@ static int _ovpn_client_gen_conf(int unit, ovpn_cconf_t *conf)
 	//Don't re-read key files across SIGUSR1 or --ping-restart
 	fprintf(fp, "persist-key\n");
 
-	//to update DNS info
-	snprintf(buf, sizeof(buf), "%s/ovpn-up", OVPN_DIR_CONF);
-	symlink("/sbin/rc", buf);
-	fprintf(fp, "up '%s %d'\n", buf, unit);
-	snprintf(buf, sizeof(buf), "%s/ovpn-down", OVPN_DIR_CONF);
-	symlink("/sbin/rc", buf);
-	fprintf(fp, "down '%s %d'\n", buf, unit);
 	fprintf(fp, "setenv ovpn_type %d\n", 1);
 	fprintf(fp, "setenv unit %d\n", unit);
 	fprintf(fp, "setenv adns %d\n", conf->adns);
@@ -1209,7 +1192,7 @@ static int _ovpn_client_gen_conf(int unit, ovpn_cconf_t *conf)
 	fprintf(fp, "daemon vpnclient%d\n", unit);
 
 	//log verbosity
-	if( conf->verb >= 0 )
+	if(conf->verb >= 0)
 		fprintf(fp, "verb %d\n", conf->verb);
 
 	//status
@@ -1217,21 +1200,23 @@ static int _ovpn_client_gen_conf(int unit, ovpn_cconf_t *conf)
 	fprintf(fp, "status status 10\n");
 
 	//compression
-	if( strlen(conf->comp) && strcmp(conf->comp, "-1") ) {
+	if(strlen(conf->comp) && strcmp(conf->comp, "-1")){
 		if(!strcmp(conf->comp, "adaptive"))
 			fprintf(fp, "comp-lzo adaptive\n");
 		else if(!strcmp(conf->comp, "no"))
 			fprintf(fp, "compress\n");
 		else if(!strcmp(conf->comp, "yes"))
+			fprintf(fp, "compress lzo\n");
+		else
 			fprintf(fp, "compress %s\n", conf->comp);
 	}
 
 // Client Mode
 	fprintf(fp, "\n# Client Mode\n");
-	if( conf->auth_mode == OVPN_AUTH_TLS ) {
+	if(conf->auth_mode == OVPN_AUTH_TLS){
 		fprintf(fp, "client\n");
 		//authentication
-		if (conf->userauth) {
+		if(conf->userauth){
 			fprintf(fp, "auth-user-pass up\n");
 		}
 	}
@@ -1240,50 +1225,50 @@ static int _ovpn_client_gen_conf(int unit, ovpn_cconf_t *conf)
 	fprintf(fp, "\n# Data Channel Encryption Options\n");
 
 	//HMAC digest algorithm
-	if ( strlen(conf->digest) && strcmp(conf->digest, "default") ) {
+	if(strlen(conf->digest) && strcmp(conf->digest, "default")){
 		fprintf(fp, "auth %s\n", conf->digest);
 	}
 
 	//cipher
-	if ( strlen(conf->cipher) && strcmp(conf->cipher, "default") ) {
+	if(strlen(conf->cipher) && strcmp(conf->cipher, "default")){
 		fprintf(fp, "cipher %s\n", conf->cipher);
 	}
 
-	if ( conf->auth_mode == OVPN_AUTH_STATIC ) {
+	if(conf->auth_mode == OVPN_AUTH_STATIC){
 		fprintf(fp, "secret static.key\n");
 	}
 
 //TLS Mode Options:
-	if ( conf->auth_mode == OVPN_AUTH_TLS ) {
+	if(conf->auth_mode == OVPN_AUTH_TLS ){
 		fprintf(fp, "\n# TLS Mode Options\n");
 		//certificate and keys
 		fprintf(fp, "ca ca.crt\n");
-		if ( !conf->useronly ) {
+		if(!conf->useronly){
 			fprintf(fp, "cert client.crt\n");
 			fprintf(fp, "key client.key\n");
-			if ( ovpn_key_exists(OVPN_TYPE_CLIENT, unit, OVPN_CLIENT_EXTRA) )
+			if(ovpn_key_exists(OVPN_TYPE_CLIENT, unit, OVPN_CLIENT_EXTRA))
 				fprintf(fp, "extra-certs client_extra.crt\n");
 		}
 
-		if ( ovpn_key_exists(OVPN_TYPE_CLIENT, unit, OVPN_CLIENT_CRL) )
+		if(ovpn_key_exists(OVPN_TYPE_CLIENT, unit, OVPN_CLIENT_CRL))
 			fprintf(fp, "crl-verify crl.pem\n");
 
-		if ( conf->verify_x509_type )
+		if(conf->verify_x509_type)
 			fprintf(fp, "verify-x509-name %s %s\n", conf->verify_x509_name, "name");
 
-		if ( conf->tlscrypt)
+		if(conf->tlscrypt)
 			fprintf(fp, "tls-crypt static.key\n");
 
 		//TLS-Auth, HMAC
-		else if ( conf->direction >= 0 ) {
+		else if(conf->direction >= 0){
 			fprintf(fp, "tls-auth static.key");
-			if ( conf->direction < 2 )
+			if(conf->direction < 2)
 				fprintf(fp, " %d", conf->direction);
 			fprintf(fp, "\n");
 		}
 
 		//TLS Renegotiation Time
-		if( conf->reneg >= 0 ) {
+		if(conf->reneg >= 0){
 			fprintf(fp, "reneg-sec %d\n", conf->reneg);
 		}
 	}
@@ -1291,6 +1276,12 @@ static int _ovpn_client_gen_conf(int unit, ovpn_cconf_t *conf)
 	//custom config
 	fprintf(fp, "\n# Custom Configuration\n");
 	fputs(conf->custom, fp);
+	fprintf(fp, "\n");
+	//to update DNS info
+	fprintf(fp, "up '/etc/openvpn/ovpnc-up %d'\n", unit);
+	fprintf(fp, "down '/etc/openvpn/ovpnc-down %d'\n", unit);
+	fprintf(fp, "route-up '/etc/openvpn/ovpnc-route-up %d'\n", unit);
+	fprintf(fp, "route-pre-down '/etc/openvpn/ovpnc-route-pre-down %d'\n", unit);
 	fclose(fp);
 	return 0;
 }
@@ -1361,51 +1352,41 @@ void append_ovpn_accnt(const char *path, const char *ovpn_path)
 	FILE *fp;
 	FILE *fp_tmp;
 
-	if( !path || !ovpn_path)
+	if(!path || !ovpn_path)
 		return;
 
-	if( !f_exists(path) || !f_exists(ovpn_path) )
+	if(!f_exists(path) || !f_exists(ovpn_path))
 		return;
 
 	//remove duplicate account
 	snprintf(tmpfile, sizeof(tmpfile), "%s.tmp", path);
-	if( (fp = fopen(path, "r")) != NULL ) {
-		if( (fp_tmp = fopen(tmpfile, "w+")) != NULL ) {
+	if((fp = fopen(path, "r")) != NULL){
+		if((fp_tmp = fopen(tmpfile, "w+")) != NULL){
 			//first line for admin account
-			if (fgets(buf, sizeof(buf), fp)) {
+			if(fgets(buf, sizeof(buf), fp)){
 				fputs(buf, fp_tmp);
 			}
 
-			while( fgets(buf, sizeof(buf), fp) ) {
-				if (sscanf(buf, "%31[^:]:%*s", account) == 1) {
+			while(fgets(buf, sizeof(buf), fp)){
+				if(sscanf(buf, "%31[^:]:%*s", account) == 1){
 					//_dprintf("%s-account(%s)\n", __FUNCTION__, account);
-					if( !_is_dup_ovpn_accnt(account) ) {
+					if(!_is_dup_ovpn_accnt(account)){
 						fputs(buf, fp_tmp);
 					}
-				}
-				else {
+				}else{
 					fputs(buf, fp_tmp);
 				}
 			}
-		}
-		else {
-			fclose(fp);
-			return;
-		}
+			fclose(fp_tmp);
 
+			unlink(path);
+			rename(tmpfile, path);
+			chmod(path, 0644);
+			snprintf(buf, sizeof(buf), "cd /etc; cat %s >> %s", ovpn_path, path);
+			system(buf);
+		}
 		fclose(fp);
-		fclose(fp_tmp);
-
-		unlink(path);
-		rename(tmpfile, path);
-		chmod(path, 0644);
 	}
-	else {
-		return;
-	}
-
-	snprintf(buf, sizeof(buf), "cd /etc; cat %s >> %s", ovpn_path, path);
-	system(buf);
 }
 
 void create_ovpn_passwd()
@@ -1423,19 +1404,19 @@ void create_ovpn_passwd()
 	base64_encode(s, salt + 3, 6);
 	salt[3 + 8] = 0;
 	p = salt;
-	while (*p) {
-		if (*p == '+') *p = '.';
+	while(*p){
+		if(*p == '+') *p = '.';
 		++p;
 	}
 
 	fps = fopen("/etc/shadow.openvpn", "w");
 	fpp = fopen("/etc/passwd.openvpn", "w");
-	if (fps == NULL || fpp == NULL)
+	if(fps == NULL || fpp == NULL)
 		goto error;
 
 	get_ovpn_accnt(&account_info);
 
-	for (i = 0; i < account_info.count; i++) {
+	for(i = 0; i < account_info.count; i++){
 		p = crypt(account_info.account[i].password, salt);
 		fprintf(fps, "%s:%s:0:0:99999:7:0:0:\n", account_info.account[i].username, p);
 		fprintf(fpp, "%s:x:%d:%d::/dev/null:/dev/null\n", account_info.account[i].username, uid, gid);
@@ -1443,9 +1424,9 @@ void create_ovpn_passwd()
 	}
 
 error:
-	if (fps)
+	if(fps)
 		fclose(fps);
-	if (fpp)
+	if(fpp)
 		fclose(fpp);
 
 	chmod("/etc/shadow.openvpn", S_IRUSR|S_IWUSR);
@@ -1458,14 +1439,14 @@ void run_ovpn_fw_scripts()
 	int unit;
 	int lock;
 	lock = file_lock("openvpn_server");
-	for(unit = 1; unit <= OVPN_SERVER_MAX; unit++) {
+	for(unit = 1; unit <= OVPN_SERVER_MAX; unit++){
 		snprintf(buf, sizeof(buf), "%s/server%d/fw.sh", OVPN_DIR_CONF, unit);
 		if(f_exists(buf))
 			eval(buf);
 	}
 	file_unlock(lock);
 	lock = file_lock("openvpn_client");
-	for(unit = 1; unit <= OVPN_CLIENT_MAX; unit++) {
+	for(unit = 1; unit <= OVPN_CLIENT_MAX; unit++){
 		snprintf(buf, sizeof(buf), "%s/client%d/fw.sh", OVPN_DIR_CONF, unit);
 		if(f_exists(buf))
 			eval(buf);
@@ -1480,9 +1461,9 @@ void start_ovpn_serverall()
 	lock = file_lock("openvpn_server");
 	get_ovpn_sconf_common(&sconf_common);
 	// start servers
-	for(unit = 1; unit <= OVPN_SERVER_MAX; unit++) {
-		if( sconf_common.enable[unit - 1] == 1 ) {
-			if( _ovpn_is_running(OVPN_TYPE_SERVER, unit) )
+	for(unit = 1; unit <= OVPN_SERVER_MAX; unit++){
+		if(sconf_common.enable[unit - 1] == 1 ){
+			if(_ovpn_is_running(OVPN_TYPE_SERVER, unit))
 				stop_ovpn_server(unit);
 			start_ovpn_server(unit);
 		}
@@ -1497,9 +1478,9 @@ void start_ovpn_clientall()
 	lock = file_lock("openvpn_client");
 	get_ovpn_cconf_common(&cconf_common);
 	// start clients
-	for(unit = 1; unit <= OVPN_CLIENT_MAX; unit++) {
-		if( cconf_common.enable[unit-1] == 1 ) {
-			if( _ovpn_is_running(OVPN_TYPE_CLIENT, unit) )
+	for(unit = 1; unit <= OVPN_CLIENT_MAX; unit++){
+		if(cconf_common.enable[unit - 1] == 1){
+			if(_ovpn_is_running(OVPN_TYPE_CLIENT, unit))
 				stop_ovpn_client(unit);
 			start_ovpn_client(unit);
 		}
@@ -1523,13 +1504,13 @@ void start_ovpn_client(int unit)
 	if(unit == 0 || unit > OVPN_CLIENT_MAX)
 		return;
 
-	if( _ovpn_is_running(OVPN_TYPE_CLIENT, unit) ) {
+	if(_ovpn_is_running(OVPN_TYPE_CLIENT, unit)){
 		_dprintf("OpenVPN Client %d is running\n", unit);
 		return;
 	}
 
 	//get config
-	if( !get_ovpn_cconf(unit, &conf)) {
+	if(!get_ovpn_cconf(unit, &conf)){
 		_dprintf("get_ovpn_cconf failed\n");
 		update_ovpn_status(OVPN_TYPE_CLIENT, unit, OVPN_STS_ERROR, OVPN_ERRNO_CONF);
 		_ovpn_cron_job_add(OVPN_TYPE_CLIENT, unit, NULL);
@@ -1560,7 +1541,7 @@ void start_ovpn_client(int unit)
 	_ovpn_tunnel_create(conf.if_type, conf.if_name);
 
 	//generate config and script files
-	if( _ovpn_client_gen_conf(unit, &conf) < 0 ) {
+	if(_ovpn_client_gen_conf(unit, &conf) < 0){
 		logmessage_normal(conf.progname, "config failed");
 		update_ovpn_status(OVPN_TYPE_CLIENT, unit, OVPN_STS_ERROR, OVPN_ERRNO_CONF);
 		_ovpn_cron_job_add(OVPN_TYPE_CLIENT, unit, NULL);
@@ -1635,13 +1616,13 @@ void start_ovpn_server(int unit)
 
 	//generate config and script files
 	_ovpn_server_check_keys(unit, &conf);
-	if( (ret = _ovpn_server_write_keys(unit, &conf)) < 0 ) {
+	if((ret = _ovpn_server_write_keys(unit, &conf)) < 0){
 		_dprintf("_ovpn_server_write_keys return %d\n", ret);
 		update_ovpn_status(OVPN_TYPE_SERVER, unit, OVPN_STS_ERROR, OVPN_ERRNO_CONF);
 		_ovpn_cron_job_add(OVPN_TYPE_SERVER, unit, NULL);
 		return;
 	}
-	if( _ovpn_server_gen_conf(unit, &conf) < 0 ) {
+	if(_ovpn_server_gen_conf(unit, &conf) < 0){
 		update_ovpn_status(OVPN_TYPE_SERVER, unit, OVPN_STS_ERROR, OVPN_ERRNO_CONF);
 		_ovpn_cron_job_add(OVPN_TYPE_SERVER, unit, NULL);
 		return;
@@ -1674,7 +1655,7 @@ void start_ovpn_server(int unit)
 	_ovpn_cron_job_add(OVPN_TYPE_SERVER, unit, &conf);
 
 	//running
-	if ( conf.auth_mode == OVPN_AUTH_STATIC ) {
+	if(conf.auth_mode == OVPN_AUTH_STATIC){
 		update_ovpn_status(OVPN_TYPE_SERVER, unit, OVPN_STS_RUNNING, OVPN_ERRNO_NONE);
 	}
 }
@@ -1781,8 +1762,8 @@ void write_ovpn_dnsmasq_config(FILE* f)
 
 	get_ovpn_sconf_common(&sconf_common);
 
-	for(unit = 1; unit <= OVPN_SERVER_MAX; unit++) {
-		if( sconf_common.dns[unit-1] ) {
+	for(unit = 1; unit <= OVPN_SERVER_MAX; unit++){
+		if(sconf_common.dns[unit - 1]){
 			get_ovpn_sconf(unit, &sconf);
 			fprintf(f, "interface=%s\n", sconf.if_name);
 		}
@@ -1798,7 +1779,7 @@ int write_ovpn_resolv_dnsmasq(FILE* fp_servers)
 	char buf[128];
 	char path[128];
 
-	for(unit = 1; unit <= OVPN_CLIENT_MAX; unit++) {
+	for(unit = 1; unit <= OVPN_CLIENT_MAX; unit++){
 		snprintf(path, sizeof(path), "%s/client%d/resolv.dnsmasq", "/etc/openvpn", unit);
 		fp = fopen(path, "r");
 		if(fp){
@@ -1825,14 +1806,10 @@ void update_ovpn_profie_remote()
 	char cmd[256];
 
 	get_ovpn_sconf_common(&sconf_common);
-
-	for(unit = 1; unit <= OVPN_SERVER_MAX; unit++)
-	{
-		if( sconf_common.enable[unit-1] )
-		{
+	for(unit = 1; unit <= OVPN_SERVER_MAX; unit++){
+		if(sconf_common.enable[unit - 1]){
 			snprintf(file_path, sizeof(file_path), "%s/server%d/client.ovpn", OVPN_DIR_CONF, unit);
-			if(f_exists(file_path) && f_size(file_path) > 0)
-			{
+			if(f_exists(file_path) && f_size(file_path) > 0){
 				get_ovpn_sconf_remote(address, sizeof(address));
 				snprintf(cmd, sizeof(cmd), "sed -i 's/remote[ ]\\+[^ ]*/remote %s/' %s", address, file_path);
 				system(cmd);
@@ -1877,30 +1854,25 @@ static void ovpn_env_foreign_option_handler(int unit, int adns)
 	snprintf(server_path, sizeof(server_path), "%s/client%d/resolv.dnsmasq", OVPN_DIR_CONF, unit);
 	unlink(server_path);
 
-	while(1)
-	{
+	while(1){
 		snprintf(env, sizeof(env), "foreign_option_%d", i++);
 		foreign_option_x = getenv(env);
 		if(!foreign_option_x)
 			break;
-		else
-		{
+		else{
 			_dprintf("foreign option: %s\n", foreign_option_x);
-			if( !strncmp(foreign_option_x, "dhcp-option DNS ", 16) )
-			{
+			if(!strncmp(foreign_option_x, "dhcp-option DNS ", 16)){
 				if(adns){
 					strlcat(dns_buf, &foreign_option_x[16], sizeof(dns_buf));
 					strlcat(dns_buf, " ", sizeof(dns_buf));
 					fp = fopen(server_path, "a");
-					if(fp)
-					{
+					if(fp){
 						fprintf(fp, "server=%s\n", &foreign_option_x[16]);
 						fclose(fp);
 					}
 				}
 			}
-			else if( !strncmp(foreign_option_x, "dhcp-option DOMAIN ", 19) )
-			{
+			else if(!strncmp(foreign_option_x, "dhcp-option DOMAIN ", 19)){
 				if(adns){
 					strlcat(dm_buf, &foreign_option_x[19], sizeof(dm_buf));
 					strlcat(dm_buf, " ", sizeof(dm_buf));

@@ -18,8 +18,8 @@
 
 /*
  * Copyright 2021-2022, ASUS
- * Copyright 2022, SWRTdev
- * Copyright 2022, paldier <paldier@hotmail.com>.
+ * Copyright 2023, SWRTdev
+ * Copyright 2023, paldier <paldier@hotmail.com>.
  * All Rights Reserved.
  */
 
@@ -102,14 +102,14 @@ char *_filter_custom_config(char *buf, size_t len)
 {
 	int i;
 	char *ptr = NULL, *pt = NULL, *pt2 = NULL;
-	char *list[] = {"ipchange", "route-up", "route-pre-down", "up", "down", "client-connect", "client-disconnect", "learn-address", 
+	char *ovpn_script_option_list[] = {"ipchange", "route-up", "route-pre-down", "up", "down", "client-connect", "client-disconnect", "learn-address", 
 		"auth-user-pass-verify", "tls-verify", ""};
 	if(buf){
 		ptr = calloc(1, len);
 		if(ptr){
 			pt = strtok(buf, "\n");
 			while(pt != NULL){
-				for(i = 0, pt2 = list[0]; *pt2; i++, pt2 = list[i]){
+				for(i = 0, pt2 = ovpn_script_option_list[0]; *pt2; i++, pt2 = ovpn_script_option_list[i]){
 					if(strncmp(pt, pt2, strlen(pt2)))
 						snprintf(&ptr[strlen(ptr)], len - strlen(ptr), "%s\n", pt);
 				}
@@ -192,6 +192,7 @@ ovpn_sconf_t* get_ovpn_sconf(int unit, ovpn_sconf_t* conf)
 	conf->direction = nvram_pf_get_int(prefix, "hmac");
 	strlcpy(conf->cipher, nvram_pf_safe_get(prefix, "cipher"), sizeof(conf->cipher));
 	strlcpy(conf->digest, nvram_pf_safe_get(prefix, "digest"), sizeof(conf->digest));
+	conf->ncp_enable = nvram_pf_get_int(prefix, "ncp_enable");
 	conf->reneg = nvram_pf_get_int(prefix, "reneg");
 	if(nvram_pf_get_int(prefix, "tls_keysize"))
 		conf->tls_keysize = 2048;
@@ -220,15 +221,20 @@ ovpn_sconf_t* get_ovpn_sconf(int unit, ovpn_sconf_t* conf)
 ovpn_cconf_t* get_ovpn_cconf(int unit, ovpn_cconf_t* conf)
 {
 	char *ptr = NULL;
-	char prefix[32];
+	char prefix[32] = {0}, vpn_clientx_list[32] = {0};
 
-	memset(prefix, 0, sizeof(prefix));
 	if(conf == NULL)
 		return NULL;
 	memset(conf, 0, sizeof(ovpn_sconf_t));
-	conf->enable = 1;
-	snprintf(conf->progname, sizeof(conf->progname), "vpnclient%d", unit);
 	snprintf(prefix, sizeof(prefix), "vpn_client%d_", unit);
+	nvram_get_r("vpn_clientx_eas", vpn_clientx_list, sizeof(vpn_clientx_list));
+	ptr = strtok(vpn_clientx_list, ",");
+	while(ptr != NULL){
+		if(atoi(ptr) == unit)
+			conf->enable = 1;
+		ptr = strtok(NULL, ",");
+	}
+	snprintf(conf->progname, sizeof(conf->progname), "vpnclient%d", unit);
 	strlcpy(conf->addr, nvram_pf_safe_get(prefix, "addr"), sizeof(conf->addr));
 	conf->retry = nvram_pf_get_int(prefix, "retry");
 	strlcpy(conf->proto, nvram_pf_safe_get(prefix, "proto"), sizeof(conf->proto));
@@ -252,8 +258,8 @@ ovpn_cconf_t* get_ovpn_cconf(int unit, ovpn_cconf_t* conf)
 		conf->auth_mode = OVPN_AUTH_TLS;
 	conf->userauth = nvram_pf_get_int(prefix, "userauth");
 	conf->useronly = nvram_pf_get_int(prefix, "useronly");
-	strlcpy(conf->username, nvram_pf_safe_get(prefix, "username"), sizeof(conf->username));
-	strlcpy(conf->password, nvram_pf_safe_get(prefix, "password"), sizeof(conf->password));
+	snprintf(conf->username, sizeof(conf->username), "%s", nvram_pf_safe_get(prefix, "username"));
+	snprintf(conf->password, sizeof(conf->password), "%s", nvram_pf_safe_get(prefix, "password"));
 	conf->direction = nvram_pf_get_int(prefix, "hmac");
 	strlcpy(conf->cipher, nvram_pf_safe_get(prefix, "cipher"), sizeof(conf->cipher));
 	strlcpy(conf->digest, nvram_pf_safe_get(prefix, "digest"), sizeof(conf->digest));
@@ -457,7 +463,7 @@ char *get_ovpn_key(ovpn_type_t type, int unit, ovpn_key_t key_type, char *buf, s
         break;
 	if(!feof(fp)){
 		n = strlen(buf);
-        count = fread(&buf[n], 1u, len - n - 1, fp);
+        count = fread(&buf[n], 1, len - n - 1, fp);
         if(count > 0){
 			buf[n + count] = 0x0;
 			fclose(fp);
@@ -524,7 +530,7 @@ char* get_lan_cidr(char* buf, size_t len)
 
 char* get_lan_cidr6(char* buf, size_t len)
 {
-	if(get_ipv6_service() == 6)
+	if(get_ipv6_service() == IPV6_PASSTHROUGH)
 		snprintf(buf, len, "%s", getifaddr(nvram_safe_get("lan_ifname"), AF_INET6, GIF_PREFIX) ? : "");
 	else
 		snprintf(buf, len, "%s/%d", nvram_safe_get("ipv6_prefix"), nvram_get_int("ipv6_prefix_length"));
@@ -635,9 +641,8 @@ ovpn_accnt_info_t* get_ovpn_accnt(ovpn_accnt_info_t *accnt_info)
 			}
 		}
 		free(buf);
-		return accnt_info;
 	}
-	return NULL;
+	return accnt_info;
 }
 
 void ovpn_defaults()
@@ -659,4 +664,17 @@ void ovpn_defaults()
 		snprintf(buf, sizeof(buf), "%s2", tmp);
 		nvram_pf_set(prefix, "remote6", buf);
 	}
+}
+
+char *get_lan_subnet(char *buf, size_t len)
+{
+	uint32_t ip, mask;
+	struct in_addr in;
+
+	ip = (uint32_t)inet_addr(nvram_safe_get("lan_ipaddr"));
+	mask = (uint32_t)inet_addr(nvram_safe_get("lan_netmask"));
+
+	in.s_addr = ip & mask;
+	snprintf(buf, len, "%s", inet_ntoa(in));
+	return buf;
 }

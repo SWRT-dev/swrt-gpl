@@ -1030,6 +1030,11 @@ config RTCONFIG_SWITCH_RTL8370MB_PHY_QCA8033_X2
 	depends on RTCONFIG_QCA
 	default n
 
+config RTCONFIG_SWITCH_IPQ50XX_QCA8337
+	bool "Qualcomm Atheros IPQ50XX + QCA8337"
+	depends on RTCONFIG_QCA
+	default n
+
 config RTCONFIG_QCA953X
 	bool "Qualcomm Atheros QCA953X Chip Support"
 	default n
@@ -1976,6 +1981,14 @@ config RTCONFIG_FIXED_BRIGHTNESS_RGBLED
 	bool "Have RGB LED with uncontrollable brightness"
 	default n
 
+config RTCONFIG_PWM_RGBLED
+	bool "Have RGB LED with controllable brightness"
+	default n
+
+config RTCONFIG_PWMX2_GPIOX1_RGBLED
+	bool "Have RGB LED with PWM x 2 and GPIO x 1"
+	default n
+
 config RTCONFIG_SINGLE_SSID
 	bool "Single SSID rule as ASUS_2X(MAC)"
 	default n
@@ -2007,6 +2020,11 @@ config RTCONFIG_AUTHSUPP
 
 config RTCONFIG_FBWIFI
 	bool "enable FBWIFI for FaceBook"
+	default n
+
+config RTCONFIG_QCA_EZMESH
+	bool "QCA EZMESH"
+	depends on RTCONFIG_QCA
 	default n
 
 config RTCONFIG_ADV_RAST
@@ -2527,6 +2545,14 @@ config RTCONFIG_MTK_NAND_BLOCK2
 	bool "For MTK nand using 2 block"
 	default n
 
+config RTCONFIG_SCHED_DAEMON
+	bool "Enable scheduler daemon"
+	default n
+
+config RTCONFIG_PC_REWARD
+	bool "Parental Control Reward"
+	default n
+
 config RTCONFIG_MAX_RE
 	int "Support the maximum number of RE"
 	default 9
@@ -2555,6 +2581,10 @@ config RTCONFIG_SPF11_3_QSDK
 config RTCONFIG_SPF11_4_QSDK
 	bool "SPF11.4 QSDK"
 	depends on RTCONFIG_QCA
+	default n
+
+config RTCONFIG_QSDK_LM256
+	bool "LM256 for RAM 256MB hardware design"
 	default n
 
 config RTCONFIG_QCA_WLAN_SCRIPTS
@@ -2632,6 +2662,10 @@ config RTCONFIG_3LANPORT_DEVICE
 
 config RTCONFIG_HW_DOG
 	bool "CPU hardward watchdog daemon"
+	default n
+
+config RTCONFIG_GRE
+	bool "Generic Routing Encapsulation tunnel"
 	default n
 
 config RTCONFIG_AMAS_CENTRAL_CONTROL

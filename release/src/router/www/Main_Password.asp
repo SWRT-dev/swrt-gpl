@@ -193,6 +193,15 @@ var isIE8 = navigator.userAgent.search("MSIE 8") > -1;
 var isIE9 = navigator.userAgent.search("MSIE 9") > -1; 
 var defaultPass = ("<% check_pw(); %>" == "1");
 var timeZoneObj;
+var productid = '<% nvram_get("productid"); %>';
+var wans_mode = '<% nvram_get("wans_mode"); %>';
+var reboot_time = parseInt("<% get_default_reboot_time(); %>");
+function isSupport(_ptn){
+	var ui_support = [<% get_ui_support(); %>][0];
+	return (ui_support[_ptn]) ? ui_support[_ptn] : 0;
+}
+
+var gobi_support = isSupport("gobi");
 
 function initial(){
 	if(is_KR_sku || is_SG_sku || is_AA_sku)
@@ -357,30 +366,39 @@ function validForm(){
 	return true;	
 }
 
+var showLoading_time = 3000;
 function submitForm(){
 	var postData = {"restart_httpd": "0", "new_username":document.form.http_username_x.value, "new_passwd":document.form.http_passwd_x.value};
-	var sw_mode = '<% nvram_get("sw_mode"); %>';
-
-	if(sw_mode == 3 && '<% nvram_get("wlc_psta"); %>' == 2)
-		sw_mode = 2;
 
 	if(validForm()){
 		$("#error_status_field").hide();
 		$("#btn_modify").hide();
 		$("#loadingIcon").show();
+
+		if(defaultPass && gobi_support && wans_mode == "lb"){
+			var form = document.getElementsByName("form")[0];
+			var input = document.createElement("input");
+			var rc_service = document.createElement("input");
+			rc_service.setAttribute("type", "hidden");
+			rc_service.setAttribute("name", "rc_service");
+			rc_service.setAttribute("value", "reboot");
+			form.appendChild(rc_service);
+			input.setAttribute("type", "hidden");
+			input.setAttribute("name", "wans_mode");
+			input.setAttribute("value", "fo");
+			form.appendChild(input);
+			form.action = "/apply.cgi";
+			showLoading_time = reboot_time * 1000;
+		}
 		document.form.submit();
 
 		setTimeout(function(){
 			httpApi.chpass(postData);
 		}, 100);
 
-		var nextPage = decodeURIComponent('<% get_ascii_parameter("nextPage"); %>');
 		setTimeout(function(){
-			if('<% nvram_get("w_Setting"); %>' == '0' && sw_mode != 2)
-				location.href = '/QIS_wizard.htm?flag=wireless';
-			else
-				location.href = (nextPage != "") ? nextPage : "/";
-		}, 3000);
+			location.href = "/";
+		}, showLoading_time);
 	}
 	else
 		return;
@@ -442,10 +460,17 @@ var validator = {
 		if(obj.value.charAt(0) == '"'){
 			showError('<#JS_validstr1#> ["]');
 			obj.value = "";
+                        obj.focus();
+                        obj.select();
+                        return false;
+                }
+                else if(obj.value.charAt(obj.value.length - 1) == '"'){
+                        showError('<#JS_validstr3#> ["]');
+			obj.value = "";
 			obj.focus();
 			obj.select();
-			return false;
-		}
+                        return false;
+                }
 		else{
 			var invalid_char = ""; 
 			for(var i = 0; i < obj.value.length; ++i){
@@ -491,6 +516,21 @@ var validator = {
 			return false;
 		}
 
+		if(obj.value.charAt(0) == '"'){
+			showError('<#JS_validstr1#> ["]');
+			obj.value = "";
+			obj.focus();
+			obj.select();
+			return false;
+		}
+		else if(obj.value.charAt(obj.value.length - 1) == '"'){
+			showError('<#JS_validstr3#> ["]');
+			obj.value = "";
+			obj.focus();
+			obj.select();
+			return false;
+		}
+
 		var invalid_char = "";
 		for(var i = 0; i < obj.value.length; ++i){
 			if(obj.value.charAt(i) <= ' ' || obj.value.charAt(i) > '~'){
@@ -524,7 +564,7 @@ function showError(str){
 <input type="hidden" name="action_mode" value="apply">
 <input type="hidden" name="action_script" value="saveNvram">
 <input type="hidden" name="action_wait" value="0">
-<input type="hidden" name="current_page" value="Main_Login.asp">
+<input type="hidden" name="current_page" value="Main_Password.asp">
 <input type="hidden" name="next_page" value="">
 <input type="hidden" name="flag" value="">
 <input type="hidden" name="login_authorization" value="">

@@ -289,6 +289,10 @@ uint32_t gpio_dir(uint32_t gpio, int dir)
 		snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio);
 		if (f_read_string(path, v, sizeof(v)) > 0 && safe_atoi(v) == 1)
 			dir_str = "high";	/* output, high voltage */
+	} else if (dir == GPIO_DIR_OUT_LOW) {
+                dir_str = "low";
+        } else if (dir == GPIO_DIR_OUT_HIGH) {
+                dir_str = "high";
 	}
 
 	__export_gpio(gpio);
@@ -2034,6 +2038,52 @@ cprintf("## %s(): ret(%d) ap_addr(%02x:%02x:%02x:%02x:%02x:%02x)\n", __func__, r
 	return 1;
 }
 
+int get_ch_cch_bw(const char *vap, int *ch, int *cch, int *bw)
+{
+	char cmd[sizeof("wifitool ") + IFNAMSIZ + sizeof(" get_ch_cch_bwXXX")];
+	char *p, data[256], line[256];
+	int data_len, cnt = 0;
+	FILE *fp;
+
+	if (vap == NULL || vap[0] == '\0')
+		return -1;
+
+	*data = '\0';
+	snprintf(cmd, sizeof(cmd), "wifitool %s get_ch_cch_bw", vap);
+	if (!(fp = popen(cmd, "r"))) {
+		dbg("%s: can't execute [%s], errno %d (%s)\n", __func__, cmd, errno, strerror(errno));
+		return -2;
+	}
+
+	data_len = 0;
+	while (data_len < sizeof(data) && fgets(line, sizeof(line), fp)) {
+		strlcat(data + data_len, line, sizeof(data) - data_len);
+		data_len += strlen(line);
+	}
+	pclose(fp);
+
+	if (strlen(data) <= 0) {
+		return 0;
+	}
+
+	if (ch != NULL && (p = strstr(data, "\nchannel: ")) != NULL ) {
+		p += 10;
+		*ch = atoi(p);
+		cnt++;
+	}
+	if (cch != NULL && (p = strstr(data, "\ncen_ch1: ")) != NULL ) {
+		p += 10;
+		*cch = atoi(p);
+		cnt++;
+	}
+	if (bw != NULL && (p = strstr(data, "\nbw: ")) != NULL ) {
+		p += 5;
+		*bw = atoi(p);
+		cnt++;
+	}
+	//dbg("%s: vap(%s) ch(%d) cch(%d) bw(%d)\n", __func__, vap, *ch, *cch, *bw);
+	return cnt;
+}
 
 #if defined(RTCONFIG_BCN_RPT)
 void save_wlxy_mac(char *mode, char* ifname)
@@ -2296,6 +2346,23 @@ int get_channel_list(const char *ifname, int ch_list[], int size)
 		ch_list[i] = range->freq[i].i;
 	}
 	return size;
+}
+
+uint64_t get_channel_list_mask(enum wl_band_id band)
+{
+	uint64_t m = 0;
+	int i, ch_list[64] = { 0 };
+	char vap[IFNAMSIZ];
+
+	if (band < 0 || band >= WL_NR_BANDS)
+		return 0;
+
+	strlcpy(vap, get_wififname(band), sizeof(vap));
+	get_channel_list(vap, ch_list, ARRAY_SIZE(ch_list));
+	for (i = 0; i < ARRAY_SIZE(ch_list) && ch_list[i] != 0; ++i)
+		m |= ch2bitmask(band, ch_list[i]);
+
+	return m;
 }
 
 int has_dfs_channel(void)
@@ -2757,6 +2824,67 @@ void set_macfilter_all(FILE *fp)
 		unit++;
 	}
 	free(wl_ifnames);
+}
+
+/* Check necessary kernel module only. */
+static struct nat_accel_kmod_s {
+	char *kmod_name;
+} nat_accel_kmod[] = {
+#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074) || defined (RTCONFIG_SOC_IPQ60XX) || defined (RTCONFIG_SOC_IPQ50XX)
+	{ "ecm" },
+#elif defined(RTCONFIG_SOC_QCA9557) || defined(RTCONFIG_QCA953X) || defined(RTCONFIG_QCA956X) || defined(RTCONFIG_QCN550X) || defined(RTCONFIG_SOC_IPQ40XX)
+	{ "shortcut_fe" },
+#else
+#error Implement nat_accel_kmod[]
+#endif
+};
+
+/* Return NAT acceleration status.
+ * @return:
+ * 	1:	NAT acceleration enabled and running.
+ * 	0:	NAT acceleration is disabled in setting or is disabled at run-time or something error.
+ */
+int nat_acceleration_status(void)
+{
+	int i, hwnat = !!nvram_get_int("qca_sfe");
+	struct nat_accel_kmod_s *p = &nat_accel_kmod[0];
+
+	for (i = 0, p = &nat_accel_kmod[i]; hwnat && i < ARRAY_SIZE(nat_accel_kmod); ++i, ++p) {
+		if (module_loaded(p->kmod_name))
+			continue;
+
+		hwnat = 0;
+	}
+
+#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ60XX) || defined(RTCONFIG_SOC_IPQ50XX)
+	/* Hardware NAT can be stopped via set non-zero value to below files.
+	 * Don't claim hardware NAT is enabled if one of them is non-zero value.
+	 */
+	if (hwnat) {
+#if defined(RTCONFIG_SOC_IPQ8064)
+		const char *v4_stop_fn = "/sys/kernel/debug/ecm/ecm_nss_ipv4/stop", *v6_stop_fn = "/sys/kernel/debug/ecm/ecm_nss_ipv6/stop";
+#elif defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ60XX) || defined(RTCONFIG_SOC_IPQ50XX)
+		const char *v4_stop_fn = "/sys/kernel/debug/ecm/front_end_ipv4_stop", *v6_stop_fn = "/sys/kernel/debug/ecm/front_end_ipv6_stop";
+#endif
+		int s1, s2;
+		char *str;
+
+		s1 = s2 = 0;
+		if ((str = file2str(v4_stop_fn)) != NULL) {
+			s1 = safe_atoi(str);
+			free(str);
+		}
+		if ((str = file2str(v6_stop_fn)) != NULL) {
+			s2 = safe_atoi(str);
+			free(str);
+		}
+
+		if (s1 != 0 || s2 != 0)
+			hwnat = 0;
+	}
+#endif
+
+	return !!hwnat;
 }
 
 /** Return temperature of specific Wireless band via thermaltool.

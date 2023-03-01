@@ -464,6 +464,8 @@ enum ASUS_IOCTL_SUBCMD {
     ASUS_SUBCMD_DFS_STATUS,
     ASUS_SUBCMD_RRM_BCN_RESP,
     ASUS_SUBCMD_GET_RCLASS,
+    ASUS_SUBCMD_DFS_CH_STATUS,				//24
+    ASUS_SUBCMD_GET_CH_BW,				//25
 	ASUS_SUBCMD_MAX
 };
 
@@ -981,6 +983,10 @@ int ra_gpio_read_int(int *value);
 int ra_gpio_write_bit(int idx, int value);
 
 extern int wl_ioctl(const char *ifname, int cmd, struct iwreq *pwrq);
+
+//cal the rate from MACHTTRANSMIT_SETTING structure replied from ioctl(CMD_RTPRIV_IOCTL_GET_MAC_TABLE_STRUCT)
+extern int getRate(MACHTTRANSMIT_SETTING_for_5G HTSetting);
+extern int getRate_2g(MACHTTRANSMIT_SETTING_for_2G HTSetting);
 
 /* for ATE Get_WanLanStatus command */
 #if defined(RTCONFIG_RALINK_MT7621)

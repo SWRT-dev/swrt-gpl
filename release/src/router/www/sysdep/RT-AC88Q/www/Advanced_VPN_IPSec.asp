@@ -1152,8 +1152,8 @@ function validForm() {
 
 					var subnetIP = existSubnetObj.value.split("/")[0];
 					var maskCIDR = parseInt(existSubnetObj.value.split("/")[1], 10);
-					if (isNaN(maskCIDR) || (maskCIDR != 24 && maskCIDR != 23)){
-						alert("Mask address must be 23 or 24.");/*untranslated*/
+					if (isNaN(maskCIDR) || maskCIDR < 8 || maskCIDR > 32){
+						alert("Mask address must be 8 ~ 32.");/*untranslated*/
 						existSubnetObj.focus();
 						existSubnetObj.select();
 						return false;
@@ -1266,8 +1266,8 @@ function validForm() {
 			}
 			var subnetIP = document.form.ipsec_virtual_subnet.value.split("/")[0];
 			var maskCIDR = parseInt(document.form.ipsec_virtual_subnet.value.split("/")[1], 10);
-			if (isNaN(maskCIDR) || (maskCIDR != 24 && maskCIDR != 23)){
-				alert("Mask address must be 23 or 24.");/*untranslated*/
+			if (isNaN(maskCIDR) || maskCIDR < 8 || maskCIDR > 32){
+				alert("Mask address must be 8 ~ 32.");/*untranslated*/
 				document.form.ipsec_virtual_subnet.focus();
 				document.form.ipsec_virtual_subnet.select();
 				return false;
@@ -1920,10 +1920,10 @@ function showipsec_clientlist() {
 				if(j == 0) {
 					if(ipsec_client_list_col[0].length > 28) {
 						ipsec_user_name = ipsec_client_list_col[0].substring(0, 26) + "...";
-						code +='<td width="45%" title="' + ipsec_client_list_col[0] + '">'+ ipsec_user_name +'</td>';
+						code +='<td width="45%" title="' + htmlEnDeCode.htmlEncode(ipsec_client_list_col[0]) + '">'+ htmlEnDeCode.htmlEncode(ipsec_user_name) +'</td>';
 					}
 					else
-						code +='<td width="45%" title="' + ipsec_client_list_col[0] + '">' + ipsec_client_list_col[0] + '</td>';
+						code +='<td width="45%" title="' + htmlEnDeCode.htmlEncode(ipsec_client_list_col[0]) + '">' + htmlEnDeCode.htmlEncode(ipsec_client_list_col[0]) + '</td>';
 				}
 				else if(j == 1)
 					code +='<td width="45%" title="' + ipsec_client_list_col[1] + '" style="pointer-events:none;">-</td>';
@@ -2147,8 +2147,9 @@ function update_ipsec_log() {
 
 		success: function(xml) {
 			var ipsecXML = xml.getElementsByTagName("ipsec");
-			var ipsec_log = ipsecXML[0].firstChild.nodeValue;
-			document.getElementById("textarea").innerText = ipsec_log;
+			var ipsec_log = ipsecXML[0].innerHTML;
+			$("textarea#textarea").html(htmlEnDeCode.htmlEncode(ipsec_log));
+
 		}
 	});	
 }

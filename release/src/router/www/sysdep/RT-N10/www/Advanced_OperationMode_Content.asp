@@ -65,7 +65,7 @@ function saveMode(){
 		if(sw_mode == 3)
 			parent.location.href = '/QIS_wizard.htm?flag=sitesurvey_rep';
 		else
-			parent.location.href = 'http://router.asus.com/QIS_wizard.htm?flag=sitesurvey_rep';
+			parent.location.href = 'http://<#Web_DOMAIN_NAME#>/QIS_wizard.htm?flag=sitesurvey_rep';
 		return false;
 	}
 	else{ // default router

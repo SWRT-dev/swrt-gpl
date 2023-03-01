@@ -37,9 +37,16 @@
 #include <sys/reboot.h>
 #endif
 
+#ifdef RTCONFIG_USB
+//#include <usb_info.h>
+//#include <disk_io_tools.h>
+#include <disk_initial.h>
+//#include <disk_share.h>
+#endif
 #if defined(RTCONFIG_SWRT)
 #include "swrt.h"
 #endif
+#include <model.h>
 
 #ifndef ARRAYSIZE
 #define ARRAYSIZE(a) (sizeof(a) / sizeof(a[0]))
@@ -357,6 +364,66 @@ coma_uevent(void)
 }
 #endif /* LINUX_2_6_36 */
 
+int pt_loops;
+void *inc_x(void *x_void_ptr)
+{
+        printf("thread-%s:pid:%d, x increment start\n", __func__, getpid());
+
+        int *x_ptr = (int *)x_void_ptr;
+        while(++(*x_ptr) < pt_loops) {
+                nvram_set("ppap_x", "1");
+                if(!nvram_match("ppap_x", "1")) {
+                        printf("%s, pid=%d. nvram read err:%s\n", __func__, getpid(), nvram_safe_get("ppap_x"));
+                }
+        }
+
+        printf("thread-%s:pid:%d, x increment finished\n", __func__, getpid());
+
+        /* the function must return something - NULL will do */
+        return NULL;
+}
+
+#ifdef HND_ROUTER
+int pt_main(int loops)
+{
+
+        int x = 0, y = 0;
+
+        printf("%s, pid:%d, x=%d, y=%d\n", __func__, getpid(), x, y);
+
+        pt_loops = loops;
+
+        pthread_t inc_x_thread;
+
+        if(pthread_create(&inc_x_thread, NULL, inc_x, &x)) {
+                fprintf(stderr, "Error creating thread\n");
+                return 1;
+        }
+
+        /* increment y to 100 in the first thread */
+        while(++y < pt_loops) {
+                nvram_set("ppap_y", "2"); 
+                if(!nvram_match("ppap_y", "2")) {
+                        printf("%s, pid=%d, nvram read err:%s\n", __func__, getpid(), nvram_safe_get("ppap_y"));
+                }
+        }
+
+        printf("y increment finished\n");
+
+        /* wait for the second thread to finish */
+        if(pthread_join(inc_x_thread, NULL)) {
+                fprintf(stderr, "Error joining thread\n");
+        return 2;
+
+        }
+
+        /* show the results - x is now 100 thanks to the second thread */
+        printf("x: %d, y: %d\n", x, y);
+
+        return 0;
+}
+#endif  /* HND_ROUTER */
+
 #ifdef DEBUG_RCTEST
 int test_mknode(int id);
 // used for various testing
@@ -554,8 +621,86 @@ static int rctest_main(int argc, char *argv[])
 	else if (strcmp(argv[1], "is_dpsta") == 0) {
 		printf("dpsta_mode=%d\n", dpsta_mode());
 	}
+	else if (strcmp(argv[1], "is_psta") == 0) {
+		printf("is_psta=(0:%d, 1:%d)\n", is_psta(0), is_psta(1));
+	}
 	else if (strcmp(argv[1], "is_rp") == 0) {
-		printf("rp_mode=%d(0:%d,1:%d)\n", rp_mode(), is_rp_unit(0), is_rp_unit(1));
+		printf("rp_mode=%d(0:%d, 1:%d)\n", rp_mode(), is_rp_unit(0), is_rp_unit(1));
+	}
+#endif
+        else if (strcmp(argv[1], "getbw") == 0) {
+                int unit = atoi(argv[2]);
+                int bw = wl_get_bw(unit);
+                printf("get wl_bw of unit_%d=%d\n", unit, bw);
+        }
+#ifdef HND_ROUTER
+	else if (strcmp(argv[1], "ptest")==0) {
+		pt_main(atoi(argv[2]));
+		return 0;
+	}
+	else if (strcmp(argv[1], "forkd")==0) {
+		pid_t pid = 0;
+		int i, err=0;
+		char *nvp = NULL;
+		clock_t begin, end;
+		int loops = atoi(argv[2])?:2000;
+		int utime = atoi(argv[3])?:0;
+		int no_fork = atoi(argv[4]);
+
+		if(no_fork) {
+			begin = clock();
+			for(i=0; i<loops; ++i) {
+				nvram_set("ppap1", "1");
+				nvp = nvram_safe_get("ppap1\n");
+				if(nvram_get_int("ppap1")!=1) {
+					err++;
+					_dprintf("pid_%d get wrong nv_ppap1=%s(%d)\n", pid, nvp, err);
+				}
+				if(utime)
+					usleep(utime);
+			}
+			end = clock();
+			_dprintf("pid_%d, clock counts=%d\n", pid, (int)(end-begin));
+			return 0;
+		} 
+
+		_dprintf("(NVP)fork nv test w/ loops(%d), usleep(%d)\n", loops, utime);
+
+		pid = fork();
+
+		if(pid == 0) {
+			begin = clock();
+			for(i=0; i<loops; ++i) {
+				nvram_set("ppap1", "1");
+				nvp = nvram_safe_get("ppap1\n");
+				if(nvram_get_int("ppap1")!=1) {
+					err++;
+					_dprintf("pid_%d get wrong nv_ppap1=%s(%d)\n", pid, nvp, err);
+				}
+				if(utime)
+					usleep(utime);
+			}
+			end = clock();
+			_dprintf("pid_%d, clock counts=%d\n", pid, (int)(end-begin));
+		} else if(pid > 0) {
+			begin = clock();
+			for(i=0; i<loops; ++i) {
+				nvram_set("ppap2", "2");
+				nvp = nvram_safe_get("ppap2\n");
+				if(nvram_get_int("ppap2")!=2) {
+					err++;
+					_dprintf("pid_%d get wrong nv_ppap2=%s(%d)\n", pid, nvp, err);
+				}
+				if(utime)
+					usleep(utime);
+			}
+			end = clock();
+			_dprintf("pid_%d, clock counts=%d\n", pid, (int)(end-begin));
+		} else {
+			_dprintf("wrong fork.\n");
+		}
+
+		_dprintf("pid_%d exit\n", pid);
 	}
 #endif
 	else if (strcmp(argv[1], "nvramhex")==0) {
@@ -576,10 +721,16 @@ static int rctest_main(int argc, char *argv[])
 
 		//if ((ret = GetPhyStatus(1, &phy_list)) == 1) {
 			GetPhyStatus(1, &phy_list);
+#ifdef RTCONFIG_NEW_PHYMAP
+#ifdef RTCONFIG_USB
+			get_usb_modem_status(&phy_list);
+#endif
+#endif
 			for(i=0;i<phy_list.count;i++) {
-				fprintf(stderr, " phy_port_id=%d, label_name=%s, cap_name=%s, state=%s, link_rate=%d, duplex=%s, tx_packets=%u, rx_packets=%u, tx_bytes=%llu, rx_bytes=%llu, crc_errors=%u\n", 
+				fprintf(stderr, " phy_port_id=%d, label_name=%s, cap=%u, cap_name=%s, state=%s, link_rate=%d, duplex=%s, tx_packets=%u, rx_packets=%u, tx_bytes=%" PRIu64 ", rx_bytes=%" PRIu64 ", crc_errors=%u\n", 
 					phy_list.phy_info[i].phy_port_id,
 					phy_list.phy_info[i].label_name,
+					phy_list.phy_info[i].cap,
 					phy_list.phy_info[i].cap_name,
 					phy_list.phy_info[i].state,
 					phy_list.phy_info[i].link_rate,
@@ -594,6 +745,329 @@ static int rctest_main(int argc, char *argv[])
 		//	_dprintf("GetPhyStatus failed (%d): ", ret);
 		_dprintf("\n");
 	}
+#ifdef RTCONFIG_NEW_PHYMAP
+	else if (strcmp(argv[1], "port_status")==0) {
+		phy_info_list phy_list = {0};
+		int /*ret,*/ i, j, usb_port = 1;
+		phy_port_mapping port_mapping;
+		get_phy_port_mapping(&port_mapping);
+		phy_list.count = port_mapping.count;
+		for(i=0;i<port_mapping.count;i++) {
+			phy_list.phy_info[i].phy_port_id = port_mapping.port[i].phy_port_id;
+			snprintf(phy_list.phy_info[i].label_name, sizeof(phy_list.phy_info[i].label_name), port_mapping.port[i].label_name);
+			phy_list.phy_info[i].cap = port_mapping.port[i].cap;
+			//phy_list.phy_info[i].max_rate = port_mapping.port[i].max_rate;
+		}
+		GetPhyStatus(0, &phy_list);
+
+#ifdef RTCONFIG_USB
+		get_usb_modem_status(&phy_list);
+#endif
+
+		for(i=0;i<phy_list.count;i++) {
+			fprintf(stderr, " phy_port_id=%d, label_name=%s, cap=%u, cap_name=%s, max_rate=%d, ifname=%s, state=%s, link_rate=%d, duplex=%s, tx_packets=%u, rx_packets=%u, tx_bytes=%" PRIu64 ", rx_bytes=%" PRIu64 ", crc_errors=%u\n",
+				phy_list.phy_info[i].phy_port_id,
+				phy_list.phy_info[i].label_name,
+				phy_list.phy_info[i].cap,
+				phy_list.phy_info[i].cap_name,
+				port_mapping.port[i].max_rate,
+				port_mapping.port[i].ifname,
+				phy_list.phy_info[i].state,
+				phy_list.phy_info[i].link_rate,
+				phy_list.phy_info[i].duplex,
+				phy_list.phy_info[i].tx_packets,
+				phy_list.phy_info[i].rx_packets,
+				phy_list.phy_info[i].tx_bytes,
+				phy_list.phy_info[i].rx_bytes,
+				phy_list.phy_info[i].crc_errors);
+#ifdef RTCONFIG_USB
+			if ((phy_list.phy_info[i].cap & PHY_PORT_CAP_USB) > 0) {
+				int max_hub_port = sizeof(phy_list.phy_info[i].usb_devices)/sizeof(usb_device_info_t);
+				get_usb_devices_by_usb_port(phy_list.phy_info[i].usb_devices, max_hub_port, usb_port++);
+				for (j=0; j<max_hub_port; j++) {
+					if (strlen(phy_list.phy_info[i].usb_devices[j].type) == 0)
+						continue;
+					fprintf(stderr, "usb_path=%s, node=%s, type=%s, manufacturer=%s, product=%s, serial=%s, device_name=%s, speed=%d, storage_size=%" PRIu64 ", storage_used=%" PRIu64 "\n",
+						phy_list.phy_info[i].usb_devices[j].usb_path,
+						phy_list.phy_info[i].usb_devices[j].node,
+						phy_list.phy_info[i].usb_devices[j].type,
+						phy_list.phy_info[i].usb_devices[j].manufacturer,
+						phy_list.phy_info[i].usb_devices[j].product,
+						phy_list.phy_info[i].usb_devices[j].serial,
+						phy_list.phy_info[i].usb_devices[j].device_name,
+						phy_list.phy_info[i].usb_devices[j].speed,
+						phy_list.phy_info[i].usb_devices[j].storage_size_in_kilobytes,
+						phy_list.phy_info[i].usb_devices[j].storage_used_in_kilobytes);
+				}
+			}
+#endif
+		}
+#if defined(RTCONFIG_CONNDIAG)
+		char *port_status_buf = NULL;
+		if(get_node_eth_port_status(NULL, &port_status_buf) > 0){
+			fprintf(stderr, "%s\n", port_status_buf);
+			free_node_eth_port_status(&port_status_buf);
+		}
+#endif
+	}
+#endif
+#if defined(RTCONFIG_LIB_CODB)
+	else if (strcmp(argv[1], "codb_test")==0) {
+		codb_test();
+#if 0		
+		if(nvram_get_int("cablediag_test")==1)
+		{
+			char capmac[] = "04:D9:F5:B5:93:E0";
+			char remac[]  = "04:D9:F5:B5:94:70";
+			exec_force_cable_diag(capmac,NULL);
+		}
+		//exec_force_cable_diag(capmac,remac);
+#endif
+	}
+#endif
+#if defined(RTCONFIG_CD_IPERF)
+	else if (strcmp(argv[1], "run_iperf")==0) {
+
+		char caller[32];
+		snprintf(caller, sizeof(caller), "%s", argv[2]);
+
+		if (strlen(caller)>0) {
+			if (argv[3] && argv[4]) {
+				if (strncmp(argv[4], "all", 3)==0) {
+					//- rc run_iperf type smac all
+					char smac[32];
+					snprintf(smac, sizeof(smac), "%s",argv[3]);
+					if(strlen(smac)==17) {
+						exec_iperf(caller, smac, "all");
+						return;
+					}
+				}
+				else {
+					//- rc run_iperf type smac cmac
+					char smac[32], cmac[32];
+					snprintf(smac, sizeof(smac), "%s",argv[3]);
+					snprintf(cmac, sizeof(cmac), "%s",argv[4]);
+					if(strlen(smac)==17 && strlen(cmac)==17) {
+						exec_iperf(caller, smac, cmac);
+						return;
+					}
+				}
+			}
+		}
+
+		_dprintf("Fail to run iperf\n");
+	}
+#endif
+#if defined(RTCONFIG_TUNNEL) && defined(RTCONFIG_ACCOUNT_BINDING)
+	else if (strcmp(argv[1], "aae_refresh_userticket")==0) {
+		char event[AAE_MAX_IPC_PACKET_SIZE];
+		char out[AAE_MAX_IPC_PACKET_SIZE];
+		snprintf(event, sizeof(event), AAE_DDNS_GENERIC_MSG, AAE_EID_DDNS_REFRESH_TOKEN);
+		aae_sendIpcMsgAndWaitResp(MASTIFF_IPC_SOCKET_PATH, event, strlen(event), out, sizeof(out), 10);
+		json_object *root = NULL;
+		json_object *ddnsObj = NULL;
+		json_object *eidObj = NULL;
+		json_object *stsObj = NULL;
+		root = json_tokener_parse((char *)out);
+		json_object_object_get_ex(root, AAE_DDNS_PREFIX, &ddnsObj);
+		json_object_object_get_ex(ddnsObj, AAE_IPC_EVENT_ID, &eidObj);
+		json_object_object_get_ex(ddnsObj, AAE_IPC_STATUS, &stsObj);
+		if (!ddnsObj || !eidObj || !stsObj)
+			printf("Failed to aae_refresh_userticket\n");
+		else {
+			int eid = json_object_get_int(eidObj);
+			const char *status = json_object_get_string(stsObj);
+			if ((eid == AAE_EID_DDNS_REFRESH_TOKEN) && (!strcmp(status, "0")))
+				printf("Success to aae_refresh_userticket\n");
+			else
+				printf("Failed to aae_refresh_userticket\n");
+		}
+		json_object_put(root);
+	}
+	else if (strcmp(argv[1], "aae_refresh_deviceticket")==0) {
+		char event[AAE_MAX_IPC_PACKET_SIZE];
+		char out[AAE_MAX_IPC_PACKET_SIZE];
+		snprintf(event, sizeof(event), AAE_NTC_GENERIC_MSG, AAE_EID_NTC_REFRESH_DEVICE_TICKET);
+		aae_sendIpcMsgAndWaitResp(MASTIFF_IPC_SOCKET_PATH, event, strlen(event), out, sizeof(out), 10);
+		json_object *root = NULL;
+		json_object *ntcObj = NULL;
+		json_object *eidObj = NULL;
+		json_object *stsObj = NULL;
+		root = json_tokener_parse((char *)out);
+		json_object_object_get_ex(root, AAE_NTC_PREFIX, &ntcObj);
+		json_object_object_get_ex(ntcObj, AAE_IPC_EVENT_ID, &eidObj);
+		json_object_object_get_ex(ntcObj, AAE_IPC_STATUS, &stsObj);
+		if (!ntcObj || !eidObj || !stsObj)
+			printf("Failed to aae_refresh_deviceticket\n");
+		else {
+			int eid = json_object_get_int(eidObj);
+			const char *status = json_object_get_string(stsObj);
+			if ((eid == AAE_EID_NTC_REFRESH_DEVICE_TICKET) && (!strcmp(status, "0")))
+				printf("Success to aae_refresh_deviceticket\n");
+			else
+				printf("Failed to aae_refresh_deviceticket\n");
+		}
+		json_object_put(root);
+	}
+	else if (strcmp(argv[1], "aae_send_payload2")==0) {
+		char event[AAE_MAX_IPC_PACKET_SIZE];
+		char out[AAE_MAX_IPC_PACKET_SIZE];
+		snprintf(event, sizeof(event), AAE_HTTPD_PAYLOAD2_MSG, AAE_EID_HTTPD_PAYLOAD2, "{\"oauth_dm_cusid\":\"45a008e300c4e1a7739ac60e14da27854e4c6d6774475be258e7f64e8db33b79\", \"mobile_deviceid\":\"8588309ead48e0a818d3d552c74ef14e\", \"dm_ticket\":\"test\"}");
+		aae_sendIpcMsgAndWaitResp(MASTIFF_IPC_SOCKET_PATH, event, strlen(event), out, sizeof(out), 5);
+		json_object *root = NULL;
+		json_object *httpdObj = NULL;
+		json_object *eidObj = NULL;
+		json_object *stsObj = NULL;
+		root = json_tokener_parse((char *)out);
+		json_object_object_get_ex(root, AAE_HTTPD_PREFIX, &httpdObj);
+		json_object_object_get_ex(httpdObj, AAE_IPC_EVENT_ID, &eidObj);
+		json_object_object_get_ex(httpdObj, AAE_IPC_STATUS, &stsObj);
+		if (!httpdObj || !eidObj || !stsObj)
+			printf("Failed to aae_send_payload2\n");
+		else {
+			int eid = json_object_get_int(eidObj);
+			const char *status = json_object_get_string(stsObj);
+			if ((eid == AAE_EID_HTTPD_PAYLOAD2) && (!strcmp(status, "0")))
+				printf("Success to aae_send_payload2\n");
+			else
+				printf("Failed to aae_send_payload2\n");
+		}
+		json_object_put(root);
+	}
+	else if (strcmp(argv[1], "aae_account_reg")==0) {
+		char event[AAE_MAX_IPC_PACKET_SIZE];
+		char out[AAE_MAX_IPC_PACKET_SIZE];
+		snprintf(event, sizeof(event), AAE_HTTPD_ACCOUNT_REG_MSG, AAE_EID_HTTPD_ACCOUNT_REG, "{\"oauth_type\":\"GOOGLE\", \"username\":\"gemini.plus0668@gmail.com\", \"password\":\"eyJhbGciOiJSUzI1NiIsImtpZCI6IjM4ZjM4ODM0NjhmYzY1OWFiYjQ0NzVmMzYzMTNkMjI1ODVjMmQ3Y2EiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI1Mjg3NTcxMzYzNC1wY245ODRwN3QwMmJjaGlkZGNhdWw4cjFiZ3YwcGkzZy5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsImF1ZCI6IjUyODc1NzEzNjM0LXA3bGs5OWViaTM5aWNta2FhMDdrdjdmcjhyMnU0MzZnLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwic3ViIjoiMTEzNjUxMjYyNzk3MjIyNzc1NzY3IiwiZW1haWwiOiJnZW1pbmkucGx1czA2NjhAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5hbWUiOiJKZXJyeSBMaW4iLCJwaWN0dXJlIjoiaHR0cHM6Ly9saDMuZ29vZ2xldXNlcmNvbnRlbnQuY29tL2EvQUFUWEFKeS1tMUNCTi1QS3N1YS00Q0EzWXJiQWgtbmdSM0s3YTlfNXBPMG89czk2LWMiLCJnaXZlbl9uYW1lIjoiSmVycnkiLCJmYW1pbHlfbmFtZSI6IkxpbiIsImxvY2FsZSI6InpoLVRXIiwiaWF0IjoxNjUzOTc5NDIxLCJleHAiOjE2NTM5ODMwMjF9.D-ttK5G9PcdEjTR1-7C-TaUEaIeXHM3kyQBjpFNAjRD67dQrDA_Slu13ZEGsADQ_F7NARIbCGvxVj6Ko0giHZBLPalssIDmn4mebegIsppt53X9ZJczVpzDth9_zrzkAMjfiHnl6_lTH2WBktQYG_VDosUh-YPI51_TUeVojB7pVYBdre5dHZ9uW6Mt5CFwPQhesnziTQBIoaT8_8n07ehClcT8SOfkN8ZYDbgHSJYLPAnSG8cLrRH-MhyS8EECyGUEGhQWQ45saFTtdhfSZ3GoeEl6dpaRAacLd8XIJ6o855mP2eOD8ZnZtDi8JeX8lQXxU0rl_XbPrmF5AsmbC0Q\"}");
+		aae_sendIpcMsgAndWaitResp(MASTIFF_IPC_SOCKET_PATH, event, strlen(event), out, sizeof(out), 10);
+		printf("out=%s, out len=%lu\n", out, sizeof(out));
+		json_object *root = NULL;
+		json_object *httpdObj = NULL;
+		json_object *eidObj = NULL;
+		json_object *stsObj = NULL;
+		json_object *accountregObj = NULL;
+		json_object *cusidObj = NULL;
+		json_object *refreshticketObj = NULL;
+		json_object *userticketObj = NULL;
+		root = json_tokener_parse((char *)out);
+		json_object_object_get_ex(root, AAE_HTTPD_ACCOUNT_REG_PREFIX, &httpdObj);
+		if (httpdObj) {
+			json_object_object_get_ex(httpdObj, AAE_IPC_EVENT_ID, &eidObj);
+			json_object_object_get_ex(httpdObj, AAE_IPC_STATUS, &stsObj);
+			json_object_object_get_ex(httpdObj, AAE_HTTPD_ACCOUNT_REG_PREFIX, &accountregObj);
+			if (eidObj && stsObj && accountregObj) {
+				json_object_object_get_ex(accountregObj, OAUTH_CUSID, &cusidObj);
+				json_object_object_get_ex(accountregObj, OAUTH_REFRESH_TICKET, &refreshticketObj);
+				json_object_object_get_ex(accountregObj, OAUTH_USER_TICKET, &userticketObj);
+
+				int eid = json_object_get_int(eidObj);
+				const char *status = json_object_get_string(stsObj);
+				if ((eid == AAE_EID_HTTPD_ACCOUNT_REG) && (!strcmp(status, "0"))) {
+					const char *cusid = json_object_get_string(cusidObj);
+					const char *refresh_ticket = json_object_get_string(refreshticketObj);
+					const char *user_ticket = json_object_get_string(userticketObj);
+					printf("Success to aae_account_reg, cusid=%s, refresh_ticket=%s, user_ticket=%s\n", cusid, refresh_ticket, user_ticket);
+					json_object_put(root);
+					return 0;
+				}	
+			}
+		}
+		
+		json_object_put(root);
+
+		printf("Failed to aae_account_reg\n");
+	}
+	else if (strcmp(argv[1], "aae_fbwifi2_reg")==0) {
+		char event[AAE_MAX_IPC_PACKET_SIZE];
+		char out[AAE_MAX_IPC_PACKET_SIZE];
+		snprintf(event, sizeof(event), AAE_HTTPD_FBWIFI2_REG_MSG, AAE_EID_HTTPD_FBWIFI2_REG, "{\"devicename\":\"testRouter\", \"hw_version\":\"1.0.0\", \"sw_version\":\"1.0.0\", \"bssids\":[\"04:42:1a:6b:50:00\",\"04:42:1a:6b:50:08\"], \"ssids\":[\"ASUS_00_XT12\", \"ASUS_00_XT12_5G-1\"]}");
+		aae_sendIpcMsgAndWaitResp(MASTIFF_IPC_SOCKET_PATH, event, strlen(event), out, sizeof(out), 5);
+		json_object *root = NULL;
+		json_object *httpdObj = NULL;
+		json_object *eidObj = NULL;
+		json_object *stsObj = NULL;
+		root = json_tokener_parse((char *)out);
+		json_object_object_get_ex(root, AAE_HTTPD_PREFIX, &httpdObj);
+		json_object_object_get_ex(httpdObj, AAE_IPC_EVENT_ID, &eidObj);
+		json_object_object_get_ex(httpdObj, AAE_IPC_STATUS, &stsObj);
+		if (!httpdObj || !eidObj || !stsObj)
+			printf("Failed to aae_fbwifi2_reg\n");
+		else {
+			int eid = json_object_get_int(eidObj);
+			const char *status = json_object_get_string(stsObj);
+			if ((eid == AAE_EID_HTTPD_FBWIFI2_REG) && (!strcmp(status, "0")))
+				printf("Success to aae_fbwifi2_reg\n");
+			else
+				printf("Failed to aae_fbwifi2_reg\n");
+		}
+		json_object_put(root);
+	}
+	else if (strcmp(argv[1], "aae_httpd_refresh_deviceticket")==0) {
+		char event[AAE_MAX_IPC_PACKET_SIZE];
+		char out[AAE_MAX_IPC_PACKET_SIZE];
+		snprintf(event, sizeof(event), AAE_HTTPD_REFRESH_DEVICE_TICKET_MSG, AAE_EID_HTTPD_REFRESH_DEVICE_TICKET);
+		aae_sendIpcMsgAndWaitResp(MASTIFF_IPC_SOCKET_PATH, event, strlen(event), out, sizeof(out), 5);
+		json_object *root = NULL;
+		json_object *httpdObj = NULL;
+		json_object *eidObj = NULL;
+		json_object *stsObj = NULL;
+		root = json_tokener_parse((char *)out);
+		json_object_object_get_ex(root, AAE_HTTPD_PREFIX, &httpdObj);
+		json_object_object_get_ex(httpdObj, AAE_IPC_EVENT_ID, &eidObj);
+		json_object_object_get_ex(httpdObj, AAE_IPC_STATUS, &stsObj);
+		if (!httpdObj || !eidObj || !stsObj)
+			printf("Failed to aae_httpd_refresh_deviceticket1\n");
+		else {
+			int eid = json_object_get_int(eidObj);
+			const char *status = json_object_get_string(stsObj);
+			if ((eid == AAE_EID_HTTPD_REFRESH_DEVICE_TICKET) && (!strcmp(status, "0")))
+				printf("Success to aae_httpd_refresh_deviceticket2\n");
+			else
+				printf("Failed to aae_httpd_refresh_deviceticket3\n");
+		}
+		json_object_put(root);
+	}
+#endif
+#ifdef RTCONFIG_GRE
+	else if (strcmp(argv[1], "l2gre") == 0) {
+		int unit;
+		if (argv[2]) {
+			unit = atoi(argv[2]);
+			if (argv[3] && atoi(argv[3]))
+				start_l2gre(unit);
+			else
+				stop_l2gre(unit);
+		}
+	}
+	else if (strcmp(argv[1], "l3gre") == 0) {
+		int unit;
+		if (argv[2]) {
+			unit = atoi(argv[2]);
+			if (argv[3] && atoi(argv[3]))
+				start_l3gre(unit);
+			else
+				stop_l3gre(unit);
+		}
+	}
+#endif
+#ifdef RTCONFIG_MULTILAN_CFG
+	else if (strcmp(argv[1], "sdn") == 0) {
+		if (argv[2] && argv[3] && argv[4]) {
+			int sdn_idx = atoi(argv[2]);
+			unsigned long features = strtoul(argv[3], NULL, 0);
+			int action = atoi(argv[4]);
+			handle_sdn_feature(sdn_idx, features, action);
+		}
+	}
+#endif
+#ifdef RTCONFIG_CONNDIAG
+	else if (strcmp(argv[1], "diag_stainfo")==0) {
+		char *stainfo_buf = NULL;
+		if(argv[2] && query_stainfo((!strcmp(argv[2], "all") ? NULL : argv[2]), &stainfo_buf) > 0){
+			fprintf(stderr, "%s\n", stainfo_buf);
+			free_stainfo(&stainfo_buf);
+		}
+	}
+#endif
 	else {
 		on = atoi(argv[2]);
 		_dprintf("%s %d\n", argv[1], on);
@@ -680,6 +1154,7 @@ static int rctest_main(int argc, char *argv[])
 			if (on) {
 #ifdef RTCONFIG_RALINK
 				if (is_hwnat_loaded()) {
+					unregister_hnat_wlifaces();
 					modprobe_r(MTK_HNAT_MOD);
 					sleep(1);
 #if 0
@@ -716,6 +1191,7 @@ static int rctest_main(int argc, char *argv[])
 					if (!(!nvram_match("switch_wantag", "none")&&!nvram_match("switch_wantag", "")))
 					{
 						modprobe(MTK_HNAT_MOD);
+						register_hnat_wlifaces();
 						sleep(1);
 					}
 				}
@@ -1507,6 +1983,7 @@ static const applets_t applets[] = {
 #if defined(RTCONFIG_DUAL_TRX2)
 	{ "fixdmgfw",			fixdmgfw_main			},
 #endif
+	{ "alt_watchdog",		alt_watchdog_main		}, // <-- add by Andrew
 	{ "watchdog",			watchdog_main			},
 	{ "check_watchdog",		check_watchdog_main		},
 #ifdef RTCONFIG_CONNTRACK
@@ -1592,7 +2069,8 @@ static const applets_t applets[] = {
 	{ "netool", 			netool_main			},
 #endif
 #ifdef RTCONFIG_SOFTWIRE46
-	{ "s46map_rptd", 		s46map_rptd_main		},
+	{ "v6plusd", 			v6plusd_main			},
+	{ "ocnvcd", 			ocnvcd_main			},
 #endif
 #if defined(RTCONFIG_RALINK) || defined(RTCONFIG_EXT_RTL8365MB) || defined(RTCONFIG_EXT_RTL8370MB) || defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2)
 	{ "rtkswitch",			config_rtkswitch		},
@@ -1731,13 +2209,21 @@ static const applets_t applets[] = {
 	{ "restart_plc",		restart_plc_main				},
 	{ "detect_plc",			detect_plc_main					},
 #endif
+#if defined(RTCONFIG_SCHED_DAEMON)
+	{ "sched_daemon",		sched_daemon_main				},
+#endif
+#ifdef RTCONFIG_TC_DOWNLOAD
+	{ "tc_download",		tc_download_main	},
+#endif
 #ifdef RTCONFIG_ISP_CUSTOMIZE_TOOL
 	{ "tci",			tci_main		},
 #endif
-#ifdef RTCONFIG_ASUSDDNS_ACCOUNT_BASE
+#if defined(RTCONFIG_TUNNEL) && defined(RTCONFIG_ACCOUNT_BINDING)
 	{ "update_asus_ddns_token",		update_asus_ddns_token_main			},
 #endif
-
+#ifdef RTCONFIG_IPSEC
+	{ "ipsec_updown",		ipsec_updown_main      },
+#endif
 	{ "toolbox",			swrt_toolbox		},
 	{NULL, NULL}
 };
@@ -2311,6 +2797,7 @@ int main(int argc, char **argv)
 
 		return asus_usb_interface(argv[1], argv[2]);
 	}
+#ifdef RTCONFIG_USB
 	else if (!strcmp(base, "get_usb_node_by_string")) {
 		char usb_node[16];
 
@@ -2324,6 +2811,7 @@ int main(int argc, char **argv)
 
 		return 0;
 	}
+#endif
 	else if (!strcmp(base, "unset_usb_nvram")) {
 		if(argc > 2)
 			return 0;
@@ -2649,6 +3137,12 @@ int main(int argc, char **argv)
 		pc_tmp_main(argc, argv);
 		return 0;
 	}
+#ifdef RTCONFIG_PC_REWARD
+	else if (!strcmp(base, "pc_reward")) {
+		pc_reward_main(argc, argv);
+		return 0;
+	}
+#endif
 #endif
 #ifdef RTCONFIG_INTERNETCTRL
 	else if (!strcmp(base, "ic")) {
@@ -2764,6 +3258,21 @@ _dprintf("LED_NOMOBILE=%d, LED_2G_YELLOW=%d, LED_3G_BLUE=%d, LED_4G_WHITE=%d.\n"
 	}
 #endif
 #endif
+	else if (!strcmp(base, "led_str_ctrl")) {
+		if(argc != 3){
+			if(argc == 2)
+				printf("Usage: led_str_ctrl %s [1/0]\n", argv[1]);
+			else
+				printf("Usage: led_str_ctrl LED_STRING [1/0]\n");
+			return 0;
+		}
+
+		int led_id = get_led_id(argv[1]);
+		int onoff = atoi(argv[2]);
+
+		printf("Switch %s(%d) %s...\n", argv[1], led_id, (onoff)?"on":"off");
+		return do_led_ctrl(led_id, atoi(argv[2]));
+	}
 #ifdef HND_ROUTER
 	else if (!strcmp(base, "hnd-erase")) {
 		if (argv[1] && (!strcmp(argv[1], "nvram"))) {
@@ -3134,8 +3643,10 @@ _dprintf("LED_NOMOBILE=%d, LED_2G_YELLOW=%d, LED_3G_BLUE=%d, LED_4G_WHITE=%d.\n"
 			wan_proto = WAN_MAPE;
 		else if (!strcmp(argv[2], "lw4o6"))
 			wan_proto = WAN_LW4O6;
-		else
+		else if (!strcmp(argv[2], "v6plus"))
 			wan_proto = WAN_V6PLUS;
+		else
+			wan_proto = WAN_OCNVC;
 
 		while (fgets(rules, sizeof(rules), stdin) != NULL) {
 			if (s46_mapcalc(wan_proto, rules, peerbuf, sizeof(peerbuf), addr6buf, sizeof(addr6buf),

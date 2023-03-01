@@ -12,6 +12,7 @@
 #ifndef __nt_common_h__
 #define __nt_common_h__
 
+#define NC_VERSION 1
 
 /* SOCKET SERVER DEFINE SETTING 
 ---------------------------------*/
@@ -67,26 +68,33 @@
 
 #endif
 
+#define NTDB_V1        NOTIFY_DB_FOLDER"nt_center.db"
+#define NTDB_V2        NOTIFY_DB_FOLDER"nt_db.db"
+
 /* ACTION SERVICE EVENT DEFINE 
 ---------------------------------*/
-#define ACTION_NOTIFY_RSV       0
-#define ACTION_NOTIFY_WEBUI     0x01
-#define ACTION_NOTIFY_EMAIL     0x02
-#define ACTION_NOTIFY_APP       0x04
-#define ACTION_NOTIFY_IFTTT     0x08
-#define ACTION_NOTIFY_ALEXA     0x10
-#define ACTION_NOTIFY_GENERAL   0x20
+#define ACT_NOTIFY_RSV       0
+#define ACT_NOTIFY_DB        0x01
+#define ACT_NOTIFY_EMAIL     0x02
+#define ACT_NOTIFY_APPUSH    0x04
+#define ACT_NOTIFY_IFTTT     0x08
+#define ACT_NOTIFY_ALEXA     0x10
+#define ACT_NOTIFY_GENERAL   0x20
 
-#define ACTION_MULTI_ALL        ACTION_NOTIFY_WEBUI | ACTION_NOTIFY_APP | ACTION_NOTIFY_EMAIL | ACTION_NOTIFY_IFTTT | ACTION_NOTIFY_ALEXA | ACTION_NOTIFY_GENERAL
-#define ACTION_MULTI_UIAPP      ACTION_NOTIFY_WEBUI | ACTION_NOTIFY_APP
+#define ACT_MULTI_ALL        ACT_NOTIFY_DB | ACT_NOTIFY_APPUSH | ACT_NOTIFY_EMAIL | ACT_NOTIFY_IFTTT | ACT_NOTIFY_ALEXA
 
 /* ACTION BIT OPERATION */
-#define NC_ACT_WEBUI_BIT        0
+#define NC_ACT_DB_BIT           0
 #define NC_ACT_EMAIL_BIT        1
-#define NC_ACT_APP_BIT          2
+#define NC_ACT_APPUSH_BIT       2
 #define NC_ACT_IFTTT_BIT        3
 #define NC_ACT_ALEXA_BIT        4
 #define NC_ACT_GENERAL_BIT      5
+
+/* DB STATUS BIT OPERATION */
+#define NC_DB_APPUSH_BIT        1
+#define NC_DB_IFTTT_BIT         3
+#define NC_DB_ALEXA_BIT         5
 
 #define NC_ACTION_SET(value,x) ( (value) |=  (0x1 << x))
 #define NC_ACTION_CLR(value,x) ( (value) &= ~(0x1 << x))
@@ -112,7 +120,7 @@
 #define SYS_WAN_UNABLE_CONNECT_PARENT_AP_EVENT     0x10019
 #define SYS_WAN_MODEM_OFFLINE_EVENT                0x1001A
 #define SYS_WAN_GOT_PROBLEMS_FROM_ISP_EVENT        0x1001B
-#define SYS_WAN_UNPUBLIC_IP_EVENT                  0x1001C  /* <-- last */
+#define SYS_WAN_UNPUBLIC_IP_EVENT                  0x1001C
 /* PASSWORD EVENT */
 #define SYS_PASSWORD_SAME_WITH_LOGIN_WIFI_EVENT    0x10003
 #define SYS_PASSWORD_WIFI_WEAK_EVENT               0x10004
@@ -132,11 +140,15 @@
 #define SYS_ECO_MODE_EVENT                         0x1000E
 #define SYS_GAME_MODE_EVENT                        0x1000F
 #define SYS_NEW_DEVICE_WIFI_CONNECTED_EVENT        0x10010
-#define SYS_WIFI_DEVICE_DISCONNECTED_EVENT         0x10011
+#define SYS_NEW_DEVICE_ETH_CONNECTED_EVENT         0x10011
 #define SYS_EXISTED_DEVICE_WIFI_CONNECTED_EVENT    0x10014
+#define SYS_ALL_WIFI_TURN_OFF_EVENT                0x1001F /* <-- last */
 /* FIRMWARE EVENT */
 #define SYS_FW_NWE_VERSION_AVAILABLE_EVENT         0x10012
 #define SYS_NEW_SIGNATURE_UPDATED_EVENT            0x10013
+/* DFS EVENT */
+#define SYS_DFS_SUPPORT_DUALBAND_EVENT             0x1001D
+#define SYS_DFS_SUPPORT_TRIBAND_EVENT              0x1001E
 /* ------------------------------
     ### Administration ###
 ---------------------------------*/
@@ -168,7 +180,8 @@
 #define PROTECTION_SUSPICIOUS_HTML_TAG_EVNET       0x3000C
 #define PROTECTION_BITCOIN_MINING_ACTIVITY_EVENT   0x3000D
 #define PROTECTION_MALWARE_RANSOM_THREAT_EVENT     0x3000E
-#define PROTECTION_MALWARE_MIRAI_THREAT_EVENT      0x3000F         
+#define PROTECTION_MALWARE_MIRAI_THREAT_EVENT      0x3000F
+#define PROTECTION_INFECTED_DEVICE_EVENT           0x30010
 /* ------------------------------
     ### Parental Contorl ###
 ---------------------------------*/
@@ -191,6 +204,7 @@
 #define USB_DISK_EJECTED_FAIL_EVENT                0x60003
 #define USB_DISK_PARTITION_FULL_EVENT              0x60004
 #define USB_DISK_FULL_EVENT                        0x60005
+#define USB_TETHERING_EVENT                        0x60006
 /* ------------------------------
     ### General Event  ###
 ---------------------------------*/
@@ -267,7 +281,7 @@ typedef struct __notify_database__t_
 {
 	time_t          tstamp;         /* Receive time */
 	int             event;          /* Refer NOTIFY CLIENT EVENT DEFINE */
-	int             status;         /* Status for read or not */
+	int             status;         /* store the action / read status of different behavior */
 	char            msg[MAX_EVENT_INFO_LEN];       /* Info */
 
 }NOTIFY_DATABASE_T;

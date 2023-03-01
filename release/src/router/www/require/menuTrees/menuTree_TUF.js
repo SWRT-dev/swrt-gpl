@@ -1,4 +1,4 @@
-﻿/* menuTree_TUF.js */
+/* menuTree_TUF.js */
 define(function(){
 	var menuTree = {
 		list: [
@@ -85,10 +85,10 @@ define(function(){
 				] 
 			},
 			{
-				menuName: "网易UU加速器",
+				menuName: "<#UU_Accelerator#>",
 				index: "menu_UU",
 				tab: [
-						{url: "UUAccelerator.asp", tabName: "网易UU加速器"},
+						{url: "UUAccelerator.asp", tabName: "<#UU_Accelerator#>"},
 						{url: "NULL", tabName: "__INHERIT__"}
 				]
 			},
@@ -101,10 +101,10 @@ define(function(){
 				]
 			},
 			{
-				menuName: "腾讯网游加速器",
+				menuName: "<#TencentAcceleration#>",
 				index: "menu_TencentAcceleration",
 				tab: [
-					{url: "GameBoost_Tencent.asp", tabName: "Tencent Game Acceleration"},
+					{url: "GameBoost_Tencent.asp", tabName: "<#TencentAcceleration#>"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				]
 			},
@@ -173,7 +173,15 @@ define(function(){
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
-
+			{
+				menuName: "<#Softcenter_tool#>",
+				index: "menu_Tools",
+				tab: [
+					{url: "Tools_Sysinfo.asp", tabName: "Sysinfo"},
+					{url: "Softcenter.asp", tabName: "<#Softcenter_tool#>"},
+					{url: "NULL", tabName: "__INHERIT__"}
+				] 
+			},
 			/* ============================================================================================================ */
 
 			{
@@ -210,6 +218,7 @@ define(function(){
 					{url: "Advanced_GWStaticRoute_Content.asp", tabName: "<#menu5_2_3#>"},
 					{url: "Advanced_IPTV_Content.asp", tabName: "IPTV"},
 					{url: "Advanced_SwitchCtrl_Content.asp", tabName: "<#Switch_itemname#>"},
+					{url: "Advanced_SmartDNS_Content.asp", tabName: "SmartDNS"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
@@ -254,13 +263,10 @@ define(function(){
 				menuName: "VPN",
 				index: "menu_VPN", 
 				tab: [
-					{url: "Advanced_VPN_PPTP.asp", tabName: "<#BOP_isp_heart_item#>"},
-					{url: "Advanced_VPN_OpenVPN.asp", tabName: "__INHERIT__"},
-					{url: "Advanced_VPN_IPSec.asp", tabName: "__INHERIT__"},
+					{url: "Advanced_VPNServer_Content.asp", tabName: "<#BOP_isp_heart_item#>"},
 					{url: "Advanced_VPNClient_Content.asp", tabName: (vpn_fusion_support) ? "<#VPN_Fusion#>" : "<#vpnc_title#>"},
 					{url: "Advanced_TOR_Content.asp", tabName: "TOR"},
 					{url: "Advanced_Instant_Guard.asp", tabName: "<#Instant_Guard_title#>"},
-					{url: "Advanced_WireguardServer_Content.asp", tabName: "WireGuard Server"},/*untranslated*/
 					{url: "NULL", tabName: "__INHERIT__"}
 				]
 			},
@@ -320,12 +326,49 @@ define(function(){
 					{url: "Advanced_Smart_Connect.asp", tabName: "<#smart_connect_rule#>"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				]
+			},
+			{
+				menuName: "Entware",
+				index: "menu_Split",
+				tab: [
+					{url: "NULL", tabName: "__HIDE__"}
+				]
+			},
+			{
+				menuName: "Entware",
+				index: "menu_Entware",
+				tab: [
+					{url: "Entware_start.asp", tabName: "<#Entware_home#>"},
+					{url: "Entware_installed.asp", tabName: "<#Entware_installed#>"},
+					{url: "Entware_list.asp", tabName: "<#Entware_list#>"},
+					{url: "NULL", tabName: "__INHERIT__"}
+				] 
+			},
+			{
+				menuName: "<#Softcenter#>",
+				index: "menu_Split",
+				tab: [
+					{url: "NULL", tabName: "__HIDE__"}
+				]
+			},
+			{
+				menuName: "<#Softcenter#>",
+				index: "menu_Softcenter",
+				tab: [
+					{url: "Main_Soft_center.asp", tabName: "<#Softcenter#>"},
+					{url: "Main_Soft_setting.asp", tabName: "Offline Mode"},
+					{url: "NULL", tabName: "__INHERIT__"}
+				]
 			}
 		],
 
 		exclude: {
 			menus: function(){
 				var retArray = [];
+
+				if(!dnsfilter_support){
+					retArray.push("DNSFilter.asp");
+				}
 
 				if(!wifiRadar_support){
 					retArray.push("menu_WifiRadar");
@@ -465,6 +508,16 @@ define(function(){
 						retArray.push("menu_Alexa_IFTTT");
 					}
 				}
+				if (!softcenter_support || '<% nvram_get("sc_installed"); %>' != '1'){
+					retArray.push("menu_Softcenter");
+				}
+				if (!entware_support){
+					retArray.push("menu_Entware");
+					for(i=0; i<menuTree.list.length; i++){
+						if(menuTree.list[i].menuName == 'Entware')
+							menuTree.list.splice(i,1);
+					}
+				}
 
 				return retArray;
 			},
@@ -473,6 +526,9 @@ define(function(){
 				var retArray = [];
 
 				/* By RC Support */
+				if (!smartdns_support){
+					retArray.push("Advanced_SmartDNS_Content.asp");
+				}
 				if(!bwdpi_support){
 					retArray.push("AdaptiveQoS_Bandwidth_Monitor.asp");
 					retArray.push("AdaptiveQoS_WebHistory.asp");
@@ -483,10 +539,9 @@ define(function(){
 					retArray.push("AiProtection_AdBlock.asp");
 					retArray.push("AiProtection_Key_Guard.asp");
 					retArray.push("AiProtection_AdBlock.asp");
-					retArray.push("TrafficAnalyzer_Statistic.asp");
 				}
 
-				if(!traffic_analyzer_support){
+				if(!traffic_analyzer_support && !dns_dpi_support){
 					retArray.push("TrafficAnalyzer_Statistic.asp");		
 				}
 
@@ -498,17 +553,9 @@ define(function(){
 					retArray.push("Main_ConnStatus_Content.asp");
 					retArray.push("Main_TrafficMonitor_realtime.asp");
 				}
-				
-				if(!pptpd_support){
-					retArray.push("Advanced_VPN_PPTP.asp");
-				}
 
-				if(!openvpnd_support){
-					retArray.push("Advanced_VPN_OpenVPN.asp");
-				}	
-
-				if(!ipsec_srv_support){
-					retArray.push("Advanced_VPN_IPSec.asp");
+				if(!pptpd_support && !openvpnd_support && !ipsec_srv_support){
+					retArray.push("Advanced_VPNServer_Content.asp");
 				}
 
 				if(!vpnc_support){
@@ -570,7 +617,7 @@ define(function(){
 					retArray.push("Advanced_Notification_Content.asp");
 				}
 
-				if(!smart_connect_support){
+				if(!smart_connect_support || Qcawifi_support || Rawifi_support){
 					retArray.push("Advanced_Smart_Connect.asp");
 				}
 				
@@ -677,10 +724,6 @@ define(function(){
 				if(!dnsfilter_support)
 					retArray.push("DNSFilter.asp");
 
-				if(!wireguard_support) {
-					retArray.push("Advanced_WireguardServer_Content.asp");
-				}
-
 				/* Operation Mode */
 				if(isSwMode("re")){
 					retArray.push("GameBoost_ROG.asp");
@@ -777,3 +820,4 @@ define(function(){
 
 	return menuTree;
 });
+

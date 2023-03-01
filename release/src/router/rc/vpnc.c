@@ -44,9 +44,9 @@
 /* TODO: remove */
 #undef VPNC_LEGACY
 
-#define L2TP_VPNC_PID	"/var/run/l2tpd-vpnc.pid"
-#define L2TP_VPNC_CTRL	"/var/run/l2tpctrl-vpnc"
-#define L2TP_VPNC_CONF	"/tmp/l2tp-vpnc.conf"
+#define RC_L2TP_VPNC_PID	"/var/run/l2tpd-vpnc.pid"
+#define RC_L2TP_VPNC_CTRL	"/var/run/l2tpctrl-vpnc"
+#define RC_L2TP_VPNC_CONF	"/tmp/l2tp-vpnc.conf"
 
 int vpnc_unit = 5;
 
@@ -236,7 +236,7 @@ start_vpnc(void)
 
 	if (nvram_match(strcat_r(prefix, "proto", tmp), "l2tp"))
 	{
-		if (!(fp = fopen(L2TP_VPNC_CONF, "w"))) {
+		if (!(fp = fopen(RC_L2TP_VPNC_CONF, "w"))) {
 			perror(options);
 			return -1;
 		}
@@ -257,7 +257,7 @@ start_vpnc(void)
 			"holdoff %d\n"
 			"hide-avps no\n"
 			"section cmd\n"
-			"socket-path " L2TP_VPNC_CTRL "\n\n",
+			"socket-path " RC_L2TP_VPNC_CTRL "\n\n",
 			options,
                         nvram_invmatch(strcat_r(prefix, "heartbeat_x", tmp), "") ?
                                 nvram_safe_get(strcat_r(prefix, "heartbeat_x", tmp)) :
@@ -270,7 +270,7 @@ start_vpnc(void)
 		fclose(fp);
 
 		/* launch l2tp */
-		eval("/usr/sbin/l2tpd", "-c", L2TP_VPNC_CONF, "-p", L2TP_VPNC_PID);
+		eval("/usr/sbin/l2tpd", "-c", RC_L2TP_VPNC_CONF, "-p", RC_L2TP_VPNC_PID);
 
 		ret = 3;
 		do {
@@ -279,7 +279,7 @@ start_vpnc(void)
 		} while (!pids("l2tpd") && ret--);
 
 		/* start-session */
-		ret = eval("/usr/sbin/l2tp-control", "-s", L2TP_VPNC_CTRL, "start-session 0.0.0.0");
+		ret = eval("/usr/sbin/l2tp-control", "-s", RC_L2TP_VPNC_CTRL, "start-session 0.0.0.0");
 
 		/* pppd sync nodetach noaccomp nobsdcomp nodeflate */
 		/* nopcomp novj novjccomp file /tmp/ppp/options.l2tp */
@@ -304,9 +304,9 @@ stop_vpnc(void)
 	nvram_set_int(strcat_r(prefix, "dut_disc", tmp), 1);
 
 	/* Stop l2tp */
-	if(check_if_file_exist(L2TP_VPNC_PID))
+	if(check_if_file_exist(RC_L2TP_VPNC_PID))
 	{
-		kill_pidfile_tk(L2TP_VPNC_PID);
+		kill_pidfile_tk(RC_L2TP_VPNC_PID);
 		usleep(1000*10000);
 	}
 
@@ -407,8 +407,11 @@ int vpnc_update_resolvconf(void)
 		fclose(fp_servers);
 	file_unlock(lock);
 
+#ifdef RTCONFIG_MULTILAN_CFG
+	reload_dnsmasq(NULL);
+#else
 	reload_dnsmasq();
-
+#endif
 	return 0;
 
 error:
@@ -443,7 +446,8 @@ void vpnc_add_firewall_rule()
 				"-m", "state", "--state", "NEW","-j", "MARK", "--set-mark", "0x01/0x7");
 #endif
 
-		eval("iptables", "-A", "FORWARD", "-o", vpnc_ifname, "!", "-i", lan_if, "-j", "DROP");
+		eval("iptables", "-A", "VPNCF", "-o", vpnc_ifname, "!", "-i", lan_if, "-j", "DROP");
+		eval("iptables", "-A", "VPNCF", "-i", vpnc_ifname, "-j", "ACCEPT");
 		eval("iptables", "-t", "nat", "-I", "PREROUTING", "-d", 
 			nvram_safe_get(strcat_r(prefix, "ipaddr", tmp)), "-j", "VSERVER");
 		eval("iptables", "-t", "nat", "-I", "POSTROUTING", "-o", 

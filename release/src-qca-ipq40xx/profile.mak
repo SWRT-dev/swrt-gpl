@@ -1,4 +1,4 @@
-EXTRACFLAGS := -DLINUX26 -DCONFIG_QCA -DDEBUG_NOISY -D_GNU_SOURCE -DDEBUG_RCTEST -pipe -funit-at-a-time -Wno-pointer-sign -marm
+EXTRACFLAGS := -DLINUX26 -DCONFIG_QCA -DDEBUG_NOISY -D_GNU_SOURCE -DDEBUG_RCTEST -pipe -funit-at-a-time -Wno-pointer-sign -marm -D__UAPI_DEF_ETHHDR
 
 ifneq ($(findstring linux-3,$(LINUXDIR)),)
 EXTRACFLAGS += -DLINUX30

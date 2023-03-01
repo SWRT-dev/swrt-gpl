@@ -61,6 +61,28 @@ static inline int __update_gpio_nv_var(const char *led_gpio, int add)
 }
 
 /**
+ * Get XXX of led_XXX_gpio.
+ * @led_gpio:		pointer to name of "led_xxx_gpio"
+ * @return:		pointer to result.
+ */
+static char *led_gpio_id(const char *led_gpio)
+{
+	static char buf[BLED_ID_LEN];
+	char *p, tmp[32];
+
+	*buf = '\0';
+	if (!led_gpio || strncmp(led_gpio, "led_", 4))
+		return buf;
+
+	strlcpy(tmp, led_gpio + 4, sizeof(tmp));
+	if ((p = strstr(tmp, "_gpio")))
+		*p = '\0';
+	strlcpy(buf, tmp, sizeof(buf));
+
+	return buf;
+}
+
+/**
  * Low-level function to add a LED which blinks in accordance with traffic of net_device
  * which is specified by ifname.
  * @led_gpio:		pointer to name of "led_xxx_gpio"
@@ -101,7 +123,8 @@ int __config_netdev_bled(const char *led_gpio, const char *ifname, unsigned int 
 	bl->mode = BLED_NORMAL_MODE;
 	bl->min_blink_speed = min_blink_speed;
 	bl->interval = interval;
-	strcpy(nl.ifname, ifname);
+	strlcpy(bl->id, led_gpio_id(led_gpio), sizeof(bl->id));
+	strlcpy(nl.ifname, ifname, sizeof(nl.ifname));
 
 	if ((r = ioctl(fd, BLED_CTL_ADD_NETDEV_BLED, &nl)) < 0 && errno != EEXIST) {
 		_dprintf("%s: ioctl(BLED_CTL_ADD_NETDEV_BLED) fail, return %d errno %d (%s)\n",
@@ -327,11 +350,12 @@ int set_bled_udef_pattern_mode(const char *led_gpio)
 
 /**
  * Low-level function to change state of bled.
+ * @led_gpio:	pointer to name of "led_xxx_gpio", it's okay to be NULL or empty as long as none of any GPIO pin is shared by two or more BLED, e.g., TUF-AX4200Q.
  * @gpio_nr:	GPIO# of a LED
  * @state:
  * @return:
  */
-static int chg_bled_state(unsigned int gpio_nr, enum bled_state state)
+static int chg_bled_state(const char *led_gpio, unsigned int gpio_nr, enum bled_state state)
 {
 	int fd, r;
 	struct bled_common bled;
@@ -352,6 +376,7 @@ static int chg_bled_state(unsigned int gpio_nr, enum bled_state state)
 	memset(&bled, 0, sizeof(bled));
 	bled.gpio_nr = gpio_nr;
 	bled.state = state;
+	strlcpy(bled.id, led_gpio_id(led_gpio), sizeof(bled.id));
 	if ((r = ioctl(fd, BLED_CTL_CHG_STATE, &bled)) < 0) {
 		_dprintf("%s: ioctl(BLED_CTL_CHG_STATE) fail, return %d errno %d (%s)\n",
 			__func__, r, errno, strerror(errno));
@@ -365,30 +390,33 @@ static int chg_bled_state(unsigned int gpio_nr, enum bled_state state)
 
 /**
  * Request bled kernel module to start blink specified LED in accordance with checking result.
+ * @led_gpio:	pointer to name of "led_xxx_gpio", it's okay to be NULL or empty as long as none of any GPIO pin is shared by two or more BLED, e.g., TUF-AX4200Q.
  * @gpio_nr:	GPIO# of a LED, include flags. (GPIO_BLINK_LED)
  * @return:
  */
-int start_bled(unsigned int gpio_nr)
+int __start_bled(const char *led_gpio, unsigned int gpio_nr)
 {
-	return chg_bled_state(gpio_nr, BLED_STATE_RUN);
+	return chg_bled_state(led_gpio, gpio_nr, BLED_STATE_RUN);
 }
 
 /**
  * Request bled kernel module to stop blink specified LED.
+ * @led_gpio:	pointer to name of "led_xxx_gpio", it's okay to be NULL or empty as long as none of any GPIO pin is shared by two or more BLED, e.g., TUF-AX4200Q.
  * @gpio_nr:	GPIO# of a LED, include flags. (GPIO_BLINK_LED)
  * @return:
  */
-int stop_bled(unsigned int gpio_nr)
+int __stop_bled(const char *led_gpio, unsigned int gpio_nr)
 {
-	return chg_bled_state(gpio_nr, BLED_STATE_STOP);
+	return chg_bled_state(led_gpio, gpio_nr, BLED_STATE_STOP);
 }
 
 /**
  * Delete a bled.
+ * @led_gpio:	pointer to name of "led_xxx_gpio", it's okay to be NULL or empty as long as none of any GPIO pin is shared by two or more BLED, e.g., TUF-AX4200Q.
  * @gpio_nr:	GPIO# of a LED
  * @return:
  */
-int del_bled(unsigned int gpio_nr)
+int __del_bled(const char *led_gpio, unsigned int gpio_nr)
 {
 	int fd, r;
 	struct bled_common bled;
@@ -396,12 +424,15 @@ int del_bled(unsigned int gpio_nr)
 	gpio_nr &= 0xFF;
 	if (gpio_nr == 0xFF)
 		return -1;
+	if (!led_gpio)
+		led_gpio = "";
 
 	if ((fd = open(BLED_DEVNAME, O_RDWR)) < 0)
 		return -2;
 
 	memset(&bled, 0, sizeof(bled));
 	bled.gpio_nr = gpio_nr;
+	strlcpy(bled.id, led_gpio, sizeof(bled.id));
 	if ((r = ioctl(fd, BLED_CTL_DEL_BLED, &bled)) < 0) {
 		_dprintf("%s: ioctl(BLED_CTL_DEL_BLED) fail, return %d errno %d (%s)\n",
 			__func__, r, errno, strerror(errno));
@@ -441,11 +472,12 @@ int append_netdev_bled_if(const char *led_gpio, const char *ifname)
 
 	memset(&nl, 0, sizeof(nl));
 	bl->gpio_nr = gpio_nr;
-	strcpy(nl.ifname, ifname);
+	strlcpy(nl.ifname, ifname, sizeof(nl.ifname));
+	strlcpy(bl->id, led_gpio_id(led_gpio), sizeof(bl->id));
 
 	if ((r = ioctl(fd, BLED_CTL_ADD_NETDEV_IF, &nl)) < 0) {
-		_dprintf("%s: ioctl(BLED_CTL_ADD_NETDEV_IF) fail, return %d errno %d (%s)\n",
-			__func__, r, errno, strerror(errno));
+		_dprintf("%s: ioctl(BLED_CTL_ADD_NETDEV_IF) fail, ifname [%s] return %d errno %d (%s)\n",
+			__func__, ifname, r, errno, strerror(errno));
 		close(fd);
 		return -5;
 	}
@@ -483,11 +515,12 @@ int remove_netdev_bled_if(const char *led_gpio, const char *ifname)
 
 	memset(&nl, 0, sizeof(nl));
 	bl->gpio_nr = gpio_nr;
-	strcpy(nl.ifname, ifname);
+	strlcpy(nl.ifname, ifname, sizeof(nl.ifname));
+	strlcpy(bl->id, led_gpio_id(led_gpio), sizeof(bl->id));
 
 	if ((r = ioctl(fd, BLED_CTL_DEL_NETDEV_IF, &nl)) < 0) {
-		_dprintf("%s: ioctl(BLED_CTL_DEL_NETDEV_IF) fail, return %d errno %d (%s)\n",
-			__func__, r, errno, strerror(errno));
+		_dprintf("%s: ioctl(BLED_CTL_DEL_NETDEV_IF) fail, ifname [%s] return %d errno %d (%s)\n",
+			__func__, ifname, r, errno, strerror(errno));
 		close(fd);
 		return -5;
 	}
@@ -538,6 +571,7 @@ int __config_swports_bled(const char *led_gpio, unsigned int port_mask, unsigned
 	bl->mode = BLED_NORMAL_MODE;
 	bl->min_blink_speed = min_blink_speed;
 	bl->interval = interval;
+	strlcpy(bl->id, led_gpio_id(led_gpio), sizeof(bl->id));
 	sl.port_mask = port_mask;
 
 	if ((r = ioctl(fd, BLED_CTL_ADD_SWPORTS_BLED, &sl)) < 0 && errno != EEXIST) {
@@ -688,6 +722,7 @@ int __config_usbbus_bled(const char *led_gpio, char *bus_list, unsigned int min_
 	bl->mode = BLED_NORMAL_MODE;
 	bl->min_blink_speed = min_blink_speed;
 	bl->interval = interval;
+	strlcpy(bl->id, led_gpio_id(led_gpio), sizeof(bl->id));
 	ul.bus_mask = bus_mask;
 
 	if ((r = ioctl(fd, BLED_CTL_ADD_USBBUS_BLED, &ul)) < 0 && errno != EEXIST) {
@@ -761,6 +796,7 @@ int __config_interrupt_bled(const char *led_gpio, char *interrupt_list, unsigned
 	bl->mode = BLED_NORMAL_MODE;
 	bl->min_blink_speed = min_blink_speed;
 	bl->interval = interval;
+	strlcpy(bl->id, led_gpio_id(led_gpio), sizeof(bl->id));
 
 	if ((r = ioctl(fd, BLED_CTL_ADD_INTERRUPT_BLED, &il)) < 0 && errno != EEXIST) {
 		_dprintf("%s: ioctl(BLED_CTL_ADD_INTERRUPT_BLED) fail, return %d errno %d (%s)\n",
@@ -1023,10 +1059,8 @@ void set_rgbled(unsigned int mode)
 		led_control(LED_BLUE, LED_ON);
 		led_control(LED_GREEN, LED_ON);
 		led_control(LED_RED, LED_ON);
-#if defined(RTAC59_CD6R) || defined(RTAC59_CD6N) || defined(PLAX56_XP4) || defined(MR60) || defined(MS60)
 		if (RGBLED_WHITE & RGBLED_WLED)
 			led_control(LED_WHITE, LED_ON);
-#endif		
 		rgbled_udef_mode = 1;
 	}
 
@@ -1158,5 +1192,169 @@ void set_rgbled(unsigned int mode)
 		set_bled_udef_pattern_mode(main_led_gpio);
 	}
 }
+#elif defined(RTCONFIG_PWMX2_GPIOX1_RGBLED)
+#define SYS_PWMCHIP	"/sys/class/pwm/pwmchip0"
+
+struct pwm_conf {
+	char type[8];
+	char fint[8];
+	char config[16];
+};
+
+unsigned int rgbled_mode = 0;
+
+static void set_pwm(int pwmx, struct pwm_conf pc)
+{
+	char pwmdev[sizeof(SYS_PWMCHIP"/pwmXXX")];
+
+	snprintf(pwmdev, sizeof(pwmdev), "%s/pwm%d", SYS_PWMCHIP, pwmx);
+	if (!d_exists(pwmdev))
+		doSystem("echo %d > %s/export", pwmx, SYS_PWMCHIP);
+
+	doSystem("echo 0 > %s/mm_enable", pwmdev);
+	doSystem("echo 0 > %s/mm_fint", pwmdev);
+	if (!strcmp(pc.type, "0"))
+		return;
+
+	doSystem("echo %s > %s/mm_type", pc.type, pwmdev);
+	doSystem("echo %s > %s/mm_fint", pc.fint, pwmdev);
+	doSystem("echo %s > %s/mm_config", pc.config, pwmdev);
+	doSystem("echo 1 > %s/mm_enable", pwmdev);
+}
+
+void set_rgbled(unsigned int mode)
+{
+	int u = 1;
+#if defined(TUFAX6000)
+	int i;
+	struct pwm_conf p[2][5] = {
+		{	/* pwm0: Red */
+			{      "0",   "0",       "0-0-0"},	/* off */
+			/*{"1-128-0", "0-1", "0x3-625-625"},*/	/* QIS run (7 color breathing) */
+			/*{"2-128-0",   "0", "0x3-500-500"},*/	/* default ready light (static yellow) */
+			{"1-128-0",   "0", "0x3-750-750"},	/* AURA: water flow (booting light) */
+			{"4-128-0", "0-1", "0x5-350-350"},	/* AURA: rainbow */
+			{"X-XXX-X",   "0", "0xX-XXX-XXX"},	/* AURA: static/breathing */
+			{      "3",   "0",  "0x7-5000-1"}	/* ATE mode (static red) */
+		},
+		{	/* pwm1: Green */
+			{      "0",   "0",       "0-0-0"},	/* off */
+			/*{  "1-0-0", "1-1", "0x3-625-625"},*/	/* QIS run (7 color breathing) */
+			/*{ "2-28-0",   "0", "0x3-500-500"},*/	/* default ready light (static yellow) */
+			{ "1-28-0",   "0", "0x3-750-750"},	/* AURA: water flow (booting light) */
+			{ "4-32-0", "3-1", "0x5-350-350"},	/* AURA: rainbow */
+			{"X-XXX-X",   "0", "0xX-XXX-XXX"},	/* AURA: static/breathing */
+			{      "3",   "0",  "0x7-5000-1"}	/* ATE mode (static green) */
+		}
+	};
+
+	switch (mode) {
+	/* start ATE mode */
+	case RGBLED_ATE_MODE:
+		for (i = 0; i < 2; i++)
+			set_pwm(i, p[i][4]);
+		break;
+	/* static blue */
+	case RGBLED_DEFAULT_STANDBY:
+		if (rgbled_mode == RGBLED_QIS_RUN) {
+			u = 0;
+			break;
+		}
+		for (i = 0; i < 2; i++)
+			set_pwm(i, p[i][0]);
+		led_control(LED_BLUE, LED_ON);
+		break;
+	/* rainbow */
+	case RGBLED_QIS_RUN:
+		for (i = 0; i < 2; i++)
+			set_pwm(i, p[i][2]);
+		led_control(LED_BLUE, LED_OFF);
+		break;
+	/* blinking blue on/off 0.5s */
+	case RGBLED_QIS_FINISH:
+		for (i = 0; i < 2; i++)
+			set_pwm(i, p[i][0]);
+		for (i = 0; i < 3; i++) {
+			led_control(LED_BLUE, LED_ON);
+			usleep(500000);
+			led_control(LED_BLUE, LED_OFF);
+			usleep(500000);
+		}
+		/* fall through */
+	/* AURA */
+	case RGBLED_CONFIGURED_STANDBY:
+		if (nvram_invmatch("ledg_scheme", "")) {
+			char nv[16], buf[64];
+			char *ptr = buf, *str = NULL;
+			int ledg_scheme = nvram_get_int("ledg_scheme");
+			int rgb[3] = { 0 }, rg0 = 0;
+			int i = 0, pidx = 0;
+
+			/* parse nvram ledg_rgbXXX */
+			snprintf(nv, sizeof(nv), "ledg_rgb%d", ledg_scheme);
+			strcpy(buf, nvram_safe_get(nv));
+			while ((str = strsep(&ptr, ","))) {
+				rgb[i] = atoi(str);
+				if (++i > ARRAY_SIZE(rgb))
+					break;
+			}
+
+			switch (ledg_scheme) {
+			/* static */
+			case LEDG_SCHEME_STEADY_RED:
+			/* breathing */
+			case LEDG_SCHEME_PULSATING:
+				pidx = 3;
+				for (i = 0; i < 2; i++) {
+					if (rgb[2] && rgb[i] == 0 && rg0 == 0) {
+						snprintf(p[i][pidx].type, sizeof(p[i][pidx].type), "%u-%u-0",
+							ledg_scheme == LEDG_SCHEME_PULSATING ? 5 : 6,
+							i == 0 ? rgb[2] / 4 : rgb[2] * 2 / 3);
+						snprintf(p[i][pidx].config, sizeof(p[i][pidx].config), "%s",
+							ledg_scheme == LEDG_SCHEME_PULSATING ? "0x0-40-40" : "0x0-20-20");
+						snprintf(p[i][pidx].fint, sizeof(p[i][pidx].fint), "2-1");
+
+						/* Avoid pwm0/1 to enable interrupt at the same time, it is not necessary */
+						if (rgb[0] == 0 && rgb[1] == 0)
+							rg0 = 1;
+					}
+					else {
+						snprintf(p[i][pidx].type, sizeof(p[i][pidx].type), "%u-%u-0",
+							ledg_scheme == LEDG_SCHEME_PULSATING ? 1 : 2,
+							i == 0 ? rgb[i] : rgb[i] / 4);
+						snprintf(p[i][pidx].config, sizeof(p[i][pidx].config), "%s",
+							ledg_scheme == LEDG_SCHEME_PULSATING ? "0x3-625-625" : "0x3-500-500");
+						snprintf(p[i][pidx].fint, sizeof(p[i][pidx].fint), "0");
+					}
+				}
+				break;
+			/* water flow */
+			case LEDG_SCHEME_WATER_FLOW:
+				pidx = 1;
+				break;
+			/* rainbow */
+			case LEDG_SCHEME_RAINBOW:
+				pidx = 2;
+				break;
+			default:
+				;
+			}
+
+			for (i = 0; i < 2; i++)
+				set_pwm(i, p[i][nvram_match("AllLED", "0") ? 0 : pidx]);
+
+			if (rgb[2] == 0 || nvram_match("AllLED", "0"))
+				led_control(LED_BLUE, LED_OFF);
+		}
+		break;
+	default:
+		;
+	}
+#endif
+
+	if (u)
+		rgbled_mode = mode;
+}
 #endif
 #endif	/* RTCONFIG_BLINK_LED */
+

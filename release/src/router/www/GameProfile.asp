@@ -89,7 +89,7 @@ function initial(){
 	show_menu();
 	$("#faq").attr('target','_blank')
 		 .attr("href", faq_href);
-	if(wan_proto=="v6plus" && array_ipv6_s46_ports.length > 1){
+	if(wan_proto=="v6plus" && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
 
 		$("#v6plus_port_range_note").show();
 		$(".setup_info_icon_game").show();
@@ -101,6 +101,12 @@ function initial(){
 					var position = $(".setup_info_icon_game").position();
 					pop_s46_ports(position, "game");
 				}
+			}
+		);
+		$("#new_profile_externalPort").focus(
+			function() {
+				var position_text = $("#new_profile_externalPort").position();
+				pop_s46_ports(position_text, "game");
 			}
 		);
 	}
@@ -559,7 +565,6 @@ function quickAddRule(id){
 
 function newProfileOK(){
 	// valid input
-	var new_rule_num=0;
 	var _platformArray = ['PC', 'XBOXSerX', 'XBOXONE', 'XBOX360', 'PS5', 'PS4', 'PS3', 'STEAM', 'SWITCH'];
 	if($("#s46_ports_content").is(':visible'))
 		$("#s46_ports_content").fadeOut();
@@ -572,16 +577,12 @@ function newProfileOK(){
 		for(i=0; i<_platformArray.length; i++){
 			if($('#platform'+ _platformArray[i]).prop('checked')){
 				_platformCheck = true;
-				new_rule_num++;
 			}
 		}
 		if(_platformCheck == false){
 			alert('Please select at least one platform.');
 			return false;
 		}
-	}
-	else{
-		new_rule_num++;
 	}
 
 	if(!Block_chars(document.getElementById("new_profile_name"), ["<" ,">" ,"%"])){
@@ -603,7 +604,7 @@ function newProfileOK(){
 		else{
 			if(!check_multi_range(document.getElementById("new_profile_externalPort"), 1, 65535, true))
 				return false;
-			if(wan_proto=="v6plus" && array_ipv6_s46_ports.length > 1){
+			if(wan_proto=="v6plus" && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
 				if (!check_multi_range_s46_ports(document.getElementById("new_profile_externalPort"))){
 					if(!confirm("The following port related settings may not work properly since the port is not available in current v6plus usable port range. Do you want to continue?"))
 					{
@@ -627,11 +628,6 @@ function newProfileOK(){
 	}
 
 	if(!validator.validIPForm(document.getElementById("new_profile_localIP"), 0)){
-		return false;
-	}
-
-	if(parseInt(rule_num.innerHTML)+new_rule_num > 32){
-		alert("<#JS_itemlimit1#> " + 32 + " <#JS_itemlimit2#>");
 		return false;
 	}
 
@@ -714,7 +710,7 @@ function newProfileOK(){
 				<!-- Content field -->
 				<div class="description-container"><#OpenNAT_desc#></div>
 				<div class="description-container" id="v6plus_port_range_note" style="color:#FFCC00;display:none;">* When using v6plus, the number of available assigned ports is limited. Kindly understand that this may result in an interruption of this services and functions.</div>		<!-- Untranslated -->
-				<div class="description-container" style="color:#FFCC00;position:relative;z-index:9;"><#OpenNAT_note#></div>
+				<div class="description-container" style="display:none;color:#FFCC00;position:relative;z-index:9;"><#OpenNAT_note#></div>
 				<div class="world-map">
 					<div class="map-connection-line"></div>
 					<div class="location-indicator location-US3"></div>
@@ -917,7 +913,7 @@ function newProfileOK(){
 
 						<div id="localPort_field" class="game-p-s-field">
 							<div class="settings-filed-title"><#IPConnection_VSList_Internal_Port#></div>
-							<input id="new_profile_localPort" type="text" class="input-container" style="width:80px;" value="" maxlength="5" onkeypress="return validator.isNumber(this,event);" autocomplete="off" autocorrect="off" autocapitalize="off" >
+							<input id="new_profile_localPort" type="text" class="input-container" value="" maxlength="5" onkeypress="return validator.isNumber(this,event);" autocomplete="off" autocorrect="off" autocapitalize="off" >
 							<div class="hint"><#feedback_optional#></div>
 						</div>
 

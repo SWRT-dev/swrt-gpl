@@ -1362,7 +1362,7 @@ function show_bandwidth(flag){
 		document.form.bw_enabled_x[0].checked = true;
 		var show_hint_content = "";
 		if(ctf_disable_orig == '0'){	//brcm NAT Acceleration turned ON
-			show_hint_content += "<br>NAT acceleration will be disable for more precise packet inspection.";	/* untranslated */			
+			show_hint_content += "<br><#Guest_Network_disable_NATacc#>";
 		}
 
 		if(QoS_enable_orig == "0"){
@@ -1729,12 +1729,12 @@ function dis_qos_enable(_wl_idx, _form_obj, _control_item){
 		</div>
 		<div id="gnset_aimesh_sync" class="gnset_setting_item_bg">
 			<div class='gnset_setting_item_titleName'>
-			<#sync_node#>
+			<#Guest_Network_On_AiMesh#>
 			</div>
 			<div class='gnset_setting_item_content'>
 				<select name="wl_sync_node" class="gnset_setting_input_text_autoWidth">
 					<option class="content_input_fd" value="0" <% nvram_match("wl_sync_node", "0","selected"); %>><#Router_only#></option>
-					<option class="content_input_fd" value="1" <% nvram_match("wl_sync_node", "1","selected"); %>><#All#></option>
+					<option class="content_input_fd" value="1" <% nvram_match("wl_sync_node", "1","selected"); %>><#All_AiMesh_nodes#></option>
 				</select>
 			</div>
 		</div>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24" height="24" viewBox="0 0 24 24">
+  <defs>
+    <path id="ic_nav_sidemenu-a" d="M21,19.6 C21.5522847,19.6 22,19.2418278 22,18.8 C22,18.3581722 21.5522847,18 21,18 L3,18 C2.44771525,18 2,18.3581722 2,18.8 C2,19.2418278 2.44771525,19.6 3,19.6 L21,19.6 Z M21,12.8 C21.5522847,12.8 22,12.4418278 22,12 C22,11.5581722 21.5522847,11.2 21,11.2 L3,11.2 C2.44771525,11.2 2,11.5581722 2,12 C2,12.4418278 2.44771525,12.8 3,12.8 L21,12.8 Z M21,6 C21.5522847,6 22,5.6418278 22,5.2 C22,4.7581722 21.5522847,4.4 21,4.4 L3,4.4 C2.44771525,4.4 2,4.7581722 2,5.2 C2,5.6418278 2.44771525,6 3,6 L21,6 Z"/>
+    <rect id="ic_nav_sidemenu-c" width="50" height="50" x="0" y="0"/>
+  </defs>
+  <g fill="none" fill-rule="evenodd">
+    <mask id="ic_nav_sidemenu-b" fill="#fff">
+      <use xlink:href="#ic_nav_sidemenu-a"/>
+    </mask>
+    <use fill="#000" fill-rule="nonzero" xlink:href="#ic_nav_sidemenu-a"/>
+    <g mask="url(#ic_nav_sidemenu-b)">
+      <use fill="#000" transform="translate(-13 -13)" xlink:href="#ic_nav_sidemenu-c"/>
+    </g>
+  </g>
+</svg>

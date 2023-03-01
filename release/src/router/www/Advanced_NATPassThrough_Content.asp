@@ -25,16 +25,22 @@ function initial(){
 	update_pppoerelay_option();
 	update_sip_alg_mode_option();
 
-	if(wan_proto=="v6plus" && array_ipv6_s46_ports.length > 1){
+	if(wan_proto=="v6plus" && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
 		$(".setup_info_icon").show();
 		$(".setup_info_icon").click(
-			function() {				
+			function() {
 				if($("#s46_ports_content").is(':visible'))
 					$("#s46_ports_content").fadeOut();
 				else{
 					var position = $(".setup_info_icon").position();
 					pop_s46_ports(position);
 				}
+			}
+		);
+		$("#vts_ftpport").focus(
+			function() {
+				var position_text = $("#vts_ftpport").position();
+				pop_s46_ports(position_text);
 			}
 		);
 	}
@@ -68,7 +74,7 @@ function applyRule(){
 	if(usb_support){
 		if(!validator.numberRange(document.form.vts_ftpport, 1, 65535))
 			return false;
-		if(wan_proto=="v6plus" && array_ipv6_s46_ports.length > 1){
+		if(wan_proto=="v6plus" && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
 			if (!validator.range_s46_ports(document.form.vts_ftpport, "none")){
 				if(!confirm("The following port related settings may not work properly since the port is not available in current v6plus usable port range. Do you want to continue?")){
 					document.form.vts_ftpport.focus();
@@ -216,7 +222,7 @@ function applyRule(){
 										<tr>
 											<th><#FTP_ALG_port#><div class="setup_info_icon" style="display:none;"></div></th>
 											<td>
-												<input type="text" maxlength="5" name="vts_ftpport" class="input_6_table" value="<% nvram_get("vts_ftpport"); %>" onkeypress="return validator.isNumber(this,event);" autocorrect="off" autocapitalize="off">
+												<input type="text" maxlength="5" id="vts_ftpport" name="vts_ftpport" class="input_6_table" value="<% nvram_get("vts_ftpport"); %>" onkeypress="return validator.isNumber(this,event);" autocorrect="off" autocapitalize="off">
 											</td>
 										</tr>
 							

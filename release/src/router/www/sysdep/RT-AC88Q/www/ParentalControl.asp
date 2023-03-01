@@ -15,14 +15,14 @@
 <link rel="stylesheet" type="text/css" href="usp_style.css">
 <link rel="stylesheet" type="text/css" href="/calendar/fullcalendar.css">
 <link rel="stylesheet" type="text/css" href="/device-map/device-map.css">
+<script type="text/javascript" src="/js/jquery.js"></script>
+<script type="text/javascript" src="/calendar/jquery-ui.js"></script> 
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" src="/help.js"></script>
 <script type="text/javascript" src="/general.js"></script>
 <script type="text/javascript" src="/client_function.js"></script>
 <script type="text/javascript" src="/validator.js"></script>
-<script type="text/javascript" src="/js/jquery.js"></script>
-<script type="text/javascript" src="/calendar/jquery-ui.js"></script> 
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script type="text/javascript" src="/js/httpApi.js"></script>
 <style>
@@ -1105,10 +1105,10 @@ function setGroup(name){
 			</table>
 			<div style="margin: 0 0 10px 5px" class="splitLine"></div>
 			<div id="block_all_device" style="margin-bottom:6px;display:none;">
-				<div style="font-size:14px;margin-left:6px;margin-bottom:6px;">By enabling Block All Devices, all of the connected devices will be blocked from Internet access.</div>
+				<div style="font-size:14px;margin-left:6px;margin-bottom:6px;"><#Block_All_Device_Desc#></div>
 				<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable">
 					<tr>
-						<th>Enable block all device</th>
+						<th><#Block_All_Device#></th>
 						<td>
 							<div align="center" class="left" style="width:94px; float:left; cursor:pointer;" id="radio_block_all"></div>
 							<div class="iphone_switch_container" style="height:32px; width:74px; position: relative; overflow: hidden">

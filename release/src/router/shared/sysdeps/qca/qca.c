@@ -494,12 +494,17 @@ static int __get_QCA_sta_info_by_ifname(const char *ifname, char subunit_id, int
 		/* Parse ACAPS ~ IEs (maybe empty string, RSN, WME, or both).
 		 * ACAPS is empty on ILQ2.x ~ SPF10, is "NULL" on SPF11
 		 */
+		{ .key = "HTCAPS",	.fmt = "%s",	.var = &r->htcaps },
+		{ .key = "VHTCAPS",	.fmt = "%s",	.var = &r->vhtcaps },
 		{ .key = "ASSOCTIME",	.fmt = "%s",	.var = &r->conn_time },
 
 		{ .key = NULL, .fmt = NULL, .var = NULL },
 	}, part3_tbl[] = {
 		/* Parse MODE ~ PSMODE */
 		{ .key = "MODE",	.fmt = "IEEE80211_MODE_%s", .var = r->mode },
+		{ .key = "PSMODE",	.fmt = "%u",	.var = &r->psm },
+		{ .key = "RXNSS",	.fmt = "%u",	.var = &r->rxnss },
+		{ .key = "TXNSS",	.fmt = "%u",	.var = &r->txnss },
 
 		{ .key = NULL, .fmt = NULL, .var = NULL },
 	};
@@ -1116,6 +1121,7 @@ void Pty_stop_wlc_connect(int band)
 #define PORT_UNITS 6
 #endif
 
+#ifdef RTCONFIG_AMAS_ETHDETECT
 //Aimesh RE: vport to eth name
 static const char *query_ifname[PORT_UNITS] = { //Aimesh RE
 #if defined(RTAX89U) || (GTAXY16000)
@@ -1132,6 +1138,7 @@ static const char *query_ifname[PORT_UNITS] = { //Aimesh RE
 	NULL,   NULL,   NULL,   NULL,   NULL,   NULL
 #endif
 };
+#endif
 
 void Pty_start_wlc_connect(int band, char *bssid)
 {
@@ -1142,15 +1149,11 @@ void Pty_start_wlc_connect(int band, char *bssid)
 	if (bssid != NULL) {
 		sta = get_staifname(band);
 		if (chk_assoc(sta)==0 || diff_current_bssid(band, bssid)) {	//Restart the network with configured BSSID
-			doSystem("wpa_cli -i %s -p /var/run/wpa_supplicant-%s disable_network 0", sta, sta);
-			doSystem("wpa_cli -i %s -p /var/run/wpa_supplicant-%s set_network 0 bssid %s", sta, sta, bssid);
-			doSystem("wpa_cli -i %s -p /var/run/wpa_supplicant-%s enable_network 0", sta, sta);
+			doSystem("wpa_cli -p /var/run/wpa_supplicant-%s disable_network 0", sta);
+			doSystem("wpa_cli -p /var/run/wpa_supplicant-%s set_network 0 bssid %s", sta, bssid);
+			doSystem("wpa_cli -p /var/run/wpa_supplicant-%s enable_network 0", sta);
 			logmessage("AMAS RE", "RE: wpacli set %s's bssid as %s\n", sta, bssid);
 		}
-		if (nvram_safe_get("amas_wlc_target_bssid")[0] == '\0')
-			doSystem("wpa_cli -i %s -p /var/run/wpa_supplicant-%s disable_network 1", sta, sta);
-		else
-			doSystem("wpa_cli -i %s -p /var/run/wpa_supplicant-%s enable_network 1", sta, sta);
 	}
 
 	set_wpa_cli_cmd(band, "reconnect", 0);
@@ -1255,7 +1258,7 @@ void Pty_start_wlc_connect(int band)
 	set_wpa_cli_cmd(band, "reconnect", 0);
 }
 #endif
-
+#endif
 /*
  * int Pty_get_upstream_rssi(int band)
  *
@@ -1393,12 +1396,14 @@ void set_wlan_service_status(int bssidx, int vifidx, int enabled)
 		snprintf(prefix, sizeof(prefix), "wl%d_", swap_5g_band(bssidx));
 	strcpy(athfix, nvram_safe_get(strcat_r(prefix, "ifname", tmp)));
 	eval(IWPRIV, athfix, "softdown", enabled? "0":"1");
-#if defined(RTCONFIG_SOC_IPQ8074)
 	if (enabled) {
+#if defined(RTCONFIG_SOC_IPQ8074)
 		eval("hostapd_cli", "-i", athfix, "disable");
 		eval("hostapd_cli", "-i", athfix, "enable");
-	}
+#elif defined(RTAC95U)
+		eval("hostapd_cli", "-i", athfix, "reload");
 #endif
+	}
 	led = get_wl_led_id(swap_5g_band(bssidx));
 	led_control(led, (inhibit_led_on() || !enabled)? LED_OFF : LED_ON);
 	// _dprintf("[%s %s softdown %s], enabled:%d\n", IWPRIV, athfix, enabled? "0":"1", enabled);
@@ -1982,8 +1987,6 @@ int wl_get_bw_cap(int unit, int *bwcap)
 
 	return 0;
 }
-
-#endif
 
 #ifdef RTCONFIG_CFGSYNC
 

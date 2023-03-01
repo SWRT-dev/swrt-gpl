@@ -49,6 +49,9 @@
 #fileflex_png{
 	background-position: 0% 63%;
 }
+#DownloadAcceleration_png{
+	background-position: 0% 50.5%;
+}
 .app_list{
 	position: relative;
 	background-image: url(images/New_ui/USBExt/app_list_active.svg);
@@ -119,7 +122,8 @@ function initial(){
 			["<#Servers_Center#>", "mediaserver.asp", "<#UPnPMediaServer_Help#>", "server_png", ""],
 			["<#Network_Printer_Server#>", "PrinterServer.asp", "<#Network_Printer_desc#>", "PrinterServer_png", ""],
 			["3G/4G", "Advanced_Modem_Content.asp", "<#HSDPAConfig_hsdpa_enable_hint1#>", "modem_png", ""],
-			["<#TimeMach#>", "Advanced_TimeMachine.asp", "<#TimeMach_enable_hint#>", "TimeMachine_png", "1.0.0.1"]];
+			["<#TimeMach#>", "Advanced_TimeMachine.asp", "<#TimeMach_enable_hint#>", "TimeMachine_png", "1.0.0.1"],
+			["Tencent Download Acceleration", "Advanced_TencentDownloadAcceleration.asp", "Tencent Download Acceleration", "DownloadAcceleration_png", "1.0.0.1"]];
 
 	if(re_mode == "1"){
 		$("#FormTitle").addClass("perNode_app_table");
@@ -150,7 +154,7 @@ function initial(){
 	}
 
 	if(sw_mode == 2 || sw_mode == 3 || sw_mode == 4 || re_mode == "1" || !modem_support  || nomodem_support ||
-		based_modelid == "4G-AC53U" || based_modelid == "4G-AC55U" ||based_modelid == "4G-AC68U"){
+		based_modelid.substring(0,3) == "4G-"){
 		if(default_apps_array.getIndexByValue2D("3G/4G") != -1)
 			default_apps_array = default_apps_array.del(default_apps_array.getIndexByValue2D("3G/4G")[0]);
 	}
@@ -158,6 +162,11 @@ function initial(){
 	if(!timemachine_support){
 		if(default_apps_array.getIndexByValue2D("<#TimeMach#>") != -1)
 			default_apps_array = default_apps_array.del(default_apps_array.getIndexByValue2D("<#TimeMach#>")[0]);
+	}
+
+	if(!tencent_game_acc_support){
+		if(default_apps_array.getIndexByValue2D("Tencent Download Acceleration") != -1)
+			default_apps_array = default_apps_array.del(default_apps_array.getIndexByValue2D("Tencent Download Acceleration")[0]);
 	}
 
 	trNum = default_apps_array.length;
@@ -636,30 +645,30 @@ function show_apps(){
 					if(apps_array[i][3] == "no") // uninstall
 						htmlcode += apps_array[i][0] + '</div>\n';
 					else if(apps_array[i][4] == "no" && apps_array[i][3] == "yes") // disable
-						htmlcode += '<a href="' + apps_array[i][6] + '" style="color:gray;">' + apps_array[i][0] + '<span class="app_ver" style="color:gray">' + apps_array[i][1] + '</sapn></a></div>\n';
+						htmlcode += '<a href="' + apps_array[i][6] + '" style="color:gray;">' + apps_array[i][0] + '<span class="app_ver" style="color:gray">' + apps_array[i][1] + '</span></a></div>\n';
 					else{ // enable
 						if(apps_array[i][0] == "<#DM_title#>")
-							htmlcode += '<a target="_blank" href="' + apps_array[i][6] + '" style="text-decoration: underline;">' + apps_array[i][0] + '</a><span class="app_ver">' + apps_array[i][1] + '</sapn></div>\n';
+							htmlcode += '<a target="_blank" href="' + apps_array[i][6] + '" style="text-decoration: underline;">' + apps_array[i][0] + '</a><span class="app_ver">' + apps_array[i][1] + '</span></div>\n';
 						else
-							htmlcode += '<a href="' + apps_array[i][6] + '" style="text-decoration: underline;">' + apps_array[i][0] + '</a><span class="app_ver">' + apps_array[i][1] + '</sapn></div>\n';
+							htmlcode += '<a href="' + apps_array[i][6] + '" style="text-decoration: underline;">' + apps_array[i][0] + '</a><span class="app_ver">' + apps_array[i][1] + '</span></div>\n';
 					}
 				}
 			}
 			else{
 				if(apps_array[i][0] == "FileFlex"){
 					if(apps_array[i][4] == "no" && apps_array[i][3] == "yes") // disable
-						htmlcode += '<a style="color:gray;">' + apps_array[i][0] + '</a><span class="app_ver" style="color:gray">ver. ' + apps_array[i][1] + '</sapn></div>\n';
+						htmlcode += '<a style="color:gray;">' + apps_array[i][0] + '</a><span class="app_ver" style="color:gray">ver. ' + apps_array[i][1] + '</span></div>\n';
 					else // uninstall or enable
-						htmlcode += '<a target="_blank" href="' + apps_array[i][6] + '" style="text-decoration: underline;">' + apps_array[i][0] + '</a><span class="app_ver">ver. ' + apps_array[i][1] + '</sapn></div>\n';
+						htmlcode += '<a target="_blank" href="' + apps_array[i][6] + '" style="text-decoration: underline;">' + apps_array[i][0] + '</a><span class="app_ver">ver. ' + apps_array[i][1] + '</span></div>\n';
 				}
 				else{
 					if(apps_array[i][4] == "no" && apps_array[i][3] == "yes") // disable
-						htmlcode += '<a href="' + apps_array[i][6] + '" style="color:gray">' + apps_array[i][0] + '<span class="app_ver" style="color:gray">ver. ' + apps_array[i][1] + '</sapn></a></div>\n';
+						htmlcode += '<a href="' + apps_array[i][6] + '" style="color:gray">' + apps_array[i][0] + '<span class="app_ver" style="color:gray">ver. ' + apps_array[i][1] + '</span></a></div>\n';
 					else{ // enable
 						if(apps_array[i][0] == "<#DM_title#>")
-							htmlcode += '<a target="_blank" href="' + apps_array[i][6] + '" style="text-decoration: underline;">' + apps_array[i][0] + '</a><span class="app_ver">ver. ' + apps_array[i][1] + '</sapn></div>\n';
+							htmlcode += '<a target="_blank" href="' + apps_array[i][6] + '" style="text-decoration: underline;">' + apps_array[i][0] + '</a><span class="app_ver">ver. ' + apps_array[i][1] + '</span></div>\n';
 						else
-							htmlcode += '<a href="' + apps_array[i][6] + '" style="text-decoration: underline;">' + apps_array[i][0] + '</a><span class="app_ver">ver. ' + apps_array[i][1] + '</sapn></div>\n';
+							htmlcode += '<a href="' + apps_array[i][6] + '" style="text-decoration: underline;">' + apps_array[i][0] + '</a><span class="app_ver">ver. ' + apps_array[i][1] + '</span></div>\n';
 					}
 				}
 			}
@@ -670,9 +679,9 @@ function show_apps(){
 			else
 				htmlcode += '<div class="app_name">';
 			if(apps_array[i][1] == "")
-				htmlcode += apps_array[i][0] + '<span class="app_ver">' + apps_array[i][1] + '</sapn></div>\n';
+				htmlcode += apps_array[i][0] + '<span class="app_ver">' + apps_array[i][1] + '</span></div>\n';
 			else
-				htmlcode += apps_array[i][0] + '<span class="app_ver">ver. ' + apps_array[i][1] + '</sapn></div>\n';
+				htmlcode += apps_array[i][0] + '<span class="app_ver">ver. ' + apps_array[i][1] + '</span></div>\n';
 		}
 
 		if(apps_array[i][0] == "<#DM_title#>")

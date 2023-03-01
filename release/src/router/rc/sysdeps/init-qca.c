@@ -1057,6 +1057,10 @@ static void init_switch_qca(void)
 #endif
 #endif	/* RTCONFIG_STRONGSWAN || RTCONFIG_QUICKSEC */
 #if defined(RTCONFIG_SOC_IPQ60XX) || defined(RTCONFIG_SOC_IPQ50XX)
+#ifdef RTCONFIG_QSDK_LM256
+		"qca-nss-pppoe",
+		"qca-nss-macsec",
+#else
 		"ip_tunnel",
 		"tunnel4", /*"tunnel6",*/
 		"ah4", "esp4", "xfrm4_tunnel", "ipcomp",
@@ -1074,6 +1078,7 @@ static void init_switch_qca(void)
 		"qca-nss-tun6rd",
 		"qca-nss-tunipip6",
 		"qca-nss-cfi-ocf",
+#endif
 #endif
 		NULL
 	}, **qmod;
@@ -1608,6 +1613,9 @@ void config_switch(void)
 				} else {
 					eval("rtkswitch", "8", "4");		/* LAN4 with WAN */
 				}
+			}
+			else if (!strcmp(nvram_safe_get("switch_wantag"), "hinet_mesh")) { /* Hinet MOD Mesh */
+				/* Nothing to do. */
 			}
 			else if (!strcmp(nvram_safe_get("switch_wantag"), "superonline")) {
 				system("rtkswitch 38 1");			/* IPTV: P0 */

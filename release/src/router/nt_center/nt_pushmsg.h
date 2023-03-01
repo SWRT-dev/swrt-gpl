@@ -45,12 +45,16 @@ struct pnsInfo mapPushInfo[] =
 	{SYS_DETECT_ASUS_SSID_UNENCRYPT_EVENT        ,0  ,"ASUS router is found and need configuration"             ,"" },
 	{SYS_ECO_MODE_EVENT                          ,0  ,"ECO Mode is on"                                          ,"" },
 	{SYS_GAME_MODE_EVENT                         ,0  ,"Game mode is on"                                         ,"" },
-	{SYS_NEW_DEVICE_WIFI_CONNECTED_EVENT         ,0  ,"New Device Connected"                                    ,"webhook_device_connect" },
-	{SYS_WIFI_DEVICE_DISCONNECTED_EVENT          ,0  ,"Device Disconnected."                                    ,"" },
+	{SYS_NEW_DEVICE_WIFI_CONNECTED_EVENT         ,3  ,"New Device Connected(wifi)"                              ,"webhook_device_connect" },
+	{SYS_NEW_DEVICE_ETH_CONNECTED_EVENT          ,3  ,"New Device Connected(eth)"                               ,"webhook_device_connect" },
 	{SYS_EXISTED_DEVICE_WIFI_CONNECTED_EVENT     ,0  ,"Manage Your Wireless Client"                             ,"webhook_device_connect" },
+	{SYS_ALL_WIFI_TURN_OFF_EVENT                 ,1  ,"All your WiFi is turned off"                             ,"" },
 	/* FIRMWARE EVENT */
 	{SYS_FW_NWE_VERSION_AVAILABLE_EVENT          ,0  ,"New Firmware Available"                                  ,"" },
 	{SYS_NEW_SIGNATURE_UPDATED_EVENT             ,0  ,"Signature Updated"                                       ,"" },
+	/* DFS EVENT */
+	{SYS_DFS_SUPPORT_DUALBAND_EVENT              ,0  ,"Support for DFS is enabled now (Dual Band)"              ,"" },
+	{SYS_DFS_SUPPORT_TRIBAND_EVENT               ,0  ,"Support for DFS is enabled now (Tri Band)"               ,"" },
 	/* ------------------------------
 	   ### Administration ###
 	---------------------------------*/
@@ -83,6 +87,7 @@ struct pnsInfo mapPushInfo[] =
 	{PROTECTION_BITCOIN_MINING_ACTIVITY_EVENT    ,0  ,"Security Event Notice - Bitcoin Mining Activity!"        ,"" },
 	{PROTECTION_MALWARE_RANSOM_THREAT_EVENT      ,0  ,"Security Event Notice - Malware Ransomware Threat!"      ,"" },
 	{PROTECTION_MALWARE_MIRAI_THREAT_EVENT       ,0  ,"Security Event Notice - Malware Mirai Threat!"           ,"" },
+	{PROTECTION_INFECTED_DEVICE_EVENT            ,1  ,"Infected Device Detected and Blocked"                    ,"" },
 	/* ------------------------------
 	   ### Parental Contorl ###
 	---------------------------------*/
@@ -109,17 +114,15 @@ struct pnsInfo mapPushInfo[] =
 	    ### General Event  ###
 	---------------------------------*/
 	/* General EVENT */
-	{GENERAL_WIFI_DEV_ONLINE                     ,0  ,""                                                        ,"" },
-	{GENERAL_WIFI_DEV_OFFLINE                    ,0  ,""                                                        ,"" },
-	{GENERAL_ETH_DEV_ONLINE                      ,0  ,""                                                        ,"" },
-	{GENERAL_ETH_DEV_OFFLINE                     ,0  ,""                                                        ,"" },
+	{GENERAL_WIFI_DEV_ONLINE                     ,0  ,"Manage Your Wireless Client"                             ,"" },
+	{GENERAL_WIFI_DEV_OFFLINE                    ,0  ,"Wireless Device Disconnectd"                             ,"" },
+	{GENERAL_ETH_DEV_ONLINE                      ,0  ,"Manage Your Ethernet Client"                             ,"" },
+	{GENERAL_ETH_DEV_OFFLINE                     ,0  ,"Ethernet Device Disconnected"                            ,"" },
 	{GENERAL_ETH_DEV_REFUSED                     ,0  ,""                                                        ,"" },
 	{GENERAL_SYS_STATES                          ,0  ,""                                                        ,"" },
 	{GENERAL_DEV_UPDATE                          ,0  ,"DeviceAddOrUpdate"                                       ,"" },
 	{GENERAL_DEV_DELETED                         ,0  ,"DeviceDelete"                                            ,"" },
 	{GENERAL_DEV_ACCESS_CHANGE                   ,0  ,"DeviceNetworkAccessChange"                               ,"" },
-	{GENERAL_QOS_UPDATE                          ,0  ,"QosModeUpdate"                                           ,"" },
-	{GENERAL_TOGGLE_STATES_UPDATE                ,0  ,"ToggleStateUpdate"                                       ,"" },
 	/* ------------------------------
 	   ### Hint Item ###
 	---------------------------------*/

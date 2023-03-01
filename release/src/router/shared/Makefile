@@ -144,6 +144,9 @@ ifeq ($(RTCONFIG_RGBLED),y)
 CFLAGS += -I$(TOP)/i2c-tools-3.1.2/include/linux
 endif
 
+#Tencent download
+CFLAGS += -D _FILE_OFFSET_BITS=64
+
 ifneq ($(findstring CONFIG_BCM_KF_NETFILTER=, $(shell cat $(LINUXDIR)/.config)),)
 CFLAGS         += -DBCM_KF_NETFILTER
 endif
@@ -229,6 +232,8 @@ else ifeq ($(RTCONFIG_QCN550X)$(RTCONFIG_SWITCH_QCA8337N),yy)
 OBJS += qca8337_ssdk_sh.o
 else ifeq ($(RTCONFIG_SOC_IPQ60XX),y)
 OBJS += ipq60xx.o
+else ifeq ($(RTCONFIG_SWITCH_IPQ50XX_QCA8337),y)
+OBJS += ipq50xx_qca8337.o
 else ifeq ($(RTCONFIG_SOC_IPQ50XX),y)
 OBJS += ipq50xx.o
 else
@@ -309,6 +314,10 @@ CFLAGS	+= -I$(TOP)/bled
 OBJS	+= bled.o
 else ifeq ($(RTCONFIG_FIXED_BRIGHTNESS_RGBLED),y)
 OBJS	+= swrtrgb.o
+endif
+
+ifeq ($(RTCONFIG_PWM_RGBLED),y)
+OBJS	+= pwm_led.o
 endif
 
 ifeq ($(RTCONFIG_SAVEJFFS),y)
@@ -419,6 +428,12 @@ CFLAGS  += -I$(TOP)/sw-hw-auth
 vpath %.c $(TOP)/sw-hw-auth
 endif
 
+ifeq ($(RTCONFIG_TUNNEL),y)
+#OBJS += aae_ipc.o
+CFLAGS  += -I$(TOP)/aaews
+vpath %.c $(TOP)/aaews
+endif
+
 ifeq ($(RTCONFIG_GEFORCENOW), y)
 OBJS += nvgfn.o
 endif
@@ -436,8 +451,16 @@ OBJS += event_utils.o
 endif
 endif
 
+ifeq ($(or $(RTCONFIG_VPN_FUSION),$(RTCONFIG_TPVPN),$(RTCONFIG_IG_SITE2SITE),$(RTCONFIG_WIREGUARD)),y)
+OBJS += vpn_utils.o
+CFLAGS += -I$(TOP)/libvpn/
+endif
+
 ifeq ($(OPDBG),y)
 CFLAGS += -DOPDBG
+endif
+ifeq ($(TURKT),y)
+CFLAGS += -DTURKT
 endif
 
 ifeq ($(RT4GAC86U),y)

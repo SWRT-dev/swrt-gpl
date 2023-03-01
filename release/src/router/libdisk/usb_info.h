@@ -19,6 +19,19 @@
 #define usb_dbg _dprintf
 #endif
 
+#define foreach_58(word, wordlist, next) \
+	for (next = &wordlist[strspn(wordlist, ":")], \
+	     strncpy(word, next, sizeof(word)), \
+	     word[sizeof(word) - 1] = '\0', \
+	     word[strcspn(word, ":")] = '\0', \
+	     next = strchr(next, ':'); \
+	     strlen(word); \
+	     next = next ? &next[strspn(next, ":")] : "", \
+	     strncpy(word, next, sizeof(word)), \
+	     word[sizeof(word) - 1] = '\0', \
+	     word[strcspn(word, ":")] = '\0', \
+	     next = strchr(next, ':'))
+
 #define MAX_WAIT_FILE 5
 
 #define SYS_MODULE "/sys/module"
@@ -156,4 +169,3 @@ extern char *find_sg_of_device(const char *device_name, char *buf, const int buf
 extern int is_builtin_modem(char *modem_type);
 
 #endif	/* !_USB_INFO_H_ */
-

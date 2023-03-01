@@ -175,9 +175,21 @@ if(isSupport('wifi6e')){
 	}	
 }
 
-var mesh_5g = JSON.parse('<% get_wl_channel_list_2g(); %>');
-var mesh_5g2 = JSON.parse('<% get_wl_channel_list_5g(); %>');
-var mesh_6g = JSON.parse('<% get_wl_channel_list_5g_2(); %>');
+try{
+	var mesh_5g = JSON.parse('<% get_wl_channel_list_2g(); %>');
+}catch(e){
+	var mesh_5g = {};
+}
+try{
+	var mesh_5g2 = JSON.parse('<% get_wl_channel_list_5g(); %>');
+}catch(e){
+	var mesh_5g2 = {};
+}
+try{
+	var mesh_6g = JSON.parse('<% get_wl_channel_list_5g_2(); %>');
+}catch(e){
+	var mesh_6g = {};
+}
 function wl_chanspec_list_change(){
 	var phytype = "n";
 	var band = '<% nvram_get("wl_unit"); %>';
@@ -434,6 +446,9 @@ function wl_chanspec_list_change(){
 			if(band6g_support){		// due to GT-AXE11000 does not support
 				if(document.getElementById('psc6g_checkbox').checked){
 					wl_channel_list_6g = ['37', '53', '69', '85', '101', '117', '133', '149', '165', '181', '197', '213'];
+					if(is_EU_sku || ttc.indexOf('AU') != -1 || ttc.indexOf('AA') != -1){
+						wl_channel_list_6g = ['5', '21', '37', '53', '69', '85'];
+					}
 				}
 
 				for(var i=wl_channel_list_6g.length-1; i>=0; i--){
@@ -1110,6 +1125,16 @@ function change_channel(obj){
 			}
 		}
 
+		if(unii4Support){
+			if(document.form.wl_channel.value  == 0){
+				document.getElementById('acs_unii4_field').style.display = "";
+				document.getElementById('acs_unii4_checkbox').disabled = false;
+			}
+			else{
+				document.getElementById('acs_unii4_field').style.display = "none";
+				document.getElementById('acs_unii4_checkbox').disabled = true;
+			}
+		}
 		//dwbMode_control_dfs({"band": band, "smart_connect": smart_connect});
 	}
 	else if(band == 0){

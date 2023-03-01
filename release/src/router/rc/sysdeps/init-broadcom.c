@@ -7793,14 +7793,14 @@ void set_acs_ifnames()
 	memset(acs_ifnames, 0, sizeof(acs_ifnames));
 	memset(acs_ifnames2, 0, sizeof(acs_ifnames2));
 
-	wl_list_5g_chans(1, 1, 0, list_5g_band1_chans, sizeof(list_5g_band1_chans));
-	wl_list_5g_chans(1, 2, war, list_5g_band2_chans, sizeof(list_5g_band2_chans));
+	wl_list_5g_chans(1, 1, 0, list_5g_band1_chans, sizeof(list_5g_band1_chans), 0);
+	wl_list_5g_chans(1, 2, war, list_5g_band2_chans, sizeof(list_5g_band2_chans), 0);
 #if defined(RTCONFIG_WIFI6E) && defined(RTCONFIG_HAS_5G_2)
 	wl_list_5g_chans(1, 3, 0, list_5g_band3_chans, sizeof(list_5g_band3_chans));
 	wl_list_5g_chans(1, 5, 0, list_5g_unii4_chans, sizeof(list_5g_unii4_chans));
 #else
-	wl_list_5g_chans((num_of_wl_if() == 3) ? 2 : 1, 3, 0, list_5g_band3_chans, sizeof(list_5g_band3_chans));
-	wl_list_5g_chans((num_of_wl_if() == 3) ? 2 : 1, 3, 0, list_5g_unii4_chans, sizeof(list_5g_unii4_chans));
+	wl_list_5g_chans((num_of_wl_if() == 3) ? 2 : 1, 3, 0, list_5g_band3_chans, sizeof(list_5g_band3_chans), 0);
+	wl_list_5g_chans((num_of_wl_if() == 3) ? 2 : 1, 3, 0, list_5g_unii4_chans, sizeof(list_5g_unii4_chans), 0);
 #endif
 
 	foreach (word, nvram_safe_get("wl_ifnames"), next) {

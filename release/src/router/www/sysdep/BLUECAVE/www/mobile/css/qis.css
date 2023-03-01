@@ -667,7 +667,7 @@ a{
 }
 .ap_ssid{
 	display: table-cell;
-	width: 100%;
+	width: 80%;
 	padding-left: 20px;
 	color: #DBDBDB;
 	cursor: pointer;
@@ -681,6 +681,10 @@ a{
 	padding: 10px;
 	font-size: 0.5em;
 	border-radius: 10px;
+}
+.apListContainer.s2s_wlSetContainer .ap_band{
+	text-align: right;
+	padding-right: 18px;
 }
 .ap_narrow_container{
 	display: table-cell;
@@ -822,6 +826,7 @@ a{
 }
 .titleSub{
 	font-size: 32px;
+	margin-top: 8px;
 }
 .aimeshTopo{
 	background:url('../css/aimesh-topo.png') no-repeat;
@@ -1542,4 +1547,45 @@ a{
 	margin-bottom: 5px;
 	width: 100%;
 	display:none;
+}
+.s2s_illustration_container{
+	display: flex;
+	justify-content: space-around;
+	min-width: 400px;
+	color: #FFF;
+}
+.s2s_illustration_container .s2s_icon_container{
+	flex-basis: 25%;
+	display: flex;
+	justify-content: flex-start;
+	flex-direction: column;
+}
+.s2s_illustration_container .s2s_blank_container{
+	flex-grow: 1;
+	display: flex;
+	align-items: center;
+}
+.s2s_icon_container .s2s_icon{
+	background-size: contain;
+	background-position: center;
+	background-repeat: no-repeat;
+	width: 100%;
+	height: 100px;
+	display: flex;
+	justify-content: center;
+}
+.s2s_icon_container .s2s_text{
+	text-align: center;
+	margin-top: 10px;
+	font-size: 1em;
+}
+.s2s_icon.internet{
+	background-image: url(/images/New_ui/networkmap/internet_allow.svg);
+	background-size: 100% 80%;
+}
+.s2s_illustration_container .horizontal_line{
+	background: #FFF;
+	height: 2px;
+	width: 95%;
+	margin-top: -38px;
 }

@@ -146,7 +146,7 @@ static int __locate_key(FILE *fp, char *key)
     char *p = NULL;
     char *q = NULL;
 
-    if(fp == NULL || key == NULL);
+    if(fp == NULL || key == NULL)
     	return offset;
 
     fseek(fp, 0, SEEK_SET);

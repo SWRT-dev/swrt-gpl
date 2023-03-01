@@ -98,7 +98,7 @@ enum {
 };
 
 static const char *upstream_iptv_ifaces[16] = {
-#if defined(RTAX59U) || defined(RMAX6000)
+#if defined(RMAX6000)
 	[WANS_DUALWAN_IF_WAN] = "wan",
 #else
 	[WANS_DUALWAN_IF_WAN] = "eth1",
@@ -226,7 +226,7 @@ static const char *vport_to_iface[MAX_WANLAN_PORT] = {
 #else /* PANTHERB */
 	"lan0", "lan1", "lan2", "lan3",				/* LAN4~1 */
 #endif
-#if defined(RTAX59U) || defined(RMAX6000)
+#if defined(RMAX6000)
 	"wan"							/* WAN */
 #else
 	"eth1"							/* WAN */
@@ -237,17 +237,20 @@ static const char *vport_to_iface[MAX_WANLAN_PORT] = {
  * array element:	platform specific VoIP/STB virtual port bitmask.
  */
 static const unsigned int stb_to_mask[7] = { 0,
+#if defined(RTAX59U) || defined(RMAX6000)
+	(1U << LAN1_PORT),
+	(1U << LAN2_PORT),
+	(1U << LAN2_PORT), /* unused */
+	(1U << LAN3_PORT),
+	(1U << LAN1_PORT) | (1U << LAN2_PORT),
+	(1U << LAN2_PORT) | (1U << LAN3_PORT)
+#else
 	(1U << LAN1_PORT),
 	(1U << LAN2_PORT),
 	(1U << LAN3_PORT),
-#if !defined(RTAX59U) && !defined(RMAX6000)
 	(1U << LAN4_PORT),
-#endif
 	(1U << LAN1_PORT) | (1U << LAN2_PORT),
-#if !defined(RTAX59U) && !defined(RMAX6000)
 	(1U << LAN3_PORT) | (1U << LAN4_PORT)
-#else
-	(1U << LAN2_PORT) | (1U << LAN3_PORT)
 #endif
 };
 
@@ -280,13 +283,19 @@ int esw_fd;
  * array value:	Model-specific virtual port number
  */
 static int n56u_to_model_port_mapping[] = {
-#if !defined(RTAX59U) && !defined(RMAX6000)
+#if defined(RTAX59U) || defined(RMAX6000)
+	LAN3_PORT,	//0000 0000 0001 LAN4 (convert to LAN3)
+	LAN2_PORT,	//0000 0000 0010 LAN3 (convert to LAN2)
+	LAN2_PORT,	//0000 0000 0100 LAN2
+	LAN1_PORT,	//0000 0000 1000 LAN1
+	WAN_PORT,	//0000 0001 0000 WAN
+#else
 	LAN4_PORT,	//0000 0000 0001 LAN4
-#endif
 	LAN3_PORT,	//0000 0000 0010 LAN3
 	LAN2_PORT,	//0000 0000 0100 LAN2
 	LAN1_PORT,	//0000 0000 1000 LAN1
 	WAN_PORT,	//0000 0001 0000 WAN
+#endif
 };
 
 #define RTN56U_WAN_GMAC	(1U << 9)
@@ -696,7 +705,7 @@ int mt7986_mt7531_vlan_set(int vtype, char *upstream_if, int vid, int prio, unsi
  *     -1:	invalid parameter
  *  otherwise:	fail
  */
-static void get_phy_info(unsigned int phy, unsigned int *link, unsigned int *speed)
+static void get_phy_info(unsigned int phy, unsigned int *link, unsigned int *speed, phy_info *info)
 {
 	unsigned int value;
 	unsigned int l = 0, s = 0;
@@ -718,21 +727,36 @@ static void get_phy_info(unsigned int phy, unsigned int *link, unsigned int *spe
 		}
 	}
 
-	if (link)
+	if (link) {
 		*link = l;
+		if (info) {
+			if (l)
+				snprintf(info->state, sizeof(info->state), "up");
+			else
+				snprintf(info->state, sizeof(info->state), "down");
+		}
+	}
 	if (speed) {
 		switch (s) {
 		case 0x0:
 			*speed = 10;
+			if (l && info)
+				info->link_rate = 10;
 			break;
 		case 0x1:
 			*speed = 100;
+			if (l && info)
+				info->link_rate = 100;
 			break;
 		case 0x2:
 			*speed = 1000;
+			if (l && info)
+				info->link_rate = 1000;
 			break;
 		case 0x4:
 			*speed = 2500;
+			if (l && info)
+				info->link_rate = 2500;
 			break;
 		default:
 			_dprintf("%s: invalid speed!\n", __func__);
@@ -758,17 +782,10 @@ static void get_phy_info(unsigned int phy, unsigned int *link, unsigned int *spe
  *     -1:	invalid parameter
  *  otherwise:	fail
  */
-static int get_mt7986_mt7531_vport_info(unsigned int vport, unsigned int *link, unsigned int *speed)
+static int get_mt7986_mt7531_vport_info(unsigned int vport, unsigned int *link, unsigned int *speed, phy_info *info)
 {
 	int phy;
 
-#if defined(TUFAX4200)
-	if (nvram_match("HwId", "A") && vport == LAN5_PORT) {
-		*link = 0;
-		*speed = 0;
-		return 0;
-	}
-#endif
 	if (vport >= MAX_WANLAN_PORT || (!link && !speed))
 		return -1;
 
@@ -783,7 +800,7 @@ static int get_mt7986_mt7531_vport_info(unsigned int vport, unsigned int *link, 
 		return -1;
 	}
 
-	get_phy_info(phy, link, speed);
+	get_phy_info(phy, link, speed, info);
 
 	return 0;
 }
@@ -805,7 +822,7 @@ static void get_mt7986_mt7531_phy_linkStatus(unsigned int mask, unsigned int *li
 		if (!(m & 1))
 			continue;
 
-		get_mt7986_mt7531_vport_info(i, &value, NULL);
+		get_mt7986_mt7531_vport_info(i, &value, NULL, NULL);
 	}
 	*linkStatus = value;
 }
@@ -945,7 +962,7 @@ static void get_mt7986_mt7531_Port_Speed(unsigned int port_mask, unsigned int *s
 		if (!(m & 1))
 			continue;
 
-		get_mt7986_mt7531_vport_info(i, NULL, &value);
+		get_mt7986_mt7531_vport_info(i, NULL, &value, NULL);
 	}
 	*speed = value;
 }
@@ -1221,7 +1238,7 @@ unsigned int rtkswitch_wanPort_phyStatus(int wan_unit)
 				return 0;
 			}
 
-			get_phy_info(phy, &link, NULL);
+			get_phy_info(phy, &link, NULL, NULL);
 			status |= link;
 		}
 
@@ -1313,27 +1330,59 @@ static char conv_speed(unsigned int link, unsigned int speed)
 	return ret;
 }
 
-void ATE_port_status(void)
+void ATE_port_status(int verbose, phy_info_list *list)
 {
 	int i, len;
 	char buf[64];
+#ifdef RTCONFIG_NEW_PHYMAP
+	char cap_buf[64] = {0};
+#endif
 	phyState pS;
 
+#ifdef RTCONFIG_NEW_PHYMAP
+	phy_port_mapping port_mapping;
+	get_phy_port_mapping(&port_mapping);
+
+	len = 0;
+	for (i = 0; i < port_mapping.count; i++) {
+		// Only handle WAN/LAN ports
+		if (((port_mapping.port[i].cap & PHY_PORT_CAP_WAN) == 0) && ((port_mapping.port[i].cap & PHY_PORT_CAP_LAN) == 0))
+			continue;
+		pS.link[i] = 0;
+		pS.speed[i] = 0;
+		get_mt7986_mt7531_vport_info(port_mapping.port[i].phy_port_id, &pS.link[i], &pS.speed[i], list ? &list->phy_info[i] : NULL);
+		if (list) {
+			list->phy_info[i].phy_port_id = port_mapping.port[i].phy_port_id;
+			snprintf(list->phy_info[i].label_name, sizeof(list->phy_info[i].label_name), "%s", 
+				port_mapping.port[i].label_name);
+			list->phy_info[i].cap = port_mapping.port[i].cap;
+			snprintf(list->phy_info[i].cap_name, sizeof(list->phy_info[i].cap_name), "%s", 
+				get_phy_port_cap_name(port_mapping.port[i].cap, cap_buf, sizeof(cap_buf)));
+			if (pS.link[i] == 1 && !list->status_and_speed_only) {
+				// TODO not complete
+				//get_mt7986_mt7531_port_mib(port_mapping.port[i].phy_port_id, &list->phy_info[i]);
+			}
+
+			list->count++;
+		}
+		len += sprintf(buf+len, "%s=%C;", port_mapping.port[i].label_name,
+			conv_speed(pS.link[i], pS.speed[i]));
+	}
+
+#else
 	for (i = 0; i < NR_WANLAN_PORT; i++) {
-		get_mt7986_mt7531_vport_info(lan_id_to_vport_nr(i), &pS.link[i], &pS.speed[i]);
+		get_mt7986_mt7531_vport_info(lan_id_to_vport_nr(i), &pS.link[i], &pS.speed[i], NULL);
 	}
 
 	len = 0;
 	len += sprintf(buf+len, "W0=%C;", conv_speed(pS.link[WAN_PORT], pS.speed[WAN_PORT]));
 	for (i = 0; i < WAN_PORT; i++) {
-#if defined(TUFAX4200)
-		if (nvram_match("HwId", "A") && i == (WAN_PORT-1))
-			continue;
-#endif
 		len += sprintf(buf+len, "L%d=%C;", i+1, conv_speed(pS.link[i], pS.speed[i]));
 	}
+#endif
 
-	puts(buf);
+	if (verbose)
+		puts(buf);
 }
 
 /* Callback function which is used to fin brvX interface, X must be number.
@@ -1490,7 +1539,7 @@ int __get_bonding_port_status(enum bs_port_id bs_port)
 		dbg("%s: can't get PHY address of vport %d\n", __func__, vport);
 		return 0;
 	}
-	get_phy_info(phy, &link, &speed);
+	get_phy_info(phy, &link, &speed, NULL);
 
 	return link? speed : 0;
 }
@@ -1678,3 +1727,95 @@ int __do_led_control(int which, int mode)
 }
 
 #endif // end of defined(TUFAX4200) || defined(TUFAX6000)
+
+#ifdef RTCONFIG_NEW_PHYMAP
+void mt798x_get_phy_port_mapping(phy_port_mapping *port_mapping)
+{
+	int i, id;
+	static phy_port_mapping port_mapping_static = {
+#if defined(TUFAX4200) || defined(TUFAX6000)
+		.count = NR_WANLAN_PORT,
+		.port[0] = { .phy_port_id = WAN_PORT,  .label_name = "W0", .cap = PHY_PORT_CAP_WAN, .max_rate = 2500, .ifname = NULL },
+		.port[1] = { .phy_port_id = LAN1_PORT, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
+		.port[2] = { .phy_port_id = LAN2_PORT, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
+		.port[3] = { .phy_port_id = LAN3_PORT, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
+		.port[4] = { .phy_port_id = LAN4_PORT, .label_name = "L4", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
+		.port[5] = { .phy_port_id = LAN5_PORT, .label_name = "L5", .cap = PHY_PORT_CAP_LAN, .max_rate = 2500, .ifname = NULL },
+#elif defined(PANTHERA)
+		.count = NR_WANLAN_PORT,
+		.port[0] = { .phy_port_id = WAN_PORT,  .label_name = "W0", .cap = PHY_PORT_CAP_WAN, .max_rate = 2500, .ifname = NULL },
+		.port[1] = { .phy_port_id = LAN1_PORT, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 2500, .ifname = NULL },
+		.port[2] = { .phy_port_id = LAN2_PORT, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
+		.port[3] = { .phy_port_id = LAN3_PORT, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
+		.port[4] = { .phy_port_id = LAN4_PORT, .label_name = "L4", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
+		.port[5] = { .phy_port_id = LAN5_PORT, .label_name = "L5", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
+		.port[6] = { .phy_port_id = LAN6_PORT, .label_name = "L6", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
+#elif defined(PANTHERB)
+		.count = NR_WANLAN_PORT,
+		.port[0] = { .phy_port_id = WAN_PORT,  .label_name = "W0", .cap = PHY_PORT_CAP_WAN, .max_rate = 1000, .ifname = NULL },
+		.port[1] = { .phy_port_id = LAN1_PORT, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
+		.port[2] = { .phy_port_id = LAN2_PORT, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
+		.port[3] = { .phy_port_id = LAN3_PORT, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
+		.port[4] = { .phy_port_id = LAN4_PORT, .label_name = "L4", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
+#elif defined(RTAX59U) || defined(RMAX6000)
+		.count = NR_WANLAN_PORT,
+		.port[0] = { .phy_port_id = WAN_PORT,  .label_name = "W0", .cap = PHY_PORT_CAP_WAN, .max_rate = 1000, .ifname = NULL },
+		.port[1] = { .phy_port_id = LAN1_PORT, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
+		.port[2] = { .phy_port_id = LAN2_PORT, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
+		.port[3] = { .phy_port_id = LAN3_PORT, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
+#else
+		#error "port_mapping is not defined."
+#endif
+	};
+	if (!port_mapping)
+		return;
+
+///////////////// copy all Ethernet port here ////////////////////////
+	memcpy(port_mapping, &port_mapping_static, sizeof(phy_port_mapping));
+
+///////////////// finetune Ethernet port here ////////////////////////
+#if defined(TUFAX4200)
+	if (nvram_match("HwId", "A")) { // disable 2.5G LAN
+		port_mapping->count = NR_WANLAN_PORT-1;
+		port_mapping->port[port_mapping->count].phy_port_id = -1;
+	}
+#endif
+
+///////////////// Assign Ethernet NIC name here ////////////////////////
+	for (i = 0; i < port_mapping->count; i++) {
+		id = port_mapping->port[i].phy_port_id;
+		if (id != -1)
+			port_mapping->port[i].ifname = (char *)vport_to_iface[id];
+	}
+
+///////////////// Add USB port define here ////////////////////////
+#if defined(PANTHERB) || defined(TUFAX4200) || defined(TUFAX6000)
+////  1 USB3 port device
+	i = port_mapping->count++;
+	port_mapping->port[i].phy_port_id = -1;
+	port_mapping->port[i].label_name = "U1";
+	port_mapping->port[i].cap = PHY_PORT_CAP_USB;
+	port_mapping->port[i].max_rate = 5000;
+	port_mapping->port[i].ifname = NULL;
+#elif defined(PANTHERA) || defined(RTAX59U)
+////  1 USB3 + 1 USB2 port device
+	i = port_mapping->count++;
+	port_mapping->port[i].phy_port_id = -1;
+	port_mapping->port[i].label_name = "U1";
+	port_mapping->port[i].cap = PHY_PORT_CAP_USB;
+	port_mapping->port[i].max_rate = 5000;
+	port_mapping->port[i].ifname = NULL;
+	i = port_mapping->count++;
+	port_mapping->port[i].phy_port_id = -1;
+	port_mapping->port[i].label_name = "U2";
+	port_mapping->port[i].cap = PHY_PORT_CAP_USB;
+	port_mapping->port[i].max_rate = 480;
+	port_mapping->port[i].ifname = NULL;
+#endif
+
+	add_sw_cap(port_mapping);
+	swap_wanlan(port_mapping);
+	return;
+}
+#endif // end of RTCONFIG_NEW_PHYMAP
+

@@ -8,8 +8,6 @@
 <meta HTTP-EQUIV="Expires" CONTENT="-1">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <link rel="icon" href="images/favicon.png">
-<script type="text/javascript" src="/js/jquery.js"></script>
-<script type="text/javascript" src="/js/https_redirect/https_redirect.js"></script>
 <title><#Web_Title#></title>
 <style>
 @font-face{
@@ -42,8 +40,10 @@ body{
 }
 .main-field-bg{
 	margin:20px auto 0;
-	width: 887px;
+	width: 100%;
 	height: 849px;
+	display: flex;
+	justify-content: center;
 }
 .main-field-bg-odm{
 	margin:20px auto 0;
@@ -52,7 +52,6 @@ body{
 	background: url('./images/New_ui/COD_rog_bg_login.png') no-repeat;
 }
 .main-field-padding{
-	width: 887px;
 	margin: 0 auto;	
 }
 .logo-rog{
@@ -66,7 +65,6 @@ body{
 	height: 191px;
 }
 .model-name{
-	width: 420px;
 	height: 100%;
 	font-size: 48px;
 	font-weight: bold;
@@ -104,6 +102,14 @@ body{
 	display: flex;
 	justify-content: center;
 	margin: 0 0 20px 0;
+}
+.warming_desc{
+	margin:0px 30px 0px 185px;
+	font-size: 14px;
+	align-items: center;
+	color:#FC0;
+	line-height:20px;
+	width: 520px;
 }
 .error-hint-bg{
 	width: 537px;
@@ -333,8 +339,6 @@ body{
 }
 </style>
 <script>
-var odm_support = ('<% nvram_get("rc_support"); %>'.indexOf(' odm') != -1) ? true : false;
-
 /* add Array.prototype.forEach() in IE8 */
 if(typeof Array.prototype.forEach != 'function'){
 	Array.prototype.forEach = function(callback){
@@ -357,17 +361,78 @@ function tryParseJSON (jsonString){
     return false;
 };
 
+var htmlEnDeCode = (function() {
+	var charToEntityRegex,
+		entityToCharRegex,
+		charToEntity,
+		entityToChar;
+
+	function resetCharacterEntities() {
+		charToEntity = {};
+		entityToChar = {};
+		// add the default set
+		addCharacterEntities({
+			'&amp;'	 :   '&',
+			'&gt;'	  :   '>',
+			'&lt;'	  :   '<',
+			'&quot;'	:   '"',
+			'&#39;'	 :   "'"
+		});
+	}
+
+	function addCharacterEntities(newEntities) {
+		var charKeys = [],
+			entityKeys = [],
+			key, echar;
+		for (key in newEntities) {
+			echar = newEntities[key];
+			entityToChar[key] = echar;
+			charToEntity[echar] = key;
+			charKeys.push(echar);
+			entityKeys.push(key);
+		}
+		charToEntityRegex = new RegExp('(' + charKeys.join('|') + ')', 'g');
+		entityToCharRegex = new RegExp('(' + entityKeys.join('|') + '|&#[0-9]{1,5};' + ')', 'g');
+	}
+
+	function htmlEncode(value){
+		var htmlEncodeReplaceFn = function(match, capture) {
+			return charToEntity[capture];
+		};
+
+		return (!value) ? value : String(value).replace(charToEntityRegex, htmlEncodeReplaceFn);
+	}
+
+	function htmlDecode(value) {
+		var htmlDecodeReplaceFn = function(match, capture) {
+			return (capture in entityToChar) ? entityToChar[capture] : String.fromCharCode(parseInt(capture.substr(2), 10));
+		};
+
+		return (!value) ? value : String(value).replace(entityToCharRegex, htmlDecodeReplaceFn);
+	}
+
+	resetCharacterEntities();
+
+	return {
+		htmlEncode: htmlEncode,
+		htmlDecode: htmlDecode
+	};
+})();
+
 var login_info =  tryParseJSON('<% login_error_info(); %>');
 var isIE8 = navigator.userAgent.search("MSIE 8") > -1; 
 var isIE9 = navigator.userAgent.search("MSIE 9") > -1; 
 var remaining_time = login_info.lock_time;
+var remaining_time_min;
+var remaining_time_sec;
+var remaining_time_show;
 var countdownid, rtime_obj;
 var redirect_page = login_info.page;
 var cloud_file = '<% get_parameter("file"); %>';
 var isRouterMode = ('<% nvram_get("sw_mode"); %>' == '1') ? true : false;
 
 var header_info = [<% get_header_info(); %>][0];
-var ROUTERHOSTNAME = '<% nvram_get("local_domain"); %>';
+var ROUTERHOSTNAME = '<#Web_DOMAIN_NAME#>';
 var domainNameUrl = header_info.protocol+"://"+ROUTERHOSTNAME+":"+header_info.port;
 var chdom = function(){window.location.href=domainNameUrl};
 (function(){
@@ -384,12 +449,15 @@ function isSupport(_ptn){
 	var ui_support = [<% get_ui_support(); %>][0];
 	return (ui_support[_ptn]) ? ui_support[_ptn] : 0;
 }
+var odm_support = isSupport("odm");
 var captcha_support = isSupport("captcha");
-if(captcha_support)
-	var captcha_on = (login_info.error_num >= 2 && login_info.error_status != "7")? true : false;
+var captcha_enable = htmlEnDeCode.htmlEncode(decodeURIComponent('<% nvram_char_to_ascii("", "captcha_enable"); %>'));
+if(captcha_support && captcha_enable != "0")
+	var captcha_on = (login_info.error_num >= 2 && login_info.error_status != "7" && login_info.error_status != "11")? true : false;
 else
 	var captcha_on = false;
 
+var faq_href = "https://nw-dlcdnet.asus.com/support/forward.html?model=&type=SG_TeleStand&lang=&kw=&num=";
 function initial(){
 	/*handle sysdep for ROG or ODM product*/
 	if(odm_support){
@@ -411,6 +479,11 @@ function initial(){
 		document.getElementById("password_title_ie").style.display ="";
 	}
 
+	if(flag != 11 && login_info.last_time_lock_warning){
+		document.getElementById("last_time_lock_warning").style.display ="";
+		document.getElementById("last_time_lock_warning").innerHTML ="You have entered an incorrect username or password 9 times. If there's one more failed account or password attempt, your router will be blocked from accessing, and need to be reset to factory setting.";
+	}
+
 	if(flag != ""){
 		document.getElementById("error_status_field").style.display ="";
 		if(flag == 3){
@@ -422,7 +495,7 @@ function initial(){
 			disable_input(1);
 			disable_button(1);
 			rtime_obj=document.getElementById("rtime");
-			rtime_obj.innerHTML=remaining_time;
+			countdownfunc();
 			countdownid = window.setInterval(countdownfunc,1000);
 		}
 		else if(flag == 8){
@@ -473,6 +546,13 @@ function initial(){
 		else if(flag == 10){
 			document.getElementById("error_status_field").style.display ="none";
 			document.getElementById("error_captcha_field").style.display ="";
+		}
+		else if(flag == 11){
+			document.getElementById("error_status_field").innerHTML ="For security reasons, this router has been locked out because of 10 times of incorrect username and password attempts.<br>To unlock, please manually reset your router to factory setting by pressing the reset button on the back.<br>Click <a id=\"faq_SG\" href=\"\" target=\"_blank\" style=\"color:#FC0;text-decoration:underline;\">here</a> for more details.";
+			document.getElementById("faq_SG").href = faq_href;
+			document.getElementById("error_status_field").className = "error_hint error_hint1";
+			disable_input(1);
+			disable_button(1);
 		}
 		else{
 			document.getElementById("error_status_field").style.display ="none";
@@ -541,8 +621,11 @@ function initial(){
 	if(history.pushState != undefined) history.pushState("", document.title, window.location.pathname);
 }
 
-function countdownfunc(){ 
-	rtime_obj.innerHTML=remaining_time;
+function countdownfunc(){
+	remaining_time_min = checkTime(Math.floor(remaining_time/60));
+	remaining_time_sec = checkTime(Math.floor(remaining_time%60));
+	remaining_time_show = remaining_time_min +":"+ remaining_time_sec;
+	rtime_obj.innerHTML = remaining_time_show;
 	if (remaining_time==0){
 		clearInterval(countdownid);
 		setTimeout("top.location.href='/Main_Login.asp';", 2000);
@@ -622,7 +705,7 @@ function login(){
 			|| redirect_page.indexOf(" ") != -1 
 			|| redirect_page.indexOf("//") != -1 
 			|| redirect_page.indexOf("http") != -1
-			|| (redirect_page.indexOf(".asp") == -1 && redirect_page.indexOf(".htm") == -1 && redirect_page != "send_IFTTTPincode.cgi" && redirect_page != "cfg_onboarding.cgi")
+			|| (redirect_page.indexOf(".asp") == -1 && redirect_page.indexOf(".htm") == -1 && redirect_page != "send_IFTTTPincode.cgi" && redirect_page != "cfg_onboarding.cgi" && redirect_page != "ig_s2s_link.cgi")
 		){
 			document.form.next_page.value = "";
 		}
@@ -657,6 +740,13 @@ function disable_button(val){
 		document.getElementById('button').disabled = true;
 	else
 		document.getElementById('button').style.display = "none";
+}
+
+function checkTime(i){
+	if (i<10){
+		i="0" + i
+	}
+	return i
 }
 
 function regen_captcha(){
@@ -702,6 +792,7 @@ function regen_captcha(){
 						<input type="password" name="login_passwd" tabindex="2" class="form-input" maxlength="128" placeholder="<#HSDPAConfig_Password_itemname#>" autocapitalize="off" autocomplete="off">
 					</div>
 					<div id="error_status_field" class="error-hint-bg" style="display: none;" ></div>
+					<div id="last_time_lock_warning" class="warming_desc" style="display:none;" ></div>
 					<div class="input-container">
 						<div id="captcha_field" style="display: none;">
 							<div id="captcha_input_div"><input id ="captcha_text" name="captcha_text" tabindex="3" maxlength="5" autocapitalize="off" autocomplete="off"></div>

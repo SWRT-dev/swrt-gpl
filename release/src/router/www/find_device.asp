@@ -452,7 +452,7 @@ function networkmap_update(){
 <!--For content in ifame-->	
 <!--[if !lte IE 6]>-->
 <div class="banner_t" align="center">
-	<img src="images/New_ui/swrt.png" width="218" height="54" align="left">
+	<img src="images/New_ui/asustitle.png" width="218" height="54" align="left">
 	<span class="modelName_top" style="margin-top:20px;">Device Discovery Web Assistant</span>
 </div>
 

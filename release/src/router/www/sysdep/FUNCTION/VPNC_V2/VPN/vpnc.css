@@ -8,7 +8,7 @@
 .desktop{
 	display: block;
 }
-.no_highlights {
+.no_highlights{
 	-webkit-tap-highlight-color: transparent;
 	-webkit-touch-callout: none;
 	-webkit-user-select: none;
@@ -41,7 +41,7 @@
 	height: auto;
 }
 .vpn_icon_all_collect{
-	background-image: url(/images/New_ui/VPN/vpn_icon_all_collect.svg);
+	background-image: url(/images/New_ui/vpn_icon_all_collect.svg);
 	background-repeat: no-repeat;
 }
 .server_list_container{
@@ -156,6 +156,18 @@
 	margin: auto;
 	color: #a4b7c3;
 }
+.profile_setting_item.keys_item .vpnc_keys_icon{
+	width: 24px;
+	height: 24px;
+	cursor: pointer;
+	background-position: 0px 0px;
+}
+.profile_setting_item.keys_item .vpnc_keys_icon{
+	background-position: -53px 0px;
+}
+.profile_setting_item.keys_item .vpnc_keys_icon:hover{
+	background-position: -53px -55px;
+}
 .client_list_title_container{
 	width: 100%;
 	color: #ABB4C2;
@@ -224,7 +236,7 @@
 	width: 24px;
 	height: 24px;
 	background-position: -108px -163px;
-	background-image: url(/images/New_ui/VPN/vpn_icon_all_collect.svg);
+	background-image: url(/images/New_ui/vpn_icon_all_collect.svg);
 	background-repeat: no-repeat;
 }
 .svr_list_add_icon, .client_list_add_icon{
@@ -256,7 +268,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	margin-bottom: 10px;
+	margin-bottom: 16px;
 }
 .svr_item_container.selected{
 	background: rgb(43, 67, 86);
@@ -280,10 +292,10 @@
 .svr_item_text_container:before{
 	position: absolute;
 	content: "";
-	height: 80%;
+	height: 40%;
 	border-right: 1px solid rgb(255 255 255 / 0.3);
 	right: 0;
-	top: 10%;
+	top: 30%;
 }
 .svr_item_container.default .svr_item_text_container:before{
 	content: initial;
@@ -321,8 +333,14 @@
 	width: 24px;
 	height: 24px;
 	background-position: -540px 0px;
-	background-image: url(/images/New_ui/VPN/vpn_icon_all_collect.svg);
+	background-image: url(/images/New_ui/vpn_icon_all_collect.svg);
 	background-repeat: no-repeat;
+}
+.svr_item_main_info > .main_info_text{
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	width: 90%;
 }
 .svr_item_container.active .svr_item_main_info:before{
 	background-position: -540px -55px;
@@ -339,9 +357,41 @@
 .svr_item_container.error_hint.active.default_wan_selected .svr_item_main_info:before{
 	background-position: -540px -270px
 }
+.svr_item_container .item_tag_container{
+	position: absolute;
+	right: 4%;
+	top: -12px;
+	font-size: 12px;
+	color: #FFFFFF;
+	height: 24px;
+	line-height: 24px;
+	display: flex;
+}
+.item_tag_container > .item_tag{
+	background: rgb(54 69 81);
+	border: 1px solid #2597FF;
+	box-shadow: 0px 4px 8px rgb(0 0 0 / 60%), 0px 0px 1px rgb(0 0 0 / 90%);
+	border-radius: 15px;
+	padding-left: 22px;
+	padding-right: 8px;
+	line-height: 22px;
+	margin-left: 6px;
+	position: relative;
+}
+.item_tag_container > .item_tag:before{
+	position: absolute;
+	content: "";
+	width: 14px;
+	height: 100%;
+	left: 5px;
+	background-image: url(/images/New_ui/amesh/client_control.svg);
+	background-repeat: no-repeat;
+	background-size: 320px;
+	background-position: -245px 2px;
+}
 .svr_item_container.internet{
 	justify-content: start;
-	margin-top: 20px;
+	margin-top: 32px;
 	color: rgb(0, 133, 255);
 }
 .svr_item_container.internet:after{
@@ -418,7 +468,7 @@
 }
 .svr_item_error_hint_container{
 	height: 32px;
-	margin-top: -10px;
+	margin-top: -16px;
 	margin-bottom: 10px;
 	background: rgb(0 0 0 / 50%);
 	border-radius: 0 0 8px 8px;
@@ -442,7 +492,7 @@
 	height: 24px;
 	right: 6%;
 	top: 4px;
-	background-image: url(/images/New_ui/VPN/vpn_icon_all_collect.svg);
+	background-image: url(/images/New_ui/vpn_icon_all_collect.svg);
 	background-repeat: no-repeat;
 	background-position: -216px -163px;
 }
@@ -537,6 +587,9 @@
 	height: 48px !important;
 	flex-wrap: nowrap !important;
 }
+.profile_setting_item.textarea{
+	height: auto !important;
+}
 .profile_setting_item.default_connect{
 	height: 60px !important;
 }
@@ -561,9 +614,17 @@
 	max-width: 160px;
 	margin-top: initial;
 }
+.profile_setting_item.nowrap.switch_item .title{
+	position: absolute;
+	max-width: 290px;
+}
 .profile_setting_item.default_connect .title{
 	max-width: 160px;
 	margin-top: initial;
+}
+.profile_setting_item.keys_item .title{
+	position: absolute;
+	max-width: 290px;
 }
 .profile_setting_item.btn_item{
 	height: auto !important;
@@ -599,7 +660,7 @@
 .btn_item .btn_container .text.import_file:before, .btn_item .btn_container .text.create_account:before{
 	position: absolute;
 	content: "";
-	background-image: url(/images/New_ui/VPN/vpn_icon_all_collect.svg);
+	background-image: url(/images/New_ui/vpn_icon_all_collect.svg);
 	background-repeat: no-repeat;
 	background-position: 0px -163px;
 	width: 24px;
@@ -631,22 +692,13 @@
 	justify-content: flex-end;
 	display: flex;
 }
-.default_connect_container .default_wan_icon{
-	width: 30px;
-	height: 30px;
-	cursor: pointer;
-	background-position: -376px 3px;
+.profile_setting_item.nowrap.switch_item .input_container,
+.profile_setting_item.keys_item .input_container{
+	flex: 0 0 95%;
+	min-width: 350px;
+	max-width: initial;
 }
-.default_connect_container .default_wan_icon:hover{
-	background-position: -376px -51px;
-}
-.default_connect_container .default_wan_icon.default_wan_selected{
-	background-position: -376px -105px;
-}
-.default_connect_container .default_wan_icon.not_support{
-	background-position: -213px -160px;
-}
-.textInput, .custom_select_container{
+.textInput, .custom_select_container, .textareaInput{
 	width: 100%;
 	padding-left: 4%;
 	font-size: 14px;
@@ -657,8 +709,14 @@
 	background: rgba(239,246,255,0.20);
 	border: 1px solid rgba(171,180,194,0.20);
 	letter-spacing: 0.1px;
+	resize: none;
 }
-.textInput:focus{
+.textareaInput{
+	padding-left: initial;
+	height: initial;
+	line-height: initial;
+}
+.textInput:focus, .textareaInput:focus{
 	box-shadow: 0 0 3px rgb(0, 133, 255);
 	border: 1px solid rgb(0, 133, 255)
 	outline-offset: 0px;
@@ -837,6 +895,20 @@
 .profile_title_item span{
 	margin-left: 4%;
 }
+.profile_title_item.edit_keys_desc{
+	height: auto;
+	padding-top: 8px;
+	padding-bottom: 8px;
+	flex-flow: column;
+	align-items: flex-start;
+	color: #FFF;
+}
+.profile_title_item.edit_keys_desc > div{
+	margin-left: 4%;
+}
+.profile_title_item.edit_keys_desc span{
+	margin-left: initial;
+}
 .popup_bg{
 	position: absolute;
 	margin: auto;
@@ -861,16 +933,17 @@
 	behavior: url(/PIE.htc);
 	border-radius: 10px 10px 10px 10px;
 	border: 0px;
-	*margin-top:200px;
-	width:400px;
 	font-size:20px;
 	color:#FFFFFF;
 	font-weight:bolder;
 	background-color:#000000;
 	position:absolute;
-	top:0;
 	z-index:200;
-	_position:absolute;
+	width: 80%;
+	max-width: 400px;
+	top: 20vh;
+	left: 0;
+	right: 0;
 }
 .hidden_mask{
 	display: none;
@@ -890,12 +963,13 @@
 	z-index: 600;
 }
 .blur_effect{
-	-webkit-filter: blur(3px); /* Chrome, Opera */
-	-moz-filter: blur(3px);
-	-ms-filter: blur(3px);
-	filter: blur(3px);
+	-webkit-filter: blur(4px); /* Chrome, Opera */
+	-moz-filter: blur(4px);
+	-ms-filter: blur(4px);
+	filter: blur(4px);
 }
 .popup_container{
+	font-family: Arial, Helvetica, sans-serif, "Microsoft JhengHei";
 	display: none;
 	height: auto;
 	top: 4%;
@@ -907,14 +981,14 @@
 	left: 0;
 	right: 0;
 	align-items: center;
+	line-height: 180%;
 }
 .popup_container.popup_element_second{
 	z-index: 500;
 }
 .popup_container.popup_customize_alert{
 	z-index: 700;
-	top: -10%;
-	bottom: 0;
+	top: 12%;
 }
 .popup_container .close_btn, .popup_container .del_btn{
 	position: absolute;
@@ -941,7 +1015,8 @@
 	margin-bottom: 20px;
 }
 .popup_title_container .title{
-	height: 40px;
+	min-height: 40px;
+	height: auto;
 	color: hsl(0deg 0% 100%);
 	font-size: 32px;
 	font-weight: 600;
@@ -1026,7 +1101,7 @@
 	left: -60px;
 	border-radius: 24px;
 	background-color: rgba(164, 183, 195, 0.2);
-	background-image: url(/images/New_ui/VPN/vpn_icon_all_collect.svg);
+	background-image: url(/images/New_ui/vpn_icon_all_collect.svg);
 	background-repeat: no-repeat;
 }
 .feature_desc .step_text.add:before{
@@ -1124,7 +1199,7 @@
 	width: 100%;
 	bottom: 6px;
 }
-.validate_hint, .vpn_type_maxi_hint{
+.validate_hint, .vpn_type_maxi_hint, .item_hint{
 	min-height: 32px;
 	height: auto;
 	background: rgb(0 0 0 / 50%);
@@ -1135,8 +1210,12 @@
 	font-weight: 500;
 	letter-spacing: 0.1px;
 }
-.vpn_type_maxi_hint{
+.vpn_type_maxi_hint, .item_hint{
 	color: #FC0;
+}
+.item_hint > div{
+	width: 100%;
+	margin: 2px 0 2px 0px;
 }
 .client_list_content_container .client_container{
 	display: flex;
@@ -1283,7 +1362,7 @@
 	right: 2%;
 }
 .wan_status_container .connect_icon_container > div{
-	background: url(/images/New_ui/vpn/cards_usage.svg) no-repeat;
+	background: url(/images/New_ui/VPN/cards_usage.svg) no-repeat;
 	background-size: initial;
 	width: 65px;
 	height: 65px;
@@ -1371,6 +1450,9 @@
 		box-shadow: 0px 4px 5px 0px rgb(0 0 0 / 14%), 0px 1px 10px 0px rgb(0 0 0 / 12%), 0px 2px 4px -1px rgb(0 0 0 / 20%);
 		border-color: rgb(54, 71, 82);
 	}
+	.item_tag_container > .item_tag{
+		background: #1E2A41;
+	}
 	.svr_item_error_hint_container{
 		border: 1px solid;
 		border-color: rgb(54, 71, 82);
@@ -1401,6 +1483,10 @@
 	}
 	.popup_container .popup_content_container{
 		background: #1E2A41;
+	}
+	.popup_container.popup_customize_alert{
+		top: -10%;
+		bottom: 0;
 	}
 	.popup_container .close_btn{
 		top: 10px;
@@ -1459,6 +1545,13 @@
 	.profile_setting_item, .popup_container .popup_content_container .profile_setting_item{
 		height: 70px;
 	}
+	.popup_container.textarea_width{
+		width: 80% !important;
+		max-width: 750px !important;
+	}
+	.popup_container.textarea_width .profile_setting_item.textarea .input_container{
+		max-width: 540px;
+	}
 	.profile_setting_item .title{
 		flex: 0 0 30%;
 		max-width: 160px;
@@ -1468,6 +1561,15 @@
 		flex: 0 0 70%;
 		max-width: 312px;
 		margin: initial;
+	}
+	.profile_setting_item.keys_item .input_container{
+		flex: 0 0 93%;
+		max-width: 470px;
+		margin-left: 4%;
+		min-width: initial;
+	}
+	.profile_setting_item.textarea{
+		padding: 12px 0;
 	}
 	.action_container .btn_container{
 		width: 200px;

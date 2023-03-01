@@ -135,6 +135,11 @@ struct REPLACE_PRODUCTID_S {
 };
 #endif
 
+struct REPLACE_TAG_S {
+        char *org_name;
+        char *replace_name;
+};
+
 #ifdef RTCONFIG_SAVE_WL_NVRAM_BOTH
 struct wl_sync_nvram {
         int model;
@@ -167,8 +172,7 @@ struct wl_sync_nvram {
 #ifdef RTCONFIG_CAPTCHA
 #define WRONGCAPTCHA   10
 #endif
-
-#define LOCKTIME 60*5
+#define FORCELOCK       11
 
 /* image path for app */
 #define IMAGE_MODEL_PRODUCT	"/Model_product.png"
@@ -195,29 +199,24 @@ struct wl_sync_nvram {
 #define NMP_CL_JSON_FILE                "/tmp/nmp_cl_json.js"
 #endif
 
-enum {
-	HTTP_OK = 200,
-	HTTP_FAIL = 400,
-	HTTP_CHPASS_FAIL,
-	HTTP_CHPASS_FAIL_MAX,
-	HTTP_RULE_ADD_SUCCESS = 2001,
-	HTTP_RULE_DEL_SUCCESS,
-	HTTP_NORULE_DEL,
-	HTTP_RULE_MODIFY_SUCCESS,
-	HTTP_OVER_MAX_RULE_LIMIT = 4000,
-	HTTP_INVALID_ACTION,
-	HTTP_INVALID_MAC,
-	HTTP_INVALID_ENABLE_OPT,
-	HTTP_INVALID_NAME,
-	HTTP_INVALID_EMAIL,
-	HTTP_INVALID_INPUT,
-	HTTP_INVALID_IPADDR,
-	HTTP_INVALID_TS,
-	HTTP_INVALID_FILE,
-	HTTP_INVALID_SUPPORT,
-	HTTP_SHMGET_FAIL = 5000,
-	HTTP_FB_SVR_FAIL
-};
+#ifdef RTCONFIG_IPSEC
+#define IPSEC_CLIENT_NUM 8
+#define IPSEC_GUEST_CLIENT_NUM 32
+#define JFFS_IPSEC              "/jffs/ipsec/"
+#define JFFS_CA_FILES           "/jffs/ca_files/"
+#define FILE_NAME_CERT_PEM                      "asusCert.pem"
+#define FILE_NAME_CERT_DER                      "asusCert.der"
+#define FILE_NAME_SVR_CERT_PEM          "svrCert.pem"
+#define OPENVPN_EXPORT_FILE     "/tmp/server_ovpn.cert"
+#define IPSEC_UPLOAD_FLODER     "/tmp/server_ipsec_file"
+#define IPSEC_UPLOAD_FILE       "/tmp/server_ipsec_file/server_ipsec.tgz"
+#endif
+
+#define CRC_LEN 8
+
+#ifdef RTCONFIG_WIREGUARD
+#define WG_DIR_CONF    "/etc/wg"
+#endif
 
 /* Exception MIME handler */
 struct except_mime_handler {
@@ -238,7 +237,7 @@ extern struct mime_referer mime_referers[];
 typedef struct asus_token_table asus_token_t;
 struct asus_token_table{
 	char useragent[1024];
-	char token[32];
+	char token[33];
 	char ipaddr[16];
 	char login_timestampstr[32];
 	char host[64];
@@ -350,7 +349,7 @@ extern struct ej_handler ej_handlers[];
 #define LOCK_LOGIN_LAN 	0x01
 #define LOCK_LOGIN_WAN 	0x02
 
-#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX6000) || defined(GTAXE16000) || defined(GTAX11000_PRO)
+#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX6000) || defined(GTAXE16000) || defined(GTAX11000_PRO) || defined(GT10) || defined(RTAX82U_V2)
 enum {
         LEDG_QIS_RUN = 1,
         LEDG_QIS_FINISH
@@ -390,15 +389,13 @@ extern unsigned int get_radio_status(char *ifname);
 extern void do_f(char *path, webs_t wp);
 
 /* cgi.c */
-extern int web_read(void *buffer, int len);
-extern void unescape(char *s);
+extern void unescape(char *s, size_t len);
 extern char *get_cgi(char *name);
 extern void set_cgi(char *name, char *value);
 extern void init_cgi(char *query);
 extern char *webcgi_get(const char *name);
 extern void webcgi_set(char *name, char *value);
 extern void webcgi_init(char *query);
-extern int web_read(void *buffer, int len);
 
 /* httpd.c */
 extern int json_support;
@@ -465,6 +462,7 @@ extern char* reverse_str( char *str );
 extern int check_AiMesh_whitelist(char *page);
 #endif
 extern int check_cmd_injection_blacklist(char *para);
+extern void __validate_apply_set_wl_var(char *nv, char *val) __attribute__((weak));
 
 /* web-*.c */
 extern int ej_wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit);
@@ -477,9 +475,10 @@ extern const char *syslog_msg_filter[];
 extern char referer_host[64];
 extern char host_name[64];
 extern char user_agent[1024];
-extern char gen_token[32];
+extern char gen_token[33];
 extern char indexpage[128];
 extern char url[128];
+extern char referer_url[128];
 extern unsigned int login_ip; // the logined ip
 extern unsigned int app_login_ip; // the app logined ip
 extern char cookies_buf[4096];
@@ -492,8 +491,18 @@ extern int check_user_agent(char* user_agent);
 #if defined(RTCONFIG_IFTTT) || defined(RTCONFIG_ALEXA) || defined(RTCONFIG_GOOGLE_ASST)
 extern void add_ifttt_flag(void);
 #endif
+extern char HTTPD_LOGIN_FAIL_LAN[32];
+extern char HTTPD_LOGIN_FAIL_WAN[32];
+extern char HTTPD_LAST_LOGIN_FAIL_TS[32];
+extern char HTTPD_LAST_LOGIN_FAIL_TS_W[32];
+extern char CAPTCHA_FAIL_NUM[32];
+extern char HTTPD_LOCK_NUM[32];
+extern char cloud_file[256];
+
 
 #ifdef RTCONFIG_HTTPS
+extern int do_ssl;
+extern int ssl_stream_fd;
 extern int gen_ddns_hostname(char *ddns_hostname);
 extern int check_model_name(void);
 extern char *pwenc(char *input, char *output, int len);
@@ -513,21 +522,17 @@ extern int alexa_block_internet(int block);
 
 extern int cur_login_ip_type;
 extern time_t login_timestamp_tmp; // the timestamp of the current session.
-extern time_t last_login_timestamp; // the timestamp of the current session.
 extern time_t login_timestamp_tmp_wan; // the timestamp of the current session.
-extern time_t last_login_timestamp_wan; // the timestamp of the current session.
-extern unsigned int login_try;
-extern unsigned int login_try_wan;
 extern time_t auth_check_dt;
 extern int lock_flag;
 extern int max_lock_time;
-extern int add_try;
+extern int login_error_status;
 extern char* ipisdomain(char* hostname, char* str);
 #ifdef RTCONFIG_AMAS
 extern char* iscap(char* str);
 #endif
 extern int referer_check(char* referer, int fromapp_flag);
-extern int auth_check(char* url, char* file, char* cookies, int fromapp_flag);
+extern int auth_check(char* url, char* file, char* cookies, int fromapp_flag, int *add_count);
 extern int check_noauth_referrer(char* referer, int fromapp_flag);
 extern char current_page_name[128];
 extern int gen_guestnetwork_pass(char *key, size_t size);
@@ -556,12 +561,14 @@ extern void amazon_wss_enable(char *wss_enable, char *do_rc);
 #endif
 #ifdef RTCONFIG_ACCOUNT_BINDING
 extern void do_get_eptoken_cgi(char *url, FILE *stream);
+extern void do_asusrouter_request_token_cgi(char *url, FILE *stream);
+extern void do_asusrouter_request_access_token_cgi(char *url, FILE *stream);
+extern void do_endpoint_request_token_cgi(char *url, FILE *stream);
 #endif
 #ifdef RTCONFIG_CAPTCHA
-extern unsigned int login_fail_num;
 extern int is_captcha_match(char *catpch);
 #endif
-#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX6000) || defined(GTAXE16000) || defined(GTAX11000_PRO)
+#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX6000) || defined(GTAXE16000) || defined(GTAX11000_PRO) || defined(GT10) || defined(RTAX82U_V2)
 extern void switch_ledg(int action);
 #endif
 #ifdef RTCONFIG_SAVE_WL_NVRAM_BOTH
@@ -569,13 +576,37 @@ extern int sync_wl_nvram(char *nvram, int unit, char *value);
 #endif
 extern int get_external_ip(void);
 extern int get_rtinfo();
+//Tencent download
+#define SESSION_RECORD          "/jffs/tencent_session_update.json"
+#define TC_STATE_COMPLETED      "completed"
+extern int customized_match(char *pattern, char *url);
+extern void tencent_send_file(char *url, FILE *stream);
 extern void clean_ban_ip_timeout();
 extern int filter_ban_ip();
 extern void slowloris_check();
 extern void slow_post_read_check();
+extern void gen_random_string(char *out, size_t len);
 extern int check_chpass_auth(char *cur_username, char *cur_passwd);
-extern int save_changed_param(json_object *cfg_root, char *param);
 extern void reg_default_final_token();
-extern int get_wl_nband_list();
+extern int captcha_on();
+extern void do_webdavInfo_asp(char *url, FILE *stream);
+extern int gen_wl_nband_array();
+extern void do_get_cta_info_cgi(char *url, FILE *stream);
+extern void do_upload_config_sync_post(char *url, FILE *stream, int len, char *boundary);
+extern void do_upload_config_sync_cgi(char *url, FILE *stream);
+extern void do_upload_blacklist_config_cgi(char *url, FILE *stream);
+extern void do_start_config_sync_cgi(char *url, FILE *stream);
+extern void do_save_all_profile_cgi(char *url, FILE *stream);
+#if defined(RTCONFIG_SAVEJFFS)
+extern int get_jffs_cfgs(FILE *stream, int *len);
+#endif
+extern int delete_client_in_group_list(char *del_maclist, int del_idx, char *in_group_list, char *out_group_list, int out_len);
+extern int b64_decode(const char* str, unsigned char* space, int size);
+extern int redirect_service_page(char *next_page, webs_t wp);
+extern void store_file_var(char *login_url, char *file);
+extern int save_changed_param(json_object *cfg_root, char *param, const char *value);
+extern int get_active_wan_unit(void);
+extern int last_time_lock_warning(void);
+extern int check_lock_status(time_t *dt);
 #endif /* _httpd_h_ */
 

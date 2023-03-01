@@ -276,6 +276,16 @@ int _ifconfig(const char *name, int flags, const char *addr, const char *netmask
 	}
 
 	close(s);
+
+//Andrew add
+#ifdef RTCONFIG_CONNTRACK 
+	if(flags & IFUP)
+		conntrack_check(CONNTRACK_START); 
+	else if (flags & IFFDOWN)
+		conntrack_check(CONNTRACK_STOP); 
+#endif
+//Andrew end
+
 	return 0;
 
  ERROR:
@@ -749,3 +759,4 @@ int stop_vlan(void)
 
 	return 0;
 }
+

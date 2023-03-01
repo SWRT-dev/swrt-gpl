@@ -68,7 +68,8 @@
 						"lan_ipaddr", 
 						"wlc_dpsta", 
 						"CoBrand", 
-						"wans_dualwan", 
+						"wans_dualwan",
+						"wans_mode",
 						"dslx_transmode", 
 						"dsl0_proto", 
 						"dsl0_pppoe_username", 
@@ -148,6 +149,7 @@
 					systemVariable.forceChangePw = (httpApi.hookGet("check_pw") == '1') ? true : false;
 					systemVariable.linkLnternet = httpApi.isConnected();
 					systemVariable.maxPasswordLen = getSupportNum("MaxLen_http_passwd");
+					systemVariable.originWansMode = initNvram.wans_mode;
 
 					httpApi.log("tcode", systemVariable.territoryCode, systemVariable.qisSession)
 
@@ -155,6 +157,7 @@
 						systemVariable.originWansExtwan = httpApi.nvramGet(["wans_extwan"]).wans_extwan;
 					if(isSupport("10G_LWAN") || isSupport("10GS_LWAN"))
 						systemVariable.originWansDualwan = httpApi.nvramGet(["wans_dualwan"]).wans_dualwan;
+
 					$("#switchWanTagContainer").append(Get_Component_ISPSelect);
 					$("#switch_wantag").attr("class", "optionInput");
 					getCloudProfiles();
@@ -180,6 +183,19 @@
 					if(dwb_mode == "1" && systemVariable.scMode == "SC_all")
 						systemVariable.scMode = "SC_dwb_mode";
 
+					systemVariable.eth_wan_list = httpApi.hookGet("get_ethernet_wan_list", true);
+					if(Object.keys(systemVariable.eth_wan_list).length > 1){
+						Object.keys(systemVariable.eth_wan_list).forEach(function(eth_wan){
+							var wan_obj = systemVariable.eth_wan_list[eth_wan];
+							if(wan_obj.hasOwnProperty("extra_settings")){
+								var extra_settings = wan_obj.extra_settings;
+								$.each(extra_settings, function(key) {
+									if(!systemVariable.hasOwnProperty(key))
+										systemVariable[key] = httpApi.nvramGet([key], true)[key];
+								});
+							}
+						});
+					}
 					handleSysDep();
 
 					switch(getJsonFromUrl["flag"] || ""){
@@ -210,6 +226,9 @@
 						case "amas_addNode":
 							systemVariable.amas_newWindow_addNode = true;
 							setTimeout(goTo.amasearch, 50);
+						break;
+						case "site2site":
+							goTo.site2site();
 						break;
 						default:
 							goTo.Welcome();
@@ -303,7 +322,7 @@
 							<div style="font-weight: normal;"><#Setup_node_desc_step2#></div>
 						</div>
 						<div style="text-align: center;">
-							<div><img id="product_location" width="504" src="/images/product_location.png"></div>
+							<div><img id="product_location" src="/images/product_location.png"></div>
 						</div>
 					</div>
 
@@ -1055,8 +1074,8 @@
 				<div class="table_td">
 					<div class="pageDesc" id="connTypeDesc"><#Layer3Forwarding_x_ConnectionType_itemname#></div>
 					<div>
-						<div class="selectorTopContainer">
-							<div class="selectorContainer">
+						<div class="selectorTopContainer" id="wanOptions">
+							<div class="selectorContainer WAN1G">
 								<div class="selectorContainerDiv">
 									<div class="selectBar" onclick="apply.WAN1G();">
 										<#wan_port#>
@@ -2694,6 +2713,243 @@
 				<div style="display: flex;justify-content: center;">
 					<div class="GD-bg"></div>
 					<div class="GD-logo"></div>
+				</div>
+			</div>
+		</div>
+
+		<!-- site2site Setting -->
+		<div id="site2site_setting" data-role="page" class="qisBackground ig_site2site">
+			<div class="headerBar"></div>
+			<div class="tableContainer">
+				<div class="desktop_left_field">
+					<div>
+						<div class="titleMain">VPN</div>
+						<div class="titleSub">WiFi</div>
+					</div>
+				</div>
+				<div class="table_td">
+					<div id="s2s_desc" class="pageDesc">
+						Create an Instant Guard WiFi network establishing a secure connection with friend's ASUS router, so that all devices connected to Instant Guard WiFi can enjoy a secure internet access.<!-- untranslated -->
+					</div>
+					<div class="s2s_illustration_container">
+						<div id="s2s_device" class="s2s_icon_container">
+							<div class="s2s_icon device"></div>
+							<div class="s2s_text">
+								<div>My device</div><!-- untranslated -->
+								<div><#Web_Title2#></div>
+							</div>
+						</div>
+						<div class="s2s_blank_container">
+							<div class="horizontal_line"></div>
+						</div>
+						<div id="s2s_friend" class="s2s_icon_container">
+							<div class="s2s_icon"></div>
+							<div class="s2s_text">
+								<div>Friend's</div><!-- untranslated -->
+								<div data-component="friend_domain">asus.asuscomm.com</div>
+							</div>
+						</div>
+						<div class="s2s_blank_container">
+							<div class="horizontal_line"></div>
+						</div>
+						<div id="s2s_internet" class="s2s_icon_container">
+							<div class="s2s_icon internet"></div>
+							<div class="s2s_text"><div><#Internet#></div></div>
+						</div>
+					</div>
+					<div id="s2s_field">
+						<div>
+							<div class="inputTitleContainer">
+								<div class="inputTitle"><#QIS_finish_wireless_item1#></div>
+							</div>
+							<div class="inputContainer">
+								<input id="s2s_wireless_ssid" type="text" maxlength="33" class="textInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-role="none" data-clear-btn="true">
+							</div>
+						</div>
+						<div>
+							<div class="inputTitleContainer">
+								<div class="inputTitle"><#QIS_finish_wireless_item2#></div>
+								<div class="secureInput icon_eye_close" for="s2s_wireless_key"></div>
+							</div>
+							<div class="inputContainer">
+								<input id="s2s_wireless_key" type="password" maxlength="64" class="textInput" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" data-role="none" data-clear-btn="true">
+							</div>
+						</div>
+						<!-- Action Button -->
+						<div class="footer_desktop">
+							<div class="desktop_applyBtn" onclick="apply.site2site();"><#CTL_apply#></div>
+						</div>
+						<div class="footer_mobile">
+							<table style="width:100%;" cellpadding="0" cellspacing="0">
+								<tr>
+									<td class="mobileApply" onclick="apply.site2site();">
+										<div class="mobile_applyBtn"><#CTL_apply#></div>
+									</td>
+								</tr>
+							</table>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- site2site wl Setting -->
+		<div id="site2site_wlSet" data-role="page" class="qisBackground ig_site2site">
+			<div class="headerBar"></div>
+			<div class="tableContainer">
+				<div class="desktop_left_field">
+					<div>
+						<div class="titleMain">VPN</div>
+						<div class="titleSub"><#WiFi_Network_List#></div>
+					</div>
+				</div>
+				<div class="table_td">
+					<div id="s2s_wlSet_desc" class="pageDesc"><#Guest_Network#></div>
+					<div id="s2s_wlSet_field">
+						<div id="s2s_wlSet_hint" class="hint_yellow" style="padding:0 30px;margin-top:6px;display:none;">
+							You have set up the first set of guest networks, please choose to keep the original guest network settings or use the new network settings to create Instant Guard WiFi<!-- untranslated -->
+						</div>
+						<div class="selectorTopContainer">
+							<div class="apListContainer s2s_wlSetContainer" data-container="wl_new">
+								<div class="apListDiv">
+									<div class="ap_ssid"></div>
+									<div class="ap_band">New</div><!-- untranslated -->
+									<div class="ap_narrow_container">
+										<div class="icon_arrow_right ap_narrow"></div>
+									</div>
+								</div>
+							</div>
+							<div class="apListContainer s2s_wlSetContainer" data-container="wl_ori">
+								<div class="apListDiv">
+									<div class="ap_ssid"></div>
+									<div class="ap_band">Original</div><!-- untranslated -->
+									<div class="ap_narrow_container">
+										<div class="icon_arrow_right ap_narrow"></div>
+									</div>
+								</div>
+							</div>
+							<div class="apListContainer s2s_wlSetContainer" data-container="wl_none">
+								<div class="apListDiv">
+									<div class="ap_ssid">Do not apply to Instant Guard</div><!-- untranslated -->
+									<div class="ap_band"></div>
+									<div class="ap_narrow_container">
+										<div class="icon_arrow_right ap_narrow"></div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<!-- Action Button -->
+						<div class="footer_desktop">
+							<div class="desktop_abortBtn" onclick="abort.site2site_wlSet();"><#CTL_prev#></div>
+						</div>
+						<div class="footer_mobile">
+							<table style="width:100%;" cellpadding="0" cellspacing="0">
+								<tr>
+									<td class="mobileAbort" style="width:100%;" onclick="abort.site2site_wlSet();">
+										<div class="mobile_abortBtn"><#CTL_prev#></div>
+									</td>
+								</tr>
+							</table>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- site2site Summary -->
+		<div id="site2site_summary_page" data-role="page" class="qisBackground">
+			<div class="headerBar"></div>
+			<div class="tableContainer">
+				<div class="desktop_left_field">
+					<div>
+						<div class="titleMain"><#QIS_finish_Summary#></div>
+					</div>
+				</div>
+				<div class="table_td">
+					<div data-group="summary_info" data-container="configuring">
+						<div class="pageDesc"><#Mobile_configuring#></div>
+						<div class="cssload-bellContainer">
+							<div class="cssload-bell">
+								<div class="cssload-circle">
+									<div class="cssload-inner"></div>
+								</div>
+								<div class="cssload-circle">
+									<div class="cssload-inner"></div>
+								</div>
+								<div class="cssload-circle">
+									<div class="cssload-inner"></div>
+								</div>
+								<div class="cssload-circle">
+									<div class="cssload-inner"></div>
+								</div>
+								<div class="cssload-circle">
+									<div class="cssload-inner"></div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div data-group="summary_info" data-container="success">
+						<div class="pageDesc">Your Instant Guard WiFi is operating perfectly!</div><!-- untranslated -->
+						<div class="pageDesc" id="wl_2G">
+							<div class="descSteps">2.4 GHz</div>
+							<div data-container="wl_info"></div>
+						</div>
+						<div class="pageDesc" id="wl_5G">
+							<div class="descSteps">5 GHz</div>
+							<div data-container="wl_info"></div>
+						</div>
+						<div data-container="action_container">
+							<div class="footer_desktop">
+								<div class="desktop_applyBtn" onclick="goTo.site2site_leave();"><#QKSet_finishpre_rebootnow#></div>
+							</div>
+							<div class="footer_mobile">
+								<table style="width:100%;" cellpadding="0" cellspacing="0">
+									<tr>
+										<td class="mobileApply" onclick="goTo.site2site_leave();">
+											<div class="mobile_applyBtn"><#QKSet_finishpre_rebootnow#></div>
+										</td>
+									</tr>
+								</table>
+							</div>
+						</div>
+					</div>
+
+					<div data-group="summary_info" data-container="err_msg">
+						<div data-group="msg_content" data-container="fail">
+							<div class="pageDesc"><#SET_fail_desc#></div>
+						</div>
+
+						<div data-group="msg_content" data-container="isDutSelf">
+							<div class="pageDesc">This is the device of inviter. Please choose another device to accept invitation for Instant Guard WiFi.</div><!-- untranslated -->
+						</div>
+
+						<div data-group="msg_content" data-container="profileMaximum">
+							<div data-group="msg_maxi_content" data-container="vpn_wifi_maxi" class="pageDesc">Your VPN WiFi profile already reached max number, please remove current profile to add new one.</div><!-- untranslated -->
+							<div data-group="msg_maxi_content" data-container="vpn_profile_maxi" class="pageDesc">Your VPN profile already reached max number, please remove current profile to add new one.</div><!-- untranslated -->
+							<div data-group="msg_maxi_content" data-container="vpn_wg_maxi" class="pageDesc">Your VPN profile with WireGuard type already reached max number, please remove current profile to add new one.</div><!-- untranslated -->
+						</div>
+
+						<div data-group="msg_content" data-container="notSupport">
+							<div class="pageDesc">This device currently does not support the Instant Guard WiFi connection feature, please confirm whether the device supports this feature and upgrade to the latest firmware.</div><!-- untranslated -->
+							<div class="pageDesc"><#AiMesh_confirm_msg12#></div>
+						</div>
+
+						<div data-container="action_container">
+							<div class="footer_desktop">
+								<div class="desktop_applyBtn" onclick="goTo.site2site_leave();"><#QKSet_finishpre_rebootnow#></div>
+							</div>
+							<div class="footer_mobile">
+								<table style="width:100%;" cellpadding="0" cellspacing="0">
+									<tr>
+										<td class="mobileApply" onclick="goTo.site2site_leave();">
+											<div class="mobile_applyBtn"><#QKSet_finishpre_rebootnow#></div>
+										</td>
+									</tr>
+								</table>
+							</div>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>

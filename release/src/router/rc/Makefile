@@ -403,6 +403,10 @@ endif
 ifeq ($(RTCONFIG_WIFI_SON),y)
 OBJS += repacd.o
 endif
+ifeq ($(RTCONFIG_QCA_EZMESH),y)
+OBJS += ezmesh_1905.o
+OBJS += ezmesh_file.o
+endif
 else ifeq ($(RTCONFIG_ALPINE),y)
 OBJS += init-alpine.o wps-alpine.o alpine.o ate-alpine.o
 ifeq ($(RTCONFIG_AMAS),y)
@@ -509,6 +513,9 @@ ifeq ($(RTCONFIG_PARENTALCTRL),y)
 OBJS += pc.o
 OBJS += pc_block.o
 OBJS += pc_tmp.o
+ifeq ($(RTCONFIG_PC_REWARD),y)
+OBJS += pc_reward.o
+endif
 endif
 
 ifeq ($(RTCONFIG_INTERNETCTRL),y)
@@ -525,7 +532,7 @@ ifeq ($(RTCONFIG_FRS_LIVE_UPDATE),y)
 OBJS += frs_service.o
 endif
 
-ifeq ($(RTCONFIG_ASUSDDNS_ACCOUNT_BASE),y)
+ifeq ($(and $(RTCONFIG_TUNNEL),$(RTCONFIG_ACCOUNT_BINDING)),y)
 OBJS += asus_ddns.o
 endif
 
@@ -696,7 +703,7 @@ endif
 ifeq ($(RTCONFIG_SOFTWIRE46),y)
 CFLAGS += -I$(TOP)/json-c
 LDFLAGS += -L$(TOP)/json-c/.libs -ljson-c
-OBJS += s46map_rptd.o
+OBJS += s46comm.o v6plusd.o ocnvcd.o
 endif
 
 ifeq ($(RTCONFIG_INTERNAL_GOBI),y)
@@ -780,6 +787,12 @@ endif
 
 ifeq ($(RTCONFIG_AMAS_WGN), y)
 OBJS += amas_wgn.o
+endif
+
+#Tencent download
+ifeq ($(RTCONFIG_TC_DOWNLOAD), y)
+OBJS += tc_utils.o
+CFLAGS += -D _FILE_OFFSET_BITS=64
 endif
 
 ifeq ($(RTCONFIG_BCMARM),y)
@@ -869,6 +882,12 @@ endif
 CFLAGS += -I$(TOP)/wlceventd
 LDFLAGS2 = $(LDFLAGS)
 
+## added by Andrew (2011/10/08)
+OBJS += alt_watchdog.o
+CFLAGS += -I$(TOP)/libev-4.33
+LDFLAGS2 += -L$(TOP)/libev-4.33/.libs -lev
+## end of add
+
 ifeq ($(RTCONFIG_QCA_LBD),y)
 OBJS += $(if $(wildcard sysdeps/qca/lbd-qca.c),lbd-qca.o,prebuild/lbd-qca.o)
 endif
@@ -918,6 +937,12 @@ endif
 CFLAGS += -I$(TOP)/acsd$(BCMEX)$(EX7)
 CFLAGS  += -I$(TOP)/sqlite
 LDFLAGS2 += -L$(TOP)/sqlite/.libs -lsqlite3
+
+ifeq ($(RTCONFIG_LIB_CODB),y)
+CFLAGS += -I$(TOP)/libcodb
+LDFLAGS2 += -L$(TOP)/libcodb -lcodb
+endif
+
 LDFLAGS2 += -L. -lconn_diag
 
 OBJS += conn_diag.o
@@ -956,6 +981,14 @@ ifeq ($(RTCONFIG_BCM_OAM),y)
 OBJS += oam.o
 endif
 
+ifeq ($(RTCONFIG_SCHED_DAEMON),y)
+OBJS += sched_daemon.o
+endif
+
+ifeq ($(RTCONFIG_TIME_QUOTA),y)
+OBJS += time_quota.o
+endif
+
 ifeq ($(RTCONFIG_WIREGUARD),y)
 CFLAGS += -DRTCONFIG_CROND
 OBJS += wireguard.o
@@ -963,6 +996,10 @@ endif
 
 ifeq ($(RTCONFIG_QCA_PLC2),y)
 OBJS += detect_plc.o
+endif
+
+ifeq ($(RTCONFIG_GRE),y)
+OBJS += gre.o
 endif
 
 ifeq ($(RTCONFIG_EASYMESH),y)
@@ -1020,6 +1057,7 @@ endif
 ifeq ($(RT4GAC86U),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc led_modem
 endif
+	@cd $(INSTALLDIR)/sbin && ln -sf rc led_str_ctrl
 	@cd $(INSTALLDIR)/sbin && ln -sf rc reboot
 	@cd $(INSTALLDIR)/sbin && ln -sf rc halt
 	@cd $(INSTALLDIR)/sbin && ln -sf rc netool
@@ -1051,6 +1089,7 @@ endif
 #	@cd $(INSTALLDIR)/sbin && ln -sf rc ots
 	@cd $(INSTALLDIR)/sbin && ln -sf rc watchdog
 	@cd $(INSTALLDIR)/sbin && ln -sf rc check_watchdog
+	@cd $(INSTALLDIR)/sbin && ln -sf rc alt_watchdog
 ifeq ($(RTCONFIG_CONNTRACK),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc pctime
 endif
@@ -1300,6 +1339,9 @@ ifeq ($(RTCONFIG_PARENTALCTRL),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc pc
 	@cd $(INSTALLDIR)/sbin && ln -sf rc pc_block
 	@cd $(INSTALLDIR)/sbin && ln -sf rc pc_tmp
+ifeq ($(RTCONFIG_PC_REWARD),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc pc_reward
+endif
 endif
 ifeq ($(RTCONFIG_INTERNETCTRL),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc ic
@@ -1443,7 +1485,8 @@ endif
 
 ifeq ($(RTCONFIG_SOFTWIRE46),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc mapcalc
-	@cd $(INSTALLDIR)/sbin && ln -sf rc s46map_rptd
+	@cd $(INSTALLDIR)/sbin && ln -sf rc v6plusd
+	@cd $(INSTALLDIR)/sbin && ln -sf rc ocnvcd
 endif
 
 ifeq ($(RTCONFIG_WLCSCAN_RSSI),y)
@@ -1478,7 +1521,16 @@ ifeq ($(RTCONFIG_QCA_PLC2),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc detect_plc
 endif
 
-ifeq ($(RTCONFIG_ASUSDDNS_ACCOUNT_BASE),y)
+ifeq ($(RTCONFIG_SCHED_DAEMON),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc sched_daemon
+endif
+
+# tencent download
+ifeq ($(RTCONFIG_TC_DOWNLOAD), y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc tc_download
+endif
+
+ifeq ($(and $(RTCONFIG_TUNNEL),$(RTCONFIG_ACCOUNT_BINDING)),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc update_asus_ddns_token
 endif
 	@cd $(INSTALLDIR)/sbin && ln -sf rc collect_debuglog
@@ -1910,15 +1962,30 @@ ledg.o:
 endif
 endif
 ifeq ($(RTCONFIG_SOFTWIRE46),y)
-ifneq ($(wildcard ./prebuild/s46map_rptd.o),)
-s46map_rptd.o:
-	@-cp -f ./prebuild/s46map_rptd.o .
+ifneq ($(wildcard ./prebuild/s46comm.o),)
+s46comm.o:
+	@-cp -f ./prebuild/s46comm.o .
+endif
+ifneq ($(wildcard ./prebuild/v6plusd.o),)
+v6plusd.o:
+	@-cp -f ./prebuild/v6plusd.o .
+endif
+ifneq ($(wildcard ./prebuild/ocnvcd.o),)
+ocnvcd.o:
+	@-cp -f ./prebuild/ocnvcd.o .
 endif
 endif
 ifeq ($(RTCONFIG_TPVPN),y)
 ifneq ($(wildcard ./prebuild/tpvpn.o),)
 tpvpn.o:
 	@-cp -f ./prebuild/tpvpn.o .
+endif
+endif
+
+ifeq ($(RTCONFIG_SCHED_DAEMON),y)
+ifneq ($(wildcard ./prebuild/sched_daemon.o),)
+sched_daemon.o.o:
+	@-cp -f ./prebuild/sched_daemon.o .
 endif
 endif
 

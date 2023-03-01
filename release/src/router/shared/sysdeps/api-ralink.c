@@ -100,17 +100,59 @@ static int __export_gpio(uint32_t gpio)
 	return 0;
 }
 
+#define PWM_SYS_PREFIX	"/sys/class/pwm/pwmchip0"
+uint32_t is_pwm_exported(uint8_t channel)
+{
+	char path[PATH_MAX], tmpbuf[20];
+	snprintf(tmpbuf, sizeof(tmpbuf), "%u", channel);
+	snprintf(path, sizeof(path), PWM_SYS_PREFIX"/pwm%u", channel);
+	if (!d_exists(path))
+		return 0;
+	return 1;
+}
+
+uint32_t pwm_export(uint8_t channel, uint32_t period, uint32_t duty_cycle)
+{
+	char path[PATH_MAX], tmpbuf[20];
+
+	if (!d_exists(PWM_SYS_PREFIX))
+		return -1;
+
+	snprintf(tmpbuf, sizeof(tmpbuf), "%u", channel);
+	f_write_string(PWM_SYS_PREFIX"/export", tmpbuf, 0, 0);
+
+	snprintf(path, sizeof(path), PWM_SYS_PREFIX"/pwm%u/period", channel);
+	snprintf(tmpbuf, sizeof(tmpbuf), "%u", period);
+	f_write_string(path, tmpbuf, 0, 0);
+
+	snprintf(path, sizeof(path), PWM_SYS_PREFIX"/pwm%u/duty_cycle", channel);
+	snprintf(tmpbuf, sizeof(tmpbuf), "%u", duty_cycle);
+	f_write_string(path, tmpbuf, 0, 0);
+
+	// toggle enable to make the status correct
+	snprintf(path, sizeof(path), PWM_SYS_PREFIX"/pwm%u/enable", channel);
+	f_write_string(path, "1", 0, 0);
+	f_write_string(path, "0", 0, 0);
+
+	return 0;
+}
+
 uint32_t gpio_dir(uint32_t gpio, int dir)
 {
 	char path[PATH_MAX], v[10], *dir_str = "in";
 
+	if (gpio >= 200) return 0; // PWM, only output
 	if (dir == GPIO_DIR_OUT) {
 		dir_str = "out";		/* output, low voltage */
 		*v = '\0';
 		snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio + GPIOBASE);
 		if (f_read_string(path, v, sizeof(v)) > 0 && safe_atoi(v) == 1)
 			dir_str = "high";	/* output, high voltage */
-	}
+	} else if (dir == GPIO_DIR_OUT_LOW) {
+                dir_str = "low";
+        } else if (dir == GPIO_DIR_OUT_HIGH) {
+                dir_str = "high";
+        }
 
 	__export_gpio(gpio);
 	snprintf(path, sizeof(path), "%s/gpio%d/direction", GPIOLIB_DIR, gpio + GPIOBASE);
@@ -123,7 +165,15 @@ uint32_t get_gpio(uint32_t gpio)
 {
 	char path[PATH_MAX], value[10];
 
-	snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio + GPIOBASE);
+	if (gpio >= 200) { // PWM
+#if defined(RTCONFIG_PWMX2_GPIOX1_RGBLED)
+		snprintf(path, sizeof(path), PWM_SYS_PREFIX"/pwm%u/mm_enable", gpio-200);
+#else
+		snprintf(path, sizeof(path), PWM_SYS_PREFIX"/pwm%u/enable", gpio-200);
+#endif
+	} else {
+		snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio + GPIOBASE);
+	}
 	f_read_string(path, value, sizeof(value));
 
 	return safe_atoi(value);
@@ -134,7 +184,15 @@ uint32_t set_gpio(uint32_t gpio, uint32_t value)
 	char path[PATH_MAX], val_str[10];
 
 	snprintf(val_str, sizeof(val_str), "%d", !!value);
-	snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio + GPIOBASE);
+	if (gpio >= 200) { // PWM
+#if defined(RTCONFIG_PWMX2_GPIOX1_RGBLED)
+		snprintf(path, sizeof(path), PWM_SYS_PREFIX"/pwm%u/mm_enable", gpio-200);
+#else
+		snprintf(path, sizeof(path), PWM_SYS_PREFIX"/pwm%u/enable", gpio-200);
+#endif
+	} else {
+		snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio + GPIOBASE);
+	}
 	f_write_string(path, val_str, 0, 0);
 
 	return 0;
@@ -991,9 +1049,7 @@ char *get_wlxy_ifname(int x, int y, char *buf)
 		}
 
 		snprintf(prefix, sizeof(prefix), "wl%d.%d_", x, i);
-#if !defined(RTCONFIG_RALINK_BUILDIN_WIFI)
-		if (nvram_pf_match(prefix, "bss_enabled", "1"))
-#endif
+		if (is_bss_enabled(prefix))
 			sidx++;
 	}
 
@@ -1039,11 +1095,29 @@ int get_channel_list(int unit, int ch_list[], int size)
 	return ch_cnt;
 }
 
+uint64_t get_channel_list_mask(enum wl_band_id band)
+{
+	uint64_t m = 0;
+	int i, ch_list[64] = { 0 };
+
+	if (band < 0 || band >= WL_NR_BANDS)
+		return 0;
+
+	get_channel_list(band, ch_list, ARRAY_SIZE(ch_list));
+	for (i = 0; i < ARRAY_SIZE(ch_list) && ch_list[i] != 0; ++i)
+		m |= ch2bitmask(band, ch_list[i]);
+
+	return m;
+}
+
 int get_radar_channel_list(int unit, int radar_list[], int size)
 {
 	struct iwreq wrq;
 	char buffer[256], *data, *p = NULL, *tmplist = NULL, tmp[128], prefix[] = "wlXXXXXXXXXX_", *ifname;
-	int radar_cnt = 0;
+	int r, radar_cnt = 0;
+
+	if (!nvram_match("wlready", "1"))
+		return 0;
 
 	memset(buffer, 0, sizeof(buffer));
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
@@ -1053,8 +1127,8 @@ int get_radar_channel_list(int unit, int radar_list[], int size)
 	wrq.u.data.pointer = buffer;
 	wrq.u.data.length  = sizeof(buffer);
 	wrq.u.data.flags   = ASUS_SUBCMD_GDFSNOPCHANNEL;
-	if (wl_ioctl(ifname, RTPRIV_IOCTL_ASUSCMD, &wrq) < 0) {
-		dbg("wl_ioctl failed on %s (%d)\n", __FUNCTION__, __LINE__);
+	if ((r = wl_ioctl(ifname, RTPRIV_IOCTL_ASUSCMD, &wrq)) < 0) {
+		dbg("%s failed, ret %d\n", __func__, r);
 		return -1;
 	}
 
@@ -1376,4 +1450,70 @@ int get_bonding_port_status(int port)
 	return ret;
 }
 #endif /* RTCONFIG_BONDING_WAN */
+
+int get_ap_mac(const char *ifname, struct iwreq *pwrq)
+{
+	return wl_ioctl(ifname, SIOCGIWAP, pwrq);
+}
+
+const unsigned char ether_zero[6]  = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+const unsigned char ether_bcast[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+
+int chk_assoc(const char *ifname)
+{
+	struct iwreq wrq;
+	int ret;
+
+	if((ret = get_ap_mac(ifname, &wrq)) < 0)
+		return ret;
+
+#if 0
+cprintf("## %s(): ret(%d) ap_addr(%02x:%02x:%02x:%02x:%02x:%02x)\n", __func__, ret
+, wrq.u.ap_addr.sa_data[0], wrq.u.ap_addr.sa_data[1], wrq.u.ap_addr.sa_data[2]
+, wrq.u.ap_addr.sa_data[3], wrq.u.ap_addr.sa_data[4], wrq.u.ap_addr.sa_data[5]);
+#endif
+	if(memcmp(&(wrq.u.ap_addr.sa_data), ether_zero, 6) == 0)
+		return 0;	// Not-Associated
+	else if(memcmp(&(wrq.u.ap_addr.sa_data), ether_bcast, 6) == 0)
+		return -1;	// Invalid
+
+	return 1;
+}
+
+int get_ch_cch_bw(const char *wlif_name, int *ch, int *cch, int *bw)
+{
+	struct iwreq wrq;
+	char data[256];
+	char *p;
+	int cnt = 0;
+
+	if (wlif_name == NULL || wlif_name[0] == '\0')
+		return -1;
+
+	data[0] = '\0';
+	wrq.u.data.length = sizeof(data);
+	wrq.u.data.pointer = (caddr_t) data;
+	wrq.u.data.flags = ASUS_SUBCMD_GET_CH_BW;
+	if (wl_ioctl(wlif_name, RTPRIV_IOCTL_ASUSCMD, &wrq) < 0) { 
+		dbg("%s: wl_ioctl(%s, ASUS_SUBCMD_GET_CH_BW) fail\n", __func__, wlif_name);
+		return -1;
+	}
+	if (  ch != NULL && (p = strstr(data, "\nchannel: ")) != NULL ) {
+		p += 10;
+		*ch = atoi(p);
+		cnt++;
+	}
+	if ( cch != NULL && (p = strstr(data, "\ncen_ch1: ")) != NULL ) {
+		p += 10;
+		*cch = atoi(p);
+		cnt++;
+	}
+	if (  bw != NULL && (p = strstr(data, "\nbw: ")) != NULL ) {
+		p += 5;
+		*bw = atoi(p);
+		cnt++;
+	}
+	//cprintf("%s: wlif_name(%s) ch(%d) cch(%d) bw(%d)\n", __func__, wlif_name, *ch, *cch, *bw);
+	return cnt;
+}
 

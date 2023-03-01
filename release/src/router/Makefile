@@ -654,7 +654,7 @@ export CFLAGS := $(shell echo $(CFLAGS)| sed 's/-fno-common//g')
 endif
 
 ifeq ($(RTCONFIG_NOTIFICATION_CENTER),y)
-KERNEL_PTHREAD_ONE = $(if $(or $(findstring linux-4.4,$(LINUXDIR)),$(findstring linux-4.1,$(LINUXDIR)),$(findstring linux-3.10,$(LINUXDIR)),$(RTCONFIG_QCA)),y)
+KERNEL_PTHREAD_ONE = $(if $(or $(findstring linux-3,$(LINUXDIR)),$(findstring linux-4,$(LINUXDIR)),$(findstring linux-5,$(LINUXDIR))),y)
 export CONFIG_KERNEL_PTHREAD_ONE = $(KERNEL_PTHREAD_ONE)
 endif
 
@@ -748,8 +748,8 @@ obj-y += wireless_tools$(WTOOL_SUFFIX)
 
 ifeq ($(RTCONFIG_RALINK_MT7621),y)
 obj-y += flash
-obj-y += $(if $(RTCONFIG_ATED122),ated_1.2.2,$(if $(ATEVER), ated_$(ATEVER), ated))
 endif
+obj-y += $(if $(RTCONFIG_ATED122),ated_1.2.2,$(if $(ATEVER), ated_$(ATEVER), ated))
 obj-y += $(if $(RTCONFIG_MII_MGR),mii_mgr)
 
 
@@ -763,9 +763,6 @@ obj-y += libuci
 obj-y += swconfig
 else ifeq ($(RTCONFIG_MT798X),y)
 obj-y += libnl-tiny-0.1
-obj-y += mt7986/regs
-obj-y += mt7986/switch
-obj-y += mt7986/mii_mgr
 obj-y += libubox
 obj-y += libuci
 obj-y += swconfig
@@ -834,7 +831,7 @@ obj-$(RTCONFIG_BT_CONN) += zlib
 obj-$(RTCONFIG_BT_CONN) += glib-2.37.7
 obj-$(RTCONFIG_BT_CONN) += udev-173
 obj-$(RTCONFIG_BT_CONN) += libical-2.0.0
-obj-$(RTCONFIG_BT_CONN) += ncurses-6.0
+obj-$(RTCONFIG_BT_CONN) += ncurses-6.1
 obj-$(RTCONFIG_BT_CONN) += readline-6.2
 obj-$(RTCONFIG_BT_CONN) += json-c
 obj-$(RTCONFIG_BT_CONN) += bluez-5.41
@@ -871,6 +868,8 @@ IPTC_LIBDIR := $(TOP)/$(IPTABLES)/libiptc/.libs
 IPTC_LIBS := -lip4tc $(if $(RTCONFIG_IPV6),-lip6tc,) -liptc
 ifeq ($(RTCONFIG_LANTIQ),y)
 obj-y += iproute2-3.15.0
+else ifeq ($(or $(RTCONFIG_QCA),$(RTCONFIG_RALINK)),y)
+obj-y += iproute2-5.18.0
 else
 obj-y += iproute2-4.4.0
 endif
@@ -928,7 +927,7 @@ obj-$(RTCONFIG_OPENVPN) += libvpn
 obj-y += rc
 obj-y += rom
 obj-y += others
-obj-y += ncurses-6.0 htop
+obj-y += ncurses-6.1 htop
 ifeq ($(RTCONFIG_SMARTDNS),y)
 obj-y += smartdns
 endif
@@ -946,7 +945,7 @@ obj-y += libnl-tiny-0.1 libubox zlib nlbwmon
 endif
 obj-y += readline-6.2
 obj-y += libpasswd
-obj-y += httpd json-c
+obj-y += httpd json-c libwebapi
 obj-$(RTCONFIG_VISUALIZATION) += sqlite3 json-c libxml2 visdcoll visdcon
 obj-y += www
 ifneq ($(HND_ROUTER),y)
@@ -1250,6 +1249,7 @@ obj-$(RTCONFIG_TFAT) += tuxera
 
 obj-$(RTCONFIG_EBTABLES) += ebtables
 obj-$(RTCONFIG_IPV6) += odhcp6c
+obj-$(RTCONFIG_IPV6) += ndisc6
 obj-$(RTCONFIG_6RELAYD) += 6relayd
 #obj-$(RTCONFIG_IPV6) += ecmh
 
@@ -2771,6 +2771,12 @@ ifneq ($(RT4GAC86U),y)
 	install $(LIBDIR)/libc.so.0 $(TARGETDIR)/lib/
 endif
 endif
+ifeq ($(TUFAX4200),y)
+	@if [ -d $(TARGETDIR)/www/images/TUF-AX4200Q ] ; then \
+		rm -rf $(TARGETDIR)/TUF-AX4200Q; \
+		mv $(TARGETDIR)/www/images/TUF-AX4200Q $(TARGETDIR)/TUF-AX4200Q; \
+	fi
+endif
 endif
 endif
 
@@ -3012,7 +3018,7 @@ infosvr: shared $(if $(BCM_502L07P2),ethctl_lib) nvram${BCMEX}$(EX7)
 infosvr-install:
 	$(MAKE) -C infosvr INSTALLDIR=$(INSTALLDIR)/infosvr install
 
-httpd: shared $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX)$(EX7) rc libdisk $(if $(RTCONFIG_HTTPS),mssl) $(if $(RTCONFIG_BWDPI),bwdpi_source) json-c $(if $(RTCONFIG_CFGSYNC), $(CFGSYNC_PKG)) libpasswd
+httpd: shared $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX)$(EX7) rc libdisk $(if $(RTCONFIG_HTTPS),mssl) $(if $(RTCONFIG_BWDPI),bwdpi_source) json-c $(if $(RTCONFIG_CFGSYNC), $(CFGSYNC_PKG)) libpasswd libwebapi $(if $(RTCONFIG_DNSQUERY_INTERCEPT), dnsqd)
 	@$(SEP)
 ifeq ($(HND_ROUTER),y)
 ifeq ($(HND_ROUTER_AX),y)
@@ -3026,6 +3032,26 @@ endif
 
 httpd-install:
 	$(MAKE) -C httpd INSTALLDIR=$(INSTALLDIR)/httpd install
+
+libwebapi-dep:json-c $(if $(RTCONFIG_BWDPI),bwdpi_source)
+
+libwebapi/stamp-h1:
+	touch $@
+	$(MAKE) libwebapi-dep
+
+libwebapi: libwebapi/stamp-h1
+	@$(SEP)
+	@$(MAKE) -C libwebapi CC=$(CC)
+
+libwebapi-install: libwebapi
+	@echo INSTALLDIR=$(INSTALLDIR)
+	install -D libwebapi/libwebapi.so $(INSTALLDIR)/$</usr/lib/libwebapi.so
+	$(STRIP) $(INSTALLDIR)/$</usr/lib/libwebapi.so
+
+libwebapi-clean:
+	@$(SEP)
+	@$(MAKE) -C libwebapi clean
+	rm -rf libwebapi/stamp-h1
 
 httpd_uam: shared $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX)$(EX7) libdisk $(if $(RTCONFIG_HTTPS),mssl) $(if $(RTCONFIG_FBWIFI),fb_wifi)
 	@$(SEP)
@@ -3285,9 +3311,10 @@ openssl-1.1/Makefile:
 	$(if $(filter y,$(RTCONFIG_SFP) $(RTCONFIG_4M_SFP) $(RTCONFIG_8M_SFP)),-Os,-O3) \
 	-ffunction-sections -fdata-sections -Wl,--gc-sections \
 	shared $(OPENSSL_CIPHERS) --api=1.0.0 \
-	    no-aria no-sm2 no-sm3 no-sm4 no-tests enable-devcryptoeng \
+	    no-aria no-sm2 no-sm3 no-sm4 no-tests \
+	    $(if $(or $(RTCONFIG_RALINK),$(RTCONFIG_QCA),$(RTCONFIG_LANTIQ),$(RTCONFIG_HND_ROUTER)),enable-devcryptoeng -I$(TOP)/cryptodev-linux/src) \
 	    $(if $(filter y,$(RTCONFIG_WTFAST)),-DRTCONFIG_WTFAST,) \
-	    $(if $(filter y,$(HND_ROUTER)),,-DOPENSSL_PREFER_CHACHA_OVER_GCM) -I$(TOP)/cryptodev-linux/src
+	    $(if $(filter y,$(HND_ROUTER)),,-DOPENSSL_PREFER_CHACHA_OVER_GCM)
 	@$(MAKE) -C openssl-1.1 depend
 	@$(MAKE) -C openssl-1.1 clean
 	@touch $@
@@ -3427,7 +3454,7 @@ wb: json-c openssl libxml2 curl
 wb-install:
 	$(MAKE) -C wb INSTALLDIR=$(INSTALLDIR)/wb install
 
-rc: shared $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX)$(EX7) libdisk $(if $(RTCONFIG_FBWIFI),fb_wifi) $(if $(RTCONFIG_QTN),libqcsapi_client) $(if $(CONFIG_LIBBCM),libbcm) $(if $(RTCONFIG_BWDPI),bwdpi_source) $(if $(RTCONFIG_USB_SMS_MODEM),smspdu) $(if $(RTCONFIG_HND_ROUTER),bcm_flashutil bcm_util bcm_boardctl) $(if $(RTCONFIG_OPENVPN),libvpn) $(if $(RTCONFIG_LANTIQ),libfapi-0.1) $(if $(RTCONFIG_CFGSYNC), $(CFGSYNC_PKG) $(if $(RTCONFIG_AMAS), amas-utils) $(if $(RTCONFIG_LANTIQ),hostapd-2.6)) json-c $(if $(or $(RTCONFIG_FRS_LIVE_UPDATE),$(RTCONFIG_FRS_FEEDBACK),$(RTCONFIG_URLFW),$(RTCONFIG_SOFTWIRE46)), curl) $(if $(and $(RTCONFIG_HND_ROUTER_AX_675X),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(and $(RTCONFIG_HND_ROUTER_AX_6756),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(and $(RTCONFIG_HND_ROUTER_AX_6710),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(and $(RTCONFIG_BCM_502L07P2),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(RTCONFIG_BRCM_HOSTAPD),wpa_supplicant-2.7)
+rc: shared libev-4.33 $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX)$(EX7) libdisk $(if $(RTCONFIG_LIB_CODB),libcodb) $(if $(RTCONFIG_FBWIFI),fb_wifi) $(if $(RTCONFIG_QTN),libqcsapi_client) $(if $(CONFIG_LIBBCM),libbcm) $(if $(RTCONFIG_BWDPI),bwdpi_source) $(if $(RTCONFIG_USB_SMS_MODEM),smspdu) $(if $(RTCONFIG_HND_ROUTER),bcm_flashutil bcm_util bcm_boardctl) $(if $(RTCONFIG_OPENVPN),libvpn) $(if $(RTCONFIG_LANTIQ),libfapi-0.1) $(if $(RTCONFIG_CFGSYNC), $(CFGSYNC_PKG) $(if $(RTCONFIG_AMAS), amas-utils) $(if $(RTCONFIG_LANTIQ),hostapd-2.6)) json-c $(if $(or $(RTCONFIG_FRS_LIVE_UPDATE),$(RTCONFIG_FRS_FEEDBACK),$(RTCONFIG_URLFW),$(RTCONFIG_SOFTWIRE46)), curl) $(if $(and $(RTCONFIG_HND_ROUTER_AX_675X),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(and $(RTCONFIG_HND_ROUTER_AX_6756),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(and $(RTCONFIG_HND_ROUTER_AX_6710),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(and $(RTCONFIG_BCM_502L07P2),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(RTCONFIG_BRCM_HOSTAPD),wpa_supplicant-2.7)
 	@$(SEP)
 	@-rm -f rc/prebuild/*.o || true
 	@-cp -f rc/prebuild/$(BUILD_NAME)/* rc/prebuild/
@@ -4519,6 +4546,39 @@ odhcp6c-install: odhcp6c
 odhcp6c-clean:
 	-@$(MAKE) -C odhcp6c clean
 
+
+ndisc6/stamp-h1:
+ifeq ($(RTCONFIG_BCMARM),y)
+	cd ndisc6 && autoreconf -i -f && CFLAGS="-Os $(EXTRACFLAGS) -ffunction-sections -fdata-sections -I$(SRCBASE)/include -I$(TOP)/shared $(if $(RTCONFIG_HTTPS),-I$(TOP)/openssl/include/openssl)" \
+	LDFLAGS="-ffunction-sections -fdata-sections -Wl,--gc-sections $(if $(RTCONFIG_HTTPS),-L$(TOP)/openssl -lcrypto -lssl)" \
+	$(CONFIGURE) --prefix="" --disable-dependency-tracking
+else
+	cd ndisc6 && autoreconf -i -f && CFLAGS="-Os $(if $(QCA),$(EXTRACFLAGS)) -ffunction-sections -fdata-sections -I$(SRCBASE)/include -I$(TOP)/shared $(if $(RTCONFIG_HTTPS),-I$(TOP)/openssl/include/openssl)" \
+	LDFLAGS="-ffunction-sections -fdata-sections -Wl,--gc-sections -L$(TOP)/nvram$(BCMEX) -L$(TOP)/shared $(if $(RTCONFIG_HTTPS),-L$(TOP)/openssl -lcrypto -lssl)" \
+	$(CONFIGURE) --prefix="" LIBS='-lnvram -lshared' --disable-dependency-tracking
+endif
+	-@$(MAKE) -C ndisc6 clean
+	@touch $@
+
+ndisc6: ndisc6/stamp-h1
+	$(MAKE) -C $@
+
+ndisc6-clean:
+	-@[ ! -f ndisc6/Makefile ] || $(MAKE) -C ndisc6 clean
+	-@[ ! -f ndisc6/Makefile ] || $(MAKE) -C ndisc6 distclean
+	-@[ -f ndisc6/stamp-h1 ] || rm -f ndisc6/stamp-h1
+
+ndisc6-install: ndisc6
+	install -D ndisc6/src/rdisc6 $(INSTALLDIR)/ndisc6/usr/sbin/rdisc6
+	install -D ndisc6/src/rdisc6 $(INSTALLDIR)/ndisc6/usr/sbin/ndisc6
+	$(STRIP) $(INSTALLDIR)/ndisc6/usr/sbin/rdisc6
+	$(STRIP) $(INSTALLDIR)/ndisc6/usr/sbin/ndisc6
+ifneq ($(RTCONFIG_BCMWL6),y)
+ifneq ($(or $(MUSL32),$(MUSL64),$(MUSL_LIBC)),y)
+	install -D $(shell dirname $(shell which $(CXX)))/../lib/librt.so.0 $(TARGETDIR)/lib/librt.so.0
+endif
+endif
+
 6relayd: 6relayd/Makefile
 	@EXT_CFLAGS="-Os -Wall $(EXTRACFLAGS) -ffunction-sections -fdata-sections -fPIC" \
 	EXT_LDFLAGS="-ffunction-sections -fdata-sections -Wl,--gc-sections" \
@@ -5411,6 +5471,25 @@ iproute2-4.4.0-install:
 iproute2-4.4.0-clean:
 	-@$(MAKE) -C iproute2-4.4.0 clean
 	-rm -f iproute2-4.4.0/src/Config
+
+iproute2-5.18.0: libmnl-1.0.4
+	touch iproute2-5.18.0/configure
+	$(MAKE) -C $@ IPTABLES_DIR=$(TOP)/$(IPTABLES) KERNEL_INCLUDE=$(TOP)/kernel_header/include EXTRACFLAGS="$(EXTRACFLAGS) $(if $(RTCONFIG_IPV6),-DUSE_IPV6,-DNO_IPV6) -I$(STAGEDIR)/usr/include" && $(MAKE) -C $@ stage
+
+iproute2-5.18.0-install:
+	install -D iproute2-5.18.0/tc/tc $(INSTALLDIR)/iproute2-5.18.0/usr/sbin/tc
+	install -D iproute2-5.18.0/ip/ip $(INSTALLDIR)/iproute2-5.18.0/usr/sbin/ip
+	install -D iproute2-5.18.0/bridge/bridge $(INSTALLDIR)/iproute2-5.18.0/usr/sbin/bridge
+	-$(STRIP) $(INSTALLDIR)/iproute2-5.18.0/usr/sbin/*
+	@if [ -e iproute2-5.18.0/tc/m_xt.so ] ; then \
+		install -D iproute2-5.18.0/tc/m_xt.so $(INSTALLDIR)/iproute2-5.18.0/usr/lib/tc/m_xt.so ; \
+		ln -sf m_xt.so $(INSTALLDIR)/iproute2-5.18.0/usr/lib/tc/m_ipt.so ; \
+		$(STRIP) $(INSTALLDIR)/iproute2-5.18.0/usr/lib/tc/*.so ; \
+	fi
+
+iproute2-5.18.0-clean:
+	-@$(MAKE) -C iproute2-5.18.0 clean
+	-rm -f iproute2-5.18.0/config.mk
 
 ntpclient: nvram$(BCMEX)$(EX7) shared $(if $(BCM_502L07P2),ethctl_lib)
 
@@ -8033,6 +8112,40 @@ libical-2.0.0-install:
 		ln -sf libicalss.so.2.0.0 libicalss.so.2 &&\
 		ln -sf libicalvcal.so.2.0.0 libicalvcal.so.2.0 &&\
 		ln -sf libicalvcal.so.2.0.0 libicalvcal.so.2
+
+ncurses-6.1/Makefile: ncurses-6.1/configure
+	cd ncurses-6.1 && $(CONFIGURE)\
+		--prefix=/usr --exec_prefix=/usr --bindir=/usr/bin --sbindir=/usr/sbin --libexecdir=/usr/lib\
+		--sysconfdir=/etc --datadir=/usr/share --localstatedir=/var --mandir=/usr/man\
+		--without-normal --with-debug --with-shared\
+		--without-tests --without-progs --without-manpages \
+		CFLAGS="-I$(STAGEDIR)/usr/local/include"\
+		LDFLAGS="-L$(STAGEDIR)/usr/local/lib -ldl -lpthread"
+
+ncurses-6.1: ncurses-6.1/Makefile
+	export TIC_PATH=$(SRCBASE)/router/ncurses-6.1/progs/tic && $(MAKE) -C $@ && $(MAKE) $@-stage
+
+ncurses-6.1-clean:
+	[ ! -f ncurses-6.1/Makefile ] || $(MAKE) -C ncurses-6.1 distclean
+
+ncurses-6.1-install: ncurses-6.1
+	install -D ncurses-6.1/lib/libform.so.6.1 $(INSTALLDIR)/ncurses-6.1/usr/lib/libform.so.6.1
+	install -D ncurses-6.1/lib/libmenu.so.6.1 $(INSTALLDIR)/ncurses-6.1/usr/lib/libmenu.so.6.1
+	install -D ncurses-6.1/lib/libncurses.so.6.1 $(INSTALLDIR)/ncurses-6.1/usr/lib/libncurses.so.6.1
+	install -D ncurses-6.1/lib/libpanel.so.6.1 $(INSTALLDIR)/ncurses-6.1/usr/lib/libpanel.so.6.1
+	$(STRIP) $(INSTALLDIR)/ncurses-6.1/usr/lib/libform.so.6.1
+	$(STRIP) $(INSTALLDIR)/ncurses-6.1/usr/lib/libmenu.so.6.1
+	$(STRIP) $(INSTALLDIR)/ncurses-6.1/usr/lib/libncurses.so.6.1
+	$(STRIP) $(INSTALLDIR)/ncurses-6.1/usr/lib/libpanel.so.6.1
+	cd $(INSTALLDIR)/ncurses-6.1/usr/lib && \
+		ln -sf libncurses.so.6.1 libncurses.so.6 &&\
+		ln -sf libncurses.so.6.1 libncurses.so &&\
+		ln -sf libform.so.6.1 libform.so.6 &&\
+		ln -sf libform.so.6.1 libform.so &&\
+		ln -sf libmenu.so.6.1 libmenu.so.6 &&\
+		ln -sf libmenu.so.6.1 libmenu.so &&\
+		ln -sf libpanel.so.6.1 libpanel.so.6 &&\
+		ln -sf libpanel.so.6.1 libpanel.so
 
 ncurses-6.0/Makefile: ncurses-6.0/configure
 	cd ncurses-6.0 && $(CONFIGURE)\

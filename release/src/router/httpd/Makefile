@@ -106,6 +106,9 @@ ifeq ($(RTCONFIG_CAPTCHA),y)
 CFLAGS += -DCAPTCHA
 endif
 
+#Tencent download
+CFLAGS += -D _FILE_OFFSET_BITS=64
+
 ifneq ($(findstring CONFIG_BCM_KF_NETFILTER=, $(shell cat $(LINUXDIR)/.config)),)
 export CFLAGS += -DBCM_KF_NETFILTER
 endif
@@ -306,8 +309,22 @@ LIBS += -L$(TOP)/libqcsapi_client_10g -lqcsapi_client
 endif
 
 ifeq ($(RTCONFIG_CONNDIAG),y)
+ifeq ($(RTCONFIG_LIB_CODB),y)
+CFLAGS += -I$(TOP)/libcodb
+LIBS += -L$(TOP)/libcodb -lcodb
+endif
 CFLAGS += -I$(TOP)/rc
 LIBS += -L$(TOP)/rc -lconn_diag
+endif
+
+ifeq ($(RTCONFIG_DNSQUERY_INTERCEPT),y)
+CFLAGS += -I$(TOP)/dnsqd
+CFLAGS += -I$(TOP)/sqlite
+CFLAGS += -I$(TOP)/json-c
+LIBS += -L$(TOP)/dnsqd -ldns_app_client
+LIBS += -L$(TOP)/sqlite/.libs -lsqlite3
+LIBS += -lpthread
+LIBS += -L$(TOP)/json-c/.libs -ljson-c
 endif
 
 CFLAGS += -I$(TOP)/libpasswd
@@ -331,6 +348,9 @@ endif
 ifeq ($(RTCONFIG_HND_ROUTER_AX_6756),y)
 CFLAGS +=-DRTCONFIG_HND_ROUTER_AX_6756
 endif
+
+CFLAGS += -I$(TOP)/libwebapi
+LIBS += -L$(TOP)/libwebapi -lwebapi
 
 all: httpd #test_apps
 

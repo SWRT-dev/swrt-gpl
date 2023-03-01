@@ -338,23 +338,33 @@ function loadData()
 			if (h.tx_max > xx_max) xx_max = h.tx_max;
 
 			if (i == "WIRELESS1"){
-				if(wl_info.band5g_2_support)
+				if(productid == "GT-AXE16000" && wl_info.band5g_2_support)
+					t = "<#tm_wireless#> (5GHz-2)";
+				else if(wl_info.band5g_2_support)
 					t = "<#tm_wireless#> (5GHz-1)";
-				else	
+				else
 					t = "<#tm_wireless#> (5GHz)";
 			}
-			else if (i == "WIRELESS0")
-				t = "<#tm_wireless#> (2.4GHz)";
+			else if (i == "WIRELESS0"){
+				if(productid == "GT-AXE16000" && wl_info.band5g_2_support)
+					t = "<#tm_wireless#> (5GHz-1)";
+				else
+					t = "<#tm_wireless#> (2.4GHz)";
+			}
 			else if (i == "WIRELESS2"){
 				if(wl_info.band6g_support){
 					t = "<#tm_wireless#> (6GHz)";
 				}
 				else{
 					t = "<#tm_wireless#> (5GHz-2)";
-				}				
-			}				
-			else if (i == "WIRELESS3")
-				t = "<#tm_wireless#> (60GHz)";
+				}
+			}
+			else if (i == "WIRELESS3"){
+				if(productid == "GT-AXE16000")
+					t = "<#tm_wireless#> (2.4GHz)";
+				else
+					t = "<#tm_wireless#> (60GHz)";
+			}
 			else if (i == "WIRED")
 				t = "<#tm_wired#>";
 			else if (i == "BRIDGE")
@@ -369,9 +379,9 @@ function loadData()
 					}
 					else if(wans_dualwan_array[0] == "wan"){
 						t = "WAN";
-						if (based_modelid == "TUF-AX4200")
+						if (based_modelid == "TUF-AX4200" || based_modelid == "TUF-AX6000")
 							t = "2.5G WAN";
-						if (based_modelid == "GT-AXY16000" || based_modelid == "RT-AX89U" || based_modelid == "TUF-AX4200") {
+						if (based_modelid == "GT-AXY16000" || based_modelid == "RT-AX89U" || based_modelid == "TUF-AX4200" || based_modelid == "TUF-AX6000") {
 							if (nvram.bond_wan == '1' && nvram.rc_support.indexOf("wanbonding") != -1)
 								t = "Bond";
 						}
@@ -384,7 +394,7 @@ function loadData()
 					}		
 					else if(wans_dualwan_array[0] == "lan") {
 						t = "LAN Port " + nvram.wans_lanport;
-						if (based_modelid == "TUF-AX4200") {
+						if (based_modelid == "TUF-AX4200" || based_modelid == "TUF-AX6000") {
 							if (nvram.wans_lanport == '5')
 								t = "2.5G LAN";
 						}
@@ -407,9 +417,9 @@ function loadData()
 				}
 				else if(wans_dualwan_array[1] == "wan"){
 					t = "WAN";
-					if (based_modelid == "TUF-AX4200")
+					if (based_modelid == "TUF-AX4200" || based_modelid == "TUF-AX6000")
 						t = "2.5G WAN";
-					if (based_modelid == "GT-AXY16000" || based_modelid == "RT-AX89U" || based_modelid == "TUF-AX4200") {
+					if (based_modelid == "GT-AXY16000" || based_modelid == "RT-AX89U" || based_modelid == "TUF-AX4200" || based_modelid == "TUF-AX6000") {
 						if (nvram.bond_wan == '1' && nvram.rc_support.indexOf("wanbonding") != -1)
 							t = "Bond";
 					}
@@ -422,7 +432,7 @@ function loadData()
 				}
 				else if(wans_dualwan_array[1] == "lan") {
 					t = "LAN Port " + nvram.wans_lanport;
-					if (based_modelid == "TUF-AX4200") {
+					if (based_modelid == "TUF-AX4200" || based_modelid == "TUF-AX6000") {
 						if (nvram.wans_lanport == '5')
 							t = "2.5G LAN";
 					}

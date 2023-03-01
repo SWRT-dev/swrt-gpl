@@ -127,7 +127,7 @@ function initial(){
 		gen_vts_ruleTable_Block(key);
 	});
 
-	if(wan_proto=="v6plus" && array_ipv6_s46_ports.length > 1){
+	if(wan_proto=="v6plus" && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
 		$(".setup_info_icon").show();
 		$(".setup_info_icon").click(
 			function() {				
@@ -137,6 +137,12 @@ function initial(){
 					var position = $(".setup_info_icon").position();
 					pop_s46_ports(position, "pf");
 				}
+			}
+		);
+		$("#vts_port_x").focus(
+			function() {
+				var position_text = $("#vts_port_x").position();
+				pop_s46_ports(position_text, "pf");
 			}
 		);
 	}
@@ -559,7 +565,7 @@ function editProfile(_mode, _this) {
 			}
 			else{
 				$("#vts_port_x").parent().parent().find('th').html('<#IPConnection_VSList_External_Port#><div class="setup_info_icon" style="display:none;"></div>');
-				if(wan_proto=="v6plus" && array_ipv6_s46_ports.length > 1){
+				if(wan_proto=="v6plus" && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
 					$(".setup_info_icon").show();
 					$(".setup_info_icon").click(
 						function() {
@@ -569,6 +575,12 @@ function editProfile(_mode, _this) {
 								var position = $(".setup_info_icon").position();
 								pop_s46_ports(position, "pf");
 							}
+						}
+					);
+					$("#vts_port_x").focus(
+						function() {
+							var position_text = $("#vts_port_x").position();
+							pop_s46_ports(position_text, "pf");
 						}
 					);
 				}
@@ -684,7 +696,7 @@ function saveProfile(_mode, _wanIdx, _rowIdx) {
 	else{
 		if(!check_multi_range(document.getElementById("vts_port_x"), 1, 65535, true))
 			return false;
-		if(wan_proto=="v6plus" && array_ipv6_s46_ports.length > 1){
+		if(wan_proto=="v6plus" && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
 			if (!check_multi_range_s46_ports(document.getElementById("vts_port_x"))){
 				if(!confirm("The following port related settings may not work properly since the port is not available in current v6plus usable port range. Do you want to continue?")){
 					document.getElementById("vts_port_x").focus();

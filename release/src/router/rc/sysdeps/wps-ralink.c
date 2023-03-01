@@ -161,27 +161,12 @@ stop_wps_method(void)
 		SKIP_ABSENT_BAND_AND_INC_UNIT(i);
 		snprintf(prefix, sizeof(prefix), "wl%d_", i);
 
-		if (!multiband) {
-
-#if defined(RTCONFIG_RALINK_RT3883) || defined(RTCONFIG_RALINK_RT3052)
-//			doSystem("iwpriv %s set WscConfMode=%d", get_wpsifname(), 0);		// WPS disabled
-			doSystem("iwpriv %s set WscStatus=%d", get_wifname(i), 0);	// Not Used
-//			doSystem("iwpriv %s set WscConfMode=%d", get_non_wpsifname(), 7);	// trigger Windows OS to give a popup about WPS PBC AP
-#else
-			doSystem("iwpriv %s set WscStop=1", get_wifname(i));	// Stop WPS Process.
-#endif
-		} else {
-			/* Make sure WPS on all band are turned off */
-#if defined(RTCONFIG_RALINK_RT3883) || defined(RTCONFIG_RALINK_RT3052)
-			doSystem("iwpriv %s set WscConfMode=%d", get_wifname(i), 0);	// WPS disabled
-			doSystem("iwpriv %s set WscStatus=%d", get_wifname(i), 0);	// Not Used
-#else
-			doSystem("iwpriv %s set WscStop=1", get_wifname(i));	// Stop WPS Process.
-#endif
-		}
+		doSystem("iwpriv %s set WscStop=1", get_wifname(i));	// Stop WPS Process.
 		++i;
 	}
+#if !defined(RTCONFIG_MT798X)
 	sleep(10);
+#endif
 	doSystem("iwpriv %s set WscConfMode=%d", get_wifname(0), 7);	// trigger Windows OS to give a popup about WPS PBC AP
 #if defined(RTCONFIG_HAS_5G)
 	doSystem("iwpriv %s set WscConfMode=%d", get_wifname(1), 7);	// trigger Windows OS to give a popup about WPS PBC AP
@@ -333,3 +318,4 @@ stop_wps_method_ob(void)
 		runtime_onoff_wps(0);
 	return 0;
 }
+

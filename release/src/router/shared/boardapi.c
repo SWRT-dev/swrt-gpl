@@ -105,7 +105,7 @@ static const struct led_btn_table_s {
 #else
 	{ "led_lan_gpio",	&led_gpio_table[LED_LAN] },
 #endif
-#if defined(RTAX86U) || defined(RTAX5700)
+#if defined(RTAX86U) || defined(RTAX86U_PRO)
 	{ "led_lan_gpio",	&led_gpio_table[LED_LAN] },
 #endif
 	{ "led_wan_gpio",	&led_gpio_table[LED_WAN] },
@@ -115,7 +115,7 @@ static const struct led_btn_table_s {
 #ifdef RTCONFIG_EXTPHY_BCM84880
 	{ "led_extphy_gpio",&led_gpio_table[LED_EXTPHY] },
 #endif
-#if defined(RTCONFIG_WANLEDX2)
+#if defined(RTCONFIG_WANLEDX2) || defined(RTAXE7800)
 	{ "led_wan2_gpio",	&led_gpio_table[LED_WAN2] },
 #endif
 #if defined(RTCONFIG_R10G_LED)
@@ -209,15 +209,13 @@ static const struct led_btn_table_s {
 	{ "led_5g_green_gpio",	&led_gpio_table[LED_5G_GREEN] },
 	{ "led_5g_orange_gpio",	&led_gpio_table[LED_5G_ORANGE] },
 	{ "led_5g_red_gpio",	&led_gpio_table[LED_5G_RED] },
-#elif defined(RTCONFIG_FIXED_BRIGHTNESS_RGBLED)
+#elif defined(RTCONFIG_FIXED_BRIGHTNESS_RGBLED) || defined(RTCONFIG_PWM_RGBLED) || defined(RTCONFIG_PWMX2_GPIOX1_RGBLED)
 	{ "led_blue_gpio",	&led_gpio_table[LED_BLUE] },
 	{ "led_green_gpio",	&led_gpio_table[LED_GREEN] },
 	{ "led_red_gpio",	&led_gpio_table[LED_RED] },
-#if defined(RTAC59_CD6R) || defined(RTAC59_CD6N) || defined(PLAX56_XP4) || defined(RMAX6000)
 	{ "led_white_gpio",	&led_gpio_table[LED_WHITE] },
 #endif
-#endif
-#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX6000)
+#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX6000) || defined(GT10) || defined(RTAX82U_V2)
 	{ "led_group1_red_gpio",	&led_gpio_table[LED_GROUP1_RED] },
 	{ "led_group1_green_gpio",	&led_gpio_table[LED_GROUP1_GREEN] },
 	{ "led_group1_blue_gpio",	&led_gpio_table[LED_GROUP1_BLUE] },
@@ -228,7 +226,7 @@ static const struct led_btn_table_s {
 	{ "led_group3_red_gpio",	&led_gpio_table[LED_GROUP3_RED] },
 	{ "led_group3_green_gpio",	&led_gpio_table[LED_GROUP3_GREEN] },
 	{ "led_group3_blue_gpio",	&led_gpio_table[LED_GROUP3_BLUE] },
-#if !defined(GTAXE11000_PRO) && !defined(GTAXE16000) && !defined(GTAX6000)
+#if !defined(GTAXE11000_PRO) && !defined(GTAXE16000) && !defined(GTAX6000) && !defined(GT10)
 	{ "led_group4_red_gpio",	&led_gpio_table[LED_GROUP4_RED] },
 	{ "led_group4_green_gpio",	&led_gpio_table[LED_GROUP4_GREEN] },
 	{ "led_group4_blue_gpio",	&led_gpio_table[LED_GROUP4_BLUE] },
@@ -245,6 +243,9 @@ static const struct led_btn_table_s {
 	{ "led_group_ant2_gpio",	&led_gpio_table[LED_GROUP_ANT2] },
 	{ "led_group_ant3_gpio",	&led_gpio_table[LED_GROUP_ANT3] },
 	{ "led_group_ant4_gpio",	&led_gpio_table[LED_GROUP_ANT4] },
+#endif
+#ifdef GT10
+	{ "led_white_gpio",     &led_gpio_table[LED_WHITE] },
 #endif
 #ifdef RPAC53
 	{ "led_pwr_red_gpio",	&led_gpio_table[LED_POWER_RED] },
@@ -302,7 +303,7 @@ static const struct led_btn_table_s {
 	{ "led_yellow_gpio",    &led_gpio_table[LED_YELLOW_GPIO] },
 	{ "led_purple_gpio",    &led_gpio_table[LED_PURPLE_GPIO] },
 #endif
-#if defined(RTAX95Q) || defined(XT8PRO) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(RTAX82_XD6) || defined(RTAX82_XD6S)  || defined(ET12) || defined(XT12)
+#if defined(RTAX95Q) || defined(XT8PRO) || defined(BM68) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(ET8_V2) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(RTAX82_XD6) || defined(RTAX82_XD6S)  || defined(ET12) || defined(XT12) || defined(XC5)
 	{ "bt_rst_gpio",        &led_gpio_table[BT_RESET] },
 	{ "bt_disable_gpio",    &led_gpio_table[BT_DISABLE] },
 	{ "led_rgb1_red_gpio",  &led_gpio_table[LED_RGB1_RED] },
@@ -320,12 +321,17 @@ static const struct led_btn_table_s {
 	{ "led_side2_white_gpio",       &led_gpio_table[LED_SIDE2_WHITE] },
 	{ "led_side3_white_gpio", 	&led_gpio_table[LED_SIDE3_WHITE] },
 #endif
+#ifdef GT10
+	{ "led_rgb1_red_gpio",		&led_gpio_table[LED_RGB1_RED] },
+	{ "led_rgb1_green_gpio",	&led_gpio_table[LED_RGB1_GREEN] },
+	{ "led_rgb1_blue_gpio",		&led_gpio_table[LED_RGB1_BLUE] },
+#endif
 #if defined(CTAX56_XD4)
 	{ "led_rgb1_red_gpio",  &led_gpio_table[LED_RGB1_RED] },
 	{ "led_rgb1_green_gpio",        &led_gpio_table[LED_RGB1_GREEN] },
 	{ "led_rgb1_blue_gpio", &led_gpio_table[LED_RGB1_BLUE] },
 #endif
-#if defined(RTAX56_XD4) || defined(XD4PRO)
+#if defined(RTAX56_XD4) || defined(XD4PRO) || defined(XC5)
 	{ "btn_bt_indicator_gpio",        &led_gpio_table[IND_BT] },
 	{ "btn_pa_indicator_gpio",    &led_gpio_table[IND_PA] },
 #endif
@@ -412,7 +418,7 @@ int init_gpio(void)
 #ifdef RTCONFIG_LED_ALL
 		, "led_all_gpio"
 #endif
-#if defined(RTCONFIG_WANLEDX2)
+#if defined(RTCONFIG_WANLEDX2) || defined(RTAXE7800)
 		, "led_wan2_gpio"
 #endif
 #if defined(RTCONFIG_WANRED_LED)
@@ -466,11 +472,9 @@ int init_gpio(void)
 		, "led_pwr_red_gpio"
 		, "led_2g_green_gpio", "led_2g_orange_gpio", "led_2g_red_gpio"
 		, "led_5g_green_gpio", "led_5g_orange_gpio", "led_5g_red_gpio"
-#elif defined(RTCONFIG_FIXED_BRIGHTNESS_RGBLED)
+#elif defined(RTCONFIG_FIXED_BRIGHTNESS_RGBLED) || defined(RTCONFIG_PWM_RGBLED) || defined(RTCONFIG_PWMX2_GPIOX1_RGBLED)
 		, "led_blue_gpio", "led_green_gpio", "led_red_gpio"
-#if defined(RTAC59_CD6R) || defined(RTAC59_CD6N) || defined(PLAX56_XP4) || defined(RMAX6000)
 		, "led_white_gpio"
-#endif
 #endif
 #ifdef RPAC53
 		, "led_pwr_red_gpio"
@@ -630,10 +634,12 @@ int init_gpio(void)
 
 #if (defined(PLN12) || defined(PLAC56))
 	if((gpio_pin = (use_gpio = nvram_get_int("led_pwr_red_gpio")) & 0xff) != 0xff)
-#elif defined(MAPAC1750)
+#elif defined(RTCONFIG_FIXED_BRIGHTNESS_RGBLED) || defined(RTCONFIG_PWM_RGBLED)
+#if defined(MAPAC1750)
 	if((gpio_pin = (use_gpio = nvram_get_int("led_blue_gpio")) & 0xff) != 0xff)
-#elif defined(RTAC59_CD6R) || defined(RTAC59_CD6N) || defined(PLAX56_XP4) || defined(XD4S)
+#else /* ZenWiFi series */
 	if((gpio_pin = (use_gpio = nvram_get_int("led_green_gpio")) & 0xff) != 0xff)
+#endif
 #else
 	if((gpio_pin = (use_gpio = nvram_get_int("led_pwr_gpio")) & 0xff) != 0xff)
 #endif
@@ -866,7 +872,7 @@ int button_pressed(int which)
 	else return 0;
 }
 
-#if defined(RTAX86U) || defined(RTAX5700)
+#if defined(RTAX86U) || defined(RTAX86U_PRO)
 void config_ext_wan_led(int onoff) {
 	unsigned int val = 0;
 	unsigned int mask = 0x200000; // bit20
@@ -924,6 +930,9 @@ int do_led_control(int which, int mode)
 {
 	int use_gpio, gpio_nr;
 	int v = (mode == LED_OFF)? 0:1;
+#ifndef HND_ROUTER
+	char *led_gpio = NULL;
+#endif
 
 	if ((mode == LED_ON) && (nvram_get_int("led_disable") == 1))
 		return 0;
@@ -987,8 +996,13 @@ int do_led_control(int which, int mode)
 		v ^= 1;
 
 #ifndef HND_ROUTER
+	if (which == LED_2G)
+		led_gpio = "led_2g_gpio";
+	else if (which == LED_5G)
+		led_gpio = "led_5g_gpio";
+
 	if (mode == LED_OFF) {
-		stop_bled(use_gpio);
+		__stop_bled(led_gpio, use_gpio);
 	}
 #endif
 #if defined(RTCONFIG_SWRT_I2CLED)
@@ -1030,7 +1044,7 @@ int do_led_control(int which, int mode)
 #endif
 #ifndef HND_ROUTER
 	if (mode == LED_ON) {
-		start_bled(use_gpio);
+		__start_bled(led_gpio, use_gpio);
 	}
 #endif
 	return 0;
@@ -1140,7 +1154,7 @@ int ethctl_set_phy(char *ifname, int ctrl)
 		return -1;
 	}
 
-	strcpy(ifr.ifr_name, ifname);
+	strlcpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
 
 	memset(&ethctl, 0, sizeof(ethctl));
 	ifr.ifr_data = &ethctl;
@@ -1212,7 +1226,7 @@ int lanport_status(void)
 
 #elif defined(RTCONFIG_QCA)
 	return rtkswitch_lanPorts_phyStatus();
-#elif defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2)
+#elif defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2) || defined(RTAX3000N)
 	return rtkswitch_lanPorts_phyStatus();
 #elif defined(RTCONFIG_HND_ROUTER_AX_675X) || defined(RTCONFIG_HND_ROUTER_AX_6710) || defined(RTCONFIG_BCM_502L07P2)
 	int status = 0;
@@ -1254,6 +1268,9 @@ int lanport_speed(void)
 #endif
 }
 
+#ifdef GTAX6000
+static int bootup_skip = 1;
+#endif
 int lanport_ctrl(int ctrl)
 {
 #if defined(RPAX56) || defined(RPAX58)
@@ -1296,7 +1313,7 @@ int lanport_ctrl(int ctrl)
 		system("/usr/bin/switch_cli GSW_MDIO_DATA_WRITE nAddressDev=5 nAddressReg=0 nData=0x1c00");
 	}
 	return 1;
-#elif defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2)
+#elif defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2) || defined(RTAX3000N)
 	if (ctrl)
 		rtkswitch_LanPort_linkUp();
 	else
@@ -1326,13 +1343,36 @@ int lanport_ctrl(int ctrl)
 #endif
 
 	foreach(word, nvram_safe_get("lanports"), next) {
-#if defined(BCM6750) || defined(BCM4912)
+#if defined(BCM6750) || defined(BCM4912) || defined(BCM6756) || defined(BCM6855)
+#ifdef GTAX6000
+		if ((nvram_get_int("ext_phy_model") == EXT_PHY_BCM54991) &&
+			ctrl && (atoi(word) == 5)) {
+			if (bootup_skip)
+				bootup_skip = 0;
+			else
+				doSystem("ethctl eth%d phy-reset", atoi(word));
+		}
+#endif
+#if defined(GTAXE16000) || defined(GTAX11000_PRO)
+		if(atoi(word) == 5 || atoi(word) == 6)
+		{
+			if(ctrl)
+				doSystem("ethctl eth%d phy-reset", atoi(word));
+		}
+		else
+#endif
 		doSystem("ethctl eth%d phy-power %s", atoi(word), ctrl ? "up" : "down");
 #else
 		mask |= (0x0001<<atoi(word));
 #endif
 	}
-#if defined(BCM6750) || defined(BCM4912)
+
+#if defined(BCM4912)
+	if((rp_mode() || mb_mode()))
+		doSystem("ethctl eth0 phy-reset");
+#endif
+
+#if defined(BCM6750) || defined(BCM4912) || defined(BCM6756) || defined(BCM6855)
 	return 1;
 #else
 	return set_phy_ctrl(mask, ctrl);

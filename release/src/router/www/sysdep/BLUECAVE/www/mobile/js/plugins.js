@@ -131,12 +131,20 @@ function getScArray(mode){
 
 function getAllWlArray(){
 	if(isSupport("quadband")){
-		var wlArrayRet = [
+		var wlArrayRet = [			
 			{"title":"2.4 GHz", "ifname":get_wl_unit_by_band("2G"), "suffix": ""},
 			{"title":"5 GHz-1", "ifname":get_wl_unit_by_band("5G"), "suffix": "_5G-1"},
 			{"title":"5 GHz-2", "ifname":get_wl_unit_by_band("5G2"), "suffix": "_5G-2"},
 			{"title":"6 GHz", "ifname":get_wl_unit_by_band("6G"), "suffix": "_6G"},
 		];
+		if(isSwMode('RP') || isSwMode('MB')){
+			wlArrayRet = [				
+				{ title: '2.4 GHz', ifname: get_wl_unit_by_band('2G'), suffix: '' },				
+				{ title: '5 GHz-1', ifname: get_wl_unit_by_band('5G'), suffix: '_5G-1' },
+				{ title: '5 GHz-2', ifname: get_wl_unit_by_band('5G2'), suffix: '_5G-2' },
+				{ title: '6 GHz', ifname: get_wl_unit_by_band('6G'), suffix: '_6G' },
+			];
+		}
 		document.querySelector('label[for="wireless_checkbox"]').innerHTML = 'Separate 2.4 GHz, 5 GHz-1, 5 GHz-2 and 6 GHz';
 	}
 	else{
@@ -192,6 +200,9 @@ function getPAPList(siteSurveyAPList, filterType, filterValue) {
 					else
 						return (ch >= 36 && ch <= 64) ? {name: "5GHz-1", unit: 1} : {name: "5GHz-2", unit: 2};
 				}
+				else if(based_modelid === 'GT-AXE16000'){
+					return (ch >= 36 && ch <= 64) ? {name: "5GHz-1", unit: 0} : {name: "5GHz-2", unit: 1};
+				}
 				else
 					return {name: "5GHz", unit: 1};
 			}
@@ -214,7 +225,18 @@ function getPAPList(siteSurveyAPList, filterType, filterValue) {
 			
 		})();
 		this.unit = (function(){
-			if(isSupport('wifi6e') && _profile[0] === '6G'){
+			if(based_modelid === 'GT-AXE16000'){
+				if(_profile[0] === '6G'){
+					return 2;
+				}
+				else if(_profile[0] === '2G'){
+					return 3;
+				}
+				else{	// 5 GHz-1 / 5 GHz-2
+					return getBandWidthName(_profile[2]).unit;
+				}
+			}
+			else if(isSupport('wifi6e') && _profile[0] === '6G'){
 				return 2;
 				//return {name: "6GHz", unit: 2};
 			}
@@ -267,6 +289,7 @@ function getAiMeshOnboardinglist(_onboardingList){
 		this.tcode = "";
 		this.type = "";
 		this.cobrand = "";
+		this.misc_info = {};
 	};
 	var convRSSI = function(val) {
 		var result = 1;
@@ -297,6 +320,7 @@ function getAiMeshOnboardinglist(_onboardingList){
 			node_info.tcode = newReMacArray[newReMac].tcode;
 			node_info.type = newReMacArray[newReMac].type;
 			node_info.cobrand = httpApi.aimesh_get_misc_info(newReMacArray[newReMac]).cobrand;
+			node_info.misc_info = newReMacArray[newReMac].misc_info;
 			jsonArray.push(node_info);
 		});
 	});
@@ -862,16 +886,44 @@ var Get_Component_WirelessInput = function(wlArray){
 				ssid_tmp = qisPostData["wlc" + wl.ifname + "_ssid"];
 				wpa_psk_tmp = qisPostData["wlc" + wl.ifname + "_wpa_psk"];
 			}
+
 			switch(parseInt(wl.ifname)){
+				
 				case 0 :
-					ssid_tmp = ssid_tmp.slice(0,28) + "_RPT";
+					console.log(isSupport('wifi6e'));
+					
+					if(isSupport('quadband')){
+						ssid_tmp = ssid_tmp.slice(0,26) + "_RPT5G";
+					}
+					else{
+						ssid_tmp = ssid_tmp.slice(0,28) + "_RPT";
+					}
+
 					break;
 				case 1 :
-					ssid_tmp = ssid_tmp.slice(0,26) + "_RPT5G";
+					
+					if(isSupport('quadband')){
+						ssid_tmp = ssid_tmp.slice(0,26) + "_RPT5G2";
+					}
+					else{
+						ssid_tmp = ssid_tmp.slice(0,26) + "_RPT5G";
+					}
+
 					break;
 				case 2 :
-					ssid_tmp = ssid_tmp.slice(0,25) + "_RPT5G2";
+					
+					if(isSupport('quadband')
+					|| isSupport('triband') && isSupport('wifi6e')){
+						ssid_tmp = ssid_tmp.slice(0,26) + "_RP6G";
+					}
+					else{
+						ssid_tmp = ssid_tmp.slice(0,25) + "_RPT5G2";
+					}	
+					
 					break;
+				case 3 :
+					ssid_tmp = ssid_tmp.slice(0,25) + "_RPT";
+					break;	
 			}
 			wirelessAP["wl" + wl.ifname + "_ssid"] = encodeURIComponent(ssid_tmp);
 
@@ -1136,12 +1188,16 @@ function handleSysDep(){
 			$("#product_location").attr("src", "/images/product_location_3pack.png")
 	}
 
-	if((isGundam() || isKimetsu()) && !$('.GD-head').length){
+	if((isGundam() || isKimetsu() || isEva()) && !$('.GD-head').length){
 		if(isGundam()){
 			$('head').append('<link rel="stylesheet" type="text/css" href="/css/gundam.css">');
 		}
 		else if(isKimetsu()){
 			$('head').append('<link rel="stylesheet" type="text/css" href="/css/kimetsu.css">');
+		}
+		else if(isEva()){
+			$('head').append('<link rel="stylesheet" type="text/css" href="/css/eva.css">');
+			$('body').addClass("body_eva");
 		}
 		
 		$("#summary_page").append($("<div>").attr({"id": "gdContainer", "class": "gundam-footer-field"}).hide())
@@ -1158,7 +1214,7 @@ function handleSysDep(){
 		$("#gdContainer").append($("<div>").attr({"class": "GD-footer-left"}))
 		$("#gdContainer").append($("<div>").attr({"class": "GD-footer-extend"}))
 		$("#gdContainer").append($("<div>").attr({"class": "GD-footer-center"}))
-		$("#gdContainer").append($("<div>").attr({"class": "GD-footer-extend"}))
+		$("#gdContainer").append($("<div>").attr({"class": "GD-footer-extend eva-footer-extend_right"}))
 		$("#gdContainer").append($("<div>").attr({"class": "GD-footer-right"}))
 		$("#gdContainer").append($("<div>").attr({"class": "GD-law-label"}))
 		// systemVariable.imgContainer = [];
@@ -1176,6 +1232,14 @@ function handleSysDep(){
 			gdImagesList.forEach(function(imageUrl){
 				var tmpObj = new Image();
 				tmpObj.src = "/images/kimetsu_no_yaiba" + imageUrl + ".png";
+				// systemVariable.imgContainer.push(tmpObj)
+			})
+		}
+		else if(isEva()){
+			var gdImagesList = ["-head", "_bg", "_bg_bottom01", "_bg_bottom02", "_bg_bottom03", "_bg_bottom04", "_lawlabel", "-logo", "-waiting"]
+			gdImagesList.forEach(function(imageUrl){
+				var tmpObj = new Image();
+				tmpObj.src = "/images/eva" + imageUrl + ".png";
 				// systemVariable.imgContainer.push(tmpObj)
 			})
 		}
@@ -1207,15 +1271,6 @@ function handleModelIcon() {
 			};
 
 			var update_color = function() {
-				if(based_modelid == "RT-AC87U") { //MODELDEP: RT-AC87U
-					/* MODELDEP by Territory Code */
-					if(ttc == "JP/02" || ttc == "AP/02" || ttc == "SG/02")
-						return "R";
-					else if(ttc == "JP/02")
-						return "W";
-					else
-						return color;
-				}
 				if(odmpid.length > 0 && odmpid != based_modelid){	//odmpid MODELDEP
 					if(odmpid == "RT-N66W" || odmpid == "RT-AC66W" || odmpid == "RT-AC68W" || odmpid == "RT-AC68RW")
 						return "W";
@@ -1331,6 +1386,10 @@ function setupWLCNvram(apProfileID) {
 		}
 		else if(encryption == "TKIP"){
 			qisPostData["wlc" + unit + "_auth_mode"] = "psk";
+			if(authentication === 'WPA2-Personal'){
+				qisPostData["wlc" + unit + "_auth_mode"] = "psk2";
+			}
+			
 			qisPostData["wlc" + unit + "_crypto"] = "tkip";
 			qisPostData["wlc" + unit + "_wep"] = "0";
 		}
@@ -1380,7 +1439,9 @@ function setupWLCNvram(apProfileID) {
 
 function setupFronthaulNetwork(_smart_connect){
 	if(isSupport("FRONTHAUL_NETWORK")){
+//		var dwb_mode = httpApi.nvramGet(["dwb_mode"]).dwb_mode;
 		postDataModel.insert(fronthaulNetworkObj);
+
 		switch(parseInt(_smart_connect)){
 			case 0:
 			case 2:
@@ -1391,6 +1452,26 @@ function setupFronthaulNetwork(_smart_connect){
 				qisPostData.fh_ap_enabled = httpApi.nvramDefaultGet(["fh_ap_enabled"]).fh_ap_enabled;
 				break;
 		}
+
+		switch(parseInt(qisPostData.fh_ap_enabled)){
+			case 0:
+				if(isSupport("amas_bdl")){
+					qisPostData.acs_unii4 = "1";
+				}
+				else{
+					qisPostData.acs_unii4 = "0";
+				}
+
+				break;
+			case 1:
+				qisPostData.acs_unii4 = "0";
+				break;
+			case 2:
+				qisPostData.acs_unii4 = "0";
+				break;
+		}
+
+		if(parseInt(_smart_connect) == 0) delete qisPostData.acs_unii4;
 	}
 }
 
@@ -1501,7 +1582,7 @@ var getRestartService = function(){
 		return "restart_all";
 	}
 
-	if(isSupport("2p5G_LWAN") || isSupport("10G_LWAN") || isSupport("10GS_LWAN")){
+	if(isSupport("2p5G_LWAN") || isSupport("10G_LWAN") || isSupport("10GS_LWAN") || Object.keys(systemVariable.eth_wan_list).length > 1){
 		if(isWANLANChange())
 			return "reboot";
 	}
@@ -1510,6 +1591,7 @@ var getRestartService = function(){
 		qisPostData.hasOwnProperty("wlc_ssid") ||
 		qisPostData.hasOwnProperty("lan_proto") ||
 		qisPostData.hasOwnProperty("wans_dualwan") ||
+		qisPostData.hasOwnProperty("wans_mode") ||
 		isSwModeChanged()
 	){
 		return "reboot";
@@ -1605,6 +1687,21 @@ var isWANLANChange = function(){
 		if(qisPostData.wans_dualwan != systemVariable.originWansDualwan) isChanged = true;
 	}
 
+	if(Object.keys(systemVariable.eth_wan_list).length > 1){
+		Object.keys(systemVariable.eth_wan_list).forEach(function(eth_wan){
+			var wan_obj = systemVariable.eth_wan_list[eth_wan];
+			if(wan_obj.hasOwnProperty("extra_settings")){
+				var extra_settings = wan_obj.extra_settings;
+				$.each(extra_settings, function(key) {
+					if(qisPostData.hasOwnProperty(key)){
+						if(qisPostData[key] != systemVariable[key]){
+							isChanged = true;
+						}
+					}
+				});
+			}
+		});
+	}
 	return isChanged;
 };
 
@@ -1650,13 +1747,16 @@ var isSupport = function(_ptn){
 			matchingResult = (ui_support["smart_connect"] == "1" || ui_support["smart_connect"] == "2" || ui_support["bandstr"] == "1") ? true : false;
 			break;
 		case "GUNDAM_UI":
-			matchingResult = ((isGundam() || isKimetsu()) && $(".desktop_left_field").is(":visible")) ? true : false;
+			matchingResult = ((isGundam() || isKimetsu() || isEva()) && $(".desktop_left_field").is(":visible")) ? true : false;
 			break;
 		case "amas_bdl":
 			matchingResult = (ui_support["amas_bdl"] >= 1 && amas_bdlkey.length != 0) ? true : false;
 			break;
 		case "FRONTHAUL_NETWORK":
 			matchingResult = ui_support["amas_fronthaul_network"] || false;
+			break;
+		case "boostkey": // force remove boostkey from qis
+			matchingResult = false;
 			break;
 		case "MB_mode_concurrep":
 			if(isSwMode("MB") && (ui_support["concurrep"] == 1) && odmpid != "RP-AC1900" && based_modelid != 'RP-AX56' && based_modelid != 'RP-AX58')
@@ -1682,6 +1782,9 @@ var isGundam = function(){
 }
 var isKimetsu = function(){
 	return (systemVariable.CoBrand == "2");
+}
+var isEva = function(){
+	return (systemVariable.CoBrand == "3");
 }
 var isSku = function(_ptn){
 	return (systemVariable.territoryCode.search(_ptn) == -1) ? false : true;
@@ -1848,19 +1951,31 @@ validator.invalidChar = function(str){
 		'errReason': ''
 	}
 
-	var invalid_char = [];
-	for(var i = 0; i < str.length; ++i){
-		if(str.charAt(i) < ' ' || str.charAt(i) > '~'){
-			invalid_char.push(str.charAt(i));
-		}
-	}
-
-	if(invalid_char.length != 0){
+	if(str.charAt(0) == '"'){
 		testResult.isError = true;
-		testResult.errReason = "<#JS_validstr2#> '" + invalid_char.join('') + "' !";
+		testResult.errReason = '<#JS_validstr1#> ["]';
+                return testResult;
 	}
+	else if(str.charAt(str.length - 1) == '"'){
+		testResult.isError = true;
+		testResult.errReason = '<#JS_validstr3#> ["]';
+		return testResult;
+	}
+	else{
+		var invalid_char = [];
+		for(var i = 0; i < str.length; ++i){
+			if(str.charAt(i) < ' ' || str.charAt(i) > '~'){
+				invalid_char.push(str.charAt(i));
+			}
+		}
 
-	return testResult;
+		if(invalid_char.length != 0){
+			testResult.isError = true;
+			testResult.errReason = "<#JS_validstr2#> '" + invalid_char.join('') + "' !";
+		}
+
+		return testResult;
+	}
 };
 
 validator.KRSkuPwd = function(str){
@@ -2071,3 +2186,81 @@ var clearIntervalStatus = function(){
 		systemVariable.interval_status = false;
 	}
 };
+
+function site2site_handle_wlSet(){
+	var wl_text_mapping = [{"idx":"wl_2G", "text":"2.4 GHz"}, {"idx":"wl_5G", "text":"5 GHz"}];
+	var select_none_num = 0;
+	var hide_wl_none = false;
+	var cur_wl_idx = "";
+	$.each(systemVariable.site2site_wl, function(wl_idx, wl_item){
+		if(cur_wl_idx == ""){
+			if(!wl_item.confirm){
+				cur_wl_idx = wl_idx;
+			}
+		}
+
+		if(cur_wl_idx != wl_idx){
+			if(wl_item.confirm){
+				if(wl_item.select == "wl_none")
+					select_none_num++;
+			}
+		}
+	});
+	if(cur_wl_idx == ""){
+		goTo.site2site_Finish();
+		return;
+	}
+	if(Object.keys(systemVariable.site2site_wl).length == (select_none_num + 1))
+		hide_wl_none = true;
+
+	var specific_wl_text = wl_text_mapping.filter(function(item, index, array){
+		return (item.idx == cur_wl_idx);
+	})[0];
+	if(specific_wl_text != undefined){
+		$("#site2site_wlSet #s2s_wlSet_desc").html(specific_wl_text.text + " <#Guest_Network#>");
+	}
+	else{
+		$("#site2site_wlSet #s2s_wlSet_desc").html("<#Guest_Network#>");
+	}
+
+	var $wl_objs = $("#site2site_wlSet").find("[data-container=wl_new], [data-container=wl_ori], [data-container=wl_none]")
+		.show().unbind("click").click(function(){
+			var type = $(this).attr("data-container");
+			systemVariable.site2site_wl[cur_wl_idx].select = type;
+			systemVariable.site2site_wl[cur_wl_idx].confirm = true;
+			var all_confirm = true;
+			$.each(systemVariable.site2site_wl, function(wl_idx, wl_item){
+				if(!wl_item.confirm){
+					all_confirm = false
+					return false;
+				}
+			});
+			if(all_confirm){
+				goTo.site2site_Finish();
+			}
+			else{
+				goTo.site2site_wlSet();
+			}
+		});
+	var $wl_new_obj = $wl_objs.filter("[data-container=wl_new]");
+	var $wl_ori_obj = $wl_objs.filter("[data-container=wl_ori]");
+	var $wl_none_obj = $wl_objs.filter("[data-container=wl_none]");
+
+	$wl_new_obj.find(".ap_ssid").html(htmlEnDeCode.htmlEncode(systemVariable.site2site_wl[cur_wl_idx].ssid_new));
+	$wl_ori_obj.find(".ap_ssid").html(htmlEnDeCode.htmlEncode(systemVariable.site2site_wl[cur_wl_idx].ssid_ori));
+	if(systemVariable.site2site_wl[cur_wl_idx].ssid_ori == ""){
+		$wl_ori_obj.hide();
+		$("#site2site_wlSet #s2s_wlSet_hint").hide();
+	}
+	else{
+		$("#site2site_wlSet #s2s_wlSet_hint").show();
+	}
+	if(hide_wl_none)
+		$wl_none_obj.hide();
+
+	$("#site2site_wlSet .ap_ssid").unbind("mouseenter mouseleave").hover(function(){
+		$(this).addClass("ap_ssid_hover")
+	}, function(){
+		$(this).removeClass("ap_ssid_hover")
+	});
+}

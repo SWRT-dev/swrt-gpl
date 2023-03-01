@@ -70,7 +70,7 @@ extern int NT_DBCommand(char *action, NOTIFY_DATABASE_T *input);
 
 /* #### API for httpd #### */
 extern int NT_DBAction(struct list *event_list, char *action, NOTIFY_DATABASE_T *input, char *count);
-extern int NT_DBActionAPP(struct list *event_list, char *action, NOTIFY_DATABASE_T *input, char *page, char *count);
+extern int NT_DBActionAPP(struct list *event_list, char *action, NOTIFY_DATABASE_T *input, char *page, char *count, char *order);
 extern void NT_DBFree(struct list *event_list);
 extern int NT_DBCount();
 

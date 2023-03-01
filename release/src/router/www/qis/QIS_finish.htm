@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -66,7 +66,7 @@ else if(wan1_primary == 1)
 if(parent.tmo_support)
 	var theUrl = "cellspot.router"; 
 else
-	var theUrl = "router.asus.com";
+	var theUrl = "<#Web_DOMAIN_NAME#>";
 
 var reIP = (parent.changeSubnet) ? [<% get_next_lanip(); %>][0].next_lanip : '<% nvram_get("lan_ipaddr"); %>';
 
@@ -105,7 +105,7 @@ var second_wanauxstate = -1;
 if(parent.tmo_support)
         var theUrl = "cellspot.router"; 
 else
-        var theUrl = "router.asus.com";
+        var theUrl = "<#Web_DOMAIN_NAME#>";
 
 var JS_timeObj = new Date();
 var uptimeStr = "<% uptime(); %>";
@@ -122,8 +122,8 @@ var timezones = {
 	"MST7DST_3":	"(GMT-07:00)",
 	"CST6DST_1":	"(GMT-06:00)",
 	"CST6DST_2":	"(GMT-06:00)",
-	"CST6DST_3":	"(GMT-06:00)",
-	"CST6DST_3_1":	"(GMT-06:00)",
+	"CST6_3":	"(GMT-06:00)",
+	"CST6_3_1":	"(GMT-06:00)",
 	"UTC6":	"(GMT-06:00)",
 	"EST5DST":	"(GMT-05:00)",
 	"UTC5_1":	"(GMT-05:00)",
@@ -131,6 +131,7 @@ var timezones = {
 	"AST4DST":	"(GMT-04:00)",
 	"UTC4_1":	"(GMT-04:00)",
 	"UTC4DST_2":	"(GMT-04:00)",
+	"UTC4DST_3":	"(GMT-04:00)",
 	"NST3.30DST":	"(GMT-03:30)",
 	"EBST3":	"(GMT-03:00)",	//EBST3DST_1
 	"UTC3":	"(GMT-03:00)",
@@ -202,7 +203,7 @@ var timezones = {
 	"UTC-11_1":	"(GMT+11:00)",
 	"UTC-11_4":	"(GMT+11:00)",
 	"UTC-12":	"(GMT+12:00)",
-	"UTC-12DST":	"(GMT+12:00)",
+	"UTC-12_3":	"(GMT+12:00)",
 	"NZST-12DST":	"(GMT+12:00)",
 	"UTC-13":	"(GMT+13:00)"
 	};
@@ -406,6 +407,11 @@ function restartService(){
 	}
 
 	var actionScriptStr = actionScriptArray.join(";");
+
+	var current_webs_chg_sku = ('<% nvram_get("webs_chg_sku"); %>'=='1')? true:false;
+	if(current_webs_chg_sku){
+		actionScriptStr="reboot";
+	}
 
 	document.restartForm.action_script.value = actionScriptStr;
 	if(actionScriptStr.indexOf("reboot") >= 0){
@@ -1335,7 +1341,7 @@ function QKfinish_load_body(){
 		$("#lanip")[0].innerHTML = reIP;
 		$(".wlcItem").css("display", "none");
 
-		if(parent.yadns_support && sw_mode==1 ){
+		if(!parent.gobiSupport && parent.yadns_support && sw_mode==1 ){
 			$("#yadns_enable").checked = (yadns_enable != 0) ? true : false;
 			$("#yadns_defmode").checked = (yadns_mode == 1) ? true : false;
 			if(!parent.yadns_hideqis || yadns_enable != 0) $(".yadnsItem").css("display", "");
@@ -1407,6 +1413,11 @@ function QKfinish_load_body(){
 			document.getElementById("timeObject").style.display = "none";
 			document.getElementById('svc_hint_div').style.display = "none";
 		}
+	}
+
+	if(parent.gobi_support && wans_mode == "lb"){
+		document.restartForm.wans_mode.disabled = false;
+		parent.sysReboot = true;
 	}
 
 	if(!isWLclient() && !parent.sysReboot) setTimeout(function(){
@@ -1874,6 +1885,7 @@ var startQuery = function(){
 	<input type="hidden" name="action_wait" value="0">
 	<input type="hidden" name="x_Setting" value="1">
 	<input type="hidden" name="force_change" value="<% nvram_get("force_change"); %>">
+	<input type="hidden" name="wans_mode" value="fo" disabled>
 	<input type="hidden" name="wans_dualwan" value="<% nvram_get("wans_dualwan"); %>" disabled>
 	<!--USB Modem-->
 	<input type="hidden" name="modem_enable" value="<% nvram_get("modem_enable"); %>" disabled>
@@ -1895,3 +1907,4 @@ var startQuery = function(){
 
 </body>
 </html>
+

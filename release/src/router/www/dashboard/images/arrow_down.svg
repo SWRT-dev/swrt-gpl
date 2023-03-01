@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24" height="24" viewBox="0 0 24 24">
+  <defs>
+    <polygon id="ic_keyboard_arrow_down-a" points="7.41 8.84 12 13.42 16.59 8.84 18 10.25 12 16.25 6 10.25"/>
+    <rect id="ic_keyboard_arrow_down-c" width="50" height="50" x="0" y="0"/>
+  </defs>
+  <g fill="none" fill-rule="evenodd">
+    <mask id="ic_keyboard_arrow_down-b" fill="#fff">
+      <use xlink:href="#ic_keyboard_arrow_down-a"/>
+    </mask>
+    <g mask="url(#ic_keyboard_arrow_down-b)">
+      <use fill="#0070FF" transform="translate(-13 -13)" xlink:href="#ic_keyboard_arrow_down-c"/>
+    </g>
+  </g>
+</svg>

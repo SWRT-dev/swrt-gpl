@@ -83,6 +83,10 @@ if(yadns_support){
 
 var wan_enable_orig = (parent.document.form.dual_wan_flag.value == 0)? '<% nvram_get("wan0_enable"); %>':'<% nvram_get("wan1_enable"); %>';
 
+if(gobi_support){
+	var modem_operation ='<% nvram_get("usb_modem_act_operation"); %>';
+}
+
 function add_lanport_number(if_name)
 {
 	if(based_modelid == "GT-AC5300"){
@@ -135,6 +139,13 @@ function initial(){
 		pri_if = pri_if.toUpperCase();
 		sec_if = sec_if.toUpperCase();
 
+		if(gobi_support){
+			pri_if = (pri_if == "USB")? "<#Mobile_title#>" : pri_if;
+			sec_if = (sec_if == "USB")? "<#Mobile_title#>": sec_if;
+			if((unit == "0" && pri_if == "<#Mobile_title#>") || (unit == "1" && sec_if == "<#Mobile_title#>"))
+				$("#wan_enable_title").text("<#Mobile_cellular_data#>");
+		}
+
 		if(based_modelid == "GT-AXY16000" || based_modelid == "RT-AX89U"){
 			if(pri_if == "WAN2")
 				pri_if = "10G base-T";
@@ -144,6 +155,15 @@ function initial(){
 				sec_if = "10G base-T";
 			else if(sec_if == "SFP+")
 				sec_if = "10G SFP+";
+		} else if (based_modelid == "TUF-AX4200" || based_modelid == "TUF-AX6000") {
+			if (pri_if == "WAN")
+				pri_if = "2.5G WAN";
+			if (sec_if == "WAN")
+				sec_if = "2.5G WAN";
+			if (pri_if == "LAN5")
+				pri_if = "2.5G LAN";
+			if (sec_if == "LAN5")
+				sec_if = "2.5G LAN";
 		}
 
 		if(sec_if != 'NONE'){
@@ -334,6 +354,12 @@ function update_connection_type(dualwan_unit){
 		wanlink_type_conv = "MAP-E";
 	else if(wanlink_type_conv == "v6plus")
 		wanlink_type_conv = "<#IPv6_plus#>";
+	else if(gobi_support && wanlink_type_conv == "USB Modem"){
+		if(modem_operation != "")
+			wanlink_type_conv = modem_operation;
+		else
+			wanlink_type_conv = "<#Mobile_title#>";
+	}
 
 	showtext($("#connectionType")[0], wanlink_type_conv);
 }
@@ -343,11 +369,36 @@ function loadBalance_form(lb_unit){
 		return 0;
 
 	var pri_if = wans_dualwan.split(" ")[0];
-	var sec_if = wans_dualwan.split(" ")[1];	
+	var sec_if = wans_dualwan.split(" ")[1];
 	pri_if = add_lanport_number(pri_if);
 	sec_if = add_lanport_number(sec_if);
 	pri_if = pri_if.toUpperCase();
 	sec_if = sec_if.toUpperCase();
+
+	if(gobi_support){
+		pri_if = (pri_if == "USB")? "<#Mobile_title#>" : pri_if;
+		sec_if = (sec_if == "USB")? "<#Mobile_title#>": sec_if;
+	}
+
+	if(based_modelid == "GT-AXY16000" || based_modelid == "RT-AX89U"){
+		if(pri_if == "WAN2")
+			pri_if = "10G base-T";
+		else if(pri_if == "SFP+")
+			pri_if = "10G SFP+";
+		if(sec_if == "WAN2")
+			sec_if = "10G base-T";
+		else if(sec_if == "SFP+")
+			sec_if = "10G SFP+";
+	} else if (based_modelid == "TUF-AX4200" || based_modelid == "TUF-AX6000") {
+		if (pri_if == "WAN")
+			pri_if = "2.5G WAN";
+		if (sec_if == "WAN")
+			sec_if = "2.5G WAN";
+		if (pri_if == "LAN5")
+			pri_if = "2.5G LAN";
+		if (sec_if == "LAN5")
+			sec_if = "2.5G LAN";
+	}
 
 	if(lb_unit == 0){
 		have_lease = (first_wanlink_type() == "dhcp" || first_wanlink_type() == "dhcp");
@@ -731,9 +782,9 @@ function manualSetup(){
 </tr>	
 <tr id="wan_enable_button">
     <td height="50" style="padding:10px 15px 0px 15px;">
-    		<p class="formfonttitle_nwm" style="float:left;width:98px;"><#menu5_3_1#></p>
-    		<div class="left" style="width:94px; float:right;" id="radio_wan_enable"></div>
-				<div class="clear"></div>
+		<div style="display:flex; align-items:center; justify-content:space-between;">
+			<div class="formfonttitle_nwm" style="width:80%; margin-bottom: 0px;" id="wan_enable_title"><#menu5_3_1#></div>
+			<div style="margin-right: 5px;" id="radio_wan_enable"></div>
 				<script type="text/javascript">
 						$('#radio_wan_enable').iphoneSwitch(wan_enable_orig,
 							 function() {
@@ -754,15 +805,16 @@ function manualSetup(){
 							 }
 						);
 				</script>
-    		<div style="margin-top:37px;" class="line_horizontal"></div>
+		</div>
+		<div style="margin-top:5px;" class="line_horizontal"></div>
     </td>
 </tr>
 
 <tr id="dualwan_enable_button">
     <td height="50" style="padding:10px 15px 0px 15px;">
-    		<p class="formfonttitle_nwm" style="float:left;width:98px;"><#dualwan_enable#></p>
-			<div class="left" style="width:94px; float:right;" id="nm_radio_dualwan_enable"></div>
-				<div class="clear"></div>
+		<div style="display:flex; align-items:center; justify-content:space-between;">
+			<div class="formfonttitle_nwm" style="width:80%; margin-bottom: 0px;"><#dualwan_enable#></div>
+			<div style="margin-right: 5px;" id="nm_radio_dualwan_enable"></div>
 				<script type="text/javascript">
 						$('#nm_radio_dualwan_enable').iphoneSwitch(parent.wans_flag,
 							 function() {
@@ -837,7 +889,8 @@ function manualSetup(){
 							 }
 						);
 				</script>
-    		<div style="margin-top:37px;" class="line_horizontal"></div>
+		</div>
+		<div style="margin-top:5px;" class="line_horizontal"></div>
     </td>
 </tr>
 

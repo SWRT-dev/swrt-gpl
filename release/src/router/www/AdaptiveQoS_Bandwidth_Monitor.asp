@@ -13,13 +13,13 @@
 <link rel="stylesheet" type="text/css" href="form_style.css">
 <link rel="stylesheet" type="text/css" href="usp_style.css">
 <link rel="stylesheet" type="text/css" href="/device-map/device-map.css" />
+<script type="text/javascript" src="/js/jquery.js"></script>
+<script type="text/javascript" src="/calendar/jquery-ui.js"></script>
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" src="/help.js"></script>
 <script type="text/javascript" src="/general.js"></script>
-<script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/client_function.js"></script>
-<script type="text/javascript" src="/calendar/jquery-ui.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script type="text/javascript" src="/form.js"></script>
 <script type="text/javascript" src="/js/httpApi.js"></script>
@@ -687,12 +687,12 @@ function render_apps(apps_array, obj_icon, apps_field){
 		code +='<tr>';
 		code +='<td style="width:70px;">';
 		img = new Image();
-		img.src = 'images/New_ui/app_icons/'+ apps_array[i][3] +'-'+ apps_array[i][4] +'-0.png';	// to check image file exist
+		img.src = 'https://nw-dlcdnet.asus.com/plugin/app_icons/'+ apps_array[i][3] +'-'+ apps_array[i][4] +'-0.png';	// to check image file exist
 		if(img.height == 0){	//default image, if image file doesn't exist
 			code +='<div class="appIcons"></div>';
 		}
 		else{
-			code +='<div class="appIcons" style="background-image:url(\'images/New_ui/app_icons/'+ apps_array[i][3] +'-'+ apps_array[i][4] +'-0.png\')"></div>';
+			code +='<div class="appIcons" style="background-image:url(\'https://nw-dlcdnet.asus.com/plugin/app_icons/'+ apps_array[i][3] +'-'+ apps_array[i][4] +'-0.png\')"></div>';
 		}
 
 		code +='</td>';
@@ -1478,6 +1478,7 @@ function applyRule(){
 		reset_wan_to_fo.change_wan_mode(document.form);
 
 	document.form.qos_rulelist.value = qos_rulelist;
+	showLoading();
 	document.form.submit();
 }
 
@@ -1786,9 +1787,11 @@ function getTrafficUnit(){
 						</tr>
 						<tr>
 							<td>
+								<div style="margin:0 0 0 12px;width:200px;">
+									<a id="faq" href="" style="text-decoration:underline;" target="_blank"><#Bandwidth_monitor_WANLAN#> FAQ</a>
+								</div>
 								<div style=" *width:136px;margin:5px 0px 0px 300px;" class="titlebtn" align="center" onClick="applyRule();">
 									<span><#CTL_apply#></span>
-									<div style="margin:-30px 0 0px -290px;width:200px;"><a id="faq" href="" style="text-decoration:underline;" target="_blank"><#Bandwidth_monitor_WANLAN#> FAQ</a></div>
 								</div>
 							</td>
 						</tr>

@@ -254,7 +254,7 @@ function initial(){
 
 	set_NM_height();
 
-	if(based_modelid == "4G-AC53U"){
+	if(based_modelid == "4G-AC53U" || based_modelid == "4G-AC56"){
 		document.internetForm.wans_lanport1.remove(3);
 		document.internetForm.wans_lanport1.remove(2);
 		document.internetForm.wans_lanport2.remove(3);
@@ -742,7 +742,7 @@ function addWANOption(obj, wanscapItem){
 				wanscapName = "Ethernet WAN";
 			else if(wanscapName == "LAN")
 				wanscapName = "Ethernet LAN";
-			else if(wanscapName == "USB" && (based_modelid == "4G-AC53U" || based_modelid == "4G-AC55U" || based_modelid == "4G-AC68U"))
+			else if(wanscapName == "USB" && based_modelid.substring(0,3) == "4G-")
 				wanscapName = "<#Mobile_title#>";
 			obj.options[i] = new Option(wanscapName, wanscapItem[i]);
 		}	

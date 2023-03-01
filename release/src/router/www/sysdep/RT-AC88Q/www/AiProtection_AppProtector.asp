@@ -663,7 +663,7 @@ function applyRule(){
 	document.form.action_script.value = "restart_wrs;restart_firewall";
 	document.form.wrs_app_rulelist.value = wrs_app_rulelist;
 	if(ctf_disable == 0 && ctf_fa_mode == 2){
-		if(!confirm(Untranslated.ctf_fa_hint)){
+		if(!confirm("<#ctf_fa_hint#>")){
 			return false;
 		}
 		else{

@@ -68,7 +68,11 @@ nvram_init(void *unused)
 
 	ret = ioctl(nvram_fd, NVRAM_IOCTL_GET_SPACE, &nvram_space);	// get the real nvram space size
 	/* Map kernel string buffer into user space */
+#if defined(NVRAM_MULTIPLE)
+	nvram_buf = mmap(NULL, (nvram_space * NVRAM_MULTIPLE), PROT_READ, MAP_SHARED, nvram_fd, 0);
+#else
 	nvram_buf = mmap(NULL, nvram_space, PROT_READ, MAP_SHARED, nvram_fd, 0);
+#endif
 	if (nvram_buf == MAP_FAILED) {
 		close(nvram_fd);
 		nvram_fd = -1;

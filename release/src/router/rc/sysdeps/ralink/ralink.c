@@ -5985,6 +5985,33 @@ int LanWanLedCtrl(void)
 }
 #endif
 
+void config_mssid_isolate(char *ifname, int vif)
+{
+	char path[64] = {0}, prefix[16] = {0};
+	if(nvram_match("sw_mode", "1") && ifname){
+		snprintf(path, sizeof(path), "/sys/class/net/%s/brport/%s", ifname, "isolated");
+		if(f_exists(path)){
+			if(vif)
+				snprintf(prefix, sizeof(prefix), "%s_", wif_to_vif(ifname));
+			else{
+				if(absent_band(0) || strcmp(ifname, get_wififname(0))){
+					if(absent_band(1) || strcmp(ifname, get_wififname(1))){
+						dbg("%s: ifname [%s] vif [%d], unknown unit [%d]\n", __func__, ifname, 0, -1);
+						return;
+					}
+				}
+				snprintf(prefix, sizeof(prefix), "wl%d_", 1);
+			}
+			if(nvram_pf_get_int(prefix, "ap_isolate") || (vif && nvram_pf_match(prefix, "lanaccess", "off")))
+				f_write_string(path, "1", 0, 0);
+			else
+				f_write_string(path, "0", 0, 0);
+		}else{
+			dbg("%s: %s doesn't exist!\n", __func__, path);
+		}
+	}
+}
+
 #if defined(RTCONFIG_RALINK_BSD)
 void gen_bsd_conf(void)
 {

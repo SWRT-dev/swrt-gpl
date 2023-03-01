@@ -17,6 +17,10 @@ static int strtonl(const char *ptr, int n, int base) {
 	//char buf[MAX_NVRAM_SCHED_LEN];
 	int lvalue;
 	int ret;
+	if (!buf) {
+		_dprintf("No memory!!(strtonl)\n");
+		return -1;
+	}
 	snprintf(buf, n+1, "%s", ptr);
 	//SCHED_DBG("buf=%s", buf);
 	lvalue = strtol(buf, &pNext, base);
@@ -33,6 +37,10 @@ static unsigned int strtonul(const char *ptr, int n, int base) {
 	char *buf = (char *)malloc(n+1);
 	//char buf[MAX_NVRAM_SCHED_LEN];
 	unsigned int ulvalue;
+	if (!buf) {
+		_dprintf("No memory!!(strtonul)\n");
+		return 0;
+	}
 	snprintf(buf, n+1, "%s", ptr);
 	//SCHED_DBG("buf=%s", buf);
 	ulvalue = strtoul(buf, NULL, base);
@@ -79,6 +87,7 @@ static int parse_str_v1_to_sched_v1_list(const char *str_sched_v1, sched_v1_t **
 		*tmp_sched_v1 = (sched_v1_t *)malloc(sizeof(sched_v1_t));
 		if(*tmp_sched_v1 == NULL) {
 			ret = -2;
+			_dprintf("No memory!!(parse_str_v1_to_sched_v1_list)\n");
 			return ret;
 		}
 
@@ -165,6 +174,8 @@ static sched_v2_type get_sched_v2_etype(const char c_type) {
 	//SCHED_DBG("%d", c_type);
 	if (c_type == 'W')
 		e_type = SCHED_V2_TYPE_WEEK;
+	else if (c_type == 'M')
+		e_type = SCHED_V2_TYPE_WEEK_ONLINE;
 	else if (c_type == 'D')
 		e_type = SCHED_V2_TYPE_DAY;
 	return e_type;
@@ -175,6 +186,8 @@ static char get_sched_v2_ctype(const sched_v2_type e_type) {
 	//SCHED_DBG("%d", c_type);
 	if (e_type == SCHED_V2_TYPE_WEEK)
 		c_type = 'W';
+	else if (e_type == SCHED_V2_TYPE_WEEK_ONLINE)
+		c_type = 'M';
 	else if (e_type == SCHED_V2_TYPE_DAY)
 		c_type = 'D';
 	return c_type;
@@ -196,7 +209,7 @@ inline static int is_merged_day_of_week(int day_of_week) {
 inline static int is_same_w_period(const sched_v2_t *sched1, const sched_v2_t *sched2) {
 	if (sched1 && sched2 && 
 		sched1->type == sched2->type && 
-		((sched1->type == SCHED_V2_TYPE_WEEK && 
+		(((sched1->type == SCHED_V2_TYPE_WEEK || sched1->type == SCHED_V2_TYPE_WEEK_ONLINE) && 
 			sched1->value_w.enable == sched2->value_w.enable && 
 			sched1->value_w.start_hour == sched2->value_w.start_hour && 
 			sched1->value_w.start_minute == sched2->value_w.start_minute && 
@@ -227,6 +240,10 @@ static int expand_sched_v2_same_w_period(sched_v2_t **sched_v2_list) {
 				if ((curr->value_w.day_of_week & (1 << i)) > 0) {
 					char tmp_rule[7];
 					new = malloc(sizeof(sched_v2_t));
+					if (!new) {
+						_dprintf("No memory!!(expand_sched_v2_same_w_period)\n");
+						continue;
+					}
 					memset(new, 0, sizeof(sched_v2_t));
 					memcpy(&new->value_w, &curr->value_w, sizeof(sched_v2_w_t));
 					new->value_w.day_of_week = (1 << i);
@@ -273,7 +290,9 @@ static int sort_sched_v2_list(sched_v2_t **sched_v2_list) {
 			//Index will point to node next to curr
 			for(index = curr->next; index != NULL; index = index->next) {
 				//If curr's data is greater than index's data, swap the data of curr and index
-				if (curr->value_w.rule_to_number > index->value_w.rule_to_number) {
+				if ((curr->type == index->type) && 
+					(curr->type == SCHED_V2_TYPE_WEEK || curr->type == SCHED_V2_TYPE_WEEK_ONLINE) &&
+					(curr->value_w.rule_to_number > index->value_w.rule_to_number)) {
 					temp = curr->value_w;
 					curr->value_w = index->value_w;
 					index->value_w = temp;
@@ -302,9 +321,7 @@ static int merge_sched_v2_same_w_period(sched_v2_t **sched_v2_list) {
 		//SCHED_DBG("%p:type1=%d", next, curr1->type);
 		for (curr2 = next; curr2 != NULL; curr2 = curr2->next) {
 			//SCHED_DBG("%p:type2=%d", curr2, curr2->type);
-			if (curr1->type == curr2->type && 
-					curr1->type == SCHED_V2_TYPE_WEEK && 
-					is_same_w_period(curr1, curr2)) {
+			if (is_same_w_period(curr1, curr2)) {
 				curr1->value_w.day_of_week |= curr2->value_w.day_of_week;
 				//SCHED_DBG("day_of_week=%d", curr1->value_w.day_of_week);
 				// remove sched_v2
@@ -338,7 +355,7 @@ static char *gen_v2_str_from_sched_v2_list(sched_v2_t *sched_v2_list, char *buf,
 				get_sched_v2_ctype(sched_v2->type), sched_v2->value_d.enable, 
 				sched_v2->value_d.start_hour, sched_v2->value_d.start_minute, 
 				sched_v2->value_d.end_hour, sched_v2->value_d.end_minute);
-		else if (sched_v2->type == SCHED_V2_TYPE_WEEK)
+		else if (sched_v2->type == SCHED_V2_TYPE_WEEK || sched_v2->type == SCHED_V2_TYPE_WEEK_ONLINE)
 			snprintf(tmp_buf+strlen(tmp_buf), buf_size-strlen(tmp_buf), "%c%d%02X%02d%02d%02d%02d<", 
 				get_sched_v2_ctype(sched_v2->type), 
 				sched_v2->value_w.enable, sched_v2->value_w.day_of_week, 
@@ -355,7 +372,7 @@ static char *gen_v2_str_from_sched_v2_list(sched_v2_t *sched_v2_list, char *buf,
 	return NULL;
 }
 
-static int parse_sched_v2_rule(const char *word, sched_v2_t **tmp_sched_v2) {
+static int parse_sched_v2_rule(const char *word, sched_v2_t **tmp_sched_v2, int skip_disabled) {
 	int i, ret = -1;
 	i = 0;
 	if (!word)
@@ -368,6 +385,7 @@ static int parse_sched_v2_rule(const char *word, sched_v2_t **tmp_sched_v2) {
 		return ret;
 	}
 	if (((*tmp_sched_v2)->type == SCHED_V2_TYPE_WEEK && strlen(word) != SCHED_V2_W_IDX_NULL) ||
+		((*tmp_sched_v2)->type == SCHED_V2_TYPE_WEEK_ONLINE && strlen(word) != SCHED_V2_W_IDX_NULL) ||
 	     ((*tmp_sched_v2)->type == SCHED_V2_TYPE_DAY && strlen(word) != SCHED_V2_D_IDX_NULL)) {
 		SCHED_DBG("invalid length of rule. rule=%s", word);
 		return ret;
@@ -379,7 +397,7 @@ static int parse_sched_v2_rule(const char *word, sched_v2_t **tmp_sched_v2) {
 			switch(i) {
 				case SCHED_V2_D_IDX_ENABLE:
 					(*tmp_sched_v2)->value_d.enable = strtonl(&word[i], (SCHED_V2_D_IDX_START_HOUR - SCHED_V2_D_IDX_ENABLE), 10);
-					if ((*tmp_sched_v2)->value_d.enable <= 0) { // Skip disabled rules
+					if (skip_disabled && (*tmp_sched_v2)->value_d.enable <= 0) { // Skip disabled rules
 						//free((*tmp_sched_v2));
 						//*tmp_sched_v2 = NULL;
 						SCHED_DBG("invalid enable flag or rule disabled. rule=%s", word);
@@ -416,11 +434,11 @@ static int parse_sched_v2_rule(const char *word, sched_v2_t **tmp_sched_v2) {
 					}
 					break;
 			}
-		} else {
+		} else if ((*tmp_sched_v2)->type == SCHED_V2_TYPE_WEEK || (*tmp_sched_v2)->type == SCHED_V2_TYPE_WEEK_ONLINE) {
 			switch(i) {
 				case SCHED_V2_W_IDX_ENABLE:
 					(*tmp_sched_v2)->value_w.enable = strtonl(&word[i], (SCHED_V2_W_IDX_DAY_OF_WEEK - SCHED_V2_W_IDX_ENABLE), 10);
-					if ((*tmp_sched_v2)->value_w.enable <= 0) {
+					if (skip_disabled && (*tmp_sched_v2)->value_w.enable <= 0) {
 						//free((*tmp_sched_v2));
 						//*tmp_sched_v2 = NULL;
 						SCHED_DBG("invalid enable flag or rule disabled. rule=%s", word);
@@ -472,7 +490,7 @@ END:
 	return ret;
 }
 
-int parse_str_v2_to_sched_v2_list(const char *str_sched_v2, sched_v2_t **sched_v2_list, int merge_same_period) {
+int parse_str_v2_to_sched_v2_list(const char *str_sched_v2, sched_v2_t **sched_v2_list, int merge_same_period, int skip_disabled) {
 	int ret = -1;
 	char tmp_str_sched[MAX_NVRAM_SCHED_LEN];
 	char word[MAX_NVRAM_SCHED_LEN], *next_word;
@@ -498,6 +516,7 @@ int parse_str_v2_to_sched_v2_list(const char *str_sched_v2, sched_v2_t **sched_v
 		//SCHED_DBG("%p", *tmp_sched_v2);
 		if(*tmp_sched_v2 == NULL) {
 			ret = -2;
+			_dprintf("No memory!!(parse_str_v2_to_sched_v2_list)\n");
 			return ret;
 		}
 
@@ -505,7 +524,7 @@ int parse_str_v2_to_sched_v2_list(const char *str_sched_v2, sched_v2_t **sched_v
 		(*tmp_sched_v2)->prev = prev_v2;
 		//SCHED_DBG("%p", *tmp_sched_v2);
 
-		if (parse_sched_v2_rule(word, tmp_sched_v2) < 0) { // If parse failed or need to skip, free the tmp_sched_v2.
+		if (parse_sched_v2_rule(word, tmp_sched_v2, skip_disabled) < 0) { // If parse failed or need to skip, free the tmp_sched_v2.
 			free((*tmp_sched_v2));
 			*tmp_sched_v2 = NULL;
 			SCHED_DBG("Skip the rule. rule=%s", word);
@@ -519,7 +538,7 @@ int parse_str_v2_to_sched_v2_list(const char *str_sched_v2, sched_v2_t **sched_v
 				word, (*tmp_sched_v2)->type, (*tmp_sched_v2)->value_d.enable, 
 				(*tmp_sched_v2)->value_d.start_hour, (*tmp_sched_v2)->value_d.start_minute, 
 				(*tmp_sched_v2)->value_d.end_hour, (*tmp_sched_v2)->value_d.end_minute);
-		} else if ((*tmp_sched_v2)->type == SCHED_V2_TYPE_WEEK) {
+		} else if ((*tmp_sched_v2)->type == SCHED_V2_TYPE_WEEK || (*tmp_sched_v2)->type == SCHED_V2_TYPE_WEEK_ONLINE) {
 			SCHED_DBG("word:%s, type:%d, enable:%d, day_of_week:%d, start_hour:%d, start_minute:%d, end_hour:%d, end_minute:%d", 
 				word, (*tmp_sched_v2)->type, (*tmp_sched_v2)->value_w.enable, (*tmp_sched_v2)->value_w.day_of_week, 
 				(*tmp_sched_v2)->value_w.start_hour, (*tmp_sched_v2)->value_w.start_minute, 
@@ -676,7 +695,7 @@ static char *convert_to_str_sched_v2(const char *str_sched, int merge_same_perio
 
 	//SCHED_DBG("%s", tmp_buf);
 	// merge the schedule string with same period
-	if (!parse_str_v2_to_sched_v2_list(tmp_buf, &sched_v2_list, merge_same_period)) {
+	if (!parse_str_v2_to_sched_v2_list(tmp_buf, &sched_v2_list, merge_same_period, 1)) {
 		if (merge_same_period)
 			merge_sched_v2_same_w_period(&sched_v2_list);
 		snprintf(buf, buf_size, "%s", ""); // clean buffer
@@ -720,7 +739,7 @@ char *convert_to_str_sched_v1(const char *str_sched, char *buf, int buf_size) {
 	else if (!strcmp(tmp_sched, "W10100002400<W10200002400<W10400002400<W10800002400<W11000002400<W12000002400<W14000002400")) // all close
 		snprintf(tmp_buf, tmp_buf_size, "%s", "");
 	else {
-		if (!parse_str_v2_to_sched_v2_list(str_sched, &sched_v2_list, 0)) {
+		if (!parse_str_v2_to_sched_v2_list(str_sched, &sched_v2_list, 0, 1)) {
 			int sched_idx = 0;
 			int real_curr_day, real_curr_hour, real_next_day, real_next_hour;
 			memset(buf, 0, tmp_buf_size);
@@ -775,20 +794,279 @@ char *convert_to_str_sched_v1(const char *str_sched, char *buf, int buf_size) {
 #define DAY1_END_MIN  time_to_minute(24, 0)
 #define DAY2_START_MIN  0
 #endif
+
+#if 1
+static int is_online_mode(sched_v2_t *sched_v2_list)
+{
+	return (sched_v2_list && sched_v2_list->type == SCHED_V2_TYPE_WEEK_ONLINE) ? 1: 0;
+}
+#else
+static int weekday_rotate(int n, unsigned int d)
+{
+	if (d > 7)
+		d = 7;
+	/* In n<<d, last d bits are 0. To put first 3 bits of n at 
+		last, do bitwise or of n<<d with n >>(INT_BITS - d) */
+	return (((n << d)|(n >> (7 - d))) & 0x7F);
+}
+
+static void convert_week_online_rule_to_offline(sched_v2_t *sched_v2_list)
+{
+	sched_v2_t *sched_v2, *new, *tail_sched_v2 = NULL;
+	int all_online_dow = 0, all_offline_dow = 0;
+	int first_sched_mode = -1;
+	for (sched_v2 = sched_v2_list; sched_v2 != NULL; sched_v2 = sched_v2->next) {
+		if (first_sched_mode == -1) {
+			if (sched_v2->type == SCHED_V2_TYPE_WEEK_ONLINE)
+				first_sched_mode = SCHED_V2_TYPE_WEEK_ONLINE;
+			else if (sched_v2->type == SCHED_V2_TYPE_WEEK)
+				first_sched_mode = SCHED_V2_TYPE_WEEK;
+		}
+
+		if (sched_v2->value_w.enable == 0)
+			continue;
+
+		SCHED_DBG("type=%d, enable=%d, dow=%d, sh=%d, sm=%d, eh=%d, em=%d", 
+			sched_v2->type,
+			sched_v2->value_w.enable,
+			sched_v2->value_w.day_of_week,
+			sched_v2->value_w.start_hour,
+			sched_v2->value_w.start_minute,
+			sched_v2->value_w.end_hour,
+			sched_v2->value_w.end_minute);
+		//get_event_day_limits(sched_v2, &(*follow_e_list)->start_day, &(*follow_e_list)->end_day);
+		tail_sched_v2 = sched_v2;
+		SCHED_DBG("prev=%p, tail_sched_v2=%p, next=%p", tail_sched_v2->prev, tail_sched_v2, tail_sched_v2->next);
+
+		int s_min = (sched_v2->value_w.start_hour*60) + sched_v2->value_w.start_minute;
+		int e_min = (sched_v2->value_w.end_hour*60) + sched_v2->value_w.end_minute;
+		int start_hour = sched_v2->value_w.start_hour;
+		int end_hour = sched_v2->value_w.end_hour;
+		int start_minute = sched_v2->value_w.start_minute;
+		int end_minute = sched_v2->value_w.end_minute;
+		if (sched_v2->type == SCHED_V2_TYPE_WEEK_ONLINE) {  // convert to offline period
+
+			all_online_dow |= sched_v2->value_w.day_of_week;
+			sched_v2->type = SCHED_V2_TYPE_WEEK;
+
+			if(s_min >= e_min) {  // over one day
+				if (s_min == 0 && e_min == 0) {  // all day online, no offline period
+					sched_v2->value_w.day_of_week = sched_v2->value_w.day_of_week;
+					sched_v2->value_w.start_hour = 24;
+					sched_v2->value_w.end_hour = 24;
+					sched_v2->value_w.start_minute = 0;
+					sched_v2->value_w.end_minute = 0;
+				} else {
+					sched_v2->value_w.day_of_week = sched_v2->value_w.day_of_week;
+					sched_v2->value_w.start_hour = 0;
+					sched_v2->value_w.end_hour = (s_min == 1440 && e_min == 1440) ? 24 : start_hour;
+					sched_v2->value_w.start_minute = 0;
+					sched_v2->value_w.end_minute = (s_min == 1440 && e_min == 1440) ? 0 : start_minute;
+				}
+
+				if (s_min != e_min) { // need two offline period
+					new = (sched_v2_t *)malloc(sizeof(sched_v2_t));
+					if(!new){
+						_dprintf("No memory!!(follow_e_list)\n");
+						continue;
+					}
+					memset(new, 0, sizeof(sched_v2_t));
+					memcpy(&new->value_w, &sched_v2->value_w, sizeof(sched_v2_w_t));
+
+					new->type = SCHED_V2_TYPE_WEEK;
+					new->value_w.day_of_week = weekday_rotate(sched_v2->value_w.day_of_week, 1);
+					all_online_dow |= new->value_w.day_of_week;
+					new->value_w.start_hour = end_hour;
+					new->value_w.end_hour = 24;
+					new->value_w.start_minute = end_minute;
+					new->value_w.end_minute = 0;
+
+					new->prev = sched_v2;
+					new->next = sched_v2->next;
+
+					if (sched_v2->next)
+						sched_v2->next->prev = new;
+					sched_v2->next = new;
+
+					sched_v2 = sched_v2->next; // skip new
+					tail_sched_v2 = new;
+					SCHED_DBG("add new over one day!!, end_hour=%d, end_miniute=%d", end_hour, end_minute);
+					SCHED_DBG("prev=%p, tail_sched_v2=%p, next=%p", tail_sched_v2->prev, tail_sched_v2, tail_sched_v2->next);
+				}
+			} else { // not over one day
+				if (s_min == 0 && e_min  == 1440) {
+					sched_v2->value_w.day_of_week = sched_v2->value_w.day_of_week;
+					sched_v2->value_w.start_hour = 24;
+					sched_v2->value_w.end_hour = 24;
+					sched_v2->value_w.start_minute = 0;
+					sched_v2->value_w.end_minute = 0;
+				} else if (s_min == 0 && e_min  != 1440) {
+					sched_v2->value_w.day_of_week = sched_v2->value_w.day_of_week;
+					sched_v2->value_w.start_hour = end_hour;
+					sched_v2->value_w.end_hour = 24;
+					sched_v2->value_w.start_minute = end_minute;
+					sched_v2->value_w.end_minute = 0;
+				} else if ((s_min != 0 && e_min  == 1440) || (s_min != 0 && e_min != 1440)) {
+					sched_v2->value_w.day_of_week = sched_v2->value_w.day_of_week;
+					sched_v2->value_w.start_hour = 0;
+					sched_v2->value_w.end_hour = start_hour;
+					sched_v2->value_w.start_minute = 0;
+					sched_v2->value_w.end_minute = start_minute;
+
+					if (s_min != 0 && e_min != 1440) {
+						new = (sched_v2_t *)malloc(sizeof(sched_v2_t));
+						if(!new){
+							_dprintf("No memory!!(follow_e_list)\n");
+							continue;
+						}
+						memset(new, 0, sizeof(sched_v2_t));
+						memcpy(&new->value_w, &sched_v2->value_w, sizeof(sched_v2_w_t));
+
+						new->type = SCHED_V2_TYPE_WEEK;
+						new->value_w.day_of_week = sched_v2->value_w.day_of_week;
+						new->value_w.start_hour = end_hour;
+						new->value_w.end_hour = 24;
+						new->value_w.start_minute = end_minute;
+						new->value_w.end_minute = 0;
+
+						new->prev = sched_v2;
+						new->next = sched_v2->next;
+
+						if (sched_v2->next)
+							sched_v2->next->prev = new;
+						sched_v2->next = new;
+
+						sched_v2 = sched_v2->next; // skip new
+						tail_sched_v2 = new;
+						SCHED_DBG("add new not over one day!!, end_hour=%d, end_miniute=%d", end_hour, end_minute);
+						SCHED_DBG("prev=%p, tail_sched_v2=%p, next=%p", tail_sched_v2->prev, tail_sched_v2, tail_sched_v2->next);
+					}
+				}
+			}
+		} else if (sched_v2->type == SCHED_V2_TYPE_WEEK) {  // offline mode. no need to convert
+			all_offline_dow |= sched_v2->value_w.day_of_week;
+			/*if(s_min >= e_min) {  // over one day
+				if (s_min == 0 && e_min == 0) {  // all day online, no offline period
+					sched_v2->value_w.day_of_week = sched_v2->value_w.day_of_week;
+					sched_v2->value_w.start_hour = 24;
+					sched_v2->value_w.end_hour = 24;
+					sched_v2->value_w.start_minute = 0;
+					sched_v2->value_w.end_minute = 0;
+				} else {
+					sched_v2->value_w.day_of_week = sched_v2->value_w.day_of_week;
+					sched_v2->value_w.start_hour = (s_min == 1440 && e_min == 1440) ? 24 : start_hour;
+					sched_v2->value_w.end_hour = 24;
+					sched_v2->value_w.start_minute = (s_min == 1440 && e_min == 1440) ? 0 : start_minute;
+					sched_v2->value_w.end_minute = 0;
+				}
+
+				if (s_min != e_min) { // need two offline period
+					new = (sched_v2_t *)malloc(sizeof(sched_v2_t));
+					if(!new){
+						_dprintf("No memory!!(follow_e_list)\n");
+						continue;
+					}
+					memset(new, 0, sizeof(sched_v2_t));
+					memcpy(&new->value_w, &sched_v2->value_w, sizeof(sched_v2_w_t));
+
+					new->type = SCHED_V2_TYPE_WEEK;
+					new->value_w.day_of_week = weekday_rotate(sched_v2->value_w.day_of_week, 1);
+					all_offline_dow |= new->value_w.day_of_week;
+					new->value_w.start_hour = 0;
+					new->value_w.end_hour = end_hour;
+					new->value_w.start_minute = 0;
+					new->value_w.end_minute = end_minute;
+
+					new->prev = sched_v2;
+					new->next = sched_v2->next;
+
+					if (sched_v2->next)
+						sched_v2->next->prev = new;
+					sched_v2->next = new;
+
+					sched_v2 = sched_v2->next; // skip new
+					tail_sched_v2 = new;
+					SCHED_DBG("add new over one day!!, end_hour=%d, end_miniute=%d", end_hour, end_minute);
+					SCHED_DBG("prev=%p, tail_sched_v2=%p, next=%p", tail_sched_v2->prev, tail_sched_v2, tail_sched_v2->next);
+				}
+			}*/
+		} else {
+			SCHED_DBG("type does not support!!!");
+			continue;
+		}
+	}
+
+	//SCHED_DBG("tail_sched_v2=%p", tail_sched_v2);
+	SCHED_DBG("first_sched_mode=%d, all_offline_dow=%d, all_online_dow=%d", first_sched_mode, all_offline_dow, all_online_dow);
+
+	// gen a rule for the days not exists in online mode rules.
+	if (tail_sched_v2 &&
+		(((first_sched_mode == SCHED_V2_TYPE_WEEK_ONLINE && all_offline_dow == 0) || (first_sched_mode == SCHED_V2_TYPE_WEEK && all_offline_dow == 0 && all_online_dow != 0)) && 
+		((~all_online_dow & 0x7F) != 0))) {
+		new = (sched_v2_t *)malloc(sizeof(sched_v2_t));
+		if(!new){
+			_dprintf("No memory!!(follow_e_list)\n");
+			return;
+		}
+		memset(new, 0, sizeof(sched_v2_t));
+		memcpy(&new->value_w, &tail_sched_v2->value_w, sizeof(sched_v2_w_t));
+
+		new->type = SCHED_V2_TYPE_WEEK;
+		new->value_w.day_of_week = (~all_online_dow & 0x7F);
+		new->value_w.start_hour = 0;
+		new->value_w.end_hour = 24;
+		new->value_w.start_minute = 0;
+		new->value_w.end_minute = 0;
+		SCHED_DBG("add new rules=%p", new);
+		SCHED_DBG("prev=%p, tail_sched_v2=%p, next=%p", tail_sched_v2->prev, tail_sched_v2, tail_sched_v2->next);
+
+		new->prev = tail_sched_v2;
+		new->next = tail_sched_v2->next;
+
+		if (tail_sched_v2->next)
+			tail_sched_v2->next->prev = new;
+		tail_sched_v2->next = new;
+		SCHED_DBG("prev=%p, tail_sched_v2=%p, next=%p", tail_sched_v2->prev, tail_sched_v2, tail_sched_v2->next);
+		SCHED_DBG("prev=%p, tail_sched_v2=%p, next=%p", tail_sched_v2->next->prev, tail_sched_v2->next, tail_sched_v2->next->next);
+	}
+}
+#endif
+
 int check_sched_v2_on_off(const char *sched_str) {
 	int ret = 1;
 	sched_v2_t *sched_v2_list;
-	if (!parse_str_v2_to_sched_v2_list(sched_str, &sched_v2_list, 1)) {
+	if (!parse_str_v2_to_sched_v2_list(sched_str, &sched_v2_list, 1, 0)) {
 		time_t now;
 		struct tm *ptm;
 		sched_v2_t *sched_v2;
 		int start_min, curr_min, end_min;
+#ifndef RTCONFIG_AVOID_TZ_ENV
 		setenv("TZ", nvram_safe_get("time_zone_x"), 1);
+#endif
 		now = time(NULL);
 		ptm = localtime(&now);
 		curr_min = time_to_minute(ptm->tm_hour, ptm->tm_min);
+#if 1
+		ret = is_online_mode(sched_v2_list) ? 0 : 1; // set default to off or on.
+		SCHED_DBG("online_mode=%d", ret == 0 ? 1 : 0);
+#else
+		convert_week_online_rule_to_offline(sched_v2_list); // If any
+#endif
 		//SCHED_DBG("now=%ld", now);
 		for (sched_v2 = sched_v2_list; sched_v2 != NULL; sched_v2 = sched_v2->next) {
+			SCHED_DBG("sched_v2=%p, type=%d, enable=%d, dow=%d, sh=%d, sm=%d, eh=%d, em=%d", 
+				sched_v2,
+				sched_v2->type,
+				sched_v2->value_w.enable,
+				sched_v2->value_w.day_of_week,
+				sched_v2->value_w.start_hour,
+				sched_v2->value_w.start_minute,
+				sched_v2->value_w.end_hour,
+				sched_v2->value_w.end_minute);
+
+			if (sched_v2->value_w.enable == 0)
+				continue;
+
 			start_min = sched_v2->type == SCHED_V2_TYPE_DAY ? 
 						time_to_minute(sched_v2->value_d.start_hour, sched_v2->value_d.start_minute) : time_to_minute(sched_v2->value_w.start_hour, sched_v2->value_w.start_minute);
 			end_min = sched_v2->type == SCHED_V2_TYPE_DAY ? 
@@ -797,13 +1075,13 @@ int check_sched_v2_on_off(const char *sched_str) {
 				(start_min <= curr_min) && (curr_min < end_min)) {
 				ret = 0;
 				break;
-			} else if (sched_v2->type == SCHED_V2_TYPE_WEEK) {
+			} else if ((sched_v2->type == SCHED_V2_TYPE_WEEK) || (sched_v2->type == SCHED_V2_TYPE_WEEK_ONLINE)) {
 #if defined(RTCONFIG_WL_SCHED_V3) || defined(RTCONFIG_PC_SCHED_V3)
 				int over_wday = !ptm->tm_wday ? 6 : (ptm->tm_wday-1);
 				if (start_min >= end_min) {  // over one day
 					if ((((sched_v2->value_w.day_of_week & (1 << ptm->tm_wday)) > 0) &&	(start_min <= curr_min) && (curr_min < DAY1_END_MIN)) || 
 						(((sched_v2->value_w.day_of_week & (1 << over_wday)) > 0) && (DAY2_START_MIN <= curr_min) && (curr_min < end_min))) {
-						ret = 0;
+						ret = (sched_v2->type == SCHED_V2_TYPE_WEEK) ? 0 : 1;
 						SCHED_DBG("over one day matched");
 						break;
 					}
@@ -812,7 +1090,7 @@ int check_sched_v2_on_off(const char *sched_str) {
 				{
 					if (((sched_v2->value_w.day_of_week & (1 << ptm->tm_wday)) > 0) &&
 						(start_min <= curr_min) && (curr_min < end_min)) {
-						ret = 0;
+						ret = (sched_v2->type == SCHED_V2_TYPE_WEEK) ? 0 : 1;
 						break;
 					}
 				}
@@ -839,14 +1117,14 @@ void convert_wl_sched_v1_to_sched_v2() {
 		{
 			/*transfer wl_sched NULL value to 000000 value, because
 			of old version firmware with wrong default value*/
-			if (!nvram_get(strcat_r(prefix, "sched", tmp)))
-				nvram_set(strcat_r(prefix, "sched", tmp), "000000");
+			if (!nvram_get(strlcat_r(prefix, "sched", tmp, sizeof(tmp))))
+				nvram_set(strlcat_r(prefix, "sched", tmp, sizeof(tmp)), "000000");
 
 			snprintf(str_sched_v2, sizeof(str_sched_v2), "%s", "");
-			if (convert_to_str_sched_v2(nvram_safe_get(strcat_r(prefix, "sched", tmp)), 0, str_sched_v2, sizeof(str_sched_v2))) {
-				if (strcmp(str_sched_v2, nvram_safe_get(strcat_r(prefix, "sched_v2", tmp)))) { // Changed
-					nvram_set(strcat_r(prefix, "sched_v2", tmp), str_sched_v2);
-					//nvram_unset(strcat_r(prefix, "sched", tmp));
+			if (convert_to_str_sched_v2(nvram_safe_get(strlcat_r(prefix, "sched", tmp, sizeof(tmp))), 0, str_sched_v2, sizeof(str_sched_v2))) {
+				if (strcmp(str_sched_v2, nvram_safe_get(strlcat_r(prefix, "sched_v2", tmp, sizeof(tmp))))) { // Changed
+					nvram_set(strlcat_r(prefix, "sched_v2", tmp, sizeof(tmp)), str_sched_v2);
+					//nvram_unset(strlcat_r(prefix, "sched", tmp, sizeof(tmp)));
 					SCHED_DBG("str_sched_v2 : %s", str_sched_v2);
 					changed = 1;
 				}
@@ -854,18 +1132,18 @@ void convert_wl_sched_v1_to_sched_v2() {
 		} else
 #endif
 		{
-			//if (nvram_get(strcat_r(prefix, "sched", tmp)) || !nvram_get(strcat_r(prefix, "sched_v2", tmp))) {
-			//fprintf((stderr), "[SCHED] %s=%s\n", strcat_r(prefix, "sched_v2_converted", tmp), nvram_get(strcat_r(prefix, "sched_v2_converted", tmp)));
-			if (!nvram_match(strcat_r(prefix, "sched_v2_converted", tmp), "1")) {
+			//if (nvram_get(strlcat_r(prefix, "sched", tmp, sizeof(tmp))) || !nvram_get(strlcat_r(prefix, "sched_v2", tmp, sizeof(tmp)))) {
+			//fprintf((stderr), "[SCHED] %s=%s\n", strlcat_r(prefix, "sched_v2_converted", tmp, sizeof(tmp)), nvram_get(strlcat_r(prefix, "sched_v2_converted", tmp, sizeof(tmp))));
+			if (!nvram_match(strlcat_r(prefix, "sched_v2_converted", tmp, sizeof(tmp)), "1")) {
 				snprintf(str_sched_v2, sizeof(str_sched_v2), "%s", "");
-				if (convert_to_str_sched_v2(nvram_safe_get(strcat_r(prefix, "sched", tmp)), 0, str_sched_v2, sizeof(str_sched_v2))) {
+				if (convert_to_str_sched_v2(nvram_safe_get(strlcat_r(prefix, "sched", tmp, sizeof(tmp))), 0, str_sched_v2, sizeof(str_sched_v2))) {
 					//if (strcmp(str_sched_v2, nvram_safe_get(strcat_r(prefix, "sched_v2", tmp)))) { // Changed
-						nvram_set(strcat_r(prefix, "sched_v2", tmp), str_sched_v2);
-						nvram_set(strcat_r(prefix, "sched_v2_converted", tmp), "1");
+						nvram_set(strlcat_r(prefix, "sched_v2", tmp, sizeof(tmp)), str_sched_v2);
+						nvram_set(strlcat_r(prefix, "sched_v2_converted", tmp, sizeof(tmp)), "1");
 #ifdef RTCONFIG_AMAS
 						if (!nvram_match("re_mode", "1"))
 #endif
-						nvram_set(strcat_r(prefix, "sched", tmp), "000000");
+						nvram_set(strlcat_r(prefix, "sched", tmp, sizeof(tmp)), "000000");
 						SCHED_DBG("str_sched_v2 : %s", str_sched_v2);
 						changed = 1;
 					//}

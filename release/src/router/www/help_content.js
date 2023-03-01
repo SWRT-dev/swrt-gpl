@@ -101,7 +101,8 @@ helpcontent[5] = new Array("",
 							 "<#RouterConfig_IGMPver_itemname#>",
 							 "<#RouterConfig_MLDver_itemname#>",
 							 "Enable Fast Leave",
-							 "<#LANHostConfig_x_DDNS_retrieve_IP_note#>");
+							 "<#LANHostConfig_x_DDNS_retrieve_IP_note#>",
+							 "<#DDNS_ipv6_update_desc#>");
 helpcontent[6] = new Array("",
 						   "<#RHELP_desc4#>",
 						   "<#RHELP_desc5#>",

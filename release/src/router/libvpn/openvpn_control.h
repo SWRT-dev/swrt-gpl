@@ -18,3 +18,7 @@ extern void ovpn_up_handler();
 extern void ovpn_down_handler();
 extern void ovpn_route_up_handler();
 extern void ovpn_route_pre_down_handler();
+#ifdef RTCONFIG_MULTILAN_CFG
+extern void update_ovpn_client_by_sdn(MTLAN_T *pmtl, size_t mtl_sz, int restart_all_sdn);
+extern void update_ovpn_server_by_sdn(MTLAN_T *pmtl, size_t mtl_sz, int restart_all_sdn);
+#endif

@@ -76,7 +76,7 @@ function initial(){
 		var wan1_ipaddr = secondary_wanlink_ipaddr();
 		document.getElementById("wan_ctrl").style.display = "none";
 		document.getElementById("dualwan_ctrl").style.display = "";	
-		document.getElementById("dualwan_ctrl").innerHTML = "<#PPTP_desc2#> <span class=\"formfontdesc\">Primary WAN IP : " + wan0_ipaddr + " </sapn><span class=\"formfontdesc\">Secondary WAN IP : " + wan1_ipaddr + "</sapn>";
+		document.getElementById("dualwan_ctrl").innerHTML = "<#PPTP_desc2#> <span class=\"formfontdesc\">Primary WAN IP : " + wan0_ipaddr + " </span><span class=\"formfontdesc\">Secondary WAN IP : " + wan1_ipaddr + "</span>";
 		//check DUT is belong to private IP. //realip doesn't support lb
 		if(validator.isPrivateIP(wan0_ipaddr) && validator.isPrivateIP(wan1_ipaddr)){
 			document.getElementById("privateIP_notes").style.display = "";
@@ -531,9 +531,9 @@ function showpptpd_clientlist(){
 					if(pptpd_clientlist_col[0].length >28){
 						overlib_str0[i] += pptpd_clientlist_col[0];
 						pptpd_clientlist_col[0]=pptpd_clientlist_col[0].substring(0, 26)+"...";
-						code +='<td width="30%" title="'+overlib_str0[i]+'">'+ pptpd_clientlist_col[0] +'</td>';
+						code +='<td width="30%" title="'+htmlEnDeCode.htmlEncode(overlib_str0[i])+'">'+ htmlEnDeCode.htmlEncode(pptpd_clientlist_col[0]) +'</td>';
 					}else
-						code +='<td width="30%" title="'+pptpd_clientlist_col[0]+'">'+ pptpd_clientlist_col[0] +'</td>';
+						code +='<td width="30%" title="'+htmlEnDeCode.htmlEncode(pptpd_clientlist_col[0])+'">'+ htmlEnDeCode.htmlEncode(pptpd_clientlist_col[0]) +'</td>';
 				}
 				else if(j == 1){
 					if(pptpd_clientlist_col[1].length >28){
@@ -646,6 +646,12 @@ function srConfirm() {
 		if(!validator.isLegalMask(document.form.pptpd_sr_netmask)) {
 			return false;
 		}
+	}
+
+	var lan_ipaddr = httpApi.nvramGet(["lan_ipaddr"]).lan_ipaddr;
+	if(pptpd_sr_ipaddr == lan_ipaddr){
+		alert("<#vpn_conflict_LANIP#> " + lan_ipaddr);
+		return false;
 	}
 	
 	var usernameFlag = false;

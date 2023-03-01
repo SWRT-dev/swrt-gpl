@@ -88,18 +88,23 @@ if(amesh_support && ameshRouter_support) {
 	}
 }
 
+var get_s46_hgw_case = '<% nvram_get("s46_hgw_case"); %>';	//topology 2,3,6
+var s46_ports_check_flag = (get_s46_hgw_case=='3' || get_s46_hgw_case=='6')? true:false;	//true for topology 3||6
 var check_ipv6_s46_ports_hook = (Softwire46_support && wan_proto=="v6plus")? '<%chk_s46_port_range();%>':'0';
+// '{"pf":"1","open_nat":"0","pt":"1","https":"0","ssh":"0","openvpn":"0","ftp":"1","ipsec":"1"}';
 var check_ipv6_s46_ports = "0";
 if(check_ipv6_s46_ports_hook != "" && check_ipv6_s46_ports_hook != "0"){
 	check_ipv6_s46_ports = JSON.parse(check_ipv6_s46_ports_hook);
 }
-
 
 var get_ipv6_s46_ports = (Softwire46_support && wan_proto=="v6plus")? '<%nvram_get("ipv6_s46_ports");%>':'0';
 var array_ipv6_s46_ports = new Array("");
 if(get_ipv6_s46_ports!="0" && get_ipv6_s46_ports!=""){
 	array_ipv6_s46_ports = get_ipv6_s46_ports.split(" ");
 }
+
+var ipsec_server_enable = '<% nvram_get("ipsec_server_enable"); %>'; //higher priority
+var ipsec_ig_enable = '<% nvram_get("ipsec_ig_enable"); %>';
 
 function pop_s46_ports(p, flag){
 	var isMobile = function() {
@@ -176,8 +181,8 @@ function close_s46_ports(){
 function pop_s46_ports_conflict(){
 
 	var conflict_links = gen_conflict_links();
-	var confilct_content = "<div style='float:right;'><img src='/images/button-close.gif' style='width:30px;cursor:pointer;margin:-28px -28px 0 0;' onclick='close_s46_ports_conflict();'></div>The following port related settings may not work properly since port number mismatch in current v6plus usable port range. Please set up a usable port listed in <a target='_self' style='text-decoration:underline;' href='Main_IPV6Status_Content.asp'>IPv6 Log</a>.<br><br>"+conflict_links;
-	
+	var confilct_content = "<div style='float:right;'><img src='/images/button-close.gif' style='width:30px;cursor:pointer;margin:-28px -28px 0 0;' onclick='close_s46_ports_conflict();'></div>Port mismatch issue may occur under the special port range of v6plus. It will not affect your internet but the following port related settings. If you would like to use them, please refer to usable port range in <a target='_self' style='text-decoration:underline;' href='Main_IPV6Status_Content.asp'>IPv6 Log</a>, and alter the port number of these features to matching range.<br><br>"+conflict_links;
+	/* Untranslated */
 	var left_tuned=0;
 	var top_tuned=130;
 	var margin_set=top_tuned +"px 0px 0px "+left_tuned+"px";
@@ -252,32 +257,48 @@ function cal_panel_s46_ports(obj, multiple) {
 	document.getElementById(obj).style.marginLeft = blockmarginLeft + "px";
 }
 
+function exist_v6plus_conflict(){	//0 for no issue
+	var count=0;
+	$.each(check_ipv6_s46_ports, function (key, data) {
+	if(data=='1'){count += 1;}
+	})
+	return count;
+}
+
 function gen_conflict_links(){
 	var items="";
 	$.each(check_ipv6_s46_ports, function (key, data) {
     	if(data=='1'){
     		switch(key) {
                 case "pf" :
-                        items += "<li><#menu5_3_4#></li>";
+                        items += "<li><a href='/Advanced_VirtualServer_Content.asp' style='text-decoration:underline;cursor:pointer;'><#menu5_3_4#></a></li>";
                         break;
                 case "open_nat" :
-                        items += "<li>OPEN NAT</li>";
+                        items += "<li><a href='/GameProfile.asp' target='_blank' style='text-decoration:underline;cursor:pointer;'>OPEN NAT</a></li>";
                         break;
                 case "pt" :
-                        items += "<li><#menu5_3_3#></li>";
+                        items += "<li><a href='/Advanced_PortTrigger_Content.asp' target='_blank' style='text-decoration:underline;cursor:pointer;'><#menu5_3_3#></a></li>";
                         break;
                 case "https" :
-                        items += "<li><#FirewallConfig_x_WanWebPort_itemname#></li>";
+                        items += "<li><a href='/Advanced_System_Content.asp' target='_blank' style='text-decoration:underline;cursor:pointer;'><#FirewallConfig_x_WanWebPort_itemname#></a></li>";
                         break;
                 case "ssh" :
-                        items += "<li><#Port_SSH#></li>";
+                        items += "<li><a href='/Advanced_System_Content.asp' target='_blank' style='text-decoration:underline;cursor:pointer;'><#Port_SSH#></a></li>";
                         break;
                 case "openvpn" :
-                        items += "<li>OpenVPN</li>";
+                        items += "<li><a href='/Advanced_VPN_OpenVPN.asp' target='_blank' style='text-decoration:underline;cursor:pointer;'>OpenVPN</a></li>";
                         break;
                 case "ftp" :
-                        items += "<li><#NAT_passthrough_itemname#> - <#FTP_ALG_port#></li>";
+                        items += "<li><a href='/Advanced_NATPassThrough_Content.asp' target='_blank' style='text-decoration:underline;cursor:pointer;'><#NAT_passthrough_itemname#> - <#FTP_ALG_port#></a></li>";
                         break;
+		case "ipsec" :
+			if(ipsec_server_enable=='1'){
+				items += "<li><a href='/Advanced_VPN_IPSec.asp' target='_blank' style='text-decoration:underline;cursor:pointer;'>IP Sec</a></li>";
+			}
+			if(ipsec_ig_enable=='1'){
+				items += "<li><a href='/Advanced_Instant_Guard.asp' target='_blank' style='text-decoration:underline;cursor:pointer;'><#Instant_Guard_title#></a></li>";
+			}
+			break;
                 default :
                         break;
         	}
@@ -317,7 +338,7 @@ var notification = {
 		var header_info = [<% get_header_info(); %>];
 		location.href = header_info[0].current_page;
 	},
-	redirectHint:function(){location.href = location.href;},
+	redirectHint:function(){location.reload();},
 	clickCallBack: [],
 	pppoe_tw: 0,
 	ie_legacy: 0,
@@ -606,10 +627,11 @@ var notification = {
 		}
 
 		if(Softwire46_support && wan_proto=="v6plus"){
-			if(check_ipv6_s46_ports != "0"){
+			var exist_conflict = exist_v6plus_conflict();
+			if(check_ipv6_s46_ports != "0" && exist_conflict>0){
 				notification.s46_ports = 1;
 				notification.array[20] = 'noti_s46_ports';
-				notification.desc[20] = 'Port settings mismatch v6plus usable port range.';  /* Untranslated */
+				notification.desc[20] = 'Port related settings may encounter mismatch issue in current v6plus port range.';  /* Untranslated */
 				notification.action_desc[20] = "Detail";
 				notification.clickCallBack[20] = "setTimeout('pop_s46_ports_conflict()', 100);"
 			}

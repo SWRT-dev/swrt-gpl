@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24" height="24" viewBox="0 0 24 24">
+  <defs>
+    <path id="ic_signal_wifi_4_bar_lock-a" d="M23,16 L23,14.5 C23,13.1 21.9,12 20.5,12 C19.1,12 18,13.1 18,14.5 L18,16 C17.5,16 17,16.5 17,17 L17,21 C17,21.5 17.5,22 18,22 L23,22 C23.5,22 24,21.5 24,21 L24,17 C24,16.5 23.5,16 23,16 L23,16 Z M22,16 L19,16 L19,14.5 C19,13.7 19.7,13 20.5,13 C21.3,13 22,13.7 22,14.5 L22,16 L22,16 Z M15.5,14.5 C15.5,11.7 17.7,9.5 20.5,9.5 C20.9,9.5 21.2,9.5 21.5,9.6 L23.6,7 C23.2,6.7 18.7,3 12,3 C5.3,3 0.8,6.7 0.4,7 L12,21.5 L15.5,17.1 L15.5,14.5 L15.5,14.5 Z"/>
+    <rect id="ic_signal_wifi_4_bar_lock-c" width="50" height="50" x="0" y="0"/>
+  </defs>
+  <g fill="none" fill-rule="evenodd">
+    <mask id="ic_signal_wifi_4_bar_lock-b" fill="#fff">
+      <use xlink:href="#ic_signal_wifi_4_bar_lock-a"/>
+    </mask>
+    <g mask="url(#ic_signal_wifi_4_bar_lock-b)">
+      <use fill="#0070FF" transform="translate(-13 -13)" xlink:href="#ic_signal_wifi_4_bar_lock-c"/>
+    </g>
+  </g>
+</svg>

@@ -167,6 +167,8 @@ function register_event(){
 
 function initial(){
 	show_menu();
+	var faq_href = "https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Faq&lang="+ui_lang+"&kw=&num=102";
+	document.getElementById("faq").href = faq_href;
 	show_clients();
 }
 
@@ -657,12 +659,12 @@ function render_apps(apps_array, obj_icon, apps_field){
 		code +='<tr>';
 		code +='<td style="width:70px;">';
 		img = new Image();
-		img.src = 'images/New_ui/app_icons/'+ apps_array[i][3] +'-'+ apps_array[i][4] +'-0.png';	// to check image file exist
+		img.src = 'https://nw-dlcdnet.asus.com/plugin/app_icons/'+ apps_array[i][3] +'-'+ apps_array[i][4] +'-0.png';	// to check image file exist
 		if(img.height == 0){	//default image, if image file doesn't exist
 			code +='<div class="appIcons"></div>';
 		}
 		else{
-			code +='<div class="appIcons" style="background-image:url(\'images/New_ui/app_icons/'+ apps_array[i][3] +'-'+ apps_array[i][4] +'-0.png\')"></div>';
+			code +='<div class="appIcons" style="background-image:url(\'https://nw-dlcdnet.asus.com/plugin/app_icons/'+ apps_array[i][3] +'-'+ apps_array[i][4] +'-0.png\')"></div>';
 		}
 
 		code +='</td>';
@@ -1466,7 +1468,7 @@ function cancel(){
 							<td>
 								<div style=" *width:136px;margin:5px 0px 0px 300px;" class="titlebtn" align="center" onClick="applyRule();">
 									<span><#CTL_apply#></span>
-									<div style="margin:-30px 0 0px -480px;"><a style="text-decoration:underline;" href="https://www.asus.com/support/FAQ/1008717/" target="_blank"><#Bandwidth_monitor_WANLAN#> FAQ</a></div>
+									<div style="margin:-30px 0 0px -480px;"><a id="faq" style="text-decoration:underline;" href="" target="_blank"><#Bandwidth_monitor_WANLAN#> FAQ</a></div>
 								</div>
 							</td>
 						</tr>

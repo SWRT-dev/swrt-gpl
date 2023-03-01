@@ -68,7 +68,7 @@ function initial(){
 			if(tmo_support)
 				var theUrl = "cellspot.router"; 
 			else
-				var theUrl = "router.asus.com";
+				var theUrl = "<#Web_DOMAIN_NAME#>";
 			document.getElementById("aicloud_main_text").innerHTML = "<#AiCloud_maintext_note0#>"+ theUrl +"<#AiCloud_maintext_note1#>";
 		}
 	}
@@ -94,7 +94,7 @@ function onProcessTimer(){
 		setTimeout("onProcessTimer();", 1000);
 	}
 	else
-		window.location.href = location.href;
+		location.reload();
 }
 
 function checkDDNSReturnCode(){
@@ -109,7 +109,7 @@ function checkDDNSReturnCode(){
       	if(ddns_return_code == 'ddns_query')
         	setTimeout("checkDDNSReturnCode();", 500);
         else 
-					window.location.href = location.href;
+					location.reload();
       }
    });
 }

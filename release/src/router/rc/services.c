@@ -75,7 +75,6 @@
 #include "libsmspdu.h"
 #endif
 #else
-#ifdef RTCONFIG_MDNS
 int mkdir_if_none(const char *path)
 {
 	DIR *dp;
@@ -91,7 +90,6 @@ int mkdir_if_none(const char *path)
 
 	return 0;
 }
-#endif
 #endif	/* RTCONFIG_USB */
 
 #ifdef RTCONFIG_QTN
@@ -179,10 +177,10 @@ static const struct itimerval zombie_tv = { {0,0}, {307, 0} };
 static const char dmhosts[] = "/etc/hosts.dnsmasq";
 static const char dmresolv[] = "/tmp/resolv.conf";
 #if defined(RTCONFIG_SMARTDNS)
-static const char dmservers[] = "/tmp/resolv.dnsmasq";
+const char dmservers[] = "/tmp/resolv.dnsmasq";
 static const char sdservers[] = "/tmp/resolv.smartdns";
 #else
-static const char dmservers[] = "/tmp/resolv.dnsmasq";
+const char dmservers[] = "/tmp/resolv.dnsmasq";
 #endif
 
 #ifdef RTCONFIG_TOAD
@@ -445,41 +443,65 @@ static int __cp(const char *param, const char *dir, const char *files, const cha
  *   VERNEED              0x004008d4
  *   VERNEEDNUM           0x00000001
  */
-static int build_temp_rootfs(const char *newroot)
+int build_temp_rootfs(const char *newroot)
 {
 	int i, r;
 	struct stat st;
 	char d1[PATH_MAX], d2[PATH_MAX];
 	struct utsname u;
 	const char *mdir[] = { "/proc", "/tmp", "/sys", "/usr", "/var", "/var/lock" };
-	const char *bin = "ash busybox cat cp dd df echo grep iwpriv kill ls ps mkdir mount nvram ping sh tar umount uname rm";
-	const char *sbin = "init rc hotplug2 insmod lsmod modprobe reboot rmmod rtkswitch"
+	const char *bin = "ash busybox cat cp dd df echo grep iwpriv kill ls ps mkdir mount nvram ping sh tar umount uname rm chmod mv klogd syslogd"
+#if defined(RTCONFIG_HND_ROUTER_AX)
+			" bcm_flasher chroot pivot_root bcm_bootstate bash vi ubinfo"			
+			" ash bash cat chmod chown cp date dd df dmesg echo egrep false fatattr fgrep fsync grep gunzip gzip ln login mkdir mknod more netsta nice pidof ping ping6i ps pwd rm rmdir"
+			" sed sleep stty sync tar touch true usleep watch zcat"
+#endif
+			;
+	const char *sbin = "init rc hotplug2 ifconfig insmod lsmod modprobe reboot rmmod rtkswitch"
 #if defined(RTCONFIG_BWDPI)
 		" bwdpi* rsasign_sig_check"
 #endif
-		;
-	const char *lib = "librt*.so* libnsl* libdl* libm* ld-* libiw* libgcc* libpthread* libdisk* libc*"
-#if defined(RTCONFIG_LIBASUSLOG)
-			     " libasuslog.so"
+#if defined(RTCONFIG_HW_DOG)
+		" hwdog"
+#endif
+#if defined(RTCONFIG_SCHED_DAEMON)
+		" sched_daemon"
 #endif
 		;
-	const char *usrbin = "killall"
+	const char *lib = "librt*.so* libnsl* libdl* libm* ld-* libiw* libgcc* libpthread* libdisk* libc*"
+#if defined(RTCONFIG_HND_ROUTER_AX)
+			" libnvram.so* libgen_util.so* libsys_util.so* libwlcsm.so* libbcm_flashutil.so* libbcm_util.so* libbcm_boardctl.so*"
+#endif
+#if defined(RTCONFIG_LIBASUSLOG)
+			     " libasuslog.so*"
+#endif
+		;
+	const char *usrbin = "killall which expr find fuser lsof"
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
 			     " cnssdaemon"
 #endif
 		;
-	const char *usrsbin __attribute__((unused)) = "httpd"
+	const char *usrsbin __attribute__((unused)) = "httpd brctl ip iptables ip6tables"
 #if defined(RTCONFIG_HTTPS)
 			     " httpds"
 #endif
 #ifdef RTCONFIG_BCMARM
 			     " nvram"
 #endif
+#ifdef RTCONFIG_HND_ROUTER
+			     " envram envrams fwupg_flashing.sh"
+#endif
 #if defined(RTCONFIG_BWDPI)
 			     " shn_ctrl bwdpi_sqlite dcd wred AiProtectionMonitor hwinfo TrafficAnalyzer WebHistory"
 #endif
 		;
-	const char *usrlib = "libnvram.so libshared.so libcrypto.so* libbcm* libjson*"
+	const char *usrlib = "libnvram.so* libshared.so* libcrypto.so* libbcm.so*"
+#if defined(RTCONFIG_HND_ROUTER_AX)
+			     " libwpa_client.so* "
+			     " libsqlite3.so.0* libjson-c.so.2* libasc.so* libvpn.so* "
+#else
+			     " libjson*"
+#endif
 #if defined(RTCONFIG_BWDPI)
 			     " libbwdpi.so libbwdpi_sql.so"
 #endif
@@ -487,9 +509,9 @@ static int build_temp_rootfs(const char *newroot)
 			     " libsmspdu.so"
 #endif
 #if defined(RTCONFIG_HTTPS) || defined(RTCONFIG_PUSH_EMAIL) || defined(RTCONFIG_FRS_FEEDBACK)
-			     " libssl* libmssl*"
+			     " libssl.so* libmssl.so*"
 #if defined(RTCONFIG_FRS_FEEDBACK) || defined(RTCONFIG_SWRT)
-			     " libcurl* libxml2*"
+			     " libcurl.so* libxml2.so*"
 #endif
 #endif
 #if defined(RTCONFIG_NOTIFICATION_CENTER) || defined(RTCONFIG_BWDPI) || \
@@ -525,6 +547,9 @@ static int build_temp_rootfs(const char *newroot)
 #if defined(RTCONFIG_RALINK_MT7629) || defined(RTCONFIG_RALINK_MT7622)
                  " libnl-tiny.so"
 #endif  /* RTCONFIG_RALINK_MT7629 */                 
+			     " libev.so.4.0.0"
+			     " libev.so.4"
+			     " libcodb.so"
 		;
 	const char *kmod = "find /lib/modules -name '*.ko'|"
 		"grep '\\("
@@ -535,14 +560,34 @@ static int build_temp_rootfs(const char *newroot)
 		"usb-common\\|"			/* usb-common.ko, kernel 3.2 or above */
 #endif
 #endif
+#if defined(RTCONFIG_IPV6)
+		"ip6t_REJECT\\|ip6t_ROUTE\\|ip6t_LOG\\|xt_length\\|"
+#endif
+		"xt_HL\\|xt_hl\\|"
 		"nvram_linux\\)'";		/* nvram_linux.ko */
 	const char *modules = "find /lib/modules -name 'modules.dep'";
 
 	if (!newroot || *newroot == '\0')
 		newroot = TMP_ROOTFS_MNT_POINT;
 
+#ifdef RTCONFIG_HND_ROUTER_AX_6756
+	eval("wl", "-i", "wl0", "down");
+	eval("wl", "-i", "wl1", "down");
+	eval("wl", "-i", "wl2", "down");
+	eval("wdtctl", "-d", "stop");
+	eval("killall", "debug_monitor");
+	sleep(1);
+
+	eval("ubirmvol", "/dev/ubi0", "-n", "12");
+	eval("ubimkvol", "/dev/ubi0", "-s", *nvram_safe_get("newroot_size")?nvram_safe_get("newroot_size"):"30000000", "-n", "12", "-N", "tmprootfs", "--type=dynamic");
+	eval("mkdir", "-p", newroot);
+
+	if ((r = mount("/dev/ubi0_12", newroot, "ubifs", MS_NOATIME, "")) != 0)
+		return -1;
+#else
 	if ((r = mount("tmpfs", newroot, "tmpfs", MS_NOATIME, "")) != 0)
 		return -1;
+#endif
 
 	_dprintf("Build temp rootfs\n");
 	__cp("", "/dev", "", newroot);
@@ -555,9 +600,7 @@ static int build_temp_rootfs(const char *newroot)
 	__cp("", "/lib", lib, newroot);
 	__cp("", "/lib", "libcrypt*", newroot);
 	__cp("", "/usr/bin", usrbin, newroot);
-#ifdef RTCONFIG_BCMARM
 	__cp("", "/usr/sbin", usrsbin, newroot);
-#endif
 	__cp("", "/usr/lib", usrlib, newroot);
 	__cp("L", "/etc", "", newroot);		/* don't creat symbolic link (/tmp/etc/foo) that will be broken soon */
 
@@ -597,6 +640,12 @@ static int build_temp_rootfs(const char *newroot)
 		__cp("", "/usr/sbin", "openvpn", newroot);
 		__cp("", "/usr/lib", "libz.so* liblzo2.so* liblz4.so*", newroot);
 	}
+#endif
+#if defined(RTCONFIG_WIREGUARD)
+	/* Use dummy command instead of preparing environment for real one. */
+	snprintf(d1, sizeof(d1), "%s/usr/sbin/cru", newroot);
+	f_write_string(d1, "#!/bin/sh\n", 0, 0);
+	eval("chmod", "a+x", d1);
 #endif
 #if defined(RTCONFIG_IPSEC)
 	if (nvram_get_int("ipsec_server_enable") || nvram_get_int("ipsec_client_enable")
@@ -643,21 +692,28 @@ static int build_temp_rootfs(const char *newroot)
  * 	-4:	Move mount point to / fail
  * 	-5:	exec new init process fail
  */
-static int switch_root(const char *newroot)
+int switch_root(const char *newroot)
 {
 	int r;
 	dev_t rdev;
 	struct stat st;
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 	char *const argv[] = { "/sbin/init", "reboot", NULL };
+#else
+	char *const argv[] = { "sh", NULL };
+#endif
 
 	if (!newroot || *newroot == '\0')
 		newroot = TMP_ROOTFS_MNT_POINT;
 
+#ifndef RTCONFIG_HND_ROUTER_AX_6756
 	if (getpid() != 1) {
 		_dprintf("%s: PID != 1\n", __func__);
 		return -1;
 	}
+#endif
 
+	_dprintf("%s, chk newroot=%s\n", __func__, newroot);
 	if (chdir(newroot))
 		return -2;
 	stat("/", &st);
@@ -666,7 +722,7 @@ static int switch_root(const char *newroot)
 	if (rdev == st.st_dev)
 		return -3;
 
-	/* emulate switch_root command */
+	_dprintf("mount / as switch_root\n");
 	if ((r = mount(".", "/", NULL, MS_MOVE, NULL)) != 0)
 		return -4;
 
@@ -677,8 +733,10 @@ static int switch_root(const char *newroot)
 	 * If new rootfilesystem lacks libraries that are need by init process,
 	 * kernel reboots system in 3 seconds.
 	 */
-	if ((r = execv(argv[0], argv)))
+	if ((r = execv(argv[0], argv))) {
+		_dprintf("%s, execv err:%d\n", __func__, r);
 		return -5;
+	}
 
 	/* NEVER REACH HERE */
 	return 0;
@@ -810,7 +868,7 @@ void create_passwd(void)
 	mode_t m;
 	char salt[32];
 	char http_user[128] = {0};
-	char *http_passwd;
+	char http_passwd[128] = {0};
 	char *shell_user, *shell_passwd;
 #ifdef RTCONFIG_SAMBASRV	//!!TB
 	char *smbd_user;
@@ -835,15 +893,15 @@ void create_passwd(void)
 	nvram_fsafe_get("http_username", http_user, sizeof(http_user));
 	if (strlen(http_user) == 0)
 		strlcpy(http_user, "admin", sizeof(http_user));
-	http_passwd = nvram_safe_get("http_passwd");
+	strlcpy(http_passwd, nvram_safe_get("http_passwd"), sizeof(http_passwd));
 	if (*http_passwd == '\0')
-		http_passwd = "admin";
+		strlcpy(http_passwd, "admin", sizeof(http_passwd));
 #ifdef RTCONFIG_NVRAM_ENCRYPT
 	else {
 		memset(http_passwd_buf, 0, sizeof(http_passwd_buf));
 		nvram_fsafe_get("http_passwd", passwd_buf, sizeof(passwd_buf));
 		pw_dec(passwd_buf, http_passwd_buf, sizeof(http_passwd_buf));
-		http_passwd = http_passwd_buf;
+		strlcpy(http_passwd, http_passwd_buf, sizeof(http_passwd));
 	}
 #endif
 
@@ -1000,9 +1058,10 @@ void get_dhcp_pool(char **dhcp_start, char **dhcp_end, char *buffer)
 #elif defined(RTCONFIG_REALTEK) || defined(RTCONFIG_QCA)
                 || mediabridge_mode()
 #endif
-#ifdef RTCONFIG_DPSTA
-                || ((dpsta_mode()||rp_mode()) && nvram_get_int("re_mode") == 0)
+#if defined(RTCONFIG_DPSTA) || defined(RTCONFIG_DPSR)
+		|| ((dpsta_mode() || dpsr_mode()) && nvram_get_int("re_mode") == 0)
 #endif
+		|| (rp_mode() && nvram_get_int("re_mode") == 0)
                 ) && nvram_get_int("wlc_state") != WLC_STATE_CONNECTED) {
 		if(nvram_match("lan_proto", "static")) {
 			unsigned int lan_ipaddr, lan_netmask;
@@ -1325,9 +1384,10 @@ void start_dnsmasq(void)
 #elif defined(RTCONFIG_REALTEK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 		|| mediabridge_mode()
 #endif
-#ifdef RTCONFIG_DPSTA
-		|| ((dpsta_mode()||rp_mode()) && nvram_get_int("re_mode") == 0)
+#if defined(RTCONFIG_DPSTA) || defined(RTCONFIG_DPSR)
+		|| ((dpsta_mode() || dpsr_mode()) && nvram_get_int("re_mode") == 0)
 #endif
+		|| (rp_mode() && nvram_get_int("re_mode") == 0)
 		) && nvram_get_int("wlc_state") != WLC_STATE_CONNECTED && !nvram_match("lan_proto", "static"))
 		lan_ipaddr = nvram_default_get("lan_ipaddr");
 	else
@@ -1349,12 +1409,23 @@ void start_dnsmasq(void)
 
 		/* default names */
 		fprintf(fp, "%s %s\n", lan_ipaddr, DUT_DOMAIN_NAME);
-		fprintf(fp, "%s %s\n", lan_ipaddr, OLD_DUT_DOMAIN_NAME1);
-		fprintf(fp, "%s %s\n", lan_ipaddr, OLD_DUT_DOMAIN_NAME2);
-#if defined(RTAC68U) || defined(RPAX56) || defined(RPAX58)
-		if ((is_dpsta_repeater()||dpsr_mode()) && nvram_get_int("re_mode") == 0)
+		fprintf(fp, "%s %s\n", lan_ipaddr, "asusrouter.com");
+		fprintf(fp, "%s %s\n", lan_ipaddr, "www.asusrepeater.com");
+		fprintf(fp, "%s %s\n", lan_ipaddr, "asusrepeater.com");
+		fprintf(fp, "%s %s\n", lan_ipaddr, "www.asusap.com");
+		fprintf(fp, "%s %s\n", lan_ipaddr, "asusap.com");
+		fprintf(fp, "%s %s\n", lan_ipaddr, "www.asusswitch.com");
+		fprintf(fp, "%s %s\n", lan_ipaddr, "asusswitch.com");
+		fprintf(fp, "%s %s\n", lan_ipaddr, "router.asus.com");
 		fprintf(fp, "%s %s\n", lan_ipaddr, "repeater.asus.com");
-#endif
+		fprintf(fp, "%s %s\n", lan_ipaddr, "ap.asus.com");
+		fprintf(fp, "%s %s\n", lan_ipaddr, "www.asusnetwork.net");
+		fprintf(fp, "%s %s\n", lan_ipaddr, "asusswitch.net");
+		fprintf(fp, "%s %s\n", lan_ipaddr, "asusrepeater.net");
+		fprintf(fp, "%s %s\n", lan_ipaddr, "asusap.net");
+		fprintf(fp, "%s %s\n", lan_ipaddr, "zenwifi.net");
+		fprintf(fp, "%s %s\n", lan_ipaddr, "expertwifi.net");
+
 	nv = nvp = strdup(nvram_safe_get("dhcp_staticlist"));
 	if (nv)
 	{
@@ -1369,7 +1440,7 @@ void start_dnsmasq(void)
 			if (!ether_atoe(mac, ea))
 				continue;
 
-			if(ip && *ip != '\0' && hostname && *hostname != '\0')
+			if(ip && *ip != '\0' && hostname && *hostname != '\0' && is_valid_hostname(hostname))
 			{
 				fprintf(fp, "%s %s.%s\n", ip, hostname, lan_domain);
 			}	
@@ -1476,9 +1547,10 @@ void start_dnsmasq(void)
 #elif defined(RTCONFIG_REALTEK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 		&& !mediabridge_mode()
 #endif
-#ifdef RTCONFIG_DPSTA
-		&& !((dpsta_mode()||rp_mode()) && nvram_get_int("re_mode") == 0)
+#if defined(RTCONFIG_DPSTA) || defined(RTCONFIG_DPSR)
+		&& !((dpsta_mode() || dpsr_mode()) && nvram_get_int("re_mode") == 0)
 #endif
+		&& !(rp_mode() && nvram_get_int("re_mode") == 0)
 	) {
 #ifdef RTCONFIG_WIFI_SON
 		if(nvram_match("wifison_ready", "1") &&
@@ -1540,7 +1612,7 @@ void start_dnsmasq(void)
 		}
 	}
 #endif
-#if defined(RTCONFIG_PPTPD) || defined(RTCONFIG_ACCEL_PPTPD)
+#if (defined(RTCONFIG_PPTPD) || defined(RTCONFIG_ACCEL_PPTPD)) && !defined(RTCONFIG_MULTILAN_CFG)
 		if (is_routing_enabled())
 		fprintf(fp, "interface=%s\n"		// dns on VPN clients interfaces
 		    	"no-dhcp-interface=%s\n",	// no dhcp for VPN clients
@@ -1605,9 +1677,10 @@ void start_dnsmasq(void)
 #elif defined(RTCONFIG_REALTEK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 			|| mediabridge_mode()
 #endif
-#ifdef RTCONFIG_DPSTA
-			|| ((dpsta_mode()||rp_mode()) && nvram_get_int("re_mode") == 0)
+#if defined(RTCONFIG_DPSTA) || defined(RTCONFIG_DPSR)
+			|| ((dpsta_mode() || dpsr_mode()) && nvram_get_int("re_mode") == 0)
 #endif
+			|| (rp_mode() && nvram_get_int("re_mode") == 0)
 		    ) && nvram_get_int("wlc_state") != WLC_STATE_CONNECTED)
 	) {
 		char *dhcp_start, *dhcp_end;
@@ -1634,9 +1707,10 @@ void start_dnsmasq(void)
 #elif defined(RTCONFIG_REALTEK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 				|| mediabridge_mode()
 #endif
-#ifdef RTCONFIG_DPSTA
-				|| ((dpsta_mode()||rp_mode()) && nvram_get_int("re_mode") == 0)
+#if defined(RTCONFIG_DPSTA) || defined(RTCONFIG_DPSR)
+				|| ((dpsta_mode() || dpsr_mode()) && nvram_get_int("re_mode") == 0)
 #endif
+				|| (rp_mode() && nvram_get_int("re_mode") == 0)
 			)
 		)
 			dhcp_lease = atoi(nvram_default_get("dhcp_lease"));
@@ -1908,11 +1982,11 @@ void start_dnsmasq(void)
 	write_ovpn_dnsmasq_config(fp);
 #endif
 
-#ifdef RTCONFIG_PORT_BASED_VLAN
+#if defined(RTCONFIG_PORT_BASED_VLAN) && !defined(RTCONFIG_MULTILAN_CFG)
 	/* Write dhcpd config for vlan's subnet */
 	vlan_subnet_dnsmasq_conf(fp);
 #endif
-#ifdef RTCONFIG_TAGGED_BASED_VLAN
+#if defined(RTCONFIG_TAGGED_BASED_VLAN) && !defined(RTCONFIG_MULTILAN_CFG)
 	/* Write dhcpd config for vlan's subnet */
 	vlan_subnet_dnsmasq_conf(fp);
 #endif
@@ -1924,7 +1998,7 @@ void start_dnsmasq(void)
 		fprintf(fp, "no-dhcp-interface=%s\n", "tun23");
 	}
 #endif
-#ifdef RTCONFIG_AMAS_WGN
+#if defined (RTCONFIG_AMAS_WGN) && !defined(RTCONFIG_MULTILAN_CFG)
 	wgn_dnsmasq_conf(fp);
 #endif
 
@@ -2382,7 +2456,7 @@ void start_s46_tunnel(int unit)
 	char tmp[256], prefix[sizeof("wanXXXXXXXXXX_")];
 	char ipaddr[INET_ADDRSTRLEN], draft[4];
 	char *wan_ifname, *wan6_ifname, *elim, *ttl, *end;
-	char *ports[256] = {0};
+	//char *ports[256] = {0};
 #if defined(RTCONFIG_PORT_BASED_VLAN) || defined(RTCONFIG_TAGGED_BASED_VLAN)
 	char ip_mask[sizeof("192.168.100.200/255.255.255.255XXX")];
 #endif
@@ -2397,6 +2471,7 @@ void start_s46_tunnel(int unit)
 		snprintf(draft, sizeof(draft), "OFF");
 		break;
 	case WAN_V6PLUS:
+	case WAN_OCNVC:
 		snprintf(draft, sizeof(draft), "ON");
 		break;
 	default:
@@ -2490,12 +2565,15 @@ void start_s46_tunnel(int unit)
 
 	/* We are done configuration */
 	wan_up(wan_ifname);
+#ifdef RTCONFIG_TUNNEL
+	restart_mastiff();
+#endif
 }
 
 void stop_s46_tunnel(int unit, int unload)
 {
 	char prefix[sizeof("wanXXXXXXXXXX_")];
-	char tmp[256], *wan_ifname, *wan6_ifname;
+	char /*tmp[256],*/ *wan_ifname, *wan6_ifname;
 	int wan_proto;
 
 	//unit = wan_primary_ifunit();
@@ -2505,6 +2583,7 @@ void stop_s46_tunnel(int unit, int unload)
 	case WAN_LW4O6:
 	case WAN_MAPE:
 	case WAN_V6PLUS:
+	case WAN_OCNVC:
 		break;
 	default:
 		return;
@@ -2535,35 +2614,66 @@ void stop_s46_tunnel(int unit, int unload)
 #endif
 }
 void
-start_s46map_rptd(void)
+start_v6plusd(void)
 {
-        char *s46map_rptd_argv[] = {"s46map_rptd", NULL};
+        char *v6plusd_argv[] = {"v6plusd", NULL};
         pid_t pid;
 
         if(getpid()!=1) {
-                notify_rc("start_s46map_rptd");
+                notify_rc("start_v6plusd");
                 return;
         }
 
-        killall("s46map_rptd", SIGTERM);
+        killall("v6plusd", SIGTERM);
 
-        _eval(s46map_rptd_argv, NULL, 0, &pid);
+        _eval(v6plusd_argv, NULL, 0, &pid);
 }
 
-void stop_s46map_rptd(void)
+void stop_v6plusd(void)
 {
         if(getpid()!=1) {
-                notify_rc("stop_s46map_rptd");
+                notify_rc("stop_v6plusd");
                 return;
         }
 
-        killall("s46map_rptd", SIGTERM);
+        killall("v6plusd", SIGTERM);
 }
 
-void restart_s46map_rptd(void)
+void restart_v6plusd(void)
 {
-	stop_s46map_rptd();
-	start_s46map_rptd();
+	stop_v6plusd();
+	start_v6plusd();
+}
+
+start_ocnvcd(void)
+{
+        char *ocnvcd_argv[] = {"ocnvcd", NULL};
+        pid_t pid;
+
+        if(getpid()!=1) {
+                notify_rc("start_ocnvcd");
+                return;
+        }
+
+        killall("ocnvcd", SIGTERM);
+
+        _eval(ocnvcd_argv, NULL, 0, &pid);
+}
+
+void stop_ocnvcd(void)
+{
+        if(getpid()!=1) {
+                notify_rc("stop_ocnvcd");
+                return;
+        }
+
+        killall("ocnvcd", SIGTERM);
+}
+
+void restart_ocnvcd(void)
+{
+	stop_ocnvcd();
+	start_ocnvcd();
 }
 #endif
 
@@ -3016,6 +3126,9 @@ start_wpsaide()
 
 	stop_wpsaide();
 
+	if (mediabridge_mode())
+		return ret;
+
 	ret = _eval(wpsaide_argv, NULL, 0, &pid);
 	return ret;
 }
@@ -3263,10 +3376,9 @@ int start_wlceventd(void)
 
 	stop_wlceventd();
 
-#if defined(RTCONFIG_CONCURRENTREPEATER) || defined(RTCONFIG_BCMWL6)
 	if (mediabridge_mode())
 		return ret;
-#endif
+
 	ret = _eval(ev_argv, NULL, 0, &pid);
 	return ret;
 }
@@ -3291,10 +3403,8 @@ int start_hapdevent(void)
 
 	stop_hapdevent();
 
-#if defined(RTCONFIG_CONCURRENTREPEATER)
 	if (mediabridge_mode())
 		return ret;
-#endif
 
 	ret = _eval(ev_argv, NULL, 0, &pid);
 
@@ -3329,12 +3439,6 @@ int start_wlc_nt(void)
 #endif
 
 	stop_wlc_nt();
-
-#if defined(RTCONFIG_CONCURRENTREPEATER) || defined(RTCONFIG_BCMWL6)
-	if (mediabridge_mode())
-		return ret;
-#endif
-
 	ret = _eval(ev_argv, NULL, 0, &pid);
 
 	return ret;
@@ -3344,7 +3448,38 @@ void stop_wlc_nt(void)
 {
 	killall_tk("wlc_nt");
 }
+
+int start_wlc_monitor(void)
+{
+	char *ev_argv[] = {"/usr/sbin/wlc_monitor", NULL};
+	pid_t pid = 0;
+	int ret = 0;
+
+#ifdef CONFIG_BCMWL5
+#ifndef RTCONFIG_BCM_MFG
+	if (factory_debug())
 #endif
+#else
+	if (IS_ATE_FACTORY_MODE())
+#endif
+	return ret;
+
+#ifdef RTCONFIG_MFGFW
+	if(nvram_match("mfgfw", "1"))
+		return 0;
+#endif
+
+	stop_wlc_monitor();
+	ret = _eval(ev_argv, NULL, 0, &pid);
+
+	return ret;
+}
+
+void stop_wlc_monitor(void)
+{
+	killall_tk("wlc_monitor");
+}
+#endif	/* RTCONFIG_NOTIFICATION_CENTER */
 
 #ifdef CONFIG_BCMWL5
 #ifdef BCM_ASPMD
@@ -4068,7 +4203,7 @@ start_ddns(char *caller)
 #ifndef RTCONFIG_INADYN
 	char usrstr[32 + 32 + sizeof(":")];
 #else
-	int realip;
+	int realip = 0; // use Internal WAN IP
 #endif
 	char cache_path[512] = {0};
 	int wild, ret = -1, wan_public = 0;
@@ -4105,23 +4240,35 @@ start_ddns(char *caller)
 	}
 #endif
 	server = nvram_safe_get("ddns_server_x");
+#ifdef RTCONFIG_INADYN
+	if (strcmp(server, "DNS.HE.NET") == 0)
+		user = nvram_safe_get("ddns_hostname_x"); /* The username is also the hostname in HE.NET */
+	else
+#endif
 	user = nvram_safe_get("ddns_username_x");
 	passwd = nvram_safe_get("ddns_passwd_x");
 	host = nvram_safe_get("ddns_hostname_x");
 	wild = nvram_get_int("ddns_wildcard_x");
-#ifdef RTCONFIG_INADYN
-	realip = nvram_get_int("ddns_realip_x");
-#endif
 
 	snprintf(prefix, sizeof(prefix), "wan%d_", unit);
-#if defined(RTCONFIG_INADYN) && defined(RTCONFIG_GETREALIP)
-	if (realip && (nvram_get_int(strcat_r(prefix, "realip_state", tmp)) == 2)) {
-		wan_ip = nvram_safe_get(strcat_r(prefix, "realip_ip", tmp));
-	}
-	else
-#endif
 	wan_ip = nvram_safe_get(strcat_r(prefix, "ipaddr", tmp));
 	wan_ifname = get_wan_ifname(unit);
+	wan_public = is_private_subnet(wan_ip); // 0 is public IP; 1, 2, 3, 4 is private IP.
+#ifdef RTCONFIG_INADYN
+	if (wan_public) { // private WAN IP
+		/* use External WAN IP */
+		nvram_set_int("ddns_realip_x", 1);
+		realip = 1;
+#ifdef RTCONFIG_GETREALIP
+		if (nvram_get_int(strcat_r(prefix, "realip_state", tmp)) == 2) {
+			wan_ip = nvram_safe_get(strcat_r(prefix, "realip_ip", tmp));
+		}
+#endif
+	} else {
+		/* use Internal WAN IP */
+		nvram_set_int("ddns_realip_x", 0);
+	}
+#endif
 
 	if (!wan_ip || (inet_addr_(wan_ip) == INADDR_ANY) || (nvram_get_int("link_internet") != 2)) {
 		logmessage("ddns", "WAN IP is empty.(%d)", ddns_check_retry);
@@ -4144,12 +4291,14 @@ start_ddns(char *caller)
 	}
 #endif
 
-	wan_public = is_private_subnet(wan_ip); // 0 is public IP; 1, 2, 3, 4 is private IP.
 	if (
 #ifdef RTCONFIG_INADYN
 		realip == 0 &&
 #endif
-		wan_public) {
+#ifdef RTCONFIG_IPV6
+		!nvram_get_int("ddns_ipv6_update") &&
+#endif
+		wan_public) { // private WAN IP
 		logmessage("ddns", "use Private WAN IP (%s).(%d)", wan_ip, ddns_check_retry);
 		nvram_unset("ddns_updated");
 		nvram_set("ddns_return_code", "299");
@@ -4220,6 +4369,8 @@ start_ddns(char *caller)
 		service = "default@easydns.com";
 	else if (strcmp(server, "WWW.DNSOMATIC.COM") == 0)
 		service = "default@dnsomatic.com";
+	else if (strcmp(server, "DNS.HE.NET") == 0)
+		service = "dyndns@he.net";
 	else if (strcmp(server, "WWW.TUNNELBROKER.NET") == 0) {
 		service = "default@tunnelbroker.net";
 		eval("iptables", "-t", "filter", "-D", "INPUT", "-p", "icmp", "-s", "66.220.2.74", "-j", "ACCEPT");
@@ -4231,8 +4382,10 @@ start_ddns(char *caller)
 	else if (strcmp(server, "WWW.SELFHOST.DE") == 0)
 		service = "default@selfhost.de";
 	else if (strncmp(server, "WWW.ASUS.COM", 12) == 0) { /* WWW.ASUS.COM or WWW.ASUS.COM.CN */
-#ifdef RTCONFIG_ASUSDDNS_ACCOUNT_BASE		
-		if(strlen(nvram_safe_get("oauth_dm_refresh_ticket")) > 0)
+#ifdef RTCONFIG_ACCOUNT_BINDING
+		if(is_account_bound() && nvram_match("ddns_replace_status", "1") &&
+			((strstr(nvram_safe_get("aae_ddnsinfo"), ".asuscomm.com") && (strstr(nvram_safe_get("ddns_hostname_x"), ".asuscomm.com")))
+			|| (strstr(nvram_safe_get("aae_ddnsinfo"), ".asuscomm.cn") && (strstr(nvram_safe_get("ddns_hostname_x"), ".asuscomm.cn")))))
 			service = "updatev2@asus.com";
 		else
 #endif			
@@ -4367,9 +4520,16 @@ start_ddns(char *caller)
 	}
 #else
 	if (*service) {
+#ifdef RTCONFIG_LETSENCRYPT
+		int asus_le = (asus_ddns == 1 && nvram_get_int("le_enable") == 1);
+#endif
 		char *inadyn_argv[] = { "/usr/sbin/inadyn",
 			"-e", "/sbin/ddns_updated",
 			"-l", nvram_get_int("ddns_debug") ? "debug" : "notice",
+#ifdef RTCONFIG_LETSENCRYPT
+			asus_le ? "-1" : NULL,
+			asus_le ? "--force" : NULL,
+#endif
 			NULL
 		};
 
@@ -4387,8 +4547,7 @@ start_ddns(char *caller)
 			fprintf(fp, "}\n");
 
 			fprintf(fp, "iterations = 1\n");
-			if (!realip)
-				fprintf(fp, "iface = %s\n", wan_ifname);
+			fprintf(fp, "iface = %s\n", wan_ifname); /* External WAN IP also need: Private IPv4 + Public IPv6 */
 			fprintf(fp, "ca-trust-file = /etc/ssl/certs/ca-certificates.crt\n");
 			if (!nvram_get_int("ntp_ready"))
 				fprintf(fp, "broken-rtc = true\n");
@@ -4397,8 +4556,10 @@ start_ddns(char *caller)
 				fprintf(fp, "secure-ssl = false\n");
 			fclose(fp);
 
-#ifdef RTCONFIG_ASUSDDNS_ACCOUNT_BASE
-			if(strlen(nvram_safe_get("oauth_dm_refresh_ticket")) > 0)
+#if defined(RTCONFIG_TUNNEL) && defined(RTCONFIG_ACCOUNT_BINDING)
+			if(is_account_bound() && nvram_match("ddns_replace_status", "1") &&
+				((strstr(nvram_safe_get("aae_ddnsinfo"), ".asuscomm.com") && (strstr(nvram_safe_get("ddns_hostname_x"), ".asuscomm.com")))
+			|| (strstr(nvram_safe_get("aae_ddnsinfo"), ".asuscomm.cn") && (strstr(nvram_safe_get("ddns_hostname_x"), ".asuscomm.cn")))))
 			{
 				nvram_set("asusddns_token_state", "0");
 				if(update_asus_ddns_token() != 1 || nvram_get_int("asusddns_token_state") != 1)
@@ -4465,7 +4626,7 @@ asusddns_reg_domain(int reg)
 	char *ddns_cache;
 	char *nserver;
 #else
-	int realip;
+	int realip = 0; // use Internal WAN IP
 #endif
 	char cache_path[512] = {0};
 	int unit, ret = -1, wan_public = 0;
@@ -4498,18 +4659,25 @@ asusddns_reg_domain(int reg)
 	}
 #endif
 
-#ifdef RTCONFIG_INADYN
-	realip = nvram_get_int("ddns_realip_x");
-#endif
-
 	snprintf(prefix, sizeof(prefix), "wan%d_", unit);
-#if defined(RTCONFIG_INADYN) && defined(RTCONFIG_GETREALIP)
-	if (realip && (nvram_get_int(strcat_r(prefix, "realip_state", tmp)) == 2))
-		wan_ip = nvram_safe_get(strcat_r(prefix, "realip_ip", tmp));
-	else
-#endif
 	wan_ip = nvram_safe_get(strcat_r(prefix, "ipaddr", tmp));
 	wan_ifname = get_wan_ifname(unit);
+	wan_public = is_private_subnet(wan_ip); // 0 is public IP; 1, 2, 3, 4 is private IP.
+#ifdef RTCONFIG_INADYN
+	if (wan_public) { // private WAN IP
+		/* use External WAN IP */
+		nvram_set_int("ddns_realip_x", 1);
+		realip = 1;
+#ifdef RTCONFIG_GETREALIP
+		if (nvram_get_int(strcat_r(prefix, "realip_state", tmp)) == 2) {
+			wan_ip = nvram_safe_get(strcat_r(prefix, "realip_ip", tmp));
+		}
+#endif
+	} else {
+		/* use Internal WAN IP */
+		nvram_set_int("ddns_realip_x", 0);
+	}
+#endif
 
 	if (!wan_ip || (inet_addr_(wan_ip) == INADDR_ANY) || (nvram_get_int("link_internet") != 2)) {
 		logmessage("asusddns", "WAN IP is empty.");
@@ -4537,7 +4705,10 @@ asusddns_reg_domain(int reg)
 #ifdef RTCONFIG_INADYN
 		realip == 0 &&
 #endif
-		wan_public) {
+#ifdef RTCONFIG_IPV6
+		!nvram_get_int("ddns_ipv6_update") &&
+#endif
+		wan_public) { // private WAN IP
 		logmessage("asusddns", "use Private WAN IP (%s).", wan_ip);
 		nvram_unset("ddns_updated");
 		nvram_set("ddns_return_code", "299");
@@ -4621,15 +4792,17 @@ asusddns_reg_domain(int reg)
 #else
 	{
 		char *inadyn_argv[] = { "/usr/sbin/inadyn",
-			"-1", /* once == forced */
+			"-1", "--force",
 			"-e", "/sbin/ddns_updated",
 			"-l", nvram_get_int("ddns_debug") ? "debug" : "notice",
 			NULL
 		};
 
 		if ((fp = fopen("/etc/inadyn.conf", "w"))) {
-#ifdef RTCONFIG_ASUSDDNS_ACCOUNT_BASE
-			if(strlen(nvram_safe_get("oauth_dm_refresh_ticket")) > 0)
+#ifdef RTCONFIG_ACCOUNT_BINDING
+			if(is_account_bound() && nvram_match("ddns_replace_status", "1") &&
+				((strstr(nvram_safe_get("aae_ddnsinfo"), ".asuscomm.com") && (strstr(nvram_safe_get("ddns_hostname_x"), ".asuscomm.com")))
+				|| (strstr(nvram_safe_get("aae_ddnsinfo"), ".asuscomm.cn") && (strstr(nvram_safe_get("ddns_hostname_x"), ".asuscomm.cn")))))
 				fprintf(fp, "provider %s {\n", "registerv2@asus.com");
 			else
 #endif
@@ -4644,8 +4817,7 @@ asusddns_reg_domain(int reg)
 			fprintf(fp, "}\n");
 
 			fprintf(fp, "iterations = 1\n");
-			if (!realip)
-				fprintf(fp, "iface = %s\n", wan_ifname);
+			fprintf(fp, "iface = %s\n", wan_ifname); /* External WAN IP also need: Private IPv4 + Public IPv6 */
 			fprintf(fp, "ca-trust-file = /etc/ssl/certs/ca-certificates.crt\n");
 			if (!nvram_get_int("ntp_ready"))
 				fprintf(fp, "broken-rtc = true\n");
@@ -4653,8 +4825,10 @@ asusddns_reg_domain(int reg)
 			if (1)
 				fprintf(fp, "secure-ssl = false\n");
 			fclose(fp);
-#ifdef RTCONFIG_ASUSDDNS_ACCOUNT_BASE
-			if(strlen(nvram_safe_get("oauth_dm_refresh_ticket")) > 0)
+#if defined(RTCONFIG_TUNNEL) && defined(RTCONFIG_ACCOUNT_BINDING)
+			if(is_account_bound() && nvram_match("ddns_replace_status", "1") &&
+				((strstr(nvram_safe_get("aae_ddnsinfo"), ".asuscomm.com") && (strstr(nvram_safe_get("ddns_hostname_x"), ".asuscomm.com")))
+				|| (strstr(nvram_safe_get("aae_ddnsinfo"), ".asuscomm.cn") && (strstr(nvram_safe_get("ddns_hostname_x"), ".asuscomm.cn")))))
 			{
 				nvram_set("asusddns_token_state", "0");
 				if(update_asus_ddns_token() != 1 || nvram_get_int("asusddns_token_state") != 1)
@@ -4746,14 +4920,16 @@ _dprintf("%s: do ez-ipupdate to unregister! unit = %d wan_ifname = %s nserver = 
 #else
 	{
 		char *inadyn_argv[] = { "/usr/sbin/inadyn",
-			"-1", /* once == forced */
+			"-1", "--force",
 			"-l", nvram_get_int("ddns_debug") ? "debug" : "notice",
 			NULL
 		};
 
 		if ((fp = fopen("/etc/inadyn.conf", "w"))) {
-#ifdef RTCONFIG_ASUSDDNS_ACCOUNT_BASE
-			if(strlen(nvram_safe_get("oauth_dm_refresh_ticket")) > 0)
+#ifdef RTCONFIG_ACCOUNT_BINDING
+			if(is_account_bound() && nvram_match("ddns_replace_status", "1") &&
+				((strstr(nvram_safe_get("aae_ddnsinfo"), ".asuscomm.com") && (strstr(nvram_safe_get("ddns_hostname_x"), ".asuscomm.com")))
+				|| (strstr(nvram_safe_get("aae_ddnsinfo"), ".asuscomm.cn") && (strstr(nvram_safe_get("ddns_hostname_x"), ".asuscomm.cn")))))
 				fprintf(fp, "provider %s {\n", "unregisterv2@asus.com");
 			else
 #endif
@@ -4778,8 +4954,10 @@ _dprintf("%s: do ez-ipupdate to unregister! unit = %d wan_ifname = %s nserver = 
 				fprintf(fp, "secure-ssl = false\n");
 			fclose(fp);
 
-#ifdef RTCONFIG_ASUSDDNS_ACCOUNT_BASE
-			if(strlen(nvram_safe_get("oauth_dm_refresh_ticket")) > 0)
+#if defined(RTCONFIG_TUNNEL) && defined(RTCONFIG_ACCOUNT_BINDING)
+			if(is_account_bound() && nvram_match("ddns_replace_status", "1") &&
+				((strstr(nvram_safe_get("aae_ddnsinfo"), ".asuscomm.com") && (strstr(nvram_safe_get("ddns_hostname_x"), ".asuscomm.com")))
+				|| (strstr(nvram_safe_get("aae_ddnsinfo"), ".asuscomm.cn") && (strstr(nvram_safe_get("ddns_hostname_x"), ".asuscomm.cn")))))
 			{
 				nvram_set("asusddns_token_state", "0");
 				if(update_asus_ddns_token() != 1 || nvram_get_int("asusddns_token_state") != 1)
@@ -5420,6 +5598,11 @@ start_acsd()
 	int pid;
 #endif
 
+#ifdef RTAC68U
+	if (is_dpsta_repeater() && !nvram_get_int("x_Setting"))
+		return 0;
+#endif
+
 #ifdef RTCONFIG_PROXYSTA
 	if (psta_exist())
 		return 0;
@@ -5567,6 +5750,10 @@ void stop_ahs(void)
 
 void start_ahs(void)
 {
+#ifdef RTAC68U
+	if (is_dpsta_repeater())
+		return;
+#endif
 	stop_ahs();
 	xstart("ahs");
 }
@@ -5707,6 +5894,7 @@ stop_misc(void)
 	stop_hapdevent();
 #endif
 #ifdef RTCONFIG_NOTIFICATION_CENTER
+	stop_wlc_monitor();
 	stop_wlc_nt();
 #endif
 	stop_wps();
@@ -5753,6 +5941,9 @@ stop_misc(void)
 #ifdef RTCONFIG_TUNNEL
 	stop_mastiff();
 #endif
+#ifdef RTCONFIG_NFCM
+	stop_nfcm();
+#endif
 #ifdef RTCONFIG_BWDPI
 	stop_bwdpi_check();
 #endif
@@ -5761,6 +5952,15 @@ stop_misc(void)
 	stop_conn_diag();
 #endif
 #endif
+	stop_pppoe_relay();
+	if (pids("igmpproxy"))
+		killall_tk("igmpproxy");
+	if (pids("telnetd"))
+		killall_tk("telnetd");
+	if (pids("dropbear"))
+		killall_tk("dropbear");
+	if (pids("alt_watchdog"))
+		killall_tk("alt_watchdog");
 #ifdef RTCONFIG_AMAS
 	stop_amas_lib();
 	stop_amas_bhctrl();
@@ -6188,7 +6388,7 @@ start_httpd(void)
 		_eval(https_argv, NULL, 0, &pid);
 #ifdef RTCONFIG_IPV6
 		if (ipv6_enabled() && nvram_get_int("misc_http_x")
-			&& is_intf_up(https_ipv6_argv[3])) {
+			&& is_intf_up(https_ipv6_argv[3]) > 0) {
 			pid = nvram_get_int("misc_httpsport_x") ? : 8443;
 			https_ipv6_argv[https_ipv6_index++] = "-p";
 			https_ipv6_argv[https_ipv6_index++] = ((pid == 8443) ? "8443" : nvram_safe_get("misc_httpsport_x"));
@@ -6254,9 +6454,9 @@ start_httpd_ipv6(void)
 	int enable;
 	char *cur_dir;
 	pid_t pid;
-	char pidfile[32];
-	char *pif = get_wan6face();
+	char pidfile[32], pif[IFNAMSIZ];
 
+	strlcpy(pif, get_wan6face(), sizeof(pif));
 	pid = nvram_get_int("misc_httpsport_x") ? : 8443;
 	snprintf(pidfile, sizeof(pidfile), "/var/run/httpd-%s-%d.pid", pif, pid);
 	if (f_exists(pidfile)) {
@@ -6756,6 +6956,29 @@ int write_lltd_conf(void)
 
 	return 0;
 }
+#elif defined(RTCONFIG_MT798X)
+int write_lltd_conf(void)
+{
+	char *model = NULL;
+	FILE *fp;
+
+	unlink("/etc/lld2d.conf");
+	if (!(fp = fopen("/etc/lld2d.conf", "w"))) {
+		perror("/etc/lld2d.conf");
+		return -1;
+	}
+
+#ifdef TUFAX4200
+	if (nvram_match("HwId", "B")) {	/* TUF-AX4200Q, CN sku */
+		model = "TUF-AX4200Q";
+	}
+#endif
+
+	fprintf(fp, "icon = /rom/etc/icon%s%s.ico\n", model? "." : "", model);
+	fprintf(fp, "jumbo-icon = /rom/etc/icon.large%s%s.ico\n", model? "." : "", model);
+	fclose(fp);
+	return 0;
+}
 #endif
 
 int start_lltd(void)
@@ -6788,7 +7011,7 @@ int start_lltd(void)
 	else
 #endif
 	{
-#ifdef RTCONFIG_BCMARM
+#if defined(RTCONFIG_BCMARM) || defined(RTCONFIG_MT798X)
 		write_lltd_conf();
 /* TODO: clarify do we need to use lan_hostname instead of productid here */
 		nvram_set("lld2d_hostname", get_productid());
@@ -7216,7 +7439,7 @@ void
 start_iperf3_client(void)
 {
 	char *iperf3_argv[] = {"iperf3","-c","192.168.50.218","-p","5201","-t","10","-P","2","-w","29200","-O","1","-l","131072","-i","2","-R", NULL};
-	char host[18], port[8], time[8], parallel[8], window[16], omit[8], buf_len[8], interval[8], reverse[4];
+	char host[18], port[8], time[8], parallel[8], window[16], omit[8], buf_len[8], interval[8];
 	pid_t pid;
 
 	strcpy(host, nvram_safe_get("iperf3_cli_host"));
@@ -7905,6 +8128,7 @@ static void _write_bluetoothd_conf()
 	}
 }
 
+#if defined(ET12) || defined(XT12)
 static int bt_add_ble_uuid() {
 	FILE *fp = NULL;
 	char cmd[128], buf[128];
@@ -7932,6 +8156,7 @@ static int bt_add_ble_uuid() {
 
 	return success;
 }
+#endif
 
 #if defined(RTCONFIG_AMAS) && defined(RTCONFIG_PRELINK)
 void ble_rename_ssid(void)
@@ -8104,7 +8329,7 @@ reset_again:
 	{
 #if defined(RTCONFIG_LP5523)
 		lp55xx_leds_proc(LP55XX_BTCOR_LEDS, LP55XX_ACT_NONE);
-#elif defined(RTCONFIG_FIXED_BRIGHTNESS_RGBLED)
+#elif defined(RTCONFIG_FIXED_BRIGHTNESS_RGBLED) || defined(RTCONFIG_PWM_RGBLED)
 		set_rgbled(RGBLED_DEFAULT_STANDBY);
 #endif /* RTCONFIG_LP5523 */
 #if defined(RTCONFIG_AMAS) && defined(RTCONFIG_PRELINK)
@@ -8167,6 +8392,31 @@ void stop_bluetooth_service(void)
 
 }
 #endif	/* RTCONFIG_BT_CONN */
+
+#if defined(RTCONFIG_QCA_EZMESH)
+void start_ezmesh_cap(void)
+{
+	#define EZ_SCRIPT "/tmp/ez.sh"
+	FILE *fp;
+
+	if(nvram_get_int("x_Setting"))
+	{
+		if (!(fp = fopen(EZ_SCRIPT, "w+")))
+			return;
+
+		fprintf(fp, "sleep 8\n");
+		fprintf(fp, "rc rc_service start_ezmesh_test\n");
+		fprintf(fp, "rc rc_service start_wsplcd_test\n");
+		fprintf(fp, "exit\n");
+		fclose(fp);
+
+		chmod(EZ_SCRIPT, 0777);
+		doSystem("%s &", EZ_SCRIPT);
+	}
+	else
+		_dprintf("EZ process is not started yet\n");
+}	
+#endif
 
 #ifdef RTCONFIG_WIFI_SON
 #if defined(RTCONFIG_ETHBACKHAUL) && defined(RTCONFIG_QCA_ORG_UPDOWN_SEPARATE)
@@ -10179,7 +10429,6 @@ sync_nc_conf(void)
 		NC_SETTING_T *pEvt = NULL;
 		pEvt = (NC_SETTING_T *) malloc(sizeof(NC_SETTING_T)* MAX_NOTIFY_EVENT_NUM);
 		if(pEvt == NULL) {
-			_dprintf("[%s, %d] %s\n", __FUNCTION__, __LINE__, "pEvt malloc error");
 			return;
 		}
 		memset(pEvt, 0, sizeof(NC_SETTING_T));
@@ -10249,27 +10498,19 @@ setup_nc_event_conf()
 
 	mkdir_if_none(NOTIFY_CENTER_TEMP_DIR);
 	/* Setting Default Config */
-	if (!strcmp(nvram_safe_get("nc_setting_conf"), "")) {
+	if (!strcmp(nvram_safe_get("nc_setting_conf"), "") ||
+	    !nvram_get("nc_ver") || (nvram_get_int("nc_ver") < NC_VERSION)) {
+
+		_dprintf("[%s(%d)][WARNING] setting is empty or nc ver. is lower than %d. restore default settings.\n",
+			 __FUNCTION__, __LINE__, NC_VERSION);
+		snprintf(tmp, sizeof(tmp), "%d", NC_VERSION);
+		nvram_set("nc_ver", tmp);
+
 		memset(setConf, 0, sizeof(setConf));
 		for (i=0; mapInfo[i].value != 0; i++) {
 			memset(tmp, 0, sizeof(tmp));
 			action = mapInfo[i].action;
-			NC_ACTION_CLR(action, NC_ACT_IFTTT_BIT);
-
-			if (mapInfo[i].value == PROTECTION_VULNERABILITY_EVENT ||
-			    mapInfo[i].value == PROTECTION_CC_EVENT ||
-			    mapInfo[i].value == PROTECTION_MALICIOUS_SITE_EVENT) {
-				snprintf(tmp, sizeof(tmp), "<%x>%d>%d",
-					 mapInfo[i].value,
-					 action,
-					 mapInfo[i].eType);
-			} else {
-				NC_ACTION_CLR(action, NC_ACT_EMAIL_BIT);
-				snprintf(tmp, sizeof(tmp), "<%x>%d>%d",
-					 mapInfo[i].value,
-					 action,
-					 mapInfo[i].eType);
-			}
+			snprintf(tmp, sizeof(tmp), "<%x>%d>%d", mapInfo[i].value, action, mapInfo[i].eType);
 			bufsize = sizeof(setConf) - strlen(setConf);
 			strncat(setConf, tmp, bufsize-1);
 		}
@@ -10291,10 +10532,9 @@ start_notification_center(void)
 	char *nt_monitor_argv[] = {"nt_monitor", NULL};
 	pid_t pid;
 
-#if defined(RTCONFIG_CONCURRENTREPEATER) || defined(RTCONFIG_BCMWL6)
 	if (mediabridge_mode())
 		return 0;
-#endif
+
 #ifdef RTCONFIG_TCPLUGIN
 	exec_tcplugin();
 #endif
@@ -10345,6 +10585,13 @@ start_netool(void)
 	char *netool_argv[] = {"/sbin/netool", NULL};
 	pid_t pid;
 
+	if(getpid() != 1) { //not rc init process
+		notify_rc("start_netool");
+		return 0;
+	}
+
+	killall("netool", SIGTERM);
+
 	return _eval(netool_argv, NULL, 0, &pid);
 }
 
@@ -10354,6 +10601,43 @@ stop_netool(void)
 	killall_tk("netool");
 }
 #endif
+
+// add by Andrew
+#ifdef RTCONFIG_NFCM
+void start_nfcm()
+{
+	char *nfcm_argv[] = {"nfcm", NULL};
+	pid_t pid;
+	int enb = nvram_get_int("nfcm_enable");
+
+	if (!enb)
+		return;
+
+	if(getpid() != 1) { //not rc init process
+		notify_rc("start_nfcm");
+		return;
+	}
+
+	killall("nfcm", SIGTERM);
+
+	_eval(nfcm_argv, NULL, 0, &pid);
+
+	return;
+}
+
+void stop_nfcm()
+{
+	if(getpid() != 1) { //not rc init process
+		notify_rc("stop_nfcm");
+		return;
+	}
+
+	killall("nfcm", SIGTERM);
+
+	return;
+}
+#endif
+// end of add
 
 #ifdef RTCONFIG_FPROBE
 void start_fprobe(void)
@@ -10564,6 +10848,8 @@ start_services(void)
 #endif
 	start_watchdog();
 	start_check_watchdog();
+    start_alt_watchdog(); // add by Andrew
+
 #ifdef RTAC87U
 	start_watchdog02();
 #endif
@@ -10794,6 +11080,9 @@ start_services(void)
 #ifdef RTCONFIG_FPROBE
 	start_fprobe();
 #endif
+#ifdef RTCONFIG_NFCM
+    start_nfcm();
+#endif
 #ifdef RTCONFIG_AMAS_ADTBW
 	start_amas_adtbw();
 #endif
@@ -10814,6 +11103,11 @@ start_services(void)
 #if defined(RTCONFIG_QCA_PLC_UTILS) || defined(RTCONFIG_QCA_PLC2)
 	start_detect_plc();
 #endif
+
+#ifdef RTCONFIG_SCHED_DAEMON
+        start_sched_daemon();
+#endif
+
 #ifdef RTCONFIG_WIREGUARD
 	start_wgsall();
 #endif
@@ -10876,6 +11170,9 @@ stop_services(void)
 #endif
 #ifdef RTCONFIG_AMAS_ADTBW
 	stop_amas_adtbw();
+#endif
+#ifdef RTCONFIG_NFCM
+	stop_nfcm();
 #endif
 #ifdef RTCONFIG_FPROBE
 	stop_fprobe();
@@ -10963,6 +11260,8 @@ stop_services(void)
 #endif
 	stop_check_watchdog();
 	stop_watchdog();
+    stop_alt_watchdog(); // add by Andrew
+
 #if defined(CONFIG_BCMWL5) && defined(RTCONFIG_FANCTRL)
 	stop_phy_tempsense();
 #endif
@@ -11140,6 +11439,9 @@ stop_services(void)
 #endif
 #if defined(RTCONFIG_CFEZ) && defined(RTCONFIG_BCMARM)
 	stop_envrams();
+#endif
+#ifdef RTCONFIG_SCHED_DAEMON
+	stop_sched_daemon();
 #endif
 #if defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_RALINK)
 	stop_jitterentropy();
@@ -11373,6 +11675,9 @@ stop_services_mfg(void)
 #ifdef RTCONFIG_TUNNEL
 	stop_mastiff();
 #endif
+#ifdef RTCONFIG_NFCM
+	stop_nfcm();
+#endif
 #ifdef RTCONFIG_NEW_USER_LOW_RSSI
 	stop_roamast();
 #endif
@@ -11521,6 +11826,14 @@ stop_watchdog(void)
 	killall_tk("watchdog");
 }
 
+// add by Andrew
+void
+stop_alt_watchdog(void)
+{
+	killall_tk("alt_watchdog");
+}
+// end of add
+
 void
 stop_check_watchdog(void)
 {
@@ -11590,6 +11903,18 @@ start_check_watchdog(void)
 
 	return _eval(check_watchdog_argv, NULL, 0, &pid);
 }
+
+// added by Andrew
+int start_alt_watchdog(void)
+{
+	char *alt_watchdog_argv[] = {"alt_watchdog", NULL};
+	pid_t whpid;
+
+	if(nvram_match("stop_watchdog", "1"))  return 0;
+
+	return _eval(alt_watchdog_argv, NULL, 0, &whpid);
+}
+// end of add
 
 #ifdef RTAC87U
 int
@@ -12214,6 +12539,60 @@ stop_ledbtn(void)
 }
 #endif
 
+#if defined(RTCONFIG_SCHED_DAEMON)
+void
+start_sched_daemon(void)
+{
+	char *sched_daemon_argv[] = {"sched_daemon", NULL};
+	pid_t pid;
+
+	if(getpid()!=1) {
+		notify_rc("start_sched_daemon");
+		return;
+	}
+
+	stop_sched_daemon();
+	_eval(sched_daemon_argv, NULL, 0, &pid);
+}
+
+void
+stop_sched_daemon(void)
+{
+	if(getpid()!=1) {
+		notify_rc("stop_sched_daemon");
+		return;
+	}
+
+	if (pids("sched_daemon"))
+		killall_tk("sched_daemon");
+
+	return;
+}
+#endif
+
+#ifdef GTAX6000
+int
+start_antled(void)
+{
+	char *antled_argv[] = {"antled", NULL};
+	pid_t pid;
+#ifdef RTCONFIG_BCM_MFG
+	return 0;
+#endif
+	stop_antled();
+	return _eval(antled_argv, NULL, 0, &pid);
+}
+
+int
+stop_antled(void)
+{
+	if (pids("antled"))
+		killall_tk("antled");
+
+	return 0;
+}
+#endif
+
 void start_script(int argc, char *argv[])
 {
 	int pid;
@@ -12295,9 +12674,6 @@ void check_services(void)
 	}
 #endif
 }
-
-#define RC_SERVICE_STOP 0x01
-#define RC_SERVICE_START 0x02
 
 void factory_reset(void)
 {
@@ -12389,6 +12765,7 @@ void factory_reset(void)
 	eval("mtd-erase", "-d", "plc");
 #endif
 
+	nvram_set("sys_reboot_reason", "rc_func_fact_rst");
 	kill(1, SIGTERM);
 }
 
@@ -12430,9 +12807,7 @@ void handle_notifications(void)
 	char tmp2[100], prefix2[32];
 	char env_unit[32];
 #endif
-#if 1 //defined(RTCONFIG_DUAL_TRX)
-	char *fwpart[2] = { LINUX_MTD_NAME, LINUX2_MTD_NAME };
-#endif
+	char *fwpart[2] __attribute__((unused)) = { LINUX_MTD_NAME, LINUX2_MTD_NAME };
 
 #if defined(RTCONFIG_LANTIQ)
 	f_write_string("/proc/sys/vm/drop_caches", "1", 0, 0);
@@ -12610,6 +12985,7 @@ again:
 #if defined(RTCONFIG_QCA_PLC_UTILS) || defined(RTCONFIG_QCA_PLC2)
 		reset_plc(1);
 #endif
+		nvram_set("sys_reboot_reason", "rc_all");
 		sleep(2); // wait for all httpd event done
 		stop_lan_port();
 		start_lan_port(6);
@@ -12672,26 +13048,6 @@ again:
 
 		// if ate needs, TBD. except writing flash
 		_dprintf("nothing to do in rc service(ate), skip it\n");
-		goto skip;
-#endif
-
-#if defined(RTCONFIG_HND_ROUTER_AX_6756)
-		if(ate_upgrade_bootnew || nvram_get_int("bootnew")==1) {
-			_dprintf("[ATE] BOOTNEW...(%d)(%d)\n", ate_upgrade_bootnew, nvram_get_int("bootnew"));
-                        if (setBootImageState(BOOT_SET_NEW_IMAGE) != 0)
-                                _dprintf("%s: setBootImageState(BOOT_SET_NEW_IMAGE) failed..\n", __func__);
-		}
-
-		if(ate_upgrade_reset) {
-			_dprintf("[ATE] Reset Default...\n");
-			ResetDefault();
-		}
-
-		if(ate_upgrade_reboot) {
-			_dprintf("[ATE] REBOOT...\n");
-			kill(1, SIGTERM);
-		}
-
 		goto skip;
 #endif
 
@@ -12783,6 +13139,38 @@ again:
 			stop_eth_obd();
 #endif
 		}
+#if defined(RTCONFIG_HND_ROUTER_AX_6756)
+		_dprintf(">> wait upgrading\n");
+		int i;
+		for(i=0; i<120; ++i) {
+			_dprintf("*");
+			sleep(1);
+			if(nvram_match("upgrade_done", "1")) {
+				nvram_set("upgrade_done", "0");
+				break;
+			}
+		}
+		_dprintf("<< wait upgrading %d secs\n", i);
+
+		if(ate_upgrade_bootnew || nvram_get_int("bootnew")==1) {
+			_dprintf("[ATE] BOOTNEW...(%d)(%d)\n", ate_upgrade_bootnew, nvram_get_int("bootnew"));
+                        if (setBootImageState(BOOT_SET_NEW_IMAGE) != 0)
+                                _dprintf("%s: setBootImageState(BOOT_SET_NEW_IMAGE) failed..\n", __func__);
+		}
+
+		if(ate_upgrade_reset) {
+			_dprintf("[ATE] Reset Default...\n");
+			ResetDefault();
+		}
+
+		if(ate_upgrade_reboot) {
+			nvram_set("sys_reboot_reason", "ate_upg_rbt");
+			_dprintf("[ATE] REBOOT...\n");
+			kill(1, SIGTERM);
+		}
+
+		goto skip;
+#endif
 		if(action & RC_SERVICE_START) {
 #ifndef RTCONFIG_PIPEFW
 			int sw = 0, r;
@@ -12947,12 +13335,14 @@ again:
 						/* Do nothing. If switch_root() success, never reach here. */
 					} else {
 						if(ate_upgrade_reboot)	{
+							nvram_set("sys_reboot_reason", "ate_upg_sw");
 							_dprintf("[ATE] REBOOT...\n");
 							kill(1, SIGTERM);
 						}
 					}
 				} else {
 					if(ate_upgrade_reboot) {
+						nvram_set("sys_reboot_reason", "ate_upg_norm");
 						_dprintf("[ATE] REBOOT...\n");
 						kill(1, SIGTERM);
 					}
@@ -13061,6 +13451,9 @@ again:
 			stop_tr();
 #endif
 			/* stop_jffs2(1); */ // do it later. Will add it to webs_upgrade 
+#if defined(RTCONFIG_QCA_PLC_UTILS) || defined(RTCONFIG_QCA_PLC2)
+			reset_plc(1);
+#endif
 			stop_misc();
 
 #if defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_RALINK)
@@ -13246,15 +13639,21 @@ again:
 					if (!(r = switch_root(TMP_ROOTFS_MNT_POINT))) {
 						/* Do nothing. If switch_root() success, never reach here. */
 					} else {
+						nvram_set("sys_reboot_reason", "rc_upg_switch");
+						_dprintf("%s: go reboot.\n", __func__);
 						kill(1, SIGTERM);
 					}
 				} else {
+					nvram_set("sys_reboot_reason", "rc_upg_noswitch");
+					_dprintf("%s: go reboot.\n", __func__);
 					kill(1, SIGTERM);
 				}
 			}
 			else
 #endif
 			{
+				nvram_set("sys_reboot_reason", "rc_upg_fw");
+				_dprintf("%s: go reboot.\n", __func__);
 				// recover? or reboot directly
 				kill(1, SIGTERM);
 			}
@@ -13270,6 +13669,7 @@ again:
 		nvram_set("asus_mfg", "3");
 		stop_check_watchdog();
 		stop_watchdog();
+        stop_alt_watchdog(); // add by Andrew
 		stop_infosvr();
 		stop_services_mfg();
 	}
@@ -13277,6 +13677,7 @@ again:
 		nvram_set("asus_mfg", "3");
 		stop_check_watchdog();
 		stop_watchdog();
+        stop_alt_watchdog(); // add by Andrew
 		stop_infosvr();
 		stop_services_mfg();
 		modprobe_r("nf_nat_sip");
@@ -13904,6 +14305,9 @@ script_allnet:
 #if defined(RTCONFIG_PPTPD) || defined(RTCONFIG_ACCEL_PPTPD)
 			//stop_pptpd();
 #endif
+#if defined(RTCONFIG_NFCM)
+            stop_nfcm();
+#endif
 #ifdef RTCONFIG_CFGSYNC
 #ifdef RTCONFIG_CONNDIAG
 			stop_conn_diag();
@@ -14064,6 +14468,9 @@ script_allnet:
 #ifdef RTCONFIG_CONNDIAG
 			start_conn_diag();
 #endif
+#endif
+#if defined(RTCONFIG_NFCM)
+            start_nfcm();
 #endif
 #if defined(RTCONFIG_AMAS)
 			start_amas_lib();
@@ -14820,6 +15227,19 @@ check_ddr_done:
 	}
 #endif
 //#endif
+
+#ifdef RTCONFIG_NFCM
+	else if (strcmp(script, "nfcm") == 0)
+	{
+		if(action&RC_SERVICE_STOP){
+			stop_nfcm();
+		}
+		if(action&RC_SERVICE_START) {
+			start_nfcm();
+		}
+	}
+#endif
+
 //#ifdef RTCONFIG_CLOUDSYNC
 	else if (strcmp(script, "cloudsync") == 0)
 	{
@@ -14957,7 +15377,9 @@ check_ddr_done:
 				nvram_set("apps_state_cancel", "");
 				nvram_set("apps_state_error", "");
 
+#if !defined(RTCONFIG_HND_ROUTER)
 				free_caches(FREE_MEM_PAGE, 1, 0);
+#endif
 
 				cmd[0] = nvtmp;
 				start_script(count, cmd);
@@ -15415,6 +15837,34 @@ check_ddr_done:
 	}
 #endif
 #endif	/* RTCONFIG_BT_CONN */
+#if defined(RTCONFIG_QCA_EZMESH)
+	else if (strcmp(script, "ezmesh_test") == 0)
+	{
+		eval("hyctl", "attach", nvram_safe_get("lan_ifname"));
+		gen_ez_config();
+		doSystem("ezmesh -C /tmp/ez.conf -cfg80211 &");
+		_dprintf("ezmesh service is running!\n");
+	
+
+	}	
+	else if (strcmp(script, "wsplcd_test") == 0)
+	{
+		wsplcd_enable();
+		if(nvram_get_int("role"))
+		{	
+			gen_1905_config(1);
+			doSystem("wsplcd-map -c tmp/wsplcd.conf -cfg80211 &");
+		}
+		else
+		{	
+			gen_1905_config(0);
+			gen_bss_policy();
+			doSystem("wsplcd-map -c tmp/wsplcd.conf -M /tmp/bss.conf -cfg80211 &");
+		}	
+		_dprintf("1905 service is running!\n");
+
+	}
+#endif	
 #ifdef RTCONFIG_WIFI_SON
 	else if (strcmp(script, "hyfi_process") == 0)
 	{
@@ -15981,10 +16431,11 @@ check_ddr_done:
 	{
 		if (is_router_mode()
 #ifdef RTCONFIG_DPSTA
-			|| ((dpsta_mode()||rp_mode()) && nvram_get_int("re_mode") == 0)
+			|| (dpsta_mode() && nvram_get_int("re_mode") == 0)
 #if defined(RPAX56)
 			|| (nvram_match("x_Setting", "0") && nvram_get_int("re_mode") == 0)
 #endif
+			|| (rp_mode() && nvram_get_int("re_mode") == 0)
 #elif defined(RPAX58)
 			|| (nvram_match("x_Setting", "0") && nvram_get_int("re_mode") == 0)
 #endif
@@ -16004,6 +16455,8 @@ check_ddr_done:
 #endif
 			) {
 				nvram_set_int("amesh_wps_enr", 1);
+				snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+				nvram_set(strcat_r(prefix, "mfp", tmp), "1");
 #ifdef RTCONFIG_HND_ROUTER_AX
 				stop_acsd();
 				stop_wps();
@@ -16020,7 +16473,6 @@ check_ddr_done:
 #else
 				char ifname[IFNAMSIZ] = { 0 };
 
-				snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 #if defined(RTCONFIG_BCM4708) || defined(RTCONFIG_BCM_7114)  || defined(RTCONFIG_HND_ROUTER)
 				nvram_set(strcat_r(prefix, "mode", tmp), "wet");
 #else
@@ -16143,18 +16595,21 @@ retry_wps_enr:
 
 		if(action & RC_SERVICE_START) 
 		{
-			start_hapd_wpasupp(1);
+			start_hapd_wpasupp(1);	// skip wpa_supp
 		}
 	}
-	else if (strcmp(script, "wpasupp")==0)
+	else if (strcmp(script, "wpasupp_qis")==0)	// rp qis dedicated preauth
 	{
-		int i = -1;
-		char tmp[128], prefix[16];
+		int i = -1, t, r, band = -1;
+		char tmp[128], prefix[16], prefix_b[16], *orig;
+		char reason_tmp[16];
+		int client_mode = 1;
+		int reload_wait = nvram_get_int("reload_wait")?:5;
 
 		if(cmd[1])
-			i = atoi(cmd[1]);
+			band = atoi(cmd[1]);
 
-		_dprintf("%s, wl%d\n", __func__, i);
+		_dprintf("%s wpasupp_qis.. wl%d, cli:%d(%d/%d), reload_wait:%d\n", __func__, band, client_mode, dpsta_mode(), dpsr_mode(), reload_wait);
 
 		nvram_set("wpas0_reason", "");
 		nvram_set("wpas1_reason", "");
@@ -16162,29 +16617,240 @@ retry_wps_enr:
 
 		if(action & RC_SERVICE_STOP)
 		{
-			stop_wpasupp(i);
-			goto skip;
+			stop_wpasupp(band);
 		}
 		if(action & RC_SERVICE_START)
 		{
-			start_wpasupp(i);
-			//goto skip;
+			if(client_mode) {
+        			//killall("psta_monitor", SIGTERM);
+
+				set_wpasupp(band, 1);
+
+				if(band >= 0) {
+					snprintf(prefix, sizeof(prefix), "wlc%d_", band);
+					if(*nvram_safe_get(strcat_r(prefix, "ssid", tmp)))
+					{
+						if(nvram_match("x_Setting", "1")) {
+							_dprintf("backup current wlc settings\n");
+	
+							snprintf(prefix, sizeof(prefix), "wlr%d_", band);
+							snprintf(prefix_b, sizeof(prefix_b), "wl%d_", band);
+
+							orig = nvram_safe_get(strcat_r(prefix_b, "akm", tmp));
+							nvram_set(strcat_r(prefix, "akm", tmp), orig);
+
+							orig = nvram_safe_get(strcat_r(prefix_b, "wpa_psk", tmp));
+							nvram_set(strcat_r(prefix, "wpa_psk", tmp), orig);
+
+							orig = nvram_safe_get(strcat_r(prefix_b, "ssid", tmp));
+							nvram_set(strcat_r(prefix, "ssid", tmp), orig);
+
+							orig = nvram_safe_get(strcat_r(prefix_b, "crypto", tmp));
+							nvram_set(strcat_r(prefix, "crypto", tmp), orig);
+
+							orig = nvram_safe_get(strcat_r(prefix_b, "wep", tmp));
+							nvram_set(strcat_r(prefix, "wep", tmp), orig);
+
+							orig = nvram_safe_get(strcat_r(prefix_b, "wep_key", tmp));
+							nvram_set(strcat_r(prefix, "wep_key", tmp), orig);
+						}
+						apply_config_to_driver_wlc(band, 0, 0);
+						set_wpasupp(band, 2);
+					} else
+						_dprintf("skip wpasupp (%d) due invalid ssid\n", band);
+				} else {
+					for(i=0; i<num_of_wl_if(); ++i) {
+						snprintf(prefix, sizeof(prefix), "wlc%d_", i);
+						if(*nvram_safe_get(strcat_r(prefix, "ssid", tmp)))
+						{
+							apply_config_to_driver_wlc(i, 0, 0);
+							set_wpasupp(band, 2);
+						}
+					}	
+				}
+			}
+		}
+	} 
+	else if (strcmp(script, "wpasupp")==0)	// warp ver by wpa_cli
+	{
+		int i = -1, t, r, band = -1;
+		char reason_tmp[16];
+		char tmp[128], prefix[16], prefix_b[16], *orig;
+		int client_mode = dpsta_mode()||dpsr_mode() ? 1:0;
+		int reload_wait = nvram_get_int("reload_wait")?:5;
+
+		if(cmd[1])
+			band = atoi(cmd[1]);
+
+		_dprintf("%s wpasupp.. wl%d, cli:%d, reload_wait:%d\n", __func__, band, client_mode, reload_wait);
+
+		nvram_set("wpas0_reason", "");
+		nvram_set("wpas1_reason", "");
+		nvram_set("wpas2_reason", "");
+		
+
+		if(action & RC_SERVICE_STOP)
+		{
+			if(client_mode)
+				stop_wpasupp(band);
+			else
+				stop_wpa_supplicant();
 		}
 
-		if(cmd[1]) {
-			i = atoi(cmd[1]);
-			snprintf(prefix, sizeof(prefix), "wlc%d_", i);
-			if(*nvram_safe_get(strcat_r(prefix, "ssid", tmp)))
-			{
-				apply_config_to_driver_wlc(i);
-			} else
-				_dprintf("skip wpasupp (%d) due invalid ssid\n", i);
-		} else {
-			for(i=0; i<num_of_wl_if(); ++i) {
-				snprintf(prefix, sizeof(prefix), "wlc%d_", i);
-				if(*nvram_safe_get(strcat_r(prefix, "ssid", tmp)))
-				{
-					apply_config_to_driver_wlc(i);
+		if(action & RC_SERVICE_START)
+		{
+			if(client_mode) {
+				set_wpasupp(band, 1);
+
+				if(band >= 0) {
+					snprintf(prefix, sizeof(prefix), "wlc%d_", band);
+					if(*nvram_safe_get(strcat_r(prefix, "ssid", tmp)))
+					{
+						apply_config_to_driver_wlc(band, 0, 0);
+						set_wpasupp(band, 2);
+					} else
+						_dprintf("skip wpasupp (%d) due invalid ssid\n", band);
+				} else {
+					for(i=0; i<num_of_wl_if(); ++i) {
+						snprintf(prefix, sizeof(prefix), "wlc%d_", i);
+						if(*nvram_safe_get(strcat_r(prefix, "ssid", tmp)))
+						{
+							apply_config_to_driver_wlc(i, 0, 0);
+							set_wpasupp(band, 2);
+						}
+					}	
+				}
+			} else {  // ap mode
+				if(!nvram_match("preauth", "1")) {
+					_dprintf("Don't preauth in ap mode.\n");
+
+				} else {
+					_dprintf("Go preauth in ap mode.\n");
+				
+					eval("killall", "debug_monitor");
+					eval("killall", "-9", "hostapd");
+
+					if(band >= 0) {
+						snprintf(tmp, sizeof(tmp), "wl%d_mode", band);
+						nvram_set(tmp, "wet");
+					} else {
+						for(i=0; i<num_of_wl_if(); ++i) {
+							snprintf(tmp, sizeof(tmp), "wl%d_mode", i);
+							nvram_set(tmp, "wet");
+						}
+					}
+
+					// convert wlcx to wlx and create config file
+					if(band >= 0) {
+						snprintf(prefix, sizeof(prefix), "wlc%d_", band);
+						if(*nvram_safe_get(strcat_r(prefix, "ssid", tmp)))
+						{
+							apply_config_to_driver_wlc(band, 1, 1);
+						} else
+							_dprintf("skip wpasupp (%d) due invalid ssid\n", band);
+					} else {
+						for(i=0; i<num_of_wl_if(); ++i) {
+							snprintf(prefix, sizeof(prefix), "wlc%d_", i);
+							if(*nvram_safe_get(strcat_r(prefix, "ssid", tmp)))
+							{
+								apply_config_to_driver_wlc(i, 1, 1);
+							}
+						}
+					}
+
+					unload_wl();
+#ifdef RTCONFIG_DHDAP
+					load_wl();
+#else
+					eval("insmod", "wl");
+#endif
+					sleep(reload_wait);
+
+					start_hapd_wpasupp(2);  // skip hostapd
+
+					for(t=0; t<10; ++t) {
+						if(band >= 0) {
+							snprintf(reason_tmp, sizeof(reason_tmp), "wpas%d_reason", band);
+							if(*nvram_safe_get(reason_tmp))
+								break;
+						} else {
+							r = 0;
+							for(i=0; i<num_of_wl_if(); ++i) {
+								snprintf(reason_tmp, sizeof(reason_tmp), "wpas%d_reason", i);
+								if(*nvram_safe_get(reason_tmp))
+									++r;
+							}
+							if(r == num_of_wl_if())
+								break;
+						}
+					}
+					_dprintf("\n..%ds elapsed.\n", t);
+					_dprintf("chk wpas0 reason=%s\n", nvram_safe_get("wpas0_reason"));
+					_dprintf("chk wpas1 reason=%s\n", nvram_safe_get("wpas1_reason"));
+					_dprintf("chk wpas2 reason=%s\n", nvram_safe_get("wpas2_reason"));
+
+					// recover ap setting
+					if(band >= 0) {
+						snprintf(prefix, sizeof(prefix), "wl%d_", band);
+						snprintf(prefix_b, sizeof(prefix_b), "wlb%d_", band);
+
+						nvram_set(strcat_r(prefix, "mode", tmp), "ap");
+
+						orig = nvram_safe_get(strcat_r(prefix_b, "akm", tmp));
+						nvram_set(strcat_r(prefix, "akm", tmp), orig);
+
+						orig = nvram_safe_get(strcat_r(prefix_b, "wpa_psk", tmp));
+						nvram_set(strcat_r(prefix, "wpa_psk", tmp), orig);
+
+						orig = nvram_safe_get(strcat_r(prefix_b, "ssid", tmp));
+						nvram_set(strcat_r(prefix, "ssid", tmp), orig);
+
+						orig = nvram_safe_get(strcat_r(prefix_b, "crypto", tmp));
+						nvram_set(strcat_r(prefix, "crypto", tmp), orig);
+
+						orig = nvram_safe_get(strcat_r(prefix_b, "wep", tmp));
+						nvram_set(strcat_r(prefix, "wep", tmp), orig);
+
+						orig = nvram_safe_get(strcat_r(prefix_b, "wep_key", tmp));
+						nvram_set(strcat_r(prefix, "wep_key", tmp), orig);
+					} else {
+						for(i=0; i<num_of_wl_if(); ++i) {
+							snprintf(prefix, sizeof(prefix), "wl%d_", i);
+							snprintf(prefix_b, sizeof(prefix_b), "wlb%d_", i);
+
+							nvram_set(strcat_r(prefix, "mode", tmp), "ap");
+
+							orig = nvram_safe_get(strcat_r(prefix_b, "akm", tmp));
+							nvram_set(strcat_r(prefix, "akm", tmp), orig);
+
+							orig = nvram_safe_get(strcat_r(prefix_b, "wpa_psk", tmp));
+							nvram_set(strcat_r(prefix, "wpa_psk", tmp), orig);
+
+							orig = nvram_safe_get(strcat_r(prefix_b, "ssid", tmp));
+							nvram_set(strcat_r(prefix, "ssid", tmp), orig);
+
+							orig = nvram_safe_get(strcat_r(prefix_b, "crypto", tmp));
+							nvram_set(strcat_r(prefix, "crypto", tmp), orig);
+
+							orig = nvram_safe_get(strcat_r(prefix_b, "wep", tmp));
+							nvram_set(strcat_r(prefix, "wep", tmp), orig);
+
+							orig = nvram_safe_get(strcat_r(prefix_b, "wep_key", tmp));
+							nvram_set(strcat_r(prefix, "wep_key", tmp), orig);
+						}
+					}
+
+					unload_wl();
+#ifdef RTCONFIG_DHDAP
+					load_wl();
+#else
+					eval("insmod", "wl");
+#endif
+					sleep(reload_wait);
+
+					stop_wpa_supplicant();
+					start_hapd_wpasupp(1);  // skip wpa_supp
+					start_dhd_monitor();
 				}
 			}	
 		}
@@ -16326,6 +16992,9 @@ retry_wps_enr:
 			start_pptpd();
 			start_firewall(wan_primary_ifunit(), 0);
 		}
+#if defined(RTCONFIG_MT798X)
+		reinit_hwnat(-1);
+#endif
 	}
 #endif
 #if defined(RTCONFIG_OPENVPN)
@@ -16447,6 +17116,9 @@ retry_wps_enr:
 			_dprintf("[%s, %d]start vpnc %d\n", __FUNCTION__, __LINE__, vpnc_unit);
 			start_vpnc_by_unit(vpnc_unit);
 		}
+#if defined(RTCONFIG_MT798X)
+		reinit_hwnat(-1);
+#endif
 	}
 	else if (strcmp(script, "default_wan") == 0)	//change default WAN
 	{
@@ -16958,10 +17630,15 @@ _dprintf("test 2. turn off the USB power during %d seconds.\n", reset_seconds[re
 	}
 #endif
 #ifdef RTCONFIG_SOFTWIRE46
-	else if (strcmp(script, "s46map_rptd") == 0)
+	else if (strcmp(script, "v6plusd") == 0)
 	{
-		if(action & RC_SERVICE_STOP) stop_s46map_rptd();
-		if(action & RC_SERVICE_START) start_s46map_rptd();
+		if(action & RC_SERVICE_STOP) stop_v6plusd();
+		if(action & RC_SERVICE_START) start_v6plusd();
+	}
+	else if (strcmp(script, "ocnvcd") == 0)
+	{
+		if(action & RC_SERVICE_STOP) stop_ocnvcd();
+		if(action & RC_SERVICE_START) start_ocnvcd();
 	}
 #endif
 #ifdef RTCONFIG_DISABLE_NETWORKMAP
@@ -17074,6 +17751,12 @@ _dprintf("test 2. turn off the USB power during %d seconds.\n", reset_seconds[re
 	{
 		if(action&RC_SERVICE_STOP) stop_fprobe();
 		if(action&RC_SERVICE_START) start_fprobe();
+#endif
+#ifdef RTCONFIG_NFCM
+	else if (strcmp(script,"nfcm") == 0)
+	{
+		if(action&RC_SERVICE_STOP) stop_nfcm();
+		if(action&RC_SERVICE_START) start_nfcm();
 	}
 #endif
 #ifdef RTCONFIG_ETHOBD
@@ -17172,6 +17855,13 @@ _dprintf("test 2. turn off the USB power during %d seconds.\n", reset_seconds[re
 		}
         }
 #endif
+#if defined(RTCONFIG_HND_ROUTER_AX)
+	else if (strcmp(script, "cable_media") == 0)
+        {
+		// cmd[1]: ethernet interface, cmd[2]: media type
+		eval("ethctl", cmd[1], "media-type", cmd[2]);
+        }
+#endif
 #if defined(RTCONFIG_QCA_LBD)
 	else if (strcmp(script, "qca_lbd") == 0 || strcmp(script, "bsd") == 0)
 	{
@@ -17240,6 +17930,13 @@ _dprintf("test 2. turn off the USB power during %d seconds.\n", reset_seconds[re
 		if (action & RC_SERVICE_STOP) stop_watchdog();
 		if (action & RC_SERVICE_START) start_watchdog();
 	}
+// add by Andrew
+    else if (strcmp(script, "alt_watchdog") == 0)
+    {
+        if (action & RC_SERVICE_STOP) stop_alt_watchdog();
+        if (action & RC_SERVICE_START) start_alt_watchdog();
+    }
+// end of add
 #if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX11000_PRO) || defined(GTAXE16000) || defined(GTAX6000)
 	else if (strcmp(script, "ledg") == 0)
 	{
@@ -17267,7 +17964,18 @@ _dprintf("test 2. turn off the USB power during %d seconds.\n", reset_seconds[re
 			start_detect_plc();
 		}
 	}
+	else if (strcmp(script, "detect_plc") == 0) {
+		if (action & RC_SERVICE_STOP) stop_detect_plc();
+		if (action & RC_SERVICE_START) start_detect_plc();
+	}
 #endif	/* RTCONFIG_QCA_PLC_UTILS || RTCONFIG_QCA_PLC2 */
+#if defined(RTCONFIG_SCHED_DAEMON)
+	else if (strcmp(script, "sched_daemon") == 0)
+	{
+		if (action & RC_SERVICE_STOP) stop_sched_daemon();
+		if (action & RC_SERVICE_START) start_sched_daemon();
+	}
+#endif
 #ifdef RTCONFIG_WIREGUARD
 	else if (strcmp(script, "wgs") == 0) {
 		if (cmd[1]) {
@@ -17345,6 +18053,20 @@ _dprintf("test 2. turn off the USB power during %d seconds.\n", reset_seconds[re
 		if (action & RC_SERVICE_START) start_plc_master();
 	}
 #endif	/* RTCONFIG_QCA_PLC2 */
+#ifdef RTCONFIG_GRE
+	else if (strcmp(script, "l2gre") == 0)
+	{
+		int unit = (cmd[1]) ? atoi(cmd[1]) : nvram_get_int("l2gre_unit");
+		if (action & RC_SERVICE_STOP) stop_l2gre(unit);
+		if (action & RC_SERVICE_START) start_l2gre(unit);
+	}
+	else if (strcmp(script, "l3gre") == 0)
+	{
+		int unit = (cmd[1]) ? atoi(cmd[1]) : nvram_get_int("l3gre_unit");
+		if (action & RC_SERVICE_STOP) stop_l3gre(unit);
+		if (action & RC_SERVICE_START) start_l3gre(unit);
+	}
+#endif
 	else
 	{
 		fprintf(stderr,
@@ -17893,9 +18615,13 @@ void start_amas_lldpd(void)
 	}
 #endif
 
-#if defined(RTCONFIG_AMAS) && defined(RTCONFIG_DPSTA)
-	if ((dpsta_mode()||rp_mode()) && !nvram_get_int("re_mode") && nvram_get_int("x_Setting"))
+#if defined(RTCONFIG_AMAS)
+#if defined(RTCONFIG_DPSTA)
+	if (dpsta_mode() && !nvram_get_int("re_mode") && nvram_get_int("x_Setting"))
 		return;
+#endif
+        if (rp_mode() && !nvram_get_int("re_mode") && nvram_get_int("x_Setting"))
+                return;
 #endif
 
 	if(nvram_match("stop_amas_lldpd", "1")) {
@@ -17936,6 +18662,10 @@ void start_amas_lldpd(void)
 
 	stop_amas_lldpd();
 
+#ifdef RTCONFIG_AVOID_TZ_ENV
+	#define CHROOTDIR_LLDPD "/var/run/lldpd"
+	doSystem("mkdir -p %s/etc ; ln -f /tmp/TZ %s/etc/TZ", CHROOTDIR_LLDPD, CHROOTDIR_LLDPD);	/* add a hard link to /tmp/TZ at /var/run/lldpd/etc/TZ */
+#endif
 	FILE *fp = NULL;
 	fp = fopen("/tmp/run_lldpd.sh", "w+");
 	if (!fp) {
@@ -18180,8 +18910,13 @@ int start_nat_rules(void)
 		return stop_nat_rules();
 
 	nat_state = nvram_get_int("nat_state");
-	if (nat_state == NAT_STATE_NORMAL)
+	if (nat_state == NAT_STATE_NORMAL) {
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
+		setup_ct_timeout(TRUE);
+		setup_udp_timeout(TRUE);
+#endif
 		return nat_state;
+	}
 
 	retry = 1;
 	while (lstat(NAT_RULES, &s) || (ret = S_ISLNK(s.st_mode) ? readlink(NAT_RULES, ln, sizeof(ln) - 1) : s.st_size) <= 0) {
@@ -18951,10 +19686,9 @@ void start_roamast(void){
 	int i;
 
 	stop_roamast();
-#if defined(RTCONFIG_CONCURRENTREPEATER) || defined(RTCONFIG_BCMWL6)
+
 	if (mediabridge_mode())
 		return;
-#endif
 
 #ifdef RTCONFIG_FAST_ACL_SET
 	if (nvram_match("watchdog_wait_a_moment", "1"))
@@ -19013,6 +19747,8 @@ void start_ecoguard(void)
 	else {
 		foreach(ifname, nvram_safe_get("wl_ifnames"), next) {
 #if defined(RTCONFIG_RALINK)
+		eval("iwpriv", ifname,"set", "httxstream=1");
+		eval("iwpriv", ifname,"set", "htrxstream=1");
 #elif defined(RTCONFIG_QCA)
 #else /* BCM */
 
@@ -21390,3 +22126,41 @@ void start_setacl_not_restart_wifi(void)
 }
 #endif //RTCONFIG_FAST_ACL_SET
 
+#if defined(RTCONFIG_HND_ROUTER_AX)
+int set_cable_media(const char *eth_inf, const char *media_type){
+	FILE *fp;
+	int ret = -1;
+	char cmd[256], buf[512], *ptr;
+#define SET_MEDIA_OK "Link is Up at Speed: "
+
+	if(!eth_inf || *eth_inf == '\0'){
+		_dprintf("%s: Not assign the ethernet interface\n", __func__);
+		return ret;
+	}
+
+	if(!media_type || *media_type == '\0'){
+		_dprintf("%s: Not assign the media type\n", __func__);
+		return ret;
+	}
+
+	// Start to set media-type of the cable
+	snprintf(cmd, sizeof(cmd), "ethctl %s media-type %s 2>/dev/null", eth_inf, media_type);
+	if((fp = popen(cmd, "r")) != NULL){
+		memset(buf, 0, sizeof(buf));
+		while(fgets(buf, sizeof(buf), fp) != NULL) {
+			if ((ptr = strstr(buf, SET_MEDIA_OK)) != NULL) { // Event Complete
+				ret = 0;
+				break;
+			}
+		}
+		pclose(fp);
+	}
+
+	if(ret == 0)
+		_dprintf("%s: the media type will be linked up by %s later\n", __func__, media_type);
+	else
+		_dprintf("%s: Fail to set %s to be %s\n", __func__, eth_inf, media_type);
+
+	return 0;
+}
+#endif

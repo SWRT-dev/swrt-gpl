@@ -1,4 +1,4 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <html xmlns:v>
 <head>
@@ -576,7 +576,7 @@ function updateDateTime(){
         					<tr>
           						<th ><a class="hintstyle" href="javascript:void(0);" onClick="openHint(10,4);"><#FirewallConfig_LanWanICMP_itemname#></a></th>
           						<td>
-          							<input type="text" maxlength="64" class="input_32_table" name="filter_lw_icmp_x" value="<% nvram_get("filter_lw_icmp_x"); %>" onKeyPress="return validator.isPortlist(this,event)" autocorrect="off" autocapitalize="off">
+								<input type="text" maxlength="64" class="input_32_table" name="filter_lw_icmp_x" value="<% nvram_get("filter_lw_icmp_x"); %>" onKeyPress="return validator.isPortlist(this,event)" autocorrect="off" autocapitalize="off">
           						</td>
         					</tr>
 
@@ -646,4 +646,3 @@ function updateDateTime(){
 <div id="footer"></div>
 </body>
 </html>
-

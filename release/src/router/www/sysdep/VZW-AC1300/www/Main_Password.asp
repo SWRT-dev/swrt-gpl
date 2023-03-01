@@ -254,10 +254,6 @@ function validForm(){
 
 function submitForm(){
 	var postData = {"restart_httpd": "0", "new_username":document.form.http_username_x.value, "new_passwd":document.form.http_passwd_x.value};
-	var sw_mode = '<% nvram_get("sw_mode"); %>';
-
-	if(sw_mode == 3 && '<% nvram_get("wlc_psta"); %>' == 2)
-		sw_mode = 2;
 
 	if(validForm()){
 		document.getElementById("error_status_field").style.display = "none";
@@ -268,12 +264,8 @@ function submitForm(){
 			httpApi.chpass(postData);
 		}, 100);
 
-		var nextPage = decodeURIComponent('<% get_ascii_parameter("nextPage"); %>');
 		setTimeout(function(){
-			if('<% nvram_get("w_Setting"); %>' == '0' && sw_mode != 2)
-				location.href = '/QIS_wizard.htm?flag=wireless';
-			else
-				location.href = (nextPage != "") ? nextPage : "<% rel_index_page(); %>";
+			location.href = "<% rel_index_page(); %>";
 		}, 3000);
 	}
 	else

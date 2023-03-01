@@ -3,9 +3,9 @@ SECS=1262278080
 
 cd /etc
 
-NVCN=`nvram get https_crt_cn`
+NVCN=`nvram get local_domain`
 if [ "$NVCN" == "" ]; then
-	NVCN="router.asus.com"
+	NVCN="www.asusrouter.com"
 fi
 
 cp -L openssl.cnf openssl.config

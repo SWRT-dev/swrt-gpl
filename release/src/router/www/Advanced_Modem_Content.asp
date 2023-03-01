@@ -176,8 +176,12 @@ function initial(){
 		},
 		function() {
 			if(dualWAN_support){
-				if(usb_index == 0)
-					document.form.wans_dualwan.value = wans_dualwan_array[1]+" none";
+				if(usb_index == 0){
+					if(wans_dualwan_array[1] != "none" && wans_dualwan_array[1] != "lan")
+						document.form.wans_dualwan.value = wans_dualwan_array[1] +" none";
+					else
+						document.form.wans_dualwan.value = "wan none";
+				}
 				else
 					document.form.wans_dualwan.value = wans_dualwan_array[0]+" none";
 			}
@@ -517,8 +521,18 @@ function applyRule(){
 	if(wans_dualwan_array.indexOf("usb") == 1 && document.form.wan1_enable.value == "0")
 		document.form.wan1_enable.value = "1";
 
-	showLoading(); 
-	document.form.submit();
+	if(document.form.action_script.value == "reboot"){
+
+		if(confirm("<#AiMesh_Node_Reboot#>")){
+			showLoading();
+			document.form.submit();
+		}
+	}
+	else{
+
+		showLoading();
+		document.form.submit();
+	}
 }
 
 /*------------ Mouse event of fake LAN IP select menu {-----------------*/

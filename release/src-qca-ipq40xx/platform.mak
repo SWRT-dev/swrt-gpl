@@ -1,7 +1,7 @@
 export LINUXDIR := $(SRCBASE)/linux/linux-4.4
 
 ifeq ($(EXTRACFLAGS),)
-export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -marm -march=armv7-a -msoft-float -mfloat-abi=soft -mtune=cortex-a7
+export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -marm -march=armv7-a -msoft-float -mfloat-abi=soft -mtune=cortex-a7 -DMUSL_LIBC
 endif
 
 export DAKOTA_DTS :=ipq4019
@@ -32,7 +32,7 @@ export ENTRYADDR := $(LOADADDR)
 # OpenWRT's toolchain needs STAGING_DIR environment variable that points to top directory of toolchain.
 export STAGING_DIR=$(TOOLS)
 
-EXTRA_CFLAGS := -DLINUX26 -DCONFIG_QCA -pipe -DDEBUG_NOISY -DDEBUG_RCTEST -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=softfp -march=armv7-a -D_GNU_SOURCE -D_BSD_SOURCE
+EXTRA_CFLAGS := -DLINUX26 -DCONFIG_QCA -pipe -DDEBUG_NOISY -DDEBUG_RCTEST -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=softfp -march=armv7-a -D_GNU_SOURCE -D_BSD_SOURCE -DMUSL_LIBC -D__BIT_TYPES_DEFINED__
 
 export CONFIG_LINUX26=y
 export CONFIG_QCA=y

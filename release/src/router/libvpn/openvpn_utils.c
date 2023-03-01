@@ -18,8 +18,8 @@
 
 /*
  * Copyright 2021-2022, ASUS
- * Copyright 2022, SWRTdev
- * Copyright 2022, paldier <paldier@hotmail.com>.
+ * Copyright 2023, SWRTdev
+ * Copyright 2023, paldier <paldier@hotmail.com>.
  * All Rights Reserved.
  */
 
@@ -88,7 +88,7 @@ int current_route(in_addr_t network, in_addr_t netmask)
 	char buf[256] = {0};
 	FILE *fp;
 	if((fp = fopen("/proc/net/route", "r")) == NULL)
-		return NULL;
+		return 0;
 	while(fgets(buf, sizeof(buf), fp) != NULL){
 		if(strncmp(buf, "Iface", 5)){
 			if(sscanf(buf, "%*s %x %*s %*s %*s %*s %*s %x", &dest, &mask) != 2)
@@ -113,7 +113,7 @@ char* get_default_gateway_dev(char *iface, size_t len)
 		return NULL;
 	while(fgets(buf, sizeof(buf), fp) != NULL){
 		if(count){
-			if(sscanf(buf, "%15s\t%x\t%x\t%x\t%*s\t%*s\t%d\t%x", device, &dest, &gate, &flags, &metric, &mask) == 6){
+			if(sscanf(buf, "%15s\t%x\t%x\t%x\t%*s\t%*s\t%d\t%x", device, &dest, &gate, &flags, &metric, &mask) == 6 && flags){
 				if(ntohl(dest) == 0 && ntohl(mask) == 0 && metric < 255){
 					found = 1;
 					break;

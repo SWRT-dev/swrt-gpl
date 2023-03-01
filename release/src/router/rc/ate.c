@@ -202,6 +202,18 @@ static int setAllSpecificColorLedOn(enum ate_led_color color)
 	case MODEL_TUFAX4200:
 	case MODEL_TUFAX6000:
 		{
+			static enum led_id blue_led[] = {
+#if defined(RTCONFIG_PWMX2_GPIOX1_RGBLED)
+				LED_BLUE,
+#endif
+				LED_ID_MAX
+			};
+			static enum led_id green_led[] = {
+#if defined(RTCONFIG_PWMX2_GPIOX1_RGBLED)
+				LED_GREEN,
+#endif
+				LED_ID_MAX
+			};
 			static enum led_id white_led[] = {
 				LED_POWER,
 				LED_WAN, 	/* GPY211 */
@@ -211,11 +223,16 @@ static int setAllSpecificColorLedOn(enum ate_led_color color)
 			};
 			static enum led_id red_led[] = {
 				LED_WAN_RED,
+#if defined(RTCONFIG_PWMX2_GPIOX1_RGBLED)
+				LED_RED,
+#endif
 				LED_ID_MAX
 			};
 
 			all_led[LED_COLOR_WHITE] = white_led;
 			all_led[LED_COLOR_RED] = red_led;
+			all_led[LED_COLOR_BLUE] = blue_led;
+			all_led[LED_COLOR_GREEN] = green_led;
 			switch_led_color = LED_COLOR_WHITE;
 		}
 		break;
@@ -440,13 +457,7 @@ static int setAllSpecificColorLedOn(enum ate_led_color color)
 #endif
 			}
 
-			if (color == LED_COLOR_RED) {
-				AntennaGroupReset(LED_ON);
-				setAntennaGroupOn();
-			} else {
-				AntennaGroupReset(LED_OFF);
-				setAntennaGroupOff();
-			}
+			AntennaGroupReset(LED_OFF);
 		}
 		break;
 #endif
@@ -1060,12 +1071,13 @@ static int setAllSpecificColorLedOn(enum ate_led_color color)
 		}
 		break;
 #endif
-#if defined(RTCONFIG_FIXED_BRIGHTNESS_RGBLED)
+#if defined(RTCONFIG_FIXED_BRIGHTNESS_RGBLED) || defined(RTCONFIG_PWM_RGBLED)
 	case MODEL_MAPAC1750:
 	case MODEL_RTAC59CD6R:
 	case MODEL_RTAC59CD6N:
 	case MODEL_PLAX56XP4:
 	case MODEL_XD4S:
+	case MODEL_RTAX59U:
 		{
 			static enum led_id blue_led[] = {
 				LED_BLUE,
@@ -1079,13 +1091,11 @@ static int setAllSpecificColorLedOn(enum ate_led_color color)
 				LED_RED,
 				LED_ID_MAX
 			};
-#if defined(RTAC59_CD6R) || defined(RTAC59_CD6N) || defined(PLAX56_XP4) || defined(XD4S)
 			static enum led_id white_led[] = {
 				LED_WHITE,
 				LED_ID_MAX
 			};
 			all_led[LED_COLOR_WHITE] = white_led;
-#endif
 			all_led[LED_COLOR_BLUE] = blue_led;
 			all_led[LED_COLOR_GREEN] = green_led;
 			all_led[LED_COLOR_RED] = red_led;
@@ -1290,17 +1300,12 @@ pincheck(const char *a)
 		return 0;
 }
 
-int isValidSN(const char *sn)
+int is0to9AtoZ(const char *str)
 {
 	int i = 0;
-	unsigned char *c = (unsigned char *) sn;
+	unsigned char *c = (unsigned char *) str;
 
-	if ( (strlen(sn) != SERIAL_NUMBER_LENGTH)
-		&& (strlen(sn) < (SERIAL_NUMBER_LENGTH+3) || strlen(sn) > SERIAL_NUMBER_LENGTH32 )
-	   )
-		return 0;
-
-	while (i < strlen(sn)) {
+	while (i < strlen(str)) {
 		/*  0~9 & A~Z */
 		if (!((*c > 0x2F && *c < 0x3A) || (*c > 0x40 && *c < 0x5B)))
 			return 0;
@@ -1311,6 +1316,26 @@ int isValidSN(const char *sn)
 
 	return 1;
 }
+
+int isValidSN(const char *sn)
+{
+	if ( (strlen(sn) != SERIAL_NUMBER_LENGTH)
+		&& (strlen(sn) < (SERIAL_NUMBER_LENGTH+3) || strlen(sn) > SERIAL_NUMBER_LENGTH32 )
+	   )
+		return 0;
+
+	return is0to9AtoZ(sn);
+}
+
+int isValidEISN(const char *eisn)
+{
+	if (strlen(eisn) < 6 || strlen(eisn) > SERIAL_NUMBER_LENGTH32)
+		return 0;
+
+	return is0to9AtoZ(eisn);
+}
+
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 int isResetFactory(const char *str)
 {
 	char reset[] = "NONE";
@@ -1321,11 +1346,23 @@ int isResetFactory(const char *str)
 	return 0;
 }
 
-int isResetSN(const char *sn)
+/* find the first 0xff/0x0 byte of FRead buffer */
+int lenFRead(const unsigned char *buf, const int len)
 {
-	return isResetFactory(sn);
-}
+	int i = 0;
+	unsigned char *c = (unsigned char *) buf;
 
+	while (i < len) {
+		if (*c == 0xFF || *c == 0xff || *c == 0x00)
+			break;
+
+		c++;
+		i++;
+	}
+
+	return i;
+}
+#endif
 
 #define USB_HUB_PORT_NUM_MAX 8
 int
@@ -1701,7 +1738,7 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 	if (!strcmp(command, "Set_StartATEMode")) {
 		asus_ate_StartATEMode();
 		stop_wanduck();
-#ifdef RTCONFIG_FIXED_BRIGHTNESS_RGBLED
+#if defined(RTCONFIG_FIXED_BRIGHTNESS_RGBLED) || defined(RTCONFIG_PWM_RGBLED) || defined(RTCONFIG_PWMX2_GPIOX1_RGBLED)
 		set_rgbled(RGBLED_ATE_MODE);
 #endif
 		puts("1");
@@ -2335,6 +2372,15 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 		}
 		return 0;
  	}
+#if 0
+	else if (!strcmp(command, "Set_EmsInternalSerialNumber")) {
+		if (!setEISN(value)) {
+			puts("ATE_ERROR_INCORRECT_PARAMETER");
+			return EINVAL;
+		}
+		return 0;
+	}
+#endif
 #ifdef RTCONFIG_ODMPID
 	else if (!strcmp(command, "Set_ModelName")) {
 #if defined(RTCONFIG_CFEZ) && defined(RTCONFIG_BCMARM)
@@ -2473,8 +2519,10 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 	}
 	else if (!strcmp(command, "Set_WanToLan")) {
 	   	set_wantolan();
+		unregister_hnat_wlifaces();
 		modprobe_r(MTK_HNAT_MOD);
 		modprobe(MTK_HNAT_MOD);
+		register_hnat_wlifaces();
 		stop_wanduck();
 		stop_udhcpc(-1);
 		return 0;
@@ -2830,6 +2878,12 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 		getSN();
 		return 0;
 	}
+#if 0
+	else if (!strcmp(command, "Get_EmsInternalSerialNumber")) {
+		getEISN();
+		return 0;
+	}
+#endif
 #ifdef RTCONFIG_ODMPID
 	else if (!strcmp(command, "Get_ModelName")) {
 		getMN();
