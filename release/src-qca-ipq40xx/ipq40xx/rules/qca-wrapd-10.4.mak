@@ -12,6 +12,6 @@ qca-wrapd-10.4-install:
 ifneq ($(wildcard qca-wrapd-10.4/main.c),)
 	install -D qca-wrapd-10.4/wrapd $(INSTALLDIR)/qca-wrapd-10.4/usr/sbin/wrapd
 else
-	install -D qca-wrapd-10.4/prebuild/wrapd $(INSTALLDIR)/qca-wrapd-10.4/usr/sbin/wrapd
+	install -D qca-wrapd-10.4/prebuild/$(BUILD_NAME)/wrapd $(INSTALLDIR)/qca-wrapd-10.4/usr/sbin/wrapd
 endif
 	$(STRIP) $(INSTALLDIR)/qca-wrapd-10.4/usr/sbin/wrapd
