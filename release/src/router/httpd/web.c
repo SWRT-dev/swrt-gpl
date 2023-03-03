@@ -24995,6 +24995,7 @@ FINISH:
 }
 #endif
 
+#ifdef RTCONFIG_IG_SITE2SITE
 static void
 do_enable_wireguard_client_cgi(char *url, FILE *stream) {
 
@@ -25059,6 +25060,7 @@ do_get_wgc_connect_status_cgi(char *url, FILE *stream) {
 		json_object_put(wgc_connect_status_obj);
 
 }
+#endif
 
 //2008.08 magic{
 struct mime_handler mime_handlers[] = {

@@ -1678,12 +1678,14 @@ int main(int argc, char *argv[])
 			refresh_networkmap = 0;
 			arp_scan_trigger = 1;
 			nvram_set("networkmap_status", "1");
+			continue;
 		}else if(30 < time(NULL) - scan_sys_arp_time){
 			scan_sys_arp_time = time(NULL);
 			arp_parser_scan(G_CLIENT_TAB, INTERFACE);//scan arp cache again
 		}else if(1800 < time(NULL) - refresh_scan_arp_time){
 			refresh_scan_arp_time = time(NULL);
 			networkmap_fullscan = 3;
+			continue;
 		}
 		deep_scan(G_CLIENT_TAB);
 		if(nvram_match("fb_nmp_scan", "1"))
