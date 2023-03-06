@@ -1423,7 +1423,7 @@ void init_syspara(void)
 #endif
 #if defined(RTCONFIG_EASYMESH)
 	ether_cal(macaddr, macaddrbh1, 14);
-	ether_cal(macaddr2, macaddrbh2, 14);
+	ether_cal(macaddr2, macaddrbh2, 18);
 	nvram_set("bh0macaddr", macaddr);
 	nvram_set("bh1macaddr", macaddr2);
 #endif

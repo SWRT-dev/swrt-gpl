@@ -542,6 +542,35 @@ int get_bw_via_channel(int band, int channel)
 	return wl_bw;
 }
 
+const char *getCountryCode()
+{
+	char *tcode = nvram_safe_get("territory_code");
+
+	if(nvram_contains_word("rc_support", "loclist") && nvram_match("location_code", "XX"))
+		return "AU";
+	else if(!strncmp(tcode, "US", 2))
+		return "US";
+	else if(!strncmp(tcode, "CN", 2))
+		return "CN";
+	else if(!strncmp(tcode, "TW", 2))
+		return "US";
+	else if(!strncmp(tcode, "JP", 2))
+		return "JP";
+	else if(!strncmp(tcode, "UK", 2))
+		return "GB";
+	else if(!strncmp(tcode, "EU", 2))
+		return "FR";
+	else if(!strncmp(tcode, "AA", 2))
+		return "US";
+	else if(!strncmp(tcode, "KR", 2))
+		return "KR";
+	else if(!strncmp(tcode, "RU", 2))
+		return "RU";
+	else if(*tcode)
+		_dprintf("XXXXXXXXX invalid Tcode? [%s] XXXXXXXXX\n", tcode);
+	return "US";
+}
+
 int gen_ralink_config(int band, int is_iNIC)
 {
 	FILE *fp;
@@ -567,6 +596,7 @@ int gen_ralink_config(int band, int is_iNIC)
 	int VHTBW_MAX = 0;
 	int sw_mode  = sw_mode();
 	int wlc_band = nvram_get_int("wlc_band");
+	int acs_dfs = nvram_get_int("acs_dfs");
 	int IEEE80211H = 0;
 #if defined(RTCONFIG_MUMIMO_2G) || defined(RTCONFIG_MUMIMO_5G)
 	int mumimo = 0;
@@ -584,6 +614,14 @@ int gen_ralink_config(int band, int is_iNIC)
 #endif
 	char *tcode = nvram_safe_get("territory_code");
 
+	if(band > 3)
+		return 0;
+	if(!nvram_match("acs_dfs", "1")){
+		if((band == 1 && nvram_match("wl1_bw_160", "1")) || (band == 2 && nvram_match("wl2_bw_160", "1"))){
+			nvram_set("acs_dfs", "1");
+			acs_dfs = 1;
+		}
+	}
 	if (!is_iNIC)
 	{
 		_dprintf("gen ralink config\n");
@@ -671,47 +709,20 @@ int gen_ralink_config(int band, int is_iNIC)
 			fprintf(fp, "CountryCode=JP\n");
 		else
 #endif
-			fprintf(fp, "CountryCode=%s\n", str);
+			fprintf(fp, "CountryCode=%s\n", getCountryCode());
 	}
 	else
 	{
 		warning = 4;
 		fprintf(fp, "CountryCode=DB\n");
 	}
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+#if 0 //defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
 	dst = tmp;
-	if(band)
-	{
-		if (FRead(dst, OFFSET_MAC_ADDR, 6) < 0)
-		{
-			_dprintf("READ MAC address: Out of scope\n");
-		}
-		else
-		{
-			ether_etoa(tmp, macaddr);
-			if(!strcmp(macaddr, "FF:FF:FF:FF:FF:FF"))
-			{
-				if (FRead(dst, OFFSET_MAC_ADDR_2G, 6) < 0)
-					strlcpy(macaddr, "00:0C:43:26:60:2C", 17);
-				else
-					ether_cal_b(dst, macaddr, 4);
-			}
-		}
-	}
+	if (FRead(dst, OFFSET_MAC_ADDR_2G, 6) < 0)
+		_dprintf("READ MAC address 2G: Out of scope\n");
 	else
-	{
-		if (FRead(dst, OFFSET_MAC_ADDR_2G, 6) < 0)
-		{
-			_dprintf("READ MAC address 2G: Out of scope\n");
-		}
-		else
-		{
-			ether_etoa(tmp, macaddr);
-		}
-	}
+		ether_etoa(tmp, macaddr);
 	fprintf(fp, "MacAddress=%s\n", macaddr);
-	memset(tmp, 0, sizeof(tmp));
-	strncpy(tmp, macaddr, strlen(macaddr));
 	for(i = 1; i < MAX_NO_MSSID; i++)
 	{
 //fix me
@@ -787,10 +798,7 @@ int gen_ralink_config(int band, int is_iNIC)
 		fprintf(fp, "%s", tmpstr);
 	}
 #if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
-	if(nvram_match("wl_atf", "1"))
-		fprintf(fp, "VOW_Airtime_Fairness_En=%d\n", 1);
-	else
-		fprintf(fp, "VOW_Airtime_Fairness_En=%d\n", 0);
+	fprintf(fp, "VOW_Airtime_Fairness_En=%d\n", nvram_match("wl_atf", "1"));
 #endif
 	//Network Mode
 	str = nvram_safe_get(strcat_r(prefix, "nmode_x", tmp));
@@ -1068,10 +1076,10 @@ int gen_ralink_config(int band, int is_iNIC)
 	}
 
 	//TxAntenna
-	fprintf(fp, "TxAntenna=\n");
+//	fprintf(fp, "TxAntenna=\n");
 
 	//RxAntenna
-	fprintf(fp, "RxAntenna=\n");
+//	fprintf(fp, "RxAntenna=\n");
 
 	//TxPreamble
 	str = nvram_safe_get(strcat_r(prefix, "plcphdr", tmp));
@@ -1104,25 +1112,11 @@ int gen_ralink_config(int band, int is_iNIC)
 
 	//TxBurst
 	str = nvram_safe_get(strcat_r(prefix, "frameburst", tmp));
-#ifdef CE_ADAPTIVITY
-	if (nvram_match("reg_spec", "CE"))
-		;
+	if(nvram_match("reg_spec", "CE") || nvram_match("reg_spec", "EAC"))
+		fprintf(fp, "TxBurst=0\n");
 	else
-#endif
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
-	if (!nvram_match("reg_spec", "EAC"))
-	{
-#endif
-	if (str && *str)
 		fprintf(fp, "TxBurst=%d\n", strcmp(str, "off") ? 1 : 0);
-	else
-	{
-		warning = 16;
-		fprintf(fp, "TxBurst=%d\n", 1);
-	}
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
-	}
-#endif
+
 	//PktAggregate
 	str = nvram_safe_get(strcat_r(prefix, "PktAggregate", tmp));
 	if (str && *str)
@@ -1167,13 +1161,11 @@ int gen_ralink_config(int band, int is_iNIC)
 	fprintf(fp, "BSSACM=0;0;0;0\n");
 
 	//AckPolicy
-	bzero(wmm_noack, sizeof(char)*8);
-	for (i = 0; i < 4; i++)
-	{
-		sprintf(wmm_noack+strlen(wmm_noack), "%d", strcmp(nvram_safe_get(strcat_r(prefix, "wme_no_ack", tmp)), "on") ? 0 : 1);
-		sprintf(wmm_noack+strlen(wmm_noack), "%c", ';');
-	}
-	wmm_noack[strlen(wmm_noack) - 1] = '\0';
+	memset(wmm_noack, 0, sizeof(wmm_noack));
+	if(nvram_match(strcat_r(prefix, "wme_no_ack", tmp), "on"))
+		snprintf(wmm_noack, sizeof(wmm_noack), "%s", "1;1;1;1;");
+	else
+		snprintf(wmm_noack, sizeof(wmm_noack), "%s", "0;0;0;0;");
 	fprintf(fp, "AckPolicy=%s\n", wmm_noack);
 
 	snprintf(prefix, sizeof(prefix), "wl%d_", band);
@@ -1259,14 +1251,7 @@ int gen_ralink_config(int band, int is_iNIC)
 			sprintf(prefix_mssid, "wl%d_", band);
 
 		str = nvram_safe_get(strcat_r(prefix_mssid, "closed", temp));
-
-		if (sw_mode == SW_MODE_REPEATER){
-			if(i == 1)
-				sprintf(tmpstr, "%s", str);
-			else if (i > 1)
-				strlcat(tmpstr, str, sizeof(tmpstr));
-		}else
-			strlcat(tmpstr, str, sizeof(tmpstr));
+		strlcat(tmpstr, str, sizeof(tmpstr));
 	}
 	fprintf(fp, "HideSSID=%s\n", tmpstr);
 
@@ -1591,21 +1576,14 @@ int gen_ralink_config(int band, int is_iNIC)
 	}
 #endif
 #endif
-
-#ifdef RTCONFIG_AP_CARRIER_DETECTION
 	if (nvram_match(strcat_r(prefix, "country_code", tmp), "JP"))
 	{
 		fprintf(fp, "RDRegion=%s\n", "JAP");
 		fprintf(fp, "CarrierDetect=%d\n", 1);
 	}
 	else
-#endif
 	{
-#ifdef RTCONFIG_RALINK_DFS
-		fprintf(fp, "RDRegion=%s\n", nvram_get("reg_spec"));
-#else
-		fprintf(fp, "RDRegion=\n");
-#endif
+		fprintf(fp, "RDRegion=FCC\n");
 		fprintf(fp, "DfsZeroWaitDefault=%d\n", 0);
 		fprintf(fp, "DfsDedicatedZeroWait=%d\n", 0);
 		fprintf(fp, "CarrierDetect=%d\n", 0);
@@ -1616,12 +1594,7 @@ int gen_ralink_config(int band, int is_iNIC)
 	fprintf(fp, "PhyRateLimit=%d\n", 0);
 	fprintf(fp, "DebugFlags=%d\n", 0);
 	fprintf(fp, "FineAGC=%d\n", 0);
-#if !defined(RTCONFIG_MT798X)
-	if(band)
-		fprintf(fp, "StreamMode=%d\n", 3);
-	else
-#endif
-		fprintf(fp, "StreamMode=%d\n", 0);
+	fprintf(fp, "StreamMode=%d\n", 0);
 	fprintf(fp, "StreamModeMac0=\n");
 	fprintf(fp, "StreamModeMac1=\n");
 	fprintf(fp, "StreamModeMac2=\n");
@@ -2244,6 +2217,12 @@ int gen_ralink_config(int band, int is_iNIC)
 		warning = 28;
 		fprintf(fp, "HT_HTC=%d\n", 1);
 	}
+
+#if 0 //defined(RTCONFIG_EASYMESH)
+	fprintf(fp, "VLANTag=%d\n", is_wgn_enabled());	
+	if(mesh_re_node())
+		fprintf(fp, "STAVLANTag=%d\n", is_wgn_enabled());	
+#endif
 
 	//HT_RDG
 	str = nvram_safe_get(strcat_r(prefix, "HT_RDG", tmp));
@@ -2980,10 +2959,22 @@ int gen_ralink_config(int band, int is_iNIC)
 				fprintf(fp, "ApCliAuthMode=%s\n", "WEPAUTO");
 				fprintf(fp, "ApCliEncrypType=%s\n", "WEP");
 			}
-			else if (!strcmp(str, "psk") || !strcmp(str, "psk2"))
+			else if (!strcmp(str, "psk") || !strcmp(str, "psk2")
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+			|| !strcmp(str, "pskpsk2") || !strcmp(str, "sae") || !strcmp(str, "psk2sae")
+#endif
+			)
 			{
 				if (!strcmp(str, "psk"))
 					fprintf(fp, "ApCliAuthMode=%s\n", "WPAPSK");
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+				else if( !strcmp(str, "pskpsk2") )
+					fprintf(fp, "ApCliAuthMode=%s\n", "WPAPSKWPA2PSK");
+				else if( !strcmp(str, "sae") )
+					fprintf(fp, "ApCliAuthMode=%s\n", "WPA3PSK");
+				else if( !strcmp(str, "psk2sae") )
+					fprintf(fp, "ApCliAuthMode=%s\n", "WPA2PSKWPA3PSK");
+#endif
 				else
 					fprintf(fp, "ApCliAuthMode=%s\n", "WPA2PSK");
 
@@ -3106,10 +3097,22 @@ int gen_ralink_config(int band, int is_iNIC)
 				fprintf(fp, "ApCliAuthMode=%s\n", "WEPAUTO");
 				fprintf(fp, "ApCliEncrypType=%s\n", "WEP");
 			}
-			else if (!strcmp(str, "psk") || !strcmp(str, "psk2"))
+			else if (!strcmp(str, "psk") || !strcmp(str, "psk2")
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+			|| !strcmp(str, "pskpsk2") || !strcmp(str, "sae") || !strcmp(str, "psk2sae")
+#endif
+			)
 			{
 				if (!strcmp(str, "psk"))
 					fprintf(fp, "ApCliAuthMode=%s\n", "WPAPSK");
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+				else if( !strcmp(str, "pskpsk2") )
+					fprintf(fp, "ApCliAuthMode=%s\n", "WPAPSKWPA2PSK");
+				else if( !strcmp(str, "sae") )
+					fprintf(fp, "ApCliAuthMode=%s\n", "WPA3PSK");
+				else if( !strcmp(str, "psk2sae") )
+					fprintf(fp, "ApCliAuthMode=%s\n", "WPA2PSKWPA3PSK");
+#endif
 				else
 					fprintf(fp, "ApCliAuthMode=%s\n", "WPA2PSK");
 
@@ -3118,6 +3121,8 @@ int gen_ralink_config(int band, int is_iNIC)
 					fprintf(fp, "ApCliEncrypType=%s\n", "TKIP");
 				else if (nvram_match("wlc_crypto", "aes"))
 					fprintf(fp, "ApCliEncrypType=%s\n", "AES");
+				else if (nvram_match("wlc_crypto", "tkip+aes"))
+					fprintf(fp, "ApCliEncrypType=%s\n", "TKIPAES");
 
 				//WPAPSK
 				fprintf(fp, "ApCliWPAPSK=%s\n", nvram_safe_get("wlc_wpa_psk"));
@@ -3393,24 +3398,33 @@ next_mrate:
 	}
 #endif
 #endif
-	if(*tcode)
-		fprintf(fp, "SKUenable=1\n");
-	else
+//	if(*tcode)
+//		fprintf(fp, "SKUenable=1\n");
+//	else
 		fprintf(fp, "SKUenable=0\n");
 	fprintf(fp, "WirelessEvent=1\n");
 
 #if defined(RTCONFIG_MT798X)
-	fprintf(fp, "SREnable=1\n");
-	fprintf(fp, "SRMode=0\n");
-	fprintf(fp, "SRDPDEnable=0\n");
-	fprintf(fp, "SRSDEnable=1\n");
-	fprintf(fp, "PPEnable=1\n");
+	if(band){
+		if(nvram_match(strcat_r(prefix, "11ax", tmp), "1")){
+			fprintf(fp, "SREnable=1\n");
+			fprintf(fp, "SRMode=0\n");
+			fprintf(fp, "SRDPDEnable=0\n");
+			fprintf(fp, "SRSDEnable=1\n");
+			fprintf(fp, "PPEnable=1\n");
+		}else{
+			fprintf(fp, "SREnable=0\n");
+			fprintf(fp, "SRMode=0\n");
+			fprintf(fp, "SRDPDEnable=0\n");
+			fprintf(fp, "SRSDEnable=0\n");
+			fprintf(fp, "PPEnable=0\n");
+		}
+	}
 	fprintf(fp, "WHNAT=1\n");
 	fprintf(fp, "IsICAPFW=0\n");
 	fprintf(fp, "KernelRps=1\n");
 	fprintf(fp, "BSSColorValue=255\n");
 	fprintf(fp, "BcnProt=0\n");
-	fprintf(fp, "WiFiTest=0\n");
 	fprintf(fp, "CCKTxStream=4\n");
 #if defined(RTCONFIG_EASYMESH)
 	fprintf(fp, "QoSR1Enable=1\n");
