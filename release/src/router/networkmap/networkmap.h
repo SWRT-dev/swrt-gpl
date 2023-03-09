@@ -102,53 +102,26 @@ enum
 	} \
 }while(0)
 
-#if !defined(RTCONFIG_RALINK) && !defined(HND_ROUTER)
+
 #define NMP_DEBUG(fmt, args...) \
 	if(f_exists(NMP_DEBUG_FILE)) { \
 		_dprintf(fmt, ## args); \
 	}
-#else
-#define NMP_DEBUG(fmt, args...) \
-	if(f_exists(NMP_DEBUG_FILE)) { \
-		printf(fmt, ## args); \
-	}
-#endif
 
-#if !defined(RTCONFIG_RALINK) && !defined(HND_ROUTER)
 #define NMP_DEBUG_M(fmt, args...) \
 	if(f_exists(NMP_DEBUG_MORE_FILE)) { \
 		_dprintf(fmt, ## args); \
 	}
-#else
-#define NMP_DEBUG_M(fmt, args...) \
-	if(f_exists(NMP_DEBUG_MORE_FILE)) { \
-		printf(fmt, ## args); \
-	}
-#endif
 
-#if !defined(RTCONFIG_RALINK) && !defined(HND_ROUTER)
 #define NMP_DEBUG_F(fmt, args...) \
 	if(f_exists(NMP_DEBUG_FUNCTION_FILE)) { \
 		_dprintf(fmt, ## args); \
 	}
-#else
-#define NMP_DEBUG_F(fmt, args...) \
-	if(f_exists(NMP_DEBUG_FUNCTION_FILE)) { \
-		printf(fmt, ## args); \
-	}
-#endif
 
-#if !defined(RTCONFIG_RALINK) && !defined(HND_ROUTER)
 #define NMP_DEBUG_VC(fmt, args...) \
 	if(f_exists(NMP_DEBUG_VC_FILE)) { \
 		_dprintf(fmt, ## args); \
 	}
-#else
-#define NMP_DEBUG_VC(fmt, args...) \
-	if(f_exists(NMP_DEBUG_VC_FILE)) { \
-		printf(fmt, ## args); \
-	}
-#endif
 
 typedef unsigned char UCHAR;
 typedef unsigned short USHORT;

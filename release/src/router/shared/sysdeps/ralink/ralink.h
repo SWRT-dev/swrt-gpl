@@ -381,7 +381,7 @@ typedef struct _SITE_SURVEY
 	char nt[3];
 	char wps[4];
 	char dpid[5];
-//	char owe[10];
+	char newline;
 } SITE_SURVEY;
 
 typedef struct _SITE_SURVEY_ARRAY

@@ -91,7 +91,7 @@ void conn_debug_info()
 	tmp = g_sta_info_tab;
 	while(tmp != NULL){
 		if(f_exists("/tmp/conn_debug"))
-			printf("%02X%02X%02X%02X%02X%02X\n", tmp->mac_addr[0], tmp->mac_addr[1], tmp->mac_addr[2], tmp->mac_addr[3], tmp->mac_addr[4], tmp->mac_addr[5]);
+			_dprintf("%02X%02X%02X%02X%02X%02X\n", tmp->mac_addr[0], tmp->mac_addr[1], tmp->mac_addr[2], tmp->mac_addr[3], tmp->mac_addr[4], tmp->mac_addr[5]);
 		tmp = tmp->next;
 	}
 }
@@ -104,15 +104,15 @@ void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 	STA_INFO_TABLE *tmp;
 	if(f_exists("/tmp/conn_debug")){
 		g_show_sta_info = 1;
-		printf("%s read wireless connections offline check %d\n", "[connection log]", offline);
+		_dprintf("%s read wireless connections offline check %d\n", "[connection log]", offline);
 #if defined(RTCONFIG_RALINK)
-		printf("MTK stainfo start\n");
+		_dprintf("MTK stainfo start\n");
 #elif defined(RTCONFIG_QCA)
-		printf("QCA stainfo start\n");
+		_dprintf("QCA stainfo start\n");
 #elif defined(RTCONFIG_LANTIQ)
-		printf("LANTIQ stainfo start\n");
+		_dprintf("LANTIQ stainfo start\n");
 #elif defined(RTCONFIG_BCMARM)
-		printf("BCM stainfo start\n");
+		_dprintf("BCM stainfo start\n");
 #endif
 	}else
 		g_show_sta_info = 0;
@@ -145,7 +145,7 @@ void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 				p_client_tab->rssi[detail_info_num] = tmp->rssi;
 				strlcpy(p_client_tab->conn_time[detail_info_num], tmp->conn_time, sizeof(p_client_tab->conn_time[0]));
 				if(g_show_sta_info && f_exists("/tmp/conn_debug")){
-					printf("###%d client wl: %d, rx %s tx %s rssi %d conn_time %s \n", detail_info_num, p_client_tab->wireless[detail_info_num], 
+					_dprintf("###%d client wl: %d, rx %s tx %s rssi %d conn_time %s \n", detail_info_num, p_client_tab->wireless[detail_info_num], 
 						p_client_tab->rxrate[detail_info_num], p_client_tab->txrate[detail_info_num], p_client_tab->rssi[detail_info_num],
 						p_client_tab->conn_time[detail_info_num]);
 				}
@@ -163,7 +163,7 @@ void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 					continue;
 				}
 				if(f_exists("/tmp/conn_debug"))
-					printf(" ###%d wireless client check: %02x%02x%02x%02x%02x%02x \n", i, p_client_tab->mac_addr[i][0], p_client_tab->mac_addr[i][1],
+					_dprintf(" ###%d wireless client check: %02x%02x%02x%02x%02x%02x \n", i, p_client_tab->mac_addr[i][0], p_client_tab->mac_addr[i][1],
 						p_client_tab->mac_addr[i][2], p_client_tab->mac_addr[i][3], p_client_tab->mac_addr[i][4], p_client_tab->mac_addr[i][5]);
 				if(g_sta_info_tab){
 					tmp = g_sta_info_tab;
@@ -183,11 +183,11 @@ void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 					strlcpy(p_client_tab->rxrate[i], tmp->rxrate, sizeof(p_client_tab->rxrate[0]));
 					strlcpy(p_client_tab->conn_time[i], tmp->conn_time, sizeof(p_client_tab->conn_time[0]));
 					if(g_show_sta_info && f_exists("/tmp/conn_debug"))
-						printf("### check: %d client wireless: %d\n", i, p_client_tab->wireless[i]);
+						_dprintf("### check: %d client wireless: %d\n", i, p_client_tab->wireless[i]);
 					p_client_tab->device_flag[i] |= 8;
 				}else{
 					if(g_show_sta_info && f_exists("/tmp/conn_debug"))
-						printf("### %d client leave! wireless: %d\n", i, p_client_tab->wireless[i]);		
+						_dprintf("### %d client leave! wireless: %d\n", i, p_client_tab->wireless[i]);		
 					p_client_tab->device_flag[i] &= 0xf7;
 				}
 			}

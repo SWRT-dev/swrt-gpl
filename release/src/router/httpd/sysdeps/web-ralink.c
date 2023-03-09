@@ -1582,7 +1582,7 @@ static void convertToUpper(char *str)
 #endif
 static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 {
-	int retval = 0, i = 0, apCount = 0;
+	int retval = 0, i = 0, apCount = 0, hdrLen = 0;
 	char data[8192];
 	char ssid_str[256];
 	char header[128];
@@ -1615,9 +1615,9 @@ static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	dbg(".");
 	sleep(1);
 	dbg(".\n\n");
-	memset(data, 0, 8192);
+	memset(data, 0, sizeof(data));
 	strlcpy(data, "", sizeof(data));
-	wrq.u.data.length = 8192;
+	wrq.u.data.length = sizeof(data);
 	wrq.u.data.pointer = data;
 	wrq.u.data.flags = 0;
 	if (wl_ioctl(nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp))), RTPRIV_IOCTL_GSITESURVEY, &wrq) < 0)
@@ -1631,15 +1631,15 @@ static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	snprintf(header, sizeof(header), "%-4s%-33s%-18s%-9s%-16s%-9s%-8s%-4s%-5s\n", "Ch", "SSID", "BSSID", "Enc", "Auth", "Siganl(%)", "W-Mode"," WPS", " DPID");
 #else
 //	snprintf(header, sizeof(header), "%-4s%-33s%-18s%-9s%-16s%-9s%-8s\n", "Ch", "SSID", "BSSID", "Enc", "Auth", "Siganl(%)", "W-Mode");
-	snprintf(header, sizeof(header), "%-4s%-33s%-20s%-23s%-9s%-12s%-7s%-3s%-4s%-5s\n", "Ch", "SSID", "BSSID", "Security", "Siganl(%)", "W-Mode", " ExtCH", " NT", " WPS", " DPID");
+	hdrLen = snprintf(header, sizeof(header), "%-4s%-33s%-20s%-23s%-9s%-12s%-7s%-3s%-4s%-5s\n", "Ch", "SSID", "BSSID", "Security", "Siganl(%)", "W-Mode", "ExtCH", "NT", "WPS", "DPID");
 #endif
 	dbg("\n%s", header);
 	if (wrq.u.data.length > 0)
 	{
-		ssap=(SSA *)(wrq.u.data.pointer+strlen(header)+1);
-		int len = strlen(wrq.u.data.pointer+strlen(header))-1;
+		ssap=(SSA *)(wrq.u.data.pointer + hdrLen + 1);
+		int len = strlen(wrq.u.data.pointer + hdrLen + 1);
 		char *sp, *op;
- 		op = sp = wrq.u.data.pointer+strlen(header)+1;
+ 		op = sp = wrq.u.data.pointer + hdrLen + 1;
 		while (*sp && ((len - (sp-op)) >= 0))
 		{
 			ssap->SiteSurvey[i].channel[3] = '\0';
@@ -1652,7 +1652,7 @@ static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 			ssap->SiteSurvey[i].nt[2] = '\0';
 			ssap->SiteSurvey[i].wps[3] = '\0';
 			ssap->SiteSurvey[i].dpid[4] = '\0';
-			sp+=strlen(header);
+			sp+=hdrLen;
 			apCount=++i;
 		}
 		if (apCount)

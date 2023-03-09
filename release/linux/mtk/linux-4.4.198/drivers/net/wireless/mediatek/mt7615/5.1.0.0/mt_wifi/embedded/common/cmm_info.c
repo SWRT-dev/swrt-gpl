@@ -5048,10 +5048,10 @@ max_len += WPS_LINE_LEN;
 //	sprintf(msg + strlen(msg), "%-4s%-4s%-33s%-20s%-23s%-9s%-7s%-7s%-3s%-8s\n",
 //			"No", "Ch", "SSID", "BSSID", "Security", "Siganl(%)", "W-Mode", " ExtCH", " NT", " SSID_Len");
 	sprintf(msg + strlen(msg), "%-4s%-33s%-20s%-23s%-9s%-12s%-7s%-3s\n",
-			"Ch", "SSID", "BSSID", "Security", "Signal(%)", "W-Mode", " ExtCH", " NT");
+			"Ch", "SSID", "BSSID", "Security", "Signal(%)", "W-Mode", "ExtCH", "NT");
 
 #ifdef WSC_INCLUDED
-	sprintf(msg + strlen(msg) - 1, "%-4s%-5s\n", " WPS", " DPID");
+	sprintf(msg + strlen(msg) - 1, "%-4s%-5s\n", "WPS", "DPID");
 #endif /* WSC_INCLUDED */
 //	sprintf(msg + strlen(msg) - 1, "%-8s\n", " BcnRept");
 #ifdef APCLI_OWE_SUPPORT

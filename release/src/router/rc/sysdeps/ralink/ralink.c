@@ -3796,6 +3796,7 @@ int startScan(int band)
 
 int getSiteSurvey(int band, char* ofile)
 {
+	int hdrLen = 0;
 	int i = 0, apCount = 0;
 	char data[8192];
 	char header[128];
@@ -3859,15 +3860,15 @@ int getSiteSurvey(int band, char* ofile)
 		return 0;
 	}
 	memset(header, 0, sizeof(header));
-	sprintf(header, "%-4s%-33s%-20s%-23s%-9s%-12s%-7s%-3s%-4s%-5s\n", "Ch", "SSID", "BSSID", "Security", "Signal(%)", "W-Mode", "ExtCH", "NT", "WPS", "DPID");
+	hdrLen = sprintf(header, "%-4s%-33s%-20s%-23s%-9s%-12s%-7s%-3s%-4s%-5s\n", "Ch", "SSID", "BSSID", "Security", "Signal(%)", "W-Mode", "ExtCH", "NT", "WPS", "DPID");
 	dbg("\n%s", header);
 
-	if (wrq.u.data.length > 0 && strlen(wrq.u.data.pointer)>0)
+	if (wrq.u.data.length > 0 && strlen(wrq.u.data.pointer) > 0)
 	{
-		ssap=(SSA *)(wrq.u.data.pointer+strlen(header)+1);
-		int len = strlen(wrq.u.data.pointer+strlen(header))-1;
+		ssap=(SSA *)(wrq.u.data.pointer + hdrLen + 1);
+		int len = strlen(wrq.u.data.pointer + hdrLen + 1);
 		char *sp, *op;
- 		op = sp = wrq.u.data.pointer+strlen(header)+1;
+ 		op = sp = wrq.u.data.pointer + hdrLen + 1;
 
 		while (*sp && ((len - (sp-op)) >= 0))
 		{
@@ -3881,7 +3882,7 @@ int getSiteSurvey(int band, char* ofile)
 			ssap->SiteSurvey[i].nt[2] = '\0';
 			ssap->SiteSurvey[i].wps[3] = '\0';
 			ssap->SiteSurvey[i].dpid[4] = '\0';
-			sp+=strlen(header);
+			sp+=hdrLen;
 			apCount=++i;
 		}
 
@@ -3954,6 +3955,13 @@ int getSiteSurvey(int band, char* ofile)
 
 					snprintf(buf, sizeof(buf), "%s", ssap->SiteSurvey[i].security);
 					sscanf(buf, "%[A-Z0-9]/%[A-Z]", auth, enc);
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+					if(!strcmp(auth,"WPA3PSK"))
+						fprintf(fp, "\"%s\",","WPA3-Personal");
+					else if(!strcmp(auth,"WPA2PSKWPA3PSK"))
+						fprintf(fp, "\"%s\",","WPA2PSKWPA3PSK");
+					else
+#endif
 					if(!strcmp(auth,"WPAPSKWPA2PSK"))
 						fprintf(fp, "\"%s\",","WPA2-Personal");
 					else if(!strcmp(auth,"WPA2PSK"))
@@ -4219,7 +4227,7 @@ int site_survey_for_channel(int n, const char *wif, int *HT_EXT)
 	if (!ssid || !strcmp(ssid, "")) {
 		return -1;
 	}
-
+	int hdrLen = 0;
 	int i = 0, apCount = 0;
 	char data[8192];
 	struct iwreq wrq;
@@ -4269,16 +4277,16 @@ int site_survey_for_channel(int n, const char *wif, int *HT_EXT)
 	}
 
 	memset(header, 0, sizeof(header));
-	sprintf(header, "%-4s%-33s%-20s%-23s%-9s%-12s%-7s%-3s%-4s%-5s\n", "Ch", "SSID", "BSSID", "Security", "Signal(%)", "W-Mode", "ExtCH", "NT", "WPS", "DPID");
-	//dbg("\n%s", header);
+	hdrLen = sprintf(header, "%-4s%-33s%-20s%-23s%-9s%-12s%-7s%-3s%-4s%-5s\n", "Ch", "SSID", "BSSID", "Security", "Signal(%)", "W-Mode", "ExtCH", "NT", "WPS", "DPID");
+	dbg("\n%s", header);
 	if (wrq.u.data.length > 0) {
 		char commch[4];
 		char cench[4];
 		int signal_max = -1, signal_tmp = -1, ht_extcha_max, idx = -1;
-		ssap = (SSA *)(wrq.u.data.pointer + strlen(header) + 1);
-		int len = strlen(wrq.u.data.pointer + strlen(header))-1;
+		ssap = (SSA *)(wrq.u.data.pointer + hdrLen + 1);
+		int len = strlen(wrq.u.data.pointer + hdrLen + 1);
 		char *sp, *op;
- 		op = sp = wrq.u.data.pointer + strlen(header) + 1;
+ 		op = sp = wrq.u.data.pointer + hdrLen + 1;
 
 		while (*sp && ((len - (sp-op)) >= 0)) {
 			ssap->SiteSurvey[i].channel[3] = '\0';
@@ -4291,7 +4299,7 @@ int site_survey_for_channel(int n, const char *wif, int *HT_EXT)
 			ssap->SiteSurvey[i].nt[2] = '\0';
 			ssap->SiteSurvey[i].wps[3] = '\0';
 			ssap->SiteSurvey[i].dpid[4] = '\0';
-			sp += strlen(header);
+			sp += hdrLen;
 			apCount = ++i;
 		}
 
@@ -4346,18 +4354,21 @@ int site_survey_for_channel(int n, const char *wif, int *HT_EXT)
 				else
 #endif
 					ht_extcha = -1;
-/*
+
 				_dprintf(
-					"%-4s%-33s%-18s%-9s%-16s%-9s%-8s\n",
+					"%-4s%-33s%-20s%-23s%-9s%-12s%-7s%-3s%-4s%-5s\n",
 					ssap->SiteSurvey[i].channel,
 					(char*)ssap->SiteSurvey[i].ssid,
 					ssap->SiteSurvey[i].bssid,
-					ssap->SiteSurvey[i].encryption,
-					ssap->SiteSurvey[i].authmode,
+					ssap->SiteSurvey[i].security,
 					ssap->SiteSurvey[i].signal,
-					ssap->SiteSurvey[i].wmode);
+					ssap->SiteSurvey[i].wmode,
+					ssap->SiteSurvey[i].extch,
+					ssap->SiteSurvey[i].nt,
+					ssap->SiteSurvey[i].wps,
+					ssap->SiteSurvey[i].dpid);
 
-*/
+
 				if ((ssid && !strcmp(ssid, trim_r(ssap->SiteSurvey[i].ssid)))/*non-hidden AP*/
 				 ) {
 
@@ -5330,11 +5341,15 @@ void apcli_start(void)
 		ch = site_survey_for_channel(wlc_band, aif, &ht_ext);
 		if(ch != -1)
 		{
-#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
+#if defined(RTCONFIG_WLMODULE_MT7603E_AP) || defined(RTCONFIG_WLMODULE_MT7610_AP)
 			doSystem("iwpriv %s set Channel=%d", aif, ch);
 #endif
 			doSystem("iwpriv %s set ApCliEnable=1", aif);
+#if defined(RTCONFIG_WLMODULE_MT7603E_AP) || defined(RTCONFIG_WLMODULE_MT7610_AP)
 			doSystem("iwpriv %s set ApCliAutoConnect=1", aif);
+#else
+			doSystem("iwpriv %s set ApCliAutoConnect=3", aif);
+#endif
 			fprintf(stderr, "##set channel=%d, enable apcli ..#\n", ch);
 		}
 		else
@@ -5650,13 +5665,18 @@ int getPapState(int band)
 		ch = site_survey_for_channel(band, aif, &ht_ext);
 		if(ch != -1)
 		{
-#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
+#if defined(RTCONFIG_WLMODULE_MT7603E_AP) || defined(RTCONFIG_WLMODULE_MT7610_AP)
 			doSystem("iwpriv %s set Channel=%d", aif, ch);
 #endif
 			doSystem("iwpriv %s set ApCliEnable=1", aif);
+
 			doSystem("ifconfig %s up", aif);
 			dbg("set pap's channel=%d, enable apcli ..#\n",ch);
+#if defined(RTCONFIG_WLMODULE_MT7603E_AP) || defined(RTCONFIG_WLMODULE_MT7610_AP)
 			doSystem("iwpriv %s set ApCliAutoConnect=1", aif);
+#else
+			doSystem("iwpriv %s set ApCliAutoConnect=3", aif);
+#endif
 
 			lastUptime[band] = Uptime;
 		}
@@ -5761,13 +5781,18 @@ int wlcconnect_core(void)
 		ch = site_survey_for_channel(band, aif, &ht_ext);
 		if(ch != -1)
 		{
-#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
+#if defined(RTCONFIG_WLMODULE_MT7603E_AP) || defined(RTCONFIG_WLMODULE_MT7610_AP)
 			doSystem("iwpriv %s set Channel=%d", aif, ch);
 #endif
 			doSystem("iwpriv %s set ApCliEnable=1", aif);
+
 			doSystem("ifconfig %s up", aif);
 			dbg("set pap's channel=%d, enable apcli ..#\n",ch);
+#if defined(RTCONFIG_WLMODULE_MT7603E_AP) || defined(RTCONFIG_WLMODULE_MT7610_AP)
 			doSystem("iwpriv %s set ApCliAutoConnect=1", aif);
+#else
+			doSystem("iwpriv %s set ApCliAutoConnect=3", aif);
+#endif
 			lastUptime = Uptime;
 		}
 		else

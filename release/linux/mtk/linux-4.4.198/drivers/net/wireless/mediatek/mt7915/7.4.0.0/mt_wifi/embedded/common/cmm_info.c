@@ -5101,9 +5101,9 @@ VOID RTMPIoctlGetSiteSurvey(
 //	snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-4s%-4s%-33s%-20s%-23s%-9s%-7s%-11s%-3s%-8s\n",
 //			"No", "Ch", "SSID", "BSSID", "Security", "Siganl(%)", "W-Mode", " ExtCH", " NT", " SSID_Len");
 	snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-4s%-33s%-20s%-23s%-9s%-12s%-7s%-3s\n",
-			"Ch", "SSID", "BSSID", "Security", "Signal(%)", "W-Mode", " ExtCH", " NT");
+			"Ch", "SSID", "BSSID", "Security", "Signal(%)", "W-Mode", "ExtCH", "NT");
 #ifdef WSC_INCLUDED
-	snprintf(msg + strlen(msg) - 1, TotalLen - strlen(msg), "%-4s%-5s\n", " WPS", " DPID");
+	snprintf(msg + strlen(msg) - 1, TotalLen - strlen(msg), "%-4s%-5s\n", "WPS", "DPID");
 #endif /* WSC_INCLUDED */
 //	snprintf(msg + strlen(msg) - 1, TotalLen - strlen(msg), "%-10s\n", " BcnRept");
 #ifdef MWDS

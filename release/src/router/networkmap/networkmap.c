@@ -630,9 +630,9 @@ int swap_client_tab(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int client1, int cli
 	swap_string(p_client_tab->conn_time[client2], p_client_tab->conn_time[client1], 12);
 #if defined(RTCONFIG_BWDPI)
 	swap_string(p_client_tab->bwdpi_host[client2], p_client_tab->bwdpi_host[client1], 32);
-	swap_string(p_client_tab->bwdpi_vendor + v26, p_client_tab->bwdpi_vendor[client1], 100);
-	swap_string(p_client_tab->bwdpi_type + v26, p_client_tab->bwdpi_type[client1], 100);
-	swap_string(p_client_tab->bwdpi_device + v26, p_client_tab->bwdpi_device[client1], 100);
+	swap_string(p_client_tab->bwdpi_vendor[client2], p_client_tab->bwdpi_vendor[client1], 100);
+	swap_string(p_client_tab->bwdpi_type[client2], p_client_tab->bwdpi_type[client1], 100);
+	swap_string(p_client_tab->bwdpi_device[client2], p_client_tab->bwdpi_device[client1], 100);
 #endif
 	NMP_DEBUG("**** swap client %d and %d\n", client2, client1);
 	return 0;
@@ -1661,6 +1661,7 @@ int main(int argc, char *argv[])
 				}
 			}//End of arp_getlen != -1
 		} // End of while for flush buffer
+		NMP_DEBUG("main loop start\n");
 #ifdef NMP_DB
 		//RAwny: check delete signal
 		if(delete_sig) {
@@ -1695,6 +1696,7 @@ int main(int argc, char *argv[])
 		if(nvram_match("rescan_networkmap", "1"))
 			continue;
 		nvram_set("networkmap_status", "0");    // Done scanning and resolving
+		NMP_DEBUG("main loop end\n");
 		sleep(2);
 	} //End of main while loop
 	file_unlock(networkmap_lock);

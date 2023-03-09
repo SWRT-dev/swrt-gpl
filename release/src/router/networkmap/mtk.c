@@ -258,6 +258,7 @@ unsigned int mtk_mcs_to_rate(unsigned char mcs, unsigned char phy_mode, unsigned
 		rate_count = sizeof(MCSMAPTAB_5G)/sizeof(int);
 	else
 		rate_count = sizeof(MCSMAPTAB)/sizeof(int);
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
 	if (phy_mode >= MODE_HE){
 		if (vht_nss == 0) {	
 			vht_nss = 1;
@@ -271,7 +272,9 @@ unsigned int mtk_mcs_to_rate(unsigned char mcs, unsigned char phy_mode, unsigned
 		vht_nss--;
 		value = he_mcs_phyrate_mapping_table[bw][vht_nss][mcs];
 		return value;
-	}else if (phy_mode >= MODE_VHT){
+	}else 
+#endif
+	if (phy_mode >= MODE_VHT){
 		if (bw == BW_20)
 			rate_index = 112 + ((vht_nss - 1) * 10) + (sgi * 160) + mcs;
 		else if (bw == BW_40)
@@ -372,7 +375,7 @@ void MTK_stainfo(int unit)
 			for(i = 0; i < mp->Num; i++){
 				sta_info_tab = (STA_INFO_TABLE *)calloc(1, sizeof(STA_INFO_TABLE));
 				if(sta_info_tab == NULL){
-					printf("%s: calloc failed.\n", __func__);
+					_dprintf("%s: calloc failed.\n", __func__);
 					return;
 				}
 				rssi = cnt = 0;
@@ -421,7 +424,7 @@ void MTK_stainfo(int unit)
 				snprintf(sta_info_tab->rxrate, sizeof(sta_info_tab->rxrate), "%ldM", mp->Entry[i].LastRxRate);
 #endif
 				if(g_show_sta_info && f_exists("/tmp/conn_debug"))
-					printf("%s[%3d,MTK] %02X%02X%02X%02X%02X%02X, rssi: %d\n", "[connection log]", i, sta_info_tab->mac_addr[0], sta_info_tab->mac_addr[1],
+					_dprintf("%s[%3d,MTK] %02X%02X%02X%02X%02X%02X, rssi: %d\n", "[connection log]", i, sta_info_tab->mac_addr[0], sta_info_tab->mac_addr[1],
 						sta_info_tab->mac_addr[2], sta_info_tab->mac_addr[3], sta_info_tab->mac_addr[4], sta_info_tab->mac_addr[5], sta_info_tab->rssi);
 				sta_info_tab->next = NULL;
 				if(g_sta_info_tab == NULL){

@@ -3092,12 +3092,12 @@ VOID RTMPIoctlGetSiteSurvey(
 //	sprintf(msg + strlen(msg), "%-4s%-33s%-18s%-9s%-16s%-9s%-8s\n",
 //			"Ch", "SSID", "BSSID", "Enc", "Auth", "Siganl(%)", "W-Mode");
 	sprintf(msg + strlen(msg), "%-4s%-33s%-20s%-23s%-9s%-12s%-7s%-3s\n",
-		"Ch", "SSID", "BSSID", "Security", "Signal(%)", "W-Mode", " ExtCH", " NT");
+		"Ch", "SSID", "BSSID", "Security", "Signal(%)", "W-Mode", "ExtCH", "NT");
 #endif /* AIRPLAY_SUPPORT */
 
 
 #ifdef WSC_INCLUDED
-	sprintf(msg+strlen(msg)-1,"%-4s%-5s\n", " WPS", " DPID");
+	sprintf(msg+strlen(msg)-1,"%-4s%-5s\n", "WPS", "DPID");
 #endif /* WSC_INCLUDED */
 #ifdef DOT11K_RRM_SUPPORT
 //	sprintf(msg+strlen(msg)-1, "%-10s\n", " BcnRept");

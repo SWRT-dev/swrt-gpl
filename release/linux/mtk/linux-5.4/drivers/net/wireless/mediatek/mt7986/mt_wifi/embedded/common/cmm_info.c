@@ -6619,7 +6619,7 @@ VOID RTMPIoctlGetSiteSurvey(
 				"No", "Ch", "SSID", "BSSID", "Security", "Rssi", "Siganl(%)", "W-Mode", " ExtCH", " NT", " SSID_Len");
 #else
 	Status = snprintf(msg + strlen(msg), LeftBufSize, "%-4s%-33s%-20s%-23s%-9s%-12s%-7s%-3s\n",
-				"Ch", "SSID", "BSSID", "Security", "Siganl(%)", "W-Mode", " ExtCH", " NT");
+				"Ch", "SSID", "BSSID", "Security", "Siganl(%)", "W-Mode", "ExtCH", "NT");
 #endif
 	if (os_snprintf_error(LeftBufSize, Status)) {
 		MTWF_DBG(pAdapter, DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, "Snprintf failed!\n");
@@ -6628,7 +6628,7 @@ VOID RTMPIoctlGetSiteSurvey(
 #endif
 #ifdef WSC_INCLUDED
 	LeftBufSize = TotalLen - strlen(msg);
-	Status = snprintf(msg + strlen(msg) - 1, LeftBufSize, "%-4s%-5s\n", " WPS", " DPID");
+	Status = snprintf(msg + strlen(msg) - 1, LeftBufSize, "%-4s%-5s\n", "WPS", "DPID");
 	if (os_snprintf_error(LeftBufSize, Status)) {
 		MTWF_DBG(pAdapter, DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, "Snprintf failed!\n");
 		goto ERROR;
