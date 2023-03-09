@@ -6717,21 +6717,21 @@ VOID RTMPIoctlGetSiteSurvey(
 
 		if (pBss->WscDPIDFromWpsAP == DEV_PASS_ID_PIN) {
 			LeftBufSize = TotalLen - strlen(msg);
-			Status = snprintf(msg + strlen(msg), LeftBufSize, "%-5s", "PIN ");
+			Status = snprintf(msg + strlen(msg), LeftBufSize, "%-5s\n", "PIN ");
 			if (os_snprintf_error(LeftBufSize, Status)) {
 				MTWF_DBG(pAdapter, DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, "Snprintf failed!\n");
 				goto ERROR;
 			}
 		} else if (pBss->WscDPIDFromWpsAP == DEV_PASS_ID_PBC) {
 			LeftBufSize = TotalLen - strlen(msg);
-			Status = snprintf(msg + strlen(msg), LeftBufSize, "%-5s", "PBC ");
+			Status = snprintf(msg + strlen(msg), LeftBufSize, "%-5s\n", "PBC ");
 			if (os_snprintf_error(LeftBufSize, Status)) {
 				MTWF_DBG(pAdapter, DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, "Snprintf failed!\n");
 				goto ERROR;
 			}
 		} else {
 			LeftBufSize = TotalLen - strlen(msg);
-			Status = snprintf(msg + strlen(msg), LeftBufSize, "%-5s", " ");
+			Status = snprintf(msg + strlen(msg), LeftBufSize, "%-5s\n", " ");
 			if (os_snprintf_error(LeftBufSize, Status)) {
 				MTWF_DBG(pAdapter, DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, "Snprintf failed!\n");
 				goto ERROR;
@@ -6818,7 +6818,7 @@ VOID RTMPIoctlGetSiteSurvey(
 #endif /* DOT11R_FT_SUPPORT */
 #endif /* CONFIG_STA_SUPPORT */
 	}
-	snprintf(msg + strlen(msg), TotalLen - strlen(msg), "\n");
+//	snprintf(msg + strlen(msg), TotalLen - strlen(msg), "\n");
 
 #ifdef CONFIG_STA_SUPPORT
 	if (wdev->wdev_type == WDEV_TYPE_STA) {

@@ -5157,11 +5157,11 @@ VOID RTMPIoctlGetSiteSurvey(
 			snprintf(msg + strlen(msg) - 1, TotalLen - strlen(msg), "%-4s", "NO  ");
 
 		if (pBss->WscDPIDFromWpsAP == DEV_PASS_ID_PIN)
-			snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-5s", "PIN ");
+			snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-5s\n", "PIN ");
 		else if (pBss->WscDPIDFromWpsAP == DEV_PASS_ID_PBC)
-			snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-5s", "PBC ");
+			snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-5s\n", "PBC ");
 		else
-			snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-5s", " ");
+			snprintf(msg + strlen(msg), TotalLen - strlen(msg), "%-5s\n", " ");
 
 #endif /* WSC_INCLUDED */
 #ifndef MWDS
@@ -5195,7 +5195,7 @@ VOID RTMPIoctlGetSiteSurvey(
 #endif /* DOT11R_FT_SUPPORT */
 #endif /* CONFIG_STA_SUPPORT */
 	}
-	snprintf(msg + strlen(msg), TotalLen - strlen(msg), "\n");
+//	snprintf(msg + strlen(msg), TotalLen - strlen(msg), "\n");
 
 #ifdef CONFIG_STA_SUPPORT
 	if (wdev->wdev_type == WDEV_TYPE_STA) {

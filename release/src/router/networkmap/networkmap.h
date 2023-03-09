@@ -12,8 +12,12 @@
 #include <shared.h>
 #include <sm.h>
 
+#ifndef FALSE
 #define FALSE	0
+#endif
+#ifndef TRUE
 #define TRUE	1
+#endif
 #define INTERFACE	"br0"
 #define MODEL_NAME	RT_BUILD_NAME
 #define ARP_BUFFER_SIZE	512
@@ -59,6 +63,7 @@
 #define AMAS_WGN_BR_1	"br2"
 #define AMAS_WGN_BR_2	"br3"
 #define AMAS_WGN_BR_3	"br4"
+#define AMAS_WGN_BR_4	"br5"
 #endif
 
 //for Notification Center trigger flag
@@ -102,26 +107,53 @@ enum
 	} \
 }while(0)
 
-
+#if !defined(RTCONFIG_RALINK) && !defined(HND_ROUTER)
 #define NMP_DEBUG(fmt, args...) \
 	if(f_exists(NMP_DEBUG_FILE)) { \
 		_dprintf(fmt, ## args); \
 	}
+#else
+#define NMP_DEBUG(fmt, args...) \
+	if(f_exists(NMP_DEBUG_FILE)) { \
+		printf(fmt, ## args); \
+	}
+#endif
 
+#if !defined(RTCONFIG_RALINK) && !defined(HND_ROUTER)
 #define NMP_DEBUG_M(fmt, args...) \
 	if(f_exists(NMP_DEBUG_MORE_FILE)) { \
 		_dprintf(fmt, ## args); \
 	}
+#else
+#define NMP_DEBUG_M(fmt, args...) \
+	if(f_exists(NMP_DEBUG_MORE_FILE)) { \
+		printf(fmt, ## args); \
+	}
+#endif
 
+#if !defined(RTCONFIG_RALINK) && !defined(HND_ROUTER)
 #define NMP_DEBUG_F(fmt, args...) \
 	if(f_exists(NMP_DEBUG_FUNCTION_FILE)) { \
 		_dprintf(fmt, ## args); \
 	}
+#else
+#define NMP_DEBUG_F(fmt, args...) \
+	if(f_exists(NMP_DEBUG_FUNCTION_FILE)) { \
+		printf(fmt, ## args); \
+	}
+#endif
 
+#if !defined(RTCONFIG_RALINK) && !defined(HND_ROUTER)
 #define NMP_DEBUG_VC(fmt, args...) \
 	if(f_exists(NMP_DEBUG_VC_FILE)) { \
 		_dprintf(fmt, ## args); \
 	}
+#else
+#define NMP_DEBUG_VC(fmt, args...) \
+	if(f_exists(NMP_DEBUG_VC_FILE)) { \
+		printf(fmt, ## args); \
+	}
+#endif
 
 typedef unsigned char UCHAR;
 typedef unsigned short USHORT;
