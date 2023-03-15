@@ -4277,7 +4277,7 @@ extern int HwCheckResult();
 extern char *DoHardwareComponent(char *index);
 #endif
 
-#if defined(RTCONFIG_SW_HW_AUTH) && defined(RTCONFIG_AMAS)
+#if defined(RTCONFIG_SW_HW_AUTH) && (defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH))
 /*
 	AMAS define type bitmap
 */

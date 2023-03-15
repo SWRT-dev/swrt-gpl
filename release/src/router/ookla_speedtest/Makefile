@@ -1,23 +1,19 @@
 include ../common.mak
 
 #OOKLA_VER = 36521# updated in 2019.12.31
-#OOKLA_VER = 37112# updated in 2021.08.26
-OOKLA_VER = 371237# updated in 2021.10.19
+#OOKLA_VER = 371237# updated in 2021.10.19
+OOKLA_VER = 38000# updated in 2022.08.16
 OOKLA_PATH = OOKLA-$(OOKLA_VER)
 
 prebuild:
 	-@mkdir prebuild
 # QCA
-ifeq ($(or $(RTCONFIG_SOC_IPQ8064),$(RTCONFIG_SOC_IPQ8074)),y)
+ifeq ($(or $(RTCONFIG_SOC_IPQ8064),$(RTCONFIG_SOC_IPQ8074),$(RTCONFIG_SOC_IPQ40XX)),y)
 	-cp -f $(OOKLA_PATH)/ookla-IPQ807-401X  prebuild/ookla # IPQ80XX / IPQ40XX
-else ifeq ($(or $(RTCONFIG_SOC_IPQ60XX),$(RTCONFIG_SOC_IPQ40XX)),y)
+else ifeq ($(RTCONFIG_SOC_IPQ60XX),y)
 	-cp -f $(OOKLA_PATH)/ookla-IPQ60XX      prebuild/ookla # IPQ60XX
-else ifeq ($(or $(RTCONFIG_QCN550X),$(RTCONFIG_LANTIQ)),y)
+else ifeq ($(RTCONFIG_QCN550X),y)
 	-cp -f $(OOKLA_PATH)/ookla-QCN5502      prebuild/ookla # QCN550X (3.7.12.35)
-else ifeq ($(RTCONFIG_RALINK_MT7621),y)
-	-cp -f $(OOKLA_PATH)/ookla-mt7621      prebuild/ookla
-else ifeq ($(RTCONFIG_MT798X),y)
-	-cp -f $(OOKLA_PATH)/ookla-MT7986A  prebuild/ookla     # MT7986A
 else
 	# nothing
 endif
@@ -30,6 +26,15 @@ else
 	-cp -f $(OOKLA_PATH)/ookla-BCM7.x-6.x prebuild/ookla   # BCM6 / BCM7
 endif # RTCONFIG_HND_ROUTER
 endif # RTCONFIG_BCMARM
+
+# MTK
+ifeq ($(RTCONFIG_RALINK),y)
+ifeq ($(RTCONFIG_MT798X),y)
+	-cp -f $(OOKLA_PATH)/ookla-MT7986A  prebuild/ookla     # MT7986A
+else
+	-cp -f $(OOKLA_PATH)/ookla-MTK7621A prebuild/ookla     # MTK7621A
+endif # RTCONFIG_MT798X
+endif # RTCONFIG_RALINK
 
 all: prebuild
 

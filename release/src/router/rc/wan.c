@@ -2432,16 +2432,22 @@ int update_resolvconf(void)
 	}
 
 #if defined(RTCONFIG_SMARTDNS)
-	FILE *fp_smartdns;
-	if (!(fp_smartdns = fopen("/tmp/resolv.smartdns", "w+"))) {
-		perror("/tmp/resolv.smartdns");
-		fclose(fp);
-		fclose(fp_servers);
-		goto error;
+	if(nvram_match("smartdns_enable", "1")
+#if defined(RTCONFIG_AMAS)
+		&& !aimesh_re_node()
+#endif
+	){
+		FILE *fp_smartdns;
+		if (!(fp_smartdns = fopen("/tmp/resolv.smartdns", "w+"))) {
+			perror("/tmp/resolv.smartdns");
+			fclose(fp);
+			fclose(fp_servers);
+			goto error;
+		}
+		fprintf(fp_smartdns, "server=127.0.0.1#9053\n");
+		fclose(fp_smartdns);
+		start_smartdns();
 	}
-	fprintf(fp_smartdns, "server=127.0.0.1#9053\n");
-	fclose(fp_smartdns);
-	start_smartdns();
 #endif
 
 #if defined(RTCONFIG_IPV6) && (defined(RTAX82_XD6) || defined(RTAX82_XD6S))

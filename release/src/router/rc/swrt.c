@@ -14,9 +14,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  *
- * Copyright 2018-2022, SWRT.
- * Copyright 2018-2022, paldier <paldier@hotmail.com>.
- * Copyright 2018-2022, lostlonger<lostlonger.g@gmail.com>.
+ * Copyright 2018-2023, SWRT.
+ * Copyright 2018-2023, paldier <paldier@hotmail.com>.
+ * Copyright 2018-2023, lostlonger<lostlonger.g@gmail.com>.
  * All Rights Reserved.
  *
  */
@@ -95,12 +95,9 @@ void swrt_init_pre()
 #if defined(RTAC82U)
 	fix_jffs_size();
 #endif
-#if defined(RTCONFIG_AMAS) && defined(RTCONFIG_SMARTDNS)
-	if(aimesh_re_node())
-		nvram_set("smartdns_enable", "0");
-#endif
 	swrt_insmod();
-	swrt_init_model();
+	if(swrt_init_model)
+		swrt_init_model();
 #if defined(RTCONFIG_ROG_UI)
 	nvram_set("swrt_rog", "1");
 #endif
@@ -169,6 +166,16 @@ void swrt_init_pre()
 		nvram_set("modelname", "JDCAX1800");
 #elif defined(RMAX6000)
 		nvram_set("modelname", "RMAX6000");
+#elif defined(RMAC2100)
+		nvram_set("modelname", "RMAC2100");
+#elif defined(R6800)
+		nvram_set("modelname", "R6800");
+#elif defined(PGBM1)
+		nvram_set("modelname", "PGBM1");
+#elif defined(JCGQ10PRO)
+		nvram_set("modelname", "JCGQ10PRO");
+#elif defined(H3CTX1801)
+		nvram_set("modelname", "H3CTX1801");
 //asus
 #elif defined(RTAC68U)
 		nvram_set("modelname", "RTAC68U");
@@ -232,16 +239,6 @@ void swrt_init_pre()
 		nvram_set("modelname", "RTAX89X");
 #elif defined(RTAC85P)
 		nvram_set("modelname", "RTAC85P");
-#elif defined(RMAC2100)
-		nvram_set("modelname", "RMAC2100");
-#elif defined(R6800)
-		nvram_set("modelname", "R6800");
-#elif defined(PGBM1)
-		nvram_set("modelname", "PGBM1");
-#elif defined(JCGQ10PRO)
-		nvram_set("modelname", "JCGQ10PRO");
-#elif defined(H3CTX1801)
-		nvram_set("modelname", "H3CTX1801");
 #elif defined(TUFAC1750)
 		nvram_set("modelname", "TUFAC1750");
 #elif defined(RTAC95U)
@@ -912,6 +909,8 @@ void init_entware(void)
 #define ENTWARE_ACT_STOP		16
 #define	ENTWARE_ACT_MASK (ENTWARE_ACT_INSTALL | ENTWARE_ACT_UPDATE | ENTWARE_ACT_REMOVE)
 #define	ENTWARE_ACT_MASK2 (ENTWARE_ACT_START | ENTWARE_ACT_STOP)
+#define ENTWARE_SERVER "bin.entware.net"
+#define ENTWARE_MIRROR "mirrors.bfsu.edu.cn/entware"
 
 void start_entware(void)
 {
@@ -931,9 +930,18 @@ void start_entware(void)
 	{
 		if (ent_action & ENTWARE_ACT_INSTALL)
 		{
-			snprintf(cmd, sizeof(cmd), "wget http://bin.entware.net/%s/installer/%s.sh -O /tmp/doentware.sh", nvram_get("entware_arch"), ent_arg);
+			snprintf(cmd, sizeof(cmd), "wget http://%s/%s/installer/%s.sh -O /tmp/doentware.sh", 
+				nvram_match("preferred_lang", "CN") ? ENTWARE_MIRROR : ENTWARE_SERVER, nvram_get("entware_arch"), ent_arg);
 			system(cmd);
 			system("chmod +x /tmp/doentware.sh");
+			if(nvram_match("preferred_lang", "CN")){
+				system("mkdir -p /opt/etc");
+				snprintf(cmd, sizeof(cmd), "wget http://%s/%s/installer/opkg.conf -O /opt/etc/opkg.conf", ENTWARE_MIRROR, nvram_get("entware_arch"));
+				system(cmd);
+				system("sed -i '/opkg.conf/d' /tmp/doentware.sh");
+				system("sed -i 's|https\?://bin.entware.net|http://mirrors.bfsu.edu.cn/entware|g' /tmp/doentware.sh");
+				system("sed -i 's|https\?://bin.entware.net|http://mirrors.bfsu.edu.cn/entware|g' /opt/etc/opkg.conf");
+			}
 			system("/tmp/doentware.sh");
 			nvram_set("entware_installed", "1");
 		}
@@ -1011,12 +1019,14 @@ void gen_arch_conf(void)
 			else
 				nvram_set("entware_arch", "armv7sf-k3.2");
 		}else if(!strcmp(uts.machine, "mips")){
-			if(!strcmp(uts.release, "4.4.198") || !strcmp(uts.release, "5.4.179"))
+			if(!strncmp(uts.release, "4.4", 3) || !strncmp(uts.release, "5.4", 3))
 				nvram_set("entware_arch", "mipselsf-k3.4");
 			else
-				nvram_set("entware_arch", "mipssf-k3.4");
+				nvram_set("entware_arch", "mipssf-k3.4");//lantiq: 3.10/4.9
 		}else if(!strcmp(uts.machine, "aarch64"))
 			nvram_set("entware_arch", "aarch64-k3.10");
+		else if(!strcmp(uts.machine, "x86_64"))
+			nvram_set("entware_arch", "x64");
 	}
 }
 #endif
@@ -1256,7 +1266,7 @@ int check_bwdpi_nvram_setting(){ return 0; }
 int check_wrs_switch(){ return 0; }
 #endif
 
-#if 0//defined(RTCONFIG_BCMARM)
+#if defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER_AX)
 #define	HAPD_MAX_BUF			512
 void __attribute__((weak)) wl_apply_akm_by_auth_mode(int unit, int subunit, char *sp_prefix_auth)
 {

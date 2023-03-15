@@ -3793,6 +3793,29 @@ int startScan(int band)
 	sleep(4);
 	return 1;
 }
+#if defined(RALINK_DBDC_MODE) || defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+void PartialScanNumOfCh(int band)
+{
+	int lock;
+	char data[64];
+	struct iwreq wrq;
+
+	memset(data, 0, sizeof(data));
+	strcpy(data, "PartialScanNumOfCh=3");
+	wrq.u.data.length = strlen(data) + 1;
+	wrq.u.data.pointer = data;
+	wrq.u.data.flags = 0;
+
+	lock = file_lock("sitesurvey");
+	if(wl_ioctl(get_wifname(band), RTPRIV_IOCTL_SET, &wrq) < 0)
+	{
+		file_unlock(lock);
+		dbg("Site Survey fails\n");
+		return;
+	}
+	file_unlock(lock);
+}
+#endif
 
 int getSiteSurvey(int band, char* ofile)
 {
@@ -3808,7 +3831,12 @@ int getSiteSurvey(int band, char* ofile)
 	char ure_mac[18];
 	int wl_authorized = 0;
 	memset(data, 0, sizeof(data));
-	strcpy(data, "SiteSurvey=1");
+#if defined(RALINK_DBDC_MODE) || defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+	PartialScanNumOfCh(band);
+	strcpy(data, "PartialScan=1");//slower, ap still works
+#else
+	strcpy(data, "SiteSurvey=1");//faster, ap will stop working for 4s
+#endif
 	wrq.u.data.length = strlen(data) + 1;
 	wrq.u.data.pointer = data;
 	wrq.u.data.flags = 0;
@@ -3846,6 +3874,18 @@ int getSiteSurvey(int band, char* ofile)
 	sleep(1);
 	dbg(".");
 	sleep(1);
+#if defined(RALINK_DBDC_MODE) || defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+	dbg(".");
+	sleep(4);
+	if(band){
+		dbg(".");
+		sleep(1);
+#if defined(RTCONFIG_WIFI6E)
+		dbg(".");
+		sleep(3);
+#endif
+	}
+#endif
 	dbg(".\n\n");
 
 	memset(data, 0, sizeof(data));
@@ -4287,7 +4327,7 @@ int site_survey_for_channel(int n, const char *wif, int *HT_EXT)
 		int len = strlen(wrq.u.data.pointer + hdrLen + 1);
 		char *sp, *op;
  		op = sp = wrq.u.data.pointer + hdrLen + 1;
-
+		dbg("sp=%s\n", sp);
 		while (*sp && ((len - (sp-op)) >= 0)) {
 			ssap->SiteSurvey[i].channel[3] = '\0';
 			ssap->SiteSurvey[i].ssid[32] = '\0';

@@ -56,7 +56,8 @@ void init_devs(void)
 		int status;
 		if((status = WEXITSTATUS(modprobe("nvram_linux"))))	printf("## modprove(nvram_linux) fail status(%d)\n", status);
 	}
-	patch_Factory();
+	if(patch_Factory)
+		patch_Factory();
 }
 
 void init_others(void)

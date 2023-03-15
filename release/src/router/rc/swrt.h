@@ -14,9 +14,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  *
- * Copyright 2018-2022, SWRT.
- * Copyright 2018-2022, paldier <paldier@hotmail.com>.
- * Copyright 2018-2022, lostlonger<lostlonger.g@gmail.com>.
+ * Copyright 2018-2023, SWRT.
+ * Copyright 2018-2023, paldier <paldier@hotmail.com>.
+ * Copyright 2018-2023, lostlonger<lostlonger.g@gmail.com>.
  * All Rights Reserved.
  * 
  */
@@ -38,7 +38,7 @@ enum {
 extern void softcenter_trigger(int sig);
 #endif
 extern void swrt_init_pre(void);
-extern void swrt_init_model(void);
+extern void swrt_init_model(void) __attribute__((weak));
 extern void swrt_init_post(void);
 extern void gen_swrtid(void);
 extern int swrt_toolbox(int argc, char **argv);
@@ -76,7 +76,7 @@ extern void ac3200p_patch_cfe(void);
 #elif defined(R7000P)
 extern void r7000p_nvram_patch(void);
 #elif defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA)
-extern void patch_Factory(void);
+extern void patch_Factory(void) __attribute__((weak));
 #else
 extern void swrt_patch_nvram(void);
 #endif
@@ -102,9 +102,7 @@ extern void exec_uu_swrt(void);
 #if defined(RTCONFIG_FRS_LIVE_UPDATE) 
 extern int swrt_firmware_check_update_main(int argc, char *argv[]);
 #endif
-#if defined(SWRT_VER_MAJOR_R) || defined(SWRT_VER_MAJOR_X) || defined(SBRAC3200P)
-extern void check_auth_code(void);
-#endif
+extern void check_auth_code(void) __attribute__((weak));
 #if defined(RTCONFIG_SWRT_LED)
 extern void swrt_ledon(void);
 #endif

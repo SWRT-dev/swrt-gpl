@@ -2500,7 +2500,7 @@ void ATE_mt7621_esw_port_status(void)
 #if defined(RTCONFIG_CONCURRENTREPEATER) && defined(RPAC87)
 		snprintf(buf, sizeof(buf), "L1=%C",
 		(pS.link[ WAN_PORT] == 1) ? (pS.speed[ WAN_PORT] == 2) ? 'G' : 'M': 'X');
-#elif defined(RTAX53U)
+#elif defined(RTAX53U) || defined(RTCONFIG_3LANPORT_DEVICE)
 	snprintf(buf, sizeof(buf), "W0=%C;L1=%C;L2=%C;L3=%C;",
 		(pS.link[ WAN_PORT] == 1) ? (pS.speed[ WAN_PORT] == 2) ? 'G' : 'M': 'X',
 		(pS.link[LAN1_PORT] == 1) ? (pS.speed[LAN1_PORT] == 2) ? 'G' : 'M': 'X',

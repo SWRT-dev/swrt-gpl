@@ -65,7 +65,7 @@ config  ASUS_EXT
         default n
 
 config  MTK_NAND_BLOCK2
-        bool "For MTK nand using 2 block"
+        bool "For MTK nand using 2 block 256k/0x40000"
         default n
 
 config  FIBOCOM_FG621

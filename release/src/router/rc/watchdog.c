@@ -7032,6 +7032,10 @@ void dnsmasq_check()
 extern void start_smartdns();
 void smartdns_check()
 {
+#if defined(RTCONFIG_AMAS)
+	if(aimesh_re_node())
+		return;
+#endif
 	if(!nvram_match("smartdns_enable", "1"))
 		return;
 	if (!pids("smartdns")) {
@@ -9927,9 +9931,8 @@ wdp:
 #ifdef HND_ROUTER
 	udhcpc_check();
 #endif
-#if defined(SWRT_VER_MAJOR_R) || defined(SWRT_VER_MAJOR_X) || defined(SBRAC3200P)
-	check_auth_code();
-#endif
+	if(check_auth_code)
+		check_auth_code();
 #ifdef CONFIG_BCMWL5
 	if(!pids("eapd"))
 		start_eapd();

@@ -834,6 +834,8 @@ void init_devs(void)
 	if (nvram_match("wifison_ready", "1"))
 		mount("overlayfs", "/www", "overlayfs", MS_MGC_VAL, "lowerdir=/www,upperdir=/www-sys");
 #endif
+	if(patch_Factory)
+		patch_Factory();
 }
 
 void generate_switch_para(void)
