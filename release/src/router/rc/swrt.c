@@ -176,6 +176,8 @@ void swrt_init_pre()
 		nvram_set("modelname", "JCGQ10PRO");
 #elif defined(H3CTX1801)
 		nvram_set("modelname", "H3CTX1801");
+#elif defined(XMCR660X)
+		nvram_set("modelname", "XMCR660X");
 //asus
 #elif defined(RTAC68U)
 		nvram_set("modelname", "RTAC68U");

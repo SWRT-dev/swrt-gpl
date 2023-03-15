@@ -46,6 +46,8 @@
    
    h3c-tx1801 : `make swrt-h3c-tx1801`
 
+   xm-cr660x : `make swrt-xm-cr660x`
+
 8. 编译完成后输出固件路径：swrt-gpl/release/src-mtk-mips/image
 
 #### MTK7986

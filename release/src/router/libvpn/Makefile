@@ -18,16 +18,16 @@ INSTALL = install
 
 OBJS = openvpn_config.o openvpn_control.o openvpn_utils.o openvpn_options.o
 
-ifneq ($(wildcard ./prebuild/$(BUILD_NAME)/libvpn.so),)
-all:
-	cp -f ./prebuild/$(BUILD_NAME)/libvpn.so .
-else
+#ifneq ($(wildcard ./prebuild/$(BUILD_NAME)/libvpn.so),)
+#all:
+#	cp -f ./prebuild/$(BUILD_NAME)/libvpn.so .
+#else
 all: libvpn.so
 
 libvpn.so: $(OBJS)
 	@echo " [libvpn] LD $@"
 	@$(CC) $(LDFLAGS) -shared -o $@ $^
-endif
+#endif
 
 install: all
 	@echo " [libvpn] Installing as $(INSTALLDIR)/usr/lib/libvpn.so"
