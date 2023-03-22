@@ -87,6 +87,7 @@ void swrt_init_pre()
 	nvram_set("sc_services_start_sig", "0");
 	nvram_set("sc_services_stop_sig", "0");
 	nvram_set("sc_unmount_sig", "0");
+	mkdir("/tmp/upload", 0777);
 #endif
 #if defined(RTCONFIG_ENTWARE)
 	nvram_set("entware_wan_sig", "0");

@@ -25105,7 +25105,7 @@ struct mime_handler mime_handlers[] = {
 //v1.5
 	{ "_temp/*", "text/html", no_cache_IE7, do_html_post_and_get, do_dbtemp_cgi, do_auth },
 	{ "_root/**", "text/html", no_cache_IE7, do_html_post_and_get, do_dbroot_cgi, do_auth },
-	{ "_upload/*", "text/html", no_cache_IE7, do_dbupload_post, do_dbupload_cgi, do_auth },
+	{ "_upload*", "text/html", no_cache_IE7, do_dbupload_post, do_dbupload_cgi, do_auth },
 	{ "_resp/*", "text/html", no_cache_IE7, do_html_post_and_get, do_dbresp_cgi, do_auth },
 	{ "_result/*", "text/html", no_cache_IE7, do_html_post_and_get, do_result_cgi, do_auth },
 	{ "_api**", "text/html", no_cache_IE7, do_html_post_and_get, do_dbapi_cgi, do_auth },

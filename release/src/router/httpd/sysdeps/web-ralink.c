@@ -1592,7 +1592,7 @@ static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	int lock;
 
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-	memset(data, 0x00, 255);
+	memset(data, 0x00, sizeof(data));
 	strlcpy(data, "SiteSurvey=1", sizeof(data));
 	wrq.u.data.length = strlen(data)+1;
 	wrq.u.data.pointer = data;

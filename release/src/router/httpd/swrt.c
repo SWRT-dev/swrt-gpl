@@ -272,15 +272,15 @@ void do_dbupload_post(char *url, FILE *stream, int len, char *boundary)
 	char upload_fifo[64] = {0};
 	int ret = EINVAL;
 	FILE *fifo = NULL;
-	char buf[4096];
+	char buf[4096] = {0};
 	int ch;
 	int count, cnt;
 	long filelen;
 	int offset;
-	char org_file_name[64];
-	memset(org_file_name, 0, 64);
-	char file_name[64];
-	memset(file_name, 0, 64);
+	char org_file_name[64] = {0};
+	char file_name[64] = {0};
+	int boundary_len = ((boundary != NULL) ? strlen(boundary) : 0);
+
 	/* Look for our part */
 	while (len > 0)
 	{
@@ -288,19 +288,17 @@ void do_dbupload_post(char *url, FILE *stream, int len, char *boundary)
 		{
 			goto err;
 		}
-
 		len -= strlen(buf);
 
 		if (!strncasecmp(buf, "Content-Disposition:", 20)){
-			if(strstr(post_buf, "name=\"file\"")) {
-				snprintf(org_file_name, sizeof(org_file_name), "%s", strstr(post_buf, "filename="));
-				substr(file_name, org_file_name, 10, (strlen(org_file_name)-13));
+			if(strstr(buf, "filename=")) {
+				snprintf(org_file_name, sizeof(org_file_name), "%s", strstr(buf, "filename="));
+				sscanf(org_file_name, "filename=\"%[^\"]\"", file_name);
 				snprintf(upload_fifo, sizeof(upload_fifo), "/tmp/upload/%s", file_name);
 				break;
 			}
 		}
 	}
-
 	/* Skip boundary and headers */
 	while (len > 0) {
 		if (!fgets(buf, MIN(len + 1, sizeof(buf)), stream))
@@ -313,8 +311,7 @@ void do_dbupload_post(char *url, FILE *stream, int len, char *boundary)
 			break;
 		}
 	}
-
-
+	len = len - (2 + 2 + boundary_len + 4);
 	if (!(fifo = fopen(upload_fifo, "a+"))) goto err;
 	filelen = len;
 	cnt = 0;
@@ -403,7 +400,7 @@ void do_dbupload_cgi(char *url, FILE *stream)
 	ret = fcntl(fileno(stream), F_GETOWN, 0);
 
 	if (ret == 0)
-		websWrite(stream,"<script>parent.upload_ok(0);</script>\n" );
+		websWrite(stream,"{\"status\":200}\n");
 }
 
 static int applydb_cgi(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg, char_t *url, char_t *path, char_t *query)
