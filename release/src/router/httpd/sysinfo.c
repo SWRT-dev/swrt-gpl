@@ -813,8 +813,7 @@ unsigned int get_phy_temperature(int radio)
             break;
 #endif
         default:
-            band = 0;
-            break;
+			return 0;
     }
 
 	if((wifi_if = get_vphyifname(band)) == NULL)

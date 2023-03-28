@@ -11,4 +11,3 @@ curr_coreTmp_wl3_raw = "<% sysinfo("temperature.3"); %>";
 curr_coreTmp_wl3 = (curr_coreTmp_wl3_raw.indexOf("disabled") > 0 ? 0 : curr_coreTmp_wl3_raw.replace("&deg;C", ""));
 
 curr_cpuTemp = "<% get_cpu_temperature(); %>";
-fanctrl_info = "<% get_fanctrl_info(); %>";

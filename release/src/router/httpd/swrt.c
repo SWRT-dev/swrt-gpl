@@ -19,7 +19,9 @@
  * All Rights Reserved.
  * 
  */
-
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,6 +31,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <limits.h>
+#include <dirent.h>
 #include <sys/types.h>
 #include <typedefs.h>
 #include <bcmutils.h>
