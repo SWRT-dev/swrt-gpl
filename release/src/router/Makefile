@@ -898,7 +898,7 @@ obj-$(RTCONFIG_OOKLA_LITE) += ookla_speedtest
 ifeq ($(or $(RTCONFIG_RALINK),$(RTCONFIG_QCA),$(RTCONFIG_LANTIQ)),y)
 ifeq ($(RTCONFIG_EASYMESH),y)
 ifeq ($(RTCONFIG_EASYMESH_OPEN),y)
-obj-y += libubox libubus libnl-bf openssl EasyMesh
+obj-y += libubox libubus libnl-bf openssl easymesh
 else
 obj-y += easymesh-sdk
 endif

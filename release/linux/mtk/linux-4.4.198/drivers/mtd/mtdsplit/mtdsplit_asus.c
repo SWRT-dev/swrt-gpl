@@ -95,11 +95,11 @@ mtdsplit_parse_asus(struct mtd_info *master,
 {
 	struct mtd_partition *parts;
 	u_char *buf;
-	int nr_parts, i;
+	int nr_parts;
 	size_t offset;
 	size_t kernel_offset;
 	size_t kernel_size = 0;
-	size_t rootfs_offset;
+	size_t rootfs_offset = 0;
 	size_t rootfs_size = 0;
 	int ret;
 
@@ -129,13 +129,8 @@ mtdsplit_parse_asus(struct mtd_info *master,
 				 master->name, (unsigned long long) offset);
 			continue;
 		}
-		for(i = 0; i < 5; i++)
-		{
-			if(hdr->u.tail.hw[i].major == ROOTFS_OFFSET_MAGIC)
-			{
-				rootfs_offset = (hdr->u.tail.hw[i].minor << 16) | (hdr->u.tail.hw[i+1].major << 8) | (hdr->u.tail.hw[i+1].minor);
-				break;
-			}
+		if(hdr->u.tail.hw[3].major == ROOTFS_OFFSET_MAGIC){
+			rootfs_offset = (hdr->u.tail.hw[3].minor << 16) | (hdr->u.tail.hw[4].major << 8) | (hdr->u.tail.hw[4].minor);
 		}
 		if(be32_to_cpu(hdr->ih_size) < 0x400000){//uImage header:only kernel
 			rootfs_offset = 0x400000;
