@@ -135,7 +135,7 @@ int ej_dbus_match(int eid, webs_t wp, int argc, char_t **argv)
 	return 0;
 }
 
-static int ssupload = 0;
+static int swrtupload = 0;
 void do_ssupload_post(char *url, FILE *stream, int len, char *boundary)
 {
 	do_html_get(url, len, boundary);
@@ -150,7 +150,7 @@ void do_ssupload_post(char *url, FILE *stream, int len, char *boundary)
 	long filelen;
 	int offset;
 
-	ssupload = 0;
+	swrtupload = 0;
 	/* Look for our part */
 	while (len > 0)
 	{
@@ -243,7 +243,7 @@ void do_ssupload_post(char *url, FILE *stream, int len, char *boundary)
 	}
 	fclose(fifo);
 	fifo = NULL;
-	ssupload = 1;
+	swrtupload = 1;
 err:
 	if (fifo)
 		fclose(fifo);
@@ -259,7 +259,7 @@ void do_ssupload_cgi(char *url, FILE *stream)
 	int i;
 	for (i=0; i<10; i++)
 	{
-		if(ssupload == 1)
+		if(swrtupload == 1)
 		{
 			websWrite(stream,"<script>parent.upload_ok(1);</script>\n" );
 			break;
@@ -273,29 +273,29 @@ void do_ssupload_cgi(char *url, FILE *stream)
 void do_dbupload_post(char *url, FILE *stream, int len, char *boundary)
 {
 	char upload_fifo[64] = {0};
-	int ret = EINVAL;
 	FILE *fifo = NULL;
-	char buf[4096] = {0};
 	int ch;
-	int count, cnt;
+	int count;
 	long filelen;
-	int offset;
 	char org_file_name[64] = {0};
 	char file_name[64] = {0};
 	int boundary_len = ((boundary != NULL) ? strlen(boundary) : 0);
-
+	memset(post_buf, 0, sizeof(post_buf));
+	swrtupload = 0;
 	/* Look for our part */
 	while (len > 0)
 	{
-		if (!fgets(buf, MIN(len + 1, sizeof(buf)), stream))
+		if (!fgets(post_buf, MIN(len + 1, sizeof(post_buf)), stream))
 		{
+			if(errno == EINTR)
+				continue;
 			goto err;
 		}
-		len -= strlen(buf);
+		len -= strlen(post_buf);
 
-		if (!strncasecmp(buf, "Content-Disposition:", 20)){
-			if(strstr(buf, "filename=")) {
-				snprintf(org_file_name, sizeof(org_file_name), "%s", strstr(buf, "filename="));
+		if (!strncasecmp(post_buf, "Content-Disposition:", 20)){
+			if(strstr(post_buf, "filename=")) {
+				snprintf(org_file_name, sizeof(org_file_name), "%s", strstr(post_buf, "filename="));
 				sscanf(org_file_name, "filename=\"%[^\"]\"", file_name);
 				snprintf(upload_fifo, sizeof(upload_fifo), "/tmp/upload/%s", file_name);
 				break;
@@ -304,70 +304,55 @@ void do_dbupload_post(char *url, FILE *stream, int len, char *boundary)
 	}
 	/* Skip boundary and headers */
 	while (len > 0) {
-		if (!fgets(buf, MIN(len + 1, sizeof(buf)), stream))
+		if (!fgets(post_buf, MIN(len + 1, sizeof(post_buf)), stream))
 		{
+			if(errno == EINTR)
+				continue;
 			goto err;
 		}
-		len -= strlen(buf);
-		if (!strcmp(buf, "\n") || !strcmp(buf, "\r\n"))
+		len -= strlen(post_buf);
+		if (!strcmp(post_buf, "\n") || !strcmp(post_buf, "\r\n"))
 		{
 			break;
 		}
 	}
 	len = len - (2 + 2 + boundary_len + 4);
-	if (!(fifo = fopen(upload_fifo, "a+"))) goto err;
+	if (!(fifo = fopen(upload_fifo, "wb"))) goto err;
 	filelen = len;
-	cnt = 0;
-	offset = 0;
 
 	/* Pipe the rest to the FIFO */
 	while (len>0 && filelen>0)
 	{
-
+		int ret;
 #ifdef RTCONFIG_HTTPS
 		if(do_ssl){
-			if (waitfor(ssl_stream_fd, (len >= 0x4000)? 3 : 1) <= 0)
-				break;
+			ret = waitfor(ssl_stream_fd, (len >= 0x4000)? 3 : 1);
 		}
-		else{
-			if (waitfor (fileno(stream), 10) <= 0)
-			{
-				break;
-			}
-		}
-#else
-		if (waitfor (fileno(stream), 10) <= 0)
+		else
+#endif
+			ret = waitfor (fileno(stream), 10);
+
+		if (ret <= 0)
 		{
+			if(ret < 0 && errno == EINTR)
+				continue;
+			_dprintf("waitfor() fail errno: %d (%s)\n", errno, strerror(errno));
 			break;
 		}
-#endif
-
-		count = fread(buf + offset, 1, MIN(len, sizeof(buf)-offset), stream);
+		count = fread(post_buf, 1, MIN(len, sizeof(post_buf)), stream);
 
 		if(count <= 0)
 			goto err;
 
 		len -= count;
-
-		if(cnt==0) {
-			if(count + offset < 8)
-			{
-				offset += count;
-				continue;
-			}
-
-			count += offset;
-			offset = 0;
-			_dprintf("read from stream: %d\n", count);
-			cnt++;
-		}
-		filelen-=count;
-		fwrite(buf, 1, count, fifo);
+		filelen -= count;
+		fwrite(post_buf, 1, count, fifo);
 	}
-
+	len += len + (2 + 2 + boundary_len + 4);
 	/* Slurp anything remaining in the request */
-	while (len-- > 0)
+	while (len > 0)
 	{
+		len--;
 		if((ch = fgetc(stream)) == EOF)
 			break;
 
@@ -377,33 +362,27 @@ void do_dbupload_post(char *url, FILE *stream, int len, char *boundary)
 			filelen--;
 		}
 	}
-	ret=0;
 	fclose(fifo);
 	fifo = NULL;
+	swrtupload = 1;
 err:
 	if (fifo)
 		fclose(fifo);
 
 	/* Slurp anything remaining in the request */
-	while (len-- > 0)
+	while (len > 0) {
+		len--;
 		if((ch = fgetc(stream)) == EOF)
 			break;
-
-	fcntl(fileno(stream), F_SETOWN, -ret);	
+	}
 }
 
 void do_dbupload_cgi(char *url, FILE *stream)
 {
-	int ret;
-#ifdef RTCONFIG_HTTPS
-	if(do_ssl)
-		ret = fcntl(ssl_stream_fd , F_GETOWN, 0);
+	if(swrtupload == 1)
+		websWrite(stream, "{\"status\":200}\n");
 	else
-#endif
-	ret = fcntl(fileno(stream), F_GETOWN, 0);
-
-	if (ret == 0)
-		websWrite(stream,"{\"status\":200}\n");
+		websWrite(stream, "{\"status\":0}\n");
 }
 
 static int applydb_cgi(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg, char_t *url, char_t *path, char_t *query)
