@@ -94,8 +94,10 @@ elif [ "$SC_MOUNT" == "1" ];then
 	fi
 elif [ "$SC_MOUNT" == "0" -a "$IS_MOUNTED" == "1" ];then
 #uninstall
+	mdisk=`nvram get sc_disk`
+	usb_disk="/tmp/mnt/$mdisk"
 	rm -rf $usb_disk/bin $usb_disk/res $usb_disk/webs $usb_disk/scripts $usb_disk/lib
-	rm -rf jffs/softcenter/*
+	rm -rf /jffs/softcenter/*
 	rm -rf /tmp/mnt/*/.sc_installed
 	rm -rf /jffs/softcenter/.sc_mounted
 	nvram set sc_installed=0

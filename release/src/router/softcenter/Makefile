@@ -77,6 +77,7 @@ endif
 	install -m 0755 softcenter/res/sc1TW.json $(INSTALLDIR)/rom/etc/softcenter/res
 	install -m 0755 softcenter/res/icon-default.png $(INSTALLDIR)/rom/etc/softcenter/res
 	install -m 0755 softcenter/res/swrt.png $(INSTALLDIR)/rom/etc/softcenter/res
+	install -m 0755 softcenter/res/eva.png $(INSTALLDIR)/rom/etc/softcenter/res
 	install -m 0755 softcenter/res/upgrade.png $(INSTALLDIR)/rom/etc/softcenter/res
 	install -m 0755 softcenter/res/softcenter.js $(INSTALLDIR)/rom/etc/softcenter/res
 	install -m 0755 softcenter/res/softcenter.css $(INSTALLDIR)/rom/etc/softcenter/res
