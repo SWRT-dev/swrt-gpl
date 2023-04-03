@@ -942,8 +942,8 @@ void start_entware(void)
 				snprintf(cmd, sizeof(cmd), "wget http://%s/%s/installer/opkg.conf -O /opt/etc/opkg.conf", ENTWARE_MIRROR, nvram_get("entware_arch"));
 				system(cmd);
 				system("sed -i '/opkg.conf/d' /tmp/doentware.sh");
-				system("sed -i 's|https\?://bin.entware.net|http://mirrors.bfsu.edu.cn/entware|g' /tmp/doentware.sh");
-				system("sed -i 's|https\?://bin.entware.net|http://mirrors.bfsu.edu.cn/entware|g' /opt/etc/opkg.conf");
+				system("sed -i 's|http://bin.entware.net|http://mirrors.bfsu.edu.cn/entware|g' /tmp/doentware.sh");
+				system("sed -i 's|http://bin.entware.net|http://mirrors.bfsu.edu.cn/entware|g' /opt/etc/opkg.conf");
 			}
 			system("/tmp/doentware.sh");
 			nvram_set("entware_installed", "1");
