@@ -13,7 +13,7 @@ if [ "$(nvram get entware_mount)" == 1 ];then
 		exit 1
 	else
 		mkdir -p $usb_disk/opt
-		entwareopt="bin etc lib sbin share tmp usr include doc var home root"
+		entwareopt="bin etc lib sbin share tmp usr include doc var home root libexec"
 		for f in $entwareopt
 		do
 			mkdir -p /jffs/opt
@@ -28,6 +28,6 @@ if [ "$(nvram get entware_mount)" == 1 ];then
 		fi
 	fi
 else
-	rm -f /jffs/opt
+	rm -rf /jffs/opt
 fi
 
