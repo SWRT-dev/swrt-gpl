@@ -14,6 +14,8 @@ release/src/router/eapd/*.c
 release/src/router/eapd/*.h
 release/src/router/eapd_arm/*.c
 release/src/router/eapd_arm/*.h
+release/src/router/easymesh/*/source/*.c
+release/src/router/easymesh/*/source/*.h
 release/src/router/envram/*.c
 release/src/router/envram/*.h
 release/src/router/libasc/*.c

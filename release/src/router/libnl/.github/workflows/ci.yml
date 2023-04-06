@@ -1,0 +1,112 @@
+name: libnl3-ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ci:
+    strategy:
+      matrix:
+        include:
+          - cc: gcc
+          - cc: clang
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get -y --no-install-recommends install \
+            check \
+            valgrind \
+            libtool-bin
+
+      - name: Check out repository code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.x
+
+      - name: Lint Python
+        run: |
+          python3 -m pip install flake8
+          flake8 . --count --select=E703,E9,F63,F7,F82,Y --show-source --statistics
+
+      - name: Build
+        run: |
+          set -x
+
+          export CC="${{ matrix.cc }}"
+          export CFLAGS="-DNL_MORE_ASSERTS=1000 -O2 -Werror -Wall -Wdeclaration-after-statement -Wvla -std=gnu11"
+          if [ "$CC" = "clang" ]; then
+                  CFLAGS="$CFLAGS -Wno-error=unused-command-line-argument -Wno-error=unused-function"
+          fi
+
+          ./autogen.sh
+          ./configure
+          make -j 5
+        shell: bash
+      - name: Build Unit Tests
+        run: make -j 5 check-progs
+
+      - name: Run Unit Tests
+        run: |
+          set -x
+          export NLTST_SEED_RAND=
+          for i in `seq 1 5`; do
+            tests/check-all
+            tests/check-direct
+            make -j check
+          done
+
+      - name: Run Unit Tests w/Valgrind
+        run: |
+          set -x
+          export NLTST_SEED_RAND=
+          CK_FORK=no libtool --mode=execute valgrind --error-exitcode=66 --leak-check=full -s --show-leak-kinds=all ./tests/check-all
+          CK_FORK=no libtool --mode=execute valgrind --error-exitcode=66 --leak-check=full -s --show-leak-kinds=all ./tests/check-direct
+        shell: bash
+
+      - name: Install packages for Release
+        run: |
+          test "${{ matrix.cc }}" == gcc || exit 0
+          sudo apt-get -y --no-install-recommends install \
+            asciidoc \
+            doxygen \
+            graphviz \
+            mscgen \
+            source-highlight \
+            python3-pygments
+
+      - name: Build Release
+        run: |
+          test "${{ matrix.cc }}" == gcc || exit 0
+          set -x
+          git clean -fdx
+          NO_GPG_SIGN=1 ./tools/build_release.sh BuildAll
+
+      - name: Build out-of-tree and disable-static
+        run: |
+          set -x
+
+          git clean -fdx
+
+          export CC="${{ matrix.cc }}"
+          export CFLAGS="-Werror -Wall -Wdeclaration-after-statement -Wvla -std=gnu11"
+          if [ "$CC" = "clang" ]; then
+                  CFLAGS="$CFLAGS -Wno-error=unused-command-line-argument -Wno-error=unused-function"
+          fi
+
+          ./autogen.sh
+          mkdir build
+          cd build
+          ../configure --disable-static
+          make -j 5
+          make -j 5 check-progs
+          export NLTST_SEED_RAND=
+          make -j 5 check
+
+      - run: echo "🍏 This job's status is ${{ job.status }}."
