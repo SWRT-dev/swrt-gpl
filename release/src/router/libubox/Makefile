@@ -45,6 +45,7 @@ install:
 		install -D -m 644 -p $$i $(DESTDIR)/usr/include/libubox/; \
 	done
 	install -D -m 644 libubox.so $(DESTDIR)/usr/lib; \
+	install -D -m 644 libblobmsg_json.so $(DESTDIR)/usr/lib; \
 
 .SECONDARY:
 %.o: %.c *.h Makefile

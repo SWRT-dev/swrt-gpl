@@ -688,19 +688,36 @@ static void _ovpn_server_fw_rule_add(int unit, ovpn_sconf_t *conf)
 		chmod(fpath, S_IRUSR|S_IWUSR|S_IXUSR);
 		eval(fpath);
 	}
+	if(conf->ipv6_enable && conf->if_type == OVPN_IF_TUN && conf->nat6){
+		snprintf(fpath, sizeof(fpath), "/etc/openvpn/server%d/fw_nat6.sh", unit);
+		fp = fopen(fpath, "w");
+		if(fp){
+			fprintf(fp, "#!/bin/sh\n\n");
+			fprintf(fp, "ip6tables -t nat -I POSTROUTING -s %s -o %s -j MASQUERADE\n", conf->network6, conf->wan6_ifname);
+			fclose(fp);
+			chmod(fpath, S_IRUSR|S_IWUSR|S_IXUSR);
+			eval(fpath);
+		}
+	}
 }
 
 static void _ovpn_server_fw_rule_del(int unit)
 {
-	char fpath[128];
+	char path[128];
 
-	snprintf(fpath, sizeof(fpath), "/etc/openvpn/server%d/fw.sh", unit);
-	if(f_exists(fpath)) {
-		eval("sed", "-i", "s/-I/-D/", fpath);
-		eval(fpath);
-		eval("sed", "-i", "s/-A/-D/", fpath);
-		eval(fpath);
-		unlink(fpath);
+	snprintf(path, sizeof(path), "/etc/openvpn/server%d/fw.sh", unit);
+	if(f_exists(path)) {
+		eval("sed", "-i", "s/-I/-D/", path);
+		eval("sed", "-i", "s/-A/-D/", path);
+		eval(path);
+		unlink(path);
+	}
+	snprintf(path, sizeof(path), "/etc/openvpn/server%d/fw_nat6.sh", unit);
+	if(f_exists(path)) {
+		eval("sed", "-i", "s/-I/-D/", path);
+		eval("sed", "-i", "s/-A/-D/", path);
+		eval(path);
+		unlink(path);
 	}
 }
 
@@ -980,8 +997,10 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 
 		//router LAN
 		if(conf->push_lan && conf->if_type == OVPN_IF_TUN){
+			get_lan_cidr(buf, sizeof(buf));
+			*strchr(buf, '/') = 0;
 			fprintf(fp, "push \"route %s %s vpn_gateway %d\"\n",
-				conf->lan_subnet, conf->lan_netmask, PUSH_LAN_METRIC);
+				buf, conf->lan_netmask, PUSH_LAN_METRIC);
 			if(conf->ipv6_enable){
 				get_lan_cidr6(buf, sizeof(buf));
 				if(strlen(buf) > 1)
@@ -1433,6 +1452,30 @@ error:
 	chmod("/etc/passwd.openvpn", S_IRUSR|S_IWUSR);
 }
 
+void run_ovpn_fw_nat_scripts()
+{
+	char buf[128];
+	int unit;
+	int lock;
+	lock = file_lock("openvpn_server");
+	for(unit = 1; unit <= OVPN_SERVER_MAX; unit++){
+		snprintf(buf, sizeof(buf), "%s/server%d/fw_nat6.sh", OVPN_DIR_CONF, unit);
+		if(f_exists(buf))
+			eval(buf);
+	}
+	file_unlock(lock);
+	lock = file_lock("openvpn_client");
+	for(unit = 1; unit <= OVPN_CLIENT_MAX; unit++){
+		snprintf(buf, sizeof(buf), "%s/client%d/fw_nat.sh", OVPN_DIR_CONF, unit);
+		if(f_exists(buf))
+			eval(buf);
+		snprintf(buf, sizeof(buf), "%s/client%d/fw_nat6.sh", OVPN_DIR_CONF, unit);
+		if(f_exists(buf))
+			eval(buf);
+	}
+	file_unlock(lock);
+}
+
 void run_ovpn_fw_scripts()
 {
 	char buf[128];
@@ -1821,25 +1864,32 @@ void update_ovpn_profie_remote()
 static void _ovpn_client_fw_rule_add_nat(int unit, const char *dev, const char *ip, int isipv6)
 {
 	FILE *fp;
-	char cmd[256], path[256];
-
-	snprintf(cmd, sizeof(cmd), "%s -t nat -I POSTROUTING ! -s %s -o %s -j MASQUERADE", isipv6 ? "ip6tables" : "iptables", ip, dev);
-	system(cmd);
-	snprintf(path, sizeof(path), "/etc/openvpn/client%d/fw.sh", unit);
-	if((fp = fopen(path, "a+")) != NULL){
-		fprintf(fp, "%s\n", cmd);
+	char path[256];
+	if(isipv6)
+		snprintf(path, sizeof(path), "/etc/openvpn/client%d/fw_nat6.sh", unit);
+	else
+		snprintf(path, sizeof(path), "/etc/openvpn/client%d/fw_nat.sh", unit);
+	if((fp = fopen(path, "w")) != NULL){
+		fprintf(fp, "#!/bin/sh\n\n");
+		fprintf(fp, "%s -t nat -I POSTROUTING ! -s %s -o %s -j MASQUERADE", isipv6 ? "ip6tables" : "iptables", ip, dev);
 		fclose(fp);
+		chmod(path, 0700u);
+		eval(path);
 	}
 }
 
 static void _ovpn_client_fw_rule_del_nat(int unit, const char *dev, const char *ip, int isipv6)
 {
-	char cmd[256];
-
-	snprintf(cmd, sizeof(cmd), "%s -t nat -D POSTROUTING ! -s %s -o %s -j MASQUERADE", isipv6 ? "ip6tables" : "iptables", ip, dev);
-	system(cmd);
-	snprintf(cmd, sizeof(cmd), "sed -i \"/%s/d\" /etc/openvpn/client%d/fw.sh", ip, unit);
-	system(cmd);
+	char path[256];
+	if(isipv6)
+		snprintf(path, sizeof(path), "/etc/openvpn/client%d/fw_nat6.sh", unit);
+	else
+		snprintf(path, sizeof(path), "/etc/openvpn/client%d/fw_nat.sh", unit);
+	if(f_exists(path)){
+		eval("sed", "-i", "s/-I/-D/", path);
+		eval(path);
+		unlink(path);
+	}
 }
 
 static void ovpn_env_foreign_option_handler(int unit, int adns)

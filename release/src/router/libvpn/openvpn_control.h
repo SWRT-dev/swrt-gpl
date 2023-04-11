@@ -1,6 +1,7 @@
 extern void append_ovpn_accnt(const char *path, const char *ovpn_path);
 extern void create_ovpn_passwd();
 extern void run_ovpn_fw_scripts();
+extern void run_ovpn_fw_nat_scripts();
 extern void start_ovpn_eas();
 extern void start_ovpn_client(int unit);
 extern void start_ovpn_server(int unit);
