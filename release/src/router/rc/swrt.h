@@ -117,7 +117,10 @@ extern void show_boraddata(void);
 extern void fix_boraddata(char *key, char *value);
 #endif
 #if defined(RAX200)
-void fan_watchdog(void);
+extern void fan_watchdog(void);
+#endif
+#if defined(RTCONFIG_BCMARM)
+extern void get_nvramstr(int unit, char *buf, size_t len, int which);
 #endif
 #endif
 
