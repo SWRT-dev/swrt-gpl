@@ -53,6 +53,8 @@ sudo apt-get -y install build-essential asciidoc binutils bzip2 gawk gettext git
 
 	xm-cr660x : `make swrt-xm-cr660x`
 
+   jcg-q20 : `make swrt-jcg-q20`
+
 8. Build result will be produced to `swrt-gpl/release/src-mtk-mips/image` directory
 
 #### MTK7986

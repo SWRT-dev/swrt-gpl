@@ -48,6 +48,8 @@
 
    xm-cr660x : `make swrt-xm-cr660x`
 
+   jcg-q20 : `make swrt-jcg-q20`
+
 8. 编译完成后输出固件路径：swrt-gpl/release/src-mtk-mips/image
 
 #### MTK7986
