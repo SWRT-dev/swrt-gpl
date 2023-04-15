@@ -204,7 +204,7 @@ enum {
 	P7_PORT=7,
 };
 #define MT7621_GSW
-#elif defined(JCGQ10PRO)
+#elif defined(JCGQ10PRO) || defined(JCGQ20)
 enum {
 	WAN_PORT=0,
 	LAN1_PORT=1,

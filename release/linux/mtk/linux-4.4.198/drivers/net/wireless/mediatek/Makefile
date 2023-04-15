@@ -18,4 +18,5 @@ obj-$(CONFIG_MODEL_PGBM1) += mt7915/7.4.0.0/mt_wifi_ap/
 obj-$(CONFIG_MODEL_JCGQ10PRO) += mt7915/7.4.0.0/mt_wifi_ap/
 obj-$(CONFIG_MODEL_H3CTX1801) += mt7915/7.4.0.0/mt_wifi_ap/
 obj-$(CONFIG_MODEL_XMCR660X) += mt7915/7.4.0.0/mt_wifi_ap/
+obj-$(CONFIG_MODEL_JCGQ20) += mt7915/7.4.0.0/mt_wifi_ap/
 

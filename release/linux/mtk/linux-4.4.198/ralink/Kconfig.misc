@@ -64,6 +64,10 @@ config  MODEL_XMCR660X
         bool "XM-CR660X"
         default n
 
+config  MODEL_JCGQ20
+        bool "JCG-Q20"
+        default n
+
 config  ASUS_EXT
         bool "ASUS_EXT"
         default n

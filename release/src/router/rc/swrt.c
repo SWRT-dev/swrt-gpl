@@ -183,6 +183,8 @@ void swrt_init_pre()
 		nvram_set("modelname", "TY6201PRO");
 #elif defined(RGMA3062)
 		nvram_set("modelname", "RGMA3062");
+#elif defined(JCGQ20)
+		nvram_set("modelname", "JCGQ20");
 //asus
 #elif defined(RTAC68U)
 		nvram_set("modelname", "RTAC68U");
