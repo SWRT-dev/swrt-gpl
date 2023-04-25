@@ -20714,10 +20714,6 @@ static void sysinit(void)
 #endif
 #endif
 
-#if defined(RTCONFIG_SOC_IPQ40XX)
-	unlink("/dev/random");
-	system("ln -sf /dev/urandom /dev/random");
-#endif
 	set_action(ACT_IDLE);
 
 	for (i = 0; defenv[i]; ++i) {

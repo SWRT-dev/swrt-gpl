@@ -72,6 +72,8 @@ void swrt_insmod(){
 	eval("insmod", "ip_set_hash_mac");
 	eval("insmod", "ip_set_list_set");
 	eval("insmod", "nf_tproxy_core");
+	eval("insmod", "nf_tproxy_ipv4");
+	eval("insmod", "nf_tproxy_ipv6");
 	eval("insmod", "xt_TPROXY");
 	eval("insmod", "xt_set");
 	modprobe("cifs");
@@ -1870,15 +1872,19 @@ void fix_jffs_size(void)
 #endif
 
 #if defined(RTCONFIG_HND_ROUTER_AX)
-void __attribute__((weak)) create_amas_sys_folder()
-{
-	if(!d_exists("/jffs/.sys"))
-		mkdir("/jffs/.sys", 0666);
-}
-
-void __attribute__((weak)) misc_info_chk()
+void __attribute__((weak)) misc_ctrl_post()
 {
 	syslog(LOG_NOTICE, "fwver: %s_%s_%s (sn:%s /ha:%s )\n", rt_version, rt_serialno, rt_extendno, nvram_safe_get("serial_no"), nvram_safe_get("et0macaddr"));
+}
+
+int  __attribute__((weak)) resetNetLed()
+{
+	return 0;
+}
+
+int  __attribute__((weak)) setNetLed(void)
+{
+	return 0;
 }
 #endif
 
@@ -2026,6 +2032,15 @@ const unsigned int devpath_idx[4] = {0, 1, 2};    // 2.4G, 5G-1, 5G-2
 		default:
 			snprintf(buf, len, "%d:%s", unit, str);
 			break;
+	}
+}
+#endif
+#if defined(RTAX89U)
+//fix something to work fine
+void pre_syspara_swrt(void)
+{
+	if(!nvram_match("pwrsave_mode", "1") && !nvram_match("pwrsave_mode", "2")){
+		nvram_set("pwrsave_mode", "1");
 	}
 }
 #endif
