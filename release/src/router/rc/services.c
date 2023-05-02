@@ -4185,6 +4185,7 @@ static char *get_ddns_macaddr(void)
 		mac_buf[0] = 0x74;
 		mac_buf[1] = 0xD0;
 		mac_buf[2] = 0x2B;
+		mac_buf[5] &= 0xFC;
 		ether_etoa(mac_buf, mac_buf_str);
 		mac = mac_buf_str;
 	}

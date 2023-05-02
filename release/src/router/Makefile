@@ -897,11 +897,10 @@ obj-$(RTCONFIG_OOKLA) += ookla_speedtest
 obj-$(RTCONFIG_OOKLA_LITE) += ookla_speedtest
 ifeq ($(or $(RTCONFIG_RALINK),$(RTCONFIG_QCA),$(RTCONFIG_LANTIQ)),y)
 ifeq ($(RTCONFIG_EASYMESH),y)
-ifeq ($(RTCONFIG_EASYMESH_OPEN),y)
-obj-y += libubox libubus libnl libuci openssl avahi easymesh
-else
 obj-y += easymesh-sdk
 endif
+ifeq ($(RTCONFIG_SWRTMESH),y)
+obj-y += libubox libubus libnl libuci openssl avahi swrtmesh
 endif
 endif
 
@@ -9567,6 +9566,10 @@ libubus-install:
 	install -D libubus/build/libubus.so.20210603 $(INSTALLDIR)/libubus/usr/lib/libubus.so.20210603
 	cd $(INSTALLDIR)/libubus/usr/lib && ln -sf libubus.so.20210603 libubus.so
 	$(STRIP) $(INSTALLDIR)/libubus/usr/lib/libubus.so.20210603
+endif
+ifeq ($(RTCONFIG_SWRTMESH),y)
+swrtmesh: libubox libubus libnl libuci openssl avahi
+	$(MAKE) -C swrtmesh all
 endif
 
 hostapd2: 
