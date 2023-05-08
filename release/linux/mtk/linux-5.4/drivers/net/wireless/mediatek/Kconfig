@@ -48,16 +48,19 @@ choice
 	bool "MT7915"
 	select WIFI_MT_MAC
 	select MT_MAC
+	select CHIP_MT7915
 
 	config FIRST_IF_MT7986
 	bool "MT7986"
 	select WIFI_MT_MAC
 	select MT_MAC
+	select CHIP_MT7986
 
 	config FIRST_IF_MT7981
 	bool "MT7981"
 	select WIFI_MT_MAC
 	select MT_MAC
+	select CHIP_MT7981
 
 endchoice
 
