@@ -206,6 +206,9 @@ OBJS += mt7622.o
 else ifeq ($(RTCONFIG_SWITCH_MT7986_MT7531),y)
 CFLAGS += -I$(SRCBASE)/$(PLATFORM_ROUTER)/mii_mgr/source
 OBJS += mt7986_mt7531.o
+else ifeq ($(RTCONFIG_SOC_MT7981),y)
+CFLAGS += -I$(SRCBASE)/$(PLATFORM_ROUTER)/mii_mgr/source
+OBJS += mt7981_mt7531.o
 else ifeq ($(BB_SOC),y)
 OBJS += econet.o
 else

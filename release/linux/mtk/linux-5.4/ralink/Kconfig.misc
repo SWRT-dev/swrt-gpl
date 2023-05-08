@@ -60,6 +60,10 @@ config  MODEL_RMAX6000
         bool "Redmi AX6000"
         default n
 
+config  MODEL_SWRT360T7
+        bool "360T7"
+        default n
+
 config  ASUS_EXT
         bool "ASUS_EXT"
         default n

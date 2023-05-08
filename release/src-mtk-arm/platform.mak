@@ -292,6 +292,22 @@ define platformKernelConfig
 		sed -i "/CONFIG_FIBOCOM_FG621/d" $(1); \
 		echo "CONFIG_FIBOCOM_FG621=y" >>$(1); \
 	fi; \
+	if [ "$(MT7981)" = "y" ]; then \
+		sed -i "/CONFIG_FIRST_IF_MT7986/d" $(1); \
+		echo "# CONFIG_FIRST_IF_MT7986 is not set" >>$(1); \
+		sed -i "/CONFIG_FIRST_IF_MT7981/d" $(1); \
+		echo "CONFIG_FIRST_IF_MT7981=y" >>$(1); \
+		sed -i "/CONFIG_RT_FIRST_CARD/d" $(1); \
+		echo "CONFIG_RT_FIRST_CARD=7981" >>$(1); \
+		sed -i "/CONFIG_CHIP_MT7986/d" $(1); \
+		echo "CONFIG_CHIP_MT7986=y" >>$(1); \
+		sed -i "/CONFIG_WARP_CHIPSET/d" $(1); \
+		echo "CONFIG_WARP_CHIPSET=\"mt7981\"" >>$(1); \
+		sed -i "/CONFIG_COMMON_CLK_MT7986/d" $(1); \
+		echo "CONFIG_COMMON_CLK_MT7981=y" >>$(1); \
+		sed -i "/CONFIG_PINCTRL_MT7986/d" $(1); \
+		echo "CONFIG_PINCTRL_MT7981=y" >>$(1); \
+	fi; \
 	if [ "$(RMAX6000)" = "y" ]; then \
 		sed -i "/CONFIG_MODEL_RMAX6000/d" $(1); \
 		echo "CONFIG_MODEL_RMAX6000=y" >>$(1); \
@@ -314,6 +330,10 @@ define platformKernelConfig
 	if [ "$(BUILD_NAME)" = "RM-AX6000" ]; then \
 		sed -i "/CONFIG_LEDS_CLASS_MULTICOLOR\>/d" $(1); \
 		echo "CONFIG_LEDS_CLASS_MULTICOLOR=y" >>$(1); \
+	fi; \
+	if [ "$(BUILD_NAME)" = "SWRT360-T7" ]; then \
+		sed -i "/CONFIG_MODEL_SWRT360T7/d" $(1); \
+		echo "CONFIG_MODEL_SWRT360T7=y" >>$(1); \
 	fi; \
 	if [ "$(WIREGUARD)" = "y" ]; then \
 		echo "CONFIG_CRYPTO_SHA256_ARM64=y" >>$(1); \

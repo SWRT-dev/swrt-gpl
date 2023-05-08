@@ -21,8 +21,12 @@ obj-$(CONFIG_MODEL_JCGQ10PRO) += mt7915/7.4.0.0/mt_wifi_ap/
 obj-$(CONFIG_MODEL_H3CTX1801) += mt7915/7.4.0.0/mt_wifi_ap/
 obj-$(CONFIG_MODEL_RMAX6000) += mt7986/mt_wifi_ap/
 obj-$(CONFIG_MODEL_RMAX6000) += mt7986/warp_driver/warp/
+obj-$(CONFIG_MODEL_SWRT360T7) += mt7986/mt_wifi_ap/
+obj-$(CONFIG_MODEL_SWRT360T7) += mt7986/warp_driver/warp/
 ifeq ($(wildcard drivers/net/wireless/mediatek/conninfra/Makefile),)
 obj-$(CONFIG_MODEL_RMAX6000) += mt7986_prebuild/
+obj-$(CONFIG_MODEL_SWRT360T7) += mt7981_prebuild/
 else
 obj-$(CONFIG_MODEL_RMAX6000) += conninfra/
+obj-$(CONFIG_MODEL_SWRT360T7) += conninfra/
 endif
