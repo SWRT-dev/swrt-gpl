@@ -1,6 +1,3 @@
-config CHIP_MT7986
-	bool
-	default y
 
 config MT_WIFI
 	tristate "MT WIFI Driver"

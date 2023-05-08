@@ -300,7 +300,7 @@ define platformKernelConfig
 		sed -i "/CONFIG_RT_FIRST_CARD/d" $(1); \
 		echo "CONFIG_RT_FIRST_CARD=7981" >>$(1); \
 		sed -i "/CONFIG_CHIP_MT7986/d" $(1); \
-		echo "CONFIG_CHIP_MT7986=y" >>$(1); \
+		echo "CONFIG_CHIP_MT7981=y" >>$(1); \
 		sed -i "/CONFIG_WARP_CHIPSET/d" $(1); \
 		echo "CONFIG_WARP_CHIPSET=\"mt7981\"" >>$(1); \
 		sed -i "/CONFIG_COMMON_CLK_MT7986/d" $(1); \
