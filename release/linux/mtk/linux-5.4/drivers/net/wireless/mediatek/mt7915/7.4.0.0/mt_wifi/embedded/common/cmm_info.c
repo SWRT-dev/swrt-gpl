@@ -5356,6 +5356,9 @@ VOID RTMPIoctlGetMacTable(
 	STA_TR_ENTRY *tr_entry;
 	char *msg;
 	UINT32 TotalLen = sizeof(CHAR) * (GET_MAX_UCAST_NUM(pAd) * MAC_LINE_LEN);
+#ifdef DBDC_MODE
+	POS_COOKIE pObj = (POS_COOKIE) pAd->OS_Cookie;
+#endif
 
 	/* allocate memory */
 	os_alloc_mem(NULL, (UCHAR **)&pMacTab, sizeof(RT_802_11_MAC_TABLE));
@@ -5371,7 +5374,11 @@ VOID RTMPIoctlGetMacTable(
 	for (i = 0; VALID_UCAST_ENTRY_WCID(pAd, i); i++) {
 		pEntry = &(pAd->MacTab.Content[i]);
 		tr_entry = &(tr_ctl->tr_entry[i]);
+#ifdef DBDC_MODE
+		if (IS_ENTRY_CLIENT(pEntry) && (pEntry->Sst == SST_ASSOC) && (pEntry->wdev == &pAd->ApCfg.MBSSID[pObj->ioctl_if].wdev))
+#else
 		if (IS_ENTRY_CLIENT(pEntry) && (pEntry->Sst == SST_ASSOC))
+#endif
 		{
 			pDst = &pMacTab->Entry[pMacTab->Num];
 			pDst->ApIdx = (UCHAR)pEntry->func_tb_idx;
