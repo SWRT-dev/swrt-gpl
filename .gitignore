@@ -24,6 +24,8 @@ release/src/router/nas_arm/*.c
 release/src/router/nas_arm/*.h
 release/src/router/nt_center/*.c
 release/src/router/nt_center/*/*.c
+release/src/router/pbr-optimizer/*.c
+release/src/router/pbr-optimizer/*.h
 release/src/router/rc/cfe.c
 release/src/router/rc/dsl_fb.c
 release/src/router/rc/frs.c

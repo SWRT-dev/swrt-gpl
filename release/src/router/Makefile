@@ -942,6 +942,9 @@ endif
 ifeq ($(RTCONFIG_NLBWMON),y)
 obj-y += libnl-tiny-0.1 libubox zlib nlbwmon
 endif
+ifeq ($(or $(RTCONFIG_RALINK),$(RTCONFIG_QCA)),y)
+obj-y += pbr-optimizer
+endif
 obj-y += readline-6.2
 obj-y += libpasswd
 obj-y += httpd json-c libwebapi

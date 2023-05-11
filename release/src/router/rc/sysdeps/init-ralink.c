@@ -2285,20 +2285,13 @@ void reset_ra_sku(const char *location, const char *country, const char *reg_spe
 
 void setup_smp(int which)
 {
-#if defined(RTCONFIG_MT798X)
-	eval("/sbin/smp.sh", NULL);
-#else
+#if !defined(RTCONFIG_NO_USBPORT)
 	if(which == 1)
-		eval("/sbin/smp.sh", "usb0", NULL);
+		doSystem("pbr-optimizer -m 1 &");//nas
 	else
-		eval("/sbin/smp.sh", "wifi", NULL);
 #endif
-	//nas or auto
-	//doSystem("pbr-optimizer -m 1 -o &");
-	//nat
-	//doSystem("pbr-optimizer -m 2 -o &");
-	//wifi
-	//doSystem("pbr-optimizer -m 3 -o &");
+		//doSystem("pbr-optimizer -m 2 &");//lan
+		doSystem("pbr-optimizer -m 3 &");//wifi
 }
 
 
