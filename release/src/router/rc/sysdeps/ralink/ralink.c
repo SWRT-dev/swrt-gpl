@@ -546,12 +546,18 @@ const char *getCountryCode()
 {
 	char *tcode = nvram_safe_get("territory_code");
 
-	if(nvram_contains_word("rc_support", "loclist") && nvram_match("location_code", "XX"))
+	if(nvram_match("location_code", "XX") || nvram_match("location_code", "AU"))
 		return "AU";
-	else if(!strncmp(tcode, "US", 2))
+	else if(nvram_match("location_code", "US"))
 		return "US";
-	else if(!strncmp(tcode, "CN", 2))
+	else if(nvram_match("location_code", "CN"))
 		return "CN";
+	else if(nvram_match("location_code", "EU"))
+		return "FR";
+	else if(nvram_match("location_code", "AA"))
+		return "US";
+	else if(nvram_match("location_code", "KR"))
+		return "KR";
 	else if(!strncmp(tcode, "TW", 2))
 		return "US";
 	else if(!strncmp(tcode, "JP", 2))
