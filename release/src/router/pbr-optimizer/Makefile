@@ -15,7 +15,7 @@ else ifeq ($(RTCONFIG_SOC_IPQ95XX),y)
 	TARGET_CFLAGS += -DCONFIG_IPQ95XX_SUPPORT
 else ifeq ($(RTCONFIG_RALINK_MT7621),y)
 	TARGET_CFLAGS += -DCONFIG_MT7621_SUPPORT
-else ifeq ($(RTCONFIG_RALINK_MT798X),y)
+else ifeq ($(RTCONFIG_MT798X),y)
 	TARGET_CFLAGS += -DCONFIG_MT798X_SUPPORT
 else ifeq ($(RTCONFIG_AMD64),y)
 	TARGET_CFLAGS += -DCONFIG_X86_SUPPORT
@@ -44,7 +44,7 @@ else ifeq ($(RTCONFIG_SOC_IPQ95XX),y)
 	cp prebuilt/pbr-optimizer-ipq95xx pbr-optimizer
 else ifeq ($(RTCONFIG_RALINK_MT7621),y)
 	cp prebuilt/pbr-optimizer-mt7621 pbr-optimizer
-else ifeq ($(RTCONFIG_RALINK_MT798X),y)
+else ifeq ($(RTCONFIG_MT798X),y)
 	cp prebuilt/pbr-optimizer-mt798x pbr-optimizer
 else ifeq ($(RTCONFIG_AMD64),y)
 	cp prebuilt/pbr-optimizer-x86 pbr-optimizer
