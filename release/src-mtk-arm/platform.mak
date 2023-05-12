@@ -130,6 +130,17 @@ define platformRouterOptions
 		echo "RTCONFIG_QAM256_2G=y" >>$(1); \
 		sed -i "/RTCONFIG_QAM1024_5G\>/d" $(1); \
 		echo "RTCONFIG_QAM1024_5G=y" >>$(1); \
+		if [ "$(MT7986_AX4200)" = "y" ]; then \
+			sed -i "/CONFIG_MTK_WIFI_SKU_TYPE=/d" $(1); \
+			echo "CONFIG_MTK_WIFI_SKU_TYPE=\"AX4200\"" >> $(1); \
+		fi; \
+		if [ "$(MTK_ADIE)" = "mt7976" ]; then \
+			sed -i "/CONFIG_MTK_WIFI_ADIE_TYPE=/d" $(1); \
+			echo "CONFIG_MTK_WIFI_ADIE_TYPE=\"mt7976\"" >> $(1); \
+		elif [ "$(MTK_ADIE)" = "mt7975" ]; then \
+			sed -i "/CONFIG_MTK_WIFI_ADIE_TYPE=/d" $(1); \
+			echo "CONFIG_MTK_WIFI_ADIE_TYPE=\"mt7975\"" >> $(1); \
+		fi; \
 	else \
 		sed -i "/RTCONFIG_RALINK_MT798X/d" $(1); \
 		echo "# RTCONFIG_RALINK_MT798X is not set" >>$(1); \

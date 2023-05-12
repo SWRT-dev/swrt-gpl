@@ -258,7 +258,7 @@ endif
 
 if (FIRST_IF_MT7915)
 menu "MediaTek MT7915 PCIe Wireless driver"
-source "drivers/net/wireless/mediatek/mt7915/7.4.0.0/mt_wifi/embedded/Kconfig"
+source "drivers/net/wireless/mediatek/mt7915/7.4.0.1/mt_wifi/embedded/Kconfig"
 endmenu
 endif
 
@@ -269,8 +269,8 @@ config CONNINFRA_APSOC
 	depends on FIRST_IF_MT7986 || FIRST_IF_MT7981
 	default y
 
-source "drivers/net/wireless/mediatek/mt7986/mt_wifi/embedded/Kconfig"
-source "drivers/net/wireless/mediatek/mt7986/warp_driver/warp/Kconfig"
+source "drivers/net/wireless/mediatek/mt798x/7.6.7.0/mt_wifi/embedded/Kconfig"
+source "drivers/net/wireless/mediatek/mt798x/7.6.7.0/warp_driver/warp/Kconfig"
 endmenu
 endif
 
