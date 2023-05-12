@@ -22,7 +22,7 @@ obj-$(CONFIG_MODEL_JCGQ10PRO) += mt7915/7.4.0.1/mt_wifi_ap/
 obj-$(CONFIG_MODEL_H3CTX1801) += mt7915/7.4.0.1/mt_wifi_ap/
 obj-$(CONFIG_MODEL_XMCR660X) += mt7915/7.4.0.1/mt_wifi_ap/
 obj-$(CONFIG_MODEL_JCGQ20) += mt7915/7.4.0.1/mt_wifi_ap/
-else ifneq ($(wildcard drivers/net/wireless/mediatek/mt7915_prebuild/mt_wifi_7915.o),)
+else ifneq ($(wildcard drivers/net/wireless/mediatek/mt7915_prebuild/mt_wifi_mt7915.o),)
 obj-$(CONFIG_MODEL_RTAX53U) += mt7915_prebuild/
 obj-$(CONFIG_MODEL_PGBM1) += mt7915_prebuild/
 obj-$(CONFIG_MODEL_JCGQ10PRO) += mt7915_prebuild/
@@ -42,9 +42,9 @@ obj-$(CONFIG_MODEL_RMAX6000) += mt798x/7.6.7.0/mt_wifi_ap/
 obj-$(CONFIG_MODEL_RMAX6000) += mt798x/7.6.7.0/warp_driver/warp/
 obj-$(CONFIG_MODEL_SWRT360T7) += mt798x/7.6.7.0/mt_wifi_ap/
 obj-$(CONFIG_MODEL_SWRT360T7) += mt798x/7.6.7.0/warp_driver/warp/
-else ifneq ($(wildcard drivers/net/wireless/mediatek/mt7986_prebuild/mt_wifi_7986.o),)
+else ifneq ($(wildcard drivers/net/wireless/mediatek/mt7986_prebuild/mt_wifi_mt7986.o),)
 obj-$(CONFIG_MODEL_RMAX6000) += mt7986_prebuild/
-else ifneq ($(wildcard drivers/net/wireless/mediatek/mt7981_prebuild/mt_wifi_7981.o),)
+else ifneq ($(wildcard drivers/net/wireless/mediatek/mt7981_prebuild/mt_wifi_mt7981.o),)
 obj-$(CONFIG_MODEL_SWRT360T7) += mt7981_prebuild/
 else
 obj-$(CONFIG_MODEL_RMAX6000) += mt7986/mt_wifi_ap/
