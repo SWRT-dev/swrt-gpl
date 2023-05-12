@@ -154,6 +154,12 @@ config MAP_R3_VER_SUPPORT
 	depends on MAP_R2_VER_SUPPORT
 	default n
 
+config MAP_R3_6E_SUPPORT
+	bool "Multi-AP R3 6E support"
+        depends on MAP_SUPPORT
+        depends on MAP_R2_6E_SUPPORT
+        default n
+
 config QOS_R1_SUPPORT
 	bool "MTK QoS R1 support"
 	default n
@@ -491,11 +497,11 @@ config 6G_AFC_SUPPORT
 #	default n
 
 config WIFI_SKU_TYPE
-       depends on MTK_CHIP_MT7986
+       depends on CHIP_MT7986
        string "Panther SKU Type : AX6000 or AX7800 or AX8400"
        default "AX6000"
 
 config WIFI_ADIE_TYPE
-       depends on MTK_CHIP_MT7986
+       depends on CHIP_MT7986
        string "Panther ADIE Type : mt7975 or mt7976"
        default "mt7976"
