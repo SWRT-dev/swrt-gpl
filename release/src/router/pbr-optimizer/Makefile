@@ -29,6 +29,7 @@ pbr-optimizer: main.c liboptimizer.c
 	$(CC) $(CFLAGS) $(TARGET_CFLAGS) $(LDFLAGS) -o pbr-optimizer liboptimizer.c main.c
 
 else
+all: 
 ifeq ($(RTCONFIG_SOC_IPQ40XX),y)
 	cp prebuilt/pbr-optimizer-ipq40xx pbr-optimizer
 else ifeq ($(RTCONFIG_SOC_IPQ50XX),y)
