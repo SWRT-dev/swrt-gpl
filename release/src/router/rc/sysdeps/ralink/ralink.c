@@ -288,152 +288,57 @@ int getCountryRegion5G(const char *countryCode, int *warning, int IEEE80211H)
 			return 18;
 		if(	(!strcasecmp(countryCode, "JP")) )
 			return 23;
-	}
+	}else
 #endif	/* RTCONFIG_RALINK_DFS */
-
-	if ((!strcasecmp(countryCode, "AE")) ||
-			(!strcasecmp(countryCode, "AL")) ||
-			(!strcasecmp(countryCode, "AR")) ||
-			(!strcasecmp(countryCode, "AU")) ||
-			(!strcasecmp(countryCode, "BH")) ||
-			(!strcasecmp(countryCode, "BY")) ||
-			(!strcasecmp(countryCode, "CA")) ||
-			(!strcasecmp(countryCode, "CL")) ||
-			(!strcasecmp(countryCode, "CO")) ||
-			(!strcasecmp(countryCode, "CR")) ||
-			(!strcasecmp(countryCode, "DO")) ||
-			(!strcasecmp(countryCode, "DZ")) ||
-			(!strcasecmp(countryCode, "EC")) ||
-			(!strcasecmp(countryCode, "GT")) ||
-			(!strcasecmp(countryCode, "HK")) ||
-			(!strcasecmp(countryCode, "HN")) ||
-			(!strcasecmp(countryCode, "IL")) ||
-			(!strcasecmp(countryCode, "IN")) ||
-			(!strcasecmp(countryCode, "JO")) ||
-			(!strcasecmp(countryCode, "KW")) ||
-			(!strcasecmp(countryCode, "KZ")) ||
-			(!strcasecmp(countryCode, "LB")) ||
-			(!strcasecmp(countryCode, "MA")) ||
-			(!strcasecmp(countryCode, "MK")) ||
-			(!strcasecmp(countryCode, "MO")) ||
-			(!strcasecmp(countryCode, "MX")) ||
-			(!strcasecmp(countryCode, "MY")) ||
-			(!strcasecmp(countryCode, "NO")) ||
-			(!strcasecmp(countryCode, "NZ")) ||
-			(!strcasecmp(countryCode, "OM")) ||
-			(!strcasecmp(countryCode, "PA")) ||
-			(!strcasecmp(countryCode, "PK")) ||
-			(!strcasecmp(countryCode, "PR")) ||
-			(!strcasecmp(countryCode, "QA")) ||
-			(!strcasecmp(countryCode, "RO")) ||
-			(!strcasecmp(countryCode, "RU")) ||
-			(!strcasecmp(countryCode, "SA")) ||
-			(!strcasecmp(countryCode, "SG")) ||
-			(!strcasecmp(countryCode, "SV")) ||
-			(!strcasecmp(countryCode, "SY")) ||
-			(!strcasecmp(countryCode, "TH")) ||
-			(!strcasecmp(countryCode, "UA")) ||
-			(!strcasecmp(countryCode, "US")) ||
-			(!strcasecmp(countryCode, "UY")) ||
-			(!strcasecmp(countryCode, "VN")) ||
-			(!strcasecmp(countryCode, "YE")) ||
-			(!strcasecmp(countryCode, "ZW")) ||
-			(!strcasecmp(countryCode, "AA")) ||
-			(!strcasecmp(countryCode, "CN")) ||//unlock bw160
-			0
-	)
-	{
+	if(nvram_match("location_code", "XX") || nvram_match("location_code", "AU") || nvram_match("location_code", "US"))
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+		return 26;
+#else
+		return 9;
+#endif
+	else if(!strcasecmp(countryCode, "UA"))
+		return 9;
+	else if (!strcasecmp(countryCode, "AE") || !strcasecmp(countryCode, "AL") || !strcasecmp(countryCode, "AR") || !strcasecmp(countryCode, "AU") ||
+		!strcasecmp(countryCode, "BH") || !strcasecmp(countryCode, "BY") || !strcasecmp(countryCode, "CA") || !strcasecmp(countryCode, "CL") ||
+		!strcasecmp(countryCode, "CO") || !strcasecmp(countryCode, "CR") || !strcasecmp(countryCode, "DO") || !strcasecmp(countryCode, "DZ") ||
+		!strcasecmp(countryCode, "EC") || !strcasecmp(countryCode, "GT") || !strcasecmp(countryCode, "HK") || !strcasecmp(countryCode, "HN") ||
+		!strcasecmp(countryCode, "IL") || !strcasecmp(countryCode, "IN") || !strcasecmp(countryCode, "JO") || !strcasecmp(countryCode, "KW") ||
+		!strcasecmp(countryCode, "KZ") || !strcasecmp(countryCode, "LB") || !strcasecmp(countryCode, "MA") || !strcasecmp(countryCode, "MK") ||
+		!strcasecmp(countryCode, "MO") || !strcasecmp(countryCode, "MX") || !strcasecmp(countryCode, "MY") || !strcasecmp(countryCode, "NO") ||
+		!strcasecmp(countryCode, "NZ") || !strcasecmp(countryCode, "OM") || !strcasecmp(countryCode, "PA") || !strcasecmp(countryCode, "PK") ||
+		!strcasecmp(countryCode, "PR") || !strcasecmp(countryCode, "QA") || !strcasecmp(countryCode, "RO") || !strcasecmp(countryCode, "RU") ||
+		!strcasecmp(countryCode, "SA") || !strcasecmp(countryCode, "SG") || !strcasecmp(countryCode, "SV") || !strcasecmp(countryCode, "SY") ||
+		!strcasecmp(countryCode, "TH") || !strcasecmp(countryCode, "UA") || !strcasecmp(countryCode, "US") || !strcasecmp(countryCode, "UY") ||
+		!strcasecmp(countryCode, "VN") || !strcasecmp(countryCode, "YE") || !strcasecmp(countryCode, "ZW") || !strcasecmp(countryCode, "AA") ||
+		!strcasecmp(countryCode, "CN")){
 		if (nvram_contains_word("rc_support", "loclist") && !strcasecmp(countryCode, "AU"))
 			return 9;
 		return 0;
-	}
-	else if (
-			(!strcasecmp(countryCode, "AM")) ||
-			(!strcasecmp(countryCode, "AT")) ||
-			(!strcasecmp(countryCode, "AZ")) ||
-			(!strcasecmp(countryCode, "BE")) ||
-			(!strcasecmp(countryCode, "BG")) ||
-			(!strcasecmp(countryCode, "BR")) ||
-			(!strcasecmp(countryCode, "CH")) ||
-			(!strcasecmp(countryCode, "CY")) ||
-			(!strcasecmp(countryCode, "CZ")) ||
-			(!strcasecmp(countryCode, "DE")) ||
-			(!strcasecmp(countryCode, "DK")) ||
-			(!strcasecmp(countryCode, "EE")) ||
-			(!strcasecmp(countryCode, "EG")) ||
-			(!strcasecmp(countryCode, "ES")) ||
-			(!strcasecmp(countryCode, "FI")) ||
-			(!strcasecmp(countryCode, "FR")) ||
-			(!strcasecmp(countryCode, "GB")) ||
-			(!strcasecmp(countryCode, "GE")) ||
-			(!strcasecmp(countryCode, "GR")) ||
-			(!strcasecmp(countryCode, "HR")) ||
-			(!strcasecmp(countryCode, "HU")) ||
-			(!strcasecmp(countryCode, "IE")) ||
-			(!strcasecmp(countryCode, "IS")) ||
-			(!strcasecmp(countryCode, "IT")) ||
-			(!strcasecmp(countryCode, "JP")) ||
-			(!strcasecmp(countryCode, "KP")) ||
-			(!strcasecmp(countryCode, "KR")) ||
-			(!strcasecmp(countryCode, "LI")) ||
-			(!strcasecmp(countryCode, "LT")) ||
-			(!strcasecmp(countryCode, "LU")) ||
-			(!strcasecmp(countryCode, "LV")) ||
-			(!strcasecmp(countryCode, "MC")) ||
-			(!strcasecmp(countryCode, "NL")) ||
-			(!strcasecmp(countryCode, "NO")) ||
-			(!strcasecmp(countryCode, "PL")) ||
-			(!strcasecmp(countryCode, "PT")) ||
-			(!strcasecmp(countryCode, "RO")) ||
-			(!strcasecmp(countryCode, "SE")) ||
-			(!strcasecmp(countryCode, "SI")) ||
-			(!strcasecmp(countryCode, "SK")) ||
-			(!strcasecmp(countryCode, "TN")) ||
-			(!strcasecmp(countryCode, "TR")) ||
-			(!strcasecmp(countryCode, "TT")) ||
-			(!strcasecmp(countryCode, "UZ")) ||
-			(!strcasecmp(countryCode, "ZA")) ||
-			0
-	)
-	{
+	}else if (!strcasecmp(countryCode, "AM") ||	!strcasecmp(countryCode, "AT") || !strcasecmp(countryCode, "AZ") || !strcasecmp(countryCode, "BE") ||
+		!strcasecmp(countryCode, "BG") || !strcasecmp(countryCode, "BR") || !strcasecmp(countryCode, "CH") || !strcasecmp(countryCode, "CY") ||
+		!strcasecmp(countryCode, "CZ") || !strcasecmp(countryCode, "DE") || !strcasecmp(countryCode, "DK") || !strcasecmp(countryCode, "EE") ||
+		!strcasecmp(countryCode, "EG") || !strcasecmp(countryCode, "ES") || !strcasecmp(countryCode, "FI") || !strcasecmp(countryCode, "FR") ||
+		!strcasecmp(countryCode, "GB") || !strcasecmp(countryCode, "GE") || !strcasecmp(countryCode, "GR") || !strcasecmp(countryCode, "HR") ||
+		!strcasecmp(countryCode, "HU") || !strcasecmp(countryCode, "IE") || !strcasecmp(countryCode, "IS") || !strcasecmp(countryCode, "IT") ||
+		!strcasecmp(countryCode, "JP") || !strcasecmp(countryCode, "KP") || !strcasecmp(countryCode, "KR") || !strcasecmp(countryCode, "LI") ||
+		!strcasecmp(countryCode, "LT") || !strcasecmp(countryCode, "LU") || !strcasecmp(countryCode, "LV") || !strcasecmp(countryCode, "MC") ||
+		!strcasecmp(countryCode, "NL") || !strcasecmp(countryCode, "NO") || !strcasecmp(countryCode, "PL") || !strcasecmp(countryCode, "PT") ||
+		!strcasecmp(countryCode, "RO") || !strcasecmp(countryCode, "SE") || !strcasecmp(countryCode, "SI") || !strcasecmp(countryCode, "SK") ||
+		!strcasecmp(countryCode, "TN") || !strcasecmp(countryCode, "TR") || !strcasecmp(countryCode, "TT") || !strcasecmp(countryCode, "UZ") ||
+		!strcasecmp(countryCode, "ZA"))
 		return 1;
-	}
-	else if ((!strcasecmp(countryCode, "IN")) || (!strcasecmp(countryCode, "MX")))
-	{
+	else if (!strcasecmp(countryCode, "IN") || !strcasecmp(countryCode, "MX"))
 		return 2;
-	}
-	else if ((!strcasecmp(countryCode, "TW")))
-	{
+	else if (!strcasecmp(countryCode, "TW"))
 		return 3;
-	}
-	else if (
-			(!strcasecmp(countryCode, "BR")) ||
-			(!strcasecmp(countryCode, "BZ")) ||
-			(!strcasecmp(countryCode, "BO")) ||
-			(!strcasecmp(countryCode, "BN")) ||
-//			(!strcasecmp(countryCode, "CN")) ||
-			(!strcasecmp(countryCode, "ID")) ||
-			(!strcasecmp(countryCode, "IR")) ||
-			(!strcasecmp(countryCode, "MO")) ||
-			(!strcasecmp(countryCode, "PE")) ||
-			(!strcasecmp(countryCode, "PH")) ||
-			(!strcasecmp(countryCode, "VE"))
-	)
-	{
+	else if (!strcasecmp(countryCode, "BR") || !strcasecmp(countryCode, "BZ") || !strcasecmp(countryCode, "BO") || !strcasecmp(countryCode, "BN") ||
+		!strcasecmp(countryCode, "ID") || !strcasecmp(countryCode, "IR") || !strcasecmp(countryCode, "MO") || !strcasecmp(countryCode, "PE") ||
+		!strcasecmp(countryCode, "PH") || !strcasecmp(countryCode, "VE"))
 		return 4;
-	}
 	else if (!strcasecmp(countryCode, "RU"))
-	{
 		return 6;
-	}
 	else if (!strcasecmp(countryCode, "DB"))
-	{
 		return 7;
-	}
-	else if ((!strcasecmp(countryCode, "UA")))
-	{
-		return 9;
-	}
 	else
 	{
 		if (warning)
@@ -442,6 +347,21 @@ int getCountryRegion5G(const char *countryCode, int *warning, int IEEE80211H)
 	}
 }
 
+#if defined(RTCONFIG_WIFI6E)
+int getCountryRegion6G(const char *countryCode, int *warning, int IEEE80211H)
+{
+	if (!strcasecmp(countryCode, "US"))
+		return 0;
+	else if (!strcasecmp(countryCode, "CN"))
+		return 1;
+	else
+	{
+		if (warning)
+			*warning = 2;
+		return 1;
+	}
+}
+#endif
 int check_macmode(const char *str)
 {
 	if(str == NULL || !strcmp(str, "") || !strcmp(str, "disabled"))
