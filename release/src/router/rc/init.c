@@ -22258,7 +22258,7 @@ int reboothalt_main(int argc, char *argv[])
 		nvram_set("ahs_rbt_act", "");
 		nvram_set("sys_reboot_reason", "rbt_AHS");
 	}
-	logmessage("%s: %s", reboot ? "Rebooting..." : "Shutting down...");
+	logmessage("ATE", "action: %s", reboot ? "Rebooting..." : "Shutting down...");
 	_dprintf(reboot ? "Rebooting..." : "Shutting down...");
 	g_reboot = 1;
 	f_write_string("/tmp/reboot", "1", 0, 0);
