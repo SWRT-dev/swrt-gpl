@@ -3324,9 +3324,9 @@ next_mrate:
 	}
 #endif
 #endif
-//	if(*tcode)
-//		fprintf(fp, "SKUenable=1\n");
-//	else
+	if(*tcode)
+		fprintf(fp, "SKUenable=1\n");
+	else
 		fprintf(fp, "SKUenable=0\n");
 	fprintf(fp, "WirelessEvent=1\n");
 
