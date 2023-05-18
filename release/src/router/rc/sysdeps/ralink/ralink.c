@@ -3324,9 +3324,11 @@ next_mrate:
 	}
 #endif
 #endif
+#if !defined(RMAX6000)
 	if(*tcode)
 		fprintf(fp, "SKUenable=1\n");
 	else
+#endif
 		fprintf(fp, "SKUenable=0\n");
 	fprintf(fp, "WirelessEvent=1\n");
 

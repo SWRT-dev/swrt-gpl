@@ -121,6 +121,7 @@ extern void fan_watchdog(void);
 #endif
 #if defined(RTCONFIG_BCMARM)
 extern void get_nvramstr(int unit, char *buf, size_t len, int which);
+extern void auth_unlock_power(int *max2g, int *max5g, int *max5g2, int *max6g) __attribute__((weak));
 #endif
 #endif
 

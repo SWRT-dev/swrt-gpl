@@ -176,6 +176,8 @@ define platformRouterOptions
 	if [ "$(BUILD_NAME)" = "RM-AX6000" ]; then \
 		sed -i "/RTCONFIG_FIXED_BRIGHTNESS_RGBLED\>/d" $(1); \
 		echo "RTCONFIG_FIXED_BRIGHTNESS_RGBLED=y" >>$(1); \
+		sed -i "/CONFIG_SINGLE_SKU\>/d" $(1); \
+		echo "# CONFIG_SINGLE_SKU is not set" >>$(1); \
 	fi; \
 	if [ "$(BUILD_NAME)" = "TUF-AX6000" ]; then \
 		sed -i "/RTCONFIG_PWMX2_GPIOX1_RGBLED\>/d" $(1); \
