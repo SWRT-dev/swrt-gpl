@@ -445,7 +445,7 @@ OBJS += common_utils.o
 endif
 
 ifeq ($(or $(RTCONFIG_JFFS_NVRAM),$(RTCONFIG_VAR_NVRAM)),y)
-OBJS += nvpriv.o
+OBJS += $(if $(wildcard nvpriv.c),nvpriv.o,prebuild/nvpriv.o)
 endif
 
 ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6710),$(BCM_502L07P2)),y)
