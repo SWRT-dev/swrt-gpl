@@ -4107,6 +4107,10 @@ define RouterOptions
 		sed -i "/RTCONFIG_CONNTRACK/d" $(1); \
 		echo "RTCONFIG_CONNTRACK=y" >>$(1); \
 	fi;
+	if [ "$(SWRTMESH)" = "y" ]; then \
+		sed -i "/RTCONFIG_SWRTMESH/d" $(1); \
+		echo "RTCONFIG_SWRTMESH=y" >>$(1); \
+	fi;
 	$(call platformRouterOptions, $(1))
 endef
 

@@ -18,6 +18,7 @@ enum {
 	EASYMESH_VER_R2,
 	EASYMESH_VER_R3,
 	EASYMESH_VER_R4,
+	EASYMESH_VER_R5
 };
 extern int get_easymesh_max_ver(void);
 extern char *get_easymesh_ver_str(int ver);

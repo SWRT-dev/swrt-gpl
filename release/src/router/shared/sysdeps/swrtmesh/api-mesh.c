@@ -27,14 +27,17 @@
 #include <swrtmesh.h>
 #include <shared.h>
 
+#if defined(RTCONFIG_RALINK)
 #undef IS_SPACE
 #define IS_SPACE(c) ((c) == ' ' || (c) == '\t' || (c) == '\r' || (c) == '\n')
-
 char bh2gifname[] = "ra11";
 char bh5gifname[] = "rai11";
 char bh5g2ifname[] = "rai11";
-#if defined(RTCONFIG_RALINK)
 char wificonf_buf[256];
+#elif defined(RTCONFIG_QCA)
+#error fixme
+#elif defined(RTCONFIG_LANTIQ)
+#error fixme
 #endif
 
 int get_easymesh_max_ver(void)
@@ -96,8 +99,10 @@ void check_mssid_prelink_reset(uint32_t sf)
 
 void swrtmesh_autoconf(void)
 {
-	int sw_mode = nvram_get_int("sw_mode");
+
+	int sw_mode = sw_mode();
 	if(sw_mode == SW_MODE_AP || sw_mode == SW_MODE_ROUTER){
+#if defined(RTCONFIG_EASYMESH)
 		nvram_set("easymesh_enable", "1");
 		nvram_set("easymesh_mode", "1");
 		if(nvram_match("re_mode", "1")){
@@ -107,14 +112,33 @@ void swrtmesh_autoconf(void)
 		}else{
 			nvram_set("easymesh_role", "1");//controller
 		}
-	}else{//same as aimesh, controller/agent only works in ap/router mode
+#elif defined(RTCONFIG_SWRTMESH)
+		nvram_set("swrtmesh_enable", "1");
+		nvram_set("swrtmesh_mode", "1");
+		if(nvram_match("re_mode", "1")){
+			nvram_set("swrtmesh_role", "2");//agent
+		}else if(nvram_match("x_Setting", "0")/* || nvram_match("w_Setting", "0")*/){
+			nvram_set("swrtmesh_role", "0");//auto
+		}else{
+			nvram_set("swrtmesh_role", "1");//controller
+		}
+#endif
+	}else{//like aimesh, controller/agent only works in ap/router mode
+#if defined(RTCONFIG_EASYMESH)
 		nvram_set("easymesh_enable", "0");
 		nvram_set("easymesh_role", "0");
 		nvram_set("easymesh_mode", "0");
 		nvram_set("re_mode", "0");
+#elif defined(RTCONFIG_SWRTMESH)
+		nvram_set("swrtmesh_enable", "0");
+		nvram_set("swrtmesh_role", "0");
+		nvram_set("swrtmesh_mode", "0");
+		nvram_set("re_mode", "0");
+#endif
 	}
 }
 
+#if defined(RTCONFIG_RALINK) && defined(RTCONFIG_EASYMESH)
 char *mesh_format_ssid(char *ssid, size_t len)
 {
 	int i;
@@ -137,7 +161,6 @@ char *mesh_format_ssid(char *ssid, size_t len)
 	return ssid;
 }
 
-#if defined(RTCONFIG_RALINK)
 /* return it's line number, if not found, return -1 */
 static int __locate_key(FILE *fp, char *key)
 {

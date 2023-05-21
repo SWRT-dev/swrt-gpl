@@ -676,38 +676,73 @@ SEP=printf "\033[41;1m   $@   \033[0m\n"
 #
 # standard packages
 #
-ifeq ($(HND_ROUTER),y)
-export BUSYBOX ?= busybox-1.24.1
-export BUSYBOX_DIR := busybox-1.24.1/busybox-1.24.1
-else
 export BUSYBOX ?= busybox
 export BUSYBOX_DIR := $(BUSYBOX)
-endif
-obj-y += $(BUSYBOX)
+# core packages
+OPENSSL := openssl-1.1
+obj-y += busybox
+obj-y += zlib
+obj-y += openssl openssl-1.1
+obj-y += json-c curl sqlite
 obj-y += shared
 obj-y += nvram$(BCMEX)$(EX7)
-
-ifeq ($(RTCONFIG_OPENSSL11),y)
-OPENSSL := openssl-1.1
-else ifeq ($(RTCONFIG_OPENSSL10),y)
-OPENSSL := openssl-1.0
-else
-$(error OpenSSL is not defined)
-endif
-
-obj-$(RTCONFIG_LIBASUSLOG) += libasuslog
+obj-y += httpd libwebapi
+obj-y += rc
+obj-y += rom
+obj-y += others
+obj-y += www
+obj-y += dnsmasq
+obj-y += libdisk
+obj-y += haveged
+obj-y += readline-6.2
+obj-y += libpasswd
+obj-y += ncurses-6.1 htop
+obj-y += wget
+obj-y += snooper
+obj-y += udpxy
+obj-y += conntrack libnfnetlink-1.0.1 libmnl-1.0.4 libnetfilter_conntrack-1.0.7 libnetfilter_cttimeout-1.0.0
+obj-y += ipset-7.6 libev-4.33
+obj-y += mssl
+obj-y += networkmap
 obj-$(RTCONFIG_SW_HW_AUTH) += sw-hw-auth
+ifeq ($(RTCONFIG_SWRT_FULLCONEV2),y)
+IPTABLES := iptables-1.8.7
+obj-y += iptables-1.8.7
+else
+IPTABLES := iptables-1.4.21
+obj-y += iptables-1.4.21
+endif
+IPTC_LIBDIR := $(TOP)/$(IPTABLES)/libiptc/.libs
+IPTC_LIBS := -lip4tc $(if $(RTCONFIG_IPV6),-lip6tc,) -liptc
+ifeq ($(RTCONFIG_LANTIQ),y)
+obj-y += iproute2-3.15.0
+else ifeq ($(or $(RTCONFIG_QCA),$(RTCONFIG_RALINK)),y)
+obj-y += iproute2-5.18.0
+else
+obj-y += iproute2-4.4.0
+endif
+obj-$(RTCONFIG_LIBASC) += libasc
+obj-$(RTCONFIG_ASD) += asd
+obj-$(RTCONFIG_OPENVPN) += libvpn
+obj-$(RTCONFIG_SMARTDNS) += smartdns
+obj-$(RTCONFIG_LETSENCRYPT) += acme.sh
+obj-$(RTCONFIG_LETSENCRYPT) += libletsencrypt
+obj-$(RTCONFIG_LETSENCRYPT) += socat
+obj-$(RTCONFIG_EASYMESH) += easymesh-sdk
+obj-$(RTCONFIG_SWRTMESH) += libubox libubus libnl libuci avahi swrtmesh
+obj-y += taskset
+
+# soc/feature packages
+obj-$(RTCONFIG_INADYN) += libconfuse inadyn
+obj-$(RTCONFIG_LIBASUSLOG) += libasuslog
 ifeq ($(RTCONFIG_TUNNEL),y)
 obj-$(RTCONFIG_NOTIFICATION_CENTER) += wb
 endif
-obj-$(RTCONFIG_NOTIFICATION_CENTER) += json-c
-obj-$(RTCONFIG_NOTIFICATION_CENTER) += sqlite
 obj-$(RTCONFIG_NOTIFICATION_CENTER) += nt_center
 obj-$(RTCONFIG_NOTIFICATION_CENTER) += email-3.1.3
 obj-$(RTCONFIG_NOTIFICATION_CENTER) += wlc_nt
 obj-$(RTCONFIG_NOTIFICATION_CENTER) += libxml2
 obj-$(RTCONFIG_PROTECTION_SERVER) += protect_srv
-
 
 ifneq ($(HND_ROUTER),y)
 obj-$(RTCONFIG_DMALLOC) += dmalloc
@@ -833,7 +868,6 @@ obj-$(RTCONFIG_BT_CONN) += udev-173
 obj-$(RTCONFIG_BT_CONN) += libical-2.0.0
 obj-$(RTCONFIG_BT_CONN) += ncurses-6.1
 obj-$(RTCONFIG_BT_CONN) += readline-6.2
-obj-$(RTCONFIG_BT_CONN) += json-c
 obj-$(RTCONFIG_BT_CONN) += bluez-5.41
 ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6756)),y)
 obj-$(RTCONFIG_BT_CONN) += btconfig
@@ -857,87 +891,25 @@ obj-$(RTCONFIG_DSL_REMOTE) += dsl_drv_tool
 obj-$(RTCONFIG_DSL_HOST) += dsl_diag
 obj-$(RTCONFIG_DSL_HOST) += dsl_autodet
 
-ifeq ($(RTCONFIG_SWRT_FULLCONEV2),y)
-IPTABLES := iptables-1.8.7
-obj-y += iptables-1.8.7
-else
-IPTABLES := iptables-1.4.21
-obj-y += iptables-1.4.21
-endif
-IPTC_LIBDIR := $(TOP)/$(IPTABLES)/libiptc/.libs
-IPTC_LIBS := -lip4tc $(if $(RTCONFIG_IPV6),-lip6tc,) -liptc
-ifeq ($(RTCONFIG_LANTIQ),y)
-obj-y += iproute2-3.15.0
-else ifeq ($(or $(RTCONFIG_QCA),$(RTCONFIG_RALINK)),y)
-obj-y += iproute2-5.18.0
-else
-obj-y += iproute2-4.4.0
-endif
-
-obj-$(RTCONFIG_CONNTRACK) += conntrack
-obj-$(RTCONFIG_CONNTRACK) += libnfnetlink-1.0.1
-obj-$(RTCONFIG_CONNTRACK) += libmnl-1.0.4
-obj-$(RTCONFIG_CONNTRACK) += libnetfilter_conntrack-1.0.7
-obj-$(RTCONFIG_CONNTRACK) += libnetfilter_cttimeout-1.0.0
-
-obj-$(RTCONFIG_TCPLUGIN) += ipset-7.6
-
-obj-$(RTCONFIG_PERMISSION_MANAGEMENT) += sqlite
 obj-$(RTCONFIG_PERMISSION_MANAGEMENT) += sqlCipher
 obj-$(RTCONFIG_PERMISSION_MANAGEMENT) += PMS_DBapis
 
-obj-$(RTCONFIG_SPEEDTEST) += curl
-
-obj-$(RTCONFIG_BWDPI) += sqlite
 obj-$(RTCONFIG_BWDPI) += bwdpi_source
-obj-$(RTCONFIG_TRAFFIC_LIMITER) += sqlite
 obj-$(RTCONFIG_TRAFFIC_LIMITER) += traffic_limiter
 
 obj-$(RTCONFIG_OOKLA) += ookla_speedtest
 obj-$(RTCONFIG_OOKLA_LITE) += ookla_speedtest
-ifeq ($(or $(RTCONFIG_RALINK),$(RTCONFIG_QCA),$(RTCONFIG_LANTIQ)),y)
-ifeq ($(RTCONFIG_EASYMESH),y)
-obj-y += easymesh-sdk
-endif
-ifeq ($(RTCONFIG_SWRTMESH),y)
-obj-y += libubox libubus libnl libuci openssl avahi swrtmesh
-endif
-endif
-
-obj-$(RTCONFIG_LETSENCRYPT) += openssl
-obj-$(RTCONFIG_LETSENCRYPT) += acme.sh
-obj-$(RTCONFIG_LETSENCRYPT) += libletsencrypt
-obj-$(RTCONFIG_LETSENCRYPT) += socat
 
 obj-$(RTCONFIG_SYSSTATE) += sysstate
 #obj-y += sysstate
 
-obj-$(RTCONFIG_LIBASC) += libasc
-
-obj-$(RTCONFIG_AHS) += openssl
-obj-$(RTCONFIG_AHS) += curl
-obj-$(RTCONFIG_AHS) += json-c
-obj-$(RTCONFIG_AHS) += ahs
-
-obj-$(RTCONFIG_ASD) += asd
-
-obj-$(RTCONFIG_OPENVPN) += openssl
-obj-$(RTCONFIG_OPENVPN) += libvpn
-obj-y += rc
-obj-y += rom
-obj-y += others
-obj-y += ncurses-6.1 htop
-ifeq ($(RTCONFIG_SMARTDNS),y)
-obj-y += smartdns
-endif
 ifeq ($(SWRT_NAME),K3)
 obj-y += k3screenctrl
 obj-y += sw-auth-lite
 endif
 ifeq ($(RTCONFIG_SOFTCENTER),y)
-obj-y += skipdbv2 libev-4.33 softcenter libiconv-1.14 lua
+obj-y += skipdbv2 softcenter libiconv-1.14 lua
 #obj-y += httpdb mbedtls
-obj-y += ipset-7.6 libmnl-1.0.4 libnfnetlink-1.0.1
 endif
 ifeq ($(RTCONFIG_NLBWMON),y)
 obj-y += libnl-tiny-0.1 libubox zlib nlbwmon
@@ -945,15 +917,12 @@ endif
 ifeq ($(or $(RTCONFIG_RALINK),$(RTCONFIG_QCA)),y)
 obj-y += pbr-optimizer
 endif
-obj-y += readline-6.2
-obj-y += libpasswd
-obj-y += httpd json-c libwebapi
-obj-$(RTCONFIG_VISUALIZATION) += sqlite3 json-c libxml2 visdcoll visdcon
-obj-y += www
+
+obj-$(RTCONFIG_VISUALIZATION) += libxml2 visdcoll visdcon
+
 ifneq ($(HND_ROUTER),y)
 obj-y += bridge
 endif
-obj-y += dnsmasq
 obj-$(RTCONFIG_DNSPRIVACY) += libyaml
 obj-$(RTCONFIG_DNSPRIVACY) += getdns
 ifneq ($(HND_ROUTER),y)
@@ -992,7 +961,6 @@ obj-$(RTCONFIG_BT_CONN) += btconfig
 obj-y += libhelper-1.4.0.2
 obj-y += fapi_wlan_common-05.04.00.131
 obj-y += libnl-bf
-obj-y += openssl
 obj-y += hostapd-2.6
 obj-y += libfapi-0.1
 obj-y += taskset
@@ -1065,8 +1033,6 @@ obj-$(RTCONFIG_WBD) += cevent_app
 obj-$(RTCONFIG_WBD) += ethswctl_lib
 obj-$(RTCONFIG_WBD) += json-c ieee1905 wbd
 obj-$(RTCONFIG_WLCLMLOAD) += clmb
-
-obj-$(RTCONFIG_HTTPS) += mssl
 obj-$(RTCONFIG_TFTP) += tftp
 obj-$(RTCONFIG_TFTP_SERVER) += tftp-hpa
 
@@ -1102,9 +1068,7 @@ obj-y += scsi-idle
 endif
 obj-y += libusb10
 obj-y += libusb
-ifneq ($(RTCONFIG_8M_SFP),y)
 obj-y += hub-ctrl
-endif
 #obj-$(RTCONFIG_USB_PRINTER) += libusb-0.1.12
 obj-$(RTCONFIG_USB_PRINTER) += u2ec
 obj-$(RTCONFIG_USB_PRINTER) += LPRng
@@ -1126,13 +1090,13 @@ endif
 ifeq ($(RTCONFIG_USB_MULTIMODEM),y)
 obj-$(RTCONFIG_USB_MODEM) += sdparm-1.02
 obj-$(RTCONFIG_USB_MODEM) += comgt-0.32
-obj-$(RTCONFIG_USB_MODEM) += json-c libubox uqmi
+obj-$(RTCONFIG_USB_MODEM) += libubox uqmi
 obj-$(RTCONFIG_USB_MODEM) += usbmode
 else
 ifneq ($(RTCONFIG_INTERNAL_GOBI),y)
 obj-$(RTCONFIG_USB_MODEM) += sdparm-1.02
 obj-$(RTCONFIG_USB_MODEM) += comgt-0.32
-obj-$(RTCONFIG_USB_MODEM) += json-c libubox uqmi
+obj-$(RTCONFIG_USB_MODEM) += libubox uqmi
 obj-$(RTCONFIG_USB_MODEM) += usbmode
 endif
 endif
@@ -1171,8 +1135,6 @@ obj-$(RTCONFIG_USB_SMS_MODEM) += smspdu
 # temporary
 obj-$(RTCONFIG_E2FSPROGS) += e2fsprogs # including libuuid
 obj-$(RTCONFIG_EXT4FS) += e2fsprogs
-
-obj-y += libdisk
 
 #obj-y += dosfstools
 #obj-$(RTCONFIG_FTP) += $(if $(RTCONFIG_QCA),vsftpd-3.x,vsftpd)
@@ -1258,7 +1220,6 @@ obj-$(RTCONFIG_6RELAYD) += 6relayd
 ifeq ($(FFMPEG_ZLIB_REQD),y)
 obj-$(RTCONFIG_MEDIA_SERVER) += zlib
 endif
-obj-$(RTCONFIG_MEDIA_SERVER) += sqlite
 obj-$(RTCONFIG_MEDIA_SERVER) += ffmpeg
 obj-$(RTCONFIG_MEDIA_SERVER) += libogg
 obj-$(RTCONFIG_MEDIA_SERVER) += flac
@@ -1276,9 +1237,7 @@ endif
 #MEDIA_SERVER_STATIC=y
 
 #add by gauss for cloudsync
-obj-$(RTCONFIG_CLOUDSYNC) += openssl
 obj-$(RTCONFIG_CLOUDSYNC) += libxml2
-obj-$(RTCONFIG_CLOUDSYNC) += curl
 obj-$(RTCONFIG_CLOUDSYNC) += smartsync_api
 obj-$(RTCONFIG_CLOUDSYNC) += asuswebstorage
 obj-$(RTCONFIG_CLOUDSYNC) += inotify
@@ -1296,23 +1255,16 @@ obj-$(RTCONFIG_USBCLIENT) += usbclient
 
 #aaews,asusnatnl related
 obj-$(RTCONFIG_TUNNEL) += libxml2
-obj-$(RTCONFIG_TUNNEL) += curl
 obj-$(RTCONFIG_TUNNEL) += wb
 obj-$(RTCONFIG_TUNNEL) += aaews
 obj-$(RTCONFIG_TUNNEL) += mastiff
 obj-$(RTCONFIG_TUNNEL) += asusnatnl
-
-
 obj-$(RTCONFIG_UPLOADER) += uploader
-
-
 ifeq ($(RTCONFIG_AMAS),y)
 #amas-utils
 obj-y += amas-utils
-
 endif
 #For timemachine
-obj-$(RTCONFIG_TIMEMACHINE) += openssl
 obj-$(RTCONFIG_TIMEMACHINE) += libgpg-error-1.10
 obj-$(RTCONFIG_TIMEMACHINE) += libgcrypt-1.5.1
 obj-$(RTCONFIG_TIMEMACHINE) += db-4.8.30
@@ -1333,7 +1285,6 @@ SNMPD_CFLAGS += -D$(BUILD_NAME)
 ifeq ($(BUILD_NAME), $(filter $(BUILD_NAME), RT-N66U RT-AC66U RT-AC68U))
 SNMPD_CFLAGS += -DDUAL_BAND
 endif
-obj-$(RTCONFIG_SNMPD) += openssl
 obj-$(RTCONFIG_SNMPD) += libnmp
 obj-$(RTCONFIG_SNMPD) += net-snmp-5.7.2
 ifeq ($(RTCONFIG_SNMPD),y)
@@ -1342,10 +1293,10 @@ endif
 
 #for chillispot
 obj-$(RTCONFIG_COOVACHILLI) += coovachilli
-obj-$(RTCONFIG_FREERADIUS) += sqlite pcre-8.31
+obj-$(RTCONFIG_FREERADIUS) += pcre-8.31
 obj-$(RTCONFIG_FREERADIUS) += talloc-2.1.1
 obj-$(RTCONFIG_FREERADIUS) += freeradius-server-3.0.0
-obj-$(RTCONFIG_CAPTIVE_PORTAL) += sqlite libxml2 pcre-8.31 lighttpd-1.4.39 libexif curl
+obj-$(RTCONFIG_CAPTIVE_PORTAL) += libxml2 pcre-8.31 lighttpd-1.4.39 libexif
 obj-$(RTCONFIG_CAPTIVE_PORTAL) += samba-3.5.8
 
 obj-$(RTCONFIG_FBWIFI) += fb_wifi
@@ -1361,10 +1312,7 @@ obj-$(RTCONFIG_PPP_BASE) += pppd rp-pppoe
 obj-$(RTCONFIG_L2TP) += rp-l2tp
 obj-$(RTCONFIG_PPTP) += accel-pptp
 obj-$(RTCONFIG_EAPOL) += wpa_supplicant
-obj-$(RTCONFIG_HTTPS) += openssl
-obj-$(RTCONFIG_HTTPS) += wget
 obj-$(RTCONFIG_HTTPS) += zlib
-obj-$(RTCONFIG_HTTPS) += curl
 obj-$(RTCONFIG_SSH) += dropbear
 obj-$(RTCONFIG_WTFAST) += wtfast
 #obj-$(RTCONFIG_ZEBRA) += zebra
@@ -1379,7 +1327,7 @@ obj-$(RTCONFIG_LZO) += lzo$(LZO_VER)
 obj-$(RTCONFIG_OPENVPN) += lz4
 obj-$(RTCONFIG_OPENVPN) += openpam
 obj-$(RTCONFIG_OPENVPN) += easy-rsa
-obj-$(RTCONFIG_OPENVPN) += openssl openvpn
+obj-$(RTCONFIG_OPENVPN) += openvpn
 
 obj-$(CONFIG_LINUX26) += hotplug2
 obj-$(CONFIG_LINUX26) += udev
@@ -1390,7 +1338,6 @@ endif
 obj-$(RTCONFIG_ACCEL_PPTPD) += accel-pptpd
 obj-$(RTCONFIG_PPTPD) += pptpd
 
-obj-$(RTCONFIG_WEBDAV) += sqlite
 obj-$(RTCONFIG_WEBDAV) += libxml2
 obj-$(RTCONFIG_WEBDAV) += pcre-8.31
 obj-$(RTCONFIG_WEBDAV) += lighttpd-1.4.39
@@ -1406,14 +1353,6 @@ obj-$(RTCONFIG_AUPNPC) += aupnpc
 obj-y += miniupnpd$(MUVER)
 obj-$(if $(RTCONFIG_IMPROXY),,y) += igmpproxy
 obj-$(RTCONFIG_IMPROXY) += improxy
-obj-y += snooper
-ifeq ($(RTCONFIG_BCMWL6),y)
-ifneq ($(RTCONFIG_BCMARM),y)
-obj-y += netconf
-obj-y += igmp
-endif
-endif
-obj-y += udpxy
 ifeq ($(CONFIG_BCMWL5),y)
 ifeq ($(RTCONFIG_BCMARM),y)
 obj-y += lltd.arm
@@ -1448,12 +1387,11 @@ endif
 ifeq ($(RTCONFIG_HAPDEVENT),y)
 obj-$(RTCONFIG_HAPDEVENT) += hapdevent
 endif
-obj-y += networkmap
+
 ifneq ($(BUILD_NAME), $(filter $(BUILD_NAME), AC2900))
 obj-y += infosvr
 endif
 obj-$(if $(filter y,$(RTCONFIG_INADYN)),,y) += ez-ipupdate
-obj-$(RTCONFIG_INADYN) += libconfuse inadyn
 ifneq ($(or $(RTN56U),$(DSLN55U)),y)
 obj-y += phddns
 endif
@@ -1544,28 +1482,22 @@ obj-$(RTCONFIG_TRANSMISSION) += Transmission curl libevent-2.0.21
 
 # Begin merlin add-ons
 obj-$(RTCONFIG_DNSSEC) += $(if $(RTCONFIG_DNSSEC_OPENSSL),openssl,) $(if $(RTCONFIG_DNSSEC_NETTLE),nettle,)
-obj-y += haveged
+
 # End merlin add-ons
 
 obj-$(RTCONFIG_SAMBASRV) += wsdd2
 ifeq ($(RTCONFIG_TOR),y)
-obj-y += openssl
 obj-y += zlib
 obj-y += libevent-2.0.21
 obj-y += tor
 endif
 
 #For TR-069 agent
-obj-$(RTCONFIG_TR069) += openssl
 obj-$(RTCONFIG_TR069) += tr069
 obj-$(RTCONFIG_TR069) += libssh2
-
 obj-$(RTCONFIG_CLOUDCHECK) += cloudcheck
-
 obj-$(RTCONFIG_GETREALIP) += ministun
-
-CFGSYNC_PKG := openssl cfg_mnt
-obj-$(RTCONFIG_CFGSYNC) += $(CFGSYNC_PKG)
+obj-$(RTCONFIG_CFGSYNC) += cfg_mnt
 
 obj-$(RTCONFIG_WIREGUARD) += wireguard-tools
 obj-$(RTCONFIG_WIREGUARD) += zlib
@@ -1684,11 +1616,6 @@ obj-$(RTCONFIG_RSYSLOGD) += libestr
 obj-$(RTCONFIG_RSYSLOGD) += libfastjson
 obj-$(RTCONFIG_RSYSLOGD) += rsyslog
 
-obj-$(RTCONFIG_FRS_LIVE_UPDATE) += curl
-obj-$(RTCONFIG_FRS_LIVE_UPDATE) += openssl
-
-obj-$(RTCONFIG_URLFW) += curl
-
 ifeq ($(RTAX86U),y)
 obj-y += nuc029ctrl
 endif
@@ -1702,23 +1629,12 @@ ifneq ($(find lighttpd-1.4.39, $(obj-y)),"")
 released_dir += APP-IPK
 endif
 
-ifeq ($(RTCONFIG_RALINK_MT7621),y)
-ifeq ($(RTCONFIG_APP_NETINSTALLED),y)
-obj-y += taskset
-endif
-endif
+
 obj-$(RTCONFIG_HD_SPINDOWN) += sd-idle
 
 obj-$(HND_ROUTER) += dhcpfwd
 
 obj-$(RTCONFIG_FSMD) += fsmd
-
-# Last rule: append openssl dir if used
-ifneq ($(filter openssl, $(obj-y)),)
-ifeq ($(filter $(OPENSSL), $(obj-y)),)
-obj-y += $(OPENSSL)
-endif
-endif
 
 obj-clean := $(foreach obj, $(obj-y) $(obj-n) $(obj-), $(obj)-clean)
 obj-install := $(foreach obj,$(obj-y),$(obj)-install)
@@ -3282,27 +3198,25 @@ else
 INSTALLSUBDIR = /openssl
 endif
 
-openssl: $(OPENSSL)/Makefile $(if $(filter y,$(HND_ROUTER)),fsbuild,)
+openssl: openssl-1.1/Makefile $(if $(filter y,$(HND_ROUTER)),fsbuild,)
 	@$(SEP)
-	[ "$(notdir $(realpath $@))" = "$(OPENSSL)" ] || (rm -f $@ && ln -s $(OPENSSL) $@)
-	$(MAKE) $(OPENSSL)
+	[ "$(notdir $(realpath $@))" = "openssl-1.1" ] || (rm -f $@ && ln -s openssl-1.1 $@)
+	$(MAKE) openssl-1.1
 
 openssl-clean:
-	@$(MAKE) $(OPENSSL)-clean
+	@$(MAKE) openssl-1.1-clean
 	rm -f openssl
 
 openssl-install:
-ifneq ($(wildcard $(OPENSSL)/Makefile),)
-	@$(MAKE) $(OPENSSL)-install
+	@$(MAKE) openssl-1.1-install
 ifeq ($(HND_ROUTER),y)
 	mkdir -p $(BCM_FSBUILD_DIR)/public/include/openssl
-	cp -u $(OPENSSL)/include/openssl/* $(BCM_FSBUILD_DIR)/public/include/openssl
+	cp -u openssl-1.1/include/openssl/* $(BCM_FSBUILD_DIR)/public/include/openssl
 endif
 	install -D -m 0500 httpd/gencert.sh $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/gencert.sh
-endif
 
 openssl-stage:
-	@$(MAKE) $(OPENSSL)-stage
+	@$(MAKE) openssl-1.1-stage
 
 openssl-1.1/Makefile:
 	cd openssl-1.1 && \
@@ -3326,72 +3240,21 @@ openssl-1.1-clean:
 	@rm -f openssl-1.1/Makefile
 
 openssl-1.1-install:
-ifneq ($(wildcard openssl-1.1/Makefile),)
 	install -D openssl-1.1/libcrypto.so.1.1 $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libcrypto.so.1.1
 	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libcrypto.so.1.1
 ifeq ($(or $(RTCONFIG_WEBDAV),$(RTCONFIG_FTP_SSL),$(RTCONFIG_OPENVPN),$(RTCONFIG_HTTPS)),y)
 	install -D openssl-1.1/libssl.so.1.1 $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.1.1
 	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.1.1
 endif
-ifeq ($(RTCONFIG_OPENSSL11),y)
 	cd $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib && rm -f libcrypto.so && ln -sf libcrypto.so.1.1 libcrypto.so
 	[ ! -f $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.1.1 ] || \
 		cd $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib && rm -f libssl.so && ln -sf libssl.so.1.1 libssl.so
 	install -D openssl-1.1/apps/openssl $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/openssl
 	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/openssl
 	chmod 0500 $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/openssl
-endif
-endif
 
 openssl-1.1-stage:
-ifeq ($(RTCONFIG_OPENSSL11),y)
 	$(MAKE) -C openssl-1.1 install_sw DESTDIR=$(STAGEDIR)
-else
-	@true
-endif
-
-openssl-1.0/Makefile:
-	cd openssl-1.0 && \
-	./Configure $(HOSTCONFIG) --prefix=/usr --openssldir=/etc --cross-compile-prefix=' ' \
-	$(if $(filter y,$(RTCONFIG_SFP) $(RTCONFIG_4M_SFP) $(RTCONFIG_8M_SFP)),-Os,-O2) \
-	-ffunction-sections -fdata-sections -Wl,--gc-sections -Wa,--noexecstack \
-	$(if $(filter y,$(RTCONFIG_WTFAST)),-DRTCONFIG_WTFAST,) \
-	shared $(OPENSSL_CIPHERS)
-	@$(MAKE) -C openssl-1.0 depend
-	@$(MAKE) -C openssl-1.0 clean
-	@touch $@
-
-openssl-1.0: openssl-1.0/Makefile
-	$(MAKE) $(PARALLEL_BUILD) -C openssl-1.0 && $(MAKE) $@-stage
-
-openssl-1.0-clean:
-	[ ! -f openssl-1.0/Makefile ] || $(MAKE) -C openssl-1.0 clean
-	@rm -f openssl-1.0/Makefile
-
-openssl-1.0-install:
-ifneq ($(wildcard openssl-1.0/Makefile),)
-	install -D openssl-1.0/libcrypto.so.1.0.0 $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libcrypto.so.1.0.0
-	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libcrypto.so.1.0.0
-ifeq ($(or $(RTCONFIG_WEBDAV),$(RTCONFIG_FTP_SSL),$(RTCONFIG_OPENVPN),$(RTCONFIG_HTTPS)),y)
-	install -D openssl-1.0/libssl.so.1.0.0 $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.1.0.0
-	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.1.0.0
-endif
-ifeq ($(RTCONFIG_OPENSSL10),y)
-	cd $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib && rm -f libcrypto.so && ln -sf libcrypto.so.1.0.0 libcrypto.so
-	[ ! -f $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.1.0.0 ] || \
-		cd $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib && rm -f libssl.so && ln -sf libssl.so.1.0.0 libssl.so
-	install -D openssl-1.0/apps/openssl $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/openssl
-	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/openssl
-	chmod 0500 $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/openssl
-endif
-endif
-
-openssl-1.0-stage:
-ifeq ($(RTCONFIG_OPENSSL10),y)
-	$(MAKE) -C openssl-1.0 install_sw INSTALL_PREFIX=$(STAGEDIR)
-else
-	@true
-endif
 
 mbedtls:
 	$(MAKE) -C $@ SHARED=1 no_test && $(MAKE) $@-stage
@@ -3672,7 +3535,7 @@ getdns/build/Makefile:
 		-DCMAKE_INSTALL_PREFIX:PATH=/usr \
 		-DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_SKIP_RPATH=TRUE \
 		-DCMAKE_C_FLAGS="-Os -DNDEBUG -ffunction-sections -fdata-sections $(EXTRACFLAGS)" \
-		-DCMAKE_EXE_LINKER_FLAGS="-Wl,--gc-sections $(EXTRALDFLAGS) $(if $(RTCONFIG_OPENSSL11),-lpthread,)" \
+		-DCMAKE_EXE_LINKER_FLAGS="-Wl,--gc-sections $(EXTRALDFLAGS) -lpthread" \
 		-DENABLE_STATIC=TRUE -DENABLE_SHARED=FALSE -DENABLE_GOST=FALSE \
 		-DBUILD_GETDNS_QUERY=FALSE \
 		-DBUILD_GETDNS_SERVER_MON=FALSE \
@@ -4081,8 +3944,8 @@ sw-auth-lite-clean:
 
 k3screenctrl/Makefile: sw-auth-lite
 	cd k3screenctrl && autoreconf -i -f && CC=$(CC) STRIP=$(STRIP) \
-		CFLAGS=" -std=gnu99 -D_GNU_SOURCE $(EXTRACFLAGS) -I$(TOP_PLATFORM)/nvram${BCMEX} -I$(TOP_PLATFORM)/shared -I$(SRCBASE)/shared/bcmwifi/include -I$(SRCBASE)/include -I$(KERNEL_HEADER_DIR) -I$(TOP_PLATFORM)/curl/include -I$(TOP_PLATFORM)/json-c -I$(TOP_PLATFORM)/openssl/include -I$(SRCBASE)/common/include -I$(TOP_PLATFORM)/sw-auth-lite" \
-		LDFLAGS="$(EXTRALDFLAGS) -L$(TOP_PLATFORM)/nvram${BCMEX} -lnvram -L$(TOP_PLATFORM)/shared -lshared -L$(TOP_PLATFORM)/curl/lib/.libs -lcurl -L$(TOP_PLATFORM)/json-c/.libs -ljson-c -L$(TOP_PLATFORM)/openssl -lcrypto -lssl -ldl  $(if $(RTCONFIG_OPENSSL11),-lpthread,) -L$(TOP_PLATFORM)/sw-auth-lite -lsw_auth" \
+		CFLAGS=" -std=gnu99 -D_GNU_SOURCE $(EXTRACFLAGS) -I$(TOP)/nvram${BCMEX} -I$(TOP)/shared -I$(SRCBASE)/shared/bcmwifi/include -I$(SRCBASE)/include -I$(KERNEL_HEADER_DIR) -I$(TOP)/curl/include -I$(TOP)/json-c -I$(TOP)/openssl/include -I$(SRCBASE)/common/include -I$(TOP)/sw-auth-lite" \
+		LDFLAGS="$(EXTRALDFLAGS) -L$(TOP)/nvram${BCMEX} -lnvram -L$(TOP)/shared -lshared -L$(TOP)/curl/lib/.libs -lcurl -L$(TOP)/json-c/.libs -ljson-c -L$(TOP)/openssl -lcrypto -lssl -ldl -lpthread -L$(TOP)/sw-auth-lite -lsw_auth" \
 		$(CONFIGURE) --target=arm-linux --host=arm-linux --build=x86_64-linux-gnu --prefix=""
 
 k3screenctrl: k3screenctrl/Makefile
@@ -4178,7 +4041,7 @@ aupnpc-clean:
 
 # !!TB
 #shared:
-shared: $(if $(RTCONFIG_HTTPS),openssl) $(if $(RTCONFIG_SW_HW_AUTH),sw-hw-auth) $(if $(BCM_502L07P2),ethctl_lib)
+shared: openssl $(if $(RTCONFIG_SW_HW_AUTH),sw-hw-auth) $(if $(BCM_502L07P2),ethctl_lib)
 # Dig into our collection of prebuilt objects based on model.
 	@-rm -f shared/prebuild/*.o || true
 	@-cp -f shared/prebuild/$(BUILD_NAME)/* shared/prebuild/
@@ -4936,7 +4799,7 @@ inadyn/Makefile: inadyn/configure
 		confuse_CFLAGS="-I$(STAGEDIR)/usr/include" \
 		confuse_LIBS="-L$(STAGEDIR)/usr/lib -lconfuse" \
 		OpenSSL_CFLAGS="-I$(STAGEDIR)/usr/include" \
-		OpenSSL_LIBS="-L$(STAGEDIR)/usr/lib -lcrypto -lssl $(if $(RTCONFIG_OPENSSL11),-lpthread,)" \
+		OpenSSL_LIBS="-L$(STAGEDIR)/usr/lib -lcrypto -lssl -lpthread" \
 		CFLAGS="-Wall -Os -I$(TOP)/shared -I$(SRCBASE)/include -DASUSWRT $(if $(RTCONFIG_IPV6),-DUSE_IPV6,) $(if $(RTCONFIG_LETSENCRYPT),-DASUSWRT_LE,) $(if $(RTCONFIG_ASUSDDNS_ACCOUNT_BASE),-DRTCONFIG_ASUSDDNS_ACCOUNT_BASE,) \
 			-I$(STAGEDIR)/usr/include  -ffunction-sections -fdata-sections $(EXTRACFLAGS)" \
 		LDFLAGS="-L$(TOP_PLATFORM)/nvram$(BCMEX)$(EX7) -L$(TOP)/shared $(EXTRA_NV_LDFLAGS) $(if $(BCM_502L07P2),-L$(TOP_PLATFORM)/ethctl_lib) \
@@ -5573,7 +5436,6 @@ else
 	install -D wtfast/wtfslhd/prebuilt$(BCMEX)$(EX7)/wtfslhd $(INSTALLDIR)/wtfast/usr/sbin/wtfslhd
 	$(STRIP) $(INSTALLDIR)/wtfast/usr/sbin/wtfslhd
 endif
-ifeq ($(RTCONFIG_OPENSSL11),y)
 	install -d $(INSTALLDIR)/wtfast/usr/lib
 ifeq ($(HND_ROUTER),y)
 	cd $(INSTALLDIR)/wtfast/usr/lib && ln -sf libcrypto.so.1.1 libcrypto.so.1.0.0
@@ -5581,7 +5443,6 @@ else
 	cd $(INSTALLDIR)/wtfast/usr/lib && ln -sf ../../lib/libpthread.so.0 libcrypto.so.1.0.0
 endif
 	cd $(INSTALLDIR)/wtfast/usr/lib && ln -sf libssl.so.1.1 libssl.so.1.0.0
-endif
 
 # Media libraries
 
@@ -7046,13 +6907,13 @@ libssh2-stage:
 libssh2/Makefile:
 	@$(SEP)
 	cd libssh2-1.9.0 && autoreconf -fi && $(CONFIGURE) --prefix=/usr CC=$(CC) CXX=$(CXX) AR=$(AR) RANLIB=$(RANLIB) --enable-shared --enable-static \
-	$(if $(RTCONFIG_OPENSSL11)$(RTCONFIG_OPENSSL10),--with-libssl-prefix=$(STAGEDIR)/usr,--without-openssl) \
+	--with-libssl-prefix=$(STAGEDIR)/usr \
 	--with-libz-prefix=$(STAGEDIR)/usr \
 	--with-libgcrypt-prefix=$(TOP)/libgcrypt-1.5.1 \
 	--disable-examples-build \
 	CFLAGS="-O2 -Wall -ffunction-sections -fdata-sections -fPIC -I$(STAGEDIR)/usr/include -I$(TOP)/libgcrypt-1.5.1/src -I$(SRCBASE)/router/openssl/include" \
 	LDFLAGS="-ldl -Wl,-rpath=$(STAGEDIR)/usr/lib,--gc-sections $(LDFLAGS) -L$(STAGEDIR)/usr/lib -lz -L$(SRCBASE)/router/openssl -lcrypto -L$(TOP)/libgcrypt-1.5.1/src/.libs" && \
-	LIBS="-lcrypto (if $(RTCONFIG_OPENSSL11),-lpthread,) -fPIC" 
+	LIBS="-lcrypto -lpthread -fPIC" 
 
 libssh2: libgcrypt-1.5.1 zlib libssh2/Makefile
 	@$(SEP)
@@ -7088,18 +6949,18 @@ curl/Makefile: curl/configure
 		--disable-doh --disable-netrc --disable-dnsshuffle \
 		--disable-progress-meter \
 		$(if $(RTCONFIG_TR069),--with-libssh2=$(STAGEDIR)/usr,--without-zlib) \
-		$(if $(RTCONFIG_OPENSSL11)$(RTCONFIG_OPENSSL10),--with-ssl=$(STAGEDIR)/usr --with-ca-fallback,--without-ssl) \
+		--with-ssl=$(STAGEDIR)/usr --with-ca-fallback \
 		$(if $(RTCONFIG_MBEDTLS),--with-mbedtls=$(STAGEDIR)/usr,--without-mbedtls) \
 		$(if $(RTCONFIG_WOLFSSL),--with-wolfssl=$(STAGEDIR)/usr,--without-wolfssl) \
 		--with-ca-bundle=/etc/ssl/certs/ca-certificates.crt \
 		CFLAGS="-Os -Wall -ffunction-sections -fdata-sections" \
 		CPPFLAGS="-I$(STAGEDIR)/usr/include" \
 		LDFLAGS="-Wl$(if $(RTCONFIG_TR069),$(comma)-rpath=$(STAGEDIR)/usr/lib,),--gc-sections $(LDFLAGS) -L$(STAGEDIR)/usr/lib" \
-		LIBS="-ldl $(if $(RTCONFIG_OPENSSL11),-lpthread,) \
+		LIBS="-ldl -lpthread \
 			   $(if $(RTCONFIG_MBEDTLS),-lmbedcrypto -lmbedx509 -lmbedtls,) \
 			   $(if $(RTCONFIG_WOLFSSL),-lwolfssl,)"
 
-curl: $(if $(RTCONFIG_OPENSSL11)$(RTCONFIG_OPENSSL10),openssl,) $(if $(RTCONFIG_TR069),libssh2,) $(if $(RTCONFIG_MBEDTLS),mbedtls,) $(if $(RTCONFIG_WOLFSSL),wolfssl,) curl/Makefile
+curl: openssl $(if $(RTCONFIG_TR069),libssh2,) $(if $(RTCONFIG_MBEDTLS),mbedtls,) $(if $(RTCONFIG_WOLFSSL),wolfssl,) curl/Makefile
 	@$(SEP)
 # temporary curl-7.21.7 path compatibility
 	[ "$(notdir $(realpath $curl-7.21.7))" = "$@" ] || (rm -f curl-7.21.7 && ln -s $@ curl-7.21.7)
@@ -7660,7 +7521,7 @@ email-3.1.3/Makefile: openssl
 	$(CONFIGURE) --with-ssl --sysconfdir=/etc \
 		CFLAGS="-Os -Wall -I$(STAGEDIR)/usr/include" \
 		LDFLAGS="-L$(STAGEDIR)/usr/lib" \
-		LIBS="-lcrypto -lssl $(if $(RTCONFIG_QCA),-ldl,) $(if $(RTCONFIG_OPENSSL11),-lpthread,)"
+		LIBS="-lcrypto -lssl $(if $(RTCONFIG_QCA),-ldl,) -lpthread"
 endif
 
 email-3.1.3: email-3.1.3/Makefile

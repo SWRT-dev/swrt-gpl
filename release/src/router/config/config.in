@@ -2787,3 +2787,8 @@ config RTCONFIG_NLBWMON
 	bool "Simple conntrack netlink based traffic accounting"
 	depends on !RTCONFIG_BWDPI
 	default n
+
+config RTCONFIG_SWRTMESH
+	bool "swrtmesh is a cross-chip implementation of easymesh for swrt"
+	depends on !RTCONFIG_EASYMESH && !RTCONFIG_AMAS
+	default n
