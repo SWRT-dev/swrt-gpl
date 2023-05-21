@@ -394,6 +394,9 @@ BRCM_UBI:
 	if (!check_if_dir_exist("/jffs/scripts/")) mkdir("/jffs/scripts/", 0755);
 	if (!check_if_dir_exist("/jffs/configs/")) mkdir("/jffs/configs/", 0755);
 	if (!check_if_dir_exist("/jffs/.sys/")) mkdir("/jffs/.sys/", 0755);
+#if defined(RTCONFIG_SWRTMESH)
+	system("ln -sf /jffs/swrtmesh /etc/config");
+#endif
 }
 
 void stop_ubifs(int stop)
