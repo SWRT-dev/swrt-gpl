@@ -242,7 +242,7 @@ LIBS += -L$(TOP)/openssl -lssl -lcrypto -ldl
 endif
 
 CFLAGS += -I$(STAGEDIR)/usr/include/json-c
-LDFLAGS += -L$(STAGEDIR)/usr/lib -ljson-c
+LIBS += -L$(STAGEDIR)/usr/lib -ljson-c
 
 ifeq ($(RTCONFIG_BWDPI),y)
 LIBS += -L$(TOP)/bwdpi_source/asus -lbwdpi
