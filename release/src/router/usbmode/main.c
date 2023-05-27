@@ -3,9 +3,9 @@
 #include <stdbool.h>
 #include <ctype.h>
 
-#include <blobmsg_json.h>
-#include <avl.h>
-#include <avl-cmp.h>
+#include <libubox/blobmsg_json.h>
+#include <libubox/avl.h>
+#include <libubox/avl-cmp.h>
 #include "switch.h"
 
 #define DEFAULT_CONFIG "/etc/usb-mode.json"

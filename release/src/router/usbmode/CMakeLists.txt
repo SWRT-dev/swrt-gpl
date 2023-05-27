@@ -8,9 +8,7 @@ ADD_DEFINITIONS(-Os -ggdb -Wall -Werror --std=gnu99 -Wmissing-declarations)
 
 SET(SOURCES main.c switch.c)
 
-SET(ubox_include_dir ${TOP}/libubox)
-SET(libusb10_include_dir ${TOP}/libusb10/libusb)
-INCLUDE_DIRECTORIES(${ubox_include_dir} ${libusb10_include_dir})
+INCLUDE_DIRECTORIES(${STAGEDIR}/usr/include ${TOP}/libusb10/libusb)
 
 #find_package(PkgConfig)
 #pkg_check_modules(LIBUSB1 REQUIRED libusb-1.0)
@@ -20,7 +18,7 @@ INCLUDE_DIRECTORIES(${ubox_include_dir} ${libusb10_include_dir})
 SET(libusb usb-1.0)
 SET(json json-c)
 
-LINK_DIRECTORIES(${TOP}/json-c/.libs ${TOP}/libubox ${TOP}/libusb10/libusb/.libs)
+LINK_DIRECTORIES(${STAGEDIR}/usr/lib ${TOP}/libusb10/libusb/.libs)
 SET(LIBS m ${json} ubox blobmsg_json ${libusb})
 
 IF(DEBUG)

@@ -1040,6 +1040,7 @@ define CMAKE_CrossOptions
 	( \
 		echo "SET(CMAKE_CROSSCOMPILING \"TRUE\")" >>$(1); \
 		echo "SET(TOP $(TOP))" >>$(1); \
+		echo "SET(STAGEDIR $(STAGEDIR))" >>$(1); \
 		echo "SET(CMAKE_SYSTEM_NAME Linux)" >>$(1); \
 		echo "SET(CMAKE_SYSTEM_VERSION $(LINUX_KERNEL))" >>$(1); \
 		echo "SET(CMAKE_SYSTEM $(PLATFORM))" >>$(1); \
@@ -4255,7 +4256,7 @@ usb-modeswitch-install: usb-modeswitch
 usbmode/stamp-h1:
 	@rm -f usbmode/crosscompiled.cmake
 	$(call CMAKE_CrossOptions, usbmode/crosscompiled.cmake)
-	cd usbmode && cmake -DCMAKE_TOOLCHAIN_FILE=crosscompiled.cmake .
+	cd usbmode && cmake -DCMAKE_TOOLCHAIN_FILE=crosscompiled.cmake -DCMAKE_INCLUDE_PATH=$(STAGEDIR)/usr/include -DCMAKE_LIBRARY_PATH=$(STAGEDIR)/usr/lib .
 	touch $@
 
 usbmode: json-c libubox usbmode/stamp-h1

@@ -1,7 +1,7 @@
 #ifndef __USBMODE_SWITCH_H
 #define __USBMODE_SWITCH_H
 
-#include <blobmsg.h>
+#include <libubox/blobmsg_json.h>
 #include <libusb.h>
 
 struct usbdev_data {
