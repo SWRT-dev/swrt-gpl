@@ -9416,14 +9416,15 @@ libubus:libubox json-c
 libubus-install:
 	install -d $(INSTALLDIR)/libubus/usr/lib
 	install -d $(INSTALLDIR)/libubus/usr/sbin
-	install -D libubus/build/cli $(INSTALLDIR)/libubus/usr/sbin/cli
-	install -D libubus/build/ubusd $(INSTALLDIR)/libubus/usr/sbin/ubusd
-	install -D libubus/build/libubus.so.20210603 $(INSTALLDIR)/libubus/usr/lib/libubus.so.20210603
-	cd $(INSTALLDIR)/libubus/usr/lib && ln -sf libubus.so.20210603 libubus.so
-	$(STRIP) $(INSTALLDIR)/libubus/usr/lib/libubus.so.20210603
-	$(STRIP) $(INSTALLDIR)/libubus/usr/sbin/cli
+	install -D libubus/ubus $(INSTALLDIR)/libubus/usr/sbin/ubus
+	install -D libubus/ubusd $(INSTALLDIR)/libubus/usr/sbin/ubusd
+	install -D libubus/libubus.so.2021-06-03 $(INSTALLDIR)/libubus/usr/lib/libubus.so.2021-06-03
+	cd $(INSTALLDIR)/libubus/usr/lib && ln -sf libubus.so.2021-06-03 libubus.so
+	$(STRIP) $(INSTALLDIR)/libubus/usr/lib/libubus.so.2021-06-03
+	$(STRIP) $(INSTALLDIR)/libubus/usr/sbin/ubus
 	$(STRIP) $(INSTALLDIR)/libubus/usr/sbin/ubusd
 endif
+
 ifeq ($(RTCONFIG_SWRTMESH),y)
 swrtmesh: json-c libubox libubus libnl libuci openssl avahi
 	$(MAKE) -C swrtmesh all
