@@ -1,0 +1,47 @@
+test_get_parsing()
+{
+	cp ${REF_DIR}/get_parsing.data ${CONFIG_DIR}/test
+
+	assertFailWithNoReturn "${UCI_Q} get test."
+	assertFailWithNoReturn "${UCI_Q} get test.section."
+	assertFailWithNoReturn "${UCI_Q} get test.section.opt."
+	assertFailWithNoReturn "${UCI_Q} get test.section.opt.val."
+	assertFailWithNoReturn "${UCI_Q} get test.section.opt.val.qsdf.qsd"
+	assertFailWithNoReturn "${UCI_Q} get test.section.opt.valqsqsd"
+}
+
+test_get_section_index_parsing()
+{
+	cp ${REF_DIR}/get_parsing.data ${CONFIG_DIR}/test
+
+	assertFailWithNoReturn "${UCI_Q} get test.@"
+	assertFailWithNoReturn "${UCI_Q} get test.@zer."
+	assertFailWithNoReturn "${UCI_Q} get test.@."
+	assertFailWithNoReturn "${UCI_Q} get test.@zer[1]"
+	assertFailWithNoReturn "${UCI_Q} get test.@.opt"
+	assertFailWithNoReturn "${UCI_Q} get test.@[28]"
+	assertFailWithNoReturn "${UCI_Q} get test.@[1]."
+	assertFailWithNoReturn "${UCI_Q} get test.@[1].val."
+}
+
+test_get_option()
+{
+	cp ${REF_DIR}/get.data ${CONFIG_DIR}/test
+	value=$($UCI get test.section.opt)
+	assertEquals 'val' "$value"
+}
+
+test_get_option_multiline()
+{
+	cp ${REF_DIR}/get_multiline.data ${CONFIG_DIR}/test
+	value="$($UCI get test.section.opt)"
+	assertEquals '"Hello, World.
+'\''' "$value"
+}
+
+test_get_section()
+{
+	cp ${REF_DIR}/get.data ${CONFIG_DIR}/test
+	type=$($UCI get test.section)
+	assertEquals 'type' "$type"
+}

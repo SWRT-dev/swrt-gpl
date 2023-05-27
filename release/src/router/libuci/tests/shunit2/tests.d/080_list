@@ -1,0 +1,52 @@
+prepare_list_test() {
+	touch ${CONFIG_DIR}/list_test_config
+	${UCI} set list_test_config.SEC0=section
+	${UCI} add_list list_test_config.SEC0.list0=value0
+	${UCI} add_list list_test_config.SEC0.list0='"Hello
+,'" world\""
+}
+test_add_list_config() {
+	prepare_list_test
+	${UCI} commit
+	assertSameFile "${REF_DIR}/add_list_config.result" "$CONFIG_DIR/list_test_config"
+}
+
+test_add_list_get() {
+	# To maintain compatibility with current code, do not quote
+	# list values that do not contain blank spaces ("\x20\t\r\n") within it.
+	prepare_list_test
+	value_list_get=$(${UCI} get list_test_config.SEC0.list0)
+	assertEquals "$value_list_get" "value0 '\"Hello
+, world\"'"
+}
+
+test_add_list_show() {
+	prepare_list_test
+	value_list_show=$(${UCI} show list_test_config)
+	value_list_show_ref=$(cat "$REF_DIR/add_list_show.result")
+	assertEquals "$value_list_show" "$value_list_show_ref"
+}
+
+test_add_list_changes() {
+	prepare_list_test
+	value_list_changes=$(${UCI} changes)
+	value_list_changes_ref=$(cat "$REF_DIR/add_list_changes.result")
+	assertEquals "$value_list_changes" "$value_list_changes_ref"
+}
+
+test_del_list() {
+	prepare_list_test
+	${UCI} commit
+	${UCI} del_list list_test_config.SEC0.list0=value0
+	${UCI} commit
+	assertSameFile "${REF_DIR}/del_list_config.result" "$CONFIG_DIR/list_test_config"
+}
+
+test_del_list_multiline() {
+	prepare_list_test
+	${UCI} commit
+	${UCI} del_list list_test_config.SEC0.list0='"Hello
+,'' world"'
+	${UCI} commit
+	assertSameFile "${REF_DIR}/del_list_multiline_config.result" "$CONFIG_DIR/list_test_config"
+}

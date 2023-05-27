@@ -1,0 +1,8 @@
+variables:
+  CI_ENABLE_UNIT_TESTING: 1
+  CI_TARGET_BUILD_DEPENDS: uci
+  CI_CMAKE_EXTRA_BUILD_ARGS: -DLUAPATH=/usr/lib/lua
+
+include:
+  - remote: https://gitlab.com/ynezz/openwrt-ci/raw/master/openwrt-ci/gitlab/main.yml
+  - remote: https://gitlab.com/ynezz/openwrt-ci/raw/master/openwrt-ci/gitlab/pipeline.yml

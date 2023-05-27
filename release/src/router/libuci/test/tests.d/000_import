@@ -1,5 +1,0 @@
-test_import ()
-{
-	${UCI} import < ${REF_DIR}/import.data
-	assertSameFile ${REF_DIR}/import.result ${CONFIG_DIR}/import
-}

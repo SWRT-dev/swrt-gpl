@@ -1,9 +1,0 @@
-test_ucimap_example()
-{
-	rm -rf ./save
-	( cd ..; ./ucimap-example -s ) > "${TMP_DIR}/ucimap_example.result"
-	assertSameFile "${TMP_DIR}/ucimap_example.result" "${REF_DIR}/ucimap_example_1.result"
-	( cd ..; ./ucimap-example -s ) > "${TMP_DIR}/ucimap_example.result"
-	assertSameFile "${TMP_DIR}/ucimap_example.result" "${REF_DIR}/ucimap_example_2.result"
-	rm -rf ./save
-}

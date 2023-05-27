@@ -1,0 +1,5 @@
+package delta
+
+config sectype 'sec0'
+	list li0 '0'
+	list li0 '1'

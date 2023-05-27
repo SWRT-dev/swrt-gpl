@@ -1,0 +1,6 @@
+
+config section 'SEC0'
+	list list0 'value0'
+	list list0 '"Hello
+, world"'
+

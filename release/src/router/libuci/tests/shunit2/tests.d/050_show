@@ -1,0 +1,45 @@
+test_get_parsing()
+{
+	cp ${REF_DIR}/show_parsing.data ${CONFIG_DIR}/test
+
+	assertFailWithNoReturn "${UCI_Q} show test."
+	assertFailWithNoReturn "${UCI_Q} show test.section."
+	assertFailWithNoReturn "${UCI_Q} show test.section.opt."
+	assertFailWithNoReturn "${UCI_Q} show test.section.opt.val."
+	assertFailWithNoReturn "${UCI_Q} show test.section.opt.val.qsdf.qsd"
+	assertFailWithNoReturn "${UCI_Q} show test.section.opt.valqsqsd"
+	assertFailWithNoReturn "${UCI_Q} show test.nilsection"
+	assertFailWithNoReturn "${UCI_Q} show test.nilsection.nilopt"
+	assertFailWithNoReturn "${UCI_Q} show test.section.nilopt"
+}
+
+prepare_get_parsing_multiline() {
+	cp ${REF_DIR}/show_parsing_multiline.data ${CONFIG_DIR}/sockd
+}
+
+test_get_parsing_multiline_package()
+{
+	prepare_get_parsing_multiline
+
+	value=$(${UCI_Q} show sockd)
+	value_ref=$(cat ${REF_DIR}/show_parsing_multiline_package.result)
+	assertEquals "$value_ref" "$value"
+}
+
+test_get_parsing_multiline_section()
+{
+	prepare_get_parsing_multiline
+
+	value=$(${UCI_Q} show sockd.instance0)
+	value_ref=$(cat ${REF_DIR}/show_parsing_multiline_section.result)
+	assertEquals "$value_ref" "$value"
+}
+
+test_get_parsing_multiline_option()
+{
+	prepare_get_parsing_multiline
+
+	value=$(${UCI_Q} show sockd.instance0.extra_config)
+	value_ref=$(cat ${REF_DIR}/show_parsing_multiline_option.result)
+	assertEquals "$value_ref" "$value"
+}

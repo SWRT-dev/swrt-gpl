@@ -1,0 +1,14 @@
+test_export ()
+{
+	cp ${REF_DIR}/export.data ${CONFIG_DIR}/export
+
+	${UCI_Q} export nilpackage
+	assertFalse $?
+
+	${UCI_Q} export export 1>/dev/null 2>&1
+	assertTrue $?
+
+	${UCI} export > ${TMP_DIR}/export.result
+	assertTrue $?
+	assertSameFile ${REF_DIR}/export.result ${TMP_DIR}/export.result
+}

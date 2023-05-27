@@ -1,0 +1,5 @@
+
+config sectype 'sec0'
+	list li0 '1'
+	list li0 '0'
+

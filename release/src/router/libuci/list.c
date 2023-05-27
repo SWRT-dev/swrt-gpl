@@ -12,8 +12,9 @@
  * GNU Lesser General Public License for more details.
  */
 
-static void uci_list_set_pos(struct uci_list *head, struct uci_list *ptr, int pos)
+static bool uci_list_set_pos(struct uci_list *head, struct uci_list *ptr, int pos)
 {
+	struct uci_list *old_head = ptr->prev;
 	struct uci_list *new_head = head;
 	struct uci_element *p = NULL;
 
@@ -25,6 +26,8 @@ static void uci_list_set_pos(struct uci_list *head, struct uci_list *ptr, int po
 	}
 
 	uci_list_add(new_head->next, ptr);
+
+	return (old_head != new_head);
 }
 
 static inline void uci_list_fixup(struct uci_list *ptr)
@@ -33,7 +36,7 @@ static inline void uci_list_fixup(struct uci_list *ptr)
 	ptr->next->prev = ptr;
 }
 
-/* 
+/*
  * uci_alloc_generic allocates a new uci_element with payload
  * payload is appended to the struct to save memory and reduce fragmentation
  */
@@ -66,8 +69,7 @@ done:
 __private void
 uci_free_element(struct uci_element *e)
 {
-	if (e->name)
-		free(e->name);
+	free(e->name);
 	if (!uci_list_empty(&e->list))
 		uci_list_del(&e->list);
 	free(e);
@@ -135,7 +137,7 @@ static unsigned int djbhash(unsigned int hash, char *str)
 	int i;
 
 	/* initial value */
-	if (hash == ~0)
+	if (hash == ~0U)
 		hash = 5381;
 
 	for(i = 0; i < len; i++) {
@@ -145,9 +147,9 @@ static unsigned int djbhash(unsigned int hash, char *str)
 }
 
 /* fix up an unnamed section, e.g. after adding options to it */
-__private void uci_fixup_section(struct uci_context *ctx, struct uci_section *s)
+static void uci_fixup_section(struct uci_context *ctx, struct uci_section *s)
 {
-	unsigned int hash = ~0;
+	unsigned int hash = ~0U;
 	struct uci_element *e;
 	char buf[16];
 
@@ -176,8 +178,34 @@ __private void uci_fixup_section(struct uci_context *ctx, struct uci_section *s)
 			break;
 		}
 	}
-	sprintf(buf, "cfg%02x%04x", ++s->package->n_section, hash % (1 << 16));
+	sprintf(buf, "cfg%02x%04x", s->package->n_section, hash % (1 << 16));
 	s->e.name = uci_strdup(ctx, buf);
+}
+
+/* fix up option list HEAD pointers and pointer to section in options */
+static void uci_section_fixup_options(struct uci_section *s, bool no_options)
+{
+	struct uci_element *e;
+
+	if (no_options) {
+		/*
+		 * enforce empty list pointer state (s->next == s) when original
+		 * section had no options in the first place
+		 */
+		uci_list_init(&s->options);
+		return;
+	}
+
+	/* fix pointers to HEAD at end/beginning of list */
+	uci_list_fixup(&s->options);
+
+	/* fix back pointer to section in options */
+	uci_foreach_element(&s->options, e) {
+		struct uci_option *o;
+
+		o = uci_to_option(e);
+		o->section = s;
+	}
 }
 
 static struct uci_section *
@@ -217,7 +245,7 @@ uci_free_section(struct uci_section *s)
 	uci_free_element(&s->e);
 }
 
-__plugin struct uci_package *
+__private struct uci_package *
 uci_alloc_package(struct uci_context *ctx, const char *name)
 {
 	struct uci_package *p;
@@ -239,8 +267,7 @@ uci_free_package(struct uci_package **package)
 	if(!p)
 		return;
 
-	if (p->path)
-		free(p->path);
+	free(p->path);
 	uci_foreach_element_safe(&p->sections, tmp, e) {
 		uci_free_section(uci_to_section(e));
 	}
@@ -320,7 +347,7 @@ uci_lookup_ext_section(struct uci_context *ctx, struct uci_ptr *ptr)
 	else if (!uci_validate_type(name))
 		goto error;
 
-	/* if the given index is negative, it specifies the section number from 
+	/* if the given index is negative, it specifies the section number from
 	 * the end of the list */
 	if (idx < 0) {
 		c = 0;
@@ -348,7 +375,7 @@ uci_lookup_ext_section(struct uci_context *ctx, struct uci_ptr *ptr)
 	goto done;
 
 error:
-	e = NULL;
+	free(section);
 	memset(ptr, 0, sizeof(struct uci_ptr));
 	UCI_THROW(ctx, UCI_ERR_INVAL);
 done:
@@ -433,11 +460,12 @@ uci_lookup_ptr(struct uci_context *ctx, struct uci_ptr *ptr, char *str, bool ext
 complete:
 	ptr->flags |= UCI_LOOKUP_COMPLETE;
 abort:
-	return 0;
+	return UCI_OK;
 
 notfound:
 	UCI_THROW(ctx, UCI_ERR_NOTFOUND);
-	return 0;
+	/* not a chance here */
+	return UCI_ERR_NOTFOUND;
 }
 
 __private struct uci_element *
@@ -485,7 +513,7 @@ static void uci_add_element_list(struct uci_context *ctx, struct uci_ptr *ptr, b
 int uci_rename(struct uci_context *ctx, struct uci_ptr *ptr)
 {
 	/* NB: UCI_INTERNAL use means without delta tracking */
-	bool internal = ctx->internal;
+	bool internal = ctx && ctx->internal;
 	struct uci_element *e;
 	struct uci_package *p;
 	char *n;
@@ -502,8 +530,7 @@ int uci_rename(struct uci_context *ctx, struct uci_ptr *ptr)
 		uci_add_delta(ctx, &p->delta, UCI_CMD_RENAME, ptr->section, ptr->option, ptr->value);
 
 	n = uci_strdup(ctx, ptr->value);
-	if (e->name)
-		free(e->name);
+	free(e->name);
 	e->name = n;
 
 	if (e->type == UCI_TYPE_SECTION)
@@ -515,12 +542,14 @@ int uci_rename(struct uci_context *ctx, struct uci_ptr *ptr)
 int uci_reorder_section(struct uci_context *ctx, struct uci_section *s, int pos)
 {
 	struct uci_package *p = s->package;
+	bool internal = ctx && ctx->internal;
+	bool changed = false;
 	char order[32];
 
 	UCI_HANDLE_ERR(ctx);
 
-	uci_list_set_pos(&s->package->sections, &s->e.list, pos);
-	if (!ctx->internal && p->has_delta) {
+	changed = uci_list_set_pos(&s->package->sections, &s->e.list, pos);
+	if (!internal && p->has_delta && changed) {
 		sprintf(order, "%d", pos);
 		uci_add_delta(ctx, &p->delta, UCI_CMD_REORDER, s->e.name, NULL, order);
 	}
@@ -530,13 +559,14 @@ int uci_reorder_section(struct uci_context *ctx, struct uci_section *s, int pos)
 
 int uci_add_section(struct uci_context *ctx, struct uci_package *p, const char *type, struct uci_section **res)
 {
-	bool internal = ctx->internal;
+	bool internal = ctx && ctx->internal;
 	struct uci_section *s;
 
 	UCI_HANDLE_ERR(ctx);
 	UCI_ASSERT(ctx, p != NULL);
 	s = uci_alloc_section(p, type, NULL);
-	uci_fixup_section(ctx, s);
+	if (s && s->anonymous)
+		uci_fixup_section(ctx, s);
 	*res = s;
 	if (!internal && p->has_delta)
 		uci_add_delta(ctx, &p->delta, UCI_CMD_ADD, s->e.name, NULL, type);
@@ -547,21 +577,39 @@ int uci_add_section(struct uci_context *ctx, struct uci_package *p, const char *
 int uci_delete(struct uci_context *ctx, struct uci_ptr *ptr)
 {
 	/* NB: pass on internal flag to uci_del_element */
-	bool internal = ctx->internal;
+	bool internal = ctx && ctx->internal;
 	struct uci_package *p;
-	struct uci_element *e;
+	struct uci_element *e1, *e2, *tmp;
+	int index;
 
 	UCI_HANDLE_ERR(ctx);
 
-	e = uci_expand_ptr(ctx, ptr, true);
+	e1 = uci_expand_ptr(ctx, ptr, true);
 	p = ptr->p;
 
 	UCI_ASSERT(ctx, ptr->s);
 
+	if (ptr->o && ptr->o->type == UCI_TYPE_LIST && ptr->value && *ptr->value) {
+		if (!sscanf(ptr->value, "%d", &index))
+			return 1;
+
+		uci_foreach_element_safe(&ptr->o->v.list, tmp, e2) {
+			if (index == 0) {
+				if (!internal && p->has_delta)
+					uci_add_delta(ctx, &p->delta, UCI_CMD_REMOVE, ptr->section, ptr->option, ptr->value);
+				uci_free_option(uci_to_option(e2));
+				return 0;
+			}
+			index--;
+		}
+
+		return 0;
+	}
+
 	if (!internal && p->has_delta)
 		uci_add_delta(ctx, &p->delta, UCI_CMD_REMOVE, ptr->section, ptr->option, NULL);
 
-	uci_free_any(&e);
+	uci_free_any(&e1);
 
 	if (ptr->option)
 		ptr->o = NULL;
@@ -574,9 +622,9 @@ int uci_delete(struct uci_context *ctx, struct uci_ptr *ptr)
 int uci_add_list(struct uci_context *ctx, struct uci_ptr *ptr)
 {
 	/* NB: UCI_INTERNAL use means without delta tracking */
-	bool internal = ctx->internal;
-	struct uci_option *prev = NULL;
-	const char *value2 = NULL;
+	bool internal = ctx && ctx->internal;
+	struct uci_option *volatile prev = NULL;
+	const char *volatile value2 = NULL;
 
 	UCI_HANDLE_ERR(ctx);
 
@@ -612,10 +660,42 @@ int uci_add_list(struct uci_context *ctx, struct uci_ptr *ptr)
 	return 0;
 }
 
+int uci_del_list(struct uci_context *ctx, struct uci_ptr *ptr)
+{
+	/* NB: pass on internal flag to uci_del_element */
+	bool internal = ctx && ctx->internal;
+	struct uci_element *e, *tmp;
+	struct uci_package *p;
+
+	UCI_HANDLE_ERR(ctx);
+
+	uci_expand_ptr(ctx, ptr, false);
+	UCI_ASSERT(ctx, ptr->s);
+	UCI_ASSERT(ctx, ptr->value);
+
+	if (!(ptr->o && ptr->option))
+		return 0;
+
+	if ((ptr->o->type != UCI_TYPE_LIST))
+		return 0;
+
+	p = ptr->p;
+	if (!internal && p->has_delta)
+		uci_add_delta(ctx, &p->delta, UCI_CMD_LIST_DEL, ptr->section, ptr->option, ptr->value);
+
+	uci_foreach_element_safe(&ptr->o->v.list, tmp, e) {
+		if (!strcmp(ptr->value, uci_to_option(e)->e.name)) {
+			uci_free_option(uci_to_option(e));
+		}
+	}
+
+	return 0;
+}
+
 int uci_set(struct uci_context *ctx, struct uci_ptr *ptr)
 {
 	/* NB: UCI_INTERNAL use means without delta tracking */
-	bool internal = ctx->internal;
+	bool internal = ctx && ctx->internal;
 
 	UCI_HANDLE_ERR(ctx);
 	uci_expand_ptr(ctx, ptr, false);
@@ -645,20 +725,29 @@ int uci_set(struct uci_context *ctx, struct uci_ptr *ptr)
 		ptr->s = uci_alloc_section(ptr->p, ptr->value, ptr->section);
 		ptr->last = &ptr->s->e;
 	} else if (ptr->o && ptr->option) { /* update option */
+		struct uci_option *o;
+
 		if ((ptr->o->type == UCI_TYPE_STRING) &&
 			!strcmp(ptr->o->v.string, ptr->value))
 			return 0;
-		uci_free_option(ptr->o);
+
+		o = ptr->o;
 		ptr->o = uci_alloc_option(ptr->s, ptr->option, ptr->value);
+		uci_free_option(o);
 		ptr->last = &ptr->o->e;
 	} else if (ptr->s && ptr->section) { /* update section */
 		char *s = uci_strdup(ctx, ptr->value);
 
 		if (ptr->s->type == uci_dataptr(ptr->s)) {
+			/* drop the in-section storage of type name */
+			bool no_options;
+
+			no_options = uci_list_empty(&ptr->s->options);
 			ptr->last = NULL;
 			ptr->last = uci_realloc(ctx, ptr->s, sizeof(struct uci_section));
 			ptr->s = uci_to_section(ptr->last);
 			uci_list_fixup(&ptr->s->e.list);
+			uci_section_fixup_options(ptr->s, no_options);
 		} else {
 			free(ptr->s->type);
 		}

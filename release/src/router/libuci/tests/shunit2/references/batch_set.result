@@ -1,0 +1,9 @@
+
+config section 'SEC0'
+	option option0 'value0'
+	option option1 '"Hello,
+  World"'
+
+config section 'SEC1'
+	option option0 'value1'
+

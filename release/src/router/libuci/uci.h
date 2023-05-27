@@ -34,6 +34,7 @@ extern "C" {
 #include <setjmp.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stddef.h>
 
 #define UCI_CONFDIR "/etc/config"
 #define UCI_SAVEDIR "/tmp/.uci"
@@ -61,8 +62,6 @@ struct uci_list
 };
 
 struct uci_ptr;
-struct uci_plugin;
-struct uci_hook_ops;
 struct uci_element;
 struct uci_package;
 struct uci_section;
@@ -156,6 +155,13 @@ extern int uci_unload(struct uci_context *ctx, struct uci_package *p);
  * Note: uci_lookup_ptr will automatically load a config package if necessary
  * @str must not be constant, as it will be modified and used for the strings inside @ptr,
  * thus it must also be available as long as @ptr is in use.
+ *
+ * This function returns UCI_ERR_NOTFOUND if the package specified in the tuple
+ * string cannot be found.  Otherwise it will return UCI_OK.
+ *
+ * Note that failures in looking up other parts, if they are also specfied,
+ * including section and option, will also have a return value UCI_OK but with
+ * ptr->flags * UCI_LOOKUP_COMPLETE not set.
  */
 extern int uci_lookup_ptr(struct uci_context *ctx, struct uci_ptr *ptr, char *str, bool extended);
 
@@ -186,6 +192,14 @@ extern int uci_set(struct uci_context *ctx, struct uci_ptr *ptr);
  * it will be converted to an 1-element-list before appending the next element
  */
 extern int uci_add_list(struct uci_context *ctx, struct uci_ptr *ptr);
+
+/**
+ * uci_del_list: Remove a string from an element list
+ * @ctx: uci context
+ * @ptr: uci pointer (with value)
+ *
+ */
+extern int uci_del_list(struct uci_context *ctx, struct uci_ptr *ptr);
 
 /**
  * uci_reorder: Reposition a section
@@ -239,6 +253,8 @@ extern int uci_list_configs(struct uci_context *ctx, char ***list);
  * uci_set_savedir: override the default delta save directory
  * @ctx: uci context
  * @dir: directory name
+ *
+ * This will also try adding the specified dir to the end of delta pathes.
  */
 extern int uci_set_savedir(struct uci_context *ctx, const char *dir);
 
@@ -256,6 +272,8 @@ extern int uci_set_confdir(struct uci_context *ctx, const char *dir);
  *
  * This function allows you to add directories, which contain 'overlays'
  * for the active config, that will never be committed.
+ *
+ * Adding a duplicate directory will cause UCI_ERR_DUPLICATE be returned.
  */
 extern int uci_add_delta_path(struct uci_context *ctx, const char *dir);
 
@@ -292,42 +310,6 @@ extern int uci_set_backend(struct uci_context *ctx, const char *name);
  * for uci options
  */
 extern bool uci_validate_text(const char *str);
-
-
-/**
- * uci_add_hook: add a uci hook
- * @ctx: uci context
- * @ops: uci hook ops
- *
- * NB: allocated and freed by the caller
- */
-extern int uci_add_hook(struct uci_context *ctx, const struct uci_hook_ops *ops);
-
-/**
- * uci_remove_hook: remove a uci hook
- * @ctx: uci context
- * @ops: uci hook ops
- */
-extern int uci_remove_hook(struct uci_context *ctx, const struct uci_hook_ops *ops);
-
-/**
- * uci_load_plugin: load an uci plugin
- * @ctx: uci context
- * @filename: path to the uci plugin
- *
- * NB: plugin will be unloaded automatically when the context is freed
- */
-int uci_load_plugin(struct uci_context *ctx, const char *filename);
-
-/**
- * uci_load_plugins: load all uci plugins from a directory
- * @ctx: uci context
- * @pattern: pattern of uci plugin files (optional)
- *
- * if pattern is NULL, then uci_load_plugins will call uci_load_plugin
- * for uci_*.so in <prefix>/lib/
- */
-int uci_load_plugins(struct uci_context *ctx, const char *pattern);
 
 /**
  * uci_parse_ptr: parse a uci string into a uci_ptr
@@ -379,7 +361,6 @@ enum uci_type {
 	UCI_TYPE_BACKEND = 6,
 	UCI_TYPE_ITEM = 7,
 	UCI_TYPE_HOOK = 8,
-	UCI_TYPE_PLUGIN = 9,
 };
 
 enum uci_option_type {
@@ -441,9 +422,6 @@ struct uci_context
 	bool internal, nested;
 	char *buf;
 	int bufsz;
-
-	struct uci_list hooks;
-	struct uci_list plugins;
 };
 
 struct uci_package
@@ -482,6 +460,9 @@ struct uci_option
 	} v;
 };
 
+/*
+ * UCI_CMD_ADD is used for anonymous sections or list values
+ */
 enum uci_command {
 	UCI_CMD_ADD,
 	UCI_CMD_REMOVE,
@@ -489,7 +470,11 @@ enum uci_command {
 	UCI_CMD_RENAME,
 	UCI_CMD_REORDER,
 	UCI_CMD_LIST_ADD,
+	UCI_CMD_LIST_DEL,
+	__UCI_CMD_MAX,
+	__UCI_CMD_LAST = __UCI_CMD_MAX - 1
 };
+extern char const uci_command_char[];
 
 struct uci_delta
 {
@@ -519,41 +504,11 @@ struct uci_ptr
 	const char *value;
 };
 
-struct uci_hook_ops
-{
-	void (*load)(const struct uci_hook_ops *ops, struct uci_package *p);
-	void (*set)(const struct uci_hook_ops *ops, struct uci_package *p, struct uci_delta *e);
-};
-
-struct uci_hook
-{
-	struct uci_element e;
-	const struct uci_hook_ops *ops;
-};
-
-struct uci_plugin_ops
-{
-	int (*attach)(struct uci_context *ctx);
-	void (*detach)(struct uci_context *ctx);
-};
-
-struct uci_plugin
-{
-	struct uci_element e;
-	const struct uci_plugin_ops *ops;
-	void *dlh;
-};
-
 struct uci_parse_option {
 	const char *name;
 	enum uci_option_type type;
 };
 
-
-/* linked list handling */
-#ifndef offsetof
-#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
-#endif
 
 /**
  * container_of - cast a member of a structure out to the containing structure
@@ -619,8 +574,6 @@ struct uci_parse_option {
 #define uci_type_package UCI_TYPE_PACKAGE
 #define uci_type_section UCI_TYPE_SECTION
 #define uci_type_option UCI_TYPE_OPTION
-#define uci_type_hook UCI_TYPE_HOOK
-#define uci_type_plugin UCI_TYPE_PLUGIN
 
 /* element typecasting */
 #ifdef UCI_DEBUG_TYPECAST
@@ -630,8 +583,6 @@ static const char *uci_typestr[] = {
 	[uci_type_package] = "package",
 	[uci_type_section] = "section",
 	[uci_type_option] = "option",
-	[uci_type_hook] = "hook",
-	[uci_type_plugin] = "plugin",
 };
 
 static void uci_typecast_error(int from, int to)
@@ -653,8 +604,6 @@ BUILD_CAST(delta)
 BUILD_CAST(package)
 BUILD_CAST(section)
 BUILD_CAST(option)
-BUILD_CAST(hook)
-BUILD_CAST(plugin)
 
 #else
 #define uci_to_backend(ptr) container_of(ptr, struct uci_backend, e)
@@ -662,8 +611,6 @@ BUILD_CAST(plugin)
 #define uci_to_package(ptr) container_of(ptr, struct uci_package, e)
 #define uci_to_section(ptr) container_of(ptr, struct uci_section, e)
 #define uci_to_option(ptr)  container_of(ptr, struct uci_option, e)
-#define uci_to_hook(ptr)    container_of(ptr, struct uci_hook, e)
-#define uci_to_plugin(ptr)  container_of(ptr, struct uci_plugin, e)
 #endif
 
 /**
@@ -736,6 +683,15 @@ uci_lookup_option_string(struct uci_context *ctx, struct uci_section *s, const c
 		return NULL;
 
 	return o->v.string;
+}
+
+#ifndef BITS_PER_LONG
+#define BITS_PER_LONG (8 * sizeof(unsigned long))
+#endif
+
+static inline void uci_bitfield_set(unsigned long *bits, int bit)
+{
+	bits[bit / BITS_PER_LONG] |= (1UL << (bit % BITS_PER_LONG));
 }
 
 #ifdef __cplusplus

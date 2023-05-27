@@ -19,7 +19,7 @@ append() {
 	local var="$1"
 	local value="$2"
 	local sep="${3:- }"
-	
+
 	eval "export ${NO_EXPORT:+-n} -- \"$var=\${$var:+\${$var}\${value:+\$sep}}\$value\""
 }
 
@@ -66,7 +66,7 @@ package() {
 config () {
 	local cfgtype="$1"
 	local name="$2"
-	
+
 	export ${NO_EXPORT:+-n} CONFIG_NUM_SECTIONS=$(($CONFIG_NUM_SECTIONS + 1))
 	name="${name:-cfg$CONFIG_NUM_SECTIONS}"
 	append CONFIG_SECTIONS "$name"
@@ -88,7 +88,7 @@ list() {
 	local value="$*"
 	local len
 
-	config_get len "$CONFIG_SECTION" "${varname}_LENGTH" 
+	config_get len "$CONFIG_SECTION" "${varname}_LENGTH"
 	len="$((${len:-0} + 1))"
 	config_set "$CONFIG_SECTION" "${varname}_ITEM$len" "$value"
 	config_set "$CONFIG_SECTION" "${varname}_LENGTH" "$len"
@@ -108,8 +108,8 @@ config_clear() {
 	export ${NO_EXPORT:+-n} CONFIG_SECTIONS="${SECTION:+$CONFIG_SECTIONS}"
 
 	for oldvar in `set | grep ^CONFIG_${SECTION:+${SECTION}_} | \
-		sed -e 's/\(.*\)=.*$/\1/'` ; do 
-		unset $oldvar 
+		sed -e 's/\(.*\)=.*$/\1/'` ; do
+		unset $oldvar
 	done
 }
 
@@ -148,7 +148,7 @@ config_foreach() {
 	local type="$1"
 	[ "$#" -ge 1 ] && shift
 	local section cfgtype
-	
+
 	[ -z "$CONFIG_SECTIONS" ] && return 0
 	for section in ${CONFIG_SECTIONS}; do
 		config_get cfgtype "$section" TYPE

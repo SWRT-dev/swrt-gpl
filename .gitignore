@@ -52,6 +52,11 @@ release/src/router/shared/sysdeps/*/bcmutils.c
 release/src/router/shared/sysdeps/*/private.c
 release/src/router/shared/tcode.c
 release/src/router/sw-hw-auth/*.c
+release/src/router/swrtmesh/ieee1905/source
+release/src/router/swrtmesh/map-agent/source
+release/src/router/swrtmesh/map-controller/source
+release/src/router/swrtmesh/map-topology/source
+release/src/router/swrtmesh/swrtmesh-utils/source
 release/src/router/wb/*.c
 release/src/router/wb/ws_src/*.c
 release/linux/*/linux-*/net/swrt_fastpath/*.c

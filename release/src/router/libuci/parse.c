@@ -35,7 +35,7 @@ void uci_parse_section(struct uci_section *s, const struct uci_parse_option *opt
 			if (strcmp(opts[i].name, o->e.name) != 0)
 				continue;
 
-			if (opts[i].type >= 0 && opts[i].type != o->type)
+			if (opts[i].type != o->type)
 				continue;
 
 			/* match found */
@@ -78,10 +78,12 @@ static uint32_t hash_murmur2(uint32_t h, const void * key, int len)
 	switch(len)
 	{
 	case 3: h ^= data[2] << 16;
+		/* fall through */
 	case 2: h ^= data[1] << 8;
+		/* fall through */
 	case 1: h ^= data[0];
 	        h *= m;
-	};
+	}
 
 	h ^= h >> 13;
 	h *= m;

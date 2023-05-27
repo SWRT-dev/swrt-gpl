@@ -1679,7 +1679,7 @@ static inline int is_bss_enabled(char *prefix)
 }
 #endif
 
-#if defined(RTCONFIG_EASYMESH)
+#if defined(RTCONFIG_EASYMESH) || defined(RTCONFIG_SWRTMESH)
 static inline int __mesh_re_node(int sw_mode)
 {
 	return (sw_mode == SW_MODE_AP && nvram_get_int("re_mode") == 1);
@@ -1756,7 +1756,7 @@ static inline char *sta_default_mode(int __attribute__((__unused__)) band) { ret
 static inline int __access_point_mode(int sw_mode)
 {
 	return (sw_mode == SW_MODE_AP
-#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH) || defined(RTCONFIG_SWRTMESH)
 		&& !nvram_get_int("re_mode")
 #endif
 #if defined(RTCONFIG_PROXYSTA) && defined(RTCONFIG_LANTIQ)
@@ -4277,7 +4277,7 @@ extern int HwCheckResult();
 extern char *DoHardwareComponent(char *index);
 #endif
 
-#if defined(RTCONFIG_SW_HW_AUTH) && (defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH))
+#if defined(RTCONFIG_SW_HW_AUTH) && (defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH) || defined(RTCONFIG_SWRTMESH))
 /*
 	AMAS define type bitmap
 */

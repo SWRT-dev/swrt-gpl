@@ -1,0 +1,47 @@
+revert_test_prepare() {
+	touch ${CONFIG_DIR}/revert
+	${UCI} set revert.SEC0=section
+	${UCI} set revert.SEC0.option0=value0
+	${UCI} set revert.SEC0.option1='"Hello,
+'"  World\""
+}
+
+test_revert_section()
+{
+	revert_test_prepare
+	${UCI} revert revert.SEC0
+	assertSameFile "${REF_DIR}/revert_section.result" "$CHANGES_DIR/revert"
+}
+
+test_revert_option()
+{
+	revert_test_prepare
+	${UCI} revert revert.SEC0.option0
+	assertSameFile "${REF_DIR}/revert_option.result" "$CHANGES_DIR/revert"
+}
+
+test_revert_option_multiline()
+{
+	revert_test_prepare
+	${UCI} revert revert.SEC0.option1
+	assertSameFile "${REF_DIR}/revert_option_multiline.result" "$CHANGES_DIR/revert"
+}
+
+test_revert_option_long()
+{
+	local val="$(head -c 8192 < /dev/zero | tr '\0' 'a')"
+	local res
+
+	touch ${CONFIG_DIR}/p
+
+	${UCI} set p.s=sec
+	${UCI} set p.s.o="$val"
+
+	res="$(${UCI} changes)"
+	assertEquals "p.s='sec'
+p.s.o='$val'" "$res"
+
+	${UCI} revert p
+	res="$(${UCI} changes)"
+	assertEquals "" "$res"
+}

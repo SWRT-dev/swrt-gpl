@@ -13,7 +13,7 @@
  */
 
 /*
- * This file contains ucimap, an API for mapping UCI to C data structures 
+ * This file contains ucimap, an API for mapping UCI to C data structures
  */
 
 #ifndef __UCIMAP_H
@@ -93,7 +93,6 @@
 #endif /* __GNUC__ */
 
 #define UCIMAP_OPTION(_type, _field) \
-	.type = UCIMAP_CUSTOM, \
 	.name = #_field, \
 	.offset = offsetof(_type, _field), \
 	.detected_type = __optmap_gen_type(_type, _field), \
@@ -135,11 +134,11 @@ enum ucimap_type {
 	UCIMAP_TYPE     = 0xf0, /* type mask */
 
 	/* subtypes */
-	UCIMAP_STRING   = 0x0,
-	UCIMAP_BOOL     = 0x1,
-	UCIMAP_INT      = 0x2,
-	UCIMAP_SECTION  = 0x3,
-	UCIMAP_CUSTOM	= 0x4,
+	UCIMAP_CUSTOM	= 0x0,
+	UCIMAP_STRING   = 0x1,
+	UCIMAP_BOOL     = 0x2,
+	UCIMAP_INT      = 0x3,
+	UCIMAP_SECTION  = 0x4,
 	UCIMAP_SUBTYPE  = 0xf, /* subtype mask */
 
 	/* automatically create lists from

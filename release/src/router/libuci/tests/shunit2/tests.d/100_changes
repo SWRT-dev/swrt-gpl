@@ -1,0 +1,32 @@
+test_changes_tailing_parts()
+{
+	local c val
+	for c in + '' @ ^ '|' '~'; do
+		touch ${CONFIG_DIR}/network
+		cat >${CHANGES_DIR}/network <<-EOF
+			${c}network.foo bar
+			${c}network.foo bar=baz
+			${c}network.foo.bar baz
+			${c}network.foo.bar baz=bazz
+		EOF
+		val=$(${UCI} changes)
+		assertNotSegFault "$?"
+		assertNull "$val"
+	done
+}
+
+test_changes_missing_value()
+{
+	local c val
+	for c in + '' @ ^ '|' '~'; do
+		touch ${CONFIG_DIR}/network
+		mkdir -p ${CHANGES_DIR}
+		cat >${CHANGES_DIR}/network <<-EOF
+			${c}network.foo
+			${c}network.foo.bar
+		EOF
+		val=$(${UCI} changes)
+		assertNotSegFault "$?"
+		assertNull "$val"
+	done
+}

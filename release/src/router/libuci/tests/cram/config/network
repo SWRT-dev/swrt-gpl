@@ -1,0 +1,25 @@
+config 'alias' 'a'
+	option 'interface' 'lan'
+
+config 'alias' 'b'
+	option 'interface' 'lan'
+
+config 'interface' 'lan'
+	option 'proto' 'static'
+	option 'ifname' 'eth0'
+	option 'test' '123'
+	option 'enabled' 'off'
+	option 'ipaddr' '2.3.4.5'
+
+config 'interface' 'wan'
+	option 'proto'	'dhcp'
+	option 'ifname' 'eth1'
+	option 'enabled' 'on'
+	option 'aliases' 'c d'
+
+config 'alias' 'c'
+	option 'interface' 'wan'
+
+config 'alias' 'd'
+	option 'interface' 'wan'
+

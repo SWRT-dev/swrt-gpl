@@ -1,0 +1,3 @@
+list_test_config.SEC0=section
+list_test_config.SEC0.list0='value0' '"Hello
+, world"'

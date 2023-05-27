@@ -1,0 +1,5 @@
+config 'type' 'section'
+	# Cannot preserve trailling whitespace with assertEquals.
+	option opt "\"Hello, \
+World.
+\'"

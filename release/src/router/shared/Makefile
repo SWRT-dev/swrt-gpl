@@ -386,7 +386,7 @@ endif
 vpath %.c sysdeps/amas
 endif
 
-ifeq ($(RTCONFIG_EASYMESH),y)
+ifeq ($(or $(RTCONFIG_EASYMESH),$(RTCONFIG_SWRTMESH)),y)
 CFLAGS += -I$(TOP)/shared/sysdeps/swrtmesh
 OBJS += api-mesh.o
 vpath %.c sysdeps/swrtmesh

@@ -17,18 +17,13 @@
 
 #define __private __attribute__((visibility("hidden")))
 #define __public
-#ifdef UCI_PLUGIN_SUPPORT
-#define __plugin extern
-#else
-#define __plugin __private
-#endif
 
 struct uci_parse_context
 {
 	/* error context */
 	const char *reason;
 	int line;
-	int byte;
+	size_t byte;
 
 	/* private: */
 	struct uci_package *package;
@@ -37,30 +32,36 @@ struct uci_parse_context
 	FILE *file;
 	const char *name;
 	char *buf;
-	int bufsz;
+	size_t bufsz;
+	size_t buf_filled;
+	size_t pos;
 };
+#define pctx_pos(pctx)		((pctx)->pos)
+#define pctx_str(pctx, i)	(&(pctx)->buf[(i)])
+#define pctx_cur_str(pctx)	pctx_str(pctx, pctx_pos(pctx))
+#define pctx_char(pctx, i)	((pctx)->buf[(i)])
+#define pctx_cur_char(pctx)	pctx_char(pctx, pctx_pos(pctx))
 
 extern const char *uci_confdir;
 extern const char *uci_savedir;
 
-__plugin void *uci_malloc(struct uci_context *ctx, size_t size);
-__plugin void *uci_realloc(struct uci_context *ctx, void *ptr, size_t size);
-__plugin char *uci_strdup(struct uci_context *ctx, const char *str);
-__plugin bool uci_validate_str(const char *str, bool name);
-__plugin void uci_add_delta(struct uci_context *ctx, struct uci_list *list, int cmd, const char *section, const char *option, const char *value);
-__plugin void uci_free_delta(struct uci_delta *h);
-__plugin struct uci_package *uci_alloc_package(struct uci_context *ctx, const char *name);
+__private void *uci_malloc(struct uci_context *ctx, size_t size);
+__private void *uci_realloc(struct uci_context *ctx, void *ptr, size_t size);
+__private char *uci_strdup(struct uci_context *ctx, const char *str);
+__private bool uci_validate_str(const char *str, bool name, bool package);
+__private void uci_add_delta(struct uci_context *ctx, struct uci_list *list, int cmd, const char *section, const char *option, const char *value);
+__private void uci_free_delta(struct uci_delta *h);
+__private struct uci_package *uci_alloc_package(struct uci_context *ctx, const char *name);
 
-__private FILE *uci_open_stream(struct uci_context *ctx, const char *filename, int pos, bool write, bool create);
+__private FILE *uci_open_stream(struct uci_context *ctx, const char *filename, const char *origfilename, int pos, bool write, bool create);
 __private void uci_close_stream(FILE *stream);
-__private void uci_getln(struct uci_context *ctx, int offset);
+__private void uci_getln(struct uci_context *ctx, size_t offset);
 
-__private void uci_parse_error(struct uci_context *ctx, char *pos, char *reason);
+__private void uci_parse_error(struct uci_context *ctx, char *reason);
 __private void uci_alloc_parse_context(struct uci_context *ctx);
 
 __private void uci_cleanup(struct uci_context *ctx);
 __private struct uci_element *uci_lookup_list(struct uci_list *list, const char *name);
-__private void uci_fixup_section(struct uci_context *ctx, struct uci_section *s);
 __private void uci_free_package(struct uci_package **package);
 __private struct uci_element *uci_alloc_generic(struct uci_context *ctx, int type, const char *name, int size);
 __private void uci_free_element(struct uci_element *e);
@@ -70,17 +71,17 @@ __private int uci_load_delta(struct uci_context *ctx, struct uci_package *p, boo
 
 static inline bool uci_validate_package(const char *str)
 {
-	return uci_validate_str(str, false);
+	return uci_validate_str(str, false, true);
 }
 
 static inline bool uci_validate_type(const char *str)
 {
-	return uci_validate_str(str, false);
+	return uci_validate_str(str, false, false);
 }
 
 static inline bool uci_validate_name(const char *str)
 {
-	return uci_validate_str(str, true);
+	return uci_validate_str(str, true, false);
 }
 
 /* initialize a list head/item */
@@ -130,7 +131,7 @@ extern struct uci_backend uci_file_backend;
  *
  * The default backend is "file", which uses /etc/config for config storage
  */
-__plugin int uci_add_backend(struct uci_context *ctx, struct uci_backend *b);
+__private int uci_add_backend(struct uci_context *ctx, struct uci_backend *b);
 
 /**
  * uci_add_backend: add an extra backend
@@ -139,7 +140,7 @@ __plugin int uci_add_backend(struct uci_context *ctx, struct uci_backend *b);
  *
  * The default backend is "file", which uses /etc/config for config storage
  */
-__plugin int uci_del_backend(struct uci_context *ctx, struct uci_backend *b);
+__private int uci_del_backend(struct uci_context *ctx, struct uci_backend *b);
 #endif
 
 #define UCI_BACKEND(_var, _name, ...)	\
@@ -165,7 +166,7 @@ struct uci_backend _var = {		\
 #define DPRINTF(...)
 #endif
 
-/* 
+/*
  * throw an uci exception and store the error number
  * in the context.
  */
@@ -186,9 +187,9 @@ struct uci_backend _var = {		\
 #define UCI_HANDLE_ERR(ctx) do {	\
 	DPRINTF("ENTER: %s\n", __func__); \
 	int __val = 0;			\
-	ctx->err = 0;			\
 	if (!ctx)			\
 		return UCI_ERR_INVAL;	\
+	ctx->err = 0;			\
 	if (!ctx->internal && !ctx->nested) \
 		__val = setjmp(ctx->trap); \
 	ctx->internal = false;		\
@@ -215,14 +216,14 @@ struct uci_backend _var = {		\
 		ctx->err = __val;	\
 		memcpy(ctx->trap, __old_trap, sizeof(ctx->trap)); \
 		goto handler;		\
-	}
+	} while(0)
 #define UCI_TRAP_RESTORE(ctx)		\
 	memcpy(ctx->trap, __old_trap, sizeof(ctx->trap)); \
 } while(0)
 
 /**
  * UCI_INTERNAL: Do an internal call of a public API function
- * 
+ *
  * Sets Exception handling to passthrough mode.
  * Allows API functions to change behavior compared to public use
  */
@@ -233,7 +234,7 @@ struct uci_backend _var = {		\
 
 /**
  * UCI_NESTED: Do an normal nested call of a public API function
- * 
+ *
  * Sets Exception handling to passthrough mode.
  * Allows API functions to change behavior compared to public use
  */

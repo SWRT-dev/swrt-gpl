@@ -16,9 +16,7 @@
  * This file contains misc utility functions and wrappers to standard
  * functions, which throw exceptions upon failure.
  */
-#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
-#endif
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h>
@@ -29,23 +27,23 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <libgen.h>
 
 #include "uci.h"
 #include "uci_internal.h"
 
-__plugin void *uci_malloc(struct uci_context *ctx, size_t size)
+__private void *uci_malloc(struct uci_context *ctx, size_t size)
 {
 	void *ptr;
 
-	ptr = malloc(size);
+	ptr = calloc(1, size);
 	if (!ptr)
 		UCI_THROW(ctx, UCI_ERR_MEM);
-	memset(ptr, 0, size);
 
 	return ptr;
 }
 
-__plugin void *uci_realloc(struct uci_context *ctx, void *ptr, size_t size)
+__private void *uci_realloc(struct uci_context *ctx, void *ptr, size_t size)
 {
 	ptr = realloc(ptr, size);
 	if (!ptr)
@@ -54,7 +52,7 @@ __plugin void *uci_realloc(struct uci_context *ctx, void *ptr, size_t size)
 	return ptr;
 }
 
-__plugin char *uci_strdup(struct uci_context *ctx, const char *str)
+__private char *uci_strdup(struct uci_context *ctx, const char *str)
 {
 	char *ptr;
 
@@ -70,18 +68,22 @@ __plugin char *uci_strdup(struct uci_context *ctx, const char *str)
  * for names, only alphanum and _ is allowed (shell compatibility)
  * for types, we allow more characters
  */
-__plugin bool uci_validate_str(const char *str, bool name)
+__private bool uci_validate_str(const char *str, bool name, bool package)
 {
 	if (!*str)
 		return false;
 
-	while (*str) {
+	for (; *str; str++) {
 		unsigned char c = *str;
-		if (!isalnum(c) && c != '_') {
-			if (name || (c < 33) || (c > 126))
-				return false;
-		}
-		str++;
+
+		if (isalnum(c) || c == '_')
+			continue;
+
+		if (c == '-' && package)
+			continue;
+
+		if (name || (c < 33) || (c > 126))
+			return false;
 	}
 	return true;
 }
@@ -90,9 +92,10 @@ bool uci_validate_text(const char *str)
 {
 	while (*str) {
 		unsigned char c = *str;
-		if ((c == '\r') || (c == '\n') ||
-			((c < 32) && (c != '\t')))
+
+		if (c < 32 && c != '\t' && c != '\n' && c != '\r')
 			return false;
+
 		str++;
 	}
 	return true;
@@ -162,12 +165,12 @@ error:
 }
 
 
-__private void uci_parse_error(struct uci_context *ctx, char *pos, char *reason)
+__private void uci_parse_error(struct uci_context *ctx, char *reason)
 {
 	struct uci_parse_context *pctx = ctx->pctx;
 
 	pctx->reason = reason;
-	pctx->byte = pos - pctx->buf;
+	pctx->byte = pctx_pos(pctx);
 	UCI_THROW(ctx, UCI_ERR_PARSE);
 }
 
@@ -179,38 +182,59 @@ __private void uci_parse_error(struct uci_context *ctx, char *pos, char *reason)
  * note: when opening for write and seeking to the beginning of
  * the stream, truncate the file
  */
-__private FILE *uci_open_stream(struct uci_context *ctx, const char *filename, int pos, bool write, bool create)
+__private FILE *uci_open_stream(struct uci_context *ctx, const char *filename, const char *origfilename, int pos, bool write, bool create)
 {
 	struct stat statbuf;
 	FILE *file = NULL;
 	int fd, ret;
-	int mode = (write ? O_RDWR : O_RDONLY);
+	int flags = (write ? O_RDWR : O_RDONLY);
+	mode_t mode = UCI_FILEMODE;
+	char *name = NULL;
+	char *filename2 = NULL;
 
-	if (create)
-		mode |= O_CREAT;
+	if (create) {
+		flags |= O_CREAT;
+		if (origfilename) {
+			name = basename((char *) origfilename);
+		} else {
+			name = basename((char *) filename);
+		}
+		if ((asprintf(&filename2, "%s/%s", ctx->confdir, name) < 0) || !filename2) {
+			UCI_THROW(ctx, UCI_ERR_MEM);
+		} else {
+			if (stat(filename2, &statbuf) == 0)
+				mode = statbuf.st_mode;
+
+			free(filename2);
+		}
+	}
 
 	if (!write && ((stat(filename, &statbuf) < 0) ||
-		((statbuf.st_mode &  S_IFMT) != S_IFREG))) {
+		((statbuf.st_mode & S_IFMT) != S_IFREG))) {
 		UCI_THROW(ctx, UCI_ERR_NOTFOUND);
 	}
 
-	fd = open(filename, mode, UCI_FILEMODE);
+	fd = open(filename, flags, mode);
 	if (fd < 0)
 		goto error;
 
 	ret = flock(fd, (write ? LOCK_EX : LOCK_SH));
 	if ((ret < 0) && (errno != ENOSYS))
-		goto error;
+		goto error_close;
 
 	ret = lseek(fd, 0, pos);
 
 	if (ret < 0)
-		goto error;
+		goto error_unlock;
 
 	file = fdopen(fd, (write ? "w+" : "r"));
 	if (file)
 		goto done;
 
+error_unlock:
+	flock(fd, LOCK_UN);
+error_close:
+	close(fd);
 error:
 	UCI_THROW(ctx, UCI_ERR_IO);
 done:

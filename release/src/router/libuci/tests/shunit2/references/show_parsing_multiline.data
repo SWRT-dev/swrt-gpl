@@ -1,0 +1,20 @@
+config main
+        option version  1.4.1
+
+config sockd 'instance0'
+        option enabled  1
+        list internal_network   vpn
+        list external_network   wan
+
+        option extra_config '
+		user.unprivileged: nobody
+		client pass {
+			from: 0.0.0.0/0 to: 0.0.0.0/0
+			session.max: 64
+			log: error
+		}
+
+		socks pass {
+			from: 0.0.0.0/0 to: 0.0.0.0/0
+			log: connect
+		} '

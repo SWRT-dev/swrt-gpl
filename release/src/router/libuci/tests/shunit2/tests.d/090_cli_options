@@ -1,0 +1,46 @@
+test_add_delta() {
+	local new_savedir="$TMP_DIR/new_savedir"
+	local config_delta="$CONFIG_DIR/delta"
+	local cmdoutput
+
+	# add normal changes
+	touch "$config_delta"
+	$UCI set delta.sec0=sectype
+	$UCI add_list delta.sec0.li0=0
+
+	# save new changes in "$new_savedir"
+	mkdir -p "$new_savedir"
+	touch "$new_savedir/delta"
+	$UCI -P "$new_savedir" set delta.sec0=sectype
+	$UCI -P "$new_savedir" add_list delta.sec0.li0=1
+
+	assertEquals "delta.sec0='sectype'
+delta.sec0.li0+='0'" "$($UCI changes)"
+
+	# check combined changes.  Order matters here.
+	cmdoutput="$($UCI -P "$new_savedir" changes)"
+	assertTrue "$?"
+	assertEquals "delta.sec0='sectype'
+delta.sec0.li0+='0'
+delta.sec0='sectype'
+delta.sec0.li0+='1'" "$cmdoutput"
+
+	# check combined export.  Order matters here.
+	cmdoutput="$($UCI -P "$new_savedir" export)"
+	assertTrue "$?"
+	assertEquals "$(cat $REF_DIR/cli.options.delta.export.result)" "$cmdoutput"
+
+	# check CLI_FLAG_NOCOMMIT with -P option.
+	$UCI -P "$new_savedir" commit
+	assertTrue "$?"
+	assertEquals "" "$(cat $config_delta)"
+
+	# check normal commit.
+	$UCI -p "$new_savedir" commit
+	assertTrue "$?"
+	assertSameFile "$REF_DIR/cli.options.delta.commit.result" "$config_delta"
+
+	rm -rf "$new_savedir"
+	rm -f "$config_delta"
+}
+

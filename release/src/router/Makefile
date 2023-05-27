@@ -4299,7 +4299,7 @@ libubox-install: libubox
 	$(STRIP) $(INSTALLDIR)/$</usr/lib/*
 
 libuci/Makefile:
-	cd libuci && cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr
+	cd libuci && cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INCLUDE_PATH=$(STAGEDIR)/usr/include -DCMAKE_LIBRARY_PATH=$(STAGEDIR)/usr/lib
 
 libuci: libuci/Makefile
 	$(MAKE) $@-stage
