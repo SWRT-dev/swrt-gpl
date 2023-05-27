@@ -6,7 +6,7 @@ OBJS = function.o connections.o sm.o networkmap.o
 ifeq ($(HND_ROUTER),y)
 CFLAGS += -Werror=return-type -Werror=uninitialized -Wno-date-time 
 endif
-CFLAGS  += -I. -I$(TOP)/shared -I$(TOP)/kernel_header/include -I$(SRCBASE)/include -I$(TOP)/json-c
+CFLAGS  += -I. -I$(TOP)/shared -I$(TOP)/kernel_header/include -I$(SRCBASE)/include -I$(STAGEDIR)/usr/include/json-c
 CFLAGS  += -s -O2 -DNO_PARALLEL
 
 ifeq ($(RTCONFIG_RALINK),y)
@@ -58,7 +58,7 @@ CFLAGS += -I$(TOP)/httpd
 CFLAGS += -I$(TOP)/bwdpi_dep/bwdpi
 endif
 
-LDFLAGS += -lm -L$(TOP)/shared -lshared -L$(TOP_PLATFORM)/nvram${BCMEX} -lnvram -L$(TOP)/json-c/.libs -ljson-c
+LDFLAGS += -lm -L$(TOP)/shared -lshared -L$(TOP_PLATFORM)/nvram${BCMEX} -lnvram -L$(STAGEDIR)/usr/lib -ljson-c
 LDFLAGS += -L$(TOP)/shared -lshared -L$(TOP_PLATFORM)/nvram${BCMEX}${EX7} -lnvram 
 ifeq ($(HND_ROUTER),y)
 LDFLAGS += -L$(TOP_PLATFORM)/wlcsm$(EXHND) -lwlcsm
