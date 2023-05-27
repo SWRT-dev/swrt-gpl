@@ -20,7 +20,7 @@ OBJS += $(if $(wildcard priv_webapi.c), priv_webapi.o, prebuild/priv_webapi.o)
 
 CFLAGS += -Os -Wall $(EXTRACFLAGS) -fPIC
 CFLAGS += -I. -I$(TOP)/shared -I$(SRCBASE)/include
-CFLAGS += -I$(TOP)/json-c
+CFLAGS += -I$(STAGEDIR)/usr/include/json-c
 
 ifeq ($(RTCONFIG_BWDPI),y)
 CFLAGS += -I$(TOP)/sqlite
@@ -31,7 +31,7 @@ CFLAGS += -I$(TOP)/bwdpi_source/asus_include
 CFLAGS += -I$(TOP)/httpd
 endif
 
-LDFLAGS += -L$(TOP)/json-c/.libs -ljson-c
+LDFLAGS += -L$(STAGEDIR)/usr/lib -ljson-c
 LDFLAGS += -L$(TOP)/shared -lshared
 
 ifeq ($(RTCONFIG_BWDPI),y)
