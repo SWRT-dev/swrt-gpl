@@ -8360,7 +8360,7 @@ json-c: json-c/Makefile
 	$(MAKE) -C $@ && $(MAKE) $@-stage
 
 json-c-install: json-c
-	install -D json-c/.libs/libjson-c.so.5.1.0 $(INSTALLDIR)/json-c/usr/lib/libjson-c.so.5.1.0
+	install -D json-c/libjson-c.so.5.1.0 $(INSTALLDIR)/json-c/usr/lib/libjson-c.so.5.1.0
 	$(STRIP) $(INSTALLDIR)/json-c/usr/lib/libjson-c.so.5.1.0
 	cd $(INSTALLDIR)/json-c/usr/lib && \
 		ln -sf libjson-c.so.5.1.0 libjson-c.so && \
