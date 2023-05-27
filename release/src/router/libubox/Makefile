@@ -12,7 +12,7 @@ CFLAGS += -I$(JSON)
 JSON_LIB := -L$(JSON) -ljson
 else ifneq ($(JSONC),)
 CFLAGS += -DJSONC -I$(JSONC)
-JSON_LIB := -L$(JSONC)/.libs -ljson-c
+JSON_LIB := -L$(STAGEDIR)/usr/lib -ljson-c
 endif
 
 TARGETS = libubox.a libubox.so

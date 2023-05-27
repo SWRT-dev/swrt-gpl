@@ -3944,8 +3944,8 @@ sw-auth-lite-clean:
 
 k3screenctrl/Makefile: sw-auth-lite
 	cd k3screenctrl && autoreconf -i -f && CC=$(CC) STRIP=$(STRIP) \
-		CFLAGS=" -std=gnu99 -D_GNU_SOURCE $(EXTRACFLAGS) -I$(TOP)/nvram${BCMEX} -I$(TOP)/shared -I$(SRCBASE)/shared/bcmwifi/include -I$(SRCBASE)/include -I$(KERNEL_HEADER_DIR) -I$(TOP)/curl/include -I$(TOP)/json-c -I$(TOP)/openssl/include -I$(SRCBASE)/common/include -I$(TOP)/sw-auth-lite" \
-		LDFLAGS="$(EXTRALDFLAGS) -L$(TOP)/nvram${BCMEX} -lnvram -L$(TOP)/shared -lshared -L$(TOP)/curl/lib/.libs -lcurl -L$(TOP)/json-c/.libs -ljson-c -L$(TOP)/openssl -lcrypto -lssl -ldl -lpthread -L$(TOP)/sw-auth-lite -lsw_auth" \
+		CFLAGS=" -std=gnu99 -D_GNU_SOURCE $(EXTRACFLAGS) -I$(TOP)/nvram${BCMEX} -I$(TOP)/shared -I$(SRCBASE)/shared/bcmwifi/include -I$(SRCBASE)/include -I$(KERNEL_HEADER_DIR) -I$(TOP)/curl/include -I$(STAGEDIR)/usr/include/json-c -I$(TOP)/openssl/include -I$(SRCBASE)/common/include -I$(TOP)/sw-auth-lite" \
+		LDFLAGS="$(EXTRALDFLAGS) -L$(TOP)/nvram${BCMEX} -lnvram -L$(TOP)/shared -lshared -L$(TOP)/curl/lib/.libs -lcurl -L$(STAGEDIR)/usr/lib -ljson-c -L$(TOP)/openssl -lcrypto -lssl -ldl -lpthread -L$(TOP)/sw-auth-lite -lsw_auth" \
 		$(CONFIGURE) --target=arm-linux --host=arm-linux --build=x86_64-linux-gnu --prefix=""
 
 k3screenctrl: k3screenctrl/Makefile
@@ -9409,7 +9409,7 @@ easymesh-sdk-install:
 	$(MAKE) -C easymesh-sdk install
 
 libubus:libubox json-c
-	cd libubus && cmake -DABIVERSION="2021-06-03" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_LUA=0 -DBUILD_EXAMPLES=0 -Djson=$(STAGEDIR)/usr/lib/libjson-c.so -Dubox_include_dir=$(STAGEDIR)/usr/include -Dubox_library=$(TOP)/libubox/libubox.so -Dblob_library=$(TOP)/libubox/libblobmsg_json.so
+	cd libubus && cmake -DABIVERSION="2021-06-03" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_LUA=0 -DBUILD_EXAMPLES=0  -DCMAKE_INCLUDE_PATH=$(STAGEDIR)/usr/include -DCMAKE_LIBRARY_PATH=$(STAGEDIR)/usr/lib
 	$(MAKE) -C libubus all && $(MAKE) $@-stage
 
 libubus-install:
