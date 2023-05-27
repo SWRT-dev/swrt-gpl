@@ -8352,24 +8352,11 @@ amas-utils-install:
 	install -D amas-utils/amas-utils-cli $(INSTALLDIR)/amas-utils/usr/sbin/amas-utils-cli
 	$(STRIP) -s $(INSTALLDIR)/amas-utils/usr/sbin/amas-utils-cli
 
-json-c/stamp-h1:
-ifeq ($(RTCONFIG_LANTIQ),y)
-	cd $(TOP)/json-c && \
-	$(CONFIGURE) --prefix=/usr --enable-shared --disable-static \
-	ac_cv_func_realloc_0_nonnull=yes ac_cv_func_malloc_0_nonnull=yes ac_cv_have_decl__isnan=no \
-	CFLAGS="-Os -Wno-error $(EXTRACFLAGS)" \
-	LDFLAGS="$(EXTRALDFLAGS) -Wl,--as-needed -lm"
-	touch $@
-else
-	cd $(TOP)/json-c && \
-	$(CONFIGURE) --prefix=/usr --enable-shared --disable-static \
-	ac_cv_func_realloc_0_nonnull=yes ac_cv_func_malloc_0_nonnull=yes \
-	CFLAGS="-Os -Wno-error $(EXTRACFLAGS)" \
-	LDFLAGS="$(EXTRALDFLAGS) -Wl,--as-needed -lm"
-	touch $@
-endif
+json-c/Makefile:
+	cd json-c && cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INCLUDE_PATH=$(STAGEDIR)/usr/include -DCMAKE_LIBRARY_PATH=$(STAGEDIR)/usr/lib \
+		-DCMAKE_SKIP_RPATH=FALSE -DCMAKE_MACOSX_RPATH=1 -DCMAKE_INSTALL_RPATH=$(STAGEDIR)/usr/lib
 
-json-c: json-c/stamp-h1
+json-c: json-c/Makefile
 	$(MAKE) -C $@ && $(MAKE) $@-stage
 
 json-c-install: json-c
@@ -9437,7 +9424,7 @@ libubus-install:
 	$(STRIP) $(INSTALLDIR)/libubus/usr/sbin/ubusd
 endif
 ifeq ($(RTCONFIG_SWRTMESH),y)
-swrtmesh: libubox libubus libnl libuci openssl avahi
+swrtmesh: json-c libubox libubus libnl libuci openssl avahi
 	$(MAKE) -C swrtmesh all
 endif
 

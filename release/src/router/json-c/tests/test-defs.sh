@@ -1,5 +1,10 @@
 #!/bin/sh
 
+if [ ! -z "$JSONC_TEST_TRACE" ] ; then
+	VERBOSE=1
+	set -x
+	set -v
+fi
 # Make sure srcdir is an absolute path.  Supply the variable
 # if it does not exist.  We want to be able to run the tests
 # stand-alone!!
@@ -50,6 +55,14 @@ echo "=== Running test $progname"
 CMP="${CMP-cmp}"
 
 use_valgrind=${USE_VALGRIND-1}
+case "${use_valgrind}" in
+	[0Nn]*)
+		use_valgrind=0
+		;;
+	*)
+		use_valgrind=1
+		;;
+esac
 valgrind_path=$(which valgrind 2> /dev/null)
 if [ -z "${valgrind_path}" -o ! -x "${valgrind_path}" ] ; then
 	use_valgrind=0
@@ -77,7 +90,7 @@ run_output_test()
 	fi
 	TEST_COMMAND="$1"
 	shift
-	if [ -z "${TEST_OUTPUT}" ] ; then	
+	if [ -z "${TEST_OUTPUT}" ] ; then
 		TEST_OUTPUT=${TEST_COMMAND}
 	fi
 
@@ -114,15 +127,13 @@ run_output_test()
 		fi
 	fi
 
-	if ! "$CMP" -s "${top_builddir}/${TEST_OUTPUT}.expected" "${TEST_OUTPUT}.out" ; then
+	if ! "$CMP" -s "${srcdir}/${TEST_OUTPUT}.expected" "${TEST_OUTPUT}.out" ; then
 		echo "ERROR: \"${TEST_COMMAND} $@\" (${TEST_OUTPUT}) failed (set VERBOSE=1 to see full output):" 1>&2
-		(cd "${CURDIR}" ; set -x ; diff "${top_builddir}/${TEST_OUTPUT}.expected" "$testsubdir/${TEST_OUTPUT}.out")
-		echo "cp \"$testsubdir/${TEST_OUTPUT}.out\" \"${top_builddir}/${TEST_OUTPUT}.expected\"" 1>&2
+		(cd "${CURDIR}" ; set -x ; diff "${srcdir}/${TEST_OUTPUT}.expected" "$testsubdir/${TEST_OUTPUT}.out")
+		echo "cp \"$testsubdir/${TEST_OUTPUT}.out\" \"${srcdir}/${TEST_OUTPUT}.expected\"" 1>&2
 
 		err=1
 	fi
 
 	return $err
 }
-
-

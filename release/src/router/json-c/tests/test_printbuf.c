@@ -1,15 +1,20 @@
 #include <assert.h>
+#include <limits.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <limits.h>
 
 #include "debug.h"
 #include "printbuf.h"
 
 static void test_basic_printbuf_memset(void);
 static void test_printbuf_memset_length(void);
+
+#ifndef __func__
+/* VC++ compat */
+#define __func__ __FUNCTION__
+#endif
 
 static void test_basic_printbuf_memset()
 {
@@ -73,7 +78,7 @@ static void test_printbuf_memappend(int *before_resize)
 
 	initial_size = pb->size;
 
-	while(pb->size == initial_size)
+	while (pb->size == initial_size)
 	{
 		printbuf_memappend_fast(pb, "x", 1);
 	}
@@ -84,7 +89,7 @@ static void test_printbuf_memappend(int *before_resize)
 	printbuf_memappend_fast(pb, "bluexyz123", 3);
 	printf("Partial append: %d, [%s]\n", printbuf_length(pb), pb->buf);
 
-	char with_nulls[] = { 'a', 'b', '\0', 'c' };
+	char with_nulls[] = {'a', 'b', '\0', 'c'};
 	printbuf_reset(pb);
 	printbuf_memappend_fast(pb, with_nulls, (int)sizeof(with_nulls));
 	printf("With embedded \\0 character: %d, [%s]\n", printbuf_length(pb), pb->buf);
@@ -106,8 +111,15 @@ static void test_printbuf_memappend(int *before_resize)
 	printf("Append to just after resize: %d, [%s]\n", printbuf_length(pb), pb->buf);
 
 	free(data);
-
 	printbuf_free(pb);
+
+#define SA_TEST_STR "XXXXXXXXXXXXXXXX"
+	pb = printbuf_new();
+	printbuf_strappend(pb, SA_TEST_STR);
+	printf("Buffer size after printbuf_strappend(): %d, [%s]\n", printbuf_length(pb), pb->buf);
+	printbuf_free(pb);
+#undef SA_TEST_STR
+
 	printf("%s: end test\n", __func__);
 }
 
@@ -115,6 +127,11 @@ static void test_sprintbuf(int before_resize);
 static void test_sprintbuf(int before_resize)
 {
 	struct printbuf *pb;
+	const char *max_char =
+	    "if string is greater than stack buffer, then use dynamic string"
+	    " with vasprintf.  Note: some implementation of vsnprintf return -1 "
+	    " if output is truncated whereas some return the number of bytes that "
+	    " would have been written - this code handles both cases.";
 
 	printf("%s: starting test\n", __func__);
 	pb = printbuf_new();
@@ -125,7 +142,8 @@ static void test_sprintbuf(int before_resize)
 	data[before_resize + 1] = '\0';
 	sprintbuf(pb, "%s", data);
 	free(data);
-	printf("sprintbuf to just after resize(%d+1): %d, [%s], strlen(buf)=%d\n", before_resize, printbuf_length(pb), pb->buf, (int)strlen(pb->buf));
+	printf("sprintbuf to just after resize(%d+1): %d, [%s], strlen(buf)=%d\n", before_resize,
+	       printbuf_length(pb), pb->buf, (int)strlen(pb->buf));
 
 	printbuf_reset(pb);
 	sprintbuf(pb, "plain");
@@ -143,6 +161,8 @@ static void test_sprintbuf(int before_resize)
 	sprintbuf(pb, "%s", "%s");
 	printf("%d, [%s]\n", printbuf_length(pb), pb->buf);
 
+	sprintbuf(pb, max_char);
+	printf("%d, [%s]\n", printbuf_length(pb), pb->buf);
 	printbuf_free(pb);
 	printf("%s: end test\n", __func__);
 }
@@ -151,7 +171,7 @@ int main(int argc, char **argv)
 {
 	int before_resize = 0;
 
-	mc_set_debug(1);
+	MC_SET_DEBUG(1);
 
 	test_basic_printbuf_memset();
 	printf("========================================\n");

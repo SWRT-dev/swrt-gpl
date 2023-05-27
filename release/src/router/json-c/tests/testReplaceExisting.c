@@ -1,6 +1,6 @@
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stddef.h>
 #include <string.h>
 
 #include "json.h"
@@ -24,7 +24,7 @@ int main(int argc, char **argv)
 	int orig_count = 0;
 	json_object_object_foreach(my_object, key0, val0)
 	{
-		printf("Key at index %d is [%s]", orig_count, key0);
+		printf("Key at index %d is [%s] %d", orig_count, key0, (val0 == NULL));
 		if (strcmp(key0, "deleteme") == 0)
 		{
 			json_object_object_del(my_object, key0);
@@ -41,7 +41,7 @@ int main(int argc, char **argv)
 	orig_count = 0;
 	json_object_object_foreach(my_object, key, val)
 	{
-		printf("Key at index %d is [%s]\n", orig_count, key);
+		printf("Key at index %d is [%s] %d\n", orig_count, key, (val == NULL));
 		orig_count++;
 		if (strcmp(key, "foo2") != 0)
 			continue;
@@ -56,7 +56,7 @@ int main(int argc, char **argv)
 	int retval = 0;
 	json_object_object_foreach(my_object, key2, val2)
 	{
-		printf("Key at index %d is [%s]\n", new_count, key2);
+		printf("Key at index %d is [%s] %d\n", new_count, key2, (val2 == NULL));
 		new_count++;
 		if (strcmp(key2, "foo2") != 0)
 			continue;
@@ -67,12 +67,12 @@ int main(int argc, char **argv)
 	}
 	if (new_count != orig_count)
 	{
-		printf("mismatch between original count (%d) and new count (%d)\n",
-		       orig_count, new_count);
+		printf("mismatch between original count (%d) and new count (%d)\n", orig_count,
+		       new_count);
 		retval = 1;
 	}
 
-	json_object_put( my_object );
+	json_object_put(my_object);
 
 	return retval;
 }
