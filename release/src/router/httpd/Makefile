@@ -216,7 +216,7 @@ endif
 endif
 
 ifeq ($(RTCONFIG_AMAS),y)
-LDFLAGS += -L$(TOP)/json-c/.libs -ljson-c
+LDFLAGS += -L$(STAGEDIR)/usr/lib -ljson-c
 endif
 
 ifeq ($(RTCONFIG_USB),y)
@@ -241,8 +241,8 @@ LIBS += -L$(TOP)/libvpn -lvpn
 LIBS += -L$(TOP)/openssl -lssl -lcrypto -ldl
 endif
 
-CFLAGS += -I$(TOP)/json-c
-LIBS += -L$(TOP)/json-c/.libs -ljson-c
+CFLAGS += -I$(STAGEDIR)/usr/include/json-c
+LDFLAGS += -L$(STAGEDIR)/usr/lib -ljson-c
 
 ifeq ($(RTCONFIG_BWDPI),y)
 LIBS += -L$(TOP)/bwdpi_source/asus -lbwdpi
@@ -320,11 +320,11 @@ endif
 ifeq ($(RTCONFIG_DNSQUERY_INTERCEPT),y)
 CFLAGS += -I$(TOP)/dnsqd
 CFLAGS += -I$(TOP)/sqlite
-CFLAGS += -I$(TOP)/json-c
+CFLAGS += -I$(STAGEDIR)/usr/include/json-c
 LIBS += -L$(TOP)/dnsqd -ldns_app_client
 LIBS += -L$(TOP)/sqlite/.libs -lsqlite3
 LIBS += -lpthread
-LIBS += -L$(TOP)/json-c/.libs -ljson-c
+LDFLAGS += -L$(STAGEDIR)/usr/lib -ljson-c
 endif
 
 CFLAGS += -I$(TOP)/libpasswd
