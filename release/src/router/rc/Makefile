@@ -701,8 +701,8 @@ endif
 endif
 
 ifeq ($(RTCONFIG_SOFTWIRE46),y)
-CFLAGS += -I$(TOP)/json-c
-LDFLAGS += -L$(TOP)/json-c/.libs -ljson-c
+CFLAGS += -I$(STAGEDIR)/usr/include/json-c
+LDFLAGS += -L$(STAGEDIR)/usr/lib -ljson-c
 OBJS += s46comm.o v6plusd.o ocnvcd.o
 endif
 
@@ -968,8 +968,8 @@ OBJS += ledg.o
 endif
 
 OBJS += dhcpc_vc_query.o
-CFLAGS += -I$(TOP)/json-c
-LDFLAGS += -L$(TOP)/json-c/.libs -ljson-c
+CFLAGS += -I$(STAGEDIR)/usr/include/json-c
+LDFLAGS += -L$(STAGEDIR)/usr/lib -ljson-c
 
 ifeq ($(RTCONFIG_MULTISERVICE_WAN),y)
 ifeq ($(CONFIG_BCMWL5),y)
