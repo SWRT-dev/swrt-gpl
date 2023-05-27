@@ -21,7 +21,7 @@ CFLAGS += -I$(JSON)
 LIBS += -L$(JSON) -ljson
 else ifneq ($(JSONC),)
 CFLAGS += -DJSONC -I$(JSONC)
-LIBS += -L$(JSONC)/.libs -ljson-c
+LIBS += -L$(STAGEDIR)/usr/lib -ljson-c
 endif
 
 TARGETS = uqmi
