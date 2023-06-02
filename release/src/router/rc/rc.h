@@ -3561,5 +3561,9 @@ extern void run_gre_fw_scripts();
 #endif
 extern void save_sys_time(void);
 void wl_apply_akm_by_auth_mode(int unit, int subunit, char *sp_prefix_auth);
+#if defined(RTCONFIG_SWRTMESH)
+extern int start_swrtmesh(void);
+extern void stop_swrtmesh(void);
+#endif
 #endif	/* __RC_H__ */
 

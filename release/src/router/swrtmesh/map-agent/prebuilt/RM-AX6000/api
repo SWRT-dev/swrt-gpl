@@ -1,0 +1,117 @@
+#!/bin/sh
+
+. /lib/functions.sh
+. /usr/share/libubox/jshn.sh
+
+MAPFILE="/var/run/multiap/multiap.backhaul"
+
+issue_discovery() {
+	local iface="$1"
+
+	ubus list ieee1905 > /dev/null 2>&1
+
+	[ "$?" != 0 ] && return
+
+	res=$(ubus -t2 call ieee1905 buildcmdu "{\"type\":0, \"ifname\":\"${iface}\"}")
+	json_load "$res" > /dev/null 2>&1
+	json_get_var data data
+
+	[ "$data" == "" ] && return
+
+	ubus -t1 wait_for ieee1905.al.$iface > /dev/null 2>&1
+	[ "$?" != 0 ] && return
+
+	ubus call ieee1905.al.$iface cmdu "{\"dst\":\"01:80:c2:00:00:13\", \"type\":0, \"data\":\"${data}\"}"
+}
+
+remove_from_bridge() {
+	config_get ifname "$section" ifname
+
+	ubus call network.interface.$bridge remove_device '{"name":"$ifname"}'
+}
+
+update_bstas() {
+	local section="$1"
+	local action="$2"
+	local ifname onboarded
+
+	config_get ifname "$section" ifname
+	config_get_bool enabled "$section" enabled 0
+
+	if [ "$action" = "down" ]; then
+		wpa_cli -i "$ifname" disconnect > /dev/null 2>&1
+		wpa_cli -i "$ifname" disable_network 0  > /dev/null 2>&1
+#		wpa_cli -i "$ifname" save_config  > /dev/null 2>&1
+	elif [ "$action" = "up" ]; then
+		[ "$enabled" -eq 0 ] && return
+		wpa_cli -i "$ifname" reconnect > /dev/null 2>&1
+		wpa_cli -i "$ifname" enable_network 0  > /dev/null 2>&1
+#		wpa_cli -i "$ifname" save_config  > /dev/null 2>&1
+	fi
+}
+
+up() {
+#	touch "$MAPFILE"
+#	echo "$1" > "$MAPFILE"
+
+	config_load "mapagent"
+	bridge=$(uci get mapagent.agent.al_bridge | cut -d '-' -f2)
+	config_foreach remove_from_bridge bsta $bridge
+	config_foreach update_bstas bsta down
+}
+
+down() {
+	rm -f "$MAPFILE"
+	config_load "mapagent"
+	config_foreach update_bstas bsta up
+}
+
+find_bridge() {
+	local ifname=$2
+
+	config_get ports "$section" ports
+
+	if [ "$(echo $ports | grep -w $ifname)" != "" ]; then
+		config_get name "$section" name
+
+		echo $name
+		break
+	fi
+}
+
+bridge_modif() {
+	local action=$1
+	local ifname=$2
+
+	config_load "network"
+
+	bridge=$(config_foreach find_bridge device $ifname)
+
+	if [ "$bridge" != "" ]; then
+		brctl ${action}if $bridge $ifname
+	fi
+}
+
+bridge_addif() {
+	local ifname=$1
+
+	bridge_modif add $ifname
+	issue_discovery $ifname
+}
+
+bridge_delif() {
+	local ifname=$1
+
+	bridge_modif del $ifname
+}
+
+func=$1
+shift
+
+case "$func" in
+	up) up $@;;
+	down) down $@;;
+	bridge_delif) bridge_delif $@;;
+	bridge_addif) bridge_addif $@;;
+	*) exit 1;;
+esac

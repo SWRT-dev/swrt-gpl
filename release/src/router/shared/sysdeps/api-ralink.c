@@ -1170,7 +1170,7 @@ int set_acl_entry(const char *ifname, char *addr)
 
 	return 1;
 }
-
+#if 0
 int set_channel(const char* ifname, int channel)
 {
 	struct iwreq wrq;
@@ -1189,7 +1189,7 @@ int set_channel(const char* ifname, int channel)
 
 	return 0;
 }
-
+#endif
 int set_bandwidth(const char* ifname, int ht_bw, int vht_bw)
 {
 	struct iwreq wrq;

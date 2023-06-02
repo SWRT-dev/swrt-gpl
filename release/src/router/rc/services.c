@@ -11172,6 +11172,9 @@ start_services(void)
 #elif defined(RTCONFIG_SWRT_KVR) && defined(RTCONFIG_RALINK)
 	start_wapp();
 #endif
+#if defined(RTCONFIG_SWRTMESH)
+	start_swrtmesh();
+#endif
 
 	return 0;
 }
@@ -11201,6 +11204,9 @@ stop_services(void)
 #endif
 #if defined(RTCONFIG_EASYMESH)
 	stop_easymesh();
+#endif
+#if defined(RTCONFIG_SWRTMESH)
+	stop_swrtmesh();
 #endif
 #ifdef RTCONFIG_FSMD
 	killall_tk("fsmd");
@@ -16134,6 +16140,13 @@ check_ddr_done:
 	{
 		if(action & RC_SERVICE_STOP) stop_easymesh();
 		if(action & RC_SERVICE_START) start_easymesh();
+	}
+#endif
+#if defined(RTCONFIG_SWRTMESH)
+	else if (strcmp(script, "swrtmesh") == 0)
+	{
+		if(action & RC_SERVICE_STOP) stop_swrtmesh();
+		if(action & RC_SERVICE_START) start_swrtmesh();
 	}
 #endif
 #ifdef RTCONFIG_DNSPRIVACY

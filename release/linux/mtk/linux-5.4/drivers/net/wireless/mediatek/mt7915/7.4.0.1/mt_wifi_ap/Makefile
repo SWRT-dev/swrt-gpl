@@ -237,7 +237,7 @@ cmm_objs := $(SRC_EMBEDDED_DIR)/common/action.o\
 		$(SRC_DIR)/protocol/protection.o\
 		$(SRC_EMBEDDED_DIR)/common/misc_app.o
 
-EXTRA_CFLAGS += -DMULTI_PROFILE
+EXTRA_CFLAGS += -DMULTI_PROFILE -DVENDOR_FEATURE6_SUPPORT
 cmm_objs += $(SRC_EMBEDDED_DIR)/common/multi_profile.o
 
 ifeq ($(CONFIG_DEFAULT_5G_PROFILE),y)

@@ -1,0 +1,69 @@
+include $(TOP)/.config
+TARGET_CC=$(CROSS_COMPILE)gcc
+LINUX_VERSION=$(LINUX_KERNEL)
+PKG_BUILD_DIR=$(shell pwd)/source
+
+ifeq ($(RTCONFIG_BCMARM),y)
+	TARGET_PLATFORM=BROADCOM
+	TARGET_WIFI_TYPE=BROADCOM
+	TARGET_CFLAGS += -DIOPSYS_BROADCOM -DCHIP_$(BCM_CHIP) -DCONFIG_BCM9$(BCM_CHIP) \
+	-I$(HND_SRC)/bcmdrivers/opensource/include/bcm963xx \
+	-I$(HND_SRC)/userspace/public/include
+else ifeq ($(RTCONFIG_AMD64),y)
+	TARGET_PLATFORM=TEST
+	TARGET_WIFI_TYPE=TEST
+	TARGET_CFLAGS += -DIOPSYS_TEST
+else ifeq ($(or $(RTCONFIG_RALINK_EN7561),$(RTCONFIG_RALINK_EN7562)),y)
+	TARGET_PLATFORM=ECONET
+	#TARGET_WIFI_TYPE=MEDIATEK MAC80211 #mt76
+	TARGET_WIFI_TYPE=MTK
+	TARGET_CFLAGS += -DIOPSYS_ECONET
+else ifeq ($(RTCONFIG_SOC_IPQ95XX),y)
+	TARGET_PLATFORM=IPQ95XX
+	TARGET_WIFI_TYPE=MAC80211
+	TARGET_CFLAGS += -DIPQ95XX
+else ifeq ($(RTCONFIG_MT798X),y)
+	TARGET_PLATFORM=LINUX
+	#TARGET_WIFI_TYPE=MAC80211 #mt76
+	TARGET_WIFI_TYPE=MEDIATEK
+	TARGET_CFLAGS += -DIOPSYS_LINUX -DMTWIFI
+else ifeq ($(RTCONFIG_LANTIQ),y)
+	TARGET_PLATFORM=LINUX
+	TARGET_WIFI_TYPE=INTEL
+	TARGET_CFLAGS += -DIOPSYS_LINUX
+else
+$(warning Unexpected PLATFORM, use default MAC80211)
+	TARGET_PLATFORM=MAC80211
+	TARGET_WIFI_TYPE=MAC80211
+	TARGET_CFLAGS += -DIOPSYS_MAC80211
+endif
+ifneq ($(RTCONFIG_AMD64),y)
+	TARGET_CFLAGS += -DHAS_WIFI
+ifneq ($(and $(RTCONFIG_AMD64),$(RTCONFIG_RALINK)),y)
+	TARGET_CFLAGS += -DLIBWIFI_USE_CTRL_IFACE
+endif
+endif
+ifeq ($(RTCONFIG_SWRTMESH),y)
+TARGET_CFLAGS += -DRTCONFIG_SWRTMESH
+endif
+
+all:
+	$(MAKE) -C $(PKG_BUILD_DIR) WIFI_TYPE="$(TARGET_WIFI_TYPE)" PLATFORM="$(TARGET_PLATFORM)" TARGET_CFLAGS="$(TARGET_CFLAGS)"
+
+install:
+	[ -d $(INSTALLDIR)/usr/lib ] || install -d $(INSTALLDIR)/usr/lib
+	install -m 755 $(PKG_BUILD_DIR)/libwifiutils.so $(INSTALLDIR)/usr/lib/
+	cp -rf $(PKG_BUILD_DIR)/libwifi-7.so* $(INSTALLDIR)/usr/lib/
+	$(STRIP) $(INSTALLDIR)/usr/lib/libwifi-7.so*
+	$(STRIP) $(INSTALLDIR)/usr/lib/libwifiutils.so
+
+clean:
+	[ ! -f $(PKG_BUILD_DIR)/Makefile ] || $(MAKE) -C $(PKG_BUILD_DIR) clean
+	find $(PKG_BUILD_DIR) -type f -name "*.o" -o -name "stage" | xargs rm -f
+
+stage:
+	install -m 644 $(PKG_BUILD_DIR)/{wifidefs,wifiutils,wifiops,wifi}.h $(STAGEDIR)/usr/include
+	cp -rf $(PKG_BUILD_DIR)/libwifiutils.so $(STAGEDIR)/usr/lib
+	cp -rf $(PKG_BUILD_DIR)/libwifi-7.so* $(STAGEDIR)/usr/lib
+
+.PHONY: stage all install clean

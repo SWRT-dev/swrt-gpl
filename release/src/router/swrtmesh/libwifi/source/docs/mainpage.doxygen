@@ -1,0 +1,287 @@
+/**
+\mainpage Architecture and Design goals
+
+The easy-soc-libs is a collection of libraries (Linux shared objects), which
+provide well defined, abstract and hardware agnostic APIs for different
+subsystems like WiFi, DSL, Ethernet etc.
+
+The APIs provide interfaces to the underlying platform/hardware for setting
+parameters and getting status/statistics information.
+
+Users of the easy-soc-libs can focus on the application logic and not bother
+about the nitty-gritty nuances of a platform/hardware.
+
+See IopsysWrt design and architecture documents to know more about easy-soc-libs.
+
+This document focuses only on the easy-soC-libs's WiFi library, which is called
+\b libwifi.so.
+
+\page dev_wifi_arch WiFi Objects
+
+Every WiFi module creates atleast one Linux network interface. Users through this
+interface can set/get parameters like ssid, bssid, channel, encryption etc. of
+the WiFi device. It is the WiFi module's MAC (or layer2) interface.
+
+This interface can function in one of the various WiFi modes that a WiFi
+module supports viz. AP (or Master), Client (or managed), Monitor, AdHoc etc.
+
+Since, IOPSYSWRT is a Router/AP/Gateway software, the WiFI interfaces which
+function in either AP or Client modes are of interest and can be managed through
+the easy-soc-libs's "libwifi" library.
+
+Any 'real' network interface must also have a PHY associated with it for it to
+communicate with the world. In WiFi, this PHY device is the WiFi's Radio interface.
+The Radio interface has its own set of registers, fifos, states and status. It
+represents Layer1 of the WiFI device.
+
+Thus, a WiFi device can be represented as a Radio interface plus a MAC
+interface.
+
+For simplicity, the MAC interface is called only interface (i.e. without the MAC
+part), and the radio interface is called radio.
+
+Libwifi's API header file "wifi.h" defines data structures that map to a WiFi
+device's radio and ap-interface - "struct wifi_radio" and "struct wifi_ap"
+respectively.
+
+\dot
+digraph wrel {
+	wl0 [shape=box label="wlan0"]
+	wl1 [shape=box label="wlan0.1"]
+	wl2 [shape=box label="wlan0.2"]
+	wl3 [shape=box label="wlan0.3"]
+	wl [shape=box label="WiFi Radio \"wlan0\""]
+    {wl0, wl1, wl2, wl3} -> wl
+}
+\enddot
+
+In the above figure, the first (or main) interface name is "wlan0", which is the
+same as the radio name "wlan0". Additional (virtual) interfaces have names
+wlan0.1, wlan0.2 etc. and so on.
+
+\page dev_new_driver Add support for a new WiFi module
+This chapter describes how to easily add support for a "new_wifi" WiFi module.
+
+\section dev_new_wifi_add Implement libwifi APIs for the new WiFi module
+
+It is broadly a four step process:
+
+Step 1. Create a new file "new_wifi_driver.c" within the 'modules' directory.
+This file will implement radio and ap related operations for the new wifi.
+Define structure instance for the new_wifi driver's operations as follows -
+
+\code
+struct wifi_driver new_wifi = {
+	.name = "new",  /* new_wifi driver creates interface names starting with this */
+	.radio.info = new_wifi_radio_info,
+	.ap.get_ssid = new_wifi_get_ssid,
+	.get_channel = new_wifi_get_channel,
+
+	 /* Add others operations as necessary */
+
+	 /* See 'nlwifi.c' within the 'modules' folder for implementation of nl/cfg80211 drivers. */
+};
+\endcode
+
+Step 2. Add "new_wifi" in drivers.c -
+
+\code
+const struct wifi_driver *wifi_drivers[] = {
+	:
+	:
+	.
+#ifdef NEW_WIFI_MODULE
+	&new_wifi,
+#endif
+};
+\endcode
+
+Step 3. Add in drivers.h file the following lines -
+
+\code
+	:
+	:
+	.
+#ifdef NEW_WIFI_MODULE
+extern const struct wifi_driver new_wifi;
+#endif
+
+\endcode
+
+
+Step 4. Finally include "new_wifi" to the build -
+
+Add in the Makefile
+
+\code
+	:
+	.
+objs_lib += modules/new_wifi_driver.o
+
+\endcode
+
+After successfully building the package with the new_wifi module, a couple of
+*.so files will be generated -
+
+	libwifi-X.so.a.b.c\n
+	libwifi-6.so.a\n
+	libwifi-6.so\n
+
+[where X = is based on the wifi.h file's version implementation,\n
+       a, b, c = major, minor and revision number of the libwifi-X.so.a]
+
+
+\page dev_new_driver_events Add support for receiving events in new WiFi module
+\section HOWTO Register, receive and dispatch events in the new WiFi module
+
+This section describes how to easily add support for receiving (f.e. from a new
+netlink family/group) and dispatching of events in the "new_wifi" module.
+
+Step 1. Implement the events' registration and receive functions -
+
+In new_wifi_driver.c file, implement "register_event" and "recv_event"
+operations -
+
+\code
+struct wifi_driver new_wifi = {
+	:
+	:
+	.
+	.register_event = new_wifi_register_event,
+	.recv_event = nlwifi_recv_event,
+	:
+};
+\endcode
+
+\code
+int new_wifi_register_event(const char *ifname, struct event_struct *req,
+						void **handle)
+{
+	/* handle new_wifi vendor events, if any */
+	if (!strncmp(req->family, "nl80211", 7) &&
+		!(strncmp(req->group, "vendor", 6))) {
+
+		req->override_cb = new_wifi_handle_vendor_event;
+	}
+
+	return nlwifi_register_event(ifname, req, handle);
+}
+\endcode
+
+\code
+int new_wifi_handle_vendor_event(struct event_struct *ev)
+{
+	struct nlwifi_event_vendor_resp *r =
+			(struct nlwifi_event_vendor_resp *)ev->resp.data;
+
+	if (r->oui != OUI_NEW_WIFI)
+		return 0;	/* discard as not ours */
+
+	/* 'r->subcmd' holds vendor specific commands for handling */
+		:
+		:
+		.
+	/* dispatch event through 'ev->cb()' after any processing etc. */
+	if (ev->cb) {
+		return ev->cb(ev);
+	}
+
+	return 0;
+}
+
+\endcode
+
+Libwifi's internal API 'nlwifi_recv_event' is used here receive the new_wifi
+driver's "nl80211" vendor specific events.
+Obviously, any netlink famiy/group can be easily supported by implementing the
+'register_event' and 'recv_event' functions.
+
+
+\page page_user_app Using libwifi APIs
+\section user_app_cmds Functions and APIs
+
+Making use of the libwifi APIs is easy. Users simply include the library header
+"wifi.h" in their main application code, and build by linking against the
+library .so file with the "-lwifi-6" flag.
+
+User application can use the libwifi_supports() API to check if a specific API
+is implemented for the WiFi module.
+
+
+\section user_app_events Receiving Events
+
+Receiving events through libwifi is also easy. The user application first has to
+initialize the struct event_struct with information about the event of interest.
+It then calls wifi_register_event() to register for the event, passing a 'void*
+handle' as the last argument to the function.
+
+In order to receive events, the application has to call wifi_recv_event(), again
+passing the same 'void *handle' pointer that it passed to the register function.
+
+\code
+int app_register_and_recv_event(struct app_private *priv, ...)
+{
+	:
+	int ret;
+	int err;
+	void *handle;
+	struct event_struct event;
+	:
+	.
+	/* prepare event_struct for registration */
+
+	memset(&event, 0, sizeof(struct event_struct));
+	strncpy(event.ifname, ifname, 16);  /* interface name */
+	strncpy(event.family, family, 32);  /* netlink family name */
+	strncpy(event.group, group, 32);    /* netlink group name */
+	event.priv = priv;                  /* application private data */
+	event.cb = app_event_cb;            /* callback function after recv event */
+
+	/* setup response buffer */
+	event.resp.data = calloc(512, sizeof(uint8_t));
+	if (event.resp.data == NULL)
+		return -ENOMEM;
+
+
+	:
+	.
+	ret = wifi_register_event((char *)ifname, &event, &handle);
+	if (ret)
+		return ret;   /* handle error */
+
+	/* receive events */
+	for (;;) {
+		err = wifi_recv_event((char *)ifname, handle);
+		if (err < 0)
+			fprintf(stderr, "Error: %s\n", __func__);
+	}
+
+	return 0;
+}
+\endcode
+
+and
+
+\code
+int app_event_cb(struct event_struct *e)
+{
+	struct app_private *priv = (struct app_private *)e->priv;
+	struct event_response *resp = &e->resp;
+	char evtbuf[512] = {0};
+
+	switch (resp->type) {
+	case WIFI_EVENT_SCAN_START:
+		/* handle events */
+
+		/* resp holds event response buffer, if any */
+		break;
+	case WIFI_EVENT_SCAN_END:
+		:
+		.
+	}
+
+	:
+}
+\endcode
+
+*/

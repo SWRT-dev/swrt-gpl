@@ -1,0 +1,12 @@
+{
+        "events" : [
+                {
+                        "type": "default",
+                        "name": "testevent",
+                        "family": "easysoc",
+                        "group": [
+                                "notify"
+                        ]
+                }
+	]
+}

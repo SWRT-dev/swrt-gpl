@@ -1013,6 +1013,10 @@ OBJS += $(if $(wildcard sysdeps/lantiq/easymesh-lantiq.c),easymesh-lantiq.o,preb
 else ifeq ($(RTCONFIG_BCMARM),y)
 OBJS += $(if $(wildcard sysdeps/broadcom/easymesh-broadcom.c),easymesh-broadcom.o,prebuild/easymesh-broadcom.o)
 endif
+else ifeq ($(RTCONFIG_SWRTMESH),y)
+LDFLAGS += -L$(STAGEDIR)/usr/lib -lubox -lblobmsg_json -luci -lswrtmesh
+CFLAGS += -I$(TOP)/shared/sysdeps/swrtmesh -I$(STAGEDIR)/usr/include
+OBJS += swrtmesh.o
 endif
 
 all: PB rc $(if $(RTCONFIG_BRCM_HOSTAPD), $(WPS_PBCD)) init.prep

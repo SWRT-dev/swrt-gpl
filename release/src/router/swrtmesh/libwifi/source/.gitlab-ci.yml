@@ -1,0 +1,37 @@
+include:
+  - project: 'iopsys/gitlab-ci-pipeline'
+    file: '/static-code-analysis.yml'
+    ref: '0.27'
+
+stages:
+    - static_code_analysis
+    - compile_test
+      #- unit_test
+      #- functional_test
+      #- api_test
+
+variables:
+  COMMON_IMAGE: "dev.iopsys.eu:5050/iopsys/gitlab-ci-pipeline/code-analysis:0.28"
+  DEBUG: 'TRUE'
+  SOURCE_FOLDER: "."
+  SUPERVISOR_LOG: "$CI_PROJECT_DIR/supervisord.log"
+  LIBWIFI_LOG: "$CI_PROJECT_DIR/libwifi.log"
+  RUN_CPPCHECK: "cppcheck --enable=all --error-exitcode=1 --suppress=unusedFunction --suppress=unreadVariable --suppress=variableScope --suppress=redundantInitialization --suppress=unusedLabel --suppress=unusedStructMember --suppress=knownConditionTrueFalse ."
+  CPPCHECK_OPTIONS: " --enable=all --error-exitcode=1 --suppress=unusedFunction --suppress=unreadVariable --suppress=variableScope --suppress=redundantInitialization --suppress=unusedLabel --suppress=unusedStructMember --suppress=knownConditionTrueFalse ."
+  RUN_CPD: "/home/user/pmd-bin-6.19.0/bin/run.sh cpd --minimum-tokens 1000 --language c --files"
+
+run_compile_test:
+    stage: compile_test
+    image: dev.iopsys.eu:5050/iopsys/gitlab-ci-pipeline/code-analysis:0.27
+    allow_failure: false
+    script:
+        - "./gitlab-ci/install-dependencies.sh"
+        - "./gitlab-ci/build.sh"
+
+    artifacts:
+        when: always
+        paths:
+            - functional-test-coverage.xml
+            - timestamp.log
+            - coverage.tar.gz
+

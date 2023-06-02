@@ -1,7 +1,7 @@
 /*
- * Copyright 2022, SWRTdev
- * Copyright 2022, paldier <paldier@hotmail.com>.
- * Copyright 2022, lostlonger<lostlonger.g@gmail.com>.
+ * Copyright 2022-2023, SWRTdev
+ * Copyright 2022-2023, paldier <paldier@hotmail.com>.
+ * Copyright 2022-2023, lostlonger<lostlonger.g@gmail.com>.
  * All Rights Reserved.
  */
 
@@ -114,13 +114,14 @@ void swrtmesh_autoconf(void)
 		}
 #elif defined(RTCONFIG_SWRTMESH)
 		nvram_set("swrtmesh_enable", "1");
-		nvram_set("swrtmesh_mode", "1");
+		nvram_set("ieee1905_enable", "1");
+		nvram_set("swrtmesh_steer_enable", "1");
 		if(nvram_match("re_mode", "1")){
-			nvram_set("swrtmesh_role", "2");//agent
-		}else if(nvram_match("x_Setting", "0")/* || nvram_match("w_Setting", "0")*/){
-			nvram_set("swrtmesh_role", "0");//auto
+			nvram_set("swrtmesh_agent_enable", "1");//agent
+			nvram_set("swrtmesh_controller_enable", "0");//controller
 		}else{
-			nvram_set("swrtmesh_role", "1");//controller
+			nvram_set("swrtmesh_agent_enable", "1");//agent
+			nvram_set("swrtmesh_controller_enable", "1");//controller
 		}
 #endif
 	}else{//like aimesh, controller/agent only works in ap/router mode
@@ -128,13 +129,13 @@ void swrtmesh_autoconf(void)
 		nvram_set("easymesh_enable", "0");
 		nvram_set("easymesh_role", "0");
 		nvram_set("easymesh_mode", "0");
-		nvram_set("re_mode", "0");
 #elif defined(RTCONFIG_SWRTMESH)
 		nvram_set("swrtmesh_enable", "0");
-		nvram_set("swrtmesh_role", "0");
-		nvram_set("swrtmesh_mode", "0");
-		nvram_set("re_mode", "0");
+		nvram_set("swrtmesh_steer_enable", "0");
+		nvram_set("swrtmesh_agent_enable", "0");
+		nvram_set("swrtmesh_controller_enable", "0");
 #endif
+		nvram_set("re_mode", "0");
 	}
 }
 

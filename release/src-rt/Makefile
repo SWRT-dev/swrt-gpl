@@ -5731,6 +5731,132 @@ fi;
 			echo "CONFIG_IPV6_GRE=y" >>$(1); \
 		fi;\
 	fi;
+	if [ "$(SWRTMESH)" = "y" ]; then \
+		sed -i "/CONFIG_NF_TABLES/d" $(1); \
+		echo "CONFIG_NF_TABLES=y" >>$(1); \
+		sed -i "/CONFIG_NF_TABLES_BRIDGE/d" $(1); \
+		echo "CONFIG_NF_TABLES_BRIDGE=y" >>$(1); \
+		sed -i "/CONFIG_NFT_BRIDGE_META/d" $(1); \
+		echo "CONFIG_NFT_BRIDGE_META=y" >>$(1); \
+		sed -i "/CONFIG_NFT_BRIDGE_REJECT/d" $(1); \
+		echo "CONFIG_NFT_BRIDGE_REJECT=y" >>$(1); \
+		sed -i "/CONFIG_BRIDGE_NF_EBTABLES/d" $(1); \
+		echo "CONFIG_BRIDGE_NF_EBTABLES=y" >>$(1); \
+		sed -i "/CONFIG_BRIDGE_EBT_BROUTE/d" $(1); \
+		echo "CONFIG_BRIDGE_EBT_BROUTE=y" >>$(1); \
+		sed -i "/CONFIG_BRIDGE_EBT_T_FILTER/d" $(1); \
+		echo "CONFIG_BRIDGE_EBT_T_FILTER=y" >>$(1); \
+		sed -i "/CONFIG_BRIDGE_EBT_T_NAT/d" $(1); \
+		echo "CONFIG_BRIDGE_EBT_T_NAT=y" >>$(1); \
+		sed -i "/CONFIG_BRIDGE_EBT_802_3/d" $(1); \
+		echo "CONFIG_BRIDGE_EBT_802_3=y" >>$(1); \
+		sed -i "/CONFIG_BRIDGE_EBT_ARP/d" $(1); \
+		echo "CONFIG_BRIDGE_EBT_ARP=y" >>$(1); \
+		sed -i "/CONFIG_BRIDGE_EBT_IP/d" $(1); \
+		echo "CONFIG_BRIDGE_EBT_IP=y" >>$(1); \
+		sed -i "/CONFIG_BRIDGE_EBT_IP6/d" $(1); \
+		echo "CONFIG_BRIDGE_EBT_IP6=y" >>$(1); \
+		sed -i "/CONFIG_BRIDGE_EBT_MARK/d" $(1); \
+		echo "CONFIG_BRIDGE_EBT_MARK=y" >>$(1); \
+		sed -i "/CONFIG_BRIDGE_EBT_PKTTYPE/d" $(1); \
+		echo "CONFIG_BRIDGE_EBT_PKTTYPE=y" >>$(1); \
+		sed -i "/CONFIG_BRIDGE_EBT_STP/d" $(1); \
+		echo "CONFIG_BRIDGE_EBT_STP=y" >>$(1); \
+		sed -i "/CONFIG_BRIDGE_EBT_VLAN/d" $(1); \
+		echo "CONFIG_BRIDGE_EBT_VLAN=y" >>$(1); \
+		sed -i "/CONFIG_BRIDGE_EBT_DNAT/d" $(1); \
+		echo "CONFIG_BRIDGE_EBT_DNAT=y" >>$(1); \
+		sed -i "/CONFIG_BRIDGE_EBT_MARK_T/d" $(1); \
+		echo "CONFIG_BRIDGE_EBT_MARK_T=y" >>$(1); \
+		sed -i "/CONFIG_BRIDGE_EBT_REDIRECT/d" $(1); \
+		echo "CONFIG_BRIDGE_EBT_REDIRECT=y" >>$(1); \
+		sed -i "/CONFIG_BRIDGE_EBT_SNAT/d" $(1); \
+		echo "CONFIG_BRIDGE_EBT_SNAT=y" >>$(1); \
+		sed -i "/CONFIG_NF_TABLES_SET/d" $(1); \
+		echo "CONFIG_NF_TABLES_SET=y" >>$(1); \
+		sed -i "/CONFIG_NF_TABLES_INET/d" $(1); \
+		echo "CONFIG_NF_TABLES_INET=y" >>$(1); \
+		sed -i "/CONFIG_NF_TABLES_NETDEV/d" $(1); \
+		echo "CONFIG_NF_TABLES_NETDEV=y" >>$(1); \
+		sed -i "/CONFIG_NFT_NUMGEN/d" $(1); \
+		echo "# CONFIG_NFT_NUMGEN is not set" >>$(1); \
+		sed -i "/CONFIG_NFT_CT/d" $(1); \
+		echo "CONFIG_NFT_CT=y" >>$(1); \
+		sed -i "/CONFIG_NFT_FLOW_OFFLOAD/d" $(1); \
+		echo "# CONFIG_NFT_FLOW_OFFLOAD is not set" >>$(1); \
+		sed -i "/CONFIG_NFT_COUNTER/d" $(1); \
+		echo "CONFIG_NFT_COUNTER=y" >>$(1); \
+		sed -i "/CONFIG_NFT_CONNLIMIT/d" $(1); \
+		echo "CONFIG_NFT_CONNLIMIT=y" >>$(1); \
+		sed -i "/CONFIG_NFT_LOG/d" $(1); \
+		echo "# CONFIG_NFT_LOG is not set" >>$(1); \
+		sed -i "/CONFIG_NFT_LIMIT/d" $(1); \
+		echo "# CONFIG_NFT_LIMIT is not set" >>$(1); \
+		sed -i "/CONFIG_NFT_MASQ/d" $(1); \
+		echo "CONFIG_NFT_MASQ=y" >>$(1); \
+		sed -i "/CONFIG_NFT_REDIR/d" $(1); \
+		echo "CONFIG_NFT_REDIR=y" >>$(1); \
+		sed -i "/CONFIG_NFT_NAT/d" $(1); \
+		echo "CONFIG_NFT_NAT=y" >>$(1); \
+		sed -i "/CONFIG_NFT_TUNNEL/d" $(1); \
+		echo "CONFIG_NFT_TUNNEL=y" >>$(1); \
+		sed -i "/CONFIG_NFT_OBJREF/d" $(1); \
+		echo "# CONFIG_NFT_OBJREF is not set" >>$(1); \
+		sed -i "/CONFIG_NFT_QUEUE/d" $(1); \
+		echo "CONFIG_NFT_QUEUE=y" >>$(1); \
+		sed -i "/CONFIG_NFT_QUOTA/d" $(1); \
+		echo "# CONFIG_NFT_QUOTA is not set" >>$(1); \
+		sed -i "/CONFIG_NFT_REJECT/d" $(1); \
+		echo "CONFIG_NFT_REJECT=y" >>$(1); \
+		sed -i "/CONFIG_NFT_COMPAT/d" $(1); \
+		echo "CONFIG_NFT_COMPAT=y" >>$(1); \
+		sed -i "/CONFIG_NFT_HASH/d" $(1); \
+		echo "CONFIG_NFT_HASH=y" >>$(1); \
+		sed -i "/CONFIG_NFT_XFRM/d" $(1); \
+		echo "CONFIG_NFT_XFRM=y" >>$(1); \
+		sed -i "/CONFIG_NFT_SOCKET/d" $(1); \
+		echo "CONFIG_NFT_SOCKET=y" >>$(1); \
+		sed -i "/CONFIG_NFT_OSF/d" $(1); \
+		echo "CONFIG_NFT_OSF=y" >>$(1); \
+		sed -i "/CONFIG_NFT_TPROXY/d" $(1); \
+		echo "CONFIG_NFT_TPROXY=y" >>$(1); \
+		sed -i "/CONFIG_NFT_SYNPROXY/d" $(1); \
+		echo "CONFIG_NFT_SYNPROXY=y" >>$(1); \
+		sed -i "/CONFIG_NF_DUP_NETDEV/d" $(1); \
+		echo "# CONFIG_NF_DUP_NETDEV is not set" >>$(1); \
+		sed -i "/CONFIG_NFT_DUP_NETDEV/d" $(1); \
+		echo "# CONFIG_NFT_DUP_NETDEV is not set" >>$(1); \
+		sed -i "/CONFIG_NFT_FWD_NETDEV/d" $(1); \
+		echo "CONFIG_NFT_FWD_NETDEV=y" >>$(1); \
+		sed -i "/CONFIG_NF_FLOW_TABLE_INET/d" $(1); \
+		echo "CONFIG_NF_FLOW_TABLE_INET=m" >>$(1); \
+		sed -i "/CONFIG_NFT_DUP_IPV4/d" $(1); \
+		echo "# CONFIG_NFT_DUP_IPV4 is not set" >>$(1); \
+		sed -i "/CONFIG_NFT_FIB_IPV4/d" $(1); \
+		echo "# CONFIG_NFT_FIB_IPV4 is not set" >>$(1); \
+		sed -i "/CONFIG_NF_TABLES_ARP/d" $(1); \
+		echo "CONFIG_NF_TABLES_ARP=y" >>$(1); \
+		sed -i "/CONFIG_NF_FLOW_TABLE_IPV4/d" $(1); \
+		echo "CONFIG_NF_FLOW_TABLE_IPV4=m" >>$(1); \
+		sed -i "/CONFIG_NFT_DUP_IPV6/d" $(1); \
+		echo "# CONFIG_NFT_DUP_IPV6 is not set" >>$(1); \
+		sed -i "/CONFIG_NFT_FIB_IPV6/d" $(1); \
+		echo "# CONFIG_NFT_FIB_IPV6 is not set" >>$(1); \
+		sed -i "/CONFIG_NF_FLOW_TABLE_IPV6/d" $(1); \
+		echo "CONFIG_NF_FLOW_TABLE_IPV6=m" >>$(1); \
+		sed -i "/CONFIG_NF_LOG_BRIDGE/d" $(1); \
+		echo "# CONFIG_NF_LOG_BRIDGE is not set" >>$(1); \
+		sed -i "/CONFIG_BRIDGE_EBT_AMONG/d" $(1); \
+		echo "# CONFIG_BRIDGE_EBT_AMONG is not set" >>$(1); \
+		sed -i "/CONFIG_BRIDGE_EBT_LIMIT/d" $(1); \
+		echo "# CONFIG_BRIDGE_EBT_LIMIT is not set" >>$(1); \
+		sed -i "/CONFIG_BRIDGE_EBT_ARPREPLY/d" $(1); \
+		echo "# CONFIG_BRIDGE_EBT_ARPREPLY is not set" >>$(1); \
+		sed -i "/CONFIG_BRIDGE_EBT_LOG/d" $(1); \
+		echo "# CONFIG_BRIDGE_EBT_LOG is not set" >>$(1); \
+		sed -i "/CONFIG_BRIDGE_EBT_NFLOG/d" $(1); \
+		echo "# CONFIG_BRIDGE_EBT_NFLOG is not set" >>$(1); \
+	fi;
 	$(call platformKernelConfig, $(1))
 	$(call extraKernelConfig, $(1))
 endef

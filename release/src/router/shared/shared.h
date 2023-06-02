@@ -2662,7 +2662,6 @@ extern int get_channel_list(int unit, int ch_list[], int size);
 extern uint64_t get_channel_list_mask(enum wl_band_id band);
 extern int get_radar_channel_list(int, int radar_list[], int size);
 extern int set_acl_entry(const char *ifname, char *addr);
-extern int set_channel(const char* ifname, int channel);
 extern int set_bw_nctrlsb(const char* ifname, int bw, int nctrlsb);
 extern int get_channel_info(const char *ifname, int *channel, int *bw, int *nctrlsb);
 extern char *get_wififname(int band);

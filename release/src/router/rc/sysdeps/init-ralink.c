@@ -1124,7 +1124,7 @@ void init_wl(void)
 #if defined(RTCONFIG_MT798X)
 	int mtd_part = 0, mtd_size = 0;
 	if (mtd_getinfo("Factory", &mtd_part, &mtd_size)){
-		snprintf(cmd, sizeof(cmd), "dd if=/dev/mtdblock%d of=/lib/firmware/e2p bs=24576 skip=0 count=1", mtd_part);
+		snprintf(cmd, sizeof(cmd), "dd if=/dev/mtdblock%d of=/lib/firmware/e2p bs=720896 skip=0 count=1", mtd_part);
 		system(cmd);
 		system("ln -sf /rom/etc/wireless/mediatek /etc/wireless/");
 		doSystem("cp -s /rom/firmware/* /lib/firmware/");
