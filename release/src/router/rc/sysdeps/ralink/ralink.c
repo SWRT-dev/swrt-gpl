@@ -3698,29 +3698,6 @@ int getChannel(int band)
 	return 0;
 }
 
-int startScan(int band)
-{
-	int lock;
-	char data[64];
-	struct iwreq wrq;
-
-	memset(data, 0, sizeof(data));
-	strcpy(data, "SiteSurvey=1");
-	wrq.u.data.length = strlen(data) + 1;
-	wrq.u.data.pointer = data;
-	wrq.u.data.flags = 0;
-
-	lock = file_lock("sitesurvey");
-	if(wl_ioctl(get_wifname(band), RTPRIV_IOCTL_SET, &wrq) < 0)
-	{
-		file_unlock(lock);
-		dbg("Site Survey fails\n");
-		return 0;
-	}
-	file_unlock(lock);
-	sleep(4);
-	return 1;
-}
 #if defined(RALINK_DBDC_MODE) || defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
 void PartialScanNumOfCh(int band)
 {

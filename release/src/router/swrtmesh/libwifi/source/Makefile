@@ -52,7 +52,9 @@ ifneq (,$(findstring MEDIATEK,$(WIFI_TYPE)))
 objs_dir += mediatek
 LIBWIFI_CFLAGS += -DWIFI_MEDIATEK
 ifneq ($(filter -DMTWIFI,$(CFLAGS)),)
-objs_lib += modules/mediatek/mtwifi.o
+LIBWIFI_CFLAGS += -Imodules/wpactrl -Imodules/nlwifi -Imodules/wext
+objs_dir += wpactrl nlwifi
+objs_lib += modules/mediatek/mtwifi.o modules/wpactrl/wpactrl_util.o modules/nlwifi/nlwifi.o
 else
 objs_lib += modules/mediatek/mt.o
 endif
