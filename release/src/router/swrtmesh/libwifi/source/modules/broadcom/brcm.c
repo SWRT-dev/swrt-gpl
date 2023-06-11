@@ -925,7 +925,7 @@ static int iface_req_btm(const char *ifname, unsigned char *sta,
 	params.valid_int = b->validity_int;
 	params.disassoc_timer = b->disassoc_tmo;
 
-	if (b->mode & WIFI_BTMREQ_PREF_INC)
+	if (b->mode & WIFI_BTMREQ_PREF_INC || bsss_nr)
 		params.pref = 1;
 	if (b->mode & WIFI_BTMREQ_ABRIDGED)
 		params.abridged = 1;
@@ -933,9 +933,6 @@ static int iface_req_btm(const char *ifname, unsigned char *sta,
 		params.disassoc_imminent = 1;
 	if (b->mode & WIFI_BTMREQ_BSSTERM_INC)
 		params.bss_term = b->bssterm_dur;
-
-	if (b->flags & BTMREQ_F_NBR_PARAM_SET)
-		params.is_nbr_set = true;
 
 	memcpy(&params.mbo, &b->mbo, sizeof(params.mbo));
 

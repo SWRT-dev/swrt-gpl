@@ -780,7 +780,7 @@ ifeq ($(RTCONFIG_RALINK),y)
 # Ralink/MTK-specific packages
 #################################################################################
 obj-y += wireless_tools$(WTOOL_SUFFIX)
-
+obj-$(RTCONFIG_SWRTMESH) += hostapd-mtk wireless-regdb
 ifeq ($(RTCONFIG_RALINK_MT7621),y)
 obj-y += flash
 endif
@@ -6211,6 +6211,21 @@ iw-install:
 	install -d $(INSTALLDIR)/iw/usr/sbin
 	cp -rf $(IW_DIR)/iw $(INSTALLDIR)/iw/usr/sbin
 endif
+
+.PHONY: hostapd-mtk hostapd-mtk-install hostapd-mtk-clean
+hostapd-mtk/hostapd/.config:
+	cp hostapd-mtk/hostapd-mini.config hostapd-mtk/hostapd/.config
+
+hostapd-mtk: libnl-tiny openssl hostapd-mtk/hostapd/.config
+	$(MAKE) $(PARALLEL_BUILD) -C hostapd-mtk/hostapd CONFIG_P2P=y CONFIG_INTERNAL_LIBTOMMATH=y CONFIG_DRIVER_NL80211=y
+
+hostapd-mtk-install:
+	install -d $(INSTALLDIR)/hostapd-mtk/usr/sbin
+	cp -rf hostapd-mtk/hostapd/hostapd $(INSTALLDIR)/hostapd-mtk/usr/sbin
+	cp -rf hostapd-mtk/hostapd/hostapd_cli $(INSTALLDIR)/hostapd-mtk/usr/sbin
+
+hostapd-mtk-clean:
+	$(MAKE) -C hostapd-mtk clean
 
 udev:
 	$(MAKE) -C $@ CROSS_COMPILE=$(CROSS_COMPILE) EXTRACFLAGS="$(EXTRACFLAGS)" \

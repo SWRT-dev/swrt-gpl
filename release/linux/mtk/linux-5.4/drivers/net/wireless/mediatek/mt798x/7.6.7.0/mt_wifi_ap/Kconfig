@@ -210,6 +210,11 @@ config CFG80211_SUPPORT
 	depends on MT_AP_SUPPORT
 	default n
 
+config MTK_IAP_VENDOR1_FEATURE_SUPPORT
+	bool "IAP Vendor1 Feature enable"
+	depends on MTK_ENTERPRISE_AP_SUPPORT
+	default n
+
 #CUSTOMISED HOSTAPD
 config CUSTOMISED_HOSTAPD_SUPPORT
 	bool "Customised Hostapd Support"
@@ -222,6 +227,12 @@ config HOSTAPD_WPA3_SUPPORT
         bool "Hostapd WPA3 Support"
         depends on MT_AP_SUPPORT
         depends on CFG80211_SUPPORT
+        default n
+
+#HOSTAPD_WPA3R3_SUPPORT
+config HOSTAPD_WPA3R3_SUPPORT
+        bool "Hostapd WPA3R3 Support"
+        depends on HOSTAPD_WPA3_SUPPORT
         default n
 
 #Support iwcommand with cfg80211
@@ -285,7 +296,6 @@ config APCLI_STA_SUPPORT
 	bool "APCLI CFG80211 STA Support"
 	depends on APCLI_SUPPORT
 	depends on CFG80211_SUPPORT
-        depends on ENTERPRISE_AP_SUPPORT
 	default n
 
 #WDS STA
@@ -293,7 +303,6 @@ config WDS_STA_SUPPORT
 	bool "WDS STA Support"
 	depends on APCLI_SUPPORT
 	depends on CFG80211_SUPPORT
-        depends on ENTERPRISE_AP_SUPPORT
 	default n
 
 #WDS AP
@@ -301,7 +310,6 @@ config MBSS_AS_WDS_AP_SUPPORT
 	bool "MBSS AS WDS AP Support"
 	depends on MT_AP_SUPPORT
 	depends on MBSS_SUPPORT
-        depends on ENTERPRISE_AP_SUPPORT
 	default n
 
 #config DSCP_PRI_SUPPORT
@@ -505,3 +513,9 @@ config WIFI_ADIE_TYPE
        depends on CHIP_MT7986
        string "Panther ADIE Type : mt7975 or mt7976"
        default "mt7976"
+
+#DBDC_ONE_BAND_SUPPORT
+config DBDC_ONE_BAND_SUPPORT
+        bool "Single Band DBDC Support"
+        depends on MT_AP_SUPPORT
+        default n

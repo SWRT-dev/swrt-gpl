@@ -4113,49 +4113,111 @@ int getSiteSurvey(int band, char* ofile)
 	return 1;
 }
 
-int getSiteSurveyVSIE(int band, struct _SITESURVEY_VSIE *result, int length)
+int startScan(int band)
 {
-	char data[8192];
-	struct iwreq wrq;
 	int lock;
+	int have_ssid;
+	char *ifname;
+	char prefix[] = "wlXXXXXXXXXX_", data[32];
+	struct iwreq wrq;
+#if defined(RTCONFIG_AMAS)
+	if(aimesh_re_node())
+#elif defined(RTCONFIG_EASYMESH) || defined(RTCONFIG_SWRTMESH)
+	if(mesh_re_node())
+#else
+	if(0)
+#endif
+	{
+    	snprintf(prefix, sizeof(prefix), "wlc%d_", band);
+		have_ssid = nvram_pf_get_int(prefix, "closed");
+		ifname = get_staifname(band);
+		//if(get_channel(band))
+			//eval("iwpriv", ifname, "set", "Channel=0");
+	}else{
+    	snprintf(prefix, sizeof(prefix), "wl%d_", band);
+		have_ssid = 0;
+		ifname = get_wifname(band);
+	}
 
 	memset(data, 0, sizeof(data));
-	strcpy(data, "SiteSurvey=1");
+	if(have_ssid == 1)
+		snprintf(data, sizeof(data), "SiteSurvey=%s", nvram_pf_safe_get(prefix, "ssid"));
+	else
+		strcpy(data, "SiteSurvey=1");
 	wrq.u.data.length = strlen(data) + 1;
 	wrq.u.data.pointer = data;
 	wrq.u.data.flags = 0;
-
 	lock = file_lock("sitesurvey");
-	if (wl_ioctl(get_wifname(band), RTPRIV_IOCTL_SET, &wrq) < 0)
-	{
+	if(wl_ioctl(ifname, RTPRIV_IOCTL_GSITESURVEY, &wrq) < 0){
 		file_unlock(lock);
 		dbg("Site Survey fails\n");
 		return 0;
 	}
 	file_unlock(lock);
 	sleep(4);
+	return 1;
+}
 
+int getSiteSurveyVSIEcount(int band)
+{
+	char *ifname;
+	char data[5];
+	struct iwreq wrq;
+#if defined(RTCONFIG_AMAS)
+	if(aimesh_re_node())
+#elif defined(RTCONFIG_EASYMESH) || defined(RTCONFIG_SWRTMESH)
+	if(mesh_re_node())
+#else
+	if(0)
+#endif
+		ifname = get_staifname(band);
+	else
+		ifname = get_wifname(band);
 	memset(data, 0, sizeof(data));
-	strcpy(data, "");
 	wrq.u.data.length = sizeof(data);
+	wrq.u.data.pointer = data;
+	wrq.u.data.flags = ASUS_SUBCMD_GETSITESURVEY_VSIE_COUNT;
+
+	if(wl_ioctl(ifname, RTPRIV_IOCTL_ASUSCMD, &wrq) < 0){
+		dbg("errors in getting site survey vie result\n");
+	}else{
+    	sleep(2);
+    	return atoi(data);
+	}
+	return 0;
+}
+
+int getSiteSurveyVSIE(int band, struct _SITESURVEY_VSIE *result, int length)
+{
+	char *ifname;
+	char data[SITE_SURVEY_APS_MAX];
+	struct iwreq wrq;
+#if defined(RTCONFIG_AMAS)
+	if(aimesh_re_node())
+#elif defined(RTCONFIG_EASYMESH) || defined(RTCONFIG_SWRTMESH)
+	if(mesh_re_node())
+#else
+	if(0)
+#endif
+		ifname = get_staifname(band);
+	else
+		ifname = get_wifname(band);
+	memset(data, 0, length);
+	wrq.u.data.length = length;
 	wrq.u.data.pointer = data;
 	wrq.u.data.flags = ASUS_SUBCMD_GETSITESURVEY_VSIE;
 
-	if (wl_ioctl(get_wifname(band), RTPRIV_IOCTL_ASUSCMD, &wrq) < 0)
+	if (wl_ioctl(ifname, RTPRIV_IOCTL_ASUSCMD, &wrq) < 0)
 	{
 		dbg("errors in getting site survey vie result\n");
 		return 0;
 	}
 
-	if (wrq.u.data.length > 0 && strlen(wrq.u.data.pointer) > 0)
-	{
-		memcpy(result, wrq.u.data.pointer, wrq.u.data.length);
-	}
-	else
-	{
+	if(result == NULL){
 		dbg("The output var result is NULL\n");
 		return 0;
 	}
+	memcpy(result, data, length);
 	return 1;
 }
 

@@ -143,6 +143,28 @@ config MAP_R2_VER_SUPPORT
 	depends on MAP_SUPPORT
 	default n
 
+config MAP_R2_6E_SUPPORT
+	bool "Multi-AP R2 6E support"
+	depends on MAP_R2_VER_SUPPORT
+	default n
+
+config MAP_R3_VER_SUPPORT
+	bool "Multi-AP R3 version support"
+	depends on MT_AP_SUPPORT
+	depends on MAP_SUPPORT
+	depends on MAP_R2_VER_SUPPORT
+	default n
+
+config MAP_R3_6E_SUPPORT
+	bool "Multi-AP R3 6E support"
+        depends on MAP_SUPPORT
+        depends on MAP_R2_6E_SUPPORT
+        default n
+
+config QOS_R1_SUPPORT
+	bool "MTK QoS R1 support"
+	default n
+
 config BS_SUPPORT
 	bool "Bandsteering 2.0 Support"
 	depends on MT_AP_SUPPORT
@@ -169,10 +191,15 @@ config OCE_SUPPORT
         bool "Optimized Connectivity Experience Support"
 	depends on MT_AP_SUPPORT
 	depends on MBO_SUPPORT
-	depends on CHIP_MT7915
+	depends on CHIP_MT7915 || CHIP_MT7986 || CHIP_MT7916 || CHIP_MT7981
 	select WAPP_SUPPORT
 	default y
 
+#config DPP_FEATURE
+#        bool "DPP Support"
+#        depends on MT_AP_SUPPORT
+#	depends on WIFI_DRIVER
+#        default n
 config WIFI_MSI_SUPPORT
         bool "MSI support"
         depends on PCI_MSI
@@ -196,6 +223,12 @@ config HOSTAPD_WPA3_SUPPORT
         bool "Hostapd WPA3 Support"
         depends on MT_AP_SUPPORT
         depends on CFG80211_SUPPORT
+        default n
+
+#HOSTAPD_WPA3R3_SUPPORT
+config HOSTAPD_WPA3R3_SUPPORT
+        bool "Hostapd WPA3R3 Support"
+        depends on HOSTAPD_WPA3_SUPPORT
         default n
 
 #Support iwcommand with cfg80211
@@ -239,6 +272,14 @@ config DYNAMIC_VLAN_SUPPORT
 	depends on CFG80211_SUPPORT
 	default n
 
+config VLAN_GTK_SUPPORT
+	bool "Per VLAN GTK Support"
+	depends on ENTERPRISE_AP_SUPPORT
+	depends on CFG80211_SUPPORT
+	depends on DYNAMIC_VLAN_SUPPORT
+	depends on IWCOMMAND_CFG80211_SUPPORT
+	default n
+
 config RADIUS_MAC_AUTH_SUPPORT
 	bool "Radius Mac Authentication Support"
 	depends on ENTERPRISE_AP_SUPPORT
@@ -251,7 +292,6 @@ config APCLI_STA_SUPPORT
 	bool "APCLI CFG80211 STA Support"
 	depends on APCLI_SUPPORT
 	depends on CFG80211_SUPPORT
-        depends on ENTERPRISE_AP_SUPPORT
 	default n
 
 #WDS STA
@@ -259,7 +299,6 @@ config WDS_STA_SUPPORT
 	bool "WDS STA Support"
 	depends on APCLI_SUPPORT
 	depends on CFG80211_SUPPORT
-        depends on ENTERPRISE_AP_SUPPORT
 	default n
 
 #WDS AP
@@ -267,7 +306,6 @@ config MBSS_AS_WDS_AP_SUPPORT
 	bool "MBSS AS WDS AP Support"
 	depends on MT_AP_SUPPORT
 	depends on MBSS_SUPPORT
-        depends on ENTERPRISE_AP_SUPPORT
 	default n
 
 #config DSCP_PRI_SUPPORT

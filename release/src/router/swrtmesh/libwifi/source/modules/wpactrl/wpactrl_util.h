@@ -51,7 +51,6 @@ struct bss_transition_params {
 	uint16_t disassoc_timer;
 	char url[1024];
 	struct wifi_btmreq_mbo mbo;
-	bool is_nbr_set;
 };
 
 struct beacon_frame {

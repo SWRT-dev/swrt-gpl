@@ -382,6 +382,57 @@ define platformKernelConfig
 		sed -i "/CONFIG_OVERLAY_FS_METACOPY\>/d" $(1); \
 		echo "# CONFIG_OVERLAY_FS_METACOPY is not set" >>$(1); \
 	fi; \
+	if [ "$(SWRTMESH)" = "y" ]; then \
+		sed -i "/CONFIG_CFG80211_SUPPORT/d" $(1); \
+		echo "CONFIG_CFG80211_SUPPORT=y" >>$(1); \
+		sed -i "/CONFIG_ENTERPRISE_AP_SUPPORT/d" $(1); \
+		echo "CONFIG_ENTERPRISE_AP_SUPPORT=y" >>$(1); \
+		echo "CONFIG_CUSTOMISED_HOSTAPD_SUPPORT=y" >>$(1); \
+		echo "CONFIG_HOSTAPD_WPA3_SUPPORT=y" >>$(1); \
+		echo "CONFIG_HOSTAPD_WPA3R3_SUPPORT=y" >>$(1); \
+		echo "CONFIG_APCLI_STA_SUPPORT=y" >>$(1); \
+		echo "CONFIG_WDS_STA_SUPPORT=y" >>$(1); \
+		echo "CONFIG_MBSS_AS_WDS_AP_SUPPORT=y" >>$(1); \
+		echo "CONFIG_IWCOMMAND_CFG80211_SUPPORT=y" >>$(1); \
+		echo "# CONFIG_DYNAMIC_VLAN_SUPPORT is not set" >>$(1); \
+		echo "CONFIG_RADIUS_MAC_AUTH_SUPPORT=y" >>$(1); \
+		echo "# CONFIG_VLAN_GTK_SUPPORT is not set" >>$(1); \
+		echo "CONFIG_MTK_IAP_VENDOR1_FEATURE_SUPPORT=y" >>$(1); \
+		sed -i "/CONFIG_WPA3_SUPPORT/d" $(1); \
+		echo "# CONFIG_WPA3_SUPPORT is not set" >>$(1); \
+		sed -i "/CONFIG_OWE_SUPPORT/d" $(1); \
+		echo "# CONFIG_OWE_SUPPORT is not set" >>$(1); \
+		sed -i "/CONFIG_MAP_SUPPORT/d" $(1); \
+		echo "# CONFIG_MAP_SUPPORT is not set" >>$(1); \
+		sed -i "/CONFIG_MBO_SUPPORT/d" $(1); \
+		echo "# CONFIG_MBO_SUPPORT is not set" >>$(1); \
+		sed -i "/CONFIG_QOS_R1_SUPPORT/d" $(1); \
+		echo "# CONFIG_QOS_R1_SUPPORT is not set" >>$(1); \
+		echo "CONFIG_CFG80211=y" >>$(1); \
+		echo "# CONFIG_MAC80211 is not set" >>$(1); \
+		echo "# CONFIG_USB_NET_RNDIS_WLAN is not set" >>$(1); \
+		echo "# CONFIG_PRISM2_USB is not set" >>$(1); \
+		echo "CONFIG_NL80211_TESTMODE=y" >>$(1); \
+		echo "# CONFIG_CFG80211_CERTIFICATION_ONUS is not set" >>$(1); \
+		echo "CONFIG_CFG80211_CRDA_SUPPORT=y" >>$(1); \
+		echo "# CONFIG_CFG80211_DEBUGFS is not set" >>$(1); \
+		echo "CONFIG_CFG80211_DEFAULT_PS=y" >>$(1); \
+		echo "# CONFIG_CFG80211_DEVELOPER_WARNINGS is not set" >>$(1); \
+		echo "CONFIG_CFG80211_REQUIRE_SIGNED_REGDB=y" >>$(1); \
+		echo "CONFIG_CFG80211_USE_KERNEL_REGDB_KEYS=y" >>$(1); \
+		echo "# CONFIG_CFG80211_WEXT is not set" >>$(1); \
+		echo "# CONFIG_VIRT_WIFI is not set" >>$(1); \
+		echo "# CONFIG_RTL8723BS is not set" >>$(1); \
+		echo "# CONFIG_R8188EU is not set" >>$(1); \
+		echo "# CONFIG_WILC1000_SDIO is not set" >>$(1); \
+		echo "# CONFIG_WILC1000_SPI is not set" >>$(1); \
+		echo "# CONFIG_PKCS8_PRIVATE_KEY_PARSER is not set" >>$(1); \
+		echo "# CONFIG_PKCS7_TEST_KEY is not set" >>$(1); \
+		echo "# CONFIG_SYSTEM_EXTRA_CERTIFICATE is not set" >>$(1); \
+		echo "# CONFIG_SECONDARY_TRUSTED_KEYRING is not set" >>$(1); \
+		echo "# CONFIG_SIGNED_PE_FILE_VERIFICATION is not set" >>$(1); \
+		echo "CONFIG_SYSTEM_TRUSTED_KEYS=\"\"" >>$(1); \
+	fi; \
 	)
 endef
 

@@ -1277,7 +1277,7 @@ struct wifi_btmreq {
 	uint8_t validity_int;		/**< in tbtts until candidate list is valid */
 	uint16_t bssterm_dur;		/**< bss termination duration in minutes */
 	struct wifi_btmreq_mbo mbo;	/**< mbo parameters */
-#define BTMREQ_F_NBR_PARAM_SET 0x1 /** nbr parameter filled in */
+#define BTMREQ_F_NBR_PARAM_SET 0x1 /** TODO: remove dependencies and remove */
 	uint32_t flags;			/**< bit flags */
 };
 

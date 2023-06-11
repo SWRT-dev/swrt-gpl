@@ -891,9 +891,9 @@ int wifi_get_opclass_internal(enum wifi_regdomain reg, enum wifi_band b,
 		break;
 	case REG_CN:
 		//TODO
-		tab = NULL;
-		tabsize = 0;
-		break;
+//		tab = NULL;
+//		tabsize = 0;
+//		break;
 	case REG_GLOBAL:
 	default:
 		tab = (struct wifi_opclass *)wifi_opclass_global;

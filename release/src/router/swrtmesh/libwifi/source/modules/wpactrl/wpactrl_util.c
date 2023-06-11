@@ -1399,7 +1399,6 @@ int hostapd_cli_iface_req_bss_transition(const char *ifname, unsigned char *sta,
 	char *buf;
 	int i;
 	int ret;
-	bool nbr_present = false;
 
 	buflen = 256 + bsss_nr * 256;
 
@@ -1412,34 +1411,36 @@ int hostapd_cli_iface_req_bss_transition(const char *ifname, unsigned char *sta,
 	len += snprintf(buf + len, buflen - len, "bss_tm_req " MACSTR " ", MAC2STR(sta));
 
 	for (i = 0 ; i < bsss_nr; i++) {
-		if (params->is_nbr_set) {
-			/* Use nbr parameters got from upper layer directly */
-			len += snprintf(buf + len, buflen - len,
-					"neighbor=" MACSTR ",%u,%hhu,%hhu,%hhu ",
-					MAC2STR(bsss[i].bssid), bsss[i].bssid_info, bsss[i].reg,
-					bsss[i].channel, bsss[i].phy);
-			nbr_present = true;
-		} else {
-			/* Lookup nbr on neighbor list to get missing parameters */
-			struct nbr nbr;
+		struct nbr nbr = {};
 
-			if (get_neighbor_data(ifname, bsss[i].bssid, &nbr)) {
-				libwifi_dbg("skip " MACSTR " - not on neighbor list\n", MAC2STR(bsss[i].bssid));
-				continue;
-			}
+		/* Lookup nbr on neighbor list to get missing params */
+		if (params->pref && get_neighbor_data(ifname, bsss[i].bssid, &nbr))
+			libwifi_warn("[%s] Preferred BSSID " MACSTR " not on neighbor list!\n",
+			             ifname, MAC2STR(bsss[i].bssid));
 
-			len += snprintf(buf + len, buflen - len,
-					"neighbor=" MACSTR ",%u,%hhu,%hhu,%hhu ",
-					MAC2STR(nbr.bssid), nbr.bssid_info, nbr.reg,
-					nbr.channel, nbr.phy);
-			nbr_present = true;
-		}
-	}
+		if (!bsss[i].bssid_info && !nbr.bssid_info)
+			libwifi_dbg("[%s] Missing bssid_info for BSSID " MACSTR "!\n",
+			            ifname, MAC2STR(bsss[i].bssid));
 
-	if (params->pref && !nbr_present) {
-		libwifi_warn("[%s] %s target bss not on neighbor list!\n",
-				ifname, __func__);
-		return -1;
+		if (!bsss[i].reg && !nbr.reg)
+			libwifi_dbg("[%s] Missing reg for BSSID " MACSTR "!\n",
+			            ifname, MAC2STR(bsss[i].bssid));
+
+		if (!bsss[i].channel && !nbr.channel)
+			libwifi_dbg("[%s] Missing channel for BSSID " MACSTR "!\n",
+			            ifname, MAC2STR(bsss[i].bssid));
+
+		if (!bsss[i].phy && !nbr.phy)
+			libwifi_dbg("[%s] Missing phy for BSSID " MACSTR "!\n",
+			            ifname, MAC2STR(bsss[i].bssid));
+
+		len += snprintf(buf + len, buflen - len,
+				"neighbor=" MACSTR ",%u,%hhu,%hhu,%hhu ",
+				MAC2STR(bsss[i].bssid),
+				bsss[i].bssid_info ? bsss[i].bssid_info : nbr.bssid_info,
+				bsss[i].reg ? bsss[i].reg : nbr.reg,
+				bsss[i].channel ? bsss[i].channel : nbr.channel,
+				bsss[i].phy ? bsss[i].phy : nbr.phy);
 	}
 
 	len += snprintf(buf + len, buflen - len,
@@ -1448,7 +1449,7 @@ int hostapd_cli_iface_req_bss_transition(const char *ifname, unsigned char *sta,
 
 	if (params->valid_int)
 		len += snprintf(buf + len, buflen - len,
-				"valid_int=%hhu", params->valid_int);
+				"valid_int=%hhu ", params->valid_int);
 
 	if (params->bss_term)
 		len += snprintf(buf + len, buflen - len,
