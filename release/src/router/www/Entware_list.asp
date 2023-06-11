@@ -18,7 +18,10 @@
 <script>
 function load_page(){
 	document.getElementById("app_list").style.height = document.getElementById("FormTitle").style.height;
-	document.getElementById("app_list").src = "http://bin.entware.net/" + "<%nvram_get("entware_arch");%>" + "/Packages.html";
+	if(is_CN || ui_lang == "CN")
+		document.getElementById("app_list").src = "http://mirrors.bfsu.edu.cn/entware/" + "<%nvram_get("entware_arch");%>" + "/Packages.html";
+	else
+		document.getElementById("app_list").src = "http://bin.entware.net/" + "<%nvram_get("entware_arch");%>" + "/Packages.html";
 }
 function initial(){
 	show_menu();
