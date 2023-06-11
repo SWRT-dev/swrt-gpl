@@ -37,6 +37,8 @@
 #include <easy/easy.h>
 #include "wifi.h"
 #include "wifiutils.h"
+#include "nlwifi.h"
+#include "wpactrl_util.h"
 #include "debug.h"
 #include "drivers.h"
 #include <shared.h>
@@ -352,6 +354,165 @@ static uint8_t wmode2std[] = {
 	[20] = WIFI_A | WIFI_N | WIFI_AC | WIFI_AX,//wifi6e
 	[21] = WIFI_AX,//wifi6e
 };
+#if 0
+static int mtwifi_get_ie(uint8_t *ies, size_t len, uint8_t e, void *data)
+{
+	int offset = 0;
+	int ielen = 0;
+	uint8_t eid;
+
+	while (offset <= (len - 2)) {
+		eid = ies[offset];
+		ielen = ies[offset + 1];
+		if (eid != e) {
+			offset += ielen + 2;
+			continue;
+		}
+
+		switch (eid) {
+		case IE_BSS_LOAD:
+			if (ielen > sizeof(struct wifi_ap_load))
+				return -1;
+			break;
+		case IE_EXT_CAP:
+			if (ielen > sizeof(struct wifi_caps_ext))
+				return -1;
+			break;
+		case IE_HT_CAP:
+			if (ielen > sizeof(struct wifi_caps_ht))
+				return -1;
+			break;
+		case IE_VHT_CAP:
+			if (ielen > sizeof(struct wifi_caps_vht))
+				return -1;
+			break;
+		case IE_RRM:
+			if (ielen > sizeof(struct wifi_caps_rm))
+				return -1;
+			break;
+		default:
+			break;
+		}
+
+		memcpy((uint8_t *)data, &ies[offset + 2], ielen);
+		return 0;
+	}
+
+	return -ENOENT;
+}
+
+static int mtwifi_get_bandwidth_from_ie(uint8_t *ies, size_t len,
+						enum wifi_bw *bw)
+{
+	int offset = 0;
+	int ielen = 0;
+	uint8_t *p = NULL;
+	int cntr = 0;
+
+#ifndef bit
+#define bit(n)	(1 << (n))
+#endif
+
+	while (offset <= (len - 2)) {
+		ielen = ies[offset + 1];
+		p = &ies[offset + 2];
+
+		switch (ies[offset]) {
+		case 61:   /* HT oper */
+			{
+				uint8_t *ht_op;
+				uint8_t off = 0;
+
+				if (ielen != 22)
+					return -1;
+
+				ht_op = p + 1;
+				off = ht_op[0] & 0x3;
+
+				if (off == 0)
+					*bw = BW20;
+				else if (off == 1 || off == 3)
+					*bw = BW40;
+
+				if ((ht_op[0] & bit(2)) == 0)
+					*bw = BW20;
+				cntr++;
+			}
+			break;
+		case 192:  /* VHT oper */
+			{
+				uint8_t *vht_op;
+				uint8_t w, cfs0, cfs1;
+
+				if (ielen < 5)
+					return -1;
+
+				vht_op = p;
+				w = vht_op[0];
+				cfs0 = vht_op[1];
+				cfs1 = vht_op[2];
+
+				if (w == 0)
+					break;
+
+				if (cfs1 == 0) {
+					*bw = BW80;
+				} else {
+					if (cfs1 - cfs0 == 8)
+						*bw = BW160;
+					else if (cfs1 - cfs0 == 16)
+						*bw = BW8080;
+				}
+				cntr++;
+			}
+			break;
+		default:
+			break;
+		}
+
+		if (cntr == 2)
+			break;
+
+		offset += ies[offset + 1] + 2;
+	}
+	return 0;
+}
+#endif
+static int is_valid_ap_iface(const char *ifname)
+{
+	int valid_iface = 0;
+	int ret;
+	enum wifi_mode mode;
+	DIR *d;
+	struct dirent *dir;
+
+	d = opendir("/sys/class/net");
+	if (WARN_ON(!d))
+		return 0;
+
+	while ((dir = readdir(d))) {
+		if (strcmp(dir->d_name, ".") == 0 ||
+		    strcmp(dir->d_name, "..") == 0)
+			continue;
+		if (strcmp(ifname, dir->d_name) == 0) {
+			valid_iface = 1;
+		}
+	}
+	closedir(d);
+
+	if (!valid_iface)
+		return 0;
+
+	ret = nlwifi_get_mode(ifname, &mode);
+	if (WARN_ON(ret))
+		return 0;
+
+	if (mode == WIFI_MODE_AP)  {
+		return 1;
+	}
+
+	return 0;
+}
 
 static int mtwifi_get_oper_stds(const char *name, uint8_t *std)
 {
@@ -371,7 +532,7 @@ static int mtwifi_get_oper_stds(const char *name, uint8_t *std)
 }
 
 #if defined(RALINK_DBDC_MODE) || defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
-void PartialScanNumOfCh(int band)
+void PartialScanNumOfCh(const char *ifname)
 {
 	int lock;
 	char data[64];
@@ -384,7 +545,7 @@ void PartialScanNumOfCh(int band)
 	wrq.u.data.flags = 0;
 
 	lock = file_lock("sitesurvey");
-	if(wl_ioctl(get_wififname(band), RTPRIV_IOCTL_SET, &wrq) < 0)
+	if(wl_ioctl(ifname, RTPRIV_IOCTL_SET, &wrq) < 0)
 	{
 		file_unlock(lock);
 		dbg("Site Survey fails\n");
@@ -394,27 +555,22 @@ void PartialScanNumOfCh(int band)
 }
 #endif
 
-int mtwifi_scan(const char *ifname, struct scan_param *p)
+int mtwifi_scan(const char *name, struct scan_param *p)
 {
-	int band;
-	char data[8192];
-	struct iwreq wrq;
+#if 0
 	int lock;
+	char data[256];
+	struct iwreq wrq;
+
 	memset(data, 0, sizeof(data));
-	if(!strncmp(ifname, "rax", 3) || !strncmp(ifname, "rai", 3))
-		band = 1;
-	else if(!strncmp(ifname, "rae", 3))
-		band = 2;
-	else
-		band = 0;
 	if(p && p->ssid[0]){
 		snprintf(data, sizeof(data), "SiteSurvey=%s", p->ssid);
 	}else{
 #if defined(RALINK_DBDC_MODE) || defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
-	PartialScanNumOfCh(band);
-	strcpy(data, "PartialScan=1");//slower, ap still works
+		PartialScanNumOfCh(ifname);
+		strcpy(data, "PartialScan=1");//slower, ap still works
 #else
-	strcpy(data, "SiteSurvey=1");//faster, ap will stop working for 4s
+		strcpy(data, "SiteSurvey=1");//faster, ap will stop working for 4s
 #endif
 	}
 	wrq.u.data.length = strlen(data) + 1;
@@ -422,33 +578,30 @@ int mtwifi_scan(const char *ifname, struct scan_param *p)
 	wrq.u.data.flags = 0;
 
 	lock = file_lock("sitesurvey");
-	if (wl_ioctl(ifname, RTPRIV_IOCTL_SET, &wrq) < 0)
+	if (wl_ioctl(ifname, RTPRIV_IOCTL_GSITESURVEY, &wrq) < 0)
 	{
 		file_unlock(lock);
-
 		libwifi_dbg("Site Survey fails\n");
-		return 0;
+		return -1;
 	}
 	file_unlock(lock);
 
-	libwifi_dbg("Please wait");
-	sleep(1);
-	libwifi_dbg(".");
-	sleep(1);
-	libwifi_dbg(".");
-	sleep(1);
-	libwifi_dbg(".");
-	sleep(1);
+	libwifi_dbg("Please wait.");
+	sleep(4);
 	if(p == NULL || p->ssid[0] == 0){
 #if defined(RALINK_DBDC_MODE) || defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
 		libwifi_dbg(".");
 		sleep(4);
-		if(band){
+		if(!strncmp(ifname, "rax", 3) || !strncmp(ifname, "rai", 3) || !strncmp(ifname, "apclii", 6) || !strncmp(ifname, "apclix", 6)){
+			libwifi_dbg(".");
+			sleep(1);
+		}
+		if(!strncmp(ifname, "rae", 3) || !strncmp(ifname, "apclie", 6)){
 			libwifi_dbg(".");
 			sleep(1);
 #if defined(RTCONFIG_WIFI6E)
 			libwifi_dbg(".");
-			sleep(3);
+			sleep(2);
 #endif
 		}
 #endif
@@ -456,78 +609,154 @@ int mtwifi_scan(const char *ifname, struct scan_param *p)
 	libwifi_dbg(".\n\n");
 
 	return 0;
+#else
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	return nlwifi_scan(name, p);
+#endif
 }
-
-static int mtwifi_get_scan_results(const char *ifname,
-				struct wifi_bss *bsss,
-				int *num)
+#if 0
+static int getSiteSurveyVSIEcount(const char *ifname)
 {
-	int hdrLen = 0;
-	int i = 0, apCount = 0;
-	char *data;
-	int size = 16380;
-	char header[128];
+	char data[64];
 	struct iwreq wrq;
-	SSA *ssap;
-	*num = 0;
-	data = malloc(size);
-	if (data == NULL)
-		return -1;
-	memset(data, 0, size);
-	strcpy(data, "");
+	memset(data, 0, sizeof(data));
 	wrq.u.data.length = sizeof(data);
 	wrq.u.data.pointer = data;
-	wrq.u.data.flags = 0;
+	wrq.u.data.flags = ASUS_SUBCMD_GETSITESURVEY_VSIE_COUNT;
 
-	if (wl_ioctl(ifname, RTPRIV_IOCTL_GSITESURVEY, &wrq) < 0)
-	{
-		libwifi_dbg("errors in getting site survey result\n");
-		free(data);
+	if(wl_ioctl(ifname, RTPRIV_IOCTL_ASUSCMD, &wrq) < 0){
+		dbg("errors in getting site survey vie result\n");
+	}else{
+    	sleep(2);
+    	return atoi(data);
+	}
+	return 0;
+}
+#endif
+static int mtwifi_get_scan_results(const char *name, struct wifi_bss *bsss, int *num)
+{
+#if 0
+	int length = 0, band, ret;
+	char prefix[64];
+	size_t ie_len;
+	uint8_t *ie;
+	struct iwreq wrq;
+	struct _SITESURVEY_VSIE *result, *pt;
+	struct scanresult {
+		int num;
+		int max;
+		struct wifi_bss *bsslist;
+	};
+	struct scanresult sres = {.num = 0, .max = *num, .bsslist = bsss};
+	struct scanresult *scanres = &sres;
+	struct wifi_bss *e = scanres->bsslist + scanres->num;
+	if(!strncmp(ifname, "rax", 3) || !strncmp(ifname, "rai", 3) || !strncmp(ifname, "apclii", 6) || !strncmp(ifname, "apclix", 6))
+		band = 1;
+	else if(!strncmp(ifname, "rae", 3) || !strncmp(ifname, "apclie", 6))
+		band = 2;
+	else
+		band = 0;
+	snprintf(prefix, sizeof(prefix), "wl%d_", band);
+	libwifi_dbg("sres: &bsss = %p (numbss limit = %d)\n", e, scanres->max);
+	length = (getSiteSurveyVSIEcount(ifname) / 6 + 1) << 10;
+	if(length == 0){
+		libwifi_dbg("length = 0\n");
 		return -1;
 	}
-	memset(header, 0, sizeof(header));
-	hdrLen = sprintf(header, "%-4s%-33s%-20s%-23s%-9s%-12s%-7s%-3s%-4s%-5s\n", "Ch", "SSID", "BSSID", "Security", "Signal(%)", "W-Mode", "ExtCH", "NT", "WPS", "DPID");
-	libwifi_dbg("\n%s", header);
-	if (wrq.u.data.length > 0 && strlen(wrq.u.data.pointer) > 0)
-	{
-		ssap=(SSA *)(wrq.u.data.pointer + hdrLen + 1);
-		int len = strlen(wrq.u.data.pointer + hdrLen + 1);
-		char *sp, *op;
- 		op = sp = wrq.u.data.pointer + hdrLen + 1;
-
-		while (*sp && ((len - (sp-op)) >= 0))
-		{
-			ssap->SiteSurvey[i].channel[3] = '\0';
-			ssap->SiteSurvey[i].ssid[32] = '\0';
-			ssap->SiteSurvey[i].bssid[19] = '\0';
-			ssap->SiteSurvey[i].security[22] = '\0';
-			ssap->SiteSurvey[i].signal[8] = '\0';
-			ssap->SiteSurvey[i].wmode[11] = '\0';
-			ssap->SiteSurvey[i].extch[6] = '\0';
-			ssap->SiteSurvey[i].nt[2] = '\0';
-			ssap->SiteSurvey[i].wps[3] = '\0';
-			ssap->SiteSurvey[i].dpid[4] = '\0';
-			sp+=hdrLen;
-			apCount=++i;
-		}
-		for (i=0;i<apCount;i++)
-		{
-			libwifi_dbg("%-4s%-33s%-20s%-23s%-9s%-12s%-7s%-3s%-4s%-5s\n",
-			ssap->SiteSurvey[i].channel,
-			(char*)ssap->SiteSurvey[i].ssid,
-			ssap->SiteSurvey[i].bssid,
-			ssap->SiteSurvey[i].security,
-			ssap->SiteSurvey[i].signal,
-			ssap->SiteSurvey[i].wmode,
-			ssap->SiteSurvey[i].extch,
-			ssap->SiteSurvey[i].nt,
-			ssap->SiteSurvey[i].wps,
-			ssap->SiteSurvey[i].dpid
-			);
-		}
+	result = (struct _SITESURVEY_VSIE *)calloc(length, 1);
+	if (result == NULL){
+		libwifi_dbg("vsie_list calloc failed\n");
+		return -1;
 	}
-	free(data);
+	memset(result, 0, length);
+	wrq.u.data.length = length;
+	wrq.u.data.pointer = result;
+	wrq.u.data.flags = ASUS_SUBCMD_GETSITESURVEY_VSIE;
+
+	if (wl_ioctl(ifname, RTPRIV_IOCTL_ASUSCMD, &wrq) < 0)
+	{
+		libwifi_dbg("errors in getting site survey vie result\n");
+		free(result);
+		return -1;
+	}
+	if (wrq.u.data.length <= 0 && strlen(wrq.u.data.pointer) <= 0)
+	{
+		libwifi_dbg("The output var result is NULL\n");
+		free(result);
+		return -1;
+	}
+	for(pt = result; pt->Channel; pt++){
+		e = scanres->bsslist + scanres->num;
+		memcpy(e->ssid, pt->Ssid, sizeof(e->ssid));
+		memcpy(e->bssid, pt->Bssid, sizeof(e->bssid));
+		e->channel = (uint8_t)pt->Channel;
+		if(!strncmp(ifname, "rae", 3) || !strncmp(ifname, "apclie", 6))
+#if defined(RTCONFIG_WIFI6E)
+			if(e->channel >= 1 && e->channel <= 233)
+				e->band = BAND_6;
+#else
+			e->band = BAND_5;
+#endif
+		else if(e->channel > 0 && e->channel <= 14)
+			e->band = BAND_2;
+		else if(e->channel >= 36 && e->channel <= 177)
+			e->band = BAND_5;
+		e->rssi = (int)pt->Rssi;
+		e->beacon_int = nvram_pf_get_int(prefix, "bcn");
+		//e->caps.basic.cap = 
+		//e->caps.valid |= WIFI_CAP_BASIC_VALID;
+		ie_len = pt->vendor_ie_len;
+		ie = pt->vendor_ie;
+		wifi_get_bss_security_from_ies(e, ie, ie_len);
+		libwifi_dbg("       wpa_versions 0x%x pairwise = 0x%x, group = 0x%x akms 0x%x caps 0x%x\n",
+				e->rsn.wpa_versions, e->rsn.pair_ciphers, e->rsn.group_cipher, e->rsn.akms, e->rsn.rsn_caps);
+
+		mtwifi_get_ie(ie, ie_len, IE_BSS_LOAD, &e->load);
+
+		ret = mtwifi_get_ie(ie, ie_len, IE_EXT_CAP, &e->caps.ext);
+		if (!ret)
+			e->caps.valid |= WIFI_CAP_EXT_VALID;
+
+		ret = mtwifi_get_ie(ie, ie_len, IE_HT_CAP, &e->caps.ht);
+		if (!ret)
+			e->caps.valid |= WIFI_CAP_HT_VALID;
+
+		ret = mtwifi_get_ie(ie, ie_len, IE_VHT_CAP, &e->caps.vht);
+		if (!ret)
+			e->caps.valid |= WIFI_CAP_VHT_VALID;
+
+		ret = mtwifi_get_ie(ie, ie_len, IE_RRM, &e->caps.rrm);
+		if (!ret)
+			e->caps.valid |= WIFI_CAP_RM_VALID;
+
+		mtwifi_get_bandwidth_from_ie(ie, ie_len, &e->curr_bw);
+
+		//TODO: wifi supp standards
+		//TODO: a-only, b-only, g-only etc.
+		if (!!(e->caps.valid & WIFI_CAP_VHT_VALID))
+			e->oper_std = WIFI_N | WIFI_AC;
+		else if (!!(e->caps.valid & WIFI_CAP_HT_VALID))
+			e->oper_std = e->channel > 14 ? (WIFI_A | WIFI_N) :
+							(WIFI_B | WIFI_G | WIFI_N);
+		else
+			e->oper_std = e->channel > 14 ? WIFI_A : (WIFI_B | WIFI_G);
+
+
+		scanres->num++;
+	}
+	if (scanres->num >= scanres->max) {
+		libwifi_warn("Num scan results > %d !\n", scanres->max);
+		free(result);
+		return -1;
+	}
+
+	free(result);
+	*num = scanres->num;
 	return 0;
+#else
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	return nlwifi_get_scan_results(name, bsss, num);
+#endif
 }
 
 #if 0
@@ -789,31 +1018,14 @@ static int mtwifi_set_channel(const char *name, uint32_t channel, enum wifi_bw b
 
 static int mtwifi_get_bssid(const char *ifname, uint8_t *bssid)
 {
-	char data[12];
-	struct iwreq wrq;
-
-	memset(data, 0x00, sizeof(data));
-	wrq.u.data.length = sizeof(data);
-	wrq.u.data.pointer = (caddr_t) data;
-	wrq.u.data.flags = OID_802_11_BSSID;
-
-	if (wl_ioctl(ifname, RT_PRIV_IOCTL, &wrq) < 0) {
-		dbg("errors in getting %s bssid\n", ifname);
-		return -1;
-	}
-	memcpy(bssid, wrq.u.data.pointer, wrq.u.data.length);
-	return 0;
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return nlwifi_get_bssid(ifname, bssid);
 }
 
 static int mtwifi_get_ssid(const char *ifname, char *ssid)
 {
-	if(!strncmp(ifname, "rax", 3) || !strncmp(ifname, "rai", 3))
-		strlcpy(ssid, nvram_safe_get("wl1_ssid"), 32);
-	else if(!strncmp(ifname, "rae", 3))
-		strlcpy(ssid, nvram_safe_get("wl2_ssid"), 32);
-	else
-		strlcpy(ssid, nvram_safe_get("wl0_ssid"), 32);
-	return 0;
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return nlwifi_get_ssid(ifname, ssid);
 }
 
 static int mtwifi_get_maxrate(const char *ifname, unsigned long *rate)
@@ -864,7 +1076,6 @@ static int mtwifi_get_maxrate(const char *ifname, unsigned long *rate)
 
 static int mtwifi_get_channel(const char *name, uint32_t *channel, enum wifi_bw *bw)
 {
-
 	struct iwreq wrq;
 	struct channel_info info;
 	*channel = 0;
@@ -901,15 +1112,723 @@ static int mtwifi_get_channel(const char *name, uint32_t *channel, enum wifi_bw 
 	return 0;
 }
 
+static int mtwifi_get_bandwidth(const char *ifname, enum wifi_bw *bw)
+{
+	struct iwreq wrq;
+	struct channel_info info;
+	*bw = 0;
+	memset(&info, 0, sizeof(struct channel_info));
+	wrq.u.data.length = sizeof(struct channel_info);
+	wrq.u.data.pointer = (caddr_t) &info;
+	wrq.u.data.flags = ASUS_SUBCMD_GCHANNELINFO;
+
+	if (wl_ioctl(ifname, RTPRIV_IOCTL_ASUSCMD, &wrq) < 0) {
+		dbg("wl_ioctl failed on %s (%d)\n", __FUNCTION__, __LINE__);
+		return -1;
+	}
+
+	switch (info.bandwidth) {
+		case 0:
+			*bw = BW20;
+			break;
+		case 1:
+			*bw = BW40;
+			break;
+		case 2:
+			*bw = BW80;
+			break;
+		case 3:
+			*bw = BW160;
+			break;
+		default:
+			*bw = BW_UNKNOWN;
+			break;
+	}
+	return 0;
+}
+
+static int mtwifi_get_supp_channels(const char *name, uint32_t *chlist, int *num, const char *cc, enum wifi_band band, enum wifi_bw bw)
+{
+	int unit = 0;
+	char chList[256], prefix[64], chan[6], *next;
+	char *country_code;
+	if(!strncmp(name, "rax", 3) || !strncmp(name, "rai", 3)){
+		unit = 1;
+		band = BAND_5;
+	}else if(!strncmp(name, "rae", 3)){
+		unit = 2;
+#if defined(RTCONFIG_WIFI6E)
+		band = BAND_6;
+#else
+		band = BAND_5;
+#endif
+	}else{
+		unit = 0;
+		band = BAND_2;
+	}
+	*num = 0;
+	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+	country_code = nvram_pf_safe_get(prefix, "country_code");
+	if(get_channel_list_via_driver(unit, chList, sizeof(chList)) <= 0)
+	{
+		*num = 0;
+		return -1;
+	}
+	else if(get_channel_list_via_country(unit, country_code, chList, sizeof(chList)) <= 0)
+	{
+		*num = 0;
+		return -1;
+	}
+	foreach_44(chan, chList, next){
+		chlist[*num] = (uint32_t)strtol(chan, NULL, 10);
+		*num += 1;
+	}
+	libwifi_dbg("[%s] %s called (max %d band %d)\n", name, __func__, *num, band);
+	return 0;
+}
+
+static int mtwifi_get_noise(const char *name, int *noise)
+{
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	if (nlwifi_get_noise(name, noise))
+		/* TODO - for 7615 upgrade backports/mt76 */
+		*noise = -90;
+
+	return 0;
+}
+
+static int mtwifi_acs(const char *name, struct acs_param *p)
+{
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	return -1;
+}
+
+static int mtwifi_start_cac(const char *name, int channel, enum wifi_bw bw, enum wifi_cac_method method)
+{
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	return nlwifi_start_cac(name, channel, bw, method);
+}
+
+static int mtwifi_stop_cac(const char *name)
+{
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+
+	return nlwifi_stop_cac(name);
+}
+
+static int mtwifi_vendor_cmd(const char *ifname, uint32_t vid, uint32_t subcmd,	uint8_t *in, int ilen, uint8_t *out, int *olen)
+{
+	return 0;
+}
+
+static int mtwifi_get_ap_info(const char *ifname, struct wifi_ap *ap)
+{
+	/* TODO
+	*	ap->isolate_enabled
+	*/
+	struct wifi_bss *bss;
+	uint32_t ch = 0;
+
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+
+	if (!is_valid_ap_iface(ifname))
+		return -1;
+
+	bss = &ap->bss;
+	memset(bss, 0, sizeof(*bss));
+	hostapd_cli_iface_ap_info(ifname, ap);
+	nlwifi_get_bssid(ifname, bss->bssid);
+	nlwifi_get_ssid(ifname, (char *)bss->ssid);
+	if (!strlen((char *)bss->ssid))
+		ap->enabled = false;
+
+	nlwifi_get_channel(ifname, &ch, &bss->curr_bw);
+	bss->channel = (uint8_t)ch;
+	nlwifi_get_bandwidth(ifname, &bss->curr_bw);
+	nlwifi_get_supp_stds(ifname, &ap->bss.supp_std);
+	hostapd_cli_get_security_cap(ifname, &ap->sec.supp_modes);
+
+	return 0;
+}
+
+int mtwifi_driver_info(const char *name, struct wifi_metainfo *info)
+{
+	char path[256] = {};
+	char *pos;
+	int fd;
+
+	libwifi_dbg("%s %s called\n", name, __func__);
+
+	snprintf(path, sizeof(path), "/sys/class/pci_bus/0000:00/device/0000:00:00.0/vendor");
+	fd = open(path, O_RDONLY);
+	if (WARN_ON(fd < 0))
+		return -1;
+
+	if (WARN_ON(!read(fd, info->vendor_id, sizeof(info->vendor_id)))) {
+		close(fd);
+		return -1;
+	}
+	if ((pos = strchr(info->vendor_id, '\n')))
+		*pos = '\0';
+	close(fd);
+
+	snprintf(path, sizeof(path), "/sys/class/pci_bus/0000:00/device/0000:00:00.0/device");
+	fd = open(path, O_RDONLY);
+	if (WARN_ON(fd < 0))
+		return -1;
+
+	if (WARN_ON(!read(fd, info->device_id, sizeof(info->device_id)))) {
+		close(fd);
+		return -1;
+	}
+	if ((pos = strchr(info->device_id, '\n')))
+		*pos = '\0';
+	close(fd);
+
+	return 0;
+}
+
+static int mtwifi_get_supp_band(const char *name, uint32_t *bands)
+{
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	return nlwifi_get_supp_band(name, bands);
+}
+
+static int mtwifi_get_oper_band(const char *name, enum wifi_band *band)
+{
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	return nlwifi_get_oper_band(name, band);
+}
+
+static int mtwifi_get_ifstatus(const char *name, ifstatus_t *f)
+{
+	if(get_radio_status((char *)name))
+		*f |= IFF_UP;
+	return 0;
+}
+
+static int mtwifi_get_caps(const char *name, struct wifi_caps *caps)
+{
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	return nlwifi_radio_get_caps(name, caps);
+}
+
+static int mtwifi_get_supp_stds(const char *name, uint8_t *std)
+{
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	return nlwifi_get_supp_stds(name, std);
+	return 0;
+}
+
+static int mtwifi_get_country(const char *name, char *alpha2)
+{
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	return nlwifi_get_country(name, alpha2);
+}
+
+static int mtwifi_get_oper_channels(const char *name, uint32_t *chlist, int *num,
+				   const char *alpha2, enum wifi_band f, enum wifi_bw b)
+{
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	return -1;
+}
+
+static int mtwifi_get_curr_opclass(const char *name, struct wifi_opclass *o)
+{
+	libwifi_dbg("[%s, %s] %s called\n", name, __func__);
+	return wifi_get_opclass(name, o);
+}
+
+static int mtwifi_get_basic_rates(const char *name, int *num, uint32_t *rates_kbps)
+{
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	return -1;
+}
+
+static int mtwifi_get_oper_rates(const char *name, int *num, uint32_t *rates_kbps)
+{
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	return -1;
+}
+
+static int mtwifi_get_supp_rates(const char *name, int *num, uint32_t *rates)
+{
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	return -1;
+}
+
+static int mtwifi_get_stats(const char *name, struct wifi_radio_stats *s)
+{
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	return -1;
+}
+
+static int mtwifi_scan_ex(const char *name, struct scan_param_ex *sp)
+{
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	return nlwifi_scan_ex(name, sp);
+}
+
+static int mtwifi_get_bss_scan_result(const char *name, uint8_t *bssid, struct wifi_bss_detail *b)
+{
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	return -1;
+}
+
+static int mtwifi_get_opclass_preferences(const char *name, struct wifi_opclass *opclass, int *num)
+{
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	return wifi_get_opclass_pref(name, num, opclass);
+}
+
+static int mtwifi_simulate_radar(const char *name, struct wifi_radar_args *radar)
+{
+	if (WARN_ON(!radar))
+		return -1;
+
+	libwifi_dbg("[%s] %s called ch:%d, bandwidth:%d, type:0x%x, subband:0x%x\n",
+	            name, __func__, radar->channel, radar->bandwidth, radar->type,
+	            radar->subband_mask);
+
+	return -1;
+}
+
+static int mtwifi_get_param(const char *name, const char *param, int *len, void *val)
+{
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	return -1;
+}
+
+static int mtwifi_set_param(const char *name, const char *param, int len, void *val)
+{
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	return -1;
+}
+
+static int mtwifi_get_hwaddr(const char *name, uint8_t *hwaddr)
+{
+	int s = -1;
+	struct ifreq ifr;
+
+	if (name == NULL)
+		return -1;
+
+	if ((s = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) < 0)
+		return -1;
+
+	strcpy(ifr.ifr_name, name);
+	if (ioctl(s, SIOCGIFHWADDR, &ifr))
+		goto error;
+
+	memcpy(hwaddr, ifr.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
+error:
+	close(s);
+	return 0;
+}
+
+static int mtwifi_add_iface(const char *name, enum wifi_mode m, char *argv[])
+{
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	return -1;
+}
+
+static int mtwifi_del_iface(const char *name, const char *ifname)
+{
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	return -1;
+}
+
+static int mtwifi_list_iface(const char *name, struct iface_entry *iface, int *num)
+{
+	char path[256];
+	char *ifname;
+	struct dirent *p;
+	struct iface_entry *entry;
+	int count = 0;
+	DIR *d;
+	if(!strncmp(name, "rax", 3))
+		ifname = "rax";
+	else if(!strncmp(name, "rai", 3))
+		ifname = "rai";
+	else if(!strncmp(name, "rae", 3))
+		ifname = "rae";
+	else if(!strncmp(name, "ra", 2))
+		ifname = "ra";
+	else if(!strncmp(name, "apclix", 6))
+		ifname = "apclix";
+	else if(!strncmp(name, "apclii", 6))
+		ifname = "apclii";
+	else if(!strncmp(name, "apclie", 6))
+		ifname = "apclie";
+	else if(!strncmp(name, "apcli", 5))
+		ifname = "apcli";
+	else
+		return -1;
+	snprintf(path, sizeof(path), "/sys/class/net");
+	if (WARN_ON(!(d = opendir(path))))
+		return -1;
+
+	while ((p = readdir(d))) {
+		if (!strcmp(p->d_name, "."))
+			continue;
+		if (!strcmp(p->d_name, ".."))
+			continue;
+		if (strncmp(p->d_name, ifname, strlen(ifname)) || strlen(p->d_name) != (strlen(ifname) + 1))
+			continue;
+		if (WARN_ON(count >= *num))
+			break;
+
+		libwifi_dbg("[%s] iface  %s\n", name, p->d_name);
+		entry = &iface[count];
+		memset(entry->name, 0, 16);
+		memcpy(entry->name, p->d_name, 15);
+		if(!strncmp(name, "apcli", 5))
+			entry->mode = WIFI_MODE_STA;
+		else
+			entry->mode = WIFI_MODE_AP;
+		count++;
+	}
+
+	closedir(d);
+	*num = count;
+
+	return 0;
+}
+
+static int mtwifi_channels_info(const char *name, struct chan_entry *channel, int *num)
+{
+	char cc[3] = {0};
+	int ret;
+	int i;
+
+	ret = nlwifi_channels_info(name, channel, num);
+	if (ret)
+		return ret;
+
+	WARN_ON(nlwifi_get_country(name, cc));
+	if (!strcmp(cc, "US") || !strcmp(cc, "JP"))	/* FIXME-CR: other non-ETSI countries */
+		return 0;
+
+	/* Check weather channels - just in case of regulatory issue */
+	for (i = 0; i < *num; i++) {
+		switch (channel[i].channel) {
+		case 120:
+		case 124:
+		case 128:
+			channel[i].cac_time = 600;
+			break;
+		default:
+			break;
+		}
+	}
+
+	return ret;
+}
+
+static int mtwifi_iface_start_wps(const char *ifname, struct wps_param wps)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+//	return hostapd_cli_iface_start_wps(ifname, wps);
+	doSystem("iwpriv %s set WscMode=%d", ifname, 2);		// PBC method
+	doSystem("iwpriv %s set WscGetConf=%d",ifname, 1);	// Trigger WPS AP to do simple config with WPS Client
+	return 0;
+}
+
+static int mtwifi_iface_stop_wps(const char *ifname)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+//	return hostapd_cli_iface_stop_wps(ifname);
+	doSystem("iwpriv %s set WscStop=1", ifname);			// Stop WPS Process.
+	return 0;
+}
+
+static int mtwifi_iface_get_wps_status(const char *ifname, enum wps_status *s)
+{
+	int data = 0;
+	struct iwreq wrq;
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+//	return hostapd_cli_iface_get_wps_status(ifname, s);
+	wrq.u.data.length = sizeof(data);
+	wrq.u.data.pointer = (caddr_t) &data;
+	wrq.u.data.flags = RT_OID_WSC_QUERY_STATUS;
+
+	if (wl_ioctl(ifname, RT_PRIV_IOCTL, &wrq) < 0)
+		libwifi_dbg("[%s]errors in getting WSC status\n", __func__);
+	return data;
+}
+
+static int mtwifi_iface_get_wps_pin(const char *ifname, unsigned long *pin)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return hostapd_cli_iface_get_wps_ap_pin(ifname, pin);
+}
+
+static int mtwifi_iface_set_wps_pin(const char *ifname, unsigned long pin)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return hostapd_cli_iface_set_wps_ap_pin(ifname, pin);
+}
+
+static int mtwifi_iface_get_wps_device_info(const char *ifname, struct wps_device *info)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return -1;
+}
+
+static int mtwifi_iface_get_caps(const char *ifname, struct wifi_caps *caps)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return nlwifi_ap_get_caps(ifname, caps);
+}
+
+static int mtwifi_iface_get_mode(const char *ifname, enum wifi_mode *mode)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return nlwifi_get_mode(ifname, mode);
+}
+
+static int mtwifi_iface_get_security(const char *ifname, uint32_t *auth, uint32_t *enc)
+{
+	char prefix[64] = {0};
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+
+	if (WARN_ON(!auth) || WARN_ON(!enc))
+		return -1;
+
+	*auth = 0;
+	*enc = 0;
+	if(!strncmp(ifname, "rax", 3) || !strncmp(ifname, "rai", 3))
+		snprintf(prefix, sizeof(prefix), "wl%d_", 1);
+	else if(!strncmp(ifname, "rae", 3))
+		snprintf(prefix, sizeof(prefix), "wl%d_", 2);
+	else if(!strncmp(ifname, "ra", 2))
+		snprintf(prefix, sizeof(prefix), "wl%d_", 0);
+	else if(!strncmp(ifname, "apclix", 6) || !strncmp(ifname, "apclii", 6))
+		snprintf(prefix, sizeof(prefix), "wlc%d_", 1);
+	else if(!strncmp(ifname, "apclie", 6))
+		snprintf(prefix, sizeof(prefix), "wlc%d_", 2);
+	else if(!strncmp(ifname, "apcli", 5))
+		snprintf(prefix, sizeof(prefix), "wlc%d_", 0);
+
+	if (nvram_pf_match(prefix, "auth_mode_x", "open") && nvram_pf_match(prefix, "wep_x", "0")) {
+		*auth = AUTH_OPEN;
+		*enc = CIPHER_NONE;
+		return 0;
+	}
+	else if ((nvram_pf_match(prefix, "auth_mode_x", "open") && !nvram_pf_match(prefix, "wep_x", "0"))
+		|| nvram_pf_match(prefix, "auth_mode_x", "shared") || nvram_pf_match(prefix, "auth_mode_x", "radius")) {
+		*enc = CIPHER_WEP;
+		*auth = AUTH_OPEN;
+		return 0;
+	}
+	else if (nvram_pf_match(prefix, "auth_mode_x", "psk"))
+		*auth = AUTH_WPAPSK;
+	else if (nvram_pf_match(prefix, "auth_mode_x", "psk2")) 
+		*auth = AUTH_WPA2PSK;
+	else if (nvram_pf_match(prefix, "auth_mode_x", "pskpsk2"))
+		*auth = AUTH_WPAPSK | AUTH_WPA2PSK;
+	else if (nvram_pf_match(prefix, "auth_mode_x", "wpa"))
+		*auth = AUTH_WPA;
+	else if (nvram_pf_match(prefix, "auth_mode_x", "wpa2"))
+		*auth = AUTH_WPA2;
+	else if (nvram_pf_match(prefix, "auth_mode_x", "wpawpa2"))
+		*auth = AUTH_WPA | AUTH_WPA2;
+
+	if (nvram_pf_match(prefix, "crypto", "aes"))
+		*enc = CIPHER_AES;
+	else if (nvram_pf_match(prefix, "crypto", "tkip"))
+		*enc = CIPHER_TKIP;
+	else if (nvram_pf_match(prefix, "crypto", "tkip+aes"))
+		*enc = CIPHER_AES | CIPHER_TKIP;
+
+	if (*enc ==0 && *auth == 0) {
+		*enc = CIPHER_UNKNOWN;
+		*auth = AUTH_UNKNOWN;
+	}
+	return 0;
+}
+
+static int mtwifi_iface_add_vendor_ie(const char *ifname, struct vendor_iereq *req)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return hostapd_cli_iface_add_vendor_ie(ifname, req);
+}
+
+static int mtwifi_iface_del_vendor_ie(const char *ifname, struct vendor_iereq *req)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return hostapd_cli_iface_del_vendor_ie(ifname, req);
+}
+
+static int mtwifi_iface_get_vendor_ies(const char *ifname, struct vendor_ie *ies, int *num_ies)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return -1;
+}
+
+static int mtwifi_radio_list(struct radio_entry *radio, int *num)
+{
+	struct dirent *p;
+	struct radio_entry *entry;
+	int count = 0;
+	DIR *d;
+
+	if (WARN_ON(!(d = opendir("/sys/class/net"))))
+		return -1;
+
+	while ((p = readdir(d))) {
+		if (!strcmp(p->d_name, "."))
+			continue;
+		if (!strcmp(p->d_name, ".."))
+			continue;
+		if (WARN_ON(count >= *num))
+			break;
+		if(strncmp(p->d_name, "ra", 2) && strncmp(p->d_name, "apcli", 5))
+			continue;
+
+		libwifi_dbg("radio: %s\n", p->d_name);
+		entry = &radio[count];
+		memset(entry->name, 0, 16);
+		memcpy(entry->name, p->d_name, 15);
+		count++;
+	}
+
+	closedir(d);
+	*num = count;
+
+	return 0;
+}
+
+static int mtwifi_iface_get_param(const char *ifname, const char *param, int *len, void *val)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return -1;
+}
+
+static int mtwifi_iface_set_param(const char *ifname, const char *param, int len, void *val)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return -1;
+}
+
 const struct wifi_driver mt_driver = {
 	.name = "ra,rai,rax,rae,apcli,apclii,apclix,apclie",
+	.info = mtwifi_driver_info,
+	/* Radio/phy callbacks */
+	.radio.info = mtwifi_radio_info,
+	.get_supp_band = mtwifi_get_supp_band,
+	.get_oper_band = mtwifi_get_oper_band,
+	.radio.get_ifstatus = mtwifi_get_ifstatus,
+	.radio.get_caps = mtwifi_get_caps,
+	.radio.get_supp_stds = mtwifi_get_supp_stds,
+	.get_oper_stds = mtwifi_get_oper_stds,
+
+	.get_country = mtwifi_get_country,
+	.get_channel = mtwifi_get_channel,
+	.set_channel = mtwifi_set_channel,
+	.get_supp_channels = mtwifi_get_supp_channels,
+	.get_oper_channels = mtwifi_get_oper_channels,
+
+	.get_curr_opclass = mtwifi_get_curr_opclass,
+
+	.get_bandwidth = mtwifi_get_bandwidth,
+	.get_supp_bandwidths = nlwifi_get_supp_bandwidths,
+	.get_maxrate = mtwifi_get_maxrate,
+	.radio.get_basic_rates = mtwifi_get_basic_rates,
+	.radio.get_oper_rates = mtwifi_get_oper_rates,
+	.radio.get_supp_rates = mtwifi_get_supp_rates,
+	.radio.get_stats = mtwifi_get_stats,
+
 	.scan = mtwifi_scan,
+	.scan_ex = mtwifi_scan_ex,
 	.get_scan_results = mtwifi_get_scan_results,
+	.get_bss_scan_result = mtwifi_get_bss_scan_result,
+
+	.get_noise = mtwifi_get_noise,
+
+	.acs = mtwifi_acs,
+	.start_cac = mtwifi_start_cac,
+	.stop_cac = mtwifi_stop_cac,
+	.get_opclass_preferences = mtwifi_get_opclass_preferences,
+	.simulate_radar = mtwifi_simulate_radar,
+
+	.radio.get_param = mtwifi_get_param,
+	.radio.set_param = mtwifi_set_param,
+
+	.radio.get_hwaddr = mtwifi_get_hwaddr,
+
+	.add_iface = mtwifi_add_iface,
+	.del_iface = mtwifi_del_iface,
+	.list_iface = mtwifi_list_iface,
+	.channels_info = mtwifi_channels_info,
+
+	/* Interface/vif common callbacks */
+	.iface.start_wps = mtwifi_iface_start_wps,
+	.iface.stop_wps = mtwifi_iface_stop_wps,
+	.iface.get_wps_status = mtwifi_iface_get_wps_status,
+	.iface.get_wps_pin = mtwifi_iface_get_wps_pin,
+	.iface.set_wps_pin = mtwifi_iface_set_wps_pin,
+	.iface.get_wps_device_info = mtwifi_iface_get_wps_device_info,
+
+	.iface.get_caps = mtwifi_iface_get_caps,
+	.iface.get_mode = mtwifi_iface_get_mode,
+	.iface.get_security = mtwifi_iface_get_security,
+
+	.iface.add_vendor_ie = mtwifi_iface_add_vendor_ie,
+	.iface.del_vendor_ie = mtwifi_iface_del_vendor_ie,
+	.iface.get_vendor_ies = mtwifi_iface_get_vendor_ies,
+
+	.iface.get_param = mtwifi_iface_get_param,
+	.iface.set_param = mtwifi_iface_set_param,
+	.vendor_cmd = mtwifi_vendor_cmd,
+#if 0
+	.iface.subscribe_frame = iface_subscribe_frame,
+	.iface.unsubscribe_frame = iface_unsubscribe_frame,
+	.set_4addr = iface_set_4addr,
+	.get_4addr = iface_get_4addr,
+	.get_4addr_parent = iface_get_4addr_parent,
+	.set_vlan = iface_set_vlan,
+#endif
+        /* Interface/vif ap callbacks */
+	.iface.ap_info = mtwifi_get_ap_info,
 	.get_bssid = mtwifi_get_bssid,
 	.get_ssid = mtwifi_get_ssid,
-	.get_maxrate = mtwifi_get_maxrate,
-	.get_channel = mtwifi_get_channel,
-	.radio.info = mtwifi_radio_info,
-	.get_oper_stds = mtwifi_get_oper_stds,
-	.set_channel = mtwifi_set_channel,
+#if 0
+	.iface.get_stats = iface_get_stats,
+	.get_beacon_ies = iface_get_beacon_ies,
+
+	.get_assoclist = iface_get_assoclist,
+	.get_sta_info = iface_get_sta_info,
+	.get_sta_stats = iface_get_sta_stats,
+	.disconnect_sta = iface_disconnect_sta,
+	.restrict_sta = iface_restrict_sta,
+	.monitor_sta = iface_monitor_sta,
+	.get_monitor_sta = iface_get_monitor_sta,
+	.get_monitor_stas = iface_get_monitor_stas,
+	.iface.add_neighbor = iface_add_neighbor,
+	.iface.del_neighbor = iface_del_neighbor,
+	.iface.get_neighbor_list = iface_get_neighbor_list,
+	.iface.req_beacon_report = iface_req_beacon_report,
+	.iface.get_beacon_report = iface_get_beacon_report,
+
+	.iface.req_bss_transition = iface_req_bss_transition,
+	.iface.req_btm = iface_req_btm,
+
+	.iface.get_11rkeys = iface_get_11rkeys,
+	.iface.set_11rkeys = iface_set_11rkeys,
+
+	.chan_switch = iface_chan_switch,
+	.mbo_disallow_assoc = iface_mbo_disallow_assoc,
+	.ap_set_state = iface_ap_set_state,
+
+         /* Interface/vif sta callbacks */
+	.iface.sta_info = iface_sta_info,
+	.iface.sta_get_stats = iface_sta_get_stats,
+	.iface.sta_get_ap_info = iface_sta_get_ap_info,
+	.iface.sta_disconnect_ap = iface_sta_disconnect_ap,
+#endif
+	.radio_list = mtwifi_radio_list,
+	.register_event = nlwifi_register_event,
+	.unregister_event = nlwifi_unregister_event,
+	.recv_event = nlwifi_recv_event,
 };

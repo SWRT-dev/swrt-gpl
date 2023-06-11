@@ -376,9 +376,9 @@ static int ctrl_iface_set(const char *ifname, const char *cmd, bool check_ok, bo
 
 	p = strstr(cmd, "raw");
 	if (p)
-		strncpy(cmdbuf, p + strlen("raw"), sizeof(cmdbuf));
+		strlcpy(cmdbuf, p + strlen("raw"), sizeof(cmdbuf));
 	else
-		strncpy(cmdbuf, cmd, sizeof(cmdbuf));
+		strlcpy(cmdbuf, cmd, sizeof(cmdbuf));
 
 	trim(cmdbuf);
 	upstr_cmd(cmdbuf);
@@ -425,9 +425,9 @@ static int ctrl_iface_get(const char *ifname, const char *cmd, char *out, size_t
 
 	p = strstr(cmd, "raw");
 	if (p)
-		strncpy(cmdbuf, p + strlen("raw"), sizeof(cmdbuf));
+		strlcpy(cmdbuf, p + strlen("raw"), sizeof(cmdbuf));
 	else
-		strncpy(cmdbuf, cmd, sizeof(cmdbuf));
+		strlcpy(cmdbuf, cmd, sizeof(cmdbuf));
 
 	trim(cmdbuf);
 	upstr_cmd(cmdbuf);
