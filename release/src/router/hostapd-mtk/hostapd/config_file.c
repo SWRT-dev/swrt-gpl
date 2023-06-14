@@ -4045,6 +4045,94 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 		bss->wps_nfc_dev_pw = wpabuf_parse_bin(pos);
 		bss->wps_nfc_pw_from_config = 1;
 #endif /* CONFIG_WPS_NFC */
+#ifdef HOSTAPD_MAP_SUPPORT
+	} else if (os_strcmp(buf, "map_vendor_extension") == 0) {
+		bss->map_vendor_extension = atoi(pos);
+	} else if (os_strcmp(buf, "bh0macaddr") == 0 ||
+			   os_strcmp(buf, "bh1macaddr") == 0 ||
+			   os_strcmp(buf, "bh2macaddr") == 0) {
+		int j = buf[os_strlen("bh")] - '0';
+		wpa_printf(MSG_ERROR, "Line %d: bh%dmacaddr '%s'",
+			  line, j, pos);
+		if (hwaddr_aton(pos, bss->bh_profile[j].bh_macaddr)) {
+			wpa_printf(MSG_ERROR, "Invalid BH MAC address '%s' at "
+				   "line %d", pos, line);			
+			os_memset(bss->bh_profile[j].bh_macaddr, 0, ETH_ALEN);
+		}	   
+		wpa_printf(MSG_ERROR, "bh%dmacaddr = "MACSTR"\n",j, 
+					MAC2STR(bss->bh_profile[j].bh_macaddr));
+	} else if (os_strcmp(buf, "bh0ssid") == 0 ||
+			   os_strcmp(buf, "bh1ssid") == 0 ||
+			   os_strcmp(buf, "bh2ssid") == 0) {
+		int j = buf[os_strlen("bh")] - '0';
+		wpa_printf(MSG_ERROR, "Line %d: bh%dssid '%s'",
+						   line, j, pos);
+		bss->bh_profile[j].bh_ssid_len = os_strlen(pos);
+		if (bss->bh_profile[j].bh_ssid_len > SSID_MAX_LEN ||
+			bss->bh_profile[j].bh_ssid_len < 1) {
+			wpa_printf(MSG_ERROR, "Line %d: invalid BH%dSSID '%s'",
+				   line, j, pos);
+		} else
+			os_memcpy(bss->bh_profile[j].bh_ssid, pos, bss->bh_profile[j].bh_ssid_len);    
+	} else if (os_strcmp(buf, "bh0wpa") == 0 ||
+			   os_strcmp(buf, "bh1wpa") == 0 ||
+			   os_strcmp(buf, "bh2wpa") == 0)  {
+		int j = buf[os_strlen("bh")] - '0';
+		if (j < 0 || j > BAND_NUM)
+			return 1;
+		bss->bh_profile[j].bh_wpa = atoi(pos);
+	} else if (os_strcmp(buf, "bh0wpa_key_mgmt") == 0 ||
+			   os_strcmp(buf, "bh1wpa_key_mgmt") == 0 ||
+			   os_strcmp(buf, "bh2wpa_key_mgmt") == 0)	{
+		int j = buf[os_strlen("bh")] - '0';
+		if (j < 0 || j > BAND_NUM)
+			return 1;	
+		bss->bh_profile[j].bh_wpa_key_mgmt = hostapd_config_parse_key_mgmt(line, pos);
+		if (bss->bh_profile[j].bh_wpa_key_mgmt == -1)
+			return 1;
+	} else if (os_strcmp(buf, "bh0wpa_passphrase") == 0 ||
+			   os_strcmp(buf, "bh1wpa_passphrase") == 0 ||
+			   os_strcmp(buf, "bh2wpa_passphrase") == 0) {
+		int len = os_strlen(pos);
+		int j = buf[os_strlen("bh")] - '0';
+		if (j < 0 || j > BAND_NUM)
+			return 1;
+		wpa_printf(MSG_ERROR, "Line %d: bh%dwpa_passphrase '%s'",
+				   line, j, pos);
+		if (len < 8 || len > 63) {
+			wpa_printf(MSG_ERROR, "Line %d: invalid BH%d WPA passphrase length %d (expected 8..63)",
+				   line, j, len);
+			return 1;
+		}
+		os_memcpy(bss->bh_profile[j].bh_wpa_passphrase, pos, len);
+	}  else if (os_strcmp(buf, "bh0rsn_pairwise") == 0 ||
+				os_strcmp(buf, "bh1rsn_pairwise") == 0 ||
+				os_strcmp(buf, "bh2rsn_pairwise") == 0) {
+		int j = buf[os_strlen("bh")] - '0';
+		if (j < 0 || j > BAND_NUM)
+			return 1;
+		bss->bh_profile[j].bh_rsn_pairwise = hostapd_config_parse_cipher(line, pos);
+		if (bss->bh_profile[j].bh_rsn_pairwise == -1 || bss->bh_profile[j].bh_rsn_pairwise == 0)
+			return 1;
+		if (bss->bh_profile[j].bh_rsn_pairwise &
+			(WPA_CIPHER_NONE | WPA_CIPHER_WEP40 | WPA_CIPHER_WEP104)) {
+			wpa_printf(MSG_ERROR, "Line %d: unsupported bh%dpairwise cipher suite '%s'",
+				   line, j, pos);
+			return 1;
+		}
+		wpa_printf(MSG_ERROR, "Line %d: bh%dpairwise cipher suite '%s'",
+			line, j, pos);
+	} else if (os_strcmp(buf, "bh0map_vendor_extension") == 0 ||
+			   os_strcmp(buf, "bh1map_vendor_extension") == 0 ||
+			   os_strcmp(buf, "bh2map_vendor_extension") == 0) {
+		int j = buf[os_strlen("bh")] - '0';
+		if (j < 0 || j > BAND_NUM)
+			return 1;
+		bss->bh_profile[j].bh_map_vendor_extension = atoi(pos);
+		wpa_printf(MSG_ERROR, "Line %d: bh%dmap_vendor_extension '%s'",
+				line, j, pos);	
+#endif /* MAP_SUPPORT */
+
 #endif /* CONFIG_WPS */
 #ifdef CONFIG_P2P_MANAGER
 	} else if (os_strcmp(buf, "manage_p2p") == 0) {

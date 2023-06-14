@@ -19,6 +19,9 @@
 #include "wps/wps.h"
 #include "fst/fst.h"
 #include "vlan.h"
+#ifdef HOSTAPD_MAP_SUPPORT
+#include "map.h"
+#endif
 
 /**
  * mesh_conf - local MBSS state and settings
@@ -529,6 +532,11 @@ struct hostapd_bss_config {
 	struct wpabuf *wps_nfc_dh_pubkey;
 	struct wpabuf *wps_nfc_dh_privkey;
 	struct wpabuf *wps_nfc_dev_pw;
+#ifdef HOSTAPD_MAP_SUPPORT
+	u8 map_vendor_extension;
+	struct map_bh_profile bh_profile[BAND_NUM];
+#endif /* MAP_SUPPORT */
+
 #endif /* CONFIG_WPS */
 	int pbc_in_m1;
 	char *server_id;

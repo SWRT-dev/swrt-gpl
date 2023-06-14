@@ -412,6 +412,20 @@ void wps_process_vendor_ext_m1(struct wps_device_data *dev, const u8 ext)
 		   dev->multi_ap_ext);
 }
 
+#ifdef HOSTAPD_MAP_SUPPORT
+int wps_process_map_ext_attribute(struct wps_device_data *dev, const u8 *map_ext_attribute)
+{
+	if (map_ext_attribute == NULL) {
+		wpa_printf(MSG_DEBUG, "WPS: No MAP extension attribute received");		
+		return 0; /*Not mandatory*/
+	}
+	dev->vendor_ext[WFA_ELEM_MULTI_AP] = wpabuf_alloc(sizeof(u8));
+	wpabuf_put_data(dev->vendor_ext[WFA_ELEM_MULTI_AP], map_ext_attribute, sizeof(u8));
+	wpa_hexdump_buf(MSG_DEBUG, "WPS: MAP Ext Attribute", dev->vendor_ext[WFA_ELEM_MULTI_AP]);
+
+	return 0;
+}
+#endif /*HOSTAPD_MAP_SUPPORT*/
 
 int wps_process_rf_bands(struct wps_device_data *dev, const u8 *bands)
 {

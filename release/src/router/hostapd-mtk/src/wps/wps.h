@@ -11,6 +11,9 @@
 
 #include "common/ieee802_11_defs.h"
 #include "wps_defs.h"
+#ifdef HOSTAPD_MAP_SUPPORT
+#include "ap/map.h"
+#endif
 
 /**
  * enum wsc_op_code - EAP-WSC OP-Code values
@@ -709,6 +712,9 @@ struct wps_context {
 	 * encr_types_rsn - Enabled encryption types for RSN (WPS_ENCR_*)
 	 */
 	u16 encr_types_rsn;
+#ifdef HOSTAPD_MAP_SUPPORT
+	u16 bh_encr_types_rsn[BAND_NUM];
+#endif
 
 	/**
 	 * encr_types_wpa - Enabled encryption types for WPA (WPS_ENCR_*)
@@ -719,6 +725,9 @@ struct wps_context {
 	 * auth_types - Authentication types (bit field of WPS_AUTH_*)
 	 */
 	u16 auth_types;
+#ifdef HOSTAPD_MAP_SUPPORT
+	u16 bh_auth_types[BAND_NUM];
+#endif
 
 	/**
 	 * encr_types - Current AP encryption type (WPS_ENCR_*)
@@ -838,6 +847,10 @@ struct wps_context {
 	struct upnp_pending_message *upnp_msgs;
 
 	u16 ap_nfc_dev_pw_id;
+#ifdef HOSTAPD_MAP_SUPPORT	
+	u8 map_ext_attribute;
+	struct map_bh_profile bh_profile[BAND_NUM];
+#endif /*HOSTAPD_MAP_SUPPORT*/
 	struct wpabuf *ap_nfc_dh_pubkey;
 	struct wpabuf *ap_nfc_dh_privkey;
 	struct wpabuf *ap_nfc_dev_pw;

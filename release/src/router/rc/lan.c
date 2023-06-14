@@ -1962,6 +1962,9 @@ void start_lan(void)
 			_dprintf("%s: setting MAC address of bridge %s as %s\n", __FUNCTION__,
 				ifr.ifr_name, ether_etoa((const unsigned char *) ifr.ifr_hwaddr.sa_data, eabuf));
 		}
+#if defined(RTCONFIG_RALINK) && defined(RTCONFIG_SWRTMESH)
+		hostapd_ra_start();
+#endif
 	}
 	// --- this shouldn't happen ---
 	else if (*lan_ifname) {

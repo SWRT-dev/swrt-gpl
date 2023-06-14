@@ -38,6 +38,8 @@ PKG_CONFIG ?= pkg-config
 CFLAGS += $(EXTRA_CFLAGS)
 CFLAGS += -I$(abspath ../src)
 CFLAGS += -I$(abspath ../src/utils)
+CFLAGS += -I$(STAGEDIR)/usr/include -I$(STAGEDIR)/usr/include/openssl
+LDFLAGS += -L$(STAGEDIR)/usr/lib
 
 ifndef CONFIG_NO_GITVER
 # Add VERSION_STR postfix for builds from a git repository

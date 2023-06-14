@@ -2943,6 +2943,9 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
 	struct wpa_eapol_ie_parse kde;
 	int vlan_id = 0;
 	int owe_ptk_workaround = !!wpa_auth->conf.owe_ptk_workaround;
+#ifdef HOSTAPD_MAPR3_SUPPORT
+	struct wpa_auth_config *conf = &sm->wpa_auth->conf;
+#endif
 
 	SM_ENTRY_MA(WPA_PTK, PTKCALCNEGOTIATING, wpa_ptk);
 	sm->EAPOLKeyReceived = false;
@@ -3073,6 +3076,11 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
 				   WLAN_REASON_PREV_AUTH_NOT_VALID);
 		return;
 	}
+
+#ifdef HOSTAPD_MAPR3_SUPPORT
+	/* Check for RSNXE only if it is sae and sae_pwe is enabled*/
+	if (wpa_key_mgmt_sae(sm->wpa_key_mgmt) && (wpa_auth->conf.sae_pwe != 0)) {
+#endif
 	if ((!sm->rsnxe && kde.rsnxe) ||
 	    (sm->rsnxe && !kde.rsnxe) ||
 	    (sm->rsnxe && kde.rsnxe &&
@@ -3089,6 +3097,9 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
 				   WLAN_REASON_PREV_AUTH_NOT_VALID);
 		return;
 	}
+#ifdef HOSTAPD_MAPR3_SUPPORT
+	}
+#endif
 #ifdef CONFIG_OCV
 	if (wpa_auth_uses_ocv(sm)) {
 		struct wpa_channel_info ci;

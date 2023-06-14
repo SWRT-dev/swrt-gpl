@@ -22,6 +22,9 @@
 #include "wps_dev_attr.h"
 #include "wps_upnp.h"
 #include "wps_upnp_i.h"
+#ifdef HOSTAPD_MAP_SUPPORT
+#include "common/defs.h"
+#endif /*HOSTAPD_MAP_SUPPORT*/
 
 #ifndef CONFIG_WPS_STRICT
 #define WPS_WORKAROUNDS
@@ -1619,6 +1622,16 @@ int wps_build_credential_wrap(struct wpabuf *msg,
 int wps_build_cred(struct wps_data *wps, struct wpabuf *msg)
 {
 	struct wpabuf *cred;
+#ifdef HOSTAPD_MAP_SUPPORT	
+	u8 bh_idx = 0;
+	u8 peer_map_ext_attribute = 0;
+	u16 bh_encr_type[BAND_NUM]; /*Select the best bh  encryption type*/
+	u16 bh_auth_type[BAND_NUM]; /*Select the best bh authentication type*/
+	struct wps_credential bh_credential = {0};
+	struct map_bh_profile *bh_profile = NULL;	
+	u8 build_bh_cred = 0;	
+#endif /* HOSTAP_MAP_SUPPORT */
+
 	struct wps_registrar *reg = wps->wps->registrar;
 	const u8 *pskfile_psk;
 	char hex[65];
@@ -1631,6 +1644,21 @@ int wps_build_cred(struct wps_data *wps, struct wpabuf *msg)
 		os_memcpy(&wps->cred, wps->use_cred, sizeof(wps->cred));
 		goto use_provided;
 	}
+#ifdef HOSTAPD_MAP_SUPPORT
+	if((wps->wps->map_ext_attribute & BIT(MAP_ROLE_FRONTHAUL_BSS)) 
+		&& (wps->peer_dev.vendor_ext[WFA_ELEM_MULTI_AP] != NULL)) {
+		os_memcpy(&peer_map_ext_attribute,
+			wps->peer_dev.vendor_ext[WFA_ELEM_MULTI_AP]->buf, wps->peer_dev.vendor_ext[WFA_ELEM_MULTI_AP]->used); 		
+		if (peer_map_ext_attribute & BIT(MAP_ROLE_BACKHAUL_STA)) {	
+			wpa_printf(MSG_DEBUG, "Make bh credentials for BH STA\n");
+			wpa_printf(MSG_ERROR, "Make BH credentials for BH STA");
+			build_bh_cred = 1;
+		}
+	}
+	
+	if (build_bh_cred == 0) {
+#endif
+
 	os_memset(&wps->cred, 0, sizeof(wps->cred));
 
 	if (wps->peer_dev.multi_ap_ext == MULTI_AP_BACKHAUL_STA &&
@@ -1782,6 +1810,52 @@ int wps_build_cred(struct wps_data *wps, struct wpabuf *msg)
 		os_memcpy(wps->cred.key, hex, wps->new_psk_len * 2);
 		wps->cred.key_len = wps->new_psk_len * 2;
 	}
+#ifdef HOSTAPD_MAP_SUPPORT	
+	}else {
+	/* Select the best authentication and encryption type of BH BSS */
+#if 0
+	for (bh_idx = 0; bh_idx < BAND_5GH; bh_idx++) {
+		wpa_printf(MSG_DEBUG,
+			   "WPS: Own bh auth types 0x%x - masked Enrollee auth types 0x%x",
+			   wps->wps->auth_types, wps->auth_type);
+		if (wps->wps->bh_auth_types[bh_idx]& WPS_AUTH_WPA2PSK)
+			wps->bh_auth_type[bh_idx] = WPS_AUTH_WPA2PSK;
+		else if (wps->wps->bh_auth_types[bh_idx] & WPS_AUTH_OPEN)
+			wps->bh_auth_type[bh_idx] = WPS_AUTH_OPEN;
+		else {
+			wpa_printf(MSG_DEBUG, "WPS: Unsupported auth_type 0x%x bh_idx %d",
+				   wps->wps->bh_auth_types[bh_idx], bh_idx);
+			return -1;
+		}
+
+		wpa_printf(MSG_DEBUG,
+			   "WPS: bh_idx %d Own encr types rsn: 0x%x - masked Enrollee encr types 0x%x",
+			   bh_idx, wps->wps->bh_encr_types_rsn[bh_idx],
+			   wps->bh_encr_type[bh_idx]);
+
+		if (wps->wps->ap && wps->bh_auth_type[bh_idx] == WPS_AUTH_WPA2PSK)
+			wps->bh_encr_type[bh_idx] &= wps->wps->bh_encr_types_rsn[bh_idx];
+		if (wps->bh_auth_type[bh_idx] == WPS_AUTH_WPA2PSK) {
+			if (wps->bh_encr_type[bh_idx] & WPS_ENCR_AES)
+				wps->bh_encr_type[bh_idx] = WPS_ENCR_AES;
+			else {
+				wpa_printf(MSG_DEBUG, "WPS:bh_idx %d No suitable encryption "
+					   "type for WPA/WPA2", bh_idx);
+				return -1;
+			}
+		} else {
+			if (wps->bh_encr_type[bh_idx] & WPS_ENCR_NONE)
+				wps->bh_encr_type[bh_idx] = WPS_ENCR_NONE;
+			else {
+				wpa_printf(MSG_DEBUG, "WPS: bh_idx %d No suitable encryption "
+					   "type for non-WPA/WPA2 mode", bh_idx);
+				return -1;
+			}
+		}
+	}
+#endif //0
+	}
+#endif
 
 use_provided:
 #ifdef CONFIG_WPS_TESTING
@@ -1810,6 +1884,77 @@ use_provided:
 		wpabuf_free(cred);
 	}
 #endif /* CONFIG_WPS_TESTING */
+#ifdef HOSTAPD_MAP_SUPPORT
+	if (build_bh_cred == 1) {
+		for (bh_idx = 0; bh_idx < BAND_5GH; bh_idx++) {
+			bh_profile = &wps->wps->bh_profile[bh_idx];
+			os_memset(&bh_credential, 0, sizeof(struct wps_credential));						
+			if (bh_profile->bh_ssid_len <= 0)
+				continue;
+			os_memcpy(bh_credential.ssid, bh_profile->bh_ssid, bh_profile->bh_ssid_len);
+			bh_credential.ssid_len = bh_profile->bh_ssid_len;
+			/*
+			bh_credential.auth_type = wps->bh_auth_type[bh_idx];
+			bh_credential.encr_type = wps->bh_encr_type[bh_idx];
+			bh_credential.key_len = os_strlen(bh_profile->bh_wpa_passphrase);
+			os_memcpy(bh_credential.key, bh_profile->bh_wpa_passphrase, bh_credential.key_len);
+			*/
+			//MESH OPEN - onboarding
+			//	bh0wpa=0
+			if (!bh_profile->bh_wpa) {
+				bh_credential.auth_type = WPS_AUTH_OPEN;
+				bh_credential.encr_type = WPS_ENCR_NONE;
+			} else if ((bh_profile->bh_wpa_key_mgmt) & (WPA_KEY_MGMT_PSK | WPA_KEY_MGMT_SAE)) {
+				/*send WPA2PSK in SAE also, as WPS does not support WPA3*/
+				if (bh_profile->bh_wpa & WPA_PROTO_RSN) {
+					bh_credential.auth_type |= WPS_AUTH_WPA2PSK;
+					if (bh_profile->bh_rsn_pairwise & (WPA_CIPHER_CCMP | WPA_CIPHER_GCMP |
+													WPA_CIPHER_CCMP_256 |WPA_CIPHER_GCMP_256)) {
+						bh_credential.encr_type |= WPS_ENCR_AES;
+					}
+					if (bh_profile->bh_rsn_pairwise & WPA_CIPHER_TKIP) {
+							bh_credential.encr_type |= WPS_ENCR_TKIP;
+					}
+					bh_credential.key_len = os_strlen(bh_profile->bh_wpa_passphrase);
+					os_memcpy(bh_credential.key, bh_profile->bh_wpa_passphrase, bh_credential.key_len);
+				}
+				if (bh_profile->bh_wpa & WPA_PROTO_WPA) {
+					bh_credential.auth_type |= WPS_AUTH_WPAPSK;
+					if (bh_profile->bh_rsn_pairwise & (WPA_CIPHER_CCMP | WPA_CIPHER_GCMP)) {
+						bh_credential.encr_type |= WPS_ENCR_AES;
+					}
+					if (bh_profile->bh_rsn_pairwise & WPA_CIPHER_TKIP) {
+						bh_credential.encr_type |= WPS_ENCR_TKIP;
+					}
+					bh_credential.key_len = os_strlen(bh_profile->bh_wpa_passphrase);
+					os_memcpy(bh_credential.key, bh_profile->bh_wpa_passphrase, bh_credential.key_len);
+				}
+			}
+					os_memcpy(bh_credential.mac_addr, bh_profile->bh_macaddr , ETH_ALEN);
+#if 0
+			wpa_printf(MSG_ERROR,"BH MAC:"
+						MACSTR "BH SSID:%s Auth Type:%d encr_type = %d",
+						MAC2STR(bh_credential.mac_addr),
+						bh_credential.ssid,bh_credential.auth_type,
+						bh_credential.encr_type 					
+					   );
+			wpa_hexdump_buf(MSG_ERROR,
+				"BH Key", bh_credential.key);
+#endif //MCR_HOSTAPD_EXTEND_WPS
+			cred = wpabuf_alloc(200);
+			if (cred == NULL)
+				return -1;
+			if (wps_build_credential(cred, &bh_credential)) {
+				wpabuf_clear_free(cred);
+				return -1;
+			}
+			wpabuf_put_be16(msg, ATTR_CRED);
+			wpabuf_put_be16(msg, wpabuf_len(cred));
+			wpabuf_put_buf(msg, cred);
+			wpabuf_clear_free(cred);
+		}
+	} else {
+#endif
 
 	cred = wpabuf_alloc(200);
 	if (cred == NULL)
@@ -1824,6 +1969,9 @@ use_provided:
 	wpabuf_put_be16(msg, wpabuf_len(cred));
 	wpabuf_put_buf(msg, cred);
 	wpabuf_clear_free(cred);
+#ifdef HOSTAPD_MAP_SUPPORT
+	}
+#endif	
 
 skip_cred_build:
 	if (wps->wps->registrar->extra_cred) {
@@ -2667,6 +2815,9 @@ static enum wps_process_res wps_process_m1(struct wps_data *wps,
 	    wps_process_assoc_state(wps, attr->assoc_state) ||
 	    wps_process_dev_password_id(wps, attr->dev_password_id) ||
 	    wps_process_config_error(wps, attr->config_error) ||
+#ifdef HOSTAPD_MAP_SUPPORT
+		wps_process_map_ext_attribute(&wps->peer_dev, attr->map_ext_attribute) ||
+#endif /* HOSTAPD_MAP_SUPPORT */
 	    wps_process_os_version(&wps->peer_dev, attr->os_version))
 		return WPS_FAILURE;
 

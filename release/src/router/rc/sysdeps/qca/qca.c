@@ -913,7 +913,7 @@ void gen_hostapd_wps_config(FILE *fp_h, int band, int subnet, char *br_if)
 
 	fprintf(fp_h, "# Wi-Fi Protected Setup (WPS)\n");
 
-	if(!subnet && nvram_pf_match(prefix, "auth_mode_x", "sae") && nvram_pf_match(prefix, "auth_mode_x", "wpa3")){
+	if(!subnet && nvram_get_int("wps_enable")){
 		char *uuid = nvram_safe_get("uuid");
 		if(nvram_pf_match(prefix, "mode_x", "1")){
 			fprintf(fp_h, "wps_state=0\n");
@@ -3301,7 +3301,7 @@ int gen_nl80211_config(int band, int is_iNIC, int subnet)
 	strcpy(vphy, get_vphyifname(band));
 
 	snprintf(hostapd_path, sizeof(hostapd_path), "/etc/Wireless/conf/hostapd_%s.conf", wif);
-	snprintf(mac_path, sizeof(hostapd_path), "/etc/Wireless/conf/maclist_%s.conf", wif);
+	snprintf(mac_path, sizeof(mac_path), "/etc/Wireless/conf/maclist_%s.conf", wif);
 	snprintf(postwifi_path, sizeof(postwifi_path), "/etc/Wireless/sh/postwifi_%s.sh", wif);
 	snprintf(prewifi_path, sizeof(prewifi_path), "/etc/Wireless/sh/prewifi_%s.sh", wif);
 	snprintf(wds_path, sizeof(wds_path), NAWDS_SH_FMT, wif);

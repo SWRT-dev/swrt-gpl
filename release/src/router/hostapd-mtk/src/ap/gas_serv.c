@@ -1792,7 +1792,9 @@ static void gas_serv_rx_gas_comeback_req(struct hostapd_data *hapd,
 	u8 dialog_token;
 	size_t frag_len;
 	int more = 0;
+#ifdef CONFIG_MTK_PASSPOINT
 	u16 status_code = (hapd->conf->external_anqp_server)?WLAN_STATUS_ADV_SRV_UNREACHABLE:WLAN_STATUS_SUCCESS;
+#endif
 
 	wpa_hexdump(MSG_DEBUG, "GAS: RX GAS Comeback Request", data, len);
 	if (len < 1)

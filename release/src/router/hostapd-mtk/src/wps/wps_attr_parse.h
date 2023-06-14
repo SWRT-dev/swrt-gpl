@@ -56,7 +56,9 @@ struct wps_parse_attr {
 	const u8 *request_to_enroll; /* 1 octet (Bool) */
 	const u8 *ap_channel; /* 2 octets */
 	const u8 *registrar_configuration_methods; /* 2 octets */
-
+#ifdef HOSTAPD_MAP_SUPPORT	
+	const u8 *map_ext_attribute; /* 1 octets */ 
+#endif /*MAP_SUPPORT*/
 	/* variable length fields */
 	const u8 *manufacturer;
 	const u8 *model_name;

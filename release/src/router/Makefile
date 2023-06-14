@@ -6216,13 +6216,23 @@ endif
 hostapd-mtk/hostapd/.config:
 	cp hostapd-mtk/hostapd-mini.config hostapd-mtk/hostapd/.config
 
-hostapd-mtk: libnl-tiny openssl hostapd-mtk/hostapd/.config
+hostapd-mtk/wpa_supplicant/.config:
+	cp hostapd-mtk/wpa_supplicant-mini.config hostapd-mtk/wpa_supplicant/.config
+
+hostapd-mtk: libnl-tiny openssl hostapd-mtk/hostapd/.config hostapd-mtk/wpa_supplicant/.config
 	$(MAKE) $(PARALLEL_BUILD) -C hostapd-mtk/hostapd CONFIG_P2P=y CONFIG_INTERNAL_LIBTOMMATH=y CONFIG_DRIVER_NL80211=y
+	$(MAKE) $(PARALLEL_BUILD) -C hostapd-mtk/wpa_supplicant CONFIG_P2P=y CONFIG_INTERNAL_LIBTOMMATH=y CONFIG_DRIVER_NL80211=y
 
 hostapd-mtk-install:
 	install -d $(INSTALLDIR)/hostapd-mtk/usr/sbin
-	cp -rf hostapd-mtk/hostapd/hostapd $(INSTALLDIR)/hostapd-mtk/usr/sbin
-	cp -rf hostapd-mtk/hostapd/hostapd_cli $(INSTALLDIR)/hostapd-mtk/usr/sbin
+	install -D hostapd-mtk/hostapd/hostapd $(INSTALLDIR)/hostapd-mtk/usr/sbin/hostapd
+	install -D hostapd-mtk/hostapd/hostapd_cli $(INSTALLDIR)/hostapd-mtk/usr/sbin/hostapd_cli
+	install -D hostapd-mtk/wpa_supplicant/wpa_supplicant $(INSTALLDIR)/hostapd-mtk/usr/sbin/wpa_supplicant
+	install -D hostapd-mtk/wpa_supplicant/wpa_cli $(INSTALLDIR)/hostapd-mtk/usr/sbin/wpa_cli
+	$(STRIP) $(INSTALLDIR)/hostapd-mtk/usr/sbin/hostapd
+	$(STRIP) $(INSTALLDIR)/hostapd-mtk/usr/sbin/hostapd_cli
+	$(STRIP) $(INSTALLDIR)/hostapd-mtk/usr/sbin/wpa_supplicant
+	$(STRIP) $(INSTALLDIR)/hostapd-mtk/usr/sbin/wpa_cli
 
 hostapd-mtk-clean:
 	$(MAKE) -C hostapd-mtk clean

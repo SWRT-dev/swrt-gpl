@@ -1083,6 +1083,9 @@ int hostapd_init_wps(struct hostapd_data *hapd,
 	struct wps_context *wps;
 	struct wps_registrar_config cfg;
 	u8 *multi_ap_netw_key = NULL;
+#ifdef HOSTAPD_MAP_SUPPORT
+	int bh_idx = 0;
+#endif /* HOSTAPD_MAP_SUPPORT */
 
 	if (conf->wps_state == 0) {
 		hostapd_wps_clear_ies(hapd, 0);
@@ -1120,6 +1123,11 @@ int hostapd_init_wps(struct hostapd_data *hapd,
 	}
 	wps->ssid_len = hapd->conf->ssid.ssid_len;
 	os_memcpy(wps->ssid, hapd->conf->ssid.ssid, wps->ssid_len);
+#ifdef HOSTAPD_MAP_SUPPORT
+	wps->map_ext_attribute = hapd->conf->map_vendor_extension;
+	os_memcpy(wps->bh_profile, hapd->conf->bh_profile, sizeof(struct map_bh_profile) * BAND_NUM);
+#endif /*HOSTAPD_MAP_SUPPORT*/
+
 	wps->ap = 1;
 	os_memcpy(wps->dev.mac_addr, hapd->own_addr, ETH_ALEN);
 	wps->dev.device_name = hapd->conf->device_name ?
@@ -1215,6 +1223,23 @@ int hostapd_init_wps(struct hostapd_data *hapd,
 		}
 #endif /* CONFIG_NO_TKIP */
 	}
+#ifdef HOSTAPD_MAP_SUPPORT //fill BH Profile's security parameters
+	for (bh_idx = BAND_2G; bh_idx < BAND_5GH; bh_idx++) {
+		if (conf->bh_profile[bh_idx].bh_wpa & WPA_PROTO_RSN) {
+			if (conf->bh_profile[bh_idx].bh_wpa_key_mgmt & WPA_KEY_MGMT_PSK)
+				wps->bh_auth_types[bh_idx] |= WPS_AUTH_WPA2PSK;
+	
+			if (conf->bh_profile[bh_idx].bh_rsn_pairwise & (WPA_CIPHER_CCMP | WPA_CIPHER_GCMP |
+						  WPA_CIPHER_CCMP_256 |
+						  WPA_CIPHER_GCMP_256)) {
+				wps->bh_encr_types_rsn[bh_idx] |= WPS_ENCR_AES;
+			}
+		} else { /*To discuss*/
+			wps->bh_auth_types[bh_idx] = WPS_AUTH_OPEN;
+			wps->bh_encr_types_rsn[bh_idx] = WPS_ENCR_NONE;
+		}
+	}
+#endif
 
 	if (conf->ssid.security_policy == SECURITY_PLAINTEXT) {
 		wps->encr_types |= WPS_ENCR_NONE;

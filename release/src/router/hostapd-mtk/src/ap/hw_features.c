@@ -1086,24 +1086,24 @@ int hostapd_select_hw_mode(struct hostapd_iface *iface)
 
 	if (iface->num_hw_features < 1)
 		return -1;
-
+#if 0
 	hapd = iface->bss[0];
-	if((!os_strncmp(hapd->conf->iface, "rai",3)) || (!os_strncmp(hapd->conf->iface, "wlani",5)) ||
-		(!os_strncmp(hapd->conf->iface, "rax",3)))
+	if((!os_strncmp(hapd->conf->iface, "rai",3)) || (!os_strncmp(hapd->conf->iface, "rax",3)) ||
+		(!os_strncmp(hapd->conf->iface, "rae",3)))
 	{
-		printf("interface name matched with rai or rax or wlani configure in A mode init freq:%d \n", iface->freq);
+		printf("interface name matched with rai or rax or rae configure in A mode init freq:%d \n", iface->freq);
 		iface->conf->hw_mode = HOSTAPD_MODE_IEEE80211A;
 		iface->conf->channel = 36;
 		iface->freq = 5180;
 	}
 	else
 	{
-		printf("interface name not matched with rai or rax or wlani configure in G Mode\n");
+		printf("interface name not matched with rai or rax or rae configure in G Mode\n");
 		iface->conf->hw_mode = HOSTAPD_MODE_IEEE80211G;
 		iface->conf->channel = 6;
 		iface->freq = 2437;
 	}
-
+#endif
 
 	if ((iface->conf->hw_mode == HOSTAPD_MODE_IEEE80211G ||
 	     iface->conf->ieee80211n || iface->conf->ieee80211ac ||

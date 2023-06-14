@@ -67,6 +67,18 @@ static int wps_set_vendor_ext_wfa_subelem(struct wps_parse_attr *attr,
 		}
 		attr->registrar_configuration_methods = pos;
 		break;
+#ifdef HOSTAPD_MAP_SUPPORT		
+	case WFA_ELEM_MULTI_AP:
+		if (len != 1) {
+			wpa_printf(MSG_ERROR, "WPS: Invalid MAP Extension attribute length %u",
+				   len);
+			return -1;
+		}
+		attr->map_ext_attribute = pos;
+		attr->multi_ap_ext = NULL;
+		break;
+#else /* MAP_SUPPORT */
+
 	case WFA_ELEM_MULTI_AP:
 		if (len != 1) {
 			wpa_printf(MSG_DEBUG,
@@ -78,6 +90,7 @@ static int wps_set_vendor_ext_wfa_subelem(struct wps_parse_attr *attr,
 		wpa_printf(MSG_DEBUG, "WPS: Multi-AP Extension 0x%02x",
 			   attr->multi_ap_ext);
 		break;
+#endif
 	default:
 		wpa_printf(MSG_MSGDUMP, "WPS: Skipped unknown WFA Vendor "
 			   "Extension subelement %u", id);

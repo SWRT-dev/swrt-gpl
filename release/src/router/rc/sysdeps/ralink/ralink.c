@@ -339,12 +339,9 @@ int getCountryRegion5G(const char *countryCode, int *warning, int IEEE80211H)
 		return 6;
 	else if (!strcasecmp(countryCode, "DB"))
 		return 7;
-	else
-	{
-		if (warning)
-			*warning = 2;
-		return 7;
-	}
+	if (warning)
+		*warning = 2;
+	return 7;
 }
 
 #if defined(RTCONFIG_WIFI6E)
@@ -464,7 +461,8 @@ int get_bw_via_channel(int band, int channel)
 
 const char *getCountryCode()
 {
-	char *tcode = nvram_safe_get("territory_code");
+	char tcode[3];
+	strlcpy(tcode, nvram_safe_get("territory_code"), 2);
 
 	if(nvram_match("location_code", "XX") || nvram_match("location_code", "AU"))
 		return "AU";
@@ -492,9 +490,9 @@ const char *getCountryCode()
 		return "KR";
 	else if(!strncmp(tcode, "RU", 2))
 		return "RU";
-	else if(*tcode)
+	else
 		_dprintf("XXXXXXXXX invalid Tcode? [%s] XXXXXXXXX\n", tcode);
-	return "US";
+	return tcode;
 }
 
 int gen_ralink_config(int band, int is_iNIC)
@@ -528,9 +526,9 @@ int gen_ralink_config(int band, int is_iNIC)
 	int mumimo = 0;
 #endif
 #if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
-	unsigned char *dst;
-	char macaddr[]="00:11:22:33:44:55";
-	char macaddr2[]="00:11:22:33:44:58";
+//	unsigned char *dst;
+//	char macaddr[]="00:11:22:33:44:55";
+//	char macaddr2[]="00:11:22:33:44:58";
 #endif
 
 #if defined(RTCONFIG_CONCURRENTREPEATER)
@@ -1847,16 +1845,14 @@ int gen_ralink_config(int band, int is_iNIC)
 			if (!nvram_match(strcat_r(prefix_mssid, "bss_enabled", temp), "1"))
 				continue;
 
-			if(strlen(tmpstr)==0)
-				sprintf(tmpstr, "%s", tmpstr);
-			else
-				sprintf(tmpstr, "%s;", tmpstr);
+			if(strlen(tmpstr))
+				strlcat(tmpstr, ";", sizeof(tmpstr));
 		}
 		else
 			sprintf(prefix_mssid, "wl%d_", band);
 
 		str = nvram_safe_get(strcat_r(prefix_mssid, "key", temp));
-		sprintf(tmpstr, "%s%s", tmpstr, str);
+		strlcat(tmpstr, str, sizeof(tmpstr));
 	}
 	fprintf(fp, "DefaultKeyID=%s\n", tmpstr);
 
@@ -5152,6 +5148,446 @@ int wl_WscConfigured(int unit)
 		return 0;
 }
 
+#ifdef RTCONFIG_WIRELESSREPEATER
+/*
+ * write_rpt_wpa_supplicant_conf()
+ *
+ * copy wifi nvram variable from prefix_wlc"xxx" to prefix_mssid"xxx"
+ * and generate wpa_supplicant configure file
+ */
+void write_rpt_wpa_supplicant_conf(int band, const char *prefix_mssid, char *prefix_wlc, const char *addition)
+{
+	FILE *fp_wpa;
+	char tmp[128];
+	char pidfile[32];
+	char *str;
+	int flag_wep = 0;
+	int i;
+
+	snprintf(tmp, sizeof(tmp), "/etc/Wireless/wpa_supplicant-%s.conf", get_staifname(band));
+	snprintf(pidfile, sizeof(pidfile), "/var/run/wifi-%s.pid", get_staifname(band));
+	if (!(fp_wpa = fopen(tmp, "w+")))
+		return;
+
+	if (strlen(nvram_pf_safe_get(prefix_wlc, "ssid")))
+		nvram_set("wl_ssid", nvram_pf_safe_get(prefix_wlc, "ssid"));
+	nvram_pf_set(prefix_mssid, "ssid", nvram_pf_safe_get(prefix_wlc, "ssid"));
+	nvram_pf_set(prefix_mssid, "auth_mode_x", nvram_pf_safe_get(prefix_wlc, "auth_mode"));
+
+	nvram_pf_set(prefix_mssid, "wep_x", nvram_pf_safe_get(prefix_wlc, "wep"));
+	nvram_pf_set(prefix_mssid, "key", nvram_pf_safe_get(prefix_wlc, "key"));
+	for(i = 1; i <= 4; i++) {
+		char prekey[16];
+		if(nvram_pf_get_int(prefix_wlc, "key") != i)
+			continue;
+
+		snprintf(prekey, sizeof(prekey), "key%d", i);
+		nvram_pf_set(prefix_mssid, prekey, nvram_pf_safe_get(prefix_wlc, "wep_key"));
+	}
+
+	nvram_pf_set(prefix_mssid, "crypto", nvram_pf_safe_get(prefix_wlc, "crypto"));
+	nvram_pf_set(prefix_mssid, "wpa_psk", nvram_pf_safe_get(prefix_wlc, "wpa_psk"));
+	nvram_pf_set(prefix_mssid, "bw", nvram_pf_safe_get(prefix_wlc, "nbw_cap"));
+
+
+	fprintf(fp_wpa,	"ctrl_interface=/var/run/wpa_supplicant-%s\n%s\nnetwork={\nssid=\"%s\"\n", get_staifname(band),	(addition ? : ""), 
+		nvram_pf_get(prefix_wlc, "ssid") ? : "8f3610e3c9feabed953a6");
+
+	fprintf(fp_wpa,"\tscan_ssid=1\n");
+
+	if(nvram_pf_match(prefix_wlc, "auth_mode", "open") && nvram_pf_match(prefix_wlc, "wep", "0"))
+		fprintf(fp_wpa,"\tkey_mgmt=NONE\n");		//open/none
+	else if(nvram_pf_match(prefix_wlc, "auth_mode", "open")){
+		flag_wep = 1;
+		fprintf(fp_wpa,"\tkey_mgmt=NONE\n");		//open
+		fprintf(fp_wpa,"\tauth_alg=OPEN\n");
+	}else if(nvram_pf_match(prefix_wlc, "auth_mode", "shared")){
+		flag_wep = 1;
+		fprintf(fp_wpa,"\tkey_mgmt=NONE\n");		//shared
+		fprintf(fp_wpa,"\tauth_alg=SHARED\n");
+	}else if (nvram_pf_match(prefix_wlc, "auth_mode", "psk") || nvram_pf_match(prefix_wlc, "auth_mode", "psk2")){
+		fprintf(fp_wpa,"\tkey_mgmt=WPA-PSK\n");
+		if(nvram_pf_match(prefix_wlc, "auth_mode", "psk"))
+			fprintf(fp_wpa,"\tproto=WPA\n");	//wpapsk
+		else
+			fprintf(fp_wpa,"\tproto=RSN\n");	//wpa2psk
+
+		//EncrypType
+		if(nvram_pf_match(prefix_wlc, "crypto", "tkip")){
+			fprintf(fp_wpa, "\tpairwise=TKIP\n");
+			fprintf(fp_wpa, "\tgroup=TKIP\n");
+		}else if (nvram_pf_match(prefix_wlc, "crypto", "aes")){
+			fprintf(fp_wpa, "\tpairwise=CCMP\n");
+			fprintf(fp_wpa, "\tgroup=CCMP\n");
+		}else if (nvram_pf_match(prefix_wlc, "crypto", "tkip+aes")){
+			fprintf(fp_wpa, "\tpairwise=CCMP TKIP\n");
+			fprintf(fp_wpa, "\tgroup=CCMP TKIP\n");
+		}
+
+		//key
+		fprintf(fp_wpa, "\tpsk=\"%s\"\n",nvram_pf_safe_get(prefix_wlc, "wpa_psk"));
+	}else
+		fprintf(fp_wpa,"\tkey_mgmt=NONE\n");		//open/none
+
+	//EncrypType
+	if (flag_wep){
+		int len;
+		for(i = 1 ; i <= 4; i++){
+			if(nvram_pf_get_int(prefix_wlc, "key") != i)
+				continue;
+
+			str = nvram_pf_safe_get(prefix_wlc, "wep_key");
+			len = strlen(str);
+			if(len == 5 || len == 13) {
+				fprintf(fp_wpa, "\twep_tx_keyidx=%d\n", i - 1);
+				fprintf(fp_wpa, "\twep_key%d=\"%s\"\n", i - 1, str);
+			}
+			else if(len == 10 || len == 26)	{
+				fprintf(fp_wpa, "\twep_tx_keyidx=%d\n", i - 1);
+				fprintf(fp_wpa, "\twep_key%d=%s\n", i - 1, str);
+			}
+			else {
+				fprintf(fp_wpa, "\twep_tx_keyidx=%d\n", i - 1);
+				fprintf(fp_wpa, "\twep_key%d=0\n", i - 1);
+			}
+		}
+	}
+	fprintf(fp_wpa, "}\n");
+	fclose(fp_wpa);
+	eval("wpa_supplicant", "-B", "-P", pidfile, "-D", "nl80211", "-i", get_staifname(band), "-b", "br0", "-c", tmp);
+}
+#endif	/* RTCONFIG_WIRELESSREPEATER */
+
+void gen_hostapd_wps_config(FILE *fp_h, int band, int subnet, char *br_if)
+{
+	char *p;
+	char prefix[8];
+	snprintf(prefix, sizeof(prefix), "wl%d_", band);
+
+	fprintf(fp_h, "# Wi-Fi Protected Setup (WPS)\n");
+
+	if(!subnet && nvram_get_int("wps_enable")){
+		char *uuid = nvram_safe_get("uuid");
+		if(nvram_pf_match(prefix, "mode_x", "1")){
+			fprintf(fp_h, "wps_state=0\n");
+		}else{
+			if (nvram_match("w_Setting", "0")) {
+				fprintf(fp_h, "wps_state=1\n");
+			} else {
+				fprintf(fp_h, "wps_state=2\n");
+				fprintf(fp_h, "ap_setup_locked=1\n");
+			}
+		}
+		if (uuid && strlen(uuid) == 36)
+			fprintf(fp_h, "uuid=%s\n", uuid);
+	} else {
+		/* Turn off WPS on guest network. */
+		fprintf(fp_h, "wps_state=0\n");
+	}
+
+	fprintf(fp_h, "wps_independent=1\n");
+	fprintf(fp_h, "device_name=ASUS Router\n");
+	fprintf(fp_h, "manufacturer=ASUSTek Computer Inc.\n");
+	fprintf(fp_h, "model_name=%s\n", nvram_safe_get("productid"));
+	fprintf(fp_h, "model_number=%s\n", nvram_get("odmpid")? : nvram_safe_get("productid"));
+	fprintf(fp_h, "serial_number=%s\n", get_lan_hwaddr());
+	fprintf(fp_h, "device_type=6-0050F204-1\n");
+	fprintf(fp_h, "config_methods=push_button display virtual_display virtual_push_button physical_push_button label\n");
+	fprintf(fp_h, "pbc_in_m1=1\n");
+	fprintf(fp_h, "ap_pin=%s\n", nvram_safe_get("secret_code"));
+	fprintf(fp_h, "upnp_iface=%s\n",br_if);
+	fprintf(fp_h, "friendly_name=WPS Access Point\n");
+	fprintf(fp_h, "manufacturer_url=http://www.asus.com\n");
+	fprintf(fp_h, "model_description=ASUS Router\n");
+	fprintf(fp_h, "model_url=http://www.asus.com\n");
+	//fprintf(fp_h, "wps_rf_bands=ag\n"); /* according to spec */
+	fprintf(fp_h, "wps_rf_bands=%c\n",band?'a':'g');
+
+	//fprintf(fp_h, "ieee80211w=0\n");
+}
+
+int gen_hostapd_config(int band, int subunit)
+{
+	int v;
+	int sw_mode = sw_mode(), wpapsk;
+	int rep_mode, macmode;
+	int flag_8021x = 0;
+	char *str = NULL, *nv, *nvp, *b, *hw_mode = "";
+	char prefix[] = "wlXXXXXXX_";
+	char tmpstr[128], psk[65];
+	char wif[IFNAMSIZ];
+	char hostapd_path[50], mac_path[50], pidfile[32];
+	FILE *fp_h, *fp_mac;
+#if defined(RTCONFIG_MT798X)
+	unsigned int maxsta = 512;
+#elif defined(RTCONFIG_WLMODULE_MT7915D_AP)
+	unsigned int maxsta = 256;
+#elif defined(RTCONFIG_WLMODULE_MT7615E_AP)
+	unsigned int maxsta = 128;
+#else
+	unsigned int maxsta = 64;
+#endif
+#ifdef RTCONFIG_WIRELESSREPEATER
+	int wlc_band = nvram_get_int("wlc_band");
+#endif
+	char br_if[IFNAMSIZ];
+	char *hostapd_argv[] = { "hostapd", "-B", "-P", pidfile, hostapd_path, NULL };
+	pid_t pid;
+
+	if (band < 0 || band >= MAX_NR_WL_IF || subunit < 0)
+		return -1;
+
+#if !defined(RTCONFIG_HAS_5G_2)
+	if (band == 2)
+		return -1;
+#endif
+
+	switch (band) {
+	case WL_2G_BAND:
+		hw_mode = "g";
+		break;
+	case WL_5G_BAND:
+	case WL_5G_2_BAND:
+		hw_mode = "a";
+		break;
+//	case WL_6G_BAND:
+//		hw_mode = "a";
+//		break;
+	default:
+		dbg("%s: unknown wl%d band!\n", __func__, band);
+		return -1;
+	}
+
+	rep_mode = 0;
+
+	get_wlxy_ifname(band, subunit, wif);
+
+	snprintf(hostapd_path, sizeof(hostapd_path), "/etc/Wireless/hostapd_%s.conf", wif);
+	snprintf(mac_path, sizeof(mac_path), "/etc/Wireless/maclist_%s.conf", wif);
+	snprintf(pidfile, sizeof(pidfile), "/var/run/hostapd_%s.pid", wif);
+	_dprintf("gen ralink hostapd config\n");
+	if (!(fp_h = fopen(hostapd_path, "w+")))
+		return 0;
+	if (!(fp_mac = fopen(mac_path, "w")))
+		return 0;
+#ifdef RTCONFIG_WIRELESSREPEATER
+	if (sw_mode == SW_MODE_REPEATER && wlc_band == band && nvram_invmatch("wlc_ssid", "") && !subunit) {
+		rep_mode = 1;
+	}
+#endif
+
+#ifdef RTCONFIG_WIRELESSREPEATER
+	if (rep_mode == 1) {
+		char prefix_wlc[] = "wlXXXXXXX_";
+		snprintf(prefix, sizeof(prefix), "wl%d_", band);
+		snprintf(prefix_wlc, sizeof(prefix_wlc), "wlc_");
+		nvram_set("ure_disable", "0");
+		write_rpt_wpa_supplicant_conf(band, prefix, prefix_wlc, NULL);
+	}
+#endif /* RTCONFIG_WIRELESSREPEATER */
+	if(subunit)
+		snprintf(prefix, sizeof(prefix), "wl%d.%d_", band, subunit);
+	else
+		snprintf(prefix, sizeof(prefix), "wl%d_", band);
+	fprintf(fp_h, "interface=%s\n", wif);
+	fprintf(fp_h, "ctrl_interface=/var/run/hostapd\n");
+	fprintf(fp_h, "driver=nl80211\n");
+	strlcpy(br_if, nvram_get("lan_ifname")? : nvram_default_get("lan_ifname"), sizeof(br_if));
+	fprintf(fp_h, "bridge=%s\n", br_if);
+	fprintf(fp_h, "logger_syslog=-1\n");
+	fprintf(fp_h, "logger_syslog_level=2\n");
+	fprintf(fp_h, "logger_stdout=-1\n");
+	fprintf(fp_h, "logger_stdout_level=2\n");
+	fprintf(fp_h, "ctrl_interface_group=0\n");
+	fprintf(fp_h, "max_num_sta=%d\n", maxsta);
+	fprintf(fp_h, "ignore_broadcast_ssid=0\n");
+	fprintf(fp_h, "eapol_key_index_workaround=0\n");
+	fprintf(fp_h, "nas_identifier=ap.mtk.com\n");
+	flag_8021x = 0;
+
+	if (nvram_pf_match(prefix, "auth_mode_x", "radius") || nvram_pf_match(prefix, "auth_mode_x", "wpa") || nvram_pf_match(prefix, "auth_mode_x", "wpa2") 
+		|| nvram_pf_match(prefix, "auth_mode_x", "wpawpa2"))
+	{
+		flag_8021x = 1;
+		fprintf(fp_h, "ieee8021x=1\n");
+		fprintf(fp_h, "eap_server=0\n");
+	} else {
+		fprintf(fp_h, "ieee8021x=0\n");
+		fprintf(fp_h, "eap_server=1\n");
+	}
+
+	fprintf(fp_h, "ssid=%s\n", nvram_pf_safe_get(prefix, "ssid"));
+
+	/* Network Mode */
+	fprintf(fp_h, "hw_mode=%s\n", hw_mode);
+	if (nvram_pf_match(prefix, "channel", "0") || nvram_pf_get(prefix, "channel") == NULL){
+		int channel = get_channel(band);
+		fprintf(fp_h, "channel=%d\n", channel);
+	}else
+		fprintf(fp_h, "channel=%s\n", nvram_pf_get(prefix, "channel"));
+	/* AuthMode */
+	memset(tmpstr, 0x0, sizeof(tmpstr));
+	str = nvram_pf_get(prefix, "auth_mode_x");
+	if (str && strlen(str)) {
+		if (!strcmp(str, "open")) {
+			fprintf(fp_h, "auth_algs=1\n");
+		} else if (!strcmp(str, "shared")) {
+			fprintf(fp_h, "auth_algs=2\n");
+		} else if (!strcmp(str, "radius")) {
+			fprintf(fp_h, "auth_algs=1\n");
+			fprintf(fp_h, "wep_key_len_broadcast=5\n");
+			fprintf(fp_h, "wep_key_len_unicast=5\n");
+			fprintf(fp_h, "wep_rekey_period=300\n");
+		} else {
+			//wpa/wpa2/wpa-auto-enterprise:wpa/wpa2/wpawpa2
+			//wpa/wpa2/wpa-auto-personal:psk/psk2/pskpsk2
+			fprintf(fp_h, "auth_algs=1\n");
+		}
+	} else {
+		fprintf(fp_h, "auth_algs=1\n");
+	}
+
+	/* EncrypType */
+	memset(tmpstr, 0x0, sizeof(tmpstr));
+
+	str = nvram_pf_get(prefix,"wpa_gtk_rekey");
+	if (str && *str != '\0') {
+		fprintf(fp_h, "wpa_group_rekey=%d\n", safe_atoi(str));
+	}
+
+	if ((nvram_pf_match(prefix, "auth_mode_x", "open") &&
+		nvram_pf_match(prefix, "wep_x", "0"))) {
+//		fprintf(fp_h, "#wpa_pairwise=\n");
+		fprintf(fp_h, "#rsn_pairwise=\n");
+	} else if ((nvram_pf_match(prefix, "auth_mode_x", "open") && nvram_pf_invmatch(prefix, "wep_x", "0")) ||
+		    nvram_pf_match(prefix, "auth_mode_x", "shared") ||
+		    nvram_pf_match(prefix, "auth_mode_x", "radius"))
+	{
+		//wep
+//		fprintf(fp_h, "#wpa_pairwise=\n");
+		fprintf(fp_h, "#rsn_pairwise=\n");
+	} else if (nvram_pf_match(prefix, "auth_mode_x", "sae")) {
+		fprintf(fp_h, "wpa_key_mgmt=SAE\n");
+		fprintf(fp_h, "rsn_pairwise=CCMP\n");
+		fprintf(fp_h, "wpa_strict_rekey=1\n");
+		fprintf(fp_h, "eapol_version=2\n");
+		fprintf(fp_h, "ieee80211w=2\n");
+	} else if (nvram_pf_match(prefix, "crypto", "tkip")) {
+		fprintf(fp_h, "wpa_key_mgmt=WPA-%s\n", flag_8021x? "EAP" : "PSK");
+		fprintf(fp_h, "wpa_strict_rekey=1\n");
+		fprintf(fp_h, "eapol_version=2\n");
+//		fprintf(fp_h, "wpa_pairwise=TKIP\n");
+		fprintf(fp_h, "rsn_pairwise=TKIP\n");
+	} else if (nvram_pf_match(prefix, "crypto", "aes")) {
+		fprintf(fp_h, "wpa_key_mgmt=WPA-%s\n", flag_8021x? "EAP" : "PSK");
+		fprintf(fp_h, "wpa_strict_rekey=1\n");
+		fprintf(fp_h, "eapol_version=2\n");
+//		fprintf(fp_h, "wpa_pairwise=CCMP\n");
+		fprintf(fp_h, "rsn_pairwise=CCMP\n");
+	} else if (nvram_pf_match(prefix, "crypto", "tkip+aes")) {
+		fprintf(fp_h, "wpa_key_mgmt=WPA-%s\n", flag_8021x? "EAP" : "PSK");
+		fprintf(fp_h, "wpa_strict_rekey=1\n");
+		fprintf(fp_h, "eapol_version=2\n");
+//		fprintf(fp_h, "wpa_pairwise=TKIP CCMP\n");
+		fprintf(fp_h, "rsn_pairwise=TKIP CCMP\n");
+	} else {
+//		fprintf(fp_h, "#wpa_pairwise=\n");
+		fprintf(fp_h, "#rsn_pairwise=\n");
+	}
+
+	wpapsk = 0;
+	if (nvram_pf_match(prefix, "auth_mode_x", "open") &&
+	    nvram_pf_match(prefix, "wep_x", "0")) {
+		fprintf(fp_h, "wpa=0\n");
+	} else if ((nvram_pf_match(prefix, "auth_mode_x", "open") && nvram_pf_invmatch(prefix, "wep_x", "0")) ||
+		    nvram_pf_match(prefix, "auth_mode_x", "shared") ||
+		    nvram_pf_match(prefix, "auth_mode_x", "radius")) {
+		fprintf(fp_h, "wpa=0\n");
+	} else if (nvram_pf_match(prefix, "auth_mode_x", "psk") ||
+		   nvram_pf_match(prefix, "auth_mode_x", "wpa")) {
+		wpapsk = 1;
+		fprintf(fp_h, "wpa=1\n");
+	} else if (nvram_pf_match(prefix, "auth_mode_x", "sae")){
+		wpapsk = 4;
+		fprintf(fp_h, "wpa=2\n");
+	} else if (nvram_pf_match(prefix, "auth_mode_x", "psk2") || nvram_pf_match(prefix, "auth_mode_x", "wpa2")) {
+		wpapsk = 2;
+		fprintf(fp_h, "wpa=2\n");
+	} else if (nvram_pf_match(prefix, "auth_mode_x", "pskpsk2") ||
+		   nvram_pf_match(prefix, "auth_mode_x", "wpawpa2")) {
+		wpapsk = 3;
+		fprintf(fp_h, "wpa=3\n");
+	} else {
+		fprintf(fp_h, "wpa=0\n");
+	}
+
+	if (wpapsk != 0 && !flag_8021x) {
+		strlcpy(psk, nvram_pf_safe_get(prefix, "wpa_psk"), sizeof(psk));
+		if (strlen(psk) == 64)
+			fprintf(fp_h, "wpa_psk=%s\n", psk);
+		else
+			fprintf(fp_h, "wpa_passphrase=%s\n", psk);
+	}
+
+	/* AccessPolicy0 */
+	if (nvram_pf_invmatch(prefix, "macmode", "disabled")) {
+		macmode = nvram_pf_match(prefix, "macmode", "deny")? 1 : 0;	/* 0: accept, 1: deny  */
+		fprintf(fp_h, "macaddr_acl=%d\n", macmode? 0 : 1);		/* 0: accept_unless_denied, 1: deny_unless_accepted */
+		fprintf(fp_h, "%s_mac_file=%s\n", macmode? "deny" : "accept", mac_path);
+		nv = nvp = strdup(nvram_pf_safe_get(prefix, "maclist_x"));
+		while (nv && (b = strsep(&nvp, "<")) != NULL) {
+			if (*b == '\0')
+				continue;
+			fprintf(fp_mac, "%s\n", b);
+		}
+		free(nv);
+	}
+
+	if (rep_mode)
+		goto next;
+
+	if (flag_8021x) {
+		fprintf(fp_h, "own_ip_addr=%s\n", nvram_get("lan_ipaddr") ? : nvram_default_get("lan_ipaddr"));
+		/* radius server */
+		fprintf(fp_h, "auth_server_addr=%s\n", nvram_pf_get(prefix, "radius_ipaddr") ? : "169.254.1.1");
+
+		/* radius port */
+		v = 1812;
+		str = nvram_pf_safe_get(prefix, "radius_port");
+		if (str && *str != '\0') {
+			v = safe_atoi(str);
+		}
+		fprintf(fp_h, "auth_server_port=%d\n", v);
+
+		/* radius key */
+		fprintf(fp_h, "auth_server_shared_secret=%s\n", nvram_pf_safe_get(prefix, "radius_key"));
+	}
+	gen_hostapd_wps_config(fp_h, band, subunit, br_if);
+
+next:
+	fclose(fp_h);
+	fclose(fp_mac);
+	_eval(hostapd_argv, NULL, 0, &pid);
+	return 0;
+}
+
+void hostapd_ra_start(void)
+{
+	int unit = 0, subunit = 0; 
+	char prefix[] = "wlXXXXXXX_";
+	for(unit = 0; unit < MAX_NR_WL_IF; unit++){
+		for(subunit = 0; subunit < MAX_NO_MSSID; subunit++){
+			if(subunit)
+				snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, subunit);
+			else
+				snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+			if(nvram_pf_match(prefix, "bss_enabled", "1")){
+				gen_hostapd_config(unit, subunit);
+			}
+		}
+	}
+}
+
 void gen_ra_config(const char* wif)
 {
 	char word[256], *next;
@@ -5162,29 +5598,14 @@ void gen_ra_config(const char* wif)
 		{
 			if (!strcmp(word, nvram_safe_get("wl0_ifname"))) // 2.4G
 			{
-#if defined(RTCONFIG_MT798X)
-				if (!strncmp(word, "rax", 3))	// iNIC
-#else
-				if (!strncmp(word, "rai", 3))	// iNIC
-#endif
-					gen_ralink_config(0, 1);
-				else{
-					gen_ralink_config(0, 0);
+				gen_ralink_config(0, 0);
 #if defined(RALINK_DBDC_MODE) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
-					gen_ralink_config(1, 1);
+				gen_ralink_config(1, 1);
 #endif
-				}
 			}
 			else if (!strcmp(word, nvram_safe_get("wl1_ifname"))) // 5G
 			{
-#if defined(RTCONFIG_MT798X)
-				if (!strncmp(word, "rax", 3))	// iNIC
-#else
-				if (!strncmp(word, "rai", 3))	// iNIC
-#endif
-					gen_ralink_config(1, 1);
-				else
-					gen_ralink_config(1, 0);
+				gen_ralink_config(1, 1);
 			}
 		}
 	}

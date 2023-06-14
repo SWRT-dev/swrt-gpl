@@ -239,6 +239,12 @@ static int hostapd_cli_cmd(struct wpa_ctrl *ctrl, const char *cmd,
 	return wpa_ctrl_command(ctrl, buf);
 }
 
+#ifdef HOSTAPD_MAP_SUPPORT
+static int hostapd_cli_cmd_config_reload(struct wpa_ctrl *ctrl, int argc, char *argv[])
+{
+	return wpa_ctrl_command(ctrl, "CONFIG_RELOAD");
+}
+#endif
 
 static int hostapd_cli_cmd_ping(struct wpa_ctrl *ctrl, int argc, char *argv[])
 {
@@ -720,6 +726,13 @@ static int hostapd_cli_cmd_get_config(struct wpa_ctrl *ctrl, int argc,
 	return wpa_ctrl_command(ctrl, "GET_CONFIG");
 }
 
+#ifdef HOSTAPD_MAP_SUPPORT
+static int hostapd_cli_cmd_get_bh_config(struct wpa_ctrl *ctrl, int argc,
+				      char *argv[])
+{
+	return wpa_ctrl_command(ctrl, "GET_BH_CONFIG");
+}
+#endif
 
 static int wpa_ctrl_command_sta(struct wpa_ctrl *ctrl, const char *cmd,
 				char *addr, size_t addr_len, int print)
@@ -1282,8 +1295,29 @@ static int hostapd_cli_cmd_pmksa(struct wpa_ctrl *ctrl, int argc, char *argv[])
 {
 	return wpa_ctrl_command(ctrl, "PMKSA");
 }
+#ifdef HOSTAPD_MAPR3_SUPPORT
+static int hostapd_cli_cmd_pmksa_add(struct wpa_ctrl *ctrl, int argc, char *argv[])
+{
+	char cmd[384];
+	int res;
 
+	if (argc != 5) {
+		printf("Invalid pmksa_add command: needs 5 arguments, it has, %d\n",argc);
+		return -1;
+	}
 
+	res = os_snprintf(cmd, sizeof(cmd), "PMKSA_ADD %s %s %s %s %s",
+			  argv[0], argv[1], argv[2], argv[3], argv[4]);
+
+	/*<STA addr> <PMKID> <PMK> <expiration in seconds> <akmp>*/
+	if (os_snprintf_error(sizeof(cmd), res)) {
+		printf("Too long PMKSA_ADD command.\n");
+		return -1;
+	}
+
+	return wpa_ctrl_command(ctrl,cmd);
+}
+#endif
 static int hostapd_cli_cmd_pmksa_flush(struct wpa_ctrl *ctrl, int argc,
 				       char *argv[])
 {
@@ -1619,6 +1653,10 @@ static const struct hostapd_cli_cmd hostapd_cli_commands[] = {
 	  "= send BSS Transition Management Request" },
 	{ "get_config", hostapd_cli_cmd_get_config, NULL,
 	  "= show current configuration" },
+#ifdef HOSTAPD_MAP_SUPPORT
+	{ "get_bh_config", hostapd_cli_cmd_get_bh_config, NULL,
+	  "= show current backhaul configuration" },
+#endif
 	{ "help", hostapd_cli_cmd_help, hostapd_cli_complete_help,
 	  "= show this usage help" },
 	{ "interface", hostapd_cli_cmd_interface, hostapd_complete_interface,
@@ -1661,6 +1699,11 @@ static const struct hostapd_cli_cmd hostapd_cli_commands[] = {
 	  "= enable hostapd on current interface" },
 	{ "reload", hostapd_cli_cmd_reload, NULL,
 	  "= reload configuration for current interface" },
+#ifdef HOSTAPD_MAP_SUPPORT
+	{ "config_reload", hostapd_cli_cmd_config_reload, NULL,
+	  "= reload configuration from conf file for current interface" },
+#endif
+
 	{ "disable", hostapd_cli_cmd_disable, NULL,
 	  "= disable hostapd on current interface" },
 	{ "update_beacon", hostapd_cli_cmd_update_beacon, NULL,
@@ -1671,6 +1714,10 @@ static const struct hostapd_cli_cmd hostapd_cli_commands[] = {
 	  "[level] = show/change log verbosity level" },
 	{ "pmksa", hostapd_cli_cmd_pmksa, NULL,
 	  " = show PMKSA cache entries" },
+#ifdef HOSTAPD_MAPR3_SUPPORT
+	{ "pmksa_add", hostapd_cli_cmd_pmksa_add, NULL,
+	  " = add PMKSA cache entry" },
+#endif
 	{ "pmksa_flush", hostapd_cli_cmd_pmksa_flush, NULL,
 	  " = flush PMKSA cache" },
 	{ "set_neighbor", hostapd_cli_cmd_set_neighbor, NULL,

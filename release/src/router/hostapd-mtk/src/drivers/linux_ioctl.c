@@ -97,6 +97,7 @@ int linux_get_ifhwaddr(int sock, const char *ifname, u8 *addr)
 		return -1;
 	}
 
+	wpa_printf(MSG_ERROR, "iface mac addr %s " MACSTR"\n", ifname, MAC2STR(ifr.ifr_hwaddr.sa_data));
 	if (os_memcmp(ifr.ifr_hwaddr.sa_data, empty, ETH_ALEN) == 0) {
 		wpa_printf(MSG_ERROR, "%s: MAC Adress is Empty", ifname);
 		return -1;

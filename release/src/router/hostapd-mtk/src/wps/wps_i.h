@@ -87,11 +87,17 @@ struct wps_data {
 	 * encr_type - Available encryption types
 	 */
 	u16 encr_type;
+#ifdef HOSTAPD_MAP_SUPPORT
+	u16 bh_encr_type[BAND_NUM];
+#endif
 
 	/**
 	 * auth_type - Available authentication types
 	 */
 	u16 auth_type;
+#ifdef HOSTAPD_MAP_SUPPORT
+	u16 bh_auth_type[BAND_NUM];
+#endif
 
 	u8 *new_psk;
 	size_t new_psk_len;

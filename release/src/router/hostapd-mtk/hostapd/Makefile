@@ -280,6 +280,11 @@ ifdef CONFIG_OCV
 CFLAGS += -DCONFIG_OCV
 OBJS += ../src/common/ocv.o
 endif
+#Mediatek MAP support in hostapd
+CFLAGS += -DHOSTAPD_MAP_SUPPORT
+
+#Mediatek MAPR3 support in hostapd
+CFLAGS += -DHOSTAPD_MAPR3_SUPPORT
 
 #save pmkid generated in hostapd to drivers
 CFLAGS += -DHOSTAPD_PMKID_IN_DRIVER_SUPPORT

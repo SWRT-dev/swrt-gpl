@@ -421,6 +421,29 @@ static int wps_validate_request_to_enroll(const u8 *request_to_enroll,
 	return 0;
 }
 
+#ifdef HOSTAPD_MAP_SUPPORT
+static int wps_validate_map_ext_attribute(const u8 *map_ext_attribute,
+						int mandatory)
+{
+	if (map_ext_attribute == NULL) {
+		/* No map ext attribute!! normal STA */
+		if (mandatory) {
+			wpa_printf(MSG_ERROR, "WPS-STRICT: MAP vendor extension "
+				   "attribute missing");
+			return -1;
+		}
+		return 0;
+	}
+	if ((*map_ext_attribute < 0x04) || (*map_ext_attribute > 0x07)) { /*	MAP_ROLE_BACKHAUL_STA = 7	*/
+		wpa_printf(MSG_ERROR, "WPS-STRICT: MAP vendor extension role invalid"
+			   "attribute value 0x%x", *map_ext_attribute);
+		return -1;
+	}
+	return 0;
+
+}
+#endif /* MAP_SUPPORT */
+
 
 static int wps_validate_req_dev_type(const u8 *req_dev_type[], size_t num,
 				     int mandatory)
@@ -1213,6 +1236,9 @@ int wps_validate_probe_req(const struct wpabuf *wps_ie, const u8 *addr)
 				      wps2) ||
 	    wps_validate_dev_name(attr.dev_name, attr.dev_name_len, wps2) ||
 	    wps_validate_request_to_enroll(attr.request_to_enroll, 0) ||
+#ifdef HOSTAPD_MAP_SUPPORT	    
+		wps_validate_map_ext_attribute(attr.map_ext_attribute, 0) ||
+#endif /* MAP_SUPPORT */
 	    wps_validate_req_dev_type(attr.req_dev_type, attr.num_req_dev_type,
 				      0)) {
 		wpa_printf(MSG_INFO, "WPS-STRICT: Invalid Probe Request "

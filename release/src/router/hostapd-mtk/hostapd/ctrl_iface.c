@@ -1361,6 +1361,67 @@ static int hostapd_ctrl_iface_get_config(struct hostapd_data *hapd,
 	return pos - buf;
 }
 
+#ifdef HOSTAPD_MAP_SUPPORT
+static int hostapd_ctrl_iface_get_bh_config(struct hostapd_data *hapd,
+					 char *buf, size_t buflen)
+{
+	int ret, band_idx = 0;
+	char *pos, *end;
+
+	pos = buf;
+	end = buf + buflen;
+
+	for (band_idx = 0; band_idx < BAND_5GH; band_idx++) {
+		ret = os_snprintf(pos, end - pos, "bh%d_bssid=" MACSTR "\n"
+				  "bh%d_ssid=%s\n",
+				  band_idx,
+				  MAC2STR(hapd->conf->bh_profile[band_idx].bh_macaddr),
+				  band_idx,
+				  wpa_ssid_txt(hapd->conf->bh_profile[band_idx].bh_ssid,
+					       hapd->conf->bh_profile[band_idx].bh_ssid_len));
+		if (os_snprintf_error(end - pos, ret))
+			return pos - buf;
+		pos += ret;
+
+
+		if (hapd->conf->bh_profile[band_idx].bh_wpa) {
+			ret = os_snprintf(pos, end - pos, "bh%d_wpa=%d\n", band_idx, hapd->conf->bh_profile[band_idx].bh_wpa);
+			if (os_snprintf_error(end - pos, ret))
+				return pos - buf;
+			pos += ret;
+		}
+
+		if (hapd->conf->bh_profile[band_idx].bh_wpa && hapd->conf->bh_profile[band_idx].bh_wpa_key_mgmt) {
+			ret = os_snprintf(pos, end - pos, "bh%d_key_mgmt=", band_idx);
+			if (os_snprintf_error(end - pos, ret))
+				return pos - buf;
+			pos += ret;
+
+			pos += hostapd_ctrl_iface_get_key_mgmt(hapd, pos, end - pos);
+
+			ret = os_snprintf(pos, end - pos, "\n");
+			if (os_snprintf_error(end - pos, ret))
+				return pos - buf;
+			pos += ret;
+		}
+		ret = os_snprintf(pos, end - pos, "bh%d_map_vendor_extension=%u\n",
+				  band_idx,
+				  hapd->conf->bh_profile[band_idx].bh_map_vendor_extension);
+		if (os_snprintf_error(end - pos, ret))
+			return pos - buf;
+		pos += ret;
+
+		ret = os_snprintf(pos, end - pos, "bh%d_hidden_ssid=%u\n",
+							band_idx,
+							hapd->conf->bh_profile[band_idx].bh_hidden_ssid);
+		if (os_snprintf_error(end - pos, ret))
+			return pos - buf;
+		pos += ret;
+
+	}
+	return pos - buf;
+}
+#endif
 
 static void hostapd_disassoc_accept_mac(struct hostapd_data *hapd)
 {
@@ -1626,6 +1687,16 @@ static int hostapd_ctrl_iface_reload(struct hostapd_iface *iface)
 	return 0;
 }
 
+#ifdef HOSTAPD_MAP_SUPPORT	
+static int hostapd_ctrl_iface_config_reload(struct hostapd_iface *iface)
+{
+	if (hostapd_reload_config(iface) < 0) {
+		wpa_printf(MSG_ERROR, "Reloading with new config of interface failed");
+		return -1;
+	}
+	return 0;
+}
+#endif /* HOSTAPD_MAP_SUPPORT */
 
 static int hostapd_ctrl_iface_disable(struct hostapd_iface *iface)
 {
@@ -3676,6 +3747,12 @@ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
 	} else if (os_strcmp(buf, "GET_CONFIG") == 0) {
 		reply_len = hostapd_ctrl_iface_get_config(hapd, reply,
 							  reply_size);
+#ifdef HOSTAPD_MAP_SUPPORT
+	} else if (os_strcmp(buf, "GET_BH_CONFIG") == 0) {
+		reply_len = hostapd_ctrl_iface_get_bh_config(hapd, reply,
+							  reply_size);
+#endif
+
 	} else if (os_strncmp(buf, "SET ", 4) == 0) {
 		if (hostapd_ctrl_iface_set(hapd, buf + 4))
 			reply_len = -1;
@@ -3688,6 +3765,12 @@ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
 	} else if (os_strcmp(buf, "RELOAD_WPA_PSK") == 0) {
 		if (hostapd_ctrl_iface_reload_wpa_psk(hapd))
 			reply_len = -1;
+#ifdef HOSTAPD_MAP_SUPPORT		
+	} else if (os_strncmp(buf, "CONFIG_RELOAD", 13) == 0) {
+		if (hostapd_ctrl_iface_config_reload(hapd->iface))
+			reply_len = -1;
+#endif /* HOSTAPD_MAP_SUPPORT */
+
 	} else if (os_strncmp(buf, "RELOAD", 6) == 0) {
 		if (hostapd_ctrl_iface_reload(hapd->iface))
 			reply_len = -1;
