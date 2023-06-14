@@ -14,7 +14,9 @@ export LDFLAGS+=$(EXTRALDFLAGS)
 pobj-y:=
 
 pobj-y += mii_mgr regs switch wifi-fw
+pobj-y += 8021xd
 pobj-$(RTCONFIG_RALINK_BSD) += bndstrg_plus
+pobj-$(RTCONFIG_SOC_MT7981) += mhz
 
 
 pobj-clean := $(foreach pobj, $(pobj-y) $(pobj-n) $(pobj-), $(pobj)-clean)
