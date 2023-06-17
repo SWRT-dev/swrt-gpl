@@ -3320,7 +3320,7 @@ next_mrate:
 	}
 #endif
 #endif
-#if !defined(RMAX6000)
+#if !defined(RTCONFIG_MT798X)
 	if(*tcode)
 		fprintf(fp, "SKUenable=1\n");
 	else
@@ -5168,7 +5168,7 @@ void write_rpt_wpa_supplicant_conf(int band, const char *prefix_mssid, char *pre
 	snprintf(pidfile, sizeof(pidfile), "/var/run/wifi-%s.pid", get_staifname(band));
 	if (!(fp_wpa = fopen(tmp, "w+")))
 		return;
-
+	ifconfig(get_staifname(band), 0, NULL, NULL);
 	if (strlen(nvram_pf_safe_get(prefix_wlc, "ssid")))
 		nvram_set("wl_ssid", nvram_pf_safe_get(prefix_wlc, "ssid"));
 	nvram_pf_set(prefix_mssid, "ssid", nvram_pf_safe_get(prefix_wlc, "ssid"));
@@ -5316,7 +5316,7 @@ int gen_hostapd_config(int band, int subunit)
 	char prefix[] = "wlXXXXXXX_";
 	char tmpstr[128], psk[65];
 	char wif[IFNAMSIZ];
-	char hostapd_path[50], mac_path[50], pidfile[32];
+	char hostapd_path[50], mac_path[50], pidfile[32], logfile[32];
 	FILE *fp_h, *fp_mac;
 #if defined(RTCONFIG_MT798X)
 	unsigned int maxsta = 512;
@@ -5331,7 +5331,7 @@ int gen_hostapd_config(int band, int subunit)
 	int wlc_band = nvram_get_int("wlc_band");
 #endif
 	char br_if[IFNAMSIZ];
-	char *hostapd_argv[] = { "hostapd", "-B", "-P", pidfile, hostapd_path, NULL };
+	char *hostapd_argv[] = { "hostapd", "-B", "-P", pidfile, "-f", logfile, /*"-dddd",*/ hostapd_path, NULL };
 	pid_t pid;
 
 	if (band < 0 || band >= MAX_NR_WL_IF || subunit < 0)
@@ -5365,6 +5365,7 @@ int gen_hostapd_config(int band, int subunit)
 	snprintf(hostapd_path, sizeof(hostapd_path), "/etc/Wireless/hostapd_%s.conf", wif);
 	snprintf(mac_path, sizeof(mac_path), "/etc/Wireless/maclist_%s.conf", wif);
 	snprintf(pidfile, sizeof(pidfile), "/var/run/hostapd_%s.pid", wif);
+	snprintf(logfile, sizeof(logfile), "/tmp/hostapd_%s.log", wif);
 	_dprintf("gen ralink hostapd config\n");
 	if (!(fp_h = fopen(hostapd_path, "w+")))
 		return 0;
@@ -5394,14 +5395,14 @@ int gen_hostapd_config(int band, int subunit)
 	fprintf(fp_h, "driver=nl80211\n");
 	strlcpy(br_if, nvram_get("lan_ifname")? : nvram_default_get("lan_ifname"), sizeof(br_if));
 	fprintf(fp_h, "bridge=%s\n", br_if);
-	fprintf(fp_h, "logger_syslog=-1\n");
-	fprintf(fp_h, "logger_syslog_level=2\n");
-	fprintf(fp_h, "logger_stdout=-1\n");
-	fprintf(fp_h, "logger_stdout_level=2\n");
+//	fprintf(fp_h, "logger_syslog=-1\n");
+//	fprintf(fp_h, "logger_syslog_level=2\n");
+//	fprintf(fp_h, "logger_stdout=-1\n");
+//	fprintf(fp_h, "logger_stdout_level=2\n");
 	fprintf(fp_h, "ctrl_interface_group=0\n");
 	fprintf(fp_h, "max_num_sta=%d\n", maxsta);
 	fprintf(fp_h, "ignore_broadcast_ssid=0\n");
-	fprintf(fp_h, "eapol_key_index_workaround=0\n");
+	fprintf(fp_h, "#eapol_key_index_workaround=0\n");
 	fprintf(fp_h, "nas_identifier=ap.mtk.com\n");
 	flag_8021x = 0;
 
@@ -5469,24 +5470,28 @@ int gen_hostapd_config(int band, int subunit)
 	} else if (nvram_pf_match(prefix, "auth_mode_x", "sae")) {
 		fprintf(fp_h, "wpa_key_mgmt=SAE\n");
 		fprintf(fp_h, "rsn_pairwise=CCMP\n");
-		fprintf(fp_h, "wpa_strict_rekey=1\n");
+		fprintf(fp_h, "wpa_ptk_rekey=0\n");
+		fprintf(fp_h, "wpa_pairwise_update_count=4\n");
 		fprintf(fp_h, "eapol_version=2\n");
 		fprintf(fp_h, "ieee80211w=2\n");
 	} else if (nvram_pf_match(prefix, "crypto", "tkip")) {
 		fprintf(fp_h, "wpa_key_mgmt=WPA-%s\n", flag_8021x? "EAP" : "PSK");
-		fprintf(fp_h, "wpa_strict_rekey=1\n");
+		fprintf(fp_h, "wpa_ptk_rekey=0\n");
+		fprintf(fp_h, "wpa_pairwise_update_count=4\n");
 		fprintf(fp_h, "eapol_version=2\n");
 //		fprintf(fp_h, "wpa_pairwise=TKIP\n");
 		fprintf(fp_h, "rsn_pairwise=TKIP\n");
 	} else if (nvram_pf_match(prefix, "crypto", "aes")) {
 		fprintf(fp_h, "wpa_key_mgmt=WPA-%s\n", flag_8021x? "EAP" : "PSK");
-		fprintf(fp_h, "wpa_strict_rekey=1\n");
+		fprintf(fp_h, "wpa_ptk_rekey=0\n");
+		fprintf(fp_h, "wpa_pairwise_update_count=4\n");
 		fprintf(fp_h, "eapol_version=2\n");
 //		fprintf(fp_h, "wpa_pairwise=CCMP\n");
 		fprintf(fp_h, "rsn_pairwise=CCMP\n");
 	} else if (nvram_pf_match(prefix, "crypto", "tkip+aes")) {
 		fprintf(fp_h, "wpa_key_mgmt=WPA-%s\n", flag_8021x? "EAP" : "PSK");
-		fprintf(fp_h, "wpa_strict_rekey=1\n");
+		fprintf(fp_h, "wpa_ptk_rekey=0\n");
+		fprintf(fp_h, "wpa_pairwise_update_count=4\n");
 		fprintf(fp_h, "eapol_version=2\n");
 //		fprintf(fp_h, "wpa_pairwise=TKIP CCMP\n");
 		fprintf(fp_h, "rsn_pairwise=TKIP CCMP\n");
@@ -5575,6 +5580,7 @@ void hostapd_ra_start(void)
 {
 	int unit = 0, subunit = 0; 
 	char prefix[] = "wlXXXXXXX_";
+	char wif[IFNAMSIZ];
 	for(unit = 0; unit < MAX_NR_WL_IF; unit++){
 		for(subunit = 0; subunit < MAX_NO_MSSID; subunit++){
 			if(subunit)
@@ -5582,8 +5588,47 @@ void hostapd_ra_start(void)
 			else
 				snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 			if(nvram_pf_match(prefix, "bss_enabled", "1")){
+				get_wlxy_ifname(unit, subunit, wif);
+				ifconfig(wif, 0, NULL, NULL);
 				gen_hostapd_config(unit, subunit);
 			}
+		}
+	}
+}
+
+void stop_wifi_hostapd(void)
+{
+	int unit = 0, subunit = 0; 
+	char prefix[] = "wlXXXXXXX_";
+	char wif[IFNAMSIZ], pidfile[32];
+	for(unit = 0; unit < MAX_NR_WL_IF; unit++){
+		for(subunit = 0; subunit < MAX_NO_MSSID; subunit++){
+			if(subunit)
+				snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, subunit);
+			else
+				snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+			get_wlxy_ifname(unit, subunit, wif);
+			snprintf(pidfile, sizeof(pidfile), "/var/run/hostapd_%s.pid", wif);
+			if(f_exists(pidfile)){
+				kill_pidfile_tk(pidfile);
+				unlink(pidfile);
+//				ifconfig(wif, 0, NULL, NULL);
+			}
+		}
+	}
+}
+
+void stop_wifi_wpa_supplicant(void)
+{
+	int unit = 0; 
+	char wif[IFNAMSIZ], pidfile[32];
+	for(unit = 0; unit < MAX_NR_WL_IF; unit++){
+		snprintf(wif, sizeof(wif), "%s", get_staifname(unit));
+		snprintf(pidfile, sizeof(pidfile), "/var/run/wifi-%s.pid", wif);
+		if(f_exists(pidfile)){
+			kill_pidfile_tk(pidfile);
+			unlink(pidfile);
+			ifconfig(wif, 0, NULL, NULL);
 		}
 	}
 }

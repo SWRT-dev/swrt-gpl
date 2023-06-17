@@ -1,7 +1,7 @@
 
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/8021xd/Makefile),)
-	ln -sf $(SDK_DIR_PLATFORM)/8021xd 8021xd
+	[ -d 8021xd ] || ln -sf $(SDK_DIR_PLATFORM)/8021xd 8021xd
 	$(MAKE) -C 8021xd all
 else
 	mkdir -p 8021xd

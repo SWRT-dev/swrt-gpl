@@ -296,6 +296,7 @@ config APCLI_STA_SUPPORT
 	bool "APCLI CFG80211 STA Support"
 	depends on APCLI_SUPPORT
 	depends on CFG80211_SUPPORT
+	depends on ENTERPRISE_AP_SUPPORT
 	default n
 
 #WDS STA
@@ -303,6 +304,7 @@ config WDS_STA_SUPPORT
 	bool "WDS STA Support"
 	depends on APCLI_SUPPORT
 	depends on CFG80211_SUPPORT
+	depends on ENTERPRISE_AP_SUPPORT
 	default n
 
 #WDS AP
@@ -310,6 +312,7 @@ config MBSS_AS_WDS_AP_SUPPORT
 	bool "MBSS AS WDS AP Support"
 	depends on MT_AP_SUPPORT
 	depends on MBSS_SUPPORT
+	depends on ENTERPRISE_AP_SUPPORT
 	default n
 
 #config DSCP_PRI_SUPPORT
@@ -519,3 +522,17 @@ config DBDC_ONE_BAND_SUPPORT
         bool "Single Band DBDC Support"
         depends on MT_AP_SUPPORT
         default n
+
+config WIFI_FW_BIN_LOAD
+       depends on CHIP_MT7986 || CHIP_MT7916 || CHIP_MT7981
+       bool "load wifi fw with bin file"
+       default n
+
+config SNIFFER_RADIOTAP_SUPPORT
+	bool "SNIFFER_RADIOTAP"
+	default y
+
+config ZERO_LOSS_CSA_SUPPORT
+	bool "Zero Loss CSA Support"
+	depends on MTK_MT_AP_SUPPORT
+	default n

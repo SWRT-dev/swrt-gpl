@@ -10022,13 +10022,6 @@ watchdog_main(int argc, char *argv[])
 	rtl_fail_max = nvram_get_int("rtl_fail_max")?:1;
 #endif
 
-#ifdef RTCONFIG_RALINK
-	doSystem("iwpriv %s set WatchdogPid=%d", WIF_2G, getpid());
-#if defined(RTCONFIG_HAS_5G)
-	doSystem("iwpriv %s set WatchdogPid=%d", WIF_5G, getpid());
-#endif	/* RTCONFIG_HAS_5G */
-#endif	/* RTCONFIG_RALINK */
-
 	init_sig();
 
 #ifdef RTCONFIG_DSL //Paul add 2012/6/27

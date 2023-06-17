@@ -121,17 +121,11 @@ else ifeq ($(MT7622),y)
 export SDK_DIR_PLATFORM := $(SDK_DIR)/mtk/mt7622
 else ifeq ($(MT798X),y)
 export SDK_DIR_PLATFORM := $(SDK_DIR)/mtk/mt7986
-else ifeq ($(IPQ40XX),y)
-export SDK_DIR_PLATFORM := $(SDK_DIR)/qca/ipq40xx
-else ifeq ($(IPQ50XX),y)
-export SDK_DIR_PLATFORM := $(SDK_DIR)/qca/ipq50xx
-else ifeq ($(IPQ60XX),y)
-export SDK_DIR_PLATFORM := $(SDK_DIR)/qca/ipq60xx
+else ifeq ($(or $(IPQ40XX),$(IPQ50XX),$(IPQ60XX),$(IPQ807X)),y)
+export SDK_DIR_PLATFORM := $(SDK_DIR)/qca/11.5
 else ifeq ($(IPQ806X),y)
 export SDK_DIR_PLATFORM := $(SDK_DIR)/qca/ipq806x
-else ifeq ($(IPQ807X),y)
-export SDK_DIR_PLATFORM := $(SDK_DIR)/qca/ipq807x
-else ifeq ($(GRX500),y)
+else ifeq ($(LANTIQ),y)
 export SDK_DIR_PLATFORM := $(SDK_DIR)/lantiq/grx500
 else ifeq ($(EN7561),y)
 export SDK_DIR_PLATFORM := $(SDK_DIR)/econet/en7561

@@ -176,8 +176,6 @@ define platformRouterOptions
 	if [ "$(BUILD_NAME)" = "RM-AX6000" ]; then \
 		sed -i "/RTCONFIG_FIXED_BRIGHTNESS_RGBLED\>/d" $(1); \
 		echo "RTCONFIG_FIXED_BRIGHTNESS_RGBLED=y" >>$(1); \
-		sed -i "/CONFIG_SINGLE_SKU\>/d" $(1); \
-		echo "# CONFIG_SINGLE_SKU is not set" >>$(1); \
 	fi; \
 	if [ "$(BUILD_NAME)" = "TUF-AX6000" ]; then \
 		sed -i "/RTCONFIG_PWMX2_GPIOX1_RGBLED\>/d" $(1); \
@@ -392,6 +390,7 @@ define platformKernelConfig
 		echo "CONFIG_HOSTAPD_WPA3R3_SUPPORT=y" >>$(1); \
 		echo "CONFIG_APCLI_STA_SUPPORT=y" >>$(1); \
 		echo "CONFIG_WDS_STA_SUPPORT=y" >>$(1); \
+		sed -i "/CONFIG_MBSS_AS_WDS_AP_SUPPORT/d" $(1); \
 		echo "CONFIG_MBSS_AS_WDS_AP_SUPPORT=y" >>$(1); \
 		echo "CONFIG_IWCOMMAND_CFG80211_SUPPORT=y" >>$(1); \
 		echo "# CONFIG_DYNAMIC_VLAN_SUPPORT is not set" >>$(1); \
@@ -402,12 +401,13 @@ define platformKernelConfig
 		echo "# CONFIG_WPA3_SUPPORT is not set" >>$(1); \
 		sed -i "/CONFIG_OWE_SUPPORT/d" $(1); \
 		echo "# CONFIG_OWE_SUPPORT is not set" >>$(1); \
-		sed -i "/CONFIG_MAP_SUPPORT/d" $(1); \
-		echo "# CONFIG_MAP_SUPPORT is not set" >>$(1); \
 		sed -i "/CONFIG_MBO_SUPPORT/d" $(1); \
 		echo "# CONFIG_MBO_SUPPORT is not set" >>$(1); \
+		sed -i "/CONFIG_OCE_SUPPORT/d" $(1); \
+		echo "# CONFIG_OCE_SUPPORT is not set" >>$(1); \
 		sed -i "/CONFIG_QOS_R1_SUPPORT/d" $(1); \
 		echo "# CONFIG_QOS_R1_SUPPORT is not set" >>$(1); \
+		sed -i "/CONFIG_CFG80211\>/d" $(1); \
 		echo "CONFIG_CFG80211=y" >>$(1); \
 		echo "# CONFIG_MAC80211 is not set" >>$(1); \
 		echo "# CONFIG_USB_NET_RNDIS_WLAN is not set" >>$(1); \

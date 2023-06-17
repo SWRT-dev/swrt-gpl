@@ -3249,13 +3249,6 @@ start_wps(void)
 #elif defined RTCONFIG_RALINK
 		nvram_set("wps_proc_status", "0");
 		start_wsc_pin_enrollee();
-		if (f_exists("/var/run/watchdog.pid"))
-		{
-			doSystem("iwpriv %s set WatchdogPid=`cat %s`", WIF_2G, "/var/run/watchdog.pid");
-#if defined(RTCONFIG_HAS_5G)
-			doSystem("iwpriv %s set WatchdogPid=`cat %s`", WIF_5G, "/var/run/watchdog.pid");
-#endif	/* RTCONFIG_HAS_5G */
-		}
 #elif defined RTCONFIG_REALTEK
 		rtk_start_wsc();
 #endif
@@ -11575,6 +11568,15 @@ int stop_wifi_service(void)
 	}
 	return 0;
 }
+#elif defined(RTCONFIG_RALINK)
+int stop_wifi_service(void)
+{
+#if defined(RTCONFIG_SWRTMESH)
+	stop_wifi_hostapd();
+	stop_wifi_wpa_supplicant();
+#endif
+	return 0;
+}
 #endif
 
 void
@@ -11725,7 +11727,7 @@ stop_services_mfg(void)
 	stop_wlcconnect();
 #endif
 
-#ifdef RTCONFIG_QCA
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 	stop_wifi_service();
 #endif
 #ifdef RTCONFIG_SYSSTATE
@@ -13309,7 +13311,7 @@ again:
 #ifdef RTCONFIG_CONCURRENTREPEATER
 				stop_wlcconnect();
 #endif	//RTCONFIG_CONCURRENTREPEATE
-#if defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ)
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 				stop_wifi_service();
 #endif	//RTCONFIG_QCA
 #endif
@@ -13612,7 +13614,7 @@ again:
 #ifdef RTCONFIG_CONCURRENTREPEATER
 				stop_wlcconnect();
 #endif	//RTCONFIG_CONCURRENTREPEATE
-#if defined(RTCONFIG_QCA)
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 				stop_wifi_service();
 #endif	//RTCONFIG_QCA
 #ifdef RTCONFIG_AMAS

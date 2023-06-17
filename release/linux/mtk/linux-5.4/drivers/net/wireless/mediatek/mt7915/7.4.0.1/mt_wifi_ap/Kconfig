@@ -505,3 +505,8 @@ config MT7976_SUPPORT
 #config GNAX_ONLY_SUPPORT
 #	bool "GNAX Only mode, 11B not allowed"
 #	default n
+
+config WIFI_FW_BIN_LOAD
+       depends on CHIP_MT7916
+       bool "load wifi fw with bin file"
+       default n
