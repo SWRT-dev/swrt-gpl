@@ -170,16 +170,16 @@ endif
 export comma=","
 
 # New Broadcom/Ralink/MTK/QCA/RTK platform.
-KPATH_2636_OR_3X = $(if $(or $(findstring linux-2.6.36,$(LINUXDIR)),$(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-4.1,$(LINUXDIR)),$(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
+KPATH_2636_OR_3X = $(if $(or $(findstring linux-2.6.36,$(LINUXDIR)),$(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-4.1,$(LINUXDIR)),$(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
 
 # New Ralink/MTK/QCA platform.
-KPATH_2636X_OR_3X = $(if $(or $(findstring linux-2.6.36.x,$(LINUXDIR)),$(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
+KPATH_2636X_OR_3X = $(if $(or $(findstring linux-2.6.36.x,$(LINUXDIR)),$(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
 
 # New Ralink/MTK/QCA/RTK platform.
-KPATH_3X = $(if $(or $(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
+KPATH_3X = $(if $(or $(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
 
-KPATH_37_OR_ABOVE = $(if $(or $(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
-KPATH_314_OR_ABOVE = $(if $(or $(findstring linux-3.14,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
+KPATH_37_OR_ABOVE = $(if $(or $(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
+KPATH_314_OR_ABOVE = $(if $(or $(findstring linux-3.14,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
 
 export KPATH_37_OR_ABOVE KPATH_314_OR_ABOVE
 
@@ -3317,7 +3317,7 @@ wb: json-c openssl libxml2 curl
 wb-install:
 	$(MAKE) -C wb INSTALLDIR=$(INSTALLDIR)/wb install
 
-rc: shared libev-4.33 $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX)$(EX7) libdisk $(if $(RTCONFIG_LIB_CODB),libcodb) $(if $(RTCONFIG_FBWIFI),fb_wifi) $(if $(RTCONFIG_QTN),libqcsapi_client) $(if $(CONFIG_LIBBCM),libbcm) $(if $(RTCONFIG_BWDPI),bwdpi_source) $(if $(RTCONFIG_USB_SMS_MODEM),smspdu) $(if $(RTCONFIG_HND_ROUTER),bcm_flashutil bcm_util bcm_boardctl) $(if $(RTCONFIG_OPENVPN),libvpn) $(if $(RTCONFIG_LANTIQ),libfapi-0.1) $(if $(RTCONFIG_CFGSYNC), $(CFGSYNC_PKG) $(if $(RTCONFIG_AMAS), amas-utils) $(if $(RTCONFIG_LANTIQ),hostapd-2.6)) json-c $(if $(or $(RTCONFIG_FRS_LIVE_UPDATE),$(RTCONFIG_FRS_FEEDBACK),$(RTCONFIG_URLFW),$(RTCONFIG_SOFTWIRE46)), curl) $(if $(and $(RTCONFIG_HND_ROUTER_AX_675X),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(and $(RTCONFIG_HND_ROUTER_AX_6756),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(and $(RTCONFIG_HND_ROUTER_AX_6710),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(and $(RTCONFIG_BCM_502L07P2),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(RTCONFIG_BRCM_HOSTAPD),wpa_supplicant-2.7) $(if $(RTCONFIG_LETSENCRYPT),libletsencrypt) $(if $(RTCONFIG_LIBASUSLOG),libasuslog) $(if $(RTCONFIG_SWRTMESH),swrtmesh)
+rc: shared libev-4.33 $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX)$(EX7) libdisk $(if $(RTCONFIG_LIB_CODB),libcodb) $(if $(RTCONFIG_FBWIFI),fb_wifi) $(if $(RTCONFIG_QTN),libqcsapi_client) $(if $(CONFIG_LIBBCM),libbcm) $(if $(RTCONFIG_BWDPI),bwdpi_source) $(if $(RTCONFIG_USB_SMS_MODEM),smspdu) $(if $(RTCONFIG_HND_ROUTER),bcm_flashutil bcm_util bcm_boardctl) $(if $(RTCONFIG_OPENVPN),libvpn) $(if $(RTCONFIG_LANTIQ),libfapi-0.1) $(if $(RTCONFIG_CFGSYNC), $(CFGSYNC_PKG) $(if $(RTCONFIG_AMAS), amas-utils) $(if $(RTCONFIG_LANTIQ),hostapd-2.6)) json-c $(if $(or $(RTCONFIG_FRS_LIVE_UPDATE),$(RTCONFIG_FRS_FEEDBACK),$(RTCONFIG_URLFW),$(RTCONFIG_SOFTWIRE46)), curl) $(if $(and $(RTCONFIG_HND_ROUTER_AX_675X),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(and $(RTCONFIG_HND_ROUTER_AX_6756),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(and $(RTCONFIG_HND_ROUTER_AX_6710),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(and $(RTCONFIG_BCM_502L07P2),$(RTCONFIG_BRCM_HOSTAPD)),sys_util gen_util) $(if $(RTCONFIG_BRCM_HOSTAPD),wpa_supplicant-2.7) $(if $(RTCONFIG_LETSENCRYPT),libletsencrypt) $(if $(RTCONFIG_LIBASUSLOG),libasuslog) $(if $(RTCONFIG_SWRTMESH),swrtmesh) $(if $(RTCONFIG_BT_CONN),bluez-5.41)
 	@$(SEP)
 	@-rm -f rc/prebuild/*.o || true
 	@-cp -f rc/prebuild/$(BUILD_NAME)/* rc/prebuild/

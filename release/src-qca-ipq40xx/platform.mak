@@ -1,4 +1,4 @@
-export LINUXDIR := $(SRCBASE)/linux/linux-4.4
+export LINUXDIR := $(SRCBASE)/linux/linux-4.4.x
 
 ifeq ($(EXTRACFLAGS),)
 export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -marm -march=armv7-a -msoft-float -mfloat-abi=soft -mtune=cortex-a7 -DMUSL_LIBC

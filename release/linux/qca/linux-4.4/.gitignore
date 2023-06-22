@@ -113,3 +113,4 @@ all.config
 
 # Kdevelop4
 *.kdev4
+!net/swrt_fastpath/*.o
