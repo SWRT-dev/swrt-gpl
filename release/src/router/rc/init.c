@@ -20681,6 +20681,9 @@ static void sysinit(void)
 #endif
 	modprobe("cryptodev");
 #endif
+#if defined(JDCAX1800)
+	modprobe("gpio-button-hotplug");
+#endif
 #ifdef LINUX26
 	do {
 		r = eval("mdev", "-s");
@@ -22480,3 +22483,4 @@ void reconfig_manual_wan_ifnames(void) {
 			break;
 	}
 }
+

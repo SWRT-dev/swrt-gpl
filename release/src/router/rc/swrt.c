@@ -1974,6 +1974,7 @@ const unsigned int devpath_idx[4] = {0, 1, 2};    // 2.4G, 5G-1, 5G-2
 		case MODEL_RTAC88U:
 		case MODEL_RTAC86U:
 		case MODEL_RTAC3100:
+#if defined(RTCONFIG_HND_ROUTER_AX)
 		case MODEL_RTAX95Q:
 		case MODEL_XT8PRO:
 #if !defined(RTAX55)
@@ -2004,6 +2005,7 @@ const unsigned int devpath_idx[4] = {0, 1, 2};    // 2.4G, 5G-1, 5G-2
 		case MODEL_RTAX68U:
 		case MODEL_RTAC68U_V4:
 		case MODEL_RTAX86U_PRO:
+#endif
 #ifdef RTAC3200
 			if (unit < 2)
 				snprintf(buf, len, "%d:%s", 1 - unit, str);
@@ -2014,10 +2016,11 @@ const unsigned int devpath_idx[4] = {0, 1, 2};    // 2.4G, 5G-1, 5G-2
 		case MODEL_GTAC5300:
 			snprintf(buf, len, "%d:%s", unit + 1, str);
 			break;
+#if defined(RTCONFIG_HND_ROUTER_AX)
 		case MODEL_RTAX55:
 		case MODEL_TUFAX3000_V2:
 		case MODEL_RTAX3000N:
-#if !defined(RTAX55)
+#if !defined(RTAX55) && !defined(XT12)
 		case MODEL_BR63:
 #endif
 		case MODEL_RPAX56:
@@ -2043,6 +2046,7 @@ const unsigned int devpath_idx[4] = {0, 1, 2};    // 2.4G, 5G-1, 5G-2
 		case MODEL_GT10:
 			snprintf(buf, len, "%d:%s", devpath_idx[unit], str);
 			break;
+#endif
 #endif
 		default:
 			snprintf(buf, len, "%d:%s", unit, str);
