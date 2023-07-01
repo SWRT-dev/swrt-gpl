@@ -2255,6 +2255,7 @@ int ubi_getinfo(const char *ubiname, int *dev, int *part, int *size)
 #endif
 
 #if defined(RTCONFIG_EXT4FS) || defined(RTCONFIG_UBIFS)
+#include <linux/version.h>
 #define BLOCK_SYSFS_DIR	"/sys/class/block/mmcblk0/"
 int block_getinfo(const char *partname, int *dev, int *part, unsigned long long int *size)
 {
