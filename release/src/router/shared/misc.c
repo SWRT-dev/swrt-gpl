@@ -2279,8 +2279,7 @@ int block_getinfo(const char *partname, int *dev, int *part, unsigned long long 
 			continue;
 		if (sscanf(ent->d_name, "mmcblk%dp%d", &d, &p) != 2)
 			continue;
-#if 0
-//kernel > 5.0
+#if LINUX_KERNEL_VERSION > KERNEL_VERSION(5,0,0)
 		snprintf(path, sizeof(path), "%s/mmcblk%dp%d/name", BLOCK_SYSFS_DIR, d, p);
 		if (!(s1 = file2str(path)))
 			continue;
@@ -2303,7 +2302,7 @@ int block_getinfo(const char *partname, int *dev, int *part, unsigned long long 
 		if (!(s1 = file2str(path)))
 			continue;
 		*size = strtoull(s1, NULL, 10);
-		//it is the number of blocks on emmc/hd/sd. defalut:512
+		//it is the number of blocks on emmc/hd/sd.
 		*size = *size * logical_block_size;
 		*dev = d;
 		*part = p;
