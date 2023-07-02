@@ -225,6 +225,10 @@ extern int PS_pclose(FILE *);
 #define GPIO_DIR_OUT_LOW	(2)
 #define GPIO_DIR_OUT_HIGH	(3)
 
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
+#define GPIO_PWM_DEFSHIFT       200
+#endif
+
 #define PROC_IRQ		"/proc/irq"
 #define SYS_CLASS_MTD		"/sys/class/mtd"
 #define SYS_CLASS_NET		"/sys/class/net"
@@ -1609,6 +1613,22 @@ static inline int lacp_enabled(void)
 static inline int lacp_enabled(void) { return 0; }
 #endif
 
+#if defined(RTCONFIG_PAGECACHE_RATIO)
+static inline int get_pagecache_ratio(void)
+{
+	int v = nvram_get_int("pagecache_ratio");
+
+	if (v < 5)
+		v = 5;
+	if (v > 90)
+		v = 90;
+
+	return v;
+}
+#else
+static inline int get_pagecache_ratio(void) { return 90; }
+#endif
+
 /* Check Wireless band existance based on compile option only.
  * This is used when DUT is restored and restore_defaults() hasn't been executed.
  */
@@ -1805,6 +1825,21 @@ static inline int mediabridge_mode(void)
 static inline int __mediabridge_mode(int __attribute__((__unused__)) sw_mode) { return 0; }
 static inline int mediabridge_mode(void) { return 0; }
 #endif
+
+#if defined(RTCONFIG_WISP)
+static inline int __wisp_mode(int sw_mode)
+{
+	return (sw_mode == SW_MODE_ROUTER && nvram_invmatch("wlc_band", ""));
+}
+static inline int wisp_mode(void)
+{
+	return __wisp_mode(sw_mode());
+}
+#else
+static inline int __wisp_mode(int __attribute__((__unused__)) sw_mode) { return 0; }
+static inline int wisp_mode(void) { return 0; }
+#endif
+
 #else
 /* Broadcom platform and others */
 static inline int __access_point_mode(int sw_mode)
@@ -1847,6 +1882,20 @@ static inline int mediabridge_mode(void)
 #else
 static inline int __mediabridge_mode(__attribute__ ((unused)) int sw_mode) { return 0; }
 static inline int mediabridge_mode(void) { return 0; }
+#endif
+
+#if defined(RTCONFIG_WISP)
+static inline int __wisp_mode(int sw_mode)
+{
+	return (sw_mode == SW_MODE_ROUTER && nvram_invmatch("wlc_band", ""));
+}
+static inline int wisp_mode(void)
+{
+	return __wisp_mode(sw_mode());
+}
+#else
+static inline int __wisp_mode(int __attribute__((__unused__)) sw_mode) { return 0; }
+static inline int wisp_mode(void) { return 0; }
 #endif
 #endif	/* RTCONFIG_RALINK || RTCONFIG_QCA */
 

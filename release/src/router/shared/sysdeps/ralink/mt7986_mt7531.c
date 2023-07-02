@@ -35,6 +35,17 @@
 #include <ralink.h>
 #include <mii_mgr.h>		/* $(SRCBASE)/$(PLATFORM_ROUTER)/mii_mgr/source */
 
+/* Comment out this definition, and get the WAN port link status by mdio */
+#if !defined(PANTHERB) \
+ && !defined(RTAX59U) \
+ && !defined(CHEETAH) \
+ && !defined(RMAX6000)
+#define REDUCE_DUPLICATED_MDIO_QUERY
+#endif
+
+#if defined(PRTAX57_GO)
+#define NO_MT7531_SWITCH
+#endif
 /* MT7531 Register */
 #define REG_MAC_PMSR_P0		0x3008
 #define REG_SSC_PHY_IAC		0x701c
@@ -46,6 +57,8 @@
 #define NR_WANLAN_PORT	6
 #elif defined(RTAX59U)
 #define NR_WANLAN_PORT	4
+#elif defined(PRTAX57_GO)
+#define NR_WANLAN_PORT	2
 #elif defined(RMAX6000)
 #define NR_WANLAN_PORT	4
 #else
@@ -81,6 +94,9 @@ enum {
 	LAN3_PORT=0,
 	LAN2_PORT,
 	LAN1_PORT,
+	WAN_PORT,
+#elif defined(PRTAX57_GO)
+	LAN1_PORT=0,
 	WAN_PORT,
 #elif defined(RMAX6000)
 	LAN3_PORT=0,
@@ -139,6 +155,16 @@ static const int lan_wan_partition[9][NR_WANLAN_PORT] = {
 	{0,0,1,0}, // IPTV STB port = LAN1 & LAN2
 	{1,0,0,0}, // IPTV STB port = LAN2 & LAN3
 	{1,1,1,1}  // ALL
+#elif defined(PRTAX57_GO)
+	/* L1, W1G */
+	{1,0}, // Normal
+	{1,0}, // no use
+	{1,0}, // no use
+	{1,0}, // no use
+	{1,0}, // no use
+	{1,0}, // no use
+	{1,0}, // no use
+	{1,1}  // ALL
 #elif defined(RMAX6000)
 	/* L1, L2, L3, W1G */
 	{1,1,1,0}, // Normal
@@ -196,6 +222,8 @@ static const int vport_to_phy_addr[MAX_WANLAN_PORT] = {
 	5, 1, 2, 3, 4, 6				/* LAN5~1, WAN */
 #elif defined(RTAX59U)
 	4, 3, 2, 1					/* LAN3~1, WAN */
+#elif defined(PRTAX57_GO)
+	24, 0						/* LAN1, WAN */
 #elif defined(RMAX6000)
 	3, 2, 1, 4					/* LAN3~1, WAN */
 #else /* PANTHERB */
@@ -221,6 +249,8 @@ static const char *vport_to_iface[MAX_WANLAN_PORT] = {
 	"lan5", "lan4", "lan3", "lan2", "lan1",			/* LAN5~1 */
 #elif defined(RTAX59U)
 	"lan3", "lan2", "lan1",					/* LAN3~1 */
+#elif defined(PRTAX57_GO)
+	"eth0",							/* LAN1 */
 #elif defined(RMAX6000)
 	"lan3", "lan2", "lan1",					/* LAN3~1 */
 #else /* PANTHERB */
@@ -244,6 +274,8 @@ static const unsigned int stb_to_mask[7] = { 0,
 	(1U << LAN3_PORT),
 	(1U << LAN1_PORT) | (1U << LAN2_PORT),
 	(1U << LAN2_PORT) | (1U << LAN3_PORT)
+#elif defined(PRTAX57_GO)
+	(1U << LAN1_PORT)
 #else
 	(1U << LAN1_PORT),
 	(1U << LAN2_PORT),
@@ -262,6 +294,8 @@ static unsigned int wanlanports_mask =
 					(1U << WAN_PORT) | (1U << LAN1_PORT) | (1U << LAN2_PORT) | (1U << LAN3_PORT) | (1U << LAN4_PORT) | (1U << LAN5_PORT);
 #elif defined(RTAX59U)
 					(1U << WAN_PORT) | (1U << LAN1_PORT) | (1U << LAN2_PORT) | (1U << LAN3_PORT);
+#elif defined(PRTAX57_GO)
+					(1U << WAN_PORT) | (1U << LAN1_PORT);
 #elif defined(RMAX6000)
 					(1U << WAN_PORT) | (1U << LAN1_PORT) | (1U << LAN2_PORT) | (1U << LAN3_PORT);
 #else /* PANTHERB */
@@ -289,6 +323,9 @@ static int n56u_to_model_port_mapping[] = {
 	LAN2_PORT,	//0000 0000 0100 LAN2
 	LAN1_PORT,	//0000 0000 1000 LAN1
 	WAN_PORT,	//0000 0001 0000 WAN
+#elif defined(PRTAX57_GO)
+	LAN1_PORT,	//0000 0000 1000 LAN1
+	WAN_PORT,	//0000 0001 0000 WAN
 #else
 	LAN4_PORT,	//0000 0000 0001 LAN4
 	LAN3_PORT,	//0000 0000 0010 LAN3
@@ -306,6 +343,7 @@ static int n56u_to_model_port_mapping[] = {
  */
 const int lan_id_to_vport[NR_WANLAN_PORT] = {
 	LAN1_PORT,
+#if !defined(PRTAX57_GO)
 	LAN2_PORT,
 	LAN3_PORT,
 #if !defined(RTAX59U) && !defined(RMAX6000)
@@ -316,6 +354,7 @@ const int lan_id_to_vport[NR_WANLAN_PORT] = {
 	LAN6_PORT,
 #elif defined(TUFAX4200) || defined(TUFAX6000)
 	LAN5_PORT,
+#endif
 #endif
 	WAN_PORT,
 };
@@ -431,6 +470,7 @@ int mt7986_mt7531_reg_write(unsigned int phy, unsigned int reg, unsigned int val
 	return 0;
 }
 
+#ifndef NO_MT7531_SWITCH
 int mt7986_mt7531_phy_read(unsigned int port_num, unsigned int reg, unsigned int *value)
 {
 	unsigned int reg_value;
@@ -490,6 +530,7 @@ int mt7986_mt7531_phy_write(unsigned int port_num, unsigned int reg, unsigned in
 
 	return 0;
 }
+#endif //NO_MT7531_SWITCH
 
 /**
  * Convert (v)port to interface name.
@@ -691,8 +732,9 @@ int mt7986_mt7531_vlan_set(int vtype, char *upstream_if, int vid, int prio, unsi
 	return 0;
 }
 
+#ifndef REDUCE_DUPLICATED_MDIO_QUERY
 /**
- * Get link status and/or phy speed of a port.
+ * Get link status and/or phy speed of a port. (by mdio)
  * @link:	pointer to unsigned integer.
  * 		If link != NULL,
  * 			*link = 0 means link-down
@@ -705,7 +747,7 @@ int mt7986_mt7531_vlan_set(int vtype, char *upstream_if, int vid, int prio, unsi
  *     -1:	invalid parameter
  *  otherwise:	fail
  */
-static void get_phy_info(unsigned int phy, unsigned int *link, unsigned int *speed, phy_info *info)
+static void get_phy_info_by_mdio(unsigned int phy, unsigned int *link, unsigned int *speed, phy_info *info)
 {
 	unsigned int value;
 	unsigned int l = 0, s = 0;
@@ -713,19 +755,23 @@ static void get_phy_info(unsigned int phy, unsigned int *link, unsigned int *spe
 	if (switch_init() < 0)
 		return;
 
+#ifndef NO_MT7531_SWITCH
 	if (phy >= 0 && phy <= 4) {
 		mt7986_mt7531_reg_read(0x1f, (REG_MAC_PMSR_P0 + 0x100*phy), &value);
 		l = value & 0x1;
 		s = (value >> 2) & 0x3;
 	}
 	else {
+#endif // NO_MT7531_SWITCH
 		mt7986_mt7531_reg_read(phy, 0x1, &value);
 		l = (value >> 2) & 0x1;
 		if (l) {
 			mt7986_mt7531_reg_read(phy, 0x18, &value);
 			s = value & 0x7;
 		}
+#ifndef NO_MT7531_SWITCH
 	}
+#endif // NO_MT7531_SWITCH
 
 	if (link) {
 		*link = l;
@@ -765,6 +811,53 @@ static void get_phy_info(unsigned int phy, unsigned int *link, unsigned int *spe
 
 	switch_fini();
 }
+#endif /* REDUCE_DUPLICATED_MDIO_QUERY */
+
+/**
+ * Get link status and/or phy speed of a port. (by sysfs)
+ * use /sys/class/net/NIC/speed to retrieve information
+ * @link:	pointer to unsigned integer.
+ * 		If link != NULL,
+ * 			*link = 0 means link-down
+ * 			*link = 1 means link-up.
+ * @speed:	pointer to unsigned integer.
+ * 		If speed != NULL,
+ * 			*speed = 10/100/1000/2500 Mbps
+ * @return:
+ * 	0:	success
+ *     -1:	invalid parameter
+ *  otherwise:	fail
+ */
+static void get_phy_info_by_sysfs(unsigned int vport, unsigned int *link, unsigned int *speed, phy_info *info)
+{
+	unsigned int l = 0, s = 0;
+	char path[256];
+	char sp_str[10]; // -1, 10, 100, 1000, 2500, 10000
+
+	snprintf(path, sizeof(path), "/sys/class/net/%s/speed", vport_to_iface[vport]);
+	if (f_read_string(path, sp_str, sizeof(sp_str)) > 0) {
+		int sp_val = atoi(sp_str);
+		if (sp_val > 0) {
+			l = 1;
+			s = sp_val;
+		}
+	}
+
+	if (link) {
+		*link = l;
+		if (info) {
+			if (l)
+				snprintf(info->state, sizeof(info->state), "up");
+			else
+				snprintf(info->state, sizeof(info->state), "down");
+		}
+	}
+	if (speed) {
+		*speed = s;
+		if (l && info)
+			info->link_rate = s;
+	}
+}
 
 /**
  * Get link status and/or phy speed of a virtual port.
@@ -784,7 +877,9 @@ static void get_phy_info(unsigned int phy, unsigned int *link, unsigned int *spe
  */
 static int get_mt7986_mt7531_vport_info(unsigned int vport, unsigned int *link, unsigned int *speed, phy_info *info)
 {
+#ifndef REDUCE_DUPLICATED_MDIO_QUERY
 	int phy;
+#endif
 
 	if (vport >= MAX_WANLAN_PORT || (!link && !speed))
 		return -1;
@@ -794,13 +889,19 @@ static int get_mt7986_mt7531_vport_info(unsigned int vport, unsigned int *link, 
 	if (speed)
 		*speed = 0;
 
-	phy = *(vport_to_phy_addr + vport);
-	if (phy < 0) {
-		dbg("%s: can't get PHY address of vport %d\n", __func__, vport);
-		return -1;
-	}
+#ifndef REDUCE_DUPLICATED_MDIO_QUERY
+	if (!strcmp(vport_to_iface[vport], "eth1")) {
+		phy = *(vport_to_phy_addr + vport);
+		if (phy < 0) {
+			dbg("%s: can't get PHY address of vport %d\n", __func__, vport);
+			return -1;
+		}
 
-	get_phy_info(phy, link, speed, info);
+		get_phy_info_by_mdio(phy, link, speed, info);
+	}
+	else
+#endif
+		get_phy_info_by_sysfs(vport, link, speed, info);
 
 	return 0;
 }
@@ -991,17 +1092,21 @@ static void link_down_up_mt7986_mt7531_PHY(unsigned int vpmask, int status)
 			return;
 		}
 
+#ifndef NO_MT7531_SWITCH
 		if (phy >= 0 && phy <= 4)
 			mt7986_mt7531_phy_read(phy, 0x0, &value);
 		else
+#endif
 			mt7986_mt7531_reg_read(phy, 0x0, &value);
 		if (!status)
 			value |= 0x0800; /* power down PHY */
 		else
 			value &= 0xf7ff; /* power up PHY */
+#ifndef NO_MT7531_SWITCH
 		if (phy >= 0 && phy <= 4)
 			mt7986_mt7531_phy_write(phy, 0x0, value);
 		else
+#endif
 			mt7986_mt7531_reg_write(phy, 0x0, value);
 	}
 
@@ -1238,7 +1343,12 @@ unsigned int rtkswitch_wanPort_phyStatus(int wan_unit)
 				return 0;
 			}
 
-			get_phy_info(phy, &link, NULL, NULL);
+#ifndef REDUCE_DUPLICATED_MDIO_QUERY
+			if (!strcmp(vport_to_iface[vport], "eth1"))
+				get_phy_info_by_mdio(phy, &link, NULL, NULL);
+			else
+#endif
+				get_phy_info_by_sysfs(vport, &link, NULL, NULL);
 			status |= link;
 		}
 
@@ -1539,7 +1649,12 @@ int __get_bonding_port_status(enum bs_port_id bs_port)
 		dbg("%s: can't get PHY address of vport %d\n", __func__, vport);
 		return 0;
 	}
-	get_phy_info(phy, &link, &speed, NULL);
+#ifndef REDUCE_DUPLICATED_MDIO_QUERY
+	if (!strcmp(vport_to_iface[vport], "eth1"))
+		get_phy_info_by_mdio(phy, &link, &speed, NULL);
+	else
+#endif
+		get_phy_info_by_sysfs(vport, &link, &speed, NULL);
 
 	return link? speed : 0;
 }
@@ -1763,6 +1878,10 @@ void mt798x_get_phy_port_mapping(phy_port_mapping *port_mapping)
 		.port[1] = { .phy_port_id = LAN1_PORT, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
 		.port[2] = { .phy_port_id = LAN2_PORT, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
 		.port[3] = { .phy_port_id = LAN3_PORT, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
+#elif defined(PRTAX57_GO)
+		.count = NR_WANLAN_PORT,
+		.port[0] = { .phy_port_id = WAN_PORT,  .label_name = "W0", .cap = PHY_PORT_CAP_WAN, .max_rate = 1000, .ifname = NULL },
+		.port[1] = { .phy_port_id = LAN1_PORT, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
 #else
 		#error "port_mapping is not defined."
 #endif
@@ -1789,7 +1908,7 @@ void mt798x_get_phy_port_mapping(phy_port_mapping *port_mapping)
 	}
 
 ///////////////// Add USB port define here ////////////////////////
-#if defined(PANTHERB) || defined(TUFAX4200) || defined(TUFAX6000)
+#if defined(PANTHERB) || defined(TUFAX4200) || defined(TUFAX6000) || defined(PRTAX57_GO)
 ////  1 USB3 port device
 	i = port_mapping->count++;
 	port_mapping->port[i].phy_port_id = -1;

@@ -100,7 +100,7 @@ static int __export_gpio(uint32_t gpio)
 	return 0;
 }
 
-#define PWM_SYS_PREFIX	"/sys/class/pwm/pwmchip0"
+#define PWM_SYS_PREFIX "/sys/class/pwm/pwmchip0"
 uint32_t is_pwm_exported(uint8_t channel)
 {
 	char path[PATH_MAX], tmpbuf[20];
@@ -141,7 +141,7 @@ uint32_t gpio_dir(uint32_t gpio, int dir)
 {
 	char path[PATH_MAX], v[10], *dir_str = "in";
 
-	if (gpio >= 200) return 0; // PWM, only output
+	if (gpio >= GPIO_PWM_DEFSHIFT) return 0; // PWM, only output
 	if (dir == GPIO_DIR_OUT) {
 		dir_str = "out";		/* output, low voltage */
 		*v = '\0';
@@ -165,11 +165,11 @@ uint32_t get_gpio(uint32_t gpio)
 {
 	char path[PATH_MAX], value[10];
 
-	if (gpio >= 200) { // PWM
-#if defined(RTCONFIG_PWMX2_GPIOX1_RGBLED)
-		snprintf(path, sizeof(path), PWM_SYS_PREFIX"/pwm%u/mm_enable", gpio-200);
+	if (gpio >= GPIO_PWM_DEFSHIFT) { // PWM
+#if defined(RTCONFIG_PWMX2_GPIOX1_RGBLED) || defined(RTCONFIG_PWMX3_RGBLED)
+		snprintf(path, sizeof(path), PWM_SYS_PREFIX"/pwm%u/mm_enable", gpio - GPIO_PWM_DEFSHIFT);
 #else
-		snprintf(path, sizeof(path), PWM_SYS_PREFIX"/pwm%u/enable", gpio-200);
+		snprintf(path, sizeof(path), PWM_SYS_PREFIX"/pwm%u/enable", gpio - GPIO_PWM_DEFSHIFT);
 #endif
 	} else {
 		snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio + GPIOBASE);
@@ -184,11 +184,11 @@ uint32_t set_gpio(uint32_t gpio, uint32_t value)
 	char path[PATH_MAX], val_str[10];
 
 	snprintf(val_str, sizeof(val_str), "%d", !!value);
-	if (gpio >= 200) { // PWM
-#if defined(RTCONFIG_PWMX2_GPIOX1_RGBLED)
-		snprintf(path, sizeof(path), PWM_SYS_PREFIX"/pwm%u/mm_enable", gpio-200);
+	if (gpio >= GPIO_PWM_DEFSHIFT) { // PWM
+#if defined(RTCONFIG_PWMX2_GPIOX1_RGBLED) || defined(RTCONFIG_PWMX3_RGBLED)
+		snprintf(path, sizeof(path), PWM_SYS_PREFIX"/pwm%u/mm_enable", gpio - GPIO_PWM_DEFSHIFT);
 #else
-		snprintf(path, sizeof(path), PWM_SYS_PREFIX"/pwm%u/enable", gpio-200);
+		snprintf(path, sizeof(path), PWM_SYS_PREFIX"/pwm%u/enable", gpio - GPIO_PWM_DEFSHIFT);
 #endif
 	} else {
 		snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio + GPIOBASE);
@@ -1000,7 +1000,7 @@ char *get_wlifname(int unit, int subunit, int subunit_x, char *buf)
 		{
 #if defined(RTCONFIG_RALINK_BUILDIN_WIFI) || defined(RTCONFIG_EASYMESH)
 #if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
-			if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1") && subunit >=2) {
+			if (aimesh_re_node() && subunit >=2) {
 				sprintf(buf, "%s%d", wifbuf, subunit-1);
 			} else
 #endif

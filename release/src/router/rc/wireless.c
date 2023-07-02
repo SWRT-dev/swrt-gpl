@@ -313,6 +313,11 @@ _dprintf("%s: Start to run...\n", __FUNCTION__);
 
 	_dprintf("%s: Start to run...\n", __FUNCTION__);
 	signal(SIGTERM, wlcconnect_safeleave);
+#if (defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA)) \
+ && !defined(RTCONFIG_CONCURRENTREPEATER)
+	signal(SIGTSTP, wlcconnect_sig_handle);
+	signal(SIGCONT, wlcconnect_sig_handle);
+#endif
 
 	nvram_set_int("wlc_state", WLC_STATE_INITIALIZING);
 	nvram_set_int("wlc_sbstate", WLC_STOPPED_REASON_NONE);
@@ -395,10 +400,16 @@ _dprintf("Ready to disconnect...%d.\n", wlc_count);
 				// notify the change to init.
 				if (ret == WLC_STATE_CONNECTED)
 				{
+#if defined(RTCONFIG_WISP)
+					if (!wisp_mode())
+#endif
 					notify_rc_and_wait("restart_wlcmode 1");
 				}
 				else
 				{
+#if defined(RTCONFIG_WISP)
+					if (!wisp_mode())
+#endif
 					notify_rc_and_wait("restart_wlcmode 0");
 #if defined(RTCONFIG_CONCURRENTREPEATER) && defined(RTCONFIG_RALINK)
 					nvram_set_int("lan_ready",0);
@@ -511,3 +522,4 @@ int dump_txbftable(void)
 	return 0;
 }
 #endif
+

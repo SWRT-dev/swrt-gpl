@@ -87,14 +87,16 @@ void init_others(void)
 		mount("overlay", "/www/images", "overlay", MS_MGC_VAL, "lowerdir=/TUF-AX4200Q/images:/www/images");
 		mount("/rom/dlna.TUF-AX4200Q", "/rom/dlna", "none", MS_BIND, NULL);
 	}
-#elif defined(TUFAX6000) || defined(RMAX6000)
+#endif
+#if defined(RTCONFIG_TS_UI)
 	if (nvram_match("CoBrand", "8")) {
 		mount("overlay", "/www", "overlay", MS_MGC_VAL, "lowerdir=/TS_UI:/www");
 		dbG("mount overlay\n");
 	}
+#endif
+#if defined(TUFAX6000)
 	if (nvram_match("odmpid", "TX-AX6000"))
 		mount("overlay", "/www/images", "overlay", MS_MGC_VAL, "lowerdir=/TX-AX6000/images:/www/images");
-#endif
 #endif
 	if (nvram_match("lacp_enabled", "1") && f_exists("/sys/kernel/no_dsa_offload"))
 		f_write_string("/sys/kernel/no_dsa_offload", "1", 0, 0);
@@ -714,6 +716,11 @@ void config_switch()
 				__setup_vlan(2, 0, 0x00000210);
 				__setup_vlan(3, 0, 0x00000210);
 #endif
+#if defined(RTCONFIG_MT798X)
+				/* IPTV tag only NIC */
+				//doSystem("echo 1 > /sys/class/net/%s/vlan_only", nvram_safe_get("wan0_gw_ifname"));
+				doSystem("echo 1 > /sys/class/net/%s/vlan_only", "eth1");
+#endif
 			}
 				else if (!strcmp(nvram_safe_get("switch_wantag"), "starhub")) {
 					//skip setting any lan port to IPTV port.
@@ -1166,6 +1173,11 @@ void wl_ifdown(void)
 	}
 #endif
 
+#if defined(RTCONFIG_WISP)
+	if (wisp_mode())
+		ifconfig(get_staifname(nvram_get_int("wlc_band")), 0, NULL, NULL);
+#endif
+
 	unit = 0;
 	wl_ifnames = strdup(nvram_safe_get("wl_ifnames"));
 	if (wl_ifnames) {
@@ -1425,6 +1437,13 @@ void init_syspara(void)
 	/* set et1macaddr the same as et0macaddr for spec. */
 	strcpy(macaddr, macaddr2);
 #endif
+#if defined(RTCONFIG_MT798X)
+	if (nvram_get_int("switch_stb_x") > 6) {
+		buffer[0] |= 2; // local admin
+		buffer[4] += 1; // make difference with 5G
+		ether_etoa(buffer, macaddr2);
+	}
+#endif
 #if defined(RTAC1200) || defined(RTAC1200V2) || defined(RTAC53) || defined(RTACRH18) || defined(RT4GAC86U) || defined(RTAX53U) || defined(RT4GAX56) || defined(RTAX54) ||defined(XD4S)
 	nvram_set("et0macaddr", macaddr2);
 	nvram_set("et1macaddr", macaddr);
@@ -1607,17 +1626,14 @@ void init_syspara(void)
 				nvram_set("wl1_country_code", "GB");
 #if defined(RTCONFIG_MT798X)
 			else if (strcmp(reg_5g, "5G_ALL") == 0) {
-				if(strncmp(nvram_safe_get("territory_code"), "TW/01", 2) == 0) {
+				char tcode[6] = { 0 };
+
+				snprintf(tcode, sizeof(tcode), "%s", nvram_safe_get("territory_code"));
+				tcode[2] = '\0';
+
+				if (strlen(tcode) && strncmp(tcode, "DB", 2)) {
 					nvram_set("wl1_IEEE80211H", "1");
-					nvram_set("wl1_country_code", "TW");
-				}
-				else if(strncmp(nvram_safe_get("territory_code"), "US/01", 2) == 0) {
-					nvram_set("wl1_IEEE80211H", "1");
-					nvram_set("wl1_country_code", "US");
-				}
-				else if(strncmp(nvram_safe_get("territory_code"), "AA/01", 2) == 0) {
-					nvram_set("wl1_IEEE80211H", "1");
-					nvram_set("wl1_country_code", "AA");
+					nvram_set("wl1_country_code", tcode);
 				}
 				else {
 					nvram_set("wl1_country_code", "DB");
@@ -1636,6 +1652,10 @@ void init_syspara(void)
 			else if (strcmp(reg_5g, "5G_BAND124") == 0) {
 					nvram_set("wl1_IEEE80211H", "1");
 					nvram_set("wl1_country_code", "CN");
+			}
+			else if (strcmp(reg_5g, "5G_BAND3") == 0) {
+					nvram_set("wl1_IEEE80211H", "1");
+					nvram_set("wl1_country_code", "EH");
 			}
 #endif
 			else if (strcmp(reg_5g, "5G_BAND123") == 0) {
@@ -1708,9 +1728,7 @@ void init_syspara(void)
 		else
 			nvram_set("secret_code", pin);
 	}
-#if defined(RTCONFIG_MT798X)
-	strlcpy(productid, rt_buildname, sizeof(productid));
-#else
+
 	dst = buffer;
 	bytes = 16;
 	if (linuxRead(dst, 0x20, bytes)<0)	/* The "linux" MTD partition, offset 0x20. */
@@ -1720,6 +1738,13 @@ void init_syspara(void)
 		nvram_set("firmver", "unknown");
 	}
 	else
+#if defined(RTCONFIG_MT798X)
+	{
+		strlcpy(productid, rt_buildname, sizeof(productid));
+		nvram_set("productid", trim_r(productid));
+		nvram_set("firmver", rt_version);
+	}
+#else
 	{
 		strncpy(productid, buffer + 4, 12);
 		productid[12] = 0;
@@ -1923,6 +1948,11 @@ void reinit_hwnat(int unit)
 #endif
 
 #if defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_IPSEC)
+	/* If IPSec VPN is enabled, disable hwnat. */
+	if (act > 0 && (nvram_get_int("ipsec_server_enable") == 1 || nvram_get_int("ipsec_client_enable") == 1))
+		act = 0;
+#endif
 	if (act > 0) {
 		snprintf(prefix, sizeof(prefix), "wan%d_", prim_unit);
 		nat_x = nvram_get_int(strcat_r(prefix, "nat_x", tmp));
@@ -1968,6 +1998,12 @@ void reinit_hwnat(int unit)
 		}
 	}
 #else /* RTCONFIG_MT798X */
+
+#if defined(RTCONFIG_IPSEC) && defined(RTCONFIG_RALINK_MT7621)
+	/* If IPSec VPN is enabled, disable hwnat. */
+	if (nvram_get_int("ipsec_server_enable") == 1 || nvram_get_int("ipsec_client_enable") == 1)
+		act = 0;
+#endif
 
 	if (act > 0) {
 #if defined(RTCONFIG_DUALWAN)

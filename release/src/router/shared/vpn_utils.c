@@ -6,7 +6,7 @@
 #include <vpn_utils.h>
 #include <openvpn_config.h>
 
-#if defined(RTCONFIG_VPN_FUSION)
+#if defined(RTCONFIG_VPN_FUSION) || defined(RTCONFIG_TPVPN) || defined(RTCONFIG_IG_SITE2SITE) || defined(RTCONFIG_WIREGUARD)
 /*******************************************************************
  * NAME: vpnc_set_basic_conf
  * AUTHOR: Andy Chiu
@@ -310,6 +310,7 @@ int read_wgc_config_file(const char* file_path, int wgc_unit)
 	{
 		while (fgets(buf, sizeof(buf), fp))
 		{
+			strtok(buf, "\r\n");
 			if (buf[0] == '[' || buf[0] == '#' || buf[0] == '\n')
 				continue;
 			else if (!strncmp(buf, "PrivateKey", 10))
@@ -328,10 +329,19 @@ int read_wgc_config_file(const char* file_path, int wgc_unit)
 			{
 				char *ep, *p;
 				ep = _get_wgconf_val(buf);
-				p = strchr(ep, ':');
-				*p = '\0';
-				nvram_pf_set(wgc_prefix, "ep_addr", ep);
-				nvram_pf_set(wgc_prefix, "ep_port", p+1);
+				p = strrchr(ep, ':');
+				if (p) {
+					*p = '\0';
+					if (ep[0] == '[' && *(p-1) == ']') {
+						ep += 1;
+						*(p-1) = '\0';
+					}
+					nvram_pf_set(wgc_prefix, "ep_addr", ep);
+					nvram_pf_set(wgc_prefix, "ep_port", p+1);
+				}
+				else {
+					logmessage_normal("WG", "Unrecognized: [%s]", buf);
+				}
 			}
 			else if (!strncmp(buf, "PersistentKeepalive", 19))
 				nvram_pf_set(wgc_prefix, "alive", _get_wgconf_val(buf));

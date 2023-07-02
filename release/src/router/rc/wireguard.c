@@ -176,7 +176,7 @@ static void _wg_client_check_conf(char* prefix)
 
 static void _wg_config_route(char* prefix, char* ifname, int table)
 {
-	char aips[1024] = {0};
+	char aips[4096] = {0};
 	char buf[128] = {0};
 	char *p = NULL;
 	char table_str[8] = {0};
@@ -498,13 +498,24 @@ static void _wg_client_nf_add(int unit, char* prefix, char* ifname)
 		fprintf(fp, "ip6tables -I WGCF -o %s -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu\n", ifname);
 #endif
 
-		if (nvram_pf_get_int(prefix, "nat"))
+		fclose(fp);
+		chmod(path, S_IRUSR|S_IWUSR|S_IXUSR);
+		eval(path);
+	}
+
+	if (nvram_pf_get_int(prefix, "nat"))
+	{
+		char addr[64] = {0};
+		char tmp[64] = {0};
+		char *next = NULL;
+		char *p = NULL;
+		int ret = -1;
+
+		snprintf(path, sizeof(path), "%s/fw_%s_nat.sh", WG_DIR_CONF, ifname);
+		fp = fopen(path, "w");
+		if (fp)
 		{
-			char addr[64] = {0};
-			char tmp[64] = {0};
-			char *next = NULL;
-			char *p = NULL;
-			int ret = -1;
+			fprintf(fp, "#!/bin/sh\n\n");
 
 			snprintf(addr, sizeof(addr), "%s", nvram_pf_safe_get(prefix, "addr"));
 			foreach_44 (tmp, addr, next)
@@ -516,12 +527,13 @@ static void _wg_client_nf_add(int unit, char* prefix, char* ifname)
 					fprintf(fp, "%s -t nat -I POSTROUTING ! -s %s -o %s -j MASQUERADE\n",
 						(ret > 1) ? "ip6tables" : "iptables", tmp, ifname);
 			}
-		}
 
-		fclose(fp);
-		chmod(path, S_IRUSR|S_IWUSR|S_IXUSR);
-		eval(path);
+			fclose(fp);
+			chmod(path, S_IRUSR|S_IWUSR|S_IXUSR);
+			eval(path);
+		}
 	}
+
 #ifdef RTCONFIG_MULTILAN_CFG
 	get_mtlan_by_idx(SDNFT_TYPE_VPNC, vpnc_idx, pmtl, &mtl_sz);
 	if (mtl_sz) {
@@ -560,6 +572,14 @@ static void _wg_x_nf_del(const char* ifname)
 #endif
 
 	snprintf(path, sizeof(path), "%s/fw_%s.sh", WG_DIR_CONF, ifname);
+	if(f_exists(path)) {
+		eval("sed", "-i", "s/-I/-D/", path);
+		eval("sed", "-i", "s/-A/-D/", path);
+		eval(path);
+		unlink(path);
+	}
+
+	snprintf(path, sizeof(path), "%s/fw_%s_nat.sh", WG_DIR_CONF, ifname);
 	if(f_exists(path)) {
 		eval("sed", "-i", "s/-I/-D/", path);
 		eval("sed", "-i", "s/-A/-D/", path);
@@ -658,7 +678,7 @@ static void _wg_client_gen_conf(char* prefix, char* path)
 	char priv[WG_KEY_SIZE] = {0};
 	char ppub[WG_KEY_SIZE] = {0};
 	char psk[WG_KEY_SIZE] = {0};
-	char aips[1024] = {0};
+	char aips[4096] = {0};
 	char ep_addr[128] = {0};
 	int alive = nvram_pf_get_int(prefix, "alive");
 	char *p;
@@ -777,6 +797,14 @@ static void _wg_server_gen_keys(char* prefix)
 
 static char* _wg_server_get_endpoint(char* buf, size_t len)
 {
+	/// Currently, Windows, iOS, Android WireGuard APP prefer IPv4
+	/// even DDNS include both IPv4 and IPv6.
+	if (is_private_subnet(get_wanip()) && ipv6_enabled()) {
+		strlcpy(buf, (getifaddr(get_wan6face(), AF_INET6, 0))?:"", len);
+		if (buf[0])
+			return buf;
+	}
+
 	strlcpy(buf, get_ddns_hostname(), len);
 
 	if (!(nvram_get_int("ddns_enable_x") && nvram_get_int("ddns_status") && strlen(buf)))
@@ -795,7 +823,7 @@ static void _wg_server_gen_client_conf(char* s_prefix, char* c_prefix, char* c_p
 	char cpriv[WG_KEY_SIZE] = {0};
 	char spub[WG_KEY_SIZE] = {0};
 	char cpsk[WG_KEY_SIZE] = {0};
-	char caips[1024] = {0};
+	char caips[4096] = {0};
 	char buf[64] = {0};
 	int psk = nvram_pf_get_int(s_prefix, "psk");
 	int dns = nvram_pf_get_int(s_prefix, "dns");
@@ -855,11 +883,12 @@ static void _wg_server_gen_client_conf(char* s_prefix, char* c_prefix, char* c_p
 		if (psk && cpsk[0] != '\0')
 			fprintf(fp, "PresharedKey = %s\n", cpsk);
 
-		fprintf(fp, "AllowedIPs = %s\n"
-			"Endpoint = %s:%d\n"
-			, caips
-			, _wg_server_get_endpoint(buf, sizeof(buf)), nvram_pf_get_int(s_prefix, "port")
-			);
+		fprintf(fp, "AllowedIPs = %s\n", caips);
+
+		if (is_valid_ip6(_wg_server_get_endpoint(buf, sizeof(buf))))
+			fprintf(fp, "Endpoint = [%s]:%d\n", buf, nvram_pf_get_int(s_prefix, "port"));
+		else
+			fprintf(fp, "Endpoint = %s:%d\n", buf, nvram_pf_get_int(s_prefix, "port"));
 
 		if (alive)
 			fprintf(fp, "PersistentKeepalive = %d\n", alive);
@@ -874,7 +903,7 @@ static void _wg_server_gen_conf(char* prefix, char* path)
 	char priv[WG_KEY_SIZE] = {0};
 	char cpub[WG_KEY_SIZE] = {0};
 	char cpsk[WG_KEY_SIZE] = {0};
-	char caips[1024] = {0};
+	char caips[4096] = {0};
 	int c;
 	char c_prefix[16] = {0};
 	int psk = nvram_pf_get_int(prefix, "psk");
@@ -955,7 +984,7 @@ void _wg_server_set_peer(char* ifname, const char* s_prefix, const char* c_prefi
 void _wg_server_route_update(char* ifname, const char* c_prefix)
 {
 	char path[128] = {0};
-	char aips[1024] = {0};
+	char aips[4096] = {0};
 	char buf[128] = {0};
 	char *p = NULL;
 
@@ -1023,6 +1052,17 @@ static int _wgc_jobs_remove(void)
 		NULL };
 
 	return _eval(argv, NULL, 0, NULL);
+}
+
+static void _wg_server_update_service(const char* prefix)
+{
+#ifdef RTCONFIG_SAMBASRV
+	if (nvram_pf_get_int(prefix, "lanaccess"))
+	{
+		stop_samba(0);
+		start_samba();
+	}
+#endif
 }
 
 void start_wgsall()
@@ -1142,6 +1182,9 @@ void start_wgs(int unit)
 
 	/// sysdeps
 	_wg_config_sysdeps(1);
+
+	/// related services
+	_wg_server_update_service(prefix);
 }
 
 void stop_wgs(int unit)
@@ -1333,6 +1376,19 @@ void run_wgs_fw_scripts()
 	}
 }
 
+void run_wgs_fw_nat_scripts()
+{
+	int unit;
+	char buf[128] = {0};
+
+	for(unit = 1; unit <= WG_CLIENT_MAX; unit++)
+	{
+		snprintf(buf, sizeof(buf), "%s/fw_%s%d_nat6.sh", WG_DIR_CONF, WG_SERVER_IF_PREFIX, unit);
+		if(f_exists(buf))
+			eval(buf);
+	}
+}
+
 void run_wgc_fw_scripts()
 {
 	int unit;
@@ -1341,6 +1397,19 @@ void run_wgc_fw_scripts()
 	for(unit = 1; unit <= WG_CLIENT_MAX; unit++)
 	{
 		snprintf(buf, sizeof(buf), "%s/fw_%s%d.sh", WG_DIR_CONF, WG_CLIENT_IF_PREFIX, unit);
+		if(f_exists(buf))
+			eval(buf);
+	}
+}
+
+void run_wgc_fw_nat_scripts()
+{
+	int unit;
+	char buf[128] = {0};
+
+	for(unit = 1; unit <= WG_CLIENT_MAX; unit++)
+	{
+		snprintf(buf, sizeof(buf), "%s/fw_%s%d_nat.sh", WG_DIR_CONF, WG_CLIENT_IF_PREFIX, unit);
 		if(f_exists(buf))
 			eval(buf);
 	}
@@ -1379,6 +1448,9 @@ void update_wgs_client(int s_unit, int c_unit)
 	// netfilter reload for nat66
 	_wg_server_nf_del_nat6(ifname);
 	_wg_server_nf_add_nat6(s_prefix, ifname);
+
+	// related services
+	_wg_server_update_service(s_prefix);
 }
 
 void update_wgs_client_ep()
