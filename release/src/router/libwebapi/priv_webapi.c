@@ -887,7 +887,7 @@ int set_wireguard_client(struct json_object *wireguard_client_obj, int *wgc_idx)
 {
 	int vpn_count = 0, unit = 0, vpn_client[OVPN_CLIENT_MAX] = {0}, index = 0, idx;
 	int ip1, ip2, ip3, ip4;
-	char word[1024] = {0}, vpnc_clientlist[CKN_STR8192] = {0}, word_tmp[1024] = {0}, vpn_name[16], vpn_unit[8];
+	char word[1024] = {0}, vpnc_clientlist[CKN_STR8192] = {0}, word_tmp[1024] = {0}, proto[16], vpn_unit[8];
 	char prefix[16] = {0}, tmp[256], cmd[128], vpnc_pptp_options_x_list[2048] = {0};
 	char wgc_name[64] = {0}, wgc_priv[64] = {0}, wgc_psk[64] = {0}, wgc_ppub[64] = {0}, wgc_enable[2] = {0};
 	char wgc_nat[2] = {0}, wgc_addr[64] = {0}, wgc_ep_addr[64] = {0}, wgc_aips[64] = {0}, wgc_dns[128] = {0};
@@ -902,8 +902,8 @@ int set_wireguard_client(struct json_object *wireguard_client_obj, int *wgc_idx)
 	strlcpy(vpnc_pptp_options_x_list, nvram_safe_get("vpnc_pptp_options_x_list"), sizeof(vpnc_clientlist));
 	foreach_60(word, vpnc_clientlist, next){
 		strlcpy(word_tmp, word, sizeof(word_tmp));
-		get_string_in_62(word_tmp, 1, vpn_name, sizeof(vpn_name));
-		if(!strcmp(vpn_name, "WireGuard")){
+		get_string_in_62(word_tmp, 1, proto, sizeof(proto));
+		if(!strcmp(proto, PROTO_WG)){
 			get_string_in_62(word, 2, &vpn_unit, sizeof(vpn_unit));
 			vpn_count++;
 			if(atoi(vpn_unit))

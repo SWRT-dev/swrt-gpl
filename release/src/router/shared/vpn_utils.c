@@ -64,6 +64,7 @@ static void _update_ovpn_client_enable(int unit, int enable)
 	}
 }
 
+#if defined(RTCONFIG_VPN_FUSION)
 /*******************************************************************
  * NAME: vpnc_load_profile
  * AUTHOR: Andy Chiu
@@ -236,6 +237,7 @@ int _get_new_vpnc_index(void)
 	}
 	return 0;
 }
+#endif
 #endif
 
 #ifdef RTCONFIG_TPVPN
