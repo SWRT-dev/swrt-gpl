@@ -743,11 +743,291 @@ noamas:
 
 int set_wireguard_server(struct json_object *wireguard_server_obj, int *wgsc_idx)
 {
-	return 0;
+	int idx = 1;
+	int ip1, ip2, ip3, ip4, netmask, wgs_port;
+	char prefix[16] = {0}, prefix_client[16] = {0};
+	char wgs_enable[2] = {0}, wgs_addr[64] = {0}, wgs_ipaddr[64] = {0}, wgs_alive[6] = {0}, wgs_dns[2] = {0};
+	char wgs_nat6[2] = {0}, wgs_psk[2] = {0}, wgs_priv[64] = {0}, wgs_pub[64] = {0}, wgs_lanaccess[2] = {0};
+	char wgsc_enable[2] = {0}, wgsc_addr[64] = {0}, wgsc_aips[1024] = {0}, wgsc_caips[1024] = {0};
+	char wgsc_priv[64] = {0}, wgsc_pub[64] = {0}, wgsc_psk[64] = {0}, wgsc_name[64] = {0};
+	char *pt;
+	struct json_object *tmp_obj;
+	snprintf(prefix, sizeof(prefix), "%s%d_", "wgs", 1);
+	while(1){
+		snprintf(prefix_client, sizeof(prefix_client), "%sc%d_", prefix, idx);
+		pt = nvram_pf_get(prefix_client, "enable");
+		if(pt == NULL || *pt == '0' || *pt == 0)
+			break;
+		if(++idx == 11)
+			return HTTP_OVER_MAX_RULE_LIMIT;
+	}
+	if(json_object_object_get_ex(wireguard_server_obj, "wgs_enable", &tmp_obj)){
+		strlcpy(wgs_enable, json_object_get_string(tmp_obj), sizeof(wgs_enable));
+		if(!isValidEnableOption(wgs_enable, 1))
+			return HTTP_INVALID_ENABLE_OPT;
+	}else
+		strlcpy(wgs_enable, nvram_pf_safe_get(prefix, "enable"), sizeof(wgs_enable));
+	if(json_object_object_get_ex(wireguard_server_obj, "wgs_addr", &tmp_obj)){
+		strlcpy(wgs_addr, json_object_get_string(tmp_obj), sizeof(wgs_addr));
+		if(strcmp(wgs_addr, nvram_pf_safe_get(prefix, "addr"))){
+			sscanf(wgs_addr, "%d.%d.%d.%d/%d", &ip1, &ip2, &ip3, &ip4, &netmask);
+			snprintf(wgs_ipaddr, sizeof(wgs_ipaddr), "%d.%d.%d.%d", ip1, ip2, ip3, ip4);
+			if(!validate_ip(wgs_ipaddr) || is_ip4_in_use(wgs_ipaddr) || netmask > 32)
+				return HTTP_INVALID_IPADDR;
+		}
+	}else
+		strlcpy(wgs_addr, nvram_pf_safe_get(prefix, "addr"), sizeof(wgs_addr));
+	if(json_object_object_get_ex(wireguard_server_obj, "wgs_port", &tmp_obj)){
+		wgs_port = strtoul(json_object_get_string(tmp_obj), NULL, 10);
+		if(nvram_pf_get_int(prefix, "port") != wgs_port && (is_port_in_use(wgs_port) || wgs_port > 65535))
+			return HTTP_INVALID_INPUT;
+	}else
+		wgs_port = nvram_pf_get_int(prefix, "port");
+	if(json_object_object_get_ex(wireguard_server_obj, "wgs_alive", &tmp_obj)){
+		strlcpy(wgs_alive, json_object_get_string(tmp_obj), sizeof(wgs_alive));
+		if(!isValid_digit_string(wgs_alive) || safe_atoi(wgs_alive) < 0 || safe_atoi(wgs_alive) > 99999){
+			return HTTP_INVALID_INPUT;
+	}else
+		strlcpy(wgs_alive, nvram_pf_safe_get(prefix, "alive"), sizeof(wgs_alive));
+	if(json_object_object_get_ex(wireguard_server_obj, "wgs_dns", &tmp_obj)){
+		strlcpy(wgs_dns, json_object_get_string(tmp_obj), sizeof(wgs_dns));
+		if(!isValidEnableOption(wgs_dns, 1)
+			return HTTP_INVALID_ENABLE_OPT;
+	}else
+		strlcpy(wgs_dns, nvram_pf_safe_get(prefix, "dns"), sizeof(wgs_dns));
+	if(json_object_object_get_ex(wireguard_server_obj, "wgs_nat6", &tmp_obj)){
+		strlcpy(wgs_nat6, json_object_get_string(tmp_obj), sizeof(wgs_nat6));
+		if(!isValidEnableOption(wgs_nat6, 1))
+			return HTTP_INVALID_ENABLE_OPT;
+	}else
+		strlcpy(wgs_nat6, nvram_pf_safe_get(prefix, "nat6"), sizeof(wgs_nat6));
+	if(json_object_object_get_ex(wireguard_server_obj, "wgs_psk", &tmp_obj)){
+		strlcpy(wgs_psk, json_object_get_string(tmp_obj), sizeof(wgs_psk));
+		if(!isValidEnableOption(wgs_psk, 1))
+			return HTTP_INVALID_ENABLE_OPT;
+	}else
+		strlcpy(wgs_psk, nvram_pf_safe_get(prefix, "psk"), sizeof(wgs_psk));
+	if(json_object_object_get_ex(wireguard_server_obj, "wgs_priv", &tmp_obj))
+		strlcpy(wgs_priv, json_object_get_string(tmp_obj), sizeof(wgs_priv));
+	else
+		strlcpy(wgs_priv, nvram_pf_safe_get(prefix, "priv"), sizeof(wgs_priv));
+	if(json_object_object_get_ex(wireguard_server_obj, "wgs_pub", &tmp_obj))
+		strlcpy(wgs_pub, json_object_get_string(tmp_obj), sizeof(wgs_pub));
+	else
+		strlcpy(wgs_pub, nvram_pf_safe_get(prefix, "pub"), sizeof(wgs_pub));
+	if(json_object_object_get_ex(wireguard_server_obj, "wgs_lanaccess", &tmp_obj)){
+		strlcpy(wgs_lanaccess, json_object_get_string(tmp_obj), sizeof(wgs_lanaccess));
+		if(!isValidEnableOption(wgs_lanaccess, 1))
+			return HTTP_INVALID_ENABLE_OPT;
+	}else
+		strlcpy(wgs_lanaccess, nvram_pf_safe_get(prefix, "lanaccess"), sizeof(wgs_lanaccess));
+	if(json_object_object_get_ex(wireguard_server_obj, "wgsc_enable", &tmp_obj)){
+		strlcpy(wgsc_enable, json_object_get_string(tmp_obj), sizeof(wgsc_enable));
+		if(!isValidEnableOption(wgsc_enable, 1))
+			return HTTP_INVALID_ENABLE_OPT;
+	}
+	if(json_object_object_get_ex(wireguard_server_obj, "wgsc_addr", &tmp_obj)){
+		strlcpy(wgsc_addr, json_object_get_string(tmp_obj), sizeof(wgsc_addr));
+		sscanf(wgsc_addr, "%d.%d.%d.%d/%d", &ip1, &ip2, &ip3, &ip4, &netmask);
+		snprintf(wgs_ipaddr, sizeof(wgs_ipaddr), "%d.%d.%d.%d", ip1, ip2, ip3, ip4);
+		if(!validate_ip(wgs_ipaddr) || is_ip4_in_use(wgs_ipaddr) || netmask > 32)
+			return HTTP_INVALID_IPADDR;
+	}
+	if(json_object_object_get_ex(wireguard_server_obj, "wgsc_aips", &tmp_obj))
+		strlcpy(wgsc_aips, json_object_get_string(tmp_obj), sizeof(wgsc_aips));
+	if(json_object_object_get_ex(wireguard_server_obj, "wgsc_caips", &tmp_obj))
+		strlcpy(wgsc_caips, json_object_get_string(tmp_obj), sizeof(wgsc_caips));
+	if(json_object_object_get_ex(wireguard_server_obj, "wgsc_priv", &tmp_obj))
+		strlcpy(wgsc_priv, json_object_get_string(tmp_obj), sizeof(wgsc_priv));
+	if(json_object_object_get_ex(wireguard_server_obj, "wgsc_pub", &tmp_obj))
+		strlcpy(wgsc_pub, json_object_get_string(tmp_obj), sizeof(wgsc_pub));
+	if(json_object_object_get_ex(wireguard_server_obj, "wgsc_psk", &tmp_obj))
+		strlcpy(wgsc_psk, json_object_get_string(tmp_obj), sizeof(wgsc_psk));
+	if(json_object_object_get_ex(wireguard_server_obj, "wgsc_name", &tmp_obj))
+		strlcpy(wgsc_name, json_object_get_string(tmp_obj), sizeof(wgsc_name));
+	*wgsc_idx = idx;
+
+	if(strcmp(wgs_enable, nvram_pf_safe_get(prefix, "enable")))
+		nvram_pf_set(prefix, "enable", wgs_enable);
+	if(strcmp(wgs_addr, nvram_pf_safe_get(prefix, "addr")))
+		nvram_pf_set(prefix, "addr", wgs_addr);
+	if(nvram_pf_get_int(prefix, "port") != wgs_port)
+		nvram_pf_set_int(prefix, "port", port);
+	if(strcmp(wgs_alive, nvram_pf_safe_get(prefix, "alive")))
+		nvram_pf_set(prefix, "alive", wgs_alive);
+	if(strcmp(wgs_dns, nvram_pf_safe_get(prefix, "dns")))
+		nvram_pf_set(prefix, "dns", wgs_dns);
+	if(strcmp(wgs_nat6, nvram_pf_safe_get(prefix, "nat6")))
+		nvram_pf_set(prefix, "nat6", wgs_nat6);
+	if(strcmp(wgs_psk, nvram_pf_safe_get(prefix, "psk")))
+		nvram_pf_set(prefix, "psk", wgs_psk);
+	if(strcmp(wgs_priv, nvram_pf_safe_get(prefix, "priv")))
+		nvram_pf_set(prefix, "priv", wgs_priv);
+	if(strcmp(wgs_pub, nvram_pf_safe_get(prefix, "pub")))
+		nvram_pf_set(prefix, "pub", wgs_pub);
+	if(strcmp(wgs_lanaccess, nvram_pf_safe_get(prefix, "lanaccess")))
+		nvram_pf_set(prefix, "lanaccess", wgs_lanaccess);
+	nvram_pf_set(prefix_client, "enable", wgsc_enable);
+	nvram_pf_set(prefix_client, "addr", wgsc_addr);
+	nvram_pf_set(prefix_client, "aips", wgsc_aips);
+	nvram_pf_set(prefix_client, "caips", wgsc_caips);
+	nvram_pf_set(prefix_client, "priv", wgsc_priv);
+	nvram_pf_set(prefix_client, "pub", wgsc_pub);
+	nvram_pf_set(prefix_client, "psk", wgsc_psk);
+	nvram_pf_set(prefix_client, "name", wgsc_name);
+	nvram_pf_set(prefix_client, "caller", "AMSAPP");
+	httpd_nvram_commit();
+	if(json_object_object_get_ex(wireguard_server_obj, "do_rc", &tmp_obj)){
+		if(!strcmp(json_object_get_string(tmp_obj), "1"))
+			notify_rc("restart_wgs;restart_dnsmasq");
+	}
+	return HTTP_OK;
 }
 int set_wireguard_client(struct json_object *wireguard_client_obj, int *wgc_idx)
 {
-	return 0;
+	int vpn_count = 0, unit = 0, vpn_client[OVPN_CLIENT_MAX] = {0}, index = 0, idx;
+	int ip1, ip2, ip3, ip4;
+	char word[1024] = {0}, vpnc_clientlist[CKN_STR8192] = {0}, word_tmp[1024] = {0}, vpn_name[16], vpn_unit[8];
+	char prefix[16] = {0}, tmp[256], cmd[128], vpnc_pptp_options_x_list[2048] = {0};
+	char wgc_name[64] = {0}, wgc_priv[64] = {0}, wgc_psk[64] = {0}, wgc_ppub[64] = {0}, wgc_enable[2] = {0};
+	char wgc_nat[2] = {0}, wgc_addr[64] = {0}, wgc_ep_addr[64] = {0}, wgc_aips[64] = {0}, wgc_dns[128] = {0};
+	char wgc_ep_port[6] = {0}, wgc_alive[6] = {0}, wgc_use_tnl[2] = {0}, wgc_ep_device_id[256] = {0};
+	char wgc_ep_area[256] = {0};
+	char dhcp_start[64] = {0}, dhcp_end[64] = {0}, lanip[64] = {0};
+	char *next;
+	struct json_object *tmp_obj;
+	if(json_object_get_type(wireguard_client_obj) != json_type_object)
+		return HTTP_INVALID_INPUT;
+	strlcpy(vpnc_clientlist, nvram_safe_get("vpnc_clientlist"), sizeof(vpnc_clientlist));
+	strlcpy(vpnc_pptp_options_x_list, nvram_safe_get("vpnc_pptp_options_x_list"), sizeof(vpnc_clientlist));
+	foreach_60(word, vpnc_clientlist, next){
+		strlcpy(word_tmp, word, sizeof(word_tmp));
+		get_string_in_62(word_tmp, 1, vpn_name, sizeof(vpn_name));
+		if(!strcmp(vpn_name, "WireGuard")){
+			get_string_in_62(word, 2, &vpn_unit, sizeof(vpn_unit));
+			vpn_count++;
+			if(atoi(vpn_unit))
+				vpn_client[atoi(vpn_unit) - 1] = 1;
+		}
+		unit++;
+	}
+	if(vpn_count >= OVPN_CLIENT_MAX)
+		return HTTP_OVER_MAX_RULE_LIMIT;
+	index = _get_new_vpnc_index();
+	if(index == 0)
+		return HTTP_OVER_MAX_RULE_LIMIT;
+	for(idx = 0; idx < OVPN_CLIENT_MAX; idx++){
+		if(vpn_client[idx] == 0){
+			snprintf(prefix, sizeof(prefix), "wgc%d_", idx + 1);
+			break;
+		}
+	}
+	if(json_object_object_get_ex(wireguard_client_obj, "wgc_name", &tmp_obj))
+		strlcpy(wgc_name, json_object_get_string(tmp_obj), sizeof(wgc_name));
+	if(json_object_object_get_ex(wireguard_client_obj, "wgc_priv", &tmp_obj))
+		strlcpy(wgc_priv, json_object_get_string(tmp_obj), sizeof(wgc_priv));
+	if(json_object_object_get_ex(wireguard_client_obj, "wgc_psk", &tmp_obj))
+		strlcpy(wgc_psk, json_object_get_string(tmp_obj), sizeof(wgc_psk));
+	if(json_object_object_get_ex(wireguard_client_obj, "wgc_ppub", &tmp_obj))
+		strlcpy(wgc_ppub, json_object_get_string(tmp_obj), sizeof(wgc_ppub));
+	if(wgc_name[0] == 0 || wgc_priv[0] == 0 || wgc_ppub[0] == 0)
+		return HTTP_INVALID_INPUT;
+	if(json_object_object_get_ex(wireguard_client_obj, "wgc_enable", &tmp_obj))
+		strlcpy(wgc_enable, json_object_get_string(tmp_obj), sizeof(wgc_enable));
+	if(json_object_object_get_ex(wireguard_client_obj, "wgc_nat", &tmp_obj))
+		strlcpy(wgc_nat, json_object_get_string(tmp_obj), sizeof(wgc_nat));
+	if(!isValidEnableOption(wgc_enable, 1) || !isValidEnableOption(wgc_nat, 1))
+		return HTTP_INVALID_ENABLE_OPT;
+	if(json_object_object_get_ex(wireguard_client_obj, "wgc_addr", &tmp_obj))
+		strlcpy(wgc_addr, json_object_get_string(tmp_obj), sizeof(wgc_addr));
+	if(!check_ip_cidr(wgc_addr, 1))
+		return HTTP_INVALID_IPADDR;
+	if(json_object_object_get_ex(wireguard_client_obj, "wgc_ep_addr", &tmp_obj))
+		strlcpy(wgc_ep_addr, json_object_get_string(tmp_obj), sizeof(wgc_ep_addr));
+	if(!check_ip_cidr(wgc_ep_addr, 0))
+		return HTTP_INVALID_IPADDR;
+	if(json_object_object_get_ex(wireguard_client_obj, "wgc_aips", &tmp_obj))
+		strlcpy(wgc_aips, json_object_get_string(tmp_obj), sizeof(wgc_aips));
+	if(!check_ip_cidr(wgc_aips, 1))
+		return HTTP_INVALID_IPADDR;
+	if(json_object_object_get_ex(wireguard_client_obj, "wgc_dns", &tmp_obj))
+		strlcpy(wgc_dns, json_object_get_string(tmp_obj), sizeof(wgc_dns));
+	if(wgc_dns[0]){
+		foreach_59(word, wgc_dns, next){
+			if(!validate_ip(word))
+				return HTTP_INVALID_IPADDR;
+		}
+	}
+	if(json_object_object_get_ex(wireguard_client_obj, "wgc_ep_port", &tmp_obj))
+		strlcpy(wgc_ep_port, json_object_get_string(tmp_obj), sizeof(wgc_ep_port));
+	if(!isValid_digit_string(wgc_ep_port) || safe_atoi(wgc_ep_port) < 0 || safe_atoi(wgc_ep_port) > 65535)
+		return HTTP_INVALID_INPUT;
+	if(json_object_object_get_ex(wireguard_client_obj, "wgc_alive", &tmp_obj))
+		strlcpy(wgc_alive, json_object_get_string(tmp_obj), sizeof(wgc_alive));
+	if(!isValid_digit_string(wgc_alive) || safe_atoi(wgc_alive) < 0 || safe_atoi(wgc_alive) > 99999)
+		return HTTP_INVALID_INPUT;
+	if(json_object_object_get_ex(wireguard_client_obj, "wgc_use_tnl", &tmp_obj))
+		strlcpy(wgc_use_tnl, json_object_get_string(tmp_obj), sizeof(wgc_use_tnl));
+	if(!isValidEnableOption(wgc_use_tnl, 1))
+		return HTTP_INVALID_ENABLE_OPT;
+	if(vpnc_clientlist[0])
+		strlcat(vpnc_clientlist, "<", sizeof(vpnc_clientlist));
+	snprintf(tmp, sizeof(tmp), "%s>WireGuard>%d>>>1>%d>>>%s>0>AMSAPP", wgc_name, (idx + 1), index, wgc_use_tnl);
+	strlcat(vpnc_clientlist, tmp, sizeof(vpnc_clientlist));
+	*wgc_idx = idx + 1;
+	if(json_object_object_get_ex(wireguard_client_obj, "change_lanip", &tmp_obj)){
+		strlcpy(lanip, json_object_get_string(tmp_obj), sizeof(lanip));
+		if(!validate_ip(lanip))
+			return HTTP_INVALID_IPADDR;
+		sscanf(lanip, "%d.%d.%d.%d", &ip1, &ip2, &ip3, &ip4);
+		snprintf(dhcp_start, sizeof(dhcp_start), "%d.%d.%d.2", ip1, ip2, ip3);
+		snprintf(dhcp_end, sizeof(dhcp_end), "%d.%d.%d.254", ip1, ip2, ip3);
+	}
+	if(json_object_object_get_ex(wireguard_client_obj, "wgc_ep_device_id", &tmp_obj)){
+		char *pt;
+		strlcpy(wgc_ep_device_id, json_object_get_string(tmp_obj), sizeof(wgc_ep_device_id));
+		pt = wgc_ep_device_id;
+		while(*pt){
+			if(!isalnum(*pt))
+				return HTTP_INVALID_INPUT;
+			pt++;
+		}
+    }
+	if(json_object_object_get_ex(wireguard_client_obj, "wgc_ep_area", &tmp_obj))
+		strlcpy(wgc_ep_area, json_object_get_string(tmp_obj), sizeof(wgc_ep_area));
+	nvram_pf_set(prefix, "enable", wgc_enable);
+	nvram_pf_set(prefix, "nat", wgc_nat);
+	nvram_pf_set(prefix, "name", wgc_name);
+	nvram_pf_set(prefix, "priv", wgc_priv);
+	nvram_pf_set(prefix, "psk", wgc_psk);
+	nvram_pf_set(prefix, "ppub", wgc_ppub);
+	nvram_pf_set(prefix, "addr", wgc_addr);
+	nvram_pf_set(prefix, "ep_addr", wgc_ep_addr);
+	nvram_pf_set(prefix, "aips", wgc_aips);
+	nvram_pf_set(prefix, "dns", wgc_dns);
+	nvram_pf_set(prefix, "ep_port", wgc_ep_port);
+	nvram_pf_set(prefix, "alive", wgc_alive);
+	nvram_pf_set(prefix, "use_tnl", wgc_use_tnl);
+	nvram_pf_set(prefix, "ep_device_id", wgc_ep_device_id);
+	nvram_pf_set(prefix, "ep_area", wgc_ep_area);
+	strlcat(cmd, "restart_vpnc;", sizeof(cmd));
+	if(lanip[0])){
+		nvram_set("lan_ipaddr", lanip);
+		nvram_set("lan_ipaddr_rt", lanip);
+		nvram_set("dhcp_start", dhcp_start);
+		nvram_set("dhcp_end", dhcp_end);
+		strlcat(cmd, "restart_net_and_phy;", sizeof(cmd));
+	}
+	nvram_set("vpnc_clientlist", vpnc_clientlist);
+	strlcat(vpnc_pptp_options_x_list, "<auto", sizeof(vpnc_pptp_options_x_list));
+	nvram_set("vpnc_pptp_options_x_list", vpnc_pptp_options_x_list);
+	nvram_set_int("vpnc_unit", unit);
+	httpd_nvram_commit();
+	if(json_object_object_get_ex(wireguard_client_obj, "do_rc", &tmp_obj)){
+		if(!strcmp(json_object_get_string(tmp_obj), "1"))
+			notify_rc(cmd);
+	}
+	return HTTP_OK;
 }
 
 int gen_jffs_backup_profile(char *name, char *file_path)

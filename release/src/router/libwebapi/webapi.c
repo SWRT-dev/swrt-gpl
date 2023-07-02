@@ -331,7 +331,7 @@ struct RWD_MAPPING_TABLE rwd_mapping_t[] =
 #ifdef RTCONFIG_DASHBOARD
 	{"Dashboard", "index.html?url=dashboard", NULL},
 #endif
-	{NULL, NULL}
+	{NULL, NULL, NULL}
 };
 
 int get_rwd_table(struct json_object *rwd_mapping)
@@ -517,16 +517,23 @@ remove_client_in_list_by_idx(char *out, int idx, int out_len)
 	char *buf, *g, *p;
 	g = buf = strdup(out);
 
-    len = strlen(out);
+	len = strlen(out);
 
 	while ((p = strchr(g, '<')) != NULL) {
 		if(find_idx == idx)
 		{
 			if((int)(p-buf)-(int)(p-g) < out_len){
-				out[(int)(p-buf)-(int)(p-g)-1] = '\0';
-				strlcat(out+1, p, out_len);
-				out[len - (p-g)-1] = '\0';
+
+				if((int)(p-buf)-(int)(p-g)-1 > 0){
+					out[(int)(p-buf)-(int)(p-g)-1] = '\0';
+					strlcat(out+1, p, out_len);
+				}else
+					strlcpy(out, p, out_len);
+
+				if((p-g)!=0)
+					out[len - (p-g)-1] = '\0';
 			}
+
 			ret = find_idx;
 			find_idx++;
 			break;
@@ -538,10 +545,11 @@ remove_client_in_list_by_idx(char *out, int idx, int out_len)
 	}
 
 	if(find_idx == idx){ // Consider the field is at the end of in_list (no '>' occur anymore).
-        if((int)(g-buf) < out_len){
-            out[(int)(g-buf)-1] = '\0';
-        }
-        ret = find_idx;
+
+		if((int)(g-buf) < out_len)
+			out[(int)(g-buf)-1] = '\0';
+
+		ret = find_idx;
 	}
 	free(buf);
 
@@ -552,7 +560,7 @@ int delete_wireguard_client(int wgc_index)
 {
 #ifdef RTCONFIG_WIREGUARD
 	int ret = HTTP_NO_CHANGE, del_vpnc_clientlist_idx = -1;
-	char vpnc_clientlist[CKN_STR8192] = {0}, vpnc_pptp_options_x_list[CKN_STR2048] = {0}, wgc_index_str[8] = {0};
+	char vpnc_clientlist[CKN_STR8192] = {0}, vpnc_pptp_options_x_list[CKN_STR2048] = {0}, wgc_index_str[8] = {0}, prefix[16] = {0};
 	strlcpy(vpnc_clientlist, nvram_safe_get("vpnc_clientlist"), sizeof(vpnc_clientlist));
 	strlcpy(vpnc_pptp_options_x_list, nvram_safe_get("vpnc_pptp_options_x_list"), sizeof(vpnc_pptp_options_x_list));
 	snprintf(wgc_index_str, sizeof(wgc_index_str), "%d", wgc_index);
@@ -561,10 +569,17 @@ int delete_wireguard_client(int wgc_index)
 		sleep(3);
 
 	del_vpnc_clientlist_idx = remove_client_in_group_list(2, wgc_index_str, vpnc_clientlist, sizeof(vpnc_clientlist));
-	if(del_vpnc_clientlist_idx){
-		remove_client_in_list_by_idx(vpnc_pptp_options_x_list, del_vpnc_clientlist_idx, sizeof(vpnc_pptp_options_x_list));
+	if(del_vpnc_clientlist_idx != -1){
+		remove_client_in_list_by_idx(vpnc_pptp_options_x_list, del_vpnc_clientlist_idx+1, sizeof(vpnc_pptp_options_x_list));
 		nvram_set("vpnc_clientlist", vpnc_clientlist);
 		nvram_set("vpnc_pptp_options_x_list", vpnc_pptp_options_x_list);
+
+		snprintf(prefix, sizeof(prefix), "wgc%d_", wgc_index);
+		nvram_pf_set(prefix, "use_tnl", "");
+		nvram_pf_set(prefix, "ep_device_id", "");
+		nvram_pf_set(prefix, "ep_area", "");
+
+		httpd_nvram_commit();
 		notify_rc("restart_vpnc");
 		ret = HTTP_OK;
 	}
@@ -597,6 +612,76 @@ int get_wgc_connect_status(struct json_object *wgc_connect_status_obj){
 	}
 
 	return 0;
+#else
+	return ASUSAPI_NOT_SUPPORT;
+#endif
+}
+
+int del_wgsc_list(int s_unit, int c_unit){
+#ifdef RTCONFIG_WIREGUARD
+	int ret = HTTP_NORULE_DEL, i = 0;
+	char *nv = NULL;
+	char prefix[16] = {0}, c_prefix[16] = {0}, tmp[16] = {0}, rc_command[64] = {0};
+
+	const char *wgsc_nv_list[] = {"addr", "aips", "caips", "priv", "pub", "psk", "name", "caller", "extinfo", NULL};
+
+	if((s_unit < 1 || s_unit > 2) || (c_unit < 1 || c_unit > 10))
+		return HTTP_INVALID_INPUT;
+
+	snprintf(prefix, sizeof(prefix), "%s%d_", WG_SERVER_NVRAM_PREFIX, s_unit);
+	snprintf(c_prefix, sizeof(c_prefix), "%sc%d_", prefix, c_unit);
+
+	nv = nvram_pf_safe_get(c_prefix, "enable");
+
+	if(*nv == '1'){
+
+		nvram_pf_set(c_prefix, "enable", "0");
+		for(i=0; wgsc_nv_list[i]; i++){
+			snprintf(tmp, sizeof(tmp), "%s%s", c_prefix, wgsc_nv_list[i]);
+			nvram_unset(tmp);
+		}
+
+		snprintf(rc_command, sizeof(rc_command), "restart_wgsc %d %d", s_unit, c_unit);
+		httpd_nvram_commit();
+		notify_rc(rc_command);
+		ret = HTTP_OK;
+	}
+
+	return ret;
+#else
+	return ASUSAPI_NOT_SUPPORT;
+#endif
+}
+
+int get_wgsc_list(int s_unit, struct json_object *wgsc_list_array) {
+#ifdef RTCONFIG_WIREGUARD
+	int i = 0, c_unit = 0;
+	char *nv = NULL, *nv_enable = NULL, *nv_name = NULL;
+	char prefix[16] = {0}, c_prefix[16] = {0}, tmp[8] = {0};
+	struct json_object *wgsc_nv_obj = NULL;
+
+	const char *wgsc_nv_list[] = {"name", "enable", "addr", "aips", "caips", "caller", "extinfo", NULL};
+
+	snprintf(prefix, sizeof(prefix), "%s%d_", WG_SERVER_NVRAM_PREFIX, s_unit);
+	for (c_unit = 1; c_unit <= WG_SERVER_CLIENT_MAX; c_unit++)
+	{
+		wgsc_nv_obj = json_object_new_object();
+		snprintf(c_prefix, sizeof(c_prefix), "%sc%d_", prefix, c_unit);
+		snprintf(tmp, sizeof(tmp), "%d", c_unit);
+
+		nv_enable = nvram_pf_safe_get(c_prefix, "enable");
+		nv_name = nvram_pf_safe_get(c_prefix, "name");
+
+		if(*nv_enable == '\0') continue;
+		if(*nv_enable == '0' && *nv_name == '\0') continue;
+
+		for(i=0; wgsc_nv_list[i]; i++){
+			nv = nvram_pf_safe_get(c_prefix, wgsc_nv_list[i]);
+			json_object_object_add(wgsc_nv_obj, wgsc_nv_list[i], json_object_new_string(nv));
+		}
+		json_object_object_add(wgsc_nv_obj, "index", json_object_new_string(tmp));
+		json_object_array_add(wgsc_list_array, wgsc_nv_obj);
+	}
 #else
 	return ASUSAPI_NOT_SUPPORT;
 #endif

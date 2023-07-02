@@ -112,4 +112,6 @@ extern int get_rwd_table(struct json_object *rwd_mapping);
 extern int enable_wireguard_client(int wgc_index, char *vpnc_enable);
 extern int delete_wireguard_client(int wgc_index);
 extern int get_wgc_connect_status(struct json_object *wgc_connect_status_obj);
+extern int del_wgsc_list(int s_unit, int c_unit);
+extern int get_wgsc_list(int s_unit, struct json_object *wgsc_list_array);
 #endif /* !__WEBAPI_H__ */
