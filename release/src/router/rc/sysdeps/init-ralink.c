@@ -81,17 +81,24 @@ void init_others(void)
 #elif defined(RTAC85U) || defined(RTAC85P) || defined(R6800) || defined(RMAC2100)
 //fix me
 #endif
+#if defined(RTCONFIG_MT798X)
 #if defined(TUFAX4200)
 	if (nvram_match("HwId", "B")) {
 		mount("overlay", "/www/images", "overlay", MS_MGC_VAL, "lowerdir=/TUF-AX4200Q/images:/www/images");
 		mount("/rom/dlna.TUF-AX4200Q", "/rom/dlna", "none", MS_BIND, NULL);
 	}
+#elif defined(TUFAX6000) || defined(RMAX6000)
+	if (nvram_match("CoBrand", "8")) {
+		mount("overlay", "/www", "overlay", MS_MGC_VAL, "lowerdir=/TS_UI:/www");
+		dbG("mount overlay\n");
+	}
+	if (nvram_match("odmpid", "TX-AX6000"))
+		mount("overlay", "/www/images", "overlay", MS_MGC_VAL, "lowerdir=/TX-AX6000/images:/www/images");
 #endif
-#if defined(RTCONFIG_MT798X)
-	if (nvram_match("lacp_enabled", "1"))
+#endif
+	if (nvram_match("lacp_enabled", "1") && f_exists("/sys/kernel/no_dsa_offload"))
 		f_write_string("/sys/kernel/no_dsa_offload", "1", 0, 0);
 	nvram_unset("wifidat_dbg");
-#endif
 }
 
 int is_if_up(char *ifname)

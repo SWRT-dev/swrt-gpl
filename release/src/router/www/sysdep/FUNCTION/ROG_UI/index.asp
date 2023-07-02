@@ -529,6 +529,12 @@ function initial(){
 	var MULTIFILTER_BLOCK_ALL = httpApi.nvramGet(["MULTIFILTER_BLOCK_ALL"]).MULTIFILTER_BLOCK_ALL;
 	if(MULTIFILTER_BLOCK_ALL == "1")
 		$(".block_all_icon").css("display", "flex");
+
+	if(cookie.get("show_phone_as_modem_hints") == "1"){
+		$("#phone_as_modem_instructions").load("/phone_as_modem_instructions.html", function(){
+			$("#phone_as_modem_div").css("display", "flex");
+		});
+	}
 }
 
 function check_eula(){
@@ -2241,6 +2247,11 @@ function notice_apply(){
 	iframe.contentWindow.document.form.next_page.value = "index.asp";
 	iframe.contentWindow.document.form.submit();
 }
+
+function close_phone_as_modem_hint(){
+	$("#phone_as_modem_div").hide();
+	cookie.unset("show_phone_as_modem_hints");
+}
 </script>
 </head>
 
@@ -2272,6 +2283,15 @@ function notice_apply(){
 		</tr>
 	</table>
 <!--[if lte IE 6.5]><iframe class="hackiframe"></iframe><![endif]-->
+</div>
+<div id="phone_as_modem_div" class="phone_as_modem" style="display: none;">
+	<div style="width: 95%; margin-bottom: 20px;">
+		<div class="phone_as_modem_top">
+			<div>Use the phone as modem</div>
+			<div><img src='/images/button-close.gif' style='width:30px; cursor:pointer' onclick='close_phone_as_modem_hint();'></div>
+		</div>
+		<div id="phone_as_modem_instructions"></div>
+	</div>
 </div>
 
 <iframe name="hidden_frame" id="hidden_frame" width="0" height="0" frameborder="0" scrolling="no"></iframe>

@@ -3,6 +3,10 @@ document.write('<script type="text/javascript" src="/js/support_site.js"></scrip
 document.write('<script type="text/javascript" src="/notification.js"></script>');
 document.write('<link rel="stylesheet" type="text/css" href="/notification.css"></link>');
 
+var CoBrand = '<% nvram_get("CoBrand"); %>';
+if(CoBrand == "8")
+	document.write('<link rel="stylesheet" type="text/css" href="/css/difference.css"></link>');
+
 /* String splice function */
 String.prototype.splice = function( idx, rem, s ) {
     return (this.slice(0,idx) + s + this.slice(idx + Math.abs(rem)));
@@ -1020,7 +1024,10 @@ function show_banner(L3){// L3 = The third Level of Menu
 		}
 	}
 	else if(tuf_support){
-		banner_code +='<div class="banner1" align="center"><img src="images/New_ui/logo_TUF.png" align="left" style="width:450px;height:96px;margin-left:45px;">\n';
+		if(CoBrand == "8")
+			banner_code +='<div class="banner1" align="center"><img src="images/New_ui/logo_TX.png" align="left" style="width:450px;height:96px;margin-left:45px;">\n';
+		else
+			banner_code +='<div class="banner1" align="center"><img src="images/New_ui/logo_TUF.png" align="left" style="width:450px;height:96px;margin-left:45px;">\n';
 		banner_code +='<div style="margin-top:0px;margin-left:-90px;*margin-top:0px;*margin-left:0px;" align="center"><span id="modelName_top" onclick="this.focus();" class="modelName_top"><#Web_Title2#></span></div>';
 			// logout
 		banner_code +='<div style="position: absolute;margin-left: 720px;"><a href="javascript:logout();"><div style="margin:20px 0 0 0;*width:136px;background:url(\'images/New_ui/btn_logout.png\') no-repeat;background-size:cover;width:132px;height:34px;float:left;" align="center"><div style="margin:8px 0 0 0;"><#t1Logout#></div></div></a></div>\n';

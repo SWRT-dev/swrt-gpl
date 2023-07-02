@@ -20,9 +20,6 @@
 <script type="text/javascript" src="/js/httpApi.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/asus_eula.js"></script>
 <style>
-*{
-  box-sizing: content-box;
-}
 .weakness{
 	width:650px;
 	height:590px;
@@ -1241,7 +1238,7 @@ function shadeHandle(flag){
 													<div class="line_vertical"></div>
 												</td>
 												<td style="width:20%;">
-													<div>
+													<div style="display: flex; justify-content: center; align-items: center;">
 														<input class="button_gen" type="button" onclick="showWeaknessTable();" value="<#CTL_scan#>">
 													</div>
 												</td>
@@ -1273,10 +1270,10 @@ function shadeHandle(flag){
 													<div class="line_vertical"></div>
 												</td>
 												<td style="width:20%;">
-													<div style="position:relative;">
-														<div id="mals_shade" style="position:absolute;width:140px;height:115px;background-color:#505050;opacity:0.6;z-index:5;margin-top:-26px;display:none"></div>
+													<div style="position:relative; display: flex; justify-content: center; align-items: center;">
+														<div id="mals_shade" style="position:absolute;width:140px;height:115px;background-color:#505050;opacity:0.6;z-index:5;display:none"></div>
 														<div align="center" class="left" style="width:94px; float:left; cursor:pointer;" id="radio_mals_enable"></div>
-														<div class="iphone_switch_container" style="height:32px; width:74px; position: relative; overflow: hidden">
+														<div class="iphone_switch_container" style="height:32px; position: relative; overflow: hidden">
 															<script type="text/javascript">
 																$('#radio_mals_enable').iphoneSwitch('<% nvram_get("wrs_mals_enable"); %>',
 																	function(){
@@ -1296,8 +1293,8 @@ function shadeHandle(flag){
 													<div class="line_vertical"></div>
 												</td>
 												<td style="width:20%;border-radius:0px 10px 10px 0px;cursor:pointer;">
-													<div style="position:relative" onclick="location.href='AiProtection_MaliciousSitesBlocking.asp'">
-														<div id="mals_count_shade" style="position:absolute;width:140px;height:115px;background-color:#505050;opacity:0.6;z-index:5;margin-top:-25px;display:none"></div>
+													<div style="position:relative; display: flex; justify-content: center; align-items: center" onclick="location.href='AiProtection_MaliciousSitesBlocking.asp'">
+														<div id="mals_count_shade" style="position:absolute;width:140px;height:115px;background-color:#505050;opacity:0.6;z-index:5; display:none"></div>
 														<div style="text-align:center;">
 															<div id="mali_count" style="width:45px;height:45px;margin:0 auto;line-height: 45px;font-size:38px;color:#FC0;text-shadow:1px 1px 0px black"></div>
 															<div style="font-size: 16px;"><#AiProtection_scan_rHits#></div>
@@ -1326,10 +1323,10 @@ function shadeHandle(flag){
 													<div class="line_vertical"></div>
 												</td>
 												<td style="width:20%;">
-													<div style="position:relative">
-														<div id="vp_shade" style="position:absolute;width:140px;height:115px;background-color:#505050;opacity:0.6;z-index:5;margin-top:-26px;display:none"></div>
+													<div style="position:relative; display: flex; justify-content: center; align-items: center;">
+														<div id="vp_shade" style="position:absolute;width:140px;height:115px;background-color:#505050;opacity:0.6;z-index:5; display:none"></div>
 														<div align="center" class="left" style="width:94px; float:left; cursor:pointer;" id="radio_vp_enable"></div>
-														<div class="iphone_switch_container" style="height:32px; width:74px; position: relative; overflow: hidden">
+														<div class="iphone_switch_container" style="height:32px; position: relative; overflow: hidden">
 															<script type="text/javascript">
 																$('#radio_vp_enable').iphoneSwitch('<% nvram_get("wrs_vp_enable"); %>',
 																	function(){
@@ -1349,8 +1346,8 @@ function shadeHandle(flag){
 													<div class="line_vertical"></div>
 												</td>
 												<td style="width:20%;border-radius:0px 10px 10px 0px;cursor:pointer;">
-													<div style="position:relative" onclick="location.href='AiProtection_IntrusionPreventionSystem.asp'">
-														<div id="vp_count_shade" style="position:absolute;width:140px;height:115px;background-color:#505050;opacity:0.6;z-index:5;margin-top:-25px;display:none"></div>
+													<div style="position:relative; display: flex; justify-content: center; align-items: center" onclick="location.href='AiProtection_IntrusionPreventionSystem.asp'">
+														<div id="vp_count_shade" style="position:absolute;width:140px;height:115px;background-color:#505050;opacity:0.6;z-index:5; display:none"></div>
 														<div style="text-align:center;">
 															<div id="vp_count" style="width:45px;height:45px;margin:0 auto;line-height: 45px;font-size:38px;color:#FC0;text-shadow:1px 1px 0px black"></div>
 															<div style="font-size: 16px;"><#AiProtection_scan_rHits#></div>
@@ -1376,10 +1373,10 @@ function shadeHandle(flag){
 													<div class="line_vertical"></div>
 												</td>
 												<td style="width:20%;">
-													<div style="position:relative">
-														<div id="cc_shade" style="position:absolute;width:140px;height:115px;background-color:#505050;opacity:0.6;z-index:5;margin-top:-26px;display:none"></div>
+													<div style="position:relative; display: flex; justify-content: center; align-items: center;">
+														<div id="cc_shade" style="position:absolute;width:140px;height:115px;background-color:#505050;opacity:0.6;z-index:5; display:none"></div>
 														<div align="center" class="left" style="width:94px; float:left; cursor:pointer;" id="radio_cc_enable"></div>
-														<div class="iphone_switch_container" style="height:32px; width:74px; position: relative; overflow: hidden">
+														<div class="iphone_switch_container" style="height:32px; position: relative; overflow: hidden">
 															<script type="text/javascript">
 																$('#radio_cc_enable').iphoneSwitch('<% nvram_get("wrs_cc_enable"); %>',
 																	function(){
@@ -1399,8 +1396,8 @@ function shadeHandle(flag){
 													<div class="line_vertical"></div>
 												</td>
 												<td style="width:20%;border-radius:0px 10px 10px 0px;cursor:pointer;">
-													<div style="position:relative" onclick="location.href='AiProtection_InfectedDevicePreventBlock.asp'">
-														<div id="infected_count_shade" style="position:absolute;width:140px;height:115px;background-color:#505050;opacity:0.6;z-index:5;margin-top:-25px;display:none"></div>
+													<div style="position:relative; display: flex; justify-content: center; align-items: center" onclick="location.href='AiProtection_InfectedDevicePreventBlock.asp'">
+														<div id="infected_count_shade" style="position:absolute;width:140px;height:115px;background-color:#505050;opacity:0.6;z-index:5; display:none"></div>
 														<div style="text-align:center;">
 															<div id="infected_count" style="width:45px;height:45px;margin:0 auto;line-height: 45px;font-size:38px;color:#FC0;text-shadow:1px 1px 0px black"></div>
 															<div style="font-size: 16px;"><#AiProtection_scan_rHits#></div>

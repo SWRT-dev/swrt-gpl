@@ -28,7 +28,11 @@ function load_page(){
 
 function initial(){
 	show_menu();
-	if(rog_support){
+
+	if(CoBrand == "8"){
+		$("#FormTitle").css("background", "#24272A");
+	}
+	else if(rog_support){
 		$("#FormTitle").css("background-color", "transparent");
 	}
 	else if(tuf_support){
