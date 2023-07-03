@@ -55,6 +55,7 @@
 #include "sqlite3.h"
 #include "bwdpi_sqlite.h"
 #endif
+#include <vpn_utils.h>
 
 struct tcode_location_s {
 	int model;
@@ -791,7 +792,7 @@ int set_wireguard_server(struct json_object *wireguard_server_obj, int *wgsc_idx
 		strlcpy(wgs_alive, nvram_pf_safe_get(prefix, "alive"), sizeof(wgs_alive));
 	if(json_object_object_get_ex(wireguard_server_obj, "wgs_dns", &tmp_obj)){
 		strlcpy(wgs_dns, json_object_get_string(tmp_obj), sizeof(wgs_dns));
-		if(!isValidEnableOption(wgs_dns, 1)
+		if(!isValidEnableOption(wgs_dns, 1))
 			return HTTP_INVALID_ENABLE_OPT;
 	}else
 		strlcpy(wgs_dns, nvram_pf_safe_get(prefix, "dns"), sizeof(wgs_dns));
@@ -852,7 +853,7 @@ int set_wireguard_server(struct json_object *wireguard_server_obj, int *wgsc_idx
 	if(strcmp(wgs_addr, nvram_pf_safe_get(prefix, "addr")))
 		nvram_pf_set(prefix, "addr", wgs_addr);
 	if(nvram_pf_get_int(prefix, "port") != wgs_port)
-		nvram_pf_set_int(prefix, "port", port);
+		nvram_pf_set_int(prefix, "port", wgs_port);
 	if(strcmp(wgs_alive, nvram_pf_safe_get(prefix, "alive")))
 		nvram_pf_set(prefix, "alive", wgs_alive);
 	if(strcmp(wgs_dns, nvram_pf_safe_get(prefix, "dns")))
@@ -886,7 +887,7 @@ int set_wireguard_server(struct json_object *wireguard_server_obj, int *wgsc_idx
 
 int set_wireguard_client(struct json_object *wireguard_client_obj, int *wgc_idx)
 {
-	int vpn_count = 0, unit = 0, vpn_client[OVPN_CLIENT_MAX] = {0}, index = 0, idx;
+	int vpn_count = 0, unit = 0, vpn_client[WG_CLIENT_MAX] = {0}, index = 0, idx;
 	int ip1, ip2, ip3, ip4;
 	char word[1024] = {0}, vpnc_clientlist[CKN_STR8192] = {0}, word_tmp[1024] = {0}, proto[16], vpn_unit[8];
 	char prefix[16] = {0}, tmp[256], cmd[128], vpnc_pptp_options_x_list[2048] = {0};
@@ -905,19 +906,19 @@ int set_wireguard_client(struct json_object *wireguard_client_obj, int *wgc_idx)
 		strlcpy(word_tmp, word, sizeof(word_tmp));
 		get_string_in_62(word_tmp, 1, proto, sizeof(proto));
 		if(!strcmp(proto, PROTO_WG)){
-			get_string_in_62(word, 2, &vpn_unit, sizeof(vpn_unit));
+			get_string_in_62(word, 2, vpn_unit, sizeof(vpn_unit));
 			vpn_count++;
 			if(atoi(vpn_unit))
 				vpn_client[atoi(vpn_unit) - 1] = 1;
 		}
 		unit++;
 	}
-	if(vpn_count >= OVPN_CLIENT_MAX)
+	if(vpn_count >= WG_CLIENT_MAX)
 		return HTTP_OVER_MAX_RULE_LIMIT;
 	index = _get_new_vpnc_index();
 	if(index == 0)
 		return HTTP_OVER_MAX_RULE_LIMIT;
-	for(idx = 0; idx < OVPN_CLIENT_MAX; idx++){
+	for(idx = 0; idx < WG_CLIENT_MAX; idx++){
 		if(vpn_client[idx] == 0){
 			snprintf(prefix, sizeof(prefix), "wgc%d_", idx + 1);
 			break;
@@ -1012,7 +1013,7 @@ int set_wireguard_client(struct json_object *wireguard_client_obj, int *wgc_idx)
 	nvram_pf_set(prefix, "ep_device_id", wgc_ep_device_id);
 	nvram_pf_set(prefix, "ep_area", wgc_ep_area);
 	strlcat(cmd, "restart_vpnc;", sizeof(cmd));
-	if(lanip[0])){
+	if(lanip[0]){
 		nvram_set("lan_ipaddr", lanip);
 		nvram_set("lan_ipaddr_rt", lanip);
 		nvram_set("dhcp_start", dhcp_start);

@@ -682,6 +682,7 @@ int get_wgsc_list(int s_unit, struct json_object *wgsc_list_array) {
 		json_object_object_add(wgsc_nv_obj, "index", json_object_new_string(tmp));
 		json_object_array_add(wgsc_list_array, wgsc_nv_obj);
 	}
+	return HTTP_OK;
 #else
 	return ASUSAPI_NOT_SUPPORT;
 #endif
