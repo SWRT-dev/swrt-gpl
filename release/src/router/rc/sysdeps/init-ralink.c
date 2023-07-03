@@ -81,7 +81,6 @@ void init_others(void)
 #elif defined(RTAC85U) || defined(RTAC85P) || defined(R6800) || defined(RMAC2100)
 //fix me
 #endif
-#if defined(RTCONFIG_MT798X)
 #if defined(TUFAX4200)
 	if (nvram_match("HwId", "B")) {
 		mount("overlay", "/www/images", "overlay", MS_MGC_VAL, "lowerdir=/TUF-AX4200Q/images:/www/images");
