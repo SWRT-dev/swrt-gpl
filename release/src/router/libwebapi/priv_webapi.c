@@ -785,7 +785,7 @@ int set_wireguard_server(struct json_object *wireguard_server_obj, int *wgsc_idx
 		wgs_port = nvram_pf_get_int(prefix, "port");
 	if(json_object_object_get_ex(wireguard_server_obj, "wgs_alive", &tmp_obj)){
 		strlcpy(wgs_alive, json_object_get_string(tmp_obj), sizeof(wgs_alive));
-		if(!isValid_digit_string(wgs_alive) || safe_atoi(wgs_alive) < 0 || safe_atoi(wgs_alive) > 99999){
+		if(!isValid_digit_string(wgs_alive) || safe_atoi(wgs_alive) < 0 || safe_atoi(wgs_alive) > 99999)
 			return HTTP_INVALID_INPUT;
 	}else
 		strlcpy(wgs_alive, nvram_pf_safe_get(prefix, "alive"), sizeof(wgs_alive));
@@ -883,6 +883,7 @@ int set_wireguard_server(struct json_object *wireguard_server_obj, int *wgsc_idx
 	}
 	return HTTP_OK;
 }
+
 int set_wireguard_client(struct json_object *wireguard_client_obj, int *wgc_idx)
 {
 	int vpn_count = 0, unit = 0, vpn_client[OVPN_CLIENT_MAX] = {0}, index = 0, idx;
