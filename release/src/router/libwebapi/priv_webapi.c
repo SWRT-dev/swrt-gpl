@@ -915,9 +915,11 @@ int set_wireguard_client(struct json_object *wireguard_client_obj, int *wgc_idx)
 	}
 	if(vpn_count >= WG_CLIENT_MAX)
 		return HTTP_OVER_MAX_RULE_LIMIT;
+#if defined(RTCONFIG_VPN_FUSION)
 	index = _get_new_vpnc_index();
 	if(index == 0)
 		return HTTP_OVER_MAX_RULE_LIMIT;
+#endif
 	for(idx = 0; idx < WG_CLIENT_MAX; idx++){
 		if(vpn_client[idx] == 0){
 			snprintf(prefix, sizeof(prefix), "wgc%d_", idx + 1);
