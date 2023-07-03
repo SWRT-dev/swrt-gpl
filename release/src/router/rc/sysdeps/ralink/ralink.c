@@ -65,6 +65,8 @@ typedef struct {
 
 int g_wsc_configured = 0;
 int g_isEnrollee[MAX_NR_WL_IF] = { 0, };
+static int pap_channel = 0;
+static int apcli_status = 0;
 
 int getCountryRegion5G(const char *countryCode, int *warning, int IEEE80211H);
 
@@ -6522,6 +6524,42 @@ void config_mssid_isolate(char *ifname, int vif)
 			dbg("%s: %s doesn't exist!\n", __func__, path);
 		}
 	}
+}
+
+int get_wlc_func_enable(const char *ifname)
+{
+	struct iwreq wrq;
+	char data[16];
+	memset(data, 0x00, sizeof(data));
+	wrq.u.data.length = sizeof(data);
+	wrq.u.data.pointer = (caddr_t) data;
+	wrq.u.data.flags = ASUS_SUBCMD_GETAPCLIENABLE;
+
+	if(wl_ioctl(ifname, RTPRIV_IOCTL_ASUSCMD, &wrq) >= 0)
+		return atoi(data);
+	dbg("errors in getting %s ASUS_SUBCMD_GETAPCLIENABLE result\n", ifname);
+	return 0;
+}
+
+void wlcconnect_sig_handle(int sig)
+{
+	int wlc_band = nvram_get_int("wlc_band");
+	if(sig == SIGCONT){
+		if(pap_channel == -1 || !apcli_status)
+			sleep(5);
+		else{
+			doSystem("iwpriv %s set Channel=%d", get_staifname(wlc_band), pap_channel);
+			if(wlc_band)
+				doSystem("iwpriv %s set DfsCacClean=1", get_staifname(wlc_band));
+			if(!get_wlc_func_enable(get_staifname(wlc_band)))
+				doSystem("iwpriv %s set ApCliEnable=1", get_staifname(wlc_band));
+			sleep(20);
+		}
+	}else if(sig == SIGTSTP){
+		pap_channel = get_channel(wlc_band);
+		pause();
+	}else
+		dbg("%s: received an invalid signal!\n", get_staifname(wlc_band));
 }
 
 #if defined(RTCONFIG_RALINK_BSD)
