@@ -18,7 +18,7 @@ INSTALL = install
 
 OBJS = letsencrypt_config.o letsencrypt_control.o letsencrypt_utils.o
 
-ifeq ($(wildcard ./*.c),)
+ifneq ($(wildcard ./prebuild/$(BUILD_NAME)/libletsencrypt.so),)
 all:
 	cp -f ./prebuild/$(BUILD_NAME)/libletsencrypt.so .
 else
