@@ -69,6 +69,8 @@
 #define		STA_EMP_PAGE		BIT(12)
 #define		NFI_FSM_CUSTDATA	(0xe << 16)
 #define		NFI_FSM_MASK		(0xf << 16)
+#define NFI_FIFOSTA		(0x64)
+#define		WR_EMPTY		BIT(14)
 #define NFI_ADDRCNTR		(0x70)
 #define		CNTR_MASK		GENMASK(16, 12)
 #define		ADDRCNTR_SEC_SHIFT	(12)
@@ -115,6 +117,8 @@
 #define ECC_OP_ENABLE		(1)
 #define ECC_OP_DISABLE		(0)
 
+#define ACCESS_TIMING_DFL	0x30c77666
+
 enum mtk_ecc_operation {ECC_ENCODE, ECC_DECODE};
 
 struct mtk_nfc_caps {
@@ -131,6 +135,10 @@ struct mtk_nfc_nand_chip {
 
 	u32 spare_per_sector;
 	u32 oobsize_avail;
+	u32 trailing_bytes;
+	u32 ecc_spare_bytes;
+
+	bool jffs2_fixup;
 
 	int nsels;
 	u8 sels[0];

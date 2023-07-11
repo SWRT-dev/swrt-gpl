@@ -180,6 +180,7 @@
 	nandflash: flash@0 {
 		reg = <0>;
 		nand-ecc-mode = "hw";
+		mediatek,jffs2-fixup;
 		partitions {
 			compatible = "fixed-partitions";
 			#address-cells = <1>;
