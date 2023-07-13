@@ -51,6 +51,11 @@ int mtk_ecc_correct_check(struct mtd_info *mtd, struct mtk_ecc *ecc,
 	int bitflips = 0;
 	u32 i;
 
+	if(fdm_buf[0] == 0x00) {
+		dev_info(ecc->dev, "skip ecc on bad block\n");
+		return 0;
+	}
+
 	num_error_bits = (readl(ecc->regs + ECC_DECENUM)
 		>> (sector_index << 2)) & ecc->caps->err_mask;
 	if (!num_error_bits)

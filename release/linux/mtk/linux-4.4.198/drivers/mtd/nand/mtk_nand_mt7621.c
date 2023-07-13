@@ -986,11 +986,18 @@ static int mtk_nfc_read_oob_raw(struct mtd_info *mtd, struct nand_chip *chip,
 static int mtk_nfc_read_oob_std(struct mtd_info *mtd, struct nand_chip *chip,
 	int page)
 {
+	int ret;
 	struct mtk_nfc *nfc = nand_get_controller_data(chip);
 
 	chip->cmdfunc(mtd, NAND_CMD_READ0, 0, page);
 
-	return mtk_nfc_read_page_hwecc(mtd, chip, nfc->buffer, 1, page);
+	ret = mtk_nfc_read_page_hwecc(mtd, chip, nfc->buffer, 1, page);
+	if(ret) {
+		dev_err(nfc->dev, "skip ECC at page %d\n", page);
+		ret = mtk_nfc_read_oob_raw(mtd, chip, page);
+	}
+
+	return ret;
 }
 
 static inline void mtk_nfc_hw_init(struct mtk_nfc *nfc)

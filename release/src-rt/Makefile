@@ -862,22 +862,8 @@ else ifeq ($(CONFIG_RALINK),y)
 	
 	# padded kernel image size
 	@SIZE=`wc -c $(PLATFORMDIR)/zImage.img | awk '{print $$1}'`; \
-	if [ "`grep -c \"^CONFIG_ROOTFS_IN_FLASH_NO_PADDING\>\" $(LINUXDIR)/.config`" -eq 0 ] && [ "$(BUILD_NAME)" != "RT-ACRH18" ] && [ "$(BUILD_NAME)" != "4G-AC86U" ] && [ "$(BUILD_NAME)" != "RT-AX53U" ] && [ "$(BUILD_NAME)" != "4G-AX56" ] && [ "$(BUILD_NAME)" != "RT-AX54" ] && [ "$(BUILD_NAME)" != "XD4S" ] && [ "$(BUILD_NAME)" != "RT-AC85P" ] && [ "$(BUILD_NAME)" != "RT-AC85U" ] && [ "$(BUILD_NAME)" != "R6800" ] && [ "$(BUILD_NAME)" != "RM-AC2100" ] && [ "$(BUILD_NAME)" != "PGB-M1" ] && [ "$(BUILD_NAME)" != "JCG-Q10PRO" ] && [ "$(BUILD_NAME)" != "H3C-TX1801" ] && [ "$(BUILD_NAME)" != "XM-CR660X" ] && [ "$(BUILD_NAME)" != "JCG-Q20" ] ; then \
-		CONFIG_MTD_KERNEL_PART_SIZ=`grep "^CONFIG_MTD_KERNEL_PART_SIZ\>" $(LINUXDIR)/.config|sed -e "s,[^=]*=,," -e "s,^\(0x\)*,0x,"` ; \
-		MTD_KRN_PART_SIZE=`printf "%d" $${CONFIG_MTD_KERNEL_PART_SIZ}` ; \
-		PAD=`expr $${MTD_KRN_PART_SIZE} - 64 - $${SIZE}` ; \
-		echo "S: $$SIZE $${MTD_KRN_PART_SIZE} $${PAD}" ; \
-		if [ "$${PAD}" -le "0" ] ; then \
-			echo "CONFIG_MTD_KERNEL_PART_SIZ $${CONFIG_MTD_KERNEL_PART_SIZ} is smaller than " \
-				"`wc -c $(PLATFORMDIR)/zImage.img|awk '{printf "0x%x",$$1}'`. Increase it!" ; \
-			ls -l $(PLATFORMDIR)/zImage.img ; \
-			exit 1 ; \
-		fi ; \
-		dd if=/dev/zero count=1 bs=$${PAD} 2> /dev/null | tr \\000 \\377 >> $(PLATFORMDIR)/zImage.img ; \
-	else \
-		PAD=`expr 64 - $${SIZE} % 64` ; \
-		dd if=/dev/zero count=1 bs=$${PAD} 2> /dev/null | tr \\000 \\377 >> $(PLATFORMDIR)/zImage.img ; \
-	fi ; \
+	PAD=`expr 64 - $${SIZE} % 64` ; \
+	dd if=/dev/zero count=1 bs=$${PAD} 2> /dev/null | tr \\000 \\377 >> $(PLATFORMDIR)/zImage.img ; \
 	if [ "$(BUILD_NAME)" = "RT-ACRH18" ] ; then	\
 		asustools/mkits.sh -D MTK-7629-RFB -o image/MTK-7629-RFB.its -k $(PLATFORMDIR)/zImage.img -d $(DTS_DIR)/$(DTB) -C lzma -a 0x40008000 -e 0x40008000 -A arm -v 4.4.198 ; \
 		#asustools/u-boot-2014.10/tools/mkimage -f image/MTK-7629-RFB.its image/$(IMGNAME).img ; \
@@ -892,7 +878,7 @@ else ifeq ($(CONFIG_RALINK),y)
 	elif [ "$(BUILD_NAME)" = "R6800" ] ; then \
 		cp $(PLATFORMDIR)/zImage.img $(PLATFORMDIR)/kernel.img ; \
 	fi ; \
-	if [ "$(BUILD_NAME)" = "R6800" ] || [ "$(BUILD_NAME)" = "RM-AC2100" ] || [ "$(BUILD_NAME)" = "PGB-M1" ] || [ "$(BUILD_NAME)" = "JCG-Q10PRO" ] || [ "$(BUILD_NAME)" = "H3C-TX1801" ] || [ "$(BUILD_NAME)" = "XM-CR660X" ] || [ "$(BUILD_NAME)" = "JCG-Q20" ]; then \
+	if [ "$(BUILD_NAME)" = "R6800" ] || [ "$(BUILD_NAME)" = "RM-AC2100" ]; then \
 		SIZE=`wc -c $(PLATFORMDIR)/zImage.img | awk '{print $$1}'`; \
 		PAD=`expr 4194304 - $${SIZE} - 64` ; \
 		dd if=/dev/zero count=1 bs=$${PAD} 2> /dev/null | tr \\000 \\377 >> $(PLATFORMDIR)/zImage.img ; \
@@ -6256,4 +6242,3 @@ get_extendno:
 .PHONY: a b c d m Makefile allversions
 .PHONY: tags
 .PHONY: dummy
-
