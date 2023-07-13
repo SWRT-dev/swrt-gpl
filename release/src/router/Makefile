@@ -8393,6 +8393,11 @@ json-c-install: json-c
 	cd $(INSTALLDIR)/json-c/usr/lib && \
 		ln -sf libjson-c.so.5.1.0 libjson-c.so && \
 		ln -sf libjson-c.so.5.1.0 libjson-c.so.5
+#compatible with prebuilt files
+ifeq ($(RTCONFIG_RALINK_MT7621),y)
+	cd $(INSTALLDIR)/json-c/usr/lib && \
+		ln -sf libjson-c.so.5.1.0 libjson-c.so.2
+endif
 
 json-c-clean:
 	-@[ ! -f json-c/Makefile ] || $(MAKE) -C json-c clean
