@@ -1,7 +1,11 @@
 #!/bin/sh
 # use STUN to find the external IP.
 
+if [ "$(nvram get preferred_lang)" = "CN" ];then
+servers="default stun.miwifi.com:3478 stun.qq.com:3478"
+else
 servers="default stun.l.google.com:19302 stun.iptel.org stun.stunprotocol.org stun.xten.com"
+fi
 prefixes="wan0_ wan1_"
 
 which ministun >/dev/null || exit 1
