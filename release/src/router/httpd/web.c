@@ -311,11 +311,15 @@ extern int ej_wl_rate_6g(int eid, webs_t wp, int argc, char_t **argv);
 extern int ej_wl_cap_2g(int eid, webs_t wp, int argc, char **argv);
 extern int ej_wl_cap_5g(int eid, webs_t wp, int argc, char **argv);
 extern int ej_wl_cap_5g_2(int eid, webs_t wp, int argc, char **argv);
+#ifdef RTCONFIG_WIFI6E
 extern int ej_wl_cap_6g(int eid, webs_t wp, int argc, char **argv);
+#endif
 extern int ej_wl_chipnum_2g(int eid, webs_t wp, int argc, char **argv);
 extern int ej_wl_chipnum_5g(int eid, webs_t wp, int argc, char **argv);
 extern int ej_wl_chipnum_5g_2(int eid, webs_t wp, int argc, char **argv);
+#ifdef RTCONFIG_WIFI6E
 extern int ej_wl_chipnum_6g(int eid, webs_t wp, int argc, char **argv);
+#endif
 #endif
 extern int ej_nat_accel_status(int eid, webs_t wp, int argc, char_t **argv);
 #ifdef RTCONFIG_PROXYSTA
@@ -36820,11 +36824,15 @@ struct ej_handler ej_handlers[] = {
 	{ "wl_cap_2g", ej_wl_cap_2g },
 	{ "wl_cap_5g", ej_wl_cap_5g },
 	{ "wl_cap_5g_2", ej_wl_cap_5g_2 },
+#ifdef RTCONFIG_WIFI6E
 	{ "wl_cap_6g", ej_wl_cap_6g },
+#endif
 	{ "wl_chipnum_2g", ej_wl_chipnum_2g },
 	{ "wl_chipnum_5g", ej_wl_chipnum_5g },
 	{ "wl_chipnum_5g_2", ej_wl_chipnum_5g_2 },
+#ifdef RTCONFIG_WIFI6E
 	{ "wl_chipnum_6g", ej_wl_chipnum_6g },
+#endif
 #endif
 	{ "nat_accel_status", ej_nat_accel_status },
 	{ "get_wl_channel_list_2g", ej_get_wl_channel_list_2g },

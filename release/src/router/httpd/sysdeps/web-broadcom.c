@@ -2213,7 +2213,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 
 			if (chanim_enab && !wl_iovar_getbuf(ifname, "chanim_state", &bi->chanspec, sizeof(chanspec_t), retbuf, WLC_IOCTL_SMLEN)) {
 				interference = *(int*)retbuf;
-				ret += websWrite(wp, "Interference Level: %s\n", CHANIMSTR(chanim_enab, interference, "Severe", "Acceptable"));
+				retval += websWrite(wp, "Interference Level: %s\n", CHANIMSTR(chanim_enab, interference, "Severe", "Acceptable"));
 			}
 		}
 		else
@@ -3121,6 +3121,14 @@ ERROR:
 int
 ej_wl_channel_list_2g(int eid, webs_t wp, int argc, char_t **argv)
 {
+	char prefix[16], tmp[32];
+	int unit;
+	for(unit = 0; unit < num_of_wl_if(); unit++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if(WL_NBAND_2G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))))
+			return ej_wl_channel_list(eid, wp, argc, argv, unit);
+	}
+
 	return ej_wl_channel_list(eid, wp, argc, argv, 0);
 }
 
@@ -3128,6 +3136,14 @@ ej_wl_channel_list_2g(int eid, webs_t wp, int argc, char_t **argv)
 int
 ej_wl_channel_list_5g(int eid, webs_t wp, int argc, char_t **argv)
 {
+	char prefix[16], tmp[32];
+	int unit;
+	for(unit = 0; unit < num_of_wl_if(); unit++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if(WL_NBAND_5G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))))
+			return ej_wl_channel_list(eid, wp, argc, argv, unit);
+	}
+
 	return ej_wl_channel_list(eid, wp, argc, argv, 1);
 }
 #endif
@@ -3135,8 +3151,38 @@ ej_wl_channel_list_5g(int eid, webs_t wp, int argc, char_t **argv)
 int
 ej_wl_channel_list_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 {
+	char prefix[16], tmp[32];
+	int unit, count = 0;
+	for(unit = 0; unit < num_of_wl_if(); unit++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if( WL_NBAND_5G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))) ||
+		    WL_NBAND_6G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp)))) {
+			if(!count) {
+				count++;
+				continue;
+			}
+			return ej_wl_channel_list(eid, wp, argc, argv, unit);
+		}
+	}
+
 	return ej_wl_channel_list(eid, wp, argc, argv, 2);
 }
+
+#ifdef RTCONFIG_WIFI6E
+int
+ej_wl_channel_list_6g(int eid, webs_t wp, int argc, char_t **argv)
+{
+	char prefix[16], tmp[32];
+	int unit;
+	for(unit = 0; unit < num_of_wl_if(); unit++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if(WL_NBAND_6G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))))
+			return ej_wl_channel_list(eid, wp, argc, argv, unit);
+	}
+
+	return ej_wl_channel_list(eid, wp, argc, argv, 2);
+}
+#endif
 
 int
 ej_wl_chanspecs_2g(int eid, webs_t wp, int argc, char_t **argv)
@@ -3511,6 +3557,10 @@ ej_wl_rate_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 	for(i=0; i<(sizeof(wl_band_list)/sizeof(wl_band_list[0])) && wl_band_list[i][0] != '\0'; i++){
 		if(strncmp("5g2", wl_band_list[i], 3) == 0)
 			break;
+#ifdef RTCONFIG_WIFI6E
+		else if((num_of_wl_if() == 3) && (strncmp("6g1", wl_band_list[i], 3) == 0))
+			break;
+#endif
 	}
 	return ej_wl_rate(eid, wp, argc, argv, i);
 }
@@ -3565,26 +3615,66 @@ ERROR:
 int
 ej_wl_cap_2g(int eid, webs_t wp, int argc, char **argv)
 {
+	char prefix[16], tmp[32];
+	int unit;
+	for(unit = 0; unit < num_of_wl_if(); unit++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if(WL_NBAND_2G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))))
+			return ej_wl_cap(eid, wp, argc, argv, unit);
+	}
+
 	return ej_wl_cap(eid, wp, argc, argv, 0);
 }
 
 int
 ej_wl_cap_5g(int eid, webs_t wp, int argc, char **argv)
 {
+	char prefix[16], tmp[32];
+	int unit;
+	for(unit = 0; unit < num_of_wl_if(); unit++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if(WL_NBAND_5G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))))
+			return ej_wl_cap(eid, wp, argc, argv, unit);
+	}
+
 	return ej_wl_cap(eid, wp, argc, argv, 1);
 }
 
 int
 ej_wl_cap_5g_2(int eid, webs_t wp, int argc, char **argv)
 {
+	char prefix[16], tmp[32];
+	int unit, count = 0;
+	for(unit = 0; unit < num_of_wl_if(); unit++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if( WL_NBAND_5G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))) ||
+		    WL_NBAND_6G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp)))) {
+			if(!count) {
+				count++;
+				continue;
+			}
+			return ej_wl_cap(eid, wp, argc, argv, unit);
+		}
+	}
+
 	return ej_wl_cap(eid, wp, argc, argv, 2);
 }
 
+#ifdef RTCONFIG_WIFI6E
 int
 ej_wl_cap_6g(int eid, webs_t wp, int argc, char **argv)
 {
-	return ej_wl_cap(eid, wp, argc, argv, 3);
+	char prefix[16], tmp[32];
+	int unit;
+	for(unit = 0; unit < num_of_wl_if(); unit++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if(WL_NBAND_6G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))))
+			return ej_wl_cap(eid, wp, argc, argv, unit);
+	}
+
+	return ej_wl_cap(eid, wp, argc, argv, 2);
 }
+#endif
 
 static int ej_wl_chipnum(int eid, webs_t wp, int argc, char_t **argv, int unit)
 {
@@ -3631,26 +3721,66 @@ ERROR:
 int
 ej_wl_chipnum_2g(int eid, webs_t wp, int argc, char **argv)
 {
+	char prefix[16], tmp[32];
+	int unit;
+	for(unit = 0; unit < num_of_wl_if(); unit++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if(WL_NBAND_2G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))))
+			return ej_wl_chipnum(eid, wp, argc, argv, unit);
+	}
+
 	return ej_wl_chipnum(eid, wp, argc, argv, 0);
 }
 
 int
 ej_wl_chipnum_5g(int eid, webs_t wp, int argc, char **argv)
 {
+	char prefix[16], tmp[32];
+	int unit;
+	for(unit = 0; unit < num_of_wl_if(); unit++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if(WL_NBAND_5G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))))
+			return ej_wl_chipnum(eid, wp, argc, argv, unit);
+	}
+
 	return ej_wl_chipnum(eid, wp, argc, argv, 1);
 }
 
 int
 ej_wl_chipnum_5g_2(int eid, webs_t wp, int argc, char **argv)
 {
+	char prefix[16], tmp[32];
+	int unit, count = 0;
+	for(unit = 0; unit < num_of_wl_if(); unit++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if( WL_NBAND_5G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))) ||
+		    WL_NBAND_6G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp)))) {
+			if(!count) {
+				count++;
+				continue;
+			}
+			return ej_wl_chipnum(eid, wp, argc, argv, unit);
+		}
+	}
+
 	return ej_wl_chipnum(eid, wp, argc, argv, 2);
 }
 
+#ifdef RTCONFIG_WIFI6E
 int
 ej_wl_chipnum_6g(int eid, webs_t wp, int argc, char **argv)
 {
-	return ej_wl_chipnum(eid, wp, argc, argv, 3);
+	char prefix[16], tmp[32];
+	int unit;
+	for(unit = 0; unit < num_of_wl_if(); unit++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if(WL_NBAND_6G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))))
+			return ej_wl_chipnum(eid, wp, argc, argv, unit);
+	}
+
+	return ej_wl_chipnum(eid, wp, argc, argv, 2);
 }
+#endif
 
 static int wps_stop_count = 0;
 
@@ -5371,7 +5501,7 @@ exit:
 // MAC/associated/authorized
 int ej_wl_auth_list(int eid, webs_t wp, int argc, char_t **argv) {
 	int unit = 0;
-	char tmp[128], prefix[] = "wlXXXXXXXXXX_";
+	char tmp[128], prefix[] = "wlXXXXXXXXXX_", prefix2[] = "wlXXXXXXXXXX_";
 	char ifname[IFNAMSIZ] = { 0 };
 	struct maclist *auth = NULL;
 	int mac_list_size;
@@ -5412,7 +5542,13 @@ int ej_wl_auth_list(int eid, webs_t wp, int argc, char_t **argv) {
 		}
 #endif
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		strlcpy(ifname, nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp))), sizeof(ifname));
+		snprintf(prefix2, sizeof(prefix2), "wl%d.%d_", unit, 1);
+		if ((repeater_mode() || psr_mode()) &&
+			(unit == nvram_get_int("wlc_band")) &&
+			nvram_match(strlcat_r(prefix2, "bss_enabled", tmp, sizeof(tmp)), "1"))
+			strlcpy(ifname, nvram_safe_get(strlcat_r(prefix2, "ifname", tmp, sizeof(tmp))), sizeof(ifname));
+		else
+			strlcpy(ifname, nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp))), sizeof(ifname));
 
 		memset(auth, 0, mac_list_size);
 		//memset(wme, 0, mac_list_size);
