@@ -693,11 +693,11 @@ else
 endif
 
 dhd_sysdep:
-	if [ "$(BCM7)" == "y" ]; then \
-		cp -f $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/dhd_pcie_43602.o $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/dhd_pcie.o ; \
-	else \
-		cp -f $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/dhd_pcie_4366.o $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/dhd_pcie.o ; \
-	fi; 
+ifeq ($(BCM7),y)
+	-cp -f $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/dhd_pcie_43602.o $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/dhd_pcie.o
+else
+	-cp -f $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/dhd_pcie_4366.o $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/dhd_pcie.o
+endif
 
 ifeq ($(HND_ROUTER),y)
 all: cfe_sysdep wl_sysdep rt_ver mkenv prebuild_checks all_postcheck1
@@ -6251,4 +6251,3 @@ get_extendno:
 .PHONY: a b c d m Makefile allversions
 .PHONY: tags
 .PHONY: dummy
-

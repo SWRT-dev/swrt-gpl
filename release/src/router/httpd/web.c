@@ -35161,7 +35161,7 @@ static int filter_5g_channel_by_bw(struct json_object *output_channel_array, str
 	}else{
 		for (i = 0; i < json_object_array_length(channel_array); i++){
 			channel_tmp = json_object_array_get_idx(channel_array, i);
-			json_object_array_add(output_channel_array, channel_tmp);
+			json_object_array_add(output_channel_array, json_object_new_string(json_object_get_string(channel_tmp)));
 		}
 	}
 
@@ -35184,7 +35184,7 @@ static int filter_5g_channel_by_bw(struct json_object *output_channel_array, str
 				del=0;
 		}
 		if(!del){
-			json_object_array_add(output_channel_array, channel_tmp);
+			json_object_array_add(output_channel_array, json_object_new_string(json_object_get_string(channel_tmp)));
 		}
 	}
 
@@ -35220,7 +35220,7 @@ static int filter_6g_channel_by_bw(struct json_object *output_channel_array, str
 	}else{
 		for (i = 0; i < json_object_array_length(channel_array); i++){
 			channel_tmp = json_object_array_get_idx(channel_array, i);
-			json_object_array_add(output_channel_array, channel_tmp);
+			json_object_array_add(output_channel_array, json_object_new_string(json_object_get_string(channel_tmp)));
 		}
 	}
 
@@ -35243,7 +35243,7 @@ static int filter_6g_channel_by_bw(struct json_object *output_channel_array, str
 				del=0;
 		}
 		if(!del){
-			json_object_array_add(output_channel_array, channel_tmp);
+			json_object_array_add(output_channel_array, json_object_new_string(json_object_get_string(channel_tmp)));
 		}
 	}
 	dbg("%d: output_channel_array: %s\n", bw, json_object_to_json_string(output_channel_array));
@@ -35450,10 +35450,10 @@ ej_get_wl_channel_list(int eid, webs_t wp, int argc, char **argv, int unit) {
 				if(cfg_rejoin > 0 && avlbl_bw40)
 					strlcpy(chanspec_auto_buf, chanspec_buf, sizeof(chanspec_auto_buf));
 #endif
-				json_object_array_add(chan_40m_array, chan_tmp);
+				json_object_array_add(chan_40m_array, json_object_new_string(json_object_get_string(chan_tmp)));
 				json_object_array_add(chanspec_40m_array, json_object_new_string(chanspec_buf));
 				if(unit == 0){
-					json_object_array_add(chan_auto_array, chan_tmp);
+					json_object_array_add(chan_auto_array, json_object_new_string(json_object_get_string(chan_tmp)));
 					json_object_array_add(chanspec_auto_array, json_object_new_string(chanspec_buf));
 				}
 			}
@@ -35474,7 +35474,7 @@ ej_get_wl_channel_list(int eid, webs_t wp, int argc, char **argv, int unit) {
 					if(avlbl_bw40)
 						strlcpy(chanspec_auto_buf, chanspec_buf, sizeof(chanspec_auto_buf));
 #endif
-					json_object_array_add(chan_40m_array, chan_tmp);
+					json_object_array_add(chan_40m_array, json_object_new_string(json_object_get_string(chan_tmp)));
 					json_object_array_add(chanspec_40m_array, json_object_new_string(chanspec_buf));
 				}
 			}
@@ -35493,10 +35493,10 @@ ej_get_wl_channel_list(int eid, webs_t wp, int argc, char **argv, int unit) {
 					if(avlbl_bw40)
 						strlcpy(chanspec_auto_buf, chanspec_buf, sizeof(chanspec_auto_buf));
 #endif
-					json_object_array_add(chan_40m_array, chan_tmp);
+					json_object_array_add(chan_40m_array, json_object_new_string(json_object_get_string(chan_tmp)));
 					json_object_array_add(chanspec_40m_array, json_object_new_string(chanspec_buf));
 					if(unit == 0){
-						json_object_array_add(chan_auto_array, chan_tmp);
+						json_object_array_add(chan_auto_array, json_object_new_string(json_object_get_string(chan_tmp)));
 						json_object_array_add(chanspec_auto_array, json_object_new_string(chanspec_buf));
 					}
 				}
@@ -35521,7 +35521,7 @@ ej_get_wl_channel_list(int eid, webs_t wp, int argc, char **argv, int unit) {
 				if(avlbl_bw80)
 					strlcpy(chanspec_auto_buf, chanspec_buf, sizeof(chanspec_auto_buf));
 #endif
-				json_object_array_add(chan_80m_array, chan_tmp);
+				json_object_array_add(chan_80m_array, json_object_new_string(json_object_get_string(chan_tmp)));
 				json_object_array_add(chanspec_80m_array, json_object_new_string(chanspec_buf));
 			}
 		}
@@ -35542,13 +35542,13 @@ ej_get_wl_channel_list(int eid, webs_t wp, int argc, char **argv, int unit) {
 				if(avlbl_bw160)
 					strlcpy(chanspec_auto_buf, chanspec_buf, sizeof(chanspec_auto_buf));
 #endif
-				json_object_array_add(chan_160m_array, chan_tmp);
+				json_object_array_add(chan_160m_array, json_object_new_string(json_object_get_string(chan_tmp)));
 				json_object_array_add(chanspec_160m_array, json_object_new_string(chanspec_buf));
 			}
 		}
 
 		if((unit == 0 && strpbrk(chanspec_buf, "lu") == NULL) || unit > 0){
-			json_object_array_add(chan_auto_array, chan_tmp);
+			json_object_array_add(chan_auto_array, json_object_new_string(json_object_get_string(chan_tmp)));
 #ifdef RTCONFIG_CFGSYNC
 			if(cfg_rejoin > 0)
 				json_object_array_add(chanspec_auto_array, json_object_new_string(chanspec_auto_buf));
@@ -35607,11 +35607,11 @@ ej_get_wl_channel_list(int eid, webs_t wp, int argc, char **argv, int unit) {
 	if(filter_channel_40)	json_object_put(filter_channel_40);
 	if(filter_channel_80)	json_object_put(filter_channel_80);
 	if(filter_channel_160)	json_object_put(filter_channel_160);
-	if(chan_20m_obj)	json_object_put(chan_20m_obj);
-	if(chan_40m_obj)	json_object_put(chan_40m_obj);
-	if(chan_80m_obj)	json_object_put(chan_80m_obj);
-	if(chan_160m_obj) 	json_object_put(chan_160m_obj);
-	if(chan_auto_obj) 	json_object_put(chan_auto_obj);
+//	if(chan_20m_obj)	json_object_put(chan_20m_obj);
+//	if(chan_40m_obj)	json_object_put(chan_40m_obj);
+//	if(chan_80m_obj)	json_object_put(chan_80m_obj);
+//	if(chan_160m_obj) 	json_object_put(chan_160m_obj);
+//	if(chan_auto_obj) 	json_object_put(chan_auto_obj);
 	if(chanspec_obj)	json_object_put(chanspec_obj);
 #ifdef RTCONFIG_CFGSYNC
 	if(cfg_chan_20m_array) json_object_put(cfg_chan_20m_array);
