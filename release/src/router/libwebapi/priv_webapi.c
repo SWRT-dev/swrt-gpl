@@ -668,9 +668,9 @@ int get_ui_support_info(struct json_object *ui_support_obj)
 	json_object_object_add(ui_support_obj, "PC_REWARD", json_object_new_int(1));
 #endif
 	json_object_object_add(ui_support_obj, "MaxRule_extend_limit", json_object_new_int(64));
+#endif
 	json_object_object_add(ui_support_obj, "MaxLen_http_name", json_object_new_int(32));
 	json_object_object_add(ui_support_obj, "MaxLen_http_passwd", json_object_new_int(32));
-#endif
 	json_object_object_add(ui_support_obj, "CHPASS", json_object_new_int(1));
 	json_object_object_add(ui_support_obj, "MaxRule_VPN_FUSION_Conn", json_object_new_int(nvram_get_int("vpnc_max_conn")));
 #if defined(RTCONFIG_AMAS)
