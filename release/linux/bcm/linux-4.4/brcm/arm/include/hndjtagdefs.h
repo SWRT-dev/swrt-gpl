@@ -1,9 +1,9 @@
 /*
  * Definitiosn for Jtag taps in HND chips.
  *
- * $Id: hndjtagdefs.h 400891 2013-05-07 23:25:36Z $
+ * $Id: hndjtagdefs.h 523133 2014-12-27 05:50:30Z $
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,6 +16,9 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
  */
 
 #ifndef	_HNDJTAGDEFS_H
@@ -145,6 +148,7 @@
 #define NS_DEVID11		0x002BF17F
 #define NS_DEVID12		0x002C017F
 #define NS_DEVID13		0x0031E17F
+#define NS_DEVID47094		0x004FF17F
 #define NS_DEVID47082	0x0032D17F
 
 #define	IDC_MFG_MASK		0x00000fff

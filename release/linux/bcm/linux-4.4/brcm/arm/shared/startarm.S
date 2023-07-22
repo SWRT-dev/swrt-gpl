@@ -1,7 +1,7 @@
 /*
  * RTE ARM run-time initialization and first level exception handling.
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,10 +15,12 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
  * $Id: startarm.S,v 1.91 2010-11-17 22:55:41 $
  */
 
-	
 #ifndef	__arm__
 #error __arm__ is NOT defined
 #endif
@@ -35,7 +37,7 @@
 /* Debug macro - write a number to memory - use it with caution,
  *  it changes r0 and r1 registers.
  */
-#if defined(BCMDBG)
+#ifdef BCMDBG_BOOT
 #define TRACE(x) \
 	ldr	r0,=x; \
 	ldr	r1,=__watermark; \
@@ -74,7 +76,15 @@
 #elif defined(__ARM_ARCH_7M__)
 #include "startarm-cm3.S"
 #elif defined(__ARM_ARCH_7A__)
+#if defined(CA7)
+#include "startarm-ca7.S"
+#else
+#if defined(_CFE_) || defined(_CFEZ_)
+#include "startarm-ca9-cfe.S"
+#else
 #include "startarm-ca9.S"
+#endif
+#endif
 #elif defined(__ARM_ARCH_4T__)
 #include "startarm-7s.S"
 #else

@@ -1,7 +1,7 @@
 /*
  * Low-Level PCI and SI support for BCM47xx
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: hndpci.c 502092 2014-09-11 21:12:39Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: hndpci.c 523160 2014-12-27 23:04:01Z $
  */
 
 #include <bcm_cfg.h>
@@ -545,7 +548,6 @@ si_write_config(si_t *sih, uint bus, uint dev, uint func, uint off, void *buf, i
 	uint coreidx;
 	void *regs;
 	pci_config_regs *cfg;
-	osl_t *osh;
 	si_bar_cfg_t *bar;
 
 	if (dev >= SI_MAXCORES || func >= MAXFUNCS || (off + len) > sizeof(pci_config_regs))
@@ -556,8 +558,6 @@ si_write_config(si_t *sih, uint bus, uint dev, uint func, uint off, void *buf, i
 
 	ASSERT(ISALIGNED(off, len));
 	ASSERT(ISALIGNED(buf, len));
-
-	osh = si_osh(sih);
 
 	if (cfg->header_type == PCI_HEADER_BRIDGE) {
 		uint busid = 0;
@@ -727,32 +727,20 @@ BCMATTACHFN(hndpci_init_pci)(si_t *sih, uint coreunit)
 		if (sih->chipst & CST4706_PCIE1_DISABLE) {
 			pci_disabled[coreunit] = TRUE;
 			host = 0;
-			PCI_MSG(("PCIE port %d is disabled\n", port));
+			PCI_MSG(("PCIE port %d is disabled\n", coreunit));
 		}
 	}
 
 	boardflags = (uint32)getintvar(NULL, "boardflags");
-	printf("boardflags are %X\n", boardflags);
-	int boardnum = (uint32)getintvar(NULL, "boardnum");
-	char *boardtype = nvram_safe_get("boardtype");
-	char *boardrev = nvram_safe_get("boardrev");
 
-	if ((boardnum == 1 || boardnum == 3500)
-	    && !strcmp(boardtype, "0x04CF")
-	    && (!strcmp(boardrev, "0x1213")
-		|| !strcmp(boardrev, "02"))) {
-		pci_disabled[coreunit] = TRUE;
-		printf("netgear wnr3500 quirk required\n");
-		host = 0;
-	} else {
-    	/*
+	/*
 	 * The NOPCI boardflag indicates we should not touch the PCI core,
 	 * it may not be bonded out or the pins may be floating.
 	 * The 200-pin BCM4712 package does not bond out PCI, and routers
 	 * based on it did not use the boardflag.
 	 */
 	if ((boardflags & BFL_NOPCI) ||
-	    ((chip == BCM4712_CHIP_ID) &&
+	    ((CHIPID(chip) == BCM4712_CHIP_ID) &&
 	     ((chippkg == BCM4712SMALL_PKG_ID) || (chippkg == BCM4712MID_PKG_ID)))) {
 		pci_disabled[coreunit] = TRUE;
 		host = 0;
@@ -765,7 +753,6 @@ BCMATTACHFN(hndpci_init_pci)(si_t *sih, uint coreunit)
 		 * Trap handler must be implemented to support this like hndrte_mips.c
 		 */
 		host = !BUSPROBE(val, (pci ? &pci->control : &pcie->control));
-	}
 	}
 
 	if (!host) {
@@ -783,8 +770,8 @@ BCMATTACHFN(hndpci_init_pci)(si_t *sih, uint coreunit)
 		/* On 4716 (and other AXI chips?) make sure the slave wrapper
 		 * is also put in reset.
 		 */
-		if ((chip == BCM4716_CHIP_ID) || (chip == BCM4748_CHIP_ID) ||
-			(chip == BCM4706_CHIP_ID)) {
+		if ((CHIPID(chip) == BCM4716_CHIP_ID) || (CHIPID(chip) == BCM4748_CHIP_ID) ||
+			(CHIPID(chip) == BCM4706_CHIP_ID)) {
 			uint32 *resetctrl;
 
 			resetctrl = (uint32 *)OSL_UNCACHED(SI_WRAP_BASE + (9 * SI_CORE_SIZE) +
@@ -797,7 +784,7 @@ BCMATTACHFN(hndpci_init_pci)(si_t *sih, uint coreunit)
 		printf("PCI: Initializing host\n");
 
 		/* Disable PCI SBReqeustTimeout for BCM4785 rev. < 2 */
-		if (chip == BCM4785_CHIP_ID && chiprev < 2) {
+		if (CHIPID(chip) == BCM4785_CHIP_ID && CHIPREV(chiprev) < 2) {
 			sbconfig_t *sb;
 			sb = (sbconfig_t *)((ulong) pci + SBCONFIGOFF);
 			AND_REG(osh, &sb->sbimconfiglow, ~0x00000070);
@@ -857,10 +844,10 @@ BCMATTACHFN(hndpci_init_pci)(si_t *sih, uint coreunit)
 			 * as mips can't generate 64-bit address on the
 			 * backplane.
 			 */
-			if ((chip == BCM4716_CHIP_ID) || (chip == BCM4748_CHIP_ID))
+			if ((CHIPID(chip) == BCM4716_CHIP_ID) || (CHIPID(chip) == BCM4748_CHIP_ID))
 				W_REG(osh, &pcie->sbtopcie0, SBTOPCIE_MEM |
 					(pci_membase[coreunit] = SI_PCI_MEM));
-			else if (chip == BCM4706_CHIP_ID) {
+			else if (CHIPID(chip) == BCM4706_CHIP_ID) {
 				if (coreunit == 0) {
 					pci_membase[coreunit] = SI_PCI_MEM;
 					pci_membase_1G[coreunit] = SI_PCIE_DMA_H32;
@@ -931,7 +918,7 @@ BCMATTACHFN(hndpci_init_pci)(si_t *sih, uint coreunit)
 			}
 		}
 
-		if ((chip == BCM4706_CHIP_ID) || (chip == BCM4716_CHIP_ID)) {
+		if ((CHIPID(chip) == BCM4706_CHIP_ID) || (CHIPID(chip) == BCM4716_CHIP_ID)) {
 			uint16 val16;
 			hndpci_read_config(sih, bus, pci_hbslot, 0, PCI_CFG_DEVCTRL,
 			                   &val16, sizeof(val16));
@@ -1094,7 +1081,6 @@ BCMATTACHFN(hndpci_init_cores)(si_t *sih)
 	pci_config_regs *cfg, *pci;
 	si_bar_cfg_t *bar;
 	void *regs;
-	osl_t *osh;
 	uint16 vendor, device;
 	uint16 coreid;
 	uint8 class, subclass, progif;
@@ -1104,8 +1090,6 @@ BCMATTACHFN(hndpci_init_cores)(si_t *sih)
 
 	chiprev = sih->chiprev;
 	coreidx = si_coreidx(sih);
-
-	osh = si_osh(sih);
 
 	/* Scan the SI bus */
 	bzero(si_config_regs, sizeof(si_config_regs));

@@ -5,7 +5,7 @@
  *
  * Definitions subject to change without notice.
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -19,7 +19,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: dhdioctl.h 437388 2013-11-18 20:11:38Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: dhdioctl.h 649388 2016-07-15 22:54:42Z $
  */
 
 #ifndef _dhdioctl_h_
@@ -48,24 +51,6 @@ typedef struct dhd_ioctl {
 	uint driver;	/* to identify target driver */
 } dhd_ioctl_t;
 
-struct dhdnl_ioctl {
-	uint cmd;	/* common ioctl definition */
-	uint len;	/* attached buffer length */
-	uint offset;	/* user buffer offset */
-	uint set;	/* get or set request optional */
-	uint magic;	/* magic number for verification */
-};
-
-enum dhdnl_attrs {
-	DHD_NLATTR_UNSPEC,
-
-	DHD_NLATTR_LEN,
-	DHD_NLATTR_DATA,
-
-	__DHD_NLATTR_AFTER_LAST,
-	DHD_NLATTR_MAX = __DHD_NLATTR_AFTER_LAST - 1
-};
-
 /* Underlying BUS definition */
 enum {
 	BUS_TYPE_USB = 0, /* for USB dongles */
@@ -79,7 +64,16 @@ enum {
 /* bump this number if you change the ioctl interface */
 #define DHD_IOCTL_VERSION	1
 
-#define	DHD_IOCTL_MAXLEN	8192		/* max length ioctl buffer required */
+/*
+ * Increase the DHD_IOCTL_MAXLEN to 16K for supporting download of NVRAM files of size
+ * > 8K. In the existing implementation when NVRAM is to be downloaded via the "vars"
+ * DHD IOVAR, the NVRAM is copied to the DHD Driver memory. Later on when "dwnldstate" is
+ * invoked with FALSE option, the NVRAM gets copied from the DHD driver to the Dongle
+ * memory. The simple way to support this feature without modifying the DHD application,
+ * driver logic is to increase the DHD_IOCTL_MAXLEN size. This macro defines the "size"
+ * of the buffer in which data is exchanged between the DHD App and DHD driver.
+ */
+#define	DHD_IOCTL_MAXLEN	(16384)	/* max length ioctl buffer required */
 #define	DHD_IOCTL_SMLEN		256		/* "small" length ioctl buffer required */
 
 /* common ioctl definitions */
@@ -102,7 +96,7 @@ enum {
 #define DHD_GLOM_VAL	0x0400
 #define DHD_EVENT_VAL	0x0800
 #define DHD_BTA_VAL	0x1000
-#if defined(NDIS) && (NDISVER >= 0x0630) && 0
+#if defined(NDIS) && (NDISVER >= 0x0630) && defined(BCMDONGLEHOST)
 #define DHD_SCAN_VAL	0x2000
 #else
 #define DHD_ISCAN_VAL	0x2000
@@ -113,6 +107,7 @@ enum {
 #define DHD_NOCHECKDIED_VAL		0x20000 /* UTF WAR */
 #define DHD_WL_VAL2		0x40000
 #define DHD_PNO_VAL		0x80000
+#define DHD_MSGTRACE_VAL	0x100000
 
 #ifdef SDTEST
 /* For pktgen iovar */
@@ -148,6 +143,31 @@ typedef struct dhd_pktgen {
 #define DHD_IDLE_ACTIVE	0	/* Do not request any SD clock change when idle */
 #define DHD_IDLE_STOP   (-1)	/* Request SD clock be stopped (and use SD1 mode) */
 
+
+enum dhd_maclist_xtlv_type {
+	DHD_MACLIST_XTLV_R = 0x1,
+	DHD_MACLIST_XTLV_X = 0x2,
+	DHD_SVMPLIST_XTLV = 0x3
+};
+
+typedef struct _dhd_maclist_t {
+	uint16 version;		/* Version */
+	uint16 bytes_len;	/* Total bytes length of lists, XTLV headers and paddings */
+	uint8 plist[1];		/* Pointer to the first list */
+} dhd_maclist_t;
+
+typedef struct _dhd_pd11regs_param {
+	uint16 start_idx;
+	uint8 verbose;
+	uint8 pad;
+	uint8 plist[1];
+} dhd_pd11regs_param;
+
+typedef struct _dhd_pd11regs_buf {
+	uint16 idx;
+	uint8 pad[2];
+	uint8 pbuf[1];
+} dhd_pd11regs_buf;
 
 /* require default structure packing */
 #include <packed_section_end.h>

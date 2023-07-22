@@ -1,7 +1,7 @@
 /*
  * BCM43XX PCI/E core sw API definitions.
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: nicpci.h 451514 2014-01-27 00:24:19Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: nicpci.h 523133 2014-12-27 05:50:30Z $
  */
 
 #ifndef	_NICPCI_H

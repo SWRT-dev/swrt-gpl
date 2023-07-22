@@ -2,7 +2,7 @@
  * Generic Broadcom Home Networking Division (HND) PIO engine HW interface
  * This supports the following chips: BCM42xx, 44xx, 47xx .
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,10 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- * $Id: sbhndpio.h 241182 2011-02-17 21:50:03Z $
+ *
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ * $Id: sbhndpio.h 523133 2014-12-27 05:50:30Z $
  */
 
 #ifndef	_sbhndpio_h_

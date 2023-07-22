@@ -1,7 +1,7 @@
 /*
  * Broadcom SiliconBackplane ARM definitions
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: sbhndarm.h 557514 2015-05-19 07:37:27Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: sbhndarm.h 530150 2015-01-29 08:43:40Z $
  */
 
 #ifndef	_sbhndarm_h_
@@ -37,19 +40,13 @@
 #define ACC_CLOCKRATIO_MASK	(0xF00)
 #define ACC_CLOCKMODE_SHIFT	(12)
 #define ACC_CLOCKMODE_MASK	(0x7000)
-#define ACC_NOTSLEEPCLKREQ0	3
-#define ACC_NOTSLEEPCLKREQ1	18
-
 
 #define ACC_CLOCKRATIO_1_TO_1	(0)
 #define ACC_CLOCKRATIO_2_TO_1	(0x4)
 
-#define ACC_CLOCKMODE_SAME	(0)	/* BP and CPU clock are the same */
-#define ACC_CLOCKMODE_ASYNC	(1)	/* BP and CPU clock are asynchronous */
-#define ACC_CLOCKMODE_SYNCH	(2)	/* BP and CPU clock are synch, ratio 1:1 or 1:2 */
-
-/* Request ALP on backplane bit 3 and 18 */
-#define ACC_REQALP			((1<<ACC_NOTSLEEPCLKREQ0) | (1<<ACC_NOTSLEEPCLKREQ1))
+#define ACC_CLOCKMODE_SAME	(0)	/**< BP and CPU clock are the same */
+#define ACC_CLOCKMODE_ASYNC	(1)	/**< BP and CPU clock are asynchronous */
+#define ACC_CLOCKMODE_SYNCH	(2)	/**< BP and CPU clock are synch, ratio 1:1 or 1:2 */
 
 /* arm resetlog */
 #define SBRESETLOG		0x1
@@ -65,25 +62,25 @@
 #if defined(__ARM_ARCH_4T__)
 /* arm7tdmi-s */
 /* backplane related stuff */
-#define ARM_CORE_ID		ARM7S_CORE_ID	/* arm coreid */
-#define SI_ARM_ROM		SI_ARM7S_ROM	/* ROM backplane/system address */
-#define SI_ARM_SRAM2		SI_ARM7S_SRAM2	/* RAM backplane address when remap is 1 or 2 */
+#define ARM_CORE_ID		ARM7S_CORE_ID	/**< arm coreid */
+#define SI_ARM_ROM		SI_ARM7S_ROM	/**< ROM backplane/system address */
+#define SI_ARM_SRAM2		SI_ARM7S_SRAM2	/**< RAM backplane address when remap is 1 or 2 */
 #elif defined(__ARM_ARCH_7M__)
 /* cortex-m3 */
 /* backplane related stuff */
-#define ARM_CORE_ID		ARMCM3_CORE_ID	/* arm coreid */
-#define SI_ARM_ROM		SI_ARMCM3_ROM	/* ROM backplane/system address */
-#define SI_ARM_SRAM2		SI_ARMCM3_SRAM2	/* RAM backplane address when remap is 1 or 2 */
+#define ARM_CORE_ID		ARMCM3_CORE_ID	/**< arm coreid */
+#define SI_ARM_ROM		SI_ARMCM3_ROM	/**< ROM backplane/system address */
+#define SI_ARM_SRAM2		SI_ARMCM3_SRAM2	/**< RAM backplane address when remap is 1 or 2 */
 /* core registers offsets */
-#define ARMCM3_CYCLECNT		0x90		/* Cortex-M3 core registers offsets */
+#define ARMCM3_CYCLECNT		0x90		/**< Cortex-M3 core registers offsets */
 #define ARMCM3_INTTIMER		0x94
 #define ARMCM3_INTMASK		0x98
 #define ARMCM3_INTSTATUS	0x9c
 /* interrupt/exception */
-#define ARMCM3_NUMINTS		16		/* # of external interrupts */
-#define ARMCM3_INTALL		((1 << ARMCM3_NUMINTS) - 1)	/* Interrupt mask */
-#define ARMCM3_SHARED_INT	0		/* Interrupt shared by multiple cores */
-#define ARMCM3_INT(i)		(1 << (i))	/* Individual interrupt enable/disable */
+#define ARMCM3_NUMINTS		16		/**< # of external interrupts */
+#define ARMCM3_INTALL		((1 << ARMCM3_NUMINTS) - 1)	/**< Interrupt mask */
+#define ARMCM3_SHARED_INT	0		/**< Interrupt shared by multiple cores */
+#define ARMCM3_INT(i)		(1 << (i))	/**< Individual interrupt enable/disable */
 /* intmask/intstatus bits */
 #define ARMCM3_INTMASK_TIMER	0x1
 #define ARMCM3_INTMASK_SYSRESET	0x4
@@ -111,9 +108,9 @@
 #elif defined(__ARM_ARCH_7R__)
 /* cortex-r4 */
 /* backplane related stuff */
-#define ARM_CORE_ID		ARMCR4_CORE_ID	/* arm coreid */
-#define SI_ARM_ROM		SI_ARMCR4_ROM	/* ROM backplane/system address */
-#define SI_ARM_SRAM2		0x0	/* In the cr4 the RAM is just not available
+#define ARM_CORE_ID		ARMCR4_CORE_ID	/**< arm coreid */
+#define SI_ARM_ROM		SI_ARMCR4_ROM	/**< ROM backplane/system address */
+#define SI_ARM_SRAM2		0x0	/**< In the cr4 the RAM is just not available
 					 * when remap is 1
 					 */
 
@@ -186,9 +183,16 @@
 #define CHIP_TCMPROTENAB(sih)	(si_arm_sflags(sih) & SISF_TCMPROT)
 
 #elif defined(__ARM_ARCH_7A__)
+
+#if defined(CA7)
+/* backplane related stuff */
+#define ARM_CORE_ID		ARMCA7_CORE_ID
+#define SI_ARM_ROM		SI_ARMCA7_ROM	/**< ROM backplane/system address */
+
+#else
 /* backplane related stuff */
 #define ARM_CORE_ID		ARMCA9_CORE_ID	/* arm coreid */
-
+#endif /* __ARM_ARCH_7A__ */
 #else	/* !__ARM_ARCH_4T__ && !__ARM_ARCH_7M__ && !__ARM_ARCH_7R__ */
 #error Unrecognized ARM Architecture
 #endif	/* !__ARM_ARCH_4T__ && !__ARM_ARCH_7M__ && !__ARM_ARCH_7R__ */

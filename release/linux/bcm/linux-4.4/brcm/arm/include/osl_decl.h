@@ -1,7 +1,7 @@
 /*
  * osl forward declarations
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,6 +15,9 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
  * $Id$
  */
 
@@ -24,5 +27,5 @@
 /* osl handle type forward declaration */
 typedef struct osl_info osl_t;
 typedef struct osl_dmainfo osldma_t;
-
+extern unsigned int lmtest; /* low memory test */
 #endif

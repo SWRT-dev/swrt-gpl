@@ -1,7 +1,7 @@
 /*
  * BCM43XX Sonics SiliconBackplane PCMCIA core hardware definitions.
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: sbpcmcia.h 521456 2014-12-17 21:28:27Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: sbpcmcia.h 619121 2016-02-15 09:03:51Z $
  */
 
 #ifndef	_SBPCMCIA_H
@@ -351,9 +354,24 @@
 
 #define HNBU_MCS5Gx1PO		0x8c
 #define HNBU_ACPPR_SB8080_PO		0x8d
+#define HNBU_TXBFRPCALS			0x8f	/* phy txbf rpcalvars */
 
-#define HNBU_ACPA_160				0x8e	/* ACPHY PA parameters for 160 */
-#define HNBU_ACPA_80P80				0x8f	/* ACPHY PA parameters for 80p80 */
+#define HNBU_ACPA_4X4C0	0x91
+#define HNBU_ACPA_4X4C1	0x92
+#define HNBU_ACPA_4X4C2	0x93
+#define HNBU_ACPA_4X4C3	0x94
+#define HNBU_ACPA_BW20_4X4C0	0x95
+#define HNBU_ACPA_BW40_4X4C0	0x96
+#define HNBU_ACPA_BW80_4X4C0	0x97
+#define HNBU_ACPA_BW20_4X4C1	0x98
+#define HNBU_ACPA_BW40_4X4C1	0x99
+#define HNBU_ACPA_BW80_4X4C1	0x9a
+#define HNBU_ACPA_BW20_4X4C2	0x9b
+#define HNBU_ACPA_BW40_4X4C2	0x9c
+#define HNBU_ACPA_BW80_4X4C2	0x9d
+#define HNBU_ACPA_BW20_4X4C3	0x9e
+#define HNBU_ACPA_BW40_4X4C3	0x9f
+#define HNBU_ACPA_BW80_4X4C3	0xa0
 
 
 #endif /* !defined(LINUX_POSTMOGRIFY_REMOVAL) */

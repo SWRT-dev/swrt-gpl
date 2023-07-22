@@ -35,7 +35,7 @@
  *              and instrumentation on top of the heap, without modifying the heap
  *              allocation implementation.
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -49,7 +49,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: bcm_mpool_pub.h 527455 2015-01-19 06:04:33Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: bcm_mpool_pub.h 514727 2014-11-12 03:02:48Z $
  */
 
 #ifndef _BCM_MPOOL_PUB_H
@@ -334,7 +337,7 @@ int bcm_mp_free(bcm_mp_pool_h pool, void *objp);
  *    other     Error getting statistics.
  *
  */
-void bcm_mp_stats(bcm_mp_pool_h pool, bcm_mp_stats_t *stats);
+int bcm_mp_stats(bcm_mp_pool_h pool, bcm_mp_stats_t *stats);
 
 
 /*

@@ -1,7 +1,7 @@
 /*
  * pcicfg.h: PCI configuration constants and structures.
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: pcicfg.h 544472 2015-03-27 10:00:03Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: pcicfg.h 514727 2014-11-12 03:02:48Z $
  */
 
 #ifndef	_h_pcicfg_
@@ -104,10 +107,6 @@
 #define	PCIBAR_PREFETCH		0x8
 #define	PCIBAR_MEM32_MASK	0xFFFFFF80
 
-/* pci config status reg has a bit to indicate that capability ptr is present */
-
-#define PCI_CAPPTR_PRESENT	0x0010
-
 typedef struct _pci_config_regs {
 	uint16	vendor;
 	uint16	device;
@@ -138,6 +137,11 @@ typedef struct _pci_config_regs {
 #define	MINSZPCR	64		/* offsetof (dev_dep[0] */
 
 #endif /* !LINUX_POSTMOGRIFY_REMOVAL */
+
+/* pci config status reg has a bit to indicate that capability ptr is present */
+
+#define PCI_CAPPTR_PRESENT	0x0010
+
 /* A structure for the config registers is nice, but in most
  * systems the config space is not memory mapped, so we need
  * field offsetts. :-(
@@ -170,7 +174,6 @@ typedef struct _pci_config_regs {
 #define	PCI_CFG_MINGNT		0x3e
 #define	PCI_CFG_MAXLAT		0x3f
 #define	PCI_CFG_DEVCTRL		0xd8
-#define PCI_CFG_TLCNTRL_5	0x814
 #ifndef LINUX_POSTMOGRIFY_REMOVAL
 
 #ifdef __NetBSD__
@@ -342,16 +345,6 @@ typedef enum {
 	PCI_XOR_OTHER = 0x80
 } pci_xor_subclasses;
 
-/* Header types */
-#define	PCI_HEADER_MULTI	0x80
-#define	PCI_HEADER_MASK		0x7f
-typedef enum {
-	PCI_HEADER_NORMAL,
-	PCI_HEADER_BRIDGE,
-	PCI_HEADER_CARDBUS
-} pci_header_types;
-
-
 /* Overlay for a PCI-to-PCI bridge */
 
 #define	PPB_RSVDA_MAX		2
@@ -398,6 +391,16 @@ typedef struct _ppb_config_regs {
 	uint32	rsvd_d[PPB_RSVDD_MAX];
 	uint8	dev_dep[192];
 } ppb_config_regs;
+
+/* Everything below is BRCM HND proprietary */
+
+
+/* Brcm PCI configuration registers */
+#define cap_list	rsvd_a[0]
+#define bar0_window	dev_dep[0x80 - 0x40]
+#define bar1_window	dev_dep[0x84 - 0x40]
+#define sprom_control	dev_dep[0x88 - 0x40]
+#endif /* LINUX_POSTMOGRIFY_REMOVAL */
 
 
 /* PCI CAPABILITY DEFINES */
@@ -488,15 +491,6 @@ typedef struct _pcie_enhanced_caphdr {
 } pcie_enhanced_caphdr;
 
 
-/* Everything below is BRCM HND proprietary */
-
-
-/* Brcm PCI configuration registers */
-#define cap_list	rsvd_a[0]
-#define bar0_window	dev_dep[0x80 - 0x40]
-#define bar1_window	dev_dep[0x84 - 0x40]
-#define sprom_control	dev_dep[0x88 - 0x40]
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
 #define	PCI_BAR0_WIN		0x80	/* backplane addres space accessed by BAR0 */
 #define	PCI_BAR1_WIN		0x84	/* backplane addres space accessed by BAR1 */
 #define	PCI_SPROM_CONTROL	0x88	/* sprom property control */
@@ -526,12 +520,6 @@ typedef struct _pcie_enhanced_caphdr {
 #define	PCI_L2_EVENTCNT		0xaa4
 #define	PCI_L2_STATETMR		0xaa8
 
-#define	PCI_PL_SPARE	0x1808	/* Config to Increase external clkreq deasserted minimum time */
-#define	PCI_CONFIG_EXT_CLK_MIN_TIME_MASK	(1 << 31)
-#define	PCI_CONFIG_EXT_CLK_MIN_TIME_SHIFT	(31)
-
-#define PCI_REG_PMCR_TCRPW_MAX_MASK  0x1F
-
 #define	PCI_PMCR_REFUP		0x1814	/* Trefup time */
 #define	PCI_PMCR_REFUP_EXT	0x1818	/* Trefup extend Max */
 #define PCI_TPOWER_SCALE_MASK 0x3
@@ -559,6 +547,7 @@ typedef struct _pcie_enhanced_caphdr {
 #define	PCI_16KB0_PCIREGS_OFFSET (8 * 1024)	/* bar0 + 8K accesses pci/pcie core registers */
 #define	PCI_16KB0_CCREGS_OFFSET	(12 * 1024)	/* bar0 + 12K accesses chipc core registers */
 #define PCI_16KBB0_WINSZ	(16 * 1024)	/* bar0 window size */
+#define PCI_SECOND_BAR0_OFFSET	(16 * 1024)	/* secondary  bar 0 window */
 
 #ifndef LINUX_POSTMOGRIFY_REMOVAL
 /* On AI chips we have a second window to map DMP regs are mapped: */
@@ -572,7 +561,6 @@ typedef struct _pcie_enhanced_caphdr {
 #define	PCI_SBIM_MASK		0xff00	/* backplane core interrupt mask */
 #define	PCI_SBIM_MASK_SERR	0x4	/* backplane SBErr interrupt mask */
 
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
 /* PCI_SPROM_CONTROL */
 #define SPROM_SZ_MSK		0x02	/* SPROM Size Mask */
 #define SPROM_LOCKED		0x08	/* SPROM Locked */
@@ -581,7 +569,6 @@ typedef struct _pcie_enhanced_caphdr {
 #define SPROM_BOOTROM_WE	0x20	/* external bootrom write enable */
 #define SPROM_BACKPLANE_EN	0x40	/* Enable indirect backplane access */
 #define SPROM_OTPIN_USE		0x80	/* device OTP In use */
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
 
 /* Bits in PCI command and status regs */
 #define PCI_CMD_IO		0x00000001	/* I/O enable */
@@ -593,5 +580,45 @@ typedef struct _pcie_enhanced_caphdr {
 #define PCI_STAT_TA		0x08000000	/* target abort status */
 #endif /* LINUX_POSTMOGRIFY_REMOVAL */
 
+/* Header types */
+#define	PCI_HEADER_MULTI	0x80
+#define	PCI_HEADER_MASK		0x7f
+typedef enum {
+	PCI_HEADER_NORMAL,
+	PCI_HEADER_BRIDGE,
+	PCI_HEADER_CARDBUS
+} pci_header_types;
+
 #define PCI_CONFIG_SPACE_SIZE	256
+
+#define DWORD_ALIGN(x)  (x & ~(0x03))
+#define BYTE_POS(x) (x & 0x3)
+#define WORD_POS(x) (x & 0x1)
+
+#define BYTE_SHIFT(x)  (8 * BYTE_POS(x))
+#define WORD_SHIFT(x)  (16 * WORD_POS(x))
+
+#define BYTE_VAL(a, x) ((a >> BYTE_SHIFT(x)) & 0xFF)
+#define WORD_VAL(a, x) ((a >> WORD_SHIFT(x)) & 0xFFFF)
+
+#define read_pci_cfg_byte(a) \
+	(BYTE_VAL(OSL_PCI_READ_CONFIG(osh, DWORD_ALIGN(a), 4), a) & 0xff)
+
+#define read_pci_cfg_word(a) \
+	(WORD_VAL(OSL_PCI_READ_CONFIG(osh, DWORD_ALIGN(a), 4), a) & 0xffff)
+
+#define write_pci_cfg_byte(a, val) do { \
+	uint32 tmpval; \
+	tmpval = (OSL_PCI_READ_CONFIG(osh, DWORD_ALIGN(a), 4) & ~0xFF << BYTE_POS(a)) | \
+	        val << BYTE_POS(a); \
+	OSL_PCI_WRITE_CONFIG(osh, DWORD_ALIGN(a), 4, tmpval); \
+	} while (0)
+
+#define write_pci_cfg_word(a, val) do { \
+	uint32 tmpval; \
+	tmpval = (OSL_PCI_READ_CONFIG(osh, DWORD_ALIGN(a), 4) & ~0xFFFF << WORD_POS(a)) | \
+	        val << WORD_POS(a); \
+	OSL_PCI_WRITE_CONFIG(osh, DWORD_ALIGN(a), 4, tmpval); \
+	} while (0)
+
 #endif	/* _h_pcicfg_ */

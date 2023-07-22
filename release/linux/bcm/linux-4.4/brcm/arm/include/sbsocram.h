@@ -1,7 +1,7 @@
 /*
  * BCM47XX Sonics SiliconBackplane embedded ram core
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: sbsocram.h 271781 2011-07-13 20:00:06Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: sbsocram.h 514727 2014-11-12 03:02:48Z $
  */
 
 #ifndef	_SBSOCRAM_H
@@ -51,7 +54,8 @@ typedef volatile struct sbsocramregs {
 	uint32	cambankmaskreg;
 	uint32	PAD[1];
 	uint32	bankinfo;	/* corev 8 */
-	uint32	PAD[15];
+	uint32	bankpda;
+	uint32	PAD[14];
 	uint32	extmemconfig;
 	uint32	extmemparitycsr;
 	uint32	extmemparityerrdata;

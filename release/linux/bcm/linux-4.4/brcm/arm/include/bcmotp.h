@@ -1,7 +1,7 @@
 /*
  * OTP support.
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: bcmotp.h 473704 2014-04-29 15:49:57Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: bcmotp.h 636309 2016-05-09 02:45:46Z $
  */
 
 #ifndef	_bcmotp_h_
@@ -29,7 +32,7 @@
 #define OTP_ALL_RGN	0xf	/* From h/w region to end of OTP including checksum */
 
 /* OTP Size */
-#define OTP_SZ_MAX		(12288/8)	/* maximum bytes in one CIS */
+#define OTP_SZ_MAX		(16384/8)	/* maximum bytes in one CIS */
 
 /* Fixed size subregions sizes in words */
 #define OTPGU_CI_SZ		2
@@ -49,6 +52,7 @@ extern bool	otp_isunified(void *oh);
 extern uint16	otp_avsbitslen(void *oh);
 extern uint16	otp_read_bit(void *oh, uint offset);
 extern void*	otp_init(si_t *sih);
+#if !defined(BCMDONGLEHOST)
 extern int	otp_newcis(void *oh);
 extern int	otp_read_region(si_t *sih, int region, uint16 *data, uint *wlen);
 extern int	otp_read_word(si_t *sih, uint wn, uint16 *data);
@@ -60,13 +64,14 @@ extern int	otp_cis_append_region(si_t *sih, int region, char *vars, int count);
 extern int	otp_lock(si_t *sih);
 extern int	otp_nvwrite(void *oh, uint16 *data, uint wlen);
 #endif /* BCMNVRAMW */
+#endif /* !defined(BCMDONGLEHOST) */
 
 #if defined(WLTEST)
 extern int	otp_dump(void *oh, int arg, char *buf, uint size);
 extern int	otp_dumpstats(void *oh, int arg, char *buf, uint size);
 #endif 
 
-#if defined(BCMNVRAMW)
+#if !defined(BCMDONGLEHOST) && defined(BCMNVRAMW)
 #define otp_write_rde(oh, rde, bit, val)	ipxotp_write_rde(oh, rde, bit, val)
 extern int	ipxotp_write_rde(void *oh, int rde, uint bit, uint val);
 extern int otp_write_bits(void *oh, uint offset, int bits, uint8* data);
@@ -79,6 +84,6 @@ extern int otp_write_ones(void *oh, uint off, uint bits);
 extern int otp_write_ones_old(void *oh, uint off, uint bits);
 #endif
 
-#endif 
+#endif /* !defined(BCMDONGLEHOST) && defined(BCMNVRAMW) */
 
 #endif /* _bcmotp_h_ */

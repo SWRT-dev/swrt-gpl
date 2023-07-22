@@ -1,7 +1,7 @@
 /*
  * TRX image file header format.
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: trxhdr.h 349211 2012-08-07 09:45:24Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: trxhdr.h 520026 2014-12-10 01:29:40Z $
  */
 
 #ifndef _TRX_HDR_H
@@ -71,7 +74,11 @@ struct trx_header {
 #define TRX_V2_MAX_OFFSETS	5
 #define SIZEOF_TRXHDR_V1	(sizeof(struct trx_header)+(TRX_V1_MAX_OFFSETS-1)*sizeof(uint32))
 #define SIZEOF_TRXHDR_V2	(sizeof(struct trx_header)+(TRX_V2_MAX_OFFSETS-1)*sizeof(uint32))
-#define TRX_VER(trx)		(trx->flag_version>>16)
+#ifdef IL_BIGENDIAN
+#define TRX_VER(trx)		(ltoh32((trx)->flag_version>>16))
+#else
+#define TRX_VER(trx)		((trx)->flag_version>>16)
+#endif
 #define ISTRX_V1(trx)		(TRX_VER(trx) == TRX_V1)
 #define ISTRX_V2(trx)		(TRX_VER(trx) == TRX_V2)
 /* For V2, return size of V2 size: others, return V1 size */

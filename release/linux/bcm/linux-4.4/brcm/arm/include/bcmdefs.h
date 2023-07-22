@@ -1,7 +1,7 @@
 /*
  * Misc system wide definitions
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: bcmdefs.h 545635 2015-04-01 07:09:17Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: bcmdefs.h 594572 2015-10-22 21:10:57Z $
  */
 
 #ifndef	_bcmdefs_h_
@@ -99,14 +102,6 @@ extern bool preattach_part_reclaimed;
 #define BCMUNINITFN(_fn)	_fn
 
 #define BCMFASTPATH
-
-/* used for per O3 function optimization for Rx & Tx DATAPATH in DONGLE build */
-#if defined(DATAFASTPATH)
-#define BCMSPEEDOPT 	__attribute__ ((optimize(push, DATAFASTPATH_FLAGS)))
-#else
-#define BCMSPEEDOPT
-#endif /* DATAFASTPATH */
-
 #else /* DONGLEBUILD */
 
 #define bcmreclaimed 		0
@@ -116,17 +111,15 @@ extern bool preattach_part_reclaimed;
 #define BCMPREATTACHFN(_fn)	_fn
 #define BCMINITDATA(_data)	_data
 #define BCMINITFN(_fn)		_fn
-#define BCMROMDATA(_data)	_data
-#define BCMROMFN(_fn)		_fn
 #define BCMUNINITFN(_fn)	_fn
 #define	BCMNMIATTACHFN(_fn)	_fn
 #define	BCMNMIATTACHDATA(_data)	_data
 #define CONST	const
 
-#define BCMSPEEDOPT
-
 #if defined(__ARM_ARCH_7A__) && !defined(OEM_ANDROID)
+#ifndef BCM_SECURE_DMA
 #define BCM47XX_CA9
+#endif /* BCM_SECURE_DMA */
 #else
 #undef BCM47XX_CA9
 #endif /* BCM47XX && __ARM_ARCH_7A__ && !OEM_ANDROID */
@@ -299,7 +292,11 @@ typedef struct {
 #define BCMEXTRAHDROOM 260
 #else /* BCM_RPC_NOCOPY || BCM_RPC_TXNOCOPY */
 #if defined(linux) && defined(BCM47XX_CA9)
+#if defined(BCM_GMAC3)
+#define BCMEXTRAHDROOM 32 /* For FullDongle, no D11 headroom space required. */
+#else
 #define BCMEXTRAHDROOM 224
+#endif /* ! BCM_GMAC3 */
 #else
 #ifdef CTFMAP
 #define BCMEXTRAHDROOM 208
@@ -371,9 +368,13 @@ typedef struct {
 
 /* Max. nvram variable table size */
 #ifndef MAXSZ_NVRAM_VARS
+#ifdef LARGE_NVRAM_MAXSZ
+#define MAXSZ_NVRAM_VARS	LARGE_NVRAM_MAXSZ
+#else
 /* SROM12 changes */
-#define	MAXSZ_NVRAM_VARS	10000
-#endif
+#define	MAXSZ_NVRAM_VARS	6144
+#endif /* LARGE_NVRAM_MAXSZ */
+#endif /* !MAXSZ_NVRAM_VARS */
 
 #ifdef ATE_BUILD
 #define ATE_NVRAM_MAXSIZE 18432
@@ -430,7 +431,7 @@ typedef struct {
 
 #ifdef BCMPCIEDEV /* BCMPCIEDEV support enab macros */
 extern bool _pciedevenab;
-	#if defined(WL_ENAB_RUNTIME_CHECK) || !defined(DONGLEBUILD)
+	#if defined(WL_ENAB_RUNTIME_CHECK)
 		#define BCMPCIEDEV_ENAB() (_pciedevenab)
 	#elif defined(BCMPCIEDEV_ENABLED)
 		#define BCMPCIEDEV_ENAB()	1
@@ -463,6 +464,7 @@ extern bool _pciedevenab;
 #else
 	#define BCM_SPLITBUF_ENAB()		(0)
 #endif	/* BCM_SPLITBUF */
+
 /* Max size for reclaimable NVRAM array */
 #ifdef DL_NVRAM
 #define NVRAM_ARRAY_MAXSIZE	DL_NVRAM

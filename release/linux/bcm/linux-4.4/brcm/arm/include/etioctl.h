@@ -1,7 +1,7 @@
 /*
  * BCM44XX Ethernet Windows device driver custom OID definitions.
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,7 +14,10 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- * $Id: etioctl.h 474120 2014-04-30 06:59:18Z $
+ *
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ * $Id: etioctl.h 523133 2014-12-27 05:50:30Z $
  */
 
 #ifndef _etioctl_h_
@@ -47,9 +50,6 @@
 #define ETCPHYWR2	13
 #define ETCROBORD	14
 #define ETCROBOWR	15
-#define ETCROBORD4	16
-#define ETCROBOWR4	17
-#define ETCROBOWR1	18
 
 /*
  * A set of iovars defined for ET set/get
@@ -76,7 +76,7 @@
 #define IOV_DUMP_FWDER		20
 #define IOV_CAP			21
 
-#if defined(linux) || defined(__ECOS)
+#if defined(linux)
 #define SIOCSETCUP		(SIOCDEVPRIVATE + ETCUP)
 #define SIOCSETCDOWN		(SIOCDEVPRIVATE + ETCDOWN)
 #define SIOCSETCLOOP		(SIOCDEVPRIVATE + ETCLOOP)
@@ -93,9 +93,6 @@
 #define SIOCSETCPHYWR2		(SIOCDEVPRIVATE + ETCPHYWR2)
 #define SIOCGETCROBORD		(SIOCDEVPRIVATE + ETCROBORD)
 #define SIOCSETCROBOWR		(SIOCDEVPRIVATE + ETCROBOWR)
-#define SIOCGETCROBORD4		(SIOCDEVPRIVATE + ETCROBORD4)
-#define SIOCSETCROBOWR4		(SIOCDEVPRIVATE + ETCROBOWR4)
-#define SIOCSETCROBOWR1		(SIOCDEVPRIVATE + ETCROBOWR1)
 
 /* structure to send a generic var set/get */
 typedef struct et_var_s {
@@ -114,7 +111,6 @@ struct txg {
 };
 #endif /* linux */
 
-
 #if defined(__NetBSD__)
 #define SIOCSETCUP		 _IOW('e',  0, struct ifreq)
 #define SIOCSETCDOWN		 _IOW('e',  1, struct ifreq)
@@ -132,9 +128,6 @@ struct txg {
 #define SIOCSETCPHYWR2		 _IOW('e', 13, struct ifreq)
 #define SIOCGETCROBORD		_IOWR('e', 14, struct ifreq)
 #define SIOCSETCROBOWR		 _IOW('e', 15, struct ifreq)
-#define SIOCGETCROBORD4		_IOWR('e', 16, struct ifreq)
-#define SIOCSETCROBOWR4		 _IOW('e', 17, struct ifreq)
-#define SIOCSETCROBOWR1		 _IOW('e', 18, struct ifreq)
 
 /* arg to SIOCTXGEN */
 struct txg {

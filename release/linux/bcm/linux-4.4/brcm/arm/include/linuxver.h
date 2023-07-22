@@ -2,7 +2,7 @@
  * Linux-specific abstractions to gain some independence from linux kernel versions.
  * Pave over some 2.2 versus 2.4 versus 2.6 kernel differences.
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,12 +16,22 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: linuxver.h 444765 2013-12-20 22:37:15Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: linuxver.h 514727 2014-11-12 03:02:48Z $
  */
 
 #ifndef _linuxver_h_
 #define _linuxver_h_
 
+#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#pragma GCC diagnostic ignored "-Wunused-but-set-parameter"
+#endif
+
+#include <typedefs.h>
 #include <linux/version.h>
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0))
 #include <linux/config.h>
@@ -36,7 +46,6 @@
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 1, 0))
 #include <linux/kconfig.h>
 #endif
-
 #include <linux/module.h>
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 3, 0))
@@ -742,18 +751,6 @@ not match our unaligned address for < 2.6.24
 #define netdev_priv(dev) dev->priv
 #endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0)) */
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
-#define RANDOM32	prandom_u32
-#else
-#define RANDOM32	random32
-#endif
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
-#define SRANDOM32(entropy)	prandom_seed(entropy)
-#else
-#define SRANDOM32(entropy)	srandom32(entropy)
-#endif
-
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25))
 #define CAN_SLEEP()	((!in_atomic() && !irqs_disabled()))
 #else
@@ -762,19 +759,35 @@ not match our unaligned address for < 2.6.24
 
 #define KMALLOC_FLAG (CAN_SLEEP() ? GFP_KERNEL: GFP_ATOMIC)
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
+#define RANDOM32	prandom_u32
+#else
+#define RANDOM32	random32
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0) */
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
+#define SRANDOM32(entropy)	prandom_seed(entropy)
+#else
+#define SRANDOM32(entropy)	srandom32(entropy)
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0) */
+
 /*
  * Overide latest kfifo functions with
  * older version to work on older kernels
  */
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)) && !defined(WL_COMPAT_WIRELESS)
 #define kfifo_in_spinlocked(a, b, c, d)		kfifo_put(a, (u8 *)b, c)
 #define kfifo_out_spinlocked(a, b, c, d)	kfifo_get(a, (u8 *)b, c)
 #define kfifo_esize(a)				1
 #elif (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)) && \
-	(LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 36))
+	(LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 36)) &&	!defined(WL_COMPAT_WIRELESS)
 #define kfifo_in_spinlocked(a, b, c, d)		kfifo_in_locked(a, b, c, d)
 #define kfifo_out_spinlocked(a, b, c, d)	kfifo_out_locked(a, b, c, d)
 #define kfifo_esize(a)				1
 #endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)) */
+
+#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
+#pragma GCC diagnostic pop
+#endif
 
 #endif /* _linuxver_h_ */

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -13,6 +13,9 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
  * $Id: epivers.h.in,v 13.33 2010-09-08 22:08:53 $
  *
 */
@@ -20,27 +23,27 @@
 #ifndef _epivers_h_
 #define _epivers_h_
 
-#define	EPI_MAJOR_VERSION	7
+#define	EPI_MAJOR_VERSION	6
 
-#define	EPI_MINOR_VERSION	14
+#define	EPI_MINOR_VERSION	37
 
-#define	EPI_RC_NUMBER		124
+#define	EPI_RC_NUMBER		14
 
-#define	EPI_INCREMENTAL_NUMBER	46
+#define	EPI_INCREMENTAL_NUMBER	126
 
 #define	EPI_BUILD_NUMBER	0
 
-#define	EPI_VERSION		7, 14, 124, 46
+#define	EPI_VERSION		6, 37, 14, 126
 
-#define	EPI_VERSION_NUM		0x070e7c2e
+#define	EPI_VERSION_NUM		0x06250e7e
 
-#define EPI_VERSION_DEV		7.14.124
+#define EPI_VERSION_DEV		6.37.14
 
 /* Driver Version String, ASCII, 32 chars max */
 #ifdef WLTEST
-#define	EPI_VERSION_STR		"7.14.124.46 (r577605 WLTEST)"
+#define	EPI_VERSION_STR		"6.37.14.126 (r561982 WLTEST)"
 #else
-#define	EPI_VERSION_STR		"7.14.124.46 (r577605)"
+#define	EPI_VERSION_STR		"6.37.14.126 (r561982)"
 #endif
 
 #endif /* _epivers_h_ */

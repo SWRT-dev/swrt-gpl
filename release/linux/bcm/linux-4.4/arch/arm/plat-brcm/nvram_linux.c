@@ -783,8 +783,6 @@ done:
 	return ret;
 }
 
-#define NVRAM_SPACE_MAGIC			0x50534341	/* 'SPAC' */
-
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 36)
 static int
 #else
@@ -798,20 +796,9 @@ dev_nvram_ioctl(
 	unsigned int cmd, 
 	unsigned long arg)
 {
-
-	switch (cmd) {
-	case NVRAM_MAGIC:
-		nvram_commit();
-		return 0;
-		break;
-	case NVRAM_SPACE_MAGIC:
-		return nvram_space;
-		break;
-	default:
+	if (cmd != NVRAM_MAGIC)
 		return -EINVAL;
-		break;
-
-	}
+	return nvram_commit();
 }
 
 static int
@@ -889,13 +876,6 @@ dev_nvram_init(void)
 	int order = 0, ret = 0;
 	struct page *page, *end;
 	osl_t *osh;
-	struct mtd_info *nvram_mtd_cfe = NULL;
-	struct mtd_info *nvram_mtd_temp = NULL;
-	DECLARE_WAITQUEUE(wait, current);
-	wait_queue_head_t wait_q;
-	struct erase_info erase;
-	struct nvram_header *header;
-	u32 *src, *dst;
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
 	unsigned int i;
 #endif
@@ -920,62 +900,6 @@ dev_nvram_init(void)
 			put_mtd_device(nvram_mtd);
 		}
 	}
-
-	if (nvram_mtd_cfe != NULL && remap_cfe && nvram_space != 0x20000) {
-		printk(KERN_INFO "check if nvram copy is required CFE Size is %d\n", NVRAM_SPACE);
-		int len;
-		char *buf = MMALLOC(NVRAM_SPACE);
-		if (buf == NULL) {
-			printk(KERN_ERR "mem allocation error");
-			goto done_nofree;
-		}
-		mtd_read(nvram_mtd, nvram_mtd->erasesize - NVRAM_SPACE,NVRAM_SPACE, &len, buf);
-		header = (struct nvram_header *)buf;
-		len = 0;
-		printk(KERN_INFO "nvram copy magic is %X\n", header->magic);
-		if (header->magic != NVRAM_MAGIC) {
-			printk(KERN_EMERG "copy cfe nvram to base nvram\n");
-			len = 0;
-			memset(buf, 0, NVRAM_SPACE);
-			mtd_read(nvram_mtd_cfe, nvram_mtd_cfe->erasesize - NVRAM_SPACE, NVRAM_SPACE, &len, buf + nvram_mtd->erasesize - NVRAM_SPACE);
-			put_mtd_device(nvram_mtd_cfe);
-			mtd_unlock(nvram_mtd, 0, nvram_mtd->erasesize);
-			init_waitqueue_head(&wait_q);
-			erase.mtd = nvram_mtd;
-			erase.addr = 0;
-			erase.len = nvram_mtd->erasesize;
-			erase.callback = erase_callback;
-			erase.priv = (u_long) & wait_q;
-			set_current_state(TASK_INTERRUPTIBLE);
-			add_wait_queue(&wait_q, &wait);
-			if ((ret = mtd_erase(nvram_mtd, &erase))) {
-				set_current_state(TASK_RUNNING);
-				remove_wait_queue(&wait_q, &wait);
-				printk("nvram_commit: erase error\n");
-				goto done;
-			}
-			/* Wait for erase to finish */
-			schedule();
-			remove_wait_queue(&wait_q, &wait);
-			len = 0;
-			printk(KERN_INFO "remap nvram %d\n", header->len);
-
-			src = (u32 *)buf + nvram_mtd->erasesize - NVRAM_SPACE;
-			dst = (u32 *)nvram_buf;
-			for (i = 0; i < sizeof(struct nvram_header); i += 4)
-				*dst++ = *src++;
-			for (; i < header->len && i < NVRAM_SPACE; i += 4)
-				*dst++ = ltoh32(*src++);
-
-			mtd_write(nvram_mtd, nvram_mtd->erasesize - NVRAM_SPACE, NVRAM_SPACE, &len, buf);
-
-		      done:;
-			MMFREE(buf);
-		      done_nofree:;
-		}
-	}
-
-
 #endif
 
 	/* Initialize hash table lock */
@@ -1023,19 +947,6 @@ err:
 	dev_nvram_exit();
 	return ret;
 }
-
-int nvram_match(char *name, char *match)
-{
-	const char *value = nvram_get(name);
-	return (value && !strcmp(value, match));
-}
-
-
-char *nvram_safe_get(const char *name)
-{
-	return nvram_get(name) ? : "";
-}
-
 
 /*
 * This is not a module, and is not unloadable.

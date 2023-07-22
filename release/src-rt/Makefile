@@ -692,8 +692,17 @@ else
 	-@echo 'KERNEL_IMAGE = $(BUILD_NAME)_$(KERNEL_VER).$(FS_VER)_$(SERIALNO)_$(EXTENDNO).trx' >> ntools/version
 endif
 
+dhd_sysdep:
+	if [ "$(BCM7)" == "y" ]; then \
+		cp -f $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/dhd_pcie_43602.o $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/dhd_pcie.o ; \
+	else \
+		cp -f $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/dhd_pcie_4366.o $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/dhd_pcie.o ; \
+	fi; 
+
 ifeq ($(HND_ROUTER),y)
 all: cfe_sysdep wl_sysdep rt_ver mkenv prebuild_checks all_postcheck1
+else ifeq ($(or $(BCM_7114),$(BCM7)),y)
+all: dhd_sysdep rt_ver $(if $(CONFIG_BCMWL5),rt_ver_ntools)
 else
 all: rt_ver $(if $(CONFIG_BCMWL5),rt_ver_ntools)
 endif
@@ -6242,3 +6251,4 @@ get_extendno:
 .PHONY: a b c d m Makefile allversions
 .PHONY: tags
 .PHONY: dummy
+

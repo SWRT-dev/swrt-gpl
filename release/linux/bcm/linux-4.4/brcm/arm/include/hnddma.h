@@ -2,7 +2,7 @@
  * Generic Broadcom Home Networking Division (HND) DMA engine SW interface
  * This supports the following chips: BCM42xx, 44xx, 47xx .
  *
- * Copyright (C) 2017, Broadcom. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,21 +16,25 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: hnddma.h 456077 2014-02-17 20:17:52Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: hnddma.h 530150 2015-01-29 08:43:40Z $
  */
 
 #ifndef	_hnddma_h_
 #define	_hnddma_h_
 
+#include <typedefs.h>
+#include <osl_decl.h>
+#include <siutils.h>
+
 #ifndef _hnddma_pub_
 #define _hnddma_pub_
 /* for pktpool_t */
 #include <bcmutils.h>
-
 typedef const struct hnddma_pub hnddma_t;
 #endif /* _hnddma_pub_ */
-
-#define HNDDMA_DBG 1
 
 /* range param for dma_getnexttxp() and dma_txreclaim */
 typedef enum txd_range {
@@ -51,8 +55,12 @@ enum dma_param_id {
 	HNDDMA_PID_RX_BURSTLEN,
 	HNDDMA_PID_BURSTLEN_CAP,
 	HNDDMA_PID_BURSTLEN_WAR,
-	HNDDMA_SEP_RX_HDR
+	HNDDMA_SEP_RX_HDR,	/**< SPLITRX related */
+	HNDDMA_SPLIT_FIFO
 };
+
+#define SPLIT_FIFO_0	1
+#define SPLIT_FIFO_1	2
 
 /* dma function type */
 typedef void (*di_detach_t)(hnddma_t *dmah);
@@ -108,7 +116,8 @@ typedef uint (*di_avoidancecnt_t)(hnddma_t *dmah);
 typedef void (*di_param_set_t)(hnddma_t *dmah, uint16 paramid, uint16 paramval);
 typedef bool (*dma_glom_enable_t) (hnddma_t *dmah, uint32 val);
 typedef uint (*dma_active_rxbuf_t) (hnddma_t *dmah);
-/* dma opsvec */
+
+/** dma opsvec */
 typedef struct di_fcn_s {
 	di_detach_t		detach;
 	di_txinit_t             txinit;
@@ -168,31 +177,33 @@ typedef struct di_fcn_s {
 	uint			endnum;
 } di_fcn_t;
 
-/*
+/**
  * Exported data structure (read-only)
  */
 /* export structure */
 struct hnddma_pub {
-	const di_fcn_t	*di_fn;		/* DMA function pointers */
-	uint		txavail;	/* # free tx descriptors */
-	uint		dmactrlflags;	/* dma control flags */
+	const di_fcn_t	*di_fn;		/**< DMA function pointers */
+	uint		txavail;	/**< # free tx descriptors */
+	uint		dmactrlflags;	/**< dma control flags */
 
 	/* rx error counters */
-	uint		rxgiants;	/* rx giant frames */
-	uint		rxnobuf;	/* rx out of dma descriptors */
+	uint		rxgiants;	/**< rx giant frames */
+	uint		rxnobuf;	/**< rx out of dma descriptors */
 	/* tx error counters */
-	uint		txnobuf;	/* tx out of dma descriptors */
-	uint		txnodesc;	/* tx out of dma descriptors running count */
+	uint		txnobuf;	/**< tx out of dma descriptors */
+	uint		txnodesc;	/**< tx out of dma descriptors running count */
 };
+
 #ifdef PCIE_PHANTOM_DEV
 extern int dma_blwar_alloc(hnddma_t *di);
 #endif
+
 extern hnddma_t * dma_attach(osl_t *osh, const char *name, si_t *sih,
 	volatile void *dmaregstx, volatile void *dmaregsrx,
 	uint ntxd, uint nrxd, uint rxbufsize, int rxextheadroom, uint nrxpost,
 	uint rxoffset, uint *msg_level);
-#ifdef BCMDMA32
 
+#ifdef BCMDMA32
 #define dma_detach(di)			((di)->di_fn->detach(di))
 #define dma_txreset(di)			((di)->di_fn->txreset(di))
 #define dma_rxreset(di)			((di)->di_fn->rxreset(di))
@@ -238,7 +249,7 @@ extern hnddma_t * dma_attach(osl_t *osh, const char *name, si_t *sih,
 #define dma_txpending(di)		((di)->di_fn->txpending(di))
 #define dma_txcommitted(di)		((di)->di_fn->txcommitted(di))
 #define dma_pktpool_set(di, pool)	((di)->di_fn->pktpool_set((di), (pool)))
-#if defined(HNDDMA_DBG)
+#if defined(BCMDBG)
 #define dma_dump(di, buf, dumpring)	((di)->di_fn->dump(di, buf, dumpring))
 #define dma_dumptx(di, buf, dumpring)	((di)->di_fn->dumptx(di, buf, dumpring))
 #define dma_dumprx(di, buf, dumpring)	((di)->di_fn->dumprx(di, buf, dumpring))
@@ -299,7 +310,7 @@ extern const di_fcn_t dma64proc;
 #define dma_txpending(di)		(dma64proc.txpending(di))
 #define dma_txcommitted(di)		(dma64proc.txcommitted(di))
 #define dma_pktpool_set(di, pool)	(dma64proc.pktpool_set((di), (pool)))
-#if defined(HNDDMA_DBG)
+#if defined(BCMDBG)
 #define dma_dump(di, buf, dumpring)	(dma64proc.dump(di, buf, dumpring))
 #define dma_dumptx(di, buf, dumpring)	(dma64proc.dumptx(di, buf, dumpring))
 #define dma_dumprx(di, buf, dumpring)	(dma64proc.dumprx(di, buf, dumpring))
@@ -321,14 +332,18 @@ extern const di_fcn_t dma64proc;
  */
 extern uint dma_addrwidth(si_t *sih, void *dmaregs);
 
+/* count the number of tx packets that are queued to the dma ring */
+extern uint dma_txp(hnddma_t *di);
+
 #ifdef WL_MULTIQUEUE
 extern void dma_txrewind(hnddma_t *di);
 #endif
-
 /* pio helpers */
 extern void dma_txpioloopback(osl_t *osh, dma32regs_t *);
 extern int dma_msgbuf_txfast(hnddma_t *di, dma64addr_t p0, bool com, uint32 ln, bool fst, bool lst);
 
 extern int dma_rxfast(hnddma_t *di, dma64addr_t p, uint32 len);
 extern int dma_rxfill_suspend(hnddma_t *dmah, bool suspended);
+extern void dma_link_handle(hnddma_t *dmah1, hnddma_t *dmah2);
+extern int dma_rxfill_unframed(hnddma_t *di, void *buf, uint len, bool commit);
 #endif	/* _hnddma_h_ */

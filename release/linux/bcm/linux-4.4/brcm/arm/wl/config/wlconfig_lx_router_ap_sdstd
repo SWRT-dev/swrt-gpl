@@ -1,6 +1,6 @@
 # Broadcom 802.11abg Networking Device Driver Configuration file
 #
-# Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+# Copyright (C) 2016, Broadcom. All Rights Reserved.
 # 
 # Permission to use, copy, modify, and/or distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
@@ -14,11 +14,14 @@
 # OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
+#
+# <<Broadcom-WL-IPTag/Open:>>
+#
 # $Id: wlconfig_lx_router_ap_sdstd,v 1.8 2010-05-25 15:55:21 $
 #
 # Linux Kernel wl driver config file
 
-# get common 
+# get common
 include $(WLCFGDIR)/wl_default
 
 # tunables

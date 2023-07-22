@@ -1,7 +1,7 @@
 /*
- * HND SOCRAM TCAM software interface.
+ * HND SOCRAM TCAM software interface - OS independent.
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,10 +15,15 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: hndtcam.h 412505 2013-07-15 08:40:14Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: hndtcam.h 523389 2014-12-30 03:09:40Z $
  */
 #ifndef _hndtcam_h_
 #define _hndtcam_h_
+
+#include <typedefs.h>
 
 /*
  * 0 - 1
@@ -64,7 +69,6 @@ typedef struct {
 
 typedef struct {
 	void		*addr;		/* patch address */
-	uint32		len;		/* bytes to patch in entry */
 	patch_entry_t	*entry;		/* patch entry data */
 } patch_hdr_t;
 
@@ -74,15 +78,16 @@ typedef struct patchaddrvalue {
 	uint32	value;
 } patchaddrvalue_t;
 
-extern void *socram_regs;
-extern uint32 socram_rev;
-
-extern void *arm_regs;
+/* patch table region */
+extern patch_entry_t _patch_table_start[], _patch_table_last[], _patch_table_end[];
+/* control block region */
+extern patch_hdr_t _patch_hdr_start[], _patch_hdr_end[];
+extern char _patch_align_start[];
 
 extern void hnd_patch_init(void *srp);
 extern void hnd_tcam_write(void *srp, uint16 idx, uint32 data);
 extern void hnd_tcam_read(void *srp, uint16 idx, uint32 *content);
-void * hnd_tcam_init(void *srp, int no_addrs);
+extern void *hnd_tcam_init(void *srp, int no_addrs);
 extern void hnd_tcam_disablepatch(void *srp);
 extern void hnd_tcam_patchdisable(void);
 extern void hnd_tcam_enablepatch(void *srp);
@@ -91,7 +96,8 @@ extern void hnd_tcam_bootloader_load(void *srp, char *pvars);
 #else
 extern void hnd_tcam_load(void *srp, const  patchaddrvalue_t *patchtbl);
 #endif /* CONFIG_XIP */
-extern void BCMATTACHFN(hnd_tcam_load_default)(void);
-extern void hnd_tcam_reclaim(void);
+extern void hnd_tcam_load_default(uint32 rambase);
+
+void hnd_tcam_stat(void);
 
 #endif /* _hndtcam_h_ */

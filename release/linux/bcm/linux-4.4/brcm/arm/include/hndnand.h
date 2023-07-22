@@ -1,7 +1,7 @@
 /*
  * Broadcom chipcommon NAND flash interface
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,6 +14,9 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
  *
  * $Id: nflash.h 256080 2011-04-28 08:40:56Z $
  */
@@ -29,7 +32,8 @@
 #define NFL_VENDOR_SAMSUNG		0xEC
 #define NFL_VENDOR_ESMT			0x92
 #define NFL_VENDOR_MXIC			0xC2
-#define NFL_VENDOR_ZENTEL_ESMT		0xC8
+#define NFL_VENDOR_ZENTEL		0xC8
+#define NFL_VENDOR_ZENTEL_ESMT          0xC8
 #define NFL_VENDOR_WINBOND              0xF1
 
 #define NFL_SECTOR_SIZE			512
@@ -42,8 +46,10 @@
 #endif
 #if defined(R8500) || defined(R7000P)
 #define NFL_BOOT_OS_SIZE		0x3200000
+#elif defined(RTAC68U) || defined(RTAC88U) || defined(RTAC3100) || defined(RTAC3200) || defined(RTAC5300)
+#define NFL_BOOT_OS_SIZE                0x4000000
 #else
-#define NFL_BOOT_OS_SIZE		0x2000000
+#define NFL_BOOT_OS_SIZE                0x2000000
 #endif
 #define NFL_BBT_SIZE			0x100000
 

@@ -1,7 +1,7 @@
 /*
  * OS Abstraction Layer
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: osl.h 552901 2015-04-28 09:13:27Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: osl.h 526460 2015-01-14 08:25:24Z $
  */
 
 #ifndef _osl_h_
@@ -86,6 +89,8 @@ MAKE_PREFETCH_RANGE_FN(PREF_STORE_RETAINED)
 #include <dos_osl.h>
 #elif defined(PCBIOS)
 #include <pcbios_osl.h>
+#elif defined(WL_UNITTEST)
+#include <utest_osl.h>
 #elif defined(linux)
 #include <linux_osl.h>
 #elif defined(NDIS)
@@ -143,6 +148,10 @@ MAKE_PREFETCH_RANGE_FN(PREF_STORE_RETAINED)
 
 #ifndef OSL_SYS_HALT
 #define OSL_SYS_HALT()	do {} while (0)
+#endif
+
+#ifndef OSL_MEM_AVAIL
+#define OSL_MEM_AVAIL()	(0xffffffff)
 #endif
 
 #if !(defined(linux) && defined(PKTC)) && !defined(PKTC_DONGLE) && \
@@ -223,19 +232,28 @@ do { \
 #define PKTISFRAG(osh, lb)		(0)
 #define PKTFRAGISCHAINED(osh, i)	(0)
 /* TRIM Tail bytes from lfrag */
-#define PKTFRAG_TRIM_TAILBYTES(osh, p, len)	PKTSETLEN(osh, p, PKTLEN(osh, p) - len)
+#define PKTFRAG_TRIM_TAILBYTES(osh, p, len, type)	PKTSETLEN(osh, p, PKTLEN(osh, p) - len)
 #endif	/* _RTE_ */
 
-#ifndef MALLOC_PERSIST
-	#define MALLOC_PERSIST MALLOC
-	#define MALLOC_PERSIST_ATTACH MALLOC
-	#define MALLOCZ_PERSIST MALLOCZ
-	#define MALLOCZ_PERSIST_ATTACH MALLOCZ
-	#define MFREE_PERSIST MFREE
-#endif /* MALLOC_PERSIST */
+#ifdef BCM_SECURE_DMA
+#define SECURE_DMA_ENAB(osh) (1)
+#else
 
-#ifndef ROMMABLE_ASSERT
-#define ROMMABLE_ASSERT(exp) ASSERT(exp)
-#endif /* ROMMABLE_ASSERT */
+#define SECURE_DMA_ENAB(osh) (0)
+#define	SECURE_DMA_MAP(osh, va, size, direction, p, dmah, pcma, offset) ((dmaaddr_t) {(0)})
+#define	SECURE_DMA_DD_MAP(osh, va, size, direction, p, dmah) 0
+#define	SECURE_DMA_MAP_TXMETA(osh, va, size, direction, p, dmah, pcma) ((dmaaddr_t) {(0)})
+#define	SECURE_DMA_UNMAP(osh, pa, size, direction, p, dmah, pcma, offset)
+#define	SECURE_DMA_UNMAP_ALL(osh, pcma)
+
+#endif
+
+#if !defined(linux)
+#define PKTLIST_INIT(x)			BCM_REFERENCE(x)
+#define PKTLIST_ENQ(x, y)		BCM_REFERENCE(x)
+#define PKTLIST_DEQ(x)			BCM_REFERENCE(x)
+#define PKTLIST_UNLINK(x, y)		BCM_REFERENCE(x)
+#define PKTLIST_FINI(x)			BCM_REFERENCE(x)
+#endif
 
 #endif	/* _osl_h_ */

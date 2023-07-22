@@ -1,7 +1,7 @@
 /*
  * Broadcom HND chip & on-chip-interconnect-related definitions.
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: hndsoc.h 568047 2015-07-01 09:22:55Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: hndsoc.h 517544 2014-11-26 00:40:42Z $
  */
 
 #ifndef	_HNDSOC_H
@@ -60,7 +63,7 @@
 #endif /* _RTE_ */
 #endif /* SI_MAXCORES */
 
-#define	SI_MAXBR		6		/* Max bridges (this is arbitrary, for software
+#define	SI_MAXBR		4		/* Max bridges (this is arbitrary, for software
 					 * convenience and could be changed if we
 					 * make any larger chips
 					 */
@@ -84,6 +87,8 @@
 #define	SI_ARMCR4_ROM		0x000f0000	/* ARM Cortex-R4 ROM */
 #define	SI_ARMCM3_SRAM2		0x60000000	/* ARM Cortex-M3 SRAM Region 2 */
 #define	SI_ARM7S_SRAM2		0x80000000	/* ARM7TDMI-S SRAM Region 2 */
+#define	SI_ARMCA7_ROM		0x00000000	/* ARM Cortex-A7 ROM */
+#define	SI_ARMCA7_RAM		0x00200000	/* ARM Cortex-A7 RAM */
 #define	SI_ARM_FLASH1		0xffff0000	/* ARM Flash Region 1 */
 #define	SI_ARM_FLASH1_SZ	0x00010000	/* ARM Size of Flash Region 1 */
 
@@ -100,7 +105,6 @@
 
 #define SI_BCM53573_NANDFLASH	0x30000000	/* 53573 NAND flash base */
 #define SI_BCM53573_NORFLASH	0x1c000000	/* 53573 NOR flash base */
-#define SI_BCM53573_FLASH2_SZ	0x04000000	/* 53573 NOR flash2 size */
 
 #define	SI_BCM53573_NORFLASH_WINDOW	0x01000000	/* only support 16M direct access for
 							 * 3-byte address modes in spi flash
@@ -108,18 +112,8 @@
 #define	SI_BCM53573_BOOTDEV_MASK	0x3
 #define	SI_BCM53573_BOOTDEV_NOR		0x0
 
-#define SI_BCM53573_NAND_PRE_MASK	0x100	/* 53573 NAND present mask */
-
 #define	SI_BCM53573_DDRTYPE_MASK	0x10
 #define	SI_BCM53573_DDRTYPE_DDR3	0x10
-
-#define	SI_BCM47189_RGMII_VDD_MASK	0x3
-#define	SI_BCM47189_RGMII_VDD_SHIFT	21
-#define	SI_BCM47189_RGMII_VDD_3_3V	0
-#define	SI_BCM47189_RGMII_VDD_2_5V	1
-#define	SI_BCM47189_RGMII_VDD_1_5V	1
-
-#define	SI_BCM53573_LOCKED_CPUPLL	0x1
 
 /* APB bridge code */
 #define	APB_BRIDGE_ID		0x135		/* APB Bridge 0, 1, etc. */
@@ -190,6 +184,7 @@
 #define M2MDMA_CORE_ID          0x844           /* memory to memory dma */
 #define CMEM_CORE_ID		0x846		/* CNDS DDR2/3 memory controller */
 #define ARMCA7_CORE_ID		0x847		/* ARM CA7 CPU */
+#define SYSMEM_CORE_ID		0x849		/* System memory core */
 #define APB_BRIDGE_CORE_ID	0x135		/* APB bridge core ID */
 #define AXI_CORE_ID		0x301		/* AXI/GPV core ID */
 #define EROM_CORE_ID		0x366		/* EROM core ID */
@@ -278,7 +273,7 @@
 #define CCS_HQCLKREQ		0x00000040	/* HQ Clock Required */
 #define CCS_USBCLKREQ		0x00000100	/* USB Clock Req */
 #define CCS_SECICLKREQ		0x00000100	/* SECI Clock Req */
-#define CCS_ARMFASTCLOCKREQ	0x00000100	/* ARM CR4 fast clock request */
+#define CCS_ARMFASTCLOCKREQ	0x00000100	/* ARM CR4/CA7 fast clock request */
 #define CCS_AVBCLKREQ		0x00000400	/* AVB Clock enable request */
 #define CCS_ERSRC_REQ_MASK	0x00000700	/* external resource requests */
 #define CCS_ERSRC_REQ_SHIFT	8
@@ -289,7 +284,6 @@
 #define CCS_ARMFASTCLOCKSTATUS	0x01000000	/* Fast CPU clock is running */
 #define CCS_ERSRC_STS_MASK	0x07000000	/* external resource status */
 #define CCS_ERSRC_STS_SHIFT	24
-#define CCS_SECI_AVAIL		0x01000000	/* RO: SECI is available  */
 
 #define	CCS0_HTAVAIL		0x00010000	/* HT avail in chipc and pcmcia on 4328a0 */
 #define	CCS0_ALPAVAIL		0x00020000	/* ALP avail in chipc and pcmcia on 4328a0 */

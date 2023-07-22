@@ -1,7 +1,7 @@
 /*
  * HND Run Time Environment for standalone MIPS programs.
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: mipsinc.h 260898 2011-05-20 23:11:12Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: mipsinc.h 523133 2014-12-27 05:50:30Z $
  */
 
 #ifndef	_MISPINC_H
@@ -395,12 +398,8 @@ symbol:		.frame	sp, 0, ra
 
 /* PRID register */
 #define PRID_COPT_MASK		0xff000000
-#ifndef PRID_COMP_MASK				/* May duplicate in cpu.h */
 #define PRID_COMP_MASK		0x00ff0000
-#endif
-#ifndef PRID_IMP_MASK				/* May duplicate in cpu.h */
 #define PRID_IMP_MASK		0x0000ff00
-#endif
 #ifndef PRID_REV_MASK				/* May duplicate in cpu.h */
 #define PRID_REV_MASK		0x000000ff
 #endif

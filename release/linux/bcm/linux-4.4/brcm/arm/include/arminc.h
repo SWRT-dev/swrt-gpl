@@ -1,7 +1,7 @@
 /*
  * HND Run Time Environment for standalone ARM programs.
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: arminc.h 425360 2013-09-24 00:06:24Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: arminc.h 525547 2015-01-10 00:29:03Z $
  */
 
 #ifndef	_ARMINC_H
@@ -78,19 +81,33 @@ var:	.word	val
 
 #endif	/* _LANGUAGE_ASSEMBLY */
 
-/*
- * Macro to count leading zeroes
- *
- */
-#if defined(__GNUC__)
-#define CLZ(x) __builtin_clzl(x)
-#elif defined(__arm__)
-#define CLZ(x) __clz(x)
-#else
-#ifndef WLOFFLD
-#error "No buitlin CLZ known on this compiler platform"
-#endif /* WLOFFLD */
-#endif /* __GNUC__ */
+#ifdef	__ARM_ARCH_7R__   /* cortex-R4 */
+
+/* mpu control register values */
+#define	B_BIT_ON	1
+#define	C_BIT_ON	(1<<1)
+
+#define TEX_VAL_000	(0<<3)
+#define TEX_VAL_001	(1<<3)
+#define TEX_VAL_010	(2<<3)
+#define TEX_VAL_011	(3<<3)
+#define TEX_VAL_100	(4<<3)
+#define TEX_VAL_101	(5<<3)
+#define TEX_VAL_110	(6<<3)
+#define TEX_VAL_111	(7<<3)
+
+#define AP_VAL_000	(0<<8)
+#define AP_VAL_001	(1<<8)
+#define AP_VAL_010	(2<<8)
+#define AP_VAL_011	(3<<8)
+#define AP_VAL_100	(4<<8)
+#define AP_VAL_101	(5<<8)
+#define AP_VAL_110	(6<<8)
+#define AP_VAL_111	(7<<8)
+
+#define XN_BIT_ON	(1<<12)
+
+#endif	/* __ARM_ARCH_7R__ */
 
 
 #if defined(__ARM_ARCH_7M__)	/* Cortex-M3 */
@@ -220,52 +237,13 @@ var:	.word	val
 #define CM3_TROFF_PC	24
 #define CM3_TROFF_xPSR	28
 
-#elif defined(__ARM_ARCH_7A__)	/* Cortex-A9 */
-/* Fields in cpsr */
-#define	PS_USR		0x00000010		/* Mode: User */
-#define	PS_FIQ		0x00000011		/* Mode: FIQ */
-#define	PS_IRQ		0x00000012		/* Mode: IRQ */
-#define	PS_SVC		0x00000013		/* Mode: Supervisor */
-#define	PS_ABT		0x00000017		/* Mode: Abort */
-#define	PS_UND		0x0000001b		/* Mode: Undefined */
-#define	PS_SYS		0x0000001f		/* Mode: System */
-#define	PS_MM		0x0000001f		/* Mode bits mask */
-#define	PS_T		0x00000020		/* Thumb mode */
-#define	PS_F		0x00000040		/* FIQ disable */
-#define	PS_I		0x00000080		/* IRQ disable */
-#define	PS_A		0x00000100		/* Imprecise abort */
-#define	PS_E		0x00000200		/* Endianess */
-#define	PS_IT72		0x0000fc00		/* IT[7:2] */
-#define	PS_GE		0x000f0000		/* IT[7:2] */
-#define	PS_J		0x01000000		/* Java state */
-#define	PS_IT10		0x06000000		/* IT[1:0] */
-#define	PS_Q		0x08000000		/* Sticky overflow */
-#define	PS_V		0x10000000		/* Overflow cc */
-#define	PS_C		0x20000000		/* Carry cc */
-#define	PS_Z		0x40000000		/* Zero cc */
-#define	PS_N		0x80000000		/* Negative cc */
-
-/* Trap types */
-#define	TR_RST		0			/* Reset trap */
-#define	TR_UND		1			/* Indefined instruction trap */
-#define	TR_SWI		2			/* Software intrrupt */
-#define	TR_IAB		3			/* Instruction fetch abort */
-#define	TR_DAB		4			/* Data access abort */
-#define	TR_BAD		5			/* Bad trap: Not used by ARM */
-#define	TR_IRQ		6			/* Interrupt */
-#define	TR_FIQ		7			/* Fast interrupt */
-
-/*
- * Memory segments (32bit kernel mode addresses)
- */
-#define PHYSADDR_MASK	0xffffffff
-
-/*
- * Map an address to a certain kernel segment
- */
-#undef PHYSADDR
-#define PHYSADDR(a)	(_ULCAST_(a) & PHYSADDR_MASK)
 #else	/* !__ARM_ARCH_7M__ */
+
+/* Common definitions to CR4/CA7/CA9 */
+/* CPU part number */
+#define	CORTEX_ID_MASK	0x0000fff0
+#define	CORTEX_ID_A9	0x0000c090
+#define	CORTEX_ID_A7	0x0000c070
 
 /* Fields in cpsr */
 #define	PS_USR		0x00000010		/* Mode: User */
@@ -317,6 +295,16 @@ var:	.word	val
 	__res;								\
 })
 
+/*
+ * Memory segments (32bit kernel mode addresses)
+ */
+#define PHYSADDR_MASK	0xffffffff
+
+/*
+ * Map an address to a certain kernel segment
+ */
+#undef PHYSADDR
+#define PHYSADDR(a)	(_ULCAST_(a) & PHYSADDR_MASK)
 
 #endif	/* !__ARM_ARCH_7M__ */
 

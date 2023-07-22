@@ -1,7 +1,7 @@
 /*
  * Broadcom AMBA Interconnect definitions.
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: aidmp.h 458249 2014-02-26 06:31:34Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: aidmp.h 514727 2014-11-12 03:02:48Z $
  */
 
 #ifndef	_AIDMP_H
@@ -52,6 +55,7 @@
 #define	ER_ADD			4
 #define	ER_END			0xe
 #define	ER_BAD			0xffffffff
+#define	ER_SZ_MAX		4096 /* 4KB */
 
 /* EROM CompIdentA */
 #define	CIA_MFG_MASK		0xfff00000
@@ -325,8 +329,8 @@ typedef volatile struct _aidmp {
 #define	AI_RESETREADID		0x808
 #define	AI_RESETWRITEID		0x80c
 #define	AI_ERRLOGCTRL		0x900
-#define AI_ERRLOGDONE		0x904
-#define AI_ERRLOGSTATUS		0x908
+#define	AI_ERRLOGDONE		0x904
+#define	AI_ERRLOGSTATUS		0x908
 #define	AI_ERRLOGADDRLO		0x90c
 #define	AI_ERRLOGADDRHI		0x910
 #define	AI_ERRLOGID		0x914
@@ -401,5 +405,6 @@ typedef volatile struct _aidmp {
 #define AI_OOBSEL_5_SHIFT	8
 #define AI_OOBSEL_6_SHIFT	16
 #define AI_OOBSEL_7_SHIFT	24
+#define AI_IOCTRL_ENABLE_D11_PME	(1 << 14)
 
 #endif	/* _AIDMP_H */

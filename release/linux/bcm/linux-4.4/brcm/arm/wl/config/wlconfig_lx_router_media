@@ -1,6 +1,6 @@
 # Broadcom 802.11abg Networking Device Driver Configuration file
 #
-# Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+# Copyright (C) 2016, Broadcom. All Rights Reserved.
 # 
 # Permission to use, copy, modify, and/or distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
@@ -13,6 +13,9 @@
 # WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
 # OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#
+#
+# <<Broadcom-WL-IPTag/Open:>>
 #
 # $Id: wlconfig_lx_router_media,v 1.1 2010-12-06 20:57:20 $
 #
@@ -32,7 +35,7 @@ BCMSUP_PSK=1
 WET=1
 MAC_SPOOF=1
 ROUTER_SECURE_IBSS=1
-#WMF=1
+WMF=1
 IGMP_UCQUERY=1
 BTC2WIRE=0
 RXCHAIN_PWRSAVE=1
@@ -56,4 +59,3 @@ TRAFFIC_MGMT_RSSI_POLICY=1
 WET_TUNNEL=1
 WLNAR=1
 PSPRETEND=1
-WLTAF=1

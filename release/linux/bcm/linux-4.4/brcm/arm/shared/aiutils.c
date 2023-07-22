@@ -2,7 +2,7 @@
  * Misc utility routines for accessing chip-specific features
  * of the SiliconBackplane-based Broadcom chips.
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,7 +16,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: aiutils.c 537822 2015-02-27 19:46:11Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: aiutils.c 526024 2015-01-13 03:59:33Z $
  */
 #include <bcm_cfg.h>
 #include <typedefs.h>
@@ -30,6 +33,7 @@
 
 #include "siutils_priv.h"
 
+#if !defined(BCMDONGLEHOST)
 #include <bcmdevs.h>
 
 #define BCM47162_DMP() ((CHIPID(sih->chip) == BCM47162_CHIP_ID) && \
@@ -44,6 +48,17 @@
 #define BCM4707_DMP() (BCM4707_CHIP(CHIPID(sih->chip)) && \
 	    (cores_info->coreid[sii->curidx] == NS_CCB_CORE_ID))
 #define PMU_DMP()  (cores_info->coreid[sii->curidx] == PMU_CORE_ID)
+#define GCI_DMP()  (cores_info->coreid[sii->curidx] == GCI_CORE_ID)
+#else
+#define BCM47162_DMP() (0)
+#define BCM5357_DMP() (0)
+#define BCM53573_DMP() (0)
+#define BCM4707_DMP() (0)
+#define PMU_DMP() (0)
+#define GCI_DMP() (0)
+#define remap_coreid(sih, coreid)	(coreid)
+#define remap_corerev(sih, corerev)	(corerev)
+#endif /* !defined(BCMDONGLEHOST) */
 
 /* EROM parsing */
 
@@ -52,6 +67,7 @@ get_erom_ent(si_t *sih, uint32 **eromptr, uint32 mask, uint32 match)
 {
 	uint32 ent;
 	uint inv = 0, nom = 0;
+	uint32 size = 0;
 
 	while (TRUE) {
 		ent = R_REG(si_osh(sih), *eromptr);
@@ -71,6 +87,13 @@ get_erom_ent(si_t *sih, uint32 **eromptr, uint32 mask, uint32 match)
 		if ((ent & mask) == match)
 			break;
 
+		/* escape condition related EROM size if it has invalid values */
+		size += sizeof(*eromptr);
+		if (size >= ER_SZ_MAX) {
+			SI_ERROR(("Failed to find end of EROM marker\n"));
+			break;
+		}
+
 		nom++;
 	}
 
@@ -86,8 +109,6 @@ get_asd(si_t *sih, uint32 **eromptr, uint sp, uint ad, uint st, uint32 *addrl, u
         uint32 *sizel, uint32 *sizeh)
 {
 	uint32 asd, sz, szd;
-
-	BCM_REFERENCE(ad);
 
 	asd = get_erom_ent(sih, eromptr, ER_VALID, ER_VALID);
 	if (((asd & ER_TAG1) != ER_ADD) ||
@@ -153,11 +174,10 @@ ai_hwfixup(si_info_t *sii)
 			SI_VMSG(("Changed i2s interrupt to use oob line 7 instead of 8\n"));
 		}
 	}
-#else
-	BCM_REFERENCE(sii);
 #endif	/* _CFE_ */
 }
 
+#if !defined(BCMDONGLEHOST)
 struct _corerev_entry {
 	uint corerev;
 	uint corerev_alias;
@@ -229,6 +249,7 @@ remap_corerev(si_t *sih, uint corerev)
 
 	return corerev;
 }
+#endif /* !defined(BCMDONGLEHOST) */
 
 /* parse the enumeration rom to identify all cores */
 void
@@ -238,8 +259,6 @@ BCMATTACHFN(ai_scan)(si_t *sih, void *regs, uint devid)
 	si_cores_info_t *cores_info = (si_cores_info_t *)sii->cores_info;
 	chipcregs_t *cc = (chipcregs_t *)regs;
 	uint32 erombase, *eromptr, *eromlim;
-
-	BCM_REFERENCE(devid);
 
 	erombase = R_REG(sii->osh, &cc->eromptr);
 
@@ -417,8 +436,8 @@ BCMATTACHFN(ai_scan)(si_t *sih, void *regs, uint devid)
 			}
 			if (i == 0)
 				cores_info->wrapba[idx] = addrl;
-			if (i == 1)
-				cores_info->wrapba_sec[idx] = addrl;
+			else if (i == 1)
+				cores_info->wrapba2[idx] = addrl;
 		}
 
 		/* And finally slave wrappers */
@@ -442,8 +461,11 @@ BCMATTACHFN(ai_scan)(si_t *sih, void *regs, uint devid)
 			}
 			if ((nmw == 0) && (i == 0))
 				cores_info->wrapba[idx] = addrl;
+			else if ((nmw == 0) && (i == 1))
+				cores_info->wrapba2[idx] = addrl;
 		}
 
+#if !defined(BCMDONGLEHOST)
 		if (CHIPID(sih->chip) == BCM4706_CHIP_ID) {
 			/* Check if it's a low cost package */
 			i = (R_REG(sii->osh, &cc->chipid) & CID_PKG_MASK) >> CID_PKG_SHIFT;
@@ -461,6 +483,7 @@ BCMATTACHFN(ai_scan)(si_t *sih, void *regs, uint devid)
 				}
 			}
 		}
+#endif /* !defined(BCMDONGLEHOST) */
 
 		/* Don't record bridges */
 		if (br)
@@ -483,12 +506,12 @@ error:
 /* This function changes the logical "focus" to the indicated core.
  * Return the current core's virtual address.
  */
-void *
-ai_setcoreidx(si_t *sih, uint coreidx)
+static void *
+_ai_setcoreidx(si_t *sih, uint coreidx, uint use_wrap2)
 {
 	si_info_t *sii = SI_INFO(sih);
 	si_cores_info_t *cores_info = (si_cores_info_t *)sii->cores_info;
-	uint32 addr, wrap;
+	uint32 addr, wrap, wrap2;
 	void *regs;
 
 	if (coreidx >= MIN(sii->numcores, SI_MAXCORES))
@@ -496,6 +519,7 @@ ai_setcoreidx(si_t *sih, uint coreidx)
 
 	addr = cores_info->coresba[coreidx];
 	wrap = cores_info->wrapba[coreidx];
+	wrap2 = cores_info->wrapba2[coreidx];
 
 	/*
 	 * If the user has provided an interrupt mask enabled function,
@@ -516,7 +540,14 @@ ai_setcoreidx(si_t *sih, uint coreidx)
 			cores_info->wrappers[coreidx] = REG_MAP(wrap, SI_CORE_SIZE);
 			ASSERT(GOODREGS(cores_info->wrappers[coreidx]));
 		}
-		sii->curwrap = cores_info->wrappers[coreidx];
+		if (!cores_info->wrappers2[coreidx] && (wrap2 != 0)) {
+			cores_info->wrappers2[coreidx] = REG_MAP(wrap2, SI_CORE_SIZE);
+			ASSERT(GOODREGS(cores_info->wrappers2[coreidx]));
+		}
+		if (use_wrap2)
+			sii->curwrap = cores_info->wrappers2[coreidx];
+		else
+			sii->curwrap = cores_info->wrappers[coreidx];
 		break;
 
 	case PCI_BUS:
@@ -524,6 +555,8 @@ ai_setcoreidx(si_t *sih, uint coreidx)
 		OSL_PCI_WRITE_CONFIG(sii->osh, PCI_BAR0_WIN, 4, addr);
 		regs = sii->curmap;
 		/* point bar0 2nd 4KB window to the primary wrapper */
+		if (use_wrap2)
+			wrap = wrap2;
 		if (PCIE_GEN2(sii))
 			OSL_PCI_WRITE_CONFIG(sii->osh, PCIE2_BAR0_WIN2, 4, wrap);
 		else
@@ -533,7 +566,10 @@ ai_setcoreidx(si_t *sih, uint coreidx)
 #ifdef BCMJTAG
 	case JTAG_BUS:
 		sii->curmap = regs = (void *)((uintptr)addr);
-		sii->curwrap = (void *)((uintptr)wrap);
+		if (use_wrap2)
+			sii->curwrap = (void *)((uintptr)wrap2);
+		else
+			sii->curwrap = (void *)((uintptr)wrap);
 		break;
 #endif	/* BCMJTAG */
 
@@ -550,6 +586,17 @@ ai_setcoreidx(si_t *sih, uint coreidx)
 	return regs;
 }
 
+void *
+ai_setcoreidx(si_t *sih, uint coreidx)
+{
+	return _ai_setcoreidx(sih, coreidx, 0);
+}
+
+void *
+ai_setcoreidx_2ndwrap(si_t *sih, uint coreidx)
+{
+	return _ai_setcoreidx(sih, coreidx, 1);
+}
 
 void
 ai_coreaddrspaceX(si_t *sih, uint asidx, uint32 *addr, uint32 *size)
@@ -641,9 +688,6 @@ error:
 int
 ai_numaddrspaces(si_t *sih)
 {
-
-	BCM_REFERENCE(sih);
-
 	return 2;
 }
 
@@ -693,7 +737,9 @@ uint
 ai_flag(si_t *sih)
 {
 	si_info_t *sii = SI_INFO(sih);
+#if !defined(BCMDONGLEHOST)
 	si_cores_info_t *cores_info = (si_cores_info_t *)sii->cores_info;
+#endif
 	aidmp_t *ai;
 
 	if (BCM47162_DMP()) {
@@ -719,6 +765,15 @@ ai_flag(si_t *sih)
 			__FUNCTION__));
 		return PMU_OOB_BIT;
 	}
+#else
+	if (PMU_DMP()) {
+		uint idx, flag;
+		idx = sii->curidx;
+		ai_setcoreidx(sih, SI_CC_IDX);
+		flag = ai_flag_alt(sih);
+		ai_setcoreidx(sih, idx);
+		return flag;
+	}
 #endif /* REROUTE_OOBINT */
 
 	ai = sii->curwrap;
@@ -731,7 +786,9 @@ uint
 ai_flag_alt(si_t *sih)
 {
 	si_info_t *sii = SI_INFO(sih);
+#if !defined(BCMDONGLEHOST)
 	si_cores_info_t *cores_info = (si_cores_info_t *)sii->cores_info;
+#endif
 	aidmp_t *ai;
 
 	if (BCM47162_DMP()) {
@@ -763,9 +820,6 @@ ai_flag_alt(si_t *sih)
 void
 ai_setint(si_t *sih, int siflag)
 {
-	BCM_REFERENCE(sih);
-	BCM_REFERENCE(siflag);
-
 }
 
 uint
@@ -970,21 +1024,12 @@ ai_corereg_addr(si_t *sih, uint coreidx, uint regoff)
 		}
 	}
 
-	if (!fast)
-		return 0;
+	if (!fast) {
+		ASSERT(sii->curidx == coreidx);
+		r = (uint32*) ((uchar*)sii->curmap + regoff);
+	}
 
 	return (r);
-}
-
-static uint32
-ai_check_bp_status(si_info_t *sii, aidmp_t *ai, aidmp_t *ai_sec)
-{
-	uint32 status, status1 = 0;
-
-	status = R_REG(sii->osh, &ai->resetstatus);
-	if (ai_sec)
-		status1 = R_REG(sii->osh, &ai_sec->resetstatus);
-	return (status | status1);
 }
 
 void
@@ -993,31 +1038,28 @@ ai_core_disable(si_t *sih, uint32 bits)
 	si_info_t *sii = SI_INFO(sih);
 	volatile uint32 dummy;
 	uint32 status;
-	aidmp_t *ai, *ai_sec = NULL;
-	si_cores_info_t *cores_info = (si_cores_info_t *)sii->cores_info;
+	aidmp_t *ai;
+
 
 	ASSERT(GOODREGS(sii->curwrap));
 	ai = sii->curwrap;
-
-	if (cores_info->wrapba_sec[sii->curidx])
-		ai_sec = REG_MAP(cores_info->wrapba_sec[sii->curidx], SI_CORE_SIZE);
 
 	/* if core is already in reset, just return */
 	if (R_REG(sii->osh, &ai->resetctrl) & AIRC_RESET)
 		return;
 
 	/* ensure there are no pending backplane operations */
-	SPINWAIT((status = ai_check_bp_status(sii, ai, ai_sec)), 300);
+	SPINWAIT(((status = R_REG(sii->osh, &ai->resetstatus)) != 0), 300);
 
 	/* if pending backplane ops still, try waiting longer */
-	if (status) {
+	if (status != 0) {
 		/* 300usecs was sufficient to allow backplane ops to clear for big hammer */
 		/* during driver load we may need more time */
-		SPINWAIT((status = ai_check_bp_status(sii, ai, ai_sec)), 10000);
+		SPINWAIT(((status = R_REG(sii->osh, &ai->resetstatus)) != 0), 10000);
 		/* if still pending ops, continue on and try disable anyway */
 		/* this is in big hammer path, so don't call wl_reinit in this case... */
 #ifdef BCMDBG
-		if (status) {
+		if (status != 0) {
 			printf("%s: WARN: resetstatus=%0x on core disable\n", __FUNCTION__, status);
 		}
 #endif
@@ -1026,21 +1068,11 @@ ai_core_disable(si_t *sih, uint32 bits)
 	W_REG(sii->osh, &ai->resetctrl, AIRC_RESET);
 	dummy = R_REG(sii->osh, &ai->resetctrl);
 	BCM_REFERENCE(dummy);
-	if (ai_sec) {
-		W_REG(sii->osh, &ai_sec->resetctrl, AIRC_RESET);
-		dummy = R_REG(sii->osh, &ai_sec->resetctrl);
-		BCM_REFERENCE(dummy);
-	}
 	OSL_DELAY(1);
 
 	W_REG(sii->osh, &ai->ioctrl, bits);
 	dummy = R_REG(sii->osh, &ai->ioctrl);
 	BCM_REFERENCE(dummy);
-	if (ai_sec) {
-		W_REG(sii->osh, &ai_sec->ioctrl, bits);
-		dummy = R_REG(sii->osh, &ai_sec->ioctrl);
-		BCM_REFERENCE(dummy);
-	}
 	OSL_DELAY(10);
 }
 
@@ -1049,74 +1081,61 @@ ai_core_disable(si_t *sih, uint32 bits)
  * bits - core specific bits that are set during and after reset sequence
  * resetbits - core specific bits that are set only during reset sequence
  */
-void
-ai_core_reset(si_t *sih, uint32 bits, uint32 resetbits)
+static void
+_ai_core_reset(si_t *sih, uint32 bits, uint32 resetbits)
 {
 	si_info_t *sii = SI_INFO(sih);
+#ifdef BCMDBG_ERR
 	si_cores_info_t *cores_info = (si_cores_info_t *)sii->cores_info;
-	aidmp_t *ai, *ai_sec = NULL;
+#endif
+	aidmp_t *ai;
 	volatile uint32 dummy;
-	uint32 status;
 	uint loop_counter = 10;
 
 	ASSERT(GOODREGS(sii->curwrap));
 	ai = sii->curwrap;
-	if (cores_info->wrapba_sec[sii->curidx])
-		ai_sec = REG_MAP(cores_info->wrapba_sec[sii->curidx], SI_CORE_SIZE);
-
 
 	/* ensure there are no pending backplane operations */
-	SPINWAIT((status = ai_check_bp_status(sii, ai, ai_sec)), 300);
+	SPINWAIT(((dummy = R_REG(sii->osh, &ai->resetstatus)) != 0), 300);
 
 #ifdef BCMDBG_ERR
-	if (status)
-		SI_ERROR(("%s: WARN1: resetstatus=0x%0x\n", __FUNCTION__, status));
+	if (dummy != 0)
+		SI_ERROR(("%s: WARN1: resetstatus=0x%0x\n", __FUNCTION__, dummy));
 #endif
 
 	/* put core into reset state */
 	W_REG(sii->osh, &ai->resetctrl, AIRC_RESET);
-	if (ai_sec)
-		W_REG(sii->osh, &ai_sec->resetctrl, AIRC_RESET);
 	OSL_DELAY(10);
 
 	/* ensure there are no pending backplane operations */
-	SPINWAIT((status = ai_check_bp_status(sii, ai, ai_sec)), 300);
+	SPINWAIT((R_REG(sii->osh, &ai->resetstatus) != 0), 300);
 
 	W_REG(sii->osh, &ai->ioctrl, (bits | resetbits | SICF_FGC | SICF_CLOCK_EN));
 	dummy = R_REG(sii->osh, &ai->ioctrl);
 	BCM_REFERENCE(dummy);
-	if (ai_sec) {
-		W_REG(sii->osh, &ai_sec->ioctrl, (bits | resetbits | SICF_FGC | SICF_CLOCK_EN));
-		dummy = R_REG(sii->osh, &ai_sec->ioctrl);
-		BCM_REFERENCE(dummy);
-	}
 
 	/* ensure there are no pending backplane operations */
-	SPINWAIT((status = ai_check_bp_status(sii, ai, ai_sec)), 300);
+	SPINWAIT(((dummy = R_REG(sii->osh, &ai->resetstatus)) != 0), 300);
 
 #ifdef BCMDBG_ERR
-	if (status != 0)
-		SI_ERROR(("%s: WARN2: resetstatus=0x%0x\n", __FUNCTION__, status));
+	if (dummy != 0)
+		SI_ERROR(("%s: WARN2: resetstatus=0x%0x\n", __FUNCTION__, dummy));
 #endif
 
-	while ((R_REG(sii->osh, &ai->resetctrl) != 0 ||
-		(ai_sec ? R_REG(sii->osh, &ai_sec->resetctrl): 0)) &&
-		--loop_counter != 0) {
+	while (R_REG(sii->osh, &ai->resetctrl) != 0 && --loop_counter != 0) {
 		/* ensure there are no pending backplane operations */
-		SPINWAIT((status = ai_check_bp_status(sii, ai, ai_sec)), 300);
+		SPINWAIT(((dummy = R_REG(sii->osh, &ai->resetstatus)) != 0), 300);
 
 #ifdef BCMDBG_ERR
-		if (status != 0)
-			SI_ERROR(("%s: WARN3 resetstatus=0x%0x\n", __FUNCTION__, status));
+		if (dummy != 0)
+			SI_ERROR(("%s: WARN3 resetstatus=0x%0x\n", __FUNCTION__, dummy));
 #endif
 
 		/* take core out of reset */
 		W_REG(sii->osh, &ai->resetctrl, 0);
-		if (ai_sec)
-			W_REG(sii->osh, &ai_sec->resetctrl, 0);
 
 		/* ensure there are no pending backplane operations */
-		SPINWAIT((status = ai_check_bp_status(sii, ai, ai_sec)), 300);
+		SPINWAIT((R_REG(sii->osh, &ai->resetstatus) != 0), 300);
 	}
 
 #ifdef BCMDBG_ERR
@@ -1128,19 +1147,32 @@ ai_core_reset(si_t *sih, uint32 bits, uint32 resetbits)
 	W_REG(sii->osh, &ai->ioctrl, (bits | SICF_CLOCK_EN));
 	dummy = R_REG(sii->osh, &ai->ioctrl);
 	BCM_REFERENCE(dummy);
-	if (ai_sec) {
-		W_REG(sii->osh, &ai_sec->ioctrl, (bits | SICF_CLOCK_EN));
-		dummy = R_REG(sii->osh, &ai_sec->ioctrl);
-		BCM_REFERENCE(dummy);
-	}
 	OSL_DELAY(1);
+}
+
+void
+ai_core_reset(si_t *sih, uint32 bits, uint32 resetbits)
+{
+	si_info_t *sii = SI_INFO(sih);
+	si_cores_info_t *cores_info = (si_cores_info_t *)sii->cores_info;
+	uint idx = sii->curidx;
+
+	if (cores_info->wrapba2[idx] != 0) {
+		ai_setcoreidx_2ndwrap(sih, idx);
+		_ai_core_reset(sih, bits, resetbits);
+		ai_setcoreidx(sih, idx);
+	}
+
+	_ai_core_reset(sih, bits, resetbits);
 }
 
 void
 ai_core_cflags_wo(si_t *sih, uint32 mask, uint32 val)
 {
 	si_info_t *sii = SI_INFO(sih);
+#if !defined(BCMDONGLEHOST)
 	si_cores_info_t *cores_info = (si_cores_info_t *)sii->cores_info;
+#endif
 	aidmp_t *ai;
 	uint32 w;
 
@@ -1181,7 +1213,9 @@ uint32
 ai_core_cflags(si_t *sih, uint32 mask, uint32 val)
 {
 	si_info_t *sii = SI_INFO(sih);
+#if !defined(BCMDONGLEHOST)
 	si_cores_info_t *cores_info = (si_cores_info_t *)sii->cores_info;
+#endif
 	aidmp_t *ai;
 	uint32 w;
 
@@ -1223,7 +1257,9 @@ uint32
 ai_core_sflags(si_t *sih, uint32 mask, uint32 val)
 {
 	si_info_t *sii = SI_INFO(sih);
+#if !defined(BCMDONGLEHOST)
 	si_cores_info_t *cores_info = (si_cores_info_t *)sii->cores_info;
+#endif
 	aidmp_t *ai;
 	uint32 w;
 
@@ -1326,6 +1362,7 @@ ai_dumpregs(si_t *sih, struct bcmstrbuf *b)
 			    R_REG(osh, &ai->intstatus),
 			    R_REG(osh, &ai->config),
 			    R_REG(osh, &ai->itcr));
+#if !defined(BCMDONGLEHOST)
 		if ((sih->chip == BCM4331_CHIP_ID) && (cores_info->coreid[i] == PCIE_CORE_ID)) {
 			/* point bar0 2nd 4KB window */
 			OSL_PCI_WRITE_CONFIG(sii->osh, PCI_BAR0_WIN2, 4, 0x18103000);
@@ -1360,6 +1397,7 @@ ai_dumpregs(si_t *sih, struct bcmstrbuf *b)
 				R_REG(osh, &ai->itcr));
 			/* bar0 2nd 4KB window will be fixed in the next setcore */
 		}
+#endif /* !defined(BCMDONGLEHOST) */
 	}
 }
 #endif	
@@ -1502,6 +1540,7 @@ ai_viewall(si_t *sih, bool verbose)
 		cid = cores_info->coreid[sii->curidx];
 		addr = cores_info->wrapba[sii->curidx];
 		_ai_view(osh, ai, cid, addr, verbose);
+//#ifndef	BCMDONGLEHOST
 		if ((sih->chip == BCM4331_CHIP_ID) && (cores_info->coreid[i] == PCIE_CORE_ID)) {
 			/* point bar0 2nd 4KB window */
 			OSL_PCI_WRITE_CONFIG(sii->osh, PCI_BAR0_WIN2, 4, 0x18103000);
@@ -1512,6 +1551,7 @@ ai_viewall(si_t *sih, bool verbose)
 			_ai_view(osh, ai, 0x135, 0x18105000, verbose);
 			/* bar0 2nd 4KB window will be fixed in the next setcore */
 		}
+//#endif /* !BCMDONGLEHOST */
 	}
 }
 #endif	/* BCMDBG */
@@ -1522,7 +1562,7 @@ BCMATTACHFN(ai_enable_backplane_timeouts)(si_t *sih)
 #ifdef AXI_TIMEOUTS
 	si_info_t *sii = SI_INFO(sih);
 	aidmp_t *ai;
-	uint32 i;
+	int i;
 
 	for (i = 0; i < sii->num_br; ++i) {
 		ai = (aidmp_t *) sii->br_wrapba[i];
@@ -1538,7 +1578,7 @@ ai_clear_backplane_to(si_t *sih)
 #ifdef AXI_TIMEOUTS
 	si_info_t *sii = SI_INFO(sih);
 	aidmp_t *ai;
-	uint32 i;
+	int i;
 	uint32 errlogstatus;
 
 	for (i = 0; i < sii->num_br; ++i) {
@@ -1583,15 +1623,6 @@ ai_clear_backplane_to(si_t *sih)
 				R_REG(sii->osh, &ai->errlogid),
 				R_REG(sii->osh, &ai->errlogflags));
 			printf(", status 0x%08x\n", errlogstatus);
-#ifdef WLC_LOW
-			printf("\t Clock Control Status:\n");
-			printf("\tCC: 0x%08x,D11a: 0x%08x,D11b:0x%08x,PCIE: 0x%08x,ARM:0x%08x\n",
-				si_corereg_unit_ifup(sih, CC_CORE_ID, 0, SI_CLK_CTL_ST, 0, 0),
-				si_corereg_unit_ifup(sih, D11_CORE_ID, 0, SI_CLK_CTL_ST, 0, 0),
-				si_corereg_unit_ifup(sih, D11_CORE_ID, 1, SI_CLK_CTL_ST, 0, 0),
-				si_corereg_unit_ifup(sih, PCIE2_CORE_ID, 0, SI_CLK_CTL_ST, 0, 0),
-				si_corereg_unit_ifup(sih, ARMCR4_CORE_ID, 0, SI_CLK_CTL_ST, 0, 0));
-#endif /* WLC_LOW */
 		}
 	}
 #endif /* AXI_TIMEOUTS */

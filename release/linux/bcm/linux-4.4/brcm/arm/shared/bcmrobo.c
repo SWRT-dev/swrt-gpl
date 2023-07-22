@@ -1112,7 +1112,6 @@ bcm_robo_check_gphy_reset(robo_info_t *robo, uint8 page, uint8 reg, void *val, i
 }
 
 /* High level switch configuration functions. */
-static int iswrt610nv1=0;
 
 /* Get access to the RoboSwitch */
 robo_info_t *
@@ -1142,10 +1141,6 @@ bcm_robo_attach(si_t *sih, void *h, char *vars, miird_f miird, miiwr_f miiwr)
 	robo->miird = miird;
 	robo->miiwr = miiwr;
 	robo->page = -1;
-
-	char *boothwmodel = nvram_get("boot_hw_model");
-	char *boothwver = nvram_get("boot_hw_ver");
-	if (boothwmodel == NULL || strcmp(boothwmodel, "WRT300N")) rreset = GPIO_PIN_NOTDEFINED;
 
 	if (SRAB_ENAB(sih) && BCM4707_CHIP(sih->chip)) {
 		SET_ROBO_SRABREGS(robo);
@@ -1234,13 +1229,10 @@ bcm_robo_attach(si_t *sih, void *h, char *vars, miird_f miird, miiwr_f miiwr)
 		 * a write to bit 0 of pseudo phy register 16 is done we are
 		 * unable to talk to the switch on a customer ref design.
 		 */
-		if (boothwmodel != NULL && !strcmp(boothwmodel, "WRT610N")
-			&& boothwver != NULL && !strcmp(boothwver, "1.0")) {
 			if (tmp == 0xffff) {
 				miiwr(h, PSEUDO_PHYAD, 16, 1);
 				tmp = miird(h, PSEUDO_PHYAD, 2);
 			}
-		}
 
 		if (tmp != 0xffff) {
 			do {
@@ -1293,11 +1285,6 @@ bcm_robo_attach(si_t *sih, void *h, char *vars, miird_f miird, miiwr_f miiwr)
 	else
 		nvram_set("switch_type", "unknown");						
  
-	if (boothwmodel != NULL && !strcmp(boothwmodel, "WRT610N")
-		&& boothwver != NULL && !strcmp(boothwver, "1.0"))
-	iswrt610nv1=1;
-
-	if (!iswrt610nv1)
 	if ((robo->devid == DEVID5395) ||
 	    (robo->devid == DEVID5397) ||
 	    (robo->devid == DEVID5398)) {
@@ -2795,6 +2782,7 @@ int bcm_robo_global_config(void *robo, struct b53_vlan *vlans, int vlans_num, st
 	}
 
 	bcm_robo_config_port_led(robo);
+	return 0;
 }
 
 void bcm_robo_reset_switch(void *b53_robo)

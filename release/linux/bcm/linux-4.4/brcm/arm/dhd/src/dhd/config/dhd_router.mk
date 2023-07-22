@@ -99,6 +99,7 @@ DHDFILES_SRC    += src/shared/bcm_l2_filter.c
 DHDFILES_SRC    += src/shared/bcmotp.c
 DHDFILES_SRC    += src/shared/bcmsrom.c
 DHDFILES_SRC    += src/shared/bcmutils.c
+DHDFILES_SRC    += src/shared/bcmxtlv.c
 DHDFILES_SRC    += src/shared/hnd_pktq.c
 DHDFILES_SRC    += src/shared/hnd_pktpool.c
 DHDFILES_SRC    += src/shared/hndpmu.c

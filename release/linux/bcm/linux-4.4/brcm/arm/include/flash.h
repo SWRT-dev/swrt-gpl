@@ -1,7 +1,7 @@
 /*
  * flash.h: Common definitions for flash access.
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: flash.h 281527 2011-09-02 17:12:53Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: flash.h 527388 2015-01-17 08:59:26Z $
  */
 
 /* FILE-CSTYLED Cannot figure out how to make the initialization continuation lines acceptable */
@@ -67,10 +70,10 @@ typedef struct _flash_desc {
 flash_cmds_t sflash_cmd_t =
 	{ SFLASH, 0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
-#ifdef NFLASH_SUPPORT
+#ifdef CCNFLASH_SUPPORT
 flash_cmds_t nflash_cmd_t =
 	{ NFLASH, 0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-#endif /* NFLASH_SUPPORT */
+#endif /* CCNFLASH_SUPPORT */
 
 flash_cmds_t flash_cmds[] = {
 /*	  type	needu	preera	eraseb	erasech	write	wbuf	clcsr	rdcsr	rdid
@@ -168,10 +171,10 @@ uint amd2114[] = {
 flash_desc_t sflash_desc =
 	{ 0, 0, 0, 0, SFLASH, 0, 0, 0, 0, 0, NULL, "SFLASH" };
 
-#ifdef NFLASH_SUPPORT
+#ifdef CCNFLASH_SUPPORT
 flash_desc_t nflash_desc =
 	{ 0, 0, 0, 0, NFLASH, 0, 0, 0, 0, 0, NULL, "NFLASH" };
-#endif /* NFLASH_SUPPORT */
+#endif /* CCNFLASH_SUPPORT */
 
 flash_desc_t flashes[] = {
 	{ 0x00b0, 0x00d0, 0x0200000, 2,	SCS, 0x10000, 32,  0, 31,  0, NULL,

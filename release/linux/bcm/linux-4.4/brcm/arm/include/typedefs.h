@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -12,12 +12,15 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- * $Id: typedefs.h 452599 2014-01-31 07:25:38Z $
+ *
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: typedefs.h 514727 2014-11-12 03:02:48Z $
  */
 
 #ifndef _TYPEDEFS_H_
 #define _TYPEDEFS_H_
-#define MAX_EVENT 16   /* Maximum number of event bit 128 */
 
 #ifdef SITE_TYPEDEFS
 
@@ -71,11 +74,14 @@ typedef	unsigned char	bool;			/* consistent w/BOOL */
 #include <basetsd.h>
 #define TYPEDEF_UINTPTR
 typedef ULONG_PTR uintptr;
-#elif defined(__x86_64__)
+#elif defined(__LP64__)
 #define TYPEDEF_UINTPTR
 typedef unsigned long long int uintptr;
 #endif
 
+#if defined(_RTE_) && !defined(_RTE_SIM_)
+#define _NEED_SIZE_T_
+#endif
 
 #if defined(_MINOSL_)
 #define _NEED_SIZE_T_
@@ -131,7 +137,6 @@ typedef unsigned __int64 uint64;
 #define TYPEDEF_ULONG
 #endif
 
-
 #ifdef	linux
 /*
  * If this is either a Linux hybrid build or the per-port code of a hybrid build
@@ -140,7 +145,6 @@ typedef unsigned __int64 uint64;
  * a duplicate typedef error; there is no way to "undefine" a typedef.
  * We know when it's per-port code because each file defines LINUX_PORT at the top.
  */
-#if !defined(LINUX_HYBRID) || defined(LINUX_PORT)
 #define TYPEDEF_UINT
 #ifndef TARGETENV_android
 #define TYPEDEF_USHORT
@@ -159,24 +163,14 @@ typedef unsigned __int64 uint64;
 #endif
 #endif	/* == 2.6.18 */
 #endif	/* __KERNEL__ */
-#endif  /* !defined(LINUX_HYBRID) || defined(LINUX_PORT) */
 #endif	/* linux */
 
-#if defined(__ECOS)
-#define TYPEDEF_UCHAR
-#define TYPEDEF_UINT
-#define TYPEDEF_USHORT
-#define TYPEDEF_ULONG
-#define TYPEDEF_BOOL
-#endif
-
-#if !defined(linux) && !defined(_WIN32) && !defined(_CFE_) && !defined(_MINOSL_) && \
-	!defined(__DJGPP__) && !defined(__ECOS) && !defined(__BOB__) && \
+#if !defined(linux) && !defined(_WIN32) && !defined(_CFE_) && !defined(_RTE_) && \
+	!defined(_MINOSL_) && !defined(__DJGPP__) && !defined(__BOB__) && \
 	!defined(TARGETOS_nucleus) && !defined(EFI) && !defined(__FreeBSD__)
 #define TYPEDEF_UINT
 #define TYPEDEF_USHORT
 #endif
-
 
 /* Do not support the (u)int64 types with strict ansi for GNU C */
 #if defined(__GNUC__) && defined(__STRICT_ANSI__)
@@ -199,34 +193,26 @@ typedef unsigned __int64 uint64;
 
 #endif /* __ICL */
 
-#if !defined(_WIN32) && !defined(_CFE_) && !defined(_MINOSL_) && !defined(__DJGPP__) && \
-	!defined(__BOB__) && !defined(TARGETOS_nucleus) && !defined(EFI)
+#if !defined(_WIN32) && !defined(_CFE_) && !defined(_RTE_) && !defined(_MINOSL_) && \
+	!defined(__DJGPP__) && !defined(__BOB__) && !defined(TARGETOS_nucleus) && !defined(EFI)
 
 /* pick up ushort & uint from standard types.h */
 #if defined(linux) && defined(__KERNEL__)
 
 /* See note above */
-#if !defined(LINUX_HYBRID) || defined(LINUX_PORT)
 #ifdef USER_MODE
 #include <sys/types.h>
 #else
 #include <linux/types.h>	/* sys/types.h and linux/types.h are oil and water */
 #endif /* USER_MODE */
-#endif /* !defined(LINUX_HYBRID) || defined(LINUX_PORT) */
 
 #else
-
-#if defined(__ECOS)
-#include <pkgconf/infra.h>
-#include <cyg/infra/cyg_type.h>
-#include <stdarg.h>
-#endif
 
 #include <sys/types.h>
 
 #endif /* linux && __KERNEL__ */
 
-#endif 
+#endif /* !_WIN32 && !PMON && !_CFE_ && !_RTE_  && !_MINOSL_ && !__DJGPP__ */
 
 #if defined(MACOSX)
 
@@ -259,7 +245,6 @@ enum {
 
 #endif /* MACOSX */
 
-
 /* use the default typedefs in the next section of this file */
 #define USE_TYPEDEF_DEFAULTS
 
@@ -274,8 +259,12 @@ enum {
 #undef USE_TYPEDEF_DEFAULTS
 
 #ifndef TYPEDEF_BOOL
+#if defined(__FreeBSD__) || defined(__NetBSD__)
+#include <stdbool.h>
+#else
 typedef	/* @abstract@ */ unsigned char	bool;
 #endif
+#endif /* endif TYPEDEF_BOOL */
 
 /* define uchar, ushort, uint, ulong */
 
@@ -348,13 +337,6 @@ typedef double		float64;
  * single or double precision arithmetic.  Compiling with -DFLOAT32
  * selects single precision; the default is double precision.
  */
-
-#ifdef MACOSX
-/* float_t types conflict with the same typedefs from the standard ANSI-C
-** math.h header file. Don't re-typedef them here.
-*/
-#define TYPEDEF_FLOAT_T
-#endif /* MACOSX */
 
 #ifndef TYPEDEF_FLOAT_T
 

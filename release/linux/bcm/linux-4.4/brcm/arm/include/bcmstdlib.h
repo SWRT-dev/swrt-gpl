@@ -1,6 +1,6 @@
 /*
  * prototypes for functions defined in bcmstdlib.c
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -13,7 +13,10 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- * $Id: bcmstdlib.h 480148 2014-05-23 00:44:11Z $:
+ *
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ * $Id: bcmstdlib.h 528810 2015-01-23 10:52:55Z $:
  */
 
 /*
@@ -49,6 +52,8 @@
  * API should simply define "BWL_INTERNAL_STDLIB_SUPPORT". This would eliminate
  * the need for the following #ifdef check.
  */
+#define PRINTF_BUFLEN	256
+
 #if !defined(_WIN32) && !defined(_CFE_) && !defined(EFI)
 
 typedef int FILE;
@@ -78,22 +83,26 @@ extern unsigned long rand(void);
 
 #define	atoi(s)	((int)(strtoul((s), NULL, 10)))
 
-#endif /* !_WIN32 && !_CFE_ && !EFI */
-
-#if !defined(_WIN32) || defined(EFI)
 /* string functions */
-#define PRINTF_BUFLEN	256
 extern int printf(const char *fmt, ...)
 	__attribute__ ((format (__printf__, 1, 2)));
+#ifndef BCMSTDLIB_SNPRINTF_ONLY
 extern int sprintf(char *buf, const char *fmt, ...)
 	__attribute__ ((format (__printf__, 2, 3)));
+#else
+#define sprintf(buf, fmt, ...)	use_snprintf_instead(buf, fmt, __VA_ARGS__)
+#endif
 
 extern int strcmp(const char *s1, const char *s2);
 extern size_t strlen(const char *s);
+#ifdef ATE_BUILD
 extern char *strcpy(char *dest, const char *src);
+#else
+#define strcpy(dest, src)	use_strncpy_instead(dest, src)
+#endif
 extern char *strstr(const char *s, const char *find);
 extern char *strncpy(char *dest, const char *src, size_t n);
-extern char *strcat(char *d, const char *s);
+#define strcat(dest, src)	use_strncat_instead(dest, src)
 
 extern int strncmp(const char *s1, const char *s2, size_t n);
 extern char *strchr(const char *str, int c);
@@ -115,7 +124,7 @@ extern void *memset(void *dest, int c, size_t n);
 extern void *memcpy(void *dest, const void *src, size_t n);
 extern int memcmp(const void *s1, const void *s2, size_t n);
 
-#endif /* !_WIN32 || EFI */
+#endif /* !_WIN32 && !_CFE_ && !EFI */
 #endif   /* BWL_INTERNAL_STDLIB_SUPPORT */
 
 #if !defined(_WIN32) || defined(EFI)
@@ -127,4 +136,4 @@ extern int snprintf(char *str, size_t n, char const *fmt, ...);
 
 extern int vsnprintf(char *buf, size_t size, const char *fmt, va_list ap);
 
-#endif 	/* _BCMSTDLIB_H */
+#endif /* _BCMSTDLIB_H */

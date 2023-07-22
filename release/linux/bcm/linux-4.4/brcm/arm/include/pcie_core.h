@@ -1,7 +1,7 @@
 /*
  * BCM43XX PCIE core hardware definitions.
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $Id: pcie_core.h 558784 2015-05-25 05:13:49Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ * $Id: pcie_core.h 514727 2014-11-12 03:02:48Z $
  */
 #ifndef	_PCIE_CORE_H
 #define	_PCIE_CORE_H
@@ -82,8 +85,7 @@ typedef struct sbpcieregs {
 	uint32 biststatus;	/* bist Status: 0x00C */
 	uint32 gpiosel;		/* PCIE gpio sel: 0x010 */
 	uint32 gpioouten;	/* PCIE gpio outen: 0x14 */
-	uint32 gpioout;		/* PCIE gpio out */
-	uint32 PAD;
+	uint32 PAD[2];
 	uint32 intstatus;	/* Interrupt status: 0x20 */
 	uint32 intmask;		/* Interrupt mask: 0x24 */
 	uint32 sbtopcimailbox;	/* sb to pcie mailbox: 0x028 */
@@ -137,15 +139,9 @@ typedef struct sbpcieregs {
 			uint32	ltr_state;	/* 0x1A0 */
 			uint32	pwr_int_status;	/* 0x1A4 */
 			uint32	pwr_int_mask;	/* 0x1A8 */
-			uint32	pme_source; /* 0x1AC */
-			uint32	err_hdr_logreg1; /* 0x1B0 */
-			uint32	err_hdr_logreg2; /* 0x1B4 */
-			uint32	err_hdr_logreg3; /* 0x1B8 */
-			uint32	err_hdr_logreg4; /* 0x1BC */
-			uint32	err_code_logreg; /* 0x1C0 */
-			uint32  PAD[7]; /* 0x1C4 - 0x1DF */
+			uint32  PAD[13]; 	/* 0x1AC - 0x1DF */
 			uint32  clk_ctl_st;	/* 0x1E0 */
-			uint32  PAD[7];		/* 0x1E4 - 0x1FF */
+			uint32  PAD[7]; 	/* 0x1E4 - 0x1FF */
 			pcie_devdmaregs_t  h2d0_dmaregs; /* 0x200 - 0x23c */
 			pcie_devdmaregs_t  d2h0_dmaregs; /* 0x240 - 0x27c */
 			pcie_devdmaregs_t  h2d1_dmaregs; /* 0x280 - 0x2bc */
@@ -220,9 +216,9 @@ typedef struct sbpcieregs {
 
 #define PCIE_MB_D2H_MB_MASK		\
 	(PCIE_MB_TOPCIE_D2H0_DB0 | PCIE_MB_TOPCIE_D2H0_DB1 |	\
-	PCIE_MB_TOPCIE_D2H1_DB1  | PCIE_MB_TOPCIE_D2H1_DB1 |	\
-	PCIE_MB_TOPCIE_D2H2_DB1  | PCIE_MB_TOPCIE_D2H2_DB1 |	\
-	PCIE_MB_TOPCIE_D2H3_DB1  | PCIE_MB_TOPCIE_D2H3_DB1)
+	PCIE_MB_TOPCIE_D2H1_DB0  | PCIE_MB_TOPCIE_D2H1_DB1 |	\
+	PCIE_MB_TOPCIE_D2H2_DB0  | PCIE_MB_TOPCIE_D2H2_DB1 |	\
+	PCIE_MB_TOPCIE_D2H3_DB0  | PCIE_MB_TOPCIE_D2H3_DB1)
 
 /* SB to PCIE translation masks */
 #define SBTOPCIE0_MASK	0xfc000000
@@ -333,6 +329,12 @@ typedef struct sbpcieregs {
 #define PCIE_TLP_TGTDEBUG2		0x078 /* Target Debug Reg2 */
 #define PCIE_TLP_TGTDEBUG3		0x07C /* Target Debug Reg3 */
 #define PCIE_TLP_TGTDEBUG4		0x080 /* Target Debug Reg4 */
+
+/* PCIE2 MDIO register offsets */
+#define PCIE2_MDIO_CONTROL    0x128
+#define PCIE2_MDIO_WR_DATA    0x12C
+#define PCIE2_MDIO_RD_DATA    0x130
+
 
 /* MDIO control */
 #define MDIOCTL_DIVISOR_MASK		0x7f	/* clock to be used on MDIO */
@@ -622,11 +624,11 @@ typedef struct sbpcieregs {
 #define PCIEGEN2_IOC_L2_L3_LINK_SHIFT		15
 
 #define PCIEGEN2_IOC_D0_STATE_MASK		(1 << PCIEGEN2_IOC_D0_STATE_SHIFT)
-#define PCIEGEN2_IOC_D1_STATE_MASK		(1 << PCIEGEN2_IOC_D1_STATE_SHIF)
-#define PCIEGEN2_IOC_D2_STATE_MASK		(1 << PCIEGEN2_IOC_D2_STATE_SHIF)
-#define PCIEGEN2_IOC_D3_STATE_MASK		(1 << PCIEGEN2_IOC_D3_STATE_SHIF)
-#define PCIEGEN2_IOC_L0_LINK_MASK		(1 << PCIEGEN2_IOC_L0_LINK_SHIF)
-#define PCIEGEN2_IOC_L1_LINK_MASK		(1 << PCIEGEN2_IOC_L1_LINK_SHIF)
+#define PCIEGEN2_IOC_D1_STATE_MASK		(1 << PCIEGEN2_IOC_D1_STATE_SHIFT)
+#define PCIEGEN2_IOC_D2_STATE_MASK		(1 << PCIEGEN2_IOC_D2_STATE_SHIFT)
+#define PCIEGEN2_IOC_D3_STATE_MASK		(1 << PCIEGEN2_IOC_D3_STATE_SHIFT)
+#define PCIEGEN2_IOC_L0_LINK_MASK		(1 << PCIEGEN2_IOC_L0_LINK_SHIFT)
+#define PCIEGEN2_IOC_L1_LINK_MASK		(1 << PCIEGEN2_IOC_L1_LINK_SHIFT)
 #define PCIEGEN2_IOC_L1L2_LINK_MASK		(1 << PCIEGEN2_IOC_L1L2_LINK_SHIFT)
 #define PCIEGEN2_IOC_L2_L3_LINK_MASK		(1 << PCIEGEN2_IOC_L2_L3_LINK_SHIFT)
 
@@ -638,6 +640,7 @@ typedef struct sbpcieregs {
 
 #ifdef BCMDRIVER
 void pcie_watchdog_reset(osl_t *osh, si_t *sih, sbpcieregs_t *sbpcieregs);
+void pcie_serdes_iddqdisable(osl_t *osh, si_t *sih, sbpcieregs_t *sbpcieregs);
 #endif /* BCMDRIVER */
 
 #endif	/* _PCIE_CORE_H */

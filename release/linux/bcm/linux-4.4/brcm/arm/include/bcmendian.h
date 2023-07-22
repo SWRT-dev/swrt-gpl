@@ -1,7 +1,7 @@
 /*
  * Byte order utilities
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- *  $Id: bcmendian.h 402715 2013-05-16 18:50:09Z $
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ *
+ *  $Id: bcmendian.h 616248 2016-01-31 07:48:13Z $
  *
  * This file by default provides proper behavior on little-endian architectures.
  * On big-endian architectures, IL_BIGENDIAN should be defined.
@@ -353,4 +356,29 @@ ntoh32_ua(const void *bytes)
 }
 
 #endif /* !__GNUC__ */
+
+#ifdef IL_BIGENDIAN
+#define htod64(i) (bcmswap64(i))
+#define htod32(i) (bcmswap32(i))
+#define htod16(i) (bcmswap16(i))
+#define dtoh64(i) (bcmswap64(i))
+#define dtoh32(i) (bcmswap32(i))
+#define dtoh16(i) (bcmswap16(i))
+#define htodchanspec(i) htod16(i)
+#define dtohchanspec(i) dtoh16(i)
+#define htodenum(i) ((sizeof(i) == 4) ? htod32(i) : ((sizeof(i) == 2) ? htod16(i) : i))
+#define dtohenum(i) ((sizeof(i) == 4) ? dtoh32(i) : ((sizeof(i) == 2) ? htod16(i) : i))
+#else
+#define htod64(i) (i)
+#define htod32(i) (i)
+#define htod16(i) (i)
+#define dtoh64(i) (i)
+#define dtoh32(i) (i)
+#define dtoh16(i) (i)
+#define htodchanspec(i) (i)
+#define dtohchanspec(i) (i)
+#define htodenum(i) (i)
+#define dtohenum(i) (i)
+#endif /* IL_BIGENDINA */
+
 #endif /* !_BCMENDIAN_H_ */

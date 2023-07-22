@@ -1,7 +1,7 @@
 /*
  * Linux Broadcom BCM47xx GPIO char driver
  *
- * Copyright (C) 2015, Broadcom Corporation. All Rights Reserved.
+ * Copyright (C) 2016, Broadcom. All Rights Reserved.
  * 
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,7 +14,10 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- * $Id: linux_gpio.c 467150 2014-04-02 17:30:43Z $
+ *
+ *
+ * <<Broadcom-WL-IPTag/Open:>>
+ * $Id: linux_gpio.c 523160 2014-12-27 23:04:01Z $
  *
  */
 #include <linux/module.h>
@@ -65,42 +68,6 @@ gpio_release(struct inode *inode, struct file * file)
 	MOD_DEC_USE_COUNT;
 	return 0;
 }
-
-/* for driver-call usage */
-uint32
-_gpio_ctrl(unsigned int cmd, uint32 mask, uint32 val)
-{
-        struct gpio_ioctl gpioioc;
-        unsigned long flags;
-
-        gpioioc.mask = mask;
-        gpioioc.val = val;
-
-        switch (cmd) {
-                case GPIO_IOC_RESERVE:
-                        gpioioc.val = si_gpioreserve(gpio_sih, gpioioc.mask, GPIO_APP_PRIORITY);
-                        break;
-                case GPIO_IOC_RELEASE:
-                        gpioioc.val = si_gpiorelease(gpio_sih, gpioioc.mask, GPIO_APP_PRIORITY);
-                        break;
-                case GPIO_IOC_OUT:
-                        gpioioc.val = si_gpioout(gpio_sih, gpioioc.mask, gpioioc.val,
-                                                GPIO_APP_PRIORITY);
-                        break;
-                case GPIO_IOC_OUTEN:
-                        gpioioc.val = si_gpioouten(gpio_sih, gpioioc.mask, gpioioc.val,
-                                                GPIO_APP_PRIORITY);
-                        break;
-                case GPIO_IOC_IN:
-                        gpioioc.val = si_gpioin(gpio_sih);
-                        break;
-                default:
-                        break;
-        }
-
-        return gpioioc.val;
-}
-EXPORT_SYMBOL(_gpio_ctrl);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 36)
 static long

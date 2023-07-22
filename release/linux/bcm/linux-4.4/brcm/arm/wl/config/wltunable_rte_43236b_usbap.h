@@ -1,15 +1,18 @@
 /*
  * Broadcom 802.11abg Networking Device Driver Configuration file
  *
- * Copyright (C) 2015, Broadcom Corporation
+ * Broadcom Proprietary and Confidential. Copyright (C) 2016,
  * All Rights Reserved.
  * 
- * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+ * This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom;
  * the contents of this file may not be disclosed to third parties, copied
  * or duplicated in any form, in whole or in part, without the prior
- * written permission of Broadcom Corporation.
+ * written permission of Broadcom.
  *
- * $Id: wltunable_rte_43236b_usbap.h 404499 2013-05-28 01:06:37Z $
+ *
+ * <<Broadcom-WL-IPTag/Proprietary:>>
+ *
+ * $Id: wltunable_rte_43236b_usbap.h 523134 2014-12-27 05:54:56Z $
  *
  * wl driver tunables for 43236b1 BMAC rte dev
  */
