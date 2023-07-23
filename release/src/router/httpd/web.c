@@ -1895,8 +1895,8 @@ ej_get_clientlist_from_json_database(int eid, webs_t wp, int argc, char_t **argv
 
 	if(customList)
 		json_object_put(customList);
-	if(new_never_online_client)
-		json_object_put(new_never_online_client);
+//	if(new_never_online_client)
+//		json_object_put(new_never_online_client);
 #ifdef RTCONFIG_AMAS
 	if(amasList)
 		json_object_put(amasList);
