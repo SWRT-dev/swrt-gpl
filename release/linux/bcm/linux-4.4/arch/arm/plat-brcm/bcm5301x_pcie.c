@@ -551,13 +551,13 @@ static void plx_pcie_switch_init(struct pci_bus *bus, unsigned int devfn)
 	soc_pci_write_config(bus, devfn, 0x62c, 4, dRead);
 
 	soc_pci_read_config(bus, devfn, 0x4, 2, &bm);
-#if NS_PCI_DEBUG
+#ifdef NS_PCI_DEBUG
 	printk("bus master: %08x\n", bm);
 #endif
 	bm |= 0x06;
 	soc_pci_write_config(bus, devfn, 0x4, 2, bm);
 	bm = 0;
-#if NS_PCI_DEBUG
+#ifdef NS_PCI_DEBUG
 	soc_pci_read_config(bus, devfn, 0x4, 2, &bm);
 	printk("bus master after: %08x\n", bm);
 	bm = 0;
@@ -653,13 +653,13 @@ static void asmedia_pcie_switch_init(struct pci_bus *bus, unsigned int devfn)
 	printk("PCIE: Doing ASMedia switch Init...Test Read = %08x\n", (unsigned int)dRead);
 
 	soc_pci_read_config(bus, devfn, 0x4, 2, &bm);
-#if NS_PCI_DEBUG
+#ifdef NS_PCI_DEBUG
 	printk("bus master: %08x\n", bm);
 #endif
 	bm |= 0x06;
 	soc_pci_write_config(bus, devfn, 0x4, 2, bm);
 	bm = 0;
-#if NS_PCI_DEBUG
+#ifdef NS_PCI_DEBUG
 	soc_pci_read_config(bus, devfn, 0x4, 2, &bm);
 	printk("bus master after: %08x\n", bm);
 	bm = 0;

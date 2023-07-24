@@ -234,16 +234,7 @@ int wlcscan_main(void)
 			wlcscan_core_escan(APSCAN_INFO, word);
 		else
 #endif
-#if defined(RTAC68U)
-			wlcscan_core_wl(APSCAN_INFO, word);
-#elif defined(R7000P)
-			if(!strcmp(word, "eth1"))
-				wlcscan_core_wl(APSCAN_INFO, word);
-			else
-				wlcscan_core(APSCAN_INFO, word);
-#else
 			wlcscan_core(APSCAN_INFO, word);
-#endif
 
 		// suppose only two or less interface handled
 		nvram_set_int("wlc_scan_state", WLCSCAN_STATE_2G+i);

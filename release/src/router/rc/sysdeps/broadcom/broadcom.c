@@ -1475,6 +1475,7 @@ int wlcscan_core(char *ofile, char *wif)
 	wl_scan_params_t *params;
 	int params_size = WL_SCAN_PARAMS_FIXED_SIZE + NUMCHANS * sizeof(uint16);
 	FILE *fp;
+	int scanmode;
 	int org_scan_time = 20, scan_time = 40;
 	int wait_time = 3;
 
@@ -1482,16 +1483,129 @@ int wlcscan_core(char *ofile, char *wif)
 	if (params == NULL)
 		return retval;
 
+	scanmode = nvram_get_int("wlc_scan_mode");
+	if ((scanmode != DOT11_SCANTYPE_ACTIVE) && (scanmode != DOT11_SCANTYPE_PASSIVE))
+		scanmode = DOT11_SCANTYPE_ACTIVE;
+
 	memset(params, 0, params_size);
-	memset(scan_result, 0, sizeof(scan_result));
-	params->bss_type = DOT11_BSSTYPE_ANY;
+	params->bss_type = DOT11_BSSTYPE_INFRASTRUCTURE;
 	memcpy(&params->bssid, &ether_bcast, ETHER_ADDR_LEN);
-	params->scan_type = 0;
+//	params->scan_type = -1;
+	params->scan_type = scanmode;
 	params->nprobes = -1;
 	params->active_time = -1;
 	params->passive_time = -1;
 	params->home_time = -1;
+#if defined(RTCONFIG_BCM_7114)
+	int band = WLC_BAND_ALL;
+	wl_ioctl(wif, WLC_GET_BAND, &band, sizeof(band));
+	if (band == WLC_BAND_5G)
+	{
+		if (wl_subband(wif, nvram_get_int("wlcscan_idx")+1) == 1)
+		{
+			params->channel_num = 4;
+			params->channel_list[0] = 36;
+			params->channel_list[1] = 40;
+			params->channel_list[2] = 44;
+			params->channel_list[3] = 48;
+		}
+		else if (wl_subband(wif, nvram_get_int("wlcscan_idx")+1) == 2)
+		{
+			params->channel_num = 4;
+			params->channel_list[0] = 52;
+			params->channel_list[1] = 56;
+			params->channel_list[2] = 60;
+			params->channel_list[3] = 64;
+		}
+		else if (wl_subband(wif, nvram_get_int("wlcscan_idx")+1) == 3)
+		{
+			if (wl_channel_valid(wif, 120))
+			{
+				params->channel_num = 11;
+				params->channel_list[0] = 100;
+				params->channel_list[1] = 104;
+				params->channel_list[2] = 108;
+				params->channel_list[3] = 112;
+				params->channel_list[4] = 116;
+				params->channel_list[5] = 120;
+				params->channel_list[6] = 124;
+				params->channel_list[7] = 128;
+				params->channel_list[8] = 132;
+				params->channel_list[9] = 136;
+				params->channel_list[10] = 140;
+			}
+			else
+			{
+				params->channel_num = 8;
+				params->channel_list[0] = 100;
+				params->channel_list[1] = 104;
+				params->channel_list[2] = 108;
+				params->channel_list[3] = 112;
+				params->channel_list[4] = 116;
+				params->channel_list[5] = 132;
+				params->channel_list[6] = 136;
+				params->channel_list[7] = 140;
+			}
+		}
+		else if (wl_subband(wif, nvram_get_int("wlcscan_idx")+1) == 4)
+		{
+			params->channel_num = 5;
+			params->channel_list[0] = 165;
+			params->channel_list[1] = 161;
+			params->channel_list[2] = 157;
+			params->channel_list[3] = 153;
+			params->channel_list[4] = 149;
+		}
+		else
+		{
+			free(params);
+			return retval;
+		}
+	}
+	else
+	{
+		if (nvram_get_int("wlcscan_idx") == 0)
+		{
+			params->channel_num = 6;
+			params->channel_list[0] = 1;
+			params->channel_list[1] = 2;
+			params->channel_list[2] = 3;
+			params->channel_list[3] = 4;
+			params->channel_list[4] = 5;
+			params->channel_list[5] = 6;
+		}
+		else if (nvram_get_int("wlcscan_idx") == 1)
+		{
+			if (wl_channel_valid(wif, 13))
+			{
+				params->channel_num = 7;
+				params->channel_list[0] = 7;
+				params->channel_list[1] = 8;
+				params->channel_list[2] = 9;
+				params->channel_list[3] = 10;
+				params->channel_list[4] = 11;
+				params->channel_list[5] = 12;
+				params->channel_list[6] = 13;
+			}
+			else
+			{
+				params->channel_num = 5;
+				params->channel_list[0] = 7;
+				params->channel_list[1] = 8;
+				params->channel_list[2] = 9;
+				params->channel_list[3] = 10;
+				params->channel_list[4] = 11;
+			}
+		}
+		else
+		{
+			free(params);
+			return retval;
+		}
+	}
+#else
 	params->channel_num = 0;
+#endif
 
 	/* extend scan channel time to get more AP probe resp */
 	wl_ioctl(wif, WLC_GET_SCAN_CHANNEL_TIME, &org_scan_time, sizeof(org_scan_time));
@@ -1601,25 +1715,13 @@ int wlcscan_core(char *ofile, char *wif)
 						apinfos[ap_count].RSSI_Quality = (int)(((info->RSSI + 90) * 26)/10);
 					else					// < -84 dbm
 						apinfos[ap_count].RSSI_Quality = 0;
-					apinfos[ap_count].wep = 0;
-					apinfos[ap_count].wpa = 0;
-					if (info->capability & DOT11_CAP_PRIVACY){
+
+					if ((info->capability & 0x10) == 0x10)
 						apinfos[ap_count].wep = 1;
-						if(info->ie_length){
-							ie = (struct bss_ie_hdr *) ((unsigned char *) info + sizeof(*info));
-							for (left = info->ie_length; left > 0; left -= (ie->len + 2), ie = (struct bss_ie_hdr *) ((unsigned char *) ie + 2 + ie->len))
-							{
-								if (ie->elem_id == DOT11_MNG_RSN_ID || ie->elem_id == DOT11_MNG_WPA_ID){
-									if (wpa_parse_wpa_ie(&ie->elem_id, ie->len + 2, &apinfos[ap_count].wid) == 0)
-									{
-										apinfos[ap_count].wep = 0;
-										apinfos[ap_count].wpa = 1;
-										break;
-									}
-								}
-							}
-						}
-					}
+					else
+						apinfos[ap_count].wep = 0;
+					apinfos[ap_count].wpa = 0;
+
 /*
 					unsigned char *RATESET = &info->rateset;
 					for (k = 0; k < 18; k++)
@@ -1667,6 +1769,35 @@ int wlcscan_core(char *ofile, char *wif)
 					if (ap_count >= MAX_NUMBER_OF_APINFO)
 						break;
 				}
+
+				ie = (struct bss_ie_hdr *) ((unsigned char *) info + sizeof(*info));
+				for (left = info->ie_length; left > 0; // look for RSN IE first
+					left -= (ie->len + 2), ie = (struct bss_ie_hdr *) ((unsigned char *) ie + 2 + ie->len))
+				{
+					if (ie->elem_id != DOT11_MNG_RSN_ID)
+						continue;
+
+					if (wpa_parse_wpa_ie(&ie->elem_id, ie->len + 2, &apinfos[ap_count - 1].wid) == 0)
+					{
+						apinfos[ap_count-1].wpa = 1;
+						goto next_info;
+					}
+				}
+
+				ie = (struct bss_ie_hdr *) ((unsigned char *) info + sizeof(*info));
+				for (left = info->ie_length; left > 0; // then look for WPA IE
+					left -= (ie->len + 2), ie = (struct bss_ie_hdr *) ((unsigned char *) ie + 2 + ie->len))
+				{
+					if (ie->elem_id != DOT11_MNG_WPA_ID)
+						continue;
+
+					if (wpa_parse_wpa_ie(&ie->elem_id, ie->len + 2, &apinfos[ap_count-1].wid) == 0)
+					{
+						apinfos[ap_count-1].wpa = 1;
+						break;
+					}
+				}
+
 next_info:
 				info = (wl_bss_info_t *) ((unsigned char *) info + info->length);
 			}
@@ -1925,7 +2056,7 @@ next_info:
 	return retval;
 }
 
-#if defined(RTAC68U) || defined(R7000P)
+#if 0 //defined(RTAC68U) || defined(R7000P)
 int wlcscan_core_wl(char *ofile, char *wif)
 {
 	int ret, i, k, left, ht_extcha;
@@ -3290,6 +3421,7 @@ bsd_defaults(void)
 #endif
 
 #ifdef RTCONFIG_BCMWL6
+#if 0
 //workaround for acs only select 20m channel
 void hook_ddwrt_driver(char *ifname, char *prefix)
 {
@@ -3333,6 +3465,7 @@ void hook_ddwrt_driver(char *ifname, char *prefix)
 		}
 	}
 }
+#endif
 
 int
 wl_check_chanspec()
@@ -3359,7 +3492,7 @@ wl_check_chanspec()
 		match_40m_ch = 0;
 
 		if (!nvram_get_int(strcat_r(prefix, "chanspec", tmp))){
-			hook_ddwrt_driver(word, prefix);
+//			hook_ddwrt_driver(word, prefix);
 			continue;
 		}
 
@@ -3583,6 +3716,63 @@ getSSID(int unit)
 	return 0;
 }
 
+#if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_BCMARM)
+/* workaround for BCMWL6 only */
+static void set_mrate(const char* ifname, const char* prefix)
+{
+	float mrate = 0;
+	char tmp[100];
+
+	switch (nvram_get_int(strcat_r(prefix, "mrate_x", tmp))) {
+	case 0: /* Auto */
+		mrate = 0;
+		break;
+	case 1: /* Legacy CCK 1Mbps */
+		mrate = 1;
+		break;
+	case 2: /* Legacy CCK 2Mbps */
+		mrate = 2;
+		break;
+	case 3: /* Legacy CCK 5.5Mbps */
+		mrate = 5.5;
+		break;
+	case 4: /* Legacy OFDM 6Mbps */
+		mrate = 6;
+		break;
+	case 5: /* Legacy OFDM 9Mbps */
+		mrate = 9;
+		break;
+	case 6: /* Legacy CCK 11Mbps */
+		mrate = 11;
+		break;
+	case 7: /* Legacy OFDM 12Mbps */
+		mrate = 12;
+		break;
+	case 8: /* Legacy OFDM 18Mbps */
+		mrate = 18;
+		break;
+	case 9: /* Legacy OFDM 24Mbps */
+		mrate = 24;
+		break;
+	case 10: /* Legacy OFDM 36Mbps */
+		mrate = 36;
+		break;
+	case 11: /* Legacy OFDM 48Mbps */
+		mrate = 48;
+		break;
+	case 12: /* Legacy OFDM 54Mbps */
+		mrate = 54;
+		break;
+	default: /* Auto */
+		mrate = 0;
+		break;
+	}
+
+	sprintf(tmp, "wl -i %s mrate %.1f", ifname, mrate);
+	system(tmp);
+}
+#endif
+
 int wlconf(char *ifname, int unit, int subunit)
 {
 	int r;
@@ -3677,9 +3867,12 @@ int wlconf(char *ifname, int unit, int subunit)
 				eval("wl", "-i", ifname, "maxassoc", "0");
 			}
 #endif
-//			if (nvram_match(strcat_r(prefix, "ampdu_rts", tmp), "0") &&
-//				nvram_match(strcat_r(prefix, "nmode", tmp), "-1"))
-//				eval("wl", "-i", ifname, "rtsthresh", "65535");
+			set_mrate(ifname, prefix);
+#ifdef RTCONFIG_BCMARM
+			if (nvram_match(strcat_r(prefix, "ampdu_rts", tmp), "0") &&
+				nvram_match(strcat_r(prefix, "nmode", tmp), "-1"))
+				eval("wl", "-i", ifname, "rtsthresh", "65535");
+#endif
 
 			wl_dfs_radarthrs_config(ifname, unit);
 

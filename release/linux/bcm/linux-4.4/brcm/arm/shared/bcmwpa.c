@@ -676,6 +676,12 @@ wpa_find_gtk_encap(uint8 *parse, uint len)
 {
 	return wpa_find_kde(parse, len, WPA2_KEY_DATA_SUBTYPE_GTK);
 }
+
+eapol_wpa2_encap_data_t *
+wpa_find_igtk_encap(uint8 *parse, uint len)
+{
+	return wpa_find_kde(parse, len, WPA2_KEY_DATA_SUBTYPE_IGTK);
+}
 #endif /* defined(BCMSUP_PSK) || defined(BCMSUPPL) || defined(GTKOE) */
 
 uint8 *

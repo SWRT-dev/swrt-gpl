@@ -35,7 +35,6 @@
 #include <linux/fs.h>
 #include <linux/miscdevice.h>
 #include <linux/mtd/mtd.h>
-#include <linux/vmalloc.h>
 
 #include <typedefs.h>
 #include <bcmendian.h>
@@ -46,11 +45,12 @@
 #include <siutils.h>
 #include <hndmips.h>
 #include <hndsflash.h>
+#include <bcmdevs.h>
 #ifdef CONFIG_MTD_NFLASH
 #include <nflash.h>
 #endif
 
-int nvram_space = 0x10000;
+int nvram_space = DEF_NVRAM_SPACE;
 
 /* Temp buffer to hold the nvram transfered romboot CFE */
 char __initdata ram_nvram_buf[MAX_NVRAM_SPACE] __attribute__((aligned(PAGE_SIZE)));
@@ -59,13 +59,12 @@ char __initdata ram_nvram_buf[MAX_NVRAM_SPACE] __attribute__((aligned(PAGE_SIZE)
 static char nvram_buf[MAX_NVRAM_SPACE] __attribute__((aligned(PAGE_SIZE)));
 static bool nvram_inram = FALSE;
 
+static char *early_nvram_get(const char *name);
 #ifdef MODULE
 
 #define early_nvram_get(name) nvram_get(name)
 
 #else /* !MODULE */
-
-static char *early_nvram_get(const char *name);
 
 /* Global SB handle */
 extern si_t *bcm947xx_sih;
@@ -81,23 +80,6 @@ extern spinlock_t bcm947xx_sih_lock;
 #define	MAX_MTD_DEVICES	32
 #endif
 
-
-void *MMALLOC(size_t size)
-{
-	void *ptr = kmalloc(size, GFP_ATOMIC);
-	if (!ptr)
-		ptr = vmalloc(size);
-	return ptr;
-}
-
-void MMFREE(void *ptr)
-{
-	if (is_vmalloc_addr(ptr))
-		vfree(ptr);
-	else
-		kfree(ptr);
-}
-
 static struct resource norflash_region = {
 	.name = "norflash",
 	.start = 0x1E000000,
@@ -105,16 +87,169 @@ static struct resource norflash_region = {
         .flags = IORESOURCE_MEM,
 };
 
-static int remap_cfe=0;
+static unsigned char flash_nvh[MAX_NVRAM_SPACE];
 #ifdef CONFIG_MTD_NFLASH
-static unsigned char nflash_nvh[MAX_NVRAM_SPACE];
+
+#define NLS_XFR 1              /* added by Jiahao for WL500gP */
+#ifdef NLS_XFR
+
+#include <linux/nls.h>
+
+static char *NLS_NVRAM_U2C="asusnlsu2c";
+static char *NLS_NVRAM_C2U="asusnlsc2u";
+__u16 unibuf[1024];
+char codebuf[1024];
+char tmpbuf[1024];
+
+void
+asusnls_u2c(char *name)
+{
+#ifdef CONFIG_NLS
+        char *codepage;
+        char *xfrstr;
+        struct nls_table *nls;
+        int ret, len;
+
+        strcpy(codebuf, name);
+        codepage=codebuf+strlen(NLS_NVRAM_U2C);
+        if((xfrstr=strchr(codepage, '_')))
+        {
+                *xfrstr=0;
+                xfrstr++;
+                nls=load_nls(codepage);
+                if(!nls)
+                {
+                        printk("NLS table is null!!\n");
+                }
+                else {
+                        len = 0;
+                        if (ret=utf8s_to_utf16s(xfrstr, strlen(xfrstr), UTF16_HOST_ENDIAN, unibuf, sizeof(unibuf)))
+                        {
+                                int i;
+                                for (i = 0; (i < ret) && unibuf[i]; i++) {
+                                        int charlen;
+                                        charlen = nls->uni2char(unibuf[i], &name[len], NLS_MAX_CHARSET_SIZE);
+                                        if (charlen > 0) {
+                                                len += charlen;
+                                        }
+                                        else {
+                                                strcpy(name, "");
+                                                unload_nls(nls);
+                                                return;
+                                        }
+                                }
+                                name[len] = 0;
+                        }
+                        unload_nls(nls);
+                        if(!len)
+                        {
+                                printk("can not xfr from utf8 to %s\n", codepage);
+                                strcpy(name, "");
+                        }
+                }
+        }
+        else
+        {
+                strcpy(name, "");
+        }
+#endif
+}
+
+void
+asusnls_c2u(char *name)
+{
+#ifdef CONFIG_NLS
+        char *codepage;
+        char *xfrstr;
+        struct nls_table *nls;
+        int ret;
+
+        strcpy(codebuf, name);
+        codepage=codebuf+strlen(NLS_NVRAM_C2U);
+        if((xfrstr=strchr(codepage, '_')))
+        {
+                *xfrstr=0;
+                xfrstr++;
+
+                strcpy(name, "");
+                nls=load_nls(codepage);
+                if(!nls)
+                {
+                        printk("NLS table is null!!\n");
+                }
+                else
+                {
+                        int charlen;
+                        int i;
+                        int len = strlen(xfrstr);
+                        for (i = 0; len && *xfrstr; i++, xfrstr += charlen, len -= charlen) {   /* string to unicode */
+                                charlen = nls->char2uni(xfrstr, len, &unibuf[i]);
+                                if (charlen < 1) {
+                                        strcpy(name ,"");
+                                        unload_nls(nls);
+                                        return;
+                                }
+                        }
+                        unibuf[i] = 0;
+                        ret=utf16s_to_utf8s(unibuf, i, UTF16_HOST_ENDIAN, name, 1024);  /* unicode to utf-8, 1024 is size of array unibuf */
+                        name[ret]=0;
+                        unload_nls(nls);
+                        if(!ret)
+                        {
+                                printk("can not xfr from %s to utf8\n", codepage);
+                                strcpy(name, "");
+                        }
+                }
+        }
+        else
+        {
+                strcpy(name, "");
+      }
+#endif
+}
+
+char *
+nvram_xfr(const char *buf)
+{
+        char *name = tmpbuf;
+        ssize_t ret=0;
+
+        if (copy_from_user(name, buf, sizeof(tmpbuf))) {
+                ret = -EFAULT;
+                goto done;
+        }
+
+        if (strncmp(tmpbuf, NLS_NVRAM_U2C, strlen(NLS_NVRAM_U2C))==0)
+        {
+                asusnls_u2c(tmpbuf);
+        }
+        else if (strncmp(tmpbuf, NLS_NVRAM_C2U, strlen(NLS_NVRAM_C2U))==0)
+        {
+                asusnls_c2u(tmpbuf);
+        }
+        else
+        {
+                strcpy(tmpbuf, "");
+        }
+
+        if (copy_to_user(buf, tmpbuf, sizeof(tmpbuf)))
+        {
+                ret = -EFAULT;
+                goto done;
+        }
+done:
+        if(ret==0) return tmpbuf;
+        else return NULL;
+}
+
+#endif  // NLS_XFR
 
 static struct nvram_header *
 BCMINITFN(nand_find_nvram)(hndnand_t *nfl, uint32 off)
 {
 	int blocksize = nfl->blocksize;
-	unsigned char *buf = nflash_nvh;
-	int rlen = sizeof(nflash_nvh);
+	unsigned char *buf = flash_nvh;
+	int rlen = sizeof(flash_nvh);
 	int len;
 
 	for (; off < NFL_BOOT_SIZE; off += blocksize) {
@@ -131,12 +266,40 @@ BCMINITFN(nand_find_nvram)(hndnand_t *nfl, uint32 off)
 		buf += len;
 		rlen -= len;
 		if (rlen == 0)
-			return (struct nvram_header *)nflash_nvh;
+			return (struct nvram_header *)flash_nvh;
 	}
 
 	return NULL;
 }
 #endif /* CONFIG_MTD_NFLASH */
+
+static struct nvram_header *
+BCMINITFN(sflash_find_nvram)(hndsflash_t *sfl, uint32 off)
+{
+	struct nvram_header header;
+	unsigned char *buf = flash_nvh;
+	uint32 rlen = sizeof(flash_nvh), hdrlen = sizeof(struct nvram_header);
+
+	/* direct access to offset if within XIP region(16M) or NorthStar platform */
+	if (off < SI_FLASH_WINDOW || sih->ccrev == 42) {
+		return (struct nvram_header *)(sfl->base + off);
+	}
+
+	/* check read size boundary */
+	if (off + rlen > sfl->size) {
+		printk("Out of flash boundary off %x sfl->size %x\n", off, sfl->size);
+		return NULL;
+	}
+
+	/* retrieve flash content if buffer have NVRAM_MAGIC header */
+	if (sfl->read(sfl, off, hdrlen, (uint8 *)&header) == hdrlen &&
+	    header.magic == NVRAM_MAGIC) {
+		if (sfl->read(sfl, off, rlen, buf) == rlen)
+			return (struct nvram_header *)buf;
+	}
+
+	return NULL;
+}
 
 /* Probe for NVRAM header */
 static int
@@ -182,10 +345,7 @@ early_nvram_init(void)
 			if ((header = nand_find_nvram(nfl_info, off)) == NULL)
 				continue;
 			if (nvram_calc_crc(header) == (uint8)header->crc_ver_init)
-			{
-				printk(KERN_INFO "found nand nvram at %X\n",off);
 				goto found;
-			}
 		}
 	}
 	else
@@ -199,31 +359,22 @@ early_nvram_init(void)
 		lim = sfl_info->size;
 
 		BUG_ON(request_resource(&iomem_resource, &norflash_region));
-	
+
 		flash_base = sfl_info->base;
-	
+
 		BUG_ON(IS_ERR_OR_NULL((void *)flash_base));
-		
+
 		off = FLASH_MIN;
 		while (off <= lim) {
 			/* Windowed flash access */
-			header = (struct nvram_header *)(flash_base + off - (nvram_space*2));
-			if (header->magic == NVRAM_MAGIC)
-				if (nvram_calc_crc(header) == (uint8)header->crc_ver_init) {
-					printk(KERN_INFO "found remapped nvram on sflash\n");
-					remap_cfe=0;
-					goto found;
-				}
+			header = sflash_find_nvram(sfl_info, off - nvram_space);
 
-			header = (struct nvram_header *)(flash_base + off - nvram_space);
-			if (header->magic == NVRAM_MAGIC)
+			if (header && header->magic == NVRAM_MAGIC) {
 				if (nvram_calc_crc(header) == (uint8)header->crc_ver_init) {
-					printk(KERN_INFO "found cfe nvram on sflash\n");
-					remap_cfe=1;
 					goto found;
 				}
-			
-			off += 0x10000;
+			}
+			off += DEF_NVRAM_SPACE;
 		}
 	}
 	else {
@@ -379,7 +530,7 @@ _nvram_realloc(struct nvram_tuple *t, const char *name, const char *value)
 		return NULL;
 
 	if (!t) {
-		if (!(t = MMALLOC(sizeof(struct nvram_tuple) + strlen(name) + 1)))
+		if (!(t = kmalloc(sizeof(struct nvram_tuple) + strlen(name) + 1, GFP_ATOMIC)))
 			return NULL;
 
 		/* Copy name */
@@ -410,7 +561,7 @@ _nvram_free(struct nvram_tuple *t)
 		nvram_offset = 0;
 		memset( nvram_buf, 0, sizeof(nvram_buf) );
 	} else {
-		MMFREE(t);
+		kfree(t);
 	}
 }
 
@@ -431,10 +582,10 @@ nvram_set(const char *name, const char *value)
 	if ((ret = _nvram_set(name, value))) {
 		printk( KERN_INFO "nvram: consolidating space!\n");
 		/* Consolidate space and try again */
-		if ((header = MMALLOC(nvram_space))) {
+		if ((header = kmalloc(nvram_space, GFP_ATOMIC))) {
 			if (_nvram_commit(header) == 0)
 				ret = _nvram_set(name, value);
-			MMFREE(header);
+			kfree(header);
 		}
 	}
 	spin_unlock_irqrestore(&nvram_lock, flags);
@@ -496,7 +647,7 @@ nvram_nflash_commit(void)
 	unsigned long flags;
 	u_int32_t offset;
 
-	if (!(buf = MMALLOC(nvram_space))) {
+	if (!(buf = kmalloc(nvram_space, GFP_KERNEL))) {
 		printk(KERN_WARNING "nvram_commit: out of memory\n");
 		return -ENOMEM;
 	}
@@ -527,7 +678,7 @@ nvram_nflash_commit(void)
 
 done:
 	mutex_unlock(&nvram_sem);
-	MMFREE(buf);
+	kfree(buf);
 	return ret;
 }
 #endif
@@ -564,7 +715,7 @@ nvram_commit(void)
 	mutex_lock(&nvram_sem);
 	/* Backup sector blocks to be erased */
 	erasesize = ROUNDUP(nvram_space, nvram_mtd->erasesize);
-	if (!(buf = MMALLOC(erasesize))) {
+	if (!(buf = kmalloc(erasesize, GFP_KERNEL))) {
 		printk(KERN_WARNING "nvram_commit: out of memory\n");
 		mutex_unlock(&nvram_sem);
 		return -ENOMEM;
@@ -670,7 +821,7 @@ nvram_commit(void)
 
 done:
 	mutex_unlock(&nvram_sem);
-	MMFREE(buf);
+	kfree(buf);
 	return ret;
 }
 
@@ -707,7 +858,7 @@ dev_nvram_read(struct file *file, char *buf, size_t count, loff_t *ppos)
 	unsigned long off;
 
 	if ((count+1) > sizeof(tmp)) {
-		if (!(name = MMALLOC(count+1)))
+		if (!(name = kmalloc(count+1, GFP_KERNEL)))
 			return -ENOMEM;
 	}
 
@@ -746,7 +897,7 @@ dev_nvram_read(struct file *file, char *buf, size_t count, loff_t *ppos)
 #endif
 done:
 	if (name != tmp)
-		MMFREE(name);
+		kfree(name);
 
 	return ret;
 }
@@ -754,11 +905,11 @@ done:
 static ssize_t
 dev_nvram_write(struct file *file, const char *buf, size_t count, loff_t *ppos)
 {
-	char tmp[100], *name = tmp, *value;
+	char tmp[512], *name = tmp, *value;
 	ssize_t ret;
 
-	if (count >= sizeof(tmp)) {
-		if (!(name = MMALLOC(count+1)))
+	if ((count+1) > sizeof(tmp)) {
+		if (!(name = kmalloc(count+1, GFP_KERNEL)))
 			return -ENOMEM;
 	}
 
@@ -778,7 +929,7 @@ dev_nvram_write(struct file *file, const char *buf, size_t count, loff_t *ppos)
 		ret = count;
 done:
 	if (name != tmp)
-		MMFREE(name);
+		kfree(name);
 
 	return ret;
 }

@@ -79,7 +79,7 @@ mspi_disable_bspi(osl_t *osh, qspiregs_t *qspi)
 			W_REG(osh, &qspi->bspi_mast_n_boot_ctrl, 0x1);
 			bspi_enabled = 0;
 			for (j = 0; j < 1000; j++);
-				return;
+			return;
 		}
 	}
 }

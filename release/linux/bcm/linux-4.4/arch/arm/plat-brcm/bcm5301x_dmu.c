@@ -757,7 +757,7 @@ static int __init dmu_proc_init(void)
 	struct proc_dir_entry *dmu, *dmu_temp;
 
 	if (BCM53573_CHIP(sih->chip)) {
-		return;
+		return 0;
 	}
 
 	dmu = proc_mkdir(DMU_PROC_NAME, NULL);

@@ -1111,7 +1111,7 @@ nandcore_mark_badb(hndnand_t *nfl, uint64 offset)
 		nandcore_cmd(osh, nc, NANDCMD_SPARE_PROG);
 		if (nandcore_poll(sih, nc) < 0) {
 			ret = -1;
-#if BCMDBG
+#ifdef BCMDBG
 			printf("%s: Spare program is not ready\n", __FUNCTION__);
 #endif
 			goto err;
