@@ -1003,7 +1003,7 @@ function enableSmartCon(val){
 			value = ["1", "2"];
 			add_options_x2(document.form.smart_connect_t, desc, value, val);
 		}
-		else if(based_modelid =="RT-AC3200" || based_modelid =="RT-AC95U"){
+		else if(based_modelid =="RT-AC3200" || based_modelid =="RT-AC95U" || based_modelid =="SBRAC3200P"){
 			desc = ["<#smart_connect_tri#> (2.4GHz, 5GHz-1 and 5GHz-2)"];
 			value = ["1"];
 			add_options_x2(document.form.smart_connect_t, desc, value, val);
@@ -1033,7 +1033,7 @@ function enableSmartCon(val){
 		based_modelid == "RT-AX89U" ||
 		based_modelid == "GT-AXY16000" ||
 		based_modelid == "XD4S" || 
-		based_modelid == "BLUECAVE"){
+		based_modelid == "BLUECAVE" || based_modelid =="SBRAC3200P"){
 		document.getElementById("smartcon_rule_link").style.display = "none";
 		if(val == 0){
 			document.getElementById("smart_connect_field").style.display = "none";
@@ -1069,7 +1069,7 @@ function enableSmartCon(val){
 		regen_auto_option(document.form.wl_nctrlsb);			
 	}
 	
-	if(based_modelid=="RT-AC5300" || based_modelid=="GT-AC5300" || based_modelid=="RT-AC3200")
+	if(based_modelid=="RT-AC5300" || based_modelid=="GT-AC5300" || based_modelid=="RT-AC3200" || based_modelid =="SBRAC3200P")
 		_change_smart_connect(val);
 
 	if(isSupport("amas_fronthaul_network")){
@@ -1374,7 +1374,7 @@ function handleMFP(){
 
 										$('#radio_smartcon_enable').iphoneSwitch( smart_connect_flag_t > 0, 
 										 function() {
-											if(based_modelid != "RT-AC5300" && based_modelid != "GT-AC5300" && based_modelid !="RT-AC3200" && based_modelid != "RT-AC88U" && based_modelid != "RT-AC86U" && based_modelid != "GT-AC2900" && based_modelid != "RT-AC3100" && based_modelid != "BLUECAVE" && based_modelid != "MAP-AC1750"  && based_modelid != "RT-AC95U" && based_modelid != "RT-AX89U" && based_modelid != "GT-AXY16000" && based_modelid != "R7000P")
+											if(based_modelid != "RT-AC5300" && based_modelid != "GT-AC5300" && based_modelid !="RT-AC3200" && based_modelid != "RT-AC88U" && based_modelid != "RT-AC86U" && based_modelid != "GT-AC2900" && based_modelid != "RT-AC3100" && based_modelid != "BLUECAVE" && based_modelid != "MAP-AC1750"  && based_modelid != "RT-AC95U" && based_modelid != "RT-AX89U" && based_modelid != "GT-AXY16000" && based_modelid != "R7000P" && based_modelid !="SBRAC3200P")
 												enableSmartCon(1);
 											else{
 												if(document.form.smart_connect_t.value)

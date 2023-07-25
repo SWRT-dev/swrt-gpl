@@ -225,7 +225,7 @@ function show_etherstate(){
 		return;
 	} else if ((based_modelid == "RT-N16") || (based_modelid == "RT-AC87U")
 	    || (based_modelid == "RT-AC3200") || (based_modelid == "RT-AC88U")
-	    || (based_modelid == "RT-AC3100"))
+	    || (based_modelid == "RT-AC3100") || based_modelid == "SBRAC3200P")
 		reversed = true;
 	else
 		reversed = false;

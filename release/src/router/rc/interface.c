@@ -50,7 +50,7 @@ static struct switch_config {
 	int lanmask;
 	int wanmask;
 } sw_config[] = {
-#ifdef RTCONFIG_EXT_RTL8365MB
+#if defined(RTCONFIG_EXT_RTL8365MB) || defined(SBRAC3200P)
 	SWCFG_INIT(SWCFG_DEFAULT, SW_CPU|SW_L1|SW_L2|SW_L3|SW_L4|SW_L5,	 SW_CPU|SW_WAN),
 	SWCFG_INIT(SWCFG_STB1,    SW_CPU|      SW_L2|SW_L3|SW_L4|SW_L5,  SW_CPU|SW_WAN|SW_L1),
 	SWCFG_INIT(SWCFG_STB2,    SW_CPU|SW_L1|      SW_L3|SW_L4|SW_L5,  SW_CPU|SW_WAN|SW_L2),

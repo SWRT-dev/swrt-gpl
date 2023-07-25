@@ -33,6 +33,8 @@
 #define MODEL_PROTECT "RT-AC3200"
 #elif defined(R7000P)
 #define MODEL_PROTECT "R7000P"
+#elif defined(SBRAC3200P)
+#define MODEL_PROTECT "SBRAC3200P"
 #endif
 
 #ifndef MODEL_PROTECT

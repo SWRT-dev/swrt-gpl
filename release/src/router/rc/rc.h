@@ -996,6 +996,9 @@ extern void update_cfe_ac3200();
 extern void update_cfe_ac3200_128k();
 extern void bsd_defaults(void);
 #endif
+#if defined(SBRAC3200P)
+extern void bsd_defaults(void);
+#endif
 #ifdef GTAC2900
 extern void update_cfe_ac2900();
 #endif
@@ -1056,7 +1059,7 @@ extern int wl_dfs_support(int unit);
 extern void wl_dfs_radarthrs_config(char *ifname, int unit);
 extern int set_wltxpower();
 extern int set_wltxpower_swrt();
-#if defined(RTAC3200) || defined(RTAC68U) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
+#if defined(RTAC3200) || defined(SBRAC3200P) || defined(RTAC68U) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
 extern void wl_disband5grp();
 #endif
 #else
@@ -1066,7 +1069,7 @@ static INLINE void check_wl_country() { return; };
 static INLINE int wl_dfs_support(int unit) { return 0; };
 static INLINE void wl_dfs_radarthrs_config(char *ifname, int unit) { return; };
 static INLINE int set_wltxpower() { return 0; }
-#if defined(RTAC3200) || defined(RTAC68U) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
+#if defined(RTAC3200) || defined(SBRAC3200P) || defined(RTAC68U) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
 static INLINE void wl_disband5grp() { return; };
 #endif
 #endif

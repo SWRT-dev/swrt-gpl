@@ -59,6 +59,10 @@ define platformRouterOptions
 		sed -i "/RTCONFIG_HAS_5G_2/d" $(1); \
 		echo "RTCONFIG_HAS_5G_2=y" >>$(1); \
 	fi; \
+	if [ "$(SBRAC3200P)" = "y" ] ; then \
+		sed -i "/RTCONFIG_HAS_5G_2/d" $(1); \
+		echo "RTCONFIG_HAS_5G_2=y" >>$(1); \
+	fi; \
 	)
 endef
 

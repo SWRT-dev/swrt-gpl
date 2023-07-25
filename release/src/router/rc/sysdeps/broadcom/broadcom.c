@@ -401,6 +401,10 @@ int GetPhyStatus(int verbose, phy_info_list *list)
 
 	model = get_model();
 	switch(model) {
+	case MODEL_SBRAC3200P:
+		/* WAN L1 L2 L3 L4 */
+		ports[0]=0; ports[1]=1; ports[2]=2, ports[3]=3; ports[4]=4;
+		break;
 	case MODEL_RTAC3200:
 		/* WAN L1 L2 L3 L4 */
 		ports[0]=0; ports[1]=4; ports[2]=3, ports[3]=2; ports[4]=1;
@@ -601,6 +605,7 @@ int setAllLedOn(void)
 	switch(model) {
 		case MODEL_RTAC68U:
 		case MODEL_RTAC3200:
+		case MODEL_SBRAC3200P:
 		case MODEL_RTAC5300:
 		case MODEL_RTAC88U:
 		case MODEL_RTAC3100:
@@ -615,7 +620,7 @@ int setAllLedOn(void)
 #endif
 			eval("et", "-i", "eth0", "robowr", "0", "0x18", "0x01ff");	// lan/wan ethernet/giga led
 			eval("et", "-i", "eth0", "robowr", "0", "0x1a", "0x01e0");
-#if defined(RTAC3200)
+#if defined(RTAC3200) || defined(SBRAC3200P)
 			eval("wl", "ledbh", "10", "1");			// wl 5G low
 			eval("wl", "-i", "eth2", "ledbh", "10", "1");	// wl 2.4G
 			eval("wl", "-i", "eth3", "ledbh", "10", "1");	// wl 5G high
@@ -639,7 +644,7 @@ int setAllLedOn(void)
 			eval("wl", "-i", "eth2", "ledbh", "10", "1");	// wl 5G
 #endif
 
-#if defined(RTAC3200)
+#if defined(RTAC3200) || defined(SBRAC3200P)
 			led_control(LED_WPS, LED_ON);
 			led_control(LED_WAN, LED_ON);
 #elif defined(RTAC88U) || defined(RTAC3100) || defined(RTAC5300) || defined(R7000P)
@@ -729,6 +734,7 @@ setWlOffLed(void)
 				eval("wl", "-i", "eth3", "ledbh", "9", "0");	// wl 5G high
 			break;
 		}
+		case MODEL_SBRAC3200P:
 		case MODEL_RTAC3200:
 		{
 			if (wlon_unit != 0 && wlon_unit_ex != 0)
@@ -760,6 +766,7 @@ setAllLedOff(void)
 	switch(model) {
 		case MODEL_RTAC68U:
 		case MODEL_RTAC3200:
+		case MODEL_SBRAC3200P:
 		case MODEL_RTAC5300:
 		case MODEL_RTAC88U:
 		case MODEL_RTAC3100:
@@ -787,7 +794,7 @@ setAllLedOff(void)
 #endif
 			eval("et", "-i", "eth0", "robowr", "0", "0x18", "0x01e0");	// lan/wan ethernet/giga led
 			eval("et", "-i", "eth0", "robowr", "0", "0x1a", "0x01e0");
-#if defined(RTAC3200)
+#if defined(RTAC3200) || defined(SBRAC3200P)
 			eval("wl", "ledbh", "10", "0");			// wl 5G low
 			eval("wl", "-i", "eth2", "ledbh", "10", "0");	// wl 2.4G
 			eval("wl", "-i", "eth3", "ledbh", "10", "0");	// wl 5G high
@@ -806,7 +813,7 @@ setAllLedOff(void)
 			eval("wl", "-i", "eth2", "ledbh", "10", "0");	// wl 5G
 #endif
 
-#if defined(RTAC3200)
+#if defined(RTAC3200) || defined(SBRAC3200P)
 			led_control(LED_WPS, LED_OFF);
 			led_control(LED_WAN, LED_OFF);
 #elif defined (RTAC88U) || defined (RTAC3100) || defined (RTAC5300) || defined(R7000P)
@@ -849,6 +856,12 @@ setATEModeLedOn(void) {
 	model = get_model();
 
 	switch(model) {
+		case MODEL_SBRAC3200P:
+			led_control(LED_WPS, LED_ON);
+			led_control(LED_WAN, LED_ON);
+			eval("et", "robowr", "0", "0x18", "0x01ff");	// lan/wan ethernet/giga led
+			eval("et", "robowr", "0", "0x1a", "0x01e0");
+			break;
 		case MODEL_RTAC68U:
 		case MODEL_RTAC3200:
 		{
@@ -1894,14 +1907,14 @@ next_info:
 		if ((fp = fopen(ofile, "a")) == NULL) {
 			printf("[wlcscan] Output %s error\n", ofile);
 		} else {
-#if defined(RTAC3200) || defined(RTAC5300)
+#if defined(RTCONFIG_HAS_5G_2) 
 			int unit = 0;
 			char prefix[] = "wlXXXXXXXXXX_", tmp[100];
 			wl_ioctl(wif, WLC_GET_INSTANCE, &unit, sizeof(unit));
 			snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 #endif
 			for (i = 0; i < ap_count; i++) {
-#if defined(RTAC3200) || defined(RTAC5300)
+#if defined(RTCONFIG_HAS_5G_2) 
 				if (!strcmp(wif, "eth1") && (apinfos[i].ctl_ch > 48))
 					continue;
 				if (!strcmp(wif, "eth3")) {
@@ -3391,29 +3404,13 @@ wl_phy_rssi_ant(char *ifname)
 }
 #endif
 
-#ifdef RTAC3200
+#if defined(RTAC3200) || defined(SBRAC3200P)
 extern struct nvram_tuple router_defaults[];
 
 void
 bsd_defaults(void)
 {
-	char extendno_org[14];
-	int ext_num;
-	char ext_commit_str[8];
 	struct nvram_tuple *t;
-
-	if (!strlen(nvram_safe_get("extendno_org")) ||
-		nvram_match("extendno_org", nvram_safe_get("extendno")))
-		return;
-
-	strcpy(extendno_org, nvram_safe_get("extendno_org"));
-	if (!strlen(extendno_org) ||
-		sscanf(extendno_org, "%d-g%s", &ext_num, ext_commit_str) != 2)
-		return;
-
-//	if (strcmp(rt_serialno, "378") || (ext_num >= 4120))
-//		return;
-
 	for (t = router_defaults; t->name; t++)
 		if (strstr(t->name, "bsd"))
 			nvram_set(t->name, t->value);
@@ -4346,6 +4343,7 @@ void led_bh_prep(int post)
 #endif
 			}
 			break;
+		case MODEL_SBRAC3200P:
 		case MODEL_RTAC3200:
 		case MODEL_RTAC68U:
 			if(post)
@@ -4353,7 +4351,7 @@ void led_bh_prep(int post)
 				eval("wl", "ledbh", "10", "7");
 				eval("wl", "-i", "eth2", "ledbh", "10", "7");
 
-#if defined(RTAC3200)
+#if defined(RTAC3200) ||  defined(SBRAC3200P)
 				eval("wl", "-i", "eth3", "ledbh", "10", "7");
 #endif
 			}
@@ -4361,7 +4359,7 @@ void led_bh_prep(int post)
 			{
 				eval("wl", "ledbh", "10", "1");
 				eval("wl", "-i", "eth2", "ledbh", "10", "1");
-#if defined(RTAC3200)
+#if defined(RTAC3200) ||  defined(SBRAC3200P)
 				eval("wl", "-i", "eth3", "ledbh", "10", "1");
 #endif
 #ifdef BCM4352
@@ -4374,7 +4372,7 @@ void led_bh_prep(int post)
 				eval("wl", "maxassoc", "0");
 				eval("wlconf", "eth2", "up");
 				eval("wl", "-i", "eth2", "maxassoc", "0");
-#if defined(RTAC3200)
+#if defined(RTAC3200) ||  defined(SBRAC3200P)
 				eval("wlconf", "eth3", "up");
 				eval("wl", "-i", "eth3", "maxassoc", "0");
 #endif

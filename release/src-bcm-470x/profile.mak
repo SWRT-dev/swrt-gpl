@@ -6,6 +6,9 @@ endif
 ifeq ($(RTCONFIG_DUAL_TRX), y)
 EXTRACFLAGS += -DRTCONFIG_DUAL_TRX                    
 endif
+ifeq ($(RTCONFIG_NV128), y)
+EXTRACFLAGS += -DCONFIG_NVSIZE_128
+endif
 
 
 export EXTRACFLAGS

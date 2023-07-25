@@ -2721,6 +2721,7 @@ void bcmvlan_models(int model, char *vlan)
 	case MODEL_RTN15U:
 	case MODEL_RTAC53U:
 	case MODEL_RTAC3200:
+	case MODEL_SBRAC3200P:
 	case MODEL_RTAC88U:
 	case MODEL_RTAC86U:
 	case MODEL_RTAC3100:

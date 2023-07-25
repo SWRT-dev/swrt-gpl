@@ -158,6 +158,110 @@ void generate_switch_para(void)
 		cfg = SWCFG_DEFAULT;	// keep wan port, but get ip from bridge
 
 	switch(model) {
+#if defined(SBRAC3200P)
+		case MODEL_SBRAC3200P:
+		{					/* WAN L1 L2 L3 L4 CPU */	/*vision: WAN L4 L3 L2 L1 */
+
+			int ports[SWPORT_COUNT] = { 0, 1, 2, 3, 4, 5, 8 };
+			char *hw_name = "et2";
+			int wancfg = (!nvram_match("switch_wantag", "none")&&!nvram_match("switch_wantag", "")&&!nvram_match("switch_wantag", "hinet")) ? SWCFG_DEFAULT : cfg;
+			wan_phyid = ports[0]; // record the phy num of the wan port on the case
+#ifdef RTCONFIG_DUALWAN
+			if (cfg != SWCFG_BRIDGE) {
+				int wan1cfg = nvram_get_int("wans_lanport");
+
+				nvram_unset("vlan2ports");
+				nvram_unset("vlan2hwname");
+				nvram_unset("vlan3ports");
+				nvram_unset("vlan3hwname");
+
+				// The first WAN port.
+				if (get_wans_dualwan()&WANSCAP_WAN) {
+					switch_gen_config(wan, ports, wancfg, 1, (get_wans_dualwan()&WANSCAP_LAN && wan1cfg >= 1 && wan1cfg <= 4)?"":"u");
+					nvram_set("vlan2ports", wan);
+					nvram_set("vlan2hwname", hw_name);
+				}
+
+				// The second WAN port.
+				if (get_wans_dualwan()&WANSCAP_LAN && wan1cfg >= 1 && wan1cfg <= 4) {
+					wan1cfg += WAN1PORT1-1;
+					if (wancfg != SWCFG_DEFAULT) {
+						gen_lan_ports(lan, ports, wancfg, wan1cfg, "*");
+						nvram_set("vlan1ports", lan);
+						gen_lan_ports(lan, ports, wancfg, wan1cfg, NULL);
+						nvram_set("lanports", lan);
+					}
+					else {
+						switch_gen_config(lan, ports, wan1cfg, 0, "*");
+						nvram_set("vlan1ports", lan);
+						switch_gen_config(lan, ports, wan1cfg, 0, NULL);
+						nvram_set("lanports", lan);
+					}
+
+					switch_gen_config(wan, ports, wan1cfg, 1, (get_wans_dualwan()&WANSCAP_WAN)?"":"u");
+					if (get_wans_dualwan()&WANSCAP_WAN) {
+						nvram_set("vlan3ports", wan);
+						nvram_set("vlan3hwname", hw_name);
+					}
+					else {
+						nvram_set("vlan2ports", wan);
+						nvram_set("vlan2hwname", hw_name);
+					}
+				}
+				else {
+					switch_gen_config(lan, ports, cfg, 0, "*");
+					nvram_set("vlan1ports", lan);
+					switch_gen_config(lan, ports, cfg, 0, NULL);
+					nvram_set("lanports", lan);
+				}
+
+				int unit;
+				char prefix[8], nvram_ports[16];
+
+				for (unit = WAN_UNIT_FIRST; unit < WAN_UNIT_MAX; ++unit) {
+					memset(prefix, 0, 8);
+					sprintf(prefix, "%d", unit);
+
+					memset(nvram_ports, 0, 16);
+					sprintf(nvram_ports, "wan%sports", (unit == WAN_UNIT_FIRST)?"":prefix);
+
+					if (get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_WAN) {
+						switch_gen_config(wan, ports, wancfg, 1, NULL);
+						nvram_set(nvram_ports, wan);
+					}
+					else if (get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_LAN) {
+						switch_gen_config(wan, ports, wan1cfg, 1, NULL);
+						nvram_set(nvram_ports, wan);
+					}
+					else
+						nvram_unset(nvram_ports);
+				}
+			}
+			else {
+				switch_gen_config(lan, ports, cfg, 0, "*");
+				switch_gen_config(wan, ports, wancfg, 1, "");
+				nvram_set("vlan1ports", lan);
+				nvram_set("vlan2ports", wan);
+				switch_gen_config(lan, ports, cfg, 0, NULL);
+				switch_gen_config(wan, ports, wancfg, 1, NULL);
+				nvram_set("lanports", lan);
+				nvram_set("wanports", wan);
+				nvram_unset("wan1ports");
+			}
+#else
+			switch_gen_config(lan, ports, cfg, 0, "*");
+			switch_gen_config(wan, ports, wancfg, 1, "u");
+			nvram_set("vlan1ports", lan);
+			nvram_set("vlan2ports", wan);
+			switch_gen_config(lan, ports, cfg, 0, NULL);
+			switch_gen_config(wan, ports, wancfg, 1, NULL);
+			nvram_set("lanports", lan);
+			nvram_set("wanports", wan);
+#endif
+			break;
+		}
+#endif
+
 		case MODEL_RTAC3200:
 		{					/* WAN L1 L2 L3 L4 CPU */	/*vision: WAN L4 L3 L2 L1 */
 			int ports[SWPORT_COUNT] = { 0, 4, 3, 2, 1, 5 };
@@ -2219,6 +2323,7 @@ reset_mssid_hwaddr(int unit)
 		switch(model) {
 			case MODEL_RTAC68U:
 			case MODEL_RTAC3200:
+			case MODEL_SBRAC3200P:
 			case MODEL_DSLAC68U:
 			case MODEL_RTAC87U:
 			case MODEL_RTAC56S:
@@ -2243,7 +2348,7 @@ reset_mssid_hwaddr(int unit)
 			case MODEL_RTAX86U:
 			case MODEL_RTAX68U:
 			case MODEL_RTAC68U_V4:
-#ifdef RTAC3200
+#if defined(RTAC3200) || defined(SBRAC3200P)
 				if (unit < 2)
 					snprintf(macaddr_str, sizeof(macaddr_str), "%d:macaddr", 1 - unit);
 				else
@@ -2445,6 +2550,7 @@ reset_psr_hwaddr()
 
 	switch(model) {
 		case MODEL_RTAC3200:
+		case MODEL_SBRAC3200P:
 		case MODEL_GTAC5300:
 		case MODEL_GTAX11000:
 		case MODEL_RTAX88U:
@@ -2659,6 +2765,7 @@ void init_wl(void)
 		case MODEL_RTAC3100:
 		case MODEL_R7000P:
 		case MODEL_RTAC3200:
+		case MODEL_SBRAC3200P:
 		case MODEL_RTAC5300:
 		case MODEL_GTAC5300:
 		case MODEL_RTAC66U:
@@ -2685,7 +2792,7 @@ void init_wl(void)
 	system("insmod igs");
 #endif
 	check_wl_country();
-#if defined(RTAC3200) || defined(RTAC68U) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER) || defined(DSL_AC68U)
+#if defined(RTAC3200) || defined(SBRAC3200P) || defined(RTAC68U) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER) || defined(DSL_AC68U)
 	wl_disband5grp();
 #endif
 #if !defined(RTCONFIG_HND_ROUTER_AX)
@@ -2812,6 +2919,7 @@ void init_wl_compact(void)
 		case MODEL_RTAC3100:
 		case MODEL_R7000P:
 		case MODEL_RTAC3200:
+		case MODEL_SBRAC3200P:
 		case MODEL_RTAC5300:
 		case MODEL_GTAC5300:
 		case MODEL_RTAC66U:
@@ -2831,7 +2939,7 @@ void init_wl_compact(void)
 #endif
 	check_wl_country();
 #ifndef RTCONFIG_BRCM_USBAP
-#if defined(RTAC3200) || defined(RTAC68U) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER) || defined(DSL_AC68U)
+#if defined(RTAC3200) || defined(SBRAC3200P) || defined(RTAC68U) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER) || defined(DSL_AC68U)
 	wl_disband5grp();
 #endif
 #if !defined(RTCONFIG_HND_ROUTER_AX)
@@ -2977,7 +3085,15 @@ void init_syspara(void)
 			if (!nvram_get("2:macaddr"))				// eth3(5GHz)
 				nvram_set("2:macaddr", "00:22:15:A5:03:08");
 			break;
-
+		case MODEL_SBRAC3200P:
+			if (!nvram_get("et2macaddr"))				// eth0 (ethernet)
+				nvram_set("et2macaddr", "00:22:15:A5:03:00");
+			nvram_set("1:macaddr", nvram_safe_get("et2macaddr"));	// eth2 (2.4GHz)
+			if (!nvram_get("0:macaddr"))				// eth1(5GHz)
+				nvram_set("0:macaddr", "00:22:15:A5:03:04");
+			if (!nvram_get("2:macaddr"))				// eth3(5GHz)
+				nvram_set("2:macaddr", "00:22:15:A5:03:08");
+			break;
 		case MODEL_RTAC53U:
 			if (!nvram_get("et0macaddr"))	//eth0, eth1
 				nvram_set("et0macaddr", "00:22:15:A5:03:00");
@@ -3445,6 +3561,9 @@ void init_others(void)
 #ifdef RTAC3200
 	update_cfe_ac3200();
 	update_cfe_ac3200_128k();
+#endif
+#if defined(SBRAC3200P)
+	ac3200p_patch_cfe();
 #endif
 #ifdef RTAC68U
 	ac68u_cofs();
@@ -4956,6 +5075,161 @@ set_wan_tag(char *interface) {
 	sprintf(wan_dev, "vlan%d", wan_vid);
 
 	switch(model) {
+#if defined(SBRAC3200P)
+	case MODEL_SBRAC3200P:
+		if (wan_vid) { /* config wan port */
+			eval("vconfig", "rem", "vlan2");
+			sprintf(port_id, "%d", wan_vid);
+			eval("vconfig", "add", interface, port_id);
+			sprintf(vlan_entry, "d", wan_vid);
+			eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "0 8");
+			eval("swconfig", "dev", "switch0", "set", "apply");
+		}
+		/* Set Wan port PRIO */
+		if (nvram_invmatch("switch_wan0prio", "0"))
+			eval("vconfig", "set_egress_map", wan_dev, "0", nvram_get("switch_wan0prio"));
+		if (nvram_match("switch_wantag", "stuff_fibre")) {
+			eval("vconfig", "set_egress_map", wan_dev, "3", "5");
+			break;
+		}
+		if (nvram_match("switch_stb_x", "3")) {  // L3:p3, w:p0, c:p8
+			if (nvram_match("switch_wantag", "vodafone")) {
+				char vlan_buf[64];
+				sprintf(vlan_buf, "1 2 3 8t");
+				eval("swconfig", "dev", "switch0", "vlan", "1", "set", "ports", vlan_buf);
+				sprintf(vlan_buf, "0t 4t 8t");
+				eval("swconfig", "dev", "switch0", "vlan", "100", "set", "ports", vlan_buf);
+				sprintf(vlan_buf, "0t 4t");
+				eval("swconfig", "dev", "switch0", "vlan", "101", "set", "ports", vlan_buf);
+				sprintf(vlan_buf, "0t 3 4t");
+				eval("swconfig", "dev", "switch0", "vlan", "105", "set", "ports", vlan_buf);
+				eval("swconfig", "dev", "switch0", "set", "apply");
+				break;
+			}
+			if (nvram_match("switch_wantag", "m1_fiber")
+				|| nvram_match("switch_wantag", "maxis_fiber_sp")
+				|| nvram_match("switch_wantag", "maxis_cts")
+				|| nvram_match("switch_wantag", "maxis_sacofa")
+				|| nvram_match("switch_wantag", "maxis_tnb")
+			) {
+				/* Just forward packets between WAN & L3, without untag */
+				sprintf(vlan_entry, "%d", voip_vid);
+				_dprintf("vlan entry: %s\n", vlan_entry);
+				eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "3 0t");
+				eval("swconfig", "dev", "switch0", "set", "apply");
+			}
+			else if (nvram_match("switch_wantag", "maxis_fiber")) {
+				/* Just forward packets between WAN & L3, without untag */
+				eval("swconfig", "dev", "switch0", "vlan", "821", "set", "ports", "3 0t");
+				eval("swconfig", "dev", "switch0", "vlan", "822", "set", "ports", "3 0t");
+				eval("swconfig", "dev", "switch0", "set", "apply");
+			}
+			else {  /* Nomo case. */
+				/* untag port map */
+				sprintf(vlan_entry, "%d", voip_vid);
+				_dprintf("vlan entry: %s\n", vlan_entry);
+				eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "3u 0t");
+				eval("swconfig", "dev", "switch0", "set", "apply");
+			}
+		} else if (nvram_match("switch_stb_x", "4")) { // lan(4) = P4
+			/* config LAN 4 = IPTV */
+			if (nvram_match("switch_wantag", "meo")) {
+				/* Just forward packets between wan & L4, without untag */
+				sprintf(vlan_entry, "%d", iptv_vid);
+				_dprintf("vlan entry: %s\n", vlan_entry);
+				eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "4 0t 8t");
+				eval("swconfig", "dev", "switch0", "set", "apply");
+			}
+			else {  /* Nomo case, untag it. */
+				/* config LAN 4 = IPTV */
+				/* untag port map */
+				sprintf(vlan_entry, "%d", iptv_vid);
+				_dprintf("vlan entry: %s\n", vlan_entry);
+				eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "4u 0t");
+				eval("swconfig", "dev", "switch0", "set", "apply");
+			}
+		} else if (nvram_match("switch_stb_x", "6")) {	// lan(3)=P3, lan(4)=P4
+			/* config lan(3)/P3 = VoIP */
+			if (nvram_match("switch_wantag", "singtel_mio")) {
+				/* Just forward packets between WAN & L3, without untag */
+				sprintf(vlan_entry, "%d", voip_vid);
+				_dprintf("vlan entry: %s\n", vlan_entry);
+				eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "3 0t");
+				eval("swconfig", "dev", "switch0", "set", "apply");
+			}
+			else {
+				if (voip_vid) {
+					/* untag port map */
+					sprintf(vlan_entry, "%d", voip_vid);
+					_dprintf("vlan entry: %s\n", vlan_entry);
+					if (voip_vid == iptv_vid)
+						eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "3u 4u 0t");
+					else
+						eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "4u 0t");
+					eval("swconfig", "dev", "switch0", "set", "apply");
+				}
+			}
+			/* config lan(4)/P4 = IPTV */
+			if (iptv_vid) {
+				/* untag port map */
+				sprintf(vlan_entry, "%d", iptv_vid);
+				_dprintf("vlan entry: %s\n", vlan_entry);
+				if (voip_vid == iptv_vid)
+					eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "3u 4u 0t");
+				else
+					eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "4u 0t");
+				eval("swconfig", "dev", "switch0", "set", "apply");
+			}
+		}
+#ifdef RTCONFIG_MULTICAST_IPTV
+		if (switch_stb >= 7) {
+			if (iptv_vid) { /* config IPTV on wan port */
+				_dprintf("*** Multicast IPTV: config IPTV on wan port ***\n");
+				sprintf(wan_dev, "vlan%d", iptv_vid);
+				nvram_set("wan10_ifname", wan_dev);
+				sprintf(port_id, "%d", iptv_vid);
+				eval("vconfig", "add", interface, port_id);
+				sprintf(vlan_entry, "%d", iptv_vid);
+				eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "0t 8t");
+				eval("swconfig", "dev", "switch0", "set", "apply");
+				if (iptv_prio) { /* config priority */
+					eval("vconfig", "set_egress_map", wan_dev, "0", (char *)iptv_prio);
+				}
+			}
+		}
+		if (switch_stb >= 8) {
+			if (voip_vid) { /* config voip on wan port */
+				_dprintf("*** Multicast IPTV: config VOIP on wan port ***\n");
+				sprintf(wan_dev, "vlan%d", voip_vid);
+				nvram_set("wan11_ifname", wan_dev);
+				sprintf(port_id, "%d", voip_vid);
+				eval("vconfig", "add", interface, port_id);
+				sprintf(vlan_entry, "%d", voip_vid);
+				eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "0t 8t");
+				eval("swconfig", "dev", "switch0", "set", "apply");
+				if (voip_prio) { /* config priority */
+					eval("vconfig", "set_egress_map", wan_dev, "0", (char *)voip_prio);
+				}
+			}
+		}
+		if (switch_stb >=9) {
+			if (mang_vid) { /* config tr069 on wan port */
+				_dprintf("*** Multicast IPTV: config Singtel TR069 on wan port ***\n");
+				sprintf(wan_dev, "vlan%d", mang_vid);
+				nvram_set("wan12_ifname", wan_dev);
+				sprintf(port_id, "%d", mang_vid);
+				eval("vconfig", "add", interface, port_id);
+				sprintf(vlan_entry, "%d", mang_vid);
+				eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "0t 8t");
+				eval("swconfig", "dev", "switch0", "set", "apply");
+				if (mang_prio) { /* config priority */
+					eval("vconfig", "set_egress_map", wan_dev, "0", (char *)iptv_prio);
+				}
+			}
+		}
+#endif
+		break;
+#endif
 				/* P0  P1 P2 P3 P4 P5 */
 	case MODEL_RTAC3200: 	/* WAN L4 L3 L2 L1 CPU */
 		if (wan_vid) { /* config wan port */

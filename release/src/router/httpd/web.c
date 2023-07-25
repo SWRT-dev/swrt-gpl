@@ -2341,13 +2341,13 @@ ej_dump(int eid, webs_t wp, int argc, char_t **argv)
 		return (ej_route_table(eid, wp, 0, NULL));
 	else if (strcmp(file, "wps_info.log")==0)
 	{
-#ifndef RTAC3200
+#if defined(RTAC3200) ||  defined(SBRAC3200P)
+		return wl_wps_info(eid, wp, argc, argv, nvram_get_int("wps_band_x"));
+#else
 		if (nvram_match("wps_band_x", "0"))
 			return (ej_wps_info_2g(eid, wp, 0, NULL));
 		else
 			return (ej_wps_info(eid, wp, 0, NULL));
-#else
-		return wl_wps_info(eid, wp, argc, argv, nvram_get_int("wps_band_x"));
 #endif
 	}
 	ret = 0;

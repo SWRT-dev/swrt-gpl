@@ -499,6 +499,7 @@ int init_toggle(void)
 		case MODEL_RTAC56S:
 		case MODEL_RTAC56U:
 		case MODEL_RTAC3200:
+		case MODEL_SBRAC3200P:
 		case MODEL_RTAC68U:
 		case MODEL_DSLAC68U:
 		case MODEL_RTAC87U:
@@ -3731,7 +3732,7 @@ void btn_check(void)
 	LED_status = button_pressed(BTN_LED);
 #endif
 
-#if (defined(RTAC68U) || defined(RTAC3200) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)) && !defined(RTCONFIG_WPS_ALLLED_BTN)
+#if (defined(RTAC68U) || defined(RTAC3200) || defined(SBRAC3200P) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)) && !defined(RTCONFIG_WPS_ALLLED_BTN)
 #if defined(RTAC68U)
 	if (is_ac66u_v2_series())
 		;
@@ -3775,7 +3776,7 @@ void btn_check(void)
 				LED_status_changed = 1;
 		}
 	}
-#elif defined(RTAC3200) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
+#elif defined(RTAC3200) || defined(SBRAC3200P) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
 	if (!nvram_get_int("AllLED") && LED_status_first)
 	{
 		LED_status_first = 0;
@@ -3811,7 +3812,7 @@ void btn_check(void)
 			nvram_set_int("led_disable", 1);
 		}
 		nvram_commit();
-#elif defined(RTAC3200) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
+#elif defined(RTAC3200) || defined(SBRAC3200P) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
 		if (LED_status && (LED_status != LED_status_old)) {
 			if (LED_status_on){
 				nvram_set_int("AllLED", 1);
@@ -3829,7 +3830,7 @@ void btn_check(void)
 #if defined(RTAC68U)
 		if (((!nvram_match("cpurev", "c0") || nvram_get_int("PA") == 5023 || (nvram_match("cpurev", "c0") && !nvram_get_int("PA"))) && LED_status == LED_status_on) ||
 		      (nvram_match("cpurev", "c0") && nvram_get_int("PA") != 5023 && nvram_get_int("PA") != 0 && LED_status_on))
-#elif defined(RTAC3200) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
+#elif defined(RTAC3200) || defined(SBRAC3200P) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
 		if (LED_status_on)
 #endif
 		{
@@ -3838,7 +3839,7 @@ void btn_check(void)
 #else
 			led_control(LED_POWER, LED_ON);
 
-#if defined(RTAC3200) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
+#if defined(RTAC3200) || defined(SBRAC3200P) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
 #ifdef HND_ROUTER
 #ifndef GTAC2900
 #if defined(RTAX58U_V2) || defined(GTAX6000) || defined(TUFAX3000_V2) || defined(RTAXE7800)
@@ -3868,7 +3869,7 @@ void btn_check(void)
 			if (wlonunit == -1 || wlonunit == 0) {
 #ifdef RTAC68U
 				eval("wl", "ledbh", "10", "7");
-#elif defined(RTAC3200)
+#elif defined(RTAC3200) || defined(SBRAC3200P)
 				eval("wl", "-i", "eth2", "ledbh", "10", "7");
 #elif defined(GTAC5300) || defined(GTAXE11000)
 				eval("wl", "-i", "eth6", "ledbh", "9", "7");
@@ -3923,7 +3924,7 @@ void btn_check(void)
 			if (wlonunit == -1 || wlonunit == 1) {
 #ifdef RTAC68U
 				eval("wl", "-i", "eth2", "ledbh", "10", "7");
-#elif defined(RTAC3200)
+#elif defined(RTAC3200) || defined(SBRAC3200P)
 				eval("wl", "ledbh", "10", "7");
 #elif defined(GTAC5300) || defined(GTAXE11000)
 				eval("wl", "-i", "eth7", "ledbh", "9", "7");
@@ -3982,7 +3983,7 @@ void btn_check(void)
 			}
 #ifdef RTCONFIG_HAS_5G_2
 			if (wlonunit == -1 || wlonunit == 2) {
-#if defined(RTAC3200)
+#if defined(RTAC3200) || defined(SBRAC3200P)
 				eval("wl", "-i", "eth3", "ledbh", "10", "7");
 #elif defined(GTAC5300) || defined(GTAXE11000)
 				eval("wl", "-i", "eth8", "ledbh", "9", "7");

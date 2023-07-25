@@ -324,6 +324,7 @@ void enable_wan_led()
 					break;
 #endif
 			case MODEL_RTAC3200:
+			case MODEL_SBRAC3200P:
 			case MODEL_RTAC87U:
 				eval("et", "-i", "eth0", "robowr", "0", "0x18", "0x01ff");
 				eval("et", "-i", "eth0", "robowr", "0", "0x1a", "0x01fe");
@@ -400,13 +401,13 @@ static void wan_led_control(int sig) {
 
 		update_wan_leds(unit, !rule_setup);
 	}
-#elif defined(RTAC68U) ||  defined(RTAC87U) || defined(RTAC3200) || defined(RTCONFIG_BCM_7114) || defined(DSL_AC68U) || defined(HND_ROUTER) || defined(RTCONFIG_RALINK)
+#elif defined(RTAC68U) ||  defined(RTAC87U) || defined(RTAC3200) || defined(SBRAC3200P) || defined(RTCONFIG_BCM_7114) || defined(DSL_AC68U) || defined(HND_ROUTER) || defined(RTCONFIG_RALINK)
 	if(nvram_match("AllLED", "1")
 #if defined(RTAC68U) && !defined(DIR868L) && !defined(F9K1118) && !defined(EA6700)
 		&& (is_ac66u_v2_series() || is_ac68u_v3_series())
 #endif
 	) {
-#if defined(RTAC68U) ||  defined(RTAC87U) || defined(RTAC3200) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
+#if defined(RTAC68U) ||  defined(RTAC87U) || defined(RTAC3200) || defined(SBRAC3200P) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
 		if (rule_setup) {
 			led_control(LED_WAN, LED_ON);
 			disable_wan_led();
@@ -3316,7 +3317,7 @@ int wanduck_main(int argc, char *argv[]){
 	char cmd[32];
 #endif
 #ifdef RTCONFIG_DUALWAN
-#if defined(RTAC68U) ||  defined(RTAC87U) || defined(RTAC3200) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER) && !defined(RTCONFIG_HND_ROUTER_AX)
+#if defined(RTAC68U) ||  defined(RTAC87U) || defined(RTAC3200) || defined(SBRAC3200P) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER) && !defined(RTCONFIG_HND_ROUTER_AX)
 	int wanred_led_status = 0;	/* 1 is no internet, 2 is internet ok */
 	int u, link_status;
 #endif
@@ -3699,7 +3700,7 @@ _dprintf("wanduck(%d)(first detect start): state %d, state_old %d, changed %d, w
 			led_control(LED_WAN, LED_OFF);
 #elif defined(DSL_N55U) || defined(DSL_N55U_B)
 		led_control(LED_WAN, LED_ON);
-#elif defined(RTAC68U) || defined(RTAC87U) || defined(RTAC3200) || defined(RTCONFIG_BCM_7114) || (defined(HND_ROUTER) && !defined(RTCONFIG_HND_ROUTER_AX))
+#elif defined(RTAC68U) || defined(RTAC87U) || defined(RTAC3200) || defined(SBRAC3200P) || defined(RTCONFIG_BCM_7114) || (defined(HND_ROUTER) && !defined(RTCONFIG_HND_ROUTER_AX))
 		if(nvram_match("AllLED", "1")
 #if defined(RTAC68U) && !defined(DIR868L) && !defined(F9K1118) && !defined(EA6700)
 				&& (is_ac66u_v2_series() || is_ac68u_v3_series())
@@ -4804,7 +4805,7 @@ _dprintf("nat_rule: start_nat_rules 6.\n");
 					led_control(LED_WAN, LED_OFF);
 #elif defined(RTCONFIG_HND_ROUTER_AX) || defined(RTCONFIG_LANWAN_LED) || defined(RTCONFIG_WANRED_LED) || defined(RTCONFIG_FAILOVER_LED)
 					update_wan_leds(current_wan_unit, link_wan[current_wan_unit]);
-#elif defined(RTAC68U) || defined(RTAC87U) || defined(RTAC3200) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
+#elif defined(RTAC68U) || defined(RTAC87U) || defined(RTAC3200) || defined(SBRAC3200P) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
 					if(
 #if defined(RTAC68U) && !defined(DIR868L) && !defined(F9K1118) && !defined(EA6700)
 						(is_ac66u_v2_series() || is_ac68u_v3_series())
@@ -4891,7 +4892,7 @@ _dprintf("nat_rule: start_nat_rules 6.\n");
 				led_control(LED_WAN, LED_ON);
 #elif defined(RTCONFIG_HND_ROUTER_AX) || defined(RTCONFIG_LANWAN_LED) || defined(RTCONFIG_WANRED_LED) || defined(RTCONFIG_FAILOVER_LED)
 				update_wan_leds(current_wan_unit, link_wan[current_wan_unit]);
-#elif defined(RTAC68U) || defined(RTAC87U) || defined(RTAC3200) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
+#elif defined(RTAC68U) || defined(RTAC87U) || defined(RTAC3200) || defined(SBRAC3200P) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
 				if(nvram_match("AllLED", "1")
 #if defined(RTAC68U) && !defined(DIR868L) && !defined(F9K1118) && !defined(EA6700)
 						&& (is_ac66u_v2_series() || is_ac68u_v3_series())
@@ -5026,7 +5027,7 @@ _dprintf("nat_rule: stop_nat_rules 7.\n");
 			}
 		}
 
-#if defined(RTAC68U) || defined(RTAC87U) || defined(RTAC3200) || defined(RTCONFIG_BCM_7114) || (defined(HND_ROUTER) && !defined(RTCONFIG_HND_ROUTER_AX))
+#if defined(RTAC68U) || defined(RTAC87U) || defined(RTAC3200) || defined(SBRAC3200P) || defined(RTCONFIG_BCM_7114) || (defined(HND_ROUTER) && !defined(RTCONFIG_HND_ROUTER_AX))
 		if (strcmp(dualwan_wans, "wan none")) {
 			if(nvram_match("AllLED", "1")
 #if defined(RTAC68U) && !defined(DIR868L) && !defined(F9K1118) && !defined(EA6700)

@@ -396,6 +396,7 @@ misc_ioctrl(void)
 		case MODEL_RTAC87U:
 		case MODEL_RTAC68U:
 		case MODEL_RTAC3200:
+		case MODEL_SBRAC3200P:
 		case MODEL_RTAC5300:
 		case MODEL_GTAC5300:
 		case MODEL_RTAC88U:
@@ -1670,6 +1671,7 @@ misc_defaults(int restore_defaults)
 			nvram_set("reboot_time", "140");
 			break;
 		case MODEL_RTAC3200:
+		case MODEL_SBRAC3200P:
 		case MODEL_RTAC1200G:
 		case MODEL_RTAC1200GP:
 		case MODEL_RPAX56:
@@ -2311,7 +2313,7 @@ restore_defaults(void)
 
 	wan_defaults();
 
-#ifdef RTAC3200
+#if defined(RTAC3200) || defined(SBRAC3200P)
 	bsd_defaults();
 #endif
 #ifdef  __CONFIG_WBD__
@@ -10449,6 +10451,113 @@ int init_nvram(void)
 		nvram_set_int("btn_led_gpio", 15|GPIO_ACTIVE_LOW);
 #endif
 		nvram_set_int("rst_hw_gpio", 17|GPIO_ACTIVE_LOW);
+#ifdef RTCONFIG_XHCIMODE
+		nvram_set("xhci_ports", "1-1");
+		nvram_set("ehci_ports", "2-1 2-2");
+		nvram_set("ohci_ports", "3-1 3-2");
+#else
+		if (usb_usb3 == 1) {
+			nvram_set("xhci_ports", "1-1");
+			nvram_set("ehci_ports", "2-1 2-2");
+			nvram_set("ohci_ports", "3-1 3-2");
+		}
+		else{
+			nvram_unset("xhci_ports");
+			nvram_set("ehci_ports", "1-1 1-2");
+			nvram_set("ohci_ports", "2-1 2-2");
+		}
+#endif
+
+		if (!nvram_get("ct_max"))
+			nvram_set("ct_max", "300000");
+		add_rc_support("mssid 2.4G 5G update usbX2");
+		add_rc_support("switchctrl"); // broadcom: for jumbo frame only
+		add_rc_support("manual_stb");
+		add_rc_support("pwrctrl");
+		add_rc_support("WIFI_LOGO");
+		add_rc_support("nandflash");
+		add_rc_support("meoVoda");
+		add_rc_support("movistarTriple");
+		add_rc_support("app");
+
+		break;
+#endif
+#ifdef SBRAC3200P
+	case MODEL_SBRAC3200P:
+		nvram_set("vlan1hwname", "et2");
+		nvram_set("rgmii_port", "5");
+		nvram_set("landevs", "vlan1 wl0 wl1 wl2");
+
+#ifdef RTCONFIG_DUALWAN
+		if (get_wans_dualwan()&WANSCAP_WAN && get_wans_dualwan()&WANSCAP_LAN)
+			nvram_set("wandevs", "vlan2 vlan3");
+		set_lan_phy("vlan1");
+
+		if (!(get_wans_dualwan()&WANSCAP_2G))
+			add_lan_phy("eth2");
+		if (!(get_wans_dualwan()&WANSCAP_5G)) {
+			add_lan_phy("eth1");
+			add_lan_phy("eth3");
+		}
+
+		if (nvram_get("wans_dualwan")) {
+			set_wan_phy("");
+			for(unit = WAN_UNIT_FIRST; unit < WAN_UNIT_MAX; ++unit) {
+				if (get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_LAN) {
+					if (get_wans_dualwan()&WANSCAP_WAN)
+						add_wan_phy("vlan3");
+					else
+						add_wan_phy(the_wan_phy());
+				}
+				else if (get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_2G)
+					add_wan_phy("eth2");
+				else if (get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_5G) {
+					add_wan_phy("eth1");
+					add_wan_phy("eth3");
+				}
+				else if (get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_WAN) {
+					if (nvram_get("switch_wantag") && !nvram_match("switch_wantag", "") && !nvram_match("switch_wantag", "none")) {
+						int wan_vid = nvram_get_int("switch_wan0tagid");
+						if (wan_vid) {
+							sprintf(wan_if, "vlan%d", wan_vid);
+							add_wan_phy(wan_if);
+						}
+						else
+							add_wan_phy(the_wan_phy());
+					}
+					else if (get_wans_dualwan()&WANSCAP_LAN)
+						add_wan_phy("vlan2");
+					else
+						add_wan_phy(the_wan_phy());
+				}
+				else if (get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_USB)
+					add_wan_phy("usb");
+#ifdef RTCONFIG_USB_MULTIMODEM
+				else if (get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_USB2)
+					add_wan_phy("usb2");
+#endif
+			}
+		}
+		else
+			nvram_set("wan_ifnames", "eth0 usb");
+#else
+		nvram_set("lan_ifnames", "vlan1 eth2 eth1 eth3");
+		nvram_set("wan_ifnames", "eth0");
+#endif
+		nvram_set("wl_ifnames", "eth2 eth1 eth3");
+		nvram_set("wl0_vifnames", "wl0.1 wl0.2 wl0.3");
+		nvram_set("wl1_vifnames", "wl1.1 wl1.2 wl1.3");
+		nvram_set("wl2_vifnames", "wl2.1 wl2.2 wl2.3");
+
+		nvram_set_int("led_pwr_gpio", 8);
+		//nvram_set_int("led_wps_gpio", 14|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_wps_gpio", 10);
+		nvram_set_int("led_wan_gpio", 9);
+		nvram_set_int("btn_wps_gpio", 20|GPIO_ACTIVE_LOW);
+		nvram_set_int("btn_rst_gpio", 19|GPIO_ACTIVE_LOW);
+#ifdef RTCONFIG_WIFI_TOG_BTN
+		nvram_set_int("btn_wltog_gpio", 23|GPIO_ACTIVE_LOW);
+#endif
 #ifdef RTCONFIG_XHCIMODE
 		nvram_set("xhci_ports", "1-1");
 		nvram_set("ehci_ports", "2-1 2-2");
@@ -19235,7 +19344,7 @@ NO_USB_CAP:
 	add_rc_support("cfg_sync");
 #endif
 
-#if (defined(RTAC3200) || defined(HND_ROUTER))
+#if (defined(RTAC3200) || defined(SBRAC3200P) || defined(HND_ROUTER))
 	add_rc_support("no_finiwl");
 #endif
 

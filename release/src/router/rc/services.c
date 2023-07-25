@@ -19892,7 +19892,7 @@ void setup_leds()
 
 /* WAN/LAN */
 #if defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_RALINK)
-#elif defined(RTAC3200) || defined(RTCONFIG_BCM_7114)
+#elif defined(RTAC3200) || defined(SBRAC3200P) || defined(RTCONFIG_BCM_7114)
 		eval("et", "-i", "eth0", "robowr", "0", "0x18", "0x01ff");
 		eval("et", "-i", "eth0", "robowr", "0", "0x1a", "0x01ff");
 #if defined(R7000P)
@@ -19935,7 +19935,7 @@ void setup_leds()
 			led_control(LED_2G, LED_ON);
 #elif defined(RTAC68U)
 			eval("wl", "ledbh", "10", "7");
-#elif defined(RTAC3200)
+#elif defined(RTAC3200) || defined(SBRAC3200P)
 			eval("wl", "-i", "eth2", "ledbh", "10", "7");
 #elif defined(RTCONFIG_BCM_7114) || defined(RTAC86U)
 			eval("wl", "ledbh", "9", "7");
@@ -19985,7 +19985,7 @@ void setup_leds()
 			led_control(LED_5G, LED_ON);
 #elif defined(RTAC68U)
 			eval("wl", "-i", "eth2", "ledbh", "10", "7");
-#elif defined(RTAC3200)
+#elif defined(RTAC3200) || defined(SBRAC3200P)
 			eval("wl", "ledbh", "10", "7");
 #elif defined(RTAC86U)
 			eval("wl", "-i", "eth6", "ledbh", "9", "7");
@@ -20035,7 +20035,7 @@ void setup_leds()
 		if (nvram_match("wl2_radio", "1")) {
 #if defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_RALINK)
 			led_control(LED_5G2, LED_ON);
-#elif defined(RTAC3200)
+#elif defined(RTAC3200) || defined(SBRAC3200P)
 			eval("wl", "-i", "eth3", "ledbh", "10", "7");
 #elif defined(GTAC5300) || defined(GTAXE11000)
 			eval("wl", "-i", "eth8", "ledbh", "9", "7");

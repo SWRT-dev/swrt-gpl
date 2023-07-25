@@ -296,6 +296,10 @@ ifeq ($(RTAC3200),y)
 	cp -rf cfe/cfe_rt-ac3200_2.0.0.4_128k.bin $(INSTALLDIR)/rom/cfe
 	cp -rf cfe/mtd-write $(INSTALLDIR)/rom/cfe/
 endif
+ifeq ($(SBRAC3200P),y)
+	mkdir -p $(INSTALLDIR)/rom/cfe
+	cp -rf cfe/sbrac3200.bin $(INSTALLDIR)/rom/cfe
+endif
 ifeq ($(R7000P),y)
 	mkdir -p $(INSTALLDIR)/rom/cfe
 	cp -rf cfe/r7000p.bin $(INSTALLDIR)/rom/cfe

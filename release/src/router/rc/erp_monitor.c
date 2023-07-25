@@ -628,6 +628,7 @@ static int ERP_CHECK_MODEL_LIST()
 		|| model == MODEL_RTAC3100
 		|| model == MODEL_RTAC5300
 		|| model == MODEL_RTAC3200
+		|| model == MODEL_SBRAC3200P
 		|| model == MODEL_RTAC68U
 		|| model == MODEL_RTAC87U
 		|| model == MODEL_DSLAC68U
@@ -793,7 +794,7 @@ static void erp_standby_mode(int model)
 		eval("qcsapi_sockrpc", "pm", "idle");
 	}
 
-	if (model == MODEL_RTAC5300 || model == MODEL_RTAC3200)
+	if (model == MODEL_RTAC5300 || model == MODEL_RTAC3200 || model == MODEL_SBRAC3200P)
 	{
 		// triple band
 		eval("wl", "-i", "eth3", "down"); // turn off 5g-2 radio

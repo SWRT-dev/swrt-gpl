@@ -593,7 +593,7 @@ int get_ui_support_info(struct json_object *ui_support_obj)
 	json_object_object_add(ui_support_obj, "acs_dfs", json_object_new_int((strtol(nvram_safe_get("wl1_band5grp"), NULL, 16) & 6) == 6));
 #if defined(RTCONFIG_BCM_7114)
 	json_object_object_add(ui_support_obj, "sdk7114", json_object_new_int(1));
-#elif defined(RTAC3200)
+#elif defined(RTAC3200) || defined(SBRAC3200P)
 	json_object_object_add(ui_support_obj, "sdk7", json_object_new_int(1));
 #endif
 #endif

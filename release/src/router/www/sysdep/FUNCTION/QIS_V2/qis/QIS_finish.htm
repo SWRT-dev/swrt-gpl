@@ -888,19 +888,19 @@ function QKfinish_load_body(){
 				shown_str = '<% nvram_get("wl0_key4"); %>';
 		}
 		else if(auth_mode2 == "psk"){
-			if(parent.based_modelid == "RT-AC5300" || parent.based_modelid == "RT-AC3200")
+			if(parent.based_modelid == "RT-AC5300" || parent.based_modelid == "RT-AC3200" || based_modelid == "SBRAC3200P")
 				$("#security2_block")[0].style.display = "none";
 			$("#security2")[0].innerHTML = "WPA-Personal - TKIP";
 			shown_str = '<% nvram_char_to_ascii("", "wl0_wpa_psk"); %>';
 		}
 		else if(auth_mode2 == "psk2"){
-			if(parent.based_modelid == "RT-AC5300" || parent.based_modelid == "RT-AC3200")
+			if(parent.based_modelid == "RT-AC5300" || parent.based_modelid == "RT-AC3200" || based_modelid == "SBRAC3200P")
 				$("#security2_block")[0].style.display = "none";
 			$("#security2")[0].innerHTML = "WPA2-Personal - AES";
 			shown_str = '<% nvram_char_to_ascii("", "wl0_wpa_psk"); %>';
 		}	
 		else if(auth_mode2 == "pskpsk2"){
-			if(parent.based_modelid == "RT-AC5300" || parent.based_modelid == "RT-AC3200")
+			if(parent.based_modelid == "RT-AC5300" || parent.based_modelid == "RT-AC3200" || based_modelid == "SBRAC3200P")
 				$("#security2_block")[0].style.display = "none";
 			$("#security2")[0].innerHTML = "WPA-Auto-Personal - TKIP + AES";
 			shown_str = '<% nvram_char_to_ascii("", "wl0_wpa_psk"); %>';
@@ -949,19 +949,19 @@ function QKfinish_load_body(){
 					shown_str = '<% nvram_get("wl1_key4"); %>';
 			}
 			else if(auth_mode == "psk"){
-				if(parent.based_modelid == "RT-AC5300" || parent.based_modelid == "RT-AC3200")
+				if(parent.based_modelid == "RT-AC5300" || parent.based_modelid == "RT-AC3200" || based_modelid == "SBRAC3200P")
 					$("#security5_block")[0].style.display = "none";
 				$("#security5")[0].innerHTML = "WPA-Personal - TKIP";
 				shown_str = '<% nvram_char_to_ascii("", "wl1_wpa_psk"); %>';
 			}
 			else if(auth_mode == "psk2"){
-				if(parent.based_modelid == "RT-AC5300" || parent.based_modelid == "RT-AC3200")
+				if(parent.based_modelid == "RT-AC5300" || parent.based_modelid == "RT-AC3200" || based_modelid == "SBRAC3200P")
 					$("#security5_block")[0].style.display = "none";
 				$("#security5")[0].innerHTML = "WPA2-Personal - AES";
 				shown_str = '<% nvram_char_to_ascii("", "wl1_wpa_psk"); %>';
 			}
 			else if(auth_mode == "pskpsk2"){
-				if(parent.based_modelid == "RT-AC5300" || parent.based_modelid == "RT-AC3200")
+				if(parent.based_modelid == "RT-AC5300" || parent.based_modelid == "RT-AC3200" || based_modelid == "SBRAC3200P")
 					$("#security5_block")[0].style.display = "none";
 				$("#security5")[0].innerHTML = "WPA-Auto-Personal - TKIP + AES";
 				shown_str = '<% nvram_char_to_ascii("", "wl1_wpa_psk"); %>';
@@ -1139,21 +1139,21 @@ function QKfinish_load_body(){
 				shown_str = '<% nvram_get("wl2_key4"); %>';
 		}
 		else if(auth_mode_5_2 == "psk"){
-			if(parent.based_modelid == "RT-AC5300" || parent.based_modelid == "RT-AC3200")
+			if(parent.based_modelid == "RT-AC5300" || parent.based_modelid == "RT-AC3200" || based_modelid == "SBRAC3200P")
 				$("#security5_2_block")[0].style.display = "none";
 			$("#security5_2")[0].innerHTML = "WPA-Personal - TKIP";
 			$("#key5_2_item")[0].innerHTML = "<#Network_key#>";
 			shown_str = '<% nvram_char_to_ascii("", "wl2_wpa_psk"); %>';
 		}
 		else if(auth_mode_5_2 == "psk2"){
-			if(parent.based_modelid == "RT-AC5300" || parent.based_modelid == "RT-AC3200")
+			if(parent.based_modelid == "RT-AC5300" || parent.based_modelid == "RT-AC3200" || based_modelid == "SBRAC3200P")
 				$("#security5_2_block")[0].style.display = "none";
 			$("#security5_2")[0].innerHTML = "WPA2-Personal - AES";
 			$("#key5_2_item")[0].innerHTML = "<#Network_key#>";
 			shown_str = '<% nvram_char_to_ascii("", "wl2_wpa_psk"); %>';
 		}
 		else if(auth_mode_5_2 == "pskpsk2"){
-			if(parent.based_modelid == "RT-AC5300" || parent.based_modelid == "RT-AC3200")
+			if(parent.based_modelid == "RT-AC5300" || parent.based_modelid == "RT-AC3200" || based_modelid == "SBRAC3200P")
 				$("#security5_2_block")[0].style.display = "none";
 			$("#security5_2")[0].innerHTML = "WPA-Auto-Personal - TKIP + AES";
 			$("#key5_2_item")[0].innerHTML = "<#Network_key#>";

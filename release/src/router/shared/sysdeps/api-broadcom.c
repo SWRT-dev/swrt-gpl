@@ -1744,6 +1744,8 @@ char *get_lan_mac_name(void)
 		case MODEL_RTAC88U:
 		case MODEL_RTAC5300:
 			return "et1macaddr";
+		case MODEL_SBRAC3200P:
+			return "et2macaddr";
 	}
 	return "et0macaddr";
 }

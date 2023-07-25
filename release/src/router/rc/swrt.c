@@ -1968,50 +1968,12 @@ const unsigned int devpath_idx[4] = {0, 1, 2};    // 2.4G, 5G-1, 5G-2
 	}else
 		str = "macaddr";
 	switch(get_model()){
-		case MODEL_RTAC68U:
 		case MODEL_RTAC3200:
-		case MODEL_RTAC5300:
-		case MODEL_RTAC88U:
-		case MODEL_RTAC86U:
-		case MODEL_RTAC3100:
-#if defined(RTCONFIG_HND_ROUTER_AX)
-		case MODEL_RTAX95Q:
-		case MODEL_XT8PRO:
-#if !defined(RTAX55)
-		case MODEL_BM68:
-#endif
-		case MODEL_XT8_V2:
-		case MODEL_RTAXE95Q:
-		case MODEL_ET8PRO:
-#if !defined(RTAX55)
-		case MODEL_ET8_V2:
-#endif
-		case MODEL_RTAX56_XD4:
-		case MODEL_XD4PRO:
-		case MODEL_CTAX56_XD4:
-		case MODEL_RTAX58U:
-		case MODEL_RTAX82U_V2:
-#if !defined(RTAX55)
-		case MODEL_TUFAX5400_V2:
-		case MODEL_RTAX5400:
-#endif
-		case MODEL_RTAX82_XD6S:
-#if !defined(RTAX55)
-		case MODEL_XD6_V2:
-#endif
-		case MODEL_RTAX58U_V2:
-		case MODEL_RTAXE7800:
-		case MODEL_RTAX86U:
-		case MODEL_RTAX68U:
-		case MODEL_RTAC68U_V4:
-		case MODEL_RTAX86U_PRO:
-#endif
-#ifdef RTAC3200
+		case MODEL_SBRAC3200P:
 			if (unit < 2)
 				snprintf(buf, len, "%d:%s", 1 - unit, str);
 			else
-#endif
-			snprintf(buf, len, "%d:%s", unit, str);
+				snprintf(buf, len, "%d:%s", unit, str);
 			break;
 		case MODEL_GTAC5300:
 			snprintf(buf, len, "%d:%s", unit + 1, str);
