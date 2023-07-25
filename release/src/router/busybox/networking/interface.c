@@ -588,8 +588,10 @@ static int if_readlist(void)
 {
 	int err = if_readlist_proc(NULL);
 	/* Needed in order to get ethN:M aliases */
+#if !defined(CONFIG_BCMWL5)
 	if (!err)
 		err = if_readconf();
+#endif
 	return err;
 }
 
