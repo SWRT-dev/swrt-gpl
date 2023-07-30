@@ -2406,6 +2406,7 @@ int set_wltxpower_swrt(void)
 			}
 			break;
 		case MODEL_RTAC3200:
+		case MODEL_SBRAC3200P:
 			if(unit & 1){
 				snprintf(prefix, sizeof(prefix), "1:");
 				snprintf(tmp2, sizeof(tmp2), "%d", p1);

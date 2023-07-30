@@ -1021,6 +1021,7 @@ uint32_t set_gpio(uint32_t gpio, uint32_t value)
 }
 
 #ifdef RTCONFIG_BCMFA
+#if 0
 int get_fa_rev(void)
 {
 	int fd, ret;
@@ -1081,7 +1082,7 @@ int get_fa_dump(void)
 skip:
 	return 0;
 }
-
+#endif
 #endif
 
 int get_switch_model(void)
@@ -1743,9 +1744,8 @@ char *get_lan_mac_name(void)
 		case MODEL_RTAC87U:
 		case MODEL_RTAC88U:
 		case MODEL_RTAC5300:
-			return "et1macaddr";
 		case MODEL_SBRAC3200P:
-			return "et2macaddr";
+			return "et1macaddr";
 	}
 	return "et0macaddr";
 }

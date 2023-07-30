@@ -15,8 +15,8 @@
  *
  * Generated file - Do not modify manually'
  */
-#if defined(SBRAC3200P) || defined(RTAC3200)
-#include <rtecdc_43602a1.h.h>
+#if defined(SBRAC3200P) || defined(RTAC3200) || defined(R8000)
+#include <rtecdc_43602a1.h>
 #define DLIMAGE_43602a1
 #else
 #include <rtecdc_4366c0.h>

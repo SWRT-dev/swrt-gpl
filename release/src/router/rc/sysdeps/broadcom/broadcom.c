@@ -31,7 +31,7 @@ typedef u_int8_t __u8;
 #include <wlscan.h>
 #include <net/if.h>
 #include <bcmendian.h>
-#ifdef RTCONFIG_BCM_7114
+#ifdef RTCONFIG_DHDAP
 #include <bcmutils.h>
 #endif
 #include <security_ipc.h>
@@ -147,9 +147,15 @@ set40M_Channel_2G(char *channel)
 	nvram_set("wl0_chanspec", str);
 	nvram_set("wl0_bw_cap", "3");
 	nvram_set("wl0_obss_coex", "0");
+#if defined(RTAC3200) || defined(SBRAC3200P)
 	eval("wlconf", "eth1", "down");
 	eval("wlconf", "eth1", "up");
 	eval("wlconf", "eth1", "start");
+#else
+	eval("wlconf", "eth1", "down");
+	eval("wlconf", "eth1", "up");
+	eval("wlconf", "eth1", "start");
+#endif
 	puts("1");
 	return 1;
 }
@@ -195,9 +201,15 @@ set40M_Channel_5G(char *channel)
 	}
 	nvram_set("wl1_chanspec", str);
 	nvram_set("wl1_bw_cap", "3");
+#if defined(RTAC3200) || defined(SBRAC3200P)
+	eval("wlconf", "eth1", "down");
+	eval("wlconf", "eth1", "up");
+	eval("wlconf", "eth1", "start");
+#else
 	eval("wlconf", "eth2", "down");
 	eval("wlconf", "eth2", "up");
 	eval("wlconf", "eth2", "start");
+#endif
 	puts("1");
 	return 1;
 }
@@ -236,9 +248,15 @@ set80M_Channel_5G(char *channel)
 
 	nvram_set("wl1_chanspec", str);
 	nvram_set("wl1_bw_cap", "7");
+#if defined(RTAC3200) || defined(SBRAC3200P)
+	eval("wlconf", "eth1", "down");
+	eval("wlconf", "eth1", "up");
+	eval("wlconf", "eth1", "start");
+#else
 	eval("wlconf", "eth2", "down");
 	eval("wlconf", "eth2", "up");
 	eval("wlconf", "eth2", "start");
+#endif
 	puts("1");
 	return 1;
 }
@@ -917,38 +935,93 @@ void setAllLedNormal(void) {
 		led_control(LED_POWER, LED_ON);
 		led_control(LED_WPS, LED_ON);
 		//lan&wan
-		eval("et", "-i", "eth0", "robowr", "0", "0x18", "0x01ff");
-		eval("et", "-i", "eth0", "robowr", "0", "0x1a", "0x01ff");
+		switch(get_model()) {
+		case MODEL_R7000P:
+		case MODEL_RTAC88U:
+		case MODEL_RTAC3100:
+		case MODEL_RTAC5300:
+		case MODEL_SBRAC3200P:
+		case MODEL_RTAC68U:
+		case MODEL_RTAC3200:
+			eval("et", "-i", "eth0", "robowr", "0", "0x18", "0x01ff");
+			eval("et", "-i", "eth0", "robowr", "0", "0x1a", "0x01ff");
 #if defined(R7000P)
-		eval("et", "-i", "eth0", "robowr", "0", "0x10", "0x3000");
-		eval("et", "-i", "eth0", "robowr", "0", "0x12", "0x78");
-		eval("et", "-i", "eth0", "robowr", "0", "0x14", "0x1");
+			eval("et", "-i", "eth0", "robowr", "0", "0x10", "0x3000");
+			eval("et", "-i", "eth0", "robowr", "0", "0x12", "0x78");
+			eval("et", "-i", "eth0", "robowr", "0", "0x14", "0x1");
 #endif
+			break;
+		}
 		kill_pidfile_s("/var/run/wanduck.pid", SIGUSR2);
 		//wifi
 		if (nvram_match("wl0_radio", "1"))
 #if defined(R7000P)
 			led_control(LED_2G, LED_ON);
-#elif defined(RTAC3100)
-			eval("wl", "ledbh", "9", "1");
+#elif defined(RTAC68U)
+			eval("wl", "ledbh", "10", "7");
+#elif defined(RTAC3200) || defined(SBRAC3200P)
+			eval("wl", "-i", "eth2", "ledbh", "10", "7");
+#elif defined(RTCONFIG_BCM_7114) || defined(RTAC86U)
+			eval("wl", "ledbh", "9", "7");
+#else
+#error missing model
 #endif
 		else
 #if defined(R7000P)
 			led_control(LED_2G, LED_OFF);
-#elif defined(RTAC3100)
+#elif defined(RTAC68U)
+			eval("wl", "ledbh", "10", "0");
+#elif defined(RTAC3200) || defined(SBRAC3200P)
+			eval("wl", "-i", "eth2", "ledbh", "10", "0");
+#elif defined(RTCONFIG_BCM_7114) || defined(RTAC86U)
 			eval("wl", "ledbh", "9", "0");
 #endif
 		if (nvram_match("wl1_radio", "1"))
 #if defined(R7000P)
 			led_control(LED_5G, LED_ON);
-#elif defined(RTAC3100)
-			eval("wl", "-i", "eth2", "ledbh", "9", "1");
+#elif defined(RTAC68U)
+			eval("wl", "-i", "eth2", "ledbh", "10", "7");
+#elif defined(RTAC3200) || defined(SBRAC3200P)
+			eval("wl", "ledbh", "10", "7");
+#elif defined(RTAC86U)
+			eval("wl", "-i", "eth6", "ledbh", "9", "7");
+#elif defined(GTAC2900)
+			eval("wl", "-i", "eth6", "ledbh", "9", "1");
+#elif defined(GTAC5300) || defined(GTAXE11000)
+			eval("wl", "-i", "eth7", "ledbh", "9", "7");
+#elif defined(RTCONFIG_BCM_7114)
+			eval("wl", "-i", "eth2", "ledbh", "9", "7");
+#error missing model
 #endif
 		else
 #if defined(R7000P)
 			led_control(LED_5G, LED_OFF);
-#elif defined(RTAC3100)
+#elif defined(RTAC68U)
+			eval("wl", "-i", "eth2", "ledbh", "10", "0");
+#elif defined(RTAC3200) || defined(SBRAC3200P)
+			eval("wl", "ledbh", "10", "0");
+#elif defined(RTAC86U)
+			eval("wl", "-i", "eth6", "ledbh", "9", "0");
+#elif defined(GTAC2900)
+			eval("wl", "-i", "eth6", "ledbh", "9", "0");
+#elif defined(GTAC5300) || defined(GTAXE11000)
+			eval("wl", "-i", "eth7", "ledbh", "9", "0");
+#elif defined(RTCONFIG_BCM_7114)
 			eval("wl", "-i", "eth2", "ledbh", "9", "0");
+#endif
+#if defined(RTCONFIG_HAS_5G_2)
+		if (nvram_match("wl2_radio", "1")) 
+#if defined(RTAC3200) || defined(SBRAC3200P)
+			eval("wl", "-i", "eth3", "ledbh", "10", "7");
+#elif defined(GTAC5300)
+			eval("wl", "-i", "eth8", "ledbh", "9", "7");
+#endif
+		else
+#if defined(RTAC3200) || defined(SBRAC3200P)
+			eval("wl", "-i", "eth3", "ledbh", "10", "0");
+#elif defined(GTAC5300)
+			eval("wl", "-i", "eth8", "ledbh", "9", "0");
+#endif
 #endif
 		//usb
 		start_usbled();
@@ -2521,7 +2594,7 @@ next_info:
 }
 #endif
 
-#ifdef RTCONFIG_BCM_7114
+#ifdef RTCONFIG_DHDAP
 
 typedef struct escan_wksp_s {
 	uint8 packet[4096];
@@ -3786,7 +3859,9 @@ int wlconf(char *ifname, int unit, int subunit)
 	if (subunit < 0)
 	{
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-
+#if defined(RTAC3200) || defined(SBRAC3200P)
+		nvram_pf_set(prefix, "ifname", ifname);
+#endif
 #if 0
 #if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
 		if (psta_exist_except(unit) || psr_exist_except(unit))
@@ -3813,7 +3888,6 @@ int wlconf(char *ifname, int unit, int subunit)
 			return -1;
 		}
 	}
-#if 0
 	if (unit >= 0 && subunit < 0)
 	{
 #ifdef RTCONFIG_OPTIMIZE_XBOX
@@ -3822,7 +3896,6 @@ int wlconf(char *ifname, int unit, int subunit)
 		else
 			eval("wl", "-i", ifname, "ldpc_cap", "1");	// driver default setting
 #endif
-#ifdef RTCONFIG_BCMWL6
 #if !defined(RTCONFIG_BCM7) && !defined(RTCONFIG_BCM_7114)
 		if (nvram_match(strcat_r(prefix, "ack_ratio", tmp), "1"))
 			eval("wl", "-i", ifname, "ack_ratio", "4");
@@ -3837,23 +3910,26 @@ int wlconf(char *ifname, int unit, int subunit)
 #else
 			eval("wl", "-i", ifname, "ampdu_mpdu", "32");	// driver default setting
 #endif
-#ifdef RTCONFIG_BCMARM
 		if (nvram_match(strcat_r(prefix, "ampdu_rts", tmp), "1"))
 			eval("wl", "-i", ifname, "ampdu_rts", "1");	// driver default setting
 		else
 			eval("wl", "-i", ifname, "ampdu_rts", "0");
-#if 0
-		if (nvram_match(strcat_r(prefix, "itxbf", tmp), "1"))
-			eval("wl", "-i", ifname, "txbf_imp", "1");	// driver default setting
-		else
-			eval("wl", "-i", ifname, "txbf_imp", "0");
+#if defined(RTCONFIG_BCM_7114)
+		if (nvram_pf_match(prefix, "atf", "1")){
+			if (nvram_pf_match(prefix, "atf_delay_disable", "1"))
+				eval("wl", "-i", ifname, "bus:ffsched_flr_rst_delay", "0");
+			else
+				eval("wl", "-i", ifname, "bus:ffsched_flr_rst_delay", "350");
+		}
+		if ( !nvram_match("no_dy_ed_thresh_ctrl", "1")){
+			if (nvram_get_int("no_dy_ed_thresh_ctrl") == -1)
+				eval("wl", "-i", ifname, "dy_ed_thresh", "0");
+			else
+				eval("wl", "-i", ifname, "dy_ed_thresh", "1");
+		}
 #endif
-#endif /* RTCONFIG_BCMARM */
-#else
-		eval("wl", "-i", ifname, "ampdu_density", "6");		// resolve IOT with Intel STA for BRCM SDK 5.110.27.20012
-#endif /* RTCONFIG_BCMWL6 */
 	}
-#endif
+
 	r = eval("wlconf", ifname, "up");
 	if (r == 0) {
 		if (unit >= 0 && subunit < 0) {
@@ -3866,9 +3942,10 @@ int wlconf(char *ifname, int unit, int subunit)
 #endif
 			set_mrate(ifname, prefix);
 #ifdef RTCONFIG_BCMARM
-			if (nvram_match(strcat_r(prefix, "ampdu_rts", tmp), "0") &&
-				nvram_match(strcat_r(prefix, "nmode", tmp), "-1"))
+			if (nvram_pf_match(prefix, "ampdu_rts", "0") && nvram_pf_match(prefix, "nmode", "-1"))
 				eval("wl", "-i", ifname, "rtsthresh", "65535");
+			if (nvram_pf_match(prefix, "frameburst_disable", "1"))
+				eval("wl", "-i", ifname, "frameburst", "0");
 #endif
 
 			wl_dfs_radarthrs_config(ifname, unit);

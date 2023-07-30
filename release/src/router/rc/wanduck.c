@@ -324,7 +324,6 @@ void enable_wan_led()
 					break;
 #endif
 			case MODEL_RTAC3200:
-			case MODEL_SBRAC3200P:
 			case MODEL_RTAC87U:
 				eval("et", "-i", "eth0", "robowr", "0", "0x18", "0x01ff");
 				eval("et", "-i", "eth0", "robowr", "0", "0x1a", "0x01fe");

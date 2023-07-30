@@ -177,12 +177,10 @@ OBJS += scripts.o
 ifeq ($(RTCONFIG_TRAFFIC_LIMITER),y)
 OBJS += tld_utils.o
 endif
-ifeq ($(RTCONFIG_BCM7),y)
-OBJS += et_linux.o bcmwifi_channels.o
-else ifeq ($(RTCONFIG_HSPOT),y)
+ifeq ($(RTCONFIG_HSPOT),y)
 OBJS += bcmwifi_channels.o
 endif
-ifeq ($(or $(RTCONFIG_BCM_7114),$(HND_ROUTER)),y)
+ifeq ($(or $(RTCONFIG_BCM_7114),$(HND_ROUTER),$(RTCONFIG_BCM7)),y)
 OBJS += confmtd_utils.o
 ifeq ($(RTCONFIG_WBD),y)
 OBJS += wbd_rc_shared.o

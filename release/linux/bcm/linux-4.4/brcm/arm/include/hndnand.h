@@ -49,7 +49,7 @@
 #elif defined(RTAC68U) || defined(RTAC88U) || defined(RTAC3100) || defined(RTAC3200) || defined(RTAC5300)
 #define NFL_BOOT_OS_SIZE                0x4000000
 #else
-#define NFL_BOOT_OS_SIZE                0x2000000
+#define NFL_BOOT_OS_SIZE                0x3000000
 #endif
 #define NFL_BBT_SIZE			0x100000
 

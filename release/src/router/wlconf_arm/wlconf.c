@@ -2043,6 +2043,13 @@ wlconf(char *name)
 	memcpy(vif_addr, buf, ETHER_ADDR_LEN);
 
 	/* Get instance */
+#if defined(RTAC3200) || defined(SBRAC3200P)
+	if(!strcmp(name, "eth1"))
+		unit = 1;
+	else if(!strcmp(name, "eth2"))
+		unit = 0;
+	else
+#endif
 	WL_IOCTL(name, WLC_GET_INSTANCE, &unit, sizeof(unit));
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 
@@ -3911,6 +3918,13 @@ wlconf_start(char *name)
 	}
 
 	/* Get instance */
+#if defined(RTAC3200) || defined(SBRAC3200P)
+	if(!strcmp(name, "eth1"))
+		unit = 1;
+	else if(!strcmp(name, "eth2"))
+		unit = 0;
+	else
+#endif
 	WL_IOCTL(name, WLC_GET_INSTANCE, &unit, sizeof(unit));
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 

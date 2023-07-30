@@ -57,9 +57,8 @@ endif
 UTILS := epi_ttcp
 CFLAGS += -s -I$(LINUXDIR)/brcm/arm/include -I$(LINUXDIR)/brcm/arm/common/include
 CFLAGS += $(if $(WLAN_ComponentIncPath),$(WLAN_ComponentIncPath),$(addprefix -I,$(wildcard $(LINUXDIR)/brcm/arm/shared/bcmwifi/include)))
-ifeq ($(R7000P),y)
 CFLAGS +=  -I$(LINUXDIR)/brcm/arm/wl/ppr/include
-endif
+
 ifeq ($(CONFIG_RTR_OPTIMIZE_SIZE),y)
 CFLAGS  += -Os
 else

@@ -94,7 +94,7 @@ define platformBusyboxOptions
 endef
 
 define platformKernelConfig
-	if [ "$(R7000P)" = "y" ] ; then \
+	if [ "$(R7000P)" = "y" ] || [ "$(SBRAC3200P)" = "y" ] ; then \
 		sed -i "/CONFIG_DRAM_SIZE/d" $(1); \
 		echo "CONFIG_DRAM_SIZE=0x10000000" >>$(1); \
 	fi

@@ -160,10 +160,9 @@ void generate_switch_para(void)
 	switch(model) {
 #if defined(SBRAC3200P)
 		case MODEL_SBRAC3200P:
-		{					/* WAN L1 L2 L3 L4 CPU */	/*vision: WAN L4 L3 L2 L1 */
-
-			int ports[SWPORT_COUNT] = { 0, 1, 2, 3, 4, 5, 8 };
-			char *hw_name = "et2";
+		{
+			int ports[SWPORT_COUNT] = { 0, 1, 2, 3, 4, 5, 7 };
+			char *hw_name = "et1";
 			int wancfg = (!nvram_match("switch_wantag", "none")&&!nvram_match("switch_wantag", "")&&!nvram_match("switch_wantag", "hinet")) ? SWCFG_DEFAULT : cfg;
 			wan_phyid = ports[0]; // record the phy num of the wan port on the case
 #ifdef RTCONFIG_DUALWAN
@@ -219,11 +218,11 @@ void generate_switch_para(void)
 				char prefix[8], nvram_ports[16];
 
 				for (unit = WAN_UNIT_FIRST; unit < WAN_UNIT_MAX; ++unit) {
-					memset(prefix, 0, 8);
-					sprintf(prefix, "%d", unit);
+					memset(prefix, 0, sizeof(prefix));
+					snprintf(prefix, sizeof(prefix), "%d", unit);
 
-					memset(nvram_ports, 0, 16);
-					sprintf(nvram_ports, "wan%sports", (unit == WAN_UNIT_FIRST)?"":prefix);
+					memset(nvram_ports, 0, sizeof(nvram_ports));
+					snprintf(nvram_ports, sizeof(nvram_ports), "wan%sports", (unit == WAN_UNIT_FIRST)?"":prefix);
 
 					if (get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_WAN) {
 						switch_gen_config(wan, ports, wancfg, 1, NULL);
@@ -2086,7 +2085,7 @@ void init_switch()
 	}
 #endif
 
-#if defined(RTCONFIG_BCMFA) && !defined(RTCONFIG_BCM_7114)
+#if defined(RTCONFIG_BCMFA)
 	if (!nvram_get("ctf_fa_cap")) {
 		char ctf_fa_mode_bak[2];
 		int nvram_ctf_fa_mode = 0;
@@ -2185,12 +2184,8 @@ void init_switch()
 	config_lacp();
 #endif
 
-#if defined(RTCONFIG_GMAC3) || defined(RTCONFIG_BCMFA)
-	if (nvram_get_int("gmac3_enable")
-#ifdef RTCONFIG_BCMFA
-		|| nvram_get_int("ctf_fa_mode") == CTF_FA_NORMAL
-#endif
-	) {
+#if defined(RTCONFIG_BCMFA)
+	if ( nvram_get_int("ctf_fa_mode") == CTF_FA_NORMAL) {
 		eval("et", "-i", "eth0", "robowr", "0x4", "0x4", "0", "6");
 	}
 #endif
@@ -3086,9 +3081,9 @@ void init_syspara(void)
 				nvram_set("2:macaddr", "00:22:15:A5:03:08");
 			break;
 		case MODEL_SBRAC3200P:
-			if (!nvram_get("et2macaddr"))				// eth0 (ethernet)
-				nvram_set("et2macaddr", "00:22:15:A5:03:00");
-			nvram_set("1:macaddr", nvram_safe_get("et2macaddr"));	// eth2 (2.4GHz)
+			if (!nvram_get("et1macaddr"))				// eth0 (ethernet)
+				nvram_set("et1macaddr", "00:22:15:A5:03:00");
+			nvram_set("1:macaddr", nvram_safe_get("et1macaddr"));	// eth2 (2.4GHz)
 			if (!nvram_get("0:macaddr"))				// eth1(5GHz)
 				nvram_set("0:macaddr", "00:22:15:A5:03:04");
 			if (!nvram_get("2:macaddr"))				// eth3(5GHz)
@@ -3126,6 +3121,10 @@ void init_syspara(void)
 		nvram_set("wps_device_pin", wps_gen_pin(devPwd, sizeof(devPwd)) ? devPwd : "12345670");
 	} else
 		nvram_set("wps_device_pin", value);
+#if !defined(RTCONFIG_HND_ROUTER)
+	if(!nvram_get("territory_code"))
+		nvram_set("territory_code", cfe_nvram_get("territory_code"));
+#endif
 }
 
 #ifdef RTCONFIG_BCMARM
@@ -3687,8 +3686,7 @@ int find_user_unit(char *ustr)
 
 void generate_wl_para(char *ifname, int unit, int subunit)
 {
-	dbG("unit %d subunit %d\n", unit, subunit);
-
+	dbG("ifname %s unit %d subunit %d\n", ifname, unit, subunit);
 	char tmp[100], prefix[]="wlXXXXXXX_";
 	char tmp2[100], prefix2[]="wlXXXXXXX_";
 	char prefix3[]="wlXXXXXXX_", *tmp3;
@@ -5082,7 +5080,7 @@ set_wan_tag(char *interface) {
 			sprintf(port_id, "%d", wan_vid);
 			eval("vconfig", "add", interface, port_id);
 			sprintf(vlan_entry, "d", wan_vid);
-			eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "0 8");
+			eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "0 7");
 			eval("swconfig", "dev", "switch0", "set", "apply");
 		}
 		/* Set Wan port PRIO */
@@ -5095,7 +5093,7 @@ set_wan_tag(char *interface) {
 		if (nvram_match("switch_stb_x", "3")) {  // L3:p3, w:p0, c:p8
 			if (nvram_match("switch_wantag", "vodafone")) {
 				char vlan_buf[64];
-				sprintf(vlan_buf, "1 2 3 8t");
+				sprintf(vlan_buf, "1 2 3 7t");
 				eval("swconfig", "dev", "switch0", "vlan", "1", "set", "ports", vlan_buf);
 				sprintf(vlan_buf, "0t 4t 8t");
 				eval("swconfig", "dev", "switch0", "vlan", "100", "set", "ports", vlan_buf);
@@ -5137,7 +5135,7 @@ set_wan_tag(char *interface) {
 				/* Just forward packets between wan & L4, without untag */
 				sprintf(vlan_entry, "%d", iptv_vid);
 				_dprintf("vlan entry: %s\n", vlan_entry);
-				eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "4 0t 8t");
+				eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "4 0t 7t");
 				eval("swconfig", "dev", "switch0", "set", "apply");
 			}
 			else {  /* Nomo case, untag it. */
@@ -5190,7 +5188,7 @@ set_wan_tag(char *interface) {
 				sprintf(port_id, "%d", iptv_vid);
 				eval("vconfig", "add", interface, port_id);
 				sprintf(vlan_entry, "%d", iptv_vid);
-				eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "0t 8t");
+				eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "0t 7t");
 				eval("swconfig", "dev", "switch0", "set", "apply");
 				if (iptv_prio) { /* config priority */
 					eval("vconfig", "set_egress_map", wan_dev, "0", (char *)iptv_prio);
@@ -5205,7 +5203,7 @@ set_wan_tag(char *interface) {
 				sprintf(port_id, "%d", voip_vid);
 				eval("vconfig", "add", interface, port_id);
 				sprintf(vlan_entry, "%d", voip_vid);
-				eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "0t 8t");
+				eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "0t 7t");
 				eval("swconfig", "dev", "switch0", "set", "apply");
 				if (voip_prio) { /* config priority */
 					eval("vconfig", "set_egress_map", wan_dev, "0", (char *)voip_prio);
@@ -5220,7 +5218,7 @@ set_wan_tag(char *interface) {
 				sprintf(port_id, "%d", mang_vid);
 				eval("vconfig", "add", interface, port_id);
 				sprintf(vlan_entry, "%d", mang_vid);
-				eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "0t 8t");
+				eval("swconfig", "dev", "switch0", "vlan", vlan_entry, "set", "ports", "0t 7t");
 				eval("swconfig", "dev", "switch0", "set", "apply");
 				if (mang_prio) { /* config priority */
 					eval("vconfig", "set_egress_map", wan_dev, "0", (char *)iptv_prio);

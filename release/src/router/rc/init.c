@@ -10484,7 +10484,7 @@ int init_nvram(void)
 #endif
 #ifdef SBRAC3200P
 	case MODEL_SBRAC3200P:
-		nvram_set("vlan1hwname", "et2");
+		nvram_set("vlan1hwname", "et1");
 		nvram_set("rgmii_port", "5");
 		nvram_set("landevs", "vlan1 wl0 wl1 wl2");
 
@@ -10545,6 +10545,9 @@ int init_nvram(void)
 		nvram_set("wan_ifnames", "eth0");
 #endif
 		nvram_set("wl_ifnames", "eth2 eth1 eth3");
+		nvram_set("wl0_ifname", "eth2");
+		nvram_set("wl1_ifname", "eth1");
+		nvram_set("wl2_ifname", "eth3");
 		nvram_set("wl0_vifnames", "wl0.1 wl0.2 wl0.3");
 		nvram_set("wl1_vifnames", "wl1.1 wl1.2 wl1.3");
 		nvram_set("wl2_vifnames", "wl2.1 wl2.2 wl2.3");
@@ -20205,7 +20208,6 @@ fa_mode_adjust()
 	) {
 		if (!nvram_match("ctf_disable_force", "1")
 			&& nvram_get_int("ctf_fa_cap")
-			&& !nvram_match("gmac3_enable", "1")
 			&& !nvram_get_int("qos_enable")
 			&& nvram_match("x_Setting", "1")
 		) {
@@ -20226,9 +20228,6 @@ fa_mode_adjust()
 			wan_proto = nvram_safe_get("wan1_proto");
 
 		if ((strcmp(wan_proto, "dhcp") && strcmp(wan_proto, "static"))
-#if defined(RTCONFIG_BWDPI)
-			|| check_bwdpi_nvram_setting()
-#endif
 		) {
 			nvram_set_int("ctf_fa_mode", CTF_FA_DISABLED);
 			_dprintf("wan_proto:%s not support FA mode...\n", wan_proto);

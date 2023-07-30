@@ -11,7 +11,7 @@ else ifeq ($(BRCM_CHIP),$(or 4908,4912))
 SC_ARCH=arm64
 else ifeq ($(BUILD_NAME), $(filter $(BUILD_NAME), RT-AC68U RT-AC88U RT-AC3100 RT-AC3200 RT-AC5300))
 SC_ARCH=arm
-else ifeq ($(or $(RTCONFIG_BCM_7114),$(RTCONFIG_BCM_7),$(RTCONFIG_BCM4708)),y)
+else ifeq ($(or $(RTCONFIG_BCM_7114),$(RTCONFIG_BCM7),$(RTCONFIG_BCM4708)),y)
 SC_ARCH=arm
 endif
 

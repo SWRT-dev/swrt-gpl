@@ -1620,6 +1620,12 @@ void start_lan(void)
 						continue;
 				}
 #ifdef CONFIG_BCMWL5
+#if defined(RTAC3200) || defined(SBRAC3200P)
+				else if(!strcmp(ifname, "eth1"))
+					unit = 1;
+				else if(!strcmp(ifname, "eth2"))
+					unit = 0;
+#endif
 				else
 					wl_ioctl(ifname, WLC_GET_INSTANCE, &unit, sizeof(unit));
 #endif
