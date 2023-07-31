@@ -54,7 +54,17 @@ wl_ioctl(char *name, int cmd, void *buf, int len)
 	int ret = 0;
 	int s;
 	char buffer[100];
-
+#if defined(RTAC3200) || defined(SBRAC3200P)
+	if(cmd == WLC_GET_INSTANCE){
+		if(!strcmp(name, "eth1")){
+			*(int *)buf = 1;
+			return 0;
+		}else if(!strcmp(name, "eth2")){
+			*(int *)buf = 0;
+			return 0;
+		}
+	}
+#endif
 	/* open socket to kernel */
 	if ((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
 		perror("socket");

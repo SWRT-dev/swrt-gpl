@@ -5591,14 +5591,12 @@ int
 start_acsd()
 {
 	int ret = 0;
-#if defined(RTCONFIG_BCM_7114) || defined(RTCONFIG_HND_ROUTER_AX) || defined(GTAC5300)
 #if defined(RTCONFIG_HND_ROUTER_AX)
 	char *acsd_argv[] = { "/usr/sbin/acsd2", NULL };
 #else
 	char *acsd_argv[] = { "/usr/sbin/acsd", NULL };
 #endif
 	int pid;
-#endif
 
 #ifdef RTAC68U
 	if (is_dpsta_repeater() && !nvram_get_int("x_Setting"))
@@ -5613,10 +5611,6 @@ start_acsd()
 	stop_acsd();
 
 	if (!restore_defaults_g && strlen(nvram_safe_get("acs_ifnames"))) {
-#if defined(RTCONFIG_BCM_7114)
-		ret = _eval(acsd_argv, NULL, 0, &pid);
-#else
-#if defined(RTCONFIG_HND_ROUTER_AX) || defined(GTAC5300)
 #if defined(RTCONFIG_HND_ROUTER_AX)
 		/* depending on NVRAM start the respective version */
 		if (nvram_match("acs_version", "2"))
@@ -5624,11 +5618,6 @@ start_acsd()
 		if (nvram_get_int("re_mode") == 1)
 #endif
 			ret = _eval(acsd_argv, NULL, 0, &pid);
-		/* default acsd version; to use even when the NVRAM is not set */
-		else
-#endif
-		ret = eval("/usr/sbin/acsd");
-#endif
 	}
 
 	return ret;

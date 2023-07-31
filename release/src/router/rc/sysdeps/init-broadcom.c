@@ -4643,7 +4643,7 @@ void generate_wl_para(char *ifname, int unit, int subunit)
 				nvram_match(strcat_r(prefix, "nband", tmp2), "2") ? 1 : 0);
 		}
 
-#if defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)
+#if defined(RTCONFIG_DHDAP)
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 		if (nvram_match(strcat_r(prefix, "nmode", tmp), "0"))
 		{

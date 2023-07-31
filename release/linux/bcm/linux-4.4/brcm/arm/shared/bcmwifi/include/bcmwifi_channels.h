@@ -213,6 +213,33 @@ typedef struct {
 			(((channel) < (uint16)(MAXCHANNEL - (offset) * CH_10MHZ_APART)) ? \
 				((channel) + (offset) * CH_10MHZ_APART) : 0)))
 
+/* given a chanspec_t of any bw, returns if control SB is in lower 20, 40, 80 or not respectively */
+#define IS_CTL_IN_L20(chspec) !((chspec) & WL_CHANSPEC_CTL_SB_U) /* CTL SB is in low 20 of any 40 */
+#define IS_CTL_IN_L40(chspec) !((chspec) & WL_CHANSPEC_CTL_SB_UL)	/* in low 40 of any 80 */
+#define IS_CTL_IN_L80(chspec) !((chspec) & WL_CHANSPEC_CTL_SB_ULL)	/* in low 80 of 80p80/160 */
+
+/* Populates array with all 20MHz side bands of a given chanspec_t in the following order:
+ *		control, ext20, two ext40s, four ext80s.
+ *     'chspec' is the chanspec of interest
+ *     'pext' must point to an uint8 array of long enough to hold all side bands of the given chspec
+ *
+ * Works with 20, 40, 80, 80p80 and 160MHz chspec
+ */
+#define GET_ALL_EXT(chspec, pext) do { \
+	chanspec_t t = (CHSPEC_IS160(chspec) || CHSPEC_IS8080(chspec)) ? /* if bw > 80MHz */\
+			wf_chspec_primary80_chspec(chspec) : (chspec); /* extract primary 80 */\
+	uint8 ctl_ch = (pext)[0] = wf_chspec_ctlchan(t); /* control channel as first element */\
+	if (CHSPEC_ISLE20(chspec)) break; /* nothing more to do since 20MHz chspec */\
+	(pext)[1] = ctl_ch + (IS_CTL_IN_L20(t) ? CH_20MHZ_APART : -CH_20MHZ_APART); /* 20MHz EXT */\
+	if (CHSPEC_IS40(chspec)) break; /* nothing more to do since 40MHz chspec */\
+	t = wf_channel2chspec(ctl_ch + (IS_CTL_IN_L40(chspec) ? CH_40MHZ_APART : -CH_40MHZ_APART), \
+			WL_CHANSPEC_BW_40); /* center 40MHz EXT */\
+	GET_ALL_SB(t, &((pext)[2])); /* get the 20MHz side bands in 40MHz EXT */\
+	if (CHSPEC_IS80(chspec)) break; /* nothing more to do since 80MHz chspec */\
+	t = CH80MHZ_CHSPEC(wf_chspec_secondary80_channel(chspec), WL_CHANSPEC_CTL_SB_LLL); \
+	GET_ALL_SB(t, &((pext)[4])); /* get the 20MHz side bands in 80MHz EXT (secondary) */\
+} while (0)
+
 #if defined(WL11AC_80P80) || defined(WL11AC_160)
 /* pass a 160MHz center channel to get 20MHz subband channel numbers */
 #define LLL_20_SB_160(channel)  CH_OFF_10MHZ_MULTIPLES(channel, -7)

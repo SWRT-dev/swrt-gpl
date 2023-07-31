@@ -10551,7 +10551,9 @@ int init_nvram(void)
 		nvram_set("wl0_vifnames", "wl0.1 wl0.2 wl0.3");
 		nvram_set("wl1_vifnames", "wl1.1 wl1.2 wl1.3");
 		nvram_set("wl2_vifnames", "wl2.1 wl2.2 wl2.3");
-
+		nvram_set("wl0_turbo_qam", "1");
+		nvram_set("wl1_turbo_qam", "1");
+		nvram_set("wl2_turbo_qam", "1");
 		nvram_set_int("led_pwr_gpio", 8);
 		//nvram_set_int("led_wps_gpio", 14|GPIO_ACTIVE_LOW);
 		nvram_set_int("led_wps_gpio", 10);

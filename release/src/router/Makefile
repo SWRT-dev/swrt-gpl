@@ -988,7 +988,7 @@ obj-y += eapd$(BCMEX)$(EX7)
 #obj-$(CONFIG_LIBUPNP) += libupnp$(BCMEX)$(EX7)
 ifeq ($(RTCONFIG_BCMWL6),y)
 ifneq ($(HND_ROUTER_AX),y)
-#obj-y += acsd$(BCMEX)$(EX7)
+obj-y += acsd$(BCMEX)$(EX7)
 endif
 endif
 #obj-$(RTCONFIG_BCMARM) += wl$(BCMEX)$(EX7)

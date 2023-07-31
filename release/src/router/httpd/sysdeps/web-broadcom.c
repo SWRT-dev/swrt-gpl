@@ -3566,10 +3566,13 @@ static int ej_wl_cap(int eid, webs_t wp, int argc, char_t **argv, int unit)
 
 	wl_ifname(unit, 0, ifname);
 
+#if !defined(RTAC3200) && !defined(SBRAC3200P)
 	wl_ioctl(ifname, WLC_GET_INSTANCE, &unit_cur, sizeof(unit_cur));
 	if (unit != unit_cur)
 		goto ERROR;
-	else if (wl_iovar_get(ifname, "cap", (void *)caps, sizeof(caps))) {
+	else 
+#endif
+	if (wl_iovar_get(ifname, "cap", (void *)caps, sizeof(caps))) {
 		dbg("can not get wl cap of %s\n", ifname);
 		goto ERROR;
 	}
@@ -3665,11 +3668,13 @@ static int ej_wl_chipnum(int eid, webs_t wp, int argc, char_t **argv, int unit)
 
 	wl_ifname(unit, 0, ifname);
 	memset(&revinfo, 0, sizeof(revinfo));
-
+#if !defined(RTAC3200) && !defined(SBRAC3200P)
 	wl_ioctl(ifname, WLC_GET_INSTANCE, &unit_cur, sizeof(unit_cur));
 	if (unit != unit_cur)
 		goto ERROR;
-	else if (wl_ioctl(ifname, WLC_GET_REVINFO, &revinfo, sizeof(revinfo))) {
+	else 
+#endif
+	if (wl_ioctl(ifname, WLC_GET_REVINFO, &revinfo, sizeof(revinfo))) {
 		dbg("can not get wl revinfo of %s\n", ifname);
 		goto ERROR;
 	}
