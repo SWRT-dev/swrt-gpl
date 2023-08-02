@@ -19551,7 +19551,7 @@ NO_USB_CAP:
 	add_rc_support("gre");
 #endif
 #if defined(RTCONFIG_BCMBSD)
-//	add_rc_support("smart_connect");
+	add_rc_support("smart_connect");
 #endif
 
 #if defined(RTCONFIG_SWRT_FULLCONE) ||  defined(RTCONFIG_SWRT_FULLCONEV2)
