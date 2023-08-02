@@ -22326,6 +22326,9 @@ _dprintf("%s %d turnning on power on ethernet here\n", __func__, __LINE__);
 #if defined(RTCONFIG_SWRT)
 			swrt_init_post();
 #endif
+#ifdef RTCONFIG_BCMWL6
+			start_acsd();
+#endif
 #ifdef RTCONFIG_AMAS
 			nvram_set("start_service_ready", "1");
 #endif
