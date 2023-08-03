@@ -36,7 +36,13 @@ vpath %.c $(SRCBASE)/shared/bcmwifi/src
 
 ifeq ($(wildcard $(SRCBASE)/router/bsd/*.c),)
 all:
-	-cp -f prebuilt/bsd bsd
+ifeq ($(or $(RTAC3200),$(SBRAC3200P)),y)
+	-cp ./prebuilt/bsd_7 ./bsd
+else ifeq ($(or $(RTAC68U)),y)
+	-cp ./prebuilt/bsd_6 ./bsd
+else
+	-cp ./prebuilt/bsd_7114 ./bsd
+endif
 else
 all: bsd
 endif

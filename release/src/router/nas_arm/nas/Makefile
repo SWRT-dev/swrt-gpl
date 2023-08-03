@@ -46,7 +46,13 @@ UTLOBJS = bcmwpa.o bcmutils.o
 
 ifeq ($(wildcard ../*.c), )
 all:
-	-cp ./prebuilt/nas .
+ifeq ($(or $(RTAC3200),$(SBRAC3200P)),y)
+	-cp ./prebuilt/nas_7 ./nas
+else ifeq ($(or $(RTAC68U)),y)
+	-cp ./prebuilt/nas_6 ./nas
+else
+	-cp ./prebuilt/nas_7114 ./nas
+endif
 else
 all: nas
 endif

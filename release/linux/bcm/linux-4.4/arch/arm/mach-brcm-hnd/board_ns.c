@@ -294,18 +294,6 @@ void soc_watchdog(void)
 		si_watchdog_ms(sih, watchdog);
 }
 
-#if defined(RTAC68U) || defined(RTAC3200) || defined(SBRAC3200P)
-#define CFE_UPDATE 1            // added by Chen-I for mac/regulation update
-#endif
-
-#ifdef CFE_UPDATE
-void bcm947xx_watchdog_disable(void)
-{
-	watchdog=0;
-	si_watchdog_ms(sih, 0);
-}
-#endif
-
 void __init board_init(void)
 {
 	early_printk("board_init\n");

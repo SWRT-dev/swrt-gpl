@@ -1181,23 +1181,6 @@ int get_embedded_block(struct mtd_info *mtd, char *buf, size_t erasesize,
 {
         size_t len;
         struct nvram_header *nvh;
-#ifdef CONFIG_RTAN23 /*for AMCC RTAN23 */
-        *offset = mtd->size - erasesize; /*/at the end of mtd */
-        *emb_size = 8*1024 - 16; /*/8K - 16 byte */
-        printk("get_embedded_block: mtd->size(%08llx) erasesize(%08x) offset(%08x) emb_size(%08x)\n", mtd->size, erasesize, *offset, *emb_size);
-        mtd_read(mtd, *offset, erasesize, &len, buf);
-        if(len != erasesize)
-                return -EIO;
-
-        /* find nvram header */
-        nvh = (struct nvram_header *)(buf + erasesize - 8*1024);
-        if (nvh->magic == NVRAM_MAGIC)
-        {
-                *header = nvh;
-                return 0;
-        }
-
-#else /* for Broadcom WL500 serials */
         *offset = 0; /* from the mtd start */
         *emb_size = 4096; /* 1K byte */
         printk("get_embedded_block:: mtd->size(%08x) erasesize(%08x) offset(%08x) emb_size(%08x)\n", mtd->size, erasesize, *offset, *emb_size);
@@ -1217,7 +1200,6 @@ int get_embedded_block(struct mtd_info *mtd, char *buf, size_t erasesize,
                 *header = nvh;
                 return 0;
         }
-#endif
         printk("get_embedded_block: no nvram magic found\n");
         return -ENXIO;
 }
@@ -1227,7 +1209,7 @@ static int cfe_init(void)
         size_t erasesize;
         int i;
         int ret = 0;
-printk("!!! cfe_init !!!\n");
+		printk("!!! cfe_init !!!\n");
         /* Find associated MTD device */
         for (i = 0; i < MAX_MTD_DEVICES; i++) {
                 cfe_mtd = get_mtd_device(NULL, i);
@@ -1263,9 +1245,6 @@ printk("!!! cfe_init !!!\n");
                 goto fail;
 
         printk("cfe_init: cfe_nvram_header(%08x)\n", (unsigned int) cfe_nvram_header);
-#ifndef CONFIG_MTD_NFLASH
-        bcm947xx_watchdog_disable();
-#endif
         return 0;
 
 fail:
@@ -1414,7 +1393,6 @@ static int cfe_commit(void)
                 printk("cfe_commit: do nothing\n");
                 return 0;
         }
-#if 1
         if (in_interrupt()) {
                 printk("cfe_commit: not committing in interrupt\n");
                 return -EINVAL;
@@ -1437,10 +1415,9 @@ static int cfe_commit(void)
            set_current_state(TASK_INTERRUPTIBLE);
            add_wait_queue(&wait_q, &wait);
            /* Unlock sector blocks */
-           if (cfe_mtd->unlock)
-                   cfe_mtd->unlock(cfe_mtd, offset, cfe_mtd->erasesize);
+           mtd_unlock(cfe_mtd, offset, cfe_mtd->erasesize);
 
-           if ((ret = cfe_mtd->erase(cfe_mtd, &erase))) {
+           if ((ret = mtd_erase(cfe_mtd, &erase))) {
                 set_current_state(TASK_RUNNING);
                 remove_wait_queue(&wait_q, &wait);
                 printk("\n\n!!!!! cfe_commit: erase error:%d\n\n\n", ret);
@@ -1473,7 +1450,6 @@ done:
         }
         printk("cfe_commit: done %d\n", ret);
         return ret;
-#endif
 }
 #endif
 

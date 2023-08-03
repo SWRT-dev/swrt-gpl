@@ -132,9 +132,17 @@ CFLAGS += -DBCM_WLEVENT
 OBJS += wlceventd_eap.o
 CFLAGS += -DBCM_WLCEVENTD
 
+CFLAGS += -DBCMDBG
+
 ifeq ($(wildcard $(SRCBASE)/router/eapd${BCMEX}$(EX7)/*.c),)
 all:
-	-cp prebuilt/eapd eapd
+ifeq ($(or $(RTAC3200),$(SBRAC3200P)),y)
+	-cp ./prebuilt/eapd_7 ./eapd
+else ifeq ($(or $(RTAC68U)),y)
+	-cp ./prebuilt/eapd_6 ./eapd
+else
+	-cp ./prebuilt/eapd_7114 ./eapd
+endif
 else
 all: eapd
 endif
