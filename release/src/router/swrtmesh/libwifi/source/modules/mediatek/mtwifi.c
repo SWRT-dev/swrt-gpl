@@ -481,8 +481,8 @@ static int mtwifi_get_bandwidth_from_ie(uint8_t *ies, size_t len,
 static int is_valid_ap_iface(const char *ifname)
 {
 	int valid_iface = 0;
-	int ret;
-	enum wifi_mode mode;
+//	int ret;
+//	enum wifi_mode mode;
 	DIR *d;
 	struct dirent *dir;
 
@@ -502,7 +502,7 @@ static int is_valid_ap_iface(const char *ifname)
 
 	if (!valid_iface)
 		return 0;
-
+#if 0
 	ret = nlwifi_get_mode(ifname, &mode);
 	if (WARN_ON(ret))
 		return 0;
@@ -510,6 +510,10 @@ static int is_valid_ap_iface(const char *ifname)
 	if (mode == WIFI_MODE_AP)  {
 		return 1;
 	}
+#else
+	if(!strncmp(ifname, "ra", 2))// ra0 rai0 rax0 rae0
+		return 1;
+#endif
 
 	return 0;
 }
@@ -1711,6 +1715,437 @@ static int mtwifi_iface_set_param(const char *ifname, const char *param, int len
 	return -1;
 }
 
+static int mtwifi_iface_subscribe_frame(const char *ifname, uint8_t type, uint8_t stype)
+{
+	enum wifi_mode mode;
+	int ret = -1;
+
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+
+	ret = mtwifi_iface_get_mode(ifname, &mode);
+	if (WARN_ON(ret))
+		return ret;
+
+	switch (mode) {
+	case WIFI_MODE_AP:
+		ret = hostapd_ubus_iface_subscribe_frame(ifname, type, stype);
+		break;
+	default:
+		ret = -1;
+		break;
+	}
+
+	return ret;
+}
+
+static int mtwifi_iface_unsubscribe_frame(const char *ifname, uint8_t type, uint8_t stype)
+{
+	enum wifi_mode mode;
+	int ret = -1;
+
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+
+	ret = mtwifi_iface_get_mode(ifname, &mode);
+	if (WARN_ON(ret))
+		return ret;
+
+	switch (mode) {
+	case WIFI_MODE_AP:
+		ret = hostapd_ubus_iface_unsubscribe_frame(ifname, type, stype);
+		break;
+	default:
+		ret = -1;
+		break;
+	}
+
+	return ret;
+}
+
+static int mtwifi_iface_set_4addr(const char *ifname, bool enable)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return -1;
+}
+
+static int mtwifi_iface_get_4addr(const char *ifname, bool *enable)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return nlwifi_get_4addr(ifname, enable);
+}
+
+static int mtwifi_iface_get_4addr_parent(const char *ifname, char *parent)
+{
+	enum wifi_mode mode;
+	int ret;
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+
+	ret = nlwifi_get_mode(ifname, &mode);
+	if (ret)
+		return ret;
+
+	if (mode != WIFI_MODE_AP_VLAN)
+		return -1;
+
+	ret = hostapd_cli_get_4addr_parent((char *)ifname, parent);
+	return ret;
+}
+
+static int mtwifi_iface_set_vlan(const char *ifname, struct vlan_param vlan)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return -1;
+}
+
+static int mtwifi_iface_get_stats(const char *ifname, struct wifi_ap_stats *s)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+
+	memset(s, 0, sizeof(*s));
+	return 0;
+}
+
+static int mtwifi_iface_get_beacon_ies(const char *ifname, uint8_t *ies, int *len)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return hostapd_cli_get_beacon_ies(ifname, ies, (size_t *)len);
+}
+
+static int mtwifi_iface_get_assoclist(const char *ifname, uint8_t *stas, int *num_stas)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+
+	if (is_valid_ap_iface(ifname)) {
+		return hostapd_iface_get_assoclist(ifname, stas, num_stas);
+	}
+	return -1;
+}
+
+static int mtwifi_iface_get_sta_info(const char *ifname, uint8_t *addr, struct wifi_sta *info)
+{
+	const char *iface;
+	char ifname_wds[256] = { 0 };
+	int ret = 0;
+
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	if (hostapd_cli_is_wds_sta(ifname, addr, ifname_wds, sizeof(ifname_wds))) {
+		libwifi_dbg("[%s] has virtual AP iface[%s]\n", ifname, ifname_wds);
+		iface = ifname_wds;
+	} else {
+		iface = ifname;
+	}
+	ret = nlwifi_get_sta_info(iface, addr, info);
+	if (!ret) {
+		ret = hostapd_cli_iface_get_sta_info(ifname, addr, info);
+	}
+
+	if (!ret) {
+		ret = mtwifi_get_maxrate(ifname, (unsigned long *) &info->maxrate);
+	}
+
+	return ret;
+}
+
+static int mtwifi_iface_get_sta_stats(const char *ifname, uint8_t *addr, struct wifi_sta_stats *s)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return -1;
+}
+
+static int mtwifi_iface_disconnect_sta(const char *ifname, uint8_t *sta, uint16_t reason)
+{
+	libwifi_dbg("[%s] %s called reason[%d]\n", ifname, __func__, reason);
+	return hostapd_cli_disconnect_sta(ifname, sta, reason);
+}
+
+static int mtwifi_iface_restrict_sta(const char *ifname, uint8_t *sta, int enable)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return -1;
+}
+
+static int mtwifi_iface_monitor_sta(const char *ifname, uint8_t *sta, struct wifi_monsta_config *cfg)
+{
+	libwifi_dbg("[%s] %s called " MACSTR " %s\n", ifname, __func__,
+		    MAC2STR(sta), cfg->enable ? "enable" : "disable");
+
+	/* Enable event driven probe req monitoring */
+	return hostapd_ubus_iface_monitor_sta(ifname, sta, cfg);
+}
+
+static int mtwifi_iface_get_monitor_sta(const char *ifname, uint8_t *sta, struct wifi_monsta *mon)
+{
+	struct wifi_sta info = {};
+	int ret;
+	int i;
+
+	libwifi_dbg("[%s] %s " MACSTR " called\n", ifname, __func__, MAC2STR(sta));
+
+	memset(mon, 0, sizeof(*mon));
+
+	/* Get RSSI from nlwifi (from data frames) for connected stations */
+	ret = nlwifi_get_sta_info(ifname, sta, &info);
+	if (WARN_ON(ret))
+		return ret;
+
+	/* Check if connected */
+	if (memcmp(mon->macaddr, info.macaddr, 6)) {
+		WARN_ON(sizeof(mon->rssi) != sizeof(info.rssi));
+		for (i = 0; i < sizeof(mon->rssi); i++)
+			mon->rssi[i] = info.rssi[i];
+
+		mon->rssi_avg = info.rssi_avg;
+		mon->last_seen = info.idle_time;
+		memcpy(mon->macaddr, info.macaddr, 6);
+		return ret;
+	}
+
+	/* Worst case for not connected station - get from hostapd (probes) */
+	return hostapd_ubus_iface_get_monitor_sta(ifname, sta, mon);
+}
+
+static int mtwifi_iface_get_monitor_stas(const char *ifname, struct wifi_monsta *stas, int *num)
+{
+	struct wifi_monsta *mon;
+	uint8_t sta[6];
+	int ret;
+	int i;
+
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+
+	ret = hostapd_ubus_iface_get_monitor_stas(ifname, stas, num);
+	if (WARN_ON(ret))
+		return ret;
+
+	for (i = 0; i < *num; i++) {
+		mon = &stas[i];
+		memcpy(sta, mon->macaddr, sizeof(sta));
+		WARN_ON(mtwifi_iface_get_monitor_sta(ifname, sta, mon));
+	}
+
+	return ret;
+}
+
+static int mtwifi_iface_add_neighbor(const char *ifname, struct nbr nbr)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return hostapd_cli_iface_add_neighbor(ifname, &nbr, sizeof(nbr));
+}
+
+static int mtwifi_iface_del_neighbor(const char *ifname, unsigned char *bssid)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return hostapd_cli_iface_del_neighbor(ifname, bssid);
+}
+
+static int mtwifi_iface_get_neighbor_list(const char *ifname, struct nbr *nbr, int *nr)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return hostapd_cli_iface_get_neighbor_list(ifname, nbr, nr);
+}
+
+static int mtwifi_iface_req_beacon_report(const char *ifname, uint8_t *sta,
+					struct wifi_beacon_req *param, size_t param_sz)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+
+	if (param_sz > 0 && param != NULL)
+		return hostapd_cli_iface_req_beacon(ifname, sta, param, param_sz);
+
+	/* No params passed - use default (minimal) configuration */
+	return hostapd_cli_iface_req_beacon_default(ifname, sta);
+}
+
+static int mtwifi_iface_get_beacon_report(const char *ifname, uint8_t *sta,
+				   struct sta_nbr *snbr, int *nr)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return -1;
+}
+
+#define MAX_BTM_NBR_NUM 64
+static int mtwifi_iface_req_bss_transition(const char *ifname, unsigned char *sta,
+				    int bsss_nr, unsigned char *bsss, unsigned int tmo)
+{
+	struct bss_transition_params params = { 0 };
+	struct nbr nbss[MAX_BTM_NBR_NUM] = {};
+	unsigned char *bss;
+	int i;
+
+	libwifi_dbg("[%s] %s called " MACSTR " nr %d\n", ifname, __func__,
+		    MAC2STR(sta), bsss_nr);
+
+	if (bsss_nr > MAX_BTM_NBR_NUM)
+		return -1;
+
+	params.valid_int = (uint8_t)tmo;
+	params.pref = bsss_nr ? 1 : 0;
+	params.disassoc_imminent = 1;
+
+	for (i = 0; i < bsss_nr; i++) {
+		bss = bsss + i * 6;
+		memcpy(&nbss[i].bssid, bss, 6);
+	}
+
+	return hostapd_cli_iface_req_bss_transition(ifname, sta, bsss_nr, nbss, &params);
+}
+
+static int mtwifi_iface_req_btm(const char *ifname, unsigned char *sta,
+			 int bsss_nr, struct nbr *bsss, struct wifi_btmreq *b)
+{
+	struct bss_transition_params params = { 0 };
+
+	libwifi_dbg("[%s] %s called " MACSTR " nr %d\n", ifname, __func__,
+		    MAC2STR(sta), bsss_nr);
+
+	params.valid_int = b->validity_int;
+	params.disassoc_timer = b->disassoc_tmo;
+
+	if (b->mode & WIFI_BTMREQ_PREF_INC || bsss_nr)
+		params.pref = 1;
+	if (b->mode & WIFI_BTMREQ_ABRIDGED)
+		params.abridged = 1;
+	if (b->mode & WIFI_BTMREQ_DISASSOC_IMM)
+		params.disassoc_imminent = 1;
+	if (b->mode & WIFI_BTMREQ_BSSTERM_INC)
+		params.bss_term = b->bssterm_dur;
+
+	return hostapd_cli_iface_req_bss_transition(ifname, sta, bsss_nr, bsss, &params);
+}
+
+static int mtwifi_iface_get_11rkeys(const char *ifname, unsigned char *sta, uint8_t *r1khid)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return -1;
+}
+
+static int mtwifi_iface_set_11rkeys(const char *ifname, struct fbt_keys *fk)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return -1;
+}
+
+static int get_sec_chan_offset(uint32_t freq)
+{
+	int ht40plus[] = { 5180, 5220, 5260, 5300, 5500, 5540, 5580, 5620, 5660, 5745, 5785, 5920 };
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(ht40plus); i++) {
+		if (freq == ht40plus[i])
+			return 1;
+	}
+
+	return -1;
+}
+
+static uint32_t get_cf1(uint32_t freq, uint32_t bw)
+{
+	uint32_t cf1 = 0;
+	int cf1_bw80[] = { 5210, 5290, 5530, 5610, 5690, 5775 };
+	int cf1_bw160[] = { 5250, 5570 };
+	int i;
+
+	/* TODO check/fix 6GHz */
+	switch (bw) {
+	case 160:
+		for (i = 0; i < ARRAY_SIZE(cf1_bw160); i++) {
+			if (freq >= cf1_bw160[i] - 70 &&
+			    freq <= cf1_bw160[i] + 70) {
+				cf1 = cf1_bw160[i];
+				break;
+			}
+		}
+		break;
+	case 80:
+		for (i = 0; i < ARRAY_SIZE(cf1_bw80); i++) {
+			if (freq >= cf1_bw80[i] - 30 &&
+			    freq <= cf1_bw80[i] + 30) {
+				cf1 = cf1_bw80[i];
+				break;
+			}
+		}
+		break;
+
+	default:
+		cf1 = freq;
+	}
+
+	return cf1;
+}
+
+static int mtwifi_iface_chan_switch(const char *ifname, struct chan_switch_param *param)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+
+	switch (param->bandwidth) {
+	case 160:
+	case 80:
+		if (!param->sec_chan_offset)
+			param->sec_chan_offset = get_sec_chan_offset(param->freq);
+		if (!param->cf1)
+			param->cf1 = get_cf1(param->freq, param->bandwidth);
+		break;
+	case 8080:
+		if (WARN_ON(!param->cf1))
+			return -1;
+		if (WARN_ON(!param->cf2))
+			return -1;
+		break;
+	case 40:
+		if (!WARN_ON(!param->sec_chan_offset))
+			return -1;
+		break;
+	default:
+		break;
+	}
+
+	return hostapd_cli_iface_chan_switch(ifname, param);
+}
+
+static int mtwifi_iface_mbo_disallow_assoc(const char *ifname, uint8_t reason)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return hostapd_cli_mbo_disallow_assoc(ifname, reason);
+}
+
+static int mtwifi_iface_ap_set_state(const char *ifname, bool up)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+
+	return hostapd_cli_ap_set_state(ifname, up);
+}
+
+/* sta interface ops */
+static int mtwifi_iface_sta_info(const char *ifname, struct wifi_sta *sta)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	int ret = 0;
+	ret = nlwifi_sta_info(ifname, sta);
+	if(ret) return -1;
+
+	WARN_ON(if_gethwaddr(ifname, sta->macaddr));
+	ret = supplicant_sta_info(ifname, sta);
+
+	return ret;
+}
+
+static int mtwifi_iface_sta_get_stats(const char *ifname, struct wifi_sta_stats *s)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return nlwifi_sta_get_stats(ifname, s);
+}
+
+static int mtwifi_iface_sta_get_ap_info(const char *ifname, struct wifi_bss *info)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	return -1;
+}
+
+static int mtwifi_iface_sta_disconnect_ap(const char *ifname, uint32_t reason)
+{
+	libwifi_dbg("[%s] %s called reason %d\n", ifname, __func__, reason);
+	return hostapd_cli_sta_disconnect_ap(ifname, reason);
+}
+
 const struct wifi_driver mt_driver = {
 	.name = "ra,rai,rax,rae,apcli,apclii,apclix,apclie",
 	.info = mtwifi_driver_info,
@@ -1781,52 +2216,51 @@ const struct wifi_driver mt_driver = {
 	.iface.get_param = mtwifi_iface_get_param,
 	.iface.set_param = mtwifi_iface_set_param,
 	.vendor_cmd = mtwifi_vendor_cmd,
-#if 0
-	.iface.subscribe_frame = iface_subscribe_frame,
-	.iface.unsubscribe_frame = iface_unsubscribe_frame,
-	.set_4addr = iface_set_4addr,
-	.get_4addr = iface_get_4addr,
-	.get_4addr_parent = iface_get_4addr_parent,
-	.set_vlan = iface_set_vlan,
-#endif
+	.iface.subscribe_frame = mtwifi_iface_subscribe_frame,
+	.iface.unsubscribe_frame = mtwifi_iface_unsubscribe_frame,
+	.set_4addr = mtwifi_iface_set_4addr,
+	.get_4addr = mtwifi_iface_get_4addr,
+	.get_4addr_parent = mtwifi_iface_get_4addr_parent,
+	.set_vlan = mtwifi_iface_set_vlan,
+
         /* Interface/vif ap callbacks */
 	.iface.ap_info = mtwifi_get_ap_info,
 	.get_bssid = mtwifi_get_bssid,
 	.get_ssid = mtwifi_get_ssid,
-#if 0
-	.iface.get_stats = iface_get_stats,
-	.get_beacon_ies = iface_get_beacon_ies,
 
-	.get_assoclist = iface_get_assoclist,
-	.get_sta_info = iface_get_sta_info,
-	.get_sta_stats = iface_get_sta_stats,
-	.disconnect_sta = iface_disconnect_sta,
-	.restrict_sta = iface_restrict_sta,
-	.monitor_sta = iface_monitor_sta,
-	.get_monitor_sta = iface_get_monitor_sta,
-	.get_monitor_stas = iface_get_monitor_stas,
-	.iface.add_neighbor = iface_add_neighbor,
-	.iface.del_neighbor = iface_del_neighbor,
-	.iface.get_neighbor_list = iface_get_neighbor_list,
-	.iface.req_beacon_report = iface_req_beacon_report,
-	.iface.get_beacon_report = iface_get_beacon_report,
+	.iface.get_stats = mtwifi_iface_get_stats,
+	.get_beacon_ies = mtwifi_iface_get_beacon_ies,
 
-	.iface.req_bss_transition = iface_req_bss_transition,
-	.iface.req_btm = iface_req_btm,
+	.get_assoclist = mtwifi_iface_get_assoclist,
+	.get_sta_info = mtwifi_iface_get_sta_info,
+	.get_sta_stats = mtwifi_iface_get_sta_stats,
+	.disconnect_sta = mtwifi_iface_disconnect_sta,
+	.restrict_sta = mtwifi_iface_restrict_sta,
+	.monitor_sta = mtwifi_iface_monitor_sta,
+	.get_monitor_sta = mtwifi_iface_get_monitor_sta,
+	.get_monitor_stas = mtwifi_iface_get_monitor_stas,
+	.iface.add_neighbor = mtwifi_iface_add_neighbor,
+	.iface.del_neighbor = mtwifi_iface_del_neighbor,
+	.iface.get_neighbor_list = mtwifi_iface_get_neighbor_list,
+	.iface.req_beacon_report = mtwifi_iface_req_beacon_report,
+	.iface.get_beacon_report = mtwifi_iface_get_beacon_report,
 
-	.iface.get_11rkeys = iface_get_11rkeys,
-	.iface.set_11rkeys = iface_set_11rkeys,
+	.iface.req_bss_transition = mtwifi_iface_req_bss_transition,
+	.iface.req_btm = mtwifi_iface_req_btm,
 
-	.chan_switch = iface_chan_switch,
-	.mbo_disallow_assoc = iface_mbo_disallow_assoc,
-	.ap_set_state = iface_ap_set_state,
+	.iface.get_11rkeys = mtwifi_iface_get_11rkeys,
+	.iface.set_11rkeys = mtwifi_iface_set_11rkeys,
+
+	.chan_switch = mtwifi_iface_chan_switch,
+	.mbo_disallow_assoc = mtwifi_iface_mbo_disallow_assoc,
+	.ap_set_state = mtwifi_iface_ap_set_state,
 
          /* Interface/vif sta callbacks */
-	.iface.sta_info = iface_sta_info,
-	.iface.sta_get_stats = iface_sta_get_stats,
-	.iface.sta_get_ap_info = iface_sta_get_ap_info,
-	.iface.sta_disconnect_ap = iface_sta_disconnect_ap,
-#endif
+	.iface.sta_info = mtwifi_iface_sta_info,
+	.iface.sta_get_stats = mtwifi_iface_sta_get_stats,
+	.iface.sta_get_ap_info = mtwifi_iface_sta_get_ap_info,
+	.iface.sta_disconnect_ap = mtwifi_iface_sta_disconnect_ap,
+
 	.radio_list = mtwifi_radio_list,
 	.register_event = nlwifi_register_event,
 	.unregister_event = nlwifi_unregister_event,

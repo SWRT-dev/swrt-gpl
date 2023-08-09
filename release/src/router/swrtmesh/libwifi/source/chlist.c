@@ -759,6 +759,13 @@ static struct wifi_opclass wifi_opclass_global[] = {
 						       {193, {193, 197, 201, 205}},
 						       {209, {209, 213, 217, 221}}}}},
 	{ 136, 136, BAND_6, BW20, EXTCH_NONE, {23, 1, {{2, {2}}}}},
+	{ 137, 137, BAND_6, BW320, EXTCH_AUTO, {23, 6, {{1, {1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49, 53, 57, 61}},
+						        {33, {33, 37, 41, 45, 49, 53, 57, 61, 65, 69, 73, 77, 81, 85, 89, 93}},
+						        {65, {65, 69, 73, 77, 81, 85, 89, 93, 97, 101, 105, 109, 113, 117, 121, 125}},
+						        {97, {97, 101, 105, 109, 113, 117, 121, 125, 129, 133, 137, 141, 145, 149, 153, 157}},
+						        {129, {129, 133, 137, 141, 145, 149, 153, 157, 161, 165, 169, 173, 177, 181, 185, 189}},
+						        {161, {161, 165, 169, 173, 177, 181, 185, 189, 193, 197, 201, 205, 209, 213, 217, 221}}}}},
+
 };
 
 #define wifi_opclass_global_size	\
@@ -891,9 +898,11 @@ int wifi_get_opclass_internal(enum wifi_regdomain reg, enum wifi_band b,
 		break;
 	case REG_CN:
 		//TODO
-//		tab = NULL;
-//		tabsize = 0;
-//		break;
+#if !defined(RTCONFIG_SWRTMESH)
+		tab = NULL;
+		tabsize = 0;
+		break;
+#endif
 	case REG_GLOBAL:
 	default:
 		tab = (struct wifi_opclass *)wifi_opclass_global;
@@ -1849,7 +1858,7 @@ static int radio_update_opclass(const char *name, struct wifi_opclass *opclass, 
 							chan_num);
 	}
 
-	/* EasyMesh/MultiAP expect center channel for 80/80+/160 MHz */
+	/* EasyMesh/MultiAP expect center channel for 80/80+/160/320 MHz */
 	switch (opclass->opclass) {
 	case 132:
 		for (i = 0; i < opclass->opchannel.num ; i++)
@@ -1866,6 +1875,10 @@ static int radio_update_opclass(const char *name, struct wifi_opclass *opclass, 
 	case 134:
 		for (i = 0; i < opclass->opchannel.num ; i++)
 			opclass->opchannel.ch[i].channel += 14;
+		break;
+	case 137:
+		for (i = 0; i < opclass->opchannel.num ; i++)
+			opclass->opchannel.ch[i].channel += 30;
 		break;
 	}
 

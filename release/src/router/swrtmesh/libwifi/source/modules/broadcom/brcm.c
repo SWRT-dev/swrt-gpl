@@ -137,8 +137,11 @@ static int radio_info(const char *name, struct wifi_radio *radio)
 	WARN_ON(bcmwl_radio_get_basic_rates(name, &n, radio->basic_rates));
 	WARN_ON(bcmwl_radio_get_oper_rates(name, &m, radio->supp_rates));
 
-	if (radio->oper_band != BAND_2)
+	if (radio->oper_band == BAND_5) {
+		radio->dot11h_capable = 1;
+		WARN_ON(bcmwl_iface_get_doth11h(name, &radio->dot11h_enabled));
 		WARN_ON(bcmwl_radio_get_cac_methods(name, &radio->cac_methods));
+	}
 
 	ret = nlwifi_phy_to_netdev_with_type(name, netdev, sizeof(netdev), NLWIFI_MODE_AP);
 	if (ret == 0) {
@@ -853,12 +856,17 @@ static int iface_get_monitor_stas(const char *ifname, struct wifi_monsta *stas, 
 static int iface_add_neighbor(const char *ifname, struct nbr nbr)
 {
 	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+
+	/* Driver need it for RNR IE in beacon/probe_resp */
+	bcmwl_add_neighbor(ifname, &nbr, sizeof(nbr));
+
 	return hostapd_cli_iface_add_neighbor(ifname, &nbr, sizeof(nbr));
 }
 
 static int iface_del_neighbor(const char *ifname, unsigned char *bssid)
 {
 	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	bcmwl_del_neighbor(ifname, bssid);
 	return hostapd_cli_iface_del_neighbor(ifname, bssid);
 }
 

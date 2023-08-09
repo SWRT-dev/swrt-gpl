@@ -86,6 +86,7 @@ LIBWIFI_INTERNAL int nlwifi_get_phy_info(const char *name, struct wifi_radio *ra
 LIBWIFI_INTERNAL int nlwifi_radio_get_caps(const char *name, struct wifi_caps *caps);
 LIBWIFI_INTERNAL int nlwifi_get_country(const char *name, char *alpha2);
 
+LIBWIFI_INTERNAL int nlwifi_get_phy_wifi_ifaces(const char *name, struct wifi_iface* iface, uint8_t *num_iface);
 LIBWIFI_INTERNAL int nlwifi_get_phyname(const char *ifname, char *phyname);
 LIBWIFI_INTERNAL int nlwifi_get_noise(const char *name, int *noise);
 

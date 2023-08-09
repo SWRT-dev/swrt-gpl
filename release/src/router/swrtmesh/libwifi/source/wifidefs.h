@@ -84,6 +84,7 @@ enum wifi_bw {
 	BW160,            /**< bandwidth = 160 Mhz */
 	BW_AUTO,          /**< bandwidth = ? */
 	BW8080 = 7,       /**< bandwidth = 80+80 Mhz */
+	BW320,		  /**< bandwidth = 320 MHz */
 	BW_UNKNOWN,       /**< Unknown or Undefined */
 };
 

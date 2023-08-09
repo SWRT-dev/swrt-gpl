@@ -1023,8 +1023,10 @@ static int bcmwl_radio_channels_update_survey(const char *name, struct chan_entr
 	memset(buf, 0, 16*1024);
 
 	ret = Cmd(buf, 16*1024, "wl -i %s chanim_stats us all", name);
-	if (WARN_ON(ret))
+	if (WARN_ON(ret)) {
+		free(buf);
 		return ret;
+	}
 
 	ptr = buf;
 
@@ -1072,8 +1074,10 @@ static int bcmwl_radio_channels_update_survey(const char *name, struct chan_entr
 	/* Get noise */
 	memset(buf, 0, 16*1024);
 	ret = Cmd(buf, 16*1024, "wl -i %s chanim_stats all", name);
-	if (WARN_ON(ret))
+	if (WARN_ON(ret)) {
+		free(buf);
 		return ret;
+	}
 
 	ptr = buf;
 	while ((line = strsep(&ptr, "\r\n"))) {
@@ -4033,6 +4037,27 @@ int bcmwl_iface_get_wsec(const char *name, uint32_t *enc)
 	return ret;
 }
 
+int bcmwl_iface_get_doth11h(const char *name, bool *doth11h)
+{
+	uint32_t val = 0;
+	int ret;
+	struct wl_arg arg = {
+		.ifname = name,
+		.cmd = WLC_GET_SPECT_MANAGMENT,
+		.buf = &val,
+		.buflen = sizeof(val)
+	};
+
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+
+	ret = wl_ctl(&arg);
+	if (!ret) {
+		*doth11h = !!(wl_swap_32(name, val) != 0);
+		return ret;
+	}
+
+	return ret;
+}
 
 static int bcm_get_sta_info_airtime(const char *ifname, uint8_t *addr,
 							struct wifi_sta *wsta)
@@ -4884,6 +4909,74 @@ int bcmwl_radio_get_cac_methods(const char *name, uint32_t *methods)
 
 	if (!Cmd(dfs_status, sizeof(dfs_status), "wl -i %s dfs_ap_move", name))
 		*methods |= BIT(WIFI_CAC_MIMO_REDUCED);
+
+	return 0;
+}
+
+static int bcmwl_get_neighbor_list_static(const char *ifname,
+					  struct nbr *nbrs,
+					  int *nr)
+{
+	char buf[2048] = {};
+	struct nbr *neigh;
+	char *p, *q, *line;
+	int max = *nr;
+
+	chrCmd(buf, sizeof(buf), "wl -i %s rrm_nbr_list", ifname);
+
+	p = buf;
+	neigh = &nbrs[0];
+	*nr = 0;
+
+	/* bssid 44:D4:37:4D:7B:30 bssid_info 0x00000001 reg 0x0b channel 0x0d phytype 0x00 */
+	while ((line = strsep(&p, "\n"))) {
+		if (WARN_ON(*nr >= max))
+			break;
+
+		q = strstr(line, "bssid");
+		if (!q)
+			continue;
+
+		if (WARN_ON(sscanf(q, "bssid %hhx:%hhx:%hhx:%hhx:%hhx:%hhx bssid_info %x reg %hhx channel %hhx phytype %hhx",
+			    &neigh->bssid[0], &neigh->bssid[1], &neigh->bssid[2],
+			    &neigh->bssid[3], &neigh->bssid[4], &neigh->bssid[5],
+			    &neigh->bssid_info, &neigh->reg, &neigh->channel, &neigh->phy) != 10))
+			continue;
+		(*nr)++;
+		neigh++;
+	}
+
+	return 0;
+}
+
+int bcmwl_get_neighbor_list(const char *ifname, struct nbr *nbrs, int *nr)
+{
+	return bcmwl_get_neighbor_list_static(ifname, nbrs, nr);
+}
+
+int bcmwl_add_neighbor(const char *ifname, struct nbr *nbr, size_t len)
+{
+	char buf[2048] = {};
+	char ssid[128];
+
+	if (hostapd_cli_get_ssid(ifname, ssid, sizeof(ssid)))
+		return -1;
+
+	libwifi_dbg("[%s] %s called " MACSTR " chan %d opclass %d\n", ifname, __func__, MAC2STR(nbr->bssid), nbr->channel, nbr->reg);
+	/* wl rrm_nbr_add_nbr <[bssid] [bssid info] [regulatory] [channel] [phytype]> [ssid] [chanspec] [prefence] */
+	chrCmd(buf, sizeof(buf), "wl -i %s rrm_nbr_add_nbr " MACSTR " %u %u %u %u %s",
+	       ifname, MAC2STR(nbr->bssid), nbr->bssid_info, nbr->reg, nbr->channel,
+	       nbr->phy, ssid);
+
+	return 0;
+}
+
+int bcmwl_del_neighbor(const char *ifname, unsigned char *bssid)
+{
+	char buf[2048] = {};
+
+	libwifi_dbg("[%s] %s called " MACSTR "\n", ifname, __func__, MAC2STR(bssid));
+	chrCmd(buf, sizeof(buf), "wl -i %s rrm_nbr_del_nbr " MACSTR, ifname, MAC2STR(bssid));
 
 	return 0;
 }

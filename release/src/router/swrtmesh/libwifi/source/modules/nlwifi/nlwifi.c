@@ -1362,6 +1362,8 @@ int nlwifi_get_bandwidth(const char *ifname, enum wifi_bw *bandwidth)
 		*bandwidth = BW160;
 	else if (bw == NL80211_CHAN_WIDTH_80P80)
 		*bandwidth = BW8080;
+	else if (bw == NL80211_CHAN_WIDTH_320)
+		*bandwidth = BW320;
 	else
 		*bandwidth = BW_UNKNOWN;
 
@@ -1879,6 +1881,40 @@ int nlwifi_get_phy_info(const char *name, struct wifi_radio *radio)
 	return nlwifi_cmd(name, &ctx);
 }
 
+int nlwifi_is_dot11h_enabled(const char *phy, bool *dot11h)
+{
+	struct chan_entry ch[64] = {0};
+	int num = ARRAY_SIZE(ch);
+	struct channels_data data = {
+		.chan_entry = ch,
+		.band = BAND_5,
+		.chlist = NULL,
+		.num = 0,
+		.max = num,
+	};
+	struct nlwifi_ctx ctx = {
+		.cmd = NL80211_CMD_GET_WIPHY,
+		.flags = NLM_F_DUMP,
+		.cb = nlwifi_get_supp_channels_cb,
+		.data = &data,
+	};
+	int i;
+
+	*dot11h = false;
+	libwifi_dbg("[%s] %s called\n", phy, __func__);
+	if (nlwifi_cmd(phy, &ctx))
+		return -1;
+
+	for (i = 0; i < data.num; i++) {
+		if (data.chan_entry[i].dfs) {
+			*dot11h = true;
+			return 0;
+		}
+	}
+
+	return 0;
+}
+
 int nlwifi_radio_info(const char *name, struct wifi_radio *radio)
 {
 	struct survey_entry survey = {};
@@ -1909,12 +1945,17 @@ int nlwifi_radio_info(const char *name, struct wifi_radio *radio)
 	radio->num_iface = WIFI_IFACE_MAX_NUM;
 	nlwifi_get_phy_wifi_ifaces( name, radio->iface, &radio->num_iface);
 
-	if (radio->oper_band != BAND_2)
+	libwifi_dbg("[%s] %s oper-band = %d\n", name, __func__, radio->oper_band);
+	if (radio->oper_band == BAND_5) {
 		/* TODO get it from iface combinations */
 		radio->cac_methods |= BIT(WIFI_CAC_CONTINUOUS);
-	else
-		/* Don't report CAC methods for 2.4GHz */
+
+		radio->dot11h_capable = true;
+		nlwifi_is_dot11h_enabled(name, &radio->dot11h_enabled);
+	} else {
+		/* Don't report CAC methods for non 5GHz */
 		radio->cac_methods = 0;
+	}
 
 	return 0;
 }
@@ -2679,6 +2720,8 @@ int nlwifi_get_max_bandwidth(const char *name, enum wifi_bw *max_bw)
 	if (WARN_ON(nlwifi_get_supp_bandwidths(name, &supp_bw)))
 		return -1;
 
+	if (supp_bw & BIT(BW320))
+		*max_bw = BW320;
 	if (supp_bw & BIT(BW160))
 		*max_bw = BW160;
 	else if (supp_bw & BIT(BW80))

@@ -12,6 +12,7 @@ int bcmwl_get_supported_security_const(const char *name, uint32_t *sec);
 int bcmwl_iface_get_auth(const char *name, uint32_t *auth);
 int bcmwl_iface_get_wsec(const char *name, uint32_t *enc);
 int bcmwl_iface_get_wpa_auth(const char *name, uint32_t *wpa_auth);
+int bcmwl_iface_get_doth11h(const char *name, bool *doth11h);
 int bcmwl_iface_get_beacon_ies(const char *name, uint8_t *ies, int *len);
 int bcmwl_iface_ap_info(const char *name, struct wifi_ap *ap);
 int bcmwl_ap_get_oper_stds(const char *name, uint8_t *std);
@@ -61,4 +62,9 @@ int bcmwl_disable_event_bit(const char *ifname, unsigned int bit);
 
 int bcmwl_radio_reset_chanim_stats(const char *name);
 int bcmwl_radio_get_cac_methods(const char *name, uint32_t *methods);
+
+int bcmwl_get_neighbor_list(const char *ifname, struct nbr *nbrs, int *nr);
+int bcmwl_add_neighbor(const char *ifname, struct nbr *nbr, size_t len);
+int bcmwl_del_neighbor(const char *ifname, unsigned char *bssid);
+
 #endif /* WLCTRL_H */
