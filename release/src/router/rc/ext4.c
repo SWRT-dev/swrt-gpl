@@ -91,6 +91,12 @@ void start_ext4(void)
 	if (!check_if_dir_exist("/jffs/scripts/")) mkdir("/jffs/scripts/", 0755);
 	if (!check_if_dir_exist("/jffs/configs/")) mkdir("/jffs/configs/", 0755);
 	if (!check_if_dir_exist("/jffs/.sys/")) mkdir("/jffs/.sys/", 0755);
+#if defined(RTCONFIG_SWRTMESH)
+	if (!check_if_dir_exist("/jffs/swrtmesh/")) mkdir("/jffs/swrtmesh/", 0755);
+	if (!check_if_dir_exist("/jffs/multiap/")) mkdir("/jffs/multiap/", 0755);
+	system("ln -sf /jffs/swrtmesh /etc/config");
+	system("ln -sf /jffs/multiap /etc/multiap");
+#endif
 }
 
 void stop_ext4(int stop)

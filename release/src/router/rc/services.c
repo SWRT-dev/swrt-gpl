@@ -16139,6 +16139,11 @@ check_ddr_done:
 		if(action & RC_SERVICE_STOP) stop_swrtmesh();
 		if(action & RC_SERVICE_START) start_swrtmesh();
 	}
+	else if (strcmp(script, "mapcontroller") == 0)
+	{
+		if(action & RC_SERVICE_STOP) stop_mapcontroller();
+		if(action & RC_SERVICE_START) start_mapcontroller();
+	}
 #endif
 #ifdef RTCONFIG_DNSPRIVACY
 	else if (strcmp(script, "stubby") == 0)

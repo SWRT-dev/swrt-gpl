@@ -36,6 +36,10 @@ void auto_generate_config(void)
 		swrtmesh_generate_ieee1905_config();
 	if(!check_if_file_exist("/etc/config/mapcontroller"))
 		swrtmesh_generate_controller_config();
+//	if(!check_if_file_exist("/etc/config/topology"))
+//		swrtmesh_generate_topology_config();
+//	if(!check_if_file_exist("/etc/config/hosts"))
+//		swrtmesh_generate_hosts_config();
 }
 
 #if defined(RTCONFIG_SWRTMESH)
@@ -43,11 +47,11 @@ int start_swrtmesh(void)
 {
 	pid_t pid;
 	char *ubusd_argv[] = { "ubusd", NULL };
-	char *ieee1905_argv[] = { "ieee1905d", "-o",  "/tmp/ieee1905.log", /*"-f",*/  "-dddd", NULL };
-	char *cntl_argv[] = { "mapcontroller", "-o",  "/tmp/mapcontroller.log", "-d", NULL,  "-vvvv", NULL };
+	char *ieee1905_argv[] = { "ieee1905d", "-o", "/tmp/ieee1905.log", /*"-f",*/ "-dddd", NULL };
+	char *cntl_argv[] = { "mapcontroller", "-o", "/tmp/mapcontroller.log", "-d", NULL, "-vvvv", NULL };
 	char *tp_argv[] = { "topologyd", NULL };
 	char *dynbhd_argv[] = { "dynbhd", NULL };
-	char *agent_argv[] = { "mapagent", "-o",  "/tmp/mapagent.log", "-d",  "-vvvv", NULL };
+	char *agent_argv[] = { "mapagent", "-o", "/tmp/mapagent.log", "-d", "-vvvv", NULL };
 //	char *swrtmeshd_argv[] = { "swrtmeshd", NULL };
 
 	if (getpid() != 1) {
@@ -63,14 +67,14 @@ int start_swrtmesh(void)
 	_eval(ubusd_argv, NULL, 0, &pid);
 	_eval(ieee1905_argv, NULL, 0, &pid);
 	_eval(tp_argv, NULL, 0, &pid);
-	if(nvram_match("swrtmesh_enable", "1") && nvram_match("swrtmesh_controller_enable", "1")){
+	if(nvram_match("swrtmesh_controller_enable", "1")){
 		if(nvram_match("swrtmesh_agent_enable", "1"))
 			cntl_argv[4] = "-w";
 		_eval(cntl_argv, NULL, 0, &pid);
 		if(!check_if_file_exist("/proc/sys/net/netfilter/nf_conntrack_timestamp"))
 			system("echo 1 >/proc/sys/net/netfilter/nf_conntrack_timestamp");
 	}
-	if(nvram_match("swrtmesh_enable", "1") && nvram_match("swrtmesh_agent_enable", "1")){
+	if(nvram_match("swrtmesh_agent_enable", "1")){
 		//unlink("/var/run/multiap/multiap.backhaul");
 		//_eval(dynbhd_argv, NULL, 0, &pid);
 		//_eval(agent_argv, NULL, 0, &pid);
@@ -99,5 +103,21 @@ void stop_swrtmesh(void)
 		killall_tk("ieee1905d");
 	if(pids("ubusd"))
 		killall_tk("ubusd");
+}
+
+int start_mapcontroller(void)
+{
+	pid_t pid;
+	char *cntl_argv[] = { "mapcontroller", "-o", "/tmp/mapcontroller.log", "-d", NULL,  "-vvvv", NULL };
+	if(nvram_match("swrtmesh_agent_enable", "1"))
+		cntl_argv[4] = "-w";
+	_eval(cntl_argv, NULL, 0, &pid);
+	return 0;
+}
+
+void stop_mapcontroller(void)
+{
+	if(pids("mapcontroller"))
+		killall_tk("mapcontroller");
 }
 #endif
