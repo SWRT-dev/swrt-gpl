@@ -10,6 +10,7 @@ endif
 install:
 	[ -d $(INSTALLDIR)/usr/sbin ] || install -d $(INSTALLDIR)/usr/sbin
 	[ -d $(INSTALLDIR)/usr/lib ] || install -d $(INSTALLDIR)/usr/lib
+	[ -d $(INSTALLDIR)/lib/wifi ] || install -d $(INSTALLDIR)/lib/wifi
 ifneq ($(wildcard source/Makefile),)
 	install -m 755 $(PKG_BUILD_DIR)/multiap $(INSTALLDIR)/usr/sbin/
 	install -m 755 $(PKG_BUILD_DIR)/libswrtmesh.so $(INSTALLDIR)/usr/lib/
@@ -19,6 +20,7 @@ else
 endif
 	$(STRIP) $(INSTALLDIR)/usr/sbin/multiap
 	$(STRIP) $(INSTALLDIR)/usr/lib/libswrtmesh.so
+	cd $(INSTALLDIR)/lib/wifi && ln -sf /usr/sbin/multiap multiap
 
 clean:
 ifneq ($(wildcard source/Makefile),)
