@@ -4,7 +4,7 @@ LINUX_VERSION=$(LINUX_KERNEL)
 PKG_BUILD_DIR=$(shell pwd)/source/src
 
 TARGET_CFLAGS += -Wno-error=deprecated-declarations -I$(STAGEDIR)/usr/include -I$(STAGEDIR)/usr/include/libnl3 -I$(TOP)/libnetfilter_conntrack-1.0.7/include -D_GNU_SOURCE
-TARGET_CFLAGS += -DEASYMESH_VENDOR_EXT_OUI=\\\"\\\\xF8\\\\x32\\\\xE4\\\"
+TARGET_CFLAGS += -DEASYMESH_VENDOR_EXT_OUI=0xF832E4 -DHOST_WAN_STATS
 ifeq ($(RTCONFIG_SWRTMESH),y)
 TARGET_CFLAGS += -DRTCONFIG_SWRTMESH
 endif

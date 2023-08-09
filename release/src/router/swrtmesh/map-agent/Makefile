@@ -32,11 +32,11 @@ install:
 ifneq ($(wildcard source/src/Makefile),)
 	install -m 755 $(PKG_BUILD_DIR)/mapagent $(INSTALLDIR)/usr/sbin/
 	install -m 755 $(PKG_BUILD_DIR)/dynbh/dynbhd $(INSTALLDIR)/usr/sbin/
-	install -m 755 $(PKG_BUILD_DIR)/dynbh/api $(INSTALLDIR)/usr/sbin/
+#	install -m 755 $(PKG_BUILD_DIR)/dynbh/api $(INSTALLDIR)/usr/sbin/
 else
 	install -m 755 prebuilt/$(BUILD_NAME)/mapagent $(INSTALLDIR)/usr/sbin/
 	install -m 755 prebuilt/$(BUILD_NAME)/dynbhd $(INSTALLDIR)/usr/sbin/
-	install -m 755 prebuilt/$(BUILD_NAME)/api $(INSTALLDIR)/usr/sbin/
+#	install -m 755 prebuilt/$(BUILD_NAME)/api $(INSTALLDIR)/usr/sbin/
 endif
 	$(STRIP) $(INSTALLDIR)/usr/sbin/mapagent
 	$(STRIP) $(INSTALLDIR)/usr/sbin/dynbhd
