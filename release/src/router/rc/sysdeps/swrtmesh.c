@@ -30,16 +30,20 @@
 
 void auto_generate_config(void)
 {
+	if(!check_if_file_exist("/var/run/multiap"))
+		eval("mkdir", "-p", "/var/run/multiap");
 	if(!check_if_file_exist("/etc/config/wireless"))
 		swrtmesh_generate_wireless_config();
 	if(!check_if_file_exist("/etc/config/ieee1905"))
 		swrtmesh_generate_ieee1905_config();
 	if(!check_if_file_exist("/etc/config/mapcontroller"))
 		swrtmesh_generate_controller_config();
-//	if(!check_if_file_exist("/etc/config/topology"))
-//		swrtmesh_generate_topology_config();
-//	if(!check_if_file_exist("/etc/config/hosts"))
-//		swrtmesh_generate_hosts_config();
+	if(!check_if_file_exist("/etc/config/mapagent"))
+		swrtmesh_generate_agent_config();
+	if(!check_if_file_exist("/etc/config/topology"))
+		swrtmesh_generate_topology_config();
+	if(!check_if_file_exist("/etc/config/hosts"))
+		swrtmesh_generate_hosts_config();
 }
 
 #if defined(RTCONFIG_SWRTMESH)
@@ -75,9 +79,9 @@ int start_swrtmesh(void)
 			system("echo 1 >/proc/sys/net/netfilter/nf_conntrack_timestamp");
 	}
 	if(nvram_match("swrtmesh_agent_enable", "1")){
-		//unlink("/var/run/multiap/multiap.backhaul");
-		//_eval(dynbhd_argv, NULL, 0, &pid);
-		//_eval(agent_argv, NULL, 0, &pid);
+		unlink("/var/run/multiap/multiap.backhaul");
+		_eval(dynbhd_argv, NULL, 0, &pid);
+		_eval(agent_argv, NULL, 0, &pid);
 	}
 	//_eval(swrtmeshd_argv, NULL, 0, &pid);
 	return 0;
