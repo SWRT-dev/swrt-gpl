@@ -10,19 +10,15 @@ endif
 install:
 	[ -d $(INSTALLDIR)/usr/sbin ] || install -d $(INSTALLDIR)/usr/sbin
 	[ -d $(INSTALLDIR)/usr/lib ] || install -d $(INSTALLDIR)/usr/lib
-	[ -d $(INSTALLDIR)/lib/wifi ] || install -d $(INSTALLDIR)/lib/wifi
-	[ -d $(INSTALLDIR)/lib/wifi/dynbhd ] || install -d $(INSTALLDIR)/lib/wifi/dynbhd
 ifneq ($(wildcard source/Makefile),)
 	install -m 755 $(PKG_BUILD_DIR)/swrtmesh $(INSTALLDIR)/usr/sbin/
 	install -m 755 $(PKG_BUILD_DIR)/libswrtmesh.so $(INSTALLDIR)/usr/lib/
+	$(STRIP) $(INSTALLDIR)/usr/sbin/swrtmesh
+	$(STRIP) $(INSTALLDIR)/usr/lib/libswrtmesh.so
 else
 	install -m 755 prebuilt/$(BUILD_NAME)/swrtmesh $(INSTALLDIR)/usr/sbin/
 	install -m 755 prebuilt/$(BUILD_NAME)/libswrtmesh.so $(INSTALLDIR)/usr/lib/
 endif
-	$(STRIP) $(INSTALLDIR)/usr/sbin/swrtmesh
-	$(STRIP) $(INSTALLDIR)/usr/lib/libswrtmesh.so
-	cd $(INSTALLDIR)/lib/wifi && ln -sf /usr/sbin/swrtmesh multiap
-	cd $(INSTALLDIR)/lib/wifi/dynbhd && ln -sf /usr/sbin/swrtmesh api
 
 clean:
 ifneq ($(wildcard source/Makefile),)

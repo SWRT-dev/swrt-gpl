@@ -39,6 +39,8 @@ SWRTMESH_FUNC int swrtmesh_generate_controller_config(void);
 SWRTMESH_FUNC int swrtmesh_generate_agent_config(void);
 SWRTMESH_FUNC int swrtmesh_generate_wireless_config(void);
 SWRTMESH_FUNC int swrtmesh_generate_ieee1905_config(void);
+SWRTMESH_FUNC int swrtmesh_generate_topology_config(void);
+SWRTMESH_FUNC int swrtmesh_generate_hosts_config(void);
 SWRTMESH_FUNC char *swrtmesh_utils_version_text(void);
 SWRTMESH_FUNC void swrtmesh_utils_set_debug(unsigned int enable);
 SWRTMESH_FUNC int swrtmesh_get_cost(char *ifname, int bandindex, int capability5g, char *ifmac, int *cost);
