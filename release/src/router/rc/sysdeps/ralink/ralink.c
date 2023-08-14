@@ -5338,6 +5338,10 @@ int gen_hostapd_config(int band, int subunit)
 
 	if (band < 0 || band >= MAX_NR_WL_IF || subunit < 0)
 		return -1;
+#if defined(RTCONFIG_SWRTMESH)
+	if (subunit == 4)
+		return -1;
+#endif
 
 #if !defined(RTCONFIG_HAS_5G_2)
 	if (band == 2)
@@ -5596,6 +5600,10 @@ void hostapd_ra_start(void)
 			}
 		}
 	}
+#if defined(RTCONFIG_SWRTMESH)
+//	auto_generate_config();
+//	swrtmesh_sysdep_bh_start();
+#endif
 }
 
 void stop_wifi_hostapd(void)
@@ -5618,6 +5626,9 @@ void stop_wifi_hostapd(void)
 			}
 		}
 	}
+#if defined(RTCONFIG_SWRTMESH)
+//	swrtmesh_sysdep_bh_stop();
+#endif
 }
 
 void stop_wifi_wpa_supplicant(void)

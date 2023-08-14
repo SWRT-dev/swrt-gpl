@@ -1017,6 +1017,15 @@ else ifeq ($(RTCONFIG_SWRTMESH),y)
 LDFLAGS += -L$(STAGEDIR)/usr/lib -lubox -lblobmsg_json -luci -lswrtmesh
 CFLAGS += -I$(TOP)/shared/sysdeps/swrtmesh -I$(STAGEDIR)/usr/include
 OBJS += swrtmesh.o
+ifeq ($(RTCONFIG_RALINK),y)
+OBJS += $(if $(wildcard sysdeps/ralink/swrtmesh-ralink.c),swrtmesh-ralink.o,prebuild/swrtmesh-ralink.o)
+else ifeq ($(RTCONFIG_QCA),y)
+OBJS += $(if $(wildcard sysdeps/qca/swrtmesh-qca.c),swrtmesh-qca.o,prebuild/swrtmesh-qca.o)
+else ifeq ($(RTCONFIG_LANTIQ),y)
+OBJS += $(if $(wildcard sysdeps/lantiq/swrtmesh-lantiq.c),swrtmesh-lantiq.o,prebuild/swrtmesh-lantiq.o)
+else ifeq ($(RTCONFIG_BCMARM),y)
+OBJS += $(if $(wildcard sysdeps/broadcom/swrtmesh-broadcom.c),swrtmesh-broadcom.o,prebuild/swrtmesh-broadcom.o)
+endif
 endif
 
 all: PB rc $(if $(RTCONFIG_BRCM_HOSTAPD), $(WPS_PBCD)) init.prep

@@ -3567,6 +3567,9 @@ void wl_apply_akm_by_auth_mode(int unit, int subunit, char *sp_prefix_auth);
 #if defined(RTCONFIG_SWRTMESH)
 extern int start_swrtmesh(void);
 extern void stop_swrtmesh(void);
+extern void auto_generate_config(void);
+extern int start_mapcontroller(void);
+extern void stop_mapcontroller(void);
 #endif
 #endif	/* __RC_H__ */
 

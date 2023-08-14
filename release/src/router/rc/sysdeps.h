@@ -149,5 +149,11 @@ extern int config_agent_main(int argc, char *argv[]);
 extern int connect_agent(char *ip, int port, char *cmd);
 extern int easymesh_agentctrl_main(int argc, char *argv[]);
 #endif
+/* sysdeps/swrtmesh-PLATFORM.c */
+#if defined(RTCONFIG_SWRTMESH)
+extern int swrtmesh_sysdep_bh_start(void);
+extern int swrtmesh_sysdep_bh_stop(void);
+extern int swrtmesh_set_bh_bss_enabled(int unit, int subunit);
+#endif
 #endif
 

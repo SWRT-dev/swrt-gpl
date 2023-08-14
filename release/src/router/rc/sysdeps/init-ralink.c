@@ -1218,6 +1218,10 @@ void wl_ifdown(void)
 			ifconfig(vif, 0, NULL, NULL);
 	}
 #endif
+#if defined(RTCONFIG_SWRTMESH)
+	stop_wifi_hostapd();
+	stop_wifi_wpa_supplicant();
+#endif
 }
 
 void fini_wl(void)

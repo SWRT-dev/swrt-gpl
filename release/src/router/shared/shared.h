@@ -1462,7 +1462,9 @@ static inline int max_no_mssid(void)
 #endif
 		max_no_mssid++;
 #endif
-
+#if defined(RTCONFIG_SWRTMESH)
+//	max_no_mssid++;
+#endif
 	return max_no_mssid;
 }
 

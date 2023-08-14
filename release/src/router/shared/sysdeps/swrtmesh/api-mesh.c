@@ -66,24 +66,25 @@ char *get_easymesh_ver_str(int ver)
 char *get_mesh_bh_ifname(int band)
 {
 #if defined(RTCONFIG_RALINK)
-	int i, index = 0;
+	int i, idx = 0;
 	char tmp[18];
 //skip main ap and guest wifi
-	for(i = 0; i < MAX_NO_MSSID; i++){
+	for(i = 1; i < MAX_NO_MSSID; i++){
 		snprintf(tmp, sizeof(tmp), "wl%d.%d_bss_enabled", band, i);
 		if(nvram_match(tmp, "1"))
-			index++;
+			idx++;
 	}
-
+	if(idx == 0)
+		idx = 1;
 	if(band){
 #if defined(RTCONFIG_MT798X)
-		snprintf(bh5gifname, sizeof(bh5gifname), "rax%d", index);
+		snprintf(bh5gifname, sizeof(bh5gifname), "rax%d", idx);
 #else
-		snprintf(bh5gifname, sizeof(bh5gifname), "rai%d", index);
+		snprintf(bh5gifname, sizeof(bh5gifname), "rai%d", idx);
 #endif
 		return bh5gifname;
 	}else{
-		snprintf(bh2gifname, sizeof(bh2gifname), "ra%d", index);
+		snprintf(bh2gifname, sizeof(bh2gifname), "ra%d", idx);
 		return bh2gifname;
 	}
 #elif defined(RTCONFIG_QCA)

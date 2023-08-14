@@ -653,6 +653,9 @@ wl_defaults(void)
 #if defined(RTCONFIG_PSR_GUEST) && !defined(HND_ROUTER)
 		max_mssid++;
 #endif
+#if defined(RTCONFIG_SWRTMESH)
+//		max_mssid++;//guest 3 + bh 1
+#endif
 		for (subunit = 1; subunit < max_mssid+1; subunit++)
 		{
 			snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, subunit);
@@ -710,6 +713,10 @@ wl_defaults(void)
 
 #if (defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)) && defined(RTCONFIG_MSSID_PRELINK)
 			set_mssid_prelink_bss_enabled(unit, subunit);
+#endif
+
+#if defined(RTCONFIG_SWRTMESH)
+//			swrtmesh_set_bh_bss_enabled(unit, subunit);
 #endif
 
 #ifdef RTCONFIG_OWE_TRANS
