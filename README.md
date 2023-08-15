@@ -3,7 +3,7 @@
 
 ## 编译测试
 
-测试目标:MT7986 IPQ4019
+测试目标:MT7621 MT7986 IPQ4019 BCM4708
 
 **状态** [![CircleCI](https://dl.circleci.com/status-badge/img/gh/SWRT-dev/swrt-gpl/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/SWRT-dev/swrt-gpl/tree/master)
 

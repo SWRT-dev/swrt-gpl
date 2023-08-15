@@ -72,15 +72,19 @@ int start_swrtmesh(void)
 	_eval(ieee1905_argv, NULL, 0, &pid);
 	_eval(tp_argv, NULL, 0, &pid);
 	if(nvram_match("swrtmesh_controller_enable", "1")){
-		if(nvram_match("swrtmesh_agent_enable", "1"))
+		char buf[2] = {0};
+		swrtmesh_get_value_by_string("mapagent", "controller_select", NULL, "local", buf, sizeof(buf));
+		if(!strcmp(buf, "0"))
 			cntl_argv[5] = "-w";
 		_eval(cntl_argv, NULL, 0, &pid);
-		if(!check_if_file_exist("/proc/sys/net/netfilter/nf_conntrack_timestamp"))
+		if(check_if_file_exist("/proc/sys/net/netfilter/nf_conntrack_timestamp"))
 			system("echo 1 >/proc/sys/net/netfilter/nf_conntrack_timestamp");
 	}
 	if(nvram_match("swrtmesh_agent_enable", "1")){
 		unlink("/var/run/multiap/multiap.backhaul");
+		usleep(200000);
 		_eval(dynbhd_argv, NULL, 0, &pid);
+		usleep(200000);
 		_eval(agent_argv, NULL, 0, &pid);
 	}
 	//_eval(swrtmeshd_argv, NULL, 0, &pid);
@@ -123,5 +127,16 @@ void stop_mapcontroller(void)
 {
 	if(pids("mapcontroller"))
 		killall_tk("mapcontroller");
+}
+
+int wl_isup(char* ifname)
+{
+	char path[128] = {0}, buf[16] = {0};
+	snprintf(path, sizeof(path), "/sys/class/net/%s/operstate", ifname);
+	if(!f_exists(path))
+		return 0;
+	if(f_read_string(path, buf, sizeof(buf) > 0 && !strcmp(buf, "up")))
+		return 1;
+	return 0;
 }
 #endif

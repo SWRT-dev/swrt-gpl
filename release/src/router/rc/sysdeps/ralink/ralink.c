@@ -5582,6 +5582,32 @@ next:
 	return 0;
 }
 
+void hostapd_watchdog(void)
+{
+	pid_t pid;
+	char *wif = NULL;
+	char hostapd_path[50], pidfile[32], logfile[32];
+	char *hostapd_argv[] = { "hostapd", "-B", "-P", pidfile, "-f", logfile, /*"-dddd",*/ hostapd_path, NULL };
+	if(nvram_match("wl0_bss_enabled", "1")){
+		wif = get_wififname(WL_2G_BAND);
+		if(!wl_isup(wif)){
+			snprintf(hostapd_path, sizeof(hostapd_path), "/etc/Wireless/hostapd_%s.conf", wif);
+			snprintf(pidfile, sizeof(pidfile), "/var/run/hostapd_%s.pid", wif);
+			snprintf(logfile, sizeof(logfile), "/tmp/hostapd_%s.log", wif);
+			_eval(hostapd_argv, NULL, 0, &pid);
+		}
+	}
+	if(nvram_match("wl1_bss_enabled", "1")){
+		wif = get_wififname(WL_5G_BAND);
+		if(!wl_isup(wif)){
+			snprintf(hostapd_path, sizeof(hostapd_path), "/etc/Wireless/hostapd_%s.conf", wif);
+			snprintf(pidfile, sizeof(pidfile), "/var/run/hostapd_%s.pid", wif);
+			snprintf(logfile, sizeof(logfile), "/tmp/hostapd_%s.log", wif);
+			_eval(hostapd_argv, NULL, 0, &pid);
+		}
+	}
+}
+
 void hostapd_ra_start(void)
 {
 	int unit = 0, subunit = 0; 
@@ -5601,6 +5627,7 @@ void hostapd_ra_start(void)
 		}
 	}
 #if defined(RTCONFIG_SWRTMESH)
+	hostapd_watchdog();
 //	auto_generate_config();
 //	swrtmesh_sysdep_bh_start();
 #endif

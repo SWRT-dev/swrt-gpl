@@ -33,6 +33,7 @@ SWRTMESH_FUNC int type_to_multi_ap(const char *type);
 SWRTMESH_FUNC struct uci_package *swrtmesh_uci_load_pkg(struct uci_context **ctx, const char *config);
 SWRTMESH_FUNC int swrtmesh_set_value(struct uci_context *ctx, struct uci_package *pkg, struct uci_section *section, const char *key, const char *value, enum uci_option_type type);
 SWRTMESH_FUNC int swrtmesh_set_value_by_string(const char *package, const char *section, const char *key, const char *value, enum uci_option_type type);
+SWRTMESH_FUNC int swrtmesh_get_value_by_string(const char *package, const char *section, const char *band, const char *key, char *value, size_t len);
 SWRTMESH_FUNC bool swrtmesh_uci_set_option(char *package_name, char *section_type, char *search_key, char *search_val, char *option, char *value);
 SWRTMESH_FUNC struct uci_section *swrtmesh_config_get_section(struct uci_context *ctx, struct uci_package *pkg, const char *type, const char *key, const char *value);
 SWRTMESH_FUNC void swrtmesh_uci_add_option(struct uci_context *ctx, struct uci_package *p, struct uci_section *s, const char *option, void *value, bool is_list);
