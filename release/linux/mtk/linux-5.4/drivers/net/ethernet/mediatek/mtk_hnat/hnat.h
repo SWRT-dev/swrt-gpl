@@ -141,6 +141,8 @@
 #define HASH_MODE (0x3 << 14) /* RW */
 #define SCAN_MODE (0x3 << 16) /* RW */
 #define XMODE (0x3 << 18) /* RW */
+#define TICK_SEL (0x1 << 24) /* RW */
+
 
 /*PPE_CAH_CTRL mask*/
 #define CAH_EN (0x1 << 0) /* RW */
@@ -670,6 +672,7 @@ struct mtk_hnat {
 	struct ppe_mcast_table *pmcast;
 
 	u32 foe_etry_num;
+	u32 etry_num_cfg;
 	struct net_device *g_ppdev;
 	struct net_device *g_wandev;
 	struct net_device *wifi_hook_if[MAX_IF_NUM];
@@ -836,9 +839,8 @@ enum FoeIpAct {
 #define NR_WDMA0_PORT 8
 #define NR_WDMA1_PORT 9
 #define LAN_DEV_NAME hnat_priv->lan
-#define IS_WAN(dev)                                                            \
-	(!strncmp((dev)->name, hnat_priv->wan, strlen(hnat_priv->wan)))
-#define IS_LAN(dev) (!strncmp(dev->name, LAN_DEV_NAME, strlen(LAN_DEV_NAME)))
+#define IS_WAN(dev) ((!strncmp((dev)->name, hnat_priv->wan, strlen(hnat_priv->wan))) || (!strncmp((dev)->name, "bond1", 5)))
+#define IS_LAN(dev) ((!strncmp(dev->name, LAN_DEV_NAME, strlen(LAN_DEV_NAME))) || (!strncmp(dev->name, "bond0", 5)))
 #define IS_BR(dev) (!strncmp(dev->name, "br", 2))
 #define IS_WHNAT(dev)								\
 	((hnat_priv->data->whnat &&						\
@@ -944,6 +946,9 @@ int ext_if_add(struct extdev_entry *ext_entry);
 int ext_if_del(struct extdev_entry *ext_entry);
 void cr_set_field(void __iomem *reg, u32 field, u32 val);
 int mtk_sw_nat_hook_tx(struct sk_buff *skb, int gmac_no);
+int mtk_hnat_eth_hook_tx(struct sk_buff *skb);
+extern int (*eth_hook_tx)(struct sk_buff *skb);
+
 int mtk_sw_nat_hook_rx(struct sk_buff *skb);
 void mtk_ppe_dev_register_hook(struct net_device *dev);
 void mtk_ppe_dev_unregister_hook(struct net_device *dev);
@@ -961,6 +966,8 @@ void set_gmac_ppe_fwd(int gmac_no, int enable);
 int entry_detail(u32 ppe_id, int index);
 int entry_delete_by_mac(u8 *mac);
 int entry_delete(u32 ppe_id, int index);
+int hnat_warm_init(void);
+
 struct hnat_accounting *hnat_get_count(struct mtk_hnat *h, u32 ppe_id,
 				       u32 index, struct hnat_accounting *diff);
 

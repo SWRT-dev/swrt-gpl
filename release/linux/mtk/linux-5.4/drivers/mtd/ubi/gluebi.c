@@ -1006,7 +1006,7 @@ static int create_rootfs_partition(struct mtd_info *mtd,
 	}
 #else
 #if defined(CONFIG_MODEL_RMAX6000) || defined(CONFIG_MODEL_SWRT360T7)//mt7986
-	for(rfs_offset = 0x390000; rfs_offset < 0x400000; rfs_offset += 0x4) {
+	for(rfs_offset = 0x3A000C; rfs_offset < 0x40000C; rfs_offset += 0x40) {
 		ret = mtd_read(mtd, rfs_offset, sizeof(magic), &retlen, (unsigned char *) &magic);
 		if (le32_to_cpu(magic) == SQUASHFS_MAGIC){
 			ret = 0;

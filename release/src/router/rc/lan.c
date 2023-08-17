@@ -1968,9 +1968,6 @@ void start_lan(void)
 			_dprintf("%s: setting MAC address of bridge %s as %s\n", __FUNCTION__,
 				ifr.ifr_name, ether_etoa((const unsigned char *) ifr.ifr_hwaddr.sa_data, eabuf));
 		}
-#if defined(RTCONFIG_RALINK) && defined(RTCONFIG_SWRTMESH)
-		hostapd_ra_start();
-#endif
 	}
 	// --- this shouldn't happen ---
 	else if (*lan_ifname) {
@@ -2483,6 +2480,9 @@ void stop_lan(void)
 					if (is_hwnat_loaded())
 						modprobe_r(MTK_HNAT_MOD);
 					stop_wds_ra(lan_ifname, ifname);
+#if defined(RTCONFIG_SWRTMESH)
+					stop_wifi_hostapd();
+#endif
 				}
 #elif defined(RTCONFIG_QCA)
 				/* do nothing */
@@ -4184,6 +4184,9 @@ void stop_lan_wl(void)
 #if defined(RTCONFIG_EASYMESH)
 	stop_easymesh();
 #endif
+#if defined(RTCONFIG_SWRTMESH)
+	stop_wifi_hostapd();
+#endif
 	snprintf(lan_ifname, sizeof(lan_ifname), "%s", nvram_safe_get("lan_ifname"));
 	if ((wl_ifnames = strdup(nvram_safe_get("lan_ifnames"))) != NULL) {
 		p = wl_ifnames;
@@ -4227,7 +4230,7 @@ void stop_lan_wl(void)
 				eval("wl", "-i", ifname, "maxassoc", "0");
 			else
 				eval("wlconf", ifname, "down");
-#elif defined RTCONFIG_RALINK
+#elif defined(RTCONFIG_RALINK)
 			if (!strncmp(ifname, "ra", 2)) {
 				unregister_hnat_wlifaces();
 				if (is_hwnat_loaded())

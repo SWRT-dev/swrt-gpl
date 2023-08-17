@@ -5372,7 +5372,7 @@ int gen_hostapd_config(int band, int subunit)
 	snprintf(mac_path, sizeof(mac_path), "/etc/Wireless/maclist_%s.conf", wif);
 	snprintf(pidfile, sizeof(pidfile), "/var/run/hostapd_%s.pid", wif);
 	snprintf(logfile, sizeof(logfile), "/tmp/hostapd_%s.log", wif);
-	_dprintf("gen ralink hostapd config\n");
+	_dprintf("gen ralink hostapd config : %s\n", wif);
 	if (!(fp_h = fopen(hostapd_path, "w+")))
 		return 0;
 	if (!(fp_mac = fopen(mac_path, "w")))
@@ -5427,11 +5427,11 @@ int gen_hostapd_config(int band, int subunit)
 
 	/* Network Mode */
 	fprintf(fp_h, "hw_mode=%s\n", hw_mode);
-	if (nvram_pf_match(prefix, "channel", "0") || nvram_pf_get(prefix, "channel") == NULL){
-		int channel = get_channel(band);
-		fprintf(fp_h, "channel=%d\n", channel);
-	}else
-		fprintf(fp_h, "channel=%s\n", nvram_pf_get(prefix, "channel"));
+	//AutoChannelSelect, workaround for hostapd to work
+	if(band == 1)
+		fprintf(fp_h, "channel=%d\n", 36);
+	else
+		fprintf(fp_h, "channel=%d\n", 1);
 	/* AuthMode */
 	memset(tmpstr, 0x0, sizeof(tmpstr));
 	str = nvram_pf_get(prefix, "auth_mode_x");
@@ -5694,6 +5694,10 @@ void gen_ra_config(const char* wif)
 			}
 		}
 	}
+#if defined(RTCONFIG_SWRTMESH)
+	stop_wifi_hostapd();
+	hostapd_ra_start();
+#endif
 }
 
 int radio_ra(const char *wif, int band, int ctrl)
