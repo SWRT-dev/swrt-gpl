@@ -179,7 +179,7 @@
 
 &hnat {
 	mtketh-wan = "wan";
-	mtketh-lan = "eth0";
+	mtketh-lan = "lan";
 	mtketh-max-gmac = <1>;
 	mtkdsa-wan-port = <3>;
 	status = "okay";

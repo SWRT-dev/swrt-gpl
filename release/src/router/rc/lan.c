@@ -2094,7 +2094,9 @@ void start_lan(void)
 	enable_jumbo_frame();
 #endif
 #endif
-
+#if defined(RTCONFIG_SWRTMESH)
+	hostapd_watchdog();
+#endif
 	config_loopback();
 
 #ifdef RTCONFIG_PORT_BASED_VLAN
@@ -5102,6 +5104,9 @@ gmac3_no_swbr:
 #endif
 #ifdef RTCONFIG_QCA
 	gen_qca_wifi_cfgs();
+#endif
+#if defined(RTCONFIG_SWRTMESH)
+	hostapd_watchdog();
 #endif
 #if defined(RTCONFIG_QCA) && defined(RTCONFIG_SOC_IPQ40XX)
 	enable_jumbo_frame();
