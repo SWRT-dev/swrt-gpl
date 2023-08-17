@@ -64,6 +64,30 @@ config  MODEL_SWRT360T7
         bool "360T7"
         default n
 
+config MODEL_PANTHERA
+		bool "Panther porting on PantherA RFB"
+        default n
+
+config MODEL_PANTHERB
+		bool "Panther porting on PantherB RFB"
+        default n
+
+config MODEL_CHEETAH
+		bool "Cheetah porting on Cheetah RFB"
+        default n
+
+config MODEL_TUFAX4200
+		bool "Panther TUF-AX4200/TUF-AX4200Q"
+        default n
+
+config MODEL_TUFAX6000
+		bool "Panther TUF-AX6000"
+        default n
+
+config MODEL_RTAX59U
+		bool "Panther RT-AX59U"
+        default n
+
 config  ASUS_EXT
         bool "ASUS_EXT"
         default n

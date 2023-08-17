@@ -76,6 +76,9 @@ bcmswap16_buf(uint16 *buf, uint len)
 #ifndef hton16
 #ifndef IL_BIGENDIAN
 #define HTON16(i) BCMSWAP16(i)
+#define NTOH16(i) BCMSWAP16(i)
+#define HTON32(i) BCMSWAP32(i)
+#define NTOH32(i) BCMSWAP32(i)
 #define	hton16(i) bcmswap16(i)
 #define	hton32(i) bcmswap32(i)
 #define	ntoh16(i) bcmswap16(i)
@@ -86,6 +89,9 @@ bcmswap16_buf(uint16 *buf, uint len)
 #define htol32(i) (i)
 #else
 #define HTON16(i) (i)
+#define NTOH16(i) (i)
+#define HTON32(i) (i)
+#define NTOH32(i) (i)
 #define	hton16(i) (i)
 #define	hton32(i) (i)
 #define	ntoh16(i) (i)
@@ -106,7 +112,7 @@ bcmswap16_buf(uint16 *buf, uint len)
 #endif /* IL_BIGENDIAN */
 
 /*
-* store 16-bit value to unaligned little endian byte array.
+* Store 16-bit value to unaligned little endian byte array.
 */
 static INLINE void
 htol16_ua_store(uint16 val, uint8 *bytes)
@@ -116,7 +122,7 @@ htol16_ua_store(uint16 val, uint8 *bytes)
 }
 
 /*
-* store 32-bit value to unaligned little endian byte array.
+* Store 32-bit value to unaligned little endian byte array.
 */
 static INLINE void
 htol32_ua_store(uint32 val, uint8 *bytes)
@@ -128,7 +134,7 @@ htol32_ua_store(uint32 val, uint8 *bytes)
 }
 
 /*
-* store 16-bit value to unaligned network(big) endian byte array.
+* Store 16-bit value to unaligned network(big) endian byte array.
 */
 static INLINE void
 hton16_ua_store(uint16 val, uint8 *bytes)
@@ -138,7 +144,7 @@ hton16_ua_store(uint16 val, uint8 *bytes)
 }
 
 /*
-* store 32-bit value to unaligned network(big) endian byte array.
+* Store 32-bit value to unaligned network(big) endian byte array.
 */
 static INLINE void
 hton32_ua_store(uint32 val, uint8 *bytes)
@@ -149,54 +155,58 @@ hton32_ua_store(uint32 val, uint8 *bytes)
 	bytes[0] = val>>24;
 }
 
+#define _LTOH16_UA(cp)	((cp)[0] | ((cp)[1] << 8))
+#define _LTOH32_UA(cp)	((cp)[0] | ((cp)[1] << 8) | ((cp)[2] << 16) | ((cp)[3] << 24))
+#define _NTOH16_UA(cp)	(((cp)[0] << 8) | (cp)[1])
+#define _NTOH32_UA(cp)	(((cp)[0] << 24) | ((cp)[1] << 16) | ((cp)[2] << 8) | (cp)[3])
+
 /*
-* load 16-bit value from unaligned little endian byte array.
-*/
+ * Load 16-bit value from unaligned little-endian byte array.
+ */
 static INLINE uint16
-ltoh16_ua(void *bytes)
+ltoh16_ua(const void *bytes)
 {
-	return (((uint8*)bytes)[1]<<8)+((uint8 *)bytes)[0];
+	return _LTOH16_UA((const uint8 *)bytes);
 }
 
 /*
-* load 32-bit value from unaligned little endian byte array.
-*/
+ * Load 32-bit value from unaligned little-endian byte array.
+ */
 static INLINE uint32
-ltoh32_ua(void *bytes)
+ltoh32_ua(const void *bytes)
 {
-	return (((uint8*)bytes)[3]<<24)+(((uint8*)bytes)[2]<<16)+
-	       (((uint8*)bytes)[1]<<8)+((uint8*)bytes)[0];
+	return _LTOH32_UA((const uint8 *)bytes);
 }
 
 /*
-* load 16-bit value from unaligned big(network) endian byte array.
-*/
+ * Load 16-bit value from unaligned big-(network-)endian byte array.
+ */
 static INLINE uint16
-ntoh16_ua(void *bytes)
+ntoh16_ua(const void *bytes)
 {
-	return (((uint8*)bytes)[0]<<8)+((uint8*)bytes)[1];
+	return _NTOH16_UA((const uint8 *)bytes);
 }
 
 /*
-* load 32-bit value from unaligned big(network) endian byte array.
-*/
+ * Load 32-bit value from unaligned big-(network-)endian byte array.
+ */
 static INLINE uint32
-ntoh32_ua(void *bytes)
+ntoh32_ua(const void *bytes)
 {
-	return (((uint8*)bytes)[0]<<24)+(((uint8*)bytes)[1]<<16)+
-	       (((uint8*)bytes)[2]<<8)+((uint8*)bytes)[3];
+	return _NTOH32_UA((const uint8 *)bytes);
 }
 
-#define ltoh_ua(ptr) (\
-	sizeof(*(ptr)) == sizeof(uint8) ?  *(uint8 *)ptr : \
-	sizeof(*(ptr)) == sizeof(uint16) ? (((uint8 *)ptr)[1]<<8)+((uint8 *)ptr)[0] : \
-	(((uint8 *)ptr)[3]<<24)+(((uint8 *)ptr)[2]<<16)+(((uint8 *)ptr)[1]<<8)+((uint8 *)ptr)[0] \
-)
+#define ltoh_ua(ptr) \
+	(sizeof(*(ptr)) == sizeof(uint8) ? *(const uint8 *)ptr : \
+	 sizeof(*(ptr)) == sizeof(uint16) ? _LTOH16_UA((const uint8 *)ptr) : \
+	 sizeof(*(ptr)) == sizeof(uint32) ? _LTOH32_UA((const uint8 *)ptr) : \
+	 0xfeedf00d)
 
-#define ntoh_ua(ptr) (\
-	sizeof(*(ptr)) == sizeof(uint8) ?  *(uint8 *)ptr : \
-	sizeof(*(ptr)) == sizeof(uint16) ? (((uint8 *)ptr)[0]<<8)+((uint8 *)ptr)[1] : \
-	(((uint8 *)ptr)[0]<<24)+(((uint8 *)ptr)[1]<<16)+(((uint8 *)ptr)[2]<<8)+((uint8 *)ptr)[3] \
-)
+#define ntoh_ua(ptr) \
+	(sizeof(*(ptr)) == sizeof(uint8) ? *(const uint8 *)ptr : \
+	 sizeof(*(ptr)) == sizeof(uint16) ? _NTOH16_UA((const uint8 *)ptr) : \
+	 sizeof(*(ptr)) == sizeof(uint32) ? _NTOH32_UA((const uint8 *)ptr) : \
+	 0xfeedf00d)
+
 
 #endif /* _BCMENDIAN_H_ */

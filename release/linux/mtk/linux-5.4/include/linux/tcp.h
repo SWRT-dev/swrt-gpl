@@ -20,6 +20,9 @@
 #include <net/inet_connection_sock.h>
 #include <net/inet_timewait_sock.h>
 #include <uapi/linux/tcp.h>
+#ifdef CONFIG_IP_NF_LFP
+#define TCP_LFP			0x12DAE8A
+#endif
 
 static inline struct tcphdr *tcp_hdr(const struct sk_buff *skb)
 {

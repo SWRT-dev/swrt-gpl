@@ -83,7 +83,7 @@
 #define MAX_PROFILE_CNT 4
 #define PER_EVENT_LIST_MAX_NUM 		5
 #define	DAEMON_NEIGHBOR_REPORT_MAX_NUM 128
-#define VERSION_WAPP_CMM "v3.0.0.1"
+#define VERSION_WAPP_CMM "v3.0.1.2"
 #ifdef MAP_R3_WF6
 #define MAX_TID 4
 #endif
@@ -205,9 +205,7 @@ typedef enum {
 	WAPP_CH_CHANGE_R3,
 	WAPP_SELF_SRG_BITMAP_EVENT,
 	WAPP_UPLINK_TRAFFIC_EVENT,
-#ifdef WPS_UNCONFIG_FEATURE_SUPPORT
 	WAPP_CONFIG_WPS_EVENT,
-#endif
 } WAPP_EVENT_ID;
 
 typedef enum {
@@ -500,6 +498,17 @@ typedef struct GNU_PACKED _wdev_op_class_info {
 	u8		num_of_op_class;
 	struct opClassInfo opClassInfo[MAX_OP_CLASS];
 } wdev_op_class_info;
+
+struct GNU_PACKED opClassInfoExt {
+	u8	op_class;
+	u8	num_of_ch;
+	u8	ch_list[MAX_NUM_OF_CHANNELS];
+};
+
+struct GNU_PACKED _wdev_op_class_info_ext {
+	u8		num_of_op_class;
+	struct opClassInfoExt opClassInfoExt[MAX_OP_CLASS];
+};
 
 typedef struct GNU_PACKED _wdev_bss_info {
 	u8 if_addr[MAC_ADDR_LEN];

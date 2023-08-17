@@ -287,56 +287,13 @@ static void hnat_roaming_disable(void)
 	pr_info("hnat roaming work disable\n");
 }
 
-static int hnat_start(u32 ppe_id)
+static int hnat_hw_init(u32 ppe_id)
 {
-	u32 foe_table_sz;
-	u32 foe_mib_tb_sz;
-	int etry_num_cfg;
-
 	if (ppe_id >= CFG_PPE_NUM)
 		return -EINVAL;
 
-	/* mapp the FOE table */
-	for (etry_num_cfg = DEF_ETRY_NUM_CFG ; etry_num_cfg >= 0 ; etry_num_cfg--, hnat_priv->foe_etry_num /= 2) {
-		foe_table_sz = hnat_priv->foe_etry_num * sizeof(struct foe_entry);
-		hnat_priv->foe_table_cpu[ppe_id] = dma_alloc_coherent(
-				hnat_priv->dev, foe_table_sz,
-				&hnat_priv->foe_table_dev[ppe_id], GFP_KERNEL);
-
-		if (hnat_priv->foe_table_cpu[ppe_id])
-			break;
-	}
-
-	if (!hnat_priv->foe_table_cpu[ppe_id])
-		return -1;
-	dev_info(hnat_priv->dev, "PPE%d entry number = %d\n",
-		 ppe_id, hnat_priv->foe_etry_num);
-
-	writel(hnat_priv->foe_table_dev[ppe_id], hnat_priv->ppe_base[ppe_id] + PPE_TB_BASE);
-	memset(hnat_priv->foe_table_cpu[ppe_id], 0, foe_table_sz);
-
-	if (hnat_priv->data->version == MTK_HNAT_V1)
-		exclude_boundary_entry(hnat_priv->foe_table_cpu[ppe_id]);
-
-	if (hnat_priv->data->per_flow_accounting) {
-		foe_mib_tb_sz = hnat_priv->foe_etry_num * sizeof(struct mib_entry);
-		hnat_priv->foe_mib_cpu[ppe_id] =
-			dma_alloc_coherent(hnat_priv->dev, foe_mib_tb_sz,
-					   &hnat_priv->foe_mib_dev[ppe_id], GFP_KERNEL);
-		if (!hnat_priv->foe_mib_cpu[ppe_id])
-			return -1;
-		writel(hnat_priv->foe_mib_dev[ppe_id],
-		       hnat_priv->ppe_base[ppe_id] + PPE_MIB_TB_BASE);
-		memset(hnat_priv->foe_mib_cpu[ppe_id], 0, foe_mib_tb_sz);
-
-		hnat_priv->acct[ppe_id] =
-			kzalloc(hnat_priv->foe_etry_num * sizeof(struct hnat_accounting),
-				GFP_KERNEL);
-		if (!hnat_priv->acct[ppe_id])
-			return -1;
-	}
 	/* setup hashing */
-	cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_TB_CFG, TB_ETRY_NUM, etry_num_cfg);
+	cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_TB_CFG, TB_ETRY_NUM, hnat_priv->etry_num_cfg);
 	cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_TB_CFG, HASH_MODE, HASH_MODE_1);
 	writel(HASH_SEED_KEY, hnat_priv->ppe_base[ppe_id] + PPE_HASH_SEED);
 	cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_TB_CFG, XMODE, 0);
@@ -374,8 +331,16 @@ static int hnat_start(u32 ppe_id)
 	cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_BND_AGE_1, TCP_DLTA, 7);
 
 	/* setup FOE ka */
+	cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_TB_CFG, KA_CFG, 0);
+	cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_BIND_LMT_1, NTU_KA, 0);
+	cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_KA, KA_T, 0);
+	cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_KA, TCP_KA, 0);
+	cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_KA, UDP_KA, 0);
+	mdelay(10);
+
 	cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_TB_CFG, SCAN_MODE, 2);
 	cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_TB_CFG, KA_CFG, 3);
+	cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_TB_CFG, TICK_SEL, 0);
 	cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_KA, KA_T, 1);
 	cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_KA, TCP_KA, 1);
 	cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_KA, UDP_KA, 1);
@@ -415,6 +380,62 @@ static int hnat_start(u32 ppe_id)
 	return 0;
 }
 
+static int hnat_start(u32 ppe_id)
+{
+	u32 foe_table_sz;
+	u32 foe_mib_tb_sz;
+	u32 etry_num_cfg;
+
+	if (ppe_id >= CFG_PPE_NUM)
+		return -EINVAL;
+
+	/* mapp the FOE table */
+	for (etry_num_cfg = DEF_ETRY_NUM_CFG ; etry_num_cfg >= 0 ;
+	     etry_num_cfg--, hnat_priv->foe_etry_num /= 2) {
+		foe_table_sz = hnat_priv->foe_etry_num * sizeof(struct foe_entry);
+		hnat_priv->foe_table_cpu[ppe_id] = dma_alloc_coherent(
+				hnat_priv->dev, foe_table_sz,
+				&hnat_priv->foe_table_dev[ppe_id], GFP_KERNEL);
+
+		if (hnat_priv->foe_table_cpu[ppe_id])
+			break;
+	}
+
+	if (!hnat_priv->foe_table_cpu[ppe_id])
+		return -1;
+	dev_info(hnat_priv->dev, "PPE%d entry number = %d\n",
+		 ppe_id, hnat_priv->foe_etry_num);
+
+	writel(hnat_priv->foe_table_dev[ppe_id], hnat_priv->ppe_base[ppe_id] + PPE_TB_BASE);
+	memset(hnat_priv->foe_table_cpu[ppe_id], 0, foe_table_sz);
+
+	if (hnat_priv->data->version == MTK_HNAT_V1)
+		exclude_boundary_entry(hnat_priv->foe_table_cpu[ppe_id]);
+
+	if (hnat_priv->data->per_flow_accounting) {
+		foe_mib_tb_sz = hnat_priv->foe_etry_num * sizeof(struct mib_entry);
+		hnat_priv->foe_mib_cpu[ppe_id] =
+			dma_alloc_coherent(hnat_priv->dev, foe_mib_tb_sz,
+					   &hnat_priv->foe_mib_dev[ppe_id], GFP_KERNEL);
+		if (!hnat_priv->foe_mib_cpu[ppe_id])
+			return -1;
+		writel(hnat_priv->foe_mib_dev[ppe_id],
+		       hnat_priv->ppe_base[ppe_id] + PPE_MIB_TB_BASE);
+		memset(hnat_priv->foe_mib_cpu[ppe_id], 0, foe_mib_tb_sz);
+
+		hnat_priv->acct[ppe_id] =
+			kzalloc(hnat_priv->foe_etry_num * sizeof(struct hnat_accounting),
+				GFP_KERNEL);
+		if (!hnat_priv->acct[ppe_id])
+			return -1;
+	}
+
+	hnat_priv->etry_num_cfg = etry_num_cfg;
+	hnat_hw_init(ppe_id);
+
+	return 0;
+}
+
 static int ppe_busy_wait(u32 ppe_id)
 {
 	unsigned long t_start = jiffies;
@@ -429,7 +450,7 @@ static int ppe_busy_wait(u32 ppe_id)
 			return 0;
 		if (time_after(jiffies, t_start + HZ))
 			break;
-		usleep_range(10, 20);
+		mdelay(10);
 	}
 
 	dev_notice(hnat_priv->dev, "ppe:%s timeout\n", __func__);
@@ -442,7 +463,6 @@ static void hnat_stop(u32 ppe_id)
 	u32 foe_table_sz;
 	u32 foe_mib_tb_sz;
 	struct foe_entry *entry, *end;
-	u32 r1 = 0, r2 = 0;
 
 	if (ppe_id >= CFG_PPE_NUM)
 		return;
@@ -491,23 +511,13 @@ static void hnat_stop(u32 ppe_id)
 	cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_TB_CFG, UDP_AGE, 0);
 	cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_TB_CFG, FIN_AGE, 0);
 
-	r1 = readl(hnat_priv->fe_base + 0x100);
-	r2 = readl(hnat_priv->fe_base + 0x10c);
-
-	dev_info(hnat_priv->dev, "0x100 = 0x%x, 0x10c = 0x%x\n", r1, r2);
-
-	if (((r1 & 0xff00) >> 0x8) >= (r1 & 0xff) ||
-	    ((r1 & 0xff00) >> 0x8) >= (r2 & 0xff)) {
-		dev_info(hnat_priv->dev, "reset pse\n");
-		writel(0x1, hnat_priv->fe_base + 0x4);
-	}
-
 	/* free the FOE table */
 	foe_table_sz = hnat_priv->foe_etry_num * sizeof(struct foe_entry);
 	if (hnat_priv->foe_table_cpu[ppe_id])
 		dma_free_coherent(hnat_priv->dev, foe_table_sz,
 				  hnat_priv->foe_table_cpu[ppe_id],
 				  hnat_priv->foe_table_dev[ppe_id]);
+	hnat_priv->foe_table_cpu[ppe_id] = NULL;
 	writel(0, hnat_priv->ppe_base[ppe_id] + PPE_TB_BASE);
 
 	if (hnat_priv->data->per_flow_accounting) {
@@ -561,6 +571,7 @@ int hnat_enable_hook(void)
 		ppe_dev_register_hook = mtk_ppe_dev_register_hook;
 		ppe_dev_unregister_hook = mtk_ppe_dev_unregister_hook;
 	}
+	eth_hook_tx = mtk_hnat_eth_hook_tx;
 
 	if (hnat_register_nf_hooks())
 		return -1;
@@ -578,6 +589,7 @@ int hnat_disable_hook(void)
 
 	ra_sw_nat_hook_tx = NULL;
 	ra_sw_nat_hook_rx = NULL;
+	eth_hook_tx = NULL;
 	hnat_unregister_nf_hooks();
 
 	for (i = 0; i < CFG_PPE_NUM; i++) {
@@ -600,6 +612,41 @@ int hnat_disable_hook(void)
 	mod_timer(&hnat_priv->hnat_sma_build_entry_timer, jiffies + 3 * HZ);
 	ppe_del_entry_by_mac = NULL;
 	hook_toggle = 0;
+
+	return 0;
+}
+
+int hnat_warm_init(void)
+{
+	u32 foe_table_sz, foe_mib_tb_sz, ppe_id = 0;
+
+	unregister_netevent_notifier(&nf_hnat_netevent_nb);
+
+	for (ppe_id = 0; ppe_id < CFG_PPE_NUM; ppe_id++) {
+		foe_table_sz =
+			hnat_priv->foe_etry_num * sizeof(struct foe_entry);
+		writel(hnat_priv->foe_table_dev[ppe_id],
+		       hnat_priv->ppe_base[ppe_id] + PPE_TB_BASE);
+		memset(hnat_priv->foe_table_cpu[ppe_id], 0, foe_table_sz);
+
+		if (hnat_priv->data->version == MTK_HNAT_V1)
+			exclude_boundary_entry(hnat_priv->foe_table_cpu[ppe_id]);
+
+		if (hnat_priv->data->per_flow_accounting) {
+			foe_mib_tb_sz =
+				hnat_priv->foe_etry_num * sizeof(struct mib_entry);
+			writel(hnat_priv->foe_mib_dev[ppe_id],
+			       hnat_priv->ppe_base[ppe_id] + PPE_MIB_TB_BASE);
+			memset(hnat_priv->foe_mib_cpu[ppe_id], 0,
+			       foe_mib_tb_sz);
+		}
+
+		hnat_hw_init(ppe_id);
+	}
+
+	set_gmac_ppe_fwd(0, 1);
+	set_gmac_ppe_fwd(1, 1);
+	register_netevent_notifier(&nf_hnat_netevent_nb);
 
 	return 0;
 }

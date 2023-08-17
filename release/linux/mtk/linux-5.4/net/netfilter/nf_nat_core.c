@@ -27,6 +27,9 @@
 
 #include "nf_internals.h"
 
+static u16 tcp_port_rover;
+static u16 udp_port_rover;
+
 static spinlock_t nf_nat_locks[CONNTRACK_LOCKS];
 
 static DEFINE_MUTEX(nf_nat_proto_mutex);
@@ -295,14 +298,27 @@ static bool nf_nat_inet_in_range(const struct nf_conntrack_tuple *t,
 /* Is the manipable part of the tuple between min and max incl? */
 static bool l4proto_in_range(const struct nf_conntrack_tuple *tuple,
 			     enum nf_nat_manip_type maniptype,
-			     const union nf_conntrack_man_proto *min,
-			     const union nf_conntrack_man_proto *max)
+			     const struct nf_nat_range2 *range)
 {
 	__be16 port;
+	const union nf_conntrack_man_proto *min = &range->min_proto;
+	const union nf_conntrack_man_proto *max = &range->max_proto;
+	unsigned int a, k, m;
+	u_int16_t id, psid;
 
 	switch (tuple->dst.protonum) {
 	case IPPROTO_ICMP:
 	case IPPROTO_ICMPV6:
+		if (range->flags & NF_NAT_RANGE_PROTO_PSID) {
+			a = range->min_proto.psid.offset;
+			k = range->min_proto.psid.length;
+			m = 16 - a - k;
+			psid = range->max_proto.psid.id;
+			id = ntohs(tuple->src.u.icmp.id);
+
+			return (a == 0 || (id >> (16 - a))) &&
+			       !(((id >> m) ^ psid) & ~(~0U << k));
+		}
 		return ntohs(tuple->src.u.icmp.id) >= ntohs(min->icmp.id) &&
 		       ntohs(tuple->src.u.icmp.id) <= ntohs(max->icmp.id);
 	case IPPROTO_GRE: /* all fall though */
@@ -315,6 +331,17 @@ static bool l4proto_in_range(const struct nf_conntrack_tuple *tuple,
 			port = tuple->src.u.all;
 		else
 			port = tuple->dst.u.all;
+
+		if (range->flags & NF_NAT_RANGE_PROTO_PSID) {
+			a = range->min_proto.psid.offset;
+			k = range->min_proto.psid.length;
+			m = 16 - a - k;
+			psid = range->max_proto.psid.id;
+			id = ntohs(port);
+
+			return (a == 0 || (id >> (16 - a))) &&
+			       !(((id >> m) ^ psid) & ~(~0U << k));
+		}
 
 		return ntohs(port) >= ntohs(min->all) &&
 		       ntohs(port) <= ntohs(max->all);
@@ -336,11 +363,14 @@ static int in_range(const struct nf_conntrack_tuple *tuple,
 	    !nf_nat_inet_in_range(tuple, range))
 		return 0;
 
-	if (!(range->flags & NF_NAT_RANGE_PROTO_SPECIFIED))
+	if (range->flags & NF_NAT_RANGE_PROTO_PSID)
+		return l4proto_in_range(tuple, NF_NAT_MANIP_SRC, range);
+
+	if (!(range->flags & NF_NAT_RANGE_PROTO_SPECIFIED) ||
+	    l4proto_in_range(tuple, NF_NAT_MANIP_SRC, range))
 		return 1;
 
-	return l4proto_in_range(tuple, NF_NAT_MANIP_SRC,
-				&range->min_proto, &range->max_proto);
+	return l4proto_in_range(tuple, NF_NAT_MANIP_SRC, range);
 }
 
 static inline int
@@ -495,22 +525,61 @@ find_best_ips_proto(const struct nf_conntrack_zone *zone,
 static int nf_nat_l4proto_unique_tuple(struct nf_conntrack_tuple *tuple,
 				       const struct nf_nat_range2 *range,
 				       enum nf_nat_manip_type maniptype,
-				       const struct nf_conn *ct)
+					const struct nf_conn *ct,
+					u16 *tcp_rover, u16 *udp_rover)
 #else
 static void nf_nat_l4proto_unique_tuple(struct nf_conntrack_tuple *tuple,
 					const struct nf_nat_range2 *range,
 					enum nf_nat_manip_type maniptype,
-					const struct nf_conn *ct)
+					const struct nf_conn *ct,
+					u16 *tcp_rover, u16 *udp_rover)
 #endif
 {
 	unsigned int range_size, min, max, i, attempts;
 	__be16 *keyptr;
 	u16 off;
+	unsigned int a, k, m;
+	u_int16_t psid;
 	static const unsigned int max_attempts = 128;
 
 	switch (tuple->dst.protonum) {
 	case IPPROTO_ICMP: /* fallthrough */
 	case IPPROTO_ICMPV6:
+		if (range->flags & NF_NAT_RANGE_PROTO_PSID) {
+			static u_int16_t id;
+
+			a = range->min_proto.psid.offset;
+			k = range->min_proto.psid.length;
+			m = 16 - a - k;
+			psid = range->max_proto.psid.id << m;
+
+			range_size = (1 << (16 - k)) - (!!a << m);
+			if (range_size == 0)
+#if defined(CONFIG_SWRT_FULLCONEV2)
+				return 1;
+#else
+				return;
+#endif
+
+			for (i = 0; ; ++id) {
+				unsigned int n = id % range_size;
+				tuple->src.u.icmp.id = htons((((n >> m) + !!a) << (16 - a)) |
+							     psid | (n & ~(~0U << m)));
+				if (++i >= range_size || !nf_nat_used_tuple(tuple, ct))
+#if defined(CONFIG_SWRT_FULLCONEV2)
+					return 1;
+#else
+					return;
+#endif
+
+			}
+#if defined(CONFIG_SWRT_FULLCONEV2)
+			return 1;
+#else
+			return;
+#endif
+		}
+
 		/* id is same for either direction... */
 		keyptr = &tuple->src.u.icmp.id;
 		if (!(range->flags & NF_NAT_RANGE_PROTO_SPECIFIED)) {
@@ -561,6 +630,53 @@ static void nf_nat_l4proto_unique_tuple(struct nf_conntrack_tuple *tuple,
 	default:
 #if defined(CONFIG_SWRT_FULLCONEV2)
 		return 0;
+#else
+		return;
+#endif
+	}
+
+	if (range->flags & NF_NAT_RANGE_PROTO_PSID) {
+
+		a = range->min_proto.psid.offset;
+		k = range->min_proto.psid.length;
+		m = 16 - a - k;
+		psid = range->max_proto.psid.id << m;
+
+		range_size = (1 << (16 - k)) - (!!a << m);
+		if (range_size == 0)
+#if defined(CONFIG_SWRT_FULLCONEV2)
+			return 1;
+#else
+			return;
+#endif
+
+		if (tuple->dst.protonum == IPPROTO_TCP)
+			off = *tcp_rover;
+		else if (tuple->dst.protonum == IPPROTO_UDP)
+			off = *udp_rover;
+		else
+			off = prandom_u32();
+
+		for (i = 0; ; ++off) {
+			unsigned int n = off % range_size;
+			*keyptr = htons((((n >> m) + !!a) << (16 - a)) |
+					 psid | (n & ~(~0U << m)));
+			if (++i != range_size && nf_nat_used_tuple(tuple, ct))
+				continue;
+			if (!(range->flags & NF_NAT_RANGE_PROTO_RANDOM_ALL)) {
+				if (tuple->dst.protonum == IPPROTO_TCP)
+					*tcp_rover = off;
+				else if (tuple->dst.protonum == IPPROTO_UDP)
+					*udp_rover = off;
+			}
+#if defined(CONFIG_SWRT_FULLCONEV2)
+			return 1;
+#else
+			return;
+#endif
+		}
+#if defined(CONFIG_SWRT_FULLCONEV2)
+		return 1;
 #else
 		return;
 #endif
@@ -760,11 +876,13 @@ get_unique_tuple(struct nf_conntrack_tuple *tuple,
 	/* Only bother mapping if it's not already in range and unique */
 #if defined(CONFIG_SWRT_FULLCONEV2)
 	if (!(nat_range.flags & NF_NAT_RANGE_PROTO_RANDOM_ALL)) {
-		if (nat_range.flags & NF_NAT_RANGE_PROTO_SPECIFIED) {
+		if (nat_range.flags & NF_NAT_RANGE_PROTO_PSID) {
+			if (l4proto_in_range(tuple, maniptype, range) &&
+			    !nf_nat_used_tuple(tuple, ct))
+				return 1;
+		} else if (nat_range.flags & NF_NAT_RANGE_PROTO_SPECIFIED) {
 			if (!(nat_range.flags & NF_NAT_RANGE_PROTO_OFFSET) &&
-			    l4proto_in_range(tuple, maniptype,
-					     &(nat_range.min_proto),
-					     &(nat_range.max_proto))) {
+			    l4proto_in_range(tuple, maniptype, range)) {
 				if (nat_range.flags & NF_NAT_RANGE_FULLCONE) {
 					if (!nf_nat_used_3_tuple(tuple, ct, maniptype))
 						goto out;
@@ -780,11 +898,12 @@ get_unique_tuple(struct nf_conntrack_tuple *tuple,
 	}
 #else
 	if (!(range->flags & NF_NAT_RANGE_PROTO_RANDOM_ALL)) {
-		if (range->flags & NF_NAT_RANGE_PROTO_SPECIFIED) {
-			if (!(range->flags & NF_NAT_RANGE_PROTO_OFFSET) &&
-			    l4proto_in_range(tuple, maniptype,
-			          &range->min_proto,
-			          &range->max_proto) &&
+		if (range->flags & NF_NAT_RANGE_PROTO_PSID) {
+			if (l4proto_in_range(tuple, maniptype, range) &&
+			    !nf_nat_used_tuple(tuple, ct))
+				return;
+		} else if (range->flags & NF_NAT_RANGE_PROTO_SPECIFIED) {
+			if (l4proto_in_range(tuple, maniptype, range) &&
 			    (range->min_proto.all == range->max_proto.all ||
 			     !nf_nat_used_tuple(tuple, ct)))
 				return;
@@ -796,11 +915,11 @@ get_unique_tuple(struct nf_conntrack_tuple *tuple,
 
 	/* Last chance: get protocol to try to obtain unique tuple. */
 #if defined(CONFIG_SWRT_FULLCONEV2)
-	return nf_nat_l4proto_unique_tuple(tuple, &nat_range, maniptype, ct);
+	return nf_nat_l4proto_unique_tuple(tuple, &nat_range, maniptype, ct, &tcp_port_rover, &udp_port_rover);
 out:
 	return 1;
 #else
-	nf_nat_l4proto_unique_tuple(tuple, range, maniptype, ct);
+	nf_nat_l4proto_unique_tuple(tuple, range, maniptype, ct, &tcp_port_rover, &udp_port_rover);
 #endif
 }
 

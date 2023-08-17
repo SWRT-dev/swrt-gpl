@@ -195,7 +195,7 @@ static const struct mtk_spi_compatible mt8183_compat = {
  */
 static const struct mtk_chip_config mtk_default_chip_info = {
 	.sample_sel = 0,
-	.get_tick_dly = 1,
+	.get_tick_dly = 2,
 };
 
 static const struct of_device_id mtk_spi_of_match[] = {

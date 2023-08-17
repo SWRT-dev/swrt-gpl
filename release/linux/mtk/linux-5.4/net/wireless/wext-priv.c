@@ -147,6 +147,15 @@ static int ioctl_private_iw_point(struct iw_point *iwp, unsigned int cmd,
 		if (!iwp->pointer && iwp->length != 0)
 			return -EFAULT;
 
+#if 1 /* ASUS FIX */
+		/* Ignore IW_PRIV_SIZE_MASK validation when cmd is RTPRIV_IOCTL_ASUSCMD.
+		 * Because the buffer size used by rc is greater than 2048,
+		 * but IW_PRIV_SIZE_MASK allows a maximum value of 2047. */
+		#define RTPRIV_IOCTL_ASUSCMD	(SIOCIWFIRSTPRIV + 0x1E)
+		if (cmd == RTPRIV_IOCTL_ASUSCMD)
+			extra_size = iwp->length;
+		else
+#endif
 		if (iwp->length > (descr->set_args & IW_PRIV_SIZE_MASK))
 			return -E2BIG;
 	} else if (!iwp->pointer)

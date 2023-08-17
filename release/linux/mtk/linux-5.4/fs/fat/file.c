@@ -509,6 +509,9 @@ int fat_setattr(struct dentry *dentry, struct iattr *attr)
 		inode_dio_wait(inode);
 
 		if (attr->ia_size > inode->i_size) {
+			error = 0;	// ASUS EXT
+			goto out;	// ASUS EXT
+
 			error = fat_cont_expand(inode, attr->ia_size);
 			if (error || attr->ia_valid == ATTR_SIZE)
 				goto out;

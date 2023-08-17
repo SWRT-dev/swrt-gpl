@@ -935,6 +935,7 @@ int usb_get_device_descriptor(struct usb_device *dev, unsigned int size)
 	kfree(desc);
 	return ret;
 }
+EXPORT_SYMBOL(usb_get_device_descriptor);
 
 /*
  * usb_set_isoch_delay - informs the device of the packet transmit delay

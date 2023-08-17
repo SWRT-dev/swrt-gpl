@@ -2,7 +2,7 @@
 #include "mt7981.dtsi"
 / {
 	model = "MediaTek MT7981 RFB";
-	compatible = "mediatek,mt7981-snand-pcie-2500wan-p5-rfb";
+	compatible = "mediatek,mt7981-snfi-snand-pcie-2500wan-p5-rfb";
 	chosen {
 		bootargs = "console=ttyS0,115200n1 loglevel=8  \
 				earlycon=uart8250,mmio32,0x11002000";

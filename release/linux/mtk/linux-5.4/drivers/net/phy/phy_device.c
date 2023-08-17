@@ -1906,6 +1906,15 @@ int genphy_update_link(struct phy_device *phydev)
 	if (bmcr < 0)
 		return bmcr;
 
+#if 1 // PHY loop bit fix workaround
+	if (memcmp(phydev->attached_dev->name, "lan", 3)==0) {
+		if (bmcr & BMCR_LOOPBACK) {
+			pr_crit("[WWWWWarning: %s loopback bit is on, fix!!]\n", phydev->attached_dev->name);
+			bmcr = 0x1040;
+			phy_write(phydev, MII_BMCR, (u16)bmcr);
+		}
+	}
+#endif
 	/* Autoneg is being started, therefore disregard BMSR value and
 	 * report link as down.
 	 */

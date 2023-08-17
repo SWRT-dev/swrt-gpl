@@ -164,8 +164,10 @@ retry:
 			 * enabled. A corresponding message will be printed
 			 * later, when it is has been scrubbed.
 			 */
-			ubi_msg(ubi, "fixable bit-flip detected at PEB %d",
-				pnum);
+			if (printk_ratelimit()) {
+				ubi_msg(ubi, "fixable bit-flip detected at PEB %d",
+					pnum);
+			}
 			ubi_assert(len == read);
 			return UBI_IO_BITFLIPS;
 		}

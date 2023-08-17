@@ -22,7 +22,7 @@
 
 #define bzero(p,l)		memset(p,0,l)
 #define sb_osh(s)		s
-#define MALLOC(o,s)		kmalloc(s, GFP_ATOMIC)
+#define MALLOC(o,s)		kmalloc(s, GFP_KERNEL)
 #define MFREE(o,a,s)	kfree(a);
 #define printf			printk
 
@@ -364,12 +364,27 @@ BCMINITFN(_nvram_set)(const char *name, const char *value)
 	uint i;
 	struct nvram_tuple *t, *u, **prev;
 
+	if(name == NULL || *name == '\0') {
+		printk("ERROR!! [%s]invalid name(%s) value(%s) !\n", __func__, name, value);
+		return -EFAULT;
+	}
 	/* Hash the name */
 	i = hash(name) % ARRAYSIZE(nvram_hash);
 
 	/* Find the associated tuple in the hash table */
+#if 0
 	for (prev = &nvram_hash[i], t = *prev; t && strcmp(t->name, name);
 	     prev = &t->next, t = *prev);
+#else /* workaroud */
+	for (prev = &nvram_hash[i], t = *prev; t ;prev = &t->next, t = *prev) {
+		if ( !t->name ) { /* invalid tuple... */
+			printk("ERROR!! [%s]invalid tuple name!\n", __func__);
+			return -EFAULT;
+		}
+		if ( !strcmp(t->name, name) )
+			break;
+	}
+#endif
 
 	/* (Re)allocate tuple */
 	if (!(u = _nvram_realloc(t, name, value)))

@@ -954,7 +954,13 @@ mt753x_cpu_port_enable(struct dsa_switch *ds, int port)
 		     PORT_SPEC_TAG);
 
 	/* Unknown multicast frame forwarding to the cpu port */
+#if defined(CONFIG_PANTHERB) // workaround for switch WAN port, port 4 => port 5 is connected to CPU eth1
+	mt7530_rmw(priv, MT7530_MFC, UNM_FFP_MASK, UNM_FFP(BIT(port)|BIT(5)|BIT(4)));
+#elif defined(CONFIG_RTAX59U) // workaround for switch WAN port, port 1 => port 5 is connected to CPU eth1
+	mt7530_rmw(priv, MT7530_MFC, UNM_FFP_MASK, UNM_FFP(BIT(port)|BIT(5)|BIT(1)));
+#else
 	mt7530_rmw(priv, MT7530_MFC, UNM_FFP_MASK, UNM_FFP(BIT(port)));
+#endif
 
 	/* Set CPU port number */
 	if (priv->id == ID_MT7621)
@@ -1047,6 +1053,7 @@ mt7530_stp_state_set(struct dsa_switch *ds, int port, u8 state)
 	mt7530_rmw(priv, MT7530_SSP_P(port), FID_PST_MASK, stp_state);
 }
 
+extern bool no_dsa_offload;
 static int
 mt7530_port_bridge_join(struct dsa_switch *ds, int port,
 			struct net_device *bridge)
@@ -1057,6 +1064,7 @@ mt7530_port_bridge_join(struct dsa_switch *ds, int port,
 
 	mutex_lock(&priv->reg_mutex);
 
+	if (!no_dsa_offload)
 	for (i = 0; i < MT7530_NUM_PORTS; i++) {
 		/* Add this port to the port matrix of the other ports in the
 		 * same bridge. If the port is disabled, port matrix is kept
@@ -1072,6 +1080,14 @@ mt7530_port_bridge_join(struct dsa_switch *ds, int port,
 
 			port_bitmap |= BIT(i);
 		}
+	}
+	else {
+		// disable MAC learning
+		mt7530_rmw(priv, MT7530_PSC_P(port), SA_DIS, SA_DIS);
+		// clear table cache
+		i = mt7530_fdb_cmd(priv, MT7530_FDB_FLUSH, NULL);
+		if (i < 0)
+			printk(KERN_CRIT "[%s:%d]port[%d] flush fdb error!!\n", __func__, __LINE__, port);
 	}
 
 	/* Add the all other ports to this port matrix. */
@@ -2759,6 +2775,9 @@ mt7530_probe(struct mdio_device *mdiodev)
 	}
 
 	priv->bus = mdiodev->bus;
+#if defined(CONFIG_TUFAX4200) || defined(CONFIG_TUFAX6000)
+	priv->ds->priv_mii_bus = priv->bus;
+#endif
 	priv->dev = &mdiodev->dev;
 	priv->ds->priv = priv;
 	priv->ds->ops = &mt7530_switch_ops;

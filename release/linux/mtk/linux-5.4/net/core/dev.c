@@ -91,6 +91,7 @@
 #include <linux/etherdevice.h>
 #include <linux/ethtool.h>
 #include <linux/skbuff.h>
+#include <linux/netfilter_ipv4.h>
 #include <linux/kthread.h>
 #include <linux/bpf.h>
 #include <linux/bpf_trace.h>
@@ -139,6 +140,9 @@
 #include <linux/hrtimer.h>
 #include <linux/netfilter_ingress.h>
 #include <linux/crash_dump.h>
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+#include <linux/imq.h>
+#endif
 #include <linux/sctp.h>
 #include <net/udp_tunnel.h>
 #include <linux/net_namespace.h>
@@ -3218,8 +3222,13 @@ static int xmit_one(struct sk_buff *skb, struct net_device *dev,
 	unsigned int len;
 	int rc;
 
-	if (dev_nit_active(dev))
+	if (dev_nit_active(dev)) {
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+		if ((!list_empty(&ptype_all) || !list_empty(&dev->ptype_all)) &&
+			!(skb->imq_flags & IMQ_F_ENQUEUE))
+#endif
 		dev_queue_xmit_nit(skb, dev);
+	}
 
 #ifdef CONFIG_ETHERNET_PACKET_MANGLE
 	if (!dev->eth_mangle_tx ||
@@ -3266,6 +3275,8 @@ out:
 	*ret = rc;
 	return skb;
 }
+
+EXPORT_SYMBOL_GPL(dev_hard_start_xmit);
 
 static struct sk_buff *validate_xmit_vlan(struct sk_buff *skb,
 					  netdev_features_t features)
@@ -3774,11 +3785,23 @@ static int __dev_queue_xmit(struct sk_buff *skb, struct net_device *sb_dev)
 	else
 		skb_dst_force(skb);
 
+#if 1 /* IPTV tag only NIC */
+	if (dev->vlan_only && !skb_vlan_tag_present(skb)) {
+			// skip non-vlan
+			kfree_skb_list(skb);
+			goto out;
+	}
+#endif
 	txq = netdev_core_pick_tx(dev, skb, sb_dev);
 	q = rcu_dereference_bh(txq->qdisc);
 
 	trace_net_dev_queue(skb);
-	if (q->enqueue) {
+	if (q->enqueue
+#ifdef CONFIG_IP_NF_LFP
+	    && !(skb->nfcache & NFC_LFP_ENABLE)
+#endif
+	   )
+	{
 		rc = __dev_xmit_skb(skb, q, dev, txq);
 		goto out;
 	}
@@ -4792,6 +4815,11 @@ static inline int nf_ingress(struct sk_buff *skb, struct packet_type **pt_prev,
 	return 0;
 }
 
+int (*hijack_rx)(struct sk_buff *skb) = NULL;
+struct net_device *hijack_dev = NULL;
+EXPORT_SYMBOL(hijack_rx);
+EXPORT_SYMBOL(hijack_dev);
+
 static int __netif_receive_skb_core(struct sk_buff **pskb, bool pfmemalloc,
 				    struct packet_type **ppt_prev)
 {
@@ -4842,11 +4870,29 @@ another_round:
 			goto out;
 	}
 
+#if 1 /* IPTV tag only NIC */
+	if (skb->dev && skb->dev->vlan_only) {
+		if (!skb_vlan_tag_present(skb)) {
+			// drop non-vlan
+			kfree_skb(skb);
+			skb = NULL;
+			goto out;
+		}
+	}
+#endif
+
 	if (skb_skip_tc_classify(skb))
 		goto skip_classify;
 
 	if (pfmemalloc)
 		goto skip_taps;
+
+	if (hijack_dev && hijack_rx) {
+		if (skb->dev == hijack_dev ) {
+			if (hijack_rx(skb))
+				goto out;
+		}
+	}
 
 	list_for_each_entry_rcu(ptype, &ptype_all, list) {
 		if (pt_prev)

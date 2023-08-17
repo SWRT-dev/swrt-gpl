@@ -9,6 +9,9 @@
 #include <linux/if_vlan.h>
 
 #include "dsa_priv.h"
+#if defined(CONFIG_NET_DSA_MT7530)
+extern bool no_dsa_offload;
+#endif
 
 #define MTK_HDR_LEN		4
 #define MTK_HDR_XMIT_UNTAGGED		0
@@ -111,6 +114,11 @@ static struct sk_buff *mtk_tag_rcv(struct sk_buff *skb, struct net_device *dev,
 		return NULL;
 
 	/* Only unicast or broadcast frames are offloaded */
+#if defined(CONFIG_NET_DSA_MT7530)
+	if (no_dsa_offload)
+		skb->offload_fwd_mark = 0;
+	else
+#endif
 	if (likely(!is_multicast_skb))
 		skb->offload_fwd_mark = 1;
 

@@ -772,7 +772,7 @@ static int ioctl_standard_iw_point(struct iw_point *iwp, unsigned int cmd,
 		if (!iwp->pointer)
 			return -EFAULT;
 		/* Save user space buffer size for checking */
-		user_length = iwp->length;
+		user_length = iwp->length + essid_compat;
 
 		/* Don't check if user_length > max to allow forward
 		 * compatibility. The test user_length < min is

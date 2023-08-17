@@ -76,33 +76,13 @@ static const struct spinand_info esmt_c8_spinand_table[] = {
 		     SPINAND_ECCINFO(&f50l1g41lb_ooblayout, NULL)),
 };
 
-static int esmt_spinand_detect(struct spinand_device *spinand)
-{
-	u8 *id = spinand->id.data;
-	u16 did;
-	int ret;
-
-	if (id[0] == SPINAND_MFR_ESMT_C8)
-		did = (id[1] << 8) + id[2];
-	else if (id[0] == 0 && id[1] == SPINAND_MFR_ESMT_C8)
-		did = id[2];
-	else
-		return 0;
-	ret = spinand_match_and_init(spinand, esmt_c8_spinand_table,
-				     ARRAY_SIZE(esmt_c8_spinand_table),
-				     did);
-	if (ret)
-		return ret;
-
-	return 1;
-}
-
 static const struct spinand_manufacturer_ops esmt_spinand_manuf_ops = {
-	.detect = esmt_spinand_detect,
 };
 
 const struct spinand_manufacturer esmt_c8_spinand_manufacturer = {
 	.id = SPINAND_MFR_ESMT_C8,
 	.name = "ESMT",
+	.chips = esmt_c8_spinand_table,
+	.nchips = ARRAY_SIZE(esmt_c8_spinand_table),
 	.ops = &esmt_spinand_manuf_ops,
 };

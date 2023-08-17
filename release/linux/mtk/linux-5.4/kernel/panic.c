@@ -212,6 +212,7 @@ void panic(const char *fmt, ...)
 	if (len && buf[len - 1] == '\n')
 		buf[len - 1] = '\0';
 
+	enable_oopsbuf(1);
 	pr_emerg("Kernel panic - not syncing: %s\n", buf);
 #ifdef CONFIG_DEBUG_BUGVERBOSE
 	/*

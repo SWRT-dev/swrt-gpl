@@ -647,7 +647,7 @@ enum p5_interface_select {
 	P5_INTF_SEL_GMAC5_SGMII,
 };
 
-static const char *p5_intf_modes(unsigned int p5_interface)
+static inline const char *p5_intf_modes(unsigned int p5_interface)
 {
 	switch (p5_interface) {
 	case P5_DISABLED:

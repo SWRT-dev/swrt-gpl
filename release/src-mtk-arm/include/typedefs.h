@@ -238,7 +238,11 @@ enum {
 #undef USE_TYPEDEF_DEFAULTS
 
 #ifndef TYPEDEF_BOOL
+#if !defined(__GLIBC__) && !defined(__UCLIBC__) /* musl */
+#include <stdbool.h>
+#else
 typedef	/* @abstract@ */ unsigned char	bool;
+#endif
 #endif
 
 /* define uchar, ushort, uint, ulong */

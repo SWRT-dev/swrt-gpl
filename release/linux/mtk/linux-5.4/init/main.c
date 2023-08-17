@@ -170,6 +170,17 @@ static int __init set_reset_devices(char *str)
 
 __setup("reset_devices", set_reset_devices);
 
+long int rfs_offset;
+EXPORT_SYMBOL(rfs_offset);
+static int __init rfs_setup(char *str)
+{
+	ssize_t	status;
+
+	status = kstrtol(str, 16, &rfs_offset);
+	return 1;
+}
+__setup("root_rfs=", rfs_setup);
+
 static const char *argv_init[MAX_INIT_ARGS+2] = { "init", NULL, };
 const char *envp_init[MAX_INIT_ENVS+2] = { "HOME=/", "TERM=linux", NULL, };
 static const char *panic_later, *panic_param;
@@ -652,6 +663,9 @@ asmlinkage __visible void __init start_kernel(void)
 	trap_init();
 	mm_init();
 
+#ifdef CONFIG_DUMP_PREV_OOPS_MSG
+	prepare_and_dump_previous_oops();
+#endif
 	ftrace_init();
 
 	/* trace_printk can be enabled here */
@@ -1183,6 +1197,24 @@ static int __ref kernel_init(void *unused)
 	      "See Linux Documentation/admin-guide/init.rst for guidance.");
 }
 
+#if defined(CONFIG_NET_DSA_MT7530)
+bool no_dsa_offload = 0;
+static ssize_t ndol_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u\n", no_dsa_offload);
+}
+
+static ssize_t ndol_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t len)
+{
+	if (len && buf[0] == '1')
+		no_dsa_offload = 1;
+	else if (len && buf[0] == '0')
+		no_dsa_offload = 0;
+	return len;
+}
+
+static struct kobj_attribute ndol_attr = __ATTR(no_dsa_offload, 0644, ndol_show, ndol_store);
+#endif
 static noinline void __init kernel_init_freeable(void)
 {
 	/*
@@ -1218,6 +1250,9 @@ static noinline void __init kernel_init_freeable(void)
 
 	do_basic_setup();
 
+#if defined(CONFIG_NET_DSA_MT7530)
+	sysfs_create_file(kernel_kobj, &ndol_attr.attr);
+#endif
 	/* Open the /dev/console on the rootfs, this should never fail */
 	if (ksys_open((const char __user *) "/dev/console", O_RDWR, 0) < 0)
 		pr_err("Warning: unable to open an initial console.\n");

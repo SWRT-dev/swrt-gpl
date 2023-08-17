@@ -121,7 +121,7 @@
 
 	port6: port@6 {
 		compatible = "mediatek,mt753x-port";
-		mediatek,ssc-on;
+		/* mediatek,ssc-on; */
 		reg = <6>;
 		phy-mode = "sgmii";
 		fixed-link {
@@ -133,7 +133,7 @@
 
 &hnat {
 	mtketh-wan = "eth1";
-	mtketh-lan = "lan";
+	mtketh-lan = "eth0";
 	mtketh-max-gmac = <2>;
 	status = "okay";
 };
@@ -186,12 +186,12 @@
 		conf-pu {
 			pins = "SPI2_CS", "SPI2_HOLD", "SPI2_WP";
 			drive-strength = <MTK_DRIVE_8mA>;
-			mediatek,pull-up-adv = <0>;	/* bias-disable */
+			bias-pull-up = <MTK_PUPD_SET_R1R0_11>;
 		};
 		conf-pd {
 			pins = "SPI2_CLK", "SPI2_MOSI", "SPI2_MISO";
 			drive-strength = <MTK_DRIVE_8mA>;
-			mediatek,pull-down-adv = <0>;	/* bias-disable */
+			bias-pull-down = <MTK_PUPD_SET_R1R0_11>;
 		};
 
 	};

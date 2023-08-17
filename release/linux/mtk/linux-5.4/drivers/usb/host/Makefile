@@ -29,6 +29,7 @@ ifneq ($(CONFIG_USB_XHCI_MTK), )
 	xhci-hcd-$(CONFIG_USB_XHCI_MTK_DEBUGFS) += xhci-mtk-hstx-srctrl.o
 	xhci-hcd-$(CONFIG_USB_XHCI_MTK_DEBUGFS) += xhci-mtk-discth.o
 	xhci-hcd-$(CONFIG_USB_XHCI_MTK_DEBUGFS) += xhci-mtk-chgdt-en.o
+	xhci-hcd-$(CONFIG_USB_XHCI_MTK_DEBUGFS) += xhci-mtk-reg.o
 endif
 
 xhci-plat-hcd-y := xhci-plat.o

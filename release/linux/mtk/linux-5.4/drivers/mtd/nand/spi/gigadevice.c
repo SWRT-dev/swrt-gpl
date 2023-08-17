@@ -13,20 +13,15 @@
 #define GD5FXGQ4XA_STATUS_ECC_1_7_BITFLIPS	(1 << 4)
 #define GD5FXGQ4XA_STATUS_ECC_8_BITFLIPS	(3 << 4)
 
-#define GD5FXGQ4UEXXG_REG_STATUS2		0xf0
+#define GD5FXGQ5XE_STATUS_ECC_1_4_BITFLIPS	(1 << 4)
+#define GD5FXGQ5XE_STATUS_ECC_4_BITFLIPS	(3 << 4)
+
+#define GD5FXGQXXEXXG_REG_STATUS2		0xf0
 
 #define GD5FXGQ4UXFXXG_STATUS_ECC_MASK		(7 << 4)
 #define GD5FXGQ4UXFXXG_STATUS_ECC_NO_BITFLIPS	(0 << 4)
 #define GD5FXGQ4UXFXXG_STATUS_ECC_1_3_BITFLIPS	(1 << 4)
 #define GD5FXGQ4UXFXXG_STATUS_ECC_UNCOR_ERROR	(7 << 4)
-
-#if defined(CONFIG_SOC_MT7621)
-#define SPINAND_PAGE_READ_FROM_CACHE_OP_NOR_EMU(fast, addr, ndummy, buf, len)	\
-	SPI_MEM_OP(SPI_MEM_OP_CMD(fast ? 0x0b : 0x03, 1),		\
-		   SPI_MEM_OP_ADDR(3, addr, 1),				\
-		   SPI_MEM_OP_DUMMY(ndummy, 1),				\
-		   SPI_MEM_OP_DATA_IN(len, buf, 1))
-#endif
 
 static SPINAND_OP_VARIANTS(read_cache_variants,
 		SPINAND_PAGE_READ_FROM_CACHE_QUADIO_OP(0, 1, NULL, 0),
@@ -44,11 +39,21 @@ static SPINAND_OP_VARIANTS(read_cache_variants_f,
 		SPINAND_PAGE_READ_FROM_CACHE_OP_3A(true, 0, 1, NULL, 0),
 		SPINAND_PAGE_READ_FROM_CACHE_OP_3A(false, 0, 0, NULL, 0));
 
-/* Q5 devices, QUADIO: Dummy bytes only valid for 1 GBit variants */
-static SPINAND_OP_VARIANTS(gd5f1gq5_read_cache_variants,
+/* For Q5 devices, QUADIO use different dummy byte settings */
+/* Q5 1Gb */
+static SPINAND_OP_VARIANTS(dummy2_read_cache_variants,
 		SPINAND_PAGE_READ_FROM_CACHE_QUADIO_OP(0, 2, NULL, 0),
 		SPINAND_PAGE_READ_FROM_CACHE_X4_OP(0, 1, NULL, 0),
 		SPINAND_PAGE_READ_FROM_CACHE_DUALIO_OP(0, 1, NULL, 0),
+		SPINAND_PAGE_READ_FROM_CACHE_X2_OP(0, 1, NULL, 0),
+		SPINAND_PAGE_READ_FROM_CACHE_OP(true, 0, 1, NULL, 0),
+		SPINAND_PAGE_READ_FROM_CACHE_OP(false, 0, 1, NULL, 0));
+
+/* Q5 2Gb & 4Gb */
+static SPINAND_OP_VARIANTS(dummy4_read_cache_variants,
+		SPINAND_PAGE_READ_FROM_CACHE_QUADIO_OP(0, 4, NULL, 0),
+		SPINAND_PAGE_READ_FROM_CACHE_X4_OP(0, 1, NULL, 0),
+		SPINAND_PAGE_READ_FROM_CACHE_DUALIO_OP(0, 2, NULL, 0),
 		SPINAND_PAGE_READ_FROM_CACHE_X2_OP(0, 1, NULL, 0),
 		SPINAND_PAGE_READ_FROM_CACHE_OP(true, 0, 1, NULL, 0),
 		SPINAND_PAGE_READ_FROM_CACHE_OP(false, 0, 1, NULL, 0));
@@ -119,7 +124,7 @@ static int gd5fxgq4xa_ecc_get_status(struct spinand_device *spinand,
 	return -EINVAL;
 }
 
-static int gd5fxgq4_variant2_ooblayout_ecc(struct mtd_info *mtd, int section,
+static int gd5fxgqx_variant2_ooblayout_ecc(struct mtd_info *mtd, int section,
 				       struct mtd_oob_region *region)
 {
 	if (section)
@@ -131,7 +136,7 @@ static int gd5fxgq4_variant2_ooblayout_ecc(struct mtd_info *mtd, int section,
 	return 0;
 }
 
-static int gd5fxgq4_variant2_ooblayout_free(struct mtd_info *mtd, int section,
+static int gd5fxgqx_variant2_ooblayout_free(struct mtd_info *mtd, int section,
 					struct mtd_oob_region *region)
 {
 	if (section)
@@ -144,45 +149,17 @@ static int gd5fxgq4_variant2_ooblayout_free(struct mtd_info *mtd, int section,
 	return 0;
 }
 
-static const struct mtd_ooblayout_ops gd5fxgq4_variant2_ooblayout = {
-	.ecc = gd5fxgq4_variant2_ooblayout_ecc,
-	.free = gd5fxgq4_variant2_ooblayout_free,
-};
-
-static int gd5fxgq4xc_ooblayout_256_ecc(struct mtd_info *mtd, int section,
-					struct mtd_oob_region *oobregion)
-{
-	if (section)
-		return -ERANGE;
-
-	oobregion->offset = 128;
-	oobregion->length = 128;
-
-	return 0;
-}
-
-static int gd5fxgq4xc_ooblayout_256_free(struct mtd_info *mtd, int section,
-					 struct mtd_oob_region *oobregion)
-{
-	if (section)
-		return -ERANGE;
-
-	oobregion->offset = 1;
-	oobregion->length = 127;
-
-	return 0;
-}
-
-static const struct mtd_ooblayout_ops gd5fxgq4xc_oob_256_ops = {
-	.ecc = gd5fxgq4xc_ooblayout_256_ecc,
-	.free = gd5fxgq4xc_ooblayout_256_free,
+/* Valid for Q4/Q5 and Q6 (untested) devices */
+static const struct mtd_ooblayout_ops gd5fxgqx_variant2_ooblayout = {
+	.ecc = gd5fxgqx_variant2_ooblayout_ecc,
+	.free = gd5fxgqx_variant2_ooblayout_free,
 };
 
 static int gd5fxgq4uexxg_ecc_get_status(struct spinand_device *spinand,
 					u8 status)
 {
 	u8 status2;
-	struct spi_mem_op op = SPINAND_GET_FEATURE_OP(GD5FXGQ4UEXXG_REG_STATUS2,
+	struct spi_mem_op op = SPINAND_GET_FEATURE_OP(GD5FXGQXXEXXG_REG_STATUS2,
 						      &status2);
 	int ret;
 
@@ -220,6 +197,43 @@ static int gd5fxgq4uexxg_ecc_get_status(struct spinand_device *spinand,
 	return -EINVAL;
 }
 
+static int gd5fxgq5xexxg_ecc_get_status(struct spinand_device *spinand,
+					u8 status)
+{
+	u8 status2;
+	struct spi_mem_op op = SPINAND_GET_FEATURE_OP(GD5FXGQXXEXXG_REG_STATUS2,
+						      &status2);
+	int ret;
+
+	switch (status & STATUS_ECC_MASK) {
+	case STATUS_ECC_NO_BITFLIPS:
+		return 0;
+
+	case GD5FXGQ5XE_STATUS_ECC_1_4_BITFLIPS:
+		/*
+		 * Read status2 register to determine a more fine grained
+		 * bit error status
+		 */
+		ret = spi_mem_exec_op(spinand->spimem, &op);
+		if (ret)
+			return ret;
+
+		/*
+		 * 1 ... 4 bits are flipped (and corrected)
+		 */
+		/* bits sorted this way (1...0): ECCSE1, ECCSE0 */
+		return ((status2 & STATUS_ECC_MASK) >> 4) + 1;
+
+	case STATUS_ECC_UNCOR_ERROR:
+		return -EBADMSG;
+
+	default:
+		break;
+	}
+
+	return -EINVAL;
+}
+
 static int gd5fxgq4ufxxg_ecc_get_status(struct spinand_device *spinand,
 					u8 status)
 {
@@ -240,57 +254,19 @@ static int gd5fxgq4ufxxg_ecc_get_status(struct spinand_device *spinand,
 	return -EINVAL;
 }
 
-/*
-static int esmt_1_ooblayout_ecc(struct mtd_info *mtd, int section,
-				  struct mtd_oob_region *region)
-{
-	if (section > 3)
-		return -ERANGE;
-
-	region->offset = (16 * section) + 8;
-	region->length = 8;
-
-	return 0;
-}
-
-static int esmt_1_ooblayout_free(struct mtd_info *mtd, int section,
-				   struct mtd_oob_region *region)
-{
-	if (section > 3)
-		return -ERANGE;
-
-	region->offset = (16 * section) + 2;
-	region->length = 6;
-
-	return 0;
-}
-
-static const struct mtd_ooblayout_ops esmt_1_ooblayout = {
-	.ecc = esmt_1_ooblayout_ecc,
-	.free = esmt_1_ooblayout_free,
-};
-*/
-
 static const struct spinand_info gigadevice_spinand_table[] = {
-//	SPINAND_INFO("F50L1G41LB", 0x01,
-//		     NAND_MEMORG(1, 2048, 64, 64, 1024, 20, 1, 1, 1),
-//		     NAND_ECCREQ(8, 512),
-//		     SPINAND_INFO_OP_VARIANTS(&gd5f1gq5_read_cache_variants,
-//					      &write_cache_variants,
-//					      &update_cache_variants),
-//		     0,
-//		     SPINAND_ECCINFO(&esmt_1_ooblayout,
-//				     NULL)),
-	SPINAND_INFO("GD5F1GQ5UExxG", 0x51,
-		     NAND_MEMORG(1, 2048, 128, 64, 1024, 20, 1, 1, 1),
-		     NAND_ECCREQ(4, 512),
-		     SPINAND_INFO_OP_VARIANTS(&gd5f1gq5_read_cache_variants,
+	SPINAND_INFO("F50L1G41LB",
+	             SPINAND_ID(SPINAND_READID_METHOD_OPCODE_ADDR, 0x01),
+		     NAND_MEMORG(1, 2048, 64, 64, 1024, 20, 1, 1, 1),
+		     NAND_ECCREQ(8, 512),
+		     SPINAND_INFO_OP_VARIANTS(&dummy2_read_cache_variants,
 					      &write_cache_variants,
 					      &update_cache_variants),
-		     SPINAND_HAS_QE_BIT,
+		     0,
 		     SPINAND_ECCINFO(&gd5fxgq4xa_ooblayout,
 				     gd5fxgq4xa_ecc_get_status)),
-	SPINAND_INFO("GD5F1GQ4xA", 0xF1,
+	SPINAND_INFO("GD5F1GQ4xA",
+		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE_ADDR, 0xf1),
 		     NAND_MEMORG(1, 2048, 64, 64, 1024, 20, 1, 1, 1),
 		     NAND_ECCREQ(8, 512),
 		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
@@ -299,7 +275,8 @@ static const struct spinand_info gigadevice_spinand_table[] = {
 		     SPINAND_HAS_QE_BIT,
 		     SPINAND_ECCINFO(&gd5fxgq4xa_ooblayout,
 				     gd5fxgq4xa_ecc_get_status)),
-	SPINAND_INFO("GD5F2GQ4xA", 0xF2,
+	SPINAND_INFO("GD5F2GQ4xA",
+		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE_ADDR, 0xf2),
 		     NAND_MEMORG(1, 2048, 64, 64, 2048, 40, 1, 1, 1),
 		     NAND_ECCREQ(8, 512),
 		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
@@ -308,7 +285,8 @@ static const struct spinand_info gigadevice_spinand_table[] = {
 		     SPINAND_HAS_QE_BIT,
 		     SPINAND_ECCINFO(&gd5fxgq4xa_ooblayout,
 				     gd5fxgq4xa_ecc_get_status)),
-	SPINAND_INFO("GD5F4GQ4xA", 0xF4,
+	SPINAND_INFO("GD5F4GQ4xA",
+		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE_ADDR, 0xf4),
 		     NAND_MEMORG(1, 2048, 64, 64, 4096, 80, 1, 1, 1),
 		     NAND_ECCREQ(8, 512),
 		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
@@ -317,276 +295,125 @@ static const struct spinand_info gigadevice_spinand_table[] = {
 		     SPINAND_HAS_QE_BIT,
 		     SPINAND_ECCINFO(&gd5fxgq4xa_ooblayout,
 				     gd5fxgq4xa_ecc_get_status)),
-	SPINAND_INFO("GD5F4GQ4RC", 0xa468,
-		     NAND_MEMORG(1, 4096, 256, 64, 2048, 40, 1, 1, 1),
-		     NAND_ECCREQ(8, 512),
-		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants_f,
-					      &write_cache_variants,
-					      &update_cache_variants),
-		     SPINAND_HAS_QE_BIT,
-		     SPINAND_ECCINFO(&gd5fxgq4xc_oob_256_ops,
-				     gd5fxgq4ufxxg_ecc_get_status)),
-	SPINAND_INFO("GD5F4GQ4UC", 0xb468,
-		     NAND_MEMORG(1, 4096, 256, 64, 2048, 40, 1, 1, 1),
-		     NAND_ECCREQ(8, 512),
-		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants_f,
-					      &write_cache_variants,
-					      &update_cache_variants),
-		     SPINAND_HAS_QE_BIT,
-		     SPINAND_ECCINFO(&gd5fxgq4xc_oob_256_ops,
-				     gd5fxgq4ufxxg_ecc_get_status)),
-	SPINAND_INFO("GD5F1GQ4UExxG", 0xd1,
+	SPINAND_INFO("GD5F1GQ4UExxG",
+	             SPINAND_ID(SPINAND_READID_METHOD_OPCODE_ADDR, 0xd1),
 		     NAND_MEMORG(1, 2048, 128, 64, 1024, 20, 1, 1, 1),
 		     NAND_ECCREQ(8, 512),
 		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
 					      &write_cache_variants,
 					      &update_cache_variants),
 		     SPINAND_HAS_QE_BIT,
-		     SPINAND_ECCINFO(&gd5fxgq4_variant2_ooblayout,
+		     SPINAND_ECCINFO(&gd5fxgqx_variant2_ooblayout,
 				     gd5fxgq4uexxg_ecc_get_status)),
-	SPINAND_INFO("GD5F1GQ4UFxxG", 0xb148,
+	SPINAND_INFO("GD5F1GQ4UFxxG",
+		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE, 0xb1, 0x48),
 		     NAND_MEMORG(1, 2048, 128, 64, 1024, 20, 1, 1, 1),
 		     NAND_ECCREQ(8, 512),
 		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants_f,
 					      &write_cache_variants,
 					      &update_cache_variants),
 		     SPINAND_HAS_QE_BIT,
-		     SPINAND_ECCINFO(&gd5fxgq4_variant2_ooblayout,
+		     SPINAND_ECCINFO(&gd5fxgqx_variant2_ooblayout,
 				     gd5fxgq4ufxxg_ecc_get_status)),
+	SPINAND_INFO("GD5F1GQ5UExxG",
+		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0x51),
+		     NAND_MEMORG(1, 2048, 128, 64, 1024, 20, 1, 1, 1),
+		     NAND_ECCREQ(4, 512),
+		     SPINAND_INFO_OP_VARIANTS(&dummy2_read_cache_variants,
+					      &write_cache_variants,
+					      &update_cache_variants),
+		     SPINAND_HAS_QE_BIT,
+		     SPINAND_ECCINFO(&gd5fxgqx_variant2_ooblayout,
+				     gd5fxgq5xexxg_ecc_get_status)),
+	SPINAND_INFO("GD5F2GQ5UExxG",
+		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE_ADDR, 0x52),
+		     NAND_MEMORG(1, 2048, 128, 64, 2048, 40, 1, 1, 1),
+		     NAND_ECCREQ(4, 512),
+		     SPINAND_INFO_OP_VARIANTS(&dummy4_read_cache_variants,
+					      &write_cache_variants,
+					      &update_cache_variants),
+		     SPINAND_HAS_QE_BIT,
+		     SPINAND_ECCINFO(&gd5fxgqx_variant2_ooblayout,
+				     gd5fxgq5xexxg_ecc_get_status)),
+	SPINAND_INFO("GD5F4GQ6UExxG",
+		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE_ADDR, 0x55),
+		     NAND_MEMORG(1, 2048, 128, 64, 4096, 80, 1, 1, 1),
+		     NAND_ECCREQ(4, 512),
+		     SPINAND_INFO_OP_VARIANTS(&dummy4_read_cache_variants,
+					      &write_cache_variants,
+					      &update_cache_variants),
+		     SPINAND_HAS_QE_BIT,
+		     SPINAND_ECCINFO(&gd5fxgqx_variant2_ooblayout,
+				     gd5fxgq5xexxg_ecc_get_status)),
+	SPINAND_INFO("GD5F1GM7UExxG",
+		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE_ADDR, 0x91),
+		     NAND_MEMORG(1, 2048, 128, 64, 1024, 20, 1, 1, 1),
+		     NAND_ECCREQ(8, 512),
+		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
+					      &write_cache_variants,
+					      &update_cache_variants),
+		     SPINAND_HAS_QE_BIT,
+		     SPINAND_ECCINFO(&gd5fxgqx_variant2_ooblayout,
+				     gd5fxgq4uexxg_ecc_get_status)),
+	SPINAND_INFO("GD5F2GM7UExxG",
+		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE_ADDR, 0x92),
+		     NAND_MEMORG(1, 2048, 128, 64, 2048, 40, 1, 1, 1),
+		     NAND_ECCREQ(8, 512),
+		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
+					      &write_cache_variants,
+					      &update_cache_variants),
+		     SPINAND_HAS_QE_BIT,
+		     SPINAND_ECCINFO(&gd5fxgqx_variant2_ooblayout,
+				     gd5fxgq4uexxg_ecc_get_status)),
+	SPINAND_INFO("GD5F4GM8UExxG",
+		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE_ADDR, 0x95),
+		     NAND_MEMORG(1, 2048, 128, 64, 4096, 80, 1, 1, 1),
+		     NAND_ECCREQ(8, 512),
+		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
+					      &write_cache_variants,
+					      &update_cache_variants),
+		     SPINAND_HAS_QE_BIT,
+		     SPINAND_ECCINFO(&gd5fxgqx_variant2_ooblayout,
+				     gd5fxgq4uexxg_ecc_get_status)),
+	SPINAND_INFO("GD5F1GQ5UExxH",
+		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0x31),
+		     NAND_MEMORG(1, 2048, 64, 64, 1024, 20, 1, 1, 1),
+		     NAND_ECCREQ(4, 512),
+		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
+					      &write_cache_variants,
+					      &update_cache_variants),
+		     SPINAND_HAS_QE_BIT,
+		     SPINAND_ECCINFO(&gd5fxgqx_variant2_ooblayout,
+				     gd5fxgq5xexxg_ecc_get_status)),
+	SPINAND_INFO("GD5F2GQ5UExxH",
+		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0x32),
+		     NAND_MEMORG(1, 2048, 64, 64, 2048, 40, 1, 1, 1),
+		     NAND_ECCREQ(4, 512),
+		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
+					      &write_cache_variants,
+					      &update_cache_variants),
+		     SPINAND_HAS_QE_BIT,
+		     SPINAND_ECCINFO(&gd5fxgqx_variant2_ooblayout,
+				     gd5fxgq5xexxg_ecc_get_status)),
+	SPINAND_INFO("GD5F4GQ6UExxH",
+		     SPINAND_ID(SPINAND_READID_METHOD_OPCODE_DUMMY, 0x32),
+		     NAND_MEMORG(1, 2048, 64, 64, 4096, 80, 1, 1, 1),
+		     NAND_ECCREQ(4, 512),
+		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
+					      &write_cache_variants,
+					      &update_cache_variants),
+		     SPINAND_HAS_QE_BIT,
+		     SPINAND_ECCINFO(&gd5fxgqx_variant2_ooblayout,
+				     gd5fxgq5xexxg_ecc_get_status)),
 };
 
-#if defined(CONFIG_SOC_MT7621)
-#define TABLE_SZ (ARRAY_SIZE(gigadevice_spinand_table))
-static struct spinand_info gigadevice_spinand_nor_emu_table[TABLE_SZ];
-
-static void gigadevice_spinand_generate_nor_emu_table(void)
-{
-	static struct spinand_info *info = gigadevice_spinand_nor_emu_table;
-	unsigned int i;
-
-	memcpy(gigadevice_spinand_nor_emu_table, gigadevice_spinand_table,
-	       sizeof(gigadevice_spinand_table));
-
-	for (i = 0; i < TABLE_SZ; i++) {
-		info[i].op_variants.read_cache = &read_cache_variants_nor_emu;
-		info[i].flags |= SPINAND_RELOAD_PAGE_0;
-	}
-}
-
-static int gigadevice_spinand_read_cfg_reg(struct spinand_device *spinand, u8 *buf,
-				       u8 *val)
-{
-	struct spi_mem_op op = SPINAND_GET_FEATURE_OP(REG_CFG, buf);
-	int ret;
-
-	ret = spi_mem_exec_op(spinand->spimem, &op);
-	if (ret)
-		return ret;
-
-	*val = buf[0];
-	return 0;
-}
-
-static int gigadevice_spinand_write_cfg_reg(struct spinand_device *spinand, u8 *buf,
-					u8 val)
-{
-	struct spi_mem_op op = SPINAND_SET_FEATURE_OP(REG_CFG, buf);
-
-	buf[0] = val;
-	return spi_mem_exec_op(spinand->spimem, &op);
-}
-
-static int gigadevice_spinand_load_page(struct spinand_device *spinand,
-				    unsigned int row)
-{
-	struct spi_mem_op op = SPINAND_PAGE_READ_OP(row);
-
-	return spi_mem_exec_op(spinand->spimem, &op);
-}
-
-static int gigadevice_spinand_read_from_cache(struct spinand_device *spinand,
-					  void *buf, unsigned int len)
-{
-	struct spi_mem_op op = SPINAND_PAGE_READ_FROM_CACHE_OP_NOR_EMU(false, 0,
-								0, NULL, 0);
-	unsigned int nbytes = len;
-	u8 *bufptr = buf;
-	int ret;
-
-	/*
-	 * Some controllers are limited in term of max RX data size. In this
-	 * case, just repeat the READ_CACHE operation after updating the
-	 * column.
-	 */
-	while (nbytes) {
-		op.data.buf.in = bufptr;
-		op.data.nbytes = nbytes;
-		ret = spi_mem_adjust_op_size(spinand->spimem, &op);
-		if (ret)
-			return ret;
-
-		ret = spi_mem_exec_op(spinand->spimem, &op);
-		if (ret)
-			return ret;
-
-		bufptr += op.data.nbytes;
-		nbytes -= op.data.nbytes;
-		op.addr.val += op.data.nbytes;
-	}
-
-	return 0;
-}
-
-static int gigadevice_spinand_detect_nor_emu(struct spinand_device *spinand,
-					 u16 devid, int *enabled)
-{
-	struct device *dev = &spinand->spimem->spi->dev;
-	unsigned int i, num_ffs = 0, num_zeros = 0, len = 0;
-	u8 cfg, *buf;
-	int ret;
-
-	for (i = 0; i < TABLE_SZ; i++) {
-		const struct spinand_info *info = &gigadevice_spinand_table[i];
-
-		if (devid != info->devid)
-			continue;
-
-		len = info->memorg.pagesize + info->memorg.oobsize;
-		break;
-	}
-
-	if (!len) {
-		*enabled = 0;
-		return 0;
-	}
-
-	buf = kmalloc(len, GFP_KERNEL);
-	if (!buf)
-		return -ENOMEM;
-
-	ret = gigadevice_spinand_read_cfg_reg(spinand, buf, &cfg);
-	if (ret) {
-		dev_err(dev, "failed to read configuration\n");
-		goto cleanup;
-	}
-
-	cfg &= ~0xc2;
-	cfg |= 0x82;
-
-	ret = gigadevice_spinand_write_cfg_reg(spinand, buf, cfg);
-	if (ret) {
-		dev_err(dev, "failed to write configuration\n");
-		goto cleanup;
-	}
-
-	ret = gigadevice_spinand_read_cfg_reg(spinand, buf, &cfg);
-	if (ret) {
-		dev_err(dev, "failed to read back configuration\n");
-		goto cleanup;
-	}
-
-	if ((cfg & 0xc2) != 0x82) {
-		dev_info(dev,
-			 "flash chip does not support NOR read emulation\n");
-		ret = -ENOTSUPP;
-		goto cleanup;
-	}
-
-	ret = gigadevice_spinand_load_page(spinand, 0);
-	if (ret) {
-		dev_err(dev, "failed to load NOR read configuration\n");
-		goto cleanup;
-	}
-
-	ret = gigadevice_spinand_read_from_cache(spinand, buf, len);
-	if (ret) {
-		dev_err(dev, "failed to read NOR read configuration\n");
-		goto cleanup;
-	}
-
-	if (!ret) {
-		for (i = 0; i < len; i++) {
-			if (buf[i] == 0xff)
-				num_ffs++;
-			else if (!buf[i])
-				num_zeros++;
-		}
-
-		if (num_ffs == len) {
-			*enabled = 0;
-		} else if (num_zeros == len) {
-			*enabled = 1;
-		} else {
-			dev_warn(dev,
-				 "failed to check NOR read configuration\n");
-			ret = -EINVAL;
-		}
-	}
-
-cleanup:
-	if (gigadevice_spinand_write_cfg_reg(spinand, buf, cfg & (~0xc2)))
-		dev_err(dev, "failed to leave NOR read configuration\n");
-
-	kfree(buf);
-
-	return ret;
-}
-#endif
-
-static int gigadevice_spinand_detect(struct spinand_device *spinand)
-{
-	u8 *id = spinand->id.data;
-	u16 did;
-	int ret;
-#if defined(CONFIG_SOC_MT7621)
-	struct device *dev = &spinand->spimem->spi->dev;
-	const struct spinand_info *table;
-	int nor_read = 0;
-#endif
-
-	/*
-	 * Earlier GDF5-series devices (A,E) return [0][MID][DID]
-	 * Later (F) devices return [MID][DID1][DID2]
-	 */
-
-	if (id[0] == SPINAND_MFR_GIGADEVICE)
-		did = (id[1] << 8) + id[2];
-	else if (id[0] == 0 && id[1] == SPINAND_MFR_GIGADEVICE)
-		did = id[2];
-	else
-		return 0;
-#if defined(CONFIG_SOC_MT7621)
-	ret = gigadevice_spinand_detect_nor_emu(spinand, did, &nor_read);
-	if (ret)
-		nor_read = 0;
-
-	if (nor_read) {
-		dev_info(dev, "flash chip is using NOR read emulation\n");
-		gigadevice_spinand_generate_nor_emu_table();
-		table = gigadevice_spinand_nor_emu_table;
-	} else {
-		table = gigadevice_spinand_table;
-	}
-
-	ret = spinand_match_and_init(spinand, table, TABLE_SZ, did);
-#else
-	ret = spinand_match_and_init(spinand, gigadevice_spinand_table,
-				     ARRAY_SIZE(gigadevice_spinand_table),
-				     did);
-#endif
-	if (ret)
-		return ret;
-
-	return 1;
-}
-
 static const struct spinand_manufacturer_ops gigadevice_spinand_manuf_ops = {
-	.detect = gigadevice_spinand_detect,
 };
 
 const struct spinand_manufacturer gigadevice_spinand_manufacturer = {
 	.id = SPINAND_MFR_GIGADEVICE,
 	.name = "GigaDevice",
+	.chips = gigadevice_spinand_table,
+	.nchips = ARRAY_SIZE(gigadevice_spinand_table),
 	.ops = &gigadevice_spinand_manuf_ops,
 };
-

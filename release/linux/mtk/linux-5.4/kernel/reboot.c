@@ -17,6 +17,7 @@
 #include <linux/syscalls.h>
 #include <linux/syscore_ops.h>
 #include <linux/uaccess.h>
+#include <linux/sched.h>
 
 /*
  * this indicates whether you can reboot with ctrl-alt-del: the default is yes
@@ -243,6 +244,16 @@ void migrate_to_reboot_cpu(void)
  */
 void kernel_restart(char *cmd)
 {
+	int onoff;
+
+	onoff = enable_oopsbuf(1);
+	rcu_read_lock();
+	printk(KERN_WARNING "%s: current [%s] parent [%s],[%s]!\n",
+		__func__, current->comm, current->parent->comm,
+		current->parent->parent? current->parent->parent->comm : "NULL");
+	rcu_read_unlock();
+	enable_oopsbuf(onoff);
+
 	kernel_restart_prepare(cmd);
 	migrate_to_reboot_cpu();
 	syscore_shutdown();
@@ -270,6 +281,16 @@ static void kernel_shutdown_prepare(enum system_states state)
  */
 void kernel_halt(void)
 {
+	int onoff;
+
+	onoff = enable_oopsbuf(1);
+	rcu_read_lock();
+	printk(KERN_WARNING "%s: current [%s] parent [%s],[%s]!\n",
+		__func__, current->comm, current->parent->comm,
+		current->parent->parent? current->parent->parent->comm : "NULL");
+	rcu_read_unlock();
+	enable_oopsbuf(onoff);
+
 	kernel_shutdown_prepare(SYSTEM_HALT);
 	migrate_to_reboot_cpu();
 	syscore_shutdown();
@@ -286,6 +307,16 @@ EXPORT_SYMBOL_GPL(kernel_halt);
  */
 void kernel_power_off(void)
 {
+	int onoff;
+
+	onoff = enable_oopsbuf(1);
+	rcu_read_lock();
+	printk(KERN_WARNING "%s: current [%s] parent [%s],[%s]!\n",
+		__func__, current->comm, current->parent->comm,
+		current->parent->parent? current->parent->parent->comm : "NULL");
+	rcu_read_unlock();
+	enable_oopsbuf(onoff);
+
 	kernel_shutdown_prepare(SYSTEM_POWER_OFF);
 	if (pm_power_off_prepare)
 		pm_power_off_prepare();
@@ -312,7 +343,7 @@ SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
 {
 	struct pid_namespace *pid_ns = task_active_pid_ns(current);
 	char buffer[256];
-	int ret = 0;
+	int ret = 0, onoff;
 
 	/* We only trust the superuser with rebooting the system. */
 	if (!ns_capable(pid_ns->user_ns, CAP_SYS_BOOT))
@@ -331,6 +362,14 @@ SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
 	 * pid_namespace, the command is handled by reboot_pid_ns() which will
 	 * call do_exit().
 	 */
+	onoff = enable_oopsbuf(1);
+	rcu_read_lock();
+	printk(KERN_WARNING "%s: cmd 0x%x, current [%s] parent [%s],[%s]!\n",
+		__func__, cmd, current->comm, current->parent->comm,
+		current->parent->parent? current->parent->parent->comm : "NULL");
+	rcu_read_unlock();
+	enable_oopsbuf(onoff);
+
 	ret = reboot_pid_ns(pid_ns, cmd);
 	if (ret)
 		return ret;

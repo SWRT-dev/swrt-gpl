@@ -174,6 +174,7 @@ static const u8 MT753x_TX_OFFSET_TBL[64] = {
 	0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f
 };
 
+#if 0
 static u8 ge_cal_flag;
 
 static u8 all_ge_ana_cal_wait(struct dsa_switch *ds, u32 delay, u32 phyaddr)
@@ -588,6 +589,7 @@ static int ge_cal_tx_offset(struct dsa_switch *ds,  u8 phyaddr, u32 delay)
 
 	return 0;
 }
+#endif
 
 u16 tx_amp_check_thres(int pair, u32 reg, u16 val, s16 offset)
 {
@@ -616,6 +618,7 @@ u16 tx_amp_check_thres(int pair, u32 reg, u16 val, s16 offset)
 	return val + offset;
 }
 
+#if 0
 static int ge_cal_tx_amp(struct dsa_switch *ds, u8 phyaddr, u32 delay)
 {
 	u8	all_ana_cal_status, calibration_pair, i;
@@ -1209,6 +1212,7 @@ static void check_rx_dc_offset_pair_d(struct dsa_switch *ds, u8 phyaddr)
 	if ((reg_tmp & 0xff) >4)
 		pr_info("pairD RX_DC_OFFSET error");
 }
+#endif
 
 /* 12 registers for TX_MLT3 waveform tuning.
  *    012 345 678 9ab
@@ -1352,7 +1356,7 @@ static void mt7531_eee_setting(struct dsa_switch *ds, u32 port)
 
 int mt7531_phy_setup(struct dsa_switch *ds)
 {
-	int ret;
+	int ret = 0;
 	int i;
 
 	mt7531_phy_setting(ds);

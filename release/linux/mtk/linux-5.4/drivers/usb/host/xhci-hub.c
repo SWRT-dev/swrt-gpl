@@ -584,7 +584,9 @@ static void xhci_set_port_power(struct xhci_hcd *xhci, struct usb_hcd *hcd,
 
 	if (on) {
 		/* Power on */
-		writel(temp | PORT_POWER, port->addr);
+		if (u3intf || hcd->speed < HCD_USB3) {
+			writel(temp | PORT_POWER, port->addr);
+		}
 		readl(port->addr);
 	} else {
 		/* Power off */
@@ -1383,7 +1385,8 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			xhci_set_port_power(xhci, hcd, wIndex, true, &flags);
 			break;
 		case USB_PORT_FEAT_RESET:
-			temp = (temp | PORT_RESET);
+			xhci_dbg(xhci, "Patch - Add clear PLC\n");
+			temp = (temp | PORT_RESET | 0x400000);
 			writel(temp, ports[wIndex]->addr);
 
 			temp = readl(ports[wIndex]->addr);

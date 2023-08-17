@@ -16,8 +16,31 @@
 #include <linux/mtd/spinand.h>
 #include <linux/of.h>
 #include <linux/slab.h>
+#include <linux/string.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/spi-mem.h>
+
+#if defined(CONFIG_SOC_MT7621)
+#define SPINAND_PAGE_READ_FROM_CACHE_OP_NOR_EMU(fast, addr, ndummy, buf, len)	\
+	SPI_MEM_OP(SPI_MEM_OP_CMD(fast ? 0x0b : 0x03, 1),		\
+		   SPI_MEM_OP_ADDR(3, addr, 1),				\
+		   SPI_MEM_OP_DUMMY(ndummy, 1),				\
+		   SPI_MEM_OP_DATA_IN(len, buf, 1))
+
+static SPINAND_OP_VARIANTS(read_cache_variants_nor_emu,
+		SPINAND_PAGE_READ_FROM_CACHE_QUADIO_OP(0, 2, NULL, 0),
+		SPINAND_PAGE_READ_FROM_CACHE_X4_OP(0, 1, NULL, 0),
+		SPINAND_PAGE_READ_FROM_CACHE_DUALIO_OP(0, 1, NULL, 0),
+		SPINAND_PAGE_READ_FROM_CACHE_X2_OP(0, 1, NULL, 0),
+		SPINAND_PAGE_READ_FROM_CACHE_OP_NOR_EMU(true, 0, 1, NULL, 0),
+		SPINAND_PAGE_READ_FROM_CACHE_OP_NOR_EMU(false, 0, 0, NULL, 0));
+
+static SPINAND_OP_VARIANTS(read_cache_variants_nor_emu2,
+		SPINAND_PAGE_READ_FROM_CACHE_X4_OP(0, 1, NULL, 0),
+		SPINAND_PAGE_READ_FROM_CACHE_X2_OP(0, 1, NULL, 0),
+		SPINAND_PAGE_READ_FROM_CACHE_OP_NOR_EMU(true, 0, 1, NULL, 0),
+		SPINAND_PAGE_READ_FROM_CACHE_OP_NOR_EMU(false, 0, 0, NULL, 0));
+#endif
 
 static int spinand_read_reg_op(struct spinand_device *spinand, u8 reg, u8 *val)
 {
@@ -370,10 +393,11 @@ out:
 	return status & STATUS_BUSY ? -ETIMEDOUT : 0;
 }
 
-static int spinand_read_id_op(struct spinand_device *spinand, u8 *buf)
+static int spinand_read_id_op(struct spinand_device *spinand, u8 naddr,
+			      u8 ndummy, u8 *buf)
 {
-	struct spi_mem_op op = SPINAND_READID_OP(0, spinand->scratchbuf,
-						 SPINAND_MAX_ID_LEN);
+	struct spi_mem_op op = SPINAND_READID_OP(
+		naddr, ndummy, spinand->scratchbuf, SPINAND_MAX_ID_LEN);
 	int ret;
 
 	ret = spi_mem_exec_op(spinand->spimem, &op);
@@ -810,22 +834,262 @@ static const struct spinand_manufacturer *spinand_manufacturers[] = {
 	&winbond_spinand_manufacturer,
 };
 
-static int spinand_manufacturer_detect(struct spinand_device *spinand)
+#if defined(CONFIG_SOC_MT7621)
+static struct spinand_info *mt7621_spinand_nor_emu_table = NULL;
+
+static void mt7621_spinand_generate_nor_emu_table(const struct spinand_info *table, unsigned int table_size, u8 mfrid)
 {
+	static struct spinand_info *info = mt7621_spinand_nor_emu_table;
 	unsigned int i;
+
+	memcpy(mt7621_spinand_nor_emu_table, table, table_size);
+
+	for (i = 0; i < table_size; i++) {
+		if(mfrid == SPINAND_MFR_GIGADEVICE || mfrid == SPINAND_MFR_MICRON)
+			info[i].op_variants.read_cache = &read_cache_variants_nor_emu;
+		else
+			info[i].op_variants.read_cache = &read_cache_variants_nor_emu2;
+		info[i].flags |= SPINAND_RELOAD_PAGE_0;
+	}
+}
+
+static int mt7621_spinand_read_cfg_reg(struct spinand_device *spinand, u8 *buf,
+				       u8 *val)
+{
+	struct spi_mem_op op = SPINAND_GET_FEATURE_OP(REG_CFG, buf);
 	int ret;
 
-	for (i = 0; i < ARRAY_SIZE(spinand_manufacturers); i++) {
-		ret = spinand_manufacturers[i]->ops->detect(spinand);
-		if (ret > 0) {
-			spinand->manufacturer = spinand_manufacturers[i];
-			return 0;
-		} else if (ret < 0) {
+	ret = spi_mem_exec_op(spinand->spimem, &op);
+	if (ret)
+		return ret;
+
+	*val = buf[0];
+	return 0;
+}
+
+static int mt7621_spinand_write_cfg_reg(struct spinand_device *spinand, u8 *buf,
+					u8 val)
+{
+	struct spi_mem_op op = SPINAND_SET_FEATURE_OP(REG_CFG, buf);
+
+	buf[0] = val;
+	return spi_mem_exec_op(spinand->spimem, &op);
+}
+
+static int mt7621_spinand_load_page(struct spinand_device *spinand,
+				    unsigned int row)
+{
+	struct spi_mem_op op = SPINAND_PAGE_READ_OP(row);
+
+	return spi_mem_exec_op(spinand->spimem, &op);
+}
+
+static int mt7621_spinand_read_from_cache(struct spinand_device *spinand,
+					  void *buf, unsigned int len)
+{
+	struct spi_mem_op op = SPINAND_PAGE_READ_FROM_CACHE_OP_NOR_EMU(false, 0,
+								0, NULL, 0);
+	unsigned int nbytes = len;
+	u8 *bufptr = buf;
+	int ret;
+
+	/*
+	 * Some controllers are limited in term of max RX data size. In this
+	 * case, just repeat the READ_CACHE operation after updating the
+	 * column.
+	 */
+	while (nbytes) {
+		op.data.buf.in = bufptr;
+		op.data.nbytes = nbytes;
+		ret = spi_mem_adjust_op_size(spinand->spimem, &op);
+		if (ret)
 			return ret;
+
+		ret = spi_mem_exec_op(spinand->spimem, &op);
+		if (ret)
+			return ret;
+
+		bufptr += op.data.nbytes;
+		nbytes -= op.data.nbytes;
+		op.addr.val += op.data.nbytes;
+	}
+
+	return 0;
+}
+
+static int mt7621_spinand_detect_nor_emu(struct spinand_device *spinand,
+					 u16 devid, int *enabled, const struct spinand_info *table, unsigned int table_size)
+{
+	struct device *dev = &spinand->spimem->spi->dev;
+	unsigned int i, num_ffs = 0, num_zeros = 0, len = 0;
+	u8 cfg, *buf;
+	int ret;
+
+	for (i = 0; i < table_size; i++) {
+		const struct spinand_info *info = &table[i];
+
+		if (devid != info->devid)
+			continue;
+
+		len = info->memorg.pagesize + info->memorg.oobsize;
+		break;
+	}
+
+	if (!len) {
+		*enabled = 0;
+		return 0;
+	}
+
+	buf = kmalloc(len, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	ret = mt7621_spinand_read_cfg_reg(spinand, buf, &cfg);
+	if (ret) {
+		dev_err(dev, "failed to read configuration\n");
+		goto cleanup;
+	}
+
+	cfg &= ~0xc2;
+	cfg |= 0x82;
+
+	ret = mt7621_spinand_write_cfg_reg(spinand, buf, cfg);
+	if (ret) {
+		dev_err(dev, "failed to write configuration\n");
+		goto cleanup;
+	}
+
+	ret = mt7621_spinand_read_cfg_reg(spinand, buf, &cfg);
+	if (ret) {
+		dev_err(dev, "failed to read back configuration\n");
+		goto cleanup;
+	}
+
+	if ((cfg & 0xc2) != 0x82) {
+		dev_info(dev,
+			 "flash chip does not support NOR read emulation\n");
+		ret = -ENOTSUPP;
+		goto cleanup;
+	}
+
+	ret = mt7621_spinand_load_page(spinand, 0);
+	if (ret) {
+		dev_err(dev, "failed to load NOR read configuration\n");
+		goto cleanup;
+	}
+
+	ret = mt7621_spinand_read_from_cache(spinand, buf, len);
+	if (ret) {
+		dev_err(dev, "failed to read NOR read configuration\n");
+		goto cleanup;
+	}
+
+	if (!ret) {
+		for (i = 0; i < len; i++) {
+			if (buf[i] == 0xff)
+				num_ffs++;
+			else if (!buf[i])
+				num_zeros++;
+		}
+
+		if (num_ffs == len) {
+			*enabled = 0;
+		} else if (num_zeros == len) {
+			*enabled = 1;
+		} else {
+			dev_warn(dev,
+				 "failed to check NOR read configuration\n");
+			ret = -EINVAL;
 		}
 	}
 
+cleanup:
+	if (mt7621_spinand_write_cfg_reg(spinand, buf, cfg & (~0xc2)))
+		dev_err(dev, "failed to leave NOR read configuration\n");
+
+	kfree(buf);
+
+	return ret;
+}
+#endif
+
+static int spinand_manufacturer_match(struct spinand_device *spinand,
+				      enum spinand_readid_method rdid_method)
+{
+	u8 *id = spinand->id.data;
+	unsigned int i;
+	int ret;
+#if defined(CONFIG_SOC_MT7621)
+	struct device *dev = &spinand->spimem->spi->dev;
+	const struct spinand_info *table;
+	int nor_read = 0;
+#endif
+
+	for (i = 0; i < ARRAY_SIZE(spinand_manufacturers); i++) {
+		const struct spinand_manufacturer *manufacturer =
+			spinand_manufacturers[i];
+
+		if (id[0] != manufacturer->id)
+			continue;
+#if defined(CONFIG_SOC_MT7621)
+		mt7621_spinand_nor_emu_table = kmalloc(manufacturer->nchips + 1, GFP_KERNEL);
+		if (!mt7621_spinand_nor_emu_table)
+			return -ENOMEM;
+		ret = mt7621_spinand_detect_nor_emu(spinand, rdid_method, &nor_read, manufacturer->chips, manufacturer->nchips);
+		if (ret)
+			nor_read = 0;
+
+		if (nor_read) {
+			dev_info(dev, "flash chip is using NOR read emulation\n");
+			mt7621_spinand_generate_nor_emu_table(manufacturer->chips, manufacturer->nchips, manufacturer->id);
+			table = mt7621_spinand_nor_emu_table;
+		} else {
+			table = manufacturer->chips;
+		}
+
+		ret = spinand_match_and_init(spinand, table, manufacturer->nchips, rdid_method);
+#else
+		ret = spinand_match_and_init(spinand,
+					     manufacturer->chips,
+					     manufacturer->nchips,
+					     rdid_method);
+#endif
+		if (ret < 0)
+			continue;
+
+		spinand->manufacturer = manufacturer;
+		return 0;
+	}
 	return -ENOTSUPP;
+}
+
+static int spinand_id_detect(struct spinand_device *spinand)
+{
+	u8 *id = spinand->id.data;
+	int ret;
+
+	ret = spinand_read_id_op(spinand, 0, 0, id);
+	if (ret)
+		return ret;
+	ret = spinand_manufacturer_match(spinand, SPINAND_READID_METHOD_OPCODE);
+	if (!ret)
+		return 0;
+
+	ret = spinand_read_id_op(spinand, 1, 0, id);
+	if (ret)
+		return ret;
+	ret = spinand_manufacturer_match(spinand,
+					 SPINAND_READID_METHOD_OPCODE_ADDR);
+	if (!ret)
+		return 0;
+
+	ret = spinand_read_id_op(spinand, 0, 1, id);
+	if (ret)
+		return ret;
+	ret = spinand_manufacturer_match(spinand,
+					 SPINAND_READID_METHOD_OPCODE_DUMMY);
+
+	return ret;
 }
 
 static int spinand_manufacturer_init(struct spinand_device *spinand)
@@ -883,9 +1147,9 @@ spinand_select_op_variant(struct spinand_device *spinand,
  * @spinand: SPI NAND object
  * @table: SPI NAND device description table
  * @table_size: size of the device description table
+ * @rdid_method: read id method to match
  *
- * Should be used by SPI NAND manufacturer drivers when they want to find a
- * match between a device ID retrieved through the READ_ID command and an
+ * Match between a device ID retrieved through the READ_ID command and an
  * entry in the SPI NAND description table. If a match is found, the spinand
  * object will be initialized with information provided by the matching
  * spinand_info entry.
@@ -894,8 +1158,10 @@ spinand_select_op_variant(struct spinand_device *spinand,
  */
 int spinand_match_and_init(struct spinand_device *spinand,
 			   const struct spinand_info *table,
-			   unsigned int table_size, u16 devid)
+			   unsigned int table_size,
+			   enum spinand_readid_method rdid_method)
 {
+	u8 *id = spinand->id.data;
 	struct nand_device *nand = spinand_to_nand(spinand);
 	unsigned int i;
 
@@ -903,14 +1169,19 @@ int spinand_match_and_init(struct spinand_device *spinand,
 		const struct spinand_info *info = &table[i];
 		const struct spi_mem_op *op;
 
-		if (devid != info->devid)
+		if (rdid_method != info->devid.method)
+			continue;
+
+		if (memcmp(id + 1, info->devid.id, info->devid.len))
 			continue;
 
 		nand->memorg = table[i].memorg;
 		nand->eccreq = table[i].eccreq;
 		spinand->eccinfo = table[i].eccinfo;
 		spinand->flags = table[i].flags;
+		spinand->id.len = 1 + table[i].devid.len;
 		spinand->select_target = table[i].select_target;
+		spinand->chip_model = table[i].model;
 
 		op = spinand_select_op_variant(spinand,
 					       info->op_variants.read_cache);
@@ -946,13 +1217,7 @@ static int spinand_detect(struct spinand_device *spinand)
 	if (ret)
 		return ret;
 
-	ret = spinand_read_id_op(spinand, spinand->id.data);
-	if (ret)
-		return ret;
-
-	spinand->id.len = SPINAND_MAX_ID_LEN;
-
-	ret = spinand_manufacturer_detect(spinand);
+	ret = spinand_id_detect(spinand);
 	if (ret) {
 		dev_err(dev, "unknown raw ID %*phN\n", SPINAND_MAX_ID_LEN,
 			spinand->id.data);
@@ -965,12 +1230,17 @@ static int spinand_detect(struct spinand_device *spinand)
 		return -EINVAL;
 	}
 
-	dev_info(&spinand->spimem->spi->dev,
-		 "%s SPI NAND was found.\n", spinand->manufacturer->name);
-	dev_info(&spinand->spimem->spi->dev,
-		 "%llu MiB, block size: %zu KiB, page size: %zu, OOB size: %u\n",
+	dev_notice(&spinand->spimem->spi->dev,
+		 "%s%s%s SPI NAND was found. (ID: %*phN)\n", spinand->manufacturer->name,
+		 spinand->chip_model? " " : "", spinand->chip_model? : "",
+		 SPINAND_MAX_ID_LEN, spinand->id.data);
+	dev_notice(&spinand->spimem->spi->dev,
+		 "%llu MiB, block size: %zu KiB, page size: %zu, OOB size: %u, "
+		 "ECC strength %u/%u, %s ECC status.\n",
 		 nanddev_size(nand) >> 20, nanddev_eraseblock_size(nand) >> 10,
-		 nanddev_page_size(nand), nanddev_per_page_oobsize(nand));
+		 nanddev_page_size(nand), nanddev_per_page_oobsize(nand),
+		 nand->eccreq.strength, nand->eccreq.step_size,
+		 spinand->eccinfo.get_status? "custom" : "default");
 
 	return 0;
 }
@@ -1101,6 +1371,8 @@ static int spinand_init(struct spinand_device *spinand)
 
 	/* Propagate ECC information to mtd_info */
 	mtd->ecc_strength = nand->eccreq.strength;
+	/* UBI schedule PEB for scrubbing if number of bit-flips >= mtd->bitflip_threshold */
+	mtd->bitflip_threshold = (mtd->ecc_strength >> 1) + 1;
 	mtd->ecc_step_size = nand->eccreq.step_size;
 
 	return 0;
@@ -1177,6 +1449,7 @@ static int spinand_remove(struct spi_mem *mem)
 #if defined(CONFIG_SOC_MT7621)
 	if (spinand->flags & SPINAND_RELOAD_PAGE_0)
 		spinand_load_page_0(spinand);
+	kfree(mt7621_spinand_nor_emu_table);
 #endif
 	spinand_cleanup(spinand);
 

@@ -265,13 +265,13 @@
 		conf-pu {
 			pins = "SPI0_CS", "SPI0_HOLD", "SPI0_WP";
 			drive-strength = <MTK_DRIVE_8mA>;
-			bias-pull-down = <MTK_PUPD_SET_R1R0_00>;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_11>;
 		};
 
 		conf-pd {
 			pins = "SPI0_CLK", "SPI0_MOSI", "SPI0_MISO";
 			drive-strength = <MTK_DRIVE_8mA>;
-			bias-pull-down = <MTK_PUPD_SET_R1R0_00>;
+			bias-pull-down = <MTK_PUPD_SET_R1R0_11>;
 		};
 	};
 

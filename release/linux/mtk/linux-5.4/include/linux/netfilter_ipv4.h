@@ -5,6 +5,9 @@
 #define __LINUX_IP_NETFILTER_H
 
 #include <uapi/linux/netfilter_ipv4.h>
+#ifdef CONFIG_IP_NF_LFP
+#define NFC_LFP_ENABLE		(1<<30)
+#endif
 
 /* Extra routing may needed on local out, as the QUEUE target never returns
  * control to the table.

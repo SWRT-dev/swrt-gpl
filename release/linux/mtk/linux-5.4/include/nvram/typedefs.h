@@ -107,6 +107,12 @@ typedef unsigned __int64 uint64;
 #define TYPEDEF_UINT
 #define TYPEDEF_USHORT
 #define TYPEDEF_ULONG
+#ifdef __KERNEL__
+#include <linux/version.h>
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 19))
+#define TYPEDEF_BOOL
+#endif	/* >= 2.6.19 */
+#endif	/* __KERNEL__ */
 #endif
 
 #if !defined(linux) && !defined(_WIN32) && !defined(_CFE_) && \
@@ -197,9 +203,13 @@ enum {
 #ifdef USE_TYPEDEF_DEFAULTS
 #undef USE_TYPEDEF_DEFAULTS
 
-//#ifndef TYPEDEF_BOOL	// 1203 ham
-//typedef	/* @abstract@ */ unsigned char	bool;
-//#endif
+#ifndef TYPEDEF_BOOL
+#if !defined(__GLIBC__) && !defined(__UCLIBC__) /* musl */
+#include <stdbool.h>
+#else
+typedef	/* @abstract@ */ unsigned char	bool;
+#endif
+#endif
 
 /* define uchar, ushort, uint, ulong */
 
@@ -273,7 +283,7 @@ typedef double		float64;
  * selects single precision; the default is double precision.
  */
 
-#ifndef TYPEDEF_FLOAT_T
+#if 0 //ndef TYPEDEF_FLOAT_T
 
 #if defined(FLOAT32)
 typedef float32 float_t;
@@ -319,7 +329,7 @@ typedef float64 float_t;
 
 #define INLINE __inline
 
-#elif __GNUC__
+#elif defined(__GNUC__)
 
 #define INLINE __inline__
 

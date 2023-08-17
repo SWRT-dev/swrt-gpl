@@ -61,6 +61,13 @@ connmark_tg_shift(struct sk_buff *skb, const struct xt_connmark_tginfo3 *info)
 			nf_conntrack_event_cache(IPCT_MARK, ct);
 		}
 		break;
+	case XT_CONNMARK_SET_RETURN:
+		// Set connmark and mark, apply mask to mark, do XT_RETURN	- zzz
+		newmark = ct->mark = (ct->mark & ~info->ctmask) | (info->ctmark & info->ctmask);
+		if (newmark != skb->mark) {
+			skb->mark = newmark;
+		}
+		return XT_RETURN;
 	case XT_CONNMARK_SAVE:
 		new_targetmark = (skb->mark & info->nfmask);
 		if (info->shift_dir == D_SHIFT_RIGHT)

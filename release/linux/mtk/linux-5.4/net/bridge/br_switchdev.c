@@ -7,6 +7,9 @@
 #include <net/switchdev.h>
 
 #include "br_private.h"
+#if defined(CONFIG_NET_DSA_MT7530)
+extern bool no_dsa_offload;
+#endif
 
 static int br_switchdev_mark_get(struct net_bridge *br, struct net_device *dev)
 {
@@ -35,6 +38,11 @@ int nbp_switchdev_mark_set(struct net_bridge_port *p)
 		return err;
 	}
 
+#if defined(CONFIG_NET_DSA_MT7530)
+	if (no_dsa_offload)
+		p->offload_fwd_mark = 0;
+	else
+#endif
 	p->offload_fwd_mark = br_switchdev_mark_get(p->br, p->dev);
 
 	return 0;

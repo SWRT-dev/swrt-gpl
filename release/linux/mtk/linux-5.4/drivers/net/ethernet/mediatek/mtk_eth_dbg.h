@@ -53,11 +53,13 @@
 
 #define PROCREG_ESW_CNT			"esw_cnt"
 #define PROCREG_TXRING			"tx_ring"
+#define PROCREG_HWTXRING		"hwtx_ring"
 #define PROCREG_RXRING			"rx_ring"
 #define PROCREG_DIR			"mtketh"
 #define PROCREG_DBG_REGS		"dbg_regs"
 #define PROCREG_HW_LRO_STATS		"hw_lro_stats"
 #define PROCREG_HW_LRO_AUTO_TLB		"hw_lro_auto_tlb"
+#define PROCREG_RESET_EVENT		"reset_event"
 
 /* HW LRO flush reason */
 #define MTK_HW_LRO_AGG_FLUSH		(1)
@@ -271,6 +273,7 @@ extern u32 _mtk_mdio_write(struct mtk_eth *eth, u16 phy_addr,
 
 extern u32 mtk_cl45_ind_read(struct mtk_eth *eth, u16 port, u16 devad, u16 reg, u16 *data);
 extern u32 mtk_cl45_ind_write(struct mtk_eth *eth, u16 port, u16 devad, u16 reg, u16 data);
+extern atomic_t force;
 
 int debug_proc_init(struct mtk_eth *eth);
 void debug_proc_exit(void);

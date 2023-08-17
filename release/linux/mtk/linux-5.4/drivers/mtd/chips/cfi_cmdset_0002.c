@@ -40,7 +40,7 @@
 #include <linux/mtd/xip.h>
 
 #define AMD_BOOTLOC_BUG
-#define FORCE_WORD_WRITE 1
+#define FORCE_WORD_WRITE 0
 
 #define MAX_RETRIES 3
 

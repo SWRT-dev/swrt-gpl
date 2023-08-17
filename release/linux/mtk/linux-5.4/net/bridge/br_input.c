@@ -80,6 +80,16 @@ int br_handle_frame_finish(struct net *net, struct sock *sk, struct sk_buff *skb
 	if (!p || p->state == BR_STATE_DISABLED)
 		goto drop;
 
+	if (p->untagged_port_vlan_en && skb_vlan_tag_present(skb)){
+		u16 skb_vid;
+		skb_vid = skb_vlan_tag_get_id(skb);
+
+		if (skb_vid != p->untagged_port_vlan) {
+			goto drop;
+		}
+		skb->vlan_tci = 0; // clear
+	}
+
 	if (!br_allowed_ingress(p->br, nbp_vlan_group_rcu(p), skb, &vid))
 		goto out;
 

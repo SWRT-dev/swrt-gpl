@@ -2,7 +2,7 @@
 #include "mt7981.dtsi"
 / {
 	model = "MediaTek MT7981 RFB";
-	compatible = "mediatek,mt7981-spim-snand-rfb";
+	compatible = "mediatek,mt7981-spim-snand-2500wan-gmac2-rfb";
 	chosen {
 		bootargs = "console=ttyS0,115200n1 loglevel=8  \
 				earlycon=uart8250,mmio32,0x11002000";
@@ -222,13 +222,13 @@
 		conf-pu {
 			pins = "SPI0_CS", "SPI0_HOLD", "SPI0_WP";
 			drive-strength = <MTK_DRIVE_8mA>;
-			bias-pull-down = <MTK_PUPD_SET_R1R0_00>;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_11>;
 		};
 
 		conf-pd {
 			pins = "SPI0_CLK", "SPI0_MOSI", "SPI0_MISO";
 			drive-strength = <MTK_DRIVE_8mA>;
-			bias-pull-down = <MTK_PUPD_SET_R1R0_00>;
+			bias-pull-down = <MTK_PUPD_SET_R1R0_11>;
 		};
 	};
 

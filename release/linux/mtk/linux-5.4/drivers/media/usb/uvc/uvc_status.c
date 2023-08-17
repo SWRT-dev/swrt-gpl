@@ -223,7 +223,6 @@ static void uvc_status_complete(struct urb *urb)
 			if (uvc_event_control(urb, status, len))
 				/* The URB will be resubmitted in work context. */
 				return;
-			dev->motion = 1;
 			break;
 		}
 
@@ -272,7 +271,6 @@ int uvc_status_init(struct uvc_device *dev)
 	}
 
 	pipe = usb_rcvintpipe(dev->udev, ep->desc.bEndpointAddress);
-	dev->motion = 0;
 
 	/* For high-speed interrupt endpoints, the bInterval value is used as
 	 * an exponent of two. Some developers forgot about it.

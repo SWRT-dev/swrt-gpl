@@ -33,6 +33,7 @@
 #include <stddef.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <sys/sysmacros.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -721,13 +722,13 @@ void cache_block_put(struct file_buffer *entry)
 			+ (((char *)A) - data_cache)))
 
 
-void inc_progress_bar()
+inline void inc_progress_bar()
 {
 	cur_uncompressed ++;
 }
 
 
-void update_progress_bar()
+inline void update_progress_bar()
 {
 	pthread_mutex_lock(&progress_mutex);
 	pthread_cond_signal(&progress_wait);
@@ -735,7 +736,7 @@ void update_progress_bar()
 }
 
 
-void waitforthread(int i)
+inline void waitforthread(int i)
 {
 	TRACE("Waiting for thread %d\n", i);
 	while(thread[i] != 0)

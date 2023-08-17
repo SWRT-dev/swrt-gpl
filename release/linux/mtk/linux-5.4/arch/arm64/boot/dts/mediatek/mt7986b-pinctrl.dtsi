@@ -26,4 +26,25 @@
 			groups = "spi1_2";
 		};
 	};
+
+	pwm1_pin_g0: pwm1-pin-20 {
+		mux {
+			function = "pwm";
+			groups = "pwm1_1";
+		};
+	};
+
+	pwm0_pin: pwm0-pin-21 {
+		mux {
+			function = "pwm";
+			groups = "pwm0";
+		};
+	};
+
+	pwm1_pin_g1: pwm1-pin-22 {
+		mux {
+			function = "pwm";
+			groups = "pwm1_0";
+		};
+	};
 };

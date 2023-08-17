@@ -11,4 +11,9 @@ config NVRAM_64K
 	depends on ASUS_NVRAM_API
 	default n
 
+config NVRAM_SIZE
+	hex "Specify nvram size on MT798X platform "
+ 	depends on ASUS_NVRAM_API && ARM64
+	default 0x10000
+
 endmenu

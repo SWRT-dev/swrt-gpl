@@ -79,7 +79,11 @@ include $(if $(wildcard $(KBUILD_EXTMOD)/Kbuild), \
              $(KBUILD_EXTMOD)/Kbuild, $(KBUILD_EXTMOD)/Makefile)
 endif
 
+ifneq ($(KBUILD_EXTMOD),)
+MODPOST += $(subst -i,-n,$(filter -i,$(MAKEFLAGS))) -s -w -T - $(wildcard vmlinux)
+else
 MODPOST += $(subst -i,-n,$(filter -i,$(MAKEFLAGS))) -s -T - $(wildcard vmlinux)
+endif
 
 # find all modules listed in modules.order
 modules := $(sort $(shell cat $(MODORDER)))

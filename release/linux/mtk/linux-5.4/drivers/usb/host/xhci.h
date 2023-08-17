@@ -1912,6 +1912,8 @@ struct xhci_hcd {
 	unsigned long		priv[0] __aligned(sizeof(s64));
 };
 
+extern int u3intf;
+
 /* Platform specific overrides to generic XHCI hc_driver ops */
 struct xhci_driver_overrides {
 	size_t extra_priv_size;

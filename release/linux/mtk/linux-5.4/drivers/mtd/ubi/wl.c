@@ -1314,7 +1314,9 @@ int ubi_wl_scrub_peb(struct ubi_device *ubi, int pnum)
 {
 	struct ubi_wl_entry *e;
 
-	ubi_msg(ubi, "schedule PEB %d for scrubbing", pnum);
+	if (printk_ratelimit()) {
+		ubi_msg(ubi, "schedule PEB %d for scrubbing", pnum);
+	}
 
 retry:
 	spin_lock(&ubi->wl_lock);

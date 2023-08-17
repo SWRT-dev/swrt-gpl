@@ -181,6 +181,7 @@ void die(const char *str, struct pt_regs *regs, int err)
 
 	raw_spin_lock_irqsave(&die_lock, flags);
 
+	enable_oopsbuf(1);
 	oops_enter();
 
 	console_verbose();

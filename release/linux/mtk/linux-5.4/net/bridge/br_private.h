@@ -278,6 +278,8 @@ struct net_bridge_port {
 #endif
 	u16				group_fwd_mask;
 	u16				backup_redirected_cnt;
+	u8				untagged_port_vlan_en; /* if untagged vlan is enalbed */
+	u16				untagged_port_vlan; /* vlan value of this port */
 };
 
 #define kobj_to_brport(obj)	container_of(obj, struct net_bridge_port, kobj)

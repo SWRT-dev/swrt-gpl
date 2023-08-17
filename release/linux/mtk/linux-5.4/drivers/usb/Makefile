@@ -6,6 +6,7 @@
 # Object files in subdirectories
 
 obj-$(CONFIG_USB_COMMON)	+= common/
+obj-$(CONFIG_USB_BUS_STATS)	+= usb-bus-stats.o
 obj-$(CONFIG_USB)		+= core/
 obj-$(CONFIG_USB_SUPPORT)	+= phy/
 

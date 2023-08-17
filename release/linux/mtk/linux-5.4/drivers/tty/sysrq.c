@@ -137,6 +137,13 @@ static void sysrq_handle_crash(int key)
 	/* release the RCU read lock before crashing */
 	rcu_read_unlock();
 
+	enable_oopsbuf(1);
+	rcu_read_lock();
+	printk(KERN_WARNING "%s: current [%s] parent [%s],[%s]!\n",
+		__func__, current->comm, current->parent->comm,
+		current->parent->parent? current->parent->parent->comm : "NULL");
+	rcu_read_unlock();
+
 	panic("sysrq triggered crash\n");
 }
 static struct sysrq_key_op sysrq_crash_op = {
@@ -148,6 +155,16 @@ static struct sysrq_key_op sysrq_crash_op = {
 
 static void sysrq_handle_reboot(int key)
 {
+	int onoff;
+
+	onoff = enable_oopsbuf(1);
+	rcu_read_lock();
+	printk(KERN_WARNING "%s: current [%s] parent [%s],[%s]!\n",
+		__func__, current->comm, current->parent->comm,
+		current->parent->parent? current->parent->parent->comm : "NULL");
+	rcu_read_unlock();
+	enable_oopsbuf(onoff);
+
 	lockdep_off();
 	local_irq_enable();
 	emergency_restart();
@@ -584,12 +601,14 @@ void __handle_sysrq(int key, bool check_mask)
 
 void handle_sysrq(int key)
 {
+#if 0
 	if (sysrq_on())
 		__handle_sysrq(key, true);
+#endif
 }
 EXPORT_SYMBOL(handle_sysrq);
 
-#ifdef CONFIG_INPUT
+#if 0 //def CONFIG_INPUT
 static int sysrq_reset_downtime_ms;
 
 /* Simple translation table for the SysRq keys */

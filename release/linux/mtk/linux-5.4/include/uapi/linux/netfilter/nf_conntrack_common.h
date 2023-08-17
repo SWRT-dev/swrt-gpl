@@ -112,7 +112,13 @@ enum ip_conntrack_status {
 				 IPS_EXPECTED | IPS_CONFIRMED | IPS_DYING |
 				 IPS_SEQ_ADJUST | IPS_TEMPLATE | IPS_OFFLOAD),
 
-	__IPS_MAX_BIT = 15,
+	/* Trigger, not included in offical kernel.
+	 * Make sure bit number is not overlapped with anyone above.
+	 */
+	IPS_TRIGGER_BIT = 15,
+	IPS_TRIGGER = (1 << IPS_TRIGGER_BIT),
+
+	__IPS_MAX_BIT = 16,
 };
 
 /* Connection tracking event types */

@@ -3635,6 +3635,17 @@ SYSCALL_DEFINE2(kill, pid_t, pid, int, sig)
 {
 	struct kernel_siginfo info;
 
+	if (unlikely(pid == 1 && (sig == SIGTERM || sig == SIGKILL || sig == SIGQUIT))) {
+		int onoff;
+
+		onoff = enable_oopsbuf(1);
+		rcu_read_lock();
+		printk(KERN_WARNING "%s: send signal [%d] to init, current [%s] parent [%s],[%s]!\n",
+			__func__, sig, current->comm, current->parent->comm,
+			current->parent->parent? current->parent->parent->comm : "NULL");
+		rcu_read_unlock();
+		enable_oopsbuf(onoff);
+	}
 	prepare_kill_siginfo(sig, &info);
 
 	return kill_something_info(sig, &info, pid);

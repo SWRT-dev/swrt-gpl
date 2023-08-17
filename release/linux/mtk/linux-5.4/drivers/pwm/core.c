@@ -528,6 +528,81 @@ int pwm_apply_state(struct pwm_device *pwm, const struct pwm_state *state)
 }
 EXPORT_SYMBOL_GPL(pwm_apply_state);
 
+#ifdef CONFIG_PWM_MTK_MM
+#ifdef CONFIG_PWM_MTK_IRQ
+void (*clear_pwm_wq_index)(void) = NULL;
+EXPORT_SYMBOL(clear_pwm_wq_index);
+#endif
+
+/**
+ * pwm_apply_mm() - atomically apply a new state to a PWM device for memory mode
+ * @pwm: PWM device
+ * @state: new state to apply
+ */
+int pwm_apply_mm(struct pwm_device *pwm, const struct pwm_state *state)
+{
+	struct pwm_chip *chip;
+	int err;
+
+	if (!pwm || !state)
+		return -EINVAL;
+
+	chip = pwm->chip;
+
+	if (!strcmp(state->mm_type, pwm->state.mm_type) &&
+	    !strcmp(state->mm_fint, pwm->state.mm_fint) &&
+	    !strcmp(state->mm_config, pwm->state.mm_config) &&
+	    state->mm_enabled == pwm->state.mm_enabled)
+		return 0;
+
+	if (strcmp(state->mm_type, pwm->state.mm_type)) {
+		err = chip->ops->mm_pwmbuf(pwm->chip, pwm,
+					   state->mm_type);
+		if (err)
+			return err;
+
+		strcpy(pwm->state.mm_type, state->mm_type);
+	}
+
+	if (strcmp(state->mm_fint, pwm->state.mm_fint)) {
+		err = chip->ops->mm_fint(pwm->chip, pwm,
+					 state->mm_fint);
+		if (err)
+			return err;
+
+		strcpy(pwm->state.mm_fint, state->mm_fint);
+#ifdef CONFIG_PWM_MTK_IRQ
+		if (clear_pwm_wq_index)
+			clear_pwm_wq_index();
+#endif
+	}
+
+	if (strcmp(state->mm_config, pwm->state.mm_config)) {
+		err = chip->ops->mm_config(pwm->chip, pwm,
+					   state->mm_config);
+		if (err)
+			return err;
+
+		strcpy(pwm->state.mm_config, state->mm_config);
+	}
+
+	if (state->mm_enabled != pwm->state.mm_enabled) {
+		if (state->mm_enabled) {
+			err = chip->ops->enable(chip, pwm);
+			if (err)
+				return err;
+		} else {
+			chip->ops->disable(chip, pwm);
+		}
+
+		pwm->state.mm_enabled = state->mm_enabled;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(pwm_apply_mm);
+#endif /* CONFIG_PWM_MTK_MM */
+
 /**
  * pwm_capture() - capture and report a PWM signal
  * @pwm: PWM device

@@ -88,6 +88,56 @@ static struct kmem_cache *skbuff_ext_cache __ro_after_init;
 int sysctl_max_skb_frags __read_mostly = MAX_SKB_FRAGS;
 EXPORT_SYMBOL(sysctl_max_skb_frags);
 
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+static struct kmem_cache *skbuff_cb_store_cache __read_mostly;
+
+/* Control buffer save/restore for IMQ devices */
+struct skb_cb_table {
+	char			cb[48] __aligned(8);
+	void			*cb_next;
+};
+
+int skb_save_cb(struct sk_buff *skb)
+{
+	struct skb_cb_table *next;
+
+	next = kmem_cache_alloc(skbuff_cb_store_cache, GFP_ATOMIC);
+	if (!next)
+		return -ENOMEM;
+
+	BUILD_BUG_ON(sizeof(skb->cb) != sizeof(next->cb));
+
+	memcpy(next->cb, skb->cb, sizeof(skb->cb));
+	next->cb_next = skb->cb_next;
+	skb->cb_next = next;
+	smp_wmb();
+
+	return 0;
+}
+EXPORT_SYMBOL(skb_save_cb);
+
+int skb_restore_cb(struct sk_buff *skb)
+{
+	struct skb_cb_table *next;
+
+	if (!skb->cb_next)
+		return 0;
+
+	next = skb->cb_next;
+
+	BUILD_BUG_ON(sizeof(skb->cb) != sizeof(next->cb));
+
+	memcpy(skb->cb, next->cb, sizeof(skb->cb));
+	skb->cb_next = next->cb_next;
+	smp_wmb();
+
+	kmem_cache_free(skbuff_cb_store_cache, next);
+
+	return 0;
+}
+EXPORT_SYMBOL(skb_restore_cb);
+#endif
+
 /**
  *	skb_panic - private function for out-of-line support
  *	@skb:	buffer
@@ -250,6 +300,10 @@ struct sk_buff *__alloc_skb(unsigned int size, gfp_t gfp_mask,
 
 		fclones->skb2.fclone = SKB_FCLONE_CLONE;
 	}
+
+#ifdef CONFIG_IP_NF_LFP
+	skb->nfcache = 0;
+#endif
 out:
 	return skb;
 nodata:
@@ -282,6 +336,9 @@ static struct sk_buff *__build_skb_around(struct sk_buff *skb,
 	shinfo = skb_shinfo(skb);
 	memset(shinfo, 0, offsetof(struct skb_shared_info, dataref));
 	atomic_set(&shinfo->dataref, 1);
+#ifdef CONFIG_IP_NF_LFP
+	skb->nfcache = 0;
+#endif
 
 	return skb;
 }
@@ -678,6 +735,28 @@ void skb_release_head_state(struct sk_buff *skb)
 		WARN_ON(in_irq());
 		skb->destructor(skb);
 	}
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+	/*
+	 * This should not happen. When it does, avoid memleak by restoring
+	 * the chain of cb-backups.
+	 */
+	while (skb->cb_next != NULL) {
+		if (net_ratelimit())
+			pr_warn("IMQ: kfree_skb: skb->cb_next: %08x\n",
+				(unsigned int)(uintptr_t)skb->cb_next);
+
+		skb_restore_cb(skb);
+	}
+	/*
+	 * This should not happen either, nf_queue_entry is nullified in
+	 * imq_dev_xmit(). If we have non-NULL nf_queue_entry then we are
+	 * leaking entry pointers, maybe memory. We don't know if this is
+	 * pointer to already freed memory, or should this be freed.
+	 * If this happens we need to add refcounting, etc for nf_queue_entry.
+	 */
+	if (skb->nf_queue_entry && net_ratelimit())
+		pr_warn("%s\n", "IMQ: kfree_skb: skb->nf_queue_entry != NULL");
+#endif
 #if IS_ENABLED(CONFIG_NF_CONNTRACK)
 	nf_conntrack_put(skb_nfct(skb));
 #endif
@@ -962,6 +1041,9 @@ static void __copy_skb_header(struct sk_buff *new, const struct sk_buff *old)
 	skb_dst_copy(new, old);
 	__skb_ext_copy(new, old);
 	__nf_copy(new, old, false);
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+	new->cb_next = NULL;
+#endif
 
 	/* Note : this field could be in headers_start/headers_end section
 	 * It is not yet because we do not want to have a 16 bit hole
@@ -998,7 +1080,6 @@ static void __copy_skb_header(struct sk_buff *new, const struct sk_buff *old)
 #ifdef CONFIG_NET_SCHED
 	CHECK_SKB_FIELD(tc_index);
 #endif
-
 }
 
 /*
@@ -1506,6 +1587,9 @@ void skb_copy_header(struct sk_buff *new, const struct sk_buff *old)
 	skb_shinfo(new)->gso_size = skb_shinfo(old)->gso_size;
 	skb_shinfo(new)->gso_segs = skb_shinfo(old)->gso_segs;
 	skb_shinfo(new)->gso_type = skb_shinfo(old)->gso_type;
+#ifdef CONFIG_IP_NF_LFP
+	new->nfcache	= old->nfcache;
+#endif
 }
 EXPORT_SYMBOL(skb_copy_header);
 
@@ -2160,7 +2244,7 @@ void *__pskb_pull_tail(struct sk_buff *skb, int delta)
 		/* Free pulled out fragments. */
 		while ((list = skb_shinfo(skb)->frag_list) != insp) {
 			skb_shinfo(skb)->frag_list = list->next;
-			kfree_skb(list);
+			consume_skb(list);
 		}
 		/* And insert new clone at head. */
 		if (clone) {
@@ -4206,6 +4290,13 @@ void __init skb_init(void)
 						0,
 						SLAB_HWCACHE_ALIGN|SLAB_PANIC,
 						NULL);
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+	skbuff_cb_store_cache = kmem_cache_create("skbuff_cb_store_cache",
+						  sizeof(struct skb_cb_table),
+						  0,
+						  SLAB_HWCACHE_ALIGN|SLAB_PANIC,
+						  NULL);
+#endif
 	skb_extensions_init();
 }
 
@@ -5867,7 +5958,7 @@ static int pskb_carve_frag_list(struct sk_buff *skb,
 	/* Free pulled out fragments. */
 	while ((list = shinfo->frag_list) != insp) {
 		shinfo->frag_list = list->next;
-		kfree_skb(list);
+		consume_skb(list);
 	}
 	/* And insert new clone at head. */
 	if (clone) {

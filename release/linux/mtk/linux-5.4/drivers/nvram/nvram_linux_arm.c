@@ -13,21 +13,9 @@
  */
 #define ASUS_NVRAM
 #define WL_NVRAM	/* wear-levelling nvram */
-
-/* If UBOOT_CFG_ENV_SIZE is defined as non-zero value,
- * we have to skip first UBOOT_CFG_ENV_SIZE bytes of MTD partition.
- * For Broadcom BSP, UBOOT_CFG_ENV_SIZE can be zero.
- */
-#if defined(WL_NVRAM)
-#if !defined(UBOOT_CFG_ENV_SIZE)
-#define UBOOT_CFG_ENV_SIZE 0x1000
+#if !defined(CONFIG_MODEL_RMAX6000)
+#define COMPRESS_NVRAM
 #endif
-
-#define RESERVED_BLOCK_SIZE	(UBOOT_CFG_ENV_SIZE)
-#else
-#define RESERVED_BLOCK_SIZE	0
-#endif
-
 
 #include <linux/init.h>
 #include <linux/module.h>
@@ -36,8 +24,26 @@
 #include <linux/interrupt.h>
 #include <linux/spinlock.h>
 #include <linux/slab.h>
-#include <linux/memblock.h>
 #include <linux/sched.h>
+#include <linux/seq_file.h>
+
+#ifdef ASUS_NVRAM
+#include <nvram/bcmnvram.h>
+#endif
+
+
+/* If UBOOT_CFG_ENV_SIZE is defined as non-zero value,
+ * we have to skip first UBOOT_CFG_ENV_SIZE bytes of MTD partition.
+ */
+#if !defined(UBOOT_CFG_ENV_SIZE)
+#error no UBOOT_CFG_ENV_SIZE defined! check header file!
+#endif
+
+#if defined(WL_NVRAM)
+#define RESERVED_BLOCK_SIZE	(UBOOT_CFG_ENV_SIZE)
+#else	/* !WL_NVRAM */
+#define RESERVED_BLOCK_SIZE	0
+#endif	/* WL_NVRAM */
 
 #ifdef ASUS_NVRAM
 #	include <linux/mm.h>
@@ -82,6 +88,10 @@
 #include <nvram/bcmendian.h>
 #include <nvram/bcmnvram.h>
 #include <nvram/bcmutils.h>
+#ifdef COMPRESS_NVRAM
+#include <linux/zlib.h>
+#include <linux/zutil.h>
+#endif
 
 #include "nvram.c"
 
@@ -95,23 +105,23 @@
 #include <sbutils.h>
 #include <sflash.h>
 #endif	// ASUS_NVRAM
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
-#include <linux/user_namespace.h>
-#include <net/net_namespace.h>
-#endif
 
 /* In BSS to minimize text size and page aligned so it can be mmap()-ed */
 #ifdef ASUS_NVRAM
-static char *nvram_buf;
+static uint8_t *nvram_buf;
 #else	// !ASUS_NVRAM
-static char nvram_buf[NVRAM_SPACE] __attribute__((aligned(PAGE_SIZE)));
+static uint8_t nvram_buf[NVRAM_SPACE] __attribute__((aligned(PAGE_SIZE)));
 #endif	// ASUS_NVRAM
 
-static char *commit_buf = NULL;
+#define READ_BUF_SIZE	(NVRAM_SPACE + 1)
+static DEFINE_MUTEX(read_buf_lock);	/* protect read_buf */
+static char *read_buf = NULL;
+static uint8_t *commit_buf = NULL;
+static int nvram_idx = 0;
 
 #ifdef WL_NVRAM
-static char *chk_sector_buf = NULL;
-static size_t rsv_blk_size = RESERVED_BLOCK_SIZE;
+static uint8_t *wblk_buf = NULL;
+static size_t rsv_blk_size = RESERVED_BLOCK_SIZE;	/* Aligned to nvram_mtd->writesize and step_unit both. */
 static size_t step_unit = STEP_UNIT;
 #endif
 
@@ -126,8 +136,38 @@ static struct device *s_nvram_device = NULL;
 #define MTD_NVRAM_NAME	"nvram"
 #define NVRAM_DRV_NAME	MTD_NVRAM_NAME
 
-
-#if 0//LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,18)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
+#       define MTD_ERASE(mtd, args...) mtd_erase(mtd, args)
+#       define MTD_POINT(mtd, a,b,c,d) mtd_point(mtd, a,b,c, (u_char **)(d))
+#       define MTD_UNPOINT(mtd, arg) mtd_unpoint(mtd, (u_char *)arg)
+#       define MTD_READ(mtd, args...) mtd_read(mtd, args)
+#       define MTD_WRITE(mtd, args...) mtd_write(mtd, args)
+#       define MTD_READV(mtd, args...) mtd_readv(mtd, args)
+#       define MTD_WRITEV(mtd, args...) mtd_writev(mtd, args)
+#       define MTD_READECC(mtd, args...) mtd_read_ecc(mtd, args)
+#       define MTD_WRITEECC(mtd, args...) mtd_write_ecc(mtd, args)
+#       define MTD_READOOB(mtd, args...) mtd_read_oob(mtd, args)
+#       define MTD_WRITEOOB(mtd, args...) mtd_write_oob(mtd, args)
+#       define MTD_SYNC(mtd) do { if (mtd->sync) (*(mtd->_sync))(mtd);  } while (0)
+#       define MTD_UNLOCK(mtd, args...) do { if (mtd->_unlock) (*(mtd->_unlock))(mtd, args);  } while (0)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
+/* Following macros are removed from linux/mtd/mtd.h since linux-2.6.0
+ * mtd_info->funcptr is renamed as mtd_info->_funcptr since linux-3.4.
+ */
+#       define MTD_ERASE(mtd, args...) (*(mtd->_erase))(mtd, args)
+#       define MTD_POINT(mtd, a,b,c,d) (*(mtd->_point))(mtd, a,b,c, (u_char **)(d))
+#       define MTD_UNPOINT(mtd, arg) (*(mtd->_unpoint))(mtd, (u_char *)arg)
+#       define MTD_READ(mtd, args...) (*(mtd->_read))(mtd, args)
+#       define MTD_WRITE(mtd, args...) (*(mtd->_write))(mtd, args)
+#       define MTD_READV(mtd, args...) (*(mtd->_readv))(mtd, args)
+#       define MTD_WRITEV(mtd, args...) (*(mtd->_writev))(mtd, args)
+#       define MTD_READECC(mtd, args...) (*(mtd->_read_ecc))(mtd, args)
+#       define MTD_WRITEECC(mtd, args...) (*(mtd->_write_ecc))(mtd, args)
+#       define MTD_READOOB(mtd, args...) (*(mtd->_read_oob))(mtd, args)
+#       define MTD_WRITEOOB(mtd, args...) (*(mtd->_write_oob))(mtd, args)
+#       define MTD_SYNC(mtd) do { if (mtd->sync) (*(mtd->_sync))(mtd);  } while (0)
+#       define MTD_UNLOCK(mtd, args...) do { if (mtd->_unlock) (*(mtd->_unlock))(mtd, args);  } while (0)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,18)
 // Following macros are removed from linux/mtd/mtd.h since linux-2.6.0
 #       define MTD_ERASE(mtd, args...) (*(mtd->erase))(mtd, args)
 #       define MTD_POINT(mtd, a,b,c,d) (*(mtd->point))(mtd, a,b,c, (u_char **)(d))
@@ -141,22 +181,8 @@ static struct device *s_nvram_device = NULL;
 #       define MTD_READOOB(mtd, args...) (*(mtd->read_oob))(mtd, args)
 #       define MTD_WRITEOOB(mtd, args...) (*(mtd->write_oob))(mtd, args)
 #       define MTD_SYNC(mtd) do { if (mtd->sync) (*(mtd->sync))(mtd);  } while (0)
-#else
-#       define MTD_ERASE(mtd, args...) (*(mtd->_erase))(mtd, args)
-#       define MTD_POINT(mtd, a,b,c,d) (*(mtd->_point))(mtd, a,b,c, (u_char **)(d))
-#       define MTD_UNPOINT(mtd, arg) (*(mtd->_unpoint))(mtd, (u_char *)arg)
-#       define MTD_READ(mtd, args...) (*(mtd->_read))(mtd, args)
-#       define MTD_WRITE(mtd, args...) (*(mtd->_write))(mtd, args)
-#       define MTD_READV(mtd, args...) (*(mtd->_readv))(mtd, args)
-#       define MTD_WRITEV(mtd, args...) (*(mtd->_writev))(mtd, args)
-#       define MTD_READECC(mtd, args...) (*(mtd->_read_ecc))(mtd, args)
-#       define MTD_WRITEECC(mtd, args...) (*(mtd->_write_ecc))(mtd, args)
-#       define MTD_READOOB(mtd, args...) (*(mtd->_read_oob))(mtd, args)
-#       define MTD_WRITEOOB(mtd, args...) (*(mtd->_write_oob))(mtd, args)
-#       define MTD_SYNC(mtd) do { if (mtd->_sync) (*(mtd->_sync))(mtd);  } while (0)
+#       define MTD_UNLOCK(mtd, args...) do { if (mtd->unlock) (*(mtd->unlock))(mtd, args);  } while (0)
 #endif
-
-#define flush_cache_all()                       do { } while (0)
 
 #ifdef CFE_UPDATE
 #include <sbextif.h>
@@ -184,10 +210,7 @@ static DEFINE_MUTEX(nvram_ioctl_lock);
 #define early_nvram_get(name) nvram_get(name)
 #endif	// ASUS_NVRAM
 
-#if defined(CONFIG_USB_SUPPORT)
 #define NLS_XFR 1
-#endif	/* CONFIG_USB_SUPPORT */
-
 #ifdef NLS_XFR
 				/* added by Jiahao for WL500gP */
 static char *NLS_NVRAM_U2C="asusnlsu2c";
@@ -358,7 +381,7 @@ asusnls_c2u(char *name)
 #else /* !MODULE */
 
 #ifdef ASUS_NVRAM
-/*#error  This nvram driver only support kernel module.*/
+#error  This nvram driver only support kernel module.
 #else   // !ASUS_NVRAM
 /* Global SB handle */
 extern void *bcm947xx_sbh;
@@ -570,7 +593,7 @@ hndcrc8(
 	return crc;
 }
 
-#define NVRAM_DRIVER_VERSION	"0.05"
+#define NVRAM_DRIVER_VERSION	"0.07"
 
 static int 
 nvram_proc_show(struct seq_file *m, void *v)
@@ -590,6 +613,7 @@ nvram_proc_show(struct seq_file *m, void *v)
 
 	seq_printf(m, "nvram driver : v" NVRAM_DRIVER_VERSION "\n");
 	seq_printf(m, "nvram space  : 0x%x\n", NVRAM_SPACE);
+	seq_printf(m, "nvram multiple: %d\n", NVRAM_MULTIPLE);
 	seq_printf(m, "major number : %d\n", nvram_major);
 	seq_printf(m, "MTD            \n");
 	seq_printf(m, "  name       : %s\n", nvram_mtd->name);
@@ -622,6 +646,176 @@ static const struct file_operations nvram_file_ops = {
 };
 #endif	// ASUS_NVRAM
 
+#ifdef COMPRESS_NVRAM
+/* reference from fs/jffs2/compr_zlib.c */
+#define STREAM_END_SPACE 12
+
+static DEFINE_MUTEX(deflate_mutex);
+static DEFINE_MUTEX(inflate_mutex);
+static z_stream inf_strm, def_strm;
+
+#ifdef __KERNEL__ /* Linux-only */
+#include <linux/vmalloc.h>
+#include <linux/mutex.h>
+
+static int __init alloc_workspaces(void)
+{
+	def_strm.workspace = vmalloc(zlib_deflate_workspacesize(MAX_WBITS,
+							MAX_MEM_LEVEL));
+	if (!def_strm.workspace)
+		return -ENOMEM;
+
+	//printk("Allocated %d bytes for deflate workspace\n",
+	//	  zlib_deflate_workspacesize(MAX_WBITS, MAX_MEM_LEVEL));
+	inf_strm.workspace = vmalloc(zlib_inflate_workspacesize());
+	if (!inf_strm.workspace) {
+		vfree(def_strm.workspace);
+		return -ENOMEM;
+	}
+	//printk("Allocated %d bytes for inflate workspace\n",
+	//	  zlib_inflate_workspacesize());
+	return 0;
+}
+
+static void free_workspaces(void)
+{
+	vfree(def_strm.workspace);
+	vfree(inf_strm.workspace);
+}
+#else
+#define alloc_workspaces() (0)
+#define free_workspaces() do { } while(0)
+#endif /* __KERNEL__ */
+
+static int kzlib_compress(unsigned char *data_in,
+			  unsigned char *cpage_out,
+			  uint32_t *sourcelen, uint32_t *dstlen)
+{
+	int ret;
+
+	if (*dstlen <= STREAM_END_SPACE)
+		return -1;
+
+	mutex_lock(&deflate_mutex);
+
+	if (Z_OK != zlib_deflateInit(&def_strm, 3)) {
+		printk(KERN_WARNING "deflateInit failed\n");
+		mutex_unlock(&deflate_mutex);
+		return -1;
+	}
+
+	def_strm.next_in = data_in;
+	def_strm.total_in = 0;
+
+	def_strm.next_out = cpage_out;
+	def_strm.total_out = 0;
+
+	while (def_strm.total_out < *dstlen - STREAM_END_SPACE && def_strm.total_in < *sourcelen) {
+		def_strm.avail_out = *dstlen - (def_strm.total_out + STREAM_END_SPACE);
+		def_strm.avail_in = min_t(unsigned long,
+			(*sourcelen-def_strm.total_in), def_strm.avail_out);
+		//printk("calling deflate with avail_in %d, avail_out %d\n",
+		//	  def_strm.avail_in, def_strm.avail_out);
+		ret = zlib_deflate(&def_strm, Z_PARTIAL_FLUSH);
+		//printk("deflate returned with avail_in %d, avail_out %d, total_in %ld, total_out %ld\n",
+		//	  def_strm.avail_in, def_strm.avail_out,
+		//	  def_strm.total_in, def_strm.total_out);
+		if (ret != Z_OK) {
+			printk("deflate in loop returned %d\n", ret);
+			zlib_deflateEnd(&def_strm);
+			mutex_unlock(&deflate_mutex);
+			return -1;
+		}
+	}
+	def_strm.avail_out += STREAM_END_SPACE;
+	def_strm.avail_in = 0;
+	ret = zlib_deflate(&def_strm, Z_FINISH);
+	zlib_deflateEnd(&def_strm);
+
+	if (ret != Z_STREAM_END) {
+		printk("final deflate returned %d\n", ret);
+		ret = -1;
+		goto out;
+	}
+
+	if (def_strm.total_out >= def_strm.total_in) {
+		printk("zlib compressed %ld bytes into %ld; failing\n",
+			  def_strm.total_in, def_strm.total_out);
+		ret = -1;
+		goto out;
+	}
+
+	//printk("zlib compressed %ld bytes into %ld\n",
+	//	  def_strm.total_in, def_strm.total_out);
+
+	*dstlen = def_strm.total_out;
+	*sourcelen = def_strm.total_in;
+	ret = 0;
+ out:
+	mutex_unlock(&deflate_mutex);
+	return ret;
+}
+
+static int kzlib_decompress(unsigned char *data_in,
+			    unsigned char *cpage_out,
+			    uint32_t srclen, uint32_t *destlen)
+{
+	int ret;
+	int wbits = MAX_WBITS;
+
+	mutex_lock(&inflate_mutex);
+
+	inf_strm.next_in = data_in;
+	inf_strm.avail_in = srclen;
+	inf_strm.total_in = 0;
+
+	inf_strm.next_out = cpage_out;
+	inf_strm.avail_out = *destlen;
+	inf_strm.total_out = 0;
+
+	/* If it's deflate, and it's got no preset dictionary, then
+	   we can tell zlib to skip the adler32 check. */
+	if (srclen > 2 && !(data_in[1] & PRESET_DICT) &&
+	    ((data_in[0] & 0x0f) == Z_DEFLATED) &&
+	    !(((data_in[0]<<8) + data_in[1]) % 31)) {
+
+		//printk("inflate skipping adler32\n");
+		wbits = -((data_in[0] >> 4) + 8);
+		inf_strm.next_in += 2;
+		inf_strm.avail_in -= 2;
+	} else {
+		/* Let this remain D1 for now -- it should never happen */
+		printk("inflate not skipping adler32\n");
+	}
+
+
+	if (Z_OK != zlib_inflateInit2(&inf_strm, wbits)) {
+		pr_warn("inflateInit failed\n");
+		mutex_unlock(&inflate_mutex);
+		return 1;
+	}
+
+	while((ret = zlib_inflate(&inf_strm, Z_FINISH)) == Z_OK)
+		;
+	if (ret != Z_STREAM_END) {
+		pr_notice("inflate returned %d\n", ret);
+	}
+	zlib_inflateEnd(&inf_strm);
+	mutex_unlock(&inflate_mutex);
+	*destlen -= inf_strm.avail_out;
+	return 0;
+}
+
+static int kzlib_init(void)
+{
+	return alloc_workspaces();
+}
+
+static void kzlib_exit(void)
+{
+	free_workspaces();
+}
+#endif
 
 /*
  * Read raw nvram data from nvram MTD partition of FLASH. Include nvram_header and variables.
@@ -644,6 +838,11 @@ _nvram_read(char *buf)
 	unsigned long t1, t2;
 	struct nvram_header *valid_h = (struct nvram_header *) valid_buf;
 	wlnv_priv_t *priv = NULL;
+#ifdef COMPRESS_NVRAM
+	char *cbuf = NULL;
+	char *cptr, *ptr;
+	int dlen, clen, skip = sizeof(struct nvram_header) + sizeof(wlnv_priv_t);
+#endif
 
 	if (!nvram_mtd) {
 		recover_flag = 1;
@@ -653,28 +852,26 @@ _nvram_read(char *buf)
 	/* find latest commited unit */
 	t1 = jiffies;
 	valid_h->magic = 0;
-//#ifdef CONFIG_MTK_MTD_NAND
-#if defined(CONFIG_MTD_NAND_MT7621) || defined(CONFIG_MTD_NAND_MTK) || defined(CONFIG_MTK_SPI_NAND)
-	for (valid_offset = i = rsv_blk_size; i < nvram_mtd->erasesize; i = ni)
-#else
-	for (valid_offset = i = rsv_blk_size; i < nvram_mtd->size; i = ni)
-#endif
-	{
+	for (valid_offset = i = rsv_blk_size; i < nvram_mtd->size; i = ni) {
 	    ni = i + step_unit;
 	    if ((ret = MTD_READ(nvram_mtd, i, sizeof(header_buf), &len, header_buf)) ||
 		len != sizeof(header_buf)) {
-		    printk("read offset 0x%x failure. ret %d len 0x%x/%x\n", i, ret, len, sizeof(header_buf));
+		    printk("read offset 0x%x failure. ret %d len 0x%zx/%zx\n", i, ret, len, sizeof(header_buf));
 		    continue;
 	    }
 
-	    if (h->magic != NVRAM_MAGIC) {
+	    if (h->magic != NVRAM_MAGIC
+#ifdef COMPRESS_NVRAM
+	     && h->magic != ZLIB_NVRAM_MAGIC
+#endif
+	    ) {
 		    continue;
 	    }
 
 	    /* found NVRAM_MAGIC at i */
 	    priv = (wlnv_priv_t*) h->private_data;
 	    if (strncmp(priv->magic, "NVP", 3) || priv->length != sizeof(wlnv_priv_t)) {
-		    printk(KERN_DEBUG "Invalid private magic %c%c%c or size mismatch %d/%d\n",
+		    printk("Invalid private magic %c%c%c or size mismatch %d/%zd\n",
 				priv->magic[0],  priv->magic[1], priv->magic[2],
 				priv->length, sizeof(wlnv_priv_t));
 		    continue;
@@ -695,56 +892,71 @@ _nvram_read(char *buf)
 	    ni = ROUNDUP(i + h->len, step_unit);
 	}
 	t2 = jiffies;
-	g_wlnv.next_offset = ROUNDUP(rsv_blk_size, step_unit);
+	g_wlnv.next_offset = rsv_blk_size;
+	g_wlnv.may_erase_nexttime = 0;
 	printk("offset 0x%x elapse %lums\n", valid_offset, ((t2 - t1) * 1000)/HZ);
 
-	if (cmt_times > 0 && valid_h->magic == NVRAM_MAGIC) {
+	if (cmt_times > 0 && (valid_h->magic == NVRAM_MAGIC
+#ifdef COMPRESS_NVRAM
+			   || valid_h->magic == ZLIB_NVRAM_MAGIC
+#endif
+	)) {
 		/* read nvram from latest offset that provide max. commit_times.
 		 * skip wlnv_priv_t structure according to it's length.
 		 */
 		rlen = valid_h->len;
 
 		if (MTD_READ(nvram_mtd, valid_offset, rlen, &len, buf) || len != rlen) {
-			printk("MTD_READ 0x%x len 0x%x/0x%x fail\n", valid_offset, len, rlen);
+			printk("MTD_READ 0x%x len 0x%zx/0x%zx fail\n", valid_offset, len, rlen);
 			recover_flag = 2;
 		} else {
 			g_wlnv.last_commit_times = cmt_times;
 			g_wlnv.cur_offset = valid_offset;
-			g_wlnv.next_offset = ROUNDUP(valid_offset + rlen, step_unit);
-//#ifdef CONFIG_MTK_MTD_NAND
-#if defined(CONFIG_MTD_NAND_MT7621) || defined(CONFIG_MTD_NAND_MTK) || defined(CONFIG_MTK_SPI_NAND)
-			g_wlnv.may_erase_nexttime = ((g_wlnv.next_offset + g_wlnv.avg_len) >= nvram_mtd->erasesize)?1:0;
-#else
-			g_wlnv.may_erase_nexttime = ((g_wlnv.next_offset + g_wlnv.avg_len) >= nvram_mtd->size)?1:0;
+
+#ifdef COMPRESS_NVRAM
+			if (valid_h->magic == NVRAM_MAGIC)
+				goto exit__nvram_read;
+
+			ptr = buf + skip;
+			clen = rlen - skip;
+
+			cbuf = kmalloc(rlen, GFP_ATOMIC);
+			if (!cbuf) {
+				printk("%s: cbuf kmalloc failed\n", __func__);
+				goto exit__nvram_read;
+			}
+			memcpy(cbuf, buf, rlen);
+
+			cptr = cbuf + skip;
+			dlen = NVRAM_SPACE - skip;
+			if (kzlib_decompress(cptr, ptr, clen, &dlen)) {
+				printk("%s: decompress nvram failed\n", __func__);
+				goto exit__nvram_read;
+			}
+			//printk("%s: decompress nvram %d into %d bytes\n", __func__, clen, dlen);
+
+			header->len = skip + dlen;
+			header->magic = NVRAM_MAGIC;
 #endif
 		}
 	} else {
 		/* try to read last unit (size: NVRAM_SPACE). for compatible */
 		g_wlnv.cur_offset = rsv_blk_size;
-//#ifdef CONFIG_MTK_MTD_NAND
-#if defined(CONFIG_MTD_NAND_MT7621) || defined(CONFIG_MTD_NAND_MTK) || defined(CONFIG_MTK_SPI_NAND)
-		if ((ret = MTD_READ(nvram_mtd, nvram_mtd->erasesize - NVRAM_SPACE, NVRAM_SPACE, &len, buf)) ||
-		    len != NVRAM_SPACE || header->magic != NVRAM_MAGIC)
-#else
 		if ((ret = MTD_READ(nvram_mtd, nvram_mtd->size - NVRAM_SPACE, NVRAM_SPACE, &len, buf)) ||
-		    len != NVRAM_SPACE || header->magic != NVRAM_MAGIC)
-#endif
-		{
+		    len != NVRAM_SPACE || header->magic != NVRAM_MAGIC) {
 			recover_flag = 3;
 		} else {
 			memcpy(valid_buf, buf, sizeof(valid_buf));
 			g_wlnv.last_commit_times = 0;
-			g_wlnv.next_offset = ROUNDUP(rsv_blk_size + valid_h->len, step_unit);
-//#ifdef CONFIG_MTK_MTD_NAND
-#if defined(CONFIG_MTD_NAND_MT7621) || defined(CONFIG_MTD_NAND_MTK) || defined(CONFIG_MTK_SPI_NAND)
-			g_wlnv.may_erase_nexttime = ((g_wlnv.next_offset + valid_h->len) >= nvram_mtd->erasesize)?1:0;
-#else
-			g_wlnv.may_erase_nexttime = ((g_wlnv.next_offset + valid_h->len) >= nvram_mtd->size)?1:0;
-#endif
 		}
 	}
 
 exit__nvram_read:
+#ifdef COMPRESS_NVRAM
+	if (cbuf)
+		kfree(cbuf);
+#endif
+
 	if (recover_flag) {
 		/* Maybe we can recover some data from early initialization */
 		memcpy(buf, nvram_buf, NVRAM_SPACE);
@@ -780,11 +992,12 @@ _nvram_realloc(struct nvram_tuple *t, const char *name, const char *value)
 		strcpy(t->name, name);
 
 		t->value = NULL;
+		t->next = NULL;
 	}
 
 	/* Copy value */
 	if (!t->value || strcmp(t->value, value)) {
-		t->value = &nvram_buf[nvram_offset];
+		t->value = &nvram_buf[nvram_offset] + (nvram_idx * NVRAM_SPACE);
 		strcpy(t->value, value);
 		nvram_offset += strlen(value) + 1;
 	}
@@ -796,7 +1009,14 @@ void
 _nvram_free(struct nvram_tuple *t)
 {
 	if (!t)
+	{
 		nvram_offset = 0;
+#if defined(NVRAM_MULTIPLE) && (NVRAM_MULTIPLE > 1)
+		nvram_idx = (nvram_idx + 1) % NVRAM_MULTIPLE;
+#endif	/* NVRAM_MULTIPLE */
+		printk("%s: %d(%s) nvram_idx(%d / %d)\n",
+			__func__, current->pid, current->comm, nvram_idx, NVRAM_MULTIPLE);
+	}
 	else
 		kfree(t);
 }
@@ -806,7 +1026,10 @@ nvram_set(const char *name, const char *value)
 {
 	unsigned long flags;
 	int ret;
-	struct nvram_header *header;
+	static struct nvram_header *header = NULL;
+
+	if (!header)
+		header = kzalloc(NVRAM_SPACE, GFP_KERNEL);
 
 	spin_lock_irqsave(&nvram_lock, flags);
 
@@ -831,12 +1054,8 @@ nvram_set(const char *name, const char *value)
 
 	if ((ret = _nvram_set(name, value))) {
 		/* Consolidate space and try again */
-		if ((header = kmalloc(NVRAM_SPACE, GFP_ATOMIC))) {
-			if (_nvram_commit(header) == 0)		{
-				ret = _nvram_set(name, value);
-			}
-			kfree(header);
-		}
+		if (header && _nvram_commit(header) == 0)
+			ret = _nvram_set(name, value);
 	}
 	spin_unlock_irqrestore(&nvram_lock, flags);
 
@@ -885,18 +1104,26 @@ nvram_unset(const char *name)
 int
 nvram_commit(void)
 {
+	#define HEADER		(zlib_done ? (uint8_t *)cbuf : (uint8_t *)header)
+	#define HEADER_LEN	(zlib_done ? h->len : header->len)
 	size_t erasesize, len;
-	int ret;
+	int ret, is_nand = 0;
 	struct nvram_header *header;
 	unsigned long flags;
 	u_int32_t offset;
-	DECLARE_WAITQUEUE(wait, current);
 	struct erase_info erase;
 #ifdef WL_NVRAM
-	int need_erase = 0, restore_reserved_block = 0;
-	char *reserved_block = NULL;
-	size_t rlen, wlen;
-	u_int32_t erase_offset, hdr_shift, unit_offset, *p;
+	int need_erase = 0, e_retry, w_retry;
+	size_t rlen, wlen, d_len, total_wlen;
+	uint8_t *data, *d;
+	u_int32_t o, prev_erase_offset, next_erase_offset, unit_offset, end_offset;
+	struct nvram_header *h;
+	char *cbuf = NULL;
+#ifdef COMPRESS_NVRAM
+	char *cptr, *ptr;
+	int dlen, clen, skip = sizeof(struct nvram_header) + sizeof(wlnv_priv_t);
+#endif
+	int zlib_done = 0;
 #else	/* !WL_NVRAM */
 	unsigned int i;
 #endif	/* WL_NVRAM */
@@ -914,6 +1141,7 @@ nvram_commit(void)
 
 	/* Backup sector blocks to be erased */
 	erasesize = ROUNDUP(NVRAM_SPACE + rsv_blk_size, nvram_mtd->erasesize);
+	is_nand = (nvram_mtd->type == MTD_NANDFLASH || nvram_mtd->type == MTD_UBIVOLUME);
 
 	mutex_lock(&nvram_sem);
 
@@ -926,154 +1154,130 @@ nvram_commit(void)
 	ret = _nvram_commit(header);
 	spin_unlock_irqrestore(&nvram_lock, flags);
 
-//#ifdef CONFIG_MTK_MTD_NAND
-#if defined(CONFIG_MTD_NAND_MT7621) || defined(CONFIG_MTD_NAND_MTK) || defined(CONFIG_MTK_SPI_NAND)
-	if ((g_wlnv.next_offset + header->len) > (nvram_mtd->erasesize))
-#else
-	if ((g_wlnv.next_offset + header->len) > nvram_mtd->size)
+#ifdef COMPRESS_NVRAM
+	ptr = (char *)header + skip;
+	dlen = header->len - skip;
+
+	cbuf = kmalloc((nvram_mtd->size - rsv_blk_size), GFP_ATOMIC);
+	if (!cbuf) {
+		printk("%s: cbuf kmalloc failed\n", __func__);
+		goto compress_fail;
+	}
+	memcpy(cbuf, (char *)header, skip);
+
+	cptr = cbuf + skip;
+	clen = nvram_mtd->size - rsv_blk_size - skip;
+	if (kzlib_compress(ptr, cptr, &dlen, &clen)) {
+		printk("%s: compress nvram failed\n", __func__);
+		goto compress_fail;
+	}
+	//printk("%s: compress nvram %d into %d bytes\n", __func__, dlen, clen);
+
+	h = (struct nvram_header *)cbuf;
+	h->len = skip + clen;
+	h->magic = ZLIB_NVRAM_MAGIC;
+	zlib_done = 1;
+
+compress_fail:
 #endif
-	{
+
+nvram_commit_wrapped:
+	unit_offset = g_wlnv.next_offset;
+	total_wlen = HEADER_LEN;
+	if (is_nand)
+		total_wlen = ROUNDUP(HEADER_LEN, nvram_mtd->writesize);
+	end_offset = unit_offset + total_wlen;
+
+	if (end_offset > nvram_mtd->size) {
 		/* last unit and the data length exceed nvram_mtd */
 		g_wlnv.next_offset = rsv_blk_size;
+		goto nvram_commit_wrapped;
 	}
 
-	unit_offset = g_wlnv.next_offset;
-	erase_offset = ROUNDDOWN(unit_offset, erasesize);	/* align to lower erasesize boundary */
-	hdr_shift = unit_offset - erase_offset;
-
-#if !defined(CONFIG_MTD_NAND_MTK) && !defined(CONFIG_MTD_NAND_MT7621) && !defined(CONFIG_MTK_SPI_NAND)
-	/* check ECC bytes page by page if MTD device is NAND Flash. */
-	if (nvram_mtd->type == MTD_NANDFLASH) {
-		int i;
-		__u8 oobbuf[64], *p;
-		size_t page_offset = unit_offset & ~(nvram_mtd->writesize - 1);
-		size_t stop_page_offset = ROUNDUP(unit_offset + header->len, nvram_mtd->writesize);
-		struct mtd_oob_ops ops, *o = &ops;
-		struct nand_ecclayout *ecc = nvram_mtd->ecclayout;
-
-		for ( ; !need_erase && page_offset < stop_page_offset;
-			page_offset += nvram_mtd->writesize)
-		{
-			o->mode = MTD_OOB_RAW;
-			o->len = 0;
-			o->ooblen = nvram_mtd->oobsize;
-			o->ooboffs = 0;
-			o->datbuf = NULL;
-			o->oobbuf = oobbuf;
-			ret = MTD_READOOB(nvram_mtd, page_offset, o);
-			if (ret || o->oobretlen != nvram_mtd->oobsize) {
-				printk("READ OOB from 0x%x ret 0x%x retlen 0x%x oobretlen 0x%x\n",
-					page_offset, ret, o->retlen, o->oobretlen);
-				continue;
-			}
-
-			for (i = 0, p = &oobbuf[0]; !need_erase && i < ecc->eccbytes; ++i) {
-				if (*(p + ecc->eccpos[i]) == 0xFF)
-					continue;
-
-				need_erase = 1;
-			}
+	for (offset = unit_offset, data = HEADER; offset < end_offset && total_wlen > 0; offset = next_erase_offset) {
+		o = offset;
+		e_retry = w_retry = need_erase = 0;
+		prev_erase_offset = ROUNDDOWN(offset, nvram_mtd->erasesize);
+		next_erase_offset = prev_erase_offset + nvram_mtd->erasesize;
+		d_len = wlen = min(next_erase_offset - offset, (u_int32_t)total_wlen);
+		if (unlikely(!d_len)) {
+			ret = -EINVAL;
+			goto done;
 		}
-	}
-#endif  // !defined(CONFIG_MTD_NAND_MTK)    
 
-	len = 0;
-	rlen = header->len;
-	ret = MTD_READ(nvram_mtd, unit_offset, rlen, &len, chk_sector_buf);
-	if (ret || len != rlen) {
-		printk(KERN_WARNING "%s: read error at 0x%x ret %d, len 0x%x/%x\n",
-			__func__, unit_offset, ret, len, rlen);
-		need_erase = 1;
-	}
-
-	/* check if we need to erase */
-	for (p = (u_int32_t*)chk_sector_buf, len = header->len;
-	     !need_erase && len > 0; len -= 4, ++p)
-	{
-		/* header->len is round up to boundary of 4 bytes.
-		 * so, it is safe to compare 4 bytes at once.
+		/* Erase a block if unit_offset is aligned to start offset of a block,
+		 * or is equal to end of reseverd area.
 		 */
-		if (*p != 0xffffffff) {
+		if (offset == ROUNDDOWN(offset, nvram_mtd->erasesize) || offset == rsv_blk_size)
 			need_erase = 1;
-		}
-	}
 
-	/* Erase sector blocks */
-	if (need_erase) {
-		if (erase_offset < rsv_blk_size) {
-			restore_reserved_block = 1;
-			len = 0;
-			reserved_block = commit_buf;
-			rlen = rsv_blk_size;
-			ret = MTD_READ(nvram_mtd, 0, rlen, &len, reserved_block);
+		/* If commit data is not writted to start of a block, to keep previous data safe,
+		 * always backup data in dest. block to wblk_buf first.
+		 * If reserved area belongs to the block or erase/write to this block failed,
+		 * use wbuf_blk instead and write from start of wblk_buf ~ end of commit data.
+		 */
+		if (offset > prev_erase_offset) {
+			rlen = nvram_mtd->erasesize;
+			ret = MTD_READ(nvram_mtd, prev_erase_offset, rlen, &len, wblk_buf);
 			if (ret || len != rlen) {
-				printk(KERN_WARNING "%s: read error at 0x%x ret %d, len 0x%x/%x. drop reserved block\n",
-					__func__, 0, ret, len, rlen);
-				memset(reserved_block, 0, rlen);
+				printk(KERN_WARNING "%s: backup data at 0x%x ret %d, len 0x%zx/%zx\n",
+					__func__, prev_erase_offset, ret, len, rlen);
+				memset(wblk_buf, 0, nvram_mtd->erasesize);
 			}
 		}
+		memcpy(wblk_buf + (offset - prev_erase_offset), data, wlen);
 
-//#ifdef CONFIG_MTK_MTD_NAND
-#if defined(CONFIG_MTD_NAND_MT7621) || defined(CONFIG_MTD_NAND_MTK) || defined(CONFIG_MTK_SPI_NAND)
-        for (offset = 0; offset < nvram_mtd->size; offset += nvram_mtd->erasesize)
-#else
-		for (offset = erase_offset;
-		     offset < (erase_offset + hdr_shift + header->len);
-		     offset += nvram_mtd->erasesize)
-#endif
-		{
-			erase.addr = offset;
+start_erase_write:
+		/* If size of reserved block is not zero and is about to write same block,
+		 * copy reserved block to commit_buf.
+		 */
+		d = data;
+		if (need_erase && ((rsv_blk_size > 0 && offset == rsv_blk_size) || e_retry > 0 || w_retry > 0)) {
+			d = wblk_buf;
+			o = prev_erase_offset;
+			wlen = (offset - o) + d_len;
+		}
+
+		/* Erase sector blocks */
+		if (need_erase) {
+			erase.addr = o;
 			erase.len = nvram_mtd->erasesize;
 
 			/* Unlock sector blocks */
-			if (nvram_mtd->_unlock)
-				nvram_mtd->_unlock(nvram_mtd, offset, nvram_mtd->erasesize);
+			MTD_UNLOCK(nvram_mtd, o, nvram_mtd->erasesize);
 
 			if ((ret = MTD_ERASE(nvram_mtd, &erase))) {
-//#ifdef CONFIG_MTK_MTD_NAND
-#if defined(CONFIG_MTD_NAND_MT7621) || defined(CONFIG_MTD_NAND_MTK) || defined(CONFIG_MTK_SPI_NAND)
-				continue;
-#else
-				printk("nvram_commit: erase error\n");
+				printk(KERN_WARNING "%s: erase error. (retry %d)\n", __func__, e_retry);
+				if (++e_retry <= 3)
+					goto start_erase_write;
+				ret = -EIO;
 				goto done;
-#endif
 			}
 		}
-	}
 
-	/* Write partition up to end of data area */
-	wlen = header->len;
-	//if (nvram_mtd->type == MTD_UBIVOLUME)
-		wlen = ROUNDUP(header->len, nvram_mtd->writesize);
-	ret = MTD_WRITE(nvram_mtd, unit_offset, wlen, &len, (char*)header);
-	if (ret || len != wlen) {
-		printk("nvram_commit: write error. ret %d len 0x%x/%x\n", ret, len, wlen);
-		ret = -EIO;
-		goto done;
-	}
-
-	/* Restore reserved block */
-	if (restore_reserved_block) {
-		ret = MTD_WRITE(nvram_mtd, 0, rsv_blk_size, &len, reserved_block);
-		if (ret || len != rsv_blk_size) {
-			printk("nvram_commit: restore reserved block error. ret %d len 0x%x/%x\n", ret, len, rsv_blk_size);
+		/* Write sector blocks */
+		ret = MTD_WRITE(nvram_mtd, o, wlen, &len, d);
+		if (!ret && len == wlen) {
+			total_wlen -= d_len;
+			data += d_len;
+		} else {
+			printk("%s: write to offset 0x%x error. ret %d len 0x%zx/%zx\n", __func__, o, ret, len, wlen);
+			if (++w_retry <= 3) {
+				need_erase = 1;
+				goto start_erase_write;
+			}
 			ret = -EIO;
 			goto done;
 		}
 	}
 
 	g_wlnv.cur_offset = unit_offset;
-	g_wlnv.next_offset = ROUNDUP(unit_offset + wlen, step_unit);
+	g_wlnv.next_offset = ROUNDUP(end_offset, step_unit);
 	if (g_wlnv.avg_len)
-		g_wlnv.avg_len = (g_wlnv.avg_len + header->len) / 2;
+		g_wlnv.avg_len = (g_wlnv.avg_len + HEADER_LEN) / 2;
 	else
-		g_wlnv.avg_len = header->len;
-//#ifdef CONFIG_MTK_MTD_NAND
-#if defined(CONFIG_MTD_NAND_MT7621) || defined(CONFIG_MTD_NAND_MTK) || defined(CONFIG_MTK_SPI_NAND)
-	g_wlnv.may_erase_nexttime = ((g_wlnv.next_offset + g_wlnv.avg_len) >= nvram_mtd->erasesize)? 1:0;
-#else
+		g_wlnv.avg_len = HEADER_LEN;
 	g_wlnv.may_erase_nexttime = ((g_wlnv.next_offset + g_wlnv.avg_len) >= nvram_mtd->size)? 1:0;
-#endif
 
 	offset = unit_offset;
 	ret = MTD_READ(nvram_mtd, offset, 4, &len, commit_buf);
@@ -1131,6 +1335,10 @@ nvram_commit(void)
 #endif	/* WL_NVRAM */
 
  done:
+#ifdef COMPRESS_NVRAM
+	if (cbuf)
+		kfree(cbuf);
+#endif
 	mutex_unlock(&nvram_sem);
 	return ret;
 }
@@ -1159,14 +1367,17 @@ EXPORT_SYMBOL(nvram_commit);
 static ssize_t
 dev_nvram_read(struct file *file, char *buf, size_t count, loff_t *ppos)
 {
-	char tmp[100], *name = tmp, *value;
+	char *name = read_buf, *value;
 	ssize_t ret;
 	unsigned long off;
 	
-	if ((count+1) > sizeof(tmp)) {
+	if ((count+1) > READ_BUF_SIZE) {
 		if (!(name = kmalloc(count+1, GFP_KERNEL)))
 			return -ENOMEM;
 	}
+
+	if (name == read_buf)
+		mutex_lock(&read_buf_lock);
 
 	if (copy_from_user(name, buf, count)) {
 		ret = -EFAULT;
@@ -1201,10 +1412,20 @@ dev_nvram_read(struct file *file, char *buf, size_t count, loff_t *ppos)
 		ret = sizeof(unsigned long);
 	}
 
-	flush_cache_all();	
+#if !(defined(CONFIG_ARM64))
+	flush_cache_all();
+#else
+	{
+		void *ptr;
+		for (ptr = nvram_buf; ptr < (void *)(nvram_buf + NVRAM_SPACE_FULL); ptr += PAGE_SIZE)
+			flush_dcache_page(virt_to_page(ptr));
+	}
+#endif
  
 done:
-	if (name != tmp)
+	if (name == read_buf)
+		mutex_unlock(&read_buf_lock);
+	else
 		kfree(name);
 
 	return ret;
@@ -1225,6 +1446,7 @@ dev_nvram_write(struct file *file, const char *buf, size_t count, loff_t *ppos)
 		ret = -EFAULT;
 		goto done;
 	}
+
 	name[count] = '\0';
 	value = name;
 	name = strsep(&value, "=");
@@ -1241,7 +1463,6 @@ dev_nvram_write(struct file *file, const char *buf, size_t count, loff_t *ppos)
 	return ret;
 }	
 
-#ifdef NLS_XFR
 char *
 nvram_xfr(const char *buf)
 {
@@ -1279,12 +1500,15 @@ done:
 	if(ret==0) return tmpbuf;
 	else return NULL;
 }
-#endif	/* NLS_XFR */
-
 
 static long
 dev_nvram_do_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
+	if (cmd == NVRAM_IOCTL_GET_SPACE && arg != 0) {
+		unsigned int nvram_space = NVRAM_SPACE;
+		copy_to_user((unsigned int *)arg, &nvram_space, sizeof(nvram_space));
+		return 0;
+	}
 	if (cmd != NVRAM_MAGIC)
 		return -EINVAL;
 	if(arg==0)
@@ -1295,7 +1519,6 @@ dev_nvram_do_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		else return -EFAULT;
 	}
 #endif
-	return 0;
 }
 
 static long
@@ -1408,6 +1631,10 @@ dev_nvram_exit(void)
 	int order = 0;
 	struct page *page, *end;
 
+#ifdef COMPRESS_NVRAM
+	kzlib_exit();
+#endif
+
 #ifdef ASUS_NVRAM
 	if (s_nvram_device) {
 		device_destroy(s_nvram_class, MKDEV(nvram_major, 0));
@@ -1428,10 +1655,11 @@ dev_nvram_exit(void)
 #endif	// ASUS_NVRAM
 
 #ifdef WL_NVRAM
-	kfree(chk_sector_buf);
+	kfree(wblk_buf);
 #endif
 
 	kfree(commit_buf);
+	kfree(read_buf);
 
 	if (nvram_mtd)
 		put_mtd_device(nvram_mtd);
@@ -1464,15 +1692,15 @@ dev_nvram_init(void)
 	size_t erasesize;
 
 #ifdef ASUS_NVRAM
-	nvram_buf = kmalloc (NVRAM_SPACE, GFP_ATOMIC);
+	nvram_buf = kzalloc (NVRAM_SPACE_FULL, GFP_ATOMIC);
 	if (nvram_buf == NULL) {
-		printk(KERN_ERR "%s(): Allocate %d bytes fail!\n", __func__, NVRAM_SPACE);
+		printk(KERN_ERR "%s(): Allocate %d bytes fail!\n", __func__, NVRAM_SPACE_FULL);
 		return -ENOMEM;
 	}
 #endif	// ASUS_NVRAM
 
 	/* Allocate and reserve memory to mmap() */
-	while ((PAGE_SIZE << order) < NVRAM_SPACE)
+	while ((PAGE_SIZE << order) < NVRAM_SPACE_FULL)
 		order++;
 	end = virt_to_page(nvram_buf + (PAGE_SIZE << order) - 1);
 	for (page = virt_to_page(nvram_buf); page <= end; page++)	{
@@ -1492,14 +1720,12 @@ dev_nvram_init(void)
 		else
 		{
 			if (!strcmp(nvram_mtd->name, MTD_NVRAM_NAME) &&
-//#ifdef CONFIG_MTK_MTD_NAND
-#if defined(CONFIG_MTD_NAND_MT7621) || defined(CONFIG_MTD_NAND_MTK) || defined(CONFIG_MTK_SPI_NAND)
-			    nvram_mtd->erasesize >= NVRAM_SPACE
+#ifdef COMPRESS_NVRAM
+			    nvram_mtd->size >= (NVRAM_SPACE / 2)
 #else
 			    nvram_mtd->size >= NVRAM_SPACE
 #endif
-			)
-			{
+			) {
 				break;
 			}
 			put_mtd_device(nvram_mtd);
@@ -1513,24 +1739,41 @@ dev_nvram_init(void)
 		goto err;
 	}
 
-	if (nvram_mtd->type == MTD_UBIVOLUME) {
-		rsv_blk_size = ROUNDUP(RESERVED_BLOCK_SIZE, nvram_mtd->writesize);
+	if (nvram_mtd->type == MTD_NANDFLASH || nvram_mtd->type == MTD_UBIVOLUME) {
 		step_unit = ROUNDUP(STEP_UNIT, nvram_mtd->writesize);
+		rsv_blk_size = ROUNDUP(ROUNDUP(RESERVED_BLOCK_SIZE, nvram_mtd->writesize), step_unit);
+	}
+
+	if (rsv_blk_size >= nvram_mtd->erasesize) {
+		printk("%s: Size of reserved area must not exceed block size.\n", __func__);
+		ret = -EINVAL;
+		goto err;
+	}
+
+	/* buffer for dev_nvram_read() */
+	if (!(read_buf = kzalloc(NVRAM_SPACE, GFP_KERNEL))) {
+		printk("%s: out of memory\n", __func__);
+		ret = -ENOMEM;
+		goto err;
 	}
 
 	/* Pre-allocate buffer */
 	erasesize = ROUNDUP(NVRAM_SPACE + rsv_blk_size, nvram_mtd->erasesize);
 	if (!(commit_buf = kmalloc(erasesize, GFP_KERNEL))) {
-		printk("nvram_commit: out of memory\n");
+		printk("%s: out of memory\n", __func__);
 		ret = -ENOMEM;
 		goto err;
 	}
 #ifdef WL_NVRAM
-	if (!(chk_sector_buf = kmalloc(erasesize, GFP_KERNEL))) {
-		printk("nvram_commit: out of memory\n");
+	if (!(wblk_buf = kmalloc(erasesize, GFP_KERNEL))) {
+		printk("%s:: out of memory\n", __func__);
 		ret = -ENOMEM;
 		goto err;
 	}
+#endif
+
+#ifdef COMPRESS_NVRAM
+	kzlib_init();
 #endif
 
 	/* Initialize hash table lock */
@@ -1732,7 +1975,6 @@ void cfe_update(char *keyword, char *value)
 
 int cfe_commit(void)
 {
-        DECLARE_WAITQUEUE(wait, current);
         struct erase_info erase;
         unsigned int i;
         int ret;
@@ -1792,11 +2034,8 @@ done:
 #endif
 
 
-#ifdef MODULE
+
 module_init(dev_nvram_init);
-#else
-late_initcall(dev_nvram_init);
-#endif
 module_exit(dev_nvram_exit);
 #ifdef ASUS_NVRAM
 MODULE_LICENSE("GPL");

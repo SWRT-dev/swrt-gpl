@@ -1036,10 +1036,52 @@ static int hnat_whnat_open(struct inode *inode, struct file *file)
 	return single_open(file, hnat_whnat_show, file->private_data);
 }
 
+static ssize_t hnat_whnat_write(struct file *file, const char __user *buf,
+				size_t length, loff_t *offset)
+{
+	char line[64] = {0};
+	struct net_device *dev;
+	int enable;
+	char name[32];
+	size_t size;
+
+	if (length >= sizeof(line))
+		return -EINVAL;
+
+	if (copy_from_user(line, buf, length))
+		return -EFAULT;
+
+	if (sscanf(line, "%s %d", name, &enable) != 2)
+		return -EFAULT;
+
+	line[length] = '\0';
+
+	dev = dev_get_by_name(&init_net, name);
+
+	if (dev) {
+		if (enable) {
+			mtk_ppe_dev_register_hook(dev);
+			pr_info("register wifi extern if = %s\n", dev->name);
+		} else {
+			mtk_ppe_dev_unregister_hook(dev);
+			pr_info("unregister wifi extern if = %s\n", dev->name);
+		}
+	} else {
+		pr_info("no such device!\n");
+	}
+
+	size = strlen(line);
+	*offset += size;
+
+	return length;
+}
+
+
 static const struct file_operations hnat_whnat_fops = {
 	.open = hnat_whnat_open,
 	.read = seq_read,
 	.llseek = seq_lseek,
+	.write = hnat_whnat_write,
 	.release = single_release,
 };
 
@@ -1908,20 +1950,35 @@ static ssize_t hnat_mape_toggle_write(struct file *file, const char __user *buff
 				      size_t count, loff_t *data)
 {
 	char buf = 0;
-	int len = count;
-
-	if (copy_from_user(&buf, buffer, len))
+	int i;
+	u32 ppe_cfg;
+	
+	if ((count < 1) || copy_from_user(&buf, buffer, sizeof(buf)))
 		return -EFAULT;
 
-	if (buf == '1' && !mape_toggle) {
+	if (buf == '1') {
 		pr_info("mape is going to be enabled, ds-lite is going to be disabled !\n");
 		mape_toggle = 1;
-	} else if (buf == '0' && mape_toggle) {
+	} else if (buf == '0') {
 		pr_info("ds-lite is going to be enabled, mape is going to be disabled !\n");
 		mape_toggle = 0;
+	} else {
+		pr_info("Invalid parameter.\n");
+		return -EFAULT;
 	}
 
-	return len;
+	for (i = 0; i < CFG_PPE_NUM; i++) {
+		ppe_cfg = readl(hnat_priv->ppe_base[i] + PPE_FLOW_CFG);
+
+		if (mape_toggle)
+			ppe_cfg &= ~BIT_IPV4_DSL_EN;
+		else
+			ppe_cfg |= BIT_IPV4_DSL_EN;
+
+		writel(ppe_cfg, hnat_priv->ppe_base[i] + PPE_FLOW_CFG);
+	}
+
+	return count;
 }
 
 static const struct file_operations hnat_mape_toggle_fops = {
@@ -1935,6 +1992,7 @@ static const struct file_operations hnat_mape_toggle_fops = {
 static int hnat_hook_toggle_read(struct seq_file *m, void *private)
 {
 	pr_info("value=%d, hook is %s now!\n", hook_toggle, (hook_toggle) ? "enabled" : "disabled");
+	seq_printf(m, "%d\n", !!hook_toggle);
 
 	return 0;
 }

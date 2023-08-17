@@ -233,6 +233,9 @@ struct dsa_switch {
 	 * structure.
 	 */
 	void *priv;
+#if defined(CONFIG_TUFAX4200) || defined(CONFIG_TUFAX6000)
+	struct mii_bus *priv_mii_bus;
+#endif
 
 	/*
 	 * Configuration data for this switch.

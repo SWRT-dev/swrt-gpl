@@ -225,6 +225,8 @@ SECOND_IF_POOL = 	\
 
 define platformKernelConfig
 	@( \
+	sed -i "/CONFIG_NVRAM_SIZE\>/d" $(1); \
+	echo "CONFIG_NVRAM_SIZE=`printf 0x%x $(NVRAM_SIZE)`" >>$(1); \
 	if [ "$(UBI)" = "y" ]; then \
 		sed -i "/CONFIG_MTD_UBI\>/d" $(1); \
 		echo "CONFIG_MTD_UBI=y" >>$(1); \
@@ -346,6 +348,21 @@ define platformKernelConfig
 		sed -i "/CONFIG_MODEL_SWRT360T7/d" $(1); \
 		echo "CONFIG_MODEL_SWRT360T7=y" >>$(1); \
 	fi; \
+	if [ "$(DUMP_OOPS_MSG)" = "y" ]; then \
+		echo "CONFIG_DUMP_PREV_OOPS_MSG=y" >>$(1); \
+		echo "CONFIG_DUMP_PREV_OOPS_MSG_BUF_ADDR=0x4C800000" >>$(1); \
+		echo "CONFIG_DUMP_PREV_OOPS_MSG_BUF_LEN=0x2000" >>$(1); \
+	else \
+		sed -i "/CONFIG_DUMP_PREV_OOPS_MSG/d" $(1); \
+		echo "# CONFIG_DUMP_PREV_OOPS_MSG is not set" >>$(1); \
+	fi; \
+	if [ "$(NFCM)" = "y" ]; then \
+		sed -i "/CONFIG_MTK_HNAT_FORCE_CT_ACCOUNTING/d" $(1); \
+		echo "CONFIG_MTK_HNAT_FORCE_CT_ACCOUNTING=y" >>$(1); \
+	else \
+		sed -i "/CONFIG_MTK_HNAT_FORCE_CT_ACCOUNTING/d" $(1); \
+		echo "# CONFIG_MTK_HNAT_FORCE_CT_ACCOUNTING is not set" >>$(1); \
+	fi; \
 	if [ "$(WIREGUARD)" = "y" ]; then \
 		echo "CONFIG_CRYPTO_SHA256_ARM64=y" >>$(1); \
 		echo "CONFIG_CRYPTO_SHA512_ARM64=y" >>$(1); \
@@ -366,7 +383,7 @@ define platformKernelConfig
 		echo "CONFIG_CRYPTO_NHPOLY1305_NEON=y" >>$(1); \
 		echo "CONFIG_CRYPTO_AES_ARM64_BS=y" >>$(1); \
 	fi; \
-	if [ "$(BUILD_NAME)" = "TUF-AX4200" ]; then \
+	if [ "$(TS_UI)" = "y" ]; then \
 		sed -i "/CONFIG_OVERLAY_FS\>/d" $(1); \
 		echo "CONFIG_OVERLAY_FS=y" >>$(1); \
 		sed -i "/CONFIG_OVERLAY_FS_REDIRECT_DIR\>/d" $(1); \

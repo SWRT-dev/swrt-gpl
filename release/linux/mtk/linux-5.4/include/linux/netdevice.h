@@ -1978,6 +1978,11 @@ struct net_device {
 /*
  * Cache lines mostly used on receive path (including eth_type_trans())
  */
+
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+	unsigned long		last_rx;
+#endif
+
 	/* Interface address info used in eth_type_trans() */
 	unsigned char		*dev_addr;
 
@@ -2107,6 +2112,9 @@ struct net_device {
 	struct lock_class_key	qdisc_xmit_lock_key;
 	struct lock_class_key	addr_list_lock_key;
 	bool			proto_down;
+#if 1 /* IPTV tag only NIC */
+	bool			vlan_only;
+#endif
 	unsigned		wol_enabled:1;
 	unsigned		threaded:1;
 };
@@ -4117,6 +4125,19 @@ static inline void netif_tx_unlock_bh(struct net_device *dev)
 		__netif_tx_release(txq);		\
 	}						\
 }
+
+#define HARD_TX_LOCK_BH(dev, txq) {           \
+    if ((dev->features & NETIF_F_LLTX) == 0) {  \
+        __netif_tx_lock_bh(txq);      \
+    }                       \
+}
+
+#define HARD_TX_UNLOCK_BH(dev, txq) {          \
+    if ((dev->features & NETIF_F_LLTX) == 0) {  \
+        __netif_tx_unlock_bh(txq);         \
+    }                       \
+}
+
 
 static inline void netif_tx_disable(struct net_device *dev)
 {

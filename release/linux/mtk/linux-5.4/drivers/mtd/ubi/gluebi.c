@@ -31,10 +31,11 @@
 #include <asus-firmware.h>
 #include "ubi.h"
 #include "ubi-media.h"
-#if defined(CONFIG_ARCH_MEDIATEK) && defined(CONFIG_ASUS_EXT)//mt7986
+#if defined(CONFIG_MODEL_RMAX6000) || defined(CONFIG_MODEL_SWRT360T7)//mt7986
 #include <linux/magic.h>
 #endif
 
+extern long int rfs_offset;
 #if defined(CONFIG_FACTORY_CHECKSUM)
 #include <linux/mutex.h>
 #include "crc32.c"
@@ -292,7 +293,7 @@ static int gluebi_write(struct mtd_info *mtd, loff_t to, size_t len,
 	lnum = div_u64_rem(to, mtd->erasesize, &offs);
 
 	if (len % mtd->writesize || offs % mtd->writesize) {
-		printk(KERN_ERR "%s: len 0x%lx and/or offs 0x%x not aligned to writesize 0x%x boundary. reject!\n",
+		printk(KERN_ERR "%s: len 0x%zx and/or offs 0x%x not aligned to writesize 0x%x boundary. reject!\n",
 			__func__, len, offs, mtd->writesize);
 		return -EINVAL;
 	}
@@ -463,7 +464,7 @@ static int __check_eeprom_set_checksum(struct mtd_info *mtd, unsigned int id, un
 	in_ram = !!buf;
 	ret = gluebi_read(mtd, offset + EEPROM_SET_HEADER_OFFSET, sizeof(*hdr), &rdlen, (unsigned char *)hdr);
 	if (ret || rdlen != sizeof(*hdr)) {
-		printk("%s: read data from 0x%llx of mtd %s fail. (ret = %d, rdlen %lx)\n",
+		printk("%s: read data from 0x%llx of mtd %s fail. (ret = %d, rdlen %zx)\n",
 			__func__, offset + EEPROM_SET_HEADER_OFFSET, mtd->name, ret, rdlen);
 		return ret;
 	}
@@ -898,8 +899,7 @@ out_factory_write:
  * @mtd: the MTD device description object
  * @instr: the erase operation description
  *
- * This function calls the erase callback when finishes. Returns zero in case
- * of success and a negative error code in case of failure.
+ * Returns zero in case of success and a negative error code in case of failure.
  */
 static int factory_erase(struct mtd_info *mtd, struct erase_info *instr)
 {
@@ -941,16 +941,15 @@ static int create_rootfs_partition(struct mtd_info *mtd,
 		uint8_t p[4];
 	} u;
 #endif
-#if defined(CONFIG_ARCH_MEDIATEK) && defined(CONFIG_ASUS_EXT)//mt7986
+#if defined(CONFIG_MODEL_RMAX6000) || defined(CONFIG_MODEL_SWRT360T7)//mt7986
 	int ret = 0;
 	size_t retlen;
-	uint32_t rootfs_offset = 0;
 	u32 magic;
 #endif
 
 	if (!mtd || !di || !vi)
 		return -1;
-#if defined(CONFIG_ARCH_MEDIATEK) && defined(CONFIG_ASUS_EXT)//mt7986
+#if defined(CONFIG_MODEL_RMAX6000) || defined(CONFIG_MODEL_SWRT360T7)//mt7986
 	if (!strcmp(vi->name, "kernel"))
 		part = &rootfs;
 	if (!strcmp(vi->name, "kernel2"))
@@ -1006,9 +1005,9 @@ static int create_rootfs_partition(struct mtd_info *mtd,
 		}
 	}
 #else
-#if defined(CONFIG_ARCH_MEDIATEK) && defined(CONFIG_ASUS_EXT)//mt7986
-	for(rootfs_offset = 0x390000; rootfs_offset < 0x400000; rootfs_offset += 0x4) {
-		ret = mtd_read(mtd, rootfs_offset, sizeof(magic), &retlen, (unsigned char *) &magic);
+#if defined(CONFIG_MODEL_RMAX6000) || defined(CONFIG_MODEL_SWRT360T7)//mt7986
+	for(rfs_offset = 0x390000; rfs_offset < 0x400000; rfs_offset += 0x4) {
+		ret = mtd_read(mtd, rfs_offset, sizeof(magic), &retlen, (unsigned char *) &magic);
 		if (le32_to_cpu(magic) == SQUASHFS_MAGIC){
 			ret = 0;
 			break;
@@ -1018,15 +1017,15 @@ static int create_rootfs_partition(struct mtd_info *mtd,
 		pr_info("no rootfs found in \"%s\"\n", mtd->name);
 		return ret;
 	}
-	part->offset = rootfs_offset;
-	part->size = mtd->size - rootfs_offset;
+	part->offset = rfs_offset;
+	part->size = mtd->size - rfs_offset;
 #else
 	part->offset = rfs_offset;
 	part->size = mtd->size - rfs_offset;
+#endif
+#endif
 	printk(KERN_DEBUG "volume %s rfs_offset %lx mtd->size %lx\n",
 		vi->name, rfs_offset, (unsigned long)mtd->size);
-#endif
-#endif
 
 	mtd_device_register(mtd, part, 1);
 

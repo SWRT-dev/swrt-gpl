@@ -778,12 +778,117 @@ static int dsa_slave_get_eee(struct net_device *dev, struct ethtool_eee *e)
 	return phylink_ethtool_get_eee(dp->pl, e);
 }
 
+#if defined(CONFIG_TUFAX4200) || defined(CONFIG_TUFAX6000)
+static int get_phy_addr_by_net_device(struct net_device *dev)
+{
+	int ret = -1;
+
+	if (!dev)
+		return ret;
+
+	if (!strcmp(dev->name, "lan5"))	/* 2.5G LAN */
+		ret = 5;
+
+	return ret;
+}
+
+static u32 dsa_slave_get_link(struct net_device *dev)
+{
+	int bmsr, phy_addr = get_phy_addr_by_net_device(dev);
+	struct dsa_slave_priv *priv;
+	struct mii_bus *bus;
+
+	if (phy_addr < 0 || phy_addr >= 32)
+		return ethtool_op_get_link(dev);
+
+	priv = netdev_priv(dev);
+	bus = priv->dp->ds->priv_mii_bus;
+	if (!bus) {
+		printk("%s: Invalid mii_bus for %s\n", __func__, dev->name);
+		return 0;
+	}
+	bmsr = mdiobus_read(bus, phy_addr, MII_BMSR);
+	return (bmsr & BMSR_LSTATUS)? 1 : 0;
+}
+#endif
+
 static int dsa_slave_get_link_ksettings(struct net_device *dev,
 					struct ethtool_link_ksettings *cmd)
 {
+	int ret;
 	struct dsa_port *dp = dsa_slave_to_port(dev);
+#if defined(CONFIG_TUFAX4200) || defined(CONFIG_TUFAX6000)
+	int phy_addr = -1, bmsr, bmcr, lbrerror;
+	struct mii_bus *bus = dp->ds->priv_mii_bus;
+#endif
 
-	return phylink_ethtool_ksettings_get(dp->pl, cmd);
+	ret = phylink_ethtool_ksettings_get(dp->pl, cmd);
+
+#if defined(CONFIG_TUFAX4200) || defined(CONFIG_TUFAX6000)
+	phy_addr = get_phy_addr_by_net_device(dev);
+	if (phy_addr < 0 || phy_addr >= 32)
+		return ret;
+	if (!bus) {
+		printk("%s: Invalid mii_bus for %s\n", __func__, dev->name);
+		cmd->base.speed = SPEED_UNKNOWN;
+		return -1;
+	}
+
+	bmsr = mdiobus_read(bus, phy_addr, MII_BMSR);
+	if (!(bmsr & BMSR_LSTATUS)) {
+		/* link down */
+		cmd->base.speed = SPEED_UNKNOWN;
+		return ret;
+	}
+
+	/* link up */
+	lbrerror = mdiobus_read(bus, phy_addr, MII_LBRERROR);
+	switch (lbrerror & 0x7) {
+		case 0:
+			cmd->base.speed = SPEED_10;
+			break;
+		case 1:
+			cmd->base.speed = SPEED_100;
+			break;
+		case 2:
+			cmd->base.speed = SPEED_1000;
+			break;
+		case 4:
+			cmd->base.speed = SPEED_2500;
+			break;
+		default:
+			printk("%s: netdev %s unknown speed %d\n", __func__, dev->name, lbrerror & 0x7);
+	}
+
+	bmcr = mdiobus_read(bus, phy_addr, MII_BMCR);
+	if (bmcr & BMCR_ANENABLE) {
+		/* autonegotiation is enabled */
+		if (cmd->base.speed >= SPEED_1000) {
+			cmd->base.duplex = DUPLEX_FULL;
+		} else {
+			int advertise, lpa;
+
+			advertise = mdiobus_read(bus, phy_addr, MII_ADVERTISE);
+			lpa = mdiobus_read(bus, phy_addr, MII_LPA);
+			if ((advertise & ADVERTISE_100FULL) && (lpa & LPA_100FULL))
+				cmd->base.duplex = DUPLEX_FULL;
+			else if ((advertise & ADVERTISE_100HALF) && (lpa & LPA_100HALF))
+				cmd->base.duplex = DUPLEX_HALF;
+			else if ((advertise & ADVERTISE_10FULL) && (lpa & LPA_10FULL))
+				cmd->base.duplex = DUPLEX_FULL;
+			else if ((advertise & ADVERTISE_10HALF) && (lpa & LPA_10HALF))
+				cmd->base.duplex = DUPLEX_HALF;
+			else {
+				cmd->base.duplex = DUPLEX_FULL;
+			}
+		}
+	} else {
+		/* autonegotiation is disabled */
+		cmd->base.duplex = (bmcr & BMCR_FULLDPLX)? 1 : 0;
+	}
+#endif
+
+	return 0;
 }
 
 static int dsa_slave_set_link_ksettings(struct net_device *dev,
@@ -1184,7 +1289,11 @@ static const struct ethtool_ops dsa_slave_ethtool_ops = {
 	.get_regs_len		= dsa_slave_get_regs_len,
 	.get_regs		= dsa_slave_get_regs,
 	.nway_reset		= dsa_slave_nway_reset,
+#if defined(CONFIG_TUFAX4200) || defined(CONFIG_TUFAX6000)
+	.get_link		= dsa_slave_get_link,
+#else
 	.get_link		= ethtool_op_get_link,
+#endif
 	.get_eeprom_len		= dsa_slave_get_eeprom_len,
 	.get_eeprom		= dsa_slave_get_eeprom,
 	.set_eeprom		= dsa_slave_set_eeprom,
@@ -1609,7 +1718,7 @@ dsa_fdb_offload_notify(struct dsa_switchdev_event_work *switchdev_work)
 	info.addr = switchdev_work->addr;
 	info.vid = switchdev_work->vid;
 	info.offloaded = true;
-	dp = dsa_to_port(ds, switchdev_work->port);
+	dp = (struct dsa_port *) dsa_to_port(ds, switchdev_work->port);
 	call_switchdev_notifiers(SWITCHDEV_FDB_OFFLOADED,
 				 dp->slave, &info.info, NULL);
 }
@@ -1622,7 +1731,7 @@ static void dsa_slave_switchdev_event_work(struct work_struct *work)
 	struct dsa_port *dp;
 	int err;
 
-	dp = dsa_to_port(ds, switchdev_work->port);
+	dp = (struct dsa_port *) dsa_to_port(ds, switchdev_work->port);
 
 	rtnl_lock();
 	switch (switchdev_work->event) {
