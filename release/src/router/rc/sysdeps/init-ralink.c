@@ -1176,7 +1176,10 @@ void wl_ifdown(void)
 	if (wisp_mode())
 		ifconfig(get_staifname(nvram_get_int("wlc_band")), 0, NULL, NULL);
 #endif
-
+#if defined(RTCONFIG_SWRTMESH)
+	ralink_hostapd_stop();
+	stop_wifi_wpa_supplicant();
+#endif
 	unit = 0;
 	wl_ifnames = strdup(nvram_safe_get("wl_ifnames"));
 	if (wl_ifnames) {
@@ -1217,10 +1220,6 @@ void wl_ifdown(void)
 		if (iface_exist(vif))
 			ifconfig(vif, 0, NULL, NULL);
 	}
-#endif
-#if defined(RTCONFIG_SWRTMESH)
-	stop_wifi_hostapd();
-	stop_wifi_wpa_supplicant();
 #endif
 }
 
@@ -1782,8 +1781,8 @@ void init_syspara(void)
 
 	memset(buffer, 0, sizeof(buffer));
 	FRead(buffer, OFFSET_BOOT_VER, 4);
-//	sprintf(blver, "%c.%c.%c.%c", buffer[0], buffer[1], buffer[2], buffer[3]);
-	sprintf(blver, "%s-0%c-0%c-0%c-0%c", trim_r(productid), buffer[0], buffer[1], buffer[2], buffer[3]);
+	sprintf(blver, "%c.%c.%c.%c", buffer[0], buffer[1], buffer[2], buffer[3]);
+//	sprintf(blver, "%s-0%c-0%c-0%c-0%c", trim_r(productid), buffer[0], buffer[1], buffer[2], buffer[3]);
 	nvram_set("blver", trim_r(blver));
 
 	_dprintf("mtd productid: %s\n", nvram_safe_get("productid"));

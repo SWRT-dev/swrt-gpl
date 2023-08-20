@@ -5161,13 +5161,13 @@ void write_rpt_wpa_supplicant_conf(int band, const char *prefix_mssid, char *pre
 {
 	FILE *fp_wpa;
 	char tmp[128];
-	char pidfile[32];
+	char pid_path[32];
 	char *str;
 	int flag_wep = 0;
 	int i;
 
 	snprintf(tmp, sizeof(tmp), "/etc/Wireless/wpa_supplicant-%s.conf", get_staifname(band));
-	snprintf(pidfile, sizeof(pidfile), "/var/run/wifi-%s.pid", get_staifname(band));
+	snprintf(pid_path, sizeof(pid_path), "/var/run/wifi-%s.pid", get_staifname(band));
 	if (!(fp_wpa = fopen(tmp, "w+")))
 		return;
 	ifconfig(get_staifname(band), 0, NULL, NULL);
@@ -5256,7 +5256,7 @@ void write_rpt_wpa_supplicant_conf(int band, const char *prefix_mssid, char *pre
 	}
 	fprintf(fp_wpa, "}\n");
 	fclose(fp_wpa);
-	eval("wpa_supplicant", "-B", "-P", pidfile, "-D", "nl80211", "-i", get_staifname(band), "-b", "br0", "-c", tmp);
+	eval("wpa_supplicant", "-B", "-P", pid_path, "-D", "nl80211", "-i", get_staifname(band), "-b", "br0", "-c", tmp);
 }
 #endif	/* RTCONFIG_WIRELESSREPEATER */
 
@@ -5318,7 +5318,7 @@ int gen_hostapd_config(int band, int subunit)
 	char prefix[] = "wlXXXXXXX_";
 	char tmpstr[128], psk[65];
 	char wif[IFNAMSIZ];
-	char hostapd_path[50], mac_path[50], pidfile[32], logfile[32];
+	char hostapd_path[50], mac_path[50];
 	FILE *fp_h, *fp_mac;
 #if defined(RTCONFIG_MT798X)
 	unsigned int maxsta = 512;
@@ -5333,8 +5333,6 @@ int gen_hostapd_config(int band, int subunit)
 	int wlc_band = nvram_get_int("wlc_band");
 #endif
 	char br_if[IFNAMSIZ];
-	char *hostapd_argv[] = { "hostapd", "-B", "-P", pidfile, "-f", logfile, /*"-dddd",*/ hostapd_path, NULL };
-	pid_t pid;
 
 	if (band < 0 || band >= MAX_NR_WL_IF || subunit < 0)
 		return -1;
@@ -5370,8 +5368,6 @@ int gen_hostapd_config(int band, int subunit)
 
 	snprintf(hostapd_path, sizeof(hostapd_path), "/etc/Wireless/hostapd_%s.conf", wif);
 	snprintf(mac_path, sizeof(mac_path), "/etc/Wireless/maclist_%s.conf", wif);
-	snprintf(pidfile, sizeof(pidfile), "/var/run/hostapd_%s.pid", wif);
-	snprintf(logfile, sizeof(logfile), "/tmp/hostapd_%s.log", wif);
 	_dprintf("gen ralink hostapd config : %s\n", wif);
 	if (!(fp_h = fopen(hostapd_path, "w+")))
 		return 0;
@@ -5578,37 +5574,48 @@ int gen_hostapd_config(int band, int subunit)
 next:
 	fclose(fp_h);
 	fclose(fp_mac);
-	_eval(hostapd_argv, NULL, 0, &pid);
 	return 0;
 }
 
-void hostapd_watchdog(void)
+void ralink_hostapd_start(void)
 {
+	FILE *fp;
 	pid_t pid;
-	char *wif = NULL;
-	char hostapd_path[50], pidfile[32], logfile[32];
-	char *hostapd_argv[] = { "hostapd", "-B", "-P", pidfile, "-f", logfile, /*"-dddd",*/ hostapd_path, NULL };
-	if(nvram_match("wl0_bss_enabled", "1")){
-		wif = get_wififname(WL_2G_BAND);
-		if(!wl_isup(wif)){
-			snprintf(hostapd_path, sizeof(hostapd_path), "/etc/Wireless/hostapd_%s.conf", wif);
-			snprintf(pidfile, sizeof(pidfile), "/var/run/hostapd_%s.pid", wif);
-			snprintf(logfile, sizeof(logfile), "/tmp/hostapd_%s.log", wif);
-			_eval(hostapd_argv, NULL, 0, &pid);
+	int unit = 0, subunit = 0; 
+	char prefix[] = "wlXXXXXXX_";
+	char wif[IFNAMSIZ];
+	char hostapd_path[24] = {0}, conf_path[50], pid_path[32], log_path[32], entropy_path[32];
+	char *argv[]={"/sbin/delay_exec","4","/tmp/postwifi.sh",NULL};
+	ralink_hostapd_stop();
+	if (!(fp = fopen("/tmp/postwifi.sh", "w+")))
+		return;
+	fprintf(fp, "#!/bin/sh\n");
+	for(unit = 0; unit < MAX_NR_WL_IF; unit++){
+		for(subunit = 0; subunit < MAX_NO_MSSID; subunit++){
+			if(subunit)
+				snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, subunit);
+			else
+				snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+			if(nvram_pf_match(prefix, "bss_enabled", "1")){
+				get_wlxy_ifname(unit, subunit, wif);
+				snprintf(hostapd_path, sizeof(hostapd_path), "/tmp/hostapd_%s", wif);
+				doSystem("ln -sf /usr/sbin/hostapd %s", hostapd_path);
+				snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/hostapd_%s.conf", wif);
+				snprintf(pid_path, sizeof(pid_path), "/var/run/hostapd_%s.pid", wif);
+				snprintf(log_path, sizeof(log_path), "/tmp/hostapd_%s.log", wif);
+				snprintf(entropy_path, sizeof(entropy_path), "/var/run/entropy_%s.bin", wif);
+				doSystem("echo \"%s -B -P %s -f %s -e %s %s\" >> /tmp/hostapd.log", hostapd_path, pid_path, log_path, entropy_path, conf_path);
+				//fprintf(fp, "%s -B -P %s -f %s -e %s -dddd %s\n", hostapd_path, pid_path, log_path, entropy_path, conf_path);
+				fprintf(fp, "%s -B -P %s -f %s -e %s %s\n", hostapd_path, pid_path, log_path, entropy_path, conf_path);
+			}
 		}
 	}
-	if(nvram_match("wl1_bss_enabled", "1")){
-		wif = get_wififname(WL_5G_BAND);
-		if(!wl_isup(wif)){
-			snprintf(hostapd_path, sizeof(hostapd_path), "/etc/Wireless/hostapd_%s.conf", wif);
-			snprintf(pidfile, sizeof(pidfile), "/var/run/hostapd_%s.pid", wif);
-			snprintf(logfile, sizeof(logfile), "/tmp/hostapd_%s.log", wif);
-			_eval(hostapd_argv, NULL, 0, &pid);
-		}
-	}
+	fclose(fp);
+	chmod("/tmp/postwifi.sh",0777);
+	_eval(argv, NULL, 0, &pid);
 }
 
-void hostapd_ra_start(void)
+void gen_ralink_wifi_cfgs(void)
 {
 	int unit = 0, subunit = 0; 
 	char prefix[] = "wlXXXXXXX_";
@@ -5627,17 +5634,16 @@ void hostapd_ra_start(void)
 		}
 	}
 #if defined(RTCONFIG_SWRTMESH)
-	hostapd_watchdog();
 //	auto_generate_config();
 //	swrtmesh_sysdep_bh_start();
 #endif
 }
 
-void stop_wifi_hostapd(void)
+void ralink_hostapd_stop(void)
 {
 	int unit = 0, subunit = 0; 
 	char prefix[] = "wlXXXXXXX_";
-	char wif[IFNAMSIZ], pidfile[32];
+	char wif[IFNAMSIZ], pid_path[32];
 	for(unit = 0; unit < MAX_NR_WL_IF; unit++){
 		for(subunit = 0; subunit < MAX_NO_MSSID; subunit++){
 			if(subunit)
@@ -5645,12 +5651,15 @@ void stop_wifi_hostapd(void)
 			else
 				snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 			get_wlxy_ifname(unit, subunit, wif);
-			snprintf(pidfile, sizeof(pidfile), "/var/run/hostapd_%s.pid", wif);
-			if(f_exists(pidfile)){
-				kill_pidfile_tk(pidfile);
-				unlink(pidfile);
+			snprintf(pid_path, sizeof(pid_path), "/var/run/hostapd_%s.pid", wif);
+			if(f_exists(pid_path)){
+				kill_pidfile_tk(pid_path);
+				unlink(pid_path);
 //				ifconfig(wif, 0, NULL, NULL);
 			}
+			snprintf(pid_path, sizeof(pid_path), "/var/run/hostapd/%s", wif);
+			if(f_exists(pid_path))
+				unlink(pid_path);
 		}
 	}
 #if defined(RTCONFIG_SWRTMESH)
@@ -5661,13 +5670,13 @@ void stop_wifi_hostapd(void)
 void stop_wifi_wpa_supplicant(void)
 {
 	int unit = 0; 
-	char wif[IFNAMSIZ], pidfile[32];
+	char wif[IFNAMSIZ], pid_path[32];
 	for(unit = 0; unit < MAX_NR_WL_IF; unit++){
 		snprintf(wif, sizeof(wif), "%s", get_staifname(unit));
-		snprintf(pidfile, sizeof(pidfile), "/var/run/wifi-%s.pid", wif);
-		if(f_exists(pidfile)){
-			kill_pidfile_tk(pidfile);
-			unlink(pidfile);
+		snprintf(pid_path, sizeof(pid_path), "/var/run/wifi-%s.pid", wif);
+		if(f_exists(pid_path)){
+			kill_pidfile_tk(pid_path);
+			unlink(pid_path);
 			ifconfig(wif, 0, NULL, NULL);
 		}
 	}
@@ -5695,8 +5704,7 @@ void gen_ra_config(const char* wif)
 		}
 	}
 #if defined(RTCONFIG_SWRTMESH)
-	stop_wifi_hostapd();
-	hostapd_ra_start();
+	gen_ralink_wifi_cfgs();
 #endif
 }
 

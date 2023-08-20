@@ -11561,7 +11561,7 @@ int stop_wifi_service(void)
 int stop_wifi_service(void)
 {
 #if defined(RTCONFIG_SWRTMESH)
-	stop_wifi_hostapd();
+	ralink_hostapd_stop();
 	stop_wifi_wpa_supplicant();
 #endif
 	return 0;

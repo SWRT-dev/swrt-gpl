@@ -941,6 +941,7 @@ extern int modprobe_r(const char *mod);
 extern int load_kmods(char *kmods_list);
 extern int remove_kmods(char *kmods_list);
 extern int num_of_wl_if(void);
+extern int num_of_wan_if(void);
 extern int num_of_5g_if(void);
 
 // usb.c

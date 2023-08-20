@@ -2095,7 +2095,7 @@ void start_lan(void)
 #endif
 #endif
 #if defined(RTCONFIG_SWRTMESH)
-	hostapd_watchdog();
+	ralink_hostapd_start();
 #endif
 	config_loopback();
 
@@ -2483,7 +2483,7 @@ void stop_lan(void)
 						modprobe_r(MTK_HNAT_MOD);
 					stop_wds_ra(lan_ifname, ifname);
 #if defined(RTCONFIG_SWRTMESH)
-					stop_wifi_hostapd();
+					ralink_hostapd_stop();
 #endif
 				}
 #elif defined(RTCONFIG_QCA)
@@ -4187,7 +4187,7 @@ void stop_lan_wl(void)
 	stop_easymesh();
 #endif
 #if defined(RTCONFIG_SWRTMESH)
-	stop_wifi_hostapd();
+	ralink_hostapd_stop();
 #endif
 	snprintf(lan_ifname, sizeof(lan_ifname), "%s", nvram_safe_get("lan_ifname"));
 	if ((wl_ifnames = strdup(nvram_safe_get("lan_ifnames"))) != NULL) {
@@ -5106,7 +5106,7 @@ gmac3_no_swbr:
 	gen_qca_wifi_cfgs();
 #endif
 #if defined(RTCONFIG_SWRTMESH)
-	hostapd_watchdog();
+	ralink_hostapd_start();
 #endif
 #if defined(RTCONFIG_QCA) && defined(RTCONFIG_SOC_IPQ40XX)
 	enable_jumbo_frame();

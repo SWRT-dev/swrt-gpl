@@ -704,6 +704,11 @@ extern void start_mapd(void);
 extern int start_easymesh(void);
 extern void easymesh_agent(void);
 #endif
+#if defined(RTCONFIG_SWRTMESH)
+extern void ralink_hostapd_start(void);
+extern void ralink_hostapd_stop(void);
+extern void gen_ralink_wifi_cfgs(void);
+#endif
 #endif
 
 /* board API under sysdeps/qca/qca.c */
@@ -2847,6 +2852,7 @@ extern void stop_bsd(void);
 #if defined(RTCONFIG_RALINK_BSD)
 extern int start_bsd(void);
 extern void stop_bsd(void);
+extern void gen_bsd_conf(void);
 #endif
 #if defined(RTCONFIG_QCA_PLC_UTILS) || defined(RTCONFIG_QCA_PLC2)
 extern int restart_plc_main(int argc, char *argv[]);
@@ -3570,6 +3576,8 @@ extern void stop_swrtmesh(void);
 extern void auto_generate_config(void);
 extern int start_mapcontroller(void);
 extern void stop_mapcontroller(void);
+extern int is_hostapd_running(const char *ifname);
+extern void restart_hostapd(const char *ifname);
 #endif
 #endif	/* __RC_H__ */
 
