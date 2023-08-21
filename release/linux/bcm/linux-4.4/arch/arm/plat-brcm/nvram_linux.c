@@ -63,7 +63,6 @@ static bool nvram_inram = FALSE;
 #define CFE_UPDATE  1 // added by Chen-I for mac/regulation update
 #endif
 #ifdef CFE_UPDATE
-extern void bcm947xx_watchdog_disable(void);
 
 #define CFE_SPACE       512*1024
 #define CFE_NVRAM_START 0x00000
@@ -623,7 +622,6 @@ nvram_set(const char *name, const char *value)
 			ret = cfe_dump();
 		else if(strcmp(name, CFE_NVRAM_WATCHDOG)==0)
 		{
-			bcm947xx_watchdog_disable();
 			ret = 0;
 		}
 		else
