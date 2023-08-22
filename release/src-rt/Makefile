@@ -5837,6 +5837,19 @@ fi;
 		echo "# CONFIG_BRIDGE_EBT_LOG is not set" >>$(1); \
 		sed -i "/CONFIG_BRIDGE_EBT_NFLOG/d" $(1); \
 		echo "# CONFIG_BRIDGE_EBT_NFLOG is not set" >>$(1); \
+		if [ "$(MT7621)" = "y" ]; then \
+			echo "# CONFIG_NFT_EXTHDR is not set" >>$(1); \
+			echo "# CONFIG_NFT_META is not set" >>$(1); \
+			echo "# CONFIG_NFT_RBTREE is not set" >>$(1); \
+			echo "CONFIG_NFT_CHAIN_ROUTE_IPV4=y" >>$(1); \
+			echo "CONFIG_NFT_CHAIN_NAT_IPV4=y" >>$(1); \
+			echo "CONFIG_NFT_MASQ_IPV4=y" >>$(1); \
+			echo "CONFIG_NFT_REDIR_IPV4=y" >>$(1); \
+			echo "CONFIG_NFT_CHAIN_ROUTE_IPV6=y" >>$(1); \
+			echo "CONFIG_NFT_CHAIN_NAT_IPV6=y" >>$(1); \
+			echo "CONFIG_NFT_MASQ_IPV6=y" >>$(1); \
+			echo "CONFIG_NFT_REDIR_IPV6=y" >>$(1); \
+		fi;\
 	fi;
 	$(call platformKernelConfig, $(1))
 	$(call extraKernelConfig, $(1))
