@@ -5336,10 +5336,6 @@ int gen_hostapd_config(int band, int subunit)
 
 	if (band < 0 || band >= MAX_NR_WL_IF || subunit < 0)
 		return -1;
-#if defined(RTCONFIG_SWRTMESH)
-	if (subunit == 4)
-		return -1;
-#endif
 
 #if !defined(RTCONFIG_HAS_5G_2)
 	if (band == 2)
@@ -5348,7 +5344,11 @@ int gen_hostapd_config(int band, int subunit)
 
 	switch (band) {
 	case WL_2G_BAND:
+#if defined(RTCONFIG_RALINK_MT7621)
+		hw_mode = "b";//workaround for mt7621
+#else
 		hw_mode = "g";
+#endif
 		break;
 	case WL_5G_BAND:
 	case WL_5G_2_BAND:

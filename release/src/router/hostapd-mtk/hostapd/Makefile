@@ -284,7 +284,9 @@ endif
 CFLAGS += -DHOSTAPD_MAP_SUPPORT
 
 #Mediatek MAPR3 support in hostapd
+ifdef RTCONFIG_MT798X
 CFLAGS += -DHOSTAPD_MAPR3_SUPPORT
+endif
 
 #save pmkid generated in hostapd to drivers
 CFLAGS += -DHOSTAPD_PMKID_IN_DRIVER_SUPPORT

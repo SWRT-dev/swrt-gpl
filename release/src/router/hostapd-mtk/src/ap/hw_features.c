@@ -1086,7 +1086,8 @@ int hostapd_select_hw_mode(struct hostapd_iface *iface)
 
 	if (iface->num_hw_features < 1)
 		return -1;
-#if 0
+
+	//workaround for AutoChannelSelect
 	hapd = iface->bss[0];
 	if((!os_strncmp(hapd->conf->iface, "rai",3)) || (!os_strncmp(hapd->conf->iface, "rax",3)) ||
 		(!os_strncmp(hapd->conf->iface, "rae",3)))
@@ -1103,7 +1104,6 @@ int hostapd_select_hw_mode(struct hostapd_iface *iface)
 		iface->conf->channel = 6;
 		iface->freq = 2437;
 	}
-#endif
 
 	if ((iface->conf->hw_mode == HOSTAPD_MODE_IEEE80211G ||
 	     iface->conf->ieee80211n || iface->conf->ieee80211ac ||

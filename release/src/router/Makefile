@@ -6217,7 +6217,7 @@ hostapd-mtk/wpa_supplicant/.config:
 	cp hostapd-mtk/wpa_supplicant-mini.config hostapd-mtk/wpa_supplicant/.config
 
 hostapd-mtk: libnl-tiny openssl hostapd-mtk/hostapd/.config hostapd-mtk/wpa_supplicant/.config
-	$(MAKE) $(PARALLEL_BUILD) -C hostapd-mtk/hostapd CONFIG_P2P=y CONFIG_INTERNAL_LIBTOMMATH=y CONFIG_DRIVER_NL80211=y
+	$(MAKE) $(PARALLEL_BUILD) -C hostapd-mtk/hostapd CONFIG_P2P=y CONFIG_INTERNAL_LIBTOMMATH=y CONFIG_DRIVER_NL80211=y RTCONFIG_MT798X=$(RTCONFIG_MT798X)
 	$(MAKE) $(PARALLEL_BUILD) -C hostapd-mtk/wpa_supplicant CONFIG_P2P=y CONFIG_INTERNAL_LIBTOMMATH=y CONFIG_DRIVER_NL80211=y
 
 hostapd-mtk-install:
