@@ -54,8 +54,6 @@ int start_swrtmesh(void)
 	char *ieee1905_argv[] = { "ieee1905d", "-o", "/tmp/ieee1905.log", /*"-f",*/ "-dddd", NULL };
 	char *cntl_argv[] = { "mapcontroller", "-o", "/tmp/mapcontroller.log", "-d", "-vvvv", NULL, NULL };
 	char *tp_argv[] = { "topologyd", NULL };
-	char *dynbhd_argv[] = { "dynbhd", NULL };
-	char *agent_argv[] = { "mapagent", "-o", "/tmp/mapagent.log", "-d", "-vvvv", NULL };
 //	char *swrtmeshd_argv[] = { "swrtmeshd", NULL };
 
 	if (getpid() != 1) {
@@ -81,11 +79,17 @@ int start_swrtmesh(void)
 			system("echo 1 >/proc/sys/net/netfilter/nf_conntrack_timestamp");
 	}
 	if(nvram_match("swrtmesh_agent_enable", "1")){
+		FILE *fp;
+		char *argv[]={"/sbin/delay_exec","15","/tmp/agent.sh",NULL};
 		unlink("/var/run/multiap/multiap.backhaul");
-		usleep(200000);
-		_eval(dynbhd_argv, NULL, 0, &pid);
-		usleep(200000);
-		_eval(agent_argv, NULL, 0, &pid);
+		if (!(fp = fopen("/tmp/agent.sh", "w+")))
+			return -1;
+		fprintf(fp, "#!/bin/sh\n");
+		fprintf(fp, "dynbhd &\n");
+		fprintf(fp, "mapagent -o /tmp/mapagent.log -d -vvvv &\n");
+		fclose(fp);
+		chmod("/tmp/agent.sh",0777);
+		_eval(argv, NULL, 0, &pid);
 	}
 	//_eval(swrtmeshd_argv, NULL, 0, &pid);
 	return 0;
