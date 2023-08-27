@@ -70,8 +70,10 @@
 			/*gpio60 for malibu reset*/
 			phy-reset-gpio = <&tlmm 60 0>;
 			phy4: ethernet-phy@4 {
-				reg = <30>;
-                        };
+				compatible ="ethernet-phy-ieee802.3-c45";
+				reg = <0>;
+			};
+			/delete-node/ ethernet-phy@5;
                 };
 
 		ess-instance {
@@ -83,8 +85,6 @@
 					port@4 {
 						port_id = <5>;
 						phy_address = <30>;
-						phy_i2c_address = <30>;
-						phy-i2c-mode;
 						/delete-property/port_mac_sel;
 						media-type = "sfp"; /* fiber mode */
 					};

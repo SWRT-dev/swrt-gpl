@@ -21,6 +21,9 @@ static int bmp280_i2c_probe(struct i2c_client *client,
 	case BME280_CHIP_ID:
 		regmap_config = &bmp280_regmap_config;
 		break;
+	case BMP390_CHIP_ID:
+		regmap_config = &bmp390_regmap_config;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -48,6 +51,7 @@ static const struct acpi_device_id bmp280_acpi_i2c_match[] = {
 	{"BMP0180", BMP180_CHIP_ID },
 	{"BMP0085", BMP180_CHIP_ID },
 	{"BME0280", BME280_CHIP_ID },
+	{"BMP0390", BMP390_CHIP_ID },
 	{ },
 };
 MODULE_DEVICE_TABLE(acpi, bmp280_acpi_i2c_match);
@@ -58,6 +62,7 @@ static const struct of_device_id bmp280_of_i2c_match[] = {
 	{ .compatible = "bosch,bmp280", .data = (void *)BMP280_CHIP_ID },
 	{ .compatible = "bosch,bmp180", .data = (void *)BMP180_CHIP_ID },
 	{ .compatible = "bosch,bmp085", .data = (void *)BMP180_CHIP_ID },
+	{ .compatible = "bosch,bmp390", .data = (void *)BMP390_CHIP_ID },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, bmp280_of_i2c_match);
@@ -70,13 +75,14 @@ static const struct i2c_device_id bmp280_i2c_id[] = {
 	{"bmp180", BMP180_CHIP_ID },
 	{"bmp085", BMP180_CHIP_ID },
 	{"bme280", BME280_CHIP_ID },
+	{"bmp390", BMP390_CHIP_ID },
 	{ },
 };
 MODULE_DEVICE_TABLE(i2c, bmp280_i2c_id);
 
 static struct i2c_driver bmp280_i2c_driver = {
 	.driver = {
-		.name	= "bmp280",
+		.name	= "bmp390",
 		.acpi_match_table = ACPI_PTR(bmp280_acpi_i2c_match),
 		.of_match_table = of_match_ptr(bmp280_of_i2c_match),
 		.pm = &bmp280_dev_pm_ops,

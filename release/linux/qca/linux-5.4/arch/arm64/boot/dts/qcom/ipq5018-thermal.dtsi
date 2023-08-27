@@ -15,7 +15,7 @@
  */
 
 / {
-	thermal-zones {
+	thermal_zones: thermal-zones {
 		tsens_tz_sensor1 {
 			polling-delay-passive = <0>;
 			polling-delay = <0>;
@@ -23,19 +23,19 @@
 
 			trips {
 				cpu-critical-hi {
-					temperature = <100>;
+					temperature = <120000>;
 					hysteresis = <2>;
 					type = "critical_high";
 				};
 
 				cpu-config-hi {
-					temperature = <80>;
+					temperature = <100000>;
 					hysteresis = <2>;
 					type = "configurable_hi";
 				};
 
 				cpu-config-lo {
-					temperature = <70>;
+					temperature = <90000>;
 					hysteresis = <2>;
 					type = "configurable_lo";
 				};
@@ -55,19 +55,19 @@
 
 			trips {
 				cpu-critical-hi {
-					temperature = <100>;
+					temperature = <120000>;
 					hysteresis = <2>;
 					type = "critical_high";
 				};
 
 				cpu-config-hi {
-					temperature = <80>;
+					temperature = <100000>;
 					hysteresis = <2>;
 					type = "configurable_hi";
 				};
 
 				cpu-config-lo {
-					temperature = <70>;
+					temperature = <90000>;
 					hysteresis = <2>;
 					type = "configurable_lo";
 				};
@@ -87,19 +87,19 @@
 
 			trips {
 				cpu-critical-hi {
-					temperature = <100>;
+					temperature = <120000>;
 					hysteresis = <2>;
 					type = "critical_high";
 				};
 
 				cpu-config-hi {
-					temperature = <80>;
+					temperature = <100000>;
 					hysteresis = <2>;
 					type = "configurable_hi";
 				};
 
 				cpu-config-lo {
-					temperature = <70>;
+					temperature = <90000>;
 					hysteresis = <2>;
 					type = "configurable_lo";
 				};
@@ -119,19 +119,19 @@
 
 			trips {
 				cpu-critical-hi {
-					temperature = <100>;
+					temperature = <120000>;
 					hysteresis = <2>;
 					type = "critical_high";
 				};
 
 				cpu-config-hi {
-					temperature = <80>;
+					temperature = <100000>;
 					hysteresis = <2>;
 					type = "configurable_hi";
 				};
 
 				cpu-config-lo {
-					temperature = <70>;
+					temperature = <90000>;
 					hysteresis = <2>;
 					type = "configurable_lo";
 				};
@@ -168,3 +168,42 @@
 		#thermal-sensor-cells = <1>;
 	};
 };
+
+/* If CPUFreq cooling is enabled */
+#if defined(__CPU_THERMAL__)
+
+&thermal_zones {
+	tsens_tz_sensor1 {
+		/delete-node/ trips;
+	};
+
+	tsens_tz_sensor2 {
+		/delete-node/ trips;
+	};
+
+	tsens_tz_sensor3 {
+		/delete-node/ trips;
+	};
+
+	tsens_tz_sensor4 {
+		/delete-node/ trips;
+
+		/* Trips with CPUFreq cooling maps */
+		trips {
+			cpu-critical-hi {
+				temperature = <120000>;
+				hysteresis = <9000>;
+				type = "critical_high";
+			};
+		};
+	};
+};
+
+&CPU0 {
+	#cooling-cells = <2>;
+};
+
+&CPU1 {
+	#cooling-cells = <2>;
+};
+#endif

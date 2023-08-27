@@ -1,0 +1,173 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * IPQ5332 Emulation board device tree source
+ *
+ * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ */
+
+/dts-v1/;
+
+#include "ipq5332.dtsi"
+#include "ipq5332-default-memory.dtsi"
+
+/ {
+	#address-cells = <0x2>;
+	#size-cells = <0x2>;
+	model = "Qualcomm Technologies, Inc. IPQ5332/EMULATION";
+	compatible = "qcom,ipq5332-ap-emulation", "qcom,ipq5332";
+	interrupt-parent = <&intc>;
+
+	clocks {
+		sleep_clk: sleep-clk {
+			clock-frequency = <160>;
+		};
+
+		xo: xo {
+			clock-frequency = <120000>;
+		};
+	};
+
+	aliases {
+		serial0 = &blsp1_uart0;
+		serial1 = &blsp1_uart1;
+	};
+
+	chosen {
+		linux,initrd-end = <0x57000000>;
+		linux,initrd-start = <0x55000000>;
+		bootargs = "root=/dev/ram0 rw init=/init";
+		stdout-path = "serial0";
+	};
+
+	cpus: cpus {
+		CPU0: cpu@0 {
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc0>;
+		};
+
+		CPU1: cpu@1 {
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc1>;
+		};
+
+		CPU2: cpu@2 {
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc2>;
+		};
+
+		CPU3: cpu@3 {
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc3>;
+		};
+	};
+
+	firmware {
+		qfprom {
+			status = "disabled";
+		};
+	};
+
+	soc {
+		pinctrl@1000000 {
+			serial_0_pins: serial0-pinmux {
+				pins = "gpio18", "gpio19";
+				function = "blsp0_uart0";
+				drive-strength = <8>;
+				bias-pull-down;
+			};
+		};
+
+		gcc: gcc@1800000 {
+			gcc-use-dummy;
+		};
+
+		nsscc: nsscc@39b00000 {
+			nsscc-use-dummy;
+		};
+
+		serial@78af000 {
+			pinctrl-0 = <&serial_0_pins>;
+			pinctrl-names = "default";
+			status = "ok";
+		};
+
+		acc0: clock-controller@b188000 {
+			compatible = "qcom,arm-cortex-acc";
+			reg = <0x0b188000 0x1000>;
+		};
+
+		acc1: clock-controller@b198000 {
+			compatible = "qcom,arm-cortex-acc";
+			reg = <0x0b198000 0x1000>;
+		};
+
+		acc2:clock-controller@b1a8000 {
+			compatible = "qcom,arm-cortex-acc";
+			reg = <0x0b1a8000 0x1000>;
+		};
+
+		acc3:clock-controller@b1b8000 {
+			compatible = "qcom,arm-cortex-acc";
+			reg = <0x0b1b8000 0x1000>;
+		};
+
+		/* Timer freq for SSOC RUMI  = timer freq / 200 */
+		timer {
+			clock-frequency = <120000>;
+		};
+
+		timer@b120000 {
+			clock-frequency = <120000>;
+		};
+
+		q6v5_wcss: remoteproc@d100000 {
+			qcom,emulation;
+			qcom,nosecure;
+			bootaddr = <0x4A900000>;
+			q6_wcss_pd1: remoteproc_pd1 {
+				qcom,emulation;
+				qcom,nosecure;
+				bootaddr = <0x4A900000>;
+				qcom,fw_shared;
+			};
+			q6_wcss_pd2: remoteproc_pd2 {
+				qcom,emulation;
+				qcom,nosecure;
+				bootaddr = <0x4A900000>;
+				qcom,fw_shared;
+				status = "ok";
+			};
+		};
+
+		scm {
+			status = "disabled";
+		};
+	};
+
+	psci {
+		status = "disabled";
+	};
+
+	qti,tzlog {
+		status = "disabled";
+	};
+
+	qti,scm_restart_reason {
+		status = "disabled";
+	};
+
+	ctx-save {
+		status = "disabled";
+	};
+
+};
+
+&wifi0 {
+	qcom,rproc = <&q6_wcss_pd1>;
+	qcom,multipd_arch;
+	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
+	qcom,bdf-addr = <0x4B500000 0x4B500000 0x4B500000 0x0 0x0 0x0>;
+	mem-region = <&q6_region>;
+	status = "ok";
+};

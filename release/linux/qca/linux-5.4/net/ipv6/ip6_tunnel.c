@@ -916,6 +916,7 @@ static void ip4ip6_fmr_calc(struct in6_addr *dest,
 			 * We need move last six Bytes 1 byte forward
 			 */
 			memmove(&dest->s6_addr[9], &dest->s6_addr[10], 6);
+			dest->s6_addr[15] = 0;
 		}
 	}
 }
@@ -1179,14 +1180,14 @@ int ip6_tnl_xmit_ctl(struct ip6_tnl *t,
 
 		if (unlikely(!ipv6_chk_addr_and_flags(net, laddr, ldev, false,
 						      0, IFA_F_TENTATIVE)))
-			pr_warn("%s xmit: Local address not yet configured!\n",
-				p->name);
+			pr_warn_ratelimited("%s xmit: Local address not yet configured!\n",
+					    p->name);
 		else if (!(p->flags & IP6_TNL_F_ALLOW_LOCAL_REMOTE) &&
 			 !ipv6_addr_is_multicast(raddr) &&
 			 unlikely(ipv6_chk_addr_and_flags(net, raddr, ldev,
 							  true, 0, IFA_F_TENTATIVE)))
-			pr_warn("%s xmit: Routing loop! Remote address found on this node!\n",
-				p->name);
+			pr_warn_ratelimited("%s xmit: Routing loop! Remote address found on this node!\n",
+					    p->name);
 		else
 			ret = 1;
 		rcu_read_unlock();
@@ -2453,6 +2454,26 @@ struct net *ip6_tnl_get_link_net(const struct net_device *dev)
 	return tunnel->net;
 }
 EXPORT_SYMBOL(ip6_tnl_get_link_net);
+
+bool ip6_tunnel_is_fallback_dev(struct net_device *dev)
+{
+	struct net *net;
+	struct ip6_tnl_net *ip6n;
+	struct net_device *fb_tnl_dev;
+
+	net = dev_net(dev);
+	if (!net)
+		return false;
+
+	ip6n = net_generic(net, ip6_tnl_net_id);
+	if (!ip6n)
+		return false;
+
+	fb_tnl_dev = ip6n->fb_tnl_dev;
+
+	return (fb_tnl_dev == dev);
+}
+EXPORT_SYMBOL(ip6_tunnel_is_fallback_dev);
 
 static const struct nla_policy ip6_tnl_policy[IFLA_IPTUN_MAX + 1] = {
 	[IFLA_IPTUN_LINK]		= { .type = NLA_U32 },

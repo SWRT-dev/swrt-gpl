@@ -106,7 +106,10 @@
 #define MAX_HALT_REG		4
 
 #define WCNSS_PAS_ID		6
-#define MAX_SEGMENTS		2
+#define QDSP6SS_Q6V7_VERSION	0x30010000
+#define QDSP6SS_Q6V6_VERSION	0x20020000
+#define QDSP6SS_Q6V5_VERSION	0x100A0000
+#define WCSS_VERSION		0x10000000
 
 static int debug_wcss;
 static const struct wcss_data wcss_ipq6018_res_init;
@@ -127,6 +130,7 @@ struct q6v5_wcss {
 
 	void __iomem *reg_base;
 	void __iomem *rmb_base;
+	void __iomem *wcmn_base;
 
 	struct regmap *halt_map;
 	u32 halt_q6;
@@ -209,6 +213,8 @@ struct wcss_data {
 	bool requires_force_stop;
 	bool need_mem_protection;
 	bool need_auto_boot;
+	int q6ss_version;
+	int wcss_version;
 };
 
 struct wcss_clk {
@@ -221,8 +227,9 @@ static void crashdump_init(struct rproc *rproc, struct rproc_dump_segment *segme
 {
 	void *handle;
 	struct device_node *node = NULL, *np = NULL;
-	struct ramdump_segment segs[MAX_SEGMENTS] = {0};
+	struct ramdump_segment *segs;
 	int ret, index = 0;
+	int num_segs;
 
 	handle = create_ramdump_device("q6mem", &rproc->dev);
 	if (!handle) {
@@ -238,7 +245,22 @@ static void crashdump_init(struct rproc *rproc, struct rproc_dump_segment *segme
 	}
 
 	np = rproc->dev.parent->of_node;
-	while (index < MAX_SEGMENTS) {
+
+	num_segs = of_count_phandle_with_args(np, "memory-region", NULL);
+	if (num_segs <= 0) {
+		dev_err(&rproc->dev, "Could not find memory regions to dump");
+		goto free_device;
+	}
+
+	dev_dbg(&rproc->dev, "number of segments to be dumped: %d\n", num_segs);
+
+	segs = kzalloc(num_segs * sizeof(struct ramdump_segment), GFP_KERNEL);
+	if (!segs) {
+		dev_err(&rproc->dev, "Could not allocate memory for ramdump segments");
+		goto free_device;
+	}
+
+	while (index < num_segs) {
 		node = of_parse_phandle(np, "memory-region", index);
 		if (!node)
 			break;
@@ -267,6 +289,7 @@ static void crashdump_init(struct rproc *rproc, struct rproc_dump_segment *segme
 	do_elf_ramdump(handle, segs, index);
 
 put_node:
+	kfree(segs);
 	of_node_put(np);
 free_device:
 	destroy_ramdump_device(handle);
@@ -661,17 +684,20 @@ static int q6v5_wcss_reset(struct rproc *rproc)
 	const struct wcss_data *desc;
 
 	desc = of_device_get_match_data(wcss->dev);
-	if (desc == &wcss_ipq6018_res_init) {
-		if (desc->aon_reset_required) {
-			/* Deassert wcss aon reset */
-			ret = reset_control_deassert(wcss->wcss_aon_reset);
-			if (ret) {
-				dev_err(wcss->dev, "wcss_aon_reset failed\n");
-				return ret;
-			}
-			mdelay(1);
-		}
+	if (!desc)
+		return -EINVAL;
 
+	if (desc->aon_reset_required) {
+		/* Deassert wcss aon reset */
+		ret = reset_control_deassert(wcss->wcss_aon_reset);
+		if (ret) {
+			dev_err(wcss->dev, "wcss_aon_reset failed\n");
+			return ret;
+		}
+		mdelay(1);
+	}
+
+	if (desc == &wcss_ipq6018_res_init) {
 		ret = ipq6018_clks_prepare_enable(wcss);
 		if (ret) {
 			dev_err(wcss->dev, "failed to enable clock\n");
@@ -718,15 +744,13 @@ static int q6v5_wcss_reset(struct rproc *rproc)
 	writel(val, wcss->reg_base + Q6SS_PWR_CTL_REG);
 	udelay(1);
 
-	if (desc == &wcss_ipq6018_res_init) {
-		/* 10 - Wait till BHS Reset is done */
-		ret = readl_poll_timeout(wcss->reg_base + Q6SS_BHS_STATUS,
-				val, (val & BHS_EN_REST_ACK), 1000,
-				Q6SS_TIMEOUT_US * 50);
-		if (ret) {
-			dev_err(wcss->dev, "BHS_STATUS not ON (rc:%d) val:0x%X\n", ret, val);
-			return ret;
-		}
+	/* 10 - Wait till BHS Reset is done */
+	ret = readl_poll_timeout(wcss->reg_base + Q6SS_BHS_STATUS,
+			val, (val & BHS_EN_REST_ACK), 1000,
+			Q6SS_TIMEOUT_US * 50);
+	if (ret) {
+		dev_err(wcss->dev, "BHS_STATUS not ON (rc:%d) val:0x%X\n", ret, val);
+		return ret;
 	}
 
 	/* Put LDO in bypass mode */
@@ -751,14 +775,11 @@ static int q6v5_wcss_reset(struct rproc *rproc)
 		writel(val, wcss->reg_base + Q6SS_MEM_PWR_CTL);
 		/*
 		 * Read back value to ensure the write is done then
-		 * wait for 1us for both memory peripheral and data
+		 * wait for 10ms for both memory peripheral and data
 		 * array to turn on.
 		 */
 		val |= readl(wcss->reg_base + Q6SS_MEM_PWR_CTL);
-		if (desc == &wcss_ipq6018_res_init)
-			mdelay(10);
-		else
-			udelay(1);
+		mdelay(10);
 	}
 	/* Remove word line clamp */
 	val = readl(wcss->reg_base + Q6SS_PWR_CTL_REG);
@@ -802,6 +823,12 @@ static int q6v5_wcss_start(struct rproc *rproc)
 {
 	struct q6v5_wcss *wcss = rproc->priv;
 	int ret;
+	uint32_t val;
+	const struct wcss_data *desc;
+
+	desc = of_device_get_match_data(wcss->dev);
+	if (!desc)
+		return -EINVAL;
 
 	ret = clk_prepare_enable(wcss->prng_clk);
 	if (ret) {
@@ -875,9 +902,28 @@ wait_for_reset:
 		else
 			dev_err(wcss->dev, "start timed out\n");
 	}
+
 	/*reset done clear the debug register*/
 	if (debug_wcss && wcss->q6_version != Q6V6)
 		writel(0x0, wcss->reg_base + Q6SS_DBG_CFG);
+
+	if (wcss->wcmn_base) {
+		/* Read the version registers to make sure WCSS is out of reset
+		 */
+		val = readl(wcss->reg_base);
+		if (val != desc->q6ss_version) {
+			dev_err(wcss->dev, "Invalid QDSP6SS Version : 0x%x\n", val);
+			return -EINVAL;
+		}
+		dev_info(wcss->dev, "QDSP6SS Version : 0x%x\n", val);
+
+		val = readl(wcss->wcmn_base);
+		if (val != desc->wcss_version) {
+			dev_err(wcss->dev, "Invalid WCSS Version : 0x%x\n", val);
+			return -EINVAL;
+		}
+		dev_info(wcss->dev, "WCSS Version : 0x%x\n", val);
+	}
 
 	return ret;
 
@@ -1131,9 +1177,8 @@ static void q6v5_wcss_halt_axi_port(struct q6v5_wcss *wcss,
 	unsigned long timeout;
 	unsigned int val;
 	int ret;
-	const struct wcss_data *desc = of_device_get_match_data(wcss->dev);
 
-	if (desc != &wcss_ipq6018_res_init) {
+	if (wcss->q6_version != Q6V5) {
 		/* Check if we're already idle */
 		ret = regmap_read(halt_map, offset + AXI_IDLE_REG, &val);
 		if (!ret && val)
@@ -1155,7 +1200,7 @@ static void q6v5_wcss_halt_axi_port(struct q6v5_wcss *wcss,
 		msleep(1);
 	}
 
-	if (desc != &wcss_ipq6018_res_init) {
+	if (wcss->q6_version != Q6V5) {
 		ret = regmap_read(halt_map, offset + AXI_IDLE_REG, &val);
 		if (ret || !val)
 			dev_err(wcss->dev, "port failed halt\n");
@@ -1233,10 +1278,8 @@ static int q6v5_wcss_powerdown(struct q6v5_wcss *wcss)
 {
 	int ret;
 	u32 val;
-	const struct wcss_data *desc = of_device_get_match_data(wcss->dev);
 
-	/*
-	1 - Assert WCSS/Q6 HALTREQ */
+	/* 1 - Assert WCSS/Q6 HALTREQ */
 	if (wcss->q6_version == Q6V6)
 		q6v6_wcss_halt_axi_port(wcss, wcss->halt_map, wcss->halt_wcss);
 	else
@@ -1278,7 +1321,7 @@ static int q6v5_wcss_powerdown(struct q6v5_wcss *wcss)
 
 	/* 6 - De-assert WCSS_AON reset */
 	reset_control_assert(wcss->wcss_aon_reset);
-	if (desc == &wcss_ipq6018_res_init)
+	if (wcss->q6_version == Q6V5)
 		mdelay(1);
 
 	if (wcss->q6_version == Q6V6 || wcss->q6_version == Q6V7) {
@@ -1296,7 +1339,7 @@ static int q6v5_wcss_powerdown(struct q6v5_wcss *wcss)
 	if (wcss->q6_version != Q6V7)
 		reset_control_assert(wcss->wcss_reset);
 
-	if (desc == &wcss_ipq6018_res_init) {
+	if (wcss->q6_version == Q6V5) {
 		/* Clear halt request (port will remain halted until reset) */
 		regmap_read(wcss->halt_map, wcss->halt_wcss + AXI_HALTREQ_REG, &val);
 		val &= ~0x1;
@@ -1333,10 +1376,9 @@ static int q6v5_q6_powerdown(struct q6v5_wcss *wcss)
 	int ret, i;
 	const struct wcss_data *desc = of_device_get_match_data(wcss->dev);
 
-	if (desc == &wcss_ipq6018_res_init) {
-		/* To retain power domain after q6 powerdown */
+	/* To retain power domain after q6 powerdown */
+	if (wcss->q6_version == Q6V5)
 		writel(0x1, wcss->reg_base + Q6SS_DBG_CFG);
-	}
 
 	/* 1 - Halt Q6 bus interface */
 	if (wcss->q6_version == Q6V6)
@@ -1416,12 +1458,12 @@ static int q6v5_q6_powerdown(struct q6v5_wcss *wcss)
 reset:
 	/* 11 -  Assert WCSS reset */
 	reset_control_assert(wcss->wcss_reset);
-	if (desc == &wcss_ipq6018_res_init)
+	if (wcss->q6_version == Q6V5)
 		mdelay(1);
 
 	/* 12 - Assert Q6 reset */
 	reset_control_assert(wcss->wcss_q6_reset);
-	if (desc == &wcss_ipq6018_res_init) {
+	if (wcss->q6_version == Q6V5) {
 		mdelay(2);
 
 		/* Clear halt request (port will remain halted until reset) */
@@ -1429,7 +1471,8 @@ reset:
 		val &= ~0x1;
 		regmap_write(wcss->halt_map, wcss->halt_q6 + AXI_HALTREQ_REG, val);
 		mdelay(1);
-
+	}
+	if (desc == &wcss_ipq6018_res_init) {
 		/* Disable clocks*/
 		ipq6018_clks_prepare_disable(wcss);
 	}
@@ -1641,6 +1684,15 @@ static int q6v5_wcss_init_mmio(struct q6v5_wcss *wcss,
 		wcss->rmb_base = devm_ioremap_resource(&pdev->dev, res);
 		if (IS_ERR(wcss->rmb_base))
 			return PTR_ERR(wcss->rmb_base);
+
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "wcmn");
+		if (res) {
+			wcss->wcmn_base = ioremap(res->start, resource_size(res));
+			if (!wcss->wcmn_base) {
+				dev_err(&pdev->dev, "wcmn ioremap failed\n");
+				return -ENOMEM;
+			}
+		}
 	}
 
 	syscon = of_parse_phandle(pdev->dev.of_node,
@@ -2100,7 +2152,10 @@ free_rproc:
 static int q6v5_wcss_remove(struct platform_device *pdev)
 {
 	struct rproc *rproc = platform_get_drvdata(pdev);
+	struct q6v5_wcss *wcss = rproc->priv;
 
+	if (wcss->wcmn_base)
+		iounmap(wcss->wcmn_base);
 	rproc_del(rproc);
 	rproc_free(rproc);
 
@@ -2123,6 +2178,8 @@ static const struct wcss_data wcss_ipq8074_res_init = {
 	.need_mem_protection = true,
 	.need_auto_boot = false,
 	.q6_version = Q6V5,
+	.q6ss_version = QDSP6SS_Q6V5_VERSION,
+	.wcss_version = WCSS_VERSION,
 };
 
 static const struct wcss_data wcss_ipq6018_res_init = {
@@ -2142,6 +2199,8 @@ static const struct wcss_data wcss_ipq6018_res_init = {
 	.need_mem_protection = true,
 	.need_auto_boot = false,
 	.q6_version = Q6V5,
+	.q6ss_version = QDSP6SS_Q6V5_VERSION,
+	.wcss_version = WCSS_VERSION,
 };
 
 static const struct wcss_data wcss_ipq5018_res_init = {
@@ -2161,6 +2220,8 @@ static const struct wcss_data wcss_ipq5018_res_init = {
 	.need_mem_protection = true,
 	.need_auto_boot = false,
 	.q6_version = Q6V6,
+	.q6ss_version = QDSP6SS_Q6V6_VERSION,
+	.wcss_version = WCSS_VERSION,
 };
 
 static const struct wcss_data wcss_ipq9574_res_init = {
@@ -2180,6 +2241,8 @@ static const struct wcss_data wcss_ipq9574_res_init = {
 	.need_mem_protection = true,
 	.need_auto_boot = false,
 	.q6_version = Q6V7,
+	.q6ss_version = QDSP6SS_Q6V7_VERSION,
+	.wcss_version = WCSS_VERSION,
 };
 
 static const struct wcss_data wcss_qcs404_res_init = {

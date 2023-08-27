@@ -79,6 +79,24 @@ struct diag_mhi_info diag_mhi[NUM_MHI_DEV] = {
 			.type = TYPE_MHI_WRITE_CH,
 		}
 	},
+	{
+                .id = MHI_3,
+                .dev_id = DIAGFWD_MDM_3,
+                .name = "MDM_3",
+                .enabled = 0,
+                .num_read = 0,
+                .mempool = POOL_TYPE_MDM3,
+                .mempool_init = 0,
+                .mhi_wq = NULL,
+                .mhi_dev = NULL,
+                .read_ch = {
+                        .type = TYPE_MHI_READ_CH,
+                },
+                .write_ch = {
+                        .type = TYPE_MHI_WRITE_CH,
+                }
+        },
+
 #ifdef	CONFIG_MHI_DCI
 	{
 		.dev_id = DIAGFWD_MDM_DCI,

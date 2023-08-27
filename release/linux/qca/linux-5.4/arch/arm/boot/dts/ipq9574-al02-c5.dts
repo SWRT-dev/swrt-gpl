@@ -7,3 +7,10 @@
  */
 
 #include <arm64/qcom/ipq9574-al02-c5.dts>
+
+/ {
+        chosen {
+                stdout-path = "serial0";
+                bootargs-append = " vmalloc=1G";
+        };
+};

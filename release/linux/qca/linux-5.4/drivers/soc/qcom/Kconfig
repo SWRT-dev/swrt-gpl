@@ -70,6 +70,12 @@ config QCOM_SDM845_LLCC
 	  data required to configure LLCC so that clients can start using the
 	  LLCC slices.
 
+config IPQ_REG_UPDATE
+	bool "QTI, Subsystem register update driver"
+	depends on ARCH_QCOM
+	help
+	  Generic driver to configure required registers
+
 config IPQ_SUBSYSTEM_RAMDUMP
 	bool "QTI, Subsystem ramdump driver"
 	depends on ARCH_QCOM
@@ -287,6 +293,13 @@ config QTI_TZ_LOG
 	  This option enables a driver with a debugfs interface for messages
 	  produced by the Secure code (Trust zone). These messages provide
 	  diagnostic information about TZ operation.
+
+config QTI_LICENSE_MANAGER
+	tristate "QTI License manager driver"
+	help
+	  This option enables a driver with License Manager QMI Service
+	  running to communicate the license termination mode and license
+	  files to the attached PCIe device.
 
 config QTI_CTXT_SAVE
 	tristate "QTI context save log"

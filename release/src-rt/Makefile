@@ -122,7 +122,7 @@ export SDK_DIR_PLATFORM := $(SDK_DIR)/mtk/mt7622
 else ifeq ($(MT798X),y)
 export SDK_DIR_PLATFORM := $(SDK_DIR)/mtk/mt7986
 else ifeq ($(or $(IPQ40XX),$(IPQ50XX),$(IPQ60XX),$(IPQ807X)),y)
-export SDK_DIR_PLATFORM := $(SDK_DIR)/qca/11.5
+export SDK_DIR_PLATFORM := $(SDK_DIR)/qca/12.2
 else ifeq ($(IPQ806X),y)
 export SDK_DIR_PLATFORM := $(SDK_DIR)/qca/ipq806x
 else ifeq ($(LANTIQ),y)

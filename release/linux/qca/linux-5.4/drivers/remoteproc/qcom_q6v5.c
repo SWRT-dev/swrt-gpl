@@ -170,7 +170,8 @@ int qcom_q6v5_request_stop(struct qcom_q6v5 *q6v5)
 	qcom_smem_state_update_bits(q6v5->state,
 			BIT(q6v5->stop_bit), BIT(q6v5->stop_bit));
 
-	ret = wait_for_completion_timeout(&q6v5->stop_done, 5 * HZ);
+	ret = wait_for_completion_timeout(&q6v5->stop_done,
+						msecs_to_jiffies(10000));
 
 	qcom_smem_state_update_bits(q6v5->state, BIT(q6v5->stop_bit), 0);
 
@@ -191,7 +192,8 @@ int qcom_q6v5_request_spawn(struct qcom_q6v5 *q6v5)
 	ret = qcom_smem_state_update_bits(q6v5->spawn_state,
 			BIT(q6v5->spawn_bit), BIT(q6v5->spawn_bit));
 
-	ret = wait_for_completion_timeout(&q6v5->spawn_done, 5 * HZ);
+	ret = wait_for_completion_timeout(&q6v5->spawn_done,
+						msecs_to_jiffies(10000));
 
 	qcom_smem_state_update_bits(q6v5->spawn_state,
 						BIT(q6v5->spawn_bit), 0);
@@ -209,6 +211,7 @@ void qcom_q6v5_panic_handler(struct qcom_q6v5 *q6v5)
 {
 	q6v5->running = false;
 
+	smem_panic_handler();
 	qcom_smem_state_update_bits(q6v5->shutdown_state,
 			BIT(q6v5->shutdown_bit), BIT(q6v5->shutdown_bit));
 	mdelay(STOP_ACK_TIMEOUT_MS);

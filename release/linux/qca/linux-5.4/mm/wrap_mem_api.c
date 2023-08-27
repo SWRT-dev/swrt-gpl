@@ -70,7 +70,7 @@ void *__wrap___kmalloc(size_t size, gfp_t flags)
 	if (addr && debug_mem_usage_enabled) {
 		void *stack[9] = {0};
 		get_stacktrace(stack);
-		debug_object_trace_init(addr, stack, size);
+		debug_object_trace_init(addr, stack, ksize(addr));
 	}
 
 	return addr;
@@ -96,7 +96,7 @@ void *__wrap_devm_kmalloc(struct device *dev, size_t size, gfp_t gfp)
 	if (addr && debug_mem_usage_enabled) {
 		void *stack[9] = {0};
 		get_stacktrace(stack);
-		debug_object_trace_init(addr, stack, size);
+		debug_object_trace_init(addr, stack, ksize(addr));
 	}
 
 	return addr;
@@ -110,7 +110,7 @@ void *__wrap_devm_kzalloc(struct device *dev, size_t size, gfp_t gfp)
 	if (addr && debug_mem_usage_enabled) {
 		void *stack[9] = {0};
 		get_stacktrace(stack);
-		debug_object_trace_init(addr, stack, size);
+		debug_object_trace_init(addr, stack, ksize(addr));
 	}
 
 	return addr;
@@ -125,7 +125,7 @@ void *__wrap_devm_kmalloc_array(struct device *dev, size_t n,
 	if (addr && debug_mem_usage_enabled) {
 		void *stack[9] = {0};
 		get_stacktrace(stack);
-		debug_object_trace_init(addr, stack, n*size);
+		debug_object_trace_init(addr, stack, ksize(addr));
 	}
 
 	return addr;
@@ -139,7 +139,7 @@ void *__wrap___kmalloc_node(size_t size, gfp_t flags, int node)
 
 	if (addr && debug_mem_usage_enabled) {
 		get_stacktrace(stack);
-		debug_object_trace_init(addr, stack, size);
+		debug_object_trace_init(addr, stack, ksize(addr));
 	}
 
 	return addr;
@@ -153,7 +153,7 @@ void *__wrap_kmalloc_node(size_t size, gfp_t flags, int node)
 
 	if (addr && debug_mem_usage_enabled) {
 		get_stacktrace(stack);
-		debug_object_trace_init(addr, stack, size);
+		debug_object_trace_init(addr, stack, ksize(addr));
 	}
 
 	return addr;
@@ -168,7 +168,7 @@ void *__wrap_devm_kcalloc(struct device *dev, size_t n,
 	if (addr && debug_mem_usage_enabled) {
 		void *stack[9] = {0};
 		get_stacktrace(stack);
-		debug_object_trace_init(addr, stack, n*size);
+		debug_object_trace_init(addr, stack, ksize(addr));
 	}
 
 	return addr;
@@ -194,7 +194,7 @@ void *__wrap_devm_kmemdup(struct device *dev, const void *src,
 	if (addr && debug_mem_usage_enabled) {
 		void *stack[9] = {0};
 		get_stacktrace(stack);
-		debug_object_trace_init(addr, stack, len);
+		debug_object_trace_init(addr, stack, ksize(addr));
 	}
 
 	return addr;
@@ -434,7 +434,7 @@ void *__wrap_kmalloc(size_t size, gfp_t flags)
 	if (addr && debug_mem_usage_enabled) {
 		void *stack[9] = {0};
 		get_stacktrace(stack);
-		debug_object_trace_init(addr, stack, size);
+		debug_object_trace_init(addr, stack, ksize(addr));
 	}
 
 	return addr;
@@ -448,7 +448,7 @@ void *__wrap_kmalloc_array(size_t n, size_t size, gfp_t flags)
 	if (addr && debug_mem_usage_enabled) {
 		void *stack[9] = {0};
 		get_stacktrace(stack);
-		debug_object_trace_init(addr, stack, n*size);
+		debug_object_trace_init(addr, stack, ksize(addr));
 	}
 
 	return addr;
@@ -462,7 +462,7 @@ void *__wrap_kcalloc(size_t n, size_t size, gfp_t flags)
 	if (addr && debug_mem_usage_enabled) {
 		void *stack[9] = {0};
 		get_stacktrace(stack);
-		debug_object_trace_init(addr, stack, n*size);
+		debug_object_trace_init(addr, stack, ksize(addr));
 	}
 
 	return addr;
@@ -476,7 +476,7 @@ void *__wrap_kzalloc(size_t size, gfp_t flags)
 	if (addr && debug_mem_usage_enabled) {
 		void *stack[9] = {0};
 		get_stacktrace(stack);
-		debug_object_trace_init(addr, stack, size);
+		debug_object_trace_init(addr, stack, ksize(addr));
 	}
 
 	return addr;
@@ -490,7 +490,7 @@ void *__wrap_kzalloc_node(size_t size, gfp_t flags, int node)
 	if (addr && debug_mem_usage_enabled) {
 		void *stack[9] = {0};
 		get_stacktrace(stack);
-		debug_object_trace_init(addr, stack, size);
+		debug_object_trace_init(addr, stack, ksize(addr));
 	}
 
 	return addr;
@@ -605,7 +605,7 @@ void *__wrap_kmemdup(const void *src, size_t len, gfp_t gfp)
 	if (addr && debug_mem_usage_enabled) {
 		void *stack[9] = {0};
 		get_stacktrace(stack);
-		debug_object_trace_init(addr, stack, len);
+		debug_object_trace_init(addr, stack, ksize(addr));
 	}
 
 	return addr;
@@ -619,7 +619,7 @@ void *__wrap_memdup_user(const void *src, size_t len)
 	if (addr && debug_mem_usage_enabled) {
 		void *stack[9] = {0};
 		get_stacktrace(stack);
-		debug_object_trace_init(addr, stack, len);
+		debug_object_trace_init(addr, stack, ksize(addr));
 	}
 
 	return addr;
@@ -755,7 +755,7 @@ void *__wrap_krealloc(const void *p, size_t new_size, gfp_t flags)
 	if (addr && debug_mem_usage_enabled) {
 		void *stack[9] = {0};
 		get_stacktrace(stack);
-		debug_object_trace_init(addr, stack, new_size);
+		debug_object_trace_init(addr, stack, ksize(addr));
 	}
 
 	return addr;
@@ -872,7 +872,7 @@ void *__wrap___kmalloc_node_track_caller(size_t size, gfp_t gfpflags,
 	if (addr && debug_mem_usage_enabled) {
 		void *stack[9] = {0};
 		get_stacktrace(stack);
-		debug_object_trace_init(addr, stack, size);
+		debug_object_trace_init(addr, stack, ksize(addr));
 	}
 
 	return addr;
@@ -886,8 +886,27 @@ void *__wrap___kmalloc_track_caller(size_t size, gfp_t gfpflags, unsigned long c
 	if (addr && debug_mem_usage_enabled) {
 		void *stack[9] = {0};
 		get_stacktrace(stack);
-		debug_object_trace_init(addr, stack, size);
+		debug_object_trace_init(addr, stack, ksize(addr));
 	}
 
 	return addr;
 }
+
+void __wrap___put_page(struct page *page)
+{
+	struct page *actual_page;
+
+	if (unlikely(PageCompound(page))) {
+		actual_page = compound_head(page);
+	} else {
+		actual_page = page;
+	}
+
+	if (debug_mem_usage_enabled)
+		debug_object_trace_free(page_address(page));
+
+	__put_page(page);
+
+	return;
+}
+EXPORT_SYMBOL(__wrap___put_page);

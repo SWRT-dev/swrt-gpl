@@ -926,7 +926,8 @@ void cfg80211_process_wdev_events(struct wireless_dev *wdev)
 			__cfg80211_disconnected(wdev->netdev,
 						ev->dc.ie, ev->dc.ie_len,
 						ev->dc.reason,
-						!ev->dc.locally_generated);
+						!ev->dc.locally_generated,
+						ev->dc.link_id);
 			break;
 		case EVENT_IBSS_JOINED:
 			__cfg80211_ibss_joined(wdev->netdev, ev->ij.bssid,
@@ -997,7 +998,7 @@ int cfg80211_change_iface(struct cfg80211_registered_device *rdev,
 		switch (otype) {
 		case NL80211_IFTYPE_AP:
 		case NL80211_IFTYPE_P2P_GO:
-			cfg80211_stop_ap(rdev, dev, true);
+			cfg80211_stop_ap(rdev, dev, true, NULL);
 			break;
 		case NL80211_IFTYPE_ADHOC:
 			cfg80211_leave_ibss(rdev, dev, false);
@@ -1999,8 +2000,19 @@ bool cfg80211_does_bw_fit_range(const struct ieee80211_freq_range *freq_range,
 {
 	u32 start_freq_khz, end_freq_khz;
 
-	start_freq_khz = center_freq_khz - (bw_khz / 2);
-	end_freq_khz = center_freq_khz + (bw_khz / 2);
+	/* As 4.9GHz supports 5Mhz and 10 MHz center frequencies,
+	 * the offset calculation using the bw_khz may not work.
+	 * Therefore, apply center_freq_khz to start_freq_khz and
+	 * end_freq_khz directly for bw check.
+	 */
+	if (center_freq_khz >= MHZ_TO_KHZ(4940) &&
+	    center_freq_khz <= MHZ_TO_KHZ(5090)) {
+		start_freq_khz = center_freq_khz;
+		end_freq_khz = center_freq_khz;
+	} else {
+		start_freq_khz = center_freq_khz - (bw_khz / 2);
+		end_freq_khz = center_freq_khz + (bw_khz / 2);
+	}
 
 	if (start_freq_khz >= freq_range->start_freq_khz &&
 	    end_freq_khz <= freq_range->end_freq_khz)

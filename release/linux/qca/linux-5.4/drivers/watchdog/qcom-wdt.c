@@ -159,6 +159,7 @@ static int qcom_wdt_start(struct watchdog_device *wdd)
 		writel(wdd->timeout * wdt->rate, wdt_addr(wdt, WDT_BARK_TIME));
 		writel((wdd->timeout * wdt->rate) * 2, wdt_addr(wdt, WDT_BITE_TIME));
 	}
+	udelay(100);
 
 	writel(qcom_get_enable(wdd), wdt_addr(wdt, WDT_EN));
 	return 0;

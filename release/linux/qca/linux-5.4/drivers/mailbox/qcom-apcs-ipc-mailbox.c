@@ -29,6 +29,10 @@ struct qcom_apcs_ipc_data {
 	char *clk_name;
 };
 
+static const struct qcom_apcs_ipc_data ipq5332_apcs_data = {
+	.offset = 8, .clk_name = "qcom,apss-ipq5332"
+};
+
 static const struct qcom_apcs_ipc_data ipq5018_apcs_data = {
 	.offset = 8, .clk_name = "qcom,apss-ipq5018"
 };
@@ -61,7 +65,7 @@ static const struct qcom_apcs_ipc_data apps_shared_apcs_data = {
 	.offset = 12, .clk_name = NULL
 };
 
-static const struct regmap_config apcs_regmap_config = {
+static struct regmap_config apcs_regmap_config = {
 	.reg_bits = 32,
 	.reg_stride = 4,
 	.val_bits = 32,
@@ -88,6 +92,8 @@ static int qcom_apcs_ipc_probe(struct platform_device *pdev)
 	const struct qcom_apcs_ipc_data *apcs_data;
 	struct regmap *regmap;
 	struct resource *res;
+	struct device_node *np;
+	u32 val;
 	void __iomem *base;
 	unsigned long i;
 	int ret;
@@ -100,6 +106,13 @@ static int qcom_apcs_ipc_probe(struct platform_device *pdev)
 	base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(base))
 		return PTR_ERR(base);
+
+	if(!pdev->dev.of_node)
+		return -EINVAL;
+	np = pdev->dev.of_node;
+	ret = of_property_read_u32(np, "apcs-max-register", &val);
+	if(!ret)
+		apcs_regmap_config.max_register = val;
 
 	regmap = devm_regmap_init_mmio(&pdev->dev, base, &apcs_regmap_config);
 	if (IS_ERR(regmap))
@@ -153,6 +166,7 @@ static int qcom_apcs_ipc_remove(struct platform_device *pdev)
 
 /* .data is the offset of the ipc register within the global block */
 static const struct of_device_id qcom_apcs_ipc_of_match[] = {
+	{ .compatible = "qcom,ipq5332-apcs-apps-global", .data = &ipq5332_apcs_data },
 	{ .compatible = "qcom,ipq5018-apcs-apps-global", .data = &ipq5018_apcs_data },
 	{ .compatible = "qcom,ipq6018-apcs-apps-global", .data = &ipq6018_apcs_data },
 	{ .compatible = "qcom,ipq8074-apcs-apps-global", .data = &ipq8074_apcs_data },

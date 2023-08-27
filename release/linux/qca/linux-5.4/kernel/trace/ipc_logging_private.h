@@ -126,7 +126,7 @@ struct ipc_log_context {
 struct dfunc_info {
 	struct list_head list;
 	int type;
-	void (*dfunc)(struct encode_context *, struct decode_context *);
+	void (*dfunc)(struct encode_context *enc, struct decode_context *dec);
 };
 
 enum {

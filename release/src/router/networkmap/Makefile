@@ -102,6 +102,10 @@ ifeq ($(HND_ROUTER),y)
 CFLAGS += -DHND_ROUTER
 endif
 
+#ifeq ($(RTCONFIG_SWRTMESH),y)
+#CFLAGS += -DHOSTAPD_SUPPORT
+#OBJS += hostapd.o
+#endif
 
 ifneq ($(wildcard prebuild/$(BUILD_NAME)/networkmap),)
 all: 

@@ -825,7 +825,7 @@ void lbs_send_disconnect_notification(struct lbs_private *priv,
 				      bool locally_generated)
 {
 	cfg80211_disconnected(priv->dev, 0, NULL, 0, locally_generated,
-			      GFP_KERNEL);
+			      NL80211_MLO_INVALID_LINK_ID, GFP_KERNEL);
 }
 
 void lbs_send_mic_failureevent(struct lbs_private *priv, u32 event)
@@ -1416,7 +1416,7 @@ int lbs_disconnect(struct lbs_private *priv, u16 reason)
 	cfg80211_disconnected(priv->dev,
 			reason,
 			NULL, 0, true,
-			GFP_KERNEL);
+			NL80211_MLO_INVALID_LINK_ID, GFP_KERNEL);
 	priv->connect_status = LBS_DISCONNECTED;
 
 	return 0;

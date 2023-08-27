@@ -20,24 +20,34 @@
 #include <linux/moduleparam.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
+#include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/notifier.h>
 #include <linux/reboot.h>
 #include <linux/qcom_scm.h>
 #include "qcom_scm.h"
-#include <linux/device.h>
+
+#define NON_SECURE_WATCHDOG		0x1
+#define AHB_TIMEOUT			0x3
+#define NOC_ERROR			0x6
+#define SYSTEM_RESET_OR_REBOOT		0x10
+#define POWER_ON_RESET			0x20
+#define SECURE_WATCHDOG			0x23
+#define HLOS_PANIC			0x47
+#define VFSM_RESET			0x68
+#define TME_L_FATAL_ERROR		0x49
+#define TME_L_WDT_BITE_FATAL_ERROR	0x69
+
+#define RESET_REASON_MSG_MAX_LEN	100
 
 static int dload_dis;
-static void __iomem *dload_reg;
-#define CFG_MAX_DIG_COUNT	2
-static unsigned long int kernel_complete;
 
 static void scm_restart_dload_mode_enable(void)
 {
 	if (!dload_dis) {
 		unsigned int magic_cookie = SET_MAGIC;
 		qti_scm_dload(QCOM_SCM_SVC_BOOT, SCM_CMD_TZ_FORCE_DLOAD_ID,
-				&magic_cookie, dload_reg);
+				&magic_cookie);
 	}
 }
 
@@ -46,13 +56,21 @@ static void scm_restart_dload_mode_disable(void)
 	unsigned int magic_cookie = CLEAR_MAGIC;
 
 	qti_scm_dload(QCOM_SCM_SVC_BOOT, SCM_CMD_TZ_FORCE_DLOAD_ID,
-			&magic_cookie, dload_reg);
+			&magic_cookie);
 };
 
 static void scm_restart_sdi_disable(void)
 {
 	qti_scm_sdi(QCOM_SCM_SVC_BOOT, SCM_CMD_TZ_CONFIG_HW_FOR_RAM_DUMP_ID);
 }
+
+static void scm_restart_abnormal_magic_disable(void)
+{
+	unsigned int magic_cookie = CLEAR_ABNORMAL_MAGIC;
+
+	qti_scm_dload(QCOM_SCM_SVC_BOOT, SCM_CMD_TZ_FORCE_DLOAD_ID,
+			&magic_cookie);
+};
 
 static int scm_restart_panic(struct notifier_block *this,
 	unsigned long event, void *data)
@@ -63,38 +81,6 @@ static int scm_restart_panic(struct notifier_block *this,
 	return NOTIFY_DONE;
 }
 
-static void scm_set_kernel_boot_complete(void)
-{
-	unsigned int val;
-
-	val = readl(dload_reg);
-	val &= SET_KERNEL_COMPLETE;
-	qti_scm_set_kernel_boot_complete(QCOM_SCM_SVC_BOOT, val);
-}
-
-static ssize_t kernel_boot_complete_show(struct device_driver *driver,
-							char *buff)
-{
-	return snprintf(buff, CFG_MAX_DIG_COUNT, "%ld", kernel_complete);
-}
-
-static ssize_t kernel_boot_complete_store(struct device_driver *driver,
-				const char *buff, size_t count)
-{
-	if (kstrtoul(buff, 0, &kernel_complete))
-		return -EINVAL;
-
-	if (kernel_complete == 1) {
-		scm_set_kernel_boot_complete();
-	} else {
-		return -EINVAL;
-	}
-
-	return count;
-
-}
-static DRIVER_ATTR_RW(kernel_boot_complete);
-
 static struct notifier_block panic_nb = {
 	.notifier_call = scm_restart_panic,
 };
@@ -104,6 +90,7 @@ static int scm_restart_reason_reboot(struct notifier_block *nb,
 {
 	scm_restart_sdi_disable();
 	scm_restart_dload_mode_disable();
+	scm_restart_abnormal_magic_disable();
 
 	return NOTIFY_DONE;
 }
@@ -113,17 +100,123 @@ static struct notifier_block reboot_nb = {
 	.priority = INT_MIN,
 };
 
+static const struct of_device_id scm_restart_reason_match_table[] = {
+	{ .compatible = "qti,scm_restart_reason",
+	  .data = (void *)CLEAR_MAGIC,
+	},
+	{ .compatible = "qti_ipq5018,scm_restart_reason",
+	  .data = (void *)ABNORMAL_MAGIC,
+	},
+	{ .compatible = "qti_ipq6018,scm_restart_reason",
+	  .data = (void *)ABNORMAL_MAGIC,
+	},
+	{ .compatible = "qti_ipq9574,scm_restart_reason",
+	  .data = (void *)ABNORMAL_MAGIC,
+	},
+	{ .compatible = "qti_ipq5332,scm_restart_reason",
+	  .data = (void *)ABNORMAL_MAGIC,
+	},
+	{}
+};
+MODULE_DEVICE_TABLE(of, scm_restart_reason_match_table);
+
+static int restart_reason_logging(struct platform_device *pdev)
+{
+	unsigned int reset_reason;
+	struct device_node *imem_np;
+	void __iomem *imem_base;
+	char reset_reason_msg[RESET_REASON_MSG_MAX_LEN];
+
+	memset(reset_reason_msg, 0, sizeof(reset_reason_msg));
+	imem_np = of_find_compatible_node(NULL, NULL,
+				  "qcom,msm-imem-restart-reason-buf-addr");
+	if (!imem_np) {
+		dev_err(&pdev->dev,
+		"restart_reason_buf_addr imem DT node does not exist\n");
+		return -ENODEV;
+	}
+
+	imem_base = of_iomap(imem_np, 0);
+	if (!imem_base) {
+		dev_err(&pdev->dev,
+		"restart_reason_buf_addr imem offset mapping failed\n");
+		return -ENOMEM;
+	}
+
+	memcpy_fromio(&reset_reason, imem_base, 4);
+	iounmap(imem_base);
+	switch(reset_reason) {
+		case NON_SECURE_WATCHDOG:
+			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+						"%s", "Non-Secure Watchdog ");
+			break;
+		case AHB_TIMEOUT:
+			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+						"%s", "AHB Timeout ");
+			break;
+		case NOC_ERROR:
+			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+						"%s", "NOC Error ");
+			break;
+		case SYSTEM_RESET_OR_REBOOT:
+			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+						"%s", "System reset or reboot ");
+			break;
+		case POWER_ON_RESET:
+			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+						"%s", "Power on Reset ");
+			break;
+		case SECURE_WATCHDOG:
+			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+						"%s", "Secure Watchdog ");
+			break;
+		case HLOS_PANIC:
+			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+						"%s", "HLOS Panic ");
+			break;
+		case VFSM_RESET:
+			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+						"%s", "VFSM Reset ");
+			break;
+		case TME_L_FATAL_ERROR:
+			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+						"%s", "TME-L Fatal Error ");
+			break;
+		case TME_L_WDT_BITE_FATAL_ERROR:
+			scnprintf(reset_reason_msg, RESET_REASON_MSG_MAX_LEN,
+						"%s", "TME-L WDT Bite occurred ");
+			break;
+	}
+
+	dev_info(&pdev->dev, "reset_reason : %s[0x%X]\n", reset_reason_msg,
+		reset_reason);
+	return 0;
+}
+
 static int scm_restart_reason_probe(struct platform_device *pdev)
 {
+	const struct of_device_id *id;
 	int ret, dload_dis_sec;
 	struct device_node *np;
 	unsigned int magic_cookie = SET_MAGIC_WARMRESET;
 	unsigned int dload_warm_reset = 0;
-	unsigned int runtime_failsafe;
+	unsigned int no_reset_reason = 0;
 
 	np = of_node_get(pdev->dev.of_node);
 	if (!np)
 		return 0;
+
+	no_reset_reason = of_property_read_bool(np, "no-reset-reason");
+	if (!no_reset_reason) {
+		ret = restart_reason_logging(pdev);
+		if (ret < 0) {
+			dev_err(&pdev->dev, "reset reason logging failed!\n");
+		}
+	}
+
+	id = of_match_device(scm_restart_reason_match_table, &pdev->dev);
+	if (!id)
+		return -ENODEV;
 
 	ret = of_property_read_u32(np, "dload_status", &dload_dis);
 	if (ret)
@@ -133,46 +226,24 @@ static int scm_restart_reason_probe(struct platform_device *pdev)
 	if (ret)
 		dload_warm_reset = 0;
 
-	ret = of_property_read_u32(np, "qti,runtime-failsafe", &runtime_failsafe);
-	if (ret) {
-		runtime_failsafe = 0;
-		dload_reg = NULL;
-	}
-
-	if (runtime_failsafe) {
-		dload_reg = devm_platform_ioremap_resource(pdev, 0);
-		if (IS_ERR_OR_NULL(dload_reg)) {
-			pr_err("%s unable to get tcsr reg\n", __func__);
-			return PTR_ERR(dload_reg);
-		}
-
-		ret = driver_create_file(pdev->dev.driver,
-					&driver_attr_kernel_boot_complete);
-		if (ret) {
-			dev_err(&pdev->dev, "failed to create sysfs entry\n");
-			return ret;
-		}
-	}
-
 	ret = of_property_read_u32(np, "dload_sec_status", &dload_dis_sec);
 	if (ret)
 		dload_dis_sec = 0;
 
 	if (dload_dis_sec) {
 		qti_scm_dload(QCOM_SCM_SVC_BOOT,
-			SCM_CMD_TZ_SET_DLOAD_FOR_SECURE_BOOT, NULL, dload_reg);
+			SCM_CMD_TZ_SET_DLOAD_FOR_SECURE_BOOT, NULL);
 	}
 
 	/* Ensure Disable before enabling the dload and sdi bits
 	 * to make sure they are disabled during boot */
 	if (dload_dis) {
-		if (!dload_warm_reset)
-			scm_restart_dload_mode_disable();
-		else
-			qti_scm_dload(QCOM_SCM_SVC_BOOT,
-				       SCM_CMD_TZ_FORCE_DLOAD_ID,
-				       &magic_cookie, dload_reg);
 		scm_restart_sdi_disable();
+		if (!dload_warm_reset)
+			magic_cookie = (uintptr_t)id->data;
+
+		qti_scm_dload(QCOM_SCM_SVC_BOOT, SCM_CMD_TZ_FORCE_DLOAD_ID,
+			      &magic_cookie);
 	} else {
 		scm_restart_dload_mode_enable();
 	}
@@ -201,12 +272,6 @@ static int scm_restart_reason_remove(struct platform_device *pdev)
 	unregister_reboot_notifier(&reboot_nb);
 	return 0;
 }
-
-static const struct of_device_id scm_restart_reason_match_table[] = {
-	{ .compatible = "qti,scm_restart_reason", },
-	{}
-};
-MODULE_DEVICE_TABLE(of, scm_restart_reason_match_table);
 
 static struct platform_driver scm_restart_reason_driver = {
 	.probe      = scm_restart_reason_probe,

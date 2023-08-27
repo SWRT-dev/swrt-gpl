@@ -123,7 +123,7 @@ static int test_rproc_notif_register(const char *rproc_name)
 	return ret;
 }
 
-#if defined(CONFIG_QCOM_Q6V5_WCSS)
+#if defined(CONFIG_QCOM_Q6V5_WCSS) || defined(CONFIG_QCOM_Q6V5_MPD)
 static struct rproc *get_rproc_from_phandle(void)
 {
 		struct device_node *of_np;

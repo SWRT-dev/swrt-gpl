@@ -37,6 +37,7 @@
 enum {
 	MHI_1,
 	MHI_2,
+	MHI_3,
 #ifdef CONFIG_MHI_DCI
 	MHI_DCI_1,
 #endif
@@ -45,7 +46,8 @@ enum {
 
 #define MHI_1			0
 #define MHI_DCI_1		1
-#define NUM_MHI_DEV		2
+#define MHI_3 			2
+#define NUM_MHI_DEV		3
 
 #define TYPE_MHI_READ_CH	0
 #define TYPE_MHI_WRITE_CH	1

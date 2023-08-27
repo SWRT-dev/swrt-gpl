@@ -1132,7 +1132,14 @@ static irqreturn_t qcom_glink_native_intr(int irq, void *data)
 		if (avail < sizeof(msg)) {
 			glinkintr[glinkintrindex].rxtail = *(pipe->tail);
 			glinkintr[glinkintrindex].rxhead = *(pipe->head);
-			break;
+			if (global_timer_base) {
+				glinkintr[glinkintrindex].global_timer_lo =
+					readl_relaxed(global_timer_base + GLOBAL_TIMER_LO) - 0x13;
+				glinkintr[glinkintrindex].global_timer_hi =
+					readl_relaxed(global_timer_base + GLOBAL_TIMER_HI);
+			}
+			ret = -1;
+			goto log_kernel_ts;
 		}
 		glinkintr[glinkintrindex].rxtail = *(pipe->tail);
 		glinkintr[glinkintrindex].rxhead = *(pipe->head);
@@ -1203,7 +1210,7 @@ static irqreturn_t qcom_glink_native_intr(int irq, void *data)
 			ret = -EINVAL;
 			break;
 		}
-
+log_kernel_ts:
 		glinkintr[glinkintrindex++].timestamp =
 			ktime_to_ms(ktime_get());
 		glinkintrindex &= (RPMLOG_SIZE - 1);
@@ -1797,6 +1804,7 @@ struct qcom_glink *qcom_glink_native_probe(struct device *dev,
 	idr_init(&glink->lcids);
 	idr_init(&glink->rcids);
 
+	spin_lock_init(&glink->irq_lock);
 	ret = of_property_read_string(dev->of_node, "label", &glink->name);
 	if (ret < 0)
 		glink->name = dev->of_node->name;

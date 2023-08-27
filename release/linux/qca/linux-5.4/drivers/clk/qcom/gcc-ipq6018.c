@@ -559,6 +559,7 @@ static const struct freq_tbl ftbl_nss_port5_rx_clk_src[] = {
 	F(78125000, P_UNIPHY1_RX, 4, 0, 0),
 	F(125000000, P_UNIPHY1_RX, 2.5, 0, 0),
 	F(125000000, P_UNIPHY0_RX, 1, 0, 0),
+	F(125000000, P_UNIPHY1_RX, 1, 0, 0),
 	F(156250000, P_UNIPHY1_RX, 2, 0, 0),
 	F(312500000, P_UNIPHY1_RX, 1, 0, 0),
 	{ }
@@ -605,6 +606,7 @@ static const struct freq_tbl ftbl_nss_port5_tx_clk_src[] = {
 	F(78125000, P_UNIPHY1_TX, 4, 0, 0),
 	F(125000000, P_UNIPHY1_TX, 2.5, 0, 0),
 	F(125000000, P_UNIPHY0_TX, 1, 0, 0),
+	F(125000000, P_UNIPHY1_TX, 1, 0, 0),
 	F(156250000, P_UNIPHY1_TX, 2, 0, 0),
 	F(312500000, P_UNIPHY1_TX, 1, 0, 0),
 	{ }
@@ -1193,6 +1195,7 @@ static struct clk_rcg2 adss_pwm_clk_src = {
 };
 
 static const struct freq_tbl ftbl_blsp1_qup_i2c_apps_clk_src[] = {
+	F(9600000, P_XO, 2.5, 0, 0),
 	F(24000000, P_XO, 1, 0, 0),
 	F(25000000, P_GPLL0_DIV2, 16, 0, 0),
 	F(50000000, P_GPLL0, 16, 0, 0),

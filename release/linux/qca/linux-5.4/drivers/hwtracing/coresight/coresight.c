@@ -22,6 +22,7 @@
 
 #include "coresight-etm-perf.h"
 #include "coresight-priv.h"
+#include "coresight-common.h"
 
 static DEFINE_MUTEX(coresight_mutex);
 
@@ -55,6 +56,14 @@ static struct list_head *stm_path;
  * it needs to look for another sync sequence.
  */
 const u32 barrier_pkt[4] = {0x7fffffff, 0x7fffffff, 0x7fffffff, 0x7fffffff};
+
+static const struct csr_set_atid_op *csr_set_atid_ops;
+
+void coresight_set_csr_ops(const struct csr_set_atid_op *csr_op)
+{
+	csr_set_atid_ops = csr_op;
+}
+EXPORT_SYMBOL(coresight_set_csr_ops);
 
 static int coresight_id_match(struct device *dev, void *data)
 {
@@ -354,6 +363,62 @@ static bool coresight_disable_source(struct coresight_device *csdev)
 	return !csdev->enable;
 }
 
+static struct coresight_device *coresight_get_source(struct list_head *path)
+{
+	struct coresight_device *csdev;
+
+	if (!path)
+		return NULL;
+
+	csdev = list_first_entry(path, struct coresight_node, link)->csdev;
+	if (csdev->type != CORESIGHT_DEV_TYPE_SOURCE)
+		return NULL;
+
+	return csdev;
+}
+
+static int coresight_set_csr_atid(struct list_head *path,
+			struct coresight_device *sink_csdev, bool enable)
+{
+	int i, num, ret = 0;
+	struct coresight_device *src_csdev;
+	u32 *atid;
+
+	src_csdev = coresight_get_source(path);
+	if (!src_csdev) {
+		ret = -EINVAL;
+		return ret;
+	}
+
+	num = of_coresight_get_atid_number(src_csdev);
+	if (num < 0)
+		return num;
+
+	atid = kcalloc(num, sizeof(*atid), GFP_KERNEL);
+	if (!atid)
+		return -ENOMEM;
+
+	ret = of_coresight_get_atid(src_csdev, atid, num);
+	if (ret < 0) {
+		kfree(atid);
+		return ret;
+	}
+
+	if (csr_set_atid_ops) {
+		for (i = 0; i < num; i++) {
+			ret = csr_set_atid_ops->set_atid(sink_csdev, atid[i], enable);
+			if (ret < 0) {
+				kfree(atid);
+				return ret;
+			}
+		}
+	} else
+		ret = -EINVAL;
+
+	kfree(atid);
+	return ret;
+}
+
 /*
  * coresight_disable_path_from : Disable components in the given path beyond
  * @nd in the list. If @nd is NULL, all the components, except the SOURCE are
@@ -385,6 +450,9 @@ static void coresight_disable_path_from(struct list_head *path,
 
 		switch (type) {
 		case CORESIGHT_DEV_TYPE_SINK:
+			if (csdev->type == CORESIGHT_DEV_TYPE_SINK)
+				coresight_set_csr_atid(path, csdev, false);
+
 			coresight_disable_sink(csdev);
 			break;
 		case CORESIGHT_DEV_TYPE_SOURCE:
@@ -445,6 +513,13 @@ int coresight_enable_path(struct list_head *path, u32 mode, void *sink_data)
 			 */
 			if (ret)
 				goto out;
+
+			if (csdev->type == CORESIGHT_DEV_TYPE_SINK) {
+				ret = coresight_set_csr_atid(path, csdev, true);
+				if (ret)
+					dev_dbg(&csdev->dev, "Set csr atid register fail\n");
+			}
+
 			break;
 		case CORESIGHT_DEV_TYPE_SOURCE:
 			/* sources are enabled from either sysFS or Perf */
@@ -1099,6 +1174,7 @@ static int coresight_remove_match(struct device *dev, void *data)
 			 * platform data.
 			 */
 			fwnode_handle_put(conn->child_fwnode);
+			conn->child_fwnode = NULL;
 			/* No need to continue */
 			break;
 		}

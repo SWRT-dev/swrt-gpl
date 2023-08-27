@@ -87,6 +87,16 @@ static int __maybe_unused tsens_activate_trip_type(void *data, int trip,
 	return 0;
 }
 
+static int __maybe_unused tsens_set_trips(void *data, int low, int high)
+{
+	struct tsens_sensor *s = data;
+	struct tsens_priv *priv = s->priv;
+
+	if (priv->ops && priv->ops->set_temp_trips)
+		return priv->ops->set_temp_trips(s, low, high);
+
+	return 0;
+}
 
 static SIMPLE_DEV_PM_OPS(tsens_pm_ops, tsens_suspend, tsens_resume);
 
@@ -113,6 +123,9 @@ static const struct of_device_id tsens_table[] = {
 		.compatible = "qcom,ipq9574-tsens",
 		.data = &data_ipq807x,
 	}, {
+		.compatible = "qcom,ipq5332-tsens",
+		.data = &data_ipq807x,
+	}, {
 		.compatible = "qcom,tsens-v1",
 		.data = &data_tsens_v1,
 	}, {
@@ -129,6 +142,7 @@ static const struct thermal_zone_of_device_ops tsens_of_ops = {
 	.get_trend = tsens_get_trend,
 	.set_trip_temp = tsens_set_trip_temp,
 	.set_trip_activate = tsens_activate_trip_type,
+	.set_trips = tsens_set_trips,
 };
 
 static int tsens_register(struct tsens_priv *priv)
@@ -210,7 +224,8 @@ static int tsens_probe(struct platform_device *pdev)
 
 	ret = priv->ops->init(priv);
 	if (ret < 0) {
-		dev_err(dev, "tsens init failed\n");
+		if (ret != -EPROBE_DEFER)
+			dev_err(dev, "tsens init failed\n");
 		return ret;
 	}
 

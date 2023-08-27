@@ -1,6 +1,7 @@
 /*
  **************************************************************************
  * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
  * above copyright notice and this permission notice appear in all copies.
@@ -32,6 +33,8 @@
 #define NF_CT_DSCPREMARK_EXT_PRIO 0x1
 #define NF_CT_DSCPREMARK_EXT_DSCP 0x2
 #define NF_CT_DSCPREMARK_EXT_IGS_QOS 0x4
+#define NF_CT_DSCPREMARK_EXT_MARK 0x8
+#define NF_CT_DSCPREMARK_EXT_SAWF 0x10
 
 /*
  * DSCP remark conntrack extension structure.
@@ -41,6 +44,8 @@ struct nf_ct_dscpremark_ext {
 	__u32 reply_priority;	/* Reply direction packet priority */
 	__u32 flow_mark;	/* Original direction packet mark */
 	__u32 reply_mark;	/* Reply direction packet mark */
+	__u32 flow_sawf_meta;	/* Original direction SAWF meta info */
+	__u32 return_sawf_meta;	/* Reply direction SAWF meta info */
 	__u16 igs_flow_qos_tag;	/* Original direction ingress packet priority */
 	__u16 igs_reply_qos_tag;	/* Reply direction ingress packet priority */
 	__u8 flow_dscp;		/* IP DSCP value for original direction */

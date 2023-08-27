@@ -36,9 +36,6 @@
 #include <linux/wait.h>
 #include <linux/io.h>
 #include <linux/of_device.h>
-#ifdef IPQ_PCM_SLIC_ENABLE
-#include <linux/of_gpio.h>
-#endif
 
 #include "ipq-lpass.h"
 #include "ipq-lpass-tdm-pcm.h"
@@ -239,7 +236,7 @@ static void ipq_lpass_dma_config_init(struct lpass_dma_buffer *buffer)
 	dma_config.watermark = buffer->watermark;
 	dma_config.ifconfig = buffer->ifconfig;
 	dma_config.idx = buffer->idx;
-	if (dma_config.burst_size >= 8){
+	if (dma_config.burst_size >= 8) {
 		dma_config.burst8_en = 1;
 		dma_config.burst_size = 1;
 	}
@@ -309,19 +306,21 @@ static void __iomem *ipq_lpass_phy_virt_lpm(uint32_t phy_addr)
 
 static int ipq_lpass_setup_bit_clock(uint32_t clk_rate)
 {
+
 /*
  * set clock rate for PRI & SEC
  * PRI is slave mode and seondary is master
  */
-	ipq_lpass_lpaif_muxsetup(INTERFACE_PRIMARY, TDM_MODE_SLAVE);
+	ipq_lpass_lpaif_muxsetup(INTERFACE_PRIMARY, TDM_MODE_SLAVE,
+				INVERT_INT_CLK, LPAIF_SLAVE_MODE_MUXSEL);
 
 	if (ipq_lpass_set_clk_rate(INTERFACE_SECONDARY, clk_rate) != 0){
 		pr_err("%s: Bit clk set Failed \n",
-			__func__);
+				__func__);
 		return -EINVAL;
 	} else {
-		ipq_lpass_lpaif_muxsetup(INTERFACE_SECONDARY,
-						TDM_MODE_MASTER);
+		ipq_lpass_lpaif_muxsetup(INTERFACE_SECONDARY, TDM_MODE_MASTER,
+				INVERT_INT_EXT_CLK, LPAIF_MASTER_MODE_MUXSEL);
 	}
 
 	return 0;
@@ -440,6 +439,7 @@ int ipq_pcm_init(struct ipq_lpass_pcm_params *params)
 	if (voice_loopback == 0)
 		temp_lpm_base += LPASS_DMA_BUFFER_SIZE;
 	atomic_set(&rx_add, 0);
+
 /*
  * DMA Tx buffer
  */
@@ -661,9 +661,6 @@ static int ipq_lpass_pcm_driver_probe(struct platform_device *pdev)
 	const struct of_device_id *match;
 	uint32_t single_buf_size_max;
 	uint32_t max_size;
-#ifdef IPQ_PCM_SLIC_ENABLE
-	uint32_t slic_reset;
-#endif
 	struct lpass_irq_buffer *irq_buffer;
 	const char *playback_memory, *capture_memory;
 	int ret;
@@ -821,32 +818,6 @@ static int ipq_lpass_pcm_driver_probe(struct platform_device *pdev)
 		}
 	}
 
-#ifdef IPQ_PCM_SLIC_ENABLE
-/*
- * setup default bit clock to 2.048MHZ
- */
-	ipq_lpass_setup_bit_clock(DEFAULT_CLK_RATE);
-
-	slic_reset = of_get_named_gpio(pdev->dev.of_node,
-						"slic-reset-gpio", 0);
-	if (slic_reset > 0) {
-		ret = gpio_request(slic_reset, "slic-reset-gpio");
-		if (ret) {
-			dev_err(&pdev->dev,
-				"Can't get slic-reset-gpio %d\n", ret);
-		} else {
-			ret = gpio_direction_output(slic_reset, 0x0);
-			if (ret) {
-				dev_err(&pdev->dev,
-					"Can't set direction for "
-					"slic-reset-gpio %d\n", ret);
-				gpio_free(slic_reset);
-			} else {
-				gpio_set_value(slic_reset, 0x02);
-			}
-		}
-	}
-#endif
 	spin_lock_init(&pcm_lock);
 
 	return 0;
@@ -865,8 +836,12 @@ static int ipq_lpass_pcm_driver_remove(struct platform_device *pdev)
 
 	ipq_pcm_deinit(pcm_params);
 
-	ipq_lpass_clear_dma_buffer(&pcm_pdev->dev, rx_dma_buffer);
-	ipq_lpass_clear_dma_buffer(&pcm_pdev->dev, tx_dma_buffer);
+	if(rx_dma_buffer != NULL) {
+		ipq_lpass_clear_dma_buffer(&pcm_pdev->dev, rx_dma_buffer);
+	}
+	if(tx_dma_buffer != NULL) {
+		ipq_lpass_clear_dma_buffer(&pcm_pdev->dev, tx_dma_buffer);
+	}
 
 	if (rx_dma_buffer)
 		kfree(rx_dma_buffer);

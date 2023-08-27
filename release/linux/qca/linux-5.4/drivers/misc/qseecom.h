@@ -42,6 +42,8 @@
 #include <linux/random.h>
 #include <linux/of_reserved_mem.h>
 
+#define QTI_CMD_AES_CLEAR_KEY		10
+#define QTI_CMD_AES_DERIVE_KEY		9
 #define CLIENT_CMD_CRYPTO_AES_DECRYPT	8
 #define CLIENT_CMD_CRYPTO_AES_ENCRYPT	7
 #define CLIENT_CMD_CRYPTO_AES_64	6
@@ -60,18 +62,25 @@
 #define CLIENT_CMD53_RUN_LOG_BITMASK_TEST	53
 #define CLIENT_CMD18_RUN_FUSE_TEST	18
 #define CLIENT_CMD13_RUN_MISC_TEST	13
+#define CLIENT_CMD121_RUN_KEY_DERIVE_TEST	121
+#define CLIENT_CMD122_CLEAR_KEY		122
+
 #define MAX_INPUT_SIZE			4096
 #define QSEE_64				64
 #define QSEE_32				32
 #define AES_BLOCK_SIZE			16
+#define MAX_CONTEXT_BUFFER_LEN		64
+#define MAX_KEY_HANDLE_SIZE		8
 
 #define MAX_ENCRYPTED_DATA_SIZE  (2072 * sizeof(uint8_t))
 #define MAX_PLAIN_DATA_SIZE	 (2048 * sizeof(uint8_t))
-#define MAX_RSA_PLAIN_DATA_SIZE  (1792 * sizeof(uint8_t))
+#define MAX_RSA_PLAIN_DATA_SIZE  (8192 * sizeof(uint8_t))
 
 #define ENCRYPTED_DATA_HEADER \
 	(MAX_ENCRYPTED_DATA_SIZE - MAX_PLAIN_DATA_SIZE)
 
+#define DEFAULT_POLICY_DESTINATION	0x0
+#define DEFAULT_KEY_TYPE	0x2
 #define KEY_BLOB_SIZE		(56 * sizeof(uint8_t))
 #define KEY_SIZE		(32 * sizeof(uint8_t))
 #define MAX_FUSE_WRITE_VALUE	0xffffffffffffff
@@ -84,8 +93,11 @@
 #define RSA_KEY_MATERIAL_SIZE	((528 + 2 + 5 + 1 + 528 + 2) * sizeof(uint8_t))
 #define MAX_RSA_SIGN_DATA_SIZE	(2048 * sizeof(uint8_t))
 #define RSA_PARAM_LEN		(5 * sizeof(uint8_t))
+#define INVALID_AES_KEY_HANDLE_VAL	117
 
 #define QSEE_LOG_BUF_SIZE		0x1000
+
+#define KEY_HANDLE_OUT_OF_SLOT		0x12C
 
 static int app_state;
 static int app_libs_state;
@@ -129,6 +141,32 @@ enum qti_storage_service_digest_pad_algo_t {
 	QTI_STOR_SVC_RSA_DIGEST_PAD_PSS_SHA2_256     = 0x00000002,
 };
 
+struct qti_storage_service_operation_policy {
+	uint32_t operations;
+	uint32_t algorithm;
+};
+
+struct qti_storage_service_hwkey_policy {
+	struct qti_storage_service_operation_policy op_policy;
+	uint32_t kdf_depth;
+	uint32_t permissions;
+	uint32_t key_type;
+	uint32_t destination;
+};
+
+struct qti_storage_service_hwkey_bindings {
+	uint32_t bindings;
+	uint32_t context_len;
+	uint8_t context[MAX_CONTEXT_BUFFER_LEN];
+};
+
+struct qti_storage_service_derive_key_cmd_t {
+	struct qti_storage_service_hwkey_policy policy;
+	struct qti_storage_service_hwkey_bindings hw_key_bindings;
+	uint32_t source;
+	uint64_t mixing_key;
+	uint64_t key;
+};
 struct qti_storage_service_key_blob_t {
 	uint64_t key_material;
 	uint32_t key_material_len;
@@ -183,7 +221,7 @@ struct qti_storage_service_unseal_data_resp_t {
 };
 
 struct qti_crypto_service_encrypt_data_cmd_t {
-	uint64_t  type;
+	uint64_t type;
 	uint64_t mode;
 	uint64_t plain_data;
 	uint64_t plain_data_len;
@@ -193,8 +231,13 @@ struct qti_crypto_service_encrypt_data_cmd_t {
 	uint64_t output_len;
 };
 
+struct qti_crypto_service_encrypt_data_cmd_t_v2 {
+	uint64_t key_handle;
+	struct qti_crypto_service_encrypt_data_cmd_t v1;
+};
+
 struct qti_crypto_service_decrypt_data_cmd_t {
-	uint64_t  type;
+	uint64_t type;
 	uint64_t mode;
 	uint64_t encrypted_data;
 	uint64_t encrypted_dlen;
@@ -202,6 +245,11 @@ struct qti_crypto_service_decrypt_data_cmd_t {
 	uint64_t iv_len;
 	uint64_t output_buffer;
 	uint64_t output_len;
+};
+
+struct qti_crypto_service_decrypt_data_cmd_t_v2 {
+	uint64_t key_handle;
+	struct qti_crypto_service_decrypt_data_cmd_t v1;
 };
 
 struct qti_storage_service_rsa_key_t {
@@ -370,6 +418,8 @@ static unsigned long basic_output;
 static size_t enc_len;
 static size_t dec_len;
 static int basic_data_len;
+static int context_data_len;
+static int aes_context_data_len;
 static int mdt_size;
 static int seg_size;
 static int auth_size;
@@ -381,6 +431,9 @@ static uint64_t aes_encrypted_len;
 static uint8_t *aes_unsealed_buf;
 static uint64_t aes_decrypted_len;
 static uint8_t *aes_ivdata;
+static uint8_t aes_context_data[MAX_CONTEXT_BUFFER_LEN];
+static dma_addr_t __aligned(sizeof(dma_addr_t) * 8) aes_source_data;
+static dma_addr_t __aligned(sizeof(dma_addr_t) * 8) aes_bindings_data;
 static uint64_t aes_ivdata_len;
 static uint64_t aes_type;
 static uint64_t aes_mode;
@@ -403,6 +456,10 @@ static uint64_t fuse_addr;
 static uint64_t fuse_value;
 static uint64_t is_fec_enable;
 
+static uint8_t *key_handle;
+dma_addr_t dma_key_handle;
+static uint8_t *aes_key_handle;
+dma_addr_t dma_aes_key_handle;
 
 static struct kobject *sec_kobj;
 static uint8_t *key;
@@ -416,6 +473,9 @@ static size_t unseal_len;
 static uint64_t encrypted_len;
 static uint64_t decrypted_len;
 static uint8_t *ivdata;
+static uint8_t context_data[MAX_CONTEXT_BUFFER_LEN];
+static dma_addr_t __aligned(sizeof(dma_addr_t) * 8) source_data;
+static dma_addr_t __aligned(sizeof(dma_addr_t) * 8) bindings_data;
 static uint64_t type;
 static uint64_t mode;
 static uint64_t ivdata_len;
@@ -433,6 +493,55 @@ static uint8_t *rsa_sign_data_buf;
 static size_t rsa_sign_data_len;
 static uint8_t *rsa_plain_data_buf;
 static size_t rsa_plain_data_len;
+
+
+void *buf_rsa_key_blob = NULL;
+void *buf_rsa_import_modulus = NULL;
+void *buf_rsa_import_public_exponent = NULL;
+void *buf_rsa_import_pvt_exponent = NULL;
+void *buf_rsa_sign_data_buf = NULL;
+void *buf_rsa_plain_data_buf = NULL;
+
+dma_addr_t dma_rsa_key_blob = 0;
+dma_addr_t dma_rsa_import_modulus = 0;
+dma_addr_t dma_rsa_import_public_exponent = 0;
+dma_addr_t dma_rsa_import_pvt_exponent = 0;
+dma_addr_t dma_rsa_sign_data_buf = 0;
+dma_addr_t dma_rsa_plain_data_buf = 0;
+
+void *buf_key = NULL;
+void *buf_key_blob = NULL;
+void *buf_sealed_buf = NULL;
+void *buf_unsealed_buf = NULL;
+void *buf_iv = NULL;
+
+dma_addr_t dma_key = 0;
+dma_addr_t dma_key_blob = 0;
+dma_addr_t dma_sealed_data = 0;
+dma_addr_t dma_unsealed_data = 0;
+dma_addr_t dma_iv_data = 0;
+
+void *buf_aes_sealed_buf = NULL;
+void *buf_aes_unsealed_buf = NULL;
+void *buf_aes_iv = NULL;
+
+dma_addr_t dma_aes_sealed_buf = 0;
+dma_addr_t dma_aes_unsealed_buf = 0;
+dma_addr_t dma_aes_ivdata = 0;
+
+void *buf_rsa_unsealed_buf = NULL;
+void *buf_rsa_sealed_buf = NULL;
+void *buf_rsa_label = NULL;
+void *buf_rsa_n_key = NULL;
+void *buf_rsa_e_key = NULL;
+void *buf_rsa_d_key = NULL;
+
+dma_addr_t dma_rsa_unsealed_buf = 0;
+dma_addr_t dma_rsa_sealed_buf = 0;
+dma_addr_t dma_rsa_label = 0;
+dma_addr_t dma_rsa_n_key = 0;
+dma_addr_t dma_rsa_e_key = 0;
+dma_addr_t dma_rsa_d_key = 0;
 
 struct kobject *qtiapp_kobj;
 struct attribute_group qtiapp_attr_grp;
@@ -478,7 +587,9 @@ enum qti_app_cmd_ids {
 	QTI_APP_AES_ENCRYPT_ID,
 	QTI_APP_AES_DECRYPT_ID,
 	QTI_APP_RSA_ENC_DEC_ID,
-	QTI_APP_FUSE_BLOW_ID
+	QTI_APP_FUSE_BLOW_ID,
+	QTI_APP_KEY_DERIVE_TEST,
+	QTI_APP_CLEAR_KEY
 };
 
 static ssize_t show_qsee_app_log_buf(struct device *dev,
@@ -486,6 +597,17 @@ static ssize_t show_qsee_app_log_buf(struct device *dev,
 
 static ssize_t generate_key_blob(struct device *dev,
 				struct device_attribute *attr, char *buf);
+
+static ssize_t show_aes_derive_key(struct device *dev,
+				struct device_attribute *attr, char *buf);
+
+static ssize_t store_aes_derive_key(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count);
+
+static ssize_t store_aes_clear_key(struct device *dev,
+				struct device_attribute *attr,
+				const char* buf, size_t count);
 
 static ssize_t store_key(struct device *dev, struct device_attribute *attr,
 			const char *buf, size_t count);
@@ -518,6 +640,18 @@ static ssize_t store_aes_type(struct device *dev,
 static ssize_t store_aes_mode(struct device *dev,
 					struct device_attribute *attr,
 					const char *buf, size_t count);
+
+static ssize_t store_source_data(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count);
+
+static ssize_t store_context_data(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count);
+
+static ssize_t store_bindings_data(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count);
 
 static ssize_t store_iv_data(struct device *dev,
 				struct device_attribute *attr,
@@ -625,6 +759,17 @@ static ssize_t store_misc_input(struct device *dev,
 static ssize_t show_qsee_app_id(struct device *dev,
 				   struct device_attribute *attr, char *buf);
 
+static ssize_t show_aes_derive_key_qtiapp(struct device *dev,
+				struct device_attribute *attr, char *buf);
+
+static ssize_t store_aes_derive_key_qtiapp(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count);
+
+static ssize_t store_aes_clear_key_qtiapp(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count);
+
 static ssize_t store_aes_type_qtiapp(struct device *dev,
 				struct device_attribute *attr,
 				const char *buf, size_t count);
@@ -632,6 +777,18 @@ static ssize_t store_aes_type_qtiapp(struct device *dev,
 static ssize_t store_aes_mode_qtiapp(struct device *dev,
 					struct device_attribute *attr,
 					const char *buf, size_t count);
+
+static ssize_t store_source_data_qtiapp(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count);
+
+static ssize_t store_context_data_qtiapp(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count);
+
+static ssize_t store_bindings_data_qtiapp(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count);
 
 static ssize_t store_iv_data_qtiapp(struct device *dev,
 				struct device_attribute *attr,
@@ -711,11 +868,16 @@ static DEVICE_ATTR(fuse, 0644, NULL, store_fuse_input);
 static DEVICE_ATTR(misc, 0644, NULL, store_misc_input);
 static DEVICE_ATTR(qsee_app_id, 0644, show_qsee_app_id, NULL);
 
+static DEVICE_ATTR(derive_key_aes, 0644, show_aes_derive_key_qtiapp, store_aes_derive_key_qtiapp);
+static DEVICE_ATTR(clear_key_qtiapp, 0644, NULL, store_aes_clear_key_qtiapp);
 static DEVICE_ATTR(encrypt_aes, 0644, show_aes_encrypted_data_qtiapp, store_aes_decrypted_data_qtiapp);
 static DEVICE_ATTR(decrypt_aes, 0644, show_aes_decrypted_data_qtiapp, store_aes_encrypted_data_qtiapp);
 static DEVICE_ATTR(ivdata_aes, 0644, NULL, store_iv_data_qtiapp);
 static DEVICE_ATTR(type_aes, 0644, NULL, store_aes_type_qtiapp);
 static DEVICE_ATTR(mode_aes, 0644, NULL, store_aes_mode_qtiapp);
+static DEVICE_ATTR(context_data_aes, 0644, NULL, store_context_data_qtiapp);
+static DEVICE_ATTR(source_data_aes, 0644, NULL, store_source_data_qtiapp);
+static DEVICE_ATTR(bindings_data_aes, 0644, NULL, store_bindings_data_qtiapp);
 
 static DEVICE_ATTR(encrypt_rsa, 0644, show_encrypted_rsa_data_qtiapp, store_decrypted_rsa_data_qtiapp);
 static DEVICE_ATTR(decrypt_rsa, 0644, show_decrypted_rsa_data_qtiapp, store_encrypted_rsa_data_qtiapp);
@@ -735,6 +897,8 @@ static DEVICE_ATTR(blow, 0644, NULL, store_blow_fuse_write_qtiapp);
 /* Tz app device attrs ends here....*/
 
 static DEVICE_ATTR(generate, 0644, generate_key_blob, NULL);
+static DEVICE_ATTR(derive_aes_key, 0644, show_aes_derive_key, store_aes_derive_key);
+static DEVICE_ATTR(clear_key, 0644, NULL, store_aes_clear_key);
 static DEVICE_ATTR(import, 0644, import_key_blob, store_key);
 static DEVICE_ATTR(key_blob, 0644, NULL, store_key_blob);
 static DEVICE_ATTR(seal, 0644, show_sealed_data, store_unsealed_data);
@@ -742,6 +906,9 @@ static DEVICE_ATTR(unseal, 0644, show_unsealed_data, store_sealed_data);
 static DEVICE_ATTR(aes_encrypt, 0644, show_encrypted_data, store_decrypted_data);
 static DEVICE_ATTR(aes_decrypt, 0644, show_decrypted_data, store_encrypted_data);
 static DEVICE_ATTR(aes_ivdata, 0644, NULL, store_iv_data);
+static DEVICE_ATTR(context_data, 0644, NULL, store_context_data);
+static DEVICE_ATTR(source_data, 0644, NULL, store_source_data);
+static DEVICE_ATTR(bindings_data, 0644, NULL, store_bindings_data);
 static DEVICE_ATTR(aes_type, 0644, NULL, store_aes_type);
 static DEVICE_ATTR(aes_mode, 0644, NULL, store_aes_mode);
 
@@ -759,6 +926,15 @@ static struct attribute *sec_key_attrs[] = {
 	&dev_attr_key_blob.attr,
 	&dev_attr_seal.attr,
 	&dev_attr_unseal.attr,
+	NULL,
+};
+
+static struct attribute *sec_key_aesv2_attrs[] = {
+	&dev_attr_derive_aes_key.attr,
+	&dev_attr_clear_key.attr,
+	&dev_attr_context_data.attr,
+	&dev_attr_source_data.attr,
+	&dev_attr_bindings_data.attr,
 	&dev_attr_aes_encrypt.attr,
 	&dev_attr_aes_decrypt.attr,
 	&dev_attr_aes_ivdata.attr,
@@ -782,6 +958,15 @@ static struct attribute *qtiapp_aes_attrs[] = {
 	&dev_attr_ivdata_aes.attr,
 	&dev_attr_type_aes.attr,
 	&dev_attr_mode_aes.attr,
+	NULL,
+};
+
+static struct attribute *qtiapp_aesv2_attrs[] = {
+	&dev_attr_derive_key_aes.attr,
+	&dev_attr_clear_key_qtiapp.attr,
+	&dev_attr_context_data_aes.attr,
+	&dev_attr_source_data_aes.attr,
+	&dev_attr_bindings_data_aes.attr,
 	NULL,
 };
 
@@ -814,6 +999,10 @@ static struct attribute_group rsa_sec_key_attr_grp = {
 	.attrs = rsa_sec_key_attrs,
 };
 
+static struct attribute_group sec_key_aesv2_attr_grp = {
+	.attrs = sec_key_aesv2_attrs,
+};
+
 static struct attribute_group qtiapp_aes_attr_grp = {
 	.attrs = qtiapp_aes_attrs,
 };
@@ -823,6 +1012,9 @@ static struct attribute_group qtiapp_rsa_attr_grp = {
 };
 static struct attribute_group qtiapp_fuse_write_attr_grp = {
 	.attrs = qtiapp_fuse_write_attrs,
+};
+static struct attribute_group qtiapp_aesv2_attr_grp = {
+	.attrs = qtiapp_aesv2_attrs,
 };
 
 

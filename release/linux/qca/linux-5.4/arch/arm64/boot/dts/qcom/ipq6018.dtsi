@@ -190,12 +190,6 @@
 	};
 
 	firmware {
-		scm {
-			compatible = "qcom,scm";
-			hvc-log-cmd-id = <0xA>;
-			smmu-state-cmd-id = <0x20>;
-		};
-
 		qfprom {
 			compatible = "qcom,qfprom-sec";
 			img-addr = <0x4A100000>;
@@ -299,6 +293,7 @@
 			clock-names = "iface", "bus", "core";
 			dmas = <&cryptobam 2>, <&cryptobam 3>;
 			dma-names = "rx", "tx";
+			qce,cmd_desc_support;
 		};
 
 		tlmm: pinctrl@1000000 {
@@ -352,9 +347,21 @@
 			reg = <0x01905000 0x8000>;
 		};
 
+		tcsr_boot_misc: syscon@193d100 {
+			compatible = "syscon";
+			reg = <0x0193d100 0x4>;
+		};
+
 		tcsr_q6: syscon@1945000 {
 			compatible = "syscon";
 			reg = <0x01945000 0xe000>;
+		};
+
+		scm {
+			compatible = "qcom,scm";
+			hvc-log-cmd-id = <0xA>;
+			smmu-state-cmd-id = <0x20>;
+			qcom,dload-mode = <&tcsr_boot_misc 0>;
 		};
 
 		blsp_dma: dma@7884000 {
@@ -1317,6 +1324,7 @@
 			#clock-cells = <1>;
 			clocks = <&a53pll>, <&xo>;
 			clock-names = "pll", "xo";
+			apcs-max-register = <0xFFC>;
 			#mbox-cells = <1>;
 		};
 
@@ -1397,9 +1405,11 @@
 		q6v5_wcss: remoteproc@cd00000 {
 			compatible = "qcom,ipq6018-wcss-pil";
 			reg = <0x0cd00000 0x4040>,
-				<0x004ab000 0x20>;
+				<0x004ab000 0x20>,
+				<0xCB50000 0x8>;
 			reg-names = "qdsp6",
-				    "rmb";
+				    "rmb",
+				    "wcmn";
 			interrupts-extended = <&intc GIC_SPI 325 IRQ_TYPE_EDGE_RISING>,
 					      <&wcss_smp2p_in 0 0>,
 					      <&wcss_smp2p_in 1 0>,
@@ -1445,7 +1455,7 @@
 			qcom,smem-state-names = "shutdown",
 						"stop";
 
-			memory-region = <&q6_region>;
+			memory-region = <&q6_region>, <&q6_etr_region>;
 
 			glink-edge {
 				interrupts = <GIC_SPI 321 IRQ_TYPE_EDGE_RISING>;
@@ -1614,6 +1624,11 @@
 				compatible = "qcom,msm-imem-tz-log-buf-addr";
 				reg = <0x720 4>;
 			};
+
+			restart-reason-buf-addr@7a4 {
+				compatible = "qcom,msm-imem-restart-reason-buf-addr";
+				reg = <0x7a4 4>;
+			};
 		};
 
 		wifi0: wifi@c000000 {
@@ -1627,11 +1642,15 @@
 #else
 			qcom,tgt-mem-mode = <0>;
 #endif
-			mem-region = <&q6_region>;
-			qcom,bdf-addr = <0x4ABC0000 0x4ABC0000 0x4ABC0000 0x0 0x0>;
-			qcom,caldb-addr = <0x4B500000 0x4B500000 0x4B500000 0x0 0x0>;
-			qcom,caldb-size = <0x480000>;
 
+#if defined(__CNSS2__)
+			mem-region = <&q6_region>;
+			qcom,bdf-addr = <0x4ABC0000 0x4ABC0000 0x4ABC0000 0x0 0x0 0x0>;
+			qcom,caldb-addr = <0x4B500000 0x4B500000 0x4B500000 0x0 0x0 0x0>;
+			qcom,caldb-size = <0x480000>;
+#else
+			memory-region = <&q6_region>;
+#endif
 			qcom,rproc = <&q6v5_wcss>;
 			interrupts = <0 320 1>, /* o_wcss_apps_intr[0] = */
 						<0 319 1>,
@@ -1862,7 +1881,7 @@
 	};
 
 	qti,scm_restart_reason {
-		compatible = "qti,scm_restart_reason";
+		compatible = "qti_ipq6018,scm_restart_reason";
 	};
 
 	ctx_save: ctx-save {

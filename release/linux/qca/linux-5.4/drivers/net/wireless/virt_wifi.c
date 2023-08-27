@@ -296,7 +296,8 @@ static int virt_wifi_disconnect(struct wiphy *wiphy, struct net_device *netdev,
 	wiphy_debug(wiphy, "disconnect\n");
 	virt_wifi_cancel_connect(netdev);
 
-	cfg80211_disconnected(netdev, reason_code, NULL, 0, true, GFP_KERNEL);
+	cfg80211_disconnected(netdev, reason_code, NULL, 0, true,
+			      NL80211_MLO_INVALID_LINK_ID, GFP_KERNEL);
 	priv->is_connected = false;
 	netif_carrier_off(netdev);
 

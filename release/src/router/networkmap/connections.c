@@ -98,7 +98,7 @@ void conn_debug_info()
 
 void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 {
-	int i = 0, detail_info_num;
+	int i = 0;
 	char word[128];
 	char *next;
 	STA_INFO_TABLE *tmp;
@@ -135,19 +135,19 @@ void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 #endif
 	if(offline == 0){
 		if(g_sta_info_tab){
-			detail_info_num = p_client_tab->detail_info_num;
-			for(tmp = g_sta_info_tab; tmp != NULL; tmp = tmp->next){
-				if(memcmp(p_client_tab->mac_addr[detail_info_num], tmp->mac_addr, sizeof(p_client_tab->mac_addr[0])))
-					continue;
-				p_client_tab->wireless[detail_info_num] = tmp->wireless;
-				strlcpy(p_client_tab->txrate[detail_info_num], tmp->txrate, sizeof(p_client_tab->txrate[0]));
-				strlcpy(p_client_tab->rxrate[detail_info_num], tmp->rxrate, sizeof(p_client_tab->rxrate[0]));
-				p_client_tab->rssi[detail_info_num] = tmp->rssi;
-				strlcpy(p_client_tab->conn_time[detail_info_num], tmp->conn_time, sizeof(p_client_tab->conn_time[0]));
-				if(g_show_sta_info && f_exists("/tmp/conn_debug")){
-					_dprintf("###%d client wl: %d, rx %s tx %s rssi %d conn_time %s \n", detail_info_num, p_client_tab->wireless[detail_info_num], 
-						p_client_tab->rxrate[detail_info_num], p_client_tab->txrate[detail_info_num], p_client_tab->rssi[detail_info_num],
-						p_client_tab->conn_time[detail_info_num]);
+			for(i = 0; i < p_client_tab->detail_info_num; i++){
+				for(tmp = g_sta_info_tab; tmp != NULL; tmp = tmp->next){
+					if(memcmp(p_client_tab->mac_addr[i], tmp->mac_addr, sizeof(p_client_tab->mac_addr[0])))
+						continue;
+					p_client_tab->wireless[i] = tmp->wireless;
+					strlcpy(p_client_tab->txrate[i], tmp->txrate, sizeof(p_client_tab->txrate[0]));
+					strlcpy(p_client_tab->rxrate[i], tmp->rxrate, sizeof(p_client_tab->rxrate[0]));
+					p_client_tab->rssi[i] = tmp->rssi;
+					strlcpy(p_client_tab->conn_time[i], tmp->conn_time, sizeof(p_client_tab->conn_time[0]));
+					if(g_show_sta_info && f_exists("/tmp/conn_debug")){
+						_dprintf("###%d client wl: %d, rx %s tx %s rssi %d conn_time %s \n", i, p_client_tab->wireless[i], 
+							p_client_tab->rxrate[i], p_client_tab->txrate[i], p_client_tab->rssi[i], p_client_tab->conn_time[i]);
+					}
 				}
 			}
 		}

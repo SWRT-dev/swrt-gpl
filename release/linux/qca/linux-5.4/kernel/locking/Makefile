@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0
 # Any varying coverage in these files is non-deterministic
 # and is generally not a function of system call inputs.
+
+KASAN_SANITIZE := n
 KCOV_INSTRUMENT		:= n
 
 obj-y += mutex.o semaphore.o rwsem.o percpu-rwsem.o

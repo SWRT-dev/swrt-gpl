@@ -27,6 +27,10 @@
 #define TSENS_THRESHOLD_MAX_CODE	0x3ff
 #define TSENS_THRESHOLD_MIN_CODE	0x0
 #define TSENS_SN_CTRL_EN		BIT(0)
+#define TSENS_SN_SW_RST			BIT(1)
+#define TSENS_SN_CODE_OR_TEMP		BIT(21)
+
+#define TSENS_MEASURE_PERIOD		0x8
 
 #define TSENS_TM_TRDY			0x00e4
 #define TSENS_TRDY_MASK			BIT(0)
@@ -74,10 +78,38 @@
 #define TSENS_TM_SN_STATUS_LOWER_STATUS		BIT(17)
 #define TSENS_TM_SN_LAST_TEMP_MASK		0xfff
 
+#define TSENS_SN_CONVERSION(n)			((n * 4) + 0x0060)
+
 #define MAX_SENSOR				16
 #define VALID_SENSOR_START_IDX			4
-#define MAX_TEMP				204 /* Celcius */
-#define MIN_TEMP				0   /* Celcius */
+#define MAX_TEMP				204000 /* milliCelcius */
+#define MIN_TEMP				0   /* milliCelcius */
+
+#define BASE0_MASK				0x001FF800
+#define BASE0_SHIFT				11
+#define BASE1_MASK				0x7FE00000
+#define BASE1_SHIFT				21
+#define TSENS11_OFFSET				0x00F000
+#define TSENS11_SHIFT				12
+#define TSENS12_OFFSET				0x0F0000
+#define TSENS12_SHIFT				16
+#define TSENS13_OFFSET				0xF00000
+#define TSENS13_SHIFT				20
+#define TSENS14_OFFSET				0x078000
+#define TSENS14_SHIFT				15
+#define TSENS15_OFFSET				0x780000
+#define TSENS15_SHIFT				19
+#define TSENS_CAL_SHIFT				3
+#define TSENS_CAL_SHIFT_SHIFT			23
+#define TSENS_ONE_POINT_SLOPE			0xCD0
+#define TSENS_ONE_PT_CZERO_CONST		94
+#define TSENS_TWO_POINT_SLOPE			921600
+#define TSENS_SLOPE_SHIFT			10
+#define TSENS_CONVERSION_DEFAULT		0x1b3416a
+#define TSENS_SENSOR_MASK			0x7C000
+
+#define CAL_SEL_MASK 0x700
+#define CAL_SEL_SHIFT 8
 
 struct low_temp_notification {
 	int temp;
@@ -97,6 +129,7 @@ enum tsens_trip_type {
 	TSENS_TRIP_NUM,
 };
 
+static int init_tsens_ctrl(struct tsens_priv *tmdev);
 static int get_temp_ipq807x(struct tsens_priv *tmdev, int id, int *temp);
 static int set_trip_temp(struct tsens_priv *tmdev, int sensor,
 					enum tsens_trip_type trip, int temp);
@@ -151,7 +184,7 @@ bool is_sensor_used_internally(int sensor)
 }
 
 /*
- * Returns Trip temp in degree Celcius
+ * Returns Trip temp in millidegree Celcius
  * Note: IPQ807x does not support -ve trip temperatures
  */
 static int get_trip_temp(struct tsens_priv *tmdev, int sensor,
@@ -169,15 +202,15 @@ static int get_trip_temp(struct tsens_priv *tmdev, int sensor,
 	case TSENS_TRIP_STAGE3:
 		regmap_read(tmdev->tm_map,
 			TSENS_TM_SN_CRITICAL_THRESHOLD(sensor), &reg_th);
-		return (TSENS_TM_SN_CRITICAL_THRESHOLD_VALUE(reg_th))/10;
+		return (TSENS_TM_SN_CRITICAL_THRESHOLD_VALUE(reg_th))*100;
 	case TSENS_TRIP_STAGE2:
 		regmap_read(tmdev->tm_map,
 			TSENS_TM_UPPER_LOWER_THRESHOLD(sensor), &reg_th);
-		return (TSENS_TM_UPPER_THRESHOLD_VALUE(reg_th))/10;
+		return (TSENS_TM_UPPER_THRESHOLD_VALUE(reg_th))*100;
 	case TSENS_TRIP_STAGE1:
 		regmap_read(tmdev->tm_map,
 			TSENS_TM_UPPER_LOWER_THRESHOLD(sensor), &reg_th);
-		return (TSENS_TM_LOWER_THRESHOLD_VALUE(reg_th))/10;
+		return (TSENS_TM_LOWER_THRESHOLD_VALUE(reg_th))*100;
 	default:
 		return -EINVAL;
 	}
@@ -186,7 +219,7 @@ static int get_trip_temp(struct tsens_priv *tmdev, int sensor,
 }
 
 /*
- * Set Trip temp in degree Celcius
+ * Set Trip temp in millidegree Celcius
  * Note: IPQ807x does not support -ve trip temperatures
  */
 static int set_trip_temp(struct tsens_priv *tmdev, int sensor,
@@ -203,8 +236,8 @@ static int set_trip_temp(struct tsens_priv *tmdev, int sensor,
 	if ((temp < MIN_TEMP) && (temp > MAX_TEMP))
 		return -EINVAL;
 
-	/* Convert temp to the required format */
-	temp = temp * 10;
+	/* convert temp from millicelsius to decicelsius */
+	temp = temp/100;
 
 	reg_th_offset = TSENS_TM_UPPER_LOWER_THRESHOLD(sensor);
 	reg_cri_th_offset = TSENS_TM_SN_CRITICAL_THRESHOLD(sensor);
@@ -299,6 +332,70 @@ static int set_trip_mode(struct tsens_priv *tmdev, int sensor, int trip,
 	return 0;
 }
 
+static int __maybe_unused set_temp_trips(struct tsens_priv *tmdev, int sensor, int low_th, int high_th)
+{
+	u32 reg_th, reg_th_offset;
+	int cur_temp;
+
+	if (!tmdev)
+		return -EINVAL;
+
+	if ((sensor < 0) || (sensor > (MAX_SENSOR - 1)))
+		return -EINVAL;
+
+	get_temp_ipq807x(tmdev, sensor, &cur_temp);
+	/* convert temp to decicelsius, HW unit */
+	cur_temp = cur_temp / 100;
+
+	reg_th_offset = TSENS_TM_UPPER_LOWER_THRESHOLD(sensor);
+
+	regmap_read(tmdev->tm_map,
+			TSENS_TM_UPPER_LOWER_THRESHOLD(sensor), &reg_th);
+
+	/*
+	 * Disable low-temp if "low" is too small. As per thermal framework
+	 * API, we use -INT_MAX rather than INT_MIN.
+	 */
+	if (low_th <= -INT_MAX) {
+		set_trip_mode(tmdev, sensor, TSENS_TRIP_STAGE1, THERMAL_TRIP_ACTIVATION_DISABLED);
+
+		/* clear lower threshold values */
+		reg_th &= TSENS_TM_LOWER_THRESHOLD_CLEAR;
+		regmap_write(tmdev->tm_map, reg_th_offset, reg_th);
+
+	} else {
+		low_th = low_th / 100;
+		reg_th &= TSENS_TM_LOWER_THRESHOLD_CLEAR;
+		reg_th |= low_th;
+
+		regmap_write(tmdev->tm_map, reg_th_offset, reg_th);
+
+		if (low_th > cur_temp)
+			/* Disable low temp interrupt when cur_temp is below lower threshold */
+			set_trip_mode(tmdev, sensor, TSENS_TRIP_STAGE1, THERMAL_TRIP_ACTIVATION_DISABLED);
+		else
+			/* enable low temp interrupt when cur_temp is greater than lower threshold */
+			set_trip_mode(tmdev, sensor, TSENS_TRIP_STAGE1, THERMAL_TRIP_ACTIVATION_ENABLED);
+	}
+
+	/* Disable high-temp if "high" is too big. */
+	if (high_th == INT_MAX) {
+		set_trip_mode(tmdev, sensor, TSENS_TRIP_STAGE2, THERMAL_TRIP_ACTIVATION_DISABLED);
+	} else {
+		high_th = high_th / 100;
+		high_th = TSENS_TM_UPPER_THRESHOLD_SET(high_th);
+		reg_th &= TSENS_TM_UPPER_THRESHOLD_CLEAR;
+		reg_th |= high_th;
+
+		regmap_write(tmdev->tm_map, reg_th_offset, reg_th);
+	}
+
+	/* Sync registers */
+	mb();
+
+	return 0;
+}
+
 static void notify_uspace_tsens_fn(struct work_struct *work)
 {
 	struct tsens_sensor *s = container_of(work, struct tsens_sensor,
@@ -323,6 +420,9 @@ static void handle_cold_condition(struct tsens_priv *tmdev,
 	int cold_cond_enter_threshold, cold_cond_exit_threshold;
 
 	if (sensor < 0 || sensor >= MAX_SENSOR)
+		return;
+
+	if (!is_sensor_used_internally(sensor))
 		return;
 
 	cold_cond_enter_threshold = low_temp_notif[sensor].temp;
@@ -404,14 +504,19 @@ static void tsens_scheduler_fn(struct work_struct *work)
 		if (th_upper || th_lower) {
 			handle_cold_condition( tmdev, i, th_lower);
 			regmap_write(tmdev->tm_map, reg_addr, reg_thr);
+#ifdef CONFIG_CPU_THERMAL
+			/* If CPUFreq cooling is enabled, then notify Thermal framework */
+			thermal_zone_device_update(tmdev->sensor[i].tzd, THERMAL_EVENT_UNSPECIFIED);
+#else
 			/* Notify user space */
 			schedule_work(&tmdev->sensor[i].notify_work);
+#endif
 
 			if (int_clr_deassert_quirk)
 				regmap_write(tmdev->tm_map, reg_addr, 0);
 
 			if (!get_temp_ipq807x(tmdev, i, &temp))
-				pr_debug("Trigger (%d degrees) for sensor %d\n",
+				pr_debug("Trigger (%d millidegrees) for sensor %d\n",
 					temp, i);
 		}
 	}
@@ -436,6 +541,12 @@ static int init_ipq807x(struct tsens_priv *tmdev)
 	init_common(tmdev);
 	if (!tmdev->tm_map)
 		return -ENODEV;
+
+	if (device_property_read_bool(tmdev->dev, "tsens-calibration")) {
+		ret = init_tsens_ctrl(tmdev);
+		if (ret)
+			return ret;
+	}
 
 	/* Store all sensor address for future use */
 	for (i = 0; i < tmdev->num_sensors; i++) {
@@ -538,7 +649,8 @@ static int get_temp_ipq807x(struct tsens_priv *tmdev, int id, int *temp)
 			/* Sign extension for negative value */
 			last_temp |= (~(TSENS_TM_CODE_BIT_MASK));
 
-		*temp = last_temp/10;
+		/* convert temp from decicelsius to millicelsius */
+		*temp = last_temp*100;
 
 		return 0;
 	} while (time_before(jiffies, timeout));
@@ -546,7 +658,7 @@ static int get_temp_ipq807x(struct tsens_priv *tmdev, int id, int *temp)
 	return -ETIMEDOUT;
 }
 
-static int set_trip_temp_ipq807x(void *data, int trip, int temp)
+static int __maybe_unused set_trip_temp_ipq807x(void *data, int trip, int temp)
 {
 	const struct tsens_sensor *s = data;
 
@@ -559,7 +671,7 @@ static int set_trip_temp_ipq807x(void *data, int trip, int temp)
 	return set_trip_temp(s->priv, s->id, trip, temp);
 }
 
-static int set_trip_activate_ipq807x(void *data, int trip,
+static int __maybe_unused set_trip_activate_ipq807x(void *data, int trip,
 					enum thermal_trip_activation_mode mode)
 {
 	const struct tsens_sensor *s = data;
@@ -573,10 +685,121 @@ static int set_trip_activate_ipq807x(void *data, int trip,
 	return set_trip_mode(s->priv, s->id, trip, mode);
 }
 
+static int __maybe_unused set_temp_trips_ipq807x(void *data, int low, int high)
+{
+	const struct tsens_sensor *s = data;
+
+	if (!s)
+		return -EINVAL;
+
+	if (is_sensor_used_internally(s->id))
+		return -EINVAL;
+
+	return set_temp_trips(s->priv, s->id, low, high);
+}
+
+static int calibrate(struct tsens_priv *tmdev)
+{
+	u32 base0 = 0, base1 = 0;
+	u32 tsens_offset[MAX_SENSOR];
+	u32 mode = 0, slope = 0, czero = 0, val = 0;
+	u32 *qfprom_cal_sel, *qfprom_cdata;
+	int i, sensor = 11;
+	int temp;
+
+
+	qfprom_cal_sel = (u32 *)qfprom_read(tmdev->dev, "cal_sel");
+	if (IS_ERR(qfprom_cal_sel))
+		return PTR_ERR(qfprom_cal_sel);
+
+	mode = (qfprom_cal_sel[0] & CAL_SEL_MASK) >> CAL_SEL_SHIFT;
+	dev_dbg(tmdev->dev, "calibration mode is %d\n", mode);
+
+	base0 = (qfprom_cal_sel[0] & BASE0_MASK) >> BASE0_SHIFT;
+	base1 = (qfprom_cal_sel[0] & BASE1_MASK) >> BASE1_SHIFT;
+
+	qfprom_cdata = (u32 *)qfprom_read(tmdev->dev, "calib_offset");
+	if (IS_ERR(qfprom_cdata))
+		return PTR_ERR(qfprom_cdata);
+
+	temp =  qfprom_cdata[0];
+	tsens_offset[sensor++] = (temp & TSENS11_OFFSET) >> TSENS11_SHIFT;
+	tsens_offset[sensor++] = (temp & TSENS12_OFFSET) >> TSENS12_SHIFT;
+	tsens_offset[sensor++] = (temp & TSENS13_OFFSET) >> TSENS13_SHIFT;
+	temp =  qfprom_cdata[2];
+	tsens_offset[sensor++] = (temp & TSENS14_OFFSET) >> TSENS14_SHIFT;
+	tsens_offset[sensor++] = (temp & TSENS15_OFFSET) >> TSENS15_SHIFT;
+
+	switch (mode) {
+	case TWO_PT_CALIB:
+		slope = (TSENS_TWO_POINT_SLOPE / (base1 - base0));
+
+		for (i = 11; i < MAX_SENSOR; i++) {
+			czero = (base0 + tsens_offset[i] -
+					((base1 - base0) / 3));
+			val = (TSENS_CAL_SHIFT << TSENS_CAL_SHIFT_SHIFT)
+				| (slope << TSENS_SLOPE_SHIFT) | czero;
+
+			regmap_write(tmdev->srot_map,
+				TSENS_SN_CONVERSION(i), val);
+		}
+		break;
+	case ONE_PT_CALIB2:
+		for (i = 11; i < MAX_SENSOR; i++) {
+			czero = base0 + tsens_offset[i] -
+					TSENS_ONE_PT_CZERO_CONST;
+			val = (TSENS_CAL_SHIFT << TSENS_CAL_SHIFT_SHIFT)
+				| (TSENS_ONE_POINT_SLOPE << TSENS_SLOPE_SHIFT)
+				| czero;
+
+			regmap_write(tmdev->srot_map,
+				TSENS_SN_CONVERSION(i), val);
+		}
+		break;
+	default:
+		for (i = 11; i < MAX_SENSOR; i++) {
+			regmap_write(tmdev->srot_map,
+					TSENS_SN_CONVERSION(i),
+					TSENS_CONVERSION_DEFAULT);
+		}
+		pr_info("Using default calibration\n");
+		break;
+	}
+
+	kfree(qfprom_cdata);
+	kfree(qfprom_cal_sel);
+	return 0;
+}
+
+static int init_tsens_ctrl(struct tsens_priv *tmdev)
+{
+	int ret, reg_val;
+
+	regmap_write(tmdev->srot_map, TSENS_CNTL_ADDR, TSENS_SN_SW_RST);
+	regmap_read(tmdev->srot_map, TSENS_CNTL_ADDR, &reg_val);
+	reg_val &= ~TSENS_SN_CTRL_EN;
+	regmap_write(tmdev->srot_map, TSENS_CNTL_ADDR, reg_val);
+	regmap_write(tmdev->srot_map, TSENS_MEASURE_PERIOD, 0x1);
+	reg_val |= TSENS_SENSOR_MASK;
+	regmap_write(tmdev->srot_map, TSENS_CNTL_ADDR, reg_val);
+	reg_val |= TSENS_SN_CODE_OR_TEMP;
+	regmap_write(tmdev->srot_map, TSENS_CNTL_ADDR, reg_val);
+	reg_val &= ~TSENS_SN_SW_RST;
+	reg_val |= TSENS_SN_CTRL_EN;
+	regmap_write(tmdev->srot_map, TSENS_CNTL_ADDR, reg_val);
+
+	ret = calibrate(tmdev);
+	return ret;
+}
+
 const struct tsens_ops ops_ipq807x = {
 	.init		= init_ipq807x,
 	.get_temp	= get_temp_ipq807x,
+	.panic_notify = panic_notify_ipq807x,
+#ifdef CONFIG_CPU_THERMAL
+	.set_temp_trips = set_temp_trips_ipq807x,
+#else
 	.set_trip_temp	= set_trip_temp_ipq807x,
 	.set_trip_activate = set_trip_activate_ipq807x,
-	.panic_notify = panic_notify_ipq807x,
+#endif
 };

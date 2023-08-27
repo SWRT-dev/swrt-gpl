@@ -15,7 +15,10 @@
 #include <linux/of_device.h>
 #include <linux/rtnetlink.h>
 #include <linux/mhi.h>
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
 
+#define MHI_RMNET_IF_NAME "rmnet_mhi"
 #define MHI_NETDEV_DRIVER_NAME "mhi_netdev"
 #define WATCHDOG_TIMEOUT (30 * HZ)
 #define IPC_LOG_PAGES (100)
@@ -44,6 +47,7 @@ struct mhi_netdev {
 	int current_index;
 	bool chain_skb;
 	struct mhi_net_chain *chain;
+	bool is_rmnet;
 
 	struct dentry *dentry;
 };
@@ -64,10 +68,26 @@ struct mhi_netbuf {
 
 static struct mhi_driver mhi_netdev_driver;
 static void mhi_netdev_create_debugfs(struct mhi_netdev *mhi_netdev);
+static u32 napi_poll_weight = NAPI_POLL_WEIGHT;
+static u32 drop_at_mhi;
 
-static __be16 mhi_netdev_ip_type_trans(u8 data)
+static unsigned long long nr_mhi_buffer;
+static unsigned long long mhi_data_len;
+
+u32 drop_at_rmnet;
+unsigned long long nr_rmnet_pkts;
+unsigned long long rmnet_rx_bytes;
+EXPORT_SYMBOL(drop_at_rmnet);
+EXPORT_SYMBOL(nr_rmnet_pkts);
+EXPORT_SYMBOL(rmnet_rx_bytes);
+
+static __be16 mhi_netdev_ip_type_trans(u8 data, bool is_rmnet)
 {
 	__be16 protocol = 0;
+
+	if (is_rmnet)
+		return htons(ETH_P_MAP);
+
 	/* determine L3 protocol */
 	switch (data & 0xf0) {
 	case 0x40:
@@ -202,8 +222,6 @@ static void mhi_netdev_queue(struct mhi_netdev *mhi_netdev)
 		 * with buffer, the buffer won't be freed
 		 */
 		atomic_inc(&mhi_buf->page->_refcount);
-		dma_sync_single_for_device(dev, mhi_buf->dma_addr, mhi_buf->len,
-					   DMA_FROM_DEVICE);
 		ret = mhi_queue_dma(mhi_dev, DMA_FROM_DEVICE, mhi_buf,
 					 mhi_buf->len, MHI_EOT);
 		if (unlikely(ret)) {
@@ -296,10 +314,12 @@ static int mhi_netdev_poll(struct napi_struct *napi, int budget)
 
 	rx_work = mhi_poll(mhi_dev, budget);
 
-	/* chained skb, push it to stack */
-	if (chain && chain->head) {
-		netif_receive_skb(chain->head);
-		chain->head = NULL;
+	if (likely(drop_at_mhi == 0)) {
+		/* chained skb, push it to stack */
+		if (chain && chain->head) {
+			netif_receive_skb(chain->head);
+			chain->head = NULL;
+		}
 	}
 
 	if (rx_work < 0) {
@@ -511,6 +531,9 @@ static int mhi_netdev_enable_iface(struct mhi_netdev *mhi_netdev)
 	if (ret)
 		mhi_netdev->interface_name = mhi_netdev_driver.driver.name;
 
+	if (!strcmp(mhi_netdev->interface_name, MHI_RMNET_IF_NAME))
+		mhi_netdev->is_rmnet = true;
+
 	snprintf(ifalias, sizeof(ifalias), "%s_%s_%u",
 		 mhi_netdev->interface_name,
 		 dev_name(mhi_cntrl->cntrl_dev), mhi_netdev->alias);
@@ -543,7 +566,7 @@ static int mhi_netdev_enable_iface(struct mhi_netdev *mhi_netdev)
 	}
 
 	netif_napi_add(mhi_netdev->ndev, mhi_netdev->napi,
-		       mhi_netdev_poll, NAPI_POLL_WEIGHT);
+		       mhi_netdev_poll, napi_poll_weight);
 	ret = register_netdev(mhi_netdev->ndev);
 	if (ret) {
 		dev_err(dbg_dev, "Network device registration failed\n");
@@ -587,25 +610,32 @@ static void mhi_netdev_push_skb(struct mhi_netdev *mhi_netdev,
 {
 	struct sk_buff *skb;
 
-	skb = alloc_skb(0, GFP_ATOMIC);
-	if (!skb) {
-		__free_pages(mhi_buf->page, mhi_netdev->order);
-		return;
-	}
-
-	if (!mhi_netdev->ethernet_interface) {
-		skb_add_rx_frag(skb, 0, mhi_buf->page, 0,
-				mhi_result->bytes_xferd, mhi_netdev->mru);
-		skb->dev = mhi_netdev->ndev;
-		skb->protocol = mhi_netdev_ip_type_trans(*(u8 *)mhi_buf->buf);
+	if (unlikely(drop_at_mhi)) {
+		if (unlikely(put_page_testzero(mhi_buf->page)))
+			free_compound_page(mhi_buf->page);
 	} else {
-		skb_add_rx_frag(skb, 0, mhi_buf->page, ETH_HLEN,
-				mhi_result->bytes_xferd - ETH_HLEN,
-				mhi_netdev->mru);
-		skb->dev = mhi_netdev->ndev;
-		skb->protocol = mhi_netdev_ip_type_trans(((u8 *)mhi_buf->buf)[ETH_HLEN]);
+		skb = alloc_skb(0, GFP_ATOMIC);
+		if (!skb) {
+			__free_pages(mhi_buf->page, mhi_netdev->order);
+			return;
+		}
+
+		if (!mhi_netdev->ethernet_interface) {
+			skb_add_rx_frag(skb, 0, mhi_buf->page, 0,
+					mhi_result->bytes_xferd, mhi_netdev->mru);
+			skb->dev = mhi_netdev->ndev;
+			skb->protocol = mhi_netdev_ip_type_trans(*(u8 *)mhi_buf->buf,
+					mhi_netdev->is_rmnet);
+		} else {
+			skb_add_rx_frag(skb, 0, mhi_buf->page, ETH_HLEN,
+					mhi_result->bytes_xferd - ETH_HLEN,
+					mhi_netdev->mru);
+			skb->dev = mhi_netdev->ndev;
+			skb->protocol = mhi_netdev_ip_type_trans(((u8 *)mhi_buf->buf)[ETH_HLEN],
+					mhi_netdev->is_rmnet);
+		}
+		netif_receive_skb(skb);
 	}
-	netif_receive_skb(skb);
 }
 
 static void mhi_netdev_xfer_dl_cb(struct mhi_device *mhi_dev,
@@ -627,6 +657,8 @@ static void mhi_netdev_xfer_dl_cb(struct mhi_device *mhi_dev,
 		return;
 	}
 
+	nr_mhi_buffer++;
+	mhi_data_len += mhi_result->bytes_xferd;
 	ndev->stats.rx_packets++;
 	ndev->stats.rx_bytes += mhi_result->bytes_xferd;
 
@@ -635,36 +667,43 @@ static void mhi_netdev_xfer_dl_cb(struct mhi_device *mhi_dev,
 		return;
 	}
 
-	/* we support chaining */
-	skb = alloc_skb(0, GFP_ATOMIC);
-	if (likely(skb)) {
-		if (!mhi_netdev->ethernet_interface) {
-			skb_add_rx_frag(skb, 0, mhi_buf->page, 0,
-					mhi_result->bytes_xferd, mhi_netdev->mru);
-		} else {
-			skb_add_rx_frag(skb, 0, mhi_buf->page, ETH_HLEN,
-					mhi_result->bytes_xferd - ETH_HLEN,
-					mhi_netdev->mru);
-		}
-
-		/* this is first on list */
-		if (!chain->head) {
-			skb->dev = ndev;
-			if (!mhi_netdev->ethernet_interface) {
-				skb->protocol =
-					mhi_netdev_ip_type_trans(*(u8 *)mhi_buf->buf);
-			} else {
-				skb->protocol =
-					mhi_netdev_ip_type_trans(((u8 *)mhi_buf->buf)[ETH_HLEN]);
-			}
-			chain->head = skb;
-		} else {
-			skb_shinfo(chain->tail)->frag_list = skb;
-		}
-
-		chain->tail = skb;
+	if (unlikely(drop_at_mhi)) {
+		if (unlikely(put_page_testzero(mhi_buf->page)))
+			free_compound_page(mhi_buf->page);
 	} else {
-		__free_pages(mhi_buf->page, mhi_netdev->order);
+		/* we support chaining */
+		skb = alloc_skb(0, GFP_ATOMIC);
+		if (likely(skb)) {
+			if (!mhi_netdev->ethernet_interface) {
+				skb_add_rx_frag(skb, 0, mhi_buf->page, 0,
+						mhi_result->bytes_xferd, mhi_netdev->mru);
+			} else {
+				skb_add_rx_frag(skb, 0, mhi_buf->page, ETH_HLEN,
+						mhi_result->bytes_xferd - ETH_HLEN,
+						mhi_netdev->mru);
+			}
+
+			/* this is first on list */
+			if (!chain->head) {
+				skb->dev = ndev;
+				if (!mhi_netdev->ethernet_interface) {
+					skb->protocol =
+						mhi_netdev_ip_type_trans(*(u8 *)mhi_buf->buf,
+								mhi_netdev->is_rmnet);
+				} else {
+					skb->protocol =
+						mhi_netdev_ip_type_trans(((u8 *)mhi_buf->buf)[ETH_HLEN],
+								mhi_netdev->is_rmnet);
+				}
+				chain->head = skb;
+			} else {
+				skb_shinfo(chain->tail)->frag_list = skb;
+			}
+
+			chain->tail = skb;
+		} else {
+			__free_pages(mhi_buf->page, mhi_netdev->order);
+		}
 	}
 }
 
@@ -757,6 +796,75 @@ static void mhi_netdev_clone_dev(struct mhi_netdev *mhi_netdev,
 	mhi_netdev->chain = parent->chain;
 }
 
+static int __init config_napi_poll(char *str)
+{
+	u32 poll_weight;
+	 if (get_option(&str, &poll_weight)) {
+		napi_poll_weight = poll_weight;
+		pr_emerg("MHI napi_poll_weight %u\n", napi_poll_weight);
+        }
+        return 0;
+}
+
+early_param("napi_poll_weight", config_napi_poll);
+
+static int __init config_drop_at_mhi(char *str)
+{
+	u32 val;
+	 if (get_option(&str, &val)) {
+		drop_at_mhi = val;
+		pr_emerg("MHI drop_at_mhi %u\n", drop_at_mhi);
+        }
+        return 0;
+}
+
+early_param("drop_at_mhi", config_drop_at_mhi);
+
+static int __init config_drop_at_rmnet(char *str)
+{
+	u32 val;
+	 if (get_option(&str, &val)) {
+		drop_at_rmnet = val;
+		pr_emerg("MHI drop_at_rmnet %u\n", drop_at_rmnet);
+        }
+        return 0;
+}
+
+early_param("drop_at_rmnet", config_drop_at_rmnet);
+
+static int fwainfo_proc_show(struct seq_file *m, void *v)
+{
+	seq_printf(m,
+		"napi_poll_weight	: %u\n"
+		"drop_at_mhi		: %u\n"
+		"drop_at_rmnet		: %u\n"
+		"nr_rmnet_pkts		: %llu\n"
+		"rmnet_rx_bytes		: %llu\n"
+		"nr_mhi_buffer		: %llu\n"
+		"mhi_data_len		: %llu\n",
+		napi_poll_weight,
+		drop_at_mhi,
+		drop_at_rmnet,
+		nr_rmnet_pkts,
+		rmnet_rx_bytes,
+		nr_mhi_buffer,
+		mhi_data_len);
+
+	return 0;
+}
+
+static int fwainfo_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, fwainfo_proc_show, NULL);
+}
+
+static const struct file_operations fwainfo_proc_fops = {
+	.open		= fwainfo_proc_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static int mhi_netdev_probe(struct mhi_device *mhi_dev,
 			    const struct mhi_device_id *id)
 {
@@ -767,6 +875,7 @@ static int mhi_netdev_probe(struct mhi_device *mhi_dev,
 	int nr_tre;
 	struct device_node *phandle;
 	bool no_chain;
+	static int fwa_proc_created;
 
 	if (!of_node)
 		return -ENODEV;
@@ -839,6 +948,10 @@ static int mhi_netdev_probe(struct mhi_device *mhi_dev,
 		mhi_netdev->pool_size <<= 1;
 	mhi_netdev->pool_size <<= 1;
 
+	dev_info(dbg_dev, "MHI netdev pool size: 0x%x \n",
+				(mhi_netdev->pool_size * mhi_netdev->mru));
+	dev_info(dbg_dev, "Note: To increase static netdev pool allocation use"
+				" mhi_nr_tre_update bootargs\n");
 	/* allocate memory pool */
 	ret = mhi_netdev_alloc_pool(mhi_netdev);
 
@@ -853,6 +966,11 @@ static int mhi_netdev_probe(struct mhi_device *mhi_dev,
 	 * by triggering a napi_poll
 	 */
 	napi_schedule(mhi_netdev->napi);
+
+	if (!fwa_proc_created) {
+		proc_create("fwainfo", 0, NULL, &fwainfo_proc_fops);
+		fwa_proc_created = 1;
+	}
 
 	return 0;
 

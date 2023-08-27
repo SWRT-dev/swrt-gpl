@@ -92,7 +92,7 @@
 	 * |        |              |                         |
 	 * +--------+--------------+-------------------------+
 	 * |        |              |                         |
-	 * |  MHI1  |  0x4DA00000  |           9MB           |
+	 * |  MHI1  |  0x4DA00000  |           5MB           |
 	 * |        |              |                         |
 	 * +--------+--------------+-------------------------+
 	 * |                                                 |
@@ -124,7 +124,7 @@
 		mhi_region1: dma_pool1@4da00000 {
 			compatible = "shared-dma-pool";
 			no-map;
-			reg = <0x0 0x4DA00000 0x0 0x00900000>;
+			reg = <0x0 0x4DA00000 0x0 0x00500000>;
 		};
 	#endif
 	#elif __IPQ_MEM_PROFILE_512_MB__
@@ -165,22 +165,22 @@
 	 * |        |              |                         |
 	 * |        |              |                         |
 	 * |        |              |                         |
-	 * |   Q6   |  0x4B000000  |          24MB           |
+	 * |   Q6   |  0x4B000000  |          23MB           |
 	 * |        |              |                         |
 	 * |        |              |                         |
 	 * +--------+--------------+-------------------------+
-	 * | M3 Dump|  0x4C800000  |           1MB           |
+	 * | M3 Dump|  0x4C700000  |           1MB           |
 	 * +--------+--------------+-------------------------+
-	 * |  QDSS  |  0x4C900000  |           1MB           |
+	 * |  QDSS  |  0x4C800000  |           1MB           |
 	 * +--------+--------------+-------------------------+
-	 * | caldb  |  0x4CA00000  |           2MB           |
-	 * +--------+--------------+-------------------------+
-	 * |        |              |                         |
-	 * |QCN9000 |  0x4CC00000  |          38MB           |
-	 * |        |              |                         |
+	 * | caldb  |  0x4C900000  |           2MB           |
 	 * +--------+--------------+-------------------------+
 	 * |        |              |                         |
-	 * |  MHI1  |  0x4F200000  |           9MB           |
+	 * |QCN9000 |  0x4CB00000  |          26MB           |
+	 * |        |              |                         |
+	 * +--------+--------------+-------------------------+
+	 * |        |              |                         |
+	 * |  MHI1  |  0x4E500000  |           5MB           |
 	 * |        |              |                         |
 	 * +--------+--------------+-------------------------+
 	 * |                                                 |
@@ -190,34 +190,34 @@
 	 */
 		q6_region: memory@4b000000 {
 			no-map;
-			reg = <0x0 0x4b000000 0x0 0x01800000>;
+			reg = <0x0 0x4b000000 0x0 0x01700000>;
 		};
 
-		m3_dump@4c800000 {
+		m3_dump@4c700000 {
+			no-map;
+			reg = <0x0 0x4c700000 0x0 0x100000>;
+		};
+
+		q6_etr_region:q6_etr_dump@4c800000 {
 			no-map;
 			reg = <0x0 0x4c800000 0x0 0x100000>;
 		};
 
-		q6_etr_region:q6_etr_dump@4c900000 {
+		q6_caldb_region:q6_caldb_region@4c900000 {
 			no-map;
-			reg = <0x0 0x4c900000 0x0 0x100000>;
+			reg = <0x0 0x4c900000 0x0 0x200000>;
 		};
 
-		q6_caldb_region:q6_caldb_region@4ca00000 {
+		qcn9000_pcie0: qcn9000_pcie0@4cb00000 {
 			no-map;
-			reg = <0x0 0x4ca00000 0x0 0x200000>;
-		};
-
-		qcn9000_pcie0: qcn9000_pcie0@4cc00000 {
-			no-map;
-			reg = <0x0 0x4CC00000 0x0 0x02600000>;
+			reg = <0x0 0x4CB00000 0x0 0x01A00000>;
 		};
 
 	#if defined(__CNSS2__)
-		mhi_region1: dma_pool1@4f200000 {
+		mhi_region1: dma_pool1@4E500000 {
 			compatible = "shared-dma-pool";
 			no-map;
-			reg = <0x0 0x4f200000 0x0 0x00900000>;
+			reg = <0x0 0x4E500000 0x0 0x00500000>;
 		};
 	#endif
 	#else
@@ -258,22 +258,22 @@
 	 * |        |              |                         |
 	 * |        |              |                         |
 	 * |        |              |                         |
-	 * |   Q6   |  0x4B000000  |          24MB           |
+	 * |   Q6   |  0x4B000000  |          23MB           |
 	 * |        |              |                         |
 	 * |        |              |                         |
 	 * +--------+--------------+-------------------------+
-	 * | M3 Dump|  0x4C800000  |           1MB           |
+	 * | M3 Dump|  0x4C700000  |           1MB           |
 	 * +--------+--------------+-------------------------+
-	 * |  QDSS  |  0x4C900000  |           1MB           |
+	 * |  QDSS  |  0x4C800000  |           1MB           |
 	 * +--------+--------------+-------------------------+
-	 * | caldb  |  0x4CA00000  |           2MB           |
-	 * +--------+--------------+-------------------------+
-	 * |        |              |                         |
-	 * |QCN9000 |  0x4CC00000  |          53MB           |
-	 * |        |              |                         |
+	 * | caldb  |  0x4C900000  |           2MB           |
 	 * +--------+--------------+-------------------------+
 	 * |        |              |                         |
-	 * |  MHI1  |  0x50100000  |           9MB           |
+	 * |QCN9000 |  0x4CB00000  |          53MB           |
+	 * |        |              |                         |
+	 * +--------+--------------+-------------------------+
+	 * |        |              |                         |
+	 * |  MHI1  |  0x50000000  |           5MB           |
 	 * |        |              |                         |
 	 * +--------+--------------+-------------------------+
 	 * |                                                 |
@@ -283,34 +283,34 @@
 	 */
 		q6_region: memory@4b000000 {
 			no-map;
-			reg = <0x0 0x4b000000 0x0 0x01800000>;
+			reg = <0x0 0x4b000000 0x0 0x01700000>;
 		};
 
-		m3_dump@4c800000 {
+		m3_dump@4c700000 {
+			no-map;
+			reg = <0x0 0x4c700000 0x0 0x100000>;
+		};
+
+		q6_etr_region:q6_etr_dump@4c800000 {
 			no-map;
 			reg = <0x0 0x4c800000 0x0 0x100000>;
 		};
 
-		q6_etr_region:q6_etr_dump@4c900000 {
+		q6_caldb_region:q6_caldb_region@4c900000 {
 			no-map;
-			reg = <0x0 0x4c900000 0x0 0x100000>;
+			reg = <0x0 0x4c900000 0x0 0x200000>;
 		};
 
-		q6_caldb_region:q6_caldb_region@4ca00000 {
+		qcn9000_pcie0: qcn9000_pcie0@4cb00000 {
 			no-map;
-			reg = <0x0 0x4ca00000 0x0 0x200000>;
-		};
-
-		qcn9000_pcie0: qcn9000_pcie0@4cc00000 {
-			no-map;
-			reg = <0x0 0x4CC00000 0x0 0x03500000>;
+			reg = <0x0 0x4CB00000 0x0 0x03500000>;
 		};
 
 	#if defined(__CNSS2__)
-		mhi_region1: dma_pool1@50100000 {
+		mhi_region1: dma_pool1@50000000 {
 			compatible = "shared-dma-pool";
 			no-map;
-			reg = <0x0 0x50100000 0x0 0x00900000>;
+			reg = <0x0 0x50000000 0x0 0x00500000>;
 		};
 	#endif
 	#endif
@@ -675,10 +675,12 @@
 	mhi_1: qcom,mhi@1 {
 		reg = <0 0 0 0 0 >;
 		qrtr_instance_id = <0x20>;
+		qti,disable-rddm-prealloc;
+		qti,rddm-seg-len = <0x1000>;
 		#address-cells = <0x2>;
 		#size-cells = <0x2>;
 	#if defined(__CNSS2__)
-		memory-region = <&mhi_region1>;
+		memory-region = <0>,<&mhi_region1>;
 	#endif
 	};
 };
@@ -752,8 +754,8 @@
 	mem-region = <&q6_region>;
 
 	qcom,bdf-addr = <0x4BA00000 0x4BA00000 0x4BA00000
-		0x0 0x0>;
-	qcom,caldb-addr = <0x4CA00000 0x4CA00000 0x0 0x0 0x0>;
+		0x0 0x0 0x0>;
+	qcom,caldb-addr = <0x4C900000 0x4C900000 0x0 0x0 0x0 0x0>;
 	qcom,caldb-size = <0x200000>;
 	qcom,board_id = <0x23>;
 	status = "ok";
@@ -787,51 +789,51 @@
 	tgt-mem-mode = <0x2>;
 	pageable-size = <0x400000>;
 #elif __IPQ_MEM_PROFILE_512_MB__
-	/* QCN9000 tgt-mem-mode=1 layout - 38MB
+	/* QCN9000 tgt-mem-mode=1 layout - 26MB
 	 * +=========+==============+=========+
 	 * |  Region | Start Offset |   Size  |
 	 * +---------+--------------+---------+
-	 * | HREMOTE |  0x4CC00000  |   20MB  |
+	 * | HREMOTE |  0x4CB00000  |   12MB  |
 	 * +---------+--------------+---------+
-	 * | M3 Dump |  0x4E000000  |   1MB   |
+	 * | M3 Dump |  0x4D700000  |   1MB   |
 	 * +---------+--------------+---------+
-	 * |   ETR   |  0x4E100000  |   1MB   |
+	 * |   ETR   |  0x4D800000  |   1MB   |
 	 * +---------+--------------+---------+
-	 * |  Caldb  |  0x4E200000  |   8MB   |
+	 * |  Caldb  |  0x4D900000  |   8MB   |
 	 * +---------+--------------+---------+
-	 * | Pageable|  0x4EA00000  |   8MB   |
+	 * | Pageable|  0x4E100000  |   4MB   |
 	 * +==================================+
 	 */
-	base-addr = <0x4CC00000>;
-	m3-dump-addr = <0x4E000000>;
-	etr-addr = <0x4E100000>;
-	caldb-addr = <0x4E200000>;
-	pageable-addr = <0x4EA00000>;
+	base-addr = <0x4CB00000>;
+	m3-dump-addr = <0x4D700000>;
+	etr-addr = <0x4D800000>;
+	caldb-addr = <0x4D900000>;
+	pageable-addr = <0x4E100000>;
 	caldb-size = <0x800000>;
-	hremote-size = <0x1400000>;
+	hremote-size = <0xC00000>;
 	tgt-mem-mode = <0x1>;
-	pageable-size = <0x800000>;
+	pageable-size = <0x400000>;
 #else
 	/* QCN9000 tgt-mem-mode=0 layout - 53MB
 	 * +=========+==============+=========+
 	 * |  Region | Start Offset |   Size  |
 	 * +---------+--------------+---------+
-	 * | HREMOTE |  0x4CC00000  |   35MB  |
+	 * | HREMOTE |  0x4CB00000  |   35MB  |
 	 * +---------+--------------+---------+
-	 * | M3 Dump |  0x4EF00000  |   1MB   |
+	 * | M3 Dump |  0x4EE00000  |   1MB   |
 	 * +---------+--------------+---------+
-	 * |   ETR   |  0x4F000000  |   1MB   |
+	 * |   ETR   |  0x4EF00000  |   1MB   |
 	 * +---------+--------------+---------+
-	 * |  Caldb  |  0x4F100000  |   8MB   |
+	 * |  Caldb  |  0x4F000000  |   8MB   |
 	 * +---------+--------------+---------+
-	 * | Pageable|  0x4F900000  |   8MB   |
+	 * | Pageable|  0x4F800000  |   8MB   |
 	 * +==================================+
 	 */
-	base-addr = <0x4CC00000>;
-	m3-dump-addr = <0x4EF00000>;
-	etr-addr = <0x4F000000>;
-	caldb-addr = <0x4F100000>;
-	pageable-addr = <0x4F900000>;
+	base-addr = <0x4CB00000>;
+	m3-dump-addr = <0x4EE00000>;
+	etr-addr = <0x4EF00000>;
+	caldb-addr = <0x4F000000>;
+	pageable-addr = <0x4F800000>;
 	hremote-size = <0x2300000>;
 	caldb-size = <0x800000>;
 	tgt-mem-mode = <0x0>;

@@ -703,6 +703,7 @@ int diag_get_remote(int remote_info)
 	switch (val) {
 	case MDM:
 	case MDM2:
+	case MDM3:
 	case QSC:
 		remote_val = -remote_info;
 		break;
@@ -1037,15 +1038,21 @@ int diag_remote_init(void)
 {
 	diagmem_setsize(POOL_TYPE_MDM, itemsize_mdm, poolsize_mdm);
 	diagmem_setsize(POOL_TYPE_MDM2, itemsize_mdm, poolsize_mdm);
+	diagmem_setsize(POOL_TYPE_MDM3, itemsize_mdm, poolsize_mdm);
 	diagmem_setsize(POOL_TYPE_MDM_DCI, itemsize_mdm_dci, poolsize_mdm_dci);
 	diagmem_setsize(POOL_TYPE_MDM2_DCI, itemsize_mdm_dci,
 			poolsize_mdm_dci);
+	diagmem_setsize(POOL_TYPE_MDM3_DCI, itemsize_mdm_dci,
+                        poolsize_mdm_dci);
 	diagmem_setsize(POOL_TYPE_MDM_MUX, itemsize_mdm_usb, poolsize_mdm_usb);
 	diagmem_setsize(POOL_TYPE_MDM2_MUX, itemsize_mdm_usb, poolsize_mdm_usb);
+	diagmem_setsize(POOL_TYPE_MDM3_MUX, itemsize_mdm_usb, poolsize_mdm_usb);
 	diagmem_setsize(POOL_TYPE_MDM_DCI_WRITE, itemsize_mdm_dci_write,
 			poolsize_mdm_dci_write);
 	diagmem_setsize(POOL_TYPE_MDM2_DCI_WRITE, itemsize_mdm_dci_write,
 			poolsize_mdm_dci_write);
+	diagmem_setsize(POOL_TYPE_MDM3_DCI_WRITE, itemsize_mdm_dci_write,
+                        poolsize_mdm_dci_write);
 	diagmem_setsize(POOL_TYPE_QSC_MUX, itemsize_qsc_usb,
 			poolsize_qsc_usb);
 	diag_md_mdm_init();

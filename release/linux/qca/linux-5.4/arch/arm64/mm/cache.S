@@ -286,8 +286,6 @@ ENDPIPROC(__dma_flush_area_no_dsb)
  *	- dir	- DMA direction
  */
 ENTRY(__dma_map_area)
-	cmp	w2, #DMA_FROM_DEVICE
-	b.eq	__dma_inv_area
 	b	__dma_clean_area
 ENDPIPROC(__dma_map_area)
 

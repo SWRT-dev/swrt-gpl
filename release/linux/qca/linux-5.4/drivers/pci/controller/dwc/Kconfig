@@ -6,6 +6,15 @@ menu "DesignWare PCI Core Support"
 config PCIE_DW
 	bool
 
+config PCIE_DW_DEBUGFS
+	bool "DWC PCIe debugfs entries"
+	default n
+	help
+	  Enables debugfs entries for the DWC PCIe Controller.
+	  These entries make use of the RAS DES features in the DW
+	  controller to help in debug, error injection and statistical
+	  counters
+
 config PCIE_DW_HOST
         bool
 	depends on PCI_MSI_IRQ_DOMAIN

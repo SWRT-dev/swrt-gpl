@@ -86,6 +86,7 @@ static const struct bond_opt_value bond_mode_tbl[] = {
 	{ "802.3ad",       BOND_MODE_8023AD,       0},
 	{ "balance-tlb",   BOND_MODE_TLB,          0},
 	{ "balance-alb",   BOND_MODE_ALB,          0},
+	{ "mode mlo",      BOND_MODE_MLO,          0},
 	{ NULL,            -1,                     0},
 };
 
@@ -1452,7 +1453,7 @@ static int bond_option_ad_actor_system_set(struct bonding *bond,
 		mac = (u8 *)&newval->value;
 	}
 
-	if (!is_valid_ether_addr(mac))
+	if (is_multicast_ether_addr(mac))
 		goto err;
 
 	netdev_dbg(bond->dev, "Setting ad_actor_system to %pM\n", mac);

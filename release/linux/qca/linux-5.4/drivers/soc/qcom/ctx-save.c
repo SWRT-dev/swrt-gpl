@@ -201,7 +201,7 @@ static int mini_dump_open(struct inode *inode, struct file *file) {
 
 		if (cur_node->va != INVALID) {
 			segment = (struct dump_segment *)
-				kmalloc(sizeof(struct dump_segment), GFP_KERNEL);
+				kmalloc(sizeof(struct dump_segment), GFP_ATOMIC);
 			if (!segment) {
 				pr_err("\nMinidump: Unable to allocate memory for dump segment");
 				return -ENOMEM;
@@ -766,7 +766,7 @@ int minidump_traverse_metadata_list(const char *name, const unsigned long
 			minidump_meta_info.cur_modinfo_offset = cur_node->modinfo_offset;
 #ifdef CONFIG_QCA_MINIDUMP_DEBUG
 		if (name != NULL) {
-			cur_node->name = kstrndup(name, strlen(name), GFP_KERNEL);
+			cur_node->name = kstrndup(name, strlen(name), GFP_ATOMIC);
 		}
 #endif
 		} else {
@@ -777,7 +777,7 @@ int minidump_traverse_metadata_list(const char *name, const unsigned long
 				*/
 				cur_node->modinfo_offset = minidump_meta_info.cur_modinfo_offset;
 #ifdef CONFIG_QCA_MINIDUMP_DEBUG
-				cur_node->name = kstrndup(name, strlen(name), GFP_KERNEL);
+				cur_node->name = kstrndup(name, strlen(name), GFP_ATOMIC);
 #endif
 			}
 		}
@@ -1572,6 +1572,45 @@ const struct ctx_save_props ctx_save_props_ipq5018 = {
 				(3 * SZ_1K) + (457 * SZ_1K) + (12 * SZ_1K)),
 };
 
+const struct ctx_save_props ctx_save_props_ipq5332 = {
+	.tlv_msg_offset = (500 * SZ_1K),
+
+	/* 300K for TME-L Crashdump
+	 * 8K for regsave
+	 * 192K is unused currently and can be used based on future needs.
+	 * 12K is used for crashdump TLV buffer for Minidump feature.
+	 *
+	 * get_order function returns the next higher order as output,
+	 * so when we pass 320K as argument 512K will be allocated.
+	 *
+	 * The memory is allocated using alloc_pages, hence it will be in
+	 * power of 2. The unused memory is the result of using alloc_pages.
+	 * As we need contigous memory for > 256K we have to use alloc_pages.
+	 *
+	 *              -----------------
+	 *              |           	|
+	 *              |      300K	|
+	 *              |    TMEL ctxt  |
+	 *              |               |
+	 *              -----------------
+	 *              |     8K        |
+	 *              |    regsave    |
+	 *              |               |
+	 *              -----------------
+	 *              |               |
+	 *              |     192K      |
+	 *              |    Unused     |
+	 *              |               |
+	 *              -----------------
+	 *              |     12 K      |
+	 *              |   TLV Buffer  |
+	 *		 ---------------
+	 *
+	 */
+	.crashdump_page_size = ((300 * SZ_1K) + (8 * SZ_1K) + (192 * SZ_1K) +
+				(12 * SZ_1K)),
+};
+
 const struct ctx_save_props ctx_save_props_ipq6018 = {
 	.tlv_msg_offset = (244 * SZ_1K),
 	/* As XBL overwrites the NSS UTCM, TZ has to copy it to some memory
@@ -1721,6 +1760,10 @@ static const struct of_device_id ctx_save_of_table[] = {
 	{
 		.compatible = "qti,ctxt-save-ipq5018",
 		.data = (void *)&ctx_save_props_ipq5018,
+	},
+	{
+		.compatible = "qti,ctxt-save-ipq5332",
+		.data = (void *)&ctx_save_props_ipq5332,
 	},
 	{
 		.compatible = "qti,ctxt-save-ipq6018",

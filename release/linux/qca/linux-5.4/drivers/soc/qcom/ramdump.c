@@ -27,7 +27,7 @@
 #include <soc/qcom/ramdump.h>
 #include <linux/dma-mapping.h>
 
-#define RAMDUMP_WAIT_MSECS	120000
+#define RAMDUMP_WAIT_MSECS	600000
 #define MAX_DEVICE 5
 
 struct ramdump_device {
@@ -46,7 +46,7 @@ struct ramdump_device {
 	char *elfcore_buf;
 };
 
-DEFINE_SPINLOCK(g_dump_class_lock);
+DEFINE_MUTEX(g_dump_class_lock);
 static struct class *dump_class;
 static int dump_major;
 static int g_class_refcnt;
@@ -131,7 +131,7 @@ static int ramdump_release(struct inode *inode, struct file *filep)
 	rd_dev->data_ready = 0;
 	unset_g_rd_dev(rd_dev, rd_dev->index);
 	device_destroy(dump_class, MKDEV(dump_major, dump_minor));
-	spin_lock(&g_dump_class_lock);
+	mutex_lock(&g_dump_class_lock);
 
 	g_class_refcnt--;
 	if (!g_class_refcnt) {
@@ -141,7 +141,7 @@ static int ramdump_release(struct inode *inode, struct file *filep)
 		dump_major = 0;
 	}
 
-	spin_unlock(&g_dump_class_lock);
+	mutex_unlock(&g_dump_class_lock);
 	complete(&rd_dev->ramdump_complete);
 	return 0;
 }
@@ -355,7 +355,7 @@ int create_ramdump_device_file(void *handle)
 		return -EINVAL;
 	}
 
-	spin_lock(&g_dump_class_lock);
+	mutex_lock(&g_dump_class_lock);
 	if (!dump_class) {
 		/* Create once and reuse */
 		dump_major = register_chrdev(UNNAMED_MAJOR, "dump_q6v5",
@@ -363,7 +363,7 @@ int create_ramdump_device_file(void *handle)
 		if (dump_major < 0) {
 			pr_err("Unable to allocate a major number err = %d",
 					dump_major);
-			spin_unlock(&g_dump_class_lock);
+			mutex_unlock(&g_dump_class_lock);
 			return dump_major;
 		}
 
@@ -373,11 +373,11 @@ int create_ramdump_device_file(void *handle)
 			ret = PTR_ERR(dump_class);
 			unregister_chrdev(dump_major, "dump_q6v5");
 			dump_major = 0;
-			spin_unlock(&g_dump_class_lock);
+			mutex_unlock(&g_dump_class_lock);
 			goto class_failed;
 		}
 	}
-	spin_unlock(&g_dump_class_lock);
+	mutex_unlock(&g_dump_class_lock);
 
 	dump_dev = device_create(dump_class, NULL,
 				 MKDEV(dump_major, rd_dev->index), rd_dev,
@@ -388,21 +388,21 @@ int create_ramdump_device_file(void *handle)
 		goto device_failed;
 	}
 
-	spin_lock(&g_dump_class_lock);
+	mutex_lock(&g_dump_class_lock);
 	g_class_refcnt++;
-	spin_unlock(&g_dump_class_lock);
+	mutex_unlock(&g_dump_class_lock);
 
 	return ret;
 
 device_failed:
-	spin_lock(&g_dump_class_lock);
+	mutex_lock(&g_dump_class_lock);
 	if (!g_class_refcnt) {
 		class_destroy(dump_class);
 		dump_class = NULL;
 		unregister_chrdev(dump_major, "dump_q6v5");
 		dump_major = 0;
 	}
-	spin_unlock(&g_dump_class_lock);
+	mutex_unlock(&g_dump_class_lock);
 class_failed:
 	return ret;
 }
@@ -445,7 +445,11 @@ static int _do_ramdump(void *handle, struct ramdump_segment *segments,
 
 		memcpy(ehdr->e_ident, ELFMAG, SELFMAG);
 		ehdr->e_ident[EI_CLASS] = ELFCLASS32;
+#ifdef CONFIG_CPU_BIG_ENDIAN
+		ehdr->e_ident[EI_DATA] = ELFDATA2MSB;
+#else
 		ehdr->e_ident[EI_DATA] = ELFDATA2LSB;
+#endif
 		ehdr->e_ident[EI_VERSION] = EV_CURRENT;
 		ehdr->e_ident[EI_OSABI] = ELFOSABI_NONE;
 		ehdr->e_type = ET_CORE;

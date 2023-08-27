@@ -896,7 +896,8 @@ void ath6kl_cfg80211_disconnect_event(struct ath6kl_vif *vif, u8 reason,
 					GFP_KERNEL);
 	} else if (vif->sme_state == SME_CONNECTED) {
 		cfg80211_disconnected(vif->ndev, proto_reason,
-				      NULL, 0, false, GFP_KERNEL);
+				      NULL, 0, false,
+				      NL80211_MLO_INVALID_LINK_ID, GFP_KERNEL);
 	}
 
 	vif->sme_state = SME_DISCONNECTED;
@@ -3486,7 +3487,8 @@ void ath6kl_cfg80211_stop(struct ath6kl_vif *vif)
 					GFP_KERNEL);
 		break;
 	case SME_CONNECTED:
-		cfg80211_disconnected(vif->ndev, 0, NULL, 0, true, GFP_KERNEL);
+		cfg80211_disconnected(vif->ndev, 0, NULL, 0, true,
+				      NL80211_MLO_INVALID_LINK_ID, GFP_KERNEL);
 		break;
 	}
 

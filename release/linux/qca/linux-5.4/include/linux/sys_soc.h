@@ -13,6 +13,8 @@ struct soc_device_attribute {
 	const char *family;
 	const char *revision;
 	const char *serial_number;
+	const char *oem_id;
+	const char *prod_id;
 	const char *soc_id;
 	const void *data;
 };

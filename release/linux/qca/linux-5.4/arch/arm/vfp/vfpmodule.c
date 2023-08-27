@@ -176,8 +176,11 @@ static int vfp_notifier(struct notifier_block *self, unsigned long cmd, void *v)
 		 * case the thread migrates to a different CPU. The
 		 * restoring is done lazily.
 		 */
-		if ((fpexc & FPEXC_EN) && vfp_current_hw_state[cpu])
+		if ((fpexc & FPEXC_EN) && vfp_current_hw_state[cpu]) {
+			/* vfp_save_state oopses on VFP11 if EX bit set */
+			fmxr(FPEXC, fpexc & ~FPEXC_EX);
 			vfp_save_state(vfp_current_hw_state[cpu], fpexc);
+		}
 #endif
 
 		/*
@@ -454,6 +457,8 @@ static int vfp_pm_suspend(void)
 	/* if vfp is on, then save state for resumption */
 	if (fpexc & FPEXC_EN) {
 		pr_debug("%s: saving vfp state\n", __func__);
+		/* vfp_save_state oopses on VFP11 if EX bit set */
+		fmxr(FPEXC, fpexc & ~FPEXC_EX);
 		vfp_save_state(&ti->vfpstate, fpexc);
 
 		/* disable, just in case */
@@ -461,6 +466,8 @@ static int vfp_pm_suspend(void)
 	} else if (vfp_current_hw_state[ti->cpu]) {
 #ifndef CONFIG_SMP
 		fmxr(FPEXC, fpexc | FPEXC_EN);
+		/* vfp_save_state oopses on VFP11 if EX bit set */
+		fmxr(FPEXC, fpexc & ~FPEXC_EX);
 		vfp_save_state(vfp_current_hw_state[ti->cpu], fpexc);
 		fmxr(FPEXC, fpexc);
 #endif
@@ -524,6 +531,8 @@ void vfp_sync_hwstate(struct thread_info *thread)
 		 * Save the last VFP state on this CPU.
 		 */
 		fmxr(FPEXC, fpexc | FPEXC_EN);
+		/* vfp_save_state oopses on VFP11 if EX bit set */
+		fmxr(FPEXC, (fpexc & ~FPEXC_EX) | FPEXC_EN);
 		vfp_save_state(&thread->vfpstate, fpexc | FPEXC_EN);
 		fmxr(FPEXC, fpexc);
 	}
@@ -732,11 +741,17 @@ void kernel_neon_begin(void)
 	 * Save the userland NEON/VFP state. Under UP,
 	 * the owner could be a task other than 'current'
 	 */
-	if (vfp_state_in_hw(cpu, thread))
+	if (vfp_state_in_hw(cpu, thread)) {
+		/* vfp_save_state oopses on VFP11 if EX bit set */
+		fmxr(FPEXC, fpexc & ~FPEXC_EX);
 		vfp_save_state(&thread->vfpstate, fpexc);
+	}
 #ifndef CONFIG_SMP
-	else if (vfp_current_hw_state[cpu] != NULL)
+	else if (vfp_current_hw_state[cpu] != NULL) {
+		/* vfp_save_state oopses on VFP11 if EX bit set */
+		fmxr(FPEXC, fpexc & ~FPEXC_EX);
 		vfp_save_state(vfp_current_hw_state[cpu], fpexc);
+	}
 #endif
 	vfp_current_hw_state[cpu] = NULL;
 }

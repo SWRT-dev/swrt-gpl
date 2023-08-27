@@ -85,6 +85,14 @@ struct diag_mempool_t diag_mempools[NUM_MEMORY_POOLS] = {
 		.count = 0
 	},
 	{
+                .id = POOL_TYPE_MDM3,
+                .name = "POOL_MDM3",
+                .pool = NULL,
+                .itemsize = 0,
+                .poolsize = 0,
+                .count = 0
+        },
+	{
 		.id = POOL_TYPE_MDM_DCI,
 		.name = "POOL_MDM_DCI",
 		.pool = NULL,
@@ -100,6 +108,14 @@ struct diag_mempool_t diag_mempools[NUM_MEMORY_POOLS] = {
 		.poolsize = 0,
 		.count = 0
 	},
+	{
+                .id = POOL_TYPE_MDM3_DCI,
+                .name = "POOL_MDM3_DCI",
+                .pool = NULL,
+                .itemsize = 0,
+                .poolsize = 0,
+                .count = 0
+        },
 	{
 		.id = POOL_TYPE_MDM_MUX,
 		.name = "POOL_MDM_MUX",
@@ -117,6 +133,14 @@ struct diag_mempool_t diag_mempools[NUM_MEMORY_POOLS] = {
 		.count = 0
 	},
 	{
+                .id = POOL_TYPE_MDM3_MUX,
+                .name = "POOL_MDM3_MUX",
+                .pool = NULL,
+                .itemsize = 0,
+                .poolsize = 0,
+                .count = 0
+        },
+	{
 		.id = POOL_TYPE_MDM_DCI_WRITE,
 		.name = "POOL_MDM_DCI_WRITE",
 		.pool = NULL,
@@ -132,6 +156,14 @@ struct diag_mempool_t diag_mempools[NUM_MEMORY_POOLS] = {
 		.poolsize = 0,
 		.count = 0
 	},
+	{
+                .id = POOL_TYPE_MDM3_DCI_WRITE,
+                .name = "POOL_MDM3_DCI_WRITE",
+                .pool = NULL,
+                .itemsize = 0,
+                .poolsize = 0,
+                .count = 0
+        },
 	{
 		.id = POOL_TYPE_QSC_MUX,
 		.name = "POOL_QSC_MUX",

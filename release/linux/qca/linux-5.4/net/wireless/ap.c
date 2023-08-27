@@ -8,10 +8,13 @@
 
 
 int __cfg80211_stop_ap(struct cfg80211_registered_device *rdev,
-		       struct net_device *dev, bool notify)
+		       struct net_device *dev, bool notify,
+		       struct genl_info *info)
 {
 	struct wireless_dev *wdev = dev->ieee80211_ptr;
 	int err;
+	struct cfg80211_ap_settings params = {0};
+
 
 	ASSERT_WDEV_LOCK(wdev);
 
@@ -25,7 +28,11 @@ int __cfg80211_stop_ap(struct cfg80211_registered_device *rdev,
 	if (!wdev->beacon_interval)
 		return -ENOENT;
 
-	err = rdev_stop_ap(rdev, dev);
+	if (info)
+		params.mlo_info.reconfig =
+			nla_get_flag(info->attrs[NL80211_ATTR_RECONFIG]);
+
+	err = rdev_stop_ap(rdev, dev, &params);
 	if (!err) {
 		wdev->conn_owner_nlportid = 0;
 		wdev->beacon_interval = 0;
@@ -47,14 +54,16 @@ int __cfg80211_stop_ap(struct cfg80211_registered_device *rdev,
 }
 
 int cfg80211_stop_ap(struct cfg80211_registered_device *rdev,
-		     struct net_device *dev, bool notify)
+		     struct net_device *dev, bool notify,
+		     struct genl_info *info)
 {
 	struct wireless_dev *wdev = dev->ieee80211_ptr;
 	int err;
 
 	wdev_lock(wdev);
-	err = __cfg80211_stop_ap(rdev, dev, notify);
+	err = __cfg80211_stop_ap(rdev, dev, notify, info);
 	wdev_unlock(wdev);
 
 	return err;
 }
+

@@ -724,6 +724,8 @@ static struct clk_branch gcc_sleep_clk_src = {
 };
 
 static const struct freq_tbl ftbl_blsp1_qup_i2c_apps_clk_src[] = {
+	F(7680000, P_XO, 2.5, 0, 0),
+	F(9600000, P_XO, 2, 0, 0),
 	F(19200000, P_XO, 1, 0, 0),
 	F(25000000, P_GPLL0_DIV2, 16, 0, 0),
 	F(50000000, P_GPLL0, 16, 0, 0),
@@ -1132,7 +1134,7 @@ static struct clk_rcg2 sdcc1_apps_clk_src = {
 		.name = "sdcc1_apps_clk_src",
 		.parent_names = gcc_xo_gpll0_gpll2_gpll0_out_main_div2,
 		.num_parents = 4,
-		.ops = &clk_rcg2_ops,
+		.ops = &clk_rcg2_floor_ops,
 	},
 };
 
@@ -1594,6 +1596,7 @@ static const struct freq_tbl ftbl_nss_port1_rx_clk_src[] = {
 	F(19200000, P_XO, 1, 0, 0),
 	F(25000000, P_UNIPHY0_RX, 5, 0, 0),
 	F(125000000, P_UNIPHY0_RX, 1, 0, 0),
+	F(312500000, P_UNIPHY0_RX, 1, 0, 0),
 	{ }
 };
 
@@ -1631,6 +1634,7 @@ static const struct freq_tbl ftbl_nss_port1_tx_clk_src[] = {
 	F(19200000, P_XO, 1, 0, 0),
 	F(25000000, P_UNIPHY0_TX, 5, 0, 0),
 	F(125000000, P_UNIPHY0_TX, 1, 0, 0),
+	F(312500000, P_UNIPHY0_TX, 1, 0, 0),
 	{ }
 };
 

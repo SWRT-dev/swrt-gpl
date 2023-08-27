@@ -805,6 +805,7 @@ struct net_device *br_port_dev_get(struct net_device *dev, unsigned char *addr,
 	struct net_bridge_fdb_entry *fdbe;
 	struct net_bridge *br;
 	struct net_device *netdev = NULL;
+	u16 __maybe_unused vid;
 
 	/* Is this a bridge? */
 	if (!(dev->priv_flags & IFF_EBRIDGE))
@@ -833,14 +834,20 @@ struct net_device *br_port_dev_get(struct net_device *dev, unsigned char *addr,
 	 * determine the port to use - fall back to using FDB
 	 */
 
+#if IS_ENABLED(CONFIG_BRIDGE_VLAN_FILTERING)
+	/* Lookup the fdb entry and get reference to the port dev.
+	 * dev_hold() is done as part of br_fdb_find_vid_by_mac()
+	 */
+	netdev = br_fdb_find_vid_by_mac(dev, addr, &vid);
+#else
 	br = netdev_priv(dev);
-
-	/* Lookup the fdb entry and get reference to the port dev */
 	fdbe = br_fdb_find_rcu(br, addr, 0);
 	if (fdbe && fdbe->dst) {
 		netdev = fdbe->dst->dev; /* port device */
 		dev_hold(netdev);
 	}
+#endif
+
 out:
 	rcu_read_unlock();
 	return netdev;
@@ -859,14 +866,16 @@ void br_dev_update_stats(struct net_device *dev,
 		return;
 
 	br = netdev_priv(dev);
-	stats = per_cpu_ptr(br->stats, 0);
+	stats = this_cpu_ptr(br->stats);
 
+	local_bh_disable();
 	u64_stats_update_begin(&stats->syncp);
 	stats->rx_packets += nlstats->rx_packets;
 	stats->rx_bytes += nlstats->rx_bytes;
 	stats->tx_packets += nlstats->tx_packets;
 	stats->tx_bytes += nlstats->tx_bytes;
 	u64_stats_update_end(&stats->syncp);
+	local_bh_enable();
 }
 EXPORT_SYMBOL_GPL(br_dev_update_stats);
 

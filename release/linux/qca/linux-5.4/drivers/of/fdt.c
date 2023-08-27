@@ -1120,6 +1120,20 @@ void __init __weak early_init_dt_add_memory_arch(u64 base, u64 size)
 		size -= PAGE_SIZE - (base & ~PAGE_MASK);
 		base = PAGE_ALIGN(base);
 	}
+
+
+#ifndef CONFIG_PHYS_ADDR_T_64BIT
+	if (base + size > ULONG_MAX) {
+		pr_crit("Truncating memory at 0x%08llx to fit in 32-bit physical address space\n",
+				(long long)base);
+		/*
+		 * To ensure bank->start + bank->size is representable in
+		 * 32 bits, we use ULONG_MAX as the upper limit rather than 4GB.
+		 * This means we lose a page after masking.
+		 */
+		size = ULONG_MAX - base;
+	}
+#endif
 	size &= PAGE_MASK;
 
 	if (base > MAX_MEMBLOCK_ADDR) {

@@ -77,6 +77,7 @@ struct tsens_ops {
 	int (*get_trend)(struct tsens_priv *priv, int i, enum thermal_trend *trend);
 	int (*set_trip_temp)(void *, int, int);
 	int (*set_trip_activate)(void *, int, enum thermal_trip_activation_mode);
+	int (*set_temp_trips)(void *, int, int);
 };
 
 #define REG_FIELD_FOR_EACH_SENSOR11(_name, _offset, _startbit, _stopbit) \

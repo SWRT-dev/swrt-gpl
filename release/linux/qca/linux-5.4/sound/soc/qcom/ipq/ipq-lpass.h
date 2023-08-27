@@ -3321,6 +3321,9 @@ typedef enum {
 #define TDM_MODE_SLAVE			0
 #define TDM_MODE_MASTER			1
 
+#define LPAIF_MASTER_MODE_MUXSEL	0
+#define LPAIF_SLAVE_MODE_MUXSEL		1
+
 enum
 {
 	TDM_DIR_INVALID = -1,
@@ -3357,6 +3360,14 @@ enum
 	TDM_CTRL_DATA_OE_ENABLE = 1,
 };
 
+enum
+{
+	NO_INVERSION,
+	INVERT_INT_CLK,
+	INVERT_EXT_CLK,
+	INVERT_INT_EXT_CLK,
+};
+
 typedef enum {
 	SRC_HB_INT_CXO = 0,
 	SRC_HB_INT_EMPTY_1,
@@ -3371,6 +3382,8 @@ struct lpass_res{
 	struct reset_control *reset;
 	struct clk *axi_core_clk;
 	struct clk *sway_clk;
+	struct clk *snoc_cfg_clk;
+	struct clk *pcnoc_clk;
 	struct clk *axi_snoc_clk;
 	struct clk *sway_snoc_clk;
 };
@@ -3442,6 +3455,8 @@ struct ipq_lpass_pcm_config
 	uint32_t bit_width;
 	uint32_t slot_count;
 	uint32_t sync_type;
+	uint32_t dir;
+	uint32_t pcm_index;
 	uint32_t sync_delay;
 	uint32_t slot_width;
 	uint32_t slot_mask;
@@ -3490,7 +3505,8 @@ void ipq_lpass_dma_read_interrupt_status(void __iomem *lpaif_base,
 void ipq_lpass_dma_reset(void __iomem *lpaif_base,
 				uint32_t dma_idx, uint32_t dma_dir);
 uint32_t ipq_lpass_set_clk_rate(uint32_t intf, uint32_t clk);
-void ipq_lpass_lpaif_muxsetup(uint32_t intf, uint32_t mode);
+void ipq_lpass_lpaif_muxsetup(uint32_t intf, uint32_t mode,
+						uint32_t val, uint32_t src);
 void ipq_lpass_dma_get_curr_addr(void __iomem *lpaif_base,
 					uint32_t dma_idx,uint32_t dma_dir,
 					uint32_t *curr_addr);

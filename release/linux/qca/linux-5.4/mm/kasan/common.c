@@ -61,6 +61,7 @@ static inline unsigned int filter_irq_stacks(unsigned long *entries,
 	return nr_entries;
 }
 
+#ifdef CONFIG_STACKDEPOT
 static inline depot_stack_handle_t save_stack(gfp_t flags)
 {
 	unsigned long entries[KASAN_STACK_DEPTH];
@@ -70,11 +71,14 @@ static inline depot_stack_handle_t save_stack(gfp_t flags)
 	nr_entries = filter_irq_stacks(entries, nr_entries);
 	return stack_depot_save(entries, nr_entries, flags);
 }
+#endif
 
 static inline void set_track(struct kasan_track *track, gfp_t flags)
 {
 	track->pid = current->pid;
+#ifdef CONFIG_STACKDEPOT
 	track->stack = save_stack(flags);
+#endif
 }
 
 void kasan_enable_current(void)

@@ -21,6 +21,7 @@ struct qseecom_props {
 	const int function;
 	bool libraries_inbuilt;
 	bool logging_support_enabled;
+	bool aes_v2;
 };
 
 const struct qseecom_props qseecom_props_ipq807x = {
@@ -29,12 +30,14 @@ const struct qseecom_props qseecom_props_ipq807x = {
 					FUSE_WRITE),
 	.libraries_inbuilt = false,
 	.logging_support_enabled = true,
+	.aes_v2 = false,
 };
 
 const struct qseecom_props qseecom_props_ipq6018 = {
 	.function = (MUL | CRYPTO | AES_SEC_KEY | RSA_SEC_KEY),
 	.libraries_inbuilt = false,
 	.logging_support_enabled = true,
+	.aes_v2 = false,
 };
 
 const struct qseecom_props qseecom_props_ipq5018 = {
@@ -42,12 +45,16 @@ const struct qseecom_props qseecom_props_ipq5018 = {
 					FUSE | MISC | RSA_TZAPP | FUSE_WRITE),
 	.libraries_inbuilt = false,
 	.logging_support_enabled = true,
+	.aes_v2 = false,
 };
 
 const struct qseecom_props qseecom_props_ipq9574 = {
-	.function = (MUL | CRYPTO | AES_SEC_KEY | RSA_SEC_KEY),
+	.function = (MUL | CRYPTO | AES_SEC_KEY | RSA_SEC_KEY | LOG_BITMASK |
+					FUSE | MISC | AES_TZAPP | RSA_TZAPP |
+					FUSE_WRITE),
 	.libraries_inbuilt = false,
 	.logging_support_enabled = true,
+	.aes_v2 = true,
 };
 
 static const struct of_device_id qseecom_of_table[] = {
@@ -144,9 +151,9 @@ show_qsee_app_log_buf(struct device *dev, struct device_attribute *attr,
 		if (g_qsee_log->log_pos.wrap != 0) {
 			memcpy(buf, g_qsee_log->log_buf +
 			      g_qsee_log->log_pos.offset, QSEE_LOG_BUF_SIZE -
-			      g_qsee_log->log_pos.offset - 64);
+			      g_qsee_log->log_pos.offset - 4);
 			count = QSEE_LOG_BUF_SIZE -
-				g_qsee_log->log_pos.offset - 64;
+				g_qsee_log->log_pos.offset - 4;
 			memcpy(buf + count, g_qsee_log->log_buf,
 			      g_qsee_log->log_pos.offset);
 			count = count + g_qsee_log->log_pos.offset;
@@ -163,6 +170,107 @@ show_qsee_app_log_buf(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
+/*
+ * store_aes_derive_key()
+ * Function to store aes derive key
+ */
+static ssize_t
+store_aes_derive_key(struct device *dev, struct device_attribute *attr,
+	 const char *buf, size_t count)
+{
+	unsigned long long val;
+
+	if (kstrtoull(buf, 10, &val))
+		return -EINVAL;
+
+	*key_handle = val;
+	if (*key_handle == INVALID_AES_KEY_HANDLE_VAL) {
+		pr_info("Invalid aes key handle: %lu\n",
+			(unsigned long)*key_handle);
+		return -EINVAL;
+	}
+
+	return count;
+}
+
+/*
+ * show_aes_derive_key()
+ * Function to derive aes_key and get key_handle
+ */
+static ssize_t show_aes_derive_key(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	int rc = 0, i = 0;
+	struct qti_storage_service_derive_key_cmd_t *req_ptr;
+	size_t req_size = 0;
+	size_t dma_buf_size = 0;
+	dma_addr_t dma_req_addr = 0;
+	const char *message = NULL;
+	int message_len = 0;
+
+	if (!source_data || !context_data_len || !bindings_data) {
+		pr_info("Provide the required src data, bindings data and context data before encrypt/decrypt\n");
+		return -EINVAL;
+	}
+
+	dev = qdev;
+
+	req_size = sizeof(struct qti_storage_service_derive_key_cmd_t);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	req_ptr = (struct qti_storage_service_derive_key_cmd_t *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_req_addr, GFP_KERNEL);
+	if (!req_ptr)
+		return -ENOMEM;
+
+	req_ptr->policy.key_type = DEFAULT_KEY_TYPE;
+	req_ptr->policy.destination = DEFAULT_POLICY_DESTINATION;
+	req_ptr->hw_key_bindings.bindings = bindings_data;
+	req_ptr->source = source_data;
+	req_ptr->key = (u64) dma_key_handle;
+	req_ptr->mixing_key = 0;
+
+	for (i = 0; i < MAX_CONTEXT_BUFFER_LEN; i++)
+		req_ptr->hw_key_bindings.context[i] = context_data[i];
+	req_ptr->hw_key_bindings.context_len = context_data_len;
+
+	rc = qti_scm_aes(dma_req_addr, req_size, QTI_CMD_AES_DERIVE_KEY);
+	if (rc == KEY_HANDLE_OUT_OF_SLOT)
+		pr_info("Key handle out of slot. Clear a key and try again!\n");
+	if (!rc) {
+		message = "AES Key derive successful\n\0";
+	} else {
+		pr_err("SCM call failed..return value = %d\n", rc);
+		message = "AES Key derive failed\n\0";
+	}
+
+	pr_info("key_handle is: %lu\n", (unsigned long)*key_handle);
+
+	message_len = strlen(message) + 1;
+	memcpy(buf, message, message_len);
+
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+	return message_len;
+}
+
+static ssize_t store_aes_clear_key(struct device *dev, struct device_attribute *attr, const char* buf, size_t count)
+{
+	int rc = 0;
+	uint32_t key_handle;
+
+	if (kstrtouint(buf, 10, &key_handle))
+		return -EINVAL;
+
+	rc = qti_scm_aes_clear_key_handle(key_handle, QTI_CMD_AES_CLEAR_KEY);
+
+	if (!rc)
+		pr_info("AES key = %u cleared successfully\n",key_handle);
+	else
+		pr_info("AES key clear failed\n");
+
+	return count;
+}
+
 static ssize_t
 generate_key_blob(struct device *dev, struct device_attribute *attr, char *buf)
 {
@@ -171,13 +279,9 @@ generate_key_blob(struct device *dev, struct device_attribute *attr, char *buf)
 	struct qti_storage_service_gen_key_resp_t *resp_ptr = NULL;
 	size_t req_size = 0;
 	size_t resp_size = 0;
-	size_t req_order = 0;
-	size_t resp_order = 0;
+	size_t dma_buf_size = 0;
 	dma_addr_t dma_req_addr = 0;
 	dma_addr_t dma_resp_addr = 0;
-	dma_addr_t dma_key_blob = 0;
-	struct page *req_page = NULL;
-	struct page *resp_page = NULL;
 
 	key_blob = memset(key_blob, 0, KEY_BLOB_SIZE);
 	key_blob_len = 0;
@@ -185,63 +289,29 @@ generate_key_blob(struct device *dev, struct device_attribute *attr, char *buf)
 	dev = qdev;
 
 	req_size = sizeof(struct qti_storage_service_gen_key_cmd_t);
-	req_order = get_order(req_size);
-	req_page = alloc_pages(GFP_KERNEL, req_order);
-
-	if (req_page)
-		req_ptr = page_address(req_page);
-	else
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	req_ptr = (struct qti_storage_service_gen_key_cmd_t *)
+			dma_alloc_coherent(dev, dma_buf_size,
+			&dma_req_addr, GFP_KERNEL);
+	if (!req_ptr)
 		return -ENOMEM;
 
 	resp_size = sizeof(struct qti_storage_service_gen_key_resp_t);
-	resp_order = get_order(resp_size);
-	resp_page = alloc_pages(GFP_KERNEL, resp_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	resp_ptr = (struct qti_storage_service_gen_key_resp_t *)
+			dma_alloc_coherent(dev, dma_buf_size,
+			&dma_resp_addr, GFP_KERNEL);
 
-	if (resp_page) {
-		resp_ptr = page_address(resp_page);
-	} else {
-		pr_err("Cannot allocate memory for key material\n");
-		free_pages((unsigned long)req_ptr, req_order);
+	if (!resp_ptr)
 		return -ENOMEM;
-	}
-
-	dma_key_blob = dma_map_single(dev, key_blob, KEY_BLOB_SIZE,
-				     DMA_FROM_DEVICE);
-	rc = dma_mapping_error(dev, dma_key_blob);
-	if (rc) {
-		pr_err("DMA Mapping Error(key blob)\n");
-		goto err_end;
-	}
-
 
 	req_ptr->key_blob.key_material = (u64)dma_key_blob;
 	req_ptr->cmd_id = QTI_STOR_SVC_GENERATE_KEY;
 	req_ptr->key_blob.key_material_len = KEY_BLOB_SIZE;
-	dma_req_addr = dma_map_single(dev, req_ptr, req_size, DMA_TO_DEVICE);
-
-	rc = dma_mapping_error(dev, dma_req_addr);
-
-	if (rc) {
-		pr_err("DMA Mapping Error(request str)\n");
-		goto err_map_req;
-	}
-
-	dma_resp_addr = dma_map_single(dev, resp_ptr, resp_size,
-				      DMA_FROM_DEVICE);
-	rc = dma_mapping_error(dev, dma_resp_addr);
-	if (rc) {
-		pr_err("DMA Mapping Error(response str)\n");
-		goto err_map_resp;
-	}
 
 	rc = qti_scm_tls_hardening(dma_req_addr, req_size,
 				   dma_resp_addr, resp_size,
 				   CLIENT_CMD_CRYPTO_AES_64);
-
-	dma_unmap_single(dev, dma_resp_addr, resp_size, DMA_FROM_DEVICE);
-	dma_unmap_single(dev, dma_req_addr, req_size, DMA_TO_DEVICE);
-	dma_unmap_single(dev, dma_key_blob, KEY_BLOB_SIZE, DMA_FROM_DEVICE);
-
 	if (rc) {
 		pr_err("SCM Call failed..SCM Call return value = %d\n", rc);
 		goto err_end;
@@ -258,21 +328,20 @@ generate_key_blob(struct device *dev, struct device_attribute *attr, char *buf)
 
 	goto end;
 
-err_map_resp:
-	dma_unmap_single(dev, dma_req_addr, req_size, DMA_TO_DEVICE);
-
-err_map_req:
-	dma_unmap_single(dev, dma_key_blob, KEY_BLOB_SIZE, DMA_FROM_DEVICE);
-
 err_end:
-	free_pages((unsigned long)page_address(req_page), req_order);
-	free_pages((unsigned long)page_address(resp_page), resp_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
 
+	dma_buf_size = PAGE_SIZE * (1 << get_order(resp_size));
+	dma_free_coherent(dev, PAGE_SIZE, resp_ptr, dma_resp_addr);
 	return rc;
 
 end:
-	free_pages((unsigned long)page_address(req_page), req_order);
-	free_pages((unsigned long)page_address(resp_page), resp_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(resp_size));
+	dma_free_coherent(dev, PAGE_SIZE, resp_ptr, dma_resp_addr);
 
 	return key_blob_len;
 }
@@ -305,14 +374,9 @@ import_key_blob(struct device *dev, struct device_attribute *attr, char *buf)
 	struct qti_storage_service_gen_key_resp_t *resp_ptr = NULL;
 	size_t req_size = 0;
 	size_t resp_size = 0;
-	size_t req_order = 0;
-	size_t resp_order = 0;
+	size_t dma_buf_size = 0;
 	dma_addr_t dma_req_addr = 0;
 	dma_addr_t dma_resp_addr = 0;
-	dma_addr_t dma_key_blob = 0;
-	dma_addr_t dma_key = 0;
-	struct page *req_page = NULL;
-	struct page *resp_page = NULL;
 
 	key_blob = memset(key_blob, 0, KEY_BLOB_SIZE);
 	key_blob_len = 0;
@@ -324,42 +388,22 @@ import_key_blob(struct device *dev, struct device_attribute *attr, char *buf)
 
 	dev = qdev;
 
-	req_size = sizeof(struct qti_storage_service_import_key_cmd_t);
-	req_order = get_order(req_size);
-	req_page = alloc_pages(GFP_KERNEL, req_order);
+        req_size = sizeof(struct qti_storage_service_import_key_cmd_t);
+        dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+        req_ptr = (struct qti_storage_service_import_key_cmd_t *)
+                        dma_alloc_coherent(dev, dma_buf_size,
+                        &dma_req_addr, GFP_KERNEL);
+        if (!req_ptr)
+                return -ENOMEM;
 
-	if (req_page)
-		req_ptr = page_address(req_page);
-	else
-		return -ENOMEM;
+        resp_size = sizeof(struct qti_storage_service_gen_key_resp_t);
+        dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+        resp_ptr = (struct qti_storage_service_gen_key_resp_t *)
+                        dma_alloc_coherent(dev, dma_buf_size,
+                        &dma_resp_addr, GFP_KERNEL);
 
-	resp_size = sizeof(struct qti_storage_service_gen_key_resp_t);
-	resp_order = get_order(resp_size);
-	resp_page = alloc_pages(GFP_KERNEL, resp_order);
-
-	if (resp_page) {
-		resp_ptr = page_address(resp_page);
-	} else {
-		pr_err("Cannot allocate memory for key material\n");
-		free_pages((unsigned long)req_ptr, req_order);
-		return -ENOMEM;
-	}
-
-	dma_key = dma_map_single(dev, key, KEY_SIZE, DMA_TO_DEVICE);
-	rc = dma_mapping_error(dev, dma_key);
-	if (rc) {
-		pr_err("DMA Mapping error(key)\n");
-		goto err_end;
-	}
-
-	dma_key_blob = dma_map_single(dev, key_blob, KEY_BLOB_SIZE,
-				     DMA_FROM_DEVICE);
-	rc = dma_mapping_error(dev, dma_key_blob);
-	if (rc) {
-		pr_err("DMA Mapping Error(key blob)\n");
-		goto err_map_key_blob;
-	}
-
+        if (!resp_ptr)
+                return -ENOMEM;
 
 	req_ptr->input_key = (u64)dma_key;
 	req_ptr->key_blob.key_material = (u64)dma_key_blob;
@@ -367,30 +411,9 @@ import_key_blob(struct device *dev, struct device_attribute *attr, char *buf)
 	req_ptr->input_key_len = KEY_SIZE;
 	req_ptr->key_blob.key_material_len = KEY_BLOB_SIZE;
 
-	dma_req_addr = dma_map_single(dev, req_ptr, req_size, DMA_TO_DEVICE);
-
-	rc = dma_mapping_error(dev, dma_req_addr);
-	if (rc) {
-		pr_err("DMA Mapping Error(request str)\n");
-		goto err_map_req;
-	}
-	dma_resp_addr = dma_map_single(dev, resp_ptr, resp_size,
-				      DMA_FROM_DEVICE);
-	rc = dma_mapping_error(dev, dma_resp_addr);
-	if (rc) {
-		pr_err("DMA Mapping Error(response str)\n");
-		goto err_map_resp;
-	}
-
 	rc = qti_scm_tls_hardening(dma_req_addr, req_size,
 				   dma_resp_addr, resp_size,
 				   CLIENT_CMD_CRYPTO_AES_64);
-
-	dma_unmap_single(dev, dma_resp_addr, resp_size, DMA_FROM_DEVICE);
-	dma_unmap_single(dev, dma_req_addr, req_size, DMA_TO_DEVICE);
-	dma_unmap_single(dev, dma_key_blob, KEY_BLOB_SIZE, DMA_FROM_DEVICE);
-	dma_unmap_single(dev, dma_key, KEY_SIZE, DMA_TO_DEVICE);
-
 	if (rc) {
 		pr_err("SCM Call failed..SCM Call return value = %d\n", rc);
 		goto err_end;
@@ -407,24 +430,20 @@ import_key_blob(struct device *dev, struct device_attribute *attr, char *buf)
 
 	goto end;
 
-err_map_resp:
-	dma_unmap_single(dev, dma_req_addr, req_size, DMA_TO_DEVICE);
-
-err_map_req:
-	dma_unmap_single(dev, dma_key_blob, KEY_BLOB_SIZE, DMA_FROM_DEVICE);
-
-err_map_key_blob:
-	dma_unmap_single(dev, dma_key, KEY_SIZE, DMA_TO_DEVICE);
-
 err_end:
-	free_pages((unsigned long)page_address(req_page), req_order);
-	free_pages((unsigned long)page_address(resp_page), resp_order);
+        dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
 
+        dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, resp_ptr, dma_resp_addr);
 	return rc;
 
 end:
-	free_pages((unsigned long)page_address(req_page), req_order);
-	free_pages((unsigned long)page_address(resp_page), resp_order);
+        dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+        dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, resp_ptr, dma_resp_addr);
 
 	return key_blob_len;
 }
@@ -507,7 +526,6 @@ store_decrypted_data(struct device *dev, struct device_attribute *attr,
 		pr_info("could not allocate ivdata\n");
 		return -EINVAL;
 	}
-	get_random_bytes((void *)ivdata, AES_BLOCK_SIZE);
 
 	memcpy(unsealed_buf, buf, decrypted_len);
 	return count;
@@ -535,6 +553,180 @@ store_iv_data(struct device *dev, struct device_attribute *attr,
 	}
 
 	memcpy(ivdata, buf, ivdata_len);
+	return count;
+}
+
+/*
+ * store_source_data()
+ * Function to provide source which is required for derive key
+ */
+static ssize_t
+store_source_data(struct device *dev, struct device_attribute *attr,
+                        const char *buf, size_t count)
+{
+	if ((count - 1) == 0) {
+		pr_err("Input cannot be NULL!\n");
+		return -EINVAL;
+	}
+
+	if (kstrtouint(buf, 10, (unsigned int *)&source_data) || source_data > (U32_MAX / 10)) {
+		pr_err("Please enter a valid unsigned integer less than %u\n",
+			(U32_MAX / 10));
+		return -EINVAL;
+	}
+	pr_debug("source_data = %lu\n", (unsigned long)source_data);
+
+	return count;
+}
+
+/*
+ * store_bindings_data()
+ * Function to provide bindings bit mask which is required for derive key
+ */
+static ssize_t
+store_bindings_data(struct device *dev, struct device_attribute *attr,
+                        const char *buf, size_t count)
+{
+	if ((count - 1) == 0) {
+		pr_err("Input cannot be NULL!\n");
+		return -EINVAL;
+	}
+
+	if (kstrtouint(buf, 10, (unsigned int *)&bindings_data) || bindings_data > (U32_MAX / 10)) {
+		pr_err("Please enter a valid unsigned integer less than %u\n",
+			(U32_MAX / 10));
+		return -EINVAL;
+	}
+	pr_debug("bindings_data = %lu\n", (unsigned long)bindings_data);
+
+	return count;
+}
+
+/*
+ * store_context_data()
+ * Function provide context(salt) to be mixed which is required for derive key
+ */
+static ssize_t
+store_context_data(struct device *dev, struct device_attribute *attr,
+                        const char *buf, size_t count)
+{
+	int i = 0;
+	int num_bytes = (count - 1) / 2 ;
+
+	for (i = 0; i < MAX_CONTEXT_BUFFER_LEN; i++)
+		context_data[i] = 0;
+
+	if((count - 1) % 2 != 0) {
+		pr_info("Input data should be in terms of bytes, which " \
+			"will have even number of digits\n");
+		pr_info("Context data length is %lu bytes\n",
+			(unsigned long)count-1);
+		context_data_len = 0;
+		return -EINVAL;
+	}
+
+	context_data_len = num_bytes;
+
+	if (count > ((MAX_CONTEXT_BUFFER_LEN * 2) + 1)) {
+		pr_info("Invalid input\n");
+		pr_info("Context data length is %lu bytes\n",
+		       (unsigned long)count);
+		pr_info("Context data length must be less than 64 bytes\n");
+		context_data_len = 0;
+		return -EINVAL;
+	}
+
+	for (i = 0; i < num_bytes; i++) {
+		sscanf(buf, "%2hhx", &context_data[i]);
+		buf += 2;
+	}
+
+	pr_debug("context_data is :\n");
+	for (i = 0; i < num_bytes; i++)
+		pr_debug("0x%02x\n", (unsigned int)context_data[i]);
+
+	return count;
+}
+
+/*
+ * store_source_data()
+ * Function to provide source which is required for derive key (in QTIAPP)
+ */
+static ssize_t
+store_source_data_qtiapp(struct device *dev, struct device_attribute *attr,
+                        const char *buf, size_t count)
+{
+	if ((count - 1) == 0) {
+		pr_err("Input cannot be NULL!\n");
+		return -EINVAL;
+	}
+
+	if (kstrtouint(buf, 10, (unsigned int *)&aes_source_data)
+			|| aes_source_data > (U32_MAX / 10)) {
+		pr_err("Please enter a valid unsigned integer less than %u\n",
+			(U32_MAX / 10));
+		return -EINVAL;
+	}
+	pr_debug("source_data = %lu\n", (unsigned long)aes_source_data);
+
+	return count;
+}
+
+/*
+ * store_bindings_data()
+ * Function to provide bindings bit mask which is required for derive key (in QTIAPP)
+ */
+static ssize_t
+store_bindings_data_qtiapp(struct device *dev, struct device_attribute *attr,
+                        const char *buf, size_t count)
+{
+	if ((count - 1) == 0) {
+		pr_err("Input cannot be NULL!\n");
+		return -EINVAL;
+	}
+
+	if (kstrtouint(buf, 10, (unsigned int *)&aes_bindings_data)
+			|| aes_bindings_data > (U32_MAX / 10)) {
+		pr_err("Please enter a valid unsigned integer less than %u\n",
+			(U32_MAX / 10));
+		return -EINVAL;
+	}
+	pr_debug("bindings_data = %lu\n", (unsigned long)aes_bindings_data);
+
+	return count;
+}
+
+/*
+ * store_context_data()
+ * Function provide context(salt) to be mixed which is required for derive key (in QTIAPP)
+ */
+static ssize_t
+store_context_data_qtiapp(struct device *dev, struct device_attribute *attr,
+                        const char *buf, size_t count)
+{
+	int i = 0;
+
+	for (i = 0; i < MAX_CONTEXT_BUFFER_LEN; i++)
+		aes_context_data[i] = 0;
+	aes_context_data_len = MAX_CONTEXT_BUFFER_LEN;
+
+	if (count > ((MAX_CONTEXT_BUFFER_LEN * 2) + 1)) {
+		pr_info("Invalid input\n");
+		pr_info("Context data length is %lu bytes\n",
+		       (unsigned long)count);
+		pr_info("Context data length must be less than 64 bytes\n");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < MAX_CONTEXT_BUFFER_LEN; i++) {
+		sscanf(buf, "%2hhx", &aes_context_data[i]);
+		buf += 2;
+	}
+
+	pr_debug("context_data is :\n");
+	for (i = 0; i < MAX_CONTEXT_BUFFER_LEN; i++)
+		pr_debug("0x%02x\n", (unsigned int)aes_context_data[i]);
+
 	return count;
 }
 
@@ -617,7 +809,6 @@ store_aes_decrypted_data_qtiapp(struct device *dev, struct device_attribute *att
 		pr_info("could not allocate ivdata\n");
 		return -EINVAL;
 	}
-	get_random_bytes((void *)aes_ivdata, AES_BLOCK_SIZE);
 
 	aes_unsealed_buf = memset(aes_unsealed_buf, 0, MAX_PLAIN_DATA_SIZE);
 	aes_decrypted_len = count;
@@ -646,7 +837,80 @@ store_aes_encrypted_data_qtiapp(struct device *dev, struct device_attribute *att
 	return count;
 }
 
+static ssize_t
+show_aes_v2_encrypted_data(struct device *dev, struct device_attribute *attr,
+			char *buf)
+{
+	int rc = 0;
+	struct qti_crypto_service_encrypt_data_cmd_t_v2 *req_ptr = NULL;
+	uint64_t req_size = 0;
+	size_t dma_buf_size = 0;
+	uint64_t output_len = 0;
+	dma_addr_t dma_req_addr = 0;
 
+	sealed_buf = memset(sealed_buf, 0, MAX_ENCRYPTED_DATA_SIZE);
+	output_len = decrypted_len;
+
+	if (decrypted_len <= 0 || decrypted_len % AES_BLOCK_SIZE) {
+		pr_err("Invalid input %lld\n", decrypted_len);
+		pr_info("Input data length for encryption should be multiple"
+			" of AES block size(16)\n");
+		return -EINVAL;
+	}
+	if (!key_handle) {
+		pr_info("Derive the required key handle before encrypt/decrypt\n");
+		return -EINVAL;
+	}
+
+	dev = qdev;
+
+	req_size = sizeof(struct qti_crypto_service_encrypt_data_cmd_t_v2);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	req_ptr = (struct qti_crypto_service_encrypt_data_cmd_t_v2 *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_req_addr, GFP_KERNEL);
+	if (!req_ptr)
+		return -ENOMEM;
+
+	req_ptr->key_handle = (unsigned long)*key_handle;
+	pr_info("key_handle is: %lu\n", (unsigned long)req_ptr->key_handle);
+	req_ptr->v1.type = type;
+	req_ptr->v1.mode = mode;
+	req_ptr->v1.iv = (req_ptr->v1.mode == 0 ? 0 : (u64)dma_iv_data);
+	req_ptr->v1.iv_len = AES_BLOCK_SIZE;
+	req_ptr->v1.plain_data = (u64)dma_unsealed_data;
+	req_ptr->v1.output_buffer = (u64)dma_sealed_data;
+	req_ptr->v1.plain_data_len = decrypted_len;
+	req_ptr->v1.output_len = output_len;
+
+	/* dma_resp_addr and resp_size required are passed in req str itself */
+	rc = qti_scm_aes(dma_req_addr, req_size,
+			CLIENT_CMD_CRYPTO_AES_ENCRYPT);
+	if (rc) {
+		pr_err("Response status failure..return value = %d\n", rc);
+		goto err_end;
+	}
+
+	if (mode == QTI_CRYPTO_SERVICE_AES_MODE_CBC && ivdata)
+		print_hex_dump(KERN_INFO, "IV data(CBC): ", DUMP_PREFIX_NONE, 16, 1,
+				ivdata, AES_BLOCK_SIZE, false);
+	else
+		pr_info("IV data(ECB): NULL\n");
+
+	memcpy(buf, sealed_buf, req_ptr->v1.output_len);
+	encrypted_len = req_ptr->v1.output_len;
+
+goto end;
+err_end:
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	return rc;
+
+end:
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	return encrypted_len;
+}
 
 static ssize_t
 show_encrypted_data(struct device *dev, struct device_attribute *attr,
@@ -655,13 +919,14 @@ show_encrypted_data(struct device *dev, struct device_attribute *attr,
 	int rc = 0;
 	struct qti_crypto_service_encrypt_data_cmd_t *req_ptr = NULL;
 	uint64_t req_size = 0;
-	size_t req_order = 0;
+	size_t dma_buf_size = 0;
 	uint64_t output_len = 0;
 	dma_addr_t dma_req_addr = 0;
-	dma_addr_t dma_plain_data = 0;
-	dma_addr_t dma_output_data = 0;
-	dma_addr_t dma_iv_data = 0;
-	struct page *req_page = NULL;
+
+	if (props->aes_v2) {
+		rc = show_aes_v2_encrypted_data(dev, attr, buf);
+		return rc;
+	}
 
 	sealed_buf = memset(sealed_buf, 0, MAX_ENCRYPTED_DATA_SIZE);
 	output_len = decrypted_len;
@@ -676,64 +941,25 @@ show_encrypted_data(struct device *dev, struct device_attribute *attr,
 	dev = qdev;
 
 	req_size = sizeof(struct qti_crypto_service_encrypt_data_cmd_t);
-	req_order = get_order(req_size);
-	req_page = alloc_pages(GFP_KERNEL, req_order);
-
-	if (req_page)
-		req_ptr = page_address(req_page);
-	else
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	req_ptr = (struct qti_crypto_service_encrypt_data_cmd_t *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_req_addr, GFP_KERNEL);
+	if (!req_ptr)
 		return -ENOMEM;
-
-	dma_plain_data = dma_map_single(dev, unsealed_buf, decrypted_len,
-				       DMA_TO_DEVICE);
-	rc = dma_mapping_error(dev, dma_plain_data);
-	if (rc) {
-		pr_err("DMA Mapping Error(plain data)\n");
-		goto err_end;
-	}
-
-	dma_output_data = dma_map_single(dev, sealed_buf, output_len,
-					DMA_FROM_DEVICE);
-	rc = dma_mapping_error(dev, dma_output_data);
-	if (rc) {
-		pr_err("DMA Mapping Error(output data)\n");
-		goto err_map_output_data;
-	}
-
-	dma_iv_data = dma_map_single(dev, ivdata, AES_BLOCK_SIZE,
-					DMA_TO_DEVICE);
-	rc = dma_mapping_error(dev, dma_iv_data);
-	if (rc) {
-		pr_err("DMA Mapping Error(output data)\n");
-		goto err_map_iv_data;
-	}
 
 	req_ptr->type = type;
 	req_ptr->mode = mode;
 	req_ptr->iv = (req_ptr->mode == 0 ? 0 : (u64)dma_iv_data);
 	req_ptr->iv_len = AES_BLOCK_SIZE;
-	req_ptr->plain_data = (u64)dma_plain_data;
-	req_ptr->output_buffer = (u64)dma_output_data;
+	req_ptr->plain_data = (u64)dma_unsealed_data;
+	req_ptr->output_buffer = (u64)dma_sealed_data;
 	req_ptr->plain_data_len = decrypted_len;
 	req_ptr->output_len = output_len;
 
-	dma_req_addr = dma_map_single(dev, req_ptr, req_size, DMA_TO_DEVICE);
-
-	rc = dma_mapping_error(dev, dma_req_addr);
-	if (rc) {
-		pr_err("DMA Mapping Error(request str)\n");
-		goto err_map_req;
-	}
-
 	/* dma_resp_addr and resp_size required are passed in req str itself */
-	rc = qti_scm_aes(dma_req_addr, req_size, 0, 0,
+	rc = qti_scm_aes(dma_req_addr, req_size,
 			CLIENT_CMD_CRYPTO_AES_ENCRYPT);
-
-	dma_unmap_single(dev, dma_req_addr, req_size, DMA_TO_DEVICE);
-	dma_unmap_single(dev, dma_iv_data, AES_BLOCK_SIZE, DMA_TO_DEVICE);
-	dma_unmap_single(dev, dma_output_data, output_len, DMA_FROM_DEVICE);
-	dma_unmap_single(dev, dma_plain_data, decrypted_len, DMA_TO_DEVICE);
-
 	if (rc) {
 		pr_err("Response status failure..return value = %d\n", rc);
 		goto err_end;
@@ -750,22 +976,12 @@ show_encrypted_data(struct device *dev, struct device_attribute *attr,
 
 goto end;
 
-err_map_req:
-	dma_unmap_single(dev, dma_iv_data, AES_BLOCK_SIZE, DMA_TO_DEVICE);
-
-err_map_iv_data:
-	dma_unmap_single(dev, dma_output_data, output_len, DMA_FROM_DEVICE);
-
-err_map_output_data:
-	dma_unmap_single(dev, dma_plain_data, decrypted_len, DMA_TO_DEVICE);
-
 err_end:
-	free_pages((unsigned long)page_address(req_page), req_order);
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
 	return rc;
 
 end:
-	free_pages((unsigned long)page_address(req_page), req_order);
-
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
 	return encrypted_len;
 }
 
@@ -793,18 +1009,94 @@ store_encrypted_data(struct device *dev, struct device_attribute *attr,
 }
 
 static ssize_t
+show_aes_v2_decrypted_data(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int rc = 0;
+	struct qti_crypto_service_decrypt_data_cmd_t_v2 *req_ptr = NULL;
+	uint64_t req_size = 0;
+	size_t dma_buf_size = 0;
+	uint64_t output_len = 0;
+	dma_addr_t dma_req_addr = 0;
+
+	unsealed_buf = memset(unsealed_buf, 0, MAX_PLAIN_DATA_SIZE);
+	output_len = encrypted_len;
+
+	if (encrypted_len <= 0 || encrypted_len % AES_BLOCK_SIZE) {
+		pr_err("Invalid input %lld\n", encrypted_len);
+		pr_info("Encrypted data length for decryption should be multiple"
+			" of AES block size(16)\n");
+		return -EINVAL;
+	}
+	if (!type) {
+		pr_info("aes type needed for decryption\n");
+		return -EINVAL;
+	}
+	if (!key_handle) {
+		pr_info("Derive the required key handle before encrypt/decrypt\n");
+		return -EINVAL;
+	}
+
+	dev = qdev;
+
+	req_size = sizeof(struct qti_crypto_service_decrypt_data_cmd_t_v2);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	req_ptr = (struct qti_crypto_service_decrypt_data_cmd_t_v2 *)
+					dma_alloc_coherent(dev, dma_buf_size,
+						  &dma_req_addr, GFP_KERNEL);
+
+	if (!req_ptr)
+		return -ENOMEM;
+
+	req_ptr->key_handle = (unsigned long)*key_handle;
+	pr_info("key_handle is: %lu\n", (unsigned long)req_ptr->key_handle);
+	req_ptr->v1.type = type;
+	req_ptr->v1.mode = mode;
+	req_ptr->v1.encrypted_data = (u64)dma_sealed_data;
+	req_ptr->v1.output_buffer = (u64)dma_unsealed_data;
+	req_ptr->v1.iv = (req_ptr->v1.mode == 0 ? 0 : (u64)dma_iv_data);
+	req_ptr->v1.iv_len = AES_BLOCK_SIZE;
+	req_ptr->v1.encrypted_dlen = encrypted_len;
+	req_ptr->v1.output_len = output_len;
+
+	/* dma_resp_addr and resp_size required are passed in req str itself */
+	rc = qti_scm_aes(dma_req_addr, req_size,
+			CLIENT_CMD_CRYPTO_AES_DECRYPT);
+
+	if (rc) {
+		pr_err("Response status failure..return value = %d\n", rc);
+		goto err_end;
+	}
+
+	decrypted_len = req_ptr->v1.output_len;
+	memcpy(buf, unsealed_buf, decrypted_len);
+
+goto end;
+
+err_end:
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	return rc;
+
+end:
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	return decrypted_len;
+}
+
+static ssize_t
 show_decrypted_data(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	int rc = 0;
 	struct qti_crypto_service_decrypt_data_cmd_t *req_ptr = NULL;
 	uint64_t req_size = 0;
-	size_t req_order = 0;
+	size_t dma_buf_size = 0;
 	uint64_t output_len = 0;
 	dma_addr_t dma_req_addr = 0;
-	dma_addr_t dma_sealed_data = 0;
-	dma_addr_t dma_output_data = 0;
-	dma_addr_t dma_iv_data = 0;
-	struct page *req_page = NULL;
+
+	if (props->aes_v2) {
+		rc = show_aes_v2_decrypted_data(dev, attr, buf);
+		return rc;
+	}
 
 	unsealed_buf = memset(unsealed_buf, 0, MAX_PLAIN_DATA_SIZE);
 	output_len = encrypted_len;
@@ -819,64 +1111,25 @@ show_decrypted_data(struct device *dev, struct device_attribute *attr, char *buf
 	dev = qdev;
 
 	req_size = sizeof(struct qti_crypto_service_decrypt_data_cmd_t);
-	req_order = get_order(req_size);
-	req_page = alloc_pages(GFP_KERNEL, req_order);
-
-	if (req_page)
-		req_ptr = page_address(req_page);
-	else
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	req_ptr = (struct qti_crypto_service_decrypt_data_cmd_t *)
+			dma_alloc_coherent(dev, dma_buf_size,
+			&dma_req_addr, GFP_KERNEL);
+	if (!req_ptr)
 		return -ENOMEM;
-
-	dma_sealed_data = dma_map_single(dev, sealed_buf, encrypted_len,
-					DMA_TO_DEVICE);
-	rc = dma_mapping_error(dev, dma_sealed_data);
-	if (rc) {
-		pr_err("DMA Mapping Error(sealed data)\n");
-		goto err_end;
-	}
-
-	dma_output_data = dma_map_single(dev, unsealed_buf, output_len,
-					DMA_FROM_DEVICE);
-	rc = dma_mapping_error(dev, dma_output_data);
-	if (rc) {
-		pr_err("DMA Mapping Error(output data)\n");
-		goto err_map_output_data;
-	}
-
-	dma_iv_data = dma_map_single(dev, ivdata, AES_BLOCK_SIZE,
-					DMA_TO_DEVICE);
-	rc = dma_mapping_error(dev, dma_iv_data);
-	if (rc) {
-		pr_err("DMA Mapping Error(output data)\n");
-		goto err_map_iv_data;
-	}
 
 	req_ptr->type = type;
 	req_ptr->mode = mode;
 	req_ptr->encrypted_data = (u64)dma_sealed_data;
-	req_ptr->output_buffer = (u64)dma_output_data;
+	req_ptr->output_buffer = (u64)dma_unsealed_data;
 	req_ptr->iv = (req_ptr->mode == 0 ? 0 : (u64)dma_iv_data);
 	req_ptr->iv_len = AES_BLOCK_SIZE;
 	req_ptr->encrypted_dlen = encrypted_len;
 	req_ptr->output_len = output_len;
 
-	dma_req_addr = dma_map_single(dev, req_ptr, req_size, DMA_TO_DEVICE);
-
-	rc = dma_mapping_error(dev, dma_req_addr);
-	if (rc) {
-		pr_err("DMA Mapping Error(request str)\n");
-		goto err_map_req;
-	}
-
 	/* dma_resp_addr and resp_size required are passed in req str itself */
-	rc = qti_scm_aes(dma_req_addr, req_size, 0, 0,
+	rc = qti_scm_aes(dma_req_addr, req_size,
 			CLIENT_CMD_CRYPTO_AES_DECRYPT);
-
-	dma_unmap_single(dev, dma_output_data, output_len, DMA_FROM_DEVICE);
-	dma_unmap_single(dev, dma_sealed_data, encrypted_len, DMA_TO_DEVICE);
-	dma_unmap_single(dev, dma_iv_data, AES_BLOCK_SIZE, DMA_TO_DEVICE);
-	dma_unmap_single(dev, dma_req_addr, req_size, DMA_TO_DEVICE);
-
 	if (rc) {
 		pr_err("Response status failure..return value = %d\n", rc);
 		goto err_end;
@@ -887,22 +1140,13 @@ show_decrypted_data(struct device *dev, struct device_attribute *attr, char *buf
 
 goto end;
 
-err_map_req:
-	dma_unmap_single(dev, dma_iv_data, AES_BLOCK_SIZE, DMA_TO_DEVICE);
-
-err_map_iv_data:
-	dma_unmap_single(dev, dma_output_data, output_len, DMA_FROM_DEVICE);
-
-err_map_output_data:
-	dma_unmap_single(dev, dma_sealed_data, encrypted_len, DMA_TO_DEVICE);
-
 err_end:
-	free_pages((unsigned long)page_address(req_page), req_order);
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
 
 	return rc;
 
 end:
-	free_pages((unsigned long)page_address(req_page), req_order);
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
 
 	return decrypted_len;
 }
@@ -937,16 +1181,10 @@ show_sealed_data(struct device *dev, struct device_attribute *attr, char *buf)
 	struct qti_storage_service_seal_data_resp_t *resp_ptr = NULL;
 	size_t req_size = 0;
 	size_t resp_size = 0;
-	size_t req_order = 0;
-	size_t resp_order = 0;
+	size_t dma_buf_size = 0;
 	size_t output_len = 0;
 	dma_addr_t dma_req_addr = 0;
 	dma_addr_t dma_resp_addr = 0;
-	dma_addr_t dma_key_blob = 0;
-	dma_addr_t dma_plain_data = 0;
-	dma_addr_t dma_output_data = 0;
-	struct page *req_page = NULL;
-	struct page *resp_page = NULL;
 
 	sealed_buf = memset(sealed_buf, 0, MAX_ENCRYPTED_DATA_SIZE);
 	output_len = unseal_len + ENCRYPTED_DATA_HEADER;
@@ -960,84 +1198,33 @@ show_sealed_data(struct device *dev, struct device_attribute *attr, char *buf)
 	dev = qdev;
 
 	req_size = sizeof(struct qti_storage_service_seal_data_cmd_t);
-	req_order = get_order(req_size);
-	req_page = alloc_pages(GFP_KERNEL, req_order);
-
-	if (req_page)
-		req_ptr = page_address(req_page);
-	else
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	req_ptr = (struct qti_storage_service_seal_data_cmd_t *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_req_addr, GFP_KERNEL);
+	if (!req_ptr)
 		return -ENOMEM;
 
 	resp_size = sizeof(struct qti_storage_service_seal_data_resp_t);
-	resp_order = get_order(resp_size);
-	resp_page = alloc_pages(GFP_KERNEL, resp_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	resp_ptr = (struct qti_storage_service_seal_data_resp_t *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_resp_addr, GFP_KERNEL);
 
-	if (resp_page) {
-		resp_ptr = page_address(resp_page);
-	} else {
-		pr_err("Cannot allocate memory for key material\n");
-		free_pages((unsigned long)req_ptr, req_order);
+	if (!resp_ptr)
 		return -ENOMEM;
-	}
-
-	dma_key_blob = dma_map_single(dev, key_blob, KEY_BLOB_SIZE,
-				     DMA_TO_DEVICE);
-	rc = dma_mapping_error(dev, dma_key_blob);
-	if (rc) {
-		pr_err("DMA Mapping Error(key blob)\n");
-		goto err_end;
-	}
-
-	dma_plain_data = dma_map_single(dev, unsealed_buf, unseal_len,
-				       DMA_TO_DEVICE);
-	rc = dma_mapping_error(dev, dma_plain_data);
-	if (rc) {
-		pr_err("DMA Mapping Error(plain data)\n");
-		goto err_map_plain_data;
-	}
-
-	dma_output_data = dma_map_single(dev, sealed_buf, output_len,
-					DMA_FROM_DEVICE);
-	rc = dma_mapping_error(dev, dma_output_data);
-	if (rc) {
-		pr_err("DMA Mapping Error(output data)\n");
-		goto err_map_output_data;
-	}
 
 	req_ptr->key_blob.key_material = (u64)dma_key_blob;
-	req_ptr->plain_data = (u64)dma_plain_data;
-	req_ptr->output_buffer = (u64)dma_output_data;
+	req_ptr->plain_data = (u64)dma_unsealed_data;
+	req_ptr->output_buffer = (u64)dma_sealed_data;
 	req_ptr->cmd_id = QTI_STOR_SVC_SEAL_DATA;
 	req_ptr->key_blob.key_material_len = KEY_BLOB_SIZE;
 	req_ptr->plain_data_len = unseal_len;
 	req_ptr->output_len = output_len;
 
-	dma_req_addr = dma_map_single(dev, req_ptr, req_size, DMA_TO_DEVICE);
-
-	rc = dma_mapping_error(dev, dma_req_addr);
-	if (rc) {
-		pr_err("DMA Mapping Error(request str)\n");
-		goto err_map_req;
-	}
-
-	dma_resp_addr = dma_map_single(dev, resp_ptr, resp_size,
-				      DMA_FROM_DEVICE);
-	rc = dma_mapping_error(dev, dma_resp_addr);
-	if (rc) {
-		pr_err("DMA Mapping Error(response str)\n");
-		goto err_map_resp;
-	}
-
 	rc = qti_scm_tls_hardening(dma_req_addr, req_size,
 				   dma_resp_addr, resp_size,
 				   CLIENT_CMD_CRYPTO_AES_64);
-
-	dma_unmap_single(dev, dma_resp_addr, resp_size, DMA_FROM_DEVICE);
-	dma_unmap_single(dev, dma_req_addr, req_size, DMA_TO_DEVICE);
-	dma_unmap_single(dev, dma_output_data, output_len, DMA_FROM_DEVICE);
-	dma_unmap_single(dev, dma_plain_data, unseal_len, DMA_TO_DEVICE);
-	dma_unmap_single(dev, dma_key_blob, KEY_BLOB_SIZE, DMA_TO_DEVICE);
-
 	if (rc) {
 		pr_err("SCM Call failed..SCM Call return value = %d\n", rc);
 		goto err_end;
@@ -1054,27 +1241,20 @@ show_sealed_data(struct device *dev, struct device_attribute *attr, char *buf)
 
 	goto end;
 
-err_map_resp:
-	dma_unmap_single(dev, dma_req_addr, req_size, DMA_TO_DEVICE);
-
-err_map_req:
-	dma_unmap_single(dev, dma_output_data, output_len, DMA_FROM_DEVICE);
-
-err_map_output_data:
-	dma_unmap_single(dev, dma_plain_data, unseal_len, DMA_TO_DEVICE);
-
-err_map_plain_data:
-	dma_unmap_single(dev, dma_key_blob, KEY_BLOB_SIZE, DMA_TO_DEVICE);
-
 err_end:
-	free_pages((unsigned long)page_address(req_page), req_order);
-	free_pages((unsigned long)page_address(resp_page), resp_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
 
+	dma_buf_size = PAGE_SIZE * (1 << get_order(resp_size));
+	dma_free_coherent(dev, PAGE_SIZE, resp_ptr, dma_resp_addr);
 	return rc;
 
 end:
-	free_pages((unsigned long)page_address(req_page), req_order);
-	free_pages((unsigned long)page_address(resp_page), resp_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(resp_size));
+	dma_free_coherent(dev, PAGE_SIZE, resp_ptr, dma_resp_addr);
 
 	return seal_len;
 }
@@ -1109,16 +1289,10 @@ show_unsealed_data(struct device *dev, struct device_attribute *attr, char *buf)
 	struct qti_storage_service_unseal_data_resp_t *resp_ptr = NULL;
 	size_t req_size = 0;
 	size_t resp_size = 0;
-	size_t req_order = 0;
-	size_t resp_order = 0;
 	size_t output_len = 0;
+	size_t dma_buf_size = 0;
 	dma_addr_t dma_req_addr = 0;
 	dma_addr_t dma_resp_addr = 0;
-	dma_addr_t dma_key_blob = 0;
-	dma_addr_t dma_sealed_data = 0;
-	dma_addr_t dma_output_data = 0;
-	struct page *req_page = NULL;
-	struct page *resp_page = NULL;
 
 	unsealed_buf = memset(unsealed_buf, 0, MAX_PLAIN_DATA_SIZE);
 	output_len = seal_len - ENCRYPTED_DATA_HEADER;
@@ -1132,84 +1306,32 @@ show_unsealed_data(struct device *dev, struct device_attribute *attr, char *buf)
 	dev = qdev;
 
 	req_size = sizeof(struct qti_storage_service_unseal_data_cmd_t);
-	req_order = get_order(req_size);
-	req_page = alloc_pages(GFP_KERNEL, req_order);
-
-	if (req_page)
-		req_ptr = page_address(req_page);
-	else
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	req_ptr = (struct qti_storage_service_unseal_data_cmd_t *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_req_addr, GFP_KERNEL);
+	if (!req_ptr)
 		return -ENOMEM;
 
 	resp_size = sizeof(struct qti_storage_service_unseal_data_resp_t);
-	resp_order = get_order(resp_size);
-	resp_page = alloc_pages(GFP_KERNEL, resp_order);
-
-	if (resp_page) {
-		resp_ptr = page_address(resp_page);
-	} else {
-		pr_err("Cannot allocate memory for key material\n");
-		free_pages((unsigned long)req_ptr, req_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	resp_ptr = (struct qti_storage_service_unseal_data_resp_t *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_resp_addr, GFP_KERNEL);
+	if (!resp_ptr)
 		return -ENOMEM;
-	}
-
-	dma_key_blob = dma_map_single(dev, key_blob, KEY_BLOB_SIZE,
-				     DMA_TO_DEVICE);
-	rc = dma_mapping_error(dev, dma_key_blob);
-	if (rc) {
-		pr_err("DMA Mapping Error(key blob)\n");
-		goto err_end;
-	}
-
-	dma_sealed_data = dma_map_single(dev, sealed_buf, seal_len,
-					DMA_TO_DEVICE);
-	rc = dma_mapping_error(dev, dma_sealed_data);
-	if (rc) {
-		pr_err("DMA Mapping Error(sealed data)\n");
-		goto err_map_sealed_data;
-	}
-
-	dma_output_data = dma_map_single(dev, unsealed_buf, output_len,
-					DMA_FROM_DEVICE);
-	rc = dma_mapping_error(dev, dma_output_data);
-	if (rc) {
-		pr_err("DMA Mapping Error(output data)\n");
-		goto err_map_output_data;
-	}
 
 	req_ptr->key_blob.key_material = (u64)dma_key_blob;
 	req_ptr->sealed_data = (u64)dma_sealed_data;
-	req_ptr->output_buffer = (u64)dma_output_data;
+	req_ptr->output_buffer = (u64)dma_unsealed_data;
 	req_ptr->cmd_id = QTI_STOR_SVC_UNSEAL_DATA;
 	req_ptr->key_blob.key_material_len = KEY_BLOB_SIZE;
 	req_ptr->sealed_dlen = seal_len;
 	req_ptr->output_len = output_len;
 
-	dma_req_addr = dma_map_single(dev, req_ptr, req_size, DMA_TO_DEVICE);
-
-	rc = dma_mapping_error(dev, dma_req_addr);
-	if (rc) {
-		pr_err("DMA Mapping Error(request str)\n");
-		goto err_map_req;
-	}
-
-	dma_resp_addr = dma_map_single(dev, resp_ptr, resp_size,
-				      DMA_FROM_DEVICE);
-	rc = dma_mapping_error(dev, dma_resp_addr);
-	if (rc) {
-		pr_err("DMA Mapping Error(response str)\n");
-		goto err_map_resp;
-	}
-
 	rc = qti_scm_tls_hardening(dma_req_addr, req_size,
 				   dma_resp_addr, resp_size,
 				   CLIENT_CMD_CRYPTO_AES_64);
-
-	dma_unmap_single(dev, dma_resp_addr, resp_size, DMA_FROM_DEVICE);
-	dma_unmap_single(dev, dma_req_addr, req_size, DMA_TO_DEVICE);
-	dma_unmap_single(dev, dma_output_data, output_len, DMA_FROM_DEVICE);
-	dma_unmap_single(dev, dma_sealed_data, seal_len, DMA_TO_DEVICE);
-	dma_unmap_single(dev, dma_key_blob, KEY_BLOB_SIZE, DMA_TO_DEVICE);
-
 	if (rc) {
 		pr_err("SCM Call failed..SCM Call return value = %d\n", rc);
 		goto err_end;
@@ -1226,27 +1348,21 @@ show_unsealed_data(struct device *dev, struct device_attribute *attr, char *buf)
 
 	goto end;
 
-err_map_resp:
-	dma_unmap_single(dev, dma_req_addr, req_size, DMA_TO_DEVICE);
-
-err_map_req:
-	dma_unmap_single(dev, dma_output_data, output_len, DMA_FROM_DEVICE);
-
-err_map_output_data:
-	dma_unmap_single(dev, dma_sealed_data, seal_len, DMA_TO_DEVICE);
-
-err_map_sealed_data:
-	dma_unmap_single(dev, dma_key_blob, KEY_BLOB_SIZE, DMA_TO_DEVICE);
-
 err_end:
-	free_pages((unsigned long)page_address(req_page), req_order);
-	free_pages((unsigned long)page_address(resp_page), resp_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(resp_size));
+	dma_free_coherent(dev, PAGE_SIZE, resp_ptr, dma_resp_addr);
 
 	return rc;
 
 end:
-	free_pages((unsigned long)page_address(req_page), req_order);
-	free_pages((unsigned long)page_address(resp_page), resp_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(resp_size));
+	dma_free_coherent(dev, PAGE_SIZE, resp_ptr, dma_resp_addr);
 
 	return unseal_len;
 }
@@ -1260,13 +1376,9 @@ generate_rsa_key_blob(struct device *dev, struct device_attribute *attr,
 	struct qti_storage_service_rsa_gen_key_resp_t *resp_ptr = NULL;
 	size_t req_size = 0;
 	size_t resp_size = 0;
-	size_t req_order = 0;
-	size_t resp_order = 0;
+	size_t dma_buf_size = 0;
 	dma_addr_t dma_req_addr = 0;
 	dma_addr_t dma_resp_addr = 0;
-	dma_addr_t dma_key_blob = 0;
-	struct page *req_page = NULL;
-	struct page *resp_page = NULL;
 
 	rsa_key_blob = memset(rsa_key_blob, 0, RSA_KEY_BLOB_SIZE);
 	rsa_key_blob_len = 0;
@@ -1274,35 +1386,22 @@ generate_rsa_key_blob(struct device *dev, struct device_attribute *attr,
 	dev = qdev;
 
 	req_size = sizeof(struct qti_storage_service_rsa_gen_key_cmd_t);
-	req_order = get_order(req_size);
-	req_page = alloc_pages(GFP_KERNEL, req_order);
-
-	if (req_page) {
-		req_ptr = page_address(req_page);
-	} else
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	req_ptr = (struct qti_storage_service_rsa_gen_key_cmd_t *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_req_addr, GFP_KERNEL);
+	if (!req_ptr)
 		return -ENOMEM;
 
 	resp_size = sizeof(struct qti_storage_service_rsa_gen_key_resp_t);
-	resp_order = get_order(resp_size);
-	resp_page = alloc_pages(GFP_KERNEL, resp_order);
-
-	if (resp_page) {
-		resp_ptr = page_address(resp_page);
-	} else {
-		pr_err("Cannot allocate memory for key material\n");
-		free_pages((unsigned long)req_ptr, req_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	resp_ptr = (struct qti_storage_service_rsa_gen_key_resp_t *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_resp_addr, GFP_KERNEL);
+	if (!resp_ptr)
 		return -ENOMEM;
-	}
 
-	dma_key_blob = dma_map_single(dev, rsa_key_blob, RSA_KEY_BLOB_SIZE,
-				     DMA_FROM_DEVICE);
-	rc = dma_mapping_error(dev, dma_key_blob);
-	if (rc) {
-		pr_err("DMA Mapping Error(rsa key blob)\n");
-		goto err_end;
-	}
-
-	req_ptr->key_blob.key_material = (u64)dma_key_blob;
+	req_ptr->key_blob.key_material = (u64)dma_rsa_key_blob;
 	req_ptr->cmd_id = QTI_STOR_SVC_RSA_GENERATE_KEY;
 	req_ptr->rsa_params.modulus_size = RSA_MODULUS_LEN;
 	req_ptr->rsa_params.public_exponent = RSA_PUBLIC_EXPONENT;
@@ -1310,31 +1409,9 @@ generate_rsa_key_blob(struct device *dev, struct device_attribute *attr,
 			QTI_STOR_SVC_RSA_DIGEST_PAD_PKCS115_SHA2_256;
 	req_ptr->key_blob.key_material_len = RSA_KEY_BLOB_SIZE;
 
-	dma_req_addr = dma_map_single(dev, req_ptr, req_size, DMA_TO_DEVICE);
-
-	rc = dma_mapping_error(dev, dma_req_addr);
-	if (rc) {
-		pr_err("DMA Mapping Error(request str)\n");
-		goto err_map_req;
-	}
-
-	dma_resp_addr = dma_map_single(dev, resp_ptr, resp_size,
-				      DMA_FROM_DEVICE);
-	rc = dma_mapping_error(dev, dma_resp_addr);
-	if (rc) {
-		pr_err("DMA Mapping Error(response str)\n");
-		goto err_map_resp;
-	}
-
 	rc = qti_scm_tls_hardening(dma_req_addr, req_size,
 				   dma_resp_addr, resp_size,
 				   CLIENT_CMD_CRYPTO_RSA_64);
-
-	dma_unmap_single(dev, dma_resp_addr, resp_size, DMA_FROM_DEVICE);
-	dma_unmap_single(dev, dma_req_addr, req_size, DMA_TO_DEVICE);
-	dma_unmap_single(dev, dma_key_blob,
-			RSA_KEY_BLOB_SIZE, DMA_FROM_DEVICE);
-
 	if (rc) {
 		pr_err("SCM call failed..SCM Call return value = %d\n", rc);
 		goto err_end;
@@ -1351,22 +1428,21 @@ generate_rsa_key_blob(struct device *dev, struct device_attribute *attr,
 
 	goto end;
 
-err_map_resp:
-	dma_unmap_single(dev, dma_req_addr, req_size, DMA_TO_DEVICE);
-
-err_map_req:
-	dma_unmap_single(dev, dma_key_blob, RSA_KEY_BLOB_SIZE,
-			DMA_FROM_DEVICE);
-
 err_end:
-	free_pages((unsigned long)page_address(req_page), req_order);
-	free_pages((unsigned long)page_address(resp_page), resp_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(resp_size));
+	dma_free_coherent(dev, PAGE_SIZE, resp_ptr, dma_resp_addr);
 
 	return rc;
 
 end:
-	free_pages((unsigned long)page_address(req_page), req_order);
-	free_pages((unsigned long)page_address(resp_page), resp_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(resp_size));
+	dma_free_coherent(dev, PAGE_SIZE, resp_ptr, dma_resp_addr);
 
 	return rsa_key_blob_len;
 }
@@ -1445,13 +1521,9 @@ import_rsa_key_blob(struct device *dev, struct device_attribute *attr,
 	int rc = 0;
 	size_t req_size = 0;
 	size_t resp_size = 0;
-	size_t req_order = 0;
-	size_t resp_order = 0;
+	size_t dma_buf_size = 0;
 	dma_addr_t dma_req_addr = 0;
 	dma_addr_t dma_resp_addr = 0;
-	dma_addr_t dma_key_blob = 0;
-	struct page *req_page = NULL;
-	struct page *resp_page = NULL;
 
 	struct qti_storage_service_rsa_import_key_cmd_t *req_ptr = NULL;
 	struct qti_storage_service_rsa_import_key_resp_t *resp_ptr = NULL;
@@ -1477,35 +1549,22 @@ import_rsa_key_blob(struct device *dev, struct device_attribute *attr,
 	dev = qdev;
 
 	req_size = sizeof(struct qti_storage_service_rsa_import_key_cmd_t);
-	req_order = get_order(req_size);
-	req_page = alloc_pages(GFP_KERNEL, req_order);
-
-	if (req_page)
-		req_ptr = page_address(req_page);
-	else
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	req_ptr = (struct qti_storage_service_rsa_import_key_cmd_t *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_req_addr, GFP_KERNEL);
+	if (!req_ptr)
 		return -ENOMEM;
 
 	resp_size = sizeof(struct qti_storage_service_rsa_import_key_resp_t);
-	resp_order = get_order(resp_size);
-	resp_page = alloc_pages(GFP_KERNEL, resp_order);
-
-	if (resp_page) {
-		resp_ptr = page_address(resp_page);
-	} else {
-		pr_err("Cannot allocate memory for key material\n");
-		free_pages((unsigned long)req_ptr, req_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	resp_ptr = (struct qti_storage_service_rsa_import_key_resp_t *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_resp_addr, GFP_KERNEL);
+	if (!resp_ptr)
 		return -ENOMEM;
-	}
 
-	dma_key_blob = dma_map_single(dev, rsa_key_blob, RSA_KEY_BLOB_SIZE,
-				     DMA_FROM_DEVICE);
-	rc = dma_mapping_error(dev, dma_key_blob);
-	if (rc) {
-		pr_err("DMA Mapping Error(rsa key blob)\n");
-		goto err_end;
-	}
-
-	req_ptr->key_blob.key_material = (u64)dma_key_blob;
+	req_ptr->key_blob.key_material = (u64)dma_rsa_key_blob;
 	req_ptr->cmd_id = QTI_STOR_SVC_RSA_IMPORT_KEY;
 	memcpy(req_ptr->modulus, rsa_import_modulus, rsa_import_modulus_len);
 	req_ptr->modulus_len = rsa_import_modulus_len;
@@ -1518,32 +1577,9 @@ import_rsa_key_blob(struct device *dev, struct device_attribute *attr,
 	req_ptr->pvt_exponent_len = rsa_import_pvt_exponent_len;
 	req_ptr->key_blob.key_material_len = RSA_KEY_BLOB_SIZE;
 
-	dma_req_addr = dma_map_single(dev, req_ptr, req_size, DMA_TO_DEVICE);
-
-	rc = dma_mapping_error(dev, dma_req_addr);
-	if (rc) {
-		pr_err("DMA Mapping Error(request str)\n");
-		goto err_map_req;
-	}
-
-	dma_resp_addr = dma_map_single(dev, resp_ptr, resp_size,
-				      DMA_FROM_DEVICE);
-
-	rc = dma_mapping_error(dev, dma_resp_addr);
-	if (rc) {
-		pr_err("DMA Mapping Error(response str)\n");
-		goto err_map_resp;
-	}
-
 	rc = qti_scm_tls_hardening(dma_req_addr, req_size,
 				   dma_resp_addr, resp_size,
 				   CLIENT_CMD_CRYPTO_RSA_64);
-
-	dma_unmap_single(dev, dma_req_addr, req_size, DMA_TO_DEVICE);
-	dma_unmap_single(dev, dma_resp_addr, resp_size, DMA_FROM_DEVICE);
-	dma_unmap_single(dev, dma_key_blob, RSA_KEY_BLOB_SIZE,
-			DMA_FROM_DEVICE);
-
 	if (rc) {
 		pr_err("SCM Call failed..SCM Call return value = %d\n", rc);
 		goto err_end;
@@ -1561,22 +1597,21 @@ import_rsa_key_blob(struct device *dev, struct device_attribute *attr,
 
 	goto end;
 
-err_map_resp:
-	dma_unmap_single(dev, dma_req_addr, req_size, DMA_TO_DEVICE);
-
-err_map_req:
-	dma_unmap_single(dev, dma_key_blob, RSA_KEY_BLOB_SIZE,
-			DMA_FROM_DEVICE);
-
 err_end:
-	free_pages((unsigned long) page_address(req_page), req_order);
-	free_pages((unsigned long) page_address(resp_page), resp_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(resp_size));
+	dma_free_coherent(dev, PAGE_SIZE, resp_ptr, dma_resp_addr);
 
 	return rc;
 
 end:
-	free_pages((unsigned long) page_address(req_page), req_order);
-	free_pages((unsigned long) page_address(resp_page), resp_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(resp_size));
+	dma_free_coherent(dev, PAGE_SIZE, resp_ptr, dma_resp_addr);
 
 	return rsa_key_blob_len;
 }
@@ -1606,23 +1641,65 @@ static ssize_t
 store_rsa_plain_data(struct device *dev, struct device_attribute *attr,
 		       const char *buf, size_t count)
 {
+	static void __iomem *file_buf;
+	struct file *file;
+	struct kstat st;
+	char *file_name;
+	loff_t pos = 0;
+	long size;
+	int ret;
+
 	rsa_plain_data_buf = memset(rsa_plain_data_buf, 0,
 				   MAX_RSA_PLAIN_DATA_SIZE);
 	rsa_plain_data_len = 0;
 
-	if (count == 0 || count > MAX_RSA_PLAIN_DATA_SIZE) {
+	file_name = kzalloc(count+1, GFP_KERNEL);
+	if (file_name == NULL)
+		return -ENOMEM;
+
+	strlcpy(file_name, buf, count+1);
+
+	file = filp_open(file_name, O_RDONLY, 0);
+	if (IS_ERR(file)) {
+		pr_err("%s File open failed\n", file_name);
+		ret = -EBADF;
+		goto free_mem;
+	}
+
+	ret = vfs_getattr(&file->f_path, &st, STATX_SIZE, AT_STATX_SYNC_AS_STAT);
+	if (ret) {
+		pr_err("get file attributes failed\n");
+		goto file_close;
+	}
+	size = (long)st.size;
+
+	if (size == 0 || size > MAX_RSA_PLAIN_DATA_SIZE) {
 		pr_info("Invalid input\n");
 		pr_info("Plain data length is %lu bytes\n",
 		       (unsigned long)count);
 		pr_info("Plain data length must be > 0 bytes and <= %u bytes\n",
 		       (unsigned int)MAX_RSA_PLAIN_DATA_SIZE);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto file_close;
 	}
 
-	rsa_plain_data_len = count;
-	memcpy(rsa_plain_data_buf, buf, rsa_plain_data_len);
+	rsa_plain_data_len = size;
+	ret = kernel_read(file, rsa_plain_data_buf, rsa_plain_data_len, &pos);
 
-	return count;
+	if (ret != rsa_plain_data_len) {
+		pr_err("%s file read failed\n", file_name);
+		goto un_map;
+	}
+
+	ret = count;
+
+un_map:
+	iounmap(file_buf);
+file_close:
+	filp_close(file, NULL);
+free_mem:
+	kfree(file_name);
+	return ret;
 }
 
 static ssize_t
@@ -1634,15 +1711,9 @@ show_rsa_signed_data(struct device *dev, struct device_attribute *attr,
 	struct qti_storage_service_rsa_sign_data_resp_t *resp_ptr = NULL;
 	size_t req_size = 0;
 	size_t resp_size = 0;
-	size_t req_order = 0;
-	size_t resp_order = 0;
+	size_t dma_buf_size = 0;
 	dma_addr_t dma_req_addr = 0;
 	dma_addr_t dma_resp_addr = 0;
-	dma_addr_t dma_key_blob = 0;
-	dma_addr_t dma_plain_data = 0;
-	dma_addr_t dma_output_data = 0;
-	struct page *req_page = NULL;
-	struct page *resp_page = NULL;
 
 	memset(rsa_sign_data_buf, 0, MAX_RSA_SIGN_DATA_SIZE);
 	rsa_sign_data_len = 0;
@@ -1656,87 +1727,32 @@ show_rsa_signed_data(struct device *dev, struct device_attribute *attr,
 	dev = qdev;
 
 	req_size = sizeof(struct qti_storage_service_rsa_sign_data_cmd_t);
-	req_order = get_order(req_size);
-	req_page = alloc_pages(GFP_KERNEL, req_order);
-
-	if (req_page)
-		req_ptr = page_address(req_page);
-	else
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	req_ptr = (struct qti_storage_service_rsa_sign_data_cmd_t *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_req_addr, GFP_KERNEL);
+	if (!req_ptr)
 		return -ENOMEM;
 
 	resp_size = sizeof(struct qti_storage_service_rsa_sign_data_resp_t);
-	resp_order = get_order(resp_size);
-	resp_page = alloc_pages(GFP_KERNEL, resp_order);
-
-	if (resp_page) {
-		resp_ptr = page_address(resp_page);
-	} else {
-		pr_err("Cannot allocate memory for key material\n");
-		free_pages((unsigned long)req_ptr, req_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	resp_ptr = (struct qti_storage_service_rsa_sign_data_resp_t *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_resp_addr, GFP_KERNEL);
+	if (!resp_ptr)
 		return -ENOMEM;
-	}
 
-	dma_key_blob = dma_map_single(dev, rsa_key_blob, RSA_KEY_BLOB_SIZE,
-				     DMA_TO_DEVICE);
-	rc = dma_mapping_error(dev, dma_key_blob);
-	if (rc) {
-		pr_err("DMA Mapping Error(key blob)\n");
-		goto err_end;
-	}
-
-	dma_plain_data = dma_map_single(dev, rsa_plain_data_buf,
-				       rsa_plain_data_len, DMA_TO_DEVICE);
-	rc = dma_mapping_error(dev, dma_plain_data);
-	if (rc) {
-		pr_err("DMA Mapping Error(plain data)\n");
-		goto err_map_plain_data;
-	}
-
-	dma_output_data = dma_map_single(dev, rsa_sign_data_buf,
-					MAX_RSA_SIGN_DATA_SIZE,
-					DMA_FROM_DEVICE);
-	rc = dma_mapping_error(dev, dma_output_data);
-	if (rc) {
-		pr_err("DMA Mapping Error(output data)\n");
-		goto err_map_output_data;
-	}
-
-	req_ptr->key_blob.key_material = (u64)dma_key_blob;
-	req_ptr->plain_data = (u64)dma_plain_data;
-	req_ptr->output_buffer = (u64)dma_output_data;
+	req_ptr->key_blob.key_material = (u64)dma_rsa_key_blob;
+	req_ptr->plain_data = (u64)dma_rsa_plain_data_buf;
+	req_ptr->output_buffer = (u64)dma_rsa_sign_data_buf;
 	req_ptr->cmd_id = QTI_STOR_SVC_RSA_SIGN_DATA;
 	req_ptr->key_blob.key_material_len = RSA_KEY_BLOB_SIZE;
 	req_ptr->plain_data_len = rsa_plain_data_len;
 	req_ptr->output_len = MAX_RSA_SIGN_DATA_SIZE;
 
-	dma_req_addr = dma_map_single(dev, req_ptr, req_size, DMA_TO_DEVICE);
-
-	rc = dma_mapping_error(dev, dma_req_addr);
-	if (rc) {
-		pr_err("DMA Mapping Error(request str)\n");
-		goto err_map_req;
-	}
-
-	dma_resp_addr = dma_map_single(dev, resp_ptr, resp_size,
-				      DMA_FROM_DEVICE);
-	rc = dma_mapping_error(dev, dma_resp_addr);
-	if (rc) {
-		pr_err("DMA Mapping Error(response str)\n");
-		goto err_map_resp;
-	}
-
 	rc = qti_scm_tls_hardening(dma_req_addr, req_size,
 				   dma_resp_addr, resp_size,
 				   CLIENT_CMD_CRYPTO_RSA_64);
-
-	dma_unmap_single(dev, dma_resp_addr, resp_size, DMA_FROM_DEVICE);
-	dma_unmap_single(dev, dma_req_addr, req_size, DMA_TO_DEVICE);
-	dma_unmap_single(dev, dma_output_data, MAX_RSA_SIGN_DATA_SIZE,
-			DMA_FROM_DEVICE);
-	dma_unmap_single(dev, dma_plain_data, rsa_plain_data_len,
-			DMA_TO_DEVICE);
-	dma_unmap_single(dev, dma_key_blob, RSA_KEY_BLOB_SIZE, DMA_TO_DEVICE);
-
 	if (rc) {
 		pr_err("SCM Call failed..SCM Call return value = %d\n", rc);
 		goto err_end;
@@ -1753,29 +1769,21 @@ show_rsa_signed_data(struct device *dev, struct device_attribute *attr,
 
 	goto end;
 
-err_map_resp:
-	dma_unmap_single(dev, dma_req_addr, req_size, DMA_TO_DEVICE);
-
-err_map_req:
-	dma_unmap_single(dev, dma_output_data, MAX_RSA_SIGN_DATA_SIZE,
-			DMA_FROM_DEVICE);
-
-err_map_output_data:
-	dma_unmap_single(dev, dma_plain_data, rsa_plain_data_len,
-			DMA_TO_DEVICE);
-
-err_map_plain_data:
-	dma_unmap_single(dev, dma_key_blob, RSA_KEY_BLOB_SIZE, DMA_TO_DEVICE);
-
 err_end:
-	free_pages((unsigned long)page_address(req_page), req_order);
-	free_pages((unsigned long)page_address(resp_page), resp_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(resp_size));
+	dma_free_coherent(dev, PAGE_SIZE, resp_ptr, dma_resp_addr);
 
 	return rc;
 
 end:
-	free_pages((unsigned long)page_address(req_page), req_order);
-	free_pages((unsigned long)page_address(resp_page), resp_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(resp_size));
+	dma_free_coherent(dev, PAGE_SIZE, resp_ptr, dma_resp_addr);
 
 	return rsa_sign_data_len;
 }
@@ -1811,15 +1819,9 @@ verify_rsa_signed_data(struct device *dev, struct device_attribute *attr,
 	struct qti_storage_service_rsa_verify_data_resp_t *resp_ptr = NULL;
 	size_t req_size = 0;
 	size_t resp_size = 0;
-	size_t req_order = 0;
-	size_t resp_order = 0;
+	size_t dma_buf_size = 0;
 	dma_addr_t dma_req_addr = 0;
 	dma_addr_t dma_resp_addr = 0;
-	dma_addr_t dma_key_blob = 0;
-	dma_addr_t dma_signed_data = 0;
-	dma_addr_t dma_plain_data = 0;
-	struct page *req_page = NULL;
-	struct page *resp_page = NULL;
 	const char *message = NULL;
 	int message_len = 0;
 
@@ -1833,86 +1835,32 @@ verify_rsa_signed_data(struct device *dev, struct device_attribute *attr,
 	dev = qdev;
 
 	req_size = sizeof(struct qti_storage_service_rsa_verify_data_cmd_t);
-	req_order = get_order(req_size);
-	req_page = alloc_pages(GFP_KERNEL, req_order);
-
-	if (req_page)
-		req_ptr = page_address(req_page);
-	else
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	req_ptr = (struct qti_storage_service_rsa_verify_data_cmd_t *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_req_addr, GFP_KERNEL);
+	if (!req_ptr)
 		return -ENOMEM;
 
 	resp_size = sizeof(struct qti_storage_service_rsa_verify_data_resp_t);
-	resp_order = get_order(resp_size);
-	resp_page = alloc_pages(GFP_KERNEL, resp_order);
-
-	if (resp_page) {
-		resp_ptr = page_address(resp_page);
-	} else {
-		pr_err("Cannot allocate memory for key material\n");
-		free_pages((unsigned long)req_ptr, req_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	resp_ptr = (struct qti_storage_service_rsa_verify_data_resp_t *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_resp_addr, GFP_KERNEL);
+	if (!resp_ptr)
 		return -ENOMEM;
-	}
 
-	dma_key_blob = dma_map_single(dev, rsa_key_blob, rsa_key_blob_len,
-				     DMA_TO_DEVICE);
-	rc = dma_mapping_error(dev, dma_key_blob);
-	if (rc) {
-		pr_err("DMA Mapping Error(key blob)\n");
-		goto err_end;
-	}
-
-	dma_signed_data = dma_map_single(dev, rsa_sign_data_buf,
-					rsa_sign_data_len, DMA_TO_DEVICE);
-	rc = dma_mapping_error(dev, dma_signed_data);
-	if (rc) {
-		pr_err("DMA Mapping Error(sealed data)\n");
-		goto err_map_sealed_data;
-	}
-
-	dma_plain_data = dma_map_single(dev, rsa_plain_data_buf,
-					rsa_plain_data_len, DMA_TO_DEVICE);
-	rc = dma_mapping_error(dev, dma_plain_data);
-	if (rc) {
-		pr_err("DMA Mapping Error(output data)\n");
-		goto err_map_output_data;
-	}
-
-	req_ptr->key_blob.key_material = (u64)dma_key_blob;
-	req_ptr->signed_data = (u64)dma_signed_data;
-	req_ptr->data = (u64)dma_plain_data;
+	req_ptr->key_blob.key_material = (u64)dma_rsa_key_blob;
+	req_ptr->signed_data = (u64)dma_rsa_sign_data_buf;
+	req_ptr->data = (u64)dma_rsa_plain_data_buf;
 	req_ptr->cmd_id = QTI_STOR_SVC_RSA_VERIFY_SIGNATURE;
 	req_ptr->key_blob.key_material_len = rsa_key_blob_len;
 	req_ptr->signed_dlen = rsa_sign_data_len;
 	req_ptr->data_len = rsa_plain_data_len;
 
-	dma_req_addr = dma_map_single(dev, req_ptr, req_size, DMA_TO_DEVICE);
-
-	rc = dma_mapping_error(dev, dma_req_addr);
-	if (rc) {
-		pr_err("DMA Mapping Error(request str)\n");
-		goto err_map_req;
-	}
-
-	dma_resp_addr = dma_map_single(dev, resp_ptr, resp_size,
-				      DMA_FROM_DEVICE);
-	rc = dma_mapping_error(dev, dma_resp_addr);
-	if (rc) {
-		pr_err("DMA Mapping Error(response str)\n");
-		goto err_map_resp;
-	}
-
 	rc = qti_scm_tls_hardening(dma_req_addr, req_size,
 				   dma_resp_addr, resp_size,
 				   CLIENT_CMD_CRYPTO_RSA_64);
-
-	dma_unmap_single(dev, dma_resp_addr, resp_size, DMA_FROM_DEVICE);
-	dma_unmap_single(dev, dma_req_addr, req_size, DMA_TO_DEVICE);
-	dma_unmap_single(dev, dma_plain_data, rsa_plain_data_len,
-			DMA_TO_DEVICE);
-	dma_unmap_single(dev, dma_signed_data, rsa_sign_data_len,
-			DMA_TO_DEVICE);
-	dma_unmap_single(dev, dma_key_blob, RSA_KEY_BLOB_SIZE, DMA_TO_DEVICE);
-
 	if (rc) {
 		pr_err("SCM Call failed..SCM Call return value = %d\n", rc);
 		goto err_end;
@@ -1933,42 +1881,29 @@ verify_rsa_signed_data(struct device *dev, struct device_attribute *attr,
 
 	goto end;
 
-err_map_resp:
-	dma_unmap_single(dev, dma_req_addr, req_size, DMA_TO_DEVICE);
-
-err_map_req:
-	dma_unmap_single(dev, dma_plain_data, rsa_plain_data_len,
-			DMA_TO_DEVICE);
-
-err_map_output_data:
-	dma_unmap_single(dev, dma_signed_data, rsa_sign_data_len,
-			DMA_TO_DEVICE);
-
-err_map_sealed_data:
-	dma_unmap_single(dev, dma_key_blob, RSA_KEY_BLOB_SIZE, DMA_TO_DEVICE);
-
 err_end:
-	free_pages((unsigned long)page_address(req_page), req_order);
-	free_pages((unsigned long)page_address(resp_page), resp_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(resp_size));
+	dma_free_coherent(dev, PAGE_SIZE, resp_ptr, dma_resp_addr);
 
 	return rc;
 
 end:
-	free_pages((unsigned long)page_address(req_page), req_order);
-	free_pages((unsigned long)page_address(resp_page), resp_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(resp_size));
+	dma_free_coherent(dev, PAGE_SIZE, resp_ptr, dma_resp_addr);
 
 	return message_len;
 }
 
-static int __init rsa_sec_key_init(void)
+static int __init rsa_sec_key_init(struct device *dev)
 {
 	int err = 0;
-	struct page *rsa_key_blob_page = NULL;
-	struct page *rsa_import_modulus_page = NULL;
-	struct page *rsa_import_public_exponent_page = NULL;
-	struct page *rsa_import_pvt_exponent_page = NULL;
-	struct page *rsa_sign_data_buf_page = NULL;
-	struct page *rsa_plain_data_buf_page = NULL;
+	size_t dma_buf_size = 0;
 
 	rsa_sec_kobj = kobject_create_and_add("rsa_sec_key", rsa_sec_kobj);
 
@@ -1985,53 +1920,81 @@ static int __init rsa_sec_key_init(void)
 		return err;
 	}
 
-	rsa_key_blob_page = alloc_pages(GFP_KERNEL,
-				       get_order(RSA_KEY_BLOB_SIZE));
-	rsa_import_modulus_page = alloc_pages(GFP_KERNEL,
-					     get_order(RSA_KEY_SIZE_MAX));
-	rsa_import_public_exponent_page = alloc_pages(GFP_KERNEL,
-					  get_order(RSA_PUB_EXP_SIZE_MAX));
-	rsa_import_pvt_exponent_page = alloc_pages(GFP_KERNEL,
-						get_order(RSA_KEY_SIZE_MAX));
-	rsa_sign_data_buf_page = alloc_pages(GFP_KERNEL,
-				     get_order(MAX_RSA_SIGN_DATA_SIZE));
-	rsa_plain_data_buf_page = alloc_pages(GFP_KERNEL,
-				       get_order(MAX_RSA_PLAIN_DATA_SIZE));
+	dma_buf_size = PAGE_SIZE * (1 << get_order(RSA_KEY_BLOB_SIZE));
+	buf_rsa_key_blob = dma_alloc_coherent(dev, dma_buf_size,
+					&dma_rsa_key_blob, GFP_KERNEL);
 
-	if (!rsa_key_blob_page || !rsa_import_modulus_page ||
-	   !rsa_import_public_exponent_page || !rsa_import_pvt_exponent_page ||
-	   !rsa_sign_data_buf_page || !rsa_plain_data_buf_page) {
+	dma_buf_size = PAGE_SIZE * (1 << get_order(RSA_KEY_SIZE_MAX));
+	buf_rsa_import_modulus = dma_alloc_coherent(dev, dma_buf_size,
+				&dma_rsa_import_modulus, GFP_KERNEL);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(RSA_PUB_EXP_SIZE_MAX));
+	buf_rsa_import_public_exponent = dma_alloc_coherent(dev, dma_buf_size,
+				&dma_rsa_import_public_exponent, GFP_KERNEL);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(RSA_KEY_SIZE_MAX));
+	buf_rsa_import_pvt_exponent = dma_alloc_coherent(dev, dma_buf_size,
+				&dma_rsa_import_pvt_exponent, GFP_KERNEL);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(MAX_RSA_SIGN_DATA_SIZE));
+	buf_rsa_sign_data_buf = dma_alloc_coherent(dev, dma_buf_size,
+					&dma_rsa_sign_data_buf, GFP_KERNEL);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(MAX_RSA_PLAIN_DATA_SIZE));
+	buf_rsa_plain_data_buf = dma_alloc_coherent(dev, dma_buf_size,
+					&dma_rsa_plain_data_buf, GFP_KERNEL);
+
+	if (!buf_rsa_key_blob || !buf_rsa_import_modulus ||
+	   !buf_rsa_import_public_exponent || !buf_rsa_import_pvt_exponent ||
+	   !buf_rsa_sign_data_buf || !buf_rsa_plain_data_buf) {
 		pr_err("Cannot allocate memory for RSA secure-key ops\n");
 
-		if (rsa_key_blob_page)
-			free_pages((unsigned long)
-				  page_address(rsa_key_blob_page),
-				  get_order(RSA_KEY_BLOB_SIZE));
+		if (buf_rsa_key_blob) {
+			dma_buf_size = PAGE_SIZE *
+					(1 << get_order(RSA_KEY_BLOB_SIZE));
+			dma_free_coherent(dev, dma_buf_size, buf_rsa_key_blob,
+							dma_rsa_key_blob);
+		}
 
-		if (rsa_import_modulus_page)
-			free_pages((unsigned long)
-				  page_address(rsa_import_modulus_page),
-				  get_order(RSA_KEY_SIZE_MAX));
+		if (buf_rsa_import_modulus) {
+			dma_buf_size = PAGE_SIZE *
+					(1 << get_order(RSA_KEY_SIZE_MAX));
+			dma_free_coherent(dev, dma_buf_size,
+					buf_rsa_import_modulus,
+					dma_rsa_import_modulus);
+		}
 
-		if (rsa_import_public_exponent_page)
-			free_pages((unsigned long)
-				  page_address(rsa_import_public_exponent_page),
-				  get_order(RSA_PUB_EXP_SIZE_MAX));
+		if (buf_rsa_import_public_exponent) {
+			dma_buf_size = PAGE_SIZE *
+					(1 << get_order(RSA_PUB_EXP_SIZE_MAX));
+			dma_free_coherent(dev, dma_buf_size,
+						buf_rsa_import_public_exponent,
+						dma_rsa_import_public_exponent);
+		}
 
-		if (rsa_import_pvt_exponent_page)
-			free_pages((unsigned long)
-				  page_address(rsa_import_pvt_exponent_page),
-				  get_order(RSA_KEY_SIZE_MAX));
+		if (buf_rsa_import_pvt_exponent) {
+			dma_buf_size = PAGE_SIZE *
+					(1 << get_order(RSA_KEY_SIZE_MAX));
+			dma_free_coherent(dev, dma_buf_size,
+						buf_rsa_import_pvt_exponent,
+						dma_rsa_import_pvt_exponent);
+		}
 
-		if (rsa_sign_data_buf_page)
-			free_pages((unsigned long)
-				  page_address(rsa_sign_data_buf_page),
-				  get_order(MAX_RSA_SIGN_DATA_SIZE));
+		if (buf_rsa_sign_data_buf) {
+			dma_buf_size = PAGE_SIZE *
+				(1 << get_order(MAX_RSA_SIGN_DATA_SIZE));
+			dma_free_coherent(dev, dma_buf_size,
+						buf_rsa_sign_data_buf,
+						dma_rsa_sign_data_buf);
+		}
 
-		if (rsa_plain_data_buf_page)
-			free_pages((unsigned long)
-				  page_address(rsa_plain_data_buf_page),
-				  get_order(MAX_RSA_PLAIN_DATA_SIZE));
+		if(buf_rsa_plain_data_buf) {
+			dma_buf_size = PAGE_SIZE *
+				(1 << get_order(MAX_RSA_PLAIN_DATA_SIZE));
+			dma_free_coherent(dev, dma_buf_size,
+						buf_rsa_plain_data_buf,
+						dma_rsa_plain_data_buf);
+		}
 
 		sysfs_remove_group(rsa_sec_kobj, &rsa_sec_key_attr_grp);
 		kobject_put(rsa_sec_kobj);
@@ -2040,25 +2003,22 @@ static int __init rsa_sec_key_init(void)
 		return -ENOMEM;
 	}
 
-	rsa_key_blob = page_address(rsa_key_blob_page);
-	rsa_import_modulus = page_address(rsa_import_modulus_page);
-	rsa_import_public_exponent =
-				page_address(rsa_import_public_exponent_page);
-	rsa_import_pvt_exponent = page_address(rsa_import_pvt_exponent_page);
-	rsa_sign_data_buf = page_address(rsa_sign_data_buf_page);
-	rsa_plain_data_buf = page_address(rsa_plain_data_buf_page);
+	rsa_key_blob = (uint8_t*) buf_rsa_key_blob;
+	rsa_import_modulus = (uint8_t*) buf_rsa_import_modulus;
+	rsa_import_public_exponent = (uint8_t*) buf_rsa_import_public_exponent;
+	rsa_import_pvt_exponent = (uint8_t*) buf_rsa_import_pvt_exponent;
+	rsa_sign_data_buf = (uint8_t*) buf_rsa_sign_data_buf;
+	rsa_plain_data_buf = (uint8_t*) buf_rsa_plain_data_buf;
 
 	return 0;
 }
 
-static int __init sec_key_init(void)
+static int __init sec_key_init(struct device *dev)
 {
 	int err = 0;
-	struct page *key_page = NULL;
-	struct page *key_blob_page = NULL;
-	struct page *sealed_buf_page = NULL;
-	struct page *unsealed_buf_page = NULL;
-	struct page *iv_page = NULL;
+	size_t dma_buf_size = 0;
+
+	dev = qdev;
 
 	sec_kobj = kobject_create_and_add("sec_key", NULL);
 
@@ -2075,51 +2035,109 @@ static int __init sec_key_init(void)
 		return err;
 	}
 
-	key_page = alloc_pages(GFP_KERNEL, get_order(KEY_SIZE));
-	key_blob_page = alloc_pages(GFP_KERNEL, get_order(KEY_BLOB_SIZE));
-	sealed_buf_page = alloc_pages(GFP_KERNEL,
-				     get_order(MAX_ENCRYPTED_DATA_SIZE));
-	unsealed_buf_page = alloc_pages(GFP_KERNEL,
-				       get_order(MAX_PLAIN_DATA_SIZE));
-	iv_page = alloc_pages(GFP_KERNEL,
-				get_order(AES_BLOCK_SIZE));
+	if (props->aes_v2) {
+		err = sysfs_create_group(sec_kobj, &sec_key_aesv2_attr_grp);
+		if (err)
+			pr_debug("TZ AES v2 sysfs creation failed with error %d\n",err);
+	}
 
-	if (!key_page || !key_blob_page ||
-	   !sealed_buf_page || !unsealed_buf_page || !iv_page) {
+	dma_buf_size = PAGE_SIZE * (1 << get_order(KEY_SIZE));
+	buf_key = dma_alloc_coherent(dev, dma_buf_size,
+					&dma_key, GFP_KERNEL);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(KEY_BLOB_SIZE));
+	buf_key_blob = dma_alloc_coherent(dev, dma_buf_size,
+					&dma_key_blob, GFP_KERNEL);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(MAX_ENCRYPTED_DATA_SIZE));
+	buf_sealed_buf = dma_alloc_coherent(dev, dma_buf_size,
+					&dma_sealed_data, GFP_KERNEL);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(MAX_PLAIN_DATA_SIZE));
+	buf_unsealed_buf = dma_alloc_coherent(dev, dma_buf_size,
+					&dma_unsealed_data, GFP_KERNEL);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(AES_BLOCK_SIZE));
+	buf_iv = dma_alloc_coherent(dev, dma_buf_size,
+					&dma_iv_data, GFP_KERNEL);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(MAX_KEY_HANDLE_SIZE));
+	key_handle = dma_alloc_coherent(dev, dma_buf_size,
+					&dma_key_handle, GFP_KERNEL);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(MAX_KEY_HANDLE_SIZE));
+	aes_key_handle = dma_alloc_coherent(dev, dma_buf_size,
+					&dma_aes_key_handle, GFP_KERNEL);
+
+	if (!buf_key || !buf_key_blob || !buf_sealed_buf ||
+	    !buf_unsealed_buf || !buf_iv || !key_handle || !aes_key_handle) {
 		pr_err("Cannot allocate memory for secure-key ops\n");
-		if (key_page)
-			free_pages((unsigned long)page_address(key_page),
-				  get_order(KEY_SIZE));
 
-		if (key_blob_page)
-			free_pages((unsigned long)page_address(key_blob_page),
-				  get_order(KEY_BLOB_SIZE));
+		if (buf_key) {
+			dma_buf_size = PAGE_SIZE *
+					(1 << get_order(KEY_SIZE));
+			dma_free_coherent(dev, dma_buf_size, buf_key,
+							dma_key);
+		}
 
-		if (sealed_buf_page)
-			free_pages((unsigned long)page_address(sealed_buf_page),
-				  get_order(MAX_ENCRYPTED_DATA_SIZE));
+		if (buf_key_blob) {
+			dma_buf_size = PAGE_SIZE *
+					(1 << get_order(KEY_BLOB_SIZE));
+			dma_free_coherent(dev, dma_buf_size, buf_key_blob,
+							dma_key_blob);
+		}
 
-		if (unsealed_buf_page)
-			free_pages((unsigned long)
-				  page_address(unsealed_buf_page),
-				  get_order(MAX_PLAIN_DATA_SIZE));
+		if (buf_sealed_buf) {
+			dma_buf_size = PAGE_SIZE *
+				(1 << get_order(MAX_ENCRYPTED_DATA_SIZE));
+			dma_free_coherent(dev, dma_buf_size,
+							buf_sealed_buf,
+							dma_sealed_data);
+		}
 
-		if (iv_page)
-			free_pages((unsigned long)page_address(iv_page),
-				get_order(AES_BLOCK_SIZE));
+		if (buf_unsealed_buf) {
+			dma_buf_size = PAGE_SIZE *
+					(1 << get_order(MAX_PLAIN_DATA_SIZE));
+			dma_free_coherent(dev, dma_buf_size,
+							buf_unsealed_buf,
+							dma_unsealed_data);
+		}
+
+		if (buf_iv) {
+			dma_buf_size = PAGE_SIZE *
+					(1 << get_order(AES_BLOCK_SIZE));
+			dma_free_coherent(dev, dma_buf_size,
+							buf_iv,
+							dma_iv_data);
+		}
+
+		if (key_handle) {
+			dma_buf_size = PAGE_SIZE *
+					(1 << get_order(MAX_KEY_HANDLE_SIZE));
+			dma_free_coherent(dev, dma_buf_size,
+					key_handle, dma_key_handle);
+		}
+
+		if (aes_key_handle) {
+			dma_buf_size = PAGE_SIZE *
+					(1 << get_order(MAX_KEY_HANDLE_SIZE));
+			dma_free_coherent(dev, dma_buf_size, aes_key_handle,
+					 dma_aes_key_handle);
+		}
 
 		sysfs_remove_group(sec_kobj, &sec_key_attr_grp);
+		if (props->aes_v2)
+			sysfs_remove_group(sec_kobj, &sec_key_aesv2_attr_grp);
 		kobject_put(sec_kobj);
 		sec_kobj = NULL;
 
 		return -ENOMEM;
 	}
 
-	key = page_address(key_page);
-	key_blob = page_address(key_blob_page);
-	sealed_buf = page_address(sealed_buf_page);
-	unsealed_buf = page_address(unsealed_buf_page);
-	ivdata = page_address(iv_page);
+	key = (uint8_t*) buf_key;
+	key_blob = (uint8_t*) buf_key_blob;
+	sealed_buf = (uint8_t*) buf_sealed_buf;
+	unsealed_buf = (uint8_t*) buf_unsealed_buf;
+	ivdata = (uint8_t*) buf_iv;
 
 	return 0;
 }
@@ -2341,6 +2359,15 @@ static int qtiapp_test(struct device *dev, void *input,
 		msgreq->data = (dma_addr_t)input;
 		msgreq->len = input_len;
 		break;
+	case QTI_APP_KEY_DERIVE_TEST:
+		msgreq->cmd_id = CLIENT_CMD121_RUN_KEY_DERIVE_TEST;
+		msgreq->data = (dma_addr_t)input;
+		msgreq->len = input_len;
+		break;
+	case QTI_APP_CLEAR_KEY:
+		msgreq->cmd_id = CLIENT_CMD122_CLEAR_KEY;
+		msgreq->data = *((dma_addr_t *)input);
+		break;
 	default:
 		pr_err("Invalid Option\n");
 		goto fn_exit;
@@ -2454,10 +2481,20 @@ static int qtiapp_test(struct device *dev, void *input,
 		if (msgrsp->status) {
 			ret = -EINVAL;
 		}
-	} else if (option == QTI_APP_AES_ENCRYPT_ID ||
+	} else if (option == QTI_APP_KEY_DERIVE_TEST ||
+			option == QTI_APP_AES_ENCRYPT_ID ||
 			option == QTI_APP_AES_DECRYPT_ID) {
+		if (msgrsp->status == KEY_HANDLE_OUT_OF_SLOT) {
+			pr_info("Key handle out of slot. Clear a key and try again!\n");
+		}
 		if (msgrsp->status) {
-			ret = -EOPNOTSUPP;
+			pr_info("QTIAPP DERIVE/ENC/DEC Failed with status = %d\n",
+				msgrsp->status);
+			ret = -EINVAL;
+		}
+	} else if (option == QTI_APP_CLEAR_KEY) {
+		if(msgrsp->status) {
+			ret = -EINVAL;
 		}
 	}
 
@@ -2469,19 +2506,194 @@ fn_exit:
 	}
 	return ret;
 }
+
+/*
+ * store_aes_derive_key_qtiapp()
+ * Function to store aes derive key handle (in QTIAPP)
+ */
+static ssize_t
+store_aes_derive_key_qtiapp(struct device *dev, struct device_attribute *attr,
+	 const char *buf, size_t count)
+{
+	unsigned long long val;
+
+	if (kstrtoull(buf, 10, &val))
+		return -EINVAL;
+
+	*aes_key_handle = val;
+	if (*aes_key_handle == INVALID_AES_KEY_HANDLE_VAL) {
+		pr_info("Invalid aes key handle: %lu\n",
+			(unsigned long)*aes_key_handle);
+		return -EINVAL;
+	}
+
+	return count;
+}
+
+/*
+ * show_aes_derive_key()
+ * Function to derive aes_key and get key_handle (in QTIAPP)
+ */
+static ssize_t show_aes_derive_key_qtiapp(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	int rc = 0, i = 0;
+	struct qti_storage_service_derive_key_cmd_t *req_ptr;
+	size_t req_size = 0;
+	size_t dma_buf_size = 0;
+	dma_addr_t dma_req_addr = 0;
+	const char *message = NULL;
+	int message_len = 0;
+
+	if (!aes_source_data || !aes_context_data_len || !aes_bindings_data) {
+		pr_info("Provide the required src data, bindings data and context data before encrypt/decrypt\n");
+		return -EINVAL;
+	}
+
+	dev = qdev;
+
+	req_size = sizeof(struct qti_storage_service_derive_key_cmd_t);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	req_ptr = (struct qti_storage_service_derive_key_cmd_t *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_req_addr, GFP_KERNEL);
+	if (!req_ptr)
+		return -ENOMEM;
+
+	req_ptr->policy.key_type = DEFAULT_KEY_TYPE;
+	req_ptr->policy.destination = DEFAULT_POLICY_DESTINATION;
+	req_ptr->hw_key_bindings.bindings = aes_bindings_data;
+	req_ptr->source = aes_source_data;
+	req_ptr->key = (u64) dma_aes_key_handle;
+	req_ptr->mixing_key = 0;
+
+	for (i = 0; i < MAX_CONTEXT_BUFFER_LEN; i++)
+		req_ptr->hw_key_bindings.context[i] = aes_context_data[i];
+	req_ptr->hw_key_bindings.context_len = aes_context_data_len;
+
+	rc = qtiapp_test(dev, (uint8_t *)dma_req_addr, NULL, req_size,
+						QTI_APP_KEY_DERIVE_TEST);
+	if (!rc) {
+		message = "AES Key derive successful\n\0";
+	} else {
+		pr_err("SCM call failed..return value = %d\n", rc);
+		message = "AES Key derive failed\n\0";
+	}
+
+	pr_info("key_handle is: %lu\n", (unsigned long)*aes_key_handle);
+
+	message_len = strlen(message) + 1;
+	memcpy(buf, message, message_len);
+
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+	return message_len;
+}
+
+static ssize_t store_aes_clear_key_qtiapp(struct device *dev, struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	uint32_t rc = 0;
+	uint32_t key_handle;
+
+	if (kstrtouint(buf, 10, &key_handle))
+		return -EINVAL;
+
+	rc = qtiapp_test(dev, &key_handle, NULL, 0, QTI_APP_CLEAR_KEY);
+
+	if (!rc)
+		pr_info("AES key =  %u cleared successfully\n",key_handle);
+	else
+		pr_info("AES key clear failed\n");
+
+	return rc ? rc : count;
+}
+
+static ssize_t
+show_aes_v2_decrypted_data_qtiapp(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int rc = 0;
+	struct qti_crypto_service_decrypt_data_cmd_t_v2 *req_ptr = NULL;
+	uint64_t req_size = 0;
+	size_t dma_buf_size = 0;
+	uint64_t output_len = 0;
+	dma_addr_t dma_req_addr = 0;
+
+	aes_unsealed_buf = memset(aes_unsealed_buf, 0, MAX_PLAIN_DATA_SIZE);
+	output_len = aes_encrypted_len;
+
+	if (aes_encrypted_len <= 0 || aes_encrypted_len % AES_BLOCK_SIZE) {
+		pr_err("Invalid input %lld\n", aes_encrypted_len);
+		pr_info("Encrypted data length for decryption should be multiple "
+			"of AES block size(16)\n");
+		return -EINVAL;
+	}
+	if (!aes_type || aes_type >= QTI_CRYPTO_SERVICE_AES_TYPE_MAX) {
+		pr_info(" aes type needed for decryption\n");
+		return -EINVAL;
+	}
+	if (!aes_key_handle) {
+		pr_info("Derive the required key handle before encrypt/decrypt\n");
+		return -EINVAL;
+	}
+
+	dev = qdev;
+
+	req_size = sizeof(struct qti_crypto_service_decrypt_data_cmd_t);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	req_ptr = (struct qti_crypto_service_decrypt_data_cmd_t_v2 *)
+					dma_alloc_coherent(dev, dma_buf_size,
+						&dma_req_addr, GFP_KERNEL);
+	if (!req_ptr)
+		return -ENOMEM;
+
+	req_ptr->key_handle = (unsigned long)*aes_key_handle;
+	pr_info("key_handle is: %lu\n", (unsigned long)req_ptr->key_handle);
+	req_ptr->v1.type = aes_type;
+	req_ptr->v1.mode = aes_mode;
+	req_ptr->v1.encrypted_data = (u64)dma_aes_sealed_buf;
+	req_ptr->v1.output_buffer = (u64)dma_aes_unsealed_buf;
+	req_ptr->v1.iv = (req_ptr->v1.mode == 0 ? 0 : (u64)dma_aes_ivdata);
+	req_ptr->v1.iv_len = AES_BLOCK_SIZE;
+	req_ptr->v1.encrypted_dlen = aes_encrypted_len;
+	req_ptr->v1.output_len = output_len;
+
+	rc = qtiapp_test(dev, (uint8_t *)dma_req_addr, NULL, req_size,
+						QTI_APP_AES_DECRYPT_ID);
+	if (rc) {
+		pr_err("Response status failure..return value = %d\n", rc);
+		goto err_end;
+	}
+
+	aes_decrypted_len = req_ptr->v1.output_len;
+	memcpy(buf, aes_unsealed_buf, aes_decrypted_len);
+
+goto end;
+
+err_end:
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	return rc;
+
+end:
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	return aes_decrypted_len;
+}
+
 static ssize_t
 show_aes_decrypted_data_qtiapp(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	int rc = 0;
 	struct qti_crypto_service_decrypt_data_cmd_t *req_ptr = NULL;
 	uint64_t req_size = 0;
-	size_t req_order = 0;
+	size_t dma_buf_size = 0;
 	uint64_t output_len = 0;
 	dma_addr_t dma_req_addr = 0;
-	dma_addr_t dma_sealed_data = 0;
-	dma_addr_t dma_output_data = 0;
-	dma_addr_t dma_iv_data = 0;
-	struct page *req_page = NULL;
+
+	if (props->aes_v2) {
+		rc = show_aes_v2_decrypted_data_qtiapp(dev, attr, buf);
+		return rc;
+	}
 
 	aes_unsealed_buf = memset(aes_unsealed_buf, 0, MAX_PLAIN_DATA_SIZE);
 	output_len = aes_encrypted_len;
@@ -2500,62 +2712,24 @@ show_aes_decrypted_data_qtiapp(struct device *dev, struct device_attribute *attr
 	dev = qdev;
 
 	req_size = sizeof(struct qti_crypto_service_decrypt_data_cmd_t);
-	req_order = get_order(req_size);
-	req_page = alloc_pages(GFP_KERNEL, req_order);
-
-	if (req_page)
-		req_ptr = page_address(req_page);
-	else
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	req_ptr = (struct qti_crypto_service_decrypt_data_cmd_t *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_req_addr, GFP_KERNEL);
+	if (!req_ptr)
 		return -ENOMEM;
-
-	dma_sealed_data = dma_map_single(dev, aes_sealed_buf, encrypted_len,
-					DMA_TO_DEVICE);
-	rc = dma_mapping_error(dev, dma_sealed_data);
-	if (rc) {
-		pr_err("DMA Mapping Error(sealed data)\n");
-		goto err_end;
-	}
-
-	dma_output_data = dma_map_single(dev, aes_unsealed_buf, output_len,
-					DMA_FROM_DEVICE);
-	rc = dma_mapping_error(dev, dma_output_data);
-	if (rc) {
-		pr_err("DMA Mapping Error(output data)\n");
-		goto err_map_output_data;
-	}
-
-	dma_iv_data = dma_map_single(dev, aes_ivdata, AES_BLOCK_SIZE,
-					DMA_TO_DEVICE);
-	rc = dma_mapping_error(dev, dma_iv_data);
-	if (rc) {
-		pr_err("DMA Mapping Error(output data)\n");
-		goto err_map_iv_data;
-	}
 
 	req_ptr->type = aes_type;
 	req_ptr->mode = aes_mode;
-	req_ptr->encrypted_data = (u64)dma_sealed_data;
-	req_ptr->output_buffer = (u64)dma_output_data;
-	req_ptr->iv = (req_ptr->mode == 0 ? 0 : (u64)dma_iv_data);
+	req_ptr->encrypted_data = (u64)dma_aes_sealed_buf;
+	req_ptr->output_buffer = (u64)dma_aes_unsealed_buf;
+	req_ptr->iv = (req_ptr->mode == 0 ? 0 : (u64)dma_aes_ivdata);
 	req_ptr->iv_len = AES_BLOCK_SIZE;
 	req_ptr->encrypted_dlen = aes_encrypted_len;
 	req_ptr->output_len = output_len;
 
-	dma_req_addr = dma_map_single(dev, req_ptr, req_size, DMA_TO_DEVICE);
-
-	rc = dma_mapping_error(dev, dma_req_addr);
-	if (rc) {
-		pr_err("DMA Mapping Error(request str)\n");
-		goto err_map_req;
-	}
-
 	rc = qtiapp_test(dev, (uint8_t *)dma_req_addr, NULL, req_size,
 						QTI_APP_AES_DECRYPT_ID);
-	dma_unmap_single(dev, dma_output_data, output_len, DMA_FROM_DEVICE);
-	dma_unmap_single(dev, dma_sealed_data, encrypted_len, DMA_TO_DEVICE);
-	dma_unmap_single(dev, dma_iv_data, AES_BLOCK_SIZE, DMA_TO_DEVICE);
-	dma_unmap_single(dev, dma_req_addr, req_size, DMA_TO_DEVICE);
-
 	if (rc) {
 		pr_err("Response status failure..return value = %d\n", rc);
 		goto err_end;
@@ -2566,25 +2740,98 @@ show_aes_decrypted_data_qtiapp(struct device *dev, struct device_attribute *attr
 
 goto end;
 
-err_map_req:
-	dma_unmap_single(dev, dma_iv_data, AES_BLOCK_SIZE, DMA_TO_DEVICE);
-
-err_map_iv_data:
-	dma_unmap_single(dev, dma_output_data, output_len, DMA_FROM_DEVICE);
-
-err_map_output_data:
-	dma_unmap_single(dev, dma_sealed_data, encrypted_len, DMA_TO_DEVICE);
-
 err_end:
-	free_pages((unsigned long)page_address(req_page), req_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
 
 	return rc;
 
 end:
-	free_pages((unsigned long)page_address(req_page), req_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
 
 	return aes_decrypted_len;
 }
+
+static ssize_t
+show_aes_v2_encrypted_data_qtiapp(struct device *dev, struct device_attribute *attr,
+			char *buf)
+{
+	int rc = 0;
+	struct qti_crypto_service_encrypt_data_cmd_t_v2 *req_ptr = NULL;
+	uint64_t req_size = 0;
+	size_t dma_buf_size = 0;
+	uint64_t output_len = 0;
+	dma_addr_t dma_req_addr = 0;
+
+	aes_sealed_buf = memset(aes_sealed_buf, 0, MAX_ENCRYPTED_DATA_SIZE);
+	output_len = aes_decrypted_len;
+
+	if (aes_decrypted_len <= 0 || aes_decrypted_len % AES_BLOCK_SIZE) {
+		pr_err("Invalid input %lld\n", aes_decrypted_len);
+		pr_info("Input data length for encryption should be multiple"
+			"of AES block size(16)\n");
+		return -EINVAL;
+	}
+	if (!aes_type || aes_type >= QTI_CRYPTO_SERVICE_AES_TYPE_MAX) {
+		pr_info(" aes type needed for encryption\n");
+		return -EINVAL;
+	}
+	if (!aes_key_handle) {
+		pr_info("Derive the required key handle before encrypt/decrypt\n");
+		return -EINVAL;
+	}
+
+	dev = qdev;
+
+	req_size = sizeof(struct qti_crypto_service_encrypt_data_cmd_t);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	req_ptr = (struct qti_crypto_service_encrypt_data_cmd_t_v2 *)
+					dma_alloc_coherent(dev, dma_buf_size,
+						&dma_req_addr, GFP_KERNEL);
+	if (!req_ptr)
+		return -ENOMEM;
+
+	req_ptr->key_handle = (unsigned long)*aes_key_handle;
+	pr_info("key_handle is: %lu\n", (unsigned long)req_ptr->key_handle);
+	req_ptr->v1.type = aes_type;
+	req_ptr->v1.mode = aes_mode;
+	req_ptr->v1.iv = (req_ptr->v1.mode == 0 ? 0 : (u64)dma_aes_ivdata);
+	req_ptr->v1.iv_len = AES_BLOCK_SIZE;
+	req_ptr->v1.plain_data = (u64)dma_aes_unsealed_buf;
+	req_ptr->v1.output_buffer = (u64)dma_aes_sealed_buf;
+	req_ptr->v1.plain_data_len = aes_decrypted_len;
+	req_ptr->v1.output_len = output_len;
+
+	rc = qtiapp_test(dev, (uint8_t *)dma_req_addr, NULL, req_size,
+						QTI_APP_AES_ENCRYPT_ID);
+	if (rc) {
+		pr_err("Response status failure..return value = %d\n", rc);
+		goto err_end;
+	}
+
+	if (aes_mode == QTI_CRYPTO_SERVICE_AES_MODE_CBC && aes_ivdata)
+		print_hex_dump(KERN_INFO, "IV data(CBC): ", DUMP_PREFIX_NONE, 16, 1,
+				aes_ivdata, AES_BLOCK_SIZE, false);
+	else
+		pr_info("IV data(ECB): NULL\n");
+
+	memcpy(buf, aes_sealed_buf, req_ptr->v1.output_len);
+	aes_encrypted_len = req_ptr->v1.output_len;
+
+goto end;
+
+err_end:
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	return rc;
+
+end:
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	return aes_encrypted_len;
+}
+
 static ssize_t
 show_aes_encrypted_data_qtiapp(struct device *dev, struct device_attribute *attr,
 			char *buf)
@@ -2592,13 +2839,14 @@ show_aes_encrypted_data_qtiapp(struct device *dev, struct device_attribute *attr
 	int rc = 0;
 	struct qti_crypto_service_encrypt_data_cmd_t *req_ptr = NULL;
 	uint64_t req_size = 0;
-	size_t req_order = 0;
+	size_t dma_buf_size = 0;
 	uint64_t output_len = 0;
 	dma_addr_t dma_req_addr = 0;
-	dma_addr_t dma_plain_data = 0;
-	dma_addr_t dma_output_data = 0;
-	dma_addr_t dma_iv_data = 0;
-	struct page *req_page = NULL;
+
+	if (props->aes_v2) {
+		rc = show_aes_v2_encrypted_data_qtiapp(dev, attr, buf);
+		return rc;
+	}
 
 	aes_sealed_buf = memset(aes_sealed_buf, 0, MAX_ENCRYPTED_DATA_SIZE);
 	output_len = aes_decrypted_len;
@@ -2617,63 +2865,24 @@ show_aes_encrypted_data_qtiapp(struct device *dev, struct device_attribute *attr
 	dev = qdev;
 
 	req_size = sizeof(struct qti_crypto_service_encrypt_data_cmd_t);
-	req_order = get_order(req_size);
-	req_page = alloc_pages(GFP_KERNEL, req_order);
-
-	if (req_page)
-		req_ptr = page_address(req_page);
-	else
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	req_ptr = (struct qti_crypto_service_encrypt_data_cmd_t *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_req_addr, GFP_KERNEL);
+	if (!req_ptr)
 		return -ENOMEM;
-
-	dma_plain_data = dma_map_single(dev, aes_unsealed_buf, aes_decrypted_len,
-				       DMA_TO_DEVICE);
-	rc = dma_mapping_error(dev, dma_plain_data);
-	if (rc) {
-		pr_err("DMA Mapping Error(plain data)\n");
-		goto err_end;
-	}
-
-	dma_output_data = dma_map_single(dev, aes_sealed_buf, output_len,
-					DMA_FROM_DEVICE);
-	rc = dma_mapping_error(dev, dma_output_data);
-	if (rc) {
-		pr_err("DMA Mapping Error(output data)\n");
-		goto err_map_output_data;
-	}
-
-	dma_iv_data = dma_map_single(dev, aes_ivdata, AES_BLOCK_SIZE,
-					DMA_TO_DEVICE);
-	rc = dma_mapping_error(dev, dma_iv_data);
-	if (rc) {
-		pr_err("DMA Mapping Error(output data)\n");
-		goto err_map_iv_data;
-	}
 
 	req_ptr->type = aes_type;
 	req_ptr->mode = aes_mode;
-	req_ptr->iv = (req_ptr->mode == 0 ? 0 : (u64)dma_iv_data);
+	req_ptr->iv = (req_ptr->mode == 0 ? 0 : (u64)dma_aes_ivdata);
 	req_ptr->iv_len = AES_BLOCK_SIZE;
-	req_ptr->plain_data = (u64)dma_plain_data;
-	req_ptr->output_buffer = (u64)dma_output_data;
+	req_ptr->plain_data = (u64)dma_aes_unsealed_buf;
+	req_ptr->output_buffer = (u64)dma_aes_sealed_buf;
 	req_ptr->plain_data_len = aes_decrypted_len;
 	req_ptr->output_len = output_len;
 
-	dma_req_addr = dma_map_single(dev, req_ptr, req_size, DMA_TO_DEVICE);
-
-	rc = dma_mapping_error(dev, dma_req_addr);
-	if (rc) {
-		pr_err("DMA Mapping Error(request str)\n");
-		goto err_map_req;
-	}
-
 	rc = qtiapp_test(dev, (uint8_t *)dma_req_addr, NULL, req_size,
 						QTI_APP_AES_ENCRYPT_ID);
-
-	dma_unmap_single(dev, dma_req_addr, req_size, DMA_TO_DEVICE);
-	dma_unmap_single(dev, dma_iv_data, AES_BLOCK_SIZE, DMA_TO_DEVICE);
-	dma_unmap_single(dev, dma_output_data, output_len, DMA_FROM_DEVICE);
-	dma_unmap_single(dev, dma_plain_data, aes_decrypted_len, DMA_TO_DEVICE);
-
 	if (rc) {
 		pr_err("Response status failure..return value = %d\n", rc);
 		goto err_end;
@@ -2690,21 +2899,15 @@ show_aes_encrypted_data_qtiapp(struct device *dev, struct device_attribute *attr
 
 goto end;
 
-err_map_req:
-	dma_unmap_single(dev, dma_iv_data, AES_BLOCK_SIZE, DMA_TO_DEVICE);
-
-err_map_iv_data:
-	dma_unmap_single(dev, dma_output_data, output_len, DMA_FROM_DEVICE);
-
-err_map_output_data:
-	dma_unmap_single(dev, dma_plain_data, decrypted_len, DMA_TO_DEVICE);
-
 err_end:
-	free_pages((unsigned long)page_address(req_page), req_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
 	return rc;
 
 end:
-	free_pages((unsigned long)page_address(req_page), req_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
 
 	return aes_encrypted_len;
 }
@@ -3095,8 +3298,7 @@ store_blow_fuse_write_qtiapp(struct device *dev, struct device_attribute *attr,
 	uint32_t ret = 0;
 	struct qti_storage_service_fuse_blow_req *req_ptr = NULL;
 	uint64_t req_size = 0;
-	size_t req_order = 0;
-	struct page *req_page = NULL;
+	size_t dma_buf_size = 0;
 	dma_addr_t dma_req_addr = 0;
 
 	unsigned long long val;
@@ -3113,22 +3315,16 @@ store_blow_fuse_write_qtiapp(struct device *dev, struct device_attribute *attr,
 	dev = qdev;
 
 	req_size = sizeof(struct qti_storage_service_fuse_blow_req);
-	req_order = get_order(req_size);
-	req_page = alloc_pages(GFP_KERNEL|GFP_DMA, req_order);
-	if (req_page)
-		req_ptr = page_address(req_page);
-	else
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	req_ptr = (struct qti_storage_service_fuse_blow_req *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_req_addr, GFP_KERNEL);
+	if (!req_ptr)
 		return -ENOMEM;
 
 	req_ptr->addr = fuse_addr;
 	req_ptr->value = fuse_value;
 	req_ptr->is_fec_enable = is_fec_enable;
-	dma_req_addr = dma_map_single(dev, req_ptr, req_size, DMA_TO_DEVICE);
-	ret = dma_mapping_error(dev, dma_req_addr);
-	if (ret) {
-		pr_err("DMA Mapping Error\n");
-		goto free_dma_req;
-	}
 
 	ret = qtiapp_test(dev, (void *)dma_req_addr, NULL, req_size,
 					QTI_APP_FUSE_BLOW_ID);
@@ -3138,10 +3334,8 @@ store_blow_fuse_write_qtiapp(struct device *dev, struct device_attribute *attr,
 	else
 		ret = count;
 
-	dma_unmap_single(dev, dma_req_addr, req_size, DMA_TO_DEVICE);
-
-free_dma_req:
-	free_pages((unsigned long)req_ptr, req_order);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
 
 	return ret;
 
@@ -3312,16 +3506,9 @@ show_encrypted_rsa_data_qtiapp(struct device *dev, struct device_attribute *attr
 	struct qti_storage_service_rsa_key_type *key = NULL;
 	struct qti_storage_service_rsa_message_req *req_ptr = NULL;
 	uint64_t msg_vector_size = 0, key_size = 0, req_size = 0;
-	size_t req_order = 0;
-	struct page *req_page = NULL;
-	dma_addr_t dma_plain_msg = 0;
-	dma_addr_t dma_encrypted_msg = 0;
+	size_t dma_buf_size = 0;
 	dma_addr_t dma_encrypted_msg_len = 0;
-	dma_addr_t dma_label = 0;
 	dma_addr_t dma_msg_vector = 0;
-	dma_addr_t dma_key_n = 0;
-	dma_addr_t dma_key_e = 0;
-	dma_addr_t dma_key_d = 0;
 	dma_addr_t dma_key = 0;
 	dma_addr_t dma_req = 0;
 	uint64_t *output_len = NULL;
@@ -3350,122 +3537,54 @@ show_encrypted_rsa_data_qtiapp(struct device *dev, struct device_attribute *attr
 
 	memset(rsa_sealed_buf, 0, MAX_RSA_SIGN_DATA_SIZE);
 	rsa_encrypted_len = 0;
-	output_len = (uint64_t*)kzalloc(sizeof(uint64_t), GFP_KERNEL);
+
+	output_len = (uint64_t*)dma_alloc_coherent(dev, sizeof(uint64_t),
+				&dma_encrypted_msg_len, GFP_KERNEL);
 	if (!output_len) {
 		pr_err("Error: alloc failed\n");
 		return -ENOMEM;
 	}
 
 	msg_vector_size = sizeof(struct qti_storage_service_rsa_message_type);
-	req_order = get_order(msg_vector_size);
-	req_page = alloc_pages(GFP_KERNEL|GFP_DMA, req_order);
-	if (req_page)
-		msg_vector_ptr = page_address(req_page);
-	else {
+	dma_buf_size = PAGE_SIZE * (1 << get_order(msg_vector_size));
+	msg_vector_ptr = (struct qti_storage_service_rsa_message_type *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_msg_vector, GFP_KERNEL|GFP_DMA);
+	if (!msg_vector_ptr) {
 		pr_err("Mem allocation failed for msg vector\n");
 		goto err_mem_msg_vector;
 	}
 
-	dma_plain_msg = dma_map_single(dev, rsa_unsealed_buf, rsa_decrypted_len,
-				       DMA_TO_DEVICE);
-	ret = dma_mapping_error(dev, dma_plain_msg);
-	if (ret) {
-		pr_err("DMA Mapping Error msg data\n");
-		goto err_dma_plain_msg;
-	}
-
-	dma_encrypted_msg = dma_map_single(dev, rsa_sealed_buf, MAX_RSA_SIGN_DATA_SIZE,
-				       DMA_FROM_DEVICE);
-	ret = dma_mapping_error(dev, dma_encrypted_msg);
-	if (ret) {
-		pr_err("DMA Mapping Error(dma_encrypted_msg)\n");
-		goto err_dma_encrypted_msg;
-	}
-
-	dma_encrypted_msg_len = dma_map_single(dev, output_len, sizeof(uint64_t*),
-				       DMA_FROM_DEVICE);
-	ret = dma_mapping_error(dev, dma_encrypted_msg_len);
-	if (ret) {
-		pr_err("DMA Mapping Error(dma_encrypted_msg_len)\n");
-		goto err_dma_encrypted_msg_len;
-	}
-
-	dma_label = dma_map_single(dev, rsa_label, rsa_label_len,
-							DMA_TO_DEVICE);
-	ret = dma_mapping_error(dev, dma_label);
-	if (ret) {
-		pr_err("DMA Mapping Error(dma_label)\n");
-		goto err_dma_label;
-	}
-
-	msg_vector_ptr->input = (u64)dma_plain_msg;
+	msg_vector_ptr->input = (u64)dma_rsa_unsealed_buf;
 	msg_vector_ptr->input_len = rsa_decrypted_len;
-	msg_vector_ptr->label = (u64)dma_label;
+	msg_vector_ptr->label = (u64)dma_rsa_label;
 	msg_vector_ptr->label_len = rsa_label_len;
-	msg_vector_ptr->output = (u64)dma_encrypted_msg;
+	msg_vector_ptr->output = (u64)dma_rsa_sealed_buf;
 	msg_vector_ptr->output_len = (u64)dma_encrypted_msg_len;
 	msg_vector_ptr->padding_type = rsa_padding_type;
 	msg_vector_ptr->hashidx = rsa_hashidx;
 
-	dma_msg_vector = dma_map_single(dev, msg_vector_ptr, msg_vector_size, DMA_TO_DEVICE);
-	ret = dma_mapping_error(dev, dma_msg_vector);
-	if (ret) {
-		pr_err("DMA Mapping Error(dma_msg_vector)\n");
-		goto err_dma_msg_vector;
-	}
-
 	key_size = sizeof(struct qti_storage_service_rsa_key_type);
-	req_order = get_order(key_size);
-	req_page = alloc_pages(GFP_KERNEL|GFP_DMA, req_order);
-	if (req_page)
-		key = page_address(req_page);
-	else {
+	dma_buf_size = PAGE_SIZE * (1 << get_order(key_size));
+	key = (struct qti_storage_service_rsa_key_type *)
+		dma_alloc_coherent(dev, dma_buf_size, &dma_key,
+					GFP_KERNEL|GFP_DMA);
+	if(!key) {
 		pr_err("Mem allocation failed for key vector\n");
 		goto err_mem_key;
 	}
 
-	dma_key_n = dma_map_single(dev, rsa_n_key, rsa_n_key_len,
-				       DMA_TO_DEVICE);
-	ret = dma_mapping_error(dev, dma_key_n);
-	if (ret) {
-		pr_err("DMA Mapping Error(dma_key_n)\n");
-		goto err_dma_key_n;
-	}
-
-	dma_key_e = dma_map_single(dev, rsa_e_key, rsa_e_key_len,
-				       DMA_TO_DEVICE);
-
-	ret = dma_mapping_error(dev, dma_key_e);
-	if (ret) {
-		pr_err("DMA Mapping Error(dma_key_e)\n");
-		goto err_dma_key_e;
-	}
-	dma_key_d = dma_map_single(dev, rsa_d_key, rsa_d_key_len,
-				       DMA_TO_DEVICE);
-
-	ret = dma_mapping_error(dev, dma_key_d);
-	if (ret) {
-		pr_err("DMA Mapping Error(dma_key_d)\n");
-		goto err_dma_key_d;
-	}
-	key->n = (u64)dma_key_n;
-	key->e = (u64)dma_key_e;
-	key->d = (u64)dma_key_d;
+	key->n = (u64)dma_rsa_n_key;
+	key->e = (u64)dma_rsa_e_key;
+	key->d = (u64)dma_rsa_d_key;
 	key->nbits = rsa_nbits_key;
 
-	dma_key = dma_map_single(dev, key, key_size, DMA_TO_DEVICE);
-	ret = dma_mapping_error(dev, dma_key);
-	if (ret) {
-		pr_err("DMA Mapping Error(key)\n");
-		goto err_dma_key;
-	}
-
 	req_size = sizeof(struct qti_storage_service_rsa_message_req);
-	req_order = get_order(req_size);
-	req_page = alloc_pages(GFP_KERNEL|GFP_DMA, req_order);
-	if (req_page)
-		req_ptr = page_address(req_page);
-	else {
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	req_ptr = (struct qti_storage_service_rsa_message_req *)
+			dma_alloc_coherent(dev, dma_buf_size, &dma_req,
+						GFP_KERNEL|GFP_DMA);
+	if (!req_ptr) {
 		pr_err("Mem allocation failed for request buffer\n");
 		goto err_mem_req;
 	}
@@ -3473,15 +3592,6 @@ show_encrypted_rsa_data_qtiapp(struct device *dev, struct device_attribute *attr
 	req_ptr->msg_req = (u64)dma_msg_vector;
 	req_ptr->key_req = (u64)dma_key;
 	req_ptr->operation = QTI_APP_RSA_ENCRYPTION_ID;
-
-	dma_req = dma_map_single(dev, req_ptr, req_size,
-				       DMA_TO_DEVICE);
-
-	ret = dma_mapping_error(dev, dma_req);
-	if (ret) {
-		pr_err("DMA Mapping Error(dma_req)\n");
-		goto err_dma_req;
-	}
 
 	ret = qtiapp_test(dev, (void *)dma_req, NULL, req_size,
 						QTI_APP_RSA_ENC_DEC_ID);
@@ -3494,33 +3604,17 @@ show_encrypted_rsa_data_qtiapp(struct device *dev, struct device_attribute *attr
 		memcpy(buf, rsa_sealed_buf, rsa_encrypted_len);
 	}
 
-	dma_unmap_single(dev, dma_req, req_size, DMA_TO_DEVICE);
-err_dma_req:
-	free_pages((unsigned long)req_ptr, get_order(req_size));
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req);
+
 err_mem_req:
-	dma_unmap_single(dev, dma_key, key_size, DMA_TO_DEVICE);
-err_dma_key:
-	dma_unmap_single(dev, dma_key_d, rsa_d_key_len, DMA_TO_DEVICE);
-err_dma_key_d:
-	dma_unmap_single(dev, dma_key_e, rsa_e_key_len, DMA_TO_DEVICE);
-err_dma_key_e:
-	dma_unmap_single(dev, dma_key_n, rsa_n_key_len, DMA_TO_DEVICE);
-err_dma_key_n:
-	free_pages((unsigned long)key, get_order(key_size));
+	dma_buf_size = PAGE_SIZE * (1 << get_order(key_size));
+	dma_free_coherent(dev, dma_buf_size, key, dma_key);
 err_mem_key:
-	dma_unmap_single(dev, dma_msg_vector, msg_vector_size, DMA_TO_DEVICE);
-err_dma_msg_vector:
-	dma_unmap_single(dev, dma_label, rsa_label_len, DMA_TO_DEVICE);
-err_dma_label:
-	dma_unmap_single(dev, dma_encrypted_msg_len, sizeof(uint64_t*), DMA_FROM_DEVICE);
-err_dma_encrypted_msg_len:
-	dma_unmap_single(dev, dma_encrypted_msg, MAX_RSA_SIGN_DATA_SIZE, DMA_FROM_DEVICE);
-err_dma_encrypted_msg:
-	dma_unmap_single(dev, dma_plain_msg, rsa_decrypted_len, DMA_TO_DEVICE);
-err_dma_plain_msg:
-	free_pages((unsigned long)msg_vector_ptr, get_order(msg_vector_size));
+	dma_buf_size = PAGE_SIZE * (1 << get_order(msg_vector_size));
+	dma_free_coherent(dev, dma_buf_size, msg_vector_ptr, dma_msg_vector);
 err_mem_msg_vector:
-	kfree(output_len);
+	dma_free_coherent(dev, sizeof(uint64_t*), output_len, dma_encrypted_msg_len);
 
 	return rsa_encrypted_len;
 }
@@ -3534,16 +3628,9 @@ show_decrypted_rsa_data_qtiapp(struct device *dev, struct device_attribute *attr
 	struct qti_storage_service_rsa_key_type *key = NULL;
 	struct qti_storage_service_rsa_message_req *req_ptr = NULL;
 	uint64_t msg_vector_size = 0, key_size = 0, req_size = 0;
-	size_t req_order = 0;
-	struct page *req_page = NULL;
-	dma_addr_t dma_plain_msg = 0;
+	size_t dma_buf_size = 0;
 	dma_addr_t dma_decrypted_msg_len = 0;
-	dma_addr_t dma_encrypted_msg = 0;
-	dma_addr_t dma_label = 0;
 	dma_addr_t dma_msg_vector = 0;
-	dma_addr_t dma_key_n = 0;
-	dma_addr_t dma_key_e = 0;
-	dma_addr_t dma_key_d = 0;
 	dma_addr_t dma_key = 0;
 	dma_addr_t dma_req = 0;
 	uint64_t *output_len = NULL;
@@ -3568,124 +3655,57 @@ show_decrypted_rsa_data_qtiapp(struct device *dev, struct device_attribute *attr
 		pr_err("Invalid key nbits, size %lld\n", rsa_nbits_key);
 		return ret;
 	}
-	output_len = (uint64_t*)kzalloc(sizeof(uint64_t), GFP_KERNEL);
+
+	output_len = (uint64_t*)dma_alloc_coherent(dev, sizeof(uint64_t),
+				&dma_decrypted_msg_len, GFP_KERNEL);
 	if (!output_len) {
 		pr_err("Error: alloc failed\n");
 		return -ENOMEM;
 	}
+
 	memset(rsa_unsealed_buf, 0, MAX_RSA_PLAIN_DATA_SIZE);
 	rsa_decrypted_len = 0;
 
 	msg_vector_size = sizeof(struct qti_storage_service_rsa_message_type);
-	req_order = get_order(msg_vector_size);
-	req_page = alloc_pages(GFP_KERNEL, req_order);
-	if (req_page)
-		msg_vector_ptr = page_address(req_page);
-	else {
+	dma_buf_size = PAGE_SIZE * (1 << get_order(msg_vector_size));
+	msg_vector_ptr = (struct qti_storage_service_rsa_message_type *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_msg_vector, GFP_KERNEL);
+	if (!msg_vector_ptr) {
 		pr_err("Mem allocation failed for msg vector\n");
 		goto err_mem_msg_vector;
 	}
 
-	dma_plain_msg = dma_map_single(dev, rsa_unsealed_buf, MAX_RSA_PLAIN_DATA_SIZE,
-				       DMA_FROM_DEVICE);
-	ret = dma_mapping_error(dev, dma_plain_msg);
-	if (ret) {
-		pr_err("DMA Mapping Error msg data\n");
-		goto err_dma_plain_msg;
-	}
-
-	dma_decrypted_msg_len = dma_map_single(dev, output_len, sizeof(uint64_t*),
-				       DMA_FROM_DEVICE);
-	ret = dma_mapping_error(dev, dma_decrypted_msg_len);
-	if (ret) {
-		pr_err("DMA Mapping Error(dma_decrypted_msg_len)\n");
-		goto err_dma_decrypted_msg_len;
-	}
-
-	dma_encrypted_msg = dma_map_single(dev, rsa_sealed_buf, rsa_encrypted_len,
-				       DMA_TO_DEVICE);
-	ret = dma_mapping_error(dev, dma_encrypted_msg);
-	if (ret) {
-		pr_err("DMA Mapping Error(dma_encrypted_msg)\n");
-		goto err_dma_encrypted_msg;
-	}
-
-	dma_label = dma_map_single(dev, rsa_label, rsa_label_len,
-							DMA_TO_DEVICE);
-	ret = dma_mapping_error(dev, dma_label);
-	if (ret) {
-		pr_err("DMA Mapping Error(dma_label)\n");
-		goto err_dma_label;
-	}
-
-	msg_vector_ptr->input = (u64)dma_encrypted_msg;
+	msg_vector_ptr->input = (u64)dma_rsa_sealed_buf;
 	msg_vector_ptr->input_len = rsa_encrypted_len;
-	msg_vector_ptr->label = (u64)dma_label;
+	msg_vector_ptr->label = (u64)dma_rsa_label;
 	msg_vector_ptr->label_len = rsa_label_len;
-	msg_vector_ptr->output = (u64)dma_plain_msg;
+	msg_vector_ptr->output = (u64)dma_rsa_unsealed_buf;
 	msg_vector_ptr->output_len = (u64)dma_decrypted_msg_len;
 	msg_vector_ptr->padding_type = rsa_padding_type;
 	msg_vector_ptr->hashidx = rsa_hashidx;
 
-	dma_msg_vector = dma_map_single(dev, msg_vector_ptr, msg_vector_size, DMA_TO_DEVICE);
-	ret = dma_mapping_error(dev, dma_msg_vector);
-	if (ret) {
-		pr_err("DMA Mapping Error(dma_msg_vector)\n");
-		goto err_dma_msg_vector;
-	}
-
 	key_size = sizeof(struct qti_storage_service_rsa_key_type);
-	req_order = get_order(key_size);
-	req_page = alloc_pages(GFP_KERNEL, req_order);
-	if (req_page)
-		key = page_address(req_page);
-	else {
-		pr_err("Mem allocation failed for Key vector\n");
+	dma_buf_size = PAGE_SIZE * (1 << get_order(key_size));
+	key = (struct qti_storage_service_rsa_key_type *)
+		dma_alloc_coherent(dev, dma_buf_size, &dma_key,
+					GFP_KERNEL);
+	if(!key) {
+		pr_err("Mem allocation failed for key vector\n");
 		goto err_mem_key;
 	}
 
-	dma_key_n = dma_map_single(dev, rsa_n_key, rsa_n_key_len,
-				       DMA_TO_DEVICE);
-	ret = dma_mapping_error(dev, dma_key_n);
-	if (ret) {
-		pr_err("DMA Mapping Error(dma_key_n)\n");
-		goto err_dma_key_n;
-	}
-
-	dma_key_e = dma_map_single(dev, rsa_e_key, rsa_e_key_len,
-				       DMA_TO_DEVICE);
-
-	ret = dma_mapping_error(dev, dma_key_e);
-	if (ret) {
-		pr_err("DMA Mapping Error(dma_key_e)\n");
-		goto err_dma_key_e;
-	}
-	dma_key_d = dma_map_single(dev, rsa_d_key, rsa_d_key_len,
-				       DMA_TO_DEVICE);
-
-	ret = dma_mapping_error(dev, dma_key_d);
-	if (ret) {
-		pr_err("DMA Mapping Error(dma_key_d)\n");
-		goto err_dma_key_d;
-	}
-	key->n = (u64)dma_key_n;
-	key->e = (u64)dma_key_e;
-	key->d = (u64)dma_key_d;
+	key->n = (u64)dma_rsa_n_key;
+	key->e = (u64)dma_rsa_e_key;
+	key->d = (u64)dma_rsa_d_key;
 	key->nbits = rsa_nbits_key;
 
-	dma_key = dma_map_single(dev, key, key_size, DMA_TO_DEVICE);
-	ret = dma_mapping_error(dev, dma_key);
-	if (ret) {
-		pr_err("DMA Mapping Error(key)\n");
-		goto err_dma_key;
-	}
-
 	req_size = sizeof(struct qti_storage_service_rsa_message_req);
-	req_order = get_order(req_size);
-	req_page = alloc_pages(GFP_KERNEL, req_order);
-	if (req_page)
-		req_ptr = page_address(req_page);
-	else {
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	req_ptr = (struct qti_storage_service_rsa_message_req *)
+			dma_alloc_coherent(dev, dma_buf_size, &dma_req,
+						GFP_KERNEL);
+	if (!req_ptr) {
 		pr_err("Mem allocation failed for request buffer\n");
 		goto err_mem_req;
 	}
@@ -3693,15 +3713,6 @@ show_decrypted_rsa_data_qtiapp(struct device *dev, struct device_attribute *attr
 	req_ptr->msg_req = (u64)dma_msg_vector;
 	req_ptr->key_req = (u64)dma_key;
 	req_ptr->operation = QTI_APP_RSA_DECRYPTION_ID;
-
-	dma_req = dma_map_single(dev, req_ptr, req_size,
-				       DMA_TO_DEVICE);
-
-	ret = dma_mapping_error(dev, dma_req);
-	if (ret) {
-		pr_err("DMA Mapping Error(dma_req)\n");
-		goto err_dma_req;
-	}
 
 	ret = qtiapp_test(dev, (void *)dma_req, NULL, req_size,
 						QTI_APP_RSA_ENC_DEC_ID);
@@ -3713,50 +3724,28 @@ show_decrypted_rsa_data_qtiapp(struct device *dev, struct device_attribute *attr
 		rsa_decrypted_len = *output_len;
 		memcpy(buf, rsa_unsealed_buf, rsa_decrypted_len);
 	}
-	dma_unmap_single(dev, dma_req, req_size, DMA_TO_DEVICE);
-err_dma_req:
-	free_pages((unsigned long)req_ptr, get_order(req_size));
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req);
+
 err_mem_req:
-	dma_unmap_single(dev, dma_key, key_size, DMA_TO_DEVICE);
-err_dma_key:
-	dma_unmap_single(dev, dma_key_d, rsa_d_key_len, DMA_TO_DEVICE);
-err_dma_key_d:
-	dma_unmap_single(dev, dma_key_e, rsa_e_key_len, DMA_TO_DEVICE);
-err_dma_key_e:
-	dma_unmap_single(dev, dma_key_n, rsa_n_key_len, DMA_TO_DEVICE);
-err_dma_key_n:
-	free_pages((unsigned long)key, get_order(key_size));
+	dma_buf_size = PAGE_SIZE * (1 << get_order(key_size));
+	dma_free_coherent(dev, dma_buf_size, key, dma_key);
 err_mem_key:
-	dma_unmap_single(dev, dma_msg_vector, msg_vector_size, DMA_TO_DEVICE);
-err_dma_msg_vector:
-	dma_unmap_single(dev, dma_label, rsa_label_len, DMA_TO_DEVICE);
-err_dma_label:
-	dma_unmap_single(dev, dma_encrypted_msg, rsa_encrypted_len, DMA_TO_DEVICE);
-err_dma_encrypted_msg:
-	dma_unmap_single(dev, dma_decrypted_msg_len, sizeof(uint64_t*), DMA_FROM_DEVICE);
-err_dma_decrypted_msg_len:
-	dma_unmap_single(dev, dma_plain_msg, MAX_RSA_PLAIN_DATA_SIZE, DMA_FROM_DEVICE);
-err_dma_plain_msg:
-	free_pages((unsigned long)msg_vector_ptr, get_order(msg_vector_size));
+	dma_buf_size = PAGE_SIZE * (1 << get_order(msg_vector_size));
+	dma_free_coherent(dev, dma_buf_size, msg_vector_ptr, dma_msg_vector);
 err_mem_msg_vector:
-	kfree(output_len);
+	dma_free_coherent(dev, sizeof(uint64_t*), output_len,
+							dma_decrypted_msg_len);
 
 	return rsa_decrypted_len;
 }
 
-static int __init qtiapp_init(void)
+static int __init qtiapp_init(struct device *dev)
 {
 	int err;
 	int i = 0;
-	struct page *sealed_buf_page = NULL;
-	struct page *unsealed_buf_page = NULL;
-	struct page *iv_page = NULL;
-	struct page *rsa_unsealed_buf_page = NULL;
-	struct page *rsa_sealed_buf_page = NULL;
-	struct page *rsa_label_page = NULL;
-	struct page *rsa_n_key_page = NULL;
-	struct page *rsa_e_key_page = NULL;
-	struct page *rsa_d_key_page = NULL;
+	size_t dma_buf_size = 0;
 	struct attribute **qtiapp_attrs = kzalloc((hweight_long(props->function)
 				+ 1) * sizeof(*qtiapp_attrs), GFP_KERNEL);
 
@@ -3810,34 +3799,53 @@ static int __init qtiapp_init(void)
 
 	if (props->function & AES_TZAPP) {
 
-		sealed_buf_page = alloc_pages(GFP_KERNEL,
-				     get_order(MAX_ENCRYPTED_DATA_SIZE));
-		unsealed_buf_page = alloc_pages(GFP_KERNEL,
-				       get_order(MAX_PLAIN_DATA_SIZE));
-		iv_page = alloc_pages(GFP_KERNEL,
-				get_order(AES_BLOCK_SIZE));
+		dma_buf_size = PAGE_SIZE *
+				(1 << get_order(MAX_ENCRYPTED_DATA_SIZE));
+		buf_aes_sealed_buf = dma_alloc_coherent(dev, dma_buf_size,
+					&dma_aes_sealed_buf, GFP_KERNEL);
 
-		if (!sealed_buf_page || !unsealed_buf_page || !iv_page) {
+		dma_buf_size = PAGE_SIZE *
+				(1 << get_order(MAX_PLAIN_DATA_SIZE));
+		buf_aes_unsealed_buf = dma_alloc_coherent(dev, dma_buf_size,
+					&dma_aes_unsealed_buf, GFP_KERNEL);
+
+		dma_buf_size = PAGE_SIZE *
+				(1 << get_order(AES_BLOCK_SIZE));
+		buf_aes_iv = dma_alloc_coherent(dev, dma_buf_size,
+					&dma_aes_ivdata, GFP_KERNEL);
+
+		if (!buf_aes_sealed_buf || !buf_aes_unsealed_buf || !buf_aes_iv) {
 			pr_err("Cannot allocate memory for aes crypt ops\n");
 
-			if (sealed_buf_page)
-				free_pages((unsigned long)page_address(sealed_buf_page),
-				  get_order(MAX_ENCRYPTED_DATA_SIZE));
+			if (buf_aes_sealed_buf) {
+				dma_buf_size = PAGE_SIZE *
+				(1 << get_order(MAX_ENCRYPTED_DATA_SIZE));
+				dma_free_coherent(dev, dma_buf_size,
+					buf_aes_sealed_buf,
+					dma_aes_sealed_buf);
+			}
 
-			if (unsealed_buf_page)
-				free_pages((unsigned long)
-				  page_address(unsealed_buf_page),
-				  get_order(MAX_PLAIN_DATA_SIZE));
+			if (buf_aes_unsealed_buf) {
+				dma_buf_size = PAGE_SIZE *
+				(1 << get_order(MAX_PLAIN_DATA_SIZE));
+				dma_free_coherent(dev, dma_buf_size,
+					buf_aes_unsealed_buf,
+					dma_aes_unsealed_buf);
+			}
 
-			if (iv_page)
-				free_pages((unsigned long)page_address(iv_page),
-				get_order(AES_BLOCK_SIZE));
+			if (buf_aes_iv) {
+				dma_buf_size = PAGE_SIZE *
+				(1 << get_order(AES_BLOCK_SIZE));
+				dma_free_coherent(dev, dma_buf_size,
+					buf_aes_iv,
+					dma_aes_ivdata);
+			}
 
 		} else {
 
-			aes_sealed_buf = page_address(sealed_buf_page);
-			aes_unsealed_buf = page_address(unsealed_buf_page);
-			aes_ivdata = page_address(iv_page);
+			aes_sealed_buf = (uint8_t*)buf_aes_sealed_buf;
+			aes_unsealed_buf = (uint8_t*)buf_aes_unsealed_buf;
+			aes_ivdata = (uint8_t*)buf_aes_iv;
 
 			qtiapp_aes_kobj = kobject_create_and_add("aes", qtiapp_kobj);
 
@@ -3846,54 +3854,101 @@ static int __init qtiapp_init(void)
 			if (err) {
 				kobject_put(qtiapp_aes_kobj);
 			}
+
+			if (props->aes_v2) {
+				err = sysfs_create_group(qtiapp_aes_kobj, &qtiapp_aesv2_attr_grp);
+				if (err)
+					pr_debug("TZapp AES v2 sysfs creation failed with error %d\n",err);
+			}
 		}
 
 	}
 
 	if (props->function & RSA_TZAPP) {
 
-		rsa_unsealed_buf_page = alloc_pages(GFP_KERNEL,get_order(MAX_RSA_PLAIN_DATA_SIZE));
-		rsa_sealed_buf_page = alloc_pages(GFP_KERNEL,get_order(MAX_RSA_PLAIN_DATA_SIZE));
-		rsa_label_page = alloc_pages(GFP_KERNEL,get_order(MAX_RSA_PLAIN_DATA_SIZE));
-		rsa_n_key_page = alloc_pages(GFP_KERNEL,get_order(MAX_RSA_PLAIN_DATA_SIZE));
-		rsa_e_key_page = alloc_pages(GFP_KERNEL,get_order(MAX_RSA_PLAIN_DATA_SIZE));
-		rsa_d_key_page = alloc_pages(GFP_KERNEL,get_order(MAX_RSA_PLAIN_DATA_SIZE));
+		dma_buf_size = PAGE_SIZE *
+				(1 << get_order(MAX_RSA_PLAIN_DATA_SIZE));
+		buf_rsa_unsealed_buf = dma_alloc_coherent(dev, dma_buf_size,
+					&dma_rsa_unsealed_buf, GFP_KERNEL);
+		buf_rsa_label = dma_alloc_coherent(dev, dma_buf_size,
+					&dma_rsa_label, GFP_KERNEL);
 
-		if (!rsa_unsealed_buf_page || !rsa_sealed_buf_page || !rsa_label_page || !rsa_n_key_page
-			|| !rsa_e_key_page || !rsa_d_key_page) {
+		dma_buf_size = PAGE_SIZE *
+				(1 << get_order(MAX_RSA_SIGN_DATA_SIZE));
+		buf_rsa_sealed_buf = dma_alloc_coherent(dev, dma_buf_size,
+					&dma_rsa_sealed_buf, GFP_KERNEL);
+
+		dma_buf_size = PAGE_SIZE *
+				(1 << get_order(RSA_KEY_SIZE_MAX));
+		buf_rsa_n_key = dma_alloc_coherent(dev, dma_buf_size,
+					&dma_rsa_n_key, GFP_KERNEL);
+		buf_rsa_e_key = dma_alloc_coherent(dev, dma_buf_size,
+					&dma_rsa_e_key, GFP_KERNEL);
+		buf_rsa_d_key = dma_alloc_coherent(dev, dma_buf_size,
+					&dma_rsa_d_key, GFP_KERNEL);
+
+		if (!buf_rsa_unsealed_buf || !buf_rsa_sealed_buf
+			|| !buf_rsa_label || !buf_rsa_n_key
+			|| !buf_rsa_e_key || !buf_rsa_d_key) {
 
 			pr_err("Cannot allocate memory for rsa crypt ops\n");
-			if(rsa_unsealed_buf_page)
-				free_pages((unsigned long)page_address(rsa_unsealed_buf_page),
-					get_order(MAX_RSA_PLAIN_DATA_SIZE));
 
-			if(rsa_sealed_buf_page)
-				free_pages((unsigned long)page_address(rsa_sealed_buf_page),
-					get_order(MAX_RSA_SIGN_DATA_SIZE));
+			if (buf_rsa_unsealed_buf) {
+				dma_buf_size = PAGE_SIZE *
+				(1 << get_order(MAX_RSA_PLAIN_DATA_SIZE));
+				dma_free_coherent(dev, dma_buf_size,
+							buf_rsa_unsealed_buf,
+							dma_rsa_unsealed_buf);
+			}
 
-			if(rsa_label_page)
-				free_pages((unsigned long)page_address(rsa_label_page),
-					get_order(MAX_RSA_PLAIN_DATA_SIZE));
+			if (buf_rsa_sealed_buf) {
+				dma_buf_size = PAGE_SIZE *
+				(1 << get_order(MAX_RSA_SIGN_DATA_SIZE));
+				dma_free_coherent(dev, dma_buf_size,
+							buf_rsa_sealed_buf,
+							dma_rsa_sealed_buf);
+			}
 
-			if(rsa_n_key_page)
-				free_pages((unsigned long)page_address(rsa_n_key_page),
-					get_order(RSA_KEY_SIZE_MAX));
+			if (buf_rsa_label) {
+				dma_buf_size = PAGE_SIZE *
+				(1 << get_order(MAX_RSA_PLAIN_DATA_SIZE));
+				dma_free_coherent(dev, dma_buf_size,
+							buf_rsa_label,
+							dma_rsa_label);
+			}
 
-			if(rsa_e_key_page)
-				free_pages((unsigned long)page_address(rsa_e_key_page),
-					get_order(RSA_KEY_SIZE_MAX));
+			if (buf_rsa_n_key) {
+				dma_buf_size = PAGE_SIZE *
+					(1 << get_order(RSA_KEY_SIZE_MAX));
+				dma_free_coherent(dev, dma_buf_size,
+							buf_rsa_n_key,
+							dma_rsa_n_key);
+			}
 
-			if(rsa_d_key_page)
-				free_pages((unsigned long)page_address(rsa_d_key_page),
-					get_order(RSA_KEY_SIZE_MAX));
+			if (buf_rsa_e_key) {
+				dma_buf_size = PAGE_SIZE *
+					(1 << get_order(RSA_KEY_SIZE_MAX));
+				dma_free_coherent(dev, dma_buf_size,
+							buf_rsa_e_key,
+							dma_rsa_e_key);
+			}
+
+			if (buf_rsa_d_key) {
+				dma_buf_size = PAGE_SIZE *
+					(1 << get_order(RSA_KEY_SIZE_MAX));
+				dma_free_coherent(dev, dma_buf_size,
+							buf_rsa_d_key,
+							dma_rsa_d_key);
+			}
+
 		} else {
 
-			rsa_unsealed_buf = page_address(rsa_unsealed_buf_page);
-			rsa_sealed_buf = page_address(rsa_sealed_buf_page);
-			rsa_label = page_address(rsa_label_page);
-			rsa_n_key = page_address(rsa_n_key_page);
-			rsa_e_key = page_address(rsa_e_key_page);
-			rsa_d_key = page_address(rsa_d_key_page);
+			rsa_unsealed_buf = (uint8_t*) buf_rsa_unsealed_buf;
+			rsa_sealed_buf = (uint8_t*) buf_rsa_sealed_buf;
+			rsa_label = (uint8_t*) buf_rsa_label;
+			rsa_n_key = (uint8_t*) buf_rsa_n_key;
+			rsa_e_key = (uint8_t*) buf_rsa_e_key;
+			rsa_d_key = (uint8_t*) buf_rsa_d_key;
 
 			qtiapp_rsa_kobj = kobject_create_and_add("rsa", qtiapp_kobj);
 
@@ -3923,6 +3978,9 @@ static int __init qseecom_probe(struct platform_device *pdev)
 {
 	struct device_node *of_node = pdev->dev.of_node;
 	struct device_node *node;
+	struct resource qseecom_res;
+	phys_addr_t node_addr;
+	size_t node_size;
 	const struct of_device_id *id;
 	struct reserved_mem *rmem = NULL;
 	struct qsee_notify_app notify_app;
@@ -3950,6 +4008,21 @@ static int __init qseecom_probe(struct platform_device *pdev)
 		pr_err("QSEECom: TZApp cannot be used\n");
 		goto load;
 	}
+
+	node = of_parse_phandle(of_node, "memory-region", 1);
+	if (node && !of_address_to_resource(node, 0, &qseecom_res)) {
+		node_addr = qseecom_res.start;
+		node_size = resource_size(&qseecom_res);
+
+		ret = dma_declare_coherent_memory(qdev, node_addr,
+				node_addr, node_size);
+		if(ret) {
+			pr_err("QSEECom: Unable to acquire tzapp_data memory-region\n");
+			pr_err("QSEECom: TZApp cannot be used\n");
+			goto load;
+		}
+	}
+
 	notify_app.applications_region_addr = rmem->base;
 	notify_app.applications_region_size = rmem->size;
 
@@ -3983,20 +4056,20 @@ load:
 
 	if (props->function & AUTH_OTP)
 		sysfs_create_bin_file(firmware_kobj, &auth_attr);
-	if (!qtiapp_init())
+	if (!qtiapp_init(qdev))
 		pr_info("Loaded tzapp successfully!\n");
 	else
 		pr_info("Failed to load tzapp module\n");
 
 	if (props->function & AES_SEC_KEY) {
-		if (!sec_key_init())
+		if (!sec_key_init(qdev))
 			pr_info("Init. AES sec key feature successful!\n");
 		else
 			pr_info("Failed to load AES Sec Key feature\n");
 	}
 
 	if (props->function & RSA_SEC_KEY) {
-		if (!rsa_sec_key_init())
+		if (!rsa_sec_key_init(qdev))
 			pr_info("Init. RSA sec key feature successful!\n");
 		else
 			pr_info("Failed to load RSA Sec Key feature\n");
@@ -4008,6 +4081,8 @@ load:
 static int __exit qseecom_remove(struct platform_device *pdev)
 {
 	int ret = -1;
+	size_t dma_buf_size = 0;
+	struct device *dev = &pdev->dev;
 
 	if (app_state) {
 		if (qseecom_unload_app())
@@ -4025,53 +4100,97 @@ static int __exit qseecom_remove(struct platform_device *pdev)
 	kobject_put(qtiapp_kobj);
 
 	if (props->function & AES_SEC_KEY) {
-		if (key)
-			free_pages((unsigned long)key, get_order(KEY_SIZE));
 
-		if (key_blob)
-			free_pages((unsigned long)key_blob,
-				  get_order(KEY_BLOB_SIZE));
+		if (buf_key) {
+			dma_buf_size = PAGE_SIZE *
+					(1 << get_order(KEY_SIZE));
+			dma_free_coherent(dev, dma_buf_size, buf_key,
+							dma_key);
+		}
 
-		if (sealed_buf)
-			free_pages((unsigned long)sealed_buf,
-				  get_order(MAX_ENCRYPTED_DATA_SIZE));
+		if (buf_key_blob) {
+			dma_buf_size = PAGE_SIZE *
+					(1 << get_order(KEY_BLOB_SIZE));
+			dma_free_coherent(dev, dma_buf_size, buf_key_blob,
+							dma_key_blob);
+		}
 
-		if (unsealed_buf)
-			free_pages((unsigned long)unsealed_buf,
-				  get_order(MAX_PLAIN_DATA_SIZE));
+		if (buf_sealed_buf) {
+			dma_buf_size = PAGE_SIZE *
+				(1 << get_order(MAX_ENCRYPTED_DATA_SIZE));
+			dma_free_coherent(dev, dma_buf_size,
+							buf_sealed_buf,
+							dma_sealed_data);
+		}
 
-		if (ivdata)
-			free_pages((unsigned long)ivdata,
-				get_order(AES_BLOCK_SIZE));
+		if (buf_unsealed_buf) {
+			dma_buf_size = PAGE_SIZE *
+					(1 << get_order(MAX_PLAIN_DATA_SIZE));
+			dma_free_coherent(dev, dma_buf_size,
+							buf_unsealed_buf,
+							dma_unsealed_data);
+		}
+
+		if (buf_iv) {
+			dma_buf_size = PAGE_SIZE *
+					(1 << get_order(AES_BLOCK_SIZE));
+			dma_free_coherent(dev, dma_buf_size,
+							buf_iv,
+							dma_iv_data);
+		}
 
 		sysfs_remove_group(sec_kobj, &sec_key_attr_grp);
 		kobject_put(sec_kobj);
 	}
 
 	if (props->function & RSA_SEC_KEY) {
-		if (rsa_key_blob)
-			free_pages((unsigned long)rsa_key_blob,
-				  get_order(RSA_KEY_BLOB_SIZE));
 
-		if (rsa_import_modulus)
-			free_pages((unsigned long)rsa_import_modulus,
-				  get_order(RSA_KEY_SIZE_MAX));
+		if (buf_rsa_key_blob) {
+			dma_buf_size = PAGE_SIZE *
+					(1 << get_order(RSA_KEY_BLOB_SIZE));
+			dma_free_coherent(dev, dma_buf_size, buf_rsa_key_blob,
+							dma_rsa_key_blob);
+		}
 
-		if (rsa_import_public_exponent)
-			free_pages((unsigned long)rsa_import_public_exponent,
-				  get_order(RSA_PUB_EXP_SIZE_MAX));
+		if (buf_rsa_import_modulus) {
+			dma_buf_size = PAGE_SIZE *
+					(1 << get_order(RSA_KEY_SIZE_MAX));
+			dma_free_coherent(dev, dma_buf_size,
+					buf_rsa_import_modulus,
+					dma_rsa_import_modulus);
+		}
 
-		if (rsa_import_pvt_exponent)
-			free_pages((unsigned long)rsa_import_pvt_exponent,
-				  get_order(RSA_KEY_SIZE_MAX));
+		if (buf_rsa_import_public_exponent) {
+			dma_buf_size = PAGE_SIZE *
+					(1 << get_order(RSA_PUB_EXP_SIZE_MAX));
+			dma_free_coherent(dev, dma_buf_size,
+						buf_rsa_import_public_exponent,
+						dma_rsa_import_public_exponent);
+		}
 
-		if (rsa_sign_data_buf)
-			free_pages((unsigned long)rsa_sign_data_buf,
-				  get_order(MAX_RSA_SIGN_DATA_SIZE));
+		if (buf_rsa_import_pvt_exponent) {
+			dma_buf_size = PAGE_SIZE *
+					(1 << get_order(RSA_KEY_SIZE_MAX));
+			dma_free_coherent(dev, dma_buf_size,
+						buf_rsa_import_pvt_exponent,
+						dma_rsa_import_pvt_exponent);
+		}
 
-		if (rsa_plain_data_buf)
-			free_pages((unsigned long)rsa_plain_data_buf,
-				  get_order(MAX_RSA_PLAIN_DATA_SIZE));
+		if (buf_rsa_sign_data_buf) {
+			dma_buf_size = PAGE_SIZE *
+				(1 << get_order(MAX_RSA_SIGN_DATA_SIZE));
+			dma_free_coherent(dev, dma_buf_size,
+						buf_rsa_sign_data_buf,
+						dma_rsa_sign_data_buf);
+		}
+
+		if(buf_rsa_plain_data_buf) {
+			dma_buf_size = PAGE_SIZE *
+				(1 << get_order(MAX_RSA_PLAIN_DATA_SIZE));
+			dma_free_coherent(dev, dma_buf_size,
+						buf_rsa_plain_data_buf,
+						dma_rsa_plain_data_buf);
+		}
 
 		sysfs_remove_group(rsa_sec_kobj, &rsa_sec_key_attr_grp);
 		kobject_put(rsa_sec_kobj);
@@ -4079,48 +4198,85 @@ static int __exit qseecom_remove(struct platform_device *pdev)
 
 	if (props->function & AES_TZAPP) {
 
-		if(aes_sealed_buf)
-			free_pages((unsigned long)aes_sealed_buf,
-				get_order(MAX_ENCRYPTED_DATA_SIZE));
+		if (buf_aes_sealed_buf) {
+			dma_buf_size = PAGE_SIZE *
+			(1 << get_order(MAX_ENCRYPTED_DATA_SIZE));
+			dma_free_coherent(dev, dma_buf_size,
+				buf_aes_sealed_buf,
+				dma_aes_sealed_buf);
+		}
 
-		if(aes_unsealed_buf)
-			free_pages((unsigned long)aes_unsealed_buf,
-				get_order(MAX_PLAIN_DATA_SIZE));
+		if (buf_aes_unsealed_buf) {
+			dma_buf_size = PAGE_SIZE *
+			(1 << get_order(MAX_PLAIN_DATA_SIZE));
+			dma_free_coherent(dev, dma_buf_size,
+				buf_aes_unsealed_buf,
+				dma_aes_unsealed_buf);
+		}
 
-		if(aes_ivdata)
-			free_pages((unsigned long)aes_ivdata,
-				get_order(AES_BLOCK_SIZE));
+		if (buf_aes_iv) {
+			dma_buf_size = PAGE_SIZE *
+			(1 << get_order(AES_BLOCK_SIZE));
+			dma_free_coherent(dev, dma_buf_size,
+				buf_aes_iv,
+				dma_aes_ivdata);
+		}
 
 		sysfs_remove_group(qtiapp_aes_kobj, &qtiapp_aes_attr_grp);
+		if (props->aes_v2)
+			sysfs_remove_group(qtiapp_aes_kobj, &qtiapp_aesv2_attr_grp);
 		kobject_put(qtiapp_aes_kobj);
 
 	}
 
 	if (props->function & RSA_TZAPP) {
+		if (buf_rsa_unsealed_buf) {
+			dma_buf_size = PAGE_SIZE *
+			(1 << get_order(MAX_RSA_PLAIN_DATA_SIZE));
+			dma_free_coherent(dev, dma_buf_size,
+						buf_rsa_unsealed_buf,
+						dma_rsa_unsealed_buf);
+		}
 
-		if(rsa_unsealed_buf)
-			free_pages((unsigned long)rsa_unsealed_buf,
-				get_order(MAX_RSA_PLAIN_DATA_SIZE));
+		if (buf_rsa_sealed_buf) {
+			dma_buf_size = PAGE_SIZE *
+			(1 << get_order(MAX_RSA_SIGN_DATA_SIZE));
+			dma_free_coherent(dev, dma_buf_size,
+						buf_rsa_sealed_buf,
+						dma_rsa_sealed_buf);
+		}
 
-		if(rsa_sealed_buf)
-			free_pages((unsigned long)rsa_sealed_buf,
-				get_order(MAX_RSA_SIGN_DATA_SIZE));
+		if (buf_rsa_label) {
+			dma_buf_size = PAGE_SIZE *
+			(1 << get_order(MAX_RSA_PLAIN_DATA_SIZE));
+			dma_free_coherent(dev, dma_buf_size,
+						buf_rsa_label,
+						dma_rsa_label);
+		}
 
-		if(rsa_label)
-			free_pages((unsigned long)rsa_label,
-				get_order(MAX_RSA_PLAIN_DATA_SIZE));
+		if (buf_rsa_n_key) {
+			dma_buf_size = PAGE_SIZE *
+				(1 << get_order(RSA_KEY_SIZE_MAX));
+			dma_free_coherent(dev, dma_buf_size,
+						buf_rsa_n_key,
+						dma_rsa_n_key);
+		}
 
-		if(rsa_n_key)
-			free_pages((unsigned long)rsa_n_key,
-				get_order(RSA_KEY_SIZE_MAX));
+		if (buf_rsa_e_key) {
+			dma_buf_size = PAGE_SIZE *
+				(1 << get_order(RSA_KEY_SIZE_MAX));
+				dma_free_coherent(dev, dma_buf_size,
+						buf_rsa_e_key,
+						dma_rsa_e_key);
+		}
 
-		if(rsa_e_key)
-			free_pages((unsigned long)rsa_e_key,
-				get_order(RSA_KEY_SIZE_MAX));
-
-		if(rsa_d_key)
-			free_pages((unsigned long)rsa_d_key,
-				get_order(RSA_KEY_SIZE_MAX));
+		if (buf_rsa_d_key) {
+			dma_buf_size = PAGE_SIZE *
+				(1 << get_order(RSA_KEY_SIZE_MAX));
+			dma_free_coherent(dev, dma_buf_size,
+						buf_rsa_d_key,
+						dma_rsa_d_key);
+		}
 
 		sysfs_remove_group(qtiapp_rsa_kobj, &qtiapp_rsa_attr_grp);
 		kobject_put(qtiapp_rsa_kobj);

@@ -181,7 +181,8 @@ static void cfg_connect_result(enum conn_event conn_disconn_evt, u8 mac_status,
 				reason = 1;
 		}
 
-		cfg80211_disconnected(dev, reason, NULL, 0, false, GFP_KERNEL);
+		cfg80211_disconnected(dev, reason, NULL, 0, false,
+				      NL80211_MLO_INVALID_LINK_ID, GFP_KERNEL);
 	}
 }
 
@@ -430,7 +431,8 @@ static int disconnect(struct wiphy *wiphy, struct net_device *dev,
 
 	if (wilc->close) {
 		/* already disconnected done */
-		cfg80211_disconnected(dev, 0, NULL, 0, true, GFP_KERNEL);
+		cfg80211_disconnected(dev, 0, NULL, 0, true,
+				      NL80211_MLO_INVALID_LINK_ID, GFP_KERNEL);
 		return 0;
 	}
 

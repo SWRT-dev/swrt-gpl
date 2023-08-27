@@ -818,6 +818,10 @@ static int qup_i2c_bam_schedule_desc(struct qup_i2c_dev *qup)
 		if (!wait_for_completion_timeout(&qup->xfer, HZ))
 			dev_err(qup->dev, "flush timed out\n");
 
+		ret = qup_i2c_change_state(qup,QUP_RESET_STATE);
+		if (ret)
+			dev_err(qup->dev, "change to reset state timed out");
+
 		ret =  (qup->bus_err & QUP_I2C_NACK_FLAG) ? -ENXIO : -EIO;
 	}
 
@@ -1793,6 +1797,16 @@ nodma:
 		if (IS_ERR(qup->pclk)) {
 			dev_err(qup->dev, "Could not get iface clock\n");
 			return PTR_ERR(qup->pclk);
+		}
+
+		if (!of_property_read_u32(pdev->dev.of_node,
+					"qup-clock-frequency", &src_clk_freq)) {
+			ret = clk_set_rate(qup->clk, src_clk_freq);
+			if (ret) {
+				dev_err(qup->dev,
+					"Set qup clock frequency failed\n");
+				goto fail;
+			}
 		}
 		qup_i2c_enable_clocks(qup);
 		src_clk_freq = clk_get_rate(qup->clk);

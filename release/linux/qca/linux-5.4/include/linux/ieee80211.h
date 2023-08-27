@@ -1638,8 +1638,8 @@ struct ieee80211_eht_operation {
  * described in 11be Draft
  */
 struct ieee80211_eht_cap_elem {
-	u8 mac_cap_info[6]; /* TBD */
-	u8 phy_cap_info[11]; /* TBD */
+	u8 mac_cap_info[2]; /* TBD */
+	u8 phy_cap_info[9]; /* TBD */
 } __packed;
 
 /**
@@ -2607,6 +2607,8 @@ enum ieee80211_eid {
 	WLAN_EID_QUIET_CHANNEL = 198,
 	WLAN_EID_OPMODE_NOTIF = 199,
 
+	WLAN_EID_REDUCED_NEIGHBOR_REPORT = 201,
+
 	WLAN_EID_VENDOR_SPECIFIC = 221,
 	WLAN_EID_QOS_PARAMETER = 222,
 	WLAN_EID_CAG_NUMBER = 237,
@@ -3504,5 +3506,16 @@ static inline bool for_each_element_completed(const struct element *element,
 {
 	return (const u8 *)element == (const u8 *)data + datalen;
 }
+
+/*
+ * TBTT Information field, based on Draft P802.11be_D1.4
+ * section 9.4.2.170.2
+ */
+#define IEEE80211_TBTT_INFO_BSSID_SSID_BSS_PARAM_PSD		13
+#define IEEE80211_TBTT_INFO_BSSID_SSID_BSS_PARAM_PSD_MLD_PARAM	16
+#define IEEE80211_TBTT_TYPE_MASK	0xC0
+#define IEEE80211_TBTT_COUNT_MASK	0x0F
+/* TBTT infomation header(2) + Operating class(1) + Channel number(1) */
+#define IEEE80211_NBR_AP_INFO_LEN	4
 
 #endif /* LINUX_IEEE80211_H */

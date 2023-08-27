@@ -321,7 +321,8 @@ qtnf_event_handle_bss_leave(struct qtnf_vif *vif,
 	pr_debug("VIF%u.%u: disconnected\n", vif->mac->macid, vif->vifid);
 
 	cfg80211_disconnected(vif->netdev, le16_to_cpu(leave_info->reason),
-			      NULL, 0, 0, GFP_KERNEL);
+			      NULL, 0, 0,
+			      NL80211_MLO_INVALID_LINK_ID, GFP_KERNEL);
 	netif_carrier_off(vif->netdev);
 
 	return 0;

@@ -92,7 +92,9 @@ struct kasan_global {
 
 struct kasan_track {
 	u32 pid;
+#ifdef CONFIG_STACKDEPOT
 	depot_stack_handle_t stack;
+#endif
 };
 
 #ifdef CONFIG_KASAN_SW_TAGS_IDENTIFY

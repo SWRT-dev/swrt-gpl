@@ -21,6 +21,15 @@
 #define QTI_TZ_DIAG_LOG_ENCR_ID		0x0
 #define QTI_TZ_QSEE_LOG_ENCR_ID		0x1
 #define QTI_TZ_LOG_NO_UPDATE		-6
+#define QTI_TRYBIT     			BIT(12)
+
+#define MAX_FUSE_ADDR_SIZE		0x8
+struct fuse_payload {
+	uint32_t fuse_addr;
+	uint32_t lsb_val;
+	uint32_t msb_val;
+};
+
 enum qseecom_qceos_cmd_id {
 	QSEOS_APP_START_COMMAND	= 0x01,
 	QSEOS_APP_SHUTDOWN_COMMAND,
@@ -162,9 +171,11 @@ struct fuse_blow {
 #define QCOM_SCM_PERM_RW (QCOM_SCM_PERM_READ | QCOM_SCM_PERM_WRITE)
 #define QCOM_SCM_PERM_RWX (QCOM_SCM_PERM_RW | QCOM_SCM_PERM_EXEC)
 
+#define QTI_SCM_OWM_FUSE_CMD_ID		0x22
 #define QTI_SCM_SVC_FUSE		0x8
 #define QTI_KERNEL_AUTH_CMD		0x15
 #define TZ_BLOW_FUSE_SECDAT             0x20
+#define QTI_KERNEL_META_AUTH_CMD	0x23
 #define FUSEPROV_SUCCESS                0x0
 #define FUSEPROV_INVALID_HASH           0x09
 #define FUSEPROV_SECDAT_LOCK_BLOWN      0xB
@@ -209,6 +220,13 @@ extern int qti_qfprom_read_version(uint32_t sw_type,
 extern int qti_sec_upgrade_auth(unsigned int scm_cmd_id, unsigned int sw_type,
 					unsigned int img_size,
 					unsigned int load_addr);
+extern int qti_sec_upgrade_auth_meta_data(unsigned int scm_cmd_id,
+                                                        unsigned int sw_type,
+                                                        unsigned int img_size,
+                                                        unsigned int load_addr,
+                                                        void* hash_addr,
+                                                        unsigned int hash_size);
+
 extern bool qti_scm_sec_auth_available(unsigned int scm_cmd_id);
 extern int qti_fuseipq_scm_call(struct device *dev, u32 svc_id, u32 cmd_id,
 					void *cmd_buf, size_t size);
@@ -238,9 +256,11 @@ extern int qti_scm_register_log_buf(struct device *dev,
 extern int qti_scm_tls_hardening(uint32_t req_addr, uint32_t req_size,
 				 uint32_t resp_addr, uint32_t resp_size,
 				 u32 cmd_id);
-extern int qti_scm_aes(uint32_t req_addr, uint32_t req_size,
-		       uint32_t resp_addr, uint32_t resp_size, u32 cmd_id);
-extern int qti_scm_dload(u32 svc_id, u32 cmd_id, void *cmd_buf, void *dload_reg);
+extern int qti_scm_aes(uint32_t req_addr, uint32_t req_size, u32 cmd_id);
+extern int qti_scm_get_ipq5332_fuse_list(u32 svc_id, u32 cmd_id,
+					struct fuse_payload *fuse, size_t size);
+extern int qti_scm_aes_clear_key_handle(uint32_t key_handle, u32 cmd_id);
+extern int qti_scm_dload(u32 svc_id, u32 cmd_id, void *cmd_buf);
 extern int qti_scm_sdi(u32 svc_id, u32 cmd_id);
 extern int qti_scm_tz_log(void *ker_buf, u32 buf_len);
 extern int qti_scm_hvc_log(void *ker_buf, u32 buf_len);
@@ -249,7 +269,9 @@ extern int qti_scm_regsave(u32 svc_id, u32 cmd_id,
 				void *scm_regsave, u32 buf_size);
 extern bool is_scm_armv8(void);
 extern int qti_set_qcekey_sec(void *buf, int size);
+extern int qti_sec_crypt(void *buf, int size);
 extern int qti_qcekey_release_xpu_prot(void);
+extern int qti_seccrypt_clearkey(void);
 extern int qti_scm_set_resettype(u32 reset_type);
 extern int qti_config_sec_ice(void *buf, int size);
 extern int qti_scm_pshold(void);
@@ -263,6 +285,31 @@ extern int qti_scm_load_otp(u32 peripheral);
 extern bool qti_scm_pil_cfg_available(void);
 extern int qti_scm_pil_cfg(u32 peripheral, u32 args);
 extern int qti_scm_toggle_bt_eco(u32 peripheral, u32 args);
+extern int qti_scm_get_device_attestation_ephimeral_key(u32 svc_id,
+		u32 cmd_id, void *key_buf, u32 key_buf_len, u32 *key_len);
+extern int __qti_scm_get_device_attestation_ephimeral_key(struct device *dev,
+		u32 svc_id, u32 cmd_id, void *key_buf, u32 key_buf_len, u32 *key_len);
+extern int qti_scm_get_device_attestation_response(u32 svc_id, u32 cmd_id,
+			void *req_buf, u32 req_buf_len, void *extclaim_buf,
+			u32 extclaim_buf_len, void *resp_buf, u32 resp_buf_len,
+			u32 *attest_resp_len);
+extern int __qti_scm_get_device_attestation_response(struct device *dev,
+		u32 svc_id, u32 cmd_id, void *req_buf, u32 req_buf_len,
+		void *extclaim_buf, u32 extclaim_buf_len, void *resp_buf,
+				u32 resp_buf_len, u32 *attest_resp_len);
+extern int qti_scm_get_device_provision_response(u32 svc_id, u32 cmd_id,
+		void *provreq_buf, u32 provreq_buf_len, void *provresp_buf,
+		u32 provresp_buf_len, u32 *prov_resp_size);
+extern int __qti_scm_get_device_provision_response(struct device *dev, u32 svc_id,
+		u32 cmd_id, void *provreq_buf, u32 provreq_buf_len,
+		void *provresp_buf, u32 provresp_buf_len, u32 *prov_resp_size);
+extern int qti_scm_get_ecdsa_blob(u32 svc_id, u32 cmd_id, dma_addr_t nonce_buf,
+		u32 nonce_buf_len, dma_addr_t ecdsa_buf, u32 ecdsa_buf_len,
+		u32 *ecdsa_consumed_len);
+extern int __qti_scm_get_ecdsa_blob(struct device *dev, u32 svc_id, u32 cmd_id,
+		dma_addr_t nonce_buf, u32 nonce_buf_len, dma_addr_t ecdsa_buf,
+		u32 ecdsa_buf_len, u32 *ecdsa_consumed_len);
+
 #else
 
 #include <linux/errno.h>
@@ -316,6 +363,15 @@ static inline int qti_sec_upgrade_auth(unsigned int scm_cmd_id, unsigned int sw_
 {
 	return -ENODEV;
 }
+static inline int qti_sec_upgrade_auth_meta_data(unsigned int scm_cmd_id, unsigned int sw_type,
+							unsigned int img_size,
+							unsigned int load_addr,
+							void* hash_addr,
+							unsigned int hash_size)
+{
+	return -ENODEV;
+}
+
 static inline bool qti_scm_sec_auth_available(unsigned int scm_cmd_id)
 {
 	return -ENODEV;
@@ -385,4 +441,7 @@ extern int qti_scm_pdseg_memcpy(u32 peripheral, int phno, dma_addr_t dma,
 								size_t size);
 extern int qti_scm_int_radio_powerup(u32 peripheral);
 extern int qti_scm_int_radio_powerdown(u32 peripheral);
+extern int __qti_scm_set_trybit(struct device *dev, u32 svc_id, u32 val, u64 dload_mode_addr);
+extern int qti_scm_set_trybit(u32 svc_id);
+extern int qti_read_dload_reg(void);
 #endif

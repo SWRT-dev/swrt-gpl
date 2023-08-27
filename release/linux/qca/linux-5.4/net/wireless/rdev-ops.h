@@ -172,11 +172,12 @@ static inline int rdev_change_beacon(struct cfg80211_registered_device *rdev,
 }
 
 static inline int rdev_stop_ap(struct cfg80211_registered_device *rdev,
-			       struct net_device *dev)
+			       struct net_device *dev,
+			       struct cfg80211_ap_settings *settings)
 {
 	int ret;
 	trace_rdev_stop_ap(&rdev->wiphy, dev);
-	ret = rdev->ops->stop_ap(&rdev->wiphy, dev);
+	ret = rdev->ops->stop_ap(&rdev->wiphy, dev, settings);
 	trace_rdev_return_int(&rdev->wiphy, ret);
 	return ret;
 }

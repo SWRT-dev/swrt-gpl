@@ -49,6 +49,23 @@
 #define SSCG_CTRL_REG_6		0xb0
 
 #define PHY_AUTOLOAD_PERIOD	35
+
+#define PCIE_USB_COMBO_PHY_CFG_RX_AFE_2		0x7C4
+#define PCIE_USB_COMBO_PHY_CFG_RX_DLF_DEMUX_2	0x7E8
+#define PCIE_USB_COMBO_PHY_CFG_MISC1		0x214
+
+#define APB_REG_UPHY_RX_RESCAL_CODE	(16 << 8)
+#define APB_REG_UPHY_RX_AFE_CAP1	(7 << 4)
+#define APB_REG_UPHY_RX_AFE_RES1	(6 << 0)
+
+#define APB_REG_UPHY_RXD_BIT_WIDTH	(2 << 0)
+#define APB_REG_UPHY_RX_PLOOP_GAIN	(4 << 4)
+#define APB_REG_UPHY_RX_DLF_RATE	(1 << 8)
+#define APB_UPHY_RX_PLOOP_EN		(1 << 12)
+#define APB_REG_UPHY_RX_CDR_EN		(1 << 13)
+
+#define APB_REG_FLOOP_GAIN		(3 << 0)
+
 struct qca_uni_ss_phy {
 	struct phy phy;
 	struct device *dev;
@@ -60,6 +77,7 @@ struct qca_uni_ss_phy {
 	unsigned int host;
 	struct clk *pipe_clk;
 	struct clk *phy_cfg_ahb_clk;
+	struct clk *phy_ahb_clk;
 };
 
 struct qf_read {
@@ -102,25 +120,42 @@ static int qca_uni_ss_phy_init(struct phy *x)
 		return ret;
 	}
 
-	if (!strcmp(compat_name, "qca,ipq5018-uni-ssphy")) {
-		/* assert SS PHY POR reset */
-		reset_control_assert(phy->por_rst);
-		usleep_range(1, 5);
-		/* deassert SS PHY POR reset */
-		reset_control_deassert(phy->por_rst);
-		clk_prepare_enable(phy->phy_cfg_ahb_clk);
-		clk_prepare_enable(phy->pipe_clk);
-		phy_autoload();
-		/*set frequency initial value*/
-		writel(0x1cb9, phy->base + SSCG_CTRL_REG_4);
-		writel(0x023a, phy->base + SSCG_CTRL_REG_5);
-		/*set spectrum spread count*/
-		writel(0xd360, phy->base + SSCG_CTRL_REG_3);
-		/*set fstep*/
-		writel(0x1, phy->base + SSCG_CTRL_REG_1);
-		writel(0xeb, phy->base + SSCG_CTRL_REG_2);
+	/* assert SS PHY POR reset */
+	reset_control_assert(phy->por_rst);
+	usleep_range(1, 5);
+	/* deassert SS PHY POR reset */
+	reset_control_deassert(phy->por_rst);
+	clk_prepare_enable(phy->phy_ahb_clk);
+	clk_prepare_enable(phy->phy_cfg_ahb_clk);
+	clk_prepare_enable(phy->pipe_clk);
+	phy_autoload();
+
+	if (!strcmp(compat_name, "qca,ipq5332-uni-ssphy")) {
+		writel(APB_REG_UPHY_RX_RESCAL_CODE |
+		APB_REG_UPHY_RX_AFE_CAP1 |
+		APB_REG_UPHY_RX_AFE_RES1,
+		phy->base + PCIE_USB_COMBO_PHY_CFG_RX_AFE_2);
+
+		writel(APB_REG_UPHY_RXD_BIT_WIDTH |
+		APB_REG_UPHY_RX_PLOOP_GAIN |
+		APB_REG_UPHY_RX_DLF_RATE |
+		APB_UPHY_RX_PLOOP_EN |
+		APB_REG_UPHY_RX_CDR_EN,
+		phy->base + PCIE_USB_COMBO_PHY_CFG_RX_DLF_DEMUX_2);
+
+		writel(APB_REG_FLOOP_GAIN,
+			phy->base + PCIE_USB_COMBO_PHY_CFG_MISC1);
+		return 0;
 	}
 
+	/*set frequency initial value*/
+	writel(0x1cb9, phy->base + SSCG_CTRL_REG_4);
+	writel(0x023a, phy->base + SSCG_CTRL_REG_5);
+	/*set spectrum spread count*/
+	writel(0xd360, phy->base + SSCG_CTRL_REG_3);
+	/*set fstep*/
+	writel(0x1, phy->base + SSCG_CTRL_REG_1);
+	writel(0xeb, phy->base + SSCG_CTRL_REG_2);
 	return ret;
 }
 
@@ -148,7 +183,8 @@ static int qca_uni_ss_get_resources(struct platform_device *pdev,
 	if (IS_ERR(phy->por_rst))
 		return PTR_ERR(phy->por_rst);
 
-	if (!strcmp(compat_name, "qca,ipq5018-uni-ssphy")) {
+	if (!strcmp(compat_name, "qca,ipq5018-uni-ssphy") ||
+			!strcmp(compat_name, "qca,ipq5332-uni-ssphy")) {
 		phy->pipe_clk = devm_clk_get(phy->dev, "pipe_clk");
 		if (IS_ERR(phy->pipe_clk)) {
 			dev_err(phy->dev, "can not get phy clock\n");
@@ -158,8 +194,14 @@ static int qca_uni_ss_get_resources(struct platform_device *pdev,
 		phy->phy_cfg_ahb_clk = devm_clk_get(phy->dev,
 					"phy_cfg_ahb_clk");
 		if (IS_ERR(phy->phy_cfg_ahb_clk)) {
-			dev_err(phy->dev, "can not get phy ahb clock\n");
+			dev_err(phy->dev, "can not get phy cfg ahb clock\n");
 			return PTR_ERR(phy->phy_cfg_ahb_clk);
+		}
+
+		phy->phy_ahb_clk = devm_clk_get_optional(phy->dev, "phy_ahb_clk");
+		if (IS_ERR(phy->phy_ahb_clk)) {
+			dev_err(phy->dev, "cannot get phy ahb clock");
+			return PTR_ERR(phy->phy_ahb_clk);
 		}
 	} else {
 		if (of_property_read_u32(np, "qca,host", &phy->host)) {
@@ -174,6 +216,7 @@ static int qca_uni_ss_get_resources(struct platform_device *pdev,
 static const struct of_device_id qca_uni_ss_id_table[] = {
 	{ .compatible = "qca,uni-ssphy" },
 	{ .compatible = "qca,ipq5018-uni-ssphy"},
+	{ .compatible = "qca,ipq5332-uni-ssphy"},
 	{ /* Sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, qca_uni_ss_id_table);

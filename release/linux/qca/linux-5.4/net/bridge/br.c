@@ -42,6 +42,10 @@ static int br_device_event(struct notifier_block *unused, unsigned long event, v
 			return notifier_from_errno(err);
 
 		if (event == NETDEV_REGISTER) {
+#ifdef CONFIG_BRIDGE_VLAN_FILTERING
+			br_vlan_disable_default_pvid(netdev_priv(dev));
+#endif
+
 			/* register of bridge completed, add sysfs entries */
 			err = br_sysfs_addbr(dev);
 			if (err)

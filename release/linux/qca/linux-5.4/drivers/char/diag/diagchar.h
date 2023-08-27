@@ -299,6 +299,7 @@ do {						\
 #define DIAG_MSM_MASK (0x0001)   /* Bit mask for MSM */
 #define DIAG_MDM_MASK (0x0002)   /* Bit mask for first mdm device */
 #define DIAG_MDM2_MASK (0x0004) /* Bit mask for second mdm device */
+#define DIAG_MDM3_MASK (0x0008) /* Bit mask for third mdm device */
 
 #define DIAG_WS_DCI		0
 #define DIAG_WS_MUX		1
@@ -324,6 +325,7 @@ do {						\
 enum remote_procs {
 	MDM = 1,
 	MDM2 = 2,
+	MDM3 = 3,
 	QSC = 5,
 };
 #define DIAG_MD_LOCAL		0
@@ -331,7 +333,8 @@ enum remote_procs {
 #define DIAG_MD_BRIDGE_BASE	DIAG_MD_LOCAL_LAST
 #define DIAG_MD_MDM		(DIAG_MD_BRIDGE_BASE)
 #define DIAG_MD_MDM2		(DIAG_MD_BRIDGE_BASE + 1)
-#define DIAG_MD_BRIDGE_LAST	(DIAG_MD_BRIDGE_BASE + 2)
+#define DIAG_MD_MDM3            (DIAG_MD_BRIDGE_BASE + 2)
+#define DIAG_MD_BRIDGE_LAST	(DIAG_MD_BRIDGE_BASE + 3)
 
 #ifndef CONFIG_DIAGFWD_BRIDGE_CODE
 #define NUM_DIAG_MD_DEV		DIAG_MD_LOCAL_LAST

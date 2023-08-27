@@ -215,12 +215,26 @@ struct bt_descriptor {
 	bool debug_en;
 	bool nosecure;
 	bool is_serdev;
+	struct list_head pid_q;
 };
 
 struct ipc_intent {
 	uint8_t *buf;
 	uint16_t len;
 	struct list_head list;
+};
+
+struct pid_n {
+	atomic_t refcnt;
+	pid_t pid;
+	struct list_head list;
+};
+
+enum pid_ops {
+	ADD = 0,
+	REMOVE,
+	TERMINATE,
+	KILLALL,
 };
 
 extern int bt_ipc_send_msg(struct bt_descriptor *btDesc, uint16_t msg_hdr,

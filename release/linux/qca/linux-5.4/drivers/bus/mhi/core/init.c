@@ -11,6 +11,7 @@
 #include <linux/idr.h>
 #include <linux/interrupt.h>
 #include <linux/of_address.h>
+#include <linux/of_reserved_mem.h>
 #include <linux/list.h>
 #include <linux/mhi.h>
 #include <linux/mod_devicetable.h>
@@ -289,8 +290,8 @@ int mhi_init_dev_ctxt(struct mhi_controller *mhi_cntrl)
 		tmp |= (mhi_chan->db_cfg.pollcfg << CHAN_CTX_POLLCFG_SHIFT);
 		chan_ctxt->chcfg = tmp;
 
-		chan_ctxt->chtype = mhi_chan->type;
-		chan_ctxt->erindex = mhi_chan->er_index;
+		chan_ctxt->chtype = cpu_to_le32(mhi_chan->type);
+		chan_ctxt->erindex = cpu_to_le32(mhi_chan->er_index);
 
 		mhi_chan->ch_state = MHI_CH_STATE_DISABLED;
 		mhi_chan->tre_ring.db_addr = (void __iomem *)&chan_ctxt->wp;
@@ -319,10 +320,10 @@ int mhi_init_dev_ctxt(struct mhi_controller *mhi_cntrl)
 		tmp &= ~EV_CTX_INTMODC_MASK;
 		tmp &= ~EV_CTX_INTMODT_MASK;
 		tmp |= (mhi_event->intmod << EV_CTX_INTMODT_SHIFT);
-		er_ctxt->intmod = tmp;
+		er_ctxt->intmod = cpu_to_le32(tmp);
 
-		er_ctxt->ertype = MHI_ER_TYPE_VALID;
-		er_ctxt->msivec = mhi_event->irq;
+		er_ctxt->ertype = cpu_to_le32(MHI_ER_TYPE_VALID);
+		er_ctxt->msivec = cpu_to_le32(mhi_event->irq);
 		mhi_event->db_cfg.db_mode = true;
 
 		ring->el_size = sizeof(struct mhi_tre);
@@ -336,9 +337,9 @@ int mhi_init_dev_ctxt(struct mhi_controller *mhi_cntrl)
 		 * ring is empty
 		 */
 		ring->rp = ring->wp = ring->base;
-		er_ctxt->rbase = ring->iommu_base;
+		er_ctxt->rbase = cpu_to_le64(ring->iommu_base);
 		er_ctxt->rp = er_ctxt->wp = er_ctxt->rbase;
-		er_ctxt->rlen = ring->len;
+		er_ctxt->rlen = cpu_to_le64(ring->len);
 		ring->ctxt_wp = &er_ctxt->wp;
 	}
 
@@ -365,9 +366,9 @@ int mhi_init_dev_ctxt(struct mhi_controller *mhi_cntrl)
 			goto error_alloc_cmd;
 
 		ring->rp = ring->wp = ring->base;
-		cmd_ctxt->rbase = ring->iommu_base;
+		cmd_ctxt->rbase = cpu_to_le64(ring->iommu_base);
 		cmd_ctxt->rp = cmd_ctxt->wp = cmd_ctxt->rbase;
-		cmd_ctxt->rlen = ring->len;
+		cmd_ctxt->rlen = cpu_to_le64(ring->len);
 		ring->ctxt_wp = &cmd_ctxt->wp;
 	}
 
@@ -572,6 +573,7 @@ int mhi_init_chan_ctxt(struct mhi_controller *mhi_cntrl,
 	struct mhi_chan_ctxt *chan_ctxt;
 	u32 tmp;
 	int ret;
+	u32 state_enabled = MHI_CH_STATE_ENABLED;
 
 	buf_ring = &mhi_chan->buf_ring;
 	tre_ring = &mhi_chan->tre_ring;
@@ -592,14 +594,14 @@ int mhi_init_chan_ctxt(struct mhi_controller *mhi_cntrl,
 		return -ENOMEM;
 	}
 
-	tmp = chan_ctxt->chcfg;
+	tmp = le32_to_cpu(chan_ctxt->chcfg);
 	tmp &= ~CHAN_CTX_CHSTATE_MASK;
-	tmp |= (MHI_CH_STATE_ENABLED << CHAN_CTX_CHSTATE_SHIFT);
-	chan_ctxt->chcfg = tmp;
+	tmp |= (state_enabled << CHAN_CTX_CHSTATE_SHIFT);
+	chan_ctxt->chcfg = cpu_to_le32(tmp);
 
-	chan_ctxt->rbase = tre_ring->iommu_base;
+	chan_ctxt->rbase = cpu_to_le64(tre_ring->iommu_base);
 	chan_ctxt->rp = chan_ctxt->wp = chan_ctxt->rbase;
-	chan_ctxt->rlen = tre_ring->len;
+	chan_ctxt->rlen = cpu_to_le64(tre_ring->len);
 	tre_ring->ctxt_wp = &chan_ctxt->wp;
 
 	tre_ring->rp = tre_ring->wp = tre_ring->base;
@@ -857,11 +859,12 @@ int mhi_register_controller(struct mhi_controller *mhi_cntrl,
 	struct mhi_chan *mhi_chan;
 	struct mhi_cmd *mhi_cmd;
 	struct mhi_device *mhi_dev;
-	struct resource mhi_res;
+	struct reserved_mem *mhi_rmem = NULL;
 	struct device_node *cma_node;
 	phys_addr_t cma_addr;
 	size_t cma_size;
 	u32 soc_info;
+	u32 major_ver_bshift, major_ver_bmask, minor_ver_bshift, minor_ver_bmask;
 	int ret, i;
 
 	if (!mhi_cntrl)
@@ -948,10 +951,27 @@ int mhi_register_controller(struct mhi_controller *mhi_cntrl,
 					SOC_HW_VERSION_FAM_NUM_SHFT;
 	mhi_cntrl->device_number = (soc_info & SOC_HW_VERSION_DEV_NUM_BMSK) >>
 					SOC_HW_VERSION_DEV_NUM_SHFT;
-	mhi_cntrl->major_version = (soc_info & SOC_HW_VERSION_MAJOR_VER_BMSK) >>
-					SOC_HW_VERSION_MAJOR_VER_SHFT;
-	mhi_cntrl->minor_version = (soc_info & SOC_HW_VERSION_MINOR_VER_BMSK) >>
-					SOC_HW_VERSION_MINOR_VER_SHFT;
+
+	switch (mhi_cntrl->dev_id) {
+	case QCN9224_DEVICE_ID:
+		major_ver_bshift = QCN9224_SOC_HW_VERSION_MAJOR_VER_SHFT;
+		major_ver_bmask = QCN9224_SOC_HW_VERSION_MAJOR_VER_BMSK;
+		minor_ver_bshift = QCN9224_SOC_HW_VERSION_MINOR_VER_SHFT;
+		minor_ver_bmask = QCN9224_SOC_HW_VERSION_MINOR_VER_BMSK;
+		break;
+
+	case QCN9000_DEVICE_ID:
+	default:
+		major_ver_bshift = QCN9000_SOC_HW_VERSION_MAJOR_VER_SHFT;
+		major_ver_bmask = QCN9000_SOC_HW_VERSION_MAJOR_VER_BMSK;
+		minor_ver_bshift = QCN9000_SOC_HW_VERSION_MINOR_VER_SHFT;
+		minor_ver_bmask = QCN9000_SOC_HW_VERSION_MINOR_VER_BMSK;
+	}
+
+	mhi_cntrl->major_version = (soc_info & major_ver_bmask) >>
+		major_ver_bshift;
+	mhi_cntrl->minor_version = (soc_info & minor_ver_bmask) >>
+		minor_ver_bshift;
 
 	mhi_cntrl->index = ida_alloc(&mhi_controller_ida, GFP_KERNEL);
 	if (mhi_cntrl->index < 0) {
@@ -968,16 +988,28 @@ int mhi_register_controller(struct mhi_controller *mhi_cntrl,
 	}
 
 	cma_node = of_parse_phandle(mhi_cntrl->cntrl_dev->of_node,
-				    "memory-region", 0);
+				    "memory-region", 1);
 
-	if (cma_node && !of_address_to_resource(cma_node, 0, &mhi_res)) {
-		cma_addr = mhi_res.start;
-		cma_size = resource_size(&mhi_res);
+	if (cma_node) {
+		mhi_rmem = of_reserved_mem_lookup(cma_node);
 
-		ret = dma_declare_coherent_memory(&mhi_dev->dev, cma_addr,
-						  cma_addr, cma_size);
-		if (ret)
-			dev_info(mhi_cntrl->cntrl_dev, "Failed to declare dma coherent memory");
+		of_node_put(cma_node);
+
+		if (mhi_rmem) {
+			cma_addr = mhi_rmem->base;
+			cma_size = mhi_rmem->size;
+
+			ret = dma_declare_coherent_memory(&mhi_dev->dev,
+							  cma_addr,
+							  cma_addr, cma_size);
+			if (ret)
+				dev_err(mhi_cntrl->cntrl_dev, "Failed to declare dma coherent memory");
+			else
+				dev_info(mhi_cntrl->cntrl_dev, "DMA Memory initialized at %pa size 0x%zx",
+					 &cma_addr, cma_size);
+		} else {
+			dev_err(mhi_cntrl->cntrl_dev, "Failed to get DMA reserved memory");
+		}
 	} else {
 		dev_err(mhi_cntrl->cntrl_dev, "mhi coherent pool is not reserved");
 	}
@@ -1377,9 +1409,13 @@ EXPORT_SYMBOL_GPL(mhi_driver_unregister);
 static int mhi_uevent(struct device *dev, struct kobj_uevent_env *env)
 {
 	struct mhi_device *mhi_dev = to_mhi_device(dev);
+	struct mhi_controller *mhi_cntrl = mhi_dev->mhi_cntrl;
 
-	return add_uevent_var(env, "MODALIAS=" MHI_DEVICE_MODALIAS_FMT,
-					mhi_dev->name);
+	add_uevent_var(env, "MODALIAS=" MHI_DEVICE_MODALIAS_FMT, mhi_dev->name);
+	if (dev->parent == mhi_cntrl->cntrl_dev)
+		add_uevent_var(env, "EXEC_ENV=%s",
+			       TO_MHI_EXEC_STR(mhi_cntrl->ee));
+	return 0;
 }
 
 static int mhi_match(struct device *dev, struct device_driver *drv)

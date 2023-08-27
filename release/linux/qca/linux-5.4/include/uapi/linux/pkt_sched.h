@@ -141,6 +141,21 @@ struct tc_nssfifo_qopt {
 	__u8	accel_mode;	/* Dictates which data plane offloads the qdisc */
 };
 
+/* PPEFIFO section */
+
+enum {
+        TCA_PPEFIFO_UNSPEC,
+        TCA_PPEFIFO_PARMS,
+        __TCA_PPEFIFO_MAX
+};
+
+#define TCA_PPEFIFO_MAX (__TCA_PPEFIFO_MAX - 1)
+
+struct tc_ppefifo_qopt {
+        __u32   limit;		/* Queue length: bytes for bfifo, packets for pfifo */
+        __u8    set_default;	/* Sets qdisc to be the default qdisc for enqueue */
+};
+
 /* NSSWRED section */
 
 enum {
@@ -186,6 +201,23 @@ struct tc_nsswred_qopt {
 	__u8	ecn;			/* Setting ECN bit or dropping */
 	__u8	set_default;		/* Sets qdisc to be the default for enqueue */
 	__u8	accel_mode;		/* Dictates which data plane offloads the qdisc */
+};
+
+/* PPERED section */
+
+enum {
+        TCA_PPERED_UNSPEC,
+        TCA_PPERED_PARMS,
+        __TCA_PPERED_MAX
+};
+
+#define TCA_PPERED_MAX (__TCA_PPERED_MAX - 1)
+
+struct tc_ppered_qopt {
+	__u32	limit;				/* Queue length */
+	struct	tc_red_alg_parameter rap;	/* RED algorithm parameters */
+	__u8	ecn;				/* Setting ECN bit or dropping */
+	__u8	set_default;			/* Sets qdisc to be the default for enqueue */
 };
 
 /* NSSCODEL section */
@@ -243,6 +275,22 @@ struct tc_nsstbl_qopt {
 	__u8	accel_mode;	/* Dictates which data plane offloads the qdisc */
 };
 
+/* PPETBL section */
+
+enum {
+        TCA_PPETBL_UNSPEC,
+        TCA_PPETBL_PARMS,
+        __TCA_PPETBL_MAX
+};
+
+#define TCA_PPETBL_MAX  (__TCA_PPETBL_MAX - 1)
+
+struct tc_ppetbl_qopt {
+       __u32	rate;	/* Limiting rate of TBF */
+       __u32	burst;	/* Maximum burst size */
+       __u32	mtu;	/* Max size of packet, or minumim burst size */
+};
+
 /* NSSPRIO section */
 
 #define TCA_NSSPRIO_MAX_BANDS 256
@@ -258,6 +306,22 @@ enum {
 struct tc_nssprio_qopt {
 	__u32	bands;		/* Number of bands */
 	__u8	accel_mode;	/* Dictates which data plane offloads the qdisc */
+};
+
+/* PPEPRIO section */
+
+#define TCA_PPEPRIO_MAX_BANDS 4
+
+enum {
+        TCA_PPEPRIO_UNSPEC,
+        TCA_PPEPRIO_PARMS,
+        __TCA_PPEPRIO_MAX
+};
+
+#define TCA_PPEPRIO_MAX (__TCA_PPEPRIO_MAX - 1)
+
+struct tc_ppeprio_qopt {
+	int	bands;		/* Number of bands */
 };
 
 /* NSSBF section */
@@ -302,6 +366,24 @@ struct tc_nsswrr_qopt {
 	__u8	accel_mode;	/* Dictates which data plane offloads the qdisc */
 };
 
+/* PPEWRR section */
+
+enum {
+        TCA_PPEWRR_UNSPEC,
+        TCA_PPEWRR_CLASS_PARMS,
+        TCA_PPEWRR_QDISC_PARMS,
+        __TCA_PPEWRR_MAX
+};
+
+#define TCA_PPEWRR_MAX  (__TCA_PPEWRR_MAX - 1)
+
+struct tc_ppewrr_class_qopt {
+        __u32   quantum;        /* Weight associated to this class */
+};
+
+struct tc_ppewrr_qopt {
+};
+
 /* NSSWFQ section */
 
 enum {
@@ -319,6 +401,24 @@ struct tc_nsswfq_class_qopt {
 
 struct tc_nsswfq_qopt {
 	__u8	accel_mode;	/* Dictates which data plane offloads the qdisc */
+};
+
+/* PPEWFQ section*/
+
+enum {
+        TCA_PPEWFQ_UNSPEC,
+        TCA_PPEWFQ_CLASS_PARMS,
+        TCA_PPEWFQ_QDISC_PARMS,
+        __TCA_PPEWFQ_MAX
+};
+
+#define TCA_PPEWFQ_MAX  (__TCA_PPEWFQ_MAX - 1)
+
+struct tc_ppewfq_class_qopt {
+        __u32   quantum;        /* Weight associated to this class */
+};
+
+struct tc_ppewfq_qopt {
 };
 
 /* NSSHTB section */
@@ -345,6 +445,31 @@ struct tc_nsshtb_class_qopt {
 struct tc_nsshtb_qopt {
 	__u32	r2q;		/* Rate to quantum ratio */
 	__u8	accel_mode;	/* Dictates which data plane offloads the qdisc */
+};
+
+/* PPEHTB section */
+
+enum {
+        TCA_PPEHTB_UNSPEC,
+        TCA_PPEHTB_CLASS_PARMS,
+        TCA_PPEHTB_QDISC_PARMS,
+        __TCA_PPEHTB_MAX
+};
+
+#define TCA_PPEHTB_MAX  (__TCA_PPEHTB_MAX - 1)
+
+struct tc_ppehtb_class_qopt {
+	__u32   burst;		/* Allowed burst size */
+	__u32   rate;		/* Allowed bandwidth for this class */
+	__u32   cburst;		/* Maximum burst size */
+	__u32   crate;		/* Maximum bandwidth for this class */
+	__u32   quantum;	/* Quantum allocation for DRR */
+	__u32   priority;	/* Priority value associated with this class */
+	__u32   overhead;	/* Overhead in bytes per packet */
+};
+
+struct tc_ppehtb_qopt {
+	__u32	r2q;		/* Rate to quantum ratio */
 };
 
 /* NSSBLACKHOLE section */

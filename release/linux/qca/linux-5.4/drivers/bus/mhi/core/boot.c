@@ -18,6 +18,7 @@
 #include <linux/slab.h>
 #include <linux/wait.h>
 #include <linux/of.h>
+#include <linux/qcom_scm.h>
 #include "internal.h"
 
 #define QRTR_INSTANCE_MASK	0x0000FFFF
@@ -27,19 +28,36 @@
 #define COREDUMP_DESC	"Q6-COREDUMP"
 #define Q6_SFR_DESC	"Q6-SFR"
 
+#define PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV1 	0x3168
+#define PCIE_SOC_PCIE_REG_PCIE_SCRATCH_0	0x4040
+#define PCIE_REMAP_BAR_CTRL_OFFSET		0x310C
+#define PCIE_SCRATCH_0_WINDOW_VAL		0x4000003C
+#define MAX_UNWINDOWED_ADDRESS			0x80000
+#define WINDOW_ENABLE_BIT 			0x40000000
+#define WINDOW_SHIFT 				19
+#define WINDOW_VALUE_MASK 			0x3F
+#define WINDOW_START 				MAX_UNWINDOWED_ADDRESS
+#define WINDOW_RANGE_MASK 			0x7FFFF
+#define PCIE_REG_FOR_BOOT_ARGS			PCIE_SOC_PCIE_REG_PCIE_SCRATCH_0
+
+#define NONCE_SIZE 				34
+#define ECDSA_BLOB_SIZE 			2048
+#define QWES_SVC_ID 				0x1E
+#define QWES_ECDSA_REQUEST 			0x4
+
 typedef struct
 {
-	uint64_t base_address;
-	uint64_t actual_phys_address;
-	uint64_t size;
+	__le64 base_address;
+	__le64 actual_phys_address;
+	__le64 size;
 	char description[20];
 	char file_name[20];
 }ramdump_entry;
 
 typedef struct
 {
-	uint32_t version;
-	uint32_t header_size;
+	__le32 version;
+	__le32 header_size;
 	ramdump_entry ramdump_table[MAX_RAMDUMP_TABLE_SIZE];
 }ramdump_header_t;
 
@@ -67,7 +85,7 @@ void get_crash_reason(struct mhi_controller *mhi_cntrl)
 	/* Get RDDM header size */
 	ramdump_header = (ramdump_header_t *)mhi_buf[0].buf;
 	ramdump_table = ramdump_header->ramdump_table;
-	coredump_offset += ramdump_header->header_size;
+	coredump_offset += le32_to_cpu(ramdump_header->header_size);
 
 	/* Traverse ramdump table to get coredump offset */
 	i = 0;
@@ -78,7 +96,7 @@ void get_crash_reason(struct mhi_controller *mhi_cntrl)
 			     sizeof(Q6_SFR_DESC))) {
 			break;
 		}
-		coredump_offset += ramdump_table->size;
+		coredump_offset += cpu_to_le64(ramdump_table->size);
 		ramdump_table++;
 		i++;
 	}
@@ -117,8 +135,8 @@ void mhi_rddm_prepare(struct mhi_controller *mhi_cntrl,
 	unsigned int i;
 
 	for (i = 0; i < img_info->entries - 1; i++, mhi_buf++, bhi_vec++) {
-		bhi_vec->dma_addr = mhi_buf->dma_addr;
-		bhi_vec->size = mhi_buf->len;
+		bhi_vec->dma_addr = cpu_to_le64(mhi_buf->dma_addr);
+		bhi_vec->size = cpu_to_le64( mhi_buf->len);
 	}
 
 	mhi_buf->dma_addr = dma_map_single(mhi_cntrl->cntrl_dev, mhi_buf->buf,
@@ -156,7 +174,7 @@ static int __mhi_download_rddm_in_panic(struct mhi_controller *mhi_cntrl)
 	enum mhi_ee_type ee;
 	const u32 delayus = 2000;
 	u32 retry = (mhi_cntrl->timeout_ms * 1000) / delayus;
-	const u32 rddm_timeout_us = 200000;
+	const u32 rddm_timeout_us = 400000;
 	int rddm_retry = rddm_timeout_us / delayus;
 	void __iomem *base = mhi_cntrl->bhie;
 	struct device *dev = &mhi_cntrl->mhi_dev->dev;
@@ -643,7 +661,7 @@ int mhi_alloc_bhie_table(struct mhi_controller *mhi_cntrl,
 		} else if (i == segments - 1) {
 			/* last entry is for vector table */
 			vec_size = sizeof(struct bhi_vec_entry) * i;
-			mhi_buf->buf = kzalloc(vec_size, gfp);
+			mhi_buf->buf = kzalloc(PAGE_ALIGN(vec_size), gfp);
 			if (!mhi_buf->buf)
 				goto error_alloc_segment;
 		} else {
@@ -711,13 +729,340 @@ static void mhi_firmware_copy(struct mhi_controller *mhi_cntrl,
 	while (remainder) {
 		to_cpy = min(remainder, mhi_buf->len);
 		memcpy(mhi_buf->buf, buf, to_cpy);
-		bhi_vec->dma_addr = mhi_buf->dma_addr;
+		bhi_vec->dma_addr = cpu_to_le64(mhi_buf->dma_addr);
 		bhi_vec->size = cpu_to_le64(mhi_buf->len);
 
 		buf += to_cpy;
 		remainder -= to_cpy;
 		bhi_vec++;
 		mhi_buf++;
+	}
+}
+
+static int mhi_select_window(struct mhi_controller *mhi_cntrl, u32 addr)
+{
+	u32 window = (addr >> WINDOW_SHIFT) & WINDOW_VALUE_MASK;
+	u32 prev_window = 0, curr_window = 0;
+	u32 read_val = 0;
+	int retry = 0;
+
+	mhi_read_reg(mhi_cntrl, mhi_cntrl->regs, PCIE_REMAP_BAR_CTRL_OFFSET, &prev_window);
+
+	/* Using the last 6 bits for Window 1. Window 2 and 3 are unaffected */
+	curr_window = (prev_window & ~(WINDOW_VALUE_MASK)) | window;
+
+	if (curr_window == prev_window)
+		return 0;
+
+	curr_window |= WINDOW_ENABLE_BIT;
+
+	mhi_write_reg(mhi_cntrl, mhi_cntrl->regs, PCIE_REMAP_BAR_CTRL_OFFSET, curr_window);
+
+	mhi_read_reg(mhi_cntrl, mhi_cntrl->regs, PCIE_REMAP_BAR_CTRL_OFFSET, &read_val);
+
+	/* Wait till written value reflects */
+	while((read_val != curr_window) && (retry < 10)) {
+		mdelay(1);
+		mhi_read_reg(mhi_cntrl, mhi_cntrl->regs, PCIE_REMAP_BAR_CTRL_OFFSET, &read_val);
+		retry++;
+	}
+
+	if(read_val != curr_window)
+		return -EINVAL;
+
+	return 0;
+}
+
+static void mhi_free_nonce_buffer(struct mhi_controller *mhi_cntrl)
+{
+	if (mhi_cntrl->nonce_buf != NULL) {
+		mhi_fw_free_coherent(mhi_cntrl, NONCE_SIZE, mhi_cntrl->nonce_buf,
+				mhi_cntrl->nonce_dma_addr);
+		mhi_cntrl->nonce_buf = NULL;
+	}
+}
+
+static int mhi_get_nonce(struct mhi_controller *mhi_cntrl)
+{
+	struct device *dev = &mhi_cntrl->mhi_dev->dev;
+	unsigned int sram_addr, rd_addr;
+	unsigned int rd_val;
+	int ret, i;
+
+	dev_info(dev, "soc-binding-check enabled, reading NONCE from Endpoint\n");
+
+	mhi_read_reg(mhi_cntrl, mhi_cntrl->regs, PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV1,
+			&sram_addr);
+	if (sram_addr != 0) {
+		mhi_cntrl->nonce_buf = mhi_fw_alloc_coherent(mhi_cntrl, NONCE_SIZE,
+					&mhi_cntrl->nonce_dma_addr, GFP_KERNEL);
+		if (!mhi_cntrl->nonce_buf) {
+			dev_err(dev, "SoC Binding check failed. Error Allocating memory buffer for NONCE\n");
+			return -ENOMEM;
+		}
+
+		/* Select window to read the NONCE from Q6 SRAM address */
+		ret = mhi_select_window(mhi_cntrl, sram_addr);
+		if (ret)
+			return ret;
+
+		for (i=0; i < NONCE_SIZE; i+=4) {
+			/* Calculate read address based on the Window range and read it */
+			rd_addr = ((sram_addr + i) & WINDOW_RANGE_MASK) + WINDOW_START;
+			mhi_read_reg(mhi_cntrl, mhi_cntrl->regs, rd_addr, &rd_val);
+
+			/* Copy the read value to nonce_buf */
+			memcpy(mhi_cntrl->nonce_buf + i, &rd_val, 4);
+		}
+	}
+	else {
+		dev_err(dev, "SoC Binding check failed, no NONCE from Q6\n");
+		/* Deallocate NONCE buffer */
+		mhi_free_nonce_buffer(mhi_cntrl);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static void *mhi_download_fw_license_or_secdat(struct mhi_controller *mhi_cntrl)
+{
+	struct device *dev = &mhi_cntrl->mhi_dev->dev;
+	int  ret;
+	void *buf;
+	const struct firmware *file = NULL;
+	size_t header_size;
+	const char *filename = NULL;
+	char *magic = NULL;
+	size_t ecdsa_size = 4;  /* 4 Bytes at end of License buffer if no ECDSA */
+	u32 ecdsa_consumed = 0;
+	dma_addr_t ecdsa_dma_addr = 0;
+	bool binding_check = 0;
+	size_t lic_aligned_size = 0;
+
+	/* Check the ftm-mode or license-file is defined in device tree */
+	if (of_property_read_bool(mhi_cntrl->cntrl_dev->of_node, "ftm-mode")) {
+		if (of_property_read_string(mhi_cntrl->cntrl_dev->of_node,
+					"secdat-file", &filename) == 0) {
+			if (filename != NULL && (strlen(filename) != 0))
+				magic = "SBSD";
+		}
+	} else if (of_property_read_string(mhi_cntrl->cntrl_dev->of_node,
+					"license-file", &filename) == 0 ) {
+		if (filename != NULL && (strlen(filename) != 0))
+			magic = "SSLD";
+	} else {
+		dev_err(dev, "License file or ftm-mode not present in DTS node,"
+					"Assuming no License or ftm mode\n");
+		mhi_write_reg(mhi_cntrl, mhi_cntrl->regs,
+				PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV1, (u32)0x0);
+		return NULL;
+	}
+
+	if (filename == NULL || magic == NULL) {
+		dev_err(dev, "License or secdat file is empty in DTS node,"
+					"Assuming no License or ftm mode\n");
+		mhi_write_reg(mhi_cntrl, mhi_cntrl->regs,
+				PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV1, (u32)0x0);
+		return NULL;
+	}
+
+	binding_check = of_property_read_bool(mhi_cntrl->cntrl_dev->of_node, "soc-binding-check");
+	if (binding_check) {
+		ret = mhi_get_nonce(mhi_cntrl);
+		if (ret) {
+			mhi_write_reg(mhi_cntrl, mhi_cntrl->regs,
+					PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV1, (u32)0x0);
+			return NULL;
+		}
+
+		/* ECDSA 2KB + size of magic + size of length */
+		ecdsa_size = ECDSA_BLOB_SIZE + 4 + 4;
+	}
+
+	/*
+	 *  Load the file from file system into DMA memory.
+	 *  Format is
+	 *  <4 Byte Magic><4 Byte Length if file Payload><file Payload>
+	 */
+	ret = request_firmware(&file, filename, dev);
+	if (ret) {
+		dev_err(dev, "Error in loading file (%s) : %d,"
+			" Assuming no license or ftm mode\n", filename, ret);
+		mhi_write_reg(mhi_cntrl, mhi_cntrl->regs,
+				PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV1, (u32)0x0);
+
+		/* Deallocate NONCE buffer */
+		mhi_free_nonce_buffer(mhi_cntrl);
+
+		return NULL;
+	}
+
+	header_size = 4 + 4; /* size of magic, size of length */
+
+	/* Add padding in end of License file to make sure next file in the
+	 * buffer is 4 Bytes Aligned */
+	lic_aligned_size = ALIGN(file->size, 4);
+
+	buf = mhi_fw_alloc_coherent(mhi_cntrl,
+			lic_aligned_size + header_size + ecdsa_size,
+					&mhi_cntrl->license_dma_addr, GFP_KERNEL);
+	if (!buf) {
+		release_firmware(file);
+		mhi_write_reg(mhi_cntrl, mhi_cntrl->regs,
+				PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV1, (u32)0x0);
+
+		/* Deallocate NONCE buffer */
+		mhi_free_nonce_buffer(mhi_cntrl);
+
+		dev_err(dev, "Error Allocating memory for license or ftm mode : %d\n", ret);
+		return NULL;
+	}
+
+	/* setup the buffer:  magic, length, payload */
+#define DATA_MAGIC_SIZE	4
+
+	memcpy(buf, magic, DATA_MAGIC_SIZE);
+
+	memcpy(buf + DATA_MAGIC_SIZE,
+			(void *)&lic_aligned_size, sizeof(file->size));
+
+	memcpy(buf + header_size, file->data, file->size);
+
+	mhi_cntrl->license_buf_size = lic_aligned_size + header_size;
+
+	/* Copy ECDSA blob at end of License buffer.            *
+	 * TLV Format: 4 bytes Magic + 4 bytes Length + Payload */
+	if (binding_check) {
+		/* ECDSA start = License buffer start + License buffer size */
+		ecdsa_dma_addr = mhi_cntrl->license_dma_addr + mhi_cntrl->license_buf_size;
+
+		/* Get the ECDSA Blob from TME-L at ecdsa_dma_addr + header size */
+		ret = qti_scm_get_ecdsa_blob(QWES_SVC_ID, QWES_ECDSA_REQUEST, mhi_cntrl->nonce_dma_addr,
+					NONCE_SIZE, ecdsa_dma_addr + header_size, ECDSA_BLOB_SIZE,
+					&ecdsa_consumed);
+		if (ret) {
+			dev_err(dev, "Failed to get the ECDSA blob from TZ/TME-L, ret %d\n", ret);
+			mhi_write_reg(mhi_cntrl, mhi_cntrl->regs,
+					PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV1, (u32)0x0);
+
+			/* Deallocate the NONCE and License buffer */
+			mhi_cntrl->license_buf_size += ecdsa_size;
+			mhi_free_fw_license_or_secdat(mhi_cntrl);
+			return NULL;
+		}
+
+		/* Copy ECDSA Magic and Data length */
+		magic = "SSED";
+		memcpy(buf + mhi_cntrl->license_buf_size, magic, DATA_MAGIC_SIZE);
+
+		memcpy(buf + mhi_cntrl->license_buf_size + DATA_MAGIC_SIZE,
+				(void *)&ecdsa_consumed, sizeof(ecdsa_consumed));
+
+		mhi_cntrl->license_buf_size += ecdsa_size;
+	}
+
+	/* Let device know the license or secdat data address : Assuming 32 bit only*/
+	mhi_write_reg(mhi_cntrl, mhi_cntrl->regs,
+				PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV1,
+					      lower_32_bits(mhi_cntrl->license_dma_addr));
+
+	release_firmware(file);
+
+	dev_info(dev, "License or secdat file address copied to PCIE_PCIE_LOCAL_REG_PCIE_LOCAL_RSV1\n");
+	return buf;
+}
+
+void mhi_free_fw_license_or_secdat(struct mhi_controller *mhi_cntrl)
+{
+	mhi_free_nonce_buffer(mhi_cntrl);
+
+	if (mhi_cntrl->license_buf != NULL) {
+		mhi_fw_free_coherent(mhi_cntrl, mhi_cntrl->license_buf_size,
+				mhi_cntrl->license_buf, mhi_cntrl->license_dma_addr);
+		mhi_cntrl->license_buf = NULL;
+	}
+}
+
+static int mhi_update_scratch_reg(struct mhi_controller *mhi_cntrl, u32 val)
+{
+	struct device *dev = &mhi_cntrl->mhi_dev->dev;
+	u32 rd_val;
+
+	/* Program Window register to update boot args pointer */
+	mhi_read_reg(mhi_cntrl, mhi_cntrl->regs, PCIE_REMAP_BAR_CTRL_OFFSET,
+			&rd_val);
+
+	rd_val = rd_val & ~(0x3f);
+
+	mhi_write_reg(mhi_cntrl, mhi_cntrl->regs, PCIE_REMAP_BAR_CTRL_OFFSET,
+				PCIE_SCRATCH_0_WINDOW_VAL | rd_val);
+
+	mhi_write_reg(mhi_cntrl, mhi_cntrl->regs + MAX_UNWINDOWED_ADDRESS,
+			PCIE_REG_FOR_BOOT_ARGS, val);
+
+	mhi_read_reg(mhi_cntrl, mhi_cntrl->regs + MAX_UNWINDOWED_ADDRESS,
+			PCIE_REG_FOR_BOOT_ARGS,	&rd_val);
+
+	if (rd_val != val) {
+		dev_err(dev, "Write to PCIE_REG_FOR_BOOT_ARGS register failed\n");
+		return -EFAULT;
+	}
+
+	return 0;
+}
+
+static int mhi_handle_boot_args(struct mhi_controller *mhi_cntrl)
+{
+	struct device *dev = &mhi_cntrl->mhi_dev->dev;
+	int i, cnt, ret;
+	u32 val;
+
+	if (!mhi_cntrl->cntrl_dev->of_node)
+		return -EINVAL;
+
+	cnt = of_property_count_u32_elems(mhi_cntrl->cntrl_dev->of_node,
+					  "boot-args");
+	if (cnt < 0) {
+		dev_err(dev, "boot-args not defined in DTS. ret:%d\n", cnt);
+		mhi_update_scratch_reg(mhi_cntrl, 0);
+		return 0;
+	}
+
+	mhi_cntrl->bootargs_buf = mhi_fw_alloc_coherent(mhi_cntrl, PAGE_SIZE,
+			&mhi_cntrl->bootargs_dma, GFP_KERNEL);
+
+	if (!mhi_cntrl->bootargs_buf) {
+		mhi_update_scratch_reg(mhi_cntrl, 0);
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < cnt; i++) {
+		ret = of_property_read_u32_index(mhi_cntrl->cntrl_dev->of_node,
+							"boot-args", i, &val);
+		if (ret) {
+			dev_err(dev, "failed to read boot args\n");
+			mhi_fw_free_coherent(mhi_cntrl, PAGE_SIZE,
+				mhi_cntrl->bootargs_buf, mhi_cntrl->bootargs_dma);
+			mhi_cntrl->bootargs_buf = NULL;
+			mhi_update_scratch_reg(mhi_cntrl, 0);
+			return ret;
+		}
+		mhi_cntrl->bootargs_buf[i] = (u8)val;
+	}
+
+	ret = mhi_update_scratch_reg(mhi_cntrl, lower_32_bits(mhi_cntrl->bootargs_dma));
+
+	dev_dbg(dev, "boot-args address copied to PCIE_REG_FOR_BOOT_ARGS\n");
+
+	return ret;
+}
+
+void mhi_free_boot_args(struct mhi_controller *mhi_cntrl)
+{
+	if (mhi_cntrl->bootargs_buf != NULL) {
+		mhi_fw_free_coherent(mhi_cntrl, PAGE_SIZE, mhi_cntrl->bootargs_buf, mhi_cntrl->bootargs_dma);
+		mhi_cntrl->bootargs_buf = NULL;
 	}
 }
 
@@ -799,6 +1144,7 @@ void mhi_fw_load_handler(struct mhi_controller *mhi_cntrl)
 	/* Wait for ready since EDL image was loaded */
 	if (fw_name == mhi_cntrl->edl_image) {
 		release_firmware(firmware);
+		mhi_uevent_notify(mhi_cntrl, MHI_EE_EDL);
 		goto fw_load_ready_state;
 	}
 
@@ -869,6 +1215,17 @@ int mhi_download_amss_image(struct mhi_controller *mhi_cntrl)
 
 	if (!image_info)
 		return -EIO;
+
+	ret = mhi_handle_boot_args(mhi_cntrl);
+	if(ret) {
+		dev_err(dev, "Failed to handle the boot-args, ret: %d\n",ret);
+		return ret;
+	}
+
+	if (mhi_cntrl->dev_id == QCN9224_DEVICE_ID) {
+		/* Download the License */
+		mhi_cntrl->license_buf = mhi_download_fw_license_or_secdat(mhi_cntrl);
+	}
 
 	ret = mhi_fw_load_bhie(mhi_cntrl,
 			       /* Vector table is the last entry */

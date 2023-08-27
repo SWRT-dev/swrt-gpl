@@ -34,6 +34,8 @@ static struct bus_type soc_bus_type = {
 static DEVICE_ATTR(machine,  S_IRUGO, soc_info_get,  NULL);
 static DEVICE_ATTR(family,   S_IRUGO, soc_info_get,  NULL);
 static DEVICE_ATTR(serial_number, S_IRUGO, soc_info_get,  NULL);
+static DEVICE_ATTR(oem_id, S_IRUGO, soc_info_get,  NULL);
+static DEVICE_ATTR(prod_id, S_IRUGO, soc_info_get,  NULL);
 static DEVICE_ATTR(soc_id,   S_IRUGO, soc_info_get,  NULL);
 static DEVICE_ATTR(revision, S_IRUGO, soc_info_get,  NULL);
 
@@ -61,6 +63,12 @@ static umode_t soc_attribute_mode(struct kobject *kobj,
 	if ((attr == &dev_attr_serial_number.attr)
 	    && (soc_dev->attr->serial_number != NULL))
 		return attr->mode;
+	if ((attr == &dev_attr_oem_id.attr)
+	    && (soc_dev->attr->oem_id != NULL))
+		return attr->mode;
+	if ((attr == &dev_attr_prod_id.attr)
+	    && (soc_dev->attr->prod_id != NULL))
+		return attr->mode;
 	if ((attr == &dev_attr_soc_id.attr)
 	    && (soc_dev->attr->soc_id != NULL))
 		return attr->mode;
@@ -76,15 +84,21 @@ static ssize_t soc_info_get(struct device *dev,
 	struct soc_device *soc_dev = container_of(dev, struct soc_device, dev);
 
 	if (attr == &dev_attr_machine)
-		return sprintf(buf, "%s\n", soc_dev->attr->machine);
+		return sysfs_emit(buf, "%s\n", soc_dev->attr->machine);
 	if (attr == &dev_attr_family)
-		return sprintf(buf, "%s\n", soc_dev->attr->family);
+		return sysfs_emit(buf, "%s\n", soc_dev->attr->family);
 	if (attr == &dev_attr_revision)
-		return sprintf(buf, "%s\n", soc_dev->attr->revision);
+		return sysfs_emit(buf, "%s\n", soc_dev->attr->revision);
 	if (attr == &dev_attr_serial_number)
-		return sprintf(buf, "%s\n", soc_dev->attr->serial_number);
+		return sysfs_emit(buf, "%s\n", soc_dev->attr->serial_number);
+	if (attr == &dev_attr_oem_id)
+		return scnprintf(buf, sizeof(u64), "%s\n",
+				soc_dev->attr->oem_id);
+	if (attr == &dev_attr_prod_id)
+		return scnprintf(buf, sizeof(u64), "%s\n",
+				soc_dev->attr->prod_id);
 	if (attr == &dev_attr_soc_id)
-		return sprintf(buf, "%s\n", soc_dev->attr->soc_id);
+		return sysfs_emit(buf, "%s\n", soc_dev->attr->soc_id);
 
 	return -EINVAL;
 
@@ -94,6 +108,8 @@ static struct attribute *soc_attr[] = {
 	&dev_attr_machine.attr,
 	&dev_attr_family.attr,
 	&dev_attr_serial_number.attr,
+	&dev_attr_oem_id.attr,
+	&dev_attr_prod_id.attr,
 	&dev_attr_soc_id.attr,
 	&dev_attr_revision.attr,
 	NULL,

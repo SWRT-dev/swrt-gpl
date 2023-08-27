@@ -108,6 +108,8 @@ static void end_report(unsigned long *flags)
 static void print_track(struct kasan_track *track, const char *prefix)
 {
 	pr_err("%s by task %u:\n", prefix, track->pid);
+
+#ifdef CONFIG_STACKDEPOT
 	if (track->stack) {
 		unsigned long *entries;
 		unsigned int nr_entries;
@@ -115,8 +117,11 @@ static void print_track(struct kasan_track *track, const char *prefix)
 		nr_entries = stack_depot_fetch(track->stack, &entries);
 		stack_trace_print(entries, nr_entries, 0);
 	} else {
+#endif
 		pr_err("(stack is not available)\n");
+#ifdef CONFIG_STACKDEPOT
 	}
+#endif
 }
 
 struct page *kasan_addr_to_page(const void *addr)

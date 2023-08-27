@@ -192,6 +192,10 @@ ifeq ($(CONFIG_CNSS2),y)
 dtc_cpp_flags += -D __CNSS2__
 endif
 
+ifeq ($(CONFIG_CPU_THERMAL),y)
+dtc_cpp_flags += -D __CPU_THERMAL__
+endif
+
 # Useful for describing the dependency of composite objects
 # Usage:
 #   $(call multi_depend, multi_used_targets, suffix_to_remove, suffix_to_add)

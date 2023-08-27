@@ -46,6 +46,8 @@ STRING_MODULE_PARM(stream_src_addr, "127.0.0.1");
 MODULE_PARM_DESC(stream_src_addr, "IPv4 src address");
 STRING_MODULE_PARM(stream_dst_addr, "127.0.0.1");
 MODULE_PARM_DESC(stream_dst_addr, "IPv4 src address");
+STRING_MODULE_PARM(stream_board_id, "AABBCCDD");
+MODULE_PARM_DESC(stream_board_id, "Board Id");
 
 unsigned int udp_packet_no;
 #define QLD_STREAM_PORT 5004
@@ -84,11 +86,12 @@ void qld_stream_work_hdlr(struct work_struct *work)
 		next_page = vaddr + PAGE_SIZE;
 		udp_packet_no++;
 		*(unsigned int *)next_page = udp_packet_no;
+		strlcpy(next_page+sizeof(udp_packet_no), stream_board_id, 32);
 		dmac_flush_range((void *)next_page, (void *)next_page
-					+ SEQ_NO_SIZE);
+					+ SEQ_NO_SIZE + 32);
 		transfer_page = virt_to_page(vaddr);
 		ret = kernel_sendpage(drvdata->qld_stream_sock, transfer_page,
-				0, PAGE_SIZE + SEQ_NO_SIZE, MSG_DONTWAIT);
+				0, PAGE_SIZE + SEQ_NO_SIZE + 32, MSG_DONTWAIT);
 		if (ret < PAGE_SIZE + SEQ_NO_SIZE)
 			pr_emerg("ERROR: Can't send 4096 bytes %d\n", ret);
 		atomic_inc(&drvdata->completed_seq_no);

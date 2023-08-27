@@ -716,7 +716,9 @@ qtnf_disconnect(struct wiphy *wiphy, struct net_device *dev,
 	if (vif->wdev.current_bss) {
 		netif_carrier_off(vif->netdev);
 		cfg80211_disconnected(vif->netdev, reason_code,
-				      NULL, 0, true, GFP_KERNEL);
+				      NULL, 0, true,
+				      NL80211_MLO_INVALID_LINK_ID,
+				      GFP_KERNEL);
 	}
 
 out:
@@ -1219,7 +1221,8 @@ void qtnf_cfg80211_vif_reset(struct qtnf_vif *vif)
 {
 	if (vif->wdev.iftype == NL80211_IFTYPE_STATION)
 		cfg80211_disconnected(vif->netdev, WLAN_REASON_DEAUTH_LEAVING,
-				      NULL, 0, 1, GFP_KERNEL);
+				      NULL, 0, 1, NL80211_MLO_INVALID_LINK_ID,
+				      GFP_KERNEL);
 
 	cfg80211_shutdown_all_interfaces(vif->wdev.wiphy);
 }

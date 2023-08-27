@@ -35,6 +35,7 @@ struct qcom_scm {
 	struct clk *bus_clk;
 	struct reset_controller_dev reset;
 
+	void __iomem *dload_reg;
 	u64 dload_mode_addr;
 	u32 hvc_log_cmd_id;
 	u32 smmu_state_cmd_id;
@@ -169,18 +170,25 @@ int qti_scm_register_log_buf(struct device *dev,
 }
 EXPORT_SYMBOL(qti_scm_register_log_buf);
 
-int qti_scm_aes(uint32_t req_addr, uint32_t req_size,
-		uint32_t resp_addr, uint32_t resp_size,
-		u32 cmd_id)
+int qti_scm_aes(uint32_t req_addr, uint32_t req_size, u32 cmd_id)
 {
 	int ret = 0;
 
-	ret = __qti_scm_aes(__scm->dev, req_addr, req_size,
-			    resp_addr, resp_size, cmd_id);
+	ret = __qti_scm_aes(__scm->dev, req_addr, req_size, cmd_id);
 
 	return ret;
 }
 EXPORT_SYMBOL(qti_scm_aes);
+
+int qti_scm_aes_clear_key_handle(uint32_t key_handle, u32 cmd_id)
+{
+	int ret = 0;
+
+	ret = __qti_scm_aes_clear_key_handle(__scm->dev, key_handle, cmd_id);
+
+	return ret;
+}
+EXPORT_SYMBOL(qti_scm_aes_clear_key_handle);
 
 int qti_scm_tls_hardening(uint32_t req_addr, uint32_t req_size,
 			  uint32_t resp_addr, uint32_t resp_size, u32 cmd_id)
@@ -333,7 +341,13 @@ int qcom_scm_pas_init_image(u32 peripheral, const void *metadata, size_t size)
 	if (ret)
 		goto free_metadata;
 
-	ret = __qcom_scm_pas_init_image(__scm->dev, peripheral, mdata_phys);
+	if (__qcom_scm_is_call_available(__scm->dev, QCOM_SCM_SVC_PIL,
+					QCOM_SCM_PAS_INIT_IMAGE_V2_CMD))
+		ret = __qcom_scm_pas_init_image_v2(__scm->dev, peripheral,
+							mdata_phys, size);
+	else
+		ret = __qcom_scm_pas_init_image(__scm->dev, peripheral,
+								mdata_phys);
 
 	qcom_scm_clk_disable();
 
@@ -487,7 +501,7 @@ static void qcom_scm_set_download_mode(bool enable)
 		dev_err(__scm->dev, "failed to set download mode: %d\n", ret);
 }
 
-static int qcom_scm_find_dload_address(struct device *dev, u64 *addr)
+static int qcom_scm_find_dload_address(struct device *dev, struct qcom_scm *scm)
 {
 	struct device_node *tcsr;
 	struct device_node *np = dev->of_node;
@@ -508,7 +522,12 @@ static int qcom_scm_find_dload_address(struct device *dev, u64 *addr)
 	if (ret < 0)
 		return ret;
 
-	*addr = res.start + offset;
+	scm->dload_mode_addr = res.start + offset;
+	scm->dload_reg = devm_ioremap(dev, res.start, resource_size(&res));
+	if (!scm->dload_reg) {
+		pr_err("%s: Error mapping memory region!\n", __func__);
+		return -ENOMEM;
+	}
 
 	return 0;
 }
@@ -650,6 +669,15 @@ int qti_sec_upgrade_auth(unsigned int scm_cmd_id, unsigned int sw_type,
 }
 EXPORT_SYMBOL(qti_sec_upgrade_auth);
 
+int qti_sec_upgrade_auth_meta_data(unsigned int scm_cmd_id, unsigned int sw_type,
+					unsigned int img_size, unsigned int load_addr,
+					void* hash_addr, unsigned int hash_size)
+{
+	return __qti_sec_upgrade_auth_meta_data(__scm->dev, scm_cmd_id, sw_type,
+					img_size, load_addr, hash_addr, hash_size);
+}
+EXPORT_SYMBOL(qti_sec_upgrade_auth_meta_data);
+
 /**
  * qti_scm_sec_auth_available() - Check if SEC_AUTH is supported.
  *
@@ -674,7 +702,7 @@ int qti_fuseipq_scm_call(struct device *dev, u32 svc_id, u32 cmd_id,
 }
 EXPORT_SYMBOL(qti_fuseipq_scm_call);
 
-int qti_scm_dload(u32 svc_id, u32 cmd_id, void *cmd_buf, void *dload_reg)
+int qti_scm_dload(u32 svc_id, u32 cmd_id, void *cmd_buf)
 {
 	int ret;
 
@@ -682,7 +710,8 @@ int qti_scm_dload(u32 svc_id, u32 cmd_id, void *cmd_buf, void *dload_reg)
 	if (ret)
 		return ret;
 
-	ret = __qti_scm_dload(__scm->dev, svc_id, cmd_id, cmd_buf, dload_reg);
+	ret = __qti_scm_dload(__scm->dev, svc_id, cmd_id, cmd_buf,
+			      __scm->dload_mode_addr, __scm->dload_reg);
 
 	qcom_scm_clk_disable();
 
@@ -691,22 +720,95 @@ int qti_scm_dload(u32 svc_id, u32 cmd_id, void *cmd_buf, void *dload_reg)
 }
 EXPORT_SYMBOL(qti_scm_dload);
 
-int qti_scm_set_kernel_boot_complete(u32 svc_id, u32 val)
+int qti_scm_set_trybit(u32 svc_id)
 {
 	int ret;
+	unsigned int val;
 
 	ret = qcom_scm_clk_enable();
 	if (ret)
 		return ret;
 
-	ret = __qti_scm_set_kernel_boot_complete(__scm->dev, svc_id, val);
+	val = readl(__scm->dload_reg);
+	val |= QTI_TRYBIT;
+	ret = __qti_scm_set_trybit(__scm->dev, svc_id, val, __scm->dload_mode_addr);
 
 	qcom_scm_clk_disable();
 
 	return ret;
 
 }
-EXPORT_SYMBOL(qti_scm_set_kernel_boot_complete);
+EXPORT_SYMBOL(qti_scm_set_trybit);
+
+int qti_read_dload_reg()
+{
+	return readl(__scm->dload_reg);
+}
+EXPORT_SYMBOL(qti_read_dload_reg);
+
+int qti_scm_get_ecdsa_blob(u32 svc_id, u32 cmd_id, dma_addr_t nonce_buf,
+			u32 nonce_buf_len, dma_addr_t ecdsa_buf,
+			u32 ecdsa_buf_len, u32 *ecdsa_consumed_len)
+{
+	int ret;
+	ret = __qti_scm_get_ecdsa_blob(__scm->dev, svc_id, cmd_id, nonce_buf,
+			nonce_buf_len, ecdsa_buf, ecdsa_buf_len, ecdsa_consumed_len);
+	return ret;
+
+}
+EXPORT_SYMBOL(qti_scm_get_ecdsa_blob);
+
+int qti_scm_get_device_attestation_ephimeral_key(u32 svc_id, u32 cmd_id,
+			void *key_buf, u32 key_buf_len, u32 *key_len)
+{
+	int ret;
+	ret = __qti_scm_get_device_attestation_ephimeral_key(__scm->dev,
+			svc_id, cmd_id, key_buf, key_buf_len, key_len);
+	return ret;
+
+}
+EXPORT_SYMBOL(qti_scm_get_device_attestation_ephimeral_key);
+
+int qti_scm_get_ipq5332_fuse_list(u32 svc_id, u32 cmd_id,
+		struct fuse_payload *fuse, size_t size)
+{
+	int ret;
+	ret = __qti_scm_get_ipq5332_fuse_list(__scm->dev,
+			svc_id, cmd_id, fuse, size);
+	return ret;
+
+}
+EXPORT_SYMBOL(qti_scm_get_ipq5332_fuse_list);
+
+int qti_scm_get_device_attestation_response(u32 svc_id, u32 cmd_id, void *req_buf,
+			u32 req_buf_len, void *extclaim_buf, u32 extclaim_buf_len,
+			void *resp_buf, u32 resp_buf_len, u32 *attest_resp_len)
+{
+	int ret;
+
+	ret = __qti_scm_get_device_attestation_response(__scm->dev, svc_id, cmd_id,
+			req_buf, req_buf_len, extclaim_buf, extclaim_buf_len, resp_buf,
+			resp_buf_len, attest_resp_len);
+
+	return ret;
+
+}
+EXPORT_SYMBOL(qti_scm_get_device_attestation_response);
+
+int qti_scm_get_device_provision_response(u32 svc_id, u32 cmd_id, void *provreq_buf,
+			u32 provreq_buf_len, void *provresp_buf, u32 provresp_buf_len,
+			u32 *prov_resp_size)
+{
+	int ret;
+
+	ret = __qti_scm_get_device_provision_response(__scm->dev, svc_id, cmd_id,
+			provreq_buf, provreq_buf_len, provresp_buf,
+			provresp_buf_len, prov_resp_size);
+
+	return ret;
+
+}
+EXPORT_SYMBOL(qti_scm_get_device_provision_response);
 
 int qti_scm_wcss_boot(u32 svc_id, u32 cmd_id, void *cmd_buf)
 {
@@ -888,6 +990,12 @@ int qti_set_qcekey_sec(void *buf, int size)
 }
 EXPORT_SYMBOL(qti_set_qcekey_sec);
 
+int qti_sec_crypt(void *buf, int size)
+{
+	return __qti_sec_crypt(__scm->dev, buf, size);
+}
+EXPORT_SYMBOL(qti_sec_crypt);
+
 /*
  * qti_qcekey_release_xpu_prot() - release XPU protection
  */
@@ -896,6 +1004,12 @@ int qti_qcekey_release_xpu_prot(void)
 	return __qti_qcekey_release_xpu_prot(__scm->dev);
 }
 EXPORT_SYMBOL(qti_qcekey_release_xpu_prot);
+
+int qti_seccrypt_clearkey(void)
+{
+	return __qti_seccrypt_clearkey(__scm->dev);
+}
+EXPORT_SYMBOL(qti_seccrypt_clearkey);
 
 /**
  * qti_scm_resettype () - cold or warm reset
@@ -963,7 +1077,7 @@ int qti_scm_is_tz_log_encryption_supported(void)
 {
 	int ret;
 
-	ret = __qcom_scm_is_call_available(__scm->dev, QCOM_SCM_SVC_BOOT,
+	ret = __qcom_scm_is_call_available(__scm->dev, QTI_SVC_APP_MGR,
 					   QCOM_SCM_IS_TZ_LOG_ENCRYPTED);
 
 	return (ret == 1) ? 1 : 0;
@@ -1065,7 +1179,7 @@ static int qcom_scm_probe(struct platform_device *pdev)
 	if (!scm)
 		return -ENOMEM;
 
-	ret = qcom_scm_find_dload_address(&pdev->dev, &scm->dload_mode_addr);
+	ret = qcom_scm_find_dload_address(&pdev->dev, scm);
 	if (ret < 0)
 		return ret;
 

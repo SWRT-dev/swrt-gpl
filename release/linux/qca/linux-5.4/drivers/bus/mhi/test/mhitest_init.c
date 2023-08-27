@@ -64,9 +64,18 @@ int mhitest_store_mplat(struct mhitest_platform *temp)
 	return 1;
 }
 
+void mhitest_remove_mplat(struct mhitest_platform *temp)
+{
+	if (d_instance > 0 && d_instance < MHI_MAX_DEVICE) {
+		d_instance--;
+		mplat_g[d_instance] = NULL;
+	}
+}
+
 void mhitest_free_mplat(struct mhitest_platform *temp)
 {
 	devm_kfree(&temp->plat_dev->dev, temp);
+	mhitest_remove_mplat(temp);
 }
 
 struct mhitest_platform *get_mhitest_mplat(int id)
@@ -138,6 +147,8 @@ int mhitest_recovery_event_handler(struct mhitest_platform *mplat, void *data)
 		break;
 	case MHI_RDDM:
 		mhitest_dump_info(mplat, false);
+		mhitest_dev_ramdump(mplat);
+
 		if (rddm_r) { /*using mod param for now*/
 			mhitest_recovery_post_rddm(mplat);
 			return 0; /*for now*/

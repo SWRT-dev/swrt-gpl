@@ -25,6 +25,9 @@
 #define QCN90XX_QRTR_INSTANCE_ID_BASE		0x20
 #define QCN92XX_QRTR_INSTANCE_ID_BASE		0x30
 
+#define MHITEST_MHI_SEG_LEN			SZ_512K
+#define MHITEST_DUMP_DESC_TOLERANCE		64
+
 static struct mhi_channel_config mhitest_mhi_channels[] = {
 	{
 		.num = 0,
@@ -177,20 +180,20 @@ int mhitest_dump_info(struct mhitest_platform *mplat, bool in_panic)
 
 	mhi_ctrl = mplat->mhi_ctrl;
 	pci_read_config_word(mplat->pci_dev, PCI_DEVICE_ID, &device_id);
-	MHITEST_EMERG("Read config space again, Device_id:0x%x\n", device_id);
+	MHITEST_VERB("Read config space again, Device_id:0x%x\n", device_id);
 	if (device_id != mplat->pci_dev_id->device) {
-		MHITEST_ERR("Device Id does not match with Probe ID..\n");
+		MHITEST_VERB("Device Id does not match with Probe ID..\n");
 		return -EIO;
 	}
 
 	ret = mhi_download_rddm_image(mhi_ctrl, in_panic);
 	if (ret) {
-		MHITEST_ERR("Error .. not able to dload rddm img ret:%d\n",
+		MHITEST_VERB("Error .. not able to dload rddm img ret:%d\n",
 									ret);
 		return ret;
 	}
 
-	MHITEST_LOG("Let's dump some more things...\n");
+	MHITEST_VERB("Let's dump some more things...\n");
 	mhi_debug_reg_dump(mhi_ctrl);
 
 	rddm_img = mhi_ctrl->rddm_image;
@@ -199,9 +202,9 @@ int mhitest_dump_info(struct mhitest_platform *mplat, bool in_panic)
 	dump_seg = mplat->mhitest_rdinfo.dump_data_vaddr;
 
 	dump_data->nentries = 0;
-	MHITEST_EMERG("dump_dname:%s entries:%d\n", dump_data->name,
+	MHITEST_VERB("dump_dname:%s entries:%d\n", dump_data->name,
 						dump_data->nentries);
-	MHITEST_EMERG("----Collect FW image dump segment, nentries %d----\n",
+	MHITEST_VERB("----Collect FW image dump segment, nentries %d----\n",
 		    fw_img->entries);
 
 	for (i = 0; i < fw_img->entries; i++) {
@@ -209,14 +212,14 @@ int mhitest_dump_info(struct mhitest_platform *mplat, bool in_panic)
 		dump_seg->v_address = fw_img->mhi_buf[i].buf;
 		dump_seg->size = fw_img->mhi_buf[i].len;
 		dump_seg->type = FW_IMAGE;
-		MHITEST_EMERG("seg-%d:Address:0x%lx,v_Address %pK, size 0x%lx\n",
+		MHITEST_VERB("seg-%d:Address:0x%lx,v_Address %pK, size 0x%lx\n",
 				i, dump_seg->address, dump_seg->v_address,
 							dump_seg->size);
 		dump_seg++;
 	}
 	dump_data->nentries += fw_img->entries;
 
-	MHITEST_EMERG("----Collect RDDM image dump segment, nentries %d----\n",
+	MHITEST_VERB("----Collect RDDM image dump segment, nentries %d----\n",
 		    rddm_img->entries);
 
 	for (i = 0; i < rddm_img->entries; i++) {
@@ -224,17 +227,104 @@ int mhitest_dump_info(struct mhitest_platform *mplat, bool in_panic)
 		dump_seg->v_address = rddm_img->mhi_buf[i].buf;
 		dump_seg->size = rddm_img->mhi_buf[i].len;
 		dump_seg->type = FW_RDDM;
-		MHITEST_EMERG("seg-%d: address:0x%lx,v_address %pK,size 0x%lx\n",
+		MHITEST_VERB("seg-%d: address:0x%lx,v_address %pK,size 0x%lx\n",
 				i, dump_seg->address, dump_seg->v_address,
 								dump_seg->size);
 		dump_seg++;
 	}
 	dump_data->nentries += rddm_img->entries;
-	MHITEST_EMERG("----TODO/not need to Collect remote heap dump segment--\n");
+	MHITEST_VERB("----TODO/not need to Collect remote heap dump segment--\n");
 	if (dump_data->nentries > 0)
 		mplat->mhitest_rdinfo.dump_data_valid = true;
 
 	return 0;
+}
+
+int mhitest_dev_ramdump(struct mhitest_platform *mplat)
+{
+	struct mhitest_ramdump_info *rdinfo = &mplat->mhitest_rdinfo;
+	struct mhitest_dump_data *dump_data = &rdinfo->dump_data;
+	struct mhitest_dump_seg *dump_seg = rdinfo->dump_data_vaddr;
+	struct ramdump_segment *ramdump_segs, *s;
+	struct mhitest_dump_meta_info *meta_info;
+	int i, ret = 0, idx = 0;
+
+	if (!rdinfo->dump_data_valid ||
+	    dump_data->nentries == 0)
+		return 0;
+
+	/* First segment of the dump_data will have meta info in
+	 * cnss_dump_meta_info structure format.
+	 * Allocate extra segment for meta info and start filling the dump_seg
+	 * entries from ramdump_segs + NUM_META_INFO_SEGMENTS.
+	 */
+	ramdump_segs = kcalloc(dump_data->nentries +
+			       MHITEST_NUM_META_INFO_SEGMENTS,
+			       sizeof(*ramdump_segs),
+			       GFP_KERNEL);
+	if (!ramdump_segs)
+		return -ENOMEM;
+
+	meta_info = kzalloc(PAGE_SIZE, GFP_KERNEL);
+	if (!meta_info) {
+		kfree(ramdump_segs);
+		return -ENOMEM;
+	}
+
+	meta_info->magic = MHITEST_RAMDUMP_MAGIC;
+	meta_info->version = MHITEST_RAMDUMP_VERSION_V2;
+	meta_info->chipset = mplat->device_id;
+
+	ramdump_segs->v_address = meta_info;
+	ramdump_segs->size = sizeof(*meta_info);
+
+	s = ramdump_segs + MHITEST_NUM_META_INFO_SEGMENTS;
+	for (i = 0; i < dump_data->nentries; i++) {
+		if (dump_seg->type >= FW_DUMP_TYPE_MAX) {
+			MHITEST_ERR("Unsupported dump type: %d\n",
+				    dump_seg->type);
+			continue;
+		}
+
+		if (dump_seg->type != meta_info->entry[idx].type)
+			idx++;
+
+		if (meta_info->entry[idx].entry_start == 0) {
+			meta_info->entry[idx].type = dump_seg->type;
+			meta_info->entry[idx].entry_start =
+						i + MHITEST_NUM_META_INFO_SEGMENTS;
+		}
+		meta_info->entry[idx].entry_num++;
+
+		s->address = dump_seg->address;
+		s->v_address = dump_seg->v_address;
+		s->size = dump_seg->size;
+		s++;
+		dump_seg++;
+	}
+
+	meta_info->total_entries = idx + 1;
+
+	MHITEST_LOG("Dumping meta_info: total_entries: %d",
+		    meta_info->total_entries);
+	for (i = 0; i < meta_info->total_entries; i++)
+		MHITEST_LOG("entry %d type %d entry_start %d entry_num %d",
+			    i, meta_info->entry[i].type,
+			    meta_info->entry[i].entry_start,
+			    meta_info->entry[i].entry_num);
+
+	ret = create_ramdump_device_file(rdinfo->ramdump_dev);
+	if (ret)
+		goto clear_dump_info;
+
+	ret = do_elf_ramdump(rdinfo->ramdump_dev, ramdump_segs,
+			     dump_data->nentries + MHITEST_NUM_META_INFO_SEGMENTS);
+
+clear_dump_info:
+	kfree(meta_info);
+	kfree(ramdump_segs);
+
+	return ret;
 }
 
 static int mhitest_get_msi_user(struct mhitest_platform *mplat, char *u_name,
@@ -542,6 +632,7 @@ int mhitest_pci_register_mhi(struct mhitest_platform *mplat)
 	MHITEST_LOG("MHI CTRL :%p\n", mhi_ctrl);
 
 	mplat->mhi_ctrl = mhi_ctrl;
+	mhi_ctrl->dev_id = mplat->device_id;
 	dev_set_drvdata(&pci_dev->dev, mplat);
 	mhi_ctrl->cntrl_dev = &pci_dev->dev;
 
@@ -584,8 +675,8 @@ int mhitest_pci_register_mhi(struct mhitest_platform *mplat)
 	} while (reg < reg_end);
 
 
-	mhi_ctrl->iova_start = (dma_addr_t)(start + 0x1000000);
-	mhi_ctrl->iova_stop = (dma_addr_t)(start + size);
+	mhi_ctrl->iova_start = (dma_addr_t)start;
+	mhi_ctrl->iova_stop = (dma_addr_t)(start + size - 1);
 
 	MHITEST_VERB("iova_start:%x iova_stop:%x\n",
 			(unsigned int)mhi_ctrl->iova_start,
@@ -797,6 +888,22 @@ int mhitest_unregister_ramdump(struct mhitest_platform *mplat)
 	return 0;
 }
 
+static u32 mhitest_get_dump_desc_size(struct mhitest_platform *mplat)
+{
+	u32 descriptor_size = 0;
+	u32 segment_len = MHITEST_MHI_SEG_LEN;
+	u32 wlan_sram_size = mplat->mhitest_rdinfo.ramdump_size;
+
+	of_property_read_u32(mplat->pci_dev->dev.of_node, "qti,rddm-seg-len",
+			     &segment_len);
+
+	descriptor_size = (((wlan_sram_size / segment_len) +
+			    MHITEST_DUMP_DESC_TOLERANCE) *
+			    sizeof(struct mhitest_dump_seg));
+
+	return descriptor_size;
+}
+
 int mhitest_register_ramdump(struct mhitest_platform *mplat)
 {
 	struct mhitest_ramdump_info *mhitest_rdinfo;
@@ -821,7 +928,8 @@ int mhitest_register_ramdump(struct mhitest_platform *mplat)
 	if (ret == 0)
 		mhitest_rdinfo->ramdump_size = ramdump_size;
 
-	mhitest_rdinfo->dump_data_vaddr = kzalloc(0x1000, GFP_KERNEL);
+	mhitest_rdinfo->dump_data_vaddr = kzalloc(
+			mhitest_get_dump_desc_size(mplat), GFP_KERNEL);
 	if (!mhitest_rdinfo->dump_data_vaddr)
 		return -ENOMEM;
 
@@ -1070,18 +1178,6 @@ int mhitest_pci_start_mhi(struct mhitest_platform *mplat)
 	ret = mhitest_pci_set_mhi_state(mplat, MHI_POWER_ON);
 	if (ret) {
 		MHITEST_ERR("Error not able to POWER ON\n");
-		if (ret == -ETIMEDOUT) {
-			/*
-			 * Though it is ETIMEOUT we are returning 0 here so that
-			 * we should be able to do rcremove and rmmod.
-			 * rcremove api's are not exported and so mhitest driver
-			 * cannot call them.
-			 *
-			 * Printing Error message here to inform the user.
-			 */
-			MHITEST_ERR("###### -ETIMEDOUT ERRRORR, do rcremove and rmmod to clean-up\n");
-			ret = 0;
-		}
 		goto out1;
 	}
 
@@ -1186,25 +1282,32 @@ int mhitest_pci_probe2(struct pci_dev *pci_dev, const struct pci_device_id *id)
 
 	ret = mhitest_event_work_init(mplat);
 	if (ret)
-		goto out1;
+		goto free_mplat;
 
 	ret = mhitest_store_mplat(mplat);
 	if (ret) {
 		MHITEST_ERR("Error ret:%d\n", ret);
-		goto out1;
+		goto work_deinit;
 	}
 
 	ret = mhitest_subsystem_register(mplat);
 	if (ret) {
 		MHITEST_ERR("Error subsystem register: ret:%d\n", ret);
-		goto out1;
+		goto pci_deinit;
 	}
 
 	MHITEST_EMERG("<---done\n");
 	return 0;
 
-out1:
-	kfree(mplat);
+pci_deinit:
+	mhitest_pci_set_mhi_state(mplat, MHI_DEINIT);
+	mhitest_pci_remove_all(mplat);
+	pci_load_and_free_saved_state(pci_dev, &mplat->pci_dev_default_state);
+	mhitest_remove_mplat(mplat);
+work_deinit:
+	mhitest_event_work_deinit(mplat);
+free_mplat:
+	devm_kfree(&mplat->plat_dev->dev, mplat);
 fail_probe:
 	return ret;
 }

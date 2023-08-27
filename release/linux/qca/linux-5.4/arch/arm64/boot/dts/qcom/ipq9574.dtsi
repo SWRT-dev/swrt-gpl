@@ -3,6 +3,7 @@
  * IPQ9574 SoC device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
@@ -120,12 +121,6 @@
 	};
 
 	firmware {
-		scm {
-			compatible = "qcom,scm";
-			hvc-log-cmd-id = <0xA>;
-			smmu-state-cmd-id = <0x20>;
-		};
-
 		qfprom {
 			compatible = "qcom,qfprom-sec";
 			img-addr = <0x4A100000>;
@@ -172,6 +167,16 @@
 		status = "ok";
 	};
 
+	qcn9224_legacy_irq0: qcn9224_legacy_irq0 {
+		compatible = "qcom,qcn9224_legacy_irq";
+		status = "ok";
+		qrtr_node_id = <0x30>;
+		qcn9224_in0: legacy_interrupt {
+			interrupt-controller;
+			#interrupt-cells = <2>;
+		};
+	};
+
 	qcn9224_legacy_irq1: qcn9224_legacy_irq1 {
 		compatible = "qcom,qcn9224_legacy_irq";
 		status = "ok";
@@ -213,12 +218,26 @@
 		dma-ranges;
 		compatible = "simple-bus";
 
+		reg_update: reg_update@400000 {
+			compatible = "ipq,reg_update";
+			reg = <0x00400000 0x6148>,<0x39D00020 0x10>;
+			reg-names = "memnoc","ubicore";
+			clocks = <&nsscc NSS_CC_NSS_CSR_CLK>,
+				 <&nsscc NSS_CC_NSSNOC_NSS_CSR_CLK>;
+			clock-names = "nss-csr-clk", "nss-nssnoc-csr-clk";
+			assigned-clocks = <&nsscc NSS_CC_NSS_CSR_CLK>,
+					  <&nsscc NSS_CC_NSSNOC_NSS_CSR_CLK>;
+			assigned-clock-rates = <100000000>,<100000000>;
+			status = "ok";
+		};
+
 		apcs_glb: mailbox@b111000 {
 			compatible = "qcom,ipq9574-apcs-apps-global";
 			reg = <0x0b111000 0x1000>;
 			#clock-cells = <1>;
 			clocks = <&a73pll>, <&xo>;
 			clock-names = "pll", "xo";
+			apcs-max-register = <0xFFC>;
 
 			#mbox-cells = <1>;
 		};
@@ -254,6 +273,7 @@
 			dmas = <&cryptobam 2>, <&cryptobam 3>;
 			dma-names = "rx", "tx";
 			qce,no-clock-init;
+			qce,cmd_desc_support;
 		};
 
 		intc: interrupt-controller@b000000 {
@@ -284,6 +304,51 @@
 				msi-controller;
 				reg = <0x2000 0xffd>;
 			};
+		};
+
+		lpass: lpass@0xA000000{
+			compatible = "qca,lpass-ipq9574";
+			reg =  <0xA000000 0x3BFFFF>;
+			clocks = <&gcc GCC_LPASS_SWAY_CLK>,
+			<&gcc GCC_LPASS_CORE_AXIM_CLK>,
+			<&gcc GCC_SNOC_LPASS_CFG_CLK>,
+			<&gcc GCC_PCNOC_LPASS_CLK>;
+			clock-names = "sway", "axim", "snoc_cfg", "pcnoc";
+			resets = <&gcc GCC_LPASS_BCR>;
+			reset-names = "lpass";
+			status = "disabled";
+		};
+
+		pcm: pcm@0xA3C0000{
+			compatible = "qca,ipq9574-lpass-pcm";
+			reg =  <0xA3C0000 0x23014>;
+			status = "disabled";
+
+			pcm0: pcm0@0 {
+				interrupts = <0 419 IRQ_TYPE_LEVEL_HIGH>;
+				interrupt-names = "out0";
+				capture_memory = "lpm";
+				playback_memory = "lpm";
+				voice_loopback = <0>;
+				slave = <0>;
+				status = "disabled";
+			      };
+
+			pcm1: pcm1@1 {
+				interrupts = <0 117 IRQ_TYPE_LEVEL_HIGH>;
+				interrupt-names = "out1";
+				capture_memory = "lpm";
+				playback_memory = "lpm";
+				voice_loopback = <0>;
+				slave = <0>;
+				status = "disabled";
+			};
+
+		};
+
+		pcm_lb: pcm_lb@0 {
+			compatible = "qca,ipq9574-pcm-lb";
+			status = "disabled";
 		};
 
 		pwm {
@@ -323,6 +388,10 @@
 					<&gcc GCC_UNIPHY1_SYS_CLK>,
 					<&gcc GCC_UNIPHY2_AHB_CLK>,
 					<&gcc GCC_UNIPHY2_SYS_CLK>,
+					<&gcc GCC_NSSNOC_NSSCC_CLK>,
+					<&gcc GCC_NSSCC_CLK>,
+					<&gcc GCC_NSSNOC_SNOC_1_CLK>,
+					<&gcc GCC_NSSNOC_SNOC_CLK>,
 					<&nsscc NSS_CC_PORT1_MAC_CLK>,
 					<&nsscc NSS_CC_PORT2_MAC_CLK>,
 					<&nsscc NSS_CC_PORT3_MAC_CLK>,
@@ -371,6 +440,10 @@
 					"uniphy1_sys_clk",
 					"uniphy2_ahb_clk",
 					"uniphy2_sys_clk",
+					"gcc_nssnoc_nsscc_clk",
+					"gcc_nsscc_clk",
+					"gcc_nssnoc_snoc_1_clk",
+					"gcc_nssnoc_snoc_clk",
 					"port1_mac_clk",
 					"port2_mac_clk",
 					"port3_mac_clk",
@@ -460,11 +533,11 @@
 				port_scheduler_resource {
 					port@0 {
 						port_id = <0>;
-						ucast_queue = <0 43>;
-						mcast_queue = <256 262>;
-						l0sp = <0 6>;
-						l0cdrr = <0 27>;
-						l0edrr = <0 27>;
+						ucast_queue = <0 63>;
+						mcast_queue = <256 263>;
+						l0sp = <0 0>;
+						l0cdrr = <0 7>;
+						l0edrr = <0 7>;
 						l1cdrr = <0 0>;
 						l1edrr = <0 0>;
 					};
@@ -539,11 +612,11 @@
 						l1edrr = <35 35>;
 					};
 					reserved {
-						ucast_queue = <44 203>;
-						mcast_queue = <263 271>;
-						l0sp = <7 50>;
-						l0cdrr = <28 107>;
-						l0edrr = <28 107>;
+						ucast_queue = <64 203>;
+						mcast_queue = <264 271>;
+						l0sp = <1 50>;
+						l0cdrr = <8 107>;
+						l0edrr = <8 107>;
 						l1cdrr = <1 22>;
 						l1edrr = <1 22>;
 					};
@@ -554,7 +627,7 @@
 						l1scheduler {
 							group@0 {
 								/* L0 SP */
-								sp = <0 1 2 3 4 5 6>;
+								sp = <0>;
 								/* cpri cdrr epri edrr */
 								cfg = <0 0 0 0>;
 							};
@@ -563,67 +636,53 @@
 							group@0 {
 								/* unicast queue */
 								ucast_queue = <0>;
-								ucast_loop_pri = <4>;
+								ucast_loop_pri = <8>;
 								/* multicast queue */
 								mcast_queue = <256>;
 								/* sp cpri cdrr epri edrr */
 								cfg = <0 0 0 0 0>;
 							};
 							group@1 {
-								ucast_queue = <4>;
-								ucast_loop_pri = <4>;
+								ucast_queue = <8>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <257>;
 								cfg = <0 0 0 0 0>;
 							};
 							group@2 {
-								ucast_queue = <8>;
-								ucast_loop_pri = <4>;
-								mcast_queue = <257>;
-								cfg = <1 0 4 0 4>;
+								ucast_queue = <16>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <258>;
+								cfg = <0 0 0 0 0>;
 							};
 							group@3 {
-								ucast_queue = <12>;
-								ucast_loop_pri = <4>;
-								cfg = <1 0 4 0 4>;
+								ucast_queue = <24>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <259>;
+								cfg = <0 0 0 0 0>;
 							};
 							group@4 {
-								ucast_queue = <16>;
-								ucast_loop_pri = <4>;
-								mcast_queue = <258>;
-								cfg = <2 0 8 0 8>;
+								ucast_queue = <32>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <260>;
+								cfg = <0 0 0 0 0>;
 							};
 							group@5 {
-								ucast_queue = <20>;
-								ucast_loop_pri = <4>;
-								cfg = <2 0 8 0 8>;
+								ucast_queue = <40>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <261>;
+								cfg = <0 0 0 0 0>;
 							};
 							group@6 {
-								ucast_queue = <24>;
-								ucast_loop_pri = <4>;
-								mcast_queue = <259>;
-								cfg = <3 0 12 0 12>;
+								ucast_queue = <48>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <262>;
+								cfg = <0 0 0 0 0>;
 							};
 							group@7 {
-								ucast_queue = <28>;
-								ucast_loop_pri = <4>;
-								cfg = <3 0 12 0 12>;
-							};
-							group@8 {
-								ucast_queue = <32>;
-								ucast_loop_pri = <4>;
-								mcast_queue = <260>;
-								cfg = <4 0 16 0 16>;
-							};
-							group@9 {
-								ucast_queue = <36>;
-								ucast_loop_pri = <4>;
-								mcast_queue = <261>;
-								cfg = <5 0 20 0 20>;
-							};
-							group@10 {
-								ucast_queue = <40>;
-								ucast_loop_pri = <4>;
-								mcast_queue = <262>;
-								cfg = <6 0 24 0 24>;
+								ucast_queue = <56>;
+								ucast_loop_pri = <8>;
+								mcast_queue = <263>;
+								cfg = <0 0 0 0 0>;
 							};
 						};
 					};
@@ -895,6 +954,11 @@
 				compatible = "qcom,msm-imem-tz-log-buf-addr";
 				reg = <0x720 4>;
 			};
+
+			restart-reason-buf-addr@7a4 {
+				compatible = "qcom,msm-imem-restart-reason-buf-addr";
+				reg = <0x7a4 4>;
+			};
 		};
 
 		dcc: dcc_v2@797F000 {
@@ -905,11 +969,6 @@
 			reg-names = "dcc-base", "dcc-ram-base";
 
 			dcc-ram-offset = <0x6000>;
-
-			clocks = <&gcc GCC_DCC_CLK>;
-			clock-names = "dcc_clk";
-
-			qca,save-reg;
 		};
 
 		tcsr_mutex_regs: syscon@1905000 {
@@ -917,9 +976,21 @@
 			reg = <0x01905000 0x8000>;
 		};
 
+		tcsr_boot_misc: syscon@193d100 {
+			compatible = "syscon";
+			reg = <0x0193d100 0x4>;
+		};
+
 		tcsr_q6_block: syscon@1945000 {
 			compatible = "syscon";
 			reg = <0x1945000 0xE000>;
+		};
+
+		scm {
+			compatible = "qcom,scm";
+			hvc-log-cmd-id = <0xA>;
+			smmu-state-cmd-id = <0x20>;
+			qcom,dload-mode = <&tcsr_boot_misc 0>;
 		};
 
 		nsscc: nsscc@39b00000 {
@@ -1179,6 +1250,10 @@
 				      "nss-nssnoc-snoc-clk", "nss-nssnoc-timeout-ref-clk", "nss-nssnoc-xo-dcd-clk";
 		};
 
+		nss-ppe {
+			compatible = "qcom,nss-ppe";
+		};
+
 		qcom,test@0 {
 			compatible = "qcom,testmhi";
 			qcom,wlan-ramdump-dynamic = <0x400000>;
@@ -1366,269 +1441,13 @@
 			qcom,low-frequency = <748800000>;
 			qcom,mid-frequency = <1497600000>;
 			qcom,max-frequency = <1689600000>;
-			qcom,bridge-enabled;
-			qcom,ipv4-enabled;
-			qcom,ipv4-reasm-enabled;
-			qcom,ipv6-enabled;
-			qcom,ipv6-reasm-enabled;
-			qcom,wlanredirect-enabled;
-			qcom,tun6rd-enabled;
-			qcom,l2tpv2-enabled;
-			qcom,gre-enabled;
-			qcom,gre-redir-enabled;
-			qcom,gre-redir-mark-enabled;
-			qcom,map-t-enabled;
-			qcom,portid-enabled;
-			qcom,ppe-enabled;
-			qcom,pppoe-enabled;
-			qcom,pptp-enabled;
-			qcom,tunipip6-enabled;
-			qcom,shaping-enabled;
-			qcom,wlan-dataplane-offload-enabled;
-			qcom,vlan-enabled;
-			qcom,igs-enabled;
-			qcom,vxlan-enabled;
-			qcom,match-enabled;
-			qcom,mirror-enabled;
+			qcom,edma-lite-enabled;
+			qcom,capwap-enabled;
+			qcom,trustsec-enabled;
+			qcom,dtls-enabled;
+			qcom,crypto-enabled;
 			npu-supply = <&npu_vreg>;
 			mx-supply = <&ipq9574_s4>;
-		};
-
-		nss1: nss@40800000 {
-			compatible = "qcom,nss";
-			interrupts = <0 443 0x1>, <0 442 0x1>, <0 441 0x1>,
-				     <0 440 0x1>, <0 439 0x1>, <0 438 0x1>,
-				     <0 437 0x1>, <0 436 0x1>, <0 435 0x1>,
-				     <0 434 0x1>;
-			reg = <0x38F01000 0x100>, <0x3820C000 0xC000>,
-				<0xB11A000 0x1000>;
-			reg-names = "nphys", "vphys", "qgic-phys";
-			clocks = <&nsscc NSS_CC_NSS_CSR_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_NSS_CSR_CLK>,
-				 <&nsscc NSS_CC_HAQ_AHB_CLK>,
-				 <&nsscc NSS_CC_HAQ_AXI_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_HAQ_AHB_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_HAQ_AXI_CLK>,
-				 <&nsscc NSS_CC_CE_APB_CLK>,
-				 <&nsscc NSS_CC_CE_AXI_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_CE_APB_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_CE_AXI_CLK>,
-				 <&nsscc NSS_CC_CLC_AXI_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_CLC_AXI_CLK>,
-				 <&nsscc NSS_CC_IMEM_QSB_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_IMEM_QSB_CLK>,
-				 <&nsscc NSS_CC_IMEM_AHB_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_IMEM_AHB_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_UBI32_AHB0_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_UBI32_AXI0_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_UBI32_INT0_AHB_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_UBI32_NC_AXI0_1_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_UBI32_NC_AXI0_CLK>,
-				 <&nsscc NSS_CC_UBI32_CORE1_CLK>,
-				 <&nsscc NSS_CC_UBI32_AHB1_CLK>,
-				 <&nsscc NSS_CC_UBI32_AXI1_CLK>,
-				 <&nsscc NSS_CC_UBI32_INTR1_AHB_CLK>,
-				 <&nsscc NSS_CC_UBI32_NC_AXI1_CLK>,
-				 <&nsscc NSS_CC_UBI32_UTCM1_CLK>,
-				 <&gcc GCC_MEM_NOC_NSSNOC_CLK>,
-				 <&gcc GCC_NSS_TBU_CLK>,
-				 <&gcc GCC_NSS_TS_CLK>,
-				 <&gcc GCC_NSSCC_CLK>,
-				 <&gcc GCC_NSSCFG_CLK>,
-				 <&gcc GCC_NSSNOC_ATB_CLK>,
-				 <&gcc GCC_NSSNOC_MEM_NOC_1_CLK>,
-				 <&gcc GCC_NSSNOC_MEMNOC_CLK>,
-				 <&gcc GCC_NSSNOC_NSSCC_CLK>,
-				 <&gcc GCC_NSSNOC_PCNOC_1_CLK>,
-				 <&gcc GCC_NSSNOC_QOSGEN_REF_CLK>,
-				 <&gcc GCC_NSSNOC_SNOC_1_CLK>,
-				 <&gcc GCC_NSSNOC_SNOC_CLK>,
-				 <&gcc GCC_NSSNOC_TIMEOUT_REF_CLK>,
-				 <&gcc GCC_NSSNOC_XO_DCD_CLK>;
-			clock-names = "nss-csr-clk", "nss-nssnoc-csr-clk",
-				      "nss-haq-ahb-clk", "nss-haq-axi-clk",
-				      "nss-nssnoc-haq-ahb-clk", "nss-nssnoc-haq-axi-clk",
-				      "nss-ce-ahb-clk", "nss-ce-axi-clk",
-				      "nss-nssnoc-ce-ahb-clk", "nss-nssnoc-ce-axi-clk",
-				      "nss-clc-axi-clk", "nss-nssnoc-clc-axi-clk",
-				      "nss-imem-qsb-clk", "nss-nssnoc-imem-qsb-clk",
-				      "nss-imem-ahb-clk", "nss-nssnoc-imem-ahb-clk",
-				      "nss-nssnoc-ahb0-clk", "nss-nssnoc-axi0-clk",
-				      "nss-nssnoc-int0-ahb-clk", "nss-nssnoc-nc-axi0-1-clk",
-				      "nss-nssnoc-nc-axi0-clk",
-				      "nss-core-clk", "nss-ahb-clk", "nss-axi-clk",
-				      "nss-intr-ahb-clk", "nss-nc-axi-clk", "nss-utcm-clk",
-				      "nss-mem-noc-nssnoc-clk", "nss-tbu-clk", "nss-ts-clk",
-				      "nss-nsscc-clk", "nss-nsscfg-clk", "nss-nsscnoc-atb-clk",
-				      "nss-nssnoc-mem-noc-1-clk", "nss-nssnoc-memnoc-clk", "nss-nssnoc-nsscc-clk",
-				      "nss-nssnoc-pcnoc-1-clk", "nss-nssnoc-qosgen-ref-clk", "nss-nssnoc-snoc-1-clk",
-				      "nss-nssnoc-snoc-clk", "nss-nssnoc-timeout-ref-clk", "nss-nssnoc-xo-dcd-clk";
-			qcom,id = <1>;
-			qcom,num-queue = <4>;
-			qcom,num-irq = <10>;
-			qcom,num-pri = <4>;
-			qcom,load-addr = <0x40800000>;
-			qcom,capwap-enabled;
-			qcom,dtls-enabled;
-			qcom,tls-enabled;
-			qcom,crypto-enabled;
-			qcom,ipsec-enabled;
-			qcom,qvpn-enabled;
-			qcom,pvxlan-enabled;
-			qcom,clmap-enabled;
-			qcom,rmnet_rx-enabled;
-		};
-
-		nss2: nss@41000000 {
-			compatible = "qcom,nss";
-			interrupts = <0 455 0x1>, <0 454 0x1>, <0 453 0x1>,
-				     <0 452 0x1>, <0 451 0x1>, <0 450 0x1>,
-				     <0 449 0x1>, <0 448 0x1>, <0 447 0x1>,
-				     <0 446 0x1>;
-			reg = <0x38F02000 0x100>, <0x38218000 0xC000>,
-				<0xB11A000 0x1000>;
-			reg-names = "nphys", "vphys", "qgic-phys";
-			clocks = <&nsscc NSS_CC_NSS_CSR_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_NSS_CSR_CLK>,
-				 <&nsscc NSS_CC_HAQ_AHB_CLK>,
-				 <&nsscc NSS_CC_HAQ_AXI_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_HAQ_AHB_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_HAQ_AXI_CLK>,
-				 <&nsscc NSS_CC_CE_APB_CLK>,
-				 <&nsscc NSS_CC_CE_AXI_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_CE_APB_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_CE_AXI_CLK>,
-				 <&nsscc NSS_CC_CLC_AXI_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_CLC_AXI_CLK>,
-				 <&nsscc NSS_CC_IMEM_QSB_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_IMEM_QSB_CLK>,
-				 <&nsscc NSS_CC_IMEM_AHB_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_IMEM_AHB_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_UBI32_AHB0_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_UBI32_AXI0_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_UBI32_INT0_AHB_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_UBI32_NC_AXI0_1_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_UBI32_NC_AXI0_CLK>,
-				 <&nsscc NSS_CC_UBI32_CORE2_CLK>,
-				 <&nsscc NSS_CC_UBI32_AHB2_CLK>,
-				 <&nsscc NSS_CC_UBI32_AXI2_CLK>,
-				 <&nsscc NSS_CC_UBI32_INTR2_AHB_CLK>,
-				 <&nsscc NSS_CC_UBI32_NC_AXI2_CLK>,
-				 <&nsscc NSS_CC_UBI32_UTCM2_CLK>,
-				 <&gcc GCC_MEM_NOC_NSSNOC_CLK>,
-				 <&gcc GCC_NSS_TBU_CLK>,
-				 <&gcc GCC_NSS_TS_CLK>,
-				 <&gcc GCC_NSSCC_CLK>,
-				 <&gcc GCC_NSSCFG_CLK>,
-				 <&gcc GCC_NSSNOC_ATB_CLK>,
-				 <&gcc GCC_NSSNOC_MEM_NOC_1_CLK>,
-				 <&gcc GCC_NSSNOC_MEMNOC_CLK>,
-				 <&gcc GCC_NSSNOC_NSSCC_CLK>,
-				 <&gcc GCC_NSSNOC_PCNOC_1_CLK>,
-				 <&gcc GCC_NSSNOC_QOSGEN_REF_CLK>,
-				 <&gcc GCC_NSSNOC_SNOC_1_CLK>,
-				 <&gcc GCC_NSSNOC_SNOC_CLK>,
-				 <&gcc GCC_NSSNOC_TIMEOUT_REF_CLK>,
-				 <&gcc GCC_NSSNOC_XO_DCD_CLK>;
-			clock-names = "nss-csr-clk", "nss-nssnoc-csr-clk",
-				      "nss-haq-ahb-clk", "nss-haq-axi-clk",
-				      "nss-nssnoc-haq-ahb-clk", "nss-nssnoc-haq-axi-clk",
-				      "nss-ce-ahb-clk", "nss-ce-axi-clk",
-				      "nss-nssnoc-ce-ahb-clk", "nss-nssnoc-ce-axi-clk",
-				      "nss-clc-axi-clk", "nss-nssnoc-clc-axi-clk",
-				      "nss-imem-qsb-clk", "nss-nssnoc-imem-qsb-clk",
-				      "nss-imem-ahb-clk", "nss-nssnoc-imem-ahb-clk",
-				      "nss-nssnoc-ahb0-clk", "nss-nssnoc-axi0-clk",
-				      "nss-nssnoc-int0-ahb-clk", "nss-nssnoc-nc-axi0-1-clk",
-				      "nss-nssnoc-nc-axi0-clk",
-				      "nss-core-clk", "nss-ahb-clk", "nss-axi-clk",
-				      "nss-intr-ahb-clk", "nss-nc-axi-clk", "nss-utcm-clk",
-				      "nss-mem-noc-nssnoc-clk", "nss-tbu-clk", "nss-ts-clk",
-				      "nss-nsscc-clk", "nss-nsscfg-clk", "nss-nsscnoc-atb-clk",
-				      "nss-nssnoc-mem-noc-1-clk", "nss-nssnoc-memnoc-clk", "nss-nssnoc-nsscc-clk",
-				      "nss-nssnoc-pcnoc-1-clk", "nss-nssnoc-qosgen-ref-clk", "nss-nssnoc-snoc-1-clk",
-				      "nss-nssnoc-snoc-clk", "nss-nssnoc-timeout-ref-clk", "nss-nssnoc-xo-dcd-clk";
-			qcom,id = <2>;
-			qcom,num-queue = <4>;
-			qcom,num-irq = <10>;
-			qcom,num-pri = <4>;
-			qcom,load-addr = <0x41000000>;
-		};
-
-		nss3: nss@41800000 {
-			compatible = "qcom,nss";
-			interrupts = <0 467 0x1>, <0 466 0x1>, <0 465 0x1>,
-				     <0 464 0x1>, <0 463 0x1>, <0 462 0x1>,
-				     <0 461 0x1>, <0 460 0x1>, <0 459 0x1>,
-				     <0 458 0x1>;
-			reg = <0x38F03000 0x100>, <0x38224000 0xC000>,
-				<0xB11A000 0x1000>;
-			reg-names = "nphys", "vphys", "qgic-phys";
-			clocks = <&nsscc NSS_CC_NSS_CSR_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_NSS_CSR_CLK>,
-				 <&nsscc NSS_CC_HAQ_AHB_CLK>,
-				 <&nsscc NSS_CC_HAQ_AXI_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_HAQ_AHB_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_HAQ_AXI_CLK>,
-				 <&nsscc NSS_CC_CE_APB_CLK>,
-				 <&nsscc NSS_CC_CE_AXI_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_CE_APB_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_CE_AXI_CLK>,
-				 <&nsscc NSS_CC_CLC_AXI_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_CLC_AXI_CLK>,
-				 <&nsscc NSS_CC_IMEM_QSB_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_IMEM_QSB_CLK>,
-				 <&nsscc NSS_CC_IMEM_AHB_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_IMEM_AHB_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_UBI32_AHB0_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_UBI32_AXI0_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_UBI32_INT0_AHB_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_UBI32_NC_AXI0_1_CLK>,
-				 <&nsscc NSS_CC_NSSNOC_UBI32_NC_AXI0_CLK>,
-				 <&nsscc NSS_CC_UBI32_CORE3_CLK>,
-				 <&nsscc NSS_CC_UBI32_AHB3_CLK>,
-				 <&nsscc NSS_CC_UBI32_AXI3_CLK>,
-				 <&nsscc NSS_CC_UBI32_INTR3_AHB_CLK>,
-				 <&nsscc NSS_CC_UBI32_NC_AXI3_CLK>,
-				 <&nsscc NSS_CC_UBI32_UTCM3_CLK>,
-				 <&gcc GCC_MEM_NOC_NSSNOC_CLK>,
-				 <&gcc GCC_NSS_TBU_CLK>,
-				 <&gcc GCC_NSS_TS_CLK>,
-				 <&gcc GCC_NSSCC_CLK>,
-				 <&gcc GCC_NSSCFG_CLK>,
-				 <&gcc GCC_NSSNOC_ATB_CLK>,
-				 <&gcc GCC_NSSNOC_MEM_NOC_1_CLK>,
-				 <&gcc GCC_NSSNOC_MEMNOC_CLK>,
-				 <&gcc GCC_NSSNOC_NSSCC_CLK>,
-				 <&gcc GCC_NSSNOC_PCNOC_1_CLK>,
-				 <&gcc GCC_NSSNOC_QOSGEN_REF_CLK>,
-				 <&gcc GCC_NSSNOC_SNOC_1_CLK>,
-				 <&gcc GCC_NSSNOC_SNOC_CLK>,
-				 <&gcc GCC_NSSNOC_TIMEOUT_REF_CLK>,
-				 <&gcc GCC_NSSNOC_XO_DCD_CLK>;
-			clock-names = "nss-csr-clk", "nss-nssnoc-csr-clk",
-				      "nss-haq-ahb-clk", "nss-haq-axi-clk",
-				      "nss-nssnoc-haq-ahb-clk", "nss-nssnoc-haq-axi-clk",
-				      "nss-ce-ahb-clk", "nss-ce-axi-clk",
-				      "nss-nssnoc-ce-ahb-clk", "nss-nssnoc-ce-axi-clk",
-				      "nss-clc-axi-clk", "nss-nssnoc-clc-axi-clk",
-				      "nss-imem-qsb-clk", "nss-nssnoc-imem-qsb-clk",
-				      "nss-imem-ahb-clk", "nss-nssnoc-imem-ahb-clk",
-				      "nss-nssnoc-ahb0-clk", "nss-nssnoc-axi0-clk",
-				      "nss-nssnoc-int0-ahb-clk", "nss-nssnoc-nc-axi0-1-clk",
-				      "nss-nssnoc-nc-axi0-clk",
-				      "nss-core-clk", "nss-ahb-clk", "nss-axi-clk",
-				      "nss-intr-ahb-clk", "nss-nc-axi-clk", "nss-utcm-clk",
-				      "nss-mem-noc-nssnoc-clk", "nss-tbu-clk", "nss-ts-clk",
-				      "nss-nsscc-clk", "nss-nsscfg-clk", "nss-nsscnoc-atb-clk",
-				      "nss-nssnoc-mem-noc-1-clk", "nss-nssnoc-memnoc-clk", "nss-nssnoc-nsscc-clk",
-				      "nss-nssnoc-pcnoc-1-clk", "nss-nssnoc-qosgen-ref-clk", "nss-nssnoc-snoc-1-clk",
-				      "nss-nssnoc-snoc-clk", "nss-nssnoc-timeout-ref-clk", "nss-nssnoc-xo-dcd-clk";
-			qcom,id = <3>;
-			qcom,num-queue = <4>;
-			qcom,num-irq = <10>;
-			qcom,num-pri = <4>;
-			qcom,load-addr = <0x41800000>;
 		};
 
 		nss_crypto: qcom,nss_crypto {
@@ -1719,6 +1538,87 @@
 					qcom,opue-enabled;
 				};
 			};
+		};
+
+		eip: eip197@39800000 {
+			compatible = "qcom,eip";
+			reg-names = "eip_pbase";
+			reg = <0x39800000 0x7ffff>;
+			reg_offset = <0x80000>;
+			ranges;
+			clocks = <&nsscc NSS_CC_CRYPTO_CLK>,
+			<&nsscc NSS_CC_NSSNOC_CRYPTO_CLK>,
+			<&nsscc NSS_CC_CRYPTO_PPE_CLK>;
+			clock-names = "crypto_clk", "crypto_nocclk",
+			"crypto_ppeclk";
+			clock-frequency = /bits/ 64 <600000000 600000000 300000000>;
+			qcom,inline-enabled;
+			status = "ok";
+			interrupts = <GIC_SPI 385 IRQ_TYPE_LEVEL_HIGH>,
+				   <GIC_SPI 386 IRQ_TYPE_LEVEL_HIGH>,
+				   <GIC_SPI 387 IRQ_TYPE_LEVEL_HIGH>,
+				   <GIC_SPI 388 IRQ_TYPE_LEVEL_HIGH>;
+
+			dma0 {
+				tx_cpu = /bits/ 8 <0>;
+				rx_cpu = /bits/ 8 <3>;
+				ring-name = "lookaside";
+				ring-id = /bits/ 8 <0>;
+			};
+
+			dma1 {
+				tx_cpu = /bits/ 8 <1>;
+				rx_cpu = /bits/ 8 <2>;
+				ring-name = "lookaside";
+				ring-id = /bits/ 8 <1>;
+			};
+
+			dma2 {
+				tx_cpu = /bits/ 8 <2>;
+				rx_cpu = /bits/ 8 <1>;
+				ring-name = "lookaside";
+				ring-id = /bits/ 8 <2>;
+			};
+
+			dma3 {
+				tx_cpu = /bits/ 8 <3>;
+				rx_cpu = /bits/ 8 <0>;
+				ring-name = "lookaside";
+				ring-id = /bits/ 8 <3>;
+			};
+
+			dma4 {
+				tx_cpu = /bits/ 8 <0>;
+				rx_cpu = /bits/ 8 <0>;
+				ring-name = "hybrid";
+				ring-id = /bits/ 8 <4>;
+			};
+
+			dma5 {
+				tx_cpu = /bits/ 8 <1>;
+				rx_cpu = /bits/ 8 <1>;
+				ring-name = "hybrid";
+				ring-id = /bits/ 8 <5>;
+			};
+
+			dma6 {
+				tx_cpu = /bits/ 8 <2>;
+				rx_cpu = /bits/ 8 <2>;
+				ring-name = "hybrid";
+				ring-id = /bits/ 8 <6>;
+			};
+
+			dma7 {
+				tx_cpu = /bits/ 8 <3>;
+				rx_cpu = /bits/ 8 <3>;
+				ring-name = "hybrid";
+				ring-id = /bits/ 8 <7>;
+			};
+		};
+
+		eip_crypto: eip_crypto {
+			compatible = "qcom,eip_crypto";
+			status = "ok";
 		};
 
 		ssphy_0: ssphy@7D000 {
@@ -1815,9 +1715,11 @@
 		q6v5_wcss: remoteproc@cd00000 {
 			compatible = "qcom,ipq9574-wcss-pil";
 			reg = <0x0cd00000 0x4040>,
-				<0x004ab000 0x20>;
+				<0x004ab000 0x20>,
+				<0xCB50000 0x8>;
 			reg-names = "qdsp6",
-				    "rmb";
+				    "rmb",
+				    "wcmn";
 			interrupts-extended = <&intc GIC_SPI 325 IRQ_TYPE_EDGE_RISING>,
 					      <&wcss_smp2p_in 0 0>,
 					      <&wcss_smp2p_in 1 0>,
@@ -2410,12 +2312,6 @@
 			qti,offset-page-indices = <56>;
 		};
 
-		qti,scm_restart_reason {
-			compatible = "qti,scm_restart_reason";
-			reg = <0x0193d100 0x4>;
-			qti,runtime-failsafe = <0>;
-		};
-
 		wifi0: wifi@c0000000 {
 			compatible = "qcom,cnss-qca9574", "qcom,ipq9574-wifi";
 			reg = <0xc000000 0x1000000>;
@@ -2429,9 +2325,9 @@
 		#endif
 			qcom,rproc = <&q6v5_wcss>;
 			qcom,bdf-addr = <0x4B700000 0x4B700000 0x4B700000
-					 0x0 0x0>;
+					 0x0 0x0 0x0>;
 			qcom,caldb-addr = <0x4D800000 0x4CA00000 0x0
-					   0x0 0x0>;
+					   0x0 0x0 0x0>;
 			qcom,caldb-size = <0x500000>;
 		#ifdef __IPQ_MEM_PROFILE_512_MB__
 			m3-dump-addr = <0x4C800000>;
@@ -2548,6 +2444,12 @@
 				"wbm2host-tx-completions-ring1",
 				"tcl2host-status-ring";
 			status = "disabled";
+			qcom,pta-num = <0>;
+			qcom,coex-mode = <0x2>;
+			qcom,bt-active-time = <0x12>;
+			qcom,bt-priority-time = <0x0c>;
+			qcom,coex-algo = <0x2>;
+			qcom,pta-priority = <0x80800505>;
 		};
 
 		wifi1: wifi1@f00000 {
@@ -2556,6 +2458,7 @@
 			qrtr_node_id = <0x20>;
 			qca,auto-restart;
 			status = "disabled";
+			interrupt-bmap = <0x100503>;
 		};
 
 		wifi2: wifi2@f00000 {
@@ -2564,14 +2467,346 @@
 			qrtr_node_id = <0x21>;
 			qca,auto-restart;
 			status = "disabled";
+			interrupt-bmap = <0x100503>;
 		};
 
 		wifi3: wifi3@f00000 {
+			compatible  = "qcom,cnss-qcn9000";
+			qcom,wlan-ramdump-dynamic = <0x400000>;
+			qrtr_node_id = <0x22>;
+			qca,auto-restart;
+			status = "disabled";
+			interrupt-bmap = <0x100503>;
+		};
+
+		wifi4: wifi4@f00000 {
+			compatible  = "qcom,cnss-qcn9224";
+			qcom,wlan-ramdump-dynamic = <0x600000>;
+			qrtr_node_id = <0x30>;
+			qca,auto-restart;
+			status = "disabled";
+			interrupt-bmap = <0x100512>;
+#ifdef __IPQ_MEM_PROFILE_512_MB__
+			/* qcn9224 tgt-mem-mode=1 layout - 37MB
+			 * +=========+==============+=========+
+			 * |  Region | Start Offset |   Size  |
+			 * +---------+--------------+---------+
+			 * | HREMOTE |  0x4CF00000  |   20MB  |
+			 * +---------+--------------+---------+
+			 * | M3 Dump |  0x4E300000  |   1MB   |
+			 * +---------+--------------+---------+
+			 * |   ETR   |  0x4E400000  |   1MB   |
+			 * +---------+--------------+---------+
+			 * |  Caldb  |  0x4E500000  |   8MB   |
+			 * +---------+--------------+---------+
+			 * |Pageable |  0x4ED00000  |   7MB   |
+			 * +==================================+
+			 */
+			base-addr = <0x4CF00000>;
+			m3-dump-addr = <0x4E300000>;
+			etr-addr = <0x4E400000>;
+			caldb-addr = <0x4E500000>;
+			pageable-addr = <0x4ED00000>;
+			hremote-size = <0x1400000>;
+			pageable-size = <0x700000>;
+			tgt-mem-mode = <0x1>;
+#else
+			/* qcn9224 tgt-mem-mode=0 layout - 50MB
+			 * +=========+==============+=========+
+			 * |  Region | Start Offset |   Size  |
+			 * +---------+--------------+---------+
+			 * | HREMOTE |  0x4DD00000  |   28MB  |
+			 * +---------+--------------+---------+
+			 * | M3 Dump |  0x4F900000  |   1MB   |
+			 * +---------+--------------+---------+
+			 * |   ETR   |  0x4FA00000  |   1MB   |
+			 * +---------+--------------+---------+
+			 * |  Caldb  |  0x4FB00000  |   8MB   |
+			 * +---------+--------------+---------+
+			 * |Pageable |  0x50300000  |  12MB   |
+			 * +==================================+
+			 */
+			base-addr = <0x4DD00000>;
+			m3-dump-addr = <0x4F900000>;
+			etr-addr = <0x4FA00000>;
+			caldb-addr = <0x4FB00000>;
+			pageable-addr = <0x50300000>;
+			hremote-size = <0x1C00000>;
+			pageable-size = <0xC00000>;
+			tgt-mem-mode = <0x0>;
+#endif
+			caldb-size = <0x800000>;
+			qca,extended-intc;
+			interrupts-extended =
+				<&qcn9224_in0 5 0>,
+				<&qcn9224_in0 6 0>,
+				<&qcn9224_in0 7 0>,
+				<&qcn9224_in0 8 0>,
+				<&qcn9224_in0 9 0>,
+				<&qcn9224_in0 10 0>,
+				<&qcn9224_in0 11 0>,
+				<&qcn9224_in0 12 0>,
+				<&qcn9224_in0 13 0>,
+				<&qcn9224_in0 14 0>,
+				<&qcn9224_in0 15 0>,
+				<&qcn9224_in0 16 0>,
+				<&qcn9224_in0 17 0>,
+				<&qcn9224_in0 18 0>,
+				<&qcn9224_in0 19 0>,
+				<&qcn9224_in0 20 0>,
+				<&qcn9224_in0 49 0>,
+				<&qcn9224_in0 48 0>,
+				<&qcn9224_in0 47 0>,
+				<&qcn9224_in0 46 0>,
+				<&qcn9224_in0 45 0>,
+				<&qcn9224_in0 44 0>,
+				<&qcn9224_in0 43 0>,
+				<&qcn9224_in0 42 0>,
+				<&qcn9224_in0 50 0>,
+				<&qcn9224_in0 52 0>,
+				<&qcn9224_in0 51 0>,
+				<&qcn9224_in0 30 0>,
+				<&qcn9224_in0 29 0>,
+				<&qcn9224_in0 28 0>,
+				<&qcn9224_in0 27 0>,
+				<&qcn9224_in0 26 0>,
+				<&qcn9224_in0 25 0>,
+				<&qcn9224_in0 31 0>,
+				<&qcn9224_in0 80 0>,
+				<&qcn9224_in0 71 0>,
+				<&qcn9224_in0 96 0>,
+				<&qcn9224_in0 97 0>,
+				<&qcn9224_in0 67 0>,
+				<&qcn9224_in0 100 0>,
+				<&qcn9224_in0 99 0>,
+				<&qcn9224_in0 68 0>,
+				<&qcn9224_in0 69 0>,
+				<&qcn9224_in0 121 0>,
+				<&qcn9224_in0 119 0>,
+				<&qcn9224_in0 122 0>,
+				<&qcn9224_in0 120 0>,
+				<&qcn9224_in0 116 0>,
+				<&qcn9224_in0 113 0>,
+				<&qcn9224_in0 115 0>,
+				<&qcn9224_in0 112 0>,
+				<&qcn9224_in0 114 0>,
+				<&qcn9224_in0 111 0>,
+				<&qcn9224_in0 110 0>,
+				<&qcn9224_in0 109 0>,
+				<&qcn9224_in0 108 0>,
+				<&qcn9224_in0 39 0>,
+				<&qcn9224_in0 38 0>,
+				<&qcn9224_in0 37 0>,
+				<&qcn9224_in0 36 0>,
+				<&qcn9224_in0 35 0>,
+				<&qcn9224_in0 34 0>,
+				<&qcn9224_in0 33 0>,
+				<&qcn9224_in0 41 0>,
+				<&qcn9224_in0 40 0>,
+				<&qcn9224_in0 32 0>,
+				<&qcn9224_in0 24 0>,
+				<&qcn9224_in0 23 0>,
+				<&qcn9224_in0 22 0>,
+				<&qcn9224_in0 21 0>,
+				<&qcn9224_in0 66 0>,
+				<&qcn9224_in0 78 0>,
+				<&qcn9224_in0 117 0>,
+				<&qcn9224_in0 118 0>,
+				<&qcn9224_in0 61 0>,
+				<&qcn9224_in0 60 0>,
+				<&qcn9224_in0 57 0>,
+				<&qcn9224_in0 56 0>,
+				<&qcn9224_in0 63 0>,
+				<&qcn9224_in0 62 0>,
+				<&qcn9224_in0 59 0>,
+				<&qcn9224_in0 58 0>,
+				<&qcn9224_in0 65 0>,
+				<&qcn9224_in0 83 0>,
+				<&qcn9224_in0 75 0>,
+				<&qcn9224_in0 82 0>,
+				<&qcn9224_in0 81 0>,
+				<&qcn9224_in0 74 0>,
+				<&qcn9224_in0 73 0>,
+				<&qcn9224_in0 72 0>,
+				<&qcn9224_in0 98 0>,
+				<&qcn9224_in0 107 0>,
+				<&qcn9224_in0 106 0>,
+				<&qcn9224_in0 105 0>,
+				<&qcn9224_in0 104 0>,
+				<&qcn9224_in0 103 0>,
+				<&qcn9224_in0 102 0>,
+				<&qcn9224_in0 101 0>,
+				<&qcn9224_in0 76 0>,
+				<&qcn9224_in0 77 0>,
+				<&qcn9224_in0 143 0>,
+				<&qcn9224_in0 142 0>,
+				<&qcn9224_in0 141 0>,
+				<&intc GIC_SPI 75 IRQ_TYPE_LEVEL_HIGH>;
+
+			interrupt-names = "ce0",
+				"ce1",
+				"ce2",
+				"ce3",
+				"ce4",
+				"ce5",
+				"ce6",
+				"ce7",
+				"ce8",
+				"ce9",
+				"ce10",
+				"ce11",
+				"ce12",
+				"ce13",
+				"ce14",
+				"ce15",
+				"reo2sw8_intr2",
+				"reo2sw7_intr2",
+				"reo2sw6_intr2",
+				"reo2sw5_intr2",
+				"reo2sw4_intr2",
+				"reo2sw3_intr2",
+				"reo2sw2_intr2",
+				"reo2sw1_intr2",
+				"reo2sw0_intr2",
+				"reo2sw8_intr",
+				"reo2sw7_intr",
+				"reo2sw6_inrr",
+				"reo2sw5_intr",
+				"reo2sw4_intr",
+				"reo2sw3_intr",
+				"reo2sw2_intr",
+				"reo2sw1_intr",
+				"reo2sw0_intr",
+				"reo2status_intr2",
+				"reo_status",
+				"reo2rxdma_out_2",
+				"reo2rxdma_out_1",
+				"reo_cmd",
+				"sw2reo6",
+				"sw2reo5",
+				"sw2reo1",
+				"sw2reo",
+				"rxdma2reo_mlo_0_dst_ring1",
+				"rxdma2reo_mlo_0_dst_ring0",
+				"rxdma2reo_mlo_1_dst_ring1",
+				"rxdma2reo_mlo_1_dst_ring0",
+				"rxdma2reo_dst_ring1",
+				"rxdma2reo_dst_ring0",
+				"rxdma2sw_dst_ring1",
+				"rxdma2sw_dst_ring0",
+				"rxdma2release_dst_ring1",
+				"rxdma2release_dst_ring0",
+				"sw2rxdma_2_src_ring",
+				"sw2rxdma_1_src_ring",
+				"sw2rxdma_0",
+				"wbm2sw6_release2",
+				"wbm2sw5_release2",
+				"wbm2sw4_release2",
+				"wbm2sw3_release2",
+				"wbm2sw2_release2",
+				"wbm2sw1_release2",
+				"wbm2sw0_release2",
+				"wbm2sw6_release",
+				"wbm2sw5_release",
+				"wbm2sw4_release",
+				"wbm2sw3_release",
+				"wbm2sw2_release",
+				"wbm2sw1_release",
+				"wbm2sw0_release",
+				"wbm2sw_link",
+				"wbm_error_release",
+				"sw2txmon_src_ring",
+				"sw2rxmon_src_ring",
+				"txmon2sw_p1_intr1",
+				"txmon2sw_p1_intr0",
+				"txmon2sw_p0_dest1",
+				"txmon2sw_p0_dest0",
+				"rxmon2sw_p1_intr1",
+				"rxmon2sw_p1_intr0",
+				"rxmon2sw_p0_dest1",
+				"rxmon2sw_p0_dest0",
+				"sw_release",
+				"sw2tcl_credit2",
+				"sw2tcl_credit",
+				"sw2tcl4",
+				"sw2tcl5",
+				"sw2tcl3",
+				"sw2tcl2",
+				"sw2tcl1",
+				"sw2wbm1",
+				"misc_8",
+				"misc_7",
+				"misc_6",
+				"misc_5",
+				"misc_4",
+				"misc_3",
+				"misc_2",
+				"misc_1",
+				"misc_0",
+				"mhi2",
+				"mhi1",
+				"mhi0",
+				"inta";
+		};
+
+
+		wifi5: wifi5@f00000 {
 			compatible  = "qcom,cnss-qcn9224";
 			qcom,wlan-ramdump-dynamic = <0x600000>;
 			qrtr_node_id = <0x31>;
 			qca,auto-restart;
 			status = "disabled";
+			interrupt-bmap = <0x100512>;
+#ifdef __IPQ_MEM_PROFILE_512_MB__
+			/* qcn9224 tgt-mem-mode=1 layout - 37MB
+			 * +=========+==============+=========+
+			 * |  Region | Start Offset |   Size  |
+			 * +---------+--------------+---------+
+			 * | HREMOTE |  0x4F400000  |   20MB  |
+			 * +---------+--------------+---------+
+			 * | M3 Dump |  0x50800000  |   1MB   |
+			 * +---------+--------------+---------+
+			 * |   ETR   |  0x50900000  |   1MB   |
+			 * +---------+--------------+---------+
+			 * |  Caldb  |  0x50A00000  |   8MB   |
+			 * +---------+--------------+---------+
+			 * |Pageable |  0x51200000  |   7MB   |
+			 * +==================================+
+			 */
+			base-addr = <0x4F400000>;
+			m3-dump-addr = <0x50800000>;
+			etr-addr = <0x50900000>;
+			caldb-addr = <0x50A00000>;
+			pageable-addr = <0x51200000>;
+			hremote-size = <0x1400000>;
+			pageable-size = <0x700000>;
+			tgt-mem-mode = <0x1>;
+#else
+			/* qcn9224 tgt-mem-mode=0 layout - 50MB
+			 * +=========+==============+=========+
+			 * |  Region | Start Offset |   Size  |
+			 * +---------+--------------+---------+
+			 * | HREMOTE |  0x50F00000  |   28MB  |
+			 * +---------+--------------+---------+
+			 * | M3 Dump |  0x52B00000  |   1MB   |
+			 * +---------+--------------+---------+
+			 * |   ETR   |  0x52C00000  |   1MB   |
+			 * +---------+--------------+---------+
+			 * |  Caldb  |  0x52D00000  |   8MB   |
+			 * +---------+--------------+---------+
+			 * |Pageable |  0x53500000  |  12MB   |
+			 * +==================================+
+			 */
+			base-addr = <0x50F00000>;
+			m3-dump-addr = <0x52B00000>;
+			etr-addr = <0x52C00000>;
+			caldb-addr = <0x52D00000>;
+			pageable-addr = <0x53500000>;
+			hremote-size = <0x1C00000>;
+			pageable-size = <0xC00000>;
+			tgt-mem-mode = <0x0>;
+#endif
+			caldb-size = <0x800000>;
 			qca,extended-intc;
 			interrupts-extended =
 				<&qcn9224_in1 5 0>,
@@ -2785,12 +3020,63 @@
 				"inta";
 		};
 
-		wifi4: wifi4@f00000 {
+		wifi6: wifi6@f00000 {
 			compatible  = "qcom,cnss-qcn9224";
 			qcom,wlan-ramdump-dynamic = <0x600000>;
 			qrtr_node_id = <0x32>;
 			qca,auto-restart;
 			status = "disabled";
+			interrupt-bmap = <0x100512>;
+#ifdef __IPQ_MEM_PROFILE_512_MB__
+			/* qcn9224 tgt-mem-mode=1 layout - 37MB
+			 * +=========+==============+=========+
+			 * |  Region | Start Offset |   Size  |
+			 * +---------+--------------+---------+
+			 * | HREMOTE |  0x51900000  |   20MB  |
+			 * +---------+--------------+---------+
+			 * | M3 Dump |  0x52D00000  |   1MB   |
+			 * +---------+--------------+---------+
+			 * |   ETR   |  0x52E00000  |   1MB   |
+			 * +---------+--------------+---------+
+			 * |  Caldb  |  0x52F00000  |   8MB   |
+			 * +---------+--------------+---------+
+			 * |Pageable |  0x53700000  |   7MB   |
+			 * +==================================+
+			 */
+			base-addr = <0x51900000>;
+			m3-dump-addr = <0x52D00000>;
+			etr-addr = <0x52E00000>;
+			caldb-addr = <0x52F00000>;
+			pageable-addr = <0x53700000>;
+			hremote-size = <0x1400000>;
+			pageable-size = <0x700000>;
+			tgt-mem-mode = <0x1>;
+#else
+			/* qcn9224 tgt-mem-mode=0 layout - 50MB
+			 * +=========+==============+=========+
+			 * |  Region | Start Offset |   Size  |
+			 * +---------+--------------+---------+
+			 * | HREMOTE |  0x54100000  |   28MB  |
+			 * +---------+--------------+---------+
+			 * | M3 Dump |  0x55D00000  |   1MB   |
+			 * +---------+--------------+---------+
+			 * |   ETR   |  0x55E00000  |   1MB   |
+			 * +---------+--------------+---------+
+			 * |  Caldb  |  0x55F00000  |   8MB   |
+			 * +---------+--------------+---------+
+			 * |Pageable |  0x56700000  |  12MB   |
+			 * +==================================+
+			 */
+			base-addr = <0x54100000>;
+			m3-dump-addr = <0x55D00000>;
+			etr-addr = <0x55E00000>;
+			caldb-addr = <0x55F00000>;
+			pageable-addr = <0x56700000>;
+			hremote-size = <0x1C00000>;
+			pageable-size = <0xC00000>;
+			tgt-mem-mode = <0x0>;
+#endif
+			caldb-size = <0x800000>;
 			qca,extended-intc;
 			interrupts-extended =
 				<&qcn9224_in2 5 0>,
@@ -3004,12 +3290,63 @@
 				"inta";
 		};
 
-		wifi5: wifi5@f00000 {
-                        compatible  = "qcom,cnss-qcn9224";
-                        qcom,wlan-ramdump-dynamic = <0x600000>;
-                        qrtr_node_id = <0x33>;
-                        qca,auto-restart;
-                        status = "disabled";
+		wifi7: wifi7@f00000 {
+			compatible  = "qcom,cnss-qcn9224";
+			qcom,wlan-ramdump-dynamic = <0x600000>;
+			qrtr_node_id = <0x33>;
+			qca,auto-restart;
+			status = "disabled";
+			interrupt-bmap = <0x100512>;
+#ifdef __IPQ_MEM_PROFILE_512_MB__
+			/* qcn9224 tgt-mem-mode=1 layout - 37MB
+			 * +=========+==============+=========+
+			 * |  Region | Start Offset |   Size  |
+			 * +---------+--------------+---------+
+			 * | HREMOTE |  0x53E00000  |   20MB  |
+			 * +---------+--------------+---------+
+			 * | M3 Dump |  0x55200000  |   1MB   |
+			 * +---------+--------------+---------+
+			 * |   ETR   |  0x55300000  |   1MB   |
+			 * +---------+--------------+---------+
+			 * |  Caldb  |  0x55400000  |   8MB   |
+			 * +---------+--------------+---------+
+			 * |Pageable |  0x55C00000  |   7MB   |
+			 * +==================================+
+			 */
+			base-addr = <0x53E00000>;
+			m3-dump-addr = <0x55200000>;
+			etr-addr = <0x55300000>;
+			caldb-addr = <0x55400000>;
+			pageable-addr = <0x55C00000>;
+			hremote-size = <0x1400000>;
+			pageable-size = <0x700000>;
+			tgt-mem-mode = <0x1>;
+#else
+			/* qcn9224 tgt-mem-mode=0 layout - 50MB
+			 * +=========+==============+=========+
+			 * |  Region | Start Offset |   Size  |
+			 * +---------+--------------+---------+
+			 * | HREMOTE |  0x57300000  |   28MB  |
+			 * +---------+--------------+---------+
+			 * | M3 Dump |  0x58F00000  |   1MB   |
+			 * +---------+--------------+---------+
+			 * |   ETR   |  0x59000000  |   1MB   |
+			 * +---------+--------------+---------+
+			 * |  Caldb  |  0x59100000  |   8MB   |
+			 * +---------+--------------+---------+
+			 * |Pageable |  0x59900000  |  12MB   |
+			 * +==================================+
+			 */
+			base-addr = <0x57300000>;
+			m3-dump-addr = <0x58F00000>;
+			etr-addr = <0x59000000>;
+			caldb-addr = <0x59100000>;
+			pageable-addr = <0x59900000>;
+			hremote-size = <0x1C00000>;
+			pageable-size = <0xC00000>;
+			tgt-mem-mode = <0x0>;
+#endif
+			caldb-size = <0x800000>;
 			qca,extended-intc;
 			interrupts-extended =
 				<&qcn9224_in3 5 0>,
@@ -3221,14 +3558,6 @@
 				"mhi1",
 				"mhi0",
 				"inta";
-                };
-
-		wifi6: wifi6@f00000 {
-			compatible  = "qcom,cnss-qcn9000";
-			qcom,wlan-ramdump-dynamic = <0x400000>;
-			qrtr_node_id = <0x22>;
-			qca,auto-restart;
-			status = "disabled";
 		};
 
 		qfprom@a4000 {
@@ -3345,6 +3674,10 @@
 				};
 			};
 		};
+	};
+
+	qti,scm_restart_reason {
+		compatible = "qti_ipq9574,scm_restart_reason";
 	};
 
 	qti,gadget_diag@0 {

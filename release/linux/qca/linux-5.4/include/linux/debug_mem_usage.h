@@ -93,6 +93,8 @@
 
 #define alloc_large_system_hash		__wrap_alloc_large_system_hash
 
+#define __put_page			__wrap___put_page
+
 #endif
 
 #endif /* __DEBUG_MEM_USAGE_H__ */

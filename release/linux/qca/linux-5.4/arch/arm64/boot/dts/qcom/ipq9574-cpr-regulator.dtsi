@@ -17,8 +17,18 @@
 &soc {
 	apc_apm: apm@b111000 {
 		compatible = "qcom,ipq807x-apm";
-		reg = <0xb111000 0x1000>;
-		reg-names = "pm-apcc-glb";
+		reg = <0xb111000 0x1000>,
+		      <0xB188030 0x4>,
+		      <0xB198030 0x4>,
+		      <0xB1A8030 0x4>,
+		      <0xB1B8030 0x4>,
+		      <0xB1D11D4 0x4>;
+		reg-names = "pm-apcc-glb",
+			    "alias0-pwr-gate",
+			    "alias1-pwr-gate",
+			    "alias2-pwr-gate",
+			    "alias3-pwr-gate",
+			    "apm-ctl-override";
 		qcom,apm-post-halt-delay = <0x2>;
 		qcom,apm-halt-clk-delay = <0x11>;
 		qcom,apm-resume-clk-delay = <0x10>;

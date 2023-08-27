@@ -28,7 +28,7 @@
 #define LPASS_DMA_BUFFER_SIZE			0x2000
 #define LPASS_BUFFER_SIZE			0x800
 
-#define LOOPBACK_SKIP_COUNT			17
+#define LOOPBACK_SKIP_COUNT			32
 
 #define MAX_PCM_DMA_BUFFERS			16
 #define MAX_PCM_SAMPLES				10
@@ -109,10 +109,13 @@
 #define PCM_SAMPLE_RATE_192K			192000
 #define PCM_SAMPLE_RATE_352_8K			352800
 #define PCM_SAMPLE_RATE_384K			384000
+#define IPQ_LPASS_MAX_INTERFACE			2
 
 enum ipq_hw_type{
 	IPQ5018,
-	IPQ8074
+	IPQ9574,
+	IPQ8074,
+	IPQ5332
 };
 
 enum ipq_pcm_sampling_rate {
@@ -170,6 +173,37 @@ struct lpass_irq_buffer {
 	struct lpass_dma_buffer *rx_buffer;
 	struct lpass_dma_buffer *tx_buffer;
 };
+
+struct ipq_lpass_wr_rd_dma_config
+{
+	uint32_t tx_idx;
+	uint32_t tx_dir;
+	uint32_t tx_intr_id;
+	uint32_t tx_ifconfig;
+	uint32_t tx_buffer_start_addr;
+	uint32_t rx_idx;
+	uint32_t rx_dir;
+	uint32_t rx_intr_id;
+	uint32_t rx_ifconfig;
+	uint32_t rx_buffer_start_addr;
+};
+
+struct ipq_lpass_pcm_tdm_config {
+	uint32_t sync_src;
+	uint32_t pcm_index;
+	uint32_t dir;
+	uint32_t invert_sync;
+	uint32_t sync_type;
+	uint32_t sync_delay;
+	uint32_t ctrl_data_oe;
+};
+
+struct ipq_lpass_props {
+	uint32_t npcm;
+	struct ipq_lpass_pcm_tdm_config pcm_config[IPQ_LPASS_MAX_INTERFACE];
+	struct ipq_lpass_wr_rd_dma_config dma_config[IPQ_LPASS_MAX_INTERFACE];
+};
+
 
 struct ipq_lpass_pcm_params {
 	uint32_t bit_width;

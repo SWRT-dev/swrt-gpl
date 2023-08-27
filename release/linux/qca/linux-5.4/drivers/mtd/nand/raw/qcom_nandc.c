@@ -2,7 +2,6 @@
 /*
  * Copyright (c) 2016, The Linux Foundation. All rights reserved.
  */
-
 #include <linux/clk.h>
 #include <linux/slab.h>
 #include <linux/bitops.h>
@@ -252,6 +251,7 @@
 #define	AUTO_STS_VAL	0x000B000B
 #define	PAGE_SCOPE_READ	(1 << 23)
 #define	MAX_STATUS_REG	12
+#define IO_MACRO_50_MHZ	50000000
 
 #define nandc_set_read_loc_first(nandc, reg, cw_offset, read_size, is_last_read_loc)	\
 nandc_set_reg(nandc, reg,			\
@@ -302,6 +302,8 @@ nandc_set_reg(nandc, reg,			\
  */
 #define NAND_ERASED_CW_SET		BIT(4)
 
+#define NAND_MID_WINBOND		0xEF
+
 /*
  * An array holding the fixed pattern
  */
@@ -315,7 +317,7 @@ static const u32 qspi_training_block_64[] = {
 struct nand_flash_dev qspinand_flash_ids_2k[] = {
 	{"MX35UF4GE4AD-Z4I SPI NAND 1G 1.8V",
 			{ .id = {0xc2, 0xb7} },
-		SZ_2K, SZ_512, SZ_256K, 0, 2, 256, NAND_ECC_INFO(8, SZ_512), 0},
+		SZ_2K, SZ_256, SZ_128K, 0, 2, 128, NAND_ECC_INFO(8, SZ_512), 0},
 	{NULL}
 };
 
@@ -1500,14 +1502,16 @@ static int erase_block(struct qcom_nand_host *host, int page_addr)
 	struct nand_chip *chip = &host->chip;
 	struct qcom_nand_controller *nandc = get_qcom_nand_controller(chip);
 	u32 ers_cmd = OP_BLOCK_ERASE | PAGE_ACC | LAST_PAGE;
+	u32 addr1 = 0x0;
 
 	if (nandc->props->is_serial_nand) {
 		ers_cmd |= (SPI_WP | SPI_HOLD | SPI_TRANSFER_MODE_x1);
+		addr1 = (page_addr >> 16) & 0xffff;
 		page_addr <<= 16;
 	}
 	nandc_set_reg(nandc, NAND_FLASH_CMD, ers_cmd);
 	nandc_set_reg(nandc, NAND_ADDR0, page_addr);
-	nandc_set_reg(nandc, NAND_ADDR1, 0);
+	nandc_set_reg(nandc, NAND_ADDR1, addr1);
 	nandc_set_reg(nandc, NAND_DEV0_CFG0,
 		      host->cfg0_raw & ~(7 << CW_PER_PAGE));
 	nandc_set_reg(nandc, NAND_DEV0_CFG1, host->cfg1_raw);
@@ -1559,6 +1563,12 @@ static int read_id(struct qcom_nand_host *host, int column)
 	write_reg_dma(nandc, NAND_EXEC_CMD, 1, NAND_BAM_NEXT_SGL);
 
 	read_reg_dma(nandc, NAND_READ_ID, 1, NAND_BAM_NEXT_SGL);
+
+	if (nandc->props->is_serial_nand &&
+		((le32_to_cpu(nandc->reg_read_buf[0]) & 0xFF) ==
+		NAND_MID_WINBOND)) {
+		nandc->buf_count = 4;
+	}
 
 	return 0;
 }
@@ -1690,7 +1700,8 @@ static void pre_command(struct qcom_nand_host *host, int command)
 	clear_read_regs(nandc);
 
 	if (command == NAND_CMD_RESET || command == NAND_CMD_READID ||
-	    command == NAND_CMD_PARAM || command == NAND_CMD_ERASE1)
+	    command == NAND_CMD_PARAM || command == NAND_CMD_ERASE1 ||
+	    command == NAND_CMD_READID_SERIAL)
 		clear_bam_transaction(nandc);
 }
 
@@ -2890,8 +2901,21 @@ static int qcom_nand_attach_chip(struct nand_chip *chip)
 
 	mtd_set_ooblayout(mtd, &qcom_nand_ooblayout_ops);
 
+	/* Free the initially allocated BAM transaction for reading the ONFI params */
+	if (nandc->props->is_bam)
+		free_bam_transaction(nandc);
+
 	nandc->max_cwperpage = max_t(unsigned int, nandc->max_cwperpage,
 				     cwperpage);
+
+	if (nandc->props->is_bam) {
+		nandc->bam_txn = alloc_bam_transaction(nandc);
+		if (!nandc->bam_txn) {
+			dev_err(nandc->dev,
+				"failed to allocate bam transaction\n");
+			return -ENOMEM;
+		}
+	}
 
 	/*
 	 * DATA_UD_BYTES varies based on whether the read/write command protects
@@ -2963,7 +2987,7 @@ static int qcom_nand_attach_chip(struct nand_chip *chip)
 	nandc->regs->erased_cw_detect_cfg_set =
 		cpu_to_le32(SET_ERASED_PAGE_DET);
 
-	dev_info(nandc->dev,
+	dev_dbg(nandc->dev,
 		"cfg0 %x cfg1 %x ecc_buf_cfg %x ecc_bch cfg %x cw_size %d cw_data %d strength %d parity_bytes %d steps %d\n",
 		host->cfg0, host->cfg1, host->ecc_buf_cfg, host->ecc_bch_cfg,
 		host->cw_size, host->cw_data, ecc->strength, ecc->bytes,
@@ -3226,12 +3250,14 @@ static int qspi_get_appropriate_phase(struct qcom_nand_controller *nandc, u8 *ph
 
 static int qpic_serial_check_status(__le32 *status)
 {
-	if (*(__le32 *)status & FLASH_ERROR) {
-		if (*(__le32 *)status & FS_MPU_ERR)
+	u32 flash  = le32_to_cpu(*(__le32 *)status);
+
+	if (flash & FLASH_ERROR) {
+		if (flash & FS_MPU_ERR)
 			return -EPERM;
-		if (*(__le32 *)status & FS_TIMEOUT_ERR)
+		if (flash & FS_TIMEOUT_ERR)
 			return -ETIMEDOUT;
-		if (*(__le32 *)status & FS_OP_ERR)
+		if (flash & FS_OP_ERR)
 			return -EIO;
 	}
 	return 0;
@@ -3317,11 +3343,15 @@ static int qcom_serial_get_feature(struct qcom_nand_controller *nandc,
 				command);
 		return ret;
 	}
+
+	nandc_read_buffer_sync(nandc, true);
+
 	/* read_reg_dma will read data in to nandc->reg_read_buf
 	 * so after issueing command in read_reg_dma function read reg_read_buf
 	 * buffer
 	 */
-	ret = *(__le32 *)nandc->reg_read_buf;
+	ret = le32_to_cpu(*(__le32 *)nandc->reg_read_buf);
+
 	return ret;
 }
 
@@ -3366,6 +3396,8 @@ static int qcom_serial_set_feature(struct qcom_nand_controller *nandc,
 	 * so after issueing command in read_reg_dma function read reg_read_buf
 	 * buffer
 	 */
+	nandc_read_buffer_sync(nandc, true);
+
 	ret = qpic_serial_check_status(nandc->reg_read_buf);
 	if (ret) {
 		dev_err(nandc->dev, "Error in executing command:%d\n",command);
@@ -3440,6 +3472,7 @@ static int qspi_nand_device_config(struct qcom_nand_controller *nandc,
 			dev_dbg(nandc->dev, "Continous buffer mode enabled on power on\n");
 		}
 	}
+
 	qcom_check_quad_mode(mtd, host);
 
 	if (!host->check_qe_bit) {
@@ -3504,6 +3537,12 @@ static int qspi_execute_training(struct qcom_nand_controller *nandc,
 	struct nand_chip *chip = &host->chip;
 	int reg;
 
+	u32 max_iomacro_clk = 0;
+	struct device_node *np = nandc->dev->of_node;
+	int sz;
+	u32 *arr = NULL;
+	u32 len = 0;
+
 	/* Set feedback clk enable bit to do auto adjustment of phase
 	 * at lower frequency
 	 */
@@ -3513,7 +3552,7 @@ static int qspi_execute_training(struct qcom_nand_controller *nandc,
 			NAND_QSPI_MSTR_CONFIG);
 
 	/* Read the training offset patched from u-boot */
-	if (of_property_read_u32(nandc->dev->of_node, "qcom,training_offset",
+	if (of_property_read_u32(np, "qcom,training_offset",
 				&training_offset)) {
 		dev_err(nandc->dev, "Serial training partition not found");
 		ret = -EINVAL;
@@ -3587,18 +3626,47 @@ static int qspi_execute_training(struct qcom_nand_controller *nandc,
 	qspi_write_reg_bam(nandc, (nandc_read(nandc,
 			reg) & ~FEEDBACK_CLK_EN),
 			NAND_QSPI_MSTR_CONFIG);
-	phase = 1;
-	phase_cnt = 0;
 
-	/* set higest clock frequecy for io_macro i.e 320MHz so
-	 * on bus it will be 320/4 = 80MHz.
-	 */
-
-	ret =  clk_set_rate(nandc->iomacro_clk, 320000000);
-	if (ret) {
-		dev_err(nandc->dev,"Setting clk rate to 320000000 MHz failed");
+	/* Get max io macro clock from device tree, value should be
+	 * 200 MHz, 380 MHz, 400 MHz etc.
+	 * */
+	if (of_property_read_u32(np, "qcom,io_macro_max_clk",
+				&max_iomacro_clk)) {
+		dev_err(nandc->dev, "Error in reading max io macro clock from dts");
 		goto mem_err;
 	}
+
+	/* Read all supported io_macro clock frequency from dts */
+	if (!of_get_property(np, "qcom,io_macro_clk_rates", &len)) {
+		dev_err(nandc->dev, "Error in reading length of io_macro_clock\n");
+		goto mem_err;
+	}
+
+	sz = (len / sizeof(*arr));
+
+	arr = kzalloc(sz * sizeof(*arr), GFP_KERNEL);
+	if (!arr) {
+		dev_err(nandc->dev, "failed allocating memory for qcom,io_macro_clk_rates\n");
+		goto mem_err;
+	}
+
+	ret = of_property_read_u32_array(np, "qcom,io_macro_clk_rates", arr, sz);
+	if (ret < 0) {
+		dev_err(nandc->dev, "failed reading array qcom,io_macro_clk_rates %d\n", ret);
+		goto mem_err;
+	}
+
+	sz -= 1;
+
+iomacro_set_clk:
+	ret =  clk_set_rate(nandc->iomacro_clk, max_iomacro_clk);
+	if (ret) {
+		dev_err(nandc->dev,"Setting clk rate to %d MHz failed", max_iomacro_clk);
+		goto mem_err;
+	}
+
+	phase = 1;
+	phase_cnt = 0;
 
 	do {
 		qspi_set_phase(nandc, phase);
@@ -3607,9 +3675,13 @@ static int qspi_execute_training(struct qcom_nand_controller *nandc,
 		memset(training_data, 0xff, mtd->writesize);
 		ret = qcom_nandc_read_page(chip, training_data, 0, page);
 		if (ret < 0) {
-			dev_err(nandc->dev, "Error in reading training data @ high freq");
-			ret = 0;
-			break;
+			dev_err(nandc->dev, "Error in reading training page at %d MHz",
+					max_iomacro_clk);
+			/* Fall back to next lower clock */
+			if (sz < 0)
+				goto default_freq;
+			max_iomacro_clk = arr[--sz];
+			goto iomacro_set_clk;
 		}
 		/* compare read training data with known pattern */
 		for (i = 0; i <  mtd->writesize; i += sizeof(qspi_training_block_64)) {
@@ -3627,15 +3699,24 @@ static int qspi_execute_training(struct qcom_nand_controller *nandc,
 
 	if (phase_cnt) {
 		phase = qspi_get_appropriate_phase(nandc, trained_phase, phase_cnt);
+		if (phase == 0) {
+			dev_err(nandc->dev, "No continous three phase found at %d MHz",
+					max_iomacro_clk);
+			if (sz < 0)
+				goto default_freq;
+			max_iomacro_clk = arr[--sz];
+			goto iomacro_set_clk;
+		}
 		qspi_set_phase(nandc, phase);
 	} else {
+default_freq:
 		dev_err(nandc->dev,"Serial training failed");
 		dev_err(nandc->dev, "Running @ low freq 50MHz");
 		/* Run @ lower frequency 50Mhz with feedback clk bit enabled  */
 		qspi_write_reg_bam(nandc, (nandc_read(nandc,
 			reg) | FEEDBACK_CLK_EN),
 			NAND_QSPI_MSTR_CONFIG);
-		ret =  clk_set_rate(nandc->iomacro_clk, 200000000);
+		ret =  clk_set_rate(nandc->iomacro_clk, IO_MACRO_50_MHZ);
 		if (ret) {
 			dev_err(nandc->dev,"Setting clk rate to 50000000 MHz failed");
 			goto mem_err;
@@ -3645,6 +3726,8 @@ static int qspi_execute_training(struct qcom_nand_controller *nandc,
 mem_err:
 	kfree(training_data);
 trng_err:
+	if (arr)
+		kfree(arr);
 	return ret;
 }
 
@@ -3709,16 +3792,6 @@ static int qcom_nand_host_init_and_register(struct qcom_nand_controller *nandc,
 	if (ret) {
 		dev_err(nandc->dev, "nand scan returned error\n");
 		return ret;
-	}
-
-	if (nandc->props->is_bam) {
-		free_bam_transaction(nandc);
-		nandc->bam_txn = alloc_bam_transaction(nandc);
-		if (!nandc->bam_txn) {
-			dev_err(nandc->dev,
-				"failed to allocate bam transaction\n");
-			return -ENOMEM;
-		}
 	}
 
 	if (nandc->props->qpic_v2 && nandc->props->page_scope) {
@@ -3923,10 +3996,6 @@ static int qcom_nandc_probe(struct platform_device *pdev)
 	if (!nandc->base_dma)
 		return -ENXIO;
 
-	ret = qcom_nandc_alloc(nandc);
-	if (ret)
-		goto err_nandc_alloc;
-
 	ret = clk_prepare_enable(nandc->core_clk);
 	if (ret)
 		goto err_core_clk;
@@ -3940,6 +4009,10 @@ static int qcom_nandc_probe(struct platform_device *pdev)
 		if (ret)
 			goto err_setup;
 	}
+
+	ret = qcom_nandc_alloc(nandc);
+	if (ret)
+		goto err_nandc_alloc;
 
 	ret = qcom_nandc_setup(nandc);
 	if (ret)
@@ -3966,15 +4039,14 @@ static int qcom_nandc_probe(struct platform_device *pdev)
 	return 0;
 
 err_setup:
+	qcom_nandc_unalloc(nandc);
+err_nandc_alloc:
 	clk_disable_unprepare(nandc->aon_clk);
 err_aon_clk:
 	clk_disable_unprepare(nandc->core_clk);
 err_core_clk:
-	qcom_nandc_unalloc(nandc);
-err_nandc_alloc:
 	dma_unmap_resource(dev, res->start, resource_size(res),
 			   DMA_BIDIRECTIONAL, 0);
-
 	return ret;
 }
 
@@ -4039,6 +4111,18 @@ static const struct qcom_nandc_props ipq5018_nandc_props = {
 	.dev_cmd_reg_start = 0x7000,
 };
 
+static const struct qcom_nandc_props ipq5332_nandc_props = {
+	.ecc_modes = (ECC_BCH_4BIT | ECC_BCH_8BIT),
+	.is_bam = true,
+	.is_serial_nand = true,
+	.qpic_v2 = true,
+	.is_serial_training = true,
+	.quad_mode = true,
+	.page_scope = true,
+	.switch_layout = false,
+	.dev_cmd_reg_start = 0x7000,
+};
+
 static const struct qcom_nandc_props ipq9574_nandc_props = {
 	.ecc_modes = (ECC_BCH_4BIT | ECC_BCH_8BIT),
 	.is_bam = true,
@@ -4075,6 +4159,10 @@ static const struct of_device_id qcom_nandc_of_match[] = {
 	{
 		.compatible = "qcom,ebi2-nandc-bam-v2.1.1",
 		.data = &ipq5018_nandc_props,
+	},
+	{
+		.compatible = "qcom,ipq5332-nand",
+		.data = &ipq5332_nandc_props,
 	},
 	{
 		.compatible = "qcom,ipq9574-nand",

@@ -784,6 +784,11 @@ int __qti_scm_tls_hardening(struct device *dev, uint32_t req_addr,
 	desc.args[3] = resp_size;
 
 	ret = qti_scm_call2(dev, SCM_SIP_FNID(QTI_SVC_CRYPTO, cmd_id), &desc);
+	if(desc.ret[0] == QCOM_SCM_EINVAL_SIZE) {
+		pr_err("%s: TZ does not support data larger than 2K bytes: -%lld\n",
+				__func__, desc.ret[0]);
+	}
+
 	scm_ret = desc.ret[0];
 	if (!ret)
 		return le32_to_cpu(scm_ret);
@@ -791,8 +796,8 @@ int __qti_scm_tls_hardening(struct device *dev, uint32_t req_addr,
 	return ret;
 }
 
-int __qti_scm_aes(struct device *dev, uint32_t req_addr, uint32_t req_size,
-		  uint32_t resp_addr, uint32_t resp_size, u32 cmd_id)
+int __qti_scm_aes(struct device *dev, uint32_t req_addr,
+		  uint32_t req_size, u32 cmd_id)
 {
 	int ret = 0;
 	__le32 scm_ret;
@@ -808,6 +813,22 @@ int __qti_scm_aes(struct device *dev, uint32_t req_addr, uint32_t req_size,
 
 	ret = qti_scm_call2(dev, SCM_SIP_FNID(QTI_SVC_CRYPTO, cmd_id), &desc);
 	scm_ret = desc.ret[0];
+
+	return le32_to_cpu(scm_ret);
+}
+
+int __qti_scm_aes_clear_key_handle(struct device *dev, uint32_t key_handle, u32 cmd_id)
+{
+	int ret;
+	__le32 scm_ret;
+	struct scm_desc desc = {0};
+
+	desc.args[0] = key_handle;
+	desc.arginfo = SCM_ARGS(1);
+
+	ret = qti_scm_call2(dev, SCM_SIP_FNID(QTI_SVC_CRYPTO, cmd_id), &desc);
+	scm_ret = desc.ret[0];
+
 	if (!ret)
 		return le32_to_cpu(scm_ret);
 
@@ -839,6 +860,7 @@ int __qcom_remove_xpu_scm_call_available(struct device *dev, u32 svc_id, u32 cmd
 int __qcom_scm_is_call_available(struct device *dev, u32 svc_id, u32 cmd_id)
 {
 	int ret;
+	int fn_id;
 
 	if (!is_scm_armv8()) {
 		__le32 svc_cmd = cpu_to_le32((svc_id << SCM_SVC_ID_SHIFT) |
@@ -855,7 +877,13 @@ int __qcom_scm_is_call_available(struct device *dev, u32 svc_id, u32 cmd_id)
 		__le32 scm_ret;
 		struct scm_desc desc = {0};
 
-		desc.args[0] = SCM_SIP_FNID(svc_id, cmd_id);
+		if (cmd_id == QCOM_SCM_IS_TZ_LOG_ENCRYPTED)
+			fn_id = QTI_SYSCALL_CREATE_SMC_ID(QTI_OWNER_QSEE_OS,
+							 svc_id, cmd_id);
+		else
+			fn_id = SCM_SIP_FNID(svc_id, cmd_id);
+
+		desc.args[0] = fn_id;
 		desc.arginfo = SCM_ARGS(1);
 		ret = qti_scm_call2(dev, SCM_SIP_FNID(QCOM_SCM_SVC_INFO,
 					QCOM_IS_CALL_AVAIL_CMD), &desc);
@@ -895,6 +923,41 @@ bool __qcom_scm_pas_supported(struct device *dev, u32 peripheral)
 			    &out, sizeof(out));
 
 	return ret ? false : !!out;
+}
+
+int __qcom_scm_pas_init_image_v2(struct device *dev, u32 peripheral,
+			      dma_addr_t metadata_phys, size_t size)
+{
+	__le32 scm_ret;
+	int ret = 0;
+	struct {
+		__le32 proc;
+		__le32 image_addr;
+		__le32 size;
+	} request;
+	struct scm_desc desc = {0};
+
+	if (!is_scm_armv8()) {
+		request.proc = cpu_to_le32(peripheral);
+		request.image_addr = cpu_to_le32(metadata_phys);
+		request.size = cpu_to_le32(size);
+
+		ret = qcom_scm_call(dev, QCOM_SCM_SVC_PIL,
+				QCOM_SCM_PAS_INIT_IMAGE_V2_CMD,
+				&request, sizeof(request),
+				&scm_ret, sizeof(scm_ret));
+	} else {
+		desc.args[0] = peripheral;
+		desc.args[1] = metadata_phys;
+		desc.args[2] = size;
+		desc.arginfo = SCM_ARGS(3, QCOM_SCM_VAL, QCOM_SCM_RW,
+							QCOM_SCM_VAL);
+		ret = qti_scm_call2(dev, SCM_SIP_FNID(QCOM_SCM_SVC_PIL,
+					QCOM_SCM_PAS_INIT_IMAGE_V2_CMD), &desc);
+		scm_ret = desc.ret[0];
+	}
+
+	return ret ? : le32_to_cpu(scm_ret);
 }
 
 int __qcom_scm_pas_init_image(struct device *dev, u32 peripheral,
@@ -1276,6 +1339,63 @@ int __qti_sec_upgrade_auth(struct device *dev, unsigned int scm_cmd_id,
 	return ret;
 }
 
+int __qti_sec_upgrade_auth_meta_data(struct device *dev, unsigned int scm_cmd_id,
+							unsigned int sw_type,
+							unsigned int img_size,
+							unsigned int load_addr,
+							void* hash_addr,
+							unsigned int hash_size)
+{
+	int ret;
+	struct {
+		unsigned type;
+		unsigned size;
+		unsigned addr;
+		unsigned hash_address;
+		unsigned hash_size;
+	} cmd_buf;
+	dma_addr_t hash_address;
+
+	hash_address = dma_map_single(dev, hash_addr, hash_size, DMA_FROM_DEVICE);
+	ret = dma_mapping_error(dev, hash_address);
+
+	if (ret != 0) {
+		pr_err("%s: DMA Mapping Error : %d\n", __func__, ret);
+		return ret;
+	}
+
+	if (!is_scm_armv8()) {
+		cmd_buf.type = sw_type;
+		cmd_buf.size = img_size;
+		cmd_buf.addr = load_addr;
+		cmd_buf.hash_address = hash_address;
+		cmd_buf.hash_size = hash_size;
+		ret = qcom_scm_call(dev, QCOM_SCM_SVC_BOOT,
+					scm_cmd_id, &cmd_buf,
+					sizeof(cmd_buf), NULL, 0);
+        } else {
+		__le32 scm_ret;
+		struct scm_desc desc = {0};
+
+		desc.args[0] = sw_type;
+		desc.args[1] = (u64)load_addr;
+		desc.args[2] = img_size;
+		desc.args[3] = hash_address;
+		desc.args[4] = hash_size;
+		desc.arginfo = SCM_ARGS(5, QCOM_SCM_VAL, QCOM_SCM_RW, QCOM_SCM_VAL,
+							QCOM_SCM_RW, QCOM_SCM_VAL);
+		ret = qti_scm_call2(dev, SCM_SIP_FNID(QCOM_SCM_SVC_BOOT,
+							scm_cmd_id), &desc);
+		scm_ret = desc.ret[0];
+
+		if (!ret)
+			ret = le32_to_cpu(scm_ret);
+	}
+	dma_unmap_single(dev, hash_address, hash_size, DMA_FROM_DEVICE);
+
+	return ret;
+}
+
 int __qti_fuseipq_scm_call(struct device *dev, u32 svc_id, u32 cmd_id,
 			    void *cmd_buf, size_t size)
 {
@@ -1302,28 +1422,29 @@ int __qti_fuseipq_scm_call(struct device *dev, u32 svc_id, u32 cmd_id,
 		return -ENOTSUPP;
 	}
 
-	return ret ? : le32_to_cpu(desc.ret[0]);
+	return ret;
 }
 
-static int __qti_scm_dload_v8(struct device *dev, void *cmd_buf, void *dload_reg)
+static int __qti_scm_dload_v8(struct device *dev, void *cmd_buf,
+			      u64 dload_mode_addr, void __iomem *dload_reg)
 {
 	struct scm_desc desc = {0};
 	int ret;
 	unsigned int enable;
 
 	enable = cmd_buf ? *((unsigned int *)cmd_buf) : 0;
-	desc.args[0] = TCSR_BOOT_MISC_REG;
+	desc.args[0] = dload_mode_addr;
+	desc.args[1] = readl(dload_reg);
 	if (enable == SET_MAGIC_WARMRESET)
-		desc.args[1] = DLOAD_MODE_ENABLE_WARMRESET;
-	else
-		desc.args[1] = enable ? DLOAD_MODE_ENABLE : DLOAD_MODE_DISABLE;
-
-	if (dload_reg) {
-		if (desc.args[1] == DLOAD_MODE_DISABLE)
-	                desc.args[1] = readl(dload_reg) & ~DLOAD_MODE_ENABLE;
-		else
-			desc.args[1] |= readl(dload_reg);
-	}
+		desc.args[1] |= DLOAD_MODE_ENABLE_WARMRESET;
+	else if (enable == ABNORMAL_MAGIC)
+		desc.args[1] |= DLOAD_MODE_DISABLE_ABNORMALRESET;
+	else if (enable == CLEAR_ABNORMAL_MAGIC)
+		desc.args[1] &= ~(DLOAD_MODE_DISABLE_ABNORMALRESET);
+	else if (enable == SET_MAGIC)
+		desc.args[1] |= DLOAD_MODE_ENABLE;
+	else if (enable == CLEAR_MAGIC)
+		desc.args[1] &= DLOAD_MODE_DISABLE;
 
 	desc.arginfo = SCM_ARGS(2, QCOM_SCM_VAL, QCOM_SCM_VAL);
 	ret = qti_scm_call2(dev, SCM_SIP_FNID(QCOM_SCM_SVC_IO,
@@ -1482,12 +1603,13 @@ int __qti_scm_int_radio_powerdown(struct device *dev, u32 peripheral)
 		return -ENOTSUPP;
 }
 
-int __qti_scm_dload(struct device *dev, u32 svc_id, u32 cmd_id, void *cmd_buf, void *dload_reg)
+int __qti_scm_dload(struct device *dev, u32 svc_id, u32 cmd_id, void *cmd_buf, u64 dload_mode_addr, void __iomem *dload_reg)
 {
 	long ret;
 
 	if (is_scm_armv8())
-		return __qti_scm_dload_v8(dev, cmd_buf, dload_reg);
+		return __qti_scm_dload_v8(dev, cmd_buf, dload_mode_addr,
+					  dload_reg);
 
 	if (cmd_buf)
 		ret = qcom_scm_call(dev, svc_id, cmd_id, cmd_buf,
@@ -1582,6 +1704,337 @@ int __qti_scm_tz_hvc_log(struct device *dev, u32 svc_id, u32 cmd_id,
 	dma_unmap_single(dev, dma_buf, buf_len, DMA_FROM_DEVICE);
 
 	return ret;
+}
+
+/**
+ * __qti_scm_get_ecdsa_blob() - Get the ECDSA blob from TME-L by sending NONCE
+ *
+ * @svc_id: SCM service id
+ * @cmd_id: SCM command id
+ * nonce_buf: NONCE buffer which contains the NONCE recieved from Q6.
+ * nonce_buf_len: Variable for NONCE buffer length
+ * ecdsa_buf: ECDSA buffer, used to receive the ECDSA blob from TME
+ * ecdsa_buf_len: Variable which holds the total ECDSA buffer lenght
+ * *ecdsa_consumed_len: Pointer to get the consumed ECDSA buffer lenght from TME
+ *
+ * This function can be used to get the ECDSA blob from TME-L by passing the
+ * NONCE through nonce_buf. nonce_buf and ecdsa_buf should be DMA alloc
+ * coherent and caller should take care of it.
+ */
+int __qti_scm_get_ecdsa_blob(struct device *dev, u32 svc_id, u32 cmd_id,
+		dma_addr_t nonce_buf, u32 nonce_buf_len, dma_addr_t ecdsa_buf,
+		u32 ecdsa_buf_len, u32 *ecdsa_consumed_len)
+{
+	int ret;
+	struct scm_desc desc = {0};
+
+	dma_addr_t dma_ecdsa_consumed_len;
+
+	dma_ecdsa_consumed_len = dma_map_single(dev, ecdsa_consumed_len,
+			sizeof(u32), DMA_FROM_DEVICE);
+	ret = dma_mapping_error(dev, dma_ecdsa_consumed_len);
+	if (ret != 0) {
+		pr_err("%s: DMA Mapping Error : %d\n", __func__, ret);
+		return ret;
+	}
+
+	if (is_scm_armv8()) {
+		desc.args[0] = nonce_buf;
+		desc.args[1] = nonce_buf_len;
+		desc.args[2] = ecdsa_buf;
+		desc.args[3] = ecdsa_buf_len;
+		desc.args[4] = dma_ecdsa_consumed_len;
+
+		desc.arginfo = SCM_ARGS(5, QCOM_SCM_VAL, QCOM_SCM_VAL,
+					QCOM_SCM_VAL, QCOM_SCM_VAL, QCOM_SCM_RW);
+		ret = qti_scm_call2(dev, SCM_SIP_FNID(svc_id, cmd_id), &desc);
+		if (!ret)
+			ret = le32_to_cpu(desc.ret[0]);
+	} else {
+		ret = -ENOTSUPP;
+	}
+
+	dma_unmap_single(dev, dma_ecdsa_consumed_len, sizeof(u32), DMA_FROM_DEVICE);
+
+	return ret;
+}
+
+/**
+ * __qti_scm_get_ipq5332_fuse_list() - Get OEM Fuse parameter from TME-L
+ *
+ * @svc_id: SCM service id
+ * @cmd_id: SCM command id
+ * @fuse: QFPROM CORR addresses
+ * @size: size of fuse structure
+ *
+ * This function can be used to get the OEM Fuse parameters from TME-L.
+ */
+int __qti_scm_get_ipq5332_fuse_list(struct device *dev, u32 svc_id,
+		u32 cmd_id, struct fuse_payload *fuse,  size_t size)
+{
+	int ret;
+	struct scm_desc desc = {0};
+	dma_addr_t dma_fuse;
+
+	dma_fuse  = dma_map_single(dev, fuse, size, DMA_FROM_DEVICE);
+	ret = dma_mapping_error(dev, dma_fuse);
+	if (ret != 0) {
+		pr_err("%s: DMA Mapping Error : %d\n", __func__, ret);
+		return -EINVAL;
+	}
+	if (is_scm_armv8()) {
+		desc.args[0] = dma_fuse;
+		desc.args[1] = size;
+
+		desc.arginfo = SCM_ARGS(2, QCOM_SCM_RW, QCOM_SCM_VAL);
+
+		ret = qti_scm_call2(dev, SCM_SIP_FNID(svc_id, cmd_id), &desc);
+
+		if (!ret)
+			ret = le32_to_cpu(desc.ret[0]);
+	} else {
+		ret = -EINVAL;
+	}
+
+	dma_unmap_single(dev, dma_fuse, size, DMA_FROM_DEVICE);
+	return ret;
+}
+
+/**
+ * __qti_scm_get_device_attestation_ephimeral_key() - Get M3 public ephimeral key from TME-L
+ *
+ * @svc_id: SCM service id
+ * @cmd_id: SCM command id
+ * key_buf: key buffer to store the M3 public ephimeral key and this is populated by TME-L
+ * key_buf_len: key buffer length
+ * key_len : Size of the M3 Ephimeral public key. This is populated by TME-L after
+ *           storing the key in the key buffer.
+ *
+ * This function can be used to get the M3 public ephimeral key from the TME-L.
+ */
+int __qti_scm_get_device_attestation_ephimeral_key(struct device *dev, u32 svc_id,
+		u32 cmd_id, void *key_buf, u32 key_buf_len, u32 *key_len)
+{
+	int ret;
+	struct scm_desc desc = {0};
+	dma_addr_t dma_key_buf;
+	dma_addr_t dma_key_len;
+
+	dma_key_buf = dma_map_single(dev, key_buf, key_buf_len, DMA_FROM_DEVICE);
+	ret = dma_mapping_error(dev, dma_key_buf);
+	if (ret != 0) {
+		pr_err("%s: DMA Mapping Error : %d\n", __func__, ret);
+		return ret;
+	}
+
+	dma_key_len  = dma_map_single(dev, key_len, sizeof(u32), DMA_FROM_DEVICE);
+	ret = dma_mapping_error(dev, dma_key_len);
+	if (ret != 0) {
+		pr_err("%s: DMA Mapping Error : %d\n", __func__, ret);
+		goto dma_unmap_key_buf;
+	}
+	if (is_scm_armv8()) {
+		desc.args[0] = dma_key_buf;
+		desc.args[1] = key_buf_len;
+		desc.args[2] = dma_key_len;
+
+		desc.arginfo = SCM_ARGS(3, QCOM_SCM_VAL, QCOM_SCM_VAL, QCOM_SCM_RW);
+
+		ret = qti_scm_call2(dev, SCM_SIP_FNID(svc_id, cmd_id), &desc);
+
+		if (!ret)
+			ret = le32_to_cpu(desc.ret[0]);
+	} else {
+		ret = -EINVAL;
+	}
+
+	dma_unmap_single(dev, dma_key_len, sizeof(unsigned int), DMA_FROM_DEVICE);
+
+dma_unmap_key_buf:
+	dma_unmap_single(dev, dma_key_buf, key_buf_len, DMA_FROM_DEVICE);
+
+	return ret;
+}
+
+/**
+ * __qti_scm_get_device_attestation_response() - Get attestation response from TME-L
+ *
+ * @svc_id: SCM service id
+ * @cmd_id: SCM command id
+ * req_buf: attestation request buffer, it contains a attestation request.
+ * req_buf_len: attestation request buffer length.
+ * extclaim_buf: External claim buffer, it also contains attestation request when the
+                 attestation request is more than 2KB.
+ * extclaim_buf_len: size of external buffer.
+ * resp_buf: Response Buffer passed to TME to store the Attestation report response.
+ *           TME will used this buffer to populate the Attestation report.
+ * resp_buf_len: size of the response buffer.
+ * attest_resp_len: Length of the Attestation report response. This is populated by TME
+ *                  after storing the attestation response.
+ *
+ * This function can be used to get the attestation response binary from TME-L by
+ * passing the attestation report through req_buf and extclaim_buf.
+ */
+int __qti_scm_get_device_attestation_response(struct device *dev, u32 svc_id,
+		u32 cmd_id, void *req_buf, u32 req_buf_len, void *extclaim_buf,
+		u32 extclaim_buf_len, void *resp_buf, u32 resp_buf_len,
+		u32 *attest_resp_len)
+{
+	int ret;
+	struct scm_desc desc = {0};
+
+	dma_addr_t dma_req_buf;
+	dma_addr_t dma_claim_buf = 0;
+	dma_addr_t dma_resp_buf;
+	dma_addr_t dma_resp_len;
+
+	dma_req_buf = dma_map_single(dev, req_buf, req_buf_len,
+			DMA_FROM_DEVICE);
+	ret = dma_mapping_error(dev, dma_req_buf);
+	if (ret != 0) {
+		pr_err("%s: DMA Mapping Error : %d\n", __func__, ret);
+		return ret;
+	}
+
+	if (extclaim_buf != NULL) {
+		dma_claim_buf = dma_map_single(dev, extclaim_buf, extclaim_buf_len,
+				DMA_FROM_DEVICE);
+		ret = dma_mapping_error(dev, dma_claim_buf);
+		if (ret != 0) {
+			pr_err("%s: DMA Mapping Error : %d\n", __func__, ret);
+			goto dma_unmap_req_buf;
+		}
+	}
+
+	dma_resp_buf = dma_map_single(dev, resp_buf, resp_buf_len,
+			DMA_FROM_DEVICE);
+	ret = dma_mapping_error(dev, dma_resp_buf);
+	if (ret != 0) {
+		pr_err("%s: DMA Mapping Error : %d\n", __func__, ret);
+		goto dma_unmap_extclaim_buf;
+	}
+
+	dma_resp_len = dma_map_single(dev, attest_resp_len,
+			sizeof(unsigned int), DMA_FROM_DEVICE);
+	ret = dma_mapping_error(dev, dma_req_buf);
+	if (ret != 0) {
+		pr_err("%s: DMA Mapping Error : %d\n", __func__, ret);
+		goto dma_unmap_resp_buf;
+	}
+
+	if (is_scm_armv8()) {
+		desc.args[0] = dma_req_buf;
+		desc.args[1] = req_buf_len;
+		desc.args[2] = dma_claim_buf;
+		desc.args[3] = extclaim_buf_len;
+		desc.args[4] = dma_resp_buf;
+		desc.args[5] = resp_buf_len;
+		desc.args[6] = dma_resp_len;
+
+		desc.arginfo = SCM_ARGS(7, QCOM_SCM_VAL, QCOM_SCM_VAL,
+					QCOM_SCM_VAL, QCOM_SCM_VAL, QCOM_SCM_VAL,
+					QCOM_SCM_VAL, QCOM_SCM_RW);
+		ret = qti_scm_call2(dev, SCM_SIP_FNID(svc_id, cmd_id), &desc);
+		if (!ret)
+			ret = le32_to_cpu(desc.ret[0]);
+	} else {
+		ret = -EINVAL;
+	}
+
+	dma_unmap_single(dev, dma_resp_len, sizeof(unsigned int),
+			DMA_FROM_DEVICE);
+dma_unmap_resp_buf:
+	dma_unmap_single(dev, dma_resp_buf, resp_buf_len, DMA_FROM_DEVICE);
+
+dma_unmap_extclaim_buf:
+	if (extclaim_buf != NULL) {
+		dma_unmap_single(dev, dma_claim_buf, extclaim_buf_len,
+			DMA_FROM_DEVICE);
+	}
+
+dma_unmap_req_buf:
+	dma_unmap_single(dev, dma_req_buf, req_buf_len, DMA_FROM_DEVICE);
+
+	return ret;
+}
+
+/**
+ *__qti_scm_get_device_provision_response() - Get device provisioning response from TME-L
+ *
+ * @svc_id: SCM service id
+ * @cmd_id: SCM command id
+ * provreq_buf: Provsion request buffer, it contains a provision request.
+ * provreq_buf_len: Provision request buffer length.
+ * provresp_buf: Provision response buffer passed to TME to store the Provision response.
+ *           TME will used this buffer to populate the provision response.
+ * provresp_buf_len: size allocated to provision response buffer.
+ * attest_resp_len: Length of the provision response. This is populated by TME
+ *                  after storing the provision response.
+ *
+ * This function can be used to get the provision response from TME-L by
+ * passing the provision report through prov_req.bin file.
+ */
+int __qti_scm_get_device_provision_response(struct device *dev, u32 svc_id,
+		u32 cmd_id, void *provreq_buf, u32 provreq_buf_len,
+		void *provresp_buf, u32 provresp_buf_len, u32 *prov_resp_size)
+{
+	int ret;
+	struct scm_desc desc = {0};
+
+	dma_addr_t dma_req_buf;
+	dma_addr_t dma_resp_buf;
+	dma_addr_t dma_prov_resp_size;
+
+	dma_req_buf = dma_map_single(dev, provreq_buf, provreq_buf_len,
+			DMA_FROM_DEVICE);
+	ret = dma_mapping_error(dev, dma_req_buf);
+	if (ret != 0) {
+		pr_err("%s: DMA Mapping Error : %d\n", __func__, ret);
+		return ret;
+	}
+
+	dma_resp_buf = dma_map_single(dev, provresp_buf, provresp_buf_len,
+			DMA_FROM_DEVICE);
+	ret = dma_mapping_error(dev, dma_resp_buf);
+	if (ret != 0) {
+		pr_err("%s: DMA Mapping Error : %d\n", __func__, ret);
+		goto dma_unmap_req_buf;
+	}
+
+	dma_prov_resp_size = dma_map_single(dev, prov_resp_size,
+			sizeof(unsigned int), DMA_FROM_DEVICE);
+	ret = dma_mapping_error(dev, dma_req_buf);
+	if (ret != 0) {
+		pr_err("%s: DMA Mapping Error : %d\n", __func__, ret);
+		goto dma_unmap_resp_buf;
+	}
+
+	if (is_scm_armv8()) {
+		desc.args[0] = dma_req_buf;
+		desc.args[1] = provreq_buf_len;
+		desc.args[2] = dma_resp_buf;
+		desc.args[3] = provresp_buf_len;
+		desc.args[4] = dma_prov_resp_size;
+
+		desc.arginfo = SCM_ARGS(5, QCOM_SCM_VAL, QCOM_SCM_VAL,
+				QCOM_SCM_VAL, QCOM_SCM_VAL, QCOM_SCM_RW);
+		ret = qti_scm_call2(dev, SCM_SIP_FNID(svc_id, cmd_id), &desc);
+		if(!ret)
+			ret = le32_to_cpu(desc.ret[0]);
+	} else {
+		ret = -EINVAL;
+	}
+
+	dma_unmap_single(dev, dma_prov_resp_size, sizeof(unsigned int),
+			DMA_FROM_DEVICE);
+dma_unmap_resp_buf:
+	dma_unmap_single(dev, dma_resp_buf, provresp_buf_len, DMA_FROM_DEVICE);
+
+dma_unmap_req_buf:
+	dma_unmap_single(dev, dma_req_buf, provreq_buf_len, DMA_FROM_DEVICE);
+
+	return ret;
+
 }
 
 /**
@@ -1684,6 +2137,45 @@ int __qti_set_qcekey_sec(struct device *dev, void *confBuf, int size)
 	return ret;
 }
 
+int __qti_sec_crypt(struct device *dev, void *confBuf, int size)
+{
+	int ret;
+
+	if (!is_scm_armv8()) {
+		ret = qcom_scm_call(dev, QCOM_SCM_QCE_SVC,QCOM_SCM_QCE_ENC_DEC_CMD,
+				NULL, 0, confBuf, size);
+	} else {
+		__le32 scm_ret;
+		struct scm_desc desc = {0};
+		dma_addr_t conf_phys;
+
+		conf_phys = dma_map_single(dev, confBuf, size, DMA_TO_DEVICE);
+
+		ret = dma_mapping_error(dev, conf_phys);
+
+		if (ret) {
+			dev_err(dev, "Allocation fail for conf buffer\n");
+			return -ENOMEM;
+		}
+
+		desc.arginfo = SCM_ARGS(2, QCOM_SCM_RW, QCOM_SCM_VAL);
+		desc.args[0] = (u64)conf_phys;
+		desc.args[1] = size;
+
+		ret = qti_scm_call2(dev, SCM_SIP_FNID(QCOM_SCM_QCE_CRYPTO_SIP,
+						QCOM_SCM_QCE_ENC_DEC_CMD), &desc);
+
+		scm_ret = desc.ret[0];
+
+		dma_unmap_single(dev, conf_phys, size, DMA_TO_DEVICE);
+
+		if (!ret)
+			return le32_to_cpu(scm_ret);
+	}
+
+	return ret;
+}
+
 int __qti_qcekey_release_xpu_prot(struct device *dev)
 {
 	int ret;
@@ -1693,6 +2185,23 @@ int __qti_qcekey_release_xpu_prot(struct device *dev)
 	desc.arginfo = SCM_ARGS(0, QCOM_SCM_VAL);
 	ret = qti_scm_call2(dev, SCM_SIP_FNID(QCOM_SCM_QCE_CRYPTO_SIP,
 				QCOM_SCM_QCE_UNLOCK_CMD), &desc);
+
+	scm_ret = desc.ret[0];
+	if (!ret)
+		return le32_to_cpu(scm_ret);
+
+	return ret;
+}
+
+int __qti_seccrypt_clearkey(struct device *dev)
+{
+	int ret;
+	__le32 scm_ret;
+	struct scm_desc desc = {0};
+
+	desc.arginfo = SCM_ARGS(0, QCOM_SCM_VAL);
+	ret = qti_scm_call2(dev, SCM_SIP_FNID(QCOM_SCM_QCE_CRYPTO_SIP,
+				QCOM_SCM_SECCRYPT_CLRKEY_CMD), &desc);
 
 	scm_ret = desc.ret[0];
 	if (!ret)
@@ -1823,13 +2332,16 @@ int __qti_scm_tcsr_reg_write(struct device *dev, u32 reg_addr, u32 value)
 int __qti_scm_is_tz_log_encrypted(struct device *dev)
 {
 	int ret;
+	int fn_id;
 	__le32 scm_ret;
 	struct scm_desc desc = {0};
 
 	desc.arginfo = SCM_ARGS(0);
 
-	ret = qti_scm_call2(dev, SCM_SIP_FNID(QCOM_SCM_SVC_BOOT,
-					QCOM_SCM_IS_TZ_LOG_ENCRYPTED), &desc);
+	fn_id = QTI_SYSCALL_CREATE_SMC_ID(QTI_OWNER_QSEE_OS,
+					 QTI_SVC_APP_MGR,
+					 QCOM_SCM_IS_TZ_LOG_ENCRYPTED);
+	ret = qti_scm_call2(dev, fn_id, &desc);
 	scm_ret = desc.ret[0];
 
 	if (!ret)
@@ -1843,6 +2355,7 @@ int __qti_scm_get_encrypted_tz_log(struct device *dev, void *ker_buf, u32 buf_le
 	struct scm_desc desc = {0};
 	dma_addr_t log_buf;
 	int ret;
+	int fn_id;
 
 	log_buf = dma_map_single(dev, ker_buf, buf_len, DMA_FROM_DEVICE);
 	ret = dma_mapping_error(dev, log_buf);
@@ -1857,8 +2370,10 @@ int __qti_scm_get_encrypted_tz_log(struct device *dev, void *ker_buf, u32 buf_le
 	desc.args[2] = log_id;
 	desc.arginfo = SCM_ARGS(3, QCOM_SCM_RW, QCOM_SCM_VAL, QCOM_SCM_VAL);
 
-	ret = qti_scm_call2(dev, SCM_SIP_FNID(QCOM_SCM_SVC_BOOT,
-					QCOM_SCM_GET_TZ_LOG_ENCRYPTED), &desc);
+	fn_id = QTI_SYSCALL_CREATE_SMC_ID(QTI_OWNER_QSEE_OS,
+					 QTI_SVC_APP_MGR,
+					 QCOM_SCM_GET_TZ_LOG_ENCRYPTED);
+	ret = qti_scm_call2(dev, fn_id, &desc);
 
 	dma_unmap_single(dev, log_buf, buf_len, DMA_FROM_DEVICE);
 
@@ -1919,12 +2434,12 @@ int __qti_scm_toggle_bt_eco(struct device *dev, u32 peripheral, u32 arg)
 	return ret ? : le32_to_cpu(desc.ret[0]);
 }
 
-static int __qti_scm_set_kernel_boot_complete_v8(struct device *dev, u32 val)
+static int __qti_scm_set_trybit_v8(struct device *dev, u32 val, u64 dload_mode_addr)
 {
 	struct scm_desc desc = {0};
 	int ret;
 
-	desc.args[0] = TCSR_BOOT_MISC_REG;
+	desc.args[0] = dload_mode_addr;
 	desc.args[1] = val;
 
 	desc.arginfo = SCM_ARGS(2, QCOM_SCM_VAL, QCOM_SCM_VAL);
@@ -1936,11 +2451,11 @@ static int __qti_scm_set_kernel_boot_complete_v8(struct device *dev, u32 val)
 	return le32_to_cpu(desc.ret[0]);
 }
 
-int __qti_scm_set_kernel_boot_complete(struct device *dev, u32 svc_id, u32 val)
+int __qti_scm_set_trybit(struct device *dev, u32 svc_id, u32 val, u64 dload_mode_addr)
 {
 	if (!is_scm_armv8())
 		return -ENOTSUPP;
 
-	return __qti_scm_set_kernel_boot_complete_v8(dev, val);
+	return __qti_scm_set_trybit_v8(dev, val, dload_mode_addr);
 
 }

@@ -1149,6 +1149,7 @@ proto_again:
 					 VLAN_PRIO_MASK) >> VLAN_PRIO_SHIFT;
 			}
 			key_vlan->vlan_tpid = saved_vlan_tpid;
+			key_vlan->vlan_eth_type = proto;
 		}
 
 		fdret = FLOW_DISSECT_RET_PROTO_AGAIN;
@@ -1353,9 +1354,10 @@ ip_proto_again:
 		break;
 	}
 
-	if (!(key_control->flags & FLOW_DIS_IS_FRAGMENT))
+	if (!(key_control->flags & FLOW_DIS_IS_FRAGMENT) || (key_control->flags & FLOW_DIS_FIRST_FRAG)) {
 		__skb_flow_dissect_ports(skb, flow_dissector, target_container,
 					 data, nhoff, ip_proto, hlen);
+	}
 
 	if (dissector_uses_key(flow_dissector,
 			       FLOW_DISSECTOR_KEY_ICMP)) {

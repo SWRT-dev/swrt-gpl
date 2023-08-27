@@ -148,6 +148,10 @@ config SND_SOC_IPQ_PCM_TDM
 	tristate "ipq pcm tdm"
 	depends on SND_SOC_IPQ
 
+config SND_SOC_IPQ9574_LPASS_PCM_RAW
+	tristate "IPQ9574_LPASS_PCM"
+	depends on SND_SOC_IPQ
+
 config SND_SOC_IPQ_PCM_RAW
 	tristate "ipq pcm raw"
 	depends on SND_SOC_IPQ && SND_SOC_IPQ_ADSS && SND_SOC_IPQ_MBOX

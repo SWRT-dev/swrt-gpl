@@ -46,6 +46,7 @@
 #define CPU_IPQ5000 503
 #define CPU_IPQ0509 504
 #define CPU_IPQ0518 505
+#define CPU_IPQ5016 520
 
 #define CPU_IPQ9514 510
 #define CPU_IPQ9554 512
@@ -53,6 +54,12 @@
 #define CPU_IPQ9574 514
 #define CPU_IPQ9550 511
 #define CPU_IPQ9510 521
+
+#define CPU_IPQ5332 592
+#define CPU_IPQ5322 593
+#define CPU_IPQ5312 594
+#define CPU_IPQ5302 595
+#define CPU_IPQ5300 624
 
 static inline int read_ipq_soc_version_major(void)
 {
@@ -259,6 +266,60 @@ static inline int cpu_is_ipq6005(void)
 #endif
 }
 
+static inline int cpu_is_ipq5332(void)
+{
+#ifdef CONFIG_ARCH_QCOM
+	return read_ipq_cpu_type() == CPU_IPQ5332;
+#else
+	return 0;
+#endif
+}
+
+static inline int cpu_is_ipq5322(void)
+{
+#ifdef CONFIG_ARCH_QCOM
+	return read_ipq_cpu_type() == CPU_IPQ5322;
+#else
+	return 0;
+#endif
+}
+
+static inline int cpu_is_ipq5312(void)
+{
+#ifdef CONFIG_ARCH_QCOM
+	return read_ipq_cpu_type() == CPU_IPQ5312;
+#else
+	return 0;
+#endif
+}
+
+static inline int cpu_is_ipq5302(void)
+{
+#ifdef CONFIG_ARCH_QCOM
+	return read_ipq_cpu_type() == CPU_IPQ5302;
+#else
+	return 0;
+#endif
+}
+
+static inline int cpu_is_ipq5300(void)
+{
+#ifdef CONFIG_ARCH_QCOM
+	return read_ipq_cpu_type() == CPU_IPQ5300;
+#else
+	return 0;
+#endif
+}
+
+static inline int cpu_is_ipq5016(void)
+{
+#ifdef CONFIG_ARCH_QCOM
+	return read_ipq_cpu_type() == CPU_IPQ5016;
+#else
+	return 0;
+#endif
+}
+
 static inline int cpu_is_ipq5010(void)
 {
 #ifdef CONFIG_ARCH_QCOM
@@ -399,7 +460,19 @@ static inline int cpu_is_ipq50xx(void)
 #ifdef CONFIG_ARCH_QCOM
 	return  cpu_is_ipq5010() || cpu_is_ipq5018() ||
 		cpu_is_ipq5028() || cpu_is_ipq5000() ||
-		cpu_is_ipq0509() || cpu_is_ipq0518();
+		cpu_is_ipq0509() || cpu_is_ipq0518() ||
+		cpu_is_ipq5016();
+#else
+	return 0;
+#endif
+}
+
+static inline int cpu_is_ipq53xx(void)
+{
+#ifdef CONFIG_ARCH_QCOM
+	return  cpu_is_ipq5332() || cpu_is_ipq5322() ||
+		cpu_is_ipq5312() || cpu_is_ipq5302() ||
+		cpu_is_ipq5300();
 #else
 	return 0;
 #endif
@@ -422,7 +495,8 @@ static inline int cpu_is_nss_crypto_enabled(void)
 	return  cpu_is_ipq807x() || cpu_is_ipq60xx() ||
 		cpu_is_ipq50xx() || cpu_is_ipq9570() ||
 		cpu_is_ipq9550() || cpu_is_ipq9574() ||
-		cpu_is_ipq9554();
+		cpu_is_ipq9554() || cpu_is_ipq5332() ||
+		cpu_is_ipq5322() || cpu_is_ipq5300();
 #else
 	return 0;
 #endif
@@ -433,7 +507,8 @@ static inline int cpu_is_internal_wifi_enabled(void)
 #ifdef CONFIG_ARCH_QCOM
 	return  cpu_is_ipq807x() || cpu_is_ipq60xx() ||
 		cpu_is_ipq50xx() || cpu_is_ipq9514() ||
-		cpu_is_ipq9554() || cpu_is_ipq9574();
+		cpu_is_ipq9554() || cpu_is_ipq9574() ||
+		cpu_is_ipq53xx();
 #else
 	return 0;
 #endif
@@ -443,8 +518,8 @@ static inline int cpu_is_uniphy1_enabled(void)
 {
 #ifdef CONFIG_ARCH_QCOM
 	return  cpu_is_ipq807x() || cpu_is_ipq60xx() ||
-		cpu_is_ipq9554() || cpu_is_ipq9570() ||
-		cpu_is_ipq9574() || cpu_is_ipq9550();
+		cpu_is_ipq9570() || cpu_is_ipq9574() ||
+		cpu_is_ipq53xx();
 #else
 	return 0;
 #endif
@@ -454,7 +529,8 @@ static inline int cpu_is_uniphy2_enabled(void)
 {
 #ifdef CONFIG_ARCH_QCOM
 	return  cpu_is_ipq807x() || cpu_is_ipq9570() ||
-		cpu_is_ipq9574();
+		cpu_is_ipq9574() || cpu_is_ipq9550() ||
+		cpu_is_ipq9554();
 #else
 	return 0;
 #endif

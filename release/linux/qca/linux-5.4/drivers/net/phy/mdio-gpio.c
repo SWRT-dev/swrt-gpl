@@ -32,6 +32,11 @@ struct mdio_gpio_info {
 	struct gpio_desc *mdc, *mdio, *mdo;
 };
 
+#if IS_ENABLED(CONFIG_MDIO_QCA)
+extern int qca_phy_reset(struct platform_device *pdev);
+extern void qca_mht_preinit(struct mii_bus *mii_bus, struct device_node *np);
+#endif
+
 static int mdio_gpio_get_data(struct device *dev,
 			      struct mdio_gpio_info *bitbang)
 {
@@ -179,6 +184,16 @@ static int mdio_gpio_probe(struct platform_device *pdev)
 	new_bus = mdio_gpio_bus_init(&pdev->dev, bitbang, bus_id);
 	if (!new_bus)
 		return -ENODEV;
+
+#if IS_ENABLED(CONFIG_MDIO_QCA)
+	ret = qca_phy_reset(pdev);
+	if (ret) {
+		dev_warn(&pdev->dev, "failed to reset PHY by GPIO\n");
+		return ret;
+	}
+
+	qca_mht_preinit(new_bus, pdev->dev.of_node);
+#endif
 
 	ret = of_mdiobus_register(new_bus, pdev->dev.of_node);
 	if (ret)

@@ -83,3 +83,45 @@ const struct regmap_config bmp280_regmap_config = {
 	.volatile_reg = bmp280_is_volatile_reg,
 };
 EXPORT_SYMBOL(bmp280_regmap_config);
+
+static bool bmp390_is_writeable_reg(struct device *dev, unsigned int reg)
+{
+	switch (reg) {
+	case BMP390_REG_CONFIG:
+	case BMP390_REG_OSR:
+	case BMP390_REG_PWR_CTRL:
+	case BMP390_REG_CMD:
+	case BMP390_REG_ODR:
+		return true;
+	default:
+		return false;
+	};
+}
+
+static bool bmp390_is_volatile_reg(struct device *dev, unsigned int reg)
+{
+	switch (reg) {
+	case BMP390_REG_TEMP_XLSB:
+	case BMP390_REG_TEMP_LSB:
+	case BMP390_REG_TEMP_MSB:
+	case BMP390_REG_PRESS_XLSB:
+	case BMP390_REG_PRESS_LSB:
+	case BMP390_REG_PRESS_MSB:
+	case BMP390_REG_STATUS:
+		return true;
+	default:
+		return false;
+	}
+}
+const struct regmap_config bmp390_regmap_config = {
+	.reg_bits = 8,
+	.val_bits = 8,
+
+	.max_register = BMP390_REG_CMD,
+	.cache_type = REGCACHE_RBTREE,
+
+	.writeable_reg = bmp390_is_writeable_reg,
+	.volatile_reg = bmp390_is_volatile_reg,
+};
+
+EXPORT_SYMBOL(bmp390_regmap_config);

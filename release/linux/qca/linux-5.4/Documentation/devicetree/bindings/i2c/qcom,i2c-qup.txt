@@ -20,6 +20,9 @@ Required properties:
 Optional properties:
  - clock-frequency: Should specify the desired i2c bus clock frequency in Hz,
                     defaults to 100kHz if omitted.
+ - qup-clock-frequency: Should specify the desired i2c qup clock frequency in
+		Hz. If omitted, then the frequency configured by bootloader
+		will be used.
 
 Child nodes should conform to i2c bus binding.
 
@@ -34,6 +37,7 @@ Example:
  	clock-names = "core", "iface";
 
  	clock-frequency = <355000>;
+	qup-clock-frequency = <19050000>;
 
  	#address-cells = <1>;
  	#size-cells = <0>;

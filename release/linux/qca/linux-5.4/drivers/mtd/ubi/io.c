@@ -76,6 +76,7 @@
 #include <linux/crc32.h>
 #include <linux/err.h>
 #include <linux/slab.h>
+#include <linux/reboot.h>
 #include "ubi.h"
 
 static int self_check_not_bad(const struct ubi_device *ubi, int pnum);
@@ -116,6 +117,7 @@ int ubi_io_read(const struct ubi_device *ubi, void *buf, int pnum, int offset,
 	int err, retries = 0;
 	size_t read;
 	loff_t addr;
+	bool device_suspend = false;
 
 	dbg_io("read %d bytes from PEB %d:%d", len, pnum, offset);
 
@@ -169,17 +171,23 @@ retry:
 			ubi_assert(len == read);
 			return UBI_IO_BITFLIPS;
 		}
+#ifdef CONFIG_KASAN
+	device_suspend = nand_device_suspended;
+#endif
+		if (!device_suspend) {
+			if (retries++ < UBI_IO_RETRIES) {
+				ubi_warn(ubi, "error %d%s while reading %d bytes from PEB %d:%d, read only %zd bytes, retry",
+					 err, errstr, len, pnum, offset, read);
+				yield();
+				goto retry;
+			}
 
-		if (retries++ < UBI_IO_RETRIES) {
-			ubi_warn(ubi, "error %d%s while reading %d bytes from PEB %d:%d, read only %zd bytes, retry",
-				 err, errstr, len, pnum, offset, read);
-			yield();
-			goto retry;
+			ubi_err(ubi, "error %d%s while reading %d bytes from PEB %d:%d, read %zd bytes",
+				err, errstr, len, pnum, offset, read);
+			dump_stack();
+		} else {
+			return 0;
 		}
-
-		ubi_err(ubi, "error %d%s while reading %d bytes from PEB %d:%d, read %zd bytes",
-			err, errstr, len, pnum, offset, read);
-		dump_stack();
 
 		/*
 		 * The driver should never return -EBADMSG if it failed to read

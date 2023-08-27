@@ -28,6 +28,7 @@
 
 #include "coresight-priv.h"
 #include "coresight-tmc.h"
+#include "coresight-common.h"
 
 DEFINE_CORESIGHT_DEVLIST(etb_devs, "tmc_etb");
 DEFINE_CORESIGHT_DEVLIST(etf_devs, "tmc_etf");
@@ -728,6 +729,11 @@ static int tmc_probe(struct amba_device *adev, const struct amba_id *id)
 		idr_init(&drvdata->idr);
 		mutex_init(&drvdata->idr_mutex);
 		dev_list = &etr_devs;
+
+		if (!of_property_read_u32(dev->of_node, "csr-atid-offset",
+						 &drvdata->atid_offset))
+			coresight_set_csr_ops(&csr_atid_ops);
+
 		break;
 	case TMC_CONFIG_TYPE_ETF:
 		desc.type = CORESIGHT_DEV_TYPE_LINKSINK;

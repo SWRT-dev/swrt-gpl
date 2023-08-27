@@ -14,6 +14,7 @@
 #include <linux/wireless.h>
 #include <linux/nl80211.h>
 #include <linux/etherdevice.h>
+#include <linux/bitfield.h>
 #include <net/arp.h>
 #include <net/cfg80211.h>
 #include <net/cfg80211-wext.h>
@@ -104,18 +105,12 @@ static inline void bss_ref_get(struct cfg80211_registered_device *rdev,
 	lockdep_assert_held(&rdev->bss_lock);
 
 	bss->refcount++;
-	if (bss->pub.hidden_beacon_bss) {
-		bss = container_of(bss->pub.hidden_beacon_bss,
-				   struct cfg80211_internal_bss,
-				   pub);
-		bss->refcount++;
-	}
-	if (bss->pub.transmitted_bss) {
-		bss = container_of(bss->pub.transmitted_bss,
-				   struct cfg80211_internal_bss,
-				   pub);
-		bss->refcount++;
-	}
+
+	if (bss->pub.hidden_beacon_bss)
+		bss_from_pub(bss->pub.hidden_beacon_bss)->refcount++;
+
+	if (bss->pub.transmitted_bss)
+		bss_from_pub(bss->pub.transmitted_bss)->refcount++;
 }
 
 static inline void bss_ref_put(struct cfg80211_registered_device *rdev,
@@ -229,9 +224,141 @@ bool cfg80211_is_element_inherited(const struct element *elem,
 }
 EXPORT_SYMBOL(cfg80211_is_element_inherited);
 
+/**
+ * cfg80211_handle_rnr_ie_for_mbssid() - parse and modify RNR IE for MBSSID
+ *                                       feature
+ * @elem: The pointer to RNR IE
+ * @bssid_index: BSSID index from MBSSID index IE
+ * @pos: The buffer pointer to save the transformed RNR IE, caller is expected
+ *       to supply a buffer that is at least as big as @elem
+ *
+ * Per the description about Neighbor AP Information field about MLD
+ * parameters subfield in section 9.4.2.170.2 of Draft P802.11be_D1.4.
+ * If the reported AP is affiliated with the same MLD of the reporting AP,
+ * the TBTT information is skipped; If the reported AP is affiliated with
+ * the same MLD of the nontransmitted BSSID, the TBTT information is copied
+ * and the MLD ID is changed to 0.
+ *
+ * Return: Length of the element written to @pos
+ */
+static size_t cfg80211_handle_rnr_ie_for_mbssid(const struct element *elem,
+						u8 bssid_index, u8 *pos)
+{
+	size_t rnr_len;
+	const u8 *rnr, *data, *rnr_end;
+	u8 *rnr_new, *tbtt_info_field;
+	u8 tbtt_type, tbtt_len, tbtt_count;
+	u8 mld_pos, mld_id;
+	u32 i, copy_len;
+	/* The count of TBTT info field whose MLD ID equals to 0 in a neighbor
+	 * AP information field.
+	 */
+	u32 tbtt_info_field_count;
+	/* The total bytes of TBTT info fields whose MLD ID equals to 0 in
+	 * current RNR IE.
+	 */
+	u32 tbtt_info_field_len = 0;
+
+	rnr_new = pos;
+	rnr = (u8 *)elem;
+	rnr_len = elem->datalen;
+	rnr_end = rnr + rnr_len + 2;
+
+	/* Copy the header bytes for new rnr element */
+	pos[0] = rnr[0]; pos[1] = rnr[1];
+	pos += 2;
+	data = elem->data;
+	while (data < rnr_end) {
+		tbtt_type = u8_get_bits(data[0], IEEE80211_TBTT_TYPE_MASK);
+		tbtt_count = u8_get_bits(data[0], IEEE80211_TBTT_COUNT_MASK);
+		tbtt_len = data[1];
+
+		copy_len = tbtt_len * (tbtt_count + 1) +
+			   IEEE80211_NBR_AP_INFO_LEN;
+		if (data + copy_len > rnr_end)
+			return 0;
+
+		if (tbtt_len >=
+		    IEEE80211_TBTT_INFO_BSSID_SSID_BSS_PARAM_PSD_MLD_PARAM)
+			mld_pos =
+			    IEEE80211_TBTT_INFO_BSSID_SSID_BSS_PARAM_PSD;
+		else
+			mld_pos = 0;
+		/* If MLD params do not exist, copy this neighbor AP
+		 * information field.
+		 * Draft P802.11be_D1.4, tbtt_type value 1, 2 and 3
+		 * are reserved.
+		 */
+		if (mld_pos == 0 || tbtt_type != 0) {
+			memcpy(pos, data, copy_len);
+			pos += copy_len;
+			data += copy_len;
+			continue;
+		}
+
+		/* Copy neighbor_ap_info field as a per-byte
+		 * assignment to aboid memcopy.
+		 */
+		pos[0] = data[0];  pos[1] = data[1];
+		pos[2] = data[2];  pos[3] = data[3];
+		tbtt_info_field = pos;
+		pos += IEEE80211_NBR_AP_INFO_LEN;
+		data += IEEE80211_NBR_AP_INFO_LEN;
+
+		tbtt_info_field_count = 0;
+		for (i = 0; i < tbtt_count + 1; i++) {
+			mld_id = data[mld_pos];
+			/* Refer to Draft P802.11be_D1.4
+			 * 9.4.2.170.2 Neighbor AP Information field about
+			 * MLD parameters subfield
+			 */
+			if (mld_id == 0) {
+				/* Skip this TBTT information since this
+				 * reported AP is affiliated with the same MLD
+				 * of the reporting AP who sending the frame
+				 * carrying this element.
+				 */
+				tbtt_info_field_len += tbtt_len;
+				data += tbtt_len;
+				tbtt_info_field_count++;
+			} else if (mld_id == bssid_index) {
+				/* Copy this TBTT information and change MLD
+				 * to 0 as this reported AP is affiliated with
+				 * the same MLD of the nontransmitted BSSID.
+				 */
+				memcpy(pos, data, tbtt_len);
+				pos[mld_pos] = 0;
+				data += tbtt_len;
+				pos += tbtt_len;
+			} else {
+				memcpy(pos, data, tbtt_len);
+				data += tbtt_len;
+				pos += tbtt_len;
+			}
+		}
+		if (tbtt_info_field_count == (tbtt_count + 1)) {
+			/* If all the TBTT informations are skipped, then also
+			 * revert the neighbor AP info which has been copied.
+			 */
+			pos -= IEEE80211_NBR_AP_INFO_LEN;
+			tbtt_info_field_len += IEEE80211_NBR_AP_INFO_LEN;
+		} else {
+			u8p_replace_bits(&tbtt_info_field[0],
+					 tbtt_count - tbtt_info_field_count,
+					 IEEE80211_TBTT_COUNT_MASK);
+		}
+	}
+
+	rnr_new[1] = rnr_len - tbtt_info_field_len;
+	if (rnr_new[1] == 0)
+		pos = rnr_new;
+
+	return pos - rnr_new;
+}
+
 static size_t cfg80211_gen_new_ie(const u8 *ie, size_t ielen,
 				  const u8 *subelement, size_t subie_len,
-				  u8 *new_ie, gfp_t gfp)
+				  u8 *new_ie, u8 bssid_index, gfp_t gfp)
 {
 	u8 *pos, *tmp;
 	const u8 *tmp_old, *tmp_new;
@@ -282,8 +409,13 @@ static size_t cfg80211_gen_new_ie(const u8 *ie, size_t ielen,
 			const struct element *old_elem = (void *)tmp_old;
 
 			/* ie in old ie but not in subelement */
-			if (cfg80211_is_element_inherited(old_elem,
-							  non_inherit_elem)) {
+			if (tmp_old[0] == WLAN_EID_REDUCED_NEIGHBOR_REPORT) {
+				pos +=
+				  cfg80211_handle_rnr_ie_for_mbssid(old_elem,
+								    bssid_index,
+								    pos);
+			} else if (cfg80211_is_element_inherited(old_elem,
+								 non_inherit_elem)) {
 				memcpy(pos, tmp_old, tmp_old[1] + 2);
 				pos += tmp_old[1] + 2;
 			}
@@ -389,6 +521,14 @@ cfg80211_add_nontrans_list(struct cfg80211_bss *trans_bss,
 	}
 
 	rcu_read_unlock();
+
+	/* This is a bit weird - it's not on the list, but already on another
+	 * one! The only way that could happen is if there's some BSSID/SSID
+	 * shared by multiple APs in their multi-BSSID profiles, potentially
+	 * with hidden SSID mixed in ... ignore it.
+	 */
+	if (!list_empty(&nontrans_bss->nontrans_list))
+		return -EINVAL;
 
 	/* add to the list */
 	list_add_tail(&nontrans_bss->nontrans_list, &trans_bss->nontrans_list);
@@ -1231,6 +1371,8 @@ cfg80211_bss_update(struct cfg80211_registered_device *rdev,
 		new->refcount = 1;
 		INIT_LIST_HEAD(&new->hidden_list);
 		INIT_LIST_HEAD(&new->pub.nontrans_list);
+		/* we'll set this later if it was non-NULL */
+		new->pub.transmitted_bss = NULL;
 
 		if (rcu_access_pointer(tmp->pub.proberesp_ies)) {
 			hidden = rb_find_bss(rdev, tmp, BSS_CMP_HIDE_ZLEN);
@@ -1457,11 +1599,18 @@ cfg80211_inform_single_bss_data(struct wiphy *wiphy,
 		/* this is a nontransmitting bss, we need to add it to
 		 * transmitting bss' list if it is not there
 		 */
+		spin_lock_bh(&rdev->bss_lock);
 		if (cfg80211_add_nontrans_list(non_tx_data->tx_bss,
 					       &res->pub)) {
-			if (__cfg80211_unlink_bss(rdev, res))
+			if (__cfg80211_unlink_bss(rdev, res)) {
 				rdev->bss_generation++;
+				res = NULL;
+			}
 		}
+		spin_unlock_bh(&rdev->bss_lock);
+
+		if (!res)
+			return NULL;
 	}
 
 	trace_cfg80211_return_bss(&res->pub);
@@ -1558,6 +1707,7 @@ static void cfg80211_parse_mbssid_data(struct wiphy *wiphy,
 	u64 seen_indices = 0;
 	u16 capability;
 	struct cfg80211_bss *bss;
+	u8 bssid_index;
 
 	if (!non_tx_data)
 		return;
@@ -1624,6 +1774,7 @@ static void cfg80211_parse_mbssid_data(struct wiphy *wiphy,
 
 			non_tx_data->bssid_index = mbssid_index_ie[2];
 			non_tx_data->max_bssid_indicator = elem->data[0];
+			bssid_index = non_tx_data->bssid_index;
 
 			cfg80211_gen_new_bssid(bssid,
 					       non_tx_data->max_bssid_indicator,
@@ -1633,7 +1784,7 @@ static void cfg80211_parse_mbssid_data(struct wiphy *wiphy,
 			new_ie_len = cfg80211_gen_new_ie(ie, ielen,
 							 profile,
 							 profile_len, new_ie,
-							 gfp);
+							 bssid_index, gfp);
 			if (!new_ie_len)
 				continue;
 
@@ -1715,7 +1866,7 @@ cfg80211_update_notlisted_nontrans(struct wiphy *wiphy,
 	size_t new_ie_len;
 	struct cfg80211_bss_ies *new_ies;
 	const struct cfg80211_bss_ies *old;
-	u8 cpy_len;
+	size_t cpy_len;
 
 	lockdep_assert_held(&wiphy_to_rdev(wiphy)->bss_lock);
 

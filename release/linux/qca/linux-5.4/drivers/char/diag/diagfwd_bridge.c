@@ -57,6 +57,18 @@ struct diagfwd_bridge_info bridge_info[NUM_REMOTE_DEV] = {
 		.dci_wq = NULL,
 	},
 	{
+                .id = DIAGFWD_MDM_3,
+                .type = DIAG_DATA_TYPE,
+                .name = "MDM3",
+                .inited = 0,
+                .ctxt = 0,
+                .dev_ops = NULL,
+                .dci_read_ptr = NULL,
+                .dci_read_buf = NULL,
+                .dci_read_len = 0,
+                .dci_wq = NULL,
+        },
+	{
 		.id = DIAGFWD_MDM_DCI,
 		.type = DIAG_DCI_TYPE,
 		.name = "MDM_DCI",

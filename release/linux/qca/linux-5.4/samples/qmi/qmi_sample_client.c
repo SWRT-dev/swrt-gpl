@@ -43,6 +43,11 @@
 #define TEST_PING_REQ_MAX_MSG_LEN_V01	266
 #define TEST_DATA_REQ_MAX_MSG_LEN_V01	8456
 
+#define LIC_GET_OEM_ID_REQ_V01		0x30
+#define LIC_GET_SERIAl_NUM_REQ_V01	0x31
+#define LIC_GET_EXTERNAL_PART_REQ_V01	0x32
+#define LIC_GET_JTAG_ID_REQ_V01		0x33
+
 /* Number of iterations to run during test */
 static unsigned long niterations = 5;
 module_param_named(niterations, niterations, ulong, S_IRUGO | S_IWUSR | S_IWGRP);
@@ -80,6 +85,10 @@ static struct qmi_dir {
 static struct mutex status_print_lock;
 u8 rail_id;
 u32 rail_voltage_uv;
+u32 oem_id;
+u32 serial_num;
+u32 external_part;
+u32 jtag_id;
 
 struct test_name_type_v01 {
 	u32 name_len;
@@ -573,6 +582,243 @@ static void ping_pong_cb(struct qmi_handle *qmi, struct sockaddr_qrtr *sq,
 }
 
 /*
+ * lic_write() - lic debugfs file write handler
+ * @file:	debugfs file context
+ * @user_buf:	reference to the user data (ignored)
+ * @count:	number of bytes in @user_buf
+ * @pos:	offset in @file to write
+ *
+ * This function allows user space to send out OEM ID, Serial number and External
+ * part to fuse via QMI encoded message to the associated remote test service and
+ * will return with the result of the transaction.
+ *
+ * Return: @count, or negative errno on failure.
+ */
+static ssize_t lic_write(struct file *file, const char __user *user_buf,
+			  size_t count, loff_t *pos)
+{
+	struct qmi_handle *qmi = file->private_data;
+	struct test_ping_req_msg_v01 req = {};
+	struct qmi_txn txn;
+	int ret;
+
+	if(!strncmp(file->f_path.dentry->d_iname, "oem_id",
+			sizeof(file->f_path.dentry->d_iname))) {
+		ret = kstrtou32_from_user(user_buf, count, 0, &oem_id);
+		if (ret)
+			return ret;
+
+		memcpy(req.ping, &oem_id, sizeof(req.ping));
+
+		ret = qmi_txn_init(qmi, &txn, NULL, NULL);
+		if (ret < 0)
+			return ret;
+
+		ret = qmi_send_request(qmi, NULL, &txn,
+					LIC_GET_OEM_ID_REQ_V01,
+					TEST_PING_REQ_MAX_MSG_LEN_V01,
+					test_ping_req_msg_v01_ei, &req);
+	} else if(!strncmp(file->f_path.dentry->d_iname, "serial_num",
+			sizeof(file->f_path.dentry->d_iname))) {
+		ret = kstrtou32_from_user(user_buf, count, 0, &serial_num);
+		if (ret)
+			return ret;
+
+		memcpy(req.ping, &serial_num, sizeof(req.ping));
+
+		ret = qmi_txn_init(qmi, &txn, NULL, NULL);
+		if (ret < 0)
+			return ret;
+
+		ret = qmi_send_request(qmi, NULL, &txn,
+					LIC_GET_SERIAl_NUM_REQ_V01,
+					TEST_PING_REQ_MAX_MSG_LEN_V01,
+					test_ping_req_msg_v01_ei, &req);
+	} else if(!strncmp(file->f_path.dentry->d_iname, "external_part",
+			sizeof(file->f_path.dentry->d_iname))) {
+		ret = kstrtou32_from_user(user_buf, count, 0, &external_part);
+		if (ret)
+			return ret;
+
+		memcpy(req.ping, &external_part, sizeof(req.ping));
+
+		ret = qmi_txn_init(qmi, &txn, NULL, NULL);
+		if (ret < 0)
+			return ret;
+
+		ret = qmi_send_request(qmi, NULL, &txn,
+					LIC_GET_EXTERNAL_PART_REQ_V01,
+					TEST_PING_REQ_MAX_MSG_LEN_V01,
+					test_ping_req_msg_v01_ei, &req);
+	} else {
+		return -EIO;
+	}
+
+	if (ret < 0) {
+		qmi_txn_cancel(&txn);
+		return ret;
+	}
+
+	ret = qmi_txn_wait(&txn, 5 * HZ);
+	if (ret < 0)
+		count = ret;
+
+	return count;
+}
+
+/*
+ * lic_read() - lic debugfs file read handler
+ * @file:	debugfs file context
+ * @user_buf:	reference to the user data (ignored)
+ * @count:	number of bytes in @user_buf
+ * @pos:	offset in @file to write
+ *
+ * This function allows user space to read out OEM ID, Serial number, External
+ * part and JTAG ID from fuse via QMI encoded message to the associated remote
+ * test service and will return with the result of the transaction.
+ *
+ * Return: zero, or negative errno on failure.
+ */
+
+static ssize_t lic_read(struct file *file, char __user *buf,
+		size_t count, loff_t *pos)
+{
+	struct qmi_handle *qmi = file->private_data;
+	struct test_ping_req_msg_v01 req = {};
+	struct qmi_txn txn;
+	int ret;
+
+	if(!strncmp(file->f_path.dentry->d_iname, "oem_id",
+			sizeof(file->f_path.dentry->d_iname))) {
+
+		oem_id = 0;
+		memcpy(req.ping, &oem_id, sizeof(req.ping));
+
+		ret = qmi_txn_init(qmi, &txn, NULL, NULL);
+		if (ret < 0)
+			return ret;
+
+		ret = qmi_send_request(qmi, NULL, &txn,
+					LIC_GET_OEM_ID_REQ_V01,
+					TEST_PING_REQ_MAX_MSG_LEN_V01,
+					test_ping_req_msg_v01_ei, &req);
+	} else if(!strncmp(file->f_path.dentry->d_iname, "serial_num",
+			sizeof(file->f_path.dentry->d_iname))) {
+
+		serial_num = 0;
+		memcpy(req.ping, &serial_num, sizeof(req.ping));
+
+		ret = qmi_txn_init(qmi, &txn, NULL, NULL);
+		if (ret < 0)
+			return ret;
+
+		ret = qmi_send_request(qmi, NULL, &txn,
+					LIC_GET_SERIAl_NUM_REQ_V01,
+					TEST_PING_REQ_MAX_MSG_LEN_V01,
+					test_ping_req_msg_v01_ei, &req);
+	} else if(!strncmp(file->f_path.dentry->d_iname, "external_part",
+			sizeof(file->f_path.dentry->d_iname))) {
+
+		external_part = 0;
+		memcpy(req.ping, &external_part, sizeof(req.ping));
+
+		ret = qmi_txn_init(qmi, &txn, NULL, NULL);
+		if (ret < 0)
+			return ret;
+
+		ret = qmi_send_request(qmi, NULL, &txn,
+					LIC_GET_EXTERNAL_PART_REQ_V01,
+					TEST_PING_REQ_MAX_MSG_LEN_V01,
+					test_ping_req_msg_v01_ei, &req);
+	} else if(!strncmp(file->f_path.dentry->d_iname, "jtag_id",
+			sizeof(file->f_path.dentry->d_iname))) {
+
+		jtag_id = 0;
+		memcpy(req.ping, &jtag_id, sizeof(req.ping));
+
+		ret = qmi_txn_init(qmi, &txn, NULL, NULL);
+		if (ret < 0)
+			return ret;
+
+		ret = qmi_send_request(qmi, NULL, &txn,
+					LIC_GET_JTAG_ID_REQ_V01,
+					TEST_PING_REQ_MAX_MSG_LEN_V01,
+					test_ping_req_msg_v01_ei, &req);
+	} else {
+		return -EIO;
+	}
+
+	if (ret < 0) {
+		qmi_txn_cancel(&txn);
+		return ret;
+	}
+
+	ret = qmi_txn_wait(&txn, 5 * HZ);
+	if (ret < 0)
+		count = ret;
+
+	return 0;
+}
+
+static const struct file_operations lic_fops = {
+	.open = simple_open,
+	.write = lic_write,
+	.read = lic_read,
+};
+
+static void lic_cb(struct qmi_handle *qmi, struct sockaddr_qrtr *sq,
+			 struct qmi_txn *txn, const void *data)
+{
+	const struct test_ping_resp_msg_v01 *resp = data;
+	struct qmi_header *hdr = (struct qmi_header *)qmi->recv_buf;
+	u32 resp_val;
+
+	if (!txn) {
+		pr_err("spurious OEM ID response\n");
+		return;
+	}
+
+	if (resp->resp.result == QMI_RESULT_FAILURE_V01)
+		txn->result = -ENXIO;
+
+	if (hdr->msg_id == LIC_GET_OEM_ID_REQ_V01) {
+
+		if ((oem_id != 0) && memcmp(resp->pong, &oem_id, sizeof(resp->pong)))
+			txn->result = -EINVAL;
+
+		memcpy(&resp_val, resp->pong, sizeof(resp->pong));
+		pr_info("Response for OEM ID from %d:%d handle[%p] is 0x%x\n",
+				qmi->sq.sq_port, qmi->sq.sq_node, qmi, resp_val);
+	} else if (hdr->msg_id == LIC_GET_SERIAl_NUM_REQ_V01) {
+
+		if ((serial_num != 0) && memcmp(resp->pong, &serial_num, sizeof(resp->pong)))
+			txn->result = -EINVAL;
+
+		memcpy(&resp_val, resp->pong, sizeof(resp->pong));
+		pr_info("Response for serial number from %d:%d handle[%p] is 0x%x\n",
+				qmi->sq.sq_port, qmi->sq.sq_node, qmi, resp_val);
+	} else if (hdr->msg_id == LIC_GET_EXTERNAL_PART_REQ_V01) {
+
+		if ((external_part != 0) && memcmp(resp->pong, &external_part, sizeof(resp->pong)))
+			txn->result = -EINVAL;
+
+		memcpy(&resp_val, resp->pong, sizeof(resp->pong));
+		pr_info("Response for external part from %d:%d handle[%p] is 0x%x\n",
+				qmi->sq.sq_port, qmi->sq.sq_node, qmi, resp_val);
+	} else if (hdr->msg_id == LIC_GET_JTAG_ID_REQ_V01) {
+
+		if ((jtag_id != 0) && memcmp(resp->pong, &jtag_id, sizeof(resp->pong)))
+			txn->result = -EINVAL;
+
+		memcpy(&resp_val, resp->pong, sizeof(resp->pong));
+		pr_info("Response for JTAG ID from %d:%d handle[%p] is 0x%x\n",
+				qmi->sq.sq_port, qmi->sq.sq_node, qmi, resp_val);
+	}
+
+	complete(&txn->completion);
+}
+
+/*
  * data_write() - data debugfs file write handler
  * @file:	debugfs file context
  * @user_buf:	reference to the user data
@@ -808,6 +1054,34 @@ static struct qmi_msg_handler qmi_sample_handlers[] = {
 		.decoded_size = sizeof(struct pmic_rail_volt_set_resp_v01),
 		.fn = volt_set_cb
 	},
+	{
+		.type = QMI_RESPONSE,
+		.msg_id = LIC_GET_OEM_ID_REQ_V01,
+		.ei = test_ping_resp_msg_v01_ei,
+		.decoded_size = sizeof(struct test_ping_req_msg_v01),
+		.fn = lic_cb
+	},
+	{
+		.type = QMI_RESPONSE,
+		.msg_id = LIC_GET_SERIAl_NUM_REQ_V01,
+		.ei = test_ping_resp_msg_v01_ei,
+		.decoded_size = sizeof(struct test_ping_req_msg_v01),
+		.fn = lic_cb
+	},
+	{
+		.type = QMI_RESPONSE,
+		.msg_id = LIC_GET_EXTERNAL_PART_REQ_V01,
+		.ei = test_ping_resp_msg_v01_ei,
+		.decoded_size = sizeof(struct test_ping_req_msg_v01),
+		.fn = lic_cb
+	},
+	{
+		.type = QMI_RESPONSE,
+		.msg_id = LIC_GET_JTAG_ID_REQ_V01,
+		.ei = test_ping_resp_msg_v01_ei,
+		.decoded_size = sizeof(struct test_ping_req_msg_v01),
+		.fn = lic_cb
+	},
 	{}
 };
 
@@ -821,6 +1095,10 @@ struct qmi_sample {
 	struct dentry *de_nthreads;
 	struct dentry *de_niterations;
 	struct dentry *de_data_size;
+	struct dentry *de_oem_id;
+	struct dentry *de_serial_num;
+	struct dentry *de_external_part;
+	struct dentry *de_jtag_id;
 	struct dentry *de_pmic_dir;
 	struct dentry *de_rail_id;
 	struct dentry *de_rail_voltage_uv;
@@ -1193,6 +1471,38 @@ static int qmi_sample_probe(struct platform_device *pdev)
 		goto err_remove_de_niterations;
 	}
 
+	sample->de_oem_id = debugfs_create_file("oem_id", 0600,
+						   sample->de_dir, sample,
+						   &lic_fops);
+	if (IS_ERR(sample->de_oem_id)) {
+		pr_err("Failed to create debugfs entry for OEM ID\n");
+		goto err_remove_de_oem_id;
+	}
+
+	sample->de_serial_num = debugfs_create_file("serial_num", 0600,
+						   sample->de_dir, sample,
+						   &lic_fops);
+	if (IS_ERR(sample->de_serial_num)) {
+		pr_err("Failed to create debugfs entry for Serial Number\n");
+		goto err_remove_de_serial_num;
+	}
+
+	sample->de_external_part = debugfs_create_file("external_part", 0600,
+						   sample->de_dir, sample,
+						   &lic_fops);
+	if (IS_ERR(sample->de_external_part)) {
+		pr_err("Failed to create debugfs entry for external part\n");
+		goto err_remove_de_external_part;
+	}
+
+	sample->de_jtag_id = debugfs_create_file("jtag_id", 0400,
+						   sample->de_dir, sample,
+						   &lic_fops);
+	if (IS_ERR(sample->de_jtag_id)) {
+		pr_err("Failed to create debugfs entry for JTAG ID\n");
+		goto err_remove_de_jtag_id;
+	}
+
 	sample->de_pmic_dir = debugfs_create_dir("pmic", sample->de_dir);
 	if (IS_ERR(sample->de_pmic_dir)) {
 		ret = PTR_ERR(sample->de_pmic_dir);
@@ -1226,6 +1536,14 @@ err_remove_de_pmic_dir:
 	debugfs_remove(sample->de_pmic_dir);
 err_remove_de_data_size:
 	debugfs_remove(sample->de_data_size);
+err_remove_de_jtag_id:
+	debugfs_remove(sample->de_jtag_id);
+err_remove_de_external_part:
+	debugfs_remove(sample->de_external_part);
+err_remove_de_serial_num:
+	debugfs_remove(sample->de_serial_num);
+err_remove_de_oem_id:
+	debugfs_remove(sample->de_oem_id);
 err_remove_de_niterations:
 	debugfs_remove(sample->de_niterations);
 err_remove_de_nthreads:
@@ -1251,6 +1569,10 @@ static int qmi_sample_remove(struct platform_device *pdev)
 	debugfs_remove(sample->de_rail_voltage_uv);
 	debugfs_remove(sample->de_rail_id);
 	debugfs_remove(sample->de_pmic_dir);
+	debugfs_remove(sample->de_jtag_id);
+	debugfs_remove(sample->de_external_part);
+	debugfs_remove(sample->de_serial_num);
+	debugfs_remove(sample->de_oem_id);
 	debugfs_remove(sample->de_data_size);
 	debugfs_remove(sample->de_niterations);
 	debugfs_remove(sample->de_nthreads);

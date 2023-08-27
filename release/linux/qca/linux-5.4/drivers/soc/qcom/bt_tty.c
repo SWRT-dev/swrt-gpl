@@ -35,18 +35,68 @@
 static bool btss_debug;
 module_param(btss_debug, bool, 0644);
 
+unsigned int pid_distinct(struct bt_descriptor *btDesc, enum pid_ops action)
+{
+	int ret;
+	struct list_head *pid_q = &btDesc->pid_q;
+	pid_t pid = current->tgid;
+	struct pid_n *pid_cursor;
+	struct platform_device *rproc_pdev = btDesc->rproc_pdev;
+	struct rproc *rproc = platform_get_drvdata(rproc_pdev);
+	struct device *dev = &btDesc->pdev->dev;
+
+	list_for_each_entry(pid_cursor, pid_q, list) {
+		if (pid_cursor->pid == pid) {
+			switch (action) {
+			case ADD:
+				atomic_inc(&pid_cursor->refcnt);
+				break;
+			case REMOVE:
+				atomic_dec(&pid_cursor->refcnt);
+				break;
+			case TERMINATE:
+				ret = atomic_read(&pid_cursor->refcnt);
+				atomic_sub(ret - 1, &rproc->power);
+				list_del(&pid_cursor->list);
+				kfree(pid_cursor);
+				pid_cursor = NULL;
+				break;
+			default:
+				dev_info(dev, "Invalid operation\n");
+				pr_err("Invalid operation\n");
+				return -ENOENT;
+			}
+			goto out;
+		}
+	}
+
+	pid_cursor = kzalloc(sizeof(struct pid_n), GFP_KERNEL);
+	if (!pid_cursor)
+		return -ENOMEM;
+
+	pid_cursor->pid = pid;
+	atomic_inc(&pid_cursor->refcnt);
+	list_add_tail(&pid_cursor->list, pid_q);
+out:
+	return pid_cursor ? atomic_read(&pid_cursor->refcnt) : 0;
+}
+EXPORT_SYMBOL(pid_distinct);
+
+void pid_show(struct bt_descriptor *btDesc)
+{
+	struct pid_n *pid_cursor;
+	struct list_head *pid_q = &btDesc->pid_q;
+	struct device *dev = &btDesc->pdev->dev;
+
+	dev_info(&btDesc->pdev->dev, "Rgistered PIDS:\n");
+	list_for_each_entry(pid_cursor, pid_q, list) {
+		dev_info(dev, "%d\n", pid_cursor->pid);
+	}
+}
+
 int bt_ipc_avail_size(struct bt_descriptor *btDesc)
 {
 	return tty_buffer_space_avail(&btDesc->tty_port);
-}
-
-static int bt_open(struct tty_struct *tty, struct file *file)
-{
-	return 0;
-}
-
-static void bt_close(struct tty_struct *tty, struct file *file)
-{
 }
 
 static
@@ -112,10 +162,12 @@ int bt_ioctl(struct tty_struct *tty, unsigned int cmd, unsigned long arg)
 			ret = rproc_boot(rproc);
 			if (ret)
 				dev_err(dev, "m0 boot fail, ret = %d\n", ret);
+			else
+				pid_distinct(btDesc, ADD);
 		} else {
+			pid_distinct(btDesc, tty->closing ? TERMINATE : REMOVE);
 			rproc_shutdown(rproc);
 		}
-
 		break;
 	default:
 		ret = -ENOIOCTLCMD;
@@ -139,6 +191,25 @@ void bt_unthrottle(struct tty_struct *tty)
 
 	wake_up(&btDesc->ipc.wait_q);
 	enable_irq(btDesc->ipc.irq);
+}
+
+static int bt_open(struct tty_struct *tty, struct file *file)
+{
+	int ret = 0;
+
+	tty->closing = 0;
+	ret = bt_ioctl(tty, IOCTL_IPC_BOOT, 1);
+	return ret;
+}
+
+static void bt_close(struct tty_struct *tty, struct file *file)
+{
+	struct bt_descriptor *btDesc = container_of(tty->port,
+						struct bt_descriptor, tty_port);
+
+	tty->closing = 1;
+	bt_ioctl(tty, IOCTL_IPC_BOOT, 0);
+	pid_show(btDesc);
 }
 
 static int bt_tty_activate(struct tty_port *port, struct tty_struct *tty)
@@ -543,21 +614,14 @@ static int bt_probe(struct platform_device *pdev)
 	btDesc->rproc_pdev = platform_device_register_data(&pdev->dev,
 							"bt_rproc_driver",
 							pdev->id, &btDesc,
-							sizeof(*btDesc));
+							sizeof(btDesc));
 	if (IS_ERR(btDesc->rproc_pdev)) {
 		ret = PTR_ERR(btDesc->rproc_pdev);
 		dev_err(&pdev->dev, "err registering rproc, ret = %d\n", ret);
 		goto err_deinit_tty;
 	}
 
-
-	init_waitqueue_head(&btDesc->ipc.wait_q);
-
-	ret = bt_ipc_init(btDesc);
-	if (ret) {
-		dev_err(&pdev->dev, "%s err initializing IPC\n", __func__);
-		goto err_deinit_tty;
-	}
+	INIT_LIST_HEAD(&btDesc->pid_q);
 
 	platform_set_drvdata(pdev, btDesc);
 
@@ -573,7 +637,6 @@ static int bt_remove(struct platform_device *pdev)
 {
 	struct bt_descriptor *btDesc = platform_get_drvdata(pdev);
 
-	bt_ipc_deinit(btDesc);
 	bt_tty_deinit(btDesc);
 	bt_debugfs_deinit(btDesc);
 

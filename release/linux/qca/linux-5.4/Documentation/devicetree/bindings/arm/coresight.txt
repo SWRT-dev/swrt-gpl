@@ -101,9 +101,16 @@ its hardware characteristcs.
 	* arm,scatter-gather: boolean. Indicates that the TMC-ETR can safely
 	  use the SG mode on this system.
 
+	* csr-atid-offset: When there are two ETRs, each of the ETR has its own ATID config
+	  csr registers. It is the ETR_ATID0 register offset to the CSR base address.
+
 * Optional property for CATU :
 	* interrupts : Exactly one SPI may be listed for reporting the address
 	  error
+
+* Optional property for all source components:
+	* atid: atid for the trace data of the source. If the data has two atids, configure
+	  two ids for the source. This is for multi ETR sink.
 
 Graph bindings for Coresight
 -------------------------------

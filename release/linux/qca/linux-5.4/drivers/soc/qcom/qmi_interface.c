@@ -472,7 +472,7 @@ static void qmi_handle_message(struct qmi_handle *qmi,
 			       struct sockaddr_qrtr *sq,
 			       const void *buf, size_t len)
 {
-	const struct qmi_header *hdr;
+	struct qmi_header *hdr;
 	struct qmi_txn tmp_txn;
 	struct qmi_txn *txn = NULL;
 	int ret;
@@ -483,7 +483,10 @@ static void qmi_handle_message(struct qmi_handle *qmi,
 		return;
 	}
 
-	hdr = buf;
+	hdr = (struct qmi_header *)buf;
+	hdr->txn_id = le16_to_cpu(hdr->txn_id);
+	hdr->msg_id = le16_to_cpu(hdr->msg_id);
+	hdr->msg_len = le16_to_cpu(hdr->msg_len);
 
 	/* If this is a response, find the matching transaction handle */
 	if (hdr->type == QMI_RESPONSE) {

@@ -1138,5 +1138,13 @@ config REGULATOR_CPR4_APSS
           adjustments for performance boost mode. This driver reads both initial
           voltage and CPR target quotient values out of hardware fuses.
 
+config REGULATOR_QTI_GPIO
+        bool "QTI GPIO regulator driver"
+        depends on REGULATOR_GPIO
+        help
+          This driver supports Qualcomm Technologies, Inc. GPIO regulator
+          can be used for boards with discrete regulators which voltage will
+          be controlled using REGULATOR_GPIO driver.
+
 endif
 

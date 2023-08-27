@@ -22,6 +22,7 @@
 #include <linux/usb/usb_qdss.h>
 
 #include "coresight-byte-cntr.h"
+#include "coresight-priv.h"
 
 #define TMC_RSZ			0x004
 #define TMC_STS			0x00c
@@ -276,6 +277,7 @@ struct tmc_drvdata {
 	atomic_t		completed_seq_no;
 	struct clk		*etr_usb_clk;
 	void __iomem		*in_funnel_base;
+	u32			atid_offset;
 };
 
 struct etr_buf_operations {
@@ -412,6 +414,7 @@ ssize_t tmc_etr_get_sysfs_trace(struct tmc_drvdata *drvdata,
 ssize_t tmc_etr_buf_get_data(struct etr_buf *etr_buf,
 				u64 offset, size_t len, char **bufpp);
 int tmc_etr_switch_mode(struct tmc_drvdata *drvdata, const char *out_mode);
+extern const struct csr_set_atid_op csr_atid_ops;
 
 
 #define TMC_REG_PAIR(name, lo_off, hi_off)				\

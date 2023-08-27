@@ -150,14 +150,16 @@ RSA Sign data:
 (1) cat key_blob.txt > /sys/rsa_sec_key/rsa_key_blob
     or
     cat import_key_blob.txt > /sys/rsa_sec_key/rsa_key_blob
-(2) cat data.txt > /sys/rsa_sec_key/rsa_sign
+(2) echo -n "data.txt" > /sys/rsa_sec_key/rsa_sign
+    (Note: data.txt is the input file that can contain plain data upto size 8k)
 (3) cat /sys/rsa_sec_key/rsa_sign > signed_data.txt
 
 RSA Verification of Signature:
 (1) cat key_blob.txt > /sys/rsa_sec_key/rsa_key_blob
     or
     cat import_key_blob.txt > /sys/rsa_sec_key/rsa_key_blob
-(2) cat data.txt > /sys/rsa_sec_key/rsa_sign
+(2) echo -n "data.txt" > /sys/rsa_sec_key/rsa_sign
+    (Note: data.txt is the input file that can contain plain data upto size 8k)
 (3) cat signed_data.txt > /sys/rsa_sec_key/rsa_verify
 (4) cat /sys/rsa_sec_key/rsa_verify > verification_result.txt
 (5) cat verification_result.txt
@@ -197,3 +199,49 @@ value in non-secure target systems.
 
 Without doing this, we will be able to encrypt in one board and decrypt in
 another board using the same keyblob.
+
+AES 256 V2 API's supported in ipq9574 (TME-L based platform) can be used as
+below:
+
+Below are sample inputs:
+
+Context data is 64 byte which can be fed as below:
+echo "34613132613738396434316363323738656166343132363635613831643530313461313261373839643431636332373865616634313236363561383164353031" > ./sys/sec_key/context_data
+
+source_data can be either 1 (OEM product seed) or 2 (CRBK)
+echo 1 > ./sys/sec_key/source_data
+
+bindings data has device and software state bindings for key:
+echo 2 > ./sys/sec_key/bindings_data
+
+To derive the key with given inputs:
+cat /sys/sec_key/derive_aes_key > key_handle.txt
+cat key_handle.txt
+
+clear key API:
+
+Note:
+The user cannot derive more than 3 keys. Trying to derive a 4th key would result
+in an error saying "key handle out of slot". If the user wants to derive a new key
+after 3 successful attempts, then the user has to clear an already existing key
+by passing it's key handle to the clear_key sysfs entry. Once a derived key handle
+is cleared, the key cannot be used for further encryption/decryption of data.
+
+To clear a derived key:
+eg: echo 31 > /sys/sec_key/clear_key
+
+Giving the required aes256 parameters:
+echo 1 > ./sys/sec_key/aes_type
+echo 1 > ./sys/sec_key/aes_mode
+echo -n -e \\x69\\x01\\x50\\x05\\x26\\x35\\x27\\x2c\\xf4\\xe0\\x19\\x1c\\xa9\\x74\\x36\\x45 > /sys/sec_key/aes_ivdata
+
+To encrypt:
+echo "Aes Encryption!" > /sys/sec_key/aes_encrypt
+cat /sys/sec_key/aes_encrypt > /tmp/enc.txt
+
+To decrypt:
+cat /tmp/enc.txt > /sys/sec_key/aes_decrypt
+cat /sys/sec_key/aes_decrypt > /tmp/pt.txt
+
+To check the tzlog buff after above operations if required:
+cat sys/firmware/tzapp/log_buf

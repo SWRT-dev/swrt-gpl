@@ -364,6 +364,7 @@ static void _wil6210_disconnect_complete(struct wil6210_vif *vif,
 			cfg80211_disconnected(ndev, reason_code,
 					      NULL, 0,
 					      vif->locally_generated_disc,
+					      NL80211_MLO_INVALID_LINK_ID,
 					      GFP_KERNEL);
 			vif->locally_generated_disc = false;
 		} else if (test_bit(wil_vif_fwconnecting, vif->status)) {

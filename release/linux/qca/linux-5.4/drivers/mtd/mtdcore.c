@@ -36,7 +36,9 @@
 #include "mtdcore.h"
 
 struct backing_dev_info *mtd_bdi;
-
+#ifdef CONFIG_KASAN
+bool nand_device_suspended = false;
+#endif
 #ifdef CONFIG_PM_SLEEP
 
 static int mtd_cls_suspend(struct device *dev)
@@ -433,9 +435,12 @@ static int mtd_reboot_notifier(struct notifier_block *n, unsigned long state,
 			       void *cmd)
 {
 	struct mtd_info *mtd;
-
 	mtd = container_of(n, struct mtd_info, reboot_notifier);
 	mtd->_reboot(mtd);
+#ifdef CONFIG_KASAN
+	nand_device_suspended = true;
+	pr_info("NAND device suspended. Ignoring further read/write requests\n");
+#endif
 
 	return NOTIFY_DONE;
 }

@@ -477,6 +477,10 @@ static void bt_ipc_worker(struct work_struct *work)
 						    ipc);
 	struct bt_mem *btmem = &btDesc->btmem;
 	bool ackReqd = false;
+	struct rproc *rproc = platform_get_drvdata(btDesc->rproc_pdev);
+
+	if (!atomic_read(&rproc->power))
+		return;
 
 	spin_lock(&btDesc->lock);
 
@@ -531,6 +535,7 @@ int bt_ipc_init(struct bt_descriptor *btDesc)
 	struct bt_ipc *ipc = &btDesc->ipc;
 	struct device *dev = &btDesc->pdev->dev;
 
+	init_waitqueue_head(&ipc->wait_q);
 	spin_lock_init(&btDesc->lock);
 	INIT_LIST_HEAD(&ipc->tx_q);
 
@@ -574,8 +579,12 @@ void bt_ipc_deinit(struct bt_descriptor *btDesc)
 	struct bt_ipc *ipc = &btDesc->ipc;
 	struct device *dev = &btDesc->pdev->dev;
 
-	atomic_notifier_chain_unregister(&panic_notifier_list,
-							&btDesc->panic_nb);
+	atomic_set(&btDesc->state, 0);
 	devm_free_irq(dev, ipc->irq, btDesc);
+	bt_ipc_purge_tx_queue(btDesc);
+	atomic_notifier_chain_unregister(&panic_notifier_list,
+			&btDesc->panic_nb);
+	flush_work(&ipc->work);
+	destroy_workqueue(ipc->wq);
 }
 EXPORT_SYMBOL(bt_ipc_deinit);

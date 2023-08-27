@@ -79,7 +79,9 @@ extern char poweroff_cmd[POWEROFF_CMD_PATH_LEN];
 
 extern void orderly_poweroff(bool force);
 extern void orderly_reboot(void);
-
+#ifdef CONFIG_KASAN
+extern bool nand_device_suspended;
+#endif
 /*
  * Emergency restart, callable from an interrupt handler.
  */

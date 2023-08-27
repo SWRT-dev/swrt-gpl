@@ -6,6 +6,7 @@
 #include <linux/module.h>
 #include <linux/bitops.h>
 #include <linux/cdev.h>
+#include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/io.h>
 #include <linux/iopoll.h>
@@ -46,24 +47,32 @@
 #define DCC_CFG				(0x20)
 #define DCC_FDA_CURR			(0x24)
 #define DCC_LLA_CURR			(0x28)
-#define DCC_LL_LOCK(m)			(0x2C + 0x80 * (m + HLOS_LIST_START))
-#define DCC_LL_CFG(m)			(0x30 + 0x80 * (m + HLOS_LIST_START))
-#define DCC_LL_BASE(m)			(0x34 + 0x80 * (m + HLOS_LIST_START))
-#define DCC_FD_BASE(m)			(0x38 + 0x80 * (m + HLOS_LIST_START))
-#define DCC_LL_TIMEOUT(m)		(0x3c + 0x80 * (m + HLOS_LIST_START))
-#define DCC_TRANS_TIMEOUT(m)		(0x40 + 0x80 * (m + HLOS_LIST_START))
-#define DCC_LL_INT_ENABLE(m)		(0x44 + 0x80 * (m + HLOS_LIST_START))
-#define DCC_LL_INT_STATUS(m)		(0x48 + 0x80 * (m + HLOS_LIST_START))
-#define DCC_FDA_CAPTURED(m)		(0x4C + 0x80 * (m + HLOS_LIST_START))
-#define DCC_LLA_CAPTURED(m)		(0x50 + 0x80 * (m + HLOS_LIST_START))
-#define DCC_LL_CRC_CAPTURED(m)		(0x54 + 0x80 * (m + HLOS_LIST_START))
-#define DCC_LL_SW_TRIGGER(m)		(0x58 + 0x80 * (m + HLOS_LIST_START))
-#define DCC_LL_BUS_ACCESS_STATUS(m)	(0x5C + 0x80 * (m + HLOS_LIST_START))
+#define DCC_QAD_VALUE			(0x2C)
+#define DCC_LL_TO_CNTR_VAL		(0x30)
+#define DCC_LL_LOCK(m)			(0x34 + 0x80 * (m + HLOS_LIST_START))
+#define DCC_LL_CFG(m)			(0x38 + 0x80 * (m + HLOS_LIST_START))
+#define DCC_LL_BASE(m)			(0x3c + 0x80 * (m + HLOS_LIST_START))
+#define DCC_FD_BASE(m)			(0x40 + 0x80 * (m + HLOS_LIST_START))
+#define DCC_LL_TIMEOUT(m)		(0x44 + 0x80 * (m + HLOS_LIST_START))
+#define DCC_TRANS_TIMEOUT(m)		(0x48 + 0x80 * (m + HLOS_LIST_START))
+#define DCC_LL_INT_ENABLE(m)		(0x4C + 0x80 * (m + HLOS_LIST_START))
+#define DCC_LL_INT_STATUS(m)		(0x50 + 0x80 * (m + HLOS_LIST_START))
+#define DCC_FDA_CAPTURED(m)		(0x54 + 0x80 * (m + HLOS_LIST_START))
+#define DCC_LLA_CAPTURED(m)		(0x58 + 0x80 * (m + HLOS_LIST_START))
+#define DCC_LL_CRC_CAPTURED(m)		(0x5C + 0x80 * (m + HLOS_LIST_START))
+#define DCC_LL_SW_TRIGGER(m)		(0x60 + 0x80 * (m + HLOS_LIST_START))
+#define DCC_LL_BUS_ACCESS_STATUS(m)	(0x64 + 0x80 * (m + HLOS_LIST_START))
+#define DCC_CTI_TRIG(m)			(0x68 + 0x80 * (m + HLOS_LIST_START))
+#define DCC_qad_output(m)		(0x6C + 0x80 * (m + HLOS_LIST_START))
 
-#define DCC_MAP2_LEVEL1			(0x18)
-#define DCC_MAP2_OFFSET1		(0x10)
-#define DCC_MAP2_LEVEL2			(0x44)
-#define DCC_MAP2_OFFSET2		(0x14)
+#define DCC_MAP_LEVEL1			(0x18)
+#define DCC_MAP_LEVEL2			(0x34)
+#define DCC_MAP_LEVEL3			(0x4C)
+
+#define DCC_MAP_OFFSET1			(0x10)
+#define DCC_MAP_OFFSET2			(0x18)
+#define DCC_MAP_OFFSET3			(0x1C)
+#define DCC_MAP_OFFSET4			(0x8)
 
 #define DCC_FIX_LOOP_OFFSET		(16)
 
@@ -112,6 +121,12 @@ enum dcc_descriptor_type {
 	DCC_WRITE_TYPE
 };
 
+enum dcc_mem_map_ver {
+	DCC_MEM_MAP_VER1,
+	DCC_MEM_MAP_VER2,
+	DCC_MEM_MAP_VER3
+};
+
 static const char * const str_dcc_data_sink[] = {
 	[DCC_DATA_SINK_SRAM]		= "sram",
 	[DCC_DATA_SINK_ATB]		= "atb",
@@ -145,12 +160,12 @@ struct dcc_drvdata {
 	uint32_t		ram_offset;
 	enum dcc_data_sink	*data_sink;
 	enum dcc_func_type	*func_type;
+	enum dcc_mem_map_ver	mem_map_ver;
 	uint32_t		ram_cfg;
 	uint32_t		ram_start;
 	bool			*enable;
 	bool			*configured;
 	bool			interrupt_disable;
-	bool			memory_map2;
 	char			*sram_node;
 	struct cdev		sram_dev;
 	struct class		*sram_class;
@@ -160,15 +175,22 @@ struct dcc_drvdata {
 	uint8_t			curr_list;
 	uint8_t			cti_trig;
 	uint8_t			loopoff;
+	struct clk_bulk_data	*clks;
+	int num_clks;
 };
 
 static uint32_t dcc_offset_conv(struct dcc_drvdata *drvdata, uint32_t off)
 {
-	if (!drvdata->memory_map2) {
-		if ((off & 0x7F) > DCC_MAP2_LEVEL2)
-			return (off - DCC_MAP2_OFFSET2);
-		else if ((off & 0x7F) > DCC_MAP2_LEVEL1)
-			return (off - DCC_MAP2_OFFSET1);
+	if (drvdata->mem_map_ver == DCC_MEM_MAP_VER1) {
+		if ((off & 0x7F) >= DCC_MAP_LEVEL3)
+			return (off - DCC_MAP_OFFSET3);
+		if ((off & 0x7F) >= DCC_MAP_LEVEL2)
+			return (off - DCC_MAP_OFFSET2);
+		else if ((off & 0x7F) >= DCC_MAP_LEVEL1)
+			return (off - DCC_MAP_OFFSET1);
+	} else if (drvdata->mem_map_ver == DCC_MEM_MAP_VER2) {
+		if ((off & 0x7F) >= DCC_MAP_LEVEL2)
+			return (off - DCC_MAP_OFFSET4);
 	}
 	return (off);
 }
@@ -217,7 +239,10 @@ static int dcc_read_status(struct dcc_drvdata *drvdata)
 				curr_list, bus_status);
 
 			ll_cfg = dcc_readl(drvdata, DCC_LL_CFG(curr_list));
-			tmp_ll_cfg = ll_cfg & ~BIT(9);
+			if (drvdata->mem_map_ver == DCC_MEM_MAP_VER3)
+				tmp_ll_cfg = ll_cfg & ~BIT(8);
+			else
+				tmp_ll_cfg = ll_cfg & ~BIT(9);
 			dcc_writel(drvdata, tmp_ll_cfg, DCC_LL_CFG(curr_list));
 			dcc_writel(drvdata, 0x3,
 				   DCC_LL_BUS_ACCESS_STATUS(curr_list));
@@ -242,7 +267,10 @@ static int dcc_sw_trigger(struct dcc_drvdata *drvdata)
 		if (!drvdata->enable[curr_list])
 			continue;
 		ll_cfg = dcc_readl(drvdata, DCC_LL_CFG(curr_list));
-		tmp_ll_cfg = ll_cfg & ~BIT(9);
+		if (drvdata->mem_map_ver == DCC_MEM_MAP_VER3)
+			tmp_ll_cfg = ll_cfg & ~BIT(8);
+		else
+			tmp_ll_cfg = ll_cfg & ~BIT(9);
 		dcc_writel(drvdata, tmp_ll_cfg, DCC_LL_CFG(curr_list));
 		dcc_writel(drvdata, 1, DCC_LL_SW_TRIGGER(curr_list));
 		dcc_writel(drvdata, ll_cfg, DCC_LL_CFG(curr_list));
@@ -695,9 +723,13 @@ static int dcc_enable(struct dcc_drvdata *drvdata)
 		}
 
 		/* 5. Configure trigger */
-		dcc_writel(drvdata, BIT(9) | ((drvdata->cti_trig << 8) |
-			   (drvdata->data_sink[list] << 4) |
-			   (drvdata->func_type[list])), DCC_LL_CFG(list));
+		if (drvdata->mem_map_ver == DCC_MEM_MAP_VER3)
+			dcc_writel(drvdata, BIT(8) | ((drvdata->data_sink[list] << 4) |
+					(drvdata->func_type[list])), DCC_LL_CFG(list));
+		else
+			dcc_writel(drvdata, BIT(9) | ((drvdata->cti_trig << 8) |
+					(drvdata->data_sink[list] << 4) |
+					(drvdata->func_type[list])), DCC_LL_CFG(list));
 	}
 
 err:
@@ -1449,6 +1481,11 @@ static ssize_t cti_trig_show(struct device *dev,
 {
 	struct dcc_drvdata *drvdata = dev_get_drvdata(dev);
 
+	if (drvdata->mem_map_ver == DCC_MEM_MAP_VER3) {
+		dev_err(dev, "cti trig is not supported\n");
+		return -EINVAL;
+	}
+
 	return scnprintf(buf, PAGE_SIZE, "%d\n", drvdata->cti_trig);
 }
 
@@ -1459,6 +1496,11 @@ static ssize_t cti_trig_store(struct device *dev,
 	unsigned long val;
 	int ret = 0;
 	struct dcc_drvdata *drvdata = dev_get_drvdata(dev);
+
+	if (drvdata->mem_map_ver == DCC_MEM_MAP_VER3) {
+		dev_err(dev, "cti trig is not supported\n");
+		return -EINVAL;
+	}
 
 	if (kstrtoul(buf, 16, &val))
 		return -EINVAL;
@@ -1785,13 +1827,35 @@ static int dcc_probe(struct platform_device *pdev)
 	if (ret)
 		return -EINVAL;
 
-	if ((dcc_readl(drvdata, DCC_HW_INFO) & 0x3F) == 0x3F) {
-		drvdata->memory_map2 = true;
+	drvdata->num_clks = devm_clk_bulk_get_all(dev, &drvdata->clks);
+	if (drvdata->num_clks < 0) {
+		dev_err(dev, "failed to get clocks\n");
+		return drvdata->num_clks;
+	};
+
+	ret = clk_bulk_prepare_enable(drvdata->num_clks, drvdata->clks);
+	if (ret) {
+		dev_err(dev, "failed to enable clocks, err = %d\n", ret);
+		return ret;
+	};
+
+	if (BVAL(dcc_readl(drvdata, DCC_HW_INFO), 9) ||
+			of_device_is_compatible(pdev->dev.of_node, "qcom,dcc-v2-ipq5332")) {
+		drvdata->mem_map_ver = DCC_MEM_MAP_VER3;
 		drvdata->nr_link_list = dcc_readl(drvdata, DCC_LL_NUM_INFO);
-		if (drvdata->nr_link_list == 0)
-			return  -EINVAL;
+		if (drvdata->nr_link_list == 0) {
+			ret = -EINVAL;
+			goto err;
+		}
+	} else if ((dcc_readl(drvdata, DCC_HW_INFO) & 0x3F) == 0x3F) {
+		drvdata->mem_map_ver = DCC_MEM_MAP_VER2;
+		drvdata->nr_link_list = dcc_readl(drvdata, DCC_LL_NUM_INFO);
+		if (drvdata->nr_link_list == 0) {
+			ret = -EINVAL;
+			goto err;
+		}
 	} else {
-		drvdata->memory_map2 = false;
+		drvdata->mem_map_ver = DCC_MEM_MAP_VER1;
 		drvdata->nr_link_list = DCC_MAX_LINK_LIST;
 	}
 
@@ -1803,28 +1867,40 @@ static int dcc_probe(struct platform_device *pdev)
 	mutex_init(&drvdata->mutex);
 	drvdata->data_sink = devm_kzalloc(dev, drvdata->nr_link_list *
 			sizeof(enum dcc_data_sink), GFP_KERNEL);
-	if (!drvdata->data_sink)
-		return -ENOMEM;
+	if (!drvdata->data_sink) {
+		ret = -ENOMEM;
+		goto err;
+	}
 	drvdata->func_type = devm_kzalloc(dev, drvdata->nr_link_list *
 			sizeof(enum dcc_func_type), GFP_KERNEL);
-	if (!drvdata->func_type)
-		return -ENOMEM;
+	if (!drvdata->func_type) {
+		ret = -ENOMEM;
+		goto err;
+	}
 	drvdata->enable = devm_kzalloc(dev, drvdata->nr_link_list *
 			sizeof(bool), GFP_KERNEL);
-	if (!drvdata->enable)
-		return -ENOMEM;
+	if (!drvdata->enable) {
+		ret = -ENOMEM;
+		goto err;
+	}
 	drvdata->configured = devm_kzalloc(dev, drvdata->nr_link_list *
 			sizeof(bool), GFP_KERNEL);
-	if (!drvdata->configured)
-		return -ENOMEM;
+	if (!drvdata->configured) {
+		ret = -ENOMEM;
+		goto err;
+	}
 	drvdata->nr_config = devm_kzalloc(dev, drvdata->nr_link_list *
 			sizeof(uint32_t), GFP_KERNEL);
-	if (!drvdata->nr_config)
-		return -ENOMEM;
+	if (!drvdata->nr_config) {
+		ret = -ENOMEM;
+		goto err;
+	}
 	drvdata->cfg_head = devm_kzalloc(dev, drvdata->nr_link_list *
 			sizeof(struct list_head), GFP_KERNEL);
-	if (!drvdata->cfg_head)
-		return -ENOMEM;
+	if (!drvdata->cfg_head) {
+		ret = -ENOMEM;
+		goto err;
+	}
 
 	for (i = 0; i < drvdata->nr_link_list; i++) {
 		INIT_LIST_HEAD(&drvdata->cfg_head[i]);
@@ -1855,12 +1931,15 @@ static int dcc_probe(struct platform_device *pdev)
 
 	return 0;
 err:
+	clk_bulk_disable_unprepare(drvdata->num_clks, drvdata->clks);
 	return ret;
 }
 
 static int dcc_remove(struct platform_device *pdev)
 {
 	struct dcc_drvdata *drvdata = platform_get_drvdata(pdev);
+
+	clk_bulk_disable_unprepare(drvdata->num_clks, drvdata->clks);
 
 	dcc_sram_dev_exit(drvdata);
 
@@ -1871,6 +1950,7 @@ static int dcc_remove(struct platform_device *pdev)
 
 static const struct of_device_id msm_dcc_match[] = {
 	{ .compatible = "qcom,dcc-v2"},
+	{ .compatible = "qcom,dcc-v2-ipq5332"},
 	{}
 };
 

@@ -59,6 +59,7 @@
 &blsp1_uart2 {
 	pinctrl-0 = <&hsuart_pins &btcoex_pins>;
 	pinctrl-names = "default";
+	qca,bt-rfr-fixup;
 	dmas = <&blsp_dma 2>,
 		<&blsp_dma 3>;
 	dma-names = "tx", "rx";
@@ -381,7 +382,9 @@
 };
 
 &pcie0 {
+#if defined(__CNSS2__)
 	status = "ok";
+#endif
 };
 
 &qusb_phy_1 {

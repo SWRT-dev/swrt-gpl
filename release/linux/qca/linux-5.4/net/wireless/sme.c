@@ -753,8 +753,10 @@ void __cfg80211_connect_result(struct net_device *dev,
 		return;
 	}
 
-	if (WARN_ON(!cr->bss))
+	if (!cr->bss) {
+		pr_warn("%s:bss not found\n", __func__);
 		return;
+	}
 
 	wdev->current_bss = bss_from_pub(cr->bss);
 
@@ -1073,7 +1075,8 @@ void cfg80211_port_authorized(struct net_device *dev, const u8 *bssid,
 EXPORT_SYMBOL(cfg80211_port_authorized);
 
 void __cfg80211_disconnected(struct net_device *dev, const u8 *ie,
-			     size_t ie_len, u16 reason, bool from_ap)
+			     size_t ie_len, u16 reason, bool from_ap,
+			     int link_id)
 {
 	struct wireless_dev *wdev = dev->ieee80211_ptr;
 	struct cfg80211_registered_device *rdev = wiphy_to_rdev(wdev->wiphy);
@@ -1088,6 +1091,13 @@ void __cfg80211_disconnected(struct net_device *dev, const u8 *ie,
 		    wdev->iftype != NL80211_IFTYPE_P2P_CLIENT))
 		return;
 
+	if (link_id >= 0 && link_id <= NL80211_MLD_MAX_NUM_LINKS) {
+		/* MLO Link Downgrade */
+		nl80211_send_disconnected(rdev, dev, reason, ie,
+					  ie_len, from_ap, link_id);
+		return;
+	}
+
 	if (wdev->current_bss) {
 		cfg80211_unhold_bss(wdev->current_bss);
 		cfg80211_put_bss(wdev->wiphy, &wdev->current_bss->pub);
@@ -1099,7 +1109,8 @@ void __cfg80211_disconnected(struct net_device *dev, const u8 *ie,
 	kzfree(wdev->connect_keys);
 	wdev->connect_keys = NULL;
 
-	nl80211_send_disconnected(rdev, dev, reason, ie, ie_len, from_ap);
+	nl80211_send_disconnected(rdev, dev, reason, ie, ie_len, from_ap,
+				  NL80211_MLO_INVALID_LINK_ID);
 
 	/* stop critical protocol if supported */
 	if (rdev->ops->crit_proto_stop && rdev->crit_proto_nlportid) {
@@ -1136,7 +1147,7 @@ void __cfg80211_disconnected(struct net_device *dev, const u8 *ie,
 
 void cfg80211_disconnected(struct net_device *dev, u16 reason,
 			   const u8 *ie, size_t ie_len,
-			   bool locally_generated, gfp_t gfp)
+			   bool locally_generated, int link_id, gfp_t gfp)
 {
 	struct wireless_dev *wdev = dev->ieee80211_ptr;
 	struct cfg80211_registered_device *rdev = wiphy_to_rdev(wdev->wiphy);
@@ -1153,6 +1164,7 @@ void cfg80211_disconnected(struct net_device *dev, u16 reason,
 	memcpy((void *)ev->dc.ie, ie, ie_len);
 	ev->dc.reason = reason;
 	ev->dc.locally_generated = locally_generated;
+	ev->dc.link_id = link_id;
 
 	spin_lock_irqsave(&wdev->event_lock, flags);
 	list_add_tail(&ev->list, &wdev->event_list);
@@ -1318,7 +1330,7 @@ void cfg80211_autodisconnect_wk(struct work_struct *work)
 			break;
 		case NL80211_IFTYPE_AP:
 		case NL80211_IFTYPE_P2P_GO:
-			__cfg80211_stop_ap(rdev, wdev->netdev, false);
+			__cfg80211_stop_ap(rdev, wdev->netdev, false, NULL);
 			break;
 		case NL80211_IFTYPE_MESH_POINT:
 			__cfg80211_leave_mesh(rdev, wdev->netdev);

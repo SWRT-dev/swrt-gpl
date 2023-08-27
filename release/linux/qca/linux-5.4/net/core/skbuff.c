@@ -468,13 +468,10 @@ struct sk_buff *__netdev_alloc_skb(struct net_device *dev,
 	unsigned int len = length;
 
 #ifdef CONFIG_SKB_RECYCLER
-	skb = skb_recycler_alloc(dev, length);
+	bool reset_skb = true;
+	skb = skb_recycler_alloc(dev, length, reset_skb);
 	if (likely(skb)) {
-		/* SKBs in the recycler are from various unknown sources.
-		 * Their truesize is unknown. We should set truesize
-		 * as the needed buffer size before using it.
-		 */
-		skb->truesize = SKB_TRUESIZE(SKB_DATA_ALIGN(len + NET_SKB_PAD));
+		skb->recycled_for_ds = 0;
 		return skb;
 	}
 
@@ -486,12 +483,6 @@ struct sk_buff *__netdev_alloc_skb(struct net_device *dev,
 			  SKB_ALLOC_RX, NUMA_NO_NODE);
 	if (!skb)
 		goto skb_fail;
-
-	/* Set truesize as the needed buffer size
-	 * rather than the allocated size by __alloc_skb().
-	 */
-	if (length + NET_SKB_PAD < SKB_WITH_OVERHEAD(PAGE_SIZE))
-		skb->truesize = SKB_TRUESIZE(SKB_DATA_ALIGN(length + NET_SKB_PAD));
 
 	goto skb_success;
 #else
@@ -559,6 +550,134 @@ skb_fail:
 	return skb;
 }
 EXPORT_SYMBOL(__netdev_alloc_skb);
+
+#ifdef CONFIG_SKB_RECYCLER
+/* __netdev_alloc_skb_no_skb_reset - allocate an skbuff for rx on a specific device
+ *	@dev: network device to receive on
+ *	@length: length to allocate
+ *	@gfp_mask: get_free_pages mask, passed from wifi driver
+ *
+ *	Allocate a new &sk_buff and assign it a usage count of one. The
+ *	buffer has NET_SKB_PAD headroom built in. Users should allocate
+ *	the headroom they think they need without accounting for the
+ *	built in space. The built in space is used for optimisations.
+ *
+ *	Currently, using __netdev_alloc_skb_no_skb_reset for DS alone
+ *	and it invokes skb_recycler_alloc with reset_skb as false.
+ *	Hence, recycler pool will not do reset_struct when it
+ *	allocates DS used buffer to DS module, which will
+ *	improve the performance
+ *
+ *      %NULL is returned if there is no free memory.
+ */
+struct sk_buff *__netdev_alloc_skb_no_skb_reset(struct net_device *dev,
+						unsigned int length, gfp_t gfp_mask)
+{
+	struct sk_buff *skb;
+	unsigned int len = length;
+	bool reset_skb = false;
+
+#ifdef CONFIG_SKB_RECYCLER
+	skb = skb_recycler_alloc(dev, length, reset_skb);
+	if (likely(skb)) {
+		/* SKBs in the recycler are from various unknown sources.
+		* Their truesize is unknown. We should set truesize
+		* as the needed buffer size before using it.
+		*/
+		skb->truesize = SKB_TRUESIZE(SKB_DATA_ALIGN(len + NET_SKB_PAD));
+		skb->fast_recycled = 0;
+		skb->fast_qdisc = 0;
+		return skb;
+	}
+
+	len = SKB_RECYCLE_SIZE;
+	if (unlikely(length > SKB_RECYCLE_SIZE))
+		len = length;
+
+	skb = __alloc_skb(len + NET_SKB_PAD, gfp_mask,
+				SKB_ALLOC_RX, NUMA_NO_NODE);
+	if (!skb)
+		goto skb_fail;
+
+	/* Set truesize as the needed buffer size
+	* rather than the allocated size by __alloc_skb().
+	* */
+	if (length + NET_SKB_PAD < SKB_WITH_OVERHEAD(PAGE_SIZE))
+		skb->truesize = SKB_TRUESIZE(SKB_DATA_ALIGN(length + NET_SKB_PAD));
+
+	goto skb_success;
+#else
+	struct page_frag_cache *nc;
+	bool pfmemalloc;
+	bool page_frag_alloc_enable = true;
+	void *data;
+
+	len += NET_SKB_PAD;
+#ifdef CONFIG_ALLOC_SKB_PAGE_FRAG_DISABLE
+        page_frag_alloc_enable = false;
+#endif
+	/* If requested length is either too small or too big,
+	 * we use kmalloc() for skb->head allocation.
+	 */
+	if (len <= SKB_WITH_OVERHEAD(1024) ||
+		len > SKB_WITH_OVERHEAD(PAGE_SIZE) ||
+		(gfp_mask & (__GFP_DIRECT_RECLAIM | GFP_DMA)) ||
+		!page_frag_alloc_enable) {
+		skb = __alloc_skb(len, gfp_mask, SKB_ALLOC_RX, NUMA_NO_NODE);
+		if (!skb)
+			goto skb_fail;
+		goto skb_success;
+	}
+
+	len += SKB_DATA_ALIGN(sizeof(struct skb_shared_info));
+	len = SKB_DATA_ALIGN(len);
+
+	if (sk_memalloc_socks())
+		gfp_mask |= __GFP_MEMALLOC;
+
+	if (in_irq() || irqs_disabled()) {
+		nc = this_cpu_ptr(&netdev_alloc_cache);
+		data = page_frag_alloc(nc, len, gfp_mask);
+		pfmemalloc = nc->pfmemalloc;
+	} else {
+		local_bh_disable();
+		nc = this_cpu_ptr(&napi_alloc_cache.page);
+		data = page_frag_alloc(nc, len, gfp_mask);
+		pfmemalloc = nc->pfmemalloc;
+		local_bh_enable();
+	}
+
+	if (unlikely(!data))
+		return NULL;
+
+	skb = __build_skb(data, len);
+	if (unlikely(!skb)) {
+		skb_free_frag(data);
+		return NULL;
+	}
+
+	/* use OR instead of assignment to avoid clearing of bits in mask */
+	if (pfmemalloc)
+		skb->pfmemalloc = 1;
+	skb->head_frag = 1;
+#endif
+
+skb_success:
+	skb_reserve(skb, NET_SKB_PAD);
+	skb->dev = dev;
+
+skb_fail:
+	return skb;
+}
+EXPORT_SYMBOL(__netdev_alloc_skb_no_skb_reset);
+#else
+struct sk_buff *__netdev_alloc_skb_no_skb_reset(struct net_device *dev,
+						unsigned int length, gfp_t gfp_mask)
+{
+	return __netdev_alloc_skb(dev, length, gfp_mask);
+}
+EXPORT_SYMBOL(__netdev_alloc_skb_no_skb_reset);
+#endif
 
 /**
  *	__napi_alloc_skb - allocate skbuff for rx in a specific NAPI instance
@@ -863,7 +982,7 @@ void skb_dump(const char *level, const struct sk_buff *skb, bool full_pkt)
 	       ntohs(skb->protocol), skb->pkt_type, skb->skb_iif);
 
 	if (dev)
-		printk("%sdev name=%s feat=0x%pNF\n",
+		printk("%sdev name=%s feat=%pNF\n",
 		       level, dev->name, &dev->features);
 	if (sk)
 		printk("%ssk family=%hu type=%u proto=%u\n",
@@ -977,6 +1096,44 @@ void consume_skb(struct sk_buff *skb)
 	kfree_skbmem(skb);
 }
 EXPORT_SYMBOL(consume_skb);
+
+/**
+ *	consume_skb_list_fast - free a list of skbs
+ *	@skb_list: head of the buffer list
+ *
+ *	Add the list of given SKBs to CPU list. Assumption is that these buffers
+ *	have been allocated originally from the skb recycler and have been transmitted
+ *	through a controlled fast xmit path, thus removing the need for additional checks
+ *	before recycling the buffers back to pool
+ */
+void consume_skb_list_fast(struct sk_buff_head *skb_list)
+{
+	struct sk_buff *skb = NULL;
+
+	if (likely(skb_recycler_consume_list_fast(skb_list))) {
+		return;
+	}
+
+	while ((skb = skb_dequeue(skb_list)) != NULL) {
+		/*
+		 * Check if release head state is needed
+		 */
+		skb_release_head_state(skb);
+
+		trace_consume_skb(skb);
+
+		/*
+		 * We're not recycling so now we need to do the rest of what we would
+		 * have done in __kfree_skb (above and beyond the skb_release_head_state
+		 * that we already did).
+		 */
+		if (likely(skb->head))
+			skb_release_data(skb);
+
+		kfree_skbmem(skb);
+	}
+}
+EXPORT_SYMBOL(consume_skb_list_fast);
 
 /**
  *	consume_stateless_skb - free an skbuff, assuming it is stateless
@@ -2270,7 +2427,7 @@ void *__pskb_pull_tail(struct sk_buff *skb, int delta)
 		/* Free pulled out fragments. */
 		while ((list = skb_shinfo(skb)->frag_list) != insp) {
 			skb_shinfo(skb)->frag_list = list->next;
-			kfree_skb(list);
+			consume_skb(list);
 		}
 		/* And insert new clone at head. */
 		if (clone) {
@@ -4701,7 +4858,7 @@ static bool skb_may_tx_timestamp(struct sock *sk, bool tsonly)
 {
 	bool ret;
 
-	if (likely(sysctl_tstamp_allow_data || tsonly))
+	if (likely(READ_ONCE(sysctl_tstamp_allow_data) || tsonly))
 		return true;
 
 	read_lock_bh(&sk->sk_callback_lock);
@@ -5984,7 +6141,7 @@ static int pskb_carve_frag_list(struct sk_buff *skb,
 	/* Free pulled out fragments. */
 	while ((list = shinfo->frag_list) != insp) {
 		shinfo->frag_list = list->next;
-		kfree_skb(list);
+		consume_skb(list);
 	}
 	/* And insert new clone at head. */
 	if (clone) {

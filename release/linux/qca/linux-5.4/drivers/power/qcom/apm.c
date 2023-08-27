@@ -26,6 +26,7 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/power/qcom/apm.h>
+#include <linux/qcom_scm.h>
 
 /*
  *        VDD_APCC
@@ -94,6 +95,12 @@ struct msm_apm_ctrl_dev {
 	void __iomem		**apcs_spm_events_addr;
 	void __iomem		*apc0_pll_ctl_addr;
 	void __iomem		*apc1_pll_ctl_addr;
+	phys_addr_t		alias0_pwr_gate_addr;
+	phys_addr_t		alias1_pwr_gate_addr;
+	phys_addr_t		alias2_pwr_gate_addr;
+	phys_addr_t		alias3_pwr_gate_addr;
+	void __iomem		*apm_ctl_override_addr;
+	bool 			apm_override_quirk;
 	u32			version;
 	struct dentry		*debugfs;
 	u32			msm_id;
@@ -260,6 +267,41 @@ static int msm8953_apm_ctrl_init(struct platform_device *pdev,
 	if (!ctrl->reg_base) {
 		dev_err(dev, "Failed to map PM APCC Global registers\n");
 		return -ENOMEM;
+	}
+
+	ctrl->apm_override_quirk = device_property_read_bool(dev, "qcom,apm-override-quirk");
+
+	if (ctrl->apm_override_quirk) {
+		/* Below 5 resource are used for APM override used during APM failure */
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "alias0-pwr-gate");
+		if (res)
+			ctrl->alias0_pwr_gate_addr = res->start;
+
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "alias1-pwr-gate");
+		if (res)
+			ctrl->alias1_pwr_gate_addr = res->start;
+
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "alias2-pwr-gate");
+		if (res)
+			ctrl->alias2_pwr_gate_addr = res->start;
+
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "alias3-pwr-gate");
+		if (res)
+			ctrl->alias3_pwr_gate_addr = res->start;
+
+		dev_dbg(dev, "ctrl_dev->alias0_pwr_gate_addr = %pa", &ctrl->alias0_pwr_gate_addr);
+		dev_dbg(dev, "ctrl_dev->alias1_pwr_gate_addr = %pa", &ctrl->alias1_pwr_gate_addr);
+		dev_dbg(dev, "ctrl_dev->alias2_pwr_gate_addr = %pa", &ctrl->alias2_pwr_gate_addr);
+		dev_dbg(dev, "ctrl_dev->alias3_pwr_gate_addr = %pa", &ctrl->alias3_pwr_gate_addr);
+
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "apm-ctl-override");
+		if (res) {
+			ctrl->apm_ctl_override_addr = devm_ioremap_resource(dev, res);
+			if (!ctrl->apm_ctl_override_addr) {
+				dev_err(dev, "Failed to map apm-ctl-override register\n");
+				return -ENOMEM;
+			}
+		}
 	}
 
 	/*
@@ -522,6 +564,101 @@ static int msm8996_apm_switch_to_apcc(struct msm_apm_ctrl_dev *ctrl_dev)
 /* Register bit mask definitions */
 #define MSM8953_APM_CTL_STS_MASK           0x1f
 
+#define APCS_ALIAS0_APC_ITM_ARB_STATE_CSR	0x90
+#define APCS_ALIAS0_L2_SPM_EVENT_STS	0x260
+#define APCS_ALIAS0_STANDBY_EXIT_ITM	0x278
+
+#define APCS_ALIAS0_L2_SPM_EVENT_STS_VAL	0x75c
+#define APCS_ALIAS_APC_PWR_GATE_STATUS_VAL	0x10003
+#define APCS_COMMON_APM_CTL_OVERRIDE_VAL	0x66
+
+static int apply_apm_override(struct msm_apm_ctrl_dev *ctrl_dev, u32 done_val)
+{
+	int timeout = MSM8953_APM_SWITCH_TIMEOUT_US;
+	unsigned int val;
+	int ret;
+
+	if (!ctrl_dev->alias0_pwr_gate_addr || !ctrl_dev->alias1_pwr_gate_addr ||
+	    !ctrl_dev->alias2_pwr_gate_addr || !ctrl_dev->alias3_pwr_gate_addr ||
+	    !ctrl_dev->apm_ctl_override_addr) {
+		dev_err(ctrl_dev->dev, "apm_ctl_override and  pwr_gate_addr's not config in DT\n");
+		return -EINVAL;
+	}
+
+	val = readl(ctrl_dev->reg_base + APCS_ALIAS0_APC_ITM_ARB_STATE_CSR);
+	if (val != 0) {
+		dev_err(ctrl_dev->dev, "APCS_ALIAS0_APC_ITM_ARB_STATE_CSR val = %u\n", val);
+		return -EINVAL;
+	}
+
+	val = readl(ctrl_dev->reg_base + APCS_ALIAS0_L2_SPM_EVENT_STS);
+	if (val != APCS_ALIAS0_L2_SPM_EVENT_STS_VAL) {
+		dev_err(ctrl_dev->dev, "APCS_ALIAS0_L2_SPM_EVENT_STS val = %u\n", val);
+		return -EINVAL;
+	}
+
+	val = readl(ctrl_dev->reg_base + APCS_ALIAS0_APC_ITM_ARB_STATE_CSR);
+	if (val != 0) {
+		dev_err(ctrl_dev->dev, "APCS_ALIAS0_APC_ITM_ARB_STATE_CSR val = %u\n", val);
+		return -EINVAL;
+	}
+
+	val = readl(ctrl_dev->reg_base + APCS_ALIAS0_STANDBY_EXIT_ITM);
+	if (val != 0) {
+		dev_err(ctrl_dev->dev, "APCS_ALIAS0_STANDBY_EXIT_ITM val = %u\n", val);
+		return -EINVAL;
+	}
+
+	ret = qcom_scm_io_readl(ctrl_dev->alias0_pwr_gate_addr, &val);
+	if (ret < 0)
+		dev_err(ctrl_dev->dev, "qcom_scm_io_readl scm call failed while reading alias0_pwr_gate_addr\n");
+	if (val != APCS_ALIAS_APC_PWR_GATE_STATUS_VAL) {
+		dev_err(ctrl_dev->dev, "alias0_pwr_gate status val = %u\n", val);
+		return -EINVAL;
+	}
+
+	ret = qcom_scm_io_readl(ctrl_dev->alias1_pwr_gate_addr, &val);
+	if (ret < 0)
+		dev_err(ctrl_dev->dev, "qcom_scm_io_readl scm call failed while reading alias1_pwr_gate_addr\n");
+	if (val != APCS_ALIAS_APC_PWR_GATE_STATUS_VAL) {
+		dev_err(ctrl_dev->dev, "alias1_pwr_gate status val = %u\n", val);
+		return -EINVAL;
+	}
+
+	ret = qcom_scm_io_readl(ctrl_dev->alias2_pwr_gate_addr, &val);
+	if (ret < 0)
+		dev_err(ctrl_dev->dev, "qcom_scm_io_readl scm call failed while reading alias2_pwr_gate_addr\n");
+	if (val != APCS_ALIAS_APC_PWR_GATE_STATUS_VAL) {
+		dev_err(ctrl_dev->dev, "alias2_pwr_gate status val = %u\n", val);
+		return -EINVAL;
+	}
+
+	ret = qcom_scm_io_readl(ctrl_dev->alias3_pwr_gate_addr, &val);
+	if (ret < 0)
+		dev_err(ctrl_dev->dev, "qcom_scm_io_readl scm call failed while reading alias3_pwr_gate_addr\n");
+	if (val != APCS_ALIAS_APC_PWR_GATE_STATUS_VAL) {
+		dev_err(ctrl_dev->dev, "alias3_pwr_gate status val = %u\n", val);
+		return -EINVAL;
+	}
+
+	WARN(1, "APM Failure, overriding it\n");
+	writel(APCS_COMMON_APM_CTL_OVERRIDE_VAL, ctrl_dev->apm_ctl_override_addr);
+
+	while (timeout > 0) {
+		val = readl_relaxed(ctrl_dev->reg_base + MSM8953_APCC_APM_CTL_STS);
+		if ((val & MSM8953_APM_CTL_STS_MASK) == done_val)
+			break;
+
+		udelay(1);
+		timeout--;
+	}
+
+	if (timeout == 0)
+		return -ETIMEDOUT;
+
+	return 0;
+}
+
 static int msm8953_apm_switch_to_mx(struct msm_apm_ctrl_dev *ctrl_dev)
 {
 	int timeout = MSM8953_APM_SWITCH_TIMEOUT_US;
@@ -547,6 +684,12 @@ static int msm8953_apm_switch_to_mx(struct msm_apm_ctrl_dev *ctrl_dev)
 
 		udelay(1);
 		timeout--;
+	}
+
+	if (timeout == 0 && ctrl_dev->apm_override_quirk) {
+		ret = apply_apm_override(ctrl_dev, MSM8953_APM_MX_DONE_VAL);
+		if (!ret)
+			timeout = MSM8953_APM_SWITCH_TIMEOUT_US;
 	}
 
 	if (timeout == 0) {
@@ -588,6 +731,12 @@ static int msm8953_apm_switch_to_apcc(struct msm_apm_ctrl_dev *ctrl_dev)
 
 		udelay(1);
 		timeout--;
+	}
+
+	if (timeout == 0 && ctrl_dev->apm_override_quirk) {
+		ret = apply_apm_override(ctrl_dev, MSM8953_APM_APCC_DONE_VAL);
+		if (!ret)
+			timeout = MSM8953_APM_SWITCH_TIMEOUT_US;
 	}
 
 	if (timeout == 0) {

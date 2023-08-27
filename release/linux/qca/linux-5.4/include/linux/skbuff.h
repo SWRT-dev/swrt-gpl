@@ -238,6 +238,14 @@
 			 SKB_DATA_ALIGN(sizeof(struct sk_buff)) +	\
 			 SKB_DATA_ALIGN(sizeof(struct skb_shared_info)))
 
+#define SKB_SAWF_VALID_TAG		0xAA
+#define SKB_SAWF_TAG_SHIFT		24
+#define SKB_SAWF_SERVICE_CLASS_SHIFT	16
+#define SKB_SAWF_SERVICE_CLASS_MASK	0xff
+
+#define SKB_GET_SAWF_TAG(x) ((x) >> SKB_SAWF_TAG_SHIFT)
+#define SKB_GET_SAWF_SERVICE_CLASS(x) (((x) >> SKB_SAWF_SERVICE_CLASS_SHIFT) & SKB_SAWF_SERVICE_CLASS_MASK)
+
 struct net_device;
 struct scatterlist;
 struct pipe_inode_info;
@@ -828,7 +836,20 @@ struct sk_buff {
 #endif
 	__u8			gro_skip:1;
 	__u8			fast_forwarded:1;
+	/* Linear packets processed by dev_fast_xmit() */
+	__u8			fast_xmit:1;
+	/* Flag to check if skb is allocated from recycler */
+	__u8			is_from_recycler:1;
+	/* Flag for fast recycle in fast xmit path */
+	__u8			fast_recycled:1;
+
+	/* Flag for recycle in PPE DS */
+	__u8			recycled_for_ds:1;
 	/* 1 or 3 bit hole */
+	__u8			fast_qdisc:1;
+	/* Packets processed in dev_fast_xmit_qdisc() path */
+	__u8			int_pri:4;
+	/* Priority info for hardware qdiscs */
 
 #ifdef CONFIG_NET_SCHED
 	__u16			tc_index;	/* traffic control index */
@@ -1035,6 +1056,8 @@ void kfree_skb_list(struct sk_buff *segs);
 void skb_dump(const char *level, const struct sk_buff *skb, bool full_pkt);
 void skb_tx_error(struct sk_buff *skb);
 void consume_skb(struct sk_buff *skb);
+void consume_skb_list_fast(struct sk_buff_head *skb_list);
+void check_skb_fast_recyclable(struct sk_buff *skb);
 void __consume_stateless_skb(struct sk_buff *skb);
 void  __kfree_skb(struct sk_buff *skb);
 extern struct kmem_cache *skbuff_head_cache;
@@ -1157,6 +1180,12 @@ static inline int skb_pad(struct sk_buff *skb, int pad)
 	return __skb_pad(skb, pad, true);
 }
 #define dev_kfree_skb(a)	consume_skb(a)
+#define dev_kfree_skb_list_fast(a)	consume_skb_list_fast(a)
+#if defined(SKB_FAST_RECYCLABLE_DEBUG_ENABLE) && defined(CONFIG_SKB_RECYCLER)
+#define dev_check_skb_fast_recyclable(a)       check_skb_fast_recyclable(a)
+#else
+#define dev_check_skb_fast_recyclable(a)
+#endif
 
 int skb_append_pagefrags(struct sk_buff *skb, struct page *page,
 			 int offset, size_t size);
@@ -2215,6 +2244,14 @@ static inline void skb_set_tail_pointer(struct sk_buff *skb, const int offset)
 
 #endif /* NET_SKBUFF_DATA_USES_OFFSET */
 
+static inline void skb_assert_len(struct sk_buff *skb)
+{
+#ifdef CONFIG_DEBUG_NET
+	if (WARN_ONCE(!skb->len, "%s\n", __func__))
+		DO_ONCE_LITE(skb_dump, KERN_ERR, skb, false);
+#endif /* CONFIG_DEBUG_NET */
+}
+
 /*
  *	Add data to an sk_buff
  */
@@ -2322,6 +2359,25 @@ static inline int pskb_may_pull(struct sk_buff *skb, unsigned int len)
 }
 
 void skb_condense(struct sk_buff *skb);
+
+/**
+ *	skb_set_int_pri - sets the int_pri field in skb with given value.
+ *	@skb: buffer to fill
+ *	@int_pri: value that is to be filled
+ */
+static inline void skb_set_int_pri(struct sk_buff *skb, uint8_t int_pri)
+{
+	skb->int_pri = int_pri;
+}
+
+/**
+ *	skb_get_int_pri - gets the int_pri value from the given skb.
+ *	@skb: buffer to check
+ */
+static inline uint8_t skb_get_int_pri(struct sk_buff *skb)
+{
+	return skb->int_pri;
+}
 
 /**
  *	skb_headroom - bytes at buffer head
@@ -2797,6 +2853,9 @@ unsigned int skb_rbtree_purge(struct rb_root *root);
 void *netdev_alloc_frag(unsigned int fragsz);
 
 struct sk_buff *__netdev_alloc_skb(struct net_device *dev, unsigned int length,
+				   gfp_t gfp_mask);
+
+struct sk_buff *__netdev_alloc_skb_no_skb_reset(struct net_device *dev, unsigned int length,
 				   gfp_t gfp_mask);
 
 /**

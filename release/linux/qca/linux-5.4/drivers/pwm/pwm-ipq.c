@@ -421,6 +421,7 @@ static const struct ipq_pwm_ops ops_v2 = {
 static const struct of_device_id pwm_msm_dt_match[] = {
 	{ .compatible = "qti,ipq-pwm", .data = &ops_v1 },
 	{ .compatible = "qti,ipq5018-pwm", .data = &ops_v2 },
+	{ .compatible = "qti,ipq5332-pwm", .data = &ops_v2 },
 	{ .compatible = "qti,ipq6018-pwm", .data = &ops_v2 },
 	{ .compatible = "qti,ipq9574-pwm", .data = &ops_v2 },
 	{}

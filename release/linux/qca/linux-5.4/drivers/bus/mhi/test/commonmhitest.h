@@ -24,6 +24,9 @@
 #include <linux/irq.h>
 
 #define MHI_MAX_DEVICE 4
+#define MHITEST_NUM_META_INFO_SEGMENTS		1
+#define MHITEST_RAMDUMP_MAGIC			0x574C414E /* WLAN in ASCII */
+#define MHITEST_RAMDUMP_VERSION_V2		2
 
 /* MHI MMIO register mapping */
 #define PCI_INVALID_READ(val) (val == U32_MAX)
@@ -105,6 +108,7 @@ enum fw_dump_type {
 	FW_IMAGE,
 	FW_RDDM,
 	FW_REMOTE_HEAP,
+	FW_DUMP_TYPE_MAX,
 };
 /* recovery reasons using only default and rddm one for now */
 enum mhitest_recovery_reason {
@@ -117,6 +121,18 @@ struct mhitest_msi_config {
 	int total_vectors;
 	int total_users;
 	struct mhitest_msi_user *users;
+};
+struct mhitest_dump_entry {
+	u32 type;
+	u32 entry_start;
+	u32 entry_num;
+};
+struct mhitest_dump_meta_info {
+	u32 magic;
+	u32 version;
+	u32 chipset;
+	u32 total_entries;
+	struct mhitest_dump_entry entry[FW_DUMP_TYPE_MAX];
 };
 struct mhitest_dump_seg {
 	unsigned long address;
@@ -207,10 +223,12 @@ int mhitest_pci_get_link_status(struct mhitest_platform *);
 int mhitest_prepare_pci_mhi_msi(struct mhitest_platform *);
 int mhitest_prepare_start_mhi(struct mhitest_platform *);
 int mhitest_dump_info(struct mhitest_platform *mplat, bool in_panic);
+int mhitest_dev_ramdump(struct mhitest_platform *mplat);
 int mhitest_post_event(struct mhitest_platform *,
 	struct mhitest_recovery_data *, enum mhitest_event_type, u32 flags);
 struct platform_device *get_plat_device(void);
 int mhitest_store_mplat(struct mhitest_platform *);
+void mhitest_remove_mplat(struct mhitest_platform *);
 void mhitest_free_mplat(struct mhitest_platform *);
 int mhitest_event_work_init(struct mhitest_platform *);
 void mhitest_event_work_deinit(struct mhitest_platform *);

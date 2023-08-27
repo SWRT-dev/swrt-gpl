@@ -51,69 +51,86 @@ int m0_btss_load_address(struct rproc *rproc, const struct firmware *fw)
 
 int m0_btss_start(struct rproc *rproc)
 {
-	int ret;
+	int ret = 0;
 	struct bt_descriptor *btDesc = rproc->priv;
 
-	if (!btDesc->nosecure) {
-		ret = qcom_scm_pas_auth_and_reset(PAS_ID, 0, CMD_ID);
+	if (rproc->state == RPROC_OFFLINE) {
+		ret = bt_ipc_init(btDesc);
 		if (ret) {
-			dev_err(rproc->dev.parent, "secure reset failed\n");
+			dev_err(rproc->dev.parent, "%s err initializing IPC\n",
+					__func__);
 			return ret;
 		}
 
-	} else {
-		ret = reset_control_deassert(btDesc->btss_reset);
-		if (ret) {
-			dev_err(rproc->dev.parent, "non secure reset failed\n");
-			return ret;
+
+		if (!btDesc->nosecure) {
+			ret = qcom_scm_pas_auth_and_reset(PAS_ID, 0, CMD_ID);
+			if (ret) {
+				dev_err(rproc->dev.parent,
+						"secure reset failed\n");
+				return ret;
+			}
+
+		} else {
+			ret = reset_control_deassert(btDesc->btss_reset);
+			if (ret) {
+				dev_err(rproc->dev.parent,
+						"non secure reset failed\n");
+				return ret;
+			}
+
+			mdelay(50);
+
+			writel(0x1, btDesc->warm_reset + BT_M0_WARM_RST);
+			writel(0x0, btDesc->warm_reset + BT_M0_WARM_RST_ORIDE);
 		}
 
-		mdelay(50);
-
-		writel(0x1, btDesc->warm_reset + BT_M0_WARM_RST);
-		writel(0x0, btDesc->warm_reset + BT_M0_WARM_RST_ORIDE);
+		dev_info(rproc->dev.parent, "%s\n", __func__);
 	}
-
-	dev_info(rproc->dev.parent, "%s\n", __func__);
 
 	return ret;
 }
 
 int m0_btss_stop(struct rproc *rproc)
 {
-	int ret;
+	int ret = 0;
 	struct bt_descriptor *btDesc = rproc->priv;
 
-	if (!btDesc->nosecure) {
-		ret = qcom_scm_pas_shutdown(PAS_ID);
-		if (ret) {
-			dev_err(rproc->dev.parent, "failed, ret = %d\n", ret);
-			return ret;
-		}
-	} else {
-		ret = reset_control_assert(btDesc->btss_reset);
-		if (ret) {
-			dev_err(rproc->dev.parent,
+	if (!atomic_read(&rproc->power) && ((rproc->state == RPROC_RUNNING) |
+				(rproc->state == RPROC_CRASHED))) {
+		bt_ipc_deinit(btDesc);
+
+		if (!btDesc->nosecure) {
+			ret = qcom_scm_pas_shutdown(PAS_ID);
+			if (ret) {
+				dev_err(rproc->dev.parent, "failed, ret = %d\n",
+						ret);
+				return ret;
+			}
+		} else {
+			ret = reset_control_assert(btDesc->btss_reset);
+			if (ret) {
+				dev_err(rproc->dev.parent,
 				"non secure assert failed, ret = %d\n", ret);
-			return ret;
-		}
+				return ret;
+			}
 
-		mdelay(50);
+			mdelay(50);
 
-		writel(0x0, btDesc->warm_reset + BT_M0_WARM_RST);
-		writel(0x1, btDesc->warm_reset + BT_M0_WARM_RST_ORIDE);
+			writel(0x0, btDesc->warm_reset + BT_M0_WARM_RST);
+			writel(0x1, btDesc->warm_reset + BT_M0_WARM_RST_ORIDE);
 
-		mdelay(50);
-		ret = reset_control_deassert(btDesc->btss_reset);
-		if (ret) {
-			dev_err(rproc->dev.parent,
+			mdelay(50);
+			ret = reset_control_deassert(btDesc->btss_reset);
+			if (ret) {
+				dev_err(rproc->dev.parent,
 				"non secure deassert failed, ret = %d\n", ret);
-			return ret;
+				return ret;
+			}
 		}
+
+		dev_info(rproc->dev.parent, "%s\n", __func__);
 	}
-
-	dev_info(rproc->dev.parent, "%s\n", __func__);
-
 	return ret;
 }
 
@@ -124,8 +141,6 @@ int m0_btss_load(struct rproc *rproc, const struct firmware *fw)
 	struct bt_descriptor *btDesc = rproc->priv;
 
 	offset = m0_btss_load_address(rproc, fw);
-
-
 
 	if (!btDesc->nosecure) {
 		ret = qcom_mdt_load(rproc->dev.parent, fw, rproc->firmware,
@@ -241,7 +256,6 @@ static int bt_rproc_remove(struct platform_device *pdev)
 	atomic_set(&btDesc->state, 0);
 	rproc_del(rproc);
 	rproc_free(rproc);
-	bt_ipc_purge_tx_queue(btDesc);
 	clk_disable_unprepare(btDesc->lpo_clk);
 
 	return 0;

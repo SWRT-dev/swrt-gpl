@@ -17,10 +17,6 @@
 	qcom,pmic-id = <0x0 0x0 0x0 0x0>;
 
 	firmware {
-		scm {
-			compatible = "qcom,scm-ipq8074", "qcom,scm";
-		};
-
 		qfprom {
 			compatible = "qcom,qfprom-sec";
 			img-addr = <0x4A400000>;
@@ -88,7 +84,7 @@
 	qseecom {
 		compatible = "ipq807x-qseecom";
 #if !defined(__IPQ_MEM_PROFILE_256_MB__) && !defined(__IPQ_MEM_PROFILE_512_MB__)
-		memory-region = <&tzapp>;
+		memory-region = <&tzapp>, <&tzapp_data>;
 #endif
 		notify-align = <1>;
 		status = "ok";
@@ -297,6 +293,7 @@
 			clock-names = "iface", "bus", "core";
 			dmas = <&cryptobam 2>, <&cryptobam 3>;
 			dma-names = "rx", "tx";
+			qce,cmd_desc_support;
 		};
 
 		rng: rng@e3000 {
@@ -1012,6 +1009,11 @@
 			reg = <0x01945000 0xe000>;
 		};
 
+		tcsr_boot_misc: syscon@193d100 {
+			compatible = "syscon";
+			reg = <0x0193d100 0x4>;
+		};
+
 		tcsr_mutex_regs: syscon@193d000 {
 			compatible = "syscon";
 			reg = <0x01905000 0x8000>;
@@ -1024,12 +1026,19 @@
 			#mbox-cells = <1>;
 		};
 
+		scm {
+			compatible = "qcom,scm-ipq8074", "qcom,scm";
+			qcom,dload-mode = <&tcsr_boot_misc 0>;
+		};
+
 		q6v5_wcss: q6v5_wcss@cd00000 {
 			compatible = "qcom,ipq8074-wcss-pil";
 			reg = <0x0cd00000 0x4040>,
-			      <0x004ab000 0x20>;
+				<0x004ab000 0x20>,
+				<0xCB50000 0x8>;
 			reg-names = "qdsp6",
-				    "rmb";
+				    "rmb",
+				    "wcmn";
 			qca,auto-restart;
 			qca,extended-intc;
 			interrupts-extended = <&intc 0 325 1>,
@@ -1476,9 +1485,9 @@
 			mem-region = <&q6_region>;
 			qcom,rproc = <&q6v5_wcss>;
 			qcom,bdf-addr = <0x4B0C0000 0x4B0C0000 0x4B0C0000
-					 0x4B0C0000 0x4B0C0000>;
+					 0x4B0C0000 0x4B0C0000 0x0>;
 			qcom,caldb-addr = <0x4BA00000 0x4BA00000 0x0
-					   0x4BA00000 0x4BA00000>;
+					   0x4BA00000 0x4BA00000 0x0>;
 			qcom,caldb-size = <0x480000>;
 			interrupts = <0 320 1>, /* o_wcss_apps_intr[0] =  */
 				<0 319 1>,
@@ -1601,13 +1610,18 @@
 		#else
 			qcom,tgt-mem-mode = <0>;
 		#endif
+
+		#if defined(__CNSS2__)
 			mem-region = <&q6_region>;
-			qcom,rproc = <&q6v5_wcss>;
 			qcom,bdf-addr = <0x4B0C0000 0x4B0C0000 0x4B0C0000
-					 0x4B0C0000 0x4B0C0000>;
+					 0x4B0C0000 0x4B0C0000 0x0>;
 			qcom,caldb-addr = <0x4BA00000 0x4BA00000 0x0
-					   0x4BA00000 0x4BA00000>;
+					   0x4BA00000 0x4BA00000 0x0>;
 			qcom,caldb-size = <0x480000>;
+		#else
+			memory-region = <&q6_region>;
+		#endif
+			qcom,rproc = <&q6v5_wcss>;
 			interrupts = <0 320 1>, /* o_wcss_apps_intr[0] =  */
 				<0 319 1>,
 				<0 318 1>,
@@ -1829,7 +1843,7 @@
 	clocks: clocks {
 		sleep_clk: sleep_clk {
 			compatible = "fixed-clock";
-			clock-frequency = <32764>;
+			clock-frequency = <32768>;
 			#clock-cells = <0>;
 		};
 
@@ -1854,6 +1868,7 @@
 
 	qti,scm_restart_reason {
 		compatible = "qti,scm_restart_reason";
+		no-reset-reason;
 	};
 
 	qti,sps {

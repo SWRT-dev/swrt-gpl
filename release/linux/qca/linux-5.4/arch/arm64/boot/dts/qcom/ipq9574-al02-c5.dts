@@ -120,10 +120,12 @@
 			pcie1_rp {
 				reg = <0 0 0 0 0>;
 
-				qcom,mhi@1 {
+				wifi@1 {
 					reg = <0 0 0 0 0>;
 					qrtr_instance_id = <0x22>;
-					memory-region = <&mhi_region2>;
+#if defined(__CNSS2__)
+					memory-region = <0>,<&mhi_region2>;
+#endif
 					status = "ok";
 				};
 			};
@@ -135,7 +137,11 @@
 	};
 };
 
-&wifi6 {
+&wifi2 {
+	board_id = <0xb6>;
+};
+
+&wifi3 {
 #if !defined(__IPQ_MEM_PROFILE_256_MB__) && !defined(__IPQ_MEM_PROFILE_512_MB__)
 	/* QCN9000 tgt-mem-mode=0 layout - 53MB
 	 * +=========+==============+=========+
@@ -162,7 +168,7 @@
 	tgt-mem-mode = <0x0>;
 	hremote_node = <&qcn9000_pcie2>;
 	caldb-size = <0x800000>;
-	board_id = <0xa3>;
+	board_id = <0xb5>;
 	status = "ok";
 #endif
 };

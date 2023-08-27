@@ -105,6 +105,17 @@ static const unsigned armv8_a73_perf_cache_map[PERF_COUNT_HW_CACHE_MAX]
 
 	[C(L1D)][C(OP_READ)][C(RESULT_ACCESS)]	= ARMV8_IMPDEF_PERFCTR_L1D_CACHE_RD,
 	[C(L1D)][C(OP_WRITE)][C(RESULT_ACCESS)]	= ARMV8_IMPDEF_PERFCTR_L1D_CACHE_WR,
+
+	[C(LL)][C(OP_READ)][C(RESULT_ACCESS)]	= ARMV8_IMPDEF_PERFCTR_L2D_CACHE_RD,
+	[C(LL)][C(OP_READ)][C(RESULT_MISS)]	= ARMV8_IMPDEF_PERFCTR_L2D_CACHE_WB_VICTIM,
+
+	/* [C(LL)][C(OP_READ)][C(RESULT_MISS)]	= ARMV8_IMPDEF_PERFCTR_L2D_CACHE_REFILL_RD,
+	[C(LL)][C(OP_WRITE)][C(RESULT_MISS)]	= ARMV8_IMPDEF_PERFCTR_L2D_CACHE_REFILL_WR, */
+
+	[C(LL)][C(OP_WRITE)][C(RESULT_ACCESS)]	= ARMV8_IMPDEF_PERFCTR_L2D_CACHE_WR,
+	[C(LL)][C(OP_WRITE)][C(RESULT_MISS)]	= ARMV8_IMPDEF_PERFCTR_L2D_CACHE_WB_CLEAN,
+
+	[C(LL)][C(OP_PREFETCH)][C(RESULT_ACCESS)]	= ARMV8_IMPDEF_PERFCTR_L2D_CACHE_INVAL,
 };
 
 static const unsigned armv8_thunder_perf_cache_map[PERF_COUNT_HW_CACHE_MAX]
@@ -224,6 +235,13 @@ ARMV8_EVENT_ATTR(sample_feed, ARMV8_SPE_PERFCTR_SAMPLE_FEED);
 ARMV8_EVENT_ATTR(sample_filtrate, ARMV8_SPE_PERFCTR_SAMPLE_FILTRATE);
 ARMV8_EVENT_ATTR(sample_collision, ARMV8_SPE_PERFCTR_SAMPLE_COLLISION);
 
+/* Implementation defined events */
+ARMV8_EVENT_ATTR(l2d_cache_rd, ARMV8_IMPDEF_PERFCTR_L2D_CACHE_RD);
+ARMV8_EVENT_ATTR(l2d_cache_wr, ARMV8_IMPDEF_PERFCTR_L2D_CACHE_WR);
+ARMV8_EVENT_ATTR(l2d_cache_wb_victim, ARMV8_IMPDEF_PERFCTR_L2D_CACHE_WB_VICTIM);
+ARMV8_EVENT_ATTR(l2d_cache_wb_clean, ARMV8_IMPDEF_PERFCTR_L2D_CACHE_WB_CLEAN);
+ARMV8_EVENT_ATTR(l2d_cache_inval, ARMV8_IMPDEF_PERFCTR_L2D_CACHE_INVAL);
+
 static struct attribute *armv8_pmuv3_event_attrs[] = {
 	&armv8_event_attr_sw_incr.attr.attr,
 	&armv8_event_attr_l1i_cache_refill.attr.attr,
@@ -285,6 +303,11 @@ static struct attribute *armv8_pmuv3_event_attrs[] = {
 	&armv8_event_attr_sample_feed.attr.attr,
 	&armv8_event_attr_sample_filtrate.attr.attr,
 	&armv8_event_attr_sample_collision.attr.attr,
+	&armv8_event_attr_l2d_cache_rd.attr.attr,
+	&armv8_event_attr_l2d_cache_wr.attr.attr,
+	&armv8_event_attr_l2d_cache_wb_victim.attr.attr,
+	&armv8_event_attr_l2d_cache_wb_clean.attr.attr,
+	&armv8_event_attr_l2d_cache_inval.attr.attr,
 	NULL,
 };
 
@@ -965,10 +988,12 @@ static void __armv8pmu_probe_pmu(void *info)
 {
 	struct armv8pmu_probe_info *probe = info;
 	struct arm_pmu *cpu_pmu = probe->pmu;
+	struct platform_device *pdev = cpu_pmu->plat_device;
 	u64 dfr0;
 	u64 pmceid_raw[2];
 	u32 pmceid[2];
 	int pmuver;
+	const char *compatible;
 
 	dfr0 = read_sysreg(id_aa64dfr0_el1);
 	pmuver = cpuid_feature_extract_unsigned_field(dfr0,
@@ -990,6 +1015,15 @@ static void __armv8pmu_probe_pmu(void *info)
 
 	bitmap_from_arr32(cpu_pmu->pmceid_bitmap,
 			     pmceid, ARMV8_PMUV3_MAX_COMMON_EVENTS);
+
+	of_property_read_string(pdev->dev.of_node, "compatible", &compatible);
+	if (strncmp("arm,cortex-a73-pmu", compatible, sizeof("arm,cortex-a73-pmu")) == 0) {
+		__bitmap_set(cpu_pmu->pmceid_bitmap, ARMV8_IMPDEF_PERFCTR_L2D_CACHE_RD, 1);
+		__bitmap_set(cpu_pmu->pmceid_bitmap, ARMV8_IMPDEF_PERFCTR_L2D_CACHE_WR, 1);
+		__bitmap_set(cpu_pmu->pmceid_bitmap, ARMV8_IMPDEF_PERFCTR_L2D_CACHE_WB_VICTIM, 1);
+		__bitmap_set(cpu_pmu->pmceid_bitmap, ARMV8_IMPDEF_PERFCTR_L2D_CACHE_WB_CLEAN, 1);
+		__bitmap_set(cpu_pmu->pmceid_bitmap, ARMV8_IMPDEF_PERFCTR_L2D_CACHE_INVAL, 1);
+	}
 
 	pmceid[0] = pmceid_raw[0] >> 32;
 	pmceid[1] = pmceid_raw[1] >> 32;

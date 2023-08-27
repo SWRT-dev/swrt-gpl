@@ -537,6 +537,7 @@ static struct clk_rcg2 apss_axi_clk_src = {
 };
 
 static const struct freq_tbl ftbl_blsp1_qup_i2c_apps_clk_src[] = {
+	F(9600000, P_XO, 2.5, 0, 0),
 	F(50000000, P_GPLL0, 16, 0, 0),
 	{ }
 };

@@ -573,7 +573,9 @@ void rtw_cfg80211_indicate_disconnect(struct adapter *padapter)
 	if (!padapter->mlmepriv.not_indic_disco) {
 		if (check_fwstate(&padapter->mlmepriv, _FW_LINKED)) {
 			cfg80211_disconnected(padapter->pnetdev, 0,
-					      NULL, 0, true, GFP_ATOMIC);
+					      NULL, 0, true,
+					      NL80211_MLO_INVALID_LINK_ID,
+					      GFP_ATOMIC);
 		} else {
 			cfg80211_connect_result(padapter->pnetdev, NULL, NULL, 0, NULL, 0,
 				WLAN_STATUS_UNSPECIFIED_FAILURE, GFP_ATOMIC/*GFP_KERNEL*/);

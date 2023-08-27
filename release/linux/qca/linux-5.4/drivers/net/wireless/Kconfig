@@ -47,7 +47,6 @@ source "drivers/net/wireless/st/Kconfig"
 source "drivers/net/wireless/ti/Kconfig"
 source "drivers/net/wireless/zydas/Kconfig"
 source "drivers/net/wireless/quantenna/Kconfig"
-source "drivers/net/wireless/cnss2/Kconfig"
 
 config PCMCIA_RAYCS
 	tristate "Aviator/Raytheon 2.4GHz wireless support"
@@ -122,5 +121,17 @@ config VIRT_WIFI
 	---help---
 	  This option adds support for ethernet connections to appear as if they
 	  are wifi connections through a special rtnetlink device.
+
+config CNSS2
+	bool "CNSS2 Platform Driver for Wi-Fi Module"
+	depends on !(ARCH_IPQ40XX || ARCH_IPQ806x)
+	---help---
+	This module adds the support for Connectivity Subsystem (CNSS) used
+	for PCIe based Wi-Fi devices with QCA6174/QCN9000 chipsets.
+	This driver also adds support to integrate WLAN module to subsystem
+	restart framework.
+	CNSS2 is compiled as kernel module outside kernel tree but this config
+	is used to differentiate between CNSS2 and upstream WLAN driver in
+	devicetree files.
 
 endif # WLAN

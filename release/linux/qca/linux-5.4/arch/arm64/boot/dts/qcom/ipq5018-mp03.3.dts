@@ -160,7 +160,7 @@
 		mhi_region1: dma_pool1@4F900000 {
 			compatible = "shared-dma-pool";
 			no-map;
-			reg = <0x0 0x4F900000 0x0 0x00900000>;
+			reg = <0x0 0x4F900000 0x0 0x00500000>;
 		};
 	#endif
 	#elif __IPQ_MEM_PROFILE_512_MB__
@@ -205,30 +205,30 @@
 	 * |  data  |              |                         |
 	 * +--------+--------------+-------------------------+
 	 * |        |              |                         |
-	 * |IPQ5018 |  0x4C000000  |          14MB           |
+	 * |IPQ5018 |  0x4C000000  |          13MB           |
 	 * |  data  |              |                         |
 	 * +--------+--------------+-------------------------+
-	 * | M3 Dump|  0x4CE00000  |           1MB           |
+	 * | M3 Dump|  0x4CD00000  |           1MB           |
 	 * +--------+--------------+-------------------------+
-	 * |  QDSS  |  0x4CF00000  |           1MB           |
+	 * |  QDSS  |  0x4CE00000  |           1MB           |
 	 * +--------+--------------+-------------------------+
-	 * | caldb  |  0x4D000000  |           2MB           |
+	 * | caldb  |  0x4CF00000  |           2MB           |
 	 * +--------+--------------+-------------------------+
-	 * |QCN6122 |  0x4D200000  |          16MB           |
+	 * |QCN6122 |  0x4D100000  |          13MB           |
 	 * |  data  |              |                         |
 	 * +--------+--------------+-------------------------+
-	 * | M3 Dump|  0x4E200000  |           1MB           |
+	 * | M3 Dump|  0x4DE00000  |           1MB           |
 	 * +--------+--------------+-------------------------+
-	 * |  QDSS  |  0x4E300000  |           1MB           |
+	 * |  QDSS  |  0x4DF00000  |           1MB           |
 	 * +--------+--------------+-------------------------+
-	 * | caldb  |  0x4E400000  |           5MB           |
-	 * +--------+--------------+-------------------------+
-	 * |        |              |                         |
-	 * |QCN9000 |  0x4E900000  |          38MB           |
-	 * |        |              |                         |
+	 * | caldb  |  0x4E000000  |           5MB           |
 	 * +--------+--------------+-------------------------+
 	 * |        |              |                         |
-	 * |  MHI1  |  0x50F00000  |           9MB           |
+	 * |QCN9000 |  0x4E500000  |          26MB           |
+	 * |        |              |                         |
+	 * +--------+--------------+-------------------------+
+	 * |        |              |                         |
+	 * |  MHI1  |  0x4FF00000  |           5MB           |
 	 * |        |              |                         |
 	 * +--------+--------------+-------------------------+
 	 * |                                                 |
@@ -239,7 +239,7 @@
 
 		q6_mem_regions: q6_mem_regions@4B000000 {
 			no-map;
-			reg = <0x0 0x4B000000 0x0 0x3900000>;
+			reg = <0x0 0x4B000000 0x0 0x3500000>;
 		};
 
 		q6_code_data: q6_code_data@4B000000 {
@@ -249,54 +249,54 @@
 
 		q6_ipq5018_data: q6_ipq5018_data@4C000000 {
 			no-map;
-			reg = <0x0 0x4C000000 0x0 0xE00000>;
+			reg = <0x0 0x4C000000 0x0 0xD00000>;
 		};
 
-		m3_dump: m3_dump@4CE00000 {
+		m3_dump: m3_dump@4CD00000 {
+			no-map;
+			reg = <0x0 0x4CD00000 0x0 0x100000>;
+		};
+
+		q6_etr_region: q6_etr_dump@4CE00000 {
 			no-map;
 			reg = <0x0 0x4CE00000 0x0 0x100000>;
 		};
 
-		q6_etr_region: q6_etr_dump@4CF00000 {
+		q6_caldb_region: q6_caldb_region@4CF00000 {
 			no-map;
-			reg = <0x0 0x4CF00000 0x0 0x100000>;
+			reg = <0x0 0x4CF00000 0x0 0x200000>;
 		};
 
-		q6_caldb_region: q6_caldb_region@4D000000 {
+		q6_qcn6122_data1: q6_qcn6122_data1@4D100000 {
 			no-map;
-			reg = <0x0 0x4D000000 0x0 0x200000>;
+			reg = <0x0 0x4D100000 0x0 0xD00000>;
 		};
 
-		q6_qcn6122_data1: q6_qcn6122_data1@4D200000 {
+		m3_dump_qcn6122_1: m3_dump_qcn6122_1@4DE00000 {
 			no-map;
-			reg = <0x0 0x4D200000 0x0 0x1000000>;
+			reg = <0x0 0x4DE00000 0x0 0x100000>;
 		};
 
-		m3_dump_qcn6122_1: m3_dump_qcn6122_1@4E200000 {
+		q6_qcn6122_etr_1: q6_qcn6122_etr_1@4DF00000 {
 			no-map;
-			reg = <0x0 0x4E200000 0x0 0x100000>;
+			reg = <0x0 0x4DF00000 0x0 0x100000>;
 		};
 
-		q6_qcn6122_etr_1: q6_qcn6122_etr_1@4E300000 {
+		q6_qcn6122_caldb_1: q6_qcn6122_caldb_1@4E000000 {
 			no-map;
-			reg = <0x0 0x4E300000 0x0 0x100000>;
+			reg = <0x0 0x4E000000 0x0 0x500000>;
 		};
 
-		q6_qcn6122_caldb_1: q6_qcn6122_caldb_1@4E400000 {
+		q6_qcn9000_region: qcn9000_pcie0@4E500000 {
 			no-map;
-			reg = <0x0 0x4E400000 0x0 0x500000>;
-		};
-
-		q6_qcn9000_region: qcn9000_pcie0@4E900000 {
-			no-map;
-			reg = <0x0 0x4E900000 0x0 0x02600000>;
+			reg = <0x0 0x4E500000 0x0 0x01A00000>;
 		};
 
 	#if defined(__CNSS2__)
-		mhi_region1: dma_pool1@50F00000 {
+		mhi_region1: dma_pool1@4FF00000 {
 			compatible = "shared-dma-pool";
 			no-map;
-			reg = <0x0 0x50F00000 0x0 0x00900000>;
+			reg = <0x0 0x4FF00000 0x0 0x00500000>;
 		};
 	#endif
 	#else
@@ -341,30 +341,30 @@
 	 * |  data  |              |                         |
 	 * +--------+--------------+-------------------------+
 	 * |        |              |                         |
-	 * |IPQ5018 |  0x4C000000  |          14MB           |
+	 * |IPQ5018 |  0x4C000000  |          13MB           |
 	 * |  data  |              |                         |
 	 * +--------+--------------+-------------------------+
-	 * | M3 Dump|  0x4CE00000  |           1MB           |
+	 * | M3 Dump|  0x4CD00000  |           1MB           |
 	 * +--------+--------------+-------------------------+
-	 * |  QDSS  |  0x4CF00000  |           1MB           |
+	 * |  QDSS  |  0x4CE00000  |           1MB           |
 	 * +--------+--------------+-------------------------+
-	 * | caldb  |  0x4D000000  |           2MB           |
+	 * | caldb  |  0x4CF00000  |           2MB           |
 	 * +--------+--------------+-------------------------+
-	 * |QCN6122 |  0x4D200000  |          16MB           |
+	 * |QCN6122 |  0x4D100000  |          13MB           |
 	 * |  data  |              |                         |
 	 * +--------+--------------+-------------------------+
-	 * | M3 Dump|  0x4E200000  |           1MB           |
+	 * | M3 Dump|  0x4DE00000  |           1MB           |
 	 * +--------+--------------+-------------------------+
-	 * |  QDSS  |  0x4E300000  |           1MB           |
+	 * |  QDSS  |  0x4DF00000  |           1MB           |
 	 * +--------+--------------+-------------------------+
-	 * | caldb  |  0x4E400000  |           5MB           |
-	 * +--------+--------------+-------------------------+
-	 * |        |              |                         |
-	 * |QCN9000 |  0x4E900000  |          53MB           |
-	 * |        |              |                         |
+	 * | caldb  |  0x4E000000  |           5MB           |
 	 * +--------+--------------+-------------------------+
 	 * |        |              |                         |
-	 * |  MHI1  |  0x51E00000  |           9MB           |
+	 * |QCN9000 |  0x4E500000  |          53MB           |
+	 * |        |              |                         |
+	 * +--------+--------------+-------------------------+
+	 * |        |              |                         |
+	 * |  MHI1  |  0x51A00000  |           9MB           |
 	 * |        |              |                         |
 	 * +--------+--------------+-------------------------+
 	 * |                                                 |
@@ -375,7 +375,7 @@
 
 		q6_mem_regions: q6_mem_regions@4B000000 {
 			no-map;
-			reg = <0x0 0x4B000000 0x0 0x3900000>;
+			reg = <0x0 0x4B000000 0x0 0x3500000>;
 		};
 
 		q6_code_data: q6_code_data@4B000000 {
@@ -385,54 +385,54 @@
 
 		q6_ipq5018_data: q6_ipq5018_data@4C000000 {
 			no-map;
-			reg = <0x0 0x4C000000 0x0 0xE00000>;
+			reg = <0x0 0x4C000000 0x0 0xD00000>;
 		};
 
-		m3_dump: m3_dump@4CE00000 {
+		m3_dump: m3_dump@4CD00000 {
+			no-map;
+			reg = <0x0 0x4CD00000 0x0 0x100000>;
+		};
+
+		q6_etr_region: q6_etr_dump@4CE00000 {
 			no-map;
 			reg = <0x0 0x4CE00000 0x0 0x100000>;
 		};
 
-		q6_etr_region: q6_etr_dump@4CF00000 {
+		q6_caldb_region: q6_caldb_region@4CF00000 {
 			no-map;
-			reg = <0x0 0x4CF00000 0x0 0x100000>;
+			reg = <0x0 0x4CF00000 0x0 0x200000>;
 		};
 
-		q6_caldb_region: q6_caldb_region@4D000000 {
+		q6_qcn6122_data1: q6_qcn6122_data1@4D100000 {
 			no-map;
-			reg = <0x0 0x4D000000 0x0 0x200000>;
+			reg = <0x0 0x4D100000 0x0 0xD00000>;
 		};
 
-		q6_qcn6122_data1: q6_qcn6122_data1@4D200000 {
+		m3_dump_qcn6122_1: m3_dump_qcn6122_1@4DE00000 {
 			no-map;
-			reg = <0x0 0x4D200000 0x0 0x1000000>;
+			reg = <0x0 0x4DE00000 0x0 0x100000>;
 		};
 
-		m3_dump_qcn6122_1: m3_dump_qcn6122_1@4E200000 {
+		q6_qcn6122_etr_1: q6_qcn6122_etr_1@4DF00000 {
 			no-map;
-			reg = <0x0 0x4E200000 0x0 0x100000>;
+			reg = <0x0 0x4DF00000 0x0 0x100000>;
 		};
 
-		q6_qcn6122_etr_1: q6_qcn6122_etr_1@4E300000 {
+		q6_qcn6122_caldb_1: q6_qcn6122_caldb_1@4E000000 {
 			no-map;
-			reg = <0x0 0x4E300000 0x0 0x100000>;
+			reg = <0x0 0x4E000000 0x0 0x500000>;
 		};
 
-		q6_qcn6122_caldb_1: q6_qcn6122_caldb_1@4E400000 {
+		q6_qcn9000_region: qcn9000_pcie0@4E500000 {
 			no-map;
-			reg = <0x0 0x4E400000 0x0 0x500000>;
-		};
-
-		q6_qcn9000_region: qcn9000_pcie0@4E900000 {
-			no-map;
-			reg = <0x0 0x4E900000 0x0 0x03500000>;
+			reg = <0x0 0x4E500000 0x0 0x03500000>;
 		};
 
 #if defined(__CNSS2__)
-		mhi_region1: dma_pool1@51e00000 {
+		mhi_region1: dma_pool1@51a00000 {
 			compatible = "shared-dma-pool";
 			no-map;
-			reg = <0x0 0x51E00000 0x0 0x00900000>;
+			reg = <0x0 0x51A00000 0x0 0x00500000>;
 		};
 #endif
 	#endif
@@ -523,6 +523,7 @@
 		};
 
 		wifi0: wifi@c000000 {
+			led-gpio = <&tlmm 30 0>;
 			status = "ok";
 		};
 
@@ -670,6 +671,14 @@
 			drive-strength = <8>;
 			bias-pull-down;
 		};
+		led0_2g {
+			pins = "gpio30";
+			function = "gpio";
+			drive-strength = <8>;
+			output-low;
+			bias-pull-down;
+		};
+
 	};
 
 	i2c_pins: i2c_pins {
@@ -795,16 +804,19 @@
 	mhi_1: qcom,mhi@1 {
 		reg = <0 0 0 0 0 >;
 		qrtr_instance_id = <0x21>;
+		qti,disable-rddm-prealloc;
+		qti,rddm-seg-len = <0x1000>;
 		#address-cells = <0x2>;
 		#size-cells = <0x2>;
 #if defined(__CNSS2__)
-		memory-region = <&mhi_region1>;
+		memory-region = <0>,<&mhi_region1>;
 #else
 		qrtr_node_id = <0x20>;
-		base-addr = <0x4CC00000>;
-		m3-dump-addr = <0x4E000000>;
-		etr-addr = <0x4E100000>;
-		qcom,caldb-addr = <0x4E200000>;
+		base-addr = <0x4E500000>;
+		m3-dump-addr = <0x4F900000>;
+		etr-addr = <0x4FA00000>;
+		qcom,caldb-addr = <0x4FB00000>;
+		pageable-addr = <0x50300000>;
 		qcom,tgt-mem-mode = <0x1>;
 		mhi,max-channels = <30>;
 		mhi,timeout = <10000>;
@@ -950,12 +962,12 @@
 	qcom,tgt-mem-mode = <1>;
 #endif
 	qcom,board_id = <0x23>;
-	qcom,bdf-addr = <0x0 0x4C000000 0x4C000000 0x0 0x0>;
+	qcom,bdf-addr = <0x0 0x4C000000 0x4C000000 0x0 0x0 0x0>;
 #ifdef __CNSS2__
-        qcom,caldb-addr = <0x0 0x4D000000 0 0 0>;
+	qcom,caldb-addr = <0x0 0x4CF00000 0 0 0 0>;
 #else
-        qcom,caldb-addr = <0x4D000000>;
-        m3-dump-addr = <0x4CE00000>;
+	qcom,caldb-addr = <0x4CF00000>;
+	m3-dump-addr = <0x4CD00000>;
 #endif
 	mem-region = <&q6_ipq5018_data>;
 	qcom,caldb-size = <0x200000>;
@@ -973,12 +985,12 @@
 	qcom,tgt-mem-mode = <1>;
 #endif
 	qcom,board_id = <0x60>;
-	qcom,bdf-addr = <0x0 0x4D200000 0x4CF00000 0x0 0x0>;
+	qcom,bdf-addr = <0x0 0x4D100000 0x4CF00000 0x0 0x0 0x0>;
 #ifdef __CNSS2__
-        qcom,caldb-addr = <0x0 0x4E400000 0 0 0>;
+	qcom,caldb-addr = <0x0 0x4E000000 0 0 0 0>;
 #else
-        qcom,caldb-addr = <0x4E400000>;
-        m3-dump-addr = <0x4E200000>;
+	qcom,caldb-addr = <0x4E000000>;
+	m3-dump-addr = <0x4DE00000>;
 #endif
 	mem-region = <&q6_qcn6122_data1>;
 	qcom,caldb-size = <0x500000>;
@@ -1014,54 +1026,55 @@
 	hremote-size = <0xF00000>;
 	tgt-mem-mode = <0x2>;
 #elif __IPQ_MEM_PROFILE_512_MB__
-	/* QCN9000 tgt-mem-mode=1 layout - 30MB
+	/* QCN9000 tgt-mem-mode=1 layout - 26MB
 	 * +=========+==============+=========+
 	 * |  Region | Start Offset |   Size  |
 	 * +---------+--------------+---------+
-	 * | HREMOTE |  0x4E900000  |   20MB  |
+	 * | HREMOTE |  0x4E500000  |   12MB  |
 	 * +---------+--------------+---------+
-	 * | M3 Dump |  0x4FD00000  |   1MB   |
+	 * | M3 Dump |  0x4F100000  |   1MB   |
 	 * +---------+--------------+---------+
-	 * |   ETR   |  0x4FE00000  |   1MB   |
+	 * |   ETR   |  0x4F200000  |   1MB   |
 	 * +---------+--------------+---------+
-	 * |  Caldb  |  0x4FF00000  |   8MB   |
+	 * |  Caldb  |  0x4F300000  |   8MB   |
 	 * +---------+--------------+---------+
-	 * | Pageable|  0x50700000  |   8MB   |
+	 * | Pageable|  0x4FB00000  |   4MB   |
 	 * +==================================+
 	 */
-	base-addr = <0x4E900000>;
-	m3-dump-addr = <0x4FD00000>;
-	etr-addr = <0x4FE00000>;
-	caldb-addr = <0x4FF00000>;
-	pageable-addr = <0x50700000>;
+	base-addr = <0x4E500000>;
+	m3-dump-addr = <0x4F100000>;
+	etr-addr = <0x4F200000>;
+	caldb-addr = <0x4F300000>;
+	pageable-addr = <0x4FB00000>;
 	caldb-size = <0x800000>;
-	hremote-size = <0x1400000>;
+	hremote-size = <0xC00000>;
 	tgt-mem-mode = <0x1>;
+	pageable-size = <0x400000>;
 #else
-	/* QCN9000 tgt-mem-mode=0 layout - 45MB
+	/* QCN9000 tgt-mem-mode=0 layout - 53MB
 	 * +=========+==============+=========+
 	 * |  Region | Start Offset |   Size  |
 	 * +---------+--------------+---------+
-	 * | HREMOTE |  0x4E900000  |   35MB  |
+	 * | HREMOTE |  0x4E500000  |   35MB  |
 	 * +---------+--------------+---------+
-	 * | M3 Dump |  0x50C00000  |   1MB   |
+	 * | M3 Dump |  0x50800000  |   1MB   |
 	 * +---------+--------------+---------+
-	 * |   ETR   |  0x50D00000  |   1MB   |
+	 * |   ETR   |  0x50900000  |   1MB   |
 	 * +---------+--------------+---------+
-	 * |  Caldb  |  0x50E00000  |   8MB   |
+	 * |  Caldb  |  0x50A00000  |   8MB   |
 	 * +---------+--------------+---------+
-	 * | Pageable|  0x51600000  |   8MB   |
+	 * | Pageable|  0x51200000  |   8MB   |
 	 * +==================================+
 	 */
-	base-addr = <0x4E900000>;
-	m3-dump-addr = <0x50C00000>;
-	etr-addr = <0x50D00000>;
-	caldb-addr = <0x50E00000>;
-	pageable-addr = <0x51600000>;
+	base-addr = <0x4E500000>;
+	m3-dump-addr = <0x50800000>;
+	etr-addr = <0x50900000>;
+	caldb-addr = <0x50A00000>;
+	pageable-addr = <0x51200000>;
 	hremote-size = <0x2300000>;
 	caldb-size = <0x800000>;
 	tgt-mem-mode = <0x0>;
-#endif
 	pageable-size = <0x800000>;
+#endif
 	hremote_node = <&q6_qcn9000_region>;
 };

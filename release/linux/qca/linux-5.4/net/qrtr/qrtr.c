@@ -3,6 +3,7 @@
  * Copyright (c) 2015, Sony Mobile Communications Inc.
  * Copyright (c) 2013, 2018 The Linux Foundation. All rights reserved.
  */
+#include <linux/kthread.h>
 #include <linux/module.h>
 #include <linux/netlink.h>
 #include <linux/qrtr.h>
@@ -140,6 +141,9 @@ static DEFINE_MUTEX(qrtr_node_locking);
  * @qrtr_tx_lock: lock for qrtr_tx_flow inserts
  * @rx_queue: receive queue
  * @item: list item for broadcast list
+ * @kworker: worker thread for recv work
+ * @task: task to run the worker thread
+ * @read_data: scheduled work for recv work
  */
 struct qrtr_node {
 	struct mutex ep_lock;
@@ -156,12 +160,11 @@ struct qrtr_node {
 	struct sk_buff_head rx_queue;
 	struct list_head item;
 
-	void *ilc;
-};
+	struct kthread_worker kworker;
+	struct task_struct *task;
+	struct kthread_work read_data;
 
-struct qrtr_tx_flow_waiter {
-	struct list_head node;
-	struct sock *sk;
+	void *ilc;
 };
 
 /**
@@ -179,6 +182,28 @@ struct qrtr_tx_flow {
 #define QRTR_TX_FLOW_HIGH	10
 #define QRTR_TX_FLOW_LOW	5
 
+#define QRTR_LOG_SIZE 		128
+/**
+ * struct qrtr_history - qrtr transaction history
+ * @timestamp: transaction timestamp
+ * @direction: transaction direction, 1 - TX, 0 - RX
+ * @qrtr_hdr: transaction qrtr header
+ * @msg_buffer: has control packet / data packet information
+ */
+struct qrtr_history {
+	u64 timestamp;
+	bool direction;
+	struct qrtr_hdr_v1 qrtr_hdr;
+	union {
+		struct qrtr_ctrl_pkt ctrl_pkt;
+		u8 data[64];
+	} msg_buffer;
+};
+
+struct qrtr_history qrtr_log[QRTR_LOG_SIZE];
+int qrtr_log_index;
+DEFINE_SPINLOCK(qrtr_log_spinlock);
+
 static struct sk_buff *qrtr_alloc_ctrl_packet(struct qrtr_ctrl_pkt **pkt,
 							gfp_t flags);
 static int qrtr_local_enqueue(struct qrtr_node *node, struct sk_buff *skb,
@@ -190,45 +215,143 @@ static int qrtr_bcast_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 static struct qrtr_sock *qrtr_port_lookup(int port);
 static void qrtr_port_put(struct qrtr_sock *ipc);
 
+
+static void qrtr_buffer_log_tx(struct qrtr_node *node, struct qrtr_hdr_v1 *hdr,
+		struct sk_buff *skb)
+{
+	const struct qrtr_ctrl_pkt *pkt;
+	unsigned long flags;
+	u32 type;
+
+	if (!hdr || !skb || !skb->data)
+		return;
+
+	spin_lock_irqsave(&qrtr_log_spinlock, flags);
+
+	/* Clear previous entry */
+	memset(&qrtr_log[qrtr_log_index], 0, sizeof(struct qrtr_history));
+
+	type = le32_to_cpu(hdr->type);
+	qrtr_log[qrtr_log_index].qrtr_hdr.type = type;
+	qrtr_log[qrtr_log_index].direction = 1;
+
+	if (type == QRTR_TYPE_DATA) {
+		qrtr_log[qrtr_log_index].qrtr_hdr.version = le32_to_cpu(hdr->version);
+		qrtr_log[qrtr_log_index].qrtr_hdr.src_node_id = le32_to_cpu(hdr->src_node_id);
+		qrtr_log[qrtr_log_index].qrtr_hdr.src_port_id = le32_to_cpu(hdr->src_port_id);
+		qrtr_log[qrtr_log_index].qrtr_hdr.confirm_rx = le32_to_cpu(hdr->confirm_rx);
+		qrtr_log[qrtr_log_index].qrtr_hdr.size = le32_to_cpu(hdr->size);
+		qrtr_log[qrtr_log_index].qrtr_hdr.dst_node_id = le32_to_cpu(hdr->dst_node_id);
+		qrtr_log[qrtr_log_index].qrtr_hdr.dst_port_id = le32_to_cpu(hdr->dst_port_id);
+		memcpy(qrtr_log[qrtr_log_index].msg_buffer.data, skb->data + QRTR_HDR_MAX_SIZE, 64);
+	} else {
+		pkt = (struct qrtr_ctrl_pkt *)(skb->data + QRTR_HDR_MAX_SIZE);
+		if (type == QRTR_TYPE_NEW_SERVER || type == QRTR_TYPE_DEL_SERVER) {
+			qrtr_log[qrtr_log_index].msg_buffer.ctrl_pkt.server.service = le32_to_cpu(pkt->server.service);
+			qrtr_log[qrtr_log_index].msg_buffer.ctrl_pkt.server.node = le32_to_cpu(pkt->server.node);
+			qrtr_log[qrtr_log_index].msg_buffer.ctrl_pkt.server.instance = le32_to_cpu(pkt->server.instance);
+			qrtr_log[qrtr_log_index].msg_buffer.ctrl_pkt.server.port = le32_to_cpu(pkt->server.port);
+		} else if (type == QRTR_TYPE_DEL_CLIENT || type == QRTR_TYPE_RESUME_TX) {
+			qrtr_log[qrtr_log_index].msg_buffer.ctrl_pkt.client.node = le32_to_cpu(pkt->client.node);
+			qrtr_log[qrtr_log_index].msg_buffer.ctrl_pkt.client.port = le32_to_cpu(pkt->client.port);
+		} else if (type == QRTR_TYPE_HELLO || type == QRTR_TYPE_BYE)
+			qrtr_log[qrtr_log_index].qrtr_hdr.src_node_id = le32_to_cpu(hdr->src_node_id);
+	}
+
+	qrtr_log[qrtr_log_index++].timestamp = ktime_to_ms(ktime_get());
+
+	qrtr_log_index &= (QRTR_LOG_SIZE - 1);
+	spin_unlock_irqrestore(&qrtr_log_spinlock, flags);
+}
+
+static void qrtr_buffer_log_rx(struct qrtr_node *node, struct sk_buff *skb)
+{
+	const struct qrtr_ctrl_pkt *pkt;
+	unsigned long flags;
+	struct qrtr_cb *cb;
+
+	if (!skb || !skb->data)
+		return;
+
+	cb = (struct qrtr_cb *)skb->cb;
+
+	spin_lock_irqsave(&qrtr_log_spinlock, flags);
+
+	/* Clear previous entry */
+	memset(&qrtr_log[qrtr_log_index], 0, sizeof(struct qrtr_history));
+
+	qrtr_log[qrtr_log_index].qrtr_hdr.type = cb->type;
+	qrtr_log[qrtr_log_index].direction = 0;
+
+	if (cb->type == QRTR_TYPE_DATA) {
+		qrtr_log[qrtr_log_index].qrtr_hdr.confirm_rx = cb->confirm_rx;
+		qrtr_log[qrtr_log_index].qrtr_hdr.src_node_id = cb->src_node;
+		qrtr_log[qrtr_log_index].qrtr_hdr.src_port_id = cb->src_port;
+		qrtr_log[qrtr_log_index].qrtr_hdr.dst_node_id = cb->dst_node;
+		qrtr_log[qrtr_log_index].qrtr_hdr.dst_port_id = cb->dst_port;
+		memcpy(qrtr_log[qrtr_log_index].msg_buffer.data, skb->data, 64);
+
+	} else {
+		pkt = (struct qrtr_ctrl_pkt *)(skb->data);
+		if (cb->type == QRTR_TYPE_NEW_SERVER || cb->type == QRTR_TYPE_DEL_SERVER) {
+			qrtr_log[qrtr_log_index].msg_buffer.ctrl_pkt.server.service = le32_to_cpu(pkt->server.service);
+			qrtr_log[qrtr_log_index].msg_buffer.ctrl_pkt.server.node = le32_to_cpu(pkt->server.node);
+			qrtr_log[qrtr_log_index].msg_buffer.ctrl_pkt.server.instance = le32_to_cpu(pkt->server.instance);
+			qrtr_log[qrtr_log_index].msg_buffer.ctrl_pkt.server.port = le32_to_cpu(pkt->server.port);
+		} else if (cb->type == QRTR_TYPE_DEL_CLIENT || cb->type == QRTR_TYPE_RESUME_TX) {
+			qrtr_log[qrtr_log_index].msg_buffer.ctrl_pkt.client.node = le32_to_cpu(pkt->client.node);
+			qrtr_log[qrtr_log_index].msg_buffer.ctrl_pkt.client.port = le32_to_cpu(pkt->client.port);
+		} else if (cb->type == QRTR_TYPE_HELLO || cb->type == QRTR_TYPE_BYE)
+			qrtr_log[qrtr_log_index].qrtr_hdr.src_node_id = cb->src_node;
+	}
+
+	qrtr_log[qrtr_log_index++].timestamp = ktime_to_ms(ktime_get());
+
+	qrtr_log_index &= (QRTR_LOG_SIZE - 1);
+	spin_unlock_irqrestore(&qrtr_log_spinlock, flags);
+}
+
 static void qrtr_log_tx_msg(struct qrtr_node *node, struct qrtr_hdr_v1 *hdr,
 			    struct sk_buff *skb)
 {
 	const struct qrtr_ctrl_pkt *pkt;
 	u64 pl_buf = 0;
+	u32 type;
 
 	if (!hdr || !skb || !skb->data)
 		return;
+	type = le32_to_cpu(hdr->type);
 
-	if (hdr->type == QRTR_TYPE_DATA) {
+	if (type == QRTR_TYPE_DATA) {
 		pl_buf = *(u64 *)(skb->data + QRTR_HDR_MAX_SIZE);
 		QRTR_INFO(node->ilc,
 			  "TX DATA: Len:0x%x CF:0x%x src[0x%x:0x%x] dst[0x%x:0x%x] [%08x %08x] [%s]\n",
-			  hdr->size, hdr->confirm_rx,
-			  hdr->src_node_id, hdr->src_port_id,
-			  hdr->dst_node_id, hdr->dst_port_id,
+			  le32_to_cpu(hdr->size), le32_to_cpu(hdr->confirm_rx),
+			  le32_to_cpu(hdr->src_node_id), le32_to_cpu(hdr->src_port_id),
+			  le32_to_cpu(hdr->dst_node_id), le32_to_cpu(hdr->dst_port_id),
 			  (unsigned int)pl_buf, (unsigned int)(pl_buf >> 32),
 			  current->comm);
 	} else {
 		pkt = (struct qrtr_ctrl_pkt *)(skb->data + QRTR_HDR_MAX_SIZE);
-		if (hdr->type == QRTR_TYPE_NEW_SERVER ||
-		    hdr->type == QRTR_TYPE_DEL_SERVER)
+		if (type == QRTR_TYPE_NEW_SERVER ||
+		    type == QRTR_TYPE_DEL_SERVER)
 			QRTR_INFO(node->ilc,
 				  "TX CTRL: cmd:0x%x SVC[0x%x:0x%x] addr[0x%x:0x%x]\n",
-				  hdr->type, le32_to_cpu(pkt->server.service),
+				  type, le32_to_cpu(pkt->server.service),
 				  le32_to_cpu(pkt->server.instance),
 				  le32_to_cpu(pkt->server.node),
 				  le32_to_cpu(pkt->server.port));
-		else if (hdr->type == QRTR_TYPE_DEL_CLIENT ||
-			 hdr->type == QRTR_TYPE_RESUME_TX)
+		else if (type == QRTR_TYPE_DEL_CLIENT ||
+			 type == QRTR_TYPE_RESUME_TX)
 			QRTR_INFO(node->ilc,
 				  "TX CTRL: cmd:0x%x addr[0x%x:0x%x]\n",
-				  hdr->type, le32_to_cpu(pkt->client.node),
+				  type, le32_to_cpu(pkt->client.node),
 				  le32_to_cpu(pkt->client.port));
-		else if (hdr->type == QRTR_TYPE_HELLO ||
-			 hdr->type == QRTR_TYPE_BYE)
+		else if (type == QRTR_TYPE_HELLO ||
+			 type == QRTR_TYPE_BYE)
 			QRTR_INFO(node->ilc,
 				  "TX CTRL: cmd:0x%x node[0x%x]\n",
-				  hdr->type, hdr->src_node_id);
+				  type, hdr->src_node_id);
 	}
 }
 
@@ -307,8 +430,6 @@ static inline int kref_put_rwsem_lock(struct kref *kref,
  */
 static void __qrtr_node_release(struct kref *kref)
 {
-	struct qrtr_tx_flow_waiter *waiter;
-	struct qrtr_tx_flow_waiter *temp;
 	struct radix_tree_iter iter;
 	struct qrtr_tx_flow *flow;
 	struct qrtr_node *node = container_of(kref, struct qrtr_node, ref);
@@ -331,15 +452,13 @@ static void __qrtr_node_release(struct kref *kref)
 	mutex_lock(&node->qrtr_tx_lock);
 	radix_tree_for_each_slot(slot, &node->qrtr_tx_flow, &iter, 0) {
 		flow = *slot;
-		list_for_each_entry_safe(waiter, temp, &flow->resume_tx.head, node) {
-			list_del(&waiter->node);
-			sock_put(waiter->sk);
-			kfree(waiter);
-		}
 		kfree(flow);
 		radix_tree_delete(&node->qrtr_tx_flow, iter.index);
 	}
 	mutex_unlock(&node->qrtr_tx_lock);
+
+	kthread_flush_worker(&node->kworker);
+	kthread_stop(node->task);
 
 	skb_queue_purge(&node->rx_queue);
 	kfree(node);
@@ -527,7 +646,7 @@ static int qrtr_node_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 
 	hdr->dst_port_id = cpu_to_le32(to->sq_port);
 	hdr->size = cpu_to_le32(len);
-	hdr->confirm_rx = !!confirm_rx;
+	hdr->confirm_rx = cpu_to_le32(!!confirm_rx);
 
 	rc = skb_put_padto(skb, ALIGN(len, 4) + sizeof(*hdr));
 	qrtr_log_tx_msg(node, hdr, skb);
@@ -535,9 +654,12 @@ static int qrtr_node_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 	if (!rc) {
 		mutex_lock(&node->ep_lock);
 		rc = -ENODEV;
-		if (node->ep)
+		if (node->ep) {
+			qrtr_buffer_log_tx(node, hdr, skb);
 			rc = node->ep->xmit(node->ep, skb);
-		else
+			if (rc)
+				pr_err("%s : Error in xmit : ret = %d\n",__func__, rc);
+		} else
 			kfree_skb(skb);
 		mutex_unlock(&node->ep_lock);
 	}
@@ -728,7 +850,6 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 	size_t size;
 	unsigned int ver;
 	size_t hdrlen;
-	struct qrtr_ctrl_pkt *pkt;
 
 	if (len == 0 || len & 3)
 		return -EINVAL;
@@ -795,11 +916,9 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 
 	skb_put_data(skb, data + hdrlen, size);
 	qrtr_log_rx_msg(node, skb);
+	qrtr_buffer_log_rx(node, skb);
 
 	qrtr_node_assign(node, cb->src_node);
-
-	if (cb->type != QRTR_TYPE_DATA)
-		qrtr_fwd_ctrl_pkt(skb);
 
 	if (cb->type == QRTR_TYPE_NEW_SERVER) {
 		/* Remote node endpoint can bridge other distant nodes */
@@ -808,23 +927,13 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 		qrtr_node_assign(node, le32_to_cpu(pkt->server.node));
 	}
 
-	if (cb->type == QRTR_TYPE_RESUME_TX) {
-		if (cb->dst_node != qrtr_local_nid) {
-			qrtr_fwd_pkt(skb, cb);
-			return 0;
-		}
-		qrtr_tx_resume(node, skb);
-	} else if (cb->dst_node != qrtr_local_nid &&
-		   cb->type == QRTR_TYPE_DATA) {
-		qrtr_fwd_pkt(skb, cb);
+	/* All control packets and non-local destined data packets should be
+	 * queued to the worker for forwarding handling.
+	 */
+	if (cb->type != QRTR_TYPE_DATA || cb->dst_node != qrtr_local_nid) {
+		skb_queue_tail(&node->rx_queue, skb);
+		kthread_queue_work(&node->kworker, &node->read_data);
 	} else {
-		/* Translate DEL_PROC to BYE for local enqueue */
-		if (cb->type == QRTR_TYPE_DEL_PROC) {
-			cb->type = QRTR_TYPE_BYE;
-			pkt = (struct qrtr_ctrl_pkt *)skb->data;
-			memset(pkt, 0, sizeof(struct qrtr_ctrl_pkt));
-			pkt->cmd = cpu_to_le32(QRTR_TYPE_BYE);
-		}
 		ipc = qrtr_port_lookup(cb->dst_port);
 		if (!ipc)
 			goto err;
@@ -870,6 +979,72 @@ static struct sk_buff *qrtr_alloc_ctrl_packet(struct qrtr_ctrl_pkt **pkt,
 	return skb;
 }
 
+/* Handle not atomic operations for a received packet. */
+static void qrtr_node_rx_work(struct kthread_work *work)
+{
+	struct qrtr_node *node = container_of(work, struct qrtr_node,
+					      read_data);
+	struct qrtr_ctrl_pkt *pkt;
+	void __rcu **slot;
+	struct radix_tree_iter iter;
+	struct qrtr_tx_flow *flow;
+
+	struct sk_buff *skb;
+	char name[32] = {0,};
+
+	if (unlikely(!node->ilc)) {
+		snprintf(name, sizeof(name), "qrtr_%d", node->nid);
+		node->ilc = ipc_log_context_create(QRTR_LOG_PAGE_CNT, name, 0);
+	}
+
+	while ((skb = skb_dequeue(&node->rx_queue)) != NULL) {
+		struct qrtr_cb *cb = (struct qrtr_cb *)skb->cb;
+		struct qrtr_sock *ipc;
+
+		if (cb->type != QRTR_TYPE_DATA)
+			qrtr_fwd_ctrl_pkt(skb);
+
+		if (cb->type == QRTR_TYPE_RESUME_TX) {
+			if (cb->dst_node != qrtr_local_nid) {
+				qrtr_fwd_pkt(skb, cb);
+				continue;
+			}
+			qrtr_tx_resume(node, skb);
+		} else if (cb->dst_node != qrtr_local_nid &&
+			   cb->type == QRTR_TYPE_DATA) {
+			qrtr_fwd_pkt(skb, cb);
+		} else {
+			ipc = qrtr_port_lookup(cb->dst_port);
+			if (!ipc) {
+				kfree_skb(skb);
+			} else {
+				if (cb->type == QRTR_TYPE_DEL_PROC) {
+					if (skb->len == sizeof(*pkt))
+						pkt = (void *)skb->data;
+
+					/* Free tx flow counters */
+					mutex_lock(&node->qrtr_tx_lock);
+					radix_tree_for_each_slot(slot, &node->qrtr_tx_flow, &iter, 0) {
+						flow = *slot;
+						wake_up_interruptible_all(&flow->resume_tx);
+					}
+					mutex_unlock(&node->qrtr_tx_lock);
+
+					/* Translate DEL_PROC to BYE for local enqueue */
+					cb->type = QRTR_TYPE_BYE;
+					pkt = (struct qrtr_ctrl_pkt *)skb->data;
+					memset(pkt, 0, sizeof(struct qrtr_ctrl_pkt));
+					pkt->cmd = cpu_to_le32(QRTR_TYPE_BYE);
+				}
+
+				if (sock_queue_rcv_skb(&ipc->sk, skb))
+					kfree_skb(skb);
+				qrtr_port_put(ipc);
+			}
+		}
+	}
+}
+
 /**
  * qrtr_endpoint_register() - register a new endpoint
  * @ep: endpoint to register
@@ -895,6 +1070,14 @@ int qrtr_endpoint_register(struct qrtr_endpoint *ep, unsigned int net_id)
 	node->nid = QRTR_EP_NID_AUTO;
 	node->ep = ep;
 	atomic_set(&node->hello_sent, 0);
+
+	kthread_init_work(&node->read_data, qrtr_node_rx_work);
+	kthread_init_worker(&node->kworker);
+	node->task = kthread_run(kthread_worker_fn, &node->kworker, "qrtr_rx");
+	if (IS_ERR(node->task)) {
+		kfree(node);
+		return -ENOMEM;
+	}
 
 	mutex_init(&node->qrtr_tx_lock);
 	INIT_RADIX_TREE(&node->qrtr_tx_flow, GFP_KERNEL);
@@ -981,6 +1164,7 @@ void qrtr_endpoint_unregister(struct qrtr_endpoint *ep)
 	struct sockaddr_qrtr src = {AF_QIPCRTR, node->nid, QRTR_PORT_CTRL};
 	struct sockaddr_qrtr dst = {AF_QIPCRTR, qrtr_local_nid, QRTR_PORT_CTRL};
 	struct qrtr_ctrl_pkt *pkt;
+	struct qrtr_tx_flow *flow;
 	struct sk_buff *skb;
 	void __rcu **slot;
 
@@ -1006,6 +1190,13 @@ void qrtr_endpoint_unregister(struct qrtr_endpoint *ep)
 	up_read(&qrtr_node_lock);
 
 	/* Wake up any transmitters waiting for resume-tx from the node */
+	mutex_lock(&node->qrtr_tx_lock);
+	radix_tree_for_each_slot(slot, &node->qrtr_tx_flow, &iter, 0) {
+		flow = *slot;
+		wake_up_interruptible_all(&flow->resume_tx);
+	}
+	mutex_unlock(&node->qrtr_tx_lock);
+
 	wake_up_interruptible_all(&node->resume_tx);
 
 	qrtr_node_release(node);

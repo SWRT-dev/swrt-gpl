@@ -135,19 +135,19 @@ static int get_non_encrypted_tz_log(char *buf, uint32_t diag_start,
 
 }
 
-int print_text(char *intro_message,
+unsigned int print_text(char *intro_message,
 			unsigned char *text_addr,
 			unsigned int size,
 			char *buf, uint32_t buf_len)
 {
 	unsigned int i;
-	int len = 0;
+	unsigned int len = 0;
 
-	pr_debug("begin address %p, size %d\n", text_addr, size);
+	pr_debug("begin address 0x%lx, size 0x%x\n", (uintptr_t)text_addr, size);
 	len += scnprintf(buf + len, buf_len - len, "%s\n", intro_message);
 	for (i = 0;  i < size;  i++) {
 		if (buf_len <= len + 6) {
-			pr_err("buffer not enough, buf_len %d, len %d\n",
+			pr_err("buffer not enough, buf_len %d, len %u\n",
 				buf_len, len);
 			return buf_len;
 		}
@@ -169,7 +169,7 @@ int parse_encrypted_log(char *ker_buf, uint32_t buf_len, char *copy_buf,
 	uint32_t display_buf_size = buf_len;
 
 	encr_log_head = (struct tzbsp_encr_log_t *)ker_buf;
-	pr_debug("display_buf_size = %d, encr_log_buff_size = %d\n",
+	pr_debug("display_buf_size = 0x%x, encr_log_buff_size = 0x%x\n",
 		buf_len, encr_log_head->encr_log_buff_size);
 	size = encr_log_head->encr_log_buff_size;
 
@@ -202,8 +202,8 @@ int parse_encrypted_log(char *ker_buf, uint32_t buf_len, char *copy_buf,
 
 	if (len > display_buf_size - size)
 		pr_warn("Cannot fit all info into the buffer\n");
-	pr_debug("encrypted log size %d, disply buffer size %d, used len %d\n",
-		size, display_buf_size, len);
+	pr_debug("encrypted log size 0x%x, display buffer size 0x%x, used len 0x%x\n",
+		size, display_buf_size, (unsigned int)len);
 	len += print_text("\nLog : ", encr_log_head->log_buf, size,
 				copy_buf + len, display_buf_size - len);
 	return len;
@@ -251,24 +251,33 @@ static int tz_hvc_log_open(struct inode *inode, struct file *file)
 	ker_buf = tz_hvc_log->ker_buf;
 	copy_buf = tz_hvc_log->copy_buf;
 	buf_len = tz_hvc_log->buf_len;
+	tz_hvc_log->copy_len = 0;
 
 	if (!strncmp(file->f_path.dentry->d_iname, "tz_log", sizeof("tz_log"))) {
 		/* SCM call to TZ to get the tz log */
 		if (tz_hvc_log->is_diag_id) {
 			ret = qti_scm_tz_log(ker_buf, buf_len);
 			if (ret != 0) {
-				pr_err("Error in getting tz log\n");
-				mutex_unlock(&tz_hvc_log->lock);
-				return ret;
+				pr_err("Error in getting tz log, ret = %d\n",
+					ret);
+				goto out_err;
 			}
 		} else {
 			if (tz_hvc_log->is_encrypted) {
-				return get_encrypted_tz_log(ker_buf, buf_len,
+				ret = get_encrypted_tz_log(ker_buf, buf_len,
 							    copy_buf);
+				if (ret == -1)
+					goto out_err;
+				else if (ret == QTI_TZ_LOG_NO_UPDATE)
+					goto out_success;
+				tz_hvc_log->copy_len = ret;
+				goto out_success;
 			} else {
-				get_non_encrypted_tz_log(ker_buf,
+				ret = get_non_encrypted_tz_log(ker_buf,
 						tz_hvc_log->log_buf_start,
 						buf_len);
+				if (ret == -1)
+					goto out_err;
 			}
 		}
 
@@ -279,8 +288,7 @@ static int tz_hvc_log_open(struct inode *inode, struct file *file)
 		ret = qti_scm_hvc_log(ker_buf, buf_len);
 		if (ret != 0) {
 			pr_err("Error in getting hvc log\n");
-			mutex_unlock(&tz_hvc_log->lock);
-			return ret;
+			goto out_err;
 		}
 
 		ring_off = tz_hvc_log->hvc_ring_off;
@@ -319,7 +327,13 @@ static int tz_hvc_log_open(struct inode *inode, struct file *file)
 		tz_hvc_log->copy_len = offset;
 	}
 
+out_success:
+	mutex_unlock(&tz_hvc_log->lock);
 	return 0;
+
+out_err:
+	mutex_unlock(&tz_hvc_log->lock);
+	return -EIO;
 }
 
 static ssize_t tz_hvc_log_read(struct file *fp, char __user *user_buffer,
@@ -392,7 +406,8 @@ static int qti_tzlog_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	tz_hvc_log->is_diag_id = !(of_device_is_compatible(np, "qti,tzlog-ipq6018") ||
+	tz_hvc_log->is_diag_id = !(of_device_is_compatible(np, "qti,tzlog-ipq5332") ||
+				   of_device_is_compatible(np, "qti,tzlog-ipq6018") ||
 				   of_device_is_compatible(np, "qti,tzlog-ipq9574") ||
 				   qti_scm_is_tz_log_encryption_supported());
 	if (!tz_hvc_log->is_diag_id) {
@@ -584,6 +599,7 @@ static int qti_tzlog_remove(struct platform_device *pdev)
 
 static const struct of_device_id qti_tzlog_of_match[] = {
 	{ .compatible = "qti,tzlog" },
+	{ .compatible = "qti,tzlog-ipq5332" },
 	{ .compatible = "qti,tzlog-ipq6018" },
 	{ .compatible = "qti,tzlog-ipq9574" },
 	{}
