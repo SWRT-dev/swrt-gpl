@@ -2013,6 +2013,11 @@ struct net_device {
 /*
  * Cache lines mostly used on receive path (including eth_type_trans())
  */
+
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+	unsigned long		last_rx;
+#endif
+
 	/* Interface address info used in eth_type_trans() */
 	unsigned char		*dev_addr;
 

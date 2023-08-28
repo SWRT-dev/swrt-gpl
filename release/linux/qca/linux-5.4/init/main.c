@@ -170,6 +170,17 @@ static int __init set_reset_devices(char *str)
 
 __setup("reset_devices", set_reset_devices);
 
+long int rfs_offset;
+EXPORT_SYMBOL(rfs_offset);
+static int __init rfs_setup(char *str)
+{
+	ssize_t	status;
+
+	status = kstrtol(str, 16, &rfs_offset);
+	return 1;
+}
+__setup("root_rfs=", rfs_setup);
+
 static const char *argv_init[MAX_INIT_ARGS+2] = { "init", NULL, };
 const char *envp_init[MAX_INIT_ENVS+2] = { "HOME=/", "TERM=linux", NULL, };
 static const char *panic_later, *panic_param;

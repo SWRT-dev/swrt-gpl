@@ -827,7 +827,7 @@ else ifeq ($(EN7561),y)
 	RFSOFFSET=`expr 64 + $${KSIZE} + $${PAD2}` ; \
 	echo `econettools/trx/trx -k $${KSIZE} -r $${RSIZE} -u 0x80002000 -f $(PLATFORMDIR)/tclinux -o $(PLATFORMDIR)/tclinux.bin -c econettools/trx/trx_config` ; \
 	asustools/u-boot-2014.10/tools/mkimage -A mips -O linux -T kernel -C lzma -a 0x80002000 -e 0x80002000 -r $${RFSOFFSET} \
-		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0"  \
+		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(SWRTEXTENDNO)" "0" "0" "0" "0" "0" "0"  \
 		-d $(PLATFORMDIR)/tclinux.bin image/$(IMGNAME).trx
 else ifeq ($(CONFIG_RALINK),y)
 # MTK/Ralink platform
@@ -903,11 +903,11 @@ else ifeq ($(CONFIG_RALINK),y)
 	RFSOFFSET=`expr 64 + $${KSIZE} + $${PAD2}` ; \
 	if [ "$(BUILD_NAME)" = "RT-AC85U" ] || [ "$(BUILD_NAME)" = "RT-AC85P" ] || [ "$(BUILD_NAME)" = "RT-AC65U" ] || [ "$(BUILD_NAME)" = "RT-ACRH26" ] || [ "$(BUILD_NAME)" = "TUF-AC1750" ] || [ "$(BUILD_NAME)" = "RM-AC2100" ] || [ "$(BUILD_NAME)" = "R6800" ] || [ "$(BUILD_NAME)" = "PGB-M1" ] || [ "$(BUILD_NAME)" = "JCG-Q10PRO" ] || [ "$(BUILD_NAME)" = "H3C-TX1801" ] || [ "$(BUILD_NAME)" = "XM-CR660X" ] || [ "$(BUILD_NAME)" = "JCG-Q20" ]; then \
 		asustools/u-boot-2014.10/tools/mkimage -A mips -O linux -T kernel -C lzma -a 0x81001000 -e 0x81001000 -r $${RFSOFFSET} \
-		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0"  \
+		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(SWRTEXTENDNO)" "0" "0" "0" "0" "0" "0"  \
 		-d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx ; \
 		if [ "$(BUILD_NAME)" = "R6800" ]; then \
 			asustools/u-boot-2014.10/tools/mkimage -A mips -O linux -T kernel -C lzma -a 0x81001000 -e 0x81001000 -r $$${RFSOFFSET} \
-			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0"  \
+			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(SWRTEXTENDNO)" "0" "0" "0" "0" "0" "0"  \
 			-d $(PLATFORMDIR)/kernel.img image/kernel.bin ; \
 		fi ; \
 	elif [ "$(BUILD_NAME)" = "RT-ACRH18" ] ; then \
@@ -920,11 +920,11 @@ else ifeq ($(CONFIG_RALINK),y)
                 -d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx ; \
 	elif [ "$(BUILD_NAME)" = "4G-AX56" ] || [ "$(BUILD_NAME)" = "RT-AX53U" ] || [ "$(BUILD_NAME)" = "RT-AX54" ] || [ "$(BUILD_NAME)" = "XD4S" ] ; then \
 		asustools/u-boot-2014.10/tools/mkimage -A mips -O linux -T kernel -C lzma -a 0x81001000 -e 0x81001000 -r $${RFSOFFSET} \
-		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0"  \
+		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(SWRTEXTENDNO)" "0" "0" "0" "0" "0" "0"  \
 		-d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx ; \
 	else \
 		asustools/mkimage -A mips -O linux -T kernel -C lzma -a 80000000 -e $${ENTRY} -r $${RFSOFFSET} \
-		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0" \
+		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(SWRTEXTENDNO)" "0" "0" "0" "0" "0" "0" \
 		-d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx ; \
 	fi ; \
 	if [ "`grep -c \"^CONFIG_RALINK_MT7620\>\" $(LINUXDIR)/.config`" -gt 0 ]; then \
@@ -995,7 +995,7 @@ endif
 		TRANS_ARCH=`if [ "$(ARCH)" = "arm64" ]; then echo -n arm; else echo -n $(ARCH); fi` ; \
 		echo "PAD2: $${PAD2}" ; \
 	asustools/mkimage -A $${TRANS_ARCH} -O linux -T kernel -C lzma -a $(LOADADDR) -e $(ENTRYADDR) -r $${RFSOFFSET} \
-			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0" \
+			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(SWRTEXTENDNO)" "0" "0" "0" "0" "0" "0" \
 			-d image/$(IMGNAME).img image/$(IMGNAME).trx
 else
 	@if [ -n "$(DTB)" -a ! -e $(LINUXDIR)/arch/$(ARCH)/boot/dts/$(DTB) ] ; then \
@@ -1008,8 +1008,8 @@ ifeq ($(RAX120),y)
 	@$(CROSS_COMPILE)objcopy -O binary $(LINUXDIR)/vmlinux $(PLATFORMDIR)/vmlinus
 	@gzip -9 -c $(PLATFORMDIR)/vmlinus > $(PLATFORMDIR)/rax120.kernel
 	@cp -f $(PLATFORMDIR)/rax120.kernel $(PLATFORMDIR)/Image.img
-	asustools/mkits.sh -D qcom-ipq807x-rax120 -o image/qcom-ipq807x-rax120.its -k $(PLATFORMDIR)/Image.img -d $(LINUXDIR)/arch/$(ARCH)/boot/dts/$(DTB) -C gzip -a 0x41208000 -e 0x41208000 -A $(ARCH) -v $(KERNEL_VER)
-	@PATH=$(LINUXDIR)/scripts/dtc asustools/mkimage -f image/qcom-ipq807x-rax120.its image/$(IMGNAME).img
+	asustools/mkits.sh -D ipq807x-rax120 -o image/ipq807x-rax120.its -k $(PLATFORMDIR)/Image.img -d $(LINUXDIR)/arch/$(ARCH)/boot/dts/$(DTB) -C gzip -a 0x41208000 -e 0x41208000 -A $(ARCH) -v $(KERNEL_VER)
+	@PATH=$(LINUXDIR)/scripts/dtc asustools/mkimage -f image/ipq807x-rax120.its image/$(IMGNAME).img
 	@SIZE=`wc -c image/$(IMGNAME).img | awk '{print $$1}'` ; \
 		PAD=`expr 64 - $${SIZE} % 64` ; \
 		dd if=/dev/zero count=1 bs=$${PAD} 2> /dev/null | tr \\000 \\377 >> image/$(IMGNAME).img
@@ -1026,7 +1026,7 @@ ifeq ($(RAX120),y)
 		RFSOFFSET=`expr 64 + $${KSIZE} + $${PAD2}` ; \
 		asustools/mkimage -A $(ARCH) -O linux -T kernel -C none \
 			-a $(LOADADDR) -e $(ENTRYADDR) -r $${RFSOFFSET} \
-			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0" \
+			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(SWRTEXTENDNO)" "0" "0" "0" "0" "0" "0" \
 			-d image/$(IMGNAME).img image/$(IMGNAME).trx
 else
 	# padded kernel image size, DTB=$(DTB)
@@ -1070,7 +1070,7 @@ endif
 		RFSOFFSET=`expr 64 + $${KSIZE} + $${PAD2}` ; \
 		asustools/mkimage -A $(ARCH) -O linux -T kernel -C lzma \
 			-a $(LOADADDR) -e $(ENTRYADDR) -r $${RFSOFFSET} \
-			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(SWRT_CODEBASE)" "0" "0" "0" "0" "0" "0" \
+			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(SWRTEXTENDNO)" "0" "0" "0" "0" "0" "0" \
 			-d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx
 endif
 endif
@@ -5851,6 +5851,26 @@ fi;
 			echo "CONFIG_NFT_REDIR_IPV6=y" >>$(1); \
 		fi;\
 	fi;
+	if [ "$(SWRT_I2CLED)" = "y" ]; then \
+		sed -i "/CONFIG_LEDS_TRIGGERS\>/d" $(1); \
+		echo "CONFIG_LEDS_TRIGGERS=y" >>$(1); \
+		echo "CONFIG_LEDS_TRIGGER_DEFAULT_ON=y" >>$(1); \
+		echo "CONFIG_LEDS_TRIGGER_NETDEV=y" >>$(1); \
+		echo "CONFIG_LEDS_TRIGGER_USBDEV=y" >>$(1); \
+		echo "CONFIG_NETFILTER_XT_TARGET_LED=y" >>$(1); \
+		echo "# CONFIG_SWCONFIG_LEDS is not set" >>$(1); \
+		echo "# CONFIG_LEDS_TRIGGER_TIMER is not set" >>$(1); \
+		echo "# CONFIG_LEDS_TRIGGER_ONESHOT is not set" >>$(1); \
+		echo "# CONFIG_LEDS_TRIGGER_HEARTBEAT is not set" >>$(1); \
+		echo "# CONFIG_LEDS_TRIGGER_BACKLIGHT is not set" >>$(1); \
+		echo "# CONFIG_LEDS_TRIGGER_CPU is not set" >>$(1); \
+		echo "# CONFIG_LEDS_TRIGGER_GPIO is not set" >>$(1); \
+		echo "# CONFIG_LEDS_TRIGGER_TRANSIENT is not set" >>$(1); \
+		echo "# CONFIG_LEDS_TRIGGER_CAMERA is not set" >>$(1); \
+		echo "# CONFIG_LEDS_TRIGGER_MORSE is not set" >>$(1); \
+		echo "CONFIG_USB_LED_TRIG=y" >>$(1); \
+		echo "# CONFIG_LEDS_IPQ is not set" >>$(1); \
+	fi;
 	$(call platformKernelConfig, $(1))
 	$(call extraKernelConfig, $(1))
 endef
@@ -5921,8 +5941,8 @@ else ifeq ($(IPQ50XX),y)
 	@cp $(LINUXDIR)/config_base_ipq5018 $(LINUXDIR)/config_$(lowercase_B)
 else ifeq ($(IPQ60XX),y)
 	@cp $(LINUXDIR)/config_base_ipq6018 $(LINUXDIR)/config_$(lowercase_B)
-else ifeq ($(IPQ8074),y)
-	@cp $(LINUXDIR)/config_base_ipq8074 $(LINUXDIR)/config_$(lowercase_B)
+else ifeq ($(IPQ807X),y)
+	@cp $(LINUXDIR)/config_base_ipq807x $(LINUXDIR)/config_$(lowercase_B)
 else ifeq ($(MT7621),y)
 	@if [ "$(BUILD_NAME)" = "RT-AC1200" ] || [ "$(BUILD_NAME)" = "RT-N600" ] ; then \
 		cp $(LINUXDIR)/ralink/Kconfig_$(lowercase_B) $(LINUXDIR)/ralink/Kconfig ; \
@@ -5955,21 +5975,6 @@ endif
 	$(call RouterOptions, router/config_$(lowercase_B))
 	$(call KernelConfig, $(LINUXDIR)/config_$(lowercase_B))
 	$(call BusyboxOptions, $(BUSYBOX_DIR)/config_$(lowercase_B))
-ifeq ($(CONFIG_RALINK),y)
-	@if [ "$(BUILD_NAME)" = "RT-N56UB1" ] || [ "$(BUILD_NAME)" = "RT-N56UB2" ]; then \
-		if [ "$(MT7603_EXTERNAL_PA_EXTERNAL_LNA)" = "y" ] ; then \
-			echo "build epa+elna fw" ; \
-			gcc -DCONFIG_MT7603E_EXTERNAL_PA_EXTERNAL_LNA -g $(LINUXDIR)/drivers/net/wireless/rlt_wifi_7603E/tools/bin2h.c \
-			-o $(LINUXDIR)/drivers/net/wireless/rlt_wifi_7603E/tools/bin2h ; \
-		elif [ "$(MT7603_INTERNAL_PA_EXTERNAL_LNA)" = "y" ] ; then \
-			echo "build ipa+elna fw" ; \
-			gcc -DCONFIG_MT7603E_INTERNAL_PA_EXTERNAL_LNA -g $(LINUXDIR)/drivers/net/wireless/rlt_wifi_7603E/tools/bin2h.c \
-			-o $(LINUXDIR)/drivers/net/wireless/rlt_wifi_7603E/tools/bin2h ; \
-		fi ; \
-		$(MAKE) -C $(LINUXDIR)/drivers/net/wireless/rlt_wifi_7603E build_e2fw; \
-	fi
-endif
-
 
 	@$(MAKE) setprofile
 	$(MAKE) all
@@ -6051,7 +6056,7 @@ ET12 et12 XT12 xt12 XD4PRO xd4pro XT8PRO xt8pro BM68 bm68 ET8PRO et8pro ET8_V2 e
 	$(call save_src_config, $@,_CFG)
 	$(MAKE) bin
 
-swrt-% SWRT-% NETGEAR-% netgear-%:
+swrt-% SWRT-% NETGEAR-% netgear-% rax%:
 	$(call save_src_config, $@)
 	$(MAKE) bin
 

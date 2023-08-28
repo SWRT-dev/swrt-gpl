@@ -1,4 +1,19 @@
 # SPDX-License-Identifier: GPL-2.0
+ifeq ($(CONFIG_MODEL_RTAX89U),y)
+dtb-y += \
+	ipq807x-rt-ax89u.dtb \
+	ipq807x-rt-ax89u_r300.dtb \
+	ipq807x-rt-ax89u_r350.dtb \
+	ipq807x-rt-ax89u_r400.dtb
+else ifeq ($(CONFIG_MODEL_RAX120),y)
+dtb-y += ipq807x-rax1200.dtb
+else ifeq ($(CONFIG_MODEL_XMAX3600),y)
+dtb-y += ipq807x-xm-ax3600.dtb
+else ifeq ($(CONFIG_MODEL_360V6),y)
+dtb-y += ipq6018-360v6.dtb
+else ifeq ($(CONFIG_MODEL_RMAX5),y)
+dtb-y += ipq6018-rmax5.dtb
+else
 dtb-$(CONFIG_ARCH_QCOM)	+= apq8016-sbc.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= apq8096-db820c.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq6018-cp01-c1.dtb
@@ -117,3 +132,4 @@ dtb-$(CONFIG_ARCH_QCOM)	+= sm8150-mtp.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs404-evb-1000.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs404-evb-4000.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= sirocco-p0.dtb
+endif

@@ -3122,7 +3122,7 @@ uint32_t set_leds_gpio(int which, int mode)
 #define LANPORTS_MASK	((1U << LAN1_PORT) | (1U << LAN2_PORT) | (1U << LAN3_PORT) | (1U << LAN4_PORT))
 #elif defined(RTCONFIG_SOC_IPQ8074)
 #define LANPORTS_MASK	((1U << LAN1_PORT) | (1U << LAN2_PORT) | (1U << LAN3_PORT) | (1U << LAN4_PORT) | \
-	(1U << LAN5_PORT) | (1U << LAN6_PORT) | (1U << LAN7_PORT) | (1U << LAN8_PORT)
+	(1U << LAN5_PORT) | (1U << LAN6_PORT) | (1U << LAN7_PORT) | (1U << LAN8_PORT))
 #endif
 	switch(which){
 		case LED_WAN:

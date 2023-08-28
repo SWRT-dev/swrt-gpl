@@ -27,6 +27,7 @@
 #include <swrtmesh.h>
 #include <shared.h>
 
+#if defined(RTCONFIG_EASYMESH)
 #if defined(RTCONFIG_RALINK)
 #undef IS_SPACE
 #define IS_SPACE(c) ((c) == ' ' || (c) == '\t' || (c) == '\r' || (c) == '\n')
@@ -38,6 +39,7 @@ char wificonf_buf[256];
 #error fixme
 #elif defined(RTCONFIG_LANTIQ)
 #error fixme
+#endif
 #endif
 
 int get_easymesh_max_ver(void)
@@ -63,6 +65,7 @@ char *get_easymesh_ver_str(int ver)
 	}
 }
 
+#if defined(RTCONFIG_EASYMESH)
 char *get_mesh_bh_ifname(int band)
 {
 #if defined(RTCONFIG_RALINK)
@@ -93,6 +96,7 @@ char *get_mesh_bh_ifname(int band)
 #error fixme
 #endif
 }
+#endif
 
 void check_mssid_prelink_reset(uint32_t sf)
 {

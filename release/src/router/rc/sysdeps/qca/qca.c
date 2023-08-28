@@ -180,10 +180,10 @@ struct bandx_defval_s {
 };
 
 struct bandx_defval_s bandx_defval[] = {
-	{ "/sbin/vap_evhandler", 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 3, 0, 0, 1, 1, 2347, 2346, 1, 100, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0 }
+	{ "/sbin/vap_evhandler", 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 3, 0, 0, 1, 1, 2347, 2346, 1, 100, 1, 0, 0, 0, 0, 1, 1, 0, 1 }
 };
 
-char *wldefval_tbl[] = { bandx_defval, bandx_defval, bandx_defval, bandx_defval };
+struct bandx_defval_s *wldefval_tbl[] = { bandx_defval, bandx_defval, bandx_defval, bandx_defval };
 #endif
 
 char *get_vap_bridge()
@@ -1550,7 +1550,7 @@ int gen_ath_config(int band, int subnet)
 	int rep_mode, nmode, shortgi, stbc;
 	int isax;
 #if defined(RTCONFIG_WIFI_QCA9990_QCA9990) || defined(RTCONFIG_WIFI_QCA9994_QCA9994) || defined(RTCONFIG_SOC_IPQ40XX) || defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
-	int fc_buf_min = 1000;
+	int fc_buf_min = 1000, channel;
 	int txbf, mumimo, ldpc = 3, tqam, tqam_intop;
 	unsigned int maxsta = 511;
 #else
@@ -1566,7 +1566,7 @@ int gen_ath_config(int band, int subnet)
 	int acs_dfs = nvram_get_int("acs_dfs");
 	int memtotal = get_meminfo_item("MemTotal");
 	int nss_en = nss_wifi_offloading();
-	struct bandx_defval_s *wldefval = &wldefval_tbl[band];
+	struct bandx_defval_s *wldefval = wldefval_tbl[band];
 #endif
 	char iwphy[16];
 
@@ -1859,9 +1859,11 @@ int gen_ath_config(int band, int subnet)
 	fprintf(fp, "driver=atheros\n");
 #endif
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+#if defined(RTCONFIG_AMAS_WGN)
 	if(subnet && subnet <= wgn_guest_ifcount(band) && guest_wlif(wif) != 0)
 		fprintf(fp, "bridge=%s\n", find_brX(wif));
 	else
+#endif
 		fprintf(fp, "bridge=%s\n", get_vap_bridge());
 #else
 	strlcpy(br_if, nvram_get("lan_ifname")? : nvram_default_get("lan_ifname"), sizeof(br_if));
@@ -5810,10 +5812,10 @@ int wlcconnect_core(void)
 	}else{
 		memset(buf, 0, sizeof(buf));
 		strlcpy(ifname, get_staifname(unit), sizeof(ifname));
-		strlcpy(buf, iwpriv_get(ifname, "get_mode") ? : "", sizeof(buf))
-		if(!strncmp(buf, "11GHE", 5) || !strncmp(s, "11AHE", 5)){
+		strlcpy(buf, iwpriv_get(ifname, "get_mode") ? : "", sizeof(buf));
+		if(!strncmp(buf, "11GHE", 5) || !strncmp(buf, "11AHE", 5)){
 			snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-			for(i = 0; i < num_of_mssid_support(); i++){
+			for(i = 0; i < num_of_mssid_support(unit); i++){
 				get_wlxy_ifname(unit, 0, ifname2);
 				if(iface_exist(ifname2)){
 					strlcpy(buf, iwpriv_get(ifname2, "get_mode") ? : "", sizeof(buf));
@@ -6415,3 +6417,27 @@ void config_mssid_isolate(char *ifname, int vif)
 	}
 }
 
+#if defined(RTCONFIG_SOC_IPQ8074)
+int test_bl_updater_main(int argc, char *argv[])
+{
+	return 0;
+}
+
+int test_switch_log_main(int argc, char *argv[])
+{
+	return 0;
+}
+
+int test_wifi_stats_log_main(int argc, char *argv[])
+{
+	return 0;
+}
+
+void beacon_counter_monitor(void)
+{
+}
+
+void thermal_monitor(void)
+{
+}
+#endif

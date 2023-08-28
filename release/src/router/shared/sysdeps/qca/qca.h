@@ -22,9 +22,11 @@
 #include "rtconfig.h"
 
 #if defined(RTCONFIG_SOC_IPQ40XX) || defined(RTCONFIG_SOC_IPQ50XX) || defined(RTCONFIG_SOC_IPQ60XX)
-#define MAX_WANLAN_PORT	5
+#define NR_WANLAN_PORT	5
+#elif defined(RAX120)
+#define NR_WANLAN_PORT	6
 #elif defined(RTCONFIG_SOC_IPQ8074)
-#define MAX_WANLAN_PORT	11
+#define NR_WANLAN_PORT	11
 #endif
 
 enum {
@@ -71,12 +73,21 @@ enum {
 	P6_PORT=5,
 #endif
 #elif defined(RTCONFIG_SOC_IPQ50XX)
+#if defined(RTAX57Q)
+	LAN4_PORT=0,
+	LAN3_PORT,
+	LAN2_PORT,
+	LAN1_PORT,
+	WAN_PORT,
+	MAX_WANLAN_PORT
+#else /* QCA MP03.1 reference board */
 	LAN1_PORT=0,
 	LAN2_PORT,
 	LAN3_PORT,
 	LAN4_PORT,
 	WAN_PORT,
 	MAX_WANLAN_PORT
+#endif
 #elif defined(RTCONFIG_SOC_IPQ60XX)
 	LAN1_PORT=0,
 	LAN2_PORT,
@@ -97,6 +108,15 @@ enum {
 	WAN_PORT=8,
 	WAN10GR_PORT,
 	WAN10GS_PORT,	/* 10 */
+
+	MAX_WANLAN_PORT
+#elif defined(RAX120)
+	LAN1_PORT=0,
+	LAN2_PORT,
+	LAN3_PORT,
+	LAN4_PORT,
+	WAN_PORT=4,
+	WAN5GR_PORT,
 
 	MAX_WANLAN_PORT
 #else

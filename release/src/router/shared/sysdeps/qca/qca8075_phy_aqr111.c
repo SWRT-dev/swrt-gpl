@@ -37,7 +37,6 @@
 #include <utils.h>
 #include <qca.h>
 
-#define NR_WANLAN_PORT	6
 #define DBGOUT		NULL			/* "/dev/console" */
 
 
@@ -49,24 +48,6 @@ static const char *upstream_iptv_ifaces[16] = {
 #error Define WAN interfaces that can be used as upstream port of IPTV.
 #endif
 };
-
-#if defined(RAX120)
-/* RAX120 virtual port mapping
- * Assume LAN port closed to 1G WAN port is LAN1.
- */
-enum {
-	LAN1_PORT=0,
-	LAN2_PORT,
-	LAN3_PORT,
-	LAN4_PORT,
-	WAN_PORT=4,
-	WAN5GR_PORT,
-
-	MAX_WANLAN_PORT
-};
-#else
-#error Define WAN/LAN ports!
-#endif
 
 /* array index:		virtual port mapping enumeration.
  * 			e.g. LAN1_PORT, LAN2_PORT, etc.

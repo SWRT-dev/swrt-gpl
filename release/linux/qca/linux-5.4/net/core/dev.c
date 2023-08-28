@@ -138,6 +138,9 @@
 #include <linux/hrtimer.h>
 #include <linux/netfilter_ingress.h>
 #include <linux/crash_dump.h>
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+#include <linux/imq.h>
+#endif
 #include <linux/sctp.h>
 #include <net/udp_tunnel.h>
 #include <linux/net_namespace.h>
@@ -3449,8 +3452,13 @@ static int xmit_one(struct sk_buff *skb, struct net_device *dev,
 	 * go to any taps (by definition we're trying to bypass them).
 	 */
 	if (unlikely(!skb->fast_forwarded)) {
-		if (dev_nit_active(dev))
+		if (dev_nit_active(dev)) {
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+			if ((!list_empty(&ptype_all) || !list_empty(&dev->ptype_all)) &&
+				!(skb->imq_flags & IMQ_F_ENQUEUE))
+#endif
 			dev_queue_xmit_nit(skb, dev);
+		}
 	}
 
 #ifdef CONFIG_ETHERNET_PACKET_MANGLE

@@ -25,15 +25,15 @@ SWITCH_CHIP_ID_POOL =					\
 export PLATFORM_ROUTER := ipq807x
 export LOADADDR := 42208000
 export ENTRYADDR := $(LOADADDR)
-export LINUXDIR := $(SRCBASE)/linux/linux-4.4
+export LINUXDIR := $(SRCBASE)/linux/linux-5.4.x
 export SDKDIR := $(SDK_DIR_PLATFORM)
 export BUILD := $(shell (gcc -dumpmachine))
 export KERNEL_BINARY=$(LINUXDIR)/vmlinux
 export PLATFORM := arm-musl
-export TOOLS := /opt/toolchain-aarch64_cortex-a53_gcc-5.2.0_musl
+export TOOLS := /opt/toolchain-aarch64_cortex-a53+neon-vfpv4_gcc-8.3.0_musl
 export CROSS_COMPILE := $(TOOLS)/bin/aarch64-openwrt-linux-musl-
 export READELF := $(TOOLS)/bin/aarch64-openwrt-linux-musl-readelf
-export RTVER := $(patsubst librt-%.so,%,$(shell basename $(wildcard $(TOOLS)/lib/librt-*.so)))
+#export RTVER := $(patsubst librt-%.so,%,$(shell basename $(wildcard $(TOOLS)/lib/librt-*.so)))
 export CROSS_COMPILER := $(CROSS_COMPILE)
 export CONFIGURE := ./configure --host=aarch64-linux-gnu --build=$(BUILD)
 export HOSTCONFIG := linux-aarch64
@@ -44,7 +44,7 @@ export KERNELLD := $(TOOLS)/bin/aarch64-openwrt-linux-musl-ld
 export KARCH := $(firstword $(subst -, ,$(shell $(KERNELCC) -dumpmachine)))
 export DTB := "qcom/$(DTB)"
 
-EXTRACFLAGS += -DBCMWPA2 -fno-delete-null-pointer-checks -march=armv8-a --target=aarch64-arm-none-eabi -mcpu=cortex-a53+crypto
+EXTRACFLAGS += -DBCMWPA2 -fno-delete-null-pointer-checks -march=armv8-a -mcpu=cortex-a53+crypto
 export EXTRACFLAGS
 
 # OpenWRT's toolchain needs STAGING_DIR environment variable that points to top directory of toolchain.
@@ -86,6 +86,10 @@ define platformRouterOptions
 	echo "RTCONFIG_QCA_ARM=y" >>$(1); \
 	sed -i "/RTCONFIG_32BYTES_ODMPID/d" $(1); \
 	echo "RTCONFIG_32BYTES_ODMPID=y" >>$(1); \
+	if [ "$(BUILD_NAME)" != "RAX120" ] ; then \
+		sed -i "/RTCONFIG_FITFDT/d" $(1); \
+		echo "# RTCONFIG_FITFDT is not set" >>$(1); \
+	fi; \
 	if [ "$(WIFI_CHIP)" = "BEELINER" ] ; then \
 		sed -i "/RTCONFIG_WIFI_QCA9990_QCA9990/d" $(1); \
 		echo "RTCONFIG_WIFI_QCA9990_QCA9990=y" >>$(1); \
@@ -177,10 +181,6 @@ define platformKernelConfig
 		echo "CONFIG_USB_F_DIAG=m" >>$(1); \
 		sed -i "/CONFIG_DIAG_CHAR/d" $(1); \
 		echo "CONFIG_DIAG_CHAR=m" >>$(1); \
-		sed -i "/CONFIG_DIAG_OVER_USB/d" $(1); \
-		echo "CONFIG_DIAG_OVER_USB=y" >>$(1); \
-		sed -i "/CONFIG_PCIE_DW_PLAT/d" $(1); \
-		echo "CONFIG_PCIE_DW_PLAT=y" >>$(1); \
 		sed -i "/CONFIG_NET_PTP_CLASSIFY/d" $(1); \
 		echo "CONFIG_NET_PTP_CLASSIFY=y" >>$(1); \
 		sed -i "/CONFIG_CFG80211\>/d" $(1); \
@@ -444,11 +444,12 @@ define platformKernelConfig
 			sed -i "/CONFIG_NF_CONNTRACK_EVENTS/d" $(1); \
 			echo "CONFIG_NF_CONNTRACK_EVENTS=y" >>$(1); \
 		fi; \
-		if [ "$(GTAXY16000)" = "y" -o "$(RTAX89U)" = "y" ] ; then \
-			sed -i "/CONFIG_QCA_APHK01/d" $(1); \
-			echo "# CONFIG_QCA_APHK01 is not set" >>$(1); \
-			sed -i "/CONFIG_ASUS_GTAXY16000/d" $(1); \
-			echo "CONFIG_ASUS_GTAXY16000=y" >>$(1); \
+		if [ "$(RTAX89U)" = "y" ] ; then \
+			sed -i "/CONFIG_MODEL_RTAX89U/d" $(1); \
+			echo "CONFIG_MODEL_RTAX89U=y" >>$(1); \
+		elif [ "$(RAX120)" = "y" ] ; then \
+			sed -i "/CONFIG_MODEL_RAX120/d" $(1); \
+			echo "CONFIG_MODEL_RAX120=y" >>$(1); \
 		fi; \
 		if [ "$(WIGIG)" = "y" ] ; then \
 			sed -i "/CONFIG_MSM_NUM_PCIE/d" $(1); \
@@ -639,6 +640,8 @@ define platformKernelConfig
 			echo "CONFIG_UBIFS_FS_XZ=y" >>$(1); \
 			sed -i "/CONFIG_UBIFS_FS_DEBUG/d" $(1); \
 			echo "# CONFIG_UBIFS_FS_DEBUG is not set" >>$(1); \
+			echo "# CONFIG_UBIFS_FS_ZSTD is not set" >>$(1); \
+			echo "# CONFIG_UBIFS_FS_AUTHENTICATION is not set" >>$(1); \
 		else \
 			sed -i "/CONFIG_UBIFS_FS/d" $(1); \
 			echo "# CONFIG_UBIFS_FS is not set" >>$(1); \
@@ -654,6 +657,53 @@ define platformKernelConfig
 				echo "# CONFIG_IPV6_MULTIPLE_TABLES is not set" >>$(1); \
 			fi; \
 		fi; \
+	fi; \
+	if [ "$(WIREGUARD)" = "y" ]; then \
+		echo "CONFIG_CRYPTO_SHA256_ARM64=y" >>$(1); \
+		echo "CONFIG_CRYPTO_SHA512_ARM64=y" >>$(1); \
+		echo "CONFIG_CRYPTO_SHA1_ARM64_CE=y" >>$(1); \
+		echo "CONFIG_CRYPTO_SHA2_ARM64_CE=y" >>$(1); \
+		echo "CONFIG_CRYPTO_SHA512_ARM64_CE=y" >>$(1); \
+		echo "CONFIG_CRYPTO_SHA3_ARM64=y" >>$(1); \
+		echo "CONFIG_CRYPTO_SM3_ARM64_CE=y" >>$(1); \
+		echo "CONFIG_CRYPTO_SM4_ARM64_CE=y" >>$(1); \
+		echo "CONFIG_CRYPTO_GHASH_ARM64_CE=y" >>$(1); \
+		echo "CONFIG_CRYPTO_AES_ARM64=y" >>$(1); \
+		echo "CONFIG_CRYPTO_AES_ARM64_CE=y" >>$(1); \
+		echo "CONFIG_CRYPTO_AES_ARM64_CE_CCM=y" >>$(1); \
+		echo "CONFIG_CRYPTO_AES_ARM64_CE_BLK=y" >>$(1); \
+		echo "CONFIG_CRYPTO_AES_ARM64_NEON_BLK=y" >>$(1); \
+		echo "CONFIG_CRYPTO_CHACHA20_NEON=y" >>$(1); \
+		echo "CONFIG_CRYPTO_POLY1305_NEON=y" >>$(1); \
+		echo "CONFIG_CRYPTO_NHPOLY1305_NEON=y" >>$(1); \
+		echo "CONFIG_CRYPTO_AES_ARM64_BS=y" >>$(1); \
+	fi; \
+	if [ "$(SWRT_FULLCONEV2)" = "y" ]; then \
+		sed -i "/CONFIG_SWRT_FULLCONE/d" $(1); \
+		echo "# CONFIG_SWRT_FULLCONE is not set" >>$(1); \
+		echo "CONFIG_SWRT_FULLCONEV2=y" >>$(1); \
+	elif [ "$(SWRT_FULLCONE)" = "y" ]; then \
+		sed -i "/CONFIG_SWRT_FULLCONE/d" $(1); \
+		echo "CONFIG_SWRT_FULLCONE=y" >>$(1); \
+		echo "# CONFIG_SWRT_FULLCONEV2 is not set" >>$(1); \
+	else \
+		sed -i "/CONFIG_SWRT_FULLCONE/d" $(1); \
+		echo "# CONFIG_SWRT_FULLCONE is not set" >>$(1); \
+		echo "# CONFIG_SWRT_FULLCONEV2 is not set" >>$(1); \
+	fi; \
+	if [ "$(BUILD_NAME)" == "RAX120" ] ; then \
+		sed -i "/CONFIG_CMDLINE_OVERRIDE/d" $(1); \
+		echo "CONFIG_CMDLINE_OVERRIDE=y" >>$(1); \
+		sed -i "/CONFIG_MTD_SPLIT\>/d" $(1); \
+		echo "CONFIG_MTD_SPLIT=y" >>$(1); \
+		sed -i "/CONFIG_BLK_DEV_RAM_SIZE/d" $(1); \
+		echo "CONFIG_BLK_DEV_RAM_SIZE=65536" >>$(1); \
+		sed -i "/CONFIG_OCF_CRYPTODEV/d" $(1); \
+		echo "# CONFIG_OCF_CRYPTODEV is not set" >>$(1); \
+		sed -i "/CONFIG_SPI_QUP/d" $(1); \
+		echo "CONFIG_SPI_QUP=y" >>$(1); \
+		sed -i "/CONFIG_SENSORS_G761/d" $(1); \
+		echo "CONFIG_SENSORS_G761=y" >>$(1); \
 	fi; \
 	)
 endef

@@ -37,7 +37,6 @@
 #include <utils.h>
 #include <qca.h>
 
-#define NR_WANLAN_PORT	5
 #define DBGOUT		NULL			/* "/dev/console" */
 #define QCA8337_IFACE	"eth1"
 #define QCA8337_CPUPORT	"6"
@@ -49,24 +48,6 @@ enum {
 	VLAN_TYPE_LAN_NO_VLAN,	/* LAN as WAN */
 
 	VLAN_TYPE_MAX
-};
-
-enum {
-#if defined(RTAX57Q)
-	LAN4_PORT=0,
-	LAN3_PORT,
-	LAN2_PORT,
-	LAN1_PORT,
-	WAN_PORT,
-	MAX_WANLAN_PORT
-#else /* QCA MP03.1 reference board */
-	LAN1_PORT=0,
-	LAN2_PORT,
-	LAN3_PORT,
-	LAN4_PORT,
-	WAN_PORT,
-	MAX_WANLAN_PORT
-#endif
 };
 
 static const char *upstream_iptv_ifaces[16] = {

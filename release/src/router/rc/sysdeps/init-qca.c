@@ -32,15 +32,13 @@
 #include <bcmdevs.h>
 #include <string.h>
 #include <stdint.h>
-
+#include <sys/sysmacros.h>
 #include <shared.h>
 #include <swrt.h>
-#ifdef RTCONFIG_QCA
 #include <qca.h>
 #include <flash_mtd.h>
 #if defined(RTCONFIG_QCA) && defined(RTCONFIG_SOC_IPQ40XX)
 extern int bg;
-#endif
 #endif
 
 #if defined(RTCONFIG_NEW_REGULATION_DOMAIN)

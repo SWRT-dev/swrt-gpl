@@ -726,7 +726,7 @@ obj-$(RTCONFIG_LETSENCRYPT) += acme.sh
 obj-$(RTCONFIG_LETSENCRYPT) += libletsencrypt
 obj-$(RTCONFIG_LETSENCRYPT) += socat
 obj-$(RTCONFIG_EASYMESH) += easymesh-sdk
-obj-$(RTCONFIG_SWRTMESH) += libubox libubus libnl libuci avahi swrtmesh
+obj-$(RTCONFIG_SWRTMESH) += libubox libubus libnl libuci libevent-2.0.21 avahi swrtmesh
 obj-y += taskset
 
 # soc/feature packages
@@ -1316,7 +1316,7 @@ obj-$(RTCONFIG_WTFAST) += wtfast
 #obj-$(RTCONFIG_ZEBRA) += zebra
 obj-$(RTCONFIG_QUAGGA) += quagga
 #obj-$(RTCONFIG_IPP2P) += ipp2p
-ifeq ($(or $(HND_ROUTER_AX_6756),$(RTCONFIG_MT798X),$(RTCONFIG_BCMARM)),y)
+ifeq ($(or $(HND_ROUTER_AX_6756),$(RTCONFIG_MT798X),$(RTCONFIG_BCMARM),$(RTCONFIG_QCA)),y)
 LZO_VER := -2.10
 else
 LZO_VER :=
@@ -1712,7 +1712,7 @@ kernel_header: $(LINUXDIR)/.config
 	$(MAKE) -C $(LINUXDIR) ARCH=$(ARCH) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) headers_install INSTALL_HDR_PATH=$(TOP)/$@
 ifeq ($(RTCONFIG_RALINK),y)
 ifeq ($(MT798X),y)
-	mkdir $@/include/uapi
+	mkdir -p $@/include/uapi
 	cp -fr $(LINUXDIR)/include/uapi/* $@/include/uapi/
 else
 	@if [ -e $(LINUX_ARCH_ASM_INCL_DIR)/rt2880/rt_mmap.h ] ; then \
@@ -1728,6 +1728,7 @@ else
 endif
 endif
 ifeq ($(RTCONFIG_QCA),y)
+	mkdir -p $@/include/uapi
 	cp -fr $(LINUXDIR)/include/uapi/* $@/include/uapi/
 endif
 	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) prepare scripts
@@ -1736,6 +1737,7 @@ endif
 else
 kernel_header: $(LINUXDIR)/.config
 	$(MAKE) -C $(LINUXDIR) ARCH=$(ARCH) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) headers_install INSTALL_HDR_PATH=$(TOP)/$@
+	mkdir -p $@/include/uapi
 	cp -fr $(LINUXDIR)/include/uapi/* $@/include/uapi/
 	find $(LINUXDIR)/include -name autoconf.h -exec cp {} $@/include/linux/ \;
 	cp $(LINUXDIR)/Makefile $@/
@@ -7280,7 +7282,7 @@ expat-2.0.1-clean:
 	-@$(MAKE) -C expat-2.0.1 clean
 	@rm -f expat-2.0.1/stamp-h1
 
-avahi: expat-2.0.1 libdaemon avahi/Makefile
+avahi: expat-2.0.1 libdaemon libevent-2.0.21 avahi/Makefile
 	@$(SEP)
 	@$(MAKE) $(PARALLEL_BUILD) -C $@
 
@@ -9438,6 +9440,8 @@ easymesh-sdk:libnl-tiny-0.1 openssl
 easymesh-sdk-install: 
 	$(MAKE) -C easymesh-sdk install
 
+endif
+
 libubus:libubox json-c
 	cd libubus && cmake -DABIVERSION="2021-06-03" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_LUA=0 -DBUILD_EXAMPLES=0  -DCMAKE_INCLUDE_PATH=$(STAGEDIR)/usr/include -DCMAKE_LIBRARY_PATH=$(STAGEDIR)/usr/lib
 	$(MAKE) -C libubus all && $(MAKE) $@-stage
@@ -9452,7 +9456,6 @@ libubus-install:
 	$(STRIP) $(INSTALLDIR)/libubus/usr/lib/libubus.so.2021-06-03
 	$(STRIP) $(INSTALLDIR)/libubus/usr/sbin/ubus
 	$(STRIP) $(INSTALLDIR)/libubus/usr/sbin/ubusd
-endif
 
 ifeq ($(RTCONFIG_SWRTMESH),y)
 swrtmesh: json-c libubox libubus libnl libuci openssl avahi libmnl-1.0.4 libnfnetlink-1.0.1 libnetfilter_conntrack-1.0.7

@@ -16,7 +16,9 @@
  * This file contains some common code for the uci library
  */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #include <sys/types.h>
 #include <stdbool.h>
 #include <string.h>

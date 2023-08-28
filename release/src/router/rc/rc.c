@@ -25,6 +25,7 @@
 #ifdef RTCONFIG_QCA
 #include <qca.h>
 #include <sys/mman.h>
+#include <sys/sysmacros.h>
 #endif
 
 #if defined(RTCONFIG_LP5523)

@@ -28,7 +28,7 @@
 #include <arpa/inet.h>
 #include <net/ethernet.h>
 #ifdef LINUX26
-#if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_QCA)
 #include <sys/sysmacros.h>
 #endif
 #include <sys/types.h>
@@ -20942,7 +20942,7 @@ static void sysinit(void)
 	reset_abmac();
 #endif
 #if defined(RTAX89U)
-	pre_syspara();
+	pre_syspara_swrt();
 #endif
 
 	init_syspara();// for system dependent part (befor first get_model())

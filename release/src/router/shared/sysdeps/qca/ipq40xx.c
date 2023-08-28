@@ -30,7 +30,7 @@
 #include <utils.h>
 #include <qca.h>
 
-#define NR_WANLAN_PORT	5
+
 
 
 //0:WAN, 1:LAN, lan_wan_partition[][0] is port0

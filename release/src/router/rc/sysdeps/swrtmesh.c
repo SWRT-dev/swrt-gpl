@@ -22,7 +22,13 @@
 #include <wlutils.h>
 #include <bcmdevs.h>
 #include <shared.h>
+#if defined(RTCONFIG_RALINK)
 #include <ralink.h>
+#elif defined(RTCONFIG_QCA)
+#include <qca.h>
+#elif defined(RTCONFIG_LANTIQ)
+#include <lantiq.h>
+#endif
 #include <flash_mtd.h>
 #include <swrt.h>
 #include <swrtmesh.h>
@@ -46,7 +52,6 @@ void auto_generate_config(void)
 		swrtmesh_generate_hosts_config();
 }
 
-#if defined(RTCONFIG_SWRTMESH)
 int start_swrtmesh(void)
 {
 	pid_t pid;
@@ -143,4 +148,4 @@ int wl_isup(char* ifname)
 		return 1;
 	return 0;
 }
-#endif
+

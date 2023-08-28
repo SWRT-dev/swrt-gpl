@@ -1,0 +1,23 @@
+menu "SWRT Miscellaneous options"
+
+config  MODEL_RTAX89U
+        bool "RT-AX89U"
+        default n
+
+config  MODEL_RAX120
+        bool "RAX120"
+        default n
+
+config  MODEL_XMAX3600
+        bool "XM-AX3600"
+        default n
+
+config  MODEL_360V6
+        bool "360V6"
+        default n
+
+config  MODEL_RMAX5
+        bool "RM-AX5"
+        default n
+
+endmenu        

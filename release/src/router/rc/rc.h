@@ -805,7 +805,7 @@ extern void pre_syspara(void);
 #endif
 #endif	/* RTCONFIG_QCA */
 
-#if defined(RTCONFIG_SOC_IPQ8074) && !defined(RAX120)
+#if defined(RTCONFIG_SOC_IPQ8074) && 0//defined(RTAX89U)
 extern int upgrade_bootloader_v2(void);
 extern int pre_firmware_upgrade(const char *fname);
 #else	/* !RTCONFIG_SOC_IPQ8074 */

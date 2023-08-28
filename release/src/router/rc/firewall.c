@@ -198,7 +198,7 @@ int host_addr_info(const char *name, int af, struct sockaddr_storage *buf)
 	return (addrtypes & af);
 }
 
-#if defined(RTCONFIG_HND_ROUTER_AX_6756) || (defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER)) || defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_HND_ROUTER_AX_6756) || (defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER)) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_QCA)
 static inline int host_addrtypes(const char *name, int af)
 {
 	return host_addr_info(name, af, NULL);
