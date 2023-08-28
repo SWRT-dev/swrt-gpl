@@ -1,0 +1,64 @@
+From a9a7f43177fb825077a0823c15649cd2a9ede4c2 Mon Sep 17 00:00:00 2001
+From: Vikram Kandukuri <quic_vikram@quicinc.com>
+Date: Mon, 8 May 2023 16:29:22 +0530
+Subject: [PATCH] iw: Add mld iface name support in mld vap creation
+
+Add mld iface name  support in mld vap creation.
+with this option VAP mac address is used as MLD mac address
+
+Signed-off-by: Vikram Kandukuri <quic_vikram@quicinc.com>
+---
+ interface.c | 19 ++++++++++++++++++-
+ 1 file changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/interface.c b/interface.c
+index 3e7d304..d1f49c1 100644
+--- a/interface.c
++++ b/interface.c
+@@ -237,8 +237,9 @@ static int handle_interface_add(struct nl80211_state *state,
+ 	int tpset;
+ 	unsigned char mac_addr[ETH_ALEN];
+ 	unsigned char mld_mac_addr[ETH_ALEN];
+-	int found_mac = 0, found_mld_mac = 0;
++	int found_mac = 0, found_mld_mac = 0, found_mld_iface = 0;
+ 	char mac_temp[20];
++	char *mldiface_name = NULL;
+ 
+ 	if (argc < 1)
+ 		return 1;
+@@ -301,6 +302,16 @@ try_another:
+ 			found_mld_mac = 1;
+ 			mac_addr_n2a(mac_temp, mld_mac_addr);
+ 			goto try_another;
++		} else if (strcmp(argv[0], "mld_iface") == 0) {
++			argc--;
++			argv++;
++
++	        mldiface_name = argv[0];
++
++			argc--;
++			argv++;
++			found_mld_iface = 1;
++			goto try_another;
+ 		} else {
+ 			return 1;
+ 		}
+@@ -316,9 +327,15 @@ try_another:
+ 	if (found_mac)
+ 		NLA_PUT(msg, NL80211_ATTR_MAC, ETH_ALEN, mac_addr);
+ 
++    if (found_mld_iface && found_mld_mac) {
++		fprintf(stderr, "Both MLD mac & iface name should not be given\n");
++		return -EINVAL;
++	}
+ 	if (found_mld_mac)
+ 		NLA_PUT(msg, NL80211_ATTR_MLD_MAC, ETH_ALEN, mld_mac_addr);
+ 
++	if (found_mld_iface)
++		NLA_PUT_STRING(msg, NL80211_ATTR_MLD_REFERENCE, mldiface_name);
+ 
+ 	return 0;
+  nla_put_failure:
+-- 
+2.7.4
+
