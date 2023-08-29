@@ -6,6 +6,10 @@ TARGET_CFLAGS += \
 		     -I$(STAGING_DIR)/usr/include/ \
 		     -I$(STAGING_DIR)/usr/include/libnl \
 		     -I$(STAGING_DIR)/usr/include/libnl3 \
+		     -I$(TOP)/libnl/include -I$(PKG_BUILD_DIR)/qca_nl80211_lib \
+			 -I$(PKG_BUILD_DIR)/vendorcmdtool \
+			 -I$(SDK_DIR_PLATFORM)/qca-wifi/include \
+			 -I$(SDK_DIR_PLATFORM)/qca-wifi/component_dev/tools/linux \
                      -D_GNU_SOURCE=1 -D__USE_GNU=1 -fpie -fPIC
 
 TARGET_LDFLAGS += \

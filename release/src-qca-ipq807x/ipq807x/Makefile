@@ -22,11 +22,12 @@ export LDFLAGS+=$(EXTRALDFLAGS)
 #
 pobj-y:=
 
+pobj-y += libroxml
 pobj-$(RTCONFIG_SOC_IPQ8074) += qca-ssdk qca-ssdk-shell
 pobj-$(RTCONFIG_SOC_IPQ8074) += qca-wifi qca-cfg80211 libqcacommon
 pobj-$(RTCONFIG_SOC_IPQ8074) += iw iwinfo qca-hostap
-pobj-$(RTCONFIG_SOC_IPQ8074) += shortcut-fe libdaemon nat46 qca-mcs-lkm
-pobj-$(RTCONFIG_SOC_IPQ8074) += qca-nss-drv qca-nss-gmac qca-nss-dp qca-nss-ecm qca-hyfi-bridge
+pobj-$(RTCONFIG_SOC_IPQ8074) += shortcut-fe libdaemon qca-mcs-lkm #nat46
+pobj-$(RTCONFIG_SOC_IPQ8074) += qca-nss-drv qca-nss-dp qca-nss-ecm qca-hyfi-bridge emesh-sp
 pobj-$(RTCONFIG_SOC_IPQ8074) += qca-nss-crypto qca-nss-cfi qca-nss-clients
 pobj-$(RTCONFIG_SOC_IPQ8074) += qca-nss-fw-eip-hk qca-nss-fw-hk qca-nss-macsec
 pobj-$(RTCONFIG_SOC_IPQ8074) += qca-mcs-apps 

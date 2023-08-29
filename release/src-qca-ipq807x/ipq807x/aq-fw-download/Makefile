@@ -2,12 +2,12 @@
 PKG_BUILD_DIR=$(shell pwd)/source
 STAGING_DIR=$(STAGEDIR)
 
-TARGET_CPPFLAGS := -D_GNU_SOURCE -I$(LINUXDIR)/include -I$(LINUXDIR)/arch/arm64/include -Isrc
+TARGET_CPPFLAGS := -D_GNU_SOURCE -I$(LINUXDIR)/arch/arm64/include -I$(LINUXDIR)/arch/arm64/include/generated -Isrc
 
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/aq-fw-download/src/*.c),)
-	ln -sf $(SDK_DIR_PLATFORM)/aq-fw-download/src source
-	$(MAKE) -C (PKG_BUILD_DIR) CFLAGS="$(TARGET_CPPFLAGS) $(CFLAGS)" LDFLAGS="$(LDFLAGS)"
+	ln -sf $(SDK_DIR_PLATFORM)/aq-fw-download source
+	$(MAKE) -C $(PKG_BUILD_DIR) CFLAGS="$(TARGET_CPPFLAGS) $(CFLAGS)" LDFLAGS="$(LDFLAGS)"
 else
 	mkdir -p $(PKG_BUILD_DIR)
 	cp prebuilt/aq-fw-download $(PKG_BUILD_DIR)/aq-fw-download

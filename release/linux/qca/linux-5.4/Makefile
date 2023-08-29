@@ -208,6 +208,9 @@ endif
 
 # Use make M=dir or set the environment variable KBUILD_EXTMOD to specify the
 # directory of external module to build. Setting M= takes precedence.
+ifdef SUBDIRS
+  KBUILD_EXTMOD ?= $(SUBDIRS)
+endif
 ifeq ("$(origin M)", "command line")
   KBUILD_EXTMOD := $(M)
 endif

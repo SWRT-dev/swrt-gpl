@@ -12,7 +12,7 @@ INSTALL_HEADERS=bufrd.h \
 	split.h
 
 HYFICOMMON_MAKEOPTS:= \
-        TOOLPREFIX=$(TARGET_CROSS) \
+        TOOLPREFIX=$(CROSS_COMPILE) \
         GWINCLUDE=$(STAGING_DIR)/usr/include/qca/ \
         QCACFLAGS="$(TARGET_CFLAGS)"\
         QCALDFLAGS="-Wl,--gc-sections $(TARGET_LDFLAGS)"\
@@ -21,6 +21,9 @@ HYFICOMMON_MAKEOPTS:= \
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/libhyficommon/*.c),)
 	ln -sf $(SDK_DIR_PLATFORM)/libhyficommon source
+	mkdir -p $(PKG_BUILD_DIR)/install
+	mkdir -p $(PKG_BUILD_DIR)/install/include
+	mkdir -p $(PKG_BUILD_DIR)/install/lib
 	$(MAKE) -C $(PKG_BUILD_DIR) $(strip $(HYFICOMMON_MAKEOPTS))
 else
 	mkdir -p $(PKG_BUILD_DIR)

@@ -1,0 +1,39 @@
+
+-------------------------
+How to use mount.fuse.xml
+-------------------------
+
+# 1st step: build and install libroxml
+- make
+- sudo make install
+
+# 2nd step: build and install mount.fuse.xml
+- make
+- sudo make install
+
+# 3rd step: find an XML file
+- try your favorite RSS feed or find any other valid xml document.
+
+# 4th step: mount it
+- sudo mount -t fuse.xml <xml file> <mount point>
+- if you want debug info you can add --debug option to mount. logs will be written to /var/log/xmlfs.log
+	user@station:~/mnt/$ sudo mount -o --debug -t fuse.xml <xml file> <mount point>
+
+# 5th step: navigate
+- you can now navigate into <mount point> as if you were in a ext3 fs
+- you can also use XPath as unix path to navigate for ex:
+
+	user@station:~/mnt/xml$ cd rss/channel/
+
+	user@station:~/mnt/xml/rss/channel$ ls
+	atom:link     copyright    generator  item[1]   item[11]  item[13]  item[15]  item[17]  item[19]  item[20]  item[4]  item[6]  item[8]  language       link            title
+	content.data  description  item[0]    item[10]  item[12]  item[14]  item[16]  item[18]  item[2]   item[3]   item[5]  item[7]  item[9]  lastBuildDate  managingEditor  webMaster
+
+	user@station:~/mnt/xml/rss/channel$ cd item\["last()"]
+
+	user@station:~/mnt/xml/rss/channel/item[last()]$ ls
+	content.data  description  guid  link  pubDate  title
+
+# 6th step: unmount your file
+- sudo umount <mount point>
+
