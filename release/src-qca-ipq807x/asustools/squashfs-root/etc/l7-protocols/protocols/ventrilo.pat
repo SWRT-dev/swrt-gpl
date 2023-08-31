@@ -1,2 +1,0 @@
-ventrilo
-^..?v\$\xcf

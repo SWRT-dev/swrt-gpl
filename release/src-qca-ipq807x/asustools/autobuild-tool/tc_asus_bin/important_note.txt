@@ -1,6 +1,0 @@
-
-remeber to copy tc_ver.h file to
-
-asuswrt\release\src-ra\router\httpd
-
-

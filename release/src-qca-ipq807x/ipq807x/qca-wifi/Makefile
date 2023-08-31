@@ -156,24 +156,23 @@ ifeq ($(CONFIG_DEBUG),y)
 	cp -rf $(PKG_BUILD_DIR)/os/linux/tools/libwlanfw_wmi.so $(STAGING_DIR)/usr/lib/
 endif
 endif
-else
-
 endif
 	touch stamp-h1
 
 install:
 	@[ -d $(INSTALLDIR)/ini ] || install -d $(INSTALLDIR)/ini
+	@[ -d $(INSTALLDIR)/sbin ] || install -d $(INSTALLDIR)/sbin
 	@[ -d $(INSTALLDIR)/usr/sbin ] || install -d $(INSTALLDIR)/usr/sbin
 	@[ -d $(INSTALLDIR)/usr/lib ] || install -d $(INSTALLDIR)/usr/lib
 	@[ -d $(INSTALLDIR)/lib/wifi ] || install -d $(INSTALLDIR)/lib/wifi
 	@[ -d $(INSTALLDIR)/data/vendor ] || install -d $(INSTALLDIR)/data/vendor
 	@[ -d $(INSTALLKMODDIR) ] || install -d $(INSTALLKMODDIR)
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-wifi/wow/*.c),)
-	@install -m 755 -D $(PKG_BUILD_DIR)/cfg80211_configs/cfg80211tool $(INSTALLDIR)/usr/sbin
+	@install -m 755 -D $(PKG_BUILD_DIR)/cfg80211_configs/cfg80211tool $(INSTALLDIR)/sbin
 	@install -m 755 -D $(PKG_BUILD_DIR)/cfg80211_configs/qcacommands_ol_radio.xml $(INSTALLDIR)/lib/wifi
 	@install -m 755 -D $(PKG_BUILD_DIR)/cfg80211_configs/qcacommands_vap.xml $(INSTALLDIR)/lib/wifi
 	@install -m 755 -D $(PKG_BUILD_DIR)/umac/son/cfg80211_configs/qcacommands_mesh.xml $(INSTALLDIR)/lib/wifi
-	ln -sf /usr/sbin/cfg80211tool $(INSTALLDIR)/usr/sbin/cfg80211tool_mesh
+	ln -sf /sbin/cfg80211tool $(INSTALLDIR)/sbin/cfg80211tool_mesh
 	$(MAKE) -C $(PKG_BUILD_DIR) QCAWLAN_TOOL_LIST="$(QCAWLAN_TOOL_LIST)" INSTALL_BIN_DEST="$(INSTALLDIR)/usr/sbin" CONFIG_WIFI_TARGET_WIFI_2_0=y \
 		INSTALL_LIB_DEST="$(INSTALLDIR)/usr/lib" INSTALL_BIN="install -m0755" INSTALL_DATA="install -m0644" tools_installonly
 	$(MAKE) -C $(PKG_BUILD_DIR) QCAWLAN_MODULE_LIST="$(QCAWLAN_MODULE_LIST)" INSTALL_ROOT_DRV="$(INSTALLKMODDIR)" driver_installonly
@@ -185,7 +184,7 @@ else
 endif
 	@$(STRIPX) $(INSTALLKMODDIR)/*
 	@$(STRIP) $(INSTALLDIR)/usr/lib/*
-	$(STRIP) $(foreach f,$(filter-out cfg80211tool cfg80211tool_mesh,$(shell ls $(INSTALLDIR)/usr/sbin)),$(INSTALLDIR)/usr/sbin/$(f))
+	@$(STRIP) $(INSTALLDIR)/usr/sbin/*
 	@ln -sf /tmp/wifi $(INSTALLDIR)/data/vendor/wifi
 	@cd prebuilt/ini && tar cvf - . | tar xvf - -C $(INSTALLDIR)/ini
 

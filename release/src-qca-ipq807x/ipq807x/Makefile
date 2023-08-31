@@ -26,12 +26,12 @@ pobj-y += libroxml
 pobj-$(RTCONFIG_SOC_IPQ8074) += qca-ssdk qca-ssdk-shell
 pobj-$(RTCONFIG_SOC_IPQ8074) += qca-wifi qca-cfg80211 libqcacommon
 pobj-$(RTCONFIG_SOC_IPQ8074) += iw iwinfo qca-hostap
-pobj-$(RTCONFIG_SOC_IPQ8074) += shortcut-fe libdaemon qca-mcs-lkm nat46
+pobj-$(RTCONFIG_SOC_IPQ8074) += libdaemon qca-mcs-lkm nat46 #shortcut-fe->qca-nss-sfe
 pobj-$(RTCONFIG_SOC_IPQ8074) += qca-nss-drv qca-nss-dp qca-nss-ecm qca-hyfi-bridge emesh-sp
 pobj-$(RTCONFIG_SOC_IPQ8074) += qca-nss-crypto qca-nss-cfi qca-nss-clients
 pobj-$(RTCONFIG_SOC_IPQ8074) += qca-nss-fw-eip-hk qca-nss-fw-hk qca-nss-macsec
 pobj-$(RTCONFIG_SOC_IPQ8074) += qca-mcs-apps 
-pobj-$(RTCONFIG_SOC_IPQ8074) += qca-whc-lbd libwifisoncfg qca-wifison-ext-lib libieee1905
+pobj-$(RTCONFIG_SOC_IPQ8074) += qca-whc-lbd libieee1905
 pobj-$(RTCONFIG_SOC_IPQ8074) += qca-thermald
 pobj-$(RTCONFIG_WIFI_QCN5024_QCN5054) += athtestcmd-lith
 pobj-$(RTCONFIG_WIFI_QCN5024_QCN5054) += qca-hk
@@ -42,7 +42,7 @@ pobj-$(RTCONFIG_WIFI_QCN5024_QCN5054) += ftm libtcmd qca-iot
 pobj-$(RTCONFIG_WIFI_QCN5024_QCN5054) += qca-cnss qca-cnss-daemon qca-qmi-framework
 
 # Wi-Fi SON related
-#pobj-$(RTCONFIG_WIFI_QCN5024_QCN5054) += qca-hyfi-qdisc qca-hyfi-bridge qca-libhyfi-bridge
+#pobj-$(RTCONFIG_WIFI_QCN5024_QCN5054) += qca-hyfi-qdisc qca-hyfi-bridge qca-libhyfi-bridge libwifisoncfg qca-wifison-ext-lib
 #ifeq ($(HIVE_LIB),y)
 #pobj-y += libieee1905
 #endif

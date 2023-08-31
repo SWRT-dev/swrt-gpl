@@ -6145,13 +6145,8 @@ ifeq ($(RTCONFIG_WLEXE),y)
 endif
 	@true
 
-.PHONY: libnl libnl-install libnl-clean
 ifeq ($(RTCONFIG_BRCM_HOSTAPD),y)
-else
-export LIBNL_PLT := $(ARCH)
-export LIBNL_BUILD := $(BUILD)
-export LIBNL_DIR := $(TOP)/libnl
-endif
+.PHONY: libnl libnl-install libnl-clean
 $(LIBNL_DIR)/Makefile:
 	(cd $(LIBNL_DIR); \
 		autoreconf --force --install && \
@@ -6176,7 +6171,6 @@ libnl-install:
 libnl-clean:
 	+$(MAKE) -C $(LIBNL_DIR) distclean
 
-ifeq ($(RTCONFIG_BRCM_HOSTAPD),y)
 .PHONY: hostapd hostapd-install hostapd-clean
 $(HOSTAPD_DIR)/hostapd/.config: $(HOSTAPD_DIR)/hostapd/brcm.config
 	cp $(HOSTAPD_DIR)/hostapd/brcm.config $(HOSTAPD_DIR)/hostapd/.config;
