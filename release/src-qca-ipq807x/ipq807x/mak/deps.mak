@@ -1,42 +1,71 @@
 qca-install-header:
 	mkdir -p header
 	cp -rf $(SDK_DIR_PLATFORM)/header/* header/
+	cp -rf header/wlan/$(PLATFORM_ROUTER) header/wlan/fwcommon
 
 libroxml:
-	$(MAKE) -C libroxml
-	$(MAKE) -C libroxml stage
+	$(MAKE) -C $@
+	$(MAKE) -C $@ stage
 
 iwinfo:
-	$(MAKE) -C iwinfo
-	$(MAKE) -C iwinfo stage
+	$(MAKE) -C $@
+	$(MAKE) -C $@ stage
 
 qca-cfg80211:iw libroxml
-	$(MAKE) -C qca-cfg80211
-	$(MAKE) -C qca-cfg80211 stage
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ] ; then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
 
 libqcacommon:
-	$(MAKE) -C libqcacommon
-	$(MAKE) -C libqcacommon stage
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ] ; then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
 
 qca-qmi-framework:
-	$(MAKE) -C qca-qmi-framework
-	$(MAKE) -C qca-qmi-framework stage
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ] ; then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+qca-cnss:
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ] ; then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
 
 qca-cnss-daemon:qca-qmi-framework
-	$(MAKE) -C qca-cnss-daemon
-	$(MAKE) -C qca-cnss-daemon stage
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ] ; then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
 
 qca-ssdk:
-	$(MAKE) -C qca-ssdk
-	$(MAKE) -C qca-ssdk stage
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
 
 qca-nss-dp:qca-ssdk
-	$(MAKE) -C qca-nss-dp
-	$(MAKE) -C qca-nss-dp stage
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
 
 qca-nss-crypto:qca-nss-drv
-	$(MAKE) -C qca-nss-crypto
-	$(MAKE) -C qca-nss-crypto stage
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
 
 qca-ovsmgr:
 #disable openvswitch
@@ -44,35 +73,120 @@ qca-ovsmgr:
 #	$(MAKE) -C qca-ovsmgr stage
 
 emesh-sp:
-	$(MAKE) -C emesh-sp
-	$(MAKE) -C emesh-sp stage
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ] ; then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
 
 qca-hyfi-bridge:emesh-sp
-	$(MAKE) -C qca-hyfi-bridge
-	$(MAKE) -C qca-hyfi-bridge stage
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ] ; then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
 
 qca-mcs-lkm:
-	$(MAKE) -C qca-mcs-lkm
-	$(MAKE) -C qca-mcs-lkm stage
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ] ; then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
 
 qca-nss-ecm:qca-nss-drv qca-hyfi-bridge qca-mcs-lkm
-	$(MAKE) -C qca-nss-ecm
-	$(MAKE) -C qca-nss-ecm stage
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
 
-qca-nss-clients:qca-nss-crypto qca-nss-ecm qca-nss-cfi-ocf qca-nss-cfi-cryptoapi qca-wifi
-	$(MAKE) -C qca-nss-clients
-	$(MAKE) -C qca-nss-clients stage
+qca-nss-clients:qca-nss-crypto qca-nss-ecm qca-nss-cfi qca-wifi
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+qca-nss-macsec:
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage; \
+	fi
 
 qca-nss-drv: qca-nss-dp
-	$(MAKE) -C qca-nss-drv
-	$(MAKE) -C qca-nss-drv stage
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+nat46:
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+qca-nss-ppe: nat46 qca-ssdk
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+qca-nss-cfi:qca-nss-drv qca-nss-crypto
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
 
 qca-acfg:qca-wifi
-	$(MAKE) -C qca-acfg
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
 
-qca-hostap:qca-acfg qca-wrapd athtestcmd-lith myftm qca-iface-mgr qca-wapid qca-lowi athdiag qca-spectral qca-wpc qca-cnss-daemon
-	$(MAKE) -C qca-hostap
+qca-wrapd:qca-cfg80211
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
 
-qca-wifi:qca-install-header libroxml qca-cfg80211 qca-cnss-daemon qca-nss-drv
-	$(MAKE) -C qca-wifi
-	$(MAKE) -C qca-wifi stage
+qca-hostap: qca-acfg qca-wrapd qca-cnss-daemon qca-nss-macsec
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+qca-wifi:qca-install-header libroxml qca-cfg80211 qca-cnss qca-cnss-daemon qca-nss-drv
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+qca-ssdk-shell:
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+qca-mcs-apps:qca-wifi qca-ssdk qca-mcs-lkm libhyficommon
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+libieee1905:libhyficommon
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi

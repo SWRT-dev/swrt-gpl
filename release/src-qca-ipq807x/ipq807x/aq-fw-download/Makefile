@@ -6,12 +6,13 @@ TARGET_CPPFLAGS := -D_GNU_SOURCE -I$(LINUXDIR)/arch/arm64/include -I$(LINUXDIR)/
 
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/aq-fw-download/src/*.c),)
-	ln -sf $(SDK_DIR_PLATFORM)/aq-fw-download source
+	[ -d $(PKG_BUILD_DIR) ] || ln -sf $(SDK_DIR_PLATFORM)/aq-fw-download source
 	$(MAKE) -C $(PKG_BUILD_DIR) CFLAGS="$(TARGET_CPPFLAGS) $(CFLAGS)" LDFLAGS="$(LDFLAGS)"
 else
 	mkdir -p $(PKG_BUILD_DIR)
 	cp prebuilt/aq-fw-download $(PKG_BUILD_DIR)/aq-fw-download
 endif
+	touch stamp-h1
 
 install:
 ifeq ($(BUILD_NAME), $(filter $(BUILD_NAME), RT-AX89U RAX120))

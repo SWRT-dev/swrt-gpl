@@ -21,6 +21,7 @@ MAKE_FLAGS += \
 
 all:
 	$(MAKE) -C $(PKG_BUILD_DIR) $(MAKE_FLAGS)
+	touch stamp-h1
 
 install:
 	install -d $(INSTALLDIR)/usr/sbin

@@ -5,6 +5,7 @@ STAGING_DIR=$(STAGEDIR)
 #TARGET_CROSS=$(shell basename $(CROSS_COMPILE))
 TARGET_CROSS=$(CROSS_COMPILE)
 subtarget:=$(CONFIG_TARGET_BOARD)
+INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
 
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/emesh-sp/*.c),)
@@ -14,6 +15,7 @@ else
 	mkdir -p $(PKG_BUILD_DIR)
 	cp prebuilt/emesh-sp.ko $(PKG_BUILD_DIR)
 endif
+	touch stamp-h1
 
 install:
 	@[ -d $(INSTALLKMODDIR) ] || install -d $(INSTALLKMODDIR)

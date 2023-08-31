@@ -24,12 +24,12 @@ EXTRA_CFLAGS+= \
 	-I$(PKG_BUILD_DIR)/$(NSS_CRYPTO_DIR)/src
 
 INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
+KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-nss-drv/Module.symvers
 
 
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-nss-crypto/Makefile),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-nss-crypto source
-	cp $(SDK_DIR_PLATFORM)/qca-nss-drv/Module.symvers $(PKG_BUILD_DIR)
 	$(MAKE) -C "$(LINUXDIR)" CC="$(TARGET_CC)" CROSS_COMPILE="$(TARGET_CROSS)" ARCH="$(ARCH)" M="$(PKG_BUILD_DIR)" \
 		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" NSS_CRYPTO_DIR=$(NSS_CRYPTO_DIR) SoC="$(subtarget)" modules
 else
@@ -40,6 +40,7 @@ else
 	cp prebuilt/qca-nss-crypto.ko $(PKG_BUILD_DIR)/$(NSS_CRYPTO_DIR)/src
 	cp prebuilt/qca-nss-crypto-tool.ko $(PKG_BUILD_DIR)/$(NSS_CRYPTO_DIR)/tool
 endif
+	touch stamp-h1
 
 install:
 	@[ -d $(INSTALLKMODDIR) ] || install -d $(INSTALLKMODDIR)

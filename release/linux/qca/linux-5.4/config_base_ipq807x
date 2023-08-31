@@ -1896,7 +1896,7 @@ CONFIG_BONDING=m
 # CONFIG_DUMMY is not set
 # CONFIG_EQUALIZER is not set
 # CONFIG_NET_FC is not set
-# CONFIG_IFB is not set
+CONFIG_IFB=y
 # CONFIG_NET_TEAM is not set
 CONFIG_MACVLAN=m
 # CONFIG_MACVTAP is not set
@@ -2232,6 +2232,13 @@ CONFIG_WLAN=y
 # CONFIG_WLAN_VENDOR_QUANTENNA is not set
 # CONFIG_VIRT_WIFI is not set
 CONFIG_CNSS2=y
+# CONFIG_CNSS2_DEBUG is not set
+# CONFIG_CNSS2_PM is not set
+# CONFIG_CNSS2_PCI_DRIVER is not set
+# CONFIG_CNSS2_CALIBRATION_SUPPORT is not set
+# CONFIG_CNSS2_SMMU is not set
+# CONFIG_CNSS2_RAMDUMP is not set
+CONFIG_CNSS2_GENL=y
 
 #
 # Enable WiMAX (Networking options) to see the WiMAX drivers

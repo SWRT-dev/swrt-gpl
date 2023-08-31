@@ -27,6 +27,7 @@ else
 	cp prebuilt/libqca_nl80211_wrapper.so $(PKG_BUILD_DIR)/qca_nl80211_lib/libqca_nl80211_wrapper.so
 	cp prebuilt/cfg80211tool.1 $(PKG_BUILD_DIR)/vendorcmdtool/cfg80211tool.1
 endif
+	touch stamp-h1
 
 install:
 	@[ -d $(INSTALLDIR)/usr/sbin ] || install -d $(INSTALLDIR)/usr/sbin

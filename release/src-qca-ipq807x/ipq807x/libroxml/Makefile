@@ -7,6 +7,7 @@ all:
 	$(MAKE) -C $(PKG_BUILD_DIR)
 	cp -rf $(PKG_BUILD_DIR)/src/roxml.h $(STAGEDIR)/usr/include
 	cp -rf $(PKG_BUILD_DIR)/.libs/libroxml.so* $(STAGEDIR)/usr/lib
+	touch stamp-h1
 
 install:
 	@[ -d $(INSTALLDIR)/usr/lib ] || install -d $(INSTALLDIR)/usr/lib

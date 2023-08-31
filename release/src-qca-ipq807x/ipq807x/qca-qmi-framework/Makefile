@@ -19,6 +19,7 @@ else
 	cp -rf prebuilt/{qrtr-cfg,qrtr-ns,qrtr-lookup} $(PKG_BUILD_DIR)/qrtr
 	cp -rf prebuilt/{*.so} $(PKG_BUILD_DIR)/qrtr $(PKG_BUILD_DIR)/lib
 endif
+	touch stamp-h1
 
 install:
 	@[ -d $(INSTALLDIR)/usr/sbin ] || install -d $(INSTALLDIR)/usr/sbin
@@ -26,9 +27,9 @@ install:
 	install -m 755 -D $(PKG_BUILD_DIR)/qrtr/qrtr-cfg $(INSTALLDIR)/usr/sbin/
 	install -m 755 -D $(PKG_BUILD_DIR)/qrtr/qrtr-ns $(INSTALLDIR)/usr/sbin/
 	install -m 755 -D $(PKG_BUILD_DIR)/qrtr/qrtr-lookup $(INSTALLDIR)/usr/sbin/
-	install -m 755 -D $(PKG_BUILD_DIR)/lib/libqmi_common_so.so $(1)/usr/lib/
-	install -m 755 -D $(PKG_BUILD_DIR)/lib/libqmi_cci.so $(1)/usr/lib/
-	install -m 755 -D $(PKG_BUILD_DIR)/lib/libqmi_qrtr_cci.so $(1)/usr/lib/
+	install -m 755 -D $(PKG_BUILD_DIR)/lib/libqmi_common_so.so $(INSTALLDIR)/usr/lib/
+	install -m 755 -D $(PKG_BUILD_DIR)/lib/libqmi_cci.so $(INSTALLDIR)/usr/lib/
+	install -m 755 -D $(PKG_BUILD_DIR)/lib/libqmi_qrtr_cci.so $(INSTALLDIR)/usr/lib/
 	@$(STRIP) $(INSTALLDIR)/usr/sbin/qrtr-cfg
 	@$(STRIP) $(INSTALLDIR)/usr/sbin/qrtr-ns
 	@$(STRIP) $(INSTALLDIR)/usr/sbin/qrtr-lookup

@@ -24,7 +24,6 @@ void nat64_show_all_configs(struct seq_file *m);
 void nat46_netdev_count_xmit(struct sk_buff *skb, struct net_device *dev);
 void *netdev_nat46_instance(struct net_device *dev);
 
-void nat46_update_stats(struct net_device *dev, uint32_t rx_packets, uint32_t rx_bytes, uint32_t tx_packets, uint32_t tx_bytes, 
+void nat46_update_stats(struct net_device *dev, uint32_t rx_packets, uint32_t rx_bytes, uint32_t tx_packets, uint32_t tx_bytes,
 							uint32_t rx_dropped, uint32_t tx_dropped);
 bool is_map_t_dev(struct net_device *dev);
-

@@ -160,28 +160,37 @@ ifneq ($(CONFIG_PACKAGE_kmod-qca-nss-drv-mirror),)
 MAKE_OPTS+=mirror=y
 endif
 
-ifneq ($(CONFIG_PACKAGE_kmod-qca-nss-drv-mscs),)
-EXTRA_CFLAGS+= \
-	-I$(STAGING_DIR)/usr/include/qca-wifi \
-	-I$(STAGING_DIR)/usr/include/qca-nss-ecm
-MAKE_OPTS+=mscs=y
-endif
+#ifneq ($(CONFIG_PACKAGE_kmod-qca-nss-drv-mscs),)
+#EXTRA_CFLAGS+= \
+#	-I$(STAGING_DIR)/usr/include/qca-wifi \
+#	-I$(STAGING_DIR)/usr/include/qca-nss-ecm
+#MAKE_OPTS+=mscs=y
+#endif
 
 ifneq ($(CONFIG_PACKAGE_kmod-qca-nss-drv-wifi-meshmgr),)
 MAKE_OPTS+=wifi-meshmgr=y
 endif
 
 INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
-PBBINS=$(wildcard prebuilt/*)
-NSS_CLIENTS_KMOD=$(filter %.ko,$(PBBINS))
+
+KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-nss-drv/Module.symvers
+KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-nss-crypto/Module.symvers
+KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-nss-ecm/Module.symvers
+KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-nss-cfi/Module.symvers
+KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/emesh-sp/Module.symvers
+KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-wifi/Module.symvers
+KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-mcs-lkm/Module.symvers
+KBUILD_EXTRA_SYMBOLS += $(LINUXDIR)/Module.symvers
+KBUILD_EXTRA_SYMBOLS += $(SRCBASE)/$(PLATFORM_ROUTER)/nat46/source/nat46/modules/Module.symvers
 
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-nss-clients/*.c),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-nss-clients source
-	cp $(SDK_DIR_PLATFORM)/qca-nss-drv/Module.symvers $(PKG_BUILD_DIR)
 	$(MAKE) -C "$(LINUXDIR)" $(strip $(MAKE_OPTS)) CROSS_COMPILE="$(TARGET_CROSS)" ARCH="$(ARCH)" M="$(PKG_BUILD_DIR)" \
 		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" SoC="$(subtarget)" DTLSMGR_DIR="$(DTLSMGR_DIR)" IPSECMGR_DIR="$(IPSECMGR_DIR)" modules
+else
 endif
+	touch stamp-h1
 
 install:
 	@[ -d $(INSTALLKMODDIR) ] || install -d $(INSTALLKMODDIR)
@@ -213,10 +222,10 @@ endif
 ifneq ($(CONFIG_PACKAGE_kmod-qca-nss-drv-capwapmgr),)
 	@install -D $(PKG_BUILD_DIR)/capwapmgr/qca-nss-capwapmgr.ko $(INSTALLKMODDIR)
 endif
-	@install -D $(PKG_BUILD_DIR)/mscs/qca-nss-mscs.ko $(INSTALLKMODDIR)
+#	@install -D $(PKG_BUILD_DIR)/mscs/qca-nss-mscs.ko $(INSTALLKMODDIR)
+#	@install -D $(PKG_BUILD_DIR)/vxlanmgr/qca-nss-vxlanmgr.ko $(INSTALLKMODDIR)
 	@install -D $(PKG_BUILD_DIR)/mirror/qca-nss-mirror.ko $(INSTALLKMODDIR)
 	@install -D $(PKG_BUILD_DIR)/match/qca-nss-match.ko $(INSTALLKMODDIR)
-	@install -D $(PKG_BUILD_DIR)/vxlanmgr/qca-nss-vxlanmgr.ko $(INSTALLKMODDIR)
 	@install -D $(PKG_BUILD_DIR)/openvpn/plugins/qca-nss-ovpn-link.ko $(INSTALLKMODDIR)
 	@install -D $(PKG_BUILD_DIR)/openvpn/src/qca-nss-ovpn-mgr.ko $(INSTALLKMODDIR)
 	@install -D $(PKG_BUILD_DIR)/netlink/qca-nss-netlink.ko $(INSTALLKMODDIR)

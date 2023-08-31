@@ -18,6 +18,7 @@
 #include "nat46-glue.h"
 #include "nat46-core.h"
 
+static DEFINE_MUTEX(ref_lock);
 int is_valid_nat46(nat46_instance_t *nat46) {
   return (nat46 && (nat46->sig == NAT46_SIGNATURE));
 }
@@ -35,7 +36,7 @@ nat46_instance_t *alloc_nat46_instance(int npairs, nat46_instance_t *old, int fr
   nat46->refcount = 1; /* The caller gets the reference */
   if (old) {
     nat46->debug = old->debug;
-    for(; (from_ipair >= 0) && (to_ipair >= 0) && 
+    for(; (from_ipair >= 0) && (to_ipair >= 0) &&
           (from_ipair < old->npairs) && (to_ipair < nat46->npairs); from_ipair++, to_ipair++) {
       nat46->pairs[to_ipair] = old->pairs[from_ipair];
     }
@@ -46,20 +47,25 @@ nat46_instance_t *alloc_nat46_instance(int npairs, nat46_instance_t *old, int fr
 
 nat46_instance_t *get_nat46_instance(struct sk_buff *sk) {
   nat46_instance_t *nat46 = netdev_nat46_instance(sk->dev);
+  mutex_lock(&ref_lock);
   if (is_valid_nat46(nat46)) {
     nat46->refcount++;
+    mutex_unlock(&ref_lock);
     return nat46;
   } else {
+    mutex_unlock(&ref_lock);
     printk("[nat46] get_nat46_instance: Could not find a valid NAT46 instance!");
     return NULL;
   }
 }
 
 void release_nat46_instance(nat46_instance_t *nat46) {
+  mutex_lock(&ref_lock);
   nat46->refcount--;
   if(0 == nat46->refcount) {
-    printk("[nat46] release_nat46_instance: freeing nat46 instance with %d pairs\n", nat46->npairs);
     nat46->sig = FREED_NAT46_SIGNATURE;
+    printk("[nat46] release_nat46_instance: freeing nat46 instance with %d pairs\n", nat46->npairs);
     kfree(nat46);
   }
+  mutex_unlock(&ref_lock);
 }

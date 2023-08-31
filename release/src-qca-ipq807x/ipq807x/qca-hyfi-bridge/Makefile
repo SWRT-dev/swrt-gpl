@@ -33,18 +33,18 @@ ifneq ($(CONFIG_PACKAGE_kmod-emesh-sp),)
 endif
 
 INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
-
+KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-ssdk/Module.symvers
+KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/emesh-sp/Module.symvers
 
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-hyfi-bridge/hyfi-netfilter/*.c),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-hyfi-bridge source
-	cp $(SDK_DIR_PLATFORM)/emesh-sp/Module.symvers $(PKG_BUILD_DIR)
-	cat $(SDK_DIR_PLATFORM)/qca-ssdk/Module.symvers >> $(PKG_BUILD_DIR)/Module.symvers
 	$(MAKE) -C $(LINUXDIR) M=$(PKG_BUILD_DIR) $(strip $(QCAHYFI_BRIDGE_MAKE_OPTS))
 else
 	mkdir -p $(PKG_BUILD_DIR)
 	cp prebuilt/hyfi-bridging.ko $(PKG_BUILD_DIR)
 endif
+	touch stamp-h1
 
 install:
 	@[ -d $(INSTALLKMODDIR) ] || install -d $(INSTALLKMODDIR)

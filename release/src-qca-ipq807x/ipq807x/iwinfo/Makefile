@@ -29,6 +29,7 @@ IWINFO_HDRS2 := $(wildcard $(PKG_BUILD_DIR)/include/iwinfo/*)
 
 all:
 	$(MAKE) -C $(PKG_BUILD_DIR) $(MAKE_FLAGS)
+	touch stamp-h1
 
 install:
 	@mkdir -p $(INSTALLDIR)/usr/bin

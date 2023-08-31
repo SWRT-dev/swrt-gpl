@@ -1,6 +1,6 @@
 include ../qsdk.config
 
-# Convert asuswrt build environment variable to qca-nss-fw-eip-hk
+# Convert swrt build environment variable to qsdk
 PKG_BUILD_DIR=$(shell pwd)/source
 
 # Define variables for qca-nss-fw-eip-hk
@@ -10,7 +10,7 @@ all:
 	@#Nothing to do
 
 install:
-	@echo Install $(TYPE) NSS firmware.
+	@echo Install NSS EIP firmware.
 	install -d $(INSTALLFWDIR)
 	rsync -avcH $(PKG_BUILD_DIR)/ $(INSTALLFWDIR)
 

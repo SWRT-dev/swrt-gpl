@@ -1,9 +1,5 @@
 include ../qsdk.config
-
-# Convert asuswrt build environment variable to qca-nss-fw-hk
--include ../.config
-NSSFW=R/retail_router
-TYPE=$(shell echo $(NSSFW) | sed -e "s,./\([^_]*\)_.*,\1,")
+# Convert swrt build environment variable to qsdk
 PKG_BUILD_DIR=$(shell pwd)/source
 
 # Define variables for qca-nss-fw-hk
@@ -13,13 +9,13 @@ all:
 	@#Nothing to do
 
 install:
-	@echo Install $(TYPE) NSS firmware.
+	@echo Install NSS firmware.
 	install -d $(INSTALLFWDIR)
-	install -m 644 $(PKG_BUILD_DIR)/$(NSSFW)0.bin $(INSTALLFWDIR)/qca-nss0-$(TYPE).bin
-	ln -sf qca-nss0-$(TYPE).bin $(INSTALLFWDIR)/qca-nss0.bin
+	install -m 644 $(PKG_BUILD_DIR)/retail_router0.bin $(INSTALLFWDIR)/qca-nss0-retail.bin
+	ln -sf qca-nss0-retail.bin $(INSTALLFWDIR)/qca-nss0.bin
 ifneq ($(CONFIG_KERNEL_IPQ_MEM_PROFILE),256)
-	install -m 644 $(PKG_BUILD_DIR)/$(NSSFW)1.bin $(INSTALLFWDIR)/qca-nss1-$(TYPE).bin
-	ln -sf qca-nss1-$(TYPE).bin $(INSTALLFWDIR)/qca-nss1.bin
+	install -m 644 $(PKG_BUILD_DIR)/retail_router1.bin $(INSTALLFWDIR)/qca-nss1-retail.bin
+	ln -sf qca-nss1-retail.bin $(INSTALLFWDIR)/qca-nss1.bin
 endif
 
 clean:

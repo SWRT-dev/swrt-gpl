@@ -31,6 +31,7 @@ else
 	mkdir -p $(PKG_BUILD_DIR)
 	cp prebuilt/qca-mcs.ko $(PKG_BUILD_DIR)
 endif
+	touch stamp-h1
 
 
 install:

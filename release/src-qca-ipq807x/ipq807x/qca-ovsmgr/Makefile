@@ -18,6 +18,7 @@ else
 	mkdir -p $(PKG_BUILD_DIR)
 	cp prebuilt/qca-ovsmgr.ko $(PKG_BUILD_DIR)
 endif
+	touch stamp-h1
 
 install:
 	@[ -d $(INSTALLKMODDIR) ] || install -d $(INSTALLKMODDIR)

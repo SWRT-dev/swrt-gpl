@@ -1,0 +1,63 @@
+#Copyright (c) 2016,2017 Qualcomm Innovation Center, Inc.
+#All Rights Reserved.
+#Confidential and Proprietary – Qualcomm Innovation Center, Inc
+#2016 Qualcomm Atheros, Inc.
+#All Rights Reserved.
+#Qualcomm Atheros Confidential and Proprietary.
+
+row=1
+xml_path=""
+mesh_command="/usr/sbin/cfg80211tool_mesh"
+mesh_xml_path="/lib/wifi/qcacommands_mesh.xml"
+
+if [ "$0" == "$mesh_command" ]
+  then
+   xml_path="$mesh_xml_path"
+  else
+   xml_name=`sed -n "$row"p /sys/class/net/$1/cfg80211_xmlfile 2> /dev/null`
+   if [ -n "$xml_name" ]
+     then
+      xml_path="/lib/wifi/$xml_name"
+   fi
+fi
+
+if [ -z "$3" ]
+  then
+   val=0
+  else
+   val=$3
+fi
+
+#echo "number of arguments: $# -> $0 $1 $2 $3 $4 $5"
+# Adjust command based on inputs
+
+if [ "$#" -eq 1 ] && [ -n "$xml_path" ] ; then
+cfg80211tool.1 -i $1 -f $xml_path -h list
+fi
+if [ "$#" -eq 2 ] && [ -n "$xml_path" ] ; then
+cfg80211tool.1 -i $1 -f $xml_path -h none --START_CMD --$2 --RESPONSE --$2 --END_CMD || return 255
+fi
+if [ "$#" -eq 3 ] && [ -n "$xml_path" ] ; then
+cfg80211tool.1 -i $1 -f $xml_path -h none --START_CMD --$2 --value0 $val --RESPONSE --$2 --END_CMD || return 255
+fi
+if [ "$#" -eq 4 ] && [ -n "$xml_path" ] ; then
+cfg80211tool.1 -i $1 -f $xml_path -h none --START_CMD --$2 --value0 $val --value1 $4 --RESPONSE --$2 --END_CMD || return 255
+fi
+if [ "$#" -eq 5 ] && [ -n "$xml_path" ] ; then
+cfg80211tool.1 -i $1 -f $xml_path -h none --START_CMD --$2 --value0 $val --value1 $4 --value2 $5 --RESPONSE --$2 --END_CMD || return 255
+fi
+if [ "$#" -eq 6 ] && [ -n "$xml_path" ] ; then
+cfg80211tool.1 -i $1 -f $xml_path -h none --START_CMD --$2 --value0 $val --value1 $4 --value2 $5 --value3 $6 --RESPONSE --$2 --END_CMD || return 255
+fi
+if [ "$#" -eq 7 ] && [ -n "$xml_path" ] ; then
+cfg80211tool.1 -i $1 -f $xml_path -h none --START_CMD --$2 --value0 $val --value1 $4 --value2 $5 --value3 $6 --value4 $7 --RESPONSE --$2 --END_CMD || return 255
+fi
+if [ "$#" -eq 8 ] && [ -n "$xml_path" ] ; then
+cfg80211tool.1 -i $1 -f $xml_path -h none --START_CMD --$2 --value0 $val --value1 $4 --value2 $5 --value3 $6 --value4 $7 --value5 $8 --RESPONSE --$2 --END_CMD || return 255
+fi
+if [ "$#" -eq 9 ] && [ -n "$xml_path" ] ; then
+cfg80211tool.1 -i $1 -f $xml_path -h none --START_CMD --$2 --value0 $val --value1 $4 --value2 $5 --value3 $6 --value4 $7 --value5 $8 --value6 $9 --RESPONSE --$2 --END_CMD || return 255
+fi
+if [ "$#" -eq 10 ] && [ -n "$xml_path" ] ; then
+cfg80211tool.1 -i $1 -f $xml_path -h none --START_CMD --$2 --value0 $val --value1 $4 --value2 $5 --value3 $6 --value4 $7 --value5 $8 --value6 $9 --value7 ${10} --RESPONSE --$2 --END_CMD || return 255
+fi

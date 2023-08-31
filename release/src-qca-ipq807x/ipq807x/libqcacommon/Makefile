@@ -29,6 +29,7 @@ else
 	mkdir -p $(PKG_BUILD_DIR)
 	cp prebuilt/libhyficommon.so $(PKG_BUILD_DIR)/libhyficommon.so
 endif
+	touch stamp-h1
 
 install:
 	@[ -d $(INSTALLDIR)/usr/lib ] || install -d $(INSTALLDIR)/usr/lib

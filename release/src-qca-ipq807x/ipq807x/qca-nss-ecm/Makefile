@@ -148,17 +148,19 @@ INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
 PBBINS=$(wildcard prebuilt/*)
 NSS_ECM_KMOD=$(filter %.ko,$(PBBINS))
 
+KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-nss-drv/Module.symvers
+KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-mcs/Module.symvers
+KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/emesh-sp/Module.symvers
+
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-nss-ecm/*.c),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-nss-ecm source
-	cp $(SDK_DIR_PLATFORM)/qca-nss-drv/Module.symvers $(PKG_BUILD_DIR)
-	cat $(SDK_DIR_PLATFORM)/qca-mcs/Module.symvers >> $(PKG_BUILD_DIR)/Module.symvers
-	cat $(SDK_DIR_PLATFORM)/emesh-sp/Module.symvers >> $(PKG_BUILD_DIR)/Module.symvers
 	$(MAKE) -C "$(LINUXDIR)" $(strip $(ECM_MAKE_OPTS)) CROSS_COMPILE="$(TARGET_CROSS)" ARCH="$(ARCH)" M="$(PKG_BUILD_DIR)" \
 		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" SoC="$(subtarget)" EXAMPLES_BUILD_PCC="$(CONFIG_QCA_NSS_ECM_EXAMPLES_PCC)" \
 		EXAMPLES_BUILD_MARK="$(CONFIG_QCA_NSS_ECM_EXAMPLES_MARK)" EXAMPLES_BUILD_OVS="$(CONFIG_QCA_NSS_ECM_OVS)" \
 		BUILD_ECM_WIFI_PLUGIN="$(CONFIG_QCA_NSS_ECM_WIFI_PLUGIN)" modules
 endif
+	touch stamp-h1
 
 install:
 	@[ -d $(INSTALLKMODDIR) ] || install -d $(INSTALLKMODDIR)

@@ -73,6 +73,7 @@ else
 	mkdir -p $(PKG_BUILD_DIR)/build/bin
 	cp prebuilt/qca-ssdk.ko $(PKG_BUILD_DIR)/build/bin
 endif
+	touch stamp-h1
 
 install:
 	@[ -d $(INSTALLKMODDIR) ] || install -d $(INSTALLKMODDIR)

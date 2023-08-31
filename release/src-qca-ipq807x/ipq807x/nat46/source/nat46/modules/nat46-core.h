@@ -32,14 +32,14 @@
 #define EA_LEN_MAX 48
 #define IPV6_BITS_MAX 128
 
+/* Flag definations for MAP-T */
+#define ADD_DUMMY_HEADER 0x01
+
 #define IPV6HDRSIZE 40
 #define IPV4HDRSIZE 20
 #define IPV6V4HDRDELTA (IPV6HDRSIZE - IPV4HDRSIZE)
 
-/* Flag definations for MAP-T */
-#define ADD_DUMMY_HEADER 0x01
-
-/* 
+/*
  * A generic v4<->v6 translation structure.
  * The currently supported translation styles:
  */
@@ -55,7 +55,6 @@ typedef enum {
  * Enumeration for sorting pairs based on
  * type of prefix length.
  */
-
 typedef enum {
   NAT46_IPV4_LOCAL = 0,
   NAT46_IPV4_REMOTE,
@@ -65,16 +64,16 @@ typedef enum {
 
 #define NAT46_SIGNATURE 0x544e3634
 #define FREED_NAT46_SIGNATURE 0xdead544e
-     
+
 typedef struct nat46_xlate_rule {
   nat46_xlate_style_t style;
   struct in6_addr v6_pref;
-  int 		  v6_pref_len;
-  u32		  v4_pref;
-  int             v4_pref_len;
-  int		  ea_len;
-  int             psid_offset;
-  int             fmr_flag;
+  int v6_pref_len;
+  u32 v4_pref;
+  int v4_pref_len;
+  int ea_len;
+  int psid_offset;
+  int fmr_flag;
 } nat46_xlate_rule_t;
 
 typedef struct nat46_xlate_rulepair {
@@ -107,14 +106,14 @@ int nat46_get_config(nat46_instance_t *nat46, char *buf, int count);
 char *get_next_arg(char **ptail);
 nat46_instance_t *get_nat46_instance(struct sk_buff *sk);
 
-nat46_instance_t *alloc_nat46_instance(int npairs, nat46_instance_t *old, int from_ipair, int to_ipair); 
+nat46_instance_t *alloc_nat46_instance(int npairs, nat46_instance_t *old, int from_ipair, int to_ipair);
 void release_nat46_instance(nat46_instance_t *nat46);
 
 int xlate_6_to_4(struct net_device *dev, struct ipv6hdr *ip6h, uint16_t proto, __u32 *pv4saddr, __u32 *pv4daddr);
-int xlate_4_to_6(struct net_device *dev, struct iphdr *hdr4, int sport, int dport, void *v6saddr, void *v6daddr);
+int xlate_4_to_6(struct net_device *dev, struct iphdr *hdr4, uint16_t sport, uint16_t dport, void *v6saddr, void *v6daddr);
+void ip6_update_csum(struct sk_buff * skb, struct ipv6hdr * ip6hdr, uint32_t v4saddr, uint32_t v4daddr, int do_atomic_frag);
 bool nat46_get_rule_config(struct net_device *dev, nat46_xlate_rulepair_t **nat46_rule_pair, int *count);
 int nat46_get_npairs(struct net_device *dev);
 bool nat46_get_info(struct net_device *dev, nat46_xlate_rulepair_t **nat46_rule_pair,
 		int *count, u8 *flag);
-
 #endif

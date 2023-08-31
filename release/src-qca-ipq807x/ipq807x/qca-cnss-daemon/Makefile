@@ -17,6 +17,7 @@ else
 	cp prebuilt/cnssdaemon $(PKG_BUILD_DIR)/lib
 	cp prebuilt/cnsscli $(PKG_BUILD_DIR)/lib
 endif
+	touch stamp-h1
 
 install:
 	@[ -d $(INSTALLDIR)/usr/bin ] || install -d $(INSTALLDIR)/usr/bin

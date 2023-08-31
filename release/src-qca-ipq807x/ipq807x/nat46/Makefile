@@ -6,7 +6,7 @@ TARGET_LDFLAGS=
 KERNEL_MAKEOPTS=-C $(LINUXDIR)
 LINUX_VERSION=$(LINUX_KERNEL)
 PKG_BUILD_DIR=$(shell pwd)/source
-PKG_SOURCE_VERSION=8ff2ae59ec9840a7b8b45f976c51cae80abe0226
+PKG_SOURCE_VERSION=95ca1c3b99376da2d0306919f2df4a8d3c9bb78b
 
 # Define variables for nat46
 INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_VERSION)
@@ -24,14 +24,15 @@ all:
 		EXTRA_CFLAGS="-DNAT46_VERSION=\\\"$(PKG_SOURCE_VERSION)\\\"" \
 		CROSS_COMPILE="$(patsubst %-gcc,%-,$(KERNELCC))" \
 		modules
+	touch stamp-h1
 
 install:
 	install -d $(INSTALLKMODDIR)
 	install -m 755 $(foreach kmod,$(NAT46_KMOD_LIST),$(PKG_BUILD_DIR)/$(kmod)) $(INSTALLKMODDIR)
 	$(KSTRIPX) $(INSTALLKMODDIR)/*.ko
 	# Package/464xlat/install
-	install -d $(INSTALLDIR)/lib/netifd/proto
-	install -m 0755 package/files/464xlat.sh $(INSTALLDIR)/lib/netifd/proto/464xlat.sh
+#	install -d $(INSTALLDIR)/lib/netifd/proto
+#	install -m 0755 package/files/464xlat.sh $(INSTALLDIR)/lib/netifd/proto/464xlat.sh
 	install -d $(INSTALLDIR)/sbin
 	install -m 0755 $(PKG_BUILD_DIR)/464xlatcfg $(INSTALLDIR)/sbin
 	$(STRIP) $(INSTALLDIR)/sbin/*

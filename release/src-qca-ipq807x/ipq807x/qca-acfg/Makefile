@@ -5,8 +5,10 @@ STAGING_DIR=$(STAGEDIR)
 MAKEOPTS+= \
 	$(TARGET_CONFIGURE_OPTS) \
 	WLAN_TOP=$(STAGING_DIR)/usr \
-	COPTS="$(TARGET_CFLAGS) -I. -I$(PKG_BUILD_DIR)/include" \
-	QSDK_ACFG=1 MEM_PROFILE="$(CONFIG_KERNEL_IPQ_MEM_PROFILE)"
+	COPTS="$(CFLAGS) -I. -I$(PKG_BUILD_DIR)/include" \
+	QSDK_ACFG=1 MEM_PROFILE="$(CONFIG_KERNEL_IPQ_MEM_PROFILE)" \
+	CC=$(CROSS_COMPILE)gcc \
+	TOOLPREFIX=$(CROSS_COMPILE)
 
 PBBINS=$(wildcard prebuilt/*)
 QCA_GPL_BINS=$(filter-out %.conf,$(PBBINS))
@@ -27,6 +29,7 @@ else
 	cp prebuilt/acfg_tool $(PKG_BUILD_DIR)/acfg_test_app/acfg_tool
 	cp prebuilt/acfg_set_profile $(PKG_BUILD_DIR)/acfg_profile_app/acfg_set_profile
 endif
+	touch stamp-h1
 
 install:
 	@[ -d $(INSTALLDIR)/usr/sbin ] || install -d $(INSTALLDIR)/usr/sbin

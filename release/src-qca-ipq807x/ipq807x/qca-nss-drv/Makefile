@@ -94,18 +94,19 @@ endif
 subtarget:=$(CONFIG_TARGET_BOARD)
 
 INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
+KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-nss-dp/Module.symvers
 
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-nss-drv/*.c),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-nss-drv source
 	ln -sf $(PKG_BUILD_DIR)/exports/arch/nss_$(CONFIG_TARGET_BOARD)_64.h $(PKG_BUILD_DIR)/exports/nss_arch.h
-	cp $(SDK_DIR_PLATFORM)/qca-nss-dp/Module.symvers $(PKG_BUILD_DIR)
 	$(MAKE) -C "$(LINUXDIR)" $(strip $(DRV_MAKE_OPTS)) CROSS_COMPILE="$(TARGET_CROSS)" ARCH="$(ARCH)" M="$(PKG_BUILD_DIR)" \
 		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" SoC=$(subtarget) modules
 else
 	mkdir -p $(PKG_BUILD_DIR)
 	cp prebuilt/qca-nss-drv.ko $(PKG_BUILD_DIR)
 endif
+	touch stamp-h1
 
 install:
 	@[ -d $(INSTALLKMODDIR) ] || install -d $(INSTALLKMODDIR)

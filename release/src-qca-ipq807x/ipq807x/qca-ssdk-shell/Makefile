@@ -24,6 +24,7 @@ else
 	mkdir -p $(PKG_BUILD_DIR)/build/bin
 	cp prebuilt/ssdk_sh $(PKG_BUILD_DIR)/build/bin
 endif
+	touch stamp-h1
 
 install:
 	@[ -d $(INSTALLDIR)/usr/sbin ] || install -d $(INSTALLDIR)/usr/sbin
