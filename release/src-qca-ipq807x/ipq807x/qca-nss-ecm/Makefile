@@ -151,6 +151,8 @@ NSS_ECM_KMOD=$(filter %.ko,$(PBBINS))
 KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-nss-drv/Module.symvers
 KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-mcs/Module.symvers
 KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/emesh-sp/Module.symvers
+KBUILD_EXTRA_SYMBOLS += $(SRCBASE)/$(PLATFORM_ROUTER)/nat46/source/nat46/modules/Module.symvers
+export KBUILD_EXTRA_SYMBOLS
 
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-nss-ecm/*.c),)

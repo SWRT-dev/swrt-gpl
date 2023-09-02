@@ -35,7 +35,23 @@ typedef uint32_t __u32;
 #define IEEE80211_IOCTL_GETCHANINFO     (SIOCIWFIRSTPRIV+7)
 typedef unsigned int	u_int;
 
-#if defined(RTCONFIG_SOC_IPQ50XX) || defined(RTCONFIG_SPF11_4_QSDK)
+#if defined(RTCONFIG_SPF12_2_QSDK)
+/* SPF12.2 or above, sync with qca-wifi's struct ieee80211_channel_info */
+struct ieee80211_channel {
+    u_int16_t       ic_freq;        /* setting in Mhz */
+    u_int32_t       ic_flags;       /* see below */
+    u_int8_t        ic_flagext;     /* see below */
+    u_int8_t        ic_ieee;        /* IEEE channel number */
+    int8_t          ic_maxregpower; /* maximum regulatory tx power in dBm */
+    int8_t          ic_maxpower;    /* maximum tx power in dBm */
+    int8_t          ic_minpower;    /* minimum tx power in dBm */
+    u_int8_t        ic_regClassId;  /* regClassId of this channel */ 
+    u_int8_t        ic_antennamax;  /* antenna gain max from regulatory */
+    u_int8_t        ic_vhtop_ch_freq_seg1;         /* Channel Center frequency */
+    u_int8_t        ic_vhtop_ch_freq_seg2;         /* Channel Center frequency applicable
+                                                  * for 80+80MHz mode of operation */ 
+};
+#elif defined(RTCONFIG_SOC_IPQ50XX) || defined(RTCONFIG_SPF11_4_QSDK)
 /* SPF11.4 or above, sync with qca-wifi's struct ieee80211_channel_info */
 struct ieee80211_channel {
     uint8_t ieee;
@@ -2266,7 +2282,7 @@ int iwfreq_to_ch(const iwfreq *fr)
 	return (int)ieee80211_mhz2ieee((u_int)freq);
 }
 
-int get_channel(const char *ifname)
+int shared_get_channel(const char *ifname)
 {
 	struct iwreq wrq;
 	const iwfreq *fr;

@@ -35,6 +35,7 @@ endif
 INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
 KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-ssdk/Module.symvers
 KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/emesh-sp/Module.symvers
+export KBUILD_EXTRA_SYMBOLS
 
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-hyfi-bridge/hyfi-netfilter/*.c),)

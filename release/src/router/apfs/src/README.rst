@@ -22,8 +22,7 @@ This module is the result of reverse engineering and testing has been limited.
 If you make use of the write support, expect data corruption. Please report any
 issues that you find, but I can't promise a quick resolution at this stage.
 
-Many features are not yet implemented, including encryption and most forms of
-compression.
+Encryption is not yet implemented even in read-only mode.
 
 Build
 =====
@@ -63,6 +62,8 @@ where ``device`` is the path to your device file or filesystem image, and
 ============   =================================================================
 vol=n	       Volume number to mount. The default is volume 0.
 
+snap=label     Volume snapshot to mount (in read-only mode).
+
 uid=n, gid=n   Override on-disk inode ownership data with given uid/gid.
 
 cknodes	       Verify the checksum on all metadata nodes. Right now this has a
@@ -84,8 +85,8 @@ To unmount it, run::
 Credits
 =======
 
-Originally written by Ernesto A. Fernández <ernesto.mnd.fernandez@gmail.com>,
-with several contributions from Gabriel Krisman Bertazi <krisman@collabora.com>,
+Originally written by Ernesto A. Fernández <ernesto@corellium.com>, with
+several contributions from Gabriel Krisman Bertazi <krisman@collabora.com>,
 Arnaud Ferraris <arnaud.ferraris@collabora.com> and Stan Skowronek
 <skylark@disorder.metrascale.com>. For attribution details see the historical
 git tree at https://github.com/eafer/linux-apfs.git.

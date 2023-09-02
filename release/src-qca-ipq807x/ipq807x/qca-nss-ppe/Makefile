@@ -50,7 +50,7 @@ all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-nss-ppe/Makefile),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-nss-ppe source
 	$(MAKE) -C "$(LINUXDIR)" $(strip $(MAKE_OPTS)) CROSS_COMPILE="$(TARGET_CROSS)" ARCH="$(ARCH)" M="$(PKG_BUILD_DIR)" \
-		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" SoC="$(subtarget)" modules
+		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" SoC="$(subtarget)" KBUILD_EXTRA_SYMBOLS=$(KBUILD_EXTRA_SYMBOLS) modules
 else
 	mkdir -p $(PKG_BUILD_DIR)
 	mkdir -p $(PKG_BUILD_DIR)/drv

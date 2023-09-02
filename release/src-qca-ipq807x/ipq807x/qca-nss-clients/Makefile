@@ -187,7 +187,8 @@ all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-nss-clients/*.c),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-nss-clients source
 	$(MAKE) -C "$(LINUXDIR)" $(strip $(MAKE_OPTS)) CROSS_COMPILE="$(TARGET_CROSS)" ARCH="$(ARCH)" M="$(PKG_BUILD_DIR)" \
-		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" SoC="$(subtarget)" DTLSMGR_DIR="$(DTLSMGR_DIR)" IPSECMGR_DIR="$(IPSECMGR_DIR)" modules
+		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" SoC="$(subtarget)" DTLSMGR_DIR="$(DTLSMGR_DIR)" IPSECMGR_DIR="$(IPSECMGR_DIR)" \
+		KBUILD_EXTRA_SYMBOLS=$(KBUILD_EXTRA_SYMBOLS) modules
 else
 endif
 	touch stamp-h1

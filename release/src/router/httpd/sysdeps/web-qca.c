@@ -101,7 +101,7 @@ typedef struct _WPS_CONFIGURED_VALUE {
 extern u_int ieee80211_mhz2ieee(u_int freq);
 extern int get_channel_list_via_driver(int unit, char *buffer, int len);
 extern int get_channel_list_via_country(int unit, const char *country_code, char *buffer, int len);
-extern int get_channel(const char *ifname);
+extern int shared_get_channel(const char *ifname);
 
 #define WL_A		(1U << 0)
 #define WL_B		(1U << 1)
@@ -467,7 +467,7 @@ unsigned int getAPChannel(int unit)
 	case WL_2G_BAND:	/* fall-through */
 	case WL_5G_BAND:	/* fall-through */
 	case WL_5G_2_BAND:
-		r = get_channel(get_wifname(unit));
+		r = shared_get_channel(get_wifname(unit));
 		break;
 	case WL_60G_BAND:
 		/* FIXME */

@@ -8550,10 +8550,10 @@ void start_spcmd(void)
 		} else if (memcmp(cmd, "SCH", 3)==0) { /* SCH2G_5G1_5G2 */
 			int ch0, ch1, ch2;
 			int my_ch0, my_ch1, my_ch2;
-			my_ch0 = get_channel(get_wififname(0));
-			my_ch1 = get_channel(get_wififname(1));
+			my_ch0 = shared_get_channel(get_wififname(0));
+			my_ch1 = shared_get_channel(get_wififname(1));
 #if defined(RTCONFIG_HAS_5G_2)
-			my_ch2 = get_channel(get_wififname(2));
+			my_ch2 = shared_get_channel(get_wififname(2));
 #else
 			my_ch2 = 0;
 #endif

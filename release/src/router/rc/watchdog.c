@@ -8235,10 +8235,10 @@ static void wifison_check(void)
 				if(sw_mode() == SW_MODE_ROUTER || nvram_match("cfg_master", "1")) /* CAP */{
 					char cmdbuf[16]; /* SCH2G_5G1_5G2 */
 					int ch0,ch1,ch2;
-					ch0 = get_channel(get_wififname(0));
-					ch1 = get_channel(get_wififname(1));
+					ch0 = shared_get_channel(get_wififname(0));
+					ch1 = shared_get_channel(get_wififname(1));
 #if defined(RTCONFIG_HAS_5G_2)
-					ch2 = get_channel(get_wififname(2));
+					ch2 = shared_get_channel(get_wififname(2));
 #else
 					ch2 = 0;
 #endif

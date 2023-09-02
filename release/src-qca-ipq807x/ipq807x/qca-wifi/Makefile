@@ -96,6 +96,7 @@ ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-wifi/wow/*.c),)
 	cp -rf $(LINUXDIR)/include/uapi/linux/nl80211.h $(STAGING_DIR)/usr/include/nl80211_copy.h
 	cp -rf $(DRIVER_PATH)/component_dev/tools/linux/cfg80211_ven_cmd.h $(STAGING_DIR)/usr/include
 	cp -rf $(SDK_DIR_PLATFORM)/qca-cnss/include/cnss2.h $(STAGING_DIR)/usr/include
+	cp -rf $(SDK_DIR_PLATFORM)/qca-cnss/Module.symvers $(PKG_BUILD_DIR)
 	export CONFIG_CNSS2_MODULE="$(CONFIG_CNSS2_MODULE)"; \
 	export CONFIG_WIFI_TARGET_WIFI_2_0="$(CONFIG_WIFI_TARGET_WIFI_2_0)"; \
 	export CONFIG_WIFI_TARGET_WIFI_3_0="$(CONFIG_WIFI_TARGET_WIFI_3_0)"; \
@@ -195,9 +196,9 @@ ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-wifi/wow/*.c),)
 	[ -d $(STAGEDIR)/usr/include/qca-wifi ] || install -d $(STAGEDIR)/usr/include/qca-wifi
 	$(MAKE) -C $(PKG_BUILD_DIR) INSTALL_DEST="$(STAGING_DIR)/usr/include/" install_headers
 	cp -rf $(LINUXDIR)/include/uapi/linux/nl80211.h $(STAGING_DIR)/usr/include/nl80211_copy.h
-	cp -rf -f $(DRIVER_PATH)/component_dev/qca_mscs/inc/qca_mscs_if.h $(STAGING_DIR)/usr/include/qca-wifi
-	cp -rf -f $(DRIVER_PATH)/component_dev/qca_mesh_latency/inc/qca_mesh_latency_if.h $(STAGING_DIR)/usr/include/qca-wifi
-	cp -rf -f $(DRIVER_PATH)/component_dev/qca_sawf/qca_sawf_if.h $(STAGING_DIR)/usr/include/qca-wifi/qca_sawf_if.h
-	cp -rf -f $(DRIVER_PATH)/component_dev/qca_scs/inc/qca_scs_if.h $(STAGING_DIR)/usr/include/qca-wifi
-	cp -rf -f $(DRIVER_PATH)/component_dev/qca_fse/qca_fse_if.h $(STAGING_DIR)/usr/include/qca-wifi
+	cp -rf $(DRIVER_PATH)/component_dev/qca_mscs/inc/qca_mscs_if.h $(STAGING_DIR)/usr/include/qca-wifi
+	cp -rf $(DRIVER_PATH)/component_dev/qca_mesh_latency/inc/qca_mesh_latency_if.h $(STAGING_DIR)/usr/include/qca-wifi
+	cp -rf $(DRIVER_PATH)/component_dev/qca_sawf/qca_sawf_if.h $(STAGING_DIR)/usr/include/qca-wifi/qca_sawf_if.h
+	cp -rf $(DRIVER_PATH)/component_dev/qca_scs/inc/qca_scs_if.h $(STAGING_DIR)/usr/include/qca-wifi
+	cp -rf $(DRIVER_PATH)/component_dev/qca_fse/qca_fse_if.h $(STAGING_DIR)/usr/include/qca-wifi
 endif

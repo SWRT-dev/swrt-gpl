@@ -156,7 +156,7 @@ qca-wrapd:qca-cfg80211
 	$(MAKE) -C $@ stage ; \
 	fi
 
-qca-hostap: qca-acfg qca-wrapd qca-cnss-daemon qca-nss-macsec
+qca-hostap: qca-acfg qca-cnss-daemon qca-nss-macsec
 	@$(SEP)
 	if [ ! -f $@/stamp-h1 ];then \
 	$(MAKE) -C $@ ; \

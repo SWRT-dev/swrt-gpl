@@ -46,7 +46,7 @@ ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-nss-cfi/Makefile),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-nss-cfi source
 	$(MAKE) -C "$(LINUXDIR)" $(strip $(MAKE_OPTS)) CROSS_COMPILE="$(TARGET_CROSS)" ARCH="$(ARCH)" M="$(PKG_BUILD_DIR)" \
 		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" CC="$(TARGET_CC)" CFI_CRYPTOAPI_DIR=$(CFI_CRYPTOAPI_DIR) CFI_OCF_DIR=$(CFI_OCF_DIR) \
-		CFI_IPSEC_DIR=$(CFI_IPSEC_DIR) SoC=$(subtarget) modules
+		CFI_IPSEC_DIR=$(CFI_IPSEC_DIR) SoC=$(subtarget) KBUILD_EXTRA_SYMBOLS=$(KBUILD_EXTRA_SYMBOLS) modules
 else
 	mkdir -p $(PKG_BUILD_DIR)
 	mkdir -p $(PKG_BUILD_DIR)/$(CFI_CRYPTOAPI_DIR)

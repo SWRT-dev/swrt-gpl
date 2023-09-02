@@ -32,3 +32,6 @@ install:
 	@$(STRIP) $(INSTALLDIR)/usr/sbin/ssdk_sh
 
 clean:
+
+stage:
+

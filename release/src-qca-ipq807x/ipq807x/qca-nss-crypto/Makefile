@@ -31,7 +31,7 @@ all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-nss-crypto/Makefile),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-nss-crypto source
 	$(MAKE) -C "$(LINUXDIR)" CC="$(TARGET_CC)" CROSS_COMPILE="$(TARGET_CROSS)" ARCH="$(ARCH)" M="$(PKG_BUILD_DIR)" \
-		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" NSS_CRYPTO_DIR=$(NSS_CRYPTO_DIR) SoC="$(subtarget)" modules
+		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" NSS_CRYPTO_DIR=$(NSS_CRYPTO_DIR) SoC="$(subtarget)" KBUILD_EXTRA_SYMBOLS=$(KBUILD_EXTRA_SYMBOLS) modules
 else
 	mkdir -p $(PKG_BUILD_DIR)
 	mkdir -p $(PKG_BUILD_DIR)/$(NSS_CRYPTO_DIR)

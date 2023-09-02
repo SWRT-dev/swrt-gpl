@@ -2449,7 +2449,7 @@ extern int get_iwphy_name(int unit, char *iwphy, size_t size);
 extern int create_vap(char *ifname, int unit, char *mode);
 extern int destroy_vap(char *ifname);
 extern int get_ch(int freq);
-extern int get_channel(const char *ifname);
+extern int shared_get_channel(const char *ifname);
 extern unsigned long long get_bitrate(const char *ifname);
 extern int get_channel_list(const char *ifname, int ch_list[], int size);
 extern uint64_t get_channel_list_mask(enum wl_band_id band);
