@@ -1844,7 +1844,9 @@ int apfs_setattr(struct mnt_idmap *idmap,
 	if (resizing && iattr->ia_size > APFS_MAX_FILE_SIZE)
 		return -EFBIG;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 12, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	err = inode_change_ok(inode, iattr);
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(5, 12, 0)
 	err = setattr_prepare(dentry, iattr);
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
 	err = setattr_prepare(&init_user_ns, dentry, iattr);

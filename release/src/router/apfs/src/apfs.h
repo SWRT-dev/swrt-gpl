@@ -59,7 +59,9 @@ static inline bool sb_rdonly(const struct super_block *sb) { return sb->s_flags 
 #endif
 
 /* Compatibility wrapper around submit_bh() */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 0, 0)
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0))
+#define apfs_submit_bh(op, op_flags, bh) submit_bh(op | op_flags, bh)
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 0, 0)
 #define apfs_submit_bh(op, op_flags, bh) submit_bh(op, op_flags, bh)
 #else
 #define apfs_submit_bh(op, op_flags, bh) submit_bh(op | op_flags, bh)
@@ -865,9 +867,14 @@ extern int apfs_mkany(struct inode *dir, struct dentry *dentry,
 extern int apfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode,
 		      dev_t rdev);
 extern int apfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+extern int apfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+		       struct inode *new_dir, struct dentry *new_dentry);
+#else
 extern int apfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 		       struct inode *new_dir, struct dentry *new_dentry,
 		       unsigned int flags);
+#endif
 extern int apfs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
 		       bool excl);
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)

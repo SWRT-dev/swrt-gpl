@@ -16,10 +16,18 @@
  * Returns a pointer to a buffer containing the target path, or an appropriate
  * error pointer in case of failure.
  */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+static const char *apfs_follow_link(struct dentry *dentry, void **cookie)
+#else
 static const char *apfs_get_link(struct dentry *dentry, struct inode *inode,
 				 struct delayed_call *done)
+#endif
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	struct super_block *sb = d_inode(dentry)->i_sb;
+#else
 	struct super_block *sb = inode->i_sb;
+#endif
 	struct apfs_nxsb_info *nxi = APFS_NXI(sb);
 	char *target = NULL;
 	int err;
@@ -32,7 +40,11 @@ static const char *apfs_get_link(struct dentry *dentry, struct inode *inode,
 		goto fail;
 	}
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	size = __apfs_xattr_get(d_inode(dentry), APFS_XATTR_NAME_SYMLINK,
+#else
 	size = __apfs_xattr_get(inode, APFS_XATTR_NAME_SYMLINK,
+#endif
 				NULL /* buffer */, 0 /* size */);
 	if (size < 0) { /* TODO: return a better error code */
 		apfs_err(sb, "symlink size read failed");
@@ -46,7 +58,11 @@ static const char *apfs_get_link(struct dentry *dentry, struct inode *inode,
 		goto fail;
 	}
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	size = __apfs_xattr_get(d_inode(dentry), APFS_XATTR_NAME_SYMLINK, target, size);
+#else
 	size = __apfs_xattr_get(inode, APFS_XATTR_NAME_SYMLINK, target, size);
+#endif
 	if (size < 0) {
 		apfs_err(sb, "symlink read failed");
 		err = size;
@@ -54,14 +70,24 @@ static const char *apfs_get_link(struct dentry *dentry, struct inode *inode,
 	}
 	if (size == 0 || *(target + size - 1) != 0) {
 		/* Target path must be NULL-terminated */
-		apfs_err(sb, "bad link target in inode 0x%llx", apfs_ino(inode));
+		apfs_err(sb, "bad link target in inode 0x%llx",
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+			   apfs_ino(d_inode(dentry))
+#else
+			   apfs_ino(inode)
+#endif
+		);
 		err = -EFSCORRUPTED;
 		goto fail;
 	}
 
 	up_read(&nxi->nx_big_sem);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	return *cookie = target;
+#else
 	set_delayed_call(done, kfree_link, target);
 	return target;
+#endif
 
 fail:
 	kfree(target);
@@ -70,7 +96,11 @@ fail:
 }
 
 const struct inode_operations apfs_symlink_inode_operations = {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	.follow_link = apfs_follow_link,
+#else
 	.get_link	= apfs_get_link,
+#endif
 	.getattr	= apfs_getattr,
 	.listxattr	= apfs_listxattr,
 	.update_time	= apfs_update_time,

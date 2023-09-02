@@ -241,7 +241,11 @@ out:
 const struct file_operations apfs_dir_operations = {
 	.llseek		= generic_file_llseek,
 	.read		= generic_read_dir,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0))
+	.iterate = apfs_readdir,
+#else
 	.iterate_shared	= apfs_readdir,
+#endif
 	.fsync		= apfs_fsync,
 	.unlocked_ioctl	= apfs_dir_ioctl,
 };
@@ -1393,7 +1397,10 @@ int apfs_rmdir(struct inode *dir, struct dentry *dentry)
 	return apfs_unlink(dir, dentry);
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 12, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+int apfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+		struct inode *new_dir, struct dentry *new_dentry)
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(5, 12, 0)
 int apfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 		struct inode *new_dir, struct dentry *new_dentry,
 		unsigned int flags)
@@ -1416,8 +1423,10 @@ int apfs_rename(struct mnt_idmap *idmap, struct inode *old_dir,
 	if (new_inode && APFS_I(new_inode)->i_nchildren)
 		return -ENOTEMPTY;
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 9, 0)
 	if (flags & ~RENAME_NOREPLACE) /* TODO: support RENAME_EXCHANGE */
 		return -EINVAL;
+#endif
 
 	maxops.cat = __APFS_UNLINK_MAXOPS + __APFS_LINK_MAXOPS;
 	if (new_inode)

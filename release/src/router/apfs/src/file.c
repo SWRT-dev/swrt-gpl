@@ -151,7 +151,7 @@ const struct file_operations apfs_file_operations = {
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0)
 	.remap_file_range	= apfs_remap_file_range,
-#else
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
 	.clone_file_range	= apfs_clone_file_range,
 #endif
 };

@@ -1223,7 +1223,7 @@ static int mtwifi_stop_cac(const char *name)
 static int mtwifi_vendor_cmd(const char *ifname, uint32_t vid, uint32_t subcmd,	uint8_t *in, int ilen, uint8_t *out, int *olen)
 {
 	libwifi_dbg("[%s] %s called\n", ifname, __func__);
-	return nlwifi_vendor_cmd(ifname, vid, subcmd, in, inlen, out, outlen);
+	return nlwifi_vendor_cmd(ifname, vid, subcmd, in, ilen, out, olen);
 }
 
 static int mtwifi_get_ap_info(const char *ifname, struct wifi_ap *ap)

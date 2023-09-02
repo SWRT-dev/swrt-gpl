@@ -326,12 +326,22 @@ static int apfs_xattr_get(struct inode *inode, const char *name, void *buffer, s
 	return ret;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+static int apfs_xattr_osx_get(const struct xattr_handler *handler,
+				struct dentry *dentry, const char *name, 
+				void *buffer, size_t size)
+#else
 static int apfs_xattr_osx_get(const struct xattr_handler *handler,
 				struct dentry *unused, struct inode *inode,
 				const char *name, void *buffer, size_t size)
+#endif
 {
 	/* Ignore the fake 'osx' prefix */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	return apfs_xattr_get(d_inode(dentry), name, buffer, size);
+#else
 	return apfs_xattr_get(inode, name, buffer, size);
+#endif
 }
 
 /**
@@ -746,7 +756,11 @@ int APFS_XATTR_SET_MAXOPS(void)
 	return 1;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 12, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+static int apfs_xattr_osx_set(const struct xattr_handler *handler,
+	      struct dentry *dentry, const char *name,
+	      const void *value, size_t size, int flags)
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(5, 12, 0)
 static int apfs_xattr_osx_set(const struct xattr_handler *handler,
 	      struct dentry *unused, struct inode *inode, const char *name,
 	      const void *value, size_t size, int flags)
@@ -762,6 +776,9 @@ static int apfs_xattr_osx_set(const struct xattr_handler *handler,
 		  size_t size, int flags)
 #endif
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+	 struct inode *inode = d_inode(dentry);
+#endif
 	struct super_block *sb = inode->i_sb;
 	struct apfs_max_ops maxops;
 	int err;
