@@ -54,10 +54,11 @@ void auto_generate_config(void)
 
 int start_swrtmesh(void)
 {
+	int idx;
 	pid_t pid;
 	char *ubusd_argv[] = { "ubusd", NULL };
-	char *ieee1905_argv[] = { "ieee1905d", "-o", "/tmp/ieee1905.log", /*"-f",*/ "-dddd", NULL };
-	char *cntl_argv[] = { "mapcontroller", "-o", "/tmp/mapcontroller.log", "-d", "-vvvv", NULL, NULL };
+	char *ieee1905_argv[] = { "ieee1905d", "-o", "/tmp/ieee1905.log", NULL, NULL, NULL };
+	char *cntl_argv[] = { "mapcontroller", "-o", "/tmp/mapcontroller.log", NULL, NULL, NULL, NULL };
 	char *tp_argv[] = { "topologyd", NULL };
 //	char *swrtmeshd_argv[] = { "swrtmeshd", NULL };
 
@@ -72,13 +73,23 @@ int start_swrtmesh(void)
 	auto_generate_config();
 //	swrtmesh_resync_config();
 	_eval(ubusd_argv, NULL, 0, &pid);
+//	idx = 3;
+//	ieee1905_argv[idx] = "-f";
+//	idx++;
+//	ieee1905_argv[idx] = "-dddd";
 	_eval(ieee1905_argv, NULL, 0, &pid);
 	_eval(tp_argv, NULL, 0, &pid);
 	if(nvram_match("swrtmesh_controller_enable", "1")){
 		char buf[2] = {0};
+		idx = 3;
+//		cntl_argv[idx] = "-d";
+//		idx++;
+//		cntl_argv[idx] = "-vvvv";
 		swrtmesh_get_value_by_string("mapagent", "controller_select", NULL, "local", buf, sizeof(buf));
-		if(!strcmp(buf, "0"))
-			cntl_argv[5] = "-w";
+		if(!strcmp(buf, "0")){
+			idx++;
+			cntl_argv[idx] = "-w";
+		}
 		_eval(cntl_argv, NULL, 0, &pid);
 		if(check_if_file_exist("/proc/sys/net/netfilter/nf_conntrack_timestamp"))
 			system("echo 1 >/proc/sys/net/netfilter/nf_conntrack_timestamp");
@@ -91,7 +102,8 @@ int start_swrtmesh(void)
 			return -1;
 		fprintf(fp, "#!/bin/sh\n");
 		fprintf(fp, "dynbhd &\n");
-		fprintf(fp, "mapagent -o /tmp/mapagent.log -d -vvvv &\n");
+//		fprintf(fp, "mapagent -o /tmp/mapagent.log -d -vvvv &\n");
+		fprintf(fp, "mapagent -o /tmp/mapagent.log &\n");
 		fclose(fp);
 		chmod("/tmp/agent.sh",0777);
 		_eval(argv, NULL, 0, &pid);
