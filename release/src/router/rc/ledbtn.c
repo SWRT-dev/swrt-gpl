@@ -155,10 +155,13 @@ static void ledbtn(int sig)
 	{
 		TRACE_PT("button BTN_LED pressed\n");
 		if (LED_status && (LED_status != LED_status_old)) {
-			if (LED_status_on)
+			if (LED_status_on){
 				nvram_set_int("AllLED", 1);
-			else
+				nvram_set_int("led_disable", 0);
+			}else{
 				nvram_set_int("AllLED", 0);
+				nvram_set_int("led_disable", 1);
+			}
 			nvram_commit();
 		}
 
