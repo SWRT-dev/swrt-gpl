@@ -81,9 +81,8 @@ extern void patch_Factory(void) __attribute__((weak));
 extern void swrt_patch_nvram(void);
 #endif
 
-#if defined(RAX70) || defined(RGMA2820A) || defined(RGMA2820B) || defined(MR60) || defined(MS60) || defined(RAC2V1S) || defined(RMAX6000) || defined(RAX200)
-extern void swrt_sys_hack(void);
-#elif defined(TUFAX3000) || defined(RTAX58U) || defined(RTAX82U)
+extern void swrt_sys_hack(void) __attribute__((weak));
+#if defined(TUFAX3000) || defined(RTAX58U) || defined(RTAX82U)
 extern void enable_4t4r_ax58(void);
 extern void enable_4t4r(void);
 #elif defined(K3C)

@@ -3,13 +3,17 @@
 if [ "$(nvram get entware_mount)" == 1 ];then
 	mdisk=`nvram get entware_disk`
 	usb_disk="/tmp/mnt/$mdisk"
-	fat=$(mount |grep $usb_disk |grep tfat)
-	fat1=$(mount |grep $usb_disk |grep vfat)
-	[ -n "$fat" -o -n "$fat1" ] && logger "Unsupport TFAT!" && exit 1
+	ext=$(mount |grep $usb_disk |grep ext)
+	tntfs=$(mount |grep $usb_disk |grep tntfs)
 	if [ ! -e "$usb_disk" ]; then
 		nvram set entware_mount="0"
 		nvram commit
-		logger "USB flash drive not detected!/没有找到可用的USB磁盘!" 
+		logger "No usable USB disk found!/没有找到可用的USB磁盘!" 
+		exit 1
+	elif [ ! -n "$ext" ] && [ ! -n "$tntfs" ]; then
+		nvram set entware_mount="0"
+		nvram commit
+		logger "No supported disk type found!/没有找到可用的USB磁盘格式!" 
 		exit 1
 	else
 		mkdir -p $usb_disk/opt
