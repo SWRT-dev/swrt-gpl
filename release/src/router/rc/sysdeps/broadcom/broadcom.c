@@ -1551,7 +1551,6 @@ int wlcscan_core(char *ofile, char *wif)
 	char ssid_str[256];
 	wl_scan_results_t *result;
 	wl_bss_info_t *info;
-	wl_bss_info_107_t *old_info;
 	struct bss_ie_hdr *ie;
 	NDIS_802_11_NETWORK_TYPE NetWorkType;
 	struct maclist *authorized;
@@ -1732,15 +1731,6 @@ int wlcscan_core(char *ofile, char *wif)
 		if (ret == 0)
 		{
 			info = &(result->bss_info[0]);
-
-			/* Convert version 107 to 109 */
-			if (dtoh32(info->version) == LEGACY_WL_BSS_INFO_VERSION) {
-				old_info = (wl_bss_info_107_t *)info;
-				info->chanspec = CH20MHZ_CHSPEC(old_info->channel);
-				info->ie_length = old_info->ie_length;
-				info->ie_offset = sizeof(wl_bss_info_107_t);
-			}
-
 			info_b = (char *) info;
 
 			for (i = 0; i < result->count; i++)
@@ -1802,12 +1792,26 @@ int wlcscan_core(char *ofile, char *wif)
 					else					// < -84 dbm
 						apinfos[ap_count].RSSI_Quality = 0;
 
-					if ((info->capability & 0x10) == 0x10)
-						apinfos[ap_count].wep = 1;
-					else
-						apinfos[ap_count].wep = 0;
+					apinfos[ap_count].wep = 0;
 					apinfos[ap_count].wpa = 0;
-
+					if (info->capability & DOT11_CAP_PRIVACY){
+						apinfos[ap_count].wep = 1;
+						if(info->ie_length){
+							//ie = (struct bss_ie_hdr *) ((unsigned char *) info + sizeof(*info));
+							ie = (struct bss_ie_hdr *) ((unsigned char *) info + info->ie_offset);
+							for (left = info->ie_length; left > 0; left -= (ie->len + 2), ie = (struct bss_ie_hdr *) ((unsigned char *) ie + 2 + ie->len))
+							{
+								if (ie->elem_id == DOT11_MNG_RSN_ID || ie->elem_id == DOT11_MNG_WPA_ID){
+									if (wpa_parse_wpa_ie(&ie->elem_id, ie->len + 2, &apinfos[ap_count].wid) == 0)
+									{
+										apinfos[ap_count].wep = 0;
+										apinfos[ap_count].wpa = 1;
+										break;
+									}
+								}
+							}
+						}
+					}
 /*
 					unsigned char *RATESET = &info->rateset;
 					for (k = 0; k < 18; k++)
@@ -1855,7 +1859,7 @@ int wlcscan_core(char *ofile, char *wif)
 					if (ap_count >= MAX_NUMBER_OF_APINFO)
 						break;
 				}
-
+#if 0
 				ie = (struct bss_ie_hdr *) ((unsigned char *) info + sizeof(*info));
 				for (left = info->ie_length; left > 0; // look for RSN IE first
 					left -= (ie->len + 2), ie = (struct bss_ie_hdr *) ((unsigned char *) ie + 2 + ie->len))
@@ -1883,7 +1887,7 @@ int wlcscan_core(char *ofile, char *wif)
 						break;
 					}
 				}
-
+#endif
 next_info:
 				info = (wl_bss_info_t *) ((unsigned char *) info + info->length);
 			}
@@ -2017,7 +2021,7 @@ next_info:
 					fprintf(fp, "\"\",");
 				} else {
 					memset(ssid_str, 0, sizeof(ssid_str));
-					char_to_ascii(ssid_str, apinfos[i].SSID);
+					char_to_ascii_with_utf8(ssid_str, apinfos[i].SSID);
 					fprintf(fp, "\"%s\",", ssid_str);
 				}
 
@@ -2156,7 +2160,6 @@ int wlcscan_core_wl(char *ofile, char *wif)
 	char ssid_str[256];
 	wl_scan_results_wl_t *result;
 	wl_bss_info_wl_t *info;
-	wl_bss_info_107_t *old_info;
 	struct bss_ie_hdr *ie;
 	NDIS_802_11_NETWORK_TYPE NetWorkType;
 	struct maclist *authorized;
@@ -2220,15 +2223,6 @@ int wlcscan_core_wl(char *ofile, char *wif)
 		if (ret == 0)
 		{
 			info = &(result->bss_info[0]);
-
-			/* Convert version 107 to 109 */
-			if (dtoh32(info->version) == LEGACY_WL_BSS_INFO_VERSION) {
-				old_info = (wl_bss_info_107_t *)info;
-				info->chanspec = CH20MHZ_CHSPEC(old_info->channel);
-				info->ie_length = old_info->ie_length;
-				info->ie_offset = sizeof(wl_bss_info_107_t);
-			}
-
 			info_b = (char *) info;
 
 			for (i = 0; i < result->count; i++)
@@ -2294,7 +2288,8 @@ int wlcscan_core_wl(char *ofile, char *wif)
 					if (info->capability & DOT11_CAP_PRIVACY){
 						apinfos[ap_count].wep = 1;
 						if(info->ie_length){
-							ie = (struct bss_ie_hdr *) ((unsigned char *) info + sizeof(*info));
+							//ie = (struct bss_ie_hdr *) ((unsigned char *) info + sizeof(*info));
+							ie = (struct bss_ie_hdr *) ((unsigned char *) info + info->ie_offset);
 							for (left = info->ie_length; left > 0; left -= (ie->len + 2), ie = (struct bss_ie_hdr *) ((unsigned char *) ie + 2 + ie->len))
 							{
 								if (ie->elem_id == DOT11_MNG_RSN_ID || ie->elem_id == DOT11_MNG_WPA_ID){
@@ -2468,7 +2463,7 @@ next_info:
 					fprintf(fp, "\"\",");
 				} else {
 					memset(ssid_str, 0, sizeof(ssid_str));
-					char_to_ascii(ssid_str, apinfos[i].SSID);
+					char_to_ascii_with_utf8(ssid_str, apinfos[i].SSID);
 					fprintf(fp, "\"%s\",", ssid_str);
 				}
 
@@ -2839,7 +2834,6 @@ int wlcscan_core_escan(char *ofile, char *wif)
 	char ssid_str[256];
 	wl_scan_results_t *result;
 	wl_bss_info_t *info;
-	wl_bss_info_107_t *old_info;
 	struct bss_ie_hdr *ie;
 	NDIS_802_11_NETWORK_TYPE NetWorkType;
 	struct maclist *authorized;
@@ -2897,29 +2891,21 @@ int wlcscan_core_escan(char *ofile, char *wif)
 			result = (wl_scan_results_t *)scan_result;
 
 			info = &(result->bss_info[0]);
-
-			/* Convert version 107 to 109 */
-			if (dtoh32(info->version) == LEGACY_WL_BSS_INFO_VERSION) {
-				old_info = (wl_bss_info_107_t *)info;
-				info->chanspec = CH20MHZ_CHSPEC(old_info->channel);
-				info->ie_length = old_info->ie_length;
-				info->ie_offset = sizeof(wl_bss_info_107_t);
-			}
-
 			info_b = (char *) info;
 
 			for (i = 0; i < result->count; i++)
 			{
 				if (info->SSID_len > 32/* || info->SSID_len == 0*/)
 					goto next_info;
-				bssidp = (unsigned char *)&info->BSSID;
-				sprintf(macstr, "%02X:%02X:%02X:%02X:%02X:%02X",
-										(unsigned char)bssidp[0],
-										(unsigned char)bssidp[1],
-										(unsigned char)bssidp[2],
-										(unsigned char)bssidp[3],
-										(unsigned char)bssidp[4],
-										(unsigned char)bssidp[5]);
+				ether_etoa((unsigned char *)&info->BSSID, macstr);
+//				bssidp = (unsigned char *)&info->BSSID;
+//				sprintf(macstr, "%02X:%02X:%02X:%02X:%02X:%02X",
+//										(unsigned char)bssidp[0],
+//										(unsigned char)bssidp[1],
+//										(unsigned char)bssidp[2],
+//										(unsigned char)bssidp[3],
+//										(unsigned char)bssidp[4],
+//										(unsigned char)bssidp[5]);
 
 				idx_same = -1;
 				for (k = 0; k < ap_count; k++) {
@@ -2967,12 +2953,26 @@ int wlcscan_core_escan(char *ofile, char *wif)
 					else					// < -84 dbm
 						apinfos[ap_count].RSSI_Quality = 0;
 
-					if ((info->capability & 0x10) == 0x10)
-						apinfos[ap_count].wep = 1;
-					else
-						apinfos[ap_count].wep = 0;
+					apinfos[ap_count].wep = 0;
 					apinfos[ap_count].wpa = 0;
-
+					if (info->capability & DOT11_CAP_PRIVACY){
+						apinfos[ap_count].wep = 1;
+						if(info->ie_length){
+							//ie = (struct bss_ie_hdr *) ((unsigned char *) info + sizeof(*info));
+							ie = (struct bss_ie_hdr *) ((unsigned char *) info + info->ie_offset);
+							for (left = info->ie_length; left > 0; left -= (ie->len + 2), ie = (struct bss_ie_hdr *) ((unsigned char *) ie + 2 + ie->len))
+							{
+								if (ie->elem_id == DOT11_MNG_RSN_ID || ie->elem_id == DOT11_MNG_WPA_ID){
+									if (wpa_parse_wpa_ie(&ie->elem_id, ie->len + 2, &apinfos[ap_count].wid) == 0)
+									{
+										apinfos[ap_count].wep = 0;
+										apinfos[ap_count].wpa = 1;
+										break;
+									}
+								}
+							}
+						}
+					}
 /*
 					unsigned char *RATESET = &info->rateset;
 					for (k = 0; k < 18; k++)
@@ -3020,7 +3020,7 @@ int wlcscan_core_escan(char *ofile, char *wif)
 					if (ap_count >= MAX_NUMBER_OF_APINFO)
 						break;
 				}
-
+#if 0
 				ie = (struct bss_ie_hdr *) ((unsigned char *) info + sizeof(*info));
 				for (left = info->ie_length; left > 0; // look for RSN IE first
 					left -= (ie->len + 2), ie = (struct bss_ie_hdr *) ((unsigned char *) ie + 2 + ie->len))
@@ -3048,7 +3048,7 @@ int wlcscan_core_escan(char *ofile, char *wif)
 						break;
 					}
 				}
-
+#endif
 next_info:
 				info = (wl_bss_info_t *) ((unsigned char *) info + info->length);
 			}
@@ -3088,12 +3088,16 @@ next_info:
 				printf("%-7s", "11b/g");
 			else if (apinfos[k].NetworkType == Ndis802_11OFDM24_N)
 				printf("%-7s", "11b/g/n");
+#ifdef RTCONFIG_HND_ROUTER_AX
+			else if (apinfos[k].NetworkType == Ndis802_11OFDMA5_HE || apinfos[k].NetworkType == Ndis802_11OFDMA24_HE)
+				printf("%-7s", "11ax");
+#endif
 			else
 				printf("%-7s", "unknown");
 
 			printf("%3d", apinfos[k].ctl_ch);
 
-			if (	((apinfos[k].NetworkType == Ndis802_11OFDM5_VHT) ||
+			if (((apinfos[k].NetworkType == Ndis802_11OFDM5_VHT) ||
 				 (apinfos[k].NetworkType == Ndis802_11OFDM5_N) ||
 				 (apinfos[k].NetworkType == Ndis802_11OFDM24_N)) &&
 					(apinfos[k].channel != apinfos[k].ctl_ch)) {
@@ -3159,7 +3163,7 @@ next_info:
 					fprintf(fp, "\"\",");
 				} else {
 					memset(ssid_str, 0, sizeof(ssid_str));
-					char_to_ascii(ssid_str, apinfos[i].SSID);
+					char_to_ascii_with_utf8(ssid_str, apinfos[i].SSID);
 					fprintf(fp, "\"%s\",", ssid_str);
 				}
 
@@ -3222,6 +3226,10 @@ next_info:
 					fprintf(fp, "\"%s\",", "bg");
 				else if (apinfos[i].NetworkType == Ndis802_11OFDM24_N)
 					fprintf(fp, "\"%s\",", "bgn");
+#ifdef RTCONFIG_HND_ROUTER_AX
+				else if (apinfos[i].NetworkType == Ndis802_11OFDMA5_HE || apinfos[i].NetworkType == Ndis802_11OFDMA24_HE)
+					fprintf(fp, "\"%s\",", "ax");
+#endif
 				else
 					fprintf(fp, "\"%s\",", "");
 
