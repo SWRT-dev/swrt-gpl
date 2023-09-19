@@ -1542,7 +1542,6 @@ int wlcscan_core(char *ofile, char *wif)
 {
 	int ret, i, k, left, ht_extcha;
 	int retval = 0, ap_count = 0, idx_same = -1, count = 0;
-	unsigned char *bssidp;
 	char *info_b;
 	unsigned char rate;
 	unsigned char bssid[6];
@@ -1737,14 +1736,7 @@ int wlcscan_core(char *ofile, char *wif)
 			{
 				if (info->SSID_len > 32/* || info->SSID_len == 0*/)
 					goto next_info;
-				bssidp = (unsigned char *)&info->BSSID;
-				sprintf(macstr, "%02X:%02X:%02X:%02X:%02X:%02X",
-										(unsigned char)bssidp[0],
-										(unsigned char)bssidp[1],
-										(unsigned char)bssidp[2],
-										(unsigned char)bssidp[3],
-										(unsigned char)bssidp[4],
-										(unsigned char)bssidp[5]);
+				ether_etoa((unsigned char *)&info->BSSID, macstr);
 
 				idx_same = -1;
 				for (k = 0; k < ap_count; k++) {
@@ -1859,35 +1851,6 @@ int wlcscan_core(char *ofile, char *wif)
 					if (ap_count >= MAX_NUMBER_OF_APINFO)
 						break;
 				}
-#if 0
-				ie = (struct bss_ie_hdr *) ((unsigned char *) info + sizeof(*info));
-				for (left = info->ie_length; left > 0; // look for RSN IE first
-					left -= (ie->len + 2), ie = (struct bss_ie_hdr *) ((unsigned char *) ie + 2 + ie->len))
-				{
-					if (ie->elem_id != DOT11_MNG_RSN_ID)
-						continue;
-
-					if (wpa_parse_wpa_ie(&ie->elem_id, ie->len + 2, &apinfos[ap_count - 1].wid) == 0)
-					{
-						apinfos[ap_count-1].wpa = 1;
-						goto next_info;
-					}
-				}
-
-				ie = (struct bss_ie_hdr *) ((unsigned char *) info + sizeof(*info));
-				for (left = info->ie_length; left > 0; // then look for WPA IE
-					left -= (ie->len + 2), ie = (struct bss_ie_hdr *) ((unsigned char *) ie + 2 + ie->len))
-				{
-					if (ie->elem_id != DOT11_MNG_WPA_ID)
-						continue;
-
-					if (wpa_parse_wpa_ie(&ie->elem_id, ie->len + 2, &apinfos[ap_count-1].wid) == 0)
-					{
-						apinfos[ap_count-1].wpa = 1;
-						break;
-					}
-				}
-#endif
 next_info:
 				info = (wl_bss_info_t *) ((unsigned char *) info + info->length);
 			}
@@ -2151,7 +2114,6 @@ int wlcscan_core_wl(char *ofile, char *wif)
 {
 	int ret, i, k, left, ht_extcha;
 	int retval = 0, ap_count = 0, idx_same = -1, count = 0;
-	unsigned char *bssidp;
 	char *info_b;
 	unsigned char rate;
 	unsigned char bssid[6];
@@ -2229,14 +2191,7 @@ int wlcscan_core_wl(char *ofile, char *wif)
 			{
 				if (info->SSID_len > 32/* || info->SSID_len == 0*/)
 					goto next_info;
-				bssidp = (unsigned char *)&info->BSSID;
-				sprintf(macstr, "%02X:%02X:%02X:%02X:%02X:%02X",
-										(unsigned char)bssidp[0],
-										(unsigned char)bssidp[1],
-										(unsigned char)bssidp[2],
-										(unsigned char)bssidp[3],
-										(unsigned char)bssidp[4],
-										(unsigned char)bssidp[5]);
+				ether_etoa((unsigned char *)&info->BSSID, macstr);
 
 				idx_same = -1;
 				for (k = 0; k < ap_count; k++) {
@@ -2825,7 +2780,6 @@ int wlcscan_core_escan(char *ofile, char *wif)
 {
 	int ret, i, k, left, ht_extcha;
 	int retval = 0, ap_count = 0, idx_same = -1, count = 0;
-	unsigned char *bssidp;
 	char *info_b;
 	unsigned char rate;
 	unsigned char bssid[6];
@@ -2898,14 +2852,6 @@ int wlcscan_core_escan(char *ofile, char *wif)
 				if (info->SSID_len > 32/* || info->SSID_len == 0*/)
 					goto next_info;
 				ether_etoa((unsigned char *)&info->BSSID, macstr);
-//				bssidp = (unsigned char *)&info->BSSID;
-//				sprintf(macstr, "%02X:%02X:%02X:%02X:%02X:%02X",
-//										(unsigned char)bssidp[0],
-//										(unsigned char)bssidp[1],
-//										(unsigned char)bssidp[2],
-//										(unsigned char)bssidp[3],
-//										(unsigned char)bssidp[4],
-//										(unsigned char)bssidp[5]);
 
 				idx_same = -1;
 				for (k = 0; k < ap_count; k++) {
@@ -3020,35 +2966,6 @@ int wlcscan_core_escan(char *ofile, char *wif)
 					if (ap_count >= MAX_NUMBER_OF_APINFO)
 						break;
 				}
-#if 0
-				ie = (struct bss_ie_hdr *) ((unsigned char *) info + sizeof(*info));
-				for (left = info->ie_length; left > 0; // look for RSN IE first
-					left -= (ie->len + 2), ie = (struct bss_ie_hdr *) ((unsigned char *) ie + 2 + ie->len))
-				{
-					if (ie->elem_id != DOT11_MNG_RSN_ID)
-						continue;
-
-					if (wpa_parse_wpa_ie(&ie->elem_id, ie->len + 2, &apinfos[ap_count - 1].wid) == 0)
-					{
-						apinfos[ap_count-1].wpa = 1;
-						goto next_info;
-					}
-				}
-
-				ie = (struct bss_ie_hdr *) ((unsigned char *) info + sizeof(*info));
-				for (left = info->ie_length; left > 0; // then look for WPA IE
-					left -= (ie->len + 2), ie = (struct bss_ie_hdr *) ((unsigned char *) ie + 2 + ie->len))
-				{
-					if (ie->elem_id != DOT11_MNG_WPA_ID)
-						continue;
-
-					if (wpa_parse_wpa_ie(&ie->elem_id, ie->len + 2, &apinfos[ap_count-1].wid) == 0)
-					{
-						apinfos[ap_count-1].wpa = 1;
-						break;
-					}
-				}
-#endif
 next_info:
 				info = (wl_bss_info_t *) ((unsigned char *) info + info->length);
 			}
