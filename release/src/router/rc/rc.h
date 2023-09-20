@@ -912,11 +912,11 @@ extern int is_ure(int unit);
 extern int is_ap(int unit);
 /* The below macros handle endian mis-matches between wl utility and wl driver. */
 extern bool g_swap;
-#define htod32(i) (g_swap?bcmswap32(i):(uint32)(i))
-#define dtoh64(i) (g_swap?bcmswap64(i):(uint64)(i))
-#define dtoh32(i) (g_swap?bcmswap32(i):(uint32)(i))
-#define dtoh16(i) (g_swap?bcmswap16(i):(uint16)(i))
-#define dtohchanspec(i) (g_swap?dtoh16(i):i)
+//#define htod32(i) (g_swap?bcmswap32(i):(uint32)(i))
+//#define dtoh64(i) (g_swap?bcmswap64(i):(uint64)(i))
+//#define dtoh32(i) (g_swap?bcmswap32(i):(uint32)(i))
+//#define dtoh16(i) (g_swap?bcmswap16(i):(uint16)(i))
+//#define dtohchanspec(i) (g_swap?dtoh16(i):i)
 
 extern void wl_vif_hwaddr_set(const char *name);
 extern int wlconf(char *ifname, int unit, int subunit);

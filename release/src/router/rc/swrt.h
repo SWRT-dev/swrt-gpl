@@ -37,6 +37,15 @@ enum {
 
 extern void softcenter_trigger(int sig);
 #endif
+#if defined(RTCONFIG_BCMARM)
+enum {
+	SUFFIX_MACADDR=0,
+	SUFFIX_TXPWR,
+	SUFFIX_DISBAND5GRP,
+	SUFFIX_CCODE,
+	SUFFIX_REGREV
+};
+#endif
 extern void swrt_init_pre(void);
 extern void swrt_init_model(void) __attribute__((weak));
 extern void swrt_init_post(void);

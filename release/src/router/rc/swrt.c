@@ -497,7 +497,7 @@ void swrt_init_post(){
 	del_rc_support("amas");
 #endif
 	gen_swrtid();
-#if defined(R8000P)
+#if defined(R8000P) || defined(RTAX89U)
     add_rc_support("uu_accel");
 #endif
 #if defined(RAX120)
@@ -2019,12 +2019,18 @@ const unsigned int devpath_idx[4] = {3, 4, 1, 2};    // 2.4G, 5G-1, 5G-2
 #elif defined(GT10)
 const unsigned int devpath_idx[4] = {0, 1, 2};    // 2.4G, 5G-1, 5G-2
 #endif
-	if(which == 1){
+	if(which == SUFFIX_TXPWR){
 		if(unit == 0)
 			str = "maxp2ga0";
 		else
 			str = "maxp5gb0a0";
-	}else
+	}else if(which == SUFFIX_DISBAND5GRP)
+		str = "disband5grp";
+	else if(which == SUFFIX_CCODE)
+		str = "ccode";
+	else if(which == SUFFIX_REGREV)
+		str = "regrev";
+	else
 		str = "macaddr";
 	switch(get_model()){
 		case MODEL_RTAC68U:
@@ -2132,20 +2138,20 @@ int set_wltxpower_swrt(void)
 	int commit_needed = 0, unit = 0;
 	int model __attribute__((unused)) = get_model();
 	int max2g = 5, max5g = 5, max5g2 = 5, max6g __attribute__((unused)) = 5;
-	get_nvramstr(0, tmp1, sizeof(tmp1), 1);
+	get_nvramstr(0, tmp1, sizeof(tmp1), SUFFIX_TXPWR);
 	max2g = nvram_get_int(tmp1);
 	memset(tmp1, 0, sizeof(tmp1));
-	get_nvramstr(1, tmp1, sizeof(tmp1), 1);
+	get_nvramstr(1, tmp1, sizeof(tmp1), SUFFIX_TXPWR);
 	max5g = nvram_get_int(tmp1);
 #if defined(RTCONFIG_HAS_5G_2)
 	memset(tmp1, 0, sizeof(tmp1));
-	get_nvramstr(2, tmp1, sizeof(tmp1), 1);
+	get_nvramstr(2, tmp1, sizeof(tmp1), SUFFIX_TXPWR);
 	max5g2 = nvram_get_int(tmp1);
 #endif
 #if defined(RTCONFIG_QUADBAND)
 #if defined(GTAXE16000)
 	memset(tmp1, 0, sizeof(tmp1));
-	get_nvramstr(3, tmp1, sizeof(tmp1), 1);
+	get_nvramstr(3, tmp1, sizeof(tmp1), SUFFIX_TXPWR);
 	max6g = nvram_get_int(tmp1);
 #endif
 #endif
@@ -2502,7 +2508,9 @@ int set_wltxpower_swrt(void)
 			}
 			break;
 		case MODEL_RTAC3200:
+#if defined(SBRAC3200P)
 		case MODEL_SBRAC3200P:
+#endif
 			if(unit & 1){
 				snprintf(prefix, sizeof(prefix), "1:");
 				snprintf(tmp2, sizeof(tmp2), "%d", p1);

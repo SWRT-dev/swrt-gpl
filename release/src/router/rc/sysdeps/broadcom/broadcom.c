@@ -1140,8 +1140,6 @@ setWiFi5G(const char *act)
 
 /* The below macro handle endian mis-matches between wl utility and wl driver. */
 bool g_swap = FALSE;
-#define htod32(i) (g_swap?bcmswap32(i):(uint32)(i))
-#define dtoh32(i) (g_swap?bcmswap32(i):(uint32)(i))
 #define	IW_MAX_FREQUENCIES	32
 
 int Get_channel_list(int unit)
@@ -1542,7 +1540,6 @@ int wlcscan_core(char *ofile, char *wif)
 {
 	int ret, i, k, left, ht_extcha;
 	int retval = 0, ap_count = 0, idx_same = -1, count = 0;
-	char *info_b;
 	unsigned char rate;
 	unsigned char bssid[6];
 	char macstr[18];
@@ -1730,7 +1727,6 @@ int wlcscan_core(char *ofile, char *wif)
 		if (ret == 0)
 		{
 			info = &(result->bss_info[0]);
-			info_b = (char *) info;
 
 			for (i = 0; i < result->count; i++)
 			{
@@ -2114,7 +2110,6 @@ int wlcscan_core_wl(char *ofile, char *wif)
 {
 	int ret, i, k, left, ht_extcha;
 	int retval = 0, ap_count = 0, idx_same = -1, count = 0;
-	char *info_b;
 	unsigned char rate;
 	unsigned char bssid[6];
 	char macstr[18];
@@ -2185,7 +2180,6 @@ int wlcscan_core_wl(char *ofile, char *wif)
 		if (ret == 0)
 		{
 			info = &(result->bss_info[0]);
-			info_b = (char *) info;
 
 			for (i = 0; i < result->count; i++)
 			{
@@ -2597,8 +2591,6 @@ exit:
 	return errno;
 }
 
-static bool escan_swap = FALSE;
-#define htod16(i) (escan_swap?bcmswap16(i):(uint16)(i))
 #define WL_EVENT_TIMEOUT 10
 
 struct escan_bss {
@@ -2776,11 +2768,56 @@ exit:
 	return (retval > 0) ? BCME_OK : BCME_ERROR;
 }
 
+int wl_control_channel(int unit)
+{
+	int ret;
+	struct ether_addr bssid;
+	wl_bss_info_t *bi;
+	wl_bss_info_107_t *old_bi;
+	char prefix[] = "wlXXXXXXXXXX_";
+	char ifname[IFNAMSIZ] = { 0 };
+	char buf[WLC_IOCTL_MAXLEN];
+
+	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+	strlcpy(ifname, nvram_pf_safe_get(prefix, "ifname"), sizeof(ifname));
+
+	if ((ret = wl_ioctl(ifname, WLC_GET_BSSID, &bssid, ETHER_ADDR_LEN)) == 0) {
+		/* The adapter is associated. */
+		*(uint32*)buf = htod32(WLC_IOCTL_MAXLEN);
+		if ((ret = wl_ioctl(ifname, WLC_GET_BSS_INFO, buf, WLC_IOCTL_MAXLEN)) < 0)
+			return 0;
+
+		bi = (wl_bss_info_t*)(buf + 4);
+		if (dtoh32(bi->version) == WL_BSS_INFO_VERSION ||
+		    dtoh32(bi->version) == LEGACY2_WL_BSS_INFO_VERSION ||
+		    dtoh32(bi->version) == LEGACY_WL_BSS_INFO_VERSION)
+		{
+			/* Convert version 107 to 109 */
+			if (dtoh32(bi->version) == LEGACY_WL_BSS_INFO_VERSION) {
+				old_bi = (wl_bss_info_107_t *)bi;
+#if defined(RTCONFIG_HND_ROUTER_AX_6756)
+				bi->chanspec = CH20MHZ_CHSPEC(old_bi->channel, WL_CHANNEL_2G5G_BAND(old_bi->channel));
+#else
+				bi->chanspec = CH20MHZ_CHSPEC(old_bi->channel);
+#endif
+				bi->ie_length = old_bi->ie_length;
+				bi->ie_offset = sizeof(wl_bss_info_107_t);
+			}
+
+			if (dtoh32(bi->version) != LEGACY_WL_BSS_INFO_VERSION && bi->n_cap)
+				return bi->ctl_ch;
+			else
+				return (bi->chanspec & WL_CHANSPEC_CHAN_MASK);
+		}
+	}
+
+	return 0;
+}
+
 int wlcscan_core_escan(char *ofile, char *wif)
 {
 	int ret, i, k, left, ht_extcha;
 	int retval = 0, ap_count = 0, idx_same = -1, count = 0;
-	char *info_b;
 	unsigned char rate;
 	unsigned char bssid[6];
 	char macstr[18];
@@ -2798,6 +2835,87 @@ int wlcscan_core_escan(char *ofile, char *wif)
 	int params_size = WL_SCAN_PARAMS_FIXED_SIZE + OFFSETOF(wl_escan_params_t, params) + NUMCHANS * sizeof(uint16);
 	FILE *fp;
 	int org_scan_time = 20, scan_time = 40;
+	wl_uint32_list_t *list;
+	char data_buf[WLC_IOCTL_MAXLEN];
+	char chanbuf[CHANSPEC_STR_LEN], tmp[128], prefix[] = "wlXXXXXXXXXX_";
+	chanspec_t c = WL_CHANSPEC_BW_20, chspec_cur = 0, chspec_tmp = 0, chanspec = 0;
+	int band, unit;
+	int scount = 0, ctl_ch;
+	int ctl_ch_tmp = 0;
+#if defined(RTCONFIG_DHDAP) && !defined(RTCONFIG_BCM7)
+	chanspec_t chspec_tar = 0;
+	char buf_sm[WLC_IOCTL_SMLEN];
+	wl_dfs_ap_move_status_t *status = (wl_dfs_ap_move_status_t*) buf_sm;
+#endif
+
+	if (wl_ioctl(wif, WLC_GET_INSTANCE, &unit, sizeof(unit)))
+		return retval;
+
+	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+	ctl_ch = wl_control_channel(unit);
+	if (nvram_pf_match(prefix, "reg_mode", "h")
+#if defined(RTCONFIG_PROXYSTA)
+		&& !is_psta(unit)
+#endif
+		) {
+
+		if (wl_iovar_get(wif, "chanspec", &chspec_cur, sizeof(chanspec_t)) < 0) {
+			dbg("get current chanpsec failed\n");
+			return retval;
+		}
+
+		if (((ctl_ch > 48) && (ctl_ch < 149))
+#ifdef RTCONFIG_BW160M
+			|| ((ctl_ch <= 48) && CHSPEC_IS160(chspec_cur))
+#endif
+		) {
+			if (!with_non_dfs_chspec(wif))
+			{
+				dbg("%s scan rejected under DFS mode\n", wif);
+				return retval;
+			}
+			else
+			{
+				dbg("current chanspec: %s (0x%x)\n", wf_chspec_ntoa(chspec_cur, chanbuf), chspec_cur);
+
+				chspec_tmp = (((nvram_get_hex(strlcat_r(prefix, "band5grp", tmp, sizeof(tmp))) & WL_5G_BAND_4) && (ctl_ch < 100)) ? select_chspec_with_band_bw(wif, 4, 3, chspec_cur) : select_chspec_with_band_bw(wif, 1, 3, chspec_cur));
+				if (!chspec_tmp && (nvram_get_hex(strlcat_r(prefix, "band5grp", tmp, sizeof(tmp))) & WL_5G_BAND_4))
+					chspec_tmp = select_chspec_with_band_bw(wif, 4, 3, chspec_cur);
+
+				if (chspec_tmp != 0) {
+					dbg("switch to chanspec: %s (0x%x)\n", wf_chspec_ntoa(chspec_tmp, chanbuf), chspec_tmp);
+					wl_iovar_setint(wif, "chanspec", chspec_tmp);
+					wl_iovar_setint(wif, "acs_update", -1);
+
+					chanspec = chspec_cur;
+					ctl_ch_tmp = wf_chspec_ctlchan(chspec_tmp);
+				}
+			}
+		}
+#if defined(RTCONFIG_DHDAP) && !defined(RTCONFIG_BCM7)
+		else if (wl_cap(unit, "bgdfs")) {
+			if (wl_iovar_get(wif, "dfs_ap_move", &buf_sm[0], WLC_IOCTL_SMLEN) < 0) {
+				dbg("get dfs_ap_move status failure\n");
+				return retval;
+			}
+
+			if (status->version != WL_DFS_AP_MOVE_VERSION)
+				return retval;
+
+			if (status->move_status != (int8) DFS_SCAN_S_IDLE) {
+				chspec_tar = status->chanspec;
+				if (chspec_tar != 0 && chspec_tar != INVCHANSPEC) {
+					chanspec = chspec_tar;
+					wf_chspec_ntoa(chspec_tar, chanbuf);
+					dbg("AP Target Chanspec %s (0x%x)\n", chanbuf, chspec_tar);
+				}
+
+				if (status->move_status == (int8) DFS_SCAN_S_INPROGESS)
+					wl_iovar_setint(wif, "dfs_ap_move", -1);
+			}
+		}
+#endif
+	}
 
 	params = (wl_escan_params_t*)malloc(params_size);
 	if (params == NULL)
@@ -2812,6 +2930,36 @@ int wlcscan_core_escan(char *ofile, char *wif)
 	params->params.passive_time = -1;
 	params->params.home_time = -1;
 	params->params.channel_num = 0;
+
+
+	wl_ioctl(wif, WLC_GET_BAND, &band, sizeof(band));
+	if (band == WLC_BAND_5G)
+		c |= WL_CHANSPEC_BAND_5G;
+#ifdef RTCONFIG_WIFI6E
+	else if(band == WLC_BAND_6G)
+		c |= WL_CHANSPEC_BAND_6G;
+#endif
+	else
+		c |= WL_CHANSPEC_BAND_2G;
+	memset(data_buf, 0, WLC_IOCTL_MAXLEN);
+	ret = wl_iovar_getbuf(wif, "chanspecs", &c, sizeof(chanspec_t),
+		data_buf, WLC_IOCTL_MAXLEN);
+	if (ret < 0)
+		dbg("failed to get valid chanspec list\n");
+	else {
+		list = (wl_uint32_list_t *)data_buf;
+		count = dtoh32(list->count);
+
+		if (count && !(count > (data_buf + sizeof(data_buf) - (char *)&list->element[0])/sizeof(list->element[0]))) {
+			for (i = 0; i < count; i++) {
+				c = (chanspec_t)dtoh32(list->element[i]);
+				params->params.channel_list[scount++] = c;
+			}
+
+			params->params.channel_num = htod32(scount & WL_SCAN_PARAMS_COUNT_MASK);
+			params_size = WL_SCAN_PARAMS_FIXED_SIZE + scount * sizeof(uint16);
+		}
+	}
 
 	params->version = htod32(ESCAN_REQ_VERSION);
 	params->action = htod16(WL_SCAN_ACTION_START);
@@ -2845,7 +2993,6 @@ int wlcscan_core_escan(char *ofile, char *wif)
 			result = (wl_scan_results_t *)scan_result;
 
 			info = &(result->bss_info[0]);
-			info_b = (char *) info;
 
 			for (i = 0; i < result->count; i++)
 			{
@@ -2969,6 +3116,21 @@ int wlcscan_core_escan(char *ofile, char *wif)
 next_info:
 				info = (wl_bss_info_t *) ((unsigned char *) info + info->length);
 			}
+		}
+	}
+
+	if (chanspec != 0) {
+		dbg("restore original chanspec: %s (0x%x)\n", wf_chspec_ntoa(chanspec, chanbuf), chanspec);
+		if (wl_cap(unit, "bgdfs")
+#ifndef RTCONFIG_HND_ROUTER_AX
+			&& (((ctl_ch >= 100) && (ctl_ch_tmp <= 48)) || ((ctl_ch < 100) && (ctl_ch_tmp >= 149)))
+#endif
+		)
+			wl_iovar_setint(wif, "dfs_ap_move", chanspec);
+		else
+		{
+			wl_iovar_setint(wif, "chanspec", chanspec);
+			wl_iovar_setint(wif, "acs_update", -1);
 		}
 	}
 
