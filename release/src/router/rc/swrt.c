@@ -2072,7 +2072,7 @@ const unsigned int devpath_idx[4] = {0, 1, 2};    // 2.4G, 5G-1, 5G-2
 		case MODEL_RTAX68U:
 		case MODEL_RTAC68U_V4:
 		case MODEL_RTAX86U_PRO:
-#ifdef RTAC3200
+#if defined(RTAC3200) || defined(SBRAC3200P)
 			if (unit < 2)
 				snprintf(buf, len, "%d:%s", 1 - unit, str);
 			else
