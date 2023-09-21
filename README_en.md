@@ -91,6 +91,19 @@ sudo apt-get -y install build-essential asciidoc binutils bzip2 gawk gettext git
 
 8. Build result will be produced to `swrt-gpl/release/src-qca-ipq40xx/image` directory
 
+#### BCM470X
+
+4. Run `cd ../swrt-gpl/release/src-bcm-470x`  to enter the directory
+
+5. Build firmware
+
+	sbrac3200p : `make swrt-sbrac3200p`
+
+	r7000p : `make swrt-r7000p`
+
+6. Build result will be produced to `swrt-gpl/release/src-bcm-470x/image` directory
+
+
 This source code is promised to be compiled successfully.
 
 You can use this source code freely, but please link this GitHub repository when redistributing. Thank you for your cooperation!

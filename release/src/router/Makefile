@@ -1156,15 +1156,8 @@ endif
 ifeq ($(RTCONFIG_SAMBASRV),y)
 ifeq ($(or $(RTCONFIG_SAMBA3),$(RTCONFIG_SAMBA36X)),y)
 NEED_SAMBA3 = y
-else ifeq ($(RTCONFIG_SAMBA4),y)
+else
 NEED_SAMBA4 = y
-else
-NEED_SAMBA2 = y
-endif
-ifeq ($(and $(RTCONFIG_SAMBA3),$(RTCONFIG_SAMBA36X)),y)
-NEED_SAMBA3BOTH = y
-else
-NEED_SAMBA3BOTH = n
 endif
 endif
 endif
@@ -1176,21 +1169,13 @@ RTCONFIG_IPV6 :=
 endif
 # install before samba3 for not overwriting some binaries
 obj-$(RTCONFIG_WEBDAV) += samba-3.5.8
-obj-$(NEED_SAMBA2) += samba
-ifeq ($(or $(CONFIG_BCMWL5),$(RTCONFIG_RALINK),$(RTCONFIG_REALTEK)),y)
 #ifeq ($(HND_ROUTER),y)
 #obj-$(NEED_SAMBA3) += brcmssp_util
 #endif
 obj-$(NEED_SAMBA4) += samba-4.0.24
-obj-$(NEED_SAMBA3) += $(if $(RTCONFIG_SAMBA36X),samba-3.6.x_opwrt,samba-3.0.33)
-obj-$(NEED_SAMBA3BOTH) += samba-3.0.33
-else
-ifeq ($(RTCONFIG_QCA),y)
-obj-$(NEED_SAMBA3) += $(if $(RTCONFIG_SAMBA36X),samba-3.6.x_opwrt,samba3)
-else
-obj-$(NEED_SAMBA3) += samba3
-endif
-endif
+obj-$(NEED_SAMBA3) += samba-3.6.x_opwrt
+
+
 
 ifeq ($(RTCONFIG_NTFS),y)
 ifeq ($(RTCONFIG_OPEN_NTFS3G_2016),y)

@@ -81,6 +81,16 @@
 8. 编译完成后输出固件路径：swrt-gpl/release/src-qca-ipq40xx/image
 
 
+#### BCM470X
+
+4. 然后 `cd ../swrt-gpl/release/src-bcm-470x` 进入目录
+
+5. 输入 `make swrt-sbrac3200p` 即可开始编译你要的固件了。
+
+	r7000p : `make swrt-r7000p`
+
+6. 编译完成后输出固件路径：swrt-gpl/release/src-bcm-470x/image
+
 ## Donate
 
 如果你觉得此项目对你有帮助，请捐助我们，以使项目能持续发展，更加完善。
