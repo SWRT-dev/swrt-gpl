@@ -35605,9 +35605,9 @@ ej_get_wl_channel_list(int eid, webs_t wp, int argc, char **argv, int unit) {
 	if(chan_40m_tmp)	json_object_put(chan_40m_tmp);
 	if(chan_80m_tmp)	json_object_put(chan_80m_tmp);
 	if(chan_160m_tmp)	json_object_put(chan_160m_tmp);
-	if(chan_160m_array)	json_object_put(chan_160m_array);
-	if(chanspec_160m_array) json_object_put(chanspec_160m_array);
-	if(chan_160m_cfg_tmp) json_object_put(chan_160m_cfg_tmp);
+//	if(chan_160m_array)	json_object_put(chan_160m_array);
+//	if(chanspec_160m_array) json_object_put(chanspec_160m_array);
+//	if(chan_160m_cfg_tmp) json_object_put(chan_160m_cfg_tmp);
 	if(filter_channel_40)	json_object_put(filter_channel_40);
 	if(filter_channel_80)	json_object_put(filter_channel_80);
 	if(filter_channel_160)	json_object_put(filter_channel_160);
