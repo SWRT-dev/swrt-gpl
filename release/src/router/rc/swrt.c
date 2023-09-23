@@ -38,6 +38,9 @@
 #ifndef MNT_DETACH
 #define MNT_DETACH	0x00000002
 #endif
+#if defined(RTCONFIG_BCMARM)
+#include <wlutils.h>
+#endif
 
 #if defined(RTAC82U)
 void fix_jffs_size(void);
@@ -651,14 +654,13 @@ int swrt_firmware_check_update_main(int argc, char *argv[])
 {
 	int download;
 	char url[100];
-	char log[200];
 	char serverurl[]="https://update.paldier.com";
-	char serverupdate[]="firmware.php";
-	char localupdate[]="/tmp/wlan_update.txt";
+	char requrl[]="firmware.php";
+	char fwinfo[]="/tmp/wlan_update.txt";
 	char releasenote[]="/tmp/release_note0.txt";
-	char fwver[10], commitnum[10], tag[10];
-	char cur_fwver[10];
-	char info[100];
+	char fwver[10] = {0}, commitnum[10] = {0}, tag[10] = {0};
+	char cur_fwver[10] = {0};
+	char info[100] = {0};
 	char *modelname = nvram_safe_get("modelname");
 	nvram_set("webs_state_update", "0");
 	nvram_set("webs_state_flag", "0");
@@ -672,19 +674,19 @@ int swrt_firmware_check_update_main(int argc, char *argv[])
 	unlink("/tmp/webs_upgrade.log");
 	unlink("/tmp/wlan_update.txt");
 	unlink("/tmp/release_note0.txt");
-	memset(cur_fwver, 0, sizeof(cur_fwver));
     strncpy(cur_fwver, RT_FWVER, 5);//5.x.x[beta]
 
-	snprintf(url, sizeof(url), "%s/%s", serverurl, serverupdate);
+	snprintf(url, sizeof(url), "%s/%s", serverurl, requrl);
 
-	FWUPDATE_DBG("---- update dl_path_info for general %s/%s ----", serverurl, serverupdate);
-	download=curl_download_swrt(url, localupdate, 8, CURL_FIRMWARE);
+	FWUPDATE_DBG("---- update dl_path_info for general %s/%s ----", serverurl, requrl);
+	download=curl_download_swrt(url, fwinfo, 8, CURL_FIRMWARE);
 	if(!download)
 	{
 		char md5[33] = {0}, fwname[100] = {0};
-		char *buffer = read_whole_file(localupdate);
-		//1aae93b2b84bf87ba000125740ec4397  GTAX11000_R5.1.8_30041-gab7352c_cferom_ubi.w 
-		if(NULL != buffer){
+		char *buffer = read_whole_file(fwinfo);
+		//1aae93b2b84bf87ba000125740ec4397  GTAX11000_R5.1.8_30041-gab7352c_cferom_ubi.w
+		//dc709750f44d43e401f99cdceefa6b2a  3.0.0.4_GTAX11000_R5.2.4_20125-g44851d9_cferom_ubi.w
+		if(NULL != buffer && strncmp(buffer, "not found", 9)){
 			sscanf(buffer, "%s %s", md5, fwname);
 			free(buffer);
 			if(!strncmp(fwname, "beta/", 5)){
@@ -692,7 +694,10 @@ int swrt_firmware_check_update_main(int argc, char *argv[])
 			}else{
 				buffer = &fwname[strlen(modelname) + 1];
 			}
-			sscanf(buffer, "%[BRX0-9.]_%[0-9]-%[a-z0-9]", fwver, commitnum, tag);
+			if(!strncmp(buffer, "3.0.0", 5) || !strncmp(buffer, "4.0.0", 5))//3.0.0.4 or 3.0.0.6 or 4.0.0.4
+				sscanf(buffer, "%*[0-9.]_%[BRX0-9.]_%[0-9]-%[a-z0-9]", fwver, commitnum, tag);
+			else
+				sscanf(buffer, "%[BRX0-9.]_%[0-9]-%[a-z0-9]", fwver, commitnum, tag);
 			_dprintf("%s#%s#%s#%s\n", modelname, fwver, commitnum, tag);
 			if(!strcmp(modelname, nvram_safe_get("modelname")) && ((nvram_match("swrt_beta", "0") && !strstr(buffer, "beta")) 
 				|| (nvram_match("swrt_beta", "1") && strstr(buffer, "beta")))){
@@ -700,9 +705,11 @@ int swrt_firmware_check_update_main(int argc, char *argv[])
 					_dprintf("%s#%s\n", fwver, cur_fwver);
 					if(versioncmp(cur_fwver, fwver + 1) == 1 || versioncmp(RT_FWEXTENDNO, commitnum) == 1){
 						nvram_set("webs_state_url", "");
-						if(!strcmp(nvram_get("firmver"), "3.0.0.4"))
+						if(!strcmp(nvram_safe_get("firmver"), "3.0.0.6"))
+							snprintf(info, sizeof(info), "3006_%s_%s_%s_%s-%s", nvram_get("buildno"), modelname, fwver, commitnum, tag);
+						else if(!strcmp(nvram_safe_get("firmver"), "3.0.0.4"))
 							snprintf(info, sizeof(info), "3004_%s_%s_%s_%s-%s", nvram_get("buildno"), modelname, fwver, commitnum, tag);
-						else if(!strcmp(nvram_get("firmver"), "4.0.0.4"))
+						else if(!strcmp(nvram_safe_get("firmver"), "4.0.0.4"))
 							snprintf(info, sizeof(info), "4004_%s_%s_%s_%s-%s", nvram_get("buildno"), modelname, fwver, commitnum, tag);
 						else
 							snprintf(info, sizeof(info), "5004_%s_%s_%s_%s-%s", nvram_get("buildno"), modelname, fwver, commitnum, tag);
@@ -719,21 +726,12 @@ int swrt_firmware_check_update_main(int argc, char *argv[])
 //						nvram_set("cfg_upgrade", "0");
 #endif
 						memset(url, 0, sizeof(url));
-						memset(log, 0, sizeof(log));
-						char releasenote_file[100];
-						snprintf(releasenote_file, sizeof(releasenote_file), "%s_%s_%s_note.zip", nvram_safe_get("productid"), nvram_get("webs_state_info"), nvram_safe_get("preferred_lang"));
-						snprintf(url, sizeof(url), "%s/%s", serverurl, releasenote_file);
-						//snprintf(log, sizeof(log), "echo \"[FWUPDATE]---- download real release note %s/%s ----\" >> /tmp/webs_upgrade.log", serverurl, releasenote_file);
-						//system(log);
-						FWUPDATE_DBG("---- download real release note %s/%s ----", serverurl, releasenote_file);
-						download = curl_download_swrt(url, releasenote, 8, CURL_OTHER);
-						if(download != 0 ){
+						snprintf(url, sizeof(url), "%s/%s_%s_%s_note.zip", serverurl, nvram_safe_get("productid"), nvram_get("webs_state_info"), nvram_safe_get("preferred_lang"));
+						FWUPDATE_DBG("---- download real release note %s ----", url);
+						if(curl_download_swrt(url, releasenote, 8, CURL_OTHER) != 0){
 							memset(url, 0, sizeof(url));
-							snprintf(releasenote_file, sizeof(releasenote_file), "%s_%s_US_note.zip", nvram_safe_get("productid"), nvram_get("webs_state_info"));
-							snprintf(url, sizeof(url), "%s/%s", serverurl, releasenote_file);
-							//snprintf(log, sizeof(log), "echo \"[FWUPDATE]---- download real release note %s/%s ----\" >> /tmp/webs_upgrade.log", serverurl, releasenote_file);
-							//system(log);
-							FWUPDATE_DBG("---- download real release note %s/%s ----", serverurl, releasenote_file);
+							snprintf(url, sizeof(url), "%s/%s_%s_US_note.zip", serverurl, nvram_safe_get("productid"), nvram_get("webs_state_info"));
+							FWUPDATE_DBG("---- download real release note %s ----", url);
 							curl_download_swrt(url, releasenote, 8, CURL_OTHER);
 						}
 						FWUPDATE_DBG("---- firmware check update finish ----");
@@ -751,13 +749,14 @@ int swrt_firmware_check_update_main(int argc, char *argv[])
 			}
 		}
 	}
-
-	if(!strcmp(nvram_get("firmver"), "3.0.0.4"))
-		snprintf(info, sizeof(info), "3004_%s_%s_%s-%s", nvram_get("buildno"), modelname, fwver, tag);
-	else if(!strcmp(nvram_get("firmver"), "4.0.0.4"))
-		snprintf(info, sizeof(info), "4004_%s_%s_%s-%s", nvram_get("buildno"), modelname, fwver, tag);
+	if(!strcmp(nvram_safe_get("firmver"), "3.0.0.6"))
+		snprintf(info, sizeof(info), "3006_%s_%s", nvram_get("buildno"), RT_EXTENDNO);
+	else if(!strcmp(nvram_safe_get("firmver"), "3.0.0.4"))
+		snprintf(info, sizeof(info), "3004_%s_%s", nvram_get("buildno"), RT_EXTENDNO);
+	else if(!strcmp(nvram_safe_get("firmver"), "4.0.0.4"))
+		snprintf(info, sizeof(info), "4004_%s_%s", nvram_get("buildno"), RT_EXTENDNO);
 	else
-		snprintf(info, sizeof(info), "5004_%s_%s_%s-%s", nvram_get("buildno"), modelname, fwver, tag);
+		snprintf(info, sizeof(info), "5004_%s_%s", nvram_get("buildno"), RT_EXTENDNO);
 	nvram_set("webs_state_url", "");
 	nvram_set("webs_state_flag", "3");
 	nvram_set("webs_state_error", "2");
@@ -805,62 +804,47 @@ void stop_uu(void)
 void exec_uu_swrt()
 {
 	FILE *fp;
-	char buf[128];
-	int download,i;
-	char *g, *gg;
-	char p[2][100];
-	if(nvram_get_int("sw_mode") == 1){
+	char buf[205] = {0};
+	struct json_object *root = NULL, *md5_string = NULL, *url_string = NULL;
+	if(sw_mode() == SW_MODE_ROUTER){
 		add_rc_support("uu_accel");
 		mkdir("/tmp/uu", 0755);
-		download = system("wget -t 2 -T 30 --dns-timeout=120 --header=Accept:text/plain -q --no-check-certificate 'https://router.uu.163.com/api/script/monitor?type=asuswrt-merlin' -O /tmp/uu/script_url");
-		if (!download){
+		snprintf(buf, sizeof(buf), "wget -t 2 -T 30 --dns-timeout=120 --header=Accept:text/plain -q --no-check-certificate %s -O %s",
+			"https://router.uu.163.com/api/script/monitor?type=asuswrt-merlin", "/tmp/uu/script_url");
+		if (!system(buf)){
 			_dprintf("download uuplugin script info successfully\n");
-			if ((fp = fopen("/tmp/uu/script_url", "r"))!=NULL){
-				fgets(buf, 128, fp);
-				fclose(fp);
-				unlink("/tmp/uu/script_url");
-				i=0;
-				g = strdup(buf);
-				gg = strtok(g, ",");
-				while(gg != NULL){
-						strcpy(p[i], gg);
-						i++;
-						++download;
-						gg = strtok(NULL, ",");
-				}
-				if (download > 0){
-					_dprintf("URL: %s\n",p[0]);
-					_dprintf("MD5: %s\n",p[1]);
-					if ( !doSystem("wget -t 2 -T 30 --dns-timeout=120 --header=Accept:text/plain -q --no-check-certificate %s -O /tmp/uu/uuplugin_monitor.sh", p[0]))
-					{
-						_dprintf("download uuplugin script successfully\n");
-						if ((fp = fopen("/tmp/uu/uuplugin_monitor.config", "w"))){
-							fprintf(fp, "router=asuswrt-merlin\n");
-							fprintf(fp, "model=\n");
-							fclose(fp);
-						}
-						if((fp=popen("md5sum /tmp/uu/uuplugin_monitor.sh | sed 's/[ ][ ]*/ /g' | cut -d' ' -f1", "r")))
-						{
-							memset(buf,'\0',sizeof(buf));
-							if((fread(buf, 1, 128, fp)))
-							{
-								buf[32]='\0';
-								buf[33]='\0';
-								if ( !strcasecmp(buf, p[1]))
-								{
-									pid_t pid;
-									char *uu_argv[] = { "/tmp/uu/uuplugin_monitor.sh", NULL };
-									_dprintf("prepare to execute uuplugin stript...\n");
-									chmod("/tmp/uu/uuplugin_monitor.sh", 0755);
-									_eval(uu_argv, NULL, 0, &pid);
-								}
+			if((root = json_object_from_file("/tmp/uu/script_url")) != NULL){
+				json_object_object_get_ex(root, "md5", &md5_string);
+				json_object_object_get_ex(root, "url", &url_string);
+				_dprintf("URL: %s\n", json_object_get_string(url_string));
+				_dprintf("MD5: %s\n", json_object_get_string(md5_string));
+				snprintf(buf, sizeof(buf), "wget -t 2 -T 30 --dns-timeout=120 --header=Accept:text/plain -q --no-check-certificate %s -O %s",
+					json_object_get_string(url_string), "/tmp/uu/uuplugin_monitor.sh");
+				if(!system(buf)){
+					_dprintf("download uuplugin script successfully\n");
+					if ((fp = fopen("/tmp/uu/uuplugin_monitor.config", "w"))){
+						fprintf(fp, "router=asuswrt-merlin\n");
+						fprintf(fp, "model=\n");
+						fclose(fp);
+					}
+					if((fp = popen("md5sum /tmp/uu/uuplugin_monitor.sh | sed 's/[ ][ ]*/ /g' | cut -d' ' -f1", "r"))){
+						memset(buf, 0, sizeof(buf));
+						if((fread(buf, 1, 128, fp))){
+							buf[32]='\0';
+							buf[33]='\0';
+							if(!strcasecmp(buf, json_object_get_string(md5_string))){
+								pid_t pid;
+								char *uu_argv[] = { "/tmp/uu/uuplugin_monitor.sh", NULL };
+								_dprintf("prepare to execute uuplugin stript...\n");
+								chmod("/tmp/uu/uuplugin_monitor.sh", 0755);
+								_eval(uu_argv, NULL, 0, &pid);
 							}
-							pclose(fp);
 						}
+						pclose(fp);
 					}
 				}
+				json_object_put(root);
 			}
-			free(g);
 		}
 	}
 }
@@ -1405,36 +1389,46 @@ void __attribute__((weak)) wl_apply_akm_by_auth_mode(int unit, int subunit, char
 #if defined(HND_ROUTER) && defined(WLHOSTFBT)
 		nvram_set(strcat_r(sp_prefix, "akm", tmp), "psk psk2 psk2ft");
 #else
+#if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
 		if((is_psta(unit) || is_psr(unit)) && subunit == -1)
 			nvram_set(strcat_r(sp_prefix, "akm", tmp), "psk2");
 		else{
+#endif
 			nvram_set(strcat_r(sp_prefix, "akm", tmp), "psk psk2");
 			if(!nvram_match(strcat_r(sp_prefix, "mfp", tmp), "2"))
 				return;
 			else
 				nvram_set(strcat_r(sp_prefix, "mfp", tmp), "1");
+#if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
 		}
+#endif
 #endif
 	}
 #ifndef RTAC68U_V4
 	else if (nvram_match(strcat_r(sp_prefix, "auth_mode_x", tmp), "sae"))
 	{
+#if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
 		if((is_psta(unit) || is_psr(unit)) && subunit == -1)
 			nvram_set(strcat_r(sp_prefix, "akm", tmp), "sae");
 		else
+#endif
 			nvram_set(strcat_r(sp_prefix, "akm", tmp), "psk2 sae");
 	}
 	else if (nvram_match(strcat_r(sp_prefix, "auth_mode_x", tmp), "psk2sae"))
 	{
+#if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
 		if((is_psta(unit) || is_psr(unit)) && subunit == -1)
 			nvram_set(strcat_r(sp_prefix, "akm", tmp), "sae");
 		else{
+#endif
 			nvram_set(strcat_r(sp_prefix, "akm", tmp), "psk2 sae");
 			if(!nvram_match(strcat_r(sp_prefix, "mfp", tmp), "2"))
 				return;
 			else
 				nvram_set(strcat_r(sp_prefix, "mfp", tmp), "1");
+#if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
 		}
+#endif
 	}
 #endif
 	else if (nvram_match(strcat_r(sp_prefix, "auth_mode_x", tmp), "wpa"))
