@@ -3784,6 +3784,12 @@ int init_nvram(void)
 #if defined(RTCONFIG_SWRT)
 	swrt_init_pre();
 #endif
+#if defined(RTCONFIG_BCMARM)
+	if(sw_mode() == SW_MODE_REPEATER)
+		nvram_set("safe_eapd", "on");
+	else
+		nvram_unset("safe_eapd");
+#endif
 
 	switch (model) {
 #ifdef RTCONFIG_RALINK

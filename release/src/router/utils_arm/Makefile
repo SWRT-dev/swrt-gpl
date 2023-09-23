@@ -86,7 +86,7 @@ ifneq ($(wildcard $(LINUXDIR)/brcm/arm/et/linux/et.c),)
 vpath %.c $(LINUXDIR)/brcm/arm/et/linux
 endif
 ifneq ($(wildcard $(LINUXDIR)/brcm/arm/wl/exe),)
-CFLAGS += -I$(LINUXDIR)/brcm/arm/wl/exe
+CFLAGS += -I$(LINUXDIR)/brcm/arm/wl/exe -DWIFI_ACT_FRAME -DWLTEST -DWLWNM -DWLBSSLOAD_REPORT 
 UTILS += wl
 vpath %.c $(LINUXDIR)/brcm/arm/wl/exe $(LINUXDIR)/brcm/arm/shared
 endif

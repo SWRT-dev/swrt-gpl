@@ -6361,7 +6361,10 @@ void start_lan_wlc(void)
 void stop_lan_wlc(void)
 {
 	_dprintf("%s %d\n", __FUNCTION__, __LINE__);
-
+#ifdef RTCONFIG_BCMARM
+	//keep br0 always up when dpsta is not loaded in repeater mode, otherwise ctf will crash.
+	if(!pids("eapd"))
+#endif
 	ifconfig(nvram_safe_get("lan_ifname"), 0, NULL, NULL);
 
 	update_lan_state(LAN_STATE_STOPPED, 0);
