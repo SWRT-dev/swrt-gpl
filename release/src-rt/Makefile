@@ -4092,6 +4092,10 @@ define RouterOptions
 		sed -i "/RTCONFIG_SWRTMESH/d" $(1); \
 		echo "RTCONFIG_SWRTMESH=y" >>$(1); \
 	fi;
+	if [ "$(SFE)" = "y" ]; then \
+		sed -i "/RTCONFIG_SFE/d" $(1); \
+		echo "RTCONFIG_SFE=y" >>$(1); \
+	fi;
 	$(call platformRouterOptions, $(1))
 endef
 

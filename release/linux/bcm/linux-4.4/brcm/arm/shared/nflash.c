@@ -142,7 +142,10 @@ nflash_check_id(uint8 *id)
 		name = "Mxic";
 		break;
 	case NFL_VENDOR_ZENTEL:
-		name = "Zentel";
+		name = "Zentel/Esmt";
+		break;
+	case NFL_VENDOR_WINBOND:
+		name = "Winbond";
 		break;
 	default:
 		printf("No NAND flash type found\n");

@@ -35,6 +35,7 @@
 #include <linux/fs.h>
 #include <linux/miscdevice.h>
 #include <linux/mtd/mtd.h>
+#include <linux/vmalloc.h>
 
 #include <typedefs.h>
 #include <bcmendian.h>
@@ -100,12 +101,32 @@ extern spinlock_t bcm947xx_sih_lock;
 /* Convenience */
 #define sih bcm947xx_sih
 #define sih_lock bcm947xx_sih_lock
+#ifdef KB
+#undef KB
+#endif
 #define KB * 1024
 #define MB * 1024 * 1024
 
 #ifndef	MAX_MTD_DEVICES
 #define	MAX_MTD_DEVICES	32
 #endif
+
+
+void *MMALLOC(size_t size)
+{
+	void *ptr = kmalloc(size, GFP_ATOMIC);
+	if (!ptr)
+		ptr = vmalloc(size);
+	return ptr;
+}
+
+void MMFREE(void *ptr)
+{
+	if (is_vmalloc_addr(ptr))
+		vfree(ptr);
+	else
+		kfree(ptr);
+}
 
 static struct resource norflash_region = {
 	.name = "norflash",
@@ -236,7 +257,7 @@ asusnls_c2u(char *name)
 }
 
 char *
-nvram_xfr(const char *buf)
+nvram_xfr(char *buf)
 {
         char *name = tmpbuf;
         ssize_t ret=0;
@@ -372,7 +393,10 @@ early_nvram_init(void)
 			if ((header = nand_find_nvram(nfl_info, off)) == NULL)
 				continue;
 			if (nvram_calc_crc(header) == (uint8)header->crc_ver_init)
+			{
+				printk(KERN_INFO "found nand nvram at %X\n",off);
 				goto found;
+			}
 		}
 	}
 	else
@@ -514,7 +538,7 @@ extern int _nvram_init(si_t *sih);
 extern void _nvram_exit(void);
 
 /* Globals */
-DEFINE_SPINLOCK(nvram_lock);
+static DEFINE_SPINLOCK(nvram_lock);
 static struct mutex nvram_sem;
 static unsigned long nvram_offset = 0;
 static int nvram_major = -1;
@@ -557,7 +581,7 @@ _nvram_realloc(struct nvram_tuple *t, const char *name, const char *value)
 		return NULL;
 
 	if (!t) {
-		if (!(t = kmalloc(sizeof(struct nvram_tuple) + strlen(name) + 1, GFP_ATOMIC)))
+		if (!(t = MMALLOC(sizeof(struct nvram_tuple) + strlen(name) + 1)))
 			return NULL;
 
 		/* Copy name */
@@ -588,7 +612,7 @@ _nvram_free(struct nvram_tuple *t)
 		nvram_offset = 0;
 		memset( nvram_buf, 0, sizeof(nvram_buf) );
 	} else {
-		kfree(t);
+		MMFREE(t);
 	}
 }
 
@@ -636,10 +660,10 @@ nvram_set(const char *name, const char *value)
 	if ((ret = _nvram_set(name, value))) {
 		printk( KERN_INFO "nvram: consolidating space!\n");
 		/* Consolidate space and try again */
-		if ((header = kmalloc(nvram_space, GFP_ATOMIC))) {
+		if ((header = MMALLOC(nvram_space))) {
 			if (_nvram_commit(header) == 0)
 				ret = _nvram_set(name, value);
-			kfree(header);
+			MMFREE(header);
 		}
 	}
 	spin_unlock_irqrestore(&nvram_lock, flags);
@@ -711,7 +735,7 @@ nvram_nflash_commit(void)
 	unsigned long flags;
 	u_int32_t offset;
 
-	if (!(buf = kmalloc(nvram_space, GFP_KERNEL))) {
+	if (!(buf = MMALLOC(nvram_space))) {
 		printk(KERN_WARNING "nvram_commit: out of memory\n");
 		return -ENOMEM;
 	}
@@ -742,7 +766,7 @@ nvram_nflash_commit(void)
 
 done:
 	mutex_unlock(&nvram_sem);
-	kfree(buf);
+	MMFREE(buf);
 	return ret;
 }
 #endif
@@ -779,12 +803,11 @@ nvram_commit(void)
 	mutex_lock(&nvram_sem);
 	/* Backup sector blocks to be erased */
 	erasesize = ROUNDUP(nvram_space, nvram_mtd->erasesize);
-	if (!(buf = kmalloc(erasesize, GFP_KERNEL))) {
+	if (!(buf = MMALLOC(erasesize))) {
 		printk(KERN_WARNING "nvram_commit: out of memory\n");
 		mutex_unlock(&nvram_sem);
 		return -ENOMEM;
 	}
-
 
 	if ((i = erasesize - nvram_space) > 0) {
 		offset = nvram_mtd->size - erasesize;
@@ -885,7 +908,7 @@ nvram_commit(void)
 
 done:
 	mutex_unlock(&nvram_sem);
-	kfree(buf);
+	MMFREE(buf);
 	return ret;
 }
 
@@ -922,7 +945,7 @@ dev_nvram_read(struct file *file, char *buf, size_t count, loff_t *ppos)
 	unsigned long off;
 
 	if ((count+1) > sizeof(tmp)) {
-		if (!(name = kmalloc(count+1, GFP_KERNEL)))
+		if (!(name = MMALLOC(count+1)))
 			return -ENOMEM;
 	}
 
@@ -961,7 +984,7 @@ dev_nvram_read(struct file *file, char *buf, size_t count, loff_t *ppos)
 #endif
 done:
 	if (name != tmp)
-		kfree(name);
+		MMFREE(name);
 
 	return ret;
 }
@@ -973,7 +996,7 @@ dev_nvram_write(struct file *file, const char *buf, size_t count, loff_t *ppos)
 	ssize_t ret;
 
 	if ((count+1) > sizeof(tmp)) {
-		if (!(name = kmalloc(count+1, GFP_KERNEL)))
+		if (!(name = MMALLOC(count+1)))
 			return -ENOMEM;
 	}
 
@@ -993,10 +1016,12 @@ dev_nvram_write(struct file *file, const char *buf, size_t count, loff_t *ppos)
 		ret = count;
 done:
 	if (name != tmp)
-		kfree(name);
+		MMFREE(name);
 
 	return ret;
 }
+
+#define NVRAM_SPACE_MAGIC			0x50534341	/* 'SPAC' */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 36)
 static int
@@ -1011,19 +1036,27 @@ dev_nvram_ioctl(
 	unsigned int cmd, 
 	unsigned long arg)
 {
-	if (cmd != NVRAM_MAGIC)
-		return -EINVAL;
 
-#ifndef NLS_XFR
-        return nvram_commit();
-#else
-        if(arg == 0)
-                return nvram_commit();
-        else {
-                if(nvram_xfr((char *)arg)==NULL) return -EFAULT;
-                else return 0;
-        }
-#endif  // NLS_XFR
+	switch (cmd) {
+	case NVRAM_MAGIC:
+#ifdef NLS_XFR
+		if(arg == 0)
+#endif
+		nvram_commit();
+#ifdef NLS_XFR
+	        else if(nvram_xfr((char *)arg)==NULL)
+			return -EFAULT;
+#endif
+		return 0;
+		break;
+	case NVRAM_SPACE_MAGIC:
+		return nvram_space;
+		break;
+	default:
+		return -EINVAL;
+		break;
+
+	}
 }
 
 static int
@@ -1231,7 +1264,7 @@ static int cfe_init(void)
         erasesize = ROUNDUP(CFE_NVRAM_SPACE, cfe_mtd->erasesize);
 
         printk("cfe_init: block size %d(%08x)\n", erasesize, erasesize);
-        cfe_buf = kmalloc(erasesize, GFP_KERNEL);
+        cfe_buf = MMALLOC(erasesize);
 
         if(cfe_buf == NULL)
         {
@@ -1253,7 +1286,7 @@ fail:
         }
         if(cfe_buf != NULL)
         {
-                kfree(cfe_buf);
+                MMFREE(cfe_buf);
                 cfe_buf=NULL;
         }
         return ret;
@@ -1443,7 +1476,7 @@ done:
         }
         if(cfe_buf != NULL)
         {
-                kfree(cfe_buf);
+                MMFREE(cfe_buf);
                 cfe_buf=NULL;
         }
         printk("cfe_commit: done %d\n", ret);

@@ -7366,7 +7366,16 @@ int start_firewall(int wanunit, int lanunit)
 
 	/* Assuming wan interface doesn't change */
 	reload_upnp();
-
+#if defined(RTCONFIG_SFE)
+#if defined(RTCONFIG_BCMARM)
+	if (nvram_match("ctf_disable", "0")){
+		if(nvram_match("sfe_enable", "1"))
+			system("echo 0 > /sys/fast_classifier/skip_to_bridge_ingress");//lan only
+		else if(nvram_match("sfe_enable", "2"))
+			system("echo 1 > /sys/fast_classifier/skip_to_bridge_ingress");//lan+wlan
+	}
+#endif
+#endif
 leave:
 	file_unlock(lock);
 	run_custom_script("firewall-start", 0, wan_if, NULL);

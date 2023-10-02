@@ -136,6 +136,7 @@ ej_wl_sta_status(int eid, webs_t wp, char *name)
 
 /* The below macros handle endian mis-matches between wl utility and wl driver. */
 #if defined(RTCONFIG_HND_ROUTER_AX) || defined(RTCONFIG_BCM_7114) || defined(RTCONFIG_BCMWL6)
+#if 0
 static bool g_swap = FALSE;
 #ifndef htod16
 #define htod16(i) (g_swap?bcmswap16(i):(uint16)(i))
@@ -154,6 +155,7 @@ static bool g_swap = FALSE;
 #endif
 #ifndef dtohchanspec
 #define dtohchanspec(i) (g_swap?dtoh16(i):i)
+#endif
 #endif
 #endif
 

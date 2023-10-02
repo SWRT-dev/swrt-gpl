@@ -2537,14 +2537,6 @@ config RTCONFIG_PREFERAP_RE_SELFOPT
 	bool "Notify RE do self optimization based on prefer ap condition"
 	default n
 
-config RTCONFIG_SYSCLASSGPIO
-	bool "enable sys class gpio"
-	default n
-
-config RTCONFIG_MTK_NAND_BLOCK2
-	bool "For MTK nand using 2 block"
-	default n
-
 config RTCONFIG_SCHED_DAEMON
 	bool "Enable scheduler daemon"
 	default n
@@ -2571,16 +2563,6 @@ config RTCONFIG_DLOADER
 
 config RTCONFIG_FIBOCOM_FG621
 	bool "LTE module FIBOCOM FG621"
-	default n
-
-config RTCONFIG_SPF11_3_QSDK
-	bool "SPF11.3 QSDK"
-	depends on RTCONFIG_QCA
-	default n
-
-config RTCONFIG_SPF11_4_QSDK
-	bool "SPF11.4 QSDK"
-	depends on RTCONFIG_QCA
 	default n
 
 config RTCONFIG_QSDK_LM256
@@ -2791,4 +2773,9 @@ config RTCONFIG_NLBWMON
 config RTCONFIG_SWRTMESH
 	bool "swrtmesh is a cross-chip implementation of easymesh for swrt"
 	depends on !RTCONFIG_EASYMESH && !RTCONFIG_AMAS
+	default n
+
+config RTCONFIG_SFE
+	bool "Shortcut Forwarding Engine"
+	depends on RTCONFIG_RALINK || RTCONFIG_BCMARM
 	default n

@@ -79,7 +79,7 @@ endif
     endif
     
     # include path for dpsta.h
-    EXTRA_CFLAGS += -I$(SRCBASE)/router/dpsta
+    EXTRA_CFLAGS += -I$(SRCBASE)/dpsta
 
     # Build the phy source files iff -DPHY_HAL is present.
     ifneq ($(findstring PHY_HAL,$(WLFLAGS)),)

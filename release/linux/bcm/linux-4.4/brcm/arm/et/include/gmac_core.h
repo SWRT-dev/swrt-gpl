@@ -254,7 +254,7 @@ typedef volatile struct _gmacregs {
 #define	CC_RED			0x04000000
 #define	CC_PE			0x08000000
 #define	CC_TPI			0x10000000
-#define	CC_AT			0x20000000
+#define	CC_AT(corerev)  ((corerev >= 6) ? 0x0: 0x20000000)
 
 /* mac addr high */
 #define	MH_HI_MASK		0xffff

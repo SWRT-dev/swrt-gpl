@@ -32,6 +32,7 @@
 #include <nand_core.h>
 #include <hndnand.h>
 #include <hndpmu.h>
+#include <sbgci.h>
 
 #ifdef BCMDBG
 #define	NANDFL_MSG(args)	printf args
@@ -84,10 +85,12 @@ static hndnand_t nandcore;
 
 static uint32 num_cache_per_page;
 static uint32 spare_per_cache;
+static int bootdev = -1;
 
 /* Prototype */
 static int nandcore_poll(si_t *sih, nandregs_t *nc);
 
+void nandcore_enable(si_t *sih, int enable);
 hndnand_t *nandcore_init(si_t *sih);
 static int nandcore_read(hndnand_t *nfl, uint64 offset, uint len, uchar *buf);
 static int nandcore_write(hndnand_t *nfl, uint64 offset, uint len, const uchar *buf);
@@ -529,6 +532,62 @@ nandcore_optimize_timing(hndnand_t *nfl)
 	return;
 }
 
+/* Get nand present flag */
+static bool
+nandcore_nand_present(si_t *sih)
+{
+	uint origidx, intr_val = 0;
+	gciregs_t *gci = NULL;
+	uint32 nand_present = 0;
+
+	/* 53573/47189 series */
+	if (sih->ccrev == 54) {
+		gci = (gciregs_t *)si_switch_core(sih, GCI_CORE_ID, &origidx, &intr_val);
+		if (gci) {
+			W_REG(NULL, &gci->gci_indirect_addr, 7);
+			nand_present = R_REG(NULL, &gci->gci_chipsts);
+			nand_present &= SI_BCM53573_NAND_PRE_MASK;
+		}
+
+		/* Return to original core */
+		si_restore_core(sih, origidx, intr_val);
+
+		if (nand_present)
+			return TRUE;
+	}
+	return FALSE;
+}
+
+void
+nandcore_enable(si_t *sih, int enable)
+{
+	ASSERT(sih);
+	/* 53573/47189 series */
+	if (sih->ccrev == 54) {
+		if (bootdev == -1)
+			bootdev = soc_boot_dev((void *)sih);
+
+		if (bootdev != SOC_BOOTDEV_NANDFLASH) {
+			osl_t *osh;
+			uint origidx, intr_val = 0;
+			pmuregs_t *pmu;
+
+			osh = si_osh(sih);
+			/* Block ints and save current core */
+			pmu = (pmuregs_t *)si_switch_core(sih, PMU_CORE_ID, &origidx, &intr_val);
+
+			W_REG(osh, &pmu->chipcontrol_addr, PMU_CHIPCTL7);
+			if (enable)
+				OR_REG(osh, &pmu->chipcontrol_data, 0x003);
+			else
+				AND_REG(osh, &pmu->chipcontrol_data, ~0x003);
+
+			/* Return to original core */
+			si_restore_core(sih, origidx, intr_val);
+		}
+	}
+}
+
 /* Initialize nand flash access */
 hndnand_t *
 nandcore_init(si_t *sih)
@@ -550,6 +609,18 @@ nandcore_init(si_t *sih)
 
 	if ((nc = (nandregs_t *)si_setcore(sih, NS_NAND_CORE_ID, 0)) == NULL)
 		return NULL;
+
+	/* 53573/47189 series */
+	if (sih->ccrev == 54) {
+		if (!nandcore_nand_present(sih))
+			return NULL;
+		if (bootdev == -1)
+			bootdev = soc_boot_dev((void *)sih);
+		if (bootdev != SOC_BOOTDEV_NANDFLASH) {
+			si_core_reset(sih, 0, 0);
+			OSL_DELAY(5);
+		}
+	}
 
 	if (R_REG(NULL, &nc->flash_device_id) == 0)
 		return NULL;

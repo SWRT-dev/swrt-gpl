@@ -2143,9 +2143,13 @@ void init_switch()
 	}
 #endif
 	eval("insmod", "softdog");
+
 	// ctf must be loaded prior to any other modules
-	if (nvram_get_int("ctf_disable") == 0)
+	if (nvram_get_int("ctf_disable") == 0){
+#if !defined(RTCONFIG_SFE)
 		eval("insmod", "ctf");
+#endif
+	}
 
 #ifdef RTCONFIG_EMF
 	eval("insmod", "emf");
@@ -2164,6 +2168,16 @@ void init_switch()
 #ifdef RTCONFIG_5301X
 	eval("insmod", "b5301x_common");
 	eval("insmod", "b5301x_srab");
+#endif
+#if defined(RTCONFIG_SFE)
+	if (nvram_get_int("ctf_disable") == 0){
+		if(nvram_invmatch("sfe_enable", "0"))
+			eval("insmod", "fast-classifier");
+		if(nvram_match("sfe_enable", "1"))
+			system("echo 0 > /sys/fast_classifier/skip_to_bridge_ingress");//lan only
+		else if(nvram_match("sfe_enable", "2"))
+			system("echo 1 > /sys/fast_classifier/skip_to_bridge_ingress");//lan+wlan
+	}
 #endif
 	enable_jumbo_frame();
 	ether_led();
@@ -3418,142 +3432,13 @@ void init_others(void)
 }
 #else // HND_ROUTER
 
-#define ASUS_TWEAK
-
-#ifdef RTCONFIG_BCM_7114
-#define SMP_AFFINITY_WL	"1"
-#else
-#define SMP_AFFINITY_WL "3"
-#endif
-
-void tweak_smp_affinity(int enable_samba)
-{
-#ifndef RTCONFIG_BCM7
-	if (nvram_get_int("stop_tweak_wl") == 1)
-#endif
-		return;
-
-#ifdef RTCONFIG_GMAC3
-	if (nvram_match("gmac3_enable", "1"))
-		return;
-#endif
-
-#ifdef RTCONFIG_BCM_7114
-	if (enable_samba) {
-		f_write_string("/proc/irq/163/smp_affinity", SMP_AFFINITY_WL, 0, 0);
-		f_write_string("/proc/irq/169/smp_affinity", SMP_AFFINITY_WL, 0, 0);
-	}
-	else
-#endif
-	{
-		f_write_string("/proc/irq/163/smp_affinity", "2", 0, 0);
-		f_write_string("/proc/irq/169/smp_affinity", "2", 0, 0);
-	}
-}
 
 void init_others(void)
 {
-#ifdef SMP
-	int fd;
-
-	if ((fd = open("/proc/irq/163/smp_affinity", O_RDWR)) >= 0) {
-		close(fd);
-#ifdef RTCONFIG_GMAC3
-		if (nvram_match("gmac3_enable", "1")) {
-			if (nvram_match("asus_tweak_usb_disable", "1")) {
-				char *fwd_cpumap;
-
-				/* Place network interface vlan1/eth0 on CPU hosting 5G upper */
-				fwd_cpumap = nvram_get("fwd_cpumap");
-
-				if (fwd_cpumap == NULL) {
-					/* BCM4709acdcrh: Network interface GMAC on Core#0
-					 * [5G+2G:163 on Core#0] and [5G:169 on Core#1].
-					 * Bind et2:vlan1:eth0:181 to Core#0
-					 * Note, USB3 xhci_hcd's irq#112 binds Core#1
-					 * bind eth0:181 to Core#1 impacts USB3 performance
-					 */
-					f_write_string("/proc/irq/181/smp_affinity", "1", 0, 0);
-				} else {
-					char cpumap[32], *next;
-
-					foreach(cpumap, fwd_cpumap, next) {
-						char mode, chan;
-						int band, irq, cpu;
-
-						/* Format: mode:chan:band#:irq#:cpu# */
-						if (sscanf(cpumap, "%c:%c:%d:%d:%d",
-							&mode, &chan, &band, &irq, &cpu) != 5) {
-							break;
-						}
-						if (cpu > 1) {
-							break;
-						}
-						/* Find the single 5G upper */
-						if ((chan == 'u') || (chan == 'U')) {
-							char command[128];
-							snprintf(command, sizeof(command),
-								"echo %d > /proc/irq/181/smp_affinity",
-								1 << cpu);
-							system(command);
-							break;
-						}
-					}
-				}
-			}
-			else
-#ifdef RTCONFIG_BCM_7114
-				f_write_string("/proc/irq/181/smp_affinity", "1", 0, 0);
-#else
-				f_write_string("/proc/irq/181/smp_affinity", "3", 0, 0);
-#endif
-		} else
-#endif
-		{
-#ifdef ASUS_TWEAK
-#ifdef RTCONFIG_BCM_7114
-			f_write_string("/proc/irq/180/smp_affinity", "1", 0, 0);
-#endif
-#ifndef RTCONFIG_BCM7
-			if (nvram_match("asus_tweak", "1")) {	/* dbg ref ? */
-				f_write_string("/proc/irq/179/smp_affinity", "1", 0, 0);	// eth0
-				f_write_string("/proc/irq/163/smp_affinity", "2", 0, 0);	// eth1 or eth1/eth2
-				f_write_string("/proc/irq/169/smp_affinity", "2", 0, 0);	// eth2 or eth3
-			} else
-#endif	// RTCONFIG_BCM7
-				tweak_smp_affinity(0);
-#endif	// ASUS_TWEAK
-		}
-
-		if (!nvram_get_int("stop_tweak_usb")) {
-			f_write_string("/proc/irq/111/smp_affinity", "2", 0, 0);		// ehci, ohci
-			f_write_string("/proc/irq/112/smp_affinity", "2", 0, 0);		// xhci
-		}
-	}
-#endif	// SMP
-
-#ifdef ASUS_TWEAK
-#ifdef RTCONFIG_BCM_7114
-	nvram_unset("txworkq");
-#else
-	if (nvram_match("enable_samba", "1") &&
-#ifdef RTCONFIG_USB_XHCI
-		nvram_match("usb_usb3", "1") &&
-#endif
-		!factory_debug()) {
+	if (nvram_match("enable_samba", "1"))
 		nvram_set("txworkq", "1");
-#if !defined(RTCONFIG_BCM9) && !defined(RTCONFIG_BCM7)
-		nvram_set("txworkq_wl", "1");
-#endif
-	} else {
+	else
 		nvram_unset("txworkq");
-#if !defined(RTCONFIG_BCM9) && !defined(RTCONFIG_BCM7)
-		nvram_unset("txworkq_wl");
-#endif
-	}
-#endif
-#endif // ASUS_TWEAK
-
 #if defined(RTAC68U) && !defined(RTAC68A) && !defined(RT4GAC68U)
 	update_cfe();
 #endif

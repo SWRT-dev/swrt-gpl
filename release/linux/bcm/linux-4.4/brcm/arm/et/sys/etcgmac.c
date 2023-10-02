@@ -936,7 +936,7 @@ gmac_reset(ch_t *ch)
 
 	cmdcfg &= ~(CC_TE | CC_RE | CC_RPI | CC_TAI | CC_HD | CC_ML |
 	            CC_CFE | CC_RL | CC_RED | CC_PE | CC_TPI | CC_PAD_EN | CC_PF);
-	cmdcfg |= (CC_PROM | CC_NLC | CC_CFE | CC_TPI | CC_AT);
+	cmdcfg |= (CC_PROM | CC_NLC | CC_CFE | CC_TPI | CC_AT(ch->etc->corerev));
 
 	if (cmdcfg != ocmdcfg)
 		W_REG(ch->osh, &ch->regs->cmdcfg, cmdcfg);

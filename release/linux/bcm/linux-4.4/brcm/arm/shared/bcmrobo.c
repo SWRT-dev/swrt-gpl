@@ -83,6 +83,7 @@
 #define PAGE_VTBL	0x05	/* ARL/VLAN Table access page */
 #define PAGE_FC		0x0a	/* Flow control register page */
 #define PAGE_GPHY_MII_P0	0x10	/* Port0 Internal GPHY MII registers page */
+#define PAGE_GPHY_MII_P1	0x11	/* Port1 Internal GPHY MII registers page */
 #define PAGE_GPHY_MII_P4	0x14	/* Last/Port4 Internal GPHY MII registers page */
 #define PAGE_MIB_P0	0x20	/* Port0 MIB page */
 #define PAGE_MIB_P1	0x21	/* Port1 MIB page */
@@ -929,7 +930,8 @@ srab_rreg(robo_info_t *robo, uint8 page, uint8 reg, void *val, int len)
 	/* validate value length and buffer address */
 	ASSERT(len == 1 || len == 6 || len == 8 ||
 	       ((len == 2) && !((int)val & 1)) || ((len == 4) && !((int)val & 3)));
-
+	if(page == 0x2e && (reg == 2 || reg == 3))//robocfg req, skip
+		return 0;
 	srab_request_grant(robo);
 
 	/* We don't need this variable */
@@ -953,7 +955,7 @@ srab_rreg(robo_info_t *robo, uint8 page, uint8 reg, void *val, int len)
 
 	/* timed out */
 	if (!i) {
-		ET_ERROR(("srab_read: timeout"));
+		ET_ERROR(("srab_read: timeout, page=0x%x, reg=0x%x", page, reg));
 		srab_interface_reset(robo);
 		ret = -1;
 		goto err;
@@ -1126,6 +1128,16 @@ bcm_robo_attach(si_t *sih, void *h, char *vars, miird_f miird, miiwr_f miiwr)
 #endif /* _CFE_ */
 	int lan_portenable = 0;
 	int rc;
+#if defined(RTAC88U) || defined(RTAC5300)
+	uint8 val8;
+	uint16 reg_val;
+#endif
+#ifdef _CFE_
+#ifdef RTAC5300
+	uint16 val16;
+#endif
+#endif
+
 	printk(KERN_INFO "robo attach\n");
 	/* Allocate and init private state */
 	if (!(robo = MALLOC(si_osh(sih), sizeof(robo_info_t)))) {
@@ -1229,10 +1241,10 @@ bcm_robo_attach(si_t *sih, void *h, char *vars, miird_f miird, miiwr_f miiwr)
 		 * a write to bit 0 of pseudo phy register 16 is done we are
 		 * unable to talk to the switch on a customer ref design.
 		 */
-			if (tmp == 0xffff) {
-				miiwr(h, PSEUDO_PHYAD, 16, 1);
-				tmp = miird(h, PSEUDO_PHYAD, 2);
-			}
+		if (tmp == 0xffff) {
+			miiwr(h, PSEUDO_PHYAD, 16, 1);
+			tmp = miird(h, PSEUDO_PHYAD, 2);
+		}
 
 		if (tmp != 0xffff) {
 			do {
@@ -1422,6 +1434,43 @@ bcm_robo_attach(si_t *sih, void *h, char *vars, miird_f miird, miiwr_f miiwr)
 	/* See if one of the ports is connected to plc chipset */
 	robo->plc_hw = (getvar(vars, "plc_vifs") != NULL);
 #endif /* PLC */
+
+#ifdef _CFE_
+#ifdef RTAC5300
+	/* disable p1 to void looping */
+	if (ROBO_IS_BCM5301X(robo->devid) && mdcport == 0 && phyaddr == 30) {
+		val16 = 0x1940;
+		robo->ops->write_reg(robo, PAGE_GPHY_MII_P1, 0x00, &val16, sizeof(val16));
+	}
+#endif
+#endif
+
+#if defined(RTAC88U) || defined(RTAC5300)
+	/* reset p5 reg when needs to link up it in ac88u/ac87u */
+	if (ROBO_IS_BCM5301X(robo->devid) && mdcport == 0 && phyaddr == 30) {
+		val8 = 0xfb;
+		robo->ops->write_reg(robo, PAGE_CTRL, 0x5d, &val8, sizeof(val8));
+	}
+
+	/* set led mode OFF in cfe */
+	/* map0 */
+	robo->ops->read_reg(robo, PAGE_CTRL, 0x18, &reg_val, sizeof(reg_val));
+#ifdef _CFE_
+	reg_val &= 0xfe00;
+#else
+	reg_val |= 0x1ff;
+#endif
+	robo->ops->write_reg(robo, PAGE_CTRL, 0x18, &reg_val, sizeof(reg_val));
+
+	/* map1 */
+	robo->ops->read_reg(robo, PAGE_CTRL, 0x1a, &reg_val, sizeof(reg_val));
+#ifdef _CFE_
+	reg_val &= 0xfe00;
+#else
+	reg_val |= 0x1ff;
+#endif
+	robo->ops->write_reg(robo, PAGE_CTRL, 0x1a, &reg_val, sizeof(reg_val));
+#endif
 
 #ifdef BCMFA
 	robo->aux_pid = -1;
@@ -2840,14 +2889,6 @@ bcm_robo_enable_switch(robo_info_t *robo)
 	int i, max_port_ind, ret = 0;
 	uint8 val8;
 	uint16 val16 = 0;
-	char *asus = nvram_get("model");
-	char *boothwmodel = nvram_get("boot_hw_model");
-	char *boothwver = nvram_get("boot_hw_ver");
-	char *boardnum = nvram_get("boardnum");
-	char *boardrev = nvram_get("boardrev");
-	char *boardtype = nvram_get("boardtype");
-	char *cardbus = nvram_get("cardbus");
-	char *et2phyaddr = nvram_get("et2phyaddr");
  
 
 	/* Enable management interface access */
@@ -2936,56 +2977,15 @@ bcm_robo_enable_switch(robo_info_t *robo)
 		}
 #endif /* !CFE */
 	}
-
-	if (boothwmodel != NULL && !strcmp(boothwmodel, "E4200") && boothwver != NULL && !strcmp(boothwver, "1.0")) {
-		printk(KERN_EMERG "E4200 switch LEDs fix\n");
-		/* Taken from cfe */
-		val16 = 0x8008;
-		robo->ops->write_reg(robo, PAGE_CTRL, 0x12, &val16, sizeof(val16));
-		
-		uint phy;
-		for (phy = 0; phy < MAX_NO_PHYS; phy++) {
-			robo->miiwr(robo->h, phy, 0x1c, 0xb8aa);
-			robo->miiwr(robo->h, phy, 0x17, 0x0f04);
-			robo->miiwr(robo->h, phy, 0x15, 0x0088);
-		}
-	}
-
-
-	if (boardnum != NULL && boardtype != NULL && cardbus != NULL)
-	if (!strcmp(boardnum, "42") && !strcmp(boardtype, "0x478") && !strcmp(cardbus, "1") && (!boothwmodel || (strcmp(boothwmodel, "WRT300N") && strcmp(boothwmodel, "WRT610N")))) {
-		printk(KERN_EMERG "Enable WRT350 LED fix\n");
-		/* WAN port LED */
-		val16 = 0x1F;
-		robo->ops->write_reg(robo, PAGE_CTRL, 0x16, &val16, sizeof(val16));    
-	}
-
-	if (boardnum != NULL && boardtype != NULL && boardrev != NULL){
-		if (!strcmp(boardnum, "32") && (!strcmp(boardtype, "0x0665") || !strcmp(boardtype, "0x072F"))){
-			/* WAN port LED fix*/
-			val16 = 0x3000 ;
-			robo->ops->write_reg(robo, PAGE_CTRL, 0x10, &val16, sizeof(val16));
-			val8 = 0x78 ;
-			robo->ops->write_reg(robo, PAGE_CTRL, 0x12, &val8, sizeof(val8)); 
-			if(!strcmp(boardrev, "0x1301") || (!strcmp(boardrev, "0x1101") && !strcmp(boardtype, "0x072F")))
-			val8 = 0x01 ;
-			if(!strcmp(boardrev, "0x1101") && strcmp(boardtype, "0x072F"))
-			val8 = 0x10 ;
-			robo->ops->write_reg(robo, PAGE_CTRL, 0x14, &val8, sizeof(val8)); 
-		}
-		
-		if (et2phyaddr != NULL)
-		if (!strcmp(boardnum, "32") && !strcmp(boardtype, "0x0646") && !strcmp(boardrev, "0x1601") && !strcmp(et2phyaddr, "30")){
-			printk(KERN_EMERG "R7000P LED fix.\n");
-			val16 = 0x3000 ;
-			robo->ops->write_reg(robo, PAGE_CTRL, 0x10, &val16, sizeof(val16));
-			val8 = 0x78 ;
-			robo->ops->write_reg(robo, PAGE_CTRL, 0x12, &val8, sizeof(val8)); 
-			val8 = 0x01;
-			robo->ops->write_reg(robo, PAGE_CTRL, 0x14, &val8, sizeof(val8));
-		}
-	}
-
+#if defined(R7000P)
+	printk(KERN_EMERG "R7000P LED fix.\n");
+	val16 = 0x3000 ;
+	robo->ops->write_reg(robo, PAGE_CTRL, 0x10, &val16, sizeof(val16));
+	val8 = 0x78 ;
+	robo->ops->write_reg(robo, PAGE_CTRL, 0x12, &val8, sizeof(val8)); 
+	val8 = 0x01;
+	robo->ops->write_reg(robo, PAGE_CTRL, 0x14, &val8, sizeof(val8));
+#endif
 	if (SRAB_ENAB(robo->sih) && ROBO_IS_BCM5301X(robo->devid)) {
 		int pdescsz = sizeof(pdesc97) / sizeof(pdesc_t);
 
@@ -3151,13 +3151,13 @@ bcm_robo_enable_switch(robo_info_t *robo)
 		robo->ops->write_reg(robo, PAGE_CFP, REG_CFP_CTL_REG, &val8, sizeof(val8));
 	}
 
-	if (asus && (!strcmp(asus,"RT-AC87U") || !strcmp(asus,"RT-AC88U"))) {
+#if defined(RTAC88U)
 	printk(KERN_INFO "workaround for RT-AC87U/RT-AC88U\n");
 	//val = robo_read16(ROBO_CTRL_PAGE, ROBO_REG_CTRL_PORT5_GMIIPO);
 	/* (GMII_SPEED_UP_2G|SW_OVERRIDE|TXFLOW_CNTL|RXFLOW_CNTL|LINK_STS) */
 	val8 = 0xfb;
 	robo->ops->write_reg(robo, PAGE_CTRL, REG_CTRL_PORT5_GMIIPO, &val8, sizeof(val8));
-	}
+#endif
 
 	bcm_robo_enable_rgmii_port(robo);
 

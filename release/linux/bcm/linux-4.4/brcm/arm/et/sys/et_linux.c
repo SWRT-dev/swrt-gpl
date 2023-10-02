@@ -194,7 +194,7 @@ typedef struct et_info {
 	uint8       fa_bhdr_sz;
 	bool        fa_aux_dev;
 #endif /* ET_FA */
-	struct semaphore sem;		/* use semaphore to allow sleep */
+	struct mutex sem;		/* use semaphore to allow sleep */
 	spinlock_t	lock;		/* per-device perimeter lock */
 	spinlock_t	txq_lock;	/* lock for txq protection */
 	spinlock_t	isr_lock;	/* lock for irq reentrancy protection */
@@ -238,7 +238,7 @@ static et_info_t *et_list = NULL;
 #define ET_LOCK(et) \
 do { \
 	if (ET_ALL_PASSIVE_ENAB(et)) \
-		down(&(et)->sem); \
+		mutex_lock(&(et)->sem); \
 	else \
 		spin_lock_bh(&(et)->lock); \
 } while (0)
@@ -246,7 +246,7 @@ do { \
 #define ET_UNLOCK(et) \
 do { \
 	if (ET_ALL_PASSIVE_ENAB(et)) \
-		up(&(et)->sem); \
+		mutex_unlock(&(et)->sem); \
 	else \
 		spin_unlock_bh(&(et)->lock); \
 } while (0)
@@ -838,7 +838,7 @@ et_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 		goto fail;
 	}
 
-	sema_init(&et->sem, 1);
+	mutex_init(&et->sem);
 	spin_lock_init(&et->lock);
 	spin_lock_init(&et->txq_lock);
 	spin_lock_init(&et->isr_lock);

@@ -19594,6 +19594,9 @@ NO_USB_CAP:
 #if defined(RTCONFIG_RALINK_BSD)
 	add_rc_support("bandstr");
 #endif
+#if defined(RTCONFIG_SFE)
+	add_rc_support("sfe");
+#endif
 
 	return 0;
 }

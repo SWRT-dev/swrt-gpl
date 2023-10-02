@@ -105,6 +105,7 @@
 
 #define SI_BCM53573_NANDFLASH	0x30000000	/* 53573 NAND flash base */
 #define SI_BCM53573_NORFLASH	0x1c000000	/* 53573 NOR flash base */
+#define SI_BCM53573_FLASH2_SZ	0x04000000	/* 53573 NOR flash2 size */
 
 #define	SI_BCM53573_NORFLASH_WINDOW	0x01000000	/* only support 16M direct access for
 							 * 3-byte address modes in spi flash
@@ -112,8 +113,18 @@
 #define	SI_BCM53573_BOOTDEV_MASK	0x3
 #define	SI_BCM53573_BOOTDEV_NOR		0x0
 
+#define SI_BCM53573_NAND_PRE_MASK	0x100	/* 53573 NAND present mask */
+
 #define	SI_BCM53573_DDRTYPE_MASK	0x10
 #define	SI_BCM53573_DDRTYPE_DDR3	0x10
+
+#define	SI_BCM47189_RGMII_VDD_MASK	0x3
+#define	SI_BCM47189_RGMII_VDD_SHIFT	21
+#define	SI_BCM47189_RGMII_VDD_3_3V	0
+#define	SI_BCM47189_RGMII_VDD_2_5V	1
+#define	SI_BCM47189_RGMII_VDD_1_5V	1
+
+#define	SI_BCM53573_LOCKED_CPUPLL	0x1
 
 /* APB bridge code */
 #define	APB_BRIDGE_ID		0x135		/* APB Bridge 0, 1, etc. */

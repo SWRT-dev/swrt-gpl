@@ -67,6 +67,22 @@ extern void nvram_get_global_vars(char **varlst, uint *varsz);
 static char *nvram_get_internal(const char *name);
 static int nvram_getall_internal(char *buf, int count);
 
+static void *MMALLOC(size_t size)
+{
+	void *ptr = kmalloc(size, GFP_ATOMIC);
+	if (!ptr)
+		ptr = vmalloc(size);
+	return ptr;
+}
+
+static void MMFREE(void *ptr)
+{
+	if (is_vmalloc_addr(ptr))
+		vfree(ptr);
+	else
+		kfree(ptr);
+}
+
 static void
 #if defined(WLTEST) || !defined(WLC_HIGH)
 sortvars(si_t *sih, vars_t *new)
@@ -90,7 +106,7 @@ sortvars(si_t *sih, vars_t *new)
 	 */
 
 	/* get a temp array to hold the sorted vars */
-	temp = MALLOC(osh, NVRAM_ARRAY_MAXSIZE + 1);
+	temp = MMALLOC(NVRAM_ARRAY_MAXSIZE + 1);
 	if (!temp) {
 		NVR_MSG(("Out of memory for malloc for NVRAM sort"));
 		return;
@@ -159,7 +175,7 @@ sortvars(si_t *sih, vars_t *new)
 		}
 	}
 
-	MFREE(osh, temp, NVRAM_ARRAY_MAXSIZE + 1);
+	MMFREE(temp);
 }
 
 #if defined(FLASH)
@@ -176,7 +192,7 @@ BCMATTACHFN(get_flash_nvram)(si_t *sih, struct nvram_header *nvh)
 	nvs = R_REG(osh, &nvh->len) - sizeof(struct nvram_header);
 	bufsz = nvs + VARS_T_OH;
 
-	if ((new = (vars_t *)MALLOC(osh, bufsz)) == NULL) {
+	if ((new = (vars_t *)MMALLOC(bufsz)) == NULL) {
 		NVR_MSG(("Out of memory for flash vars\n"));
 		return;
 	}
@@ -308,14 +324,14 @@ BCMATTACHFN(nvram_init)(void *si)
 	if ((oh = otp_init(sih)) != NULL) {
 		uint sz = otp_size(oh);
 		uint bufsz = sz + VARS_T_OH;
-		vars_t *new = (vars_t *)MALLOC(osh, bufsz);
+		vars_t *new = (vars_t *)MMALLOC(bufsz);
 		if (new != NULL)
 			new->vars = (char *)new + VARS_T_OH;
 		if (new == NULL) {
 			NVR_MSG(("Out of memory for otp\n"));
 		} else if (otp_nvread(oh, new->vars, &sz)) {
 			NVR_MSG(("otp_nvread error\n"));
-			MFREE(osh, new, bufsz);
+			MMFREE(new);
 		} else {
 			new->bufsz = bufsz;
 			new->size = sz;
@@ -373,7 +389,7 @@ nvram_file_init(void* sih)
 	char *base = NULL, *nvp = NULL, *flvars = NULL;
 	int err = 0, nvlen = 0;
 
-	base = nvp = MALLOC(si_osh((si_t *)sih), MAXSZ_NVRAM_VARS);
+	base = nvp = MMALLOC(MAXSZ_NVRAM_VARS);
 	if (base == NULL)
 		return BCME_NOMEM;
 
@@ -384,7 +400,7 @@ nvram_file_init(void* sih)
 		goto exit;
 	}
 	if (nvlen) {
-		flvars = MALLOC(si_osh((si_t *)sih), nvlen);
+		flvars = MMALLOC(nvlen);
 		if (flvars == NULL)
 			goto exit;
 	}
@@ -395,7 +411,7 @@ nvram_file_init(void* sih)
 	err = nvram_append(sih, flvars, nvlen);
 
 exit:
-	MFREE(si_osh((si_t *)sih), base, MAXSZ_NVRAM_VARS);
+	MMFREE(base);
 
 	return err;
 }
@@ -452,7 +468,7 @@ BCMATTACHFN(nvram_append)(void *si, char *varlst, uint varsz)
 	uint bufsz = VARS_T_OH;
 	vars_t *new;
 
-	if ((new = MALLOC(si_osh((si_t *)si), bufsz)) == NULL)
+	if ((new = MMALLOC(bufsz)) == NULL)
 		return BCME_NOMEM;
 
 	new->vars = varlst;
@@ -484,17 +500,17 @@ BCMATTACHFN(nvram_exit)(void *si)
 
 #ifdef DONGLEBUILD
 	if (this && this->vars && (_vars_otp == this->vars)) {
-		MFREE(si_osh(sih), this->vars, this->bufsz);
+		MMFREE(this->vars);
 		_vars_otp = NULL;
 	}
 #else
 	if (this)
-		MFREE(si_osh(sih), this->vars, this->size);
+		MMFREE(this->vars);
 #endif /* DONGLEBUILD */
 
 	while (this) {
 		next = this->next;
-		MFREE(si_osh(sih), this, this->bufsz);
+		MMFREE(this);
 		this = next;
 	}
 	vars = NULL;

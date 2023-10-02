@@ -65,12 +65,12 @@
 /*
  * The maximum packet length.
  */
-#define	ETHER_MAX_LEN		1518
+#define	ETHER_MAX_LEN		2018
 
 /*
  * The maximum packet user data length.
  */
-#define	ETHER_MAX_DATA		1500
+#define	ETHER_MAX_DATA		2000
 
 /* ether types */
 #define ETHER_TYPE_MIN		0x0600		/* Anything less than MIN is a length */

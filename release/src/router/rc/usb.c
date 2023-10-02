@@ -3461,10 +3461,6 @@ start_samba(void)
 #endif
 #endif
 
-#if defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER)
-	tweak_smp_affinity(1);
-#endif
-
 	mkdir_if_none("/var/run/samba");
 	mkdir_if_none("/etc/samba");
 
@@ -3651,10 +3647,6 @@ void stop_samba(int force)
 	eval("rm", "-rf", "/var/run/samba");
 
 	logmessage("Samba Server", "smb daemon is stopped");
-
-#if defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER)
-	tweak_smp_affinity(0);
-#endif
 
 #if 0
 #ifdef RTCONFIG_BCMARM

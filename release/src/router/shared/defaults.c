@@ -4553,6 +4553,9 @@ struct nvram_tuple router_defaults[] = {
 	{ "easymesh_tpcon", "0" , CKN_STR1 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "easymesh_perportpervlan", "0" , CKN_STR1 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
+#if defined(RTCONFIG_SFE)
+	{ "sfe_enable", "2" , CKN_STR1 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },//0:disable,1:lan only,2:lan+wlan
+#endif
 #if defined(RTCONFIG_SWRT_KVR)
 	{ "wl_kvr_kv", "1" , CKN_STR1 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "wl_kvr_ft", "0" , CKN_STR1 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
