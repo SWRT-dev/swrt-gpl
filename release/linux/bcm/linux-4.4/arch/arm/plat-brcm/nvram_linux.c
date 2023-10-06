@@ -534,7 +534,7 @@ extern int _nvram_set(const char *name, const char *value);
 extern int _nvram_unset(const char *name);
 extern int _nvram_getall(char *buf, int count);
 extern int _nvram_commit(struct nvram_header *header);
-extern int _nvram_init(si_t *sih);
+extern int _nvram_init(si_t *sih, int idx);
 extern void _nvram_exit(void);
 
 /* Globals */
@@ -546,7 +546,7 @@ static struct class *nvram_class = NULL;
 static struct mtd_info *nvram_mtd = NULL;
 
 int
-_nvram_read(char *buf)
+_nvram_read(char *buf, int idx)
 {
 	struct nvram_header *header = (struct nvram_header *) buf;
 	size_t len;
@@ -767,6 +767,7 @@ nvram_nflash_commit(void)
 done:
 	mutex_unlock(&nvram_sem);
 	MMFREE(buf);
+
 	return ret;
 }
 #endif
@@ -948,7 +949,8 @@ dev_nvram_read(struct file *file, char *buf, size_t count, loff_t *ppos)
 		if (!(name = MMALLOC(count+1)))
 			return -ENOMEM;
 	}
-
+	if (name == tmp)
+		mutex_lock(&nvram_sem);
 	if (copy_from_user(name, buf, count)) {
 		ret = -EFAULT;
 		goto done;
@@ -983,6 +985,8 @@ dev_nvram_read(struct file *file, char *buf, size_t count, loff_t *ppos)
 	flush_cache_all();
 #endif
 done:
+	if (name == tmp)
+		mutex_unlock(&nvram_sem);
 	if (name != tmp)
 		MMFREE(name);
 
@@ -1183,7 +1187,7 @@ dev_nvram_init(void)
 	}
 
 	/* Initialize hash table */
-	_nvram_init(sih);
+	_nvram_init(sih, 0);
 
 	/* Create /dev/nvram handle */
 	nvram_class = class_create(THIS_MODULE, "nvram");

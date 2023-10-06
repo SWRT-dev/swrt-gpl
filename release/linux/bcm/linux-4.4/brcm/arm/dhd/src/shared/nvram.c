@@ -30,6 +30,9 @@
 #include <bcmnvram.h>
 #include <sbsdram.h>
 
+extern void *MMALLOC(size_t size);
+extern void MMFREE(void *addr);
+
 extern struct nvram_tuple *_nvram_realloc(struct nvram_tuple *t, const char *name,
                                           const char *value);
 extern void _nvram_free(struct nvram_tuple *t);
@@ -354,7 +357,7 @@ BCMINITFN(_nvram_init)(void *sih, int idx)
 	int ret;
 
 
-	if (!(header = (struct nvram_header *) MALLOC(si_osh(sih), MAX_NVRAM_SPACE))) {
+	if (!(header = (struct nvram_header *) MMALLOC(MAX_NVRAM_SPACE))) {
 		printf("nvram_init: out of memory\n");
 		return -12; /* -ENOMEM */
 	}
@@ -363,7 +366,7 @@ BCMINITFN(_nvram_init)(void *sih, int idx)
 	    header->magic == NVRAM_MAGIC)
 		nvram_rehash(header);
 
-	MFREE(si_osh(sih), header, MAX_NVRAM_SPACE);
+	MMFREE(header);
 	return ret;
 }
 

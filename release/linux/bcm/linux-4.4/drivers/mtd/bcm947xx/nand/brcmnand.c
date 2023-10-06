@@ -75,6 +75,7 @@
 
 /* Mutexing is version-dependent */
 extern struct nand_hw_control *nand_hwcontrol_lock_init(void);
+extern void *partitions_lock_init(void);
 
 /*
  * Driver private control structure
@@ -153,6 +154,22 @@ static const struct brcmnand_ecc_size_s {
 	{10,	11, 	39},
 	{10,	12, 	42},
 };
+
+static void
+brcmnand_get_device(si_t *sih, struct mtd_info *mtd)
+{
+	/* 53573/47189 series */
+	if (sih->ccrev == 54 && mtd->mlock)
+		spin_lock(mtd->mlock);
+}
+
+static void
+brcmnand_release_device(si_t *sih, struct mtd_info *mtd)
+{
+	/* 53573/47189 series */
+	if (sih->ccrev == 54 && mtd->mlock)
+		spin_unlock(mtd->mlock);
+}
 
 /*
  * INTERNAL - Populate the various fields that depend on how
@@ -381,8 +398,13 @@ brcmnand_dev_ready(struct mtd_info *mtd)
 {
 	struct nand_chip *chip = (struct nand_chip *)mtd->priv;
 	struct brcmnand_mtd *brcmnand = (struct brcmnand_mtd *)chip->priv;
+	int ret = 0;
 
-	return (hndnand_dev_ready(brcmnand->nfl));
+	brcmnand_get_device(brcmnand->sih, mtd);
+	ret = hndnand_dev_ready(brcmnand->nfl);
+	brcmnand_release_device(brcmnand->sih, mtd);
+
+	return ret;
 }
 
 /*
@@ -398,8 +420,10 @@ brcmnand_waitfunc(struct mtd_info *mtd, struct nand_chip *chip)
 	if ((ret = brcmnand->cmd_ret) < 0)
 		brcmnand->cmd_ret = 0;
 	else {
+		brcmnand_get_device(brcmnand->sih, mtd);
 		if ((ret = hndnand_waitfunc(brcmnand->nfl, &status)) == 0)
 			ret = status;
+		brcmnand_release_device(brcmnand->sih, mtd);
 	}
 
 	/* Timeout */
@@ -421,9 +445,14 @@ brcmnand_read_oob(struct mtd_info *mtd, struct nand_chip *chip, int page)
 {
 	struct brcmnand_mtd *brcmnand = chip->priv;
 	uint64 nand_addr;
+	int ret = 0;
 
 	nand_addr = ((uint64)page << chip->page_shift);
-	return hndnand_read_oob(brcmnand->nfl, nand_addr, chip->oob_poi);
+	brcmnand_get_device(brcmnand->sih, mtd);
+	ret = hndnand_read_oob(brcmnand->nfl, nand_addr, chip->oob_poi);
+	brcmnand_release_device(brcmnand->sih, mtd);
+
+	return ret;
 }
 
 /*
@@ -437,7 +466,9 @@ brcmnand_write_oob(struct mtd_info *mtd, struct nand_chip *chip, int page)
 	int status = 0;
 
 	nand_addr = ((uint64)page << chip->page_shift);
+	brcmnand_get_device(brcmnand->sih, mtd);
 	hndnand_write_oob(brcmnand->nfl, nand_addr, chip->oob_poi);
+	brcmnand_release_device(brcmnand->sih, mtd);
 
 	status = brcmnand_waitfunc(mtd, chip);
 
@@ -457,7 +488,9 @@ _brcmnand_read_page_do(struct mtd_info *mtd, struct nand_chip *chip,
 	int ret;
 
 	nand_addr = ((uint64)page << chip->page_shift);
+	brcmnand_get_device(brcmnand->sih, mtd);
 	ret = hndnand_read_page(brcmnand->nfl, nand_addr, buf, chip->oob_poi, ecc, &herr, &serr);
+	brcmnand_release_device(brcmnand->sih, mtd);
 
 	if (ecc && ret == 0) {
 		/* Report hard ECC errors */
@@ -520,8 +553,10 @@ _brcmnand_write_page_do(struct mtd_info *mtd, struct nand_chip *chip, const uint
 		chip->oob_poi[i] &= tmp_poi[i];
 
 	nand_addr = ((uint64)brcmnand->page_addr << chip->page_shift);
+	brcmnand_get_device(brcmnand->sih, mtd);
 	brcmnand->cmd_ret = hndnand_write_page(brcmnand->nfl, nand_addr, buf,
 		chip->oob_poi, ecc);
+	brcmnand_release_device(brcmnand->sih, mtd);
 
 	return;
 }
@@ -567,8 +602,10 @@ brcmnand_read_byte(struct mtd_info *mtd)
 	switch (brcmnand->last_cmd) {
 		case NAND_CMD_READID:
 			if (brcmnand->id_byte_index < 8) {
+				brcmnand_get_device(brcmnand->sih, mtd);
 				reg = hndnand_cmd_read_byte(brcmnand->nfl, CMDFUNC_READID,
 					(brcmnand->id_byte_index & 0x4));
+				brcmnand_release_device(brcmnand->sih, mtd);
 				reg >>= 24 - ((brcmnand->id_byte_index & 3) << 3);
 				b = (uint8_t) (reg & ((1 << 8) - 1));
 
@@ -581,7 +618,9 @@ brcmnand_read_byte(struct mtd_info *mtd)
 			}
 			break;
 		case NAND_CMD_STATUS:
+			brcmnand_get_device(brcmnand->sih, mtd);
 			b = (uint8_t)hndnand_cmd_read_byte(brcmnand->nfl, CMDFUNC_STATUS, 0);
+			brcmnand_release_device(brcmnand->sih, mtd);
 			break;
 		default:
 			BUG_ON(1);
@@ -620,7 +659,9 @@ brcmnand_select_chip(struct mtd_info *mtd, int chip_num)
 	struct nand_chip *chip = mtd->priv;
 	struct brcmnand_mtd *brcmnand = chip->priv;
 	/* chip_num == -1 means de-select the device */
+	brcmnand_get_device(brcmnand->sih, mtd);
 	hndnand_select_chip(brcmnand->nfl, 0);
+	brcmnand_release_device(brcmnand->sih, mtd);
 }
 
 /*
@@ -646,38 +687,52 @@ brcmnand_cmdfunc(struct mtd_info *mtd, unsigned command, int column, int page_ad
 			column = 0;
 			BUG_ON(column >= mtd->writesize);
 			nand_addr = (uint64) column | ((uint64)page_addr << chip->page_shift);
+			brcmnand_get_device(brcmnand->sih, mtd);
 			hndnand_cmdfunc(brcmnand->nfl, nand_addr, CMDFUNC_ERASE1);
+			brcmnand_release_device(brcmnand->sih, mtd);
 			break;
 
 		case NAND_CMD_ERASE2:
+			brcmnand_get_device(brcmnand->sih, mtd);
 			brcmnand->cmd_ret = hndnand_cmdfunc(brcmnand->nfl, 0, CMDFUNC_ERASE2);
+			brcmnand_release_device(brcmnand->sih, mtd);
 			break;
 
 		case NAND_CMD_SEQIN:
 			BUG_ON(column >= mtd->writesize);
 			brcmnand->page_addr = page_addr;
 			nand_addr = (uint64) column | ((uint64)page_addr << chip->page_shift);
+			brcmnand_get_device(brcmnand->sih, mtd);
 			hndnand_cmdfunc(brcmnand->nfl, nand_addr, CMDFUNC_SEQIN);
+			brcmnand_release_device(brcmnand->sih, mtd);
 			break;
 
 		case NAND_CMD_READ0:
 		case NAND_CMD_READ1:
 			BUG_ON(column >= mtd->writesize);
 			nand_addr = (uint64) column | ((uint64)page_addr << chip->page_shift);
+			brcmnand_get_device(brcmnand->sih, mtd);
 			brcmnand->cmd_ret = hndnand_cmdfunc(brcmnand->nfl, nand_addr, CMDFUNC_READ);
+			brcmnand_release_device(brcmnand->sih, mtd);
 			break;
 
 		case NAND_CMD_RESET:
+			brcmnand_get_device(brcmnand->sih, mtd);
 			brcmnand->cmd_ret = hndnand_cmdfunc(brcmnand->nfl, 0, CMDFUNC_RESET);
+			brcmnand_release_device(brcmnand->sih, mtd);
 			break;
 
 		case NAND_CMD_READID:
+			brcmnand_get_device(brcmnand->sih, mtd);
 			brcmnand->cmd_ret = hndnand_cmdfunc(brcmnand->nfl, 0, CMDFUNC_READID);
+			brcmnand_release_device(brcmnand->sih, mtd);
 			brcmnand->id_byte_index = 0;
 			break;
 
 		case NAND_CMD_STATUS:
+			brcmnand_get_device(brcmnand->sih, mtd);
 			brcmnand->cmd_ret = hndnand_cmdfunc(brcmnand->nfl, 0, CMDFUNC_STATUS);
+			brcmnand_release_device(brcmnand->sih, mtd);
 			break;
 
 		case NAND_CMD_PAGEPROG:
@@ -756,249 +811,6 @@ brcmnand_dummy_func(struct mtd_info * mtd)
 {
 	BUG_ON(1);
 }
-
-# define NAND_ALE_COL	0x08
-# define NAND_ALE_ROW	0x10
-
-#ifdef CONFIG_MIPS_BRCM
-
-/**
- * brcmnand_command_lp - [DEFAULT] Send command to NAND large page device
- * @mtd:	MTD device structure
- * @command:	the command to be sent
- * @column:	the column address for this command, -1 if none
- * @page_addr:	the page address for this command, -1 if none
- *
- * Send command to NAND device. This is the version for the new large page
- * devices We dont have the separate regions as we have in the small page
- * devices.  We must emulate NAND_CMD_READOOB to keep the code compatible.
- */
-static void
-brcmnand_command_lp(struct mtd_info *mtd, unsigned int command, int column, int page_addr)
-{
-	register struct nand_chip *chip = mtd->priv;
-
-	/* Emulate NAND_CMD_READOOB */
-	if (command == NAND_CMD_READOOB) {
-		column += mtd->writesize;
-		command = NAND_CMD_READ0;
-	}
-
-	/* Command latch cycle */
-	chip->cmd_ctrl(mtd, command & 0xff, NAND_NCE | NAND_CLE);
-
-	if (column != -1 || page_addr != -1) {
-		int ctrl = NAND_NCE | NAND_ALE;
-
-		/* Serially input address */
-		if (column != -1) {
-			ctrl |= NAND_ALE_COL;
-
-			/* Adjust columns for 16 bit buswidth */
-			if (chip->options & NAND_BUSWIDTH_16)
-				column >>= 1;
-
-			chip->cmd_ctrl(mtd, column, ctrl);
-		}
-
-		if (page_addr != -1) {
-			ctrl &= ~NAND_ALE_COL;
-			ctrl |= NAND_ALE_ROW;
-
-			chip->cmd_ctrl(mtd, page_addr, ctrl);
-		}
-	}
-
-	chip->cmd_ctrl(mtd, NAND_CMD_NONE, NAND_NCE);
-
-	/*
-	 * program and erase have their own busy handlers
-	 * status, sequential in, and deplete1 need no delay
-	 */
-	switch (command) {
-
-	case NAND_CMD_CACHEDPROG:
-	case NAND_CMD_PAGEPROG:
-	case NAND_CMD_ERASE1:
-	case NAND_CMD_ERASE2:
-	case NAND_CMD_SEQIN:
-	case NAND_CMD_RNDIN:
-	case NAND_CMD_STATUS:
-	case NAND_CMD_DEPLETE1:
-		return;
-
-	/*
-	 * read error status commands require only a short delay
-	 */
-	case NAND_CMD_STATUS_ERROR:
-	case NAND_CMD_STATUS_ERROR0:
-	case NAND_CMD_STATUS_ERROR1:
-	case NAND_CMD_STATUS_ERROR2:
-	case NAND_CMD_STATUS_ERROR3:
-		udelay(chip->chip_delay);
-		return;
-
-	case NAND_CMD_RESET:
-		if (chip->dev_ready)
-			break;
-
-		udelay(chip->chip_delay);
-
-		chip->cmd_ctrl(mtd, NAND_CMD_STATUS, NAND_NCE | NAND_CLE);
-		chip->cmd_ctrl(mtd, NAND_CMD_NONE, NAND_NCE);
-
-		while (!(chip->read_byte(mtd) & NAND_STATUS_READY));
-		return;
-
-	case NAND_CMD_RNDOUT:
-		/* No ready / busy check necessary */
-		chip->cmd_ctrl(mtd, NAND_CMD_RNDOUTSTART, NAND_NCE | NAND_CLE);
-		chip->cmd_ctrl(mtd, NAND_CMD_NONE, NAND_NCE);
-		return;
-
-	case NAND_CMD_READ0:
-		chip->cmd_ctrl(mtd, NAND_CMD_READSTART, NAND_NCE | NAND_CLE);
-		chip->cmd_ctrl(mtd, NAND_CMD_NONE, NAND_NCE);
-
-	/* This applies to read commands */
-	default:
-		/*
-		 * If we don't have access to the busy pin, we apply the given
-		 * command delay
-		 */
-		if (!chip->dev_ready) {
-			udelay(chip->chip_delay);
-			return;
-		}
-	}
-
-	/* Apply this short delay always to ensure that we do wait tWB in
-	 * any case on any machine.
-	 */
-	ndelay(100);
-
-	nand_wait_ready(mtd);
-}
-
-/**
- * brcmnand_command - [DEFAULT] Send command to NAND device
- * @mtd:	MTD device structure
- * @command:	the command to be sent
- * @column:	the column address for this command, -1 if none
- * @page_addr:	the page address for this command, -1 if none
- *
- * Send command to NAND device. This function is used for small page
- * devices (256/512 Bytes per page)
- */
-static void
-brcmnand_command(struct mtd_info *mtd, unsigned int command, int column, int page_addr)
-{
-	register struct nand_chip *chip = mtd->priv;
-	int ctrl = NAND_CTRL_CLE;
-
-	/* Invoke large page command function */
-	if (mtd->writesize > 512) {
-		brcmnand_command_lp(mtd, command, column, page_addr);
-		return;
-	}
-
-	/*
-	 * Write out the command to the device.
-	 */
-	if (command == NAND_CMD_SEQIN) {
-		int readcmd;
-
-		if (column >= mtd->writesize) {
-			/* OOB area */
-			column -= mtd->writesize;
-			readcmd = NAND_CMD_READOOB;
-		} else if (column < 256) {
-			/* First 256 bytes --> READ0 */
-			readcmd = NAND_CMD_READ0;
-		} else {
-			column -= 256;
-			readcmd = NAND_CMD_READ1;
-		}
-
-		chip->cmd_ctrl(mtd, readcmd, ctrl);
-	}
-
-	chip->cmd_ctrl(mtd, command, ctrl);
-
-	/*
-	 * Address cycle, when necessary
-	 */
-	ctrl = NAND_CTRL_ALE;
-
-	/* Serially input address */
-	if (column != -1) {
-		ctrl |= NAND_ALE_COL;
-
-		/* Adjust columns for 16 bit buswidth */
-		if (chip->options & NAND_BUSWIDTH_16)
-			column >>= 1;
-
-		chip->cmd_ctrl(mtd, column, ctrl);
-	}
-
-	if (page_addr != -1) {
-		ctrl &= ~NAND_ALE_COL;
-		ctrl |= NAND_ALE_ROW;
-
-		chip->cmd_ctrl(mtd, page_addr, ctrl);
-	}
-
-	chip->cmd_ctrl(mtd, NAND_CMD_NONE, NAND_NCE);
-
-	/*
-	 * program and erase have their own busy handlers
-	 * status and sequential in needs no delay
-	 */
-	switch (command) {
-
-	case NAND_CMD_PAGEPROG:
-	case NAND_CMD_ERASE1:
-	case NAND_CMD_ERASE2:
-	case NAND_CMD_SEQIN:
-	case NAND_CMD_STATUS:
-		return;
-
-	case NAND_CMD_RESET:
-		if (chip->dev_ready)
-			break;
-
-		udelay(chip->chip_delay);
-
-		chip->cmd_ctrl(mtd, NAND_CMD_STATUS, NAND_CTRL_CLE);
-
-		chip->cmd_ctrl(mtd, NAND_CMD_NONE, NAND_NCE);
-
-		while (!(chip->read_byte(mtd) & NAND_STATUS_READY));
-
-		return;
-
-		/* This applies to read commands */
-	default:
-		/*
-		 * If we don't have access to the busy pin, we apply the given
-		 * command delay
-		 */
-		if (!chip->dev_ready) {
-			udelay(chip->chip_delay);
-			return;
-		}
-	}
-
-	/* Apply this short delay always to ensure that we do wait tWB in
-	 * any case on any machine.
-	 */
-	ndelay(100);
-
-	nand_wait_ready(mtd);
-}
-
-#endif
-
 
 #ifdef CONFIG_MTD
 struct mtd_partition brcmnand_parts[] = {
@@ -1167,6 +979,11 @@ brcmnand_mtd_init(void)
 	mtd->priv = chip;
 	mtd->owner = THIS_MODULE;
 	mtd->name = DRV_NAME;
+	mtd->mlock = partitions_lock_init();
+	if (!mtd->mlock) {
+		ret = -ENOMEM;
+		goto fail;
+	}
 
 	chip->priv = &brcmnand;
 	chip->controller = nand_hwcontrol_lock_init();

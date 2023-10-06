@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+# Check how pread/pwrite and preadv/pwritev syscalls are traced.
+#
+# Copyright (c) 2014-2018 The strace developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/init.sh"
+
+run_prog
+run_strace -e%desc $args
+match_grep
+
+exit 0

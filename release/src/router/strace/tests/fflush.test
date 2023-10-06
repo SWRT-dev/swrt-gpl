@@ -1,0 +1,21 @@
+#!/bin/sh -efu
+#
+# Check fflush error diagnostics.
+#
+# Copyright (c) 2011-2018 The strace developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/init.sh"
+
+run_prog > /dev/null
+args="-o /dev/full -e trace=none $args"
+
+$STRACE $args > "$EXP" 2> "$LOG" || {
+	msg="$STRACE $args failed with code $?"
+	cat "$LOG" >&2
+	fail_ "$msg"
+}
+
+match_diff "$LOG" "$EXP"

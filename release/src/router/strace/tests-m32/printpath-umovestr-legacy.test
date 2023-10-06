@@ -1,0 +1,32 @@
+#!/bin/sh
+#
+# Force legacy printpath/umovestr using process_vm_readv fault injection.
+#
+# Copyright (c) 2017-2018 Dmitry V. Levin <ldv@altlinux.org>
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/scno_tampering.sh"
+
+> "$LOG" || fail_ "failed to write $LOG"
+fault_args='-qq -esignal=none -etrace=process_vm_readv -efault=process_vm_readv'
+args='../printpath-umovestr-peekdata'
+
+$STRACE -o "$LOG" $fault_args $args > /dev/null || {
+	rc=$?
+	if [ $rc -eq 77 ]; then
+		skip_ "$fault_args $args exited with code 77"
+	else
+		fail_ "$fault_args $args failed with code $rc"
+	fi
+}
+
+> "$LOG" || fail_ "failed to write $LOG"
+args="-a11 -e signal=none -e trace=chdir $args skip-process_vm_readv-check"
+
+$STRACE -o /dev/null $fault_args \
+	$STRACE -o "$LOG" $args > "$EXP" ||
+	dump_log_and_fail_with "$STRACE $args failed with code $?"
+
+match_diff "$LOG" "$EXP"

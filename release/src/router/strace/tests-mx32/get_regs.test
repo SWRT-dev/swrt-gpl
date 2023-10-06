@@ -1,0 +1,33 @@
+#!/bin/sh
+#
+# Check that get_regs is skipped for filtered syscalls.
+#
+# Copyright (c) 2017-2018 Dmitry V. Levin <ldv@altlinux.org>
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/init.sh"
+
+check_prog env
+check_prog grep
+run_prog ../gettid > /dev/null
+
+run_strace -qq -esignal=none -eraw=all -etrace=none ../gettid > /dev/null
+
+run_strace -qq -esignal=none -eraw=all -eptrace -o '|grep -c ^ptrace > less' \
+	-- "$STRACE_EXE" -o "$LOG" $args > /dev/null
+
+[ "$(cat less)" -gt 0 ] ||
+	fail_ "$STRACE $args failed to catch any ptrace syscalls"
+
+run_strace -qq -esignal=none -eraw=all -etrace=all ../gettid > /dev/null
+
+run_strace -qq -esignal=none -eraw=all -eptrace -o '|grep -c ^ptrace > more' \
+	-- "$STRACE_EXE" -o "$LOG" $args > /dev/null
+
+[ "$(cat more)" -gt 0 ] ||
+	fail_ "$STRACE $args failed to catch any ptrace syscalls"
+
+[ "$(cat more)" -gt "$(cat less)" ] ||
+	fail_ "$STRACE failed to skip get_regs for filtered syscalls"

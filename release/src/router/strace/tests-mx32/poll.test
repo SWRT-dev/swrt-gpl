@@ -1,0 +1,20 @@
+#!/bin/sh
+#
+# Check poll syscall decoding.
+#
+# Copyright (c) 2016-2018 The strace developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/init.sh"
+
+run_prog > /dev/null
+run_strace -a16 -vepoll $args > "$EXP"
+match_diff "$LOG" "$EXP"
+
+for abbrev in 0 1 2 3 4 5; do
+	run_prog "../$NAME" $abbrev > /dev/null
+	run_strace -a16 -epoll -s$abbrev $args > "$EXP"
+	match_diff "$LOG" "$EXP"
+done

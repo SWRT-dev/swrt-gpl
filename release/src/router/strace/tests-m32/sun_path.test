@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+# Check how long sun_path addresses are traced.
+#
+# Copyright (c) 2015-2018 The strace developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/init.sh"
+
+run_prog ../net-accept-connect 123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678
+run_strace_merge -ebind,connect,getsockname $args
+match_grep
+
+exit 0

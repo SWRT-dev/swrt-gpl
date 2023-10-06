@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+# Check _llseek syscall decoding.
+#
+# Copyright (c) 2015-2018 The strace developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/init.sh"
+
+check_prog grep
+run_prog > /dev/null
+run_strace -e_llseek $args > "$EXP"
+grep -v '^_llseek([0-9]' < "$LOG" > "$OUT"
+match_diff "$OUT" "$EXP"

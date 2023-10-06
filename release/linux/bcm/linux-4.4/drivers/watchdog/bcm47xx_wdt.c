@@ -197,7 +197,7 @@ static int bcm47xx_wdt_probe(struct platform_device *pdev)
 	if (!wdt)
 		return -ENXIO;
 
-	soft = wdt->max_timer_ms < WDT_SOFTTIMER_THRESHOLD * 1000;
+	soft = false/*wdt->max_timer_ms < WDT_SOFTTIMER_THRESHOLD * 1000*/;
 
 	if (soft) {
 		wdt->wdd.ops = &bcm47xx_wdt_soft_ops;

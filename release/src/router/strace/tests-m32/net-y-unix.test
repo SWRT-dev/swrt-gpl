@@ -1,0 +1,19 @@
+#!/bin/sh
+#
+# Check decoding of network syscalls in -y mode.
+#
+# Copyright (c) 2016-2018 Dmitry V. Levin <ldv@altlinux.org>
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/init.sh"
+
+check_prog sed
+
+run_prog > /dev/null
+run_strace -a20 -y -eclose,network $args > "$EXP"
+
+# Filter out close() calls made by ld.so and libc.
+sed -n '/socket/,$p' < "$LOG" > "$OUT"
+match_diff "$OUT" "$EXP"

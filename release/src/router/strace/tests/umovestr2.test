@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+# Copyright (c) 2015-2018 The strace developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+# umovestr short read regression test
+
+. "${srcdir=.}/init.sh"
+
+run_prog > /dev/null
+run_strace -veexecve -s262144 $args > "$EXP"
+check_prog sed
+sed 1d < "$LOG" > "$OUT"
+match_diff "$OUT" "$EXP"

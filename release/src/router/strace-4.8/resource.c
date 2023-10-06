@@ -32,7 +32,9 @@
 #include <sys/resource.h>
 #include <sys/times.h>
 #include <sys/sysinfo.h>
+#if !defined(RTCONFIG_MUSL_LIBC)
 #include <linux/kernel.h>
+#endif
 
 static const struct xlat resources[] = {
 #ifdef RLIMIT_AS

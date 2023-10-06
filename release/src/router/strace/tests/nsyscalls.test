@@ -1,0 +1,18 @@
+#!/bin/sh
+#
+# Check decoding of out-of-range syscalls.
+#
+# Copyright (c) 2016-2018 The strace developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/init.sh"
+
+if [ "$MIPS_ABI" = "o32" ]; then
+	syscall=syscall
+else
+	syscall=none
+fi
+
+run_strace_match_diff -e trace=$syscall

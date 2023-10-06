@@ -1,0 +1,21 @@
+#!/bin/sh
+#
+# Check how seccomp SECCOMP_SET_MODE_STRICT is decoded.
+#
+# Copyright (c) 2016-2018 The strace developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/init.sh"
+
+set -- "../$NAME"
+"$@" > /dev/null || {
+	case $? in
+		77) skip_ "$* exited with code 77" ;;
+		137) framework_skip_ "$* killed by SIGKILL, fix your kernel" ;;
+		*) fail_ "$args failed" ;;
+	esac
+}
+run_strace -eseccomp "$@" > "$EXP"
+match_diff "$LOG" "$EXP"

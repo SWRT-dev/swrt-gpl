@@ -1,0 +1,21 @@
+#!/bin/sh
+#
+# Check decoding of ip:port pairs associated with socket descriptors
+#
+# Copyright (c) 2014-2016 Dmitry V. Levin <ldv@altlinux.org>
+# Copyright (c) 2016-2018 The strace developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/init.sh"
+
+check_prog sed
+
+run_prog ../netlink_inet_diag
+run_prog > /dev/null
+run_strace -a22 -yy -eclose,network $args > "$EXP"
+
+# Filter out close() calls made by ld.so and libc.
+sed -n '/socket/,$p' < "$LOG" > "$OUT"
+match_diff "$OUT" "$EXP"

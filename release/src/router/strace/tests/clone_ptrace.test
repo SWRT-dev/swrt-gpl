@@ -1,0 +1,24 @@
+#!/bin/sh -efu
+#
+# Check handling of CLONE_PTRACE'ed processes.
+#
+# Copyright (c) 2017-2020 The strace developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/init.sh"
+
+run_prog > /dev/null 3>&1
+args="-e trace=none ${1:---quiet=personality} $args"
+> "$LOG" || fail_ "failed to write $LOG"
+
+$STRACE -o "$LOG" $args > "$EXP" 2> "$OUT"-err 3> "$EXP"-err || {
+	msg="$STRACE $args failed with code $?"
+	cat "$OUT"-err "$LOG" >&2
+	fail_ "$msg"
+}
+
+cat "$OUT"-err >&2
+match_diff "$LOG" "$EXP"
+match_diff "$OUT"-err "$EXP"-err

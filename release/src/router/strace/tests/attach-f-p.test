@@ -1,0 +1,26 @@
+#!/bin/sh
+#
+# Check that -f -p attaches to threads properly.
+#
+# Copyright (c) 2016 Dmitry V. Levin <ldv@altlinux.org>
+# Copyright (c) 2016-2018 The strace developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/init.sh"
+
+run_prog_skip_if_failed \
+	kill -0 $$
+run_prog ../attach-f-p-cmd > /dev/null
+
+../set_ptracer_any sh -c "exec ../attach-f-p >> $EXP" > /dev/null &
+tracee_pid=$!
+
+while ! [ -s "$EXP" ]; do
+	kill -0 $tracee_pid 2> /dev/null ||
+		fail_ 'set_ptracer_any sh failed'
+done
+
+run_strace -a32 -f -echdir -p $tracee_pid ../attach-f-p-cmd > "$EXP"
+match_diff "$LOG" "$EXP"

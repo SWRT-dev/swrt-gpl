@@ -1,0 +1,20 @@
+#!/bin/sh
+#
+# Check that in interactive mode those signals that were blocked
+# at strace startup will remain blocked.
+#
+# Copyright (c) 2017-2018 The strace developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/init.sh"
+
+strace0="$STRACE"
+for signo in 1 2 3 13 14 15; do
+	blocksig="../block_reset_raise_run $signo"
+	run_prog $blocksig ../umovestr
+	STRACE="$blocksig $strace0"
+	run_strace -I2 -echdir ../umovestr
+	match_diff "$LOG" "$srcdir/umovestr.expected"
+done

@@ -1,0 +1,49 @@
+#!/bin/sh
+#
+# Ensure that strace does not retain stdin and stdout descriptors.
+#
+# Copyright (c) 2016 Dmitry V. Levin <ldv@altlinux.org>
+# Copyright (c) 2016-2020 The strace developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/init.sh"
+
+run_prog_skip_if_failed \
+	kill -0 $$
+
+check_prog sleep
+check_prog yes
+
+SLEEP_3_BITS="$SLEEP_A_BIT; $SLEEP_A_BIT; $SLEEP_A_BIT"
+> "$OUT"
+
+> lock1
+> lock2
+(
+	while [ -f lock1 ]; do
+		$SLEEP_A_BIT
+	done
+	yes
+	[ -f lock2 ] ||
+		printf ' input' >> "$OUT"
+) | $STRACE -qq -enone -esignal=none \
+	sh -c "exec <&- >&-; rm -f lock1; $SLEEP_3_BITS; rm -f lock2"
+
+> lock1
+> lock2
+$STRACE -qq -enone -esignal=none \
+	sh -c "exec <&- >&-; rm -f lock1; $SLEEP_3_BITS; rm -f lock2" |
+(
+	while [ -f lock1 ]; do
+		$SLEEP_A_BIT
+	done
+	cat > /dev/null
+	[ -f lock2 ] ||
+		printf ' output' >> "$OUT"
+)
+
+if [ -s "$OUT" ]; then
+	fail_ "$STRACE failed to redirect standard descriptors:$(cat "$OUT")"
+fi

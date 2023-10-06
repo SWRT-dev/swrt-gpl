@@ -1379,11 +1379,7 @@ ifneq ($(or $(RTN56U),$(DSLN55U)),y)
 obj-y += phddns
 endif
 
-ifeq ($(RTCONFIG_MUSL_LIBC),y)
-obj-$(RTCONFIG_STRACE) += strace-4.8
-else
 obj-$(RTCONFIG_STRACE) += strace
-endif
 
 obj-n += lsof
 obj-$(RTCONFIG_IPERF) += iperf
@@ -5144,10 +5140,6 @@ libbcm:
 libbcm-install:
 	install -D libbcm/libbcm.so $(INSTALLDIR)/libbcm/usr/lib/libbcm.so
 	$(STRIP) $(INSTALLDIR)/libbcm/usr/lib/libbcm.so
-
-strace-4.8-install:
-	install -D strace-4.8/strace $(INSTALLDIR)/strace-4.8/usr/sbin/strace
-	$(STRIP) $(INSTALLDIR)/strace-4.8/usr/sbin/strace
 
 lldpd-0.9.8: $(if $(RTCONFIG_AMAS),json-c libevent-2.0.21) jansson-2.7 lldpd-0.9.8/Makefile
 	$(MAKE) -C $@

@@ -1,0 +1,94 @@
+#!/bin/sh
+#
+# Ensure that strace can detach from stopped processes.
+#
+# Copyright (c) 2013-2015 Dmitry V. Levin <ldv@altlinux.org>
+# Copyright (c) 2014-2019 The strace developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/init.sh"
+. "${srcdir=.}/PTRACE_SEIZE.sh"
+
+run_prog_skip_if_failed \
+	kill -0 $$
+
+check_prog sleep
+
+trap - TERM
+sleep $TIMEOUT_DURATION &
+kill -TERM $!
+wait $!
+expected_rc=$?
+
+set -e
+
+> "$LOG"
+../set_ptracer_any sleep $((2*$TIMEOUT_DURATION)) > "$LOG" &
+
+while ! [ -s "$LOG" ]; do
+	kill -0 $! 2> /dev/null ||
+		fail_ 'set_ptracer_any sleep failed'
+	$SLEEP_A_BIT
+done
+
+tracee_pid=$!
+kill -STOP $tracee_pid
+
+cleanup()
+{
+	set +e
+	kill $tracee_pid
+	kill -CONT $tracee_pid
+	wait $tracee_pid 2> /dev/null
+	return 0
+}
+
+> "$LOG"
+$STRACE -p $tracee_pid 2> "$LOG" &
+
+while ! grep -F "Process $tracee_pid attached" "$LOG" > /dev/null; do
+	kill -0 $! 2> /dev/null || {
+		cleanup
+		dump_log_and_fail_with "$STRACE -p failed to attach"
+	}
+	$SLEEP_A_BIT
+done
+
+while ! grep -F -e '--- stopped by ' "$LOG" > /dev/null; do
+	kill -0 $! 2> /dev/null || {
+		cleanup
+		dump_log_and_fail_with "$STRACE -p missed stop notifications"
+	}
+	$SLEEP_A_BIT
+done
+
+kill -TERM $!
+wait $! && rc=0 || rc=$?
+
+grep -F "Process $tracee_pid detached" "$LOG" > /dev/null || {
+	cleanup
+	dump_log_and_fail_with "$STRACE -p failed to detach"
+}
+
+[ "$rc" = "$expected_rc" ] || {
+	cleanup
+	dump_log_and_fail_with "$STRACE -p failed to terminate itself"
+}
+
+if [ -f /proc/self/status ]; then
+	$SLEEP_A_BIT
+	test -d /proc/$tracee_pid || {
+		cleanup
+		dump_log_and_fail_with 'tracee died after detach'
+	}
+	grep_pid_status "$tracee_pid" '^State:.*T (stopped)' > /dev/null || {
+		grep_pid_status "$tracee_pid" '^State:'
+		cleanup
+		dump_log_and_fail_with 'tracee is not group-stopped after detach'
+	}
+fi
+
+cleanup
+exit 0

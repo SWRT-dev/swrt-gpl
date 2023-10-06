@@ -1,0 +1,14 @@
+#!/bin/sh
+#
+# Check brk syscall decoding.
+#
+# Copyright (c) 2016-2018 The strace developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/init.sh"
+
+run_prog > /dev/null
+run_strace -a10 -ebrk $args > "$EXP"
+match_grep "$LOG" "$EXP"

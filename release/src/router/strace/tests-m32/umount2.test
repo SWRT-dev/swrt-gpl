@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+# Check umount2 syscall decoding.
+#
+# Copyright (c) 2015-2018 The strace developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/init.sh"
+
+case "$STRACE_ARCH" in
+	alpha|ia64) syscall=umount ;;
+	*) syscall=umount2 ;;
+esac
+run_strace_match_diff -s7 -e trace=$syscall

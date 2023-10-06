@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+# Check that <unavailable> syscalls are filtered properly.
+#
+# Copyright (c) 2015-2018 The strace developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/init.sh"
+
+run_prog
+run_strace -qq -f -echdir -esignal=none $args
+match_diff
+
+exit 0

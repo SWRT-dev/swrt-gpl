@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+# Check rt_sigaction decoding.
+#
+# Copyright (c) 2017-2018 The strace developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/init.sh"
+
+run_prog
+run_strace -ert_sigaction $args
+match_awk
+
+exit 0

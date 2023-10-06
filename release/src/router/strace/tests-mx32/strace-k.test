@@ -1,0 +1,106 @@
+#!/bin/sh
+#
+# Ensure that strace -k works.
+#
+# Copyright (c) 2014 Masatake YAMATO <yamato@redhat.com>
+# Copyright (c) 2014-2016 Dmitry V. Levin <ldv@altlinux.org>
+# Copyright (c) 2014-2020 The strace developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/init.sh"
+
+: "${ATTACH_MODE=0}"
+
+# strace -k is implemented using /proc/$pid/maps
+[ -f /proc/self/maps ] ||
+	framework_skip_ '/proc/self/maps is not available'
+
+check_prog grep
+check_prog readlink
+check_prog sed
+check_prog tr
+
+path_to_sed="$(command -v sed)"
+if [ -x "$path_to_sed" ] &&
+   path_to_sed="$(readlink -ev -- "$path_to_sed")"; then
+	"$path_to_sed" -n 's/^[^/]\+[[:space:]]\(\/.*\)$/\1/p' /proc/self/maps |
+	grep -F -x -e "$path_to_sed" > /dev/null || {
+		cat >&2 /proc/self/maps
+		framework_skip_ '/proc/self/maps is invalid'
+	}
+fi
+
+run_prog "${test_prog=../stack-fcall}"
+
+if [ "x${ATTACH_MODE}" = "x1" ]; then
+	../set_ptracer_any "${test_prog}" >> "$EXP" &
+	tracee_pid=$!
+
+	while ! [ -s "$EXP" ]; do
+		kill -0 "$tracee_pid" 2> /dev/null ||
+			fail_ 'set_ptracer_any failed'
+	done
+
+	run_strace --trace=chdir --stack-trace --attach="$tracee_pid"
+else
+	run_strace -e chdir -k $args
+fi
+
+expected="$srcdir/$NAME.expected"
+awk '
+/^[^ ]/ {
+	if (out != "")
+		print out
+
+	syscall = gensub(/^([[:alnum:]_]+)\(.*/, "\\1", 1)
+	signal = gensub(/^--- ([A-Z]+) .*/, "\\1", 1)
+
+	if (syscall != $0) {
+		out = syscall
+		stop = 0
+	} else if (signal != $0) {
+		out = signal
+		stop = 0
+	} else {
+		out = ""
+	}
+}
+
+/^ >[^(]+\(([^+]+)\+0x[a-f0-9]+\) / && !stop {
+	sym = gensub(/^ >[^(]+\(([^+]+)\+0x[a-f0-9]+\) .*$/, "\\1", 1)
+	out = out " " sym
+	if (sym == "main")
+		stop = 1
+}' "$LOG" > "$OUT"
+
+LC_ALL=C grep -E -x -f "$expected" < "$OUT" > /dev/null || {
+	cat >&2 <<__EOF__
+Failed pattern of expected output:
+$(cat "$expected")
+Actual output:
+$(cat "$OUT")
+__EOF__
+
+	pattern=
+	case "$STRACE_ARCH" in
+		aarch64|i386|ppc*|s390*|sparc*|x32|x86*)
+			# These architectures are supported by elfutils libdw,
+			# see grep '\<HOOK\>.*\<abi_cfi\>' elfutils/backends
+			;;
+		arm) pattern='No DWARF information found'
+			# This is also supported by elfutils libdw
+			# but the latter needs debuginfo for unwinding.
+			;;
+		*) pattern='Unwinding not supported for this architecture'
+			;;
+	esac
+	if [ -n "$pattern" ] &&
+	   LC_ALL=C grep -x " > $pattern" < "$LOG" > /dev/null; then
+		cat < "$LOG" >&2
+		skip_ "stack tracing is not fully supported on $STRACE_ARCH yet"
+	fi
+
+	dump_log_and_fail_with "$STRACE $args output mismatch"
+}

@@ -1,0 +1,22 @@
+#!/bin/sh
+#
+# Check uname syscall decoding.
+#
+# Copyright (c) 2016-2018 The strace developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+. "${srcdir=.}/init.sh"
+
+check_prog uniq
+
+run_prog > /dev/null
+run_strace -v -euname $args > "$EXP"
+uniq < "$LOG" > "$OUT"
+
+run_prog "../$NAME" abbrev > /dev/null
+run_strace -euname $args >> "$EXP"
+uniq < "$LOG" >> "$OUT"
+
+match_diff "$OUT" "$EXP"
