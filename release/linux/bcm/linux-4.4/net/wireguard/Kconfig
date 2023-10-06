@@ -6,10 +6,10 @@ config WIREGUARD
 	select DST_CACHE
 	select CRYPTO
 	select CRYPTO_ALGAPI
-	select VFP if !CONFIG_PLAT_BCM5301X
-	select VFPv3 if CPU_V7 && !CONFIG_PLAT_BCM5301X
-	select NEON if CPU_V7 && !CONFIG_PLAT_BCM5301X
-	select KERNEL_MODE_NEON if CPU_V7 && !CONFIG_PLAT_BCM5301X
+	select VFP if !PLAT_BCM5301X
+	select VFPv3 if CPU_V7 && !PLAT_BCM5301X
+	select NEON if CPU_V7 && !PLAT_BCM5301X
+	select KERNEL_MODE_NEON if CPU_V7 && !PLAT_BCM5301X
 	default m
 	help
 	  WireGuard is a secure, fast, and easy to use replacement for IPsec

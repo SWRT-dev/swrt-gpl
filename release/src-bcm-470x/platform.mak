@@ -117,7 +117,7 @@ define platformKernelConfig
 	if [ "$(R7000P)" = "y" ] || [ "$(SBRAC3200P)" = "y" ] ; then \
 		sed -i "/CONFIG_DRAM_SIZE/d" $(1); \
 		echo "CONFIG_DRAM_SIZE=0x10000000" >>$(1); \
-	fi
+	fi; \
 	if [ "$(WIREGUARD)" = "y" ]; then \
 		echo "# CONFIG_CRYPTO_SHA1_ARM_NEON is not set" >>$(1); \
 		echo "# CONFIG_CRYPTO_SHA1_ARM_CE is not set" >>$(1); \
@@ -125,7 +125,7 @@ define platformKernelConfig
 		echo "# CONFIG_CRYPTO_AES_ARM_BS is not set" >>$(1); \
 		echo "# CONFIG_CRYPTO_AES_ARM_CE is not set" >>$(1); \
 		echo "# CONFIG_CRYPTO_GHASH_ARM_CE is not set" >>$(1); \
-	fi; \
+	fi;
 endef
 
 export PARALLEL_BUILD := -j$(shell grep -c '^processor' /proc/cpuinfo)
