@@ -3455,6 +3455,101 @@ void init_others(void)
 #if defined(R7000P)
 	r7000p_nvram_patch();
 #endif
+#if !defined(RTCONFIG_HND_ROUTER)
+	_dprintf("Overclocking started\n");
+
+	int rev = cpu_plltype();
+
+	if (rev < 7 || rev > 11)
+		return;		// unsupported
+
+	if (!nvram_get("bcm_overclock") || nvram_match("bcm_overclock", "") || !nvram_get("clkfreq") || nvram_match("clkfreq", ""))
+		return;
+	int i, set = 1;
+	int clk = nvram_get_int("bcm_overclock"), cclk;
+	char dup[10] = {0}, mem[4] = {0};
+	strlcpy(dup, nvram_safe_get("clkfreq"), sizeof(dup));
+
+	for (i = 0; i < strlen(dup); i++){
+		if (dup[i] == ','){
+			dup[i] = 0;
+			mem[0] = dup[i + 1];
+			mem[1] = dup[i + 2];
+			mem[2] = dup[i + 3];
+			break;
+		}
+	}
+	cclk = atoi(dup);
+
+	if (clk == cclk) {
+		_dprintf("clkfreq %d MHz identical with new setting\n", clk);
+		return;		// clock already set
+	}
+
+	if (rev == 7) {
+		switch (clk) {
+		case 600:
+		case 800:
+		case 1000:
+			break;
+		default:
+			set = 0;
+			break;
+		}
+	}else if (rev == 8) {
+		switch (clk) {
+		case 600:
+		case 800:
+		case 1000:
+		case 1200:
+		case 1400:
+			break;
+		default:
+			set = 0;
+			break;
+		}
+	}else if (rev == 9) {
+		switch (clk) {
+		case 600:
+		case 800:
+			break;
+		default:
+			set = 0;
+			break;
+		}
+	}else if (rev == 10) {
+		switch (clk) {
+		case 600:
+		case 800:
+		case 1000:
+			break;
+		default:
+			set = 0;
+			break;
+		}
+	}else if (rev == 11) {
+		switch (clk) {
+		case 600:
+		case 800:
+		case 900:
+			break;
+		default:
+			set = 0;
+			break;
+		}
+	}
+	if (set) {
+		_dprintf("clock frequency adjusted from %d to %d, reboot needed\n", cclk, clk);
+		if(mem[0])
+			snprintf(dup, sizeof(dup), "%d,%s", clk, mem);
+		else
+			snprintf(dup, sizeof(dup), "%d", clk);
+		nvram_set("clkfreq", dup);
+		nvram_commit();
+		fprintf(stderr, "Overclocking done, rebooting...\n");
+		reboot(RB_AUTOBOOT);
+	}
+#endif
 }
 #endif	// HND_ROUTER
 #endif	// RTCONFIG_BCMARM

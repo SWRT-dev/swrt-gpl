@@ -2559,3 +2559,53 @@ void gen_bcmbsd_def_policy(int sel)
 }
 
 #endif
+
+#if !defined(RTCONFIG_HND_ROUTER)
+int cpu_plltype(void)
+{
+	int chipid;
+	int chiprevision;
+	int packageoption;
+	FILE *fp = fopen("/proc/bcm_chipinfo", "rb");
+	if (!fp) {
+		return 9;
+	}
+	fscanf(fp, "%*s %X\n", &chipid);
+	fscanf(fp, "%*s %X\n", &chiprevision);
+	fscanf(fp, "%*s %X\n", &packageoption);
+	fclose(fp);
+	if (chipid == 53573)
+		return 11;
+	if (packageoption == 2) {
+		if (chipid == 53030)
+			return 10;	// 600 / 800 / 1000
+		else
+			return 9;	// 600 / 800
+
+	}
+	if (packageoption == 0) {
+		if (chipid == 53030)
+			return 8;	// 600 / 800 / 1000 / 1200 / 1400
+		else
+			return 7;	// 600 / 800 / 1000
+
+	}
+	return 9;
+}
+
+char *get_cpu_model(void)
+{
+	switch(cpu_plltype()){
+		case 7:
+			return "BCM4709";
+		case 8:
+			return "BCM4709C";
+		case 9:
+			return "BCM4708";
+		case 10:
+			return "BCM4708A";
+		case 11:
+			return "BCM47189";
+	}
+}
+#endif

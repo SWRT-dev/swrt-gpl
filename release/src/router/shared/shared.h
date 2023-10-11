@@ -4747,5 +4747,8 @@ enum {
 	EASYMESH_ROLE_AGENT
 };
 #endif
+#if defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER)
+extern int cpu_plltype(void);
+#endif
 #endif	/* !__SHARED_H__ */
 

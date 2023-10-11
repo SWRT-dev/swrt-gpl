@@ -329,6 +329,10 @@ int ej_wl_auth_psta(int eid, webs_t wp, int argc, char_t **argv);
 int ej_wl_pre_auth_psta(int eid, webs_t wp, int argc, char_t **argv);
 #endif
 
+#if defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER)
+int ej_cpu_plltype(int eid, webs_t wp, int argc, char_t **argv);
+#endif
+
 #if defined(RTCONFIG_USB) || defined(RTCONFIG_PERMISSION_MANAGEMENT)
 void not_ej_initial_folder_var_file();
 #endif
@@ -36852,6 +36856,9 @@ struct ej_handler ej_handlers[] = {
 	{ "radio_status", ej_radio_status},
 	{ "asus_sysinfo", ej_sysinfo},
 	{ "sysinfo", ej_show_sysinfo},
+#if defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER)
+	{ "cpu_plltype", ej_cpu_plltype},
+#endif
 #ifdef RTCONFIG_OPENVPN
 	{ "vpn_server_get_parameter", ej_vpn_server_get_parameter},
 	{ "vpn_client_get_parameter", ej_vpn_client_get_parameter},

@@ -6651,3 +6651,11 @@ loop_end:
 
 	return 0;
 }
+
+#if defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER)
+int ej_cpu_plltype(int eid, webs_t wp, int argc, char_t **argv)
+{
+	websWrite(wp, "%d", cpu_plltype());
+	return 0;
+}
+#endif

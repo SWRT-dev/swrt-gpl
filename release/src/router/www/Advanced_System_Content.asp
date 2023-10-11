@@ -394,6 +394,31 @@ function initial(){
 		$('select[name="usb_idle_enable"]').prop("disabled", false);
 		$('input[name="usb_idle_timeout"]').prop("disabled", false);
 	}
+	if(isSupport("bcm470x")){
+		var code = "";
+		var model = '<% cpu_plltype("null"); %>';
+		code +='<th>OverClock</th>';
+		code +='<td>';
+		code +='<select name="bcm_overclock" class="input_option">';
+		if(model == 7 || model == 8 || model == 9 || model == 10 || model == 11)
+			code +='<option value="600" <% nvram_match("bcm_overclock", "600","selected"); %>>600</option>';
+		if(model == 7 || model == 8 || model == 9 || model == 10 || model == 11)
+			code +='<option value="800" <% nvram_match("bcm_overclock", "800","selected"); %>>800</option>';
+		if(model == 11)
+			code +='<option value="900" <% nvram_match("bcm_overclock", "900","selected"); %>>900</option>';
+		if(model == 7 || model == 8 || model == 10)
+			code +='<option value="1000" <% nvram_match("bcm_overclock", "1000","selected"); %>>1000</option>';
+		if(model == 8)
+			code +='<option value="1200" <% nvram_match("bcm_overclock", "1200","selected"); %>>1200</option>';
+		if(model == 8)
+			code +='<option value="1400" <% nvram_match("bcm_overclock", "1400","selected"); %>>1400</option>';
+		code +='</select>';
+		code +='</td>';
+		document.getElementById("overclock_tr").innerHTML = code;
+		document.getElementById("overclock_tr").style.display = "";
+		document.form.bcm_overclock[0].disabled = false;
+		document.form.bcm_overclock[1].disabled = false;
+	}
 
 	$("#https_download_cert").css("display", (le_enable != "1" && orig_http_enable != "0")? "": "none");
 
@@ -614,6 +639,11 @@ function applyRule(){
 
 		if(pwrsave_support)
 			action_script_tmp += "pwrsave;";
+
+		if(isSupport("bcm470x")){
+			if ('<% nvram_get("bcm_overclock"); %>' != document.form.bcm_overclock.value)
+				needReboot = true;
+		}
 
 		if(needReboot){
 
@@ -2327,6 +2357,8 @@ function check_password_length(obj){
 						<input type="radio" name="uu_enable" class="input" value="1" <% nvram_match_x("", "uu_enable", "1", "checked"); %>><#checkbox_Yes#>
 						<input type="radio" name="uu_enable" class="input" value="0" <% nvram_match_x("", "uu_enable", "0", "checked"); %>><#checkbox_No#>
 					</td>
+				</tr>
+				<tr id="overclock_tr" style="display: none;">
 				</tr>
 				<tr id="pwrsave_tr">
 					<th align="right"><#usb_Power_Save_Mode#></th>
