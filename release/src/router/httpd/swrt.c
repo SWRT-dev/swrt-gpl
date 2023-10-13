@@ -670,11 +670,6 @@ static int dbapi_cgi(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg, char
 				snprintf(scPath, sizeof(scPath), "/jffs/softcenter/scripts/%s %d &", script, id);
 			}
 			doSystem(scPath);
-			json_object_put(idObj);
-			json_object_put(methodObj);
-			json_object_put(paramsObj);
-			json_object_put(fieldsObj);
-			json_object_put(arrayObj);
 			json_object_put(root);
 			dbclient_end(&client);
 			memset(scPath, 0, sizeof(scPath));
