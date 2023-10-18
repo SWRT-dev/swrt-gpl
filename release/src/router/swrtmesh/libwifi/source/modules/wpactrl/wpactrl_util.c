@@ -32,7 +32,8 @@
 #include <stdlib.h>
 #include <endian.h>
 #include <dirent.h>
-
+#include <netlink/genl/genl.h>
+#include <netlink/genl/ctrl.h>
 #include <easy/easy.h>
 #include "wifiutils.h"
 #include "wifi.h"
@@ -1510,7 +1511,7 @@ int hostapd_cli_ap_set_state(const char *ifname, bool up)
 		return -1;
 
 	if (up) {
-		if (strcmp(state, "ENABLED"))
+		if (strcmp(state, "ENABLED") && strcmp(state, "DFS"))
 			ret = hostapd_cli_set(ifname, "enable", true);
 		WARN_ON(hostapd_cli_set(ifname, "update_beacon", true));
 	} else {

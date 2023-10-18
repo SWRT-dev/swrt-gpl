@@ -23,7 +23,7 @@
 		system(info); \
 	} \
 })
-
+extern struct json_object *json_msg;
 ////////////////////////////////////////////////////////////////////////////////
 //
 //	EXTERNAL FUNCTIONS
@@ -33,17 +33,21 @@ SWRTMESH_FUNC int type_to_multi_ap(const char *type);
 SWRTMESH_FUNC struct uci_package *swrtmesh_uci_load_pkg(struct uci_context **ctx, const char *config);
 SWRTMESH_FUNC int swrtmesh_set_value(struct uci_context *ctx, struct uci_package *pkg, struct uci_section *section, const char *key, const char *value, enum uci_option_type type);
 SWRTMESH_FUNC int swrtmesh_set_value_by_string(const char *package, const char *section, const char *key, const char *value, enum uci_option_type type);
-SWRTMESH_FUNC int swrtmesh_get_value_by_string(const char *package, const char *section, const char *band, const char *key, char *value, size_t len);
+SWRTMESH_FUNC int swrtmesh_get_value_by_string(const char *package, const char *section, const char *key, char *value, size_t len);
+SWRTMESH_FUNC int swrtmesh_get_band_value_by_string(const char *package, const char *section, const char *band, const char *key, char *value, size_t len);
 SWRTMESH_FUNC bool swrtmesh_uci_set_option(char *package_name, char *section_type, char *search_key, char *search_val, char *option, char *value);
 SWRTMESH_FUNC struct uci_section *swrtmesh_config_get_section(struct uci_context *ctx, struct uci_package *pkg, const char *type, const char *key, const char *value);
 SWRTMESH_FUNC void swrtmesh_uci_add_option(struct uci_context *ctx, struct uci_package *p, struct uci_section *s, const char *option, void *value, bool is_list);
 SWRTMESH_FUNC void swrtmesh_uci_del_option(struct uci_context *ctx, struct uci_package *p, struct uci_section *s, const char *option);
+SWRTMESH_FUNC int swrtmesh_lookup_option_match(struct uci_context *ctx, struct uci_section *s, char *option, char *value);
 SWRTMESH_FUNC int swrtmesh_generate_controller_config(void);
 SWRTMESH_FUNC int swrtmesh_generate_agent_config(void);
 SWRTMESH_FUNC int swrtmesh_generate_wireless_config(void);
 SWRTMESH_FUNC int swrtmesh_generate_ieee1905_config(void);
 SWRTMESH_FUNC int swrtmesh_generate_topology_config(void);
 SWRTMESH_FUNC int swrtmesh_generate_hosts_config(void);
+SWRTMESH_FUNC int swrtmesh_ubus_call(char *path, char *method, char *message);
+SWRTMESH_FUNC int swrtmesh_ubus_list(const char *path);
 SWRTMESH_FUNC char *swrtmesh_utils_version_text(void);
 SWRTMESH_FUNC void swrtmesh_utils_set_debug(unsigned int enable);
 SWRTMESH_FUNC int swrtmesh_get_cost(char *ifname, int bandindex, int capability5g, char *ifmac, int *cost);

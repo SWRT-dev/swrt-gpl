@@ -57,7 +57,7 @@ int start_swrtmesh(void)
 	int idx;
 	pid_t pid;
 	char *ubusd_argv[] = { "ubusd", NULL };
-	char *ieee1905_argv[] = { "ieee1905d", "-o", "/tmp/ieee1905.log", NULL, NULL, NULL };
+	char *ieee1905_argv[] = { "ieee1905d", "-o", "/tmp/ieee1905.log", "--no-lo", NULL, NULL, NULL };
 	char *cntl_argv[] = { "mapcontroller", "-o", "/tmp/mapcontroller.log", NULL, NULL, NULL, NULL };
 	char *tp_argv[] = { "topologyd", NULL };
 //	char *swrtmeshd_argv[] = { "swrtmeshd", NULL };
@@ -73,7 +73,7 @@ int start_swrtmesh(void)
 	auto_generate_config();
 //	swrtmesh_resync_config();
 	_eval(ubusd_argv, NULL, 0, &pid);
-//	idx = 3;
+//	idx = 4;
 //	ieee1905_argv[idx] = "-f";
 //	idx++;
 //	ieee1905_argv[idx] = "-dddd";
@@ -85,7 +85,7 @@ int start_swrtmesh(void)
 //		cntl_argv[idx] = "-d";
 //		idx++;
 //		cntl_argv[idx] = "-vvvv";
-		swrtmesh_get_value_by_string("mapagent", "controller_select", NULL, "local", buf, sizeof(buf));
+		swrtmesh_get_value_by_string("mapagent", "controller_select", "local", buf, sizeof(buf));
 		if(!strcmp(buf, "0")){
 			idx++;
 			cntl_argv[idx] = "-w";

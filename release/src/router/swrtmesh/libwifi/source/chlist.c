@@ -949,9 +949,8 @@ int wifi_get_opclass_internal(enum wifi_regdomain reg, enum wifi_band b,
 	return -1;
 }
 
-int wifi_get_opclass_bw(const char *name, struct wifi_opclass *o, const enum wifi_bw *pbw)
+int wifi_get_opclass_bw(const char *name, enum wifi_band band, struct wifi_opclass *o, const enum wifi_bw *pbw)
 {
-	enum wifi_band band = BAND_5;
 	struct wifi_radio radio = {};
 	enum wifi_bw bw = BW20;
 	enum wifi_chan_ext ext = EXTCH_AUTO;
@@ -960,13 +959,11 @@ int wifi_get_opclass_bw(const char *name, struct wifi_opclass *o, const enum wif
 	char cc[4] = {0};
 	int ret = 0;
 
-	ret |= wifi_get_channel(name, &channel, &bw);
-	ret |= wifi_get_bandwidth(name, &bw);
+	ret |= wifi_get_band_channel(name, band, &channel, &bw);
 	ret |= wifi_get_country(name, cc);
-	ret |= wifi_get_oper_band(name, &band);
 
 	if (band == BAND_2) {
-		WARN_ON(wifi_radio_info(name, &radio));
+		WARN_ON(wifi_radio_info_band(name, band, &radio));
 		ext = radio.extch;
 	}
 
@@ -981,9 +978,17 @@ int wifi_get_opclass_bw(const char *name, struct wifi_opclass *o, const enum wif
 	return ret;
 }
 
+int wifi_get_band_opclass(const char *name, enum wifi_band band, struct wifi_opclass *o)
+{
+	return wifi_get_opclass_bw(name, band, o, NULL);
+}
+
 int wifi_get_opclass(const char *name, struct wifi_opclass *o)
 {
-	return wifi_get_opclass_bw(name, o, NULL);
+	enum wifi_band band = BAND_ANY;
+
+	wifi_get_oper_band(name, &band);
+	return wifi_get_band_opclass(name, band, o);
 }
 
 int wifi_opclass_to_channels(uint32_t opclass, int *num, uint32_t *channels)
@@ -1020,11 +1025,19 @@ int wifi_opclass_to_channels(uint32_t opclass, int *num, uint32_t *channels)
 	return 0;
 }
 
-int wifi_get_opclass_ht20(const char *name, struct wifi_opclass *o)
+int wifi_get_band_opclass_ht20(const char *name, enum wifi_band band, struct wifi_opclass *o)
 {
 	enum wifi_bw bw = BW20;
 
-	return wifi_get_opclass_bw(name, o, &bw);
+	return wifi_get_opclass_bw(name, band, o, &bw);
+}
+
+int wifi_get_opclass_ht20(const char *name, struct wifi_opclass *o)
+{
+	enum wifi_band band = BAND_ANY;
+
+	wifi_get_oper_band(name, &band);
+	return wifi_get_band_opclass_ht20(name, band, o);
 }
 
 int wifi_get_supported_opclass_internal(enum wifi_regdomain reg,
@@ -1078,7 +1091,7 @@ int wifi_get_supported_opclass_internal(enum wifi_regdomain reg,
 	return 0;
 }
 
-static int _radio_get_supported_opclass(const char *name, int *num, struct wifi_opclass *o)
+static int _radio_get_supported_opclass(const char *name, enum wifi_band band, int *num, struct wifi_opclass *o)
 {
 	uint32_t bands = 0;
 	enum wifi_bw bw = BW20;
@@ -1089,7 +1102,11 @@ static int _radio_get_supported_opclass(const char *name, int *num, struct wifi_
 	if (*num <= 0)
 		return -1;
 
-	ret |= wifi_get_supp_band(name, &bands);
+	if (band == BAND_ANY)
+		ret |= wifi_get_supp_band(name, &bands);
+	else
+		bands = band;
+
 	wifi_get_bandwidth(name, &bw);
 	ret |= wifi_get_country(name, cc);
 
@@ -1100,7 +1117,7 @@ static int _radio_get_supported_opclass(const char *name, int *num, struct wifi_
 	return ret;
 }
 
-int wifi_get_sideband(const char *name, enum wifi_chan_ext *sideband)
+int wifi_get_band_sideband(const char *name, enum wifi_band band, enum wifi_chan_ext *sideband)
 {
 	int ht40plus[] = { 36, 44, 52, 60, 100, 108, 116, 124, 132, 149, 157, 184, 192 };
 	enum wifi_chan_ext ext = EXTCH_NONE;
@@ -1108,7 +1125,7 @@ int wifi_get_sideband(const char *name, enum wifi_chan_ext *sideband)
 	uint32_t channel = 0;
 	int i;
 
-	if (WARN_ON(wifi_get_channel(name, &channel, &bw)))
+	if (WARN_ON(wifi_get_band_channel(name, band, &channel, &bw)))
 		return -1;
 
 	libwifi_dbg("[%s] %s channel %d bw %d\n", name, __func__, channel, bw);
@@ -1141,6 +1158,11 @@ int wifi_get_sideband(const char *name, enum wifi_chan_ext *sideband)
 
 	*sideband = ext;
 	return 0;
+}
+
+int wifi_get_sideband(const char *name, enum wifi_chan_ext *sideband)
+{
+	return wifi_get_band_sideband(name, BAND_ANY, sideband);
 }
 
 bool wifi_is_dfs_channel(const char *name, int channel, int bandwidth)
@@ -1918,7 +1940,7 @@ static int radio_update_opclass_channels(const char *name, struct wifi_opclass *
 	return (opclass_ch_num ? 0 : -1);
 }
 
-int wifi_get_supported_opclass(const char *name, int *num_opclass, struct wifi_opclass *o)
+int wifi_get_band_supported_opclass(const char *name, enum wifi_band band, int *num_opclass, struct wifi_opclass *o)
 {
 	struct chan_entry channel[64];
 	int channel_num = ARRAY_SIZE(channel);
@@ -1943,11 +1965,11 @@ int wifi_get_supported_opclass(const char *name, int *num_opclass, struct wifi_o
 	max = *num_opclass;
 	*num_opclass = 0;
 
-	ret = wifi_get_supp_bandwidths(name, &supp_bw);
+	ret = wifi_get_band_supp_bandwidths(name, band, &supp_bw);
 	if (WARN_ON(ret))
 		return ret;
 
-	ret = wifi_channels_info(name, channel, &channel_num);
+	ret = wifi_channels_info_band(name, band, channel, &channel_num);
 	if (WARN_ON(ret))
 		return ret;
 
@@ -1957,7 +1979,7 @@ int wifi_get_supported_opclass(const char *name, int *num_opclass, struct wifi_o
 		return -1;
 
 	rd_num_opclass = max;
-	ret  = _radio_get_supported_opclass(name, &rd_num_opclass, rd_opclass);
+	ret  = _radio_get_supported_opclass(name, band, &rd_num_opclass, rd_opclass);
 	if (WARN_ON(ret))
 		goto end;
 
@@ -1986,20 +2008,20 @@ end:
 	return ret;
 }
 
-bool wifi_is_dfs_usable(const char *name, int chan, enum wifi_bw bw)
+bool wifi_is_dfs_usable(const char *name, enum wifi_band band, int chan, enum wifi_bw bw)
 {
 	struct chan_entry channel[64];
 	int channel_num = ARRAY_SIZE(channel);
 	int ret;
 
-	ret = wifi_channels_info(name, channel, &channel_num);
+	ret = wifi_channels_info_band(name, band, channel, &channel_num);
 	if (WARN_ON(ret))
 		return false;
 
 	return radio_opclass_dfs_usable(chan, bw, channel, channel_num);
 }
 
-int wifi_get_opclass_pref(const char *name, int *num_opclass, struct wifi_opclass *o)
+int wifi_get_band_opclass_pref(const char *name, enum wifi_band band, int *num_opclass, struct wifi_opclass *o)
 {
 	struct chan_entry channel[64];
 	int channel_num = ARRAY_SIZE(channel);
@@ -2026,11 +2048,11 @@ int wifi_get_opclass_pref(const char *name, int *num_opclass, struct wifi_opclas
 	max = *num_opclass;
 	*num_opclass = 0;
 
-	ret = wifi_get_supp_bandwidths(name, &supp_bw);
+	ret = wifi_get_band_supp_bandwidths(name, band, &supp_bw);
 	if (WARN_ON(ret))
 		return ret;
 
-	ret = wifi_channels_info(name, channel, &channel_num);
+	ret = wifi_channels_info_band(name, band, channel, &channel_num);
 	if (WARN_ON(ret))
 		return ret;
 
@@ -2042,7 +2064,7 @@ int wifi_get_opclass_pref(const char *name, int *num_opclass, struct wifi_opclas
 		return -1;
 
 	rd_num_opclass = max;
-	ret  = _radio_get_supported_opclass(name, &rd_num_opclass, rd_opclass);
+	ret  = _radio_get_supported_opclass(name, band, &rd_num_opclass, rd_opclass);
 	if (WARN_ON(ret))
 		goto end;
 
@@ -2066,4 +2088,14 @@ int wifi_get_opclass_pref(const char *name, int *num_opclass, struct wifi_opclas
 end:
 	free(rd_opclass);
 	return ret;
+}
+
+int wifi_get_supported_opclass(const char *name, int *num_opclass, struct wifi_opclass *o)
+{
+	return wifi_get_band_supported_opclass(name, BAND_ANY, num_opclass, o);
+}
+
+int wifi_get_opclass_pref(const char *name, int *num_opclass, struct wifi_opclass *o)
+{
+	return wifi_get_band_opclass_pref(name, BAND_ANY, num_opclass, o);
 }

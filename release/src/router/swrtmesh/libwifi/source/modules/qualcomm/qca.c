@@ -82,10 +82,18 @@ int radio_simulate_radar(const char *name, struct wifi_radar_args *radar)
 	return qca_simulate_radar_debugfs(name, radar);
 }
 
+static int radio_is_multiband(const char *ifname, bool *res)
+{
+	/* Report early without NL80211 calls */
+	*res = true;
+	return 0;
+}
+
 const struct wifi_driver qca_driver = {
 	.name = "wlan,phy",
 
 	/* Radio/phy callbacks */
+	.radio.is_multiband = radio_is_multiband,
 	.simulate_radar = radio_simulate_radar,
 
 	/* Interface/vif common callbacks */

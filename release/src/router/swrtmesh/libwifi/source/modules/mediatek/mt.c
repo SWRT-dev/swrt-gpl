@@ -34,11 +34,11 @@
 #include <dirent.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <linux/ethtool.h>
-#include <linux/sockios.h>
 #include <errno.h>
 #include <ctype.h>
 #include <linux/limits.h>
+#include <linux/nl80211.h>
+#include <netlink/genl/genl.h>
 
 #include <easy/easy.h>
 #include "wifi.h"
@@ -47,6 +47,53 @@
 #include "debug.h"
 #include "drivers.h"
 
+#ifdef MT7915_VENDOR_EXT
+#include "mt7915/vendor.h"
+#endif
+
+static int mt76_simulate_radar_debugfs(const char *phyname, struct wifi_radar_args *radar)
+{
+	char path[512] = {};
+	int fd;
+	int char_num;
+
+	char_num = snprintf(path, sizeof(path), "/sys/kernel/debug/ieee80211/%s/mt76/radar_trigger", phyname);
+	if (WARN_ON(char_num < 0))
+		return -1;
+
+	if (WARN_ON(char_num >= (int)sizeof(path)))
+		return -1;
+
+	fd = open(path, O_WRONLY);
+	if (WARN_ON(fd < 0))
+		return -1;
+
+	/* Trigger radar
+	 * echo 1 > /sys/kernel/debug/ieee80211/phy1/mt76/radar_trigger
+	 */
+	if (!write(fd, "1", 1)) {
+		close(fd);
+		return -1;
+	}
+
+	close(fd);
+	return 0;
+}
+
+int radio_simulate_radar(const char *name, struct wifi_radar_args *radar)
+{
+	if (WARN_ON(!radar))
+		return -1;
+
+	libwifi_dbg("[%s] %s called ch:%d, bandwidth:%d, type:0x%x, subband:0x%x\n",
+		    name, __func__, radar->channel, radar->bandwidth, radar->type,
+		    radar->subband_mask);
+
+	return mt76_simulate_radar_debugfs(name, radar);
+}
+
+
+#if defined(MT_USE_ETHTOOL_STATS) || !defined(MT7915_VENDOR_EXT)
 /* Statistics available via SIOCETHTOOL */
 enum {
 	ET_TX_BYTES = 0,
@@ -303,7 +350,7 @@ static int radio_get_stats(const char *name, struct wifi_radio_stats *s)
 
 	libwifi_dbg("[%s] %s called\n", name, __func__);
 
-	if (nlwifi_get_phy_wifi_ifaces(name, ifaces, &num) < 0) {
+	if (nlwifi_get_phy_wifi_ifaces(name, BAND_ANY, ifaces, &num) < 0) {
 		libwifi_dbg("Failed to get list of interfaces of %s\n", name);
 		return -1;
 	}
@@ -344,46 +391,278 @@ static int radio_get_stats(const char *name, struct wifi_radio_stats *s)
 	return 0;
 }
 
-static int mt76_simulate_radar_debugfs(const char *phyname, struct wifi_radar_args *radar)
+#else /* !MT_USE_ETHTOOL_STATS */
+
+struct wifi_iface_common_stats {
+       WIFI_IF_COMMON_STATS
+};
+
+static int
+read_int_from_file(const char *fmt, ...)
 {
-	char path[512] = {};
-	int fd;
-	int char_num;
+	char str[PATH_MAX], *tmp;
+	va_list  ap;
+	FILE    *f;
+	int      res;
 
-	char_num = snprintf(path, sizeof(path), "/sys/kernel/debug/ieee80211/%s/mt76/radar_trigger", phyname);
-	if (WARN_ON(char_num < 0))
+	va_start(ap, fmt);
+	vsnprintf(str, sizeof(str), fmt, ap);
+	va_end(ap);
+
+	if ((f = fopen(str, "r")) == NULL)
 		return -1;
 
-	if (WARN_ON(char_num >= (int)sizeof(path)))
+	tmp = fgets(str, sizeof(str), f);
+	fclose(f);
+	if (tmp == NULL)
 		return -1;
 
-	fd = open(path, O_WRONLY);
-	if (WARN_ON(fd < 0))
+	res = strtol(str, &tmp, 10);
+	if (tmp == str || (*tmp != 0 && !isspace(*tmp)))
 		return -1;
 
-	/* Trigger radar
-	 * echo 1 > /sys/kernel/debug/ieee80211/phy1/mt76/radar_trigger
-	 */
-	if (!write(fd, "1", 1)) {
-		close(fd);
-		return -1;
+	return res;
+}
+
+static int iface_to_phy_index(const char *ifname)
+{
+	return read_int_from_file("/sys/class/net/%s/phy80211/index", ifname);
+}
+
+static int phy_name_to_index(const char *phyname)
+{
+	return read_int_from_file("/sys/class/ieee80211/%s/index", phyname);
+}
+
+static int if_stats_cb(struct nl_msg *msg, struct wifi_iface_common_stats *s,
+						int sta)
+{
+	struct wifi_sta_ifstats *ifst = (struct wifi_sta_ifstats *)s;
+	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+	struct nlattr *tb[NL80211_ATTR_MAX + 1];
+	struct nlattr *nl_resp, *nl_iter;
+	int iter = 0;
+
+	nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
+			genlmsg_attrlen(gnlh, 0), NULL);
+
+	nl_resp = tb[NL80211_ATTR_VENDOR_DATA];
+	if (!nl_resp) {
+		return NL_SKIP;
 	}
 
-	close(fd);
+	nla_for_each_nested(nl_iter, nl_resp, iter) {
+		switch (nla_type(nl_iter))
+		{
+#define GET_ATTR(_attr, _field) \
+		case MTK_VENDOR_ATTR_IFSTATS_DUMP_##_attr: \
+			s->_field = *(uint64_t *)nla_data(nl_iter); break
+
+			GET_ATTR(TX_BYTES, tx_bytes);
+			GET_ATTR(RX_BYTES, rx_bytes);
+			GET_ATTR(TX_PKTS, tx_pkts);
+			GET_ATTR(RX_PKTS, rx_pkts);
+			GET_ATTR(TX_ERR_PKTS, tx_err_pkts);
+			GET_ATTR(TX_RTX_PKTS, tx_rtx_pkts);
+			GET_ATTR(TX_RTX_FAIL_PKTS, tx_rtx_fail_pkts);
+			GET_ATTR(TX_RETRY_PKTS, tx_retry_pkts);
+			GET_ATTR(TX_MRETRY_PKTS, tx_mretry_pkts);
+			GET_ATTR(ACK_FAIL_PKTS, ack_fail_pkts);
+			GET_ATTR(AGGR_PKTS, aggr_pkts);
+			GET_ATTR(RX_ERR_PKTS, rx_err_pkts);
+			GET_ATTR(TX_UCAST_PKTS, tx_ucast_pkts);
+			GET_ATTR(RX_UCAST_PKTS, rx_ucast_pkts);
+			GET_ATTR(TX_DROPPED_PKTS, tx_dropped_pkts);
+			GET_ATTR(RX_DROPPED_PKTS, rx_dropped_pkts);
+			GET_ATTR(TX_MCAST_PKTS, tx_mcast_pkts);
+			GET_ATTR(RX_MCAST_PKTS,rx_mcast_pkts);
+			GET_ATTR(TX_BCAST_PKTS, tx_bcast_pkts);
+			GET_ATTR(RX_BCAST_PKTS, rx_bcast_pkts);
+			GET_ATTR(RX_UNKNOWN_PKTS, rx_unknown_pkts);
+			GET_ATTR(TX_BUF_OVERFLOW, tx_buf_overflow);
+			GET_ATTR(TX_STA_NOT_ASSOC, tx_sta_not_assoc);
+			GET_ATTR(TX_FRAGS, tx_frags);
+			GET_ATTR(TX_NO_ACK_PKTS, tx_no_ack_pkts);
+			GET_ATTR(RX_DUP_PKTS, rx_dup_pkts);
+			GET_ATTR(RX_TOO_LONG_PKTS, tx_too_long_pkts);
+			GET_ATTR(TX_TOO_SHORT_PKTS, tx_too_short_pkts);
+			GET_ATTR(UCAST_ACK, ucast_ack);
+#undef GET_ATTR
+#define GET_ATTR(_attr, _field, _type) \
+		case MTK_VENDOR_ATTR_IFSTATS_DUMP_##_attr: \
+			if (sta) { \
+				ifst->_field = (_type)(*(uint64_t *)nla_data(nl_iter)); \
+			} \
+			break
+
+			GET_ATTR(LAST_DL_RATE, last_dl_rate, uint32_t);
+			GET_ATTR(LAST_UL_RATE, last_ul_rate, uint32_t);
+			GET_ATTR(SIGNAL, signal, int8_t);
+			GET_ATTR(RETRANS_100, retrans_100, uint8_t);
+			default: break;
+#undef GET_ATTR
+		}
+	}
+
+	return NL_SKIP;
+}
+
+
+static int apif_stats_cb(struct nl_msg *msg, void *arg)
+{
+	return if_stats_cb(msg, arg, 0);
+}
+
+static int staif_stats_cb(struct nl_msg *msg, void *arg)
+{
+	return if_stats_cb(msg, arg, 1);
+}
+
+static int if_get_stats(const char *ifname, struct wifi_iface_common_stats *s,
+							void *cb)
+{
+	int ifindex = if_nametoindex(ifname), pindex;
+	struct nl_msg *msg = NULL;
+	struct nl_sock *nl;
+
+	memset(s, 0, sizeof(*s));
+
+	if (ifindex == 0) {
+		libwifi_dbg("Failed to find interface %s\n", ifname);
+		return 0;
+	}
+
+	if ((pindex = iface_to_phy_index(ifname)) < 0) {
+		libwifi_dbg("Failed to find phy for interface %s\n", ifname);
+		return 0;
+	}
+
+	nl = nlwifi_socket();
+	if (!nl)
+		return 0;
+
+	msg = nlwifi_alloc_msg(nl, NL80211_CMD_VENDOR, NLM_F_DUMP, 0);
+	if (!msg)
+		goto nla_put_failure;
+
+	NLA_PUT_U32(msg, NL80211_ATTR_VENDOR_ID, pindex);
+	NLA_PUT_U32(msg, NL80211_ATTR_VENDOR_ID, MTK_NL80211_VENDOR_ID);
+	NLA_PUT_U32(msg, NL80211_ATTR_VENDOR_SUBCMD,
+				MTK_NL80211_VENDOR_SUBCMD_IFSTATS);
+	NLA_PUT_U32(msg, NL80211_ATTR_WIPHY, pindex);
+	NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, ifindex);
+
+	nlwifi_send_msg(nl, msg, cb, s);
+
+nla_put_failure:
+	if (msg != NULL)
+		nlmsg_free(msg);
+	nl_socket_free(nl);
 	return 0;
 }
 
-int radio_simulate_radar(const char *name, struct wifi_radar_args *radar)
+static int apif_get_stats(const char *ifname, struct wifi_ap_stats *s)
 {
-	if (WARN_ON(!radar))
-		return -1;
-
-	libwifi_dbg("[%s] %s called ch:%d, bandwidth:%d, type:0x%x, subband:0x%x\n",
-		    name, __func__, radar->channel, radar->bandwidth, radar->type,
-		    radar->subband_mask);
-
-	return mt76_simulate_radar_debugfs(name, radar);
+	return if_get_stats(ifname, (struct wifi_iface_common_stats *)s,
+						apif_stats_cb);
 }
+
+static int staif_get_stats(const char *ifname, struct wifi_sta_ifstats *s)
+{
+	return if_get_stats(ifname, (struct wifi_iface_common_stats *)s,
+								staif_stats_cb);
+}
+
+static int radio_stats_cb(struct nl_msg *msg, void *arg)
+{
+	struct wifi_radio_stats *s = arg;
+	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+	struct nlattr *tb[NL80211_ATTR_MAX + 1];
+	struct nlattr *nl_resp, *nl_iter;
+	int iter = 0;
+
+	nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
+			genlmsg_attrlen(gnlh, 0), NULL);
+
+	nl_resp = tb[NL80211_ATTR_VENDOR_DATA];
+	if (!nl_resp) {
+		return NL_SKIP;
+	}
+
+	nla_for_each_nested(nl_iter, nl_resp, iter) {
+		switch (nla_type(nl_iter))
+		{
+#define GET_ATTR(_attr, _field, _type) \
+		case MTK_VENDOR_ATTR_RSTATS_DUMP_##_attr: \
+			s->_field = *(uint##_type##_t *)nla_data(nl_iter); break
+			GET_ATTR(CTS_RCVD, cts_rcvd, 64);
+			GET_ATTR(CTS_NOT_RCVD, cts_not_rcvd, 64);
+			GET_ATTR(RX_FRAME_ERR_PKTS, rx_frame_err_pkts, 64);
+			GET_ATTR(RX_GOOG_PLCP_PKTS, rx_good_plcp_pkts, 64);
+			GET_ATTR(RX_OMAC_DATA_PKTS, omac_data_pkts, 64);
+			GET_ATTR(RX_OMAC_MGMT_PKTS, omac_mgmt_pkts, 64);
+			GET_ATTR(RX_OMAC_CTRL_PKTS, omac_ctrl_pkts, 64);
+			GET_ATTR(RX_OMAC_CTS, omac_cts, 64);
+			GET_ATTR(RX_OMAC_RTS, omac_rts, 64);
+			GET_ATTR(TX_BYTES, tx_bytes, 64);
+			GET_ATTR(RX_BYTES, rx_bytes, 64);
+			GET_ATTR(TX_PKTS, tx_pkts, 64);
+			GET_ATTR(RX_PKTS, rx_pkts, 64);
+			GET_ATTR(TX_ERR_PKTS, tx_err_pkts, 32);
+			GET_ATTR(RX_ERR_PKTS, rx_err_pkts, 32);
+			GET_ATTR(TX_DROPPED_PKTS, tx_dropped_pkts, 32);
+			GET_ATTR(RX_DROPPED_PKTS, rx_dropped_pkts, 32);
+			GET_ATTR(RX_PLCP_ERR_PKTS, rx_plcp_err_pkts, 32);
+			GET_ATTR(RX_FCS_ERR_PKTS, rx_fcs_err_pkts, 32);
+			GET_ATTR(RX_MAC_ERR_PKTS, rx_mac_err_pkts, 32);
+			GET_ATTR(RX_UNKNOWN_PKTS, rx_unknown_pkts, 32);
+			GET_ATTR(NOISE, noise, 16);
+			
+			default: break;
+		}
+#undef GET_ATTR
+	}
+
+	return NL_SKIP;
+}
+
+static int radio_get_stats(const char *name, struct wifi_radio_stats *s)
+{
+	int pindex = phy_name_to_index(name);
+	struct nl_msg *msg = NULL;
+	struct nl_sock *nl;
+
+	memset(s, 0, sizeof(*s));
+
+	if (pindex < 0) {
+		libwifi_dbg("Failed to find phy %s\n", name);
+		return 0;
+	}
+
+	nl = nlwifi_socket();
+	if (!nl)
+		return 0;
+
+	msg = nlwifi_alloc_msg(nl, NL80211_CMD_VENDOR, NLM_F_DUMP, 0);
+	if (!msg)
+		goto nla_put_failure;
+
+	NLA_PUT_U32(msg, NL80211_ATTR_VENDOR_ID, pindex);
+	NLA_PUT_U32(msg, NL80211_ATTR_VENDOR_ID, MTK_NL80211_VENDOR_ID);
+	NLA_PUT_U32(msg, NL80211_ATTR_VENDOR_SUBCMD,
+				MTK_NL80211_VENDOR_SUBCMD_RSTATS);
+	NLA_PUT_U32(msg, NL80211_ATTR_WIPHY, pindex);
+
+	nlwifi_send_msg(nl, msg, radio_stats_cb, s);
+
+nla_put_failure:
+	if (msg != NULL)
+		nlmsg_free(msg);
+	nl_socket_free(nl);
+	return 0;
+}
+
+#endif
 
 const struct wifi_driver mt_driver = {
 	.name = "wlan,phy",
@@ -397,9 +676,13 @@ const struct wifi_driver mt_driver = {
 
 	/* Interface/vif ap callbacks */
 
-	.iface.get_stats = iface_get_stats,
+	.iface.get_stats = apif_get_stats,
 
 	/* Interface/vif sta callbacks */
+
+#ifndef MT_USE_ETHTOOL_STATS
+	.iface.sta_get_ifstats = staif_get_stats,
+#endif
 
 	/* use fallback driver ops */
 	.fallback = &mac80211_driver,

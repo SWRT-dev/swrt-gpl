@@ -55,6 +55,9 @@ int wifi_oper_stds_set_from_ie(uint8_t *beacon_ies, size_t beacon_ies_len, uint8
 int wifi_ssid_advertised_set_from_ie(uint8_t *ies, size_t ies_len, bool *ssid_advertised);
 int wifi_apload_set_from_ie(uint8_t *ies, size_t ies_len, struct wifi_ap_load *load);
 
+const char * wifi_band_to_str(enum wifi_band band);
+const char * wifi_bw_to_str(enum wifi_bw bw);
+
 #ifndef BIT
 #define BIT(n)	(1U << (n))
 #endif

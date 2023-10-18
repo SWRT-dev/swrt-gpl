@@ -1014,7 +1014,7 @@ else ifeq ($(RTCONFIG_BCMARM),y)
 OBJS += $(if $(wildcard sysdeps/broadcom/easymesh-broadcom.c),easymesh-broadcom.o,prebuild/easymesh-broadcom.o)
 endif
 else ifeq ($(RTCONFIG_SWRTMESH),y)
-LDFLAGS += -L$(STAGEDIR)/usr/lib -lubox -lblobmsg_json -luci -lswrtmesh
+LDFLAGS += -L$(STAGEDIR)/usr/lib -lubus -lubox -lblobmsg_json -luci -ljson-c -lswrtmesh
 CFLAGS += -I$(TOP)/shared/sysdeps/swrtmesh -I$(STAGEDIR)/usr/include
 OBJS += hostapd_helper.o swrtmesh.o
 ifeq ($(RTCONFIG_RALINK),y)

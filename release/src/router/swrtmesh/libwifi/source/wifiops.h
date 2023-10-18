@@ -40,9 +40,20 @@
  *	@param[out] radio  radio array
  *	@param[out] num   number of entries in radio array
  *
+ * <b>int (*is_multiband)(const char *name, bool *res).</b>\n
+ *	@brief            Check if multiband radio.
+ *	@param[in] name   radio interface name
+ *	@param[out] res   result
+ *
  * <b>int (*info)(const char *name, struct wifi_radio *radio).</b>\n
  *	@brief            Get information about the radio interface.
  *	@param[in] name   radio interface name
+ *	@param[out] radio struct wifi_radio
+ *
+ * <b>int (*info_band)(const char *name, enum wifi_band band, struct wifi_radio *radio).</b>\n
+ *	@brief            Get information about the radio interface.
+ *	@param[in] name   radio interface name
+ *	@param[in] band   radio band - multiband case
  *	@param[out] radio struct wifi_radio
  *
  * <b>int (*get_supp_band)(const char *name, uint32_t *bands)</b>\n
@@ -65,14 +76,32 @@
  *	@param[in] name   radio interface name
  *	@param[out] caps  capabilities struct wifi_caps
  *
+ * <b>int (*get_band_caps)(const char *name, enum wifi_band band, struct wifi_caps *caps)</b>\n
+ *	@brief            Get WiFi radio capabilities.
+ *	@param[in] name   radio interface name
+ *	@param[in] band   radio band
+ *	@param[out] caps  capabilities struct wifi_caps
+ *
  * <b>int (*get_supp_stds)(const char *name, uint8_t *std)</b>\n
  *	@brief            Get WiFi supported standards.
  *	@param[in] name   radio interface name
  *	@param[out] std   bitmap of #enum wifi_std
  *
+ * <b>int (*get_band_supp_stds)(const char *name, enum wifi_band band, uint8_t *std)</b>\n
+ *	@brief            Get WiFi supported standards.
+ *	@param[in] name   radio interface name
+ *	@param[in] band   radio band
+ *	@param[out] std   bitmap of #enum wifi_std
+ *
  * <b>int (*get_oper_stds)(const char *name, uint8_t *std)</b>\n
  *	@brief            Get WiFi operational standards.
  *	@param[in] name   radio interface name
+ *	@param[out] std   bitmap of enum wifi_std
+ *
+ * <b>int (*get_band_oper_stds)(const char *name, enum wifi_band band, uint8_t *std)</b>\n
+ *	@brief            Get WiFi operational standards.
+ *	@param[in] name   radio interface name
+ *	@param[in] band   radio band
  *	@param[out] std   bitmap of enum wifi_std
  *
  * <b>int (*get_country)(const char *name, char *alpha2)</b>\n
@@ -89,6 +118,13 @@
  * <b>int (*get_channel)(const char *ifname, uint32_t *channel, enum wifi_bw *bw)</b>\n
  *	@brief              Get operating channel information.
  *	@param[in] ifname   radio interface name
+ *	@param[out] channel primary control channel
+ *	@param[out] bw      channel bandwidth
+ *
+ * <b>int (*get_band_channel)(const char *ifname, enum wifi_band band, uint32_t *channel, enum wifi_bw *bw)</b>\n
+ *	@brief              Get operating channel information.
+ *	@param[in] ifname   radio interface name
+ *	@param[in] band     radio band
  *	@param[out] channel primary control channel
  *	@param[out] bw      channel bandwidth
  *
@@ -125,10 +161,26 @@
  *	@param[out] num     number of operating classes supported
  *	@param[out] o       array of struct wifi_opclass elements
  *
+ * <b>int (*get_band_supp_opclass)(const char *name, enum wifi_band band,
+ *				   int *num, struct wifi_opclass *o)</b>\n
+ *	@brief              Get supported operating classes.
+ *	@param[in] name     radio interface name
+ *	@param[in] band     radio band
+ *	@param[out] num     number of operating classes supported
+ *	@param[out] o       array of struct wifi_opclass elements
+ *
  * <b>int (*get_curr_opclass)(const char *name, int *num,
  *						struct wifi_opclass *o)</b>\n
  *	@brief              Get current operating class(es).
  *	@param[in] name     radio interface name
+ *	@param[out] num     number of current operating classes
+ *	@param[out] o       array of struct wifi_opclass elements
+ *
+ * <b>int (*get_band_curr_opclass)(const char *name, enum wifi_band band,
+ *				   int *num, struct wifi_opclass *o)</b>\n
+ *	@brief              Get current operating class(es).
+ *	@param[in] name     radio interface name
+ *	@param[in] band     radio band
  *	@param[out] num     number of current operating classes
  *	@param[out] o       array of struct wifi_opclass elements
  *
@@ -142,9 +194,21 @@
  *	@param[i] name     radio interface name
  *      @param[out] bws    bitmask of supported BWs
  *
+ * <b>int (*get_band_supp_bandwidths)(const char *name, enum wifi_band band, uint32_t *bws)</b>\n
+ *	@brief             Get supported bandwidths
+ *	@param[i] name     radio interface name
+ *	@param[i] band     radio band
+ *      @param[out] bws    bitmask of supported BWs
+ *
  * <b>int (*get_maxrate)(const char *name, unsigned long *rate)</b>\n
  *	@brief             Get maximum supported phy rate.
  *	@param[in] name    radio interface name
+ *	@param[out] rate   rate in Mbps
+ *
+ * <b>int (*get_band_maxrate)(const char *name, enum wifi_band band, unsigned long *rate)</b>\n
+ *	@brief             Get maximum supported phy rate.
+ *	@param[in] name    radio interface name
+ *	@param[in] band    radio band
  *	@param[out] rate   rate in Mbps
  *
  * <b>int (*get_basic_rates)(const char *name, int *num, uint32_t *rates)</b>\n
@@ -168,6 +232,12 @@
  * <b>int (*get_stats)(const char *ifname, struct wifi_radio_stats *s)</b>\n
  *	@brief             Get radio statistics.
  *	@param[in] ifname  radio interface name
+ *	@param[out] s      radio stats and counters
+ *
+ * <b>int (*get_band_stats)(const char *ifname, enum wifi_band band, struct wifi_radio_stats *s)</b>\n
+ *	@brief             Get radio statistics.
+ *	@param[in] ifname  radio interface name
+ *	@param[in] band    radio band
  *	@param[out] s      radio stats and counters
  *
  * <b>int (*scan)(const char *name, struct scan_param *p)</b>\n
@@ -196,6 +266,12 @@
  * <b>int (*get_noise)(const char *ifname, int *noise);
  *	@brief             Get current noise value.
  *	@param[in] name    radio interface name
+ *	@param[out] noise  noise value in dBm
+ *
+ * <b>int (*get_band_noise)(const char *ifname, enum wifi_band band, int *noise);
+ *	@brief             Get current noise value.
+ *	@param[in] name    radio interface name
+ *	@param[in] band    radio band
  *	@param[out] noise  noise value in dBm
  *
  * <b>int (*acs)(const char *name, struct acs_param *p)</b>\n
@@ -245,6 +321,13 @@
  *	@param[out] iface  array of channels
  *	@param[out] num    number of entries in channel array
  *
+ * <b>int (*channels_info_band)(const char *name, enum wifi_band band, struct chan_entry *channel, int *num)</b>\n
+ *	@brief             Get current channels info.
+ *	@param[in] name    radio interface name
+ *	@param[in] band    radio band
+ *	@param[out] iface  array of channels
+ *	@param[out] num    number of entries in channel array
+ *
  * <b>int (*start_cac)(const char *name, int channel, enum wifi_bw bw,
  *					enum wifi_cac_method method)</b>\n
  *	@brief             Start CAC (channel availability check).
@@ -264,23 +347,37 @@
  *	@param[out] opclass array of opclass/channels
  *	@param[in/out] num  number of entries in opclass array
  *
+ * <b>int (*get_band_opclass_preferences)(const char *name, enum wifi_band band,
+ *					  struct wifi_opclass *opclass, int *num);</b>\n
+ *	@brief              Get prefered opclass/channels
+ *	@param[in] name     radio interface name
+ *	@param[in] band     radio band
+ *	@param[out] opclass array of opclass/channels
+ *	@param[in/out] num  number of entries in opclass array
+ *
  * <b>int (*simulate_radar)(const char *name, struct wifi_radar_args *radar)</b>\n
  *	@brief             Trigger radar detection event.
  *	@param[in] name    radio interface name
  *	@param[in] radar   simulated radar parameters
  */
 struct wifi_radio_ops {
+	int (*is_multiband)(const char *name, bool *res);
 	int (*info)(const char *name, struct wifi_radio *radio);
+	int (*info_band)(const char *name, enum wifi_band band, struct wifi_radio *radio);
 	int (*get_supp_band)(const char *name, uint32_t *bands);
 	int (*get_oper_band)(const char *name, enum wifi_band *band);
 	int (*get_ifstatus)(const char *name, ifstatus_t *f);
 	int (*get_caps)(const char *name, struct wifi_caps *caps);
+	int (*get_band_caps)(const char *name, enum wifi_band band, struct wifi_caps *caps);
 	int (*get_supp_stds)(const char *name, uint8_t *std);
+	int (*get_band_supp_stds)(const char *name, enum wifi_band band, uint8_t *std);
 	int (*get_oper_stds)(const char *name, uint8_t *std);
+	int (*get_band_oper_stds)(const char *name, enum wifi_band band, uint8_t *std);
 
 	int (*get_country)(const char *name, char *alpha2);
 	int (*get_countrylist)(const char *name, char *cc, int *num);
 	int (*get_channel)(const char *ifname, uint32_t *channel, enum wifi_bw *bw);
+	int (*get_band_channel)(const char *ifname, enum wifi_band band, uint32_t *channel, enum wifi_bw *bw);
 	int (*set_channel)(const char *ifname, uint32_t channel, enum wifi_bw bw);
 	int (*get_supp_channels)(const char *name, uint32_t *chlist, int *num,
 			const char *alpha2, enum wifi_band f, enum wifi_bw b);
@@ -289,16 +386,22 @@ struct wifi_radio_ops {
 
 	int (*get_supp_opclass)(const char *name, int *num_opclass,
 						struct wifi_opclass *o);
+	int (*get_band_supp_opclass)(const char *name, enum wifi_band band,
+				     int *num_opclass, struct wifi_opclass *o);
 
 	int (*get_curr_opclass)(const char *name, struct wifi_opclass *o);
+	int (*get_band_curr_opclass)(const char *name, enum wifi_band band, struct wifi_opclass *o);
 
 	int (*get_bandwidth)(const char *name, enum wifi_bw *bw);
 	int (*get_supp_bandwidths)(const char *name, uint32_t *bws);
+	int (*get_band_supp_bandwidths)(const char *name, enum wifi_band band, uint32_t *bws);
 	int (*get_maxrate)(const char *name, unsigned long *rate_Mbps);
+	int (*get_band_maxrate)(const char *name, enum wifi_band band, unsigned long *rate_Mbps);
 	int (*get_basic_rates)(const char *name, int *num, uint32_t *rates_kbps);
 	int (*get_oper_rates)(const char *name, int *num, uint32_t *rates_kbps);
 	int (*get_supp_rates)(const char *name, int *num, uint32_t *rates);
 	int (*get_stats)(const char *ifname, struct wifi_radio_stats *s);
+	int (*get_band_stats)(const char *ifname, enum wifi_band band, struct wifi_radio_stats *s);
 
 	int (*scan)(const char *name, struct scan_param *p);
 	int (*scan_ex)(const char *ifname, struct scan_param_ex *sp);
@@ -307,6 +410,7 @@ struct wifi_radio_ops {
 						struct wifi_bss_detail *b);
 
 	int (*get_noise)(const char *ifname, int *noise);
+	int (*get_band_noise)(const char *ifname, enum wifi_band band, int *noise);
 
 	int (*acs)(const char *name, struct acs_param *p);
 
@@ -320,12 +424,15 @@ struct wifi_radio_ops {
 	int (*list_iface)(const char *name, struct iface_entry *iface, int *num);
 
 	int (*channels_info)(const char *name, struct chan_entry *channel, int *num);
+	int (*channels_info_band)(const char *name, enum wifi_band band, struct chan_entry *channel, int *num);
 
 	int (*start_cac)(const char *name, int channel, enum wifi_bw bw,
 			 enum wifi_cac_method method);
 	int (*stop_cac)(const char *name);
 	int (*get_opclass_preferences)(const char *name, struct wifi_opclass *opclass,
 				       int *num);
+	int (*get_band_opclass_preferences)(const char *name, enum wifi_band band,
+					    struct wifi_opclass *opclass, int *num);
 	int (*simulate_radar)(const char *name, struct wifi_radar_args *radar);
 };
 
@@ -613,6 +720,14 @@ struct wifi_radio_ops {
  *	@param[in] ifname  interface name
  *	@param[in] sta     macaddress of the STA
  *
+ * <b>int (*get_mlo_links)(const char *ifname, enum wifi_band band,
+ *			   struct wifi_mlo_link *link, int *num)</b>\n
+ *	@brief              Get MLO links we have inside netdev.
+ *	@param[in] ifname   interface name
+ *	@param[in] band     requested/used band
+ *      @param[out] link    table of wifi_mlo_link
+ *      @param[in|out] num  array size, number of mlo links
+ *
  * <b>int (*sta_info)(const char *ifname, struct wifi_sta *sta)</b>\n
  *	@brief             Get detailed STA information
  *	@param[in] ifname  interface name
@@ -633,6 +748,10 @@ struct wifi_radio_ops {
  *	@param[in] ifname  interface name
  *	@param[in] reason  disconnection reason code as in IEEE802.11 Std.
  *
+ * <b>int (*sta_get_ifstats)(const char *ifname, struct wifi_sta_ifstats *s)</b>\n
+ *	@brief             Get statistics of the interface in STA mode
+ *	@param[in] ifname  interface name
+ *	@param[out] s      wifi_sta_ifstats structure
  */
 struct wifi_iface_ops {
 	/*
@@ -665,7 +784,8 @@ struct wifi_iface_ops {
 	int (*get_4addr_parent)(const char *ifname, char *parent);
 	int (*set_vlan)(const char *ifname, struct vlan_param vlan);
 	int (*link_measure)(const char *ifname, uint8_t *sta);
-
+	int (*get_mlo_links)(const char *ifname, enum wifi_band band,
+			     struct wifi_mlo_link *link, int *num);
 
 	/*
 	 * ap interface ops
@@ -715,6 +835,7 @@ struct wifi_iface_ops {
 	int (*sta_get_stats)(const char *ifname, struct wifi_sta_stats *s);
 	int (*sta_get_ap_info)(const char *ifname, struct wifi_bss *info);
 	int (*sta_disconnect_ap)(const char *ifname, uint32_t reason);
+	int (*sta_get_ifstats)(const char *ifname, struct wifi_sta_ifstats *s);
 };
 
 /** struct wifi_metainfo - meta information about wifi module */
@@ -793,6 +914,7 @@ struct wifi_driver {
 #define link_measure		IFACE_OP(link_measure)
 #define mbo_disallow_assoc	IFACE_OP(mbo_disallow_assoc)
 #define ap_set_state		IFACE_OP(ap_set_state)
+#define get_mlo_links		IFACE_OP(get_mlo_links)
 
 
 /* List of the APIs this library provides */
@@ -801,17 +923,23 @@ int wifi_driver_info(const char *name, struct wifi_metainfo *info);
 
 /* WiFi radio APIs */
 int wifi_radio_list(struct radio_entry *radio, int *num);
+int wifi_radio_is_multiband(const char *ifname, bool *res);
 int wifi_radio_info(const char *name, struct wifi_radio *radio);
+int wifi_radio_info_band(const char *ifname, enum wifi_band band, struct wifi_radio *info);
 int wifi_get_supp_band(const char *name, uint32_t *bands);
 int wifi_get_oper_band(const char *name, enum wifi_band *band);
 int wifi_radio_get_ifstatus(const char *ifname, ifstatus_t *f);
 int wifi_radio_get_caps(const char *name, struct wifi_caps *caps);
+int wifi_radio_get_band_caps(const char *name, enum wifi_band band, struct wifi_caps *caps);
 int wifi_get_supp_stds(const char *name, uint8_t *std);
+int wifi_get_band_supp_stds(const char *name, enum wifi_band band, uint8_t *std);
 int wifi_get_oper_stds(const char *name, uint8_t *std);
+int wifi_get_band_oper_stds(const char *name, enum wifi_band band, uint8_t *std);
 
 int wifi_get_country(const char *name, char *alpha2);
 int wifi_get_countrylist(const char *name, char *cc, int *num);
 int wifi_get_channel(const char *ifname, uint32_t *channel, enum wifi_bw *bw);
+int wifi_get_band_channel(const char *ifname, enum wifi_band band, uint32_t *channel, enum wifi_bw *bw);
 int wifi_set_channel(const char *ifname, uint32_t channel, enum wifi_bw bw);
 int wifi_get_supp_channels(const char *name, uint32_t *chlist, int *num,
 			   const char *alpha2, enum wifi_band f, enum wifi_bw b);
@@ -820,16 +948,22 @@ int wifi_get_oper_channels(const char *name, uint32_t *chlist, int *num,
 
 int wifi_get_supp_opclass(const char *name, int *num_opclass,
 			  struct wifi_opclass *o);
+int wifi_get_band_supp_opclass(const char *name, enum wifi_band band,
+			       int *num_opclass, struct wifi_opclass *o);
 
 int wifi_get_curr_opclass(const char *name, struct wifi_opclass *o);
+int wifi_get_band_curr_opclass(const char *name, enum wifi_band band, struct wifi_opclass *o);
 
 int wifi_get_bandwidth(const char *name, enum wifi_bw *bw);
 int wifi_get_supp_bandwidths(const char *name, uint32_t *bws);
+int wifi_get_band_supp_bandwidths(const char *name, enum wifi_band band, uint32_t *bws);
 int wifi_get_maxrate(const char *name, unsigned long *rate);
+int wifi_get_band_maxrate(const char *name, enum wifi_band band, unsigned long *rate);
 int wifi_radio_get_basic_rates(const char *name, int *num, uint32_t *rates);
 int wifi_radio_get_oper_rates(const char *name, int *num, uint32_t *rates);
 int wifi_radio_get_supp_rates(const char *name, int *num, uint32_t *rates);
 int wifi_radio_get_stats(const char *ifname, struct wifi_radio_stats *s);
+int wifi_radio_get_band_stats(const char *ifname, enum wifi_band band, struct wifi_radio_stats *s);
 
 int wifi_scan(const char *name, struct scan_param *p);
 int wifi_scan_ex(const char *ifname, struct scan_param_ex *sp);
@@ -838,6 +972,7 @@ int wifi_get_bss_scan_result(const char *name, uint8_t *bssid,
 			     struct wifi_bss_detail *b);
 
 int wifi_get_noise(const char *ifname, int *noise);
+int wifi_get_band_noise(const char *ifname, enum wifi_band band, int *noise);
 
 int wifi_acs(const char *name, struct acs_param *p);
 
@@ -851,12 +986,15 @@ int wifi_del_iface(const char *name, const char *ifname);
 int wifi_list_iface(const char *name, struct iface_entry *iface, int *num);
 
 int wifi_channels_info(const char *name, struct chan_entry *channel, int *num);
+int wifi_channels_info_band(const char *name, enum wifi_band band, struct chan_entry *channel, int *num);
 
 int wifi_start_cac(const char *name, int channel, enum wifi_bw bw,
 		   enum wifi_cac_method method);
 int wifi_stop_cac(const char *name);
 int wifi_get_opclass_preferences(const char *name, struct wifi_opclass *opclass,
 				 int *num);
+int wifi_get_band_opclass_preferences(const char *name, enum wifi_band band,
+				      struct wifi_opclass *opclass, int *num);
 int wifi_simulate_radar(const char *name, struct wifi_radar_args *radar);
 
 /** WiFi interface APIs */
@@ -887,6 +1025,7 @@ int wifi_get_4addr(const char *ifname, bool *enabled);
 int wifi_get_4addr_parent(const char *ifname, char *parent);
 int wifi_set_vlan(const char *ifname, struct vlan_param vlan);
 int wifi_link_measure(const char *ifname, uint8_t *sta);
+int wifi_get_mlo_links(const char *ifname, enum wifi_band band, struct wifi_mlo_link *link, int *num);
 
 
 /* WiFi AP interface specific APIs */
@@ -932,6 +1071,7 @@ int wifi_sta_info(const char *ifname, struct wifi_sta *sta);
 int wifi_sta_get_stats(const char *ifname, struct wifi_sta_stats *s);
 int wifi_sta_get_ap_info(const char *ifname, struct wifi_bss *info);
 int wifi_sta_disconnect_ap(const char *ifname, uint32_t reason);
+int wifi_sta_get_stats_ex(const char *ifname, struct wifi_sta_ifstats *s);
 
 
 /* WiFi events */
@@ -980,6 +1120,7 @@ int wifi_get_valid_channels(const char *ifname, enum wifi_band b,
 
 /** Get current operating class of the wifi radio */
 int wifi_get_opclass(const char *name, struct wifi_opclass *o);
+int wifi_get_band_opclass(const char *name, enum wifi_band band, struct wifi_opclass *o);
 
 /** Get list of channels for a global opclass */
 int wifi_opclass_to_channels(uint32_t opclass, int *num, uint32_t *channels);
@@ -994,6 +1135,8 @@ int wifi_get_supported_opclass(const char *name, int *num_opclass,
 /** Get list of preferred operating classes */
 int wifi_get_opclass_pref(const char *name, int *num_opclass,
 			  struct wifi_opclass *o);
+int wifi_get_band_opclass_pref(const char *name, enum wifi_band band,
+			       int *num_opclass, struct wifi_opclass *o);
 
 /** Get sideband base on ctrl channel and bw */
 int wifi_get_sideband(const char *name, enum wifi_chan_ext *sideband);

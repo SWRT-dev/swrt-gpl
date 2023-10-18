@@ -1273,12 +1273,6 @@ int wifi_oper_stds_set_from_ie(uint8_t *ies, size_t ies_len, uint8_t *std)
 		}
 	}
 
-	if (ds && ds[1] == 1) {
-		channel = ds[2];
-	} else {
-		return -1;
-	}
-
 	*std = 0;
 
 	if (eht_cap)
@@ -1287,23 +1281,38 @@ int wifi_oper_stds_set_from_ie(uint8_t *ies, size_t ies_len, uint8_t *std)
 	if (he_cap)
 		*std |= WIFI_AX;
 
+	if (vht_cap)
+		*std |= WIFI_AC;
+
 	if (ht_cap)
 		*std |= WIFI_N;
 
-	if (!band6_cap) {
-		if (channel >= 36) {
-			*std |= WIFI_A;
+	if (brate)
+		*std |= WIFI_B;
 
-			if (vht_cap)
-				*std |= WIFI_AC;
+	if (grate)
+		*std |= WIFI_G;
+
+	if (ds && ds[1] == 1 && !band6_cap) {
+		channel = ds[2];
+
+		if (channel >= 1 && channel <= 14) {
+			/* 2.4GHz */
+			*std &= ~(WIFI_A | WIFI_AC);
+
+			if (grate)
+				*std |= WIFI_G;
+		 } else {
+			/* 5GHz */
+			*std &= ~(WIFI_G | WIFI_B);
+
+			if (grate)
+				*std |= WIFI_A;
 		}
-
-		if (channel < 15 && brate)
-			*std |= WIFI_B;
-
-		if (channel < 15 && grate)
-			*std |= WIFI_G;
 	}
+
+	if (band6_cap)
+		*std &= ~(WIFI_G | WIFI_A | WIFI_B | WIFI_AC);
 
 	return 0;
 }
@@ -1338,3 +1347,44 @@ int wifi_apload_set_from_ie(uint8_t *ies, size_t ies_len, struct wifi_ap_load *l
 	}
 	return 0;
 }
+
+#define C2S(x) case x: return #x
+const char * wifi_band_to_str(enum wifi_band band)
+{
+        switch (band) {
+        C2S(BAND_2);
+        C2S(BAND_5);
+        C2S(BAND_DUAL);
+        C2S(BAND_6);
+        C2S(BAND_60);
+        C2S(BAND_UNII_1);
+        C2S(BAND_UNII_2);
+        C2S(BAND_UNII_3);
+        C2S(BAND_UNII_4);
+        C2S(BAND_UNII_5);
+        C2S(BAND_UNII_6);
+        C2S(BAND_UNII_7);
+        C2S(BAND_UNII_8);
+        C2S(BAND_UNKNOWN);
+        C2S(BAND_ANY);
+	default:
+		return "unknown";
+	}
+}
+
+const char * wifi_bw_to_str(enum wifi_bw bw)
+{
+	switch (bw) {
+	C2S(BW20);
+	C2S(BW40);
+	C2S(BW80);
+	C2S(BW160);
+	C2S(BW_AUTO);
+	C2S(BW8080);
+	C2S(BW320);
+	C2S(BW_UNKNOWN);
+	default:
+		return "unknown";
+	}
+}
+#undef C2S

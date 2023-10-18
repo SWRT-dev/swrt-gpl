@@ -44,6 +44,18 @@
 
 #define C2S(x) case x: return #x;
 
+struct radio_data {
+	const char *phyname;
+	enum wifi_band band;
+	struct wifi_radio *radio;
+};
+
+struct caps_data {
+	const char *phyname;
+	enum wifi_band band;
+	struct wifi_caps *caps;
+};
+
 struct channels_data {
 	int num;
 	int max;
@@ -73,13 +85,65 @@ struct survey_data {
 	int num;
 	int max;
 	struct survey_entry *survey_entry;
+	enum wifi_band band;
+};
+
+struct mlo_links_data {
+	const char *ifname;
+	enum wifi_band band;
+	int num;
+	int max;
+	struct wifi_mlo_link *link;
 };
 
 static int nlwifi_get_survey(const char *name, struct survey_data *survey_data);
 static int nlwifi_get_phy(const char *name, char *phy, size_t phy_size);
 static int nlwifi_get_supp_channels_cb(struct nl_msg *msg, void *data);
 
-int nlwifi_get_phy_wifi_ifaces(const char *name, struct wifi_iface* iface, uint8_t *num_iface)
+static enum wifi_band nlwifi_band_to_wifi_band(enum nl80211_band nlband)
+{
+	enum wifi_band band;
+
+	switch (nlband) {
+	case NL80211_BAND_2GHZ:
+		band = BAND_2;
+		break;
+	case NL80211_BAND_5GHZ:
+		band = BAND_5;
+		break;
+	case NL80211_BAND_6GHZ:
+		band = BAND_6;
+		break;
+	default:
+		band = BAND_UNKNOWN;
+		break;
+	}
+
+	return band;
+}
+
+static enum wifi_bw nlwifi_width_to_wifi_bw(enum nl80211_chan_width nlwidth)
+{
+	switch (nlwidth) {
+	case NL80211_CHAN_WIDTH_80:
+		return BW80;
+	case NL80211_CHAN_WIDTH_40:
+		return BW40;
+	case NL80211_CHAN_WIDTH_20:
+	case NL80211_CHAN_WIDTH_20_NOHT:
+		return BW20;
+	case NL80211_CHAN_WIDTH_160:
+		return BW160;
+	case NL80211_CHAN_WIDTH_80P80:
+		return BW8080;
+	case NL80211_CHAN_WIDTH_320:
+		return BW320;
+	default:
+		return BW_UNKNOWN;
+	}
+}
+
+int nlwifi_get_phy_wifi_ifaces(const char *name, enum wifi_band band, struct wifi_iface* iface, uint8_t *num_iface)
 {
 	char path[256];
 	char phy[16];
@@ -90,7 +154,7 @@ int nlwifi_get_phy_wifi_ifaces(const char *name, struct wifi_iface* iface, uint8
 	size_t i = 0;
 	uint8_t if_max = *num_iface;
 
-	libwifi_dbg("[%s] %s called\n", name, __func__);
+	libwifi_dbg("[%s, %s] %s called\n", name, wifi_band_to_str(band), __func__);
 
 	if (WARN_ON(nlwifi_get_phy(name, phy, sizeof(phy))))
 		return -1;
@@ -113,6 +177,10 @@ int nlwifi_get_phy_wifi_ifaces(const char *name, struct wifi_iface* iface, uint8
 		if (strcmp(phy, netdevphy))
 			continue;
 
+		nlwifi_iface_get_band(p->d_name, &iface[i].band);
+		if (band && band != BAND_ANY && band != iface[i].band)
+			continue;
+
 		memset(iface[i].name, 0, 16);
 		memcpy(iface[i].name, p->d_name, 15);
 		nlwifi_get_mode(p->d_name, &iface[i].mode);
@@ -130,20 +198,22 @@ int nlwifi_phy_to_netdev(const char *phy, char *netdev, size_t size)
 	return nlwifi_phy_to_netdev_with_type(phy, netdev, size, NLWIFI_MODE_ANY);
 }
 
-int nlwifi_phy_to_netdev_with_type(const char *phy, char *netdev, size_t size, uint32_t type)
+int nlwifi_phy_to_netdev_with_type_and_band(const char *phy, char *netdev, size_t size, uint32_t type, enum wifi_band band)
 {
 	char path[512];
 	char rphy[256] = {};
 	char netdevphy[256] = {0};
 	struct dirent *p;
+	bool found = false;
 	int ret = -1;
 	DIR *d;
 	ifstatus_t ifstatus = 0;
 	enum wifi_mode mode;
+	enum wifi_band b;
 
 	memset(netdev, 0, size);
 
-	if (type == NLWIFI_MODE_ANY && !strstr(phy, "phy")) {
+	if (type == NLWIFI_MODE_ANY && band == BAND_ANY && !strstr(phy, "phy")) {
 		/* Assume we get correct netdev */
 		strncpy(netdev, phy, size);
 		return 0;
@@ -174,9 +244,9 @@ int nlwifi_phy_to_netdev_with_type(const char *phy, char *netdev, size_t size, u
 		if (strcmp(rphy, netdevphy))
 			continue;
 
-		if (type == NLWIFI_MODE_ANY) {
+		if (type == NLWIFI_MODE_ANY && band == BAND_ANY) {
 			strncpy(netdev, p->d_name, size);
-			ret = 0;
+			found = true;
 			break;
 		}
 
@@ -184,18 +254,42 @@ int nlwifi_phy_to_netdev_with_type(const char *phy, char *netdev, size_t size, u
 		if (WARN_ON(ret))
 			continue;
 
+		ret = nlwifi_iface_get_band(p->d_name, &b);
+		if (WARN_ON(ret))
+			continue;
+
+		if (band != BAND_ANY && b != band)
+			continue;
+
 		if (((type & NLWIFI_MODE_AP) && (mode == WIFI_MODE_AP)) ||
 		    (((type & NLWIFI_MODE_STA) && (mode == WIFI_MODE_STA)))) {
 			strncpy(netdev, p->d_name, size);
-			ret = 0;
+			found = true;
 			break;
 		}
-		ret = -1;
+
+		if (type == NLWIFI_MODE_ANY && b == band) {
+			strncpy(netdev, p->d_name, size);
+			found = true;
+			break;
+		}
 	}
 	closedir(d);
 
-	libwifi_dbg("[%s, %s] %s type %d ret %d [%s]\n", phy, rphy, __func__, type, ret, netdev);
+	ret = found ? 0 : -1;
+
+	libwifi_dbg("[%s, %s] %s type %d band %s ret %d [%s]\n", phy, rphy, __func__, type, wifi_band_to_str(band), ret, netdev);
 	return ret;
+}
+
+int nlwifi_phy_to_netdev_with_type(const char *phy, char *netdev, size_t size, uint32_t type)
+{
+        return nlwifi_phy_to_netdev_with_type_and_band(phy, netdev, size, type, BAND_ANY);
+}
+
+int nlwifi_phy_to_netdev_with_band(const char *phy, char *netdev, size_t size, enum wifi_band band)
+{
+        return nlwifi_phy_to_netdev_with_type_and_band(phy, netdev, size, NLWIFI_MODE_ANY, band);
 }
 
 static int nlwifi_get_phy(const char *name, char *phy, size_t phy_size)
@@ -255,7 +349,7 @@ static enum wifi_band ieee80211_frequency_to_band(int freq)
 {
 	enum wifi_band band;
 
-	if (freq < 5000)
+	if (freq > 2407 && freq < 5000)
 		band = BAND_2;
 	else if (freq > 5000 && freq < 5950)
 		band = BAND_5;
@@ -312,7 +406,7 @@ static int phy_nametoindex(const char *name)
 	return atoi(buf);
 }
 
-static struct nl_sock *nlwifi_socket(void)
+struct nl_sock *nlwifi_socket(void)
 {
 	struct nl_sock *nl;
 
@@ -376,7 +470,7 @@ static int nlwifi_no_seq_check(struct nl_msg *msg, void *arg)
 	return NL_OK;
 }
 
-static int nlwifi_send_msg(struct nl_sock *nl, struct nl_msg *msg,
+int nlwifi_send_msg(struct nl_sock *nl, struct nl_msg *msg,
 			int (*cmd_resp_handler)(struct nl_msg *, void *),
 			void *cmd_resp_data)
 {
@@ -1069,6 +1163,107 @@ int nlwifi_get_channel_freq(const char *ifname, uint32_t *control_freq)
 	return ret;
 }
 
+int nlwifi_iface_get_band(const char *netdev, enum wifi_band *band)
+{
+	uint32_t freq;
+	int ret;
+
+	ret = nlwifi_get_channel_freq(netdev, &freq);
+	if (WARN_ON(ret))
+		return ret;
+
+	*band = ieee80211_frequency_to_band(freq);
+	return ret;
+}
+
+static int nlwifi_get_mlo_links_cb(struct nl_msg *msg, void *data)
+{
+	struct nlattr *tb[NL80211_ATTR_MAX + 1];
+	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+	struct mlo_links_data *links = data;
+	struct wifi_mlo_link *l;
+	struct nlattr *link;
+	int n;
+
+	libwifi_err("[%s] %s called\n", links->ifname, __func__);
+	nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
+			genlmsg_attrlen(gnlh, 0), NULL);
+
+	links->num = 0;
+	if (!tb[NL80211_ATTR_IFNAME])
+		return NL_SKIP;
+
+	if (!tb[NL80211_ATTR_MLO_LINKS])
+		return NL_SKIP;
+
+	nla_for_each_nested(link, tb[NL80211_ATTR_MLO_LINKS], n) {
+		struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
+		uint32_t freq;
+		uint32_t width;
+
+		nla_parse_nested(tb_msg, NL80211_ATTR_MAX, link, NULL);
+		if (!tb_msg[NL80211_ATTR_MLO_LINK_ID] &&
+		    !tb_msg[NL80211_ATTR_MAC] &&
+		    !tb_msg[NL80211_ATTR_WIPHY_FREQ])
+			continue;
+
+		if (links->num >= links->max)
+			break;
+
+		l = &links->link[links->num];
+		freq = nla_get_u32(tb_msg[NL80211_ATTR_WIPHY_FREQ]);
+
+		if (tb_msg[NL80211_ATTR_CHANNEL_WIDTH])
+			width = nla_get_u32(tb_msg[NL80211_ATTR_CHANNEL_WIDTH]);
+		else
+			width = 20;
+
+		l->id =  nla_get_u32(tb_msg[NL80211_ATTR_MLO_LINK_ID]);
+		l->channel = wifi_freq_to_channel(freq);
+		l->band = ieee80211_frequency_to_band(freq);
+		l->bandwidth = nlwifi_width_to_wifi_bw(width);
+		memcpy(l->macaddr, nla_data(tb_msg[NL80211_ATTR_MAC]), 6);
+
+		/* Check if specyfic band requested */
+		if (links->band != BAND_ANY && links->band != l->band) {
+			libwifi_dbg("[%s] %s skip link id %u (%u vs %u)\n", links->ifname,
+				    __func__, l->id, links->band, l->band);
+			continue;
+		}
+
+		links->num++;
+	}
+
+	return NL_SKIP;
+}
+
+int nlwifi_get_mlo_links(const char *ifname, enum wifi_band band,
+			 struct wifi_mlo_link *link, int *num)
+{
+	struct mlo_links_data data = {
+		.ifname = ifname,
+		.band = band,
+		.max = *num,
+		.link = link,
+	};
+
+	struct nlwifi_ctx ctx = {
+		.cmd = NL80211_CMD_GET_INTERFACE,
+		.cb = nlwifi_get_mlo_links_cb,
+		.data = &data,
+	};
+	int ret;
+
+	ret = nlwifi_cmd(ifname, &ctx);
+	if (WARN_ON(ret))
+		return ret;
+
+	*num = data.num;
+
+	libwifi_dbg("[%s] %s mlo links = %u\n", ifname, __func__, *num);
+	return ret;
+}
+
 int nlwifi_get_channel_center_freq1(const char *ifname, uint32_t *center_freq1)
 {
 	uint32_t center1 = 0;
@@ -1211,6 +1406,9 @@ static int nlwifi_get_supp_channels_cb(struct nl_msg *msg, void *data)
 			break;
 		}
 
+		if (channels_data->band && channels_data->band != BAND_ANY && channels_data->band != band)
+			continue;
+
 		nla_for_each_nested(nl_freq, tb_band[NL80211_BAND_ATTR_FREQS],
 							iter_freq) {
 			uint32_t freq;
@@ -1318,7 +1516,7 @@ int nlwifi_get_supp_channels(const char *name, uint32_t *chlist, int *num,
 
 	int ret;
 
-	libwifi_dbg("[%s] %s called (max %d band %d)\n", name, __func__, *num, band);
+	libwifi_dbg("[%s] %s called (max %d band %s)\n", name, __func__, *num, wifi_band_to_str(band));
 
 	ret = nlwifi_cmd(name, &ctx);
 	if (ret)
@@ -1351,25 +1549,51 @@ int nlwifi_get_bandwidth(const char *ifname, enum wifi_bw *bandwidth)
 	if (ret)
 		return ret;
 
-	if (bw == NL80211_CHAN_WIDTH_80)
-		*bandwidth = BW80;
-	else if (bw == NL80211_CHAN_WIDTH_40)
-		*bandwidth = BW40;
-	else if (bw == NL80211_CHAN_WIDTH_20 ||
-			bw == NL80211_CHAN_WIDTH_20_NOHT)
-		*bandwidth = BW20;
-	else if (bw == NL80211_CHAN_WIDTH_160)
-		*bandwidth = BW160;
-	else if (bw == NL80211_CHAN_WIDTH_80P80)
-		*bandwidth = BW8080;
-	else if (bw == NL80211_CHAN_WIDTH_320)
-		*bandwidth = BW320;
-	else
-		*bandwidth = BW_UNKNOWN;
-
-	libwifi_dbg("nlwifi bandwidth = %d\n", *bandwidth);
+	*bandwidth = nlwifi_width_to_wifi_bw(bw);
+	libwifi_dbg("nlwifi bandwidth = %s\n", wifi_bw_to_str(*bandwidth));
 
 	return 0;
+}
+
+static uint32_t nlwifi_default_channel(enum wifi_band band)
+{
+	switch (band) {
+	case BAND_2:
+		return 1;
+	case BAND_5:
+		return 36;
+	case BAND_6:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
+int nlwifi_get_band_channel(const char *phyname, enum wifi_band band,
+			    uint32_t *channel, enum wifi_bw *bw)
+{
+	uint32_t freq;
+	char netdev[16];
+	int ret;
+
+	*channel = 0;
+	*bw = BW20;
+
+	if (nlwifi_phy_to_netdev_with_band(phyname, netdev, sizeof(netdev), band)) {
+		/* No netdev for this band */
+		*bw = BW20;
+		*channel = nlwifi_default_channel(band);
+		return 0;
+	}
+
+	ret = nlwifi_get_channel_freq(netdev, &freq);
+	if (WARN_ON(ret))
+		return ret;
+
+	nlwifi_get_bandwidth(netdev, bw);
+	*channel = wifi_freq_to_channel(freq);
+
+	return ret;
 }
 
 int nlwifi_get_channel(const char *name, uint32_t *channel,
@@ -1640,7 +1864,9 @@ static int nlwifi_radio_caps_cb(struct nl_msg *msg, void *data)
 	struct nlattr *tb[NL80211_ATTR_MAX + 1];
 	struct nlattr *tb_band[NL80211_BAND_ATTR_MAX + 1];
 	struct nlattr *nl_band;
-	struct wifi_caps *caps = data;
+	struct caps_data *caps_data = data;
+	struct wifi_caps *caps = caps_data->caps;
+	enum wifi_band band;
 	int iter_band;
 
 #define min(x, y)	(x) < (y) ? (x) : (y)
@@ -1659,6 +1885,11 @@ static int nlwifi_radio_caps_cb(struct nl_msg *msg, void *data)
 		return NL_SKIP;
 
 	nla_for_each_nested(nl_band, tb[NL80211_ATTR_WIPHY_BANDS], iter_band) {
+
+		band = nlwifi_band_to_wifi_band(nl_band->nla_type);
+		if (caps_data->band && caps_data->band != BAND_ANY && caps_data->band != band)
+			continue;
+
 		nla_parse(tb_band,
 			NL80211_BAND_ATTR_MAX,
 			nla_data(nl_band),
@@ -1700,18 +1931,29 @@ static int nlwifi_radio_caps_cb(struct nl_msg *msg, void *data)
 	return NL_SKIP;
 }
 
-int nlwifi_radio_get_caps(const char *name, struct wifi_caps *caps)
+int nlwifi_radio_get_band_caps(const char *phyname, enum wifi_band band, struct wifi_caps *caps)
 {
+	struct caps_data data = {
+		.phyname = phyname,
+		.band = band,
+		.caps = caps,
+	};
+
 	struct nlwifi_ctx ctx = {
 		.cmd = NL80211_CMD_GET_WIPHY,
 		.flags = NLM_F_DUMP,
 		.cb = nlwifi_radio_caps_cb,
-		.data = caps,
+		.data = &data,
 	};
 
-	libwifi_dbg("[%s] %s called\n", name, __func__);
+	libwifi_dbg("[%s, %s] %s called\n", phyname, wifi_band_to_str(band), __func__);
 
-	return nlwifi_cmd(name, &ctx);
+	return nlwifi_cmd(phyname, &ctx);
+}
+
+int nlwifi_radio_get_caps(const char *name, struct wifi_caps *caps)
+{
+	return nlwifi_radio_get_band_caps(name, BAND_ANY, caps);
 }
 
 static void _nlwifi_set_supp_stds(uint32_t bands, const struct wifi_caps *caps, uint8_t *std)
@@ -1755,6 +1997,13 @@ static void _nlwifi_set_supp_bandwidth(const struct wifi_caps *caps, uint32_t *s
 		}
 	}
 
+	if (caps->valid & WIFI_CAP_HE_VALID) {
+		/* TODO parse MCS for 160/320MHz */
+		*supp_bw |= BIT(BW20);
+		*supp_bw |= BIT(BW40);
+		*supp_bw |= BIT(BW80);
+	}
+
 	if (0 == *supp_bw)
 		*supp_bw |= BIT(BW_UNKNOWN);
 }
@@ -1775,8 +2024,16 @@ static int nlwifi_get_phy_info_cb(struct nl_msg *msg, void *data)
 {
 	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
 	struct nlattr *tb[NL80211_ATTR_MAX + 1];
-	struct wifi_radio *radio = data;
+	struct radio_data *radio_data = data;
+	struct wifi_radio *radio = radio_data->radio;
+
 	struct wifi_caps caps = { 0 };
+	struct caps_data caps_data = {
+		.phyname = radio_data->phyname,
+		.band = radio_data->band,
+		.caps = &caps,
+	};
+
 	struct nlattr *nl_band;
 	enum nl80211_band band;
 	int iter_band;
@@ -1808,11 +2065,12 @@ static int nlwifi_get_phy_info_cb(struct nl_msg *msg, void *data)
 		}
 	}
 
-	nlwifi_radio_caps_cb(msg, &caps);
+	if (radio_data->band != BAND_ANY)
+		radio->oper_band = radio_data->band;
+
+	nlwifi_radio_caps_cb(msg, &caps_data);
 	_nlwifi_set_supp_stds(radio->supp_band, &caps, &radio->supp_std);
 	_nlwifi_set_supp_bandwidth(&caps, &radio->supp_bw);
-	libwifi_dbg(" - oper band %d\n", radio->oper_band);
-	libwifi_dbg(" - supp band 0x%x\n", radio->supp_band);
 
 	if (tb[NL80211_ATTR_WIPHY_FRAG_THRESHOLD])
 		radio->frag = nla_get_u32(tb[NL80211_ATTR_WIPHY_FRAG_THRESHOLD]);
@@ -1868,17 +2126,23 @@ static int nlwifi_get_phy_info_cb(struct nl_msg *msg, void *data)
 	return NL_SKIP;
 }
 
-int nlwifi_get_phy_info(const char *name, struct wifi_radio *radio)
+int nlwifi_get_phy_info(const char *phyname, enum wifi_band band, struct wifi_radio *radio)
 {
+	struct radio_data data = {
+		.phyname = phyname,
+		.band = band,
+		.radio = radio,
+	};
+
 	struct nlwifi_ctx ctx = {
 		.cmd = NL80211_CMD_GET_WIPHY,
 		.flags = NLM_F_DUMP,
 		.cb = nlwifi_get_phy_info_cb,
-		.data = radio,
+		.data = &data,
 	};
 
 	memset(radio, 0, sizeof(*radio));
-	return nlwifi_cmd(name, &ctx);
+	return nlwifi_cmd(phyname, &ctx);
 }
 
 int nlwifi_is_dot11h_enabled(const char *phy, bool *dot11h)
@@ -1915,25 +2179,26 @@ int nlwifi_is_dot11h_enabled(const char *phy, bool *dot11h)
 	return 0;
 }
 
-int nlwifi_radio_info(const char *name, struct wifi_radio *radio)
+int nlwifi_radio_info_band(const char *name, enum wifi_band band, struct wifi_radio *radio)
 {
 	struct survey_entry survey = {};
 	struct survey_data survey_data = {
 		.survey_entry = &survey,
 		.num = 0,
 		.max = 1,
+		.band = band,
 	};
 	char netdev[16];
 	int ret = -1;
 
-	libwifi_dbg("[%s] %s called\n", name, __func__);
+	libwifi_dbg("[%s, %s] %s called\n", name, wifi_band_to_str(band), __func__);
 
-	ret = nlwifi_get_phy_info(name, radio);
+	ret = nlwifi_get_phy_info(name, band, radio);
 
 	if (WARN_ON(ret))
 		return ret;
 
-	nlwifi_phy_to_netdev(name, netdev, sizeof(netdev));
+	nlwifi_phy_to_netdev_with_band(name, netdev, sizeof(netdev), band);
 	if (WARN_ON(nlwifi_get_survey(netdev, &survey_data)))
 		return 0;
 
@@ -1943,7 +2208,7 @@ int nlwifi_radio_info(const char *name, struct wifi_radio *radio)
 	radio->diag.tx_airtime = survey.tx_time * 1000;
 	radio->diag.rx_airtime = survey.rx_time * 1000;
 	radio->num_iface = WIFI_IFACE_MAX_NUM;
-	nlwifi_get_phy_wifi_ifaces( name, radio->iface, &radio->num_iface);
+	nlwifi_get_phy_wifi_ifaces(name, band, radio->iface, &radio->num_iface);
 
 	libwifi_dbg("[%s] %s oper-band = %d\n", name, __func__, radio->oper_band);
 	if (radio->oper_band == BAND_5) {
@@ -1957,6 +2222,32 @@ int nlwifi_radio_info(const char *name, struct wifi_radio *radio)
 		radio->cac_methods = 0;
 	}
 
+	return 0;
+}
+
+int nlwifi_radio_info(const char *name, struct wifi_radio *radio)
+{
+	return nlwifi_radio_info_band(name, BAND_ANY, radio);
+}
+
+int nlwifi_radio_is_multiband(const char *name, bool *res)
+{
+	struct wifi_radio radio = {};
+	int bands = 0;
+	int ret;
+
+	ret = nlwifi_radio_info(name, &radio);
+	if (ret)
+		return ret;
+
+	if (radio.supp_band & BAND_2)
+		bands++;
+	if (radio.supp_band & BAND_5)
+		bands++;
+	if (radio.supp_band & BAND_6)
+		bands++;
+
+	*res = bands > 1 ? true : false;
 	return 0;
 }
 
@@ -2613,13 +2904,20 @@ static int nlwifi_get_survey_cb(struct nl_msg *msg, void *data)
 		return NL_SKIP;
 
         survey = &survey_data->survey_entry[survey_data->num];
-        survey_data->num++;
 
 	if (sinfo[NL80211_SURVEY_INFO_FREQUENCY])
 		libwifi_dbg(" - frequency: %u MHz%s\n",
 			    nla_get_u32(sinfo[NL80211_SURVEY_INFO_FREQUENCY]),
 			    sinfo[NL80211_SURVEY_INFO_IN_USE] ? " [in use]" : "");
 	survey->freq = nla_get_u32(sinfo[NL80211_SURVEY_INFO_FREQUENCY]);
+
+	if (survey_data->band && survey_data->band != BAND_ANY &&
+	    survey_data->band != ieee80211_frequency_to_band(survey->freq)) {
+		libwifi_dbg("survey skip due to band\n");
+		return NL_SKIP;
+	}
+
+        survey_data->num++;
 
 	if (sinfo[NL80211_SURVEY_INFO_NOISE]) {
 		survey->noise = (int8_t) nla_get_u8(sinfo[NL80211_SURVEY_INFO_NOISE]);
@@ -2665,13 +2963,14 @@ static int nlwifi_get_survey(const char *name, struct survey_data *survey_data)
 	return nlwifi_cmd(name, &ctx);
 }
 
-int nlwifi_get_noise(const char *name, int *noise)
+int nlwifi_get_band_noise(const char *name, enum wifi_band band, int *noise)
 {
 	struct survey_entry survey = {};
 	struct survey_data survey_data = {
 		.survey_entry = &survey,
 		.num = 0,
-		.max = 1
+		.max = 1,
+		.band = band,
 	};
 	int ret;
 
@@ -2686,31 +2985,50 @@ int nlwifi_get_noise(const char *name, int *noise)
 	return 0;
 }
 
-int nlwifi_get_supp_stds(const char *name, uint8_t *std)
+int nlwifi_get_noise(const char *name, int *noise)
+{
+	return nlwifi_get_band_noise(name, BAND_ANY, noise);
+}
+
+int nlwifi_get_band_supp_stds(const char *name, enum wifi_band band, uint8_t *std)
 {
 	struct wifi_caps caps = {};
 	uint32_t bands = 0;
 
 	*std = 0;
 
-	if (WARN_ON(nlwifi_radio_get_caps(name, &caps)))
+	if (WARN_ON(nlwifi_radio_get_band_caps(name, band, &caps)))
 		return -1;
 
-	nlwifi_get_supp_band(name, &bands);
+	if (band == BAND_ANY)
+		nlwifi_get_supp_band(name, &bands);
+	else
+		bands = band;
+
 	_nlwifi_set_supp_stds(bands, &caps, std);
 
 	return 0;
 }
 
-int nlwifi_get_supp_bandwidths(const char *name, uint32_t *supp_bw)
+int nlwifi_get_supp_stds(const char *name, uint8_t *std)
+{
+	return nlwifi_get_band_supp_stds(name, BAND_ANY, std);
+}
+
+int nlwifi_get_band_supp_bandwidths(const char *name, enum wifi_band band, uint32_t *supp_bw)
 {
 	struct wifi_caps caps;
 
-	if (WARN_ON(nlwifi_radio_get_caps(name, &caps)))
+	if (WARN_ON(nlwifi_radio_get_band_caps(name, band, &caps)))
 		return -1;
 
 	_nlwifi_set_supp_bandwidth(&caps, supp_bw);
 	return 0;
+}
+
+int nlwifi_get_supp_bandwidths(const char *name, uint32_t *supp_bw)
+{
+	return nlwifi_get_band_supp_bandwidths(name, BAND_ANY, supp_bw);
 }
 
 int nlwifi_get_max_bandwidth(const char *name, enum wifi_bw *max_bw)
@@ -2734,19 +3052,20 @@ int nlwifi_get_max_bandwidth(const char *name, enum wifi_bw *max_bw)
 	return 0;
 }
 
-int nlwifi_surveys_get(const char *name, struct survey_entry *entry, int *num)
+int nlwifi_surveys_get(const char *name, enum wifi_band band, struct survey_entry *entry, int *num)
 {
 	char netdev[16] = {};
 	struct survey_data survey_data = {
 		.survey_entry = entry,
 		.num = 0,
-		.max = *num
+		.max = *num,
+		.band = band,
 	};
 
 	int ret;
 
 	nlwifi_phy_to_netdev(name, netdev, sizeof(netdev));
-	libwifi_dbg("[%s %s] %s called max %d\n", name, netdev, __func__, *num);
+	libwifi_dbg("[%s %s %s] %s called max %d\n", name, netdev, wifi_band_to_str(band), __func__, *num);
         ret = nlwifi_get_survey(netdev, &survey_data);
 	if (ret)
 		return ret;
@@ -2756,7 +3075,8 @@ int nlwifi_surveys_get(const char *name, struct survey_entry *entry, int *num)
 
 	return 0;
 }
-int nlwifi_channels_info(const char *name, struct chan_entry *channel, int *num)
+
+int nlwifi_channels_info_band(const char *name, enum wifi_band band, struct chan_entry *channel, int *num)
 {
 	struct survey_entry *entry;
 	int entry_num;
@@ -2767,6 +3087,7 @@ int nlwifi_channels_info(const char *name, struct chan_entry *channel, int *num)
 		.chlist = NULL,
 		.num = 0,
 		.max = *num,
+		.band = band,
 	};
 	struct nlwifi_ctx ctx = {
 		.cmd = NL80211_CMD_GET_WIPHY,
@@ -2777,7 +3098,7 @@ int nlwifi_channels_info(const char *name, struct chan_entry *channel, int *num)
 
 	int ret;
 
-	libwifi_dbg("[%s] %s called (max: %d)\n", name, __func__, *num);
+	libwifi_dbg("[%s, %s] %s called (max: %d)\n", name, wifi_band_to_str(band), __func__, *num);
 
 	memset(channel, 0, sizeof(*channel) * (*num));
 	ret = nlwifi_cmd(name, &ctx);
@@ -2793,7 +3114,7 @@ int nlwifi_channels_info(const char *name, struct chan_entry *channel, int *num)
 	if (!entry)
 		return -1;
 
-	if (WARN_ON(nlwifi_surveys_get(name, entry, &entry_num))) {
+	if (WARN_ON(nlwifi_surveys_get(name, band, entry, &entry_num))) {
 		free(entry);
 		return -1;
 	}
@@ -2834,6 +3155,11 @@ int nlwifi_channels_info(const char *name, struct chan_entry *channel, int *num)
 	return ret;
 }
 
+int nlwifi_channels_info(const char *name, struct chan_entry *channel, int *num)
+{
+	return nlwifi_channels_info_band(name, BAND_ANY, channel, num);
+}
+
 static int nlwifi_get_supp_band_cb(struct nl_msg *msg, void *data)
 {
 	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
@@ -2868,8 +3194,6 @@ static int nlwifi_get_supp_band_cb(struct nl_msg *msg, void *data)
 			}
 		}
 	}
-
-	libwifi_dbg(" - supp bands 0x%x\n", *bands);
 
 	return NL_SKIP;
 }
@@ -3325,6 +3649,7 @@ int nlwifi_stop_cac(const char *name)
 
 const struct wifi_driver nlwifi_driver = {
 	.name = "wlan",
+	.radio.is_multiband = nlwifi_radio_is_multiband,
         .info = nlwifi_driver_info,
 	.scan = nlwifi_scan,
 	.scan_ex = nlwifi_scan_ex,
@@ -3332,6 +3657,7 @@ const struct wifi_driver nlwifi_driver = {
 	.get_bssid = nlwifi_get_bssid,
 	.get_ssid = nlwifi_get_ssid,
 	.get_channel = nlwifi_get_channel,
+	.radio.get_band_channel = nlwifi_get_band_channel,
 	.get_supp_channels = nlwifi_get_supp_channels,
 	.get_bandwidth = nlwifi_get_bandwidth,
 	.vendor_cmd = nlwifi_vendor_cmd,
@@ -3339,14 +3665,19 @@ const struct wifi_driver nlwifi_driver = {
 	.get_assoclist = nlwifi_get_assoclist,
 	.get_sta_info = nlwifi_get_sta_info,
 	.radio.get_caps = nlwifi_radio_get_caps,
+	.radio.get_band_caps = nlwifi_radio_get_band_caps,
 	.radio.info = nlwifi_radio_info,
+	.radio.info_band = nlwifi_radio_info_band,
 	.get_country = nlwifi_get_country,
 	.register_event = nlwifi_register_event,
 	.unregister_event = nlwifi_unregister_event,
 	.recv_event = nlwifi_recv_event,
 	.get_noise = nlwifi_get_noise,
+	.radio.get_band_noise = nlwifi_get_band_noise,
 	.radio.get_supp_stds = nlwifi_get_supp_stds,
+	.radio.get_band_supp_stds = nlwifi_get_band_supp_stds,
 	.channels_info = nlwifi_channels_info,
+	.radio.channels_info_band = nlwifi_channels_info_band,
 	.get_4addr = nlwifi_get_4addr,
 	.start_cac = nlwifi_start_cac,
 	.stop_cac = nlwifi_stop_cac,

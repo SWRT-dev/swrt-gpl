@@ -16,8 +16,8 @@ variables:
   SOURCE_FOLDER: "."
   SUPERVISOR_LOG: "$CI_PROJECT_DIR/supervisord.log"
   LIBWIFI_LOG: "$CI_PROJECT_DIR/libwifi.log"
-  RUN_CPPCHECK: "cppcheck --enable=all --error-exitcode=1 --suppress=unusedFunction --suppress=unreadVariable --suppress=variableScope --suppress=redundantInitialization --suppress=unusedLabel --suppress=unusedStructMember --suppress=knownConditionTrueFalse ."
-  CPPCHECK_OPTIONS: " --enable=all --error-exitcode=1 --suppress=unusedFunction --suppress=unreadVariable --suppress=variableScope --suppress=redundantInitialization --suppress=unusedLabel --suppress=unusedStructMember --suppress=knownConditionTrueFalse ."
+  RUN_CPPCHECK: "cppcheck --enable=all --error-exitcode=1 --suppress=unusedFunction --suppress=unreadVariable --suppress=variableScope --suppress=redundantInitialization --suppress=unusedLabel --suppress=unusedStructMember ."
+  CPPCHECK_OPTIONS: " --enable=all --error-exitcode=1 --suppress=unusedFunction --suppress=unreadVariable --suppress=variableScope --suppress=redundantInitialization --suppress=unusedLabel --suppress=unusedStructMember ."
   RUN_CPD: "/home/user/pmd-bin-6.19.0/bin/run.sh cpd --minimum-tokens 1000 --language c --files"
 
 run_compile_test:

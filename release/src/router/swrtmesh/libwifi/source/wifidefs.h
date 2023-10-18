@@ -73,7 +73,8 @@ enum wifi_band {
 	BAND_UNII_7  = 1 << 10,        /**< 0x400 (6.525 to 6.875) GHz */
 	BAND_UNII_8  = 1 << 11,        /**< 0x800 (6.875 to 7.125) GHz */
 
-	BAND_UNKNOWN = 1 << 12,        /**< 0x1000 (and above) unsupported band */
+	BAND_ANY     = 1 << 12,        /**< 0x1000 any band */
+	BAND_UNKNOWN = 1 << 13,        /**< 0x2000 (and above) unsupported band */
 };
 
 /** enum wifi_bw - bandwidth */
@@ -627,6 +628,7 @@ enum wifi_statusflags {
 struct wifi_iface {
 	char name[16];
 	enum wifi_mode mode;
+	enum wifi_band band;
 };
 
 /* limit max interfaces per radio */
@@ -637,19 +639,28 @@ struct wifi_iface {
  * struct wifi_radio_stats - per radio statistics
  */
 struct wifi_radio_stats {
-	unsigned long tx_bytes;
-	unsigned long rx_bytes;
-	unsigned long tx_pkts;
-	unsigned long rx_pkts;
-	uint32_t tx_err_pkts;
-	uint32_t rx_err_pkts;
-	uint32_t tx_dropped_pkts;
-	uint32_t rx_dropped_pkts;
-	uint32_t rx_plcp_err_pkts;
-	uint32_t rx_fcs_err_pkts;
-	uint32_t rx_mac_err_pkts;
-	uint32_t rx_unknown_pkts;
-	int noise;
+	unsigned long tx_bytes; 	/**< TX bytes including framing characters */
+	unsigned long rx_bytes;		/**< RX bytes including framing characters */ 
+	unsigned long tx_pkts;		/**< TX packets */
+	unsigned long rx_pkts;		/**< RX packets */
+	uint32_t tx_err_pkts;		/**< Packets not transmitted due errors */
+	uint32_t rx_err_pkts;		/**< RX not delivered to higher proto due errors */
+	uint32_t tx_dropped_pkts;	/**< Packets not sent not due errors */
+	uint32_t rx_dropped_pkts;	/**< RX not delivered to higher proto not due errors */
+	uint32_t rx_plcp_err_pkts;	/**< RX with PLCP header error */
+	uint32_t rx_fcs_err_pkts;	/**< RX with FCS error */
+	uint32_t rx_mac_err_pkts;	/**< RX with bad MAC header */
+	uint32_t rx_unknown_pkts;	/**< RX destined for a MAC address that is not associated with the iface */
+	int noise;					/**< Noise in dBm */
+	uint64_t cts_rcvd;			/**< RX CTS answers on RTS */
+	uint64_t cts_not_rcvd;		/**< Not answered RTS */
+	uint64_t rx_frame_err_pkts; /**< RX with good preamble but bad header */
+	uint64_t rx_good_plcp_pkts;	/**< RX with good PLCP header */
+	uint64_t omac_data_pkts;	/**< RX data with good FCS but addressed to a different MAC */
+	uint64_t omac_mgmt_pkts;	/**< RX mgmt with good FCS but addressed to a different MAC */
+	uint64_t omac_ctrl_pkts;	/**< RX ctrl with good FCS but addressed to a different MAC */
+	uint64_t omac_cts;			/**< RX CTS addressed to a different MAC */
+	uint64_t omac_rts;			/**< RX RTS addressed to a different MAC */
 };
 
 /** struct wifi_radio_diagnostic - radio diagnostic data */
@@ -709,31 +720,43 @@ struct wifi_radio {
 	struct wifi_iface iface[WIFI_IFACE_MAX_NUM];
 };
 
+/* Statistics for interface common for AP and STA modes */
+#define WIFI_IF_COMMON_STATS \
+	uint64_t tx_bytes; 			/** TX bytes including framing characters */ \
+	uint64_t rx_bytes; 			/** RX bytes including framing characters */ \
+	uint64_t tx_pkts; 			/** TX packets */ \
+	uint64_t rx_pkts;  			/** RX packets */ \
+	uint64_t tx_err_pkts; 		/** Packets not transmitted due errors */ \
+	uint64_t tx_rtx_pkts; 		/** Sum of all retransmissions of all packets  */ \
+	uint64_t tx_rtx_fail_pkts; 	/** TX fail after too many retransmissions */ \
+	uint64_t tx_retry_pkts; 	/** TX OK after on or more retransmissions */ \
+	uint64_t tx_mretry_pkts; 	/** TX OK after more than one retransmissions */ \
+	uint64_t ack_fail_pkts; 	/** Expected and not received ACK */ \
+	uint64_t aggr_pkts; 		/** TX aggregated */ \
+	uint64_t rx_err_pkts; 		/** RX not delivered to higher proto due errors */ \
+	uint64_t tx_ucast_pkts; 	/** TX unicast */ \
+	uint64_t rx_ucast_pkts; 	/** RX unicast */ \
+	uint64_t tx_dropped_pkts; 	/** Packets not sent not due errors */ \
+	uint64_t rx_dropped_pkts; 	/** RX not delivered to higher proto not due errors */ \
+	uint64_t tx_mcast_pkts; 	/** TX multicast */ \
+	uint64_t rx_mcast_pkts; 	/** RX multicast */ \
+	uint64_t tx_bcast_pkts; 	/** TX broadcast*/ \
+	uint64_t rx_bcast_pkts; 	/** RX broadcast */ \
+	uint64_t rx_unknown_pkts; 	/** RX with unknown/unsupported proto */ \
+	uint64_t tx_buf_overflow; 	/** TX dropped due buffer overflow */ \
+	uint64_t tx_sta_not_assoc; 	/** TX dropped because dst STA is not associated */ \
+	uint64_t tx_frags; 			/** TX fragments */ \
+	uint64_t tx_no_ack_pkts; 	/** TX data packets with no ACK received */ \
+	uint64_t rx_dup_pkts; 		/** RX duplicate according to Sequence Control */ \
+	uint64_t tx_too_long_pkts; 	/** RX too long */ \
+	uint64_t tx_too_short_pkts; /** RX too short (can't detect packet type) */ \
+	uint64_t ucast_ack; 		/** Unicast ACKs with good FCS received */ 
+
 /*
  * struct wifi_ap_stats - per-BSS statistics
  */
 struct wifi_ap_stats {
-	uint64_t tx_bytes;
-	uint64_t rx_bytes;
-	uint64_t tx_pkts;
-	uint64_t rx_pkts;
-	uint64_t tx_err_pkts;
-	uint64_t tx_rtx_pkts;
-	uint64_t tx_rtx_fail_pkts;
-	uint64_t tx_retry_pkts;
-	uint64_t tx_mretry_pkts;
-	uint64_t ack_fail_pkts;
-	uint64_t aggr_pkts;
-	uint64_t rx_err_pkts;
-	uint64_t tx_ucast_pkts;
-	uint64_t rx_ucast_pkts;
-	uint64_t tx_dropped_pkts;
-	uint64_t rx_dropped_pkts;
-	uint64_t tx_mcast_pkts;
-	uint64_t rx_mcast_pkts;
-	uint64_t tx_bcast_pkts;
-	uint64_t rx_bcast_pkts;
-	uint64_t rx_unknown_pkts;
+	WIFI_IF_COMMON_STATS
 };
 
 /*
@@ -1024,6 +1047,17 @@ struct wifi_ap {
 	struct wifi_ap_stats stats;
 	uint32_t assoclist_num;
 	void *assoclist;  /** list of struct wifi_sta or simply macaddresses */
+};
+
+/*
+ * struct wifi_sta_ifstats - statistics for interface in STA mode
+ */
+struct wifi_sta_ifstats {
+	WIFI_IF_COMMON_STATS
+	uint32_t last_dl_rate;	/**< Recent AP->STA rate in kbps */
+	uint32_t last_ul_rate;	/**< Recent STA->AP rate in kbps */
+	int8_t signal;			/**< Signal average of the last 100 packets received, in dBm */
+	uint8_t retrans_100;	/**< Sum of all retransmissions of the last 100 packets */
 };
 
 enum wifi_scan_state {
@@ -1398,6 +1432,15 @@ struct wifi_opclass {
 	struct wifi_opchannel opchannel;
 };
 
+/** struct wifi_mlo link - MLO link */
+struct wifi_mlo_link {
+	uint32_t id;			/**< MLO link id */
+	uint8_t macaddr[6];         	/**< MLO link macaddress */
+	enum wifi_band band;		/**< MLO link band */
+	uint32_t channel;		/**< MLO link channel */
+	enum wifi_bw bandwidth;		/**< MLO link bandwidth */
+};
+
 /** Get valid channels for given country, band and bandwidth */
 int wifi_get_valid_channels(const char *ifname, enum wifi_band b,
 					enum wifi_bw bw, const char *cc,
@@ -1410,6 +1453,9 @@ int wifi_opclass_to_channels(uint32_t opclass, int *num, uint32_t *channels);
 /** Get list of operating classes supported by the wifi radio */
 int wifi_get_supported_opclass(const char *name, int *num_opclass,
 						struct wifi_opclass *o);
+
+int wifi_get_band_supported_opclass(const char *name, enum wifi_band band,
+				    int *num_opclass, struct wifi_opclass *o);
 
 /** Check if given channel is DFS */
 bool wifi_is_dfs_channel(const char *name, int channel, int bandwidth);

@@ -218,6 +218,18 @@ int wifi_radio_get_caps(const char *name, struct wifi_caps *caps)
 	return ret;
 }
 
+int wifi_radio_get_band_caps(const char *name, enum wifi_band band, struct wifi_caps *caps)
+{
+	const struct wifi_driver *drv = get_wifi_driver(name);
+	int ret = -ENOTSUP;
+
+	ENTER();
+	ret = drv_op(drv, radio.get_band_caps, name, band, caps);
+
+	EXIT(ret);
+	return ret;
+}
+
 int wifi_get_supp_stds(const char *name, uint8_t *std)
 {
 	const struct wifi_driver *drv = get_wifi_driver(name);
@@ -225,6 +237,18 @@ int wifi_get_supp_stds(const char *name, uint8_t *std)
 
 	ENTER();
 	ret = drv_op(drv, radio.get_supp_stds, name, std);
+
+	EXIT(ret);
+	return ret;
+}
+
+int wifi_get_band_supp_stds(const char *name, enum wifi_band band, uint8_t *std)
+{
+	const struct wifi_driver *drv = get_wifi_driver(name);
+	int ret = -ENOTSUP;
+
+	ENTER();
+	ret = drv_op(drv, radio.get_band_supp_stds, name, band, std);
 
 	EXIT(ret);
 	return ret;
@@ -261,6 +285,31 @@ int wifi_get_channel(const char *ifname, uint32_t *channel, enum wifi_bw *bw)
 
 	ENTER();
 	ret = drv_op(drv, get_channel, ifname, channel, bw);
+
+	EXIT(ret);
+	return ret;
+}
+
+int wifi_get_band_channel(const char *ifname, enum wifi_band band, uint32_t *channel, enum wifi_bw *bw)
+{
+	const struct wifi_driver *drv = get_wifi_driver(ifname);
+	int ret = -ENOTSUP;
+
+	ENTER();
+	ret = drv_op(drv, radio.get_band_channel, ifname, band, channel, bw);
+
+	EXIT(ret);
+	return ret;
+}
+
+int wifi_get_mlo_links(const char *ifname, enum wifi_band band,
+		       struct wifi_mlo_link *link, int *num)
+{
+	const struct wifi_driver *drv = get_wifi_driver(ifname);
+	int ret = -ENOTSUP;
+
+	ENTER();
+	ret = drv_op(drv, get_mlo_links, ifname, band, link, num);
 
 	EXIT(ret);
 	return ret;
@@ -441,6 +490,18 @@ int wifi_get_oper_stds(const char *name, uint8_t *std)
 	return ret;
 }
 
+int wifi_get_band_oper_stds(const char *name, enum wifi_band band, uint8_t *std)
+{
+	const struct wifi_driver *drv = get_wifi_driver(name);
+	int ret = -ENOTSUP;
+
+	ENTER();
+	ret = drv_op(drv, radio.get_band_oper_stds, name, band, std);
+
+	EXIT(ret);
+	return ret;
+}
+
 int wifi_get_country(const char *name, char *alpha2)
 {
 	const struct wifi_driver *drv = get_wifi_driver(name);
@@ -525,6 +586,18 @@ int wifi_get_maxrate(const char *ifname, unsigned long *rate)
 	return ret;
 }
 
+int wifi_get_band_maxrate(const char *ifname, enum wifi_band band, unsigned long *rate)
+{
+	const struct wifi_driver *drv = get_wifi_driver(ifname);
+	int ret = -ENOTSUP;
+
+	ENTER();
+	ret = drv_op(drv, radio.get_band_maxrate, ifname, band, rate);
+
+	EXIT(ret);
+	return ret;
+}
+
 int wifi_get_supp_opclass(const char *name, int *num_opclass,
 						struct wifi_opclass *o)
 {
@@ -540,6 +613,21 @@ int wifi_get_supp_opclass(const char *name, int *num_opclass,
 	return ret;
 }
 
+int wifi_get_band_supp_opclass(const char *name, enum wifi_band band,
+			       int *num_opclass, struct wifi_opclass *o)
+{
+	const struct wifi_driver *drv = get_wifi_driver(name);
+	int ret = -ENOTSUP;
+
+	ENTER();
+	ret = drv_op(drv, radio.get_band_supp_opclass, name, band, num_opclass, o);
+	if (ret == -ENOTSUP)
+		ret = wifi_get_band_supported_opclass(name, band, num_opclass, o);
+
+	EXIT(ret);
+	return ret;
+}
+
 int wifi_get_curr_opclass(const char *name, struct wifi_opclass *o)
 {
 	const struct wifi_driver *drv = get_wifi_driver(name);
@@ -549,6 +637,20 @@ int wifi_get_curr_opclass(const char *name, struct wifi_opclass *o)
 	ret = drv_op(drv, get_curr_opclass, name, o);
 	if (ret == -ENOTSUP)
 		ret = wifi_get_opclass(name, o);
+
+	EXIT(ret);
+	return ret;
+}
+
+int wifi_get_band_curr_opclass(const char *name, enum wifi_band band, struct wifi_opclass *o)
+{
+	const struct wifi_driver *drv = get_wifi_driver(name);
+	int ret = -ENOTSUP;
+
+	ENTER();
+	ret = drv_op(drv, radio.get_band_curr_opclass, name, band, o);
+	if (ret == -ENOTSUP)
+		ret = wifi_get_band_opclass(name, band, o);
 
 	EXIT(ret);
 	return ret;
@@ -578,6 +680,18 @@ int wifi_get_supp_bandwidths(const char *name, uint32_t *bws)
 	return ret;
 }
 
+int wifi_get_band_supp_bandwidths(const char *name, enum wifi_band band, uint32_t *bws)
+{
+	const struct wifi_driver *drv = get_wifi_driver(name);
+	int ret = -ENOTSUP;
+
+	ENTER();
+	ret = drv_op(drv, radio.get_band_supp_bandwidths, name, band, bws);
+
+	EXIT(ret);
+	return ret;
+}
+
 int wifi_get_noise(const char *ifname, int *noise)
 {
 	const struct wifi_driver *drv = get_wifi_driver(ifname);
@@ -590,6 +704,18 @@ int wifi_get_noise(const char *ifname, int *noise)
 	return ret;
 }
 
+int wifi_get_band_noise(const char *ifname, enum wifi_band band, int *noise)
+{
+	const struct wifi_driver *drv = get_wifi_driver(ifname);
+	int ret = -ENOTSUP;
+
+	ENTER();
+	ret = drv_op(drv, radio.get_band_noise, ifname, band, noise);
+
+	EXIT(ret);
+	return ret;
+}
+
 int wifi_radio_get_stats(const char *ifname, struct wifi_radio_stats *s)
 {
 	const struct wifi_driver *drv = get_wifi_driver(ifname);
@@ -597,6 +723,18 @@ int wifi_radio_get_stats(const char *ifname, struct wifi_radio_stats *s)
 
 	ENTER();
 	ret = drv_op(drv, radio.get_stats, ifname, s);
+
+	EXIT(ret);
+	return ret;
+}
+
+int wifi_radio_get_band_stats(const char *ifname, enum wifi_band band, struct wifi_radio_stats *s)
+{
+	const struct wifi_driver *drv = get_wifi_driver(ifname);
+	int ret = -ENOTSUP;
+
+	ENTER();
+	ret = drv_op(drv, radio.get_band_stats, ifname, band, s);
 
 	EXIT(ret);
 	return ret;
@@ -642,6 +780,18 @@ int wifi_radio_list(struct radio_entry *radio, int *num)
 	return 0;
 }
 
+int wifi_radio_is_multiband(const char *ifname, bool *res)
+{
+	const struct wifi_driver *drv = get_wifi_driver(ifname);
+	int ret = -ENOTSUP;
+
+	ENTER();
+	ret = drv_op(drv, radio.is_multiband, ifname, res);
+
+	EXIT(ret);
+	return ret;
+}
+
 int wifi_radio_info(const char *ifname, struct wifi_radio *info)
 {
 	const struct wifi_driver *drv = get_wifi_driver(ifname);
@@ -649,6 +799,18 @@ int wifi_radio_info(const char *ifname, struct wifi_radio *info)
 
 	ENTER();
 	ret = drv_op(drv, radio.info, ifname, info);
+
+	EXIT(ret);
+	return ret;
+}
+
+int wifi_radio_info_band(const char *ifname, enum wifi_band band, struct wifi_radio *info)
+{
+	const struct wifi_driver *drv = get_wifi_driver(ifname);
+	int ret = -ENOTSUP;
+
+	ENTER();
+	ret = drv_op(drv, radio.info_band, ifname, band, info);
 
 	EXIT(ret);
 	return ret;
@@ -798,6 +960,18 @@ int wifi_channels_info(const char *name, struct chan_entry *channel, int *num)
 	return ret;
 }
 
+int wifi_channels_info_band(const char *name, enum wifi_band band, struct chan_entry *channel, int *num)
+{
+	const struct wifi_driver *drv = get_wifi_driver(name);
+	int ret = -ENOTSUP;
+
+	ENTER();
+	ret = drv_op(drv, radio.channels_info_band, name, band, channel, num);
+
+	EXIT(ret);
+	return ret;
+}
+
 int wifi_start_cac(const char *name, int channel, enum wifi_bw bw,
 		   enum wifi_cac_method method)
 {
@@ -831,6 +1005,19 @@ int wifi_get_opclass_preferences(const char *name, struct wifi_opclass *opclass,
 
 	ENTER();
 	ret = drv_op(drv, get_opclass_preferences, name, opclass, num);
+
+	EXIT(ret);
+	return ret;
+}
+
+int wifi_get_band_opclass_preferences(const char *name, enum wifi_band band,
+				      struct wifi_opclass *opclass, int *num)
+{
+	const struct wifi_driver *drv = get_wifi_driver(name);
+	int ret = -ENOTSUP;
+
+	ENTER();
+	ret = drv_op(drv, radio.get_band_opclass_preferences, name, band, opclass, num);
 
 	EXIT(ret);
 	return ret;
@@ -1129,6 +1316,18 @@ int wifi_sta_disconnect_ap(const char *ifname, uint32_t reason)
 	return ret;
 }
 
+int wifi_sta_get_stats_ex(const char *ifname, struct wifi_sta_ifstats *s)
+{
+	const struct wifi_driver *drv = get_wifi_driver(ifname);
+	int ret = -ENOTSUP;
+
+	ENTER();
+	ret = drv_op(drv, iface.sta_get_ifstats, ifname, s);
+
+	EXIT(ret);
+	return ret;
+}
+
 int wifi_register_event(const char *ifname, struct event_struct *ev, void **handle)
 {
 	const struct wifi_driver *drv;
@@ -1338,28 +1537,40 @@ const char *libwifi_apis[] = {
 	/*
 	 * wifi radio apis
 	 */
+	"wifi_radio_is_multiband",
 	"wifi_radio_info",
+	"wifi_radio_info_band",
 	"wifi_get_supp_band",
 	"wifi_get_oper_band",
 	"wifi_radio_get_ifstatus",
 	"wifi_radio_get_caps",
+	"wifi_radio_get_band_caps",
 	"wifi_get_supp_stds",
+	"wifi_get_band_supp_stds",
 	"wifi_get_oper_stds",
+	"wifi_band_get_oper_stds",
 	"wifi_get_country",
 	"wifi_get_countrylist",
 	"wifi_get_channel",
+	"wifi_get_band_channel",
 	"wifi_set_channel",  /* deprecate */
 	"wifi_get_supp_channels",
+	"wifi_get_band_supp_channels",
 	"wifi_get_oper_channels",
 	"wifi_get_supp_opclass",
+	"wifi_get_band_supp_opclass",
 	"wifi_get_curr_opclass",
+	"wifi_get_band_curr_opclass",
 	"wifi_get_bandwidth",
 	"wifi_get_supp_bandwidths",
+	"wifi_get_band_supp_bandwidths",
 	"wifi_get_maxrate",
+	"wifi_get_band_maxrate",
 	"wifi_get_basic_rates",
 	"wifi_get_oper_rates",
 	"wifi_get_supp_rates",
 	"wifi_radio_get_stats",
+	"wifi_radio_get_band_stats",
 	"wifi_scan",
 	"wifi_scan_ex",
 	"wifi_get_scan_results",
@@ -1373,9 +1584,11 @@ const char *libwifi_apis[] = {
 	"wifi_del_iface",
 	"wifi_list_iface",
 	"wifi_channels_info",
+	"wifi_band_channels_info",
 	"wifi_start_cac",
 	"wifi_stop_cac",
 	"wifi_get_opclass_preferences",
+	"wifi_get_band_opclass_preferences",
 	"wifi_simulate_radar",
 
 
@@ -1404,6 +1617,7 @@ const char *libwifi_apis[] = {
 	"wifi_get_4addr_parent",
 	"wifi_set_vlan",
 	"wifi_link_measure",
+	"wifi_get_mlo_links",
 
 	"wifi_ap_info",
 	"wifi_get_bssid",
@@ -1436,6 +1650,7 @@ const char *libwifi_apis[] = {
 	"wifi_sta_get_stats",
 	"wifi_sta_get_ap_info",
 	"wifi_sta_disconnect_ap",
+	"wifi_sta_get_stats_ex",
 
 	"wifi_register_event",
 	"wifi_recv_event",

@@ -43,6 +43,11 @@ extern "C" {
 #define NLWIFI_MODE_AP_STA      NLWIFI_MODE_AP | NLWIFI_MODE_STA
 #define NLWIFI_MODE_ANY         0xff
 
+LIBWIFI_INTERNAL struct nl_sock *nlwifi_socket(void);
+LIBWIFI_INTERNAL void *nlwifi_alloc_msg(struct nl_sock *sk, int cmd, int flags, size_t priv);
+LIBWIFI_INTERNAL int nlwifi_send_msg(struct nl_sock *nl, struct nl_msg *msg,
+									int (*cmd_resp_handler)(struct nl_msg *, void *),
+									void *cmd_resp_data);
 LIBWIFI_INTERNAL int nlwifi_scan(const char *ifname, struct scan_param *p);
 LIBWIFI_INTERNAL int nlwifi_scan_ex(const char *ifname, struct scan_param_ex *sp);
 LIBWIFI_INTERNAL int nlwifi_get_scan_results(const char *ifname,
@@ -56,8 +61,10 @@ LIBWIFI_INTERNAL int nlwifi_get_channel_list(const char *ifname,
 				enum wifi_band band, enum wifi_bw bw);
 LIBWIFI_INTERNAL int nlwifi_get_channel(const char *ifname, uint32_t *channel,
 							enum wifi_bw *bw);
+LIBWIFI_INTERNAL int nlwifi_get_band_channel(const char *phyname, enum wifi_band band,
+					     uint32_t *channel, enum wifi_bw *bw);
 LIBWIFI_INTERNAL int nlwifi_get_mode(const char *ifname, enum wifi_mode *mode);
-
+LIBWIFI_INTERNAL int nlwifi_iface_get_band(const char *netdev, enum wifi_band *band);
 LIBWIFI_INTERNAL int nlwifi_get_supp_channels(const char *ifname,
 					uint32_t *chlist, int *num,
 					const char *cc,
@@ -65,7 +72,9 @@ LIBWIFI_INTERNAL int nlwifi_get_supp_channels(const char *ifname,
 					enum wifi_bw bw);
 
 LIBWIFI_INTERNAL int nlwifi_get_supp_stds(const char *name, uint8_t *std);
+LIBWIFI_INTERNAL int nlwifi_get_band_supp_stds(const char *name, enum wifi_band band, uint8_t *std);
 LIBWIFI_INTERNAL int nlwifi_get_supp_bandwidths(const char *name, uint32_t *supp_bw);
+LIBWIFI_INTERNAL int nlwifi_get_band_supp_bandwidths(const char *name, enum wifi_band band, uint32_t *supp_bw);
 LIBWIFI_INTERNAL int nlwifi_get_bandwidth(const char *ifname, enum wifi_bw *bandwidth);
 LIBWIFI_INTERNAL int nlwifi_vendor_cmd(const char *ifname, uint32_t vid,
 					uint32_t subcmd, uint8_t *in, int ilen,
@@ -82,13 +91,17 @@ LIBWIFI_INTERNAL int nlwifi_get_sta_info(const char *ifname, uint8_t *addr,
 					struct wifi_sta *info);
 
 LIBWIFI_INTERNAL int nlwifi_radio_info(const char *name, struct wifi_radio *radio);
-LIBWIFI_INTERNAL int nlwifi_get_phy_info(const char *name, struct wifi_radio *radio);
+LIBWIFI_INTERNAL int nlwifi_radio_is_multiband(const char *name, bool *res);
+LIBWIFI_INTERNAL int nlwifi_radio_info_band(const char *name, enum wifi_band band, struct wifi_radio *radio);
+LIBWIFI_INTERNAL int nlwifi_get_phy_info(const char *name, enum wifi_band band, struct wifi_radio *radio);
 LIBWIFI_INTERNAL int nlwifi_radio_get_caps(const char *name, struct wifi_caps *caps);
+LIBWIFI_INTERNAL int nlwifi_radio_get_band_caps(const char *name, enum wifi_band band, struct wifi_caps *caps);
 LIBWIFI_INTERNAL int nlwifi_get_country(const char *name, char *alpha2);
 
-LIBWIFI_INTERNAL int nlwifi_get_phy_wifi_ifaces(const char *name, struct wifi_iface* iface, uint8_t *num_iface);
+LIBWIFI_INTERNAL int nlwifi_get_phy_wifi_ifaces(const char *name, enum wifi_band band, struct wifi_iface* iface, uint8_t *num_iface);
 LIBWIFI_INTERNAL int nlwifi_get_phyname(const char *ifname, char *phyname);
 LIBWIFI_INTERNAL int nlwifi_get_noise(const char *name, int *noise);
+LIBWIFI_INTERNAL int nlwifi_get_band_noise(const char *name, enum wifi_band band, int *noise);
 
 
 LIBWIFI_INTERNAL int nlwifi_register_event(const char *ifname,
@@ -97,8 +110,11 @@ LIBWIFI_INTERNAL int nlwifi_unregister_event(const char *ifname, void *handle);
 LIBWIFI_INTERNAL int nlwifi_recv_event(const char *ifname, void *evhandle);
 LIBWIFI_INTERNAL int nlwifi_phy_to_netdev(const char *phy, char *netdev, size_t size);
 LIBWIFI_INTERNAL int nlwifi_phy_to_netdev_with_type(const char *phy, char *netdev, size_t size, uint32_t type);
+LIBWIFI_INTERNAL int nlwifi_phy_to_netdev_with_band(const char *phy, char *netdev, size_t size, enum wifi_band band);
+LIBWIFI_INTERNAL int nlwifi_phy_to_netdev_with_type_and_band(const char *phy, char *netdev, size_t size, uint32_t type, enum wifi_band band);
 LIBWIFI_INTERNAL int nlwifi_driver_info(const char *name, struct wifi_metainfo *info);
 LIBWIFI_INTERNAL int nlwifi_channels_info(const char *name, struct chan_entry *channel, int *num);
+LIBWIFI_INTERNAL int nlwifi_channels_info_band(const char *name, enum wifi_band band, struct chan_entry *channel, int *num);
 
 LIBWIFI_INTERNAL int nlwifi_get_supp_band(const char *name, uint32_t *bands);
 LIBWIFI_INTERNAL int nlwifi_get_oper_band(const char *name, enum wifi_band *band);
@@ -110,6 +126,10 @@ LIBWIFI_INTERNAL int nlwifi_get_4addr(const char *ifname, bool *enabled);
 LIBWIFI_INTERNAL int nlwifi_start_cac(const char *ifname, int channel, enum wifi_bw bw,
 		     						  enum wifi_cac_method method);
 LIBWIFI_INTERNAL int nlwifi_stop_cac(const char *name);
+
+LIBWIFI_INTERNAL int nlwifi_get_mlo_links(const char *ifname, enum wifi_band band,
+					  struct wifi_mlo_link *link, int *num);
+
 
 struct nlwifi_event_vendor_resp {
 	uint32_t oui;
