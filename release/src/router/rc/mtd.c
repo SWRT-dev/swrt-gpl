@@ -30,7 +30,7 @@
 #include <sys/ioctl.h>
 #include <sys/sysinfo.h>
 #include <sys/mman.h>
-#ifdef LINUX26
+#if defined(LINUX26) || defined(BB_SOC)
 #ifndef HND_ROUTER
 #include <linux/compiler.h>
 #endif
@@ -735,7 +735,7 @@ int mtd_write_main(int argc, char *argv[])
 		}
 #else
 #if defined(RTCONFIG_RALINK) && !defined(SUPPORT_NMBM)
-		if (ei.start % ei.length == 0) {
+		if (ei.start % ei.length == 0 && ofs % ei.length == 0) {
 			loff_t offset = ei.start;
 			for(offset = ei.start; ioctl(mf, MEMGETBADBLOCK, &offset) > 0; badblock_size += ei.length, ei.start += ei.length, offset = ei.start)
 				printf("Skipping bad block at 0x%08x\n", ei.start);

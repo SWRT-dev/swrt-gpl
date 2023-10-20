@@ -4750,5 +4750,11 @@ enum {
 #if defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER)
 extern int cpu_plltype(void);
 #endif
+#ifndef likely
+#define likely(x) __builtin_expect((x), 1)
+#endif
+#ifndef unlikely
+#define unlikely(x) __builtin_expect((x), 0)
+#endif
 #endif	/* !__SHARED_H__ */
 

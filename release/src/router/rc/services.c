@@ -671,7 +671,9 @@ int build_temp_rootfs(const char *newroot)
 		__cp("", "/usr/lib", "libasc.so", newroot);
 	}
 #endif
-
+#if defined(RTCONFIG_SWRTMESH)
+	__cp("", "/usr/lib", "libubus.so* libubox.so* libblobmsg_json.so* libuci.so*", newroot);
+#endif
 	/* copy mandatory kernel modules */
 	snprintf(d2, sizeof(d2), "tar cvf - `%s` `%s` | tar xf - -C %s", kmod, modules, newroot);
 	system(d2);
