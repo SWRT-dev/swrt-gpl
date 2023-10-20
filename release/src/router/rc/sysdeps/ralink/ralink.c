@@ -5590,6 +5590,9 @@ void ralink_hostapd_start(void)
 	if (!(fp = fopen("/tmp/postwifi.sh", "w+")))
 		return;
 	fprintf(fp, "#!/bin/sh\n");
+#if defined(RTCONFIG_SINGLE_HOSTAPD)
+	eval("hostapd", "-g", "/var/run/hostapd/global", "-B", "-P", "/var/run/hostapd_global.pid");
+#endif
 	for(unit = 0; unit < MAX_NR_WL_IF; unit++){
 		for(subunit = 0; subunit < MAX_NO_MSSID; subunit++){
 			if(subunit)
@@ -5598,6 +5601,9 @@ void ralink_hostapd_start(void)
 				snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 			if(nvram_pf_match(prefix, "bss_enabled", "1")){
 				get_wlxy_ifname(unit, subunit, wif);
+#if defined(RTCONFIG_SINGLE_HOSTAPD)
+				fprintf(fp, "wpa_cli -g /var/run/hostapd/global raw ADD bss_config=%s:/etc/Wireless/hostapd_%s.conf", wif, wif);
+#else
 				snprintf(hostapd_path, sizeof(hostapd_path), "/tmp/hostapd_%s", wif);
 				doSystem("ln -sf /usr/sbin/hostapd %s", hostapd_path);
 				snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/hostapd_%s.conf", wif);
@@ -5605,8 +5611,13 @@ void ralink_hostapd_start(void)
 				snprintf(log_path, sizeof(log_path), "/tmp/hostapd_%s.log", wif);
 				snprintf(entropy_path, sizeof(entropy_path), "/var/run/entropy_%s.bin", wif);
 				doSystem("echo \"%s -B -P %s -f %s -e %s %s\" >> /tmp/hostapd.log", hostapd_path, pid_path, log_path, entropy_path, conf_path);
+				fprintf(fp, "while [ -z $(pidof hostapd_%s) ]\n", wif);
+				fprintf(fp, "do\n");
 				//fprintf(fp, "%s -B -P %s -f %s -e %s -dddd %s\n", hostapd_path, pid_path, log_path, entropy_path, conf_path);
 				fprintf(fp, "%s -B -P %s -f %s -e %s %s\n", hostapd_path, pid_path, log_path, entropy_path, conf_path);
+				fprintf(fp, "sleep 1s\n");
+				fprintf(fp, "done\n");
+#endif
 			}
 		}
 	}
@@ -5643,7 +5654,12 @@ void ralink_hostapd_stop(void)
 {
 	int unit = 0, subunit = 0; 
 	char prefix[] = "wlXXXXXXX_";
-	char wif[IFNAMSIZ], pid_path[32];
+	char wif[IFNAMSIZ];
+#if defined(RTCONFIG_SINGLE_HOSTAPD)
+	char cmd[128];
+#else
+	char pid_path[32];
+#endif
 	for(unit = 0; unit < MAX_NR_WL_IF; unit++){
 		for(subunit = 0; subunit < MAX_NO_MSSID; subunit++){
 			if(subunit)
@@ -5651,6 +5667,10 @@ void ralink_hostapd_stop(void)
 			else
 				snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 			get_wlxy_ifname(unit, subunit, wif);
+#if defined(RTCONFIG_SINGLE_HOSTAPD)
+			snprintf(cmd, sizeof(cmd), "wpa_cli -g /var/run/hostapd/global raw REMOVE %s", wif);
+			doSystem(cmd);
+#else
 			snprintf(pid_path, sizeof(pid_path), "/var/run/hostapd_%s.pid", wif);
 			if(f_exists(pid_path)){
 				kill_pidfile_tk(pid_path);
@@ -5660,8 +5680,12 @@ void ralink_hostapd_stop(void)
 			snprintf(pid_path, sizeof(pid_path), "/var/run/hostapd/%s", wif);
 			if(f_exists(pid_path))
 				unlink(pid_path);
+#endif
 		}
 	}
+#if defined(RTCONFIG_SINGLE_HOSTAPD)
+	kill_pidfile_tk("/var/run/hostapd_global.pid");
+#endif
 #if defined(RTCONFIG_SWRTMESH)
 //	swrtmesh_sysdep_bh_stop();
 #endif

@@ -726,7 +726,7 @@ obj-$(RTCONFIG_LETSENCRYPT) += acme.sh
 obj-$(RTCONFIG_LETSENCRYPT) += libletsencrypt
 obj-$(RTCONFIG_LETSENCRYPT) += socat
 obj-$(RTCONFIG_EASYMESH) += easymesh-sdk
-obj-$(RTCONFIG_SWRTMESH) += libubox libubus libnl libuci libevent-2.0.21 avahi swrtmesh
+obj-$(RTCONFIG_SWRTMESH) += libubox libubus libnl libuci libevent-2.0.21 avahi ebtables swrtmesh
 obj-y += taskset
 
 # soc/feature packages
@@ -744,9 +744,6 @@ obj-$(RTCONFIG_PROTECTION_SERVER) += protect_srv
 ifneq ($(HND_ROUTER),y)
 obj-$(RTCONFIG_DMALLOC) += dmalloc
 obj-$(RTCONFIG_BCMARM) += ctf_arm
-ifneq ($(RTCONFIG_RALINK)$(RTCONFIG_QCA)$(RTCONFIG_LANTIQ),y)
-obj-y += ctf
-endif
 endif
 obj-$(RTCONFIG_DHDAP) += dhd
 ifeq ($(wildcard $(SRCBASE_DHD)/dongle/sysdeps),)
@@ -1294,7 +1291,9 @@ endif
 obj-$(RTCONFIG_PPP_BASE) += pppd rp-pppoe
 obj-$(RTCONFIG_L2TP) += rp-l2tp
 obj-$(RTCONFIG_PPTP) += accel-pptp
+ifneq ($(RTCONFIG_SWRTMESH),y)
 obj-$(RTCONFIG_EAPOL) += wpa_supplicant
+endif
 obj-$(RTCONFIG_HTTPS) += zlib
 obj-$(RTCONFIG_SSH) += dropbear
 obj-$(RTCONFIG_WTFAST) += wtfast
@@ -9435,7 +9434,7 @@ libubus-install:
 	$(STRIP) $(INSTALLDIR)/libubus/usr/sbin/ubusd
 
 ifeq ($(RTCONFIG_SWRTMESH),y)
-swrtmesh: json-c libubox libubus libnl libuci openssl avahi libmnl-1.0.4 libnfnetlink-1.0.1 libnetfilter_conntrack-1.0.7
+swrtmesh: json-c libubox libubus libnl libuci openssl avahi libmnl-1.0.4 libnfnetlink-1.0.1 libnetfilter_conntrack-1.0.7 ebtables
 	$(MAKE) -C swrtmesh all
 endif
 
