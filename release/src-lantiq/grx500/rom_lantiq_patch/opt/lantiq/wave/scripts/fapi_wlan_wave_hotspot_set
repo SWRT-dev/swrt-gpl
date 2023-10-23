@@ -1,0 +1,166 @@
+#!/bin/sh
+# Configure AccessPoint.X_LANTIQ_COM_Vendor.HS20 parameters
+# Needed object: AccessPoint.X_LANTIQ_COM_Vendor.HS20
+
+script_name="$0"
+
+[ ! "$LIB_COMMON_SOURCED" ] && . /tmp/fapi_wlan_wave_lib_common.sh
+[ ! "$IN_CONF_SOURCED" ] && in_conf_source
+
+# Find the interface index and the radio index
+interface_index=`find_index_from_interface_name $interface_name`
+radio_name=${interface_name%%.*}
+radio_index=`find_index_from_interface_name $radio_name`
+
+print2log $radio_index $radio_index DEBUG "$script_name $*"
+timestamp $radio_index $radio_index "$script_name:begin"
+
+# DEBUG: set debug_save_conf in fapi_wlan_wave_lib_common.sh to save the in conf file
+[ "$debug_save_conf" ] && cp ${IN_CONF} ${CONF_DIR}/hotspot_set_in_conf
+
+interface_name=$1
+pid=$$
+
+radio_name=${interface_name%%.*}
+
+# Define list of AccessPoint Vendor HS20 parameters
+hostapd_params="osen
+disable_dgaf
+anqp_domain_id
+hs20_operating_class
+osu_ssid
+gas_comeback_delay
+access_network_type
+internet
+venue_group
+venue_type
+hessid
+network_auth_type
+ipaddr_type_availability
+domain_name
+anqp_3gpp_cell_net
+hs20_wan_metrics"
+
+hostapd_hardcoded_params="hs20_deauth_req_timeout
+manage_p2p
+allow_cross_connection
+tdls_prohibit
+interworking"
+
+# Map the objects indexes to the received objects in the in.conf file
+hs20_index=`map_param_index Object $ACCESSPOINT_HS20_VENDOR_OBJECT`
+
+# Prepare the temporary configuration files to use
+prepare_confs $interface_name $interface_name $pid $VAP
+# Get the pid to use in this configuration session
+. ${CONF_IN_PROGRESS}_${radio_name}
+
+# Check if hotspot is enabled and update the conf file with value
+hs20_mode=`get_conf_param hs20_mode $hs20_index $interface_name`
+[ -n "$hs20_mode" ] && set_conf_param hostapd_vap regular no_otf $pid $interface_name "hs20" "$hs20_mode"
+
+# Calculate new values only if hotspot is enabled.
+# Try to read the values of all the parameters from the fapi_wlan_wave_in.conf file.
+# Parameters that are not in the fapi_wlan_wave_in.conf file will be empty and won't be set.
+
+# If hotspot state changed to enabled, set all hardcoded parameters and parameters from in conf file
+if [ -n "$hs20_mode" ] && [ $hs20_mode -gt $HS20_MODE_DISABLED ]
+then
+	hostapd_params_list="$hostapd_params $hostapd_hardcoded_params"
+	for param in $hostapd_params_list
+	do
+		value=`get_conf_param $param $hs20_index $interface_name`
+		if [ -n "$value" ]
+		then
+			set_conf_param hostapd_vap regular no_otf $pid $interface_name "$param" "$value"
+		fi
+	done
+elif  [ -n "$hs20_mode" ] && [ "$hs20_mode" = "$HS20_MODE_DISABLED" ]
+# If hotspot was changed to disabled, clear all hotspot parameters from hostapd conf file
+then
+	hostapd_params_list="$hostapd_params $hostapd_hardcoded_params"
+	clear_hostapd_params $interface_name $pid "$hostapd_params_list"
+else
+	# If hotspot state wasn't changed, set only the parameters from in conf file
+	for param in $hostapd_params
+	do
+		value=`get_conf_param $param $hs20_index $interface_name`
+		if [ -n "$value" ]
+		then
+			set_conf_param hostapd_vap regular no_otf $pid $interface_name "$param" "$value"
+		fi
+	done
+fi
+
+## Read needed parameters for other hotsopt components
+hs20_current=`get_conf_param hs20_current $hs20_index $interface_name`
+# TODO: need to read proxy_arp value from AP.Vendor
+proxy_arp=`get_conf_param proxy_arp $hs20_index $interface_name`
+disable_dgaf=`get_conf_param disable_dgaf $hs20_index $interface_name`
+wan_metrics_duration=`get_conf_param wan_metrics_duration $hs20_index $interface_name`
+wan_port=`get_conf_param wan_port $hs20_index $interface_name`
+ap_isolate=`get_driver_param ap_isolate $interface_name`
+l2_fw_ena=`get_conf_param l2_fw_ena $hs20_index $interface_name`
+
+# Start/stop/configure other hotspot components
+if [ $hs20_current -gt $HS20_MODE_DISABLED ] && [ -n "$proxy_arp" ]
+then
+	parp_cmd="disable"
+
+	[ "$proxy_arp" = "1" ] && parp_cmd="enable"
+	set_conf_param $WAVE_WLAN_RUNNNER alumnus otf $pid $interface_name "(. $PARP_CTRL_SCRIPT" "$parp_cmd $interface_name)"
+	set_conf_param $WAVE_WLAN_RUNNNER alumnus otf $pid $interface_name "(. $DGAF_DISABLE_SCRIPT" "$interface_name $disable_dgaf)"
+fi
+
+if [ -n "$hs20" ] && [ "$hs20" = "$HS20_MODE_ENABLED" ]
+then
+	set_conf_param $WAVE_WLAN_RUNNNER alumnus otf $pid $interface_name "(. $WMDCTRL_SCRIPT" "set duration $wan_metrics_duration)"
+	set_conf_param $WAVE_WLAN_RUNNNER alumnus otf $pid $interface_name "(. $WMDCTRL_SCRIPT" "set wlan name=$interface_name w_active=1 wans=$wan_port)"
+	set_conf_param $WAVE_WLAN_RUNNNER alumnus otf $pid $interface_name "(. $WMDCTRL_SCRIPT" "enable $interface_name)"
+elif [ -n "$hs20" ]
+then
+	set_conf_param $WAVE_WLAN_RUNNNER alumnus otf $pid $interface_name "(. $WMDCTRL_SCRIPT" "disable $interface_name)"
+fi
+
+if [ $hs20_current -gt $HS20_MODE_DISABLED ] && [ -n "$ap_isolate" ]
+then
+	ap_isolate_cmd="disable"
+	[ "$ap_isolate" = "1" ] && ap_isolate_cmd="enable"
+	set_conf_param $WAVE_WLAN_RUNNNER alumnus otf $pid $interface_name "(. $HAIRPIN_CONFIG_SCRIPT" "$ap_isolate_cmd $interface_name)"
+fi
+
+if [ -n "$l2_fw_ena" ] && [ "$l2_fw_ena" = "1" ]
+then
+	set_conf_param $WAVE_WLAN_RUNNNER alumnus otf $pid $interface_name "(. $L2F_CTRL_SCRIPT" "enable $interface_name)"
+elif [ -n "$l2_fw_ena" ]
+then
+	set_conf_param $WAVE_WLAN_RUNNNER alumnus otf $pid $interface_name "(. $L2F_CTRL_SCRIPT" "disable $interface_name)"
+fi
+
+# If hotspot is not enabled, don't set any other parameter
+if [ $hs20_current -gt $HS20_MODE_DISABLED ]
+then
+	# The following objects can have multiple values
+	set_hotspot_objects OperatorFriendlyName $interface_name $pid $hs20_index
+	set_hotspot_objects ConnectionCapability $interface_name $pid $hs20_index
+	set_hotspot_objects OSUicons $interface_name $pid $hs20_index
+	set_hotspot_objects OSUproviders $interface_name $pid $hs20_index
+	set_hotspot_objects RoamingConsortium $interface_name $pid $hs20_index
+	set_hotspot_objects VenueName $interface_name $pid $hs20_index
+	set_hotspot_objects NAIrealm $interface_name $pid $hs20_index
+fi
+
+# Save the HS20 parameters to a temp conf file for each interface
+[ -n "$hs20_index" ] && save_hs20_params $hs20_index $interface_name
+
+# Create the output configuration file
+cat /dev/null > ${OUT_CONF}
+
+# Configuration is completed successfully
+update_conf_out "wlan_configuration_status" "success"
+
+# DEBUG: set debug_save_conf in fapi_wlan_wave_lib_common.sh to save the out conf file
+[ "$debug_save_conf" ] && cp ${OUT_CONF} ${CONF_DIR}/hotspot_set_out_conf
+
+print2log $radio_index DEBUG "$script_name done"
+timestamp $radio_index "$script_name:done"

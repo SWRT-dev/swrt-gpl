@@ -81,6 +81,13 @@ static ssize_t show_priority(struct net_bridge_port *p, char *buf)
 static BRPORT_ATTR(priority, S_IRUGO | S_IWUSR,
 			 show_priority, br_stp_set_port_priority);
 
+static ssize_t show_learning_limit(struct net_bridge_port *p, char *buf)
+{
+	return sprintf(buf, "%i\n", p->learning_limit);
+}
+
+static BRPORT_ATTR(learning_limit, S_IRUGO, show_learning_limit, NULL);
+
 static ssize_t show_designated_root(struct net_bridge_port *p, char *buf)
 {
 	return br_show_bridge_id(buf, &p->designated_root);
@@ -172,7 +179,9 @@ BRPORT_ATTR_FLAG(unicast_flood, BR_FLOOD);
 BRPORT_ATTR_FLAG(proxyarp, BR_PROXYARP);
 BRPORT_ATTR_FLAG(proxyarp_wifi, BR_PROXYARP_WIFI);
 BRPORT_ATTR_FLAG(multicast_flood, BR_MCAST_FLOOD);
-BRPORT_ATTR_FLAG(isolate_mode, BR_ISOLATE_MODE);
+BRPORT_ATTR_FLAG(isolated, BR_ISOLATED);
+BRPORT_ATTR_FLAG(mcast_dest_lookup, BR_MCAST_DEST_LOOKUP);
+BRPORT_ATTR_FLAG(mcast_src_lookup, BR_MCAST_SRC_LOOKUP);
 
 #ifdef CONFIG_BRIDGE_IGMP_SNOOPING
 static ssize_t show_multicast_router(struct net_bridge_port *p, char *buf)
@@ -221,7 +230,9 @@ static const struct brport_attribute *brport_attrs[] = {
 	&brport_attr_proxyarp,
 	&brport_attr_proxyarp_wifi,
 	&brport_attr_multicast_flood,
-	&brport_attr_isolate_mode,
+	&brport_attr_isolated,
+	&brport_attr_mcast_dest_lookup,
+	&brport_attr_mcast_src_lookup,
 	NULL
 };
 

@@ -1,0 +1,8 @@
+config INTEL_E160
+	tristate "Intel CHD MACsec (E160) HW offload support"
+	select MACSEC
+	select MACSEC_HW_OFFLOAD
+	select CRYPTO_AES
+	select CRYPTO_ECB
+	---help---
+	  This driver provides support for MACsec HW offload.

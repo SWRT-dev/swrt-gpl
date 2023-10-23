@@ -19,12 +19,15 @@
 #include <asm/irq_cpu.h>
 #include <asm/mips-cm.h>
 
+#define CPU_VEIC_STATUS	(cpu_has_veic ? "on" : "off")
+#define CPU_VINT_STATUS	(cpu_has_vint ? "on" : "off")
+
 void __init arch_init_irq(void)
 {
 	struct device_node *intc_node;
 
-	pr_info("EIC is %s\n", cpu_has_veic ? "on" : "off");
-	pr_info("VINT is %s\n", cpu_has_vint ? "on" : "off");
+	pr_info("EIC is %s\n", CPU_VEIC_STATUS);
+	pr_info("VINT is %s\n", CPU_VINT_STATUS);
 
 	intc_node = of_find_compatible_node(NULL, NULL,
 					    "mti,cpu-interrupt-controller");

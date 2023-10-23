@@ -41,6 +41,7 @@
 #define CMD_WRITE_REG                   0x1f
 #define CMD_READ_CACHE_X2               0x3b
 #define CMD_READ_CACHE_X4               0x6b
+#define CMD_SWITCH_DIE                  0xc2
 
 /* feature registers */
 #define REG_BLOCK_LOCK                  0xa0
@@ -90,6 +91,11 @@ struct spinand_info {
 	struct nand_ecclayout *ecclayout;
 	struct spi_device *spi;
 	void *priv;
+
+	/* for die selection */
+	u8 current_die;
+	u32 num_of_die;
+	u32 page_per_die_shift;
 };
 
 struct spinand_privbuf {

@@ -1,0 +1,11 @@
+dwpal_cli
+dwpal_daemon
+dwpald_client_ref
+test_dwpal
+test_lib_wv_ipc
+*.a
+*.d
+*.o
+*.so
+build_*/
+

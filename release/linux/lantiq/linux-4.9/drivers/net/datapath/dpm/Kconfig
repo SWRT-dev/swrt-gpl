@@ -13,10 +13,17 @@ menuconfig INTEL_DATAPATH
 
 if INTEL_DATAPATH
 
+config INTEL_DATAPATH_PARTIAL_FEEDS
+	bool "Datapath in partial feeds"
+	default y
+	depends on PRX300_CQM || LGM_CQM
+	---help---
+	  Support dpm out of kernel tree but not fully sine some driver still 
+	  calling dpm api which is built in kernel
+
 config INTEL_DATAPATH_ACA_CSUM_WORKAROUND
 	bool "ACA Checksum Workaround"
-	default n
-	depends on SOC_GRX500 && INTEL_DATAPATH
+	depends on GRX500_CBM && INTEL_DATAPATH
 	---help---
 	  It is to solve system bus hang hang issue in GRX500
 	  Once there is SW-UMT, there is no need to enable it
@@ -25,7 +32,7 @@ config INTEL_DATAPATH_ACA_CSUM_WORKAROUND
 
 config INTEL_DATAPATH_MANUAL_PARSE
 	bool "Datapath manual parse network protocol"
-	depends on INTEL_DATAPATH
+	depends on GRX500_CBM && INTEL_DATAPATH
 	default y
 	---help---
 	  Manual parse network protocol for tcp offloading
@@ -35,8 +42,7 @@ config INTEL_DATAPATH_MANUAL_PARSE
 
 config INTEL_DATAPATH_COPY_LINEAR_BUF_ONLY
 	bool "Datapath Copy linear buffer only for skb"
-	default n
-	depends on INTEL_DATAPATH
+	depends on GRX500_CBM && INTEL_DATAPATH
 	---help---
 	  Datapath Copy linear buffer only for skb if need to alloc new buffer.
 	  For TSO/GSO case, it will not consider
@@ -55,7 +61,6 @@ config INTEL_DATAPATH_DBG
 
 config INTEL_DATAPATH_DBG_PROTOCOL_PARSE
 	bool "Datapath Debug Tool for hw checksum's protocol parsing"
-	default n
 	depends on INTEL_DATAPATH_DBG
 	---help---
 	  Datapath Debug Tool for hw checksum's protocol parsing
@@ -64,7 +69,6 @@ config INTEL_DATAPATH_DBG_PROTOCOL_PARSE
 
 config INTEL_DATAPATH_EXTRA_DEBUG
 	bool "extra debugging support"
-	default n
 	depends on  INTEL_DATAPATH_DBG
 	---help---
 	  This is to enable/disable extra strict debugging support.
@@ -72,27 +76,16 @@ config INTEL_DATAPATH_EXTRA_DEBUG
 	  It will affect performance
 	  By default it should be disabled.
 
-config INTEL_DATAPATH_SWDEV_TEST
-	bool "Test Switchdev Event"
-	default n
-	depends on  INTEL_DATAPATH_DBG && INTEL_DATAPATH_SWITCHDEV
-	---help---
-	  This is to force enable macro CONFIG_SOC_SWITCHDEV_TESTING
-	  in order to test switchdev event
-	  without real switchdev handling
-
 config INTEL_DATAPATH_SKB
 	bool "Datapath Skb Hack"
-	default n
-	depends on  INTEL_DATAPATH
+	depends on GRX500_CBM && INTEL_DATAPATH
 	---help---
 	  For Ethernet OAM and MPE FW purpose testing purpose,
 	  It needs to hack SKB
 
 config INTEL_DATAPATH_ETH_OAM
 	bool "ETH OAM SUPPORT"
-	default n
-	depends on  INTEL_DATAPATH_SKB
+	depends on GRX500_CBM && INTEL_DATAPATH_SKB
 	---help---
 	  Datapath Ethernet OAM support. Once it is enabled, it will add some fields in skb structure
 	  in order to support MPE FAST HOOK. The reason is that some network driver is
@@ -101,35 +94,19 @@ config INTEL_DATAPATH_ETH_OAM
 
 config INTEL_DATAPATH_SWITCHDEV
 	bool "Switchdev Support"
-	default n
-	depends on  INTEL_DATAPATH && NET_SWITCHDEV
+	depends on  INTEL_DATAPATH && NET_SWITCHDEV && !GRX500_CBM
 	---help---
 	  Switchdev support for different switch in datapath
 
-config INTEL_DATAPATH_PTP1588
-	bool "PTP1588 Support"
-	default n
-	depends on  INTEL_DATAPATH
-	---help---
-	  PTP1588 support in datapath
-
-config INTEL_DATAPATH_PTP1588_SW_WORKAROUND
-        bool "PTP1588 Software Workaround"
-        default n
-        depends on  INTEL_DATAPATH && INTEL_DATAPATH_PTP1588
-        ---help---
-          PTP1588 Software Workaround
-
 config INTEL_DATAPATH_CPUFREQ
 	bool "Datapath DFS(COC) support"
-	depends on INTEL_DATAPATH && CPU_FREQ
-	default n
+	depends on GRX500_CBM && INTEL_DATAPATH && CPU_FREQ
 	---help---
 	  It is to support DFS(COC) in Datapath
 
 config INTEL_DATAPATH_MIB
 	bool "Datapath MIB support"
-	depends on INTEL_DATAPATH
+	depends on GRX500_CBM && INTEL_DATAPATH
 	---help---
 	  It is to support MIB counter in Datapath
 
@@ -152,8 +129,15 @@ config LTQ_DATAPATH_CPUFREQ
 	bool
 	default INTEL_DATAPATH_CPUFREQ
 
-source "drivers/net/datapath/dpm/gswip32/Kconfig"
-source "drivers/net/datapath/dpm/gswip31/Kconfig"
+config INTEL_DATAPATH_HAL_GSWIP31
+	bool "Datapath HAL"
+	default y
+	depends on INTEL_DATAPATH && PRX300_CQM
+
+config INTEL_DATAPATH_QOS_HAL
+	bool "Datapath HAL-QOS"
+	default y
+	depends on PPV4
+
 source "drivers/net/datapath/dpm/gswip30/Kconfig"
 endif
-

@@ -1,0 +1,17 @@
+[mtidl_item_0]
+binary_type=mtlk_wssa_drv_peer_stats_t
+description="Peer packets flow statistics"
+field_0_binary_subtype=
+field_0_binary_type=long
+field_0_description="StationID"
+field_0_element_size=4
+field_0_fract_size=
+field_0_num_elements=1
+field_1_binary_subtype=
+field_1_binary_type=mtlk_wssa_peer_traffic_stats_t
+field_1_description="Traffic statistics"
+field_1_element_size=0
+field_1_fract_size=
+field_1_num_elements=1
+field_2_binary_subtype=
+field_2_binary_type=fract

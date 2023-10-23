@@ -122,7 +122,7 @@ static int cli_add_fifo(void *pdev)
 
 	fifo_entry_add(pdev, pdata->val[0], pdata->val[1],
 		       pdata->val[2], pdata->val[3], pdata->val[4],
-		       pdata->val[5]);
+		       pdata->val[5], NULL);
 
 	return 0;
 }
@@ -189,6 +189,14 @@ static int cli_get_hwcap(void *pdev)
 	return 0;
 }
 
+static int cli_xgmac_rd_reg(void *pdev, u32 off)
+{
+	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
+	GSW_MAC_Cli_t *param = pdata->mac_cli;
+
+	return xgmac_rd_reg(pdev, off, &param->val[0]);
+}
+
 static const struct mac_api_cfg xgmac_cfg[] = {
 	{MAC_CLI_INIT, mac_init, 0, 0, 0, 0},
 	{MAC_CLI_RESET, 0, mac_reset, 0, 0, 0},
@@ -244,14 +252,14 @@ static const struct mac_api_cfg xgmac_cfg[] = {
 	{MAC_CLI_GET_CNTR_CFG, 0, 0, 0, 0, 0},
 	{MAC_CLI_GET_HW_FEAT, 0, 0, 0, 0, cli_get_hwcap},
 	{MAC_CLI_GET_MDIO_CL, 0, 0, 0, 0, cli_mdio_get_clause},
-	{MAC_CLI_REG_RD, 0, xgmac_rd_reg, 0, 0, 0},
+	{MAC_CLI_REG_RD, 0, cli_xgmac_rd_reg, 0, 0, 0},
 	{MAC_CLI_REG_WR, 0, 0, xgmac_wr_reg, 0, 0},
 };
 
 int xgmac_cfg_main(GSW_MAC_Cli_t *params)
 {
-	struct mac_ops *ops = gsw_get_mac_ops(0, MAC_2);
-	struct mac_prv_data *pdata = GET_MAC_PDATA(ops);
+	struct mac_ops *ops;
+	struct mac_prv_data *pdata;
 	int i = 0, ret = 0;
 	int num_of_elem = ARRAY_SIZE(xgmac_cfg);
 
@@ -260,8 +268,12 @@ int xgmac_cfg_main(GSW_MAC_Cli_t *params)
 			break;
 		}
 	}
+	if (i >= num_of_elem)
+		return -EINVAL;
 
 	ops = gsw_get_mac_ops(0, params->mac_idx);
+	if (!ops)
+		return -EINVAL;
 	pdata = GET_MAC_PDATA(ops);
 	pdata->set_all = 0;
 
@@ -458,9 +470,26 @@ static int cli_get_nco(void *pdev)
 	return nco;
 }
 
+static int cli_gswss_rd_reg(void *pdev, u32 off)
+{
+	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
+	GSW_MAC_Cli_t *param = pdata->mac_cli;
+	int ret;
+
+	if (!param)
+		return -EINVAL;
+
+	ret = gswss_rd_reg(pdev, off);
+	if (ret >= 0) {
+		param->val[0] = (u16)ret;
+		ret = 0;
+	}
+	return ret;
+}
+
 struct mac_api_cfg ss_cfg[] = {
 	{GSWSS_REG_WR, 0, 0, gswss_wr_reg, 0, 0},
-	{GSWSS_REG_RD, 0, gswss_rd_reg, 0, 0, 0},
+	{GSWSS_REG_RD, 0, cli_gswss_rd_reg, 0, 0, 0},
 	{GSWSS_MAC_RESET, cli_mac_reset, 0, 0, 0, 0},
 	{GSWSS_MAC_EN, 0, gswss_mac_enable, 0, 0, 0},
 	{GSWSS_MAC_IF, cli_set_macif, 0, 0, 0, 0},
@@ -494,6 +523,8 @@ int gswss_cfg_main(GSW_MAC_Cli_t *params)
 			break;
 		}
 	}
+	if (i >= num_of_elem)
+		return -EINVAL;
 
 	if (params->cmdType < GSWSS_MAX_MAC) {
 
@@ -565,9 +596,23 @@ static int cli_lmac_get_rmon(void *pdev)
 	return 0;
 }
 
+static int cli_lmac_rd_reg(void *pdev, u32 off)
+{
+	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
+	GSW_MAC_Cli_t *param = pdata->mac_cli;
+	int ret;
+
+	ret = lmac_rd_reg(pdev, off);
+	if (ret >= 0) {
+		param->val[0] = (u16)ret;
+		ret = 0;
+	}
+	return ret;
+}
+
 static const struct mac_api_cfg lmac_api_cfg[] = {
 	{LMAC_REG_WR, 0, 0, lmac_wr_reg, 0, 0},
-	{LMAC_REG_RD, 0, lmac_rd_reg, 0, 0, 0},
+	{LMAC_REG_RD, 0, cli_lmac_rd_reg, 0, 0, 0},
 	{LMAC_RMON, 0, 0, 0, 0, cli_lmac_get_rmon},
 	{LMAC_CLR_RMON, lmac_rmon_clr, 0, 0, 0, 0},
 	{LMAC_IF_MODE, 0, lmac_set_intf_mode, 0, 0, 0},
@@ -598,8 +643,12 @@ int lmac_cfg_main(GSW_MAC_Cli_t *params)
 			break;
 		}
 	}
+	if (i >= num_of_elem)
+		return -EINVAL;
 
 	mac_ops = gsw_get_mac_ops(0, params->mac_idx);
+	if (!mac_ops)
+		return -EINVAL;
 	mac_pdata = GET_MAC_PDATA(mac_ops);
 
 	mac_pdata->mac_cli = params;

@@ -348,6 +348,7 @@ out_unlock:
 	ubi_err(ubi, "cannot create volume %d, error %d", vol_id, err);
 	return err;
 }
+EXPORT_SYMBOL_GPL(ubi_create_volume);
 
 /**
  * ubi_remove_volume - remove volume.

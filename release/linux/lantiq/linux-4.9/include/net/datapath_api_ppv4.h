@@ -1,14 +1,15 @@
-/*
- * Copyright (C) Intel Corporation
- * Author: Shao Guohua <guohua.shao@intel.com>
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 as published
- * by the Free Software Foundation.
- */
+// SPDX-License-Identifier: GPL-2.0
+/******************************************************************************
+ * Copyright (c) 2020 - 2021, MaxLinear, Inc.
+ * Copyright 2018 - 2020 Intel Corporation
+ * 
+ ******************************************************************************/
+ 
 #ifndef DATAPATH_API_PPV4_H
 #define DATAPATH_API_PPV4_H
+#include <asm/byteorder.h>
 
+#if !IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP30)
 #if IS_ENABLED(CONFIG_LITTLE_ENDIAN)
 struct ppv4_ud_0_dw_0 {
 	/* DWORD 0 */
@@ -260,5 +261,26 @@ struct ppv4_ud_1 {
 	struct ppv4_ud_1_dw_3 dw3;
 };
 
+static inline u8 pp_get_rx_port(char *buf_base)
+{
+	return buf_base[17];
+}
+
+static inline u32 pp_get_signature(char *buf_base)
+{
+	return le32_to_cpup((__le32 *)(buf_base + 32));
+}
+
+static inline int pp_get_hash(char *buf_base, u32 *h1, u32 *h2)
+{
+	u64 val = le64_to_cpup((__le64 *)(buf_base + 36));
+
+	if (!buf_base || !h1 || !h2)
+		return -1;
+	*h1 = val & 0xfffff;
+	*h2 = (val >> 20) & 0xfffff;
+	return 0;
+}
+#endif /* CONFIG_INTEL_DATAPATH_HAL_GSWIP30 */
 #endif /*DATAPATH_API_PPV4_H*/
 

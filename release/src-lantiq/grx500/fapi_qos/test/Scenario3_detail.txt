@@ -1,0 +1,10 @@
+Three streams S1, S2, S3 from LAN to WAN.
+
+Stream 1 : UDP traffic with destination port 1024
+Stream 2 : Traffic with destination IP address 10.10.10.1
+Stream 3 : Traffic with destination MAC address 00:1A:BC:40:EF:80
+
+Requirement :
+Stream 1 to WAN should go at rate 1Mpbs
+Stream 2 and 3 to WAN should go with equal priority and sharing bandwidth at 2:1
+

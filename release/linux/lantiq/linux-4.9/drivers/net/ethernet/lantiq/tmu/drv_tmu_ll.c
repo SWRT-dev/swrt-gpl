@@ -3281,6 +3281,7 @@ void lookup_table_via_qid(int qid)
 void lookup_table_remap(int old_q, int new_q)
 {
 	uint32_t index, tmp, i, j, k, f = 0;
+	struct cbm_lookup cbm_lu = {0};
 
 	TMU_DEBUG(TMU_DEBUG_MSG,
 		  "Try to remap all lookup flags mapped from old_q %d to new_q %d\n",
@@ -3292,7 +3293,9 @@ void lookup_table_remap(int old_q, int new_q)
 				tmp = get_lookup_qid_via_index(index);
 				if (tmp != old_q)
 					continue;
-				set_lookup_qid_via_index(index, new_q);
+				cbm_lu.qid = new_q;
+				cbm_lu.index = index;
+				set_lookup_qid_via_index(&cbm_lu);
 				f = 1;
 				PRINTK
 				    ("Remap lookup[%05u 0x%04x] -> TMU queue[%d]\n",
@@ -3306,11 +3309,14 @@ void lookup_table_remap(int old_q, int new_q)
 
 void lookup_table_recursive(int k, int tmp_index, int set_flag, int qid)
 {
+	struct cbm_lookup cbm_lu = {0};
 	int i;
 
 	if (k < 0) {		/*finish recursive and start real read/set action */
 		if (set_flag) {
-			set_lookup_qid_via_index(tmp_index, qid);
+			cbm_lu.qid = qid;
+			cbm_lu.index = tmp_index;
+			set_lookup_qid_via_index(&cbm_lu);
 			PRINTK("Set lookup[%05u 0x%04x] -> TMU queue[%d]\n",
 			       tmp_index, tmp_index, qid);
 		} else {
@@ -3341,6 +3347,8 @@ ssize_t tmu_proc_get_qid_via_index(struct file *file, const char *buf,
 	unsigned int qid = 0;
 	char *param_list[10];
 	int num;
+	struct cbm_lookup cbm_lu = {0};
+
 	len = (count >= sizeof(data)) ? (sizeof(data) - 1) : count;
 	TMU_DEBUG(TMU_DEBUG_MSG, "len=%d\n", len);
 
@@ -3386,7 +3394,9 @@ ssize_t tmu_proc_get_qid_via_index(struct file *file, const char *buf,
 					       qid);
 			return count;
 		}
-		set_lookup_qid_via_index(lookup_index, qid);
+		cbm_lu.qid = qid;
+		cbm_lu.index = lookup_index;
+		set_lookup_qid_via_index(&cbm_lu);
 		TMU_PRINT("Set lookup[%u 0x%x] -> TMU queue[%u]\n",
 			  lookup_index, lookup_index, qid);
 	} else if ((dp_strncmpi(param_list[0], "get", strlen("get")) == 0) ||
@@ -3450,10 +3460,11 @@ ssize_t tmu_proc_eqt_write(struct file *file, const char *buf, size_t count,
 	int value = 0, num;
 	char *param_list[5];
 	int print_mode = PROC_EQT_MODE_DEFAULT;
+	struct cbm_lookup cbm_lu = {0};
+
 	len = (sizeof(str) > count) ? count : sizeof(str) - 1;
 	len -= copy_from_user(str, buf, len);
 	str[len] = 0;
-
 	if (!len)
 		return count;
 
@@ -3548,7 +3559,9 @@ ssize_t tmu_proc_eqt_write(struct file *file, const char *buf, size_t count,
 			for (i = 0; i < 0x4000; i++) {
 				if (get_lookup_qid_via_index(i) != qid)
 					continue;
-				set_lookup_qid_via_index(i, EGRESS_QUEUE_ID_MAX - 1);
+				cbm_lu.index = i;
+				cbm_lu.qid = EGRESS_QUEUE_ID_MAX - 1;
+				set_lookup_qid_via_index(&cbm_lu);
 			}
 #endif
 

@@ -460,7 +460,8 @@ static void lqasc_shutdown(struct uart_port *port)
 
 	/* Make sure flush is done, FIFO empty */
 	while ((readl(port->membase + LTQ_ASC_FSTAT) & (ASCFSTAT_RXFFLMASK |
-	       ASCFSTAT_TXFFLMASK)) != 0);
+	       ASCFSTAT_TXFFLMASK)) != 0)
+		;
 	/*
 	 * Clock off it, TX/RX free FIFO will be always one byte
 	 * Console TX free FIFO check will always pass
@@ -544,8 +545,13 @@ static void lqasc_set_termios(struct uart_port *port,
 
 	/* Set baud rate - take a divider of 2 into account */
 	baud = uart_get_baud_rate(port, new, old, 0, port->uartclk / 16);
-	if (baud)
+	if (baud) {
 		lqasc_fdv_and_reload_get(ltq_port, baud, &fdv, &reload);
+	} else {
+		spin_unlock_irqrestore(&ltq_port->asc_lock, flags);
+		dev_err(port->dev, "%s: baud rate is zero!\n!", __func__);
+		return;
+	}
 	/* disable the baudrate generator */
 	asc_w32_mask(ASCCON_R, 0, port->membase + LTQ_ASC_CON);
 	/* Ensure the setting is effect before enabling */
@@ -753,7 +759,8 @@ static void lqasc_serial_early_console_write(struct console *co,
 	lqasc_serial_port_write(&dev->port, s, count);
 }
 
-static int __init lqasc_serial_early_console_setup(struct earlycon_device *device,
+static int __init
+lqasc_serial_early_console_setup(struct earlycon_device *device,
 				 const char *opt)
 {
 	if (!device->port.membase)
@@ -762,6 +769,7 @@ static int __init lqasc_serial_early_console_setup(struct earlycon_device *devic
 	device->con->write = lqasc_serial_early_console_write;
 	return 0;
 }
+
 OF_EARLYCON_DECLARE(lantiq, DRVNAME, lqasc_serial_early_console_setup);
 
 static struct uart_driver lqasc_reg = {
@@ -777,8 +785,8 @@ static struct uart_driver lqasc_reg = {
 #if defined(CONFIG_LTQ_CPU_FREQ) && !defined(CONFIG_SOC_GRX500)
 /* Linux CPUFREQ support start */
 static int lqasc_cpufreq_prechange(enum ltq_cpufreq_module module,
-				   enum ltq_cpufreq_state newState,
-				   enum ltq_cpufreq_state oldState)
+				   enum ltq_cpufreq_state newstate,
+				   enum ltq_cpufreq_state oldstate)
 {
 	struct ltq_uart_port *ltq_port;
 	struct uart_port *port;
@@ -790,8 +798,8 @@ static int lqasc_cpufreq_prechange(enum ltq_cpufreq_module module,
 }
 
 static int lqasc_cpufreq_postchange(enum ltq_cpufreq_module module,
-				    enum ltq_cpufreq_state newState,
-				    enum ltq_cpufreq_state oldState)
+				    enum ltq_cpufreq_state newstate,
+				    enum ltq_cpufreq_state oldstate)
 {
 	struct ltq_uart_port *ltq_port;
 	struct uart_port *port;
@@ -819,7 +827,7 @@ static int lqasc_cpufreq_postchange(enum ltq_cpufreq_module module,
 
 exit:
 	console_start(port->cons);
-	lqasc_pwm_state = newState;
+	lqasc_pwm_state = newstate;
 	return 0;
 }
 
@@ -828,25 +836,25 @@ static int lqasc_cpufreq_notifier(struct notifier_block *nb, unsigned long val,
 				  void *data)
 {
 	struct cpufreq_freqs *freq = data;
-	enum ltq_cpufreq_state new_State, old_State;
+	enum ltq_cpufreq_state new_state, old_state;
 	int ret;
 
-	new_State = ltq_cpufreq_get_ps_from_khz(freq->new);
-	if (new_State == LTQ_CPUFREQ_PS_UNDEF)
+	new_state = ltq_cpufreq_get_ps_from_khz(freq->new);
+	if (new_state == LTQ_CPUFREQ_PS_UNDEF)
 		return NOTIFY_STOP_MASK | (LTQ_CPUFREQ_MODULE_UART << 4);
-	old_State = ltq_cpufreq_get_ps_from_khz(freq->old);
-	if (old_State == LTQ_CPUFREQ_PS_UNDEF)
+	old_state = ltq_cpufreq_get_ps_from_khz(freq->old);
+	if (old_state == LTQ_CPUFREQ_PS_UNDEF)
 		return NOTIFY_STOP_MASK | (LTQ_CPUFREQ_MODULE_UART << 4);
 
 	if (val == CPUFREQ_PRECHANGE) {
 		ret = lqasc_cpufreq_prechange(LTQ_CPUFREQ_MODULE_UART,
-					      new_State, old_State);
+					      new_state, old_state);
 		if (ret < 0)
 			return NOTIFY_STOP_MASK |
 				(LTQ_CPUFREQ_MODULE_UART << 4);
 	} else if (val == CPUFREQ_POSTCHANGE) {
 		ret = lqasc_cpufreq_postchange(LTQ_CPUFREQ_MODULE_UART,
-					       new_State, old_State);
+					       new_state, old_state);
 		if (ret < 0)
 			return NOTIFY_STOP_MASK |
 				(LTQ_CPUFREQ_MODULE_UART << 4);
@@ -856,10 +864,10 @@ static int lqasc_cpufreq_notifier(struct notifier_block *nb, unsigned long val,
 	return NOTIFY_OK | (LTQ_CPUFREQ_MODULE_UART << 4);
 }
 
-static int lqasc_cpufreq_state_get(enum ltq_cpufreq_state *pmcuState)
+static int lqasc_cpufreq_state_get(enum ltq_cpufreq_state *pmcustate)
 {
-	if (pmcuState)
-		*pmcuState = lqasc_pwm_state;
+	if (pmcustate)
+		*pmcustate = lqasc_pwm_state;
 
 	return 0;
 }

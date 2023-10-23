@@ -1,0 +1,159 @@
+Changelog prx3xx/ltq_fw_PHY31G_IP_prx3xx_Bxx_R877c.bin
+=========================
+prx3xx/ltq_fw_PHY31G_IP_prx3xx_Bxx_R877c.bin - PRX3XX GPHY FW update to 877C
+
+Changelog URx8xx/intel_fw_PHY34X_OTP_URx8xx_Bxx_R0b7a.bin
+=========================
+URx8xx/intel_fw_PHY34X_OTP_URx8xx_Bxx_R0b7a.bin - LGM P34X B0 GPHY FW update to 0B7A
+
+Changelog xRx5xx/ltq_fw_PHY11G_IP_1v1_xRx5xx_A21_R8549.bin
+=========================
+xRx5xx/ltq_fw_PHY11G_IP_1v1_xRx5xx_A21_R8549.bin - GRX500 GPHY FW update to 8549
+
+Changelog URx8xx/p34x_fw_v8977.bin
+=========================
+URx8xx/p34x_fw_v8977.bin - LGM GPHY FW update to 8977
+
+Changelog prx3xx/ltq_fw_PHY31G_IP_prx3xx_Bxx_R8773.bin
+=========================
+prx3xx/ltq_fw_PHY31G_IP_prx3xx_Bxx_R8773.bin - Falcon GPHY FW update to 8773
+
+Changelog prx3xx/ltq_fw_PHY31G_IP_prx3xx_Bxx_R8747.bin
+=========================
+prx3xx/ltq_fw_PHY31G_IP_prx3xx_Bxx_R8747.bin - Falcon GPHY FW roll back to 8747
+
+Changelog URx8xx/p34x_fw_v8964.bin
+=========================
+URx8xx/p34x_fw_v8964.bin - P34x FW roll back to 8964
+
+Changelog URx8xx/p34x_fw_v8967.bin
+=========================
+URx8xx/p34x_fw_v8967.bin - P34x FW change to 8967
+
+Changelog URx8xx/p34x_fw_v3938.bin
+=========================
+URx8xx/p34x_fw_v3938.bin - P34x FW change back to old one
+
+Changelog ltq_fw_PHY31G_IP_prx3xx_Bxx_R8747.bin:
+==========================
+B1 gphyfirmware for prx3xx (Falcon Mountain).
+
+Changelog URx8xx/intel_fw_PHY34X_IP_URx8xx_Axx_R8943.bin
+=========================
+URx8xx/intel_fw_PHY34X_IP_URx8xx_Axx_R8943.bin - P34x FW added for URx8xx
+   
+Changelog ltq_fw_PHY31G_IP_prx3xx_Bxx_R8745.bin:
+==========================
+B1 gphyfirmware for prx3xx (Falcon Mountain).
+	   
+Changelog URx8xx/p34x_fw_v3936.bin 
+=========================
+URx8xx/p34x_fw_v3936.bin - P34x FW added for URx8xx
+
+Changelog ltq_fw_PHY31G_IP_prx3xx_Bxx_R8732.bin:
+==========================
+B1 gphyfirmware for prx3xx (Falcon Mountain).
+
+Changelog ltq_fw_PHY31G_IP_prx3xx_Bxx_R8728.bin:
+==========================
+B1 gphyfirmware for prx3xx (Falcon Mountain).
+
+Changelog ltq_fw_PHY31G_IP_prx3xx_Bxx_R0728.bin:
+==========================
+B1 gphyfirmware for prx3xx (Falcon Mountain).
+
+Changelog ltq_fw_PHY31G_IP_prx3xx_Bxx_R0727.bin:
+==========================
+B1 gphyfirmware for prx3xx (Falcon Mountain).
+
+Changelog ltq_fw_PHY31G_IP_prx3xx_Bxx_R0716.bin:
+==========================
+B0 gphyfirmware for prx3xx (Falcon Mountain).
+
+Changelog ltq_fw_PHY31G_IP_prx3xx_A11_R0651.bin:
+==========================
+A11 gphyfirmware for prx3xx (Falcon Mountain).
+
+Changelog PHY11G_IP_1v1_xRx5xx_A21_R8547:
+==========================
+A21 gphyfirmware  for grx500.
+
+Changelog PHY11G_IP_1v0_xRx5xx_A21_R8536:
+==========================
+A21 gphyfirmware  for grx500.
+
+Changelog PHY11G_IP_1v0_xRx5xx_A21_R8531:
+==========================
+A21 gphyfirmware  for grx500.
+
+Changelog PHY11G_IP_1v6_xRx5xx_A11_R851D:
+==========================
+UGW_SW-5997 - Fix GPHY FW on A11 due to which the Ethernet Link events (Link UP/DOWN) are wrongly notified
+Intel NIC card interop issue fix for PHY11G_IP_1v6_xRx5xx_A11_R851A.
+
+
+Changelog PHY11G_IP_1v6_xRx5xx_A11_R851A:
+==========================
+Energy Efficient Ethernet (EEE) as per IEEE 802.3az is supported for grx500.
+
+
+Changelog PHY11G_1v5_R841B:
+==========================
+Energy Efficient Ethernet (EEE) as per IEEE 802.3az is supported (but not activated by default).
+
+
+Changelog PHY11G_1v5_RC40D:
+==========================
+Energy Efficient Ethernet (EEE) as per IEEE 802.3az is supported (but not activated by default).
+Interoperability issues when connected to against IntelTM 82577 LM and RealtekTM 8139 related to MDI/MDIX operation have been resolved.
+
+Changelog PHY11G_1v5_T0405:
+==========================
+
+This version is also referred to as PHY11G-FW-T4.5/PHY_1v5_11G_IP_VR9_T0405
+
+Changed since PHY11G-FW-R3.4
+• GPHY IP V1.5 tuning
+• 100BT LPI mode running on IP V1.5
+• The 1000BT echo test loop running 
+• Update code banks contents to support ATE testing in 1st 32Kbytes
+
+
+Not supported:
+• 1000BT LPI mode (EEE)
+
+Changelog PHY_1v4_11G_IP_VR9_R0304:
+==================================
+This version is also referred to as PHY11G-FW-T3.4/PHY_1v4_11G_IP_VR9_R0304
+
+
+Not supported:
+EEE 100BTX
+EEE 1000BTX
+
+
+Changelog PHY22F_1v4_T0109:
+===========================
+
+This version is also referred to as PHY22F-FW-T1.9/PHY_1v4_22F_IP_VR9_T0109
+
+
+Not supported:
+EEE 100BTX
+
+Changelog PHY22F_1v5_T4405:
+==========================
+
+This version is also referred to as PHY22F-FW-T4.5/PHY_1v522F_IP_VR9_T4405
+
+Changed since PHY22F-FW-T0109
+EEE 100BTX
+Fix of Errata from PHY22F (PEF7062) FW version T0109
+
+
+Not supported:
+--
+
+
+
+

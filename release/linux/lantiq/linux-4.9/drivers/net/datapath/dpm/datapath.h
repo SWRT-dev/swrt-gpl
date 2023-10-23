@@ -1,11 +1,11 @@
-/*
- * Copyright (C) Intel Corporation
- * Author: Shao Guohua <guohua.shao@intel.com>
+// SPDX-License-Identifier: GPL-2.0
+/*****************************************************************************
+ * Copyright (c) 2020 - 2021, MaxLinear, Inc.
+ * Copyright 2016 - 2020 Intel Corporation
+ * Copyright 2015 - 2016 Lantiq Beteiligungs-GmbH & Co. KG
+ * Copyright 2012 - 2014 Lantiq Deutschland GmbH
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 as published
- * by the Free Software Foundation.
- */
+ *****************************************************************************/
 
 #ifndef DATAPATH_H
 #define DATAPATH_H
@@ -15,8 +15,10 @@
 #include <linux/netdevice.h>
 #include <linux/platform_device.h>
 #include <linux/atomic.h>
+#include <linux/spinlock.h>
 #include <linux/version.h>
-#include <net/ppa/qos_mgr_tc_hook.h>
+#include <net/qos_mgr/qos_mgr_tc_hook.h>
+#include <linux/percpu.h>
 
 #if IS_ENABLED(CONFIG_PRX300_CQM) || \
 	IS_ENABLED(CONFIG_GRX500_CBM)
@@ -26,17 +28,7 @@
 #endif
 
 #define dp_vlan_dev_priv vlan_dev_priv
-#ifdef DUMMY_PPV4_QOS_API_OLD
-/*TODO:currently need to include both header file */
-#include <net/pp_qos_drv_slim.h>
 #include <linux/pp_qos_api.h>
-#else
-	#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0)
-		#include <net/pp_qos_drv.h>
-	#else
-		#include <linux/pp_qos_api.h>
-	#endif
-#endif
 #if IS_ENABLED(CONFIG_INTEL_CBM_SKB) || \
 	LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0)
 	#define DP_SKB_HACK
@@ -51,18 +43,20 @@
 #include <net/datapath_inst.h>
 #include <net/datapath_api_umt.h>
 
+#define DP_DEBUGFS_PATH "/sys/kernel/debug/dp"
+
 #define MAX_SUBIFS 256  /* Max subif per DPID */
 #define MAX_DP_PORTS  16
-#define PMAC_SIZE 8
-#define PMAC_SIZE_GSW32	16
 #define PMAC_CPU_ID  0
 #define DP_MAX_BP_NUM 128
 #define DP_MAX_QUEUE_NUM 256
 #define DP_MAX_SCHED_NUM 2048  /*In fact it should use max number of node*/
-#define DP_MAX_CQM_DEQ 128 /*CQM dequeue port*/
+#define DP_MAX_CQM_DEQ 256 /* Max Deq for array definition from LGM and PRX */
 
 #define DP_PLATFORM_INIT    1
 #define DP_PLATFORM_DE_INIT 2
+
+#define GSWIP_VER_REG_OFFSET 0x013
 
 #define UP_STATS(atomic) atomic_add(1, &(atomic))
 
@@ -99,37 +93,58 @@
 #define DP_DEBUG(flags, fmt, arg...)
 #endif				/* end of CONFIG_INTEL_DATAPATH_DBG */
 
+extern u32 reinsert_deq_port;
+
+static inline bool is_invalid_port(unsigned int port_id)
+{
+	if (port_id >= MAX_DP_PORTS) {
+		pr_err("port_id(%u) should be 0~%u\n", port_id, MAX_DP_PORTS);
+		return true;
+	}
+	return false;
+}
+
+static inline bool is_invalid_inst(unsigned int inst)
+{
+	if (inst >= DP_MAX_INST) {
+		pr_err("inst(%u) should be 0~%u\n", inst, DP_MAX_INST);
+		return true;
+	}
+	return false;
+}
+
 #define IFNAMSIZ 16
 #define DP_MAX_HW_CAP 4
 
-#if (!IS_ENABLED(CONFIG_PRX300_CQM))
-#define DP_SPIN_LOCK
-#endif
 #ifdef DP_SPIN_LOCK
+#define DP_LOCK_T spinlock_t
+#define DP_LOCK_INIT(lock) spin_lock_init(lock)
 #define DP_DEFINE_LOCK(lock) DEFINE_SPINLOCK(lock)
 #define DP_LIB_LOCK    spin_lock_bh
 #define DP_LIB_UNLOCK  spin_unlock_bh
 #else
+#define DP_LOCK_T struct mutex
+#define DP_LOCK_INIT(lock) mutex_init(lock)
 #define DP_DEFINE_LOCK(lock) DEFINE_MUTEX(lock)
 #define DP_LIB_LOCK    mutex_lock
 #define DP_LIB_UNLOCK  mutex_unlock
 #endif
 
+extern DP_LOCK_T dp_lock;
+
 #define PARSER_FLAG_SIZE   40
 #define PARSER_OFFSET_SIZE 8
 
+#define PMAC_HDR_SIZE (sizeof(struct pmac_rx_hdr))
 #define PKT_PASER_FLAG_OFFSET   0
 #define PKT_PASER_OFFSET_OFFSET (PARSER_FLAG_SIZE)
 #define PKT_PMAC_OFFSET         ((PARSER_FLAG_SIZE) + (PARSER_OFFSET_SIZE))
-#define PKT_DATA_OFFSET         ((PKT_PMAC_OFFSET) + (PMAC_SIZE))
+#define PKT_DATA_OFFSET         ((PKT_PMAC_OFFSET) + (PMAC_HDR_SIZE))
 
 #define CHECK_BIT(var, pos) (((var) & (1 << (pos))) ? 1 : 0)
 
 #define PASAR_OFFSETS_NUM 40	/*40 bytes offset */
 #define PASAR_FLAGS_NUM 8	/*8 bytes */
-
-#define GET_VAP(subif, bit_shift, mask) (((subif) >> (bit_shift)) & (mask))
-#define SET_VAP(vap, bit_shift, mask) ((((u32)vap) & (mask)) << (bit_shift))
 
 /* maximum DMA port per controller */
 #define DP_MAX_DMA_PORT 4
@@ -231,6 +246,16 @@ enum PARSER_FLAGS {
 	PASER_FLAGS_MAX
 };
 
+enum dp_message_errors {
+	DP_ERR_SUBIF_NOT_FOUND = -7,
+	DP_ERR_INIT_FAIL = -6,
+	DP_ERR_INVALID_PORT_ID = -5,
+	DP_ERR_MEM = -4,
+	DP_ERR_NULL_DATA = -3,
+	DP_ERR_INVALID_SUBIF = -2,
+	DP_ERR_DEFAULT = -1,
+};
+
 /*! PMAC port flag */
 enum PORT_FLAG {
 	PORT_FREE = 0,		/*! The port is free */
@@ -273,7 +298,9 @@ enum DP_DBG_FLAG {
 	DP_DBG_FLAG_QOS_DETAIL = BIT(20),
 	DP_DBG_FLAG_LOOKUP = BIT(21),
 	DP_DBG_FLAG_REG = BIT(22),
-
+	DP_DBG_FLAG_BR_VLAN = BIT(23),
+	DP_DBG_FLAG_PCE = BIT(24),
+	DP_DBG_FLAG_OPS = BIT(25),
 	/*Note, once add a new entry here int the enum,
 	 *need to add new item in below macro DP_F_FLAG_LIST
 	 */
@@ -307,6 +334,9 @@ enum DP_DBG_FLAG {
 	DP_DBG_ENUM_OR_STRING(DP_DBG_FLAG_QOS_DETAIL, "qos2"), \
 	DP_DBG_ENUM_OR_STRING(DP_DBG_FLAG_LOOKUP, "lookup"), \
 	DP_DBG_ENUM_OR_STRING(DP_DBG_FLAG_REG, "register"), \
+	DP_DBG_ENUM_OR_STRING(DP_DBG_FLAG_BR_VLAN, "br_vlan"), \
+	DP_DBG_ENUM_OR_STRING(DP_DBG_FLAG_PCE, "pce"), \
+	DP_DBG_ENUM_OR_STRING(DP_DBG_FLAG_OPS, "ops"), \
 	\
 	\
 	/*must be last one */\
@@ -342,6 +372,8 @@ enum QOS_FLAG {
 	QOS_Q_LOGIC,       /* get logical queue ID based on physical queue ID */
 	QOS_GLOBAL_CFG_GET, /* get global qos config info */
 	QOS_PORT_CFG_SET, /* set qos port config info */
+	QOS_BLOCK_FLUSH_PORT, /* Block and Flush all QiD's in the port */
+	QOS_BLOCK_FLUSH_QUEUE, /* Block and Flush particular QiD */
 };
 
 struct dev_mib {
@@ -355,6 +387,30 @@ struct dev_mib {
 	atomic_t tx_pkt_dropped;	/*! dropped packet counter */
 };
 
+struct mib_global_stats {
+	u64 rx_rxif_pkts;
+	u64 rx_txif_pkts;
+	u64 rx_rxif_clone;
+	u64 rx_drop;
+	u64 tx_pkts;
+	u64 tx_drop;
+};
+
+DECLARE_PER_CPU_SHARED_ALIGNED(struct mib_global_stats, mib_g_stats);
+
+#define MIB_G_STATS_INC(member) do { \
+			per_cpu(mib_g_stats, get_cpu()).member++; \
+			put_cpu(); \
+		} while(0)
+
+#define MIB_G_STATS_RESET(member, cpu) do { \
+			per_cpu(mib_g_stats, cpu).member = 0; \
+		} while(0)
+
+#define MIB_G_STATS_GET(member, cpu) \
+			per_cpu(mib_g_stats, cpu).member
+
+
 struct logic_dev {
 	struct list_head list;
 	struct net_device *dev;
@@ -364,6 +420,17 @@ struct logic_dev {
 	u32 subif_flag; /*save the flag used during dp_register_subif*/
 };
 
+struct dp_igp {
+	u32 igp_id; /* CQM enqueue port based ID */
+	u32 igp_dma_ch_to_gswip; /* DMA TX channel base to GSWIP */
+	u32 num_out_cqm_deq_port; /* num of CQM dequeue port to GSWIP */
+};
+
+struct dp_egp {
+	int egp_id; /* EGP port ID */
+	enum DP_EGP_TYPE type; /* EGP port: DP_EGP_TO_DEV, DP_EGP_TO_GSWIP */
+};
+
 /*! Sub interface detail information */
 struct dp_subif_info {
 	s32 flags;
@@ -371,21 +438,45 @@ struct dp_subif_info {
 	struct net_device *netif; /*! pointer to  net_device */
 	char device_name[IFNAMSIZ]; /*! devide name, like wlan0, */
 	struct dev_mib mib; /*! mib */
+	struct dp_reinsert_count reins_cnt;
 	struct net_device *ctp_dev; /*CTP dev for PON pmapper case*/
-	u16 bp; /*bridge port */
 	u16 fid; /* switch bridge id */
 	struct list_head logic_dev; /*unexplicit logical dev*/
 #if IS_ENABLED(CONFIG_NET_SWITCHDEV)
 	void *swdev_priv; /*to store ext vlan info*/
 #endif
-	u8 num_qid; /*!< number of queue id*/
 	u8 deq_port_idx; /* To store deq port index from register_subif */
 	union {
-		s16 qid;    /* physical queue id Still keep it to be
-			     * back-compatible for legacy platform and legacy
-			     * integration
-			     */
-		s16 qid_list[DP_MAX_DEQ_PER_SUBIF];/* physical queue id */
+		struct {
+			u16 bp;     /* bridge port */
+			u16 gpid; /*!< [out] gpid which is mapped from
+				   * dpid +subif normally one GPID per subif for
+				   *   non PON device.
+				   *   For PON case, one GPID per bridge port
+				   */
+			u32 data_flag_ops; /* To store original flag from caller
+					    * during dp_register_subif
+					    * under data->flag_ops
+					    */
+			u8 num_qid; /*!< number of queue id*/
+			union {
+				u16 qid;    /* physical queue id Still keep it
+					     * to be back-compatible for legacy
+					     * platform and legacy integration
+					     */
+				/* physical queue id */
+				u16 qid_list[DP_MAX_DEQ_PER_SUBIF];
+			};
+			u32 dfl_sess[DP_DFL_SESS_NUM];	  /*! default CPU egress
+							   * session ID Valid
+							   * only if
+							   * f_dfl_eg_sess set
+							   * one sesson per
+							   * class[4 bits]
+							   */
+			u32 subif_groupid;
+		};
+		struct dp_subif_common subif_common;
 	};
 	s16 sched_id; /* can be physical scheduler id or logical node id */
 	s16 q_node[DP_MAX_DEQ_PER_SUBIF]; /* logical Q node Id if applicable */
@@ -397,9 +488,6 @@ struct dp_subif_info {
 	u32 subif_flag; /* To store original flag from caller during
 			 * dp_register_subif
 			 */
-	u32 data_flag_ops; /* To store original flag from caller during
-			    * dp_register_subif under data->flag_ops
-			    */
 	u16 mac_learn_dis; /* To store mac learning capability of subif from
 			    * caller during dp_register_subif
 			    */
@@ -408,24 +496,34 @@ struct dp_subif_info {
 					       *  dfl_eg_sess valid or
 					       *  not
 					       */
-	u32 dfl_sess[DP_DFL_SESS_NUM]; /*! default CPU egress session ID
-					* Valid only if f_dfl_eg_sess is set
-					* one sesson per class[4 bits]
-					*/
 	u16 max_pkt_size;
+	u16 cqm_mtu_size;
 	u16 headroom_size;
 	u16 tailroom_size;
 	u16 min_pkt_len;
-#define DP_POLICY_PER_PORT 4
-	u16 policy_base;
-	u8 policy_num;
-	u16 pool_map;	/* pool map: bit 0: POOL SIZE 0
-			 *           bit 1: POOL_SIZE_1 and so on
-			 */
-	u8  pkt_only_en;
-	u8  seg_en;
-	u16 gpid;
+	int min_pkt_len_cfg;
+	u16 tx_policy_base;    /* TX policy base */
+	u8 tx_policy_num;      /* TX policy number */
+	u8 tx_policy_map;      /* TX policy map */
+	u16 rx_policy_base; /* RX policy base */
+	u8 rx_policy_num;   /* RX policy number */
+	u8 rx_policy_map;   /* RX policy map */
+	u8 pkt_only_en;
+	u8 seg_en;
+	u16 swdev_en;
 	bool cpu_port_en;
+	u8 prel2_len:2;	 /* 0 = disabled, 1 = 16 bytes, 2 = 32 bytes, 3 = 48 bytes */
+	dp_rx_fn_t rx_fn;	/*!< Rx function callback */
+	dp_get_netif_subifid_fn_t get_subifid_fn; /*! get subif ID callback */
+	enum DP_DATA_PORT_TYPE type;
+	enum DP_SPL_TYPE spl_conn_type; /* only for special path,
+					 * otherwise set to DP_SPL_INVAL
+					 */
+	int igp_id;
+	int tx_pkt_credit;
+	u8 num_igp;
+	u8 num_egp;
+	struct dp_spl_cfg *spl_cfg;
 };
 
 struct vlan_info {
@@ -439,11 +537,10 @@ struct vlan_info {
 enum DP_TEMP_DMA_PMAC {
 	TEMPL_NORMAL = 0,
 	TEMPL_CHECKSUM,
-#if IS_ENABLED(CONFIG_INTEL_DATAPATH_PTP1588)
 	TEMPL_PTP,
-#endif
 	TEMPL_INSERT,
 	TEMPL_OTHERS,
+	TEMPL_CHECKSUM_PTP,
 	MAX_TEMPLATE
 };
 
@@ -453,22 +550,35 @@ enum DP_PRIV_F {
 
 struct pmac_port_info {
 	enum PORT_FLAG status;	/*! port status */
-	int alloc_flags;	/* the flags saved when calling dp_port_alloc */
 	struct dp_cb cb;	/*! Callback Pointer to DIRECTPATH_CB */
 	struct module *owner;
 	struct net_device *dev;
 	u32 dev_port;
 	u32 num_subif;
 	u16 subif_max;
-	s32 port_id;
+	union {
+		struct {
+			int port_id;
+			int alloc_flags; /* the flags saved when calling
+					  * dp_port_alloc
+					  */
+			u8  cqe_lu_mode; /* cqe lookup mode */
+			u32 gsw_mode; /* gswip mode for subif */
+			s16 gpid_spl;  /* special GPID:
+					* alloc it at dp_alloc_port
+					* config it at dp_register_dev
+					* for policy setting
+					*/
+
+		};
+		struct dp_subif_port_common subif_port_cmn;
+	};
 	atomic_t tx_err_drop;
 	atomic_t rx_err_drop;
 	struct gsw_itf *itf_info;  /*point to switch interface configuration */
 	int ctp_max; /*maximum ctp */
 	u32 vap_offset; /*shift bits to get vap value */
 	u32 vap_mask; /*get final vap after bit shift */
-	u8  cqe_lu_mode; /*cqe lookup mode */
-	u32 gsw_mode; /*gswip mode for subif */
 	u32 flag_other; /*save flag from cbm_dp_port_alloc */
 	u32 deq_port_base; /*CQE Dequeue Port */
 	u32 deq_port_num;  /*for PON IP: 64 ports, others: 1 */
@@ -492,26 +602,37 @@ struct pmac_port_info {
 			*   config it at dp_register_subif
 			*/
 	u16 gpid_num; /* reserved nubmer of continuous of gpid */
-	u16 gpid_spl;  /* special GPID:
-			* alloc it at dp_alloc_port
-			* config it at dp_register_dev for policy setting
-			*/
-	u16 policy_base; /* policy base */
-	u8 policy_num;   /* policy number */
-	u16 pool_map;	/* pool map: bit 0: POOL SIZE 0
-			 *           bit 1: POOL_SIZE_1 and so on
-			 */
+	u16 tx_policy_base; /* TX policy base */
+	u8 tx_policy_num;   /* TX policy number */
+	u16 rx_policy_base; /* RX policy base */
+	u8 rx_policy_num;   /* RX policy number */
+	u16 spl_tx_policy_base; /* TX policy base   for spl GPID */
+	u8 spl_tx_policy_num;   /* TX policy number for spl GPID */
+	u8 spl_tx_policy_map;   /* TX policy map    for spl GPID */
+	u16 spl_rx_policy_base; /* RX policy base   for spl GPID */
+	u8 spl_rx_policy_num;   /* RX policy number for spl GPID */
+	u8 spl_rx_policy_map;   /* RX policy map    for spl GPID */
 	u32 num_dma_chan; /*For G.INT it's 8 or 16, for other 1*/
 	u32 lct_idx; /* LCT subif register flag */
-	u32 dma_ch_base; /*! Base entry index of dp_dma_chan_tbl */
+	struct dp_lct_rx_cnt *lct_rx_cnt; /* For lct counter corrections,
+					   * only allocated in case of lct subif
+					   */
+	u32 dma_chan_tbl_idx; /*! Base entry index of dp_dma_chan_tbl */
 	u32 res_qid_base; /* Base entry for the device's reserved Q */
 	u32 num_resv_q; /* Num of reserved Q per device */
-#if IS_ENABLED(CONFIG_INTEL_DATAPATH_PTP1588)
-	u32 f_ptp:1; /* PTP1588 support enablement */
-#endif
+	u32 f_ptp: 1; /* PTP1588 support enablement */
 #if IS_ENABLED(CONFIG_INTEL_DATAPATH_SWITCHDEV)
 	u32 swdev_en; /* switchdev enable/disable flag for port */
 #endif
+	u16 loop_dis; /*!< If set do not add this dp port's bp
+		       * into other bp's member port map
+		       * if source = dest dp port
+		       */
+	u16 bp_hairpin_cap; /*!< If set, then add BP's in this dev
+			     * into its own bridgeport member list
+			     * For PRX: Only WLAN/Wifi device need
+			     * hair pin capability
+			     */
 	/*only valid for 1st dp instanace which need dp_xmit/dp_rx*/
 	/*[0] for non-checksum case,
 	 *[1] for checksum offload
@@ -520,33 +641,52 @@ struct pmac_port_info {
 	 * b: DSL bonding FCS case
 	 */
 	struct pmac_tx_hdr pmac_template[MAX_TEMPLATE];
+	u32 desc_dw_templ[4][MAX_TEMPLATE];
+	u32 desc_dw_mask[4][MAX_TEMPLATE];
+#if IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP30)
 	struct dma_tx_desc_0 dma0_template[MAX_TEMPLATE];
 	struct dma_tx_desc_0 dma0_mask_template[MAX_TEMPLATE];
 	struct dma_tx_desc_1 dma1_template[MAX_TEMPLATE];
 	struct dma_tx_desc_1 dma1_mask_template[MAX_TEMPLATE];
 	struct dma_tx_desc_3 dma3_template[MAX_TEMPLATE];
 	struct dma_tx_desc_3 dma3_mask_template[MAX_TEMPLATE];
+#endif
 	u32 num_tx_ring; /* Num of Tx ring */
 	u32 num_rx_ring; /* Num of Rx ring */
 	struct dp_rx_ring rx_ring[DP_RX_RING_NUM]; /*!< DC rx ring info	*/
 	struct dp_tx_ring tx_ring[DP_TX_RING_NUM]; /*!< DC tx ring info	*/
+	u8 num_umt_port; /* Num of UMT port */
 #if !IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP30)
-	struct dp_umt_port umt; /*!< UMT Param */
+	struct dp_umt_port umt[DP_MAX_UMT]; /*!< UMT Param */
 #endif
+	enum DP_DATA_PORT_TYPE type;
+	u32 blk_size;	/*!< PCE Block Size */
 	/* These members must be end. */
 	u32 tail;
 	struct dp_subif_info *subif_info;
+	spinlock_t mib_cnt_lock; /* lock for updates from mib_counters module*/
+};
+
+struct ctp_dev {
+	struct list_head list;
+	struct net_device *dev; /* CTP device pointer */
+	u16 bp; /* bridge port */
+	u16 ctp; /* CTP port */
 };
 
 /*bridge port with pmapper supported dev structure */
-struct bp_pmapper_dev {
+struct bp_pmapper {
 	int flag;/*0-FREE, 1-Used*/
 	struct net_device *dev; /*bridge port device pointer */
+	struct list_head ctp_dev; /* CTP dev list */
 	int pcp[DP_PMAP_PCP_NUM];  /*PCP table */
 	int dscp[DP_PMAP_DSCP_NUM]; /*DSCP table*/
 	int def_ctp; /*Untag & nonip*/
 	int mode; /*mode*/
 	int ref_cnt; /*reference counter */
+	int ctp_flow_index; /* to store CTP first flow entry index
+			     * for vlan aware feature PCE rule
+			     */
 };
 
 /*queue struct */
@@ -573,8 +713,9 @@ struct dma_chan_info {
 };
 
 struct cqm_port_info {
-	int f_first_qid : 1; /*0 not valid */
+	u32 f_first_qid : 1; /*0 not valid */
 	u32 ref_cnt; /*reference counter: the number of CTP attached to it*/
+	u32 ref_cnt_umt; /* ref counter of UMT */
 	u32 tx_pkt_credit;  /*PP port tx bytes credit */
 	void *txpush_addr; /* QOS push addr after shift or mask from
 			    * PP QOS point of view
@@ -582,11 +723,15 @@ struct cqm_port_info {
 	void *txpush_addr_qos; /* QOS push address without any shift/mask */
 	u32 tx_ring_size; /*PP port ring size */
 	int qos_port; /*qos port id*/
-	int first_qid; /*in order to auto sharing queue, 1st queue allocated by
-			*dp_register_subif_ext for that cqm_dequeue_port will be
-			*stored here. later it will be shared by other subif via
-			*dp_register_subif_ext
-			*/
+	union {
+		int first_qid; /*in order to auto sharing queue,
+				*1st queue allocated by dp_register_subif_ext
+				* for that cqm_dequeue_port will be stored here.
+				* later it will be shared by other subif via
+				* dp_register_subif_ext
+				*/
+		int qid[DP_MAX_DEQ_PER_SUBIF];
+	};
 	int q_node; /*first_qid's logical node id*/
 	int dp_port; /* dp_port info */
 	u32 dma_chan;
@@ -702,30 +847,46 @@ extern struct pmac_port_info *dp_port_info[DP_MAX_INST];
 extern struct q_info dp_q_tbl[DP_MAX_INST][DP_MAX_QUEUE_NUM];
 extern struct dp_sched_info dp_sched_tbl[DP_MAX_INST][DP_MAX_SCHED_NUM];
 extern struct cqm_port_info dp_deq_port_tbl[DP_MAX_INST][DP_MAX_CQM_DEQ];
-extern struct bp_pmapper_dev dp_bp_dev_tbl[DP_MAX_INST][DP_MAX_BP_NUM];
+extern struct bp_pmapper dp_bp_tbl[DP_MAX_INST][DP_MAX_BP_NUM];
 extern struct dma_chan_info *dp_dma_chan_tbl[DP_MAX_INST];
 
 static inline struct inst_property *get_dp_port_prop(int inst)
 {
-	if (inst >= 0)
-		return &dp_port_prop[inst];
-	return NULL;
+	return &dp_port_prop[inst];
 }
 
 static inline struct pmac_port_info *get_dp_port_info(int inst, int index)
 {
-	if (index < dp_port_prop[inst].info.cap.max_num_dp_ports)
-		return &dp_port_info[inst][index];
-	return NULL;
+	return &dp_port_info[inst][index];
+}
+
+static inline struct cqm_port_info *get_dp_deqport_info(int inst, int idx)
+{
+	return &dp_deq_port_tbl[inst][idx];
+}
+
+static inline struct bp_pmapper *get_dp_bp_info(int inst, int idx)
+{
+	return &dp_bp_tbl[inst][idx];
+}
+
+static inline struct q_info *get_dp_q_info(int inst, int idx)
+{
+	return &dp_q_tbl[inst][idx];
+}
+
+static inline struct inst_info *get_dp_prop_info(int inst)
+{
+	return &dp_port_prop[inst].info;
 }
 
 struct inst_property *dp_port_prop_dbg(int inst);
 struct pmac_port_info *dp_port_info_dbg(int inst, int index);
 
 static inline struct dp_subif_info *get_dp_port_subif(
-	const struct pmac_port_info *port, u16 subif_id)
+	const struct pmac_port_info *port, u16 vap)
 {
-	return &port->subif_info[subif_id];
+	return &port->subif_info[vap];
 }
 
 static inline struct dev_mib *get_dp_port_subif_mib(struct dp_subif_info *sif)
@@ -733,38 +894,69 @@ static inline struct dev_mib *get_dp_port_subif_mib(struct dp_subif_info *sif)
 	return &sif->mib;
 }
 
+/* TODO: Need to improve this API later */
+static inline bool is_soc_lgm(int inst)
+{
+	struct inst_info *info = get_dp_prop_info(inst);
+
+	if (info->type == GSWIP32_TYPE)
+		return true;
+	return false;
+}
+
+/* TODO: Need to improve this API later */
+static inline bool is_soc_prx(int inst)
+{
+	struct inst_info *info = get_dp_prop_info(inst);
+
+	if (info->type == GSWIP31_TYPE)
+		return true;
+	return false;
+}
+
 extern u32 dp_dbg_flag;
-extern unsigned int dp_dbg_err;
+extern u32 dp_dbg_err;
 #if IS_ENABLED(CONFIG_INTEL_DATAPATH_DBG)
-extern unsigned int dp_max_print_num;
-extern unsigned int dp_print_num_en;
+extern u32 dp_max_print_num;
+extern u32 dp_print_num_en;
 #endif
 #if IS_ENABLED(CONFIG_INTEL_DATAPATH_ACA_CSUM_WORKAROUND)
 extern int aca_portid;
 #endif
 
-int dp_loop_eth_dev_init(struct dentry *parent);
 void dp_loop_eth_dev_exit(void);
+
+#ifdef CONFIG_DEBUG_FS
 struct dentry *dp_proc_install(void);
+#else
+static inline struct dentry *dp_proc_install(void) { return NULL;}
+#endif
+
 extern char *dp_dbg_flag_str[];
-extern unsigned int dp_dbg_flag_list[];
+extern u32 dp_dbg_flag_list[];
 extern u32 dp_port_flag[];
 extern char *dp_port_type_str[];
 extern char *dp_port_status_str[];
 extern struct parser_info pinfo[];
-//extern GSW_API_HANDLE gswr_r;
+
 enum TEST_MODE {
 	DP_RX_MODE_NORMAL = 0,
 	DP_RX_MODE_LAN_WAN_BRIDGE,
 	DPR_RX_MODE_MAX
 };
 
+extern struct platform_device *g_dp_dev;
 extern u32 dp_rx_test_mode;
+extern u32 rx_desc_mask[4];
+extern u32 tx_desc_mask[4];
+#if IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP30)
 extern struct dma_rx_desc_1 dma_rx_desc_mask1;
 extern struct dma_rx_desc_2 dma_rx_desc_mask2;
 extern struct dma_rx_desc_3 dma_rx_desc_mask3;
 extern struct dma_rx_desc_0 dma_tx_desc_mask0;
 extern struct dma_rx_desc_1 dma_tx_desc_mask1;
+#endif
+
 ssize_t proc_print_mode_write(struct file *file, const char *buf,
 			      size_t count, loff_t *ppos);
 void proc_print_mode_read(struct seq_file *s);
@@ -773,18 +965,15 @@ struct pmac_port_info *get_port_info_via_dev(struct net_device *dev);
 void dp_clear_mib(dp_subif_t *subif, uint32_t flag);
 extern u32 dp_drop_all_tcp_err;
 extern u32 dp_pkt_size_check;
-void dp_mib_exit(void);
 void print_parser_status(struct seq_file *s);
 void proc_mib_timer_read(struct seq_file *s);
 int mpe_fh_netfiler_install(void);
 #ifdef CONFIG_LTQ_DATAPATH_CPUFREQ
-int dp_coc_cpufreq_exit(void);
-int dp_coc_cpufreq_init(void);
 int dp_cpufreq_notify_init(int inst);
 int dp_cpufreq_notify_exit(void);
 #endif
-int qos_dump_start(void);
-int qos_dump(struct seq_file *s, int pos);
+int proc_qos_init(void);
+int proc_qos_dump(struct seq_file *s, int pos);
 ssize_t proc_qos_write(struct file *file, const char *buf,
 		       size_t count, loff_t *ppos);
 void dump_parser_flag(char *buf);
@@ -792,48 +981,46 @@ void dump_parser_flag(char *buf);
 //int dp_reset_sys_mib(u32 flag);
 void dp_clear_all_mib_inside(uint32_t flag);
 
-struct sk_buff *dp_create_new_skb(struct sk_buff *skb);
 extern int ip_offset_hw_adjust;
 int register_notifier(u32 flag);
 int unregister_notifier(u32 flag);
 //int supported_logic_dev(int inst, struct net_device *dev, char *subif_name);
 struct net_device *get_base_dev(struct net_device *dev, int level);
 int add_logic_dev(int inst, int port_id, struct net_device *dev,
-		  dp_subif_t *subif_id, u32 flags);
+		  dp_subif_t *subif_id, struct dp_subif_data *data, u32 flags);
 int del_logic_dev(int inst, struct list_head *head, struct net_device *dev,
 		  u32 flags);
-int dp_get_port_subitf_via_dev_private(struct net_device *dev,
-				       dp_subif_t *subif);
 int get_vlan_via_dev(struct net_device *dev, struct vlan_prop *vlan_prop);
 void dp_parser_info_refresh(u32 cpu, u32 mpe1, u32 mpe2, u32 mpe3, u32 verify);
 int dp_inst_init(u32 flag);
+void dp_inst_free(void);
 int request_dp(u32 flag);
-/*static __init */ int dp_init_module(void);
-/*static __exit*/ void dp_cleanup_module(void);
+int dp_init_module(void);
+void dp_cleanup_module(void);
 int dp_probe(struct platform_device *pdev);
 #define NS_INT16SZ	 2
 #define NS_INADDRSZ	 4
 #define NS_IN6ADDRSZ	16
 
-int inet_pton4(const char *src, u_char *dst);
-int pton(const char *src, void *dst);
-int inet_pton4(const char *src, u_char *dst);
-int inet_pton6(const char *src, u_char *dst);
 int low_10dec(u64 x);
 int high_10dec(u64 x);
 int dp_atoi(unsigned char *str);
+#if IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP32)
 int get_offset_clear_chksum(struct sk_buff *skb, u32 *ip_offset,
 			    u32 *tcp_h_offset,
 			    u32 *tcp_type);
-int get_vlan_info(struct net_device *dev, struct vlan_info *vinfo);
+#else
+int get_offset_clear_chksum(struct sk_buff *skb, u32 *ip_offset,
+			    u32 *tcp_h_offset, u16 *l3_csum_off,
+			    u16 *l4_csum_off, u32 *tcp_type);
+#endif
 int dp_basic_proc(void);
 
-struct inst_property *get_dp_port_prop(int inst);
 struct pmac_port_info *get_port_info_via_dp_port(int inst, int dp_port);
 
 void set_dp_dbg_flag(uint32_t flags);
 uint32_t get_dp_dbg_flag(void);
-void dp_dump_raw_data(char *buf, int len, char *prefix_str);
+void dp_dump_raw_data(const void *buf, int len, char *prefix_str);
 
 #if IS_ENABLED(CONFIG_LTQ_TOE_DRIVER)
 /*! @brief  ltq_tso_xmit
@@ -854,12 +1041,14 @@ int get_dp_port_status_str_size(void);
 
 int dp_request_inst(struct dp_inst_info *info, u32 flag);
 int register_dp_cap(u32 flag);
-int bp_pmapper_dev_get(int inst, struct net_device *dev);
+int bp_pmapper_get(int inst, struct net_device *dev);
 extern int dp_init_ok;
+extern int dp_cpu_init_ok;
 void set_chksum(struct pmac_tx_hdr *pmac, u32 tcp_type,
 		u32 ip_offset, int ip_off_hw_adjust, u32 tcp_h_offset);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0)
+#if IS_ENABLED(CONFIG_QOS_MGR)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
 extern int32_t (*qos_mgr_hook_setup_tc)(struct net_device *dev, u32 handle,
 					__be16 protocol,
 					struct tc_to_netdev *tc);
@@ -867,6 +1056,8 @@ extern int32_t (*qos_mgr_hook_setup_tc)(struct net_device *dev, u32 handle,
 extern int32_t (*qos_mgr_hook_setup_tc)(struct net_device *dev,
 					enum tc_setup_type type,
 					void *type_data);
+#endif
+#define DP_ENABLE_TC_OFFLOADS
 #endif
 
 #define DP_SUBIF_LIST_HASH_SHIFT 8
@@ -881,7 +1072,7 @@ int32_t dp_sync_subifid(struct net_device *dev, char *subif_name,
 int32_t dp_sync_subifid_priv(struct net_device *dev, char *subif_name,
 			     dp_subif_t *subif_id, struct dp_subif_data *data,
 			     u32 flags, dp_get_netif_subifid_fn_t subifid_fn,
-			     int *f_subif_up);
+			     int *f_subif_up, int f_notif);
 int32_t	dp_update_subif(struct net_device *netif, void *data, dp_subif_t *subif,
 			char *subif_name, u32 flags,
 			dp_get_netif_subifid_fn_t subifid_fn);
@@ -891,19 +1082,90 @@ struct dp_subif_cache *dp_subif_lookup_safe(struct hlist_head *head,
 					    struct net_device *dev,
 					    void *data);
 int dp_subif_list_init(void);
+void dp_subif_list_free(void);
 int parser_enabled(int ep, struct dma_rx_desc_1 *desc_1);
 int dp_lan_wan_bridging(int port_id, struct sk_buff *skb);
-u32 get_dma_chan_idx(int inst, int num_dma_chan);
+int get_dma_chan_idx(int inst, int num_dma_chan);
+int dp_get_dma_ch_num(int inst, int ep, int num_deq_port);
 u32 alloc_dma_chan_tbl(int inst);
 void free_dma_chan_tbl(int inst);
 u32 alloc_dp_port_subif_info(int inst);
 void free_dp_port_subif_info(int inst);
 u32 dp_subif_hash(struct net_device *dev);
-int32_t dp_get_netif_subifid_priv(struct net_device *netif,
-				  struct sk_buff *skb, void *subif_data,
-				  u8 dst_mac[DP_MAX_ETH_ALEN],
+int dp_cbm_deq_port_enable(struct module *owner, int inst, int port_id,
+			   int deq_port_idx, int num_deq_port, int flags,
+			   u32 dma_ch_off);
+int32_t dp_get_subifid_for_update(int inst, struct net_device *netif,
 				  dp_subif_t *subif, uint32_t flags);
-struct hlist_head *get_dp_g_bridge_id_entry_hash_table_info(int instance,
-							    int index);
+int do_tx_hwtstamp(int inst, int dpid, struct sk_buff *skb);
+struct hlist_head *get_dp_g_bridge_id_entry_hash_table_info(int index);
+struct dp_evt_notif_info {
+	struct notifier_block nb;
+	struct dp_event evt_info;
+	struct list_head list;
+};
+
+struct dp_evt_notif_data {
+	enum DP_DATA_PORT_TYPE type;
+	enum DP_EVENT_OWNER owner;
+	struct net_device *dev;
+	struct module *mod;
+	u32 dev_port;
+	s32 subif;
+	int dpid;
+	int inst;
+};
+
+extern struct blocking_notifier_head dp_evt_notif_list;
+int register_dp_event_notifier(struct dp_event *info);
+int unregister_dp_event_notifier(struct dp_event *info);
+
+static inline bool is_directpath(struct pmac_port_info *port)
+{
+	return (port->alloc_flags & DP_F_DIRECT);
+}
+
+static inline bool is_dsl(struct pmac_port_info *port)
+{
+	return (port->alloc_flags & DP_F_FAST_DSL);
+}
+
+void dp_print_err_info(int res);
+int dp_notifier_invoke(int inst,
+		       struct net_device *dev, u32 port_id, u32 subif_id,
+		       enum DP_EVENT_TYPE type);
+int proc_dp_event_list_dump(struct seq_file *s, int pos);
+
+int dp_dealloc_cqm_port(struct module *owner, u32 dev_port,
+			struct pmac_port_info *port,
+			struct cbm_dp_alloc_data *data, u32 flags);
+
+int dp_alloc_cqm_port(struct module *owner, struct net_device *dev,
+		      u32 dev_port, s32 port_id,
+		      struct cbm_dp_alloc_data *cbm_data, u32 flags);
+
+int dp_enable_cqm_port(struct module *owner, struct pmac_port_info *port,
+		       struct cbm_dp_en_data *data, u32 flags);
+
+int dp_cqm_port_alloc_complete(struct module *owner,
+			       struct pmac_port_info *port, s32 dp_port,
+			       struct cbm_dp_alloc_complete_data *data,
+			       u32 flags);
+
+int dp_cqm_deq_port_res_get(u32 dp_port, cbm_dq_port_res_t *res,
+			    u32 flags);
+
+#if IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP32)
+int dp_cqm_gpid_lpid_map(struct cbm_gpid_lpid *map);
+#endif
+
+int dp_init_pce(void);
+int proc_pce_dump(struct seq_file *s, int pos);
+ssize_t proc_pce_write(struct file *file, const char *buf, size_t count,
+		       loff_t *ppos);
+int dp_ctp_dev_list_add(struct list_head *head, struct net_device *dev, int bp,
+			int vap);
+int dp_ctp_dev_list_del(struct list_head *head, struct net_device *dev);
+
 #endif /*DATAPATH_H */
 

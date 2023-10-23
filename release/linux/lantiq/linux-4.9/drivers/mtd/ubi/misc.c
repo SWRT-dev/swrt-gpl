@@ -92,6 +92,7 @@ int ubi_check_volume(struct ubi_device *ubi, int vol_id)
 	vfree(buf);
 	return err;
 }
+EXPORT_SYMBOL_GPL(ubi_check_volume);
 
 /**
  * ubi_update_reserved - update bad eraseblock handling accounting data.
@@ -186,6 +187,7 @@ void ubi_warn(const struct ubi_device *ubi, const char *fmt, ...)
 
 	va_end(args);
 }
+EXPORT_SYMBOL_GPL(ubi_warn);
 
 /* UBI error messages */
 void ubi_err(const struct ubi_device *ubi, const char *fmt, ...)
@@ -202,3 +204,4 @@ void ubi_err(const struct ubi_device *ubi, const char *fmt, ...)
 	       ubi->ubi_num, __builtin_return_address(0), &vaf);
 	va_end(args);
 }
+EXPORT_SYMBOL_GPL(ubi_err);

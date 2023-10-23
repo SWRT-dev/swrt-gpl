@@ -1,6 +1,7 @@
 config MIPS
 	bool
 	default y
+	select ARCH_HAS_UBSAN_SANITIZE_ALL
 	select ARCH_SUPPORTS_UPROBES
 	select ARCH_MIGHT_HAVE_PC_PARPORT
 	select ARCH_MIGHT_HAVE_PC_SERIO
@@ -69,6 +70,8 @@ config MIPS
 	select HAVE_EXIT_THREAD
 	select HAVE_REGS_AND_STACK_ACCESS_API
 	select HAVE_ARCH_HARDENED_USERCOPY
+	select ARCH_HAS_KCOV
+	select HAVE_GCC_PLUGINS
 
 menu "Machine selection"
 
@@ -806,6 +809,7 @@ config SIBYTE_LITTLESUR
 	select SYS_SUPPORTS_BIG_ENDIAN
 	select SYS_SUPPORTS_HIGHMEM
 	select SYS_SUPPORTS_LITTLE_ENDIAN
+	select ZONE_DMA32 if 64BIT
 
 config SIBYTE_SENTOSA
 	bool "Sibyte BCM91250E-Sentosa"
@@ -849,6 +853,7 @@ config SNI_RM
 	select I8253
 	select I8259
 	select ISA
+	select MIPS_L1_CACHE_SHIFT_6
 	select SWAP_IO_SPACE if CPU_BIG_ENDIAN
 	select SYS_HAS_CPU_R4X00
 	select SYS_HAS_CPU_R5000
@@ -1789,6 +1794,16 @@ config LTQ_EVA_LEGACY
 	help
 	  Choose this for EVA legacy(512MB) support
 
+config LTQ_EVA_LOAD_ADDR
+	hex "EVA load address"
+	depends on CPU_MIPS32_3_5_EVA
+	depends on SOC_GRX500
+	default 0xffffffff20020000 if LTQ_EVA_2GB
+	default 0xffffffff60020000 if LTQ_EVA_1GB
+	default 0xffffffff80020000
+	help
+	  Define the kernel load address for LTQ EVA modes.
+
 config CPU_MIPS32_R5_FEATURES
 	bool "MIPS32 Release 5 Features"
 	depends on SYS_HAS_CPU_MIPS32_R5
@@ -2698,6 +2713,16 @@ config RANDOMIZE_BASE_MAX_OFFSET
 
 	  This is limited by the size of KSEG0, 256Mb on 32-bit or 1Gb with
 	  EVA or 64-bit. The default is 16Mb.
+
+config RANDOMIZE_BASE_MIN_ADDR
+	hex "Minimal kASLR address" if EXPERT
+	depends on RANDOMIZE_BASE
+	default "0x00000000"
+	---help---
+	  When kASLR is active, this can be used to configure the minimal
+	  address for the relocation.
+	  If this is not 0, it will be used as base address instead of the
+	  default load address of the kernel.
 
 config NODES_SHIFT
 	int

@@ -1407,7 +1407,7 @@ static int pinbank_probe(struct intel_pinctrl_drv_data *drvdata)
 			pinbank_init(np_bank, drvdata, banks + i, i);
 			prop = of_find_property(np_bank,
 						EQBR_PINBANK_GPIO_CTRL, NULL);
-			if (prop) {
+			if ((prop)&&(gpio_desc)) {
 				phandle = be32_to_cpup(prop->value);
 				gpio_desc[i].node
 					= of_find_node_by_phandle(phandle);

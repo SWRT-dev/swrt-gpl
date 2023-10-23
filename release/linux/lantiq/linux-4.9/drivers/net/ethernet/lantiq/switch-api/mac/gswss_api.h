@@ -175,15 +175,10 @@ enum {
 	LINK
 };
 
-enum {
-	XGMAC2 = 0,
-	XGMAC3,
-	XGMAC4,
-};
-
 struct adap_prv_data;
 
 struct adap_prv_data {
+	struct adap_ops ops;
 	u32 flags;
 #ifdef __KERNEL__
 	/* Adaption layer private data */
@@ -194,7 +189,6 @@ struct adap_prv_data {
 	u32 ss_addr_base;
 #endif
 	u32 core_en_cnt;
-	struct adap_ops ops;
 	/* Mac Cli */
 	GSW_MAC_Cli_t *mac_cli;
 };

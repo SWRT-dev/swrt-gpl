@@ -1,0 +1,23 @@
+*.o
+*.d
+*.orig
+*~
+
+# Linux module
+*.ko.cmd
+*.ko
+*.o.cmd
+*.mod.c
+*.mod
+Kbuild
+Module.symvers
+modules.order
+
+# temporary files from OpenWrt
+.built*
+.configured*
+.dep_files
+.prepared*
+ipkg-mips_24kc*
+
+tools/ppacmd/ppacmd

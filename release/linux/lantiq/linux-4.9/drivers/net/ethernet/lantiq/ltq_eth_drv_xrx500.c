@@ -22,6 +22,9 @@
 #include <linux/of_irq.h>
 #include <linux/of_device.h>
 #include <linux/thermal.h>
+#include <linux/delay.h>
+#include <dt-bindings/net/lantiq,prx300-eth.h>
+#include <net/switchdev.h>
 
 #ifdef CONFIG_USERSPACE_LINK_NOTIFICATION
 #include <net/genetlink.h>
@@ -29,9 +32,13 @@
 
 #include <lantiq.h>
 #include <net/datapath_api.h>
+#include <net/datapath_br_domain.h>
 #include <net/lantiq_cbm_api.h>
 #include <net/switch_api/lantiq_gsw_api.h>
 #include <net/switch_api/gsw_dev.h>
+#if IS_ENABLED(CONFIG_INTEL_E160)
+#include <net/e160.h>
+#endif
 #include "xrx500_phy_fw.h"
 #include "ltq_eth_drv_xrx500.h"
 #include "xpcs/xpcs.h"
@@ -56,7 +63,8 @@
 
 #define LTQ_ETH_NUM_INTERRUPTS 5
 
-#define NUM_IF 6
+#define SUB_IF 4
+#define PON_IP_HOST_SUBIF_IDX	3
 
 /* Init of the network device */
 static int ltq_eth_init(struct net_device *dev);
@@ -68,8 +76,6 @@ static int ltq_eth_stop(struct net_device *dev);
 static void ltq_eth_uninit(struct net_device *dev);
 /* Transmit packet from Tx Queue to MAC */
 static int ltq_start_xmit(struct sk_buff *skb, struct net_device *dev);
-/* Hardware specific IOCTL's  */
-static int ltq_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd);
 /* Get the network device statistics */
 static
 struct rtnl_link_stats64 *ltq_get_stats(struct net_device *dev,
@@ -84,7 +90,7 @@ static void ltq_tx_timeout(struct net_device *dev);
 /* interface change event handler */
 static int phy_netdevice_event(struct notifier_block *nb, unsigned long action,
 			       void *ptr);
-static int xrx500_mdio_probe(struct net_device *dev, struct xrx500_port *port);
+static int xrx500_phy_connect(struct net_device *dev, struct xrx500_port *port);
 static int ltq_gsw_pmac_init(void);
 
 /**
@@ -96,15 +102,12 @@ static int32_t dp_fp_rx(struct net_device *, struct net_device *,
 			struct sk_buff *, int32_t);
 
 static struct xrx500_hw xrx500_hw;
-
 static char wan_iface[IFNAMSIZ] = "eth1";
-static int dev_num;
-
 static struct module g_ltq_eth_module[NUM_ETH_INF];
 static u32 g_rx_csum_offload;
 static u32 g_eth_switch_mode;
 static struct ltq_net_soc_data g_soc_data;
-static struct net_device *eth_dev[NUM_IF];
+static struct net_device *eth_dev[NUM_ETH_INF][SUB_IF];
 
 static const struct net_device_ops ltq_eth_drv_ops = {
 	.ndo_init		= ltq_eth_init,
@@ -115,8 +118,9 @@ static const struct net_device_ops ltq_eth_drv_ops = {
 	.ndo_set_mac_address	= ltq_set_mac_address,
 	.ndo_change_mtu		= ltq_change_mtu,
 	.ndo_get_stats64	= ltq_get_stats,
-	.ndo_do_ioctl		= ltq_ioctl,
 	.ndo_tx_timeout		= ltq_tx_timeout,
+	.ndo_bridge_setlink	= switchdev_port_bridge_setlink,
+	.ndo_bridge_getlink	= switchdev_port_bridge_getlink,
 };
 
 static struct notifier_block netdevice_notifier = {
@@ -245,6 +249,90 @@ static int set_link_ksettings(struct net_device *dev,
 	return phy_ethtool_set_link_ksettings(dev, cmd);
 }
 
+static inline struct core_ops *get_swcore_ops(struct net_device *dev)
+{
+	struct ltq_eth_priv *priv = netdev_priv(dev);
+	u32 devid = g_eth_switch_mode > 1 && priv->wan ? 1 : 0;
+
+	return gsw_get_swcore_ops(devid);
+}
+
+static void get_pauseparam(struct net_device *dev,
+			   struct ethtool_pauseparam *epause)
+{
+	int ret;
+	struct core_ops *ops;
+	GSW_portCfg_t cfg = {0};
+
+	ops = get_swcore_ops(dev);
+	if (!ops) {
+		dev_err(&dev->dev, "failed in getting SW Core Ops\n");
+		return;
+	}
+
+	cfg.nPortId = dev->dev_id;
+	ret = ops->gsw_common_ops.PortCfgGet(ops, &cfg);
+	if (ret != GSW_statusOk) {
+		dev_err(&dev->dev, "failed in getting Port Cfg: %d\n", ret);
+		return;
+	}
+
+	switch (cfg.eFlowCtrl) {
+	case GSW_FLOW_AUTO:
+		epause->autoneg = 1;
+	case GSW_FLOW_RXTX:
+		epause->rx_pause = 1;
+		epause->tx_pause = 1;
+		break;
+	case GSW_FLOW_RX:
+		epause->rx_pause = 1;
+		break;
+	case GSW_FLOW_TX:
+		epause->tx_pause = 1;
+		break;
+	case GSW_FLOW_OFF:
+	default:
+		epause->autoneg = 0;
+	}
+}
+
+static int set_pauseparam(struct net_device *dev,
+			  struct ethtool_pauseparam *epause)
+{
+	int ret;
+	struct core_ops *ops;
+	GSW_portCfg_t cfg = {0};
+
+	ops = get_swcore_ops(dev);
+	if (!ops) {
+		dev_err(&dev->dev, "failed in getting SW Core Ops\n");
+		return -EINVAL;
+	}
+
+	cfg.nPortId = dev->dev_id;
+	ret = ops->gsw_common_ops.PortCfgGet(ops, &cfg);
+	if (ret != GSW_statusOk) {
+		dev_err(&dev->dev, "failed in getting Port Cfg: %d\n", ret);
+		return -EIO;
+	}
+
+	if (epause->autoneg)
+		cfg.eFlowCtrl = GSW_FLOW_AUTO;
+	else if (epause->rx_pause)
+		cfg.eFlowCtrl = epause->tx_pause ? GSW_FLOW_RXTX : GSW_FLOW_RX;
+	else if (epause->tx_pause)
+		cfg.eFlowCtrl = GSW_FLOW_TX;
+	else
+		cfg.eFlowCtrl = GSW_FLOW_OFF;
+
+	ret = ops->gsw_common_ops.PortCfgSet(ops, &cfg);
+	if (ret != GSW_statusOk) {
+		dev_err(&dev->dev, "failed in setting Port Cfg: %d\n", ret);
+		return -EIO;
+	} else
+		return 0;
+}
+
 /* Reset the device */
 static int nway_reset(struct net_device *dev)
 {
@@ -255,68 +343,75 @@ static int nway_reset(struct net_device *dev)
 static int  ethtool_eee_get(struct net_device *dev,
 			    struct ethtool_eee *eee_data)
 {
+	struct ltq_eth_priv *priv = netdev_priv(dev);
+
+	eee_data->eee_enabled = priv->eee_enabled;
+	eee_data->tx_lpi_enabled = priv->tx_lpi_enabled;
+	eee_data->eee_active = priv->eee_active;
+	/* Check for XGMAC capability */
+	if (priv->xgmac_id >= 2)
+		eee_data->tx_lpi_timer = priv->tx_lpi_timer;
+
+	return phy_ethtool_get_eee(dev->phydev, eee_data);
+}
+
+static int  mac_set_eee(struct net_device *dev,
+			bool enable)
+{
+	int retval;
 	struct core_ops *ops = gsw_get_swcore_ops(0);
-	GSW_portLinkCfg_t	port_link_cfg = {0};
-	int retval = -EOPNOTSUPP;
+	GSW_portLinkCfg_t   port_link_cfg = {0};
 
 	if (!ops)
 		return -ENODEV;
+
 	port_link_cfg.nPortId = dev->dev_id;
 	retval = ops->gsw_common_ops.PortLinkCfgGet(ops, &port_link_cfg);
-
 	if (retval != 0) {
 		pr_err("%s: gsw PortLinkCfgGet failed\n", __func__);
 		return retval;
 	}
 
-	if (port_link_cfg.bLPI) {
-		phy_ethtool_get_eee(dev->phydev, eee_data);
-		eee_data->eee_active = port_link_cfg.bLPI;
-		eee_data->eee_enabled = port_link_cfg.bLPI;
-		eee_data->tx_lpi_enabled = port_link_cfg.bLPI;
+	port_link_cfg.bLPI = enable;
+
+	retval = ops->gsw_common_ops.PortLinkCfgSet(ops, &port_link_cfg);
+	if (retval != 0) {
+		pr_err("%s: gsw PortLinkCfgSet failed\n", __func__);
+		return retval;
 	}
 
-	return retval;
+	return 0;
 }
 
 static int  ethtool_eee_set(struct net_device *dev,
 			    struct ethtool_eee *eee_data)
 {
-	struct core_ops *ops = gsw_get_swcore_ops(0);
-	GSW_portLinkCfg_t	port_link_cfg = {0};
+	struct ltq_eth_priv *priv = netdev_priv(dev);
 	int retval = -EOPNOTSUPP;
 
-	if (!ops)
-		return -ENODEV;
-	port_link_cfg.nPortId = dev->dev_id;
-	retval = ops->gsw_common_ops.PortLinkCfgGet(ops, &port_link_cfg);
+	priv->eee_enabled = eee_data->eee_enabled;
+	priv->tx_lpi_enabled = eee_data->tx_lpi_enabled;
+	priv->tx_lpi_timer = eee_data->tx_lpi_timer;
 
-	if (retval != 0) {
-		pr_err("%s: gsw PortLinkCfgGet failed\n", __func__);
+	retval = mac_set_eee(dev, priv->eee_enabled && priv->tx_lpi_enabled);
+	if (retval) {
+		pr_err("%s: MAC LPI setting  failed\n", __func__);
 		return retval;
 	}
 
-	/* xmac */
-	port_link_cfg.bLPI ^= 1;
-	retval =  ops->gsw_common_ops.PortLinkCfgSet(ops, &port_link_cfg);
+	/* Check for XGMAC capability */
+	if (priv->xgmac_id >= 2) {
+		struct mac_ops *ops;
 
-	if (retval != 0) {
-		pr_err("%s: gsw PortLinkCfgset failed\n", __func__);
-		return retval;
-	}
-
-	/* phy */
-	if (!eee_data->eee_active) {
-		if (phy_init_eee(dev->phydev, 0)) {
-			pr_err("%s: phy_init_eee failed\n", __func__);
-			return retval;
-		}
+		ops = gsw_get_mac_ops(0, priv->xgmac_id);
+		if (ops)
+			ops->xgmac_reg_wr(ops, 0x00D4, priv->tx_lpi_timer);
 	}
 
 	return retval;
 }
 
-int serdes_ethtool_get_link_ksettings(struct net_device *dev,
+static int serdes_ethtool_get_link_ksettings(struct net_device *dev,
 				      struct ethtool_link_ksettings *cmd)
 {
 	struct ltq_eth_priv *priv = netdev_priv(dev);
@@ -329,8 +424,15 @@ int serdes_ethtool_get_link_ksettings(struct net_device *dev,
 	pdev = of_find_device_by_node(priv->xpcs_node);
 	if (pdev) {
 #ifdef CONFIG_INTEL_XPCS
-		/* Speed Get in Ethtool */
-		ret = xpcs_ethtool_ksettings_get(&pdev->dev, cmd);
+		struct xpcs_ops *ops = xpcs_pdev_ops(pdev);
+
+		if (IS_ERR(ops))
+			ret = PTR_ERR(ops);
+		else if (!ops->ethtool_ksettings_get)
+			ret = -EINVAL;
+		else
+			/* Speed Get in Ethtool */
+			ret = ops->ethtool_ksettings_get(&pdev->dev, cmd);
 #endif
 	} else {
 		pr_err("Cannot get Xpcs pdev for %s\n", dev->name);
@@ -339,25 +441,32 @@ int serdes_ethtool_get_link_ksettings(struct net_device *dev,
 	return ret;
 }
 
-int serdes_ethtool_set_link_ksettings(struct net_device *dev,
+static int serdes_ethtool_set_link_ksettings(struct net_device *dev,
 				      const struct ethtool_link_ksettings *cmd)
 {
 	struct ltq_eth_priv *priv = netdev_priv(dev);
 	int ret = 0;
 	struct platform_device *pdev;
 
-	if (!priv->xpcs_node)
+	if (!priv->xpcs_node || !of_device_is_available(priv->xpcs_node))
 		return -1;
 
 	/* Speed Set in Ethtool */
 	pdev = of_find_device_by_node(priv->xpcs_node);
 	if (pdev) {
 #ifdef CONFIG_INTEL_XPCS
-		/* Speed Get in Ethtool */
-		ret = xpcs_ethtool_ksettings_set(&pdev->dev, cmd);
+		struct xpcs_ops *ops = xpcs_pdev_ops(pdev);
+
+		if (IS_ERR(ops))
+			ret = PTR_ERR(ops);
+		else if (!ops->ethtool_ksettings_set)
+			ret = -EINVAL;
+		else
+			/* Speed Get in Ethtool */
+			ret = ops->ethtool_ksettings_set(&pdev->dev, cmd);
 #endif
 	} else {
-		 pr_err("Cannot get Xpcs pdev for %s\n", dev->name);
+		pr_err("Cannot get Xpcs pdev for %s\n", dev->name);
 		ret = -1;
 	}
 
@@ -414,6 +523,9 @@ static void get_strings(struct net_device *netdev, u32 stringset, u8 *data)
 			data += ETH_GSTRING_LEN;
 		}
 		break;
+	case ETH_SS_STATS:
+		dp_net_dev_get_ss_stat_strings(netdev, data);
+		break;
 	default:
 		break;
 	}
@@ -424,9 +536,17 @@ static int get_stringset_count(struct net_device *netdev, int sset)
 	switch (sset) {
 	case ETH_SS_PRIV_FLAGS:
 		return PRIV_FLAGS_STR_LEN;
+	case ETH_SS_STATS:
+		return dp_net_dev_get_ss_stat_strings_count(netdev);
 	default:
 		return -EOPNOTSUPP;
 	}
+}
+
+static void get_ethtool_stats(struct net_device *dev,
+			      struct ethtool_stats *stats, u64 *data)
+{
+	dp_net_dev_get_ethtool_stats(dev, stats, data);
 }
 
 /* Structure of the ether tool operation in Phy case  */
@@ -438,30 +558,137 @@ static const struct ethtool_ops ethtool_ops = {
 	.get_link		= ethtool_op_get_link,
 	.get_link_ksettings	= get_link_ksettings,
 	.set_link_ksettings	= set_link_ksettings,
+	.get_pauseparam		= get_pauseparam,
+	.set_pauseparam		= set_pauseparam,
 	.get_eee		= ethtool_eee_get,
 	.set_eee		= ethtool_eee_set,
 	.get_strings		= get_strings,
 	.get_sset_count		= get_stringset_count,
 	.get_priv_flags		= get_priv_flags,
 	.set_priv_flags		= set_priv_flags,
+	.get_ethtool_stats	= get_ethtool_stats,
 };
 
 /* Structure of the ether tool operation in No-Phy case */
 static const struct ethtool_ops serdes_ethtool_ops = {
 	.get_drvinfo		= get_drvinfo,
+	.get_link		= ethtool_op_get_link,
 	.get_link_ksettings	= serdes_ethtool_get_link_ksettings,
 	.set_link_ksettings	= serdes_ethtool_set_link_ksettings,
+	.get_pauseparam		= get_pauseparam,
+	.set_pauseparam		= set_pauseparam,
 	.get_strings		= get_strings,
 	.get_sset_count		= get_stringset_count,
 	.get_priv_flags		= get_priv_flags,
 	.set_priv_flags		= set_priv_flags,
+	.get_ethtool_stats	= get_ethtool_stats,
 };
+
+static const struct ethtool_ops subif_ethtool_ops = {
+	.get_drvinfo		= get_drvinfo,
+	.get_link		= ethtool_op_get_link,
+	.get_strings		= get_strings,
+	.get_sset_count		= get_stringset_count,
+	.get_ethtool_stats	= get_ethtool_stats,
+};
+
+static int eth_serdes_power(struct net_device *dev, bool up)
+{
+	int ret = 0;
+
+#ifdef CONFIG_INTEL_XPCS
+	struct ltq_eth_priv *priv = netdev_priv(dev);
+	struct platform_device *pdev;
+	struct xpcs_ops *ops;
+
+	pr_debug("%s(%s, %d)\n", __func__, dev->name, up);
+
+	if (priv->master)
+		priv = priv->master;
+
+	if (!of_device_is_available(priv->xpcs_node))
+		return 0;
+
+	if ((!up || atomic_inc_return(&priv->powerup) != 1)
+	    && (up || atomic_dec_if_positive(&priv->powerup) != 0))
+		return 0;
+
+	if (!priv->xpcs_node) {
+		pr_err("Cannot get Xpcs device tree node for %s\n", dev->name);
+		return -EINVAL;
+	}
+
+	pdev = of_find_device_by_node(priv->xpcs_node);
+	if (!pdev) {
+		pr_err("Cannot get Xpcs pdef for %s\n", dev->name);
+		return -EINVAL;
+	}
+
+	ops = xpcs_pdev_ops(pdev);
+	if (IS_ERR(ops))
+		return PTR_ERR(ops);
+
+	if (up) {
+		if (ops->power_on)
+			ret = ops->power_on(&pdev->dev);
+		else
+			ret = -EINVAL;
+	} else {
+		if (ops->power_off)
+			ret = ops->power_off(&pdev->dev);
+		else
+			ret = -EINVAL;
+	}
+#endif
+
+	return ret;
+}
+
+static int xgmac_rx(struct ltq_eth_priv *priv, bool on)
+{
+	struct mac_ops *ops;
+
+	if (priv->master)
+		priv = priv->master;
+
+	if (priv->xgmac_id <= MAC_2)
+		return -EINVAL;
+
+	if ((!on || atomic_inc_return(&priv->xgmac_rx) != 1)
+	    && (on || atomic_dec_if_positive(&priv->xgmac_rx) != 0))
+		return 0;
+
+	ops = gsw_get_mac_ops(0, priv->xgmac_id);
+	if (!ops) {
+		pr_err("Failed in get ops from XGMAC %u\n", priv->xgmac_id);
+		return -ENOTSUPP;
+	}
+	if (!ops->rx_enable) {
+		pr_err("No XGMAC RX enable/disable support on XGMAC %u\n",
+		       priv->xgmac_id);
+		return -ENOTSUPP;
+	}
+
+	if (!on) {
+		/* Set the Link Down */
+		ops->set_link_sts(ops, GSW_PORT_LINK_DOWN);
+		/* Set the Duplex as Full Duplex */
+		ops->set_duplex(ops, GSW_DUPLEX_FULL);
+	} else {
+		/* Set the Duplex as AUTO */
+		ops->set_duplex(ops, GSW_DUPLEX_AUTO);
+		/* Set the Link as AUTO */
+		ops->set_link_sts(ops, GSW_PORT_LINK_AUTO);
+	}
+
+	return ops->rx_enable(ops, on);
+}
 
 /* open the network device interface*/
 static int ltq_eth_open(struct net_device *dev)
 {
+	struct ltq_eth_priv *priv = netdev_priv(dev);
 	int ret;
-	int flags = 1;  /* flag 1 for enable */
 
 	pr_debug("%s called for device %s\n", __func__, dev->name);
 #ifdef CONFIG_GRX500_CBM
@@ -472,7 +699,7 @@ static int ltq_eth_open(struct net_device *dev)
 		pr_info("p2p channel already ON !\n");
 #endif
 
-	ret = dp_rx_enable(dev, dev->name, flags);
+	ret = dp_rx_enable(dev, dev->name, DP_RX_ENABLE);
 
 	if (ret != DP_SUCCESS) {
 		pr_err("%s: failed to enable for device: %s ret %d\n",
@@ -480,17 +707,27 @@ static int ltq_eth_open(struct net_device *dev)
 		return -1;
 	}
 
+	eth_serdes_power(dev, true);
+	usleep_range(20, 30);
+
+	xgmac_rx(priv, true);
+
 	return 0;
 }
 
 /* Stop the network device interface*/
 static int ltq_eth_stop(struct net_device *dev)
 {
+	struct ltq_eth_priv *priv = netdev_priv(dev);
 	int ret;
-	int flags = 0;  /* flag 0 for disable */
 
 	pr_debug("%s called for device %s\n", __func__, dev->name);
-	ret = dp_rx_enable(dev, dev->name, flags);
+
+	xgmac_rx(priv, false);
+
+	eth_serdes_power(dev, false);
+
+	ret = dp_rx_enable(dev, dev->name, DP_RX_DISABLE);
 
 	if (ret != DP_SUCCESS) {
 		pr_err("%s: failed to disable for device: %s ret %d\n",
@@ -518,22 +755,15 @@ static void ltq_eth_uninit(struct net_device *dev)
 		return;
 	}
 
-	if (priv->lct_en == 1) {
-		priv->dp_subif.subif = -1;
-		priv->dp_subif.port_id = priv->dp_port_id;
-		data.flag_ops = DP_F_DATA_LCT_SUBIF;
-		ret = dp_register_subif_ext(0, priv->owner,
-					    dev, dev->name,
-					    &priv->dp_subif,
-					    &data, DP_F_DEREGISTER);
-	} else {
-		priv->dp_subif.subif = -1;
-		priv->dp_subif.port_id = priv->dp_port_id;
-		ret = dp_register_subif_ext(0, priv->owner,
-					    dev, dev->name,
-					    &priv->dp_subif,
-					    NULL, DP_F_DEREGISTER);
-	}
+	if (priv->lct_en == 1)
+		data.flag_ops |= DP_F_DATA_LCT_SUBIF;
+
+	priv->dp_subif.subif = -1;
+	priv->dp_subif.port_id = priv->dp_port_id;
+	ret = dp_register_subif_ext(0, priv->owner,
+				    dev, dev->name,
+				    &priv->dp_subif,
+				    &data, DP_F_DEREGISTER);
 	if (ret != DP_SUCCESS)
 		pr_err("%s: failed to close for device: %s ret %d\n",
 		       __func__, dev->name, ret);
@@ -809,9 +1039,10 @@ static int ltq_disable_gsw_r_jumbo(struct net_device *dev)
 	return 0;
 }
 
-static void ltq_set_max_pkt_len (struct ltq_eth_priv *priv, u16 pkt_len)
+static void ltq_set_max_pkt_len(struct ltq_eth_priv *priv, u16 pkt_len)
 {
 	struct core_ops *ops = NULL;
+
 	pkt_len += ETH_HLEN + ETH_FCS_LEN;
 	if (priv != NULL) {
 		/* Set the GSW-L MAC_FLEN register for max packet length */
@@ -820,7 +1051,7 @@ static void ltq_set_max_pkt_len (struct ltq_eth_priv *priv, u16 pkt_len)
 			if (ops == NULL)
 				return;
 
-			pr_info("doing the GSW-L MAC_FLEN configuration\n");
+			pr_debug("doing the GSW-L MAC_FLEN configuration\n");
 			gsw_reg_set_val(ops, 0x8C5, max(pkt_len, gsw_reg_get_val(ops, 0x8C5)));
 		}
 
@@ -829,7 +1060,7 @@ static void ltq_set_max_pkt_len (struct ltq_eth_priv *priv, u16 pkt_len)
 		if (ops == NULL)
 			return;
 
-		pr_info("doing the GSW-R MAC_FLEN configuration\n");
+		pr_debug("doing the GSW-R MAC_FLEN configuration\n");
 		gsw_reg_set_val(ops, 0x8C5, max(pkt_len, gsw_reg_get_val(ops, 0x8C5)));
 	}
 }
@@ -861,7 +1092,7 @@ static int ltq_change_mtu(struct net_device *dev, int new_mtu)
 	} else {
 
 		/* set the max pkt length on the switch */
-		ltq_set_max_pkt_len(priv,(u16)new_mtu);
+		ltq_set_max_pkt_len(priv, (u16)new_mtu);
 
 		/* if the MTU > 1500, do the jumbo config in switch */
 		if (new_mtu > ETH_DATA_LEN && !(priv->jumbo_enabled)) {
@@ -896,8 +1127,9 @@ static int ltq_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	int len;
 
 	/* pad packet to avoid stuck in traffic queues
-	   as ethernet expects min of ETH_ZLEN bytes */
-	if (skb_put_padto(skb,ETH_ZLEN)) {
+	 *  as ethernet expects min of ETH_ZLEN bytes
+	 */
+	if (skb_put_padto(skb, ETH_ZLEN)) {
 		priv->stats.tx_dropped++;
 		return 0;
 	}
@@ -924,12 +1156,6 @@ static int ltq_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	return 0;
 }
 
-/* Platform specific IOCTL's handler */
-static int ltq_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
-{
-	return -EOPNOTSUPP;
-}
-
 /* init of the network device */
 static int ltq_eth_init(struct net_device *dev)
 {
@@ -941,6 +1167,11 @@ static int ltq_eth_init(struct net_device *dev)
 	priv = netdev_priv(dev);
 	pr_debug("probing for number of ports = %d\n", priv->num_port);
 	pr_debug("%s called for device %s\n", __func__, dev->name);
+
+	/* First assume it is a subif, for physical ports it will be changed
+	 * in the loop later.
+	 */
+	dev->ethtool_ops = &subif_ethtool_ops;
 
 	for (i = 0; i < priv->num_port; i++) {
 		if (of_phy_is_fixed_link(priv->port[i].phy_node))
@@ -956,20 +1187,39 @@ static int ltq_eth_init(struct net_device *dev)
 			dev->ethtool_ops = &serdes_ethtool_ops;
 	}
 
-	if (priv->lct_en == 1) {
-		priv->dp_subif.subif = -1;
-		priv->dp_subif.port_id = priv->dp_port_id;
-		data.flag_ops = DP_F_DATA_LCT_SUBIF;
-		ret = dp_register_subif_ext(0, priv->owner,
-					    dev, dev->name, &priv->dp_subif,
-					    &data, 0);
-	} else {
-		priv->dp_subif.subif = -1;
-		priv->dp_subif.port_id = priv->dp_port_id;
-		ret = dp_register_subif_ext(0, priv->owner,
-					    dev, dev->name, &priv->dp_subif,
-					    NULL, 0);
+	data.flag_ops |= DP_SUBIF_RX_FLAG;
+	data.rx_en_flag = netif_running(dev);
+
+#ifndef CONFIG_INTEL_DATAPATH_HAL_GSWIP30
+	data.flag_ops |= DP_SUBIF_BR_DOMAIN;
+	data.domain_id = priv->bridge_domain;
+	if (data.domain_id == DP_BR_DM_UC) {
+		data.domain_members |= DP_BR_DM_MEMBER(data.domain_id);
+		/* As broadcast GEM traffic should go to LAN[0] make it a
+		 * member of broadcast domain 1. LAN[x] gets also broadcast
+		 * GEM traffic but as member of broadcast domain 2.
+		 * Both LAN ports have to use different domains to avoid
+		 * loops e.g. from main port subif=0 of the first port to
+		 * the additional broadcast subif of the second port when
+		 * the broadcast GEM is shared.
+		 */
+		if (!priv->lan_id)
+			data.domain_members |= DP_BR_DM_MEMBER(DP_BR_DM_BC1);
+		else
+			data.domain_members |= DP_BR_DM_MEMBER(DP_BR_DM_BC2);
 	}
+	if (data.domain_id == DP_BR_DM_US)
+		data.domain_members |= DP_BR_DM_MEMBER(DP_BR_DM_UC);
+#endif
+
+	if (priv->lct_en == 1)
+		data.flag_ops |= DP_F_DATA_LCT_SUBIF;
+
+	priv->dp_subif.subif = -1;
+	priv->dp_subif.port_id = priv->dp_port_id;
+	ret = dp_register_subif_ext(0, priv->owner,
+				    dev, dev->name, &priv->dp_subif,
+				    &data, 0);
 	if (ret != DP_SUCCESS) {
 		pr_err("%s: failed to open for device: %s ret %d\n",
 		       __func__, dev->name, ret);
@@ -1705,51 +1955,274 @@ xrx500_of_port(struct net_device *dev, struct device_node *port)
 	priv->hw->port_map[p->num] = priv->hw->num_devs;
 }
 
-static int ltq_eth_dev_reg(struct xrx500_hw *hw, u32 xgmac_id_param,
-			   u32 lct_en, u32 dp_port, int start, int end)
+#if IS_ENABLED(CONFIG_INTEL_E160)
+static int macsec_prepare(struct macsec_context *ctx, macsec_irq_handler_t ig,
+			  macsec_irq_handler_t eg)
+{
+	struct ltq_eth_priv *priv;
+	struct mac_ops *ops;
+
+	pr_debug("E160: Enter %s\n", __FUNCTION__);
+
+	if (!ctx || !ctx->netdev)
+		return -EINVAL;
+
+	priv = netdev_priv(ctx->netdev);
+	ops = gsw_get_mac_ops(0, priv->xgmac_id);
+	if (!ops)
+		return -EINVAL;
+
+	pr_debug("E160: Exit %s\n", __FUNCTION__);
+	return ops->mac_e160_prepare(ops, &priv->e160_ops);
+}
+
+static void macsec_unprepare(struct macsec_context *ctx)
+{
+	struct ltq_eth_priv *priv;
+	struct mac_ops *ops;
+
+	pr_debug("E160: Enter %s\n", __FUNCTION__);
+
+	if (!ctx || !ctx->netdev) {
+		pr_err("Invalid MACsec context: ctx %p, ctx->netdev %p\n",
+			ctx, ctx ? ctx->netdev : NULL);
+		return;
+	}
+
+	priv = netdev_priv(ctx->netdev);
+	ops = gsw_get_mac_ops(0, priv->xgmac_id);
+	if (!ops) {
+		pr_err("Failed in get ops from XGMAC %u\n", priv->xgmac_id);
+		return;
+	}
+
+	pr_debug("E160: Exit %s\n", __FUNCTION__);
+
+	ops->mac_e160_unprepare(ops);
+}
+
+static int macsec_dummy_irq(struct macsec_context *ctx)
+{
+	pr_debug("E160: Enter %s\n", __FUNCTION__);
+	return 0;
+}
+
+static int macsec_ig_reg_rd(struct macsec_context *ctx, u32 off, u32 *pdata)
+{
+	struct ltq_eth_priv *priv;
+
+	if (!ctx || !ctx->netdev || !pdata)
+		return -EINVAL;
+
+	priv = netdev_priv(ctx->netdev);
+	return priv->e160_ops.reg_rd(priv->e160_ops.ig_pdev, off, pdata);
+}
+
+static int macsec_ig_reg_wr(struct macsec_context *ctx, u32 off, u32 data)
+{
+	struct ltq_eth_priv *priv;
+
+	if (!ctx || !ctx->netdev)
+		return -EINVAL;
+
+	priv = netdev_priv(ctx->netdev);
+	return priv->e160_ops.reg_wr(priv->e160_ops.ig_pdev, off, data);
+}
+
+static int macsec_eg_reg_rd(struct macsec_context *ctx, u32 off, u32 *pdata)
+{
+	struct ltq_eth_priv *priv;
+
+	if (!ctx || !ctx->netdev || !pdata)
+		return -EINVAL;
+
+	priv = netdev_priv(ctx->netdev);
+	return priv->e160_ops.reg_rd(priv->e160_ops.eg_pdev, off, pdata);
+}
+
+static int macsec_eg_reg_wr(struct macsec_context *ctx, u32 off, u32 data)
+{
+	struct ltq_eth_priv *priv;
+
+	if (!ctx || !ctx->netdev)
+		return -EINVAL;
+
+	priv = netdev_priv(ctx->netdev);
+	return priv->e160_ops.reg_wr(priv->e160_ops.eg_pdev, off, data);
+}
+
+static int register_macsec(struct net_device *netdev)
+{
+	struct e160_metadata e160;
+
+	pr_debug("E160: Enter %s: %s\n", __FUNCTION__, netdev->name);
+
+	memset(&e160, 0, sizeof(e160));
+
+	e160.ctx.offload = MACSEC_OFFLOAD_MAC;
+	e160.ctx.netdev = netdev;
+
+	e160.prepare	= macsec_prepare;
+	e160.unprepare	= macsec_unprepare;
+	e160.ig_irq_ena	= macsec_dummy_irq;
+	e160.ig_irq_dis	= macsec_dummy_irq;
+	e160.ig_reg_rd	= macsec_ig_reg_rd;
+	e160.ig_reg_wr	= macsec_ig_reg_wr;
+	e160.eg_irq_ena	= macsec_dummy_irq;
+	e160.eg_irq_dis	= macsec_dummy_irq;
+	e160.eg_reg_rd	= macsec_eg_reg_rd;
+	e160.eg_reg_wr	= macsec_eg_reg_wr;
+
+	pr_debug("E160: Exit %s\n", __FUNCTION__);
+	return e160_register(&e160);
+}
+
+static void unregister_macsec(struct net_device *netdev)
+{
+	struct e160_metadata e160;
+
+	pr_debug("Enter %s: %s\n", __FUNCTION__, netdev->name);
+
+	memset(&e160, 0, sizeof(e160));
+
+	e160.ctx.offload = MACSEC_OFFLOAD_MAC;
+	e160.ctx.netdev = netdev;
+
+	e160_unregister(&e160);
+
+	pr_debug("Exit %s\n", __FUNCTION__);
+}
+#endif
+
+static void ltq_eth_iphost_cpu_disconnect(struct net_device *dev)
+{
+	struct dp_bp_attr conf = {0};
+
+	conf.dev = dev;
+	conf.en = 0;
+	dp_set_bp_attr(&conf, 0);
+}
+
+static int ltq_eth_dev_bridge_domain_set(struct ltq_eth_priv *priv,
+					 struct device_node *iface,
+					 int index)
+{
+	int err;
+	u32 bridge_domain, lan_id;
+
+	err = of_property_read_u32(iface, "reg", &lan_id);
+	if (err != 0) {
+		pr_err("%s: property [%s] read error(%d)\n",
+		       __func__, "reg", err);
+		return err;
+	}
+	priv->lan_id = lan_id;
+
+	err = of_property_read_u32_index(iface, "mxl,bridge-domain",
+					 index, &bridge_domain);
+	if (err != 0) {
+		if (err == -EINVAL) {
+			pr_debug("%s: property [%s:%d] does not exist, using default value [%d]\n",
+				 __func__, "mxl,bridge-domain", index,
+				 DP_BR_DM_UC);
+			/* Use default value */
+			priv->bridge_domain = DP_BR_DM_UC;
+			return 0;
+		}
+		pr_err("%s: property [%s:%d] read error(%d)\n",
+		       __func__, "mxl,bridge-domain", index, err);
+		return err;
+	}
+
+	pr_debug("%s: Parsed bridge-domain [%u] for index [%d]\n", __func__,
+		 bridge_domain, index);
+
+	switch (bridge_domain) {
+	case UNI_BR_DOMAIN_UC:
+		priv->bridge_domain = DP_BR_DM_UC;
+		break;
+	case UNI_BR_DOMAIN_MC:
+		priv->bridge_domain = DP_BR_DM_MC;
+		break;
+	case UNI_BR_DOMAIN_BC1:
+		priv->bridge_domain = DP_BR_DM_BC1;
+		break;
+	case UNI_BR_DOMAIN_BC2:
+		priv->bridge_domain = DP_BR_DM_BC2;
+		break;
+	case UNI_BR_DOMAIN_US:
+		priv->bridge_domain = DP_BR_DM_US;
+		break;
+	default:
+		priv->bridge_domain = DP_BR_DM_UC;
+		break;
+	}
+
+	pr_debug("%s: Assigned bridge-domain [%u] for index [%d]\n", __func__,
+		 priv->bridge_domain, index);
+	return 0;
+}
+
+static int ltq_eth_dev_reg(struct xrx500_hw *hw, struct device_node *iface,
+			   u32 xgmac_id_param, u32 lct_en, u32 dp_port,
+			   int start, int end,
+			   struct ltq_eth_priv *master)
 {
 	int i, err, num = 1;
+	struct ltq_eth_priv *priv;
 
 	for (i = start; i < end; i++) {
-		struct ltq_eth_priv *priv;
 
-		eth_dev[i] = alloc_etherdev_mq(sizeof(struct ltq_eth_priv),
+		eth_dev[hw->num_devs][i] = alloc_etherdev_mq(sizeof(struct ltq_eth_priv),
 						g_soc_data.queue_num);
-		if (!eth_dev[i]) {
+		if (!eth_dev[hw->num_devs][i]) {
 			pr_debug("allocated failed for interface %d\n", i);
 			return -ENOMEM;
 		}
-		priv = netdev_priv(eth_dev[i]);
+		priv = netdev_priv(eth_dev[hw->num_devs][i]);
 		priv->dp_port_id = dp_port;
 		priv->xgmac_id = xgmac_id_param;
 		priv->hw = hw;
 		priv->id = hw->num_devs;
 		priv->owner = &g_ltq_eth_module[hw->num_devs];
 		sprintf(priv->owner->name, "module%02d", priv->id);
+		err = ltq_eth_dev_bridge_domain_set(priv, iface, i + 1);
+		if (err != 0)
+			return err;
 		if (start == i && lct_en == 1) {
 			priv->lct_en = 1;
-			snprintf(eth_dev[i]->name, IFNAMSIZ,
+			snprintf(eth_dev[hw->num_devs][i]->name, IFNAMSIZ,
 				 "eth0_%d_%d_lct", hw->num_devs, num);
 		} else {
 			priv->lct_en = 0;
-			snprintf(eth_dev[i]->name, IFNAMSIZ,
-				 "eth0_%d_%d",  hw->num_devs, num);
+			if (i == PON_IP_HOST_SUBIF_IDX)
+				snprintf(eth_dev[hw->num_devs][i]->name, IFNAMSIZ,
+					 "eth0_%d_us", hw->num_devs);
+			else
+				snprintf(eth_dev[hw->num_devs][i]->name, IFNAMSIZ,
+					 "eth0_%d_%d", hw->num_devs, num);
 		}
+		priv->master = master;
 
-		eth_dev[i]->netdev_ops = &ltq_eth_drv_ops;
-		ltq_eth_drv_eth_addr_setup(eth_dev[i], priv->id);
-		err = register_netdev(eth_dev[i]);
+		eth_dev[hw->num_devs][i]->netdev_ops = &ltq_eth_drv_ops;
+		ltq_eth_drv_eth_addr_setup(eth_dev[hw->num_devs][i], priv->id);
+		err = register_netdev(eth_dev[hw->num_devs][i]);
 		if (err) {
 			pr_err("%s: failed to register netdevice: %p %d\n",
-			       __func__, eth_dev[i], err);
+			       __func__, eth_dev[hw->num_devs][i], err);
 				return -1;
 		}
+#if IS_ENABLED(CONFIG_INTEL_E160)
+		register_macsec(eth_dev[hw->num_devs][i]);
+#endif
+		if (i == PON_IP_HOST_SUBIF_IDX)
+			ltq_eth_iphost_cpu_disconnect(eth_dev[hw->num_devs][i]);
 		num++;
 	}
 	return 0;
 }
 
-static int ltq_eth_dev_dereg_subif(int start, int end)
+static int ltq_eth_dev_dereg_subif(int num_dev, int start, int end)
 {
 	int i;
 	int res = DP_SUCCESS;
@@ -1757,11 +2230,9 @@ static int ltq_eth_dev_dereg_subif(int start, int end)
 	struct dp_subif_data data = {0};
 
 	for (i = start; i < end; i++) {
-		struct net_device *dev = eth_dev[i];
+		struct net_device *dev = eth_dev[num_dev][i];
 
 		priv = netdev_priv(dev);
-		priv->dp_subif.subif = priv->dp_subif.subif;
-		priv->dp_subif.port_id = priv->dp_subif.port_id;
 		if (priv->lct_en == 1) {
 			pr_debug("owner = %s portid = %d subifid = %d dev= %s\n",
 				 priv->owner->name, priv->dp_port_id,
@@ -1789,17 +2260,20 @@ static int ltq_eth_dev_dereg_subif(int start, int end)
 	return 0;
 }
 
-static int ltq_eth_dev_dereg(int start, int end)
+static int ltq_eth_dev_dereg(int num_dev, int start, int end)
 {
 	int i;
 
 	for (i = start; i < end; i++) {
 		struct ltq_eth_priv *priv;
-		struct net_device *dev = eth_dev[i];
+		struct net_device *dev = eth_dev[num_dev][i];
 
 		netif_stop_queue(dev);
 		priv = netdev_priv(dev);
 		priv->dp_port_id = DP_FAILURE;
+#if IS_ENABLED(CONFIG_INTEL_E160)
+		unregister_macsec(dev);
+#endif
 		unregister_netdev(dev);
 		free_netdev(dev);
 	}
@@ -1812,24 +2286,28 @@ static int xrx500_of_iface(struct xrx500_hw *hw, struct device_node *iface,
 	struct ltq_eth_priv *priv;
 	struct dp_dev_data dev_data = {0};
 	struct device_node *port, *mac_np;
+	struct dp_port_data data = {0};
 	const __be32 *wan;
-	u32 dp_dev_port_param, dp_port_id_param, xgmac_id_param;
+	u32 dp_dev_port_param, dp_port_id_param;
 	u32 lct_en_param = 0, extra_subif_param = 0;
 	int net_start = 0, net_end = 0;
 	dp_cb_t cb = {0};
 	u32 dp_port_id = 0;
 	char name[16];
 	int ret;
+	struct net_device *dev;
 
 	/* alloc the network device */
-	hw->devs[hw->num_devs] = alloc_etherdev_mq(sizeof(struct ltq_eth_priv),
+	dev = alloc_etherdev_mq(sizeof(struct ltq_eth_priv),
 						   g_soc_data.queue_num);
 
-	if (!hw->devs[hw->num_devs]) {
+	if (!dev) {
 		pr_debug("allocated failed for interface %d\n",
 			 hw->num_devs);
 		return -ENOMEM;
 	}
+
+	hw->devs[hw->num_devs] = dev;
 
 	priv = netdev_priv(hw->devs[hw->num_devs]);
 
@@ -1863,26 +2341,24 @@ static int xrx500_of_iface(struct xrx500_hw *hw, struct device_node *iface,
 		return ret;
 	}
 
-	priv->xgmac_id = -1;
-
 	mac_np = of_parse_phandle(iface, "mac", 0);
-	if (mac_np) {
-		ret = of_property_read_u32(mac_np, "mac_idx", &xgmac_id_param);
-		if (ret < 0) {
-			pr_info("ERROR : Property mac_idx not read from DT for if %s\n",
-				name);
-			return ret;
+
+		if (!mac_np) {
+			pr_info("INFO : Property mac is not defined in DT\n");
+			priv->xgmac_id = -1;
+		} else {
+			ret = of_property_read_u32(mac_np, "mac_idx", &priv->xgmac_id);
+			if (ret < 0) {
+				pr_info("ERROR : Property mac_idx not read from DT for if %s\n",
+					name);
+				return ret;
+			}
+
+			priv->xpcs_node = of_parse_phandle(mac_np, "xpcs", 0);
+			if (!priv->xpcs_node) {
+				pr_info("Cannot get xpcs node\n");
+			}
 		}
-
-		priv->xgmac_id = xgmac_id_param;
-
-		priv->xpcs_node = of_parse_phandle(mac_np, "xpcs", 0);
-		if (!priv->xpcs_node) {
-			pr_info("Cannot get xpcs node\n");
-			return -EINVAL;
-		}
-	}
-
 	ret = of_property_read_u32(iface, "intel,lct-en",
 				   &lct_en_param);
 	if (ret < 0) {
@@ -1901,12 +2377,19 @@ static int xrx500_of_iface(struct xrx500_hw *hw, struct device_node *iface,
 	}	else {
 			pr_info("Property intel,extra-subif for if %s %d\n",
 				name, extra_subif_param);
+			if(extra_subif_param > SUB_IF)
+			{
+				pr_err("%s : Too many sub devices requested: %i\n",
+						name, priv->end);
+				return -EINVAL;
+			}	
 			priv->extra_subif = extra_subif_param;
-			priv->start = dev_num;
-			priv->end = dev_num + priv->extra_subif;
-			dev_num = priv->extra_subif;
+			priv->start = 0;
+			priv->end = priv->extra_subif;
+			/* Traffic between diff subif */
+			if (!of_property_read_bool(iface, "intel,allow_subif_data_loop"))
+				data.flag_ops = DP_F_DATA_NO_LOOP;
 	}
-
 	strcpy(hw->devs[hw->num_devs]->name, name);
 	hw->devs[hw->num_devs]->netdev_ops = &ltq_eth_drv_ops;
 	hw->devs[hw->num_devs]->watchdog_timeo = LTQ_TX_TIMEOUT;
@@ -1918,27 +2401,29 @@ static int xrx500_of_iface(struct xrx500_hw *hw, struct device_node *iface,
 	priv->hw = hw;
 	priv->id = hw->num_devs;
 	spin_lock_init(&priv->lock);
+	if (priv->xgmac_id >= 1)
+		priv->tx_lpi_timer = DEFAULT_LPI_TIMER;
 
 	priv->owner = &g_ltq_eth_module[hw->num_devs];
 	sprintf(priv->owner->name, "module%02d", priv->id);
+	ret = ltq_eth_dev_bridge_domain_set(priv, iface, 0);
+	if (ret != 0)
+		return ret;
 
-	if (priv->wan)
-		dp_port_id  = dp_alloc_port(priv->owner, hw->devs[hw->num_devs],
-					    dp_dev_port_param, dp_port_id_param,
-					    NULL, DP_F_FAST_ETH_WAN);
-	else
-		dp_port_id  = dp_alloc_port(priv->owner, hw->devs[hw->num_devs],
-					    dp_dev_port_param, dp_port_id_param,
-					    NULL, DP_F_FAST_ETH_LAN);
+	dp_port_id = dp_alloc_port_ext(0, priv->owner, hw->devs[hw->num_devs],
+				       dp_dev_port_param, dp_port_id_param,
+				       NULL, &data,
+				       ((priv->wan) ? DP_F_FAST_ETH_WAN : DP_F_FAST_ETH_LAN));
 
 	if (dp_port_id == DP_FAILURE) {
-		pr_err("dp_alloc_port failed for %s with port_id %d\n",
+		pr_err("dp_alloc_port_ext failed for %s with port_id %d\n",
 		       hw->devs[hw->num_devs]->name, priv->id + 1);
 		return -ENODEV;
 	}
 
 	priv->dp_port_id = dp_port_id;
-	dev_data.max_ctp = 4;
+	if (priv->extra_subif >= 0)
+		dev_data.max_ctp = extra_subif_param + 1;
 	cb.stop_fn = (dp_stop_tx_fn_t)dp_fp_stop_tx;
 	cb.restart_fn  = (dp_restart_tx_fn_t)dp_fp_restart_tx;
 	cb.rx_fn = (dp_rx_fn_t)dp_fp_rx;
@@ -1990,157 +2475,22 @@ static int xrx500_of_iface(struct xrx500_hw *hw, struct device_node *iface,
 	ltq_eth_drv_eth_addr_setup(hw->devs[hw->num_devs], priv->id);
 
 	/* register the actual device */
-	if (!register_netdev(hw->devs[hw->num_devs]))
+	if (!register_netdev(hw->devs[hw->num_devs])) {
 		pr_debug("%s: priv->extra_subif = %d interface %s !\n",
 			 __func__, priv->extra_subif, name);
+#if IS_ENABLED(CONFIG_INTEL_E160)
+		register_macsec(hw->devs[hw->num_devs]);
+#endif
+	}
 	if (extra_subif_param >= 1) {
 		net_start = priv->start;
 		net_end = priv->end;
-		ltq_eth_dev_reg(&xrx500_hw, xgmac_id_param, lct_en_param,
-				dp_port_id_param, net_start, net_end);
+		ltq_eth_dev_reg(&xrx500_hw, iface, priv->xgmac_id,
+				lct_en_param, dp_port_id_param,
+				net_start, net_end, priv);
 	}
 
 	hw->num_devs++;
-
-	return 0;
-}
-
-static int xrx500_mdio_pae_wr(struct mii_bus *bus, int addr, int reg, u16 val)
-{
-	GSW_MDIO_data_t mmd_data;
-	struct core_ops *ops;
-
-	pr_debug("%s called with phy addr:%d and reg: %x and val: %x\n",
-		 __func__, addr, reg, val);
-
-	ops = gsw_get_swcore_ops(1);
-
-	if (!ops) {
-		pr_err("%s: Open SWAPI device FAILED!\n", __func__);
-		return -EIO;
-	}
-
-	memset((void *)&mmd_data, 0x00, sizeof(mmd_data));
-	mmd_data.nAddressDev = addr;
-	mmd_data.nAddressReg = reg;
-	mmd_data.nData = val;
-	ops->gsw_common_ops.MDIO_DataWrite(ops, &mmd_data);
-
-	return 0;
-}
-
-static int xrx500_mdio_pae_rd(struct mii_bus *bus, int addr, int reg)
-{
-	GSW_MDIO_data_t mmd_data;
-	struct core_ops *ops;
-
-	pr_debug("%s called with phy addr:%d and reg: %x\n",
-		 __func__, addr, reg);
-
-	ops = gsw_get_swcore_ops(1);
-
-	if (!ops) {
-		pr_err("%s: Open SWAPI device FAILED!\n", __func__);
-		return -EIO;
-	}
-
-	memset((void *)&mmd_data, 0x00, sizeof(mmd_data));
-	mmd_data.nAddressDev = addr;
-	mmd_data.nAddressReg = reg;
-	ops->gsw_common_ops.MDIO_DataRead(ops, &mmd_data);
-
-	pr_debug("returing: %x\n", mmd_data.nData);
-	return mmd_data.nData;
-}
-
-static int xrx500_mdio_wr(struct mii_bus *bus, int addr, int reg, u16 val)
-{
-	GSW_MDIO_data_t mmd_data;
-	struct core_ops *ops;
-
-	pr_debug("%s called with phy addr:%d and reg: %x and val: %x\n",
-		 __func__, addr, reg, val);
-
-	ops = gsw_get_swcore_ops(0);
-
-	if (!ops) {
-		pr_err("%s: Open SWAPI device FAILED!\n", __func__);
-		return -EIO;
-	}
-
-	memset((void *)&mmd_data, 0x00, sizeof(mmd_data));
-	mmd_data.nAddressDev = addr;
-	mmd_data.nAddressReg = reg;
-	mmd_data.nData = val;
-	ops->gsw_common_ops.MDIO_DataWrite(ops, &mmd_data);
-
-	return 0;
-}
-
-static int xrx500_mdio_rd(struct mii_bus *bus, int addr, int reg)
-{
-	GSW_MDIO_data_t mmd_data;
-	struct core_ops *ops;
-
-	pr_debug("%s called with phy addr:%d and reg: %x\n",
-		 __func__, addr, reg);
-
-	ops = gsw_get_swcore_ops(0);
-
-	if (!ops) {
-		pr_err("%s: Open SWAPI device FAILED!\n", __func__);
-		return -EIO;
-	}
-
-	memset((void *)&mmd_data, 0x00, sizeof(mmd_data));
-	mmd_data.nAddressDev = addr;
-	mmd_data.nAddressReg = reg;
-	ops->gsw_common_ops.MDIO_DataRead(ops, &mmd_data);
-
-	pr_debug("returing: %x\n", mmd_data.nData);
-	return mmd_data.nData;
-}
-
-static int xrx500_of_mdio(struct xrx500_hw *hw, struct device_node *np)
-{
-	hw->mii_bus = mdiobus_alloc();
-
-	if (!hw->mii_bus)
-		return -ENOMEM;
-
-	hw->mii_bus->read = xrx500_mdio_rd;
-	hw->mii_bus->write = xrx500_mdio_wr;
-	hw->mii_bus->name = "lantiq,xrx500-mdio";
-	snprintf(hw->mii_bus->id, MII_BUS_ID_SIZE, "%x", 0);
-
-	pr_info("registering one of MII bus\n");
-
-	if (of_mdiobus_register(hw->mii_bus, np)) {
-		mdiobus_free(hw->mii_bus);
-		return -ENXIO;
-	}
-
-	return 0;
-}
-
-static int xrx500_of_mdio_pae(struct xrx500_hw *hw, struct device_node *np)
-{
-	hw->mii_bus_pae = mdiobus_alloc();
-
-	if (!hw->mii_bus_pae)
-		return -ENOMEM;
-
-	hw->mii_bus_pae->read = xrx500_mdio_pae_rd;
-	hw->mii_bus_pae->write = xrx500_mdio_pae_wr;
-	hw->mii_bus_pae->name = "lantiq,xrx500-mdio-pae";
-	snprintf(hw->mii_bus_pae->id, MII_BUS_ID_SIZE, "%x", 1);
-
-	pr_info("registering PAE MII bus\n");
-
-	if (of_mdiobus_register(hw->mii_bus_pae, np)) {
-		mdiobus_free(hw->mii_bus_pae);
-		return -ENXIO;
-	}
 
 	return 0;
 }
@@ -2170,7 +2520,7 @@ static void xrx500_gmac_update(struct xrx500_port *port)
 static void xrx500_mdio_link(struct net_device *dev)
 {
 	struct ltq_eth_priv *priv;
-	int i;
+	int i, retval;
 
 	priv = netdev_priv(dev);
 	pr_debug("%s called..\n", __func__);
@@ -2192,6 +2542,16 @@ static void xrx500_mdio_link(struct net_device *dev)
 					    dev->name);
 #endif
 			phy_print_status(priv->port[i].phydev);
+			if (priv->eee_enabled) {
+				priv->eee_active = !phy_init_eee(dev->phydev, 0);
+				retval = mac_set_eee(dev, priv->eee_enabled &&
+						     priv->tx_lpi_enabled);
+				if (retval) {
+					pr_err("%s:MAC LPI setting failed\n", __func__);
+					return;
+				}
+			}
+
 		}
 	}
 }
@@ -2242,36 +2602,36 @@ static int prx300_phy_connect(struct net_device *dev, struct xrx500_port *port)
 	return 0;
 }
 
-static int xrx500_mdio_probe(struct net_device *dev, struct xrx500_port *port)
+static int xrx500_phy_connect(struct net_device *dev, struct xrx500_port *port)
 {
 	struct phy_device *phydev = NULL;
 	struct ltq_eth_priv *priv = NULL;
-	struct mii_bus *bus = NULL;
 
 	priv = netdev_priv(dev);
 
-	if (priv->wan)
-		bus = priv->hw->mii_bus_pae;
-	else
-		bus = priv->hw->mii_bus;
-
-	if (!bus) {
-		pr_info("No mdio bus defined for this port!\n");
+	if (!port->phy_node) {
+		netdev_err(dev, "Unable to find node\n");
+		return 0;
+	}
+	/* find the phy_device given phy node */
+	phydev = of_phy_find_device(port->phy_node);
+	if (!phydev || !phydev->mdio.dev.driver) {
+		netdev_err(dev, "Unable to find phydev\n");
 		return -ENODEV;
 	}
-
-	phydev = mdiobus_get_phy(bus, port->phy_addr);
-	if (!phydev) {
-		netdev_err(dev, "no PHY found\n");
-		return -ENODEV;
-	}
+	pr_debug("phy[%d]: device %s, driver %s\n",
+		phydev->mdio.addr, phydev_name(phydev),
+		phydev->drv ? phydev->drv->name : "unknown");
 
 	pr_info("trying to connect: %s to device: %s with irq: %d\n",
 		dev->name, phydev_name(phydev), port->irq_num);
 	phydev->irq = port->irq_num;
-	phydev = phy_connect(dev, phydev_name(phydev), &xrx500_mdio_link,
-			     port->phy_if);
-
+	phydev = of_phy_connect(dev, port->phy_node, &xrx500_mdio_link,
+				0, port->phy_if);
+	if (!phydev) {
+		netdev_err(dev, "Unable to connect phydev\n");
+		return -ENODEV;
+	}
 	if (IS_ERR(phydev)) {
 		netdev_err(dev, "Could not attach to PHY\n");
 		return PTR_ERR(phydev);
@@ -2303,8 +2663,7 @@ static int ltq_eth_drv_init(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct device_node *node = pdev->dev.of_node;
-	struct device_node *mdio_np, *iface_np;
-	struct mii_bus *bus;
+	struct device_node *iface_np;
 
 	memset(g_ltq_eth_module, 0, sizeof(g_ltq_eth_module));
 
@@ -2338,27 +2697,6 @@ static int ltq_eth_drv_init(struct platform_device *pdev)
 
 	g_soc_data.mtu_limit = LTQ_ETH_MAX_DATA_LEN;
 
-	/* bring up the mdio bus */
-	mdio_np = of_find_compatible_node(node, NULL,
-					  "lantiq,xrx500-mdio");
-
-	if (mdio_np) {
-		if (xrx500_of_mdio(&xrx500_hw, mdio_np))
-			dev_err(&pdev->dev, "mdio probe failed\n");
-
-		/* bring up the mdio bus for PAE */
-		mdio_np = of_find_compatible_node(node, NULL,
-						  "lantiq,xrx500-mdio-pae");
-
-		if (mdio_np)
-			if (xrx500_of_mdio_pae(&xrx500_hw, mdio_np))
-				dev_err(&pdev->dev, "mdio probe of PAE failed\n");
-	}
-
-	bus = xrx500_hw.mii_bus;
-	if (bus)
-		bus->parent = &pdev->dev;
-
 	/* load the interfaces */
 	/* add a dummy interface */
 	xrx500_hw.num_devs = 0;
@@ -2390,13 +2728,8 @@ static int ltq_eth_drv_init(struct platform_device *pdev)
 	ltq_eth_genetlink_init();
 #endif
 
-	if (of_find_property(node, "#cooling-cells", NULL)) {
-		ret = ltq_eth_thermal_init(node, &xrx500_hw);
-		if (ret) {
-			pr_err("%s: net cooling device not registered (err %d)\n",
-			       __func__, ret);
-		}
-	}
+	if (of_find_property(node, "#cooling-cells", NULL))
+		ltq_eth_thermal_init(node, &xrx500_hw);
 
 	pr_info("Lantiq ethernet driver for XRX500 init.\n");
 	return 0;
@@ -2452,7 +2785,7 @@ static void ltq_eth_drv_exit(struct platform_device *pdev)
 		}
 
 		if (priv->extra_subif >= 1)
-			ltq_eth_dev_dereg_subif(net_start, net_end);
+			ltq_eth_dev_dereg_subif(i, net_start, net_end);
 
 		ret = dp_register_dev_ext(0, priv->owner,
 					  priv->dp_port_id, NULL,
@@ -2470,20 +2803,13 @@ static void ltq_eth_drv_exit(struct platform_device *pdev)
 		}
 
 		priv->dp_port_id = DP_FAILURE;
+#if IS_ENABLED(CONFIG_INTEL_E160)
+		unregister_macsec(dev);
+#endif
 		unregister_netdev(dev);
 		free_netdev(dev);
 		if (priv->extra_subif >= 1)
-			ltq_eth_dev_dereg(net_start, net_end);
-	}
-
-	if (xrx500_hw.mii_bus) {
-		mdiobus_unregister(xrx500_hw.mii_bus);
-		mdiobus_free(xrx500_hw.mii_bus);
-	}
-
-	if (xrx500_hw.mii_bus_pae) {
-		mdiobus_unregister(xrx500_hw.mii_bus_pae);
-		mdiobus_free(xrx500_hw.mii_bus_pae);
+			ltq_eth_dev_dereg(i, net_start, net_end);
 	}
 
 	ltq_eth_thermal_exit(&xrx500_hw);
@@ -2529,7 +2855,7 @@ static const struct ltq_net_soc_data xrx500_net_data = {
 	.need_defer = true,
 	.hw_checksum = true,
 	.queue_num = 1,
-	.phy_connect_func = &xrx500_mdio_probe,
+	.phy_connect_func = &xrx500_phy_connect,
 };
 
 static const struct ltq_net_soc_data prx300_net_data = {

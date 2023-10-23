@@ -1,0 +1,21 @@
+if INTEL_DATAPATH
+
+config DP_MCAST_BRIDGE_FILTER
+	tristate "Datapath multicast packet bridge filter"
+	depends on NETFILTER
+
+	help
+	  This installs a netfilter hook which filters out all multicast
+	  packets on all bridges. These packages can then be handled in
+	  user space applications.
+
+config DP_ARP_NDP_REINSERT
+	tristate "Datapath ARP and NDP packet reinsert on bridge"
+	depends on NETFILTER
+
+	help
+	  This installs a netfilter hook which filters out ARP and NDP
+	  packets on all bridges and reinsert them into the datapath
+	  of the GSWIP again.
+
+endif

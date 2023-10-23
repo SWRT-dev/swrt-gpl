@@ -279,6 +279,11 @@ config DMA_CMA
 if  DMA_CMA
 comment "Default contiguous memory area size:"
 
+config CMA_LIMIT_256M
+    bool "Limit CMA region to beginning of 256MB physical memory"
+    depends on CMA
+    default y
+
 config CMA_SIZE_MBYTES
 	int "Size in Mega Bytes"
 	depends on !CMA_SIZE_SEL_PERCENTAGE

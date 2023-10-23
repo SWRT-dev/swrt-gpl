@@ -88,18 +88,29 @@ int xgmac_wr_reg(void *pdev, u32 reg_off, u32 reg_val)
 {
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
 
+	if (reg_off >= 0x4000)
+		return -EFAULT;
+
+	reg_off &= 0x3FFC;
 	XGMAC_RGWR(pdata, reg_off, reg_val);
 
 	return 0;
 }
 
-int xgmac_rd_reg(void *pdev, u32 reg_off)
+int xgmac_rd_reg(void *pdev, u32 reg_off, u32 *pval)
 {
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
 
-	pdata->mac_cli->val[0] = XGMAC_RGRD(pdata, reg_off);
+	if (!pval)
+		return -EINVAL;
 
-	return pdata->mac_cli->val[0];
+	if (reg_off >= 0x4000)
+		return -EFAULT;
+
+	reg_off &= 0x3FFC;
+	*pval = XGMAC_RGRD(pdata, reg_off);
+
+	return 0;
 }
 
 

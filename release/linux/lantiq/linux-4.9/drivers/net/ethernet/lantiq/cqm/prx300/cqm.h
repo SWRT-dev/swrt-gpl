@@ -14,6 +14,7 @@
 #include <linux/klogging.h>
 #include <net/lantiq_cbm_api.h>
 #include <net/datapath_api.h>
+#include <net/datapath_api_qos.h>
 #include <linux/debugfs.h>
 #include "reg/cbm_ls.h"
 #include "reg/cqem.h"
@@ -39,10 +40,21 @@
 #define FLAG_PIB_BYPASS		BIT(5)
 #define FLAG_PIB_DELAY		BIT(6)
 #define FLAG_PIB_PKT_LEN_ADJ	BIT(7)
+#define DMA_PORT_RE_INSERTION	23
 #define DMA_PORT_FOR_FLUSH 25
 #define PRX300_CQM_DROP_Q	0x0
 #define PRX300_CQM_Q_MASK	0xff
-
+#define SUB_IF_ID_MASK_SHF	16
+#define SUB_IF_ID_MODE_1_MASK	0xFF
+#define SUB_IF_ID_MODE_2_MASK	0x0F
+#define SUB_IF_ID_MODE_3_MASK	0x1F
+#define SUB_IF_ID_MODE_1_POS	0
+#define SUB_IF_ID_MODE_2_POS	8
+#define SUB_IF_ID_MODE_3_POS	0
+#define MODE1_SUB_IF_ID_LIMIT	BIT(8)
+#define MODE2_SUB_IF_ID_LIMIT	BIT(4)
+#define MODE3_SUB_IF_ID_LIMIT	BIT(5)
+#define MAX_QID_MAP_EP_NUM	16
 /***********************
  * ENUM
  ***********************/
@@ -165,13 +177,6 @@ enum CQM_BUFF_SIZE {
 	CQM_SIZE3_BUF_SIZE,
 };
 
-enum CQM_QOS_LINK_MODE {
-	FULL_QOS_10G = 0,
-	SHORT_QOS_10G,
-	FULL_QOS_1G,
-	SHORT_QOS_1G,
-};
-
 /**************************************************
  *
  * Macros
@@ -216,6 +221,9 @@ enum CQM_QOS_LINK_MODE {
 
 #define CQM_DEQ_PON_DMA_DESC(pid, des_idx)\
 (DESC0_EGP_PON_0)
+
+#define CQM_PON_CNTR(idx)\
+(PON_CNTR_26 + ((idx) - DQM_PON_START_ID) * 4)
 
 /***********************
  * Default  Value Definition
@@ -518,6 +526,9 @@ struct cqm_dqm_port_info {
 	char dma_chan_str[DMA_CH_STR_LEN];
 	u32 cpu_port_type;
 	u32 valid;
+	s32 ref_cnt;
+	u32 flush_index;
+	u32 tx_ring_size;
 };
 
 struct cqm_eqm_port_info {
@@ -544,6 +555,10 @@ struct cqm_pmac_port_map {
 	 *High priority/Low priority
 	 */
 	u32 egp_type;
+	u32 dma_chnl_init;
+	u32 num_dma_chan;
+	u32 eqp_en_cnt;
+	u32 aca_buf_ref_cnt;
 	struct list_head list;
 };
 
@@ -615,7 +630,6 @@ struct cqm_ctrl {
 	void __iomem *fsqm;
 	void __iomem *pib;
 	void __iomem *pon_dqm_cntr;
-	u32 max_mem_alloc;
 	dma_addr_t dma_hndl_qos;
 	dma_addr_t dma_hndl_p[TOT_DMA_HNDL];
 	struct dentry *debugfs;
@@ -623,6 +637,9 @@ struct cqm_ctrl {
 	u32 prx300_pool_ptrs[CQM_PRX300_NUM_BM_POOLS];
 	u32 prx300_pool_size[CQM_PRX300_NUM_BM_POOLS];
 	int gint_mode;
+	int re_insertion;
+	u32 radio_num;
+	int split[2];
 };
 
 struct cqm_buf_dbg_cnt {
@@ -631,6 +648,7 @@ struct cqm_buf_dbg_cnt {
 	atomic_t free_cnt;
 	atomic_t alloc_cnt;
 	atomic_t isr_free_cnt;
+	atomic_t dma_ring_buff_cnt;
 };
 
 struct fsq {
@@ -653,6 +671,7 @@ void *cqm_get_deq_base(void);
 void *cqm_get_dma_desc_base(void);
 void *cqm_get_ctrl_base(void);
 void *cqm_get_ls_base(void);
+void *cqm_get_pib_base(void);
 int cqm_debugfs_init(struct cqm_ctrl *pctrl);
 
 #endif

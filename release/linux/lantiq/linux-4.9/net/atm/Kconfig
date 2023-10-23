@@ -85,3 +85,9 @@ config ATM_BR2684_MINI_JUMBO_FRAME_SUPPORT
 	default n
 	help
 	  Mini Jumbo Frame support
+
+config ATM_MPOA_INTEL_DSL_PHY_SUPPORT
+	bool "Intel DSL Phy MPOA support"
+	depends on ATM && NET
+	help
+	  Add support for Intel DSL Phy ATM MPOA

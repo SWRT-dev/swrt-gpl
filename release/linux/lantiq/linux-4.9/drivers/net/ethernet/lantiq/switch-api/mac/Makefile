@@ -5,6 +5,7 @@
 EXTRA_CFLAGS += -I$(src)
 obj-$(CONFIG_LTQ_ETHSW_API) += mac_driver.o
 
+mac_driver-objs = macsec_drv.o 
 mac_driver-objs += mac_drv.o 
 mac_driver-objs += xgmac_main.o 
 mac_driver-objs += xgmac_debug.o 

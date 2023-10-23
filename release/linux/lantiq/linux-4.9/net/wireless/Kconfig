@@ -6,7 +6,6 @@ config WEXT_CORE
 	depends on CFG80211_WEXT || WIRELESS_EXT
 
 config WEXT_PROC
-	def_bool y
 	depends on PROC_FS
 	depends on WEXT_CORE
 
@@ -219,3 +218,10 @@ config LIB80211_DEBUG
 	  from lib80211.
 
 	  If unsure, say N.
+
+config USE_WAVE600_2_EMULATOR
+   bool "Support for WAVE600-2 R2 Device Emulator"
+   depends on SOC_GRX500 || SOC_GRX500_BOOTCORE
+   default n
+   help
+     Enable this for WAVE600-2 R2 Device emulator support

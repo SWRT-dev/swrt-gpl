@@ -1,0 +1,90 @@
+# wav-dpal source Makefile
+.DEFAULT_GOAL := all
+PKG_NAME := libdwpal
+MAJOR := 0
+MINOR := 1
+VERSION := $(MAJOR).$(MINOR)
+
+opt_no_flags := -Werror -Wcast-qual
+
+LOG_CFLAGS := -DPACKAGE_ID=\"DWPALWLAN\" -DLOGGING_ID="dwpal" -DLOG_LEVEL=7 -DLOG_TYPE=1
+EXTRALDFLAGS := -L./ -ldwpal -lncurses -lreadline -lrt -lpthread -lnl-genl-3 -lnl-3 -ldl
+EXTRACFLAGS := -I./include -I./wv_ipc -I./daemon -DCONFIG_CTRL_IFACE -DCONFIG_CTRL_IFACE_UNIX -DCONFIG_ALLOW_SYSLOG -DYOCTO \
+              -DWLAN_STANDALONE_TEST `pkg-config libnl-3.0 libnl-genl-3.0 --cflags` -Werror=format-security -Wall -Wl,-strip-debug
+
+LIB_OBJS := dwpal.o dwpal_ext.o wpa_ctrl.o os_unix.o logs.o
+DWPAL_CLI_OBJS := stats.o dwpal_cli.o
+
+%.o: %.c
+	$(CC) $(INCLUDES) $(CFLAGS) $(EXTRACFLAGS) $(LOG_CFLAGS) $(DEFS) $(CPPFLAGS) -fPIC -MT $@ -MD -MP -MF $@.d -c -o $@ $<
+
+$(PKG_NAME).so.$(VERSION): $(LIB_OBJS)
+	$(CC) -shared -fPIC -Wl,-soname,$@ $(LIB_OBJS) $(LDFLAGS) -lnl-genl-3 -o $@
+
+$(PKG_NAME).so: $(PKG_NAME).so.$(VERSION)
+	ln -sf $< $@
+
+WV_CORE_OBJS := wv_ipc/linked_list.o wv_ipc/obj_pool.o wv_ipc/work_serializer.o wv_ipc/logs.o
+
+libwv_core.so.1.0: $(WV_CORE_OBJS)
+	$(CC) -shared -fPIC -Wl,-soname,$@  $(WV_CORE_OBJS) $(LDFLAGS) -o $@
+
+libwv_core.so: libwv_core.so.1.0
+	ln -sf $< $@
+
+IPC_CORE_OBJS := wv_ipc/wave_ipc_core.o
+LIB_IPC_CLIENT_OBJS := wv_ipc/wave_ipc_client.o
+LIB_IPC_SERVER_OBJS := wv_ipc/wave_ipc_server.o
+
+libwv_ipcc.a: $(IPC_CORE_OBJS) $(LIB_IPC_CLIENT_OBJS)
+	ar rcs libwv_ipcc.a $(IPC_CORE_OBJS) $(LIB_IPC_CLIENT_OBJS)
+
+libwv_ipcs.a: $(IPC_CORE_OBJS) $(LIB_IPC_SERVER_OBJS)
+	ar rcs libwv_ipcs.a $(IPC_CORE_OBJS) $(LIB_IPC_SERVER_OBJS)
+
+TEST_IPCLIB_OBJS := unit_tests/test_lib_wv_ipc.o unit_tests/test_ipc_core.o unit_tests/test_list.o unit_tests/test_obj_pool.o unit_tests/test_ipc_client.o unit_tests/test_ipc_server.o unit_tests/test_work_serializer.o
+
+test_lib_wv_ipc: $(TEST_IPCLIB_OBJS) libwv_ipcc.a libwv_ipcs.a libwv_core.so
+	$(CC) -o $@ $? $(LDFLAGS) -L./ -lwv_ipcs -lwv_ipcc -lwv_core -lpthread
+
+DWPAL_DAEMON_OBJS := daemon/dwpal_daemon.o daemon/iface_manager.o daemon/hostap_iface.o daemon/nl_iface.o
+
+dwpal_daemon: $(DWPAL_DAEMON_OBJS) libwv_ipcs.a $(PKG_NAME).so.$(VERSION) $(PKG_NAME).so libwv_core.so
+	$(CC) -o $@ $? $(LDFLAGS) -L./ -lwv_ipcs -lwv_core -lpthread -lnl-genl-3 -lrt -lnl-3 -ldwpal
+
+libdwpald_client.so.1.0: daemon/dwpald_client.o daemon/dwpald_hostap_parse.o libwv_ipcc.a libwv_core.so
+	$(CC) -shared -fPIC -Wl,-soname,$@ daemon/dwpald_client.o daemon/dwpald_hostap_parse.o $(LDFLAGS) -lnl-genl-3 -L./ -lwv_ipcc -o $@
+
+libdwpald_client.so: libdwpald_client.so.1.0
+	ln -sf $< $@
+
+dwpald_client_ref: daemon/dwpald_client_reference.o libwv_core.so libdwpald_client.so.1.0 libdwpald_client.so $(PKG_NAME).so.$(VERSION) $(PKG_NAME).so
+	$(CC) -o $@ $? -L./ -lpthread -lnl-genl-3 -lnl-3 $(LDFLAGS) -ldwpald_client -lwv_core
+
+dwpal_cli: $(DWPAL_CLI_OBJS) libwv_ipcs.a libwv_ipcc.a libwv_core.so $(PKG_NAME).so.$(VERSION) $(PKG_NAME).so
+	$(CC) -o $@ $? $(EXTRALDFLAGS) $(LDFLAGS) -L./ -lwv_ipcs -lwv_ipcs -lwv_core
+
+TEST_DWPAL_OBJS := unit_tests/test_dwpal.o unit_tests/test_dwpal_ext.o unit_tests/test_dwpal_daemon.o
+
+test_dwpal: $(TEST_DWPAL_OBJS) libdwpald_client.so.1.0 libdwpald_client.so $(PKG_NAME).so.$(VERSION) $(PKG_NAME).so
+	$(CC) -o $@ $? -L./ -lpthread -lnl-genl-3 -lnl-3 $(LDFLAGS) -ldwpald_client -lwv_core
+
+.PHONY: all
+all: $(PKG_NAME).so.$(VERSION) dwpal_cli $(PKG_NAME).so libwv_ipcc.a libwv_ipcs.a dwpal_daemon libdwpald_client.so.1.0 libdwpald_client.so dwpald_client_ref test_lib_wv_ipc test_dwpal
+
+.PHONY: clean
+clean:
+	@rm -f $(LIB_OBJS)
+	@rm -f lib$(NAME).so*
+	@rm -f libdwpald_client.so*
+	@rm -f libwv_ipc*
+	@rm -f dwpald_client_ref
+	@rm -f dwpal_daemon
+	@rm -f test_lib_wv_ipc
+	@rm -f wv_ipc/*.o
+	@rm -f wv_ipc/*.o.d
+	@rm -f daemon/*.o
+	@rm -f daemon/*.o.d
+	@rm -f unit_tests/*.o
+	@rm -f dwpal_cli.o dwpal_cli stats.o
+	@rm -f *.o.d

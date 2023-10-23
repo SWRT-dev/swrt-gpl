@@ -25,6 +25,9 @@
 #define PROC_DPORT "dport"	/*TMU dequeue port info */
 #define DP_PROC_CBMLOOKUP "lookup"
 
+#define DEBUGFS_RMON DP_DEBUGFS_PATH "/" PROC_RMON_PORTS
+#define DEBUGFS_EP DP_DEBUGFS_PATH "/" PROC_EP
+
 #define MAX_GSW_L_PMAC_PORT  7
 #define MAX_GSW_R_PMAC_PORT  16
 static GSW_RMON_Port_cnt_t gsw_l_rmon_mib[MAX_GSW_L_PMAC_PORT];
@@ -994,11 +997,11 @@ EXIT_OK:
 	return count;
 
 help:
-	pr_info("usage: echo clear > /proc/dp/rmon\n");
-	pr_info("usage: echo TMU on > /proc/dp/rmon\n");
-	pr_info("usage: echo TMU off > /proc/dp/rmon\n");
-	pr_info("usage: echo RMON Full > /proc/dp/rmon\n");
-	pr_info("usage: echo RMON Basic > /proc/dp/rmon\n");
+	pr_info("usage: echo clear > %s\n", DEBUGFS_RMON);
+	pr_info("usage: echo TMU on > %s\n", DEBUGFS_RMON);
+	pr_info("usage: echo TMU off > %s\n", DEBUGFS_RMON);
+	pr_info("usage: echo RMON Full > %s\n", DEBUGFS_RMON);
+	pr_info("usage: echo RMON Basic > %s\n", DEBUGFS_RMON);
 	return count;
 }
 
@@ -1165,18 +1168,19 @@ ssize_t ep_port_write(struct file *file, const char *buf, size_t count,
 
 	return count;
 help:
-	pr_info("echo ingress/egress [ep_port] %s > /proc/dp/ep\n",
-		"['ingress/egress fields'] [value]");
-	pr_info("(eg) echo ingress 1 pmac 1 > /proc/dp/ep\n");
-	pr_info("(eg) echo egress 1 rm_l2hdr 2 > /proc/dp/ep\n");
+	pr_info("echo ingress/egress [ep_port] %s > %s\n",
+		"['ingress/egress fields'] [value]", DEBUGFS_EP);
+	pr_info("(eg) echo ingress 1 pmac 1 > %s\n", DEBUGFS_EP);
+	pr_info("(eg) echo egress 1 rm_l2hdr 2 > %s\n", DEBUGFS_EP);
 	pr_info("echo %s ['errdisc/pmac/pmac_pmap/pmac_en_pmap/pmac_tc",
 		"ingress [ep_port] ");
-	pr_info("                         %s > /proc/dp/ep\n",
-		"/pmac_en_tc/pmac_subifid/pmac_srcport'] [value]");
-	pr_info("echo  %s %s> /proc/dp/ep\n",
-		"egress [ep_port]",
-		"['rx_dmachan/fcs/pmac/res_dw1/res1_dw0/res2_dw0] [value]");
-	pr_info("echo egress [ep_port] ['rm_l2hdr'] [value] > /proc/dp/ep\n");
+	pr_info("                         %s > %s\n",
+		"/pmac_en_tc/pmac_subifid/pmac_srcport'] [value]", DEBUGFS_EP);
+	pr_info("echo  %s %s > %s\n", "egress [ep_port]",
+		"['rx_dmachan/fcs/pmac/res_dw1/res1_dw0/res2_dw0] [value]",
+		DEBUGFS_EP);
+	pr_info("echo egress [ep_port] ['rm_l2hdr'] [value] > %s\n",
+		DEBUGFS_EP);
 	return count;
 }
 

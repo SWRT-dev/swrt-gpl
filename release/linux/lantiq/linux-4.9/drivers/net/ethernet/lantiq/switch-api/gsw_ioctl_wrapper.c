@@ -105,6 +105,11 @@ int gsw_command_search(void *phandle, u32 command,
 #ifdef __KERNEL__
 				ret = copy_from_user((void *)(pdrv->paramBuffer),
 						     (const void __user *)arg, (unsigned long)size);
+				if (ret) {
+					pr_err("ERROR %s[%d]: cmdnr=%u, size=%u, copy_from_user failed\n",
+						__func__, __LINE__, cmdnr, size);
+					goto fail;
+				}
 				/* Now call the low-level function with the right low-level context */
 				/* handle and the local copy of the parameter structure of 'arg'. */
 
@@ -118,6 +123,12 @@ int gsw_command_search(void *phandle, u32 command,
 					ret = copy_to_user((void __user *)arg,
 							   (const void *)(pdrv->paramBuffer),
 							   (unsigned long)size);
+					if (ret) {
+						pr_err("ERROR %s[%d]: cmdnr=%u, size=%u, copy_to_user failed\n",
+							__func__, __LINE__,
+							cmdnr, size);
+						goto fail;
+					}
 				}
 
 #endif
@@ -287,14 +298,14 @@ int gsw_api_drv_register(u32 major)
 	dev_num = MKDEV(major, 0);
 	result = register_chrdev_region(dev_num, MINORMASK, ETHSW_API_DEV_NAME);
 
-	if (result < 0) {
+	if (result) {
 		pr_err("SWAPI: Register Char Dev failed with %d !!!\n", result);
 		goto fail_register_chrdev_region;
 	}
 
 	/* Register the device class */
 	gswss_class = class_create(THIS_MODULE, ETHSW_API_DEV_NAME);
-	if (!gswss_class) {
+	if (IS_ERR(gswss_class)) {
 		result = -EEXIST;
 		pr_err("SWAPI: failed to create class %d\n", result);
 		goto fail_create_class;
@@ -307,11 +318,12 @@ fail_create_class:
 	unregister_chrdev_region(MKDEV(major, 0), MINORMASK);
 	return -1;
 fail_register_chrdev_region:
-	return result;
+	return -1;
 }
 
 int gsw_api_drv_unregister(u32 major)
 {
+	device_destroy(gswss_class, MKDEV(major, 0));
 	class_destroy(gswss_class);
 	unregister_chrdev_region(MKDEV(major, 0), MINORMASK);
 	return 0;
@@ -452,6 +464,8 @@ GSW_API_HANDLE gsw_api_kopen(char *name)
 		}
 	} else if (!strcmp(name, "1")) {
 		pLlHandle = pdev->pEthSWDev[1];
+	} else if (!strcmp(name, "2")) {
+		pLlHandle = pdev->pEthSWDev[2];
 	} else {
 		pr_err("\nNot support external switch number = %s\n\n", name);
 		return 0;
@@ -486,6 +500,8 @@ int gsw_api_kioctl(GSW_API_HANDLE handle, u32 command, void *arg)
 		cmd_handle->pLlHandle = pdev->pEthSWDev[0];
 	} else if (handle == (GSW_API_HANDLE)pdev->pEthSWDev[1]) {
 		cmd_handle->pLlHandle = pdev->pEthSWDev[1];
+	} else if (handle == (GSW_API_HANDLE)pdev->pEthSWDev[2]) {
+		cmd_handle->pLlHandle = pdev->pEthSWDev[2];
 	}	else {
 		pr_err("ERROR:Provided wrong address ( Address:0x%p) %s:%s:%d\n",
 		       handle, __FILE__, __func__, __LINE__);

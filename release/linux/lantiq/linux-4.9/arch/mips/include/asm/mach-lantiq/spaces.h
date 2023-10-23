@@ -66,6 +66,7 @@
 #define RPHYSADDR(a)		((_ACAST32_(a)) & 0x1fffffff)
 
 #define LEGACY_KSEC0(a)		(RPHYSADDR(a) | 0x80000000)
+#define LEGACY_TO_VADDR(a)      ((a) - 0x80000000 + PAGE_OFFSET)
 
 /* DRAM one */
 #define CKSEG0ADDR(a)		((_ACAST32_(a)))
@@ -131,6 +132,7 @@
 #define RPHYSADDR(a)		((_ACAST32_(a)) & 0x1fffffff)
 
 #define LEGACY_KSEC0(a)		(RPHYSADDR(a) | 0x80000000)
+#define LEGACY_TO_VADDR(a)      ((a) - 0x80000000 + PAGE_OFFSET)
 
 /* DRAM one */
 #define CKSEG0ADDR(a)		((_ACAST32_(a)))
@@ -189,6 +191,7 @@
 #define CPHYSADDR(a)		((_ACAST32_(a)) - PAGE_OFFSET + PHYS_OFFSET)
 #define RPHYSADDR(a)		((_ACAST32_(a)) & 0x1fffffff)
 #define LEGACY_KSEC0(a)		(RPHYSADDR(a) | KSEG0)
+#define LEGACY_TO_VADDR(a)      ((a) - 0x80000000 + PAGE_OFFSET)
 
 /* DRAM one */
 #define CKSEG0ADDR(a)		((_ACAST32_(a)))
@@ -251,6 +254,7 @@
 #define CPHYSADDR(a)		((_ACAST32_(a)) - PAGE_OFFSET + PHYS_OFFSET)
 #define RPHYSADDR(a)		((_ACAST32_(a)) & 0x1fffffff)
 #define LEGACY_KSEC0(a)		(RPHYSADDR(a) | KSEG0)
+#define LEGACY_TO_VADDR(a)      ((a) - 0x80000000 + PAGE_OFFSET)
 
 /* DRAM one */
 #define CKSEG0ADDR(a)		((_ACAST32_(a)))

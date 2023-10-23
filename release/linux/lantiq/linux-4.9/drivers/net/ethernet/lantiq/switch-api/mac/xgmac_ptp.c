@@ -1,5 +1,5 @@
 /******************************************************************************
- *                Copyright (c) 2016, 2017 Intel Corporation
+ *                Copyright (c) 2016, 2017, 2018, 2019, 2020  Intel Corporation
  *
  *
  * For licensing information, see the file 'LICENSE' in the root folder of
@@ -64,7 +64,7 @@ static void xgmac_extts_isr_handler(struct mac_prv_data *pdata,
 int xgmac_config_timer_reg(void *pdev, u32 mac_tscr)
 {
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
-	struct timespec now;
+	struct timespec64 now;
 	struct mac_ops *hw_if = &pdata->ops;
 	u64 temp = 0;
 
@@ -88,7 +88,7 @@ int xgmac_config_timer_reg(void *pdev, u32 mac_tscr)
 		hw_if->config_addend(pdev, pdata->def_addend);
 
 		/* initialize system time */
-		getnstimeofday(&now);
+		getnstimeofday64(&now);
 		hw_if->init_systime(pdev, now.tv_sec, now.tv_nsec);
 		pdata->systime_initialized = 1;
 	}
@@ -371,7 +371,8 @@ int xgmac_tx_hwts(void *pdev, struct sk_buff *skb)
 			pdata->ptp_tx_skb = skb_get(skb);
 
 			/* PTP Sync if we are Master TTSE=1 OSTC=0, OSTPA=0 */
-			rec_id = fifo_entry_add(pdev, 1, 0, 0, 0, 0, 0);
+			rec_id = fifo_entry_add(pdev, 1, 0, 0, 0, 0, 0,
+						&pdata->ptp_tx_skb);
 		}
 
 		if (IS_1STEP(pdata)) {
@@ -384,7 +385,7 @@ int xgmac_tx_hwts(void *pdev, struct sk_buff *skb)
 			}
 
 			/* PTP Sync if we are Master TTSE=0 OSTC=1, OSTPA=0 */
-			rec_id = fifo_entry_add(pdev, 0, 1, 0, 0, 0, 0);
+			rec_id = fifo_entry_add(pdev, 0, 1, 0, 0, 0, 0, NULL);
 			/* SNAPTYPESEL=0 TSMSTREN=1 TSEVNTEN = 1 */
 			xgmac_ptp_txtstamp_mode(pdev, 0, 1, 1);
 		}
@@ -410,15 +411,17 @@ int xgmac_ptp_tx_work(struct work_struct *work)
 	u64 tstamp;
 	struct skb_shared_hwtstamps shhwtstamp;
 
-	if (!pdata->ptp_tx_skb) {
-		pr_info("No PTP packet transferred out from device\n");
-		return -1;
-	}
-
 	/* check tx tstamp status, if have, read the timestamp and sent to
 	 * stack, otherwise reschedule later
+	 * Get Tx Timestamp need to be done first, since it will clear the
+	 * Xgmac Stored interrupt
 	 */
 	tstamp = pdata->ops.get_tx_tstamp(&pdata->ops);
+
+	if (!pdata->ptp_tx_skb) {
+		pr_debug("No PTP packet transferred out from device\n");
+		return -1;
+	}
 
 	if (!tstamp) {
 		pr_info("Tx tstamp is not captured or ignored for this pkt\n");
@@ -700,15 +703,60 @@ int xgmac_ptp_init(void *pdev)
 
 	if (ret == -1)
 		pr_info("Already have a PTP clock device\n");
+	
+	if (pdata->ptp_clock) {
+		/* Start internal clock */
+		xgmac_config_tstamp(&pdata->ops, BIT(MAC_TSTAMP_CR_TSENA_POS));
+		xgmac_config_timer_reg(&pdata->ops, BIT(MAC_TSTAMP_CR_TSENA_POS));
+
+		/* Enable timestamp interrupt for ExtTS */
+		mac_int_enable(pdev);
+		xgmac_set_mac_int(pdev, XGMAC_TSTAMP_EVNT, 1);
+	}
 
 	return ret;
 }
+
+#ifdef CONFIG_PTP_1588_CLOCK
+static int get_ext_ref_time(struct mac_prv_data *pdata)
+{
+	struct gswss *gswss;
+	struct adap_ops *ops;
+	struct platform_device *mac_pdev;
+	struct mac_ops *mac_ops;
+	struct mac_prv_data *ext_pdata;
+	u32 ref, dig, bin, pps;
+
+	gswss = dev_get_drvdata(pdata->pdev->dev.parent);
+	ops = gswss->adap_ops;
+
+	ops->ss_get_cfg0_1588(ops, &ref, &dig, &bin, &pps);
+	if (ref < 3 || ref > 5 || ref >= 3 + gswss->mac_subdevs_cnt)
+		return -1;
+
+	mac_pdev = gswss->mac_dev[ref - 3];
+	mac_ops = platform_get_drvdata(mac_pdev);
+	ext_pdata = GET_MAC_PDATA(mac_ops);
+	if (ext_pdata->ptp_clock)
+		return ptp_clock_index(ext_pdata->ptp_clock);
+	else
+		return -1;
+}
+#endif
 
 int xgmac_get_ts_info(void *pdev,
 		      struct ethtool_ts_info *ts_info)
 {
 #ifdef CONFIG_PTP_1588_CLOCK
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
+
+	if (pdata->ext_ref_time)
+		ts_info->phc_index = get_ext_ref_time(pdata);
+	else if (pdata->ptp_clock)
+		ts_info->phc_index = ptp_clock_index(pdata->ptp_clock);
+	else
+		ts_info->phc_index = -1;
+
 #endif
 
 	ts_info->so_timestamping = SOF_TIMESTAMPING_TX_SOFTWARE |
@@ -717,15 +765,6 @@ int xgmac_get_ts_info(void *pdev,
 				   SOF_TIMESTAMPING_TX_HARDWARE |
 				   SOF_TIMESTAMPING_RX_HARDWARE |
 				   SOF_TIMESTAMPING_RAW_HARDWARE;
-
-#ifdef CONFIG_PTP_1588_CLOCK
-
-	if (pdata->ptp_clock)
-		ts_info->phc_index = ptp_clock_index(pdata->ptp_clock);
-	else
-		ts_info->phc_index = -1;
-
-#endif
 
 	ts_info->tx_types = (1 << HWTSTAMP_TX_OFF) | (1 << HWTSTAMP_TX_ON);
 	ts_info->rx_filters = (1 << HWTSTAMP_FILTER_NONE) |
@@ -765,14 +804,15 @@ static int xgmac_ptp_register(void *pdev)
 	info->settime64 = xgmac_set_time;
 	info->enable	= xgmac_extts_enable;
 #ifdef CONFIG_PTP_1588_CLOCK
-	pdata->ptp_clock = ptp_clock_register(info, pdata->dev);
-#endif
-
-	if (IS_ERR(pdata->ptp_clock)) {
-		pdata->ptp_clock = NULL;
-		pr_err("ptp_clock_register() failed\n");
-		return -1;
+	if (!pdata->ext_ref_time) {
+		pdata->ptp_clock = ptp_clock_register(info, pdata->dev);
+		if (IS_ERR(pdata->ptp_clock)) {
+			pdata->ptp_clock = NULL;
+			pr_err("ptp_clock_register() failed\n");
+			return -1;
+		}
 	}
+#endif
 
 	mac_dbg("Added PTP HW clock successfully\n");
 
@@ -787,12 +827,13 @@ void xgmac_ptp_remove(void *pdev)
 {
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
 
-	if (pdata->ptp_clock) {
-		cancel_work_sync(&pdata->ptp_tx_work);
+	cancel_work_sync(&pdata->ptp_tx_work);
+
 #ifdef CONFIG_PTP_1588_CLOCK
+	if (pdata->ptp_clock) {
 		ptp_clock_unregister(pdata->ptp_clock);
 		pr_info("Removed PTP HW clock successfully\n");
-#endif
 	}
+#endif
 }
 

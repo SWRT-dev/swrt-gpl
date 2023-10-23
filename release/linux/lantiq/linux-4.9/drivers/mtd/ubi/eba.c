@@ -722,6 +722,7 @@ out_unlock:
 	leb_read_unlock(ubi, vol_id, lnum);
 	return err;
 }
+EXPORT_SYMBOL_GPL(ubi_eba_read_leb);
 
 /**
  * ubi_eba_read_leb_sg - read data into a scatter gather list.

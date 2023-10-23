@@ -30,6 +30,12 @@ static struct platform_driver syscon_driver;
 static DEFINE_SPINLOCK(syscon_list_slock);
 static LIST_HEAD(syscon_list);
 
+enum {
+	REGMAP_ICC_BUS,
+	REGMAP_MMIO_BUS,
+	REGMAP_MAX_BUS
+};
+
 struct syscon {
 	struct device_node *np;
 	struct regmap *regmap;
@@ -42,17 +48,40 @@ static const struct regmap_config syscon_regmap_config = {
 	.reg_stride = 4,
 };
 
+static const struct platform_device_id syscon_ids[] = {
+	{ "syscon-icc", },
+	{ "syscon", },
+	{ "", }
+};
+
+static int syscon_bus_lookup_by_compatible(struct device_node *np)
+{
+	size_t count, i;
+
+	i = 0;
+	count = sizeof(syscon_ids)/sizeof(struct platform_device_id) - 1;
+
+	while (i < count) {
+		if (of_device_is_compatible(np,syscon_ids[i].name))
+			return i;
+		i++;
+	}
+
+	return REGMAP_MAX_BUS;
+}
+
 static struct syscon *of_syscon_register(struct device_node *np)
 {
 	struct syscon *syscon;
 	struct regmap *regmap;
 	void __iomem *base;
 	u32 reg_io_width;
-	int ret;
+	int ret, bus;
 	struct regmap_config syscon_config = syscon_regmap_config;
 	struct resource res;
 
-	if (!of_device_is_compatible(np, "syscon"))
+	bus = syscon_bus_lookup_by_compatible(np);
+	if (bus >= REGMAP_MAX_BUS)
 		return ERR_PTR(-EINVAL);
 
 	syscon = kzalloc(sizeof(*syscon), GFP_KERNEL);
@@ -87,11 +116,28 @@ static struct syscon *of_syscon_register(struct device_node *np)
 	if (ret)
 		reg_io_width = 4;
 
+	syscon_config.name = of_node_full_name(np);
 	syscon_config.reg_stride = reg_io_width;
 	syscon_config.val_bits = reg_io_width * 8;
 	syscon_config.max_register = resource_size(&res) - reg_io_width;
 
-	regmap = regmap_init_mmio(NULL, base, &syscon_config);
+	switch (bus) {
+	case REGMAP_MMIO_BUS:
+		regmap = regmap_init_mmio(NULL, base, &syscon_config);
+		break;
+
+	case REGMAP_ICC_BUS:
+#if IS_ENABLED(CONFIG_REGMAP_ICC) && IS_ENABLED(CONFIG_SOC_GRX500)
+		regmap = regmap_init_icc(NULL, base,
+					 res.start, &syscon_config);
+#else
+		regmap = regmap_init_mmio(NULL, base, &syscon_config);
+#endif
+		break;
+
+	default:
+		goto err_regmap;
+	}
 	if (IS_ERR(regmap)) {
 		pr_err("regmap init failed\n");
 		ret = PTR_ERR(regmap);
@@ -176,7 +222,7 @@ struct regmap *syscon_regmap_lookup_by_pdevname(const char *s)
 EXPORT_SYMBOL_GPL(syscon_regmap_lookup_by_pdevname);
 
 struct regmap *syscon_regmap_lookup_by_phandle(struct device_node *np,
-					const char *property)
+					       const char *property)
 {
 	struct device_node *syscon_np;
 	struct regmap *regmap;
@@ -204,6 +250,7 @@ static int syscon_probe(struct platform_device *pdev)
 	struct regmap_config syscon_config = syscon_regmap_config;
 	struct resource *res;
 	void __iomem *base;
+	int bus;
 
 	syscon = devm_kzalloc(dev, sizeof(*syscon), GFP_KERNEL);
 	if (!syscon)
@@ -220,7 +267,31 @@ static int syscon_probe(struct platform_device *pdev)
 	syscon_config.max_register = res->end - res->start - 3;
 	if (pdata)
 		syscon_config.name = pdata->label;
-	syscon->regmap = devm_regmap_init_mmio(dev, base, &syscon_config);
+
+	bus = syscon_bus_lookup_by_compatible(dev->of_node);
+	if (bus >= REGMAP_MAX_BUS)
+		return -EINVAL;
+
+	switch (bus) {
+	case REGMAP_MMIO_BUS:
+		syscon->regmap = regmap_init_mmio(dev, base,
+						  &syscon_config);
+		break;
+
+	case REGMAP_ICC_BUS:
+
+#if IS_ENABLED(CONFIG_REGMAP_ICC) && IS_ENABLED(CONFIG_SOC_GRX500)
+		syscon->regmap = regmap_init_icc(dev, base, res->start,
+						 &syscon_config);
+#else
+		syscon->regmap = regmap_init_mmio(dev, base,
+						  &syscon_config);
+#endif
+		break;
+
+	default:
+		return -ENOMEM;
+	}
 	if (IS_ERR(syscon->regmap)) {
 		dev_err(dev, "regmap init failed\n");
 		return PTR_ERR(syscon->regmap);
@@ -232,11 +303,6 @@ static int syscon_probe(struct platform_device *pdev)
 
 	return 0;
 }
-
-static const struct platform_device_id syscon_ids[] = {
-	{ "syscon", },
-	{ }
-};
 
 static struct platform_driver syscon_driver = {
 	.driver = {

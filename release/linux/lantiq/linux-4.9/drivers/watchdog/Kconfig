@@ -1531,6 +1531,13 @@ config GRX500_BOOTCORE_WDT
           Hardware driver for the GRX500 SoC Watchdog Timer for
 	  Bootcore core.
 
+config PRX300_BOOTCORE_WDT
+	tristate "PRX300 SoC watchdog for TEP"
+	depends on SOC_PRX300_BOOTCORE
+	select WATCHDOG_CORE
+	help
+	  Hardware driver for the PRX300 SoC Watchdog Timer for TEP core.
+
 config RALINK_WDT
 	tristate "Ralink SoC watchdog"
 	select WATCHDOG_CORE

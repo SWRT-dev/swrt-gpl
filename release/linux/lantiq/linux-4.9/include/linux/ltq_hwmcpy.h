@@ -68,6 +68,7 @@ struct umt_set_mode {
 	enum umt_msg_mode msg_mode;
 	u32 phy_dst;
 	u32 period;
+	u32 msg1_period;
 	enum umt_status enable;
 	u32 umt_ep_dst;
 };
@@ -79,7 +80,8 @@ extern int ltq_hwmcpy_sg(void *dst, const struct mcpy_frag *src, u32 frag_num,
 extern int ltq_mcpy_reserve(void);
 extern void ltq_mcpy_release(u32 pid);
 
-int ltq_umt_set_period(u32 umt_id, u32 ep_id, u32 period);
+int ltq_umt_set_period(u32 umt_id, u32 ep_id,
+		       enum umt_msg_mode msg_mode, u32 period);
 int ltq_umt_set_mode(u32 umt_id, u32 ep_id, struct umt_set_mode *umt_mode);
 int ltq_umt_enable(u32 umt_id, u32 ep_id, u32 enable);
 int ltq_umt_request(u32 ep_id, u32 cbm_pid,

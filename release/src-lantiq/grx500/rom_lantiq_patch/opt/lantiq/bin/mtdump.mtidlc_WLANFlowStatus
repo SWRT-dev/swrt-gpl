@@ -1,0 +1,27 @@
+[mtidl_item_0]
+binary_type=mtlk_wssa_drv_wlan_stats_t
+description="WLAN packets flow statistics"
+field_0_binary_subtype=
+field_0_binary_type=mtlk_wssa_drv_traffic_stats_t
+field_0_description="Traffic statistics"
+field_0_element_size=0
+field_0_fract_size=
+field_0_num_elements=1
+field_1_binary_subtype=
+field_1_binary_type=mtlk_wssa_drv_tr181_wlan_stats_t
+field_1_description="TR-181 statistics"
+field_1_element_size=0
+field_1_fract_size=
+field_1_num_elements=1
+field_2_binary_subtype=
+field_2_binary_type=mtlk_wssa_drv_mgmt_stats_t
+field_2_description="MGMT statistics"
+field_2_element_size=0
+field_2_fract_size=
+field_2_num_elements=1
+friendly_name=WLANFlowStatus
+id=3
+level=2
+source=2
+type=2
+

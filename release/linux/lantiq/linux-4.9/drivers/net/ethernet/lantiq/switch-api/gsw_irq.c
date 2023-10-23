@@ -113,10 +113,19 @@ static GSW_return_t pce_irq_add(void *cdev, gsw_pce_irq *pce_irq,
 	}
 
 #ifdef __KERNEL__
-	reg_irq = (gsw_pce_irq *)kmalloc(sizeof(gsw_pce_irq), GFP_KERNEL);
-	memset(reg_irq, 0, sizeof(gsw_pce_irq));
+	reg_irq = (gsw_pce_irq *)kzalloc(sizeof(gsw_pce_irq), GFP_ATOMIC);
+	if (!reg_irq) {
+		pr_err("Out of Memory %s:%s:%d",
+		       __FILE__, __func__, __LINE__);
+		return -ENOMEM;
+	}
 #else
 	reg_irq = (gsw_pce_irq *)malloc(sizeof(gsw_pce_irq));
+	if (!reg_irq) {
+		pr_err("Out of Memory %s:%s:%d",
+		       __FILE__, __func__, __LINE__);
+		return GSW_statusErr;
+	}
 	memset(reg_irq, 0, sizeof(gsw_pce_irq));
 #endif
 
@@ -200,15 +209,16 @@ static GSW_return_t pce_irq_del(void *cdev, gsw_pce_irq *pce_irq,
 				prv_irq->pNext = delete_irq->pNext;
 			}
 
-#ifdef __KERNEL__
-			kfree(delete_irq);
-#else
-			free(delete_irq);
-#endif
 		}
-
 		prv_irq = delete_irq;
 		delete_irq = delete_irq->pNext;
+		if (found) {
+#ifdef __KERNEL__
+			kfree(prv_irq);
+#else
+			free(prv_irq);
+#endif
+		}
 	}
 
 	return GSW_statusOk;
@@ -549,6 +559,10 @@ static irqreturn_t GSW_ISR(int irq, void *cdev)
 	ethsw_api_dev_t *gswdev = GSW_PDATA_GET(cdev);
 	u32 dev, maxdev = 0, isr_event;
 
+	if (!gswdev) {
+		pr_err("%s:%s:%d", __FILE__, __func__, __LINE__);
+		return GSW_statusErr;
+	}
 	if (gswdev->gipver == LTQ_GSWIP_3_0)
 		maxdev = 2;
 	else if (gswdev->gipver == LTQ_GSWIP_3_1)
@@ -609,9 +623,15 @@ GSW_return_t GSW_Irq_init(void *cdev)
 #ifdef __KERNEL__
 	gswdev->PceIrqList =
 		(struct pce_irq_linklist *)kmalloc(sizeof(struct pce_irq_linklist), GFP_KERNEL);
+	if (gswdev->PceIrqList == NULL) {
+		pr_err("%s:%s:%d: kmalloc fail\n", __FILE__, __func__, __LINE__);
+		return GSW_statusErr;
+	}
 	ret = request_irq(gswdev->irq_num, GSW_ISR, 0, "gswip", cdev);
 
 	if (ret) {
+		kfree(gswdev->PceIrqList);
+		gswdev->PceIrqList = NULL;
 		pr_err("Switch irq request error %s:%s:%d", __FILE__, __func__, __LINE__);
 		return ret;
 	}
@@ -625,6 +645,8 @@ GSW_return_t GSW_Irq_init(void *cdev)
 #else
 	gswdev->PceIrqList =
 		(struct pce_irq_linklist *)malloc(sizeof(struct pce_irq_linklist));
+	if (gswdev->PceIrqList == NULL)
+		return GSW_statusErr;
 
 	gswdev->PceIrqList->first_ptr = NULL;
 	gswdev->PceIrqList->last_ptr = NULL;

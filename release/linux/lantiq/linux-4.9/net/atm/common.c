@@ -141,7 +141,7 @@ static struct proto vcc_proto = {
 	.release_cb = vcc_release_cb,
 };
 
-#if IS_ENABLED(CONFIG_VRX518_TC)
+#if IS_ENABLED(CONFIG_ATM_MPOA_INTEL_DSL_PHY_SUPPORT)
 void (*atm_hook_mpoa_setup)(struct atm_vcc *, int, int, struct net_device *) = NULL;
 EXPORT_SYMBOL(atm_hook_mpoa_setup);
 #endif
@@ -158,7 +158,6 @@ int push_oam(struct atm_vcc *atmvcc, void *cell)
 }
 EXPORT_SYMBOL(push_oam);
 #endif
-
 
 int vcc_create(struct net *net, struct socket *sock, int protocol, int family, int kern)
 {

@@ -178,8 +178,16 @@ int __init cma_init_reserved_mem(phys_addr_t base, phys_addr_t size,
 		return -ENOSPC;
 	}
 
+/*
+ * MIPS uses bootmem to manage early memory allocations and only partly
+ * memblock in kernel 4.9. At this point in the memblock is not fully
+ * initialized on MIPS and this checks fails. I think this should work
+ * better starting with kernel 5.4 and this check should work fine also on MIPS.
+ */
+#ifndef CONFIG_MIPS
 	if (!size || !memblock_is_region_reserved(base, size))
 		return -EINVAL;
+#endif
 
 	/* ensure minimal alignment required by mm core */
 	alignment = PAGE_SIZE <<

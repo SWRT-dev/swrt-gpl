@@ -1,9 +1,40 @@
-#ifndef DATAPATH_TX_H_7PAJCKO6
-#define DATAPATH_TX_H_7PAJCKO6
+// SPDX-License-Identifier: GPL-2.0
+/* Copyright (C) Intel Corporation
+ * Author: Shao Guohua <guohua.shao@intel.com>
+ */
+
+#ifndef DATAPATH_TX_H
+#define DATAPATH_TX_H
 
 #include <net/datapath_api_tx.h>
 
-int dp_tx_init(int inst);
+struct pmac_port_info;
+struct dp_subif_info;
+struct pmac_tx_hdr;
+struct dev_mib;
+
+/**
+ * struct dp_checksum_info - datapath checksum info to pass to GSWIP HW
+ */
+/*! @brief datapath checksum parameters */
+struct dp_checksum_info {
+	u32 tcp_h_offset;
+	u32 ip_offset;
+	u32 tcp_type;
+};
+
+struct dp_tx_common_ex {
+	struct dp_tx_common cmn;
+	struct net_device *dev;	  	  /*!< net device */
+	struct dev_mib *mib;          /*!< mib info */
+	struct pmac_port_info *port;  /*!< port info */
+	struct dp_subif_info *sif;    /*!< subif info */
+	dp_subif_t *rx_subif;		  /*!< rx_subif */
+	enum DP_TEMP_DMA_PMAC tmpl;   /*!< DMA Pmac Template */
+	struct dp_checksum_info csum_info;      /*!< DP checksum parameters */
+};
+
+int dp_tx_ctx_init(int inst);
 
 void dp_tx_register_process(enum DP_TX_PRIORITY priority, tx_fn fn,
 			    void *priv);
@@ -15,10 +46,17 @@ int dp_tx_update_list(void);
 
 int dp_tx_start(struct sk_buff *skb, struct dp_tx_common *cmn);
 
-int dp_tx_err(struct sk_buff *skb, struct dp_tx_common *cmn, int ret);
+void dp_tx_dbg(char *title, struct sk_buff *skb, struct dp_tx_common_ex *ex);
 
-void dp_tx_dbg(char *title, struct sk_buff *skb, s32 ep, s32 len, u32 flags,
-	       struct pmac_tx_hdr *pmac, struct dp_subif *rx_subif,
-	       int need_pmac, int gso, int checksum);
+static inline struct pmac_tx_hdr *
+dp_tx_get_pmac(const struct dp_tx_common_ex *ex)
+{
+	return (struct pmac_tx_hdr *)ex->cmn.pmac;
+}
 
-#endif /* end of include guard: DATAPATH_TX_H_7PAJCKO6 */
+static inline u8 dp_tx_get_pmac_len(const struct dp_tx_common_ex *ex)
+{
+	return ex->cmn.pmac_len;
+}
+
+#endif /* end of include guard: DATAPATH_TX_H */

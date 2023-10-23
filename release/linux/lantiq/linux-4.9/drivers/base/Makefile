@@ -23,6 +23,7 @@ obj-$(CONFIG_SOC_BUS) += soc.o
 obj-$(CONFIG_PINCTRL) += pinctrl.o
 obj-$(CONFIG_DEV_COREDUMP) += devcoredump.o
 obj-$(CONFIG_GENERIC_MSI_IRQ_DOMAIN) += platform-msi.o
+obj-$(CONFIG_SOC_PRX300_BOOTCORE) += tep-sec.o
 
 ccflags-$(CONFIG_DEBUG_DRIVER) := -DDEBUG
 

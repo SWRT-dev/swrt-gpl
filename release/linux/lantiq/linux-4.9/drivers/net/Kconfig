@@ -219,6 +219,12 @@ config MACSEC
 	---help---
 	   MACsec is an encryption standard for Ethernet.
 
+config MACSEC_HW_OFFLOAD
+        bool "MACSec HW Offload Support"
+	depends on MACSEC
+        ---help---
+           MACSec HW Offload Support.
+
 config NETCONSOLE
 	tristate "Network console logging support"
 	---help---
@@ -455,3 +461,5 @@ config FUJITSU_ES
 source "drivers/net/hyperv/Kconfig"
 
 endif # NETDEVICES
+
+source "drivers/net/ppv4/Kconfig"

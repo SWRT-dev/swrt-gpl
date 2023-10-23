@@ -599,7 +599,7 @@ static int br2684_regvcc(struct atm_vcc *atmvcc, void __user * arg)
 	atmvcc->push = br2684_push;
 	atmvcc->pop = br2684_pop;
 	atmvcc->release_cb = br2684_release_cb;
-#if IS_ENABLED(CONFIG_VRX518_TC)
+#if IS_ENABLED(CONFIG_ATM_MPOA_INTEL_DSL_PHY_SUPPORT)
 	if (atm_hook_mpoa_setup) /* IPoA or EoA w/o FCS */
 		atm_hook_mpoa_setup(atmvcc, brdev->payload == p_routed ? 3 : 0,
 			brvcc->encaps == BR2684_ENCAPS_LLC ? 1 : 0, net_dev);
@@ -771,6 +771,12 @@ static int br2684_create(void __user *arg)
 		free_netdev(netdev);
 		return err;
 	}
+
+	/* By default, carrier state is ON and it's causing in making the interface
+	 * UP even before physical port registration. Hence making the carrier OFF
+	 * and it will be ON after physical port registration */
+	netif_carrier_off(netdev);
+
 	/* Mark br2684 device */
 	netdev->priv_flags |= IFF_BR2684;
 

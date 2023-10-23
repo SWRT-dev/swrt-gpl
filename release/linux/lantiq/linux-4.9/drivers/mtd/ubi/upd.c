@@ -168,6 +168,7 @@ int ubi_start_update(struct ubi_device *ubi, struct ubi_volume *vol,
 	vol->upd_received = 0;
 	return 0;
 }
+EXPORT_SYMBOL_GPL(ubi_start_update);
 
 /**
  * ubi_start_leb_change - start atomic LEB change.
@@ -375,6 +376,7 @@ int ubi_more_update_data(struct ubi_device *ubi, struct ubi_volume *vol,
 
 	return err;
 }
+EXPORT_SYMBOL_GPL(ubi_more_update_data);
 
 /**
  * ubi_more_leb_change_data - accept more data for atomic LEB change.

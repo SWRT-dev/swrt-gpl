@@ -30,6 +30,7 @@
 #include "watchdog_core.h"
 #include <linux/mfd/syscon.h>
 #include <linux/regmap.h>
+#include <linux/nmi.h>
 
 /* WDT MACROs */
 #define WD_RESET	(1 << 7)
@@ -114,6 +115,7 @@ struct grx500_wdt_struct {
 	 */
 	int reset_count;
 	struct reset_control **resets;
+	unsigned char warning_flag;
 };
 
 #define to_grx500_wdt(wdd)	container_of(wdd, struct grx500_wdt_struct, wdd)
@@ -135,10 +137,13 @@ static int grx500wdt_start(struct watchdog_device *wdt_dev)
 {
 	uint32_t config0;
 	unsigned long flags;
+	struct grx500_wdt_struct *priv;
 
-	pr_debug("[%s]:[%d] wdt_dev=0x%p id=%d cpu = %d\n", __func__, __LINE__,
-		wdt_dev, wdt_dev->id, smp_processor_id());
-	if (wdt_dev->id == smp_processor_id()) {
+	priv = watchdog_get_drvdata(wdt_dev);
+	priv->warning_flag = 0;
+	pr_debug("[%s]:[%d] wdd=0x%p id=%d cpu=%d priv->cpu=%d\n", __func__,
+		 __LINE__, wdt_dev, wdt_dev->id, smp_processor_id(), priv->cpu);
+	if (priv->cpu == smp_processor_id()) {
 		config0 = gic_read_reg(GIC_REG(VPE_LOCAL, GIC_VPE_WD_CONFIG0));
 		rmb();
 		gic_write_reg(GIC_REG(VPE_LOCAL, GIC_VPE_WD_CONFIG0),
@@ -146,7 +151,8 @@ static int grx500wdt_start(struct watchdog_device *wdt_dev)
 		wmb();
 	} else {
 		local_irq_save(flags);
-		gic_write_reg(GIC_REG(VPE_LOCAL, GIC_VPE_OTHER_ADDR), wdt_dev->id);
+		gic_write_reg(GIC_REG(VPE_LOCAL, GIC_VPE_OTHER_ADDR),
+			      priv->cpu);
 		wmb();
 		config0 = gic_read_reg(GIC_REG(VPE_OTHER, GIC_VPE_WD_CONFIG0));
 		rmb();
@@ -163,10 +169,13 @@ static int grx500wdt_stop(struct watchdog_device *wdt_dev)
 {
 	uint32_t config0;
 	unsigned long flags;
+	struct grx500_wdt_struct *priv;
 
-	pr_debug("[%s]:[%d] wdt_dev=0x%p id=%d cpu = %d\n", __func__, __LINE__,
-		wdt_dev, wdt_dev->id, smp_processor_id());
-	if (wdt_dev->id == smp_processor_id()) {
+	priv = watchdog_get_drvdata(wdt_dev);
+
+	pr_debug("[%s]:[%d] wdd=0x%p id=%d cpu=%d priv->cpu=%d\n", __func__,
+		 __LINE__, wdt_dev, wdt_dev->id, smp_processor_id(), priv->cpu);
+	if (priv->cpu == smp_processor_id()) {
 		config0 = gic_read_reg(GIC_REG(VPE_LOCAL, GIC_VPE_WD_CONFIG0));
 		rmb();
 		gic_write_reg(GIC_REG(VPE_LOCAL, GIC_VPE_WD_CONFIG0),
@@ -174,7 +183,8 @@ static int grx500wdt_stop(struct watchdog_device *wdt_dev)
 		wmb();
 	} else {
 		local_irq_save(flags);
-		gic_write_reg(GIC_REG(VPE_LOCAL, GIC_VPE_OTHER_ADDR), wdt_dev->id);
+		gic_write_reg(GIC_REG(VPE_LOCAL, GIC_VPE_OTHER_ADDR),
+			      priv->cpu);
 		wmb();
 		config0 = gic_read_reg(GIC_REG(VPE_OTHER, GIC_VPE_WD_CONFIG0));
 		rmb();
@@ -192,6 +202,9 @@ static int grx500wdt_set_timeout(struct watchdog_device *wdt_dev,
 {
 	struct watchdog_device *grx500_wdt;
 	unsigned long flags;
+	struct grx500_wdt_struct *priv;
+
+	priv = watchdog_get_drvdata(wdt_dev);
 
 	if (!capable(CAP_SYS_ADMIN))
 		return -EPERM;
@@ -200,12 +213,13 @@ static int grx500wdt_set_timeout(struct watchdog_device *wdt_dev,
 	grx500_wdt = wdt_dev;
 
 	grx500_wdt->timeout = new_timeout;
-	pr_debug("%s: timeout = %d, cpu = %d, id = %d wdt_dev=0x%p\n", __func__,
-		new_timeout, smp_processor_id(), wdt_dev->id, wdt_dev);
+	pr_debug("%s: timeout=%d, cpu=%d, id=%d wdd=0x%p priv->cpu=%d\n",
+		 __func__, new_timeout, smp_processor_id(), wdt_dev->id,
+		 wdt_dev, priv->cpu);
 
 	grx500wdt_stop(grx500_wdt);
 
-	if (wdt_dev->id == smp_processor_id()) {
+	if (priv->cpu == smp_processor_id()) {
 		if (((u64)cpu_clk * (u64)(grx500_wdt->timeout)) <= (u64)U32_MAX) {
 			gic_write_reg(GIC_REG(VPE_LOCAL, GIC_VPE_WD_INITIAL0),
 				(cpu_clk * grx500_wdt->timeout));
@@ -216,7 +230,8 @@ static int grx500wdt_set_timeout(struct watchdog_device *wdt_dev,
 		wmb();
 	} else {
 		local_irq_save(flags);
-		gic_write_reg(GIC_REG(VPE_LOCAL, GIC_VPE_OTHER_ADDR), wdt_dev->id);
+		gic_write_reg(GIC_REG(VPE_LOCAL, GIC_VPE_OTHER_ADDR),
+			      priv->cpu);
 		wmb();
 		if (((u64)cpu_clk * (u64)(grx500_wdt->timeout)) <= (u64)U32_MAX) {
 			gic_write_reg(GIC_REG(VPE_OTHER, GIC_VPE_WD_INITIAL0),
@@ -238,8 +253,11 @@ static uint32_t grx500wdt_get_timeleft(struct watchdog_device *wdt_dev)
 {
 	u32 count0, initial0, config0, rst_en, map0;
 	unsigned long flags;
+	struct grx500_wdt_struct *priv;
 
-	if (wdt_dev->id == smp_processor_id()) {
+	priv = watchdog_get_drvdata(wdt_dev);
+
+	if (priv->cpu == smp_processor_id()) {
 		initial0 = gic_read_reg(GIC_REG(VPE_LOCAL, GIC_VPE_WD_INITIAL0));
 		rmb();
 		config0 = gic_read_reg(GIC_REG(VPE_LOCAL, GIC_VPE_WD_CONFIG0));
@@ -250,7 +268,8 @@ static uint32_t grx500wdt_get_timeleft(struct watchdog_device *wdt_dev)
 		rmb();
 	} else {
 		local_irq_save(flags);
-		gic_write_reg(GIC_REG(VPE_LOCAL, GIC_VPE_OTHER_ADDR), wdt_dev->id);
+		gic_write_reg(GIC_REG(VPE_LOCAL, GIC_VPE_OTHER_ADDR),
+			      priv->cpu);
 		wmb();
 		initial0 = gic_read_reg(GIC_REG(VPE_OTHER, GIC_VPE_WD_INITIAL0));
 		rmb();
@@ -311,12 +330,24 @@ static irqreturn_t grx500wdt_irq(int irqno, void *param)
 
 	/* enable this for dump data */
 /*	grx500wdt_start(grx500_wdt);*/
-	WARN_ONCE(1, " IRQ %d triggered as WDT%d Timer Overflow on CPU %d!\n",
-		irqno, grx500_wdt->id, smp_processor_id());
-
-	if (flag == 0) {
-		show_state();
+	if (priv->warning_flag == 0) {
+		grx500wdt_stop(grx500_wdt);
+		grx500wdt_start(grx500_wdt);
+		priv->warning_flag = 1;
 		flag = 1;
+		dump_stack();
+		show_regs(get_irq_regs());
+		printk("## IRQ %d perform all-CPU dump!!!\n", irqno);
+		trigger_allbutself_cpu_backtrace();
+	} else {
+		if (flag) {
+			WARN(1, "IRQ %d triggered as WDT%d Timer Overflow on CPU %d!\n",
+			     irqno, grx500_wdt->id, smp_processor_id());
+			dump_stack();
+			show_regs(get_irq_regs());
+			trigger_allbutself_cpu_backtrace();
+			flag=0;
+		}
 	}
 	return IRQ_HANDLED;
 }
@@ -383,6 +414,12 @@ static int grx500wdt_probe(struct platform_device *pdev)
 				i);
 			return PTR_ERR(priv->resets[i]);
 		}
+		ret = reset_control_deassert(priv->resets[i]);
+		if (ret) {
+			while (--i >= 0)
+				reset_control_assert(priv->resets[i]);
+			return ret;
+		}
 	}
 
 	/* set up per-cpu IRQ */
@@ -398,21 +435,38 @@ static int grx500wdt_probe(struct platform_device *pdev)
 	}
 
 	cpu_clk = clk_get_rate(clk);
+	if (!cpu_clk) {
+		dev_err(&pdev->dev, "Failed to get CPU clock rate\n");
+		ret = -EINVAL;
+		goto exit;
+	}
+
 	dev_info(&pdev->dev, "[%s]:[%d] cpu_clk=%lu\n",
 		__func__, __LINE__, cpu_clk);
 	/* cpu_clk = grx500_clk_get_rate((struct clk *)ltq_grx500_wdt->clk); */
 
 	for_each_possible_cpu(cpu) {
 		struct watchdog_device *grx500_wdt;
+		struct grx500_wdt_struct *priv_data;
 
 		grx500_wdt = &per_cpu(grx500wdt, cpu);
 
 		grx500_wdt->id = cpu;
 		grx500_wdt->info = &grx500wdt_info;
 		grx500_wdt->ops = &grx500wdt_ops;
-		watchdog_set_drvdata(grx500_wdt, priv);
+
+		priv_data = devm_kzalloc(&pdev->dev, sizeof(*priv_data),
+					 GFP_KERNEL);
+		if (!priv_data)
+			return -ENOMEM;
+		memcpy(priv_data, priv, sizeof(*priv));
+
+		priv_data->cpu = cpu;
+		priv_data->warning_flag = 0;
+		watchdog_set_drvdata(grx500_wdt, priv_data);
 	}
 
+	devm_kfree(&pdev->dev, priv);
 	regmap_read(ltq_rcu_base, RCU_IAP_WDT_RST_STAT, &resetcause);
 	dev_info(&pdev->dev, "[%s]WDT reset is Bit31, RCU_IAP_WDT_RST_STAT=0x%x\n",
 		__func__, resetcause);
@@ -424,6 +478,7 @@ static int grx500wdt_probe(struct platform_device *pdev)
 	for_each_online_cpu(cpu) {
 		uint32_t config0;
 		struct watchdog_device *grx500_wdt;
+		u32 timeout_init;
 
 		grx500_wdt = &per_cpu(grx500wdt, cpu);
 
@@ -437,9 +492,21 @@ static int grx500wdt_probe(struct platform_device *pdev)
 		grx500_wdt->max_hw_heartbeat_ms = grx500_wdt->max_timeout *1000;
 		grx500_wdt->min_hw_heartbeat_ms = grx500_wdt->min_timeout *1000;
 
-		timeout = 3;
-		watchdog_init_timeout(grx500_wdt, timeout, &pdev->dev);
+		timeout = 0;
+		ret = watchdog_init_timeout(grx500_wdt, timeout, &pdev->dev);
+		if (ret)
+			dev_warn(&pdev->dev, "[%s] Set to U32_MAX\n", __func__);
+
+		if (!ret && ((u64)cpu_clk * (u64)(grx500_wdt->timeout)) <= (u64)U32_MAX)
+			timeout_init = (u64)cpu_clk * (u64)(grx500_wdt->timeout);
+		else
+			timeout_init = U32_MAX;
+
 		watchdog_set_nowayout(grx500_wdt, nowayout);
+
+		dev_dbg(&pdev->dev, "[%s]:[%d] timeout=%u timeout_init %u\n",
+			  __func__, __LINE__, grx500_wdt->timeout,
+			 timeout_init);
 
 		if (cpu == smp_processor_id()) {
 			gic_write_reg(GIC_REG(VPE_LOCAL, GIC_VPE_WD_CONFIG0), 0x0);
@@ -450,7 +517,7 @@ static int grx500wdt_probe(struct platform_device *pdev)
 				(config0 | WD_TYPE_SCD | WD_NWAIT));
 			wmb();
 			gic_write_reg(GIC_REG(VPE_LOCAL, GIC_VPE_WD_INITIAL0),
-				(U32_MAX));
+				(timeout_init));
 			wmb();
 		} else {
 			local_irq_save(flags);
@@ -464,7 +531,7 @@ static int grx500wdt_probe(struct platform_device *pdev)
 				(config0 | WD_TYPE_SCD | WD_NWAIT));
 			wmb();
 			gic_write_reg(GIC_REG(VPE_OTHER, GIC_VPE_WD_INITIAL0),
-				(U32_MAX));
+				(timeout_init));
 			wmb();
 			local_irq_restore(flags);
 		}

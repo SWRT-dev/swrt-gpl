@@ -21,6 +21,7 @@
 #include <linux/of.h>
 #include <linux/of_irq.h>
 #include <linux/slab.h>
+#include <linux/iopoll.h>
 
 #include "hdma.h"
 
@@ -408,6 +409,9 @@ static void dma_ctrl_reset(struct dma_ctrl *pctrl)
 	spin_lock_irqsave(&pctrl->ctrl_lock, flags);
 	ltq_dma_w32_mask(pctrl, 0, DMA_CTRL_RST, DMA_CTRL);
 	spin_unlock_irqrestore(&pctrl->ctrl_lock, flags);
+
+	/* delay 1ms to 2 ms */
+	usleep_range(1000, 2000);
 }
 
 /* DMA controller related configuration */
@@ -573,26 +577,32 @@ static int dma_ctrl_cfg(struct dma_ctrl *pctrl)
 {
 	int enable;
 
-	if ((pctrl->flags & DMA_FLCTL))
+	if (pctrl->flags & DMA_FLCTL)
 		enable = 1;
 	else
 		enable = 0;
 	dma_ctrl_chan_flow_ctl_cfg(pctrl, enable);
 
-	if ((pctrl->flags & DMA_DESC_IN_SRAM))
+	if (pctrl->flags & DMA_FTOD)
+		enable = 1;
+	else
+		enable = 0;
+	dma_ctrl_desc_fetch_on_demand_cfg(pctrl, enable);
+
+	if (pctrl->flags & DMA_DESC_IN_SRAM)
 		enable = 1;
 	else
 		enable = 0;
 	dma_ctrl_sram_desc_cfg(pctrl, enable);
 
 	dma_ctrl_arb_cfg(pctrl);
-	if ((pctrl->flags & DMA_DRB))
+	if (pctrl->flags & DMA_DRB)
 		enable = 1;
 	else
 		enable = 0;
 	dma_ctrl_desc_read_back_cfg(pctrl, enable);
 
-	if ((pctrl->flags & DMA_EN_BYTE_EN))
+	if (pctrl->flags & DMA_EN_BYTE_EN)
 		enable = 1;
 	else
 		enable = 0;
@@ -658,7 +668,7 @@ static int dma_chan_set_class(struct dmax_chan *pch, u32 val)
 
 	if (val > DMA_MAX_CLASS)
 		return -EINVAL;
-	/* 3 bits low */ 	
+	/* 3 bits low */
 	class_val = SM((val & 0x7), DMA_CCTRL_CLASS);
 	/* 2 bits high */
 	class_val |= SM(((val >> 3) & 0x3), DMA_CCTRL_CLASSH);
@@ -666,7 +676,7 @@ static int dma_chan_set_class(struct dmax_chan *pch, u32 val)
 	spin_lock_irqsave(&pctrl->ctrl_lock, flags);
 	ltq_dma_w32(pctrl, pch->nr, DMA_CS);
 	ltq_dma_w32_mask(pctrl, DMA_CCTRL_CLASS | DMA_CCTRL_CLASSH,
-		class_val, DMA_CCTRL);
+			 class_val, DMA_CCTRL);
 	spin_unlock_irqrestore(&pctrl->ctrl_lock, flags);
 	return 0;
 }
@@ -2983,7 +2993,7 @@ static irqreturn_t dma_chan_interrupt(int irq, void *dev_id)
 static int dma_ctrl_init(struct dma_ctrl *pctrl)
 {
 	u32 i, j;
-	int enable, ret;
+	int ret;
 	struct dma_port *pport = NULL;
 	struct dmax_chan *pch = NULL;
 
@@ -3018,12 +3028,6 @@ static int dma_ctrl_init(struct dma_ctrl *pctrl)
 			}
 		}
 	}
-
-	if ((pctrl->flags & DMA_FTOD))
-		enable = 1;
-	else
-		enable = 0;
-	dma_ctrl_desc_fetch_on_demand_cfg(pctrl, enable);
 
 	return 0;
 }
@@ -4056,30 +4060,30 @@ static int dma_debugfs_init(struct dma_ctrl *pctrl)
 	if (!pctrl->debugfs)
 		return -ENOMEM;
 
-	file = debugfs_create_file("chan_register", 0644, pctrl->debugfs,
+	file = debugfs_create_file("chan_register", 0400, pctrl->debugfs,
 				   pctrl, &dma_chan_reg_fops);
 	if (!file)
 		goto err;
 
-	file = debugfs_create_file("desc_list", 0644, pctrl->debugfs,
+	file = debugfs_create_file("desc_list", 0400, pctrl->debugfs,
 				   pctrl, &dma_chan_desc_fops);
 	if (!file)
 		goto err;
-	file = debugfs_create_file("ctrl_port_register", 0644,
+	file = debugfs_create_file("ctrl_port_register", 0400,
 				   pctrl->debugfs, pctrl, &dma_ctrl_port_fops);
 	if (!file)
 		goto err;
 
-	file = debugfs_create_file("ctrl_cfg", 0644, pctrl->debugfs,
+	file = debugfs_create_file("ctrl_cfg", 0400, pctrl->debugfs,
 				   pctrl, &dma_ctrl_cfg_fops);
 	if (!file)
 		goto err;
 
-	file = debugfs_create_file("port_cfg", 0644, pctrl->debugfs,
+	file = debugfs_create_file("port_cfg", 0400, pctrl->debugfs,
 				   pctrl, &dma_port_cfg_fops);
 	if (!file)
 		goto err;
-	file = debugfs_create_file("chan_cfg", 0644, pctrl->debugfs,
+	file = debugfs_create_file("chan_cfg", 0400, pctrl->debugfs,
 				   pctrl, &dma_chan_cfg_fops);
 	if (!file)
 		goto err;
@@ -4427,4 +4431,4 @@ static int __init ltq_dma_init(void)
 {
 	return platform_driver_register(&ltq_dma_driver);
 }
-postcore_initcall(ltq_dma_init);
+arch_initcall(ltq_dma_init);

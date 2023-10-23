@@ -91,7 +91,11 @@ typedef struct{
 }mmap_addr_t;
 
 static short icc_major_id = 0;
-char icc_dev_name[]="ltq_icc";
+#ifdef CONFIG_SOC_TYPE_GRX500_TEP
+static struct device *icc_char_dev;
+static struct class *icc_char_class;
+const char icc_dev_name[] = "ltq_icc";
+#endif
 /*Variable used*/
 #ifdef KTHREAD
 unsigned int g_num;
@@ -106,9 +110,12 @@ uint32_t BLOCK_MSG[MAX_CLIENT];
 mmap_addr_t mmap_address[MAX_CLIENT];
 icc_fifo_t ICC_BUFFER[MAX_CLIENT];
 #ifdef KTHREAD
-struct semaphore icc_callback_sem;
+static struct semaphore icc_callback_sem;
 #endif
+static DEFINE_SPINLOCK(icc_sync_lock);
 
+
+#ifdef CONFIG_SOC_TYPE_GRX500_TEP
 /* the driver callbacks */
 static struct file_operations icc_fops = {
  owner:THIS_MODULE,
@@ -120,6 +127,7 @@ static struct file_operations icc_fops = {
  open:icc_open,
  release:icc_close
 };
+#endif
 
 /*Local functions*/
 static void  FIFO_INC_WRITE_PTR(uint32_t index) 
@@ -386,7 +394,7 @@ long icc_ioctl (struct file *file_p,uint32_t nCmd, unsigned long arg){
 		 			iccdev[num].Installed=1;
 #if defined(CONFIG_SOC_GRX500_BOOTCORE) || defined(CONFIG_SOC_PRX300_BOOTCORE)
 					/*Intimate to IAP that bootcore is ready if sec services gets registered*/
-					if(num == SEC_STORE_SERVICE)
+					if(num == SEC_SERVICE)
 					{
 						mps_message Mpsmsg;
 
@@ -404,20 +412,19 @@ long icc_ioctl (struct file *file_p,uint32_t nCmd, unsigned long arg){
 				break;
 			case ICC_IOC_MEM_INVALIDATE:
 			case ICC_IOC_MEM_COMMIT:
-#ifdef SYSTEM_4KEC
-					/*As the 4kec is uncached access no need of cache flushing, but for safety do a sync*/
-					__asm__ __volatile__(" sync \n");
-					return 0;
-#endif
-				num=(int)file_p->private_data;
-        /* Initialize destination and copy mps_message from usermode */
-        memset (&icc_address, 0, sizeof (icc_commit_t));
-        if (0<copy_from_user (&icc_address, (void *) arg,sizeof (icc_commit_t)))
-        {
-        	TRACE(ICC, DBG_LEVEL_HIGH, ("[%s %s %d]: copy_from_user error\r\n",
-        		__FILE__, __func__, __LINE__));
+				num = (int)file_p->private_data;
+				/*
+				 * Initialize destination and copy mps_message
+				 * from usermode
+				 */
+				memset(&icc_address, 0, sizeof(icc_commit_t));
+				if (copy_from_user(&icc_address,
+					(void *)arg,
+					sizeof(icc_commit_t)) != 0) {
+					TRACE(ICC, DBG_LEVEL_HIGH, ("[%s %s %d] copy_from_user error\n",
+						__FILE__, __func__, __LINE__));
 					return -EFAULT;
-        }
+				}
 				for(i=0;i<icc_address.count;i++){
 					uint32_t mmap_addr;
 
@@ -428,12 +435,10 @@ long icc_ioctl (struct file *file_p,uint32_t nCmd, unsigned long arg){
 					}
 
 					icc_address.address[i] = mmap_addr+icc_address.offset[i];
-#ifndef SYSTEM_4KEC
 					if(nCmd == ICC_IOC_MEM_COMMIT)
 						cache_wb_inv(icc_address.address[i],icc_address.length[i]);
 					else
 						cache_inv(icc_address.address[i],icc_address.length[i]);
-#endif 
 				}
 				
 				break;
@@ -458,7 +463,7 @@ int icc_read_d(struct file *file_p, char *buf, size_t count, loff_t *ppos)
 	memset(&icc_msg,0,sizeof(icc_msg_t));
 	/*Convert data from MPS to ICC*/
 		mps_icc_fill(pMpsmsg,&icc_msg);
-	if (0<copy_to_user (buf,&icc_msg,sizeof(icc_msg_t)))
+	if (copy_to_user(buf, &icc_msg, sizeof(icc_msg_t)) != 0)
   {
 		TRACE(ICC, DBG_LEVEL_HIGH, ("[%s %s %d]: copy_to_user error\r\n",__FILE__, __func__, __LINE__));
 		return -EAGAIN;
@@ -505,6 +510,225 @@ int icc_write(icc_devices icdev, icc_msg_t *buf)
   	return sizeof(icc_msg_t);
 }
 
+void process_icc_message(unsigned int uiClientId)
+{
+#ifndef KTHREAD
+	icc_t *icc_workq;
+	struct work_struct *wq;
+#endif
+			/*waking up the sleeping process on wait queue*/
+			icc_excpt[uiClientId] = 1;
+			wake_up_interruptible(&iccdev[uiClientId].wakeuplist);
+#ifndef KTHREAD
+			if (icc_wq[uiClientId]) {
+				icc_workq = kmalloc(sizeof(icc_t), GFP_ATOMIC);
+				if (icc_workq) {
+					wq = (struct work_struct *)icc_workq;
+					INIT_WORK(wq, icc_wq_function);
+					icc_workq->x = uiClientId;
+					queue_work(icc_wq[uiClientId], wq);
+				} else {
+					TRACE(ICC, DBG_LEVEL_HIGH,
+						("cant schedule icc wq %d\n",
+						uiClientId));
+					return;
+				}
+			}
+#endif
+}
+
+
+#ifdef CONFIG_REGMAP_ICC
+static int icc_sync_write(icc_msg_t *buf, icc_msg_t *retbuf);
+
+/* regmap write function */
+int icc_regmap_sync_write(icc_devices ClientId,
+				phys_addr_t paddr, unsigned int val)
+{
+	icc_msg_t retmsg = {0}, msg = {0};
+	int ret;
+	unsigned long flags;
+
+	/* if we assume irqsave already at top, we may hit up issues */
+	/* dont allow anything to run on this CPU */
+	local_irq_save(flags);
+	/* disable mps irq , as it may hit the other CPU */
+	mps_disable_irq();
+
+	msg.src_client_id = ClientId;
+	msg.dst_client_id = ClientId;
+	msg.msg_id = REGMAP_WR_MSGID;
+	msg.param[0] = (uint32_t)paddr;
+	msg.param[1] = val;
+
+	ret = icc_sync_write(&msg, &retmsg);
+
+	/* enable irq  */
+	mps_enable_irq();
+	local_irq_restore(flags);
+	return ret;
+}
+EXPORT_SYMBOL(icc_regmap_sync_write);
+
+/* regmap read function */
+int icc_regmap_sync_read(icc_devices ClientId,
+				phys_addr_t paddr, unsigned int *val)
+{
+	icc_msg_t retmsg = {0}, msg = {0};
+	unsigned long flags;
+	int ret;
+
+	if (!val)
+		return -EINVAL;
+
+	/* if we assume irqsave already at top, we may hit up issues */
+	/* dont allow anything to run on this CPU */
+	local_irq_save(flags);
+	/* disable mps irq , as it may hit the other CPU */
+	mps_disable_irq();
+
+	msg.src_client_id = ClientId;
+	msg.dst_client_id = ClientId;
+	msg.msg_id = REGMAP_RD_MSGID;
+	msg.param[0] = (uint32_t)paddr;
+
+	ret = icc_sync_write(&msg, &retmsg);
+	if (!retmsg.param[2])
+		*val = retmsg.param[1];
+
+	/* enable irq  */
+	mps_enable_irq();
+	local_irq_restore(flags);
+	return ret;
+}
+EXPORT_SYMBOL(icc_regmap_sync_read);
+
+/* regmap sync function */
+static int icc_sync_write(icc_msg_t *buf, icc_msg_t *ret_buf)
+{
+	int ret = 0;
+	unsigned int lock_try_count = 0xFFFFF;
+	unsigned int mailbox_count = 0xFFFFF;
+	unsigned int read_count = 0;
+	mps_message mps_buf, *mps_ptr;
+	unsigned int uiClientId, wrptr;
+
+
+	uiClientId = buf->src_client_id;
+	if (uiClientId < MAX_CLIENT && iccdev[uiClientId].Installed == 0)
+		icc_open((struct inode *)uiClientId, NULL);
+
+	memset(ret_buf, 0, sizeof(icc_msg_t));
+	ret_buf->param[2] = 1;
+
+	/* before writing flush the messages on this client */
+	while (read_count < 32 && icc_read(buf->src_client_id, ret_buf) > 0) {
+		TRACE(ICC, DBG_LEVEL_HIGH, ("some invalid messages in pipe\n"));
+		memset(ret_buf, 0, sizeof(icc_msg_t));
+		read_count++;
+	}
+	if (read_count == 32) {
+		TRACE(ICC, DBG_LEVEL_HIGH, ("Is TEP compromised !!!!!!\n"));
+		return -EINVAL;
+	}
+
+	ret = icc_write(buf->src_client_id, buf);
+	if (ret < 0) {
+		TRACE(ICC, DBG_LEVEL_HIGH, ("icc write failed\n"));
+		return ret;
+	}
+
+	/* Try for spin lock till count becomes 0 */
+	while (lock_try_count) {
+		if (spin_trylock(&icc_sync_lock)) {
+			/* disable mps irq , as it might have been enabled
+			 * from another CPU
+			 */
+			mps_disable_irq();
+
+			memset(ret_buf, 0, sizeof(icc_msg_t));
+			/* after spinlock check in fifo for safety */
+			if (icc_read(buf->src_client_id, ret_buf) > 0) {
+				spin_unlock(&icc_sync_lock);
+				break;
+			}
+
+			/* read out MAX_MSG and we dont find our response or
+			 * TEP is not alive break from loop
+			 */
+			read_count = 0;
+			while (read_count < 32) {
+				read_count++;
+				memset(&mps_buf, 0, sizeof(mps_message));
+				/* check for mail box content availability */
+				while (mailbox_count &&
+					mps_read_mailbox(&mps_buf) != 0)
+					mailbox_count--;
+
+				if (mailbox_count == 0) {
+					TRACE(ICC, DBG_LEVEL_HIGH,
+						("TEP not responding\n"));
+					spin_unlock(&icc_sync_lock);
+					return -EBUSY;
+				}
+				/* reset count as TEP is alive */
+				mailbox_count = 0xFFFFF;
+				uiClientId = mps_buf.header.Hd.dst_id;
+				TRACE(ICC, DBG_LEVEL_LOW,
+					("command type %x client Id is %d\n",
+					mps_buf.header.val, uiClientId));
+				if (uiClientId >= MAX_CLIENT ||
+					iccdev[uiClientId].Installed == 0) {
+					TRACE(ICC, DBG_LEVEL_HIGH,
+						("client[%d] not opened yet\n",
+						uiClientId));
+					continue;
+				}
+				/* else case is not for sync clients as there
+				 * will be only one in q put it to client
+				 * and read from there or wakeup
+				 */
+				if (FIFO_AVAILABLE(uiClientId) > 0) {
+					wrptr = FIFO_GET_WRITE_PTR(uiClientId);
+					FIFO_INC_WRITE_PTR(uiClientId);
+					mps_ptr = &GET_ICC_WRITE_MSG(uiClientId,
+							wrptr);
+					memcpy(mps_ptr, &mps_buf,
+						sizeof(mps_message));
+				} else {
+					TRACE(ICC, DBG_LEVEL_HIGH,
+						("Fifo full  for client %d, Dropping\n",
+						uiClientId));
+				}
+
+				/* same client read and break,else wakeup */
+				if (uiClientId == buf->src_client_id) {
+					memset(ret_buf, 0, sizeof(icc_msg_t));
+					icc_read(buf->src_client_id, ret_buf);
+					spin_unlock(&icc_sync_lock);
+					return 0;
+				}
+				process_icc_message(uiClientId);
+			}
+			TRACE(ICC, DBG_LEVEL_HIGH,
+				("client[%u] not responding\n", uiClientId));
+			spin_unlock(&icc_sync_lock);
+			return -EBUSY;
+		}
+		memset(ret_buf, 0, sizeof(icc_msg_t));
+		if (icc_read(buf->src_client_id, ret_buf) > 0)
+			break;
+		lock_try_count--;
+	}
+	if (lock_try_count == 0) {
+		TRACE(ICC, DBG_LEVEL_HIGH, ("icc sync spin lock get failed\n"));
+		ret_buf->param[2] = 1;
+		return -EBUSY;
+	}
+	return 0;
+}
+#endif
+
 #ifndef __LIBRARY__
 /*write call back function of the driver*/
 int icc_write_d(struct file *file_p, char *buf, size_t count, loff_t *ppos)
@@ -514,7 +738,7 @@ int icc_write_d(struct file *file_p, char *buf, size_t count, loff_t *ppos)
 	int ret , i , num;
 	memset(&Mpsmsg,0,sizeof(mps_message));
 	memset(&icc_msg,0,sizeof(icc_msg_t));
-	if (0<copy_from_user (&icc_msg,buf,sizeof(icc_msg_t)))
+	if (copy_from_user(&icc_msg, buf, sizeof(icc_msg_t)) != 0)
   {
 		TRACE(ICC, DBG_LEVEL_HIGH, ("[%s %s %d]: copy_from_user error\r\n",__FILE__, __func__, __LINE__));
 		return -EAGAIN;
@@ -568,20 +792,39 @@ unsigned int icc_poll(struct file *file_p, poll_table *wait){
 	return ret;
 }
 
+#ifdef CONFIG_SOC_TYPE_GRX500_TEP
 /*register the char region with the linux*/
-int icc_os_register (void){
-	 int ret=0;
-		ret=register_chrdev(icc_major_id, icc_dev_name, &icc_fops);
-   if (ret < 0)
-   {
-			TRACE(ICC, DBG_LEVEL_HIGH, ("Not able to register chrdev\n"));
-      return ret;
-   }else if(icc_major_id==0){
-			icc_major_id=ret;
-	 }
-		TRACE(ICC, DBG_LEVEL_HIGH, ("Major Id is %d\n",icc_major_id));
+int icc_os_register(void)
+{
+	int ret = 0;
+
+	ret = register_chrdev(icc_major_id, icc_dev_name, &icc_fops);
+	if (ret < 0) {
+		TRACE(ICC, DBG_LEVEL_HIGH, ("Not able to register chrdev\n"));
+		return ret;
+	} else if (icc_major_id == 0) {
+		icc_major_id = ret;
+
+		icc_char_class = class_create(THIS_MODULE, icc_dev_name);
+		if (IS_ERR(icc_char_class)) {
+			TRACE(ICC, DBG_LEVEL_HIGH, ("failed to create device class\n"));
+			unregister_chrdev(icc_major_id, icc_dev_name);
+			return PTR_ERR(icc_char_class);
+		}
+
+		icc_char_dev = device_create(icc_char_class, NULL,
+					     MKDEV(icc_major_id, 0),
+					     NULL, "%s", icc_dev_name);
+		if (IS_ERR(icc_char_dev)) {
+			TRACE(ICC, DBG_LEVEL_HIGH, ("failed to create device\n"));
+			class_destroy(icc_char_class);
+			unregister_chrdev(icc_major_id, icc_dev_name);
+			return PTR_ERR(icc_char_dev);
+		}
+	}
+	TRACE(ICC, DBG_LEVEL_HIGH, ("Major Id is %d\n", icc_major_id));
    	TRACE(ICC, DBG_LEVEL_HIGH, ("ICC driver registered\n"));
-   return 0;
+	return 0;
 }
 
 /**
@@ -590,9 +833,20 @@ int icc_os_register (void){
 void icc_os_unregister (void)
 {
 	 /*unregister the driver region completely*/
+	 device_unregister(icc_char_dev);
+	 class_destroy(icc_char_class);
    unregister_chrdev(icc_major_id, icc_dev_name);
 	 TRACE(ICC, DBG_LEVEL_HIGH, ("ICC driver un-registered\n"));
 }
+#else
+static int icc_os_register(void)
+{
+	return 0;
+}
+static void icc_os_unregister(void)
+{
+}
+#endif /* CONFIG_SOC_TYPE_GRX500_TEP */
 
 /*Global Functions*/
 /**
@@ -605,7 +859,6 @@ void icc_os_unregister (void)
  * \param   file_p  Pointer to file descriptor
  * \return  0       device opened
  * \return  EMFILE  Device already open
- * \return  EINVAL  Invalid minor ID
  * \ingroup API
  */
 int icc_open (struct inode * inode, struct file * file_p)
@@ -625,22 +878,13 @@ int icc_open (struct inode * inode, struct file * file_p)
    {
       return 0;        /* the real device */
    }
-	/*check for validity of client Id*/
-	 if(num>=0 && num < (MAX_CLIENT)){
-			/*check if its already opened*/
-		 if(iccdev[num].Installed==1){
-     		TRACE(ICC, DBG_LEVEL_HIGH, (" Device %d is already open!\n", num));
-				return -EMFILE;
-		 }
-		 /*mark that the device is opened in global structure
-			to avoid further open of the device*/
-		 iccdev[num].Installed=1;
-		 /* Initialize a wait_queue list for the system poll/wait_event function. */
-  	 init_waitqueue_head(&iccdev[num].wakeuplist);
-	 }else{
-			TRACE(ICC, DBG_LEVEL_HIGH, ("Max device number exceeded\n"));
-			return -EINVAL;
-	 }
+	if (iccdev[num].Installed == 1){
+		TRACE(ICC, DBG_LEVEL_HIGH,
+			(" Device %d is already open!\n", num));
+			return -EMFILE;
+	}
+	iccdev[num].Installed = 1;
+	init_waitqueue_head(&iccdev[num].wakeuplist);
 	return 0;
 }
 
@@ -690,45 +934,26 @@ int icc_close(struct inode * inode, struct file * file_p){
 }
 
 
-void process_icc_message(unsigned int uiClientId)
-{
-#ifndef KTHREAD
-	icc_t *icc_workq;
-#endif
-			/*waking up the sleeping process on wait queue*/
-			icc_excpt[uiClientId]=1;
-			wake_up_interruptible(&iccdev[uiClientId].wakeuplist);
-#ifndef KTHREAD
-			if( icc_wq[uiClientId]){
-				icc_workq=(icc_t *)kmalloc(sizeof(icc_t), GFP_ATOMIC);	
-				if(icc_workq){
-					INIT_WORK((struct work_struct *)icc_workq, icc_wq_function );
-					icc_workq->x=uiClientId;
-					queue_work( icc_wq[uiClientId], (struct work_struct *)icc_workq );
-					//printk("pointer is %p\n",icc_workq);
-				}
-				else{
-					TRACE(ICC, DBG_LEVEL_HIGH, ("Allocation failed cant schedule icc wq %d\n",uiClientId));
-					return;
-				}
-			}
-#endif
-
-}
 void pfn_icc_callback(void){
-	int ret;
-	unsigned int uiClientId,wrptr;
+	unsigned int uiClientId, wrptr, process_budget = 128;
 	mps_message rw;
 	mps_message *mps_msg;
-	uiClientId=0;
-	memset(&rw,0,sizeof(mps_message));
-	ret=mps_read_mailbox(&rw);
-	if(ret==0){
-		uiClientId=rw.header.Hd.dst_id;
+
+	/* sync apis already holding the lock so just return */
+	if (spin_trylock(&icc_sync_lock) == 0)
+		return;
+
+	memset(&rw, 0, sizeof(mps_message));
+	while (process_budget && mps_read_mailbox(&rw) == 0) {
+		process_budget--;
+		uiClientId = rw.header.Hd.dst_id;
 		TRACE(ICC, DBG_LEVEL_LOW,("command type %x client Id is %d\n",rw.header.val,uiClientId));
-		if(iccdev[uiClientId].Installed==0){
-			TRACE(ICC, DBG_LEVEL_HIGH,("client Id %d not opened yet\n",uiClientId));
-			return;	
+		if (uiClientId >= MAX_CLIENT ||
+			iccdev[uiClientId].Installed == 0) {
+			TRACE(ICC, DBG_LEVEL_HIGH,
+				("client[%d] not opened yet\n", uiClientId));
+			memset(&rw, 0, sizeof(mps_message));
+			continue;
 		}
 		if(FIFO_AVAILABLE(uiClientId) > 0){
 			wrptr=FIFO_GET_WRITE_PTR(uiClientId);
@@ -751,13 +976,16 @@ void pfn_icc_callback(void){
 				process_icc_message(ICC_Client);
 			}
 		}else{
-			TRACE(ICC, DBG_LEVEL_HIGH, ("Fifo full  for client %d \n",uiClientId));
-			return;
+			TRACE(ICC, DBG_LEVEL_HIGH, \
+				("Fifo full  for client[%d], Dropping\n",
+				uiClientId));
+			memset(&rw, 0, sizeof(mps_message));
+			continue;
 		}
-
-	}else{
-		TRACE(ICC, DBG_LEVEL_HIGH, ("Mailbox read error is %d\n",ret));
+		memset(&rw, 0, sizeof(mps_message));
 	}
+	spin_unlock(&icc_sync_lock);
+	TRACE(ICC, DBG_LEVEL_LOW, ("Process budget is %u\n", process_budget));
 }
 /*Init module routine*/
 int __init icc_init_module (void){
@@ -777,7 +1005,7 @@ int __init icc_init_module (void){
 	/*Init structures if required*/
 	/* register char module in kernel */
 	result = icc_os_register();
-	if (result)
+	if (IS_ENABLED(CONFIG_SOC_TYPE_GRX500_TEP) && result)
 		goto finish;
 #ifdef KTHREAD
 	sema_init(&icc_callback_sem,1);
@@ -786,7 +1014,7 @@ int __init icc_init_module (void){
 finish:
 	mps_unregister_callback();
 	mps_close((struct inode *)1, NULL);
-	return -EINVAL;
+	return result;
 }
 
 /*Exit module routine*/
@@ -975,8 +1203,10 @@ int icc_unregister_callback (icc_devices type)
 /*Module related definitions*/
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Swaroop Sarma");
+MODULE_PARM_DESC (icc_major_id, "Major ID of device");
+module_param (icc_major_id, short, 0);
 /*module functions of ICC driver*/
-module_init (icc_init_module);
+arch_initcall(icc_init_module);
 module_exit (icc_cleanup_module);
 /*exported symbols from ICC driver*/
 EXPORT_SYMBOL(icc_open);

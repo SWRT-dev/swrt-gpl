@@ -52,7 +52,7 @@
 /**
   \brief DC DP API version code
  */
-#define DC_DP_API_VERSION_CODE        0x050000
+#define DC_DP_API_VERSION_CODE        0x050007
 
 /**
   \brief DC DP API version
@@ -490,6 +490,16 @@
 #define DC_DP_F_SUBIF_LOGICAL                 0x00001000
 
 /**
+  \brief property id: specify it if request for MTU property
+ */
+#define DC_DP_PROP_ID_MTU  (1 << 0)
+
+/**
+  \brief property id: specify it if request for DGAF property
+ */
+#define DC_DP_PROP_ID_DGAF (1 << 1)
+
+/**
   \brief Power Saving (Cpufreq) callback register request
  */
 #define DC_DP_F_PS_REGISTER			0x01
@@ -615,6 +625,7 @@ enum dc_dp_dev_type {
 	DC_DP_DEV_WAV_500 = 0,
 	DC_DP_DEV_WAV_600_24G,
 	DC_DP_DEV_WAV_600_5G,
+	DC_DP_DEV_WAV_600_6G,
 	DC_DP_DEV_WAV_600_CDB,
 };
 
@@ -641,6 +652,26 @@ enum dc_dp_power_state {
 	DC_DP_PS_D0D3,
 	/** Power State BOOST highest freq, time limited because of thermal aspects */
 	DC_DP_PS_BOOST,
+};
+
+/** \brief FW Download options for FW allocation and release.
+ */
+enum dc_dp_fw_opt_type {
+	/* Free struct firmware and buffer (if alloc’ed) before return */
+	DC_DP_FW_OPT_FREE_BUF_AFTER_CB  = BIT(0),
+	/* Allocate FW uncached non-coherent buffer */
+	DC_DP_FW_OPT_MEM_ALLOC_UC       = BIT(1),
+	/* Allocate FW coherent buffer */
+	DC_DP_FW_OPT_MEM_ALLOC_COHERENT = BIT(2),
+	/* For debug builds, allow rewriting firmware */
+	DC_DP_FW_OPT_DEBUG_RELOAD       = BIT(3),
+};
+
+/** \brief Definition of DC access type
+ */
+enum dc_dp_acc_type {
+	DC_DP_ACC_RW = 0,
+	DC_DP_ACC_RO,
 };
 
 /* @} */
@@ -822,6 +853,19 @@ typedef int32_t (*dc_dp_irq_handler_fn_t) (
 	uint32_t flags
 );
 
+/**
+   \brief   Notify deletion of MAC address from Linux Bridge. Mostly applicable to DC WLAN peripheral only.
+   \param[in] netif  Network interface from which this MAC address was deleted
+   \param[in] mac_addr  MAC Address of host
+   \param[in] flags  Reserved for future use
+   \return 0 if OK, -1 on ERROR
+ */
+typedef int32_t (*dc_dp_mac_update_notify_fn_t) (
+	struct net_device *netif,
+	char *mac_addr,
+	uint32_t flags
+);
+
 /** \brief  Multicast module callback to add/delete a mcast group membership to/from a DirectConnect interface.
   \param[in] grp_id  Multicast group id.
   \param[in] dev  Registered net device.
@@ -912,6 +956,7 @@ struct dc_dp_cb {
 	dp_get_mib_fn_t get_mib_fn;  /*!< Retrieve registered device's network mib counters  */
 	dc_dp_get_recovery_stats_fn_t recovery_fn; /*!< Get Recovery related stats - Optional (NULL) */
 	dc_dp_irq_handler_fn_t dma_rx_handler_fn; /*!< DMA RX IRQ Handler */
+	dc_dp_mac_update_notify_fn_t notify_mac_fn; /*!< Notify MAC callback for host steering */
 };
 
 /**
@@ -1038,6 +1083,9 @@ struct dc_dp_ring_res {
                                             PRX (Falcon) - DW contains Policy, Pool */
 	uint32_t rxout_temp_dw3; /*!< [out] RXOUT (dev2soc) Template DW3  - 32bit
                                             LGM - DW contains Policy, Pool */
+	uint32_t rxout_temp_dw1; /*!< [out] RXOUT (dev2soc) Template DW1  - 32bit
+                                            LGM - DW contains 4bit High Address
+                                            PRX (Falcon) - NA SoC will set this to 0 */
 };
 
 /**
@@ -1170,11 +1218,89 @@ struct dc_dp_dev_config {
 	uint32_t tx_bufs; /*!< [out] Max Tx Bufs requested by Peripheral for prefetching in TXIN */
 };
 
+/** \brief DirectConnect Datapath subif structure
+ */
+struct dc_dp_subif {
+	int32_t port_id; /*!< Datapath Port Id corresponds to PMAC Port Id */
+	int32_t subif; /*!< [out] Sub-interface Id info. Platform specific */
+	uint8_t mcf:1; /*!< [in, out] Setting for Multicast Frame */
+	uint16_t vap_id; /*!< [in, out] VAP id */
+	uint16_t sta_id; /*!<[in, out] Station id */
+	uint16_t mc_index; /*!<[in, out] Multicast Index */
+	uint8_t frame_type; /*!<[in, out] Frame Type */
+};
+
+/** \brief DirectConnect Datapath property structure
+ */
+struct dc_dp_prop {
+	uint32_t prop_id; /*!<[in] Identification of Property */
+	uint32_t mtu; /*!< [in, out] Setting for MTU */
+	uint8_t dgaf_disabled:1; /*!< [in, out] Setting for DGAF Disable: 0 or 1 */
+};
+
+/** \brief Forward declaration of Linux structure
+ */
+struct firmware;
+struct device;
+struct pci_dev;
+
 /* @} */
 
 
 /** \addtogroup DirectConnect_Datapath_Lib_APIs */
 /* @{ */
+
+/** \brief FW download callback – Can be used to program HW block
+ \param[in] device: device for which firmware is being loaded
+ \param[in] fw_p: pointer to firmware image
+ \param[in] dma_addr:  Phys addr of the FW download buffer
+ \return 0 if OK / -1 if error
+ \note This callback is optional – driver may use this to program HW block
+ */
+typedef int (*dc_dp_soc_fw_load_to_hw)(
+	struct device *device,
+	struct firmware *fw_p,
+	dma_addr_t dma_addr
+); /*!< FW Download function callback */
+
+/** \brief FW download and NOC firewall abstraction
+  \param[in] firmware_p : pointer to firmware image
+  \param[in] name: name of firmware file
+  \param[in] device: device for which firmware is being loaded
+  \param[in] cb: Optional download callback
+  \param[in] opt_type: FW download options for FW/Buffer alloc/free
+  \return 0 if OK / -1 if error
+  \note Expect FW in contiguous DDR, since is to be used by SoC HW
+    blocks. ROData can also be allocated behind the code being
+    downloaded for use by the HW block.
+*/
+int32_t
+dc_dp_soc_request_firmware_load (
+	const struct firmware **firmware_p,
+	char *name,
+	struct device *device,
+	dc_dp_soc_fw_load_to_hw cb,
+	enum dc_dp_fw_opt_type type
+);
+
+/** \brief FW download and NOC firewall abstraction
+  \param[in] firmware_p : pointer to firmware image
+  \param[in] name: name of firmware file
+  \param[in] device: device for which firmware is being loaded
+  \param[in] opt_type: FW download options for FW/Buffer alloc/free
+  \return 0 if OK / -1 if error
+  \note Shall remove NoC Firewall rule (if needed)
+    If Free flag is passed, allocated buffer shall be released
+    (only if allocated by dc_dp_soc_request_firmware_load())
+    Will release struct firmware and members
+*/
+void
+dc_dp_soc_release_firmware (
+	const struct firmware **firmware_p,
+	const char *name,
+	struct device *device,
+	enum dc_dp_fw_opt_type type
+);
 
 /** \brief  Obtain device capability in SoC.
   \param[in] dev_id  enum indicating device type
@@ -1327,6 +1453,24 @@ dc_dp_register_subif_ext (
 	uint32_t flags
 );
 
+/** \brief  Encode DC subif parameters to DP subif.
+  \param[in,out] dc_subif  Pointer to DC subif including port_id.
+  \return None
+ */
+void
+dc_dp_set_subif_param (
+	struct dc_dp_subif *dc_subif
+);
+
+/** \brief  Decode DP subif to DC subif parameters.
+  \param[in,out] dc_subif  Pointer to DC subif including port_id.
+  \return None
+ */
+void
+dc_dp_get_subif_param (
+	struct dc_dp_subif *dc_subif
+);
+
 /** \brief  Transmit packet to low-level Datapath driver
   \param[in] rx_if  Rx If netdevice pointer (optional)- MUST be set when received net_device is known.
   \param[in] rx_subif  Rx SubIf pointer (Optional) - MUST be set when atleast received {PortId, <SubifId>} are known.
@@ -1463,6 +1607,35 @@ int32_t dc_dp_free_bufs (
 	struct dc_dp_buf_pool *buflist,
 	enum dc_dp_dir_type dir,
 	uint32_t flags
+);
+
+/** \brief  Allocate Memory for HW/FW
+  \param[in] pcidev  pcidev pointer for which allocation is required
+  \param[in] buf_len  Length of the buffer required
+  \param[out] buf  Allocated buffer with required Access as applicable
+  \param[in] access  enum values are as described in enum dc_dp_acc_type
+  \param[in] attrs  dma attributes (DMA_ATTR_NON_CONSISTENT)
+  \return 0 if OK / -1 if error
+ */
+int32_t
+dc_dp_alloc_mem (
+	struct pci_dev *pcidev,
+	uint32_t buf_len,
+	void *buf,
+	enum dc_dp_acc_type access,
+	unsigned long attrs
+);
+
+/** \brief  Free Memory for HW/FW
+  \param[in] pcidev  pcidev pointer for which allocation is required
+  \param[in] buf_len  Length of the buffer required
+  \param[out] buf  Allocated buffer with required Access as applicable
+*/
+void
+dc_dp_free_mem (
+	struct pci_dev *pcidev,
+	uint32_t buf_len,
+	void *buf
 );
 
 /** \brief  Allow Acceleration subsystem to learn about session when driver shortcuts
@@ -1679,6 +1852,15 @@ dc_dp_register_mcast_module (
 	uint32_t flags
 );
 
+/** \brief  Get MCAST GID from network packet structure
+  \param[in] skb  pointer to network packet/sk_buff structure
+  \return MCGID >=0 if OK / <0 if error
+ */
+int32_t
+dc_dp_get_skb_gid (
+	struct sk_buff *skb
+);
+
 /** \brief  Provide a Priority (802.1D Priority) to Device QoS/WMM Class/TID map for the
  * given WiFi Radio/net_device
   \param[in] port_id  Port Id on which mapping is to be updated
@@ -1737,6 +1919,32 @@ dc_dp_clear_netif_stats (
 	struct net_device *netif,
 	struct dp_subif *subif_id,
 	uint32_t flags
+);
+
+/** \brief  Get DirectConnect interface properties like MTU, DGAF etc. netdevice and subif_id has to be passed.
+  \param[in] netif  Pointer to Linux netdevice structure
+  \param[in] subif_id  Datapath Port Number and Sub-Interface (if applicable else -1).
+  \param[in,out] property  Pointer to property structure
+  \return 0 if OK / -1 if error
+ */
+int32_t
+dc_dp_get_property (
+	struct net_device *netif,
+	struct dp_subif *subif_id,
+	struct dc_dp_prop *property
+);
+
+/** \brief  Set DirectConnect interface properties like MTU, DGAF etc. netif and subif_id has to be passed.
+  \param[in] netif  Pointer to Linux netdevice structure
+  \param[in] subif_id  Datapath Port Number and Sub-Interface (if applicable else -1).
+  \param[in,out] property  Pointer to property structure
+  \return 0 if OK / -1 if error
+ */
+int32_t
+dc_dp_set_property (
+	struct net_device *netif,
+	struct dp_subif *subif_id,
+	struct dc_dp_prop *property
 );
 
 /**

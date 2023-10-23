@@ -637,5 +637,12 @@ config LTQ_UMT_518_FW_SG
       MIPS FW TC to support 518 Bonding scatter-gather
       memory to overhaul hardware limitaton.
 
+config LTQ_UMT_SW_INTERVAL_DEFAULT
+	int "Lantiq UMT Software Interval default"
+	default 40
+	depends on SOC_GRX500
+	help
+      UMT Software Interval is set to 40 by default.
+	  Change here to support emulator platforms
 
 endif

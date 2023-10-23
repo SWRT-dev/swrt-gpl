@@ -17,6 +17,8 @@
 #include <net/switch_api/gsw_dev.h>
 #endif
 
+#include "macsec_drv.h"
+
 int mac_set_flowctrl(void *pdev, u32 val)
 {
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
@@ -33,43 +35,43 @@ int mac_set_flowctrl(void *pdev, u32 val)
 	lmac_set_flowcon_mode(pdev, val);
 
 	switch (val) {
-	case 0: /* AUTO */
+	case GSW_FLOW_AUTO: /* AUTO */
 		xgmac_enable_tx_flow_ctl(pdev, pdata->pause_time);
 		xgmac_enable_rx_flow_ctl(pdev);
-		gswss_set_flowctrl_rx(pdev, 0);
-		gswss_set_flowctrl_tx(pdev, 0);
+		gswss_set_flowctrl_rx(pdev, PAUSE_AUTO);
+		gswss_set_flowctrl_tx(pdev, PAUSE_AUTO);
 		break;
 
-	case 3: /* RXTX */
+	case GSW_FLOW_RXTX: /* RXTX */
 		xgmac_enable_tx_flow_ctl(pdev, pdata->pause_time);
 		xgmac_enable_rx_flow_ctl(pdev);
-		gswss_set_flowctrl_rx(pdev, 1);
-		gswss_set_flowctrl_tx(pdev, 1);
+		gswss_set_flowctrl_rx(pdev, PAUSE_EN);
+		gswss_set_flowctrl_tx(pdev, PAUSE_EN);
 		break;
 
-	case 1: /* RX */
-		/* Disable TX in XGMAC and GSWSS */
-		xgmac_disable_tx_flow_ctl(pdev);
-		gswss_set_flowctrl_tx(pdev, 3);
+	case GSW_FLOW_RX: /* RX */
 		/* Enable RX in XGMAC and GSWSS */
 		xgmac_enable_rx_flow_ctl(pdev);
-		gswss_set_flowctrl_rx(pdev, 1);
+		gswss_set_flowctrl_rx(pdev, PAUSE_EN);
+		/* Disable TX in XGMAC and GSWSS */
+		xgmac_disable_tx_flow_ctl(pdev);
+		gswss_set_flowctrl_tx(pdev, PAUSE_DIS);
 		break;
 
-	case 2: /* TX */
+	case GSW_FLOW_TX: /* TX */
 		/* Disable RX in XGMAC and GSWSS */
 		xgmac_disable_rx_flow_ctl(pdev);
-		gswss_set_flowctrl_rx(pdev, 3);
+		gswss_set_flowctrl_rx(pdev, PAUSE_DIS);
 		/* Enable TX in XGMAC and GSWSS */
 		xgmac_enable_tx_flow_ctl(pdev, pdata->pause_time);
-		gswss_set_flowctrl_tx(pdev, 1);
+		gswss_set_flowctrl_tx(pdev, PAUSE_EN);
 		break;
 
-	case 4: /* Disabled */
+	case GSW_FLOW_OFF: /* Disabled */
 		xgmac_disable_tx_flow_ctl(pdev);
 		xgmac_disable_rx_flow_ctl(pdev);
-		gswss_set_flowctrl_rx(pdev, 3);
-		gswss_set_flowctrl_tx(pdev, 3);
+		gswss_set_flowctrl_rx(pdev, PAUSE_DIS);
+		gswss_set_flowctrl_tx(pdev, PAUSE_DIS);
 		break;
 
 	default:
@@ -87,7 +89,7 @@ int mac_get_flowctrl(void *pdev)
 {
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
 
-	u32 flow_ctrl_tx = 0, flow_ctrl_rx = 0, flow_ctrl = 0;
+	u32 flow_ctrl_tx, flow_ctrl_rx, flow_ctrl = GSW_FLOW_AUTO;
 
 #ifdef __KERNEL__
 	spin_lock_bh(&pdata->mac_lock);
@@ -96,16 +98,16 @@ int mac_get_flowctrl(void *pdev)
 	flow_ctrl_tx = gswss_get_flowctrl_tx(pdev);
 	flow_ctrl_rx = gswss_get_flowctrl_rx(pdev);
 
-	if (flow_ctrl_tx == 1 && flow_ctrl_rx == 1)
-		flow_ctrl = 3; /* RXTX */
-	else if (flow_ctrl_tx == 1 && flow_ctrl_rx == 0)
-		flow_ctrl = 2; /* TX */
-	else if (flow_ctrl_tx == 0 && flow_ctrl_rx == 1)
-		flow_ctrl = 1; /* RX */
-	else if (flow_ctrl_tx == 3 && flow_ctrl_rx == 3)
-		flow_ctrl = 4; /* Disabled */
-	else if (flow_ctrl_tx == 0 && flow_ctrl_rx == 0)
-		flow_ctrl = 0; /* Auto */
+	if (flow_ctrl_tx == PAUSE_EN && flow_ctrl_rx == PAUSE_EN)
+		flow_ctrl = GSW_FLOW_RXTX;	/* RXTX */
+	else if (flow_ctrl_tx == PAUSE_EN && flow_ctrl_rx == PAUSE_DIS)
+		flow_ctrl = GSW_FLOW_TX;	/* TX */
+	else if (flow_ctrl_tx == PAUSE_DIS && flow_ctrl_rx == PAUSE_EN)
+		flow_ctrl = GSW_FLOW_RX;	/* RX */
+	else if (flow_ctrl_tx == PAUSE_DIS && flow_ctrl_rx == PAUSE_DIS)
+		flow_ctrl = GSW_FLOW_OFF;	/* Disabled */
+	else if (flow_ctrl_tx == PAUSE_AUTO && flow_ctrl_rx == PAUSE_AUTO)
+		flow_ctrl = GSW_FLOW_AUTO;	/* Auto */
 
 #ifdef __KERNEL__
 	spin_unlock_bh(&pdata->mac_lock);
@@ -131,6 +133,10 @@ int mac_reset(void *pdev, u32 reset)
 		gswss_mac_enable(pdev, MAC_DIS);
 	else
 		gswss_mac_enable(pdev, MAC_EN);
+
+	memset(&pdata->xrmon_shadow, 0, sizeof(pdata->xrmon_shadow));
+	memset(&pdata->lrmon_shadow, 0, sizeof(pdata->lrmon_shadow));
+	memset(&pdata->rmon_shadow, 0, sizeof(pdata->rmon_shadow));
 
 #ifdef __KERNEL__
 	spin_unlock_bh(&pdata->mac_lock);
@@ -902,13 +908,11 @@ int mac_enable_ts(void *pdev)
 		return -1;
 	}
 
-	memset((void *)&cpu_port_cfg, 0x00, sizeof(cpu_port_cfg));
-
 	/* Enable the Egress Special Tag */
-	ops->gsw_common_ops.CPU_PortCfgGet(ops, &cpu_port_cfg);
+	memset((void *)&cpu_port_cfg, 0x00, sizeof(cpu_port_cfg));
 	cpu_port_cfg.nPortId = pdata->mac_idx;
+	ops->gsw_common_ops.CPU_PortCfgGet(ops, &cpu_port_cfg);
 	cpu_port_cfg.bSpecialTagIngress = 1;
-	cpu_port_cfg.bSpecialTagEgress = 1;
 	ops->gsw_common_ops.CPU_PortCfgSet(ops, &cpu_port_cfg);
 
 #if IS_ENABLED(CONFIG_LTQ_DATAPATH_PTP1588_SW_WORKAROUND)
@@ -931,13 +935,6 @@ int mac_enable_ts(void *pdev)
 	/* Tell adaption layer to attach Timestamp */
 	gswss_set_mac_rxtime_op(pdev, MODE1);
 
-	/* Tell adaption layer to remove Special Tag in Tx Directon */
-	gswss_set_mac_txsptag_op(pdev, MODE3);
-
-	mac_int_enable(pdev);
-
-	xgmac_set_mac_int(pdev, XGMAC_TSTAMP_EVNT, 1);
-
 #ifdef __KERNEL__
 	spin_unlock_bh(&pdata->mac_lock);
 #endif
@@ -950,23 +947,6 @@ int mac_disable_ts(void *pdev)
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
 
 #ifdef __KERNEL__
-
-	GSW_CPU_PortCfg_t cpu_port_cfg;
-	struct core_ops *ops = gsw_get_swcore_ops(0);
-
-	if (!ops) {
-		pr_err("%s: Open SWAPI device FAILED!\n", __func__);
-		return -EIO;
-	}
-
-	memset((void *)&cpu_port_cfg, 0x00, sizeof(cpu_port_cfg));
-
-	/* Disable the Egress Special Tag */
-	ops->gsw_common_ops.CPU_PortCfgGet(ops, &cpu_port_cfg);
-	cpu_port_cfg.nPortId = pdata->mac_idx;
-	cpu_port_cfg.bSpecialTagEgress = 0;
-	ops->gsw_common_ops.CPU_PortCfgSet(ops, &cpu_port_cfg);
-
 	spin_lock_bh(&pdata->mac_lock);
 #endif
 	mac_printf("MAC %d: Disable Timestamp operations\n", pdata->mac_idx);
@@ -976,13 +956,6 @@ int mac_disable_ts(void *pdev)
 		gswss_set_mtu(pdev, gswss_get_mtu(pdev) - TIMESTAMP80_SIZE);
 
 	gswss_set_mac_rxtime_op(pdev, MODE0);
-	gswss_set_mac_txsptag_op(pdev, MODE0);
-
-	xgmac_disable_tstamp(pdev);
-
-	xgmac_set_mac_int(pdev, XGMAC_TSTAMP_EVNT, 0);
-
-	pdata->systime_initialized = 0;
 
 #ifdef __KERNEL__
 	spin_unlock_bh(&pdata->mac_lock);
@@ -1082,6 +1055,40 @@ int mac_get_int_sts(void *pdev)
 	return val;
 }
 
+static int xgmac_rx_enable(void *pdev, int enable)
+{
+	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
+	u32 addr, val;
+
+	if (pdata->mac_idx < MAC_2 || pdata->mac_idx > MAC_LAST)
+		return -EINVAL;
+
+	addr = 0x1080 | (pdata->mac_idx << 8);
+	val = GSWSS_MAC_RGRD(pdata, addr);
+	if (enable)
+		val &= ~BIT(2);
+	else
+		val |= BIT(2);
+	GSWSS_MAC_RGWR(pdata, addr, val);
+
+	return 0;
+}
+
+static int xgmac_powerup_tx(void *pdev)
+{
+	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
+	int ret;
+
+	if (pdata->mac_idx < MAC_2 || pdata->mac_idx > MAC_LAST)
+		return -EINVAL;
+
+	ret = xgmac_powerup(pdev);
+	if (ret)
+		return ret;
+
+	return xgmac_rx_enable(pdev, 0);
+}
+
 int mac_init(void *pdev)
 {
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
@@ -1158,7 +1165,10 @@ int mac_init(void *pdev)
 		mac_set_physpeed(pdev, SPEED_MAC_AUTO);
 
 	/* POWER ON MAC Tx/Rx */
-	xgmac_powerup(pdev);
+	if (pdata->mac_idx > MAC_2)
+		xgmac_powerup_tx(pdev);
+	else
+		xgmac_powerup(pdev);
 
 #ifdef __KERNEL__
 	/* Filter pause frames from XGMAC */
@@ -1187,6 +1197,11 @@ int mac_init(void *pdev)
 	 */
 	gswss_set_mac_txfcs_rm_op(pdev, (TX_FCS_NO_REMOVE % 4));
 
+	/* By default, setting FDMA does not remove (GSW Init)
+	 * TX Special Tag and adaption layer to remove instead
+	 */
+	gswss_set_mac_txsptag_op(pdev, TX_SPTAG_REMOVE % 4);
+
 	/* Set XGMAC Port to MDIO Clause 22 */
 	mdio_set_clause(pdev, 1, (pdata->mac_idx - MAC_2));
 
@@ -1197,6 +1212,12 @@ int mac_init(void *pdev)
 #ifdef CONFIG_PTP_1588_CLOCK
 	xgmac_ptp_init(pdev);
 #endif
+
+	if (pdata->tx_sptag)
+		gswss_set_mac_txsptag_op(pdev, pdata->tx_sptag);
+
+	if (pdata->rx_sptag)
+		gswss_set_mac_rxsptag_op(pdev, pdata->rx_sptag);
 
 	return 0;
 }
@@ -1228,6 +1249,11 @@ int mac_exit(void *pdev)
 	u32 mtl_rx_debugq, prxq, rxqsts;
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
 
+	/* disable interrupts */
+	mac_int_disable(pdev);
+	xgmac_set_mac_int(pdev, XGMAC_ALL_EVNT, 0);
+	lmac_set_event_int(pdev, LMAC_ALL_EVNT, 0);
+
 	mtl_tx_debugq = XGMAC_RGRD(pdata, MTL_Q_TQDG);
 	trcsts = MAC_GET_VAL(mtl_tx_debugq, MTL_Q_TQDG, TRCSTS);
 	txqsts = MAC_GET_VAL(mtl_tx_debugq, MTL_Q_TQDG, TXQSTS);
@@ -1248,6 +1274,10 @@ int mac_exit(void *pdev)
 		mac_printf("All Data is transferred to system memory\n");
 	else
 		mac_printf("ERROR: Data is still txing to system memory\n");
+
+#ifdef CONFIG_PTP_1588_CLOCK
+	xgmac_ptp_remove(pdev);
+#endif
 
 #ifdef __KERNEL__
 	xgmac_mdio_unregister(pdev);
@@ -1417,11 +1447,239 @@ int mac_irq_clr(void *pdev, u32 event)
 	return 0;
 }
 
-static void mac_soft_restart(void *pdev)
+static int macsec_reg_rd(struct platform_device *pdev, u32 off, u32 *data)
 {
-	/* Bring Down and up Xgmac Tx and Rx, Not all register reset */
-	xgmac_powerdown(pdev);
-	xgmac_powerup(pdev);
+	struct macsec_prv_data *pdata = platform_get_drvdata(pdev);
+	volatile u8 __iomem *addr = pdata->eip160_base;
+
+	addr += off;
+	*data = readl(addr);
+
+	return 0;
+}
+
+static int macsec_reg_wr(struct platform_device *pdev, u32 off, u32 data)
+{
+	struct macsec_prv_data *pdata = platform_get_drvdata(pdev);
+	volatile u8 __iomem *addr = pdata->eip160_base;
+
+	addr += off;
+	writel(data, addr);
+
+	return 0;
+}
+
+static void macsec_stag_cfg(struct platform_device *pdev, bool has_stag)
+{
+	u32 reg;
+
+	/* SoC specific register to enable Special Tag handling.
+	   Bit 0 - 1: enable Special Tag handling, 0: disable
+	 */
+	macsec_reg_rd(pdev, 0x7B84, &reg);
+	if (has_stag)
+		reg |= BIT(0);
+	else
+		reg &= ~BIT(0);
+	macsec_reg_wr(pdev, 0x7B84, reg);
+}
+
+int mac_e160_prepare(void *pdev, struct mac_e160_ops *e160)
+{
+	int ret = 0;
+	struct mac_prv_data *pdata;
+	struct device *dev;
+	struct gswss *gswdev;
+	struct adap_ops *ops;
+	struct device_node *ig_node = NULL, *eg_node = NULL;
+	struct platform_device *ig_pdev, *eg_pdev;
+	int mac_idx;
+	int stag;
+
+	pr_debug("Enter %s %u\n", __FUNCTION__, __LINE__);
+
+	if (!pdev || !e160)
+		return -EINVAL;
+	pdata = GET_MAC_PDATA(pdev);
+
+	dev = pdata->dev;
+	if (!dev)
+		return -EINVAL;
+
+	gswdev = dev_get_drvdata(dev->parent);
+	ops = gswdev->adap_ops;
+	if (!ops)
+		return -EINVAL;
+
+	if (gswss_get_mac_rxfcs_op(pdev) == (RX_FCS_NO_REMOVE & 3)) {
+		pr_crit("MACsec engine can't accept RX packet which has FCS not stripped.\n");
+		return -EPERM;
+	}
+
+	ig_node = of_parse_phandle(dev->of_node, "macsec_ig", 0);
+	if (!ig_node) {
+		pr_err("Can't not find macsec_ig in MAC device tree.\n");
+		return -EINVAL;
+	}
+
+	ig_pdev = of_find_device_by_node(ig_node);
+	if (!ig_pdev) {
+		pr_err("Can't get macsec_ig platform device.\n");
+		ret = -EINVAL;
+		goto END;
+	}
+	pdata->ig_pdev = ig_pdev;
+
+	eg_node = of_parse_phandle(dev->of_node, "macsec_eg", 0);
+	if (!eg_node) {
+		pr_err("Can't not find macsec_eg in MAC device tree.\n");
+		ret = -EINVAL;
+		goto END;
+	}
+
+	eg_pdev = of_find_device_by_node(eg_node);
+	if (!eg_pdev) {
+		pr_err("Can't get macsec_eg platform device.\n");
+		ret = -EINVAL;
+		goto END;
+	}
+	pdata->eg_pdev = eg_pdev;
+
+	mac_idx = ops->ss_get_macsec_mac(ops);
+	if (mac_idx == 0) {
+		gswss_set_xgmac_rx_disable(pdev, 1);
+		udelay(2);
+		ops->ss_core_en(ops, 0);
+		udelay(2);
+		ret = ops->ss_set_macsec_mac(ops, pdata->mac_idx, 1);
+		udelay(1);
+		ops->ss_core_en(ops, 1);
+		gswss_set_xgmac_rx_disable(pdev, 0);
+		if (ret) {
+			pr_crit("Failed in attaching MACsec to MAC %u", pdata->mac_idx);
+			goto END;
+		}
+	} else if (mac_idx != (int)pdata->mac_idx) {
+		pr_err("%s (%u): Only one time attachment is supported.\n",
+			__FUNCTION__, __LINE__);
+		ret = -EPERM;
+		goto END;
+	}
+
+	stag = gswss_get_mac_txsptag_op(pdev);
+	pr_debug("TX stag = %u\n", stag);
+	macsec_stag_cfg(pdata->eg_pdev, stag != (TX_SPTAG_NOTAG & 3));
+
+	stag = gswss_get_mac_rxsptag_op(pdev);
+	pr_debug("RX stag = %u\n", stag);
+	macsec_stag_cfg(pdata->ig_pdev,
+			stag == (RX_SPTAG_INSERT & 3)
+			|| stag == (RX_SPTAG_NO_INSERT & 3));
+
+	e160->ig_pdev = pdata->ig_pdev;
+	e160->eg_pdev = pdata->eg_pdev;
+	e160->reg_rd = macsec_reg_rd;
+	e160->reg_wr = macsec_reg_wr;
+
+END:
+	if (ig_node)
+		of_node_put(ig_node);
+	if (eg_node)
+		of_node_put(eg_node);
+	pr_debug("Exit %s %u, return %d\n", __FUNCTION__, __LINE__, ret);
+	return ret;
+}
+
+int mac_e160_unprepare(void *pdev)
+{
+	/* Do nothing at the moment during unsolved data path re-configuration
+	 * when unattach MACsec from MAC
+	 */
+	pr_debug("Enter/Exit %s %u\n", __FUNCTION__, __LINE__);
+	return 0;
+}
+
+static int __rmon_get(void *pdev, struct mac_rmon *prmon)
+{
+	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
+	struct mac_rmon *pshd = &pdata->rmon_shadow;
+	struct lmac_rmon_cnt lrmon = {0};
+	struct xgmac_mmc_stats xrmon = {0};
+	int ret;
+
+	ret = xgmac_read_mmc_stats(pdev, &xrmon);
+	if (ret < 0)
+		return ret;
+
+	lmac_rmon_rd(pdev, &lrmon);
+
+	pshd->cnt[RMON_TX_PKTS] += xrmon.txframecount_gb - pdata->xrmon_shadow.txframecount_gb;
+	pshd->cnt[RMON_TX_BYTES] += xrmon.txoctetcount_gb - pdata->xrmon_shadow.txoctetcount_gb;
+	pshd->cnt[RMON_TX_GOOD_PKTS] += xrmon.txframecount_g - pdata->xrmon_shadow.txframecount_g;
+	pshd->cnt[RMON_TX_GOOD_BYTES] += xrmon.txoctetcount_g - pdata->xrmon_shadow.txoctetcount_g;
+	pshd->cnt[RMON_TX_PAUSE] += xrmon.txpauseframes - pdata->xrmon_shadow.txpauseframes;
+	pshd->cnt[RMON_TX_PAUSE] += lrmon.tx_pause_cnt - pdata->lrmon_shadow.tx_pause_cnt;
+	pshd->cnt[RMON_TX_UNDERFLOW] += xrmon.txunderflowerror - pdata->xrmon_shadow.txunderflowerror;
+	pshd->cnt[RMON_TX_SINGLE_COL] += lrmon.sing_coln_cnt - pdata->lrmon_shadow.sing_coln_cnt;
+	pshd->cnt[RMON_TX_MULTI_COL] += lrmon.mple_coln_cnt - pdata->lrmon_shadow.mple_coln_cnt;
+	pshd->cnt[RMON_TX_LATE_COL] += lrmon.late_coln_cnt - pdata->lrmon_shadow.late_coln_cnt;
+	pshd->cnt[RMON_TX_EXCS_COL] += lrmon.excs_coln_cnt - pdata->lrmon_shadow.excs_coln_cnt;
+
+	pshd->cnt[RMON_RX_PKTS] += xrmon.rxframecount_gb - pdata->xrmon_shadow.rxframecount_gb;
+	pshd->cnt[RMON_RX_BYTES] += xrmon.rxoctetcount_gb - pdata->xrmon_shadow.rxoctetcount_gb;
+	pshd->cnt[RMON_RX_GOOD_BYTES] += xrmon.rxoctetcount_g - pdata->xrmon_shadow.rxoctetcount_g;
+	pshd->cnt[RMON_RX_PAUSE] += xrmon.rxpauseframes - pdata->xrmon_shadow.rxpauseframes;
+	pshd->cnt[RMON_RX_PAUSE] += lrmon.rx_pause_cnt - pdata->lrmon_shadow.rx_pause_cnt;
+	pshd->cnt[RMON_RX_CRC_ERR] += xrmon.rxcrcerror - pdata->xrmon_shadow.rxcrcerror;
+	pshd->cnt[RMON_RX_OVERFLOW] += xrmon.rxfifooverflow - pdata->xrmon_shadow.rxfifooverflow;
+
+	memcpy(&pdata->xrmon_shadow, &xrmon, sizeof(pdata->xrmon_shadow));
+	memcpy(&pdata->lrmon_shadow, &lrmon, sizeof(pdata->lrmon_shadow));
+	memcpy(prmon, &pdata->rmon_shadow, sizeof(*prmon));
+
+	return 0;
+}
+
+static int rmon_get(void *pdev, struct mac_rmon *prmon)
+{
+	struct mac_prv_data *pdata;
+	int ret;
+
+	if (!pdev || !prmon)
+		return -EINVAL;
+
+	pdata = GET_MAC_PDATA(pdev);
+#ifdef __KERNEL__
+	spin_lock_bh(&pdata->mac_lock);
+#endif
+	ret = __rmon_get(pdev, prmon);
+
+#ifdef __KERNEL__
+	spin_unlock_bh(&pdata->mac_lock);
+#endif
+	return ret;
+}
+
+static int rmon_clr(void *pdev)
+{
+	struct mac_prv_data *pdata;
+	struct mac_rmon rmon;
+	int ret;
+
+	if (!pdev)
+		return -EINVAL;
+
+	pdata = GET_MAC_PDATA(pdev);
+#ifdef __KERNEL__
+	spin_lock_bh(&pdata->mac_lock);
+#endif
+	ret = __rmon_get(pdev, &rmon);
+	memset(&pdata->rmon_shadow, 0, sizeof(pdata->rmon_shadow));
+#ifdef __KERNEL__
+	spin_unlock_bh(&pdata->mac_lock);
+#endif
+
+	return ret;
 }
 
 void mac_init_fn_ptrs(struct mac_ops *mac_op)
@@ -1470,6 +1728,9 @@ void mac_init_fn_ptrs(struct mac_ops *mac_op)
 	mac_op->config_subsec_inc = xgmac_config_subsec_inc;
 	mac_op->get_txtstamp_cap_cnt = xgmac_get_txtstamp_cnt;
 
+	mac_op->rmon_get = rmon_get;
+	mac_op->rmon_clr = rmon_clr;
+
 	mac_op->init = mac_init;
 	mac_op->exit = mac_exit;
 	mac_op->xgmac_cli = xgmac_cfg_main;
@@ -1486,7 +1747,8 @@ void mac_init_fn_ptrs(struct mac_ops *mac_op)
 	mac_op->do_tx_hwts = xgmac_tx_hwts;
 	mac_op->mac_get_ts_info = xgmac_get_ts_info;
 #endif
-	mac_op->soft_restart = mac_soft_restart;
+	mac_op->soft_restart = xgmac_soft_restart;
+	mac_op->rx_enable = xgmac_rx_enable;
 
 	mac_op->set_macaddr = mac_set_macaddr;
 	mac_op->set_rx_crccheck = mac_set_rxcrccheck;
@@ -1501,4 +1763,6 @@ void mac_init_fn_ptrs(struct mac_ops *mac_op)
 	mac_op->IRQ_UnRegister = mac_irq_unregister;
 
 	mac_op->mac_op_cfg = mac_oper_cfg;
+	mac_op->mac_e160_prepare = mac_e160_prepare;
+	mac_op->mac_e160_unprepare = mac_e160_unprepare;
 }

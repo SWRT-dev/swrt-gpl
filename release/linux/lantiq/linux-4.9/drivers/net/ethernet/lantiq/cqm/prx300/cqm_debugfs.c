@@ -6,6 +6,712 @@
 #include "../cqm_common.h"
 
 #define PRINTK  pr_err
+#define cqm_dbg_printf(s, fmt, arg...) \
+	do { \
+		if (!s) \
+			printk(fmt, ##arg); \
+		else \
+			seq_printf(s, fmt, ##arg); \
+	} while (0)
+
+#define CARE_FLAG      0
+#define CARE_NOT_FLAG  1
+
+#define LIST_ALL_CASES(t, mask, not_care)  \
+	for (t[0] = 0;  t[0] < ((mask[0] == not_care) ? 2 : 1); t[0]++) \
+	for (t[1] = 0;  t[1] < ((mask[1] == not_care) ? 2 : 1); t[1]++) \
+	for (t[2] = 0;  t[2] < ((mask[2] == not_care) ? 2 : 1); t[2]++) \
+	for (t[3] = 0;  t[3] < ((mask[3] == not_care) ? 2 : 1); t[3]++) \
+	for (t[4] = 0;  t[4] < 1; t[4]++) \
+	for (t[5] = 0;  t[5] < 1; t[5]++) \
+	for (t[6] = 0;  t[6] < 1; t[6]++) \
+	for (t[7] = 0;  t[7] < 1; t[7]++) \
+	for (t[8] = 0;  t[8] < ((mask[8] == not_care) ? 2 : 1); t[8]++) \
+	for (t[9] = 0;  t[9] < ((mask[9] == not_care) ? 2 : 1); t[9]++) \
+	for (t[10] = 0; t[10] < ((mask[10] == not_care) ? 2 : 1); t[10]++) \
+	for (t[11] = 0; t[11] < ((mask[11] == not_care) ? 2 : 1); t[11]++) \
+	for (t[12] = 0; t[12] < ((mask[12] == not_care) ? 2 : 1); t[12]++) \
+	for (t[13] = 0; t[13] < ((mask[13] == not_care) ? 2 : 1); t[13]++)
+
+/* The purpose of this file is to find the CBM lookup pattern and
+ * print it in the simple way.
+ * Otherway it may print up to 16K lines in the console to get lookup setting
+ *  Lookup table: flow[1] flow[0] dec end mpe2 mpe1 ep(4) class(4)
+ * Idea: We fixed the EP value during finding lookup setting pattern.
+ * method:
+ *     1st: to find the possible don't care bit from flow[2]/dec/enc/mpe2/mpe1
+ *	 and class(4), excluding ep, ie total 10 bits
+ *	       API: c_not_care_walkthrought
+ *		   Note: from big don't care bit number (ie, maximum don't
+ *		   care case) to 1 (minimal don't care case)
+ *
+ *	  2nd: generate tmp_index based on care bits
+ *	       API: list_care_combination
+ *
+ *    3rd: based on tmp_index, check whether there is really pattern which meet
+ *    don't care, ie, mapping to same qid.
+ *
+ */
+#define LOOKUP_FIELD_BITS 14
+#define CQM_DBG_FLAG_LOOKUP (BIT(21))
+#if IS_ENABLED(CONFIG_INTEL_CQM_DBG)
+static u32 cqm_max_print_num = -1;
+static u32 cqm_print_num_en;
+static u32 cqm_dbg_flag;
+#define CQM_DEBUG(flags, fmt, arg...)  do { \
+if (unlikely((cqm_dbg_flag & (flags)) && (((cqm_print_num_en) && \
+	(cqm_max_print_num)) || !cqm_print_num_en))) {\
+	pr_info(fmt, ##arg); \
+	if ((cqm_print_num_en) && \
+	    (cqm_max_print_num)) \
+		cqm_max_print_num--; \
+	} \
+} while (0)
+#else
+#define CQM_DEBUG(flags, fmt, arg...)
+#endif				/* end of CONFIG_INTEL_CQM_DBG */
+
+#define DEBUGFS_LOOKUP "qid_queue_map"
+
+static int lookup_mask_n;
+#define PATTERN_MATCH_INIT  0
+#define PATTERN_MATCH_START 1
+#define PATTERN_MATCH_FAIL  2
+#define PATTERN_MATCH_PASS  3
+
+#define ENTRY_FILLED 0
+#define ENTRY_USED   1
+
+typedef void (*cqm_dbg_single_callback_t) (struct seq_file *);
+typedef int (*cqm_dbg_callback_t) (struct seq_file *, int);
+typedef int (*cqm_dbg_init_callback_t) (void);
+typedef ssize_t(*cqm_dbg_write_callback_t) (struct file *file,
+					     const char __user *input,
+					     size_t size, loff_t *loff);
+
+struct cqm_dbg_file_entry {
+	cqm_dbg_callback_t multi_callback;
+	cqm_dbg_single_callback_t single_callback;
+	int pos;
+	int single_call_only;
+};
+
+struct cqm_dbg_entry {
+	char *name;
+	cqm_dbg_single_callback_t single_callback;
+	cqm_dbg_callback_t multi_callback;
+	cqm_dbg_init_callback_t init_callback;
+	cqm_dbg_write_callback_t write_callback;
+};
+
+static int pattern_match_flag;	/*1--start matching  2--failed, 3---match 0k */
+static unsigned char lookup_mask1[LOOKUP_FIELD_BITS];
+
+#define C_ARRAY_SIZE  20
+static int c_tmp_data[C_ARRAY_SIZE];
+
+/*store result */
+#define MAX_PATTERN_NUM 1024
+static int lookup_match_num;
+static unsigned short lookup_match_mask[MAX_PATTERN_NUM];
+/*save tmp_index */
+static unsigned short lookup_match_index[MAX_PATTERN_NUM];
+/*save tmp_index */
+static unsigned char lookup_match_qid[MAX_PATTERN_NUM];
+
+static int tmp_pattern_port_id;
+
+static int left_n;
+/*10 bits lookup table except 4 bits EP */
+static unsigned char lookup_tbl_flags[MAX_PATTERN_NUM * 16];
+
+static void combine_util(int *arr, int *data, int start, int end, int index,
+			 int r);
+static int check_pattern(int *data, int r);
+static void lookup_table_via_qid(int qid);
+static void lookup_table_remap(int old_q, int new_q);
+static int cqm_find_pattern(int port_id, struct seq_file *s, int qid);
+static int get_dont_care_lookup(char *s);
+static void lookup_table_recursive(int k, int tmp_index, int set_flag, int qid);
+static int lookup_start32(void);
+static ssize_t cqm_get_qid_queue_map_write(struct file *file,
+					   const char __user *buf,
+					   size_t count, loff_t *ppos);
+static int cqm_dbg_open(struct inode *inode, struct file *file);
+static int cqm_qid_queue_map_read(struct seq_file *s, int pos);
+static __attribute__((unused)) int cqm_dbg_single_open(struct inode *inode,
+						       struct file *file);
+
+/* The main function that prints all combinations of size r*/
+/* in arr[] of size n. This function mainly uses combine_util()*/
+static int c_not_care_walkthrought(int *arr, int n, int r)
+{
+	/* A temporary array data[] to store all combination one by one */
+
+	/* Print all combination using temprary array 'data[]' */
+	combine_util(arr, c_tmp_data, 0, n - 1, 0, r);
+	/* return lookup_match_num here to avoid KW warning */
+	return lookup_match_num;
+}
+
+/* arr[]  ---> Input Array
+ * data[] ---> Temporary array to store current combination
+ * start & end ---> Staring and Ending indexes in arr[]
+ * index  ---> Current index in data[]
+ * r ---> Size of a combination to be printed
+ *
+ */
+static void combine_util(int *arr, int *data, int start, int end, int index,
+			 int r)
+{
+	int i;
+
+	/* Current combination is ready to be printed, print it */
+	if (left_n <= 0)
+		return;
+	if (index == r) {/*Find one pattern with specified don't care flag */
+
+		check_pattern(data, r);
+		/*find a don't care case and need further check */
+
+		return;
+	}
+	/* replace index with all possible elements. The condition */
+	/* "end-i+1 >= r-index" makes sure that including one element */
+	/* at index will make a combination with remaining elements */
+	/* at remaining positions */
+	for (i = start; i <= end && end - i + 1 >= r - index; i++) {
+		data[index] = arr[i];
+		if (left_n <= 0)
+			break;
+		combine_util(arr, data, i + 1, end, index + 1, r);
+	}
+}
+
+/*Note: when call this API, for those cared bits,
+ * its value already set in tmp_index.
+ */
+static void lookup_pattern_match(int tmp_index)
+{
+	int i;
+	int qid;
+	static int first_qid;
+	int t[LOOKUP_FIELD_BITS] = { 0 };
+	int index;
+	struct cbm_lookup info;
+
+	CQM_DEBUG(CQM_DBG_FLAG_LOOKUP,
+		  "trying with tmp_index=0x%x with lookup_match_num=%d\n",
+		  tmp_index, lookup_match_num);
+	pattern_match_flag = PATTERN_MATCH_INIT;
+	lookup_match_index[lookup_match_num] = tmp_index;
+
+	LIST_ALL_CASES(t, lookup_mask1, CARE_NOT_FLAG) {
+		index = tmp_index;
+		for (i = 0; i < LOOKUP_FIELD_BITS; i++)
+			index |= (t[i] << i);
+		CQM_DEBUG(CQM_DBG_FLAG_LOOKUP, "don't care[14]=");
+		for (i = 0; i < LOOKUP_FIELD_BITS; i++)
+			CQM_DEBUG(CQM_DBG_FLAG_LOOKUP, "%d ", t[i]);
+		CQM_DEBUG(CQM_DBG_FLAG_LOOKUP, "\n");
+
+		CQM_DEBUG(CQM_DBG_FLAG_LOOKUP, "don't care index=%x\n", index);
+
+		if (lookup_tbl_flags[index] == ENTRY_USED) {
+			pattern_match_flag = PATTERN_MATCH_FAIL;
+			goto END;
+		}
+		info.index = index;
+		qid = get_lookup_qid_via_index(&info);
+
+		if (pattern_match_flag == PATTERN_MATCH_INIT) {
+			pattern_match_flag = PATTERN_MATCH_START;
+			first_qid = qid;
+		} else if (first_qid != qid) {
+			pattern_match_flag = PATTERN_MATCH_FAIL;
+			CQM_DEBUG(CQM_DBG_FLAG_LOOKUP,
+				  "first_qid(%d) != qid(%d)\n",
+				  first_qid, qid);
+			goto END;
+		}
+	}
+
+END:
+	/*save the result if necessary here */
+	if (pattern_match_flag == PATTERN_MATCH_START) {
+		/*pass since still not fail yet */
+		pattern_match_flag = PATTERN_MATCH_PASS;
+
+		/*mark the entries */
+		LIST_ALL_CASES(t, lookup_mask1, CARE_NOT_FLAG) {
+			index = tmp_index;
+			for (i = 0; i < LOOKUP_FIELD_BITS; i++)
+				index |= (t[i] << i);
+			if (lookup_tbl_flags[index] == ENTRY_USED)
+				pr_err("why already used\n");
+			else
+				lookup_tbl_flags[index] = ENTRY_USED;
+		}
+		/*save status */
+		lookup_match_qid[lookup_match_num] = first_qid;
+		lookup_match_mask[lookup_match_num] = 0;
+		for (i = 0; i < LOOKUP_FIELD_BITS; i++)
+			if (lookup_mask1[i])
+				lookup_match_mask[lookup_match_num] |= 1 << i;
+		lookup_match_num++;
+		CQM_DEBUG(CQM_DBG_FLAG_LOOKUP,
+			  "left_n=%d lookup_mask_n=%d. Need reduce=%d\n",
+			  left_n, lookup_mask_n, (1 << lookup_mask_n));
+		left_n -= (1 << lookup_mask_n);
+	} else {
+		/*failed */
+	}
+}
+
+/*k--number of don't care flags
+ */
+static int list_care_combination(int tmp_index)
+{
+	int i, k, index;
+	int t[14] = { 0 };
+
+	LIST_ALL_CASES(t, lookup_mask1, CARE_FLAG) {
+		index = tmp_index;
+		for (i = 0; i < LOOKUP_FIELD_BITS; i++)
+			index |= (t[i] << i);
+		CQM_DEBUG(CQM_DBG_FLAG_LOOKUP, "care index=%x\n", index);
+		CQM_DEBUG(CQM_DBG_FLAG_LOOKUP, "care t[14]=");
+		for (k = 0; k < LOOKUP_FIELD_BITS; k++)
+			CQM_DEBUG(CQM_DBG_FLAG_LOOKUP, "%d ", t[k]);
+		CQM_DEBUG(CQM_DBG_FLAG_LOOKUP, "\n");
+		lookup_pattern_match(index);
+	}
+
+	return 0;
+}
+
+/*based on the don't care list, we try to find the all possible pattern:
+ *for example: bit 13 and bit 11 don't care.
+ *data---the flag index list which is don't care
+ *r -- the flag index length
+ */
+static int check_pattern(int *data, int r)
+{
+	int i;
+
+	memset(lookup_mask1, 0, sizeof(lookup_mask1));
+	CQM_DEBUG(CQM_DBG_FLAG_LOOKUP, "data:");
+	for (i = 0; i < r; i++) {
+		CQM_DEBUG(CQM_DBG_FLAG_LOOKUP, "%d ", data[i]);
+		lookup_mask1[data[i]] = CARE_NOT_FLAG;
+	}
+	lookup_mask_n = r;
+	pattern_match_flag = 0;
+	CQM_DEBUG(CQM_DBG_FLAG_LOOKUP, "\n");
+
+	CQM_DEBUG(CQM_DBG_FLAG_LOOKUP, "Don't care flag: ");
+	for (i = 0; i < LOOKUP_FIELD_BITS; i++)
+		CQM_DEBUG(CQM_DBG_FLAG_LOOKUP, "%c ",
+			  lookup_mask1[i] ? 'x' : '0');
+	CQM_DEBUG(CQM_DBG_FLAG_LOOKUP, "\n");
+
+	list_care_combination(tmp_pattern_port_id << 4);
+	return 0;
+}
+
+/*qid: -1: match all queues
+ *      >=0: only match the specified queue
+ */
+int cqm_mode_mask0[] = {13, 12, 11, 10, 9, 8,/*7, 6, 5, 4,*/ 3, 2, 1, 0 };
+int cqm_mode_mask1[] = {13, 12, 11, 10, 9, 8,/* 7, 6, 5, 4,*/ 3, 2, 1, 0 };
+int cqm_mode_mask2[] = {13, 12, 11, 10, 9, 8, /*7, 6, 5, 4, */3, 2, 1, 0 };
+int cqm_mode_mask3[] = {13, 12, 11, 10, 9, 8, /*7, 6, 5, 4, 3 , */2, 1, 0 };
+static void cqm_print_title(struct seq_file *s, int ep, int mode, int qid)
+{
+	if (mode == 0)
+		cqm_dbg_printf(s,
+			       "%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%s%d\n",
+			       "F2", "F1",
+			       "DEC", "ENC", "MPE2", "MPE1", "EP3",
+			       "EP2", "EP1", "EP0", "CLS3", "CLS2", "CLS1",
+			       "CLS0", "qid", "id", "mode", "=", mode);
+
+	else if (mode == 1)
+		cqm_dbg_printf(s,
+			       "%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%s%d\n",
+			       "S7", "S6",
+			       "S5", "S4", "MPE2", "MPE1", "EP3",
+			       "EP2", "EP1", "EP0", "S3", "S2", "S1",
+			       "S0", "qid", "id", "mode", "=", mode);
+
+	else if (mode == 2)
+		cqm_dbg_printf(s,
+			       "%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%s%d\n",
+			       "S11", "S10",
+			       "S9", "S8", "MPE2", "MPE1", "EP3",
+			       "EP2", "EP1", "EP0", "CLS3", "CLS2", "CLS1",
+			       "CLS0", "qid", "id", "mode", "=", mode);
+
+	else if (mode == 3)
+		cqm_dbg_printf(s,
+			       "%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%5s%s%d\n",
+			       "S4", "S3",
+			       "S2", "S1", "MPE2", "MPE1", "EP3",
+			       "EP2", "EP1", "EP0", "S0", "CLS2", "CLS1",
+			       "CLS0", "qid", "id", "mode", "=", mode);
+	else
+		return;
+}
+
+static int cqm_find_pattern(int port_id, struct seq_file *s, int qid)
+{
+	int r, i, j, n;
+	int f = 0;
+	cbm_queue_map_entry_t entry;
+	int *arr = NULL;
+	int ret, data_index;
+	char data_str[14];
+	u32 mode;
+	int match = 0;
+
+	entry.ep = port_id;
+	ret = cqm_mode_table_get(0, &mode, &entry, 0);
+	if (ret != 0)
+		return ret;
+
+	if (mode == 0) {
+		arr = cqm_mode_mask0;
+		n = ARRAY_SIZE(cqm_mode_mask0);
+	} else if (mode == 1) {
+		arr = cqm_mode_mask1;
+		n = ARRAY_SIZE(cqm_mode_mask1);
+	} else if (mode == 2) {
+		arr = cqm_mode_mask2;
+		n = ARRAY_SIZE(cqm_mode_mask2);
+	} else if (mode == 3) {
+		arr = cqm_mode_mask3;
+		n = ARRAY_SIZE(cqm_mode_mask3);
+	} else {
+		return -1;
+	}
+
+	left_n = 1 << (LOOKUP_FIELD_BITS - 4);	/*maximum lookup entried */
+	lookup_match_num = 0;
+	tmp_pattern_port_id = port_id;
+	memset(lookup_tbl_flags, 0, sizeof(lookup_tbl_flags));
+	/*list all pattern, ie, don't care numbers from 10 to 1 */
+	for (r = n; r >= 0; r--) {
+		if (left_n <= 0)
+			break;
+		match = c_not_care_walkthrought(arr, n, r);
+		CQM_DEBUG(CQM_DBG_FLAG_LOOKUP, "left_n=%d\n", left_n);
+		if (!left_n)
+			break;
+	}
+
+	for (i = 0; i < match; i++) {
+		if (((qid >= 0) && (qid != lookup_match_qid[i])) ||
+		    (!lookup_match_qid[i]))
+			continue;
+		if (!f) {
+			f = 1;
+			cqm_print_title(s, tmp_pattern_port_id,
+					mode, qid);
+		}
+		data_index = 0;
+		for (j = LOOKUP_FIELD_BITS - 1; j >= 0; j--) {
+			if ((lookup_match_mask[i] >> j) & 1)
+				data_str[data_index] = 'x';
+			else
+				data_str[data_index]
+					= ((lookup_match_index[i] >> j) & 1)
+					+ '0';
+			data_index++;
+		}
+		cqm_dbg_printf(s,
+			       "%5c%5c%5c%5c%5c%5c%5c%5c%5c%5c%5c%5c%5c%5c  %-3d(0x%04x)\n",
+			       data_str[0], data_str[1], data_str[2],
+			       data_str[3], data_str[4], data_str[5],
+			       data_str[6], data_str[7], data_str[8],
+			       data_str[9], data_str[10], data_str[11],
+			       data_str[12], data_str[13],
+			       lookup_match_qid[i],
+			       lookup_match_index[i]);
+	}
+
+	if (s && seq_has_overflowed(s))
+		return -1;
+
+	return 0;
+}
+
+ssize_t cqm_get_qid_queue_map_write(struct file *file, const char __user *buf,
+				    size_t count, loff_t *ppos)
+{
+	size_t len;
+	char data[100];
+	unsigned int lookup_index;
+	unsigned int qid = 0;
+	char *param_list[10];
+	int num;
+	struct cbm_lookup cbm_lu = {0};
+	struct cbm_lookup info;
+
+	if (!capable(CAP_NET_ADMIN))
+		return -EPERM;
+	len = (count >= sizeof(data)) ? (sizeof(data) - 1) : count;
+	CQM_DEBUG(CQM_DBG_FLAG_LOOKUP, "len=%d\n", len);
+	len -= copy_from_user(data, buf, len);
+	data[len] = 0; /* Make string */
+	num = dp_split_buffer(data, param_list, ARRAY_SIZE(param_list));
+
+	if (num <= 1)
+		goto help;
+	if (!param_list[1])
+		goto help;
+
+	lookup_index = dp_atoi(param_list[1]);
+
+	if ((dp_strncmpi(param_list[0], "set", strlen("set")) == 0) ||
+	    (dp_strncmpi(param_list[0], "write", strlen("write")) == 0)) {
+		if (!param_list[2]) {
+			pr_err("wrong command\n");
+			return count;
+		}
+		qid = dp_atoi(param_list[2]);
+		/*workaround for mask support */
+		if (get_dont_care_lookup(param_list[1]) == 0) {
+			lookup_table_recursive(LOOKUP_FIELD_BITS - 1, 0, 1,
+					       qid);
+			return count;
+		}
+		printk("Set to queue[%u] done\n", qid);
+		cbm_lu.qid = qid;
+		cbm_lu.index = lookup_index;
+		set_lookup_qid_via_index(&cbm_lu);
+		return count;
+	} else if ((dp_strncmpi(param_list[0], "get", strlen("get")) == 0) ||
+		   (dp_strncmpi(param_list[0], "read", strlen("read")) == 0)) {
+		if (get_dont_care_lookup(param_list[1]) == 0) {
+			lookup_table_recursive(LOOKUP_FIELD_BITS - 1, 0, 0,
+					       0);
+			return count;
+		}
+		info.index = lookup_index;
+		qid = get_lookup_qid_via_index(&info);
+		cqm_dbg_printf(NULL,
+			       "Get lookup[%05u 0x%04x] ->     queue[%u]\n",
+			       lookup_index, lookup_index, qid);
+		return count;
+	} else if (dp_strncmpi(param_list[0], "find", strlen("find") + 1)
+			       == 0) {
+		/*read out its all flags for specified qid */
+		int i;
+
+		qid = dp_atoi(param_list[1]);
+		//for (i = 0; i < 16; i++)
+		cqm_find_pattern(i, NULL, qid);
+		return count;
+	} else if (dp_strncmpi(param_list[0], "find2", strlen("find2") + 1)
+			       == 0) {
+		/*read out its all flags for specified qid */
+		qid = dp_atoi(param_list[1]);
+		lookup_table_via_qid(qid);
+		return count;
+	} else if (dp_strncmpi(param_list[0], "remap", strlen("remap")) == 0) {
+		int old_q = dp_atoi(param_list[1]);
+		int new_q = dp_atoi(param_list[2]);
+
+		lookup_table_remap(old_q, new_q);
+		cqm_dbg_printf(NULL,
+			       "remap queue[%d] to queue[%d] done\n",
+			       old_q, new_q);
+		return count;
+	}
+
+	goto help;
+help:
+	cqm_dbg_printf(NULL,
+		       "Usage: echo set lookup_flags queue_id > %s\n",
+		       DEBUGFS_LOOKUP);
+	cqm_dbg_printf(NULL,
+		       "     : echo get lookup_flags > %s\n",
+		       DEBUGFS_LOOKUP);
+	cqm_dbg_printf(NULL,
+		       "     : echo find  <x> > %s\n", DEBUGFS_LOOKUP);
+	cqm_dbg_printf(NULL, "     : echo find2 <x> > %s\n", DEBUGFS_LOOKUP);
+	cqm_dbg_printf(NULL, "     : echo remap <old_q> <new_q> > %s\n",
+		       DEBUGFS_LOOKUP);
+	cqm_dbg_printf(NULL, "  Hex example: echo set 0x10 10 > %s\n",
+		       DEBUGFS_LOOKUP);
+	cqm_dbg_printf(NULL, "  Dec:example: echo set 16 10 > %s\n",
+		       DEBUGFS_LOOKUP);
+	cqm_dbg_printf(NULL, "  Bin:example: echo set b10000 10 > %s\n",
+		       DEBUGFS_LOOKUP);
+
+	cqm_dbg_printf(NULL, "%s: echo set b1xxxx 10 > %s\n",
+		       "Special for BIN(Don't care bit)", DEBUGFS_LOOKUP);
+	cqm_dbg_printf(NULL, "Lookup format:\n");
+	cqm_dbg_printf(NULL, "  Bits Index: | %s\n",
+		       "13   12 |  11  |  10  |  9   |  8   |7   4 | 3   0 |");
+	cqm_dbg_printf(NULL,
+		       "  Fields:     | %s\n",
+		       "Flow ID | DEC  | ENC  | MPE2 | MPE1 |  EP  | CLASS |");
+	return count;
+}
+
+void lookup_table_via_qid(int qid)
+{
+	u32 index, tmp, i, j, k, f = 0;
+	struct cbm_lookup info;
+
+	CQM_DEBUG(CQM_DBG_FLAG_LOOKUP,
+		  "Try to find all lookup flags mapped to qid %d\n", qid);
+
+	for (i = 0; i < 16; i++) {	/*ep */
+		for (j = 0; j < 16; j++) {	/*class */
+			for (k = 0; k < 64; k++) {/*flow id/dec/enc/mpe2/mpe1 */
+				index = (k << 8) | (i << 4) | j;
+				info.index = index;
+				tmp = get_lookup_qid_via_index(&info);
+				if (tmp != qid)
+					continue;
+				f = 1;
+				cqm_dbg_printf(NULL,
+					       "Get lookup[%05u 0x%04x]%s[%d]\n",
+					       index, index,
+					       " ->     queue", qid);
+			}
+		}
+	}
+
+	if (!f)
+		pr_err("No mapping to queue id %d yet ?\n", qid);
+}
+
+void lookup_table_remap(int old_q, int new_q)
+{
+	u32 index, tmp, i, j, k, f = 0;
+	struct cbm_lookup cbm_lu = {0};
+	struct cbm_lookup info;
+
+	CQM_DEBUG(CQM_DBG_FLAG_LOOKUP,
+		  "Try to remap lookup flags mapped from old_q %d to new_q %d\n",
+		  old_q, new_q);
+	for (i = 0; i < 16; i++) {	/*ep */
+		for (j = 0; j < 16; j++) {	/*class */
+			for (k = 0; k < 64; k++) {/*flow id/dec/enc/mpe2/mpe1 */
+				index = (k << 8) | (i << 4) | j;
+				info.index = index;
+				tmp = get_lookup_qid_via_index(&info);
+				if (tmp != old_q)
+					continue;
+				cbm_lu.qid = new_q;
+				cbm_lu.index = index;
+				set_lookup_qid_via_index(&cbm_lu);
+				f = 1;
+				CQM_DEBUG(CQM_DBG_FLAG_LOOKUP,
+					  "Remap lookup[%05u 0x%04x] %s[%d]\n",
+					  index, index,
+					  "->     queue", new_q);
+			}
+		}
+	}
+	if (!f)
+		pr_info("No mapping to queue id %d yet\n", new_q);
+}
+
+#define LOOKUP_FIELD_BITS 14
+static u8 lookup_flags2[LOOKUP_FIELD_BITS];
+static u8 lookup_mask2[LOOKUP_FIELD_BITS];
+
+/*return 0: get correct bit mask
+ * -1: no
+ */
+int get_dont_care_lookup(char *s)
+{
+	int len, i, j;
+	int flag = 0;
+
+	if (!s)
+		return -1;
+	len = strlen(s);
+	dp_replace_ch(s, strlen(s), ' ', 0);
+	dp_replace_ch(s, strlen(s), '\r', 0);
+	dp_replace_ch(s, strlen(s), '\n', 0);
+	if (s[0] == 0)
+		return -1;
+	memset(lookup_flags2, 0, sizeof(lookup_flags2));
+	memset(lookup_mask2, 0, sizeof(lookup_mask2));
+	if ((s[0] != 'b') && (s[0] != 'B'))
+		return -1;
+
+	if (len >= LOOKUP_FIELD_BITS + 1)
+		len = LOOKUP_FIELD_BITS + 1;
+	for (i = len - 1, j = 0; i >= 1; i--, j++) {
+		if ((s[i] == 'x') || (s[i] == 'X')) {
+			lookup_mask2[j] = 1;
+			flag = 1;
+		} else if (('0' <= s[i]) && (s[i] <= '9')) {
+			lookup_flags2[j] = s[i] - '0';
+		} else if (('A' <= s[i]) && (s[i] <= 'F')) {
+			lookup_flags2[j] = s[i] - 'A' + 10;
+		} else if (('a' <= s[i]) && (s[i] <= 'f')) {
+			lookup_flags2[j] = s[i] - '1' + 10;
+		} else {
+			return -1;
+		}
+	}
+	if (flag) {
+		CQM_DEBUG(DP_DBG_FLAG_LOOKUP, "\nGet lookup flag: ");
+		for (i = LOOKUP_FIELD_BITS - 1; i >= 0; i--) {
+			if (lookup_mask2[i])
+				CQM_DEBUG(CQM_DBG_FLAG_LOOKUP, "x");
+			else
+				CQM_DEBUG(CQM_DBG_FLAG_LOOKUP, "%d",
+					  lookup_flags2[i]);
+		}
+		CQM_DEBUG(CQM_DBG_FLAG_LOOKUP, "\n");
+
+		return 0;
+	} else {
+		return -1;
+	}
+}
+
+void lookup_table_recursive(int k, int tmp_index, int set_flag, int qid)
+{
+	int i;
+	struct cbm_lookup cbm_lu = {0};
+	struct cbm_lookup info;
+
+	if (k < 0) {	/*finish recursive and start real read/set action */
+		if (set_flag) {
+			cbm_lu.qid = qid;
+			cbm_lu.index = tmp_index;
+			set_lookup_qid_via_index(&cbm_lu);
+			CQM_DEBUG(CQM_DBG_FLAG_LOOKUP,
+				  "Set lookup[%05u/0x%04x] ->     queue[%d]\n",
+				  tmp_index, tmp_index, qid);
+		} else {
+			info.index = tmp_index;
+			qid = get_lookup_qid_via_index(&info);
+			pr_info("Get lookup[%05u/0x%04x] ->     queue[%d]\n",
+				tmp_index, tmp_index, qid);
+		}
+		return;
+	}
+
+	if (lookup_mask2[k]) {
+		for (i = 0; i < 2; i++)
+			lookup_table_recursive(k - 1, tmp_index + (i << k),
+					       set_flag, qid);
+		return;
+	}
+
+	lookup_table_recursive(k - 1, tmp_index + (lookup_flags2[k] << k),
+			       set_flag, qid);
+}
 
 static ssize_t print_cqm_dbg_cntrs_write(struct file *file,
 					 const char __user *buf,
@@ -42,17 +748,19 @@ static int print_cqm_dbg_cntrs(struct seq_file *s, void *v)
 	u32 tx_cnt = 0;
 	u32 free_cnt = 0;
 	u32 alloc_cnt = 0;
+	u32 ring_buff_cnt = 0;
 	u32 rx_cnt_t = 0;
 	u32 tx_cnt_t = 0;
 	u32 free_cnt_t = 0;
 	u32 alloc_cnt_t = 0;
 	u32 isr_free_cnt_t = 0;
+	u32 ring_buff_cnt_t = 0;
 
 	if (!capable(CAP_SYS_ADMIN))
 		return -EPERM;
 
 	seq_puts(s, "Print CQEM debug counters:\n");
-	seq_puts(s, "\t\t\trx\t\ttx\t\tfree\t\talloc\t\tdelta (rx+alloc-tx-free)\n");
+	seq_puts(s, "\t\t\trx\t\ttx\t\tfree\t\talloc\t\tring_b\t\tdelta (rx+alloc-tx-free)\n");
 	for (i = 0; i < CQM_MAX_POLICY_NUM; i++) {
 		for (j = 0; j < CQM_MAX_POOL_NUM; j++) {
 			if (i == CQM_CPU_POLICY && j == CQM_CPU_POOL)
@@ -61,6 +769,8 @@ static int print_cqm_dbg_cntrs(struct seq_file *s, void *v)
 			tx_cnt_t = STATS_GET(cqm_dbg_cntrs[i][j].tx_cnt);
 			free_cnt_t = STATS_GET(cqm_dbg_cntrs[i][j].free_cnt);
 			alloc_cnt_t = STATS_GET(cqm_dbg_cntrs[i][j].alloc_cnt);
+			ring_buff_cnt_t = STATS_GET(cqm_dbg_cntrs[i]
+						    [j].dma_ring_buff_cnt);
 
 			if (rx_cnt_t || tx_cnt_t || free_cnt_t ||
 			    alloc_cnt_t) {
@@ -70,11 +780,13 @@ static int print_cqm_dbg_cntrs(struct seq_file *s, void *v)
 				seq_printf(s, "\t0x%08x", tx_cnt_t);
 				seq_printf(s, "\t0x%08x", free_cnt_t);
 				seq_printf(s, "\t0x%08x", alloc_cnt_t);
+				seq_printf(s, "\t0x%08x", ring_buff_cnt_t);
 
 				rx_cnt += rx_cnt_t;
 				tx_cnt += tx_cnt_t;
 				free_cnt += free_cnt_t;
 				alloc_cnt += alloc_cnt_t;
+				ring_buff_cnt += ring_buff_cnt_t;
 				val = (rx_cnt_t + alloc_cnt_t - tx_cnt_t -
 				       free_cnt_t);
 
@@ -87,23 +799,26 @@ static int print_cqm_dbg_cntrs(struct seq_file *s, void *v)
 	seq_printf(s, "\t0x%08x", tx_cnt);
 	seq_printf(s, "\t0x%08x", free_cnt);
 	seq_printf(s, "\t0x%08x", alloc_cnt);
+	seq_printf(s, "\t0x%08x", ring_buff_cnt);
 	val = (rx_cnt + alloc_cnt - tx_cnt - free_cnt);
 
 	seq_printf(s, "\t%d\n", val);
 	i = CQM_CPU_POLICY;
 	j = CQM_CPU_POOL;
 	seq_puts(s, "\nPrint CQEM cpu buffer debug counters:\n");
-	seq_puts(s, "\t\t\trx\t\ttx\t\tfree\t\talloc\t\tisr_free\tdelta (rx+alloc+tx+free-isr_free)\n");
+	seq_puts(s, "\t\t\trx\t\ttx\t\tfree\t\talloc\t\tring_b\t\tisr_free\tdelta (rx+alloc+tx+free-isr_free)\n");
 	rx_cnt_t = STATS_GET(cqm_dbg_cntrs[i][j].rx_cnt);
 	tx_cnt_t = STATS_GET(cqm_dbg_cntrs[i][j].tx_cnt);
 	free_cnt_t = STATS_GET(cqm_dbg_cntrs[i][j].free_cnt);
 	alloc_cnt_t = STATS_GET(cqm_dbg_cntrs[i][j].alloc_cnt);
+	ring_buff_cnt_t = STATS_GET(cqm_dbg_cntrs[i][j].dma_ring_buff_cnt);
 	isr_free_cnt_t = STATS_GET(cqm_dbg_cntrs[i][j].isr_free_cnt);
 	seq_printf(s, "policy (%d) pool( %d ):", i, j);
 	seq_printf(s, "\t0x%08x", rx_cnt_t);
 	seq_printf(s, "\t0x%08x", tx_cnt_t);
 	seq_printf(s, "\t0x%08x", free_cnt_t);
 	seq_printf(s, "\t0x%08x", alloc_cnt_t);
+	seq_printf(s, "\t0x%08x", ring_buff_cnt_t);
 	seq_printf(s, "\t0x%08x", isr_free_cnt_t);
 	val = (rx_cnt_t + alloc_cnt_t + tx_cnt_t + free_cnt_t) -
 	       isr_free_cnt_t;
@@ -172,7 +887,7 @@ static ssize_t cqm_ls_write(struct file *file, const char __user *buf,
 	num = dp_split_buffer(p, param_list, ARRAY_SIZE(param_list));
 
 	if ((num == 1) && (strncmp(param_list[0], "help", 4) == 0))
-		PRINTK("Help: Please use: cat /sys/kernel/debug/cqm/cqmls\n");
+		PRINTK("Help: Please use: cat /sys/kernel/debug/cqm/cqm_ls\n");
 	return count;
 }
 
@@ -288,10 +1003,10 @@ static ssize_t cqm_dma_desc_write(struct file *file, const char __user *buf,
 	num = dp_split_buffer(p, param_list, ARRAY_SIZE(param_list));
 	if ((num == 1) && (strncmp(param_list[0], "help", 4) == 0)) {
 		PRINTK("Example:\n");
-		PRINTK("echo 0 port > /sys/kernel/debug/cqm/cqmdma_desc");
+		PRINTK("echo 0 port > /sys/kernel/debug/cqm/dma_desc");
 		PRINTK("to display DESC_IGP register\n");
 		PRINTK("If port <= 15 or port >= 4, displays all reg values\n");
-		PRINTK("echo 1 port > /sys/kernel/debug/cqm/cqmdma_desc\n");
+		PRINTK("echo 1 port > /sys/kernel/debug/cqm/dma_desc\n");
 		PRINTK("to display DESC_EGP register\n");
 		PRINTK("If port <=26 or port >= 7, displays all reg values\n");
 	} else if (num >= 1) {
@@ -420,7 +1135,7 @@ static ssize_t cqm_ctrl_write(struct file *file, const char __user *buf,
 	num = dp_split_buffer(p, param_list, ARRAY_SIZE(param_list));
 
 	if ((num == 1) && (strncmp(param_list[0], "help", 4) == 0))
-		PRINTK("Help: cat /sys/kernel/debug/cqm/cqmctrl\n");
+		PRINTK("Help: cat /sys/kernel/debug/cqm/ctrl\n");
 	return count;
 }
 
@@ -556,6 +1271,7 @@ static inline void disp_deq_pon_reg(void *deq_base, u32 j)
 	unsigned long tmp2 = 0x19F00 + ((j - 26) * 0x400);
 	unsigned long tmp4;
 	unsigned long desc0 = DESC0_0_CPU_EGP_0;
+	void *pib_base = cqm_get_pib_base();
 	int i;
 
 	PRINTK("Name: CFG_PON_EGP_%02d\n", j);
@@ -585,6 +1301,11 @@ static inline void disp_deq_pon_reg(void *deq_base, u32 j)
 		       deq_base + DPTR_CPU_EGP_0 + (tmp1));
 		PRINTK("Val:  0x%08x\n",
 		       cbm_r32(deq_base + DPTR_CPU_EGP_0 + (tmp1)));
+		PRINTK("Name: DQPC_PON_EGP_%02d\n", j);
+		PRINTK("Addr: 0x%8p\n",
+		       pib_base + CQM_PON_CNTR(j));
+		PRINTK("Val:  0x%08x\n",
+		       cbm_r32(pib_base + CQM_PON_CNTR(j)));
 		PRINTK("Name: BPRC_PON_EGP_%02d\n", j);
 		PRINTK("Addr: 0x%8p\n",
 		       deq_base + BPRC_CPU_EGP_0 + (tmp1));
@@ -608,6 +1329,11 @@ static inline void disp_deq_pon_reg(void *deq_base, u32 j)
 		       deq_base + DPTR_CPU_EGP_0 + tmp);
 		PRINTK("Val:  0x%08x\n",
 		       cbm_r32(deq_base + DPTR_CPU_EGP_0 + tmp));
+		PRINTK("Name: DQPC_PON_EGP_%02d\n", j);
+		PRINTK("Addr: 0x%8p\n",
+		       pib_base + CQM_PON_CNTR(j));
+		PRINTK("Val:  0x%08x\n",
+		       cbm_r32(pib_base + CQM_PON_CNTR(j)));
 	}
 
 	for (i = 0; i < 8; i++) {
@@ -851,7 +1577,7 @@ static ssize_t cqm_deq_write(struct file *file, const char __user *buf,
 
 	num = dp_split_buffer(p, param_list, ARRAY_SIZE(param_list));
 	if ((num == 1) && (strncmp(param_list[0], "help", 4) == 0)) {
-		PRINTK("echo port_num > /sys/kernel/debug/cqm/cqmdeq\n");
+		PRINTK("echo port_num > /sys/kernel/debug/cqm/deq\n");
 		PRINTK("If port < 90, it will display that port registers.\n");
 		PRINTK("Port 0-3, CPU; 4~6, ACA; 7~25, DMA; 26~89, PON.\n");
 	} else if (num == 1) {
@@ -914,21 +1640,21 @@ static const struct file_operations cqm_deq_fops = {
 static inline void disp_enq_help(void)
 {
 	PRINTK("To display CQM enq register try\n");
-	PRINTK("echo port_num > /sys/kernel/debug/cqm/cqmenq\n");
+	PRINTK("echo port_num > /sys/kernel/debug/cqm/enq\n");
 	PRINTK("To display CQM enq ctrl registers try\n");
-	PRINTK("echo ctrl > /sys/kernel/debug/cqm/cqmenq\n");
+	PRINTK("echo ctrl > /sys/kernel/debug/cqm/enq\n");
 	PRINTK("To display CQM enq den registers try\n");
-	PRINTK("echo den > /sys/kernel/debug/cqm/cqmenq\n");
+	PRINTK("echo den > /sys/kernel/debug/cqm/enq\n");
 	PRINTK("To display CQM enq ovh registers try\n");
-	PRINTK("echo ovh > /sys/kernel/debug/cqm/cqmenq\n");
+	PRINTK("echo ovh > /sys/kernel/debug/cqm/enq\n");
 	PRINTK("To display CQM enq threshold enable registers try\n");
-	PRINTK("echo thres_en > /sys/kernel/debug/cqm/cqmenq\n");
+	PRINTK("echo thres_en > /sys/kernel/debug/cqm/enq\n");
 	PRINTK("To display CQM enq IP occupancy registers try\n");
-	PRINTK("echo ip_occ > /sys/kernel/debug/cqm/cqmenq\n");
+	PRINTK("echo ip_occ > /sys/kernel/debug/cqm/enq\n");
 	PRINTK("To display CQM enq HIGH watermark registers try\n");
-	PRINTK("echo hwm > /sys/kernel/debug/cqm/cqmenq\n");
+	PRINTK("echo hwm > /sys/kernel/debug/cqm/enq\n");
 	PRINTK("To display CQM enq HIGH watermark registers try\n");
-	PRINTK("echo lwm > /sys/kernel/debug/cqm/cqmenq\n");
+	PRINTK("echo lwm > /sys/kernel/debug/cqm/enq\n");
 }
 
 static inline void disp_enq_thres(void *enq_base)
@@ -1481,7 +2207,7 @@ static ssize_t cqm_enq_write(struct file *file, const char __user *buf,
 
 	} else {
 		PRINTK("Wrong Param(try):\n");
-		PRINTK("echo port > /sys/kernel/debug/cqm/cqmenq\n");
+		PRINTK("echo port > /sys/kernel/debug/cqm/enq\n");
 	}
 	return count;
 }
@@ -1533,7 +2259,7 @@ static ssize_t cqm_dqpc_write(struct file *file, const char __user *buf,
 	num = dp_split_buffer(p, param_list, ARRAY_SIZE(param_list));
 
 	if ((num == 1) && (strncmp(param_list[0], "help", 4) == 0))
-		PRINTK("cat /sys/kernel/debug/cqm/cqmdqpc\n");
+		PRINTK("cat /sys/kernel/debug/cqm/dqpc\n");
 	return count;
 }
 
@@ -1541,6 +2267,7 @@ static int cqm_dqpc_seq_read(struct seq_file *s, void *v)
 {
 	void *deq_base = cqm_get_deq_base();
 	u32 j;
+	void *pon_base = cqm_get_pib_base();
 
 	if (!capable(CAP_SYS_ADMIN))
 		return -EPERM;
@@ -1572,6 +2299,16 @@ static int cqm_dqpc_seq_read(struct seq_file *s, void *v)
 		seq_printf(s, "Val:  0x%08x        0x%08x\n",
 			   cbm_r32(deq_base + ((2 * j) * 0x1000)),
 			   cbm_r32(deq_base + (((2 * j) + 1) * 0x1000)));
+	}
+	for (j = 26; j <= 88; j = j + 2) {
+		seq_printf(s, "Name: DQPC_PON_EGP__%02d  DQPC_PON_EGP__%02d\n",
+			   j, j + 1);
+		seq_printf(s, "Addr: 0x%8p        0x%8p\n",
+			   pon_base + CQM_PON_CNTR(j),
+			   pon_base + CQM_PON_CNTR(j + 1));
+		seq_printf(s, "Val:  0x%08x        0x%08x\n",
+			   cbm_r32(pon_base + CQM_PON_CNTR(j)),
+			   cbm_r32(pon_base + CQM_PON_CNTR(j + 1)));
 	}
 	return 0;
 }
@@ -1610,7 +2347,7 @@ static ssize_t cqm_eqpc_write(struct file *file, const char __user *buf,
 	num = dp_split_buffer(p, param_list, ARRAY_SIZE(param_list));
 
 	if ((num == 1) && (strncmp(param_list[0], "help", 4) == 0))
-		PRINTK("Help: cat /sys/kernel/debug/cqm/cqmeqpc\n");
+		PRINTK("Help: cat /sys/kernel/debug/cqm/eqpc\n");
 	return count;
 }
 
@@ -1730,6 +2467,217 @@ static const struct file_operations cqm_ofsq_fops = {
 	.release = single_release,
 };
 
+static int cqm_epon_queue_read(struct seq_file *s, void *v)
+{
+	int startq, endq, base_port;
+	u32 epon_mode_reg_value = epon_mode_reg_get();
+
+	startq = epon_mode_reg_value & EPON_EPON_MODE_REG_STARTQ_MASK;
+	endq = (epon_mode_reg_value & EPON_EPON_MODE_REG_ENDQ_MASK)
+		>> EPON_EPON_MODE_REG_ENDQ_POS;
+	base_port = (epon_mode_reg_value
+		& EPON_EPON_MODE_REG_EPONBASEPORT_MASK)
+		>> EPON_EPON_MODE_REG_EPONBASEPORT_POS;
+
+	seq_puts(s, "EPON_QUEUE_SETTING:\n");
+	seq_printf(s, "base port:	%d\n", base_port);
+	seq_printf(s, "starting qid:	%d\n", startq);
+	seq_printf(s, "total num:	%d\n", 1 + endq - startq);
+	return 0;
+}
+
+static int cqm_epon_queue_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, cqm_epon_queue_read, inode->i_private);
+}
+
+static const struct file_operations cqm_epon_queue_fops = {
+	.open = cqm_epon_queue_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
+static int cqm_qid_to_ep_read(struct seq_file *s, void *v)
+{
+	int port, qid_i;
+
+	seq_puts(s, "qid to ep port mapping table\n");
+	seq_puts(s, "---------------\n");
+	seq_puts(s, "|  qid | port |\n");
+
+	for (qid_i = 0; qid_i < MAX_QOS_QUEUES; qid_i++) {
+		cqm_qid2ep_map_get(qid_i, &port);
+		if (port != 0) {
+			seq_puts(s, "---------------\n");
+			seq_printf(s, "| %4u | %4u |\n", qid_i, port);
+		}
+	}
+	return 0;
+}
+
+static int cqm_qid_to_ep_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, cqm_qid_to_ep_read, inode->i_private);
+}
+
+static const struct file_operations cqm_qid_to_ep_fops = {
+	.open = cqm_qid_to_ep_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
+int lookup_start32(void)
+{
+	return 0;
+}
+
+static int cqm_qid_queue_map_read(struct seq_file *s, int pos)
+{
+	if (!capable(CAP_NET_ADMIN))
+		return -EPERM;
+	if (cqm_find_pattern(pos, s, -1) < 0)
+		return pos;
+	pos++;
+	if (pos >= 16)
+		pos = -1;
+	return pos;
+}
+
+static void *cqm_seq_start(struct seq_file *s, loff_t *pos)
+{
+	struct cqm_dbg_file_entry *p = s->private;
+
+	if (p->pos < 0)
+		return NULL;
+
+	return p;
+}
+
+static void *cqm_seq_next(struct seq_file *s, void *v, loff_t *pos)
+{
+	struct cqm_dbg_file_entry *p = s->private;
+
+	*pos = p->pos;
+
+	if (p->pos >= 0)
+		return p;
+	else
+		return NULL;
+}
+
+static void cqm_seq_stop(struct seq_file *s, void *v)
+{
+}
+
+static int cqm_seq_show(struct seq_file *s, void *v)
+{
+	struct cqm_dbg_file_entry *p = s->private;
+
+	if (p->pos >= 0) {
+		if (p->multi_callback) {
+			//pr_info("multiple call");
+			p->pos = p->multi_callback(s, p->pos);
+		} else if (p->single_callback) {
+			//pr_info("single call: %px", p->single_callback);
+			p->single_callback(s);
+			p->pos = -1;
+		}
+	}
+	return 0;
+}
+
+static const struct seq_operations cqm_seq_ops = {
+	.start = cqm_seq_start,
+	.next = cqm_seq_next,
+	.stop = cqm_seq_stop,
+	.show = cqm_seq_show
+};
+
+void cqm_dummy_single_show(struct seq_file *s)
+{
+	seq_puts(s, "Cat Not implemented yet !\n");
+}
+
+static int cqm_dbg_open(struct inode *inode, struct file *file)
+{
+	struct seq_file *s;
+	struct cqm_dbg_file_entry *p;
+	struct cqm_dbg_entry *entry;
+	int ret;
+
+	ret = seq_open(file, &cqm_seq_ops);
+	if (ret)
+		return ret;
+
+	s = file->private_data;
+	p = kmalloc(sizeof(*p), GFP_KERNEL);
+
+	if (!p) {
+		(void)seq_release(inode, file);
+		return -ENOMEM;
+	}
+	memset(p, 0, sizeof(*p));
+
+	entry = inode->i_private;
+
+	if (entry->multi_callback)
+		p->multi_callback = entry->multi_callback;
+	if (entry->single_callback)
+		p->single_callback = entry->single_callback;
+	else
+		p->single_callback = cqm_dummy_single_show;
+
+	if (entry->init_callback)
+		p->pos = entry->init_callback();
+	else
+		p->pos = 0;
+
+	s->private = p;
+
+	return 0;
+}
+
+static int cqm_dbg_release(struct inode *inode, struct file *file)
+{
+	struct seq_file *s;
+
+	s = file->private_data;
+	kfree(s->private);
+
+	return seq_release(inode, file);
+}
+
+static int cqm_seq_single_show(struct seq_file *s, void *v)
+{
+	struct cqm_dbg_entry *p = s->private;
+
+	p->single_callback(s);
+	return 0;
+}
+
+static int cqm_dbg_single_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, cqm_seq_single_show, inode->i_private);
+}
+
+static const struct file_operations cqm_queue_map_lookup_fops = {
+	.owner = THIS_MODULE,
+	.open = cqm_dbg_open,
+	.read = seq_read,
+	.write = cqm_get_qid_queue_map_write,
+	.llseek = seq_lseek,
+	.release = cqm_dbg_release,
+};
+
+static struct cqm_dbg_entry cqm_dbg_entries[] = {
+	{"qid_queue_map", NULL, cqm_qid_queue_map_read,
+		lookup_start32, cqm_get_qid_queue_map_write},
+	/*the last place holder */
+	{NULL, NULL, NULL, NULL, NULL}
+};
+
 int cqm_debugfs_init(struct cqm_ctrl *pctrl)
 {
 	char cqm_dir[64] = {0};
@@ -1740,35 +2688,36 @@ int cqm_debugfs_init(struct cqm_ctrl *pctrl)
 	if (!pctrl->debugfs)
 		return -ENOMEM;
 
-	file = debugfs_create_file("cqmeqpc", 0400, pctrl->debugfs,
+	file = debugfs_create_file("eqpc", 0400, pctrl->debugfs,
 				   pctrl, &cqm_eqpc_fops);
 	if (!file)
 		goto err;
 
-	file = debugfs_create_file("cqmdqpc", 0400, pctrl->debugfs,
+	file = debugfs_create_file("dqpc", 0400, pctrl->debugfs,
 				   pctrl, &cqm_dqpc_fops);
 	if (!file)
 		goto err;
-	file = debugfs_create_file("cqmenq", 0400, pctrl->debugfs,
+	file = debugfs_create_file("enq", 0400, pctrl->debugfs,
 				   pctrl, &cqm_enq_fops);
 	if (!file)
 		goto err;
 
-	file = debugfs_create_file("cqmdeq", 0400, pctrl->debugfs,
+	file = debugfs_create_file("deq", 0400, pctrl->debugfs,
 				   pctrl, &cqm_deq_fops);
 	if (!file)
 		goto err;
-	file = debugfs_create_file("cqmdma_desc", 0400,
+
+	file = debugfs_create_file("dma_desc", 0400,
 				   pctrl->debugfs, pctrl, &cqm_dma_desc_fops);
 	if (!file)
 		goto err;
 
-	file = debugfs_create_file("cqmctrl", 0400, pctrl->debugfs,
+	file = debugfs_create_file("ctrl", 0400, pctrl->debugfs,
 				   pctrl, &cqm_ctrl_fops);
 	if (!file)
 		goto err;
 
-	file = debugfs_create_file("cqmls", 0400, pctrl->debugfs,
+	file = debugfs_create_file("cqm_ls", 0400, pctrl->debugfs,
 				   pctrl, &cqm_ls_fops);
 	if (!file)
 		goto err;
@@ -1777,14 +2726,33 @@ int cqm_debugfs_init(struct cqm_ctrl *pctrl)
 				   pctrl, &cqm_ofsc_fops);
 	if (!file)
 		goto err;
+
 	file = debugfs_create_file("check_fsqm", 0400, pctrl->debugfs,
 				   pctrl, &cqm_ofsq_fops);
 	if (!file)
 		goto err;
+
 	file = debugfs_create_file("pkt_count", 0400, pctrl->debugfs,
 				   pctrl, &cqm_dbg_cntrs_fops);
 	if (!file)
 		goto err;
+
+	file = debugfs_create_file("qid_to_ep", 0400, pctrl->debugfs,
+				   pctrl, &cqm_qid_to_ep_fops);
+	if (!file)
+		goto err;
+
+	file = debugfs_create_file("epon_queue", 0400, pctrl->debugfs,
+				   pctrl, &cqm_epon_queue_fops);
+	if (!file)
+		goto err;
+
+	file = debugfs_create_file("qid_queue_map", 0400, pctrl->debugfs,
+				   &cqm_dbg_entries[0],
+				   &cqm_queue_map_lookup_fops);
+	if (!file)
+		goto err;
+
 	return 0;
 err:
 	debugfs_remove_recursive(pctrl->debugfs);

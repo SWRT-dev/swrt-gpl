@@ -15,18 +15,26 @@
 #include <linux/of.h>
 #include <linux/reset.h>
 #include <xgmac_common.h>
+#include <xgmac.h>
+#include <gswss_mac_api.h>
 #include <gswss_api.h>
 #include <gsw_flow_core.h>
 
-#define GRX500_MACH_NAME        		"lantiq,xrx500"
-#define PRX300_MACH_NAME          		"intel,prx300"
-#define DEVID_STR               		"intel,gsw-devid"
-#define EXTERNAL_SWITCH_DEVID    		"intel,gsw_ext-devid"
+#define GRX500_MACH_NAME			"lantiq,xrx500"
+#define PRX300_MACH_NAME			"intel,prx300"
+#define DEVID_STR				"intel,gsw-devid"
+#define EXTERNAL_SWITCH_DEVID			"intel,gsw_ext-devid"
 #define EXTERNAL_SWITCH_PHYID			"intel,gsw_ext-phyid"
 #define EXTERNAL_SWITCH_BASEADDR		"intel,gsw_ext-baseaddr"
-#define EXTERNAL_SWITCH_SGMIIBASEADDR   "intel,gsw_ext-sgmiibaseaddr"
-#define GSW_DPU                         "intel,gsw-dpu"
-#define GSW_GLOBAL_PCE_RULE_NUM         "intel,gsw-globalpce-rules"
+#define EXTERNAL_SWITCH_SGMIIBASEADDR		"intel,gsw_ext-sgmiibaseaddr"
+#define GSW_DPU					"intel,gsw-dpu"
+#define GSW_GLOBAL_PCE_RULE_NUM			"intel,gsw-globalpce-rules"
+#define GSW_AGING_TIMEOUT			"intel,gsw-aging-timeout"
+#define GSW_EXTERNAL_OR_INTERNAL		"intel,gsw_ext-switch"
+#define AUX0_TRIGGER				"intel,aux0-trigger"
+#define AUX1_TRIGGER				"intel,aux1-trigger"
+#define REF_TIME				"intel,ref-time"
+#define PPS_SEL					"intel,pps-sel"
 
 /* Structure for GSWIP Subsystem operations
  * used to start Sub-Functional Drivers
@@ -209,6 +217,7 @@ static int gsw_remove_data(u32 devid)
 					container_of(gsw_dev_cells[i].drv_data,
 						     ethsw_api_dev_t,
 						     ops);
+				kfree(core_pdata->Global_Rule_BitMap.global_rule_idx_map);
 				kfree(core_pdata);
 			}
 		}
@@ -230,7 +239,10 @@ static int gsw_add_macdev(struct gsw_cell *gsw_dev_cell, u32 devid)
 {
 	struct mac_prv_data *mac_pdata;
 	int ret = 0;
+#ifdef CONFIG_OF
 	struct resource irqres;
+	u32 val;
+#endif
 
 	/* Allocate the private data for MAC */
 	mac_pdata = kzalloc(sizeof(struct mac_prv_data), GFP_KERNEL);
@@ -246,6 +258,18 @@ static int gsw_add_macdev(struct gsw_cell *gsw_dev_cell, u32 devid)
 		mac_pdata->mac_en = MAC_DIS;
 
 #ifdef CONFIG_OF
+	/* Retrieve external reference time flag */
+	val = 0;
+	of_property_read_u32(gsw_dev_cell->of_node, "ext-ref-time", &val);
+	if (val)
+		mac_pdata->ext_ref_time = true;
+
+	/* Retrieve ingress/egress time correction */
+	of_property_read_s32(gsw_dev_cell->of_node, "ts-ig-corr",
+			     &mac_pdata->ig_corr);
+	of_property_read_s32(gsw_dev_cell->of_node, "ts-eg-corr",
+			     &mac_pdata->eg_corr);
+
 	/* Retrieve the phymode */
 	ret = of_property_read_string(gsw_dev_cell->of_node, "phy-mode",
 				      &mac_pdata->phy_mode);
@@ -257,6 +281,10 @@ static int gsw_add_macdev(struct gsw_cell *gsw_dev_cell, u32 devid)
 	/* Retrieve the speedset */
 	ret = of_property_read_u32(gsw_dev_cell->of_node, "speed",
 				   &mac_pdata->phy_speed);
+
+	/* Logic to Reset Adaption layer if RxFifo Error happens in MAC */
+	of_property_read_u32(gsw_dev_cell->of_node, "rxfifo_err_thresh",
+			     &mac_pdata->rxfifo_err.rxfifo_err_threshold);
 #else
 
 	if (gsw_dev[devid].prod_id & PRX300) {
@@ -292,12 +320,13 @@ static int gsw_add_switchdev(struct gsw_cell *gsw_dev_cell, u32 devid)
 
 	of_irq_to_resource_table(gsw_dev_cell->of_node, &irqres, 1);
 	switch_pdata->irq_num = irqres.start;
+	switch_pdata->prod_id = gsw_dev[devid].prod_id;
 
 	of_property_read_u32(gsw_dev_cell->of_node,
-			     EXTERNAL_SWITCH_DEVID,
-			     &switch_pdata->ext_devid);
+			     GSW_EXTERNAL_OR_INTERNAL,
+			     &switch_pdata->ext_switch);
 
-	if (switch_pdata->ext_devid) {
+	if (switch_pdata->ext_switch) {
 		of_property_read_u32(gsw_dev_cell->of_node,
 				     EXTERNAL_SWITCH_PHYID,
 				     &switch_pdata->ext_phyid);
@@ -314,13 +343,20 @@ static int gsw_add_switchdev(struct gsw_cell *gsw_dev_cell, u32 devid)
 	gsw_dpu = of_find_node_by_name(NULL, "gint_eth");
 
 	if (!gsw_dpu)
-		pr_err("Unable to get node from gint_eth\n");
+		pr_debug("Unable to get node from gint_eth\n");
 
 	of_property_read_u32(gsw_dpu, GSW_DPU,
 			     &switch_pdata->dpu);
 	/* Get the Number of Common/Global TFLOW Rules */
 	of_property_read_u32(gsw_dev_cell->of_node, GSW_GLOBAL_PCE_RULE_NUM,
 			     &switch_pdata->num_of_global_rules);
+	/* Get default MAC table aging time */
+	of_property_read_u32(gsw_dev_cell->of_node, GSW_AGING_TIMEOUT,
+			     &switch_pdata->aging_timeout);
+	of_property_read_u32(gsw_dev_cell->of_node, DEVID_STR,
+			     &switch_pdata->devid);
+	of_property_read_u32(gsw_dev_cell->of_node, "intel,eg-sptag",
+			     &switch_pdata->eg_sptag);
 #ifndef CONFIG_OF
 
 	if (gsw_dev[devid].prod_id == GRX500) {
@@ -403,11 +439,13 @@ static int update_gsw_dev_cell(struct device_node *np,
 			goto failed;
 
 		gsw_dev[devid].mac_subdevs_cnt++;
-	} else if (of_node_cmp(np->name, CORE_DEV_NAME) == 0) {
+	} else if ((of_node_cmp(np->name, CORE_DEV_NAME) == 0)  &&
+		of_device_is_available(np)) {
 		ret = gsw_add_switchdev(&gsw_dev_cells[idx], devid);
 
 		if (ret)
 			goto failed;
+		gsw_dev[devid].gsw_subdevs_cnt++;
 	}
 
 	return 0;
@@ -444,7 +482,8 @@ static int gsw_parse_dt(struct device_node *base_node)
 	memset(&gsw_dev[devid], 0, sizeof(gsw_dev));
 
 	for_each_child_of_node(base_node, np) {
-		gsw_dev[devid].num_devs++;
+		if (of_device_is_available(np))
+			gsw_dev[devid].num_devs++;
 	}
 
 	gsw_dev_cells =
@@ -527,6 +566,37 @@ static int init_adapt_prvdata(int devid)
 	return 0;
 }
 
+static void cfg_ptp_mux(struct platform_device *pdev, int devid)
+{
+	struct adap_ops *ops = gsw_dev[devid].adap_ops;
+	struct device_node *np = pdev->dev.of_node;
+	u32 ref, dig, bin, pps;
+	u32 aux0, aux1, dummy;
+	int ret;
+
+	if (!ops->ss_get_cfg0_1588 || !ops->ss_set_cfg0_1588
+	    || !ops->ss_get_cfg1_1588 || !ops->ss_set_cfg1_1588) {
+		dev_err(&pdev->dev, "GSWSS does not PTP/1588 APIs.\n");
+		return;
+	}
+	
+	if (!ops->ss_get_cfg1_1588(ops, &aux0, &aux1, &dummy)) {
+		ret = !of_property_read_u32(np, AUX0_TRIGGER, &aux0);
+		ret |= !of_property_read_u32(np, AUX1_TRIGGER, &aux1);
+		if (ret)
+			ops->ss_set_cfg1_1588(ops, aux1, aux0, dummy);
+	}
+
+	if (!ops->ss_get_cfg0_1588(ops, &ref, &dig, &bin, &pps)) {
+		ret = !of_property_read_u32(np, REF_TIME, &ref);
+		if (ret)
+			dig = bin = ref;
+		ret |= !of_property_read_u32(np, PPS_SEL, &pps);
+		if (ret)
+			ops->ss_set_cfg0_1588(ops, ref, dig, bin, pps);
+	}
+}
+
 static int gsw_remove_devices(struct device *parent)
 {
 	struct gswss *gswdev = dev_get_drvdata(parent);
@@ -538,8 +608,10 @@ static int gsw_remove_devices(struct device *parent)
 	if (gswdev->adap_ops)
 		kfree(gswdev->adap_ops);
 
-	if (gswdev->core_dev)
-		platform_device_put(gswdev->core_dev);
+	for (i = 0; i < gswdev->gsw_subdevs_cnt; i++) {
+		if (gswdev->core_dev[i])
+			platform_device_put(gswdev->core_dev[i]);
+	}
 
 	for (i = 0; i < gswdev->mac_subdevs_cnt; i++)
 		platform_device_put(gswdev->mac_dev[i]);
@@ -661,6 +733,58 @@ fail:
 	return ret;
 }
 
+/* This API will get executed by workqueue
+ * if per MAC rxfifo_err exceeds rxfifo_err_threshold,
+ * it resets corresponding MAC adaption layer
+ */
+static int rxfifo_err_poll(struct delayed_work *work)
+{
+	struct mac_rxfifo_poll *rxfifo_err =
+		container_of(work, struct mac_rxfifo_poll, work);
+	u32 devid = 0;
+	int mac_cnt = gsw_get_mac_subifcnt(devid);
+	int i = 0;
+	struct mac_ops *ops;
+	u32 val_lo = 0, val_hi = 0;
+	u64 val = 0;
+	int err_cnt = 0;
+
+	for (i = 0; i < mac_cnt; i++) {
+		ops = gsw_get_mac_ops(devid, MAC_2 + i);
+
+		ops->xgmac_reg_rd(ops, MMC_RXFIFOOVERFLOW_LO, &val_lo);
+		ops->xgmac_reg_rd(ops, MMC_RXFIFOOVERFLOW_LO + 4, &val_hi);
+		val = ((u64)val_hi << 32) | val_lo;
+
+		if (!rxfifo_err->rxfifo_err_cnt[i]) {
+			rxfifo_err->rxfifo_err_cnt[i] = val;
+			err_cnt = val;
+		} else {
+			err_cnt = val - rxfifo_err->rxfifo_err_cnt[i];
+		}
+
+		if (err_cnt > rxfifo_err->rxfifo_err_threshold) {
+			gswss_adap_reset(ops, 1);
+			rxfifo_err->rxfifo_err_cnt[i] = val;
+		}
+	}
+
+	/* reschedule to check later after 1 sec*/
+	schedule_delayed_work(&rxfifo_err->work, msecs_to_jiffies(1000));
+
+	return 1;
+}
+
+static void cfg_rxfifo_err_poll(struct platform_device *pdev, int devid)
+{
+	struct mac_ops *ops = gsw_get_mac_ops(devid, MAC_2);
+	struct mac_prv_data *pdata = GET_MAC_PDATA(ops);
+
+	/* Init and schedule RxFifo Error Poll for all MAC's in every 1 sec */
+	INIT_DELAYED_WORK(&pdata->rxfifo_err.work, (work_func_t)rxfifo_err_poll);
+	schedule_delayed_work(&pdata->rxfifo_err.work, msecs_to_jiffies(1000));
+}
+
 static int gsw_dev_probe(struct platform_device *pdev)
 {
 	u32 devid = 0;
@@ -717,6 +841,14 @@ static int gsw_dev_probe(struct platform_device *pdev)
 	ret = gsw_add_devices(dev, PLATFORM_DEVID_AUTO, gsw_dev_cells,
 			      gsw_dev[devid].num_devs,
 			      NULL, 0);
+
+	/* Config PTP/1588 Mux */
+	if (ret == 0 && prod_id == PRX300)
+		cfg_ptp_mux(pdev, devid);
+
+	if (ret == 0 && prod_id != GRX500)
+		cfg_rxfifo_err_poll(pdev, devid);
+
 	return ret;
 }
 
@@ -733,7 +865,7 @@ struct mac_ops *gsw_get_mac_ops(u32 devid, u32 mac_idx)
 {
 	u32 macid = mac_idx - MAC_2;
 
-	if (macid > gsw_dev[devid].mac_subdevs_cnt)
+	if (macid >= gsw_dev[devid].mac_subdevs_cnt)
 		return NULL;
 
 	if (gsw_dev[devid].mac_dev[macid])
@@ -747,7 +879,7 @@ EXPORT_SYMBOL(gsw_get_mac_ops);
 struct core_ops *gsw_get_swcore_ops(u32 devid)
 {
 	if (gsw_dev[devid].core_dev)
-		return (platform_get_drvdata(gsw_dev[devid].core_dev));
+		return (platform_get_drvdata(gsw_dev[devid].core_dev[devid]));
 
 	return NULL;
 }
@@ -756,7 +888,7 @@ EXPORT_SYMBOL(gsw_get_swcore_ops);
 struct platform_device *gsw_get_coredev(u32 devid)
 {
 	if (gsw_dev[devid].core_dev)
-		return (gsw_dev[devid].core_dev);
+		return (gsw_dev[devid].core_dev[devid]);
 
 	return NULL;
 }

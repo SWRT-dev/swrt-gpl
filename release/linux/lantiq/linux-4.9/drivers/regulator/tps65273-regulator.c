@@ -318,14 +318,21 @@ static void tps65273_shutdown(struct i2c_client *client)
 {
 	struct tps65273 *tps = i2c_get_clientdata(client);
 	int i, ret = 0;
+	int count = 10;
 
 	dev_dbg(&client->dev, "function %s is called\n", __func__);
 
 	for (i = 0; i < TPS65273_NUM_REGULATOR; i++) {
 		struct regulator_dev *rdev = tps->rdev[i];
-		ret = regmap_update_bits(tps->regmap,
+		do {
+			ret = regmap_update_bits(tps->regmap,
 					TPS65273_REG_VOUT1_SEL + i,
 					TPS65273_VOUT_SEL_GO_BIT, 0);
+			/* try out multiple times for success */
+			/* fail case may be signal with ERESTARTSYS */
+			if (ret == 0)
+				break;
+		} while(--count);
 		if (ret < 0) {
 			dev_err(&client->dev,
 				"shutdown regulator failed: (%d)\n", ret);

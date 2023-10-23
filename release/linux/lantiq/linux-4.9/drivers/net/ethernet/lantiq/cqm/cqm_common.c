@@ -18,19 +18,25 @@ static void __iomem *cqm_ls_addr_base;
 
 void buf_addr_adjust(unsigned int buf_base_addr,
 		     unsigned int buf_size,
+		     dma_addr_t buf_dma_addr,
 		     unsigned int *adjusted_buf_base,
 		     unsigned int *adjusted_buf_size,
+		     dma_addr_t *adjusted_dma_addr,
 		     unsigned int align)
 {
 	unsigned int base;
 	unsigned int size;
+	dma_addr_t dma_addr;
 
 	pr_info("0x%x 0x%x 0x%x\n", buf_base_addr, buf_size, align);
 	base = ALIGN(buf_base_addr, align);
 	size = buf_base_addr + buf_size - base;
+	dma_addr = ALIGN(buf_dma_addr, align);
 
 	*adjusted_buf_base = base;
 	*adjusted_buf_size = size;
+	if (adjusted_dma_addr)
+		*adjusted_dma_addr = dma_addr;
 	pr_info("0x%x 0x%x\n", base, size);
 }
 

@@ -22,6 +22,11 @@
 #define MII_MMDCTRL		0x0d
 #define MII_MMDDATA		0x0e
 
+#define MII_GCTRL		0x09
+#define MII_GCTRL_MSPT		BIT(10)	/* Master/Slave Port Type */
+#define MII_GCTRL_MS		BIT(11)	/* Master/Slave Config Value */
+#define MII_GCTRL_MSEN		BIT(12)	/* Master/Slave Manual Configuration Enable */
+
 #define MII_VR9_11G_IMASK	0x19	/* interrupt mask */
 #define MII_VR9_11G_ISTAT	0x1a	/* interrupt status */
 #define MII_PHY_FWV		0x1e	/* firmware version */
@@ -52,6 +57,13 @@
 #define P31G_ANEG_MGBT_AN_STAT	0x21
 #define STAT_AB_2G5BT_BIT	BIT(5)
 #define STAT_AB_FR_2G5BT	BIT(3)
+#define MMD_DEVVSPEC1			0x1E
+#define VSPEC1_PM_CTRL			0x0C
+#define VSPEC1_PM_CTRL_SYNCE_EN		BIT(4)
+#define VSPEC1_PM_CTRL_SYNCE_CLK_MASK	GENMASK(5, 6)
+#define VSPEC1_PM_CTRL_SYNCE_CLK_PSTN	(0 << 5) /* 8kHz clock */
+#define VSPEC1_PM_CTRL_SYNCE_CLK_EEC1	(1 << 5) /* 2048kHz clock */
+#define VSPEC1_PM_CTRL_SYNCE_CLK_EEC2	(2 << 5) /* 1544kHz clock */
 
 static __maybe_unused int vr9_gphy_mmd_read(struct phy_device *phydev,
 						u16 regnum)
@@ -72,6 +84,22 @@ static __maybe_unused int vr9_gphy_mmd_write(struct phy_device *phydev,
 	phy_write(phydev, MII_MMDDATA, val);
 
 	return 0;
+}
+
+static int
+p31g_read_mmd_phyreg(struct phy_device *phydev, int regnum,
+		     int devnum, int ptrad)
+{
+	return mdiobus_read(phydev->mdio.bus, phydev->mdio.addr,
+				   MII_ADDR_C45 | (devnum << 16) | (regnum & 0xffff));
+}
+
+static void
+p31g_write_mmd_phyreg(struct phy_device *phydev, int regnum,
+		      int devnum, int ptrad, u32 val)
+{
+	regnum = MII_ADDR_C45 | ((devnum & 0x1f) << 16) | (regnum & 0xffff);
+	mdiobus_write(phydev->mdio.bus, phydev->mdio.addr, regnum, val);
 }
 
 static int vr9_gphy_config_init(struct phy_device *phydev)
@@ -182,8 +210,25 @@ static __maybe_unused int p31g_gphy_mmd_write(struct phy_device *phydev,
 	return phy_write(phydev, regnum, val);
 }
 
+static __maybe_unused int p31g_gphy_mmd_mask(struct phy_device *phydev,
+					     u32 devad, u32 regnum,
+					     u32 clear, u32 set)
+{
+	int val;
+
+	val = p31g_gphy_mmd_read(phydev, devad, regnum);
+	if (val < 0)
+		return val;
+
+	val &= ~(clear);
+	val |= set;
+	return p31g_gphy_mmd_write(phydev, devad, regnum, val);
+}
+
 static int p31g_gphy_config_init(struct phy_device *phydev)
 {
+	int err, val;
+
 	vr9_gphy_config_init(phydev);
 
 	/* Linux PHY framework does not have a way yet to define
@@ -197,7 +242,22 @@ static int p31g_gphy_config_init(struct phy_device *phydev)
 	dev_info(&phydev->mdio.dev, "fw version 0x%04X\n",
 		 phy_read(phydev, MII_PHY_FWV));
 
-	return 0;
+	/* PRX300 only supports 2.048 MHz input clock, configure that */
+	err = p31g_gphy_mmd_mask(phydev, MMD_DEVVSPEC1, VSPEC1_PM_CTRL,
+				 VSPEC1_PM_CTRL_SYNCE_EN |
+				 VSPEC1_PM_CTRL_SYNCE_CLK_MASK,
+				 VSPEC1_PM_CTRL_SYNCE_EN |
+				 VSPEC1_PM_CTRL_SYNCE_CLK_EEC1);
+	if (err)
+		return err;
+	val = phy_read(phydev, MII_GCTRL);
+	if (val < 0)
+		return val;
+	val |= MII_GCTRL_MS;
+	val |= MII_GCTRL_MSEN;
+	err = phy_write(phydev, MII_GCTRL, val);
+
+	return err;
 }
 
 static int p31g_gphy_config_aneg(struct phy_device *phydev)
@@ -327,6 +387,8 @@ static struct phy_driver lantiq_phy[] = {
 		.read_status	= p31g_gphy_read_status,
 		.ack_interrupt	= vr9_gphy_ack_interrupt,
 		.config_intr	= vr9_gphy_config_intr,
+		.read_mmd_indirect = p31g_read_mmd_phyreg,
+		.write_mmd_indirect = p31g_write_mmd_phyreg,
 	},
 };
 

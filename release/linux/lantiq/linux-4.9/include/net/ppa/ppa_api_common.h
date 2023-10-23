@@ -22,9 +22,6 @@
 #ifndef RTP_SAMPLING_ENABLE	 /*if not defined in kernel's .configure file, then use local's definition*/
 #define RTP_SAMPLING_ENABLE	1
 #endif
-#ifndef MIB_MODE_ENABLE	 /*if not defined in kernel's .configure file, then use local's definition*/
-#define MIB_MODE_ENABLE		1
-#endif
 #ifndef CAP_WAP_CONFIG	 /*if not defined in kernel's .configure file, then use local's definition*/
 #define CAP_WAP_CONFIG		1
 #endif
@@ -53,11 +50,8 @@
 #define MPE_IFMIB		1
 #if IS_ENABLED(CONFIG_IPV4_IPV6_COUNTER_SUPPORT)
 #undef PPA_INTF_MIB_TIMER	/* Interface packet counters will be updated in other thread */
-#ifndef MIB_MODE_ENABLE	 /*if not defined in kernel's .configure file, then use local's definition*/
-#define MIB_MODE_ENABLE		1
-#endif
-#else /* CONFIG_IPV4_IPV6_COUNTER_SUPPORT */
+#else
 #define PPA_INTF_MIB_TIMER	1
-#endif /* CONFIG_IPV4_IPV6_COUNTER_SUPPORT */
+#endif
 
 #endif

@@ -3,6 +3,8 @@
 
 #include <linux/types.h>
 #include <linux/ethtool.h>
+#include <linux/platform_device.h>
+#include <linux/workqueue.h>
 
 #define XPCS_SUCCESS			0
 #define XPCS_FAILURE			-1
@@ -299,8 +301,21 @@
 #define SR_MII_CTRL_SS5_WIDTH			1
 #define SR_MII_CTRL_DUPLEX_MODE_POS		8
 #define SR_MII_CTRL_DUPLEX_MODE_WIDTH		1
+#define SR_MII_CTRL_RESTART_ANEG_POS		9
+#define SR_MII_CTRL_RESTART_ANEG_WIDTH		1
 #define SR_MII_CTRL_AN_ENABLE_POS		12
 #define SR_MII_CTRL_AN_ENABLE_WIDTH		1
+
+#define SR_MII_AN_ADV_FD_POS			5
+#define SR_MII_AN_ADV_FD_WIDTH			1
+#define SR_MII_AN_ADV_HD_POS			6
+#define SR_MII_AN_ADV_HD_WIDTH			1
+#define SR_MII_AN_ADV_PAUSE_POS			7
+#define SR_MII_AN_ADV_PAUSE_WIDTH		2
+#define SR_MII_AN_ADV_RF_POS			12
+#define SR_MII_AN_ADV_RF_WIDTH			2
+#define SR_MII_AN_ADV_NP_POS			15
+#define SR_MII_AN_ADV_NP_WIDTH			1
 
 #define VR_MII_AN_CTRL_PCS_MODE_POS		1
 #define VR_MII_AN_CTRL_PCS_MODE_WIDTH		2
@@ -398,8 +413,8 @@
 #define PMA_RX_RATE_CTRL_RX_RATE_3_POS		12
 #define PMA_RX_RATE_CTRL_RX_RATE_3_WIDTH	2
 
-#define PMA_RX_GENCTRL1_RX_DIV16P5_CLK_EN_POS   13
-#define PMA_RX_GENCTRL1_RX_DIV16P5_CLK_EN_WIDTH 3
+#define PMA_RX_GENCTRL1_RX_DIV16P5_CLK_EN_POS   12
+#define PMA_RX_GENCTRL1_RX_DIV16P5_CLK_EN_WIDTH 4
 
 #define PMA_TX_GENCTRL1_VBOOST_EN_0_POS		4
 #define PMA_TX_GENCTRL1_VBOOST_EN_0_WIDTH	1
@@ -462,13 +477,13 @@
 #define PMA_CTRL2_PMA_TYPE_WIDTH		4
 
 #define PMA_TX_BOOST_CTRL_TX0_IBOOST_POS	0
-#define PMA_TX_BOOST_CTRL_TX0_IBOOST_WIDTH	3
+#define PMA_TX_BOOST_CTRL_TX0_IBOOST_WIDTH	4
 #define PMA_TX_BOOST_CTRL_TX1_IBOOST_POS	4
-#define PMA_TX_BOOST_CTRL_TX1_IBOOST_WIDTH	3
+#define PMA_TX_BOOST_CTRL_TX1_IBOOST_WIDTH	4
 #define PMA_TX_BOOST_CTRL_TX2_IBOOST_POS	8
-#define PMA_TX_BOOST_CTRL_TX2_IBOOST_WIDTH	3
+#define PMA_TX_BOOST_CTRL_TX2_IBOOST_WIDTH	4
 #define PMA_TX_BOOST_CTRL_TX3_IBOOST_POS	12
-#define PMA_TX_BOOST_CTRL_TX3_IBOOST_WIDTH	3
+#define PMA_TX_BOOST_CTRL_TX3_IBOOST_WIDTH	4
 
 #define PMA_TX_STS_TX_ACK_0_POS			0
 #define PMA_TX_STS_TX_ACK_0_WIDTH		1
@@ -551,7 +566,52 @@
 #define PCS_DIG_STS_PSEQ_STATE_POS		2
 #define PCS_DIG_STS_PSEQ_STATE_WIDTH		3
 
-#define MAX_XPCS 				6
+#define PMA_RX_EQ_CTRL0_CTLE_BOOST_0_POS	0
+#define PMA_RX_EQ_CTRL0_CTLE_BOOST_0_WIDTH	4
+#define PMA_RX_EQ_CTRL0_CTLE_POLE_0_POS		5
+#define PMA_RX_EQ_CTRL0_CTLE_POLE_0_WIDTH	3
+#define PMA_RX_EQ_CTRL0_VGA2_GAIN_0_POS	8
+#define PMA_RX_EQ_CTRL0_VGA2_GAIN_0_WIDTH	4
+#define PMA_RX_EQ_CTRL0_VGA1_GAIN_0_POS	12
+#define PMA_RX_EQ_CTRL0_VGA1_GAIN_0_WIDTH	4
+
+/* Test Pattern */
+#define PCS_TP_CTRL_TP_SEL_POS	1
+#define PCS_TP_CTRL_TP_SEL_WIDTH	1
+#define PCS_TP_CTRL_RTP_EN_POS	2
+#define PCS_TP_CTRL_RTP_EN_WIDTH	1
+#define PCS_TP_CTRL_TTP_EN_POS	3
+#define PCS_TP_CTRL_TTP_EN_WIDTH	1
+#define PCS_TP_CTRL_PRBS31T_EN_POS	4
+#define PCS_TP_CTRL_PRBS31T_EN_WIDTH	1
+#define PCS_TP_CTRL_PRBS31R_EN_POS	5
+#define PCS_TP_CTRL_PRBS31R_EN_WIDTH	1
+#define PCS_TP_CTRL_PRBS9T_EN_POS	6
+#define PCS_TP_CTRL_PRBS9T_EN_WIDTH	1
+#define PCS_KR_CTRL_PRBS9RXEN_POS	7
+#define PCS_KR_CTRL_PRBS9RXEN_WIDTH	7
+
+/* Tx Tx to Rx Loopback */
+#define PMA_CTRL1_LB_POS	0
+#define PMA_CTRL1_LB_WIDTH	1
+/* Rx to Tx Loopback */
+#define PCS_DIG_CTRL1_R2TLBE_POS	14
+#define PCS_DIG_CTRL1_R2TLBE_WIDTH	1
+/* Square wave period */
+#define PCS_KR_CTRL_NVAL_SEL_POS	4
+#define PCS_KR_CTRL_NVAL_SEL_WIDTH	3
+/* PCS Error Block Counter */
+#define PCS_KR_STS2_ERR_BLK_POS 0
+#define PCS_KR_STS2_ERR_BLK_WIDTH	8
+/*PCS Bit Error Rate Counter */
+#define PCS_KR_STS2_BER_CNT_POS	8
+#define PCS_KR_STS2_BER_CNT_WIDTH	6
+/* PCS Latched High Bit Error */
+#define PCS_KR_STS2_LAT_HBER_POS 14
+#define PCS_KR_STS2_LAT_HBER_WIDTH	1
+/* Latched Block Lock */
+#define PCS_KR_STS2_LAT_BL_POS 15
+#define PCS_KR_STS2_LAT_BL_WIDTH	1
 
 enum {
 	BACKPL_ETH_PCS = 0,
@@ -575,13 +635,10 @@ enum {
 };
 
 enum {
-	PHY_SIDE_SGMII = 0,
-	MAC_SIDE_SGMII = 1
-};
-
-enum {
-	CONN_TYPE_SFP = 0,
-	CONN_TYPE_PHY = 1,
+	CONN_TYPE_ANEG_DIS = 0,
+	CONN_TYPE_ANEG_MAC = 1,
+	CONN_TYPE_ANEG_PHY = 2,
+	CONN_TYPE_ANEG_BX = 3,
 	CONN_TYPE_MAX,
 };
 
@@ -626,11 +683,8 @@ struct xpcs_mode_cfg {
 	u32 mpllb_bw;
 	u32 vco_ld_val[4];
 	u32 vco_ref_ld[4];
-	u32 afe_en;
 	u32 afe_en_31;
-	u32 dfe_en;
 	u32 dfe_en_31;
-	u32 cont_adapt0;
 	u32 cont_adapt31;
 	u32 tx_rate[4];
 	u32 rx_rate[4];
@@ -644,17 +698,119 @@ struct xpcs_mode_cfg {
 	u32 mpllb_div10_clk_en;
 	u32 mpllb_div8_clk_en;
 	u32 rx_div165_clk_en;
-	u32 tx_eq_main;
-	u32 tx_eq_pre;
-	u32 tx_eq_post;
 	u32 tx_eq_ovrride;
 	u32 los_thr;
-	u32 phy_boost_gain_val;
 	u32 rx_vref_ctrl;
 	u32 ref_clk_ctrl;
-	u32 vboost_lvl;
 	u32 tx_iboost[4];
 	int (*set_mode)(struct xpcs_prv_data *);
+};
+
+/* RX EQ XPCS Serdes Default ettings */
+#define XPCS_TENG_KR_AFE_EN 0x1
+#define XPCS_TENG_XAUI_AFE_EN 0x1
+#define XPCS_ONEG_AFE_EN 0x0
+#define XPCS_TWOP5G_AFE_EN 0x0
+
+#define XPCS_TENG_KR_DFE_EN 0x1
+#define XPCS_TENG_XAUI_DFE_EN 0x1
+#define XPCS_ONEG_DFE_EN 0x0
+#define XPCS_TWOP5G_DFE_EN 0x0
+
+#define XPCS_TENG_KR_CONT_ADAPT_0 0x1
+#define XPCS_TENG_XAUI_CONT_ADAPT_0 0x1
+#define XPCS_ONEG_CONT_ADAPT_0 0x0
+#define XPCS_TWOP5G_CONT_ADAPT_0 0x0
+
+#define XPCS_TENG_KR_PMA_RX_ATTN_CTRL 0x7
+#define XPCS_TENG_XAUI_PMA_RX_ATTN_CTRL 0x7
+#define XPCS_ONEG_PMA_RX_ATTN_CTRL 0x7
+#define XPCS_TWOP5G_PMA_RX_ATTN_CTRL 0x7
+
+#define XPCS_TENG_KR_PMA_RX_CTLE_BOOST_0 0xA
+#define XPCS_TENG_XAUI_PMA_RX_CTLE_BOOST_0 0xA
+#define XPCS_ONEG_PMA_RX_CTLE_BOOST_0 0x6
+#define XPCS_TWOP5G_PMA_RX_CTLE_BOOST_0 0x6
+
+#define XPCS_TENG_KR_PMA_RX_EQ_CTRL0 0x4
+#define XPCS_TENG_XAUI_PMA_RX_EQ_CTRL0 0x4
+#define XPCS_TWOP5G_PMA_RX_EQ_CTRL0 0x0
+#define XPCS_ONEG_PMA_RX_EQ_CTRL0 0x0
+
+#define XPCS_TENG_KR_PMA_RX_VGA2_GAIN_0 0x7
+#define XPCS_TENG_XAUI_PMA_RX_VGA2_GAIN_0 0x7
+#define XPCS_TWOP5G_PMA_RX_VGA2_GAIN_0 0x7
+#define XPCS_ONEG_PMA_RX_VGA2_GAIN_0 0x7
+
+#define XPCS_TENG_KR_PMA_RX_VGA1_GAIN_0 0x7
+#define XPCS_TENG_XAUI_PMA_RX_VGA1_GAIN_0 0x7
+#define XPCS_TWOP5G_PMA_RX_VGA1_GAIN_0 0x7
+#define XPCS_ONEG_PMA_RX_VGA1_GAIN_0 0x7
+
+#define XPCS_TENG_KR_PMA_TX_EQ_MAIN 0x24
+#define XPCS_TENG_XAUI_PMA_TX_EQ_MAIN 0x24
+#define XPCS_TWOP5G_PMA_TX_EQ_MAIN 0X13
+#define XPCS_ONEG_PMA_TX_EQ_MAIN 0x10
+
+#define XPCS_TENG_KR_PMA_TX_EQ_PRE 0x10
+#define XPCS_TENG_XAUI_PMA_TX_EQ_PRE 0x10
+#define XPCS_TWOP5G_PMA_TX_EQ_PRE 0X4
+#define XPCS_ONEG_PMA_TX_EQ_PRE 0x4
+
+#define XPCS_TENG_KR_PMA_TX_EQ_POST 0x0
+#define XPCS_TENG_XAUI_PMA_TX_EQ_POST 0x0
+#define XPCS_TWOP5G_PMA_TX_EQ_POST 0X4
+#define XPCS_ONEG_PMA_TX_EQ_POST 0x4
+
+#define XPCS_TENG_KR_PMA_TX_EQ_IBOOST_LVL 0xF
+#define XPCS_TENG_XAUI_PMA_TX_EQ_IBOOST_LVL 0xF
+#define XPCS_TWOP5G_PMA_TX_EQ_IBOOST_LVL 0xF
+#define XPCS_ONEG_PMA_TX_EQ_IBOOST_LVL 0xF
+
+#define XPCS_TENG_KR_PMA_TX_EQ_VBOOST_LVL 0x5
+#define XPCS_TENG_XAUI_PMA_TX_EQ_VBOOST_LVL 0x5
+#define XPCS_TWOP5G_PMA_TX_EQ_VBOOST_LVL 0x5
+#define XPCS_ONEG_PMA_TX_EQ_VBOOST_LVL 0x5
+
+#define XPCS_TENG_KR_PMA_TX_EQ_VBOOST_EN 0x1
+#define XPCS_TENG_XAUI_PMA_TX_EQ_VBOOST_EN 0x1
+#define XPCS_TWOP5G_PMA_TX_EQ_VBOOST_EN 0x1
+#define XPCS_ONEG_PMA_TX_EQ_VBOOST_EN 0x1
+
+struct xpcs_serdes_cfg {
+	/* TX/RX EQ XPCS Serdes configurable settings
+	 * related to the transmission line loss
+	 * on the PCB board design,
+	 * Switching beetween speeds require new serdes
+	 * configurable settings, the required values can be
+	 * supplied as device properties in array format
+	 * Entry sequence is 10GbE KR, 10GbE XAUI, 1GbE and 2.5GbE.
+	 */
+	u32 afe_en[MAX_XPCS_MODE];
+	u32 dfe_en[MAX_XPCS_MODE];
+	u32 cont_adapt0[MAX_XPCS_MODE];
+	u32 rx_attn_lvl[MAX_XPCS_MODE];
+	u32 rx_ctle_boost[MAX_XPCS_MODE];
+	u32 rx_ctle_pole[MAX_XPCS_MODE];
+	u32 rx_vga2_gain[MAX_XPCS_MODE];
+	u32 rx_vga1_gain[MAX_XPCS_MODE];
+	u32 tx_eq_main[MAX_XPCS_MODE];
+	u32 tx_eq_pre[MAX_XPCS_MODE];
+	u32 tx_eq_post[MAX_XPCS_MODE];
+	u32 tx_iboost_lvl[MAX_XPCS_MODE];
+	u32 tx_vboost_lvl[MAX_XPCS_MODE];
+	u32 tx_vboost_en[MAX_XPCS_MODE];
+	/* Phy Rx auto adapt */
+	bool no_phy_rx_auto_adapt;
+};
+
+struct xpcs_ops {
+	int (*ethtool_ksettings_get)(struct device *dev,
+				     struct ethtool_link_ksettings *cmd);
+	int (*ethtool_ksettings_set)(struct device *dev,
+				     const struct ethtool_link_ksettings *cmd);
+	int (*power_off)(struct device *dev);
+	int (*power_on)(struct device *dev);
 };
 
 struct xpcs_prv_data {
@@ -667,8 +823,12 @@ struct xpcs_prv_data {
 	struct device *dev;
 	struct phy *phy;
 
+	struct xpcs_ops ops;
+
 	/* XPCS Interface Name */
 	const char *name;
+
+	int state;
 
 	/* XPCS Mode 10G, 1G, 2.5G */
 	u32 mode;
@@ -679,13 +839,24 @@ struct xpcs_prv_data {
 	/* PCS Mode */
 	u32 pcs_mode;
 
-	u32 sgmii_type;
+	u32 speed;
 	u32 duplex;
 
 	u32 mpllb;
 
-	/* Connection Type SFP or PHY */
-	u32 conntype;
+	/* ANEG mode
+	 * 0 - disable
+	 * 1 - CL37 enabled and configured in SGMII MAC Side
+	 * 2 - CL37 enabled and configured in SGMII PHY Side
+	 * 3 - CL37 enabled (BaseX mode)
+	 */
+	u32 cl37;
+
+	/* ANEG mode
+	 * 0 - disable
+	 * 1 - CL73 enable
+	 */
+	u32 cl73;
 
 	/* Power save mode 0 - Normal Mode, 1 - power save mode */
 	u8 power_save;
@@ -697,6 +868,22 @@ struct xpcs_prv_data {
 
 	/* XPCS Mode Switching */
 	struct xpcs_mode_cfg *mode_cfg;
+
+	/* Scheduled link poll workitem */
+	struct workqueue_struct *link_poll;
+	/* Delayable work to queue */
+	struct delayed_work link_change_work;
+	/* link cfg sequence */
+	u32 link_change_seq[MAX_XPCS_MODE];
+	/* Current state of the XPCS link mode */
+	u32 link_mode;
+	/* jiffies to wait before queueing */
+	unsigned int poll_interval;
+
+	/* Serdes configurable data */
+	void *serdes_cfg;
+
+	unsigned int link, old_link;
 };
 
 #define xpcs_r32(reg)		readl(reg)
@@ -776,12 +963,21 @@ static inline void XPCS_RGWR(struct xpcs_prv_data *pdata, u32 reg, u32 val)
 		XPCS_RGWR(pdata, reg, reg_val);			\
 	} while (0)
 
-int xpcs_sysfs_init(struct xpcs_prv_data *priv);
-int xpcs_ethtool_ksettings_get(struct device *dev,
-				struct ethtool_link_ksettings *cmd);
-int xpcs_ethtool_ksettings_set(struct device *dev,
-			       const struct ethtool_link_ksettings *cmd);
+void xpcs_disable_an(struct xpcs_prv_data *pdata);
+void xpcs_cl37_an(struct xpcs_prv_data *pdata);
 int xpcs_reinit(struct device *dev, u32 mode);
+int xpcs_sysfs_init(struct xpcs_prv_data *priv);
+
+static inline struct xpcs_ops *xpcs_pdev_ops(struct platform_device *pdev)
+{
+	struct xpcs_prv_data *pdata;
+
+	if (!pdev)
+		return ERR_PTR(-EINVAL);
+
+	pdata = platform_get_drvdata(pdev);
+	return &pdata->ops;
+}
 
 #endif
 

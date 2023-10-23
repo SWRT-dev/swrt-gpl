@@ -16,6 +16,7 @@
 #include <net/rtnetlink.h>
 #include <net/net_namespace.h>
 #include <net/sock.h>
+#include <net/switchdev.h>
 #include <uapi/linux/if_bridge.h>
 
 #include "br_private.h"
@@ -128,6 +129,7 @@ static inline size_t br_port_info_size(void)
 		+ nla_total_size(1)	/* IFLA_BRPORT_UNICAST_FLOOD */
 		+ nla_total_size(1)	/* IFLA_BRPORT_PROXYARP */
 		+ nla_total_size(1)	/* IFLA_BRPORT_PROXYARP_WIFI */
+		+ nla_total_size(1)	/* IFLA_BRPORT_ISOLATED */
 		+ nla_total_size(sizeof(struct ifla_bridge_id))	/* IFLA_BRPORT_ROOT_ID */
 		+ nla_total_size(sizeof(struct ifla_bridge_id))	/* IFLA_BRPORT_BRIDGE_ID */
 		+ nla_total_size(sizeof(u16))	/* IFLA_BRPORT_DESIGNATED_PORT */
@@ -142,6 +144,9 @@ static inline size_t br_port_info_size(void)
 #ifdef CONFIG_BRIDGE_IGMP_SNOOPING
 		+ nla_total_size(sizeof(u8))	/* IFLA_BRPORT_MULTICAST_ROUTER */
 #endif
+		+ nla_total_size(4)	/* IFLA_BRPORT_LEARNING_LIMIT */
+		+ nla_total_size(sizeof(u8))	/* IFLA_BRPORT_DEST_LOOKUP */
+		+ nla_total_size(sizeof(u8))	/* IFLA_BRPORT_SRC_LOOKUP */
 		+ 0;
 }
 
@@ -194,7 +199,11 @@ static int br_port_fill_attrs(struct sk_buff *skb,
 	    nla_put_u16(skb, IFLA_BRPORT_NO, p->port_no) ||
 	    nla_put_u8(skb, IFLA_BRPORT_TOPOLOGY_CHANGE_ACK,
 		       p->topology_change_ack) ||
-	    nla_put_u8(skb, IFLA_BRPORT_CONFIG_PENDING, p->config_pending))
+	    nla_put_u8(skb, IFLA_BRPORT_CONFIG_PENDING, p->config_pending) ||
+	    nla_put_u32(skb, IFLA_BRPORT_LEARNING_LIMIT, p->learning_limit) ||
+	    nla_put_u8(skb, IFLA_BRPORT_DEST_LOOKUP, !!(p->flags & BR_MCAST_DEST_LOOKUP)) ||
+	    nla_put_u8(skb, IFLA_BRPORT_SRC_LOOKUP, !!(p->flags & BR_MCAST_SRC_LOOKUP)) ||
+	    nla_put_u8(skb, IFLA_BRPORT_ISOLATED, !!(p->flags & BR_ISOLATED)))
 		return -EMSGSIZE;
 
 	timerval = br_timer_value(&p->message_age_timer);
@@ -589,7 +598,11 @@ static const struct nla_policy br_port_policy[IFLA_BRPORT_MAX + 1] = {
 	[IFLA_BRPORT_PROXYARP]	= { .type = NLA_U8 },
 	[IFLA_BRPORT_PROXYARP_WIFI] = { .type = NLA_U8 },
 	[IFLA_BRPORT_MULTICAST_ROUTER] = { .type = NLA_U8 },
+	[IFLA_BRPORT_LEARNING_LIMIT] = { .type = NLA_S32 },
 	[IFLA_BRPORT_MCAST_TO_UCAST] = { .type = NLA_U8 },
+	[IFLA_BRPORT_ISOLATED]	= { .type = NLA_U8 },
+	[IFLA_BRPORT_DEST_LOOKUP]	= { .type = NLA_U8 },
+	[IFLA_BRPORT_SRC_LOOKUP]	= { .type = NLA_U8 },
 };
 
 /* Change the state of the port and notify spanning tree */
@@ -614,17 +627,83 @@ static int br_set_port_state(struct net_bridge_port *p, u8 state)
 	return 0;
 }
 
-/* Set/clear or port flags based on attribute */
-static void br_set_port_flag(struct net_bridge_port *p, struct nlattr *tb[],
-			   int attrtype, unsigned long mask)
+/* Change the state of the port and notify spanning tree */
+static int br_set_learning_limit(struct net_bridge_port *p, int learning_limit)
 {
-	if (tb[attrtype]) {
-		u8 flag = nla_get_u8(tb[attrtype]);
-		if (flag)
-			p->flags |= mask;
-		else
-			p->flags &= ~mask;
+	struct switchdev_attr attr = {
+		.orig_dev = p->dev,
+		.id = SWITCHDEV_ATTR_ID_PORT_LEARNING_LIMIT,
+		.flags = SWITCHDEV_F_SKIP_EOPNOTSUPP,
+		.u.learning_limit = learning_limit,
+	};
+	int err;
+
+	if (learning_limit < BRPORT_LEARNING_LIMIT_UNLIMITED) {
+		br_warn(p->br, "invalid value (%i) for mac table learning on port %u(%s)\n",
+			learning_limit, (unsigned int)p->port_no, p->dev->name);
+		return -EINVAL;
 	}
+
+	p->learning_limit = learning_limit;
+
+	err = switchdev_port_attr_set(p->dev, &attr);
+	if (err && err != -EOPNOTSUPP)
+		br_warn(p->br, "error setting offload mac table learning on port %u(%s)\n",
+			(unsigned int)p->port_no, p->dev->name);
+	else
+		br_debug(p->br, "mac learning limit set to %i on port %u(%s)\n",
+			 p->learning_limit, (unsigned int)p->port_no,
+			 p->dev->name);
+
+	br_configuration_update(p->br);
+	return 0;
+}
+
+/* Change the state of the port and notify spanning tree */
+static int br_set_mcast_flood(struct net_bridge *br, enum br_mcast_flood_mode mcast_flood)
+{
+	struct switchdev_attr attr = {
+		.orig_dev = br->dev,
+		.id = SWITCHDEV_ATTR_ID_BRIDGE_MCAST_FLOOD,
+		.flags = SWITCHDEV_F_SKIP_EOPNOTSUPP,
+		.u.mcast_flood = mcast_flood,
+	};
+	int err;
+
+	br->mcast_flood = mcast_flood;
+
+	err = switchdev_port_attr_set(br->dev, &attr);
+	if (err && err != -EOPNOTSUPP)
+		br_warn(br, "error setting multicast flooding on bridge\n");
+	else
+		br_debug(br, "multicast flooding set to %i bridge\n",
+			 br->mcast_flood);
+
+	br_configuration_update(br);
+	return 0;
+}
+
+/* Set/clear or port flags based on attribute */
+static int br_set_port_flag(struct net_bridge_port *p, struct nlattr *tb[],
+			    int attrtype, unsigned long mask)
+{
+	unsigned long flags;
+	int err;
+
+	if (!tb[attrtype])
+		return 0;
+
+	if (nla_get_u8(tb[attrtype]))
+		flags = p->flags | mask;
+	else
+		flags = p->flags & ~mask;
+
+	err = br_switchdev_set_port_flag(p, flags, mask);
+	if (err)
+		return err;
+
+	p->flags = flags;
+	return 0;
 }
 
 /* Process bridge protocol info on port */
@@ -633,16 +712,57 @@ static int br_setport(struct net_bridge_port *p, struct nlattr *tb[])
 	int err;
 	unsigned long old_flags = p->flags;
 
-	br_set_port_flag(p, tb, IFLA_BRPORT_MODE, BR_HAIRPIN_MODE);
-	br_set_port_flag(p, tb, IFLA_BRPORT_GUARD, BR_BPDU_GUARD);
-	br_set_port_flag(p, tb, IFLA_BRPORT_FAST_LEAVE, BR_MULTICAST_FAST_LEAVE);
-	br_set_port_flag(p, tb, IFLA_BRPORT_PROTECT, BR_ROOT_BLOCK);
-	br_set_port_flag(p, tb, IFLA_BRPORT_LEARNING, BR_LEARNING);
-	br_set_port_flag(p, tb, IFLA_BRPORT_UNICAST_FLOOD, BR_FLOOD);
-	br_set_port_flag(p, tb, IFLA_BRPORT_MCAST_FLOOD, BR_MCAST_FLOOD);
-	br_set_port_flag(p, tb, IFLA_BRPORT_MCAST_TO_UCAST, BR_MULTICAST_TO_UNICAST);
-	br_set_port_flag(p, tb, IFLA_BRPORT_PROXYARP, BR_PROXYARP);
-	br_set_port_flag(p, tb, IFLA_BRPORT_PROXYARP_WIFI, BR_PROXYARP_WIFI);
+	err = br_set_port_flag(p, tb, IFLA_BRPORT_MODE, BR_HAIRPIN_MODE);
+	if (err)
+		return err;
+
+	err = br_set_port_flag(p, tb, IFLA_BRPORT_GUARD, BR_BPDU_GUARD);
+	if (err)
+		return err;
+
+	err = br_set_port_flag(p, tb, IFLA_BRPORT_FAST_LEAVE, BR_MULTICAST_FAST_LEAVE);
+	if (err)
+		return err;
+
+	err = br_set_port_flag(p, tb, IFLA_BRPORT_PROTECT, BR_ROOT_BLOCK);
+	if (err)
+		return err;
+
+	err = br_set_port_flag(p, tb, IFLA_BRPORT_LEARNING, BR_LEARNING);
+	if (err)
+		return err;
+
+	err = br_set_port_flag(p, tb, IFLA_BRPORT_UNICAST_FLOOD, BR_FLOOD);
+	if (err)
+		return err;
+
+	err = br_set_port_flag(p, tb, IFLA_BRPORT_MCAST_FLOOD, BR_MCAST_FLOOD);
+	if (err)
+		return err;
+
+	err = br_set_port_flag(p, tb, IFLA_BRPORT_MCAST_TO_UCAST, BR_MULTICAST_TO_UNICAST);
+	if (err)
+		return err;
+
+	err = br_set_port_flag(p, tb, IFLA_BRPORT_PROXYARP, BR_PROXYARP);
+	if (err)
+		return err;
+
+	err = br_set_port_flag(p, tb, IFLA_BRPORT_PROXYARP_WIFI, BR_PROXYARP_WIFI);
+	if (err)
+		return err;
+
+	err = br_set_port_flag(p, tb, IFLA_BRPORT_ISOLATED, BR_ISOLATED);
+	if (err)
+		return err;
+
+	err = br_set_port_flag(p, tb, IFLA_BRPORT_DEST_LOOKUP, BR_MCAST_DEST_LOOKUP);
+	if (err)
+		return err;
+
+	err = br_set_port_flag(p, tb, IFLA_BRPORT_SRC_LOOKUP, BR_MCAST_SRC_LOOKUP);
+	if (err)
+		return err;
 
 	if (tb[IFLA_BRPORT_COST]) {
 		err = br_stp_set_path_cost(p, nla_get_u32(tb[IFLA_BRPORT_COST]));
@@ -674,6 +794,12 @@ static int br_setport(struct net_bridge_port *p, struct nlattr *tb[])
 			return err;
 	}
 #endif
+	if (tb[IFLA_BRPORT_LEARNING_LIMIT]) {
+		err = br_set_learning_limit(p, nla_get_u32(tb[IFLA_BRPORT_LEARNING_LIMIT]));
+		if (err)
+			return err;
+	}
+
 	br_port_flags_change(p, old_flags ^ p->flags);
 	return 0;
 }
@@ -790,6 +916,17 @@ static int br_validate(struct nlattr *tb[], struct nlattr *data[])
 	}
 #endif
 
+	if (data[IFLA_BR_MCAST_FLOOD]) {
+		switch (nla_get_u8(data[IFLA_BR_MCAST_FLOOD])) {
+		case BR_MCAST_FLOOD_ALL:
+		case BR_MCAST_FLOOD_DISCARD:
+		case BR_MCAST_FLOOD_CPU:
+			break;
+		default:
+			return -EPROTONOSUPPORT;
+		}
+	}
+
 	return 0;
 }
 
@@ -856,6 +993,9 @@ static const struct nla_policy br_policy[IFLA_BR_MAX + 1] = {
 	[IFLA_BR_VLAN_DEFAULT_PVID] = { .type = NLA_U16 },
 	[IFLA_BR_VLAN_STATS_ENABLED] = { .type = NLA_U8 },
 	[IFLA_BR_MCAST_STATS_ENABLED] = { .type = NLA_U8 },
+	[IFLA_BR_MCAST_FLOOD] = { .type = NLA_U8 },
+	[IFLA_BR_MCAST_IGMP_VERSION] = { .type = NLA_U8 },
+	[IFLA_BR_MCAST_MLD_VERSION] = { .type = NLA_U8 },
 };
 
 static int br_changelink(struct net_device *brdev, struct nlattr *tb[],
@@ -1067,7 +1207,36 @@ static int br_changelink(struct net_device *brdev, struct nlattr *tb[],
 		mcast_stats = nla_get_u8(data[IFLA_BR_MCAST_STATS_ENABLED]);
 		br->multicast_stats_enabled = !!mcast_stats;
 	}
+
+	if (data[IFLA_BR_MCAST_IGMP_VERSION]) {
+		__u8 igmp_version;
+
+		igmp_version = nla_get_u8(data[IFLA_BR_MCAST_IGMP_VERSION]);
+		err = br_multicast_set_igmp_version(br, igmp_version);
+		if (err)
+			return err;
+	}
+
+#if IS_ENABLED(CONFIG_IPV6)
+	if (data[IFLA_BR_MCAST_MLD_VERSION]) {
+		__u8 mld_version;
+
+		mld_version = nla_get_u8(data[IFLA_BR_MCAST_MLD_VERSION]);
+		err = br_multicast_set_mld_version(br, mld_version);
+		if (err)
+			return err;
+	}
 #endif
+#endif
+	if (data[IFLA_BR_MCAST_FLOOD]) {
+		enum br_mcast_flood_mode mcast_flood;
+		
+		mcast_flood = nla_get_u8(data[IFLA_BR_MCAST_FLOOD]);
+
+		err = br_set_mcast_flood(br, mcast_flood);
+		if (err)
+			return err;
+	}
 #if IS_ENABLED(CONFIG_BRIDGE_NETFILTER)
 	if (data[IFLA_BR_NF_CALL_IPTABLES]) {
 		u8 val = nla_get_u8(data[IFLA_BR_NF_CALL_IPTABLES]);
@@ -1146,6 +1315,7 @@ static size_t br_get_size(const struct net_device *brdev)
 	       nla_total_size(sizeof(u8)) +     /* IFLA_BR_MCAST_QUERY_USE_IFADDR */
 	       nla_total_size(sizeof(u8)) +     /* IFLA_BR_MCAST_QUERIER */
 	       nla_total_size(sizeof(u8)) +     /* IFLA_BR_MCAST_STATS_ENABLED */
+	       nla_total_size(sizeof(u8)) +     /* IFLA_BR_MCAST_FLOOD */
 	       nla_total_size(sizeof(u32)) +    /* IFLA_BR_MCAST_HASH_ELASTICITY */
 	       nla_total_size(sizeof(u32)) +    /* IFLA_BR_MCAST_HASH_MAX */
 	       nla_total_size(sizeof(u32)) +    /* IFLA_BR_MCAST_LAST_MEMBER_CNT */
@@ -1156,6 +1326,8 @@ static size_t br_get_size(const struct net_device *brdev)
 	       nla_total_size_64bit(sizeof(u64)) + /* IFLA_BR_MCAST_QUERY_INTVL */
 	       nla_total_size_64bit(sizeof(u64)) + /* IFLA_BR_MCAST_QUERY_RESPONSE_INTVL */
 	       nla_total_size_64bit(sizeof(u64)) + /* IFLA_BR_MCAST_STARTUP_QUERY_INTVL */
+	       nla_total_size(sizeof(u8)) +	/* IFLA_BR_MCAST_IGMP_VERSION */
+	       nla_total_size(sizeof(u8)) +	/* IFLA_BR_MCAST_MLD_VERSION */
 #endif
 #if IS_ENABLED(CONFIG_BRIDGE_NETFILTER)
 	       nla_total_size(sizeof(u8)) +     /* IFLA_BR_NF_CALL_IPTABLES */
@@ -1225,15 +1397,23 @@ static int br_fill_info(struct sk_buff *skb, const struct net_device *brdev)
 	    nla_put_u8(skb, IFLA_BR_MCAST_QUERIER, br->multicast_querier) ||
 	    nla_put_u8(skb, IFLA_BR_MCAST_STATS_ENABLED,
 		       br->multicast_stats_enabled) ||
+	    nla_put_u8(skb, IFLA_BR_MCAST_FLOOD,
+		       br->mcast_flood) ||
 	    nla_put_u32(skb, IFLA_BR_MCAST_HASH_ELASTICITY,
 			br->hash_elasticity) ||
 	    nla_put_u32(skb, IFLA_BR_MCAST_HASH_MAX, br->hash_max) ||
 	    nla_put_u32(skb, IFLA_BR_MCAST_LAST_MEMBER_CNT,
 			br->multicast_last_member_count) ||
 	    nla_put_u32(skb, IFLA_BR_MCAST_STARTUP_QUERY_CNT,
-			br->multicast_startup_query_count))
+			br->multicast_startup_query_count) ||
+	    nla_put_u8(skb, IFLA_BR_MCAST_IGMP_VERSION,
+		       br->multicast_igmp_version))
 		return -EMSGSIZE;
-
+#if IS_ENABLED(CONFIG_IPV6)
+	if (nla_put_u8(skb, IFLA_BR_MCAST_MLD_VERSION,
+		       br->multicast_mld_version))
+		return -EMSGSIZE;
+#endif
 	clockval = jiffies_to_clock_t(br->multicast_last_member_interval);
 	if (nla_put_u64_64bit(skb, IFLA_BR_MCAST_LAST_MEMBER_INTVL, clockval,
 			      IFLA_BR_PAD))

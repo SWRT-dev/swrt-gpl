@@ -1,11 +1,9 @@
-/*
- * Copyright (C) Intel Corporation
- * Author Shao Guohua <guohua.shao@intel.com>
+// SPDX-License-Identifier: GPL-2.0
+/******************************************************************************
+ * Copyright (c) 2020 - 2021, MaxLinear, Inc.
+ * Copyright 2016 - 2020 Intel Corporation
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 as published
- * by the Free Software Foundation.
- */
+ ******************************************************************************/
 
 /*!
  * @file Datapath_api_qos.h
@@ -325,6 +323,10 @@
  /*! @} */
 #ifndef DP_QOS_API_H
 #define DP_QOS_API_H
+
+#if IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP30)
+#include <net/datapath_api_qos_grx500.h>
+#else
 #define DP_NODE_SMART_FREE 1 /*< @brief flag to free node
 			      *  and its parent if no child
 			      */
@@ -378,10 +380,11 @@ enum dp_node_en {
 				   *   Not for TMU
 				   *   for ppv4, valid queue/sched/port
 				   */
-	DP_NODE_RESUME = BIT(3)   /*!< Resume scheduling for this node:
+	DP_NODE_RESUME = BIT(3),   /*!< Resume scheduling for this node:
 				   *  Not for TMU
 				   *  for ppv4,valid queue/sched/port
 				   */
+	DP_NODE_SET_CMD_MAX = BIT(4)
 };
 
 /*! @brief arbitration method used for the node in its parents scheduler/ports*/
@@ -394,6 +397,9 @@ enum dp_arbitate {
 			      *   ppv4 also not support at present
 			      */
 	ARBITRATION_WFQ,     /*!< fwq: for TMU/ppv4*/
+	ARBITRATION_PARENT,  /*!< used parent's arbitration mode,
+			      *   parent's node ID must be valid
+			      */
 };
 
 /*! @brief dp_node_flag */
@@ -736,6 +742,12 @@ enum dp_q_size_unit {
 	DP_COLOR_BYTE,   /*!< in bytes*/
 };
 
+/*! @brief dp_q_codel */
+enum dp_q_codel {
+	DP_CODEL_DIS = 0, /*!< codel disable */
+	DP_CODEL_EN,   /*!< codel enable */
+};
+
 /*! @brief dp_queue_conf*/
 struct dp_queue_conf {
 	int inst; /*!< input: dp instance. For SOC side, it is always zero */
@@ -753,6 +765,7 @@ struct dp_queue_conf {
 	u32 wred_slope[DP_MAX_COLORS];/*!< in percent, for example, 1 means 1%*/
 	u32 wred_min_guaranteed; /*!< ??? from ppv4 */
 	u32 wred_max_allowed; /*!< ??? from ppv4 */
+	enum dp_q_codel codel;  /*!< [in] enable/disable/ queue codel param */
 };
 
 /*! \addtogroup APIs_dp_queue_conf
@@ -795,8 +808,20 @@ struct dp_shaper_conf {
 	union dp_node_id id;  /*!< node id for queue/scheduler/port*/
 	u32 cir;  /*!< bandwidth in kbps */
 	u32 pir; /*!< bandwidth in kbps. PPV4 support ?? */
-	u32 cbs;  /*!< cbs. PPV4 support ?? */
-	u32 pbs;  /*!< pbs. PPV4 support ?? */
+	u32 cbs;  /*!< cbs. Shoud be in Bytes, if need 16K burst,
+		   * then need to give 16*1024,
+		   * value should be multiplication of Quanta
+		   * Quanta currenty in PPv4 is 4
+		   * if other values there will be rounding and result
+		   * not accurate
+		   */
+	u32 pbs;  /*!< pbs. Should be in Bytes if need 16K burst,
+		   * then need to give 16*1024,
+		   * value should be multiplication of Quanta
+		   * Quanta currenty in PPv4 is 4
+		   * if other values there will be rounding and result
+		   * not accurate
+		   */
 };
 
 /*! \addtogroup APIs_dp_shaper_conf_set
@@ -877,8 +902,11 @@ struct dp_queue_res {
 				   */
 	int cqm_deq_port; /*!< cqm dequeue port: absolute port id */
 	int qos_deq_port; /*!< qos dequeue port: Normally user no need to know*/
-	u32 cqm_deq_port_type; /*!< output: Valid only in case of CPU DQ port
-				* with MPE*/
+	u32 cqm_deq_port_type; /*!< output: specify DQ port type, like CPU,
+				* DPDK, MPE and so on.
+				*/
+	u32 cpu_id; /*!< valid only for CPU port */
+	u16 cpu_gpid; /*!< gpid value */
 };
 
 #define DEQ_PORT_OFFSET_ALL -1 /*!< @brief Port offset all */
@@ -993,6 +1021,12 @@ struct dp_q_map_mask {
 	u32	mpe1:1; /*!< MPE1 Flag don't care */
 	u32	mpe2:1; /*!< MPE2 Flag don't care */
 	u32	subif:1; /*!< subif don't care */
+	u32	subif_id_mask; /*!< subifid mask for
+				* CQM qmap lookup setting
+				* if the value of one particular bit is 1, it
+				* means don't care for this bit,this field is
+				* valid only if subif field bit is set
+				*/
 	u32	dp_port:1; /*!< logical port don't care */
 	u32	class:1; /*!< Traffic Class don't care */
 	u32	egflag :1; /*!< egflag don't care */
@@ -1119,12 +1153,16 @@ enum dp_meter_type {
 
 /*! Enumeration for traffic types needed for flow and bridge meters config */
 enum dp_meter_traffic_type {
+	/*!< All traffic */
+	DP_OTHERS,
 	/*!< Unicast traffic with no destination address */
 	DP_UKNOWN_UNICAST,
 	/*!< Upstream multicast traffic */
 	DP_MULTICAST,
 	/*!< Upstream broadcast traffic */
 	DP_BROADCAST,
+	/*!< All traffic flows */
+	DP_TRAFFIC_TYPE_MAX,
 };
 
 /*!
@@ -1152,13 +1190,13 @@ struct dp_meter_cfg {
 	int meter_id;
 	/*!< meter type single/dual rate */
 	enum dp_meter_type type;
-	/*!< Committed information rate in kbit/s */
-	u32 cir;
-	/*!< Peak information rate in kbit/s */
-	u32 pir;
-	/*!< committed burst size in kbit */
+	/*!< Committed information rate in bit/s */
+	u64 cir;
+	/*!< Peak information rate in bit/s */
+	u64 pir;
+	/*!< committed burst size in bytes */
 	u32 cbs;
-	/*!< peak burst size in kbit */
+	/*!< peak burst size in bytes */
 	u32 pbs;
 	/*!< color blind/aware */
 	bool col_mode;
@@ -1169,8 +1207,6 @@ struct dp_meter_cfg {
 	 /*!< traffic flow type for bridge/PCE rule mode only */
 	union dp_pce {
 		enum dp_meter_traffic_type flow;
-		/*!< PCE table rule index */
-		u32 pce_idx;
 	} dp_pce;
 };
 
@@ -1255,6 +1291,12 @@ int dp_ingress_ctp_tc_map_set(struct dp_tc_cfg *tc, int flag);
 struct dp_qos_cfg_info {
 	int inst; /*!< input: dp instance. For SOC side, it is always zero */
 	u32 quanta; /*!< QoS quanta for scheduler */
+	u32 reinsert_deq_port; /*!< dequeue port allocated for reinsertion flow.
+							* -1 if invalid dequeue port
+							*/
+	u32 reinsert_qid; /*!< queue ID allocated for reinsertion flow
+					   * -1 if invalid queue ID
+					   */
 };
 
 /*!< API dp_qos_global_info_get: Helps to retrieve global QoS
@@ -1279,6 +1321,10 @@ struct dp_port_cfg_info {
 	int pid; /*!< [in] physical qos port id */
 	u32 green_threshold; /*!< [in] QoS port Egress green bytes threshold*/
 	u32 yellow_threshold; /*!< [in] QoS port Egress yellow bytes threshold*/
+	u32 ewsp; /*!< [in] Enhanced EWSP Operation */
+#define DP_PORT_CFG_GREEN_THRESHOLD	BIT(0) /*!< [in] config Green thresh */
+#define DP_PORT_CFG_YELLOW_THRESHOLD	BIT(1) /*!< [in] config Yellow thresh */
+#define DP_PORT_CFG_EWSP		BIT(2) /*!< [in] config EWSP */
 };
 
 /*!< API dp_qos_port_conf_set: Helps to retrieve global QoS
@@ -1311,6 +1357,74 @@ struct dp_qos_q_logic {
  *           succeed DP_SUCCESS
  */
 int dp_qos_get_q_logic(struct dp_qos_q_logic *cfg, int flag);
+
+/*!
+ * @struct dp_qos_blk_flush_port
+ *
+ * Structure to flush Q based on Deq Port
+ *
+ */
+struct dp_qos_blk_flush_port {
+	int inst;	 /*!< [in] DP instance */
+	u32 dp_port;	 /*!< [in] Logical port id */
+	int deq_port_idx;/*!< [in] Flushes Q based  on deq port idx specified */
+};
+
+/*!< dp_block_flush_port: Flush all the Q's associated with the deq port
+ *   Flushes all the Q in this port and restore Q back to original deq port,
+ *   Qmap will be pointing to Drop Q
+ *   @param [in/out] cfg
+ *   @param [in] flag: reserved only
+ *   @return failure DP_FAILURE
+ *           succeed DP_SUCCESS
+ */
+int dp_block_flush_port(struct dp_qos_blk_flush_port *cfg, int flag);
+
+/*!
+ * @struct dp_qos_q_logic
+ *
+ * Structure to flush Q based on specified physical qid
+ *
+ */
+struct dp_qos_blk_flush_queue {
+	int inst;  /*!< [in] DP instance */
+	int q_id;  /*!< [in] physical queue id */
+};
+
+/*!< dp_block_flush_queue: Flush the packets specified in QiD
+ *   Flushes the Q and restore Q back to original deq port,
+ *   Qmap will be pointing to Drop Q
+ *   @param [in/out] cfg
+ *   @param [in] flag: reserved only
+ *   @return failure DP_FAILURE
+ *           succeed DP_SUCCESS
+ */
+int dp_block_flush_queue(struct dp_qos_blk_flush_queue *cfg, int flag);
+
+/*!
+ * @struct dp_qos_queue_info
+ *
+ * Structure defining the QoS queue info
+ *
+ */
+struct dp_qos_queue_info {
+	int inst; /*!< [in] dp instance */
+	u32 nodeid; /*!< [in] QoS logical qid */
+	u32 qocc; /*!< [out] queue occupancy value */
+};
+
+/*!< API dp_qos_get_q_qocc: Helps to retrieve QoS queue occupancy  value
+ *
+ * This API is only for CQM driver to use during queue flush 
+ * There is no any DPM level lock used
+ *
+ * @param [in,out] qos queue info struct dp_qos_queue_info *info
+ * @param [in] flag: reserved
+ * @return [out] failure DP_FAILURE
+ *		 succeed DP_SUCCESS
+ *
+ */
+int dp_qos_get_q_qocc(struct dp_qos_queue_info *info, int flag);
 
 #ifdef ENABLE_QOS_EXAMPLE
 /*! \ingroup APIs_dp_qos_example
@@ -1653,5 +1767,6 @@ static inline int gpon_example3(void)
  * 3) dp_reserved_resource_get: no hardcoded reservation will be take. No need
  */
 #endif
+#endif /* CONFIG_INTEL_DATAPATH_HAL_GSWIP30 */
 #endif
 

@@ -1,0 +1,5 @@
+config wifi-db 'driver'
+	option fastpath '1'
+
+config wifi-db 'merge'
+	option enable '0'

@@ -288,7 +288,7 @@ config VRX518
 config VRX518_TC
 	tristate "Intel(R) VRX518 SmartPHY DSL PCIe Endpoint support"
 	depends on VRX518
-        default n
+        select ATM_MPOA_INTEL_DSL_PHY_SUPPORT
 	---help---
 	  This driver supports Intel(R) VRX518 TC functions. 
 
@@ -298,7 +298,6 @@ config VRX518_TC
 config VRX518_PCIE_SWITCH_BONDING
 	bool "Intel(R) VRX518 SmartPHY DSL bonding with PCIe Switch"
 	depends on VRX518
-	default n
 	---help---
 	Supported VRX518 SmartPHY PCIe DSL Bonding with PCIe switch
 

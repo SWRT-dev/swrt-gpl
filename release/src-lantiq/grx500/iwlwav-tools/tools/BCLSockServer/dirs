@@ -1,0 +1,9 @@
+#
+# $Id: $
+#
+
+DIRS=BCL
+
+OPTIONAL_DIRS= wce \
+               wxp \
+               wnet

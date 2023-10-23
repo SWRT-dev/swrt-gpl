@@ -83,7 +83,7 @@ static int __init apply_r_mips_26_rel(u32 *loc_orig, u32 *loc_new, long offset)
 
 	/* Original target address */
 	target_addr <<= 2;
-	target_addr += (unsigned long)loc_orig & ~0x03ffffff;
+	target_addr += (unsigned long)loc_orig & ~0x0fffffff;
 
 	/* Get the new target address */
 	target_addr += offset;
@@ -93,7 +93,7 @@ static int __init apply_r_mips_26_rel(u32 *loc_orig, u32 *loc_new, long offset)
 		return -ENOEXEC;
 	}
 
-	target_addr -= (unsigned long)loc_new & ~0x03ffffff;
+	target_addr -= (unsigned long)loc_new & ~0x0fffffff;
 	target_addr >>= 2;
 
 	*loc_new = (*loc_new & ~0x03ffffff) | (target_addr & 0x03ffffff);
@@ -175,8 +175,14 @@ static int __init relocate_exception_table(long offset)
 static inline __init unsigned long rotate_xor(unsigned long hash,
 					      const void *area, size_t size)
 {
-	size_t i;
-	unsigned long *ptr = (unsigned long *)area;
+	const typeof(hash) *ptr = PTR_ALIGN(area, sizeof(hash));
+	size_t diff, i;
+
+	diff = (void *)ptr - area;
+	if (unlikely(size < diff + sizeof(hash)))
+		return hash;
+
+	size = ALIGN_DOWN(size - diff, sizeof(hash));
 
 	for (i = 0; i < size / sizeof(hash); i++) {
 		/* Rotate by odd number of bits and XOR. */
@@ -236,24 +242,61 @@ static inline __init bool kaslr_disabled(void)
 	return false;
 }
 
+static inline int __init relocation_addr_valid(void *loc_new)
+{
+	unsigned long kernel_length;
+
+	if ((unsigned long)loc_new & 0x0000ffff) {
+		/* Inappropriately aligned new location */
+		return 0;
+	}
+	kernel_length = (long)_end - (long)(&_text);
+
+	/* enough space before kernel */
+	if ((unsigned long)loc_new + kernel_length < (unsigned long)&_text)
+		return 1;
+
+	/* behind the original kernel */
+	if ((unsigned long)loc_new > (unsigned long)&_end)
+		return 1;
+
+	/* New location overlaps original kernel */
+	pr_err("locations overlap for 0x%p\n", loc_new);
+	return 0;
+}
+
 static inline void __init *determine_relocation_address(void)
 {
 	/* Choose a new address for the kernel */
 	unsigned long kernel_length;
 	void *dest = &_text;
-	unsigned long offset;
+	unsigned long offset = 0;
+	int count = 10;
+
+	if (CONFIG_RANDOMIZE_BASE_MIN_ADDR != 0)
+		dest = (void *)CONFIG_RANDOMIZE_BASE_MIN_ADDR;
 
 	if (kaslr_disabled())
 		return dest;
 
 	kernel_length = (long)_end - (long)(&_text);
 
-	offset = get_random_boot() << 16;
-	offset &= (CONFIG_RANDOMIZE_BASE_MAX_OFFSET - 1);
-	if (offset < kernel_length)
-		offset += ALIGN(kernel_length, 0xffff);
+	do {
+		offset = get_random_boot() << 16;
+		offset &= (CONFIG_RANDOMIZE_BASE_MAX_OFFSET - 1);
 
-	return RELOCATED(dest);
+		if (relocation_addr_valid(RELOCATED(dest)))
+			return RELOCATED(dest);
+
+		pr_debug("Relocation by 0x%lX not possible\n", offset);
+	} while (--count);
+
+	if (dest == &_text)
+		pr_err("Relocation not possible, did not find a working offset\n");
+	else
+		pr_err("Relocation to fixed offset\n");
+
+	return dest;
 }
 
 #else
@@ -268,19 +311,6 @@ static inline void __init *determine_relocation_address(void)
 }
 
 #endif
-
-static inline int __init relocation_addr_valid(void *loc_new)
-{
-	if ((unsigned long)loc_new & 0x0000ffff) {
-		/* Inappropriately aligned new location */
-		return 0;
-	}
-	if ((unsigned long)loc_new < (unsigned long)&_end) {
-		/* New location overlaps original kernel */
-		return 0;
-	}
-	return 1;
-}
 
 void *__init relocate_kernel(void)
 {
@@ -308,9 +338,7 @@ void *__init relocate_kernel(void)
 
 	loc_new = determine_relocation_address();
 
-	/* Sanity check relocation address */
-	if (relocation_addr_valid(loc_new))
-		offset = (unsigned long)loc_new - (unsigned long)(&_text);
+	offset = (unsigned long)loc_new - (unsigned long)(&_text);
 
 	/* Reset the command line now so we don't end up with a duplicate */
 	arcs_cmdline[0] = '\0';
@@ -330,6 +358,28 @@ void *__init relocate_kernel(void)
 		res = relocate_exception_table(offset);
 		if (res < 0)
 			goto out;
+
+#ifdef CONFIG_USE_OF
+#ifdef CONFIG_MIPS_RAW_APPENDED_DTB
+		/*
+		 * The appended DTB is not copied above, as it is located after
+		 * "_relocation_start" (see vmlinux.lds.S)
+		 * Copy the dtb block (size as specified in lds) and update the
+		 * pointer "fw_passed_dtb". The copy of .bss will update the
+		 * variable at the new location later.
+		 */
+		memcpy((void *)fw_passed_dtb + offset, (void *)fw_passed_dtb,
+			0x100000);
+		fw_passed_dtb += offset;
+
+		/*
+		 * Reset the cached pointer from fdt to ensure the new address
+		 * is retrieved again, instead of continuing with the original
+		 * address.
+		 */
+		initial_boot_params = NULL;
+#endif
+#endif
 
 		/*
 		 * The original .bss has already been cleared, and
@@ -353,11 +403,11 @@ out:
  */
 void show_kernel_relocation(const char *level)
 {
-	unsigned long offset;
+	long offset;
 
 	offset = __pa_symbol(_text) - __pa_symbol(VMLINUX_LOAD_ADDRESS);
 
-	if (IS_ENABLED(CONFIG_RELOCATABLE) && offset > 0) {
+	if (IS_ENABLED(CONFIG_RELOCATABLE) && offset != 0) {
 		printk(level);
 		pr_cont("Kernel relocated by 0x%pK\n", (void *)offset);
 		pr_cont(" .text @ 0x%pK\n", _text);

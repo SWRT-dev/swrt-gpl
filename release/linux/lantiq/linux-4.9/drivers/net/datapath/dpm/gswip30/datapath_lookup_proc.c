@@ -23,11 +23,13 @@
 			      *DMA descriptor and pmac header files
 			      */
 #include <net/datapath_api.h>
-#include <net/datapath_api_gswip31.h>
+#include <net/datapath_api_gswip30.h>
 #include "../datapath.h"
 #include "datapath_proc.h"
 #include "datapath_misc.h"
 #include <net/datapath_proc_api.h>
+
+#define DEBUGFS_LOOKUP DP_DEBUGFS_PATH "/lookup"
 
 #define SEQ_PRINTF seq_printf
 
@@ -386,34 +388,23 @@ int lookup_dump30(struct seq_file *s, int pos)
 	return pos;
 }
 
-ssize_t proc_get_qid_via_index30(struct file *file, const char *buf,
+ssize_t proc_get_qid_via_index30(struct file *file, const char __user *buf,
 				 size_t count, loff_t *ppos)
 {
-	int err = 0, len = 0;
+	size_t len;
 	char data[100];
 	unsigned int lookup_index;
 	unsigned int qid = 0;
 	char *param_list[10];
 	int num;
+	struct cbm_lookup cbm_lu = {0};
 
 	if (!capable(CAP_NET_ADMIN))
 		return -EPERM;
 	len = (count >= sizeof(data)) ? (sizeof(data) - 1) : count;
 	DP_DEBUG(DP_DBG_FLAG_LOOKUP, "len=%d\n", len);
-
-	if (len <= 0) {
-		err = -EFAULT;
-		pr_err("Wrong len value (%d)\n", len);
-		return count;
-	}
-
-	if (copy_from_user(data, buf, len)) {
-		err = -EFAULT;
-		pr_err("copy_from_user fail");
-		return count;
-	}
-
-	data[len - 1] = 0;	/* Make string */
+	len -= copy_from_user(data, buf, len);
+	data[len] = 0; /* Make string */
 	num = dp_split_buffer(data, param_list, ARRAY_SIZE(param_list));
 
 	if (num <= 1)
@@ -437,7 +428,9 @@ ssize_t proc_get_qid_via_index30(struct file *file, const char *buf,
 					       qid);
 			return count;
 		}
-		set_lookup_qid_via_index(lookup_index, qid);
+		cbm_lu.qid = qid;
+		cbm_lu.index = lookup_index;
+		set_lookup_qid_via_index(&cbm_lu);
 		pr_info("Set lookup[%u 0x%x] ->     queue[%u]\n",
 			lookup_index, lookup_index, qid);
 	} else if ((dp_strncmpi(param_list[0], "get", strlen("get")) == 0) ||
@@ -472,17 +465,17 @@ ssize_t proc_get_qid_via_index30(struct file *file, const char *buf,
 	}
 	goto help;
 help:
-	pr_info("Usage: echo set lookup_flags queue_id > /proc/dp/lookup\n");
-	pr_info("     : echo get lookup_flags > /proc/dp/lookup\n");
-	pr_info("     : echo find  <x> > /proc/dp/lookup\n");
-	pr_info("     : echo find2 <x> > /proc/dp/lookup\n");
-	pr_info("     : echo remap <old_q> <new_q> > /proc/dp/lookup\n");
-	pr_info("  Hex example: echo set 0x10 10 > /proc/dp/lookup\n");
-	pr_info("  Dec:example: echo set 16 10 > /proc/dp/lookup\n");
-	pr_info("  Bin:example: echo set b10000 10 > /proc/dp/lookup\n");
+	pr_info("Usage: echo set lookup_flags queue_id > %s\n", DEBUGFS_LOOKUP);
+	pr_info("     : echo get lookup_flags > %s\n", DEBUGFS_LOOKUP);
+	pr_info("     : echo find  <x> > %s\n", DEBUGFS_LOOKUP);
+	pr_info("     : echo find2 <x> > %s\n", DEBUGFS_LOOKUP);
+	pr_info("     : echo remap <old_q> <new_q> > %s\n", DEBUGFS_LOOKUP);
+	pr_info("  Hex example: echo set 0x10 10 > %s\n", DEBUGFS_LOOKUP);
+	pr_info("  Dec:example: echo set 16 10 > %s\n", DEBUGFS_LOOKUP);
+	pr_info("  Bin:example: echo set b10000 10 > %s\n", DEBUGFS_LOOKUP);
 
-	pr_info("%s: echo set b1xxxx 10 > /proc/dp/lookup\n",
-		"Special for BIN(Don't care bit)");
+	pr_info("%s: echo set b1xxxx 10 > %s\n",
+		"Special for BIN(Don't care bit)", DEBUGFS_LOOKUP);
 	pr_info("Lookup format:\n");
 	pr_info("  Bits Index: | %s\n",
 		"13   12 |  11  |  10  |  9   |  8   |7   4 | 3   0 |");
@@ -519,6 +512,7 @@ void lookup_table_via_qid(int qid)
 void lookup_table_remap(int old_q, int new_q)
 {
 	u32 index, tmp, i, j, k, f = 0;
+	struct cbm_lookup cbm_lu = {0};
 
 	DP_DEBUG(DP_DBG_FLAG_LOOKUP,
 		 "Try to remap lookup flags mapped from old_q %d to new_q %d\n",
@@ -530,7 +524,9 @@ void lookup_table_remap(int old_q, int new_q)
 				tmp = get_lookup_qid_via_index(index);
 				if (tmp != old_q)
 					continue;
-				set_lookup_qid_via_index(index, new_q);
+				cbm_lu.qid = new_q;
+				cbm_lu.index = index;
+				set_lookup_qid_via_index(&cbm_lu);
 				f = 1;
 				pr_info("Remap lookup[%05u 0x%04x] %s[%d]\n",
 					index, index,
@@ -603,10 +599,13 @@ int get_dont_care_lookup(char *s)
 void lookup_table_recursive(int k, int tmp_index, int set_flag, int qid)
 {
 	int i;
+	struct cbm_lookup cbm_lu = {0};
 
 	if (k < 0) {	/*finish recursive and start real read/set action */
 		if (set_flag) {
-			set_lookup_qid_via_index(tmp_index, qid);
+			cbm_lu.qid = qid;
+			cbm_lu.index = tmp_index;
+			set_lookup_qid_via_index(&cbm_lu);
 			pr_info("Set lookup[%05u 0x%04x] ->     queue[%d]\n",
 				tmp_index, tmp_index, qid);
 		} else {

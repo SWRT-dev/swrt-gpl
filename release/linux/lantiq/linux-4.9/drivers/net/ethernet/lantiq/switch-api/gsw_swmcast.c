@@ -383,6 +383,7 @@ int gsw_insert_hashtable_entry(void *cdev, GSW_multicastTable_t *parm)
 	u32 loc = 0, found_loc = 0;
 	u32 hashidx;
 	int i = 0, ret = 0;
+	int new_hash_slot = 0;
 	u32 portId;
 	MCAST_HASHTBL  *table_ptr = NULL, *new_table_ptr = NULL;
 	MCAST_HASHTBL_PTN pattern;
@@ -454,16 +455,16 @@ int gsw_insert_hashtable_entry(void *cdev, GSW_multicastTable_t *parm)
 	   1. New hashidx entry
 	   2. Existing hashidx with a new entry
 	 */
-	if ((loc = get_hashtable_empty_slot(cdev, phtable)) == TBL_FULL) {
+	new_hash_slot = get_hashtable_empty_slot(cdev, phtable);
+	if (new_hash_slot == TBL_FULL) {
 		pr_err("Hash Table FULL\n");
 		return TBL_FULL;
-	}
-
-	if (loc > MCAST_TABLE_SIZE) {
+	} else if (new_hash_slot > MCAST_TABLE_SIZE) {
 		pr_err("Location got is wrong\n");
 		return FAIL;
 	}
 
+	loc = (u32)new_hash_slot;
 	pr_debug("Got new location %d\n", loc);
 
 	new_table_ptr = &phtable[loc];
@@ -719,7 +720,7 @@ int gsw_remove_hashtable_entry(void *cdev, GSW_multicastTable_t *parm)
 
 	if (gswdev == NULL) {
 		pr_err("%s:%s:%d", __FILE__, __func__, __LINE__);
-		return GSW_statusErr;
+		return FAIL;
 	}
 
 	if (parm->nPortId > gswdev->num_of_bridge_port) {
@@ -765,10 +766,8 @@ int gsw_remove_hashtable_entry(void *cdev, GSW_multicastTable_t *parm)
 
 	if (ret == REMOVED_ENTRY)
 		pr_debug("REMOVED_ENTRY %s:%s:%d\n", __FILE__, __func__, __LINE__);
-	else if (ret == UPDATED_BR_PMAP)
-		pr_debug("UPDATED BR PMAP ENTRY %s:%s:%d\n", __FILE__, __func__, __LINE__);
 	else
-		pr_debug("ENTRY_CANNOT_REMOVE %s:%s:%d\n", __FILE__, __func__, __LINE__);
+		pr_debug("UPDATED BR PMAP ENTRY %s:%s:%d\n", __FILE__, __func__, __LINE__);
 
 	return ret;
 }

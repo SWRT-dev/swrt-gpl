@@ -33,7 +33,7 @@ extern uint32_t ppa_drv_get_vlan_map(PPA_BRDG_VLAN_FILTER_MAP *filter , uint32_t
 extern uint32_t ppa_drv_del_all_vlan_map(uint32_t flag);
 extern uint32_t ppa_drv_get_max_vfilter_entries(PPA_VFILTER_COUNT_CFG *count, uint32_t flag);
 extern uint32_t ppa_drv_is_ipv6_enabled(uint32_t flag);
-#if defined(MIB_MODE_ENABLE) && MIB_MODE_ENABLE
+#if IS_ENABLED(CONFIG_PPA_MIB_MODE)
 extern uint32_t ppa_drv_set_mib_mode(PPA_MIB_MODE_ENABLE *cfg, uint32_t);
 extern uint32_t ppa_drv_get_mib_mode(PPA_MIB_MODE_ENABLE *cfg);
 #endif

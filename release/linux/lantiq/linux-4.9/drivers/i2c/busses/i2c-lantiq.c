@@ -96,7 +96,10 @@ struct ltq_i2c {
 
 
 	/* resources (memory and interrupts) */
-	int irq_lb;				/* last burst irq */
+	unsigned int irq_lb;           /* last burst irq */
+	unsigned int irq_b;            /* burst irq */
+	unsigned int irq_err;          /* error irq */
+	unsigned int irq_prot;         /* protocol irq */
 
 	struct lantiq_reg_i2c __iomem *membase;	/* base of mapped registers */
 
@@ -137,6 +140,24 @@ struct ltq_i2c {
 };
 
 static irqreturn_t ltq_i2c_isr(int irq, void *dev_id);
+
+/* enable all irqs in Linux */
+static void enable_all_irqs(struct ltq_i2c *priv)
+{
+	enable_irq(priv->irq_err);
+	enable_irq(priv->irq_b);
+	enable_irq(priv->irq_lb);
+	enable_irq(priv->irq_prot);
+}
+
+/* disable all irqs in Linux */
+static void disable_all_irqs(struct ltq_i2c *priv)
+{
+	disable_irq(priv->irq_prot);
+	disable_irq(priv->irq_lb);
+	disable_irq(priv->irq_b);
+	disable_irq(priv->irq_err);
+}
 
 /**
  * enable burst irq
@@ -316,11 +337,12 @@ static int ltq_i2c_hw_init(struct i2c_adapter *adap)
 static int ltq_i2c_wait_bus_not_busy(struct ltq_i2c *priv)
 {
 	unsigned long timeout;
+	u32 stat = 0;
 
 	timeout = jiffies + msecs_to_jiffies(LTQ_I2C_BUSY_TIMEOUT);
 
 	do {
-		u32 stat = i2c_r32(bus_stat);
+		stat = i2c_r32(bus_stat);
 
 		if ((stat & I2C_BUS_STAT_BS_MASK) == I2C_BUS_STAT_BS_FREE)
 			return 0;
@@ -328,7 +350,8 @@ static int ltq_i2c_wait_bus_not_busy(struct ltq_i2c *priv)
 		cond_resched();
 	} while (!time_after_eq(jiffies, timeout));
 
-	dev_err(priv->dev, "timeout waiting for bus ready\n");
+	dev_err(priv->dev, "timeout waiting for bus ready (stat 0x%08X)\n",
+		stat);
 	return -ETIMEDOUT;
 }
 
@@ -514,52 +537,56 @@ static int ltq_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	priv->status = STATUS_IDLE;
 	priv->rx_thread_status = RX_THREAD_STOP;
 	priv->rx_thread_force_stop = 0;
+
+	enable_all_irqs(priv);
+
 	/* wait for the bus to become ready */
 	ret = ltq_i2c_wait_bus_not_busy(priv);
 	if (ret) {
-		dev_err(priv->dev, "%s: bus is busy %x\n", __func__, ret);
+		dev_err(priv->dev, "%s: bus is busy %d\n", __func__, ret);
 		i2c_recover_bus(adap);
 		ltq_i2c_hw_init(adap);
 		goto done;
 	}
 
 	while (priv->msgs_num) {
-		/* start the transfers */
-		ltq_i2c_xfer_init(priv);
-		/* wait for transfers to complete */
-		ret = wait_for_completion_interruptible_timeout(
-			&priv->cmd_complete, LTQ_I2C_XFER_TIMEOUT);
-		if (ret == 0) {
-			i2c_recover_bus(adap);
-			ltq_i2c_hw_init(adap);
-			dev_err(priv->dev, "controller timed out 0x%x\n",
-				priv->msg_err);
-			ret = -ETIMEDOUT;
-			goto done;
-		} else if (ret < 0)
-			goto done;
-
-		if (priv->msg_err) {
-			if (priv->msg_err & LTQ_I2C_NACK)
-				ret = -ENXIO;
-			else {
-				dev_err(priv->dev, "xfer error:\n");
-				if (priv->msg_err & LTQ_I2C_TX_OFL)
-					dev_err(priv->dev, " tx overflow\n");
-				if (priv->msg_err & LTQ_I2C_TX_UFL)
-					dev_err(priv->dev, " tx underflow\n");
-				if (priv->msg_err & LTQ_I2C_RX_OFL)
-					dev_err(priv->dev, " rx overflow\n");
-				if (priv->msg_err & LTQ_I2C_RX_UFL)
-					dev_err(priv->dev, " rx underflow\n");
-
-				ret = -EREMOTEIO;
+		if (priv->current_msg->len > 0) {
+			/* start the transfers */
+			ltq_i2c_xfer_init(priv);
+			/* wait for transfers to complete */
+			ret = wait_for_completion_interruptible_timeout(
+				&priv->cmd_complete, LTQ_I2C_XFER_TIMEOUT);
+			if (ret == 0) {
+				dev_err(priv->dev, "controller timed out 0x%x\n",
+					priv->msg_err);
 				i2c_recover_bus(adap);
 				ltq_i2c_hw_init(adap);
-			}
+				ret = -ETIMEDOUT;
+				goto done;
+			} else if (ret < 0)
+				goto done;
 
-			goto done;
+			if (priv->msg_err) {
+				if (priv->msg_err & LTQ_I2C_NACK)
+					ret = -ENXIO;
+				else {
+					dev_err(priv->dev, "xfer error:\n");
+					if (priv->msg_err & LTQ_I2C_TX_OFL)
+						dev_err(priv->dev, " tx overflow\n");
+					if (priv->msg_err & LTQ_I2C_TX_UFL)
+						dev_err(priv->dev, " tx underflow\n");
+					if (priv->msg_err & LTQ_I2C_RX_OFL)
+						dev_err(priv->dev, " rx overflow\n");
+					if (priv->msg_err & LTQ_I2C_RX_UFL)
+						dev_err(priv->dev, " rx underflow\n");
+
+					ret = -EREMOTEIO;
+				}
+
+				goto done;
+			}
 		}
+
 		if (--priv->msgs_num)
 			priv->current_msg++;
 	}
@@ -567,15 +594,21 @@ static int ltq_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	ret = num;
 
 done:
+	disable_all_irqs(priv);
 	ltq_i2c_release_bus(priv);
 	if (priv->rx_thread_status != RX_THREAD_STOP) {
 		priv->rx_thread_force_stop = 1;
 		if (wait_event_interruptible_timeout(
-			priv->rx_thread_wait_queue,
-			priv->rx_thread_status == RX_THREAD_STOP,
-			LTQ_I2C_RX_FIFO_TIMEOUT*3) <= 0)
+		    priv->rx_thread_wait_queue,
+		    priv->rx_thread_status == RX_THREAD_STOP,
+		    LTQ_I2C_RX_FIFO_TIMEOUT*3) <= 0)
 			dev_err(priv->dev, "RX Threaded could not stop!!!\n");
 	}
+	/* ensure that really no interrupts will access
+	 * "msg_buf" or "current_mgs" after this function returns
+	 */
+	priv->msg_buf = NULL;
+	priv->current_msg = NULL;
 
 	mutex_unlock(&priv->mutex);
 
@@ -636,7 +669,7 @@ static irqreturn_t ltq_i2c_isr_burst(int irq, void *dev_id)
 			break;
 		default:
 			disable_burst_irq(priv);
-			pr_err("===Status R %d\n", priv->status);
+			pr_debug("===Status R %d\n", priv->status);
 			break;
 		}
 	} else {
@@ -648,7 +681,7 @@ static irqreturn_t ltq_i2c_isr_burst(int irq, void *dev_id)
 			break;
 		default:
 			disable_burst_irq(priv);
-			pr_err("===Status W %d\n", priv->status);
+			pr_debug("===Status W %d\n", priv->status);
 			break;
 		}
 	}
@@ -891,7 +924,11 @@ static int ltq_i2c_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	priv->dev = &pdev->dev;
+
 	priv->irq_lb = irqres[0].start;
+	priv->irq_b = irqres[1].start;
+	priv->irq_err = irqres[2].start;
+	priv->irq_prot = irqres[3].start;
 
 	ret = devm_request_threaded_irq(&pdev->dev,
 		irqres[0].start,
@@ -948,6 +985,7 @@ static int ltq_i2c_probe(struct platform_device *pdev)
 			irqres[3].start);
 		return -ENODEV;
 	}
+	disable_all_irqs(priv);
 
 	dev_dbg(&pdev->dev, "mapped io-space to %p\n", priv->membase);
 	dev_dbg(&pdev->dev, "use IRQs %d, %d, %d, %d\n", irqres[0].start,

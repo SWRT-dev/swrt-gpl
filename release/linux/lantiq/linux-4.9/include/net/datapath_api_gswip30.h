@@ -1,14 +1,12 @@
-/*
- * Copyright (C) Intel Corporation
- * Author: Shao Guohua <guohua.shao@intel.com>
+// SPDX-License-Identifier: GPL-2.0
+/******************************************************************************
+ * Copyright (c) 2020 - 2021, MaxLinear, Inc.
+ * Copyright 2016 - 2020 Intel Corporation
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 as published
- * by the Free Software Foundation.
- */
+ *****************************************************************************/
 
-#ifndef DATAPATH_API_GRX500_H
-#define DATAPATH_API_GRX500_H
+#ifndef DATAPATH_API_GRX500_GSWIP_H
+#define DATAPATH_API_GRX500_GSWIP_H
 
 #if IS_ENABLED(CONFIG_LITTLE_ENDIAN)
 struct dma_rx_desc_0 {

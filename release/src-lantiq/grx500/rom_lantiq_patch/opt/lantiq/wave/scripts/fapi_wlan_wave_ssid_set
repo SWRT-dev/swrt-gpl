@@ -1,0 +1,78 @@
+#!/bin/sh
+# Configure SSID parameters
+# Needed objects: SSID
+
+script_name="$0"
+
+[ ! "$LIB_COMMON_SOURCED" ] && . /tmp/fapi_wlan_wave_lib_common.sh
+[ ! "$LIB_CONVERT_SOURCED" ] && . /tmp/fapi_wlan_wave_lib_convert.sh
+
+interface_name=$1
+pid=$$
+
+# Find the interface index and the radio index
+interface_index=`find_index_from_interface_name $interface_name`
+radio_name=${interface_name%%.*}
+radio_index=`find_index_from_interface_name $radio_name`
+
+print2log $radio_index $radio_index DEBUG "$script_name $*"
+timestamp $radio_index $radio_index "$script_name:begin"
+
+# DEBUG: set debug_save_conf in fapi_wlan_wave_lib_common.sh to save the in conf file
+[ "$debug_save_conf" ] && cp ${IN_CONF} ${CONF_DIR}/ssid_set_in_conf_${interface_name}
+
+# Map the objects indexes to the received objects in the in.conf file
+ssid_index=`map_param_index Object $SSID_OBJECT`
+
+# Save the input configuration parameters to a local DB used by Wave FAPI
+[ -n "$ssid_index" ] && save_db_params ssid_set $interface_name $ssid_index $interface_index
+local_db_source SSID
+
+comment="___SSID_parameters___###"
+
+# Define list of ssid parameters
+hostapd_params="bridge
+ssid"
+
+# Prepare the temporary configuration files to use
+prepare_confs $interface_name $radio_name $pid $VAP
+# Get the pid to use in this configuration session
+. ${CONF_IN_PROGRESS}_${radio_name}
+
+# Read current values and initiate new values file.
+hostapd_current_values=${CONF_DIR}/hostapd_current_values_${interface_name}_${pid}
+
+read_current_values $HOSTAPD_VAP_CONF_PREFIX $interface_name $hostapd_current_values
+
+# Calculate new values.
+bridge=`db2fapi_convert regular X_LANTIQ_COM_Vendor_BridgeName $interface_index`
+ssid=`db2fapi_convert regular SSID $interface_index`
+
+# Write the parameters to the configuration files.
+# Check if a hostapd parameter was changed.
+hostapd_changed=`check_param_changed "$hostapd_params"`
+
+# If a hostapd parameter was changed, remove ssid parameters from hostapd_vap temp conf file and write all of them with updated values.
+if [ "$hostapd_changed" ]
+then
+	hostapd_vap_conf_name=${CONF_DIR}/hostapd_vap_${interface_name}_${pid}.conf
+	# Remove the hostapd main parameters.
+	remove_params_from_conf "###$comment $hostapd_params" $hostapd_vap_conf_name $HOSTAPD_VAP_CONF_PREFIX
+
+	# Write the hostapd main parameters.
+	set_conf_param hostapd_vap comment otf $pid $interface_name comment "$comment"
+	[ -n "$bridge" ] && [ "$bridge" != "NoBridge" ] && [ -n "`brctl show | grep -w ${bridge}`" ] && set_conf_param hostapd_vap regular no_otf $pid $interface_name bridge "$bridge"
+	set_conf_param hostapd_vap regular no_otf $pid $interface_name ssid "$ssid"
+fi
+
+# Create the output configuration file
+cat /dev/null > ${OUT_CONF}
+
+# Configuration is completed successfully
+update_conf_out "wlan_configuration_status" "success"
+
+# DEBUG: set debug_save_conf in fapi_wlan_wave_lib_common.sh to save the out conf file
+[ "$debug_save_conf" ] && cp ${OUT_CONF} ${CONF_DIR}/ssid_set_out_conf_${interface_name}
+
+print2log $radio_index DEBUG "$script_name done"
+timestamp $radio_index "$script_name:done"

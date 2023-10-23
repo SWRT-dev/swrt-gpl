@@ -1083,17 +1083,18 @@ int dc_dp_br_fdb_delete(struct net_device *dev, const unsigned char *addr)
 	if (!dev)
 		return -EINVAL;
 
-	p = br_port_get_rcu(dev);
-	if (!p) {
-		pr_info("bridge: %s not a bridge port\n",
-			dev->name);
+	if (!br_port_exists(dev))
 		return -EINVAL;
-	}
 
-	if (addr)
-		err = __br_fdb_delete(p, addr, 0);
-	else
-		br_fdb_delete_by_port(p->br, p, 0, 0);
+	rcu_read_lock();
+	p = br_port_get_rcu(dev);
+	if (p) {
+		if (addr)
+			err = __br_fdb_delete(p, addr, 0);
+		else
+			br_fdb_delete_by_port(p->br, p, 0, 0);
+	}
+	rcu_read_unlock();
 
 	return err;
 }

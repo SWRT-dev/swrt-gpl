@@ -1,0 +1,58 @@
+###############################
+# PPV4 driver developer guide #
+###############################
+
+NOTE: Please keep this doc short, only must importatnt common rules should be added here
+
+1. Use kernel coding style only
+	/kernel/scripts/checkpatch.pl script must be run for all c and h files with no errors and no warnings
+
+2. For all drivers debugfs - must create the new directories under the pp directory
+	pp directory can be achieved by the pp_dbgfs_dir_get API from pp_common.h
+
+3. debugfs functionality must be implemented in a separate c file with common "internal" h file
+	example:
+	src c file:		module.c
+	debugfs c file:		module_debugfs.c
+
+4. h files:
+	Exported API's & definitions:			module.h
+	Internal h file for src and debugfs c files:	module_internal.h
+
+5. All HW modules base address should be define in pp_regs.h and should be define with ULL prefix
+	Example: #define PP_PORT_DIST_BASE               0xF0004000ULL
+
+6. Registers offsets should be define in each module internal h file
+
+7. Registers field uses:
+	Definition:
+	#define MODULE_NAME_REGISTER_NAME_REG      (PP_HW_MODULE_NAME_BASE + <reg off>)
+	#define FIELD_NAMEX_FIELD                  GENMASK(1, 0)
+	#define FIELD_NAMEY_FIELD                  BIT(2)
+	#define FIELD_NAMEZ_FIELD                  GENMASK(4, 3)
+
+	Get field val (bitfield.h):
+	fld_val = PP_FIELD_GET(FIELD_NAMEX_FIELD, reg_val);
+
+	Set field val (bitfield.h):
+	reg_val |= PP_FIELD_PREP(FIELD_NAMEX_FIELD, fld_val);
+
+	Save reg_val | fld_val in dest (macro from pp_regs.h):
+	dest = PP_FIELD_MOD(FIELD_NAMEX_FIELD, fld_val, reg_val);
+
+8. Use and add common PP macros from pp_common.h:
+	Example for existing macro's:
+	PP_MAX_PORT
+	PP_MAX_RPB_PORT
+	PP_MAX_TC
+
+
+9. For packets and bytes statistics use "struct pp_stats" from pp_api.c
+
+10.All error/warn/info printk must mentioned the driver name by using:
+	#ifdef pr_fmt
+	#undef pr_fmt
+	#define pr_fmt(fmt) "[PP_MODIFIER] " fmt
+	#endif
+
+11. Always use constants, unless function must modify referenced memory

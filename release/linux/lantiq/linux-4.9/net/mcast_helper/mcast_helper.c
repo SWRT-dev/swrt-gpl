@@ -48,48 +48,36 @@
 #include <linux/if_arp.h>
 #include <linux/if_pppox.h>
 
-#if IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP30)
-#include <net/switch_api/lantiq_gsw_api.h>
-#define SWITCH_DEV "/dev/switch_api/0"
-#endif
-
 /** Defines **/
-#define GINDX_LOOP_COUNT 1
-#define GINDX_MAX_SIZE 64
+#define GINDX_LOOP_COUNT        1
+#define GINDX_MAX_SIZE          64
 
-#define IP_HDR_LEN 20
-#define UDP_HDR_LEN 8
-#define TOT_HDR_LEN 28
-#define IP6_HDR_LEN 40
-#define TOT6_HDR_LEN 48
-#define MCH_UPDATE_TIMER 10
-#define LANSERVER_UPDATE_TIMER 10
-#define MCH_ETH_P_IPV6      0x86DD
-#define MCH_ETH_P_IP        0x0800
-#define MCH_MIN_BUF_SIZE  64
+#define UDP_HDR_LEN             (sizeof(struct udphdr))
+#define TOT_HDR_LEN             (sizeof(struct iphdr) + UDP_HDR_LEN)
+#define IP6_HDR_LEN             (sizeof(struct ipv6hdr))
+#define TOT6_HDR_LEN            (IP6_HDR_LEN + UDP_HDR_LEN)
 
-#define MCH_MAX_PROC_SIZE 24
+#define MCH_UPDATE_TIMER        10
+#define LANSERVER_UPDATE_TIMER  10
 
-////////////////////////////////
-/*! \def MCH_ETH_HLEN
-  \brief Macro that specifies the maximum length of an Ethernet MAC header.
- */
-#define MCH_ETH_HLEN                            14  /*Total octets in header.   */
+/* Log level for debug prints */
+static int mcast_debug;
 
-//#define ETH_ALEN 6
-
+#define mch_debug(fmt, ...)					\
+do {								\
+	if (mcast_debug)					\
+		printk(KERN_DEBUG "MCH: "fmt, ##__VA_ARGS__);	\
+} while (0)
 
 /*!
   \brief  Packet buffer structure. For Linux OS, this is the sk_buff structure.
  */
-typedef struct sk_buff        MCH_BUF;
+typedef struct sk_buff MCH_BUF;
 
 /*!
   \brief Macro that specifies MCH network interface data structure
  */
-typedef struct net_device     MCH_NETIF;
-
-
+typedef struct net_device MCH_NETIF;
 
 /**mcast helper member  list */
 LIST_HEAD(mch_mem_list_g);
@@ -99,11 +87,10 @@ LIST_HEAD(mch_mem_list6_g);
 LIST_HEAD(mch_mem_list_session_g);
 LIST_HEAD(mch_mem_list6_session_g);
 
-
 /** mcast helper global variables */
 static FTUPLE_INFO_t ftuple_info[FTUPLE_ARR_SIZE];
 static FTUPLE_INFO_t ftuple_info6[FTUPLE_ARR_SIZE];
-static unsigned long long int  g_mcast_grpindex[GINDX_LOOP_COUNT];
+static unsigned long long int g_mcast_grpindex[GINDX_LOOP_COUNT];
 
 #if defined(CONFIG_PROC_FS)
 struct mcast_helperf_iter_state {
@@ -112,7 +99,6 @@ struct mcast_helperf_iter_state {
 	struct in_device *in_dev;
 };
 #endif
-
 
 static struct sk_buff *skb_buff = NULL;
 static struct sk_buff *skb_buff6 = NULL;
@@ -125,6 +111,10 @@ int mch_timerstarted = 0;
 int lanserver_timerstarted = 0;
 int mch_timermod = 0;
 int lanserver_timermod = 0;
+
+static void mcast_helper_start_helper_timer(void);
+static void mcast_helper_start_lanserver_timer(void);
+
 int mch_iptype = 0;
 
 int mch_acl_enabled = 0;
@@ -132,7 +122,6 @@ int mch_accl_enabled = 1;
 #ifdef CONFIG_MCAST_HELPER_ACL
 mch_acl_enabled	= 1;
 #endif
-
 
 static int mch_major = -1;
 static struct cdev mcast_cdev;
@@ -151,15 +140,20 @@ extern void (*five_tuple_info6_ptr)(struct sk_buff *, char);
 extern void (*five_tuple_br_info_ptr)(struct sk_buff *);
 extern void (*five_tuple_br_info_hook)(struct sk_buff *);
 
-extern int mch_br_capture_pkt;
-extern int mcast_helper_invoke_callback(unsigned int grpidx, struct net_device *netdev, void *mc_stream, unsigned int flag, unsigned int count);
+extern atomic_t mch_br_capture_pkt;
+extern int mcast_helper_invoke_callback(unsigned int grpidx,
+		struct net_device *netdev, void *mc_stream,
+		unsigned int flag, unsigned int count);
 extern int (*mcast_helper_sig_check_update_ptr)(struct sk_buff *skb);
+extern int (*mcast_helper_get_skb_gid_ptr)(struct sk_buff *skb);
 
 /**mcast helper function prototype */
-static int mcast_helper_invoke_return_callback(unsigned int grpidx, struct net_device *netdev,
+static int mcast_helper_invoke_return_callback(unsigned int grpidx,
+		struct net_device *netdev,
 		MCAST_STREAM_t *mc_stream, unsigned int flag, unsigned int count);
 static MCAST_GIMC_t *mcast_helper_search_gimc_record(IP_Addr_t *gaddr,
 		IP_Addr_t *saddr, struct list_head *head);
+static void mcast_helper_release_grpidx(int grpidx);
 static MCAST_GIMC_t * mcast_helper_add_gimc_record(struct net_device *netdev,
                           IP_Addr_t * gaddr, IP_Addr_t * saddr,
                           unsigned int proto,unsigned int sport,
@@ -170,34 +164,16 @@ static int mcast_helper_open(struct inode *i, struct file *f)
 {
 	return 0;
 }
+
 static int mcast_helper_close(struct inode *i, struct file *f)
 {
 	return 0;
-}
-
-
-
-/*=============================================================================
- *Function Name: mcast_helper_dev_get_by_name
- *Description	: Function to get the device by name
- *===========================================================================*/
-
-struct net_device *mcast_helper_dev_get_by_name(struct net *net, const char *name)
-{
-	struct net_device *netif = NULL;
-	netif = dev_get_by_name(net, name);
-	if (netif != NULL) {
-		dev_put(netif);
-		return netif;
-	} else
-		return NULL;
 }
 
 /*=============================================================================
  *Function Name: mcast_helper_copy_ipaddr
  *Description	: Wrapper function to copy ip address
  *===========================================================================*/
-
 static void mcast_helper_copy_ipaddr(IP_Addr_t *to, IP_Addr_t *from)
 {
 	if (to == NULL || from == NULL)
@@ -210,18 +186,16 @@ static void mcast_helper_copy_ipaddr(IP_Addr_t *to, IP_Addr_t *from)
  *Function Name: mcast_helper_is_same_ipaddr
  *Description	: Wrapper function to compare IP address
  *===========================================================================*/
-
-
 static int mcast_helper_is_same_ipaddr(IP_Addr_t *addr1, IP_Addr_t *addr2)
 {
 	if (addr1 == NULL || addr2 == NULL)
-		return false;
+		return 0;
 
-	if (0) {
-	} else if (addr1->ipType == IPV4 && addr2->ipType == IPV4) {
+	if (addr1->ipType == IPV4 && addr2->ipType == IPV4) {
 		return addr1->ipA.ipAddr.s_addr == addr2->ipA.ipAddr.s_addr;
 	} else if (addr1->ipType == IPV6 && addr2->ipType == IPV6) {
-		return IN6_ARE_ADDR_EQUAL(&addr1->ipA.ip6Addr, &addr2->ipA.ip6Addr);
+		return IN6_ARE_ADDR_EQUAL(&addr1->ipA.ip6Addr,
+				&addr2->ipA.ip6Addr);
 	}
 
 	return 0;
@@ -231,26 +205,22 @@ static int mcast_helper_is_same_ipaddr(IP_Addr_t *addr1, IP_Addr_t *addr2)
  *Function Name: mcast_helper_init_ipaddr
  *Description	: Wrapper function to initialize IP address
  *===========================================================================*/
-
 static void mcast_helper_init_ipaddr(IP_Addr_t *addr, ptype_t type, void *addrp)
 {
 	if (addr == NULL)
 		return;
 
-	if (0) {
-	} else if (type == IPV4) {
-		addr->ipType = IPV4;
-		if (addrp) {
+	addr->ipType = type;
+	if (type == IPV4) {
+		if (addrp)
 			addr->ipA.ipAddr.s_addr = *((unsigned int *)addrp);
-		} else {
+		else
 			addr->ipA.ipAddr.s_addr = 0;
-		}
 	} else if (type == IPV6) {
 		struct in6_addr *in6 = (struct in6_addr *)addrp;
-		addr->ipType = IPV6;
-		if (in6) {
+		if (addrp)
 			memcpy(&(addr->ipA.ip6Addr), in6, sizeof(struct in6_addr));
-		} else
+		else
 			memset(&(addr->ipA.ip6Addr), 0, sizeof(struct in6_addr));
 	}
 }
@@ -259,29 +229,23 @@ static void mcast_helper_init_ipaddr(IP_Addr_t *addr, ptype_t type, void *addrp)
  *Function Name: mcast_helper_is_addr_unspecified
  *Description	: Wrapper function to ip address is specified
  *===========================================================================*/
-
-
-int mcast_helper_is_addr_unspecified(IP_Addr_t *addr)
+static int mcast_helper_is_addr_unspecified(IP_Addr_t *addr)
 {
 	if (addr->ipType == IPV4) {
 		return addr->ipA.ipAddr.s_addr == 0;
 	} else if (addr->ipType == IPV6) {
-		return IN6_IS_ADDR_UNSPECIFIED(&(addr->ipA.ip6Addr.s6_addr16[0]));
+		return IN6_IS_ADDR_UNSPECIFIED(addr->ipA.ip6Addr.s6_addr);
 	}
 	return 0;
 }
-
 
 /*=============================================================================
  *Function Name: mcast_helper_list_p
  *Description	: Wrapper function to get the membership list pointer
  *===========================================================================*/
-
-
-struct list_head *mcast_helper_list_p(ptype_t type)
+static struct list_head *mcast_helper_list_p(ptype_t type)
 {
-	if (0) {
-	} else if (type == IPV4) {
+	if (type == IPV4) {
 		return &mch_mem_list_g;
 	} else if (type == IPV6) {
 		return &mch_mem_list6_g;
@@ -290,7 +254,7 @@ struct list_head *mcast_helper_list_p(ptype_t type)
 	return NULL;
 }
 
-struct list_head *mcast_helper_session_p(ptype_t type)
+static struct list_head *mcast_helper_session_p(ptype_t type)
 {
 	if (type == IPV4) {
 		return &mch_mem_list_session_g;
@@ -302,40 +266,21 @@ struct list_head *mcast_helper_session_p(ptype_t type)
 	return NULL;
 }
 
-
 /*=============================================================================
  *Function Name: mch_check_is_ppp_netif
- *Description	: Wrapper function to check netif is ppp
+ *Description  : Wrapper function to check netif is ppp
  *===========================================================================*/
-
-
-uint32_t mch_check_is_ppp_netif (MCH_NETIF *netif)
+static inline uint32_t mch_check_is_ppp_netif(MCH_NETIF *netif)
 {
-	return (netif->type == ARPHRD_PPP && (netif->flags & IFF_POINTOPOINT));
+	return ((netif->type == ARPHRD_PPP) && (netif->flags & IFF_POINTOPOINT));
 }
-
-/*=============================================================================
- *Function Name: mch_dev_get_by_name
- *Description	: Wrapper function to get the net device from interface name
- *===========================================================================*/
-
-struct net_device *mch_dev_get_by_name(const char *ifname)
-{
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 32)
-	return dev_get_by_name(ifname);
-#else
-	return dev_get_by_name(&init_net, ifname);
-#endif
-
-}
-
 
 /*=============================================================================
  *Function Name: mcast_helper_get_pkt_rx_src_mac_addr
- *Description	: Wrapper function to extract the source mac address from skb
+ *Description  : Wrapper function to extract the source mac address from skb
  *===========================================================================*/
-
-void mcast_helper_get_pkt_rx_src_mac_addr(MCH_BUF *mch_buf, uint8_t mac[ETH_ALEN])
+static inline void mcast_helper_get_pkt_rx_src_mac_addr(MCH_BUF *mch_buf,
+						 uint8_t mac[ETH_ALEN])
 {
 	if ((uint32_t)skb_mac_header(mch_buf) >= KSEG0)
 		memcpy(mac, skb_mac_header(mch_buf) + ETH_ALEN, ETH_ALEN);
@@ -343,14 +288,37 @@ void mcast_helper_get_pkt_rx_src_mac_addr(MCH_BUF *mch_buf, uint8_t mac[ETH_ALEN
 
 /*=============================================================================
  *Function Name: mch_get_netif
- *Description	: Wrapper function to get netif from interface name
+ *Description  : Wrapper function to get netif from interface name
  *===========================================================================*/
-
-MCH_NETIF *mch_get_netif (char  *ifname)
+static MCH_NETIF *mch_get_netif(char *ifname)
 {
-
 	MCH_NETIF *netif;
-	netif = mch_dev_get_by_name(ifname);
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 23)
+	netif = dev_get_by_name(ifname);
+#else
+	netif = dev_get_by_name(&init_net, ifname);
+#endif
+	if (netif) {
+		dev_put(netif);
+		return netif;
+	} else
+		return NULL;
+}
+
+/*=============================================================================
+ *Function Name: mch_get_netif_by_idx
+ *Description  : Wrapper function to get netif from interface index
+ *===========================================================================*/
+static MCH_NETIF *mch_get_netif_by_idx(int ifindex)
+{
+	MCH_NETIF *netif;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 23)
+	netif = dev_get_by_index(ifindex);
+#else
+	netif = dev_get_by_index(&init_net, ifindex);
+#endif
 	if (netif) {
 		dev_put(netif);
 		return netif;
@@ -360,74 +328,80 @@ MCH_NETIF *mch_get_netif (char  *ifname)
 
 /*=============================================================================
  *Function Name: mcast_helper_get_rx_mac_addr
- *Description	: function to read the source mac address from skb based on interface type
+ *Description	: function to read the source mac address from skb
+ *                based on interface type
  *===========================================================================*/
-
-
-void  mcast_helper_get_rx_mac_addr(MCH_BUF *mch_buf, char *ifname, char *s_mac)
+static void mcast_helper_get_rx_mac_addr(MCH_BUF *mch_buf,
+					 char *ifname, char *s_mac)
 {
 	MCH_NETIF *netif;
-	int32_t hdr_offset = 14; // pppoe header length
-	netif = mch_get_netif (ifname);
-	if (netif != NULL) {
-		hdr_offset = MCH_ETH_HLEN;
-		if (mch_check_is_ppp_netif (netif)) {
-			hdr_offset += PPPOE_SES_HLEN ; // PPPoE
-			skb_set_mac_header(mch_buf, -hdr_offset);
-			mcast_helper_get_pkt_rx_src_mac_addr(mch_buf, s_mac);
-			skb_reset_mac_header(mch_buf);
+	int32_t hdr_offset = ETH_HLEN;
 
-		} else {
+	netif = mch_get_netif(ifname);
+	if (netif == NULL)
+		return;
 
-			mcast_helper_get_pkt_rx_src_mac_addr(mch_buf, s_mac);
-		}
-
+	if (mch_check_is_ppp_netif(netif)) {
+		hdr_offset += PPPOE_SES_HLEN;
+		skb_set_mac_header(mch_buf, -hdr_offset);
+		mcast_helper_get_pkt_rx_src_mac_addr(mch_buf, s_mac);
+		skb_reset_mac_header(mch_buf);
+	} else {
+		mcast_helper_get_pkt_rx_src_mac_addr(mch_buf, s_mac);
 	}
 }
 
 /*=============================================================================
  *Function Name: mcast_helper_five_tuple_info
- *Description	: Function  to retrive 5-tuple info for IPV4 packet
+ *Description  : Function  to retrive 5-tuple info for IPV4 packet
  *===========================================================================*/
-
-
-static void mcast_helper_five_tuple_info(struct sk_buff *skb, char iface_name[IFSIZE])
+static void
+mcast_helper_five_tuple_info(struct sk_buff *skb, char iface_name[IFSIZE])
 {
 	int index = 0;
 	struct iphdr *iph = ip_hdr(skb);
 	struct udphdr *udph = (struct udphdr *)((u8 *)iph +(iph->ihl << 2));
-
 	const unsigned char *dest = eth_hdr(skb)->h_dest;
+
 	if (is_multicast_ether_addr(dest)) {
-		if (mch_captured_skb && strncmp(skb->dev->name, "br", 2) && mch_acl_enabled) {
+		if (mch_captured_skb && mch_acl_enabled &&
+		    strncmp(skb->dev->name, "br", 2)) {
 			skb_buff = skb_copy(skb, GFP_ATOMIC);
 			mch_captured_skb = 0;
 		}
 
-
 		for (index = 0; index < FTUPLE_ARR_SIZE; index++) {
 			if (ftuple_info[index].uflag == 0) {
-
-				strncpy(ftuple_info[index].rxIntrfName, iface_name, strlen(iface_name));
-				mcast_helper_init_ipaddr(&ftuple_info[index].groupIP, IPV4, &iph->daddr);
-				mcast_helper_init_ipaddr(&ftuple_info[index].srcIP, IPV4, &iph->saddr);
+				strncpy(ftuple_info[index].rxIntrfName,
+						iface_name, strlen(iface_name));
+				mcast_helper_init_ipaddr(
+						&ftuple_info[index].groupIP,
+						IPV4, &iph->daddr);
+				mcast_helper_init_ipaddr(
+						&ftuple_info[index].srcIP,
+						IPV4, &iph->saddr);
 				ftuple_info[index].proto = iph->protocol;
 				ftuple_info[index].sPort = udph->source;
 				ftuple_info[index].dPort = udph->dest;
-				mcast_helper_get_rx_mac_addr(skb, iface_name, ftuple_info[index].src_mac);
+				mcast_helper_get_rx_mac_addr(skb, iface_name,
+						ftuple_info[index].src_mac);
 
 				ftuple_info[index].uflag = 1;
-				if ((index+1) < FTUPLE_ARR_SIZE)
-					ftuple_info[index+1].uflag = 0;
+				if ((index + 1) < FTUPLE_ARR_SIZE)
+					ftuple_info[index + 1].uflag = 0;
 				else
 					ftuple_info[0].uflag = 0;
-
 				break;
-			} else if (mcast_helper_is_same_ipaddr(&ftuple_info[index].groupIP, (IP_Addr_t *)&iph->daddr)
-					&& (mcast_helper_is_same_ipaddr(&ftuple_info[index].srcIP, (IP_Addr_t *)&iph->saddr)
-						|| mcast_helper_is_addr_unspecified(&ftuple_info[index].srcIP)))
+			} else if (mcast_helper_is_same_ipaddr(
+				   &ftuple_info[index].groupIP,
+				   (IP_Addr_t *)&iph->daddr) &&
+				   (mcast_helper_is_same_ipaddr(
+				   &ftuple_info[index].srcIP,
+				   (IP_Addr_t *)&iph->saddr) ||
+				   mcast_helper_is_addr_unspecified(
+				   &ftuple_info[index].srcIP))) {
 				break;
-
+			}
 		}
 	}
 	return;
@@ -435,42 +409,57 @@ static void mcast_helper_five_tuple_info(struct sk_buff *skb, char iface_name[IF
 
 /*=============================================================================
  *Function Name: mcast_helper_five_tuple_info6
- *Description	: Function  to retrive 5-tuple info for IPV6 packet
+ *Description  : Function  to retrive 5-tuple info for IPV6 packet
  *===========================================================================*/
-
-static void mcast_helper_five_tuple_info6(struct sk_buff *skb, char iface_name[IFSIZE])
+static void
+mcast_helper_five_tuple_info6(struct sk_buff *skb, char iface_name[IFSIZE])
 {
 	int index;
 	struct ipv6hdr *ip6h = ipv6_hdr(skb);
-	struct udphdr *udph = udp_hdr(skb);
+	/*
+	 * IP packet received from ip6mr.c hook,
+	 * cannot use udp_hdr() directly to get udp details
+	 */
+	struct udphdr *udph = (struct udphdr *)((u8 *)ip6h + IP6_HDR_LEN);
 	const unsigned char *dest = eth_hdr(skb)->h_dest;
 
 	if (is_multicast_ether_addr(dest)) {
-		if (mch_captured_skb6 && strncmp(skb->dev->name, "br", 2) && mch_acl_enabled) {
+		if (mch_captured_skb6 && mch_acl_enabled &&
+		    strncmp(skb->dev->name, "br", 2)) {
 			skb_buff6 = skb_copy(skb, GFP_ATOMIC);
 			mch_captured_skb6 = 0;
 		}
 		for (index = 0; index < FTUPLE_ARR_SIZE; index++) {
 			if (ftuple_info6[index].uflag == 0) {
-				strncpy(ftuple_info6[index].rxIntrfName, iface_name, strlen(iface_name));
-				mcast_helper_init_ipaddr(&ftuple_info6[index].groupIP, IPV6, &ip6h->daddr);
-				mcast_helper_init_ipaddr(&ftuple_info6[index].srcIP, IPV6, &ip6h->saddr);
+				strncpy(ftuple_info6[index].rxIntrfName,
+					iface_name, strlen(iface_name));
+				mcast_helper_init_ipaddr(
+						&ftuple_info6[index].groupIP,
+						IPV6, &ip6h->daddr);
+				mcast_helper_init_ipaddr(
+						&ftuple_info6[index].srcIP,
+						IPV6, &ip6h->saddr);
 				ftuple_info6[index].proto = ip6h->nexthdr;
 				ftuple_info6[index].sPort = udph->source;
 				ftuple_info6[index].dPort = udph->dest;
-				mcast_helper_get_rx_mac_addr(skb, iface_name, ftuple_info6[index].src_mac);
+				mcast_helper_get_rx_mac_addr(skb, iface_name,
+						ftuple_info6[index].src_mac);
 
 				ftuple_info6[index].uflag = 1;
-				if ((index+1) < FTUPLE_ARR_SIZE)
-					ftuple_info6[index+1].uflag = 0;
+				if ((index + 1) < FTUPLE_ARR_SIZE)
+					ftuple_info6[index + 1].uflag = 0;
 				else
 					ftuple_info6[0].uflag = 0;
 				break;
-			} else {
-				if (mcast_helper_is_same_ipaddr(&ftuple_info6[index].groupIP, (IP_Addr_t *)&ip6h->daddr)
-						&& (mcast_helper_is_same_ipaddr(&ftuple_info6[index].srcIP, (IP_Addr_t *)&ip6h->saddr)
-							|| mcast_helper_is_addr_unspecified(&ftuple_info6[index].srcIP)))
-					break;
+			} else if (mcast_helper_is_same_ipaddr(
+				   &ftuple_info6[index].groupIP,
+				   (IP_Addr_t *)&ip6h->daddr) &&
+				   (mcast_helper_is_same_ipaddr(
+				   &ftuple_info6[index].srcIP,
+				   (IP_Addr_t *)&ip6h->saddr) ||
+				   mcast_helper_is_addr_unspecified(
+				   &ftuple_info6[index].srcIP))) {
+				break;
 			}
 		}
 	}
@@ -478,353 +467,475 @@ static void mcast_helper_five_tuple_info6(struct sk_buff *skb, char iface_name[I
 }
 
 /*=============================================================================
- *Function Name: mcast_helper_five_tuple_br_info
- *Description	: Function  to retrive 5-tuple info for bridge IPV4 and IPV6 packet
+ *Function Name: mcast_helper_update_five_tuple
+ *Description  : Function to update 5-tuple info for stream and inform callback
  *===========================================================================*/
-
-static void mcast_helper_five_tuple_br_info(struct sk_buff *skb)
+static MCAST_GIMC_t *mcast_helper_update_five_tuple(struct sk_buff *skb,
+		IP_Addr_t *daddr, IP_Addr_t *saddr, uint32_t proto,
+		uint32_t sPort, uint32_t dPort, bool update)
 {
-
 	MCAST_GIMC_t *gimc_rec;
+	MCAST_MEMBER_t *gitxmc_rec = NULL;
 	struct list_head *liter = NULL;
 	struct list_head *tliter = NULL;
-	MCAST_MEMBER_t *gitxmc_rec = NULL;
 	struct list_head *gimc_list;
+	unsigned int flag = MCH_CB_F_ADD;
+	const unsigned char *src_mac = eth_hdr(skb)->h_source;
+
+	if (skb->protocol == htons(ETH_P_IP))
+		gimc_list = mcast_helper_list_p(IPV4);
+	else
+		gimc_list = mcast_helper_list_p(IPV6);
+	gimc_rec = mcast_helper_search_gimc_record(daddr, saddr, gimc_list);
+	if (gimc_rec == NULL)
+		goto done;
+
+	/*
+	 * FIXME: Updated flag indicates the touple change.
+	 * Think about the callback in LAN server case, when
+	 * same stream coming but port got changed.
+	 */
+	if (update) {
+		memcpy(gimc_rec->mc_stream.src_mac, src_mac, ETH_ALEN);
+		gimc_rec->mc_stream.rxDev = mch_get_netif_by_idx(skb->skb_iif);
+		flag = MCH_CB_F_UPD;
+	}
+
+	/* If not asked to update always, depends on br_callback_flag */
+	if (!update && gimc_rec->br_callback_flag)
+		goto done;
+
+	/* GA/daddr & dev updated from MCH add entry */
+	gimc_rec->br_callback_flag = 1;
+	atomic_dec(&mch_br_capture_pkt);
+	memcpy(&gimc_rec->mc_stream.sIP, saddr, sizeof(IP_Addr_t));
+	gimc_rec->mc_stream.proto = proto;
+	gimc_rec->mc_stream.sPort = sPort;
+	gimc_rec->mc_stream.dPort = dPort;
+
+	list_for_each_safe(liter, tliter, &gimc_rec->mc_mem_list) {
+		gitxmc_rec = list_entry(liter, MCAST_MEMBER_t, list);
+		mcast_helper_invoke_return_callback(gimc_rec->grpIdx,
+				gitxmc_rec->memDev, &gimc_rec->mc_stream,
+				flag, gitxmc_rec->macaddr_count);
+	}
+
+done:
+	return gimc_rec;
+}
+
+/*=============================================================================
+ *Function Name: mcast_helper_five_tuple_br_info
+ *Description  : Function to retrive 5-tuple info for bridge IPV4 and IPV6 packet
+ *===========================================================================*/
+static void mcast_helper_five_tuple_br_info(struct sk_buff *skb)
+{
 	IP_Addr_t saddr;
 	IP_Addr_t daddr;
-	const unsigned char *dest = eth_hdr(skb)->h_dest;
 
-
-	if ((skb->protocol == htons(ETH_P_IP)) && (is_multicast_ether_addr(dest))) {
+	if (skb->protocol == htons(ETH_P_IP)) {
 		struct iphdr *iph = ip_hdr(skb);
-		struct udphdr *udph = (struct udphdr *)((u8 *)iph +(iph->ihl << 2));
-		mcast_helper_init_ipaddr(&saddr, IPV4, &iph->saddr);
-		mcast_helper_init_ipaddr(&daddr, IPV4, &iph->daddr);
-		gimc_list = mcast_helper_list_p(IPV4) ;
-
+		struct udphdr *udph = (struct udphdr *)((u8 *)iph +
+				(iph->ihl << 2));
 
 		if (mch_captured_skb && mch_acl_enabled) {
 			skb_buff = skb_copy(skb, GFP_ATOMIC);
 			mch_captured_skb = 0;
 		}
 
+		mcast_helper_init_ipaddr(&saddr, IPV4, &iph->saddr);
+		mcast_helper_init_ipaddr(&daddr, IPV4, &iph->daddr);
 
-		gimc_rec = mcast_helper_search_gimc_record(&daddr, &saddr, gimc_list);
-		if (gimc_rec != NULL && gimc_rec->br_callback_flag == 0) {
-			mch_br_capture_pkt = 0;
-			if (!list_empty(&gimc_rec->mc_mem_list)) {
-				list_for_each_safe(liter, tliter, &gimc_rec->mc_mem_list) {
-					gitxmc_rec = list_entry(liter, MCAST_MEMBER_t, list);
-					if (gitxmc_rec != NULL) {
-						gimc_rec->br_callback_flag = 1;
-						mcast_helper_init_ipaddr(&gimc_rec->mc_stream.sIP, IPV4, &iph->saddr);
-						gimc_rec->mc_stream.proto = iph->protocol;
-						gimc_rec->mc_stream.sPort = udph->source;
-						gimc_rec->mc_stream.dPort = udph->dest;
-						mcast_helper_get_pkt_rx_src_mac_addr(skb, gimc_rec->mc_stream.src_mac);
-						mcast_helper_invoke_return_callback(gimc_rec->grpIdx, gitxmc_rec->memDev, (MCAST_STREAM_t *)&(gimc_rec->mc_stream), MC_F_ADD, gitxmc_rec->macaddr_count);
-					}
-				}
-			}
-
-		} else {
-			mch_br_capture_pkt = 0;
-		}
+		/* Update helper and inform callback if not done */
+		mcast_helper_update_five_tuple(skb, &daddr, &saddr,
+				iph->protocol, udph->source, udph->dest, false);
 	} else if (skb->protocol == htons(ETH_P_IPV6)) {
 		struct ipv6hdr *iph6 = ipv6_hdr(skb);
-		struct udphdr *udph6 = udp_hdr(skb);
-		gimc_list = mcast_helper_list_p(IPV6) ;
-
-		mcast_helper_init_ipaddr(&saddr, IPV6, &iph6->saddr);
-		mcast_helper_init_ipaddr(&daddr, IPV6, &iph6->daddr);
+		/*
+		 * XXX: IP packet received from bridge hook,
+		 * cannot use udp_hdr() directly to get udp details
+		 */
+		struct udphdr *udph6 = (struct udphdr *)((u8 *)iph6 +
+				IP6_HDR_LEN);
 
 		if (mch_captured_skb6 && mch_acl_enabled) {
 			skb_buff6 = skb_copy(skb, GFP_ATOMIC);
 			mch_captured_skb6 = 0;
 		}
 
+		mcast_helper_init_ipaddr(&saddr, IPV6, &iph6->saddr);
+		mcast_helper_init_ipaddr(&daddr, IPV6, &iph6->daddr);
 
-		gimc_rec = mcast_helper_search_gimc_record(&daddr, &saddr, gimc_list);
-		if (gimc_rec != NULL && gimc_rec->br_callback_flag == 0) {
-			mch_br_capture_pkt = 0;
-			if (!list_empty(&gimc_rec->mc_mem_list)) {
-				list_for_each_safe(liter, tliter, &gimc_rec->mc_mem_list) {
-					gitxmc_rec = list_entry(liter, MCAST_MEMBER_t, list);
-					if (gitxmc_rec != NULL) {
-						gimc_rec->br_callback_flag = 1;
-						mcast_helper_init_ipaddr(&gimc_rec->mc_stream.sIP, IPV6, &iph6->saddr);
-						gimc_rec->mc_stream.proto = iph6->nexthdr;
-						gimc_rec->mc_stream.sPort = udph6->source;
-						gimc_rec->mc_stream.dPort = udph6->dest;
-						mcast_helper_get_pkt_rx_src_mac_addr(skb, gimc_rec->mc_stream.src_mac);
-						mcast_helper_invoke_return_callback(gimc_rec->grpIdx, gitxmc_rec->memDev, (MCAST_STREAM_t *)&(gimc_rec->mc_stream), MC_F_ADD, gitxmc_rec->macaddr_count);
-					}
-				}
-			}
-
-		} else {
-			mch_br_capture_pkt = 0;
-		}
-	} else {
-		mch_br_capture_pkt = 0;
+		/* Update helper and inform callback if not done */
+		mcast_helper_update_five_tuple(skb, &daddr, &saddr,
+				iph6->nexthdr, udph6->source, udph6->dest, false);
 	}
 
 	return;
+}
+
+/*=============================================================================
+ *Function Name: mcast_helper_update_lanserver_list
+ *Description  : Function to add IPv4 5-tuple info and inform callback
+ *===========================================================================*/
+static void mcast_helper_update_lanserver_list(struct sk_buff *skb)
+{
+	bool changed = false;
+	IP_Addr_t saddr;
+	IP_Addr_t daddr;
+	MCAST_GIMC_t *gimc_rec;
+	MCAST_GIMC_t *gimc_rec_h;
+	MCH_NETIF *rxDev = NULL;
+	struct list_head *gimc_list;
+	unsigned char *src_mac = eth_hdr(skb)->h_source;
+	struct iphdr *iph = ip_hdr(skb);
+	struct udphdr *udph = (struct udphdr *)((u8 *)iph + (iph->ihl << 2));
+
+	/*
+	 * Ignore Multicast control packets(224.0.0.x) &
+	 * UPnP packets(239.255.255.250)
+	 */
+	if (((ntohl(iph->daddr) & 0xffffff00U) == 0xe0000000U) ||
+	    ((ntohl(iph->daddr) & 0xffffffffU) == 0xeffffffaU))
+		return;
+
+	rxDev = mch_get_netif_by_idx(skb->skb_iif);
+	mcast_helper_init_ipaddr(&saddr, IPV4, &iph->saddr);
+	mcast_helper_init_ipaddr(&daddr, IPV4, &iph->daddr);
+
+	/* Search stream in lanserver list */
+	gimc_list = mcast_helper_session_p(IPV4) ;
+	gimc_rec = mcast_helper_search_gimc_record(&daddr, &saddr, gimc_list);
+	if (gimc_rec == NULL) {
+		gimc_rec = mcast_helper_add_gimc_record(rxDev, &daddr,
+				&saddr, iph->protocol, udph->source,
+				udph->dest, src_mac, gimc_list);
+		if (gimc_rec == NULL)
+			return;
+
+		/* Update helper and inform callback if not done */
+		gimc_rec_h = mcast_helper_update_five_tuple(skb, &daddr, &saddr,
+				iph->protocol, udph->source, udph->dest, false);
+		if (gimc_rec_h) {
+			/* Use same GID from helper list */
+			mcast_helper_release_grpidx(gimc_rec->grpIdx);
+			gimc_rec->grpIdx = gimc_rec_h->grpIdx;
+		}
+	} else {
+		/* Updating lanserver list entry */
+		if (gimc_rec->mc_stream.rxDev != rxDev) {
+			gimc_rec->mc_stream.rxDev = rxDev;
+			changed = true;
+		}
+		if (gimc_rec->mc_stream.proto != iph->protocol) {
+			gimc_rec->mc_stream.proto = iph->protocol;
+			changed = true;
+		}
+		if (gimc_rec->mc_stream.sPort != udph->source) {
+			gimc_rec->mc_stream.sPort = udph->source;
+			changed = true;
+		}
+		if (gimc_rec->mc_stream.dPort != udph->dest) {
+			gimc_rec->mc_stream.dPort = udph->dest;
+			changed = true;
+		}
+		if (!ether_addr_equal(gimc_rec->mc_stream.src_mac, src_mac)) {
+			memcpy(gimc_rec->mc_stream.src_mac, src_mac, ETH_ALEN);
+			changed = true;
+		}
+		if (changed) {
+			/*
+			 * Some change in source, update helper list entry
+			 * and inform callback */
+			mcast_helper_update_five_tuple(skb, &daddr, &saddr,
+					iph->protocol, udph->source,
+					/* TODO: touple updated - callback? */
+					udph->dest, false);
+		}
+	}
+}
+
+/*=============================================================================
+ *Function Name: mcast_helper_update_lanserver_list6
+ *Description  : Function to add IPv6 5-tuple info and inform callback
+ *===========================================================================*/
+static void mcast_helper_update_lanserver_list6(struct sk_buff *skb)
+{
+	bool changed = false;
+	IP_Addr_t saddr;
+	IP_Addr_t daddr;
+	MCAST_GIMC_t *gimc_rec;
+	MCAST_GIMC_t *gimc_rec_h;
+	MCH_NETIF *rxDev = NULL;
+	struct list_head *gimc_list;
+	unsigned char *src_mac = eth_hdr(skb)->h_source;
+	struct ipv6hdr *iph6 = ipv6_hdr(skb);
+	/*
+	 * IP packet received from bridge hook, cannot
+	 * use udp_hdr() directly to get udp details
+	 */
+	struct udphdr *udph6 = (struct udphdr *)((u8 *)iph6 +
+			IP6_HDR_LEN);
+
+	rxDev = mch_get_netif_by_idx(skb->skb_iif);
+	mcast_helper_init_ipaddr(&saddr, IPV6, &iph6->saddr);
+	mcast_helper_init_ipaddr(&daddr, IPV6, &iph6->daddr);
+
+	/* Search stream in lanserver list */
+	gimc_list = mcast_helper_session_p(IPV6);
+	gimc_rec = mcast_helper_search_gimc_record(&daddr, &saddr, gimc_list);
+	if (gimc_rec == NULL) {
+		gimc_rec = mcast_helper_add_gimc_record(rxDev, &daddr,
+				&saddr, iph6->nexthdr, udph6->source,
+				udph6->dest, src_mac, gimc_list);
+		if (gimc_rec == NULL)
+			return;
+
+		/* Update helper and inform callback if not done */
+		gimc_rec_h = mcast_helper_update_five_tuple(skb, &daddr, &saddr,
+				iph6->nexthdr, udph6->source, udph6->dest, false);
+		if (gimc_rec_h) {
+			/* Use same GID from helper list */
+			mcast_helper_release_grpidx(gimc_rec->grpIdx);
+			gimc_rec->grpIdx = gimc_rec_h->grpIdx;
+		}
+	} else {
+		/* Updating lanserver list entry */
+		if (gimc_rec->mc_stream.rxDev != rxDev) {
+			gimc_rec->mc_stream.rxDev = rxDev;
+			changed = true;
+		}
+		if (gimc_rec->mc_stream.proto != iph6->nexthdr) {
+			gimc_rec->mc_stream.proto = iph6->nexthdr;
+			changed = true;
+		}
+		if (gimc_rec->mc_stream.sPort != udph6->source) {
+			gimc_rec->mc_stream.sPort = udph6->source;
+			changed = true;
+		}
+		if (gimc_rec->mc_stream.dPort != udph6->dest) {
+			gimc_rec->mc_stream.dPort = udph6->dest;
+			changed = true;
+		}
+		if (!ether_addr_equal(gimc_rec->mc_stream.src_mac, src_mac)) {
+			memcpy(gimc_rec->mc_stream.src_mac, src_mac, ETH_ALEN);
+			changed = true;
+		}
+		if (changed) {
+			/*
+			 * Some change in source, update helper list entry
+			 * and inform callback */
+			mcast_helper_update_five_tuple(skb, &daddr, &saddr,
+					iph6->nexthdr, udph6->source,
+					/* TODO: touple updated - callback? */
+					udph6->dest, false);
+		}
+	}
 }
 
 /*=============================================================================
  * Function Name : mcast_helper_five_tuple_br_hook
- * Description	 : Function  to retrive 5-tuple info for bridge IPV4 and IPV6 packet
+ * Description   : Function to retrive 5-tuple info for bridge
+ *                 IPV4 and IPV6 packet (lanserver)
  *===========================================================================*/
-
 static void mcast_helper_five_tuple_br_hook(struct sk_buff *skb)
 {
-	MCAST_GIMC_t *gimc_rec;
-	MCAST_GIMC_t *gimc_rec_h;
-	struct list_head *gimc_list;
-	struct list_head *gimc_list_h;
-	MCAST_MEMBER_t *gitxmc_rec = NULL;
-	struct list_head *liter = NULL;
-	struct list_head *tliter = NULL;
-	IP_Addr_t saddr;
-	IP_Addr_t daddr;
-	const unsigned char *dest = eth_hdr(skb)->h_dest;
-
 	if (skb->protocol == htons(ETH_P_IP)) {
-		uint8_t src_mac[ETH_ALEN] = { 0 };
-		struct iphdr *iph = ip_hdr(skb);
-		struct udphdr *udph = (struct udphdr *)((u8 *)iph +(iph->ihl << 2));
-		mcast_helper_init_ipaddr(&saddr, IPV4, &iph->saddr);
-		mcast_helper_init_ipaddr(&daddr, IPV4, &iph->daddr);
-		mcast_helper_get_pkt_rx_src_mac_addr(skb, src_mac);
-		gimc_list = mcast_helper_session_p(IPV4) ;
-
-		gimc_rec = mcast_helper_search_gimc_record(&daddr, &saddr, gimc_list);
-		if (gimc_rec == NULL) {
-			gimc_rec = mcast_helper_add_gimc_record(skb->dev,&daddr,&saddr,iph->protocol,udph->source,udph->dest, src_mac,gimc_list);
-			if (gimc_rec == NULL) {
-			  return;
-			}
-
-			gimc_list_h = mcast_helper_list_p(IPV4);
-			gimc_rec_h = mcast_helper_search_gimc_record(&daddr, &saddr, gimc_list_h);
-			if (gimc_rec_h != NULL && gimc_rec_h->br_callback_flag == 0) {
-				if (!list_empty(&gimc_rec_h->mc_mem_list)) {
-					list_for_each_safe(liter,tliter, &gimc_rec_h->mc_mem_list) {
-						gitxmc_rec = list_entry(liter, MCAST_MEMBER_t, list);
-						if (gitxmc_rec != NULL) {
-							gimc_rec_h->br_callback_flag = 1;
-							mcast_helper_init_ipaddr(&gimc_rec_h->mc_stream.sIP, IPV4, &iph->saddr);
-							gimc_rec_h->mc_stream.proto = iph->protocol;
-							gimc_rec_h->mc_stream.sPort = udph->source;
-							gimc_rec_h->mc_stream.dPort = udph->dest;
-							gimc_rec_h->mc_stream.rxDev = skb->dev;
-							mcast_helper_get_pkt_rx_src_mac_addr(skb,gimc_rec_h->mc_stream.src_mac);
-							mcast_helper_invoke_return_callback(gimc_rec_h->grpIdx,gitxmc_rec->memDev,(MCAST_STREAM_t *)&(gimc_rec_h->mc_stream),MC_F_ADD, gitxmc_rec->macaddr_count);
-						}
-					}
-				}
-			}
-		} else { //update the information
-			gimc_rec->mc_stream.rxDev = skb->dev;
-			gimc_rec->mc_stream.proto = iph->protocol;
-			gimc_rec->mc_stream.sPort = udph->source;
-			gimc_rec->mc_stream.dPort = udph->dest;
-			memcpy(gimc_rec->mc_stream.src_mac, src_mac, ETH_ALEN);
-		}
-
+		mcast_helper_update_lanserver_list(skb);
+	} else if (skb->protocol == htons(ETH_P_IPV6)) {
+		mcast_helper_update_lanserver_list6(skb);
 	}
-	else if (skb->protocol == htons(ETH_P_IPV6)) {
-		uint8_t src_mac[ETH_ALEN] = { 0 };
-		struct ipv6hdr *iph6 = ipv6_hdr(skb);
-		struct udphdr *udph6 = udp_hdr(skb);
-		gimc_list = mcast_helper_session_p(IPV6);
-
-		mcast_helper_init_ipaddr(&saddr, IPV6, &iph6->saddr);
-		mcast_helper_init_ipaddr(&daddr, IPV6, &iph6->daddr);
-		mcast_helper_get_pkt_rx_src_mac_addr(skb, src_mac);
-
-		gimc_rec = mcast_helper_search_gimc_record(&daddr, &saddr, gimc_list);
-		if (gimc_rec == NULL) {
-			gimc_rec = mcast_helper_add_gimc_record(skb->dev,&daddr,&saddr,iph6->nexthdr,udph6->source,udph6->dest, src_mac,gimc_list);
-			if (gimc_rec == NULL) {
-			  return;
-			}
-
-			gimc_list_h = mcast_helper_list_p(IPV6);
-			gimc_rec_h = mcast_helper_search_gimc_record(&daddr, &saddr, gimc_list_h);
-			if (gimc_rec_h != NULL && gimc_rec_h->br_callback_flag == 0) {
-				if (!list_empty(&gimc_rec_h->mc_mem_list)) {
-					list_for_each_safe(liter,tliter, &gimc_rec_h->mc_mem_list) {
-						gitxmc_rec = list_entry(liter, MCAST_MEMBER_t, list);
-						if (gitxmc_rec != NULL) {
-							gimc_rec_h->br_callback_flag = 1;
-							mcast_helper_init_ipaddr(&gimc_rec_h->mc_stream.sIP, IPV6, &iph6->saddr);
-							gimc_rec_h->mc_stream.proto = iph6->nexthdr;
-							gimc_rec_h->mc_stream.sPort = udph6->source;
-							gimc_rec_h->mc_stream.dPort = udph6->dest;
-							gimc_rec_h->mc_stream.rxDev = skb->dev;
-							mcast_helper_get_pkt_rx_src_mac_addr(skb,gimc_rec_h->mc_stream.src_mac);
-							mcast_helper_invoke_return_callback(gimc_rec_h->grpIdx,gitxmc_rec->memDev,(MCAST_STREAM_t *)&(gimc_rec_h->mc_stream),MC_F_ADD, gitxmc_rec->macaddr_count);
-						}
-					}
-				}
-			}
-		} else { //update the information
-			gimc_rec->mc_stream.rxDev = skb->dev;
-			gimc_rec->mc_stream.proto = iph6->nexthdr;
-			gimc_rec->mc_stream.sPort = udph6->source;
-			gimc_rec->mc_stream.dPort = udph6->dest;
-
-			memcpy(gimc_rec->mc_stream.src_mac, src_mac, ETH_ALEN);
-		}
-	}
-
-	return;
 }
+
 /*=============================================================================
- * Function Name : mcast_helper_get_grpidx
- * Description	 : Function  to allocate group index
+ * Function Name : mcast_helper_allocate_grpidx
+ * Description	 : Function to allocate group index
  *===========================================================================*/
-
-
-static int mcast_helper_get_grpidx(void)
+static int mcast_helper_allocate_grpidx(void)
 {
-	unsigned int index = 0, index1 = 0;
+	unsigned int index = 0, i = 0;
 	int grpIdx = -1;
-	for (index = 0; index < GINDX_LOOP_COUNT; index++) {
-		for (index1 = 0 ; index1 < GINDX_MAX_SIZE ; index1++) {
-			if ((g_mcast_grpindex[index] & (0x01 << index1)) == 0) {
-				g_mcast_grpindex[index] |= (0x01 << index1) ;
-				grpIdx = (index1+1)+(GINDX_MAX_SIZE*index);
 
+	for (index = 0; index < GINDX_LOOP_COUNT; index++) {
+		for (i = 0 ; i < GINDX_MAX_SIZE ; i++) {
+			if ((g_mcast_grpindex[index] & BIT_ULL(i)) == 0) {
+				g_mcast_grpindex[index] |= BIT_ULL(i);
+				grpIdx = i + 1 + (GINDX_MAX_SIZE * index);
 				return grpIdx;
 			}
 		}
 	}
-
 
 	return grpIdx;
 }
 
 /*=============================================================================
  *Function Name: mcast_helper_release_grpidx
- *Description	: Function  to release allocated  group index
+ *Description	: Function to release allocated group index
  *===========================================================================*/
-
-
-static void  mcast_helper_release_grpidx(int grpidx)
+static void mcast_helper_release_grpidx(int grpidx)
 {
 	unsigned int index = 0, index1 = 0;
-	if (grpidx > GINDX_MAX_SIZE)
-		index = 1;
-	for (index1 = 0 ; index1 < GINDX_MAX_SIZE ; index1++) {
 
+	if (grpidx > GINDX_MAX_SIZE)
+		index = 1; /* index 1 not possible GINDX_MAX_SIZE=1 */
+
+	for (index1 = 0; index1 < GINDX_MAX_SIZE; index1++) {
 		if (grpidx == index1) {
-			g_mcast_grpindex[index] &= ~(0x01 << (index1-1)) ;
+			g_mcast_grpindex[index] &= ~BIT_ULL(grpidx - 1);
 			break;
 		}
-
 	}
 }
 
 /*=============================================================================
- *Function Name: mcast_helper_search_gimc_record
- *Description	: Function  to search gaddr and saddr in the gimc record list
+ *function name: mcast_helper_get_gimc_record
+ *description  : function to get the gimc record
  *===========================================================================*/
-
-
-static MCAST_GIMC_t *mcast_helper_search_gimc_record(IP_Addr_t *gaddr,
-		IP_Addr_t *saddr, struct list_head *head)
+static MCAST_GIMC_t *
+mcast_helper_get_gimc_record(struct list_head *head, int grpidx)
 {
-	struct list_head *liter = NULL;
-	struct list_head *tliter = NULL;
 	MCAST_GIMC_t *gimc_rec = NULL;
+	struct list_head *liter = NULL, *tliter = NULL;
 
 	list_for_each_safe(liter, tliter, head) {
 		gimc_rec = list_entry(liter, MCAST_GIMC_t, list);
-		if (gimc_rec != NULL) {
-			if (mcast_helper_is_same_ipaddr((IP_Addr_t *)&gimc_rec->mc_stream.dIP, gaddr)) {
-				if (!mcast_helper_is_addr_unspecified(saddr)) {
-					if (!mcast_helper_is_addr_unspecified(&gimc_rec->mc_stream.sIP)) {
-						if (mcast_helper_is_same_ipaddr((IP_Addr_t *)&gimc_rec->mc_stream.sIP, saddr)) {
-							return gimc_rec;
-						} else {
-							continue;
-						}
-					}
-				}
-				return gimc_rec;
-			}
+		if (gimc_rec->grpIdx == grpidx) {
+			return gimc_rec;
 		}
 	}
 
 	return NULL;
 }
 
-#if 0 /*Debug code */
-static void mcast_helper_show_gimc_entry(void)
+/*=============================================================================
+ *Function Name: mcast_helper_search_gimc_record
+ *Description	: Function to search gaddr and saddr in the gimc record list
+ *===========================================================================*/
+static MCAST_GIMC_t *
+mcast_helper_search_gimc_record(IP_Addr_t *gaddr,
+				IP_Addr_t *saddr,
+				struct list_head *head)
 {
 	struct list_head *liter = NULL;
-	struct list_head *gliter = NULL;
+	struct list_head *tliter = NULL;
 	MCAST_GIMC_t *gimc_rec = NULL;
-	MCAST_MEMBER_t *gitxmc_rec = NULL;
-	struct list_head *gimc_list = mcast_helper_list_p(IPV4) ;
-	printk(KERN_INFO
-			"%3s %10s "
-			"%10s %10s %6s %6s %6s %8s\n", "GIdx",
-			"RxIntrf", "GA",
-			"SA", "proto", "sPort", "dPort", "memIntrf");
-	list_for_each(liter, gimc_list) {
+	MCAST_STREAM_t *stream;
+
+	list_for_each_safe(liter, tliter, head) {
 		gimc_rec = list_entry(liter, MCAST_GIMC_t, list);
-		if (gimc_rec) {
-			printk(KERN_INFO
-					"%3d %10s %10x "
-					"%10x %6d %6d %6d",
-					gimc_rec->grpIdx, gimc_rec->mc_stream.rxDev->name, gimc_rec->mc_stream.sIP.ipA.ipAddr.s_addr, gimc_rec->mc_stream.dIP.ipA.ipAddr.s_addr,
-					gimc_rec->mc_stream.proto,
-					gimc_rec->mc_stream.sPort,
-					gimc_rec->mc_stream.dPort);
+		stream = &gimc_rec->mc_stream;
+		if (!mcast_helper_is_same_ipaddr(&stream->dIP, gaddr))
+			continue;
+		/* ASM: group IP matched */
+		if (!mcast_helper_is_addr_unspecified(saddr) &&
+		    !mcast_helper_is_addr_unspecified(&stream->sIP)) {
+			if (!mcast_helper_is_same_ipaddr(&stream->sIP, saddr))
+				continue;
+			/* SSM: source IP matched */
 		}
-		list_for_each(gliter, &gimc_rec->mc_mem_list) {
-			gitxmc_rec = list_entry(gliter, MCAST_MEMBER_t, list);
-			if (gitxmc_rec) {
-				printk(KERN_INFO "%8s", gitxmc_rec->memDev->name);
-
-			}
-		}
-		printk(KERN_INFO "\n");
-
+		/* TODO: If VLAN present and not matching continue */
+		return gimc_rec;
 	}
 
+	return NULL;
 }
-static void mcast_helper_show_mcstream(unsigned int grpidx,MCAST_STREAM_t *mc_stream,unsigned int flag)
+
+/**
+ * mcast_helper_get_skb_gid_internal - get MCGID from socket buffer
+ *
+ * @skb: pointer to the socket buffer
+ *
+ * Return: MCGID (>=0) on success else negative in case of failure
+ */
+static int mcast_helper_get_skb_gid_internal(struct sk_buff *skb)
 {
-	unsigned int index = 0;
-	printk(KERN_INFO   " mc_stream->num_joined_macs: %d flag%d\n",mc_stream->num_joined_macs,flag);
-	printk(KERN_INFO   "%6s %6s %8s\n",
-			   "sPort", "dPort","mac addr");
-	printk(KERN_INFO  "%3d %3d ",
-			   mc_stream->sPort,
-		           mc_stream->dPort);
-	for(index =0 ; index < mc_stream->num_joined_macs;index++ ) {
-		printk(KERN_INFO "%02x:%02x:%02x:%02x:%02x:%02x",
-			   mc_stream->macaddr[index][0],mc_stream->macaddr[index][1],mc_stream->macaddr[index][2],mc_stream->macaddr[index][3],mc_stream->macaddr[index][4],mc_stream->macaddr[index][5]);
-		printk(KERN_INFO "::");
+	int mc_gid = MCH_GID_BCAST;
+	MCAST_GIMC_t *gimc_rec;
+	struct list_head *gimc_list;
+	IP_Addr_t saddr;
+	IP_Addr_t daddr;
+	struct iphdr *iph;
+	struct ipv6hdr *iph6;
+	const unsigned char *dest;
+	unsigned short network_header_offset;
+	unsigned short protocol;
+	ptype_t ptype;
+
+	if (!skb_mac_header_was_set(skb)) {
+		struct ethhdr *eth_hdr = (struct ethhdr *)skb->data;
+
+		dest = eth_hdr->h_dest;
+		protocol = eth_hdr->h_proto;
+		network_header_offset = skb->data - skb->head + ETH_HLEN;
+	} else {
+		dest = eth_hdr(skb)->h_dest;
+		protocol = skb->protocol;
+		network_header_offset = skb->network_header;
 	}
 
+	if (!is_multicast_ether_addr(dest))
+		return MCH_GID_ERR;
+
+	if (is_broadcast_ether_addr(dest))
+		return MCH_GID_BCAST;
+
+	/* TODO: Handle one or more vlan tag if present */
+
+	switch (ntohs(protocol)) {
+	case ETH_P_IP:
+		iph = (struct iphdr *)(skb->head + network_header_offset);
+		ptype = IPV4;
+
+		mcast_helper_init_ipaddr(&saddr, ptype, &iph->saddr);
+		mcast_helper_init_ipaddr(&daddr, ptype, &iph->daddr);
+		/* Check link-local multicast space 224.0.0.0/24
+		 * and IPv4 Service Discovery Protocol address 239.255.255.250
+		 */
+		if (ipv4_is_local_multicast(iph->daddr) ||
+		    (ntohl(iph->daddr) == 0xEFFFFFFAU)) {
+			mch_debug("{%pI4, %pI4} => %d\n",
+				  &saddr.ipA, &daddr.ipA, MCH_GID_BCAST);
+			return MCH_GID_BCAST;
+		}
+		break;
+#if IS_ENABLED(CONFIG_IPV6)
+	case ETH_P_IPV6:
+		iph6 = (struct ipv6hdr *)(skb->head + network_header_offset);
+		ptype = IPV6;
+
+		mcast_helper_init_ipaddr(&saddr, ptype, &iph6->saddr);
+		mcast_helper_init_ipaddr(&daddr, ptype, &iph6->daddr);
+		if (ipv6_addr_is_ll_all_nodes(&iph6->daddr) ||
+		    IPV6_ADDR_MC_SCOPE(&iph6->daddr) < IPV6_ADDR_SCOPE_LINKLOCAL) {
+			mch_debug("{%pI6c, %pI6c} => %d\n",
+				  &saddr.ipA, &daddr.ipA, MCH_GID_BCAST);
+			return MCH_GID_BCAST;
+		}
+		break;
+#endif /* CONFIG_IPV6 */
+	default:
+		mch_debug("{*, %pM} => %d\n", dest, MCH_GID_BCAST);
+		return MCH_GID_BCAST;
+	}
+
+	gimc_list = mcast_helper_list_p(ptype);
+	gimc_rec = mcast_helper_search_gimc_record(&daddr, &saddr, gimc_list);
+	if (gimc_rec)
+		mc_gid = gimc_rec->grpIdx;
+
+	if (ptype == IPV4)
+		mch_debug("{%pI4, %pI4} => %d\n", &saddr.ipA, &daddr.ipA, mc_gid);
+	else if (ptype == IPV6)
+		mch_debug("{%pI6c, %pI6c} => %d\n", &saddr.ipA, &daddr.ipA, mc_gid);
+
+	return mc_gid;
 }
-
-
-}
-#endif
-
 
 /*=============================================================================
  *Function Name: mcast_helper_add_gimc_record
  *Description	: Function  to create and add 5 tuple entry into gimc record list
  *===========================================================================*/
-
 static MCAST_GIMC_t *mcast_helper_add_gimc_record(struct net_device *netdev,
 		IP_Addr_t *gaddr, IP_Addr_t *saddr,
 		unsigned int proto, unsigned int sport,
@@ -832,20 +943,23 @@ static MCAST_GIMC_t *mcast_helper_add_gimc_record(struct net_device *netdev,
 		struct list_head *head)
 {
 	MCAST_GIMC_t *gimc_rec = NULL;
+	struct list_head *ses_list = mcast_helper_session_p(saddr->ipType);
 	int grpidx = -1;
-	grpidx = mcast_helper_get_grpidx();
 
+	grpidx = mcast_helper_allocate_grpidx();
 	if (grpidx == -1)
 		return NULL;
 
-	gimc_rec = kmalloc(sizeof(MCAST_GIMC_t), GFP_KERNEL);
-	if (gimc_rec == NULL)
+	gimc_rec = kmalloc(sizeof(MCAST_GIMC_t), GFP_ATOMIC);
+	if (gimc_rec == NULL) {
+		mch_debug("failed to add GIMC\n");
 		return NULL;
+	}
 
-	gimc_rec->mc_stream.rxDev = netdev ;
+	gimc_rec->mc_stream.rxDev = netdev;
 	mcast_helper_copy_ipaddr(&(gimc_rec->mc_stream.dIP), gaddr);
 	mcast_helper_copy_ipaddr(&(gimc_rec->mc_stream.sIP), saddr);
-	gimc_rec->mc_stream.proto = proto ;
+	gimc_rec->mc_stream.proto = proto;
 	gimc_rec->mc_stream.sPort = sport;
 	gimc_rec->mc_stream.dPort = dport;
 
@@ -858,11 +972,14 @@ static MCAST_GIMC_t *mcast_helper_add_gimc_record(struct net_device *netdev,
 	gimc_rec->probeFlag = 0;
 #endif
 
-	memset(gimc_rec->mc_stream.macaddr,0, MAX_MAC*(sizeof(char)*ETH_ALEN));
-        gimc_rec->mc_stream.num_joined_macs =0 ;
+	memset(gimc_rec->mc_stream.macaddr, 0, MAX_MAC * ETH_ALEN);
+	gimc_rec->mc_stream.num_joined_macs = 0;
 	INIT_LIST_HEAD(&gimc_rec->list);
 	INIT_LIST_HEAD(&gimc_rec->mc_mem_list);
 	list_add_tail(&gimc_rec->list, head);
+	mch_debug("adding GIMC record=%p RX(%pM, %s) with GID=%d into '%s' list\n",
+		  gimc_rec, src_mac, netdev->name, grpidx,
+		  (head == ses_list) ? "session" : "member");
 
 	return gimc_rec;
 }
@@ -876,6 +993,10 @@ static void mcast_helper_delete_gimc_record(MCAST_GIMC_t *gimc_rec)
 {
 	if (gimc_rec == NULL)
 		return;
+
+	mch_debug("deleting GIMC record=%p for GID=%d\n",
+		  gimc_rec, gimc_rec->grpIdx);
+
 	mcast_helper_release_grpidx(gimc_rec->grpIdx);
 	list_del(&gimc_rec->list);
 	kfree(gimc_rec);
@@ -886,22 +1007,39 @@ static void mcast_helper_delete_gimc_record(MCAST_GIMC_t *gimc_rec)
  *Function Name: mcast_helper_invoke_return_callback
  *Description	: Function  which invoke the registerd callback from PPA/WLAN ..
  *===========================================================================*/
-
-static int mcast_helper_invoke_return_callback(unsigned int grpidx, struct net_device *netdev,
-		MCAST_STREAM_t *mc_stream, unsigned int flag, unsigned int count)
+static int
+mcast_helper_invoke_return_callback(unsigned int grpidx,
+				    struct net_device *netdev,
+				    MCAST_STREAM_t *stream,
+				    unsigned int flag, unsigned int count)
 {
+	if (mch_accl_enabled == 0)
+		return SUCCESS;
 
-	if (mch_accl_enabled)
-		mcast_helper_invoke_callback(grpidx, netdev, mc_stream, flag, count);
-	return SUCCESS;
+	if (stream->sIP.ipType == IPV4) {
+		mch_debug("callback for(%s): stream source(%pM, %s)# sIP=%pI4,"
+			  " dIP=%pI4, proto=%#x, sPort=%d, dPort=%d\n",
+			  netdev->name, stream->src_mac, stream->rxDev->name,
+			  &stream->sIP.ipA, &stream->dIP.ipA,
+			  stream->proto, stream->sPort, stream->dPort);
+	} else if (stream->sIP.ipType == IPV6) {
+		mch_debug("callback for: stream src(%pM, %s)# sIP=%pI6,"
+			  " dIP=%pI6, proto=%#x, sPort=%d, dPort=%d\n",
+			  stream->src_mac, stream->rxDev->name,
+			  &stream->sIP.ipA, &stream->dIP.ipA,
+			  stream->proto, stream->sPort, stream->dPort);
+	}
+
+	return mcast_helper_invoke_callback(grpidx, netdev, stream, flag, count);
 }
 
 /*=============================================================================
  *function name: mcast_helper_search_mac_record
  *description  : function to search and get mac record based on gitxmc_rec
  *===========================================================================*/
-
-static MCAST_MAC_t *mcast_helper_search_mac_record(MCAST_MEMBER_t *gitxmc_rec, unsigned char *macaddr)
+static MCAST_MAC_t *
+mcast_helper_search_mac_record(MCAST_MEMBER_t *gitxmc_rec,
+			       unsigned char *macaddr)
 {
 	MCAST_MAC_t *mac_rec = NULL;
 	struct list_head *liter = NULL;
@@ -909,7 +1047,7 @@ static MCAST_MAC_t *mcast_helper_search_mac_record(MCAST_MEMBER_t *gitxmc_rec, u
 
 	list_for_each_safe(liter, tliter, &gitxmc_rec->macaddr_list) {
 		mac_rec = list_entry(liter, MCAST_MAC_t, list);
-		if (memcmp(mac_rec->macaddr, macaddr, sizeof(char)*ETH_ALEN) == 0) {
+		if (memcmp(mac_rec->macaddr, macaddr, ETH_ALEN) == 0) {
 			return mac_rec;
 		}
 	}
@@ -920,15 +1058,16 @@ static MCAST_MAC_t *mcast_helper_search_mac_record(MCAST_MEMBER_t *gitxmc_rec, u
  *function name: mcast_helper_update_macaddr_record
  *description  : function to update the mac address in gitxmc record
  *===========================================================================*/
-
-static MCAST_MAC_t *mcast_helper_update_macaddr_record(MCAST_MEMBER_t *gitxmc_rec, unsigned char *macaddr)
+static MCAST_MAC_t *
+mcast_helper_update_macaddr_record(MCAST_MEMBER_t *gitxmc_rec,
+				   unsigned char *macaddr)
 {
 	MCAST_MAC_t *mac;
 
 	if (gitxmc_rec == NULL || macaddr == NULL)
 		return NULL;
 
-	mac = kmalloc(sizeof(MCAST_MAC_t), GFP_KERNEL);
+	mac = kmalloc(sizeof(MCAST_MAC_t), GFP_ATOMIC);
 	if (mac == NULL)
 		return NULL;
 
@@ -938,6 +1077,9 @@ static MCAST_MAC_t *mcast_helper_update_macaddr_record(MCAST_MEMBER_t *gitxmc_re
 	INIT_LIST_HEAD(&mac->list);
 	list_add_tail(&mac->list, &gitxmc_rec->macaddr_list);
 
+	mch_debug("adding MAC=%pM into member=%s, total MAC=%d\n",
+		  macaddr, gitxmc_rec->memDev->name, gitxmc_rec->macaddr_count);
+
 	return mac;
 }
 
@@ -945,104 +1087,96 @@ static MCAST_MAC_t *mcast_helper_update_macaddr_record(MCAST_MEMBER_t *gitxmc_re
  *Function Name: mcast_helper_add_gitxmc_record
  *Description	: Function  which add the entry in gitxmc record
  *===========================================================================*/
-
-static MCAST_MEMBER_t *mcast_helper_add_gitxmc_record(unsigned int grpidx,
-		struct net_device *netdev, unsigned char *macaddr,
-		struct list_head *head)
+static MCAST_MEMBER_t *mcast_helper_add_gitxmc_record(MCAST_GIMC_t *gimc_rec,
+		struct net_device *netdev, unsigned char *macaddr)
 {
 	MCAST_MEMBER_t *gitxmc_rec = NULL;
-	MCAST_GIMC_t *gimc_rec = NULL;
 	MCAST_MAC_t *mac_rec = NULL;
-	struct list_head *liter = NULL;
-	struct list_head *tliter = NULL;
 
-	list_for_each_safe(liter, tliter, head) {
-		gimc_rec = list_entry(liter, MCAST_GIMC_t, list);
-		if (gimc_rec != NULL || liter != NULL) {
-			if (gimc_rec->grpIdx == grpidx) {
-				gitxmc_rec = kmalloc(sizeof(MCAST_MEMBER_t), GFP_KERNEL);
-				if (gitxmc_rec == NULL)
-					return NULL;
-				gitxmc_rec->memDev = netdev;
-				gitxmc_rec->macaddr_count = 0;
+	if (gimc_rec == NULL)
+		return NULL;
 
-				INIT_LIST_HEAD(&gitxmc_rec->macaddr_list);
-				mac_rec = mcast_helper_update_macaddr_record(gitxmc_rec, macaddr);
-				if (mac_rec == NULL) {
-					kfree(gitxmc_rec);
-					return NULL;
-				}
+	gitxmc_rec = kmalloc(sizeof(MCAST_MEMBER_t), GFP_ATOMIC);
+	if (gitxmc_rec == NULL)
+		return NULL;
 
-				if (mch_acl_enabled) {
-#ifdef CONFIG_MCAST_HELPER_ACL
-					gitxmc_rec->aclBlocked = 0;
-#endif
-				}
-				INIT_LIST_HEAD(&gitxmc_rec->list);
-				list_add_tail(&gitxmc_rec->list, &gimc_rec->mc_mem_list);
+	mch_debug("adding member=%s into GIMC record=%p for GID=%d\n",
+		  netdev->name, gimc_rec, gimc_rec->grpIdx);
 
-				return gitxmc_rec;
-			}
-		}
+	gitxmc_rec->memDev = netdev;
+	gitxmc_rec->macaddr_count = 0;
 
+	INIT_LIST_HEAD(&gitxmc_rec->macaddr_list);
+	mac_rec = mcast_helper_update_macaddr_record(gitxmc_rec, macaddr);
+	if (mac_rec == NULL) {
+		kfree(gitxmc_rec);
+		return NULL;
 	}
 
-	return NULL;
-}
+	if (mch_acl_enabled) {
+#ifdef CONFIG_MCAST_HELPER_ACL
+		gitxmc_rec->aclBlocked = 0;
+#endif
+	}
+	INIT_LIST_HEAD(&gitxmc_rec->list);
+	list_add_tail(&gitxmc_rec->list, &gimc_rec->mc_mem_list);
 
+	return gitxmc_rec;
+}
 
 /*=============================================================================
  * function name : mcast_helper_update_mac_list
- * description   : function updates the mac list which will be passed to registered call back
+ * description   : Function updates the mac list which will be passed
+ *                 to registered call back
  *===========================================================================*/
-
-static unsigned int mcast_helper_update_mac_list(MCAST_MEMBER_t *gitxmc_rec,MCAST_GIMC_t *gimc_rec,unsigned char *macaddr,unsigned int action)
+static unsigned int 
+mcast_helper_update_mac_list(MCAST_MEMBER_t *gitxmc_rec,
+			     MCAST_GIMC_t *gimc_rec,
+			     unsigned char *macaddr,
+			     unsigned int action)
 {
+	MCAST_STREAM_t *stream = &gimc_rec->mc_stream;
 	MCAST_MAC_t *mac_rec = NULL;
 	struct list_head *liter = NULL;
 	struct list_head *tliter = NULL;
 	unsigned int flag = 0;
-	unsigned int index = 0;
 
-	memset(gimc_rec->mc_stream.macaddr,0, MAX_MAC*(sizeof(char)*ETH_ALEN));
-        gimc_rec->mc_stream.num_joined_macs =0 ;
+	memset(stream->macaddr, 0, MAX_MAC * ETH_ALEN);
+	stream->num_joined_macs = 0;
 
-	if ((gitxmc_rec->macaddr_count == 1) && (action == MC_F_DEL)) {
+	if ((gitxmc_rec->macaddr_count == 1) && (action == MCH_CB_F_DEL)) {
 		if (macaddr != NULL) {
-			memcpy(&(gimc_rec->mc_stream.macaddr[0][0]),macaddr,sizeof(char)*ETH_ALEN);
-			gimc_rec->mc_stream.num_joined_macs = 1;
+			memcpy(stream->macaddr[0], macaddr, ETH_ALEN);
+			stream->num_joined_macs = 1;
 		}
-		flag = MC_F_DEL ;
-
-	}
-	else {
+		flag = MCH_CB_F_DEL;
+	} else {
 		list_for_each_safe(liter, tliter, &gitxmc_rec->macaddr_list) {
 			mac_rec = list_entry(liter, MCAST_MAC_t, list);
-              		if (mac_rec) {
-				if (gimc_rec->mc_stream.num_joined_macs < 64 ) {
-					memcpy(&(gimc_rec->mc_stream.macaddr[index][0]),mac_rec->macaddr,sizeof(char)*ETH_ALEN);
-					index ++;
-				}
+			if (stream->num_joined_macs < MAX_MAC) {
+				memcpy(stream->macaddr[stream->num_joined_macs],
+				       mac_rec->macaddr, ETH_ALEN);
+				stream->num_joined_macs++;
 			}
-
 		}
-
-		gimc_rec->mc_stream.num_joined_macs = gitxmc_rec->macaddr_count;
-		flag = action ;
+		flag = action;
 	}
+
 	return flag;
 }
 
-
-
 /*=============================================================================
  *Function Name: mcast_helper_delete_gitxmc_record
- *Description	: Function  which delete the entry in gitxmc record
+ *Description  : Function which delete the entry in gitxmc record
  *===========================================================================*/
-
-static void mcast_helper_delete_gitxmc_record(MCAST_MEMBER_t * gitxmc_rec,MCAST_GIMC_t *gimc_rec,struct net_device *netdev,unsigned char *macaddr, unsigned int action) 
+static void
+mcast_helper_delete_gitxmc_record(MCAST_MEMBER_t *gitxmc_rec,
+				  MCAST_GIMC_t *gimc_rec,
+				  struct net_device *netdev,
+				  unsigned char *macaddr, unsigned int action) 
 {
 	unsigned int flag = 0;
+	char mac_str[18] = { 0 };
 
 	if ((gitxmc_rec == NULL) || (gimc_rec == NULL))
 		return;
@@ -1053,86 +1187,43 @@ static void mcast_helper_delete_gitxmc_record(MCAST_MEMBER_t * gitxmc_rec,MCAST_
 	}
 #endif
 
-	flag = mcast_helper_update_mac_list(gitxmc_rec,gimc_rec,macaddr,action);
-	mcast_helper_invoke_return_callback(gimc_rec->grpIdx, netdev, (MCAST_STREAM_t *)&(gimc_rec->mc_stream), flag, gitxmc_rec->macaddr_count);
+	if (macaddr)
+		snprintf(mac_str, sizeof(mac_str), "%pM", macaddr);
+	mch_debug("deleting %d MAC(%s) from member=%s GID=%d & callback\n",
+		  gitxmc_rec->macaddr_count, (macaddr) ? mac_str : "all",
+		  gitxmc_rec->memDev->name, gimc_rec->grpIdx);
+
+	flag = mcast_helper_update_mac_list(gitxmc_rec, gimc_rec,
+					    macaddr, action);
+	mcast_helper_invoke_return_callback(gimc_rec->grpIdx,
+					    netdev, &gimc_rec->mc_stream,
+					    flag, gitxmc_rec->macaddr_count);
 }
 
 /*=============================================================================
  *Function Name: mcast_helper_search_gitxmc_record
  *Description	: Function  to search and get the gitxmc recod based on netdev name
  *===========================================================================*/
-
-static MCAST_MEMBER_t *mcast_helper_search_gitxmc_record(int grpidx,
-		struct net_device *netdev, struct list_head *head)
+static MCAST_MEMBER_t *mcast_helper_search_gitxmc_record(struct list_head *head,
+		struct net_device *netdev)
 {
 	struct list_head *liter = NULL;
 	struct list_head *tliter = NULL;
 	MCAST_MEMBER_t *gitxmc_rec = NULL;
 
-	if (!list_empty(head)) {
-		list_for_each_safe(liter, tliter, head) {
-			gitxmc_rec = list_entry(liter, MCAST_MEMBER_t, list);
-			if (gitxmc_rec != NULL)
-				if (strncmp (netdev->name, gitxmc_rec->memDev->name, IFNAMSIZ) == 0) {
-					return gitxmc_rec;
-				}
-		}
+	list_for_each_safe(liter, tliter, head) {
+		gitxmc_rec = list_entry(liter, MCAST_MEMBER_t, list);
+		if (gitxmc_rec->memDev == netdev)
+			return gitxmc_rec;
 	}
 
 	return NULL;
 }
 
-#if 0 /*Debug code */
-static void mcast_helper_show_gitxmc_entry(struct list_head *head)
-
-{
-	struct list_head *liter = NULL;
-	struct list_head *tliter = NULL;
-	struct list_head *gliter = NULL;
-	MCAST_GIMC_t *gimc_rec = NULL;
-
-	MCAST_MEMBER_t *gitxmc_rec = NULL;
-
-
-	printk(KERN_INFO "\n######## Group Index interface info #########");
-	list_for_each_safe(liter, tliter, head) {
-		gimc_rec = list_entry(liter, MCAST_GIMC_t, list);
-		//if (!list_empty(&gimc_rec->mc_mem_list))
-		list_for_each(gliter, &gimc_rec->mc_mem_list) {
-			gitxmc_rec = list_entry(gliter, MCAST_MEMBER_t, list);
-			if (gitxmc_rec) {
-				printk(KERN_INFO "\n intrf  index -> %d \n", gitxmc_rec->memDev->ifindex);
-				printk(KERN_INFO "\n intrf name -> %s \n", gitxmc_rec->memDev->name);
-			}
-		}
-	}
-	printk(KERN_INFO "######################################\n");
-}
-#endif
-
-#if 0
-void mcast_helper_inet_proto_csum_replace2_u(void *hdr, void *skb, __be32 from, __be32 to)
-{
-	struct udphdr *uhdr;
-	uhdr = (struct udphdr *)hdr;
-	inet_proto_csum_replace2(&uhdr->check, (struct sk_buff *)skb, from, to, 0);
-}
-
-void mcast_helper_inet_proto_csum_replace4_u(void *hdr, void *skb, __be32 from, __be32 to)
-{
-	struct udphdr *uhdr;
-	uhdr = (struct udphdr *)hdr;
-	inet_proto_csum_replace4(&uhdr->check, (struct sk_buff *)skb, from, to, 1);
-}
-#endif
-
-
 /*=============================================================================
  *Function Name: mcast_helper_make_skb_writeable
  *Description	: Function  to make skb writeable
  *===========================================================================*/
-
-
 static int mcast_helper_make_skb_writeable(struct sk_buff *skb, int write_len)
 {
 	if (!pskb_may_pull(skb, write_len))
@@ -1148,7 +1239,6 @@ static int mcast_helper_make_skb_writeable(struct sk_buff *skb, int write_len)
  *Function Name: mcast_helper_set_ip_addr
  *Description	: Function  to set ip address in the skb
  *===========================================================================*/
-
 static void mcast_helper_set_ip_addr(struct sk_buff *skb, struct iphdr *nh,
 		unsigned int  *addr, unsigned int  new_addr)
 {
@@ -1180,7 +1270,6 @@ static void mcast_helper_set_ip_addr(struct sk_buff *skb, struct iphdr *nh,
  *function name: mcast_helper_update_ipv6_checksum
  *description	: function  to update ipv6 checksum in the passed skb
  *===========================================================================*/
-
 static void mcast_helper_update_ipv6_checksum(struct sk_buff *skb,
 		unsigned int  addr[4], unsigned int  new_addr[4])
 {
@@ -1201,9 +1290,8 @@ static void mcast_helper_update_ipv6_checksum(struct sk_buff *skb,
  *function name: mcast_helper_set_ipv6_addr
  *description	: function  to set the ipaddress in the skb
  *===========================================================================*/
-
 static void mcast_helper_set_ipv6_addr(struct sk_buff *skb,
-		unsigned int addr[4], unsigned int  new_addr[4],
+		unsigned int addr[4], unsigned int new_addr[4],
 		bool recalculate_csum)
 {
 	if (recalculate_csum)
@@ -1216,8 +1304,8 @@ static void mcast_helper_set_ipv6_addr(struct sk_buff *skb,
  *function name: mcast_helper_set_ipv6
  *description  : function  to update the ipv6 address in skb
  *===========================================================================*/
-
-static int mcast_helper_set_ipv6(struct sk_buff *skb, IP_Addr_t *new_saddr, IP_Addr_t *new_daddr)
+static int mcast_helper_set_ipv6(struct sk_buff *skb,
+				 IP_Addr_t *new_saddr, IP_Addr_t *new_daddr)
 {
 	struct ipv6hdr *nh;
 	int err;
@@ -1248,24 +1336,26 @@ static int mcast_helper_set_ipv6(struct sk_buff *skb, IP_Addr_t *new_saddr, IP_A
  *function name: mcast_helper_set_ipv4
  *description  : function  to update the ipv4 address in skb
  *===========================================================================*/
-
-static int mcast_helper_set_ipv4(struct sk_buff *skb, IP_Addr_t *saddr, IP_Addr_t *daddr)
+static int mcast_helper_set_ipv4(struct sk_buff *skb,
+				 IP_Addr_t *saddr, IP_Addr_t *daddr)
 {
 	struct iphdr *nh;
 	int err;
 
 	err = mcast_helper_make_skb_writeable(skb, skb_network_offset(skb) +
-			sizeof(struct iphdr));
+					      sizeof(struct iphdr));
 	if (unlikely(err))
 		return err;
 
 	nh = ip_hdr(skb);
 
 	if (saddr->ipA.ipAddr.s_addr != nh->saddr)
-		mcast_helper_set_ip_addr(skb, nh, &nh->saddr, saddr->ipA.ipAddr.s_addr);
+		mcast_helper_set_ip_addr(skb, nh, &nh->saddr,
+					 saddr->ipA.ipAddr.s_addr);
 
 	if (daddr->ipA.ipAddr.s_addr != nh->daddr)
-		mcast_helper_set_ip_addr(skb, nh, &nh->daddr, daddr->ipA.ipAddr.s_addr);
+		mcast_helper_set_ip_addr(skb, nh, &nh->daddr,
+					 daddr->ipA.ipAddr.s_addr);
 
 	return 0;
 }
@@ -1274,7 +1364,6 @@ static int mcast_helper_set_ipv4(struct sk_buff *skb, IP_Addr_t *saddr, IP_Addr_
  *function name: mcast_helper_set_port
  *description  : function  to update the port info in skb
  *===========================================================================*/
-
 static void mcast_helper_set_port(struct sk_buff *skb, unsigned short *port,
 		unsigned short new_port, unsigned short *check)
 {
@@ -1286,8 +1375,8 @@ static void mcast_helper_set_port(struct sk_buff *skb, unsigned short *port,
  *function name: mcast_helper_set_udp_port
  *description  : function  to update the udp port in skb
  *===========================================================================*/
-
-static void mcast_helper_set_udp_port(struct sk_buff *skb, unsigned short *port, unsigned short new_port)
+static void mcast_helper_set_udp_port(struct sk_buff *skb, unsigned short *port,
+				      unsigned short new_port)
 {
 	struct udphdr *uh = udp_hdr(skb);
 
@@ -1305,14 +1394,14 @@ static void mcast_helper_set_udp_port(struct sk_buff *skb, unsigned short *port,
  *function name: mcast_helper_set_udp
  *description  : function  to update the udp header in skb
  *===========================================================================*/
-
-static void mcast_helper_set_udp(struct sk_buff *skb, unsigned short udp_src, unsigned short udp_dst)
+static void mcast_helper_set_udp(struct sk_buff *skb, unsigned short udp_src,
+				 unsigned short udp_dst)
 {
 	struct udphdr *uh;
 	int err;
 
 	err = mcast_helper_make_skb_writeable(skb, skb_transport_offset(skb) +
-			sizeof(struct udphdr));
+					      sizeof(struct udphdr));
 	if (unlikely(err))
 		return;
 
@@ -1326,26 +1415,6 @@ static void mcast_helper_set_udp(struct sk_buff *skb, unsigned short udp_src, un
 	return;
 }
 
-/*=============================================================================
- *function name: mcast_helper_ether_addr_copy
- *description  : function  to copy the ether address
- *===========================================================================*/
-
-static inline void mcast_helper_ether_addr_copy(u8 *dst, const u8 *src)
-{
-#if defined(CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS)
-	*(u32 *)dst = *(const u32 *)src;
-	*(u16 *)(dst + 4) = *(const u16 *)(src + 4);
-#else
-	u16 *a = (u16 *)dst;
-	const u16 *b = (const u16 *)src;
-
-	a[0] = b[0];
-	a[1] = b[1];
-	a[2] = b[2];
-#endif
-}
-
 /*
    static int mcast_helper_set_eth_addr(struct sk_buff *skb,
    unsigned char *eth_src, unsigned char *eth_dst)
@@ -1356,8 +1425,8 @@ static inline void mcast_helper_ether_addr_copy(u8 *dst, const u8 *src)
    return err;
 
 
-   mcast_helper_ether_addr_copy(eth_hdr(skb)->h_source, eth_src);
-   mcast_helper_ether_addr_copy(eth_hdr(skb)->h_dest, eth_dst);
+   ether_addr_copy(eth_hdr(skb)->h_source, eth_src);
+   ether_addr_copy(eth_hdr(skb)->h_dest, eth_dst);
 
    skb_postpull_rcsum(skb, eth_hdr(skb), ETH_ALEN *2);
 
@@ -1369,9 +1438,8 @@ static inline void mcast_helper_ether_addr_copy(u8 *dst, const u8 *src)
  *function name: mcast_helper_set_sig
  *description  : function  to insert the signature in skb
  *===========================================================================*/
-
-
-static void mcast_helper_set_sig(struct sk_buff *skb, struct net_device *netdev, int grpidx, int flag)
+static void mcast_helper_set_sig(struct sk_buff *skb, struct net_device *netdev,
+				 int grpidx, int flag)
 {
 	unsigned char *data = NULL;
 	unsigned int data_len = 0;
@@ -1383,7 +1451,7 @@ static void mcast_helper_set_sig(struct sk_buff *skb, struct net_device *netdev,
 		data_len = skb->len - TOT_HDR_LEN;
 	extra_data_len =  sizeof(mch_signature)+8;
 	index = sizeof(mch_signature) -1;
-	data = (unsigned char *)udp_hdr(skb)+UDP_HDR_LEN;
+	data = (unsigned char *)udp_hdr(skb) + UDP_HDR_LEN;
 	if (data_len > extra_data_len) {
 		memcpy(data, mch_signature, sizeof(mch_signature));
 		data[index] = (unsigned char)(grpidx & 0xFF);
@@ -1396,9 +1464,7 @@ static void mcast_helper_set_sig(struct sk_buff *skb, struct net_device *netdev,
  *function name: mcast_helper_acl_probe_pckt_send
  *description  : function  to send the IPV4 probe packet
  *===========================================================================*/
-
-
-static unsigned int mcast_helper_acl_probe_pckt_send (struct net_device *inetdev,
+static unsigned int mcast_helper_acl_probe_pckt_send(struct net_device *inetdev,
 		struct net_device *onetdev,
 		int grpidx, IP_Addr_t *gaddr, IP_Addr_t *saddr,
 		unsigned int proto, unsigned int sport,
@@ -1406,22 +1472,23 @@ static unsigned int mcast_helper_acl_probe_pckt_send (struct net_device *inetdev
 {
 	struct iphdr *iph = NULL;
 	struct sk_buff *newskb = NULL;
-	if (skb_buff) {
-		if (ip_hdr(skb_buff)->protocol == IPPROTO_UDP) {
-			newskb = skb_copy(skb_buff, GFP_ATOMIC);
-			if (newskb != NULL) {
-				iph = (struct iphdr *) skb_network_header(newskb);
+	if (skb_buff == NULL)
+		return 0;
+	if (ip_hdr(skb_buff)->protocol == IPPROTO_UDP) {
+		newskb = skb_copy(skb_buff, GFP_ATOMIC);
+		if (newskb != NULL) {
+			iph = (struct iphdr *) skb_network_header(newskb);
 
-				mcast_helper_set_ipv4(newskb, saddr, gaddr);
-				mcast_helper_set_udp(newskb, sport, dport);
-				//				mcast_helper_set_eth_addr(newskb, newskb->dev->dev_addr, eth_hdr(newskb)->h_dest);
-				newskb->dev = inetdev;
-				mcast_helper_set_sig(newskb, onetdev, grpidx, IPV4);
-				netif_receive_skb(newskb); // insert the skb in to  input queue
-				return 1;
-			}
+			mcast_helper_set_ipv4(newskb, saddr, gaddr);
+			mcast_helper_set_udp(newskb, sport, dport);
+			//mcast_helper_set_eth_addr(newskb, newskb->dev->dev_addr, eth_hdr(newskb)->h_dest);
+			newskb->dev = inetdev;
+			mcast_helper_set_sig(newskb, onetdev, grpidx, IPV4);
+			netif_receive_skb(newskb); // insert the skb in to  input queue
+			return 1;
 		}
 	}
+
 	return 0;
 }
 
@@ -1429,7 +1496,6 @@ static unsigned int mcast_helper_acl_probe_pckt_send (struct net_device *inetdev
  *function name: mcast_helper_acl_probe_pckt_send6
  *description  : function  to send the IPV6 probe packet
  *===========================================================================*/
-
 static unsigned int mcast_helper_acl_probe_pckt_send6(struct net_device *inetdev,
 		struct net_device *onetdev,
 		int grpidx, IP_Addr_t *gaddr, IP_Addr_t *saddr,
@@ -1440,17 +1506,21 @@ static unsigned int mcast_helper_acl_probe_pckt_send6(struct net_device *inetdev
 	struct sk_buff *newskb = NULL;
 
 	if (skb_buff6) {
-
 		if (ipv6_hdr(skb_buff6)->nexthdr == IPPROTO_UDP) {
 			newskb = skb_copy(skb_buff6, GFP_ATOMIC);
 			if (newskb != NULL) {
 				mcast_helper_set_ipv6(newskb, saddr, gaddr);
 				mcast_helper_set_udp(newskb, sport, dport);
-				//mcast_helper_set_eth_addr(newskb, newskb->dev->dev_addr, eth_hdr(newskb)->h_dest);
+#if 0
+				mcast_helper_set_eth_addr(newskb,
+						newskb->dev->dev_addr,
+						eth_hdr(newskb)->h_dest);
+#endif
 				newskb->dev = inetdev;
-				mcast_helper_set_sig(newskb, onetdev, grpidx, IPV6);
-
-				netif_receive_skb(newskb); // insert the skb in to  input queue
+				mcast_helper_set_sig(newskb, onetdev,
+						     grpidx, IPV6);
+				/* insert the skb in to input queue */
+				netif_receive_skb(newskb);
 			}
 		}
 	}
@@ -1462,88 +1532,89 @@ static unsigned int mcast_helper_acl_probe_pckt_send6(struct net_device *inetdev
 
 /*=============================================================================
  *function name: mcast_helper_update_entry
- *description  : function searches the gimc record and then updated the gitx record and then
- *		send the probe packets by starting  the proble pckt expiry timer
-
+ *description  : function searches the gimc record and then updated the gitx
+ *               record and then send the probe packets by starting the
+ *               proble pckt expiry timer
  *===========================================================================*/
 
 /*call the function to check if GI exist for this group in GIMc table */
-static int mcast_helper_update_entry(struct net_device *netdev, struct net_device *rxnetdev, MCAST_REC_t *mc_rec)
+static int
+mcast_helper_update_entry(struct net_device *netdev, MCAST_REC_t *mc_rec)
 {
+	int ret = 0;
 	MCAST_GIMC_t *gimc_rec = NULL;
 	MCAST_MEMBER_t *gitxmc_rec = NULL;
 	MCAST_MAC_t *mac_rec = NULL;
-	struct list_head *liter = NULL;
-	struct list_head *tliter = NULL;
-	MCAST_MAC_t *mac = NULL;
-	int ret=0;
-	unsigned int flag = MC_F_UPD ;
+	unsigned int flag = MCH_CB_F_UPD;
+	struct list_head *gimc_list = NULL;
 
-	struct list_head *gimc_list = mcast_helper_list_p(mc_rec->groupIP.ipType) ;
-	gimc_rec = mcast_helper_search_gimc_record(&(mc_rec->groupIP), &(mc_rec->srcIP), gimc_list);
+	gimc_list = mcast_helper_list_p(mc_rec->groupIP.ipType);
+	gimc_rec = mcast_helper_search_gimc_record(&mc_rec->groupIP,
+			&mc_rec->srcIP, gimc_list);
 	if (gimc_rec == NULL) {
 		return FAILURE;
 	}
 
-	// update the GIMcTx table to add the new interface into the list
-	gitxmc_rec = mcast_helper_search_gitxmc_record(gimc_rec->grpIdx, netdev, &gimc_rec->mc_mem_list);
+	/* Update the GIMcTx table to add the new interface into the list */
+	gitxmc_rec = mcast_helper_search_gitxmc_record(&gimc_rec->mc_mem_list,
+			netdev);
 	if (gitxmc_rec == NULL) {
-		gitxmc_rec = mcast_helper_add_gitxmc_record(gimc_rec->grpIdx, netdev, mc_rec->macaddr, mcast_helper_list_p(mc_rec->groupIP.ipType)) ;
+		gitxmc_rec = mcast_helper_add_gitxmc_record(gimc_rec, netdev,
+				mc_rec->macaddr);
 		if (gitxmc_rec == NULL)
 			return FAILURE;
 	} else {
-		if (mcast_helper_search_mac_record(gitxmc_rec, mc_rec->macaddr) == NULL) {
-			mac_rec = mcast_helper_update_macaddr_record(gitxmc_rec, mc_rec->macaddr);
+		if (mcast_helper_search_mac_record(gitxmc_rec,
+		    mc_rec->macaddr) == NULL) {
+			mac_rec = mcast_helper_update_macaddr_record(gitxmc_rec,
+					mc_rec->macaddr);
 			if (mac_rec == NULL)
 				return FAILURE;
 		}
 	}
 
 	if (mch_acl_enabled) {
-		// start the timer here
-		if (!mch_timerstarted) {
-			mcast_helper_exp_timer.expires = jiffies + (MCH_UPDATE_TIMER *HZ);
-			add_timer(&mcast_helper_exp_timer);
-			mch_timerstarted  = 1;
-		} else {
-			mch_timermod  = 1;
-			mod_timer(&mcast_helper_exp_timer, jiffies + MCH_UPDATE_TIMER *HZ);
-			mch_timermod = 0;
-		}
+		/* Start the timer here */
+		mcast_helper_start_helper_timer();
 
+#ifdef CONFIG_MCAST_HELPER_ACL
+		gimc_rec->probeFlag = 1;
+#endif
 		/*Send the Skb probe packet on interfaces */
 		if (gimc_rec->mc_stream.sIP.ipType == IPV6) {
-#ifdef CONFIG_MCAST_HELPER_ACL
-			gimc_rec->probeFlag = 1;
-#endif
 			mch_iptype = IPV6;
-			mcast_helper_acl_probe_pckt_send6(gimc_rec->mc_stream.rxDev, netdev, gimc_rec->grpIdx, &(gimc_rec->mc_stream.dIP), &(gimc_rec->mc_stream.sIP), gimc_rec->mc_stream.proto, gimc_rec->mc_stream.sPort, gimc_rec->mc_stream.dPort);
+			mcast_helper_acl_probe_pckt_send6(
+					gimc_rec->mc_stream.rxDev, netdev,
+					gimc_rec->grpIdx,
+					&gimc_rec->mc_stream.dIP,
+					&gimc_rec->mc_stream.sIP,
+					gimc_rec->mc_stream.proto,
+					gimc_rec->mc_stream.sPort,
+					gimc_rec->mc_stream.dPort);
 
 		} else {
-#ifdef CONFIG_MCAST_HELPER_ACL
-			gimc_rec->probeFlag = 1;
-#endif
 			mch_iptype = IPV4;
-			ret = mcast_helper_acl_probe_pckt_send(gimc_rec->mc_stream.rxDev, netdev, gimc_rec->grpIdx, &(gimc_rec->mc_stream.dIP), &(gimc_rec->mc_stream.sIP), gimc_rec->mc_stream.proto, gimc_rec->mc_stream.sPort, gimc_rec->mc_stream.dPort);
+			ret = mcast_helper_acl_probe_pckt_send(
+					gimc_rec->mc_stream.rxDev,
+					netdev, gimc_rec->grpIdx,
+					&gimc_rec->mc_stream.dIP,
+					&gimc_rec->mc_stream.sIP,
+					gimc_rec->mc_stream.proto,
+					gimc_rec->mc_stream.sPort,
+					gimc_rec->mc_stream.dPort);
 			if (ret == 0)
 				return FAILURE;
 		}
-      } else {
-		flag = mcast_helper_update_mac_list(gitxmc_rec,gimc_rec,mc_rec->macaddr,flag);
-		mcast_helper_invoke_return_callback(gimc_rec->grpIdx,netdev,(MCAST_STREAM_t *)&(gimc_rec->mc_stream),flag, gitxmc_rec->macaddr_count);
-
-	}
-
-	if (!lanserver_timerstarted)
-	{
-		mcast_lanserver_timer.expires = jiffies + (LANSERVER_UPDATE_TIMER * HZ);
-		add_timer(&mcast_lanserver_timer);
-		lanserver_timerstarted =1;
 	} else {
-		lanserver_timermod =1;
-		mod_timer(&mcast_lanserver_timer,jiffies + LANSERVER_UPDATE_TIMER * HZ);
-		lanserver_timermod =0;
+		flag = mcast_helper_update_mac_list(gitxmc_rec,
+				gimc_rec, mc_rec->macaddr, flag);
+		mcast_helper_invoke_return_callback(gimc_rec->grpIdx, netdev,
+				&gimc_rec->mc_stream, flag,
+				gitxmc_rec->macaddr_count);
+
 	}
+
+	mcast_helper_start_lanserver_timer();
 
 	return SUCCESS;
 }
@@ -1551,157 +1622,186 @@ static int mcast_helper_update_entry(struct net_device *netdev, struct net_devic
 
 /*=============================================================================
  *function name: mcast_helper_add_entry
- *description  : function searches and adds the entry in gimc/gitcmc record based on
- *		the prameters received  from user space
+ *description  : function searches and adds the entry in gimc/gitcmc record
+ *               based on the prameters received  from user space
  *===========================================================================*/
-
-
-static int mcast_helper_add_entry(struct net_device *netdev, struct net_device *rxnetdev, MCAST_REC_t *mc_rec, unsigned char *src_mac)
+static int mcast_helper_add_entry(struct net_device *netdev,
+				  struct net_device *rxnetdev,
+				  bool routed, MCAST_REC_t *mc_rec,
+				  unsigned char *src_mac)
 {
-	MCAST_GIMC_t *gimc_rec = NULL;
-	MCAST_MEMBER_t *gitxmc_rec = NULL;
-	struct net_device *upper_dev = NULL;
-	struct list_head *gimc_list = mcast_helper_list_p(mc_rec->groupIP.ipType) ;
 	int ret=0;
 	unsigned int flag = 0;
+	MCAST_GIMC_t *gimc_rec = NULL, *gimc_rec_l = NULL;
+	MCAST_MEMBER_t *gitxmc_rec = NULL;
+	struct list_head *gimc_list = NULL;
+	struct list_head *gimc_list_l = NULL;
+	__be32 s_addr = ntohl(mc_rec->groupIP.ipA.ipAddr.s_addr);
 
-	gimc_rec = mcast_helper_search_gimc_record(&(mc_rec->groupIP),&(mc_rec->srcIP),gimc_list);
+	/*
+	 * Ignore Multicast control packets(224.0.0.x)
+	 * and UPnP packets(239.255.255.250)
+	 */
+	if (((s_addr & 0xffffff00U) == 0xe0000000U) ||
+	    ((s_addr & 0xffffffffU) == 0xeffffffaU)) {
+		return FAILURE;
+	}
+
+	gimc_list = mcast_helper_list_p(mc_rec->groupIP.ipType);
+	gimc_list_l = mcast_helper_session_p(mc_rec->groupIP.ipType);
+	gimc_rec = mcast_helper_search_gimc_record(&mc_rec->groupIP,
+			&mc_rec->srcIP, gimc_list);
 	if (gimc_rec == NULL) {
-		gimc_rec = mcast_helper_add_gimc_record(rxnetdev, &(mc_rec->groupIP), &(mc_rec->srcIP), mc_rec->proto, mc_rec->sPort, mc_rec->dPort, src_mac, gimc_list);
+		gimc_rec = mcast_helper_add_gimc_record(rxnetdev,
+				&mc_rec->groupIP, &mc_rec->srcIP, mc_rec->proto,
+				mc_rec->sPort, mc_rec->dPort, src_mac, gimc_list);
 		if (gimc_rec == NULL) {
 			return FAILURE;
 		}
-	}
-	/*update the GIMcTx table to add the new interface into the list */
-	gitxmc_rec = mcast_helper_search_gitxmc_record(gimc_rec->grpIdx, netdev, &gimc_rec->mc_mem_list);
-	if (gitxmc_rec == NULL) {
-		gitxmc_rec = mcast_helper_add_gitxmc_record(gimc_rec->grpIdx, netdev, mc_rec->macaddr, mcast_helper_list_p(mc_rec->groupIP.ipType)) ;
-
-		if (gitxmc_rec == NULL)
-			return FAILURE;
-		memcpy(gimc_rec->mc_stream.macaddr, mc_rec->macaddr, sizeof(char)*ETH_ALEN);
-
-		rtnl_lock();
-		upper_dev = netdev_master_upper_dev_get(rxnetdev);
-		rtnl_unlock();
-		if (upper_dev && (upper_dev->priv_flags & IFF_EBRIDGE)) {
-			flag = mcast_helper_update_mac_list(gitxmc_rec, gimc_rec, mc_rec->macaddr, MC_F_ADD);
-			mch_br_capture_pkt = 1;
-		} else {
-
-			if (mch_acl_enabled) {
-				// start the timer here
-				if (!mch_timerstarted) {
-					mcast_helper_exp_timer.expires = jiffies + (MCH_UPDATE_TIMER *HZ);
-					add_timer(&mcast_helper_exp_timer);
-					mch_timerstarted  = 1;
-				} else {
-					mch_timermod  = 1;
-					mod_timer(&mcast_helper_exp_timer, jiffies + MCH_UPDATE_TIMER *HZ);
-					mch_timermod = 0;
-				}
-
-				/*Send the Skb probe packet on interfaces */
-				if (gimc_rec->mc_stream.sIP.ipType == IPV6) {
+		/* For LAN server case stream will be in session list */
+		gimc_rec_l = mcast_helper_search_gimc_record(&mc_rec->groupIP,
+				&mc_rec->srcIP, gimc_list_l);
+		if (gimc_rec_l) {
+			mch_debug("found GIMC record=%p GID=%d in lanserver"
+				  " list, updating into helper GIMC record=%p\n",
+				  gimc_rec_l, gimc_rec_l->grpIdx, gimc_rec);
+			/* Use same GID from session list */
+			mcast_helper_release_grpidx(gimc_rec->grpIdx);
+			gimc_rec->grpIdx = gimc_rec_l->grpIdx;
+			gimc_rec->br_callback_flag = gimc_rec_l->br_callback_flag;
 #ifdef CONFIG_MCAST_HELPER_ACL
-					gimc_rec->probeFlag = 1;
+			gimc_rec->oifbitmap = gimc_rec_l->oifbitmap;
+			gimc_rec->probeFlag = gimc_rec_l->probeFlag;
 #endif
-					mch_iptype = IPV6;
-					mcast_helper_acl_probe_pckt_send6(gimc_rec->mc_stream.rxDev, netdev, gimc_rec->grpIdx, &(gimc_rec->mc_stream.dIP), &(gimc_rec->mc_stream.sIP), gimc_rec->mc_stream.proto, gimc_rec->mc_stream.sPort, gimc_rec->mc_stream.dPort);
-
-				} else {
-
-#ifdef CONFIG_MCAST_HELPER_ACL
-					gimc_rec->probeFlag = 1;
-#endif
-					mch_iptype = IPV4;
-					ret = mcast_helper_acl_probe_pckt_send(gimc_rec->mc_stream.rxDev, netdev, gimc_rec->grpIdx, &(gimc_rec->mc_stream.dIP), &(gimc_rec->mc_stream.sIP), gimc_rec->mc_stream.proto, gimc_rec->mc_stream.sPort, gimc_rec->mc_stream.dPort);
-					if (ret == 0)
-						return FAILURE;
-				}
-			}else {
-				flag = mcast_helper_update_mac_list(gitxmc_rec,gimc_rec,mc_rec->macaddr,MC_F_ADD);
-	        		mcast_helper_invoke_return_callback(gimc_rec->grpIdx,netdev,(MCAST_STREAM_t *)&(gimc_rec->mc_stream),MC_F_ADD, gitxmc_rec->macaddr_count);
-		        }
-		}
-
-		if (!lanserver_timerstarted)
-		{
-			mcast_lanserver_timer.expires = jiffies + (LANSERVER_UPDATE_TIMER * HZ);
-			add_timer(&mcast_lanserver_timer);
-			lanserver_timerstarted =1;
-		} else {
-			lanserver_timermod =1;
-			mod_timer(&mcast_lanserver_timer,jiffies + LANSERVER_UPDATE_TIMER * HZ);
-			lanserver_timermod =0;
+			memcpy(&gimc_rec->mc_stream, &gimc_rec_l->mc_stream,
+			       sizeof(MCAST_STREAM_t));
 		}
 	}
+
+	/* Update the GIMcTx table to add the new interface into the list */
+	gitxmc_rec = mcast_helper_search_gitxmc_record(&gimc_rec->mc_mem_list,
+			netdev);
+	if (gitxmc_rec)
+		return SUCCESS;
+
+	gitxmc_rec = mcast_helper_add_gitxmc_record(gimc_rec, netdev,
+			mc_rec->macaddr);
+	if (gitxmc_rec == NULL)
+		return FAILURE;
+
+	/* Just now member created adding single MAC */
+	memcpy(gimc_rec->mc_stream.macaddr, mc_rec->macaddr, ETH_ALEN);
+	if (routed) {
+		flag = mcast_helper_update_mac_list(gitxmc_rec, gimc_rec,
+				mc_rec->macaddr, MCH_CB_F_ADD);
+		mch_debug("added member for routed path into GID=%d\n",
+			  gimc_rec->grpIdx);
+		atomic_inc(&mch_br_capture_pkt);
+	} else {
+		if (mch_acl_enabled) {
+			/* Start the timer here */
+			mcast_helper_start_helper_timer();
+
+#ifdef CONFIG_MCAST_HELPER_ACL
+			gimc_rec->probeFlag = 1;
+#endif
+			/* Send the Skb probe packet on interfaces */
+			if (gimc_rec->mc_stream.sIP.ipType == IPV6) {
+				mch_iptype = IPV6;
+				mcast_helper_acl_probe_pckt_send6(
+						gimc_rec->mc_stream.rxDev,
+						netdev, gimc_rec->grpIdx,
+						&(gimc_rec->mc_stream.dIP),
+						&(gimc_rec->mc_stream.sIP),
+						gimc_rec->mc_stream.proto,
+						gimc_rec->mc_stream.sPort,
+						gimc_rec->mc_stream.dPort);
+
+			} else {
+				mch_iptype = IPV4;
+				ret = mcast_helper_acl_probe_pckt_send(
+						gimc_rec->mc_stream.rxDev,
+						netdev, gimc_rec->grpIdx,
+						&(gimc_rec->mc_stream.dIP),
+						&(gimc_rec->mc_stream.sIP),
+						gimc_rec->mc_stream.proto,
+						gimc_rec->mc_stream.sPort,
+						gimc_rec->mc_stream.dPort);
+				if (ret == 0)
+					return FAILURE;
+			}
+		} else {
+			mch_debug("added member for LAN server path into"
+				  " GID=%d & callback\n", gimc_rec->grpIdx);
+			if (gimc_rec_l)
+				gimc_rec_l->br_callback_flag = 1;
+			gimc_rec->br_callback_flag = 1;
+			flag = mcast_helper_update_mac_list(gitxmc_rec,
+					gimc_rec, mc_rec->macaddr, MCH_CB_F_ADD);
+			mcast_helper_invoke_return_callback(gimc_rec->grpIdx,
+					netdev, &gimc_rec->mc_stream, MCH_CB_F_ADD,
+					gitxmc_rec->macaddr_count);
+	        }
+	}
+
+	mcast_helper_start_lanserver_timer();
+
 	return SUCCESS;
 }
 
 /*=============================================================================
  *function name: mcast_helper_delete_entry
- *description  : function searches and delted the entry in gimc/gitcmc record based on
- *		the prameters received  from user space
+ *description  : function searches and delted the entry in gimc/gitcmc record
+ *               based on the prameters received  from user space
  *===========================================================================*/
 
 /*call the function to check if GI exist for this group in GIMc table */
-static int mcast_helper_delete_entry(struct net_device *netdev, struct net_device *rxnetdev, MCAST_REC_t *mc_mem)
+static int
+mcast_helper_delete_entry(struct net_device *netdev, MCAST_REC_t *mc_mem)
 {
 	MCAST_GIMC_t *gimc_rec = NULL;
 	MCAST_MEMBER_t *gitxmc_rec = NULL;
-	struct list_head *gimc_list = mcast_helper_list_p(mc_mem->groupIP.ipType);
+	struct list_head *gimc_list = NULL;
 	MCAST_MAC_t *mac = NULL;
-	struct list_head *liter = NULL;
-        struct list_head *tliter = NULL;
-	unsigned int flag = 0;
 
-	gimc_rec = mcast_helper_search_gimc_record(&(mc_mem->groupIP), &(mc_mem->srcIP), gimc_list);
+	gimc_list = mcast_helper_list_p(mc_mem->groupIP.ipType);
+	gimc_rec = mcast_helper_search_gimc_record(&mc_mem->groupIP,
+			&mc_mem->srcIP, gimc_list);
 	if (gimc_rec == NULL)
 		return FAILURE;
 
-	// update the GIMcTx table to del  mcast member mapping table
-	gitxmc_rec = mcast_helper_search_gitxmc_record(gimc_rec->grpIdx, netdev, &gimc_rec->mc_mem_list);
+	/* Update the GIMcTx table to del mcast member mapping table */
+	gitxmc_rec = mcast_helper_search_gitxmc_record(&gimc_rec->mc_mem_list,
+			netdev);
 	if (gitxmc_rec == NULL)
 		return FAILURE;
 
-	if (mc_mem->macaddr != NULL) {
-		mac = mcast_helper_search_mac_record(gitxmc_rec,mc_mem-> macaddr); 
-	}
-
+	mac = mcast_helper_search_mac_record(gitxmc_rec, mc_mem->macaddr); 
+	mch_debug("deleting MAC=%pM from member=%s GID=%d total MAC=%d\n",
+		  (mac) ? mac->macaddr : NULL, gitxmc_rec->memDev->name,
+		  gimc_rec->grpIdx, gitxmc_rec->macaddr_count);
 	if (mac && gitxmc_rec->macaddr_count <= 1) {
-		mcast_helper_delete_gitxmc_record(gitxmc_rec,gimc_rec,netdev,mc_mem->macaddr,MC_F_DEL);
-		list_for_each_safe(liter, tliter, &gitxmc_rec->macaddr_list) {
-                        MCAST_MAC_t *mac_all = list_entry(liter, MCAST_MAC_t, list);
-                        if (mac_all) {
-                                list_del(&mac_all->list);
-                                kfree(mac_all);
-				gitxmc_rec->macaddr_count--;
-                        }
-                }
+		/* MAC count 1 and matching, inform and remove */
+		mcast_helper_delete_gitxmc_record(gitxmc_rec, gimc_rec,
+				netdev, mc_mem->macaddr, MCH_CB_F_DEL);
+		list_del(&mac->list);
+		kfree(mac);
+		mch_debug("deleting member=%s from GIMC=%p GID=%d\n",
+			  gitxmc_rec->memDev->name, gimc_rec, gimc_rec->grpIdx);
 		list_del(&gitxmc_rec->list);
 		kfree(gitxmc_rec);
 	} else if (mac) {
 		list_del(&mac->list);
 		kfree(mac);
 		gitxmc_rec->macaddr_count--;
-		flag = MC_F_DEL_UPD ;
-		mcast_helper_delete_gitxmc_record(gitxmc_rec,gimc_rec,netdev,mc_mem->macaddr,flag);
+		mcast_helper_delete_gitxmc_record(gitxmc_rec, gimc_rec,
+				netdev, mc_mem->macaddr, MCH_CB_F_DEL_UPD);
 	}
 
 	if (list_empty(&gimc_rec->mc_mem_list))
 		mcast_helper_delete_gimc_record(gimc_rec);
 
-	if (!lanserver_timerstarted)
-	{
-		mcast_lanserver_timer.expires = jiffies + (LANSERVER_UPDATE_TIMER * HZ);
-		add_timer(&mcast_lanserver_timer);
-		lanserver_timerstarted =1;
-	} else {
-		lanserver_timermod =1;
-		mod_timer(&mcast_lanserver_timer,jiffies + LANSERVER_UPDATE_TIMER * HZ);
-		lanserver_timermod =0;
-	}
+	mcast_helper_start_lanserver_timer();
 
 	return SUCCESS;
 }
@@ -1711,33 +1811,31 @@ static int mcast_helper_delete_entry(struct net_device *netdev, struct net_devic
  *function name: mcast_helper_update_ftuple_info
  *description  : function to update the five tuple info
  *===========================================================================*/
-
-static void mcast_helper_update_ftuple_info(MCAST_REC_t *mcast_rec, unsigned char *src_mac)
+static void
+mcast_helper_update_ftuple_info(MCAST_REC_t *mcast_rec, unsigned char *src_mac)
 {
 	int index;
+	FTUPLE_INFO_t *tuple = NULL;
+
 	if (mcast_rec->groupIP.ipType == IPV4) {
-		for (index = 0; index < FTUPLE_ARR_SIZE; index++) {
-			if (!strcmp(mcast_rec->rxIntrfName, ftuple_info[index].rxIntrfName)
-					&& mcast_helper_is_same_ipaddr((IP_Addr_t *)&mcast_rec->groupIP, (IP_Addr_t *)&ftuple_info[index].groupIP)
-					&& mcast_helper_is_same_ipaddr((IP_Addr_t *)&mcast_rec->srcIP, (IP_Addr_t *)&ftuple_info[index].srcIP)) {
-				mcast_rec->proto = ftuple_info[index].proto;
-				mcast_rec->sPort = ftuple_info[index].sPort;
-				mcast_rec->dPort = ftuple_info[index].dPort;
-				memcpy(src_mac, ftuple_info[index].src_mac, ETH_ALEN);
-				break;
-			}
-		}
+		tuple = ftuple_info;
 	} else if (mcast_rec->groupIP.ipType == IPV6) {
-		for (index = 0; index < FTUPLE_ARR_SIZE; index++) {
-			if (!strcmp(mcast_rec->rxIntrfName, ftuple_info6[index].rxIntrfName)
-					&& mcast_helper_is_same_ipaddr((IP_Addr_t *)&mcast_rec->groupIP, (IP_Addr_t *)&ftuple_info6[index].groupIP)
-					&& mcast_helper_is_same_ipaddr((IP_Addr_t *)&mcast_rec->srcIP, (IP_Addr_t *)&ftuple_info6[index].srcIP)) {
-				mcast_rec->proto = ftuple_info6[index].proto;
-				mcast_rec->sPort = ftuple_info6[index].sPort;
-				mcast_rec->dPort = ftuple_info6[index].dPort;
-				memcpy(src_mac, ftuple_info6[index].src_mac, ETH_ALEN);
-				break;
-			}
+		tuple = ftuple_info6;
+	} else {
+		return;
+	}
+
+	for (index = 0; index < FTUPLE_ARR_SIZE; index++) {
+		if (!strcmp(mcast_rec->rxIntrfName, tuple[index].rxIntrfName) &&
+		    mcast_helper_is_same_ipaddr(
+		    &mcast_rec->groupIP, &tuple[index].groupIP) &&
+		    mcast_helper_is_same_ipaddr(
+		    &mcast_rec->srcIP, &tuple[index].srcIP)) {
+			mcast_rec->proto = tuple[index].proto;
+			mcast_rec->sPort = tuple[index].sPort;
+			mcast_rec->dPort = tuple[index].dPort;
+			memcpy(src_mac, tuple[index].src_mac, ETH_ALEN);
+			break;
 		}
 	}
 }
@@ -1747,8 +1845,6 @@ static void mcast_helper_update_ftuple_info(MCAST_REC_t *mcast_rec, unsigned cha
  *function name: mcast_helper_ioctl
  *description  : IOCTL handler functon
  *===========================================================================*/
-
-
 static long mcast_helper_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 {
 	MCAST_REC_t mcast_mem;
@@ -1758,101 +1854,93 @@ static long mcast_helper_ioctl(struct file *f, unsigned int cmd, unsigned long a
 	MCAST_GIMC_t *gimc_rec = NULL;
 	struct list_head *gimc_list = NULL;
 	unsigned char s_mac[ETH_ALEN] = {0};
+	bool routed = false;
 
 	if (!capable(CAP_NET_ADMIN))
 		return -EPERM;
 
 	switch (cmd) {
 	case MCH_MEMBER_ENTRY_ADD:
-			if (copy_from_user(&mcast_mem, (MCAST_REC_t *)arg, sizeof(MCAST_REC_t))) {
-				return -EACCES;
+		if (copy_from_user(&mcast_mem, (MCAST_REC_t *)arg,
+		    sizeof(MCAST_REC_t))) {
+			return -EACCES;
+		}
+		netdev = mch_get_netif(mcast_mem.memIntrfName);
+		rxnetdev = mch_get_netif(mcast_mem.rxIntrfName);
+		if (rxnetdev == NULL || netdev == NULL)
+			return -ENXIO;
+
+		rtnl_lock();
+		upper_dev = netdev_master_upper_dev_get(rxnetdev);
+		rtnl_unlock();
+		if (upper_dev) {
+			if (!(upper_dev->priv_flags & IFF_EBRIDGE)) {
+				mcast_helper_update_ftuple_info(&mcast_mem,
+								s_mac);
+				routed = true;
 			}
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 32)
-			netdev = dev_get_by_name(mcast_mem.memIntrfName);
-			rxnetdev = dev_get_by_name(mcast_mem.rxIntrfName);
-#else
-			netdev = mcast_helper_dev_get_by_name(&init_net, mcast_mem.memIntrfName);
-			rxnetdev = mcast_helper_dev_get_by_name(&init_net, mcast_mem.rxIntrfName);
-#endif
-			if (rxnetdev == NULL || netdev == NULL)
-				return -ENXIO;
+		} else {
+			mcast_helper_update_ftuple_info(&mcast_mem, s_mac);
+			routed = true;
+		}
+		mcast_helper_add_entry(netdev, rxnetdev,
+				       routed, &mcast_mem, s_mac);
+		break;
+	case MCH_MEMBER_ENTRY_UPDATE:
+		if (copy_from_user(&mcast_mem, (MCAST_REC_t *)arg,
+		    sizeof(MCAST_REC_t))) {
+			return -EACCES;
+		}
+		netdev = mch_get_netif(mcast_mem.memIntrfName);
+		if (netdev == NULL)
+			return -ENXIO;
 
-			rtnl_lock();
-			upper_dev = netdev_master_upper_dev_get(rxnetdev);
-			rtnl_unlock();
-			if (upper_dev) {
-				if (!(upper_dev->priv_flags & IFF_EBRIDGE)) {
-					mcast_helper_update_ftuple_info(&mcast_mem, s_mac);
-				}
-			} else {
-				mcast_helper_update_ftuple_info(&mcast_mem, s_mac);
-			}
+		mcast_helper_update_entry(netdev, &mcast_mem);
+		break;
+	case  MCH_MEMBER_ENTRY_REMOVE:
+		if (copy_from_user(&mcast_mem, (MCAST_REC_t *)arg,
+		    sizeof(MCAST_REC_t))) {
+			return -EACCES;
+		}
+		netdev = mch_get_netif(mcast_mem.memIntrfName);
+		if (netdev == NULL)
+			return -ENXIO;
 
-			mcast_helper_add_entry(netdev, rxnetdev, &mcast_mem, s_mac);
-			break;
-		case MCH_MEMBER_ENTRY_UPDATE:
-			if (copy_from_user(&mcast_mem, (MCAST_REC_t *)arg, sizeof(MCAST_REC_t))) {
-				return -EACCES;
-			}
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 32)
-			netdev = dev_get_by_name(mcast_mem.memIntrfName);
-#else
-			netdev = mcast_helper_dev_get_by_name(&init_net, mcast_mem.memIntrfName);
-#endif
-			if (netdev == NULL)
-				return -ENXIO;
+		mcast_helper_delete_entry(netdev, &mcast_mem);
+		break;
+	case MCH_SERVER_ENTRY_GET:
+		if (copy_from_user(&mcast_mem, (MCAST_REC_t *)arg,
+		    sizeof(MCAST_REC_t))) {
+			return -EACCES;
+		}
+		gimc_list = mcast_helper_session_p(mcast_mem.groupIP.ipType);
+		gimc_rec = mcast_helper_search_gimc_record(&mcast_mem.groupIP,
+				&mcast_mem.srcIP, gimc_list);
+		if (gimc_rec == NULL) {
+			return -EACCES;
+		} else {
+			memcpy(mcast_mem.rxIntrfName,
+			       gimc_rec->mc_stream.rxDev->name, IFNAMSIZ);
+		}
+		if (copy_to_user((MCAST_REC_t *)arg,
+		    &mcast_mem, sizeof(MCAST_REC_t))) {
+			return -EACCES;
+		}
+		break;
 
-			mch_br_capture_pkt = 0;
-			mcast_helper_update_entry(netdev, NULL, &mcast_mem);
-			break;
-		case  MCH_MEMBER_ENTRY_REMOVE:
-			if (copy_from_user(&mcast_mem, (MCAST_REC_t *)arg, sizeof(MCAST_REC_t))) {
-				return -EACCES;
-			}
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 32)
-			netdev = dev_get_by_name(mcast_mem.memIntrfName);
-#else
-			netdev = mcast_helper_dev_get_by_name(&init_net, mcast_mem.memIntrfName);
-#endif
-			if (netdev == NULL)
-				return -ENXIO;
-
-			mch_br_capture_pkt = 0;
-			mcast_helper_delete_entry(netdev, NULL, &mcast_mem);
-			break;
-		case MCH_SEVER_ENTRY_GET:
-			if (copy_from_user(&mcast_mem, (MCAST_REC_t *)arg, sizeof(MCAST_REC_t))) {
-				return -EACCES;
-			}
-
-			gimc_list = mcast_helper_session_p(mcast_mem.groupIP.ipType);
-			gimc_rec = mcast_helper_search_gimc_record(&(mcast_mem.groupIP), &(mcast_mem.srcIP), gimc_list);
-			if (gimc_rec == NULL) {
-				return -EACCES;
-
-			} else {
-				memcpy(mcast_mem.rxIntrfName, gimc_rec->mc_stream.rxDev->name, strlen(gimc_rec->mc_stream.rxDev->name));
-			}
-
-			if (copy_to_user((MCAST_REC_t *)arg, &mcast_mem, sizeof(MCAST_REC_t))) {
-				return -EACCES;
-			}
-			break;
-
-		default:
-			return -EINVAL;
+	default:
+		return -EINVAL;
 	}
 	return 0;
 }
 
 #ifdef CONFIG_PROC_FS
-
 /*=============================================================================
- *function name: mcast_helper_seq_show
- *description  : proc support to read and output  the mcast helper IPV4 table entries
+ *function name: mcast_helper_show_ipv4
+ *description  : proc support to read and output the IPv4 table entries
  *===========================================================================*/
-
-int mcast_helper_seq_show(struct seq_file *seq, void *v)
+static int
+mcast_helper_show_ipv4(struct seq_file *seq, struct list_head *gimc_list)
 {
 	struct list_head *liter = NULL;
 	struct list_head *tliter = NULL;
@@ -1863,75 +1951,90 @@ int mcast_helper_seq_show(struct seq_file *seq, void *v)
 	MCAST_GIMC_t *gimc_rec = NULL;
 	MCAST_MEMBER_t *gitxmc_rec = NULL;
 	MCAST_MAC_t *mac_rec = NULL;
-	struct list_head *gimc_list = mcast_helper_list_p(IPV4) ;
 
-	if (!capable(CAP_NET_ADMIN))
-		return -EPERM;
-
-	if (mch_acl_enabled) {
-		seq_printf(seq,
-				"%3s %10s "
-				"%10s %10s %6s %6s %6s %6s %12s\n", "GIdx",
-				"RxIntrf", "SA",
-				"GA", "proto", "sPort", "dPort", "sMac", "memIntrf(MacAddr)(AclFlag)");
-	} else {
-		seq_printf(seq,
-				"%3s %10s "
-				"%10s %10s %6s %6s %6s %6s %12s\n", "GIdx",
-				"RxIntrf", "SA",
-				"GA", "proto", "sPort", "dPort", "sMac", "memIntrf(MacAddr)");
-	}
 	list_for_each_safe(liter, tliter, gimc_list) {
 		gimc_rec = list_entry(liter, MCAST_GIMC_t, list);
-		if (gimc_rec != NULL) {
-			if (gimc_rec->mc_stream.dIP.ipType == IPV4) {
-				seq_printf(seq,
-						"%3d %10s %10x "
-						"%10x %6d %6d %6d  (%02x:%02x:%02x:%02x:%02x:%02x)",
-						gimc_rec->grpIdx, gimc_rec->mc_stream.rxDev->name,
-						gimc_rec->mc_stream.sIP.ipA.ipAddr.s_addr,
-						gimc_rec->mc_stream.dIP.ipA.ipAddr.s_addr,
-						gimc_rec->mc_stream.proto,
-						gimc_rec->mc_stream.sPort,
-						gimc_rec->mc_stream.dPort,
-						gimc_rec->mc_stream.src_mac[0], gimc_rec->mc_stream.src_mac[1],
-						gimc_rec->mc_stream.src_mac[2], gimc_rec->mc_stream.src_mac[3],
-						gimc_rec->mc_stream.src_mac[4], gimc_rec->mc_stream.src_mac[5]);
-			}
-			if (mch_acl_enabled) {
-				list_for_each_safe(gliter, iter, &gimc_rec->mc_mem_list) {
-					gitxmc_rec = list_entry(gliter, MCAST_MEMBER_t, list);
-					if (gitxmc_rec) {
-						list_for_each_safe(gliter_mac, iter_mac, &gitxmc_rec->macaddr_list) {
-							mac_rec = list_entry(gliter_mac, MCAST_MAC_t, list);
-						}
-					}
+		if (gimc_rec->mc_stream.dIP.ipType == IPV4) {
+			seq_printf(seq, "%3d %15s %10x %10x %6d %6d %6d (%pM)",
+				   gimc_rec->grpIdx,
+				   gimc_rec->mc_stream.rxDev->name,
+				   gimc_rec->mc_stream.sIP.ipA.ipAddr.s_addr,
+				   gimc_rec->mc_stream.dIP.ipA.ipAddr.s_addr,
+				   gimc_rec->mc_stream.proto,
+				   gimc_rec->mc_stream.sPort,
+				   gimc_rec->mc_stream.dPort,
+				   gimc_rec->mc_stream.src_mac);
+		}
+
+		list_for_each_safe(gliter, iter, &gimc_rec->mc_mem_list) {
+			gitxmc_rec = list_entry(gliter, MCAST_MEMBER_t, list);
+			list_for_each_safe(gliter_mac, iter_mac,
+					   &gitxmc_rec->macaddr_list) {
+				mac_rec = list_entry(gliter_mac,
+						     MCAST_MAC_t, list);
+				seq_printf(seq, " %s(%pM)",
+					   gitxmc_rec->memDev->name,
+					   mac_rec->macaddr);
+#ifdef CONFIG_MCAST_HELPER_ACL
+				if (mch_acl_enabled) {
+					seq_printf(seq, "(%d)",
+						   gitxmc_rec->aclBlocked);
 				}
-			} else {
-				list_for_each_safe(gliter, iter, &gimc_rec->mc_mem_list) {
-					gitxmc_rec = list_entry(gliter, MCAST_MEMBER_t, list);
-					if (gitxmc_rec) {
-						list_for_each_safe(gliter_mac, iter_mac, &gitxmc_rec->macaddr_list) {
-							mac_rec = list_entry(gliter_mac, MCAST_MAC_t, list);
-							if (mac_rec) {
-								seq_printf(seq, "%8s(%02x:%02x:%02x:%02x:%02x:%02x)", gitxmc_rec->memDev->name, mac_rec->macaddr[0],
-										mac_rec->macaddr[1],
-										mac_rec->macaddr[2],
-										mac_rec->macaddr[3],
-										mac_rec->macaddr[4],
-										mac_rec->macaddr[5]);
-							}
-						}
-					}
-				}
+#endif
 			}
 		}
 		seq_printf(seq, "\n");
 	}
+
 	return 0;
 }
 
-int mcast_lanserver_seq_show(struct seq_file *seq, void *v)
+/*=============================================================================
+ *function name: mcast_helper_seq_show
+ *description  : proc support to read and output IPV4 mcast helper record
+ *===========================================================================*/
+static int mcast_helper_seq_show(struct seq_file *seq, void *v)
+{
+	struct list_head *gimc_list = mcast_helper_list_p(IPV4);
+
+	if (!capable(CAP_NET_ADMIN))
+		return -EPERM;
+
+	seq_printf(seq, "%3s %10s %11s %10s %9s %6s %6s %12s %24s%s\n",
+		   "GIdx", "RxIntrf", "SA", "GA", "proto", "sPort",
+		   "dPort", "sMAC", "memIntrf(MacAddr)",
+		   (mch_acl_enabled) ? "(AclFlag)" : "");
+
+	mcast_helper_show_ipv4(seq, gimc_list);
+
+	return 0;
+}
+
+/*=============================================================================
+ *function name: mcast_lanserver_seq_show
+ *description  : proc support to read and output IPV4 mcast lanserver record
+ *===========================================================================*/
+static int mcast_lanserver_seq_show(struct seq_file *seq, void *v)
+{
+	struct list_head *gimc_list = mcast_helper_session_p(IPV4) ;
+
+	if (!capable(CAP_NET_ADMIN))
+		return -EPERM;
+
+	seq_printf(seq, "%3s %10s %11s %10s %9s %6s %6s %12s\n", "GIdx",
+		   "RxIntrf", "SA", "GA", "proto", "sPort", "dPort", "sMAC");
+
+	mcast_helper_show_ipv4(seq, gimc_list);
+
+	return 0;
+}
+
+/*=============================================================================
+ *function name: mcast_helper_show_ipv6
+ *description  : proc support to read and output the IPv6 table entries
+ *===========================================================================*/
+static int
+mcast_helper_show_ipv6(struct seq_file *seq, struct list_head *gimc_list)
 {
 	struct list_head *liter = NULL;
 	struct list_head *tliter = NULL;
@@ -1942,343 +2045,272 @@ int mcast_lanserver_seq_show(struct seq_file *seq, void *v)
 	MCAST_GIMC_t *gimc_rec = NULL;
 	MCAST_MEMBER_t *gitxmc_rec = NULL;
 	MCAST_MAC_t *mac_rec = NULL;
-	struct list_head *gimc_list = mcast_helper_session_p(IPV4) ;
 
-	seq_printf(seq,
-                           "%3s %10s "
-                           "%10s %10s %6s %6s %6s %6s %12s\n", "GIdx",
-                           "RxIntrf", "SA",
-                           "GA", "proto" ,"sPort", "dPort", "sMac", "memIntrf(MacAddr)");
-
-	list_for_each_safe(liter,tliter,gimc_list) {
+	list_for_each_safe(liter, tliter, gimc_list) {
 		gimc_rec = list_entry(liter, MCAST_GIMC_t, list);
-		if (gimc_rec != NULL) {
-			if (gimc_rec->mc_stream.dIP.ipType == IPV4) {
-				seq_printf(seq,
-						"%3d %10s %10x "
-						"%10x %6d %6d %6d  (%02x:%02x:%02x:%02x:%02x:%02x)",
-						gimc_rec->grpIdx, gimc_rec->mc_stream.rxDev->name,
-						gimc_rec->mc_stream.sIP.ipA.ipAddr.s_addr,
-						gimc_rec->mc_stream.dIP.ipA.ipAddr.s_addr,
-						gimc_rec->mc_stream.proto,
-						gimc_rec->mc_stream.sPort,
-						gimc_rec->mc_stream.dPort,
-						gimc_rec->mc_stream.src_mac[0],gimc_rec->mc_stream.src_mac[1],
-						gimc_rec->mc_stream.src_mac[2],gimc_rec->mc_stream.src_mac[3],
-						gimc_rec->mc_stream.src_mac[4],gimc_rec->mc_stream.src_mac[5]);
-			}
+		seq_printf(seq, "%3d %15s %pI6 %pI6 %6d %6d %6d (%pM)",
+			   gimc_rec->grpIdx, gimc_rec->mc_stream.rxDev->name,
+			   gimc_rec->mc_stream.sIP.ipA.ip6Addr.s6_addr,
+			   gimc_rec->mc_stream.dIP.ipA.ip6Addr.s6_addr,
+			   gimc_rec->mc_stream.proto, gimc_rec->mc_stream.sPort,
+			   gimc_rec->mc_stream.dPort,
+			   gimc_rec->mc_stream.src_mac);
 
-			list_for_each_safe(gliter,iter,&gimc_rec->mc_mem_list) {
-				gitxmc_rec = list_entry(gliter, MCAST_MEMBER_t, list);
-				if (gitxmc_rec) {
-					list_for_each_safe(gliter_mac,iter_mac,&gitxmc_rec->macaddr_list) {
-						mac_rec = list_entry(gliter_mac, MCAST_MAC_t, list);
-						if(mac_rec) {
-							seq_printf(seq,"%8s(%02x:%02x:%02x:%02x:%02x:%02x)",gitxmc_rec->memDev->name,mac_rec->macaddr[0],
-									mac_rec->macaddr[1],
-									mac_rec->macaddr[2],
-									mac_rec->macaddr[3],
-									mac_rec->macaddr[4],
-									mac_rec->macaddr[5]);
-						}
-					}
+		list_for_each_safe(gliter, iter, &gimc_rec->mc_mem_list) {
+			gitxmc_rec = list_entry(gliter, MCAST_MEMBER_t, list);
+			list_for_each_safe(gliter_mac, iter_mac,
+					   &gitxmc_rec->macaddr_list) {
+				mac_rec = list_entry(gliter_mac,
+						     MCAST_MAC_t, list);
+				seq_printf(seq, " %s(%pM)",
+					   gitxmc_rec->memDev->name,
+					   mac_rec->macaddr);
+#ifdef CONFIG_MCAST_HELPER_ACL
+				if (mch_acl_enabled) {
+					seq_printf(seq, "(%d)",
+						   gitxmc_rec->aclBlocked);
 				}
+#endif
 			}
 		}
-		seq_printf(seq,"\n");
+		seq_printf(seq, "\n");
+
 	}
+
 	return 0;
 }
-
 
 /*=============================================================================
  *function name: mcast_helper_seq_show6
- *description  : proc support to read and output  the mcast helper IPV6 table entries
+ *description  : proc support to read and output IPV6 mcast helper record
  *===========================================================================*/
-
-
-int mcast_helper_seq_show6(struct seq_file *seq, void *v)
+static int mcast_helper_seq_show6(struct seq_file *seq, void *v)
 {
-	struct list_head *liter = NULL;
-	struct list_head *tliter = NULL;
-	struct list_head *gliter = NULL;
-	struct list_head *iter = NULL;
-	struct list_head *gliter_mac = NULL;
-	struct list_head *iter_mac = NULL;
-	MCAST_GIMC_t *gimc_rec = NULL;
-	MCAST_MEMBER_t *gitxmc_rec = NULL;
-	MCAST_MAC_t *mac_rec = NULL;
 	struct list_head *gimc_list = mcast_helper_list_p(IPV6) ;
 
 	if (!capable(CAP_NET_ADMIN))
 		return -EPERM;
 
-	if (mch_acl_enabled) {
-		seq_printf(seq,
-				"%3s %10s "
-				"%32s %32s\t\t\t %6s %6s %6s %12s\n", "GIdx",
-				"RxIntrf", "SA",
-				"GA", "proto", "sPort", "dPort", "memIntrf(MacAddr)(AclFlag)");
-	} else {
-		seq_printf(seq,
-				"%3s %10s "
-				"%32s %32s\t\t\t %6s %6s %6s %12s\n", "GIdx",
-				"RxIntrf", "SA",
-				"GA", "proto", "sPort", "dPort", "memIntrf(MacAddr)");
-	}
+	seq_printf(seq, "%3s %10s %26s %38s\t\t %9s %6s %6s %12s %24s%s\n",
+		   "GIdx", "RxIntrf", "SA", "GA", "proto", "sPort",
+		   "dPort", "sMAC", "memIntrf(MacAddr)",
+		   (mch_acl_enabled) ? "(AclFlag)" : "");
 
-	list_for_each_safe(liter, tliter, gimc_list) {
-		gimc_rec = list_entry(liter, MCAST_GIMC_t, list);
-		if (gimc_rec != NULL) {
-			if (gimc_rec->mc_stream.dIP.ipType == IPV6) {
-				seq_printf(seq,
-						"%3d %15s %04X:%04X:%04X:%04X:%04X:%04X:%04X:%04X "
-						"%04X:%04X:%04X:%04X:%04X:%04X:%04X:%04X %6d %6d %6d",
-						gimc_rec->grpIdx, gimc_rec->mc_stream.rxDev->name,
-						gimc_rec->mc_stream.sIP.ipA.ip6Addr.s6_addr16[0],
-						gimc_rec->mc_stream.sIP.ipA.ip6Addr.s6_addr16[1],
-						gimc_rec->mc_stream.sIP.ipA.ip6Addr.s6_addr16[2],
-						gimc_rec->mc_stream.sIP.ipA.ip6Addr.s6_addr16[3],
-						gimc_rec->mc_stream.sIP.ipA.ip6Addr.s6_addr16[4],
-						gimc_rec->mc_stream.sIP.ipA.ip6Addr.s6_addr16[5],
-						gimc_rec->mc_stream.sIP.ipA.ip6Addr.s6_addr16[6],
-						gimc_rec->mc_stream.sIP.ipA.ip6Addr.s6_addr16[7],
-						gimc_rec->mc_stream.dIP.ipA.ip6Addr.s6_addr16[0],
-						gimc_rec->mc_stream.dIP.ipA.ip6Addr.s6_addr16[1],
-						gimc_rec->mc_stream.dIP.ipA.ip6Addr.s6_addr16[2],
-						gimc_rec->mc_stream.dIP.ipA.ip6Addr.s6_addr16[3],
-						gimc_rec->mc_stream.dIP.ipA.ip6Addr.s6_addr16[4],
-						gimc_rec->mc_stream.dIP.ipA.ip6Addr.s6_addr16[5],
-						gimc_rec->mc_stream.dIP.ipA.ip6Addr.s6_addr16[6],
-						gimc_rec->mc_stream.dIP.ipA.ip6Addr.s6_addr16[7],
-						gimc_rec->mc_stream.proto,
-						gimc_rec->mc_stream.sPort,
-						gimc_rec->mc_stream.dPort);
-			}
+	mcast_helper_show_ipv6(seq, gimc_list);
 
-			if (mch_acl_enabled) {
-				list_for_each_safe(gliter, iter, &gimc_rec->mc_mem_list) {
-					gitxmc_rec = list_entry(gliter, MCAST_MEMBER_t, list);
-					if (gitxmc_rec) {
-						list_for_each_safe(gliter_mac, iter_mac, &gitxmc_rec->macaddr_list) {
-							mac_rec = list_entry(gliter_mac, MCAST_MAC_t, list);
-							if(mac_rec) {
-#ifdef CONFIG_MCAST_HELPER_ACL
-								seq_printf(seq,"%8s(%02x:%02x:%02x:%02x:%02x:%02x)(%d)",gitxmc_rec->memDev->name,
-										mac_rec->macaddr[0],
-										mac_rec->macaddr[1],
-										mac_rec->macaddr[2],
-										mac_rec->macaddr[3],
-										mac_rec->macaddr[4],
-										mac_rec->macaddr[5],
-										gitxmc_rec->aclBlocked);
-#endif
-							}
-						}
-					}
-				}
-			} else {
-				list_for_each_safe(gliter, iter, &gimc_rec->mc_mem_list) {
-					gitxmc_rec = list_entry(gliter, MCAST_MEMBER_t, list);
-					if (gitxmc_rec) {
-						list_for_each_safe(gliter_mac, iter_mac, &gitxmc_rec->macaddr_list) {
-							mac_rec = list_entry(gliter_mac, MCAST_MAC_t, list);
-							if (mac_rec) {
-								seq_printf(seq, "%8s(%02x:%02x:%02x:%02x:%02x:%02x)", gitxmc_rec->memDev->name,
-										mac_rec->macaddr[0],
-										mac_rec->macaddr[1],
-										mac_rec->macaddr[2],
-										mac_rec->macaddr[3],
-										mac_rec->macaddr[4],
-										mac_rec->macaddr[5]);
-							}
-						}
-					}
-				}
-			}
-		}
-		seq_printf(seq, "\n");
-
-	}
-	return 0;
-}
-
-int mcast_lanserver_seq_show6(struct seq_file *seq, void *v)
-{
-	struct list_head *liter = NULL;
-	struct list_head *tliter = NULL;
-	struct list_head *gliter = NULL;
-	struct list_head *iter = NULL;
-	struct list_head *gliter_mac = NULL;
-	struct list_head *iter_mac = NULL;
-	MCAST_GIMC_t *gimc_rec = NULL;
-	MCAST_MEMBER_t *gitxmc_rec = NULL;
-	MCAST_MAC_t *mac_rec = NULL;
-	struct list_head *gimc_list = mcast_helper_session_p(IPV6) ;
-
-	seq_printf(seq,
-		   "%3s %10s "
-		   "%32s %32s\t\t\t %6s %6s %6s %12s\n", "GIdx",
-		   "RxIntrf", "SA",
-		   "GA", "proto" ,"sPort", "dPort","memIntrf(MacAddr)");
-
-	list_for_each_safe(liter,tliter,gimc_list) {
-		gimc_rec = list_entry(liter, MCAST_GIMC_t, list);
-		if (gimc_rec != NULL) {
-			if (gimc_rec->mc_stream.dIP.ipType == IPV6) {
-				seq_printf(seq,
-						"%3d %15s %04X:%04X:%04X:%04X:%04X:%04X:%04X:%04X "
-						"%04X:%04X:%04X:%04X:%04X:%04X:%04X:%04X %6d %6d %6d",
-						gimc_rec->grpIdx, gimc_rec->mc_stream.rxDev->name,
-						gimc_rec->mc_stream.sIP.ipA.ip6Addr.s6_addr16[0],
-						gimc_rec->mc_stream.sIP.ipA.ip6Addr.s6_addr16[1],
-						gimc_rec->mc_stream.sIP.ipA.ip6Addr.s6_addr16[2],
-						gimc_rec->mc_stream.sIP.ipA.ip6Addr.s6_addr16[3],
-						gimc_rec->mc_stream.sIP.ipA.ip6Addr.s6_addr16[4],
-						gimc_rec->mc_stream.sIP.ipA.ip6Addr.s6_addr16[5],
-						gimc_rec->mc_stream.sIP.ipA.ip6Addr.s6_addr16[6],
-						gimc_rec->mc_stream.sIP.ipA.ip6Addr.s6_addr16[7],
-						gimc_rec->mc_stream.dIP.ipA.ip6Addr.s6_addr16[0],
-						gimc_rec->mc_stream.dIP.ipA.ip6Addr.s6_addr16[1],
-						gimc_rec->mc_stream.dIP.ipA.ip6Addr.s6_addr16[2],
-						gimc_rec->mc_stream.dIP.ipA.ip6Addr.s6_addr16[3],
-						gimc_rec->mc_stream.dIP.ipA.ip6Addr.s6_addr16[4],
-						gimc_rec->mc_stream.dIP.ipA.ip6Addr.s6_addr16[5],
-						gimc_rec->mc_stream.dIP.ipA.ip6Addr.s6_addr16[6],
-						gimc_rec->mc_stream.dIP.ipA.ip6Addr.s6_addr16[7],
-						gimc_rec->mc_stream.proto,
-						gimc_rec->mc_stream.sPort,
-						gimc_rec->mc_stream.dPort);
-			}
-
-
-			list_for_each_safe(gliter,iter,&gimc_rec->mc_mem_list) {
-				gitxmc_rec = list_entry(gliter, MCAST_MEMBER_t, list);
-				if (gitxmc_rec) {
-					list_for_each_safe(gliter_mac,iter_mac,&gitxmc_rec->macaddr_list) {
-						mac_rec = list_entry(gliter_mac, MCAST_MAC_t, list);
-						if(mac_rec) {
-							seq_printf(seq,"%8s(%02x:%02x:%02x:%02x:%02x:%02x)",gitxmc_rec->memDev->name,
-									mac_rec->macaddr[0],
-									mac_rec->macaddr[1],
-									mac_rec->macaddr[2],
-									mac_rec->macaddr[3],
-									mac_rec->macaddr[4],
-									mac_rec->macaddr[5]);
-						}
-					}
-				}
-			}
-		}
-		seq_printf(seq,"\n");
-
-	}
 	return 0;
 }
 
 /*=============================================================================
- *function name: mcast_proc_open
- *description  : function to open proc for ipv6 table entries
+ *function name: mcast_lanserver_seq_show6
+ *description  : proc support to read and output IPV6 mcast lanserver record
  *===========================================================================*/
+static int mcast_lanserver_seq_show6(struct seq_file *seq, void *v)
+{
+	struct list_head *gimc_list = mcast_helper_session_p(IPV6) ;
 
+	if (!capable(CAP_NET_ADMIN))
+		return -EPERM;
 
-int mcast_proc_open(struct inode *inode, struct file *file)
+	seq_printf(seq, "%3s %10s %26s %38s\t\t %9s %6s %6s %12s\n", "GIdx",
+		   "RxIntrf", "SA", "GA", "proto", "sPort", "dPort", "sMAC");
+
+	mcast_helper_show_ipv6(seq, gimc_list);
+
+	return 0;
+}
+
+/*=============================================================================
+ *function name: mcast_debug_seq_show
+ *description  : proc support to read and output debug status
+ *===========================================================================*/
+static int mcast_debug_seq_show(struct seq_file *m, void *v)
+{
+	if (!capable(CAP_NET_ADMIN))
+		return -EPERM;
+
+	seq_printf(m, "MCH: debug is %sabled\n", (mcast_debug)? "en" : "dis");
+
+	return 0;
+}
+
+/*=============================================================================
+ *function name: mcast_debug_proc_write
+ *description  : proc support to enable/disable (1/0) debug level
+ *===========================================================================*/
+static ssize_t mcast_debug_proc_write(struct file *file, const char *buffer,
+				size_t length, loff_t *offset)
+{
+	int ret = 0;
+	char *wbuf = NULL;
+
+	if (!capable(CAP_NET_ADMIN))
+		return -EPERM;
+
+	wbuf = kmalloc(length, GFP_KERNEL);
+	if (wbuf == NULL) {
+		printk(KERN_ERR "MCH: Cannot allocate memory!\n");
+		return -EFAULT;
+	}
+
+	if (copy_from_user(wbuf, buffer, length)) {
+		printk(KERN_ERR "MCH: Cannot copy buffer from user space!\n");
+		kfree(wbuf);
+		return -EFAULT;
+	}
+	wbuf[length - 1] = '\0';
+
+	if ((wbuf[0] == '0') || (wbuf[0] == '1')) {
+		mcast_debug = wbuf[0] - '0';
+		printk(KERN_INFO "MCH: Debug level is now %sabled\n",
+		       (mcast_debug) ? "en" : "dis");
+	} else {
+		printk(KERN_ERR "MCH: invalid value - 0/1 (enable/disable)\n");
+	}
+
+	ret = length;
+
+	kfree(wbuf);
+	*offset += ret;
+	return ret;
+}
+
+/*=============================================================================
+ *function name: helper_proc_open
+ *description  : function to open helper proc for ipv4 table entries
+ *===========================================================================*/
+int helper_proc_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, mcast_helper_seq_show, NULL);
 }
 
+/*=============================================================================
+ *function name: lanserver_proc_open
+ *description  : function to open lanserver proc for ipv4 table entries
+ *===========================================================================*/
 int lanserver_proc_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, mcast_lanserver_seq_show, NULL);
 }
 
 /*=============================================================================
- *function name: mcast_proc_open
- *description  : function to open proc for ipv6 table entries
+ *function name: helper_proc_open6
+ *description  : function to open helper proc for ipv6 table entries
  *===========================================================================*/
-
-
-int mcast_proc_open6(struct inode *inode, struct file *file)
+int helper_proc_open6(struct inode *inode, struct file *file)
 {
 	return single_open(file, mcast_helper_seq_show6, NULL);
 }
 
+/*=============================================================================
+ *function name: lanserver_proc_open6
+ *description  : function to open lanserver proc for ipv6 table entries
+ *===========================================================================*/
 int lanserver_proc_open6(struct inode *inode, struct file *file)
 {
 	return single_open(file, mcast_lanserver_seq_show6, NULL);
 }
 
+/*=============================================================================
+ *function name: mcast_debug_proc_open
+ *description  : function to open debug proc for debug prints
+ *===========================================================================*/
+static int mcast_debug_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mcast_debug_seq_show, NULL);
+}
 
-const struct file_operations mcast_helper_seq_fops = {
-	.owner		=	THIS_MODULE,
-	.open		=	mcast_proc_open,
-	.read		=	seq_read,
-	.llseek		=	seq_lseek,
-	.release	=	single_release,
+static const struct file_operations mcast_helper_seq_fops = {
+	.owner		= THIS_MODULE,
+	.open		= helper_proc_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
 };
 
-const struct file_operations mcast_helper_seq_fops6 = {
-	.owner          =       THIS_MODULE,
-	.open           =       mcast_proc_open6,
-	.read           =       seq_read,
-	.llseek         =       seq_lseek,
-	.release        =       single_release,
+static const struct file_operations mcast_helper_seq_fops6 = {
+	.owner		= THIS_MODULE,
+	.open		= helper_proc_open6,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
 };
 
-const struct file_operations mcast_lanserver_seq_fops = {
-	.owner		=	THIS_MODULE,
-	.open		=	lanserver_proc_open,
-	.read		=	seq_read,
-	.llseek		=	seq_lseek,
-	.release	=	single_release,
+static const struct file_operations mcast_lanserver_seq_fops = {
+	.owner		= THIS_MODULE,
+	.open		= lanserver_proc_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
 };
 
-const struct file_operations mcast_lanserver_seq_fops6 = {
-        .owner          =       THIS_MODULE,
-        .open           =       lanserver_proc_open6,
-        .read           =       seq_read,
-        .llseek         =       seq_lseek,
-        .release        =       single_release,
+static const struct file_operations mcast_lanserver_seq_fops6 = {
+	.owner		= THIS_MODULE,
+	.open		= lanserver_proc_open6,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
 };
 
+static const struct file_operations mcast_debug_fops = {
+	.owner		= THIS_MODULE,
+	.open		= mcast_debug_proc_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+	.write		= mcast_debug_proc_write,
+};
 
 /*=============================================================================
  *function name: mcast_helper_net_init
  *description  : function to create mcast helper proc entry
  *===========================================================================*/
-
-
-int mcast_helper_net_init(void)
+static int mcast_helper_net_init(void)
 {
+	struct proc_dir_entry *pdh = NULL, *pdh6 = NULL;
+	struct proc_dir_entry *pdl = NULL, *pdl6 = NULL;
+	struct proc_dir_entry *pdebug = NULL;
 
-	struct proc_dir_entry *pde, *pde6;
-	struct proc_dir_entry *pdl, *pdl6;
-	pde = proc_create("mcast_helper", 0, NULL, &mcast_helper_seq_fops);
-	if (!pde) {
+	pdh = proc_create("mcast_helper", 0,
+			  NULL, &mcast_helper_seq_fops);
+	if (!pdh) {
 		goto out_mcast;
 	}
-	pde6 = proc_create("mcast_helper6", 0, NULL, &mcast_helper_seq_fops6);
-	if (!pde6) {
+	pdh6 = proc_create("mcast_helper6", 0,
+			   NULL, &mcast_helper_seq_fops6);
+	if (!pdh6) {
 		goto out_mcast;
 	}
 
-	pdl = proc_create("mcast_lanserver", 0, NULL, &mcast_lanserver_seq_fops);
+	pdl = proc_create("mcast_lanserver", 0,
+			  NULL, &mcast_lanserver_seq_fops);
 	if (!pdl) {
 		goto out_mcast;
 	}
-	pdl6 = proc_create("mcast_lanserver6", 0, NULL, &mcast_lanserver_seq_fops6);
-    if (!pdl6) {
-            goto out_mcast;
-    }
+	pdl6 = proc_create("mcast_lanserver6", 0,
+			   NULL, &mcast_lanserver_seq_fops6);
+	if (!pdl6) {
+		goto out_mcast;
+	}
+
+	pdebug = proc_create("mcast_debug", 0, NULL, &mcast_debug_fops);
+	if (!pdebug) {
+		goto out_mcast;
+	}
+
 	return 0;
 
 out_mcast:
-	remove_proc_entry("mcast_helper", NULL);
-	remove_proc_entry("mcast_helper6", NULL);
-	remove_proc_entry("mcast_lanserver", NULL);
-	remove_proc_entry("mcast_lanserver6", NULL);
-	return -ENOMEM;
+	if (pdh)
+		remove_proc_entry("mcast_helper", NULL);
+	if (pdh6)
+		remove_proc_entry("mcast_helper6", NULL);
+	if (pdl)
+		remove_proc_entry("mcast_lanserver", NULL);
+	if (pdl6)
+		remove_proc_entry("mcast_lanserver6", NULL);
 
+	return -ENOMEM;
 }
 
 /*=============================================================================
@@ -2287,12 +2319,11 @@ out_mcast:
  *===========================================================================*/
 
 #ifdef CONFIG_SYSCTL
-
 /**Functions to create a proc for ACL enable/disbale support **/
-
-	static
-int mcast_helper_acl_sysctl_call_tables(struct ctl_table *ctl, int write,
-		void __user *buffer, size_t *lenp, loff_t *ppos)
+static int
+mcast_helper_acl_sysctl_call_tables(struct ctl_table *ctl, int write,
+				    void __user *buffer,
+				    size_t *lenp, loff_t *ppos)
 {
 	int ret;
 
@@ -2306,21 +2337,25 @@ int mcast_helper_acl_sysctl_call_tables(struct ctl_table *ctl, int write,
 static struct ctl_table mcast_helper_acl_table[] = {
 	{
 
-		.procname       = "multicast-acl",
-		.data           = &mch_acl_enabled,
-		.maxlen         = sizeof(int),
-		.mode           = 0644,
-		.proc_handler   = mcast_helper_acl_sysctl_call_tables,
+		.procname	= "multicast-acl",
+		.data		= &mch_acl_enabled,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= mcast_helper_acl_sysctl_call_tables,
 	},
 	{ }
 
 };
 
-/**Functions to create a proc to  enable/disbale Multicast accleration for WLAN **/
-
-	static
-int mcast_helper_accl_sysctl_call_tables(struct ctl_table *ctl, int write,
-		void __user *buffer, size_t *lenp, loff_t *ppos)
+/*=============================================================================
+ *function name: mcast_helper_accl_sysctl_call_tables
+ *description  : Functions to create a proc to enable/disbale
+ *               Multicast accleration for WLAN
+ *===========================================================================*/
+static int
+mcast_helper_accl_sysctl_call_tables(struct ctl_table *ctl, int write,
+				     void __user *buffer, size_t *lenp,
+				     loff_t *ppos)
 {
 	int ret;
 
@@ -2334,108 +2369,51 @@ int mcast_helper_accl_sysctl_call_tables(struct ctl_table *ctl, int write,
 static struct ctl_table mcast_helper_accl_table[] = {
 	{
 
-		.procname       = "multicast-accleration",
-		.data           = &mch_accl_enabled,
-		.maxlen         = sizeof(int),
-		.mode           = 0644,
-		.proc_handler   = mcast_helper_accl_sysctl_call_tables,
+		.procname	= "multicast-accleration",
+		.data		= &mch_accl_enabled,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= mcast_helper_accl_sysctl_call_tables,
 	},
 	{ }
 
 };
+#endif /* CONFIG_SYSCTL */
 
-
-static struct proc_dir_entry *proc_write_entry;
-
-int read_proc(char *buf, char **start, off_t offset, int count, int *eof, void *data)
-{
-	int len = 0;
-	len = sprintf(buf, "\n %s\n ", (char *)data);
-	return len;
-}
-
-int write_proc(struct file *file, const char *buf, int count, void *data)
-{
-
-	if (count > MCH_MAX_PROC_SIZE)
-		count = MCH_MAX_PROC_SIZE;
-	if (copy_from_user(data, buf, count))
-		return -EFAULT;
-
-	return count;
-}
-
-/*
-void create_new_proc_entry(void)
-{
-	proc_write_entry = create_proc_entry("proc_entry", 0666, NULL);
-	if (!proc_write_entry)
-	{
-		printk(KERN_INFO "Error creating proc entry");
-		return ;
-	}
-	proc_write_entry->read_proc = read_proc ;
-	proc_write_entry->write_proc = write_proc;
-	printk(KERN_INFO "proc initialized");
-
-}
-*/
-#endif
 int __init mcast_helper_proc_init(void)
 {
 	int ret;
+
 #ifdef CONFIG_SYSCTL
-	mcast_acl_sysctl_header = register_net_sysctl(&init_net, "net/", mcast_helper_acl_table);
+	mcast_acl_sysctl_header = register_net_sysctl(&init_net,
+			"net/", mcast_helper_acl_table);
 	if (mcast_acl_sysctl_header == NULL) {
-		printk(KERN_WARNING "Failed to register mcast acl sysctl table.\n");
+		printk(KERN_WARNING
+		       "Failed to register mcast acl sysctl table.\n");
 		return 0;
 	}
 
 	/*Proc to disable multicast accleration for WLAN */
-	mcast_accl_sysctl_header = register_net_sysctl(&init_net, "net/", mcast_helper_accl_table);
+	mcast_accl_sysctl_header = register_net_sysctl(&init_net,
+			"net/", mcast_helper_accl_table);
 	if (mcast_accl_sysctl_header == NULL) {
-		printk(KERN_WARNING "Failed to register mcast accl sysctl table.\n");
+		printk(KERN_WARNING
+		       "Failed to register mcast accl sysctl table.\n");
 		return 0;
 	}
 
 #endif
-	/*create_new_proc_entry();*/
 
 	ret = mcast_helper_net_init();
+
 	return ret;
 }
-
-
 #endif
-
-/*=============================================================================
- *function name: mcast_helper_get_gimc_record
- *description  : function to get the gimc record
- *===========================================================================*/
-
-
-static MCAST_GIMC_t *mcast_helper_get_gimc_record(int grpidx, struct list_head *head)
-{
-	struct list_head *liter = NULL;
-	struct list_head *tliter = NULL;
-	MCAST_GIMC_t *gimc_rec = NULL;
-	list_for_each_safe(liter, tliter, head) {
-		gimc_rec = list_entry(liter, MCAST_GIMC_t, list);
-		if (gimc_rec != NULL) {
-			if (gimc_rec->grpIdx == grpidx) {
-				return gimc_rec;
-			}
-		}
-	}
-
-	return NULL;
-}
 
 /*=============================================================================
  *function name: mcast_helper_extract_grpidx
  *description  : function to retrieve the group index from the data buffer
  *===========================================================================*/
-
 static unsigned int mcast_helper_extract_grpidx(char *data, int offset)
 {
 	unsigned int grpidx = 0;
@@ -2459,7 +2437,6 @@ static unsigned int mcast_helper_extract_intrfidx(char *data, int offset)
  *function name: mcast_helper_sig_check
  *description  : function to check the signature in the received probe packt
  *===========================================================================*/
-
 static int mcast_helper_sig_check(unsigned char *data)
 {
 	if (memcmp(data, mch_signature, (sizeof(mch_signature)-1)) == 0)
@@ -2471,10 +2448,9 @@ static int mcast_helper_sig_check(unsigned char *data)
 /*=============================================================================
  *function name: mcast_helper_sig_check_update_ip
  *description  : function to check signature and update the gitxmc table and
- *		invoke registered callbacks for IPv4 packet
+ *               invoke registered callbacks for IPv4 packet
  *===========================================================================*/
-
-int mcast_helper_sig_check_update_ip(struct sk_buff *skb)
+static int mcast_helper_sig_check_update_ip(struct sk_buff *skb)
 {
 	unsigned char *data;
 	int grpidx = 0;
@@ -2485,52 +2461,62 @@ int mcast_helper_sig_check_update_ip(struct sk_buff *skb)
 	unsigned int flag = 0;
 
 
-	if (ip_hdr(skb)->protocol == IPPROTO_UDP) {
-		data = (unsigned char *)udp_hdr(skb)+UDP_HDR_LEN;
+	if (ip_hdr(skb)->protocol == IPPROTO_UDP)
+		return 0;
 
-		if (mcast_helper_sig_check(data) == 0)
-			return 0;
+	data = (unsigned char *)udp_hdr(skb) + UDP_HDR_LEN;
 
+	if (mcast_helper_sig_check(data) == 0)
+		return 0;
 
-		/*Signature matched now extract the grpindex and the call update gitxmc table */
-		grpidx = mcast_helper_extract_grpidx(data, sizeof(mch_signature)-1);
-		intrfid = mcast_helper_extract_intrfidx(data, sizeof(mch_signature));
-		gimc_rec = mcast_helper_get_gimc_record(grpidx, gimc_list);
-		if (gimc_rec) {
-			if (skb->dev->ifindex == intrfid) {
-				/*update the GIMcTx table to add the new interface into the list */
-				gitxmc_rec = mcast_helper_search_gitxmc_record(gimc_rec->grpIdx, skb->dev, &gimc_rec->mc_mem_list);
-				if (gitxmc_rec != NULL) {
+	/*
+	 * Signature matched now extract the grpindex
+	 * and the call update gitxmc table
+	 */
+	grpidx = mcast_helper_extract_grpidx(data, sizeof(mch_signature) - 1);
+	intrfid = mcast_helper_extract_intrfidx(data, sizeof(mch_signature));
+	gimc_rec = mcast_helper_get_gimc_record(gimc_list, grpidx);
+	if (gimc_rec) {
+		if (skb->dev->ifindex == intrfid) {
+			/*
+			 * Update the GIMcTx table to add the
+			 * new interface into the list
+			 */
+			gitxmc_rec = mcast_helper_search_gitxmc_record(
+					&gimc_rec->mc_mem_list, skb->dev);
+			if (gitxmc_rec != NULL) {
 #ifdef CONFIG_MCAST_HELPER_ACL
-					gitxmc_rec->aclBlocked = 0;
+				gitxmc_rec->aclBlocked = 0;
 #endif
-					flag = mcast_helper_update_mac_list(gitxmc_rec,gimc_rec,NULL,MC_F_ADD);
-					mcast_helper_invoke_return_callback(gimc_rec->grpIdx,gitxmc_rec->memDev,(MCAST_STREAM_t *)&(gimc_rec->mc_stream),flag, gitxmc_rec->macaddr_count);
-
-				}
+				flag = mcast_helper_update_mac_list(gitxmc_rec,
+						gimc_rec, NULL, MCH_CB_F_ADD);
+				mcast_helper_invoke_return_callback(
+						gimc_rec->grpIdx,
+						gitxmc_rec->memDev,
+						&gimc_rec->mc_stream, flag,
+						gitxmc_rec->macaddr_count);
 
 			}
-			/*update the oifindex bitmap to be used for evaluating after timer expires */
-#ifdef CONFIG_MCAST_HELPER_ACL
-			gimc_rec->oifbitmap |= 1ULL << skb->dev->ifindex;
-#endif
+
 		}
-
-		return 1;
+#ifdef CONFIG_MCAST_HELPER_ACL
+		/*
+		 * Update the oifindex bitmap to be used
+		 * for evaluating after timer expires
+		 */
+		gimc_rec->oifbitmap |= 1ULL << skb->dev->ifindex;
+#endif
 	}
-	return 0;
-}
 
+	return 1;
+}
 
 /*=============================================================================
  *function name: mcast_helper_sig_check_update_ip6
- *description  : function to check signature and update the gitxmc table and invoke
- *		registered callbacks for the IPv6 packet
+ *description  : function to check signature and update the gitxmc table
+ *               and invoke registered callbacks for the IPv6 packet
  *===========================================================================*/
-
-
-
-int mcast_helper_sig_check_update_ip6(struct sk_buff *skb)
+static int mcast_helper_sig_check_update_ip6(struct sk_buff *skb)
 {
 	unsigned char *data;
 	int grpidx = 0;
@@ -2540,33 +2526,46 @@ int mcast_helper_sig_check_update_ip6(struct sk_buff *skb)
 	MCAST_MEMBER_t *gitxmc_rec = NULL;
 	unsigned int flag = 0;
 
-	data = (unsigned char *)udp_hdr(skb)+UDP_HDR_LEN;
+	data = (unsigned char *)udp_hdr(skb) + UDP_HDR_LEN;
 
 	if (mcast_helper_sig_check(data) == 0)
 		return 0;
 
-	/*Signature matched now extract the grpindex and the call update gitxmc table */
-	grpidx = mcast_helper_extract_grpidx(data, sizeof(mch_signature)-1);
-
+	/*
+	 * Signature matched now extract the grpindex
+	 * and the call update gitxmc table
+	 */
+	grpidx = mcast_helper_extract_grpidx(data, sizeof(mch_signature) - 1);
 	intrfid = mcast_helper_extract_intrfidx(data, sizeof(mch_signature));
-	gimc_rec = mcast_helper_get_gimc_record(grpidx, gimc_list);
+	gimc_rec = mcast_helper_get_gimc_record(gimc_list, grpidx);
 	if (gimc_rec) {
 		if (skb->dev->ifindex == intrfid) {
-			/*update the GIMcTx table to add the new interface into the list */
-			gitxmc_rec = mcast_helper_search_gitxmc_record(gimc_rec->grpIdx, skb->dev, &gimc_rec->mc_mem_list);
-			if (gitxmc_rec != NULL) {
+			/*
+			 * Update the GIMcTx table to add the
+			 * new interface into the list
+			 */
+			gitxmc_rec = mcast_helper_search_gitxmc_record(
+					&gimc_rec->mc_mem_list, skb->dev);
+			if (gitxmc_rec) {
 
 #ifdef CONFIG_MCAST_HELPER_ACL
 				gitxmc_rec->aclBlocked = 0;
 #endif
-				flag = mcast_helper_update_mac_list(gitxmc_rec,gimc_rec,NULL,MC_F_UPD);
-				mcast_helper_invoke_return_callback(gimc_rec->grpIdx,gitxmc_rec->memDev,(MCAST_STREAM_t *)&(gimc_rec->mc_stream),flag, gitxmc_rec->macaddr_count);
+				flag = mcast_helper_update_mac_list(gitxmc_rec,
+						gimc_rec, NULL, MCH_CB_F_UPD);
+				mcast_helper_invoke_return_callback(
+						gimc_rec->grpIdx,
+						gitxmc_rec->memDev,
+						&gimc_rec->mc_stream, flag,
+						gitxmc_rec->macaddr_count);
 			}
-
 		}
-		/*update the oifindex bitmap to be used for evaluating after timer expires */
 #ifdef CONFIG_MCAST_HELPER_ACL
-		gimc_rec->oifbitmap |= 1ULL << skb->dev->ifindex;
+		/*
+		 * Update the oifindex bitmap to be used
+		 * for evaluating after timer expires
+		 */
+		gimc_rec->oifbitmap |= (1ULL << skb->dev->ifindex);
 #endif
 	}
 
@@ -2577,104 +2576,117 @@ int mcast_helper_sig_check_update_ip6(struct sk_buff *skb)
  *function name: mcast_helper_sig_check_update
  *description  : function to check signature and call corresponding callbacks
  *===========================================================================*/
-
 int mcast_helper_sig_check_update(struct sk_buff *skb)
 {
-	struct list_head *gimc_list ;
+	struct list_head *gimc_list;
 	const unsigned char *dest = eth_hdr(skb)->h_dest;
 
 	if (!mch_acl_enabled)
 		return 1;
+
 	if (mch_iptype == IPV6)
 		gimc_list = mcast_helper_list_p(IPV6) ;
 	else
 		gimc_list = mcast_helper_list_p(IPV4) ;
 
 	if (mch_timerstarted && is_multicast_ether_addr(dest)) {
-
-		if (eth_hdr(skb)->h_proto == MCH_ETH_P_IP) {
+		if (eth_hdr(skb)->h_proto == ETH_P_IP) {
 			if (ip_hdr(skb)->protocol == IPPROTO_UDP)
 				mcast_helper_sig_check_update_ip(skb);
-
-		} else if (eth_hdr(skb)->h_proto == MCH_ETH_P_IPV6) {
+		} else if (eth_hdr(skb)->h_proto == ETH_P_IPV6) {
 			if (ipv6_hdr(skb)->nexthdr == IPPROTO_UDP)
 				mcast_helper_sig_check_update_ip6(skb);
-
 		}
 	}
+
 	return 1;
 }
-
 EXPORT_SYMBOL(mcast_helper_sig_check_update);
+
+#ifdef CONFIG_MCAST_HELPER_ACL
+static void mcast_helper_timer_handler_probe(MCAST_GIMC_t *gimc_rec)
+{
+	MCAST_MEMBER_t *gitxmc_rec = NULL;
+	struct list_head *tliter = NULL;
+	struct list_head *pliter = NULL;
+	unsigned int i = 0, flag = 0, delflag = 1;
+	unsigned long long int oifbitmap = 0;
+
+	list_for_each_safe(tliter, pliter, &gimc_rec->mc_mem_list) {
+		gitxmc_rec = list_entry(tliter, MCAST_MEMBER_t, list);
+		oifbitmap = gimc_rec->oifbitmap;
+		i = 0;
+		delflag = 1;
+		do {
+			if (!(oifbitmap & 0x1)) {
+				i++;
+				continue;
+			}
+			if (gitxmc_rec->memDev->ifindex == i) {
+				if (gitxmc_rec->aclBlocked == 1) {
+					flag = mcast_helper_update_mac_list(
+							gitxmc_rec, gimc_rec,
+							NULL, MCH_CB_F_ADD);
+					mcast_helper_invoke_return_callback(
+							gimc_rec->grpIdx,
+							gitxmc_rec->memDev,
+							&gimc_rec->mc_stream,
+							MCH_CB_F_ADD,
+							gitxmc_rec->macaddr_count);
+					gitxmc_rec->aclBlocked = 0;
+				}
+				delflag = 0;
+				break;
+			}
+			i++;
+		} while (oifbitmap >>= 1);
+
+		if (delflag == 1) {
+			/* Delete this interface from the
+			 * gitxmc list and invoke registered
+			 * call back for this if any
+			 */
+			flag = mcast_helper_update_mac_list(gitxmc_rec,
+					gimc_rec, NULL, MCH_CB_F_DEL);
+			mcast_helper_invoke_return_callback(
+					gimc_rec->grpIdx, gitxmc_rec->memDev,
+					&gimc_rec->mc_stream, flag,
+					gitxmc_rec->macaddr_count);
+			gitxmc_rec->aclBlocked = 1;
+		}
+	}
+	gimc_rec->oifbitmap = 0;
+	gimc_rec->probeFlag = 0;
+}
+#endif
 
 /*=============================================================================
  *function name: mcast_helper_timer_handler
  *description  : function handling mcast herlper timer expiry
  *===========================================================================*/
-
 static void mcast_helper_timer_handler(unsigned long data)
 {
+	MCAST_GIMC_t *gimc_rec = NULL;
 	struct list_head *liter = NULL;
 	struct list_head *gliter = NULL;
-	struct list_head *tliter = NULL;
-	struct list_head *pliter = NULL;
 	struct list_head *gimc_list = NULL;
-	MCAST_GIMC_t *gimc_rec = NULL;
-	MCAST_MEMBER_t *gitxmc_rec = NULL;
-	unsigned int i=0;
-	unsigned int delflag=1;
-	unsigned long long int oifbitmap = 0;
-	unsigned int flag = 0;
+
+	mch_debug("helper timer invoked\n");
+	if (mch_timermod) {
+		mch_timermod = 0;
+		return;
+	}
 
 	if (mch_iptype == IPV6)
 		gimc_list = mcast_helper_list_p(IPV6) ;
 	else
 		gimc_list = mcast_helper_list_p(IPV4) ;
 
-	if (mch_timermod) {
-		mch_timermod = 0;
-		return;
-	}
 	list_for_each_safe(liter, gliter, gimc_list) {
 		gimc_rec = list_entry(liter, MCAST_GIMC_t, list);
 #ifdef CONFIG_MCAST_HELPER_ACL
-		if (gimc_rec->probeFlag == 1) {
-			list_for_each_safe(tliter, pliter, &gimc_rec->mc_mem_list) {
-				gitxmc_rec = list_entry(tliter, MCAST_MEMBER_t, list);
-				if (gitxmc_rec) {
-					oifbitmap = gimc_rec->oifbitmap;
-					i = 0;
-					delflag = 1;
-					do {
-
-						if (oifbitmap & 0x1) {
-							if (gitxmc_rec->memDev->ifindex == i) {
-								if (gitxmc_rec->aclBlocked == 1) {
-
-									flag = mcast_helper_update_mac_list(gitxmc_rec,gimc_rec,NULL,MC_F_ADD);
-									mcast_helper_invoke_return_callback(gimc_rec->grpIdx, gitxmc_rec->memDev, (MCAST_STREAM_t *)&(gimc_rec->mc_stream), MC_F_ADD, gitxmc_rec->macaddr_count);
-									gitxmc_rec->aclBlocked = 0;
-								}
-								delflag = 0;
-								break;
-							}
-
-						}
-						i++;
-					} while (oifbitmap >>= 1);
-
-					if (delflag == 1) {
-						/* delete this interface from the gitxmc list and invoke registered call back for this if any */
-
-						flag = mcast_helper_update_mac_list(gitxmc_rec,gimc_rec,NULL,MC_F_DEL);
-						mcast_helper_invoke_return_callback(gimc_rec->grpIdx,gitxmc_rec->memDev,(MCAST_STREAM_t *)&(gimc_rec->mc_stream),flag, gitxmc_rec->macaddr_count);
-						gitxmc_rec->aclBlocked=1;
-					}
-				}
-			}
-			gimc_rec->oifbitmap = 0;
-			gimc_rec->probeFlag = 0;
-		}
+		if (gimc_rec->probeFlag == 1)
+			mcast_helper_timer_handler_probe(gimc_rec);
 #endif
 	}
 
@@ -2683,63 +2695,80 @@ static void mcast_helper_timer_handler(unsigned long data)
 }
 
 /*=============================================================================
+ * function name : mcast_helper_clear_lanserver
+ * description   : function clearing lanserver entries
+ *===========================================================================*/
+static void mcast_helper_clear_lanserver(ptype_t type)
+{
+	struct list_head *vliter = NULL;
+	struct list_head *vtliter = NULL;
+	MCAST_GIMC_t *lan_gimc_rec = NULL, *mcast_gimc_rec = NULL;
+	struct list_head *gimc_list = mcast_helper_list_p(type);
+	struct list_head *lan_gimc_list = mcast_helper_session_p(type);
+
+	/* Loop the (IPv4/IPv6) lanserver group list */
+	list_for_each_safe(vliter, vtliter, lan_gimc_list) {
+		lan_gimc_rec = list_entry(vliter, MCAST_GIMC_t, list);
+		mcast_gimc_rec = mcast_helper_get_gimc_record(gimc_list,
+				lan_gimc_rec->grpIdx);
+		if (mcast_gimc_rec != NULL)
+			continue;
+		/*
+		 * If not found in mcast_helper, then indicate
+		 * no any client join this GROUP, will delete
+		 * from lanserver Group. As, not maintaining
+		 * lanserver hook list when mcast_helper entry
+		 * update, delete blindly. Will get added again
+		 * if streaming continues.
+		 */
+		mcast_helper_delete_gimc_record(lan_gimc_rec);
+	}
+}
+
+/*=============================================================================
  * function name : mcast_lanserver_timer_handler
  * description   : function handling lanserver entry timer expiry
  *===========================================================================*/
-
 static void mcast_lanserver_timer_handler(unsigned long data)
 {
-	/* update the lanserver hook list when mcast_helper entry update */
-	struct list_head *vliter = NULL;
-	struct list_head *vtliter = NULL;
-	MCAST_GIMC_t *lanserver_gimc_rec = NULL;
-	struct list_head *gimc_list_v4 = mcast_helper_list_p(IPV4);
-	struct list_head *gimc_list_v6 = mcast_helper_list_p(IPV6);
-	struct list_head *gimc_lanserver_v4 = mcast_helper_session_p(IPV4);
-	struct list_head *gimc_lanserver_v6 = mcast_helper_session_p(IPV6);
-
+	mch_debug("LAN server timer invoked\n");
 	if (lanserver_timermod) {
 		lanserver_timermod = 0;
 		return;
 	}
 
-	/* loop the IPv4 lanserver group list */
-	list_for_each_safe(vliter,vtliter,gimc_lanserver_v4) {
-		lanserver_gimc_rec = list_entry(vliter, MCAST_GIMC_t, list);
-
-		MCAST_GIMC_t * mcast_gimc_rec = mcast_helper_search_gimc_record(&(lanserver_gimc_rec->mc_stream.dIP),&(lanserver_gimc_rec->mc_stream.sIP),gimc_list_v4);
-
-		/* if not found in mcast_helper, then indicate no any client join this GROUP, will delete the lanserver Group fistly */
-		if(mcast_gimc_rec == NULL)
-		{
-			if (list_empty(&lanserver_gimc_rec->mc_mem_list)){
-				mcast_helper_delete_gimc_record(lanserver_gimc_rec);
-			}
-		}
-	}
-
-
-	/* loop the IPv6 lanserver group list */
-	list_for_each_safe(vliter,vtliter,gimc_lanserver_v6) {
-		lanserver_gimc_rec = list_entry(vliter, MCAST_GIMC_t, list);
-		MCAST_GIMC_t * mcast_gimc_rec = mcast_helper_search_gimc_record(&(lanserver_gimc_rec->mc_stream.dIP),&(lanserver_gimc_rec->mc_stream.sIP),gimc_list_v6);
-
-		/* if not found in mcast_helper, then indicate no any client join this GROUP, will delete the lanserver Group fistly */
-		if(mcast_gimc_rec == NULL)
-		{
-			if (list_empty(&lanserver_gimc_rec->mc_mem_list)){
-				mcast_helper_delete_gimc_record(lanserver_gimc_rec);
-			}
-		}
-	}
+	/* Clear lanserver entries if no member present */
+	mcast_helper_clear_lanserver(IPV4);
+	mcast_helper_clear_lanserver(IPV6);
 
 	lanserver_timerstarted = 0;
 }
+
+/*=============================================================================
+ *function name: mcast_helper_start_helper_timer
+ *description  : function starting/modifying helper timer
+ *===========================================================================*/
+static void mcast_helper_start_helper_timer(void)
+{
+	if (!mch_timerstarted) {
+		mch_debug("starting helper timer\n");
+		mcast_helper_exp_timer.expires = jiffies +
+				(MCH_UPDATE_TIMER * HZ);
+		add_timer(&mcast_helper_exp_timer);
+		mch_timerstarted  = 1;
+	} else {
+		mch_debug("modifying helper timer\n");
+		mch_timermod = 1;
+		mod_timer(&mcast_helper_exp_timer, jiffies +
+			  MCH_UPDATE_TIMER * HZ);
+		mch_timermod = 0;
+	}
+}
+
 /*=============================================================================
  *function name: mcast_helper_init_timer
- *description  : function handling timer Initialization
+ *description  : function handling helper timer Initialization
  *===========================================================================*/
-
 static int mcast_helper_init_timer(int delay)
 {
 
@@ -2747,9 +2776,35 @@ static int mcast_helper_init_timer(int delay)
 	mcast_helper_exp_timer.expires = jiffies + delay *HZ;
 	mcast_helper_exp_timer.data = 0;
 	mcast_helper_exp_timer.function = mcast_helper_timer_handler;
+
 	return 0;
 }
 
+/*=============================================================================
+ *function name: mcast_helper_start_lanserver_timer
+ *description  : function starting/modifying lanserver timer
+ *===========================================================================*/
+static void mcast_helper_start_lanserver_timer(void)
+{
+	if (!lanserver_timerstarted) {
+		mch_debug("starting LAN server timer\n");
+		mcast_lanserver_timer.expires = jiffies +
+				(LANSERVER_UPDATE_TIMER * HZ);
+		add_timer(&mcast_lanserver_timer);
+		lanserver_timerstarted = 1;
+	} else {
+		mch_debug("modifying LAN server timer\n");
+		lanserver_timermod = 1;
+		mod_timer(&mcast_lanserver_timer,jiffies +
+			  LANSERVER_UPDATE_TIMER * HZ);
+		lanserver_timermod = 0;
+	}
+}
+
+/*=============================================================================
+ *function name: mcast_lanserver_init_timer
+ *description  : function handling lanserver timer Initialization
+ *===========================================================================*/
 static int mcast_lanserver_init_timer(int delay)
 {
 	init_timer(&mcast_lanserver_timer);
@@ -2768,19 +2823,116 @@ static struct file_operations mcast_helper_fops = {
 };
 
 /*=============================================================================
+ * function name: mcast_helper_delete_all_mac
+ * description  : Function deletes all clients and inform callback
+ *===========================================================================*/
+static void
+mcast_helper_delete_all_mac(MCAST_GIMC_t *gimc_rec, MCAST_MEMBER_t *mem_rec)
+{
+	MCAST_MAC_t *mac_rec = NULL;
+	struct list_head *liter = NULL, *tliter = NULL;
+
+	if ((mem_rec == NULL) || (gimc_rec == NULL))
+		return;
+
+	if (mem_rec->macaddr_count <= 1) {
+		list_for_each_safe(liter, tliter, &mem_rec->macaddr_list) {
+			mac_rec = list_entry(liter, MCAST_MAC_t, list);
+		}
+		if (mac_rec) {
+			/* MAC count 1 and matching, inform and remove */
+			mcast_helper_delete_gitxmc_record(mem_rec,
+					gimc_rec, mem_rec->memDev,
+					mac_rec->macaddr, MCH_CB_F_DEL);
+			list_del(&mac_rec->list);
+			kfree(mac_rec);
+		}
+	} else {
+		/* More than one MAC, delete at once */
+		mcast_helper_delete_gitxmc_record(mem_rec, gimc_rec,
+				mem_rec->memDev, NULL, MCH_CB_F_DEL);
+		list_for_each_safe(liter, tliter, &mem_rec->macaddr_list) {
+			mac_rec = list_entry(liter, MCAST_MAC_t, list);
+			list_del(&mac_rec->list);
+			kfree(mac_rec);
+		}
+	}
+}
+
+/*=============================================================================
+ * function name: mcast_helper_delete_gitxmc_and_mac
+ * description  : Function searches and deletes all clients and inform callback
+ *                Also delete the member and if no member delete GIMC
+ *===========================================================================*/
+static void
+mcast_helper_delete_gitxmc_and_mac(ptype_t type, MCH_NETIF *netif)
+{
+	MCAST_GIMC_t *gimc_rec = NULL;
+	MCAST_MEMBER_t *mem_rec = NULL;
+	struct list_head *vliter = NULL, *vtliter = NULL;
+	struct list_head *gimc_list = mcast_helper_list_p(type);
+
+	/* Loop the GIMC list (IPv4/IPv6) */
+	list_for_each_safe(vliter, vtliter, gimc_list) {
+		gimc_rec = list_entry(vliter, MCAST_GIMC_t, list);
+
+		/* Search group membership for the device */
+		mem_rec = mcast_helper_search_gitxmc_record(
+				&gimc_rec->mc_mem_list, netif);
+		if (mem_rec == NULL)
+			continue;
+
+		/* Delete all of its associated clients */
+		mcast_helper_delete_all_mac(gimc_rec, mem_rec);
+
+		list_del(&mem_rec->list);
+		kfree(mem_rec);
+
+		if (list_empty(&gimc_rec->mc_mem_list)) {
+			/* Delete helper GIMC record */
+			mcast_helper_delete_gimc_record(gimc_rec);
+		}
+		break;
+	}
+}
+
+/* Lanserver entry deletion for netdev down/unregister events */
+static int mcast_netdevice_event(struct notifier_block *nb,
+				 unsigned long action, void *ptr)
+{
+	MCH_NETIF *netif = NULL;
+
+	netif = netdev_notifier_info_to_dev((struct netdev_notifier_info *)ptr);
+
+	switch (action) {
+	case NETDEV_UNREGISTER:
+	case NETDEV_DOWN:
+		/* Search and delete member and all associated clients */
+		mcast_helper_delete_gitxmc_and_mac(IPV4, netif);
+		mcast_helper_delete_gitxmc_and_mac(IPV6, netif);
+
+		/* Clear lanserver entries if no member present */
+		mcast_helper_clear_lanserver(IPV4);
+		mcast_helper_clear_lanserver(IPV6);
+		break;
+	}
+
+	return 0;
+}
+
+struct notifier_block mcast_netdevice_notifier = {
+	.notifier_call = mcast_netdevice_event
+};
+
+/*=============================================================================
  *function name: mcast_helper_init_module
  *description  : Multucast helper module initilization
  *===========================================================================*/
-
-
 static int __init mcast_helper_init_module(void)
 {
-	int ret_val ,ret = 0;
+	int ret_val;
 	int index = 0;
-#if IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP30)
-	GSW_API_HANDLE gswl;
-	GSW_PCE_rule_t pcecfg;
-#endif
+
 	/*
 	 * Alloc the chrdev region for mcast helper
 	 */
@@ -2791,7 +2943,8 @@ static int __init mcast_helper_init_module(void)
 	 */
 	if (ret_val < 0) {
 		printk(KERN_ALERT "%s failed with %d\n",
-		       "Sorry, alloc_chrdev_region failed for the mcast  device ", ret_val);
+		       "Sorry, alloc_chrdev_region failed for the mcast device",
+		       ret_val);
 		return ret_val;
 	}
 
@@ -2815,28 +2968,7 @@ static int __init mcast_helper_init_module(void)
 		g_mcast_grpindex[index] = 0 ;
 	}
 
-#if IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP30)
-	/* Do GSW_L configuration to avoid control packet flooding */
-	gswl = gsw_api_kopen(SWITCH_DEV);
-	if (gswl == 0) {
-		pr_err (" Mcast helper init- Failed to open swtch dev\n");
-	}
-
-	memset(&pcecfg, 0, sizeof(pcecfg));
-	pcecfg.pattern.nIndex = 18;
-	pcecfg.pattern.bEnable = 1;
-	pcecfg.pattern.bParserFlagMSB_Enable = 1;
-	pcecfg.pattern.nParserFlagMSB = 0x0040;
-	pcecfg.pattern.nParserFlagMSB_Mask = 0xFFBF;
-	pcecfg.action.ePortMapAction = GSW_PCE_ACTION_PORTMAP_ALTERNATIVE;
-	pcecfg.action.nForwardPortMap[0] = 0x01; /*CPU port */
-
-	if ((ret = gsw_api_kioctl(gswl, GSW_PCE_RULE_WRITE, &pcecfg)) < GSW_statusOk) {
-		pr_err("GSW_PCE_RULE_WRITE returned failure on GSWIPL %d\n",ret);
-	}
-	gsw_api_kclose(gswl);
-#endif
-
+	register_netdevice_notifier(&mcast_netdevice_notifier);
 #ifdef CONFIG_PROC_FS
 	mcast_helper_proc_init();
 #endif
@@ -2849,9 +2981,12 @@ static int __init mcast_helper_init_module(void)
 	five_tuple_br_info_ptr = (void *)mcast_helper_five_tuple_br_info;
 	five_tuple_br_info_hook = (void *)mcast_helper_five_tuple_br_hook;
 	mcast_helper_sig_check_update_ptr = mcast_helper_sig_check_update;
+	mcast_helper_get_skb_gid_ptr = mcast_helper_get_skb_gid_internal;
 	mcast_helper_init_timer(MCH_UPDATE_TIMER);
 	mcast_lanserver_init_timer(LANSERVER_UPDATE_TIMER);
+
 	return 0;
+
 fail:
 	if (device_created) {
 		device_destroy(mcast_class, mch_major);
@@ -2872,7 +3007,11 @@ fail:
 
 static void __exit mcast_helper_exit_module(void)
 {
+	/* Cancel all timers */
+	del_timer(&mcast_helper_exp_timer);
+	del_timer(&mcast_lanserver_timer);
 
+	mch_acl_enabled = 0;
 	five_tuple_info_ptr = NULL;
 #if IS_ENABLED(CONFIG_IPV6_MROUTE)
 	five_tuple_info6_ptr = NULL;
@@ -2880,19 +3019,24 @@ static void __exit mcast_helper_exit_module(void)
 	five_tuple_br_info_ptr = NULL;
 	five_tuple_br_info_hook = NULL;
 	mcast_helper_sig_check_update_ptr = NULL;
-	mch_acl_enabled = 0;
+	mcast_helper_get_skb_gid_ptr = NULL;
+
 	if (skb_buff)
 		kfree_skb(skb_buff);
 	if (skb_buff6)
 		kfree_skb(skb_buff6);
 
+	unregister_netdevice_notifier(&mcast_netdevice_notifier);
 #ifdef CONFIG_SYSCTL
 	unregister_net_sysctl_table(mcast_acl_sysctl_header);
 	unregister_net_sysctl_table(mcast_accl_sysctl_header);
 #endif
+	remove_proc_entry("mcast_lanserver", NULL);
+	remove_proc_entry("mcast_lanserver6", NULL);
 	remove_proc_entry("mcast_helper", NULL);
 	remove_proc_entry("mcast_helper6", NULL);
-	remove_proc_entry("proc_entry", NULL);
+	remove_proc_entry("mcast_debug", NULL);
+
 	if (device_created) {
 		device_destroy(mcast_class, mch_major);
 		cdev_del(&mcast_cdev);
@@ -2900,16 +3044,13 @@ static void __exit mcast_helper_exit_module(void)
 	if (mcast_class)
 		class_destroy(mcast_class);
 	if (mch_major != -1)
-	unregister_chrdev_region(mch_major, 1);
+		unregister_chrdev_region(mch_major, 1);
 }
-
 
 module_init(mcast_helper_init_module);
 module_exit(mcast_helper_exit_module);
 
 MODULE_LICENSE("GPL");
-MODULE_ALIAS_RTNL_LINK("mcast_helper");
-MODULE_ALIAS_RTNL_LINK("mcast_helper6");
-MODULE_DESCRIPTION("Multicast helper ");
+MODULE_DESCRIPTION("Multicast helper");
 MODULE_AUTHOR("Srikanth");
 

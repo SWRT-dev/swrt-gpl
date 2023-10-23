@@ -1,0 +1,14 @@
+Pending Implementation
+1. Atomicity of private data structure across multiple DC API
+2. Optimization of the data structure (Searching & Mapping)
+3. Other possible mode, such as FASTPATH+SWPATH
+3. Proc debug
+
+Pending Testing
+1. GRX350 Fastpath, Litepath Only, SWPATH + Litepath
+2. GRX750 Fastpath, Litepath Only, SWPATH + Litepath
+3. GRX330 Litepath Only, SWPATH + Litepath
+
+Documentation
+1. Concept design
+

@@ -16,12 +16,17 @@
 #define VLAN_F_POP		0x1
 #define VLAN_F_PUSH		0x2
 
+#define ACTVLAN_PUSH_F_ID	0x1
+#define ACTVLAN_PUSH_F_PRIO	0x2
+#define ACTVLAN_PUSH_F_PROTO 	0x4
+
 struct tcf_vlan {
 	struct tc_action	common;
 	int			tcfv_action;
 	u16			tcfv_push_vid;
 	__be16			tcfv_push_proto;
 	u8			tcfv_push_prio;
+	u8			tcfv_push_flags;
 };
 #define to_vlan(a) ((struct tcf_vlan *)a)
 
@@ -47,6 +52,22 @@ static inline u16 tcf_vlan_push_vid(const struct tc_action *a)
 static inline __be16 tcf_vlan_push_proto(const struct tc_action *a)
 {
 	return to_vlan(a)->tcfv_push_proto;
+}
+
+static inline u8 tcf_vlan_push_prio(const struct tc_action *a)
+{
+	return to_vlan(a)->tcfv_push_prio;
+}
+
+static inline u8 tcf_vlan_push_flags(const struct tc_action *a)
+{
+	u8 tcfv_push_flags;
+
+	rcu_read_lock();
+	tcfv_push_flags = to_vlan(a)->tcfv_push_flags;
+	rcu_read_unlock();
+
+	return tcfv_push_flags;
 }
 
 #endif /* __NET_TC_VLAN_H */

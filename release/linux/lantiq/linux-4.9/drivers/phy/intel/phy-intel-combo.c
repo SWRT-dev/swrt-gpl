@@ -53,6 +53,8 @@
 #define TX_POST_CUR_MASK		0x3F
 #define TX_POST_CUR_OFF			7
 #define PRE_OVRD_EN			13
+#define RX_ADAPT_REG			(RAWLANEN_RX_OV_IN_3 << 2)
+#define RX_ADAPT_DONE			0xC178
 
 static const char * const intel_phy_names[] = {"pcie", "xpcs", "sata"};
 
@@ -73,11 +75,6 @@ enum intel_phy_mode {
 	PHY_XPCS_MODE,
 	PHY_SATA_MODE,
 	PHY_MAX_MODE
-};
-
-struct intel_phy_calibrate {
-	u32 resv:31;
-	u32 rx_auto_adapt:1;
 };
 
 enum combo_phy_mode {
@@ -116,7 +113,6 @@ struct phy_ctx {
 	bool enable;
 	struct intel_combo_phy *parent;
 	enum intel_phy_mode phy_mode;
-	struct intel_phy_calibrate calibrate;
 	bool power_en;
 	enum intel_phy_role phy_role;
 	struct phy *phy;
@@ -366,7 +362,8 @@ static int intel_phy_clk_freq_set(struct phy_ctx *iphy)
 {
 	enum intel_phy_mode phy_mode = iphy->phy_mode;
 
-	if (iphy->phy_freq_clk && iphy->phy_clk_rate[phy_mode]) {
+	if (iphy->phy_freq_clk && phy_mode < PHY_MAX_MODE &&
+	    iphy->phy_clk_rate[phy_mode]) {
 		if (clk_set_rate(iphy->phy_freq_clk,
 				 iphy->phy_clk_rate[phy_mode]))
 			return -EINVAL;
@@ -395,78 +392,35 @@ static int intel_pcie_set_clk_src(struct phy_ctx *iphy)
 static int phy_rxeq_autoadapt(struct phy *phy)
 {
 	struct phy_ctx *iphy;
-	int err;
+	int err, max_retry_cnt = 2;
 	u32 val;
 	struct device *dev;
 
 	iphy = phy_get_drvdata(phy);
 	dev = iphy->dev;
-	/* RAWLANEN_RX_OV_IN_3 */
-	/* 15		CONT_OVRD_EN = 0
-	 * 14		OFFCAN_CONT = 0
-	 * 13		ADAPT_CONT = 0
-	 * 12		ADAPT_REQ_OVRD_EN = 0
-	 * 11		ADAPT_REQ = 0
-	 * 10		REF_LD_VAL_OVRD_EN = 0
-	 * 9:4		REF_LD_VAL_OVRD = 0
-	 * 3		RX_LOS_THRSHLD_OVRD_EN = 0
-	 * 2:0		RX_LOS_THRSHLD_OVRD_VAL = 0
-	 */
-	/* ADAPT_REQ Bit 11 and ADAPT_REQ_OVRD_EN Bit 12 */
-	val = readl(iphy->cr_base + (RAWLANEN_RX_OV_IN_3 << 2));
-	writel(val & ~(BIT(11) | BIT(12)), iphy->cr_base + (RAWLANEN_RX_OV_IN_3 << 2));
-	/* ADAPT_REQ and ADAPT_REQ_OVRD_EN set to '11' */
-	writel(val | (BIT(11) | BIT(12)), iphy->cr_base + (RAWLANEN_RX_OV_IN_3 << 2));
 
-	/* Check for RX Adaptation is done
-	 * RAWLANEN_DIG_AON_RX_ADAPT_DONE.RX_ADAPT_DONE[0]
-	 */
-	err = readl_poll_timeout(iphy->cr_base +
-		(RAWLANEN_RX_OV_IN_3 << 2), val, (!!(val & BIT(0))),
-		5, 5 * PHY_RXADAPT_POLL_CNT);
 	/* if auto adapt fail, run auto adapt one more time */
-	if (err) {
+	while (max_retry_cnt--) {
 		/* ADAPT_REQ Bit 11 and ADAPT_REQ_OVRD_EN Bit 12 */
-		val = readl(iphy->cr_base + (RAWLANEN_RX_OV_IN_3 << 2));
-		writel(val & ~(BIT(11) | BIT(12)), iphy->cr_base + (RAWLANEN_RX_OV_IN_3 << 2));
+		val = combo_phy_r32(iphy->cr_base, RX_ADAPT_REG);
+		combo_phy_w32(iphy->cr_base, val & ~(BIT(11) | BIT(12)),
+			      RX_ADAPT_REG);
 		/* ADAPT_REQ and ADAPT_REQ_OVRD_EN set to '11' */
-		writel(val | (BIT(11) | BIT(12)), iphy->cr_base + (RAWLANEN_RX_OV_IN_3 << 2));
+		combo_phy_w32(iphy->cr_base, val | (BIT(11) | BIT(12)),
+			      RX_ADAPT_REG);
 
 		/* Check for RX Adaptation is done
 		 * RAWLANEN_DIG_AON_RX_ADAPT_DONE.RX_ADAPT_DONE[0]
 		 */
-		err = readl_poll_timeout(iphy->cr_base +
-			(RAWLANEN_RX_OV_IN_3 << 2), val, (!!(val & BIT(0))),
-			5, 5 * PHY_RXADAPT_POLL_CNT);
+		err = readl_poll_timeout(iphy->cr_base + RX_ADAPT_DONE, val,
+					 (!!(val & BIT(0))), 5,
+					 5 * PHY_RXADAPT_POLL_CNT);
+		if (!err)
+			break;
 	}
+
 	/* Stop RX Adaptation */
-	combo_phy_w32(iphy->cr_base, 0x0, (RAWLANEN_RX_OV_IN_3 << 2));
-	dev_dbg(dev, "RX Adaptation Turn off after done:\n");
-	dev_dbg(dev, "RAWLANEN_RX_OV_IN_3 (0x%p) = 0x%08x\n",
-		(iphy->cr_base + (RAWLANEN_RX_OV_IN_3 << 2)),
-		combo_phy_r32(iphy->cr_base, (RAWLANEN_RX_OV_IN_3 << 2)));
-
-	/* Display RX Adapt Value in PMA */
-	dev_dbg(dev, "Read back on RX Adapted Value\n");
-	/* LANEN_RX_ADPT_ATT_STAT ATT Adaptation code */
-	dev_dbg(dev, "LANEN_RX_ADPT_ATT_STAT [ (0x%p) = 0x%08x\n",
-		(iphy->cr_base + (LANEN_RX_ADPT_ATT_STAT << 2)),
-		combo_phy_r32(iphy->cr_base, (LANEN_RX_ADPT_ATT_STAT << 2)));
-
-	/* LANEN_RX_ADPT_VGA_STAT VGA Adaptation code */
-	dev_dbg(dev, "LANEN_RX_ADPT_VGA_STAT [ (0x%p) = 0x%08x\n",
-		(iphy->cr_base + (LANEN_RX_ADPT_VGA_STAT << 2)),
-		combo_phy_r32(iphy->cr_base, (LANEN_RX_ADPT_VGA_STAT << 2)));
-
-	/* LANEN_RX_ADPT_CTLE_STAT CTLE Adaptation code */
-	dev_dbg(dev, "LANEN_RX_ADPT_CTLE_STAT [ (0x%p) = 0x%08x\n",
-		(iphy->cr_base + (LANEN_RX_ADPT_CTLE_STAT << 2)),
-		combo_phy_r32(iphy->cr_base, (LANEN_RX_ADPT_CTLE_STAT << 2)));
-
-	/* LANEN_RX_ADPT_DFETAP1_STAT DFE Tap1 Adaptation code */
-	dev_dbg(dev, "LANEN_RX_ADPT_DFETAP1_STAT [ (0x%p) = 0x%08x\n",
-		(iphy->cr_base + (LANEN_RX_ADPT_DFETAP1_STAT << 2)),
-		combo_phy_r32(iphy->cr_base, (LANEN_RX_ADPT_DFETAP1_STAT << 2)));
+	combo_phy_w32(iphy->cr_base, 0x0, RX_ADAPT_REG);
 
 	if (err) {
 		dev_warn(dev, "PHY(%u:%u): RX Adaptation not done\n",
@@ -699,7 +653,7 @@ static int intel_combo_phy_calibrate(struct phy *phy)
 	int ret = 0;
 
 	iphy = phy_get_drvdata(phy);
-	if (iphy->calibrate.rx_auto_adapt)
+	if (iphy->phy_mode == PHY_XPCS_MODE)
 		ret = phy_rxeq_autoadapt(phy);
 
 	return ret;
@@ -851,9 +805,6 @@ static int intel_phy_dt_parse(struct intel_combo_phy *priv,
 		}
 	}
 
-	iphy->calibrate.rx_auto_adapt =
-		device_property_read_bool(dev, "intel,rx-auto-adapt");
-
 	if (!(BIT(iphy->phy_mode) & priv->phy_cap)) {
 		dev_err(dev,
 			"PHY mode %u is not supported by COMBO PHY id %u of %s soc platform!\n",
@@ -893,11 +844,7 @@ static int intel_phy_dt_parse(struct intel_combo_phy *priv,
 		return -EINVAL;
 	}
 
-	if (intel_combo_phy_get_reset(iphy)) {
-		dev_err(dev, "Get phy(%u:%u) resets failed!\n",
-			COMBO_PHY_ID(iphy), PHY_ID(iphy));
-		return -EINVAL;
-	}
+	intel_combo_phy_get_reset(iphy);
 
 	iphy->enable = of_device_is_available(np);
 	priv->enable[idx] = iphy->enable;
@@ -1090,9 +1037,9 @@ static int intel_combo_phy_create(struct intel_combo_phy *priv)
 					COMBO_PHY_ID(iphy), PHY_ID(iphy),
 					iphy->phy_clk_rate[iphy->phy_mode]);
 			} else {
-				dev_err(iphy->dev, "PHY(%u:%u) clock frequency set to %lu Success!\n",
-					COMBO_PHY_ID(iphy), PHY_ID(iphy),
-					iphy->phy_clk_rate[iphy->phy_mode]);
+				dev_info(iphy->dev, "PHY(%u:%u) clock frequency set to %lu Success!\n",
+					 COMBO_PHY_ID(iphy), PHY_ID(iphy),
+					 iphy->phy_clk_rate[iphy->phy_mode]);
 			}
 		}
 	}
@@ -1115,6 +1062,7 @@ intel_combo_phy_serdes_write(struct file *s, const char __user *buffer,
 	u32 main_cur = 0, pre_cur = 0, post_cur = 0;
 	char buf[32] = {0};
 	size_t buf_size;
+	int ret;
 
 	if (!capable(CAP_SYS_ADMIN))
 		return -EPERM;
@@ -1124,7 +1072,9 @@ intel_combo_phy_serdes_write(struct file *s, const char __user *buffer,
 
 	memset(buf, 0, sizeof(buf));
 	buf_size = min(count, sizeof(buf) - 1);
-	if (copy_from_user(buf, buffer, buf_size))
+
+	ret = copy_from_user(buf, buffer, buf_size);
+	if (ret)
 		return -EFAULT;
 
 	if (strcmp(buf, "help") == 0)
@@ -1160,15 +1110,15 @@ static int intel_combo_phy_seq_read(struct seq_file *s, void *v)
 	if (!capable(CAP_SYS_ADMIN))
 		return -EPERM;
 
-	dev_info(iphy->dev, "TX_MAIN_CUR\t%u\n",
-		 ((combo_phy_r32(iphy->cr_base, TX_MAIN_CUR) &
-		 (TX_MAIN_CUR_MASK << TX_MAIN_CUR_OFF)) >> TX_MAIN_CUR_OFF));
-	dev_info(iphy->dev, "TX_PRE_CUR\t%u\n",
-		 ((combo_phy_r32(iphy->cr_base, TX_PRE_CUR) &
-		 (TX_PRE_CUR_MASK << TX_PRE_CUR_OFF)) >> TX_PRE_CUR_OFF));
-	dev_info(iphy->dev, "TX_POST_CUR\t%u\n",
-		 ((combo_phy_r32(iphy->cr_base, TX_POST_CUR) &
-		 (TX_POST_CUR_MASK << TX_POST_CUR_OFF)) >> TX_POST_CUR_OFF));
+	seq_printf(s, "TX_MAIN_CUR\t%u\n",
+		   ((combo_phy_r32(iphy->cr_base, TX_MAIN_CUR) &
+		   (TX_MAIN_CUR_MASK << TX_MAIN_CUR_OFF)) >> TX_MAIN_CUR_OFF));
+	seq_printf(s, "TX_PRE_CUR\t%u\n",
+		   ((combo_phy_r32(iphy->cr_base, TX_PRE_CUR) &
+		   (TX_PRE_CUR_MASK << TX_PRE_CUR_OFF)) >> TX_PRE_CUR_OFF));
+	seq_printf(s, "TX_POST_CUR\t%u\n",
+		   ((combo_phy_r32(iphy->cr_base, TX_POST_CUR) &
+		   (TX_POST_CUR_MASK << TX_POST_CUR_OFF)) >> TX_POST_CUR_OFF));
 
 	return 0;
 }

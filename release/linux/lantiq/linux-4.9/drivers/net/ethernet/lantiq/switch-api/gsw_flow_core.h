@@ -16,6 +16,7 @@
 
 #ifdef __KERNEL__
 #include <net/switch_api/gsw_flow_ops.h>
+#include <linux/regmap.h>
 #else
 #include <gsw_flow_ops.h>
 #endif
@@ -105,7 +106,6 @@ Where as CLEAR_FILL_CTRL_REG takes care of clear then fill.
 
 #endif
 
-
 #define PORT_STATE_LISTENING 0
 #define PS_RENABLE_TDISABLE	1
 #define PS_RDISABLE_TENABLE	2
@@ -144,7 +144,6 @@ Where as CLEAR_FILL_CTRL_REG takes care of clear then fill.
 /*Applicable only for GSWIP 3.1*/
 #define RMON_COUNTER_OFFSET_GSWIP3_1 22
 #define RMON_TFLOW_DIR_MAX 2
-#define GSW_TREG_OFFSET 0xC40
 #define MAX_PACKET_LENGTH 9600
 #define V31_MAX_PACKET_LENGTH 10000
 #define PCE_PKG_LNG_TBL_SIZE 16
@@ -163,9 +162,9 @@ Where as CLEAR_FILL_CTRL_REG takes care of clear then fill.
 /* Pore redirect PCE rules set or port 0 (30), port 1 (31),*/
 /* port 2 (32), port 3(33), port 4(34) and port 5(35) */
 #define PRD_PRULE_INDEX 30
-#define EAPOL_PCE_RULE_INDEX	60
-#define BPDU_PCE_RULE_INDEX 61
-#define MPCE_RULES_INDEX	10
+#define EAPOL_PCE_RULE_INDEX	8
+#define BPDU_PCE_RULE_INDEX 9
+#define MPCE_RULES_INDEX	0
 #define LTQ_GSWIP_2_0 0x100
 #define LTQ_GSWIP_2_1 0x021
 #define LTQ_GSWIP_2_2 0x122
@@ -174,30 +173,16 @@ Where as CLEAR_FILL_CTRL_REG takes care of clear then fill.
 #define LTQ_GSWIP_3_1 0x031
 #define LTQ_GSWIP_3_2 0x032
 
+#define VRSN_CMP(x, y)	((int)((x) & 0xFF) - (int)((y) & 0xFF))
+
 #define IS_VRSN_30_31(ver) \
 	((ver == LTQ_GSWIP_3_0) || (ver == LTQ_GSWIP_3_1))
-
-#define IS_VRSN_30_31_32(ver) \
-	((ver == LTQ_GSWIP_3_0) || (ver == LTQ_GSWIP_3_1) || (ver == LTQ_GSWIP_3_2))
-#define IS_VRSN_31_OR_32(ver) \
-	((ver == LTQ_GSWIP_3_1) || (ver == LTQ_GSWIP_3_2))
 
 #define IS_VRSN_31(ver) \
 	((ver == LTQ_GSWIP_3_1))
 
 #define IS_VRSN_NOT_31(ver) \
 	((ver != LTQ_GSWIP_3_1))
-
-/* Features compared with less than 3.1 GSWIP versions */
-#define IS_VRSN_BELOW_31(ver) \
-    ((ver == LTQ_GSWIP_3_0) || (ver == LTQ_GSWIP_2_2_ETC) \
-    || (ver == LTQ_GSWIP_2_2) || (ver == LTQ_GSWIP_2_1) \
-    || (ver == LTQ_GSWIP_2_0))
-
-/* Features compared with less than 3.0 GSWIP versions */
-#define IS_VRSN_BELOW_30(ver) \
-	((ver == LTQ_GSWIP_2_2_ETC)  || (ver == LTQ_GSWIP_2_2)\
-	 ||  (ver == LTQ_GSWIP_2_1) || (ver == LTQ_GSWIP_2_0))
 
 #define GSW_BRIDGE_PORT_SRC_IP_LOOKUP_DISABLE 1
 
@@ -211,6 +196,8 @@ Where as CLEAR_FILL_CTRL_REG takes care of clear then fill.
 #define PHY_AN_ADV_1000FDX 0x200
 
 #define DEFAULT_AGING_TIMEOUT	300
+#define AGING_CLK		25000000
+#define AGING_STEPS		16
 /* Define Aging Counter Mantissa Value */
 #define AGETIMER_1_DAY 0xFB75
 #define AGETIMER_1_HOUR 0xA7BA
@@ -322,8 +309,8 @@ enum {
 	FLAG_GRE,
 	FLAG_LEN,
 	FLAG_GREK,
-	FLAG_NN1,
-	FLAG_NN2,
+	FLAG_VXLAN,
+	FLAG_TCPSYN,
 	FLAG_ITAG,
 	FLAG_1VLAN,
 	FLAG_2VLAN,  /* 10 */
@@ -352,7 +339,7 @@ enum {
 	FLAG_GRE_VLAN1,
 	FLAG_GRE_VLAN2,
 	FLAG_GRE_PPPOE,
-	FLAG_NN13,
+	FLAG_IPV4MC,
 	FLAG_ETYPE_888E,
 	FLAG_NN15,
 	FLAG_NN16,
@@ -364,9 +351,9 @@ enum {
 	FLAG_NN22,
 	FLAG_NN23,
 	FLAG_NN24,
-	FLAG_NN25,
-	FLAG_NN26,
-	FLAG_NN27, /* 50 */
+	FLAG_DHCPV4,
+	FLAG_DHCPV6,
+	FLAG_IPMC, /* 50 */
 	FLAG_NN28,
 	FLAG_NN29,
 	FLAG_NN30,
@@ -544,6 +531,11 @@ typedef enum {
 	LTQ_FLOW_DEV_MAX
 } gsw_devtype_t;
 
+/*Applicable only for GSWIP 3.0*/
+enum {
+	PCE_VXLAN_INDEX_0 = 126,
+	PCE_VXLAN_INDEX_1 = 127
+};
 
 typedef struct {
 	u16 pkg_lng;
@@ -563,7 +555,9 @@ typedef struct {
 typedef struct {
 	u16 appl_data;
 	u16 mask_range;
-	u8 mask_range_type;
+	u8 mask_range_type;	/* 0 - nibble mask
+				 * 1 - range
+				 * 2 - bit mask (GSWIP3.x) */
 } app_tbl_t;
 
 typedef struct {
@@ -916,7 +910,30 @@ typedef struct {
 	u16 usedentry;
 } gsw_tflow_t;
 
+/** \brief Parameter to manage a rule from the packet classification engine.
+ */
 typedef struct {
+	/** Logical Port Id. The valid range is hardware dependent. */
+	u32 logicalportid;
+	/** Sub interface ID group,
+	 *The valid range is hardware/protocol dependent.
+	 */
+	u32 subifidgroup;
+	/** Rule Index in the PCE Table. */
+	u32	nIndex;
+} GSW_PCE_RuleManage_t;
+
+/* \brief Bitmap used Global PCE Rules */
+typedef struct {
+	/** Number of Global PCE rules map size. */
+	u32 global_rule_map_size;
+	/** Bitmap for used Global PCE Rules. */
+	unsigned long *global_rule_idx_map;
+} GSW_Global_PCE_RuleMap;
+
+typedef struct {
+	/**Switch Opertations**/
+	struct core_ops ops;
 	gsw_devtype_t	sdev;
 	port_config_t pconfig[MAX_PORT_NUMBER];
 	avlan_tbl_t avtable[VLAN_ACTIVE_TABLE_SIZE];
@@ -939,7 +956,7 @@ typedef struct {
 	u16 pnum;
 	u16 tpnum;			/* Total number of ports including vitual ports*/
 	u16 mpnum; 			/* ManagementPortNumber */
-	u32 matimer;
+	u32 aging_timeout;
 	ltq_bool_t rst;
 	ltq_bool_t hwinit;
 	u16 vlan_rd_index; 		/* read VLAN table index */
@@ -1004,6 +1021,10 @@ typedef struct {
 	u32 num_of_global_rules;	/* Number of Global(Common) TFLOW Rules */
 	u16 hitstatus_idx;
 	u16 hitstatus_mask;
+	u32 ext_switch;			/* External Switch or Internal Switch */
+	u32 devid;		/* Device id, device instance number */
+	u32 eg_sptag;	/*Special Tag Insertion Enable/Disable */
+	u32 prod_id;	/* Product id, get each SOC ID */
 
 #ifdef __KERNEL__
 	spinlock_t lock_pce;
@@ -1017,6 +1038,10 @@ typedef struct {
 	spinlock_t lock_mmd;
 	spinlock_t lock_pce_tbl;	/* lock of PCE Table register */
 	struct tasklet_struct gswip_tasklet;
+	struct device_node *master_mii_node; /* MDIO node for Master MDIO */
+	struct mii_bus *master_mii_bus;	/* MII bus for Mater MDIO */
+	struct device *dev;
+	struct regmap *chiptop_base;
 #endif
 
 	u16 num_of_pce_tbl;
@@ -1025,13 +1050,10 @@ typedef struct {
 	/*IRQ*/
 	struct pce_irq_linklist *PceIrqList;
 	u32  irq_num;
-	/**Switch Opertations**/
-	struct core_ops ops;
+	GSW_Global_PCE_RuleMap Global_Rule_BitMap;
 } ethsw_api_dev_t;
 
 
-
-int gsw_pmicro_code_init_f24s(void *cdev);
 
 u8 find_active_vlan_index(void *cdev, u16 vid);
 int find_msb_tbl_entry(pcetbl_prog_t *ptbl,

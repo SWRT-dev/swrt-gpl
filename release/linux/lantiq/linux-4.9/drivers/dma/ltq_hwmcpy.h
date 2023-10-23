@@ -96,6 +96,11 @@ enum mcpy_port_status {
 	MCPY_PORT_RESERVED = 4,
 };
 
+#define UMT_PORT_LOCK_T struct mutex
+#define UMT_PORT_LOCK_INIT(lock) mutex_init(lock)
+#define UMT_PORT_LOCK(lock) mutex_lock(lock)
+#define UMT_PORT_UNLOCK(lock) mutex_unlock(lock)
+
 struct umt_port {
 	struct mcpy_umt *pctrl;
 	u32 umt_pid;
@@ -108,11 +113,12 @@ struct umt_port {
 	u32 cbm_pid; /* CBM WLAN ID (0 - 3) */
 	u32 dma_cid; /* DMA Chan ID */
 	enum umt_status suspend;
-	spinlock_t umt_port_lock;
+	UMT_PORT_LOCK_T umt_port_lock;
 #if IS_ENABLED(CONFIG_LTQ_UMT_SW_MODE)
 	u32 dq_idx;
 	u32 umt_ep_dst;
 	u32 umtid_map_cbmid;
+	u32 umt_msg1_period;
 	u32 umt_remaining_time;
 #endif
 };
@@ -123,7 +129,7 @@ struct mcpy_umt {
 	u32 dma_ctrlid;
 	enum umt_status status;
 	struct proc_dir_entry *proc;
-	spinlock_t umt_lock;
+	UMT_PORT_LOCK_T umt_lock;
 	struct clk *clk;
 };
 

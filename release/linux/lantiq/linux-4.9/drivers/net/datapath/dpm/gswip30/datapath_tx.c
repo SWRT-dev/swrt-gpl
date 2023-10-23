@@ -14,95 +14,15 @@
 #include "../datapath.h"
 #include "datapath_misc.h"
 #include "../datapath_instance.h"
+#include "../datapath_tx.h"
 
-void dp_xmit_dbg(
-	char *title,
-	struct sk_buff *skb,
-	s32 ep,
-	s32 len,
-	u32 flags,
-	struct pmac_tx_hdr *pmac,
-	dp_subif_t *rx_subif,
-	int need_pmac,
-	int gso,
-	int checksum)
+int _dp_tx(struct sk_buff *skb, struct dp_tx_common *cmn)
 {
-	int data_len;
-
-#ifdef DP_SKB_HACK
-	DP_DEBUG(DP_DBG_FLAG_DUMP_TX,
-		 "%s: dp_xmit:skb->data/len=0x%p/%d data_ptr=%x from port=%d and subitf=%d\n",
-		 title,	skb->data, len,
-		 ((struct dma_tx_desc_2 *)&skb->DW2)->field.data_ptr,
-		 ep, rx_subif->subif);
-#endif
-	if (dp_dbg_flag & DP_DBG_FLAG_DUMP_TX_DATA) {
-		data_len = skb->len > dp_print_len ? skb->len : dp_print_len;
-		if (pmac)
-			dp_dump_raw_data((char *)pmac, PMAC_SIZE, "Tx Data");
-		dp_dump_raw_data(skb->data, data_len, "Tx Data");
-	}
-	DP_DEBUG(DP_DBG_FLAG_DUMP_TX_SUM,
-		 "ip_summed=%s(%d) encapsulation=%s\n",
-		 dp_skb_csum_str(skb), skb->ip_summed,
-		 skb->encapsulation ? "Yes" : "No");
-	if (skb->encapsulation)
-		DP_DEBUG(DP_DBG_FLAG_DUMP_TX_SUM,
-			 "inner ip start=0x%x(%d), transport=0x%x(%d)\n",
-			 (unsigned int)skb_inner_network_header(skb),
-			 (int)(skb_inner_network_header(skb) -
-			 skb->data),
-			 (unsigned int)
-			 skb_inner_transport_header(skb),
-			 (int)(skb_inner_transport_header(skb) -
-			 skb_inner_network_header(skb)));
-	else
-		DP_DEBUG(DP_DBG_FLAG_DUMP_TX_SUM,
-			 "ip start=0x%x(%d), transport=0x%x(%d)\n",
-			 (unsigned int)(unsigned int)
-			 skb_network_header(skb),
-			 (int)(skb_network_header(skb) - skb->data),
-			 (unsigned int)skb_transport_header(skb),
-			 (int)(skb_transport_header(skb) -
-			 skb_network_header(skb)));
-
-	if (dp_dbg_flag & DP_DBG_FLAG_DUMP_TX_DESCRIPTOR)
-#ifdef DP_SKB_HACK
-		dp_port_prop[0].info.dump_tx_dma_desc(
-				(struct dma_tx_desc_0 *)&skb->DW0,
-				(struct dma_tx_desc_1 *)&skb->DW1,
-				(struct dma_tx_desc_2 *)&skb->DW2,
-				(struct dma_tx_desc_3 *)&skb->DW3);
-#endif
-
-	DP_DEBUG(DP_DBG_FLAG_DUMP_TX, "flags=0x%x skb->len=%d\n",
-		 flags, skb->len);
-	DP_DEBUG(DP_DBG_FLAG_DUMP_TX,
-		 "skb->data=0x%p with pmac hdr size=%u\n", skb->data,
-		 sizeof(struct pmac_tx_hdr));
-	if (need_pmac) { /*insert one pmac header */
-		DP_DEBUG(DP_DBG_FLAG_DUMP_TX,
-			 "need pmac\n");
-		if (pmac && (dp_dbg_flag & DP_DBG_FLAG_DUMP_TX_DESCRIPTOR))
-			dp_port_prop[0].info.dump_tx_pmac(pmac);
-	} else {
-		DP_DEBUG(DP_DBG_FLAG_DUMP_TX, "no pmac\n");
-	}
-	if (gso)
-		DP_DEBUG(DP_DBG_FLAG_DUMP_TX, "GSO pkt\n");
-	else
-		DP_DEBUG(DP_DBG_FLAG_DUMP_TX, "Non-GSO pkt\n");
-	if (checksum)
-		DP_DEBUG(DP_DBG_FLAG_DUMP_TX, "Need checksum offload\n");
-	else
-		DP_DEBUG(DP_DBG_FLAG_DUMP_TX, "No need checksum offload pkt\n");
-
-	DP_DEBUG(DP_DBG_FLAG_DUMP_TX, "\n\n");
-}
-
-int32_t dp_xmit_30(struct net_device *rx_if, dp_subif_t *rx_subif,
-		   struct sk_buff *skb, int32_t len, uint32_t flags)
-{
+	struct dp_tx_common_ex *ex =
+		container_of(cmn, struct dp_tx_common_ex, cmn);
+	struct net_device *rx_if = ex->dev;
+	dp_subif_t *rx_subif = ex->rx_subif;
+	uint32_t flags = cmn->flags;
 	struct dma_tx_desc_0 *desc_0;
 	struct dma_tx_desc_1 *desc_1;
 	struct dma_tx_desc_2 *desc_2;
@@ -116,7 +36,7 @@ int32_t dp_xmit_30(struct net_device *rx_if, dp_subif_t *rx_subif,
 	int ep, vap;
 	enum dp_xmit_errors err_ret = 0;
 	int inst = 0;
-	struct cbm_tx_data data;
+	struct cbm_tx_data data = {0};
 #if IS_ENABLED(CONFIG_INTEL_DATAPATH_PTP1588)
 	struct mac_ops *ops;
 	int rec_id = 0;
@@ -161,8 +81,7 @@ int32_t dp_xmit_30(struct net_device *rx_if, dp_subif_t *rx_subif,
 		ltq_mpe_fasthook_tx_fn(skb, 0, NULL);
 #endif
 	if (unlikely(dp_dbg_flag))
-		dp_xmit_dbg("\nOrig", skb, ep, len, flags,
-			    NULL, rx_subif, 0, 0, flags & DP_TX_CAL_CHKSUM);
+		dp_tx_dbg("\nOrig", skb, ex);
 
 	/*No PMAC for WAVE500 and DSL by default except bonding case */
 	if (unlikely(NO_NEED_PMAC(dp_info->alloc_flags)))
@@ -186,7 +105,10 @@ int32_t dp_xmit_30(struct net_device *rx_if, dp_subif_t *rx_subif,
 			goto lbl_err_ret;
 		}
 		ret_flg = get_offset_clear_chksum(skb, &ip_offset,
-						  &tcp_h_offset, &tcp_type);
+						  &tcp_h_offset,
+						  &data.l3_chksum_off,
+						  &data.l4_chksum_off,
+						  &tcp_type);
 		if (likely(ret_flg == 0))
 			/*HW can support checksum offload*/
 			tx_chksum_flag = 1;
@@ -341,21 +263,23 @@ int32_t dp_xmit_30(struct net_device *rx_if, dp_subif_t *rx_subif,
 	}
 	desc_3->field.data_len = skb->len;
 
+	if (insert_pmac_f) {
+		ex->cmn.pmac_len = sizeof(pmac);
+		ex->cmn.pmac = (u8 *)&pmac;
+	}
+
 	if (unlikely(dp_dbg_flag)) {
 		if (insert_pmac_f)
-			dp_xmit_dbg("After", skb, ep, len, flags, &pmac,
-				    rx_subif, insert_pmac_f, skb_is_gso(skb),
-				    tx_chksum_flag);
+			dp_tx_dbg("After", skb, ex);
 		else
-			dp_xmit_dbg("After", skb, ep, len, flags, NULL,
-				    rx_subif, insert_pmac_f, skb_is_gso(skb),
-				    tx_chksum_flag);
+			dp_tx_dbg("After", skb, ex);
 	}
 
 #if IS_ENABLED(CONFIG_LTQ_TOE_DRIVER)
 	if (skb_is_gso(skb)) {
 		res = ltq_tso_xmit(skb, &pmac, sizeof(pmac), 0);
 		UP_STATS(mib->tx_tso_pkt);
+		MIB_G_STATS_INC(tx_pkts);
 		return res;
 	}
 #endif /* CONFIG_LTQ_TOE_DRIVER */
@@ -379,6 +303,7 @@ int32_t dp_xmit_30(struct net_device *rx_if, dp_subif_t *rx_subif,
 	}
 	res = cbm_cpu_pkt_tx(skb, &data, 0);
 	UP_STATS(mib->tx_cbm_pkt);
+	MIB_G_STATS_INC(tx_pkts);
 	return res;
 
 lbl_err_ret:
@@ -425,8 +350,10 @@ lbl_err_ret:
 		UP_STATS(mib->tx_pkt_dropped);
 		pr_info_once("Why come to here:%x\n", dp_info->status);
 	}
-	if (skb)
+	if (skb) {
 		dev_kfree_skb_any(skb);
+		MIB_G_STATS_INC(tx_drop);
+	}
 	return DP_FAILURE;
 }
 

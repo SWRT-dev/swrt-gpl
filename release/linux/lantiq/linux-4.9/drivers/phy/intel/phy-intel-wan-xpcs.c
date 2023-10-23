@@ -14,6 +14,7 @@
  */
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/iopoll.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/phy/phy.h>
@@ -40,6 +41,10 @@
 #define TX_POST_CUR_MASK		0x3F
 #define TX_POST_CUR_OFF			7
 #define PRE_OVRD_EN			13
+#define PHY_RXADAPT_POLL_CNT	5000
+#define RAWLANEN_RX_OV_IN_3		0x3008
+#define RX_ADAPT_REG			(RAWLANEN_RX_OV_IN_3 << 2)
+#define RX_ADAPT_DONE			0xC178
 
 enum {
 	PHY_RST,
@@ -74,7 +79,7 @@ static void intel_wan_xpcs_w32(void __iomem *base, u32 val,  u32 reg)
 }
 
 static void intel_wan_xpcs_w32_off_mask(void __iomem *base, u32 off,
-					       u32 mask, u32 set, u32 reg)
+					u32 mask, u32 set, u32 reg)
 {
 	u32 val;
 
@@ -97,16 +102,19 @@ intel_wan_xpcs_phy_serdes_write(struct file *s, const char __user *buffer,
 	u32 main_cur = 0, pre_cur = 0, post_cur = 0;
 	char buf[32] = {0};
 	size_t buf_size;
+	int ret;
 
 	if (!capable(CAP_SYS_ADMIN))
 		return -EPERM;
 
-	if (count > sizeof(buf) -1)
+	if (count > sizeof(buf) - 1)
 		return -EINVAL;
 
 	memset(buf, 0, sizeof(buf));
-	buf_size = min(count, sizeof(buf) -1);
-	if (copy_from_user(buf, buffer, buf_size))
+	buf_size = min(count, sizeof(buf) - 1);
+
+	ret = copy_from_user(buf, buffer, buf_size);
+	if (ret)
 		return -EFAULT;
 
 	if (strcmp(buf, "help") == 0)
@@ -243,13 +251,6 @@ static int intel_wan_xpcs_phy_power_on(struct phy *phy)
 		return ret;
 	}
 
-	ret = reset_control_deassert(priv->resets[WANSS_RST]);
-	if (ret) {
-		dev_err(dev, "Failed to deassert wanss reset\n");
-		return ret;
-	}
-	udelay(2);
-
 	return 0;
 }
 
@@ -266,13 +267,43 @@ static int intel_wan_xpcs_phy_power_off(struct phy *phy)
 		dev_err(dev, "Failed to assert phy reset\n");
 		return ret;
 	}
-
-	ret = reset_control_assert(priv->resets[WANSS_RST]);
-	if (ret) {
-		dev_err(dev, "Failed to assert WANSS reset\n");
-		return ret;
-	}
 	clk_disable_unprepare(priv->clk);
+
+	return 0;
+}
+
+static int intel_wan_xpcs_phy_calibrate(struct phy *phy)
+{
+	struct intel_wan_xpcs_phy *priv = phy_get_drvdata(phy);
+	int err, max_retry_cnt = 2;
+	u32 val;
+
+	/* if auto adapt fail, run auto adapt one more time */
+	while (max_retry_cnt--) {
+		/* ADAPT_REQ Bit 11 and ADAPT_REQ_OVRD_EN Bit 12 */
+		val = intel_wan_xpcs_r32(priv->base, RX_ADAPT_REG);
+		intel_wan_xpcs_w32(priv->base, val & ~(BIT(11) | BIT(12)),
+				   RX_ADAPT_REG);
+		/* ADAPT_REQ and ADAPT_REQ_OVRD_EN set to '11' */
+		intel_wan_xpcs_w32(priv->base, val | (BIT(11) | BIT(12)),
+				   RX_ADAPT_REG);
+		/* Check for RX Adaptation is done
+		 * RAWLANEN_DIG_AON_RX_ADAPT_DONE.RX_ADAPT_DONE[0]
+		 */
+		err = readl_poll_timeout(priv->base + RX_ADAPT_DONE, val,
+					 (!!(val & BIT(0))), 5,
+					 5 * PHY_RXADAPT_POLL_CNT);
+		if (!err)
+			break;
+	}
+
+	/* Stop RX Adaptation */
+	intel_wan_xpcs_w32(priv->base, 0x0, RX_ADAPT_REG);
+
+	if (err) {
+		dev_warn(priv->dev, "RX Adaptation not done\n");
+		return -1;
+	}
 
 	return 0;
 }
@@ -331,6 +362,7 @@ static const struct phy_ops ops = {
 	.init		= intel_wan_xpcs_phy_init,
 	.power_on	= intel_wan_xpcs_phy_power_on,
 	.power_off	= intel_wan_xpcs_phy_power_off,
+	.calibrate	= intel_wan_xpcs_phy_calibrate,
 	.owner		= THIS_MODULE,
 };
 
@@ -366,6 +398,13 @@ static int intel_wan_xpcs_phy_probe(struct platform_device *pdev)
 		dev_err(dev, "Failed to register phy provider!\n");
 		return PTR_ERR(phy_provider);
 	}
+
+	ret = reset_control_deassert(priv->resets[WANSS_RST]);
+	if (ret) {
+		dev_err(dev, "Failed to deassert wanss reset\n");
+		return ret;
+	}
+	udelay(2);
 
 	if (intel_wan_xpcs_phy_debugfs_init(priv))
 		return -EINVAL;

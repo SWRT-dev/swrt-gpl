@@ -44,7 +44,6 @@
 #include <net/ppa/ppa_api.h>
 #include <net/ppa/ppa_hal_api.h>
 #include <net/ppa/ppa_drv_wrapper.h>
-#include <net/ppa/qos_hal_api.h>
 
 #if IS_ENABLED(CONFIG_SOC_GRX500)
 #include <net/datapath_api.h>
@@ -233,7 +232,7 @@ int32_t (*tmu_hal_set_lro_queue_map_hook_fn)(uint32_t pmac_port) = NULL;
 EXPORT_SYMBOL(tmu_hal_set_lro_queue_map_hook_fn);
 
 int32_t (*mpe_hal_set_checksum_queue_map_hook_fn)(
-		uint32_t pmac_port, bool is_pmac_hdr_req) = NULL;
+		uint32_t pmac_port, uint32_t flags) = NULL;
 EXPORT_SYMBOL(mpe_hal_set_checksum_queue_map_hook_fn);
 
 #if IS_ENABLED(CONFIG_PPA_TMU_MIB_SUPPORT)
@@ -318,11 +317,11 @@ int32_t ppa_drv_tmu_set_lro_queue_map(uint32_t pmac_port)
 }
 EXPORT_SYMBOL(ppa_drv_tmu_set_lro_queue_map);
 
-int32_t ppa_drv_mpe_set_checksum_queue_map(uint32_t pmac_port, bool is_pmac_hdr_req)
+int32_t ppa_drv_mpe_set_checksum_queue_map(uint32_t pmac_port, uint32_t flags)
 {
 	if(!mpe_hal_set_checksum_queue_map_hook_fn)
 		return PPA_EINVAL;
-	return mpe_hal_set_checksum_queue_map_hook_fn(pmac_port, is_pmac_hdr_req);
+	return mpe_hal_set_checksum_queue_map_hook_fn(pmac_port, flags);
 }
 EXPORT_SYMBOL(ppa_drv_mpe_set_checksum_queue_map);
 #endif

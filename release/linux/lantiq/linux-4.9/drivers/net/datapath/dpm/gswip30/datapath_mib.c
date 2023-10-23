@@ -579,7 +579,7 @@ static int update_port_mib_lower_lvl(dp_subif_t *subif, u32 flag)
 				 subif->port_id);
 		return -1;
 	}
-	curr = kmalloc(sizeof(*curr), GFP_KERNEL);
+	curr = devm_kzalloc(&g_dp_dev->dev, sizeof(*curr), GFP_ATOMIC);
 	if (!curr)
 		return -1;
 	memset(curr, 0, sizeof(*curr));
@@ -677,7 +677,7 @@ static int update_port_mib_lower_lvl(dp_subif_t *subif, u32 flag)
 HANDLE_WRAPWROUND:
 	ret =
 	    port_mib_wraparound(tmp.port_id, curr, &last[tmp.port_id]);
-	kfree(curr);
+	devm_kfree(&g_dp_dev->dev, curr);
 	return ret;
 }
 
@@ -728,7 +728,7 @@ static int update_vap_mib_lower_lvl(dp_subif_t *subif, u32 flag)
 	if (!subif || (subif->port_id <= 0) || (subif->port_id >= PMAC_MAX_NUM))
 		return -1;
 
-	curr = kmalloc(sizeof(*curr), GFP_KERNEL);
+	curr = devm_kzalloc(&g_dp_dev->dev, sizeof(*curr), GFP_ATOMIC);
 	if (!curr)
 		return -1;
 	memset(curr, 0, sizeof(*curr));
@@ -766,9 +766,10 @@ static int update_vap_mib_lower_lvl(dp_subif_t *subif, u32 flag)
 					      &curr->tmu_qos, 0);
 		if (ret) {
 			curr->tmu_qos = last_vap[port_id][vap].tmu_qos;
-			DP_DEBUG(DP_DBG_FLAG_MIB, "%s failed for port.vap(%d.%d):%d\n",
-			       "tmu_hal_get_qos_mib_hook_fn",
-			       port_id, vap, ret);
+			DP_DEBUG(DP_DBG_FLAG_MIB,
+				 "%s failed for port.vap(%d.%d):%d\n",
+				 "tmu_hal_get_qos_mib_hook_fn",
+				 port_id, vap, ret);
 		}
 	}
 	/*get MPE mib */
@@ -795,7 +796,7 @@ static int update_vap_mib_lower_lvl(dp_subif_t *subif, u32 flag)
 
 	ret = vap_mib_wraparound(subif, curr, &last_vap[port_id][vap]);
 EXIT:
-	kfree(curr);
+	devm_kfree(&g_dp_dev->dev, curr);
 
 	return ret;
 }

@@ -17,6 +17,7 @@ choice
 
 config PRX300_CQM
 	bool "PRX300"
+	select OF_RESERVED_MEM
 	help
 	  CQM driver for PRX300 platform.
 if PRX300_CQM

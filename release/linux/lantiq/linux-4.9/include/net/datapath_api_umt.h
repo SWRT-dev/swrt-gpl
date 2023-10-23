@@ -1,12 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0 */
-/*
- *  Copyright (C) 2018 Intel Corporation.
- *  Wu ZhiXian <zhixian.wu@intel.com>
- */
+// SPDX-License-Identifier: GPL-2.0
+/******************************************************************************
+ * Copyright (c) 2020 - 2021, MaxLinear, Inc.
+ * Copyright 2016 - 2020 Intel Corporation
+ *
+ ******************************************************************************/
 
 #ifndef _DATAPATH_UMT_H_
 #define _DATAPATH_UMT_H_
-
+#if !IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP30)
 /* UMT feature flag */
 #define UMT_SND_DIS			BIT(0)
 #define UMT_CLEAR_CNT			BIT(1)
@@ -29,6 +30,7 @@ enum umt_sw_msg {
 	UMT_MSG0_ONLY,
 	UMT_MSG1_ONLY,
 	UMT_MSG0_MSG1,
+	UMT_MSG4 = 0xF,
 };
 
 enum umt_cnt_mode {
@@ -38,7 +40,8 @@ enum umt_cnt_mode {
 
 enum umt_rx_msg_mode {
 	UMT_RXOUT_MSG_SUB, /* RX OUT SUB mode */
-	UMT_RXIN_MSG_ADD   /* RX IN Add mode */
+	UMT_RXIN_MSG_ADD,   /* RX IN Add mode */
+	UMT_4MSG_MODE,
 };
 
 struct umt_port_ctl {
@@ -68,11 +71,12 @@ struct dp_umt_port {
 
 struct umt_ops {
 	struct device *umt_dev;
+	int (*umt_alloc)(struct device *umt_dev, struct dp_umt_port *port);
 	int (*umt_request)(struct device *umt_dev, struct dp_umt_port *port);
 	int (*umt_enable)(struct device *umt_dev, unsigned int id, bool en);
 	int (*umt_set_ctrl)(struct device *umt_dev, unsigned int id,
 			    unsigned long flag_mask, unsigned long vflag);
 	int (*umt_release)(struct device *umt_dev, unsigned int id);
 };
-
+#endif /* CONFIG_INTEL_DATAPATH_HAL_GSWIP30 */
 #endif /* _DATAPATH_UMT_H_ */

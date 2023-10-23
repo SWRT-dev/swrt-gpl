@@ -153,13 +153,9 @@ int xgmac_get_mtl_tx(void *pdev)
 	if (tx_mode == 1)
 		mac_printf("\tXGMAC %d TX Q Mode: Store and Forward mode\n",
 			   pdata->mac_idx);
-	else if (tx_mode == 0)
+	else
 		mac_printf("\tXGMAC %d TX Q Mode: Thresh mode\n",
 			   pdata->mac_idx);
-	else
-		mac_printf("\tXGMAC %d TX Q Mode: unknown mode\n",
-			   pdata->mac_idx);
-
 	xgmac_get_tx_threshold(pdev);
 	return 0;
 }
@@ -177,13 +173,9 @@ int xgmac_get_mtl_rx(void *pdev)
 	if (rx_mode == 1)
 		mac_printf("\tXGMAC %d RX Q Mode: Store and Forward mode\n",
 			   pdata->mac_idx);
-	else if (rx_mode == 0)
+	else
 		mac_printf("\tXGMAC %d RX Q Mode: Thresh mode\n",
 			   pdata->mac_idx);
-	else
-		mac_printf("\tXGMAC %d RX Q Mode: unknown mode\n",
-			   pdata->mac_idx);
-
 	xgmac_get_rx_threshold(pdev);
 	return 0;
 }

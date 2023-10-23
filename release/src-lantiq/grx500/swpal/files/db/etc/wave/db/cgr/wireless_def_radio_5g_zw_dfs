@@ -1,0 +1,5 @@
+		option channel 'first_non_dfs'
+		option hwmode '11anac'
+		option htmode 'auto'
+		option num_antennas '1'
+		option ignore_40_mhz_intolerant '1'

@@ -233,14 +233,24 @@ extern int32_t ppa_check_if_netif_fastpath_fn(PPA_NETIF *netif, char *ifname, ui
  */
 #ifdef NO_DOXY
 extern int32_t (*ppa_hook_disconn_if_fn)(PPA_NETIF *dev, PPA_DP_SUBIF *subif, uint8_t *mac, uint32_t flags);
-#if defined(WMM_QOS_CONFIG) && WMM_QOS_CONFIG
-extern int32_t (*ppa_register_qos_class2prio_hook_fn)(int32_t port_id, PPA_NETIF *netif, PPA_QOS_CLASS2PRIO_CB qos_class2prio_cb, uint32_t flags);
-#endif /* WMM*/
 #else
 extern int32_t ppa_hook_disconn_if_fn(PPA_NETIF *dev, PPA_DP_SUBIF *subif, uint8_t *mac, uint32_t flags);
+#endif
 #if defined(WMM_QOS_CONFIG) && WMM_QOS_CONFIG
-extern int32_t ppa_register_qos_class2prio_hook_fn(int32_t port_id, PPA_NETIF *netif, PPA_QOS_CLASS2PRIO_CB qos_class2prio_cb, uint32_t flags);
-#endif /* WMM*/
+/* PPA class2prio notifier chain. */
+#define PPA_CLASS2PRIO_DEFAULT	0x0001 /* Notify class2prio default */
+#define PPA_CLASS2PRIO_CHANGE	0x0002 /* Notify class2prio change */
+
+struct ppa_class2prio_notifier_info {
+	s32 port_id;
+	PPA_NETIF *dev;
+	u8 class2prio[MAX_TC_NUM];
+};
+extern int ppa_register_event_notifier(PPA_NOTIFIER_BLOCK *nb);
+extern int ppa_unregister_event_notifier(PPA_NOTIFIER_BLOCK *nb);
+extern int ppa_call_class2prio_notifiers(unsigned long val,
+					 s32 port_id, struct net_device *dev,
+					 u8 class2prio[MAX_TC_NUM]);
 #endif
 #endif
 /*!
@@ -669,6 +679,7 @@ extern int32_t ppa_hook_reset_qos_wfq(uint32_t portid, uint32_t queueid, uint32_
 extern uint32_t (*ppa_is_ipv4_gretap_fn)(struct net_device *dev);
 extern uint32_t (*ppa_is_ipv6_gretap_fn)(struct net_device *dev);
 /*#endif*/
+extern uint32_t (*ppa_is_vxlan_fn)(struct net_device *dev);
 extern int32_t (*ppa_ppp_get_chan_info_fn)(struct net_device *ppp_dev, struct ppp_channel **chan);
 extern int32_t (*ppa_check_pppoe_addr_valid_fn)(struct net_device *dev, struct pppoe_addr *pa);
 extern int32_t (*ppa_get_pppoa_info_fn)(struct net_device *dev, void *pvcc, uint32_t pppoa_id, void *value);

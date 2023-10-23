@@ -1,0 +1,13 @@
+if INTEL_DATAPATH
+
+config DP_ETH_REINSERT
+	tristate "Datapath reinsert driver"
+	depends on !GRX500_CBM
+	help
+	  This driver provides user space API for reinserting packets back for
+	  hardware processing before sending them out. The driver provides
+	  special reinsertion network devices used for the reinsertion. The
+	  network device for the reinsertion point is passed using the
+	  SO_MARK socket option.
+
+endif

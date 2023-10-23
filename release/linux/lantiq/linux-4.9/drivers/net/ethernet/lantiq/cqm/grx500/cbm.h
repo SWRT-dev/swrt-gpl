@@ -324,6 +324,7 @@ struct cbm_ctrl {
 	const struct cbm_ops *g_cbm_ops;
 	dma_addr_t dma_handle_std;
 	dma_addr_t dma_handle_jbo;
+	int highprio_lan;
 };
 
 #endif

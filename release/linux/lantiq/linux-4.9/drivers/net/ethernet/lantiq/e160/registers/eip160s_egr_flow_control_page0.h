@@ -1,0 +1,3006 @@
+// SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0-only)
+/*
+ * Driver for MACsec Engine inside Intel CHD GSWIP or GPHY
+ *
+ * Copyright 2019 - 2020 Intel Corporation
+ */
+
+//-----------------------------------------------------------------------------
+// LSD Generator
+//-----------------------------------------------------------------------------
+// Perl Package        : LSD::generator::targetC (v1.1)
+// LSD Source          : /home/p34x/p34x_chip/v_emouchel.priv.p34x_chip.registers/ipg_lsd/lsd_sys/source_32b/xml/reg_files/slice_pm/EIPE_EIP_160s_e_32_Flow_control_page0_def.xml
+// Register File Name  : EGR_FLOW_CONTROL_PAGE0
+// Register File Title : EIPE EIP_160s_e_32_Flow_control_page0
+// Register Width      : 32
+// Note                : Doxygen compliant comments
+//-----------------------------------------------------------------------------
+
+#ifndef _EGR_FLOW_CONTROL_PAGE0_H
+#define _EGR_FLOW_CONTROL_PAGE0_H
+
+//! \defgroup EGR_FLOW_CONTROL_PAGE0 Register File EGR_FLOW_CONTROL_PAGE0 - EIPE EIP_160s_e_32_Flow_control_page0
+//! @{
+
+//! Base Address of EGR_FLOW_CONTROL_PAGE0
+#define EGR_FLOW_CONTROL_PAGE0_MODULE_BASE 0x7000u
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_0 Register EIPE_SAM_FLOW_CTRL_0 - EIPE SAM FLOW CTRL 0
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_0 0x0
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_0 0x7000u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_0_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_0_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_1 Register EIPE_SAM_FLOW_CTRL_1 - EIPE SAM FLOW CTRL 1
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_1 0x4
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_1 0x7004u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_1_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_1_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_2 Register EIPE_SAM_FLOW_CTRL_2 - EIPE SAM FLOW CTRL 2
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_2 0x8
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_2 0x7008u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_2_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_2_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_3 Register EIPE_SAM_FLOW_CTRL_3 - EIPE SAM FLOW CTRL 3
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_3 0xC
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_3 0x700Cu
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_3_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_3_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_4 Register EIPE_SAM_FLOW_CTRL_4 - EIPE SAM FLOW CTRL 4
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_4 0x10
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_4 0x7010u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_4_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_4_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_5 Register EIPE_SAM_FLOW_CTRL_5 - EIPE SAM FLOW CTRL 5
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_5 0x14
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_5 0x7014u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_5_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_5_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_6 Register EIPE_SAM_FLOW_CTRL_6 - EIPE SAM FLOW CTRL 6
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_6 0x18
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_6 0x7018u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_6_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_6_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_7 Register EIPE_SAM_FLOW_CTRL_7 - EIPE SAM FLOW CTRL 7
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_7 0x1C
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_7 0x701Cu
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_7_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_7_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_8 Register EIPE_SAM_FLOW_CTRL_8 - EIPE SAM FLOW CTRL 8
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_8 0x20
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_8 0x7020u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_8_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_8_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_9 Register EIPE_SAM_FLOW_CTRL_9 - EIPE SAM FLOW CTRL 9
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_9 0x24
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_9 0x7024u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_9_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_9_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_10 Register EIPE_SAM_FLOW_CTRL_10 - EIPE SAM FLOW CTRL 10
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_10 0x28
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_10 0x7028u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_10_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_10_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_11 Register EIPE_SAM_FLOW_CTRL_11 - EIPE SAM FLOW CTRL 11
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_11 0x2C
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_11 0x702Cu
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_11_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_11_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_12 Register EIPE_SAM_FLOW_CTRL_12 - EIPE SAM FLOW CTRL 12
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_12 0x30
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_12 0x7030u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_12_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_12_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_13 Register EIPE_SAM_FLOW_CTRL_13 - EIPE SAM FLOW CTRL 13
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_13 0x34
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_13 0x7034u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_13_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_13_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_14 Register EIPE_SAM_FLOW_CTRL_14 - EIPE SAM FLOW CTRL 14
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_14 0x38
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_14 0x7038u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_14_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_14_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_15 Register EIPE_SAM_FLOW_CTRL_15 - EIPE SAM FLOW CTRL 15
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_15 0x3C
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_15 0x703Cu
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_15_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_15_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_16 Register EIPE_SAM_FLOW_CTRL_16 - EIPE SAM FLOW CTRL 16
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_16 0x40
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_16 0x7040u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_16_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_16_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_17 Register EIPE_SAM_FLOW_CTRL_17 - EIPE SAM FLOW CTRL 17
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_17 0x44
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_17 0x7044u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_17_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_17_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_18 Register EIPE_SAM_FLOW_CTRL_18 - EIPE SAM FLOW CTRL 18
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_18 0x48
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_18 0x7048u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_18_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_18_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_19 Register EIPE_SAM_FLOW_CTRL_19 - EIPE SAM FLOW CTRL 19
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_19 0x4C
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_19 0x704Cu
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_19_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_19_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_20 Register EIPE_SAM_FLOW_CTRL_20 - EIPE SAM FLOW CTRL 20
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_20 0x50
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_20 0x7050u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_20_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_20_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_21 Register EIPE_SAM_FLOW_CTRL_21 - EIPE SAM FLOW CTRL 21
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_21 0x54
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_21 0x7054u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_21_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_21_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_22 Register EIPE_SAM_FLOW_CTRL_22 - EIPE SAM FLOW CTRL 22
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_22 0x58
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_22 0x7058u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_22_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_22_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_23 Register EIPE_SAM_FLOW_CTRL_23 - EIPE SAM FLOW CTRL 23
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_23 0x5C
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_23 0x705Cu
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_23_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_23_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_24 Register EIPE_SAM_FLOW_CTRL_24 - EIPE SAM FLOW CTRL 24
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_24 0x60
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_24 0x7060u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_24_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_24_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_25 Register EIPE_SAM_FLOW_CTRL_25 - EIPE SAM FLOW CTRL 25
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_25 0x64
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_25 0x7064u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_25_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_25_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_26 Register EIPE_SAM_FLOW_CTRL_26 - EIPE SAM FLOW CTRL 26
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_26 0x68
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_26 0x7068u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_26_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_26_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_27 Register EIPE_SAM_FLOW_CTRL_27 - EIPE SAM FLOW CTRL 27
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_27 0x6C
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_27 0x706Cu
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_27_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_27_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_28 Register EIPE_SAM_FLOW_CTRL_28 - EIPE SAM FLOW CTRL 28
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_28 0x70
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_28 0x7070u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_28_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_28_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_29 Register EIPE_SAM_FLOW_CTRL_29 - EIPE SAM FLOW CTRL 29
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_29 0x74
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_29 0x7074u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_29_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_29_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_30 Register EIPE_SAM_FLOW_CTRL_30 - EIPE SAM FLOW CTRL 30
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_30 0x78
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_30 0x7078u
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_30_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_30_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPE_SAM_FLOW_CTRL_31 Register EIPE_SAM_FLOW_CTRL_31 - EIPE SAM FLOW CTRL 31
+//! @{
+
+//! Register Offset (relative)
+#define EIPE_SAM_FLOW_CTRL_31 0x7C
+//! Register Offset (absolute) for 1st Instance EGR_FLOW_CONTROL_PAGE0
+#define EGR_REG_SAM_FLOW_CTRL_31 0x707Cu
+
+//! Register Reset Value
+#define EIPE_SAM_FLOW_CTRL_31_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_DEST_PORT_MASK 0xCu
+
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_RESERVED_0_POS 4
+//! Field RESERVED_0 - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_RESERVED_0_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_RESERVED_1_POS 13
+//! Field RESERVED_1 - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_RESERVED_1_MASK 0xE000u
+
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_PROTECT_FRAME_POS 16
+//! Field PROTECT_FRAME - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_PROTECT_FRAME_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_SA_IN_USE_MASK 0x20000u
+
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_INCLUDE_SCI_POS 18
+//! Field INCLUDE_SCI - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_INCLUDE_SCI_MASK 0x40000u
+
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_USE_ES_POS 19
+//! Field USE_ES - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_USE_ES_MASK 0x80000u
+
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_USE_SCB_POS 20
+//! Field USE_SCB - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_USE_SCB_MASK 0x100000u
+
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_TAG_BYPASS_LEN_POS 21
+//! Field TAG_BYPASS_LEN - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_TAG_BYPASS_LEN_MASK 0x600000u
+
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_SA_INDEX_UPDATE_POS 23
+//! Field SA_INDEX_UPDATE - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_SA_INDEX_UPDATE_MASK 0x800000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_CONF_PROTECT_POS 31
+//! Field CONF_PROTECT - No Content.
+#define EIPE_SAM_FLOW_CTRL_31_CONF_PROTECT_MASK 0x80000000u
+
+//! @}
+
+//! @}
+
+#endif

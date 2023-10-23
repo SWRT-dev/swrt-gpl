@@ -12,10 +12,16 @@
 static u32 read_lmac_cnt(void *pdev);
 static u32 write_lmac_cnt(void *pdev, u32 val);
 
+#define RMON_CLR_TIMEOUT	10000
+
 int lmac_wr_reg(void *pdev, u32 reg_off, u32 reg_val)
 {
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
 
+	if (reg_off >= 0x1000)
+		return -EFAULT;
+
+	reg_off &= 0x0FFC;
 	LMAC_RGWR(pdata, reg_off, reg_val);
 
 	return 0;
@@ -24,11 +30,15 @@ int lmac_wr_reg(void *pdev, u32 reg_off, u32 reg_val)
 int lmac_rd_reg(void *pdev, u32 reg_off)
 {
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
-	GSW_MAC_Cli_t *param = pdata->mac_cli;
 
-	param->val[0] = LMAC_RGRD(pdata, reg_off);
+	if (reg_off >= 0x1000)
+		return -EFAULT;
 
-	return param->val[0];
+	/* Address is 32-bit aligned.
+	 * Register value is 16-bit when MSB 16 bits are ZERO.
+	 */
+	reg_off &= 0x0FFC;
+	return LMAC_RGRD(pdata, reg_off);
 }
 
 int lmac_set_intf_mode(void *pdev, u32 val)
@@ -753,6 +763,7 @@ int lmac_rmon_clr(void *pdev)
 {
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
 	u32 lmac_cnt_acc = 0;
+	u32 timeout = 0;
 
 	MAC_SET_VAL(lmac_cnt_acc, LMAC_CNT_ACC, OPMOD, LMAC_RMON_CLR);
 	MAC_SET_VAL(lmac_cnt_acc, LMAC_CNT_ACC, MAC, pdata->mac_idx);
@@ -762,18 +773,22 @@ int lmac_rmon_clr(void *pdev)
 
 	LMAC_RGWR(pdata, REG_LMAC_CNT_ACC, lmac_cnt_acc);
 
-	while (1) {
+	while (timeout++ < RMON_CLR_TIMEOUT) {
 		if ((LMAC_RGRD(pdata, REG_LMAC_CNT_ACC) & 0x8000) == 0)
 			break;
 	}
 
-	return 0;
+	memset(&pdata->lrmon_shadow, 0, sizeof(pdata->lrmon_shadow));
+	memset(&pdata->rmon_shadow, 0, sizeof(pdata->rmon_shadow));
+
+	return timeout < RMON_CLR_TIMEOUT ? 0 : -EIO;
 }
 
 void lmac_rmon_clr_allmac(void *pdev)
 {
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
 	u32 lmac_cnt_acc = 0;
+	u32 timeout = 0;
 
 	MAC_SET_VAL(lmac_cnt_acc, LMAC_CNT_ACC, OPMOD, LMAC_RMON_CLRALL);
 	MAC_SET_VAL(lmac_cnt_acc, LMAC_CNT_ACC, MAC, 0); // ignored
@@ -783,9 +798,12 @@ void lmac_rmon_clr_allmac(void *pdev)
 
 	LMAC_RGWR(pdata, REG_LMAC_CNT_ACC, lmac_cnt_acc);
 
-	while (1) {
+	while (timeout++ < RMON_CLR_TIMEOUT) {
 		if ((LMAC_RGRD(pdata, REG_LMAC_CNT_ACC) & 0x8000) == 0)
 			break;
 	}
+
+	memset(&pdata->lrmon_shadow, 0, sizeof(pdata->lrmon_shadow));
+	memset(&pdata->rmon_shadow, 0, sizeof(pdata->rmon_shadow));
 }
 

@@ -14,5 +14,6 @@
 #define get_val(val, mask, offset) (((val) & (mask)) >> (offset))
 void print_reg64(char *name, void *addr);
 uint64_t REG64(void *addr);
+u32 epon_mode_reg_get(void);
 #endif
 

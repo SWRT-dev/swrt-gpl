@@ -1,0 +1,10 @@
+This README file contains information about the whm_handler tool.
+
+Introduction
+============
+WHM dump evacuation application retrieves warning dump debug files from WLAN driver/FW and hostapd.
+
+Configuration
+=============
+ubus call uci set '{ "config" : "wireless" ,"section" : "generic", "values" : {"whm_enable" : "0" }}'
+ubus call uci commit '{"config" : "wireless"}'

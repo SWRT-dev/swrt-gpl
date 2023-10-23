@@ -1,5 +1,5 @@
 /******************************************************************************
- *                Copyright (c) 2016, 2017, 2018 Intel Corporation
+ *                Copyright (c) 2016, 2017, 2018, 2019, 2020  Intel Corporation
  *
  *
  * For licensing information, see the file 'LICENSE' in the root folder of
@@ -34,7 +34,7 @@ u32 fifo_init(void *pdev)
 }
 
 int fifo_entry_add(void *pdev, u8 ttse, u8 ostc, u8 ostpa, u8 cic,
-		   u32 ttsl, u32 ttsh)
+		   u32 ttsl, u32 ttsh, struct sk_buff **ptp_tx_skb_loc)
 {
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
 	int id;
@@ -63,6 +63,7 @@ int fifo_entry_add(void *pdev, u8 ttse, u8 ostc, u8 ostpa, u8 cic,
 	f_entry->ttsh = ttsh;
 	f_entry->timeout = FIFO_TIMEOUT_IN_SEC;
 	f_entry->is_used = 1;
+	f_entry->ptp_tx_skb_loc = ptp_tx_skb_loc;
 
 #ifdef __KERNEL__
 	setup_timer(&f_entry->timer, fifo_entry_timeout,
@@ -93,6 +94,8 @@ int fifo_entry_del(void *pdev, u32 rec_id)
 	f_entry->cic = 0;
 	f_entry->ttsl = 0;
 	f_entry->ttsh = 0;
+
+	f_entry->ptp_tx_skb_loc = NULL;
 
 	/* Fifo available for the next packet */
 	f_entry->is_used = 0;
@@ -182,11 +185,10 @@ static int fifo_freeid_get(void *pdev, u8 ttse)
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
 
 	for (i = START_FIFO; i < MAX_FIFO_ENTRY; i++) {
-		if (!pdata->ts_fifo[i].is_used) {
-			return pdata->ts_fifo[i].rec_id;
-		} else {
+		if (pdata->ts_fifo[i].is_used)
 			fifo_update_hw_clrsts(pdev, &pdata->ts_fifo[i]);
-		}
+		if (!pdata->ts_fifo[i].is_used)
+			return pdata->ts_fifo[i].rec_id;
 	}
 
 	return FIFO_FULL;
@@ -199,9 +201,11 @@ void fifo_entry_timeout(unsigned long data)
 {
 	struct mac_fifo_entry *f_entry  = (struct mac_fifo_entry *)data;
 
-	//mac_printf("RecordID in timeout %d \n", f_entry->rec_id);
-
 	/* Mark this Fifo entry can be used again */
+	if (f_entry->ptp_tx_skb_loc) {
+		kfree_skb(*(f_entry->ptp_tx_skb_loc));
+		*(f_entry->ptp_tx_skb_loc) = (struct sk_buff *)NULL;
+	}
 	f_entry->is_used = 0;
 }
 

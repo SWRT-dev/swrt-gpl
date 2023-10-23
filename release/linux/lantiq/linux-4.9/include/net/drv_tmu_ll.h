@@ -124,6 +124,9 @@ In order to easy setting, here only use 9K normal frame number
 /** Factory default value for TBS peak maximum burst size*/
 #define TMU_TBS_PBS_DEF	16000000UL
 
+/** Factory default value for green threshold*/
+#define TMU_GREEN_DEFAULT_THRESHOLD 0x24
+
 /**
    This structure is used to set the modes and drop thresholds
    for an egress queue.

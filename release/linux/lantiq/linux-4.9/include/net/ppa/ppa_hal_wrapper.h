@@ -84,8 +84,8 @@ extern uint32_t ppa_hsel_add_class_rule(PPA_CLASS_RULE *rule, uint32_t flag, uin
 extern uint32_t ppa_hsel_mod_class_rule(PPA_CLASS_RULE *rule, uint32_t flag, uint32_t hal_id);
 extern uint32_t ppa_hsel_del_class_rule(PPA_CLASS_RULE *rule, uint32_t flag, uint32_t hal_id);
 extern uint32_t ppa_hsel_get_class_rule(PPA_CLASS_RULE *rule, uint32_t flag, uint32_t hal_id);
-extern uint32_t ppa_hsel_set_qos_meter_entry(PPA_QOS_METER_CFG *entry,
-			uint32_t flag, uint32_t hal_id);
+
+extern uint32_t ppa_hsel_set_qos_meter_entry(PPA_QOS_METER_CFG *entry, uint32_t flag, uint32_t hal_id);
 #endif
 #if defined(RTP_SAMPLING_ENABLE) && RTP_SAMPLING_ENABLE
 extern uint32_t ppa_hsel_set_wan_mc_rtp(PPA_MC_INFO *entry, uint32_t hal_id);

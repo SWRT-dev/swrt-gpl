@@ -1,0 +1,42 @@
+#
+# $Id: $
+#
+
+# Compatibility with WinDDK -----------------------
+
+DDK_TARGET_OS = $(_TGTOS)
+DDKBUILDENV   = $(PLT)\$(WINCEDEBUG)\$(_TGTCPU)
+NTMAKEENV     = $(_MAKEENVROOT)
+
+#-----------------------------------------------
+
+!include ../BCLSockServerConfig.inc
+
+RELEASETYPE = CUSTOM
+CDEFINES    = $(C_DEFINES)
+EXEENTRY    = main
+
+#
+# Libraries list
+#
+
+TLIBPATH=$(_PROJECTROOT)/cesysgen/sdk/lib/$(_CPUINDPATH)
+
+# System libs
+TARGETLIBS= $(TARGETLIBS) $(TLIBPATH)/coredll.lib 
+TARGETLIBS= $(TARGETLIBS) $(_PROJECTROOT)/cesysgen/sdk/lib/$(_CPUINDPATH)/ws2.lib
+# Custom libs
+TARGETLIBS = $(TARGETLIBS) $(DRIVER_ROOT)\$(MTLK_TOOLS_BIN_PATH)\BCLHyp.lib
+TARGETLIBS = $(TARGETLIBS) $(DRIVER_ROOT)\$(MTLK_LIB_PATH)\BCL_LIB.lib
+
+MSC_WARNING_LEVEL = 1
+WARNLEVEL         = 1
+
+INCLUDES = $(INCLUDES)                    \
+           $(_PUBLICROOT)\COMMON\SDK\INC; \
+           ..\BCL;
+
+#
+# Setup VisualC++ source browsing
+#
+BSCMAKE_FLAGS=$(BSCMAKE_FLAGS) -n

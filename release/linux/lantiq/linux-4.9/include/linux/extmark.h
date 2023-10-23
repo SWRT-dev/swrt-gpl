@@ -6,6 +6,12 @@
 #define CPEID_START_BIT_POS 0
 #define CPEID_NO_OF_BITS 5
 #define CPEID_MASK 0x1f
+/* Reusing 1 bit in cpeid bits, this bit
+ * indicates classification in IPtables
+ */
+#define CPU_CLASSIFICATION_START_BIT_POS 5
+#define CPU_CLASSIFICATION_NO_OF_BITS 1
+#define CPU_CLASSIFICATION_MASK 0x10
 
 #define QUEPRIO_START_BIT_POS 5
 #define QUEPRIO_NO_OF_BITS 5

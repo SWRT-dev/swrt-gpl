@@ -172,10 +172,12 @@ int br_handle_frame_finish(struct net *net, struct sock *sk, struct sk_buff *skb
 	if (p->state == BR_STATE_LEARNING)
 		goto drop;
 
+	BR_INPUT_SKB_CB(skb)->src_port_isolated = !!(p->flags & BR_ISOLATED);
+
 	if (IS_ENABLED(CONFIG_INET) && skb->protocol == htons(ETH_P_ARP))
 		br_do_proxy_arp(skb, br, vid, p);
 
-	if (p->flags & BR_ISOLATE_MODE)
+	if (p->flags & BR_ISOLATED)
 		return br_pass_frame_up(skb);
 
 	switch (pkt_type) {

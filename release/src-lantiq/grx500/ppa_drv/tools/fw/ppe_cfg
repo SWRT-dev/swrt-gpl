@@ -1,0 +1,37 @@
+"ppe_repo_path"			=>	"/home/wlnsw/repo/work/$ENV{\"USER\"}/ppe_fw/",
+"ppe_repo_parent_dir"   =>	"/home/wlnsw/repo/work/$ENV{\"USER\"}/",
+"ppe_repo_url"			=>  "https://mts.lantiq.com/~ppefw/repo/team/ppe_fw/",
+"ppe_release_dir"		=>  "/Release/",
+"ppa_fw"				=>  {
+								"A5"		=>	{
+													"AR9"		=>	[ "A5/AR9/ar9_a5.h", 		"ar9/a5/ifxmips_ppa_datapath_fw_ar9_a5.h"   ],
+													"AR10"		=>	[ "A5/AR10/ar10_a5.h",		"ar10/a5/ifxmips_ppa_datapath_fw_ar10_a5.h" ],
+													"VR9"		=>	[ "A5/VR9/vr9_a5.h",		"vr9/a5/ifxmips_ppa_datapath_fw_vr9_a5.h"   ],
+												},
+								"D5"		=>	{
+													"AR9"		=>	[ "D5/AR9/ar9_d5.h",		"ar9/d5/ifxmips_ppa_datapath_fw_ar9_d5.h"   ],
+													"AR10"		=>	[ "D5/AR10/ar10_d5.h",		"ar10/d5/ifxmips_ppa_datapath_fw_ar10_d5.h" ],
+													"VR9"		=>	[ "D5V2/VR9/vr9_d5v2.h",	"vr9/d5/ifxmips_ppa_datapath_fw_vr9_d5.h"   ],
+												},
+								"E5"		=>	{
+													"AR9"		=>	[ "E5/AR9/AR9_E5.h",		"ar9/e5/ifxmips_ppa_datapath_fw_ar9_e5.h"	],
+													"AR10"		=>	[ "E5/AR10/AR10_E5.h",		"ar10/e5/ifxmips_ppa_datapath_fw_ar10_e5.h"	],
+													"VR9"		=>	[ "D5/VR9/vr9_d5.h",		"vr9/e5/ifxmips_ppa_datapath_fw_vr9_d5.h"	],
+												},
+								"VRX218"	=>  {
+													"A1PLUS"	=>	[ "VRX218/vrx218_a1plus.h",	"vrx218/smartphy/vrx218_a1plus.h"			],
+													"PP32_1"	=>  [ "VRX218/vrx218_pp32_1.h", "vrx218/smartphy/vrx218_pp32_1.h"			],
+                                                    "AR10_SOC"  =>  [ "D5/AR10/ar10_d5.h",      "vrx218/soc/ltqmips_fw_ar10_d5.h"           ],
+												},
+							},
+"ptm_fw"				=>	{
+								"E1"		=>	{
+													"VR9"		=>	[ "E1/VR9/tc_main.h",		"vr9/e5/ifxmips_ppa_datapath_fw_vr9_e1.h" 	],
+													"VRX218"	=>	[ "E1/VRX218/vrx218_e1.h",	"vrx218/smartphy/vrx218_e1.h"				],
+												},
+							},
+"fw_h_file"         =>  {
+                            "Unified_QoS"  => [ "ppa_fw/A5_D5/sources/Unified_QoS/unified_qos_ds_be.h", "vrx218/smartphy/unified_qos_ds_be.h" ],
+                            "A1Plus_Addr"  => [ "ppa_fw/A5_D5/sources/VRX218_Bonding/VRX218_A1Plus_addr_def.inc", "vrx218/smartphy/vrx218_a1plus_addr_def.h"],
+                            "PTM_Addr"     => [ "ppa_fw/A5_D5/sources/VRX218_Bonding/vrx218_addr_def.inc", "vrx218/smartphy/vrx218_addr_def.h" ],
+                        },

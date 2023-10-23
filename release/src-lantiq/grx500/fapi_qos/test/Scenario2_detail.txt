@@ -1,0 +1,9 @@
+Two streams S1 and S2 with distinct DSCP values from LAN to WAN.
+Traffic ratio between the two should be at ratio of 2:1
+
+Stream 1 : UDP traffic with DSCP value AF11
+Stream 2 : UDP traffic with DSCP value AF31
+
+Requirement :
+Stream 1 and 2 to WAN should go with equal priority and sharing bandwidth at 2:1
+

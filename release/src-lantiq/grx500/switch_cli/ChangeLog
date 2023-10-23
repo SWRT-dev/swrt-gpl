@@ -1,0 +1,110 @@
+- Moved some data structures in the '.text' segment.
+- Update the PortId printout for portmap fields
+===============================================================================
+Version 1.3.2 (requires Switch API Version: 1.1.8.6)
+- Update the Switch API help text regarding some flow table programming
+  metering action details.
+- Corrected the implementation for IFX_ETHSW_QOS_SHAPER_QUEUE_GET.
+  This correction requires also a Switch API update to be newer than
+  version 1.1.8.6, because the ioctl command read-write flags needed
+  to be corrected.
+===============================================================================
+Version 1.3.1 (requires Switch API Version: 1.1.8.5)
+- Added regular metering action for flow table action part
+===============================================================================
+Version 1.3.0 (requires Switch API Version: 1.1.8.5)
+- Corrected IFX_ETHSW_MAC_TABLE_ENTRY_READ to not printout wrong entries when
+  portmap bit is set in 'PortId' field. Previously Port 31 got printed out
+  wrongly.
+- Corrected generate portmap bit printout routine (used by many commands)
+  to not printout port id 31, which is the portmap indication bit and not
+  a port id.
+- The decimal and hex value printout is only done for values > 9.
+- Corrected IFX_ETHSW_VLAN_PORT_MEMBER_READ printout to support portmap output
+  parameter.
+- Corrected IFX_ETHSW_MULTICAST_TABLE_ENTRY_READ printout to support portmap
+  output parameter.
+- The Switch CLI also contains function that are dedicated for the selected
+  platform only (e.g. TANTOS). Cleanup the code to not compile functions that
+  are meant for another platform.
+- Add "dev" parameter help text printout for all command help text printout,
+  which is triggered by the command parameter "--help".
+- Shrink down the size of helptext table by removing trailing spaces.
+- IFX_ETHSW_QOS_QUEUE_PORT_GET enhancement printing unused queues and all
+  port queues.
+- Corrected help text typos.
+===============================================================================
+Version 1.2.0 (requires Switch API Version: 1.1.8.4)
+- Correct IFX_ETHSW_MAC_TABLE_ENTRY_READ implementation to printout entries
+  for physical/virtual ports which are greater than port 6.
+- Accept boolean "IFX_TRUE"/"IFX_FALSE" parameter values.
+- Accept short API command format, where the "IFX_ETHSW_" prefix is missing.
+  For instance, user could use the command "CFG_SET" instead
+  of "IFX_ETHSW_CFG_SET".
+===============================================================================
+Version 1.1.2 (requires Switch API Version: 1.1.8.1)
+- Adapt IFX_ETHSW_MAC_TABLE_ENTRY_READ implementation to printout
+  static- or learned- entries when the MAC address is 00:00:00:00:00:00.
+===============================================================================
+Version 1.1.1 (requires Switch API Version: 1.1.7.1)
+- Remove "bSpecialTagEgressSuppress" parameter from the IFX_ETHSW_CPU_CFG_SET
+  command.
+===============================================================================
+Version 1.1.0 (requires Switch API Version: 1.1.7)
+- Add implementation for IFX_ETHSW_WOL_CFG_GET and IFX_ETHSW_WOL_CFG_SET
+===============================================================================
+Version 1.0.4 (requires Switch API Version: 1.1.7)
+- Update the IFX_ETHSW_MAC_TABLE_ENTRY_QUERY and IFX_ETHSW_CFG_GET printout
+  displaying the MAC address information.
+- Enhance the PortId parameter printout to also display the portmap bits, in
+  case the PortId MSB bit is set. This MSB bit indicated that the PortId field
+  carries a portmap information instead of port index value.
+===============================================================================
+Version 1.0.3 (requires Switch API Version: 1.1.7)
+- Extend the Register set commands be bit -set and -clear parameter, for bit
+  manipulation
+- Corrected the help description for IFX_ETHSW_QOS_METER_PORT_ASSIGN
+  (Jira ticket SWITCHPHY_SW-295).
+- Add flow table programming parameter support for bFlowID_Action & nFlowID
+  (SWITCHPHY_SW-307)
+- Corrected switch_cli IFX_ETHSW_MAC_TABLE_ENTRY_READ (SWITCHPHY_SW-304)
+- Corrected help text parameter support for IFX_ETHSW_MAC_TABLE_ENTRY_QUERY
+  (SWITCHPHY_SW-303)
+- Enhance CPU port configuration (SWITCHPHY_SW-302)
+===============================================================================
+Version 1.0.2 (requires Switch API Version: 1.1.6.7)
+- Update the interface help text
+===============================================================================
+Version 1.0.1
+- Update the description of the GSWIP flow table snooping parameter
+===============================================================================
+Version 1.0.0
+- Add '--enable-dumpparam' to generate a test CLI application that dumps out
+  the ioctl parameter instead of calling the SWAPI driver.
+  This feature is only for testing purposes and not used inside the UGW
+  package.
+- Update based on API interface parameter changes
+===============================================================================
+Version 0.0.9
+- Regenerated the source code based on the Switch API interface changes and
+  extensions.
+- Corrected some bugs regarding the MAC table printout algorithm
+===============================================================================
+Version 0.0.7
+- Changed the IPv4 Address printout to full-up leading zeros. For instance,
+  print out "010.168.100.002" instead of "10.168.100.2".
+- Add the automake build environment
+- Corrected implementation for "IFX_ETHSW_QOS_QUEUE_PORT_GET/SET". It now
+  takes the "nPortId" and "nTrafficClassId" as input parameter.
+- Update and corrected the help text
+===============================================================================
+Version 0.0.6
+- Bug fix in the command parameter scanning function
+  (Jira ticket SWITCHPHY_SW-206)
+- Change printout format for IFX_ETHSW_VERSION_GET
+===============================================================================
+Version 0.0.5
+- Help text updated and enhanced
+- Enhance usage information printout by Switch CLI version printout
+- Reformated parameter printout improving readability
+===============================================================================

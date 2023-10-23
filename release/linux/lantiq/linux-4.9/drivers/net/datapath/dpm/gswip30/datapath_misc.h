@@ -59,15 +59,18 @@ struct dp_coc_threshold {
 	(pmac)->src_sub_inf_id =  ((subif) >> 8) & 0x1f; } \
 	while (0)
 
+#ifdef CONFIG_DEBUG_FS
 int dp_sub_proc_install_30(void);
+#else
+static inline int dp_sub_proc_install_30(void) { return 0; }
+#endif
 void dp_sys_mib_reset_30(u32 flag);
 int dp_set_gsw_parser_30(u8 flag, u8 cpu, u8 mpe1, u8 mpe2, u8 mpe3);
 int dp_get_gsw_parser_30(u8 *cpu, u8 *mpe1, u8 *mpe2, u8 *mpe3);
 int gsw_mib_reset_30(int dev, u32 flag);
 int dp_pmac_set_30(int inst, u32 port, dp_pmac_cfg_t *pmac_cfg);
 int32_t dp_rx_30(struct sk_buff *skb, u32 flags);
-int32_t dp_xmit_30(struct net_device *rx_if, dp_subif_t *rx_subif,
-		   struct sk_buff *skb, int32_t len, uint32_t flags);
+int _dp_tx(struct sk_buff *skb, struct dp_tx_common *cmn);
 
 static inline char *parser_flag_str(u8 f)
 {
@@ -88,6 +91,8 @@ int lookup_start30(void);
 ssize_t proc_get_qid_via_index30(struct file *file, const char *buf,
 				 size_t count, loff_t *ppos);
 #if IS_ENABLED(CONFIG_INTEL_DATAPATH_CPUFREQ)
+int dp_coc_cpufreq_exit(void);
+int dp_coc_cpufreq_init(void);
 int dp_handle_cpufreq_event_30(int event_id, void *cfg);
 void proc_coc_read_30(struct seq_file *s);
 ssize_t proc_coc_write_30(struct file *file, const char *buf, size_t count,
@@ -96,6 +101,7 @@ ssize_t proc_coc_write_30(struct file *file, const char *buf, size_t count,
 #if IS_ENABLED(CONFIG_INTEL_DATAPATH_MIB)
 int dp_reset_sys_mib(u32 flag);
 int dp_mib_init(u32 flag);
+void dp_mib_exit(void);
 #endif
 
 #endif

@@ -1,0 +1,79 @@
+* PRX CQM
+
+Required properties:
+- compatible:	should be "intel,prx300-cqm"
+- reg:	address and length of the register set for the device.
+- interrupts:	IRQ line info for CQM The interrupt specifier
+	depends on the interrupt-parent interrupt controller
+- interrupt-names:	Name associated with interrupt line
+- clocks: clocks source for CQM
+- clocks:-names: name of the clock source
+- resets:	reference to a reset controller asserting the CQM
+- reset-names:	list of reset signal names.
+          See: Documentation/devicetree/bindings/reset/reset.txt
+- intel,syscon: reference to syscon
+- intel,bm-buff-size: reference to buffer pool size
+- intel,bm-buff-num: bm buffer numbers for pool 0 - 3
+- intel,bm-buff-num-a1: A1 bm buffer numbers for pool 0 - 3
+- intel,bm-buff-num-a1: A1 bm buffer size for pool 0 - 3
+- intel,re-insertion: enable/disable re-insertion handling
+	0 - re_insertion disabled
+	1 - re_insertion enabled
+- intel,deq-port: cpu deq port configuration, to specify port num and port type
+
+Optional properties:
+- intel,radio-32-vap: number of radios requiring 32 VAP support defined
+		      in policy_defs
+		0 - not supporting radio port
+		1 - 1 radio
+		2 - 2 radios
+
+Example:
+	cqm: cqm@A40000 {
+		compatible = "intel,prx300-cqm";
+		reg = < 0xA40000 0x10000 /*TX PUSH DQM*/
+			0xF00000 0x100000   /*CQM DMA DESC*/
+			0x1010000 0x10000 /*CQM*/
+			0x1020000 0x4000 /*QIDT*/
+			0x1060000 0x10000 /*LS*/
+			0x1080000 0x20000 /*CQM ENQ*/
+			0x10C0000 0x40000 /*CBM DEQ*/
+			0x1140000 0x400 /*QID2EP_MAP*/
+			0x1200000 0x100000 /*FSQM*/
+			0x1100000 0x1000 /*CQEM PIB*/
+			0x1141000 0x100 /*CBM PON CNTR*/
+			>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SHARED 192 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SHARED 196 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SHARED 197 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SHARED 198 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SHARED 199 IRQ_TYPE_LEVEL_HIGH>;
+		resets = <&rcu0 0x10 8>;
+		reset-names = "cqm";
+		clocks = <&cgu0 PRX300_CLK_NGI>, <&cgu0 PRX300_GCLK_CQEM>;
+		clock-names = "freq", "cbm";
+		intel,syscon = <&sysconf>;
+		/* Total Number of Buffers in pools 0-3 */
+		intel,bm-buff-num = <0x4480 0x680 0x13100 0x1a80>;
+		/* Size of each buffer in pools 0-3 */
+		intel,bm-buff-size = <0x400 0x2800 0x400 0x2800>;
+		/* Applicable only for A1 chip */
+		/* Total Number of Buffers in pool0 */
+		intel,bm-buff-num-a1 = <0xaf40>;
+		/* Size of each buffer in pool0 */
+		intel,bm-buff-num-a1 = <0x1000>;
+		/* split the buffer pools into 2 for DS and 2 for US */
+		intel,bm-buff-split = <0x2 0x2>;
+		intel,re-insertion = <1>;
+		intel,radio-32-vap = <1>;
+		/*
+		* DQ port,
+		* intel,deq-port = <port_num port_type>
+		* port_type = 2 for CPU
+		* port_type = 4 for MPE FW(if available)
+		*/
+		DQ0: cpu-port0 {
+				intel,deq-port = <0 2>;
+		};
+	};

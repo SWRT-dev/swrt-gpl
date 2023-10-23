@@ -13,28 +13,28 @@ static struct device_node *parse_dts(int j, void **pdata, struct resource **res,
 
 static int add_cqm_dev(int i);
 static int cqm_platdev_parse_dts(void);
+
+void __attribute__((weak)) cqm_rst(struct cqm_data *lpp)
+{
+}
+
 struct device_node *parse_dts(int j, void **pdata, struct resource **res,
 			      int *num_res)
 {
 	struct device_node *node = NULL, *cpu_deq_port = NULL;
-	struct device_node *ret_node = NULL, *gsw_node = NULL;
 	int idx = 0;
 	struct cqm_data *cqm_pdata = NULL;
 	unsigned int intr[MAX_NUM_INTR];
 	struct resource resource[MAX_NUM_BASE_ADDR];
 	struct property *prop;
 	const __be32 *p;
-	unsigned int buf_num;
+	unsigned int buf_num, split_num, split;
 	unsigned int pool_size = 0;
 	u8 count = 0;
 
 	node = of_find_node_by_name(NULL, dev_node_name[j].node_name);
-	if (!node) {
-		pr_err("Unable to get node %s for %s\n",
-		       dev_node_name[j].node_name,
-		       dev_node_name[j].dev_name);
+	if (!node)
 		return NULL;
-	}
 	*pdata = kzalloc(sizeof(*cqm_pdata), GFP_KERNEL);
 	if (!*pdata) {
 		pr_err("%s: Failed to allocate pdata.\n", __func__);
@@ -69,8 +69,12 @@ struct device_node *parse_dts(int j, void **pdata, struct resource **res,
 		goto err_free_pdata;
 	memcpy(cqm_pdata->intrs, intr, (sizeof(unsigned int) * idx));
 	cqm_pdata->rcu_reset = of_reset_control_get(node, "cqm");
-	if (IS_ERR(cqm_pdata->rcu_reset))
-		pr_err("No rcu reset for %s\n", dev_node_name[j].node_name);
+	if (IS_ERR(cqm_pdata->rcu_reset)) {
+		pr_debug("No rcu reset for %s\n", dev_node_name[j].node_name);
+	} else {
+		pr_debug("cqm reset deassert\n");
+		cqm_rst(cqm_pdata);
+	}
 
 	cqm_pdata->syscfg = syscon_regmap_lookup_by_phandle(node,
 							    "intel,syscon");
@@ -78,13 +82,46 @@ struct device_node *parse_dts(int j, void **pdata, struct resource **res,
 		pr_err("No syscon phandle specified for wan mux\n");
 		cqm_pdata->syscfg = NULL;
 	}
+
+	of_property_read_u32(node, "intel,radio-32-vap",
+			     &cqm_pdata->radio_dev_num);
+	pr_debug("num of radio dev : %d\n", cqm_pdata->radio_dev_num);
+
 	cqm_pdata->force_xpcs = of_property_read_bool(node, "intel,force-xpcs");
-	of_property_for_each_u32(node, "intel,bm-buff-num", prop, p, buf_num) {
-		cqm_pdata->pool_ptrs[cqm_pdata->num_pools++] = buf_num;
+	/*checking split shared pools for US and DS*/
+	split_num = 0;
+	of_property_for_each_u32(node, "intel,bm-buff-split", prop, p,
+				 split) {
+		if (split_num < 2) {
+			cqm_pdata->bm_buff_split[split_num++] = split;
+		} else {
+			pr_err("intel,bm-buff-split invalid entry: %d\n",
+			       split_num);
+			goto err_free_pdata;
+		}
 	}
 
-	of_property_for_each_u32(node, "intel,bm-buff-size", prop, p, buf_num) {
-		cqm_pdata->pool_size[pool_size++] = buf_num;
+	of_property_for_each_u32(node, "intel,bm-buff-num",
+				 prop, p, buf_num) {
+		if (cqm_pdata->num_pools < MAX_NUM_POOLS) {
+			cqm_pdata->pool_ptrs[cqm_pdata->num_pools++] =
+				buf_num;
+		} else {
+			pr_err("intel,bm-buff-num invalid entry: %d\n",
+			       cqm_pdata->num_pools);
+			goto err_free_pdata;
+		}
+	}
+
+	of_property_for_each_u32(node, "intel,bm-buff-size",
+				 prop, p, buf_num) {
+		if (pool_size < MAX_NUM_POOLS) {
+			cqm_pdata->pool_size[pool_size++] = buf_num;
+		} else {
+			pr_err("intel,bm-buff-size invalid entry: %d\n",
+			       pool_size);
+			goto err_free_pdata;
+		}
 	}
 
 	if (cqm_pdata->num_pools != pool_size) {
@@ -95,12 +132,25 @@ struct device_node *parse_dts(int j, void **pdata, struct resource **res,
 	pool_size = 0;
 	of_property_for_each_u32(node, "intel,bm-buff-num-a1", prop, p,
 				 buf_num) {
-		cqm_pdata->pool_ptrs_a1[cqm_pdata->num_pools_a1++] = buf_num;
+		if (cqm_pdata->num_pools_a1 < MAX_NUM_POOLS) {
+			cqm_pdata->pool_ptrs_a1[cqm_pdata->num_pools_a1++] =
+				buf_num;
+		} else {
+			pr_err("intel,bm-buff-num-a1 invalid entry: %d\n",
+			       cqm_pdata->num_pools_a1);
+			goto err_free_pdata;
+		}
 	}
 
 	of_property_for_each_u32(node, "intel,bm-buff-size-a1", prop, p,
 				 buf_num) {
-		cqm_pdata->pool_size_a1[pool_size++] = buf_num;
+		if (pool_size < MAX_NUM_POOLS) {
+			cqm_pdata->pool_size_a1[pool_size++] = buf_num;
+		} else {
+			pr_err("intel,bm-buff-size-a1 invalid entry: %d\n",
+			       pool_size);
+			goto err_free_pdata;
+		}
 	}
 
 	if (cqm_pdata->num_pools_a1 != pool_size) {
@@ -129,15 +179,15 @@ struct device_node *parse_dts(int j, void **pdata, struct resource **res,
 				 &cqm_pdata->gint_mode))
 		cqm_pdata->gint_mode = -1;
 
-	ret_node = node;
-	gsw_node = of_find_node_by_name(NULL, "gsw_core");
-	if (!gsw_node) {
-		pr_err("Unable to get node gsw_core\n");
-		goto err_free_pdata;
-	}
-	cqm_pdata->gsw_mode = 0;
-	of_property_read_u32(gsw_node, "gsw_mode", &cqm_pdata->gsw_mode);
-	return ret_node;
+	if (of_property_read_s32(node, "intel,highprio-lan",
+				 &cqm_pdata->highprio_lan))
+		cqm_pdata->highprio_lan = -1;
+
+	if (of_property_read_u32(node, "intel,re-insertion",
+				 &cqm_pdata->re_insertion))
+		cqm_pdata->re_insertion = -1;
+
+	return node;
 
 err_free_pdata:
 	kfree(pdata);
@@ -155,7 +205,7 @@ int add_cqm_dev(int i)
 
 	node = parse_dts(i, &pdata, &res, &num_res);
 	if (!node) {
-		pr_err("%s(#%d): parse_dts fail for %s\n",
+		pr_debug("%s(#%d): parse_dts fail for %s\n",
 		       __func__, __LINE__, dev_node_name[i].dev_name);
 		return CBM_FAILURE;
 	}
@@ -191,7 +241,8 @@ int add_cqm_dev(int i)
 		goto err_free_pdata;
 	}
 #endif
-
+	
+	kfree(res);
 	return ret;
 
 err_free_pdata:

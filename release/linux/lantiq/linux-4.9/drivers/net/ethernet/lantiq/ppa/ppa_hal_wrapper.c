@@ -1137,7 +1137,11 @@ uint32_t ppa_drv_get_number_of_phys_port(PPA_COUNT_CFG *count, uint32_t flag)
 /*****************************************************************************************/
 uint32_t ppa_drv_get_phys_port_info(PPE_IFINFO *info, uint32_t flag)
 {
+#if IS_ENABLED(CONFIG_PRX300_CQM)
+	return ppa_hsel_get_phys_port_info(info, flag, MPE_HAL);
+#else
 	return ppa_hsel_get_phys_port_info(info, flag, get_platform_hal(0));
+#endif
 }
 
 /*****************************************************************************************/
@@ -1256,7 +1260,7 @@ uint32_t ppa_drv_test_and_clear_bridging_hit_stat(PPA_BR_MAC_INFO *entry, uint32
 	return ppa_hsel_test_and_clear_bridging_hit_stat(entry, flag, get_platform_hal(0));
 }
 
-#if defined(MIB_MODE_ENABLE) && MIB_MODE_ENABLE
+#if IS_ENABLED(CONFIG_PPA_MIB_MODE)
 uint32_t ppa_drv_set_mib_mode(PPA_MIB_MODE_ENABLE *cfg, uint32_t flag)
 {
 	uint32_t hal_id = get_platform_hal(0);
@@ -1274,7 +1278,7 @@ uint32_t ppa_drv_get_mib_mode(PPA_MIB_MODE_ENABLE *cfg)
 
 	return ppa_drv_hal_hook[hal_id](PPA_GENERIC_HAL_GET_MIB_MODE_ENABLE, (void *)cfg, 0);
 }
-#endif
+#endif /* CONFIG_PPA_MIB_MODE */
 
 #if defined(RTP_SAMPLING_ENABLE) && RTP_SAMPLING_ENABLE
 uint32_t ppa_hsel_set_wan_mc_rtp(PPA_MC_INFO *entry, uint32_t hal_id)
@@ -1658,7 +1662,7 @@ EXPORT_SYMBOL(ppa_drv_get_vlan_map);
 EXPORT_SYMBOL(ppa_drv_del_vlan_map);
 EXPORT_SYMBOL(ppa_drv_add_vlan_map);
 EXPORT_SYMBOL(ppa_drv_del_all_vlan_map);
-#if defined(MIB_MODE_ENABLE) && MIB_MODE_ENABLE
+#if IS_ENABLED(CONFIG_PPA_MIB_MODE)
 EXPORT_SYMBOL(ppa_drv_set_mib_mode);
 EXPORT_SYMBOL(ppa_drv_get_mib_mode);
 #endif

@@ -1,0 +1,275 @@
+config IWLWAV
+        tristate "Intel Wireless Lan Wave Driver (iwlwav)"
+        depends on m
+	depends on m
+	select CFG80211_WEXT_EXPORT
+	select WIRELESS_EXT
+        depends on MAC80211
+        ---help---
+          Select to build the driver supporting the:
+
+          Intel Wireless WiFi Link Next-Gen AGN
+
+          This option enables support for use with the following hardware:
+                GRX 350
+                GRX 550
+                GRX 750
+
+
+          This driver uses the kernel's mac80211 subsystem.
+
+if IWLWAV
+
+menu "Configuration"
+
+menu "Configuration"
+
+config IWLWAV_PMCU_SUPPORT
+	bool "PMCU Support"
+	default n
+	---help---
+	  Enable on-the-fly CPU frequency switch support
+
+config IWLWAV_PUMA6_UDMA_SUPPORT
+	bool "PUMA6 UDMA (partial offload)"
+	---help---
+	  Enable UDMA partial offload feature on PUMA6
+
+config IWLWAV_DC_DP_LIB_SUPPORT
+	bool "Use DirectConnect DP API"
+	default y
+	---help---
+	  Enable support for universal DirectConnect DP API (former FastPath API)
+
+config IWLWAV_GEN6_USE_LEGACY_INT
+	bool "Use legacy interrupts on Gen6"
+	default y
+	help
+	  Use legacy interrupts on Gen6 instead of MSI
+
+config IWLWAV_X86_HOST_PC
+	bool "Compile for x86 Host PC"
+	default n
+
+config IWLWAV_BUS_PCI_PCIE
+	bool
+	default y
+
+endmenu
+
+menu "Features"
+
+config IWLWAV_EEPROM_SUPPORT
+	bool "EEPROM Chip Support"
+	default y
+	---help---
+	  Read calibration data from EEPROM chip.
+
+config IWLWAV_USE_GENL
+	bool "Use generic netlink socket"
+	default y
+	---help---
+	  Use generic netlink socket instead of newly allocated one.
+
+config IWLWAV_USE_INTERRUPT_POLLING
+	bool "Use interrupt polling"
+	default n
+	---help---
+	  Turns interrupt polling on.
+	  This feature hits performance, therefore it is for debugging purposes
+	  mainly and must not be used in production without very special reasons.
+
+config IWLWAV_SET_PM_QOS
+	bool "Yocto Power management"
+	default n
+	---help---
+	  Set Power mode for DMA
+
+config IWLWAV_LEGACY_INT_RECOVERY_MON
+	bool "Lost Interrupts recovery mon"
+	default n
+	---help---
+	  Recover lost legacy Intterupt
+
+config IWLWAV_X86_PUMA7_WAVE600_NOSNOOP
+	bool "No snooping PCIe operations for Wave600 cards on Puma7"
+	default n
+	---help---
+	  Allow Wave600 card to perform memory read/write operations in no-snoop mode.
+	  This avoids synchronization between CPU cache and DRAM which causes DMA
+	  transfers to timeout if CPU went to power save mode. However, the use of this
+	  mode requires software to address the arising cache coherence issues.
+
+endmenu
+
+menu "Debug extentions"
+
+config IWLWAV_DEBUG
+	bool "General debug extentions"
+	default n
+	---help---
+	  Enable run-time checks, memory access validation and extended printouts.
+
+config IWLWAV_ENABLE_OBJPOOL
+	bool "Object tracking extensions"
+	default y if IWLWAV_DEBUG
+	default n
+	---help---
+	  Defines whether to compile OBJPOOL.
+
+config IWLWAV_ENABLE_NBUF_OBJPOOL
+	depends on IWLWAV_ENABLE_OBJPOOL
+	bool "Net Buffer Object tracking extensions"
+	default n
+	---help---
+	  Defines whether to enable Network Buffer monitoring by OBJPOOL.
+
+config IWLWAV_TXMM_HISTORY_LENGTH
+	int "TXMM history length"
+	range 0 20
+	default 3 if IWLWAV_DEBUG
+	default 0
+	---help---
+	  Advanced TXMM messages history length (0-20).
+	  0 to disable messages history.
+
+config IWLWAV_TRACER_HISTORY_LENGTH
+	int "TRACER history length"
+	range 0 1000
+	default 0
+	---help---
+	  Realtime TRACER history length (0-1000).
+	  0 to disable tracer.
+
+config IWLWAV_CPU_STAT
+	bool "Profiling tools"
+	default n
+	---help---
+	  Include profiling tools AKA CPU Stat.
+
+config IWLWAV_BENCHMARK_TOOLS
+	bool
+	default y if IWLWAV_CPU_STAT
+	default n
+
+config IWLWAV_CCR_DEBUG
+	bool "HW access tracing"
+	default n
+	---help---
+	  Include detailed printouts for shared memory access by the driver.
+	  This option is useful for startup sequence debugging, in other cases
+	  it produces too much printouts and makes driver virtually unusable.
+
+config IWLWAV_FW_WRITE_VALIDATION
+	bool "Validation of FW download"
+	default n
+	---help---
+	  Include validation of written FW chunks.
+	  This option is useful when there is suspicion that there is something wrong
+	  with FW download.
+
+config IWLWAV_STAT_CNTRS_DEBUG
+	bool "Debug statistic counters"
+	default y if IWLWAV_DEBUG
+	---help---
+	  Debug statistic counters
+
+config IWLWAV_PER_PACKET_STATS
+	bool "Per-Packet Statistics"
+	default n
+	---help---
+	  Per-packet statistics (timestamps, counters, info etc.)
+
+config IWLWAV_PRINT_PER_PACKET_STATS
+	depends on IWLWAV_PER_PACKET_STATS
+	bool "Log per-packet statistics"
+	default n
+	---help---
+	  Per-packet statistics will be logged.
+
+config IWLWAV_TSF_TIMER_TIMESTAMPS_IN_DEBUG_PRINTOUTS
+	depends on IWLWAV_BUS_PCI_PCIE
+	bool "Add TSF timer timestamps to debug printouts"
+	default n
+	---help---
+	  TSF timestamp will be printed out with each debug message as a second timestamp.
+	  TSF timer timestamps have microsecond resolution.
+
+config IWLWAV_TSF_TIMER_ACCESS_ENABLED
+	bool "TSF_TIMER_ACCESS_ENABLED"
+	default y if IWLWAV_TSF_TIMER_TIMESTAMPS_IN_DEBUG_PRINTOUTS
+	default y if IWLWAV_DEBUG
+	default n
+
+config IWLWAV_NO_FW_RESET_ON_STOP
+	bool "Do not reset firmware on driver stop/unload"
+	default y if IWLWAV_DEBUG
+	default n
+	---help---
+	  May be useful during firmware debugging.
+
+config IWLWAV_PKT_INJECT
+	bool "Enable packet injection via procfs"
+	default y if IWLWAV_DEBUG
+	default n
+	---help---
+	  May be useful during firmware debugging.
+
+config IWLWAV_ETH_PARSER
+	bool "Enable ethernet packet parsing"
+	default n
+	---help---
+	  May be useful during connection debugging.
+
+config IWLWAV_VALIDATE_IFNAME
+	bool "Validate interface name in Linux callbacks"
+	default n
+	---help---
+	  Enable validation of interface name in Linux callbacks.
+	  If name is wrong (not wlan), packets will be dropped.
+
+config IWLWAV_FILTER_BLACKLISTED_BSS
+	bool "Don't report frames from blacklisted BSS"
+	default y if IWLWAV_DEBUG
+	default n
+	---help---
+	  Don't report frames from blacklisted BSS to cfg80211.
+
+choice
+	prompt "Runtime logger support"
+	default IWLWAV_RT_LOGGER_FUNCTIONS
+
+config IWLWAV_RT_LOGGER_FUNCTIONS
+	bool "Log directives as external functions"
+	---help---
+	  Making log directives external functions may decrease performance but makes image size smaller.
+
+config IWLWAV_RT_LOGGER_INLINES
+	bool "Log directives as inline functions"
+	---help---
+	  Making log directives inline functions may increase performance but makes image size bigger.
+
+endchoice
+
+menu "Log level"
+
+config IWLWAV_MAX_DLEVEL
+	int "Log level" if !IWLWAV_SILENT
+	range -4 9
+	default 2 if IWLWAV_DEBUG
+	default 1
+	---help---
+	  Max compilation time Log level (-4 (logs disabled), -3 (error), -2 (warning), -1 (release info), 0-9 (info))
+
+config IWLWAV_SILENT
+	bool "Silent build (No debug printouts)"
+	---help---
+	  Disable driver printouts.
+
+endmenu
+
+endmenu
+
+endmenu
+
+endif

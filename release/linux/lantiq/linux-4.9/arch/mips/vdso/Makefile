@@ -44,6 +44,8 @@ VDSO_LDFLAGS := \
 	$(call cc-ldoption, -Wl$(comma)--build-id)
 
 GCOV_PROFILE := n
+UBSAN_SANITIZE := n
+KCOV_INSTRUMENT := n
 
 #
 # Shared build commands.

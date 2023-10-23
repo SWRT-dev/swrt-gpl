@@ -46,9 +46,14 @@ struct cqm_data {
 	unsigned int pool_size[MAX_NUM_POOLS];
 	unsigned int pool_ptrs_a1[MAX_NUM_POOLS];
 	unsigned int pool_size_a1[MAX_NUM_POOLS];
+	unsigned int bm_buff_split[2];
 	u32  dq_port[MAX_CPU_DQ_PORT_N_TYPE];
 	u32 num_dq_port;
-	u32 gsw_mode;
 	int gint_mode;
+	int highprio_lan;
+	int re_insertion;
+	int radio_dev_num;
 };
+
+void cqm_rst(struct cqm_data *lpp);
 #endif

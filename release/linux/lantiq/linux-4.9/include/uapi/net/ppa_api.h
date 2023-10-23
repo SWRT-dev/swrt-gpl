@@ -365,6 +365,11 @@
 	\brief MAX_PRIO_NUM */
 #define MAX_PRIO_NUM 8
 
+/*!
+ *	\brief MAX_WLAN_DEV
+ */
+#define MAX_WLAN_DEV 4
+
 #define TC_START_BIT_POS		0
 #define TC_MASK				 0x1f
 /*!
@@ -412,6 +417,12 @@
 /*!
   \brief PPA_QOS_CL_CPU */
 #define PPA_QOS_CL_CPU				0x00010000
+/*!
+  \brief PPA_QOS_Q_F_SP_WFQ */
+#define PPA_QOS_Q_F_SP_WFQ	0x00020000 /*!< QoS configured in SP+WFQ mode */
+/*!
+  \brief Macro specifying VAP QoS Operations */
+#define PPA_QOS_Q_F_VAP_QOS		0x00040000
 /*!
 	\brief PPA_F_PPPOATM */
 #define PPA_F_PPPOATM				0x80000000
@@ -492,11 +503,11 @@
 #define SESSION_FLAG2_VALID_IPSEC_TRANS		0x00040000 /* Flag for L2TP over IPSec Transport mode */
 #define SESSION_FLAG2_IG_GRE			0x00080000 /* Flag for Ingress GRE session*/
 #define SESSION_FLAG2_EG_GRE			0x00100000 /* Flag for Engress GRE session*/
+#define SESSION_FLAG2_VXLAN			0x00200000 /* Flag for VxLAN session*/
 
 /* Other flags */
 #define FLG_PPA_PROCESSED		0x100	/* this used to mark ecah packets which are processed by ppa datapath driver*/
 #define SESSION_FLAG_TC_REMARK		0x40000000 /*Flag to sepcify bit 30 in extmark which specifies packet classified by iptables when set to 1*/
-#define SESSION_FLAG_DSCP_REMARK	0x00000010 /*Flag to enable DSCP remark in Stack when packet is not classified using PAE Flow Rule*/
 #define SESSION_FLAG2_UPDATE_INFO_PROCESSED	0x10000000 /*Flag to specify ppa_update_session_info is complete*/
 #define MAX_DATA_FLOW_ENGINES 3 /* will be changed to runtime value*/
 
@@ -672,13 +683,8 @@ typedef struct {
 	uint64_t host_bytes; /*!< Number of bytes transmitted through CPU path */
 	uint64_t acc_bytes; /*!< Number of bytes accelerated by hardware engines */
 } PPA_SESSION_STATS;
-/*!
-	\brief This is the data structure for basic IPV4/IPV6 address
- */
-typedef union {
-	uint32_t ip; /*!< ipv4 address */
-	uint32_t ip6[4]; /*!< ipv6 address */
-} IP_ADDR;
+
+typedef PPA_IPADDR IP_ADDR;
 /*!
 	\brief This is the data structure for complex IPV4/IPV6 address
  */
@@ -1134,6 +1140,14 @@ typedef struct {
 	uint32_t flags; /*!< reserved for future */
 } PPA_CMD_BRIDGE_ENABLE_INFO;
 /*!
+	\brief This is the data structure to get the Fid id For IOCTL.
+ */
+typedef struct {
+	PPA_IFNAME ifname[PPA_IF_NAME_SIZE]; /*!< the Bridge interface name */
+	uint16_t fid; /*!< the Fid */
+	uint32_t flags; /*!< reserved for future */
+} PPA_CMD_BRIDGE_FID_INFO;
+/*!
 	\brief QoS Shaper Mode Configuration
  */
 typedef enum {
@@ -1143,6 +1157,13 @@ typedef enum {
 	PPA_QOS_SHAPER_TR_TCM_RFC4115 = 3,
 	PPA_QOS_SHAPER_LOOSE_COLOR_BLIND = 4
 } PPA_QOS_SHAPER_MODE;
+
+typedef enum {
+	PPA_QOS_METER_TOKEN_BUCKET = 1,/*!< Simple Token Bucket */
+	PPA_QOS_METER_SR_TCM = 2, /*!< Single Rate Three Color Marker */
+	PPA_QOS_METER_TR_TCM = 3 /*!< Two Rate Three Color Marker */
+}PPA_QOS_METER_TYPE;
+
 /*!
 	\brief QoS Shaper configuration structure
  */
@@ -1158,14 +1179,7 @@ typedef struct {
 						- QOS_SHAPER_F_CIR */
 	int32_t			phys_shaperid;
 } PPA_QOS_SHAPER_CFG;
-/*!
-	\brief QoS Meter Mode Configuration
- */
-typedef enum {
-	PPA_QOS_METER_TOKEN_BUCKET = 1,/*!< Simple Token Bucket */
-	PPA_QOS_METER_SR_TCM = 2, /*!< Single Rate Three Color Marker */
-	PPA_QOS_METER_TR_TCM = 3 /*!< Two Rate Three Color Marker */
-}PPA_QOS_METER_TYPE;
+
 /*!
   \brief QoS Meter configuration structure
  */
@@ -1178,7 +1192,29 @@ typedef struct {
 	uint32_t		pbs; /*!< Peak Burst Size */
 	uint32_t		meterid; /*!< Meter ID Configured on the system*/
 	uint32_t		flags; /*!< Flags define operations on meters enbled*/
+	int32_t			phys_meterid; /*!< Meter ID Configured on the system*/
+	uint32_t		pce_id; /*!< ID of PCE rule configured for this meter*/
+	uint32_t		port_id; /*!< port on which Meter Configured*/
 }PPA_QOS_METER_INFO;
+
+/*!
+  \brief QoS Meter configuration structure
+ */
+typedef struct {
+	PPA_IFNAME		ifname[PPA_IF_NAME_SIZE];
+	PPA_IFNAME		meter_name[PPA_IF_NAME_SIZE];
+	PPA_QOS_METER_TYPE	type; /*!< Mode of Meter*/
+	uint32_t		enable; /*!< Enable for meter */
+	uint32_t		cir; /*!< Committed Information Rate in bytes/s */
+	uint32_t		cbs; /*!< Committed Burst Size in bytes */
+	uint32_t		pir; /*!< Peak Information Rate in bytes/s */
+	uint32_t		pbs; /*!< Peak Burst Size */
+	uint32_t		flags; /*!< Flags define operations on meters enbled*/
+	int32_t			phys_meterid; /*!< Meter ID Configured on the system*/
+	uint32_t		pce_id; /*!< ID of PCE rule configured for this meter*/
+	uint32_t		port_id; /*!< port on which Meter Configured*/
+}PPA_QOS_METER_CFG;
+
 /*!
 	\brief This is the data structure for PPA QOS Internal INFO
  */
@@ -1634,6 +1670,7 @@ typedef enum ppa_qos_module_type {
 typedef enum {
 	PPA_QOS_SCHED_SP = 0,
 	PPA_QOS_SCHED_WFQ = 1,
+	PPA_QOS_SCHED_WRR = 2,
 } PPA_QOS_QSCHED_MODE;
 /*!
 	\brief QoS Modify Queue Configuration structure
@@ -2020,6 +2057,8 @@ typedef union {
 	PPA_CMD_VARIABLE_VALUE_INFO var_value_info; /*!< PPA VARABILE value. */
 	PPA_CMD_DEL_SESSION_INFO del_session; /*!< PPA session delete info. */
 	PPA_QOS_METER_INFO meter_info; /*!< PPA qos meter info. */
+	PPA_QOS_METER_CFG meter_cfg; /*!< PPA qos meter configuration. */
+	PPA_CMD_BRIDGE_FID_INFO br_fid_info; /*!< PPA bridge fid parameter */
 } PPA_CMD_DATA;
 /*@}*/ /* PPA_IOCTL */
 /* -------------------------------------------------------------------------- */
@@ -2141,8 +2180,9 @@ typedef enum {
 	PPA_CMD_SET_QOS_METER_NR, /*!< NR for PPA_CMD_SET_QOS_METER */
 	PPA_CMD_QOS_DSCP_CLASS_SET_NR, /*!< NR for PPA_CMD_QOS_DSCP_CLASS_SET */
 	PPA_CMD_QOS_DSCP_CLASS_RESET_NR, /*!< NR for PPA_CMD_QOS_DSCP_CLASS_RESET */
-	PPA_MEM_SET_PORT_TRUNKING_NR, /*!< NR for PPA_MEM_SET_PORT_TRUNKING */
 	PPA_CMD_GET_IFACE_MIB_NR, /*!< NR for PPA_CMD_GET_IFACE_MIB */
+	PPA_CMD_ADD_QOS_METER_NR, /*!< NR for PPA_CMD_SET_QOS_METER */
+	PPA_CMD_GET_BRIDGE_FID_NR, /*!< NR for PPA_CMD_GET_BRIDGE_FID */
 	/* PPA_IOC_MAXNR should be the last one in the enumberation */
 	PPA_IOC_MAXNR /*!< NR for PPA_IOC_MAXNR */
 } PPA_IOC_NR;
@@ -2410,6 +2450,11 @@ typedef enum {
 	\ref PPA_CMD_GET_BRIDGE_STATUS structure
  */
 #define PPA_CMD_GET_BRIDGE_STATUS _IOR(PPA_IOC_MAGIC, PPA_CMD_GET_BRIDGE_STATUS_NR, PPA_CMD_BRIDGE_ENABLE_INFO)
+/** PPA get ppa bridge fid. Value is manipulated by _IOR() macro for final value
+	\param PPA_CMD_GET_BRIDGE_FID The parameter points to a
+	\ref PPA_CMD_GET_BRIDGE_FID structure
+ */
+#define PPA_CMD_GET_BRIDGE_FID _IOR(PPA_IOC_MAGIC, PPA_CMD_GET_BRIDGE_FID_NR, PPA_CMD_BRIDGE_FID_INFO)
 /* Classification start*/
 /** PPA Add QOS Class. Value is manipulated by _IOW() macro for final value
 	\param[in,out] PPA_CMD_CLASSIFIER_INFO The parameter points to a
@@ -2567,10 +2612,10 @@ typedef enum {
  *     \ref PPA_QOS_METER_CFG structure
  *      */
 #define PPA_CMD_SET_QOS_METER _IOW(PPA_IOC_MAGIC, PPA_CMD_SET_QOS_METER_NR, PPA_QOS_METER_INFO)
+#define PPA_CMD_ADD_QOS_METER _IOW(PPA_IOC_MAGIC, PPA_CMD_ADD_QOS_METER_NR, PPA_QOS_METER_CFG)
+
 /* PPA Set DSCP to TC Map */
 #define PPA_CMD_QOS_DSCP_CLASS_SET _IO(PPA_IOC_MAGIC, PPA_CMD_QOS_DSCP_CLASS_SET_NR)
-/* PPA Memory write to switch_api-2*/
-#define PPA_MEM_SET_PORT_TRUNKING _IO(PPA_IOC_MAGIC, PPA_MEM_SET_PORT_TRUNKING_NR)
 /* PPA Reset DSCP to TC Map */
 #define PPA_CMD_QOS_DSCP_CLASS_RESET _IO(PPA_IOC_MAGIC, PPA_CMD_QOS_DSCP_CLASS_RESET_NR)
 /** PPA get all exported hook count. Value is manipulated by _IOR() macro for final value

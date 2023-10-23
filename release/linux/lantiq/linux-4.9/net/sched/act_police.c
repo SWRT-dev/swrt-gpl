@@ -21,37 +21,8 @@
 #include <linux/slab.h>
 #include <net/act_api.h>
 #include <net/netlink.h>
-
-struct tcf_police {
-	struct tc_action	common;
-	int			tcfp_result;
-	u32			tcfp_ewma_rate;
-	s64			tcfp_burst;
-	u32			tcfp_mtu;
-	s64			tcfp_toks;
-	s64			tcfp_ptoks;
-	s64			tcfp_mtu_ptoks;
-	s64			tcfp_t_c;
-	struct psched_ratecfg	rate;
-	bool			rate_present;
-	struct psched_ratecfg	peak;
-	bool			peak_present;
-};
-
-#define to_police(pc) ((struct tcf_police *)pc)
-
-#define POL_TAB_MASK     15
-
-/* old policer structure from before tc actions */
-struct tc_police_compat {
-	u32			index;
-	int			action;
-	u32			limit;
-	u32			burst;
-	u32			mtu;
-	struct tc_ratespec	rate;
-	struct tc_ratespec	peakrate;
-};
+#include <net/pkt_cls.h>
+#include <net/tc_act/tc_police.h>
 
 /* Each policer is serialized by its individual spinlock */
 

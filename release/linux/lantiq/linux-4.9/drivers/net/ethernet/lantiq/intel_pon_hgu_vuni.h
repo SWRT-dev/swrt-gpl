@@ -38,6 +38,7 @@ struct intel_vuni_priv {
 	int id;
 	int vani;
 	int extra_subif;
+	u32 extra_subif_domain;
 	/*! min netdevices for extra subif/lct */
 	int start;
 	/*! max netdevices for extra subif/lct */

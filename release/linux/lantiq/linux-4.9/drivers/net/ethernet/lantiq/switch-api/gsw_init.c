@@ -19,6 +19,9 @@
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
 #include <linux/version.h>
+#include <linux/mfd/syscon.h>
+#include <linux/of.h>
+#include <linux/regmap.h>
 
 #ifndef CONFIG_X86_INTEL_CE2700
 
@@ -53,7 +56,6 @@ extern int DWC_ETH_QOS_mdio_write_direct(int bus_number, bool c45, int phyaddr, 
 
 #define gsw1_w32(x, y)	ltq_w32((x), ((y)))
 #define gsw1_r32(x)			ltq_r32((x))
-
 
 void __iomem		*addr_gswl;
 void __iomem		*addr_gswr;
@@ -496,11 +498,11 @@ int GSW_SMDIO_DataWrite(void *cdev, GSW_MDIO_data_t *pPar)
 	return ret;
 }
 
-/** read the gswitch register */
+/** read the External gswitch register */
 void gsw_ext_r32(void *cdev, short offset, short shift, short size, u32 *value)
 {
 	u32 rvalue, mask;
-	GSW_MDIO_data_t mdio_data;
+	u16 addr;
 	ethsw_api_dev_t *pethdev = GSW_PDATA_GET(cdev);
 
 	if (pethdev == NULL) {
@@ -508,20 +510,16 @@ void gsw_ext_r32(void *cdev, short offset, short shift, short size, u32 *value)
 		return;
 	}
 
-	mdio_data.nAddressDev = pethdev->ext_phyid;
-	mdio_data.nAddressReg = 0x1F;
-
-	if ((offset & pethdev->gswex_sgmiibase) == 0xD000)
-		mdio_data.nData = (offset);
+	if ((offset & pethdev->gswex_sgmiibase) == pethdev->gswex_sgmiibase)
+		addr = (offset);
 	else
-		mdio_data.nData = (offset | pethdev->gswex_base);
+		addr = (offset | pethdev->gswex_base);
 
-	GSW_SMDIO_DataWrite(cdev, &mdio_data);
-	mdio_data.nAddressDev = pethdev->ext_phyid;
-	mdio_data.nAddressReg = 0x00;
-	mdio_data.nData = 0;
-	GSW_SMDIO_DataRead(cdev, &mdio_data);
-	rvalue = mdio_data.nData;
+	/*TODO mdiobus_read/mdiobus_write failing using switch_cli */
+	pethdev->master_mii_bus->write(pethdev->master_mii_bus,
+				       pethdev->ext_phyid, 0x1F, addr);
+	rvalue = pethdev->master_mii_bus->read(pethdev->master_mii_bus,
+					       pethdev->ext_phyid, 0);
 
 	mask = (1 << size) - 1;
 	rvalue = (rvalue >> shift);
@@ -529,11 +527,11 @@ void gsw_ext_r32(void *cdev, short offset, short shift, short size, u32 *value)
 
 }
 
-/** read and update the GSWIP register */
+/** read and update the External GSWIP register */
 void gsw_ext_w32(void *cdev, short offset, short shift, short size, u32 value)
 {
+	u16 data;
 	u32 rvalue, mask;
-	GSW_MDIO_data_t mdio_data;
 	ethsw_api_dev_t *pethdev = GSW_PDATA_GET(cdev);
 
 	if (pethdev == NULL) {
@@ -541,46 +539,23 @@ void gsw_ext_w32(void *cdev, short offset, short shift, short size, u32 value)
 		return;
 	}
 
-	mdio_data.nAddressDev = pethdev->ext_phyid;
-	mdio_data.nAddressReg = 0x1F;
+	gsw_ext_r32(cdev, offset, 0, 16, &rvalue);
+
+	mask = (1 << size) - 1;
+	mask = (mask << shift);
+	value = ((value << shift) & mask);
+	value = ((rvalue & ~mask) | value);
 
 	if ((offset & pethdev->gswex_sgmiibase) == 0xD000)
-		mdio_data.nData = (offset);
+		data = (offset);
 	else
-		mdio_data.nData = (offset | pethdev->gswex_base);
+		data = (offset | pethdev->gswex_base);
 
-	GSW_SMDIO_DataWrite(cdev, &mdio_data);
-
-	if (size != 16) {
-		mdio_data.nAddressDev = pethdev->ext_phyid;;
-		mdio_data.nAddressReg = 0x00;
-		mdio_data.nData = 0;
-		GSW_SMDIO_DataRead(cdev, &mdio_data);
-		rvalue = mdio_data.nData;
-
-		/* Prepare the mask	*/
-		mask = (1 << size) - 1 ;
-		mask = (mask << shift);
-		/* Shift the value to the right place and mask the rest of the bit*/
-		value = (value << shift) & mask;
-		/*  Mask out the bit field from the read register and place in the new value */
-		value = (rvalue & ~mask) | value ;
-
-		mdio_data.nAddressDev = pethdev->ext_phyid;
-		mdio_data.nAddressReg = 0x1F;
-
-		if ((offset & pethdev->gswex_sgmiibase) == 0xD000)
-			mdio_data.nData = (offset);
-		else
-			mdio_data.nData = (offset | pethdev->gswex_base);
-
-		GSW_SMDIO_DataWrite(cdev, &mdio_data);
-	}
-
-	mdio_data.nAddressDev = pethdev->ext_phyid;
-	mdio_data.nAddressReg = 0x0;
-	mdio_data.nData = value;
-	GSW_SMDIO_DataWrite(cdev, &mdio_data);
+	/*TODO mdiobus_read/mdiobus_write failing using switch_cli */
+	pethdev->master_mii_bus->write(pethdev->master_mii_bus,
+				       pethdev->ext_phyid, 0x1F, data);
+	pethdev->master_mii_bus->write(pethdev->master_mii_bus,
+				       pethdev->ext_phyid, 0, value);
 }
 
 #endif
@@ -632,9 +607,9 @@ void gsw_r32(void *cdev, short offset, short shift, short size, u32 *value)
 #ifdef __KERNEL__
 
 		/*external switch*/
-		if (pethdev->ext_devid) {
+		if (pethdev->ext_switch)
 			gsw_ext_r32(cdev, offset, shift, size, value);
-		} else
+		else
 #endif
 			pr_err("%s:%s:%d,(ERROR)\n", __FILE__, __func__, __LINE__);
 	}
@@ -676,12 +651,19 @@ void gsw_w32(void *cdev, short offset, short shift, short size, u32 value)
 #ifdef __KERNEL__
 
 		/*external switch*/
-		if (pethdev->ext_devid)
+		if (pethdev->ext_switch)
 			gsw_ext_w32(cdev, offset, shift, size, value);
 		else
 #endif
 			pr_err("%s:%s:%d,(ERROR)\n", __FILE__, __func__, __LINE__);
 	}
+}
+
+/* get ext switch handle if present */
+static inline void get_gsw_ext_handle(ethsw_api_dev_t *prvdata,
+					struct device_node *np) {
+	prvdata->chiptop_base = syscon_regmap_lookup_by_phandle
+				(np, "intel,syscon");
 }
 
 
@@ -924,49 +906,53 @@ int ltq_gsw_api_register(struct platform_device *pdev)
 	ethsw_core_init_t core_init;
 	struct clk *clk;
 	struct gswss *gswdev = dev_get_drvdata(pdev->dev.parent);
-	u32 device_id = pdev->dev.parent->id;
+	u32 device_id;
+	struct device *dev = &pdev->dev;
+	struct device_node *mdio_node, *node = dev->of_node;
 	struct core_ops *ops = platform_get_drvdata(pdev);
 	ethsw_api_dev_t *prvdata = container_of(ops, ethsw_api_dev_t, ops);
+
+	device_id = prvdata->devid;
+	if (device_id >= LTQ_FLOW_DEV_MAX)
+		return -EINVAL;
+
+	/*Initialize global array*/
+	gswdev->core_dev[device_id] = pdev;
 	/** Clear core_init */
 	memset(&core_init, 0, sizeof(ethsw_core_init_t));
 
-
-	/*Initialize global array*/
-	gswdev->core_dev = pdev;
-
-	memset(&core_init, 0, sizeof(ethsw_core_init_t));
-
-	if (device_id < LTQ_FLOW_DEV_INT || device_id >= LTQ_FLOW_DEV_MAX)
-		return -EINVAL;
-
-	if (!prvdata->ext_devid) {
+	/* External switches are not MMIO devices, managed by
+	 * MDIO bus, NO need to allocate resoucres for
+	 * External Switches
+	 */
+	if (!prvdata->ext_switch) {
 
 		/* Find and map our resources */
 		memres = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 
-	if (memres == NULL) {
-		pr_err("%s:%s:%d (Failed)\n", __FILE__, __func__, __LINE__);
-		/*		dev_err(&pdev->dev, "Cannot get IORESOURCE_MEM\n");*/
-		return -ENOENT;
-	}
+		if (memres == NULL) {
+			pr_err("%s:%s:%d (Failed)\n", __FILE__, __func__, __LINE__);
+			/*		dev_err(&pdev->dev, "Cannot get IORESOURCE_MEM\n");*/
+			return -ENOENT;
+		}
 
-	/*Enable Switch Power  */
-	clk = devm_clk_get(&pdev->dev, "gate");
+		/*Enable Switch Power  */
+		clk = devm_clk_get(&pdev->dev, "gate");
 
-	if (IS_ERR(clk))
-		panic("Failed to get switch clock");
+		if (IS_ERR(clk))
+			panic("Failed to get switch clock");
 
-	clk_prepare_enable(clk);
+		clk_prepare_enable(clk);
 
-	if (device_id == 0) {
-		addr_gswl = devm_ioremap_resource(&pdev->dev, memres);
+		if (device_id == 0) {
+			addr_gswl = devm_ioremap_resource(&pdev->dev, memres);
 
-		if (IS_ERR(addr_gswl))
-			return PTR_ERR(addr_gswl);
-	}
+			if (IS_ERR(addr_gswl))
+				return PTR_ERR(addr_gswl);
+		}
 
-	if (device_id == 1) {
-		addr_gswr = devm_ioremap_resource(&pdev->dev, memres);
+		if (device_id == 1) {
+			addr_gswr = devm_ioremap_resource(&pdev->dev, memres);
 
 			if (IS_ERR(addr_gswr))
 				return PTR_ERR(addr_gswr);
@@ -1010,7 +996,7 @@ int ltq_gsw_api_register(struct platform_device *pdev)
 		pEDev0->gsw_base = addr_gswl;
 	}
 
-	if (device_id == LTQ_FLOW_DEV_INT_R) {
+	if (device_id == LTQ_FLOW_DEV_INT_R && (!prvdata->ext_switch)) {
 		/* Init FLOW Switch Core Layer */
 		core_init.sdev = LTQ_FLOW_DEV_INT_R;
 		core_init.gsw_base_addr = addr_gswr;
@@ -1028,17 +1014,48 @@ int ltq_gsw_api_register(struct platform_device *pdev)
 		pEDev1->gswr_base = addr_gswr;
 		pEDev1->gsw_base = addr_gswr;
 	}
+	result = gsw_mdio_alloc(pdev);
+	if (result != 0)
+		pr_debug("\nFailed to create mdio interface\n");
+
+	if (prvdata->ext_switch) {
+		mdio_node = of_parse_phandle(node, "master-mdio", 0);
+		if (mdio_node)
+			prvdata->master_mii_bus = of_mdio_find_bus(mdio_node);
+		if (!prvdata->master_mii_bus) {
+			dev_err(prvdata->dev, "\ncannot get Master MDIO bus\n");
+			return -EPROBE_DEFER;
+		}
+		get_device(&prvdata->master_mii_bus->dev);
+		prvdata->master_mii_node = mdio_node;
+		/* if external switch , try to get misc info */
+		get_gsw_ext_handle(prvdata,node);
+	}
+
+	if (device_id == LTQ_FLOW_DEV_INT_R && prvdata->ext_switch) {
+		core_init.gsw_base_addr = NULL;
+		core_init.sdev = LTQ_FLOW_DEV_INT_R;
+		core_init.pdev = (void *)pdev;
+		pEDev1 = ethsw_api_core_init(&core_init);
+
+		if (!pEDev1) {
+			pr_err("%s:%s:%d (Init Failed)\n",
+			       __FILE__, __func__, __LINE__);
+			return -1;
+		}
+		pEDev1->cport = GSW_3X_SOC_CPU_PORT;
+	}
 
 	if (device_id == LTQ_FLOW_DEV_EXT_AX3000_F24S) {
-
 		prvdata->cport = GSW_2X_SOC_CPU_PORT;
 		prvdata->gsw_dev = LTQ_FLOW_DEV_EXT_AX3000_F24S;
 		prvdata->parent_devid = LTQ_FLOW_DEV_INT_R;
+		grx550_misc_config(prvdata);
 
 		/* Init External Switch Core Layer */
 		core_init.sdev = LTQ_FLOW_DEV_EXT_AX3000_F24S;
 		core_init.gsw_base_addr = NULL;
-		core_init.pdev = (void *)prvdata;
+		core_init.pdev = (void *)pdev;
 		pEDevExt = ethsw_api_core_init(&core_init);
 
 		if (pEDevExt == NULL) {
@@ -1046,7 +1063,6 @@ int ltq_gsw_api_register(struct platform_device *pdev)
 			       __FILE__, __func__, __LINE__);
 			return -1;
 		}
-
 	}
 
 
@@ -1073,10 +1089,9 @@ int ltq_gsw_api_register(struct platform_device *pdev)
 
 	/* Init wrapper , if external switch attached to GSWIP-R*/
 	if ((device_id == LTQ_FLOW_DEV_EXT_AX3000_F24S) && pioctlctl
-						&& pEDevExt)
+	    && pEDevExt)
 		ioctl_wrapper_dev_add(pioctlctl, &pEDevExt->ops,
-				LTQ_FLOW_DEV_EXT_AX3000_F24S);
-
+				      LTQ_FLOW_DEV_EXT_AX3000_F24S);
 	return 0;
 }
 #endif /* CONFIG_SOC_GRX500 */

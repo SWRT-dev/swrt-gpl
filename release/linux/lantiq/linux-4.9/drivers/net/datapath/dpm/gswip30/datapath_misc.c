@@ -64,6 +64,7 @@ static void init_dma_desc_mask(void)
 	dma_tx_desc_mask1.field.mpe1 = 0x1;
 	dma_tx_desc_mask1.field.color = 0x3;
 	dma_tx_desc_mask1.field.ep = 0xF;
+	dma_tx_desc_mask1.field.resv1 = 0xF; /* mask for WMM */
 }
 
 static void init_dma_pmac_template(int portid, u32 flags)
@@ -227,7 +228,7 @@ static void init_dma_pmac_template(int portid, u32 flags)
 		dp_info->dma1_mask_template[TEMPL_NORMAL].field.dec = 0;
 		dp_info->dma1_mask_template[TEMPL_NORMAL].field.mpe2 = 0;
 
-		/* directpath with checksum support, used only for HW Litepath */
+		/* directpath with checksum support, used only for HW Litepath*/
 		dp_info->pmac_template[TEMPL_CHECKSUM].port_map_en = 0;
 		dp_info->pmac_template[TEMPL_CHECKSUM].sppid = portid;
 		dp_info->pmac_template[TEMPL_CHECKSUM].redirect = 0;
@@ -236,7 +237,7 @@ static void init_dma_pmac_template(int portid, u32 flags)
 		dp_info->pmac_template[TEMPL_CHECKSUM].port_map = 0xff;
 		dp_info->pmac_template[TEMPL_CHECKSUM].port_map2 = 0xff;
 		RESET_PMAC_PORTMAP(&dp_info->pmac_template[TEMPL_CHECKSUM],
-				 portid);
+				   portid);
 		dp_info->dma1_template[TEMPL_CHECKSUM].field.enc = 1;
 		dp_info->dma1_template[TEMPL_CHECKSUM].field.dec = 1;
 		dp_info->dma1_template[TEMPL_CHECKSUM].field.mpe2 = 1;
@@ -442,8 +443,13 @@ static int dp_platform_set(int inst, u32 flag)
 	}
 		if (!inst)
 			dp_sub_proc_install_30();
-	if (!inst)
+#if IS_ENABLED(CONFIG_INTEL_DATAPATH_MIB)
+	if (!inst) {
 		mib_init(0);
+		if (flag == DP_PLATFORM_DE_INIT)
+			dp_mib_exit();
+	}
+#endif
 	dp_get_gsw_parser_30(NULL, NULL, NULL, NULL);
 #if IS_ENABLED(CONFIG_INTEL_DATAPATH_CPUFREQ)
 	if (!inst) {
@@ -475,7 +481,7 @@ static int port_platform_set(int inst, u8 ep, struct dp_port_data *data,
 	port_info->vap_mask = 0xF;
 	idx = port_info->deq_port_base;
 	dma_chan =  port_info->dma_chan;
-	dma_ch_base = port_info->dma_ch_base;
+	dma_ch_base = port_info->dma_chan_tbl_idx;
 	for (i = 0; i < port_info->deq_port_num; i++) {
 		dp_deq_port_tbl[inst][i + idx].dp_port = ep;
 
@@ -693,7 +699,8 @@ int register_dp_cap_gswip30(int flag)
 	cap.info.dp_set_gsw_parser = dp_set_gsw_parser_30;
 	cap.info.dp_get_gsw_parser = dp_get_gsw_parser_30;
 	cap.info.dp_rx = dp_rx_30;
-	cap.info.dp_tx = dp_xmit_30;
+	cap.info.dp_tx = _dp_tx;
+
 #if IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP30_MIB)
 	cap.info.dp_get_port_vap_mib = dp_get_port_vap_mib_30;
 	cap.info.dp_clear_netif_mib = dp_clear_netif_mib_30;

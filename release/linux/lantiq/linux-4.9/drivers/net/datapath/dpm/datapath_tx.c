@@ -1,9 +1,23 @@
+// SPDX-License-Identifier: GPL-2.0
+/*****************************************************************************
+ * Copyright (c) 2020 - 2021, MaxLinear, Inc.
+ * Copyright 2016 - 2020 Intel Corporation
+ *
+ *****************************************************************************/
+
 #include <linux/kernel.h>
 #include <linux/types.h>
-
+#include <net/xfrm.h>
+#include <linux/log2.h>
+#include <net/datapath_api.h>
 #include "datapath.h"
 #include "datapath_tx.h"
 
+/**
+ * struct tx_entry - hook setup
+ * @cb: callback function
+ * @priv: data
+ */
 struct tx_entry {
 	tx_fn cb;
 	void *priv;
@@ -23,51 +37,70 @@ struct tx_stored {
 
 /**
  * struct tx_hook_list - datapath TX call chain
- * @fn: callback function, sorted by priority
- * @cnt: number of callback function
+ * @rcu_head: used by RCU
+ * @entry: TX entry for preprocess and process sorted by priority
+ * @cnt: number of entry in the list
  */
 struct tx_hook_list {
 	struct rcu_head rcu_head;
-	struct tx_entry chain[DP_TX_CNT * 2];
+	struct tx_entry entry[DP_TX_CNT * 2];
 	u8 cnt;
 };
 
+#define DP_TX_CTX_LOCK_T	spinlock_t
+#define DP_TX_CTX_LOCK		spin_lock_bh
+#define DP_TX_CTX_UNLOCK	spin_unlock_bh
+#define DP_TX_CTX_LOCK_INIT	spin_lock_init
 /**
  * struct dp_tx_context - datapath TX runtime
  * @lock: Lock to pretect concurrent update
- * @en: TX list for reader
- * @stored: TX lists for updater
+ * @hook_list: TX entry list for reader
+ * @stored: TX information from updater
  */
 struct dp_tx_context {
-	spinlock_t lock;
-	struct tx_hook_list __rcu *en;
+	DP_TX_CTX_LOCK_T lock;
+	struct tx_hook_list __rcu *hook_list;
 	struct tx_stored stored[DP_TX_CNT];
 };
 
 static struct dp_tx_context *dp_tx_ctx;
 
-void dp_tx_dbg(char *title, struct sk_buff *skb, s32 ep, s32 len, u32 flags,
-	       struct pmac_tx_hdr *pmac, struct dp_subif *rx_subif,
-	       int need_pmac, int gso, int checksum)
+#define POS(VAL) ilog2(DP_TX_##VAL)
+const char *dp_tx_flag_str[] = {
+	[0] 				= "NONE",
+	[POS(CAL_CHKSUM)] 	= "DP_TX_CAL_CHKSUM",
+	[POS(DSL_FCS)] 		= "DP_TX_DSL_FCS",
+	[POS(BYPASS_QOS)]	= "DP_TX_BYPASS_QOS",
+	[POS(BYPASS_FLOW)]  = "DP_TX_BYPASS_FLOW",
+	[POS(OAM)] 			= "DP_TX_OAM",
+	[POS(TO_DL_MPEFW)] 	= "DP_TX_TO_DL_MPEFW",
+	[POS(INSERT)] 		= "DP_TX_INSERT",
+	[POS(INSERT_POINT)] = "DP_TX_INSERT_POINT",
+	[POS(WITH_PMAC)] 	= "DP_TX_WITH_PMAC",
+};
+
+#define dp_tx_flags_str_len \
+	(sizeof (dp_tx_flag_str) / sizeof (dp_tx_flag_str[0]))
+
+void dp_tx_dbg(char *title, struct sk_buff *skb, struct dp_tx_common_ex *ex)
 {
+	struct inst_info *dp_info = get_dp_prop_info(0);
+
 #if defined(DP_SKB_HACK)
 	DP_DEBUG(DP_DBG_FLAG_DUMP_TX,
 		 "%s: dp_xmit:skb->data/len=0x%px/%d data_ptr=%x from port=%d and subitf=%d\n",
 		 title,
-		 skb->data, len,
+		 skb->data, skb->len,
 		 ((struct dma_tx_desc_2 *)&skb->DW2)->field.data_ptr,
-		 ep, rx_subif->subif);
+		 ex->port->port_id, ex->cmn.subif);
 #endif
 	if (dp_dbg_flag & DP_DBG_FLAG_DUMP_TX_DATA) {
-		if (pmac) {
-			dp_dump_raw_data((char *)pmac, PMAC_SIZE, "Tx Data");
-			dp_dump_raw_data(skb->data,
-					 skb->len,
+		if (dp_tx_get_pmac_len(ex)) {
+			dp_dump_raw_data(dp_tx_get_pmac(ex),
+					 dp_tx_get_pmac_len(ex),
 					 "Tx Data");
-		} else
-			dp_dump_raw_data(skb->data,
-					 skb->len,
-					 "Tx Data");
+		}
+		dp_dump_raw_data(skb->data, skb->len, "Tx Data");
 	}
 
 	DP_DEBUG(DP_DBG_FLAG_DUMP_TX_SUM,
@@ -96,37 +129,51 @@ void dp_tx_dbg(char *title, struct sk_buff *skb, s32 ep, s32 len, u32 flags,
 
 	if (dp_dbg_flag & DP_DBG_FLAG_DUMP_TX_DESCRIPTOR)
 #if defined(DP_SKB_HACK)
-		dp_port_prop[0].info.dump_tx_dma_desc(
-			(struct dma_tx_desc_0 *)&skb->DW0,
-			(struct dma_tx_desc_1 *)&skb->DW1,
-			(struct dma_tx_desc_2 *)&skb->DW2,
-			(struct dma_tx_desc_3 *)&skb->DW3);
+		dp_info->dump_tx_dma_desc((struct dma_tx_desc_0 *)&skb->DW0,
+					  (struct dma_tx_desc_1 *)&skb->DW1,
+					  (struct dma_tx_desc_2 *)&skb->DW2,
+					  (struct dma_tx_desc_3 *)&skb->DW3);
 #else
-	;
+		;
 #endif
 
-	DP_DEBUG(DP_DBG_FLAG_DUMP_TX, "flags=0x%x skb->len=%d\n",
-		 flags, skb->len);
+	DP_DEBUG(DP_DBG_FLAG_DUMP_TX, "skb->len=%d skb->priority=%d\n",
+		 skb->len, skb->priority);
+
+	if (dp_dbg_flag & DP_DBG_FLAG_DUMP_TX) {
+		int i;
+		pr_info("flags =");
+		if (ex->cmn.flags) {
+			/* valid flags start from index 1 */
+			for (i = 1; i < dp_tx_flags_str_len; i++) {
+				if (ex->cmn.flags & (1 << i))
+					pr_info(" %s |", dp_tx_flag_str[i]);
+			}
+		} else {
+			pr_info(" %s", dp_tx_flag_str[0]);
+		}
+		pr_info("\n");
+	}
+
 	DP_DEBUG(DP_DBG_FLAG_DUMP_TX,
 		 "skb->data=0x%px with pmac hdr size=%zu\n", skb->data,
 		 sizeof(struct pmac_tx_hdr));
 
-	if (need_pmac) { /*insert one pmac header */
-		DP_DEBUG(DP_DBG_FLAG_DUMP_TX,
-			 "need pmac\n");
+	if (dp_tx_get_pmac_len(ex)) { /*insert one pmac header */
+		DP_DEBUG(DP_DBG_FLAG_DUMP_TX, "need pmac\n");
 
-		if (pmac && (dp_dbg_flag & DP_DBG_FLAG_DUMP_TX_DESCRIPTOR))
-			dp_port_prop[0].info.dump_tx_pmac(pmac);
+		if (dp_dbg_flag & DP_DBG_FLAG_DUMP_TX_DESCRIPTOR)
+			dp_info->dump_tx_pmac(dp_tx_get_pmac(ex));
 	} else {
 		DP_DEBUG(DP_DBG_FLAG_DUMP_TX, "no pmac\n");
 	}
 
-	if (gso)
+	if (skb_is_gso(skb))
 		DP_DEBUG(DP_DBG_FLAG_DUMP_TX, "GSO pkt\n");
 	else
 		DP_DEBUG(DP_DBG_FLAG_DUMP_TX, "Non-GSO pkt\n");
 
-	if (checksum)
+	if (ex->cmn.flags & DP_TX_CAL_CHKSUM)
 		DP_DEBUG(DP_DBG_FLAG_DUMP_TX, "Need checksum offload\n");
 	else
 		DP_DEBUG(DP_DBG_FLAG_DUMP_TX, "No need checksum offload pkt\n");
@@ -134,102 +181,37 @@ void dp_tx_dbg(char *title, struct sk_buff *skb, s32 ep, s32 len, u32 flags,
 	DP_DEBUG(DP_DBG_FLAG_DUMP_TX, "\n\n");
 }
 
-int dp_tx_err(struct sk_buff *skb, struct dp_tx_common *cmn, int ret)
-{
-	switch (ret) {
-	case DP_XMIT_ERR_NOT_INIT:
-		printk_ratelimited("dp_xmit failed for dp no init yet\n");
-		break;
-
-	case DP_XMIT_ERR_IN_IRQ:
-		printk_ratelimited("dp_xmit not allowed in interrupt context\n");
-		break;
-
-	case DP_XMIT_ERR_NULL_SUBIF:
-		printk_ratelimited("dp_xmit failed for rx_subif null\n");
-		UP_STATS(get_dp_port_info(0, 0)->tx_err_drop);
-		break;
-
-	case DP_XMIT_ERR_PORT_TOO_BIG:
-		UP_STATS(get_dp_port_info(0, 0)->tx_err_drop);
-		printk_ratelimited("rx_subif->port_id >= max_ports");
-		break;
-
-	case DP_XMIT_ERR_NULL_SKB:
-		printk_ratelimited("skb NULL");
-		UP_STATS(get_dp_port_info(0, cmn->dpid)->tx_err_drop);
-		break;
-
-	case DP_XMIT_ERR_NULL_IF:
-		UP_STATS(cmn->mib->tx_pkt_dropped);
-		printk_ratelimited("rx_if NULL");
-		break;
-
-	case DP_XMIT_ERR_REALLOC_SKB:
-		pr_info_once("dp_create_new_skb failed\n");
-		break;
-
-	case DP_XMIT_ERR_EP_ZERO:
-		pr_err("Why ep zero in dp_xmit for %s\n",
-		       skb->dev ? skb->dev->name : "NULL");
-		break;
-
-	case DP_XMIT_ERR_GSO_NOHEADROOM:
-		pr_err("No enough skb headerroom(GSO). Need tune SKB buffer\n");
-		break;
-
-	case DP_XMIT_ERR_CSM_NO_SUPPORT:
-		printk_ratelimited("dp_xmit not support checksum\n");
-		break;
-
-	case DP_XMIT_PTP_ERR:
-		break;
-
-	default:
-		UP_STATS(cmn->mib->tx_pkt_dropped);
-		pr_info_once("Why come to here:%x\n",
-			     get_dp_port_info(0, cmn->dpid)->status);
-	}
-
-	if (skb)
-		dev_kfree_skb_any(skb);
-	return DP_FAILURE;
-}
-
 int dp_tx_update_list(void)
 {
 	struct dp_tx_context *ctx = dp_tx_ctx;
-	struct tx_hook_list *new_data;
-	struct tx_hook_list *old_data;
+	struct tx_hook_list *new_list;
+	struct tx_hook_list *old_list;
 	u8 cnt = 0;
 	u8 i;
 
-	/* update list for fast read */
-	new_data = kmalloc(sizeof(struct tx_hook_list), GFP_ATOMIC);
-	if (!new_data)
+	/* update stored tx info into fast list */
+	new_list = kzalloc(sizeof(*new_list), GFP_ATOMIC);
+	if (!new_list)
 		return -ENOMEM;
-	/* add spin lock to protect modules update TX list concurrently */
-	spin_lock(&ctx->lock);
 	for (i = 0; i < DP_TX_CNT; i++) {
 		const struct tx_stored *s = &ctx->stored[i];
 		bool en = s->preprocess_always_enabled || s->process.cb;
 
 		if (s->preprocess.cb && en) {
-			memcpy(&new_data->chain[cnt++], &s->preprocess,
+			memcpy(&new_list->entry[cnt++], &s->preprocess,
 			       sizeof(struct tx_entry));
 		}
 		if (s->process.cb) {
-			memcpy(&new_data->chain[cnt++], &s->process,
+			memcpy(&new_list->entry[cnt++], &s->process,
 			       sizeof(struct tx_entry));
 		}
 	}
-	new_data->cnt = cnt;
-	old_data = rcu_access_pointer(ctx->en);
-	rcu_assign_pointer(ctx->en, new_data);
-	spin_unlock(&ctx->lock);
+	new_list->cnt = cnt;
+	old_list = rcu_access_pointer(ctx->hook_list);
+	rcu_assign_pointer(ctx->hook_list, new_list);
 
-	if (old_data)
-		kfree_rcu(old_data, rcu_head);
+	if (old_list)
+		kfree_rcu(old_list, rcu_head);
 	return 0;
 }
 
@@ -261,15 +243,15 @@ int dp_tx_start(struct sk_buff *skb, struct dp_tx_common *cmn)
 {
 	int ret = DP_XMIT_ERR_NOT_INIT;
 	struct tx_hook_list *list;
-	u8 cnt;
 	u8 i;
 
 	/* dp_tx_start() could be called in either normal context or softirq */
 	rcu_read_lock();
-	list = rcu_dereference(dp_tx_ctx->en);
-	cnt = list->cnt;
-	for (i = 0; i < cnt; i++) {
-		const struct tx_entry *entry = &list->chain[i];
+	list = rcu_dereference(dp_tx_ctx->hook_list);
+	if (!list)
+		return ret;
+	for (i = 0; i < list->cnt; i++) {
+		const struct tx_entry *entry = &list->entry[i];
 
 		ret = entry->cb(skb, cmn, entry->priv);
 		if (ret != DP_TX_FN_CONTINUE)
@@ -279,22 +261,30 @@ int dp_tx_start(struct sk_buff *skb, struct dp_tx_common *cmn)
 	return ret;
 }
 
-int dp_tx_init(int inst)
+int dp_tx_ctx_init(int inst)
 {
 	if (inst)
 		return 0;
-	dp_tx_ctx = kzalloc(sizeof(struct dp_tx_context), GFP_ATOMIC);
+	dp_tx_ctx = devm_kzalloc(&g_dp_dev->dev, sizeof(*dp_tx_ctx),
+				 GFP_ATOMIC);
 	if (!dp_tx_ctx)
 		return -ENOMEM;
-	spin_lock_init(&dp_tx_ctx->lock);
+	DP_TX_CTX_LOCK_INIT(&dp_tx_ctx->lock);
 	return 0;
 }
 
 int dp_register_tx(enum DP_TX_PRIORITY priority, tx_fn fn, void *priv)
 {
+	int ret;
+
 	if (!dp_tx_ctx)
 		return -ENOMEM;
+	/* add spin lock to protect modules update TX list concurrently */
+	DP_TX_CTX_LOCK(&dp_tx_ctx->lock);
 	dp_tx_register_process(priority, fn, priv);
-	return dp_tx_update_list();
+	ret = dp_tx_update_list();
+	DP_TX_CTX_UNLOCK(&dp_tx_ctx->lock);
+
+	return ret;
 }
 EXPORT_SYMBOL(dp_register_tx);

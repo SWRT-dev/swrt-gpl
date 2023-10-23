@@ -59,6 +59,7 @@
 //#include <asm/delay.h> */
 #include <linux/delay.h>
 #include <linux/slab.h>
+#include <linux/of_mdio.h>
 
 #ifndef CONFIG_X86_INTEL_CE2700
 #include <net/switch_api/lantiq_gsw_api.h>
@@ -175,7 +176,9 @@ void gsw_w32(void *cdev, short offset, short shift, short size, u32 value);
 void *ethsw_api_core_init(ethsw_core_init_t *pinit);
 void gsw_corecleanup(void);
 int	gsw_pmicro_code_init(void *cdev);
+int	gsw_pmicro_code_init_f24s(void *cdev);
 int gsw_swapi_init(void);
+int gsw_global_pcerule_bitmap_alloc(void *cdev);
 
 #if defined(WIN_PC_MODE) && WIN_PC_MODE
 struct core_ops *gsw_get_swcore_ops(u32 devid);
@@ -194,6 +197,8 @@ void gsw_r32_raw(void *cdev, short offset, u32 *value);
 void gsw_w32_raw(void *cdev, short offset, u32 value);
 void gsw_ext_r32(void *cdev, short offset, short shift, short size, u32 *value);
 void gsw_ext_w32(void *cdev, short offset, short shift, short size, u32 value);
+int gsw_mdio_alloc(struct platform_device *pdev);
+void grx550_misc_config(ethsw_api_dev_t *gswdev);
 #endif
 
 static inline u32 gsw_field_r32(u32 rval, short shift, short size)
@@ -230,23 +235,15 @@ static inline void gsw_w32_raw(void *cdev, short offset, u32 value)
 
 static inline ethsw_api_dev_t *GSW_PDATA_GET(void *pdev)
 {
-	struct core_ops *gsw_ops;
 	ethsw_api_dev_t *pdata = NULL;
 
 	if (pdev == NULL) {
 		pr_err("%s:%s:%d", __FILE__, __func__, __LINE__);
-		return pdata;
+		return NULL;
 	}
 
 #ifdef __KERNEL__
-	gsw_ops = (struct core_ops *)pdev;
-
-	if (gsw_ops == NULL) {
-		pr_err("%s:%s:%d", __FILE__, __func__, __LINE__);
-		return pdata;
-	}
-
-	pdata = container_of(gsw_ops, ethsw_api_dev_t, ops);
+	pdata = container_of((struct core_ops *)pdev, ethsw_api_dev_t, ops);
 #else
 	pdata = (ethsw_api_dev_t *)pdev;
 #endif

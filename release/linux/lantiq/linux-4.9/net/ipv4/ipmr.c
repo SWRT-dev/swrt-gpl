@@ -994,7 +994,7 @@ static int ipmr_cache_report(struct mr_table *mrt,
 
 #if IS_ENABLED(CONFIG_MCAST_HELPER)
 		/* Send five tuple info to mcast helper */
-		if (ip_hdr(pkt)->protocol == 17)
+		if (ip_hdr(pkt)->protocol == IPPROTO_UDP)
 			if (five_tuple_info_ptr != NULL)
 				five_tuple_info_ptr(pkt, mrt->vif_table[vifi].dev->name);
 #endif

@@ -1,0 +1,78 @@
+/******************************************************************************
+
+                         Copyright (c) 2012, 2014, 2015
+                            Lantiq Deutschland GmbH
+
+  For licensing information, see the file 'LICENSE' in the root folder of
+  this software module.
+
+  Author: Mohammad Firdaus B Alias Thani
+  Module: LTQ Hardware Accelerated Crypto Engine
+  Version: 1.2.15
+
+******************************************************************************/
+
+1. Introduction
+
+The cryptographic engine supports these alogorithms:
+	- AES 	(CBC, ECB, OFB, CTR)
+	- DES 	(CBC, ECB, OFB)
+	- 3DES	(CBC, ECB, CTR)
+	- SHA1, SHA224, SHA256, SHA512
+	- MD5
+	- HMAC (SHA1, SHA224, SHA256, SHA512, MD5)
+	- AUTHENC (HASH + CRYPTO transforms)
+
+	To get a full list of the supported algorithms, please take a look at ltq_crypto_core.c 
+	ltq_crypto_alg[] array. 
+
+2. Build Process
+	The LTQ crypto engine can be build as a loadable module or as a built-in module.
+
+	To build it as a built-in module:
+	i) Clone the crypto repo
+	ii) Create a softlink in the crypto folder 
+		i.e ln -s <path to EIP97_driver folder> driver/crypto/lantiq_eip97/Sources
+	iii) Select in kernel_menuconfig
+		Cryptographic API -> Hardware Crypto Devices -> Support for LTQ Crypto drivers
+	iv) make
+
+	As a loadable module, the module needed is ltq_crypto_core.ko
+
+3. Driver functionality tests
+	A simple functional test of the driver makes use of the Linux cryptographic test manager. 
+	Please take a look at ltq_module_test.c which provides the list of test cases supported.
+	To build the test module:
+    i) Clone the crypto repo
+    ii) Create a softlink in the crypto folder
+        i.e ln -s <path to EIP97_driver folder> lantiq_crypto
+    iii) Select in kernel_menuconfig
+        Cryptographic API -> Hardware Crypto Devices -> Support for LTQ Crypto drivers
+		Cryptographic API -> Hardware Crypto Devices -> Support for LTQ Crypto drivers -> Lantiq Crypto Test
+    iv) make
+	v) Copy the ltq_module_test.ko into the root-filesystem directory and re-build the kernel & RootFS
+	vi) In the DUT console, insmod ltq_module_test.ko to run the test
+
+4. IPSec Fastpath Drivers
+	IPSec Fastpath drivers are an extension of the base EIP97 glue layer drivers mentiioned above. 
+	The main driver can be found in ltq_ipsec_api.c. This contains the APIs to create Token & SA
+	and the ipsec_enc and ipsec_dec functions to encrypt/decrypt ipsec packet data respectively.
+	These APIs are available only when LTQ_PPA_MPE_IP97 is enabled, i.e PPA IPSec fastpath is enabled.
+	Exported APIs are:
+		1. int ltq_get_ipsec_token(struct ltq_crypto_ipsec_params *ipsec_params)
+			- Create security assosciation and token data
+		2. int ltq_get_length_params(u32 spi, unsigned int *ivsize, unsigned int *ICV_length,
+		               				unsigned int *blksize)
+			- Get ivsize, ICV length and padding blocksize for the tunnel SA
+		3. int ltq_ipsec_enc(u32 spi, u8 *in, u8 *out, void (*callback)(struct ltq_ipsec_complete *done),
+		            unsigned int buflen, void *ip_data)
+		4. int ltq_ipsec_dec(u32 spi, u8 *in, u8 *out, void (*callback)(struct ltq_ipsec_complete *done),
+		            unsigned int buflen, void *ip_data)
+			- API to encrypt/decrypt IPSec packet 
+
+			
+	There are two test applications which can be used as a base reference to use the exported APIs
+		1. ltq_ipsec_api_test.c: Generate the token & SA API test
+		2. ltq_submit_one.c: Functionality test for the IPSec encrypt/decrypt APIs
+
+	

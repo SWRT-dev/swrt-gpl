@@ -38,8 +38,8 @@ GSW_return_t GSW_Debug_RMON_Port_Get(void *cdev, GSW_Debug_RMON_Port_cnt_t *parm
 		return GSW_statusErr;
 	}
 
-	Portmode = parm->ePortType;
-	PortId = parm->nPortId;
+	Portmode = (u32)parm->ePortType;
+	PortId = (u32)parm->nPortId;
 	/*Clear the structure before using*/
 	memset(parm, 0, sizeof(GSW_Debug_RMON_Port_cnt_t));
 
@@ -349,6 +349,12 @@ GSW_return_t GSW_Debug_GetCtpStatistics(void *cdev, GSW_debug_t *parm)
 		return GSW_statusErr;
 	}
 
+	ctpidx = parm->nTableIndex;
+	if (ctpidx >= ARRAY_SIZE(gswdev->ctpportconfig_idx)) {
+		printk("ERROR: Ctp Port Index out of bounds!\n");
+		return GSW_statusErr;
+	}
+
 	memset(&Assign_get, 0x00, sizeof(Assign_get));
 	memset(&CTP_get, 0x00, sizeof(CTP_get));
 	memset(&BP_get, 0x00, sizeof(BP_get));
@@ -356,9 +362,8 @@ GSW_return_t GSW_Debug_GetCtpStatistics(void *cdev, GSW_debug_t *parm)
 	memset(&Pmac_Count, 0x00, sizeof(Pmac_Count));
 	memset(&Rmon_get, 0x00, sizeof(Rmon_get));
 
-
 	printk("\n");
-	ctpidx = parm->nTableIndex;
+
 	lp = gswdev->ctpportconfig_idx[ctpidx].AssociatedLogicalPort;
 
 	if (!gswdev->ctpportconfig_idx[ctpidx].IndexInUse) {
@@ -709,6 +714,10 @@ GSW_return_t GSW_Debug_CtpTableStatus(void *cdev, GSW_debug_t *parm)
 
 		return GSW_statusOk;
 	}
+	if (parm->nTableIndex >= ARRAY_SIZE(gswdev->ctpportconfig_idx)) {
+		pr_err("%s:%s:%d nTableIndex out of bounds!", __FILE__, __func__, __LINE__);
+		return GSW_statusErr;
+	}
 
 	if (parm->nForceSet) {
 		gswdev->ctpportconfig_idx[parm->nTableIndex].IndexInUse = 1;
@@ -770,6 +779,10 @@ GSW_return_t GSW_Debug_BrgPortTableStatus(void *cdev, GSW_debug_t *parm)
 
 		return GSW_statusOk;
 	}
+	if (parm->nTableIndex >= ARRAY_SIZE(gswdev->brdgeportconfig_idx)) {
+		pr_err("%s:%s:%d nTableIndex out of bounds!", __FILE__, __func__, __LINE__);
+		return GSW_statusErr;
+	}
 
 	if (parm->nForceSet) {
 		gswdev->brdgeportconfig_idx[parm->nTableIndex].IndexInUse = 1;
@@ -826,11 +839,15 @@ GSW_return_t GSW_Debug_BrgTableStatus(void *cdev, GSW_debug_t *parm)
 		pr_err("%s:%s:%d", __FILE__, __func__, __LINE__);
 		return GSW_statusErr;
 	}
+	if (parm->nTableIndex >= ARRAY_SIZE(gswdev->brdgeconfig_idx)) {
+		pr_err("%s:%s:%d nTableIndex out of bounds!", __FILE__, __func__, __LINE__);
+		return GSW_statusErr;
+	}
 
 	printk("\n");
 
 	if (parm->nCheckIndexInUse) {
-		for (j = 0; j < gswdev->num_of_bridge_port; j++) {
+		for (j = 0; j < gswdev->num_of_bridge; j++) {
 			if (gswdev->brdgeconfig_idx[j].IndexInUse) {
 				printk("Bridge  %d	= InUse.\n", j);
 			}
@@ -883,6 +900,10 @@ GSW_return_t GSW_Debug_ExvlanTableStatus(void *cdev, GSW_debug_t *parm)
 
 		return GSW_statusOk;
 	}
+	if (parm->nTableIndex >= ARRAY_SIZE(gswdev->extendvlan_idx.vlan_idx)) {
+		pr_err("%s:%s:%d nTableIndex out of bounds!", __FILE__, __func__, __LINE__);
+		return GSW_statusErr;
+	}
 
 	if (parm->nForceSet) {
 		gswdev->extendvlan_idx.vlan_idx[parm->nTableIndex].IndexInUse = 1;
@@ -926,6 +947,10 @@ GSW_return_t GSW_Debug_VlanFilterTableStatus(void *cdev, GSW_debug_t *parm)
 
 		return GSW_statusOk;
 	}
+	if (parm->nTableIndex >= ARRAY_SIZE(gswdev->vlanfilter_idx.filter_idx)) {
+		pr_err("%s:%s:%d nTableIndex out of bounds!", __FILE__, __func__, __LINE__);
+		return GSW_statusErr;
+	}
 
 	if (parm->nForceSet) {
 		gswdev->vlanfilter_idx.filter_idx[parm->nTableIndex].IndexInUse = 1;
@@ -955,6 +980,10 @@ GSW_return_t GSW_Debug_MeterTableStatus(void *cdev, GSW_debug_t *parm)
 
 	if (gswdev == NULL) {
 		pr_err("%s:%s:%d", __FILE__, __func__, __LINE__);
+		return GSW_statusErr;
+	}
+	if (parm->nTableIndex >= ARRAY_SIZE(gswdev->meter_idx)) {
+		pr_err("%s:%s:%d nTableIndex out of bounds!", __FILE__, __func__, __LINE__);
 		return GSW_statusErr;
 	}
 
@@ -989,6 +1018,10 @@ GSW_return_t GSW_Debug_Dscp2PcpTableStatus(void *cdev, GSW_debug_t *parm)
 
 	if (gswdev == NULL) {
 		pr_err("%s:%s:%d", __FILE__, __func__, __LINE__);
+		return GSW_statusErr;
+	}
+	if (parm->nTableIndex >= ARRAY_SIZE(gswdev->dscp2pcp_idx)) { 
+		pr_err("%s:%s:%d nTableIndex out of bounds!", __FILE__, __func__, __LINE__);
 		return GSW_statusErr;
 	}
 
@@ -1026,6 +1059,11 @@ GSW_return_t GSW_Debug_PmapperTableStatus(void *cdev, GSW_debug_t *parm)
 		}
 
 		return GSW_statusOk;
+	}
+
+	if (parm->nTableIndex >= ARRAY_SIZE(gswdev->pmapper_idx)) {
+		pr_err("%s:%s:%d nTableIndex out of bounds!", __FILE__, __func__, __LINE__);
+		return GSW_statusErr;
 	}
 
 	if (parm->nForceSet) {
@@ -1189,7 +1227,7 @@ GSW_return_t GSW_MacsecCfg(void *cdev, GSW_MAC_cfg_t *macsec_cfg)
 	return GSW_statusOk;
 }
 
-GSW_return_t gsw_debug_tflow_tablestatus(void *cdev, GSW_debug_t *parm)
+GSW_return_t GSW_Debug_PceRuleTableStatus(void *cdev, GSW_debug_t *parm)
 {
 	ethsw_api_dev_t *gswdev = GSW_PDATA_GET(cdev);
 	u32 i, blockid = 0;
@@ -1205,28 +1243,32 @@ GSW_return_t gsw_debug_tflow_tablestatus(void *cdev, GSW_debug_t *parm)
 		for (i = 0; i < gswdev->tftblsize; i++) {
 			if (gswdev->tflow_idx.flow_idx[i].indexinuse) {
 				blockid = gswdev->tflow_idx.flow_idx[i].tflowblockid;
-				pr_info("TFLOW Table Index  %d = InUse, Associated to TFLOW Block Id %d.\n",
+				pr_info("TFLOW Table Index %u = InUse, Associated to TFLOW Block Id %u.\n",
 					i, blockid);
 			}
 		}
+		pr_info("Total used entries = %u\n", gswdev->tflow_idx.usedentry);
 
 		return GSW_statusOk;
+	}
+	if (parm->nTableIndex >= ARRAY_SIZE(gswdev->tflow_idx.flow_idx)) {
+		pr_err("%s:%s:%d nTableIndex out of bounds!", __FILE__, __func__, __LINE__);
+		return GSW_statusErr;
 	}
 
 	if (parm->nForceSet) {
 		gswdev->tflow_idx.flow_idx[parm->nTableIndex].indexinuse = 1;
 		gswdev->tflow_idx.flow_idx[parm->nTableIndex].tflowblockid = parm->nblockid;
 		gswdev->tflow_idx.usedentry++;
-		pr_info("TFLOW Table Index  %d is Forced to InUSe\n",
+		pr_info("TFLOW Table Index %u is Forced to InUse\n",
 			parm->nTableIndex);
 	} else {
-		pr_info("TFLOW  Table Index %d:\n\n",
-			parm->nTableIndex);
-		pr_info("BlockId						= %d\n",
+		pr_info("TFLOW  Table Index %u:\n\n", parm->nTableIndex);
+		pr_info("BlockId          = %u\n",
 			gswdev->tflow_idx.flow_idx[parm->nTableIndex].tflowblockid);
-		pr_info("IndexInUse					= %d\n",
+		pr_info("IndexInUse       = %u\n",
 			gswdev->tflow_idx.flow_idx[parm->nTableIndex].indexinuse);
-		pr_info("IndexInUsageCnt				= %d\n",
+		pr_info("IndexInUsageCnt  = %u\n",
 			gswdev->tflow_idx.flow_idx[parm->nTableIndex].indexinusagecnt);
 	}
 

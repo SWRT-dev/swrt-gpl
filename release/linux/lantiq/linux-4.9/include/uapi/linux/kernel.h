@@ -3,6 +3,7 @@
 
 #if defined(__KERNEL__) || defined( __GLIBC__)
 #include <linux/sysinfo.h>
+#include <linux/const.h>
 #endif
 
 /*

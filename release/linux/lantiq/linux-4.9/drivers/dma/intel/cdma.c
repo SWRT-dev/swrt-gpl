@@ -468,6 +468,9 @@ int dma_device_release(_dma_device_info *dev)
 {
 	int i;
 
+	if (unlikely(!dev))
+		return -EINVAL;
+
 	for (i = 0; i < dma_max_ports; i++) {
 		if (strcmp(dma_devs[i].device_name, dev->device_name) == 0) {
 			if (dev->port_reserved) {
@@ -596,7 +599,7 @@ int dma_device_register(_dma_device_info *dev)
 				ltq_dma_w32(pch->desc_len, DMA_CDLEN);
 
 			ltq_dma_w32_mask(DMA_CCTRL_ON, 0, DMA_CCTRL);
-			udelay(20);
+			usleep_range(20, 50);
 			ltq_dma_w32_mask(0, DMA_CCTRL_RST, DMA_CCTRL);
 			while ((ltq_dma_r32(DMA_CCTRL) & DMA_CCTRL_RST))
 				;
@@ -693,7 +696,7 @@ int dma_device_register(_dma_device_info *dev)
 				ltq_dma_w32(((pch->desc_len)), DMA_CDLEN);
 
 			ltq_dma_w32_mask(DMA_CCTRL_ON, 0, DMA_CCTRL);
-			udelay(20);
+			usleep_range(20, 50);
 			ltq_dma_w32_mask(0, DMA_CCTRL_RST, DMA_CCTRL);
 			while ((ltq_dma_r32(DMA_CCTRL) & DMA_CCTRL_RST))
 				;
@@ -751,8 +754,12 @@ int dma_device_unregister(_dma_device_info *dev)
 	_dma_channel_info *pch;
 	struct rx_desc *rx_desc_p;
 	struct tx_desc *tx_desc_p;
-	int port_no = dev->port_num;
+	int port_no;
 
+	if (unlikely(!dev))
+		return -EINVAL;
+
+	port_no = dev->port_num;
 	if (port_no < 0 || port_no > dma_max_ports)
 		pr_err("%s: Wrong port number(%d)!!!\n", __func__, port_no);
 	for (i = 0; i < dev->max_tx_chan_num; i++) {
@@ -895,10 +902,12 @@ int dma_device_desc_setup(_dma_device_info *dma_dev, char *buf, size_t len)
 {
 	int byte_offset = 0;
 	struct rx_desc *rx_desc_p;
+	_dma_channel_info *pch;
 
-	_dma_channel_info *pch =
-		dma_dev->rx_chan[dma_dev->current_rx_chan];
+	if (unlikely(!dma_dev || !buf))
+		return -EINVAL;
 
+	pch = dma_dev->rx_chan[dma_dev->current_rx_chan];
 	rx_desc_p = (struct rx_desc *)pch->desc_base + pch->curr_desc;
 	if (!(rx_desc_p->status.field.OWN == CPU_OWN)) {
 		pr_err("%s: Err!!!(Already setup the descriptor)\n", __func__);
@@ -941,9 +950,12 @@ EXPORT_SYMBOL(dma_device_desc_setup);
 void poll_dma_ownership_bit(_dma_device_info *dma_dev)
 {
 	struct rx_desc *rx_desc_p;
+	_dma_channel_info *pch;
 
-	_dma_channel_info *pch =
-		dma_dev->rx_chan[dma_dev->current_rx_chan];
+	if (unlikely(!dma_dev))
+		return;
+
+	pch = dma_dev->rx_chan[dma_dev->current_rx_chan];
 	rx_desc_p = (struct rx_desc *)pch->desc_base + pch->curr_desc;
 
 	while (rx_desc_p->status.field.OWN || !(rx_desc_p->status.field.C))
@@ -986,9 +998,12 @@ int dma_device_read(struct dma_device_info *dma_dev, unsigned char **dataptr,
 	int len, byte_offset = 0;
 	void *p = NULL;
 	struct rx_desc *rx_desc_p;
-	_dma_channel_info *pch =
-		dma_dev->rx_chan[dma_dev->current_rx_chan];
+	_dma_channel_info *pch;
 
+	if (unlikely(!dma_dev || !dataptr))
+		return -EINVAL;
+
+	pch = dma_dev->rx_chan[dma_dev->current_rx_chan];
 	spin_lock_irqsave(&pch->irq_lock, sys_flag);
 	/* Get the rx data first */
 	rx_desc_p = (struct rx_desc *)pch->desc_base + pch->curr_desc;
@@ -1097,6 +1112,9 @@ int dma_device_write(struct dma_device_info *dma_dev, unsigned char *dataptr,
 	_dma_channel_info *pch;
 	int cn, byte_offset, prev_ch;
 	struct tx_desc *tx_desc_p;
+
+	if (unlikely(!dma_dev || !dataptr))
+		return -EINVAL;
 
 	pch = dma_dev->tx_chan[dma_dev->current_tx_chan];
 	cn = CN_GET(pch);
@@ -1442,7 +1460,8 @@ static int map_dma_chan(struct ifx_dma_chan_map *map, struct dma_ctrl *pctrl)
 	unsigned int reg_val;
 
 	for (i = 0; i < dma_max_ports; i++)
-		strcpy(dma_devs[i].device_name, dma_device_name[i]);
+		strncpy(dma_devs[i].device_name,
+			dma_device_name[i], DMA_DEV_NAME_LEN - 1);
 
 	for (i = 0; i < pctrl->chans; i++) {
 		if (dma_chan_no_exist(i))
@@ -1599,22 +1618,22 @@ static int dma_core_proc_init(void)
 	if (!g_dma_dir)
 		return -ENOMEM;
 
-	entry = proc_create("register", 0644,
+	entry = proc_create("register", 0400,
 			    g_dma_dir, &dma_reg_proc_fops);
 	if (!entry)
 		goto err1;
 
-	entry = proc_create("port", 0644,
+	entry = proc_create("port", 0400,
 			    g_dma_dir, &dma_gen_port_proc_fops);
 	if (!entry)
 		goto err2;
 
-	entry = proc_create("chan_weight", 0644,
+	entry = proc_create("chan_weight", 0400,
 			    g_dma_dir, &dma_weight_proc_fops);
 	if (!entry)
 		goto err3;
 
-	entry = proc_create("desc_list", 0644,
+	entry = proc_create("desc_list", 0400,
 			    g_dma_dir, &dma_desc_proc_fops);
 	if (!entry)
 		goto err4;
@@ -1872,8 +1891,8 @@ static int ltq_dma_init(struct platform_device *pdev)
 		/** init spin lock */
 		spin_lock_init(&dma_chan[i].irq_lock);
 		vaddr = dmam_alloc_coherent(&pdev->dev,
-					   dma_desc_num * sizeof(u64),
-					   &phys_addr, GFP_DMA);
+					    dma_desc_num * sizeof(u64),
+					    &phys_addr, GFP_DMA);
 		if (!vaddr)
 			return -ENOMEM;
 		dev_dbg(pctrl->dev, "DMA0 chan %d desc base 0x%08x phys base 0x%08x\n",
@@ -1925,4 +1944,4 @@ static int __init dma_init(void)
 {
 	return platform_driver_register(&dma_driver);
 }
-postcore_initcall(dma_init);
+arch_initcall(dma_init);

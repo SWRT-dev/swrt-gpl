@@ -30,6 +30,7 @@
 /* access to the ebu needs to be locked between different drivers */
 DEFINE_SPINLOCK(ebu_lock);
 EXPORT_SYMBOL_GPL(ebu_lock);
+static __initdata const void *dtb;
 
 /*
  * this struct is filled by the soc specific detection code and holds
@@ -142,23 +143,24 @@ static void free_init_pages_eva_xrx500(void *begin, void *end)
 			__pa_symbol((unsigned long *)end));
 }
 
-static void plat_early_init_devtree(void)
+void __init *plat_get_fdt(void)
 {
-	void *dtb;
-
 	/*
 	 * Load the builtin devicetree. This causes the chosen node to be
 	 * parsed resulting in our memory appearing
 	 */
-	if (fw_passed_dtb) /* used by CONFIG_MIPS_APPENDED_RAW_DTB as well */
-		dtb = (void *)fw_passed_dtb;
-	else if (__dtb_start != __dtb_end)
+	if (fw_passed_dtb) { /* used by CONFIG_MIPS_APPENDED_RAW_DTB as well */
+		if (fw_arg0 == -2) {/* uboot pass dtb to kernel */
+			dtb = (void *)LEGACY_TO_VADDR(fw_arg1);
+		} else /* CONFIG_MIPS_APPENDED_RAW_DTB case */
+			dtb = (void *)fw_passed_dtb;
+	} else if (__dtb_start != __dtb_end) {
 		dtb = (void *)__dtb_start;
-	else
+	} else {
 		panic("no dtb found");
+	}
 
-	if (dtb)
-		__dt_setup_arch(dtb);
+	return (void *)dtb;
 }
 
 void __init plat_mem_setup(void)
@@ -184,7 +186,9 @@ void __init plat_mem_setup(void)
 
 	set_io_port_base((unsigned long)KSEG1);
 
-	plat_early_init_devtree();
+	if (dtb)
+		__dt_setup_arch((void *)dtb);
+
 	plat_setup_iocoherency();
 	free_init_pages_eva = eva ? free_init_pages_eva_xrx500 : NULL;
 }
@@ -250,6 +254,8 @@ void __init prom_init(void)
 	pr_info("SoC: %s\n", get_system_type());
 
 	prom_init_cmdline();
+	plat_get_fdt();
+	BUG_ON(!dtb);
 
 	mips_cpc_probe();
 
@@ -280,17 +286,23 @@ static int __init chiptop_default_setup(void)
 {
 	unsigned int val = 0;
 	struct regmap *chiptop_base;
+	struct device_node *np;
 
-	chiptop_base =
-		syscon_regmap_lookup_by_compatible("lantiq,chiptop-grx500");
-	if (IS_ERR(chiptop_base)) {
-		pr_err("%s: failed to find chiptop regmap!\n", __func__);
-		return -EINVAL;
+	np = of_find_compatible_node(NULL, NULL, "lantiq,grx500");
+	if (np) {
+		chiptop_base =
+		    syscon_regmap_lookup_by_compatible("lantiq,chiptop-grx500");
+		if (IS_ERR(chiptop_base)) {
+			pr_err("%s: failed to find chiptop regmap!\n",
+			       __func__);
+			return -EINVAL;
+		}
+
+		regmap_read(chiptop_base, CHIPTOP_IFMUX_CFG, &val);
+		val &= ~SPI_DEBUG_EN;
+		regmap_write(chiptop_base, CHIPTOP_IFMUX_CFG, val);
 	}
 
-	regmap_read(chiptop_base, CHIPTOP_IFMUX_CFG, &val);
-	val &= ~SPI_DEBUG_EN;
-	regmap_write(chiptop_base, CHIPTOP_IFMUX_CFG, val);
 	return 0;
 }
 postcore_initcall(chiptop_default_setup);

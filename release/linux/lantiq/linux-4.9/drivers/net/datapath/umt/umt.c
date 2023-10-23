@@ -274,21 +274,21 @@ umt_check_cfg(struct umt_priv *priv, struct umt_port *umt_p,
 
 	/* check UMT RX CAP */
 	if (!(BIT(res->rx_src) & umt_p->rx_src_cap)) {
-		dev_dbg(dev, "UMT RX src: %u not supported!\n", res->rx_src);
+		dev_err(dev, "UMT RX src: %u not supported!\n", res->rx_src);
 		return -EINVAL;
 	}
 
 	/* check UMT DMA CAP */
 	if (res->rx_src == UMT_RX_SRC_DMA) {
 		if (res->dma_ch_num > umt_p->dma_chn_cap) {
-			dev_dbg(dev, "UMT RX DMA CHNUM: %u not supported on pid: %u\n",
+			dev_err(dev, "UMT RX DMA CHNUM: %u not supported on pid: %u\n",
 				res->dma_ch_num, umt_p->id);
 			return -EINVAL;
 		}
 
 		/* check UMT DMA Ctrl/channel CAP */
 		if (umt_dma_check(priv, res->dma_id)) {
-			dev_dbg(dev, "UMT RX DMA: %u not supported on pid: %u\n",
+			dev_err(dev, "UMT RX DMA: %u not supported on pid: %u\n",
 				res->dma_id, umt_p->id);
 			return -EINVAL;
 		}
@@ -296,7 +296,7 @@ umt_check_cfg(struct umt_priv *priv, struct umt_port *umt_p,
 
 	/* check UMT feature CAP */
 	if ((ctl->fflag & umt_p->feature_cap) != ctl->fflag) {
-		dev_dbg(dev,
+		dev_err(dev,
 			"UMT feature not supported: req:0x%lx, hwcap:0x%lx\n",
 			ctl->fflag, umt_p->feature_cap);
 		return -EINVAL;
@@ -425,11 +425,6 @@ static int umt_set_rxmux(struct umt_priv *priv, struct umt_port *umt_p)
 		} else {
 			umt_reg_update_bit(priv, UMT_MODE, P0_CNT_MODE_OFF, 1);
 			for (i = 0; i < res->dma_ch_num; i++) {
-				if (rxmux > max_mux) {
-					dev_err(priv->dev, "UMT Port %u invalid rxmux: %d\n",
-						id, rxmux);
-					return -EINVAL;
-				}
 				umt_reg_write_mask(priv, UMT_RX0_MUX,
 						   to_mask(UMT_MUX_WIDTH),
 						   umt_rx0_mux_off(priv, i),
@@ -637,7 +632,8 @@ static int umt_port_release(struct device *dev, unsigned int id)
  * API to request and allocate UMT port
  * input:
  * @dev: umt device
- * @umt: UMT port info. if id is 0xff means dynamic allocate port
+ * @umt: UMT port info.
+ * UMT always dynamic allocate port
  * output:
  * ret: Fail: < 0,  Success: 0
  */
@@ -645,8 +641,8 @@ static int umt_port_request(struct device *dev, struct dp_umt_port *port)
 {
 	struct umt_port *umt_p;
 	struct umt_priv *priv;
-	struct umt_port_ctl *ctl = &port->ctl;
-	struct umt_port_res *res = &port->res;
+	struct umt_port_ctl *ctl;
+	struct umt_port_res *res;
 	int id;
 
 	if (!port || !dev) {
@@ -654,6 +650,9 @@ static int umt_port_request(struct device *dev, struct dp_umt_port *port)
 		return -EINVAL;
 	}
 	priv = dev_get_drvdata(dev);
+
+	ctl = &port->ctl;
+	res = &port->res;
 
 	id = umt_find_pid(priv, port);
 	if (id < 0) {
@@ -805,12 +804,12 @@ static int umt_debugfs_init(struct umt_priv *priv)
 	if (!priv->debugfs)
 		return -ENOMEM;
 
-	file = debugfs_create_file("umt_info", 0644, priv->debugfs,
+	file = debugfs_create_file("umt_info", 0400, priv->debugfs,
 				   priv, &umt_port_fops);
 	if (!file)
 		goto err;
 
-	file = debugfs_create_file("umt_reg", 0644, priv->debugfs,
+	file = debugfs_create_file("umt_reg", 0400, priv->debugfs,
 				   priv, &umt_reg_info_fops);
 	if (!file)
 		goto err;
@@ -857,7 +856,8 @@ static const struct umt_soc_data prx300_umt_data = {
 	.ver          = PRX300_SOC,
 	.umt_port_num = 3,
 	.rx_src_cap   = BIT(UMT_RX_SRC_DMA),
-	.feature_cap  = UMT_SND_DIS | UMT_CLEAR_CNT,
+	.feature_cap  = UMT_SND_DIS | UMT_CLEAR_CNT
+			| UMT_NOT_SND_ZERO_CNT | UMT_SND_RX_CNT_ONLY,
 	.dq_base      = 4,
 };
 

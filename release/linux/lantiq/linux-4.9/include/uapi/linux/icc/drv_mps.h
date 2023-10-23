@@ -147,7 +147,8 @@ void mps_bufman_register (void *
                                     (*malloc) (size_t size,
                                                int32_t priority),
                                     void (*free) (const void * ptr));
-
+void mps_enable_irq(void);
+void mps_disable_irq(void);
 extern void cache_inv (ulong addr, uint32_t len);
 extern void cache_wb_inv (ulong addr, uint32_t len);
 #endif /*__KERNEL__*/

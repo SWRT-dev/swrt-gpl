@@ -42,6 +42,7 @@
 /* SoC compatible */
 #define COMP_GRX500		"lantiq,grx500"
 #define COMP_PRX300		"intel,prx300"
+#define COMP_PRX300_BOOTCORE	"intel,prx300-bootcore"
 
 static inline int ltq_is_grx500(void)
 {

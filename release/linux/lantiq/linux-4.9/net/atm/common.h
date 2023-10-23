@@ -9,7 +9,6 @@
 #include <linux/net.h>
 #include <linux/poll.h> /* for poll_table */
 
-
 int vcc_create(struct net *net, struct socket *sock, int protocol, int family, int kern);
 int vcc_release(struct socket *sock);
 int vcc_connect(struct socket *sock, int itf, short vpi, int vci);
@@ -55,10 +54,6 @@ void atm_dev_release_vccs(struct atm_dev *dev);
 int push_oam(struct atm_vcc *atmvcc, void *cell);
 #endif
 
-#if IS_ENABLED(CONFIG_VRX318_DATAPATH) || IS_ENABLED(CONFIG_VRX518_TC) \
-	|| IS_ENABLED(CONFIG_LTQ_PPA_A1)
 extern void (*atm_hook_mpoa_setup)(struct atm_vcc *, int, int, struct net_device *);
-#endif
-
 
 #endif

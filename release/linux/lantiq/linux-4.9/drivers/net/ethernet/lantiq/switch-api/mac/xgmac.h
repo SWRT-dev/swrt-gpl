@@ -111,14 +111,17 @@
 #define MAC_SYS_TIME_SEC_UPD		0x0d10
 #define MAC_SYS_TIME_NSEC_UPD		0x0d14
 #define MAC_TSTAMP_ADDNDR		0x0d18
+#define MAC_SYS_TIME_HWS		0x0d1c
 #define MAC_TSTAMP_STSR			0x0d20
+#define MAC_RX_PCH_CRC_CNT		0x0d2c
 #define MAC_TXTSTAMP_NSECR		0x0d30
 #define MAC_TXTSTAMP_SECR		0x0d34
 #define MAC_TXTSTAMP_STS		0x0d38
 #define MAC_AUX_CTRL			0x0d40
 #define MAC_AUX_NSEC			0x0d48
 #define MAC_AUX_SEC			0x0d4c
-#define MAC_RX_PCH_CRC_CNT		0x0d2c
+#define MAC_TSTAMP_IG_CORR_NS		0x0d58
+#define MAC_TSTAMP_EG_CORR_NS		0x0d60
 
 /* MTL register offsets */
 #define MTL_OMR				0x1000
@@ -986,7 +989,7 @@ int xgmac_set_all_multicast_mode(void *pdev, u32 val);
 int xgmac_set_mac_address(void *pdev, u8 *mac_addr);
 int xgmac_set_checksum_offload(void *pdev, u32 val);
 int xgmac_set_tstamp_addend(void *pdev, u32 tstamp_addend);
-int xgmac_init_systime(void *pdev, u32 sec, u32 nsec);
+int xgmac_init_systime(void *pdev, u64 sec, u32 nsec);
 int xgmac_adjust_systime(void *pdev, u32 sec, u32 nsec, u32 add_sub,
 			 u32 one_nsec_accuracy);
 u64 xgmac_get_systime(void *pdev);
@@ -998,6 +1001,7 @@ int xgmac_set_hwtstamp_settings(void *pdev, u32 tx_type,
 				u32 rx_filter);
 int xgmac_config_jumbo_pkt(void *pdev, u32 mtu);
 int xgmac_config_std_pkt(void *pdev);
+void xgmac_soft_restart(void *pdev);
 int xgmac_powerup(void *pdev);
 int xgmac_powerdown(void *pdev);
 int xgmac_config_subsec_inc(void *pdev, u32 ptp_clk);

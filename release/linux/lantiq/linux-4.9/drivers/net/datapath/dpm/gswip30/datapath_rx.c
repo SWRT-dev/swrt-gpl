@@ -95,10 +95,9 @@ static int dp_handle_lct(struct pmac_port_info *dp_port,
 	if (skb->data[PMAC_SIZE] & 0x1) {
 		/* multicast/broadcast */
 		DP_DEBUG(DP_DBG_FLAG_PAE, "LCT mcast or broadcast\n");
-		if ((STATS_GET(sif->rx_flag) <= 0)) {
-			UP_STATS(mib->rx_fn_dropped);
+		if ((STATS_GET(sif->rx_flag) <= 0))
 			return 1;
-		}
+
 		lct_skb = skb_clone(skb, GFP_ATOMIC);
 		if (!lct_skb) {
 			pr_err("LCT mcast/bcast skb clone fail\n");
@@ -106,6 +105,7 @@ static int dp_handle_lct(struct pmac_port_info *dp_port,
 		}
 		lct_skb->dev = sif->netif;
 		UP_STATS(mib->rx_fn_rxif_pkt);
+		MIB_G_STATS_INC(rx_rxif_clone);
 		DP_DEBUG(DP_DBG_FLAG_PAE, "pkt sent lct(%s)\n",
 			 lct_skb->dev->name ? lct_skb->dev->name : "NULL");
 		rx_fn(lct_skb->dev, NULL, lct_skb, lct_skb->len);
@@ -117,11 +117,13 @@ static int dp_handle_lct(struct pmac_port_info *dp_port,
 			 skb->dev->name ? skb->dev->name : "NULL");
 		if ((STATS_GET(sif->rx_flag) <= 0)) {
 			UP_STATS(mib->rx_fn_dropped);
+			MIB_G_STATS_INC(rx_drop);
 			dev_kfree_skb_any(skb);
 			return 0;
 		}
 		rx_fn(skb->dev, NULL, skb, skb->len);
 		UP_STATS(mib->rx_fn_rxif_pkt);
+		MIB_G_STATS_INC(rx_rxif_pkts);
 		return 0;
 	}
 	return 1;
@@ -223,6 +225,7 @@ int32_t dp_rx_30(struct sk_buff *skb, u32 flags)
 		}
 		if (!dev && ((dp_port->alloc_flags & DP_F_FAST_DSL) == 0)) {
 			UP_STATS(mib->rx_fn_dropped);
+			MIB_G_STATS_INC(rx_drop);
 			goto RX_DROP;
 		}
 
@@ -269,25 +272,29 @@ int32_t dp_rx_30(struct sk_buff *skb, u32 flags)
 			if (ret_lct) {
 				if ((STATS_GET(sif->rx_flag) <= 0)) {
 					UP_STATS(mib->rx_fn_dropped);
+					MIB_G_STATS_INC(rx_drop);
 					goto RX_DROP2;
 				}
 				rx_fn(dev, NULL, skb, skb->len);
 				UP_STATS(mib->rx_fn_rxif_pkt);
+				MIB_G_STATS_INC(rx_rxif_pkts);
 			}
 		} else {
 			if ((STATS_GET(sif->rx_flag) <= 0)) {
 				UP_STATS(mib->rx_fn_dropped);
+				MIB_G_STATS_INC(rx_drop);
 				goto RX_DROP2;
 			}
 			rx_fn(NULL, dev, skb, skb->len);
 			UP_STATS(mib->rx_fn_txif_pkt);
+			MIB_G_STATS_INC(rx_txif_pkts);
 		}
 
 		return DP_SUCCESS;
 	}
 
 	if (unlikely(port_id >=
-	    dp_port_prop[inst].info.cap.max_num_dp_ports - 1)) {
+	    dp_port_prop[inst].info.cap.max_num_dp_ports)) {
 		pr_err("Drop for wrong ep or src port id=%u ??\n",
 		       port_id);
 		goto RX_DROP;
@@ -300,12 +307,14 @@ int32_t dp_rx_30(struct sk_buff *skb, u32 flags)
 			 "Drop for subif of port %u not registered yet\n",
 			 port_id);
 		UP_STATS(mib->rx_fn_dropped);
+		MIB_G_STATS_INC(rx_drop);
 		goto RX_DROP2;
 	} else {
 		pr_info("Unknown issue\n");
 	}
 RX_DROP:
 	UP_STATS(dp_port->rx_err_drop);
+	MIB_G_STATS_INC(rx_drop);
 RX_DROP2:
 	if (skb)
 		dev_kfree_skb_any(skb);

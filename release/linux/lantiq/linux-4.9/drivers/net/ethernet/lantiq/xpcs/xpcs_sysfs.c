@@ -25,6 +25,9 @@ xpcs_linksts_show(struct device *dev,
 
 	pdata = dev_get_drvdata(dev);
 
+	if (!pdata->state)
+		return sprintf(buf, "\n%s: power off\n", pdata->name);
+
 	off = sprintf(buf + off, "\n%s: LINK Status\n", pdata->name);
 	off += sprintf(buf + off, "\n");
 
@@ -95,13 +98,13 @@ xpcs_linksts_show(struct device *dev,
 
 	val = XPCS_RGRD_VAL(pdata, PMA_KR_LP_CESTS, LP_RR);
 	off += sprintf(buf + off, "\tPMA_KR_LP_CESTS LP_RR:               %s\n",
-		       val ? "The LP rx has determined that the training is "
-		       "complete, and it is ready to receive data." :
-		       "The LP rx is requesting that the training "
-		       "should be continued.");
+		       val ?
+		       "The LP rx has determined that the training is complete, and it is ready to receive data."
+		       :
+		       "The LP rx is requesting that the training should be continued.");
 
-	off += sprintf(buf + off, "\n10GBASE-KR LD coeff Update Local Device "
-		       "requests to Link Partner.\n");
+	off += sprintf(buf + off,
+		       "\n10GBASE-KR LD coeff Update Local Device requests to Link Partner.\n");
 	off += sprintf(buf + off, "\n");
 
 	val = XPCS_RGRD_VAL(pdata, PMA_KR_LD_CEU, LD_INIT);
@@ -119,10 +122,10 @@ xpcs_linksts_show(struct device *dev,
 
 	val = XPCS_RGRD_VAL(pdata, PMA_KR_LD_CESTS, LD_RR);
 	off += sprintf(buf + off, "\tPMA_KR_LD_CESTS RR:                  %s\n",
-		       val ? "The LD rx has determined that the training is "
-		       "complete, and it is ready to receive data." :
-		       "The LD rx is requesting that the training "
-		       "should be continued.");
+		       val ?
+		       "The LD rx has determined that the training is complete, and it is ready to receive data."
+		       :
+		       "The LD rx is requesting that the training should be continued.");
 
 	off += sprintf(buf + off, "\nAutonegotiation Status Register\n");
 	off += sprintf(buf + off, "\n");
@@ -154,8 +157,9 @@ xpcs_linksts_show(struct device *dev,
 
 	val = XPCS_RGRD_VAL(pdata, AN_STS, PR);
 	off += sprintf(buf + off, "\tPage Received:                       %s\n",
-		       val ? "Page is received and the corresponding "
-		       "Link Code Word is stored " : "No page received");
+		       val ?
+		       "Page is received and the corresponding Link Code Word is stored "
+		       : "No page received");
 
 	val = XPCS_RGRD_VAL(pdata, AN_STS, PDF);
 	off += sprintf(buf + off, "\tParallel Detection Fault in CL73 :   %s\n",
@@ -249,6 +253,9 @@ xpcs_cl73_info_show(struct device *dev,
 
 	pdata = dev_get_drvdata(dev);
 
+	if (!pdata->state)
+		return sprintf(buf, "\n%s: power off\n", pdata->name);
+
 	off = sprintf(buf + off, "\n%s: CL 73 Status\n", pdata->name);
 	off += sprintf(buf + off, "\n");
 
@@ -315,6 +322,9 @@ xpcs_table_show(struct device *dev,
 	u32 tx_eq0, tx_eq1;
 
 	pdata = dev_get_drvdata(dev);
+
+	if (!pdata->state)
+		return sprintf(buf, "\n%s: power off\n", pdata->name);
 
 	off = sprintf(buf + off, "\n%s: Table Show\n", pdata->name);
 	off += sprintf(buf + off, "\n");
@@ -488,7 +498,7 @@ xpcs_table_show(struct device *dev,
 
 static DEVICE_ATTR_RO(xpcs_table);
 
-static const char *xpcs_status_strings[] = {
+static const char * const xpcs_status_strings[] = {
 	"Wait for Ack High 0",
 	"Wait for Ack Low 0",
 	"Wait for Ack High 1",
@@ -507,6 +517,9 @@ static ssize_t xpcs_status_show(struct device *dev,
 
 	pdata = dev_get_drvdata(dev);
 
+	if (!pdata->state)
+		return sprintf(buf, "\n%s: power off\n", pdata->name);
+
 	off = sprintf(buf + off, "\n%s: RX/TX Stable Status\n", pdata->name);
 	off += sprintf(buf + off, "\n");
 
@@ -523,11 +536,873 @@ static ssize_t xpcs_status_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(xpcs_status);
 
+static ssize_t reg_show(struct device *dev, struct device_attribute *attr,
+			char *buf)
+{
+	struct xpcs_prv_data *pdata = dev_get_drvdata(dev);
+	int off = 0;
+
+	pdata = dev_get_drvdata(dev);
+
+	if (!pdata->state)
+		return sprintf(buf, "\n%s: power off\n", pdata->name);
+
+	off += sprintf(buf + off, "Usage:\n");
+	off += sprintf(buf + off, "    read:  echo <addr> > reg\n");
+	off += sprintf(buf + off, "    write: echo <addr> <value> > reg\n");
+	off += sprintf(buf + off, "  notes: all parameters are HEX format\n");
+
+	return off;
+}
+
+static ssize_t reg_store(struct device *dev,
+			 struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct xpcs_prv_data *pdata = dev_get_drvdata(dev);
+	u32 val = 0;
+	unsigned long reg_val, reg_off;
+	int err;
+	char *token;
+	char *b = (char *)&buf[0];
+
+	if (!capable(CAP_SYS_ADMIN))
+		return -EPERM;
+
+	if (count >= 4 && strncasecmp(buf, "help", 4) == 0) {
+		pr_info("Usage:\n");
+		pr_info("    help:  echo help > reg\n");
+		pr_info("    read:  echo <addr> > reg\n");
+		pr_info("    write: echo <addr> <value> > reg\n");
+		return  count;
+	}
+
+	token = strsep(&b, " ");
+	if (!token)
+		return count;
+	err = kstrtoul(token, 16, &reg_off);
+	if (err) {
+		pr_err("incorrect XPCS register offset: %s\n", token);
+		return count;
+	}
+	token = strsep(&b, " ");
+	if (token) {
+		err = kstrtoul(token, 16, &reg_val);
+		if (err) {
+			pr_err("incorrect value: %s\n", token);
+			return count;
+		}
+		pr_info("%s: write off %08x val %08x\n", pdata->name,
+			(u32)reg_off, (u32)reg_val);
+		XPCS_RGWR(pdata, reg_off, reg_val);
+	}
+	val = XPCS_RGRD(pdata, reg_off);
+	pr_info("%s: read off %08x val %08x\n",
+		pdata->name, (u32)reg_off, val);
+	return count;
+}
+static DEVICE_ATTR_RW(reg);
+
+static ssize_t rxeq_show(struct device *dev, struct device_attribute *attr,
+			char *buf)
+{
+	struct xpcs_prv_data *pdata = dev_get_drvdata(dev);
+	struct xpcs_serdes_cfg *pserdes = pdata->serdes_cfg;
+	int off = 0;
+	u32 val;
+
+	pdata = dev_get_drvdata(dev);
+
+	if (!pdata->state)
+		return sprintf(buf, "\n%s: power off\n", pdata->name);
+
+	off += sprintf(buf + off, "Register:\n");
+	val = XPCS_RGRD(pdata, PMA_RX_EQ_CTRL0);
+	off += sprintf(buf + off, "  vga1_gain:  %d\n", (val >> 12) & 0x0F);
+	off += sprintf(buf + off, "  vga2_gain:  %d\n", (val >> 8) & 0x0F);
+	off += sprintf(buf + off, "  ctle_pole:  %d\n", (val >> 5) & 0x07);
+	off += sprintf(buf + off, "  ctle_boost: %d\n", val & 0x1F);
+	val = XPCS_RGRD(pdata, PMA_RX_ATTN_CTRL);
+	off += sprintf(buf + off, "  attn_lvl:   %d\n", val & 0x0F);
+
+	off += sprintf(buf + off, "Configure:\n");
+	off += sprintf(buf + off, "  vga1_gain:  %d\n", pserdes->rx_vga1_gain[pdata->mode]);
+	off += sprintf(buf + off, "  vga2_gain:  %d\n", pserdes->rx_vga2_gain[pdata->mode]);
+	off += sprintf(buf + off, "  ctle_pole:  %d\n", pserdes->rx_ctle_pole[pdata->mode]);
+	off += sprintf(buf + off, "  ctle_boost: %d\n", pserdes->rx_ctle_boost[pdata->mode]);
+	off += sprintf(buf + off, "  attn_lvl:   %d\n", pserdes->rx_attn_lvl[pdata->mode]);
+
+	off += sprintf(buf + off, "Calibration: %d\n", pserdes->no_phy_rx_auto_adapt ^ 0x01);
+
+	return off;
+}
+
+static ssize_t rxeq_store(struct device * dev, struct device_attribute * attr,
+			 const char * buf, size_t count)
+{
+	struct xpcs_prv_data *pdata = dev_get_drvdata(dev);
+	struct xpcs_serdes_cfg *pserdes = pdata->serdes_cfg;
+	char lbuf[256];
+	size_t n, len;
+	u32 val;
+
+	if (!pdata->state) {
+		pr_err("\n%s: power off\n", pdata->name);
+		return count;
+	}
+
+	len = min(count, sizeof(lbuf)-1);
+	memcpy(lbuf, buf, len);
+	lbuf[len] = 0;
+
+	for (n = 0; n < len && lbuf[n] > ' '; n++);
+	lbuf[n] = 0;
+	for (; n < len && lbuf[n] <= ' '; n++);
+
+	if (n >= len) {
+		pr_err("echo <param> <val> > rxeq\n");
+		return count;
+	}
+
+	val = simple_strtoull(&lbuf[n], NULL, 0);
+	if (strncasecmp(lbuf, "vga1_gain", n) == 0)
+		pserdes->rx_vga1_gain[pdata->mode] = val;
+	else if (strncasecmp(lbuf, "vga2_gain", n) == 0)
+		pserdes->rx_vga2_gain[pdata->mode] = val;
+	else if (strncasecmp(lbuf, "ctle_pole", n) == 0)
+		pserdes->rx_ctle_pole[pdata->mode] = val;
+	else if (strncasecmp(lbuf, "ctle_boost", n) == 0)
+		pserdes->rx_ctle_boost[pdata->mode] = val;
+	else if (strncasecmp(lbuf, "attn_lvl", n) == 0)
+		pserdes->rx_attn_lvl[pdata->mode] = val;
+	else if (strncasecmp(lbuf, "rx_cali", n) == 0
+		|| strncasecmp(lbuf, "Calibration", n) == 0)
+		pserdes->no_phy_rx_auto_adapt = val ? 0 : 1;
+	else {
+		pr_err("valid param:\n");
+		pr_err("  vga1_gain\n");
+		pr_err("  vga2_gain\n");
+		pr_err("  ctle_pole\n");
+		pr_err("  ctle_boost\n");
+		pr_err("  att_lvl\n");
+		pr_err("  rx_cali\n");
+		pr_err("input:\n");
+		pr_err("  \"%s\"\n", lbuf);
+	}
+
+	return count;
+}
+static DEVICE_ATTR_RW(rxeq);
+
+static ssize_t txeq_show(struct device *dev, struct device_attribute *attr,
+			char *buf)
+{
+	struct xpcs_prv_data *pdata = dev_get_drvdata(dev);
+	struct xpcs_serdes_cfg *pserdes = pdata->serdes_cfg;
+	int off = 0;
+	u32 val;
+
+	pdata = dev_get_drvdata(dev);
+
+	if (!pdata->state)
+		return sprintf(buf, "\n%s: power off\n", pdata->name);
+
+	off += sprintf(buf + off, "Register:\n");
+	val = XPCS_RGRD(pdata, PMA_TX_EQ_C0);
+	off += sprintf(buf + off, "  main:    %d\n", XPCS_GET_VAL(val, PMA_TX_EQ_C0, TX_EQ_MAIN));
+	off += sprintf(buf + off, "  pre:     %d\n", XPCS_GET_VAL(val, PMA_TX_EQ_C0, TX_EQ_PRE));
+	val = XPCS_RGRD(pdata, PMA_TX_EQ_C1);
+	off += sprintf(buf + off, "  post:    %d\n", XPCS_GET_VAL(val, PMA_TX_EQ_C1, TX_EQ_POST));
+	off += sprintf(buf + off, "  ovrride: %d\n", XPCS_GET_VAL(val, PMA_TX_EQ_C1, TX_EQ_OVR_RIDE));
+
+	off += sprintf(buf + off, "Configure:\n");
+	off += sprintf(buf + off, "  main:    %d\n", pserdes->tx_eq_main[pdata->mode]);
+	off += sprintf(buf + off, "  pre:     %d\n", pserdes->tx_eq_pre[pdata->mode]);
+	off += sprintf(buf + off, "  post:    %d\n", pserdes->tx_eq_post[pdata->mode]);
+	off += sprintf(buf + off, "  ovrride: %d\n", pdata->mode_cfg->tx_eq_ovrride);
+
+	return off;
+}
+
+static ssize_t txeq_store(struct device * dev, struct device_attribute * attr,
+			 const char * buf, size_t count)
+{
+	struct xpcs_prv_data *pdata = dev_get_drvdata(dev);
+	struct xpcs_serdes_cfg *pserdes = pdata->serdes_cfg;
+	char lbuf[256];
+	size_t n, len;
+	u32 val;
+
+	if (!pdata->state) {
+		pr_err("\n%s: power off\n", pdata->name);
+		return count;
+	}
+
+	len = min(count, sizeof(lbuf)-1);
+	memcpy(lbuf, buf, len);
+	lbuf[len] = 0;
+
+	for (n = 0; n < len && lbuf[n] > ' '; n++);
+	lbuf[n] = 0;
+	for (; n < len && lbuf[n] <= ' '; n++);
+
+	if (n >= len) {
+		pr_err("echo <param> <val> > rxeq\n");
+		return count;
+	}
+
+	val = simple_strtoull(&lbuf[n], NULL, 0);
+	if (strncasecmp(lbuf, "main", n) == 0)
+		pserdes->tx_eq_main[pdata->mode] = val;
+	else if (strncasecmp(lbuf, "pre", n) == 0)
+		pserdes->tx_eq_pre[pdata->mode] = val;
+	else if (strncasecmp(lbuf, "post", n) == 0)
+		pserdes->tx_eq_post[pdata->mode] = val;
+	else if (strncasecmp(lbuf, "ovrride", n) == 0)
+		pdata->mode_cfg->tx_eq_ovrride = val;
+	else {
+		pr_err("valid param:\n");
+		pr_err("  main\n");
+		pr_err("  pre\n");
+		pr_err("  post\n");
+		pr_err("  ovrride\n");
+		pr_err("input:\n");
+		pr_err("  \"%s\"\n", lbuf);
+	}
+
+	return count;
+}
+static DEVICE_ATTR_RW(txeq);
+
+static ssize_t mode_show(struct device *dev, struct device_attribute *attr,
+			char *buf)
+{
+	struct xpcs_prv_data *pdata = dev_get_drvdata(dev);
+	int off = 0;
+	const char *mode_name[] = {"10G_KR", "10G_XAUI", "1G_SGMII", "2.5G_SGMII"};
+
+	pdata = dev_get_drvdata(dev);
+
+	if (!pdata->state)
+		return sprintf(buf, "\n%s: power off\n", pdata->name);
+
+	off += sprintf(buf, "%s\n", mode_name[pdata->mode_cfg->id]);
+
+	return off;
+}
+
+static ssize_t mode_store(struct device * dev, struct device_attribute * attr,
+			 const char * buf, size_t count)
+{
+	const char *mode_name[] = {"10G_KR", "10G_XAUI", "1G_SGMII", "2.5G_SGMII"};
+	char lbuf[256];
+	size_t n, len;
+
+	len = min(count, sizeof(lbuf)-1);
+	for (n = 0; n < len && buf[n] > ' '; n++)
+		lbuf[n] = buf[n];
+	lbuf[n] = 0;
+	len = n;
+
+	for (n = 0; n < ARRAY_SIZE(mode_name); n++) {
+		if (strncasecmp(lbuf, mode_name[n], len))
+			continue;
+		xpcs_reinit(dev, n);
+		return count;
+	}
+	if (n >= ARRAY_SIZE(mode_name)) {
+		pr_err("valid modes:\n");
+		for (n = 0; n < ARRAY_SIZE(mode_name); n++)
+			pr_err("  %s\n", mode_name[n]);
+		pr_err("input:\n");
+		pr_err("  \"%s\"\n", lbuf);
+	}
+
+	return count;
+}
+static DEVICE_ATTR_RW(mode);
+
+static ssize_t cl37_show(struct device *dev, struct device_attribute *attr,
+			char *buf)
+{
+	struct xpcs_prv_data *pdata = dev_get_drvdata(dev);
+	const char *an_name[] = {"disable", "SGMII MAC Side", "SGMII PHY Side", "1000/2500-BaseX"};
+	const struct {
+		const char *name;
+		u32 addr;
+	} cl37_regs[] = {
+		{"SR_AN_CTRL", AN_CTRL},
+		{"SR_MII_CTRL", SR_MII_CTRL},
+		{"SR_MII_AN_ADV", SR_MII_AN_ADV},
+		{"SR_MII_LP_BABL", SR_MII_LP_BABL},
+		{"SR_MII_EXPN", SR_MII_EXPN},
+		{"VR_MII_DIG_CTRL1", VR_MII_DIG_CTRL1},
+		{"VR_MII_AN_CTRL", VR_MII_AN_CTRL},
+		{"VR_MII_AN_INTR_STS", VR_MII_AN_INTR_STS},
+		{"VR_MII_LINK_TIMER_CTRL", VR_MII_LINK_TIMER_CTRL},
+	};
+	ssize_t off = 0, i;
+	u32 mode, phy_side, val;
+	const char *str1, *str2, *str3;
+	const char *linksts = NULL;
+
+	pdata = dev_get_drvdata(dev);
+
+	if (!pdata->state)
+		return sprintf(buf, "\n%s: power off\n", pdata->name);
+
+	off += sprintf(buf, "xpcs-cl37: %u, %s\n", pdata->cl37,
+			an_name[pdata->cl37]);
+
+	off += sprintf(buf + off, "CL37 Registers:\n");
+	for (i = 0; i < ARRAY_SIZE(cl37_regs); i++)
+		off += sprintf(buf + off, "  %22s (0x%06x) - 0x%04x\n",
+				cl37_regs[i].name, cl37_regs[i].addr,
+				XPCS_RGRD(pdata, cl37_regs[i].addr) & 0xFFFF);
+
+	off += sprintf(buf + off, "CL37 Status:\n");
+	str1 = XPCS_RGRD_VAL(pdata, AN_CTRL, AN_EN) ? "enabled" : "disabled";
+	off += sprintf(buf + off, "  CL73              - %s\n", str1);
+	str1 = XPCS_RGRD_VAL(pdata, PCS_DIG_CTRL1, CL37_BP)
+		? "enabled" : "disabled";
+	off += sprintf(buf + off, "  CL37 in backplane - %s\n", str1);
+	str1 = XPCS_RGRD_VAL(pdata, SR_MII_CTRL, AN_ENABLE)
+		? "enabled" : "disabled";
+	off += sprintf(buf + off, "  CL37              - %s\n", str1);
+
+	phy_side = XPCS_RGRD_VAL(pdata, VR_MII_AN_CTRL, TX_CONFIG);
+	mode = XPCS_RGRD_VAL(pdata, VR_MII_AN_CTRL, PCS_MODE);
+	switch (mode) {
+	case 0:
+		off += sprintf(buf + off, "  ANEG Mode         - BaseX\n");
+		off += sprintf(buf + off, "    Advertised    15 Next Page %u\n",
+				XPCS_RGRD_VAL(pdata, SR_MII_AN_ADV, NP));
+		val = XPCS_RGRD_VAL(pdata, SR_MII_AN_ADV, RF);
+		switch (val) {
+		case 0: linksts = "No Error"; break;
+		case 1: linksts = "Offline"; break;
+		case 2: linksts = "Link Failure"; break;
+		case 3: linksts = "ANEG Error"; break;
+		default: linksts = "Unkown";
+		}
+		off += sprintf(buf + off, "               12~13 %s (%u)\n",
+				linksts, val);
+		val = XPCS_RGRD_VAL(pdata, SR_MII_AN_ADV, PAUSE);
+		switch (val) {
+		case 0:
+			str1 = "No Pause";
+			break;
+		case 1:
+			str1 = "Asymmetric Pause towards the link partner";
+			break;
+		case 2:
+			str1 = "Symmetric Pause";
+			break;
+		case 3:
+			str1 = "Symmetric Pause and Asymmetric Pause towards the local device";
+			break;
+		default:
+			str1 = "Unkown";
+		}
+		off += sprintf(buf + off, "                 7~8 %s (%u)\n",
+				str1, val);
+		if (XPCS_RGRD_VAL(pdata, SR_MII_AN_ADV, HD))
+			str1 = "Supported";
+		else
+			str1 = "Not Supported";
+		off += sprintf(buf + off, "                   6 Half Duplex %s\n",
+				str1);
+		if (XPCS_RGRD_VAL(pdata, SR_MII_AN_ADV, FD))
+			str1 = "Supported";
+		else
+			str1 = "Not Supported";
+		off += sprintf(buf + off, "                   5 Full Duplex %s\n",
+				str1);
+		break;
+	case 2:
+	case 3:
+		str1 = mode == 2 ? "SGMII" : "QSGMII";
+		str2 = phy_side ? "PHY" : "MAC";
+		off += sprintf(buf + off, "  ANEG Mode         - %s %s Side\n",
+				str1, str2);
+		if (!phy_side) {
+			off += sprintf(buf + off, "    Advertised Word 0x4001\n");
+			break;
+		}
+		if (XPCS_RGRD_VAL(pdata, VR_MII_DIG_CTRL1, PHY_MODE_CTRL)) {
+			off += sprintf(buf + off, "    Advertised    15 xpcs_sgmii_link_sts_i\n");
+			off += sprintf(buf + off, "                  14 1\n");
+			off += sprintf(buf + off, "                  12 xpcs_sgmii_full_duplex_i\n");
+			off += sprintf(buf + off, "               10~11 xpcs_sgmii_link_speed_i[1:0]\n");
+			off += sprintf(buf + off, "                   0 1\n");
+			break;
+		}
+		val = XPCS_RGRD_VAL(pdata, VR_MII_AN_CTRL, SGMII_LINK_STS);
+		linksts = val ? "Link Up" : "Link Down";
+		off += sprintf(buf + off, "    Advertised    15 %s (%u)\n",
+				linksts, val);
+		off += sprintf(buf + off, "                  14 1\n");
+		val = XPCS_RGRD_VAL(pdata, SR_MII_AN_ADV, FD);
+		str1 = val ? "Full Duplex" : "Half Duplex";
+		off += sprintf(buf + off, "                  12 %s (%u)\n",
+				str1, val);
+		val = XPCS_RGRD_VAL(pdata, SR_MII_CTRL, SS6) << 1;
+		val |= XPCS_RGRD_VAL(pdata, SR_MII_CTRL, SS13);
+		switch (val) {
+		case 0: str1 = "10Mbps"; break;
+		case 1: str1 = "100Mbps"; break;
+		case 2: str1 = "1000Mbps"; break;
+		default: str1 = "Unknown";
+		}
+		off += sprintf(buf + off, "               10~11 %s (%u)\n",
+				str1, val);
+		off += sprintf(buf + off, "                   0 1\n");
+		break;
+	default:
+		off += sprintf(buf + off, "  ANEG Mode         - Unknown (%u)\n",
+				mode);
+	}
+
+	if (XPCS_RGRD_VAL(pdata, VR_MII_DIG_CTRL1, CL37_TMR_OVR_RIDE)) {
+		val = XPCS_RGRD(pdata, VR_MII_LINK_TIMER_CTRL) & 0xFFFF;
+		off += sprintf(buf + off, "  Link Timer        - 0x%04x\n", val);
+	} else
+		off += sprintf(buf + off, "  Link Timer        - default\n");
+	str1 = XPCS_RGRD_VAL(pdata, VR_MII_AN_CTRL, MII_CONTROL)
+		? "8-bit GMII Mode" : "4-bit MII Mode";
+	off += sprintf(buf + off, "  MII (100/10Mbps)  - %s\n", str1);
+	str1 = XPCS_RGRD_VAL(pdata, VR_MII_AN_CTRL, MII_AN_INTR_EN)
+		? "enabled" : "disabled";
+	off += sprintf(buf + off, "  ANEG Complete Int - %s\n", str1);
+	str1 = XPCS_RGRD_VAL(pdata, VR_MII_AN_CTRL, MII_AN_INTR_EN)
+		? "enabled" : "disabled";
+
+	val = XPCS_RGRD(pdata, VR_MII_AN_INTR_STS) & 0xFFFF;
+	XPCS_RGWR(pdata, VR_MII_AN_INTR_STS, val & ~1);
+	str1 = (val & BIT(0)) ? "completed" : "not completed";
+	off += sprintf(buf + off, "  ANEG Result       - %s\n", str1);
+	str1 = (val & BIT(4)) ? "link up" : "link down";
+	off += sprintf(buf + off, "                      %s\n", str1);
+	str2 = (val & BIT(1)) ? "full duplex" : "half duplex";
+	off += sprintf(buf + off, "                      %s\n", str2);
+	switch ((val >> 2) & 0x03) {
+	case 0: str3 = "10Mbps"; break;
+	case 1: str3 = "100Mbps"; break;
+	case 2: str3 = "1000Mbps"; break;
+	default: str3 = "unknown speed (3)";
+	}
+	off += sprintf(buf + off, "                      %s\n", str3);
+
+	if (XPCS_RGRD_VAL(pdata, VR_MII_DIG_CTRL1, PHY_MODE_CTRL)) {
+		off += sprintf(buf + off, "  Setting aft. ANEG - input signals\n");
+		off += sprintf(buf + off, "                      xpcs_sgmii_link_sts_i\n");
+		off += sprintf(buf + off, "                      xpcs_sgmii_full_duplex_i\n");
+		off += sprintf(buf + off, "                      xpcs_sgmii_link_speed_i[1:0]\n");
+	} else if (XPCS_RGRD_VAL(pdata, VR_MII_DIG_CTRL1, MAC_AUTO_SW)) {
+		off += sprintf(buf + off, "  Setting aft. ANEG - ANEG result\n");
+		off += sprintf(buf + off, "                      %s\n", str1);
+		off += sprintf(buf + off, "                      %s\n", str2);
+		off += sprintf(buf + off, "                      %s\n", str3);
+	} else {
+		off += sprintf(buf + off, "  Setting aft. ANEG - MII Settings\n");
+
+		off += sprintf(buf + off, "                      %s\n", linksts);
+		str1 = XPCS_RGRD_VAL(pdata, SR_MII_CTRL, DUPLEX_MODE)
+			? "full duplex" : "half duplex";
+		off += sprintf(buf + off, "                      %s\n", str1);
+		val = XPCS_RGRD_VAL(pdata, SR_MII_CTRL, SS6) << 1;
+		val |= XPCS_RGRD_VAL(pdata, SR_MII_CTRL, SS13);
+		switch (val) {
+		case 0: str1 = "10Mbps"; break;
+		case 1: str1 = "100Mbps"; break;
+		case 2: str1 = "1000Mbps"; break;
+		default: str1 = "Unknown";
+		}
+		off += sprintf(buf + off, "                      %s\n", str1);
+	}
+
+	return off;
+}
+
+static void cl37_help(void)
+{
+	pr_info("Usage:\n");
+	pr_info("  echo <cmd> [mac|phy] [speed <10|100|1000|2500>] > cl37\n");
+	pr_info("  cmd: help    - this page\n");
+	pr_info("       disable - disable CL37\n");
+	pr_info("       sgmii   - enable SGMII ANEG, take parameters MAC, PHY, speed\n");
+	pr_info("       basex   - enable 1000/2500-BaseX ANEG\n");
+	pr_info("       restart - restart ANEG\n");
+}
+
+static ssize_t cl37_store(struct device * dev, struct device_attribute * attr,
+			 const char * buf, size_t count)
+{
+	const char *ct = " \t\n";
+	struct xpcs_prv_data *pdata = dev_get_drvdata(dev);
+	char lbuf[256];
+	size_t len;
+	char *p, *token;
+
+	len = min(count, sizeof(lbuf)-1);
+	memcpy(lbuf, buf, len);
+	lbuf[len] = '\0';
+
+	p = lbuf;
+	token = strsep(&p, ct);
+	if (!token) {
+		cl37_help();
+		return count;
+	}
+
+	len = strlen(token);
+	if (strncasecmp(token, "disable", min_t(size_t, len, 7UL)) == 0) {
+		pdata->cl37 = CONN_TYPE_ANEG_DIS;
+		if (pdata->mode == TWOP5G_SGMII_MODE)
+			pdata->speed = SPEED_2500;
+		else
+			pdata->speed = SPEED_1000;
+		XPCS_RGWR_VAL(pdata, SR_MII_CTRL, SS13, 0);
+		XPCS_RGWR_VAL(pdata, SR_MII_CTRL, SS6, 1);
+		xpcs_disable_an(pdata);
+		pr_info("Disable Clause 37\n");
+	} else if (strncasecmp(token, "sgmii", min_t(size_t, len, 5UL)) == 0) {
+		u32 set_phy = 0, set_speed = 0;
+		u32 speed = 2;
+
+		for (token = strsep(&p, ct); token; token = strsep(&p, ct)) {
+			len = strlen(token);
+			if (!len)
+				continue;
+
+			if (set_speed) {
+				switch (simple_strtoull(token, NULL, 0)) {
+				case 10:  speed = 0; break;
+				case 100: speed = 1; break;
+				default: break;
+				}
+				set_speed = 0;
+				continue;
+			}
+
+			if (strncasecmp(token, "PHY", min_t(size_t, len, 3UL)) == 0)
+				set_phy = 1;
+			else if (strncasecmp(token, "speed", min_t(size_t, len, 5UL)) == 0)
+				set_speed = 1;
+		}
+
+		pdata->cl37 = set_phy ? CONN_TYPE_ANEG_PHY : CONN_TYPE_ANEG_MAC;
+		switch (speed) {
+		case 0: pdata->speed = SPEED_10; break;
+		case 1: pdata->speed = SPEED_100; break;
+		default: pdata->speed = pdata->mode == TWOP5G_SGMII_MODE ?
+					SPEED_2500 : SPEED_1000;
+		}
+		XPCS_RGWR_VAL(pdata, SR_MII_CTRL, SS13, speed & BIT(0));
+		XPCS_RGWR_VAL(pdata, SR_MII_CTRL, SS6, (speed >> 1) & BIT(0));
+		xpcs_cl37_an(pdata);
+		if (set_phy)
+			pr_info("Enable Clause 37, SGMII PHY Side ANEG\n");
+		else
+			pr_info("Enable Clause 37, SGMII MAC Side ANEG\n");
+	} else if (strncasecmp(token, "basex", min_t(size_t, len, 5UL)) == 0) {
+		pdata->cl37 = CONN_TYPE_ANEG_BX;
+		if (pdata->mode == TWOP5G_SGMII_MODE)
+			pdata->speed = SPEED_2500;
+		else
+			pdata->speed = SPEED_1000;
+		XPCS_RGWR_VAL(pdata, SR_MII_CTRL, SS13, 0);
+		XPCS_RGWR_VAL(pdata, SR_MII_CTRL, SS6, 1);
+		xpcs_cl37_an(pdata);
+		pr_info("Enable Clause 37, 1000/2500-BaseX ANEG\n");
+	} else if (strncasecmp(token, "restart", min_t(size_t, len, 7UL)) == 0
+		|| strncasecmp(token, "reaneg", min_t(size_t, len, 6UL)) == 0) {
+		XPCS_RGWR_VAL(pdata, SR_MII_CTRL, RESTART_ANEG, 1);
+	} else
+		cl37_help();
+
+	return count;
+}
+static DEVICE_ATTR_RW(cl37);
+
+static void serdes_tx_test_pattern_cfg_get(struct xpcs_prv_data *pdata)
+{
+	int val;
+
+	val = XPCS_RGRD(pdata, PCS_TP_CTRL) & 0xFFFF;
+	if (val & 0xA)
+		pr_info("\tTX bert mode = BERT_SQUAREWAVE_TX");
+	else if (val & 0x10)
+		pr_info("\tTX bert mode = BERT_PRBS31_TX");
+	else if (val & 0x40)
+		pr_info("\tTX bert mode = BERT_PRBS9_TX");
+	else
+		pr_info("\tTX bert mode = BERT_TX_MODE_DISABLE");
+}
+
+static void serdes_rx_test_pattern_cfg_get(struct xpcs_prv_data *pdata)
+{
+	int val;
+
+	val = XPCS_RGRD(pdata, PCS_TP_CTRL) & 0xFFFF;
+	if (val & 0x20)
+		pr_info("\tTX bert mode = BERT_PRBS31_RX");
+	val = XPCS_RGRD(pdata, PCS_KR_CTRL) & 0xFFFF;
+	if (val & 0x80)
+		pr_info("\tTX bert mode = BERT_PRBS9_TX");
+}
+
+static void serdes_rx_bit_error_get(struct xpcs_prv_data *pdata)
+{
+	int val;
+
+	val = XPCS_RGRD(pdata, PCS_TP_ERRCR);
+	pr_info("tp_error_cnt	= 0x%x\n", val);
+	val = XPCS_RGRD(pdata, PCS_KR_STS2);
+	val = XPCS_RGRD_VAL(pdata, PCS_KR_STS2, ERR_BLK);
+	pr_info("error_block_count	= 0x%x\n", val);
+	val = XPCS_RGRD_VAL(pdata, PCS_KR_STS2, BER_CNT);
+	pr_info("bit_error_rate_counter	=0x%x\n", val);
+	val = XPCS_RGRD_VAL(pdata, PCS_KR_STS2, LAT_HBER);
+	pr_info("latched_high_bit_err_rate	=0x%x\n", val);
+	val = XPCS_RGRD_VAL(pdata, PCS_KR_STS2, LAT_BL);
+	pr_info("latched_block_lock	=0x%x\n", val);
+}
+
+static ssize_t bert_show(struct device *dev, struct device_attribute *attr,
+			 char *buf)
+{
+	ssize_t off = 0;
+	const char *str;
+	int val;
+	struct xpcs_prv_data *pdata = dev_get_drvdata(dev);
+
+	if (!pdata->state)
+		return sprintf(buf, "\n%s: power off\n", pdata->name);
+
+	str = XPCS_RGRD_VAL(pdata, PCS_TP_CTRL, TP_SEL) ?
+		"enabled" : "disabled";
+	off += sprintf(buf + off, "\tTx_test_pattern:	%s\n",
+							  str);
+	str = XPCS_RGRD_VAL(pdata, PCS_TP_CTRL, RTP_EN) ?
+		"enabled" : "disabled";
+	off += sprintf(buf + off, "\tRx_test_pattern:	%s\n",
+							  str);
+	str = XPCS_RGRD_VAL(pdata, PCS_DIG_CTRL1, R2TLBE) ? "enabled" : "disabled";
+	off += sprintf(buf + off, "\tRemote loopback:	%s\n",
+							  str);
+	str = XPCS_RGRD_VAL(pdata, PMA_CTRL1, LB) ?
+		"enabled" : "disabled";
+	off += sprintf(buf + off, "\tLocal loopback:	%s\n",
+							  str);
+	val = XPCS_RGRD(pdata, PCS_TP_CTRL) & 0xFFFF;
+	if (val & 0xA)
+		off += sprintf(buf + off, "\tTX BERT MODE: %s\n",
+								  "\tBERT_SQUAREWAVE_TX");
+	else if (val & 0x10)
+		off += sprintf(buf + off, "\tTX BERT MODE: %s\n",
+								  "\tBERT_PRBS31_TX");
+	else if (val & 0x40)
+		off += sprintf(buf + off, "\tTX BERT MODE: %s\n",
+								  "\tBERT_PRBS39_TX");
+	else
+		off += sprintf(buf + off, "\tTX BERT MODE: %s\n",
+								  "\tBERT_TX_MODE_DISABLE");
+	val = XPCS_RGRD(pdata, PCS_TP_CTRL) & 0xFFFF;
+	if (val & 0x20)
+		off += sprintf(buf + off, "\tRX BERT MODE: %s\n",
+								  "\tBERT_PRBS31_RX");
+	val = XPCS_RGRD(pdata, PCS_KR_CTRL) & 0xFFFF;
+	if (val & 0x80)
+		off += sprintf(buf + off, "\tRX BERT MODE: %s\n",
+								  "\tBERT_PRBS9_RX");
+	return off;
+}
+
+static void bert_help(void)
+{
+	pr_info("Usage:\n");
+	pr_info("  echo <cmd>  > bert\n");
+	pr_info("	 cmd:\n");
+	pr_info("       tx_test_pattern_enable:		Enable Tx pattern\n");
+	pr_info("       tx_test_pattern_disable:	Disable Tx test pattern\n");
+	pr_info("       rx_test_pattern_enable:		Enable Rx test pattern\n");
+	pr_info("       rx_test_pattern_disable:	Disable Rx test pattern\n");
+	pr_info("       remote_loop_enable:			Enable parallel Rx to Tx loop\n");
+	pr_info("       remote_loop_disable:		Disable parallel Rx to Tx loop\n");
+	pr_info("       local_loop_enable:			Enable serial Rx to Tx loop\n");
+	pr_info("       local_loop_disable:			Disable serial Rx to Tx loop\n");
+	pr_info("       tx_test_pattern_cfg_set:	Define the pattern to be sent (PRBS/fixed pattern)\n");
+	pr_info("       tx_test_pattern_cfg_get:	Get Tx BERT mode\n");
+	pr_info("       rx_test_pattern_cfg_set:	Define the pattern to be received (PRBS/fixed pattern)\n");
+	pr_info("       rx_test_pattern_cfg_get:	Get Rx BERT mode\n");
+	pr_info("       rx_bit_error_counter_get:	Read the bit error counter,clear-on-read\n");
+}
+
+struct bert_cmd {
+	const char *name;
+	int val;
+};
+
+static struct bert_cmd bert_cmd_tbl[] = {
+	{"tx_test_pattern_enable", 0 },
+	{"tx_test_pattern_disable", 1},
+	{"rx_test_pattern_enable", 2},
+	{"rx_test_pattern_disable", 3},
+	{"remote_loop_enable", 4},
+	{"remote_loop_disable", 5},
+	{"local_loop_enable", 6},
+	{"local_loop_disable", 7},
+	{"tx_test_pattern_cfg_set", 8},
+	{"tx_test_pattern_cfg_get", 9},
+	{"rx_test_pattern_cfg_set", 10},
+	{"rx_test_pattern_cfg_get", 11},
+	{"rx_bit_error_counter_get", 12},
+};
+
+static int bert_cmd_idx_get(const char *name)
+{
+	struct bert_cmd *p;
+
+	for (p = bert_cmd_tbl; p->name; p++) {
+		if (strncasecmp(p->name, name, strlen(name)) == 0)
+			return p->val;
+	}
+
+	return -EINVAL;
+}
+
+static ssize_t bert_store(struct device *dev, struct device_attribute *attr,
+			  const char *buf, size_t count)
+{
+	struct xpcs_prv_data *pdata = dev_get_drvdata(dev);
+	char lbuf[256];
+	size_t len;
+	char *p, *token;
+	const char *ct = " \t\n";
+	int index;
+
+	len = min(count, sizeof(lbuf) - 1);
+	memcpy(lbuf, buf, len);
+	lbuf[len] = '\0';
+
+	p = lbuf;
+	token = strsep(&p, ct);
+	if (!token) {
+		bert_help();
+		return count;
+	}
+	len = strlen(token);
+	index = bert_cmd_idx_get(token);
+	switch (index) {
+	case 0:
+		XPCS_RGWR_VAL(pdata, PCS_TP_CTRL, TP_SEL, 1);
+		break;
+	case 1:
+		XPCS_RGWR_VAL(pdata, PCS_TP_CTRL, TP_SEL, 0);
+		break;
+	case 2:
+		XPCS_RGWR_VAL(pdata, PCS_TP_CTRL, RTP_EN, 1);
+		break;
+	case 3:
+		XPCS_RGWR_VAL(pdata, PCS_TP_CTRL, RTP_EN, 0);
+		break;
+	case 4:
+		XPCS_RGWR_VAL(pdata, PCS_DIG_CTRL1, R2TLBE, 1);
+		break;
+	case 5:
+		XPCS_RGWR_VAL(pdata, PCS_DIG_CTRL1, R2TLBE, 0);
+		break;
+	case 6:
+		XPCS_RGWR_VAL(pdata, PMA_CTRL1, LB, 1);
+		break;
+	case 7:
+		XPCS_RGWR_VAL(pdata, PMA_CTRL1, LB, 0);
+		break;
+	case 8:
+		for (token = strsep(&p, ct); token; token = strsep(&p, ct)) {
+			len = strlen(token);
+			if (!len)
+				continue;
+			if (strncasecmp(token, "square",
+					min_t(size_t, len, 6UL)) == 0) {
+				XPCS_RGWR_VAL(pdata, PCS_TP_CTRL, TTP_EN, 1);
+				XPCS_RGWR_VAL(pdata, PCS_TP_CTRL,
+					      PRBS31T_EN, 0);
+				XPCS_RGWR_VAL(pdata, PCS_TP_CTRL, PRBS9T_EN, 0);
+			} else if (strncasecmp(token, "PRBS31",
+				min_t(size_t, len, 6UL)) == 0) {
+				XPCS_RGWR_VAL(pdata, PCS_TP_CTRL, TTP_EN, 0);
+				XPCS_RGWR_VAL(pdata, PCS_TP_CTRL, TP_SEL, 0);
+				XPCS_RGWR_VAL(pdata, PCS_TP_CTRL, PRBS9T_EN, 0);
+				XPCS_RGWR_VAL(pdata, PCS_TP_CTRL,
+					      PRBS31T_EN, 1);
+			} else if (strncasecmp(token, "PRBS9",
+				min_t(size_t, len, 5UL)) == 0) {
+				XPCS_RGWR_VAL(pdata, PCS_TP_CTRL, TTP_EN, 0);
+				XPCS_RGWR_VAL(pdata, PCS_TP_CTRL, TP_SEL, 0);
+				XPCS_RGWR_VAL(pdata, PCS_TP_CTRL,
+					      PRBS31T_EN, 0);
+				XPCS_RGWR_VAL(pdata, PCS_TP_CTRL, PRBS9T_EN, 1);
+			} else if (strncasecmp(token, "RANDOM",
+				min_t(size_t, len, 6UL)) == 0)
+				pr_info("WARN: random mode not supported");
+			}
+		break;
+	case 9:
+		serdes_tx_test_pattern_cfg_get(pdata);
+		break;
+	case 10:
+		for (token = strsep(&p, ct); token; token = strsep(&p, ct)) {
+			len = strlen(token);
+			if (!len)
+				continue;
+			if (strncasecmp(token, "PRBS31",
+					min_t(size_t, len, 6UL)) == 0) {
+				XPCS_RGWR_VAL(pdata, PCS_TP_CTRL, RTP_EN, 0);
+				XPCS_RGWR_VAL(pdata, PCS_KR_CTRL, PRBS9RXEN, 0);
+				XPCS_RGWR_VAL(pdata, PCS_TP_CTRL,
+					      PRBS31R_EN, 1);
+
+			} else if (strncasecmp(token, "PRBS9",
+				min_t(size_t, len, 5UL)) == 0) {
+				XPCS_RGWR_VAL(pdata, PCS_TP_CTRL, RTP_EN, 0);
+				XPCS_RGWR_VAL(pdata, PCS_TP_CTRL,
+					      PRBS31R_EN, 0);
+				XPCS_RGWR_VAL(pdata, PCS_KR_CTRL, PRBS9RXEN, 1);
+			} else if (strncasecmp(token, "RANDOM",
+				min_t(size_t, len, 6UL)) == 0) {
+				pr_info("random not supported");
+			}
+		}
+		break;
+	case 11:
+		serdes_rx_test_pattern_cfg_get(pdata);
+		break;
+	case 12:
+		serdes_rx_bit_error_get(pdata);
+		break;
+	default:
+		bert_help();
+		break;
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(bert);
+
 static struct attribute *xpcs_attrs[] = {
 	&dev_attr_xpcs_cl73_info.attr,
 	&dev_attr_xpcs_status.attr,
 	&dev_attr_xpcs_table.attr,
 	&dev_attr_xpcs_linksts.attr,
+	&dev_attr_reg.attr,
+	&dev_attr_rxeq.attr,
+	&dev_attr_txeq.attr,
+	&dev_attr_mode.attr,
+	&dev_attr_cl37.attr,
+	&dev_attr_bert.attr,
 	NULL,
 };
 

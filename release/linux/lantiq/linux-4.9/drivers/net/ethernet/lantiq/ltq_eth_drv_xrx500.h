@@ -43,8 +43,6 @@ struct xrx500_thermal {
 };
 
 struct xrx500_hw {
-	struct mii_bus *mii_bus;
-	struct mii_bus *mii_bus_pae;
 	struct net_device *devs[NUM_ETH_INF];
 	int num_devs;
 	int port_map[NUM_ETH_INF];
@@ -56,6 +54,10 @@ struct xrx500_hw {
  * This structure is used internal purpose
  */
 struct ltq_eth_priv {
+#if IS_ENABLED(CONFIG_INTEL_E160)
+	void *macsec_data;
+	struct mac_e160_ops e160_ops;
+#endif
 	/*!< network device interface Statistics */
 	struct rtnl_link_stats64 stats;
 	/*!< structure of dma device information */
@@ -84,10 +86,15 @@ struct ltq_eth_priv {
 	int jumbo_enabled;
 	int lct_en;
 	int extra_subif;
+	u8 bridge_domain;
+	u8 lan_id;
 	/*! min netdevices for extra subif/lct */
 	int start;
 	/*! max netdevices for extra subif/lct */
 	int end;
+	struct ltq_eth_priv *master;
+	atomic_t powerup;
+	atomic_t xgmac_rx;
 	struct ethtool_cmd bkup_cmd;
 	bool needs_recovery;
 	#define FLAG_PAUSE_AUTO         0x00000001
@@ -107,6 +114,14 @@ struct ltq_eth_priv {
 	#define FLAG_INTERNAL_PHY       0x00100000
 	u32 ethtool_flags;
 	#define ETHTOOL_FLAG_BP_CPU_ENABLE	BIT(0)
+	bool eee_enabled;
+	bool eee_active;
+	bool tx_lpi_enabled;
+	u32 tx_lpi_timer;
+	/* The default timer value as per the
+	 * XGMAC spec 1 sec(1000 ms)
+	 */
+	#define DEFAULT_LPI_TIMER 1000
 };
 
 /**

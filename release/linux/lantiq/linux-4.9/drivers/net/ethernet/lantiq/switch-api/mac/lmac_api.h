@@ -13,8 +13,8 @@
 #include <xgmac_common.h>
 #if defined(PC_UTILITY) && PC_UTILITY
 #define LEGACY_MAC_BASE			0x42000
-#else
-#define LEGACY_MAC_BASE			0xb8420000
+#elif defined(CHIPTEST) && CHIPTEST
+#define LEGACY_MAC_BASE			0xb8442000
 #endif
 #define MAC_TEST			0x300
 #define MAC_PFADCFG			0x304

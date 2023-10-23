@@ -1,0 +1,509 @@
+Version 610.26 rev f7b53226e9a06f955349936de15180f78c72b44f of branch rel/6.1.0, 21/11/2019
+
+Content\Fixes:
+
+* Merge pull request #80 in SW_WAVE/dut from bugfix/WLANRTSYS-16978-align-shared-headers-to-latest-cv-06.01.00.510 to rel/6.1.0
+
+Release files location:
+G:\Wireless\SW\ReleaseVersions\DUT\6.1.0\610.26
+
+Shared headers hash:
+50a9aee5df71b263c85ab3d436ec5a36d6c423c2
+
+Tested with CV:
+610.510
+
+----------------------------------------------------------------
+
+Version 610.25 rev 5fedea3b19c0ddaaf290c30170351ed8bdfc9250 of branch rel/6.1.0, 14/11/2019
+
+Content\Fixes:
+
+* Merge pull request #69 in SW_WAVE/dut from feature/WLANRTSYS-15334-fcc-enable-by-default to rel/6.1.0
+* Merge pull request #77 in SW_WAVE/dut from bugfix/WLANRTSYS-16713-align-shared-headers-to-latest-stable-cv-06.01.00.484 to rel/6.1.0
+* Merge pull request #76 in SW_WAVE/dut from bugfix/WLANRTSYS-16624-fail-to-detect-memory-size-on-flash to rel/6.1.0
+* Merge pull request #72 in SW_WAVE/dut from feature/WLANRTSYS-16085-conversion-script-improvement to rel/6.1.0
+* Merge pull request #66 in SW_WAVE/dut from feature/WLANRTSYS-14932-upload-auto-test-demo-source-into-dut-git to rel/6.1.0
+* Merge pull request #71 in SW_WAVE/dut from feature/WLANRTSYS-9860-Dut-release-tasks to rel/6.1.0
+* Merge pull request #68 in SW_WAVE/dut from bugfix/WLANRTSYS-15293-enable-gitpush-in-dut-version-release-script to rel/6.1.0
+* Merge pull request #65 in SW_WAVE/dut from bugfix/WLANRTSYS-13675-dut-gui-logger-features to rel/6.1.0
+
+Release files location:
+G:\Wireless\SW\ReleaseVersions\DUT\6.1.0\610.25
+
+Shared headers hash:
+92088220d487b874fd978a5456ac92ef5dec7ef9
+
+Tested with CV:
+610.484
+
+----------------------------------------------------------------
+
+Version 610.24 rev 9a9ead00c2d8571b686394729620891a91b490e5 of branch rel/6.1.0, 25/09/2019
+
+Content\Fixes:
+
+*  Merge pull request #67 in SW_WAVE/dut from feature/WLANRTSYS-14950-zwdfs-dut-support to rel/6.1.0
+*  Merge pull request #63 in SW_WAVE/dut from bugfix/WLANRTSYS-14015-reverse-data-rate-between-mcs3-and-mcs-4-on-11g-a to rel/6.1.0
+
+Release files location:
+G:\Wireless\SW\ReleaseVersions\DUT\6.1.0\610.24
+
+Shared headers hash:
+dcd95b2a73dedae888c2726d782bba18398997f6
+
+----------------------------------------------------------------
+
+Version 610.23 rev 8f2239346806cd0f914628ee05afa9405ea1ae42 of branch rel/6.1.0, 25/07/2019
+
+Content\Fixes:
+
+*  Merge pull request #60 in SW_WAVE/dut from feature/DUT610-WLANRTSYS-8476-add-dut-relese-script-in-team-city to rel/6.1.0
+
+*  Merge pull request #56 in SW_WAVE/dut from bugfix/DUT610-WLANRTSYS-12596-Conversion-script-to-fix-no-common-procedures-for-couple-of-items-in-shared_header to rel/6.1.0
+
+*  Merge pull request #58 in SW_WAVE/dut from feature/DUT610-WLANRTSYS-8476-add-dut-relese-script-in-team-city to rel/6.1.0
+
+Release files location:
+G:\Wireless\SW\ReleaseVersions\DUT\6.1.0\610.23
+
+Shared headers hash:
+dcd95b2a73dedae888c2726d782bba18398997f6
+
+----------------------------------------------------------------
+
+Version 610.22 rev aca852b7bf8204d385a7f6ecff4b9c20127f9603 of branch release/6.1.0, 23/06/2019
+
+Content\Fixes:
+
+*  Merge pull request #54 in SW_WAVE/dut from bugfix/DUT610-WLANRTSYS-12547-IQLite-Calibration-crash-probabilistically,when-using-DUT-version-with-conversion-script to release/6.1.0
+
+Release files location:
+G:\Wireless\SW\ReleaseVersions\DUT\6.1.0\610.22
+
+Shared headers hash:
+dcd95b2a73dedae888c2726d782bba18398997f6
+
+----------------------------------------------------------------
+
+Version 610.21 rev 50482793c86a2e759bfb0c3f27158064c9a00198 of branch release/6.1.0, 20/06/2019
+
+Content\Fixes:
+*  Merge pull request #51 in SW_WAVE/dut from bugfix/DUT610-Latest-WLANRTSYS-12404-rx-sub-band-debug-6.1.0 to release/6.1.0
+
+Release files location:
+G:\Wireless\SW\ReleaseVersions\DUT\6.1.0\610.21
+
+Shared headers hash:
+dcd95b2a73dedae888c2726d782bba18398997f6
+
+----------------------------------------------------------------
+
+Version 610.20 rev 9c072e2bae1a98497f94b957ec5ec5fa4661fe89 of branch release/6.1.0, 19/06/2019
+
+Content\Fixes:
+
+*  Merge pull request #49 in SW_WAVE/dut from feature/DUT6.1.0_Conversion_script to release/6.1.0
+
+Release files location:
+G:\Wireless\SW\ReleaseVersions\DUT\6.1.0\610.20
+
+Shared headers hash:
+dcd95b2a73dedae888c2726d782bba18398997f6
+
+----------------------------------------------------------------
+
+Version 610.19 rev 4e7aa48d2160d3c00630e495aef89fa578fcfc25 of branch release/6.1.0, 17/06/2019
+
+Content\Fixes:
+
+*  Merge pull request #45 in SW_WAVE/dut from bugfix/WLANRTSYS-11282-dut-gui-gpb654-issues to release/6.1.0
+	- for each set band, always check phytype and make it algined to band
+
+*  Merge pull request #43 in SW_WAVE/dut from feature/WLANRTSYS-8476-add-dut-relese-script-in-team-city to release/6.1.0
+
+*  Merge pull request #40 in SW_WAVE/dut from feature/WLANRTSYS-9864-dut-gui-allow-showing-dut-version-before-connecting-to-board to release/6.1.0
+
+*  Merge pull request #38 in SW_WAVE/dut from bugfix/WLANRTSYS-11282-dut-gui-gpb654-issues to release/6.1.0
+	- fix bug: GPB654 current band is 5G but gui default values are for 2.4G
+
+Release files location:
+G:\Wireless\SW\ReleaseVersions\DUT\6.1.0\610.19
+
+Shared headers hash:
+dcd95b2a73dedae888c2726d782bba18398997f6
+
+----------------------------------------------------------------
+
+Version 610.18 rev 60d4d8063f01ce12f080ec9901e12863fd49e178 of branch release/6.1.0, 22/05/2019
+
+Content\Fixes:
+
+*  Merge pull request #35 in SW_WAVE/dut from bugfix/WLANRTSYS-11785-iqlite-create-2k-cal-file-while-set-1k-in-testflow to release/6.1.0
+
+*  Merge pull request #36 in SW_WAVE/dut from bugfix/WLANRTSYS-11786-align-mhi_umi-to-latest-shared-headers to release/6.1.0
+	- Align mhi_umi to shared headers hash: dcd95b2a73dedae888c2726d782bba18398997f6
+
+*  Merge pull request #31 in SW_WAVE/dut from WLANRTSYS-9861-add-logging-mechanism-to-dut-dlls to release/6.1.0
+
+Release files location:
+G:\Wireless\SW\ReleaseVersions\DUT\6.1.0\610.18
+
+Shared headers hash:
+dcd95b2a73dedae888c2726d782bba18398997f6
+
+----------------------------------------------------------------
+
+Version 610.17 rev 5b63b7176b39f9c4a70d88ffc1e4ca94e93ca099 of branch release/6.1.0, 13/05/2019
+
+Content\Fixes:
+*  Merge pull request #33 in SW_WAVE/dut from bugfix/WLANRTSYS-11438-modify-umi_set_bss-reserved-field-to-support-er2 to release/6.1.0
+	- Changed UMI_SET_BSS reserved field to support ER2 branch modifications
+
+*  Merge pull request #30 in SW_WAVE/dut from bugfix/6.1.0-revise-WLANRTSYS-10517-tx-power-in-band-edge-channel-on-dut_gui to release/6.1.0
+	- revised fcc regulatory check box callback
+
+Release files location:
+G:\Wireless\SW\ReleaseVersions\DUT\6.1.0\610.17
+
+Shared headers hash:
+851b5da125767b39e28cc7ac16f54b6f59415d2e
+
+----------------------------------------------------------------
+
+Version 610.16 rev f60581c06731e632f1cc406ba879afbdc879c598 of branch release/6.1.0, 01/05/2019
+
+Content\Fixes:
+
+*  Merge pull request #29 in SW_WAVE/dut from bugfix/WLANRTSYS-9735-_RAX40]_IQrun_Console_pop-up_error_message_-_GroupID_38,_FiledID_14,_Line_168 to release/6.1.0
+   - sendS2dParams() pause/resume tx for fcsi register write.
+
+*  Merge pull request #25 in SW_WAVE/dut from bugfix/WLANRTSYS-10779-default-to-disable-rx-aggregation to release/6.1.0
+*  - when insert dut , disable rx aggregation.
+
+*  Merge pull request #27 in SW_WAVE/dut from bugfix/WLANRTSYS-10869-increase-socket-receive-timeout-to-align-to-driver-fw-timeout to release/6.1.0
+   - ReceiveTimeout increase up to 22 seconds to align to driver-FW 20sec timeout.
+
+Release files location:
+G:\Wireless\SW\ReleaseVersions\DUT\6.1.0\610.16
+
+Shared headers hash:
+851b5da125767b39e28cc7ac16f54b6f59415d2e
+
+----------------------------------------------------------------
+
+Version 610.15 rev d18dc413d400ce8e0fca14e9e79fc19387cc8f6a of branch release/6.1.0, 18/04/2019
+
+Content\Fixes:
+*  Merge pull request #23 in SW_WAVE/dut from subBandFix to release/6.1.0
+
+Release files location:
+G:\Wireless\SW\ReleaseVersions\DUT\6.1.0\610.15
+
+Shared headers hash:
+851b5da125767b39e28cc7ac16f54b6f59415d2e
+
+----------------------------------------------------------------
+
+Version 610.14 rev 9e768712e57706209f72155cf7e8f1508724e579 of branch release/6.1.0, 18/04/2019
+
+Content\Fixes:
+
+*  Merge pull request #21 in SW_WAVE/dut from bugfix/WLANRTSYS-10703-increase-socket-receive-timeout-for-stability-issues to release/6.1.0
+
+*  Merge pull request #20 in SW_WAVE/dut from bugfix/6.1.0-WLANRTSYS-10517-tx-power-in-band-edge-channel-on-dut_gui to release/6.1.0
+
+*  Merge pull request #10 in SW_WAVE/dut from bugfix/WLANRTSYS-9590-flash_2k-support to release/6.1.0
+
+Release files location:
+G:\Wireless\SW\ReleaseVersions\DUT\6.1.0\610.14
+
+Shared headers hash:
+851b5da125767b39e28cc7ac16f54b6f59415d2e
+
+----------------------------------------------------------------
+
+Version 610.13 rev 69e16778d9c335f8a84b22af320b7d330d2760e2 of branch release/6.1.0, 14/04/2019
+
+Content\Fixes:
+
+*  Merge pull request #15 in SW_WAVE/dut from bugfix/WLANRTSYS-10544-fw-crash-after-dutwrapper.dut_midgaincalibrate-api to release/6.1.0
+	- Changed sendMeasureCwPower & sendMidGainCalibrate functions to work with activeAntMask instead of hwAntMask
+
+*  Merge pull request #16 in SW_WAVE/dut from bugfix/WLANRTSYS-9842_WLANRTSYS-10139_windows7-dut-timeout-issues to release/6.1.0
+	- Increased Telnet connection and Socket connection timeouts for Win7 issues.
+
+*  Merge pull request #14 in SW_WAVE/dut from feature/WLANRTSYS-9393-rx-cal-file-parsing-on-gui to release/6.1.0
+	- Completed RSSI Parsing Beta version
+	- completed LNA gain & Mid gain
+	- Initial draft for RSSI parsing
+
+*  Merge pull request #8 in SW_WAVE/dut from bugfix/WLANRTSYS-9801-dut-build-warning to release/6.1.0
+	- Remove unused comment
+	- Remove unreached code but remain comment for reference
+
+*  update shared header hash for 6.1.0
+
+*  Merge pull request #6 in SW_WAVE/dut from bugfix/6.1.0-WLANRTSYS-7085-dut-fails-to-connect-on-first-connection-attempt to release/6.1.0
+	- ReceiveTimeout increase up to 3 senconds due to the case of multiple slave VAPs in which FW would spending 2.x seconds on handling RESET MAC at first connect.
+
+*  change the aggregation enable api parameter's name from "flag" to "enable"
+
+Release files location:
+G:/Wireless/SW/ReleaseVersions/DUT/6.1.0/610.13
+
+Shared headers hash:
+851b5da125767b39e28cc7ac16f54b6f59415d2e
+
+----------------------------------------------------------------
+
+Version 610.12 rev f55ceb42930ac7478d433a00e39c8fc86716d797 of branch release/6.1.0, 10/03/2019
+
+Content\Fixes:
+
+*  Merge remote-tracking branch 'origin/feature/WLANRTSYS-9485-aggregate-packets-support' into release/6.1.0
+*  
+*  Revise the data type from integer to bool for isDataLong
+*  
+*  aggregate packets RX support
+*  
+*  Align to Shared header commit(6.1.0 latest) :
+* 
+* 851b5da125767b39e28cc7ac16f54b6f59415d2e
+*  
+*  When close GUI, the transmission would be force stopped
+*  
+*  No tx calculation before dut connected
+*  
+
+
+Release files location:
+G:/Wireless/SW/ReleaseVersions/DUT/6.1.0/610.12
+
+Shared headers hash:
+645690dec2d186c9599be0d93eead30a5b74d0fe
+
+----------------------------------------------------------------
+
+Version 610.11 rev 5b2bdbf4e13d4aaa3140e2868d6e8a6b7656b0c6 of branch release/6.1.0, 27/02/2019
+
+Content\Fixes:
+
+*  Restore "Merge branch 'release/6.1.0' of ssh://gts-chd.intel.com:29418/sw_wave/dut into release/6.1.0"" (tx-long-packet-dut-implementation)
+* 
+* This reverts commit 7ce5265161de35d6458f97d39d2a605287b4f425.
+*  
+*  Revert "Merge branch 'release/6.1.0' of ssh://gts-chd.intel.com:29418/sw_wave/dut into release/6.1.0"(tx-long-packet-dut-implementation)
+* 
+* This reverts commit 8000d74b334871d7766c035a458ea870f86ddeaa, reversing
+* changes made to 89bbe7629c26ca02f7da7381a44a75a216b0ff43.
+*  
+*  Merge branch 'release/6.1.0' of ssh://gts-chd.intel.com:29418/sw_wave/dut into release/6.1.0  (tx-long-packet-dut-implementation)
+*  
+*  new common header
+*  
+
+
+Release files location:
+//ptkcv02a-cifs.iil.intel.com/groups/Wireless/SW/ReleaseVersions/DUT/6.1.0/610.11
+
+Shared headers hash:
+645690dec2d186c9599be0d93eead30a5b74d0fe
+
+----------------------------------------------------------------
+
+Version 610.10 rev a87dad4bb46e35bdf5ea5c5b72eac39367833e5b of branch release/6.1.0, 13/02/2019
+
+Content\Fixes:
+
+*  Revised bss struct for 610.09
+*  
+
+
+Release files location:
+G:/Wireless/SW/ReleaseVersions/DUT/6.1.0/610.10
+
+Shared headers hash:
+645690dec2d186c9599be0d93eead30a5b74d0fe
+
+----------------------------------------------------------------
+
+Version 610.09 rev f4106e5bb739cfc278b55638972f838103aa16e9 of branch release/6.1.0, 11/02/2019
+
+
+CV 6.1.0.162
+IQlite 6032
+DUT 608.9
+
+Content\Fixes:
+
+*  rel 6.1.0
+*  
+*  dut api
+*  
+*  edit git ignor
+*  
+*  fixed size Type
+*  
+*  memory size
+*  
+*  memory size to wrapper
+*  
+
+
+Release files location:
+G:/Wireless/SW/ReleaseVersions/DUT/6.1.0/610.09
+
+Shared headers hash:
+645690dec2d186c9599be0d93eead30a5b74d0fe
+
+----------------------------------------------------------------
+
+Version 610.07 rev e3ebb67764dce5e555db0f978c2400debf9e79b5 of branch release/6.1.0, 03/02/2019
+CV 6.0.1.144 and up
+IQlite 6031 and up
+
+Content\Fixes: add file for connection. linux_host.txt 
+
+For new DUT version you shoulde delete registry:
+	windows -> run ->write: regEdit   (enter)
+	in regEdit go HKEY_CURRENT_USER-> software-> intel->DUT->ip, delete ip
+
+
+
+
+
+
+Release files location:
+G:/Wireless/SW/ReleaseVersions/DUT/6.1.0/610.07
+
+Shared headers hash:
+645690dec2d186c9599be0d93eead30a5b74d0fe
+
+----------------------------------------------------------------
+
+Version 610.06 rev c87427da9cf92d2d610c7215799f5c7ee562c791 of branch release/6.1.0, 03/02/2019
+
+Content\Fixes:
+
+*  telnetInterface.cs
+*  
+*  Added linux_hosts.txt file
+*  
+*  GUI tab to be bold after connected
+*  
+*  Remove debug check box from connection GUI
+*  
+*  Change combo box of memory type, to be small letter: "flash, eeprom_1k, eeprom_2k"
+*  
+
+
+Release files location:
+G:/Wireless/SW/ReleaseVersions/DUT/6.1.0/610.06
+
+Shared headers hash:
+645690dec2d186c9599be0d93eead30a5b74d0fe
+
+----------------------------------------------------------------
+
+Version 610.06 rev 7b04df809753bb3bebe9ba1232a0b0639b83ca80 of branch release/6.1.0, 30/01/2019
+
+Content\Fixes:
+
+Support A0 CV 6.1.0.156 and up
+NOT SUPPORT A1 untill FAPI will handeld.
+
+Release files location:G:/Wireless/SW/ReleaseVersions/DUT/6.1.0/610.06
+
+Shared headers hash:
+645690dec2d186c9599be0d93eead30a5b74d0fe
+
+----------------------------------------------------------------
+
+Version 610.05 rev f13ce37e78c21bcca1a17d5cf9a19ac5f9aa7b5c of branch release/6.1.0, 20/12/2018
+
+
+ CV 6.1.0.103 and up
+
+Content\Fixes:
+
+*  Merge remote-tracking branch 'origin/bugfix/WLANRTSYS-7344-enable-working-dut-for-cv-6.1.0.103' into release/6.1.0
+*  
+*  Enable working DUT for CV 6.1.0.103: Align the structure of UMI_SET_BSS in mhi_umi.cs  with FW
+*  
+*  update shared header
+*  
+
+
+Release files location:
+//tlvsdn50.iil.intel.com/groups/Wireless/SW/ReleaseVersions/DUT/6.1.0/610.05
+
+Shared headers hash:
+f88d83851140985b8f3abec7140013682db56d15
+
+----------------------------------------------------------------
+
+Version 610.04 rev 48538666d94be4d84326103b483b8284de06a299 of branch release/6.1.0, 06/12/2018
+
+CV 6.0.8.139
+CV 6.0.1.77
+
+Content\Fixes:
+
+* 
+
+
+Release files location:
+G:/Wireless/SW/ReleaseVersions/DUT/6.1.0/610.04
+
+Shared headers hash:
+645690dec2d186c9599be0d93eead30a5b74d0fe
+
+----------------------------------------------------------------
+
+Version 610.03 rev 2081:925403322702 of branch DUT_REL_6.1.0, 05/11/2018
+
+CV: Support CV 6.0.8.134 - 6.0.8.138
+-Support B0 FW 6.1.0.xx - 6.1.0.
+-Release for B0 - connect works. continue Bring Up.
+
+Content\Fixes:
+
+* Merge with DUT_REL_6.0.8_Merge610Changes
+
+
+Release files location:
+//tlvsdn50.iil.intel.com/groups/Wireless/SW/ReleaseVersions/DUT/6.1.0/610.03
+
+Shared files hash:
+ff4b766f261a
+
+----------------------------------------------------------------
+
+Version 610.02 rev 1899:0e66f28fe2bc of branch DUT_REL_6.1.0, 11/07/2018
+
+Content\Fixes:
+
+* Merge with DUT_REL_6.08.43_rev1898
+
+
+Release files location:
+G:/Wireless/SW/ReleaseVersions/DUT/6.1.0/610.02
+
+Shared files hash:
+29be941ef1f6
+
+----------------------------------------------------------------
+
+Version 610.01 rev 1894:86ea43b0517a of branch DUT_REL_6.1.0, 11/07/2018
+
+Content\Fixes:
+
+* version 610
+
+
+Release files location:
+G:/Wireless/SW/ReleaseVersions/DUT/6.1.0/610.01
+
+Shared files hash:
+3e3cf8eea2bd

@@ -1,0 +1,22 @@
+
+Release tag MPE_FW_Release Ver=2.1.7-0 ID=19 branch=falcon
+16-10-20
+- subif information is common for all EP
+
+Release tag MPE_FW_Release Ver=2.1.6-0 ID=19 branch=falcon
+13-03-20
+- Update tm_flow: if dispatch Q is full, disable CQM DEQ interrupt
+
+Release tag MPE_FW_Release Ver=2.1.5-3 ID=19 branch=falcon
+19-02-20
+- HGU mode tested with PON OLT (Fritz) and ETH WAN (Spearpoint)
+
+Release tag MPE_FW_Release Ver=2.0.1-0 ID=18 branch=falcon
+10-10-19
+- Remove workaround for 6rd and Dslite UDP traffic
+- VER_DESC changed to PRX300
+
+Release tag MPE_FW_Release Ver=2.0.0-0 ID=18 branch=falcon
+26-07-19
+- First release of MPE FW for FLM (FalconMX)
+

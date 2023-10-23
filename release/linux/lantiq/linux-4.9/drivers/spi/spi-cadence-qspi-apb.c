@@ -88,7 +88,7 @@ static unsigned int cadence_qspi_apb_cmd2addr(const unsigned char *addr_buf,
 
 	for (i = 0; i < addr_width; i++) {
 		addr = addr << 8;
-		addr |= addr_buf[i];
+		addr |= (unsigned int)addr_buf[i];
 	}
 
 	return addr;

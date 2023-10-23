@@ -16,6 +16,7 @@
 #include <linux/regmap.h>
 #include <linux/mfd/syscon.h>
 #include <lantiq.h>
+#include "xrx500_phy_fw.h"
 
 #define FIRMWARE_P11G_XRX500 "ltq_fw_PHY11G_IP_xRx5xx_A21.bin"
 #define FIRMWARE_P31G_PRX300_A "ltq_fw_PHY31G_IP_prx3xx_A11.bin"
@@ -34,9 +35,9 @@ struct prx300_reset_control {
 
 struct xway_gphy_data {
 	struct device *dev;
-	struct regmap *syscfg, *cgu_syscfg, *chipid_syscfg, *aspa_syscfg;
-	void __iomem *base, *fcsi_base;
+	struct regmap *syscfg, *cgu_syscfg, *chipid_syscfg, *aspa_syscfg, *pdi_base, *fcsi_base;
 	struct clk *clk;
+	struct clk *clk_synce;
 
 	dma_addr_t dma_addr;
 	const char *fw_name;
@@ -58,8 +59,15 @@ struct xway_gphy_data {
 	} *soc_data;
 };
 
+static struct regmap_config gphy_regmap_cfg = {
+	.reg_bits	= 32,
+	.reg_stride	= 4,
+	.val_bits	= 32,
+};
+
 /* GPHY related */
 static int g_xway_gphy_fw_loaded;
+static struct xrx500_reset_control xrx500_rst;
 
 /* xRX500 gphy (GSW-L) registers */
 #define GPHY2_LBADR_XRX500     0x0228
@@ -118,22 +126,27 @@ static u32 xrx500_gphy[] = {
 #define GPHYCDB_RCM_D 1
 #define GPHYCDB_RCM_M 4110
 
-static u32 gsw_reg_r32(void __iomem *base, u32 reg_off)
+static u32 gsw_reg_r32(struct regmap *map, u32 reg_off)
 {
-	return __raw_readl(base + reg_off);
+	u32 reg_val = 0;
+
+	if (regmap_read(map, reg_off, &reg_val))
+		return -EINVAL;
+
+	return reg_val;
 }
 
-static void gsw_reg_w32(void __iomem *base, u32 val, u32 reg_off)
+static void gsw_reg_w32(struct regmap *map, u32 val, u32 reg_off)
 {
-	__raw_writel(val, base + reg_off);
+	regmap_write(map, reg_off, val);
 }
 
-static void gsw_reg_w32_mask(void __iomem *base, u32 clear, u32 set,
+static void gsw_reg_w32_mask(struct regmap *map, u32 clear, u32 set,
 			     u32 reg_off)
 {
-	u32 val = gsw_reg_r32(base, reg_off);
+	u32 val = gsw_reg_r32(map, reg_off);
 
-	gsw_reg_w32(base, (val & (~clear)) | set, reg_off);
+	gsw_reg_w32(map, (val & (~clear)) | set, reg_off);
 }
 
 /* xrx500 specific boot sequence */
@@ -147,9 +160,9 @@ static int xrx500_gphy_boot(struct xway_gphy_data *priv)
 			continue;
 
 		reset_control_assert(rst->phy[i]);
-		gsw_reg_w32(priv->base, (priv->dma_addr & 0xFFFF),
+		gsw_reg_w32(priv->pdi_base, (priv->dma_addr & 0xFFFF),
 			    xrx500_gphy[i]);
-		gsw_reg_w32(priv->base, ((priv->dma_addr >> 16) & 0xFFFF),
+		gsw_reg_w32(priv->pdi_base, ((priv->dma_addr >> 16) & 0xFFFF),
 			    (xrx500_gphy[i] + 4));
 		reset_control_deassert(rst->phy[i]);
 		dev_info(priv->dev, "booting GPHY%u firmware for GRX500\n", i);
@@ -164,6 +177,7 @@ static int xrx500_dt_parse(struct xway_gphy_data *priv)
 	int i;
 	struct xrx500_reset_control *rst = &priv->rst.xrx500;
 	struct resource *res;
+	void __iomem *base;
 	struct platform_device *pdev = container_of(priv->dev,
 						    struct platform_device,
 						    dev);
@@ -174,9 +188,14 @@ static int xrx500_dt_parse(struct xway_gphy_data *priv)
 		return -ENODEV;
 	}
 
-	priv->base = devm_ioremap_resource(&pdev->dev, res);
-	if (!priv->base)
+	base = devm_ioremap_resource(&pdev->dev, res);
+	if (!base)
 		return -ENOMEM;
+
+	gphy_regmap_cfg.name = "gphy-xrx500";
+
+	priv->pdi_base = devm_regmap_init_mmio(&pdev->dev, base,
+					  &gphy_regmap_cfg);
 
 	for (i = 0; i < XRX500_GPHY_NUM; i++) {
 		snprintf(phy_str, sizeof(phy_str), "phy%d", i);
@@ -190,8 +209,22 @@ static int xrx500_dt_parse(struct xway_gphy_data *priv)
 	}
 
 	priv->fw_name = FIRMWARE_P11G_XRX500;
+	memcpy(&xrx500_rst, rst, sizeof(struct xrx500_reset_control));
 
 	return 0;
+}
+
+/* xrx500 gphy reset for a particular phy ID */
+static void xrx500_gphy_reset(u32 phy_id)
+{
+	struct xrx500_reset_control *rst = &xrx500_rst;
+
+	if (phy_id < XRX500_GPHY_NUM && rst->phy[phy_id] != NULL) {
+		reset_control_assert(rst->phy[phy_id]);
+		udelay(1);
+		reset_control_deassert(rst->phy[phy_id]);
+		pr_info("Reset GPHY%u for GRX500\n", phy_id);
+	}
 }
 
 /* prx300 rcal/rc_count value calculation.
@@ -205,7 +238,7 @@ static u32 prx300_gphy_config_rcal_rcm(struct xway_gphy_data *priv)
 	u32 val;
 	int retry;
 
-	if (ltq_get_soc_rev() == 1) {
+	if (ltq_get_soc_rev()) {
 		/* B-Step: get rcal from cdb register */
 		val = gsw_reg_r32(priv->fcsi_base,
 				  PRX300_GPHY_CDB_FCSI_PLL_RCALSTAT) & 0xF;
@@ -334,10 +367,11 @@ static int prx300_gphy_boot(struct xway_gphy_data *priv)
 	reset_control_deassert(rst->gphy_cdb);
 
 	/* Set divider and misc config, must be done before rcm calculation */
-	gsw_reg_w32(priv->base, (fbdiv << 4) | PRX300_PLL_LOCK_RST,
+	gsw_reg_w32(priv->pdi_base, (fbdiv << 4) | PRX300_PLL_LOCK_RST,
 		    PRX300_GPHY_CDB_PDI_PLL_CFG0);
-	gsw_reg_w32(priv->base, (refdiv << 8), PRX300_GPHY_CDB_PDI_PLL_CFG2);
-	gsw_reg_w32(priv->base, (PRX300_GPHY_FORCE_LATCH << 13) |
+	gsw_reg_w32(priv->pdi_base, (refdiv << 8),
+		    PRX300_GPHY_CDB_PDI_PLL_CFG2);
+	gsw_reg_w32(priv->pdi_base, (PRX300_GPHY_FORCE_LATCH << 13) |
 		    (PRX300_GPHY_CLEAR_STICKY << 14),
 		    PRX300_GPHY_CDB_PDI_PLL_MISC);
 
@@ -375,6 +409,7 @@ static int prx300_dt_parse(struct xway_gphy_data *priv)
 	int ret;
 	struct prx300_reset_control *rst = &priv->rst.prx300;
 	struct resource *res;
+	void __iomem *base;
 	struct platform_device *pdev = container_of(priv->dev,
 						    struct platform_device,
 						    dev);
@@ -385,9 +420,25 @@ static int prx300_dt_parse(struct xway_gphy_data *priv)
 		dev_err(&pdev->dev, "no cdb_pdi resources\n");
 		return -ENODEV;
 	}
-	priv->base = devm_ioremap_resource(&pdev->dev, res);
-	if (!priv->base)
+	base = devm_ioremap_resource(&pdev->dev, res);
+	if (!base)
 		return -ENOMEM;
+
+	gphy_regmap_cfg.name = "gphy_cdb_pdi";
+	if (IS_ENABLED(CONFIG_REGMAP_ICC))
+		priv->pdi_base = devm_regmap_init_icc(&pdev->dev, base,
+						      res->start,
+						      &gphy_regmap_cfg);
+	else
+		priv->pdi_base = devm_regmap_init_mmio(&pdev->dev, base,
+					  &gphy_regmap_cfg);
+
+	if (IS_ERR(priv->pdi_base)) {
+		ret = PTR_ERR(priv->pdi_base);
+		dev_err(&pdev->dev,
+			"failed to init pdi_base register map: %d\n", ret);
+		return ret;
+	}
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 					   "gphy_cdb_fcsi");
@@ -395,9 +446,25 @@ static int prx300_dt_parse(struct xway_gphy_data *priv)
 		dev_err(&pdev->dev, "no cdb_fcsi resources\n");
 		return -ENODEV;
 	}
-	priv->fcsi_base = devm_ioremap_resource(&pdev->dev, res);
-	if (!priv->fcsi_base)
+	base = devm_ioremap_resource(&pdev->dev, res);
+	if (!base)
 		return -ENOMEM;
+
+	gphy_regmap_cfg.name = "gphy_cdb_fcsi";
+	if (IS_ENABLED(CONFIG_REGMAP_ICC))
+		priv->fcsi_base = devm_regmap_init_icc(&pdev->dev, base,
+						       res->start,
+						       &gphy_regmap_cfg);
+	else
+		priv->fcsi_base = devm_regmap_init_mmio(&pdev->dev, base,
+					  &gphy_regmap_cfg);
+
+	if (IS_ERR(priv->fcsi_base)) {
+		ret = PTR_ERR(priv->fcsi_base);
+		dev_err(&pdev->dev,
+			"failed to init fcsi_base register map: %d\n", ret);
+		return ret;
+	}
 
 	/* get clock */
 	priv->clk = devm_clk_get(&pdev->dev, "freq");
@@ -410,6 +477,24 @@ static int prx300_dt_parse(struct xway_gphy_data *priv)
 	if (ret < 0) {
 		dev_err(&pdev->dev, "failed to enable clock: %d\n", ret);
 		return ret;
+	}
+
+	/* get SyncE clock */
+	priv->clk_synce = devm_clk_get(&pdev->dev, "synce");
+	/* clock is optional */
+	if (priv->clk_synce == ERR_PTR(-ENOENT)) {
+		priv->clk_synce = NULL;
+	} else {
+		if (IS_ERR(priv->clk_synce)) {
+			dev_err(&pdev->dev, "unable to get synce clk\n");
+			return PTR_ERR(priv->clk_synce);
+		}
+
+		ret = clk_prepare_enable(priv->clk_synce);
+		if (ret < 0) {
+			dev_err(&pdev->dev, "failed to enable clock: %d\n", ret);
+			return ret;
+		}
 	}
 
 	/* get chiptop regmap */
@@ -450,23 +535,24 @@ static int prx300_dt_parse(struct xway_gphy_data *priv)
 		return PTR_ERR(rst->gphy);
 	}
 
-	rst->gphy_cdb = devm_reset_control_get(priv->dev, "gphy_cdb");
+	rst->gphy_cdb = devm_reset_control_get_shared(priv->dev, "gphy_cdb");
 	if (IS_ERR(rst->gphy_cdb)) {
 		dev_err(priv->dev, "fail to get gphy_cdb prop\n");
 		return PTR_ERR(rst->gphy_cdb);
 	}
 
-	rst->gphy_pwr_down = devm_reset_control_get(priv->dev, "gphy_pwr_down");
+	rst->gphy_pwr_down = devm_reset_control_get_shared(priv->dev,
+							   "gphy_pwr_down");
 	if (IS_ERR(rst->gphy_pwr_down)) {
 		dev_err(priv->dev, "fail to get gphy_pwr_down prop\n");
 		return PTR_ERR(rst->gphy_pwr_down);
 	}
 
 	/* Check SoC version and set firmware name accordingly */
-	if (ltq_get_soc_rev() == 1)
-		priv->fw_name = FIRMWARE_P31G_PRX300_B;
-	else
+	if (ltq_get_soc_rev() == 0)
 		priv->fw_name = FIRMWARE_P31G_PRX300_A;
+	else
+		priv->fw_name = FIRMWARE_P31G_PRX300_B;
 
 	return 0;
 }
@@ -495,6 +581,7 @@ static int xway_gphy_load(struct xway_gphy_data *priv)
 	if (request_firmware(&fw, priv->fw_name, priv->dev)) {
 		dev_err(priv->dev, "failed to load firmware: %s\n",
 			priv->fw_name);
+		release_firmware(fw);
 		return -EIO;
 	}
 
@@ -533,6 +620,7 @@ static int xway_phy_fw_probe(struct platform_device *pdev)
 	int ret = 0;
 	struct xway_gphy_data *priv;
 
+	xrx500_gphy_reset_cb = NULL;
 	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv) {
 		dev_err(&pdev->dev, "can't allocate private data\n");
@@ -561,6 +649,7 @@ static int xway_phy_fw_probe(struct platform_device *pdev)
 		msleep(100);
 
 	g_xway_gphy_fw_loaded = 1;
+	xrx500_gphy_reset_cb = xrx500_gphy_reset;
 	return ret;
 }
 

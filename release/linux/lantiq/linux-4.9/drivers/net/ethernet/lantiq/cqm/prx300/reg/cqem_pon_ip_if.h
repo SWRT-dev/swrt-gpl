@@ -987,6 +987,9 @@
 
 //! @}
 
+//! CBM_PON_CNTR PON DQPC Register
+#define PON_CNTR_26 0x41000u
+
 //! @}
 
 #endif

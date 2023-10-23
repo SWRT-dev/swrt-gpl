@@ -204,6 +204,13 @@ FILE *get_fp(void);
 
 
 enum {
+	PAUSE_AUTO = 0,
+	PAUSE_EN,
+	PAUSE_RES,
+	PAUSE_DIS
+};
+
+enum {
 	MAC_AUTO_DPLX = 0,
 	MAC_FULL_DPLX,
 	MAC_RES_DPLX,
@@ -333,11 +340,18 @@ struct mac_irq_hdl {
 	void *param;
 };
 
+/* Structure to poll for Rx Fifo Error and set adaptation layer */
+struct mac_rxfifo_poll {
+	struct delayed_work work;
+	u64 rxfifo_err_cnt[MAC_LAST];
+	int rxfifo_err_threshold;
+};
 
 /* do forward declaration of private data structure */
 struct mac_prv_data;
 
 struct mac_prv_data {
+	struct mac_ops ops;
 
 	/* XGMAC registers for indirect accessing */
 	u32 xgmac_ctrl_reg;
@@ -401,6 +415,9 @@ struct mac_prv_data {
 	u32 rec_id;
 	bool systime_initialized;
 	struct mac_fifo_entry ts_fifo[MAX_FIFO_ENTRY];
+	bool ext_ref_time;
+	s32 ig_corr;
+	s32 eg_corr;
 
 #ifdef __KERNEL__
 	/* will be pointing to skb which is
@@ -420,6 +437,11 @@ struct mac_prv_data {
 	struct phy_device *phydev;
 	struct tasklet_struct mac_tasklet;
 	struct clk *ker_ptp_clk;
+
+	/* Platform Device for Ingress MACsec (EIP160) slice. */
+	struct platform_device *ig_pdev;
+	/* Platform Device for Egress MACsec (EIP160) slice. */
+	struct platform_device *eg_pdev;
 #endif
 	u32 exts_enabled[N_EXT_TS];
 	u32 snaptype;
@@ -541,10 +563,19 @@ struct mac_prv_data {
 	/* haps=1, if board is HAPS, else 0 */
 	u32 haps;
 
+	struct lmac_rmon_cnt lrmon_shadow;
+	struct xgmac_mmc_stats xrmon_shadow;
+	struct mac_rmon rmon_shadow;
+
+	/* Special Tag Operation mode */
+	u32 tx_sptag;
+	u32 rx_sptag;
+
 	/* MAC IRQ handler */
 	struct mac_irq_hdl *irq_hdl;
 
-	struct mac_ops ops;
+	/* MAC RxFifo Err Poll */
+	struct mac_rxfifo_poll rxfifo_err;
 };
 
 extern struct mac_prv_data prv_data[10];
@@ -577,7 +608,7 @@ int lmac_cfg_main(GSW_MAC_Cli_t *);
 int lmac_wr_reg(void *pdev, u32 reg_off, u32 reg_val);
 int lmac_rd_reg(void *pdev, u32 reg_off);
 int xgmac_wr_reg(void *pdev, u32 reg_off, u32 reg_val);
-int xgmac_rd_reg(void *pdev, u32 reg_off);
+int xgmac_rd_reg(void *pdev, u32 reg_off, u32 *pval);
 int gswss_wr_reg(void *pdev, u32 reg_off, u32 reg_val);
 int gswss_rd_reg(void *pdev, u32 reg_off);
 void mac_init_fn_ptrs(struct mac_ops *mac_op);

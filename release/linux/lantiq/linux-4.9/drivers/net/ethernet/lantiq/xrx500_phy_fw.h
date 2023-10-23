@@ -10,5 +10,6 @@
 #define _XRX500_PHY_FW_
 
 bool is_xway_gphy_fw_loaded(void);
+extern void (*xrx500_gphy_reset_cb)(u32 phy_id);
 
 #endif

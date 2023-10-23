@@ -43,6 +43,7 @@
 #include <xgmac_mdio.h>
 #include <xgmac.h>
 #ifdef __KERNEL__
+#include <linux/gpio/consumer.h>
 #include <linux/of_mdio.h>
 #endif
 
@@ -441,18 +442,12 @@ static int xgmac_mdio_read(struct mii_bus *bus, int phyadr, int phyreg)
 	struct mac_ops *pdev = bus->priv;
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
 	int phydata;
-	int clause;
+	u32 clause = (phyreg & MII_ADDR_C45) ? 0 : 1;
 
 	mac_dbg("XGMAC %d: MDIO Read phyadr = %d, phyreg = %d\n",
 		pdata->mac_idx, phyadr, phyreg);
 
-	if (phyreg & MII_ADDR_C45)
-		clause = 0;
-	else
-		clause = 1;
-
-	if (clause != mdio_get_clause(pdev, phyadr))
-		mdio_set_clause(pdev, clause, phyadr);
+	mdio_set_clause(pdev, clause, phyadr);
 
 	phydata = xgmac_mdio_single_rd(pdev, (phyreg >> 16) & 0x1F, phyadr,
 			     phyreg & 0xFFFF);
@@ -481,15 +476,9 @@ static int xgmac_mdio_write(struct mii_bus *bus, int phyadr, int phyreg,
 	struct mac_ops *pdev = bus->priv;
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
 	int ret = 0;
-	int clause;
+	u32 clause = (phyreg & MII_ADDR_C45) ? 0 : 1;
 
-	if (phyreg & MII_ADDR_C45)
-		clause = 0;
-	else
-		clause = 1;
-
-	if (clause != mdio_get_clause(pdev, phyadr))
-		mdio_set_clause(pdev, clause, phyadr);
+	mdio_set_clause(pdev, clause, phyadr);
 
 	xgmac_mdio_single_wr(pdev, (phyreg >> 16) & 0x1F, phyadr,
 			     phyreg & 0xFFFF, phydata);
@@ -499,6 +488,34 @@ static int xgmac_mdio_write(struct mii_bus *bus, int phyadr, int phyreg,
 		pdata->mac_idx, phyadr, phyreg, phydata);
 
 	return ret;
+}
+
+int xgmac_mdio_reset(struct mii_bus *bus)
+{
+	struct device *dev = bus->parent;
+	struct gpio_descs *descs = NULL;
+	int i;
+
+	if (!dev)
+		return 0;
+
+	descs = devm_gpiod_get_array_optional(dev, "reset", GPIOD_OUT_LOW);
+	if (!descs)
+		return 0;
+
+	/* set reset gpios as output and activate reset */
+	for (i = 0; i < descs->ndescs; ++i)
+		gpiod_direction_output(descs->desc[i], 1);
+
+	msleep(100);
+
+	/* deactivate reset gpios */
+	for (i = 0; i < descs->ndescs; ++i)
+		gpiod_set_value(descs->desc[i], 0);
+
+	msleep(100);
+
+	return 0;
 }
 
 /* API to register mdio.
@@ -530,7 +547,7 @@ int xgmac_mdio_register(void *pdev)
 	new_bus->name = "xgmac_phy";
 	new_bus->read = xgmac_mdio_read;
 	new_bus->write = xgmac_mdio_write;
-	new_bus->reset = NULL;
+	new_bus->reset = xgmac_mdio_reset;
 	snprintf(new_bus->id, MII_BUS_ID_SIZE, "%s-%x", new_bus->name,
 		 pdata->mac_idx);
 	new_bus->priv = pdev;

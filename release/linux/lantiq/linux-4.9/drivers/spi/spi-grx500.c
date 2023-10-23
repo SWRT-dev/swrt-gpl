@@ -341,7 +341,7 @@ static u32 ltq_spi_tx_word(struct ltq_spi *hw, u32 num_of_bytes)
 
 	for (i = start; i < num_of_bytes && i >= 0; i += step) {
 		data = data << 8;
-		data |= tx[i];
+		data |= (u32)tx[i];
 	}
 
 	hw->tx_cnt += num_of_bytes;

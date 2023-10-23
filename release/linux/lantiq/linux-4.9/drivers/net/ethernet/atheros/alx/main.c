@@ -1056,8 +1056,12 @@ out_disable_adv_intr:
 
 static void __alx_stop(struct alx_priv *alx)
 {
-	alx_halt(alx);
 	alx_free_irq(alx);
+
+	cancel_work_sync(&alx->link_check_wk);
+	cancel_work_sync(&alx->reset_wk);
+
+	alx_halt(alx);
 	alx_free_rings(alx);
 }
 
@@ -1649,6 +1653,7 @@ out_free_netdev:
 	free_netdev(netdev);
 out_pci_release:
 	pci_release_mem_regions(pdev);
+	pci_disable_pcie_error_reporting(pdev);
 out_pci_disable:
 	pci_disable_device(pdev);
 	return err;
@@ -1658,9 +1663,6 @@ static void alx_remove(struct pci_dev *pdev)
 {
 	struct alx_priv *alx = pci_get_drvdata(pdev);
 	struct alx_hw *hw = &alx->hw;
-
-	cancel_work_sync(&alx->link_check_wk);
-	cancel_work_sync(&alx->reset_wk);
 
 	/* restore permanent mac address */
 	alx_set_macaddr(hw, hw->perm_addr);
@@ -1693,13 +1695,19 @@ static int alx_resume(struct device *dev)
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct alx_priv *alx = pci_get_drvdata(pdev);
 	struct alx_hw *hw = &alx->hw;
+	int err;
 
 	alx_reset_phy(hw);
 
 	if (!netif_running(alx->dev))
 		return 0;
+
+	err = __alx_open(alx, true);
+	if (err)
+		return err;
+
 	netif_device_attach(alx->dev);
-	return __alx_open(alx, true);
+	return 0;
 }
 
 static SIMPLE_DEV_PM_OPS(alx_pm_ops, alx_suspend, alx_resume);

@@ -384,12 +384,13 @@ int gswss_set_macsec_to_mac(void *pdev, u32 mac_idx, u32 enable)
 	struct adap_prv_data *pdata = GET_ADAP_PDATA(pdev);
 	u32 macsec_en;
 
+	if (mac_idx < MAC_2 || mac_idx >= MAC_LAST)
+		return -1;
+
 #ifdef __KERNEL__
 	spin_lock_bh(&pdata->adap_lock);
 #endif
 	macsec_en = GSWSS_RGRD(pdata, MACSEC_EN);
-
-	mac_idx += 2;
 
 	if (enable) {
 		mac_dbg("GSWSS: MACSEC enabled to MAC %d data traffic\n",
@@ -398,6 +399,7 @@ int gswss_set_macsec_to_mac(void *pdev, u32 mac_idx, u32 enable)
 	} else {
 		mac_dbg("GSWSS: MACSEC to MAC mapping : DISABLED\n");
 		MAC_SET_VAL(macsec_en, MACSEC_EN, SEL, 0);
+		MAC_SET_VAL(macsec_en, MACSEC_EN, RES, 1);
 	}
 
 	GSWSS_RGWR(pdata, MACSEC_EN, macsec_en);
@@ -562,6 +564,8 @@ void gswss_init_fn_ptrs(struct adap_ops *adap_ops)
 
 	adap_ops->ss_set_cfg0_1588 = gswss_cfg0_1588;
 	adap_ops->ss_get_cfg0_1588 = gswss_get_cfg0_1588;
+	adap_ops->ss_set_cfg1_1588 = gswss_cfg1_1588;
+	adap_ops->ss_get_cfg1_1588 = gswss_get_cfg1_1588;
 
 	adap_ops->ss_set_clkmode = gswss_set_clkmode;
 	adap_ops->ss_get_clkmode = gswss_get_clkmode;

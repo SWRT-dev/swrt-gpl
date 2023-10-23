@@ -75,10 +75,6 @@
  * Definition
  * ####################################
  */
-#if defined(WMM_QOS_CONFIG) && WMM_QOS_CONFIG
-#define WMM_QOS_DEV_F_REG			0x00000001
-#define WMM_QOS_DEV_F_DREG			0x00000002
-#endif/* WMM_QOS_CONFIG */
 #ifdef NO_DOXY
 #define VLAN_ID_SPLIT(full_id, pri, cfi, vid)	do { pri = ((full_id) >> 13) & 7; cfi = ((full_id) >> 12) & 1; vid = (full_id) & 0xFFF } while (0)
 #define VLAN_ID_CONBINE(full_id, pri, cfi, vid) full_id	= (((uint16_t)(pri) & 7) << 13) | (((uint16_t)(cfi) & 1) << 12) | ((uint16_t) (vid) & 0xFFF)
@@ -117,6 +113,10 @@
 #define ING_GROUP_POS					21
 #define INGRESS_TC_BIT_POS				23
 #endif /* CONFIG_INTEL_IPQOS_MPE_DS_ACCEL */
+#ifndef CONFIG_NETWORK_EXTMARK
+/* This bit indicates whether packet is classified by PAE */
+#define CPU_CLASSIFICATION_MASK     0x10
+#endif
 #if IS_ENABLED(WMM_QOS_CONFIG)
 typedef int (*PPA_QOS_CLASS2PRIO_CB)(int32_t , PPA_NETIF *, uint8_t *);
 #endif
@@ -165,6 +165,7 @@ typedef enum {
 	TUNNEL_DECRYPT,
 	TUNNEL_GRE_US,
 	TUNNEL_GRE_DS,
+	TUNNEL_VXLAN,
 	TUNNEL_IPSEC_US,
 	TUNNEL_IPSEC_DS,
 	TUNNEL_IPSEC_MIB,
@@ -193,6 +194,7 @@ typedef enum {
 	QOS_METER,
 	WMM_QOS_DSCP_MAP,
 	TUNNEL_MAP_E,
+	PORT_METER,
 	MAX_CAPS
 } PPA_API_CAPS;
 
@@ -514,6 +516,7 @@ typedef enum {
 	TUNNEL_TYPE_6EOGRE, /*!< IPv6 Ethernet Over GRE Tunnel */
 	TUNNEL_TYPE_IPOGRE, /*!< IPv4 IP Over GRE Tunnel */
 	TUNNEL_TYPE_IP6OGRE, /*!< IPv6 IP Over GRE Tunnel */
+	TUNNEL_TYPE_VXLAN,  /*!< VXLAN over UDP Tunnel */
 	TUNNEL_TYPE_IPSEC, /*!< IPSEC Tunnel */
 	TUNNEL_TYPE_MAX /*!< Not Valid Tunnel type */
 } e_Tunnel_Types;
@@ -523,7 +526,7 @@ typedef struct {
 	struct net_device *tx_dev;
 } PPA_TUNNEL_INFO;
 typedef struct {
-	void  *p_item; 	/* pointer to the uc_session_node */
+	void *p_item; 	/* pointer to the uc_session_node */
 	uint8_t f_ipv6;
 	IP_ADDR src_ip;
 	IP_ADDR dst_ip;
@@ -581,7 +584,7 @@ typedef struct {
 	uint32_t f_enable;
 	uint32_t flags;
 } PPA_ACC_ENABLE;
-#if defined(MIB_MODE_ENABLE) && MIB_MODE_ENABLE
+#if IS_ENABLED(CONFIG_PPA_MIB_MODE)
 typedef struct {
 	uint8_t session_mib_unit;
 } PPA_MIB_MODE_ENABLE;
@@ -943,19 +946,7 @@ typedef struct {
 	ppa_tnl_info	tunnel_info;	/*!< PPA tunnel info*/
 	void	 *hal_buffer;	/*!< PPA hal buffer*/
 } ppa_tunnel_entry;
-/*!
-  \brief QoS Meter configuration structure
- */
-typedef struct {
-	PPA_QOS_METER_TYPE	type; /*!< Mode of Meter*/
-	uint32_t		enable; /*!< Enable for meter */
-	uint32_t		cir; /*!< Committed Information Rate in bytes/s */
-	uint32_t		cbs; /*!< Committed Burst Size in bytes */
-	uint32_t		pir; /*!< Peak Information Rate in bytes/s */
-	uint32_t		pbs; /*!< Peak Burst Size */
-	uint32_t		meterid; /*!< Meter ID Configured on the system*/
-	uint32_t		flags; /*!< Flags define operations on meters enbled*/
-}PPA_QOS_METER_CFG;
+
 /*
  * ####################################
  * Declaration
@@ -988,7 +979,7 @@ int32_t ppa_init(PPA_INIT_INFO *, uint32_t);
 void ppa_exit(void);
 int32_t ppa_enable(uint32_t, uint32_t, uint32_t);
 int32_t ppa_get_status(uint32_t *, uint32_t *, uint32_t);
-#if defined(MIB_MODE_ENABLE) && MIB_MODE_ENABLE
+#if IS_ENABLED(CONFIG_PPA_MIB_MODE)
 int32_t ppa_set_mib_mode(uint8_t);
 int32_t ppa_get_mib_mode(uint8_t *);
 #endif
@@ -1016,7 +1007,7 @@ int32_t ppa_add_class_rule(PPA_CLASS_RULE *rule);
 int32_t ppa_mod_class_rule(PPA_CLASS_RULE *rule);
 int32_t ppa_del_class_rule(PPA_CLASS_RULE *rule);
 int32_t ppa_get_class_rule(PPA_CLASS_RULE *rule);
-int32_t ppa_set_qos_meter(PPA_QOS_METER_CFG *meter_cfg);
+int32_t ppa_set_qos_meter(PPA_QOS_METER_CFG *meter_cfg, uint32_t hal_id);
 #endif
 int32_t ppa_inactivity_status(PPA_U_SESSION *);
 int32_t ppa_set_session_inactivity(PPA_U_SESSION *, int32_t);

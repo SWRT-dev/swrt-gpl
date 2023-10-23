@@ -1,0 +1,42 @@
+#!build
+default:
+	program
+	:e_option=keep_comments
+	:elxr_map_option=map
+	:elxr_map_option=numeric_sort
+	:config_setting=nolonglong
+	:passsource=true
+	:parameter_check=true
+	:dual_debug=true
+	:outputmode=srec
+	:processor=mips
+	:yfputype=soft
+	:xda_thresholdkind=small
+	:mips_cputype=mips32_m4k
+	:mips16_usage=mixed
+	:mips16_version=2
+	:prototype_mode=warn
+	:asm_mode=silent
+	:debuglevel=plain
+	:memcheck=none
+	:optimizestrategy=space
+	:cx_enum=small
+	:temp_dir=d:\green_out
+	:outputname=contr
+	:assembler_list=list.list
+	:assembler_list_dir=d:\green_out\list
+	:linker_map=map.map
+	:call_graph_file=.\contr.graph
+	:xda_threshold=all
+	:startfiles=-
+	:sourcedirs=.\
+	:deflibraries=multi
+	:deflibraries=ansi
+	:deflibraries=ind
+	:deflibraries=sys
+	:deflibraries=arch
+	:defines=MT_USE_GENERATED_HEADER
+mt_bcl.c
+	C
+mt_util.c
+	C

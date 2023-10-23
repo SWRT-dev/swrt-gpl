@@ -348,11 +348,9 @@ static int update_DB_from_DT(struct VMB_vpe_t *vt)
 	/* get the interrupt numbers from DT */
 	g_fw_vmb_irq[vt->cpu_id] = irqres.start;
 
-	ret = of_property_read_u32_index(np, "interrupts", 1,
-					 &g_fw_vmb_hwirq[vt->cpu_id]);
-
-	if (ret < 0) {
-		pr_info("failed to get hwirq for vmb since ret = %d\n", ret);
+	if (of_property_read_u32_index(np, "interrupts", 1,
+				       &g_fw_vmb_hwirq[vt->cpu_id]) != 0) {
+		pr_info("failed to get hwirq for vmb\n");
 		return -ENODEV;
 	}
 

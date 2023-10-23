@@ -1,0 +1,10 @@
+# When queuing is in firmware
+# replace ptm0 with appropriate WAN interface for PTM WAN
+
+cd /opt/lantiq/usr/sbin
+qoscfg -I 1
+qcfg --queue -A q1 -l 100 -i ptm0 -m wfq --priority 1 --weight 2 --map 1
+qcfg --queue -A q2 -l 100 -i ptm0 -m wfq --priority 2 --weight 1 --map 2
+
+classcfg -A cl1 -i br0 --iphdr-dscp 10 -j mark --mark 1
+classcfg -A cl2 -i br0 --iphdr-dscp 26 -j mark --mark 2

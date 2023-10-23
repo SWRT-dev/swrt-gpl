@@ -1,0 +1,4 @@
+#ifndef PPA_STAT_HELPER_XRX500_H
+#define PPA_STAT_HELPER_XRX500_H
+
+#endif

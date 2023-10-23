@@ -1,0 +1,470 @@
+2.10.0-0 
+1. merge ppacmd getlansession/getwansession hang issue in PPA 2.9
+2. support RTP/capwap features
+
+2.9.1-3 by xuliang/shaoguoh
+1. merge SMP stability improvement in PPE driver done by Xu liang in PPA default branch to PPA 2.9 
+2. support PPA directpath IMQ rateshaping
+3. All PPA D5 supports 5 directpath, its port id is from 3 ~ 7. 
+
+2.9.1 by zhuyixin/shaoguohua
+1. update ar10 to init qid_conf to 2.
+2. fix double free item in netif during ppacmd addlan/wan if the interface already exists
+3. fix issue PPE sleep will cause the dma packet drop in VR9 E5
+4. workaround for warning message "WARNING: at kernel/softirq.c:local_bh_enable" for wlan disabled irq during registering to ppa directpath
+5. add ppacmd setvalue/getvalue to enable/disable ppe fw early_drop_flag
+
+2.9.0 by zhuyixin/shaoguohua
+1. SMP support
+2. Network based MIB counter support 
+3. Support port MIB counter wrapround workaround with 64 bits count in PPA
+4. Support QoS MIB counter wrapround workaround with 64 bits count in PPA
+5. QoS L2/L1 rate statistic support with ppacmd getqstatus
+6. ppacmd clearmib fully support ( match with echo clear > /proc/eth/mib )
+7. Support PPE FW routing hash usage summary
+8. Support PPA routing hash usage summary
+9. Fix getlansessions/getwansessions issue after spinlock 
+10. PPA auto stop allocate new memroy for new sessions if system memory is low. By default it is disabled.
+11. Fix IPV6 tos learning wrongly for netfilter only define 4 bits priority
+12. Optimize hook memory usage
+13. Fix potential memory leak in ppa_netif_add if continuously call ppacmd addlan/wan with same interface
+14. support kmalloc for ppa sessions. By default it is disabled. 
+
+2.8.1 by shaoguoh/xuliang/zhuyixin
+1. ppacmd addlan/wan support -f option to force change ppefw's wanitf register. So far only VR9 D5 HAL is ready
+2. VR9 A5/D5/E5 - clock gating in A5/D5v1/D5v2.
+3. VR9 E5 - fix offchip bonding one link drop issue.
+4. Make PPA API loadable module independent on datapath/HAL driver.
+5. Enable software queue for directpath.
+6. AR9/VR9/AR10 - provide per VCC counter (rx_pdu, rx_bytes, tx_pdu, tx_bytes,
+tx_dropped_pdu).
+
+2.7.2 by shaoguoh/xuliang/zhuyixin
+1. VR9 E5 - implement polling of fastpath to blink DSL Data LED.
+2. VR9 E5 - workaround for wrong QId for off-chip bonding.
+3. AR9 - Integrate port mirroring feature.
+4. Port mirroring update
+5. Reduce performance impact on L2 trunking caused by offchip bonding workaround
+6. Fix ppacmd modifysession command not consistent issue for supporting hairpin NAT
+7. directpath will check bridge interface's mac address if it is under bridge interface since UGW 5.2 requrie unique mac address for br and its sub interfaces
+
+2.7.1 by shaoguoh
+1. use single character for ppa hook module parameter since kernel  cmdline length overflow
+
+2.7.0 by shaoguoh/xuliang/zhu yixin
+1. ppacmd init support minimal hit option with -n
+2. ppacmd MFE support ( PPA API/HAL level only)
+3. Update AR9/VR9 firmware to support (switch) class to QID and QID to class mapping.
+4. First draft version of on/off-chip bonding support for VR9 E5.
+5. Fix AR9 GPHY reset - increase delay between reset pin rising edge and first
+   MDIO access from 50ms to 300ms according to Data Sheet.
+6. Fix wrong-acceleration hairpin related traffics which will need src/dst ip editing.
+7. Fix ifx_ppa_mc_group_update only update part action issue: del old mc and add new mc
+8. Fix xRX200 Hang issue in PPE FW ( wrongly parse pause frame )
+9. Fix socket cannot send out UDP packet issue from CPU path
+10. Fix socket cannot send out UDP packet issue from CPU path via re-allocate new skb buffer
+
+2.6.4 by shaoguoh
+1. adjust rateshaping burst coments: 
+2. ppacmd support test automation protocol
+3. format ppacmd.c to ansi format with astyle ( astyle --style=ansi ppacmd.c )
+4. fix some doxygen warning message
+
+2.6.3 by shaoguoh/xuliang
+1. fix ppacmd setmac not work issue 
+2. fix packet corrupted due to mirror function by replacing skb_clone with skb_copy.
+3. merge VB300 branch to enhance PHY11G v1.4 stability.
+4. Update power saving feature to reduce system load.
+5. Change varible new_port in structure PPE_ROUTING_INFO in ifx_ppa_api.h from uint8_t to uint16_t, otherwise the
+assignment will overflow.
+6. Fix AR9 E5 QOS bug and change E5 QOS overhead from 20 bytes to 24 bytes.
+
+
+2.6.2 by shaoguoh
+1. fix ppacmd set/get issue with VR9 QOS mixed wan mode
+2. export lan/wan session collision size, collision flag per session, skb->priority per session to ppacmd
+3. ppacmd modifysession support more flag: session address 0 to  match all session, lan/wan flag 
+
+2.6.1 by xuliang
+1. Danube A4/D4 Seamless WAN mode switching with Persistent LAN interface.
+2. Amazon-SE A4 - fix incorrect MIB port number from 8 to 4.
+3. Amazon-SE A4 - enhance softq for TX queue delete operation.
+4. AR9 D5 - fix incorrect interrupt handling (speed register) of VSC 8601 GPHY.
+5. AR9 D5, VR9 D5/E5 - update proc_write_prio to fix improper range of queue value by checking WAN port to decide how many queues are available.
+
+2.6.0 by yixin
+1. merge from default branch (UGW 5.2 feature set) to UGW 5.1.1 branch.
+2. fix mixed mode 6rd acceleration FW editing error.
+
+2.5.7 by xuliang
+1. VR9 E5 (E1) workaround short frame indication with this feature disabled, invalid C_j detection fail in hardware.
+
+v2.5.6 by xuliang
+1. Add CoC feature to turn on/off power saving mode (including clock gating
+2. Fix flow control on/off function in AR9 D5.
+
+v2.5.5 by xuliang
+1. Disable DEBUG_SKB_SWAP, ENABLE_SKB_SWAP_DBG in Amazon-SE A4/E4 drivers.
+
+v2.5.4 by xuliang
+1. Add workaround in "reset_ppe" for GW188 (AR9) to avoid traffic stall during system bootup.
+
+v2.5.3 by xuliang/yixin
+1. Fix bug (AR9 D5) due to merging VB300 modification - MDIO related structure should
+be append after MIB counters.
+2. AR9 D5 Mixed mode with FW QoS support.
+3. Amazon-SE Seamless WAN mode switching with Persistent LAN interface (with workaround for LAN/WAN interface hang issue).
+4. Add AR9 D5 mixed mode QoS
+5. Add AR9 D5 dslite function
+6. Fixed Dslite mtu bug
+7. Add VR9 D5 mixed mode QoS of PPE).
+
+v2.5.2 by xuliang/yixin
+1. reduce buffer size for ARx/VRx to avoid 4096-byte slab block allocation for
+skb buffer.
+
+v2.5.1 by xuliang
+1. merge modification from VB300 team.
+
+v2.5.0 by xuliang/shaoguoh/yixin
+1. AR9 A5/D5/E5 - Persistent LAN interface together with clean loadable/unloadable
+module is implemented. This is a part of seamless WAN mode switching.
+2. add 6rd support in AR9 D5 and E5
+3. add ppacmd getqstatus support in VR9 A5/D5/E5
+4. fix AR9 E5 QoS WFQ not work issue
+
+v2.4.10 by xuliang/shaoguoh/yixin
+1. ppacmd provide r/w memory command with specified bit operation
+2. VR9 A5 - Persistent LAN interface together with clean unloadable module is
+implemented.
+3. fix bugs reported by tools klocwork
+4. AR9 A5 FW fix multicast frame block
+
+v2.4.9 by xuliang/yixing/shaoguoh
+1. AR9 A5/D5/E5 - unloadable module to support seamless WAN mode switch.
+Persistent LAN interface (eth0) is not available yet.
+2. VR9 D5/E5 - Persistent LAN interface together with clean unloadable module is
+implemented.
+3. add detection 6rd device change in ppa.
+4. fix AR9 A5 6rd entry delete unbalanced.
+5. remove tunnel structure change so that no patch requirement for the kernel without 6rd ppa acceleration functions.
+6. fix segment issue during set up 6rd tunnel
+7. Fix incorrect function invocation "del_wan_mc_entry" in
+"PPA_GENERIC_HAL_DEL_BR_MAC_BRIDGING_ENTRY" with correct function
+"del_bridging_entry".
+
+v.2.4.8 by shaoguoh
+1. fix ppacmd setctrlwfq and setctrl not work issue after changing HAL API
+2. add ppacmd getqstatus for AR9.
+
+v.2.4.7 by shaoguoh/xuliang/yixin
+1. add more featuers for ppacmd getversion and status
+   getversion: get ipv6/qos status
+   status: get maximum lan/wan/mc/bridge/ipv6/ entries/queues
+2. add ppa automation support in PPE driver for controlling wan mode setting via uboot env
+3. remove delsession in ppacmd
+4. During UGW 5.1 test, we found after LAN interface (eth0) bringup, DMA channels are configured properly. But after a while, before WAN interface (nas0) bringup, DMA channels are turned off unexpected. The root cause is still not clear. The workaround is to manually turn on DMA channels again during WAN interface bringup.
+5. fix VR9 D5/E5, AR9 D5, incorrect calculation of byteoff due to flag_header
+change.
+6. fix AR9 detect external phy (lantiq phy v1.4) link fail during reboot. The
+root cause is v1.3 uses falling edge, but v1.4 uses low level trigger.
+7. VR9 A5/D5/E5 - clean unloadable module support.
+8. VR9 A5/D5/E5 - detach skb from protocol (e.g. conntrack) before put skb in TX queues
+9. Danube/AR9/VR9 - remove print from proc_write_prio
+10. Danube/AR9/VR9 - fix potential risk of crash of all proc_read_xxx functions
+11. add dummy parameter/mechanism for IGMP V3 firmware queues.
+12. AR9 A5 support 6RD acceleration.Changed kernel file sit.c and if_tunnel.h in the meanwhile.Must work with the kernel patch.
+
+v2.4.6 by shaoguoh
+1. changed the version to 2.4.6 in order to align with UGW 5.1.
+2. Enhance CoC feature, to reject lower frequency only when session created in firmware table.
+
+v2.5.1 by xuliang ----- 2011 March 2: Note, it should be 2.4.5
+1. VR9 D5: implement module unload functions. So far, module can be loaded/unloaded multiple times, but there is memory leakage because sk_buff occupied by PPE firmware is not released during unload.
+2. AR9/VR9/AR10: add WAN port mirror feature, duplicate WAN port egress packet
+and forward to given LAN net device (e.g. eth0, wifi0).
+3. fix PPPOE/PPPOA over IPv6 not work issue
+
+v2.5.0 by shaoguoh/xuliang/zhuyixin 2011 Jan 28 --- 2011 March 2: Note, it is wrong version, it should be 2.4.4
+1. update Switch API device name (to "switch_api") in VR9 A5/D5/E5
+2. fix improper power state set in deactivate function, use pre change
+function instead of pos change function
+3. Allow to accelerate multicast on the fly even lan interface changed to
+different vlan tag
+   ( in old version it needs to delete the acceleration first, then add new
+acceleration rule )
+4. ppacmd getversion support more information, like platform and wan
+interfaces and wan vlan range if mixed mode
+5. fix VR9 E5 MAC address of "ptm0" can not be changed in Linux 2.6.32.11.
+6. PPPOE ds multicast bug fix for ASE_A4, DANUBE_A4, DANUBE_D4 
+7. Mixed mode packets wihtout VLAN tag classified as LAN for ASE_A4,ASE_E4, DANUBE_A4, DANUBE_D4 
+
+
+v2.4.3 by shaoguoh/xuliang/zhuyixin 2010 Nov 29
+1. fix incorrect parameter for function call "ifx_pmcu_state_req"
+2. fix incorrect out vlan flag in "add_wan_mc_entry"
+3. update Amazon-SE E4 firmware to version 0.12 to fix downstream Multicast
+fail issue
+
+v2.4.2 by shaoguoh/xuliang  2010 Nov 22
+1. add ioctl/ppacmd to set/get routing session polling timer
+2. add PPE Clk change for different power state in AR9 and VR9
+3. add power state notification when add session and/or delete session
+4. fix PPA mib counter swapping bug
+5. add directpath (only 2) support for Danube D4, TODO: add filtering function
+to prevent routing entry WLAN -> LAN/WAN being added
+
+V2.4.1 by shaoguoh/xuliang/zhuyixin 2010 NOV 15
+1. refine return value of HAL API add_routing_entry
+2. checkin Amazon-SE E4 with qualified driver/firmware
+3. integrate ETH Framework for Amazon-SE E4
+4. add initial version of AR10 A5/D5
+5. AR9 A5 - enhance DSL drop counters (MIB)
+
+v.2.4.0 by shaoguoh/xuliang/zhuyixin 2010 Nov 04 --- support new kernel 2.6.32
+1. add IPV6 support for VR9 E5  Ethernet WAN mode ( basic test )
+2. change per session mib counter from uint32_t to uint64_t and update it per
+3. VR9 E5 ethernet WAN mode, fix bug: packets from dma go for ptm, but ptm driver not initialized and try to send it.
+4. Disable PPA mac address learning from Direct Path driver  if Direct Path
+bridging feature is diabled
+5. support per session control to enable/disable acceleration via hook/ioctl (
+not test yet)
+
+
+V2.3.8 by shaoguoh/xuliang/zhuyixin 2010 OCT 12
+1. fix ppacmd init failure issue for ppacmd dual ppe fw version support
+2. support routing session deletion via ioctl/ppacmd ( only delete from PPE accleration entry, not PP at present)
+3. support routing session add via ioctl/ppacmd ( For test purpose, there is memory leak for tc session buffer)
+4. add br2684 vlan support patch from Ritesh ( non-standard vlan tagging in br2684 )
+5. fix ppacmd cannot get lan/wan sessions
+6. port AR9/VR9 codes to support 2.6.20 and 2.6.32 simultaneously
+7. VR9 A5/D5/E5 - fix incorrect CPU_TO_WAN_SWAP_DESC_NUM (should be 32)
+8. VR9 E5 - fix data LED blink issue for ingress traffic
+9. add Amazon-SE E4
+10. VR9 A5/D5/E5 - add proc entry "ewan" for WAN port configuration
+
+V2.3.7 by shaoguoh 2010 Sept 2
+1. fix ioctl for DSL queue drop counter and add ppacmd getdslmib support ( so far only for drop counter)
+2. new ar9/vr9 a5 fw with new base address for per queue drop counter support.
+
+V2.3.6 by shaoguoh/xuliang/zhuyixin 2010 AUG 27
+1. AR9 A5: add configurable WAN interface support
+2. AR9 A5/D5, VR9 A5/D5/E5: force APP2 to use indirect mode (packet include flag header) on all platform (in ifx_ppa_api_core.c).
+3. fix compile dependency issue btweeen PPA QOS WFQ and rateshaping. 
+4. fix doxygen warning message
+5. AR9 A5/D5, VR9 A5/D5/E5: add per session counter to proc and ioctl.
+6. VR9 E5: fix incorrect default priority value to queue mapping of ETH1 with
+QoS support.
+7. VR9 E5: firmware workaround for RTHA bitmap bug and enable workaround (with
+threshold = 64, byte_shift = 32) by default.
+8. all datapath driver: add reset_ppe in module_init.
+9. PPA API (PWM) - fix PMCU not registered issue.
+10. PPA API (PWM) - fix incorrect criteria of pre-change status.
+11. E1 firmware v0.30 support flowcontrol with GPIO.
+12. Optimize PPA routing hook with MACRO PPA_SPEEDUP_TEST and PPA Routing HASH size: patch from Ritesh
+13. Add br2684 VLAN support: patch from Ritesh
+14. Add per queue drop counter support and new PPE FW (a5 only) ---not tested yet
+15. Add MAC address learning for VR9
+16. Merge proc module to datapath module
+
+12. Optimize PPA routing hook with MACRO PPA_SPEEDUP_TEST and PPA Routing HASH size: patch from Ritesh
+13. Add br2684 VLAN support: patch from Ritesh
+14. Add per queue drop counter support and new PPE FW (a5 only) ---not tested yet
+15. Add MAC address learning for VR9
+16. Merge proc module to datapath module
+
+V2.3.2 by shaoguoh/xuliang/zhuyixin 2010 Jul 16
+1. fix incorrect TX MIB in "ppe_send" for all A4/A5 driver
+2. add LANTIQ GPHY11 support for AR9 A5/D5
+
+v2.3.1 by shaoguoh/xuliang/zhuyixin 2010 Jul 15
+1. syn all PPA QOS Hal layer with VR9 E5
+2. Add PMCU v2.1 support in PPA API. Add HAL function "ppe_clk_change" in all datapath driver.
+
+v2.3.0 by shaoguoh/xuliang/zhuyixin (release together with v2.3.1)
+1. ppacmd init improvement to support checksum enable/disable, lan/wan/mc/bridge maximum acceleration entries.
+2. fast read qos mib count instead of one by one mib counter reading
+3. fix proc checksum status wrong information
+4. fix ASE A4 module can not be inserted issue, use malloc to allocate memory
+for DMA RX channel 2
+5. fix Danube D4 insert ifxmips_ppa_lite_datapath_danube_d4.ko fail
+6. ppa support direct wfq's weight without mapping or new weight multipler
+7. integrate VR9 E1 v0.24 to support configurable TX QoS queues for VDSL WAN
+8. update function "proc_write_prio" in AR9/VR9 to support configurable number of TX QoS queue of ETH WAN.
+9. update function "get_netif_qid_with_pkt" in AR9/VR9 to support both LAN and
+WAN QID.
+10. change PPA copyright
+11. ppacmd add version support for itself
+12. syn ppa vr9 qos e1 structure with d5
+13. solve multicast action table crash issue 
+14. adjust default wfq's multipler from 2000 to 200
+
+V2.2.20 by shaoguoh/xuliang 2010 Jun 18
+1. ppacmd: all data started with 0x will be regarded as hex value, otherwise it is decimal value
+2. AR9 A5 QOS supported and basic rate shaping is verified 
+3. consolidate structure/register names for AR9 A5/D5, VR9 E5
+4. add RX discard congestion counter for VR9 A5/D5/E5
+5. add support for new AR9 D5 firmware which support QoS, IPv6, MFE, etc.
+6. add hal layer display/clear qos mib support/ppe internal variable
+7. add skb priority display via proc
+8. add qos test tool for 8 queue simultanously testing 
+9. for rate shaping, add over_header 20 bytes for preamble and inter-frame gap
+10.ppacmd replace hard-coded acceleratation entries number with ioctl 
+
+V2.2.19 by shaoguoh/zhuyixin/xuliang 2010 Jun 2
+1. make all models (A4/D4/A5/D5) can be compiled as modules with one build
+2. add doxygen for qos( wfq and rate shaping) 
+3. Multiple fields editin's upstream verified now against E5
+   For downstream still fail to configure switch
+4. Allow to delete multicast group via hook/ppacmd even it is not really accelerated yet
+5. fix VR9 A5 QSB not enabled in PMU register
+6. add support for new AR9 A5 firmware which support QoS, IPv6, MFE, etc.
+7. fix ETH WAN mode for VR9 E5
+8. add some functions for IPv6 and kernel 2.6.32
+9. add ioctl to get maximum routing/bridging entries for ppacmd
+
+V2.2.18 by shaoguoh/xuliang 2010 May 13
+1. fix incorrect A4/A5 DSL port drop counter
+2. support vr9 ppa a5 enable via proc
+3. enable DMA port packet drop (RX) in all platform
+4. add/modify structure for hook enable/disable, memory read/write, multiple field editing
+5. support per hook enable/disable via ioctl/ppacmd
+6. support memory read/write via ioctl ( specify address, bits and size )
+7. make proc dbg information more flexible to add new bug
+8. add multiple filed delete ioctl
+9. Multiple fields editing's ppacmd is tested against ioctl without PPE driver
+10.Multiple fields editin's upstream verified now against E5 
+   For downstream still fail to configure switch  
+11.Amazon-SE A4 add software TX queue support to overcome multiple TCP session
+drop issue due to overflow upstream traffic.
+12.AR9 A5/D5, VR9 A5/D5/E5 add workaround to prevent improper ethernet watchdog timeout which causes intermittent traffic.
+
+V2.2.17 by xuliang 2010 Mar 4
+1. solve VR9 A5 multicast issue, correct address of multicast table in firmware
+2. add proc to read multicast table
+3. fix per queue MIB display for A5
+
+V2.2.16 by xuliang 2010 Mar 2
+1. apply discrambler patch in firmware
+2. fix HTU table address
+3. ppacmd add VR9 A5 support
+
+V2.2.15 by xuliang 2010 Feb 24
+1. export symbol "ppa_hook_bridge_enable_fn".
+2. fix unexported symbol "kallsyms_lookup" used in "ifx_ppa_stack_al.c".
+3. At runtime to enable/disable ppacmd debug mode: via creating /var/ppa_dbg_enable. 
+   Also change printf to macro IFX_PPACMD_DBG
+4. move ppa subsystem version from ifx_ppa_api_core.c to ifx_ppa_ss.h
+5. remove limit on number of PVCs on each port
+6. remove console log of PVC creation/destroy/MAC_change
+7. add init version of VR9 A5
+
+V2.2.14 by xuliang 2010 Feb 10
+1. Check showtime status when get "leave showtime" notification.
+
+v2.2.13 by shaoguoh 2010 Feb 3
+1. update VR9 PPA D5v1/E5  D5 firmware to ver 0.41 -fix multiple vlan editing match
+bug and action 
+2. enable double VLAN for VR9 E5
+3. merge ppa api doxygen from santosh
+4. fix incorrect MIB display in Amazon-SE HAL
+
+v2.2.12 by xuliang 2010 Jan 18
+1. fix incorrect dest_list in function update_routing_entry (HAL).
+2. fix ASSERT message in function get_skb_pointer for VR9 D5/E5 datapath.
+3. Update VR9 E1 firmware to ver 0.22 - TX descriptor field QoS is limited to 3 bits.
+4. Update VR9 D5 firmware to ver 0.25 - PTM TX descriptor field QoS is limited to 3 bits.
+5. Add PMCU (COC) support with dummy code.
+6. Rename PPA API ioctl command PPA_CMD_GET_SIZE_GET to PPA_CMD_GET_SIZE.
+7. Update doxygen comments.
+
+v2.2.11 by xuliang 2009 Dec 23
+1. fix CONFIG_DSL_MEI_CPE_DRV alignment with MEI driver
+2. add IOCTL command PPE_ATM_GET_MAP_PKT_PRIO_TO_Q to get priority value to
+virtual queue ID mapping
+
+v2.2.10 by xuliang 2009 Dec 22
+1. add VR9 D5
+2. add VR9 E5
+
+v2.2.9 by shaoguoh 2009 Dec 14
+1. add routing session vlan priority learning
+2. add enable/disable ppa bridge mac address learning
+3. add part of eth1 FWQ code. Not verified yet.
+
+v2.2.8 by shaoguoh 2009 Dec 03
+1. add all missing adaption layer for memcpy, copy_from_user and so on in PPA
+API level. ( not for Hal layer yet )
+
+v2.2.7 by xuliang on 2009 Dec 4
+1. align with MEI on CONFIG_DSL_MEI_CPE_DRV
+2. update proc_read_dbg
+
+v2.2.6 by xuliang on 2009 Nov 30
+1. disable error/warning message by default
+
+v2.2.5 by xuliang on 2009 Nov 17
+1. add LED framework support for all platforms (A4,A5)
+2. support MTU change for all platforms
+3. support loadable module for all platforms
+
+v2.2.4 by xuliang on 2009 Nov 5
+1. fix incorrect VPI/VCI in ioctl PPE_ATM_Q_OP and PPE_ATM_MAP_PKT_PRIO_TO_Q
+2. use LED framework for DSL DATA led (trial version in AR9 A5 only)
+
+v2.2.3 by shaoguoh on 2009 Oct 27
+1. fix version mismatch in releasenotes and ifx_ppa_api_core.c
+
+v2.2.2 by shaoguoh on 2009 Oct 27
+1. add GPL statement for ifx_ppa_stack_al.c/h
+
+v2.2.1 by xuliang on 2009 Oct 26
+1. fix issue for no delayed TX buffer free in A4/A5 driver - in error handler "NO_FREE_DESC"
+2. add GPL statement for low level driver
+3. remove obsolete header file for Danube A4/D4
+
+v2.2.0 by Xuliang/Shao Guohua on 2009 Oct 16
+1. fix direct path
+2. add direct path simulator which support normal IP( icmp/udp) but not TCP
+3. doxygen documenting
+4. update test report
+5. change PPA version from 2.1.x to 2.2.0
+   Pandey Pramod Kumar (IFAG WLC CPE GW) suggest to change UEIP PPA to 2.2.x in order to avoid confusion with no-UEIP PPA.
+
+v2.1.7 by xuliang on 2009 Oct 14
+1. no delayed TX buffer free patch
+
+v2.1.6 by shaoguoh on 2009 Oct 9
+1. fix danube vlan bridging issue in set_bridge_if_vlan_config function
+
+v2.1.5 by xuliang on 2009 Oct 9
+1. danube external switch support ( 2nd ~4th port as lan and 5th as wan )
+2. change ppa code format
+
+v2.1.4 by shaoguohua on 2009 Oct 1
+1. Multicast support out vlan ID
+2. change netif print format from dec to hex
+3. Fix DMA config of Amazon-SE
+
+v2.1.3 by shaoguohua on 2009 Sept 16
+1. change g_dbg_enable to g_ppa_dbg_enable
+2. ppacmd support to get some basic unicast/multicast/bridge session size and netif size
+3. PPA doxygen support for ifx_ppa_stack_al.h and ifx_ppa_api.h and so on.
+4. house-keeping
+5. LOW level driver UEIP compatible
+
+v2.1.2 by shaoguohua on 2009 Aug 03
+1. Fix modprob crash issue for module dependency issue caused by variable g_dbg_enable
+2. ppacmd support multiple vlan type, reformat ppacmd print message
+3. doxygen ppa exported hook api
+
+v2.1.1 by shaoguohua 2009 Jul 10
+1. Bridging: VLAN Processing VLAN tag table should  match 12-bit VID.
+2. Bridging: VLAN Processing Egress Queue ID classification based on ETYPE/SRCIP/TAG/PORT is supported (A4/D4)
+3. Routing: Routing Forward Table Action set checks protocol field (UDP or TCP).
+4. Routing: For WAN/LAN Mixed over Single Ethernet interface, WAN traffic Identified by Single VID Instead of a VID Range
+5. Routing/Bridging: 2-level VLAN (stacked) VLAN editing to be supported
+6. Multicast support in bridging and it can auto-learn multicast source interface in routing/bridging mode
+7. VLAN auto-learning inside bridge, i.e. br0 has members like eth0.10
+8. More IOCLT and PPA command are supported, like set/get/modify multicast group,  set vlan range in mixed mode and so on
+9. Routing Forward Table Action assigns upstream QID ( D4 )

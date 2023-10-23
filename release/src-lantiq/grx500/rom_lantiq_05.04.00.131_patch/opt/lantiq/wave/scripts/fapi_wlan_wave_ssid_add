@@ -1,0 +1,128 @@
+#!/tmp/wireless/lantiq/bin/sh
+# Add a new VAP to the Wave radio
+# Needed objects: SSID
+
+export PATH=/tmp/wireless/lantiq/bin/:$PATH
+script_name="$0"
+
+[ ! "$LIB_COMMON_SOURCED" ] && . /tmp/fapi_wlan_wave_lib_common.sh
+[ ! "$LIB_CONVERT_SOURCED" ] && . /tmp/fapi_wlan_wave_lib_convert.sh
+
+radio_name=$1
+pid=$$
+
+if [ -e "$INIT_FLAG" ] && [ -e ${USE_CURRENT_CONF}_${radio_name} ]
+then
+	echo "####### $script_name: init flow with conf from previous setting" > /dev/console
+	# Create the output configuration file
+	cat /dev/null > ${OUT_CONF}
+
+	# Configuration is completed successfully
+	update_conf_out "wlan_configuration_status" "success"
+	exit 0
+fi
+
+# Find the radio index
+radio_index=`find_index_from_interface_name $radio_name`
+
+print2log $radio_index DEBUG "$script_name $*"
+timestamp $radio_index "$script_name:$radio_name:begin"
+
+# Map the objects indexes to the received objects in the in.conf file
+ssid_index=`map_param_index Object $SSID_OBJECT`
+
+# Create the output configuration file
+cat /dev/null > ${OUT_CONF}
+
+# Check if call is to configure the first VAP (radio), add new VAP or add new EndPoint by checking value of X_LANTIQ_COM_Vendor_SsidType
+# For Radio: value is "Radio"
+# For EndPoint: value is "EndPoint"
+# For VAP: value is empty
+ssid_type=`get_ssid_type`
+case "$ssid_type" in
+	"Radio")
+		ap_type="$AP"
+		vap_to_set="$radio_name"
+		echo "$radio_name" > ${VAPS_LIST}_${radio_name}
+		interface_index=`find_index_from_interface_name $radio_name`
+		conf_in_progress_interface=$radio_name
+		;;
+	"EndPoint")
+		ap_type="$STA"
+		vap_to_set=`find_sta_name $radio_name`
+		#echo "$radio_name" > ${VAPS_LIST}_${radio_name}
+		interface_index=`set_index_for_interface $vap_to_set`
+		conf_in_progress_interface=$radio_name
+		;;
+	*)
+		ap_type="$VAP"
+		conf_in_progress_interface=$radio_name
+		# Check if number of max VAPs wasn't reached
+		local_db_source RADIO
+		max_vaps=`db2fapi_convert regular MaxNumVaps $radio_index`
+		current_vaps=`wc -l < ${VAPS_LIST}_${radio_name}`
+		[ ! -e ${VAPS_LIST}_${radio_name}_tmp ] && cp ${VAPS_LIST}_${radio_name} ${VAPS_LIST}_${radio_name}_tmp
+		if [ $max_vaps -eq $current_vaps ]
+		then
+			print2log $radio_index ERROR "$script_name: max number of VAPs reached ($max_vaps), cannot add new VAP to $radio_name. Deleting all changes done in this session"
+			mv ${VAPS_LIST}_${radio_name}_tmp ${VAPS_LIST}_${radio_name}
+			[ -e ${CONF_IN_PROGRESS}_${conf_in_progress_interface} ] && . ${CONF_IN_PROGRESS}_${conf_in_progress_interface}
+			rm -f ${CONF_IN_PROGRESS}_${conf_in_progress_interface}
+			rm -f ${CONF_DIR}/*_${pid}*
+
+			# Configuration is failed
+			update_conf_out "wlan_configuration_status" "FAILURE"
+			exit 1
+		fi
+
+		vap_to_set=`find_vap_name $radio_name`
+		echo "$vap_to_set" >> ${VAPS_LIST}_${radio_name}
+		interface_index=`set_index_for_interface $vap_to_set`
+		;;
+esac
+
+# DEBUG: set debug_save_conf in fapi_wlan_wave_lib_common.sh to save the in conf file
+[ "$debug_save_conf" ] && cp ${IN_CONF} ${TEMP_DIR}/ssid_add_in_conf_${vap_to_set}
+
+save_db_params ssid_add $vap_to_set 0 $interface_index
+local_db_source SSID
+
+# To prevent duplications in local DB in init flow after factory reset, remove all parameters from local DB SSID CONF_DIR.
+# It will be added on the call to ssid_set
+[ -e "$INIT_FLAG" ] && remove_index_from_local_db SSID $interface_index
+
+# Prepare the temporary configuration files to use
+prepare_confs $vap_to_set $conf_in_progress_interface $pid $ap_type ssid_add
+# Get the pid to use in this configuration session
+. ${CONF_IN_PROGRESS}_${conf_in_progress_interface}
+
+# Calculate the MAC address of the interface
+# Check if the MAC of the VAP is already set, if so, don't change it.
+new_vap_mac=`db2fapi_convert regular MACAddress $interface_index`
+[ -z "$new_vap_mac" ] && new_vap_mac=`update_mac_address $vap_to_set $ap_type`
+
+# Write the MAC address to conf file
+[ "$ap_type" != "$STA" ] && set_conf_param hostapd_vap regular no_otf $pid $vap_to_set bssid "$new_vap_mac"
+
+# Update the name and MAC of the new VAP
+update_conf_out "Object_${ssid_index}" "$SSID_OBJECT"
+update_conf_out "Name_${ssid_index}" "$vap_to_set"
+update_conf_out "MACAddress_${ssid_index}" "$new_vap_mac"
+[ "$ap_type" != "$STA" ] && update_conf_out "BSSID_${ssid_index}" "$new_vap_mac"
+
+# Set reconfigure flag for hostapd if new VAP was added
+if [ "$ap_type" = "$VAP" ]
+then
+	echo "reconfigure_add_del=yes" >> ${CONF_DIR}/${RESTART_FLAG}_${radio_name}
+	interface_no_dot=${vap_to_set/\./_}
+	echo "reconfigure_add_del_${interface_no_dot}=yes" >> ${CONF_DIR}/${RESTART_FLAG}_${radio_name}
+fi
+
+# Configuration is completed successfully
+update_conf_out "wlan_configuration_status" "success"
+
+# DEBUG: set debug_save_conf in fapi_wlan_wave_lib_common.sh to save the out conf file
+[ "$debug_save_conf" ] && cp ${OUT_CONF} ${TEMP_DIR}/ssid_add_out_conf_${vap_to_set}
+
+print2log $radio_index DEBUG "$script_name done"
+timestamp $radio_index "$script_name:$radio_name:done"

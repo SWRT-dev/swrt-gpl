@@ -30,6 +30,10 @@ obj-$(CONFIG_SFI)		+= sfi/
 obj-$(CONFIG_PNP)		+= pnp/
 obj-y				+= amba/
 
+# ICC support required in clk driver if we use regmap over icc
+obj-y				+= char/ltq_mps2/
+obj-y				+= char/ltq_icc/
+
 obj-y				+= clk/
 # Many drivers will want to use DMA so this has to be made available
 # really early.

@@ -1,0 +1,8 @@
+menu "QOS_MGR"
+
+config QOS_MGR
+        bool "QoS Manager"
+        depends on LANTIQ
+        help
+            QoS Manager
+endmenu

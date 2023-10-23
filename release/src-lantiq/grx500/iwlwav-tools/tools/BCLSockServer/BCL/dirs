@@ -1,0 +1,7 @@
+#
+# $Id: dirs 1571 2007-07-04 13:21:18Z phylosoph $
+#
+
+OPTIONAL_DIRS= wce \
+               wxp \
+               wnet

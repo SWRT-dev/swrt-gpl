@@ -458,6 +458,10 @@ LTQ_ll_fkt ltq_fkt_ptr_tbl[] = {
 	(LTQ_ll_fkt) GSW_MacsecCfg,
 	/* Command: GSW_DUMP_MEM ; Index: 0xCA */
 	(LTQ_ll_fkt) GSW_DumpTable,
+	/* Command: GSW_VXLAN_CFG_GET ; Index: 0xCC */
+	(LTQ_ll_fkt) GSW_SW_FKT(CONFIG_LTQ_VLAN, gsw_vxlan_cfg_get),
+	/* Command: GSW_SVLAN_CFG_SET ; Index: 0xCD */
+	(LTQ_ll_fkt) GSW_SW_FKT(CONFIG_LTQ_VLAN, gsw_vxlan_cfg_set),
 };
 
 ltq_lowlevel_fkts_t GSW_FLOW_fkt_tbl = {

@@ -1,0 +1,206 @@
+#
+#                              Copyright (c) 2010
+#                            Lantiq Deutschland GmbH
+#                     Am Campeon 3; 85579 Neubiberg, Germany
+#
+#  For licensing information, see the file 'LICENSE' in the root folder of
+#  this software module.
+#
+#
+
+AC_PREREQ(2.59)
+AC_COPYRIGHT([Copyright (C) 2010, Lantiq Deutschland GmbH
+For licensing information please see the file 'LICENSE' in the root folder of
+this software module.])
+
+#AC_INIT([switch_cli - Ethernet Switch API Command Line Utility],[2.0.2],[],[switch_cli])
+AC_INIT([switch_cli - Ethernet Switch API Command Line Utility],[2.1.1],[],[switch_cli])
+AC_CONFIG_SRCDIR([src/swapi_cli.c])
+AM_INIT_AUTOMAKE
+
+# save the configure arguments
+# remove the install dir from the distcheck configure line to avoid that the
+# installed binaries are deleted on distcheck. The regex will remove
+# --prefix and all subsequent "non-space" chars from the configure options
+# as well as the internal features.
+# Note: The escaped \' are important.
+# Note: Don't lin* - it would match also --enable-linux-26 (!)
+CONFIGURE_OPTIONS=''
+for c_arg in $ac_configure_args; do
+	case $c_arg in
+		\'--prefix=*)
+			#echo "skipping configure option for distcheck: $c_arg"
+			;;
+		*)
+			CONFIGURE_OPTIONS="$CONFIGURE_OPTIONS $c_arg"
+			;;
+	esac
+done
+AC_SUBST(CONFIGURE_OPTIONS)
+
+AC_CONFIG_HEADER(switch_cli_config.h)
+
+AC_PROG_CC
+AM_PROG_CC_C_O
+
+AH_TOP(
+[/******************************************************************************
+
+                              Copyright (c) 2010
+                            Lantiq Deutschland GmbH
+                     Am Campeon 3; 85579 Neubiberg, Germany
+
+  For licensing information, see the file 'LICENSE' in the root folder of
+  this software module.
+
+  ****************************************************************************/
+#ifndef _SWITCHCLI_CONFIG_H_
+#define _SWITCHCLI_CONFIG_H_]
+)
+
+AH_BOTTOM([
+#endif /* _SWITCHCLI_CONFIG_H_ */
+])
+
+AC_DEFINE_UNQUOTED([SWITCHCLI_CONFIGURE_STR], ["$ac_configure_args"], [configure options string])
+
+dnl Set kernel include path (new flag)
+DEFAULT_SYS_INCL_PATH=
+AC_ARG_ENABLE(kernelincl,
+    AS_HELP_STRING(
+        [--enable-kernelincl=x],
+        [set the kernel include path]
+    ),
+    [
+        if test -n $enableval; then
+            echo enable including of system headers from $enableval
+            AC_SUBST([SYSTEM_INCL_PATH],[$enableval])
+        else
+            AC_SUBST([SYSTEM_INCL_PATH],[$DEFAULT_SYS_INCL_PATH])
+        fi
+    ],
+    [
+        AC_SUBST([SYSTEM_INCL_PATH],[$DEFAULT_SYS_INCL_PATH])
+    ]
+)
+
+dnl Enable Warnings
+AC_ARG_ENABLE(warnings,
+    AS_HELP_STRING(
+        [--enable-warnings],
+        [enable Warnings]
+   ),
+   [
+        AC_MSG_RESULT(enable Warnings)
+        CFLAGS="$CFLAGS -Wall -Wunused -Wpointer-arith"
+   ]
+)
+
+dnl GSWIP support
+AC_ARG_ENABLE(gswip,
+    AS_HELP_STRING(
+        [--enable-gswip],
+        [enable Add GSWIP specific feature support]
+   ),
+   [
+        AC_MSG_RESULT(enable Add GSWIP feature support)
+            AM_CONDITIONAL(SWITCHAPI_GSWIP_SUPPORT, true)
+    ],
+    [
+        AM_CONDITIONAL(SWITCHAPI_GSWIP_SUPPORT, false)
+    ]
+)
+
+dnl TANTOS support
+AC_ARG_ENABLE(tantos,
+    AS_HELP_STRING(
+        [--enable-tantos],
+        [enable Add TANTOS/AR9 specific feature support]
+   ),
+   [
+        AC_MSG_RESULT(enable Add TANTOS/AR9 feature support)
+            AM_CONDITIONAL(SWITCHAPI_TANTOS_SUPPORT, true)
+    ],
+    [
+        AM_CONDITIONAL(SWITCHAPI_TANTOS_SUPPORT, false)
+    ]
+)
+
+dnl help text printout support
+AC_ARG_ENABLE(printhelp,
+    AS_HELP_STRING(
+        [--enable-printhelp],
+        [enable Add help text printout for every command]
+   ),
+   [
+        AC_MSG_RESULT(enable Add help text printout for every command)
+            AC_DEFINE([SWITCHAPI_HELP_TEXT],[1],[enable add help text printout for every command])
+    ]
+)
+
+dnl enable warnings as error
+AC_ARG_ENABLE(werror,
+    AS_HELP_STRING(
+        [--enable-werror],
+        [enable warnings as error]
+    ),
+    [
+        if test $enableval = 'yes'; then
+            AM_CONDITIONAL(WERROR, true)
+            CFLAGS="$CFLAGS -Werror"
+        else
+            AM_CONDITIONAL(WERROR, false)
+        fi
+    ],
+    [
+        AM_CONDITIONAL(WERROR, false)
+    ]
+)
+
+dnl Dump ioctl parameter instead of driver call (Debug feature)
+AC_ARG_ENABLE(dumpparam,
+    AS_HELP_STRING(
+        [--enable-dumpparam],
+        [enable Dump ioctl parameter instead of driver call (Debug feature)]
+   ),
+   [
+        AC_MSG_RESULT(enable Dump ioctl parameter instead of driver call (Debug feature))
+            AM_CONDITIONAL(CLI_DUMP_CALL, true)
+   ],
+   [
+        AM_CONDITIONAL(CLI_DUMP_CALL, false)
+   ]
+)
+
+dnl set additional (device specific) CFLAGS
+AC_ARG_WITH(cflags,
+    AS_HELP_STRING(
+        [--with-cflags=val],
+        [pass additional CFLAGS, not required for Linux 2.6]
+    ),
+    [
+	    if test "$withval" = yes; then
+		    AC_MSG_ERROR([Please provide a value for the maximum devices]);
+	    fi
+	    AC_MSG_RESULT([passing additional CFLAGS $withval])
+        CFLAGS="$CFLAGS $withval"
+    ]
+)
+
+AC_CONFIG_FILES([Makefile src/Makefile])
+
+AC_OUTPUT
+
+echo \
+"------------------------------------------------------------------------
+Configuration:
+
+  Source code location: ${srcdir}
+  System path:          ${SYSTEM_INCL_PATH}
+  Compiler:             ${CC}
+  Compiler flags:       ${CFLAGS}
+  Host System Type:     ${host}
+  Install path:         ${prefix}
+------------------------------------------------------------------------"
+
+

@@ -1,5 +1,19 @@
-#ifndef DATAPATH_API_TX_H_34JWW7RR
-#define DATAPATH_API_TX_H_34JWW7RR
+// SPDX-License-Identifier: GPL-2.0
+/******************************************************************************
+ * Copyright (c) 2020 - 2021, MaxLinear, Inc.
+ * Copyright 2018 - 2020 Intel Corporation
+ *
+ *****************************************************************************/
+
+#ifndef _DATAPATH_API_TX_H
+#define _DATAPATH_API_TX_H
+#include <linux/bits.h>
+#include <linux/types.h>
+#include <linux/netdevice.h>
+#if IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP30)
+#include <net/datapath_api_tx_grx500.h>
+#else
+struct sk_buff;
 
 /*! @{ */
 /*!
@@ -7,12 +21,20 @@
  *
  * @brief Datapath TX path API
  */
- /*! @} */
+/*! @} */
 
+/**
+ * enum DP_TX_FN_RET - define TX return value for dp_xmit() with DP_TX_NEWRET
+ * flag
+ */
+/*! @brief define TX return value for dp_xmit() with DP_TX_NEWRET flag */
 enum DP_TX_FN_RET {
-	DP_TX_FN_CONSUMED,
-	DP_TX_FN_CONTINUE,
-	DP_TX_FN_DROPPED,
+	DP_TX_FN_CONSUMED = NETDEV_TX_OK,
+	DP_TX_FN_DROPPED = NET_XMIT_DROP,
+	DP_TX_FN_BUSY = NETDEV_TX_BUSY,
+	/* DP_TX_FN_CONTINUE is an internal state, will not be returned to
+	 * dp_xmit() */
+	DP_TX_FN_CONTINUE = INT_MAX,
 };
 
 /**
@@ -21,8 +43,8 @@ enum DP_TX_FN_RET {
 /*! @brief define TX chain priority from high to low */
 enum DP_TX_PRIORITY {
 	DP_TX_PP, /*!< packet processor */
-	DP_TX_TSO, /*!< traffic offload engine */
 	DP_TX_VPNA, /*!< VPN adapter */
+	DP_TX_TSO, /*!< traffic offload engine */
 	DP_TX_CQM,  /*!< CQM CPU port */
 	DP_TX_CNT,
 };
@@ -32,8 +54,19 @@ enum DP_TX_PRIORITY {
  */
 /*! @brief define TX path common flags */
 enum DP_TX_FLAGS {
-	DP_TX_FLAG_INSERT_PMAC = BIT(0), /*!< insert PMAC header*/
-	DP_TX_FLAG_STREAM_PORT = BIT(1), /*!< is stream port*/
+	DP_TX_FLAG_NONE       = BIT(0), /*!< @brief enable HW checksum offload */
+	DP_TX_CAL_CHKSUM      = BIT(1), /*!< @brief enable HW checksum offload */
+	DP_TX_DSL_FCS         = BIT(2), /*!< @brief enable DSL FCS checksum offload */
+	DP_TX_BYPASS_QOS      = BIT(3), /*!< @brief bypass QoS */
+	DP_TX_BYPASS_FLOW     = BIT(4), /*!< @brief bypass DMA descriptor filling flow */
+	DP_TX_OAM             = BIT(5), /*!< @brief OAM packet */
+	DP_TX_TO_DL_MPEFW     = BIT(6), /*!< @brief Send pkt directly to DL FW */
+	DP_TX_INSERT          = BIT(7), /*!< @brief GSWIP insertion Support */
+	DP_TX_INSERT_POINT    = BIT(8), /*!< @brief For GSWIP insertion Point 0 or 1 */
+	DP_TX_WITH_PMAC       = BIT(9), /*!< @brief caller already put pmac in
+					*           the skb->data-16 to skb->data-1
+					*/
+	DP_TX_NEWRET          = BIT(10), /*!< @brief dp_xmit() returns enum DP_TX_FN_RET */
 };
 
 /**
@@ -43,13 +76,13 @@ enum DP_TX_FLAGS {
  */
 /*! @brief datapath TX callback parameters */
 struct dp_tx_common {
-	u8 *pmac; /*!< PMAC */
-	u32 flags; /*!< bitmap of enum DP_TX_FLAGS */
-	u8 len; /*!< length of PMAC */
-	u8 dpid; /*!< datapath port ID */
-	u8 vap; /*!< datapath port subif vap */
-	u8 gpid; /*!< GPID */
-	struct dev_mib *mib; /*!< per vap MIB */
+	u32 subif;                    /*!< subif id */
+	u32 flags;                    /*!< bitmap of enum DP_TX_FLAGS */
+	int alloc_flags;              /*!< bitmap of enum DP_F_FLAG */
+	u8 *pmac;                     /*!< PMAC */
+	u8 pmac_len;                  /*!< length of PMAC */
+	u8 tx_portid;                 /*!< tx portid */
+	u8 inst;                      /*!< inst */
 };
 
 /**
@@ -71,5 +104,5 @@ typedef int (*tx_fn)(struct sk_buff *skb, struct dp_tx_common *cmn, void *p);
  * @p: parameters
  */
 int dp_register_tx(enum DP_TX_PRIORITY priority, tx_fn fn, void *p);
-
-#endif /* end of include guard: DATAPATH_API_TX_H_34JWW7RR */
+#endif /* CONFIG_INTEL_DATAPATH_HAL_GSWIP30 */
+#endif /* end of include guard: _DATAPATH_API_TX_H */

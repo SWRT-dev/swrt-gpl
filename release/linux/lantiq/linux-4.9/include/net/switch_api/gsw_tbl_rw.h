@@ -140,7 +140,7 @@ typedef struct {
 
 /* GSWIP Table structure to access all tables */
 typedef struct {
-	u8 tbl_entry;
+	u32 tbl_entry;
 	/** Start offset mem dump purpose */
 	u32 tbl_addr;
 	u32 tbl_id;
@@ -159,6 +159,7 @@ int route_table_write(void *cdev, pctbl_prog_t *rdata);
 GSW_return_t gsw_bm_table_read(void *cdev, bmtbl_prog_t *ptdata);
 GSW_return_t gsw_bm_table_write(void *cdev, bmtbl_prog_t *ptdata);
 u32 pmac_addr_off(u32 off, u32 id);
+GSW_return_t gsw_pce_rule_set(void *cdev, pctbl_prog_t *ptdata);
 
 #endif
 

@@ -64,7 +64,17 @@
 #define PCIE_LCTLSTS_LINK_BMS			BIT(30)
 #define PCIE_LCTLSTS_LINK_ABS			BIT(31)
 
-#define PCIE_LCTLSTS2				0xA0
+/* PCIe 2.0 specific stuff */
+#define PCIE_DCAP2						0x94
+
+#define PCIE_DCTLSTS2					0x98
+
+#define PCIE_CPL_TIMEOUT_RANGE			0x0000000F
+#define PCIE_CPL_TIMEOUT_RANGE_S		0
+#define PCIE_CPL_TIMEOUT_DIS			0x00000010 /* Root Port optional */
+
+#define PCIE_LCTLSTS2					0xA0
+
 
 #define PCIE_LCTLSTS2_TGT_LINK_SPEED		GENMASK(3, 0)
 #define PCIE_LCTLSTS2_TGT_LINK_SPEED_S		0
@@ -1048,14 +1058,33 @@ static void intel_pcie_upconfig_setup(struct intel_pcie_port *lpp)
 	pcie_rc_cfg_wr(lpp, reg, PCIE_IOP_CTRL);
 }
 
+#ifdef CONFIG_USE_WAVE600_2_EMULATOR
+static void intel_pcie_cpl_timeout_disable(struct intel_pcie_port *lpp)
+{
+
+	if (lpp->max_speed >= PCIE_LINK_SPEED_GEN2) {
+		u32 reg;
+
+		reg = pcie_rc_cfg_rd(lpp, PCIE_DCTLSTS2);
+		reg |= PCIE_CPL_TIMEOUT_DIS;
+		pcie_rc_cfg_wr(lpp, reg, PCIE_DCTLSTS2);
+	}
+}
+#endif
+
 static void intel_pcie_rc_setup(struct intel_pcie_port *lpp)
 {
 	intel_pcie_ltssm_disable(lpp);
 	intel_pcie_link_setup(lpp);
+#ifdef CONFIG_USE_WAVE600_2_EMULATOR
+	intel_pcie_cpl_timeout_disable(lpp);
+#endif
+
 	if (lpp->max_speed >= PCIE_LINK_SPEED_GEN3) {
 		intel_pcie_rc_mode_setup(lpp);
 		intel_pcie_lane_and_width_setup(lpp);
 	}
+
 	intel_pcie_upconfig_setup(lpp);
 	intel_pcie_bridge_class_code_setup(lpp);
 	intel_pcie_max_speed_setup(lpp);

@@ -364,6 +364,7 @@ static struct net_bridge_port *new_nbp(struct net_bridge *br,
 	dev_hold(dev);
 	p->dev = dev;
 	p->path_cost = port_cost(dev);
+	p->learning_limit = BRPORT_LEARNING_LIMIT_UNLIMITED;
 	p->priority = 0x8000 >> BR_PORT_BITS;
 	p->port_no = index;
 	p->flags = BR_LEARNING | BR_FLOOD | BR_MCAST_FLOOD;
@@ -603,9 +604,6 @@ int br_add_if(struct net_bridge *br, struct net_device *dev)
 
 	kobject_uevent(&p->kobj, KOBJ_ADD);
 
-#ifdef CONFIG_MCAST_SNOOPING
-	br_ifinfo_notify(RTM_NEWLINK, p);
-#endif
 
 	return 0;
 
@@ -658,9 +656,6 @@ int br_del_if(struct net_bridge *br, struct net_device *dev)
 
 	netdev_update_features(br->dev);
 
-#ifdef CONFIG_MCAST_SNOOPING
-	br_ifinfo_notify(RTM_DELLINK, p);
-#endif
 
 	return 0;
 }

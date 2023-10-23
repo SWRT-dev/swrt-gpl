@@ -1,0 +1,12 @@
+3 streams from a LAN client to WAN with different filter fields
+
+Stream 1 : UDP with source port 2000
+Stream 2 : destination address 100.100.100.10
+Stream 3 : any other traffic
+
+Requirement :
+Stream 1 to WAN should take highest priority (with priority 1)
+Stream 2 to WAN should take medium priority queue (with priority 4)
+Stream 3 to WAN should take low priority queue (with priority 8)
+
+

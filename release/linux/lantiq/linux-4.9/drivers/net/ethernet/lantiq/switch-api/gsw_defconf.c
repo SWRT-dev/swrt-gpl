@@ -90,28 +90,30 @@ int gsw_set_def_pce_qmap(struct core_ops *ops)
 			memset(&q_map, 0, sizeof(GSW_QoS_queuePort_t));
 			q_map.nPortId = gsw_pce_path[j].eg_lpid;
 
-			if ((gswdev->gsw_mode & BIT(0)) == GSW_SHORTCUT_MODE) {
+			q_map.nQueueId = gsw_pce_path[j].qid;
+			q_map.nRedirectPortId =	gsw_pce_path[j].redir_lpid;
+
+			q_map.nTrafficClassId = i;
+
+			if (gsw_pce_path[j].ext == X) {
+				q_map.bExtrationEnable = 1;
+				ops->gsw_qos_ops.QoS_QueuePortSet(ops, &q_map);
+
+				q_map.bExtrationEnable = 0;
+			} else {
+				q_map.bExtrationEnable = gsw_pce_path[j].ext;
+			}
+
+			if (!q_map.bExtrationEnable &&
+			    (gswdev->gsw_mode & BIT(0)) == GSW_SHORTCUT_MODE) {
 				if (q_map.nPortId == LOG_3) {
 					q_map.nQueueId = 0;	/* Use Q0 */
 					q_map.nRedirectPortId = LOG_3;
 				} else if (q_map.nPortId == LOG_4) {
 					q_map.nQueueId = 8;	/* Use Q8 */
 					q_map.nRedirectPortId = LOG_4;
-				} else {
-					q_map.nQueueId = gsw_pce_path[j].qid;
-					q_map.nRedirectPortId =
-						gsw_pce_path[j].redir_lpid;
 				}
-			} else {
-				q_map.nQueueId = gsw_pce_path[j].qid;
-				q_map.nRedirectPortId =
-					gsw_pce_path[j].redir_lpid;
 			}
-
-			if (gsw_pce_path[j].ext != X)
-				q_map.bExtrationEnable = gsw_pce_path[j].ext;
-
-			q_map.nTrafficClassId = i;
 
 			ops->gsw_qos_ops.QoS_QueuePortSet(ops, &q_map);
 		}
@@ -236,32 +238,86 @@ int gsw_misc_config(struct core_ops *ops)
 	return 0;
 }
 
-/* Default Qos WRED Config in switch */
+/* Default Qos WRED Config in switch
+ * API for setting the default QoS Wred Queue and Port Configuration
+ * for all 5 MAC ports and 32 Queues for Prx300
+ */
 int gsw_qos_def_config(struct core_ops *ops)
 {
+	u32 phy_eg_qmap = BIT(16) | BIT(8) | BIT(0);
 	GSW_QoS_WRED_PortCfg_t sVar;
 	GSW_QoS_WRED_QueueCfg_t qcfg;
-	int j = 0;
+	GSW_QoS_WRED_Cfg_t q_gbl_cfg;
+	GSW_register_t reg;
+	int j;
 
-	for (j = 0; j < 5; j++) {
-		memset(&sVar, 0x00, sizeof(sVar));
+	/* Setting Yellow threshold to a half of green to don't drop the packet
+	 * once marked to yellow color
+	 */
+	memset(&q_gbl_cfg, 0x00, sizeof(q_gbl_cfg));
+	ops->gsw_qos_ops.QoS_WredCfgGet(ops, &q_gbl_cfg);
+	q_gbl_cfg.nYellow_Min = q_gbl_cfg.nGreen_Min / 2;
+	q_gbl_cfg.nYellow_Max = q_gbl_cfg.nGreen_Max / 2;
+	ops->gsw_qos_ops.QoS_WredCfgSet(ops, &q_gbl_cfg);
 
+	/* Setting Port WRED for all ports */
+	memset(&sVar, 0x00, sizeof(sVar));
+	sVar.nYellow_Min = 240;
+	sVar.nYellow_Max = 255;
+	sVar.nGreen_Min = 240;
+	sVar.nGreen_Max = 255;
+	for (j = 0; j < 12; j++) {
 		sVar.nPortId = j;
-		sVar.nGreen_Min = 240;
-		sVar.nGreen_Max = 256;
 
 		ops->gsw_qos_ops.QoS_WredPortCfgSet(ops, &sVar);
 	}
 
-	for (j = 0; j < 31; j++) {
+	/* Setting Q WRED default config for Q0 to Q31 */
+	for (j = 0; j < 32; j++) {
 		memset(&qcfg, 0x00, sizeof(qcfg));
 
 		qcfg.nQueueId = j;
-		qcfg.nGreen_Min = 240;
-		qcfg.nGreen_Max = 256;
+
+		if ((phy_eg_qmap & BIT(j))) {
+			qcfg.nYellow_Min = 240;
+			qcfg.nYellow_Max = 255;
+			qcfg.nGreen_Min = 240;
+			qcfg.nGreen_Max = 255;
+			qcfg.nReserveThreshold = 240;
+		} else {
+			qcfg.nYellow_Min = 120;
+			qcfg.nYellow_Max = 128;
+			qcfg.nGreen_Min = 120;
+			qcfg.nGreen_Max = 128;
+		}
 
 		ops->gsw_qos_ops.QoS_WredQueueCfgSet(ops, &qcfg);
 	}
+
+	/* Port 0/1/2 use SDMA tail drop watermark 6 */
+	for (j = 0; j < 3; j++) {
+		reg.nRegAddr = SDMA_PCTRL_DTHR_OFFSET + 6 * j;
+		ops->gsw_common_ops.RegisterGet(ops,&reg);
+		CLEAR_FILL_CTRL_REG(reg.nData, SDMA_PCTRL_DTHR_SHIFT,
+				    SDMA_PCTRL_DTHR_SIZE, 1);
+		ops->gsw_common_ops.RegisterSet(ops,&reg);
+	}
+
+	/* Port 3/4 use SDMA tail drop watermark 5 */
+	for (j = 3; j < 5; j++) {
+		reg.nRegAddr = SDMA_PCTRL_DTHR_OFFSET + 6 * j;
+		ops->gsw_common_ops.RegisterGet(ops,&reg);
+		CLEAR_FILL_CTRL_REG(reg.nData, SDMA_PCTRL_DTHR_SHIFT,
+				    SDMA_PCTRL_DTHR_SIZE, 0);
+		ops->gsw_common_ops.RegisterSet(ops,&reg);
+	}
+
+	/* set tail drop watermark 5 to lower value */
+	reg.nRegAddr = SDMA_FCTHR5_THR5_OFFSET;
+	ops->gsw_common_ops.RegisterGet(ops,&reg);
+	CLEAR_FILL_CTRL_REG(reg.nData, SDMA_FCTHR5_THR5_SHIFT,
+			    SDMA_FCTHR5_THR5_SIZE, 0x2FF);
+	ops->gsw_common_ops.RegisterSet(ops,&reg);
 
 	return 0;
 }
@@ -445,10 +501,15 @@ static int pmac_eg_cfg(struct core_ops *ops, u8 pmacid, u8 dpu)
 					/* Pmac1, PCE bypass traffic to MAC2*/
 					/* Pmac0, PCE-Bypass Traf to MAC3-MAC4*/
 					else {
-						if (m == 3 || m == 4)
-							/* BSL priority to 1 for Dest port 3 and 4*/
+						if (pmacid == 1 && m == 2)
+							/* BSL priority to 2 for upstream port
+							   to leave some FSQM segments for
+							   downstream traffic */
+							eg_cfg.nBslTrafficClass = 2;
+						else if (m == 3 || m == 4)
+							/* BSL priority to 3 for Dest port 3 and 4*/
 							/* support for above 3.0 GSWIP versions */
-							eg_cfg.nBslTrafficClass =1;
+							eg_cfg.nBslTrafficClass = 3;
 						/* Every Pkt has Pmac header */
 						eg_cfg.bPmacEna = 1;
 						/* Pkt can be segmented. */
@@ -464,6 +525,10 @@ static int pmac_eg_cfg(struct core_ops *ops, u8 pmacid, u8 dpu)
 					eg_cfg.bMpe1Flag	= (j & 1);
 					eg_cfg.nFlowIDMsb	= k;
 					eg_cfg.bFcsEna		= 1;
+
+					/* MPE flag (10b) is extraction to CPU */
+					if ((j & 3) == 2)
+						eg_cfg.bBslSegmentDisable = 1;
 
 					/* All other fields set to 0. */
 					ops->gsw_pmac_ops.Pmac_Eg_CfgSet(ops,

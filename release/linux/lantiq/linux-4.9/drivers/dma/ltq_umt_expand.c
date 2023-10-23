@@ -41,8 +41,8 @@
 #include <clocksource/intel-gptc-timer.h>
 #include "net/lantiq_cbm_api.h"
 
-/* the default interval is 40us */
-#define LTQ_UMT_SW_INTERVAL_DEFAULT 40
+/* the default interval is 40us coming from Kconfig */
+#define LTQ_UMT_SW_INTERVAL_DEFAULT CONFIG_LTQ_UMT_SW_INTERVAL_DEFAULT
 /* the default yield pin is 8 */
 #define LTQ_UMT_SW_YIELD_PIN 8
 
@@ -207,10 +207,12 @@ static inline void umt_reset_umt(u32 umt_id)
  * intput:
  * @umt_id: UMT port id, (0 - 3)
  * @ep_id:  Aligned with datapath lib ep_id
+ * @msg_mode:  0-No MSG, 1-MSG0 Only, 2-MSG1 Only, 3-MSG0 & MSG1.
  * @period: measured in microseconds.
  * ret:  Fail < 0 / Success: 0
  */
-int ltq_umt_set_period(u32 umt_id, u32 ep_id, u32 period)
+int ltq_umt_set_period(u32 umt_id, u32 ep_id,
+		       enum umt_msg_mode msg_mode, u32 period)
 {
 	struct mcpy_umt *pumt = mcpy_get_umt();
 	struct umt_port *port;
@@ -225,20 +227,29 @@ int ltq_umt_set_period(u32 umt_id, u32 ep_id, u32 period)
 
 	port = &pumt->ports[umt_id];
 
-	spin_lock_bh(&port->umt_port_lock);
+	UMT_PORT_LOCK(&port->umt_port_lock);
 	if (port->ep_id != ep_id) {
-		spin_unlock_bh(&port->umt_port_lock);
+		UMT_PORT_UNLOCK(&port->umt_port_lock);
 		goto period_err;
 	}
 
+	#if IS_ENABLED(CONFIG_LTQ_UMT_SW_MODE)
+	if ((msg_mode == UMT_MSG1_ONLY)) {
+		port->umt_msg1_period = period;
+		port->umt_remaining_time = period;
+	} else
+	#endif
 	if (port->umt_period != period) {
 		port->umt_period = period;
 		#if IS_ENABLED(CONFIG_LTQ_UMT_SW_MODE)
-		port->umt_remaining_time = period;
+		if ((msg_mode == UMT_MSG0_MSG1)) {
+			port->umt_msg1_period = period;
+			port->umt_remaining_time = period;
+		}
 		#endif
 		umt_set_period(umt_id, port->umt_period);
 	}
-	spin_unlock_bh(&port->umt_port_lock);
+	UMT_PORT_UNLOCK(&port->umt_port_lock);
 
 	return 0;
 
@@ -302,11 +313,11 @@ int ltq_umt_set_mode(u32 umt_id, u32 ep_id, struct umt_set_mode *p_umt_mode)
 
 	port = &pumt->ports[umt_id];
 
-	spin_lock_bh(&port->umt_port_lock);
+	UMT_PORT_LOCK(&port->umt_port_lock);
 	if (port->ep_id != ep_id) {
 		mcpy_dbg(MCPY_ERR, "input ep_id: %d, port ep_id: %d\n",
 			 ep_id, port->ep_id);
-		spin_unlock_bh(&port->umt_port_lock);
+		UMT_PORT_UNLOCK(&port->umt_port_lock);
 		return -EINVAL;
 	}
 
@@ -320,7 +331,11 @@ int ltq_umt_set_mode(u32 umt_id, u32 ep_id, struct umt_set_mode *p_umt_mode)
 
 #if IS_ENABLED(CONFIG_LTQ_UMT_SW_MODE)
 	port->umt_ep_dst = umt_ep_dst;
-	port->umt_remaining_time = port->umt_period;
+	if (p_umt_mode->msg1_period)
+		port->umt_msg1_period = p_umt_mode->msg1_period;
+	else
+		port->umt_msg1_period = port->umt_period;
+	port->umt_remaining_time = port->umt_msg1_period;
 #endif
 	umt_set_mode(umt_id, port->umt_mode);
 	umt_set_msgmode(umt_id, port->msg_mode);
@@ -328,7 +343,7 @@ int ltq_umt_set_mode(u32 umt_id, u32 ep_id, struct umt_set_mode *p_umt_mode)
 	umt_set_period(umt_id, port->umt_period);
 	umt_enable(umt_id, port->status);
 	/* setup the CBM/DMA mapping */
-	spin_unlock_bh(&port->umt_port_lock);
+	UMT_PORT_UNLOCK(&port->umt_port_lock);
 
 	return 0;
 }
@@ -354,7 +369,7 @@ int ltq_umt_enable(u32 umt_id, u32 ep_id, u32 enable)
 
 	port = &pumt->ports[umt_id];
 
-	spin_lock_bh(&port->umt_port_lock);
+	UMT_PORT_LOCK(&port->umt_port_lock);
 	if (port->ep_id != ep_id || port->umt_dst == 0 || port->ep_id == 0) {
 		mcpy_dbg(MCPY_ERR, "input ep_id: %d, umt port ep_id: %d, umt_dst: 0x%x\n",
 			 ep_id, port->ep_id, port->umt_dst);
@@ -365,12 +380,12 @@ int ltq_umt_enable(u32 umt_id, u32 ep_id, u32 enable)
 		port->status = (enum umt_status)enable;
 		umt_enable(umt_id, port->status);
 	}
-	spin_unlock_bh(&port->umt_port_lock);
+	UMT_PORT_UNLOCK(&port->umt_port_lock);
 
 	return 0;
 
 en_err:
-	spin_unlock_bh(&port->umt_port_lock);
+	UMT_PORT_UNLOCK(&port->umt_port_lock);
 	return -EINVAL;
 }
 EXPORT_SYMBOL(ltq_umt_enable);
@@ -395,7 +410,7 @@ int ltq_umt_suspend(u32 umt_id, u32 ep_id, u32 enable)
 
 	port = &pumt->ports[umt_id];
 
-	spin_lock_bh(&port->umt_port_lock);
+	UMT_PORT_LOCK(&port->umt_port_lock);
 	if (port->ep_id != ep_id || port->umt_dst == 0 || port->ep_id == 0) {
 		mcpy_dbg(MCPY_ERR, "input ep_id: %d, umt port ep_id: %d, umt_dst: 0x%x\n",
 			 ep_id, port->ep_id, port->umt_dst);
@@ -407,12 +422,12 @@ int ltq_umt_suspend(u32 umt_id, u32 ep_id, u32 enable)
 		umt_enable(umt_id, port->status);
 		umt_suspend(umt_id, port->suspend);
 	}
-	spin_unlock_bh(&port->umt_port_lock);
+	UMT_PORT_UNLOCK(&port->umt_port_lock);
 
 	return 0;
 
 en_err:
-	spin_unlock_bh(&port->umt_port_lock);
+	UMT_PORT_UNLOCK(&port->umt_port_lock);
 	return -EINVAL;
 }
 EXPORT_SYMBOL(ltq_umt_suspend);
@@ -457,20 +472,20 @@ int ltq_umt_request(u32 ep_id, u32 cbm_pid,
 	}
 
 	pid = -1;
-	spin_lock_bh(&pumt->umt_lock);
+	UMT_PORT_LOCK(&pumt->umt_lock);
 	for (i = 0; i < UMT_PORTS_NUM; i++) {
 		port = &pumt->ports[i];
-		spin_lock_bh(&port->umt_port_lock);
+		UMT_PORT_LOCK(&port->umt_port_lock);
 		if (port->ep_id == ep_id && port->cbm_pid == cbm_pid) {
 			pid = i;
-			spin_unlock_bh(&port->umt_port_lock);
+			UMT_PORT_UNLOCK(&port->umt_port_lock);
 			break;
 		} else if (port->ep_id == 0 && pid == -1) {
 			pid = i;
 		}
-		spin_unlock_bh(&port->umt_port_lock);
+		UMT_PORT_UNLOCK(&port->umt_port_lock);
 	}
-	spin_unlock_bh(&pumt->umt_lock);
+	UMT_PORT_UNLOCK(&pumt->umt_lock);
 
 	if (pid < 0) {
 		mcpy_dbg(MCPY_ERR, "No free UMT port!\n");
@@ -478,14 +493,14 @@ int ltq_umt_request(u32 ep_id, u32 cbm_pid,
 	}
 
 	port = &pumt->ports[pid];
-	spin_lock_bh(&port->umt_port_lock);
+	UMT_PORT_LOCK(&port->umt_port_lock);
 	port->ep_id = ep_id;
 	port->cbm_pid = cbm_pid;
 	umt_set_mux(port->umt_pid, port->cbm_pid, port->dma_cid);
 	*dma_ctrlid = pumt->dma_ctrlid;
 	*dma_cid = port->dma_cid;
 	*umt_id = port->umt_pid;
-	spin_unlock_bh(&port->umt_port_lock);
+	UMT_PORT_UNLOCK(&port->umt_port_lock);
 
 #if IS_ENABLED(CONFIG_LTQ_UMT_SW_MODE)
 	{
@@ -511,13 +526,13 @@ int ltq_umt_request(u32 ep_id, u32 cbm_pid,
 	    dqport.deq_info->port_no == 24 ||
 	    dqport.deq_info->port_no == 25 ||
 	    dqport.deq_info->port_no == 26) {
-		spin_lock_bh(&port->umt_port_lock);
+		UMT_PORT_LOCK(&port->umt_port_lock);
 		if (cbm_pid == cbm_pid_l)
 			port->umtid_map_cbmid = dqport.deq_info->port_no;
 		else
 			port->umtid_map_cbmid = 0;
 
-		spin_unlock_bh(&port->umt_port_lock);
+		UMT_PORT_UNLOCK(&port->umt_port_lock);
 	} else {
 		mcpy_dbg(MCPY_ERR, "port no %d not valid !\n",
 			 dqport.deq_info->port_no);
@@ -560,11 +575,11 @@ int ltq_umt_release(u32 umt_id, u32 ep_id)
 
 	port = &pumt->ports[umt_id];
 
-	spin_lock_bh(&port->umt_port_lock);
+	UMT_PORT_LOCK(&port->umt_port_lock);
 	if (port->ep_id != ep_id) {
 		mcpy_dbg(MCPY_ERR, "input ep_id: %d, UMT port ep_id: %d\n",
 			 ep_id, port->ep_id);
-		spin_unlock_bh(&port->umt_port_lock);
+		UMT_PORT_UNLOCK(&port->umt_port_lock);
 
 		return -ENODEV;
 	}
@@ -575,13 +590,14 @@ int ltq_umt_release(u32 umt_id, u32 ep_id)
 	port->umt_period = 0;
 	port->status = UMT_DISABLE;
 #if IS_ENABLED(CONFIG_LTQ_UMT_SW_MODE)
+	port->umt_msg1_period = 0;
 	port->umt_remaining_time = 0;
 	port->umt_ep_dst = 0;
 	port->umtid_map_cbmid = 0;
 #endif
 	umt_enable(port->umt_pid, UMT_DISABLE);
 
-	spin_unlock_bh(&port->umt_port_lock);
+	UMT_PORT_UNLOCK(&port->umt_port_lock);
 
 	return 0;
 }
@@ -604,7 +620,7 @@ static void umt_port_init(struct mcpy_umt *pumt,
 	port->dma_cid = cid;
 	port->ep_id = 0;
 	port->status = UMT_DISABLE;
-	spin_lock_init(&port->umt_port_lock);
+	UMT_PORT_LOCK_INIT(&port->umt_port_lock);
 #if IS_ENABLED(CONFIG_LTQ_UMT_SW_MODE)
 	port->dq_idx = 0;
 	port->umt_ep_dst = 0;
@@ -935,7 +951,7 @@ void umt_callback_fn(void *param)
 				port->umt_remaining_time -= g_umt_interval;
 				continue;
 			}
-			port->umt_remaining_time = port->umt_period;
+			port->umt_remaining_time = port->umt_msg1_period;
 			ret = cbm_dequeue_dma_port_stats_get(port->umtid_map_cbmid, &dq_ptr, 0);
 			if (ret != 0)
 				continue;
@@ -998,7 +1014,7 @@ int umt_init(struct mcpy_ctrl *pctrl)
 		       (int)pumt->clk);
 		pumt->clk = NULL;
 	}
-	spin_lock_init(&pumt->umt_lock);
+	UMT_PORT_LOCK_INIT(&pumt->umt_lock);
 	umt_en_expand_mode();
 
 	for (i = 0; i < UMT_PORTS_NUM; i++)

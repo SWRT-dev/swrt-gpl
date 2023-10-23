@@ -1,0 +1,50 @@
+================================================================================
+PPA Subsystem Development Checklist
+================================================================================
+00 | Checklist version              : 
+01 | Component                      : PPA Subsystem
+02 | Actual component version       : 2.1.4
+03 | Component owner                : Shao Guohua/XuLiang/HeJun/James (IFAP DC WLC SDC)
+04 | Last Change                    : 2009-10-08
+05 | Main purpose of change         : doxygen documenting
+06 | Object code size [kByte]       : 256032 
+   | ifx_ppa_stack_al.ko            : 20272 
+   | ifx_ppa_ppe_hal.ko (a5)        : 100384 
+   | ifx_ppa_api.ko                 : 97888 
+   | ifx_ppa_api_proc.ko            : 37488 
+07 | Typical use case data run time
+   | memory consumption [kByte]     
+   | 1.0ne unicast session          : 108
+   | 2.One multicast session        : 120
+   | 3.One Bridge session           : 44
+   | 4.One LAN/WAN interface        : 58  
+08 | API calls to other components  : PMU, DMA, GPIO, RCU, CGU
+09 | API's used by other components : N/A
+10 | UCM baseline configuration     : 
+================================================================================		
+
+================================================================================
+Nr.| Topic                          Y/N	        | Comment
+================================================================================
+11 | CoC compliant API implemented  : NO	| 
+12 | Code clean-up performed        : YES	|
+13 | Complies to actual coding		    	|
+   | rules                          : Partly    | For back-compatiblity and less porting risk
+14 | OS abstraction layer           : YES       |
+   | implemented                    : YES	|
+15 | Are there any hard coded board :           |
+   | dependencies left              : NO	|
+16 | Performance impact             :    	| 
+17 | Footprint impact               :   	|
+18 | Code review conducted and at  	    	|
+   | least all major defects fixed  : NO	| 
+19 | Test report available          : YES       | 
+20 | Design document updated        : most      | 
+21 | Doxygen compliant APIs/        : mostly    |
+   | comments included              : YES       |
+22 | Known issues summarized and    :           |
+   | risk assessment done           :    	|
+23 | Are agreed requirements met?   : YES	| 
+24 | Action items from previous     :           |
+   | Milestones finalized?          : YES	| 
+================================================================================

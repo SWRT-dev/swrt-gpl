@@ -1,0 +1,7 @@
+		option whm_enable '0'
+		option whm_tar_size '100'
+		option whm_max_dumps '200'
+		option whm_driver_warn '1'
+		option whm_hostapd_warn '1'
+		option whm_fw_warn '1'
+		option whm_phy_warn '1'

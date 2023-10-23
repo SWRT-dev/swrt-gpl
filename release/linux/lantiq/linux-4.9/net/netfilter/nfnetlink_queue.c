@@ -538,6 +538,12 @@ nfqnl_build_packet_message(struct net *net, struct nfqnl_instance *queue,
 	    nla_put_be32(skb, NFQA_MARK, htonl(entskb->mark)))
 		goto nla_put_failure;
 
+#if IS_ENABLED(CONFIG_NETWORK_EXTMARK)
+	if (entskb->extmark &&
+	    nla_put_be32(skb, NFQA_EXTMARK, htonl(entskb->extmark)))
+		goto nla_put_failure;
+#endif
+
 	if (indev && entskb->dev &&
 	    entskb->mac_header != entskb->network_header) {
 		struct nfqnl_msg_packet_hw phw;
@@ -984,6 +990,9 @@ static const struct nla_policy nfqa_vlan_policy[NFQA_VLAN_MAX + 1] = {
 static const struct nla_policy nfqa_verdict_policy[NFQA_MAX+1] = {
 	[NFQA_VERDICT_HDR]	= { .len = sizeof(struct nfqnl_msg_verdict_hdr) },
 	[NFQA_MARK]		= { .type = NLA_U32 },
+#if IS_ENABLED(CONFIG_NETWORK_EXTMARK)
+	[NFQA_EXTMARK]		= { .type = NLA_U32 },
+#endif
 	[NFQA_PAYLOAD]		= { .type = NLA_UNSPEC },
 	[NFQA_CT]		= { .type = NLA_UNSPEC },
 	[NFQA_EXP]		= { .type = NLA_UNSPEC },
@@ -1195,6 +1204,11 @@ static int nfqnl_recv_verdict(struct net *net, struct sock *ctnl,
 
 	if (nfqa[NFQA_MARK])
 		entry->skb->mark = ntohl(nla_get_be32(nfqa[NFQA_MARK]));
+
+#if IS_ENABLED(CONFIG_NETWORK_EXTMARK)
+	if (nfqa[NFQA_EXTMARK])
+		entry->skb->extmark = ntohl(nla_get_be32(nfqa[NFQA_EXTMARK]));
+#endif
 
 	nf_reinject(entry, verdict);
 	return 0;

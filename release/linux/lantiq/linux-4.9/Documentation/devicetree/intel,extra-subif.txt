@@ -1,0 +1,28 @@
+* Vuni driver
+
+Required properties:
+- compatible:	should be "intel,hgu-vuni"
+- reg:	address and length of the register set for the device.
+
+/* Vuni Subif configuration */
+- intel,extra-subif: Sub interfaces parameters
+	VANI0 -- always at interface 0
+	VUNI0_us -- always at interface 3.
+- intel,allow_subif_data_loop: Traffic between diff subif
+Example:
+
+	 vuni: vuni {
+                        compatible = "intel,hgu-vuni";
+                        #address-cells = <1>;
+                        #size-cells = <0>;
+                        reg = <0>;
+                        status = "disabled";
+                };
+
+	&vuni {
+		status = "okay";
+		vani@0 {
+			intel,extra-subif = "VANI0", "VUNI0_0", "VUNI0_1", "VUNI0_us";
+			intel,allow_subif_data_loop; /*Traffic between diff subif */
+		};
+	};

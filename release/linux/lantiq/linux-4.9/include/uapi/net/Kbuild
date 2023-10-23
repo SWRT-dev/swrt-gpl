@@ -1,2 +1,3 @@
 # misc Header export list
 header-y += ppa_api.h
+header-y += qos_mgr_common.h

@@ -1,0 +1,2 @@
+        option wps_pushbutton '1'
+        option wps_rf_bands 'a'

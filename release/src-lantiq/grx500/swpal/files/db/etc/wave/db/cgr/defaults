@@ -1,0 +1,5 @@
+config wifi-db 'num_vaps'
+        option 24g '4'
+        option 5g '4'
+        option 5g_zw_dfs '0'
+        option 6g '1'

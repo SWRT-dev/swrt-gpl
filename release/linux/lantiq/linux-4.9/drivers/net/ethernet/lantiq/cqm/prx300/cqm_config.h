@@ -1,14 +1,14 @@
 #ifndef __CQM_CONFIG_H__
 #define __CQM_CONFIG_H__
 
-#include "../../ppv4/bm/pp_bm_drv.h"
+#include <linux/pp_buffer_mgr_api.h>
 
 #define CQM_PRX300_NUM_BM_POOLS	4
 #define CQM_PRX300_NUM_POOLS	(CQM_PRX300_NUM_BM_POOLS + 1)
 #define CQM_PRX300_POOL_POL_HDR_SIZE	4
 #define CQM_QIDT_DW_NUM	0x1000
 #define CQM_QID2EP_DW_NUM	0x100
-#define CQM_SRAM_SIZE	0xC0000
+#define CQM_SRAM_SIZE	0xE0000
 #define CQM_SRAM_FRM_SIZE 128
 #define CQM_CPU_POOL_BUF_ALW_NUM	128
 #define CQM_SRAM_BASE	0x18D00000
@@ -32,6 +32,17 @@
 #define PRX300_MPE1_POS 8
 #define PRX300_EP_POS 4
 #define PRX300_SEL3TO0_POS 0
+
+#if CQM_SRAM_FRM_SIZE == 128
+#define CQM_SEGMENT_MASK_SIZE 0xfffff800
+#define CQM_OFFSET_MASK_SIZE 0x7ff
+#define CQM_SRAM_FRM_SIZE_BIT 0
+#else
+#define CQM_SEGMENT_MASK_SIZE 0xffffff80
+#define CQM_OFFSET_MASK_SIZE 0x7f
+#define CQM_SRAM_FRM_SIZE_BIT 1
+#endif
+
 enum {
 	REQ_FSQM_BUF = 0,
 	REQ_SIZE0_BUF = 1,
@@ -117,6 +128,7 @@ struct cqm_bm_pool_config {
 	unsigned int pool_start_high;
 	unsigned int pool_end_low;
 	unsigned int pool_end_high;
+	dma_addr_t pool_dma;
 	unsigned int segment_mask;
 	unsigned int offset_mask;
 	unsigned int pool;

@@ -48,4 +48,42 @@ struct ip6_tnl_parm2 {
 	__be32			o_key;
 };
 
+struct map_rule_parm {
+	struct in6_addr ipv6_prefix;
+	__u8            ipv6_prefix_length;
+	__be32          ipv4_prefix;
+	__u8            ipv4_prefix_length;
+	__u16           psid_prefix;
+	__u8            psid_prefix_length;
+	__u8            ea_length;
+	__u8            psid_offset;
+	__u8            forwarding_mode;
+	__u8            forwarding_rule;
+	struct in6_addr raddr;
+	struct in6_addr laddr;
+};
+
+struct map_pool_parm {
+	__be32          pool_prefix;
+	__u8            pool_prefix_length;
+};
+
+struct map_parm {
+	char                 name[IFNAMSIZ];
+	int                  tunnel_source;
+	struct in6_addr      br_address;
+	__u8                 br_address_length;
+	__u8                 role;
+	__u8                 default_forwarding_mode;
+	__u8                 default_forwarding_rule;
+	int                  ipv6_fragment_size;
+	__u8                 ipv4_fragment_inner;
+	__u8                 napt_always;
+	__u8                 napt_force_recycle;
+	unsigned long        rule_num;
+	unsigned long        pool_num;
+	struct map_rule_parm rule[0];
+	struct map_pool_parm pool[0];
+};
+
 #endif

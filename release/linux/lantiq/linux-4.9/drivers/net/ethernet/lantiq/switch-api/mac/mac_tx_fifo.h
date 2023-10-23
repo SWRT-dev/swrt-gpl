@@ -10,7 +10,7 @@
 #ifndef _MAC_TXFIFO_H
 #define _MAC_TXFIFO_H
 
-#define FIFO_TIMEOUT_IN_SEC         	100     /* 100 Sec */
+#define FIFO_TIMEOUT_IN_SEC		1	/* 1 sec */
 #define MAX_FIFO_ENTRY			64	/* Max Hw Fifo available */
 #define START_FIFO			1	/* */
 
@@ -22,7 +22,7 @@ enum {
 
 u32 fifo_init(void *pdev);
 int fifo_entry_add(void *pdev, u8 ttse, u8 ostc, u8 ostpa, u8 cic,
-		   u32 ttsl, u32 ttsh);
+		   u32 ttsl, u32 ttsh, struct sk_buff **ptp_tx_skb_loc);
 int fifo_entry_del(void *pdev, u32 rec_id);
 void fifo_isr_handler(void *pdev);
 int print_fifo(void *pdev);

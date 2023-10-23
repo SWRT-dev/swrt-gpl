@@ -435,23 +435,29 @@ static int gptc_clock_init(struct gptc *gptc)
 	struct device_node *np = gptc->np;
 
 	gptc->gateclk = of_clk_get_by_name(np, "gptc");
-	if (IS_ERR_OR_NULL(gptc->gateclk)) {
+	if (IS_ERR(gptc->gateclk)) {
 		pr_err("Failed to get gptc gate clk: %ld\n",
 		       PTR_ERR(gptc->gateclk));
-		return gptc->gateclk ? PTR_ERR(gptc->gateclk) : -ENODEV;
+		return PTR_ERR(gptc->gateclk);
 	}
 
 	gptc->freqclk = of_clk_get_by_name(np, "freq");
-	if (IS_ERR_OR_NULL(gptc->freqclk)) {
+	if (IS_ERR(gptc->freqclk)) {
 		pr_err("Failed to get gptc frequency clk: %ld\n",
 		       PTR_ERR(gptc->freqclk));
-		return gptc->freqclk ? PTR_ERR(gptc->freqclk) : -ENODEV;
+		return PTR_ERR(gptc->freqclk);
 	}
 	return 0;
 }
 
 static void gptc_clock_deinit(struct gptc *gptc)
 {
+	if (gptc->gateclk && !IS_ERR(gptc->gateclk))
+		clk_put(gptc->gateclk);
+
+	if (gptc->freqclk && !IS_ERR(gptc->freqclk))
+		clk_put(gptc->freqclk);
+
 	gptc->gateclk = NULL;
 	gptc->freqclk = NULL;
 }
@@ -520,29 +526,32 @@ static void gptc_put(struct gptc *gptc)
 	kref_put(&gptc->ref, __gptc_release);
 }
 
-static void gptc_free_timer(void)
+static void gptc_free_timer(struct gptc_timer *timer)
 {
-	struct gptc_timer *timer, *next;
+	struct gptc *gptc = timer->gptc;
+	unsigned long flags;
 
-	list_for_each_entry_safe(timer, next, &gptc_clksrc_list, clksrc)
-		kfree(timer);
-	INIT_LIST_HEAD(&gptc_clksrc_list);
+	spin_lock_irqsave(&gptc->lock, flags);
 
-	list_for_each_entry_safe(timer, next, &gptc_heartbeat_list, heartbeat)
-		kfree(timer);
-	INIT_LIST_HEAD(&gptc_heartbeat_list);
+	switch (timer->type) {
+	case TIMER_TYPE_CLK_SRC:
+		list_del(&timer->clksrc);
+		break;
+	case TIMER_TYPE_HEARTBEAT:
+		list_del(&timer->heartbeat);
+		break;
+	case TIMER_TYPE_CLK_EVT:
+		list_del(&timer->clkevt);
+		break;
+	case TIMER_TYPE_WDT:
+		list_del(&timer->wdt);
+		break;
+	default:
+		break;
+	}
 
-	list_for_each_entry_safe(timer, next, &gptc_clkevt_list, clkevt)
-		kfree(timer);
-	INIT_LIST_HEAD(&gptc_clkevt_list);
-
-	list_for_each_entry_safe(timer, next, &gptc_wdt_list, wdt)
-		kfree(timer);
-	INIT_LIST_HEAD(&gptc_wdt_list);
-
-	list_for_each_entry_safe(timer, next, &gptc_ht_yield_list, ht_yield)
-		kfree(timer);
-	INIT_LIST_HEAD(&gptc_ht_yield_list);
+	spin_unlock_irqrestore(&gptc->lock, flags);
+	kfree(timer);
 }
 
 static int gptc_of_parse_timer(struct gptc *gptc)
@@ -550,13 +559,13 @@ static int gptc_of_parse_timer(struct gptc *gptc)
 	u32 type;
 	struct of_phandle_args clkspec;
 	int index, ret, nr_timers;
-	struct gptc_timer *timer;
+	struct gptc_timer *timer, *timer_list[GPTC_MAX];
 	u32 tid;
 	u32 cpuid;
 	struct device_node *np = gptc->np;
 
 	nr_timers = of_count_phandle_with_args(np, "intel,clk", "#gptc-cells");
-	if (nr_timers <= 0) {
+	if ((nr_timers <= 0) || (nr_timers >= GPTC_MAX)) {
 		pr_err("gptc%d: invalid value of phandler property at %s\n",
 		       gptc->id, np->full_name);
 		return -ENODEV;
@@ -566,8 +575,10 @@ static int gptc_of_parse_timer(struct gptc *gptc)
 	for (index = 0; index < nr_timers; index++) {
 		ret = of_parse_phandle_with_args(np, "intel,clk", "#gptc-cells",
 						 index, &clkspec);
-		if (ret < 0)
-			return ret;
+		if (ret < 0) {
+			pr_err("gptc%d:gptc-cells invalid phandle\n", gptc->id);
+			goto err;
+		}
 		pr_debug("%s args_count %d arg[0] %d arg[1] %d arg[2] %d\n",
 			 __func__, clkspec.args_count, clkspec.args[0],
 			 clkspec.args[1], clkspec.args[2]);
@@ -580,12 +591,17 @@ static int gptc_of_parse_timer(struct gptc *gptc)
 		if (type > TIMER_TYPE_MAX || tid > (TIMER_PER_GPTC - 1)) {
 			pr_err("%s invalid clk type %d or timer id %d\n",
 			       __func__, type, tid);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto err;
 		}
 
 		timer = kzalloc(sizeof(*timer), GFP_KERNEL);
-		if (!timer)
-			return -ENOMEM;
+		if (!timer) {
+			ret = -ENOMEM;
+			goto err;
+		}
+
+		timer_list[index] = timer;
 
 		INIT_LIST_HEAD(&timer->child);
 		timer->gptc = gptc;
@@ -642,6 +658,12 @@ static int gptc_of_parse_timer(struct gptc *gptc)
 		}
 	}
 	return 0;
+
+err:
+	while (--index >= 0)
+		gptc_free_timer(timer_list[index]);
+
+	return ret;
 }
 
 static int gptc_of_init(struct device_node *np)
@@ -698,7 +720,6 @@ static int gptc_of_init(struct device_node *np)
 	gptc_of_config_print(gptc);
 	return 0;
 err_parse_fail:
-	gptc_free_timer();
 	gptc_clock_disable(gptc);
 err_clk_en:
 	gptc_clock_deinit(gptc);
@@ -967,7 +988,7 @@ static int __init gptc_heartbeat_init(void)
 }
 arch_initcall(gptc_heartbeat_init);
 
-#ifdef CONFIG_LTQ_VMB
+#if (IS_ENABLED(CONFIG_LTQ_VMB) && IS_ENABLED(CONFIG_LTQ_UMT_SW_MODE))
 #define GPTC_TC_THREAD_STACK_SIZE 4096
 #define GPTC_TC_THREAD_STACK_RESERVED_SIZE (32 + sizeof(struct pt_regs))
 

@@ -165,6 +165,7 @@ octeon-wdt-y := octeon-wdt-main.o octeon-wdt-nmi.o
 obj-$(CONFIG_LANTIQ_WDT) += lantiq_wdt.o
 obj-$(CONFIG_GRX500_IAP_WDT) += grx500_wdt.o
 obj-$(CONFIG_GRX500_BOOTCORE_WDT) += bootcore_wdt.o
+obj-$(CONFIG_SOC_PRX300_BOOTCORE) += tep-wdt.o
 obj-$(CONFIG_RALINK_WDT) += rt2880_wdt.o
 obj-$(CONFIG_IMGPDC_WDT) += imgpdc_wdt.o
 obj-$(CONFIG_MT7621_WDT) += mt7621_wdt.o

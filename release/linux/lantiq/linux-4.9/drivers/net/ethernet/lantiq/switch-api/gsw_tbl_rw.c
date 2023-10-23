@@ -108,6 +108,11 @@ int xwayflow_pmac_table_write(void *cdev, pmtbl_prog_t *ptdata)
 {
 	ethsw_api_dev_t *gswdev = GSW_PDATA_GET(cdev);
 
+	if (!gswdev) {
+		pr_err("%s:%s:%d", __FILE__, __func__, __LINE__);
+		return GSW_statusErr;
+	}
+
 	if (IS_VRSN_31(gswdev->gipver)) {
 		GSW_Freeze();
 	}
@@ -163,7 +168,7 @@ int route_table_read(void *cdev, pctbl_prog_t *rdata)
 	} while (value != 0);
 
 #ifdef __KERNEL__
-	spin_lock(&gswdev->lock_pce_tbl);
+	spin_lock_bh(&gswdev->lock_pce_tbl);
 #endif
 
 	gsw_w32(cdev, PCE_TBL_ADDR_ADDR_OFFSET,
@@ -325,7 +330,7 @@ int route_table_read(void *cdev, pctbl_prog_t *rdata)
 	gsw_w32(cdev, PCE_TBL_CTRL_ADDR_OFFSET, 0, 16, 0);
 
 #ifdef __KERNEL__
-	spin_unlock(&gswdev->lock_pce_tbl);
+	spin_unlock_bh(&gswdev->lock_pce_tbl);
 #endif
 
 	return GSW_statusOk;
@@ -344,7 +349,7 @@ int route_table_write(void *cdev, pctbl_prog_t *rdata)
 	} while (value);
 
 #ifdef __KERNEL__
-	spin_lock(&gswdev->lock_pce_tbl);
+	spin_lock_bh(&gswdev->lock_pce_tbl);
 #endif
 
 	gsw_w32(cdev, PCE_TBL_ADDR_ADDR_OFFSET,
@@ -477,7 +482,7 @@ int route_table_write(void *cdev, pctbl_prog_t *rdata)
 	gsw_w32(cdev, PCE_TBL_CTRL_ADDR_OFFSET, 0, 16, 0);
 
 #ifdef __KERNEL__
-	spin_unlock(&gswdev->lock_pce_tbl);
+	spin_unlock_bh(&gswdev->lock_pce_tbl);
 #endif
 
 	return GSW_statusOk;
@@ -500,7 +505,7 @@ int gsw_pce_table_write(void *cdev, pctbl_prog_t *ptdata)
 			       PCE_TBL_CTRL_BAS_SIZE));
 
 #ifdef __KERNEL__
-	spin_lock(&gswdev->lock_pce_tbl);
+	spin_lock_bh(&gswdev->lock_pce_tbl);
 #endif
 
 	gsw_w32_raw(cdev, PCE_TBL_ADDR_ADDR_OFFSET, ptdata->pcindex);
@@ -555,22 +560,17 @@ int gsw_pce_table_write(void *cdev, pctbl_prog_t *ptdata)
 	gsw_w32_raw(cdev, PCE_TBL_CTRL_ADDR_OFFSET, 0);
 
 #ifdef __KERNEL__
-	spin_unlock(&gswdev->lock_pce_tbl);
+	spin_unlock_bh(&gswdev->lock_pce_tbl);
 #endif
 
 	return GSW_statusOk;
 }
 
-int gsw_pce_table_read(void *cdev, pctbl_prog_t *ptdata)
+static int __gsw_pce_table_read(void *cdev, ethsw_api_dev_t *gswdev,
+				pctbl_prog_t *ptdata)
 {
 	u32 ctrlval, value;
 	u16 i, j;
-	ethsw_api_dev_t *gswdev = GSW_PDATA_GET(cdev);
-
-	if (gswdev == NULL) {
-		pr_err("\n%s:%s:%d", __FILE__, __func__, __LINE__);
-		return GSW_statusErr;
-	}
 
 	do {
 		gsw_r32_raw(cdev, PCE_TBL_CTRL_BAS_OFFSET, &ctrlval);
@@ -578,7 +578,7 @@ int gsw_pce_table_read(void *cdev, pctbl_prog_t *ptdata)
 			       PCE_TBL_CTRL_BAS_SIZE));
 
 #ifdef __KERNEL__
-	spin_lock(&gswdev->lock_pce_tbl);
+	spin_lock_bh(&gswdev->lock_pce_tbl);
 #endif
 
 	gsw_w32_raw(cdev, PCE_TBL_ADDR_ADDR_OFFSET, ptdata->pcindex);
@@ -635,10 +635,49 @@ int gsw_pce_table_read(void *cdev, pctbl_prog_t *ptdata)
 	gsw_w32_raw(cdev, PCE_TBL_CTRL_ADDR_OFFSET, 0);
 
 #ifdef __KERNEL__
-	spin_unlock(&gswdev->lock_pce_tbl);
+	spin_unlock_bh(&gswdev->lock_pce_tbl);
 #endif
 
 	return GSW_statusOk;
+}
+
+int gsw_pce_table_read(void *cdev, pctbl_prog_t *ptdata)
+{
+	int ret;
+	int retry;
+	ethsw_api_dev_t *gswdev = GSW_PDATA_GET(cdev);
+
+	if (gswdev == NULL) {
+		pr_err("\n%s:%s:%d", __FILE__, __func__, __LINE__);
+		return GSW_statusErr;
+	}
+
+	if (!IS_VRSN_31(gswdev->gipver)
+	    || ptdata->table != PCE_IGBGP_INDEX
+	    || !gswdev->brdgeportconfig_idx[ptdata->pcindex].IndexInUse)
+		return __gsw_pce_table_read(cdev, gswdev, ptdata);
+
+	retry = 5;
+	while (retry--) {
+		u16 val;
+		int i;
+
+		ret = __gsw_pce_table_read(cdev, gswdev, ptdata);
+		if (ret != GSW_statusOk)
+			continue;
+
+		/* Go through port state at val[0] and port map at val[10~18]
+		   to ensure at least 1 valid non-zero value is available for
+		   reading and table entry is completely loaded.
+		 */
+		val = ptdata->val[0];
+		for (i = 10; i < 18; i++)
+			val |= ptdata->val[i];
+		if (val)
+			break;
+	}
+
+	return ret;
 }
 
 int gsw_pce_table_key_read(void *cdev, pctbl_prog_t *ptdata)
@@ -658,7 +697,7 @@ int gsw_pce_table_key_read(void *cdev, pctbl_prog_t *ptdata)
 			       PCE_TBL_CTRL_BAS_SIZE));
 
 #ifdef __KERNEL__
-	spin_lock(&gswdev->lock_pce_tbl);
+	spin_lock_bh(&gswdev->lock_pce_tbl);
 #endif
 
 	/*KEY REG*/
@@ -703,7 +742,7 @@ int gsw_pce_table_key_read(void *cdev, pctbl_prog_t *ptdata)
 	gsw_w32_raw(cdev, PCE_TBL_CTRL_ADDR_OFFSET, 0);
 
 #ifdef __KERNEL__
-	spin_unlock(&gswdev->lock_pce_tbl);
+	spin_unlock_bh(&gswdev->lock_pce_tbl);
 #endif
 
 	return GSW_statusOk;
@@ -727,7 +766,7 @@ int gsw_pce_table_key_write(void *cdev, pctbl_prog_t *ptdata)
 			       PCE_TBL_CTRL_BAS_SIZE));
 
 #ifdef __KERNEL__
-	spin_lock(&gswdev->lock_pce_tbl);
+	spin_lock_bh(&gswdev->lock_pce_tbl);
 #endif
 
 	ctrlval = 0;
@@ -767,6 +806,57 @@ int gsw_pce_table_key_write(void *cdev, pctbl_prog_t *ptdata)
 				PCE_TBL_CTRL_VLD_SIZE, ptdata->valid);
 	ctrlval = gsw_field_w32(ctrlval, PCE_TBL_CTRL_GMAP_SHIFT,
 				PCE_TBL_CTRL_GMAP_SIZE, ptdata->group);
+	ctrlval = gsw_field_w32(ctrlval, PCE_TBL_CTRL_BAS_SHIFT,
+				PCE_TBL_CTRL_BAS_SIZE, 1);
+	gsw_w32_raw(cdev, PCE_TBL_CTRL_BAS_OFFSET, ctrlval);
+
+	do {
+		gsw_r32_raw(cdev, PCE_TBL_CTRL_BAS_OFFSET, &ctrlval);
+	} while (gsw_field_r32(ctrlval, PCE_TBL_CTRL_BAS_SHIFT,
+			       PCE_TBL_CTRL_BAS_SIZE));
+
+	gsw_w32_raw(cdev, PCE_TBL_CTRL_ADDR_OFFSET, 0);
+
+#ifdef __KERNEL__
+	spin_unlock_bh(&gswdev->lock_pce_tbl);
+#endif
+
+	return GSW_statusOk;
+}
+
+/**
+ * gsw_pce_rule_set()- Enable/Disable PCE Rule
+ * @cdev: a pointer to the target &ethsw_api_dev_t
+ * @pctbl_prog_t: a pointer to PCE Table target &pctbl_prog_t
+ *
+ * Parse the valid bit,Table Address and set the valid bit.
+ */
+GSW_return_t gsw_pce_rule_set(void *cdev, pctbl_prog_t *ptdata)
+{
+	u32 ctrlval;
+	ethsw_api_dev_t *gswdev = GSW_PDATA_GET(cdev);
+
+	if (!gswdev || !cdev)
+		return GSW_statusErr;
+
+	do {
+		gsw_r32_raw(cdev, PCE_TBL_CTRL_BAS_OFFSET, &ctrlval);
+	} while (gsw_field_r32(ctrlval, PCE_TBL_CTRL_BAS_SHIFT,
+			       PCE_TBL_CTRL_BAS_SIZE));
+
+#ifdef __KERNEL__
+	spin_lock(&gswdev->lock_pce_tbl);
+#endif
+
+	gsw_w32_raw(cdev, PCE_TBL_ADDR_ADDR_OFFSET, ptdata->pcindex);
+	/*TABLE ADDRESS*/
+	ctrlval = 0;
+	ctrlval = gsw_field_w32(ctrlval, PCE_TBL_CTRL_ADDR_SHIFT,
+				PCE_TBL_CTRL_ADDR_SIZE, ptdata->table);
+	ctrlval = gsw_field_w32(ctrlval, PCE_TBL_CTRL_OPMOD_SHIFT,
+				PCE_TBL_CTRL_OPMOD_SIZE, PCE_OP_MODE_ADWR);
+	ctrlval = gsw_field_w32(ctrlval, PCE_TBL_CTRL_VLD_SHIFT,
+				PCE_TBL_CTRL_VLD_SIZE, ptdata->valid);
 	ctrlval = gsw_field_w32(ctrlval, PCE_TBL_CTRL_BAS_SHIFT,
 				PCE_TBL_CTRL_BAS_SIZE, 1);
 	gsw_w32_raw(cdev, PCE_TBL_CTRL_BAS_OFFSET, ctrlval);
@@ -863,6 +953,5 @@ GSW_return_t GSW_DumpTable(void *cdev, GSW_table_t *parm)
 
 	return GSW_statusOk;
 }
-
 
 

@@ -1,0 +1,32 @@
+#
+# PPV4 configuration
+#
+config PPV4
+	tristate "Packet Processor V4"
+	---help---
+	  Packet Processor V4 Driver
+
+config PPV4_LGM
+	bool "Packet Processor V4 for LGM"
+	depends on PPV4
+	---help---
+	  Packet Processor V4 Driver for LGM
+
+config PPV4_UT
+	bool "Packet Processor V4 Unit test"
+	depends on PPV4
+	---help---
+	  Packet Processor V4 Driver Unit Test
+
+config PPV4_HW_MOD_REGS_LOGS
+	bool "Enable logs prints when modifying hw modules registers"
+	depends on PPV4
+	---help---
+	  Set to true if you want to see logs print when modifying hw
+	  registers, e.g. QoS, BM, etc...
+
+config PPV4_HW_MOD_REGS_LOGS_EN
+	hex "Bitmap specifying which hw modules should be enabled"
+	depends on PPV4_HW_MOD_REGS_LOGS
+	---help---
+	  Set the desired module bit to 1

@@ -42,6 +42,8 @@
 
 #include <xgmac.h>
 
+#define RMON_CLR_TIMEOUT	10000
+
 /*  RSF: Receive Q store and forward
  *  if 1, XGMAC reads packet from Rx Q after the complete packet has been
  *  written
@@ -283,6 +285,7 @@ int xgmac_set_mmc(void *pdev)
 int xgmac_clear_rmon(void *pdev)
 {
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
+	u32 timeout = 0;
 
 	/* Reset the counters */
 	mac_printf("XGMAC %d: Resetting the counters\n",
@@ -291,12 +294,15 @@ int xgmac_clear_rmon(void *pdev)
 	memset(&prv_data[pdata->mac_idx].mmc_stats, 0,
 	       sizeof(struct xgmac_mmc_stats));
 
-	while (1) {
+	while (timeout++ < RMON_CLR_TIMEOUT) {
 		if (XGMAC_RGRD_BITS(pdata, MMC_CR, CR) == 0)
 			break;
 	}
 
-	return 0;
+	memset(&pdata->xrmon_shadow, 0, sizeof(pdata->xrmon_shadow));
+	memset(&pdata->rmon_shadow, 0, sizeof(pdata->rmon_shadow));
+
+	return timeout < RMON_CLR_TIMEOUT ? 0 : -EIO;
 }
 
 /* GB - Good Bad frames

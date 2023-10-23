@@ -1,0 +1,74 @@
+This README file contains information about the dump_handler tool.
+
+Introduction
+============
+Firmware dump evacuation application retrieves firmware dump files from WLAN driver
+via procfs kernel interface following a Firmware fatal error/assert.
+
+Script will be run once per radio on device boot after driver insmod.
+
+Usage
+=====
+dump_handler [OPTIONS]
+
+Available OPTIONS ([MST] - mandatory, [OPT] - optional):
+  --card_idx <value>
+  -i <value>
+      - [MST] card index
+  --storage_path <value>
+  -f <value>
+      - [MST] persistent storage path. For example: /nvram/etc/wave_dumps , /opt/wave_dumps
+  --offline_dump <value>
+  -d <value>
+      - [OPT] parse offline dump
+
+Flow
+====
+Script does the following:
+
+1. Checks if a recovery already occurred before script has been started (during
+   pci_probe, for example) and if so if there is a dump file available.
+
+2. Listens to d-wpal 'dumps ready' event in a while loop.
+
+3. If persistent storage is available application will save a copy in
+   non-volatile folder according to the following priorities:
+
+* In debug context only script will check the availability of a mounted USB
+  device and use the USB path for saving the dump file.
+
+* Alternatively, the path passed to the script as command line argument will be used.
+
+3. Retrieves files from procfs
+
+4. Verifies magic number
+
+5. Creates files according to the header and creates a tar of these files.
+
+6. Adds date in the tar file name.
+
+7. If already have max dumps allowed, delete oldest to allow saving of new
+   ones (unless the files are saved to a USB device).
+
+8. In case there is only one old dump file and not enough space to create
+   another one (and leave 0.5 MB free):
+   If no dumps were created since dump handler was started or dump file has
+   aged (older than 24 hrs) replace with a newer dump. Otherwise, keep the old one
+
+9. Reports errors/milestones using syslog.
+
+Notes
+=====
+Note: we are using hard-coded paths for the following binary:
+/usr/sbin/dwpal_debug_cli
+/bin/ls
+/usr/bin/tail
+/usr/bin/xargs
+/bin/rm
+/bin/tar
+/usr/bin/head
+/bin/grep
+/usr/bin/which
+/bin/cat
+/usr/bin/awk
+Note: we are using other non binary hard-coded paths, we recommend to check hard-coded paths first if anything fails.

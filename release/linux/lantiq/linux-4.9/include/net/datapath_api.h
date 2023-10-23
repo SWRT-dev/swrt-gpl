@@ -1,11 +1,11 @@
-/*
- * Copyright (C) Intel Corporation
- * Author: Shao Guohua <guohua.shao@intel.com>
+// SPDX-License-Identifier: GPL-2.0
+/*******************************************************************************
+ * Copyright (c) 2020 - 2021, MaxLinear, Inc.
+ * Copyright 2016 - 2020 Intel Corporation
+ * Copyright 2015 - 2016 Lantiq Beteiligungs-GmbH & Co. KG
+ * Copyright 2012 - 2014 Lantiq Deutschland GmbH
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 as published
- * by the Free Software Foundation.
- */
+*******************************************************************************/
 
 #ifndef DATAPATH_API_H
 #define DATAPATH_API_H
@@ -13,7 +13,9 @@
 #include <linux/skbuff.h>
 #include <linux/etherdevice.h>
 #include <linux/atmdev.h>
-
+#if IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP30)
+#include <net/datapath_api_grx500.h>
+#else
 #ifndef DATAPATH_HAL_LAYER
 #if IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP32) || \
 	IS_ENABLED(CONFIG_SOC_LGM) || \
@@ -28,15 +30,18 @@
 #error "wrong DP HAL selected"
 #endif
 #endif /*DATAPATH_HAL_LAYER */
+#include <net/datapath_api_tx.h>
 #if !IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP30) /*GRX500 GSWIP30*/
 #include <net/datapath_api_umt.h>
 #endif
+#include <net/datapath_api_qos.h>
 #include <net/datapath_api_vlan.h>
 #include <net/switch_api/lantiq_gsw_api.h>
 #include <net/switch_api/lantiq_gsw_flow.h>
 #include <net/switch_api/lantiq_gsw.h>
 #include <net/switch_api/gsw_dev.h>
 #include <net/switch_api/gsw_flow_ops.h>
+#include <net/datapath_dp_cqm.h>
 #if IS_ENABLED(CONFIG_INTEL_DATAPATH_CPUFREQ)
 #include <linux/cpufreq.h>
 #endif /*CONFIG_INTEL_DATAPATH_CPUFREQ*/
@@ -80,16 +85,6 @@
 #define DP_MAX_INST  1  /*!< @brief maximum DP instance to support. It can be
 			 *  change as as needed
 			 */
-#define DP_TX_CAL_CHKSUM 1 /*!< @brief Need calculate PMAC. \n
-			    *  Note, make sure pmac place holder already have\n
-			    *   or set flag DP_TX_INSERT_PMAC to insert it
-			    */
-#define DP_TX_DSL_FCS        2	/*!< @brief For DSL FCS Checksum calculation */
-#define DP_TX_INSERT_PMAC    4	/*!< @brief Oly for special test purpose */
-#define DP_TX_OAM            8	/*!< @brief OAM packet */
-#define DP_TX_TO_DL_MPEFW    0x10/*!< @brief Send Pkt directly to DL FW */
-#define DP_TX_INSERT	     0x20 /*!< @brief GSWIP Insertion Support */
-#define DP_TX_INSERT_POINT   0x40 /*!< For GSWIP Insertion Point 0 or 1 */
 #define DP_MAX_ETH_ALEN 6  /*!< @brief MAC Header Size */
 #define DP_MAX_PMAC_LEN     8  /*!< @brief Maximum PMAC Header Size */
 
@@ -102,48 +97,28 @@
 #define DP_RXOUT_PKT_SIZE_DEF 2048 /*!< Default size of RXOUT normal pkt */
 #define DP_RXOUT_PKt_SIZE_DEF_JUMBO 10240 /*!< Default size of RXOUT jumbo pkt*/
 
-#define DP_RX_RING_NUM 2  /*!< maximum number of ACA RX ring
-			   *   For GRX500/PRX300, only support 1 ring
-			   *   For LGM, maximum up to 2 rings
-			   */
-#define DP_TX_RING_NUM 8  /*!< maximum number of ACA RXOUT ring
-			   *   For GRX500/PRX300, only support 1 ring
-			   *   For 5G, it needs to support up to 16 ring.
-			   */
 #define DP_MAX_UMT DP_RX_RING_NUM /*!< maximum number of UMT port per DC
 				   *   For GRX500/PRX300, only support 1
 				   *      umt port
 				   *   For LGM docsis, it can support up to 2
 				   */
-#define DP_MAX_POLICY_GPID 4     /*!< maximum number of policy per GPID
-				  *   for HW automatically free BM buffer
-				  *   In LGM, it is 4. Not valid for all other
-				  *   existing products
-				  */
+
+#define DP_MAX_POOL_SUBIF 4     /*!< maximum number of pool per subif
+				 */
+#define DP_SPLPATH_IGP_NUM 2   /*!< maximum number of IGP number for CPU special
+				*   path
+				*/
+#define DP_SPLPATH_EGP_NUM 1   /*!< maximum number of EGP number for CPU special
+				*   path
+				*/
 #define DP_TS_HDRLEN	10    /*!< Befault Timestamp Header Length to strip */
 #define DP_DFL_SESS_NUM 16    /*!< Maximum default egress session per subif */
-/* Note: In LGM kernel (4.19) branch,
- * DMA driver already adapted to linux kernel
- * DMA framework and some DMA macro (like
- * _DMA_CONTROLLER/_DMA_PORT/_DMA_CHANNEL)
- * was removed. In order to keep the interface between DP and CQM/UMT driver
- * same, DP has defined DMA macro accordingly
- */
-#define _DMA_CHANBITS   16
-#define _DMA_PORTBITS   8
-#define _DMA_CTRLBITS   8
-
-#define _DMA_CHANMASK   ((1 << _DMA_CHANBITS) - 1)
-#define _DMA_PORTMASK   ((1 << _DMA_PORTBITS) - 1)
-#define _DMA_CTRLMASK   ((1 << _DMA_CTRLBITS) - 1)
-
-#define _DMA_CHANSHIFT  0
-#define _DMA_PORTSHIFT  (_DMA_CHANSHIFT + _DMA_CHANBITS)
-#define _DMA_CTRLSHIFT  (_DMA_PORTSHIFT + _DMA_PORTBITS)
-
-#define _DMA_CONTROLLER(nr)     (((nr) >> _DMA_CTRLSHIFT) & _DMA_CTRLMASK)
-#define _DMA_PORT(nr)           (((nr) >> _DMA_PORTSHIFT) & _DMA_PORTMASK)
-#define _DMA_CHANNEL(nr)        (((nr) >> _DMA_CHANSHIFT) & _DMA_CHANMASK)
+#define DP_MAX_DEF_Q_PER_SUBIF 8 /*!< Maximum default queue per subif */
+#define DP_CPU_LPID		0 /*!< Default CPU port LPID */
+/*!< get vap or subif group */
+#define GET_VAP(subif, bit_shift, mask) (((subif) >> (bit_shift)) & (mask))
+/*!< set vap or subif group */
+#define SET_VAP(vap, bit_shift, mask) ((((u32)vap) & (mask)) << (bit_shift))
 
 /*! @addtogroup Datapath_Driver_Structures */
 /*! @brief  DP Sub-interface Data structure
@@ -196,8 +171,11 @@ enum DP_F_FLAG {
 	DP_F_GINT     = BIT(14), /*!< For GINT device */
 	DP_F_DOCSIS   = BIT(15), /*!< For DOCSIS device support */
 	DP_F_CPU      = BIT(16), /*!< For CPU */
+	DP_F_VUNI     = BIT(17), /*!< For vUNI device */
+#define	DP_F_DEV_END  (DP_F_VUNI << 1) /*!< end of device type for
+					*looping in dp_xmit
+					*/
 
-	DP_F_VUNI     = BIT(21), /*!< For vUNI device */
 	DP_F_SHARE_RES = BIT(22), /*!< Wave600 multiple radio share same ACA */
 	DP_F_ACA       = BIT(23), /*!< peripheral PCI device via ACA*/
 	DP_F_NON_ACA_PORT = BIT(24), /*!< ACA device but without ACA PORT */
@@ -250,7 +228,8 @@ enum DP_F_FLAG {
 	DP_F_ENUM_OR_STRING(DP_F_LRO,           "LRO"), \
 	DP_F_ENUM_OR_STRING(DP_F_FAST_DSL_DOWNSTREAM, "DSL_Down"),\
 	DP_F_ENUM_OR_STRING(DP_F_DSL_BONDING,         "DSL_Bonding"),\
-	DP_F_ENUM_OR_STRING(DP_F_VUNI,         "VUNI") \
+	DP_F_ENUM_OR_STRING(DP_F_VUNI,         "VUNI"), \
+	DP_F_ENUM_OR_STRING(DP_F_CPU,         "CPU") \
 }
 
 #define DP_F_PORT_TUNNEL_DECAP  DP_F_LOOPBACK /*!< @brief Just for
@@ -285,27 +264,15 @@ enum DP_PMAP_MODE {
 	DP_PMAP_MAX       /*!< Not valid */
 };
 
-/*! @brief DP Special Connectivity Type*/
-enum DP_SPL_TYPE {
-	DP_SPL_LRO = 0, /*!< Special connectivity type: LRO */
-	DP_SPL_TSO, /*!< Special connectivity type: TSO */
-	DP_SPL_VOICE, /*!< Special connectivity type: VOICE */
-	DP_SPL_VPN, /*!< Special connectivity type: VPN Adaptor */
-	DP_SPL_PP_2ND_PATH, /*!< Special connectivity type: a second pass via
-			     *   PPV4
-			     */
-	DP_SPL_APP_LITEPATH, /*!< Special connectivity type: For Application
-			      *   Litepath
-			      */
-	DP_SPL_PPV4_NFS, /*!< Special connectivity type:For PPV4 uCs-
-			  *   Fragmenter, Reassembler, Multicast, TurboDox
-			  */
-	DP_SPL_MAX /*!< Special connectivity type: NOT VALID */
+enum DP_IO_PORT_TYPE {
+	DP_IO_PORT_LINUX = BIT(0), /*!< Linux IO Type */
+	DP_IO_PORT_DPDK = BIT(1),  /*!< DPDK IO Type */
 };
 
+#define DP_MAX_CPU 4 /*!< @brief Max number of CPUs */
 #define DP_PMAP_PCP_NUM 8  /*!< @brief  Max pcp entries supported per pmapper*/
 #define DP_PMAP_DSCP_NUM 64 /*!<@brief  Max dscp entries supported per pmapper*/
-#define DP_MAX_CTP_PER_DEV  64  /*!< @brief  max CTP per dev:
+#define DP_MAX_CTP_PER_DEV  8   /*!< @brief  max CTP per dev:
 				 *  Note: its value should be like
 				 *     max(DP_PMAP_DSCP_NUM, DP_PMAP_PCP_NUM)
 				 *   ? Maybe we can reduce from 64 to 8 since
@@ -337,14 +304,127 @@ struct dp_pmapper {
 	u16 dscp_map[DP_PMAP_DSCP_NUM]; /*!< For dscp mapper*/
 };
 
-/*! @brief structure for dp_subif */
-typedef struct dp_subif {
-	s32 port_id; /*!< Datapath Port Id corresponds to PMAC Port Id */
-	int inst;  /*!< dp instance id */
-	int bport;  /*!< output: valid only for API dp_get_netif_subifid in the
+/*! @brief structure for dp_subif_port_common */
+struct dp_subif_port_common { /* shared by struct dp_subif and pmac_port_info */
+	int port_id;
+	int alloc_flag; /*!< [out] the flag value is from the top level driver
+			 *    during calling dp_alloc_port_ext
+			 *   output for dp_get_netif_subifid
+			 *   no use for dp_register_subif_ext
+			 *   This is requested by PPA/DCDP to get original flag
+			 *   the caller provided to DP during
+			 *   dp_alloc_port
+			 */
+	u8  cqe_lu_mode; /* cqe lookup mode */
+	u32 gsw_mode; /* gswip mode for subif */
+	s16 gpid_spl;  /* special GPID:
+			* alloc it at dp_alloc_port
+			* config it at dp_register_dev for policy setting
+			*/
+};
+
+struct dp_subif_common {  /* shared by struct dp_subif and dp_subif_info */
+	u16 bport;  /*!< output: valid only for API dp_get_netif_subifid in the
 		     *  GSWIP 3.1 or above
 		     *  bridge port ID
 		     */
+	u16 gpid; /*!< [out] gpid which is mapped from dpid + subif
+		   *   normally one GPID per subif for non PON device.
+		   *   For PON case, one GPID per bridge port
+		   */
+	u32 data_flag; /*!< [out] return the caller provided data->flag_ops
+			* during dp_register_subif
+			*/
+	u8 num_q; /*!< number of queue id*/
+	union {
+		u16 def_qid;/* physical queue id Still keep it to be
+			     * back-compatible for legacy platform and legacy
+			     * integration
+			     */
+		u16 def_qlist[DP_MAX_DEQ_PER_SUBIF];/* physical queue id */
+	};
+	u32 dfl_eg_sess[DP_DFL_SESS_NUM]; /*! default CPU egress session ID
+					   * Valid only if f_dfl_eg_sess set
+					   * one sesson per class[4 bits]
+					   */
+	u32 subif_groupid; /*!< [out] subif group id or vap */
+};
+
+/*! @brief structure for dp_subif */
+typedef struct dp_subif {
+	int inst;  /*!< dp instance id */
+	union {
+		struct {
+			int port_id;
+			int alloc_flag; /*!< [out] the flag value is from the
+					 * top level driver during calling
+					 * dp_alloc_port_ext
+					 *   output for dp_get_netif_subifid
+					 *   no use for dp_register_subif_ext
+					 * This is requested by PPA/DCDP to
+					 * get original flag the caller provided
+					 * to DP during dp_alloc_port
+					 */
+			u8  lookup_mode; /*!< [out] CQM lookup mode for this
+					  * device (dp_port based)
+					  * valid for dp_get_netif_subifid only
+					  */
+			u32 gsw_mode; /* gswip mode for subif */
+			s16 gpid_spl;  /* special GPID:
+					* alloc it at dp_alloc_port
+					* config it at dp_register_dev
+					* for policy setting
+					*/
+
+		};
+		struct dp_subif_port_common subif_port_cmn; /*!<out]
+							     * return the
+							     * common fields
+							     * stored during
+							     * dp_alloc_port
+							     */
+	};
+	union {
+		struct {
+			u16 bport;  /*!< output: valid only for API
+				     * dp_get_netif_subifid in the
+				     *  GSWIP 3.1 or above
+				     *  bridge port ID
+				     */
+			u16 gpid; /*!< [out] gpid which is mapped from
+				   * dpid + subif normally one GPID per subif
+				   * for non PON device.
+				   *   For PON case, one GPID per bridge port
+				   */
+			u32 data_flag; /*!< [out] return the caller provided
+					* data->flag_ops
+					* during dp_register_subif
+					*/
+			u8  num_q; /*!< [out] num of default number of queues
+				    * allocated by DP
+				    */
+			union {
+				u16 def_qid; /*!< [out] def physical queue id
+					      * assigned by DP
+					      */
+				/*!< [in/out] default physical qid list assigned
+				 * by DP
+				 */
+				u16 def_qlist[DP_MAX_DEQ_PER_SUBIF];
+			};
+			u32 dfl_eg_sess[DP_DFL_SESS_NUM]; /*!< [out]
+							   * default egress
+							   * session id. This is
+							   * for CPU TX to DC
+							   * only
+							   */
+			u32 subif_groupid; /*!< [out] subif group id or vap */
+		};
+		struct dp_subif_common subif_common; /*[out] return group of
+						      * fields which is stored
+						      * during dp_register_subif
+						      */
+	};
 	int subif_num; /*!< valid subif/ctp num.
 			*   output for dp_get_netif_subifid,
 			*   no use for dp_register_subif_ext
@@ -360,29 +440,6 @@ typedef struct dp_subif {
 						     *   device
 						     */
 	};
-	u16 gpid; /*!< [out] gpid which is mapped from dpid + subif
-		   *   normally one GPID per subif for non PON device.
-		   *   For PON case, one GPID per bridge port
-		   */
-	u8  num_q; /*!< [out] num of default number of queues allocated by DP */
-	union {
-		u16 def_qid; /*!< [out] def physical queue id assigned by DP */
-		u16 def_qlist[DP_MAX_DEQ_PER_SUBIF]; /*!< [in/out] default
-						      * physical qid list 
-						      * assigned by DP */
-	};
-	int lookup_mode; /*!< [out] CQM lookup mode for this device
-			  *   (dp_port based)
-			  *   valid for dp_get_netif_subifid only
-			  */
-	int alloc_flag; /*!< [out] the flag value is from the top level driver
-			 *    during calling dp_alloc_port_ext
-			 *   output for dp_get_netif_subifid
-			 *   no use for dp_register_subif_ext
-			 *   This is requested by PPA/DCDP to get original flag
-			 *   the caller provided to DP during
-			 *   dp_alloc_port
-			 */
 	int subif_flag[DP_MAX_CTP_PER_DEV]; /*!< the flag is used during
 					     *   dp_register_subif_ext
 					     *   output for dp_get_netif_subifid
@@ -409,18 +466,38 @@ typedef struct dp_subif {
 			       *   For PON CTP device or other non PON device:0
 			       *   valid for dp_get_netif_subifid only
 			       */
-	u16 dfl_eg_sess[DP_DFL_SESS_NUM]; /*!< [out] default egress session id
-					   *   This is for CPU TX to DC only
-					   */
-	u32 data_flag; /*!< [out] return the caller provided data->flag_ops
-			* during dp_register_subif
-			*/
+	enum DP_IO_PORT_TYPE type; /*!< [out] IO Port type */
 	struct net_device *associate_netif; /*!< [out] return vUNI dev pointer,
 					     * valid for VANI device only
 					     */
+	u32 peripheral_pvt; /*!< [out] peripheral private flag
+			     * output for dp_get_netif_subifid
+			     * no use for dp_register_subif_ext
+			     * For example: DSL driver used to indicate Bonding
+			     */
 } dp_subif_t;
 
 typedef dp_subif_t PPA_SUBIF; /*!< @brief structure type dp_subif PPA_SUBIF*/
+
+struct dp_port_prop {
+	u32 vap_offset; /*shift bits to get vap value */
+	u32 vap_mask; /*get final vap after bit shift */
+	int alloc_flags; /* alloc flag */
+	struct module *owner; /* port owner */
+	u32 num_subif;  /* number of subif registered already */
+	u16 subif_max;  /* maximum number of subif supported for this port */
+	int ctp_max;  /* maximum number of stp reserved for this port */
+	int status;  /* port status, registered or not */
+	int port_id; /* dp_port id */
+	u32 lct_idx; /* lct_idx if applicable */
+	u32 deq_port_num; /* number of CQM dequeue port for this dp_port */
+};
+
+struct dp_subif_prop {
+	int flags;
+	struct net_device *netif;
+	struct net_device *ctp_dev;
+};
 
 struct vlan_prop {
 	u8 num;
@@ -755,6 +832,7 @@ struct pon_subif_d {
 		*   -1: non valid pcp value
 		*/
 };
+
 #define DP_F_DATA_LCT_SUBIF DP_SUBIF_LCT
 /*! @brief enum DP_SUBIF_DATA_FLAG */
 enum DP_SUBIF_DATA_FLAG {
@@ -772,6 +850,28 @@ enum DP_SUBIF_DATA_FLAG {
 				    * DP register subif using rx_en_flag
 				    * specified under struct dp_subif_data
 				    */
+	DP_SUBIF_SWDEV = BIT(6), /*!< To specify subif level swdev
+				  * enable/disable
+				  */
+	DP_SUBIF_PREL2 = BIT(7), /*!< Pre_L2 support */
+	DP_SUBIF_CPU_QMAP = BIT(8),
+	DP_SUBIF_NO_HOSTIF = BIT(9),
+	DP_SUBIF_BP_CPU_DISABLE = BIT(10), /*!< To remove CPU bridge port
+					   * from bridge port member list
+					   */
+	DP_SUBIF_SEG_EN = BIT(11), /*!< if this flag is set seg_en will be set to 1
+								* to use FSQM buffer,
+								*/
+	DP_SUBIF_SEG_DIS = BIT(12), /*!< if this flag is set seg_en=0 to use
+								 * BM buffer
+								 */
+	DP_SUBIF_NON_CPU_MAC = BIT(13), /*!< if this flag is set, dpm will not
+					 *   set this device's mac address to
+					 *   CPU bridge port
+					 */
+	DP_SUBIF_BR_DOMAIN = BIT(14), /*!< once this flag is set, it means
+				       * domain_id and domain_members are valid
+				       */
 };
 
 /*! @brief dp_subif_id struct for get_netif_subif */
@@ -785,26 +885,6 @@ struct dp_subif_cache {
 					      */
 	void *data;
 	struct rcu_head rcu;
-};
-
-struct dp_gpid_tx_info {
-	/* Note for GPID max packet lengh setting, DP should get it from
-	 *      struct dp_tx_ring's tx_pkt_size
-	 */
-	u32 f_min_pkt_len : 1; /*!< flag to indicate whether min_pkt_len is
-				*   set or not by caller
-				*   1: min_pkt_len is set by caller
-				*   0: min_pkt_len is not set by caller.
-				*/
-	u32 seg_en : 1; /*!< support FSQM buffer or not
-			 *   For stream port: should set to 1.
-			 *   For non_stream port: shoudl set to 0
-			 */
-
-	u16 min_pkt_len; /*!< minimum packet length in bytes
-			  *   valid if f_min_pkt_len is set
-			  */
-
 };
 
 /*! @brief struct dp_subif_data */
@@ -824,18 +904,14 @@ struct dp_subif_data {
 	struct net_device *ctp_dev; /*!<  Optional CTP device.
 				     * Mainly for PON CTP device under pmapper.
 				     */
-	dp_cb_t *dp_cb; /*!< [in] for subif level callback.
-			 *   Mainly for docsis/voice special handling.
-			 *   For wave/VRX618/518, just set to NULL.
-			 */
-	u16 f_tx_policy : 1;   /*!< [in] flag to indicate whether need new
-				*   policy for this subif or not.
-				*   if this flat is set, it needs new txin
-				*       policy
-				*   otherwise DP will use its existing base
-				*       policy which is create during
-				*       dp_register_dev_ext
-				*/
+	dp_rx_fn_t rx_fn;      /*!< [in] subif RX callback */
+	dp_get_netif_subifid_fn_t get_subifid_fn; /*! [in] get subif ID cb */
+	u8 f_policy;   /*!< [in] flag to indicate whether need new
+			*   policy for this subif or not.
+			*   if this flat is set, it needs new tx/rx policy
+			*   otherwise DP will use its existing base policy
+			*   which is created during dp_register_dev_ext
+			*/
 	u16 tx_pkt_size;  /*!< [in] maximum packet size required
 			   *   to alloc new policy for different cqm dequeue
 			   *   port
@@ -845,12 +921,15 @@ struct dp_subif_data {
 					      *   Valid only if \ref
 					      *   f_tx_policy set
 					      */
-	u16 txin_base_policy; /*!< [out] txin_policy
+	u16 tx_policy_base;   /*!< [out] txin_policy
 			       *   if f_txin_policy set, this subif will need
 			       *       create new policy
 			       *   else DP will use its base policy which is
 			       *       create during dp_register_dev_ext
 			       */
+	u8 tx_policy_num;	/*!< [out] */
+	u16 rx_policy_base;	/*!< [out] */
+	u8 rx_policy_num;	/*!< [out] */
 
 	int txin_ring_size;  /*!< [in/out] ACA TXIN Ring size.
 			      *   if input value is not zero, DP try to tune
@@ -881,6 +960,21 @@ struct dp_subif_data {
 	u32 rx_en_flag; /*!< [in] rx_en_flag = 1 - To enable dp_rx
 			 * rx_en_flag = 0 - disable dp_rx
 			 */
+	u32 bm_policy_res_id; /*!< [in] buffer policy id */
+	u16 swdev_en_flag; /*!< [in] swdev_en_flag =1 - Support h/w offload
+			    * swdev_en_flag = 0 - no h/w offload support
+			    */
+	u8 domain_id:5;	/*!< [in] we support 32 domain per bridge only
+			 * valid only DP_SUBIF_BR_DOMAIN is set in flag_ops
+			 */
+	#define DP_BR_DM_MEMBER(domain) (1 << (domain))
+	u32 domain_members; /*!< [in] one bit for one domain_id:
+			     * bit 0 for domain_id 0, bit 1 for domain 1 and so on.
+			     * If one bit is set to 1, the traffic received
+			     * from this dev can be forwarded to this domain
+			     * as specified in domain_members
+			     * valid only if DP_SUBIF_BR_DOMAIN is set in flag_ops
+			     */
 };
 
 /*! @brief enum DP_F_DATA_RESV_CQM_PORT */
@@ -896,9 +990,24 @@ enum dp_port_data_flag {
 					*   packet from PP QOS port via credit
 					*   left and credit add
 					*/
-	DP_F_DATA_CONTINOUS_Q_RESV = BIT(7) /*!< reserve continous physical
-					     *   queue ID
-					     */
+	DP_F_DATA_CONTINUOUS_Q_RESV = BIT(7), /*!< reserve continuous physical
+					       *   queue ID
+					       */
+	DP_F_DATA_NO_LOOP = BIT(8),	/*!< Once this flag is set,Bridge
+					 * forwarding among subif which belongs
+					 * to same DP port/llid is disabled.
+					 * It can be used for PON application,
+					 * but may not for others like WIFI
+					 * bridging between diff subif/vap
+					 */
+	DP_F_DATA_PCE_PATH_EN = BIT(9), /*!< Once this flag is set,
+					 * PCE path will be enabled for the
+					 * corresponding LPID
+					 */
+	DP_F_DATA_PON_HGU_SEC_LOOP = BIT(10), /*!< Once this flag is set,
+					       * GSWIP second loop redirect to
+					       * PMAC 1 will be configured
+					       */
 };
 
 /*! @brief typedef struct dp_port_data */
@@ -940,7 +1049,7 @@ struct dp_port_data {
  *  |     |    (via UMT RX Msg to Alloc )       |           |
  *  |-----| ----------------------------------> |-----------|
  *
- *  4 Ring with Multipe QOS dequeue ports
+ *  4 Ring with Multiple QOS dequeue ports
  *  |-----| ------Multiple TXIN (Pkt+Desc)----> |-----------|
  *  |     |    (Poll Each QOS port Credit_Add ) |           |
  *  |     |                                     |           |
@@ -1007,7 +1116,7 @@ struct dp_buf_info {
  */
 int dp_free_dc_buf(struct dp_buf_info *buf, int flag);
 
-/*! @brief enum DP_SUBIF_DATA_FLAG */
+/*! @brief enum DP_DEV_DATA_FLAG */
 enum DP_DEV_DATA_FLAG {
 	DP_F_DEV_RESV_Q = BIT(0), /*!< Reserve queues for this dev
 				   * based on num_resv_q
@@ -1019,6 +1128,7 @@ enum DP_DEV_DATA_FLAG {
 					 * DP_F_DEV_RESV_Q bit should also be
 					 * set for this continuous Q alloc
 					 */
+	DP_F_DEV_NO_BM_DUMMY_READ = BIT(3), /*!< Disable dummy read */
 };
 
 /**
@@ -1035,8 +1145,6 @@ enum DP_DEV_DATA_FLAG {
  *                only 13 bits in PAE are handled [14, 11:0]
  *\note
  */
-
-
 
 enum DP_RXOUT_QOS_MODE {
 	DP_RXOUT_BYPASS_QOS_ONLY = 0, /*!< bypass QOS but with FSQM */
@@ -1055,10 +1163,15 @@ struct dp_rx_ring {
 				 *   for Peripheral device to enqueue packets to
 				 *   Host side via CQM or DMA in burst.
 				 *   If 0, then auto set by DP/CQM.
-				 *   Note: this paramater will be forced to tune
+				 *   Note: this parameter will be forced to tune
 				 *         down to HW capability
 				 */
-	u32   out_enq_port_id; /*!< [out] CQM enqueue port based ID */
+	u32 out_enq_port_id;   /*!<  [in/out] CQM enqueue port based ID
+				* [out] for dev registration which is set by CQM
+				* driver.
+				* [in] for dev de-registration which is set by
+				* DPM.
+				*/
 	void *out_enq_paddr;   /*!< [out] rxout ring physical address
 				*   For GRX350/PRX300, it is DMA Descriptor base
 				*      address
@@ -1073,12 +1186,20 @@ struct dp_rx_ring {
 				*     of CQM enqueue register base
 				*   If NULL, it means not valid
 				*/
-	u32 out_dma_ch_to_gswip; /*!< [out] DMA TX channel base to GSWIP for
+	u32 out_dma_ch_to_gswip; /*!< [in/out] DMA TX channel base to GSWIP for
 				  *   forwarding rxout packet to GSWIP
+				  * [out] for dev registration which is set by
+				  * CQM driver.
+				  * [in] for dev de-registration which is set by
+				  * DPM.
 				  */
 	u32 num_out_tx_dma_ch; /*!< [out] number of DMA tx channel assigned */
-	u32 out_cqm_deq_port_id; /*!< [out] CQM dequeue port to GSWIP for rxout
-				  *   packet
+	u32 out_cqm_deq_port_id; /*!< [in/out] CQM dequeue port to GSWIP for
+				  *  rxout packet
+				  * [out] for dev registration which is set by
+				  * CQM driver.
+				  * [in] for dev de-registration which is set by
+				  * DPM.
 				  */
 	u32 num_out_cqm_deq_port; /*!< [out] number of CQM dequeue port to GSWIP
 				   *   for rxout packet
@@ -1106,6 +1227,10 @@ struct dp_rx_ring {
 	u16 rx_policy_base; /*!< [out] the rx_policy based on @rx_pkt_size
 			     *      requirement.
 			     */
+	u8 policy_num; /*!< [out] number of policy for this rx_ring */
+	u16 rx_poolid; /*!< [out] Only for PRX300, it should be passed for
+			*     device to free the packet buffer in rx ring
+			*/
 	int prefill_pkt_num; /*!< [in] the number of pre-fill packet buffer
 			      *       required.
 			      * For LGM, normally no need and caller just set it
@@ -1198,11 +1323,7 @@ struct dp_tx_ring {
 	u16 tx_poolid; /*!< [out] Only for PRX300, it should be passed for
 			*     device to free the packet buffer in tx ring
 			*/
-	struct dp_gpid_tx_info gpid_info; /*!< [in] for GPID tx information
-					   *   Valid only if @f_gpid valid.
-					   */
-
-	int f_out_auto_free : 1; /*!< [in] flag to indicate whether need txout
+	u32 f_out_auto_free : 1; /*!< [in] flag to indicate whether need txout
 				  *      base policy to auto free TXIN buffer.
 				  * Once f_txout_auto_free is set, this
 				  * device can only support maximum up to 4
@@ -1218,6 +1339,7 @@ struct dp_tx_ring {
 				  * Note, this setting is not valid for
 				  *GRX500/FLM
 				  */
+	u32 tx_deq_port; /*!< [out] cqm deque port id for this txin ring */
 };
 
 /*! @brief struct dp_dev_data, which used for DirectConnected (DC)
@@ -1226,25 +1348,26 @@ struct dp_tx_ring {
 struct dp_dev_data {
 	enum DP_DEV_DATA_FLAG flag_ops; /*!< flag operation, for subif
 					 * registration
-					 * refer to enum DP_DEV_DATA_FLAG 
+					 * refer to enum DP_DEV_DATA_FLAG
 					 */
 	u8 num_rx_ring;   /*!< [in] number of rx ring from DC device to Host.
-			    *   num_rx_ring requirement:
-			    *   @num_rings <= @DP_RX_RING_NUM
-			    *   GRX350/PRX300:1 rx ring
-			    *   LGM: up to 2 rx ring, like Docsis can use 2 rings
-			    *   For two ring case:
-			    *    1st rxout ring without qos
-			    *    2nd rxout ring with qos
-			    */
+			   *   num_rx_ring requirement:
+			   *   @num_rings <= @DP_RX_RING_NUM
+			   *   GRX350/PRX300:1 rx ring
+			   *   LGM: up to 2 rx ring, like Docsis can use 2 rings
+			   *   For two ring case:
+			   *    1st rxout ring without qos
+			   *    2nd rxout ring with qos
+			   */
 	u8 num_tx_ring;   /*!< [in] number of tx ring from Host to DC device
-			    *   num_rx_ring requirement:
-			    *   @num_rings <= @DP_TX_RING_NUM
-			    *   Normally it is 1 TX ring only.
-			    *   But for 5G, it can support up to 8 TX ring
-			    *   For docsis, alhtough it is 16 dequeue port to WIB.
-			    *   But the final ring only 1, ie, WIB to Dcosis
-			    */
+			   *   num_rx_ring requirement:
+			   *   @num_rings <= @DP_TX_RING_NUM
+			   *   Normally it is 1 TX ring only.
+			   *   But for 5G, it can support up to 8 TX ring
+			   *   For docsis, alhtough it is 16 dequeue port to
+			   *   WIB.
+			   *   But the final ring only 1, ie, WIB to Dcosis
+			   */
 	u8 num_umt_port;   /*!< [in] number of UMT port.
 			    *    Normally is 1 only. But Docsis can use up to 2
 			    */
@@ -1279,7 +1402,7 @@ struct dp_dev_data {
 			 * dp_register_dev
 			 */
 	u16 max_gpid;  /*!< [in] maximum subif required which will be mapped to
-			* PP continious GPID block. The continuous limitation is
+			* PP continuous GPID block. The continuous limitation is
 			* from GSWIP (subif->GPID mapping design), not because
 			* of PP itself.
 			* since overall number of GPID < nubmer of CTP in HW,
@@ -1294,6 +1417,79 @@ struct dp_dev_data {
 			     *   \ref flag_ops
 			     */
 	u16 qos_resv_q_base; /*!< [out] PPv4 QoS reserved Q base */
+	phys_addr_t wib_tx_phy_addr; /*!< [in] DOCSIS WIB ring address */
+	u32 n_wib_credit_pkt; /*!< [in] credit size for CQM non-DC egress port
+			       * related to WIB. If zero, set as HW capability,
+			       * otherwise set as specified for all egress port
+			       * linked to WIB
+			       */
+	u32 bm_policy_res_id; /*!< [in] buffer policy id */
+	struct dp_dev_opt_param opt_param; /*!< [in] optional parameters */
+};
+
+/**
+ * struct dp_reinsert_count - datapath re-insertion counters in TX
+ */
+struct dp_reinsert_count {
+	/* Size 64 Bytes Packet Count. */
+	u64 dp_64BytePkts;
+	/* Size 65-127 Bytes Packet Count. */
+	u64 dp_127BytePkts;
+	/* Size 128-255 Bytes Packet Count. */
+	u64 dp_255BytePkts;
+	/* Size 256-511 Bytes Packet Count. */
+	u64 dp_511BytePkts;
+	/* Size 512-1023 Bytes Packet Count. */
+	u64 dp_1023BytePkts;
+	/* Size 1024-1522 Bytes (or more, if configured) Packet Count. */
+	u64 dp_MaxBytePkts;
+	/* DP Oversize Good Packet Count. */
+	u64 dp_OversizeGoodPkts;
+	/* DP Unicast Packet Count. */
+	u64 dp_UnicastPkts;
+	/* DP Multicast Packet Count. */
+	u64 dp_MulticastPkts;
+	/* DP Broadcast Packet Count. */
+	u64 dp_BroadcastPkts;
+	/* DP Good Packet Count. */
+	u64 dp_GoodPkts;
+	/* DP Good Bytes Count. */
+	u64 dp_GoodBytes;
+};
+
+/**
+ * struct dp_lct_rx_cnt - datapath lct counters in RX
+ */
+struct dp_lct_rx_cnt {
+	/* Size 64 Bytes Packet Count. */
+	u64 dp_64BytePkts;
+	/* Size 65-127 Bytes Packet Count. */
+	u64 dp_127BytePkts;
+	/* Size 128-255 Bytes Packet Count. */
+	u64 dp_255BytePkts;
+	/* Size 256-511 Bytes Packet Count. */
+	u64 dp_511BytePkts;
+	/* Size 512-1023 Bytes Packet Count. */
+	u64 dp_1023BytePkts;
+	/* Size 1024-1522 Bytes (or more, if configured) Packet Count. */
+	u64 dp_MaxBytePkts;
+	/* DP Unicast Packet Count. */
+	u64 dp_UnicastPkts;
+	/* DP Multicast Packet Count. */
+	u64 dp_MulticastPkts;
+	/* DP Broadcast Packet Count. */
+	u64 dp_BroadcastPkts;
+	/* DP Good Packet Count. */
+	u64 dp_GoodPkts;
+	/* DP Good Bytes Count. */
+	u64 dp_GoodBytes;
+};
+
+/*! @brief enum DP_LATE_INIT_TYPE */
+enum DP_LATE_INIT_TYPE
+{
+	DP_LATE_INIT_MIB_COUNTER = 0,
+	DP_LATE_INIT_MAX,
 };
 
 /*! @addtogroup Datapath_Driver_API */
@@ -1471,6 +1667,23 @@ int32_t dp_get_netif_subifid(struct net_device *netif, struct sk_buff *skb,
 			     void *subif_data, uint8_t dst_mac[DP_MAX_ETH_ALEN],
 			     dp_subif_t *subif, uint32_t flags);
 
+
+/*! @brief  get port information
+ *@param[in] inst instance id
+ *@param[in] port_id dp port id
+ *@param[out] port attribute
+ *@return 0 if OK / -1 if error
+ *@note: these two API is for dp_dbg and pon mib counter special use.
+ */
+int dp_get_port_prop(int inst, int port_id, struct dp_port_prop *prop);
+int dp_get_subif_prop(int inst, int port_id, int vap, struct dp_subif_prop *prop);
+
+/*! @brief  Check if given interface is a pmapper
+ *@param[in] dev  pointer to stack network interface structure
+ *@return true if the interface is a pmapper; false otherwise
+ */
+bool dp_is_pmapper_check(struct net_device *dev);
+
 /*! @brief  The API is for CBM to send received packets(skb) to dp lib. Datapath
  *	lib will do basic packet parsing and forwards it to related drivers,\n
  *	like ethernet driver, wifi and lte and so on. Noted.
@@ -1605,6 +1818,8 @@ struct dp_umt_cap {
 };
 
 #define DP_MAX_NAME  20 /*!< max name length in character */
+#define DP_MAX_GSWIP_LOGICAL_MODE 3 /*!< Max GSWIP Logical Mode */
+
 /*! struct dp_cap: dp capability per instance */
 struct dp_cap {
 	int inst; /*!< Datapath instance id */
@@ -1622,9 +1837,11 @@ struct dp_cap {
 	u32 hw_tso: 1; /*!< output: HW TSO offload support for TX path */
 	u32 hw_gso: 1; /*!< output: HW GSO offload support for TX path */
 	u32 hw_ptp: 1; /*!< HW PTP support */
-
+	u32 max_cpu: 8;			/*!< Maximum number of CPU */
+	u32 max_port_per_cpu: 8;	/*!< Maximum number of ports per CPU */
 	char qos_eng_name[DP_MAX_NAME]; /*!< QOS engine name in string */
 	char pkt_eng_name[DP_MAX_NAME]; /*!< Packet Engine Name String */
+	int max_num_spl_conn; /*!< max number of special connection */
 	int max_num_queues; /*!< max number of QOS queue supported */
 	int max_num_scheds; /*!< max number of QOS scheduler supported */
 	int max_num_deq_ports; /*!< max number of CQM dequeue port */
@@ -1634,6 +1851,11 @@ struct dp_cap {
 	int max_num_subif; /*!< max number of subif supported. Maybe no meaning?
 			    */
 	int max_num_bridge_port; /*!< max number of bridge port */
+	int max_num_learn_limit_port;  /*!< max limit of mac addr per port */
+	u32 max_eth_port; /*!< Number of MAC Ports */
+	u32 max_virt_eth_port; /*!< Number of maximum logical ports over PMAC */
+	u32 vap_offset[DP_MAX_GSWIP_LOGICAL_MODE]; /*!< Vap Offset */
+	u32 vap_mask[DP_MAX_GSWIP_LOGICAL_MODE]; /*!< Vap Mask */
 	struct dp_umt_cap umt; /*!< UMT cap */
 };
 
@@ -1714,76 +1936,752 @@ int dp_get_pmapper(struct net_device *dev, struct dp_pmapper *mapper, u32 flag);
 int dp_dma_chan_irq_rx_enable(int inst, struct dp_dma_ch *ch, int flag);
 
 /*!
- *@brief Datapath Swdev API to get FID from bridge name
+ *@brief Datapath Swdev API to get FID from device
  *@param[in] dev: network device pointer
  *@param[out] inst: DP instance ID
  *@return Returns GSWIP bridge id i.e. FID
  */
-int dp_get_fid_by_brname(struct net_device *dev, int *inst);
+int dp_get_fid_by_dev(struct net_device *dev, int *inst);
+/*!
+ *@note dp_get_fid_by_brname will be remove after all other drivers change
+ *      to dp_get_fid_by_dev
+ */
+#define dp_get_fid_by_brname(dev, inst) dp_get_fid_by_dev(dev, inst)
 
-struct dp_spl_conn {
-	enum DP_SPL_TYPE type; /*!< [in] Special Connectity Type */
-	u32 f_subif : 1; /*!< [in] need allocate subif */
-	u32 f_gpid : 1; /*!< [in] need allocate GPID */
-	u32 f_gpid_policy : 1; /*!< [in] need allocate policy or not.
-				*   valid only if f_gpid set
-				*   For LGM:
-				*     Required only for Voice CPU DQ port.
-				*     TSO - Not required (No Dequeue )
-				*     LRO - Not required (No GPID )
-				*     VPN-A: Not required.(reuses input buffer)
-				*     App Litepath: Not required
-				*       (reuses the CPU DQ ports for the host).
-				*     Fragmenter NF: Not required
-				*       (GPID will not be used as Egress port
-				*     Other NFs: Not required (No GPIDs).
+enum DP_EGP_TYPE {
+	DP_EGP_TO_DEV = 0, /*!< EGP port type:  to device */
+	DP_EGP_TO_GSWIP    /*!< intermediate Port to GSWIP */
+};
+
+/*! @brief struct dp_spl_egp, which is used for sepcial CPU path
+ *  applications: CQM egress path to special application
+ */
+struct dp_spl_egp {
+	enum DP_EGP_TYPE type; /*!< [out] EGP port type: DP_EGP_TO_DEV
+				*         DP_EGP_TO_GSWIP
 				*/
-	dp_cb_t *dp_cb; /*!< [in] for subif level callback.
-			 *   Valid only if f_subif valid.
-			 *   Mainly for voice related applicaton only
+	int egp_id; /*!< EGP port ID */
+	int pp_ring_size; /*!< [in/out] ACA TXIN Ring burst size, ie,
+			   *         size of maximum number of
+			   *         buffer can be dequeue in one time
+			   *         LGM
+			   *           Voice: 4 if input is 0
+			   *           TOE(LRO/TSO): 2 if input is 0
+			   *           VPN-A: 1-32. 32 if input is 0
+			   *           App Litepath: NA
+			   *           PP NF: 32 if input is 0 ?
+			   */
+	void *egp_paddr; /*!< [out] egp physical base address
+			  *         LGM
+			  *           Voice: [out] valid
+			  *           TOE(LRO/TSO): [out] valid for LRO only
+			  *           VPN-A: [out] valid
+			  *           App Litepath: NA
+			  *           PP NF: [out] NULL since PP NF use PP Port
+			  */
+	u32 tx_pkt_credit;  /*port tx packet credit */
+	void *tx_push_paddr; /*!< [in/out] QOS TX push physical address
+			      *         LGM
+			      *           Voice: [out] valid
+			      *           TOE(LRO/TSO): [out] valid for LRO only
+			      *           VPN-A: [out] valid
+			      *           App Litepath: NA
+			      *           PP NF: [in] points to PP SRAM
+			      */
+	void *tx_push_paddr_qos; /*!< [in/out] QOS TX push physical address for
+				  *   QOS Port configuration with masking
+				  *   LGM
+				  *     Voice: [out] valid
+				  *     TOE(LRO/TSO): [out] valid for LRO only
+				  *     VPN-A: [out] valid
+				  *     App Litepath: NA
+				  *     PP NF: [in] points to PP SRAM
+				  */
+	void *free_paddr; /*!< [out] register physical address to free
+			   *  BM buffer
+			   *    LGM
+			   *      Voice: [out] valid
+			   *      TOE(LRO/TSO): NA
+			   *      VPN-A: NA
+			   *      App Litepath: NA
+			   *      PP NF: NA
+			   *  Note: Not valid for dequeue port for IGP
+			   */
+	void *free_vaddr; /*!< For voice */
+	int qid;  /*!< [out] physical qid to the EGP
+		   *         LGM
+		   *           Voice: valid
+		   *           TOE(LRO/TSO): valid for LRO only
+		   *           VPN-A: valid
+		   *           App Litepath: NA
+		   *           PP NF: valid
+		   */
+};
+
+/*! @brief struct dp_spl_igp, which is used for sepcial CPU path
+ *  applications: special applicaton to CQM ingress path, then to GSWIP and PP
+ */
+struct dp_spl_igp {
+	u32 igp_id; /*!< [out] CQM enqueue port based ID
+		     *         LGM
+		     *           Voice: valid
+		     *           TOE(LRO/TSO): valid
+		     *           VPNA FW: valid
+		     *           App Litepath: NA
+		     *           PP NF: NA
+		     */
+	int igp_ring_size;  /*!< [in/out]
+			     *   If 0, then auto set by DP/CQM.
+			     *   Note: this parameter will be forced to tune
+			     *         down to HW capability
+			     *    LGM
+			     *       Voice: 1
+			     *       TOE(LRO/TSO): 1 for LRO_ACK and TSO
+			     *       VPNA FW: 1-32. Driver need to decide for it
+			     *       App Litepath: NA
+			     *       PP NF: NA
+			     */
+	void *igp_paddr;   /*!< [out] CQM enqueue register address
+			    *         LGM
+			    *           Voice: valid
+			    *           TOE(LRO/TSO): valid
+			    *           VPNA FW: valid
+			    *           App Litepath: NA
+			    *           PP NF: NA
+			    */
+	void *alloc_paddr; /*!< [out] register physical address to allococate
+			    *   BM buffer
+			    *   LGM
+			    *      Voice: [out] valid
+			    *      TOE(LRO/TSO): NA
+			    *      VPN-A: NA
+			    *      App Litepath: NA
+			    *      PP NF: NA
+			    */
+	void *alloc_vaddr; /*!< [out] For voice_testing */
+
+	u32 igp_dma_ch_to_gswip; /*!< [out] DMA TX channel base to GSWIP for
+				  *         forwarding rxout packet to GSWIP
+				  *    LGM
+				  *       Voice: valid
+				  *       TOE(LRO/TSO): valid for LRO_ACK/TSO
+				  *       VPNA FW: valid
+				  *       App Litepath: NA
+				  *       PP NF: valid with one shared common
+				  *              path for all NFs
+				  */
+	u32 num_out_tx_dma_ch; /*!< [out] number of DMA tx channel assigned
+				*    LGM
+				*       Voice: 1
+				*       TOE(LRO/TSO): 1 respectilvey per IGP
+				*       VPNA FW: 0
+				*       App Litepath: 0
+				*       PP NF: 1(shared common path for all NFs)
+				*/
+#if !IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP30) /*GRX500 GSWIP30*/
+	enum umt_rx_msg_mode out_msg_mode; /*!< [in] rxout msg mode
+					    *    LGM
+					    *       Voice: NA
+					    *       TOE(LRO/TSO): NA
+					    *       VPNA FW: valid
+					    *       App Litepath: NA
+					    *       PP NF: NA
+					    */
+#endif
+	enum DP_RXOUT_QOS_MODE out_qos_mode; /*!< [in] rxout qos mode
+					      *    LGM
+					      *       Voice: NA
+					      *       TOE(LRO/TSO): NA
+					      *       VPNA FW: valid
+					      *       App Litepath: NA
+					      *       PP NF: NA
+					      */
+	u32 num_out_cqm_deq_port; /*!< [out] number of CQM dequeue port to GSWIP
+				   *   for rxout packet: 1 or 0
+				   *    LGM
+				   *       Voice: 1
+				   *       TOE(LRO/TSO): 1
+				   *       VPNA FW: 1
+				   *       App Litepath: 0
+				   *       PP NF: 1(shared common path for
+				   *                all NFs)
+				   */
+	struct dp_spl_egp *egp; /*!< [out] CQM dequeue port to GSWIP for
+				 *   rxout/igp packet
+				 */
+};
+
+/*! @brief struct dp_spl_policy, which is used for sepcial CPU path
+ *  applications: policy related information
+ */
+struct dp_spl_policy {
+	u32 num_pkt; /*!< [in] nuber of packet for this policy */
+	u32 rx_pkt_size; /*!< [in/out] rx packet buffer size
+			  *   requirement rxout packets.
+			  *   DP/CQM will adjust to most
+			  *   matched BM pool
+			  */
+	u16 tx_policy_base; /*!< [out] tx policy ID base */
+	u8 tx_policy_num;   /*!< [out] number of continuous tx policy allowed */
+	u16 rx_policy_base; /*!< [out] rx policy ID base */
+	u8 rx_policy_num;   /*!< [out] number of continuous rx policy allowed */
+	u16 pool_id[DP_MAX_POOL_SUBIF]; /* [out] pool id allocated. valid only
+					 *   if num_policy is non-zero
+					 */
+	u16 policy_map;	/* [out] buffer size bit map for relevant policy
+			 *      eg 0x4 is for size-2 buffer
+			 *      eg 0x0 is for size-0 buffer
 			 */
+};
+
+/*! @brief struct dp_spl_cfg, which is used for register/register special
+ *  CPU path applications
+ */
+struct dp_spl_cfg {
+	u32 flag; /*!< [in]DE_REGISTER for de-registration, otherwise for
+		   *       registration
+		   */
+	enum DP_SPL_TYPE type; /*!< [in] Special Connectity Type */
+	u32 spl_id; /*!< [out] for dp_spl_conn_get() only
+		     *   [out/in] For registration, it is [out] parameter
+		     *            For de-registration, it is [in] parameter
+		     *            Note: for LGM, DP can support up to 8 special
+		     *                  CPU connection path at present.
+		     *            From CQM point of view, may from 16 better.
+		     */
+	u32 f_subif : 1; /*!< [out] for dp_spl_conn_get() only
+			  *   [in] need allocate subif flag
+			  *        LGM:
+			  *         Even if caller disable it. DP internally
+			  *         still assign one subif for it.
+			  *         caller just skip its output parameters
+			  *         For Voice: 1
+			  *         For TOE(TSO/LRO): 0
+			  *         For VPN-A Driver: 1
+			  *         For APP Litepath: 1
+			  *         For PP NF: Fragmenter: 1
+			  */
+	u32 f_gpid : 1; /*!< [out] for dp_spl_conn_get() only
+			 *   [in] need allocate GPID flag
+			 *        Even if caller disable it. DP internally will
+			 *        assign one GPID for it. But DP will not
+			 *        call PP API to really configure it in this
+			 *        case. Valid only if @f_subif valid
+			 *       LGM:
+			 *         For Voice: 1
+			 *         For TOE(TSO/LRO): 0
+			 *         For VPN-A Driver: 1
+			 *         For APP Litepath: 1
+			 *         For PP NF: 1
+			 */
+	u32 f_policy : 1; /*!< [out] for dp_spl_conn_get() only
+			   *   [in] need allocate policy or not
+			   *   LGM:
+			   *     voice: 1 Need allocate one special policy,
+			   *     TOE(LRO/TSO): 0 CQM driver configure it to
+			   *                  system policy for TSO/LRO_ACK
+			   *     VPN-A Driver: 0, ie, reuses input buffer
+			   *     App Litepath: 0, ie, reuses the CPU DQ
+			   *                   ports for the host
+			   *     PP NF: Fragmenter NF: 0
+			   */
+	u32 f_hostif : 1; /*!< [out] for dp_spl_conn_get() only
+			   *   [in] need create PP hostif flag
+			   *   LGM:
+			   *     voice: 1
+			   *     TOE(LRO/TSO): 0
+			   *     VPN-A Driver: 1
+			   *     App Litepath: 1
+			   *     PP NF: Mutlicast : 1,
+			   *            Others: 0
+			   */
+	u32 prel2_len:2; /*!< [out] for dp_spl_conn_get() only
+			   *   [in] size of PMAC header in multiple of 16 bytes
+			   *   LGM:
+			   *     0: Disabled
+			   *     1: 16 bytes
+			   *     2: 32 bytes
+			   *     3: 48 bytes
+			   */
+	int subif; /*!< [out] subif id. Valid only if f_subif is set */
+	int gpid; /*!< [out] gpid. Valid only if f_gpid is set */
+	int spl_gpid; /*!< [out] gpid for voice. Valid only if f_gpid is set */
+	dp_cb_t *dp_cb; /*!< [out] for dp_spl_conn_get() only
+			 *   [in] for subif level callback.
+			 *        Not for GRX500/PRX300
+			 *        LGM:
+			 *         *)For rx_fn of dp_cb
+			 *            voice: yes for rx_fn
+			 *            TOE(LRO/TSO): no
+			 *            VPN-A Driver: yes
+			 *            App Litepath: yes
+			 *            PP NF: no
+			 *         *)For tx_fn of dp_cb
+			 *            voice: no
+			 *            TOE(LRO/TSO): yes for TSO
+			 *            VPN-A Driver: no
+			 *            App Litepath: no
+			 *            PP NF: Multicast NF needs rx_cb
+			 */
+	struct net_device *dev; /*!< [out] for dp_spl_conn_get() only
+				 *   [in] network device if need.
+				 *   if rx_fn of dp_cb valid, dev should be
+				 *      valid also
+				 *   Not for GRX500/PRX300
+				 *   LGM:
+				 *     voice: yes
+				 *     TOE(LRO/TSO)- Not required (No Dequeue )
+				 *     VPN-A Driver: yes
+				 *     App Litepath: yes
+				 *     Fragmenter NF: Not required
+				 */
 	int dp_port; /*!< [out] dp_port ID, normally it is CPU 0.
 		      *   if -1, then not applicable for this special connect
 		      */
-	u8 num_rx_ring; /*!< [in] number of rx ring from DC device to Host.
-			 *   num_rx_ring requirement:
-			 *   @num_rings <= @DP_RX_RING_NUM
-			 *   GRX350/PRX300:1 rx ring
-			 *   LGM: up to 2 rx ring, like Docsis can use 2 rings
-			 *   For two ring case:
-			 *    1st rxout ring without qos
-			 *    2nd rxout ring with qos
-			 */
-	u8 num_tx_ring; /*!< [in] number of tx ring from Host to DC device
-			 *   num_rx_ring requirement:
-			 *   @num_rings <= @DP_TX_RING_NUM
-			 *   Normally it is 1 TX ring only.
-			 *   But for 5G, it can support up to 8 TX ring
-			 *   For docsis, alhtough it is 16 dequeue port to WIB.
-			 *   But the final ring only 1, ie, WIB to Dcosis
-			 */
-	u8 num_umt_port; /*!< [in] number of UMT port.
-			  *    Normally is 1 only. But Docsis can use up to 2
-			  */
-	struct dp_rx_ring rx_ring[DP_RX_RING_NUM]; /*!< [in/out] DC rx ring info
+	u8 num_igp;   /*!< [out] number of IGP (ingress port) from device to CQM
+		       *   num_igp requirement: @num_igp <= @DP_SPLPATH_IGP_NUM
+		       *   LGM:
+		       *     Voice: 1(CPU IGP without QOS) igp_info[0]
+		       *     TOE(LRO/TSO): 2(DMA IGP)
+		       *                     igp_info[0]-TSO,
+		       *                     igp_info[1]-LRO_ACK
+		       *     VPN-A Driver: 2(DC IGP)
+		       *                     igp_info[0]-with QOS,
+		       *                     igp_info[1]-without QOS,
+		       *     App Litepath: 0
+		       *     PP NF: 0
+		       */
+	u8 num_egp; /*!< [out] number of EGP from CQM/Host to device
+		     *   num_egp requirement:@num_egps <= @DP_TX_RING_NUM
+		     *   LGM:
+		     *     Voice: 1(CPU) + 1 GSWIP EGP
+		     *     TOE(LRO/TSO): 1(CPU) for LRO + 2 GSWIP EGP
+		     *     VPN-A Driver: 1(DC)
+		     *     App Litepath: 0 + 0
+		     *     PP NF: 1 per NF + 1 GSWIP.
+		     *            note, it is PP QOS port based only
+		     */
+	u8 num_umt_port;   /*!< [out] number of UMT port.
+			    *        LGM
+			    *           Voice: 0
+			    *           TOE(LRO/TSO): 0
+			    *           VPN-A Driver: 1
+			    *           App Litepath: 0
+			    *           PP NF: 0
+			    */
+	struct dp_spl_igp igp[DP_SPLPATH_IGP_NUM]; /*!< [out] for
+						    *   dp_spl_conn_get() only
+						    *   [in/out] IGP
+						    *   ingress Port information
+						    *   refer to the comment of
+						    *   @num_igp
 						    */
-	struct dp_tx_ring tx_ring[DP_TX_RING_NUM]; /*!< [in/out] DC tx ring info
-						    */
-	struct dp_gpid_tx_info gpid_info; /*!< [in] for GPID tx information
-					   *   Valid only if @f_gpid valid.
-					   */
+	struct dp_spl_egp egp[DP_SPLPATH_EGP_NUM + DP_SPLPATH_IGP_NUM];
+						    /*!< [out]
+						     * for dp_spl_conn_get only
+						     * [in/out] EGP egress port
+						     *   information
+						     *   refer to the comment of
+						     *   @num_egp
+						     */
 #if !IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP30) /*GRX500 GSWIP30*/
-	struct dp_umt_port umt[DP_MAX_UMT]; /*!< [in/out] DC umt information */
+	struct dp_umt_port umt[1];  /*!< [out] for dp_spl_conn_get() only
+				     *        [in/out] umt information
+				     *        LGM
+				     *           Voice: Not applicable
+				     *           TOE(LRO/TSO): Not applicable
+				     *           VPN-A Driver:Yes
+				     *           App Litepath: NA
+				     *           PP NF: NA
+				     */
 #endif
+	struct dp_spl_policy policy[1];  /*!< [out] for dp_spl_conn_get() only
+					  *   [in/out] Buffer policy information
+					  *        LGM
+					  *           Voice: Yes and need
+					  *              allocate policy for it
+					  *           TOE(LRO/TSO): fixed to
+					  *              system policy.
+					  *               For TSO: policy base 0
+					  *               For LRO: no need
+					  *           VPN-A Driver:NA
+					  *           App Litepath: NA
+					  *           PP NF: NA
+					  */
 };
 
 /*!
  *@brief Datapath Manager Initialize Speical Connectivity API
  *@param[in] inst: DP instance ID
  *@param[in] conn: Special Connect information
+ *@param[in] flag: for deregistration, it needs to use flag DP_F_DEREGISTER
+ *                 otherwise it is for registration a new CPU special path
  *@return Returns DP_SUCCESS on succeed and DP_FAILURE on failure
  */
-int dp_connect_spl_path(int inst, struct dp_spl_conn *conn);
+int dp_spl_conn(int inst, struct dp_spl_cfg *conn);
+
+#define DP_SPL_CONN_MAX_CNT 4 /*!< maximum number of struct dp_spl_cfg */
+
+/*!
+ *@brief Datapath Manager get Speical Connectivity API
+ *@param[in] inst: DP instance ID
+ *@param[in] type: DP special connectivity type
+ *@param[in/out] conns: user allocated buffer to store connectivity info
+ *@param[in] cnt: number of dp_spl_cfg been allocated
+ *@return returns number of results been wrote, 0 means not found
+ */
+int dp_spl_conn_get(int inst, enum DP_SPL_TYPE type,
+		    struct dp_spl_cfg *conns, u8 cnt);
+
+/*! @addtogroup Datapath_Driver_Structures */
+/*! @brief  DP IO  information
+ *@param port_id  Datapath Port Id corresponds to PMAC Port Id
+ *@param subif    Sub-interface Id info. In GRX500, this 15 bits,
+ *		only 13 bits in PAE are handled [14, 11:0]
+ *\note
+ */
+#define DP_MAX_CORE  4 /*!< maximum CORE DP supported */
+struct dp_dpdk_io_per_core {
+	u8 core_id; /*!< [out] core ID: from 0 ~ (DP_MAX_CORE -1)  */
+	int num_subif; /*!< [out] number of subif allocated for this IO type */
+	int subif[2]; /*!< [out] subif ID for this core.
+		       *   Two subifs are needed because DPDK needs 2 CQM
+		       *   EQ ports (QOS bypass and QOS).
+		       *   For the CQM DQ side, they currently require 1 CQM
+		       *   DQ port - but this may change later.
+		       */
+	u16 gpid[2]; /*!< [out] gpid ID for this core */
+
+	int num_egp; /*!< [out] number of egress port. Normally 1 */
+	int egp_id[2]; /*!< [out] CQM EGP(Egress) port ID */
+
+	int num_igp; /*!< [out] number of CQM ingress port. Normally 2 */
+	int igp_id[2]; /*!< [out] IGP port ID.
+			*   Note: DPDK will get igp/allo_buffer/return buffer
+			*         register address based on igp_id as spec
+			*         defined
+			*/
+	u8  f_igp_qos[2]; /*!< [out] flag to indicate whether this igp with or
+			   *   without QOS
+			   *   0 -- without QOS
+			   *   1  -- with QOS
+			   */
+	int num_policy; /*!< [out] number of policy. Normally 1 */
+	u16 policy_base; /*!< [out] the base policy assigned to DPDK */
+
+	/* need further align for DPDK optimized path */
+	int num_tx_push; /*!< [out] number of tx push used DPDK */
+	void *credit_add_paddr[2]; /*!< [out] credit add physical address */
+	void *credit_left_paddr[2]; /*!< [out] credit left physical address */
+};
+
+struct dp_dpdk_io {
+	u8 num; /*!< [out] number of DPDK core */
+	int dpid; /*!< [out] DPID, it is always zero in LGM */
+	struct dp_dpdk_io_per_core info[DP_MAX_CORE]; /*!< [out] information per
+						       *    core
+						       */
+};
+
+/*! @brief struct dp_io_port_info, which is used for dp_get_io_port_info
+ */
+struct dp_io_port_info {
+	int inst;  /*!< [in] dp instance id. For Host side, it is alwasy 0 */
+	enum DP_IO_PORT_TYPE type; /*!< [in] io port type */
+	union {
+		struct dp_dpdk_io info; /*!< [out] dpdk io information */
+		char dummy[0]; /*!< [out] reserve for future */
+	} info; /*!< [out] union variable */
+};
+
+/*!
+ *@brief dp_get_io_port_info API to retrieve system IO port information
+ *@param[in/out] info: io port information
+ *       1)DPDK: it needs set info->type to DP_IO_PORT_TYPE,
+ *               in this case, DP will return DPDK IO port information per core
+ *@param[in] flag: reserved for future
+ *@return DP_SUCCESS on succeed and DP_FAILURE on failure
+ *@note: CQM driver no need to export new API, instead just enhance existing
+ *       API cbm_cpu_port_get to add new varabile enum DP_IO_PORT_TYPE type
+ */
+int dp_get_io_port_info(struct dp_io_port_info *info, uint32_t flag);
+
+enum DP_DATA_PORT_TYPE {
+	DP_DATA_PORT_LINUX = 0, /*!< data port owned by Linux */
+	DP_DATA_PORT_DPDK, /*!< data port owned by DPDK */
+	DP_DATA_PORT_MPE, /*!< data port owned by MPE */
+};
+
+/*! @brief struct dp_dpdk_port_conf, which is used for DPDK to call
+ *  dp_set_port/dp_get_port
+ */
+struct dp_dpdk_port_conf {
+	int dpid;  /*!< [in] dp port ID */
+	enum DP_DATA_PORT_TYPE type; /*!< [in/out] io port type:
+				      * For dp_set_io_port, it is [in] parameter
+				      *   if type == DP_DATA_PORT_LINUX
+				      *      data port owner should set to Linux
+				      *   if type == DP_DATA_PORT_DPDK
+				      *      data port owner should set to DPDK
+				      * For dp_get_io_port, it is [out]
+				      *      parameter
+				      */
+};
+
+/*! @brief struct dp_port_conf, which is used for dp_set_port/dp_get_port
+ */
+struct dp_port_conf {
+	int inst;  /*!< [in] dp instance id. For Host side, it is alwasy 0 */
+	enum DP_IO_PORT_TYPE type; /*!< [in] io port type */
+	union {
+		struct dp_dpdk_port_conf info; /*!< [out] dpdk io information */
+		char dummy[0]; /*!< [out] reserve for future */
+	} info; /*!< [out] union variable */
+};
+
+/*!
+ *@brief dp_set_io_port API
+ *@param[in/out] conf: port information
+ *@param[in] flag: reserved for future
+ *@return DP_SUCCESS on succeed and DP_FAILURE on failure
+ *@note:  1) For DPDK: it needs set info->type to DP_IO_PORT_TYPE,
+ *                     a) This API is used to set data port owner: linux or DPDK
+ *                     b) conf->dpid cannot be zero. CPU port type is fixed
+ *                        and cannot be changed during runtime.
+ *                     c) All subifs under same dpdk will be owned either DPDK
+ *                        or linux, cannot partially by Linux, partially by DPDK
+ */
+int dp_set_datapath_io_port(struct dp_port_conf *conf, uint32_t flag);
+
+/*!
+ *@brief dp_get_io_port API
+ *@param[in/out] conf: port information
+ *@param[in] flag: reserved for future
+ *@return DP_SUCCESS on succeed and DP_FAILURE on failure
+ *@note:  1) For DPDK: it needs set info->type to DP_IO_PORT_TYPE,
+ *                     a) This API is used to get data port owner: linux or DPDK
+ */
+int dp_get_datapath_io_port(struct dp_port_conf *conf, uint32_t flag);
+
+enum DP_EVENT_TYPE_BITS {
+	DP_EVENT_INIT_BIT,
+	DP_EVENT_ALLOC_PORT_BIT,
+	DP_EVENT_DE_ALLOC_PORT_BIT,
+	DP_EVENT_REGISTER_DEV_BIT,
+	DP_EVENT_DE_REGISTER_DEV_BIT,
+	DP_EVENT_REGISTER_SUBIF_BIT,
+	DP_EVENT_DE_REGISTER_SUBIF_BIT,
+	DP_EVENT_OWNER_SWITCH_BIT,
+	DP_EVENT_MAX_BIT
+};
+
+#define EVENT(TYPE) BIT(DP_EVENT_##TYPE##_BIT)
+
+/*! @brief enum DP_EVENT_TYPE to define the different kind of event type
+ */
+enum DP_EVENT_TYPE {
+	DP_EVENT_INIT = EVENT(INIT), /*!< event callback for initiazation
+					*   when first network driver register to dp via
+					*   calling API dp_alloc_port_ext
+					*   DP will call event callback before
+					*   allocate port for this request
+					*/
+	DP_EVENT_ALLOC_PORT = EVENT(ALLOC_PORT), /*!< event callback for
+					*   alloc port
+					*/
+	DP_EVENT_DE_ALLOC_PORT = EVENT(DE_ALLOC_PORT), /*!< event callback
+					*   for de_alloc port
+					*/
+	DP_EVENT_REGISTER_DEV = EVENT(REGISTER_DEV), /*!< event callback for
+					*   register dev
+					*/
+	DP_EVENT_DE_REGISTER_DEV = EVENT(DE_REGISTER_DEV), /*!< event callback
+					*   for de_register dev
+					*/
+	DP_EVENT_REGISTER_SUBIF = EVENT(REGISTER_SUBIF), /*!< event callback
+					*   for register subif
+					*/
+	DP_EVENT_DE_REGISTER_SUBIF = EVENT(DE_REGISTER_SUBIF), /*!< event
+					*   callback for de_register subif
+					*/
+	DP_EVENT_OWNER_SWITCH = EVENT(OWNER_SWITCH),  /*!< event callback
+					*   when data port owner switching between linux and
+					*   DPDK
+					*/
+	DP_EVENT_MAX = EVENT(MAX)
+};
+
+/*! @brief struct dp_event_init_info, init event specific information
+ */
+struct dp_event_init_info {
+	struct module *owner; /*!< Kernel module pointer which owns the port */
+	struct net_device *dev; /*!< network device pointer. it can be NULL for
+				 *   some device
+				 */
+	u32 dev_port; /*!< Physical Port Number of this device managed by the
+		       *   driver
+		       */
+};
+
+/*! @brief struct dp_event_alloc_info, alloc port event specific information
+ */
+struct dp_event_alloc_info {
+	struct module *owner; /*!< Kernel module pointer which owns the port */
+	struct net_device *dev; /*!< network device pointer. it can be NULL for
+				 *   some device
+				 */
+	u32 dev_port; /*!< Physical Port Number of this device managed by the
+		       *   driver
+		       */
+};
+
+/*! @brief struct dp_event_reg_dev_info, register dev event specific
+ *  information
+ */
+struct dp_event_reg_dev_info {
+	struct module *owner; /*!< Kernel module pointer which owns the port */
+	struct net_device *dev; /*!< network device pointer. it can be NULL for
+				 *   some device
+				 */
+	int dpid;  /*!< dp port ID */
+};
+
+/*! @brief struct dp_event_reg_subif_info, register subif event specific
+ *   information
+ */
+struct dp_event_reg_subif_info {
+	int dpid;  /*!< dp port ID */
+	s32 subif; /*!< device subif */
+	struct net_device *dev; /*!< subif network device pointer.
+				 *   It can be NULL for some case, like ATM DSL
+				 */
+};
+
+/*! @brief struct dp_event_owner_info, data port owner change event specific
+ *   information
+ */
+struct dp_event_dataport_owner_info {
+	int dpid;  /*!< dp port ID */
+	enum DP_DATA_PORT_TYPE new_owner; /*!<  owner dpid will switch to */
+};
+
+/*! @brief struct dp_dev_event, which is used for dp_register_event
+ */
+struct dp_event_info {
+	int inst; /*!< [out] dp instance id */
+	enum DP_EVENT_TYPE type; /*!< [out] event type */
+	union {
+		struct dp_event_init_info init_info; /*!< initialization info */
+		struct dp_event_alloc_info alloc_info; /*!< alloc port info */
+		struct dp_event_alloc_info de_alloc_info; /*!< de_alloc port
+							   * info
+							   */
+		struct dp_event_reg_dev_info reg_dev_info; /*!< register
+							    *   dev info
+							    */
+		struct dp_event_reg_dev_info dereg_dev_info; /*!< de_register
+							      *   dev info
+							      */
+		struct dp_event_reg_subif_info reg_subif_info;/*!< register
+							       *   subif
+							       *   info
+							       */
+		struct dp_event_reg_subif_info de_reg_subif_info;/*!< register
+								  *   subif
+								  *   info
+								  */
+		struct dp_event_dataport_owner_info owner_info;/*!< data port
+								*   owner info
+								*/
+	};
+	void *data; /*!< [out] pass back the data to caller which was provied by
+		     *   caller when calling dp_register_event_cb API
+		     */
+
+};
+
+enum DP_EVENT_OWNER {
+	DP_EVENT_OWNER_OTHERS = 0, /*!< Event owner type OTHERS */
+	DP_EVENT_OWNER_DPDK, /*!< Event owner type DPDK */
+	DP_EVENT_OWNER_PPA, /*!< Event owner type PPA */
+	DP_EVENT_OWNER_MIB, /*!< Event owner type MIB */
+	DP_EVENT_OWNER_MAX /*!< Maximum owners types */
+};
+
+/* Note:this callback should should support tasklet/softtimer related context */
+struct dp_event {
+	int inst; /*!< [in] dp instance id */
+	enum DP_EVENT_OWNER owner; /*!< [in] owner who register to DP
+				    *   for event status monitoring.
+				    *   For debugging purpose only
+				    */
+	enum DP_EVENT_TYPE type; /*!< [in] type of event */
+	int f_owner_only; /*!< [in] flag to indicate whether only limited event
+			   *   will be trigger. It is mainly for DPDK if
+			   *   DPDK only interted in those data port which owned
+			   *   by DPDK only
+			   */
+	int32_t(*dp_event_cb)(struct dp_event_info *info);  /*!< [in] event
+							     *   callback
+							     *   function
+							     *   callback contex
+							     *   can be tasklet
+							     *   or soft-timer
+							     */
+	void *data; /*!< [in] optinal data which will be passed backed to
+		     *   callback function when event triggered
+		     */
+	void *id; /*!< [in/out] handle for dp_register_event_cb.
+		   *   When set as NULL, it will be treated as [out] parameter.
+		   *   Upon sucessful registration of the callback function, a
+		   *   valid handle will be return.
+		   *   The handle can be used for subsequent update by
+		   *   registered apps. It will be used as [in] parameter.
+		   *   All existing values will be overwritten by the new
+		   *   values in dp_event_info.
+		   */
+};
+
+/*!
+ *@brief dp_register_event_cb API to register event callback functions
+ *@param[in/out] info: registration event info
+ *@param[in] flag: DP_F_DEREGISTER is for de-registration,
+ *                 otherwise it is for registration
+ *@return DP_SUCCESS on succeed and DP_FAILURE on failure
+ */
+int dp_register_event_cb(struct dp_event *info, uint32_t flag);
+
+/*!
+ *@brief dp_set_ethtool_stats_fn API to register callback function which
+ * retrieves counters for ethtool statistics
+ *@param[in] inst: dp instance id
+ *@param[in] cb: pointer to function called to retrieve counters for
+ *		 ethtool statistics
+ */
+void dp_set_ethtool_stats_fn(int inst,
+			     void (*cb)(struct net_device *dev,
+					struct ethtool_stats *stats,
+					u64 *data));
+
+/*!
+ *@brief dp_set_ethtool_stats_strings_cnt_fn API to register callback function which
+ * retrieves retrieve number of counters
+ *@param[in] inst: dp instance id
+ *@param[in] cb: pointer to function called to retrieve number of counters for
+ *		 ethtool statistics
+ */
+void dp_set_ethtool_stats_strings_cnt_fn(int inst,
+					 int (*cb)(struct net_device *dev));
+
+/*!
+ *@brief dp_set_ethtool_stats_strings_fn API to register callback function which
+ * retrieves set of counters' names
+ *@param[in] inst: dp instance id
+ *@param[in] cb: pointer to function called to retrieve set of counters' names
+ *		 for ethtool statistics
+ */
+void dp_set_ethtool_stats_strings_fn(int inst,
+				     void (*cb)(struct net_device *dev, u8 *data));
 
 /*! @brief Enumerator DP_OPS_TYPE */
 enum DP_OPS_TYPE {
@@ -1792,8 +2690,52 @@ enum DP_OPS_TYPE {
 	DP_OPS_GSW, /*!< GSWIP ops type */
 	DP_OPS_UMT, /*!< UMT ops type */
 	DP_OPS_LRO, /*!< LRO ops type */
+	DP_OPS_VPN, /*!< VPN ops type */
+	DP_OPS_CQM, /*!< CQM ops type */
 	DP_OPS_CNT,  /*!< total ops type count */
 };
+
+enum DP_SUBIF_UPD {
+	/*!< Once this flag is set, qmap will not be changed */
+	DP_F_UPDATE_NO_Q_MAP = BIT(0),
+};
+
+/*! @brief struct dp_subif_upd_info, which is used for dp_update_subif
+ */
+struct dp_subif_upd_info {
+	int inst; /*!< [in] dp instance id */
+	int dp_port; /*!< [in] Datapath Port Id corresponds to PMAC Port Id */
+	int subif; /*!< [in] Sub-interface Id as HW defined */
+	struct net_device *new_dev; /*!< [in] master dev */
+	struct net_device *new_ctp_dev; /*!< [in] slave dev */
+	int new_cqm_deq_idx; /*!< [in] New deq port index */
+	int new_num_cqm_deq; /*!< [in] number of CQM dequeue port used
+			      * for this subif
+			      * for GPON, always 1, for EPON, 1-8
+			      */
+	u32 flags; /*!< [in] caller provided during dp_update_subif_info */
+	u8 new_domain_flag : 1; /*!< [in] if set, then use domain
+				 * information, otherwise keep original
+				 * domain information
+				 */
+	u8 new_domain_id : 5; /*!< [in] we support 32 domain per bridge only.
+			       * valid only DP_SUBIF_BR_DOMAIN is set in flag_ops
+			       */
+	u32 domain_members; /*!< [in] one bit for one domain_id:
+			     * bit 0 for domain_id 0, bit 1 for domain 1,so on.
+			     * If one bit is set to 1, the traffic received
+			     * from this dev can be forwarded to this domain
+			     * as specified in domain_members
+			     * valid only if DP_SUBIF_BR_DOMAIN is set in flag_ops
+			     */
+};
+
+/*!
+ *@brief Datapath Manager subif registration update
+ *@param[in] info: subif_update_information
+ *@return DP_SUCCESS on success and DP_FAILURE on failure
+ */
+int dp_update_subif_info(struct dp_subif_upd_info *info);
 
 /*!
  *@brief Datapath Manager ops registration
@@ -1812,7 +2754,23 @@ int dp_register_ops(int inst, enum DP_OPS_TYPE type, void *ops);
  *@return ops pointer if registered, or NULL if not registered
  */
 void *dp_get_ops(int inst, enum DP_OPS_TYPE type);
+
+/*!
+ * @brief get network device's MTU
+ * @param[in] dev: network device pointer
+ * @param[out] mtu_size: return the maximum MTU can be supported
+ *                       for this device based on current HW configuration
+ * @return DP_SUCCESS on succeed and DP_FAILURE on failure
+ */
 int dp_get_mtu_size(struct net_device *dev, u32 *mtu_size);
+
+/*!
+ * @brief set network device's MTU
+ * @param[in] dev: network device pointer
+ * @param[in] mtu_size: new Linux network MTU requested
+ * @return DP_SUCCESS on succeed and DP_FAILURE on failure
+ */
+int dp_set_mtu_size(struct net_device *dev, u32 mtu_size);
 
 /*!
  *@brief free Rx/Tx buffer
@@ -1832,15 +2790,12 @@ static inline struct umt_ops *dp_get_umt_ops(int inst)
 	return (struct umt_ops *)dp_get_ops(inst, DP_OPS_UMT);
 }
 
-enum DP_DATA_PORT_TYPE {
-        DP_DATA_PORT_LINUX = 0, /*!< data port owned by Linux */
-        DP_DATA_PORT_DPDK, /*!< data port owned by DKDP */
-        DP_DATA_PORT_MPE, /*!< data port owned by MPE */
-};
+#define DP_DMA_PORT_BIT_POS 16
+#define DP_DMA_CTRL_BIT_POS 24
 
 /*!
- *@brief parse dma ID
- *@param[in] inst     : DMA ID
+ *@brief parse DMA ID
+ *@param[in] dma_id   : DMA ID
  *@param[out] cid     : DMA Controller ID
  *@param[out] pid     : DMA Port ID
  *@param[out] chid    : DMA Channel ID
@@ -1848,11 +2803,58 @@ enum DP_DATA_PORT_TYPE {
 static inline void dp_dma_parse_id(u32 dma_id, u8 *cid, u8 *pid, u16 *chid)
 {
 	if (cid)
-		*cid = dma_id >> 24;
+		*cid = dma_id >> DP_DMA_CTRL_BIT_POS;
 	if (pid)
-		*pid = (dma_id >> 16) & 0xff;
+		*pid = (dma_id >> DP_DMA_PORT_BIT_POS) & 0xff;
 	if (chid)
 		*chid = dma_id & 0xffff;
+}
+
+/*!
+ *@brief set DMA ID
+ *@param[in] cid     : DMA Controller ID
+ *@param[in] pid     : DMA Port ID
+ *@param[in] chid    : DMA Channel ID
+ *@return DMA ID
+ */
+static inline u32 dp_dma_set_id(int cid, int pid, int chid)
+{
+	return cid << DP_DMA_CTRL_BIT_POS |
+			(pid & 0xff) << DP_DMA_PORT_BIT_POS | (chid & 0xffff);
+}
+
+/*!
+ *@brief is_stream_port
+ *@param[in] inst     : alloc flags
+ *@param[out] true    : if stream port
+ *@param[out] false   : if not stream port
+ */
+static inline bool is_stream_port(int flags)
+{
+	return !!(flags & (DP_F_FAST_ETH_LAN | DP_F_FAST_ETH_WAN | DP_F_GINT |
+			   DP_F_GPON | DP_F_EPON | DP_F_VUNI));
+}
+
+/*!
+ *@brief is_dc_port
+ *@param[in] inst     : alloc flags
+ *@param[out] true    : if dc port
+ *@param[out] false   : if not dc port
+ */
+static inline bool is_dc_port(int flags)
+{
+	return !!(flags & DP_F_ACA);
+}
+
+/*!
+ *@brief is_spl_conn
+ *@param[in] lpid    : port LPID
+ *@param[in] vap	 : VAP id
+ *@retrurn bool      : true if CPU Special connection
+ */
+static inline bool is_spl_conn(int lpid, int vap)
+{
+	return (lpid == DP_CPU_LPID && vap >= DP_MAX_CPU * 2);
 }
 
 /*!
@@ -1872,4 +2874,232 @@ struct dp_bp_attr {
  */
 int dp_set_bp_attr(struct dp_bp_attr *conf, uint32_t flag);
 
+#define DP_CQM_LU_MODE_SET BIT(0)
+#define DP_CQM_LU_MODE_GET BIT(1)
+
+/*!
+ *@brief dp_lookup_mode_cfg API
+ *@param[in] inst	: Instance
+ *@param[in/out] lu_mode: lu_mode set/get
+ *@param[in] map	: qmap values, to set/get lookup mode
+ *@param[in] flag	: DP_CQM_LU_MODE_SET/DP_CQM_LU_MODE_GET
+ *@return DP_SUCCESS on succeed and DP_FAILURE on failure
+ */
+int dp_lookup_mode_cfg(int inst, u32 lu_mode, struct dp_q_map *map,
+		       u32 flag);
+
+/*!
+ *@brief dp_net_dev_get_ss_stat_strings API - function used by ethtool
+ *	 to retrieve set of counters' names
+ *@param[in] dev: net device
+ *@param[out] data: buffer pointer where the function will copy counters' names
+ */
+void dp_net_dev_get_ss_stat_strings(struct net_device *dev, u8 *data);
+
+/*!
+ *@brief dp_net_dev_get_ss_stat_strings_count API - function used by ethtool
+ *	 to retrieve number of counters
+ *@param[in] dev: net device
+ *@return number of counters
+ */
+int dp_net_dev_get_ss_stat_strings_count(struct net_device *dev);
+
+/*!
+ *@brief dp_net_dev_get_ethtool_stats API - function used by ethtool
+ *	 to retrieve counters' values
+ *@param[in] dev: net device
+ *@param[out] stats: for dumping NIC-specific statistics
+ *@param[out] data: for dumping counters values sequence
+ */
+void dp_net_dev_get_ethtool_stats(struct net_device *dev,
+				  struct ethtool_stats *stats, u64 *data);
+
+#define DP_OPS_RESET		BIT(0) /*!< set ops to original ops */
+#define DP_OPS_NETDEV		BIT(1) /*!< set ops for net_device_ops */
+#define DP_OPS_ETHTOOL		BIT(2) /*!< set ops for ethtool_ops */
+#define DP_OPS_SWITCHDEV	BIT(3) /*!< set ops for switchdev_ops */
+#define DP_OPS_XFRMDEV		BIT(4) /*!< set ops for xfrmdev_ops */
+
+/*!
+ *@brief dp_set_net_dev_ops API
+ *@param[in] dev: pointer to net_device structure
+ *@param[in] ops_callback: pointer to new callback,
+ *                         will be ignore if DP_OPS_RESET is set in flag
+ *@param[in] ops_offset: offset of the new callback,
+ *                       e.g. offsetof(const struct net_device_ops, ndo_xxx)
+ *@param[in] flag: ops to change - DP_OPS_x
+ *@return DP_SUCCESS on succeed and DP_FAILURE on failure
+ *@note: Set to new ops - dp_set_net_dev_ops(dev, ops, ops_offset, DP_OPS_NETDEV
+ *       Reset to orginal ops - dp_set_net_dev_ops(dev, NULL, ops_offset,
+ *                                                 DP_OPS_NETDEV|DP_OPS_RESET);
+ */
+int dp_set_net_dev_ops(struct net_device *dev, void *ops_cb, int ops_offset,
+		       u32 flag);
+
+struct dp_dc_res {
+	int inst;    /*! <in> dp instance */
+	int dp_port; /*! <in> dp port id/lpid/ep */
+	int res_id;  /*! <in> resource ID */
+	struct dp_dc_rx_res rx_res;  /*! <out> rx resource */
+	struct dp_dc_tx_res tx_res;  /*! <out> tx resource */
+};
+
+int dp_get_dc_config(struct dp_dc_res *res, int flag);
+
+/*!
+ *@brief dp_set_br_vlan_limit API, will initialize Bridge VLAN
+ *with how many vlanid and bridgeid supported per bridge
+ *@param[in] br_dev: Specifies bridge device to set the limit
+ *@param[in] maxvlanid: Specifies Maximum VLAN ID supported
+ *@return DP_SUCCESS on succeed and DP_FAILURE on failure
+ */
+int dp_set_br_vlan_limit(struct net_device *br_dev, u32 maxvlanid);
+
+/* Sub-Blocks user data which will be used to manipulate rule creation */
+struct dp_pce_user_data {
+	bool idx_en;	/* Enable user to request index within range */
+	u32 idx_s;	/* Requested start index */
+	u32 idx_e;	/* Requested end index */
+};
+
+/*!
+ *@brief struct dp_subblk_info to pass PCE Sub-Block Information
+ */
+struct dp_subblk_info {
+	int portid;   		/*!< [in] LPID, Used only for CTP Region */
+	int subif;    		/*!< [in] SubifIdGroup/VAP, Used only
+				 * for CTP Region
+				 */
+	bool subblk_protected;	/*!< [in] 1 - Sub-block is protected
+			         * delete will be done by user
+			         * 0 - Sub-block is Un-Protected,
+			         * delete will be done once last rule gets
+			         * deleted
+			         */
+	int subblk_id;		/*!< [in/out] Sub-Block Type ID
+				 *   while add ID will be returned back to user
+				 *   While del, ID need to be passed to API
+				 */
+	int subblk_firstidx;	/*!< [in] If not <=0, use this as first Idx to
+				 *   allocate
+				 */
+	int subblk_size;	/*!< [in] Sub-Block Size */
+	char subblk_name[32];  /*!< [in] Name for sub-block */
+	struct dp_pce_user_data *user_data; /*!< [in] Optional user data */
+};
+
+/*!
+ *@brief struct dp_pce_blk_info which contains all information needed to create
+ * block and Sub-Block
+ */
+struct dp_pce_blk_info {
+	int inst;    /*! <in> dp instance */
+	GSW_PCE_RuleRegion_t region; /*!< [in] Region CTP/Global for PCE rule */
+	/*!< different block type will have different information */
+	union {
+		struct dp_subblk_info info;	/*!< DP Sub-Block Information */
+		int dummy; /*!< For Future use */
+	};
+};
+
+/*!
+ *@brief enum DP_PCE_UPDATE which tells DPM to enable/disable or update the 
+ * PCE rule
+ */
+enum DP_PCE_RULE_UPDATE {
+	DP_PCE_RULE_NOCHANGE = 0, /*!< pce rule no change */
+	DP_PCE_RULE_EN, /*!< pce rule enable */
+	DP_PCE_RULE_DIS, /*!< pce rule disable */
+	DP_PCE_RULE_REWRITE, /*!< pce rule rewrite any pattern or action */
+};
+
+/*!
+ *@brief dp_pce_blk_create API, will add Blk, Sub-Blk and reserve
+ *@param[in] pce_blk_info: pointer to dp_pce_blk_info structure
+ *@return DP_SUCCESS on succeed and DP_FAILURE on failure
+ */
+int dp_pce_blk_create(struct dp_pce_blk_info *pce_blk_info);
+
+/*!
+ *@brief dp_pce_rule_add API, will add Blk, Sub-Blk, if not present and Pce-Rule
+ *@param[in] pce_blk_info: pointer to dp_pce_blk_info structure
+ *@param[in] pce: PCE Rule to add
+ *@return DP_SUCCESS on succeed and DP_FAILURE on failure
+ */
+int dp_pce_rule_add(struct dp_pce_blk_info *pce_blk_info,
+		    GSW_PCE_rule_t *pce);
+
+/*!
+ *@brief dp_pce_rule_del API, will delete pce-rule,
+ *Blk and Sub-Blk deleted if un-protected
+ *@param[in] pce_blk_info: pointer to dp_pce_blk_info structure
+ *@param[in] pce: PCE Rule to Delete
+ *@return DP_SUCCESS on succeed and DP_FAILURE on failure
+ */
+int dp_pce_rule_del(struct dp_pce_blk_info *pce_blk_info,
+		    GSW_PCE_ruleDelete_t *pce);
+
+/*!
+ *@brief dp_pce_rule_get Get the PCE rule inside Sub-Block
+ *@param[in] pce_blk_info: pointer to dp_pce_blk_info structure
+ *@param[in] pce: PCE Rule from sub-block will be returned back
+ *@return DP_SUCCESS on succeed and DP_FAILURE on failure
+ */
+int dp_pce_rule_get(struct dp_pce_blk_info *pce_blk_info,
+		    GSW_PCE_rule_t *pce);
+
+/*!
+ *@brief dp_pce_rule_update Update the PCE rule inside Sub-Block
+ *@param[in] pce_blk_info: pointer to dp_pce_blk_info structure
+ *@param[in] pce: PCE Rule to update
+ *@param[in] update: PCE Rule update operation Enable/Disable/ReWrite
+ *@return DP_SUCCESS on succeed and DP_FAILURE on failure
+ */
+int dp_pce_rule_update(struct dp_pce_blk_info *pce_blk_info,
+		       GSW_PCE_rule_t *pce, enum DP_PCE_RULE_UPDATE update);
+
+/*!
+ *@brief dp_pce_blk_del API, will delete Blk, Sub-Blk and all pce rules inside
+ *@param[in] pce_blk_info: pointer to dp_pce_blk_info structure
+ *@return DP_SUCCESS on succeed and DP_FAILURE on failure
+ */
+int dp_pce_blk_del(struct dp_pce_blk_info *pce_blk_info);
+
+
+/*!
+ *@brief dp_get_tx_cbm_pkt API, get CPU CQM TX counter via port_id and
+ *       subifid group
+ *@param[in] inst: dp instance
+ *@param[in] dp_port: dp port id
+ *@param[subif_id_grp] subifid group or vap
+ *@return CPU TX counter on succeed, otherise return 0
+ */
+u32 dp_get_tx_cbm_pkt(int inst, int dp_port, int subif_id_grp);
+
+/*!
+ *@brief dp_get_reinsert_cnt API, get reinsertion counter
+ *@param[in] inst: dp instance
+ *@param[in] dp_port dp port id
+ *@param[in] vap subif group or vap
+ *@param[in] flag 
+ *@param[out] dp_reins_count output of reinsertion counter
+ *@return DP_SUCCESS on succeed and DP_FAILURE on failure
+ */
+int dp_get_reinsert_cnt(int inst, int dp_port, int vap,
+				   int flag, 
+				   struct dp_reinsert_count *dp_reins_count);
+int dp_get_lct_cnt(int inst, int dp_port, int flag,
+		   u32 *lct_idx, struct dp_lct_rx_cnt *dp_lct_rx_count);
+/*!
+ *@brief dp_is_ready API, check whether DPM initialize is done or not
+ *@return true if DPM initialization done, otherwise return false;
+ */
+bool dp_is_ready(void);
+
+/* for paritial dpm feed workaround */
+int dp_late_register_ops(void);
+int dp_late_register_event_cb(void);
+int dp_late_register_tx(void);
+#endif /*CONFIG_INTEL_DATAPATH_HAL_GSWIP30*/
 #endif /*DATAPATH_API_H */
+

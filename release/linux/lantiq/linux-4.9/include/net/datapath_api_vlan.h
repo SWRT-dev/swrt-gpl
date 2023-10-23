@@ -1,15 +1,15 @@
-/*
- * Copyright (C) Intel Corporation
- * Author: Shao Guohua <guohua.shao@intel.com>
+// SPDX-License-Identifier: GPL-2.0
+/******************************************************************************
+ * Copyright (c) 2020 - 2021, MaxLinear, Inc.
+ * Copyright 2016 - 2020 Intel Corporation
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 as published
- * by the Free Software Foundation.
- */
+ ******************************************************************************/
+
 #ifndef DATAPATH_VLAN_H
 #define DATAPATH_VLAN_H
 #include <linux/if_ether.h>
 
+#if !IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP30)
 #define DP_VLAN_PATTERN_NOT_CARE -1  /*Don't care the specified pattern field,
 				      *ie, match whatever value supported
 				      */
@@ -52,6 +52,11 @@ struct dp_act_reassign {
 	int act;
 	int new_tc;             /* set new traffic class */
 	struct net_device *bp_dev;  /* BP network device where to reassign*/
+};
+
+struct dp_merge_key {
+	u64 hi;
+	u64 lo;
 };
 
 struct dp_act_vlan {
@@ -99,30 +104,44 @@ struct dp_act_vlan {
 				*  copy from recv pkt's inner tag(CP_FROM_INNER)
 				*  copy from recv pkt's outer tag(CP_FROM_OUTER)
 				*/
-	unsigned char dscp_pcp_map[64]; /* DSCP to P-bit mapping table */
+#define DP_DSCP_MAP 64
+	unsigned char dscp_pcp_map[DP_DSCP_MAP]; /*! DSCP to P-bit mapping
+						  *  for hardware table
+						  */
+	bool dscp_pcp_map_valid[DP_DSCP_MAP]; /*! DSCP to P-bit mapping
+					       *  validity table
+					       */
 	struct dp_act_reassign ract; /* VLAN reassignment action */
+	u64 sort_key; /*! Special user key used to sort rules */
+	struct dp_merge_key merge_key; /*! Special user key used to merge rules */
 };
 
 #define DP_VLAN_DEF_RULE 1
 struct dp_vlan0 {
+	int prio; /*! Base rule priority */
 	int def;		/* default rule for untagged packet */
 	struct dp_pattern_vlan outer;	/* match pattern.
 					 * only proto is valid for this case
 					 */
 	struct dp_act_vlan act; /*action once matched */
+	struct list_head list; /*! Linux linked list */
 };
 
 struct dp_vlan1 {
+	int prio; /*! Base rule priority */
 	int def;		/* default rule for 1-tag packet */
 	struct dp_pattern_vlan outer;	/*outer VLAN match pattern */
 	struct dp_act_vlan act; /*action once matched */
+	struct list_head list; /*! Linux linked list */
 };
 
 struct dp_vlan2 {
+	int prio; /*! Base rule priority */
 	int def;		/* default rule for 2-tag packet */
 	struct dp_pattern_vlan outer;	/*outer VLAN match pattern */
 	struct dp_pattern_vlan inner;	/*inner VLAN match pattern */
 	struct dp_act_vlan act; /*action once matched */
+	struct list_head list; /*! Linux linked list */
 };
 
 struct dp_tc_vlan {
@@ -143,7 +162,8 @@ struct dp_tc_vlan {
 #define DP_MULTICAST_SESSION		1  /* IGMP Multicast session only */
 #define DP_NON_MULTICAST_SESSION	2  /* Non-IGMP Multicast Session only */
 	int mcast_flag; /*normal, multicast only, or non-multicast only
-			  session */
+			 *session
+			 */
 
 	int n_vlan0, n_vlan1, n_vlan2; /*size of vlan0/vlan1/2_list*/
 	struct dp_vlan0 *vlan0_list; /* non-vlan matching rules,
@@ -151,7 +171,13 @@ struct dp_tc_vlan {
 				      */
 	struct dp_vlan1 *vlan1_list; /* single vlan matching rules */
 	struct dp_vlan2 *vlan2_list; /* double vlan matching rules */
-
+#if IS_ENABLED(CONFIG_PON_QOS)
+	struct list_head *vlan0_head; /* non-vlan matching rules,
+				       * ie, ether type matching only
+				       */
+	struct list_head *vlan1_head; /* single vlan matching rules */
+	struct list_head *vlan2_head; /* double vlan matching rules */
+#endif /* IS_ENABLED(CONFIG_PON_QOS) */
 };
 
 /* API dp_vlan_set: Asymmetric VLAN handling via TC command
@@ -183,4 +209,5 @@ struct dp_tc_vlan {
  *     tpid=specified_tpid   dei=1
  */
 int dp_vlan_set(struct dp_tc_vlan *vlan, int flag);
+#endif /* IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP3) */
 #endif /*DATAPATH_VLAN_H*/

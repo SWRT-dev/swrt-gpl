@@ -21,7 +21,7 @@
 #include <net/netlink.h>
 #include <net/sch_generic.h>
 #include <net/pkt_sched.h>
-
+#include <net/pkt_cls.h>
 
 /*	Simple Token Bucket Filter.
 	=======================================
@@ -292,6 +292,33 @@ static const struct nla_policy tbf_policy[TCA_TBF_MAX + 1] = {
 	[TCA_TBF_PBURST] = { .type = NLA_U32 },
 };
 
+static int tbf_offload(struct Qdisc *sch, u32 burst, u32 pburst, bool enable)
+{
+	struct net_device *dev = qdisc_dev(sch);
+	struct tbf_sched_data *q = qdisc_priv(sch);
+	struct tc_tbf_qopt_offload opt = {
+		.parent = sch->parent,
+		.handle = sch->handle,
+	};
+	struct tc_to_netdev tc = {.type = TC_SETUP_TBF,
+				  { .sch_tbf = &opt } };
+
+	if (!(dev->features & NETIF_F_HW_TC) || !dev->netdev_ops->ndo_setup_tc)
+		return -EOPNOTSUPP;
+
+	if (enable) {
+		opt.command = TC_TBF_REPLACE;
+		opt.set_params.rate = q->rate.rate_bytes_ps;
+		opt.set_params.prate = q->peak.rate_bytes_ps;
+		opt.set_params.burst = burst;
+		opt.set_params.pburst = pburst;
+	} else
+		opt.command = TC_TBF_DESTROY;
+
+	return dev->netdev_ops->ndo_setup_tc(dev, sch->handle, 0, &tc);
+}
+
+
 static int tbf_change(struct Qdisc *sch, struct nlattr *opt)
 {
 	int err;
@@ -404,6 +431,13 @@ static int tbf_change(struct Qdisc *sch, struct nlattr *opt)
 	memcpy(&q->peak, &peak, sizeof(struct psched_ratecfg));
 
 	sch_tree_unlock(sch);
+
+	if (tb[TCA_TBF_BURST]) {
+		tbf_offload(sch, nla_get_u32(tb[TCA_TBF_BURST]),
+		     tb[TCA_TBF_PBURST] ? nla_get_u32(tb[TCA_TBF_PBURST]) : 0,
+		     true);
+	}
+
 	err = 0;
 done:
 	return err;
@@ -428,6 +462,7 @@ static void tbf_destroy(struct Qdisc *sch)
 {
 	struct tbf_sched_data *q = qdisc_priv(sch);
 
+	tbf_offload(sch, 0, 0, false);
 	qdisc_watchdog_cancel(&q->watchdog);
 	qdisc_destroy(q->qdisc);
 }

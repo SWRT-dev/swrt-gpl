@@ -33,6 +33,7 @@ EXTRA_CFLAGS += -I$(src)/ -I$(src)/mac/
   drv_switch_api-objs   += gsw_defconf.o
   drv_switch_api-objs   += gsw_irq.o
   drv_switch_api-objs   += gsw_tbl_rw.o
+  drv_switch_api-objs   += gsw_mdio.o
 endif
 
 ifeq ($(CONFIG_X86_INTEL_CE2700),y)

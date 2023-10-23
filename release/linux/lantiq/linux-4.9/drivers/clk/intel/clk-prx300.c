@@ -9,6 +9,7 @@
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
+#include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <dt-bindings/clock/intel,prx300-clk.h>
 
@@ -30,6 +31,7 @@
 #define CGU_GATE1		0x120
 #define CGU_GATE2		0x130
 #define CGU_IF_CLK		0x140
+#define DPLL_CFG5		0x214
 
 #define PLL_DIV(x)		((x) + 0x4)
 #define PLL_SSC(x)		((x) + 0x10)
@@ -61,6 +63,7 @@ PNAME(pll_p)	= { "osc" };
 PNAME(emmc_p)	= { "emmc4", "noc4" };
 PNAME(sdio_p)	= { "sdio3", "sdio2" };
 
+static struct intel_clk_provider *early_ctx;
 static const struct intel_clk_early_data prx300_early_clks[] __initconst = {
 	{ PLL0A_CFG0, 0, 4, "earlycpu", pll_p, 0,
 	  0, 0, PLL_DIV_WIDTH,
@@ -169,16 +172,16 @@ static const struct intel_clk_branch prx300_branch_clks[] __initconst = {
 		   12, GATE_CLK_HW, 0),
 	INTEL_GATE(PRX300_GCLK_GPTC1, "g_gptc1", NULL, 0, CGU_GATE1,
 		   13, GATE_CLK_HW, 0),
-	INTEL_GATE(PRX300_GCLK_GPTC2, "g_gptc2", NULL, 0, CGU_GATE1,
-		   14, GATE_CLK_HW, 0),
-	INTEL_GATE(PRX300_GCLK_URT0, "g_uart0", NULL, 0, CGU_GATE1,
-		   17, GATE_CLK_HW, 0),
+	INTEL_GATE(PRX300_GCLK_GPTC2, "g_gptc2", NULL, CLK_IGNORE_UNUSED,
+		   CGU_GATE1, 14, GATE_CLK_HW, 0),
+	INTEL_GATE(PRX300_GCLK_URT0, "g_uart0", NULL, CLK_IGNORE_UNUSED,
+		   CGU_GATE1, 17, GATE_CLK_HW, 0),
 	INTEL_GATE(PRX300_GCLK_URT1, "g_uart1", NULL, 0, CGU_GATE1,
 		   18, GATE_CLK_HW, 0),
-	INTEL_GATE(PRX300_GCLK_SECPT, "g_secpt", NULL, 0,   CGU_GATE1,
-		   21, GATE_CLK_HW, 0),
-	INTEL_GATE(PRX300_GCLK_SCPU, "g_scpu", NULL, 0, CGU_GATE1,
-		   22, GATE_CLK_HW, 0),
+	INTEL_GATE(PRX300_GCLK_SECPT, "g_secpt", NULL, CLK_IGNORE_UNUSED,
+		   CGU_GATE1, 21, GATE_CLK_HW, 0),
+	INTEL_GATE(PRX300_GCLK_SCPU, "g_scpu", NULL, CLK_IGNORE_UNUSED,
+		   CGU_GATE1, 22, GATE_CLK_HW, 0),
 	INTEL_GATE(PRX300_GCLK_MPE, "g_mpe", NULL, 0, CGU_GATE1,
 		   23, GATE_CLK_HW, 0),
 	INTEL_GATE(PRX300_GCLK_TDM, "g_tdm", NULL, 0, CGU_GATE1,
@@ -259,25 +262,26 @@ static const struct intel_clk_ddiv_data prx300_ddiv_clks[] __initconst = {
 
 static void __init prx300_clk_init(struct device_node *np)
 {
-	struct intel_clk_provider *ctx;
 	struct regmap *map;
 
 	map = syscon_node_to_regmap(np);
 	if (IS_ERR(map))
 		return;
 
-	ctx = intel_clk_init(map, ARRAY_SIZE(prx300_early_clks));
+	early_ctx = intel_clk_init(map, ARRAY_SIZE(prx300_early_clks));
 
-	if (IS_ERR(ctx)) {
-		pr_info("ERROR\n");
+	if (IS_ERR(early_ctx)) {
+		pr_err("%s: early clock alloc ctx failed!\n", __func__);
 		regmap_exit(map);
 		return;
 	}
 
-	if (intel_clk_register_early(ctx, prx300_early_clks,
-				     ARRAY_SIZE(prx300_early_clks)))
+	if (intel_clk_register_early(early_ctx, prx300_early_clks,
+				     ARRAY_SIZE(prx300_early_clks))) {
+		kfree(early_ctx);
 		return;
-	of_clk_add_hw_provider(np, of_clk_hw_onecell_get, &ctx->clk_data);
+	}
+	of_clk_add_hw_provider(np, of_clk_hw_onecell_get, &early_ctx->clk_data);
 }
 
 CLK_OF_DECLARE_DRIVER(intel_prx300_cgu, "intel,cgu-prx300",
@@ -307,6 +311,12 @@ static int __init intel_prx300_cgu_probe(struct platform_device *pdev)
 
 	intel_clk_register_plls(ctx, prx300_pll_clks,
 				ARRAY_SIZE(prx300_pll_clks));
+	/* PON FW enables the sync (DPLL_CFG5 register configs),
+	 * After soft reboot ETH link between SFP and Paragon-X cannot be
+	 * established anymore only power-cycle of the SFP helps.
+	 * CGU driver needs to reset DPLL_CFG5 register and re-init the LJPLL3
+	 */
+	intel_set_clk_val(map, DPLL_CFG5, 0, 31, 0);
 	intel_clk_plls_parse_vco_config(ctx, prx300_pll_clks,
 					ARRAY_SIZE(prx300_pll_clks));
 	intel_clk_register_branches(ctx, prx300_branch_clks,
@@ -337,5 +347,5 @@ static int __init intel_prx300_cgu_init(void)
 {
 	return platform_driver_register(&intel_prx300_cgu_driver);
 }
-core_initcall(intel_prx300_cgu_init);
+arch_initcall(intel_prx300_cgu_init);
 

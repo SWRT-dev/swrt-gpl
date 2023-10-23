@@ -1,0 +1,484 @@
+#!/tmp/wireless/lantiq/bin/sh
+# Bring up the interfaces of a Wave radio
+# Needed object: None
+
+export PATH=/tmp/wireless/lantiq/bin/:$PATH
+script_name="$0"
+
+[ ! "$LIB_COMMON_SOURCED" ] && . /tmp/fapi_wlan_wave_lib_common.sh
+
+vap_name=$1
+up_mode=$2
+#bug!
+iwpriv $vap_name sMcastRange 1,224.0.0.0,224.0.0.0
+
+# Check if interface is AP/VAP or Endpoint
+interface_type=`check_interface_type $vap_name`
+if [ "$interface_type" = "$STA" ]
+then
+	radio_name=`get_radio_name_from_endpoint $vap_name`
+	radio_index=`find_index_from_interface_name $radio_name`
+	endpoint_name="$vap_name"
+	endpoint_index=`find_index_from_interface_name $endpoint_name`
+	interface_name="$endpoint_name"
+else
+	radio_name=${vap_name%%.*}
+	[ "$radio_name" != "$vap_name" ] && interface_type="$VAP"
+	radio_index=`find_index_from_interface_name $radio_name`
+	interface_index="$radio_index"
+	interface_name="$radio_name"
+	endpoint_suffix=${radio_name##wlan}
+	endpoint_suffix=$((endpoint_suffix+1))
+	endpoint_name="wlan${endpoint_suffix}"
+	endpoint_index=`find_index_from_interface_name $endpoint_name`
+fi
+
+restart_radio="yes"
+
+timestamp $radio_index "$script_name:$vap_name:begin"
+print2log $radio_index DEBUG "$script_name $*"
+
+# Check if a flag indicating that confs folder needs to be removed is set
+if [ -e $WAVE_DELETE_CONFS_FLAG ]
+then
+	(. $ETC_PATH/fapi_wlan_wave_factory_reset)
+	# Thw script creates the out.conf file
+	exit
+fi
+
+# Init flow with previous settings
+if [ -e "$INIT_FLAG" ] && [ -e ${USE_CURRENT_CONF}_${interface_name} ]
+then
+	echo "####### $script_name: init flow with conf from previous setting" > /dev/console
+
+	# Delete the runner file
+	rm -f ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "[ ! \"\$LIB_COMMON_SOURCED\" ] && . /tmp/fapi_wlan_wave_lib_common.sh" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+	# Go over the list of interfaces in the status of the interfaces (enabled/disabled) conf file.
+	# For disabled interfaces: rename conf files and remove related commands from OTF conf
+	# For enabled interfaces, check if enable online is true
+	# If enable online is true, check enable router flag of the VAP
+	# If enable router is false, rename conf files and remove related commands from OTF conf
+	# Create temporary script with commands to rename the conf file to original name after configuration is done
+	# If interface is the Radio interface, don't allow to disable it
+	# Output of the function is: "accesspoint_disabled endpoint_disabled" values.
+	disabled_interfaces=`up_check_and_handle_enable_disable $radio_name $interface_type $endpoint_name`
+	accesspoint_disabled=`echo $disabled_interfaces | awk '{print $1}'`
+	endpoint_disabled=`echo $disabled_interfaces | awk '{print $2}'`
+
+	# Add the commands to bring up the logger interface. Needs to be added only once
+	if [ ! -e $LOGGER_CONFIGURED_FLAG ] && [ -e $LOGGER_COMMANDS_CONF ]
+	then
+		cat $LOGGER_COMMANDS_CONF >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+		touch $LOGGER_CONFIGURED_FLAG
+	fi
+
+	echo "##### fapi_wlan_wave_up commands #####" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+	# Add radio driver pre-up commands
+	if [ ! -e ${DRIVER_PRE_UP_CONFIGURED_FLAG}_${radio_name} ]
+	then
+		up_add_pre_up_to_runner $radio_name
+		touch ${DRIVER_PRE_UP_CONFIGURED_FLAG}_${radio_name}
+	fi
+
+	# Add commands to start the EndPoint if it is enabled
+	if [ "$interface_type" = "$STA" ]
+	then
+		[ "$endpoint_disabled" = "0" ] && [ -e ${ENDPOINT_UP_CONF}_${endpoint_name}.conf ] && cat ${ENDPOINT_UP_CONF}_${endpoint_name}.conf >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	elif [ "$interface_type" = "$AP" ]
+	then
+		if [ "$accesspoint_disabled" = "0" ]
+		then
+			local_db_source RADIO
+
+			externally_managed=`db2fapi_convert boolean WaveExternallyManaged 0`
+			# Start hostapd only if externally_managed is false
+			if [ "$externally_managed" != "1" ] || [ -e ${ENABLE_HOSTAPD}_${radio_name} ]
+			then
+				[ -e ${RADIO_UP_CONF}_${radio_name}.conf ] && cat ${RADIO_UP_CONF}_${radio_name}.conf >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+				[ -e ${DRVHLPR_UP_CONF}_${radio_name}.conf ] && cat ${DRVHLPR_UP_CONF}_${radio_name}.conf >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+				[ -e ${WAIT_HOSTAPD_CONF}_${radio_name}.conf ] && cat ${WAIT_HOSTAPD_CONF}_${radio_name}.conf >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+			else
+				[ "$externally_managed" = "1" ] && echo "echo \"$script_name: externally_managed is true, not starting the hostapd\"" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+				[ ! -e ${ENABLE_HOSTAPD}_${radio_name} ] && echo "echo \"$script_name: ${ENABLE_HOSTAPD}_${radio_name} doesn't exist, not starting the hostapd\"" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+			fi
+
+			# Handle HS20
+			delete_alumnus_files=`up_add_hs20_commands_to_runner $radio_name $script_name $vap_name`
+
+			# Setup RDKB-OS radio configuration after hostapd has been started
+			[ -f ${RDKBOS_WIFI_UTIL} ] && echo "${RDKBOS_WIFI_UTIL} radio_config_up ${radio_name} > /dev/null" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+		fi
+		# Execute post-up commands of the radio VAP (even if radio is disabled)
+		up_add_ap_post_up_to_runner $radio_name $accesspoint_disabled $restart_radio
+
+		# If the flag indicating vap0 (radio) is down exists, add ifconfig down command to runner (only if it is not disabled)
+		[ -e ${CONF_DIR}/${radio_name}_down ] && [ "$accesspoint_disabled" = "1" ] && echo "ifconfig $radio_name down" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	else
+		echo "####### $script_name: up was called already for $radio_name. Nothing to do for $interface_name" > /dev/console
+		# Create the output configuration file
+		cat /dev/null > ${OUT_CONF}
+
+		# Configuration is completed successfully
+		update_conf_out "wlan_configuration_status" "success"
+		exit 0
+	fi
+
+	# Execute the runner (if exists)
+	if [ -e ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER} ]
+	then
+		chmod +x ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+		${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+		# If runner execution failed, return failure
+		if [ $? -gt 0 ]
+		then
+			# Create the output configuration file
+			cat /dev/null > ${OUT_CONF}
+			update_conf_out "wlan_configuration_status" "FAILURE"
+			# DEBUG: set debug_save_conf in fapi_wlan_wave_lib_common.sh to save the out conf file
+			[ "$debug_save_conf" ] && cp ${OUT_CONF} ${TEMP_DIR}/up_out_conf_${interface_name}
+			up_clean_and_restore $radio_name $interface_name
+			exit 1
+		fi
+	fi
+
+	# DEBUG: set debug_save_runner in fapi_wlan_wave_lib_common.sh to save the runner script
+	[ "$debug_save_runner" ] && [ -e ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER} ] && cp ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER} ${CONF_DIR}/runner_up_${interface_name}.sh
+
+	# Create the output configuration file
+	cat /dev/null > ${OUT_CONF}
+
+	update_interfaces_status $interface_name $interface_type $radio_name
+
+	# Configuration is completed successfully
+	update_conf_out "wlan_configuration_status" "success"
+	# DEBUG: set debug_save_conf in fapi_wlan_wave_lib_common.sh to save the out conf file
+	[ "$debug_save_conf" ] && cp ${OUT_CONF} ${TEMP_DIR}/up_out_conf_${interface_name}
+	print2log $radio_index DEBUG "$script_name done"
+	timestamp $radio_index "$script_name:$vap_name:done"
+	exit 0
+fi
+
+local_db_source RADIO
+
+# The fapi_wlan_wave_up script is called per-VAP but needs to be executed per radio.
+# Check if configuration is marked as "in progress" and if not, no need to do anything
+# When script is called by FW recovery action, no need to do this check
+if [ "$up_mode" != "IN_FW_RECOVERY" ]
+then
+	if [ ! -e "${CONF_IN_PROGRESS}_${radio_name}" ]
+	then
+		# Create the output configuration file
+		cat /dev/null > ${OUT_CONF}
+
+		# Configuration is completed successfully
+		update_conf_out "wlan_configuration_status" "success"
+		print2log $radio_index DEBUG "$script_name done"
+		timestamp $radio_index "$script_name:$vap_name:done"
+		# DEBUG: set debug_save_conf in fapi_wlan_wave_lib_common.sh to save the out conf file
+		[ "$debug_save_conf" ] && cp ${OUT_CONF} ${TEMP_DIR}/up_out_conf_${interface_name}
+		exit
+	fi
+
+	# The conf file indicating configuration is in progress has the pid of the current configuration flow in it
+	. ${CONF_IN_PROGRESS}_${radio_name}
+	
+	# Copy the temporary conf files instead of the existing files.
+	update_conf_files $pid
+fi
+
+# Delete the flag indicating interface is down for the VAP called
+rm -rf ${CONF_DIR}/${vap_name}_down
+
+# Delete the runner file
+rm -f ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+echo "[ ! \"\$LIB_COMMON_SOURCED\" ] && . /tmp/fapi_wlan_wave_lib_common.sh" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+# Go over the list of interfaces in the status of the interfaces (enabled/disabled) conf file.
+# For disabled interfaces: rename conf files and remove related commands from OTF conf
+# For enabled interfaces, check if enable online is true
+# If enable online is true, check enable router flag of the VAP
+# If enable router is false, rename conf files and remove related commands from OTF conf
+# Create temporary script with commands to rename the conf file to original name after configuration is done
+# If interface is the Radio interface, don't allow to disable it
+# Output of the function is: "accesspoint_disabled endpoint_disabled" values.
+disabled_interfaces=`up_check_and_handle_enable_disable $radio_name $interface_type $endpoint_name`
+accesspoint_disabled=`echo $disabled_interfaces | awk '{print $1}'`
+endpoint_disabled=`echo $disabled_interfaces | awk '{print $2}'`
+
+local_db_source SSID
+
+# TODO: remove the following function call once logger will be configured on hw_init
+# On init, add the commands to bring up the logger interface. Needs to be added only once
+if [ -e $INIT_FLAG ] && [ ! -e $LOGGER_CONFIGURED_FLAG ]
+then
+	# Read the bridge name to which the logger needs to be added
+	rtlog_bridge=`read_bridge_from_db rtlog0 $radio_index`
+	# Prepare the logger commands to be added to the runner
+	up_prepare_logger_commands $rtlog_bridge
+	cat $LOGGER_COMMANDS_CONF >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	touch $LOGGER_CONFIGURED_FLAG
+fi
+
+# If restart flag file is set:
+# Bring down the interface if restart_radio is set
+# Reconfigure hostapd if restart_radio is not set
+# Don't bring down interface on init flow
+if [ -e "${CONF_DIR}/${RESTART_FLAG}_${interface_name}" ] || [ "$up_mode" = "IN_FW_RECOVERY" ]
+then
+	# Source the restart file only if exist (when IN_FW_RECOVERY, there is no restart file)
+	[ -e "${CONF_DIR}/${RESTART_FLAG}_${interface_name}" ] && . ${CONF_DIR}/${RESTART_FLAG}_${interface_name}
+	eval restart_radio=\${restart_${radio_name}}
+	eval restart_endpoint=\${restart_${endpoint_name}}
+	# Write down commands to runner if not in recovery process and not on init flow
+	if [ "$up_mode" != "IN_FW_RECOVERY" ] && [ ! -e "$INIT_FLAG" ]
+	then
+		# Bring hostapd down only for radio interfaces changes, for VAPs, reconfigure will be called
+		# Bring supplicant down if needed
+		if [ "$restart_radio" = "yes" ] || [ "$restart_endpoint" = "yes" ]
+		then
+			(. $ETC_PATH/fapi_wlan_wave_down $interface_name "FAPI_WLAN_WAVE_UP" "$interface_type" "$endpoint_disabled" "$radio_name" "$endpoint_name" "$radio_index")
+			echo -ne "\n" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+		fi
+	fi
+
+	# Write up commands to runner
+	echo "##### fapi_wlan_wave_up commands #####" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "export PATH=/tmp/wireless/lantiq/bin/:$PATH" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	export PATH=/tmp/wireless/lantiq/bin/:$PATH
+	# Execute pre-up commands
+	if [ "$up_mode" != "IN_FW_RECOVERY" ] && [ ! -e ${DRIVER_PRE_UP_CONFIGURED_FLAG}_${radio_name} ]
+	then
+		if [ -e "$INIT_FLAG" ] || [ "$restart_radio" = "yes" ]
+		then
+			up_add_pre_up_to_runner $radio_name
+			[ -e "$INIT_FLAG" ] && touch ${DRIVER_PRE_UP_CONFIGURED_FLAG}_${radio_name}
+		fi
+	fi
+
+	# Add commands to start supplicant if EndPoint is enabled
+	if [ "$interface_type" = "$STA" ] && [ "$endpoint_disabled" = "0" ]
+	then
+		up_merge_supplicant_conf $endpoint_name
+
+		eval restart_endpoint=\${restart_${endpoint_name}}
+		if [ "$restart_endpoint" = "yes" ]
+		then
+			# If supplicant is already up, just reconfigure it
+			supplicant_running=`is_process_running wpa_supplicant_${endpoint_name}`
+			# endpoint_bridge=`db2fapi_convert regular X_LANTIQ_COM_Vendor_BridgeName $endpoint_index`
+			endpoint_bridge=`nvram get lan_ifname`
+			# Supplicant is not yet up
+			if [ $supplicant_running -eq 0 ]
+			then
+				# Read the needed parameters to start the endpoint
+				endpoint_mac=`db2fapi_convert regular MACAddress $endpoint_index`
+				radio_mac=`db2fapi_convert regular MACAddress $radio_index`
+
+				local_db_source ACCESSPOINT
+				local_db_source ENDPOINT
+
+				wds=`db2fapi_convert boolean X_LANTIQ_COM_Vendor_WaveEndPointWDS $endpoint_index`
+				fastpath_enabled=`db2fapi_convert boolean WaveFastpathEnabled $radio_index`
+				ppa_enabled=`db2fapi_convert boolean PPAEnable $radio_index`
+				acceleration_enabled="0"
+				if [ "$fastpath_enabled" = "1" ] || [ "$ppa_enabled" = "1" ]
+				then
+					acceleration_enabled="1"
+				fi
+				up_add_start_endpoint_to_runner $endpoint_name $endpoint_mac $radio_mac $script_name $endpoint_bridge $wds $acceleration_enabled
+			# Supplicant is up already, just reconfigure it
+			else
+				up_reconfigure_endpoint $endpoint_name $endpoint_bridge
+			fi
+		fi
+	fi
+
+	if [ "$interface_type" != "$STA" ]
+	then
+		# If the radio AP is disabled, don't start hostapd
+		if [ "$accesspoint_disabled" = "0" ]
+		then
+			atf_ena=`db2fapi_convert boolean WaveAtfEnabled $interface_index`
+			vap_ena=`db2fapi_convert boolean WaveAtfVapEnabled $interface_index`
+			up_merge_hostapd_confs $radio_name $atf_ena $vap_ena
+
+			# Start hostapd only if externally_managed is false
+			externally_managed=`db2fapi_convert boolean WaveExternallyManaged 0`
+			if [ "$externally_managed" != "1" ] || [ -e ${ENABLE_HOSTAPD}_${radio_name} ]
+			then
+				enable_hostapd_logs=`db2fapi_convert boolean WaveEnableHostapdLogs $interface_index`
+				up_add_start_ap_to_runner $radio_name $script_name $enable_hostapd_logs $restart_radio
+				if [ "$up_mode" != "IN_FW_RECOVERY" ] && [ "$restart_radio" = "yes" ]
+				then
+					up_add_start_drvhlpr_to_runner $radio_name
+				fi
+				up_add_wait_for_hostapd_to_runner $radio_name
+			else
+				[ "$externally_managed" = "1" ] && echo "echo \"$script_name: externally_managed is true, not starting the hostapd\"" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+				[ ! -e ${ENABLE_HOSTAPD}_${radio_name} ] && echo "echo \"$script_name: ${ENABLE_HOSTAPD}_${radio_name} doesn't exist, not starting the hostapd\"" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+			fi
+		
+			# Copy commands that need to be executed only once to the runner and delete the conf files for these commands
+			up_add_single_execute_to_runner $radio_name
+
+			# Handle HS20
+			delete_alumnus_files=`up_add_hs20_commands_to_runner $radio_name $script_name $vap_name`
+
+			# Setup RDKB-OS radio configuration after hostapd has been started
+			[ -f ${RDKBOS_WIFI_UTIL} ] && echo "${RDKBOS_WIFI_UTIL} radio_config_up ${radio_name} > /dev/null" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+		fi
+		# Copy post-up driver commands to the runner (otf commands)
+		up_add_ap_post_up_to_runner $radio_name $accesspoint_disabled $restart_radio
+	fi
+	# Delete the restart flag
+	rm -f ${CONF_DIR}/${RESTART_FLAG}_${interface_name} ${CONF_DIR}/${RESTART_DRVHLPR_FLAG}_${radio_name}
+	print2log $radio_index NON_OTF_PARAM "$script_name:remove the restart flags for $interface_name"
+else
+	if [ "$interface_type" = "$STA" ] && [ "$endpoint_disabled" = "0" ]
+	then
+		up_merge_supplicant_conf $endpoint_name
+		# endpoint_bridge=`db2fapi_convert regular X_LANTIQ_COM_Vendor_BridgeName $endpoint_index`
+		endpoint_bridge=`nvram get lan_ifname`
+		up_reconfigure_endpoint $endpoint_name $endpoint_bridge
+	fi
+	if [ "$interface_type" != "$STA" ] && [ "$accesspoint_disabled" = "0" ]
+	then
+		radio_enabled=`db2fapi_convert boolean Enable $radio_index`
+		if [ $radio_enabled -eq 0 ]
+		then
+			# Remove interface related hostapd softlinks
+			echo "rm -f /tmp/hostapd_${radio_name}" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+			echo "rm -f /tmp/hostapd_cli_${radio_name}" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+		fi
+		# If interface is up, execute OTF commands or do nothing if no OTF file exists
+		if [ -e ${CONF_DIR}/${OTF_CONFIG_FILE} ]
+		then
+			echo -ne "\n" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+			echo "##### fapi_wlan_wave_up commands #####" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+			echo -ne "\n" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+			# if atf otf command was set merge files before run the hostapd_cli atf command.
+			echo "ATF:OTF merge files ${radio_name}" >> /dev/console
+			[ `check_atf_param_changed atf ${CONF_DIR}/${OTF_CONFIG_FILE}` = "1" ] && merge_atf_conf_file $radio_name
+
+			echo "### AccessPoint OTF commands ###" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+			cat ${CONF_DIR}/${OTF_CONFIG_FILE} >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+		fi
+	fi
+	if [ "$interface_type" != "$STA" ] && [ "$accesspoint_disabled" = "1" ]
+	then
+		# If the radio AP is disabled, execute post-up commands of the radio VAP
+		up_add_ap_post_up_to_runner $radio_name $accesspoint_disabled $restart_radio
+	fi
+	# Delete DRIVER_SINGLE_CALL_CONFIG_FILE since the commands in it are already in OTF file
+	rm -f $CONF_DIR/*${DRIVER_SINGLE_CALL_CONFIG_FILE}_${interface_name}*
+fi
+
+# Delete ALUMNUS_HS20_CONFIG_FILE since the commands in it are already in OTF file
+[ "$delete_alumnus_files" = "1" ] && [ "$interface_type" != "$STA" ] && rm -f ${CONF_DIR}/${ALUMNUS_HS20_CONFIG_FILE}_${radio_name}*
+
+if [ "$interface_type" != "$STA" ]
+then
+	# If the flag indicating vap0 (radio) is down exists, add ifconfig down command to runner (only if it is not disabled)
+	[ -e ${CONF_DIR}/${radio_name}_down ] && [ "$accesspoint_disabled" = "1" ] && echo "ifconfig $radio_name down" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+fi
+
+# Execute the runner (if exists)
+if [ -e ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER} ]
+then
+	chmod +x ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	# If runner execution failed, return failure
+	if [ $? -gt 0 ]
+	then
+		# Create the output configuration file
+		cat /dev/null > ${OUT_CONF}
+		update_conf_out "wlan_configuration_status" "FAILURE"
+		# DEBUG: set debug_save_conf in fapi_wlan_wave_lib_common.sh to save the out conf file
+		[ "$debug_save_conf" ] && cp ${OUT_CONF} ${TEMP_DIR}/up_out_conf_${interface_name}
+		up_clean_and_restore $radio_name $interface_name
+		exit 1
+	fi
+fi
+
+up_clean_and_restore $radio_name $interface_name
+
+# DEBUG: set debug_save_runner in fapi_wlan_wave_lib_common.sh to save the runner script
+[ "$debug_save_runner" ] && [ -e ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER} ] && cp ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER} ${CONF_DIR}/runner_up_${interface_name}.sh
+
+# Set flag indication to use saved conf files after reboot
+[ -e "$INIT_FLAG" ] && touch ${USE_CURRENT_CONF}_${interface_name}
+
+# Create the output configuration file
+cat /dev/null > ${OUT_CONF}
+
+# When no on init:
+# For EndPoint, if the CONNECT flag is set, check if STA got connected within ENDPOINT_CONNECTION_TIMEOUT seconds, if not - fail
+if [ "$interface_type" = "$STA" ] && [ -e "${CONNECT_FLAG}_${endpoint_name}" ] && [ ! -e "$INIT_FLAG" ]
+then
+	# Set the repeater flag to indicate APs that we are in repeater mode
+	touch ${REPEATER_FLAG}_${endpoint_name}
+	print2log $radio_index DEBUG "$script_name: ${CONNECT_FLAG}_${endpoint_name} was found, checking connection status"
+	rm -f ${CONNECT_FLAG}_${endpoint_name}
+	connection_timeout=0
+	max_timout=$ENDPOINT_CONNECTION_TIMEOUT
+	connection_status=`wpa_cli -i${endpoint_name} status | grep "wpa_state=COMPLETED" -c`
+	while [ $connection_status -eq 0 ] && [ $connection_timeout -lt $max_timout ]
+	do
+		sleep 1
+		connection_status=`wpa_cli -i${endpoint_name} status | grep "wpa_state=COMPLETED" -c`
+		echo "Waiting for connection to be established on $endpoint_name" > /dev/console
+		connection_timeout=$((connection_timeout+1))
+	done
+	if [ $connection_status -eq 0 ]
+	then
+		update_conf_out "wlan_configuration_status" "FAILURE"
+		print2log $radio_index ERROR "$script_name: failed to connect $endpoint_name, profile is removed"
+		# Delete content of profile conf file
+		cat /dev/null > ${CONF_DIR}/${SUPPLICANT_PROFILE_CONF_PREFIX}_${endpoint_name}.conf
+		cat ${CONF_DIR}/${SUPPLICANT_CONFIGURATION_CONF_PREFIX}_${endpoint_name}.conf > ${CONF_DIR}/${SUPPLICANT_CONF_PREFIX}_${endpoint_name}.conf
+		# For WISP, disable the supplicant. For client mode, reconfigure supplicant
+		if [ "$endpoint_bridge" = "None" ]
+		then
+			# Delete the runner file
+			rm -f ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+			echo "[ ! \"\$LIB_COMMON_SOURCED\" ] && . /tmp/fapi_wlan_wave_lib_common.sh" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+			(. $ETC_PATH/fapi_wlan_wave_down $interface_name "FAPI_WLAN_WAVE_UP" "$STA" "1" "$radio_name" "$endpoint_name" "$radio_index")
+			chmod +x ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+			${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+		else
+			wpa_cli -i${endpoint_name} reconfigure
+		fi
+		# DEBUG: set debug_save_conf in fapi_wlan_wave_lib_common.sh to save the out conf file
+		[ "$debug_save_conf" ] && cp ${OUT_CONF} ${TEMP_DIR}/up_out_conf_${interface_name}
+		print2log $radio_index DEBUG "$script_name done"
+		timestamp $radio_index "$script_name:$vap_name:done"
+		# DEBUG: set debug_save_conf in fapi_wlan_wave_lib_common.sh to save the out conf file
+		[ "$debug_save_conf" ] && cp ${OUT_CONF} ${TEMP_DIR}/up_out_conf_${interface_name}
+		exit
+	fi
+fi
+
+# If EndPoint is disabled, remove repeater flag
+if [ "$interface_type" = "$STA" ] && [ "$endpoint_disabled" = "1" ]
+then
+	rm -f ${REPEATER_FLAG}_${endpoint_name}
+fi
+
+update_interfaces_status $interface_name $interface_type $radio_name
+
+# Configuration is completed successfully
+update_conf_out "wlan_configuration_status" "success"
+
+# Call the script to compare between the driver, FW, progmodels version in version.sh and in driver /proc
+# Call is done only in init flow
+[ -e ${INIT_FLAG} ] && [ "$interface_type" != "$STA" ] && (. ${ETC_PATH}/fapi_wlan_wave_check_overlay.sh &)
+
+# DEBUG: set debug_save_conf in fapi_wlan_wave_lib_common.sh to save the out conf file
+[ "$debug_save_conf" ] && cp ${OUT_CONF} ${TEMP_DIR}/up_out_conf_${interface_name}
+
+print2log $radio_index DEBUG "$script_name done"
+timestamp $radio_index "$script_name:$vap_name:done"

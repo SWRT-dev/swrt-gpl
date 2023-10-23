@@ -253,9 +253,35 @@ int32_t (*ppa_check_if_netif_fastpath_fn)(PPA_NETIF *, char *, uint32_t) = NULL;
 int32_t (*ppa_hook_disconn_if_fn)(PPA_NETIF *, PPA_DP_SUBIF *, uint8_t *, uint32_t) = NULL;
 
 #if defined(WMM_QOS_CONFIG) && WMM_QOS_CONFIG
-int32_t (*ppa_register_qos_class2prio_hook_fn)(int32_t, PPA_NETIF *, PPA_QOS_CLASS2PRIO_CB, uint32_t) = NULL;
-#endif
-#endif
+static RAW_NOTIFIER_HEAD(ppa_event_chain);
+
+int ppa_register_event_notifier(struct notifier_block *nb)
+{
+	return raw_notifier_chain_register(&ppa_event_chain, nb);
+}
+EXPORT_SYMBOL(ppa_register_event_notifier);
+
+int ppa_unregister_event_notifier(struct notifier_block *nb)
+{
+	return raw_notifier_chain_unregister(&ppa_event_chain, nb);
+}
+EXPORT_SYMBOL(ppa_unregister_event_notifier);
+
+int ppa_call_class2prio_notifiers(unsigned long val,
+				  s32 port_id, PPA_NETIF *dev,
+				  u8 class2prio[MAX_TC_NUM])
+{
+	struct ppa_class2prio_notifier_info info;
+
+	info.port_id = port_id;
+	info.dev = dev;
+	memcpy(info.class2prio, class2prio, (sizeof(u8) * MAX_TC_NUM));
+
+	return raw_notifier_call_chain(&ppa_event_chain, val, &info);
+}
+EXPORT_SYMBOL(ppa_call_class2prio_notifiers);
+#endif /* WMM_QOS_CONFIG */
+#endif /* CONFIG_PPA_API_DIRECTCONNECT */
 
 #if IS_ENABLED(CONFIG_PPA_API_DIRECTPATH)
 int32_t (*ppa_directpath_port_add_fn)(void) = NULL;
@@ -370,6 +396,8 @@ int32_t (*ppa_hook_get_ifid_for_netif_fn)(PPA_NETIF *) = NULL;
 uint32_t (*ppa_is_ipv4_gretap_fn)(struct net_device *dev) = NULL;
 uint32_t (*ppa_is_ipv6_gretap_fn)(struct net_device *dev) = NULL;
 
+uint32_t (*ppa_is_vxlan_fn)(struct net_device *dev) = NULL;
+
 /*PPP related functions */
 /* ppp_generic.c will register function for getting ppp info once the ppp.ko is insmoded */
 int32_t (*ppa_ppp_get_chan_info_fn)(struct net_device *ppp_dev, struct ppp_channel **chan) = NULL;
@@ -396,11 +424,6 @@ int32_t (*ppa_hook_set_qos_wfq)(uint32_t portid, uint32_t queueid, uint32_t weig
 int32_t (*ppa_hook_get_qos_wfq)(uint32_t portid, uint32_t queueid, uint32_t *weight_level, uint32_t flag) = NULL;
 int32_t (*ppa_hook_reset_qos_wfq)(uint32_t portid, uint32_t queueid, uint32_t flag) = NULL;
 #endif /*end of CONFIG_PPA_QOS*/
-
-int32_t (*qos_mgr_hook_setup_tc)(struct net_device *dev, u32 handle, __be16 protocol, struct tc_to_netdev *tc) = NULL;
-
-int32_t (*qos_mgr_hook_setup_tc_ext)(struct net_device *dev, u32 handle, __be16 protocol, struct tc_to_netdev *tc, int32_t deq_idx, int32_t port_id) = NULL;
-EXPORT_SYMBOL(qos_mgr_hook_setup_tc_ext);
 
 #ifdef CONFIG_INTEL_IPQOS_MARK_SKBPRIO
 /*
@@ -486,9 +509,6 @@ EXPORT_SYMBOL(ppa_hook_get_netif_accel_stats_fn);
 #if IS_ENABLED(CONFIG_PPA_API_DIRECTCONNECT)
 EXPORT_SYMBOL(ppa_check_if_netif_fastpath_fn);
 EXPORT_SYMBOL(ppa_hook_disconn_if_fn);
-#if defined(WMM_QOS_CONFIG) && WMM_QOS_CONFIG
-EXPORT_SYMBOL(ppa_register_qos_class2prio_hook_fn);
-#endif
 #endif
 
 #if IS_ENABLED(CONFIG_PPA_API_DIRECTPATH)
@@ -517,6 +537,7 @@ EXPORT_SYMBOL(ppa_check_pppoe_addr_valid_fn);
 EXPORT_SYMBOL(ppa_ppp_get_chan_info_fn);
 EXPORT_SYMBOL(ppa_is_ipv4_gretap_fn);
 EXPORT_SYMBOL(ppa_is_ipv6_gretap_fn);
+EXPORT_SYMBOL(ppa_is_vxlan_fn);
 EXPORT_SYMBOL(ppa_get_pppol2tp_info_fn);
 EXPORT_SYMBOL(ppa_if_is_ipoa_fn);
 EXPORT_SYMBOL(ppa_if_is_br2684_fn);
@@ -537,7 +558,6 @@ EXPORT_SYMBOL(ppa_hook_set_qos_wfq);
 EXPORT_SYMBOL(ppa_hook_get_qos_wfq);
 EXPORT_SYMBOL(ppa_hook_reset_qos_wfq);
 #endif /*end of CONFIG_PPA_QOS*/
-EXPORT_SYMBOL(qos_mgr_hook_setup_tc);
 
 #if IS_ENABLED(CONFIG_PPA_API_SW_FASTPATH)
 EXPORT_SYMBOL(ppa_hook_set_sw_fastpath_enable_fn);
@@ -873,7 +893,40 @@ static unsigned int ppa_qos_postrt_hook_fn(void *priv,
 	return NF_ACCEPT;
 }
 
+static unsigned int ppa_qos_prert_hook_fn(void *priv,
+		struct sk_buff *skb,
+		const struct nf_hook_state *state)
+{
+	uint32_t qos_priority;
+	struct dma_rx_desc_1 *desc_1 = (struct dma_rx_desc_1 *)&skb->DW1;
+
+#if IS_ENABLED(CONFIG_INTEL_IPQOS_MARK_SKBPRIO)
+	if (desc_1->field.classid != skb->priority) {
+		skb->priority = desc_1->field.classid;
+	}
+	qos_priority = skb->priority + 1;
+#if IS_ENABLED(CONFIG_NETWORK_EXTMARK)
+	SET_DATA_FROM_MARK_OPT(skb->extmark, QUEPRIO_MASK, QUEPRIO_START_BIT_POS, qos_priority );
+#endif
+#endif
+	return NF_ACCEPT;
+}
+
 static struct nf_hook_ops qos_hook_ops[] __read_mostly = {
+	/* hook for pre-routing ipv4 packets */
+	{
+		.hook		= ppa_qos_prert_hook_fn,
+		.hooknum	= 0, /*NF_IP_PRE_ROUTING*/
+		.pf		= PF_INET,
+		.priority	= NF_IP_PRI_LAST,
+	},
+	/* hook for pre-routing ipv6 packets */
+	{
+		.hook		= ppa_qos_prert_hook_fn,
+		.hooknum	= 0, /*NF_IP_PRE_ROUTING*/
+		.pf		= PF_INET6,
+		.priority	= NF_IP_PRI_LAST,
+	},
 	/* hook for post-routing ipv4 packets */
 	{
 		.hook		= ppa_qos_postrt_hook_fn,
@@ -941,14 +994,44 @@ static unsigned int ppa_qos_br_prert_hook_fn(void *priv,
 					     struct sk_buff *skb,
 					     const struct nf_hook_state *state)
 {
-	u16 vlan_id = skb_vlan_tag_get_id(skb);
+	u16 vlan_id = 0;
+	u16 vprio = 0;
 	u16 vlan_tci = skb->vlan_tci;
-	u32 vprio = (vlan_tci >> VLAN_PRIO_SHIFT);
-	SET_DATA_FROM_MARK_OPT(skb->extmark, VLANID_MASK,
-				VLANID_START_BIT_POS, vlan_id);
-	SET_DATA_FROM_MARK_OPT(skb->extmark, VPRIO_MASK,
-				VPRIO_START_BIT_POS, vprio);
-	
+	struct dma_rx_desc_1 *desc_1 = (struct dma_rx_desc_1 *)&skb->DW1;
+
+	/* In case of trunk vlan, vlan is stripped off before
+	 * reaching this hook so get the vlan from netdevice
+	 */
+	if (skb->dev->priv_flags & IFF_802_1Q_VLAN) {
+		/* In case of trunk VLAN, skb priority which has
+		 * PCE traffic class is overwrittten by pcp-qos map
+		 * so copy class back to skb priority
+		 */
+		if (desc_1->field.classid) {
+			skb->priority = desc_1->field.classid;
+		} else {
+			vlan_id = vlan_dev_vlan_id(skb->dev);
+			vprio = skb->priority;
+			SET_DATA_FROM_MARK_OPT(skb->extmark, VLANID_MASK,
+					       VLANID_START_BIT_POS, vlan_id);
+			SET_DATA_FROM_MARK_OPT(skb->extmark, VPRIO_MASK,
+					       VPRIO_START_BIT_POS, vprio);
+			/* skb priority is used to identify PCE classified
+			 * packets. since this prioirty is coming from pcp-qos
+			 * mapping so clearing it.
+			 */
+			skb->extmark |= CPU_CLASSIFICATION_MASK;
+		}
+	} else {
+		/* In case of PCE classification skb priority is set
+		 * and that will be considered for final QoS. else
+		 * PCP is copied into extmark, IPtables rule is used
+		 * to do final QoS.
+		 */
+		vprio = (vlan_tci >> VLAN_PRIO_SHIFT);
+		SET_DATA_FROM_MARK_OPT(skb->extmark, VPRIO_MASK,
+				       VPRIO_START_BIT_POS, vprio);
+	}
 	return NF_ACCEPT;
 }
 #endif

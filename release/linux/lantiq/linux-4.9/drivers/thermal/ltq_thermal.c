@@ -26,6 +26,7 @@
 #include <linux/thermal.h>
 #include <linux/regmap.h>
 #include <linux/mfd/syscon.h>
+#include <linux/reboot.h>
 
 #include  "thermal_core.h"
 
@@ -38,25 +39,19 @@ struct ltq_thermal_sensor_ops {
 
 struct ltq_thermal_sensor {
 	int id;
-
 	struct thermal_zone_device *tzd;
-
 	const struct ltq_thermal_sensor_ops *ops;
-
 	int temp;
 	int last_temp;
 	int emul_temp;
-
 	void *drvdata;
 };
 
 struct ltq_thermal {
-	struct regmap	*chiptop;
-
-	struct device *dev;
-
-	struct ltq_thermal_sensor *sensors;
-	int count;
+	struct regmap			*chiptop;
+	struct device			*dev;
+	struct ltq_thermal_sensor	*sensors;
+	int				count;
 };
 
 #define CTRL_REG  0x100
@@ -84,21 +79,21 @@ struct ltq_thermal {
 #define INT_LVL			0xFFFF0000
 
 /* Temp sensor data (read out) register */
-#define	TS_CODE		0x00000FFF
-#define	TS_DV		0x80000000
+#define	TS_CODE			0x00000FFF
+#define	TS_DV			0x80000000
 
-#define TS_REG_OFF			0x10U
-#define INT_LVL_POS			16
+#define TS_REG_OFF		0x10U
+#define INT_LVL_POS		16
 #define PRX300_TS_CODE		0x3FFu
 #define VSAMPLE_MASK		0x4
-#define VSAMPLE_V			0x4
-#define VSMPLE_NV			0x0
+#define VSAMPLE_V		0x4
+#define VSMPLE_NV		0x0
 #define CTRL_REG_ID(__X__)	(CTRL_REG + ((__X__) * TS_REG_OFF))
 #define DATA_REG_ID(__X__)	(DATA_REG + ((__X__) * TS_REG_OFF))
-#define TIMEOUT				1000
-#define ETEMPINVAL			-255
+#define TIMEOUT			1000
+#define ETEMPINVAL		255
 
-void ltq_prx300_init(struct ltq_thermal_sensor *sensor)
+static void ltq_prx300_init(struct ltq_thermal_sensor *sensor)
 {
 	struct ltq_thermal *priv = sensor->drvdata;
 
@@ -109,7 +104,7 @@ static int ltq_prx300_get_temp(struct ltq_thermal_sensor *sensor)
 {
 	struct ltq_thermal *priv = sensor->drvdata;
 	u32 val;
-	int ts_val = ETEMPINVAL;
+	int ts_val = -ETEMPINVAL;
 	int a0 = -49;
 	int v1 = 10;
 	int v2 = 1000;
@@ -117,9 +112,9 @@ static int ltq_prx300_get_temp(struct ltq_thermal_sensor *sensor)
 	if (!priv)
 		return ts_val;
 
-	/* Select a channel */
-	regmap_update_bits(priv->chiptop, CTRL_REG_ID(sensor->id),
-			   SOC_MASK | VSAMPLE_MASK, SOC_NC | VSMPLE_NV);
+	/* configure to temp channel */
+	regmap_write(priv->chiptop, CTRL_REG_ID(sensor->id),
+		     SOC_NC | VSMPLE_NV);
 
 	/* Converted data availability */
 	if (regmap_read_poll_timeout(priv->chiptop, DATA_REG_ID(sensor->id),
@@ -151,7 +146,7 @@ static int ltq_prx300_get_temp(struct ltq_thermal_sensor *sensor)
 	return (ts_val / 1000); /* returns °mC */
 }
 
-void  ltq_grx500_init(struct ltq_thermal_sensor *sensor)
+static void  ltq_grx500_init(struct ltq_thermal_sensor *sensor)
 {
 	struct ltq_thermal *priv = sensor->drvdata;
 
@@ -177,7 +172,7 @@ void  ltq_grx500_init(struct ltq_thermal_sensor *sensor)
 			   SOC_NC | TS_EN_SHUNT);
 }
 
-int ltq_grx500_get_temp(struct ltq_thermal_sensor *sensor)
+static int ltq_grx500_get_temp(struct ltq_thermal_sensor *sensor)
 {
 	u32 reg;
 	int T, v;
@@ -188,7 +183,7 @@ int ltq_grx500_get_temp(struct ltq_thermal_sensor *sensor)
 	struct ltq_thermal *priv = sensor->drvdata;
 
 	if (!priv)
-		return -EINVAL;
+		return -ETEMPINVAL;
 
 	/* Select a channel */
 	regmap_update_bits(priv->chiptop, CTRL_REG, CH_SEL_MASK,
@@ -207,7 +202,7 @@ int ltq_grx500_get_temp(struct ltq_thermal_sensor *sensor)
 			   SOC_NC | TS_EN_SHUNT);
 
 	if (ret)
-		return -EIO;  /* temp read timeouted */
+		return -ETEMPINVAL;  /* temp read timeout */
 
 	v = reg & TS_CODE;
 
@@ -274,12 +269,6 @@ static int ltq_thermal_get_trend(void *data, int trip,
 		*trend = THERMAL_TREND_RAISING;
 	else if (temp < last_temp && temp <= (trip_temp - trip_hyst))
 		*trend = THERMAL_TREND_DROPPING;
-/*
-	else if (temp < last_temp && temp > (trip_temp - trip_hyst))
-		*trend = THERMAL_TREND_DROPPING;
-	else if (temp < last_temp && temp <= (trip_temp - trip_hyst))
-		*trend = THERMAL_TREND_DROP_FULL;
-*/		
 	else
 		*trend = THERMAL_TREND_STABLE;
 
@@ -294,6 +283,22 @@ static int ltq_thermal_set_emul_temp(void *data, int temp)
 		return -EINVAL;
 
 	sensor->emul_temp = temp;
+
+	return 0;
+}
+
+static int ltq_thermal_notify(struct thermal_zone_device *zone,
+			      int trip, enum thermal_trip_type type)
+{
+	switch (type) {
+	case THERMAL_TRIP_HOT:
+		dev_warn(&zone->device,
+			 "Thermal reach critical tempt. Trigger sys reset\n");
+		emergency_restart();
+		break;
+	default:
+		break;
+	}
 
 	return 0;
 }
@@ -369,9 +374,17 @@ static int ltq_thermal_probe(struct platform_device *pdev)
 				"Failed to register tzd for sensor id %d\n", i);
 			return PTR_ERR(sensor->tzd);
 		}
+
+		if (sensor->tzd->ops) {
+			sensor->tzd->ops->notify = ltq_thermal_notify;
+		} else {
+			dev_err(&pdev->dev,
+				"Failed to register notify cb\n");
+			return PTR_ERR(sensor->tzd->ops);
+		}
 	}
 
-	dev_dbg(&pdev->dev, "%s: tzd registered\n", __func__);
+	dev_info(&pdev->dev, "%s: is done\n", __func__);
 
 	return 0;
 }

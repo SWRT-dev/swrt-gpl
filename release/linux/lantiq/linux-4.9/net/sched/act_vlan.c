@@ -69,13 +69,17 @@ static int tcf_vlan(struct sk_buff *skb, const struct tc_action *a,
 			if (err)
 				goto drop;
 		}
-		/* replace the vid */
-		tci = (tci & ~VLAN_VID_MASK) | v->tcfv_push_vid;
+		/* replace the vid if specified*/
+		if (v->tcfv_push_flags & ACTVLAN_PUSH_F_ID)
+			tci = (tci & ~VLAN_VID_MASK) | v->tcfv_push_vid;
 		/* replace prio bits, if tcfv_push_prio specified */
-		if (v->tcfv_push_prio) {
+		if (v->tcfv_push_flags & ACTVLAN_PUSH_F_PRIO) {
 			tci &= ~VLAN_PRIO_MASK;
 			tci |= v->tcfv_push_prio << VLAN_PRIO_SHIFT;
 		}
+		/* keep protocol if not specified */
+		if (!(v->tcfv_push_flags & ACTVLAN_PUSH_F_PROTO))
+			v->tcfv_push_proto = skb->vlan_proto;
 		/* put updated tci as hwaccel tag */
 		__vlan_hwaccel_put_tag(skb, v->tcfv_push_proto, tci);
 		break;
@@ -103,6 +107,20 @@ static const struct nla_policy vlan_policy[TCA_VLAN_MAX + 1] = {
 	[TCA_VLAN_PUSH_VLAN_PRIORITY]	= { .type = NLA_U8 },
 };
 
+static bool tcf_vlan_parm_ok(int v_act, struct nlattr **tb)
+{
+	if (v_act == TCA_VLAN_ACT_PUSH && !tb[TCA_VLAN_PUSH_VLAN_ID])
+		return false;
+
+	if (v_act == TCA_VLAN_ACT_MODIFY &&
+	    !tb[TCA_VLAN_PUSH_VLAN_ID] &&
+	    !tb[TCA_VLAN_PUSH_VLAN_PROTOCOL] &&
+	    !tb[TCA_VLAN_PUSH_VLAN_PRIORITY])
+		return false;
+
+	return true;
+}
+
 static int tcf_vlan_init(struct net *net, struct nlattr *nla,
 			 struct nlattr *est, struct tc_action **a,
 			 int ovr, int bind)
@@ -115,6 +133,7 @@ static int tcf_vlan_init(struct net *net, struct nlattr *nla,
 	__be16 push_vid = 0;
 	__be16 push_proto = 0;
 	u8 push_prio = 0;
+	u8 push_flags = 0;
 	bool exists = false;
 	int ret = 0, err;
 
@@ -127,7 +146,11 @@ static int tcf_vlan_init(struct net *net, struct nlattr *nla,
 
 	if (!tb[TCA_VLAN_PARMS])
 		return -EINVAL;
+
 	parm = nla_data(tb[TCA_VLAN_PARMS]);
+	if (!tcf_vlan_parm_ok(parm->v_action, tb))
+		return -EINVAL;
+
 	exists = tcf_hash_check(tn, parm->index, a, bind);
 	if (exists && bind)
 		return 0;
@@ -137,18 +160,10 @@ static int tcf_vlan_init(struct net *net, struct nlattr *nla,
 		break;
 	case TCA_VLAN_ACT_PUSH:
 	case TCA_VLAN_ACT_MODIFY:
-		if (!tb[TCA_VLAN_PUSH_VLAN_ID]) {
-			if (exists)
-				tcf_hash_release(*a, bind);
-			return -EINVAL;
+		if (tb[TCA_VLAN_PUSH_VLAN_ID]) {
+			push_vid = nla_get_u16(tb[TCA_VLAN_PUSH_VLAN_ID]);
+			push_flags |= ACTVLAN_PUSH_F_ID;
 		}
-		push_vid = nla_get_u16(tb[TCA_VLAN_PUSH_VLAN_ID]);
-		if (push_vid >= VLAN_VID_MASK) {
-			if (exists)
-				tcf_hash_release(*a, bind);
-			return -ERANGE;
-		}
-
 		if (tb[TCA_VLAN_PUSH_VLAN_PROTOCOL]) {
 			push_proto = nla_get_be16(tb[TCA_VLAN_PUSH_VLAN_PROTOCOL]);
 			switch (push_proto) {
@@ -158,12 +173,14 @@ static int tcf_vlan_init(struct net *net, struct nlattr *nla,
 			default:
 				return -EPROTONOSUPPORT;
 			}
+			push_flags |= ACTVLAN_PUSH_F_PROTO;
 		} else {
 			push_proto = htons(ETH_P_8021Q);
 		}
-
-		if (tb[TCA_VLAN_PUSH_VLAN_PRIORITY])
+		if (tb[TCA_VLAN_PUSH_VLAN_PRIORITY]) {
 			push_prio = nla_get_u8(tb[TCA_VLAN_PUSH_VLAN_PRIORITY]);
+			push_flags |= ACTVLAN_PUSH_F_PRIO;
+		}
 		break;
 	default:
 		if (exists)
@@ -193,6 +210,7 @@ static int tcf_vlan_init(struct net *net, struct nlattr *nla,
 	v->tcfv_push_vid = push_vid;
 	v->tcfv_push_prio = push_prio;
 	v->tcfv_push_proto = push_proto;
+	v->tcfv_push_flags = push_flags;
 
 	v->tcf_action = parm->action;
 
@@ -220,14 +238,20 @@ static int tcf_vlan_dump(struct sk_buff *skb, struct tc_action *a,
 	if (nla_put(skb, TCA_VLAN_PARMS, sizeof(opt), &opt))
 		goto nla_put_failure;
 
-	if ((v->tcfv_action == TCA_VLAN_ACT_PUSH ||
-	     v->tcfv_action == TCA_VLAN_ACT_MODIFY) &&
-	    (nla_put_u16(skb, TCA_VLAN_PUSH_VLAN_ID, v->tcfv_push_vid) ||
-	     nla_put_be16(skb, TCA_VLAN_PUSH_VLAN_PROTOCOL,
-			  v->tcfv_push_proto) ||
-	     (nla_put_u8(skb, TCA_VLAN_PUSH_VLAN_PRIORITY,
-					      v->tcfv_push_prio))))
-		goto nla_put_failure;
+	if (v->tcfv_action == TCA_VLAN_ACT_PUSH ||
+	    v->tcfv_action == TCA_VLAN_ACT_MODIFY) {
+		if (v->tcfv_push_flags & ACTVLAN_PUSH_F_ID &&
+		    nla_put_u16(skb, TCA_VLAN_PUSH_VLAN_ID, v->tcfv_push_vid))
+			goto nla_put_failure;
+		if (v->tcfv_push_flags & ACTVLAN_PUSH_F_PROTO &&
+		    nla_put_be16(skb, TCA_VLAN_PUSH_VLAN_PROTOCOL,
+				 v->tcfv_push_proto))
+			goto nla_put_failure;
+		if (v->tcfv_push_flags & ACTVLAN_PUSH_F_PRIO &&
+		    nla_put_u8(skb, TCA_VLAN_PUSH_VLAN_PRIORITY,
+			       v->tcfv_push_prio))
+			goto nla_put_failure;
+	}
 
 	tcf_tm_dump(&t, &v->tcf_tm);
 	if (nla_put_64bit(skb, TCA_VLAN_TM, sizeof(t), &t, TCA_VLAN_PAD))

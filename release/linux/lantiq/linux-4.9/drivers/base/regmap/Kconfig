@@ -37,3 +37,7 @@ config REGMAP_MMIO
 config REGMAP_IRQ
 	select REGMAP
 	bool
+
+config REGMAP_ICC
+	tristate "regmap over ICC"
+	depends on LTQ_ICC

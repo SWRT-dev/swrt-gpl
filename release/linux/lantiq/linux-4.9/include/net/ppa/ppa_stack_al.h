@@ -35,6 +35,9 @@
 #ifdef CONFIG_PPA_HANDLE_CONNTRACK_SESSIONS
 #include <net/netfilter/nf_conntrack_session_limit.h>
 #endif
+#if IS_ENABLED(CONFIG_SOC_GRX500)
+#include <net/vxlan.h>
+#endif
 #if IS_ENABLED(CONFIG_PPA_MPE_IP97)
 #include <net/xfrm.h>
 #endif
@@ -234,7 +237,7 @@ typedef union {
 }PPA_NATSRCIP;
 
 typedef struct {
-#if IS_ENABLED(CONFIG_NAT_LOOP_BACK)
+#if IS_ENABLED(CONFIG_PPA_NAT_LOOP_BACK)
 	PPA_IPADDR natdstip;        /*!< nat destination ip for NAT Loopback */
 #endif
 	PPA_NATSRCIP natsrcip;      /*!< nat source ip */
@@ -1380,6 +1383,12 @@ PPA_NETIF *ppa_get_netif (const PPA_IFNAME *ifname);
 PPA_NETIF *ppa_get_netif_by_net(const struct net *net, const PPA_IFNAME *ifname);
 
 /*#ifdef CONFIG_LTQ_MINI_JUMBO_FRAME_SUPPORT*/
+/*! \brief This function returns the base MTU of the interface.
+	\param[in] netif Pointer to the netif structure.
+	\return MTU size.
+	\note
+ */
+int ppa_get_base_mtu(PPA_NETIF *netif);
 /*! \brief This function returns the MTU of the interface.
 	\param[in] netif Pointer to the netif structure.
 	\return MTU size.
@@ -1603,6 +1612,126 @@ extern struct net_device *ppa_get_6rd_phyif (struct net_device *dev);
 	\note
  */
 extern struct net_device *ppa_get_ip4ip6_phyif (struct net_device *dev);
+/*! \brief This function returns VxLAN private structure address.
+	\param[in] dev Pointer to the network interface structure.
+	\param[in] int Pointer to VxLAN UDP port.
+	\param[in] int Pointer to VxLAN vni.
+	\note
+ */
+void ppa_get_vxlan_port_vni(struct net_device *dev,
+		uint16_t *vxlan_port, uint32_t *vni);
+/*! \brief This function returns VxLAN tunnel destination mac address.
+	\param[out] mac Pointer to destination mac address.
+	\param[in] dev Pointer to the network interface structure.
+	\param[in] skb Pointer to the packet buffer.
+	\return Returns PPA_SUCCESS value if VxLAN dmac is formed.
+	\note
+ */
+int32_t ppa_get_vxlan_dmac(uint8_t *mac,
+		struct net_device* dev,
+		struct sk_buff *skb);
+/*! \brief This function check whether underlying vlan interface is VxLAN.
+	\param[in] dev Pointer to the network interface structure.
+	\param[in] dev Pointer to the address if base network interface structure.
+	\param[in] Pointer to store flag result if dev is of VxLAN type.
+	\return Returns non-zero value if underlying vlan interface is VxLAN.
+	\note
+ */
+int32_t ppa_get_underlying_vlan_interface_if_vxlan(PPA_NETIF *netif,
+			PPA_NETIF **base_netif, uint8_t *isvxlan);
+/*! \brief This function is used for forming IPv4 header.
+	\param[in] Pointer to IP Header.
+	\param[in] Integer for Source IP.
+	\param[in] Integer for Destination IP.
+	\param[in] Integer for Protocol type.
+	\param[in] Integer for DataLen as in template buffer.
+	\note
+ */
+void form_IPv4_header(struct iphdr *iph,
+		uint32_t src_ip,
+		uint32_t dst_ip,
+		uint32_t protocol_type,
+		uint16_t dataLen);
+/*! \brief This function is used for forming UDP header.
+	\param[in] Pointer to UDP Header.
+	\param[in] Integer for Source Port.
+	\param[in] Integer for Destination Port.
+	\param[in] Integer for header len.
+	\note
+ */
+void form_UDP_header(struct udphdr *udph,
+		uint16_t sport,
+		uint16_t dport,
+		uint16_t len);
+/*! \brief This function check whether given interface is VxLAN.
+	\param[in] dev Pointer to the network interface structure.
+	\return Returns non-zero value if given interface VxLAN
+	\note
+ */
+uint32_t ppa_is_vxlan_netif(PPA_NETIF *dev);
+/*! \brief This function check whether given interface is ipv4 VxLAN.
+	\param[in] dev Pointer to the network interface structure.
+	\return Returns non-zero value if given interface ipv4 VxLAN
+	\note
+ */
+uint32_t ppa_is_vxlan_ipv4(PPA_NETIF *dev);
+/*! \brief This function check whether given interface is ipv6 VxLAN.
+	\param[in] dev Pointer to the network interface structure.
+	\return Returns non-zero value if given interface ipv6 VxLAN
+	\note
+ */
+uint32_t ppa_is_vxlan_ipv6(PPA_NETIF *dev);
+/*! \brief This function returns the base interface of VxLAN device.
+	\param[in] dev Pointer to the network interface structure.
+	\return On success returns base physical interface of VxLAN dev.
+	On failure returns NULL
+	\note
+ */
+struct net_device *ppa_get_vxlan_phyif(PPA_NETIF *dev);
+/*! \brief This function returns VxLAN tunnel destination mac address.
+	\param[out] mac Pointer to destination mac address.
+	\param[in] dev Pointer to the network interface structure.
+	\param[in] skb Pointer to the packet buffer.
+	\return Returns PPA_SUCCESS value if VxLAN dmac is formed.
+	\note
+ */
+int32_t ppa_get_vxlan_dmac(uint8_t *mac,
+		struct net_device* dev,
+		struct sk_buff *skb);
+/*! \brief This function returns required VxLAN header len.
+	\param[in] dev Pointer to the network interface structure.
+	\param[out] hdrlen Pointer to the uint32_t to hold VxLAN header len.
+	\return On success returns PPA_SUCCESS and VxLAN header len is passed
+	in hdrlen
+	\note
+ */
+int32_t ppa_get_vxlan_hdrlen(PPA_NETIF *dev, uint16_t *hdrlen);
+/*! \brief This function forms VxLAN header for a given VxLAN interface.
+	\param[in] dev Pointer to the network interface structure.
+	\param[in] Data length to be carried on VxLAN
+	\param[in] isIPv6 Set to 1 if session is IPv6
+	\param[out] pHdr Pointer to buffer. The formated VxLAN header is returned
+	in this buffer.
+	\param[in,out] len Pointer to uint32_t. Caller should pass the len of
+	the buffer. On return it contains actual VxLAN header len.
+	\return Returns PPA_SUCCESS value if VxLAN header is formed.
+	\note
+ */
+int32_t ppa_form_vxlan_hdr(PPA_BUF *skb,
+		PPA_NETIF *dev,
+		uint8_t isIPv6,
+		uint16_t dataLen,
+		uint8_t *pHdr,
+		uint16_t *len);
+/*! \brief This function check whether given interface is VxLAN and also returns
+	type of VxLAN tunnel - IPv4/IPv6
+	\param[in] dev Pointer to the network interface structure.
+	\param[out] isIPv4VxLAN Pointer to uint8_t. Set to 1 if IPv4 tunnel
+	\return Returns non-zero value if given interface is VxLAN
+	\note
+ */
+uint32_t ppa_is_vxlan_netif_type(struct net_device *dev,
+		uint8_t *isIPv4VxLAN);
 /*! \brief This function check whether given interface is GRE.
 	\param[in] dev Pointer to the network interface structure.
 	\return Returns non-zero value if given interface GRE
@@ -1662,23 +1791,23 @@ int32_t ppa_form_gre_hdr(PPA_NETIF *dev,
 		uint8_t *pHdr,
 		uint16_t *len);
 /*! \brief  This function forms IPv6 header (DSLite) for given interface.
-  \param[out]  dev  Pointer to the buffer to copy header.
-  \param[in]   pointer to netdev struct.
-  \param[in]   payload length.
-  \return    Returns PPA_SUCCESS value if header is formed.
-  \note
+	\param[out]  dev  Pointer to the buffer to copy header.
+	\param[in]   pointer to netdev struct.
+	\param[in]   payload length.
+	\return    Returns PPA_SUCCESS value if header is formed.
+	\note
  */
 int32_t ppa_get_ipv6_tnl_iph(struct ipv6hdr* ip6h,
-   struct net_device *dev,
-   uint16_t dataLen);
+		struct net_device *dev,
+		uint16_t dataLen);
 /*! \brief  This function detects mesh mode for MapE session.
-  \param[in]   IP destination IPv4  address of the map-e session.
-  \param[in]   net dev pointer for map-e interface.
-  \return    Returns true if mesh mode is detected else false.
-  \note
+	\param[in]   IP destination IPv4  address of the map-e session.
+	\param[in]   net dev pointer for map-e interface.
+	\return    Returns true if mesh mode is detected else false.
+	\note
  */
 bool ppa_is_mape_mesh_session(uint32_t dest_ip,
-                struct net_device *dev);
+		struct net_device *dev);
 
 /*! \brief This function returns EOGRE inner destination mac address.
 	\param[out] mac Pointer to destination mac address.

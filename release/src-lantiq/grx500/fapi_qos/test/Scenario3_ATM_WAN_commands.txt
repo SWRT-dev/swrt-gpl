@@ -1,0 +1,12 @@
+# When queuing is in software
+# replace nas0 with appropriate WAN interface for ATM WAN
+
+cd /opt/lantiq/usr/sbin
+qoscfg -I 1
+qcfg --queue -A q1 -l 100 -i nas0 -m sp --priority 1 --map 1
+qcfg --queue -A q2 -l 100 -i nas0 -m wfq --priority 2 --weight 2 --map 2
+qcfg --queue -A q3 -l 100 -i nas0 -m wfq --priority 3 --weight 1 --map 3
+
+classcfg -A cl1 -i br0 -p udp --dport 1024:1024 -j mark --mark 1
+classcfg -A cl2 -i br0 -d 10.10.10.1 -j mark --mark 2
+classcfg -A cl3 -i br0 --dmac 00:1A:BC:40:EF:80 -j mark --mark 2

@@ -768,7 +768,8 @@ int switchdev_port_bridge_getlink(struct sk_buff *skb, u32 pid, u32 seq,
 		.id = SWITCHDEV_ATTR_ID_PORT_BRIDGE_FLAGS,
 	};
 	u16 mode = BRIDGE_MODE_UNDEF;
-	u32 mask = BR_LEARNING | BR_LEARNING_SYNC | BR_FLOOD;
+	u32 mask = BR_LEARNING | BR_LEARNING_SYNC | BR_FLOOD | BR_HAIRPIN_MODE |
+		BR_ISOLATED;
 	int err;
 
 	if (!netif_is_bridge_port(dev))
@@ -819,6 +820,7 @@ switchdev_port_bridge_policy[IFLA_BRPORT_MAX + 1] = {
 	[IFLA_BRPORT_LEARNING]		= { .type = NLA_U8 },
 	[IFLA_BRPORT_LEARNING_SYNC]	= { .type = NLA_U8 },
 	[IFLA_BRPORT_UNICAST_FLOOD]	= { .type = NLA_U8 },
+	[IFLA_BRPORT_ISOLATED]		= { .type = NLA_U8 },
 };
 
 static int switchdev_port_br_setlink_protinfo(struct net_device *dev,
@@ -832,7 +834,6 @@ static int switchdev_port_br_setlink_protinfo(struct net_device *dev,
 				  switchdev_port_bridge_policy);
 	if (err)
 		return err;
-
 	nla_for_each_nested(attr, protinfo, rem) {
 		switch (nla_type(attr)) {
 		case IFLA_BRPORT_LEARNING:
@@ -845,6 +846,12 @@ static int switchdev_port_br_setlink_protinfo(struct net_device *dev,
 			break;
 		case IFLA_BRPORT_UNICAST_FLOOD:
 			err = switchdev_port_br_setflag(dev, attr, BR_FLOOD);
+			break;
+		case IFLA_BRPORT_MODE:
+			err = switchdev_port_br_setflag(dev, attr, BR_HAIRPIN_MODE);
+			break;
+		case IFLA_BRPORT_ISOLATED:
+			err = switchdev_port_br_setflag(dev, attr, BR_ISOLATED);
 			break;
 		default:
 			err = -EOPNOTSUPP;

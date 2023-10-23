@@ -1,0 +1,13 @@
+# When queuing is in software
+# replace nas0 with appropriate WAN interface for ATM WAN
+# replace filter fields in iptables rules as appropriate
+
+cd /opt/lantiq//usr/sbin
+qoscfg -I 1
+qcfg --queue -A high -l 10000 -i nas0 -m sp --priority 1 --map 1 -d red
+qcfg --queue -A medium -l 10000 -i nas0 -m sp --priority 4 --map 4 -d red
+qcfg --queue -A low -l 10000 -i nas0 -m sp --priority 8 --map 8 -d red
+
+iptables -t mangle -I PREROUTING -p udp --sport 2000 -j EXTMARK --set-mark 0x0040
+iptables -t mangle -I PREROUTING -d 100.100.100.10 -j EXTMARK --set-mark 0x0100
+iptables -t mangle -I PREROUTING -i br0 -j EXTMARK --set-mark 0x0200

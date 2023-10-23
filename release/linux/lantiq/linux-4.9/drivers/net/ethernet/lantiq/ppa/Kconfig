@@ -4,9 +4,8 @@ menu "PPA"
 config PPA
         bool "Protocol Processing Accelerator"
         depends on LANTIQ
-        default n
-        ---help---
-        Protocol Acceleration Engine
+        help
+            Protocol Acceleration Engine
 
 if PPA 
 
@@ -14,36 +13,35 @@ config PPA_QOS
        bool "PPA Quality of Service"
        depends on PPA 
        default y
-       ---help---	
-       PPA QoS enable
+       help
+           PPA QoS enable
 
 config PPA_API_DIRECTPATH
         bool "Direct Path Support for PPA API"
         depends on PPA
         default y
-        ---help---
-        Direct Path Support (e.g. WLAN) for PPA API
+        help
+            Direct Path Support (e.g. WLAN) for PPA API
 
 config PPA_API_DIRECTCONNECT
         bool "Direct connect Support for SOC"
         depends on PPA && SOC_GRX500
-        default n
-        ---help---
-        Direct connect Support (e.g. WLAN) for PPA
+        help
+            Direct connect Support (e.g. WLAN) for PPA
 
 config PPA_API_SW_FASTPATH
        bool "PPA software acceleration"
        depends on PPA
        default y
-       ---help---       
-       PPA software acceleration enable
+       help
+           PPA software acceleration enable
 
 config PPA_TCP_LITEPATH
        bool "TCP litepath"
        depends on PPA_API_SW_FASTPATH
        default y
-       ---help---       
-       PPA local TCP session Acceleration
+       help
+           PPA local TCP session Acceleration
 
 config PPA_TMU_MIB_SUPPORT
         tristate "PPA TMU HAL - kernel APIs"
@@ -55,7 +53,6 @@ config PPA_TMU_MIB_SUPPORT
 config PPA_BR_MAC_LEARNING
         bool "Bridge MAC learning"
         depends on PPA
-        default n
         help
             Bridge MAC learning support for PPA
 
@@ -69,28 +66,37 @@ config PPA_RT_SESS_LEARNING
 config PPA_BR_SESS_LEARNING
         bool "Bridge session learning"
         depends on PPA_RT_SESS_LEARNING
-        default n
         help
             Bridge session learning support for PPA
 
 config PPA_MPE_IP97
          tristate "INTEL PPA MPE IP97 Support"
          depends on PPA && SOC_GRX500
-         default n
          help
             INTEL PPA MPE IP97 Support
+
+config PPA_NAT_LOOP_BACK
+        bool "INTEL PPA NAT Loop Back Support"
+        depends on PPA && SOC_GRX500
+        help
+           INTEL PPA NAT Loop Back Support
 
 config PPA_EXT_PKT_LEARNING
         bool "External packet learning driver"
         depends on LTQ_PON_ETH && !PPA_RT_SESS_LEARNING
-        default n
         help
             External packet learning driver support for PPA
+
+config PPA_MIB_MODE
+        bool "PPA MIB Mode"
+        depends on PPA
+        default y
+        help
+            PPA MIB Mode
 
 config IPV4_IPV6_COUNTER_SUPPORT
         bool "IPv4 IPv6 counter support"
         depends on PPA
-        default n
         help
             IPv4 IPv6 counter support in PPA
 

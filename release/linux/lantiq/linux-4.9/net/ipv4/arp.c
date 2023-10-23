@@ -317,7 +317,11 @@ static void arp_send_dst(int type, int ptype, __be32 dest_ip,
 	if (!skb)
 		return;
 
-	skb->priority = 7; /* For ARP Prioritization */
+#ifdef CONFIG_INTEL_IPQOS
+	/* For ARP Prioritization */
+	skb->priority = 7;
+#endif /* CONFIG_INTEL_IPQOS */
+
 	skb_dst_set(skb, dst_clone(dst));
 	arp_xmit(skb);
 }

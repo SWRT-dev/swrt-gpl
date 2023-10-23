@@ -1,0 +1,19 @@
+--------------------------
+Intel S-WPAL
+(c) 2019 Intel Corporation
+--------------------------
+
+S-WPAL is a static configuration system for WLAN, based on the OpenWRT infrastructure.
+OpenWRT is released mostly under GPLv2, with some components (such as uci and ubus) released under LGPL-2.1.
+
+Links to opensource git repos:
+	https://git.openwrt.org/?p=project/netifd.git (GPLv2)
+	https://git.openwrt.org/?p=project/uci.git (LGPL-2.1)
+	https://git.openwrt.org/?p=project/ubus.git (LGPL-2.1)
+
+S-WPAL scripts are released under the GPLv2.
+S-WPAL C code, which links with uci, is released under LGPL-2.1.
+
+See LICENSE for the current license terms of this component.
+
+

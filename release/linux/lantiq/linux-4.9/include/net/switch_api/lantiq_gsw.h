@@ -753,6 +753,16 @@ typedef struct {
 	u16 nEgCVid;
 } GSW_PCE_EgVLAN_Entry_t;
 
+/** \brief  VXLAN BIT MASK configuration.
+    Used by \ref GSW_VXLAN_CFG_GET
+    and \ref GSW_VXLAN_CFG_SET */
+typedef struct {
+	/** VXLAN Mask value */
+	u16 vxlan_value;
+	/** Index of entry in PCE table */
+	u16 index;
+} gsw_vxlan_cfg_t;
+
 /*@}*/ /* GSW_IOCTL_VLAN */
 
 /** \addtogroup GSW_IOCTL_QOS */
@@ -1101,6 +1111,8 @@ typedef struct {
 	u32	nGreen_Min;
 	/** WRED Green Threshold Max [number of segments]. */
 	u32	nGreen_Max;
+	/** Reserved Buffer Threshold */
+	u32	nReserveThreshold;
 } GSW_QoS_WRED_QueueCfg_t;
 
 /** \brief Configures the WRED threshold parameter per port.
@@ -1617,7 +1629,9 @@ typedef enum {
 	/** Group source IP address is 'don't care'. This means all source IP
 	    addresses (*) are included for the multicast group membership.
 	    This is the default mode for IGMPv1 and IGMPv2. */
-	GSW_IGMP_MEMBER_DONT_CARE	= 2
+	GSW_IGMP_MEMBER_DONT_CARE	= 2,
+
+	GSW_IGMP_MEMBER_INVALID,
 } GSW_IGMP_MemberMode_t;
 
 /** \brief Add a host as a member to a multicast group.
@@ -1890,7 +1904,7 @@ typedef enum {
 	/** Number of bridge ports - for GSWIP-3.1 only. */
 	GSW_CAP_TYPE_BRIDGE_PORT = 25,
 	/** Number of COMMON PCE Rules. */
-	GSW_CAP_TYPE_COMMON_TFLOW_RULES = 26,
+	GSW_CAP_TYPE_COMMON_PCE_RULES = 26,
 	/** Last Capability Index */
 	GSW_CAP_TYPE_LAST	= 27
 } GSW_capType_t;
@@ -2533,6 +2547,8 @@ typedef enum {
 	GSW_statusMAC_TableFull	= -11,
 	/** Locking failed - SWAPI is busy */
 	GSW_statusLock_Failed	=  -12,
+	/** Multicast Forwarding table entry not found */
+	GSW_statusEntryNotFound = -13,
 	/** Generic or unknown error occurred */
 	GSW_statusErr	= -1
 } GSW_return_t;
@@ -2851,7 +2867,7 @@ typedef struct {
 	/** Interface Counter Index Number. (Range : 0-255)
 	    It has to be reserved for ports by the application before
 	    calling \ref GSW_RMON_IF_GET. */
-	u8	nIfId;
+	u16	nIfId;
 	/** Counters Mode - Global level current settings. */
 	GSW_RMON_CountMode_t  countMode;
 	/** Received Total Packets count. */
@@ -2910,6 +2926,9 @@ typedef struct {
  */
 typedef enum {
 	GSW_RMON_REDIRECTION = 0X18,
+	GSW_RMON_IF = 0x1A,
+	GSW_RMON_ROUTE = 0x1B,
+	GSW_RMON_PMACIG = 0x1C,
 } GSW_RMON_Port_t;
 
 /*@}*/ /* GSW_IOCTL_RMON */
@@ -3382,7 +3401,11 @@ typedef enum {
 	/** IPv6 IPoE frame (Ethertyp is 0x86DD). */
 	GSW_EXTENDEDVLAN_FILTER_ETHERTYPE_IPV6IPOE = 4,
 	/** EAPOL (Ethertyp is 0x888E). */
-	GSW_EXTENDEDVLAN_FILTER_ETHERTYPE_EAPOL = 5
+	GSW_EXTENDEDVLAN_FILTER_ETHERTYPE_EAPOL = 5,
+	/** DHCPV4 (UDP DESTINATION PORT 67&68). */
+	GSW_EXTENDEDVLAN_FILTER_ETHERTYPE_DHCPV4 = 6,
+	/** DHCPV6 (UDP DESTINATION PORT 546&547). */
+	GSW_EXTENDEDVLAN_FILTER_ETHERTYPE_DHCPV6 = 7
 } GSW_ExtendedVlanFilterEthertype_t;
 
 /** \brief Extended VLAN Filter VLAN Tag.
@@ -4565,7 +4588,7 @@ typedef struct {
 } GSW_PBB_Tunnel_Template_Config_t;
 
 /** \brief TRAFFIC FLOW TABLE  Allocation.
- *	Used by \ref GSW_TFLOW_ALLOC and \ref GSW_TFLOW_FREE.
+ *	Used by \ref GSW_PCE_RULE_ALLOC and \ref GSW_PCE_RULE_FREE.
  */
 typedef struct {
 	/** Number of traffic flow table entries are
@@ -4573,18 +4596,32 @@ typedef struct {
 	 *	port will go through PCE rules search ending at
 	 *	(nFirstFlowEntryIndex+nNumberOfFlowEntries)-1. Should
 	 *	be times of 4. Proper value should be given
-	 *	for \ref GSW_TFLOW_ALLOC.
-	 *	This field is ignored for \ref GSW_TFLOW_FREE.
+	 *	for \ref GSW_PCE_RULE_ALLOC.
+	 *	This field is ignored for \ref GSW_PCE_RULE_FREE.
 	 */
-	u32 num_of_pcerules;
-	/** If \ref GSW_TFLOW_ALLOC is successful, a valid ID will be returned
+	u32 num_of_rules;
+	/** If \ref GSW_PCE_RULE_ALLOC is successful, a valid ID will be returned
 	 *  in this field. Otherwise, \ref INVALID_HANDLE is
 	 *	returned in this field.
-	 *  For \ref GSW_TFLOW_FREE, this field should be valid ID returned by
-	 *  \ref GSW_TFLOW_ALLOC.
+	 *  For \ref GSW_PCE_RULE_FREE, this field should be valid ID returned by
+	 *  \ref GSW_PCE_RULE_ALLOC.
 	 */
-	u32 tflowblockid;
-} gsw_tflow_alloc_t;
+	u32 blockid;
+} GSW_PCE_rule_alloc_t;
+
+/** \brief TRAFFIC FLOW TABLE  Global BitMap Allocation.
+ */
+typedef struct {
+	/** Number of traffic flow table entries are
+	 * associated to Global or Common Region.
+	 */
+	u32 num_of_rules;
+
+	/** Find a contiguous free Global Rules based on
+	 * num_of_rules assign baseindex
+	 */
+	u32 base_index;
+} GSW_PCE_GlobalBitMap_t;
 
 /*@}*/ /* GSW_IOCTL_GSWIP31 */
 
@@ -5222,6 +5259,42 @@ typedef struct {
    - An error code in case an error occurs
 */
 #define GSW_PCE_EG_VLAN_ENTRY_READ	_IOWR(GSW_VLAN_MAGIC, 0x0F, GSW_PCE_EgVLAN_Entry_t)
+
+/**
+  \brief Set VXLAN BIT MASK configuration.
+  The current configuration can be retrieved by \ref GSW_VXLAN_CFG_GET.
+  NOTE: Applicable for GSWIP 3.0
+
+   \param gsw_vxlan_cfg_t Pointer to an \ref gsw_vxlan_cfg_t
+      structure element.
+
+   \remarks The function returns an error code in case an error occurs.
+            The error code is described in \ref GSW_return_t.
+
+   \return Return value as follows:
+   - GSW_statusOk: if successful
+   - An error code in case an error occurs
+*/
+#define GSW_VXLAN_CFG_SET	_IOW(GSW_VLAN_MAGIC, 0x14, gsw_vxlan_cfg_t)
+
+/**
+   \brief Get VXLAN BIT MASK Configuration.
+   This function returns the VXLAN configuration of the given Port 'Mask'.
+   NOTE: Applicable for GSWIP 3.0
+
+   \param gsw_vxlan_cfg_t Pointer to an
+      \ref gsw_vxlan_cfg_t structure element. Based on the parameter
+      'masl', the switch API implementation fills out the remaining structure
+      elements.
+
+  \remarks The function returns an error code in case an error occurs.
+           The error code is described in \ref GSW_return_t.
+
+   \return Return value as follows:
+   - GSW_statusOk: if successful
+   - An error code in case an error occurs
+*/
+#define GSW_VXLAN_CFG_GET	_IOWR(GSW_VLAN_MAGIC, 0x15, gsw_vxlan_cfg_t)
 
 /*@}*/ /* GSW_IOCTL_VLAN */
 
@@ -7526,13 +7599,13 @@ typedef struct {
    Decrease reference counter of the meter. If reference counter is 0, disable
    the meter then free it.
 
-   \param u32 Meter ID.
+   \param GSW_QoS_meterCfg_t Pointer to \ref GSW_QoS_meterCfg_t.
 
    \return Return value as follows:
    - GSW_statusOk: if successful
    - An error code in case an error occurs
 */
-#define GSW_QOS_METER_FREE   _IOW(GSW_QOS_MAGIC, 0x31, u32)
+#define GSW_QOS_METER_FREE   _IOW(GSW_QOS_MAGIC, 0x31, GSW_QoS_meterCfg_t)
 
 /**
    \brief Update Color Marking Table.
@@ -7725,7 +7798,7 @@ typedef struct {
 #define GSW_DEBUG_PRINT_PCEIRQ_LIST 		_IO(GSW_DEBUG_MAGIC, 0x16)
 #define GSW_DEBUG_RMON_PORT_GET				_IOWR(GSW_DEBUG_MAGIC, 0x17, GSW_Debug_RMON_Port_cnt_t)
 #define GSW_DEBUG_TUNNELTEMP_STATUS 		_IOWR(GSW_DEBUG_MAGIC, 0x18, GSW_debug_t)
-#define GSW_DEBUG_TFLOWTABLE_STATUS _IOWR(GSW_DEBUG_MAGIC, 0x19, GSW_debug_t)
+#define GSW_DEBUG_PCERULETABLE_STATUS	_IOWR(GSW_DEBUG_MAGIC, 0x19, GSW_debug_t)
 
 /**
    \brief Following are for GSWIP IRQ operation

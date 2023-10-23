@@ -19,6 +19,9 @@
 
 #define to_intel_clk_pll(_hw)   container_of(_hw, struct intel_clk_pll, hw)
 #define to_intel_clk_early(_hw) container_of(_hw, struct intel_clk_early, hw)
+#define DEFAULT_EARLY_CLK_FREQ	600000000UL
+
+static ulong __read_mostly cpu_clk;
 
 /*
  * Calculate formula:
@@ -100,6 +103,7 @@ static const struct clk_ops grx500_clk_early_ops = {
 static unsigned long
 prx300_early_recalc_rate(struct clk_hw *hw, unsigned long prate)
 {
+#ifndef CONFIG_REGMAP_ICC
 	struct intel_clk_early *early = to_intel_clk_early(hw);
 	unsigned int i, div1 = 0, mult, div, frac, val;
 
@@ -124,6 +128,9 @@ prx300_early_recalc_rate(struct clk_hw *hw, unsigned long prate)
 	div = div * div1;
 
 	return intel_pll_calc_rate(prate, mult, div, frac, BIT(24));
+#else
+	return ((cpu_clk > 0) ? cpu_clk : DEFAULT_EARLY_CLK_FREQ);
+#endif
 }
 
 static const struct clk_ops prx300_clk_early_ops = {
@@ -153,6 +160,7 @@ int intel_clk_register_early(struct intel_clk_provider *ctx,
 		} else {
 			pr_err("%s: platform not support: %u\n",
 			       __func__, list->platform);
+			kfree(early);
 			return -EINVAL;
 		}
 
@@ -248,9 +256,14 @@ prx300_pll_set_params(struct intel_clk_pll *pll, unsigned int mult,
 	intel_set_clk_val(pll->map, pll->reg, 28, 1, !!frac);
 
 	if (pll->type == TYPE_LJPLL) {
+		/* set the default value for LD bit */
+		if (intel_get_clk_val(pll->map, pll->reg, 31, 1))
+			intel_set_clk_val(pll->map, pll->reg, 31, 1, 0);
+
+		/* LD bit self clearing */
+		intel_set_clk_val(pll->map, pll->reg, 28, 1, 1);
+		intel_set_clk_val(pll->map, pll->reg, 30, 1, 1);
 		intel_set_clk_val(pll->map, pll->reg, 31, 1, 1);
-		udelay(1);
-		intel_set_clk_val(pll->map, pll->reg, 31, 1, 0);
 	}
 
 	return intel_pll_wait_for_lock(pll);
@@ -263,6 +276,9 @@ prx300_pll_recalc_rate(struct clk_hw *hw, unsigned long prate)
 	unsigned int div, mult, frac;
 
 	prx300_pll_get_params(pll, &mult, &div, &frac);
+	if (!div)
+		div = 1; /* div by zero Error workaround */
+
 	if (pll->type == TYPE_LJPLL)
 		div *= 4;
 
@@ -448,6 +464,12 @@ void intel_clk_plls_parse_vco_config(struct intel_clk_provider *ctx,
 			break;
 
 		clk_id   = r.args[0];
+		/* All clk rates in table are divided by 1000 of the
+		 * real clk rate to support clk rate upto 10G, So expecting
+		 * the same from dts to match with clk rate table.
+		 * Actual clk rate setting only will use the mult, div, frac
+		 * value from clk rate table.
+		 */
 		clk_rate = r.args[1];
 		clk_en   = r.args[2];
 
@@ -478,4 +500,10 @@ void intel_clk_plls_parse_vco_config(struct intel_clk_provider *ctx,
 		}
 	}
 }
+
+static int __init early_clk_freq_setup(char *str)
+{
+	return ((!*str) || (kstrtoul(str, 0, &cpu_clk)));
+}
+__setup("cpuclk=", early_clk_freq_setup);
 

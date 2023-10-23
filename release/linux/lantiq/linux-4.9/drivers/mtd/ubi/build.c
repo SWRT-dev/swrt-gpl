@@ -276,6 +276,7 @@ struct ubi_device *ubi_get_device(int ubi_num)
 
 	return ubi;
 }
+EXPORT_SYMBOL_GPL(ubi_get_device);
 
 /**
  * ubi_put_device - drop an UBI device reference.
@@ -288,6 +289,7 @@ void ubi_put_device(struct ubi_device *ubi)
 	put_device(&ubi->dev);
 	spin_unlock(&ubi_devices_lock);
 }
+EXPORT_SYMBOL_GPL(ubi_put_device);
 
 /**
  * ubi_get_by_major - get UBI device by character device major number.

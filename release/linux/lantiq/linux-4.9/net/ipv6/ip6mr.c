@@ -1188,7 +1188,7 @@ static int ip6mr_cache_report(struct mr6_table *mrt, struct sk_buff *pkt,
 
 #if IS_ENABLED(CONFIG_MCAST_HELPER)
 		/* Send five tuple info to mcast helper */
-		if (ipv6_hdr(pkt)->nexthdr == 17)
+		if (ipv6_hdr(pkt)->nexthdr == IPPROTO_UDP)
 			if (five_tuple_info6_ptr != NULL)
 				five_tuple_info6_ptr(pkt, mrt->vif6_table[mifi].dev->name);
 #endif

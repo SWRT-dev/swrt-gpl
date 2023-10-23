@@ -1,0 +1,72 @@
+
+###############################################################################
+#         Copyright (c) 2020, MaxLinear, Inc.
+#         Copyright 2016 - 2020 Intel Corporation
+# 
+#  For licensing information, see the file 'LICENSE' in the root folder of
+#  this software module.
+# 
+###############################################################################
+
+#CC:=gcc
+
+##################################################
+# For cross compile only
+##################################################
+#export STAGING_DIR:=/local/agaraix/8.4.2/ugw_sw/openwrt/staging_dir/toolchain-mips_24kc+nomips16_gcc-8.3.0_musl
+export STAGING_DIR:=../../../../../../openwrt/staging_dir/toolchain-mips_24kc+nomips16_gcc-8.3.0_musl
+CC:=$(STAGING_DIR)/bin/mips-openwrt-linux-musl-gcc
+CFLAGS:=-Os -pipe -mno-branch-likely -mips32r2 -mtune=24kc -fno-caller-saves -fno-plt -fhonour-copts
+CFLAGS+=-Wno-error=unused-but-set-variable -Wno-error=unused-result -msoft-float -Wformat -Werror=format-security
+CFLAGS+=-fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wl,-z,now -Wl,-z,relro -Wno-uninitialized -Wno-switch-unreachable
+CFLAGS+=-I ../../include -I ../../../../../../openwrt/staging_dir/target-mips_24kc+nomips16_musl_axepoint_gw_sec/usr/include
+CFLAGS+=-D__UNIT_TESTING__
+LDFLAGS:=-L$(STAGING_DIR) -L ../../../../../../openwrt/staging_dir/target-mips_24kc+nomips16_musl_axepoint_gw_sec/usr/lib
+
+##################################################
+
+PROGRAMS:=ut_rx_bonding_testgroup_1 ut_rx_bonding_testgroup_2 ut_rx_bonding_testgroup_3 ut_rx_reassembly_testgroup_1 ut_rx_bonding_and_reassembly_testgroup_1 ut_asm
+
+ut_rx_bonding_testgroup_1:=	\
+	ut_rx_bonding_testgroup_1.o
+
+ut_rx_bonding_testgroup_2:=	\
+	ut_rx_bonding_testgroup_2.o
+
+ut_rx_bonding_testgroup_3:=	\
+	ut_rx_bonding_testgroup_3.o
+
+ut_rx_reassembly_testgroup_1:=	\
+	ut_rx_reassembly_testgroup_1.o
+
+ut_rx_bonding_and_reassembly_testgroup_1:=	\
+	ut_rx_bonding_and_reassembly_testgroup_1.o
+
+ut_asm:=\
+	ut_asm.o
+
+%.o:%.c
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+ut_rx_bonding_testgroup_1: $(ut_rx_bonding_testgroup_1)
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
+
+ut_rx_bonding_testgroup_2: $(ut_rx_bonding_testgroup_2)
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
+
+ut_rx_bonding_testgroup_3: $(ut_rx_bonding_testgroup_3)
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
+
+ut_rx_reassembly_testgroup_1: $(ut_rx_reassembly_testgroup_1)
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
+
+ut_rx_bonding_and_reassembly_testgroup_1: $(ut_rx_bonding_and_reassembly_testgroup_1)
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
+
+ut_asm: $(ut_asm)
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) -lz
+
+all: $(PROGRAMS)
+
+clean:
+	rm -f *.o $(PROGRAMS)

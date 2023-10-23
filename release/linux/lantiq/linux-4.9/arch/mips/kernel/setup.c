@@ -75,7 +75,7 @@ static char __initdata builtin_cmdline[COMMAND_LINE_SIZE] = CONFIG_CMDLINE;
  * mips_io_port_base is the begin of the address space to which x86 style
  * I/O ports are mapped.
  */
-const unsigned long mips_io_port_base = -1;
+unsigned long mips_io_port_base = -1;
 EXPORT_SYMBOL(mips_io_port_base);
 
 static struct resource code_resource = { .name = "Kernel code", };
@@ -598,19 +598,22 @@ static void __init bootmem_init(void)
 	 */
 	if (__pa_symbol(_text) > __pa_symbol(VMLINUX_LOAD_ADDRESS)) {
 		unsigned long offset;
-		extern void show_kernel_relocation(const char *level);
 
 		offset = __pa_symbol(_text) - __pa_symbol(VMLINUX_LOAD_ADDRESS);
 		free_bootmem(__pa_symbol(VMLINUX_LOAD_ADDRESS), offset);
+	}
 
 #if defined(CONFIG_DEBUG_KERNEL) && defined(CONFIG_DEBUG_INFO)
+	{
 		/*
 		 * This information is necessary when debugging the kernel
 		 * But is a security vulnerability otherwise!
 		 */
+		extern void show_kernel_relocation(const char *level);
 		show_kernel_relocation(KERN_INFO);
-#endif
 	}
+#endif
+
 #endif
 
 	/*
@@ -773,7 +776,9 @@ static void __init request_crashkernel(struct resource *res)
 
 static void __init arch_mem_init(char **cmdline_p)
 {
+#ifdef CONFIG_CMA_LIMIT_256M
 	phys_addr_t dma_cma_limit;
+#endif
 	struct memblock_region *reg;
 	extern void plat_mem_setup(void);
 
@@ -855,9 +860,20 @@ static void __init arch_mem_init(char **cmdline_p)
 				BOOTMEM_DEFAULT);
 #endif
 	device_tree_init();
+
+	/*
+	 * In order to reduce the possibility of kernel panic when failed to
+	 * get IO TLB memory under CONFIG_SWIOTLB, it is better to allocate
+	 * low memory as small as possible before plat_swiotlb_setup(), so
+	 * make sparse_init() using top-down allocation.
+	 */
+	memblock_set_bottom_up(false);
 	sparse_init();
+	memblock_set_bottom_up(true);
+
 	plat_swiotlb_setup();
 
+#ifdef CONFIG_CMA_LIMIT_256M
 	/*
 	 * dma_alloc_coherent will return uncached address for most legacy MIPS,
 	 * the physical RAM is 256 MB for interaptiv, physical RAM is up to 3GB,
@@ -868,7 +884,11 @@ static void __init arch_mem_init(char **cmdline_p)
 		dma_cma_limit = PFN_PHYS(max_low_pfn);
 
 	dma_contiguous_reserve(dma_cma_limit);
-	/* Tell bootmem about cma reserved memblock section */
+#else
+    dma_contiguous_reserve(PFN_PHYS(max_low_pfn));
+#endif
+
+    /* Tell bootmem about cma reserved memblock section */
 	for_each_memblock(reserved, reg)
 		if (reg->size != 0)
 			reserve_bootmem(reg->base, reg->size, BOOTMEM_DEFAULT);

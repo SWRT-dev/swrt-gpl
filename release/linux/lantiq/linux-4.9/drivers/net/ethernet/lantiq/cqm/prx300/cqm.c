@@ -1,6 +1,7 @@
 #include "cqm.h"
 #include "cqm_debugfs.h"
 #include "../cqm_dev.h"
+#include <linux/of_reserved_mem.h>
 #include <net/datapath_proc_api.h>
 #include <net/switch_api/gsw_flow_ops.h>
 #include <net/switch_api/gsw_dev.h>
@@ -15,6 +16,7 @@
 #define COMPLETE_BIT  BIT(30)
 #define CQM_PON_IP_BASE_ADDR 0x181003FC
 #define CQM_PON_IP_PKT_LEN_ADJ_BYTES 9
+#define CQEM_PON_IP_IF_PIB_OVERSHOOT_BYTES 9260
 #define PRX300_CQM_DROP_INIT ((PRX300_CQM_DROP_Q << 24) | \
 			   (PRX300_CQM_DROP_Q << 16) | \
 			   (PRX300_CQM_DROP_Q << 8) | \
@@ -41,7 +43,7 @@ static u32 g_qidt_help[0x4000];
 static spinlock_t cqm_qidt_lock;
 static spinlock_t cqm_port_map;
 static spinlock_t cpu_pool_enq;
-static struct bmgr_policy_params p_param[CQM_PRX300_NUM_BM_POOLS];
+static struct pp_bmgr_policy_params p_param[CQM_PRX300_NUM_BM_POOLS];
 
 LIST_HEAD(pmac_mapping_list);
 static struct cqm_ctrl *cqm_ctrl;
@@ -50,6 +52,9 @@ static s32 cqm_dma_port_enable(s32 cqm_port_id, u32 flags, s32 type);
 static s32 cqm_dq_dma_chan_init(s32 cqm_port_id, u32 flags);
 static void init_cqm_deq_cpu_port(int idx, u32 tx_ring_size);
 static s32 cqm_dequeue_dma_port_uninit(s32 cqm_port_id, u32 flags);
+static void fill_dp_alloc_data(struct cbm_dp_alloc_data *data, int dp,
+			       int port, u32 flags);
+static void cqm_deq_port_flush(int port);
 
 #ifdef ENABLE_LL_DEBUG
 static void do_cbm_debug_tasklet(unsigned long cpu);
@@ -61,16 +66,18 @@ static struct tasklet_struct cbm_debug_tasklet;
 #define FLAG_ACA (DP_F_FAST_WLAN | DP_F_FAST_DSL)
 #define FLAG_LSB_DONT_CARE 0x80000000
 #define FLAG_VUNI (DP_F_VUNI)
+#define Q_FLUSH_NO_PACKET_CNT 5
 
 struct cqm_egp_map epg_lookup_table[] = {
-	{0,	0,			0},
-	{26,	2,			FLAG_WAN},
-	{LAN_0_PORT,	3,			FLAG_LAN},
-	{LAN_1_PORT,	4,			FLAG_LAN},
-	{4,	CBM_PMAC_DYNAMIC,	FLAG_ACA},
-	{5,	CBM_PMAC_DYNAMIC,	FLAG_ACA},
-	{6,	CBM_PMAC_DYNAMIC,	FLAG_ACA},
-	{24,	CBM_PMAC_DYNAMIC,	FLAG_VUNI},
+	{0,              0,                0},
+	{26,             2,                FLAG_WAN},
+	{LAN_0_PORT,     3,                FLAG_LAN},
+	{LAN_1_PORT,     4,                FLAG_LAN},
+	{4,              CBM_PMAC_DYNAMIC, FLAG_ACA},
+	{5,              CBM_PMAC_DYNAMIC, FLAG_ACA},
+	{6,              CBM_PMAC_DYNAMIC, FLAG_ACA},
+	{24,             CBM_PMAC_DYNAMIC, FLAG_VUNI},
+	{LAN_1_PORT + 1, CBM_PMAC_DYNAMIC, DP_F_DIRECT},
 };
 
 struct cqm_buf_dbg_cnt cqm_dbg_cntrs[CQM_MAX_POLICY_NUM][CQM_MAX_POOL_NUM];
@@ -235,36 +242,36 @@ static u32 get_matching_pmac(u32 *ep, u32 flags, u32 *cbm_port, int pmac,
 		cbm_port[i] = CBM_PORT_INVALID;
 	}
 	for (i = 0; i < ARRAY_SIZE(epg_lookup_table); i++) {
-		if (epg_lookup_table[i].port_type & flags) {
-			if (j < PRX300_MAX_PORT_PER_EP) {
-				if (pmac_present &&
-				    (epg_lookup_table[i].pmac == pmac)) {
+		if (!(epg_lookup_table[i].port_type & flags))
+			continue;
+
+		if (j < PRX300_MAX_PORT_PER_EP) {
+			if (pmac_present &&
+			    (epg_lookup_table[i].pmac == pmac)) {
+				ep[j] = epg_lookup_table[i].pmac;
+				cbm_port[j] = epg_lookup_table[i].epg;
+				if (cbm_port[j] == DMA_PORT_FOR_FLUSH)
+					dev_err(cqm_ctrl->dev, "DMA port %d in use pmac %d\n",
+						cbm_port[j], pmac);
+				j++;
+			}
+			if (!pmac_present) {
+				if (!is_cbm_allocated(
+					epg_lookup_table[i].epg, flags)) {
 					ep[j] = epg_lookup_table[i].pmac;
 					cbm_port[j] = epg_lookup_table[i].epg;
-					if (cbm_port[j] == DMA_PORT_FOR_FLUSH)
-						dev_err(cqm_ctrl->dev, "DMA port %d in use pmac %d\n",
+					if (cbm_port[j] ==
+					    DMA_PORT_FOR_FLUSH) {
+						dev_err(cqm_ctrl->dev,
+							"DMA port %d in use pmac %d\n",
 							cbm_port[j], pmac);
+					}
 					j++;
 				}
-				if (!pmac_present) {
-					if (!is_cbm_allocated(
-						epg_lookup_table[i].epg,
-						flags)) {
-						ep[j] =
-						epg_lookup_table[i].pmac;
-						cbm_port[j] =
-						epg_lookup_table[i].epg;
-					if (cbm_port[j] ==
-							DMA_PORT_FOR_FLUSH)
-						dev_err(cqm_ctrl->dev, "DMA port %d in use pmac %d\n",
-							cbm_port[j], pmac);
-						j++;
-					}
-				}
-				result = CBM_SUCCESS;
-			} else {
-				break;
 			}
+			result = CBM_SUCCESS;
+		} else {
+			break;
 		}
 	}
 	return result;
@@ -439,7 +446,7 @@ static int get_buffer_base_index(u32 v_buf, u32 *buff_base,
 		temp_buf_end = bm_pool_conf[i].pool_end_low;
 		dev_dbg(cqm_ctrl->dev, "0x%x 0x%x 0x%x\n",
 			v_buf, temp_buf_start, temp_buf_end);
-		if ((v_buf >= temp_buf_start) && (v_buf <= temp_buf_end)) {
+		if ((v_buf >= temp_buf_start) && (v_buf < temp_buf_end)) {
 			dev_dbg(cqm_ctrl->dev, "0x%x 0x%x 0x%x\n",
 				v_buf, temp_buf_start, temp_buf_end);
 			*buff_size = bm_pool_conf[i].buf_frm_size;
@@ -585,7 +592,8 @@ static s32 enable_backpressure(s32 port_id, bool flag)
 	int retval = CBM_SUCCESS;
 	u32 reg_off, config;
 
-	dev_dbg(cqm_ctrl->dev, "%s enter port_id %d\n", __func__, port_id);
+	dev_dbg(cqm_ctrl->dev, "%s enter port_id %d enable: %d\n",
+		__func__, port_id, flag);
 
 	switch (find_dqm_port_type(port_id)) {
 	case DQM_PON_TYPE:
@@ -645,6 +653,11 @@ static s32 qid2ep_map_get(int qid, int *port)
 {
 	*port = cbm_r32(cqm_ctrl->qid2ep + (qid * 4));
 	return CBM_SUCCESS;
+}
+
+u32 epon_mode_reg_get(void)
+{
+	return cbm_r32(cqm_ctrl->enq + EPON_EPON_MODE_REG);
 }
 
 static s32 mode_table_get(int cbm_inst, int *mode,
@@ -738,17 +751,18 @@ static void cqm_qid_reg_set(struct cqm_qidt_elm *qidt_elm, u8 qid_val,
 	cqm_qid_program(qid_val, qidt);
 }
 
-static void set_lookup_qid_via_index_prx300(u32 index, u32 qid)
+static void set_lookup_qid_via_index_prx300(struct cbm_lookup *info)
 {
 	unsigned long sys_flag;
 
 	spin_lock_irqsave(&cqm_qidt_lock, sys_flag);
-	cqm_qid_program(qid, index);
+	cqm_qid_program(info->qid, info->index);
 	spin_unlock_irqrestore(&cqm_qidt_lock, sys_flag);
 }
 
-static u8 get_lookup_qid_via_idx_prx300(u32 index)
+static u8 get_lookup_qid_via_idx_prx300(struct cbm_lookup *info)
 {
+	u32 index = info->index;
 	u32 offset = (index / 4) * 4;
 	u32 shift = (index % 4) * 8;
 	unsigned long sys_flag;
@@ -759,6 +773,69 @@ static u8 get_lookup_qid_via_idx_prx300(u32 index)
 	value = ((cbm_r32(qidt + offset)) >> shift) & PRX300_CQM_Q_MASK;
 	spin_unlock_irqrestore(&cqm_qidt_lock, sys_flag);
 	return value;
+}
+
+static void map_to_drop_q(struct cbm_lookup_entry *lu_entry)
+{
+	unsigned long sys_flag;
+	u8 value = 0;
+	int i = 0;
+	u32 offset, shift;
+	void *qidt = cqm_ctrl->qidt;
+
+	spin_lock_irqsave(&cqm_qidt_lock, sys_flag);
+
+	for (i = 0; i < MAX_LOOKUP_TBL_SIZE; i++) {
+		offset = (i / 4) * 4;
+		shift = (i % 4) * 8;
+		value = ((cbm_r32(qidt + offset)) >> shift) & PRX300_CQM_Q_MASK;
+
+		/* if match, set the index to drop q */
+		if (lu_entry->qid == value) {
+			lu_entry->entry[lu_entry->num[0]++] = i;
+			cqm_qid_program(lu_entry->ppv4_drop_q, i);
+		}
+	}
+
+	spin_unlock_irqrestore(&cqm_qidt_lock, sys_flag);
+}
+
+static void restore_orig_q(const struct cbm_lookup_entry *lu_entry)
+{
+	unsigned long sys_flag;
+	int i = 0;
+
+	spin_lock_irqsave(&cqm_qidt_lock, sys_flag);
+
+	for (i = 0; i < lu_entry->num[0]; i++)
+		cqm_qid_program(lu_entry->qid, lu_entry->entry[i]);
+
+	spin_unlock_irqrestore(&cqm_qidt_lock, sys_flag);
+}
+
+static inline void find_next_sub_if_id(u32 *idx_p, u32 mask, u32 mask_all,
+				       u32 limit_v, u32 start_v)
+{
+	if (*idx_p < start_v)
+		*idx_p = start_v;
+	if (mask && (*idx_p) && mask_all) {
+		while ((start_v != ((*idx_p) & (~mask))) &&
+		       ((*idx_p) < limit_v)) {
+			*idx_p =  *idx_p + 1;
+		}
+	}
+}
+
+static inline void sub_if_id_masking(u32 sub_if_id, u32 *st, u32 *lim,
+				     u32 in_mask, u32 *bit_mask)
+{
+	if (in_mask & 1) {
+		*bit_mask = in_mask >> SUB_IF_ID_MASK_SHF;
+		if (*bit_mask) {
+			*st = sub_if_id & (~(*bit_mask));
+			*lim = ((*st) | (*bit_mask)) + 1;
+		}
+	}
 }
 
 static void cqm_qidt_set_mode0(const struct cqm_qidt_elm *qid_set,
@@ -836,7 +913,8 @@ static void cqm_qidt_set_mode0(const struct cqm_qidt_elm *qid_set,
 				     &flag_done.mpe2_done, qid_set->mpe2,
 				     qid_mask->mpe2_mask, &qidt_elm.mpe2,
 				     &qidt_idx.mpe2);
-			cqm_qid_reg_set(&qidt_elm, qid_val, sel_field);
+			if (!flag_done.mpe2_done)
+				cqm_qid_reg_set(&qidt_elm, qid_val, sel_field);
 			break;
 		case STATE_NONE:
 			break;
@@ -852,6 +930,11 @@ static void cqm_qidt_set_mode1(const struct cqm_qidt_elm *qid_set,
 	struct cqm_qidt_elm qidt_elm = {0};
 	int state;
 	struct qidt_flag_done flag_done = {0};
+	u32 limit = MODE1_SUB_IF_ID_LIMIT, masking_bits = 0, start = 0;
+	u32 sub_if_id_bit_mask =
+		((qid_mask->sub_if_id_mask >> SUB_IF_ID_MODE_1_POS) &
+		(SUB_IF_ID_MODE_1_MASK << SUB_IF_ID_MASK_SHF)) |
+		(qid_mask->sub_if_id_mask & 0x01);
 	u8 sel_field = 0;
 
 	dev_dbg(cqm_ctrl->dev, "%u\n", qid_val);
@@ -865,15 +948,23 @@ static void cqm_qidt_set_mode1(const struct cqm_qidt_elm *qid_set,
 		qid_mask->dec_mask, qid_mask->flowid_hmask,
 		qid_mask->flowid_lmask);
 	state = STATE_SUBIF_ID;
+	sub_if_id_masking(((qid_set->sub_if_id >> SUB_IF_ID_MODE_1_POS) &
+			  SUB_IF_ID_MODE_1_MASK), &start, &limit,
+			  sub_if_id_bit_mask, &masking_bits);
+	qidt_elm.sub_if_id = start;
+	qidt_idx.sub_if_id = start;
 	while (state != STATE_NONE) {
 		switch (state) {
 		case STATE_SUBIF_ID:
-			handle_state(&state, STATE_EP, STATE_NONE, 256,
+			handle_state(&state, STATE_EP, STATE_NONE, limit,
 				     &flag_done.sub_if_id_done,
 				     (qid_set->sub_if_id & 0xff),
 				     qid_mask->sub_if_id_mask,
 				     &qidt_elm.sub_if_id, &qidt_idx.sub_if_id);
 			sel_field = qidt_elm.sub_if_id;
+			find_next_sub_if_id(&qidt_idx.sub_if_id, masking_bits,
+					    (qid_mask->sub_if_id_mask & 1),
+					    limit, start);
 			break;
 		case STATE_EP:
 			handle_state(&state, STATE_MPE1, STATE_SUBIF_ID, 16,
@@ -892,7 +983,8 @@ static void cqm_qidt_set_mode1(const struct cqm_qidt_elm *qid_set,
 				     &flag_done.mpe2_done, qid_set->mpe2,
 				     qid_mask->mpe2_mask, &qidt_elm.mpe2,
 				     &qidt_idx.mpe2);
-			cqm_qid_reg_set(&qidt_elm, qid_val, sel_field);
+			if (!flag_done.mpe2_done)
+				cqm_qid_reg_set(&qidt_elm, qid_val, sel_field);
 			break;
 		case STATE_NONE:
 			break;
@@ -906,10 +998,14 @@ static void cqm_qidt_set_mode2(const struct cqm_qidt_elm *qid_set,
 {
 	struct cqm_qidt_elm qidt_idx = {0};
 	struct cqm_qidt_elm qidt_elm = {0};
-	int state, nxt_st_subif, pr_st_ep;
+	int state;
 	struct qidt_flag_done flag_done = {0};
+	u32 limit = MODE2_SUB_IF_ID_LIMIT, masking_bits = 0, start = 0;
+	u32 sub_if_id_bit_mask =
+		((qid_mask->sub_if_id_mask >> SUB_IF_ID_MODE_2_POS) &
+		(SUB_IF_ID_MODE_2_MASK << SUB_IF_ID_MASK_SHF)) |
+		(qid_mask->sub_if_id_mask & 0x01);
 	u8 sel_field = 0;
-	u32 temp = 0, temp_idx = 0;
 
 	dev_dbg(cqm_ctrl->dev, "%u\n", qid_val);
 	dev_dbg(cqm_ctrl->dev, "%u %u %u %u\n", qid_set->clsid,
@@ -923,11 +1019,13 @@ static void cqm_qidt_set_mode2(const struct cqm_qidt_elm *qid_set,
 		qid_mask->flowid_lmask);
 	dev_dbg(cqm_ctrl->dev, "%u %u\n", qid_set->sub_if_id,
 		qid_mask->sub_if_id_mask);
-	nxt_st_subif = (qid_mask->sub_if_id_mask & FLAG_LSB_DONT_CARE) ?
-			STATE_SUBIF_LSB_DC : STATE_EP;
-	pr_st_ep = (qid_mask->sub_if_id_mask & FLAG_LSB_DONT_CARE) ?
-			STATE_SUBIF_LSB_DC : STATE_SUBIF_ID;
+
 	state = STATE_CLASS;
+	sub_if_id_masking(((qid_set->sub_if_id >> SUB_IF_ID_MODE_2_POS) &
+			  SUB_IF_ID_MODE_2_MASK), &start, &limit,
+			  sub_if_id_bit_mask, &masking_bits);
+	qidt_elm.sub_if_id = start;
+	qidt_idx.sub_if_id = start;
 	while (state != STATE_NONE) {
 		switch (state) {
 		case STATE_CLASS:
@@ -937,30 +1035,22 @@ static void cqm_qidt_set_mode2(const struct cqm_qidt_elm *qid_set,
 				     &qidt_idx.clsid);
 			break;
 		case STATE_SUBIF_ID:
-			handle_state(&state, nxt_st_subif, STATE_CLASS,
-				     16, &flag_done.sub_if_id_done,
+			handle_state(&state, STATE_EP, STATE_CLASS,
+				     limit, &flag_done.sub_if_id_done,
 				     ((qid_set->sub_if_id >> 8) & 0xf),
 				     qid_mask->sub_if_id_mask & 1,
 				     &qidt_elm.sub_if_id,
 				     &qidt_idx.sub_if_id);
 			sel_field = (qidt_elm.sub_if_id << 4) |
 				(qidt_elm.clsid & 0xf);
-			temp = (qidt_elm.sub_if_id & 0xf);
-			temp |= 1UL;
-			temp_idx = temp & (~1UL);
-			break;
-		case STATE_SUBIF_LSB_DC:
-			handle_state(&state, STATE_EP, STATE_SUBIF_ID,
-				     temp + 1, &flag_done.sub_if_dc_done,
-				     ((qid_set->sub_if_id >> 8) & 0xf),
-				     qid_mask->sub_if_id_mask,
-				     &qidt_elm.sub_if_id,
-				     &temp_idx);
-			sel_field = (qidt_elm.sub_if_id << 4) |
-					     (qidt_elm.clsid & 0xf);
+
+			find_next_sub_if_id(&qidt_idx.sub_if_id, masking_bits,
+					    (qid_mask->sub_if_id_mask & 1),
+					    limit, start);
+
 			break;
 		case STATE_EP:
-			handle_state(&state, STATE_MPE1, pr_st_ep, 16,
+			handle_state(&state, STATE_MPE1, STATE_SUBIF_ID, 16,
 				     &flag_done.ep_done, qid_set->ep,
 				     qid_mask->ep_mask, &qidt_elm.ep,
 				     &qidt_idx.ep);
@@ -976,7 +1066,8 @@ static void cqm_qidt_set_mode2(const struct cqm_qidt_elm *qid_set,
 				     &flag_done.mpe2_done, qid_set->mpe2,
 				     qid_mask->mpe2_mask, &qidt_elm.mpe2,
 				     &qidt_idx.mpe2);
-			cqm_qid_reg_set(&qidt_elm, qid_val, sel_field);
+			if (!flag_done.mpe2_done)
+				cqm_qid_reg_set(&qidt_elm, qid_val, sel_field);
 			break;
 		case STATE_NONE:
 			break;
@@ -993,6 +1084,11 @@ static void cqm_qidt_set_mode3(const struct cqm_qidt_elm *qid_set,
 	int state;
 	struct qidt_flag_done flag_done = {0};
 	u8 sel_field = 0;
+	u32 limit = MODE3_SUB_IF_ID_LIMIT, masking_bits = 0, start = 0;
+	u32 sub_if_id_bit_mask =
+		((qid_mask->sub_if_id_mask >> SUB_IF_ID_MODE_3_POS) &
+		(SUB_IF_ID_MODE_3_MASK << SUB_IF_ID_MASK_SHF)) |
+		(qid_mask->sub_if_id_mask & 0x01);
 
 	dev_dbg(cqm_ctrl->dev, "%u\n", qid_val);
 	dev_dbg(cqm_ctrl->dev, "%u %u %u %u\n", qid_set->clsid,
@@ -1005,6 +1101,11 @@ static void cqm_qidt_set_mode3(const struct cqm_qidt_elm *qid_set,
 		qid_mask->dec_mask, qid_mask->flowid_hmask,
 		qid_mask->flowid_lmask);
 	state = STATE_CLASS;
+	sub_if_id_masking(((qid_set->sub_if_id >> SUB_IF_ID_MODE_3_POS) &
+			  SUB_IF_ID_MODE_3_MASK), &start, &limit,
+			  sub_if_id_bit_mask, &masking_bits);
+	qidt_elm.sub_if_id = start;
+	qidt_idx.sub_if_id = start;
 	while (state != STATE_NONE) {
 		switch (state) {
 		case STATE_CLASS:
@@ -1014,7 +1115,7 @@ static void cqm_qidt_set_mode3(const struct cqm_qidt_elm *qid_set,
 				     &qidt_idx.clsid);
 			break;
 		case STATE_SUBIF_ID:
-			handle_state(&state, STATE_EP, STATE_CLASS, 32,
+			handle_state(&state, STATE_EP, STATE_CLASS, limit,
 				     &flag_done.sub_if_id_done,
 				     (qid_set->sub_if_id & 0x1f),
 				      qid_mask->sub_if_id_mask,
@@ -1022,6 +1123,9 @@ static void cqm_qidt_set_mode3(const struct cqm_qidt_elm *qid_set,
 				      &qidt_idx.sub_if_id);
 			sel_field = (qidt_elm.sub_if_id << 3) |
 				     (qidt_elm.clsid & 0x7);
+			find_next_sub_if_id(&qidt_idx.sub_if_id, masking_bits,
+					    (qid_mask->sub_if_id_mask & 1),
+					    limit, start);
 			break;
 		case STATE_EP:
 			handle_state(&state, STATE_MPE1, STATE_SUBIF_ID, 16,
@@ -1040,7 +1144,8 @@ static void cqm_qidt_set_mode3(const struct cqm_qidt_elm *qid_set,
 				     &flag_done.mpe2_done, qid_set->mpe2,
 				     qid_mask->mpe2_mask, &qidt_elm.mpe2,
 				     &qidt_idx.mpe2);
-			cqm_qid_reg_set(&qidt_elm, qid_val, sel_field);
+			if (!flag_done.mpe2_done)
+				cqm_qid_reg_set(&qidt_elm, qid_val, sel_field);
 			break;
 		case STATE_NONE:
 			break;
@@ -1082,7 +1187,6 @@ static void cqm_qidt_set(const struct cqm_qidt_elm *qid_set,
 	}
 }
 
-#if 1
 static s32 queue_map_get(int cbm_inst, s32 queue_id, s32 *num_entries,
 			 cbm_queue_map_entry_t **entries, u32 flags)
 {
@@ -1131,7 +1235,6 @@ static s32 queue_map_get(int cbm_inst, s32 queue_id, s32 *num_entries,
 		index = (g_qidt_help[i] / 4) << 2;
 		offset = (g_qidt_help[i] % 4);
 		index = index + 3 - offset;
-		temp_entry[i].regval = 0;
 		temp_entry[i].mpe1 = (index & 0x100) >> PRX300_MPE1_POS;
 		temp_entry[i].mpe2 = (index & 0x200) >> PRX300_MPE2_POS;
 		temp_entry[i].ep = (index & 0xF0) >> PRX300_EP_POS;
@@ -1181,6 +1284,7 @@ static s32 queue_map_set(int cbm_inst, s32 queue_id,
 	unsigned long sys_flag;
 	struct cqm_qidt_elm qidt_elm;
 	struct cqm_qidt_mask qidt_mask = {0};
+	u32 i;
 
 	if (!entry)
 		return CBM_FAILURE;
@@ -1206,21 +1310,31 @@ static s32 queue_map_set(int cbm_inst, s32 queue_id,
 		qidt_mask.mpe1_mask = 1;
 	if (flags & CBM_QUEUE_MAP_F_MPE2_DONTCARE)
 		qidt_mask.mpe2_mask = 1;
-	if (flags & CBM_QUEUE_MAP_F_EP_DONTCARE)
-		qidt_mask.ep_mask = 1;
 	if (flags & CBM_QUEUE_MAP_F_TC_DONTCARE)
 		qidt_mask.classid_mask = 1;
-	if (flags & CBM_QUEUE_MAP_F_SUBIF_DONTCARE)
+	if (flags & CBM_QUEUE_MAP_F_SUBIF_DONTCARE) {
 		qidt_mask.sub_if_id_mask = 1;
-	if (flags & CBM_QUEUE_MAP_F_SUBIF_LSB_DONTCARE)
-		qidt_mask.sub_if_id_mask |= FLAG_LSB_DONT_CARE;
+		qidt_mask.sub_if_id_mask |= (entry->sub_if_id_mask_bits
+			<< SUB_IF_ID_MASK_SHF);
+	}
 
 	spin_lock_irqsave(&cqm_qidt_lock, sys_flag);
-	cqm_qidt_set(&qidt_elm, &qidt_mask, queue_id);
+	if (flags & CBM_QUEUE_MAP_F_EP_DONTCARE) {
+		for (i = 0; i < MAX_QID_MAP_EP_NUM; i++) {
+			qidt_elm.ep = i;
+			cqm_qidt_set(&qidt_elm, &qidt_mask, queue_id);
+		}
+	} else {
+		cqm_qidt_set(&qidt_elm, &qidt_mask, queue_id);
+	}
 	spin_unlock_irqrestore(&cqm_qidt_lock, sys_flag);
 	return CBM_SUCCESS;
 }
-#endif
+
+void queue_map_buf_free(cbm_queue_map_entry_t *entries)
+{
+	kfree(entries);
+}
 
 void *cqm_get_enq_base(void)
 {
@@ -1245,6 +1359,11 @@ void *cqm_get_ctrl_base(void)
 void *cqm_get_ls_base(void)
 {
 	return cqm_ctrl->ls;
+}
+
+void *cqm_get_pib_base(void)
+{
+	return cqm_ctrl->pib;
 }
 
 void cqm_read_dma_desc_prep(int port, void **base_addr, int *num_desc)
@@ -1410,15 +1529,16 @@ static int cqm_cpu_enqueue(u32 pid, struct cbm_desc *desc)
 /*return 1: pointer is valid
  *0: pointer is invalid
  */
-static inline int check_ptr_validation_prx300(u32 v_buf)
+static inline int check_ptr_validation_prx300(void *buf)
 {
 	int i = 0;
 	u32 temp_buf_start, temp_buf_end;
+	u32 v_buf = (u32)buf;
 
 	while (i < CQM_PRX300_NUM_POOLS) {
 		temp_buf_start = bm_pool_conf[i].pool_start_low;
 		temp_buf_end = bm_pool_conf[i].pool_end_low;
-		if ((v_buf >= temp_buf_start) && (v_buf <= temp_buf_end))
+		if ((v_buf >= temp_buf_start) && (v_buf < temp_buf_end))
 			return 1;
 		i++;
 	}
@@ -1527,6 +1647,41 @@ static void *cqm_buff_alloc_by_policy_prx300(u32 pid, u32 flag, u32 policy)
 	return (void *)buff_base + CQM_POOL_METADATA;
 }
 
+static int cqm_buffer_free_by_policy_prx300(struct cqm_bm_free *free_info)
+{
+	u32 buf, size, pool, policy, pid = smp_processor_id();
+	unsigned long sys_flag;
+	int ret, idx;
+
+	ret = get_buffer_base_index((u32)__va(free_info->buf),
+				    &buf, &size, &idx);
+	if (!ret) {
+		pool = bm_pool_conf[idx].pool;
+		policy = free_info->policy_base + pool;
+
+		if ((pool != CQM_FSQM_POOL) &&
+		    (policy != CQM_FSQM_POLICY)) {
+			memset((u8 *)buf, 0, CQM_PRX300_POOL_POL_HDR_SIZE);
+			buf = dma_map_single(cqm_ctrl->dev, (void *)buf,
+					     size, DMA_FROM_DEVICE);
+			if (dma_mapping_error(cqm_ctrl->dev, buf)) {
+				dev_err(cqm_ctrl->dev, "%s DMA map failed\n",
+					__func__);
+				return CBM_FAILURE;
+			}
+		}
+		UP_STATS(cqm_dbg_cntrs[policy][pool].free_cnt);
+		local_irq_save(sys_flag);
+		cbm_w32(cqm_ctrl->deq + DQ_CPU_PORT(pid, ptr_rtn_dw2), buf);
+		cbm_w32(cqm_ctrl->deq + DQ_CPU_PORT(pid, ptr_rtn_dw3),
+			(pool << PTR_RTN_CPU_DW3_EGP_0_POOL_POS)
+			| (policy << PTR_RTN_CPU_DW3_EGP_0_POLICY_POS));
+		local_irq_restore(sys_flag);
+	}
+
+	return ret;
+}
+
 static void *cqm_buffer_alloc(u32 pid, u32 flag, u32 size, u32 *buf_size)
 {
 	u32 buf_addr = 0;
@@ -1611,7 +1766,7 @@ static int cqm_buffer_free(u32 pid, void *v_buf_free, u32 flag)
 	}
 	if (flag)
 		v_buf = (u32)__va(v_buf);
-	dev_dbg(cqm_ctrl->dev, "%s %u\n", __func__, v_buf);
+	dev_dbg(cqm_ctrl->dev, "%s %x\n", __func__, v_buf);
 	res = get_buffer_base_index(v_buf, &pointer_to_wb, &size_to_wb, &idx);
 	if (!res) {
 		pool = bm_pool_conf[idx].pool;
@@ -1649,7 +1804,6 @@ static int cqm_buffer_free(u32 pid, void *v_buf_free, u32 flag)
 		return CBM_FAILURE;
 	}
 BUFF_FREE:
-	UP_STATS(cqm_dbg_cntrs[policy][pool].free_cnt);
 	local_irq_save(sys_flag);
 	/*Mahua's fix for buffer free issue.To be tuned for real silicon*/
 	i = 0;
@@ -1669,7 +1823,7 @@ BUFF_FREE:
 		dev_err(cqm_ctrl->dev, "can not free for portid: %d", pid);
 		return CBM_FAILURE;
 	}
-
+	UP_STATS(cqm_dbg_cntrs[policy][pool].free_cnt);
 	cbm_w32(deq + DQ_CPU_PORT(pid, ptr_rtn_dw2), buf);
 	cbm_w32(deq + DQ_CPU_PORT(pid, ptr_rtn_dw3),
 		(pool << PTR_RTN_CPU_DW3_EGP_0_POOL_POS)
@@ -1687,7 +1841,7 @@ static int setup_desc(struct cbm_desc *desc, u32 data_ptr, u32 data_len,
 	if (!desc)
 		return CBM_FAILURE;
 	memset(&temp_desc, 0, sizeof(struct dma_desc));
-	temp_desc.data_ptr		= data_ptr;
+	temp_desc.data_ptr		= data_ptr & (~0x7);
 	temp_desc.data_len		= data_len;
 	temp_desc.byte_offset	= data_ptr & 0x7;
 	temp_desc.sop			= 1;
@@ -1728,7 +1882,7 @@ static int setup_desc(struct cbm_desc *desc, u32 data_ptr, u32 data_len,
 static s32 cqm_cpu_pkt_tx(struct sk_buff *skb, struct cbm_tx_data *data,
 			  u32 flags)
 {
-	struct cbm_desc desc;
+	struct cbm_desc desc = {0};
 	u32 tmp_data_ptr;
 	struct dma_tx_desc_2 *desc_2 = (struct dma_tx_desc_2 *)&skb->DW2;
 	u32 new_buf = 0;
@@ -1739,7 +1893,7 @@ static s32 cqm_cpu_pkt_tx(struct sk_buff *skb, struct cbm_tx_data *data,
 	tot_len = skb->len;
 	clone_f = skb_cloned(skb);
 	shared_f = skb_shared(skb);
-	cpu_buf = !check_ptr_validation_prx300((u32)(skb->head));
+	cpu_buf = !check_ptr_validation_prx300((void *)(skb->head));
 
 	if (data && data->pmac) {
 		no_hdr_room_f = skb_headroom(skb) < data->pmac_len ? 1 : 0;
@@ -1759,15 +1913,10 @@ static s32 cqm_cpu_pkt_tx(struct sk_buff *skb, struct cbm_tx_data *data,
 				dev_err(cqm_ctrl->dev, "Error getting pool policy\n");
 				goto ERR_CASE_1;
 			}
-			if (cbm_linearise_buf(skb, data, buf_size,
-					      (new_buf)
-					      )) {
-				pr_err("linearize failed\n");
-				goto ERR_CASE_1;
-			}
 			tmp_data_ptr = new_buf;
 			dev_dbg(cqm_ctrl->dev, "tmp_data_ptr 0x%x\n",
 				tmp_data_ptr);
+			cbm_linearise_buf(skb, data, buf_size, new_buf);
 		}
 	} else {
 		/*Insert PMAC header if present*/
@@ -1786,20 +1935,11 @@ static s32 cqm_cpu_pkt_tx(struct sk_buff *skb, struct cbm_tx_data *data,
 		/* Detach the skb */
 		skb->head = NULL;
 	}
-	if (setup_desc((struct cbm_desc *)&desc, tmp_data_ptr,
-		       tot_len,
-		       skb->DW1, skb->DW0, skb->DW3, pool, policy)) {
-		dev_err(cqm_ctrl->dev, "cbm setup desc failed..\n");
-		cqm_buffer_free(smp_processor_id(), (void *)tmp_data_ptr, 1);
-		goto ERR_CASE_2;
-	}
+	setup_desc((struct cbm_desc *)&desc, tmp_data_ptr, tot_len, skb->DW1,
+		   skb->DW0, skb->DW3, pool, policy);
 	dev_kfree_skb_any(skb);
 
-	if (cqm_cpu_enqueue(smp_processor_id(), &desc)) {
-		dev_err(cqm_ctrl->dev, "cpu enqueue failed..\n");
-		cqm_buffer_free(smp_processor_id(), (void *)tmp_data_ptr, 1);
-		return CBM_FAILURE;
-	}
+	cqm_cpu_enqueue(smp_processor_id(), &desc);
 	UP_STATS(cqm_dbg_cntrs[policy][pool].tx_cnt);
 		return CBM_SUCCESS;
 ERR_CASE_1:
@@ -1823,14 +1963,20 @@ s32 cqm_cpu_port_get(struct cbm_cpu_port_data *data, u32 flags)
 	data->dq_tx_flush_info.deq_port = DMA_PORT_FOR_FLUSH;
 	data->dq_tx_flush_info.tx_ring_size = 1;
 	data->dq_tx_flush_info.tx_b_credit = 0;
-	data->dq_tx_flush_info.txpush_addr_qos = (u32)(cqm_ctrl->txpush +
-				  (TXPUSH_CMD_RX_EGP_1 * DMA_PORT_FOR_FLUSH)) &
-				  0x7FFFFF;
-	data->dq_tx_flush_info.txpush_addr = (u32)(cqm_ctrl->txpush +
-				  (TXPUSH_CMD_RX_EGP_1 * DMA_PORT_FOR_FLUSH));
+	data->dq_tx_flush_info.txpush_addr_qos =
+		(void *)((u32)(cqm_ctrl->txpush +
+		(TXPUSH_CMD_RX_EGP_1 * DMA_PORT_FOR_FLUSH)) &
+		0x7FFFFF);
+	data->dq_tx_flush_info.txpush_addr = (void *)((u32)(cqm_ctrl->txpush +
+				  (TXPUSH_CMD_RX_EGP_1 * DMA_PORT_FOR_FLUSH)));
 	data->dq_tx_flush_info.tx_ring_offset = TXPUSH_CMD_RX_EGP_1;
 	data->dq_tx_flush_info.tx_pkt_credit =
 				dqm_port_info[DMA_PORT_FOR_FLUSH].dq_txpush_num;
+	if (!(dqm_port_info[DMA_PORT_FOR_FLUSH].ref_cnt)) {
+		cqm_dma_port_enable(DMA_PORT_FOR_FLUSH,
+				    CBM_PORT_F_DEQUEUE_PORT, 0);
+		dqm_port_info[DMA_PORT_FOR_FLUSH].ref_cnt = 1;
+	}
 
 	dev_dbg(cqm_ctrl->dev,
 		"%d %d %d 0x%x 0x%x %d\n",
@@ -1843,23 +1989,30 @@ s32 cqm_cpu_port_get(struct cbm_cpu_port_data *data, u32 flags)
 
 	for (i = 0; i < CQM_MAX_CPU; i++) {
 		type = dqm_port_info[i].cpu_port_type;
+		data->policy_num[i][0] = cqm_ctrl->num_pools;
+		data->policy_base[i][0] = 0;
 		if (!((dqm_port_info[i].valid) && IS_CPU_PORT_TYPE(type))) {
-			data->dq_tx_push_info[i].deq_port = -1;
+			data->dq_tx_push_info[i][0].deq_port = -1;
 			continue;
 		}
-		ptr = &data->dq_tx_push_info[i];
+		ptr = &data->dq_tx_push_info[i][0];
 		ptr->deq_port = i;
 		ptr->type = type;
 		ptr->tx_ring_size = 1;
 		ptr->tx_b_credit = 0;
-		ptr->txpush_addr_qos = (u32)(cqm_ctrl->txpush +
+		ptr->txpush_addr_qos = (void *)((u32)(cqm_ctrl->txpush +
 					  (TXPUSH_CMD_RX_EGP_1 * i)) &
-					  0x7FFFFF;
-		ptr->txpush_addr = (u32)(cqm_ctrl->txpush +
-					  (TXPUSH_CMD_RX_EGP_1 * i));
+					  0x7FFFFF);
+		ptr->txpush_addr = (void *)((u32)(cqm_ctrl->txpush +
+					  (TXPUSH_CMD_RX_EGP_1 * i)));
 		ptr->tx_ring_offset = TXPUSH_CMD_RX_EGP_1;
 		ptr->tx_pkt_credit = dqm_port_info[i].dq_txpush_num;
 	}
+
+	if (cqm_ctrl->re_insertion > 0)
+		fill_dp_alloc_data(&data->re_insertion, 0,
+				   DMA_PORT_RE_INSERTION, 0);
+
 	return CBM_SUCCESS;
 }
 
@@ -1916,10 +2069,11 @@ static void fill_dp_alloc_data(struct cbm_dp_alloc_data *data, int dp,
 	data->num_dma_chan = idx;
 	data->deq_port_num = (data->deq_port == DQM_PON_TYPE) ? 64 : idx;
 	/*Lower 22 bits*/
-	data->txpush_addr_qos = (u32)(cqm_ctrl->txpush +
-	(TXPUSH_CMD_RX_EGP_1 * port)) & 0x7FFFFF;
-	data->txpush_addr = (u32)(cqm_ctrl->txpush +
-	(TXPUSH_CMD_RX_EGP_1 * port));
+	data->txpush_addr_qos =
+		(void *)((u32)(cqm_ctrl->txpush +
+		(TXPUSH_CMD_RX_EGP_1 * port)) & 0x7FFFFF);
+	data->txpush_addr = (void *)((u32)(cqm_ctrl->txpush +
+		(TXPUSH_CMD_RX_EGP_1 * port)));
 	data->tx_ring_offset = TXPUSH_CMD_RX_EGP_1;
 }
 
@@ -1970,13 +2124,16 @@ static s32 do_port_setting(u32 *pmac, u32 flags, u32 *cbm_port,
 		set_ifmux(PRX300_WAN_AON_MODE);
 		break;
 	case DP_F_GPON:
+		pib_program_overshoot(CQEM_PON_IP_IF_PIB_OVERSHOOT_BYTES);
 		/*clear PIB bypass*/
 		ctrl.pib_bypass = 0;
 		ctrl.pib_en = 1;
 		ctrl.wakeup_intr_en = 1;
+		ctrl.deq_delay = 7;
 		config_pib_ctrl(&ctrl,
 				FLAG_PIB_BYPASS |
 				FLAG_PIB_ENABLE |
+				FLAG_PIB_DELAY |
 				FLAG_PIB_WAKEUP_INTR);
 		if (cqm_ctrl->force_xpcs)
 			set_ifmux(PRX300_WAN_AON_MODE);
@@ -1992,9 +2149,11 @@ static s32 do_port_setting(u32 *pmac, u32 flags, u32 *cbm_port,
 		ctrl.pib_en = 1;
 		ctrl.wakeup_intr_en = 1;
 		ctrl.pkt_len_adj = 1;
+		ctrl.deq_delay = 0xf;
 		config_pib_ctrl(&ctrl,
 				FLAG_PIB_BYPASS |
 				FLAG_PIB_ENABLE |
+				FLAG_PIB_DELAY |
 				FLAG_PIB_WAKEUP_INTR |
 				FLAG_PIB_PKT_LEN_ADJ);
 		if (cqm_ctrl->force_xpcs)
@@ -2031,11 +2190,10 @@ static s32 cqm_dp_port_dealloc(struct module *owner, u32 dev_port,
 			       s32 port_id, struct cbm_dp_alloc_data *data,
 			       u32 flags)
 {
-	u32 num, cpu =  smp_processor_id();
+	u32 num;
 	struct cqm_res_t *res = NULL;
-	int port, idx;
+	int port, shared_p;
 	struct cqm_dqm_port_info *p_info;
-	void *buf;
 
 	if ((dp_port_resources_get(&port_id, &num, &res,
 				   flags) != 0) && (!res)) {
@@ -2043,20 +2201,35 @@ static s32 cqm_dp_port_dealloc(struct module *owner, u32 dev_port,
 			"Error getting resources for port_id %d\n", port_id);
 		return CBM_FAILURE;
 	}
+	if (port_id >= PMAC_MAX_NUM || port_id < 0)
+		return DP_FAILURE;
+
+	dev_dbg(cqm_ctrl->dev,
+		"cqm_delete_from_list port_id:%d, flags:0x%x\n",
+		port_id, flags);
+	cqm_delete_from_list(port_id, flags);
+
 /*First Subif*/
 	port = res[0].cqm_deq_port;
 	p_info = &dqm_port_info[port];
+	if (p_info->ref_cnt != 0)
+		return DP_SUCCESS;
+
+	if (flags & DP_F_SHARE_RES) {
+		shared_p = port_id ^ 1;
+		if (is_dp_allocated(shared_p, flags)) {
+			dev_dbg(cqm_ctrl->dev,
+				"shared port_id %d exists\n",
+				shared_p);
+			return DP_SUCCESS;
+		}
+	}
+	dev_dbg(cqm_ctrl->dev, "%s free deq port = %d flag:%x ptk_base :%x\n",
+		__func__, port, flags & FLAG_ACA,
+		(unsigned int)p_info->deq_info.pkt_base);
 
 	/* Free ACA port */
 	if ((flags & FLAG_ACA) && (p_info->deq_info.pkt_base)) {
-		for (idx = 0; idx < p_info->deq_info.prefill_pkt_num; idx++) {
-			if (p_info->deq_info.pkt_base[idx]) {
-				buf = (void *)p_info->deq_info.pkt_base[idx];
-				cqm_buffer_free(cpu, buf, 1);
-			} else {
-				break;
-			}
-		}
 		dmam_free_coherent(cqm_ctrl->dev, p_info->deq_info.dma_size,
 				   p_info->deq_info.pkt_base,
 				   (dma_addr_t)p_info->deq_info.pkt_base_paddr);
@@ -2071,12 +2244,15 @@ static s32 cqm_dp_port_dealloc(struct module *owner, u32 dev_port,
 	} else {
 		/*ACA port*/
 		cbm_w32((cqm_ctrl->deq + DQ_CPU_PORT(port, cfg)), 0x0);
+		if (find_dqm_port_type(port) == DQM_ACA_TYPE) {
+			dev_dbg(cqm_ctrl->dev, "%s DQM_ACA: reset dptr and dqpc\n",
+				__func__);
+			cbm_w32((cqm_ctrl->deq + DQ_SCPU_PORT(port, dqpc)), 0);
+			cbm_w32((cqm_ctrl->deq + DQ_SCPU_PORT(port, dptr)), 0);
+		}
 	}
 	devm_kfree(cqm_ctrl->dev, res);
 
-	if (port_id >= PMAC_MAX_NUM || port_id < 0)
-		return DP_FAILURE;
-	cqm_delete_from_list(port_id, flags);
 	return DP_SUCCESS;
 }
 
@@ -2084,20 +2260,33 @@ static s32
 dp_port_alloc(struct module *owner, struct net_device *dev, u32 dev_port,
 	      s32 port_id, struct cbm_dp_alloc_data *data, u32 flags)
 {
-	u32 port_start;
-	u32 port_end;
+	u32 port_start, port_resv_st = 0;
+	u32 port_end, port_resv_end = 0;
 	int i, result, cnt;
 	int param_pmac = 0, pmac_present = 0, pmac_found = 0;
 	u32 cbm_port[PRX300_MAX_PORT_PER_EP],
 	pmac[PRX300_MAX_PORT_PER_EP];
 	struct cqm_pmac_port_map local_entry = {0};
 	struct cqm_pmac_port_map *dp_local_entry = NULL;
+	u32 ch_dp_port, ch_num;
+	struct cqm_res_t *res = NULL;
+	u32 shared_port = 0;
+	u32 shared_port_exist = 0;
 
 	data->flags = 0;
 	if (!owner)
 		return CBM_FAILURE;
-	dev_dbg(cqm_ctrl->dev, "flags 0x%x\n", flags);
+	dev_dbg(cqm_ctrl->dev, "%s: port_id %d, flags 0x%x\n",
+		__func__, port_id, flags);
 	/*to allocate port*/
+
+	if (cqm_ctrl->radio_num) {
+		port_resv_st = PMAC_ALLOC_START_ID % 2 + PMAC_ALLOC_START_ID;
+		port_resv_end = port_resv_st + 2 * cqm_ctrl->radio_num - 1;
+		if (port_resv_end > PMAC_ALLOC_END_ID)
+			return DP_FAILURE;
+	}
+
 	if (flags & FLAG_LAN) {
 		port_start = PMAC_ETH_LAN_START_ID;
 		port_end = PMAC_ETH_LAN_END_ID;
@@ -2114,6 +2303,11 @@ dp_port_alloc(struct module *owner, struct net_device *dev, u32 dev_port,
 	} else {
 		port_start = PMAC_ALLOC_START_ID;
 		port_end = PMAC_ALLOC_END_ID;
+
+		if (flags & DP_F_SHARE_RES) {
+			port_start = port_resv_st;
+			port_end = port_resv_end;
+		}
 	}
 	/*alloc port */
 	if (port_id) {	/*allocate with specified port id */
@@ -2124,29 +2318,74 @@ dp_port_alloc(struct module *owner, struct net_device *dev, u32 dev_port,
 			return DP_FAILURE;
 		}
 
+		if ((cqm_ctrl->radio_num) && !(flags & DP_F_SHARE_RES) &&
+		    (port_id > port_resv_st) &&
+		    (port_id < port_resv_end)) {
+			dev_err(cqm_ctrl->dev,
+				"pord_id %i is reserved [%i..%i]\n", port_id,
+				port_resv_st, port_resv_end);
+			return DP_FAILURE;
+		}
+
 		if (is_dp_allocated(port_id, flags)) {
 			dev_err(cqm_ctrl->dev,
 				"already llocated pmac port %d\n", port_id);
 			return DP_FAILURE; /*not free*/
 		}
+
+		if ((flags & DP_F_SHARE_RES) && (cqm_ctrl->radio_num)) {
+			shared_port = port_id ^ 1;
+			if (is_dp_allocated(shared_port, flags))
+				shared_port_exist = 1;
+			else
+				shared_port_exist = 0;
+		}
 		param_pmac = port_id;
 		pmac_present = 1;
 		goto ALLOC_OK;
 	} else { /* dynamic alloc a free port */
+		if ((flags & DP_F_SHARE_RES) &&
+		    (cqm_ctrl->radio_num)) {
+			port_start++; /*start from odd number*/
+		}
 		for (i = port_start; i <= port_end; i++) {
+			if ((cqm_ctrl->radio_num) &&
+			    !(flags & DP_F_SHARE_RES) &&
+			    (i >= port_resv_st) && (i <= port_resv_end)) {
+				i = port_resv_end;
+				continue;
+			}
 			dp_local_entry = is_dp_allocated(i, flags);
 			if (!dp_local_entry) {
 				port_id = i;
+				if (flags & DP_F_SHARE_RES) {
+					shared_port = port_id ^ 1;
+					dp_local_entry =
+						is_dp_allocated(shared_port,
+								flags);
+					if (dp_local_entry) {
+						i++;
+						continue;
+					}
+				}
 				goto ALLOC_OK;
 			}
+			/*to get next even port id for SHARE_RES*/
+			if (flags & DP_F_SHARE_RES)
+				i++;
 		}
 	}
 	dev_err(cqm_ctrl->dev,
 		"Failed to get a free port for module %p\n", owner);
 	return DP_FAILURE;
 ALLOC_OK:
-	result = get_matching_pmac(pmac, flags, cbm_port, param_pmac,
-				   pmac_present);
+	if (!shared_port_exist) {
+		result = get_matching_pmac(pmac, flags, cbm_port, param_pmac,
+					   pmac_present);
+	} else {
+		pmac[0] = CBM_PMAC_DYNAMIC;
+		result = CBM_SUCCESS;
+	}
 	if (result == CBM_FAILURE) {
 		dev_err(cqm_ctrl->dev, "get_matching pmac error\n");
 		return DP_FAILURE;
@@ -2154,7 +2393,7 @@ ALLOC_OK:
 		/*Physical port allocation failure,
 		 *means this is just virtual pmac required
 		 */
-		dev_err(cqm_ctrl->dev, "phys port alloc\n");
+		dev_err(cqm_ctrl->dev, "phys port alloc failure\n");
 	} else {
 		if ((pmac[0] != CBM_PMAC_DYNAMIC) && (pmac[0] != port_id)) {
 			dev_err(cqm_ctrl->dev,
@@ -2166,20 +2405,43 @@ ALLOC_OK:
 		local_entry.dev = dev;
 		local_entry.dev_port = dev_port;
 		local_entry.flags = P_ALLOCATED;
-		for (i = 0; i < PRX300_MAX_PORT_PER_EP; i++) {
-			if (pmac[i] == CBM_PORT_INVALID)
-				continue;
-			cnt = i;
-			do_port_setting(pmac, flags, cbm_port, &local_entry,
-					&pmac_found, &cnt);
-			if (cnt == CBM_FAILURE)
-				break;
+
+		if (!shared_port_exist) {
+			for (i = 0; i < PRX300_MAX_PORT_PER_EP; i++) {
+				if (pmac[i] == CBM_PORT_INVALID)
+					continue;
+				cnt = i;
+				do_port_setting(pmac, flags, cbm_port,
+						&local_entry,
+						&pmac_found, &cnt);
+				if (cnt == CBM_FAILURE)
+					break;
+			}
+			if (!pmac_found)
+				return DP_FAILURE;
 		}
-		if (!pmac_found)
-			return DP_FAILURE;
+	}
+
+	if (shared_port_exist) {
+			/*get cbm_port[0] accordingly*/
+		ch_dp_port = port_id ^ 1;
+		local_entry.egp_type = flags;
+		result = dp_port_resources_get(&ch_dp_port, &ch_num,
+					       &res, flags);
+
+		if (result == CBM_FAILURE)
+			return CBM_FAILURE;
+
+		cbm_port[0] = res[0].cqm_deq_port;
+		devm_kfree(cqm_ctrl->dev, res);
+		cqm_populate_entry(&local_entry,
+				   &ch_dp_port, cbm_port[0],
+				   flags, &pmac_found);
 	}
 	cqm_add_to_list(&local_entry);
 	fill_dp_alloc_data(data, port_id, cbm_port[0], flags);
+	dev_dbg(cqm_ctrl->dev, "%s: port_id:%d, cbm_port:%d\n",
+		__func__, port_id, cbm_port[0]);
 	return CBM_SUCCESS;
 }
 
@@ -2196,31 +2458,31 @@ static void fill_tx_ring_data(struct cbm_dp_alloc_complete_data *dp_data)
 	p_info = &dqm_port_info[dp_data->deq_port];
 
 	for (ring_idx = 0; ring_idx < dp_data->num_tx_ring; ring_idx++) {
-		dp_data->tx_ring[ring_idx].in_deq_ring_size =
+		dp_data->tx_ring[ring_idx]->in_deq_ring_size =
 				p_info->deq_info.num_desc;
-		dp_data->tx_ring[ring_idx].in_deq_paddr	=
+		dp_data->tx_ring[ring_idx]->in_deq_paddr	=
 			(deq + (dp_data->deq_port * (DESC0_0_CPU_EGP_1 -
 			 DESC0_0_CPU_EGP_0)));
-		dp_data->tx_ring[ring_idx].in_deq_vaddr	=
+		dp_data->tx_ring[ring_idx]->in_deq_vaddr	=
 			(deq_v + (dp_data->deq_port * (DESC0_0_CPU_EGP_1 -
 			 DESC0_0_CPU_EGP_0)));
-
-		dp_data->tx_ring[ring_idx].out_free_paddr =
+		dp_data->tx_ring[ring_idx]->out_free_paddr =
 			(free + (dp_data->deq_port * (PTR_RTN_CPU_DW2_EGP_1 -
 			 PTR_RTN_CPU_DW2_EGP_0)));
-		dp_data->tx_ring[ring_idx].out_free_vaddr =
+		dp_data->tx_ring[ring_idx]->out_free_vaddr =
 			(free_v + (dp_data->deq_port * (PTR_RTN_CPU_DW2_EGP_1 -
 			 PTR_RTN_CPU_DW2_EGP_0)));
 
-		dp_data->tx_ring[ring_idx].out_free_ring_size =
+		dp_data->tx_ring[ring_idx]->out_free_ring_size =
 			p_info->deq_info.num_free_burst;
 
 		/* Need to be disccused and modified later base on policy */
-		dp_data->tx_ring[ring_idx].num_tx_pkt = 0;
-		dp_data->tx_ring[ring_idx].txout_policy_base = 0;
-		dp_data->tx_ring[ring_idx].policy_num = 1;
-		dp_data->tx_ring[ring_idx].tx_pkt_size = 0;
-		dp_data->tx_ring[ring_idx].tx_poolid = 0;
+		dp_data->tx_ring[ring_idx]->num_tx_pkt = 0;
+		dp_data->tx_ring[ring_idx]->txout_policy_base = 0;
+		dp_data->tx_ring[ring_idx]->policy_num = 1;
+		dp_data->tx_ring[ring_idx]->tx_pkt_size = 0;
+		dp_data->tx_ring[ring_idx]->tx_poolid = 0;
+		dp_data->tx_ring[ring_idx]->tx_deq_port = dp_data->deq_port;
 	}
 }
 
@@ -2245,78 +2507,78 @@ static int fill_rx_ring_data(struct cbm_dp_alloc_complete_data *dp_data)
 	p_info = &dqm_port_info[dp_data->deq_port];
 
 	for (ring_idx = 0; ring_idx < dp_data->num_rx_ring; ring_idx++) {
+		tbl_size = dp_data->rx_ring[ring_idx]->prefill_pkt_num
+			 * sizeof(u32);
+		dma_size = tbl_size * 2;
 		/* rx_pkt_size fixed to 2048 */
-		if (dp_data->rx_ring[ring_idx].rx_pkt_size != CQM_KB(2)) {
+		if (dp_data->rx_ring[ring_idx]->rx_pkt_size != CQM_KB(2)) {
 			dev_err(cqm_ctrl->dev, "%s rx_pkt_size %u\n",
 				__func__,
-				dp_data->rx_ring[ring_idx].rx_pkt_size);
+				dp_data->rx_ring[ring_idx]->rx_pkt_size);
 			break;
 		}
 
 		/* out_enq_ring_size fixed to 4096 */
-		if (dp_data->rx_ring[ring_idx].out_enq_ring_size >= CQM_KB(4)) {
+		if (dp_data->rx_ring[ring_idx]->out_enq_ring_size >=
+			CQM_KB(4)) {
 			dev_err(cqm_ctrl->dev, "%s out_enq_ring_size %u\n",
 				__func__,
-				dp_data->rx_ring[ring_idx].out_enq_ring_size);
+				dp_data->rx_ring[ring_idx]->out_enq_ring_size);
 			break;
 		}
 
-		if (p_info->dma_dt_init_type != DEQ_DMA_CHNL) {
-			dev_err(cqm_ctrl->dev, "%s Inv DMA type %u dqport %u\n",
-				__func__, p_info->dma_dt_init_type,
-				dp_data->deq_port);
-			break;
+		if (!p_info->dma_ch_in_use) {
+			if (p_info->dma_dt_init_type != DEQ_DMA_CHNL) {
+				dev_err(cqm_ctrl->dev, "%s Inv DMA type %u dqport %u\n",
+					__func__, p_info->dma_dt_init_type,
+					dp_data->deq_port);
+				break;
+			}
+
+			if (ltq_request_dma(p_info->dma_ch,
+					    p_info->dma_chan_str)) {
+				dev_err(cqm_ctrl->dev, "%s: dma open failed\r\n",
+					__func__);
+				break;
+			}
+
+			if (ltq_dma_chan_desc_alloc(
+				p_info->dma_ch,
+				dp_data->rx_ring[ring_idx]->out_enq_ring_size)) {
+				ltq_free_dma(p_info->dma_ch);
+				dev_err(cqm_ctrl->dev, "%s: dma alloc failed\r\n",
+					__func__);
+				break;
+			}
+			ltq_dma_chan_polling_cfg(p_info->dma_ch, 6, 6);
+
+			p_info->deq_info.desc_phy_base =
+				(void *)ltq_dma_chan_get_desc_phys_base(p_info->
+									dma_ch);
+			p_info->deq_info.desc_vir_base =
+				(void *)ltq_dma_chan_get_desc_vir_base(p_info->
+								       dma_ch);
+			dma_vaddr = dmam_alloc_coherent(cqm_ctrl->dev, dma_size,
+							&dma_paddr, GFP_DMA);
+			if (!dma_vaddr) {
+				dev_err(cqm_ctrl->dev,
+					"%s: dmam_alloc_coherent failed\n",
+					__func__);
+				ltq_free_dma(p_info->dma_ch);
+				break;
+			}
+			p_info->deq_info.pkt_base_paddr = (void *)dma_paddr;
+			p_info->deq_info.pkt_base = dma_vaddr;
+			p_info->deq_info.dma_size = dma_size;
 		}
 
-		if (ltq_request_dma(p_info->dma_ch, p_info->dma_chan_str)) {
-			dev_err(cqm_ctrl->dev, "%s: dma open failed\r\n",
-				__func__);
-			break;
-		}
-
-		if (ltq_dma_chan_desc_alloc(
-			p_info->dma_ch,
-			dp_data->rx_ring[ring_idx].out_enq_ring_size)) {
-			ltq_free_dma(p_info->dma_ch);
-			dev_err(cqm_ctrl->dev, "%s: dma alloc failed\r\n",
-				__func__);
-			break;
-		}
-
-		p_info->dma_ch_in_use = true;
-		dp_data->rx_ring[ring_idx].out_dma_ch_to_gswip = p_info->dma_ch;
-		dp_data->rx_ring[ring_idx].num_out_tx_dma_ch =
-							dp_data->num_rx_ring;
-		dp_data->rx_ring[ring_idx].out_enq_paddr =
-			(void *)ltq_dma_chan_get_desc_phys_base(p_info->dma_ch);
-		dp_data->rx_ring[ring_idx].out_enq_vaddr =
-			(void *)ltq_dma_chan_get_desc_vir_base(p_info->dma_ch);
-
-		tbl_size = dp_data->rx_ring[ring_idx].prefill_pkt_num
-				* sizeof(u32);
-		dma_size = tbl_size * 2;
-		dma_vaddr = dmam_alloc_coherent(cqm_ctrl->dev, dma_size,
-						&dma_paddr, GFP_DMA);
-		if (!dma_vaddr) {
-			dev_err(cqm_ctrl->dev,
-				"%s: dmam_alloc_coherent failed\n", __func__);
-			ltq_free_dma(p_info->dma_ch);
-			break;
-		}
-		p_info->deq_info.pkt_base_paddr = (void *)dma_paddr;
-		p_info->deq_info.pkt_base = dma_vaddr;
-		p_info->deq_info.dma_size = dma_size;
-		dp_data->rx_ring[ring_idx].pkt_base_paddr = (void *)dma_paddr;
-		dp_data->rx_ring[ring_idx].pkt_base_vaddr = dma_vaddr;
-		vbase = dma_vaddr + tbl_size;
-		dp_data->rx_ring[ring_idx].pkt_list_vaddr = vbase;
-
-		/* BM Buffer */
-		for (idx = 0; idx < dp_data->rx_ring[ring_idx].prefill_pkt_num;
-			idx++) {
-			/* depends on the dc port policy right now
-			 * its fixed to policy 0
-			 */
+		for (idx = 0;
+		     (idx < dp_data->rx_ring[ring_idx]->prefill_pkt_num) &&
+		     (!p_info->deq_info.pkt_base[idx]);
+		     idx++) {
+		     /* depends on the dc port policy right now
+		      * its fixed to policy 0
+		      */
 			buf = (u32)cqm_buff_alloc_by_policy_prx300(cpu, 0, 0);
 			if (!buf) {
 				dev_err(cqm_ctrl->dev, "%s: BM alloc failed\n",
@@ -2332,22 +2594,114 @@ static int fill_rx_ring_data(struct cbm_dp_alloc_complete_data *dp_data)
 				return CBM_FAILURE;
 			}
 			p_info->deq_info.pkt_base[idx] =
-					__pa(buf - CQM_POOL_METADATA);
+				__pa(buf - CQM_POOL_METADATA);
+			vbase = p_info->deq_info.pkt_base + tbl_size;
 			vbase[idx] = buf - CQM_POOL_METADATA;
 		}
 
-		dp_data->rx_ring[ring_idx].num_pkt =
-				dp_data->rx_ring[ring_idx].prefill_pkt_num;
+		dp_data->rx_ring[ring_idx]->out_dma_ch_to_gswip =
+			p_info->dma_ch;
+		dp_data->rx_ring[ring_idx]->num_out_tx_dma_ch =
+			dp_data->num_rx_ring;
+		dp_data->rx_ring[ring_idx]->out_enq_paddr =
+			p_info->deq_info.desc_phy_base;
+		dp_data->rx_ring[ring_idx]->out_enq_vaddr =
+			p_info->deq_info.desc_vir_base;
+		dp_data->rx_ring[ring_idx]->pkt_base_paddr =
+			p_info->deq_info.pkt_base_paddr;
+		dp_data->rx_ring[ring_idx]->pkt_base_vaddr =
+			p_info->deq_info.pkt_base;
+		dp_data->rx_ring[ring_idx]->pkt_list_vaddr =
+			p_info->deq_info.pkt_base + tbl_size;
+		dp_data->rx_ring[ring_idx]->num_pkt =
+				dp_data->rx_ring[ring_idx]->prefill_pkt_num;
 		p_info->deq_info.prefill_pkt_num =
-				dp_data->rx_ring[ring_idx].prefill_pkt_num;
-
+				dp_data->rx_ring[ring_idx]->prefill_pkt_num;
 		/* Need to be disccused and modified later base on policy */
-		dp_data->rx_ring[ring_idx].rx_policy_base = 0;
-
+		dp_data->rx_ring[ring_idx]->rx_policy_base = 0;
+		dp_data->rx_ring[ring_idx]->policy_num = 1;
+		p_info->dma_ch_in_use = true;
 		ret = CBM_SUCCESS;
 	}
 
 	return ret;
+}
+
+static s32 dp_port_dealloc_complete(struct cbm_dp_alloc_complete_data *dp,
+				    s32 port_id, u32 flags)
+{
+	u32 num;
+	struct cqm_res_t *res = NULL;
+	int port, idx, shared_p;
+	struct cqm_dqm_port_info *p_info;
+	void *buf;
+	struct cqm_pmac_port_map *shared_dp = NULL;
+	struct cqm_pmac_port_map *local_dp = NULL;
+
+	dev_dbg(cqm_ctrl->dev, "%s: enter port_id:%d, flags:%x\n",
+		__func__, port_id, flags);
+
+	if ((dp_port_resources_get(&port_id, &num, &res,
+				   flags) != 0) && (!res)) {
+		dev_err(cqm_ctrl->dev,
+			"Error getting resources for port_id %d\n", port_id);
+		return CBM_FAILURE;
+	}
+	if (port_id >= PMAC_MAX_NUM || port_id < 0)
+		return DP_FAILURE;
+
+	port = res[0].cqm_deq_port;
+	p_info = &dqm_port_info[port];
+	if (p_info->ref_cnt != 0)
+		return DP_SUCCESS;
+
+	local_dp = is_dp_allocated(port_id, flags);
+	if (!local_dp) {
+		dev_err(cqm_ctrl->dev, "%s invalid dp %d\n",
+			__func__, port_id);
+		return DP_FAILURE;
+	}
+
+	if (local_dp->aca_buf_ref_cnt)
+		local_dp->aca_buf_ref_cnt = 0;
+
+	if (flags & DP_F_SHARE_RES) {
+		shared_p = port_id ^ 1;
+		shared_dp = is_dp_allocated(shared_p, flags);
+		if (shared_dp) {
+			if (shared_dp->aca_buf_ref_cnt) {
+				dev_dbg(cqm_ctrl->dev,
+					"shared port_id %d aca buf in use\n",
+					shared_p);
+					return DP_SUCCESS;
+			}
+		}
+	}
+
+	dev_dbg(cqm_ctrl->dev, "%s free deq port = %d flag:%x ptk_base :%lx\n",
+		__func__, port, flags & FLAG_ACA,
+		(unsigned long)p_info->deq_info.pkt_base);
+
+	/* Free ACA port */
+	if ((flags & FLAG_ACA) && (p_info->deq_info.pkt_base)) {
+		struct cqm_bm_free free_info;
+
+		free_info.policy_base = 0;
+		for (idx = 0; idx < p_info->deq_info.prefill_pkt_num; idx++) {
+			if (p_info->deq_info.pkt_base[idx]) {
+				buf = (void *)p_info->deq_info.pkt_base[idx];
+				free_info.buf = buf;
+				cqm_buffer_free_by_policy_prx300(&free_info);
+				p_info->deq_info.pkt_base[idx] = 0;
+			} else {
+				break;
+			}
+		}
+	}
+
+	devm_kfree(cqm_ctrl->dev, res);
+
+	return DP_SUCCESS;
 }
 
 static s32 dp_port_alloc_complete(struct module *owner, struct net_device *dev,
@@ -2356,16 +2710,26 @@ static s32 dp_port_alloc_complete(struct module *owner, struct net_device *dev,
 				  u32 flags)
 {
 	u32 reg;
+	struct cqm_pmac_port_map *local_dp = NULL;
 
-	dev_dbg(cqm_ctrl->dev, "%s: enter\n", __func__);
+	dev_dbg(cqm_ctrl->dev, "%s: enter dp_port:%d, flags:0x%x\n",
+		__func__, dp_port, flags);
 
 	if (!owner)
 		return CBM_FAILURE;
 
+	if (flags & DP_F_DEREGISTER)
+		return dp_port_dealloc_complete(data, dp_port, flags);
+
 	if (flags & FLAG_ACA) {
+		local_dp = is_dp_allocated(dp_port, flags);
+		if (local_dp) {
+			if (!local_dp->aca_buf_ref_cnt)
+				local_dp->aca_buf_ref_cnt++;
+		}
+
 		if (fill_rx_ring_data(data) != CBM_SUCCESS)
 			return CBM_FAILURE;
-
 		fill_tx_ring_data(data);
 	} else if (flags & DP_F_EPON) {
 		reg = (EPON_EPON_MODE_REG_EPONCHKEN_MASK |
@@ -2376,6 +2740,8 @@ static s32 dp_port_alloc_complete(struct module *owner, struct net_device *dev,
 		       | data->qid_base);
 		cbm_w32(cqm_ctrl->enq + EPON_EPON_MODE_REG, reg);
 	}
+	data->tx_policy_base = 0;
+	data->tx_policy_num = cqm_ctrl->num_pools;
 
 	dev_dbg(cqm_ctrl->dev, "%s: exit\n", __func__);
 	return CBM_SUCCESS;
@@ -2385,18 +2751,29 @@ static s32 handle_dma_chnl_init(int port, u32 flags)
 {
 	struct cqm_dqm_port_info *p_info;
 	int chan;
+	int port_type = find_dqm_port_type(port);
 
-	if (find_dqm_port_type(port) == DQM_PON_TYPE)
+	if (port_type == DQM_PON_TYPE)
 		p_info = &dqm_port_info[DQM_PON_START_ID];
 	else
 		p_info = &dqm_port_info[port];
 
 	chan = p_info->dma_ch;
+
 	if (flags & CBM_PORT_F_DISABLE) {
-		if (chan)
-			ltq_dma_chan_off(chan);
-		cqm_dma_port_enable(port, CBM_PORT_F_DEQUEUE_PORT |
-				    CBM_PORT_F_DISABLE, 0);
+		if (port_type != DQM_PON_TYPE) {
+			if (chan)
+				ltq_dma_chan_off(chan);
+			usleep_range(20, 25);
+			/*disable auto read inrcement*/
+			set_val((cqm_ctrl->deq + DQ_DMA_PORT((port), cfg)),
+				1, 0x2, 1);
+			if (flags & CBM_PORT_F_FLUSH)
+				cqm_deq_port_flush(port);
+
+			cqm_dma_port_enable(port, CBM_PORT_F_DEQUEUE_PORT |
+					    CBM_PORT_F_DISABLE, 0);
+		}
 	} else {
 		if (chan && p_info->dma_ch_in_use) {
 			cqm_dma_port_enable(port, CBM_PORT_F_DEQUEUE_PORT, 0);
@@ -2416,59 +2793,182 @@ static void cqm_free_aca_port(s32 port)
 	int id = 0, cnt = p_info->deq_info.num_desc * 3;
 	void *deq = cqm_ctrl->deq;
 	u32 reg, val;
+	u32 flush_cnt = 0;
 
+	dev_dbg(cqm_ctrl->dev, "%s port:%d desc_num:%d, base:%x\n",
+		__func__, port, cnt, DQ_SCPU_PORT(port, desc[0].desc0));
+	enable_backpressure(port, 0);
 	while (cnt--) {
 		id = id % p_info->deq_info.num_desc;
 		reg = cbm_r32(deq + DQ_SCPU_PORT(port, desc[id].desc0) + 0xC);
 		rmb(); /* read before write */
-
+		dev_dbg(cqm_ctrl->dev, "%s id:%d dw3:%x\n",
+			__func__, id, reg);
 		if (reg & OWN_BIT) {
 			val = cbm_r32(deq +
 				      DQ_SCPU_PORT(port, desc[id].desc0) + 8);
 			cbm_w32((deq +
 				 DQ_SCPU_PORT(port, scpu_ptr_rtn[id].ptr_rtn0)),
 				 val);
+			/* FMX DC port limitation,
+			 * only one pool = 0  and policy = 0
+			 */
+			cbm_w32((deq +
+				 DQ_SCPU_PORT(port, scpu_ptr_rtn[id].ptr_rtn1)),
+				 0); /*hardcode pool and policy to 0*/
 			wmb(); /* write before read */
+			flush_cnt++;
+			dev_dbg(cqm_ctrl->dev, "%s dw2:%x, addr:%x, reg:%x\n",
+				__func__, val, (unsigned int)
+				DQ_SCPU_PORT(port, scpu_ptr_rtn[id].ptr_rtn0),
+				reg);
 		}
-
 		id++;
+	}
+	/*dqpc and dptr to be set to 0 after port is disabled*/
+	dev_info(cqm_ctrl->dev, "%s flush_cnt:%d\n", __func__, flush_cnt);
+}
+
+static void cqm_deq_pon_port_disable(u32 port, u32 alloc_flags)
+{
+	struct cqm_dqm_port_info *p_info;
+	void *deq = cqm_ctrl->deq;
+	int chan, i;
+	u32  val = 0;
+	struct pib_stat stat;
+
+	p_info = &dqm_port_info[port];
+	chan = p_info->dma_ch;
+
+	if (alloc_flags & (DP_F_EPON | DP_F_GPON)) {
+		val = ((port - DQM_PON_START_ID) <<
+		       PIB_PON_IP_CMD_PORT_ID_POS) | 0x28000;
+		cbm_w32(cqm_ctrl->pib + PIB_PON_IP_CMD, val);
+		dev_dbg(cqm_ctrl->dev, "%s: write CQEM_PIB_PIB_PON_IP_CMD %lx , val %x\n",
+			__func__,
+			(unsigned long)cqm_ctrl->pib + PIB_PON_IP_CMD, val);
+		pib_status_get(&stat);
+		dev_dbg(cqm_ctrl->dev, "%s waiting for fifo_emtpy %d\n",
+			__func__, stat.fifo_empty);
+		while (!stat.fifo_empty)
+			pib_status_get(&stat);
+
+		dev_dbg(cqm_ctrl->dev, "%s disable all DQ PON PORT %d - %d\n",
+			__func__,
+			 DQM_PON_START_ID, DQM_PON_END_ID);
+		for (i = DQM_PON_START_ID; i < DQM_PON_END_ID; i++)
+			cbm_w32((deq + DQ_PON_PORT((i), cfg)), 0);
+
+	} else if (alloc_flags & DP_F_FAST_ETH_WAN) {
+		if (chan) {
+			dev_dbg(cqm_ctrl->dev, " %s dma_chan off for port %d\n",
+				__func__, port);
+			ltq_dma_chan_off(chan);
+		}
+		cqm_deq_port_flush(port);
+		cbm_w32((deq + DQ_PON_PORT((port), cfg)), 0);
 	}
 }
 
 static s32 dp_enable(struct module *owner, u32 port_id,
 		     struct cbm_dp_en_data *data, u32 flags, u32 alloc_flags)
 {
-	int port, type, i;
-	u32 val;
+	int port, type, i, found = 0;
+	u32 val, dma_flag = 0;
 	struct core_ops *ops;
 	GSW_PMAC_Glbl_Cfg_t glbl_cfg;
 
 	static bool set_bsl;
 	void *deq = cqm_ctrl->deq;
+	struct cqm_dqm_port_info *dqp_info;
+	struct cqm_pmac_port_map *entry_ptr = NULL;
 
 	port = data->deq_port;
+
+	dev_dbg(cqm_ctrl->dev, "%s cbm_port:%d , port_id %d flags:%x, alloc_flags:%x\n",
+		__func__, port, port_id, flags, alloc_flags);
+
 	if (port == -1) {
 		dev_err(cqm_ctrl->dev, "Invalid port number\n");
 		return CBM_FAILURE;
 	}
 
-	if (data->dma_chnl_init) {
-		for (i = 0; i < data->num_dma_chan; i++)
+	dqp_info = &dqm_port_info[data->deq_port];
+	if (flags & CBM_PORT_F_DISABLE) {
+		if (dqp_info->ref_cnt) {
+			flags |= CBM_PORT_F_FLUSH;
+			dqp_info->ref_cnt--;
+		} else {
+			return CBM_SUCCESS;
+		}
+	} else {
+		if (!dqp_info->ref_cnt)
+			dqp_info->ref_cnt++;
+		else
+			return CBM_SUCCESS;
+	}
+
+	list_for_each_entry(entry_ptr, &pmac_mapping_list, list) {
+		if (entry_ptr->pmac == port_id) {
+			found = 1;
+			break;
+		}
+	}
+	if (!found) {
+		dev_err(cqm_ctrl->dev, "Invalid port_id:%d\n", port_id);
+		return CBM_FAILURE;
+	}
+
+	if (flags & CBM_PORT_F_DISABLE) {
+		if (entry_ptr->eqp_en_cnt) {
+			entry_ptr->eqp_en_cnt--;
+			if (!entry_ptr->eqp_en_cnt)
+				dma_flag = 1;
+		}
+	} else {
+		if (!entry_ptr->eqp_en_cnt) {
+			entry_ptr->dma_chnl_init = data->dma_chnl_init;
+			entry_ptr->num_dma_chan = data->num_dma_chan;
+			dma_flag = 1;
+		}
+		entry_ptr->eqp_en_cnt++;
+	}
+
+	if ((entry_ptr->dma_chnl_init) && dma_flag) {
+		for (i = 0; i < entry_ptr->num_dma_chan; i++)
 			handle_dma_chnl_init((port + i), flags);
 	}
 	type = find_dqm_port_type(port);
 	switch (type) {
 	case DQM_CPU_TYPE:
 	case DQM_ACA_TYPE:
-		init_cqm_deq_cpu_port(port, data->tx_ring_size);
-		if ((type == DQM_ACA_TYPE) && (flags & CBM_PORT_F_DISABLE))
-			cqm_free_aca_port(port);
+		if (flags & CBM_PORT_F_DISABLE) {
+			if (type == DQM_ACA_TYPE)
+				cqm_free_aca_port(port);
+		} else {
+			init_cqm_deq_cpu_port(port, data->tx_ring_size);
+			dqp_info->tx_ring_size = data->tx_ring_size;
+		}
 		break;
 	case DQM_PON_TYPE:
-		if (flags & CBM_PORT_F_DISABLE) {
-			cbm_w32((deq + DQ_PON_PORT((port), cfg)), 0x0);
-			pib_port_enable(port, 0);
-		} else {
+		if ((flags & CBM_PORT_F_DISABLE) &&
+		    (entry_ptr->dma_chnl_init) && dma_flag)
+			cqm_deq_pon_port_disable(port, alloc_flags);
+
+		if ((flags & CBM_PORT_F_DISABLE) &&
+		    ((!entry_ptr->dma_chnl_init) || !dma_flag) &&
+		    (alloc_flags & (DP_F_EPON | DP_F_GPON))) {
+			val = ((port - DQM_PON_START_ID)
+				<< PIB_PON_IP_CMD_PORT_ID_POS) | 0x28000;
+			cbm_w32(cqm_ctrl->pib + PIB_PON_IP_CMD, val);
+			dev_dbg(cqm_ctrl->dev,
+				"%s: write CQEM_PIB_PIB_PON_IP_CMD %lx , val %x\n",
+				__func__,
+				(unsigned long)cqm_ctrl->pib + PIB_PON_IP_CMD,
+				val);
+		}
+
+		if (!(flags & CBM_PORT_F_DISABLE)) {
 			val = CFG_PON_EGP_26_DQREQ_MASK |
 				CFG_PON_EGP_26_BUFRTN_MASK |
 				CFG_PON_EGP_26_BFBPEN_MASK |
@@ -2490,20 +2990,46 @@ static s32 dp_enable(struct module *owner, u32 port_id,
 	}
 	if (!set_bsl) {
 		ops = gsw_get_swcore_ops(0);
-		for (i = 0; i < 2; i++) {
-			glbl_cfg.nPmacId = i;
-			if (ops)
-				ops->gsw_pmac_ops.Pmac_Gbl_CfgGet(ops,
+		if (cqm_ctrl->split[0] != 2 || cqm_ctrl->split[1] != 2) {
+			for (i = 0; i < 2; i++) {
+				glbl_cfg.nPmacId = i;
+				if (ops)
+					ops->gsw_pmac_ops.Pmac_Gbl_CfgGet(ops,
 						&glbl_cfg);
+				val = get_buff_resv_bytes(0, 3);
+				glbl_cfg.nMaxJumboLen = val;
+				val = get_buff_resv_bytes(0, 0);
+				glbl_cfg.nBslThreshold[0] = val;
+				val = get_buff_resv_bytes(0, 1);
+				glbl_cfg.nBslThreshold[1] = val;
+				val = get_buff_resv_bytes(0, 2);
+				glbl_cfg.nBslThreshold[2] = val;
+
+				if (ops)
+					ops->gsw_pmac_ops.Pmac_Gbl_CfgSet(ops,
+						&glbl_cfg);
+			}
+		} else {
 			val = get_buff_resv_bytes(0, 3);
 			glbl_cfg.nMaxJumboLen = val;
-			val = get_buff_resv_bytes(0, 0);
-			glbl_cfg.nBslThreshold[0] = val;
-			val = get_buff_resv_bytes(0, 1);
-			glbl_cfg.nBslThreshold[1] = val;
-			val = get_buff_resv_bytes(0, 2);
-			glbl_cfg.nBslThreshold[2] = val;
 
+			glbl_cfg.nPmacId = 0;
+			if (ops)
+				ops->gsw_pmac_ops.Pmac_Gbl_CfgGet(ops,
+					&glbl_cfg);
+			glbl_cfg.nBslThreshold[0] = 0x2ba;
+			glbl_cfg.nBslThreshold[1] = 0x3000;
+			glbl_cfg.nBslThreshold[2] = 0x3000;
+			if (ops)
+				ops->gsw_pmac_ops.Pmac_Gbl_CfgSet(ops,
+					&glbl_cfg);
+			glbl_cfg.nPmacId = 1;
+			if (ops)
+				ops->gsw_pmac_ops.Pmac_Gbl_CfgGet(ops,
+								  &glbl_cfg);
+			glbl_cfg.nBslThreshold[0] = 0x10;
+			glbl_cfg.nBslThreshold[1] = 0x11;
+			glbl_cfg.nBslThreshold[2] = 0x2ba;
 			if (ops)
 				ops->gsw_pmac_ops.Pmac_Gbl_CfgSet(ops,
 						&glbl_cfg);
@@ -2562,12 +3088,18 @@ static void init_fsqm(void)
 	cbm_w32((fsqm + FSQT0), fsqm_frm_num / 5);
 	cbm_w32((fsqm + FSQT1), fsqm_frm_num / 8);
 	cbm_w32((fsqm + FSQT2), fsqm_frm_num / 12);
-	cbm_w32((fsqm + FSQT3), fsqm_frm_num / 25);
-	cbm_w32((fsqm + FSQT4), fsqm_frm_num / 25);
+
+	/* FSQT4 should be 2x(Number of 128B segments for the largest packet)
+	 * for supporting 9.K Jumbo buffer plus some safety margin, we set it to
+	 * 0xa0.FSQT4=FSQT3 will cause back-pressure when the threshold is
+	 * reached. So set FSQT3 to 0xa3
+	 */
+	cbm_w32((fsqm + FSQT3), 0xa3);
+	cbm_w32((fsqm + FSQT4), 0xa0);
 	cbm_w32(fsqm + IO_BUF_RD, 0);
 	cbm_w32(fsqm + IO_BUF_WR, 0);
 	cbm_w32(fsqm + FSQM_CTRL, 0x1);
-	/*Dump FSQM registers*/
+	/* Dump FSQM registers */
 	{
 #if 1
 		print_reg("FSQM_CTRL",	(u32 *)(fsqm + FSQM_CTRL));
@@ -2614,9 +3146,11 @@ static struct sk_buff *build_skb_cqm(void *data, unsigned int frag_size,
 		return NULL;
 	}
 	buf_size = bm_pool_conf[pool].buf_frm_size;
-	if (frag_size > buf_size)
-		panic("Packet length exceeds the buffer size %d %d\n",
-		      frag_size, buf_size);
+	if (frag_size > buf_size) {
+		dev_err(cqm_ctrl->dev, "Insufficient Headroom %d %d\n",
+			frag_size, buf_size);
+		return NULL;
+	}
 	return __build_skb(data + CQM_POOL_METADATA, frag_size);
 }
 
@@ -2644,43 +3178,104 @@ static struct sk_buff *cqm_alloc_skb(unsigned int size, gfp_t priority)
 	return skbuf;
 }
 
-s32 qos_q_flush(s32 cqm_inst, s32 cqm_drop_port, s32 qid)
+static void cqm_deq_port_flush(int port)
+{
+	int port_type = find_dqm_port_type(port);
+	void *desc3_addr_base;
+	u32 dw3, no_packet = 0;
+	u32 i = 0;
+	u32 d_num = dqm_port_info[port].deq_info.num_desc;
+	u32 total_free_cnt = 0;
+	u32 dqpc_reg;
+
+	if (port_type == DQM_DMA_TYPE)
+		desc3_addr_base =
+			cqm_ctrl->dmadesc + CQM_DEQ_DMA_DESC(port, 0) + 0xc;
+	else if (port_type == DQM_PON_TYPE)
+		desc3_addr_base =
+			cqm_ctrl->dmadesc + CQM_DEQ_PON_DMA_DESC(port, 0)
+			+ 0xc;
+	else
+		return;
+
+	while (no_packet < 2 * d_num) {
+		dw3 = cbm_r32(desc3_addr_base + i * 0x10);
+		if (dw3 & OWN_BIT) {
+			total_free_cnt++;
+			dev_dbg(cqm_ctrl->dev, "%s desc_%d, addr, dw3:%x, cnt:%d\n",
+				__func__, i, dw3, total_free_cnt);
+			cbm_w32((void *)desc3_addr_base + i * 0x10,
+				(dw3 & ~OWN_BIT) | COMPLETE_BIT);
+			no_packet = 0;
+		} else {
+			no_packet++;
+			dev_dbg(cqm_ctrl->dev, "no_packet %d desc_%d:0x%x\n",
+				no_packet, i, dw3);
+		}
+		i = (i + 1) % d_num;
+	}
+
+	if (port_type == DQM_DMA_TYPE) {
+		dqpc_reg = cbm_r32(cqm_ctrl->deq + DQ_DMA_PORT(port, dqpc));
+		dev_dbg(cqm_ctrl->dev, "%s: DQPC_EGP_%d = %d total flush %d\n",
+			__func__, port, dqpc_reg, total_free_cnt);
+	} else {
+		dqpc_reg = cbm_r32(cqm_ctrl->pib + CQM_PON_CNTR(port));
+		dev_dbg(cqm_ctrl->dev, "%s: DQPC_PON_%d = %d total flush %d\n",
+			__func__, port, dqpc_reg, total_free_cnt);
+	}
+}
+
+s32 qos_q_flush(s32 cqm_inst, s32 cqm_drop_port, s32 qid, s32 nodeid)
 {
 	void *dma_desc = cqm_ctrl->dmadesc;
 	int no_packet = 0;
 	u32 port = DMA_PORT_FOR_FLUSH;
-	u32 reg;
-	int i = 0;
-	u32 desc_num = dqm_port_info[DMA_PORT_FOR_FLUSH].deq_info.num_desc;
+	u32 reg, dqpc_reg;
+	u32 i = dqm_port_info[port].flush_index;
+	u32 desc_num = dqm_port_info[port].deq_info.num_desc;
+	u32 total_flush = 0;
+	u32 qocc_q = 0;
+	struct dp_qos_queue_info qocc_info;
 
-	/*Port Enable*/
-	cqm_dma_port_enable(port, CBM_PORT_F_DEQUEUE_PORT, 0);
+	qocc_info.nodeid = nodeid;
+	qocc_info.inst = cqm_inst;
 
-	while (no_packet < (3 * desc_num)) {
+	while ((no_packet < Q_FLUSH_NO_PACKET_CNT) || (qocc_q)) {
 		reg = cbm_r32(dma_desc +
-				CQM_DEQ_DMA_DESC(DMA_PORT_FOR_FLUSH, i) + 0xc);
-		/*read before write*/
-		rmb();
+				CQM_DEQ_DMA_DESC(port, i) + 0xc);
 		if (reg & OWN_BIT) {
 			cbm_w32(dma_desc +
-				CQM_DEQ_DMA_DESC(DMA_PORT_FOR_FLUSH, i) + 0xc,
+				CQM_DEQ_DMA_DESC(port, i) + 0xc,
 				(reg & ~OWN_BIT) | COMPLETE_BIT);
-			/*write before read*/
-			wmb();
+
+			i = (i + 1) % desc_num;
 			no_packet = 0;
+			total_flush++;
 		} else {
 			no_packet++;
 			dev_dbg(cqm_ctrl->dev, "no_packet %d\n", no_packet);
+			if (no_packet >= Q_FLUSH_NO_PACKET_CNT) {
+				if (dp_qos_get_q_qocc(&qocc_info,
+						      0) == DP_SUCCESS) {
+					qocc_q = qocc_info.qocc;
+					if (qocc_q)
+						no_packet = 0;
+				} else {
+					qocc_q = 0;
+					dev_info(cqm_ctrl->dev, "qocc read error!\n");
+				}
+				dev_dbg(cqm_ctrl->dev, "%s qid:%d nodeid:%d qocc:%d\n",
+					__func__, qid, nodeid, qocc_q);
+			}
 		}
-		i = (i + 1) % desc_num;
 	}
+	dqm_port_info[port].flush_index = i;
 
-	/*Reset*/
-	cqm_dma_port_enable(port, CBM_PORT_F_DEQUEUE_PORT |
-					    CBM_PORT_F_DISABLE, 0);
-	cbm_w32((cqm_ctrl->deq + DQ_DMA_PORT(DMA_PORT_FOR_FLUSH, dqpc)), 0);
-	set_val((cqm_ctrl->deq + DQ_DMA_PORT(DMA_PORT_FOR_FLUSH, dptr)), 0,
-                DPTR_DMA_EGP_25_DPTR_MASK, DPTR_DMA_EGP_25_DPTR_POS);
+	dqpc_reg = cbm_r32(cqm_ctrl->deq + DQ_DMA_PORT(port, dqpc));
+	dev_dbg(cqm_ctrl->dev, "%s: DQPC_EGP_%d =  %d, flush cnt:%d\n",
+		__func__, port, dqpc_reg, total_flush);
+
 	return CBM_SUCCESS;
 }
 
@@ -2753,7 +3348,7 @@ static void cqm_cpu_free_tasklet(unsigned long cpu)
 int is_fsqm(u32 desc2)
 {
 	if ((desc2 >= (u32)(CQM_SRAM_BASE)) &&
-	    (desc2 <= (u32)(CQM_SRAM_BASE + CQM_SRAM_SIZE)))
+	    (desc2 < (u32)(CQM_SRAM_BASE + CQM_SRAM_SIZE)))
 		return 1;
 	return 0;
 }
@@ -2764,7 +3359,7 @@ static inline int is_bm(u32 desc2)
 
 	for (i = 0; i < CQM_PRX300_NUM_BM_POOLS; i++) {
 		if ((desc2 >= bm_pool_conf[i].pool_start_low) &&
-		    (desc2 <= bm_pool_conf[i].pool_end_low))
+		    (desc2 < bm_pool_conf[i].pool_end_low))
 			return 1;
 	}
 	return 0;
@@ -2859,6 +3454,7 @@ static void do_cqm_tasklet(unsigned long cpu)
 			dev_err(cqm_ctrl->dev, "FSQM buffer 0x%x %d %d\n",
 				desc_list->desc.desc2, pool, policy);
 			cqm_buffer_free(cpu, (void *)desc_list->desc.desc2, 0);
+			UP_STATS(cqm_dbg_cntrs[policy][pool].rx_cnt);
 			goto HANDLE_INTR;
 		}
 		data_ptr = (u32)__va(desc_list->desc.desc2);
@@ -3168,7 +3764,6 @@ static int init_cqm_basic(struct platform_device *pdev)
 {
 	int tmp_v;
 	u32 version;
-	int frm_size_bit = (CQM_SRAM_FRM_SIZE == 128) ? 0 : 1;
 	int size;
 	void *c_base = cqm_ctrl->cqm;
 
@@ -3183,7 +3778,7 @@ static int init_cqm_basic(struct platform_device *pdev)
 	/*Program the PBS bit to Select between
 	 *Internal Packet Buffer frame size of 128 Bytes or 2 KBytes
 	 */
-	set_val((c_base + CBM_CTRL), frm_size_bit, CBM_CTRL_PBSEL_MASK,
+	set_val((c_base + CBM_CTRL), CQM_SRAM_FRM_SIZE_BIT, CBM_CTRL_PBSEL_MASK,
 		CBM_CTRL_PBSEL_POS);
 
 	/*Enable trigger for ACA ports from EQM*/
@@ -3213,15 +3808,11 @@ static int init_cqm_basic(struct platform_device *pdev)
 	cbm_w32((c_base + CBM_QPUSH_BASE), 0x00260000);
 	cbm_w32((c_base + CBM_TX_CREDIT_BASE), 0x00200800);
 	size = (CQM_CPU_POOL_BUF_ALW_NUM + 4) * sizeof(u32);
-	cqm_ctrl->max_mem_alloc += size;
-	WARN_ON(cqm_ctrl->max_mem_alloc >=
-		CONFIG_CMA_SIZE_MBYTES * 1024 * 1024);
 	tmp_v = TOT_DMA_HNDL - 1;
 #ifdef CPU_POOL_ALLOWED
-	cqm_ctrl->cpu_rtn_ptr = dma_alloc_attrs(&pdev->dev, size,
+	cqm_ctrl->cpu_rtn_ptr = dma_alloc_noncoherent(&pdev->dev, size,
 						&cqm_ctrl->dma_hndl_p[tmp_v],
-						GFP_KERNEL,
-						DMA_ATTR_NON_CONSISTENT);
+						GFP_KERNEL);
 	dev_info(cqm_ctrl->dev, "cpu rtn buf 0x%p\n", cqm_ctrl->cpu_rtn_ptr);
 	if (!cqm_ctrl->cpu_rtn_ptr) {
 		dev_err(cqm_ctrl->dev, "Error in cpu_rtn_ptr allocation\n");
@@ -3275,6 +3866,31 @@ static int get_bufsize(int size)
 	return 0;
 }
 
+static int cqm_get_dc_config(struct cbm_dc_res *dc_res, int flag)
+{
+	struct cqm_dqm_port_info *dqp_info = dqm_port_info;
+	struct cqm_res_t *res = NULL;
+	u32 num, cbm_port;
+
+	if (dc_res->alloc_flags & FLAG_ACA) {
+		if ((dp_port_resources_get(&dc_res->dp_port, &num, &res,
+					   0) != 0) && (!res)) {
+			dev_err(cqm_ctrl->dev,
+				"Error getting resources for port_id %d\n",
+				dc_res->dp_port);
+			return CBM_FAILURE;
+		}
+		cbm_port = res[0].cqm_deq_port;
+		dc_res->rx_res.rx_bufs = 0x40;
+		dc_res->tx_res.tx_bufs = 0x40;
+		dc_res->tx_res.in_deq_ring_size =
+			dqp_info[cbm_port].deq_info.num_desc;
+		dc_res->tx_res.out_free_ring_size =
+			dqp_info[cbm_port].deq_info.num_free_burst;
+	}
+	return CBM_SUCCESS;
+}
+
 static int pool_config(struct platform_device *pdev, int p, u32 buf_size,
 		       u32 buf_num)
 {
@@ -3283,17 +3899,9 @@ static int pool_config(struct platform_device *pdev, int p, u32 buf_size,
 	u32 adj_size;
 
 	size = buf_size * buf_num;
-	cqm_ctrl->max_mem_alloc += size;
-	/*This is not a fool proof check, because there could be other users
-	 *allocating from CMA zone
-	 */
-	if (cqm_ctrl->max_mem_alloc >= CONFIG_CMA_SIZE_MBYTES * 1024 * 1024)
-		panic("Total mem alloc exceeds CMA zone %d\n",
-		      cqm_ctrl->max_mem_alloc);
-	cqm_ctrl->bm_buf_base[p] = dma_alloc_attrs(&pdev->dev, size,
-			&cqm_ctrl->dma_hndl_p[p],
-			GFP_KERNEL,
-			DMA_ATTR_NON_CONSISTENT);
+	cqm_ctrl->bm_buf_base[p] = dma_alloc_noncoherent(&pdev->dev, size,
+						&cqm_ctrl->dma_hndl_p[p],
+						GFP_KERNEL);
 	dev_dbg(cqm_ctrl->dev, "qos bm buf 0x%p\n", cqm_ctrl->bm_buf_base[p]);
 	if (!cqm_ctrl->bm_buf_base[p]) {
 		dev_err(cqm_ctrl->dev, "Error in pool %d buffer allocation\n",
@@ -3305,8 +3913,10 @@ static int pool_config(struct platform_device *pdev, int p, u32 buf_size,
 	p_ptr->buf_frm_num = buf_num;
 	buf_addr_adjust((u32)cqm_ctrl->bm_buf_base[p],
 			size,
+			cqm_ctrl->dma_hndl_p[p],
 			&p_ptr->pool_start_low,
 			&adj_size,
+			&p_ptr->pool_dma,
 			p_ptr->buf_frm_size);
 	p_ptr->pool_end_low = p_ptr->pool_start_low + adj_size;
 	p_ptr->buf_frm_size_reg = get_bufsize(buf_size);
@@ -3315,11 +3925,16 @@ static int pool_config(struct platform_device *pdev, int p, u32 buf_size,
 
 static int bm_init(struct platform_device *pdev)
 {
-	struct bmgr_pool_params p_params;
+	struct pp_bmgr_pool_params p_params;
 	u8 i, j;
 	int result;
-	u32 buf_size;
-	u32 start_low;
+	u8  req_pool_id = PP_BM_INVALID_POOL_ID;
+	u16 req_policy_id = PP_BM_INVALID_POLICY_ID;
+	s32 ret;
+
+	ret = pp_bmgr_set_total_active_pools(cqm_ctrl->num_pools);
+	if (ret)
+		dev_err(cqm_ctrl->dev, "Set active pools failed\n");
 
 	for (i = 0; i < cqm_ctrl->num_pools; i++) {
 		result = pool_config(pdev, i, cqm_ctrl->prx300_pool_size[i],
@@ -3328,30 +3943,24 @@ static int bm_init(struct platform_device *pdev)
 			panic("pool %d allocation failed\n", i);
 	}
 
-	bmgr_driver_init();
-
 	for (i = 0; i < cqm_ctrl->num_pools; i++) {
-		p_params.group_id = 0;
 		p_params.num_buffers = bm_pool_conf[i].buf_frm_num;
 		p_params.size_of_buffer = bm_pool_conf[i].buf_frm_size;
-		start_low = bm_pool_conf[i].pool_start_low;
-		buf_size = p_params.num_buffers * p_params.size_of_buffer;
-		buf_size *= sizeof(u32);
-		p_params.base_addr_low = dma_map_single(cqm_ctrl->dev,
-							(void *)start_low,
-							buf_size,
-							DMA_TO_DEVICE);
-		/* The buffers are reserved for BM module.
-		 * no need to call dma_unmap_single.
-		 */
+		p_params.base_addr_low = bm_pool_conf[i].pool_dma;
 		p_params.base_addr_high = 0;
 		p_params.flags = POOL_ENABLE_FOR_MIN_GRNT_POLICY_CALC;
-		p_params.num_pools = cqm_ctrl->num_pools;
-		bmgr_pool_configure(&p_params, &i);
+		req_pool_id = PP_BM_INVALID_POOL_ID;
+		ret = pp_bmgr_pool_configure(&p_params, &req_pool_id);
+		if (ret)
+			dev_err(cqm_ctrl->dev, "Pool %u conf failed\n", i);
 	}
 
-	for (j = 0; j < cqm_ctrl->num_pools; j++)
-		bmgr_policy_configure(&p_param[j], &i);
+	for (j = 0; j < cqm_ctrl->num_pools; j++) {
+		req_policy_id = PP_BM_INVALID_POLICY_ID;
+		ret = pp_bmgr_policy_configure(&p_param[j], &req_policy_id);
+		if (ret)
+			dev_err(cqm_ctrl->dev, "Pool %u conf failed\n", j);
+	}
 
 	return CBM_SUCCESS;
 }
@@ -3454,6 +4063,8 @@ static int setup_enq_dma_desc(int pid, u32 desc_num, s32 type,
 		wmb();
 		#endif
 		#endif
+		UP_STATS(cqm_dbg_cntrs[tmp_bm.policy]
+			 [tmp_bm.pool].dma_ring_buff_cnt);
 	}
 	return CBM_SUCCESS;
 }
@@ -3493,49 +4104,101 @@ static void init_cqm_enq_dma_port(int idx, s32 type)
 
 static void setup_deq_dma_desc(u32 pid, u32 desc_num)
 {
-	int i;
+	int i, type;
 	void *dma_desc = cqm_ctrl->dmadesc;
 
 	cbm_assert(pid >= DQM_ACA_START_ID,
 		   "cbm dma dqm port id less than %d, pid:%d",
 		   DQM_ACA_START_ID, pid);
+	type = find_dqm_port_type(pid);
 
-	for (i = 0; i < desc_num; i++) {
-		cbm_w32(dma_desc + CQM_DEQ_DMA_DESC(pid, i) + 0x0, 0);
-		cbm_w32(dma_desc + CQM_DEQ_DMA_DESC(pid, i) + 0x4, 0);
-		cbm_w32(dma_desc + CQM_DEQ_DMA_DESC(pid, i) + 0x8, 0);
-		cbm_w32(dma_desc + CQM_DEQ_DMA_DESC(pid, i) + 0xc, 0);
+	if (type != DQM_PON_TYPE) {
+		for (i = 0; i < desc_num; i++) {
+			cbm_w32(dma_desc + CQM_DEQ_DMA_DESC(pid, i)
+				+ 0x0, 0);
+			cbm_w32(dma_desc + CQM_DEQ_DMA_DESC(pid, i)
+				+ 0x4, 0);
+			cbm_w32(dma_desc + CQM_DEQ_DMA_DESC(pid, i)
+				+ 0x8, 0);
+			cbm_w32(dma_desc + CQM_DEQ_DMA_DESC(pid, i)
+				+ 0xc, 0);
+		}
+	} else {
+		for (i = 0; i < desc_num; i++) {
+			cbm_w32(dma_desc + CQM_DEQ_PON_DMA_DESC(pid, i)
+				+ 0x0, 0);
+			cbm_w32(dma_desc + CQM_DEQ_PON_DMA_DESC(pid, i)
+				+ 0x4, 0);
+			cbm_w32(dma_desc + CQM_DEQ_PON_DMA_DESC(pid, i)
+				+ 0x8, 0);
+			cbm_w32(dma_desc + CQM_DEQ_PON_DMA_DESC(pid, i)
+				+ 0xc, 0);
+		}
 	}
 }
 
 static void init_cqm_deq_dma_port(int dqp_idx, int dmap_idx)
 {
 	void *deq = cqm_ctrl->deq;
+	int type = find_dqm_port_type(dqp_idx);
 
 	setup_deq_dma_desc(dqp_idx, dqm_port_info[dqp_idx].deq_info.num_desc);
-	cbm_w32((deq + DQ_DMA_PORT(dmap_idx, cfg)),
-		CFG_DMA_EGP_7_DQPCEN_MASK |
-		CFG_DMA_EGP_7_DQREQ_MASK |
-		((dqp_idx << CFG_DMA_EGP_7_EPMAP_POS) &
-		CFG_DMA_EGP_7_EPMAP_MASK));
-	dev_dbg(cqm_ctrl->dev, " %s 0x%x 0x%x\n",
-		__func__,
-		(int)(deq + DQ_DMA_PORT(dmap_idx, cfg)),
-		CFG_DMA_EGP_7_DQPCEN_MASK |
-		CFG_DMA_EGP_7_DQREQ_MASK |
-		((dqp_idx << CFG_DMA_EGP_7_EPMAP_POS) &
-		CFG_DMA_EGP_7_EPMAP_MASK));
+	if (type != DQM_PON_TYPE) {
+		/* disable auto read increment, re-en after deq_req */
+		cbm_w32((deq + DQ_DMA_PORT(dmap_idx, cfg)),
+			0x02 |
+			CFG_DMA_EGP_7_DQPCEN_MASK |
+			((dqp_idx << CFG_DMA_EGP_7_EPMAP_POS) &
+			CFG_DMA_EGP_7_EPMAP_MASK));
+		set_val((cqm_ctrl->deq + DQ_DMA_PORT((dmap_idx), cfg)),
+			1, 0x1, 0);
+		/* re-enable auto read increment here*/
+		set_val((cqm_ctrl->deq + DQ_DMA_PORT((dmap_idx), cfg)),
+			0, 0x2, 1);
+		dev_dbg(cqm_ctrl->dev, " %s 0x%x 0x%x\n dmap_idx %d, dqp_idx %d\n",
+			__func__,
+			(int)(deq + DQ_DMA_PORT(dmap_idx, cfg)),
+			0x02 |
+			CFG_DMA_EGP_7_DQPCEN_MASK |
+			((dqp_idx << CFG_DMA_EGP_7_EPMAP_POS) &
+			CFG_DMA_EGP_7_EPMAP_MASK), dmap_idx, dqp_idx);
+	} else if (type == DQM_PON_TYPE) {
+		cbm_w32((deq + DQ_PON_PORT(dmap_idx, cfg)),
+			CFG_PON_EGP_26_DQPCEN_MASK |
+			CFG_PON_EGP_26_DQREQ_MASK |
+			((dqp_idx << CFG_PON_EGP_26_EPMAP_POS) &
+			CFG_PON_EGP_26_EPMAP_MASK));
+		dev_dbg(cqm_ctrl->dev, " %s PON 0x%x 0x%x, dmap_idx %d, dqp_idx %d\n",
+			__func__,
+			(int)(deq + DQ_PON_PORT(dmap_idx, cfg)),
+			CFG_PON_EGP_26_DQPCEN_MASK |
+			CFG_PON_EGP_26_DQREQ_MASK |
+			((dqp_idx << CFG_PON_EGP_26_EPMAP_POS) &
+			CFG_PON_EGP_26_EPMAP_MASK), dmap_idx, dqp_idx);
+	}
 }
 
 static s32 cqm_dma_port_enable(s32 port_id, u32 flags, s32 type)
 {
-	dev_dbg(cqm_ctrl->dev, "%d 0x%x\n", port_id, flags);
+	int port_type = find_dqm_port_type(port_id);
+
+	dev_dbg(cqm_ctrl->dev, "%s %d 0x%x\n", __func__, port_id, flags);
 	if (flags & CBM_PORT_F_DEQUEUE_PORT) {
 		/*DMA dequeue port*/
-		if (flags & CBM_PORT_F_DISABLE)
-			cbm_w32((cqm_ctrl->deq + DQ_DMA_PORT(port_id, cfg)), 0);
-		else
+		if (flags & CBM_PORT_F_DISABLE) {
+			if (port_type != DQM_PON_TYPE) {
+				set_val((cqm_ctrl->deq
+					+ DQ_DMA_PORT((port_id), cfg)),
+					0, 0x1, 0);
+				cbm_w32((cqm_ctrl->deq
+					+ DQ_DMA_PORT(port_id, dqpc)), 0);
+			} else if (port_type == DQM_PON_TYPE) {
+				cbm_w32((cqm_ctrl->deq
+					+ DQ_PON_PORT(port_id, cfg)), 0);
+			}
+		} else {
 			init_cqm_deq_dma_port(port_id, port_id);
+		}
 	} else {
 		/*DMA Enqueue port*/
 		if (flags & CBM_PORT_F_DISABLE)
@@ -3553,16 +4216,27 @@ static void init_cqm_deq_cpu_port(int idx, u32 tx_ring_size)
 		    CFG_CPU_EGP_0_BFBPEN_MASK |
 		    CFG_CPU_EGP_0_DQPCEN_MASK;
 	void *deq = cqm_ctrl->deq;
+	u32 type = find_dqm_port_type(idx);
 
-	if (tx_ring_size)
+	if ((tx_ring_size) && (type == DQM_CPU_TYPE)) {
 		cbm_w32((deq + DQ_CPU_PORT(idx, dptr)), tx_ring_size - 1);
+		dev_dbg(cqm_ctrl->dev, "%s port:%d,val:%d\n",
+			__func__, idx, tx_ring_size - 1);
+	} else if (type == DQM_ACA_TYPE) {
+		cbm_w32((deq + DQ_CPU_PORT(idx, dptr)),
+			dqm_port_info[idx].deq_info.num_desc - 1);
+		dev_dbg(cqm_ctrl->dev, "%s port:%d,val:%d\n", __func__,
+			idx, dqm_port_info[idx].deq_info.num_desc - 1);
+	}
 
 	config |= cbm_r32(deq + DQ_CPU_PORT(idx, cfg));
 		/*!< preserve complete data changes */
 	config |= ((idx << CFG_CPU_EGP_0_EPMAP_POS) & CFG_CPU_EGP_0_EPMAP_MASK);
 	dev_dbg(cqm_ctrl->dev, "%d\n", idx);
 	cbm_w32((deq + DQ_CPU_PORT(idx, cfg)), config);
-	dev_dbg(cqm_ctrl->dev, "0x%x\n", (u32)(deq + DQ_CPU_PORT(idx, cfg)));
+	dev_dbg(cqm_ctrl->dev, "%s port:%d,addr:0x%x, cfg:0x%x tx_ring_size:%d\n",
+		__func__, idx, (u32)(deq + DQ_CPU_PORT(idx, cfg)),
+		config, tx_ring_size);
 #ifdef CONFIG_CBM_LS_ENABLE
 	cbm_w32((deq + DQ_CPU_PORT(2, irnen)), 0x2);
 #endif
@@ -3620,6 +4294,7 @@ static s32 setup_DMA_channel(int chan, int cqm_port, dma_addr_t desc_base,
 			__func__, chan);
 		return CBM_FAILURE;
 	}
+	ltq_dma_chan_polling_cfg(chan, 6, 6);
 	/* Channel on */
 	if (ltq_dma_chan_on(chan) < 0) {
 		dev_err(cqm_ctrl->dev, " %s failed to ON chan%d\r\n",
@@ -3937,23 +4612,23 @@ static inline void cqm_rst_deassert(struct cqm_data *lpp)
 {
 	u32 status = reset_control_status(lpp->rcu_reset);
 
-	dev_dbg(cqm_ctrl->dev, "0x%x\n", status);
+	pr_debug("0x%x\n", status);
 	reset_control_deassert(lpp->rcu_reset);
-	dev_dbg(cqm_ctrl->dev, "poll until its zero\n");
+	pr_debug("poll until its zero\n");
 	while (status)
 		status = reset_control_status(lpp->rcu_reset);
 }
 
-static void cqm_rst(struct cqm_data *lpp)
+void cqm_rst(struct cqm_data *lpp)
 {
 	cqm_rst_deassert(lpp);
 }
 
-static int cqm_get_mtu_size(u32 *mtu_size)
+static int cqm_get_mtu_size(struct cbm_mtu *mtu)
 {
 	/* Always last pool */
-	*mtu_size = (cqm_ctrl->prx300_pool_size[cqm_ctrl->num_pools - 1] -
-		     BSL_THRES);
+	mtu->mtu = (cqm_ctrl->prx300_pool_size[cqm_ctrl->num_pools - 1] -
+		BSL_THRES);
 	return CBM_SUCCESS;
 }
 
@@ -3961,13 +4636,14 @@ static const struct cbm_ops cqm_ops = {
 	.cbm_igp_delay_set = cqm_igp_delay_set,
 	.cbm_igp_delay_get = cqm_igp_delay_get,
 	.cbm_buffer_alloc = cqm_buffer_alloc_by_size,
-	.cqm_buffer_alloc_by_policy = cqm_buff_alloc_by_policy_prx300,
+	.cqm_buffer_free_by_policy = cqm_buffer_free_by_policy_prx300,
 	.cbm_buffer_free = cqm_buffer_free,
 	.cbm_cpu_pkt_tx = cqm_cpu_pkt_tx,
 	.check_ptr_validation = check_ptr_validation_prx300,
 	.cbm_build_skb = build_skb_cqm,
 	.cbm_queue_map_get = queue_map_get,
 	.cbm_queue_map_set = queue_map_set,
+	.cbm_queue_map_buf_free = queue_map_buf_free,
 	.cqm_qid2ep_map_get = qid2ep_map_get,
 	.cqm_qid2ep_map_set = qid2ep_map_set,
 	.cqm_mode_table_get = mode_table_get,
@@ -3986,8 +4662,11 @@ static const struct cbm_ops cqm_ops = {
 	.pon_deq_cntr_get = pon_deq_cntr_get,
 	.set_lookup_qid_via_index = set_lookup_qid_via_index_prx300,
 	.get_lookup_qid_via_index = get_lookup_qid_via_idx_prx300,
+	.cqm_map_to_drop_q = map_to_drop_q,
+	.cqm_restore_orig_q = restore_orig_q,
 	.cbm_enable_backpressure = enable_backpressure,
 	.cbm_get_mtu_size = cqm_get_mtu_size,
+	.cbm_dp_get_dc_config = cqm_get_dc_config,
 };
 
 static const struct of_device_id cqm_prx300_match[] = {
@@ -4056,9 +4735,6 @@ static int conf_bm(struct cqm_data *pdata)
 
 		/* Config no of policy */
 		p_param[i].num_pools_in_policy = 1;
-
-		/* group_id default value */
-		p_param[i].group_id = 0;
 
 		 /* Pool size loop*/
 		for (j = 0; j < p_param[i].num_pools_in_policy; j++) {
@@ -4209,6 +4885,15 @@ bool fsqm_check(uint16_t len)
 	return pass;
 }
 
+static void cqm_enable_re_insertion_port(s32 portid)
+{
+	struct cbm_dp_alloc_data data = {0};
+
+	/* Fill the DMA channels and enable */
+	fill_dp_alloc_data(&data, 0, DMA_PORT_RE_INSERTION, 0);
+	handle_dma_chnl_init(DMA_PORT_RE_INSERTION, 0);
+}
+
 static int cqm_prx300_probe(struct platform_device *pdev)
 {
 	struct resource *res[PRX300_MAX_RESOURCE] = {NULL};
@@ -4216,7 +4901,8 @@ static int cqm_prx300_probe(struct platform_device *pdev)
 	unsigned long sys_flag;
 	struct cqm_data *pdata = NULL;
 	const struct of_device_id *match;
-	u32 port_no, port_type;
+	u32 port_type;
+	int port_no;
 	int result, ret;
 	struct clk *cqm_clk;
 
@@ -4230,6 +4916,7 @@ static int cqm_prx300_probe(struct platform_device *pdev)
 	cqm_ctrl = (struct cqm_ctrl *)match->data;
 	cqm_ctrl->cqm_ops = &cqm_ops;
 	register_cbm(cqm_ctrl->cqm_ops);
+	dp_register_ops(0, DP_OPS_CQM, (void *)cqm_ctrl->cqm_ops);
 	/** init spin lock */
 	spin_lock_init(&cqm_qidt_lock);
 	spin_lock_init(&cqm_port_map);
@@ -4244,6 +4931,17 @@ static int cqm_prx300_probe(struct platform_device *pdev)
 			return -ENOENT;
 		}
 	}
+
+	ret = of_reserved_mem_device_init_by_idx(&pdev->dev, pdev->dev.of_node,
+						 0);
+	/* Ignore if this is not available in the device tree, we will use
+	 * the normal CMA memory instead.
+	 */
+	if (ret && ret != -ENODEV) {
+		dev_err(&pdev->dev, "Error adding reserved mem: %i\n", ret);
+		return ret;
+	}
+
 	#endif
 
 	cqm_ctrl->name = cqm_name;
@@ -4262,12 +4960,13 @@ static int cqm_prx300_probe(struct platform_device *pdev)
 	cqm_ctrl->fsqm = devm_ioremap_resource(&pdev->dev, res[8]);
 	cqm_ctrl->pib = devm_ioremap_resource(&pdev->dev, res[9]);
 	cqm_ctrl->pon_dqm_cntr = devm_ioremap_resource(&pdev->dev, res[10]);
+
 	result = check_base_addr();
 	if (result) {
 		dev_err(cqm_ctrl->dev, "failed to request and remap io ranges\n");
 		return result;
 	}
-	cqm_rst(pdata);
+
 	store_bufreq_baseaddr();
 	cqm_ctrl->cbm_irq[0] = pdata->intrs[0];
 	for_each_present_cpu(i) {
@@ -4295,6 +4994,9 @@ static int cqm_prx300_probe(struct platform_device *pdev)
 	cqm_ctrl->syscfg = pdata->syscfg;
 	cqm_ctrl->force_xpcs = pdata->force_xpcs;
 	cqm_ctrl->gint_mode = pdata->gint_mode;
+
+	cqm_ctrl->split[0] = pdata->bm_buff_split[0];
+	cqm_ctrl->split[1] = pdata->bm_buff_split[1];
 
 	if (conf_bm(pdata) != CBM_SUCCESS) {
 		pr_err("conf_BMpool_and_policy failed\n");
@@ -4355,6 +5057,12 @@ static int cqm_prx300_probe(struct platform_device *pdev)
 		}
 	}
 
+	cqm_ctrl->radio_num = pdata->radio_dev_num;
+
+	cqm_ctrl->re_insertion = pdata->re_insertion;
+	if (cqm_ctrl->re_insertion > 0)
+		cqm_enable_re_insertion_port(cqm_ctrl->re_insertion);
+
 #if 1
 	for_each_online_cpu(i)
 		tasklet_init(&cqm_ctrl->cqm_tasklet[i],
@@ -4382,18 +5090,9 @@ static int cqm_prx300_probe(struct platform_device *pdev)
 #endif
 	/* Enable all the LS interrupts */
 	ls_intr_ctrl(0xFF0000, cqm_ctrl->ls);
-	/*set the Ingress port delay before enqueue*/
-	switch (pdata->gsw_mode) {
-	case SHORT_QOS_10G:
-		clk_set_rate(cqm_ctrl->cbm_clk, 400000000);
-		break;
-	case FULL_QOS_1G:
-	case SHORT_QOS_1G:
-		clk_set_rate(cqm_ctrl->cbm_clk, 250000000);
-		break;
-	};
-	dev_info(cqm_ctrl->dev, "CBM Clock: %ldHz\n",
-		 clk_get_rate(cqm_ctrl->cbm_clk));
+
+	/*Override the HW reset values*/
+	cbm_w32(cqm_ctrl->enq + DMA_RDY_EN, 0xfff);
 
 	/*setup the DMA channels*/
 	for (i = 0; i < CQM_ENQ_PORT_MAX; i++) {
@@ -4424,6 +5123,7 @@ static int cqm_prx300_probe(struct platform_device *pdev)
 
 static int cqm_prx300_release(struct platform_device *pdev)
 {
+	of_reserved_mem_device_release(&pdev->dev);
 	return 0;
 }
 
@@ -4441,4 +5141,4 @@ int __init cqm_prx300_init(void)
 	return platform_driver_register(&cqm_prx300_driver);
 }
 
-arch_initcall(cqm_prx300_init);
+subsys_initcall(cqm_prx300_init);

@@ -1,0 +1,255 @@
+PPE firmware version tracelog
+
+====================================================
+PPE firmware for Amazon-SE E4
+====================================================
+version 0.11
+1. first working version support ETH0<->PTM acceleration.
+   Tested for ETH traffic, PTM traffic, ETH<->PTM acceleration with manually added entry.
+
+version 0.12
+1. fix downstream multicast bug
+
+version 0.13
+1. Mixed mode packets wihtout VLAN tag classified as LAN
+
+
+====================================================
+PPE firmware for Amazon_SE A4
+====================================================
+version 1.0.8
+1. PPPOE ds multicast bug fi
+2. Mixed mode packets wihtout VLAN tag classified as LAN
+
+
+====================================================
+PPE firmware for Danube A4
+====================================================
+version 1.0.8
+1. PPPOE ds multicast bug fi
+2. Mixed mode packets wihtout VLAN tag classified as LAN 
+
+
+====================================================
+PPE firmware for Danube D4
+====================================================
+version 1.0.3
+1. PPPOE ds multicast bug fi
+2. Mixed mode packets wihtout VLAN tag classified as LAN 
+
+
+====================================================
+PPE firmware for AR9 A5
+====================================================
+version 1.21
+1. first version supporting qos
+ 
+version 1.22  
+1. fix vlan editing bug.  Last version, it will automatically insert 2 inner vlan when only one inner vlan insert is required
+2. fix pppoa packet error after acceleration. 	      
+
+NO version 1.23
+
+version 1.24
+1. fix wfq not accurate bug: 
+	rate shaping involved in wfq algo, which will block the high priotiry queue with large size packet.
+	This new firmware will start wfq only if the rate shaping buffer exceed 1514 to allow the largest packet to passthrough.
+2. fix wfq swap descriptor error and cause system crash bug. 
+
+version 1.25
+1. fix wfq not accurate bug: 
+	Last version has bug that the firmware deduct b with 20 bytes over header  but doesn't deduct w with these. 
+2. improve hash algo
+3. fix mulitcast bug:
+	Last version, if add more than 3 multicast address via ppa command, the whole ppe hash table is in a mess. 
+
+version 1.26
+1. add configurable WAN interface support
+#define CFG_WAN_PORTMAP                         SB_BUFFER(0x201A)
+#define CFG_MIXED_PORTMAP                       SB_BUFFER(0x201B)
+
+NO version 1.28
+
+version 1.29
+1. map APP2 (IFID 5) to DMA RX channel 0/3
+
+version 1.31
+1. support per queue drop counter
+
+version 1.32
+1. add per queue drop counter
+   DSL_QUEUE_TX_DROP_MIB_TABLE(i)  SB_BUFFER(0x2D80 + (i)))    /*  i < 15  */
+
+version 1.33
+1. fix multicast bug with which instances of a multicast except the first one are corrupted 
+2. add QoS time_tick shadow register to support dynamic PPE clock change 
+3. fix MIB counting bug which incorrectly counts an ingress bridge packet as an ingress cpu packet
+4. expand COS from 2 bits to 3 bits to accommodate AR10 
+
+version 1.35
+1. Fix IPv6 over PPPoE cannot be accelerated.
+2. Set Mbox0 Bit30 when transmit data to GSwitch DMA TX channel 0
+   Set Mbox0 Bit31 when transmit data to GSwitch DMA TX channel 1
+
+====================================================
+PPE firmware for AR9 D5
+====================================================
+version 1.05
+1. first version supporting qos
+
+version 1.06
+1. fix vlan editing bug.  Last version, it will automatically insert 2 inner vlan when only one inner vlan insert is required
+2. fix pppoa packet error after acceleration. 	      
+
+NO version 1.07
+
+version 1.08
+1. bug fixing: refer to AR9 A5 version 1.24
+
+version 1.09
+refer to AR9 A5 version 1.25
+
+version 1.11
+1. fix multicast bug with which instances of a multicast except the first one are corrupted 
+2. add QoS time_tick shadow register to support dynamic PPE clock change 
+3. fix MIB counting bug which incorrectly counts an ingress bridge packet as an ingress cpu packet
+4. expand COS from 2 bits to 3 bits to accommodate AR10 
+
+version 1.13
+1. Fix IPv6 over PPPoE cannot be accelerated.
+2. Set Mbox0 Bit30 when transmit data to GSwitch DMA TX channel 0
+   Set Mbox0 Bit31 when transmit data to GSwitch DMA TX channel 1
+
+====================================================
+PPE firmware for AR9 E5
+====================================================
+version 0.03
+1. first version of ETH/PTM acceleration firmware
+
+version 0.04
+1. fix multicast bug with which instances of a multicast except the first one are corrupted
+2. fix MIB counting bug which incorrectly counts an ingress bridge packet as an ingress cpu packet 
+3. expand COS from 2 bits to 3 bits to accommodate AR10
+4. add QoS time_tick shadow register to support dynamic PPE clock change 
+
+version 0.05 
+1. Fix IPv6 over PPPoE cannot be accelerated.
+2. Set Mbox0 Bit30 when transmit data to GSwitch DMA TX channel 0
+   Set Mbox0 Bit31 when transmit data to GSwitch DMA TX channel 1
+
+
+====================================================
+PPE firmware for VR9 A5
+====================================================
+version 1.05
+1. first version supporting qos
+
+version 1.06 
+1.bug fixing: refter to AR9 A5 version 1.16
+
+version 1.07
+1. fix eth1 tx descriptor address error 
+2. fix counter base address
+#define __ETH1_TX_DES_ADDR                0x2600
+#define __TX_QOSQ_TOTAL_PKT_CNT_BASE      0x7E08
+#define __TX_QOSQ_PENDING_PKT_CNT_BASE    0x7E00
+
+version 1.08
+1. fix dma tx ch1 descriptor number bug, last version use 32 descriptor, should be 64
+#define __ETH1_TX_MAX_DES_LEN                   128
+
+NO version 1.09
+
+version 1.10
+1. bug fixing: refer to AR9 A5 version 1.24
+
+version 1.11
+refer to AR9 A5 version 1.25
+
+version 1.15
+1. fix multicast bug with which instances of a multicast except the first one are corrupted 
+2. add QoS time_tick shadow register to support dynamic PPE clock change 
+3. fix MIB counting bug which incorrectly counts an ingress bridge packet as an ingress cpu packet
+
+version 1.17
+1. Fix IPv6 over PPPoE cannot be accelerated
+2. Set Mbox0 Bit30 when transmit data to GSwitch DMA TX channel 0
+   Set Mbox0 Bit31 when transmit data to GSwitch DMA TX channel 1
+
+====================================================
+PPE firmware for VR9 D5
+====================================================
+version 1.06
+1. first version supporting qos
+
+version 1.07
+1.bug fixing: refter to AR9 A5 version 1.16
+
+version 1.08
+1. bug fixing: refer to VR9 A5 version 1.07
+
+version 1.09
+1. bug fixing: refter to VR9 A5 version 1.08
+
+NO version 1.10
+
+version 1.11
+1. bug fixing: refer to AR9 A5 version 1.24
+
+version 1.12
+refer to AR9 A5 version 1.25
+
+version 1.13
+1. support per queue drop counter
+
+version 1.14
+1. change per queue drop coutner from 0x5070 to 47F0
+DSL_QUEUE_TX_DROP_MIB_TABLE SB_BUFFER(0x47F0 + (i)))    /*  i < 15  */
+
+version 1.18
+1. fix multicast bug with which instances of a multicast except the first one are corrupted 
+2. add QoS time_tick shadow register to support dynamic PPE clock change 
+3. fix MIB counting bug which incorrectly counts an ingress bridge packet as an ingress cpu packet
+4. configurable WAN is included in this release 
+
+version 1.20
+1. Fix bug that ipv6 over PPPoE cannot be accelerated.
+2. Set Mbox0 Bit30 when transmit data to GSwitch DMA TX channel 0
+   Set Mbox0 Bit31 when transmit data to GSwitch DMA TX channel 1
+
+
+====================================================
+PPE firmware for VR9 E1
+====================================================
+version 0.23
+1. Add QoS functions for E1. (No Port based shaping in E1)
+
+version 0.24
+1. Fix QoS bug for E1. Last version, ppe firmware will overwrite register 2012 and crash descriptor.
+   This version needs driver  not setting ETH1_QSS of register 2012 in PTM mode, because D5 firmware will do QoS if this was set to Firmware mode.
+
+NO version 0.25
+
+version 0.26
+1. Fix WFQ bug for E1. Last version, ppe directly use the D reload codes of D5. But in E5, all 8 dispatch queus were mapped to 4 garma interface, that means
+		       The queues might me divided into 4 groups and the reload must work in a certain group one time. unfortunately, D5 reload function do			    don't have any idea of these groups and would reload in all 8 queues at the same times. 
+
+NO version 0.27 (debugging version for flowcontrol with GPIO)
+
+version 0.28
+1. Workaround for TC syn issue for HW bug
+
+version 0.29
+1. firmware workaround for RTHA bitmap bug and enable workaround (with threshold = 64, byte_shift = 32) by default.
+
+version 0.30
+1. merge flowcontrol with GPIO and workaround for RTHA bitmap bug.
+   #define GPIO_ADDR                  SB_BUFFER(0x2019)
+   #define GPIO_MODE                  SB_BUFFER(0x201C)
+   #define GPIO_WM_CFG                SB_BUFFER(0x201D)
+
+version 0.31
+1. add QoS time_tick shadow register to support dynamic PPE clock change
+
+version 0.32
+1. Change QoS tx swap descriptor number from 64 to 32. alignment with driver and spec.

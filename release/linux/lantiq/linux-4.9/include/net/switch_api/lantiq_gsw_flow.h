@@ -116,12 +116,10 @@ typedef enum {
 /** \brief Select Mode of Sub-Interface ID Field.
     Used by \ref GSW_PCE_pattern_t. */
 typedef enum {
-	/** Sub Interface ID as defined by GSWIP-3.0. */
-	GSW_PCE_SUBIFID_TYPE_SUBIFID = 0,
 	/** Sub Interface ID group as defined by GSWIP-3.1. */
-	GSW_PCE_SUBIFID_TYPE_GROUP = 1,
+	GSW_PCE_SUBIFID_TYPE_GROUP = 0,
 	/** Bridge Port ID as defined by GSWIP-3.1. */
-	GSW_PCE_SUBIFID_TYPE_BRIDGEPORT = 2
+	GSW_PCE_SUBIFID_TYPE_BRIDGEPORT = 1
 } GSW_PCE_SUBIFID_TYPE_t;
 
 /** \brief Packet Classification Engine Pattern Configuration.
@@ -889,18 +887,13 @@ typedef struct {
  *   Used by \ref GSW_PCE_rule_t.
  */
 typedef enum {
-	/** TFLOW TABLE COMMON Region Selection.
-	 *	The parameter 'nRegion' specifies the relative TFLOW Region.
-	 */
-	GSW_TFLOW_COMMMON_REGION = 0,
-	/** TFLOW TABLE CTP Region Selection.
-	 *  The parameter 'nRegion' specifies the relative TFLOW Region.
-	 */
-	GSW_TFLOW_CTP_REGION = 1,
-	/** TFLOW TABLE Debug selection */
-	GSW_TFLOW_DEBUG	= 2
-} gsw_tflowregion_t;
-
+	/** PCE Rule Region common for all CTP */
+	GSW_PCE_RULE_COMMMON = 0,
+	/** PCE Rule Region for specific CTP */
+	GSW_PCE_RULE_CTP = 1,
+	/** PCE Rule Debug (HW direct mapping) */
+	GSW_PCE_RULE_DEBUG = 2
+} GSW_PCE_RuleRegion_t;
 
 /** \brief Packet Classification Engine Action Configuration.
     GSWIP-3.0 extension actions are explicitly indicated.
@@ -1103,7 +1096,7 @@ typedef struct {
 	 */
 	u32 subifidgroup;
 	/** PCE TABLE Region */
-	gsw_tflowregion_t region;
+	GSW_PCE_RuleRegion_t	region;
 	/** PCE Rule Pattern Part. */
 	GSW_PCE_pattern_t	pattern;
 	/** PCE Rule Action Part. */
@@ -1113,6 +1106,14 @@ typedef struct {
 /** \brief Parameter to delete a rule from the packet classification engine.
     Used by \ref GSW_PCE_RULE_DELETE. */
 typedef struct {
+	/** Logical Port Id. The valid range is hardware dependent. */
+	u32 logicalportid;
+	/** Sub interface ID group,
+	 *The valid range is hardware/protocol dependent.
+	 */
+	u32 subifidgroup;
+	/** PCE TABLE Region */
+	GSW_PCE_RuleRegion_t	region;
 	/** Rule Index in the PCE Table. */
 	u32	nIndex;
 } GSW_PCE_ruleDelete_t;
@@ -1422,29 +1423,55 @@ typedef struct {
 #define GSW_PCE_RULE_DELETE  _IOWR(GSW_TFLOW_MAGIC, 0x01, GSW_PCE_ruleDelete_t)
 
 /**
- *\brief Allocate TFLOW  block.
- *It allocates consecutive TFLOW configuration entries and return the block ID
- *for further operations: \ref GSW_TFLOW_FREE.
+ *\brief Allocate PCE Rule block.
+ *It allocates consecutive PCE Rule entries and return the block ID
+ *for further operations: \ref GSW_PCE_RULE_FREE.
 
- *\param gsw_tflow_alloc_t Pointer to \ref gsw_tflow_alloc_t.
+ *\param GSW_PCE_rule_alloc_t Pointer to \ref GSW_PCE_rule_alloc_t.
 
  *\return Return value as follows:
  *- GSW_statusOk: if successful
  *- An error code in case an error occurs
  */
-#define GSW_TFLOW_ALLOC	_IOWR(GSW_TFLOW_MAGIC, 0x04, gsw_tflow_alloc_t)
+#define GSW_PCE_RULE_ALLOC	_IOWR(GSW_TFLOW_MAGIC, 0x04, GSW_PCE_rule_alloc_t)
 /**
- *\brief Release TFLOW Configuration block.
- *It is used to release TFLOW Configuration block allocated by
- *\ref GSW_TFLOW_ALLOC.
+ *\brief Release PCE Rule block.
+ *It is used to release PCE Rule block allocated by
+ *\ref GSW_PCE_RULE_ALLOC.
 
- *\param gsw_tflow_alloc_t Pointer to \ref gsw_tflow_alloc_t.
+ *\param GSW_PCE_rule_alloc_t Pointer to \ref GSW_PCE_rule_alloc_t.
 
  *\return Return value as follows:
  *- GSW_statusOk: if successful
  *- An error code in case an error occurs
  */
-#define GSW_TFLOW_FREE	_IOWR(GSW_TFLOW_MAGIC, 0x05, gsw_tflow_alloc_t)
+#define GSW_PCE_RULE_FREE	_IOWR(GSW_TFLOW_MAGIC, 0x05, GSW_PCE_rule_alloc_t)
+
+/**
+ *\brief Enable PCE Rule.
+ *It is used to Enable PCE Rule written by
+ *\ref GSW_PCE_RULE_WRITE.
+
+ *\param GSW_PCE_rule_t Pointer to \ref GSW_PCE_rule_t.
+
+ *\return Return value as follows:
+ *- GSW_statusOk: if successful
+ *- An error code in case an error occurs
+ */
+#define GSW_PCE_RULE_ENABLE	_IOWR(GSW_TFLOW_MAGIC, 0x06, GSW_PCE_rule_t)
+
+/**
+ *\brief Disable PCE Rule.
+ *It is used to Disable PCE Rule written by
+ *\ref GSW_PCE_RULE_WRITE.
+
+ *\param GSW_PCE_rule_t Pointer to \ref GSW_PCE_rule_t.
+
+ *\return Return value as follows:
+ *- GSW_statusOk: if successful
+ *- An error code in case an error occurs
+ */
+#define GSW_PCE_RULE_DISABLE _IOWR(GSW_TFLOW_MAGIC, 0x07, GSW_PCE_rule_t)
 
 /*@}*/ /* GSW_IOCTL_CLASS */
 

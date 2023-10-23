@@ -11,6 +11,9 @@
 
 #ifndef _LTQ_GSW_SOC_TOP_H_
 #define _LTQ_GSW_SOC_TOP_H_
+
+#define GSW_TREG_OFFSET 0xF400
+
 /* ----------------------------------------------- */
 /* Register: 'Global Control Register0' */
 /* Bit: 'SE' */

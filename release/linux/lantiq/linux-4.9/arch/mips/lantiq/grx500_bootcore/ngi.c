@@ -1888,7 +1888,9 @@ static int ltq_ngi_enumerate(struct ngi_inst *pinst)
 			/* Set the default REQ_TIMEOUT to be 4 */
 			pr_debug("request timeout for TA: %s BEFORE is : %x \n", 
 						pinst->props.target_agents[ta_count].name, ltq_ngi_r32(pinst, initial_comp_addr + 0x20));
+#ifndef CONFIG_USE_WAVE600_2_EMULATOR
 			ltq_ngi_w32_mask(pinst, 0, 4 << TSSB_TA_AGENT_CONTROL_REQ_TIMEOUT_POS, (initial_comp_addr + 0x20));
+#endif
 			pr_debug("request timeout for TA: %s AFTER is : %x \n", 
 						pinst->props.target_agents[ta_count].name, ltq_ngi_r32(pinst, initial_comp_addr + 0x20));
 			ta_count++;

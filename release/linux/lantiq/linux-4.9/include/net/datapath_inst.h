@@ -1,15 +1,16 @@
-/*
- * Copyright (C) Intel Corporation
- * Author: Shao Guohua <guohua.shao@intel.com>
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 as published
- * by the Free Software Foundation.
- */
+// SPDX-License-Identifier: GPL-2.0
+/*******************************************************************************
+         Copyright (c) 2020 - 2021, MaxLinear, Inc.
+         Copyright 2016 - 2020 Intel Corporation
+
+*******************************************************************************/
 
 #ifndef DATAPATH_INST_H
 #define DATAPATH_INST_H
 
+#if IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP30)
+#include <net/datapath_inst_grx500.h>
+#else 
 #include <net/switch_api/lantiq_gsw_api.h> /*Switch related structures */
 #include <net/switch_api/lantiq_gsw_flow.h>
 #include <net/switch_api/lantiq_gsw.h>
@@ -57,18 +58,17 @@ struct dp_inst_info {
 	int qos_inst; /*! QOS instance for this DP instance*/
 };
 
+struct dp_tx_common;
 struct dp_tc_vlan_info;
 struct inst_info {
 	enum DP_HW_CAP_TYPE type;
 	enum DP_HW_CAP_VER ver;
-	int max_ports;
-	int max_port_subifs;
 	struct dp_cap cap;
 	int (*dp_platform_set)(int inst, u32 flag);
 	int (*port_platform_set)(int inst, u8 ep, struct dp_port_data *data,
 				 uint32_t flags);
 	int (*dev_platform_set)(int inst, u8 ep, struct dp_dev_data *data,
-				 uint32_t flags);
+				uint32_t flags);
 	int (*subif_platform_set_unexplicit)(int inst, int port_id,
 					     struct logic_dev *dev,
 					     u32 flag);
@@ -78,6 +78,8 @@ struct inst_info {
 	int (*subif_platform_set)(int inst, int portid, int subif_ix,
 				  struct subif_platform_data *data,
 				  u32 flags);
+	int (*subif_platform_change_mtu)(int inst, int portid, int subif_ix,
+					 u32 mtu);
 	int (*proc_print_ctp_bp_info)(struct seq_file *s, int inst,
 				      struct pmac_port_info *port,
 				      int subif_index, u32 flag);
@@ -127,25 +129,50 @@ struct inst_info {
 	int (*dp_meter_del)(struct net_device *dev,
 			    struct dp_meter_cfg *meter, int flag,
 			    struct dp_meter_subif *mtr_subif);
-
 	int (*dp_set_bp_attr)(struct dp_bp_attr *bp_attr, int bport, u32 flags);
 
 	int32_t (*dp_rx)(struct sk_buff *skb, uint32_t flags);
-	int32_t (*dp_tx)(struct net_device *rx_if, dp_subif_t *rx_subif,
-			 struct sk_buff *skb, int32_t len, uint32_t flags);
-
+	int32_t (*dp_tx)(struct sk_buff *skb, struct dp_tx_common *cmn);
+	void (*dp_net_dev_get_ss_stat_strings)(struct net_device *dev,
+					       u8 *data);
+	int (*dp_net_dev_get_ss_stat_strings_count)(struct net_device *dev);
+	void (*dp_net_dev_get_ethtool_stats)(struct net_device *dev,
+					     struct ethtool_stats *stats,
+					     u64 *data);
+	int (*dp_spl_conn)(int inst, struct dp_spl_cfg *conn);
+	int (*dp_spl_conn_get)(int inst, enum DP_SPL_TYPE type,
+			       struct dp_spl_cfg *conns, u8 cnt);
+	int (*dp_set_io_port)(int inst, int dpid, int vap, int type);
+	int (*dp_alloc_bridge_port)(int inst, int port_id, int subif_ix,
+				    int fid, int bp_member, int flags);
+	int (*dp_free_bridge_port)(int inst, int bp);
+	int (*dp_deq_update_info)(struct dp_subif_upd_info *info);
+	int (*dp_set_ctp_bp)(int inst, int ctp, int portid, int bp,
+			     struct subif_platform_data *data);
+	int (*dp_get_queue_qocc)(struct dp_qos_queue_info *info, int flag);
+	int (*dp_cfg_domain_for_bp_member)(int inst, int bp);
 #if IS_ENABLED(CONFIG_INTEL_DATAPATH_SWITCHDEV)
 	int swdev_flag;
+	/* VLAN AWARE feature flag currently enabled only for PRX */
+	int vlan_aware_flag;
 	int (*swdev_alloc_bridge_id)(int inst);
 	int (*swdev_free_brcfg)(int inst, u16 fid);
 	int (*swdev_bridge_cfg_set)(int inst, u16 fid);
 	int (*swdev_bridge_port_cfg_set)(struct br_info *br_item, int inst,
-					 int port, u32 flags);
+					 int bport);
 	int (*swdev_bridge_port_cfg_reset)(struct br_info *br_item,
 					   int inst, int bport);
+	int (*swdev_bridge_port_flags_set)(struct br_info *br_info,
+					   int inst, int bport,
+					   unsigned long flags);
+	int (*swdev_bridge_port_flags_get)(int inst, int bport,
+					   unsigned long *flags);
+	int (*swdev_port_learning_limit_set)(int inst, int bport,
+					     int learning_limit);
 	int (*dp_mac_set)(int bport, int fid, int inst, u8 *addr);
 	int (*dp_mac_reset)(int bport, int fid, int inst, u8 *addr);
 	int (*dp_cfg_vlan)(int inst, int vap, int ep);
+	int (*swdev_bridge_mcast_flood)(int inst, int br_id, bool activate);
 #endif
 	int (*dp_tc_vlan_set)(struct core_ops *ops, struct dp_tc_vlan *vlan,
 			      struct dp_tc_vlan_info *info,
@@ -179,11 +206,10 @@ struct inst_property {
 };
 
 int register_dp_cap_gswip30(int flag);
-int register_dp_cap_gswip31(int flag);
-int register_dp_cap_gswip32(int flag);
+int register_dp_capability(int flag);
 int register_dp_hw_cap(struct dp_hw_cap *info, u32 flag);
 
 /*! request a new DP instance based on its HW type/version */
 int dp_request_inst(struct dp_inst_info *info, u32 flag);
-
+#endif /* CONFIG_INTEL_DATAPATH_HAL_GSWIP30 */
 #endif /* DATAPATH_INST_H */

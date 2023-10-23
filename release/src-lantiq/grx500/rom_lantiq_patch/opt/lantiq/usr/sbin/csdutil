@@ -1,0 +1,74 @@
+#!/bin/sh
+
+
+if [ "$1" = "encrypt" ] ; then
+	if [ -n "$3" ] ; then 
+		ubus call csd view-config '{
+				"input":"'$2'", 
+				"output":"'$3'", 
+				"crypt":1
+	}'
+	else
+		echo -e "Invalid option, for usage execute : $0 -h\n"
+	fi
+
+elif [ "$1" = "decrypt" ] ; then
+	if [ -n "$3" ] ; then 
+		ubus call csd view-config '{
+				"input":"'$2'", 
+				"output":"'$3'", 
+				"crypt":0
+	}'
+	else
+		echo -e "Invalid option, for usage  execute : $0 -h\n"
+	fi
+
+elif [ "$1" = "setlog" ] ; then
+	if [ -n "$3" ] ; then 
+		ubus call csd setlog '{
+				"loglevel":'$2',
+				"logtype" :'$3'
+		}'
+	else
+		echo -e "Invalid option,  for usage execute : $0 -h\n"
+	fi
+
+elif [ "$1" = "dump" ] ; then
+	if [ -n "$4" ] ; then 
+		ubus call csd dump '{
+				"object":"'$2'",
+				"path" :"'$3'",
+				"filepath" :"'$4'"
+		}'
+	else
+		echo -e "Invalid option,  for usage execute : $0 -h\n"
+	fi
+
+elif [ "$1" = "-h" -o "$1" = "-help" ] ; then
+
+	echo -e "---------------------------------------------------------------------------------------"
+	echo -e "This utiltiy is used to perform csd actions at run time"
+	echo -e "Provides supports like" 
+	echo -e "1. Enabling csd logs at run time"
+	echo -e "2. encryption,decryptio of running and default config at run time"
+	echo -e "3. Dump running configuration to console or file or both"
+	echo -e "--------------------------------------------------------------------------------------\n"
+	echo -e "1. How to Enable log\n"
+	echo -e "	$0 setlog <loglevel> <logtype>"
+	echo -e "	<loglevel> < 1 - CRITICAL | 2 - ERROR | 3 - INFO | 4 - DEBUG"
+	echo -e "	<logtype>  < 1 - File | 2- Console | 3- Both\n"
+	echo -e "Example : $0 setlog 3 2\n"
+	echo -e "2. How to encrypt or decrypt file\n"
+	echo -e "	$0 encrypt <inputfile> <outputfile>"
+	echo -e "	$0 decrypt <inputfile> <outputfile>\n"
+	echo -e "Example : $0 decrypt /opt/lantiq/config/.run-data.xml /tmp/out-file.xml\n"
+	echo -e "3. How to dump running configuration to console or file or both\n"
+	echo -e "	$0 dump <objname> <console/file/both> <path>\n"
+	echo -e"Exmaple: $0 dump Device.PPP.Interface. console NULL "
+	echo -e"	 $0 dump Device.PPP.Interface. file /tmp/dump.txt "
+	echo -e"	 $0 dump Device.PPP.Interface. both /tmp/dump.txt \n"
+	echo -e " -------------------------------------------------------------------------------------\n"
+else
+	echo -e "Select proper option, for usage run $0 -h or $0 -help"
+
+fi

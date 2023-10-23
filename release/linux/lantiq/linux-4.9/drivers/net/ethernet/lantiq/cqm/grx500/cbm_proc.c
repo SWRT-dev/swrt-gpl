@@ -979,11 +979,11 @@ ssize_t cbm_qocc_test_steps(struct file *file, const char *buf,
 			cbm_queue_map_get(0, 28, &num_entries, &temp_entry, 0);
 			pr_info("num entries 28 %d\n", num_entries);
 			if (num_entries)
-				kfree(temp_entry);
+				cbm_queue_map_buf_free(temp_entry);
 			cbm_queue_map_get(0, 100, &num_entries, &temp_entry, 0);
 			pr_info("num entries 100 %d\n", num_entries);
 			if (num_entries)
-				kfree(temp_entry);
+				cbm_queue_map_buf_free(temp_entry);
 			break;
 		case 16:
 			cbm_dp_q_enable (0, 15, -1, 19, -1, 100000, 0, (CBM_Q_F_DISABLE | CBM_Q_F_FLUSH));

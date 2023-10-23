@@ -141,6 +141,7 @@ inline void grx500_bootcore_ack_irq(unsigned int irq_nr)
         UartStatus = MT_RdReg(MT_LOCAL_MIPS_BASE_ADDRESS, REG_UART_INT);
     printk("exit: UNMAPPED_IRQS_TO_MAPPER = %x, MAPPED_IRQS_FROM_MAPPER = %x, stat b=%x ", temp1, temp2, UartStatus);
 #endif
+#ifdef CONFIG_SERIAL_GRX500_BOOTCORE_CONSOLE
         // TX Part
         if (UartStatus && REG_UART_WRITE_FIFO_WATER_LEVEL_IRQ_MASK)
             grx500_bootcore_uart_tx_isr(dev_id); /*needed???*/
@@ -149,6 +150,7 @@ inline void grx500_bootcore_ack_irq(unsigned int irq_nr)
         if ((UartStatus && REG_UART_READ_FIFO_WATER_LEVEL_IRQ_MASK) ||
             (UartStatus && REG_UART_IDLE_IRQ_MASK))
         grx500_bootcore_uart_rx_isr(dev_id);
+#endif /* CONFIG_SERIAL_GRX500_BOOTCORE_CONSOLE */
          
     return IRQ_HANDLED;
 }

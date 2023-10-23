@@ -275,6 +275,7 @@ struct net_bridge_port {
 	bridge_id			designated_bridge;
 	u32				path_cost;
 	u32				designated_cost;
+	int				learning_limit;
 	unsigned long			designated_age;
 
 	struct timer_list		forward_delay_timer;
@@ -384,6 +385,7 @@ struct net_bridge {
 	unsigned char			topology_change;
 	unsigned char			topology_change_detected;
 
+	enum br_mcast_flood_mode	mcast_flood;
 #ifdef CONFIG_BRIDGE_IGMP_SNOOPING
 	unsigned char			multicast_router;
 
@@ -398,6 +400,8 @@ struct net_bridge {
 
 	u32				multicast_last_member_count;
 	u32				multicast_startup_query_count;
+
+	u8				multicast_igmp_version;
 
 	unsigned long			multicast_last_member_interval;
 	unsigned long			multicast_membership_interval;
@@ -419,6 +423,7 @@ struct net_bridge {
 	struct bridge_mcast_other_query	ip6_other_query;
 	struct bridge_mcast_own_query	ip6_own_query;
 	struct bridge_mcast_querier	ip6_querier;
+	u8				multicast_mld_version;
 #endif /* IS_ENABLED(CONFIG_IPV6) */
 #endif
 
@@ -451,6 +456,7 @@ struct br_input_skb_cb {
 #endif
 
 	bool proxyarp_replied;
+	bool src_port_isolated;
 
 #ifdef CONFIG_BRIDGE_VLAN_FILTERING
 	bool vlan_filtered;
@@ -595,6 +601,14 @@ int br_forward_finish(struct net *net, struct sock *sk, struct sk_buff *skb);
 void br_flood(struct net_bridge *br, struct sk_buff *skb,
 	      enum br_pkt_type pkt_type, bool local_rcv, bool local_orig);
 
+/* return true if both source port and dest port are isolated */
+static inline bool br_skb_isolated(const struct net_bridge_port *to,
+				   const struct sk_buff *skb)
+{
+	return BR_INPUT_SKB_CB(skb)->src_port_isolated &&
+	       (to->flags & BR_ISOLATED);
+}
+
 /* br_if.c */
 void br_port_carrier_check(struct net_bridge_port *p);
 int br_add_bridge(struct net *net, const char *name);
@@ -648,6 +662,10 @@ int br_multicast_set_port_router(struct net_bridge_port *p, unsigned long val);
 int br_multicast_toggle(struct net_bridge *br, unsigned long val);
 int br_multicast_set_querier(struct net_bridge *br, unsigned long val);
 int br_multicast_set_hash_max(struct net_bridge *br, unsigned long val);
+int br_multicast_set_igmp_version(struct net_bridge *br, unsigned long val);
+#if IS_ENABLED(CONFIG_IPV6)
+int br_multicast_set_mld_version(struct net_bridge *br, unsigned long val);
+#endif
 struct net_bridge_mdb_entry *
 br_mdb_ip_get(struct net_bridge_mdb_htable *mdb, struct br_ip *dst);
 struct net_bridge_mdb_entry *
@@ -1138,6 +1156,9 @@ void nbp_switchdev_frame_mark(const struct net_bridge_port *p,
 			      struct sk_buff *skb);
 bool nbp_switchdev_allowed_egress(const struct net_bridge_port *p,
 				  const struct sk_buff *skb);
+int br_switchdev_set_port_flag(struct net_bridge_port *p,
+			       unsigned long flags,
+			       unsigned long mask);
 #else
 static inline int nbp_switchdev_mark_set(struct net_bridge_port *p)
 {
@@ -1153,6 +1174,13 @@ static inline bool nbp_switchdev_allowed_egress(const struct net_bridge_port *p,
 						const struct sk_buff *skb)
 {
 	return true;
+}
+
+static inline int br_switchdev_set_port_flag(struct net_bridge_port *p,
+					     unsigned long flags,
+					     unsigned long mask)
+{
+	return 0;
 }
 #endif /* CONFIG_NET_SWITCHDEV */
 

@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-2.0
+
+config INTEL_MIB_COUNTERS
+    bool "MIB counters driver"
+    default y
+    depends on INTEL_DATAPATH && !GRX500_CBM
+
+    ---help---
+    This driver supports counters overflow handling.
+    It is designed to accumulate 32 bit wide counters
+    into 64 bit counters and overflow handling
+

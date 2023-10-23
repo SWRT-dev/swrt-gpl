@@ -43,7 +43,7 @@
 #include <linux/slab.h>
 #include <linux/hash.h>
 #include <linux/etherdevice.h>
-
+#include <linux/inet.h>
 #include <asm/uaccess.h>
 #include <linux/atomic.h>
 
@@ -84,6 +84,12 @@ static u32 HASH(const struct in6_addr *addr)
 static int ip6_tnl_dev_init(struct net_device *dev);
 static void ip6_tnl_dev_setup(struct net_device *dev);
 static struct rtnl_link_ops ip6_link_ops __read_mostly;
+static int ipmap_parm_from_user(struct map_rule_parm *p_rule,
+	struct __ip6_tnl_parm *p2, struct net *net, struct ip6_tnl **tl);
+static void ipmap_parm_to_user(struct __ip6_tnl_fmr *fmrs,
+	struct map_rule_parm *p_rule);
+static int del_fmr(struct map_rule_parm *p_rule, struct net *net);
+static int if_map_parm_unique(struct ip6_tnl *t, struct map_rule_parm *p_rule);
 
 static int ip6_tnl_net_id __read_mostly;
 struct ip6_tnl_net {
@@ -284,7 +290,6 @@ static int ip6_tnl_create2(struct net_device *dev)
 
 	strcpy(t->parms.name, dev->name);
 
-	dev_hold(dev);
 	ip6_tnl_link(ip6n, t);
 	return 0;
 
@@ -951,24 +956,22 @@ static int __ip6_tnl_rcv(struct ip6_tnl *tunnel, struct sk_buff *skb,
 	memset(skb->cb, 0, sizeof(struct inet6_skb_parm));
 
 	if (tpi->proto == htons(ETH_P_IP) && tunnel->parms.fmrs &&
-		!ipv6_addr_equal(&ipv6h->saddr, &tunnel->parms.raddr)) {
-			/* Packet didn't come from BR, so lookup FMR */
-			struct __ip6_tnl_fmr *fmr;
-			struct in6_addr expected = tunnel->parms.raddr;
-			for (fmr = tunnel->parms.fmrs; fmr; fmr = fmr->next)
-				if (ipv6_prefix_equal(&ipv6h->saddr,
-					&fmr->ip6_prefix, fmr->ip6_prefix_len))
-						break;
+	    !ipv6_addr_equal(&ipv6h->saddr, &tunnel->parms.raddr)) {
+		/* Packet didn't come from BR, so lookup FMR */
+		struct __ip6_tnl_fmr *fmr;
+		struct in6_addr expected = tunnel->parms.raddr;
+		for (fmr = tunnel->parms.fmrs; fmr; fmr = fmr->next)
+			if (ipv6_prefix_equal(&ipv6h->saddr,
+			    &fmr->ip6_prefix, fmr->ip6_prefix_len))
+				break;
 
-			/* Check that IPv6 matches IPv4 source to prevent spoofing */
-			if (fmr)
-				ip4ip6_fmr_calc(&expected, ip_hdr(skb),
-						skb_tail_pointer(skb), fmr, false);
+		/* Check that IPv6 matches IPv4 source to prevent spoofing */
+		if (fmr)
+			ip4ip6_fmr_calc(&expected, ip_hdr(skb),
+					skb_tail_pointer(skb), fmr, false);
 
-			if (!ipv6_addr_equal(&ipv6h->saddr, &expected)) {
-				rcu_read_unlock();
-				goto drop;
-			}
+		if (!ipv6_addr_equal(&ipv6h->saddr, &expected))
+			goto drop;
 	}
 
 	__skb_tunnel_rx(skb, tunnel->dev, tunnel->net);
@@ -1010,7 +1013,15 @@ int ip6_tnl_rcv(struct ip6_tnl *t, struct sk_buff *skb,
 		struct metadata_dst *tun_dst,
 		bool log_ecn_err)
 {
-	return __ip6_tnl_rcv(t, skb, tpi, NULL, ip6ip6_dscp_ecn_decapsulate,
+	int (*dscp_ecn_decapsulate)(const struct ip6_tnl *t,
+				    const struct ipv6hdr *ipv6h,
+				    struct sk_buff *skb);
+
+	dscp_ecn_decapsulate = ip6ip6_dscp_ecn_decapsulate;
+	if (tpi->proto == htons(ETH_P_IP))
+		dscp_ecn_decapsulate = ip4ip6_dscp_ecn_decapsulate;
+
+	return __ip6_tnl_rcv(t, skb, tpi, NULL, dscp_ecn_decapsulate,
 			     log_ecn_err);
 }
 EXPORT_SYMBOL(ip6_tnl_rcv);
@@ -1380,6 +1391,7 @@ ip4ip6_tnl_xmit(struct sk_buff *skb, struct net_device *dev)
 {
 	struct ip6_tnl *t = netdev_priv(dev);
 	const struct iphdr  *iph;
+	struct __ip6_tnl_fmr *fmr;
 	int encap_limit = -1;
 	struct flowi6 fl6;
 	__u8 dsfield;
@@ -1428,6 +1440,19 @@ ip4ip6_tnl_xmit(struct sk_buff *skb, struct net_device *dev)
 	}
 
 	dsfield = INET_ECN_encapsulate(dsfield, ipv4_get_dsfield(iph));
+
+	/* try to find matching FMR (Forwarding Mapping Rules) */
+	for (fmr = t->parms.fmrs; fmr; fmr = fmr->next) {
+		unsigned mshift = 32 - fmr->ip4_prefix_len;
+		if (ntohl(fmr->ip4_prefix.s_addr) >> mshift ==
+				ntohl(ip_hdr(skb)->daddr) >> mshift)
+			break;
+	}
+
+	/* change dstaddr according to FMR */
+	if (fmr)
+		ip4ip6_fmr_calc(&fl6.daddr, ip_hdr(skb),
+			skb_tail_pointer(skb), fmr, true);
 
 	if (iptunnel_handle_offloads(skb, SKB_GSO_IPXIP6))
 		return -1;
@@ -1527,7 +1552,8 @@ ip6ip6_tnl_xmit(struct sk_buff *skb, struct net_device *dev)
 
 	/* change dstaddr according to FMR */
 	if (fmr)
-		ip4ip6_fmr_calc(&fl6.daddr, ip_hdr(skb), skb_tail_pointer(skb), fmr, true);
+		ip4ip6_fmr_calc(&fl6.daddr, ip_hdr(skb),
+			skb_tail_pointer(skb), fmr, true);
 
 	if (iptunnel_handle_offloads(skb, SKB_GSO_IPXIP6))
 		return -1;
@@ -1718,6 +1744,147 @@ ip6_tnl_parm_to_user(struct ip6_tnl_parm *u, const struct __ip6_tnl_parm *p)
 	memcpy(u->name, p->name, sizeof(u->name));
 }
 
+static int if_map_parm_unique(struct ip6_tnl *t, struct map_rule_parm *p_rule)
+{
+	struct __ip6_tnl_fmr *fmr = NULL;
+	fmr = t->parms.fmrs;
+	while (fmr) {
+		/*Compare v6 prefix, v4 prefix and ea-length*/
+		if ((ipv6_prefix_equal(&p_rule->ipv6_prefix, &fmr->ip6_prefix,
+			p_rule->ipv6_prefix_length))
+			&& ((ntohl(fmr->ip4_prefix.s_addr)
+			>> (32 - fmr->ip4_prefix_len))
+			== ((ntohl(p_rule->ipv4_prefix))
+			>> (32 - p_rule->ipv4_prefix_length)))
+			&& (fmr->ea_len == p_rule->ea_length)) {
+			return 1;
+		}
+		fmr = fmr->next;
+	}
+	return 0;
+}
+
+static void ipmap_parm_to_user(struct __ip6_tnl_fmr *fmrs,
+	struct map_rule_parm *p_rule)
+{
+	p_rule->ipv6_prefix_length = fmrs->ip6_prefix_len;
+	p_rule->ipv4_prefix_length = fmrs->ip4_prefix_len;
+	p_rule->ea_length = fmrs->ea_len;
+	p_rule->psid_offset = 6; /* fix 6 bits for offset */
+	memcpy(&p_rule->ipv6_prefix, &fmrs->ip6_prefix,
+		sizeof(fmrs->ip6_prefix));
+	memcpy(&p_rule->ipv4_prefix, &fmrs->ip4_prefix,
+		sizeof(fmrs->ip4_prefix));
+}
+
+static int ipmap_parm_from_user(struct map_rule_parm *p_rule,
+	struct __ip6_tnl_parm *p2, struct net *net, struct ip6_tnl **tnl)
+{
+	struct __ip6_tnl_fmr *t_parm = NULL, *fmr_node = NULL;
+	struct ip6_tnl *t = NULL;
+	p2->laddr = p_rule->laddr;
+	p2->raddr = p_rule->raddr;
+
+	t = ip6_tnl_locate(net, p2, 0);
+	if (!IS_ERR(t)) {
+		if (if_map_parm_unique(t, p_rule))
+			return -EINVAL;
+		p2->fmrs = kzalloc(sizeof(struct __ip6_tnl_fmr), GFP_KERNEL);
+		if (!p2->fmrs)
+			return -ENOMEM;
+		p2->fmrs->next = NULL;
+		p2->fmrs->ip6_prefix_len = p_rule->ipv6_prefix_length;
+		p2->fmrs->ip4_prefix_len = p_rule->ipv4_prefix_length;
+		p2->fmrs->ea_len = p_rule->ea_length;
+		p2->fmrs->offset = p_rule->psid_offset;
+		memcpy(&p2->fmrs->ip6_prefix, &p_rule->ipv6_prefix,
+			sizeof(p2->fmrs->ip6_prefix));
+		memcpy(&p2->fmrs->ip4_prefix, &p_rule->ipv4_prefix,
+			sizeof(p2->fmrs->ip4_prefix));
+		p2->laddr = t->parms.laddr;
+		p2->raddr = t->parms.raddr;
+		p2->flags = t->parms.flags;
+		p2->hop_limit = t->parms.hop_limit;
+		p2->encap_limit = t->parms.encap_limit;
+		p2->flowinfo = t->parms.flowinfo;
+		p2->link = t->parms.link;
+		p2->proto = t->parms.proto;
+		memcpy(p2->name, t->parms.name, sizeof(t->parms.name));
+		t_parm = t->parms.fmrs;
+
+		/* Copy fmr link list from the tunnel parm*/
+		while (t_parm != NULL) {
+			fmr_node = kzalloc(sizeof(struct __ip6_tnl_fmr),
+				GFP_KERNEL);
+			if (!fmr_node)
+				return -ENOMEM;
+			memcpy(fmr_node, t_parm, sizeof(struct __ip6_tnl_fmr));
+			fmr_node->next = p2->fmrs;
+			p2->fmrs = fmr_node;
+			t_parm = t_parm->next;
+		}
+	} else {
+		return -1;
+	}
+	*tnl = t;
+	return 0;
+}
+
+static int del_fmr(struct map_rule_parm *p_rule, struct net *net)
+{
+	int fmr_del = -ENOENT;
+	struct ip6_tnl *t = NULL;
+	struct __ip6_tnl_parm p2;
+	struct __ip6_tnl_fmr *prev_fmrs = NULL, *fmrs = NULL, *temp = NULL;
+	memcpy(&p2.laddr, &p_rule->laddr, sizeof(p2.laddr));
+	memcpy(&p2.raddr, &p_rule->raddr, sizeof(p2.raddr));
+
+	/* Locate the tunnel from the given remote and local address*/
+	t = ip6_tnl_locate(net, &p2, 0);
+	if (!IS_ERR(t))
+		return -ENOENT;
+	fmrs = t->parms.fmrs;
+	temp = t->parms.fmrs;
+	prev_fmrs = t->parms.fmrs;
+
+	/* Find the node by matching the Param "IPv6 Prefix,
+		IPv4 Prefix & EA LENGTH" */
+	if (t->parms.fmrs) {
+		if (((ipv6_prefix_equal(&p_rule->ipv6_prefix,
+			&fmrs->ip6_prefix, p_rule->ipv6_prefix_length)))
+			&& ((ntohl(fmrs->ip4_prefix.s_addr)
+			>> (32 - fmrs->ip4_prefix_len))
+			== ((ntohl(p_rule->ipv4_prefix))
+			>> (32 - p_rule->ipv4_prefix_length)))
+			&& (fmrs->ea_len == p_rule->ea_length)) {
+			fmr_del = 1;
+			t->parms.fmrs = fmrs->next;
+			kfree(fmrs);
+		} else {
+			while (fmrs != NULL) {
+				if (((ipv6_prefix_equal(&p_rule->ipv6_prefix,
+					&fmrs->ip6_prefix,
+					p_rule->ipv6_prefix_length)))
+					&& ((ntohl(fmrs->ip4_prefix.s_addr)
+					>> (32 - fmrs->ip4_prefix_len))
+					== ((ntohl(p_rule->ipv4_prefix))
+					>> (32 - p_rule->ipv4_prefix_length)))
+					&& (fmrs->ea_len
+					== p_rule->ea_length)) {
+					prev_fmrs->next = fmrs->next;
+					kfree(fmrs);
+					fmr_del = 1;
+					break;
+				}
+				prev_fmrs = fmrs;
+				fmrs = fmrs->next;
+			}
+		}
+	}
+
+	return fmr_del;
+}
+
 /**
  * ip6_tnl_ioctl - configure ipv6 tunnels from userspace
  *   @dev: virtual device associated with tunnel
@@ -1749,12 +1916,15 @@ ip6_tnl_parm_to_user(struct ip6_tnl_parm *u, const struct __ip6_tnl_parm *p)
 static int
 ip6_tnl_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 {
-	int err = 0;
+	int err = 0, fmrs_count = 0, i;
 	struct ip6_tnl_parm p;
-	struct __ip6_tnl_parm p1;
+	struct __ip6_tnl_parm p1, p2;
 	struct ip6_tnl *t = netdev_priv(dev);
+	struct __ip6_tnl_fmr *temp = NULL;
 	struct net *net = t->net;
 	struct ip6_tnl_net *ip6n = net_generic(net, ip6_tnl_net_id);
+	struct map_parm *pptr, pParm;
+	struct map_rule_parm *p_rule;
 
 	memset(&p1, 0, sizeof(p1));
 
@@ -1777,6 +1947,7 @@ ip6_tnl_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 			err = -EFAULT;
 		}
 		break;
+
 	case SIOCADDTUNNEL:
 	case SIOCCHGTUNNEL:
 		err = -EPERM;
@@ -1835,6 +2006,109 @@ ip6_tnl_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 		}
 		err = 0;
 		unregister_netdevice(dev);
+		break;
+	case SIOCGETRULES:
+	case SIOCGETPRL:
+		if (t == NULL)
+			t = netdev_priv(dev);
+		if (t != NULL) {
+			if (cmd == SIOCGETRULES) {
+				if (t->parms.fmrs != NULL) {
+					temp = t->parms.fmrs;
+					while (temp != NULL) {
+						temp = temp->next;
+						fmrs_count++;
+					}
+					if (!fmrs_count)
+						err = ENOENT;
+					pParm.rule_num = fmrs_count;
+					if (copy_to_user
+						(ifr->ifr_ifru.ifru_data,
+						&pParm,
+						sizeof(struct map_parm)))
+						err = -EFAULT;
+				} else {
+					err = ENOENT;
+				}
+			}
+			if (cmd == SIOCGETPRL) {
+				temp = t->parms.fmrs;
+				while (temp != NULL) {
+					temp = temp->next;
+					fmrs_count++;
+				}
+				pptr = kzalloc(sizeof(struct map_parm)
+					+ (sizeof(struct map_rule_parm)
+					* fmrs_count), GFP_KERNEL);
+				if (!pptr)
+					break;
+				temp = t->parms.fmrs;
+				for (i = 0; i < fmrs_count; i++) {
+					if (temp != NULL) {
+						ipmap_parm_to_user(temp,
+							&pptr->rule[i]);
+						temp = temp->next;
+					}
+				}
+				pptr->rule_num = fmrs_count;
+				if (copy_to_user(ifr->ifr_ifru.ifru_data, pptr,
+					sizeof(struct map_parm)
+					+ (sizeof(struct map_rule_parm)
+					* fmrs_count)))
+					err = -EFAULT;
+				if (pptr != NULL)
+					kfree(pptr);
+			}
+		} else {
+			err = -EINVAL;
+		}
+		break;
+	case SIOCADDPRL:
+		err = -EPERM;
+		if (!ns_capable(net->user_ns, CAP_NET_ADMIN))
+			break;
+		pptr = kzalloc(sizeof(struct map_parm)
+			+ sizeof(struct map_rule_parm), GFP_KERNEL);
+		if (!pptr)
+			break;
+		memset(&p2, 0, sizeof(p2));
+		if (copy_from_user(pptr, ifr->ifr_ifru.ifru_data,
+			sizeof(struct map_parm)
+			+ sizeof(struct map_rule_parm)))
+			break;
+		p_rule = &pptr->rule[0];
+
+		if (ipmap_parm_from_user(p_rule, &p2, net, &t) == 0) {
+			err = ip6_tnl_update(t, &p2);
+			ipmap_parm_to_user(t->parms.fmrs, p_rule);
+			if (copy_to_user(ifr->ifr_ifru.ifru_data,
+				pptr, sizeof(struct map_parm)
+				+ sizeof(struct map_rule_parm)))
+				err = -EFAULT;
+
+		} else {
+			err = -ENOENT;
+		}
+		kfree(pptr);
+		break;
+	case SIOCDELPRL:
+		err = -EPERM;
+		if (!ns_capable(net->user_ns, CAP_NET_ADMIN))
+			break;
+		pptr = kzalloc(sizeof(struct map_parm)
+			+ sizeof(struct map_rule_parm), GFP_KERNEL);
+		if (!pptr)
+			break;
+		memset(&p2, 0, sizeof(p2));
+		if (copy_from_user(pptr, ifr->ifr_ifru.ifru_data,
+			sizeof(struct map_parm)
+			+ sizeof(struct map_rule_parm)))
+			break;
+		p_rule = &pptr->rule[0];
+		err = 0;
+		if (!del_fmr(p_rule, net))
+			err = -ENOENT;
+		kfree(pptr);
 		break;
 	default:
 		err = -EINVAL;
@@ -2011,6 +2285,7 @@ ip6_tnl_dev_init_gen(struct net_device *dev)
 	if (!(t->parms.flags & IP6_TNL_F_IGN_ENCAP_LIMIT))
 		dev->mtu -= 8;
 
+	dev_hold(dev);
 	return 0;
 
 destroy_dst:
@@ -2035,10 +2310,8 @@ static int ip6_tnl_dev_init(struct net_device *dev)
 	if (err)
 		return err;
 	ip6_tnl_link_config(t);
-	if (t->parms.collect_md) {
-		dev->features |= NETIF_F_NETNS_LOCAL;
+	if (t->parms.collect_md)
 		netif_keep_dst(dev);
-	}
 	return 0;
 }
 
@@ -2056,7 +2329,6 @@ static int __net_init ip6_fb_tnl_dev_init(struct net_device *dev)
 	struct ip6_tnl_net *ip6n = net_generic(net, ip6_tnl_net_id);
 
 	t->parms.proto = IPPROTO_IPV6;
-	dev_hold(dev);
 
 	rcu_assign_pointer(ip6n->tnls_wc[0], t);
 	return 0;

@@ -1,0 +1,1 @@
+/tmp2/manohara/manohara_ws_120717/ugw_8/openwrt/staging_dir/toolchain-mips_24kc+nomips16_gcc-5.4.0_musl-1.1.16/bin/mips-openwrt-linux-gcc gsw_cli_fkts.c gsw_cli_fkts_common.c gsw_cli_fkts_flow.c gsw_tbl.c ltq_cli_dump_call.c ltq_cli_lib.c swapi_cli.c -o switch_cli

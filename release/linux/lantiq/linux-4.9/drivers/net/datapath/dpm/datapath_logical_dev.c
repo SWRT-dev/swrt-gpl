@@ -1,26 +1,11 @@
-/*
- * Copyright (C) Intel Corporation
- * Author: Shao Guohua <guohua.shao@intel.com>
+// SPDX-License-Identifier: GPL-2.0
+/*****************************************************************************
+ * Copyright (c) 2020 - 2021, MaxLinear, Inc.
+ * Copyright 2016 - 2020 Intel Corporation
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 as published
- * by the Free Software Foundation.
- */
-#include<linux/init.h>
-#include<linux/module.h>
-#include <linux/kernel.h>
+ *****************************************************************************/
+
 #include <linux/types.h>
-#include <linux/version.h>
-#include <linux/if_ether.h>
-#include <linux/ethtool.h>
-#include <linux/proc_fs.h>
-#include <linux/delay.h>
-#include <linux/init.h>
-#include <linux/clk.h>
-#include <linux/if_ether.h>
-#include <linux/clk.h>
-#include <linux/ip.h>
-#include <net/ip.h>
 #include <net/datapath_api.h>
 #include <linux/if_vlan.h>
 #include "datapath.h"
@@ -90,37 +75,32 @@ struct logic_dev *logic_list_lookup(struct list_head *head,
 	return NULL;
 }
 
-/*level >=1: only get the specified level if possible
- *otherwise: -1 maximum
+/* level > 0: search until specified level is reached
+ * level < 0: search for maximum depth
  */
 struct net_device *get_base_dev(struct net_device *dev, int level)
 {
-	struct net_device *lower_dev, *tmp;
+	struct net_device *cdev = dev;
+	struct net_device *ldev;
 	struct list_head *iter;
 
-	tmp = dev;
-	lower_dev = NULL;
-	do {
-		netdev_for_each_lower_dev(tmp, lower_dev, iter)
+	/* klocwork workaround
+	 * code logic comes from netdev_for_each_lower_dev
+	 */
+	while (cdev && level) {
+		iter = cdev->adj_list.lower.next,
+		ldev = netdev_lower_get_next(cdev, &iter);
+		if (!ldev)
 			break;
-		if (lower_dev) {
-			tmp = lower_dev;
-			lower_dev = NULL;
-			level--;
-			if (level == 0)
-				break;
-		} else {
-			break;
-		}
-	} while (1);
-	if (tmp == dev)
-		return NULL;
-	return tmp;
+		cdev = ldev;
+		level--;
+	}
+	return cdev == dev ? NULL : cdev;
 }
 
 /* add logic device into its base dev's logic dev list */
 int add_logic_dev(int inst, int port_id, struct net_device *dev,
-		  dp_subif_t *subif_id, u32 flags)
+		  dp_subif_t *subif_id, struct dp_subif_data *data, u32 flags)
 {
 	struct logic_dev *logic_dev_tmp;
 	struct net_device *base_dev;
@@ -128,6 +108,7 @@ int add_logic_dev(int inst, int port_id, struct net_device *dev,
 	int masked_subif;
 	struct pmac_port_info *port_info;
 	struct dp_subif_info *sif;
+	struct inst_info *dp_info = get_dp_prop_info(inst);
 
 	if (!dev) {
 		pr_err("dev NULL\n");
@@ -135,15 +116,13 @@ int add_logic_dev(int inst, int port_id, struct net_device *dev,
 	}
 	base_dev = get_base_dev(dev, -1);
 	if (!base_dev) {
-		DP_DEBUG(DP_DBG_FLAG_LOGIC,
-			 "Not found base dev of %s\n", dev->name);
+		pr_err("Not found base dev of %s\n", dev->name);
 		return -1;
 	}
 	DP_DEBUG(DP_DBG_FLAG_LOGIC,
 		 "base_dev=%s for logic dev %s\n", base_dev->name, dev->name);
-	if (dp_get_port_subitf_via_dev_private(base_dev, &subif)) {
-		DP_DEBUG(DP_DBG_FLAG_LOGIC,
-			 "Not registered base dev %s in DP\n", dev->name);
+	if (dp_get_netif_subifid(base_dev, NULL, NULL, NULL, &subif, 0)) {
+		pr_err("Not registered base dev %s in DP\n", dev->name);
 		return -1;
 	}
 	port_info = get_dp_port_info(inst, port_id);
@@ -154,11 +133,11 @@ int add_logic_dev(int inst, int port_id, struct net_device *dev,
 	sif = get_dp_port_subif(port_info, masked_subif);
 	logic_dev_tmp = logic_list_lookup(&sif->logic_dev, dev);
 	if (logic_dev_tmp) {
-		DP_DEBUG(DP_DBG_FLAG_LOGIC, "Device already exist: %s\n",
-			 dev->name);
+		pr_err("Device already exist: %s\n", dev->name);
 		return -1;
 	}
-	logic_dev_tmp = kmalloc(sizeof(*logic_dev_tmp), GFP_KERNEL);
+	logic_dev_tmp = devm_kzalloc(&g_dp_dev->dev,
+				     sizeof(*logic_dev_tmp), GFP_ATOMIC);
 	if (!logic_dev_tmp) {
 		DP_DEBUG(DP_DBG_FLAG_LOGIC, "kmalloc fail for %zd bytes\n",
 			 sizeof(*logic_dev_tmp));
@@ -167,10 +146,9 @@ int add_logic_dev(int inst, int port_id, struct net_device *dev,
 	logic_dev_tmp->dev = dev;
 	logic_dev_tmp->ep = port_id;
 	logic_dev_tmp->ctp = subif.subif;
-	if (dp_port_prop[inst].info.subif_platform_set_unexplicit(inst,
-								  port_id,
-								  logic_dev_tmp,
-								  0)) {
+	if (dp_info->subif_platform_set_unexplicit(inst, port_id,
+						   logic_dev_tmp,
+						   data->flag_ops)) {
 		DP_DEBUG(DP_DBG_FLAG_LOGIC, "dp_set_unexplicit fail\n");
 		return -1;
 	}
@@ -179,9 +157,7 @@ int add_logic_dev(int inst, int port_id, struct net_device *dev,
 
 	subif_id->bport = logic_dev_tmp->bp;
 	subif_id->subif = subif.subif;
-	dp_inst_add_dev(dev, NULL,
-			inst, port_id,
-			logic_dev_tmp->bp,
+	dp_inst_add_dev(dev, inst, port_id, logic_dev_tmp->bp,
 			subif.subif, flags);
 	return 0;
 }
@@ -190,6 +166,7 @@ int del_logic_dev(int inst, struct list_head *head, struct net_device *dev,
 		  u32 flags)
 {
 	struct logic_dev *logic_dev;
+	struct inst_info *dp_info = get_dp_prop_info(inst);
 
 	logic_dev = logic_list_lookup(head, dev);
 	if (!logic_dev) {
@@ -197,12 +174,11 @@ int del_logic_dev(int inst, struct list_head *head, struct net_device *dev,
 			 dev->name);
 		return -1;
 	}
-	dp_port_prop[inst].info.subif_platform_set_unexplicit(inst,
-		logic_dev->ep,
-		logic_dev, flags);
-	dp_inst_del_dev(dev, NULL, inst, logic_dev->ep, logic_dev->ctp, 0);
+	dp_info->subif_platform_set_unexplicit(inst, logic_dev->ep, logic_dev,
+					       flags);
+	dp_inst_del_dev(dev, inst, logic_dev->ep, logic_dev->ctp, flags);
 	list_del(&logic_dev->list);
-	kfree(logic_dev);
+	devm_kfree(&g_dp_dev->dev, logic_dev);
 
 	return 0;
 }

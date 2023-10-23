@@ -1,0 +1,138 @@
+Danube a4 dsl wan mode--------------------------
+ts_lan_wan_static_udp_directpath: skip
+ts_lan_wan_static_udp: ok
+ts_lan_wan_static_Routed: ok
+ts_lan_1vlanwan_bridge_portbased: ok
+ts_lan_1vlanwan_bridge_LanPortBase_WanSrcIP: ok
+ts_lan_wan_static_tcp_tos: skip
+ts_lan_1vlanwan_bridge_LanPortBase_WanVlanTagBase: ok
+ts_lan_1vanwan_static_tcp: ok
+ts_lan_1vanwan_static_mc: ok
+ts_lan_1vanwan_static_udp: ok
+ts_lan_wan_pppoe_udp: ok
+ts_lan_wan_bridge: ok
+ts_lan_wan_static_tcp_vcmux: fail --- DSL CO not support vcmux, maybe configuration issue
+ts_lan_wan_static_tcp: ok
+ts_lan_1vlanwan_bridge_LanPortBase_WanEtherType: ok
+ts_lan_wan_static_mc: ok
+ts_lan_wan_pppoe_mc: fail  ---- PPE FW not support yet
+ts_lan_wan_pppoe_tcp: ok
+
+Danube a4 dsl mixed mode-------------------------------
+ts_1vlanlan_1vlanwan_static_mc: ok
+ts_lan_1vanwan_static_tcp: fail  --non vlan packet will be dropped by PPE FW
+ts_1vlanlan_1vlanwan_static_tcp: ok
+
+
+AR9 a5 DSL wan mode------------------------------------
+ts_lan_wan_static_udp_directpath: skip
+ts_lan_wan_static_udp: ok
+ts_lan_wan_static_Routed: ok
+ts_lan_1vlanwan_bridge_portbased: skip
+ts_lan_1vlanwan_bridge_LanPortBase_WanSrcIP: skip
+ts_lan_wan_static_tcp_tos: skip
+ts_lan_1vlanwan_bridge_LanPortBase_WanVlanTagBase: skip
+ts_lan_1vanwan_static_tcp: ok
+ts_lan_1vanwan_static_mc: ok
+ts_lan_1vanwan_static_udp: ok
+ts_lan_wan_pppoe_udp: ok
+ts_lan_wan_bridge: ok
+ts_lan_wan_static_tcp_vcmux: skip
+ts_lan_wan_static_tcp: ok
+ts_lan_1vlanwan_bridge_LanPortBase_WanEtherType: skip
+ts_lan_wan_static_mc: ok
+ts_lan_wan_pppoe_mc: ok
+ts_lan_wan_pppoe_tcp: ok
+                                                                                                                       
+AR9 a5 mixed mode ------------------------------------
+ts_1vlanlan_1vlanwan_static_mc: ok
+ts_lan_1vanwan_static_tcp: ok
+ts_1vlanlan_1vlanwan_static_tcp: ok                                                                                                                                                                                                                  
+AR9 a5 eth1 wan mode---------------------------------
+ts_lan_wan_static_udp_directpath: skip
+ts_lan_wan_static_udp: ok
+ts_lan_1vlanwan_bridge_portbased: skip
+ts_lan_wan_static_tcp_tos: skip
+ts_lan_1vanwan_static_tcp: ok
+ts_lan_1vanwan_static_mc: ok
+ts_lan_1vanwan_static_udp: ok
+ts_lan_wan_pppoe_udp: ok
+ts_lan_wan_bridge: ok
+ts_lan_wan_static_tcp: ok
+ts_lan_wan_static_mc: ok
+ts_lan_wan_pppoe_mc: ok
+ts_lan_wan_pppoe_tcp: ok
+
+AR9 d5 dsl wan mode -------------------------------------
+ts_lan_wan_static_udp_directpath: skip
+ts_lan_wan_static_udp: ok
+ts_lan_1vlanwan_bridge_portbased: skip
+ts_lan_wan_static_tcp_tos: skip
+ts_lan_1vanwan_static_tcp: ok
+ts_lan_1vanwan_static_mc: ok
+ts_lan_1vanwan_static_udp: ok
+ts_lan_wan_pppoe_udp: ok
+ts_lan_wan_bridge: ok
+ts_lan_wan_static_tcp: ok
+ts_lan_wan_static_mc: ok
+ts_lan_wan_pppoe_mc: ok
+ts_lan_wan_pppoe_tcp: ok
+
+AR9 d5 mixed mode ------------------------------------~
+ts_1vlanlan_1vlanwan_static_mc: ok
+ts_lan_1vanwan_static_tcp: ok
+ts_1vlanlan_1vlanwan_static_tcp: ok  
+
+Amazon a4 dsl wan mode--------------------------
+ts_lan_wan_static_udp_directpath: skip
+ts_lan_wan_static_udp: ok
+ts_lan_wan_static_Routed: ok
+ts_lan_1vlanwan_bridge_portbased: ok
+ts_lan_1vlanwan_bridge_LanPortBase_WanSrcIP: ok
+ts_lan_wan_static_tcp_tos: skip
+ts_lan_1vlanwan_bridge_LanPortBase_WanVlanTagBase: ok
+ts_lan_1vanwan_static_tcp: ok
+ts_lan_1vanwan_static_mc: ok
+ts_lan_1vanwan_static_udp: ok
+ts_lan_wan_pppoe_udp: ok
+ts_lan_wan_bridge: ok
+ts_lan_wan_static_tcp_vcmux:fail --- DSL CO not support vcmux, maybe configuration issue
+ts_lan_wan_static_tcp: ok
+ts_lan_1vlanwan_bridge_LanPortBase_WanEtherType: ok
+ts_lan_wan_static_mc: ok
+ts_lan_wan_pppoe_mc: fail  ---- PPE FW not support yet
+ts_lan_wan_pppoe_tcp: ok
+ts_1vlanlan_1vlanwan_static_mc: ok
+ts_1vlanlan_1vlanwan_static_tcp:ok
+
+Amzaon a4 dsl mixed mode-------------------------------
+ts_1vlanlan_1vlanwan_static_mc: ok
+ts_lan_1vanwan_static_tcp: fail --- no vlan packet will be dropped by PPE FW
+ts_1vlanlan_1vlanwan_static_tcp: ok
+ 
+Amazon d4 dsl eth wan mode--------------------------
+ts_lan_wan_static_udp_directpath: skip
+ts_lan_wan_static_udp: ok
+ts_lan_1vlanwan_bridge_portbased: ok
+ts_lan_1vlanwan_bridge_LanPortBase_WanSrcIP: ok
+ts_lan_wan_static_tcp_tos: skip
+ts_lan_1vlanwan_bridge_LanPortBase_WanVlanTagBase: ok
+ts_lan_1vanwan_static_tcp: ok
+ts_lan_1vanwan_static_mc: ok
+ts_lan_1vanwan_static_udp: ok
+ts_lan_wan_pppoe_udp: ok
+ts_lan_wan_bridge: ok
+ts_lan_wan_static_tcp: ok
+ts_lan_1vlanwan_bridge_LanPortBase_WanEtherType: ok
+ts_lan_wan_static_mc: ok
+ts_lan_wan_pppoe_mc: fail  ---- PPE FW not support yet
+ts_lan_wan_pppoe_tcp: ok
+ts_1vlanlan_1vlanwan_static_mc: ok
+ts_1vlanlan_1vlanwan_static_tcp:ok
+
+Amzaon d4  mixed mode-------------------------------
+ts_1vlanlan_1vlanwan_static_mc: ok
+ts_lan_1vanwan_static_tcp: fail --- no vlan packet will be dropped by PPE FW
+ts_1vlanlan_1vlanwan_static_tcp: ok
+
+

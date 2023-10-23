@@ -100,121 +100,6 @@ u32 qidt_shadow;
 u32 qidt_drop_flag;
 };
 
-struct cbm_ops {
-	s32 (*cbm_queue_delay_enable_set)(s32 enable, s32 queue);
-	s32 (*cbm_igp_delay_set)(s32 cbm_port_id, s32 delay);
-	s32 (*cbm_igp_delay_get)(s32 cbm_port_id, s32 *delay);
-	struct sk_buff *(*cbm_build_skb)(void *data, unsigned int frag_size,
-					 gfp_t priority);
-	s32 (*cbm_queue_map_get)(int cbm_inst, s32 queue_id, s32 *num_entries,
-				 cbm_queue_map_entry_t **entries,
-				 u32 flags);
-	s32 (*cbm_queue_map_set)(int cbm_inst, s32 queue_id,
-				 cbm_queue_map_entry_t *entry, u32 flags);
-	s32 (*cqm_qid2ep_map_get)(int qid, int *port);
-	s32 (*cqm_qid2ep_map_set)(int qid, int port);
-	s32 (*cqm_mode_table_get)(int cbm_inst, int *mode,
-				  cbm_queue_map_entry_t *entry, u32 flags);
-	s32 (*cqm_mode_table_set)(int cbm_inst,
-				  cbm_queue_map_entry_t *entry, u32 mode,
-				  u32 flags);
-	int (*cbm_setup_desc)(struct cbm_desc *desc, u32 data_ptr, u32 data_len,
-			      u32 DW0, u32 DW1);
-	int (*cbm_cpu_enqueue_hw)(u32 pid, struct cbm_desc *desc,
-				  void *data_pointer,  int flags);
-	void *(*cbm_buffer_alloc)(u32 pid, u32 flag, u32 size);
-	void *(*cqm_buffer_alloc_by_policy)(u32 pid, u32 flag, u32 policy);
-	struct sk_buff *(*cbm_copy_skb)(const struct sk_buff *skb,
-					gfp_t gfp_mask);
-	struct sk_buff *(*cbm_alloc_skb)(unsigned int size, gfp_t priority);
-	int (*cbm_buffer_free)(u32 pid, void *v_buf, u32 flag);
-	int (*check_ptr_validation)(u32 buf);
-	s32 (*cbm_cpu_pkt_tx)(struct sk_buff *skb, struct cbm_tx_data *data,
-			      u32 flags);
-	s32 (*cbm_port_quick_reset)(s32 cbm_port_id, u32 flags);
-	u32 (*cbm_get_dptr_scpu_egp_count)(u32 cbm_port_id, u32 flags);
-	s32 (*cbm_dp_port_alloc)(struct module *owner, struct net_device *dev,
-				 u32 dev_port, s32 dp_port,
-				 struct cbm_dp_alloc_data *data, u32 flags);
-	s32 (*cbm_dp_port_alloc_complete)(struct module *owner,
-					  struct net_device *dev,
-					  u32 dev_port, s32 dp_port,
-				  struct cbm_dp_alloc_complete_data *data,
-					  u32 flags);
-	int (*cbm_get_wlan_umt_pid)(u32 ep_id, u32 *cbm_pid);
-	s32 (*cbm_dp_enable)(struct module *owner, u32 dp_port,
-			     struct cbm_dp_en_data *data, u32 flags,
-			     u32 alloc_flags);
-	s32 (*cqm_qos_queue_flush)(s32 cqm_inst, s32 cqm_drop_port, int qid);
-	s32 (*cbm_queue_flush)(s32 cbm_port_id, s32 queue_id, u32 timeout,
-			       u32 flags);
-	s32 (*cbm_dp_q_enable)(int cbm_inst, s32 dp_port_id, s32 qnum,
-			       s32 tmu_port_id, s32 remap_to_qid, u32 timeout,
-			       s32 qidt_valid, u32 flags);
-	s32 (*cbm_enqueue_port_resources_get)(cbm_eq_port_res_t *res,
-					      u32 flags);
-	s32 (*cbm_dequeue_port_resources_get)(u32 dp_port,
-					      cbm_dq_port_res_t *res,
-					      u32 flags);
-	s32 (*cbm_dp_port_resources_get)(u32 *dp_port, u32 *num_tmu_ports,
-					 cbm_tmu_res_t **res_pp,
-					 u32 flags);
-	s32 (*cbm_reserved_dp_resources_get)(u32 *tmu_port, u32 *tmu_sched,
-					     u32 *tmu_q);
-	s32 (*cbm_get_egress_port_info)(u32 cbm_port, u32 *tx_ch, u32 *flags);
-	s32 (*cbm_enqueue_port_overhead_set)(s32 port_id, int8_t ovh);
-	s32 (*cbm_enqueue_port_overhead_get)(s32 port_id, int8_t *ovh);
-	s32 (*cbm_enqueue_port_thresh_get)(s32 cbm_port_id,
-					   cbm_port_thresh_t *thresh,
-					   u32 flags);
-	s32 (*cbm_enqueue_port_thresh_set)(s32 cbm_port_id,
-					   cbm_port_thresh_t *thresh,
-					   u32 flags);
-	s32 (*cbm_dequeue_cpu_port_stats_get)(s32 cbm_port_id, u32 *deq_ctr,
-					      u32 flags);
-	s32 (*cbm_enqueue_cpu_port_stats_get)(s32 cbm_port_id,
-					      u32 *occupancy_ctr, u32 *enq_ctr,
-					      u32 flags);
-	s32 (*cbm_dequeue_dma_port_stats_get)(s32 cbm_port_id, u32 *deq_ctr,
-					      u32 flags);
-	s32 (*cbm_enqueue_dma_port_stats_get)(s32 cbm_port_id,
-					      u32 *occupancy_ctr,
-					      u32 *enq_ctr,
-					      u32 flags);
-	void (*set_lookup_qid_via_index)(u32 index, u32 qid);
-	uint8_t (*get_lookup_qid_via_index)(u32 index);
-	u8 (*get_lookup_qid_via_bits)(
-	u32 ep,
-	u32 classid,
-	u32 mpe1,
-	u32 mpe2,
-	u32 enc,
-	u32 dec,
-	u8 flow_id,
-	u32 dic);
-	int (*cbm_q_thres_get)(u32 *length);
-	int (*cbm_q_thres_set)(u32 length);
-	s32 (*cbm_dp_port_dealloc)(struct module *owner, u32 dev_port,
-				   s32 cbm_port_id,
-				   struct cbm_dp_alloc_data *data, u32 flags);
-	s32 (*cbm_enqueue_mgr_ctrl_get)(cbm_eqm_ctrl_t *ctrl, u32 flags);
-	s32 (*cbm_enqueue_mgr_ctrl_set)(cbm_eqm_ctrl_t *ctrl, u32 flags);
-	s32 (*cbm_dequeue_mgr_ctrl_get)(cbm_dqm_ctrl_t *ctrl, u32 flags);
-	s32 (*cbm_dequeue_mgr_ctrl_set)(cbm_dqm_ctrl_t *ctrl, u32 flags);
-	int (*cbm_counter_mode_set)(int enq, int mode);
-	int (*cbm_counter_mode_get)(int enq, int *mode);
-	s32 (*cbm_cpu_port_get)(struct cbm_cpu_port_data *data, u32 flags);
-	s32 (*pib_program_overshoot)(u32 overshoot_bytes);
-	s32 (*pib_status_get)(struct pib_stat *ctrl);
-	s32 (*pib_ovflw_cmd_get)(u32 *cmd);
-	s32 (*pib_illegal_cmd_get)(u32 *cmd);
-	s32 (*pon_deq_cntr_get)(int port, u32 *count);
-	void (*cbm_setup_DMA_p2p)(void);
-	int (*cbm_turn_on_DMA_p2p)(void);
-	s32 (*cbm_enable_backpressure)(s32 port_id, bool flag);
-	s32 (*cbm_get_mtu_size)(u32 *mtu_size);
-};
-
 static inline void set_val(void __iomem *reg, u32 val, u32 mask, u32 offset)
 {
 	u32 temp_val = cbm_r32(reg);
@@ -250,8 +135,10 @@ static inline int get_is_bit_set(u32 flags)
 }
 
 void buf_addr_adjust(unsigned int buf_base_addr, unsigned int buf_size,
+		     dma_addr_t buf_dma_addr,
 		     unsigned int *adjusted_buf_base,
 		     unsigned int *adjusted_buf_size,
+		     dma_addr_t *adjusted_dma_addr,
 		     unsigned int align);
 int cbm_linearise_buf(struct sk_buff *skb, struct cbm_tx_data *data,
 		      int buf_size, u32 new_buf);

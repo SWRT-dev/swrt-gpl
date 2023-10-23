@@ -420,24 +420,24 @@ define build_bluecave_image
 	mips-openwrt-linux-uclibc-objcopy -R .reginfo -R .notes -R .note -R .comment -R .mdebug -R .note.gnu.build-id -S $(LANTIQ_LINUX_DIR)/vmlinux ./vmlinux.elf
 	cp -fpR $(LANTIQ_LINUX_DIR)/vmlinux ./vmlinux.debug
 	cp ./vmlinux ./vmlinux-easy350_anywan_router_800m
-	tools/dtc -O dtb -o ./easy350_anywan_router_800m.dtb ./proprietary/dts/easy350_anywan_router_800m.dts
-	tools/host/bin/patch-dtb ./vmlinux-easy350_anywan_router_800m ./easy350_anywan_router_800m.dtb 32768
-	tools/host/bin/lzma e ./vmlinux-easy350_anywan_router_800m ./vmlinux-easy350_anywan_router_800m.lzma
+	tools/dtc -O dtb -o ./easy350_anywan_router_800m.dtb ./grx500/dts/easy350_anywan_router_800m.dts
+	tools/patch-dtb ./vmlinux-easy350_anywan_router_800m ./easy350_anywan_router_800m.dtb 32768
+	tools/lzma e ./vmlinux-easy350_anywan_router_800m ./vmlinux-easy350_anywan_router_800m.lzma
 	mv ./vmlinux-easy350_anywan_router_800m.lzma ./vmlinux.lzma
-	tools/u-boot-2010.06/tools/mkimage -A mips -O linux -T kernel -a 0x80002000 -C lzma -e 0x80002000 -n 'MIPS OpenWrt $(LANTIQ_LINUX_DIR)' -d ./vmlinux.lzma ./uImage
+	tools/mkimage -A mips -O linux -T kernel -a 0x80002000 -C lzma -e 0x80002000 -n 'MIPS OpenWrt $(LANTIQ_LINUX_DIR)' -d ./vmlinux.lzma ./uImage
 	len2=`wc -c ./vmlinux.lzma | awk '{ printf $$1 }'` ; \
 	echo "Raymond: $$len2"
 	len=`wc -c ./vmlinux.lzma | awk '{ printf $$1 }'`; pad=`expr  131072 - $$len %  131072`; pad=`expr $$pad %  131072`; pad=`expr $$pad -  64`; [ $$pad -lt 0 ] && pad=0; echo pad is $$pad; echo len is $$len; cat ./vmlinux.lzma > ./vmlinux.lzma.padded; dd if=/dev/zero of=./vmlinux.lzma.padded bs=1 count=$$pad seek=$$len
 	load_addr=0x$(shell grep -w _text $(LANTIQ_LINUX_DIR)/System.map 2>/dev/null| awk '{ printf "%s", $$1 }'); \
 	entry_addr=0x$(shell grep -w kernel_entry $(LANTIQ_LINUX_DIR)/System.map 2>/dev/null| awk '{ printf "%s", $$1 }'); \
-	tools/u-boot-2010.06/tools/mkimage -A mips -O linux -T kernel \
+	tools/mkimage -A mips -O linux -T kernel \
 		-a $(s_load_addr) -C $(compression_type) -e $(s_entry_addr) \
 	-n '$(image_header)' $(call bluecave_mkimage_extra_checks) \
 	-d ./vmlinux.lzma.padded ./uImage.padded
 	cp -f ./uImage.padded $(PLATFORMDIR)/uImage
 	# ------ rootfs --------
-	tools/host/bin/mksquashfs4 $(PLATFORMDIR)/target $(PLATFORMDIR)/root.squashfs -noappend -root-owned -comp xz -Xpreset 9 -Xe -Xlc 0 -Xlp 2 -Xpb 2 -processors 1
-	tools/u-boot-2010.06/tools/mkimage -A MIPS -O Linux -C lzma -T filesystem -e 0x00 -a 0x00 -n "LTQCPE RootFS" \
+	tools/mksquashfs4 $(PLATFORMDIR)/target $(PLATFORMDIR)/root.squashfs -noappend -root-owned -comp xz -Xpreset 9 -Xe -Xlc 0 -Xlp 2 -Xpb 2 -processors 1
+	tools/mkimage -A MIPS -O Linux -C lzma -T filesystem -e 0x00 -a 0x00 -n "LTQCPE RootFS" \
 	-d $(PLATFORMDIR)/root.squashfs $(PLATFORMDIR)/rootfs.img.padded
 	cp -f $(PLATFORMDIR)/rootfs.img.padded $(PLATFORMDIR)/rootfs.img
 	IMAGE_LIST="$(PLATFORMDIR)/rootfs.img \
@@ -465,14 +465,14 @@ define build_bluecave_image
 			exit 1; \
 		fi; \
 	done; \
-	tools/u-boot-2010.06/tools/mkimage -A MIPS -O Linux -C none -T multi -e 0x00 -a 0x00 \
+	tools/mkimage -A MIPS -O Linux -C none -T multi -e 0x00 -a 0x00 \
 		-n  \
 		"$$PLATFORM Fullimage" -d $$ONEIMAGE.tmp $$ONEIMAGE; \
 	rm -f $$ONEIMAGE.tmp; \
 	chmod 644 $$ONEIMAGE;
-	cp proprietary/gphy_firmware.img image/
-	cp proprietary/uImage_bootcore image/
-	cp proprietary/u-boot-nand.bin image/
+	#cp grx500/gphy_firmware.img image/
+	#cp grx500/uImage_bootcore image/
+	#cp grx500/u-boot-nand.bin image/
 	rm -f vmlinux*
 	rm -f uImage*
 	rm -f easy350_anywan_router_800m.dtb
@@ -1170,6 +1170,15 @@ ifeq ($(R6800),y)
 	zip -j -X image/factory.img image/factory.img.tmp/R6950.bin
 	rm -rf image/factory.img.tmp image/kernel.bin
 	asustools/mksercommfw -i image/factory.img -b BZV -r A001 -v 0x0062
+else ifeq ($(R7000P),y)
+ifneq ($(RTCONFIG_SOFTCENTER),y)
+	cd image && touch rootfs && \
+	../ctools/packet -k $(IMGNAME).trx -f rootfs -b ../ctools/compatible_r7000plus.txt \
+	-ok kernel_image -oall kernel_rootfs_image -or rootfs_image \
+	-i ../ctools/R7000P.h && \
+	rm -f rootfs && rm -f kernel_image.chk && rm -f rootfs_image.chk && \
+	mv kernel_rootfs_image.chk r7000p2swrt.chk
+endif
 endif
 	@echo ""
 
@@ -1179,15 +1188,15 @@ export_config:
 
 kernel_patch:
 ifeq ($(CONFIG_LANTIQ),y)
-	cd proprietary; rm -rf ltq_eip97_1.2.25; tar zxf ltq_eip97_1.2.25.tar.gz
-	cd proprietary; rm -rf ${SRCBASE}/router/rom_lantiq/; tar zxf rom_lantiq_05.04.00.131.tgz -C ${SRCBASE}/router/ ; mv ${SRCBASE}/router/rom_lantiq_05.04.00.131 ${SRCBASE}/router/rom_lantiq/
+	cd grx500; rm -rf ltq_eip97_1.2.25; tar zxf ltq_eip97_1.2.25.tar.gz
+	cd grx500; rm -rf ${SRCBASE}/router/rom_lantiq/; tar zxf rom_lantiq_05.04.00.131.tgz -C ${SRCBASE}/router/ ; mv ${SRCBASE}/router/rom_lantiq_05.04.00.131 ${SRCBASE}/router/rom_lantiq/
 	cp patches/iptables-1.4.21/extensions/* ${SRCBASE}/router/iptables-1.4.21/extensions/
 	# rm -f ${SRCBASE}/router/rom_lantiq/opt/lantiq/wave/images/cal_wlan0.bin
 	# rm -f ${SRCBASE}/router/rom_lantiq/opt/lantiq/wave/images/cal_wlan1.bin
-	# rm -f proprietary/rom_lantiq/opt/lantiq/wave/images/cal_wlan0.bin
-	# rm -f proprietary/rom_lantiq/opt/lantiq/wave/images/cal_wlan1.bin
-	cd proprietary; cp -rf rom_lantiq_05.04.00.131_patch/* ${SRCBASE}/router/rom_lantiq/
-	# cp -f proprietary/linux-3.10.104/firmware/lantiq/phy11g_ip_BE.bin linux/linux-3.10.104/firmware/lantiq/phy11g_ip_BE.bin
+	# rm -f grx500/rom_lantiq/opt/lantiq/wave/images/cal_wlan0.bin
+	# rm -f grx500/rom_lantiq/opt/lantiq/wave/images/cal_wlan1.bin
+	cd grx500; cp -rf rom_lantiq_05.04.00.131_patch/* ${SRCBASE}/router/rom_lantiq/
+	# cp -f grx500/linux-3.10.104/firmware/lantiq/phy11g_ip_BE.bin linux/linux-3.10.104/firmware/lantiq/phy11g_ip_BE.bin
 endif
 
 prepare_toolchain:
@@ -5152,7 +5161,7 @@ fi;
 			echo "CONFIG_DUMP_PREV_OOPS_MSG_BUF_LEN=0x2000" >>$(1); \
 		elif [ "$(BCM_7114)" = "y" ] || [ "$(BCM7)" = "y" ]; then \
 			echo "CONFIG_DUMP_PREV_OOPS_MSG=y" >>$(1); \
-			echo "CONFIG_DUMP_PREV_OOPS_MSG_BUF_ADDR=0xC0000000" >>$(1); \
+			echo "CONFIG_DUMP_PREV_OOPS_MSG_BUF_ADDR=0x80000000" >>$(1); \
 			echo "CONFIG_DUMP_PREV_OOPS_MSG_BUF_LEN=0x3000" >>$(1); \
 		elif [ "$(BUILD_NAME)" = "RT-AC56S" ]; then \
 			echo "CONFIG_DUMP_PREV_OOPS_MSG=y" >>$(1); \
@@ -6265,3 +6274,4 @@ get_extendno:
 .PHONY: a b c d m Makefile allversions
 .PHONY: tags
 .PHONY: dummy
+

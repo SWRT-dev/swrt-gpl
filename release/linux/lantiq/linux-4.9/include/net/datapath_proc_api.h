@@ -1,15 +1,17 @@
-/*
- * Copyright (C) Intel Corporation
- * Author: Shao Guohua <guohua.shao@intel.com>
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 as published
- * by the Free Software Foundation.
- */
+// SPDX-License-Identifier: GPL-2.0
+/*******************************************************************************
+         Copyright (c) 2020 - 2021, MaxLinear, Inc.
+         Copyright 2016 - 2020 Intel Corporation
+         Copyright 2015 - 2016 Lantiq Beteiligungs-GmbH & Co. KG
+         Copyright 2012 - 2014 Lantiq Deutschland GmbH
+
+*******************************************************************************/
 
 #ifndef DATAPATH_PROC_H
 #define DATAPATH_PROC_H
-
+#if IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP30)
+#include <net/datapath_proc_api_grx500.h>
+#else
 #include <linux/kernel.h>	/*kmalloc */
 #include <linux/ctype.h>
 #include <linux/debugfs.h>	/*file_operations */
@@ -68,9 +70,10 @@ int dp_split_buffer(char *buffer, char *array[], int max_param_num);
 #define ltq_replace_ch dp_replace_ch
 #define ltq_remove_leading_whitespace dp_remove_leading_whitespace
 #define ltq_split_buffer dp_split_buffer
-void set_start_end_id(unsigned int new_start, unsigned int new_end,
-		      unsigned int max_start, unsigned int max_end,
-		      unsigned int default_start, unsigned int default_end,
-		      unsigned int *start, unsigned int *end);
-
+#define set_start_end_id dp_set_start_end_id
+void dp_set_start_end_id(unsigned int new_start, unsigned int new_end,
+			 unsigned int max_start, unsigned int max_end,
+			 unsigned int default_start, unsigned int default_end,
+			 unsigned int *start, unsigned int *end);
+#endif /* IS_ENABLED(CONFIG_INTEL_DATAPATH_HAL_GSWIP30 */
 #endif				/*DATAPATH_PROC_H */

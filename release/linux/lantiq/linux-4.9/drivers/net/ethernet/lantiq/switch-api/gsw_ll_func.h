@@ -784,6 +784,46 @@ GSW_return_t GSW_PCE_EG_VLAN_EntryWrite(void *cdev,
 GSW_return_t GSW_PCE_EG_VLAN_EntryRead(void *cdev,
 				       GSW_PCE_EgVLAN_Entry_t *parm);
 
+/**
+  This is the switch API low-level function for
+  the \ref GSW_VXLAN_CFG_GET command.
+
+   \param cdev This parameter is a pointer to the device context
+   which contains all information related to this special
+   instance of the device.
+   \param parm Pointer to an \ref gsw_vxlan_cfg_t
+      structure element.
+
+	\remarks The function returns an error code in case an error occurs.
+		The error code is described in \ref GSW_status_t.
+
+   \return Return value as follows:
+   - GSW_statusOk: if successful
+   - An error code in case an error occurs
+*/
+GSW_return_t gsw_vxlan_cfg_get(void *cdev,
+			       gsw_vxlan_cfg_t *parm);
+
+/**
+  This is the switch API low-level function for
+   the \ref GSW_VXLAN_CFG_SET command.
+
+   \param cdev This parameter is a pointer to the device context
+   which contains all information related to this special
+   instance of the device.
+   \param parm Pointer to an \ref gsw_vxlan_cfg_t
+      structure element.
+
+	\remarks The function returns an error code in case an error occurs.
+		The error code is described in \ref GSW_status_t.
+
+   \return Return value as follows:
+   - GSW_statusOk: if successful
+   - An error code in case an error occurs
+*/
+GSW_return_t gsw_vxlan_cfg_set(void *cdev,
+			       gsw_vxlan_cfg_t *parm);
+
 /*@}*/ /* FLOW_LL_VLAN */
 /** \addtogroup FLOW_LL_QOS */
 /*@{*/
@@ -3252,8 +3292,11 @@ GSW_return_t GSW_CtpPortConfigReset(void *cdev, GSW_CTP_portConfig_t *parm);
 GSW_return_t GSW_DefaultMacFilterSet(void *cdev, GSW_MACFILTER_default_t *parm);
 GSW_return_t GSW_DefaultMacFilterGet(void *cdev, GSW_MACFILTER_default_t *parm);
 
-GSW_return_t gsw_tflow_alloc(void *cdev, gsw_tflow_alloc_t *parm);
-GSW_return_t gsw_tflow_free(void *cdev, gsw_tflow_alloc_t *parm);
+GSW_return_t GSW_PceRuleAlloc(void *cdev, GSW_PCE_rule_alloc_t *parm);
+GSW_return_t GSW_PceRuleFree(void *cdev, GSW_PCE_rule_alloc_t *parm);
+
+GSW_return_t GSW_PceRuleEnable(void *cdev, GSW_PCE_rule_t *parm);
+GSW_return_t GSW_PceRuleDisable(void *cdev, GSW_PCE_rule_t *parm);
 
 GSW_return_t GSW_Debug_CtpTableStatus(void *cdev, GSW_debug_t *parm);
 GSW_return_t GSW_Debug_BrgPortTableStatus(void *cdev, GSW_debug_t *parm);
@@ -3270,9 +3313,9 @@ GSW_return_t GSW_Debug_PceBypassTable(void *cdev, GSW_debug_t *parm);
 GSW_return_t GSW_Debug_PceQTable(void *cdev, GSW_debug_t *parm);
 GSW_return_t GSW_Debug_GetLpStatistics(void *cdev, GSW_debug_t *parm);
 GSW_return_t GSW_Debug_GetCtpStatistics(void *cdev, GSW_debug_t *parm);
-GSW_return_t  GSW_Debug_PrintPceIrqList(void *cdev);
+GSW_return_t GSW_Debug_PrintPceIrqList(void *cdev);
 GSW_return_t GSW_Debug_RMON_Port_Get(void *cdev, GSW_Debug_RMON_Port_cnt_t *parm);
-GSW_return_t gsw_debug_tflow_tablestatus(void *cdev, GSW_debug_t *parm);
+GSW_return_t GSW_Debug_PceRuleTableStatus(void *cdev, GSW_debug_t *parm);
 
 
 GSW_return_t GSW_Irq_register(void *cdev, GSW_Irq_Op_t *irq);

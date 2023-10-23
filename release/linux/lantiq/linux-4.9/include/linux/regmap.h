@@ -453,6 +453,11 @@ struct regmap *__regmap_init_mmio_clk(struct device *dev, const char *clk_id,
 				      const struct regmap_config *config,
 				      struct lock_class_key *lock_key,
 				      const char *lock_name);
+struct regmap *__regmap_init_icc_clk(struct device *dev, const char *clk_id,
+				     void __iomem *regs, phys_addr_t paddr,
+				     const struct regmap_config *config,
+				     struct lock_class_key *lock_key,
+				     const char *lock_name);
 struct regmap *__regmap_init_ac97(struct snd_ac97 *ac97,
 				  const struct regmap_config *config,
 				  struct lock_class_key *lock_key,
@@ -486,6 +491,12 @@ struct regmap *__devm_regmap_init_mmio_clk(struct device *dev,
 					   const struct regmap_config *config,
 					   struct lock_class_key *lock_key,
 					   const char *lock_name);
+struct regmap *__devm_regmap_init_icc_clk(struct device *dev,
+					  const char *clk_id,
+					  void __iomem *regs, phys_addr_t paddr,
+					  const struct regmap_config *config,
+					  struct lock_class_key *lock_key,
+					  const char *lock_name);
 struct regmap *__devm_regmap_init_ac97(struct snd_ac97 *ac97,
 				       const struct regmap_config *config,
 				       struct lock_class_key *lock_key,
@@ -610,7 +621,37 @@ int regmap_attach_dev(struct device *dev, struct regmap *map,
 	regmap_init_mmio_clk(dev, NULL, regs, config)
 
 /**
- * regmap_init_ac97(): Initialise AC'97 register map
+ * regmap_init_icc_clk() - Initialise register map with register clock
+ *
+ * @dev: Device that will be interacted with
+ * @clk_id: register clock consumer ID
+ * @regs: Pointer to memory-mapped IO region
+ * @paddr: Physical address of IO region
+ * @config: Configuration for register map
+ *
+ * The return value will be an ERR_PTR() on error or a valid pointer to
+ * a struct regmap.
+ */
+#define regmap_init_icc_clk(dev, clk_id, regs, paddr, config)		\
+	__regmap_lockdep_wrapper(__regmap_init_icc_clk, #config,	\
+				dev, clk_id, regs, paddr, config)
+
+/**
+ * regmap_init_icc() - Initialise register map
+ *
+ * @dev: Device that will be interacted with
+ * @regs: Pointer to memory-mapped IO region
+ * @paddr: Physical address of IO region
+ * @config: Configuration for register map
+ *
+ * The return value will be an ERR_PTR() on error or a valid pointer to
+ * a struct regmap.
+ */
+#define regmap_init_icc(dev, regs, paddr, config)		\
+	regmap_init_icc_clk(dev, NULL, regs, paddr, config)
+
+/**
+ * regmap_init_ac97() - Initialise AC'97 register map
  *
  * @ac97: Device that will be interacted with
  * @config: Configuration for register map
@@ -723,6 +764,38 @@ bool regmap_ac97_default_volatile(struct device *dev, unsigned int reg);
  */
 #define devm_regmap_init_mmio(dev, regs, config)		\
 	devm_regmap_init_mmio_clk(dev, NULL, regs, config)
+
+/**
+ * devm_regmap_init_icc_clk() - Initialise managed register map with clock
+ *
+ * @dev: Device that will be interacted with
+ * @clk_id: register clock consumer ID
+ * @regs: Pointer to memory-mapped IO region
+ * @paddr: Physical address of IO region
+ * @config: Configuration for register map
+ *
+ * The return value will be an ERR_PTR() on error or a valid pointer
+ * to a struct regmap.  The regmap will be automatically freed by the
+ * device management code.
+ */
+#define devm_regmap_init_icc_clk(dev, clk_id, regs, paddr, config)	\
+	__regmap_lockdep_wrapper(__devm_regmap_init_icc_clk, #config,	\
+				dev, clk_id, regs, paddr, config)
+
+/**
+ * devm_regmap_init_icc() - Initialise managed register map
+ *
+ * @dev: Device that will be interacted with
+ * @regs: Pointer to memory-mapped IO region
+ * @paddr: Physical address of IO region
+ * @config: Configuration for register map
+ *
+ * The return value will be an ERR_PTR() on error or a valid pointer
+ * to a struct regmap.  The regmap will be automatically freed by the
+ * device management code.
+ */
+#define devm_regmap_init_icc(dev, regs, paddr, config)		\
+	devm_regmap_init_icc_clk(dev, NULL, regs, paddr, config)
 
 /**
  * devm_regmap_init_ac97(): Initialise AC'97 register map

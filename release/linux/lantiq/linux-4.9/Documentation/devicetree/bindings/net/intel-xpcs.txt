@@ -1,0 +1,111 @@
+* Intel XPCS driver
+
+Required properties:
+- compatible:	should be "intel,xpcs"
+- reg:	address and length of the register set for the device.
+- reg-names:	names of the mapped memory regions listed in regs property
+- interrupts:	IRQ line info for XPCS, The interrupt specifier
+	depends on the interrupt-parent interrupt controller
+- interrupt-names:	Name associated with interrupt line
+	Should be "xpcs_reset"
+- phy: - phys :	the phandle for the PHY device
+	(used by generic PHY framework)
+- phy-names :	the names of the PHY corresponding to the PHYs present in the
+  	 *phy* phandle.
+- resets:	Reference to a reset controller asserting the XPCS
+- reset-names:	list of reset signal names. Should be "xpcs_reset".
+          See: Documentation/devicetree/bindings/reset/reset.txt
+-xpcs-mode:	Speed capabilities of the XPCS
+	 0 - 10GbE-KR(default)
+	 1 - 10GbE-XAUI
+	 2 - 1GbE-SGMII
+	 3 - 2.5GbE-SGMII
+xpcs-cl73:	CL73 configuration
+	0 - CL73 ANEG disabled
+	1 - CL73 ANEG enabled
+xpcs-cl37:	CL37 configuration
+	0 - CL37 ANEG disabled
+	1 - CL37 ANEG enabled in SGMII MAC Side
+	2 - CL37 ANEG enabled in SGMII PHY Side
+	3 - CL37 ANEG enabled (BaseX)
+xpcs-conn:	Auto negotiate mode (for backward compatible)
+	0 - disable ANEG, overwritten by xpcs-cl37/xpcs-cl73
+	1 - enable ANEG, overwritten by xpcs-cl37/xpcs-cl73
+power-save:	Tx current boost level on lane of the PHY
+	0 - Default Value
+	1 - 0xB
+
+Optional properties:
+- xpcs-no-phy-rx-auto-adapt: boolean,Tunes the phy hw
+	parameters for current configuration.
+ 
+xpcs_mode_cfg_seq:  management of link dynamically,
+			represented by an array with each value corresponding
+			to a particular speed supported options are
+		0 - 10GbE-KR(default)
+		1 - 10GbE-XAUI
+		2 - 1GbE-SGMII (1000BaseX)
+		3 - 2.5GbE-SGMII (2500BaseX)
+
+link_poll_interval: polling period of XPCS get link status.
+
+The following optional Channel Equalization properties are
+represented by an array with each value corresponding to a
+particular speed. The first array value represents the setting
+for the 10GbE KR speed, the second value for the 10GbE XAUI, the second
+value for the 2.5GbE speed and the fouth value for the 10GbE speed.
+All four values are required if the property is used.
+
+/* xpcs RX EQ Settings */
+-xpcs-afe_en: Rx Adaptation AFE Enable on lane
+-xpcs-dfe_en: Rx Decision Feedback Equalization (DFE) Enable on lane
+-xpcs-cont_adapt_en: Receiver Adaptation Continuous Operation on lane
+-xpcs-rx_attn_lvl: Rx Equalization Attenuation level for lane
+-xpcs-rx_ctle_boost: Rx Equalization CTLE Boost value on lane
+-xpcs-rx_ctle_pole: Rx Equalization CTLE Pole Value on lane
+-xpcs-rx_vga2_gain:Rx Equalization VGA2 Gain on lane
+-xpcs-rx_vga1_gain: Rx Equalization VGA1 Gain on lane
+
+/* xpcs TX EQ Settings */
+-xpcs-tx_eq_pre: Tx Pre-Emphasis level adjustment Control
+-xpcs-tx_eq_post: Tx Post-Emphasis level adjustment Control
+-xpcs-tx_eq_main: Control for setting Tx driver output amplitude
+-xpcs-tx_iboost_lvl: Tx current boost level on lane
+-xpcs-tx_vboost_lvl: Tx Voltage Boost Maximum Level
+-xpcs-tx_vboost_en: Tx voltage Boost Enable on lane 
+
+Example:
+	wan_xpcs: wan_xpcs@18C42000 {
+		compatible = "intel,xpcs";
+		reg =<0x18C42000 0x400 >;
+		reg-names = "xpcs_reg";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SHARED 26 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "xpcs_irq";
+		phys = <&wan_xpcs_phy>;
+		phy-names = "phy";
+		resets = <&rcu0 0x10 16>;
+		reset-names = "xpcs_reset";
+		xpcs-name = "wan_xpcs";
+		xpcs-mode = <2>;
+		xpcs-cl73 = <0>;
+		xpcs-cl37 = <1>;
+		power-save = <1>;
+		xpcs-no-phy-rx-auto-adapt
+		/* xpcs RX EQ Settings */
+		xpcs-afe_en = <0x0>, <0x0>, <0x0>, <0x0>;
+		xpcs-dfe_en = <0x0>, <0x0>, <0x0>, <0x0>;
+		xpcs-cont_adapt_en = <0x0>, <0x0>, <0x0>, <0x0>;
+		xpcs-rx_attn_lvl = <0x7>, <0x7>, <0x7>, <0x7>;
+		xpcs-rx_ctle_boost = <0x0>, <0x0>, <0x0>, <0x0>;
+		xpcs-rx_ctle_pole = <0x6>, <0x6>, <0x6>, <0x6>;
+		xpcs-rx_vga2_gain = <0x5>, <0x5>, <0x5>, <0x5>;
+		xpcs-rx_vga1_gain = <0x5>, <0x5>, <0x5>, <0x5>;
+		/* xpcs TX EQ Settings */
+		xpcs-tx_eq_pre = <0x5>, <0x5>, <0x0>, <0x0>;
+		xpcs-tx_eq_post =  <0x14>, <0x14>, <0x1>, <0x1>;
+		xpcs-tx_eq_main = <0x18>, <0x18>, <0xC>, <0xC>;
+		xpcs-tx_iboost_lvl = <0xF>, <0xF>,<0xF>, <0xF>;
+		xpcs-tx_vboost_lvl = <0x5>, <0x5>, <0x5>, <0x5>;
+		xpcs-tx_vboost_en = <0x1>, <0x1>, <0x1>, <0x1>;
+	}

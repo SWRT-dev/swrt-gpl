@@ -708,6 +708,11 @@ int GSW_ROUTE_SessionEntryAdd(void *cdev, GSW_ROUTE_Entry_t *rpar)
 
 
 	if ((ethdev->gipver == LTQ_GSWIP_3_0)	&& ((ethdev->gsw_dev == LTQ_FLOW_DEV_INT_R))) {
+		if (rthandler->rstbl.nuentries >= RT_SESSION_TABLE_SIZE) {
+			retval = GSW_ROUTE_ERROR_RT_SESS_FULL;
+			goto UNLOCK_AND_RETURN;
+		}
+
 		if (rpar->nHashVal < 0) {
 			/* calculate hash index */
 			hindex = pae_hash_index(rpar);
@@ -939,7 +944,9 @@ int GSW_ROUTE_SessionEntryAdd(void *cdev, GSW_ROUTE_Entry_t *rpar)
 		if (rpar->routeEntry.action.bPPPoEmode == 1) {
 			/* New PPPoE Index Index */
 			rt_ppoe_tbl_t sesid;
+			memset(&sesid, 0, sizeof(rt_ppoe_tbl_t));
 			sesid.psesid = rpar->routeEntry.action.nPPPoESessId;
+			sesid.valid = 1;
 			tab_index = rt_pppoe_tbl_write(cdev, &rthandler->rt_sub_tbl, &sesid);
 
 			if (tab_index < 0) {
@@ -972,9 +979,8 @@ int GSW_ROUTE_SessionEntryAdd(void *cdev, GSW_ROUTE_Entry_t *rpar)
 			rrindex = 0x3F;
 		}
 
+		ptable.val[12] &= ~(3 << 2);
 		switch (rpar->routeEntry.action.eSessRoutingMode) {
-			ptable.val[12] &= ~(3 << 2);
-
 		case GSW_ROUTE_MODE_NULL:
 			ptable.val[12] |= (0 << 2);
 			break;
@@ -996,9 +1002,8 @@ int GSW_ROUTE_SessionEntryAdd(void *cdev, GSW_ROUTE_Entry_t *rpar)
 		}
 
 		/* Tunnel Index */
+		ptable.val[12] &= ~(3 << 4);
 		if (rpar->routeEntry.action.bTunnel_Enable == 1) {
-			ptable.val[12] &= ~(3 << 4);
-
 			switch (rpar->routeEntry.action.eTunType) {
 			case GSW_ROUTE_TUNL_NULL:
 				ptable.val[12] |= (0 << 4);
@@ -1037,9 +1042,8 @@ int GSW_ROUTE_SessionEntryAdd(void *cdev, GSW_ROUTE_Entry_t *rpar)
 			tuindex = 0xFF;
 		}
 
+		ptable.val[12] &= ~(3 << 6);
 		switch (rpar->routeEntry.action.eOutDSCPAction) {
-			ptable.val[12] &= ~(3 << 6);
-
 		case GSW_ROUTE_OUT_DSCP_NULL:
 			ptable.val[12] |= (0 << 6);
 			break;
@@ -1260,11 +1264,9 @@ start:
 
 					rpar->nRtIndex = index;
 					retval = success;
-					goto UNLOCK_AND_RETURN;
 				}
 			}
 		}
-		retval = GSW_statusOk;
 		goto UNLOCK_AND_RETURN;
 
 errexit:
@@ -1301,8 +1303,6 @@ errexit1:
 
 		if (sindex != 0x7FFF)
 			rt_ip_tbl_delete(cdev, &rthandler->rt_sub_tbl, sindex);
-
-		retval = GSW_statusOk;
 	} else {
 		retval = GSW_statusErr;
 	}
@@ -1320,7 +1320,7 @@ int GSW_ROUTE_SessionEntryDel(void *cdev, GSW_ROUTE_Entry_t *rpar)
 {
 	ethsw_api_dev_t *ethdev = GSW_PDATA_GET(cdev);
 	int hindex,  index;
-	int retval = 0;
+	int retval = GSW_statusOk;
 
 	if (ethdev == NULL) {
 		pr_err("%s:%s:%d \n", __FILE__, __func__, __LINE__);
@@ -1426,8 +1426,6 @@ int GSW_ROUTE_SessionEntryDel(void *cdev, GSW_ROUTE_Entry_t *rpar)
 		retval = GSW_statusErr;
 	}
 
-	retval = GSW_statusOk;
-
 
 UNLOCK_AND_RETURN:
 
@@ -1442,7 +1440,7 @@ int GSW_ROUTE_SessionEntryRead(void *cdev,
 {
 	ethsw_api_dev_t *ethdev = GSW_PDATA_GET(cdev);
 	u16 index;
-	int i, retval = 0;
+	int i, retval = GSW_statusOk;
 
 	if (ethdev == NULL) {
 		pr_err("%s:%s:%d \n", __FILE__, __func__, __LINE__);
@@ -1745,8 +1743,6 @@ int GSW_ROUTE_SessionEntryRead(void *cdev,
 		retval = GSW_statusErr;
 	}
 
-	retval = GSW_statusOk;
-
 #ifdef __KERNEL__
 	spin_unlock_bh(&ethdev->lock_pae);
 #endif
@@ -1757,7 +1753,7 @@ int GSW_ROUTE_TunnelEntryAdd(void *cdev,
 			     GSW_ROUTE_Tunnel_Entry_t *rpar)
 {
 	ethsw_api_dev_t *ethdev = GSW_PDATA_GET(cdev);
-	int i, j, retval = 0;
+	int i, j, retval = GSW_statusOk;
 
 	if (ethdev == NULL) {
 		pr_err("%s:%s:%d \n", __FILE__, __func__, __LINE__);
@@ -1857,9 +1853,6 @@ int GSW_ROUTE_TunnelEntryAdd(void *cdev,
 		retval = GSW_statusErr;
 	}
 
-	retval = GSW_statusOk;
-
-
 #ifdef __KERNEL__
 	spin_unlock_bh(&ethdev->lock_pae);
 #endif
@@ -1870,7 +1863,7 @@ int GSW_ROUTE_TunnelEntryRead(void *cdev,
 			      GSW_ROUTE_Tunnel_Entry_t *rpar)
 {
 	ethsw_api_dev_t *ethdev = GSW_PDATA_GET(cdev);
-	int retval = 0;
+	int retval = GSW_statusOk;
 
 	if (ethdev == NULL) {
 		pr_err("%s:%s:%d \n", __FILE__, __func__, __LINE__);
@@ -1926,8 +1919,6 @@ int GSW_ROUTE_TunnelEntryRead(void *cdev,
 		retval = GSW_statusErr;
 	}
 
-	retval = GSW_statusOk;
-
 #ifdef __KERNEL__
 	spin_unlock_bh(&ethdev->lock_pae);
 #endif
@@ -1939,7 +1930,7 @@ int GSW_ROUTE_TunnelEntryDel(void *cdev,
 			     GSW_ROUTE_Tunnel_Entry_t *rpar)
 {
 	ethsw_api_dev_t *ethdev = GSW_PDATA_GET(cdev);
-	int retval = 0;
+	int retval = GSW_statusOk;
 
 	if (ethdev == NULL) {
 		pr_err("%s:%s:%d \n", __FILE__, __func__, __LINE__);
@@ -1966,8 +1957,6 @@ int GSW_ROUTE_TunnelEntryDel(void *cdev,
 		retval = GSW_statusErr;
 	}
 
-	retval = GSW_statusOk;
-
 #ifdef __KERNEL__
 	spin_unlock_bh(&ethdev->lock_pae);
 #endif
@@ -1978,7 +1967,7 @@ int GSW_ROUTE_L2NATCfgWrite(void *cdev,
 			    GSW_ROUTE_EgPort_L2NAT_Cfg_t *rpar)
 {
 	ethsw_api_dev_t *ethdev = GSW_PDATA_GET(cdev);
-	int retval = 0;
+	int retval = GSW_statusOk;
 
 	if (ethdev == NULL) {
 		pr_err("%s:%s:%d \n", __FILE__, __func__, __LINE__);
@@ -2024,8 +2013,6 @@ int GSW_ROUTE_L2NATCfgWrite(void *cdev,
 		retval = GSW_statusErr;
 	}
 
-	retval = GSW_statusOk;
-
 UNLOCK_AND_RETURN:
 
 #ifdef __KERNEL__
@@ -2039,7 +2026,7 @@ int GSW_ROUTE_L2NATCfgRead(void *cdev,
 			   GSW_ROUTE_EgPort_L2NAT_Cfg_t *rpar)
 {
 	ethsw_api_dev_t *ethdev = GSW_PDATA_GET(cdev);
-	int retval = 0;
+	int retval = GSW_statusOk;
 
 	if (ethdev == NULL) {
 		pr_err("%s:%s:%d \n", __FILE__, __func__, __LINE__);
@@ -2088,8 +2075,6 @@ int GSW_ROUTE_L2NATCfgRead(void *cdev,
 		retval = GSW_statusErr;
 	}
 
-	retval = GSW_statusOk;
-
 UNLOCK_AND_RETURN:
 
 #ifdef __KERNEL__
@@ -2103,7 +2088,7 @@ int GSW_ROUTE_SessHitOp(void *cdev,
 			GSW_ROUTE_Session_Hit_t *rpar)
 {
 	ethsw_api_dev_t *ethdev = GSW_PDATA_GET(cdev);
-	int retval = 0;
+	int retval = GSW_statusOk;
 
 	if (ethdev == NULL) {
 		pr_err("%s:%s:%d \n", __FILE__, __func__, __LINE__);
@@ -2173,8 +2158,6 @@ int GSW_ROUTE_SessHitOp(void *cdev,
 		retval = GSW_statusErr;
 	}
 
-	retval = GSW_statusOk;
-
 #ifdef __KERNEL__
 	spin_unlock_bh(&ethdev->lock_pae);
 #endif
@@ -2185,7 +2168,7 @@ int GSW_ROUTE_SessDestModify(void *cdev,
 			     GSW_ROUTE_Session_Dest_t *rpar)
 {
 	ethsw_api_dev_t *ethdev = GSW_PDATA_GET(cdev);
-	int retval = 0;
+	int retval = GSW_statusOk;
 
 
 	if (ethdev == NULL) {
@@ -2219,8 +2202,6 @@ int GSW_ROUTE_SessDestModify(void *cdev,
 	} else {
 		retval = GSW_statusErr;
 	}
-
-	retval = GSW_statusOk;
 
 #ifdef __KERNEL__
 	spin_unlock_bh(&ethdev->lock_pae);

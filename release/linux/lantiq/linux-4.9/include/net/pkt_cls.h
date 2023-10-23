@@ -622,4 +622,41 @@ struct tc_drr_qopt_offload {
 	};
 };
 
+/* This structure holds cookie structure that is passed from user
+ * to the kernel for actions and classifiers
+ */
+struct tc_cookie {
+	u8  *data;
+	u32 len;
+};
+
+enum tc_tbf_command {
+	TC_TBF_REPLACE,
+	TC_TBF_DESTROY,
+	TC_TBF_STATS,
+};
+
+struct tc_tbf_qopt_offload_params {
+	u64 rate;
+	u64 prate;
+	u32 burst;
+	u32 pburst;
+	struct gnet_stats_queue *qstats;
+};
+
+struct tc_tbf_qopt_offload_stats {
+	struct gnet_stats_basic_packed *bstats;
+	struct gnet_stats_queue *qstats;
+};
+
+struct tc_tbf_qopt_offload {
+	enum tc_tbf_command command;
+	u32 handle;
+	u32 parent;
+	union {
+		struct tc_tbf_qopt_offload_params set_params;
+		struct tc_tbf_qopt_offload_stats stats;
+	};
+};
+
 #endif

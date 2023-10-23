@@ -39,11 +39,13 @@ struct gswss {
 	/* Number of devices in this GSWIP SubSystem */
 	u32 num_devs;
 	/* Core Platform device */
-	struct platform_device *core_dev;
+	struct platform_device *core_dev[3];
 	/* Number of Mac Subdevice in this GSWIP SubSystem */
 	u32 mac_subdevs_cnt;
 	/* cdev interface for GSWIP SubSystem */
 	struct cdev gswss_cdev;
+	/* Number of switch Subdevices in this GSWIP SubSystem */
+	u32 gsw_subdevs_cnt;
 	/* Mac Platform device for each Mac Subdevice */
 	struct platform_device *mac_dev[];
 };

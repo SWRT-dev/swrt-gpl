@@ -1,0 +1,143 @@
+--------------------------------------------------------------------------------
+version 1.2.0.0   2020-05-20
+--------------------------------------------------------------------------------
+UGW_SW-45187: VxLAN Tunneling Support in MPE-FW
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+version 1.1.4.0   2020-02-20
+--------------------------------------------------------------------------------
+UGW_SW-48051: Updated check to allow packets with mtu equal interface mtu 
+              to be accelerated
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+version 1.1.3.0   2020-01-17
+--------------------------------------------------------------------------------
+UGW SW-44498: Fix for missing ECN handling in MPE fw
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+version 1.1.2.0   2019-09-12
+--------------------------------------------------------------------------------
+UGW_SW-43249: MPE Support for EoGRE-IPSec
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+version 1.1.1.3   2019-08-02
+--------------------------------------------------------------------------------
+UGW_SW-40254: W support for PMAC update for EoGRE
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+version 1.1.1.2   2019-07-30
+--------------------------------------------------------------------------------
+UGW_SW-39696: removed pmac header in case of l2tp o ipsec
+--------------------------------------------------------------------------------
+
+Release tag MPE_FW_Release Ver=1.1.0-1 ID=18 branch=mpe_fw_protex
+22-04-19
+- This branch is passing Protex and Klocwork scan
+- No Directlink (DL) support in the config build
+- VDSL dual line support
+  https://jira-chd.intel.com/browse/UGW_SW-31099
+
+Release tag MPE_FW_Release Ver=0.5.1-1 ID=17 branch=ds_qos
+12-06-18
+- Functional verification is done in BLR
+- Merge with default branch is expected later
+
+Release tag MPE_FW_Release Ver=0.5.1-0 ID=16 branch=ds_qos
+01-06-2018
+- Ds Qos with calling MPE SE twice implementation
+  https://jira-chd.intel.com/browse/PPA_SYS-561
+- Only for internal system verification, not for release yet.
+- Objective is to compare system performance with previous tag
+
+Release tag MPE_FW_Release Ver=0.5.0-0 ID=16 branch=ds_qos
+31-05-2018
+- Ds Qos with FW compare table hash index in DMA descriptor
+  implementation
+  https://jira-chd.intel.com/browse/PPA_SYS-561
+- Only for internal system verification, not for release yet.
+
+Release tag MPE_FW_Release Ver=0.4.0-0 ID=15 branch=default
+02-05-2018
+- Generic IPSEC handling
+  https://jira-chd.intel.com/browse/PPA_SYS-559
+- Only for internal system verification, not for release yet.
+
+Release tag MPE_FW_Release Ver=0.3.13-0 ID=14 branch=default
+11-01-2018
+- Fix inner IP DSCP field update
+  https://jira-chd.intel.com/browse/UGW_SW-20869
+
+Release tag MPE_FW_Release Ver=0.3.12-0 ID=14 branch=default
+12-10-2017
+- Pmac ingress port field support for EP=7-14
+  https://jira-chd.intel.com/browse/PPA_SYS-555
+- Header file is changed due to UMT feature completely removed (27-02-2017)
+
+Release tag MPE_FW_Release Ver=0.3.11-0 ID=13 branch=default
+01-02-2017
+- Retain fields from RxDMA to TxDMA desc unless they need to change
+  https://jira.lantiq.com/browse/PPA_SYS-518
+- No DL support
+
+Release tag MPE_FW_Release Ver=0.3.10-0 ID=13 branch=default
+02-12-2016
+DL
+- DMA descriptor corrupting memory issue resolved
+- DMA descriptor under run interrupt handled
+
+Release tag MPE_FW_Release Ver=0.3.9-0 ID=13 branch=default
+15-11-2016
+DL
+- Directlink CS2 support port flow for QoS, Fetch Indication and Response
+- No CBM packets recievd in DL, all redirected through GSWIP-R
+MPE
+- Reverted the adaption to new PAE parser microcode
+
+Release tag MPE_FW_Release Ver=0.3.8-0 ID=12 branch=default
+13-10-2016
+- Cbm Buffer size/configuration is configurable from MPE HAL. It is used mainly 
+  for packet duplication e.g Downstream multicast. Default value is set by MPE.
+- Adapted to new PAE parser microcode (branch: tested_default_20161005T104300+0800) 
+  to cater for encrypted packets.
+
+Release tag MPE_FW_Release Ver=0.3.7-0 ID=11 branch=default
+20-09-2016
+- TX DMA desc for CPU path is configurable from MPE HAL (DW0, 1)
+- Update error return code in IPSEC inb/out
+- remove cache invalidate before copying parser and pmac/pkt header to L2$
+- add profiling macro for Mcast with Cbm alloc buffer
+
+Release tag MPE_FW_Release Ver=0.3.6-1 ID=10 branch=default 
+30-08-2016
+DL
+- M2C Fix for private data overlap
+
+
+Release tag MPE_FW_Release Ver=0.3.6-0 ID=10 branch=default 
+24-08-2016
+DL
+- directlink direct dequeue from DMA1RX channel 3
+- directlink CE5 interrupt moved from QCA driver to MPE FW
+- M2C support client behind router
+- TX buffer free moved from DLRX to Mpe FW
+- Dual processing CE5 message
+MPE
+- new Mcast VAP MIB counter implemented (need MPE HAL support before use)
+
+Release tag MPE_FW_Release Ver=0.3.4-0 ID=8 branch=default 
+29-06-2016
+- Inbound IPSEC dst_sub_if issue on TX DMA descriptor fixed
+
+Release tag MPE_FW_Release Ver=0.3.3-0 ID=8 branch=default 
+30-05-2016
+- genconf e97_mpe_en is added
+- direct link fix is included
+- IPSEC NAT-T supported
+- Sanity check for MTU for NAT=0 case
+- Update and relocate some debug prints
+

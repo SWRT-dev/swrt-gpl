@@ -39,4 +39,9 @@ static inline u8 tcf_colmark_mtype(const struct tc_action *a)
 	return to_colmark(a)->type;
 }
 
+static inline u8 tcf_colmark_flags(const struct tc_action *a)
+{
+	return to_colmark(a)->flags;
+}
+
 #endif /* __NET_TC_COLMARK_H */

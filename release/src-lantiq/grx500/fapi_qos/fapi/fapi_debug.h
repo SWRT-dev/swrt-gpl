@@ -1,0 +1,2 @@
+#define FAPI_QOS_INIT_DEBUG \
+	"FAPI QoS init arguments: qos_cfg_t: qos_cfg_t->ena: %d\tqos_cfg_t->upstream: %d\tfor qos_cfg_t->downstream: %d\tqos_cfg_t->log_level: %d\tqos_cfg_t->log_type: %d\tqos_cfg_t->log_file: %s\tqos_cfg_t->def_wan_dscp: %d\tqos_cfg_t->wmm_ena: %d\tqos_cfg_t->mgmt_ena: %d\tqos_cfg_t->wan_port_rate_limit: %d\tqos_cfg_t->version: %s\t flags: %x\n", qoscfg->ena, qoscfg->us_ena, qoscfg->ds_ena, qoscfg->log_level, qoscfg->log_type, qoscfg->log_file, qoscfg->def_wan_dscp, qoscfg->wmm_ena, qoscfg->mgmt_ena, qoscfg->wan_port_rate_limit, qoscfg->version, flags

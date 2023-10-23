@@ -372,9 +372,9 @@ static int cadence_qspi_probe(struct platform_device *pdev)
 	cadence_qspi->pdev = pdev;
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	cadence_qspi->iobase = devm_ioremap_resource(&pdev->dev, res);
-	if (!cadence_qspi->iobase) {
+	if (IS_ERR(cadence_qspi->iobase)) {
 		dev_err(&pdev->dev, "devm_ioremap_resource res 0 failed\n");
-		status = -EADDRNOTAVAIL;
+		status = PTR_ERR(cadence_qspi->iobase);
 		goto err_ioremap;
 	}
 
@@ -507,22 +507,29 @@ static int cadence_qspi_remove(struct platform_device *pdev)
 {
 	struct spi_master *master = platform_get_drvdata(pdev);
 	struct struct_cqspi *cadence_qspi = spi_master_get_devdata(master);
+	unsigned long flags;
 
+	flush_workqueue(cadence_qspi->workqueue);
+	spi_unregister_master(master);
+	destroy_workqueue(cadence_qspi->workqueue);
+
+	WARN(!list_empty(&cadence_qspi->msg_queue), "Cadence QSPI queue not empty at shutdown");
+
+	spin_lock_irqsave(&cadence_qspi->lock, flags);
 	cadence_qspi_apb_controller_disable(cadence_qspi->iobase);
 
 	clk_disable_unprepare(cadence_qspi->fpi_clk);
 	clk_disable_unprepare(cadence_qspi->clk);
 
 	platform_set_drvdata(pdev, NULL);
-	destroy_workqueue(cadence_qspi->workqueue);
 	free_irq(cadence_qspi->irq, cadence_qspi);
 	iounmap(cadence_qspi->iobase);
 	iounmap(cadence_qspi->qspi_ahb_virt);
 	release_mem_region(cadence_qspi->res->start,
 		resource_size(cadence_qspi->res));
 	kfree(pdev->dev.platform_data);
-	spi_unregister_master(master);
 	spi_master_put(master);
+	spin_unlock_irqrestore(&cadence_qspi->lock, flags);
 	return 0;
 }
 #ifdef CONFIG_PM

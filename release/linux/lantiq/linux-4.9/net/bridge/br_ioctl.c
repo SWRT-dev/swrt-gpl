@@ -132,10 +132,14 @@ static int mcast_snoop_set_router_port(struct net_bridge *br, struct ifreq *rq)
 
 	if (rp.type == IPV4) {
 		port->igmp_router_port = 1;
-		mod_timer(&port->igmp_router_timer, jiffies + rp.expires * HZ);
+		if (rp.expires) {
+			mod_timer(&port->igmp_router_timer, jiffies + rp.expires * HZ);
+		}
 	} else if (rp.type == IPV6) {
 		port->mld_router_port = 1;
-		mod_timer(&port->mld_router_timer, jiffies + rp.expires * HZ);
+		if (rp.expires) {
+			mod_timer(&port->mld_router_timer, jiffies + rp.expires * HZ);
+		}
 	} else {
 		dev_put(dev);
 		return -EINVAL;

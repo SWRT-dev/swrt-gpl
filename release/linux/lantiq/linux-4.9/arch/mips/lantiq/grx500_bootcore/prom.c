@@ -35,6 +35,7 @@
 /* access to the ebu needs to be locked between different drivers */
 DEFINE_SPINLOCK(ebu_lock);
 EXPORT_SYMBOL_GPL(ebu_lock);
+static __initdata const void *dtb;
 
 /*
  * this struct is filled by the soc specific detection code and holds
@@ -90,10 +91,9 @@ static void __init prom_init_cmdline(void)
 }
 //#endif
 
-static void plat_early_init_devtree(void)
-{
-	void *dtb = NULL;
 
+void __init *plat_get_fdt(void)
+{
 	/*
 	 * Load the builtin devicetree. This causes the chosen node to be
 	 * parsed resulting in our memory appearing
@@ -102,9 +102,10 @@ static void plat_early_init_devtree(void)
 		dtb = (void *)fw_passed_dtb;
 	else if (__dtb_start != __dtb_end)
 		dtb = (void *)__dtb_start;
+	else
+		panic("no dtb found");
 
-	if (dtb)
-		__dt_setup_arch(dtb);
+	return (void *)dtb;
 }
 
 void __init plat_mem_setup(void)
@@ -116,7 +117,8 @@ void __init plat_mem_setup(void)
 
 	set_io_port_base((unsigned long) KSEG1);
 
-	plat_early_init_devtree();
+	if (dtb)
+		__dt_setup_arch((void *)dtb);
 }
 
 void __init device_tree_init(void)
@@ -135,9 +137,10 @@ void __init prom_init(void)
 		soc_info.name, soc_info.rev_type);
 	soc_info.sys_type[LTQ_SYS_TYPE_LEN - 1] = '\0';
 	pr_info("SoC: %s\n", soc_info.sys_type);
-//#ifndef CONFIG_USE_EMULATOR
+
 	prom_init_cmdline();
-//#endif
+	plat_get_fdt();
+	BUG_ON(!dtb);
 }
 
 void __init ltq_soc_detect(struct ltq_soc_info *i)
@@ -173,7 +176,7 @@ void __init ltq_soc_detect(struct ltq_soc_info *i)
         case SOC_ID_FMX_DPU:
                 i->name = SOC_PRX300;
                 i->type = SOC_TYPE_PRX300;
-                i->compatible = COMP_PRX300;
+                i->compatible = COMP_PRX300_BOOTCORE;
                 break;
 
 #ifdef CONFIG_USE_EMULATOR

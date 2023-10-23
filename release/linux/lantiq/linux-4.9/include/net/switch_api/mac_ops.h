@@ -64,6 +64,32 @@ struct xgmac_mmc_stats {
 	u64 rxfifooverflow;
 };
 
+enum {
+	RMON_TX_PKTS = 0,
+	RMON_TX_BYTES,
+	RMON_TX_GOOD_PKTS,
+	RMON_TX_GOOD_BYTES,
+	RMON_TX_PAUSE,
+	RMON_TX_UNDERFLOW,
+	RMON_TX_SINGLE_COL,
+	RMON_TX_MULTI_COL,
+	RMON_TX_LATE_COL,
+	RMON_TX_EXCS_COL,
+
+	RMON_RX_PKTS,
+	RMON_RX_BYTES,
+	RMON_RX_GOOD_BYTES,
+	RMON_RX_PAUSE,
+	RMON_RX_CRC_ERR,
+	RMON_RX_OVERFLOW,
+
+	MAC_RMON_MAX
+};
+
+struct mac_rmon {
+	u64 cnt[MAC_RMON_MAX];
+};
+
 /* This structure contains flags that indicate what hardware features
  * or configurations are present in the device.
  */
@@ -146,8 +172,16 @@ struct mac_fifo_entry {
 #ifdef __KERNEL__
 	struct timer_list timer;
 #endif
+	struct sk_buff **ptp_tx_skb_loc;
 };
 
+struct mac_e160_ops {
+	struct platform_device *ig_pdev;
+	struct platform_device *eg_pdev;
+
+	int (*reg_rd)(struct platform_device *pdev, u32 off, u32 *pdata);
+	int (*reg_wr)(struct platform_device *pdev, u32 off, u32 data);
+};
 
 /** \brief MAC Cli struct.
      MAC Cli struct for passing args and argument values. */
@@ -364,22 +398,25 @@ struct mac_ops {
 	 *				2 - Flow Ctrl enabled only in TX
 	 *				3 - Flow Ctrl enabled both in RX & TX
 	 *				4 - Flow Ctrl disabled both in RX & TX
-	 * return	OUT  0:Flow Ctrl operation Set Successfully
-	 * return	OUT  !0:Flow Ctrl operation Set Error
+	 * return	OUT	0:Flow Ctrl operation Set Successfully
+	 * return	OUT	!0:Flow Ctrl operation Set Error
 	 */
-	int (*set_flow_ctl)(void *, u32);
+	int (*set_flow_ctl)(void *ops, u32 mode);
+
 	/* This function Sets the Mac Adress in xgmac.
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	*mac_addr MAC source address to Set
 	 * return	OUT	-1:	Source Address Set Error
 	 */
-	int (*set_macaddr)(void *, u8 *);
+	int (*set_macaddr)(void *ops, u8 *mac_addr);
+
 	/* This function Enables/Disables Rx CRC check.
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	disable	Disable=1, Enable=0
 	 * return	OUT	-1:	Set Failed
 	 */
-	int (*set_rx_crccheck)(void *, u8);
+	int (*set_rx_crccheck)(void *ops, u8 dis);
+
 	/* This function configure treatment of special tag
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	mode	0 - packet does not have special tag
@@ -392,7 +429,8 @@ struct mac_ops {
 #define SPTAG_MODE_REPLACE	1
 #define SPTAG_MODE_KEEP		2
 #define SPTAG_MODE_REMOVE	3
-	int (*set_sptag)(void *, u8);
+	int (*set_sptag)(void *ops, u8 mode);
+
 	/* This function Gets the Flow Ctrl operation in Both XGMAC and LMAC.
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * return	OUT:	mode	0 - Auto Mode based on GPHY/XPCS link.
@@ -402,20 +440,25 @@ struct mac_ops {
 	 *				4 - Flow Ctrl disabled both in RX & TX
 	 * return	OUT  -1:	Flow Ctrl operation Get Error
 	 */
-	int (*get_flow_ctl)(void *);
+	int (*get_flow_ctl)(void *ops);
+
 	/* This function Resets the MAC module.
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
-	 * param[in/out]IN:	reset	1 - Reset ON, 0 - Reset Off
+	 * param[in/out]IN:	reset	0 - reset deassert
+	 *				1 - reset assert
+	 *				2 - back register, reset toggle, restore register
 	 * return	OUT  0:	Reset of MAC module Done Successfully
 	 * return	OUT  -1:	Reset of MAC module Error
 	 */
-	int (*mac_reset)(void *, u32);
+	int (*mac_reset)(void *ops, u32 mode);
+
 	/* This function Configures MAC Loopback.
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	val	1 - Loopback Enable, 0 - Loopback Dis
 	 * return	OUT  -1:	Loopback Set Error
 	 */
-	int (*mac_config_loopback)(void *, u32);
+	int (*mac_config_loopback)(void *ops, u32 en);
+
 	/* This function Configures MAC IPG.
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	IPG val	Value is from 0 - 7,
@@ -428,7 +471,8 @@ struct mac_ops {
 	 *			101 – 111: Reserved
 	 * return	OUT  -1:	IPG Set Error
 	 */
-	int (*mac_config_ipg)(void *, u32);
+	int (*mac_config_ipg)(void *ops, u32 ipg);
+
 	/* This function Configures the Speed
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	speed(Mbps)
@@ -439,8 +483,8 @@ struct mac_ops {
 	 *			100000	- 10Gbps
 	 * return	OUT  -1:	Speed Set Error
 	 */
+	int (*set_speed)(void *ops, u32 speed);
 
-	int (*set_speed)(void *, u32);
 	/* This function Gets the Speed
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * return	OUT:	speed(Mbps)
@@ -451,7 +495,8 @@ struct mac_ops {
 	 *			100000	- 10Gbps
 	 * return	OUT  -1:	Speed Get Error
 	 */
-	int (*get_speed)(void *);
+	int (*get_speed)(void *ops);
+
 	/* This function Configures the Duplex
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	duplex
@@ -460,7 +505,8 @@ struct mac_ops {
 	 *			2	- Auto
 	 * return	OUT  -1:	Duplex Set Error
 	 */
-	int (*set_duplex)(void *, u32);
+	int (*set_duplex)(void *ops, u32 duplex);
+
 	/* This function Gets the Duplex value
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * return	OUT:	duplex
@@ -469,7 +515,8 @@ struct mac_ops {
 	 *			2	- Auto
 	 * return	OUT  -1:	Duplex Get Error
 	 */
-	int (*get_duplex)(void *);
+	int (*get_duplex)(void *ops);
+
 	/* This function Configures the LPI
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	LPI EN
@@ -479,7 +526,8 @@ struct mac_ops {
 	 * param[in/out]IN:	LPI Wait time for 1G in usec
 	 * return	OUT	-1:	LPI Set Error
 	 */
-	int (*set_lpi)(void *, u32, u32, u32);
+	int (*set_lpi)(void *ops, u32 en, u32 wait_100m, u32 wait_1g);
+
 	/* This function Gets the LPI Enable/Disable
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * return	OUT:	LPI EN
@@ -487,7 +535,8 @@ struct mac_ops {
 	 *			1	- Enable
 	 * return	OUT  -1:	LPI Get Error
 	 */
-	int (*get_lpi)(void *);
+	int (*get_lpi)(void *ops);
+
 	/* This function Configures the MII Interface
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	MII Mode
@@ -497,7 +546,8 @@ struct mac_ops {
 	 *			5	- LMAC GMII
 	 * return	OUT  -1:	MII Interface Set Error
 	 */
-	int (*set_mii_if)(void *, u32);
+	int (*set_mii_if)(void *ops, u32 mii);
+
 	/* This function Gets the MII Interface
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * return	OUT:	MII Mode
@@ -507,7 +557,8 @@ struct mac_ops {
 	 *			5	- LMAC GMII
 	 * return	OUT  -1:	MII Interface Get Error
 	 */
-	int (*get_mii_if)(void *);
+	int (*get_mii_if)(void *ops);
+
 	/* This function Sets the Link Status
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	Link
@@ -516,7 +567,8 @@ struct mac_ops {
 	 *	Any	- AUTO Mode
 	 * return	OUT  -1:	Link Status Set Error
 	 */
-	int (*set_link_sts)(void *, u32);
+	int (*set_link_sts)(void *ops, u32 link);
+
 	/* This function Gets the Link Status
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * return	OUT:	Link
@@ -525,21 +577,24 @@ struct mac_ops {
 	 *	Any	- AUTO Mode
 	 * return	OUT  -1:	Link Status Get Error
 	 */
-	int (*get_link_sts)(void *);
+	int (*get_link_sts)(void *ops);
+
 	/* This function Sets the MTU Configuration
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	MTU
 	 *			Max MTU that can be set is 10000 for PRX300
 	 * return	OUT	-1:	MTU set exceed the Max limit
 	 */
-	int (*set_mtu)(void *, u32);
+	int (*set_mtu)(void *ops, u32 mtu);
+
 	/* This function Gets the MTU Configuration
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * return	OUT:	MTU
 	 *			MTU configured
 	 * return	OUT  -1:	MTU Get Error
 	 */
-	int (*get_mtu)(void *);
+	int (*get_mtu)(void *ops);
+
 	/* This function Sets the Pause frame Source Address
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	*mac_addr MAC source address to Set
@@ -548,7 +603,8 @@ struct mac_ops {
 	 *			0 - COMMON MAC source address
 	 * return	OUT	-1: Pause frame Source Address Set Error
 	 */
-	int (*set_pfsa)(void *, u8 *, u32);
+	int (*set_pfsa)(void *ops, u8 *mac_addr, u32 mode);
+
 	/* This function Gets the Pause frame Source Address
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * return	OUT:	*mac_addr	MAC source address which is set
@@ -557,7 +613,8 @@ struct mac_ops {
 	 *			0 - COMMON MAC source address
 	 * return	OUT	-1:	Pause frame Source Address Get Error
 	 */
-	int (*get_pfsa)(void *, u8 *, u32 *);
+	int (*get_pfsa)(void *ops, u8 *mac_addr, u32 *mode);
+
 	/* This function Sets the FCS generation Configuration
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	val	FCS generation Configuration
@@ -566,7 +623,8 @@ struct mac_ops {
 	 *			2 - CRC and PAD are not insert and not replaced.
 	 * return	OUT	-1:	FCS generation Set Error
 	 */
-	int (*set_fcsgen)(void *, u32);
+	int (*set_fcsgen)(void *ops, u32 fcsgen);
+
 	/* This function Gets the FCS generation Configuration
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * return	OUT:	val	FCS generation Configuration
@@ -575,18 +633,21 @@ struct mac_ops {
 	 *			2 - CRC and PAD are not insert and not replaced.
 	 * return	OUT	-1:	FCS generation Get Error
 	 */
-	int (*get_fcsgen)(void *);
+	int (*get_fcsgen)(void *ops);
+
 	/* This function Clears MAC Interrupt Status
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	event	Difffernt events to clear
 	 * return	OUT	: Cleared return status
 	 */
-	int (*clr_int_sts)(void *, u32);
+	int (*clr_int_sts)(void *ops, u32 event);
+
 	/* This function Gets MAC Interrupt Status
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * return	OUT	:	Interrupts Pending
 	 */
-	int (*get_int_sts)(void *);
+	int (*get_int_sts)(void *ops);
+
 	/* This function Initializes System time Configuration
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	sec	Initial seconds value to be configured
@@ -595,7 +656,8 @@ struct mac_ops {
 	 *				configured in register
 	 * return	OUT	-1: System time Configuration Set Error
 	 */
-	int (*init_systime)(void *, u32, u32);
+	int (*init_systime)(void *ops, u64 sec, u32 nsec);
+
 	/* This function Configures addend value
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	addend
@@ -611,7 +673,8 @@ struct mac_ops {
 	 * Accumulator register to achieve time synchronization.
 	 * return	OUT	-1: Addend Configuration Set Error
 	 */
-	int (*config_addend)(void *, u32);
+	int (*config_addend)(void *ops, u32 addend);
+
 	/* This function Adjust System Time for PTP
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	sec	New seconds value to be configured
@@ -628,22 +691,27 @@ struct mac_ops {
 	 *	(2^31 - <new_nsec_value> if MAC_TX_CFG.TSCTRLSSR is reset)
 	 * return   OUT -1:     Adjust System Time for PTP Error
 	 */
-	int (*adjust_systime)(void *, u32, u32, u32, u32);
+	int (*adjust_systime)(void *ops, u32 sec, u32 nsec, u32 addsub,
+			      u32 adjust_systime);
+
 	/* This sequence is used get 64-bit system time in nano sec
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * return	OUT	u64: 64-bit system time in nano sec
 	 */
-	u64 (*get_systime)(void *);
+	u64 (*get_systime)(void *ops);
+
 	/* This sequence is used get Transmitted 64-bit system time in nano sec
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * return	OUT	u64: Tx 64-bit system time in nano sec
 	 */
-	u64 (*get_tx_tstamp)(void *);
+	u64 (*get_tx_tstamp)(void *ops);
+
 	/* This sequence is used get Tx Transmitted capture count
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * return	OUT	u32: Tx Timestamp capture count
 	 */
-	int (*get_txtstamp_cap_cnt)(void *);
+	int (*get_txtstamp_cap_cnt)(void *ops);
+
 	/* This sequence is used Configure HW TimeStamping TX/RX filter Cfg
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	tx_type: 1/0 - ON/OFF
@@ -651,7 +719,8 @@ struct mac_ops {
 	 *			Receive side timestamp Capture scenarios
 	 * return	OUT	-1:	Configure HW TimeStamping Set Error
 	 */
-	int (*config_hw_time_stamping)(void *, u32, u32);
+	int (*config_hw_time_stamping)(void *ops, u32 tx_type, u32 rx_filter);
+
 	/* This sequence is used ConfigureSub Second Increment
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	ptp_clk: PTP Clock Value in Hz
@@ -667,123 +736,176 @@ struct mac_ops {
 	 *	which is derived by 20 ns/0.465.
 	 * return	OUT	-1: Configure Sub Second Inccrement Error
 	 */
-	int (*config_subsec_inc)(void *, u32);
+	int (*config_subsec_inc)(void *ops, u32 ptp_clk);
+
 #ifdef __KERNEL__
 	/* This sequence is used set Hardware timestamp
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 */
-	int (*set_hwts)(void *, struct ifreq *);
+	int (*set_hwts)(void *ops, struct ifreq *req);
+
 	/* This sequence is used get Hardware timestamp
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 */
-	int (*get_hwts)(void *, struct ifreq *);
+	int (*get_hwts)(void *ops, struct ifreq *req);
+
 	/* This sequence is used for Rx Hardware timestamp operations
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * return	OUT	-1: Initialize MAC Error
 	 */
-	int (*do_rx_hwts)(void *, struct sk_buff *);
+	int (*do_rx_hwts)(void *ops, struct sk_buff *skb);
+
 	/* This sequence is used for Tx Hardware timestamp operations
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * return	OUT	-1: Initialize MAC Error
 	 */
-	int (*do_tx_hwts)(void *, struct sk_buff *);
+	int (*do_tx_hwts)(void *ops, struct sk_buff *skb);
+
 	/* This sequence is get Timestamp info
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * return	OUT	-1: Initialize MAC Error
 	 */
-	int (*mac_get_ts_info)(void *, struct ethtool_ts_info *);
+	int (*mac_get_ts_info)(void *ops, struct ethtool_ts_info *ts_info);
+#endif
+
 	/* This sequence is to do soft restart of Xgmac
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * return	OUT	-1:	Initialize MAC Error
 	 */
-	void (*soft_restart)(void *);
-#endif
+	void (*soft_restart)(void *ops);
+
+	/* This sequence is to enable/disable RX
+	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
+	 * param[in/out]IN:	enable	0: disable, 1: enable
+	 * return	OUT	-1:	Initialize MAC Error
+	 */
+	int (*rx_enable)(void *ops, int enable);
+
+	/* This sequence is used to retrieve XG/L-MAC counter
+	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
+	 * param[in/out]OUT:	mac_rmon
+	 * return	OUT:	-1: Exit MAC Error
+	 */
+	int (*rmon_get)(void *ops, struct mac_rmon *rmon);
+
+	/* This sequence is used to clear XG/L-MAC counter
+	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
+	 * return	OUT:	-1: Exit MAC Error
+	 */
+	int (*rmon_clr)(void *ops);
+
 	/* This sequence is used Initialize MAC
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * return	OUT	-1: Initialize MAC Error
 	 */
-	int (*init)(void *);
+	int (*init)(void *ops);
+
 	/* This sequence is used Exit MAC
 	 * param[in/out]IN:	ops	MAC ops Struct registered for MAC 0/1/2.
 	 * return	OUT	-1:	Exit MAC Error
 	 */
-	int (*exit)(void *);
+	int (*exit)(void *ops);
+
 	/* This sequence is used for Xgmac Cli implementation
-	 * param[in/out]IN:	argc - Number of args.
-	 * param[in/out]IN:	argv - Argument value.
+	 * param[in/out]IN:	GSW_MAC_Cli_t - Argument list.
 	 * return	OUT	-1: Exit MAC Error
 	 */
-	int (*xgmac_cli)(GSW_MAC_Cli_t *);
+	int (*xgmac_cli)(GSW_MAC_Cli_t *arg);
+
 	/* This sequence is used for Lmac Cli implementation
-	 * param[in/out]IN:	argc - Number of args.
-	 * param[in/out]IN:	argv - Argument value.
+	 * param[in/out]IN:	GSW_MAC_Cli_t - Argument list.
 	 * return	OUT	-1: Exit MAC Error
 	 */
-	int (*lmac_cli)(GSW_MAC_Cli_t *);
+	int (*lmac_cli)(GSW_MAC_Cli_t *arg);
+
 	/* This sequence is used for Reading XGMAC register
 	 * param[in/out]IN:	ops -	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	u32 -   Register Offset.
-	 * return	OUT	u32 -	Register Value
+	 * param[in/out]OUT:	u32 -   Register Value.
+	 * return	OUT	u32 -	Error code or 0 when successful.
 	 */
-	int (*xgmac_reg_rd)(void *, u32);
+	int (*xgmac_reg_rd)(void *ops, u32 off, u32 *pval);
+
 	/* This sequence is used for Writing XGMAC register
 	 * param[in/out]IN:	ops -	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	u32 -   Register Offset.
 	 * param[in/out]IN:	u32 -   Register Value.
 	 */
-	int (*xgmac_reg_wr)(void *, u32, u32);
+	int (*xgmac_reg_wr)(void *ops, u32 off, u32 val);
+
 	/* This sequence is used for Reading LMAC register
 	 * param[in/out]IN:	ops -	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	u32 -   Register Offset.
 	 * return	OUT	u32 -	Register Value
 	 */
-	int (*lmac_reg_rd)(void *, u32);
+	int (*lmac_reg_rd)(void *ops, u32 off);
+
 	/* This sequence is used for Writing LMAC register
 	 * param[in/out]IN:	ops -	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	u32 -   Register Offset.
 	 * param[in/out]IN:	u32 -   Register Value.
 	 */
-	int (*lmac_reg_wr)(void *, u32, u32);
+	int (*lmac_reg_wr)(void *ops, u32 off, u32 val);
+
 	/* This sequence is used for Registering IRQ Callback for a event
 	 * param[in/out]IN:	ops -	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	GSW_Irq_Op_t -   IRQ event info.
 	 * return	OUT	int -	Success/Fail
 	 */
-	int (*IRQ_Register)(void *, GSW_Irq_Op_t *);
+	int (*IRQ_Register)(void *ops, GSW_Irq_Op_t *irq_op);
+
 	/* This sequence is used for UnRegistering IRQ Callback for a event
 	 * param[in/out]IN:	ops -	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	GSW_Irq_Op_t -   IRQ event info.
 	 * return	OUT	int -	Success/Fail
 	 */
-	int (*IRQ_UnRegister)(void *, GSW_Irq_Op_t *);
+	int (*IRQ_UnRegister)(void *ops, GSW_Irq_Op_t *irq_op);
+
 	/* This sequence is used for Enabling IRQ for a event
 	 * param[in/out]IN:	ops -	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	GSW_Irq_Op_t -   IRQ event info.
 	 * return	OUT	int -	Success/Fail
 	 */
-	int (*IRQ_Enable)(void *, GSW_Irq_Op_t *);
+	int (*IRQ_Enable)(void *ops, GSW_Irq_Op_t *irq_op);
+
 	/* This sequence is used for Disabling IRQ for a event
 	 * param[in/out]IN:	ops -	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	GSW_Irq_Op_t -   IRQ event info.
 	 * return	OUT	int -	Success/Fail
 	 */
-	int (*IRQ_Disable)(void *, GSW_Irq_Op_t *);
+	int (*IRQ_Disable)(void *ops, GSW_Irq_Op_t *irq_op);
+
 	/* This sequence is used for Enabling MAC Interrupt
 	 * param[in/out]IN:	ops -	MAC ops Struct registered for MAC 0/1/2.
 	 * return	OUT	int -	Success/Fail
 	 */
-	int (*mac_int_en)(void *);
+	int (*mac_int_en)(void *ops);
+
 	/* This sequence is used for Disabling MAC Interrupt
 	 * param[in/out]IN:	ops -	MAC ops Struct registered for MAC 0/1/2.
 	 * return	OUT	int -	Success/Fail
 	 */
-	int (*mac_int_dis)(void *);
+	int (*mac_int_dis)(void *ops);
+
 	/* This sequence is used for Configuring Mac operation
 	 * param[in/out]IN:	ops -	MAC ops Struct registered for MAC 0/1/2.
 	 * param[in/out]IN:	MAC_OP_CFG - operation to perform
 	 * return	OUT	int -	Success/Fail
 	 */
-	int (*mac_op_cfg)(void *, MAC_OPER_CFG);
+	int (*mac_op_cfg)(void *ops, MAC_OPER_CFG cfg);
+
+	/* This sequence is used for MACsec Preparation
+	 * param[in/out]IN:	ops -	MAC ops Struct registered for MAC 0/1/2.
+	 * param[out]OUT:	e160_metadata - E160 Meta Data
+	 * return	OUT	int -	Success/Fail
+	 */
+	int (*mac_e160_prepare)(void *ops, struct mac_e160_ops *e160);
+
+	/* This sequence is used for MACsec Un-preparation
+	 * param[in/out]IN:	ops -	MAC ops Struct registered for MAC 0/1/2.
+	 * return	OUT	int -	Success/Fail
+	 */
+	int (*mac_e160_unprepare)(void *ops);
 };
 
 #endif

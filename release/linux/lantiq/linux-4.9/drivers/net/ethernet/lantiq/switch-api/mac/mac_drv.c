@@ -27,6 +27,15 @@ static irqreturn_t mac_isr(int irq, void *dev_id)
 	u32 max_mac = gsw_get_mac_subifcnt(devid);
 	int task_sched = 0;
 
+	/* Clear link related interrupts.
+	 * Link status change or re-configuration on the path triggers interrupt
+	 * and must be cleared to avoid dead loop in interrupt handling. */
+	mac_int_sts = gswss_get_int_stat(adap_ops, LINK);
+	if (mac_int_sts) {
+		pr_info("Link status change: 0x%04X\n", mac_int_sts);
+		GSWSS_RGWR(GET_ADAP_PDATA(adap_ops), GSWIPSS_ISR1, mac_int_sts);
+	}
+
 	/* Handle all the MAC Interrupts */
 	for (i = 0; i < max_mac; i++) {
 		task_sched = 0;
@@ -188,7 +197,17 @@ static int mac_probe(struct platform_device *pdev)
 			pdata->mac_idx);
 		return PTR_ERR(pdata->ker_ptp_clk);
 	}
+	ret = of_property_read_u32(dev->of_node, "intel,tx-sptag",
+				   &pdata->tx_sptag);
+	if (ret < 0)
+		dev_dbg(dev, "Default TX direction Special tag mode\n");
 
+	ret = of_property_read_u32(dev->of_node, "intel,rx-sptag",
+				   &pdata->rx_sptag);
+	if (ret < 0)
+		dev_dbg(dev, "Default RX  direction Special tag mode\n");
+
+	pdata->pdev = pdev;
 	pdata->dev = dev;
 
 	/* Init function fointers */
@@ -266,6 +285,8 @@ static int mac_probe(struct platform_device *pdev)
 static int mac_remove(struct platform_device *pdev)
 {
 	struct mac_prv_data *pdata = GET_MAC_PDATA(platform_get_drvdata(pdev));
+
+	pdata->ops.exit(&pdata->ops);
 
 	clk_disable_unprepare(pdata->ker_ptp_clk);
 

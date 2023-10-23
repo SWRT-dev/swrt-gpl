@@ -24,6 +24,13 @@
 #include "ltq_spinand.h"
 #include <linux/platform_device.h>
 
+struct spinand_flash_dev {
+	struct nand_flash_dev nand;
+
+	/* extension to standard nand flash structure */
+	u32 num_of_die;
+};
+
 /*============================================================================*/
 /* Macro and Switches */
 /*============================================================================*/
@@ -90,57 +97,81 @@ static inline struct spinand_info* spi_to_info(struct spi_device *spi)
  * If page size and eraseblock size are 0, the sizes are taken from the
  * extended chip ID.
  */
-struct nand_flash_dev spinand_flash_ids[] = {
-
-	{"SPI NAND Gigadevice 1Gbit 3.3v",
+static struct spinand_flash_dev spinand_flash_ids[] = {
+	{ {"SPI NAND Gigadevice 1Gbit 3.3v",
 		{ .id = {0xc8, 0xb1} }, 2048, 128, 0x20000,
 		 LP_OPTIONS | GIGADEVICE_DUMMY_TYPE, 2, 128},
-	{"SPI NAND Gigadevice 2Gbit 3.3v",
+		},
+	{ {"SPI NAND Gigadevice 2Gbit 3.3v",
 		{ .id = {0xc8, 0xb2} }, 2048, 256, 0x20000,
 		 LP_OPTIONS | GIGADEVICE_DUMMY_TYPE, 2, 128},
-	{"SPI NAND Gigadevice 4Gbit 3.3v",
+		},
+	{ {"SPI NAND Gigadevice 4Gbit 3.3v",
 		{ .id = {0xc8, 0xb4} }, 4096, 512, 0x40000,
 		 LP_OPTIONS | GIGADEVICE_DUMMY_TYPE, 2, 256},
-	{"SPI NAND Gigadevice 4Gbit 1.8v",
+		},
+	{ {"SPI NAND Gigadevice 4Gbit 1.8v",
 		{ .id = {0xc8, 0xA4} }, 4096, 512, 0x40000,
 		 LP_OPTIONS | GIGADEVICE_DUMMY_TYPE, 2, 256},
-	{"SPI NAND Micron 128MiB 3,3V 8-bit",
+		},
+	{ {"SPI NAND Micron 128MiB 3,3V 8-bit",
 		{ .id = {0x2c, 0x11} }, 2048, 128, 0x20000, LP_OPTIONS, 2, 64},
-	{"SPI NAND Micron 128MiB 3,3V 8-bit",
+		},
+	{ {"SPI NAND Micron 128MiB 3,3V 8-bit",
 		{ .id = {0x2c, 0x12} }, 2048, 128, 0x20000, LP_OPTIONS, 2, 64},
-	{"SPI NAND MT29F2G01AAAED 256MiB",
+		},
+	{ {"SPI NAND MT29F2G01AAAED 256MiB",
 		{ .id = {0x2c, 0x22} }, 2048, 256, 0x20000,
 		 LP_OPTIONS | SPINAND_NEED_PLANE_SELECT, 2, 64},
-	{"SPI NAND MT29F1G01ABAFD 128MiB",
+		},
+	{ {"SPI NAND MT29F1G01ABAFD 128MiB",
 		{ .id = {0x2c, 0x14} }, 2048, 128, 0x20000, LP_OPTIONS, 2, 128},
-	{"SPI NAND MT29F2G01ABAGD 256MiB",
+		},
+	{ {"SPI NAND MT29F2G01ABAGD 256MiB",
 		{ .id = {0x2c, 0x24} }, 2048, 256, 0x20000,
 		 LP_OPTIONS | SPINAND_NEED_PLANE_SELECT, 2, 128},
-	{"SPI NAND MT29F4G01AAADD 512MiB",
+		},
+	{ {"SPI NAND MT29F4G01AAADD 512MiB",
 		{ .id = {0x2c, 0x32} }, 2048, 512, 0x20000,
 		 LP_OPTIONS | SPINAND_NEED_PLANE_SELECT, 2, 64},
-	{"SPI NAND MT29F1G01ABB 1Gbit",
+		},
+	{ {"SPI NAND MT29F1G01ABB 1Gbit",
 		{ .id = {0x2c, 0x15} }, 2048, 128, 0x20000, LP_OPTIONS, 2, 128},
-	{"SPI NAND MT29F2G01ABBG 2Gbit 1,8v",
+		},
+	{ {"SPI NAND MT29F2G01ABBG 2Gbit 1,8v",
 		{ .id = {0x2c, 0x25} }, 2048, 256, 0x20000,
 		 LP_OPTIONS | SPINAND_NEED_PLANE_SELECT, 2, 64},
-	{"SPI NAND TC58CVG0S3 1Gbit",
+		},
+	{ {"SPI NAND TC58CVG0S3 1Gbit",
 		{ .id = {0x98, 0xc2} }, 2048, 128, 0x20000, LP_OPTIONS, 2, 64},
-	{"SPI NAND TC58CVG1S3 2Gbit",
+		},
+	{ {"SPI NAND TC58CVG1S3 2Gbit",
 		{ .id = {0x98, 0xcb} }, 2048, 256, 0x20000, LP_OPTIONS, 2, 64},
-	{"SPI NAND TC58CVG2S0 4Gbit",
+		},
+	{ {"SPI NAND TC58CVG2S0 4Gbit",
 		{ .id = {0x98, 0xcd} }, 4096, 512, 0x40000, LP_OPTIONS, 2, 128},
-	{"SPI NAND MX35LFE4AB 1Gbit",
+		},
+	{ {"SPI NAND MX35LFE4AB 1Gbit",
 		{ .id = {0xc2, 0x12} }, 2048, 128, 0x20000, LP_OPTIONS, 2, 64},
-	{"SPI NAND MX35LFE4AB 2Gbit",
+		},
+	{ {"SPI NAND MX35LFE4AB 2Gbit",
 		{ .id = {0xc2, 0x22} }, 2048, 256, 0x20000,
 		 LP_OPTIONS | SPINAND_NEED_PLANE_SELECT, 2, 64},
-	{"SPI NAND 1Gbit 3,3v WN25N01GV",
+		},
+	{ {"SPI NAND MX35LF2G14AC 2Gbit",
+		{ .id = {0xc2, 0x20} }, 2048, 256, 0x20000,
+		 LP_OPTIONS | SPINAND_NEED_PLANE_SELECT, 2, 64},
+		},
+	{ {"SPI NAND 1Gbit 3,3v WN25N01GV",
 		{ .id = {0xef, 0xaa} }, 2048, 128, 0x20000, LP_OPTIONS, 2, 64},
-	{"SPI NAND 1Gbit 1,8v WN25N01GW",
+		},
+	{ {"SPI NAND 1Gbit 1,8v WN25N01GW",
 		{ .id = {0xef, 0xba} }, 2048, 128, 0x20000, LP_OPTIONS, 2, 64},
-	{"SPI NAND 2Gbit 3,3v WN25M02GV",
+		},
+	{ {"SPI NAND 2Gbit 3,3v WN25M02GV",
 		{ .id = {0xef, 0xab} }, 2048, 256, 0x20000, LP_OPTIONS, 2, 64},
+		.num_of_die = 2,
+		},
 };
 #if 0
 /**
@@ -326,22 +357,23 @@ static int spi_nand_manufacture_init(struct mtd_info *mtd, struct nand_chip *chi
  */
 struct nand_flash_dev * spinand_flash_detect(struct mtd_info *mtd, struct nand_chip *chip)
 {
+	struct spinand_info *info = (struct spinand_info *)chip->priv;
 	u8 id_data[8];
 	int i;
-	struct nand_flash_dev *type = NULL;
+	struct nand_flash_dev *type;
+	u32 diesize;
 
 	chip->cmdfunc(mtd, NAND_CMD_READID, 0x00, -1);
 	for (i = 0; i < 3; i++)
 		id_data[i] = chip->read_byte(mtd);
 
-	if (!type)
-		type = spinand_flash_ids;
-
-	for (; type->name != NULL; type++)
+	for (i = 0; i < ARRAY_SIZE(spinand_flash_ids); i++) {
+		type = &spinand_flash_ids[i].nand;
 		if ((id_data[0] == type->mfr_id) && (id_data[1] == type->dev_id))
 			break;
+	}
 
-	if (!type->name) {
+	if (i == ARRAY_SIZE(spinand_flash_ids)) {
 		pr_err("Unable to find flash id 0x%x 0x%x\n", id_data[0],
 		       id_data[1]);
 		goto probe_done;
@@ -362,6 +394,17 @@ struct nand_flash_dev * spinand_flash_detect(struct mtd_info *mtd, struct nand_c
 
 	/* do we need it ? */
 	chip->options |= type->options;
+
+	info->num_of_die = spinand_flash_ids[i].num_of_die;
+	if (!info->num_of_die)
+		info->num_of_die = 1; /* default to 1 if undefined */
+
+	/* fill up die information */
+	diesize = chip->chipsize >> (ffs(info->num_of_die) - 1);
+	info->page_per_die_shift = ffs(diesize) - ffs(mtd->writesize);
+	dev_dbg(&info->spi->dev,
+		"diesize 0x%x page_per_die %d\n",
+		diesize, info->page_per_die_shift);
 
 	/* manufacturer init */
 	spi_nand_manufacture_init(mtd, chip, type);
@@ -477,17 +520,19 @@ static int spinand_read_status(struct spi_device *spi, uint8_t *status)
 {
 	struct spinand_cmd cmd = {0};
 	int ret;
+	u8 rx_buf = 0;
 
 	cmd.cmd = CMD_READ_REG;
 	cmd.n_addr = 1;
 	cmd.addr[0] = REG_STATUS;
 	cmd.n_rx = 1;
-	cmd.rx_buf = status;
+	cmd.rx_buf = &rx_buf;
 
 	ret = spinand_cmd(spi, &cmd);
 	if (ret < 0)
 		dev_err(&spi->dev, "err: %d read status register\n", ret);
 
+	*status = rx_buf;
 	return ret;
 }
 
@@ -530,6 +575,44 @@ static int wait_till_ready(struct spi_device *spi)
 		return 0;
 
 	return -1;
+}
+
+/**
+ * spinand_select_die - Select a specific die
+ * @spi: the spi device
+ * @die: die to select
+ *
+ * Select a new target/die.
+ */
+static int spinand_select_die(struct spi_device *spi, u32 die)
+{
+	struct spinand_info *info = spi_to_info(spi);
+	struct spinand_cmd cmd = {0};
+	int ret;
+	u8 buf;
+
+	if (info->current_die == die)
+		return 0;
+
+	if (die >= info->num_of_die) {
+		dev_err(&spi->dev, "Invalid die %d / %d\n",
+			die, info->num_of_die);
+		return -EINVAL;
+	}
+
+	cmd.cmd = CMD_SWITCH_DIE;
+	cmd.n_tx = 1;
+	cmd.tx_buf = &buf;
+	buf = die & 0xff;
+
+	ret = spinand_cmd(spi, &cmd);
+	if (ret < 0) {
+		dev_err(&spi->dev, "Failed to select die %d\n", die);
+		return ret;
+	}
+
+	info->current_die = die;
+	return 0;
 }
 
 /**
@@ -590,7 +673,7 @@ static int spinand_set_otp(struct spi_device *spi, u8 *otp)
 /* set_otp with mask */
 static int spinand_set_otp_mask(struct spi_device *spi, u8 otp, u8 mask)
 {
-	u8 val;
+	u8 val = 0;
 	int ret;
 
 	ret = spinand_get_otp(spi, &val);
@@ -769,8 +852,13 @@ static void spinand_ecc_status(struct spi_device *spi,
 static int spinand_read_page(struct spi_device *spi, int page_id,
 		u16 offset, u16 len, u8 *rbuf)
 {
+	struct spinand_info *info = spi_to_info(spi);
 	int ret, ecc_error;
 	u8 status = 0;
+
+	ret = spinand_select_die(spi, page_id >> info->page_per_die_shift);
+	if (ret)
+		return ret;
 
 	ret = spinand_read_page_to_cache(spi, page_id);
 	if (ret < 0)
@@ -892,11 +980,15 @@ static int spinand_program_execute(struct spi_device *spi, int page_id)
 static int spinand_program_page(struct spi_device *spi,
 		int page_id, u16 offset, u16 len, u8 *buf)
 {
-	// struct mtd_info *mtd = (struct mtd_info *)dev_get_drvdata((const struct device *)&(spi->dev));
+	struct spinand_info *info = spi_to_info(spi);
 	int retval;
 	u8 status = 0;
 	uint8_t *wbuf;
-	int retry = 3;
+	int retry = 6;
+
+	retval = spinand_select_die(spi, page_id >> info->page_per_die_shift);
+	if (retval)
+		return retval;
 
 	wbuf = buf;
 
@@ -988,8 +1080,13 @@ static int spinand_erase_block_erase(struct spi_device *spi, u32 block_id)
  */
 static int spinand_erase_block(struct spi_device *spi, u32 block_id)
 {
+	struct spinand_info *info = spi_to_info(spi);
 	int retval;
 	u8 status = 0;
+
+	retval = spinand_select_die(spi, block_id >> info->page_per_die_shift);
+	if (retval)
+		return retval;
 
 	retval = spinand_write_enable(spi);
 	if (wait_till_ready(spi))
@@ -1056,7 +1153,9 @@ static int spinand_lock_block(struct spi_device *spi_nand, u8 lock)
  */
 static void spinand_reset(struct spi_device *spi)
 {
+	struct spinand_info *info = spi_to_info(spi);
 	struct spinand_cmd cmd = {0};
+	int i;
 
 	cmd.cmd = CMD_RESET;
 
@@ -1069,14 +1168,21 @@ static void spinand_reset(struct spi_device *spi)
 	if (wait_till_ready(spi))
 		dev_err(&spi->dev, "WAIT timedout!\n");
 
-	/* safety try to unlock after reset */
-	spinand_lock_block(spi, BL_ALL_UNLOCKED);
+	for (i = 0; i < info->num_of_die; i++) {
+		spinand_select_die(spi, i);
 
-	if (wait_till_ready(spi))
-		dev_err(&spi->dev, "WAIT timedout!\n");
+		/* safety try to unlock after reset */
+		spinand_lock_block(spi, BL_ALL_UNLOCKED);
 
-	/* safety enable On-Die ECC again in case */
-	spinand_set_otp_mask(spi, OTP_ECC_ENABLE, OTP_ECC_ENABLE);
+		if (wait_till_ready(spi))
+			dev_err(&spi->dev, "WAIT timedout!\n");
+
+		/* safety enable On-Die ECC again in case */
+		spinand_set_otp_mask(spi, OTP_ECC_ENABLE, OTP_ECC_ENABLE);
+	}
+
+	/* set die selection back to 0 after reset */
+	info->current_die = 0;
 
 	return;
 }
@@ -1117,7 +1223,8 @@ static int spinand_write_page_hwecc(struct mtd_info *mtd,
 static int spinand_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip,
 		uint8_t *buf, int oob_required, int page)
 {
-	u8 retval, status;
+	u8 status = 0;
+	int retval;
 	uint8_t *p = buf;
 	int eccsize = chip->ecc.size;
 	int eccsteps = chip->ecc.steps;
@@ -1191,7 +1298,7 @@ static int spinand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 
 	unsigned long timeo = jiffies;
 	int retval, state = chip->state;
-	u8 status;
+	u8 status = 0;
 
 	if (state == FL_ERASING)
 		timeo += msecs_to_jiffies(400);
@@ -1202,8 +1309,12 @@ static int spinand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 		retval = spinand_read_status(info->spi, &status);
 		if (retval < 0)
 			break;
-		if ((status & STATUS_OIP_MASK) == STATUS_READY)
-			return 0;
+		if ((status & STATUS_OIP_MASK) == STATUS_READY) {
+			if ((status & STATUS_E_FAIL_MASK) == STATUS_E_FAIL)
+				return NAND_STATUS_FAIL;
+			else
+				return 0;
+		}
 
 		cond_resched();
 	}

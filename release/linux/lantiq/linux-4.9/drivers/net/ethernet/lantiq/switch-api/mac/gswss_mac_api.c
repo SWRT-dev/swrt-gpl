@@ -20,6 +20,10 @@ int gswss_wr_reg(void *pdev, u32 reg_off, u32 reg_val)
 {
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
 
+	if (reg_off >= 0x2000)
+		return -EFAULT;
+
+	reg_off &= 0x1FFC;
 	GSWSS_MAC_RGWR(pdata, reg_off, reg_val);
 
 	return 0;
@@ -28,11 +32,12 @@ int gswss_wr_reg(void *pdev, u32 reg_off, u32 reg_val)
 int gswss_rd_reg(void *pdev, u32 reg_off)
 {
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
-	GSW_MAC_Cli_t *param = pdata->mac_cli;
 
-	param->val[0] = GSWSS_MAC_RGRD(pdata, reg_off);
+	if (reg_off >= 0x2000)
+		return -EFAULT;
 
-	return param->val[0];
+	reg_off &= 0x1FFC;
+	return GSWSS_MAC_RGRD(pdata, reg_off);
 }
 
 int gswss_xgmac_reset(void *pdev, u32 reset)
@@ -42,7 +47,7 @@ int gswss_xgmac_reset(void *pdev, u32 reset)
 
 	mac_if_cfg = GSWSS_MAC_RGRD(pdata, MAC_IF_CFG(pdata->mac_idx));
 
-	MAC_SET_VAL(mac_if_cfg, MAC_IF_CFG, XGMAC_RES, reset);
+	MAC_SET_VAL(mac_if_cfg, MAC_IF_CFG, XGMAC_RES, reset ? 1 : 0);
 
 	mac_dbg("GSWSS: Resetting XGMAC %d Module\n", pdata->mac_idx);
 
@@ -58,7 +63,7 @@ int gswss_lmac_reset(void *pdev, u32 reset)
 
 	mac_if_cfg = GSWSS_MAC_RGRD(pdata, MAC_IF_CFG(pdata->mac_idx));
 
-	MAC_SET_VAL(mac_if_cfg, MAC_IF_CFG, LMAC_RES, reset);
+	MAC_SET_VAL(mac_if_cfg, MAC_IF_CFG, LMAC_RES, reset ? 1 : 0);
 
 	mac_dbg("GSWSS: Resetting LMAC %d Module\n", pdata->mac_idx);
 
@@ -74,7 +79,7 @@ int gswss_adap_reset(void *pdev, u32 reset)
 
 	mac_if_cfg = GSWSS_MAC_RGRD(pdata, MAC_IF_CFG(pdata->mac_idx));
 
-	MAC_SET_VAL(mac_if_cfg, MAC_IF_CFG, ADAP_RES, reset);
+	MAC_SET_VAL(mac_if_cfg, MAC_IF_CFG, ADAP_RES, reset ? 1 : 0);
 
 	mac_dbg("GSWSS: Resetting ADAP %d Module\n", pdata->mac_idx);
 
@@ -90,7 +95,7 @@ int gswss_mac_enable(void *pdev, u32 enable)
 
 	mac_if_cfg = GSWSS_MAC_RGRD(pdata, MAC_IF_CFG(pdata->mac_idx));
 
-	MAC_SET_VAL(mac_if_cfg, MAC_IF_CFG, MAC_EN, enable);
+	MAC_SET_VAL(mac_if_cfg, MAC_IF_CFG, MAC_EN, enable ? 1 : 0);
 
 	mac_dbg("GSWSS: MAC %d: %s\n", pdata->mac_idx,
 		enable ? "ENABLED" : "DISABLED");
@@ -135,11 +140,9 @@ u32 gswss_get_1g_intf(void *pdev)
 	if (macif == 0) {
 		mac_dbg("GSWSS: MACIF got for CFG1G is LMAC_GMII\n");
 		macif = LMAC_GMII;
-	} else if (macif == 1) {
+	} else {
 		mac_dbg("GSWSS: MACIF got for CFG1G is XGMAC_GMII\n");
 		macif = XGMAC_GMII;
-	} else {
-		mac_printf("GSWSS: MACIF got for CFG1G is Wrong Value\n");
 	}
 
 	return macif;
@@ -180,11 +183,9 @@ u32 gswss_get_fe_intf(void *pdev)
 	if (macif == 0) {
 		mac_printf("GSWSS: MACIF got for CFGFE is LMAC_MII\n");
 		macif = LMAC_MII;
-	} else if (macif == 1) {
+	} else {
 		mac_printf("GSWSS: MACIF got for CFGFE is XGMAC_GMII\n");
 		macif = XGMAC_GMII;
-	} else {
-		mac_printf("GSWSS: MACIF got for CFGFE is Wrong Value\n");
 	}
 
 	return macif;
@@ -225,11 +226,9 @@ u32 gswss_get_2G5_intf(void *pdev)
 	if (macif == 0) {
 		mac_printf("GSWSS: MACIF Got for 2.5G with XGMAC_GMII\n");
 		macif = XGMAC_GMII;
-	} else if (macif == 1) {
+	} else {
 		mac_printf("GSWSS: MACIF Got for 2.5G with XGMAC_XGMII\n");
 		macif = XGMAC_XGMII;
-	} else {
-		mac_printf("GSWSS: MACIF Got for 2.5G Wrong Value\n");
 	}
 
 	return macif;

@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: GPL-2.0
+
+config PON_QOS
+	tristate "PON QoS driver"
+	depends on INTEL_DATAPATH && !GRX500_CBM
+	select NET_SCH_RED
+	select NET_ACT_COLMARK
+
+	help
+	  This driver provides user space API for configuring PON specific QoS
+	  resources as schedulers, queues etc. The interface is based on linux
+	  tc offload interface. The Intel datapath driver is used to do the
+	  actual hardware configuration.
+
+config PON_QOS_KCOV
+	bool "PON QoS KCOV"
+	depends on KCOV && PON_QOS
+	help
+	  Enable coverage on PON QoS driver for fuzzing.
+
+config PON_QOS_TRACING
+	bool "PON QoS tracing support"
+	depends on PON_QOS
+	depends on EVENT_TRACING
+	---help---
+	  Select this to enable pon_qos tracing infrastructure.

@@ -1,0 +1,117 @@
+#!/bin/sh
+# Bring down a Wave interface
+# Needed object: None
+
+script_name="fapi_wlan_wave_down"
+
+[ ! "$LIB_COMMON_SOURCED" ] && . /tmp/fapi_wlan_wave_lib_common.sh
+
+interface_name=$1
+initiator=$2
+
+# The script can be called from other script or from external API
+[ -z "$initiator" ] && initiator="external_api"
+
+# Find the radio name and index
+radio_name=${interface_name%%.*}
+radio_index=`find_index_from_interface_name $radio_name`
+
+timestamp $radio_index "$script_name:begin"
+print2log $radio_index DEBUG "$script_name $*"
+
+# When external API calls the script, only bring down the interface using ifconfig and return success
+if [ "$initiator" = "external_api" ]
+then
+	# Delete the runner
+	rm -f ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+	echo "ifconfig $interface_name down" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	# Execute the runner
+	if [ -e "${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}" ]
+	then
+		chmod +x ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+		${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	fi
+	# Create the output configuration file
+	cat /dev/null > ${OUT_CONF}
+
+	# Configuration is completed successfully
+	update_conf_out "wlan_configuration_status" "success"
+
+	# Set a flag indicating interfae is down
+	touch ${CONF_DIR}/${interface_name}_down
+
+	print2log $radio_index DEBUG "$script_name done"
+	timestamp $radio_index "$script_name:done"
+else
+	# Stop HS2.0 related components on all VAPs of the current radio
+	while read interface
+	do
+		# Unconditionaly disable of the parp - no API to know the status:
+		[ -e "${ETC_PATH}/wave_wifi_parp_ctrl.sh" ] && echo "(. ${ETC_PATH}/wave_wifi_parp_ctrl.sh disable $interface)" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+		# Disable dgaf and l2f if they are enabled
+		[ -e /proc/net/wave_wifi_l2f/l2f ] && in_l2f=`cat /proc/net/wave_wifi_l2f/l2f | grep $interface -w`
+		[ -e /proc/net/wave_wifi_l2f/dgaf ] && in_dgaf=`cat /proc/net/wave_wifi_l2f/dgaf | grep $interface -w`
+		[ -n "$in_dgaf" ] && echo "( .$ETC_PATH/wave_wifi_dgaf_disable.sh $interface 0)" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+		[ -n "$in_l2f" ] && echo "(. $ETC_PATH/wave_wifi_l2f_ctrl.sh disable $interface)" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+		[ -e "${ETC_PATH}/wmdctrl.sh" ] && echo "(. ${ETC_PATH}/wmdctrl.sh disable $interface)" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+		[ -e "${ETC_PATH}/wave_wifi_hairpin_config.sh" ] && echo "(. ${ETC_PATH}/wave_wifi_hairpin_config.sh disable $interface)" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	done < ${VAPS_LIST}_${radio_name}
+
+	# Remove all related VAPs from PPA if PPA exists, check if /SBINDIR/ppacmd exists.
+	# The set_ppa_commands function writes the ppa commands for removal to the runner script.
+	vaps_ppa=""
+	[ -e ${SBINDIR}/ppacmd ] && vaps_ppa=`ppacmd getlan | grep "\<$radio_name\>" | awk '{print $3}'`
+	current_vap=""
+	for current_vap in $vaps_ppa
+	do
+		set_ppa_commands $current_vap "remove" ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	done
+
+	# Remove RDKB-OS radio configuration before stop hostapd
+	[ ! -f ${INIT_FLAG} ] && [ -f ${RDKBOS_WIFI_UTIL} ] && echo "${RDKBOS_WIFI_UTIL} radio_config_down ${radio_name} > /dev/null" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+	# Stop hostapd_cli and hostapd
+	echo "killall hostapd_cli_${radio_name} 2>/dev/null" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "hostapd_cli_count=\`ps | grep hostapd_cli_${radio_name} -c\`" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "hostapd_cli_down_timeout=0" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "while [ "\$hostapd_cli_count" -gt 1 ] && [ "\$hostapd_cli_down_timeout" -lt 15 ]; do" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	sleep 1" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	hostapd_cli_count=\`ps | grep hostapd_cli_$radio_name -c\`" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	hostapd_cli_down_timeout=\$((hostapd_cli_down_timeout+1))" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "done" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "[ "\$hostapd_cli_down_timeout" -eq 15 ] && echo fapi_wlan_wave_down ERROR: HOSTAPD_CLI WAS KILLED BUT DID NOT DIE ON TIME > /dev/console && exit 1" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+	echo "killall hostapd_$radio_name 2>/dev/null" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "hostapd_count=\`ps | grep hostapd_$radio_name -c\`" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "down_timeout=0" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "while [ "\$hostapd_count" -gt 1 ] && [ "\$down_timeout" -lt 15 ]; do sleep 1; hostapd_count=\`ps | grep hostapd_$radio_name -c\`; down_timeout=\$((down_timeout+1)); done" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "[ "\$down_timeout" -eq 15 ] && echo $script_name ERROR: HOSTAPD WAS KILLED BUT DID NOT DIE ON TIME > /dev/console && exit 1" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+	# Verify all VAPs of the radio are down
+	echo "if_timeout=0" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "if_count=\`ifconfig | grep $radio_name -c\`" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "while [ "\$if_count" -gt 0 ] && [ "\$if_timeout" -lt 30 ]; do" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "sleep 1" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "echo $script_name WARNING: INTERFACES ARE UP AFTER HOSTAPD WAS KILLED > /dev/console" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "if_count=\`ifconfig | grep $radio_name -c\`" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "if_timeout=\$((if_timeout+1))" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "done" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "[ "\$if_timeout" -eq 30 ] && echo $script_name ERROR: INTERFACES ARE UP AFTER HOSTAPD WAS KILLED > /dev/console && exit 1" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	build_wlan_notification "servd" "NOTIFY_WIFI_RADIO_STATUS_CHANGE" "Name:${radio_name} Status:Down" "runner"
+	# Send notification about all VAPs being down
+	current_vap=""
+	while read current_vap
+	do
+		build_wlan_notification "servd" "NOTIFY_WIFI_SSID_STATUS_CHANGE" "Name:${current_vap} Status:Down" "runner"
+	done < ${VAPS_LIST}_${radio_name}
+	#URGENT TODO - add support for application to trigger recovery
+
+	# Remove interface related hostapd softlinks
+	echo "rm -f /tmp/hostapd_${radio_name}" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "rm -f /tmp/hostapd_cli_${radio_name}" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+fi
+print2log $radio_index DEBUG "$script_name done"
+timestamp $radio_index "$script_name::done"

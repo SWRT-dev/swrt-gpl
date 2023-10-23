@@ -99,6 +99,14 @@ NESTED(kernel_entry, 16, sp)			# kernel entry point
 	jr	t0
 0:
 
+#ifdef CONFIG_SOC_TYPE_GRX500_TEP
+	/* ignore arguments from bootloader for TEP */
+	move		a0, zero
+	move		a1, zero
+	move		a2, zero
+	move		a3, zero
+#endif
+
 #ifdef CONFIG_USE_OF
 #ifdef CONFIG_MIPS_RAW_APPENDED_DTB
 	PTR_LA		t2, __appended_dtb

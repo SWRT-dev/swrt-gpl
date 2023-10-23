@@ -1,0 +1,2686 @@
+// SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0-only)
+/*
+ * Driver for MACsec Engine inside Intel CHD GSWIP or GPHY
+ *
+ * Copyright 2019 - 2020 Intel Corporation
+ */
+
+//-----------------------------------------------------------------------------
+// LSD Generator
+//-----------------------------------------------------------------------------
+// Perl Package        : LSD::generator::targetC (v1.1)
+// LSD Source          : /home/p34x/p34x_chip/v_emouchel.priv.p34x_chip.registers/ipg_lsd/lsd_sys/source_32b/xml/reg_files/slice_pm/EIPI_EIP_160s_i_32_Flow_control_page0_def.xml
+// Register File Name  : ING_FLOW_CONTROL_PAGE0
+// Register File Title : EIPI EIP_160s_i_32_Flow_control_page0
+// Register Width      : 32
+// Note                : Doxygen compliant comments
+//-----------------------------------------------------------------------------
+
+#ifndef _ING_FLOW_CONTROL_PAGE0_H
+#define _ING_FLOW_CONTROL_PAGE0_H
+
+//! \defgroup ING_FLOW_CONTROL_PAGE0 Register File ING_FLOW_CONTROL_PAGE0 - EIPI EIP_160s_i_32_Flow_control_page0
+//! @{
+
+//! Base Address of ING_FLOW_CONTROL_PAGE0
+#define ING_FLOW_CONTROL_PAGE0_MODULE_BASE 0x7000u
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_0 Register EIPI_SAM_FLOW_CTRL_0 - EIPI SAM FLOW CTRL 0
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_0 0x0
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_0 0x7000u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_0_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_0_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_1 Register EIPI_SAM_FLOW_CTRL_1 - EIPI SAM FLOW CTRL 1
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_1 0x4
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_1 0x7004u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_1_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_1_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_2 Register EIPI_SAM_FLOW_CTRL_2 - EIPI SAM FLOW CTRL 2
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_2 0x8
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_2 0x7008u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_2_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_2_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_3 Register EIPI_SAM_FLOW_CTRL_3 - EIPI SAM FLOW CTRL 3
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_3 0xC
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_3 0x700Cu
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_3_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_3_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_4 Register EIPI_SAM_FLOW_CTRL_4 - EIPI SAM FLOW CTRL 4
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_4 0x10
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_4 0x7010u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_4_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_4_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_5 Register EIPI_SAM_FLOW_CTRL_5 - EIPI SAM FLOW CTRL 5
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_5 0x14
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_5 0x7014u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_5_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_5_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_6 Register EIPI_SAM_FLOW_CTRL_6 - EIPI SAM FLOW CTRL 6
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_6 0x18
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_6 0x7018u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_6_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_6_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_7 Register EIPI_SAM_FLOW_CTRL_7 - EIPI SAM FLOW CTRL 7
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_7 0x1C
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_7 0x701Cu
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_7_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_7_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_8 Register EIPI_SAM_FLOW_CTRL_8 - EIPI SAM FLOW CTRL 8
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_8 0x20
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_8 0x7020u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_8_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_8_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_9 Register EIPI_SAM_FLOW_CTRL_9 - EIPI SAM FLOW CTRL 9
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_9 0x24
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_9 0x7024u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_9_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_9_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_10 Register EIPI_SAM_FLOW_CTRL_10 - EIPI SAM FLOW CTRL 10
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_10 0x28
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_10 0x7028u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_10_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_10_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_11 Register EIPI_SAM_FLOW_CTRL_11 - EIPI SAM FLOW CTRL 11
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_11 0x2C
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_11 0x702Cu
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_11_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_11_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_12 Register EIPI_SAM_FLOW_CTRL_12 - EIPI SAM FLOW CTRL 12
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_12 0x30
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_12 0x7030u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_12_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_12_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_13 Register EIPI_SAM_FLOW_CTRL_13 - EIPI SAM FLOW CTRL 13
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_13 0x34
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_13 0x7034u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_13_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_13_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_14 Register EIPI_SAM_FLOW_CTRL_14 - EIPI SAM FLOW CTRL 14
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_14 0x38
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_14 0x7038u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_14_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_14_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_15 Register EIPI_SAM_FLOW_CTRL_15 - EIPI SAM FLOW CTRL 15
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_15 0x3C
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_15 0x703Cu
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_15_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_15_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_16 Register EIPI_SAM_FLOW_CTRL_16 - EIPI SAM FLOW CTRL 16
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_16 0x40
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_16 0x7040u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_16_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_16_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_17 Register EIPI_SAM_FLOW_CTRL_17 - EIPI SAM FLOW CTRL 17
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_17 0x44
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_17 0x7044u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_17_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_17_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_18 Register EIPI_SAM_FLOW_CTRL_18 - EIPI SAM FLOW CTRL 18
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_18 0x48
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_18 0x7048u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_18_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_18_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_19 Register EIPI_SAM_FLOW_CTRL_19 - EIPI SAM FLOW CTRL 19
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_19 0x4C
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_19 0x704Cu
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_19_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_19_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_20 Register EIPI_SAM_FLOW_CTRL_20 - EIPI SAM FLOW CTRL 20
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_20 0x50
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_20 0x7050u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_20_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_20_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_21 Register EIPI_SAM_FLOW_CTRL_21 - EIPI SAM FLOW CTRL 21
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_21 0x54
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_21 0x7054u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_21_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_21_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_22 Register EIPI_SAM_FLOW_CTRL_22 - EIPI SAM FLOW CTRL 22
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_22 0x58
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_22 0x7058u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_22_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_22_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_23 Register EIPI_SAM_FLOW_CTRL_23 - EIPI SAM FLOW CTRL 23
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_23 0x5C
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_23 0x705Cu
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_23_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_23_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_24 Register EIPI_SAM_FLOW_CTRL_24 - EIPI SAM FLOW CTRL 24
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_24 0x60
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_24 0x7060u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_24_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_24_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_25 Register EIPI_SAM_FLOW_CTRL_25 - EIPI SAM FLOW CTRL 25
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_25 0x64
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_25 0x7064u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_25_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_25_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_26 Register EIPI_SAM_FLOW_CTRL_26 - EIPI SAM FLOW CTRL 26
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_26 0x68
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_26 0x7068u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_26_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_26_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_27 Register EIPI_SAM_FLOW_CTRL_27 - EIPI SAM FLOW CTRL 27
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_27 0x6C
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_27 0x706Cu
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_27_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_27_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_28 Register EIPI_SAM_FLOW_CTRL_28 - EIPI SAM FLOW CTRL 28
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_28 0x70
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_28 0x7070u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_28_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_28_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_29 Register EIPI_SAM_FLOW_CTRL_29 - EIPI SAM FLOW CTRL 29
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_29 0x74
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_29 0x7074u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_29_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_29_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_30 Register EIPI_SAM_FLOW_CTRL_30 - EIPI SAM FLOW CTRL 30
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_30 0x78
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_30 0x7078u
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_30_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_30_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! \defgroup EIPI_SAM_FLOW_CTRL_31 Register EIPI_SAM_FLOW_CTRL_31 - EIPI SAM FLOW CTRL 31
+//! @{
+
+//! Register Offset (relative)
+#define EIPI_SAM_FLOW_CTRL_31 0x7C
+//! Register Offset (absolute) for 1st Instance ING_FLOW_CONTROL_PAGE0
+#define ING_REG_SAM_FLOW_CTRL_31 0x707Cu
+
+//! Register Reset Value
+#define EIPI_SAM_FLOW_CTRL_31_RST 0x00000000u
+
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_FLOW_TYPE_POS 0
+//! Field FLOW_TYPE - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_FLOW_TYPE_MASK 0x3u
+
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_DEST_PORT_POS 2
+//! Field DEST_PORT - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_DEST_PORT_MASK 0xCu
+
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_DROP_NON_RESERVED_POS 4
+//! Field DROP_NON_RESERVED - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_DROP_NON_RESERVED_MASK 0x10u
+
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_FLOW_CRYPT_AUTH_POS 5
+//! Field FLOW_CRYPT_AUTH - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_FLOW_CRYPT_AUTH_MASK 0x20u
+
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_DROP_ACTION_POS 6
+//! Field DROP_ACTION - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_DROP_ACTION_MASK 0xC0u
+
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_SA_INDEX_POS 8
+//! Field SA_INDEX - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_SA_INDEX_MASK 0x1F00u
+
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_RESERVED_0_POS 13
+//! Field RESERVED_0 - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_RESERVED_0_MASK 0xE000u
+
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_REPLAY_PROTECT_POS 16
+//! Field REPLAY_PROTECT - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_REPLAY_PROTECT_MASK 0x10000u
+
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_SA_IN_USE_POS 17
+//! Field SA_IN_USE - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_SA_IN_USE_MASK 0x20000u
+
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_RESERVED_1_POS 18
+//! Field RESERVED_1 - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_RESERVED_1_MASK 0x40000u
+
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_VALIDATE_FRAMES_POS 19
+//! Field VALIDATE_FRAMES - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_VALIDATE_FRAMES_MASK 0x180000u
+
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_RESERVED_2_POS 21
+//! Field RESERVED_2 - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_RESERVED_2_MASK 0xE00000u
+
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_CONFIDENTIALITY_OFFSET_POS 24
+//! Field CONFIDENTIALITY_OFFSET - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_CONFIDENTIALITY_OFFSET_MASK 0x7F000000u
+
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_RESERVED_3_POS 31
+//! Field RESERVED_3 - No Content.
+#define EIPI_SAM_FLOW_CTRL_31_RESERVED_3_MASK 0x80000000u
+
+//! @}
+
+//! @}
+
+#endif

@@ -37,6 +37,8 @@
 #define CBM_DMADESC_BASE	(g_base_addr.cbm_dmadesc_addr_base)
 #define SIZE_DONT_CARE 0
 #define CHECK_WHILE_LOOP 1
+#define LOW_PRIO_LAN_START 6
+#define LOW_PRIO_LAN_END 11
 static struct cbm_ctrl g_cbm_ctrl;
 struct clk *g_cbm_clk;
 static void *std_buf_base;
@@ -52,7 +54,7 @@ static struct cbm_buff_stat g_cbm_buff_stat = {
 	.std_alloc_err = 0,
 	.jbo_alloc_err = 0,
 	.xmit_alloc_err = 0
-	};
+};
 
 #ifdef CONFIG_CBM_LS_ENABLE
 static struct cbm_desc_list g_cbm_dq_dlist[204];
@@ -125,6 +127,8 @@ static void store_rcnt_baseaddr(void);
 static void store_bufreq_baseaddr(void);
 static int cbm_interrupt_init(void);
 extern int cbm_proc_install(struct dentry *parent);
+static s32 dequeue_dma_port_init(s32 cbm_port_id, s32 dma_hw_num,
+				 u32 dma_chan_num, u32 flags);
 
 #define BADKEY -1
 enum port_value {
@@ -403,12 +407,12 @@ struct cbm_egp_map epg_lookup_table[] = {
 	{1,	CBM_PMAC_DYNAMIC, DP_F_DIRECTLINK},
 	{CBM_PORT_NOT_APPL,	CBM_PMAC_DYNAMIC, DP_F_FAST_WLAN},
 	{5,	CBM_PMAC_NOT_APPL, DP_F_LRO},
-	{6,	1,			 DP_F_FAST_ETH_LAN},
+	{LOW_PRIO_LAN_START, 1, DP_F_FAST_ETH_LAN},
 	{7,	2,			 DP_F_FAST_ETH_LAN},
 	{8,	3,			 DP_F_FAST_ETH_LAN},
 	{9,	4,			 DP_F_FAST_ETH_LAN},
 	{10,	5,			 DP_F_FAST_ETH_LAN},
-	{11,	6,			 DP_F_FAST_ETH_LAN},
+	{LOW_PRIO_LAN_END,	6, DP_F_FAST_ETH_LAN},
 	{12,	1,			 DP_F_FAST_ETH_LAN},
 	{13,	2,			 DP_F_FAST_ETH_LAN},
 	{14,	3,			 DP_F_FAST_ETH_LAN},
@@ -600,16 +604,17 @@ static s32 dp_port_resources_get(
 			}
 		} else {
 			LOGF_KLOG_ERROR("%s error in allocating memory", __func__);
+			return -1;
 		}
 	} else if ((!local_entry) &&
 		   ((flags & DP_F_MPE_ACCEL) ||
-		(flags & DP_F_DIRECTPATH_RX) ||
-		(flags & DP_F_CHECKSUM))) {
+		    (flags & DP_F_DIRECTPATH_RX) ||
+		    (flags & DP_F_CHECKSUM))) {
 		return -1;
 	} else if (dp_port && ((*dp_port <= 6) || (*dp_port == 15))) {
-	/*check if it is static pmac*/
+		/*check if it is static pmac*/
 		result = get_matching_pmac_noflags(
-		cbm_port, *dp_port, &local_flags, &local_num_ports);
+			cbm_port, *dp_port, &local_flags, &local_num_ports);
 		if (result == CBM_SUCCESS) {
 			res = kmalloc(sizeof(cbm_tmu_res_t) * (local_num_ports), GFP_ATOMIC);
 			if (res) {
@@ -628,11 +633,12 @@ static s32 dp_port_resources_get(
 				}
 			} else {
 				LOGF_KLOG_ERROR("%s: kmalloc failed in getting static pmac port\r\n", __func__);
+				return -1;
 			}
 		} else {
-		LOGF_KLOG_ERROR("%s: Error in getting static pmac port\r\n", __func__);
-		return -1;
-	}
+			LOGF_KLOG_ERROR("%s: Error in getting static pmac port\r\n", __func__);
+			return -1;
+		}
 	} else {
 		/*LOGF_KLOG_ERROR("%s: unallocated pmac port\r\n", __func__);*/
 		return -1;
@@ -875,13 +881,17 @@ static void init_fsqm(void)
 {
 	buf_addr_adjust((u32)std_buf_base,
 			CONFIG_CBM_STD_BUF_POOL_SIZE,
+			0,
 			&g_cbm_buff.std_buf_addr,
 			&g_cbm_buff.std_buf_size,
+			NULL,
 			g_cbm_buff.std_frm_size);
 	buf_addr_adjust((u32)jbo_buf_base,
 			CONFIG_CBM_JBO_BUF_SIZE,
+			0,
 			&g_cbm_buff.jbo_buf_addr,
 			&g_cbm_buff.jbo_buf_size,
+			NULL,
 			g_cbm_buff.jbo_frm_size);
 
 	g_cbm_buff.std_frm_num =
@@ -1176,6 +1186,7 @@ static void cbm_qidt_set(const struct cbm_qidt_elm *qid_set,
 	struct cbm_qidt_elm qidt_elm;
 	int cls_done = 0, ep_done = 0, fl_done = 0, fh_done = 0,
 	dec_done = 0, enc_done = 0, mpe1_done = 0, mpe2_done = 0;
+	unsigned long sys_flag;
 
 	pr_debug("%d\n", qid_val);
 	pr_debug("%u %u %u %u %u %u %u %u\n", qid_set->clsid,
@@ -1194,7 +1205,8 @@ static void cbm_qidt_set(const struct cbm_qidt_elm *qid_set,
 		 qid_mask->dec_mask,
 		 qid_mask->flowid_hmask,
 		 qid_mask->flowid_lmask);
-#if 1
+
+	spin_lock_irqsave(&cbm_qidt_lock, sys_flag);
 	state = STATE_CLASS;
 	while (state != STATE_NONE) {
 		switch (state) {
@@ -1347,7 +1359,7 @@ static void cbm_qidt_set(const struct cbm_qidt_elm *qid_set,
 		break;
 		};
 		}
-#endif
+	spin_unlock_irqrestore(&cbm_qidt_lock, sys_flag);
 }
 
 static s32
@@ -1392,7 +1404,7 @@ queue_map_get(
 		spin_unlock_irqrestore(&cbm_qidt_lock, sys_flag);
 		return CBM_FAILURE;
 	}
-	temp_entry = kmalloc(sizeof(cbm_queue_map_entry_t) * (j), GFP_ATOMIC);
+	temp_entry = kzalloc(sizeof(cbm_queue_map_entry_t) * (j), GFP_ATOMIC);
 	if (temp_entry) {
 		*entries = temp_entry;
 		*num_entries = j;
@@ -1401,7 +1413,6 @@ queue_map_get(
 			offset = (g_qidt_help[i] % 4);
 			index = index + 3 - offset;
 
-			temp_entry[i].regval = 0;
 			temp_entry[i].flowid = ((index & 0x2000) | (index & 0x1000)) >> 12;
 			temp_entry[i].dec = (index & 0x800) >> 11;
 			temp_entry[i].enc = (index & 0x400) >> 10;
@@ -1423,7 +1434,6 @@ cbm_queue_map_entry_t *entry,
 u32 flags
 )
 {
-	unsigned long sys_flag;
 	struct cbm_qidt_elm qidt_elm;
 	struct cbm_qidt_mask qidt_mask = {0};
 
@@ -1456,10 +1466,13 @@ u32 flags
 	if (flags & CBM_QUEUE_MAP_F_TC_DONTCARE)
 		qidt_mask.classid_mask = 1;
 
-	spin_lock_irqsave(&cbm_qidt_lock, sys_flag);
 	cbm_qidt_set(&qidt_elm, &qidt_mask, tmu_queue_id);
-	spin_unlock_irqrestore(&cbm_qidt_lock, sys_flag);
 	return CBM_SUCCESS;
+}
+
+void queue_map_buf_free(cbm_queue_map_entry_t *entries)
+{
+	kfree(entries);
 }
 
 /*CBM CPU Enqueue API
@@ -1803,6 +1816,19 @@ cbm_cpu_pkt_tx_grx500(
 		/* Detach th skb */
 		skb->head = NULL;
 	}
+
+	/* If PMAC header present */
+	if ((data) && (data->pmac)) {
+		data->l3_chksum_off += ((data->l3_chksum_off) ? data->pmac_len : 0);
+		data->l4_chksum_off += ((data->l4_chksum_off) ? data->pmac_len : 0);
+	}
+
+	/* IP & TCP/UDP header checksum offloading */
+	if (data->l3_chksum_off)
+		*(uint16_t *)((u8 *)tmp_data_ptr + data->l3_chksum_off) = 0;
+	if (data->l4_chksum_off)
+		*(uint16_t *)((u8 *)tmp_data_ptr + data->l4_chksum_off) = 0;
+
 	if (setup_desc((struct cbm_desc *)&desc, tmp_data_ptr,
 		       skb->len,
 		       skb->DW1, skb->DW0)){
@@ -2193,7 +2219,7 @@ static int do_dq_cbm_poll(struct napi_struct *napi, int budget)
 				LOGF_KLOG_DEBUG("%s: rx to datapath library\n", __func__);
 			} else {
 				LOGF_KLOG_ERROR("%s:failure in allocating skb, free cbm data pointer\r\n", __func__);
-				cbm_buffer_free_grx500(smp_processor_id(), desc_list->desc.desc2, 0);
+				cbm_buffer_free_grx500(smp_processor_id(), (void *)data_ptr, 0);
 			}
 		} else {
 				tasklet_loop = (tasklet_loop >= 2) ? 0 : tasklet_loop + 1;
@@ -2320,7 +2346,7 @@ static void do_cbm_tasklet(unsigned long cpu)
 				LOGF_KLOG_DEBUG("%s: rx to datapath library\n", __func__);
 			} else {
 				LOGF_KLOG_ERROR("%s:failure in allocating skb, free cbm data pointer\r\n", __func__);
-				cbm_buffer_free_grx500(smp_processor_id(), (void *)desc_list->desc.desc2, 0);
+				cbm_buffer_free_grx500(smp_processor_id(), (void *)data_ptr, 0);
 			}
 			desc_list = &g_cbm_dlist[cpu][++j];
 		}
@@ -3037,7 +3063,8 @@ RET_PORT:
 	data->dp_port = port_id;
 	data->deq_port = (flags & DP_F_FAST_WLAN) ? cbm_port[i] : cbm_port[0];
 	data->deq_port_num = 1;
-	data->num_dma_chan = 1;
+	if (find_dqm_port_type(data->deq_port) == DQM_DMA_TYPE)
+		data->num_dma_chan = 1;
 	return CBM_SUCCESS;
 }
 
@@ -3114,6 +3141,14 @@ s32 direct_dp_enable(u32 port_id, u32 flags, u32 type)
 	if (type != DP_F_FAST_DSL) {
 		local_entry = is_dp_allocated(CBM_PMAC_NOT_APPL, DP_F_DIRECTPATH_RX);
 		if (local_entry) {
+			/* Enable/Disable by default */
+			if (flags & CBM_PORT_F_DISABLE)
+				cbm_dequeue_dma_port_uninit(DQM_DIRECTPATH_RX, 0);
+			else
+				dequeue_dma_port_init(DQM_DIRECTPATH_RX,
+						      dqm_port_info[DQM_DIRECTPATH_RX].dma_dt_ctrl,
+						      dqm_port_info[DQM_DIRECTPATH_RX].dma_dt_ch, 0);
+
 			for (j = 0; j < local_entry->qid_num; j++) {
 				if (flags & CBM_PORT_F_DISABLE)
 					queue_number = 255;
@@ -3140,6 +3175,14 @@ s32 direct_dp_enable(u32 port_id, u32 flags, u32 type)
 
 	local_entry = is_dp_allocated(CBM_PMAC_NOT_APPL, DP_F_CHECKSUM);
 	if (local_entry) {
+		/* Enable/Disable by default */
+		if (flags & CBM_PORT_F_DISABLE)
+			cbm_dequeue_dma_port_uninit(DQM_CHECKSUM_ID, 0);
+		else
+			dequeue_dma_port_init(DQM_CHECKSUM_ID,
+					      dqm_port_info[DQM_CHECKSUM_ID].dma_dt_ctrl,
+					      dqm_port_info[DQM_CHECKSUM_ID].dma_dt_ch, 0);
+
 		for (j = 0; j < local_entry->qid_num; j++) {
 			if (flags & CBM_PORT_F_DISABLE)
 				queue_number = 255;
@@ -3330,7 +3373,7 @@ dp_enable(
 	u32 num;
 	cbm_tmu_res_t *res = NULL;
 	int q_buff_num;
-	unsigned long sys_flag;
+	int port, port_high;
 	struct tmu_equeue_drop_params thx = {0};
 
 	qidt_set.ep = port_id;
@@ -3345,7 +3388,32 @@ dp_enable(
 		       res[0].tmu_q,
 		       res[0].tmu_sched);
 	local_entry = is_dp_allocated(port_id, alloc_flags);
-	spin_lock_irqsave(&cbm_qidt_lock, sys_flag);
+	port = data->deq_port;
+	port_high = port + g_cbm_ctrl.highprio_lan * PMAC_ETH_LAN_END_ID;
+	if (port == -1) {
+		LOGF_KLOG_ERROR("Invalid port number\n");
+		return CBM_FAILURE;
+	}
+	if (data->dma_chnl_init) {
+		if (flags & CBM_PORT_F_DISABLE) {
+			cbm_dequeue_dma_port_uninit(port, 0);
+			if (g_cbm_ctrl.highprio_lan &&
+			    ((port >= LOW_PRIO_LAN_START) && (port <= LOW_PRIO_LAN_END)))
+				cbm_dequeue_dma_port_uninit(port_high, 0);
+		} else {
+			dequeue_dma_port_init(port,
+					      dqm_port_info[port].dma_dt_ctrl,
+					      dqm_port_info[port].dma_dt_ch,
+					      0);
+			if (g_cbm_ctrl.highprio_lan &&
+			    ((port >= LOW_PRIO_LAN_START) && (port <= LOW_PRIO_LAN_END)))
+				dequeue_dma_port_init(port_high,
+						      dqm_port_info[port_high].dma_dt_ctrl,
+						      dqm_port_info[port_high].dma_dt_ch,
+						      0);
+		}
+	}
+
 	if (local_entry && ((local_entry->egp_type == DP_F_DIRECT) ||
 			    (local_entry->egp_type == DP_F_FAST_DSL) ||
 			    (local_entry->egp_type == DP_F_DIRECTLINK))) {
@@ -3392,16 +3460,15 @@ dp_enable(
 		 * the default threshold
 		 */
 		thx.dmod = 0;
-		thx.math0 = 0x72;
-		thx.math1 = 0x24;
-		thx.qtth1 = 0x24;
+		thx.math0 = 3 * TMU_GREEN_DEFAULT_THRESHOLD;
+		thx.math1 = TMU_GREEN_DEFAULT_THRESHOLD;
+		thx.qtth1 = 0;
 		tmu_equeue_drop_params_set(tmp_q_buff3[j], &thx);
 	}
 	/*Enable the TMU port, i*/
 	tmu_egress_port_enable(res[0].tmu_port, (flags & CBM_PORT_F_DISABLE) ? 0 : 1);
 UNLOCK:
 	kfree(res);
-	spin_unlock_irqrestore(&cbm_qidt_lock, sys_flag);
 	return CBM_SUCCESS;
 }
 
@@ -3862,11 +3929,9 @@ CBM_F_QUEUE_DROP flag from the DDR table*/
 		CBM_F_QUEUE_DROP flag. For each such entry, program the CBM Queue Map table entry in CBM to map
 		to the Global Drop Queue*/
 		if (flags & CBM_Q_F_DISABLE) {
-			spin_lock_irqsave(&cbm_qidt_lock, sys_flag);
 			cbm_qidt_set(&qidt_set,
 				     &qidt_mask,
 				     255);
-			spin_unlock_irqrestore(&cbm_qidt_lock, sys_flag);
 		}
 		/* For each queue_id in the CBM Queue map table matched entries
 		 *(by EP), disable/enable the TMU queue by calling
@@ -4086,47 +4151,6 @@ s32 get_egress_port_info(u32 cbm_port, u32 *tx_ch,
 	return 0;
 }
 
-static s32 enqueue_mgr_ctrl_get(
-	cbm_eqm_ctrl_t *ctrl,
-	u32 flags
-	)
-{
-	ctrl->regval = xrx500_cbm_r32(CBM_BASE + CBM_CTRL);
-	return CBM_SUCCESS;
-}
-
-static s32
-enqueue_mgr_ctrl_set(
-	cbm_eqm_ctrl_t *ctrl,
-	u32 flags
-	)
-{
-	xrx500_cbm_w32(CBM_BASE + CBM_CTRL, ctrl->regval);
-	asm("sync");
-	return CBM_SUCCESS;
-}
-
-static s32
-dequeue_mgr_ctrl_get(
-	cbm_dqm_ctrl_t *ctrl,
-	u32 flags
-	)
-{
-	ctrl->regval = xrx500_cbm_r32(CBM_DQM_BASE + CBM_DQM_CTRL);
-	return CBM_SUCCESS;
-}
-
-static s32
-dequeue_mgr_ctrl_set(
-	cbm_dqm_ctrl_t *ctrl,
-	u32 flags
-	)
-{
-	xrx500_cbm_w32(CBM_DQM_BASE + CBM_DQM_CTRL, ctrl->regval);
-	asm("sync");
-	return CBM_SUCCESS;
-}
-
 #define DMA_DQM_START_PORT 6
 #define DMA_EQM_START_PORT 5
 
@@ -4214,23 +4238,6 @@ enqueue_dma_port_init(
 				      CBM_PORT_F_JUMBO_BUF))
 			return CBM_FAILURE;
 	}
-	return CBM_SUCCESS;
-}
-
-s32
-cbm_enqueue_dma_port_uninit(
-	s32 cbm_port_id,
-	u32 flags
-	)
-{
-	int chan;
-
-	chan = dqm_port_info[cbm_port_id].dma_ch;
-	if (ltq_dma_chan_off(chan))
-		return CBM_FAILURE;
-
-	if (ltq_free_dma(chan))
-		return CBM_FAILURE;
 	return CBM_SUCCESS;
 }
 
@@ -4334,42 +4341,6 @@ dma_vrx318_port_enable(s32 cbm_port_id, int flags)
 	return CBM_SUCCESS;
 }
 
-s32
-dma_port_config_get(
-	s32 cbm_port_id,
-	cbm_dma_port_config_t *cfg,
-	u32 flags
-	)
-{
-	if (flags == CBM_PORT_F_DEQUEUE_PORT)
-		cfg->deq_cfg.regval =  xrx500_cbm_r32(CBM_DQM_BASE
-		+ CBM_DQM_DMA_PORT(cbm_port_id - DMA_DQM_START_PORT,
-		cfg));
-	else
-		cfg->enq_cfg.regval = xrx500_cbm_r32(CBM_EQM_BASE
-		+ CBM_EQM_DMA_PORT(cbm_port_id - DMA_EQM_START_PORT,
-		cfg));
-	return CBM_SUCCESS;
-}
-
-s32
-dma_port_config_set(
-	s32 cbm_port_id,
-	cbm_dma_port_config_t *cfg,
-	u32 flags
-	)
-{
-	if (flags == CBM_PORT_F_DEQUEUE_PORT)
-		xrx500_cbm_w32(CBM_DQM_BASE
-		+ CBM_DQM_DMA_PORT(cbm_port_id - DMA_DQM_START_PORT, cfg),
-		cfg->deq_cfg.regval);
-	else
-		xrx500_cbm_w32(CBM_EQM_BASE
-		+ CBM_EQM_DMA_PORT(cbm_port_id - DMA_EQM_START_PORT, cfg),
-		cfg->enq_cfg.regval);
-	return CBM_SUCCESS;
-}
-
 static s32
 enqueue_port_overhead_set(
 s32 port_id,
@@ -4454,70 +4425,6 @@ queue_delay_enable_set(
 	for (i = 0; i <= 15; i++)
 		igp_delay_set(i, CBM_EQM_DELAY_ENQ);
 	return CBM_SUCCESS;
-}
-
-static s32
-enqueue_port_thresh_get(
-	s32 cbm_port_id,
-	cbm_port_thresh_t *thresh,
-	u32 flags
-	)
-{
-	WARN_ON(!((cbm_port_id >= 0) && (cbm_port_id <= 15)));
-	if ((cbm_port_id >= 0) && (cbm_port_id <= 15)) {
-		thresh->regval = xrx500_cbm_r32(CBM_EQM_BASE
-		+ CBM_EQM_CPU_PORT(cbm_port_id, wm));
-		return CBM_SUCCESS;
-	}
-	return CBM_FAILURE;
-}
-
-static s32 enqueue_port_thresh_set(
-	s32 cbm_port_id,
-	cbm_port_thresh_t *thresh,
-	u32 flags)
-{
-	WARN_ON(!((cbm_port_id >= 0) && (cbm_port_id <= 15)));
-	if ((cbm_port_id >= 0) && (cbm_port_id <= 15)) {
-		xrx500_cbm_w32(CBM_EQM_BASE +
-			       CBM_EQM_CPU_PORT(cbm_port_id, wm),
-			       thresh->regval);
-		return CBM_SUCCESS;
-	}
-	return CBM_FAILURE;
-}
-
-static s32 dequeue_cpu_port_stats_get(
-	s32 cbm_port_id,
-	u32 *deq_ctr,
-	u32 flags)
-{
-	WARN_ON(!((cbm_port_id >= 0) && (cbm_port_id <= 4)));
-	if ((cbm_port_id >= 0) && (cbm_port_id <= 4)) {
-		*deq_ctr = xrx500_cbm_r32(CBM_DQM_BASE
-		+ CBM_DQM_CPU_PORT(cbm_port_id,
-		dqpc));
-		return CBM_SUCCESS;
-	}
-	return CBM_FAILURE;
-}
-
-static s32 enqueue_cpu_port_stats_get(
-	s32 cbm_port_id,
-	u32 *occupancy_ctr,
-	u32 *enq_ctr,
-	u32 flags)
-{
-	WARN_ON(!((cbm_port_id >= 0) && (cbm_port_id <= 4)));
-	if ((cbm_port_id >= 0) && (cbm_port_id <= 4)) {
-		*enq_ctr = xrx500_cbm_r32(CBM_EQM_BASE
-		+ CBM_EQM_CPU_PORT(cbm_port_id, eqpc));
-		*occupancy_ctr = xrx500_cbm_r32(CBM_EQM_BASE
-		+ CBM_EQM_CPU_PORT(cbm_port_id,
-		pocc));
-		return CBM_SUCCESS;
-	}
-	return CBM_FAILURE;
 }
 
 static s32 dequeue_dma_port_stats_get(
@@ -4628,16 +4535,16 @@ int counter_mode_get(int enq, int *mode)
 	return CBM_SUCCESS;
 }
 
-static void set_lookup_qid_via_index_grx500(u32 index, u32 qid)
+static void set_lookup_qid_via_index_grx500(struct cbm_lookup *info)
 {
-	u32 offset = (index / 4) * 4;
-	u32 shift = (index % 4) * 8;
+	u32 offset = (info->index / 4) * 4;
+	u32 shift = (info->index % 4) * 8;
 	unsigned long sys_flag;
 	u32 tmp;
 
 	spin_lock_irqsave(&cbm_qidt_lock, sys_flag);
 	tmp = xrx500_cbm_r32(CBM_QIDT_BASE + offset);
-	tmp = (tmp & (~(0xFF << shift))) | (qid << shift);
+	tmp = (tmp & (~(0xFF << shift))) | (info->qid << shift);
 	xrx500_cbm_w32(CBM_QIDT_BASE + offset, tmp);
 	spin_unlock_irqrestore(&cbm_qidt_lock, sys_flag);
 }
@@ -5189,20 +5096,12 @@ static const struct cbm_ops l_cbm_ops = {
 	.cbm_q_thres_get = q_thres_get,
 	.cbm_q_thres_set = q_thres_set,
 	.cbm_dp_port_dealloc = dp_port_dealloc,
-	.cbm_enqueue_mgr_ctrl_get = enqueue_mgr_ctrl_get,
-	.cbm_enqueue_mgr_ctrl_set = enqueue_mgr_ctrl_set,
-	.cbm_dequeue_mgr_ctrl_get = dequeue_mgr_ctrl_get,
-	.cbm_dequeue_mgr_ctrl_set = dequeue_mgr_ctrl_set,
 	.cbm_alloc_skb = cbm_alloc_skb_grx500,
 	.cbm_buffer_alloc = cbm_buffer_alloc_grx500_by_size,
 	.cbm_buffer_free = cbm_buffer_free_grx500,
 	.cbm_enqueue_port_overhead_set = enqueue_port_overhead_set,
 	.cbm_enqueue_port_overhead_get = enqueue_port_overhead_get,
 	.cbm_cpu_pkt_tx = cbm_cpu_pkt_tx_grx500,
-	.cbm_enqueue_port_thresh_get = enqueue_port_thresh_get,
-	.cbm_enqueue_port_thresh_set = enqueue_port_thresh_set,
-	.cbm_dequeue_cpu_port_stats_get = dequeue_cpu_port_stats_get,
-	.cbm_enqueue_cpu_port_stats_get = enqueue_cpu_port_stats_get,
 	.cbm_dequeue_dma_port_stats_get = dequeue_dma_port_stats_get,
 	.cbm_enqueue_dma_port_stats_get = enqueue_dma_port_stats_get,
 	.cbm_dp_port_resources_get = dp_port_resources_get,
@@ -5211,6 +5110,7 @@ static const struct cbm_ops l_cbm_ops = {
 	.cbm_build_skb = build_skb_grx500,
 	.cbm_queue_map_get = queue_map_get,
 	.cbm_queue_map_set = queue_map_set,
+	.cbm_queue_map_buf_free = queue_map_buf_free,
 	.cbm_setup_desc = setup_desc,
 	.cbm_get_dptr_scpu_egp_count = get_dptr_scpu_egp_count,
 	.cbm_get_wlan_umt_pid = get_wlan_umt_pid_grx500,
@@ -5219,8 +5119,6 @@ static const struct cbm_ops l_cbm_ops = {
 	.cbm_dequeue_port_resources_get = dequeue_port_resources_get,
 	.cbm_reserved_dp_resources_get = reserved_dp_resources_get,
 	.cbm_get_egress_port_info = get_egress_port_info,
-	.cbm_enqueue_port_thresh_get = enqueue_port_thresh_get,
-	.cbm_enqueue_port_thresh_set = enqueue_port_thresh_set,
 	.cbm_counter_mode_set = counter_mode_set,
 	.cbm_counter_mode_get = counter_mode_get,
 	.get_lookup_qid_via_bits = get_lookup_qid_via_bits_grx500,
@@ -5317,6 +5215,12 @@ static int cbm_xrx500_probe(struct platform_device *pdev)
 		pr_info("reserving %d bytes @ %x for CBM\n",
 			CONFIG_CBM_JBO_BUF_SIZE, (unsigned int)jbo_buf_base);
 	g_cbm_ctrl.g_cbm_ops = &l_cbm_ops;
+
+	if (pdata->highprio_lan < 0) {
+		LOGF_KLOG_DEV_ERROR(&pdev->dev, "Invalid LAN config\n");
+		return -EINVAL;
+	}
+	g_cbm_ctrl.highprio_lan = pdata->highprio_lan;
 	register_cbm(g_cbm_ctrl.g_cbm_ops);
 	store_bufreq_baseaddr();
 	g_cbm_irq[0] = pdata->intrs[0];
@@ -5405,19 +5309,6 @@ static int cbm_xrx500_probe(struct platform_device *pdev)
 	queue_delay_enable_set(1, 0);
 	/*setup the DMA channels*/
 	#if 1
-	for (i = 0; i < CBM_PORT_MAX; i++) {
-		switch (dqm_port_info[i].dma_dt_init_type) {
-		case 1:
-		dequeue_dma_port_init(
-		i,
-		dqm_port_info[i].dma_dt_ctrl,
-		dqm_port_info[i].dma_dt_ch,
-		0);
-		break;
-		default:
-		break;
-		}
-	}
 	for (i = 0; i < CBM_EQM_PORT_MAX; i++) {
 		switch (eqm_port_info[i].dma_dt_init_type) {
 		case 2:

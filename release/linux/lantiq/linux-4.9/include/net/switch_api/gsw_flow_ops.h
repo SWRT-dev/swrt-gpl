@@ -151,9 +151,17 @@ struct tflow_ops {
 	/* Command: GSW_PCE_RULE_WRITE ; Index: 0x03 */
 	GSW_return_t (*TFLOW_PceRuleWrite)(void *, GSW_PCE_rule_t *);
 	/* Command: GSW_TFLOW_ALLOC ; Index: 0x04 */
-	GSW_return_t (*tflow_pcealloc)(void *, gsw_tflow_alloc_t *);
+	GSW_return_t (*TFLOW_PceRuleAlloc)(void *, GSW_PCE_rule_alloc_t *);
 	/* Command: GSW_TFLOW_FREE ; Index: 0x05 */
-	GSW_return_t (*tflow_pcefree)(void *, gsw_tflow_alloc_t *);
+	GSW_return_t (*TFLOW_PceRuleFree)(void *, GSW_PCE_rule_alloc_t *);
+	/* Command: GSW_PCE_RULE_ENABLE ; Index: 0x06 */
+	GSW_return_t (*TFLOW_PceRuleEnable)(void *, GSW_PCE_rule_t *);
+	/* Command: GSW_PCE_RULE_DISABLE ; Index: 0x07 */
+	GSW_return_t (*TFLOW_PceRuleDisable)(void *, GSW_PCE_rule_t *);
+	/* BitMap to Allocate free Global Entries*/
+	GSW_return_t (*TFLOW_GlobalRule_BitMapAlloc)(void *, GSW_PCE_GlobalBitMap_t *);
+	/* BitMap to Free used Global Entries*/
+	GSW_return_t (*TFLOW_GlobalRule_BitMapFree)(void *, GSW_PCE_GlobalBitMap_t *);
 };
 
 /*QOS operations*/
@@ -479,6 +487,10 @@ struct vlan_ops {
 	GSW_return_t (*SVLAN_PortCfgGet)(void *, GSW_SVLAN_portCfg_t *);
 	/* Command: GSW_SVLAN_PORT_CFG_SET ; Index: 0x13 */
 	GSW_return_t (*SVLAN_PortCfgSet)(void *, GSW_SVLAN_portCfg_t *);
+	/* Command: GSW_VXLAN_CFG_SET ; Index: 0x14 */
+	GSW_return_t (*vxlan_cfg_set)(void *, gsw_vxlan_cfg_t *);
+	/* Command: GSW_VXLAN_CFG_GET ; Index: 0x15 */
+	GSW_return_t (*vxlan_cfg_get)(void *, gsw_vxlan_cfg_t *);
 };
 
 /*PMAC operation*/
@@ -579,14 +591,14 @@ struct debug_ops {
 	GSW_return_t (*Pmacbr)(void *, GSW_MAC_cfg_t *);
 	/* Command: GSW_DUMP_MEM ; Index: 0x15 */
 	GSW_return_t (*DumpMem)(void *, GSW_table_t *);
-	/* Command: GSW_DEBUG_PRINT_PCEIRQ_LIST ; Index: 0x15 */
+	/* Command: GSW_DEBUG_PRINT_PCEIRQ_LIST ; Index: 0x16 */
 	GSW_return_t (*DEBUG_PrintPceIrqList)(void *);
-	/* Command: GSW_DEBUG_RMON_PORT_GET ; Index: 0x16 */
+	/* Command: GSW_DEBUG_RMON_PORT_GET ; Index: 0x17 */
 	GSW_return_t (*DEBUG_RMON_Port_Get)(void *, GSW_Debug_RMON_Port_cnt_t *);
 	/* Command: GSW_DEBUG_TUNNELTEMP_STATUS ; Index: 0x18 */
 	GSW_return_t (*DEBUG_TunnelTempTableStatus)(void *, GSW_debug_t *);
 	/* Command: GSW_DEBUG_TFLOWTABLE_STATUS ; Index: 0x19 */
-	GSW_return_t (*debug_tflowtablestatus)(void *, GSW_debug_t *);
+	GSW_return_t (*DEBUG_PceRuleTableStatus)(void *, GSW_debug_t *);
 };
 
 struct irq_ops {

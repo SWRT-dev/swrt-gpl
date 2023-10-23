@@ -64,6 +64,9 @@ int mac_int_enable(void *pdev);
 int mac_int_disable(void *pdev);
 
 int mac_oper_cfg(void *pdev, MAC_OPER_CFG oper);
+int mac_e160_prepare(void *pdev, struct mac_e160_ops *e160);
+int mac_e160_unprepare(void *pdev);
+
 int xgmac_cfg_main(GSW_MAC_Cli_t *params);
 
 #endif

@@ -1,0 +1,209 @@
+#!/tmp/wireless/lantiq/bin/sh
+# Bring down a Wave interface
+# Needed object: None
+
+export PATH=/tmp/wireless/lantiq/bin/:$PATH
+script_name="fapi_wlan_wave_down"
+
+[ ! "$LIB_COMMON_SOURCED" ] && . /tmp/fapi_wlan_wave_lib_common.sh
+
+interface_name=$1
+initiator=$2
+
+# The script can be called from other script or from external API.
+# External API executiong doesn't have initiator argument.
+if [ -z "$initiator" ]
+then
+	# Delete the runner
+	rm -f ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "[ ! \"\$LIB_COMMON_SOURCED\" ] && . /tmp/fapi_wlan_wave_lib_common.sh" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+	echo "ifconfig $interface_name down" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	# Execute the runner
+	if [ -e "${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}" ]
+	then
+		chmod +x ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+		${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	fi
+	# Create the output configuration file
+	cat /dev/null > ${OUT_CONF}
+
+	# Configuration is completed successfully
+	update_conf_out "wlan_configuration_status" "success"
+
+	# Set a flag indicating interfae is down
+	touch ${CONF_DIR}/${interface_name}_down
+
+	echo "$script_name: Interface $interface_name brought down by external API"
+fi
+
+# Script is called by other script
+interface_type=$3
+endpoint_disabled=$4
+radio_name=$5
+endpoint_name=$6
+radio_index=$7
+pid=$$
+
+timestamp $radio_index "$script_name:$interface_name:begin"
+print2log $radio_index DEBUG "$script_name $*"
+
+echo "##### fapi_wlan_wave_down commands #####" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+echo "export PATH=/tmp/wireless/lantiq/bin/:$PATH" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+if [ "$interface_type" != "$STA" ]
+then
+	# Stop HS2.0 related components on all VAPs of the current radio
+	while read interface
+	do
+		[ "$interface" = "$endpoint_name" ] && continue
+		# Unconditionaly disable of the parp - no API to know the status:
+		echo "hs_cli PARP -O DISABLE -I $interface" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+		# Disable dgaf and l2f if they are enabled
+		echo "hs_cli HS -O DISABLE -I $interface" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+		if [ -e /proc/net/wave_wifi_l2f/ ]
+		then
+			echo "hs_cli L2F -O DISABLE -I $interface" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+			echo "hs_cli L2F -O DGAF_ENABLE -I $interface" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+		fi
+	done < ${VAPS_LIST}_${radio_name}
+
+	# Remove all related VAPs from PPA if PPA exists, check if /SBINDIR/ppacmd exists.
+	# The set_ppa_commands function writes the ppa commands for removal to the runner script.
+	vaps_ppa=""
+	[ -e ${SBINDIR}/ppacmd ] && vaps_ppa=`ppacmd getlan | grep -o "\].*" | grep "\<$radio_name\>" | awk '{print $2}'`
+	current_vap=""
+	for current_vap in $vaps_ppa
+	do
+		set_ppa_commands $current_vap "remove" ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	done
+
+	# Remove RDKB-OS radio configuration before stop hostapd
+	[ ! -f ${INIT_FLAG} ] && [ -f ${RDKBOS_WIFI_UTIL} ] && echo "${RDKBOS_WIFI_UTIL} radio_config_down ${radio_name} > /dev/null" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+	# kill all dut application instances.
+	echo "echo \"$script_name: Killing DUT APP (if exists)\" > /dev/console" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "dut_apps=`ps | grep dut | grep -v grep | awk '{print $1}'`" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "[ "\$dut_apps" != "" ] && for dut_app in \$dut_apps; do kill \$dut_app; done" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+	# Stop hostapd_cli and hostapd
+	echo "killall hostapd_cli_${radio_name} 2>/dev/null" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "hostapd_cli_running=\`is_process_running hostapd_cli_${radio_name}\`" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "hostapd_cli_down_timeout=0" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "while [ "\$hostapd_cli_running" -eq 1 ] && [ "\$hostapd_cli_down_timeout" -lt 3 ]; do" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	sleep 1" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	hostapd_cli_running=\`is_process_running hostapd_cli_$radio_name\`" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	hostapd_cli_down_timeout=\$((hostapd_cli_down_timeout+1))" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "done" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "if [ "\$hostapd_cli_down_timeout" -eq 3 ]" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "then" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	echo fapi_wlan_wave_down ERROR: HOSTAPD_CLI WAS KILLED BUT DID NOT DIE ON TIME, using kill -9 > /dev/console" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	pid_to_kill=\`ps | grep hostapd_cli_$radio_name | grep -v grep | awk '{print \$1}'\`" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	kill -9 \$pid_to_kill" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "fi" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+	echo "killall hostapd_$radio_name 2>/dev/null" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "hostapd_running=\`is_process_running hostapd_$radio_name\`" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "down_timeout=0" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "while [ "\$hostapd_running" -eq 1 ] && [ "\$down_timeout" -lt 3 ]; do sleep 1; hostapd_running=\`is_process_running hostapd_$radio_name\`; down_timeout=\$((down_timeout+1)); done" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "if [ "\$down_timeout" -eq 3 ]" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "then" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	echo $script_name ERROR: HOSTAPD WAS KILLED BUT DID NOT DIE ON TIME, using kill -9 > /dev/console" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	pid_to_kill=\`ps | grep hostapd_$radio_name | grep -v grep | awk '{print \$1}'\`" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	kill -9 \$pid_to_kill" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "fi" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+	# Verify all VAPs of the radio are down
+	echo "if_timeout=0" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "if_count=\`ifconfig | grep $radio_name -c\`" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "while [ "\$if_count" -gt 0 ] && [ "\$if_timeout" -lt 3 ]; do" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "sleep 1" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "echo $script_name WARNING: INTERFACES ARE UP AFTER HOSTAPD WAS KILLED > /dev/console" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "if_count=\`ifconfig | grep $radio_name -c\`" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "if_timeout=\$((if_timeout+1))" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "done" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "if [ "\$if_timeout" -eq 15 ]" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "then" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	echo $script_name ERROR: INTERFACES ARE UP AFTER HOSTAPD WAS KILLED, using ifconfig down > /dev/console" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	current_vap=\"\"" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	while read current_vap" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	do" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "		[ \"\$current_vap\" = \"$endpoint_name\" ] && continue" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "		ifconfig \$current_vap down" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	done < ${VAPS_LIST}_${radio_name}" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "fi" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+	# Send notification to delete all AssociatedDevice object of this radio
+	build_wlan_notification "servd" "NOTIFY_WIFI_DEVICE_ASSOCIATED" "Name:${radio_name} Status:Disconnected MACAddress:All" "runner"
+
+	# Remove interface related hostapd softlinks
+	echo "rm -f /tmp/hostapd_${radio_name}" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "rm -f /tmp/hostapd_cli_${radio_name}" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+fi
+
+# wpa_cli and wpa_supplicant will be stopped in radio was stopped or endpoint_disabled=1
+#if [ "$interface_type" != "$STA" ] || [ "$endpoint_disabled" = "1" ]
+if [ "$endpoint_disabled" = "1" ]
+then
+	# Remove the EndPoint from PPA
+	endpoint_ppa=0
+	[ -e ${SBINDIR}/ppacmd ] && set_ppa_commands $endpoint_name "remove" ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+	# Remove the EndPoint from the bridge
+	local_db_source SSID
+	endpoint_bridge=`db2fapi_convert regular X_LANTIQ_COM_Vendor_BridgeName $endpoint_index`
+	echo "brctl delif ${endpoint_bridge} ${endpoint_name} 2>/dev/null" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "killall wpa_cli_${endpoint_name} 2>/dev/null" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "wpa_cli_running=\`is_process_running wpa_cli_${endpoint_name}\`" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "wpa_cli_down_timeout=0" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "while [ "\$wpa_cli_running" -eq 1 ] && [ "\$wpa_cli_down_timeout" -lt 15 ]; do" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	sleep 1" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	wpa_cli_running=\`is_process_running wpa_cli_$endpoint_name\`" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	wpa_cli_down_timeout=\$((wpa_cli_down_timeout+1))" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "done" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "if [ "\$wpa_cli_down_timeout" -eq 15 ]" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "then" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	echo fapi_wlan_wave_down ERROR: WPA_CLI WAS KILLED BUT DID NOT DIE ON TIME, using kill -9 > /dev/console" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	pid_to_kill=\`ps | grep wpa_cli_${endpoint_name} | grep -v grep | awk '{print \$1}'\`" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	kill -9 \$pid_to_kill" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "fi" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+	echo "wpa_cli -i${endpoint_name} terminate 2>/dev/null" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "wpa_supplicant_running=\`is_process_running wpa_supplicant_$endpoint_name\`" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "down_timeout=0" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "while [ "\$wpa_supplicant_running" -eq 1 ] && [ "\$down_timeout" -lt 15 ]; do sleep 1; wpa_supplicant_running=\`is_process_running wpa_supplicant_$endpoint_name\`; down_timeout=\$((down_timeout+1)); done" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "if [ "\$down_timeout" -eq 15 ]"  >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "then" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	echo WPA_SUPPLICANT WAS KILLED BUT DID NOT DIE ON TIME, using kill -9 > /dev/console" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	pid_to_kill=\`ps | grep wpa_supplicant_$endpoint_name | grep -v grep | awk '{print \$1}'\`" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	kill -9 \$pid_to_kill" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "fi" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+	# Verify the Endpoint is down
+	echo "if_timeout=0" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "if_count=\`ifconfig | grep $endpoint_name -c\`" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "while [ "\$if_count" -gt 0 ] && [ "\$if_timeout" -lt 15 ]; do" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	sleep 1" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	echo $script_name WARNING: INTERFACES ARE UP AFTER SUPPLICANT WAS KILLED > /dev/console" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	if_count=\`ifconfig | grep $endpoint_name -c\`" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	if_timeout=\$((if_timeout+1))" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "done" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+	echo "if [ "\$if_timeout" -eq 15 ]" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "then" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	echo $script_name ERROR: INTERFACES ARE UP AFTER SUPPLICANT WAS KILLED, using ifconfig down > /dev/console" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "	ifconfig $endpoint_name down" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "fi" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+	# Remove post up commands
+	echo "cat /dev/null > ${CONF_DIR}/${DRIVER_POST_UP_CONF_PREFIX}_${endpoint_name}.conf" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+
+	# Remove ENDPOINT_UP_CONF
+	echo "rm -f ${ENDPOINT_UP_CONF}_${endpoint_name}.conf" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	# Remove interface related supplicant softlinks
+	echo "rm -f /tmp/wpa_supplicant_${endpoint_name}" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+	echo "rm -f /tmp/wpa_cli_${endpoint_name}" >> ${CONF_DIR}/${FAPI_WLAN_WAVE_RUNNNER}
+fi
+
+print2log $radio_index DEBUG "$script_name done"
+timestamp $radio_index "$script_name:$interface_name:done"

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /* Copyright (C) 2019 Intel Corporation.
+ * Copyright (c) 2021 MaxLinear, Inc.
  */
 #include <linux/version.h>
 #include <linux/module.h>
@@ -18,10 +19,15 @@
 #include <linux/of_device.h>
 
 #include <net/datapath_api.h>
+#include <net/datapath_br_domain.h>
 #include "intel_pon_hgu_vuni.h"
 
-#define MAX_SUB_IF 4
+#include <dt-bindings/net/mxl,vuni.h>
+
+#define MAX_SUB_IF 5
+
 #define DRV_MODULE_NAME		"intel_pon_hgu_vuni"
+#define DRV_MODULE_VERSION	"1.0"
 
 /* length of time before we decide the hardware is borked,
  * and dev->eth_tx_timeout() should be called to fix the problem
@@ -57,6 +63,8 @@ static int32_t dp_fp_restart_tx(struct net_device *);
 static int32_t dp_fp_rx(struct net_device *, struct net_device *,
 			struct sk_buff *, int32_t);
 
+const char *string_array[MAX_SUB_IF]={NULL};
+static u32 eth_subif_domain[MAX_SUB_IF];
 static struct vuni_hw vuni_hw;
 
 static struct module g_intel_vuni_module[NUM_IF];
@@ -74,6 +82,50 @@ static const struct net_device_ops intel_vuni_drv_ops = {
 	.ndo_get_stats64	= vuni_get_stats,
 	.ndo_do_ioctl		= vuni_ioctl,
 	.ndo_tx_timeout		= vuni_tx_timeout,
+};
+
+/* Get the driver information, used by ethtool_ops  */
+static void get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info)
+{
+	/* driver driver short name (Max 32 characters) */
+	strcpy(info->driver, DRV_MODULE_NAME);
+	/* driver version(Max 32 characters) */
+	strcpy(info->version, DRV_MODULE_VERSION);
+}
+
+static void get_strings(struct net_device *netdev, u32 stringset, u8 *data)
+{
+	switch (stringset) {
+	case ETH_SS_STATS:
+		dp_net_dev_get_ss_stat_strings(netdev, data);
+		break;
+	default:
+		break;
+	}
+}
+
+static int get_stringset_count(struct net_device *netdev, int sset)
+{
+	switch (sset) {
+	case ETH_SS_STATS:
+		return dp_net_dev_get_ss_stat_strings_count(netdev);
+	default:
+		return -EOPNOTSUPP;
+	}
+}
+
+static void get_ethtool_stats(struct net_device *dev,
+			      struct ethtool_stats *stats, u64 *data)
+{
+	dp_net_dev_get_ethtool_stats(dev, stats, data);
+}
+
+static const struct ethtool_ops ethtool_ops = {
+	.get_drvinfo		= get_drvinfo,
+	.get_link		= ethtool_op_get_link,
+	.get_strings		= get_strings,
+	.get_sset_count		= get_stringset_count,
+	.get_ethtool_stats	= get_ethtool_stats,
 };
 
 /* Set the MAC address */
@@ -151,7 +203,7 @@ static void vuni_uninit(struct net_device *dev)
 	if (priv->vani == 1) {
 		priv->dp_subif.subif = -1;
 		priv->dp_subif.port_id = priv->dp_port_id;
-		data.flag_ops = DP_SUBIF_VANI;
+		data.flag_ops = DP_SUBIF_VANI | DP_SUBIF_SWDEV;
 		ret = dp_register_subif_ext(0, priv->owner,
 					    dev, dev->name,
 					    &priv->dp_subif,
@@ -236,7 +288,7 @@ static int32_t dp_fp_rx(struct net_device *rxif, struct net_device *txif,
 		priv = netdev_priv(txif);
 		vani_dev = eth_dev[priv->id][0];
 		skb->dev = vani_dev;
-
+		skb->offload_fwd_mark = 0;
 		if (vani_dev) {
 			eth_rx(vani_dev, len, skb);
 		} else {
@@ -280,14 +332,22 @@ static int vuni_xmit(struct sk_buff *skb, struct net_device *dev)
 	int ret;
 	int len;
 	struct net_device *vuni_dev;
+	struct net_device *vani_dev;
 
 	if (skb_put_padto(skb, ETH_ZLEN)) {
 		priv->stats.tx_dropped++;
 		return NETDEV_TX_OK;
 	}
 
-	if (strcmp(dev->name, eth_dev[priv->id][0]->name) != 0) {
-		/*drop the packet*/
+	if (dev != eth_dev[priv->id][0]) {
+		vani_dev = eth_dev[priv->id][0];
+		skb->dev = vani_dev;
+		skb->offload_fwd_mark = 0;
+		if (vani_dev) {
+			eth_rx(vani_dev, skb->len, skb);
+			return 0;
+		}
+		pr_err("Invalid Tx\n");
 		priv->stats.tx_dropped++;
 		kfree_skb(skb);
 		return 0;
@@ -324,31 +384,78 @@ static int vuni_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 	return -EOPNOTSUPP;
 }
 
+static void vuni_domain_set(struct net_device *dev,
+			    struct dp_subif_data *data)
+{
+	struct intel_vuni_priv *priv;
+
+	priv = netdev_priv(dev);
+	if (priv->extra_subif_domain != VUNI_BR_DOMAIN_NO) {
+		data->flag_ops |= DP_SUBIF_BR_DOMAIN;
+
+		switch (priv->extra_subif_domain) {
+		case VUNI_BR_DOMAIN_UC:
+			data->domain_id = DP_BR_DM_UC;
+			break;
+		case VUNI_BR_DOMAIN_MC:
+			data->domain_id = DP_BR_DM_MC;
+			break;
+		case VUNI_BR_DOMAIN_BC:
+			data->domain_id = DP_BR_DM_BC1;
+			break;
+		case VUNI_BR_DOMAIN_US:
+			data->domain_id = DP_BR_DM_US;
+			break;
+		default:
+			data->domain_id = DP_BR_DM_UC;
+			break;
+		}
+
+		if (priv->extra_subif_domain == VUNI_BR_DOMAIN_UC)
+			data->domain_members = DP_BR_DM_MEMBER(DP_BR_DM_UC) |
+					       DP_BR_DM_MEMBER(DP_BR_DM_BC1);
+		else if (priv->extra_subif_domain == VUNI_BR_DOMAIN_US)
+			data->domain_members = DP_BR_DM_MEMBER(DP_BR_DM_UC);
+
+		pr_info("domain set for dev %s id %d member 0x%x\n",
+			dev->name, data->domain_id, data->domain_members);
+	}
+}
+
 /* init of the network device */
 static int vuni_init(struct net_device *dev)
 {
 #if 1
 	struct intel_vuni_priv *priv;
 	struct dp_subif_data data = {0};
+	struct dp_bp_attr conf;
 	int ret;
 
 	priv = netdev_priv(dev);
 	pr_info("probing for number of ports = %d\n", priv->num_port);
 	pr_info("%s called for device %s\n", __func__, dev->name);
 
+	dev->ethtool_ops = &ethtool_ops;
+
 	if (priv->vani == 1) {
 		priv->dp_subif.subif = -1;
 		priv->dp_subif.port_id = priv->dp_port_id;
-		data.flag_ops = DP_SUBIF_VANI;
+		data.flag_ops = DP_SUBIF_VANI | DP_SUBIF_SWDEV;
 		ret = dp_register_subif_ext(0, priv->owner,
 					    dev, dev->name, &priv->dp_subif,
 					    &data, 0);
 	} else {
 		priv->dp_subif.subif = -1;
 		priv->dp_subif.port_id = priv->dp_port_id;
+		vuni_domain_set(dev, &data);
 		ret = dp_register_subif_ext(0, priv->owner,
 					    dev, dev->name, &priv->dp_subif,
 					    NULL, 0);
+		/* For vUNI need to remove CPU from bridge port member list */
+		conf.inst = 0;
+		conf.dev = dev;
+		conf.en = 0;
+		dp_set_bp_attr(&conf, 0);
 	}
 	if (ret != DP_SUCCESS) {
 		pr_err("%s: failed to open for device: %s ret %d\n",
@@ -382,6 +489,16 @@ ltq_eth_drv_eth_addr_setup(struct net_device *dev, int port, int vani)
 	}
 }
 
+static void
+vuni_iphost_cpu_disconnect(struct net_device *dev)
+{
+	struct dp_bp_attr conf = {0};
+
+	conf.dev = dev;
+	conf.en = 0;
+	dp_set_bp_attr(&conf, 0);
+}
+
 static int intel_vuni_dev_reg(struct net_device *dev_0, struct vuni_hw *hw,
 			      u32 dp_port, int start, int end)
 {
@@ -390,7 +507,6 @@ static int intel_vuni_dev_reg(struct net_device *dev_0, struct vuni_hw *hw,
 	struct net_device *dev = dev_0;
 
 	pr_info("start %d end %d\n", start, end);
-
 	for (i = start; i <= end; i++) {
 		if (i) {
 			dev = alloc_etherdev_mq(sizeof(struct intel_vuni_priv),
@@ -411,13 +527,14 @@ static int intel_vuni_dev_reg(struct net_device *dev_0, struct vuni_hw *hw,
 		if (start == i) {
 			priv->vani = 1;
 			snprintf(eth_dev[hw->num_devs][i]->name, IFNAMSIZ,
-				 "VANI%d", hw->num_devs);
+				 string_array[i], hw->num_devs);
 		} else {
 			priv->vani = 0;
-			snprintf(eth_dev[hw->num_devs][i]->name, IFNAMSIZ,
-				 "VUNI%d_%d",  hw->num_devs, i - 1);
+			snprintf(eth_dev[hw->num_devs][i]->name,
+				 IFNAMSIZ, string_array[i],
+				 hw->num_devs);
+			priv->extra_subif_domain = eth_subif_domain[i];
 		}
-
 		eth_dev[hw->num_devs][i]->netdev_ops = &intel_vuni_drv_ops;
 		ltq_eth_drv_eth_addr_setup(eth_dev[hw->num_devs][i],
 					   priv->id, priv->vani);
@@ -428,6 +545,8 @@ static int intel_vuni_dev_reg(struct net_device *dev_0, struct vuni_hw *hw,
 			       err, eth_dev[hw->num_devs][i]->name);
 				return -1;
 		}
+		if (i == end)
+			vuni_iphost_cpu_disconnect(eth_dev[hw->num_devs][i]);
 	}
 	return 0;
 }
@@ -448,7 +567,7 @@ static int vuni_dev_dereg_subif(int dev_num, int start, int end)
 			pr_info("owner = %s portid = %d subifid = %d dev= %s\n",
 				priv->owner->name, priv->dp_port_id,
 				priv->dp_subif.subif, dev->name);
-			data.flag_ops = DP_SUBIF_VANI;
+			data.flag_ops = DP_SUBIF_VANI | DP_SUBIF_SWDEV;
 			res = dp_register_subif_ext(0, priv->owner,
 						    dev, dev->name,
 						    &priv->dp_subif,
@@ -493,13 +612,15 @@ static int vuni_of_iface(struct vuni_hw *hw, struct device_node *iface,
 {
 	struct intel_vuni_priv *priv;
 	struct dp_dev_data dev_data = {0};
+	struct dp_port_data data = {0};
 	dp_pmac_cfg_t pmac_cfg;
-	u32 extra_subif_param = 0;
+	u32 extra_subif_param;
+	int extra_subif_domain_num = 0;
 	int net_start = 0, net_end = 0;
 	dp_cb_t cb = {0};
 	u32 dp_port_id = 0;
 	char name[16];
-	int ret;
+	int ret, i;
 	struct net_device *dev;
 
 	/* alloc the network device */
@@ -518,24 +639,44 @@ static int vuni_of_iface(struct vuni_hw *hw, struct device_node *iface,
 	/* setup the network device */
 	snprintf(name, sizeof(name), "vANI%d", hw->num_devs);
 
-	ret = of_property_read_u32(iface, "intel,extra-subif",
-				   &extra_subif_param);
+	extra_subif_param = of_property_count_strings(iface, "intel,extra-subif");
+	if (extra_subif_param > MAX_SUB_IF) {
+		pr_err("Vuni subif exceeds the max limit\n");
+		return -EINVAL;
+	}
+	ret = of_property_read_string_array(iface, "intel,extra-subif",
+				   string_array, extra_subif_param);
+	extra_subif_domain_num =
+		of_property_read_variable_u32_array(iface,
+						    "intel,extra-subif-domain",
+						    eth_subif_domain,
+						    MAX_SUB_IF, MAX_SUB_IF);
 	if (ret < 0) {
 		pr_info("Property intel,extra-subif not exist for if %s %d\n",
 			name, extra_subif_param);
 		priv->extra_subif = 0;
+	} else if ((extra_subif_domain_num < 0 &&
+		    extra_subif_domain_num != -EINVAL) ||
+		   (extra_subif_domain_num > 0 &&
+		    extra_subif_domain_num != extra_subif_param)) {
+		/* no error if property is not existing */
+		pr_info("Property intel,extra-subif-domain not correct: %d\n",
+			extra_subif_domain_num);
+		priv->extra_subif = 0;
 	} else {
-		pr_info("Property intel,extra-subif for if %s %d\n",
-			name, extra_subif_param);
+		for (i = 0; i < extra_subif_param ; i++) {
+			pr_info("Property intel,extra-subif for if %s %d %d\n",
+				string_array[i], i, eth_subif_domain[i]);
+		}
 		priv->extra_subif = extra_subif_param;
+		/* Traffic between diff subif */
+		if (!of_property_read_bool(iface,
+					   "intel,allow_subif_data_loop"))
+			data.flag_ops = DP_F_DATA_NO_LOOP;
 	}
 	priv->start = 0;
-	priv->end = priv->extra_subif + 1;
-	if (priv->end >= MAX_SUB_IF) {
-		pr_err("Vuni subif exceeds the max\n");
-		priv->end = MAX_SUB_IF - 1;
-	}
-
+	priv->end = priv->extra_subif - 1;
+	
 	strcpy(hw->devs[hw->num_devs]->name, name);
 	hw->devs[hw->num_devs]->netdev_ops = &intel_vuni_drv_ops;
 	hw->devs[hw->num_devs]->watchdog_timeo = INTEL_VUNI_TX_TIMEOUT;
@@ -555,17 +696,17 @@ static int vuni_of_iface(struct vuni_hw *hw, struct device_node *iface,
 	pmac_cfg.eg_pmac.pmac = 1;
 
 	dp_port_id  = dp_alloc_port_ext(0, priv->owner, hw->devs[hw->num_devs],
-					0, 0, &pmac_cfg, NULL, DP_F_VUNI);
+					0, 0, &pmac_cfg, &data, DP_F_VUNI);
 
 	if (dp_port_id == DP_FAILURE) {
 		pr_err("dp_alloc_port failed for %s with port_id %d\n",
 		       hw->devs[hw->num_devs]->name, priv->id + 1);
 		return -ENODEV;
 	}
-
 	hw->devs[hw->num_devs]->dev_id = dp_port_id;
 	priv->dp_port_id = dp_port_id;
-	dev_data.max_ctp = 4;
+	if (priv->extra_subif >= 0)
+		dev_data.max_ctp = extra_subif_param + 1;
 	cb.stop_fn = dp_fp_stop_tx;
 	cb.restart_fn  = (dp_restart_tx_fn_t)dp_fp_restart_tx;
 	cb.rx_fn = (dp_rx_fn_t)dp_fp_rx;
@@ -623,6 +764,7 @@ static int intel_vuni_drv_init(struct platform_device *pdev)
 	struct device_node *iface_np;
 
 	memset(g_intel_vuni_module, 0, sizeof(g_intel_vuni_module));
+	memset(eth_subif_domain, VUNI_BR_DOMAIN_NO, sizeof(eth_subif_domain));
 
 	/* load the interfaces */
 	/* add a dummy interface */

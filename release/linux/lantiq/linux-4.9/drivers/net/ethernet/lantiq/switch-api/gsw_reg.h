@@ -4427,4 +4427,21 @@
 #define PCE_PISR_METER_SIZE				1
 
 /* --------------------------------------------------- */
+
+/*Description: SGMII Autonegotiation Control Register - Applicable for GSW120*/
+/* --------------------------------------------------- */
+/* Register: 'SGMII Autonegotiation Control Bits' */
+/* Description: 'This register holds the bits that control the ANEG process' */
+#define SGMII_TBI_ANEGCTL_OFFSET	0xD304
+#define SGMII_TBI_ANEGCTL_SHIFT		0
+#define SGMII_TBI_ANEGCTL_SIZE		16
+/* --------------------------------------------------- */
+/*Description: SGMII Link Partner Status Register - Applicable for GSW120*/
+/* --------------------------------------------------- */
+/* Register: 'SGMII Link Parttner Status Bits' */
+/* Description: 'This register holds the bits that the LP status' */
+#define SGMII_TBI_LPSTAT_OFFSET		0xD30A
+#define SGMII_TBI_LPSTAT_SHIFT		0
+#define SGMII_TBI_LPSTAT_SIZE		16
+/* --------------------------------------------------- */
 #endif /* _LTQ_GSWITCH_REG_H_ */
