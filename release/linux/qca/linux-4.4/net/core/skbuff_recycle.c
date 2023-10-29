@@ -108,6 +108,11 @@ inline struct sk_buff *skb_recycler_alloc(struct net_device *dev,
 		prefetchw(shinfo);
 
 		zero_struct(skb, offsetof(struct sk_buff, tail));
+#ifdef CONFIG_IP_NF_LFP
+		skb->nfcache = 0;
+#endif
+		skb->fast_forwarded = 0;
+
 		atomic_set(&skb->users, 1);
 		skb->mac_header = (typeof(skb->mac_header))~0U;
 		skb->transport_header = (typeof(skb->transport_header))~0U;

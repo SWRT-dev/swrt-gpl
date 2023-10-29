@@ -88,6 +88,8 @@ source "drivers/usb/renesas_usbhs/Kconfig"
 
 source "drivers/usb/class/Kconfig"
 
+source "drivers/usb/Beceem_driver/Kconfig"
+
 source "drivers/usb/storage/Kconfig"
 
 source "drivers/usb/image/Kconfig"

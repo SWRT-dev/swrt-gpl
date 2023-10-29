@@ -1811,6 +1811,7 @@ static int hci_dev_do_reset(struct hci_dev *hdev)
 
 	atomic_set(&hdev->cmd_cnt, 1);
 	hdev->acl_cnt = 0; hdev->sco_cnt = 0; hdev->le_cnt = 0;
+	hdev->cmdtimeoutcnt = 0;
 
 	ret = __hci_req_sync(hdev, hci_reset_req, 0, HCI_INIT_TIMEOUT);
 
@@ -2623,6 +2624,7 @@ static void hci_cmd_timeout(struct work_struct *work)
 	} else {
 		BT_ERR("%s command tx timeout", hdev->name);
 	}
+	hdev->cmdtimeoutcnt++;
 
 	atomic_set(&hdev->cmd_cnt, 1);
 	queue_work(hdev->workqueue, &hdev->cmd_work);
@@ -4502,6 +4504,7 @@ static void hci_cmd_work(struct work_struct *work)
 		kfree_skb(hdev->sent_cmd);
 
 		hdev->sent_cmd = skb_clone(skb, GFP_KERNEL);
+//hdev->cmdtimeoutcnt++; // just test
 		if (hdev->sent_cmd) {
 			atomic_dec(&hdev->cmd_cnt);
 			hci_send_frame(hdev, skb);

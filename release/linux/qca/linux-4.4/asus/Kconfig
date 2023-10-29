@@ -9,5 +9,17 @@ config RTAC82U
 config RTAC95U
 	bool "RT-AC95U (IPQ4019 + QCA9984)"
 
+config PLAX56XP4
+	bool "PL-AX56_XP4 (IPQ6018 + QCA7550)"
+
+config QIHOO360V6
+	bool "360v6 (IPQ6000 + QCA8075)"
+
+config GLAX1800
+	bool "GL-AX1800 (IPQ6000 + QCA8075)"
+
+config JDCAX1800
+	bool "JDCAX1800 (IPQ6000 + QCA8075)"
+
 endchoice
 

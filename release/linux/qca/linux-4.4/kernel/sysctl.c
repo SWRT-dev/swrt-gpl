@@ -124,6 +124,7 @@ static int zero;
 static int __maybe_unused one = 1;
 static int __maybe_unused two = 2;
 static int __maybe_unused four = 4;
+static int __maybe_unused five = 5;
 static unsigned long one_ul = 1;
 static int one_hundred = 100;
 #ifdef CONFIG_PRINTK
@@ -1564,6 +1565,15 @@ static struct ctl_table vm_table[] = {
 		.extra2		= &one,
 	},
 #endif
+	{
+		.procname	= "pagecache_ratio",
+		.data		= &pagecache_ratio,
+		.maxlen		= sizeof(pagecache_ratio),
+		.mode		= 0644,
+		.proc_handler	= &pagecache_ratio_sysctl_handler,
+		.extra1		= &five,
+		.extra2		= &one_hundred,
+	},
 	{
 		.procname	= "user_reserve_kbytes",
 		.data		= &sysctl_user_reserve_kbytes,

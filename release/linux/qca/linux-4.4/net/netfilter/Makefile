@@ -42,6 +42,11 @@ obj-$(CONFIG_NF_CONNTRACK_BROADCAST) += nf_conntrack_broadcast.o
 obj-$(CONFIG_NF_CONNTRACK_NETBIOS_NS) += nf_conntrack_netbios_ns.o
 obj-$(CONFIG_NF_CONNTRACK_SNMP) += nf_conntrack_snmp.o
 obj-$(CONFIG_NF_CONNTRACK_PPTP) += nf_conntrack_pptp.o
+
+# ASUS_EXT
+obj-$(CONFIG_NF_CONNTRACK_QUAKE3) += nf_conntrack_quake3.o
+obj-$(CONFIG_NF_CONNTRACK_RTSP) += nf_conntrack_rtsp.o
+
 obj-$(CONFIG_NF_CONNTRACK_SANE) += nf_conntrack_sane.o
 obj-$(CONFIG_NF_CONNTRACK_SIP) += nf_conntrack_sip.o
 obj-$(CONFIG_NF_CONNTRACK_TFTP) += nf_conntrack_tftp.o
@@ -112,6 +117,7 @@ obj-$(CONFIG_NETFILTER_XT_TARGET_CT) += xt_CT.o
 obj-$(CONFIG_NETFILTER_XT_TARGET_DSCP) += xt_DSCP.o
 obj-$(CONFIG_NETFILTER_XT_TARGET_HL) += xt_HL.o
 obj-$(CONFIG_NETFILTER_XT_TARGET_HMARK) += xt_HMARK.o
+obj-$(CONFIG_NETFILTER_XT_TARGET_IMQ) += xt_IMQ.o
 obj-$(CONFIG_NETFILTER_XT_TARGET_LED) += xt_LED.o
 obj-$(CONFIG_NETFILTER_XT_TARGET_LOG) += xt_LOG.o
 obj-$(CONFIG_NETFILTER_XT_TARGET_NETMAP) += xt_NETMAP.o
@@ -161,7 +167,9 @@ obj-$(CONFIG_NETFILTER_XT_MATCH_CGROUP) += xt_cgroup.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_PHYSDEV) += xt_physdev.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_PKTTYPE) += xt_pkttype.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_POLICY) += xt_policy.o
+obj-$(CONFIG_NETFILTER_XT_MATCH_QTAGUID) += xt_qtaguid_print.o xt_qtaguid.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_QUOTA) += xt_quota.o
+obj-$(CONFIG_NETFILTER_XT_MATCH_QUOTA2) += xt_quota2.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_RATEEST) += xt_rateest.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_REALM) += xt_realm.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_RECENT) += xt_recent.o
@@ -173,6 +181,12 @@ obj-$(CONFIG_NETFILTER_XT_MATCH_STRING) += xt_string.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_TCPMSS) += xt_tcpmss.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_TIME) += xt_time.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_U32) += xt_u32.o
+
+# ASUS_EXT
+obj-$(CONFIG_NETFILTER_XT_MATCH_CONDITION) += xt_condition.o
+obj-$(CONFIG_NETFILTER_XT_MATCH_GEOIP) += xt_geoip.o
+obj-$(CONFIG_NETFILTER_XT_MATCH_WEBSTR) += xt_webstr.o
+obj-$(CONFIG_NETFILTER_XT_MATCH_ETHPORT) += xt_ethport.o
 
 # ipset
 obj-$(CONFIG_IP_SET) += ipset/

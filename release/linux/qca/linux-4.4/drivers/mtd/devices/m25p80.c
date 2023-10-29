@@ -26,6 +26,49 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/flash.h>
 #include <linux/mtd/spi-nor.h>
+#include <asus-firmware.h>
+
+extern long int rfs_offset;
+extern int is_norplusnand;
+static struct mtd_partition msm_nor_partitions[] = {
+	{
+		name:           "Bootloader",
+		size:           MTD_BOOT_PART_SIZE,
+		offset:         0,
+	}, {
+		name:           "nvram",
+		size:           MTD_CONFIG_PART_SIZE,
+		offset:         MTDPART_OFS_APPEND
+	}, {
+		name:           "Factory",
+		size:           MTD_FACTORY_PART_SIZE,
+		offset:         MTDPART_OFS_APPEND
+	}, {
+		name:           "linux",
+		size:           MTD_KERN_PART_SIZE,
+		offset:         MTDPART_OFS_APPEND,
+	}, {
+		name:           "rootfs",
+		size:           MTD_ROOTFS_PART_SIZE,
+		offset:         MTDPART_OFS_APPEND,
+	}, {
+		name:           "jffs2",
+		size:           MTD_JFFS2_PART_SIZE,
+		offset:         MTDPART_OFS_APPEND,
+	}, {
+		name:           "ALL",
+		size:           MTDPART_SIZ_FULL,
+		offset:         0,
+	}
+};
+
+static struct mtd_partition msm_norplusnand_partitions[] = {
+	{
+		name:           "Bootloader",
+		size:           MTD_NOR_PLUS_NAND_BOOT_SIZE,
+		offset:         0,
+	}
+};
 
 #define	MAX_CMD_SIZE		6
 struct m25p {
@@ -187,6 +230,14 @@ static int m25p_probe(struct spi_device *spi)
 	enum read_mode mode = SPI_NOR_NORMAL;
 	char *flash_name = NULL;
 	int ret;
+	size_t jffs2_size = MTD_JFFS2_PART_SIZE;
+	struct mtd_partition *parts = msm_nor_partitions;
+	struct flash_platform_data fake_data = {
+		.name = "msm-nor0",
+		.parts = msm_nor_partitions,
+		.nr_parts = ARRAY_SIZE(msm_nor_partitions),
+	};
+	unsigned long offs;
 
 	data = dev_get_platdata(&spi->dev);
 
@@ -235,11 +286,52 @@ static int m25p_probe(struct spi_device *spi)
 	memset(&ppdata, '\0', sizeof(ppdata));
 	ppdata.of_node = spi->dev.of_node;
 
+#if 0
 	return mtd_device_parse_register(&nor->mtd,
 			data ? data->part_probes : NULL,
 			&ppdata,
 			data ? data->parts : NULL,
 			data ? data->nr_parts : 0);
+#else
+	data = &fake_data;
+	nor->mtd.name = data->name;
+	if ( is_norplusnand == 2 )
+		; // nothing
+	else if ( is_norplusnand == 1 ) {
+		/* Register the partitions */
+		mtd_device_register(&nor->mtd, &msm_norplusnand_partitions[0], ARRAY_SIZE(msm_norplusnand_partitions));
+	} else {
+		offs = MTD_BOOT_PART_SIZE + MTD_CONFIG_PART_SIZE + MTD_FACTORY_PART_SIZE;
+
+		if (nor->mtd.size < 0x800000)
+			jffs2_size = 0;
+
+		parts[2].offset = MTD_BOOT_PART_SIZE + MTD_CONFIG_PART_SIZE;
+		parts[2].size = MTD_CONFIG_PART_SIZE;
+		parts[3].size = nor->mtd.size - (MTD_BOOT_PART_SIZE + MTD_CONFIG_PART_SIZE + MTD_FACTORY_PART_SIZE + jffs2_size);
+		parts[3].offset = MTD_BOOT_PART_SIZE + MTD_CONFIG_PART_SIZE + MTD_FACTORY_PART_SIZE;
+		parts[4].size = parts[3].size - rfs_offset;
+		parts[4].offset = MTD_BOOT_PART_SIZE + MTD_CONFIG_PART_SIZE + MTD_FACTORY_PART_SIZE + rfs_offset;
+		parts[4].mask_flags |= MTD_WRITEABLE;
+
+		if (jffs2_size > 0) {
+			parts[5].offset = nor->mtd.size - jffs2_size;
+			parts[5].size = jffs2_size;
+		} else {
+			parts[5].name = parts[6].name;
+			parts[5].size = parts[6].size;
+			parts[5].offset = parts[6].offset;
+		}
+
+		if (nor->mtd.size < 0x800000)
+			data->nr_parts -= 1;
+
+		/* Register the partitions */
+		mtd_device_register(&nor->mtd, parts, ARRAY_SIZE(msm_nor_partitions));
+	}
+
+	return 0;
+#endif
 }
 
 

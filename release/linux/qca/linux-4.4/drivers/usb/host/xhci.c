@@ -41,6 +41,9 @@
 static int link_quirk;
 module_param(link_quirk, int, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(link_quirk, "Don't clear the chain bit on a link TRB");
+int u3intf = 0;
+module_param(u3intf, int, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(u3intf, "USB3/2.4GHz interference");
 
 static unsigned int quirks;
 module_param(quirks, uint, S_IRUGO);

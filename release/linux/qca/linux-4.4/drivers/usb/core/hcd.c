@@ -45,6 +45,7 @@
 #include <linux/phy/phy.h>
 #include <linux/usb.h>
 #include <linux/usb/hcd.h>
+#include <linux/usb/usb-bus-stats.h>
 #include <linux/usb/phy.h>
 
 #include "usb.h"
@@ -372,6 +373,33 @@ MODULE_PARM_DESC(authorized_default,
 		"authorized, -1 is authorized except for wireless USB (default, "
 		"old behaviour");
 /*-------------------------------------------------------------------------*/
+#if defined(CONFIG_USB_BUS_STATS)
+static inline void account_usb_traffic(struct usb_hcd *hcd, struct urb *urb)
+{
+	int i;
+	struct usb_bus_stat_s *us = &usb_bus_stat[hcd->self.busnum];
+	unsigned long *p = &us->tx_bytes;
+	struct usb_iso_packet_descriptor *d;
+
+	if (unlikely(urb->status))
+		return;
+
+	if (urb->transfer_flags & URB_DIR_IN)
+		p = &us->rx_bytes;
+
+	*p += urb->actual_length;
+	if (likely(urb->number_of_packets <= 0))
+		return;
+
+	/* ISO. transfer */
+	for (i = 0, d = &urb->iso_frame_desc[0]; i < urb->number_of_packets; ++i, ++d) {
+		if (likely(!d->status))
+			*p += d->length;
+	}
+}
+#else
+static inline void account_usb_traffic(struct usb_hcd *hcd, struct urb *urb) { }
+#endif
 
 /**
  * ascii2desc() - Helper routine for producing UTF-16LE string descriptors
@@ -1740,6 +1768,7 @@ static void __usb_hcd_giveback_urb(struct urb *urb)
 	 */
 	local_irq_save(flags);
 	urb->complete(urb);
+	account_usb_traffic(hcd, urb);
 	local_irq_restore(flags);
 
 	usb_anchor_resume_wakeups(anchor);

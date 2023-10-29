@@ -94,6 +94,7 @@
 #include <linux/ethtool.h>
 #include <linux/notifier.h>
 #include <linux/skbuff.h>
+#include <linux/netfilter_ipv4.h>
 #include <net/net_namespace.h>
 #include <net/sock.h>
 #include <linux/rtnetlink.h>
@@ -137,6 +138,9 @@
 #include <linux/errqueue.h>
 #include <linux/hrtimer.h>
 #include <linux/netfilter_ingress.h>
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+#include <linux/imq.h>
+#endif
 
 #include "net-sysfs.h"
 #include "skbuff_debug.h"
@@ -151,6 +155,8 @@ static DEFINE_SPINLOCK(ptype_lock);
 static DEFINE_SPINLOCK(offload_lock);
 struct list_head ptype_base[PTYPE_HASH_SIZE] __read_mostly;
 struct list_head ptype_all __read_mostly;	/* Taps */
+struct list_head ptype_all_mcast __read_mostly;	/* Taps */
+static int mcast_check_cnt;
 static struct list_head offload_base __read_mostly;
 
 static int netif_rx_internal(struct sk_buff *skb);
@@ -398,7 +404,11 @@ void dev_add_pack(struct packet_type *pt)
 	struct list_head *head = ptype_head(pt);
 
 	spin_lock(&ptype_lock);
-	list_add_rcu(&pt->list, head);
+	if (pt->type == htons(ETH_P_ALL) && pt->mcast_only) {
+		list_add_rcu(&pt->list, &ptype_all_mcast);
+		mcast_check_cnt++;
+	} else
+		list_add_rcu(&pt->list, head);
 	spin_unlock(&ptype_lock);
 }
 EXPORT_SYMBOL(dev_add_pack);
@@ -422,6 +432,10 @@ void __dev_remove_pack(struct packet_type *pt)
 	struct packet_type *pt1;
 
 	spin_lock(&ptype_lock);
+	if (pt->type == htons(ETH_P_ALL) && pt->mcast_only) {
+		head = &ptype_all_mcast;
+		mcast_check_cnt--;
+	}
 
 	list_for_each_entry(pt1, head, list) {
 		if (pt == pt1) {
@@ -2737,7 +2751,12 @@ static int xmit_one(struct sk_buff *skb, struct net_device *dev,
 	 * go to any taps (by definition we're trying to bypass them).
 	 */
 	if (unlikely(!skb->fast_forwarded)) {
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+		if ((!list_empty(&ptype_all) || !list_empty(&dev->ptype_all)) &&
+			!(skb->imq_flags & IMQ_F_ENQUEUE))
+#else
 		if (!list_empty(&ptype_all) || !list_empty(&dev->ptype_all))
+#endif
 			dev_queue_xmit_nit(skb, dev);
 	}
 
@@ -3155,7 +3174,12 @@ static int __dev_queue_xmit(struct sk_buff *skb, void *accel_priv)
 	skb->tc_verd = SET_TC_AT(skb->tc_verd, AT_EGRESS);
 #endif
 	trace_net_dev_queue(skb);
-	if (q->enqueue) {
+	if (q->enqueue
+#ifdef CONFIG_IP_NF_LFP
+	    && !(skb->nfcache & NFC_LFP_ENABLE)
+#endif
+	   )
+	{
 		rc = __dev_xmit_skb(skb, q, dev, txq);
 		goto out;
 	}
@@ -3869,6 +3893,7 @@ static inline int nf_ingress(struct sk_buff *skb, struct packet_type **pt_prev,
 static int __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc)
 {
 	struct packet_type *ptype, *pt_prev;
+	unsigned char *mac_pt = NULL;
 	rx_handler_func_t *rx_handler;
 	struct net_device *orig_dev;
 	bool deliver_exact = false;
@@ -3931,6 +3956,27 @@ another_round:
 		pt_prev = ptype;
 	}
 
+	if (mcast_check_cnt) {
+		if (skb_mac_header_was_set(skb)) {
+			mac_pt = skb_mac_header(skb);
+		}
+
+		list_for_each_entry_rcu(ptype, &ptype_all_mcast, list) {
+			if (!ptype->dev || ptype->dev == skb->dev) {
+				if (pt_prev) {
+					if (pt_prev->mcast_only) {
+						if (mac_pt && (mac_pt[0]==0x01)){
+							ret = deliver_skb(skb, pt_prev, orig_dev);
+						}
+					} else
+						ret = deliver_skb(skb, pt_prev, orig_dev);
+				}
+				pt_prev = ptype;
+			}
+		}
+	}
+
+
 skip_taps:
 #ifdef CONFIG_NET_INGRESS
 	if (static_key_false(&ingress_needed)) {
@@ -3951,7 +3997,12 @@ ncls:
 
 	if (skb_vlan_tag_present(skb)) {
 		if (pt_prev) {
-			ret = deliver_skb(skb, pt_prev, orig_dev);
+			if (pt_prev->mcast_only) {
+				if (mac_pt && (mac_pt[0]==0x01)){
+					ret = deliver_skb(skb, pt_prev, orig_dev);
+				}
+			} else
+				ret = deliver_skb(skb, pt_prev, orig_dev);
 			pt_prev = NULL;
 		}
 		if (vlan_do_receive(&skb))
@@ -3963,7 +4014,12 @@ ncls:
 	rx_handler = rcu_dereference(skb->dev->rx_handler);
 	if (rx_handler) {
 		if (pt_prev) {
-			ret = deliver_skb(skb, pt_prev, orig_dev);
+			if (pt_prev->mcast_only) {
+				if (mac_pt && (mac_pt[0]==0x01)){
+					ret = deliver_skb(skb, pt_prev, orig_dev);
+				}
+			} else
+				ret = deliver_skb(skb, pt_prev, orig_dev);
 			pt_prev = NULL;
 		}
 		switch (rx_handler(&skb)) {
@@ -7900,6 +7956,8 @@ static int __init net_dev_init(void)
 		goto out;
 
 	INIT_LIST_HEAD(&ptype_all);
+	INIT_LIST_HEAD(&ptype_all_mcast);
+	mcast_check_cnt = 0;
 	for (i = 0; i < PTYPE_HASH_SIZE; i++)
 		INIT_LIST_HEAD(&ptype_base[i]);
 

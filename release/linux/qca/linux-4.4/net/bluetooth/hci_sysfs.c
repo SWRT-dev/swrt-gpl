@@ -164,14 +164,34 @@ static ssize_t show_address(struct device *dev,
 	return sprintf(buf, "%pMR\n", &hdev->bdaddr);
 }
 
+static ssize_t show_cmdtimeout(struct device *dev,
+			    struct device_attribute *attr, char *buf)
+{
+	struct hci_dev *hdev = to_hci_dev(dev);
+	return sprintf(buf, "%u\n", hdev->cmdtimeoutcnt);
+}
+
+/* 1st char 'c' to clear */
+static ssize_t set_cmdtimeout(struct device *dev, struct device_attribute *attr,
+			    const char *buf, size_t size)
+{
+	struct hci_dev *hdev = to_hci_dev(dev);
+	if ((size) && (buf[0]=='c'))
+		hdev->cmdtimeoutcnt = 0;
+        return size;
+}
+
 static DEVICE_ATTR(type, S_IRUGO, show_type, NULL);
 static DEVICE_ATTR(name, S_IRUGO, show_name, NULL);
 static DEVICE_ATTR(address, S_IRUGO, show_address, NULL);
+static DEVICE_ATTR(cmd_timeout, S_IWUSR | S_IRUGO, show_cmdtimeout, set_cmdtimeout);
+
 
 static struct attribute *bt_host_attrs[] = {
 	&dev_attr_type.attr,
 	&dev_attr_name.attr,
 	&dev_attr_address.attr,
+	&dev_attr_cmd_timeout.attr,
 	NULL
 };
 

@@ -1663,6 +1663,8 @@ struct xhci_hcd {
 #define COMP_MODE_RCVRY_MSECS 2000
 };
 
+extern int u3intf;
+
 /* Platform specific overrides to generic XHCI hc_driver ops */
 struct xhci_driver_overrides {
 	size_t extra_priv_size;

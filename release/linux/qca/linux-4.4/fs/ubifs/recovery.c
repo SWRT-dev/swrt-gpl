@@ -180,8 +180,21 @@ static int get_master_node(const struct ubifs_info *c, int lnum, void **pbuf,
 	}
 	/* Check remaining empty space */
 	if (offs < c->leb_size)
-		if (!is_empty(buf, len))
+		if (!is_empty(buf, len)) {
+			int i, l = len;
+			uint8_t *p = buf;
+			printk("%s:%d: lnum %d offs 0x%x < c->leb_size 0x%x, !is_empty(buf %p, len %d)\n",
+				__func__, __LINE__, lnum, offs, c->leb_size, buf, len);
+			if (l > 2048)
+				l = 2048;
+			for (i = 0; i < l; ++i, ++p) {
+				if (!(i % 16))
+					printk("\n%06X  ", i);
+				printk("%02X ", *p);
+			}
+			printk("\n");
 			goto out_err;
+		}
 	*pbuf = sbuf;
 	return 0;
 

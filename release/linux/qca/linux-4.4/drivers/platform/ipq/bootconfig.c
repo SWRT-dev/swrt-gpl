@@ -289,6 +289,7 @@ static int __init bootconfig_partition_init(void)
 #ifdef CONFIG_MMC
 	else if (flash_type_emmc == 1) {
 		flash_type_emmc = 0;
+#ifdef CONFIG_MMC
 		for (i = 0; i < MAX_MMC_DEVICE; i++) {
 
 			disk = get_gendisk(MKDEV(MMC_BLOCK_MAJOR, i*CONFIG_MMC_BLOCK_MINORS), &partno);
@@ -318,6 +319,9 @@ static int __init bootconfig_partition_init(void)
 			if (bootconfig1 || bootconfig2)
 			       break;
 		}
+#else
+		return 0;
+#endif
 	}
 #endif
 

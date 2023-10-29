@@ -2101,6 +2101,7 @@ struct packet_type {
 					    struct sock *sk);
 	void			*af_packet_priv;
 	struct list_head	list;
+	bool			mcast_only;
 };
 
 struct offload_callbacks {

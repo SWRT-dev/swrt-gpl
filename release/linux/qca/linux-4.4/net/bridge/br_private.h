@@ -236,6 +236,11 @@ struct net_bridge_port
 #ifdef CONFIG_BRIDGE_VLAN_FILTERING
 	struct net_bridge_vlan_group	__rcu *vlgrp;
 #endif
+	u8				untagged_port_vlan_en; /* if untagged vlan is enalbed */
+	u16				untagged_port_vlan; /* vlan value of this port */
+#if defined(PLAX56_XP4)
+	u8				forward_88e1; /* forward ethertype 0x88e1 (PLC MME control packets) to bridge or not */
+#endif
 };
 
 #define br_auto_port(p) ((p)->flags & BR_AUTO_MASK)
@@ -926,9 +931,10 @@ BR_HOOK(uint8_t pf, unsigned int hook, struct net *net, struct sock *sk,
 	struct sk_buff *skb, struct net_device *in, struct net_device *out,
 	int (*okfn)(struct net *, struct sock *, struct sk_buff *))
 {
+#ifdef CONFIG_BRIDGE_NETFILTER
 	if (!br_netfilter_run_hooks())
 		return okfn(net, sk, skb);
-
+#endif
 	return NF_HOOK(pf, hook, net, sk, skb, in, out, okfn);
 }
 

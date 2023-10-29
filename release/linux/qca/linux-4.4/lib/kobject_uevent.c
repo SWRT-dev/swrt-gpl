@@ -258,6 +258,11 @@ int kobject_uevent_env(struct kobject *kobj, enum kobject_action action,
 	if (retval)
 		goto exit;
 
+	if (strcmp(subsystem, "bluetooth")==0) {
+		pr_err("BT: ACTION=%s\n", action_string);
+		pr_err("BT: DEVPATH=%s\n", devpath);
+	}
+
 	/* keys passed in from the caller */
 	if (envp_ext) {
 		for (i = 0; envp_ext[i]; i++) {

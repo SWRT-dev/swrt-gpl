@@ -127,6 +127,7 @@ static void do_sync_work(struct work_struct *work)
 	 * Sync twice to reduce the possibility we skipped some inodes / pages
 	 * because they were temporarily locked
 	 */
+	enable_oopsbuf(1);
 	iterate_supers(sync_inodes_one_sb, &nowait);
 	iterate_supers(sync_fs_one_sb, &nowait);
 	iterate_bdevs(fdatawrite_one_bdev, NULL);

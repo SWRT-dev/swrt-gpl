@@ -98,6 +98,7 @@ struct ipt_ip {
 #define IPT_INV_FRAG		0x20	/* Invert the sense of FRAG. */
 #define IPT_INV_PROTO		XT_INV_PROTO
 #define IPT_INV_MASK		0x7F	/* All possible flag bits mask. */
+#define IPT_F_NO_DEF_MATCH	0x80	/* Internal: no default match rules present */
 
 /* This structure defines each of the firewall rules.  Consists of 3
    parts which are 1) general IP header stuff 2) match specific

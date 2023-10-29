@@ -648,6 +648,8 @@ static int claimintf(struct usb_dev_state *ps, unsigned int ifnum)
 		err = usb_driver_claim_interface(&usbfs_driver, intf, ps);
 	if (err == 0)
 		set_bit(ifnum, &ps->ifclaimed);
+	else if (!strcmp(intf->dev.driver->name, "usblp"))	// patch for U2EC
+		err = 0;					// patch for U2EC
 	return err;
 }
 
@@ -680,9 +682,11 @@ static int checkintf(struct usb_dev_state *ps, unsigned int ifnum)
 	if (test_bit(ifnum, &ps->ifclaimed))
 		return 0;
 	/* if not yet claimed, claim it for the driver */
+/* U2EC mark this
 	dev_warn(&ps->dev->dev, "usbfs: process %d (%s) did not claim "
 		 "interface %u before use\n", task_pid_nr(current),
 		 current->comm, ifnum);
+ */
 	return claimintf(ps, ifnum);
 }
 

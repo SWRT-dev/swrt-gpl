@@ -25,6 +25,49 @@ static bool node_has_compatible(struct device_node *pp)
 	return of_get_property(pp, "compatible", NULL);
 }
 
+#if defined(RAX120) || defined(SWRT360V6)
+struct dni_nand_partition_entry {
+	u32 offset; /* bytes */
+	u32 size;   /* bytes */
+	char    *name;
+};
+
+struct dni_nand_partition_entry dni_nand_partition[] = {
+#if defined(RAX120)
+	{ 0x00000000, 0x00F80000, "Bootloader" },
+	{ 0x00d00000, 0x00080000, "appsblenv" },
+	{ 0x00f80000, 0x00080000, "art" },
+	{ 0x01180000, 0x00100000, "boarddata" },
+	{ 0x01980000, 0x06400000, "firmware" },
+	{ 0x01980000, 0x00620000, "kernel" },
+	{ 0x01fa0000, 0x05de0000, "rootfs" },
+	{ 0x0e880000, 0x11760000, "UBI_DEV" }
+#elif defined(SWRT360V6)
+	{ 0x00000000, 0x00180000, "0:SBL1" },
+	{ 0x00180000, 0x00100000, "0:MIBIB" },
+	{ 0x00280000, 0x00080000, "0:BOOTCONFIG" },
+	{ 0x00300000, 0x00080000, "0:BOOTCONFIG1" },
+	{ 0x00380000, 0x00380000, "0:QSEE" },
+	{ 0x00700000, 0x00380000, "0:QSEE_1" },
+	{ 0x00A80000, 0x00080000, "0:DEVCFG" },
+	{ 0x00B00000, 0x00080000, "0:DEVCFG_1" },
+	{ 0x00B80000, 0x00080000, "0:RPM" },
+	{ 0x00C00000, 0x00080000, "0:RPM_1" },
+	{ 0x00C80000, 0x00080000, "0:CDT" },
+	{ 0x00D00000, 0x00080000, "0:CDT_1" },
+	{ 0x00D80000, 0x00080000, "0:APPSBLENV" },
+	{ 0x00E00000, 0x00180000, "0:APPSBL" },
+	{ 0x00F80000, 0x00180000, "0:APPSBL_1" },
+	{ 0x01100000, 0x00080000, "0:ART" },
+//	{ 0x01180000, 0x02CA0000, "firmware" },
+//	{ 0x03E20000, 0x03520000, "UBI_DEV" },
+	{ 0x01180000, 0x05940000, "UBI_DEV" },
+	{ 0x06AC0000, 0x00880000, "jffsconcat1" },
+	{ 0x07340000, 0x00CC0000, "BACKUP" }
+#endif
+};
+#endif
+
 static int parse_ofpart_partitions(struct mtd_info *master,
 				   struct mtd_partition **pparts,
 				   struct mtd_part_parser_data *data)
@@ -35,7 +78,9 @@ static int parse_ofpart_partitions(struct mtd_info *master,
 	struct device_node *pp;
 	int nr_parts, i, ret = 0;
 	bool dedicated = true;
-
+#if defined(RAX120) || defined(SWRT360V6)
+	int count;
+#endif
 
 	if (!data)
 		return 0;
@@ -71,8 +116,13 @@ static int parse_ofpart_partitions(struct mtd_info *master,
 
 	if (nr_parts == 0)
 		return 0;
-
+#if defined(RAX120)
+	*pparts = kzalloc(35 * sizeof(**pparts), GFP_KERNEL);
+#elif defined(SWRT360V6)
+	*pparts = kzalloc(24 * sizeof(**pparts), GFP_KERNEL);
+#else
 	*pparts = kzalloc(nr_parts * sizeof(**pparts), GFP_KERNEL);
+#endif
 	if (!*pparts)
 		return -ENOMEM;
 
@@ -127,6 +177,37 @@ static int parse_ofpart_partitions(struct mtd_info *master,
 	if (!nr_parts)
 		goto ofpart_none;
 
+#if defined(RAX120)
+    	/* default get 8 mtd partitions.
+     	* 0	Bootloader
+     	* 1	appsblenv
+     	* 2	art
+     	* 3	boarddata
+     	* 4	firmware
+     	* 5	kernel
+     	* 6	rootfs
+     	* 7	UBI_DEV
+     	*/
+
+	nr_parts = 0;
+	count = sizeof(dni_nand_partition)/sizeof(struct dni_nand_partition_entry);
+	for (i = 0; i < count; i++, nr_parts++) {
+		(*pparts)[nr_parts].offset = dni_nand_partition[i].offset;
+		(*pparts)[nr_parts].size = dni_nand_partition[i].size;
+		(*pparts)[nr_parts].name = dni_nand_partition[i].name;
+		if(i == 2 || i == 3)
+			(*pparts)[nr_parts].mask_flags |= MTD_WRITEABLE;
+	}
+#elif defined(SWRT360V6)
+	nr_parts = 0;
+	count = sizeof(dni_nand_partition)/sizeof(struct dni_nand_partition_entry);
+	for (i = 0; i < count; i++, nr_parts++) {
+		(*pparts)[nr_parts].offset = dni_nand_partition[i].offset;
+		(*pparts)[nr_parts].size = dni_nand_partition[i].size;
+		(*pparts)[nr_parts].name = dni_nand_partition[i].name;
+	}
+	(*pparts)[nr_parts].mask_flags |= MTD_WRITEABLE;//lock factory
+#endif
 	return nr_parts;
 
 ofpart_fail:

@@ -152,6 +152,16 @@ int br_handle_frame_finish(struct net *net, struct sock *sk, struct sk_buff *skb
 	if (!p || p->state == BR_STATE_DISABLED)
 		goto drop;
 
+	if (p->untagged_port_vlan_en && skb_vlan_tag_present(skb)){
+		u16 skb_vid;
+		skb_vid = skb_vlan_tag_get_id(skb);
+
+		if (skb_vid != p->untagged_port_vlan) {
+			goto drop;
+		}
+		skb->vlan_tci = 0; // clear
+	}
+
 	if (!br_allowed_ingress(p->br, nbp_vlan_group_rcu(p), skb, &vid))
 		goto out;
 
@@ -331,6 +341,11 @@ rx_handler_result_t br_handle_frame(struct sk_buff **pskb)
 	}
 
 forward:
+#if defined(PLAX56_XP4)
+	if (unlikely(skb->protocol == htons(0x88e1)) && likely(p->forward_88e1 == 0)) { // ethertype 0x88e1 is PLC MME control packetss
+		return RX_HANDLER_EXACT;
+	}
+#endif
 	switch (p->state) {
 	case BR_STATE_DISABLED:
 		if (skb->protocol == htons(ETH_P_PAE)) {

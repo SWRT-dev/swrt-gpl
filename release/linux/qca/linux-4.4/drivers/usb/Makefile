@@ -39,6 +39,8 @@ obj-$(CONFIG_USB_PRINTER)	+= class/
 obj-$(CONFIG_USB_WDM)		+= class/
 obj-$(CONFIG_USB_TMC)		+= class/
 
+obj-$(CONFIG_USB_BECEEM)	+= Beceem_driver/
+
 obj-$(CONFIG_USB_STORAGE)	+= storage/
 obj-$(CONFIG_USB)		+= storage/
 
@@ -59,5 +61,6 @@ obj-$(CONFIG_USB_RENESAS_USBHS)	+= renesas_usbhs/
 obj-$(CONFIG_USB_GADGET)	+= gadget/
 
 obj-$(CONFIG_USB_COMMON)	+= common/
+obj-$(CONFIG_USB_BUS_STATS)	+= usb-bus-stats.o
 
 obj-$(CONFIG_USBIP_CORE)	+= usbip/

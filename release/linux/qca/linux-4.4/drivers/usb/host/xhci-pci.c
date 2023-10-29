@@ -310,11 +310,58 @@ put_runtime_pm:
 	return retval;
 }
 
+static void stop_ports(struct xhci_hcd *xhci)
+{
+	int i, port_index;
+	unsigned int num_ports;
+	__le32 __iomem *addr;
+	u32 s1;
+
+	num_ports = HCS_MAX_PORTS(xhci->hcs_params1);
+	if (!xhci || !num_ports || !xhci->port_array)
+		return;
+
+	for (i = 0, port_index = 0;
+		xhci->usb2_ports && port_index < xhci->num_usb2_ports && i < num_ports;
+		++i)
+	{
+		if (xhci->port_array[i] == 0x03 ||
+			xhci->port_array[i] == 0 ||
+			xhci->port_array[i] == DUPLICATE_ENTRY)
+			continue;
+
+		addr = xhci->usb2_ports[port_index];
+		s1 = readl(addr);
+		writel(s1 & ~PORT_POWER, addr);
+		xhci_warn(xhci, "## USB2 port %d/%d addr(%p) s1(%08x) --> (%08x)\n",
+			port_index, i, addr, s1, readl(addr));
+		port_index++;
+	}
+
+	for (i = 0, port_index = 0;
+		xhci->usb3_ports && port_index < xhci->num_usb3_ports && i < num_ports;
+		++i)
+	{
+		if (xhci->port_array[i] != 0x03)
+			continue;
+
+		addr = xhci->usb3_ports[port_index];
+		s1 = readl(addr);
+		writel(s1 & ~PORT_POWER, addr);
+		xhci_warn(xhci, "## USB3 port %d/%d addr(%p) s1(%08x) --> (%08x)\n",
+			port_index, i, addr, s1, readl(addr));
+		port_index++;
+	}
+
+	return;
+}
+
 static void xhci_pci_remove(struct pci_dev *dev)
 {
 	struct xhci_hcd *xhci;
 
 	xhci = hcd_to_xhci(pci_get_drvdata(dev));
+	stop_ports(xhci);
 	xhci->xhc_state |= XHCI_STATE_REMOVING;
 	if (xhci->shared_hcd) {
 		usb_remove_hcd(xhci->shared_hcd);
@@ -326,6 +373,16 @@ static void xhci_pci_remove(struct pci_dev *dev)
 		pci_set_power_state(dev, PCI_D3hot);
 
 	usb_hcd_pci_remove(dev);
+}
+
+static void xhci_pci_shutdown(struct pci_dev *dev)
+{
+	struct xhci_hcd *xhci;
+
+	xhci = hcd_to_xhci(pci_get_drvdata(dev));
+	stop_ports(xhci);
+
+	usb_hcd_pci_shutdown(dev);
 }
 
 #ifdef CONFIG_PM
@@ -456,7 +513,7 @@ static struct pci_driver xhci_pci_driver = {
 	.remove =	xhci_pci_remove,
 	/* suspend and resume implemented later */
 
-	.shutdown = 	usb_hcd_pci_shutdown,
+	.shutdown = 	xhci_pci_shutdown,
 #ifdef CONFIG_PM
 	.driver = {
 		.pm = &usb_hcd_pci_pm_ops

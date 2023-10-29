@@ -75,6 +75,11 @@ config USB_OTG_BLACKLIST_HUB
 	  and software costs by not supporting external hubs.  So
 	  are "Embedded Hosts" that don't offer OTG support.
 
+config USB_BUS_STATS
+	bool "Account USB BUS traffic"
+	depends on USB
+	default n
+
 config USB_OTG_FSM
 	tristate "USB 2.0 OTG FSM implementation"
 	depends on USB && USB_OTG

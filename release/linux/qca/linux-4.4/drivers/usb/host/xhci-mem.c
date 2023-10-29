@@ -2234,7 +2234,7 @@ static void xhci_add_in_port(struct xhci_hcd *xhci, unsigned int num_ports,
 static int xhci_setup_port_arrays(struct xhci_hcd *xhci, gfp_t flags)
 {
 	__le32 __iomem *addr, *tmp_addr;
-	u32 offset, tmp_offset;
+	u32 offset, tmp_offset, s1;
 	unsigned int num_ports;
 	int i, j, port_index;
 	int cap_count = 0;
@@ -2365,20 +2365,33 @@ static int xhci_setup_port_arrays(struct xhci_hcd *xhci, gfp_t flags)
 		if (!xhci->usb3_ports)
 			return -ENOMEM;
 
+		msleep(10);
 		port_index = 0;
-		for (i = 0; i < num_ports; i++)
-			if (xhci->port_array[i] == 0x03) {
-				xhci->usb3_ports[port_index] =
-					&xhci->op_regs->port_status_base +
-					NUM_PORT_REGS*i;
+		for (i = 0; i < num_ports; i++) {
+			if (xhci->port_array[i] != 0x03)
+				continue;
+
+			xhci->usb3_ports[port_index] =
+				&xhci->op_regs->port_status_base +
+				NUM_PORT_REGS*i;
+			if (u3intf) {
 				xhci_dbg_trace(xhci, trace_xhci_dbg_init,
 						"USB 3.0 port at index %u, "
 						"addr = %p", i,
 						xhci->usb3_ports[port_index]);
-				port_index++;
-				if (port_index == xhci->num_usb3_ports)
-					break;
+			} else {
+				addr = xhci->usb3_ports[port_index];
+				s1 = readl(addr);
+
+				writel((s1 | PORT_PE) & ~(PORT_RESET | PORT_POWER), addr);
+				xhci_warn(xhci, "## USB3 port %d/%d addr(%p) s1(%08x) --> (%08x)\n",
+					port_index, i, addr, s1, readl(addr));
 			}
+
+			port_index++;
+			if (port_index == xhci->num_usb3_ports)
+				break;
+		}
 	}
 	return 0;
 }

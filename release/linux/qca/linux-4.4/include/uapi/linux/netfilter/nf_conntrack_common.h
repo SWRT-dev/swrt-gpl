@@ -91,6 +91,12 @@ enum ip_conntrack_status {
 	/* Conntrack got a helper explicitly attached via CT target. */
 	IPS_HELPER_BIT = 13,
 	IPS_HELPER = (1 << IPS_HELPER_BIT),
+
+	/* Trigger, not included in offical kernel.
+	 * Make sure bit number is not overlapped with anyone above.
+	 */
+	IPS_TRIGGER_BIT = 14,
+	IPS_TRIGGER = (1 << IPS_TRIGGER_BIT),
 };
 
 /* Connection tracking event types */

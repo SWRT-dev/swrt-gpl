@@ -189,6 +189,53 @@ static int store_isolate_mode(struct net_bridge_port *p, unsigned long v)
 static BRPORT_ATTR(isolate_mode, S_IRUGO | S_IWUSR,
 		   show_isolate_mode, store_isolate_mode);
 
+static ssize_t show_untagged_vlan_en(struct net_bridge_port *p, char *buf)
+{
+	return sprintf(buf, "%u\n", p->untagged_port_vlan_en);
+}
+static int store_untagged_vlan_en(struct net_bridge_port *p, unsigned long v)
+{
+	if (v)
+		p->untagged_port_vlan_en = 1;
+	else
+		p->untagged_port_vlan_en = 0;
+	return 0;
+}
+static BRPORT_ATTR(untagged_vlan_en, S_IRUGO | S_IWUSR,
+		   show_untagged_vlan_en, store_untagged_vlan_en);
+
+static ssize_t show_untagged_vlan(struct net_bridge_port *p, char *buf)
+{
+	return sprintf(buf, "%u\n", p->untagged_port_vlan);
+}
+static int store_untagged_vlan(struct net_bridge_port *p, unsigned long v)
+{
+	if (v)
+		p->untagged_port_vlan = v;
+	else
+		p->untagged_port_vlan = 0;
+	return 0;
+}
+static BRPORT_ATTR(untagged_vlan, S_IRUGO | S_IWUSR,
+		   show_untagged_vlan, store_untagged_vlan);
+
+#if defined(PLAX56_XP4)	/* ASUS block PLC MME control packet from bridge */
+static ssize_t show_forward_88e1(struct net_bridge_port *p, char *buf)
+{
+	return sprintf(buf, "%u\n", p->forward_88e1);
+}
+static int store_forward_88e1(struct net_bridge_port *p, unsigned long v)
+{
+	if (v)
+		p->forward_88e1 = v;
+	else
+		p->forward_88e1 = 0;
+	return 0;
+}
+static BRPORT_ATTR(forward_88e1, S_IRUGO | S_IWUSR,
+		   show_forward_88e1, store_forward_88e1);
+#endif	/* ASUS */
+
 #ifdef CONFIG_BRIDGE_IGMP_SNOOPING
 static ssize_t show_multicast_router(struct net_bridge_port *p, char *buf)
 {
@@ -236,6 +283,11 @@ static const struct brport_attribute *brport_attrs[] = {
 	&brport_attr_proxyarp,
 	&brport_attr_proxyarp_wifi,
 	&brport_attr_isolate_mode,
+	&brport_attr_untagged_vlan_en,
+	&brport_attr_untagged_vlan,
+#if defined(PLAX56_XP4)
+	&brport_attr_forward_88e1,
+#endif
 	NULL
 };
 

@@ -321,6 +321,28 @@ config NF_CONNTRACK_PPTP
 
 	  To compile it as a module, choose M here.  If unsure, say N.
 
+config NF_CONNTRACK_QUAKE3
+	tristate "Quake3 protocol support"
+	depends on NETFILTER_ADVANCED
+	help
+	  Quake III Arena  connection tracking helper. This module allows for a
+	  stricter firewall rulebase if one only allows traffic to a master
+	  server. Connections to Quake III server IP addresses and ports returned
+	  by the master server will be tracked automatically.
+
+	  If you want to compile it as a module, say M here and read
+	  <file:Documentation/modules.txt>.  If unsure, say 'Y'.
+
+config NF_CONNTRACK_RTSP
+	tristate  "RTSP protocol support"
+	depends on NETFILTER_ADVANCED
+	help
+	  Support the RTSP protocol.  This allows UDP transports to be setup
+	  properly, including RTP and RDT.
+
+	  If you want to compile it as a module, say 'M' here and read
+	  Documentation/modules.txt.  If unsure, say 'Y'.
+
 config NF_CONNTRACK_SANE
 	tristate "SANE protocol support"
 	depends on NETFILTER_ADVANCED
@@ -819,6 +841,18 @@ config NETFILTER_XT_TARGET_LOG
 	  any iptables table which records the packet header to the syslog.
 
 	  To compile it as a module, choose M here.  If unsure, say N.
+
+config NETFILTER_XT_TARGET_IMQ
+        tristate '"IMQ" target support'
+	depends on NETFILTER_XTABLES
+	depends on IP_NF_MANGLE || IP6_NF_MANGLE
+	select IMQ
+	default m if NETFILTER_ADVANCED=n
+        help
+          This option adds a `IMQ' target which is used to specify if and
+          to which imq device packets should get enqueued/dequeued.
+
+          To compile it as a module, choose M here.  If unsure, say N.
 
 config NETFILTER_XT_TARGET_MARK
 	tristate '"MARK" target support'
@@ -1494,6 +1528,49 @@ config NETFILTER_XT_MATCH_U32
 	  lengths.
 
 	  Details and examples are in the kernel module source.
+
+config NETFILTER_XT_MATCH_CONDITION
+        tristate  '"condition" match support'
+        depends on NETFILTER_XTABLES
+        help
+          This option allows you to match firewall rules against condition
+          variables stored in the /proc/net/nf_condition directory.
+
+          N.B.: older versions used /proc/net/ipt_condition. You can
+          reenable it with "compat_dir_name".
+
+          If you want to compile it as a module, say M here and read
+          Documentation/modules.txt.  If unsure, say `N'.
+
+config NETFILTER_XT_MATCH_GEOIP
+   tristate  '"geoip" match support'
+   depends on NETFILTER_XTABLES
+   help
+          This option allows you to match a packet by its source or
+          destination country.  Basically, you need a country's
+          database containing all subnets and associated countries.
+
+          For the complete procedure and understanding, read :
+          http://people.netfilter.org/acidfu/geoip/howto/geoip-HOWTO.html
+
+          If you want to compile it as a module, say M here and read
+          <file:Documentation/modules.txt>.  The module will be
+          called `ipt_geoip'.  If unsure, say `N'.
+
+config NETFILTER_XT_MATCH_WEBSTR
+	tristate  '"webstr" match support'
+	depends on NETFILTER_XTABLES
+	help
+	  This option adds a `webstr' match, which allows you to look for
+	  pattern matchings in http stream.
+
+	  To compile it as a module, choose M here.  If unsure, say N.
+
+config NETFILTER_XT_MATCH_ETHPORT
+	tristate '"Ethernet port for incoming packets" match support'
+	depends on NETFILTER_XTABLES && (IP6_NF_IPTABLES || IP6_NF_IPTABLES=n)
+	help
+	  This option adds a `ethport' match.
 
 endif # NETFILTER_XTABLES
 

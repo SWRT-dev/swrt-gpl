@@ -27,6 +27,11 @@
 
 #include "nf_internals.h"
 
+#ifdef CONFIG_IP_NF_LFP
+typedef int (*lfpHitHook)(int pf, unsigned int hook, struct sk_buff *skb);
+extern lfpHitHook lfp_hit_hook;
+#endif
+
 static DEFINE_MUTEX(afinfo_mutex);
 
 const struct nf_afinfo __rcu *nf_afinfo[NFPROTO_NUMPROTO] __read_mostly;
@@ -301,6 +306,13 @@ int nf_hook_slow(struct sk_buff *skb, struct nf_hook_state *state)
 	/* We may already have this, but read-locks nest anyway */
 	rcu_read_lock();
 
+#ifdef CONFIG_IP_NF_LFP
+	if(likely(lfp_hit_hook)) {
+		ret = lfp_hit_hook(state->pf, state->hook, skb);
+		if(unlikely(ret)) goto unlock;
+	}
+#endif
+
 	elem = list_entry_rcu(state->hook_list, struct nf_hook_ops, list);
 next_hook:
 	verdict = nf_iterate(state->hook_list, skb, state, &elem);
@@ -311,9 +323,11 @@ next_hook:
 		ret = NF_DROP_GETERR(verdict);
 		if (ret == 0)
 			ret = -EPERM;
-	} else if ((verdict & NF_VERDICT_MASK) == NF_QUEUE) {
+	} else if ((verdict & NF_VERDICT_MASK) == NF_QUEUE ||
+		(verdict & NF_VERDICT_MASK) == NF_IMQ_QUEUE) {
 		int err = nf_queue(skb, elem, state,
-				   verdict >> NF_VERDICT_QBITS);
+				   verdict >> NF_VERDICT_QBITS,
+				  verdict & NF_VERDICT_MASK);
 		if (err < 0) {
 			if (err == -ESRCH &&
 			   (verdict & NF_VERDICT_FLAG_QUEUE_BYPASS))
@@ -321,6 +335,7 @@ next_hook:
 			kfree_skb(skb);
 		}
 	}
+unlock:
 	rcu_read_unlock();
 	return ret;
 }

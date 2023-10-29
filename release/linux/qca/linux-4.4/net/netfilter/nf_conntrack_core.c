@@ -834,7 +834,10 @@ __nf_conntrack_alloc(struct net *net,
 	    unlikely(atomic_read(&net->ct.count) > nf_conntrack_max)) {
 		if (!early_drop(net, hash)) {
 			atomic_dec(&net->ct.count);
-			net_warn_ratelimited("nf_conntrack: table full, dropping packet\n");
+			net_warn_ratelimited("nf_conntrack: table full, dropping"
+					" packet. (nf_conntrack_max %u/%u)\n",
+				       atomic_read(&net->ct.count),
+				       nf_conntrack_max);
 			return ERR_PTR(-ENOMEM);
 		}
 	}

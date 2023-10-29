@@ -30,6 +30,7 @@
 #define PHY_ID_AQR111	0x03a1b610
 #define PHY_ID_AQR111B0	0x03a1b612
 #define PHY_ID_AQR112	0x03a1b660
+#define PHY_ID_AQR113A1	0x31c31c41
 #define PHY_ID_AQR113C	0x31c31C10
 #define PHY_ID_AQR112C	0x03a1b792
 
@@ -756,6 +757,25 @@ static struct phy_driver aquantia_driver[] = {
 	.update_link	= aquantia_update_link,
 	.driver		= { .owner = THIS_MODULE,},
 },
+{
+	.phy_id		= PHY_ID_AQR113A1,
+	.phy_id_mask	= 0xfffffff0,
+	.name		= "Aquantia AQR113",
+	.features	= PHY_AQUANTIA_FEATURES,
+	.flags		= PHY_HAS_INTERRUPT,
+	.probe		= aquantia_phy_probe,
+	.soft_reset	= aquantia_soft_reset,
+	.config_init	= aquantia_config_init,
+	.aneg_done	= aquantia_aneg_done,
+	.config_aneg	= aquantia_config_aneg,
+	.config_intr	= aquantia_config_intr,
+	.ack_interrupt	= aquantia_ack_interrupt,
+	.read_status	= aquantia_read_status,
+	.suspend	= aquantia_suspend,
+	.resume		= aquantia_resume,
+	.update_link	= aquantia_update_link,
+	.driver		= { .owner = THIS_MODULE,},
+},
 };
 
 module_phy_driver(aquantia_driver);
@@ -773,6 +793,7 @@ static struct mdio_device_id __maybe_unused aquantia_tbl[] = {
 	{ PHY_ID_AQR112, 0xfffffff0 },
 	{ PHY_ID_AQR113C, 0xfffffff0 },
 	{ PHY_ID_AQR112C, 0xfffffff0 },
+	{ PHY_ID_AQR113A1, 0xfffffff0 },
 	{ }
 };
 

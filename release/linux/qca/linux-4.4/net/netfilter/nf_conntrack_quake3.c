@@ -97,7 +97,7 @@ static int quake3_help(struct sk_buff *skb,
 	BUG_ON(qb_ptr == NULL);
 	data = qb_ptr;
 
-	if (strnicmp(data + 4, quake3s_conntrack.pattern,
+	if (strncmp(data + 4, quake3s_conntrack.pattern,
 		     quake3s_conntrack.plen) == 0) {
 		for(i=23;    /* 4 bytes filler, 18 bytes "getserversResponse",
 				1 byte "\" */

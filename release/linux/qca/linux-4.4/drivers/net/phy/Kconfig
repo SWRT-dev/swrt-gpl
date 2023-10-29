@@ -43,6 +43,11 @@ config AMD_PHY
 	---help---
 	  Currently supports the am79c874
 
+config AR8033_PHY
+	tristate "Drivers for the QCA AR8033 PHY"
+	---help---
+	  Currently supports the ar8033
+
 config MARVELL_PHY
 	tristate "Drivers for Marvell PHYs"
 	---help---

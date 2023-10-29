@@ -36,6 +36,7 @@
 #include <linux/mutex.h>
 #include <linux/workqueue.h>
 #include <linux/debugfs.h>
+#include <linux/usb/usb-bus-stats.h>
 
 #include <asm/io.h>
 #include <linux/scatterlist.h>
@@ -1139,6 +1140,9 @@ static int __init usb_init(void)
 	retval = usb_hub_init();
 	if (retval)
 		goto hub_init_failed;
+#if defined(CONFIG_USB_BUS_STATS)
+	memset(usb_bus_stat, 0, sizeof(usb_bus_stat));
+#endif
 	retval = usb_register_device_driver(&usb_generic_driver, THIS_MODULE);
 	if (!retval)
 		goto out;

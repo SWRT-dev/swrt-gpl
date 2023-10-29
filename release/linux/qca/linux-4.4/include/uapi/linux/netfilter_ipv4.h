@@ -54,6 +54,10 @@
 #define NF_IP_NUMHOOKS		5
 #endif /* ! __KERNEL__ */
 
+#ifdef CONFIG_IP_NF_LFP
+#define NFC_LFP_ENABLE		(1<<30)
+#endif
+
 enum nf_ip_hook_priorities {
 	NF_IP_PRI_FIRST = INT_MIN,
 	NF_IP_PRI_CONNTRACK_DEFRAG = -400,

@@ -45,6 +45,10 @@
 #include "ubi.h"
 #include "ubi-media.h"
 
+#if defined(SWRT360V6) || defined(JDCAX1800)
+#include <linux/magic.h>
+#endif
+
 extern long int rfs_offset;
 #if defined(CONFIG_FACTORY_CHECKSUM)
 #include <linux/mutex.h>
@@ -964,15 +968,26 @@ static int create_rootfs_partition(struct mtd_info *mtd,
 		uint8_t p[4];
 	} u;
 #endif
+#if defined(SWRT360V6) || defined(JDCAX1800)
+	int ret = 0;
+	size_t retlen;
+	uint32_t rootfs_offset = 0;
+	u32 magic;
+#endif
 
 	if (!mtd || !di || !vi)
 		return -1;
-
+#if defined(SWRT360V6) || defined(JDCAX1800)
+	if (!strcmp(vi->name, "kernel"))
+		part = &rootfs;
+	if (!strcmp(vi->name, "kernel2"))
+		part = &rootfs2;
+#else
 	if (!strcmp(vi->name, "linux"))
 		part = &rootfs;
 	if (!strcmp(vi->name, "linux2"))
 		part = &rootfs2;
-
+#endif
 	if (!part)
 		return 0;
 
@@ -1018,9 +1033,24 @@ static int create_rootfs_partition(struct mtd_info *mtd,
 		}
 	}
 #else
+#if defined(SWRT360V6) || defined(JDCAX1800)
+	for(rootfs_offset = 0x3c0000; rootfs_offset < 0x400000; rootfs_offset += 0x40) {
+		ret = mtd_read(mtd, rootfs_offset, sizeof(magic), &retlen, (unsigned char *) &magic);
+		if (le32_to_cpu(magic) == SQUASHFS_MAGIC){
+			ret = 0;
+			break;
+		}
+	}
+	if (ret) {
+		pr_info("no rootfs found in \"%s\"\n", mtd->name);
+		return ret;
+	}
+	part->offset = rootfs_offset;
+	part->size = mtd->size - rootfs_offset;
+#else
 	part->offset = rfs_offset;
 	part->size = mtd->size - rfs_offset;
-
+#endif
 #endif
 
 	printk(KERN_DEBUG "volume %s rfs_offset %lx mtd->size %lx\n",

@@ -1075,7 +1075,9 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			 * However, hub_wq will ignore the roothub events until
 			 * the roothub is registered.
 			 */
-			writel(temp | PORT_POWER, port_array[wIndex]);
+			if (u3intf || hcd->speed != HCD_USB3) {
+				writel(temp | PORT_POWER, port_array[wIndex]);
+			}
 
 			temp = readl(port_array[wIndex]);
 			xhci_dbg(xhci, "set port power, actual port %d status  = 0x%x\n", wIndex, temp);
@@ -1089,7 +1091,12 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			spin_lock_irqsave(&xhci->lock, flags);
 			break;
 		case USB_PORT_FEAT_RESET:
+#if defined(PLAX56_XP4)
+			xhci_dbg(xhci, "Patch - Add clear PLC\n");
+			temp = (temp | PORT_RESET | 0x400000);
+#else
 			temp = (temp | PORT_RESET);
+#endif
 			writel(temp, port_array[wIndex]);
 
 			temp = readl(port_array[wIndex]);

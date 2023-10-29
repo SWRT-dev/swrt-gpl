@@ -43,6 +43,9 @@ static char __initdata saved_root_name[64];
 static int root_wait;
 
 dev_t ROOT_DEV;
+#ifdef CONFIG_MTD_ROOTFS_ROOT_DEV
+dev_t ROOTFS_DEV, ROOTFS2_DEV;
+#endif
 
 static int __init load_ramdisk(char *str)
 {
@@ -549,6 +552,10 @@ void __init mount_root(void)
 void __init prepare_namespace(void)
 {
 	int is_floppy;
+#ifdef CONFIG_MTD_ROOTFS_ROOT_DEV
+	char *r;
+	dev_t *d = NULL;
+#endif
 
 	if (root_delay) {
 		printk(KERN_INFO "Waiting %d sec before mounting root device...\n",
@@ -575,6 +582,20 @@ void __init prepare_namespace(void)
 			goto out;
 		}
 		ROOT_DEV = name_to_dev_t(root_device_name);
+#ifdef CONFIG_MTD_ROOTFS_ROOT_DEV
+		r = root_device_name;
+		if (ROOTFS2_DEV && (!strcmp(r, "/dev/mtdblock8") || !strcmp(r, "rootfs2"))) {
+			d = &ROOTFS2_DEV;
+		} else if (ROOTFS_DEV && (!strncmp(r, "/dev/mtdblock", 13) || !strcmp(r, "rootfs"))) {
+			d = &ROOTFS_DEV;
+		}
+
+		if (d != NULL && (MAJOR(ROOT_DEV) != MAJOR(*d) || MINOR(ROOT_DEV) != MINOR(*d))) {
+			printk("Override root device as %d:%d\n", MAJOR(*d), MINOR(*d));
+			ROOT_DEV = *d;
+		}
+#endif
+
 		if (strncmp(root_device_name, "/dev/", 5) == 0)
 			root_device_name += 5;
 	}
