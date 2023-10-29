@@ -123,7 +123,7 @@ static int edsa_rcv(struct sk_buff *skb, struct net_device *dev,
 	if (source_device >= dst->pd->nr_chips)
 		goto out_drop;
 	ds = dst->ds[source_device];
-	if (source_port >= DSA_MAX_PORTS || ds->ports[source_port] == NULL)
+	if (source_port >= DSA_MAX_PORTS || !ds->ports[source_port].netdev)
 		goto out_drop;
 
 	/*
@@ -178,7 +178,7 @@ static int edsa_rcv(struct sk_buff *skb, struct net_device *dev,
 			2 * ETH_ALEN);
 	}
 
-	skb->dev = ds->ports[source_port];
+	skb->dev = ds->ports[source_port].netdev;
 	skb_push(skb, ETH_HLEN);
 	skb->pkt_type = PACKET_HOST;
 	skb->protocol = eth_type_trans(skb, skb->dev);

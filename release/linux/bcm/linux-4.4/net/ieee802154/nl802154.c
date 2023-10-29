@@ -843,13 +843,8 @@ nl802154_send_iface(struct sk_buff *msg, u32 portid, u32 seq, int flags,
 		goto nla_put_failure;
 
 #ifdef CONFIG_IEEE802154_NL802154_EXPERIMENTAL
-	if (wpan_dev->iftype == NL802154_IFTYPE_MONITOR)
-		goto out;
-
 	if (nl802154_get_llsec_params(msg, rdev, wpan_dev) < 0)
 		goto nla_put_failure;
-
-out:
 #endif /* CONFIG_IEEE802154_NL802154_EXPERIMENTAL */
 
 	genlmsg_end(msg, hdr);
@@ -1372,9 +1367,6 @@ static int nl802154_set_llsec_params(struct sk_buff *skb,
 	u32 changed = 0;
 	int ret;
 
-	if (wpan_dev->iftype == NL802154_IFTYPE_MONITOR)
-		return -EOPNOTSUPP;
-
 	if (info->attrs[NL802154_ATTR_SEC_ENABLED]) {
 		u8 enabled;
 
@@ -1423,7 +1415,7 @@ static int nl802154_send_key(struct sk_buff *msg, u32 cmd, u32 portid,
 
 	hdr = nl802154hdr_put(msg, portid, seq, flags, cmd);
 	if (!hdr)
-		return -ENOBUFS;
+		return -1;
 
 	if (nla_put_u32(msg, NL802154_ATTR_IFINDEX, dev->ifindex))
 		goto nla_put_failure;
@@ -1481,11 +1473,6 @@ nl802154_dump_llsec_key(struct sk_buff *skb, struct netlink_callback *cb)
 	if (err)
 		return err;
 
-	if (wpan_dev->iftype == NL802154_IFTYPE_MONITOR) {
-		err = skb->len;
-		goto out_err;
-	}
-
 	if (!wpan_dev->netdev) {
 		err = -EINVAL;
 		goto out_err;
@@ -1540,8 +1527,7 @@ static int nl802154_add_llsec_key(struct sk_buff *skb, struct genl_info *info)
 	struct ieee802154_llsec_key_id id = { };
 	u32 commands[NL802154_CMD_FRAME_NR_IDS / 32] = { };
 
-	if (!info->attrs[NL802154_ATTR_SEC_KEY] ||
-	    nla_parse_nested(attrs, NL802154_KEY_ATTR_MAX,
+	if (nla_parse_nested(attrs, NL802154_KEY_ATTR_MAX,
 			     info->attrs[NL802154_ATTR_SEC_KEY],
 			     nl802154_key_policy))
 		return -EINVAL;
@@ -1591,8 +1577,7 @@ static int nl802154_del_llsec_key(struct sk_buff *skb, struct genl_info *info)
 	struct nlattr *attrs[NL802154_KEY_ATTR_MAX + 1];
 	struct ieee802154_llsec_key_id id;
 
-	if (!info->attrs[NL802154_ATTR_SEC_KEY] ||
-	    nla_parse_nested(attrs, NL802154_KEY_ATTR_MAX,
+	if (nla_parse_nested(attrs, NL802154_KEY_ATTR_MAX,
 			     info->attrs[NL802154_ATTR_SEC_KEY],
 			     nl802154_key_policy))
 		return -EINVAL;
@@ -1614,7 +1599,7 @@ static int nl802154_send_device(struct sk_buff *msg, u32 cmd, u32 portid,
 
 	hdr = nl802154hdr_put(msg, portid, seq, flags, cmd);
 	if (!hdr)
-		return -ENOBUFS;
+		return -1;
 
 	if (nla_put_u32(msg, NL802154_ATTR_IFINDEX, dev->ifindex))
 		goto nla_put_failure;
@@ -1657,11 +1642,6 @@ nl802154_dump_llsec_dev(struct sk_buff *skb, struct netlink_callback *cb)
 	err = nl802154_prepare_wpan_dev_dump(skb, cb, &rdev, &wpan_dev);
 	if (err)
 		return err;
-
-	if (wpan_dev->iftype == NL802154_IFTYPE_MONITOR) {
-		err = skb->len;
-		goto out_err;
-	}
 
 	if (!wpan_dev->netdev) {
 		err = -EINVAL;
@@ -1750,9 +1730,6 @@ static int nl802154_add_llsec_dev(struct sk_buff *skb, struct genl_info *info)
 	struct wpan_dev *wpan_dev = dev->ieee802154_ptr;
 	struct ieee802154_llsec_device dev_desc;
 
-	if (wpan_dev->iftype == NL802154_IFTYPE_MONITOR)
-		return -EOPNOTSUPP;
-
 	if (ieee802154_llsec_parse_device(info->attrs[NL802154_ATTR_SEC_DEVICE],
 					  &dev_desc) < 0)
 		return -EINVAL;
@@ -1768,8 +1745,7 @@ static int nl802154_del_llsec_dev(struct sk_buff *skb, struct genl_info *info)
 	struct nlattr *attrs[NL802154_DEV_ATTR_MAX + 1];
 	__le64 extended_addr;
 
-	if (!info->attrs[NL802154_ATTR_SEC_DEVICE] ||
-	    nla_parse_nested(attrs, NL802154_DEV_ATTR_MAX,
+	if (nla_parse_nested(attrs, NL802154_DEV_ATTR_MAX,
 			     info->attrs[NL802154_ATTR_SEC_DEVICE],
 			     nl802154_dev_policy))
 		return -EINVAL;
@@ -1792,7 +1768,7 @@ static int nl802154_send_devkey(struct sk_buff *msg, u32 cmd, u32 portid,
 
 	hdr = nl802154hdr_put(msg, portid, seq, flags, cmd);
 	if (!hdr)
-		return -ENOBUFS;
+		return -1;
 
 	if (nla_put_u32(msg, NL802154_ATTR_IFINDEX, dev->ifindex))
 		goto nla_put_failure;
@@ -1838,11 +1814,6 @@ nl802154_dump_llsec_devkey(struct sk_buff *skb, struct netlink_callback *cb)
 	err = nl802154_prepare_wpan_dev_dump(skb, cb, &rdev, &wpan_dev);
 	if (err)
 		return err;
-
-	if (wpan_dev->iftype == NL802154_IFTYPE_MONITOR) {
-		err = skb->len;
-		goto out_err;
-	}
 
 	if (!wpan_dev->netdev) {
 		err = -EINVAL;
@@ -1901,9 +1872,6 @@ static int nl802154_add_llsec_devkey(struct sk_buff *skb, struct genl_info *info
 	struct ieee802154_llsec_device_key key;
 	__le64 extended_addr;
 
-	if (wpan_dev->iftype == NL802154_IFTYPE_MONITOR)
-		return -EOPNOTSUPP;
-
 	if (!info->attrs[NL802154_ATTR_SEC_DEVKEY] ||
 	    nla_parse_nested(attrs, NL802154_DEVKEY_ATTR_MAX,
 			     info->attrs[NL802154_ATTR_SEC_DEVKEY],
@@ -1937,8 +1905,7 @@ static int nl802154_del_llsec_devkey(struct sk_buff *skb, struct genl_info *info
 	struct ieee802154_llsec_device_key key;
 	__le64 extended_addr;
 
-	if (!info->attrs[NL802154_ATTR_SEC_DEVKEY] ||
-	    nla_parse_nested(attrs, NL802154_DEVKEY_ATTR_MAX,
+	if (nla_parse_nested(attrs, NL802154_DEVKEY_ATTR_MAX,
 			     info->attrs[NL802154_ATTR_SEC_DEVKEY],
 			     nl802154_devkey_policy))
 		return -EINVAL;
@@ -1969,7 +1936,7 @@ static int nl802154_send_seclevel(struct sk_buff *msg, u32 cmd, u32 portid,
 
 	hdr = nl802154hdr_put(msg, portid, seq, flags, cmd);
 	if (!hdr)
-		return -ENOBUFS;
+		return -1;
 
 	if (nla_put_u32(msg, NL802154_ATTR_IFINDEX, dev->ifindex))
 		goto nla_put_failure;
@@ -2012,11 +1979,6 @@ nl802154_dump_llsec_seclevel(struct sk_buff *skb, struct netlink_callback *cb)
 	err = nl802154_prepare_wpan_dev_dump(skb, cb, &rdev, &wpan_dev);
 	if (err)
 		return err;
-
-	if (wpan_dev->iftype == NL802154_IFTYPE_MONITOR) {
-		err = skb->len;
-		goto out_err;
-	}
 
 	if (!wpan_dev->netdev) {
 		err = -EINVAL;
@@ -2103,9 +2065,6 @@ static int nl802154_add_llsec_seclevel(struct sk_buff *skb,
 	struct wpan_dev *wpan_dev = dev->ieee802154_ptr;
 	struct ieee802154_llsec_seclevel sl;
 
-	if (wpan_dev->iftype == NL802154_IFTYPE_MONITOR)
-		return -EOPNOTSUPP;
-
 	if (llsec_parse_seclevel(info->attrs[NL802154_ATTR_SEC_LEVEL],
 				 &sl) < 0)
 		return -EINVAL;
@@ -2120,9 +2079,6 @@ static int nl802154_del_llsec_seclevel(struct sk_buff *skb,
 	struct net_device *dev = info->user_ptr[1];
 	struct wpan_dev *wpan_dev = dev->ieee802154_ptr;
 	struct ieee802154_llsec_seclevel sl;
-
-	if (wpan_dev->iftype == NL802154_IFTYPE_MONITOR)
-		return -EOPNOTSUPP;
 
 	if (!info->attrs[NL802154_ATTR_SEC_LEVEL] ||
 	    llsec_parse_seclevel(info->attrs[NL802154_ATTR_SEC_LEVEL],

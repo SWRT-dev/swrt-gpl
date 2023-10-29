@@ -563,6 +563,36 @@ TRACE_EVENT(sched_wake_idle_without_ipi,
 	TP_printk("cpu=%d", __entry->cpu)
 );
 #endif /* _TRACE_SCHED_H */
+#define trace_sched_boost_cpu(...) {}
+#define trace_core_ctl_eval_need(...) {}
+#define trace_core_ctl_set_busy(...) {}
+#define trace_core_ctl_set_boost(...) {}
+#define trace_core_ctl_update_nr_need(...) {}
+#define trace_sched_tune_tasks_update(...) {}
+#define trace_sched_tune_boostgroup_update(...) {}
+#define trace_sched_boost_task(...) {}
+#define trace_sched_overutilized(...) {}
+#define trace_sched_find_best_target(...) {}
+#define trace_sched_util_est_task(...) {}
+#define trace_sched_util_est_cpu(...) {}
+#define trace_sched_capacity_update(...) {}
+#define trace_sched_cpu_util(...) {}
+#define trace_sched_energy_diff(...) {}
+#define trace_sched_task_util(...) {}
+#define trace_sched_task_util_enabled(...) false
+#define trace_sched_get_nr_running_avg(...) {}
+#define trace_sched_isolate(...) {}
+#define trace_sched_isolate_enabled(...) false
+#define trace_sched_load_balance_skip_tasks(...) {}
+#define trace_sched_load_to_gov {}
+#define trace_sched_update_pred_demand {}
+#define trace_sched_update_history {}
+#define trace_sched_get_task_cpu_cycles {}
+#define trace_sched_update_task_ravg {}
+#define trace_sched_update_task_ravg_mini {}
+#define trace_sched_set_preferred_cluster {}
+#define trace_sched_migration_update_sum {}
+#define trace_sched_set_boost {}
 
 /* This part must be outside protection */
 #include <trace/define_trace.h>

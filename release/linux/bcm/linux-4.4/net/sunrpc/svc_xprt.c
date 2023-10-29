@@ -97,17 +97,8 @@ void svc_unreg_xprt_class(struct svc_xprt_class *xcl)
 }
 EXPORT_SYMBOL_GPL(svc_unreg_xprt_class);
 
-/**
- * svc_print_xprts - Format the transport list for printing
- * @buf: target buffer for formatted address
- * @maxlen: length of target buffer
- *
- * Fills in @buf with a string containing a list of transport names, each name
- * terminated with '\n'. If the buffer is too small, some entries may be
- * missing, but it is guaranteed that all lines in the output buffer are
- * complete.
- *
- * Returns positive length of the filled-in string.
+/*
+ * Format the transport list for printing
  */
 int svc_print_xprts(char *buf, int maxlen)
 {
@@ -120,9 +111,9 @@ int svc_print_xprts(char *buf, int maxlen)
 	list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
 		int slen;
 
-		slen = snprintf(tmpstr, sizeof(tmpstr), "%s %d\n",
-				xcl->xcl_name, xcl->xcl_max_payload);
-		if (slen >= sizeof(tmpstr) || len + slen >= maxlen)
+		sprintf(tmpstr, "%s %d\n", xcl->xcl_name, xcl->xcl_max_payload);
+		slen = strlen(tmpstr);
+		if (len + slen > maxlen)
 			break;
 		len += slen;
 		strcat(buf, tmpstr);
@@ -1011,7 +1002,7 @@ static int svc_close_list(struct svc_serv *serv, struct list_head *xprt_list, st
 	struct svc_xprt *xprt;
 	int ret = 0;
 
-	spin_lock_bh(&serv->sv_lock);
+	spin_lock(&serv->sv_lock);
 	list_for_each_entry(xprt, xprt_list, xpt_list) {
 		if (xprt->xpt_net != net)
 			continue;
@@ -1019,7 +1010,7 @@ static int svc_close_list(struct svc_serv *serv, struct list_head *xprt_list, st
 		set_bit(XPT_CLOSE, &xprt->xpt_flags);
 		svc_xprt_enqueue(xprt);
 	}
-	spin_unlock_bh(&serv->sv_lock);
+	spin_unlock(&serv->sv_lock);
 	return ret;
 }
 

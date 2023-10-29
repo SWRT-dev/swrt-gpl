@@ -290,17 +290,17 @@ unlock:
 }
 EXPORT_SYMBOL(udp_del_offload);
 
-struct sk_buff *udp_gro_receive(struct list_head *head, struct sk_buff *skb,
+struct sk_buff **udp_gro_receive(struct sk_buff **head, struct sk_buff *skb,
 				 struct udphdr *uh)
 {
 	struct udp_offload_priv *uo_priv;
-	struct sk_buff *p, *pp = NULL;
+	struct sk_buff *p, **pp = NULL;
 	struct udphdr *uh2;
 	unsigned int off = skb_gro_offset(skb);
 	int flush = 1;
 
 	if (NAPI_GRO_CB(skb)->encap_mark ||
-	    (uh->check && skb->ip_summed != CHECKSUM_PARTIAL &&
+	    (skb->ip_summed != CHECKSUM_PARTIAL &&
 	     NAPI_GRO_CB(skb)->csum_cnt == 0 &&
 	     !NAPI_GRO_CB(skb)->csum_valid))
 		goto out;
@@ -320,7 +320,7 @@ struct sk_buff *udp_gro_receive(struct list_head *head, struct sk_buff *skb,
 unflush:
 	flush = 0;
 
-	list_for_each_entry(p, head, list) {
+	for (p = *head; p; p = p->next) {
 		if (!NAPI_GRO_CB(p)->same_flow)
 			continue;
 
@@ -349,8 +349,8 @@ out:
 	return pp;
 }
 
-static struct sk_buff *udp4_gro_receive(struct list_head *head,
-					struct sk_buff *skb)
+static struct sk_buff **udp4_gro_receive(struct sk_buff **head,
+					 struct sk_buff *skb)
 {
 	struct udphdr *uh = udp_gro_udphdr(skb);
 

@@ -94,22 +94,24 @@ define platformBusyboxOptions
 endef
 
 define platformKernelConfig
-#	sed -i "/CONFIG_DEBUG_RT_MUTEXES/d" $(1); \
-#	echo "CONFIG_DEBUG_RT_MUTEXES=y" >>$(1); \
-#	sed -i "/CONFIG_DEBUG_SPINLOCK/d" $(1); \
-#	echo "CONFIG_DEBUG_SPINLOCK=y" >>$(1); \
-#	sed -i "/CONFIG_DEBUG_MUTEXES/d" $(1); \
-#	echo "CONFIG_DEBUG_MUTEXES=y" >>$(1); \
-#	sed -i "/CONFIG_DEBUG_WW_MUTEX_SLOWPATH/d" $(1); \
-#	echo "CONFIG_DEBUG_WW_MUTEX_SLOWPATH=y" >>$(1); \
-#	sed -i "/CONFIG_DEBUG_LOCK_ALLOC/d" $(1); \
-#	echo "CONFIG_DEBUG_LOCK_ALLOC=y" >>$(1); \
-#	sed -i "/CONFIG_PROVE_LOCKING/d" $(1); \
-#	echo "CONFIG_PROVE_LOCKING=y" >>$(1); \
-#	sed -i "/CONFIG_LOCK_STAT/d" $(1); \
-#	echo "CONFIG_LOCK_STAT=y" >>$(1); \
-#	echo "CONFIG_DEBUG_LOCKDEP=y" >>$(1); \
-#	echo "# CONFIG_PROVE_RCU_REPEATEDLY is not set" >>$(1); \
+	if [ "$(DEBUG)" = "y" ] ; then \
+		sed -i "/CONFIG_DEBUG_RT_MUTEXES/d" $(1); \
+		echo "CONFIG_DEBUG_RT_MUTEXES=y" >>$(1); \
+		sed -i "/CONFIG_DEBUG_SPINLOCK/d" $(1); \
+		echo "CONFIG_DEBUG_SPINLOCK=y" >>$(1); \
+		sed -i "/CONFIG_DEBUG_MUTEXES/d" $(1); \
+		echo "CONFIG_DEBUG_MUTEXES=y" >>$(1); \
+		sed -i "/CONFIG_DEBUG_WW_MUTEX_SLOWPATH/d" $(1); \
+		echo "CONFIG_DEBUG_WW_MUTEX_SLOWPATH=y" >>$(1); \
+		sed -i "/CONFIG_DEBUG_LOCK_ALLOC/d" $(1); \
+		echo "CONFIG_DEBUG_LOCK_ALLOC=y" >>$(1); \
+		sed -i "/CONFIG_PROVE_LOCKING/d" $(1); \
+		echo "CONFIG_PROVE_LOCKING=y" >>$(1); \
+		sed -i "/CONFIG_LOCK_STAT/d" $(1); \
+		echo "CONFIG_LOCK_STAT=y" >>$(1); \
+		echo "CONFIG_DEBUG_LOCKDEP=y" >>$(1); \
+		echo "# CONFIG_PROVE_RCU_REPEATEDLY is not set" >>$(1); \
+	fi; \
 	if [ "$(SFE)" = "y" ] ; then \
 		sed -i "/CONFIG_BCM_CTF\>/d" $(1); \
 		echo "# CONFIG_BCM_CTF is not set" >>$(1); \

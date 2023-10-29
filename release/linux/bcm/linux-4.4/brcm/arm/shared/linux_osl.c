@@ -255,7 +255,7 @@ struct pcmcia_dev {
 #endif /* defined(CONFIG_PCMCIA) || defined(CONFIG_PCMCIA_MODULE) */
 
 /* Global ASSERT type flag */
-uint32 g_assert_type = 0;
+uint32 g_assert_type = 1;
 module_param(g_assert_type, int, 0);
 
 #ifdef	BCM_SECURE_DMA

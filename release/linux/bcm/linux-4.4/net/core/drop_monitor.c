@@ -159,7 +159,6 @@ static void sched_send_work(unsigned long _data)
 static void trace_drop_common(struct sk_buff *skb, void *location)
 {
 	struct net_dm_alert_msg *msg;
-	struct net_dm_drop_point *point;
 	struct nlmsghdr *nlh;
 	struct nlattr *nla;
 	int i;
@@ -178,13 +177,11 @@ static void trace_drop_common(struct sk_buff *skb, void *location)
 	nlh = (struct nlmsghdr *)dskb->data;
 	nla = genlmsg_data(nlmsg_data(nlh));
 	msg = nla_data(nla);
-	point = msg->points;
 	for (i = 0; i < msg->entries; i++) {
-		if (!memcmp(&location, &point->pc, sizeof(void *))) {
-			point->count++;
+		if (!memcmp(&location, msg->points[i].pc, sizeof(void *))) {
+			msg->points[i].count++;
 			goto out;
 		}
-		point++;
 	}
 	if (msg->entries == dm_hit_limit)
 		goto out;
@@ -193,8 +190,8 @@ static void trace_drop_common(struct sk_buff *skb, void *location)
 	 */
 	__nla_reserve_nohdr(dskb, sizeof(struct net_dm_drop_point));
 	nla->nla_len += NLA_ALIGN(sizeof(struct net_dm_drop_point));
-	memcpy(point->pc, &location, sizeof(void *));
-	point->count = 1;
+	memcpy(msg->points[msg->entries].pc, &location, sizeof(void *));
+	msg->points[msg->entries].count = 1;
 	msg->entries++;
 
 	if (!timer_pending(&data->send_timer)) {
@@ -223,17 +220,13 @@ static void trace_napi_poll_hit(void *ignore, struct napi_struct *napi)
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(new_stat, &hw_stats_list, list) {
-		struct net_device *dev;
-
 		/*
 		 * only add a note to our monitor buffer if:
 		 * 1) this is the dev we received on
 		 * 2) its after the last_rx delta
 		 * 3) our rx_dropped count has gone up
 		 */
-		/* Paired with WRITE_ONCE() in dropmon_net_event() */
-		dev = READ_ONCE(new_stat->dev);
-		if ((dev == napi->dev)  &&
+		if ((new_stat->dev == napi->dev)  &&
 		    (time_after(jiffies, new_stat->last_rx + dm_hw_check_delta)) &&
 		    (napi->dev->stats.rx_dropped != new_stat->last_drop_val)) {
 			trace_drop_common(NULL, NULL);
@@ -348,10 +341,7 @@ static int dropmon_net_event(struct notifier_block *ev_block,
 		mutex_lock(&trace_state_mutex);
 		list_for_each_entry_safe(new_stat, tmp, &hw_stats_list, list) {
 			if (new_stat->dev == dev) {
-
-				/* Paired with READ_ONCE() in trace_napi_poll_hit() */
-				WRITE_ONCE(new_stat->dev, NULL);
-
+				new_stat->dev = NULL;
 				if (trace_state == TRACE_OFF) {
 					list_del_rcu(&new_stat->list);
 					kfree_rcu(new_stat, rcu);

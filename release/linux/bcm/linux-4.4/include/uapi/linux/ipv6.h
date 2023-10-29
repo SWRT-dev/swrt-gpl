@@ -102,7 +102,7 @@ struct ipv6_destopt_hao {
 	__u8			type;
 	__u8			length;
 	struct in6_addr		addr;
-} __attribute__((packed, aligned(2)));
+} __attribute__((packed));
 
 /*
  *	IPv6 fixed header
@@ -129,7 +129,7 @@ struct ipv6hdr {
 
 	struct	in6_addr	saddr;
 	struct	in6_addr	daddr;
-} MIPS_ENABLED(__attribute__((packed, aligned(2))));
+};
 
 
 /* index values for the variables in ipv6_devconf */
@@ -164,6 +164,7 @@ enum {
 	DEVCONF_ACCEPT_DAD,
 	DEVCONF_FORCE_TLLAO,
 	DEVCONF_NDISC_NOTIFY,
+	DEVCONF_ACCEPT_RA_RT_TABLE,
 	DEVCONF_MLDV1_UNSOLICITED_REPORT_INTERVAL,
 	DEVCONF_MLDV2_UNSOLICITED_REPORT_INTERVAL,
 	DEVCONF_SUPPRESS_FRAG_NDISC,
@@ -174,6 +175,16 @@ enum {
 	DEVCONF_USE_OIF_ADDRS_ONLY,
 	DEVCONF_ACCEPT_RA_MIN_HOP_LIMIT,
 	DEVCONF_IGNORE_ROUTES_WITH_LINKDOWN,
+	DEVCONF_DROP_UNICAST_IN_L2_MULTICAST,
+	DEVCONF_DROP_UNSOLICITED_NA,
+	DEVCONF_KEEP_ADDR_ON_DOWN,
+	DEVCONF_RTR_SOLICIT_MAX_INTERVAL,
+	DEVCONF_SEG6_ENABLED,
+	DEVCONF_SEG6_REQUIRE_HMAC,
+	DEVCONF_ENHANCED_DAD,
+	DEVCONF_ADDR_GEN_MODE,
+	DEVCONF_DISABLE_POLICY,
+	DEVCONF_ACCEPT_RA_RT_INFO_MIN_PLEN,
 	DEVCONF_MAX
 };
 

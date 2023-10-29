@@ -544,11 +544,7 @@ static __be32 *xdr_get_next_encode_buffer(struct xdr_stream *xdr,
 	 */
 	xdr->p = (void *)p + frag2bytes;
 	space_left = xdr->buf->buflen - xdr->buf->len;
-	if (space_left - frag1bytes >= PAGE_SIZE)
-		xdr->end = (void *)p + PAGE_SIZE;
-	else
-		xdr->end = (void *)p + space_left - frag1bytes;
-
+	xdr->end = (void *)p + min_t(int, space_left, PAGE_SIZE);
 	xdr->buf->page_len += frag2bytes;
 	xdr->buf->len += nbytes;
 	return p;
@@ -1035,7 +1031,6 @@ xdr_buf_subsegment(struct xdr_buf *buf, struct xdr_buf *subbuf,
 		base = 0;
 	} else {
 		base -= buf->head[0].iov_len;
-		subbuf->head[0].iov_base = buf->head[0].iov_base;
 		subbuf->head[0].iov_len = 0;
 	}
 
@@ -1048,8 +1043,6 @@ xdr_buf_subsegment(struct xdr_buf *buf, struct xdr_buf *subbuf,
 		base = 0;
 	} else {
 		base -= buf->page_len;
-		subbuf->pages = buf->pages;
-		subbuf->page_base = 0;
 		subbuf->page_len = 0;
 	}
 
@@ -1061,7 +1054,6 @@ xdr_buf_subsegment(struct xdr_buf *buf, struct xdr_buf *subbuf,
 		base = 0;
 	} else {
 		base -= buf->tail[0].iov_len;
-		subbuf->tail[0].iov_base = buf->tail[0].iov_base;
 		subbuf->tail[0].iov_len = 0;
 	}
 

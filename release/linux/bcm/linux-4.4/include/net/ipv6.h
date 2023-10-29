@@ -107,7 +107,7 @@ struct frag_hdr {
 	__u8	reserved;
 	__be16	frag_off;
 	__be32	identification;
-} MIPS_ENABLED(__attribute__((packed, aligned(2))));
+};
 
 #define	IP6_MF		0x0001
 #define	IP6_OFFSET	0xFFF8
@@ -411,8 +411,8 @@ static inline void __ipv6_addr_set_half(__be32 *addr,
 	}
 #endif
 #endif
-	net_hdr_word(&addr[0]) = wh;
-	net_hdr_word(&addr[1]) = wl;
+	addr[0] = wh;
+	addr[1] = wl;
 }
 
 static inline void ipv6_addr_set(struct in6_addr *addr, 
@@ -471,8 +471,6 @@ static inline bool ipv6_prefix_equal(const struct in6_addr *addr1,
 	const __be32 *a1 = addr1->s6_addr32;
 	const __be32 *a2 = addr2->s6_addr32;
 	unsigned int pdw, pbi;
-	/* Used for last <32-bit fraction of prefix */
-	u32 pbia1, pbia2;
 
 	/* check complete u32 in prefix */
 	pdw = prefixlen >> 5;
@@ -481,9 +479,7 @@ static inline bool ipv6_prefix_equal(const struct in6_addr *addr1,
 
 	/* check incomplete u32 in prefix */
 	pbi = prefixlen & 0x1f;
-	pbia1 = net_hdr_word(&a1[pdw]);
-	pbia2 = net_hdr_word(&a2[pdw]);
-	if (pbi && ((pbia1 ^ pbia2) & htonl((0xffffffff) << (32 - pbi))))
+	if (pbi && ((a1[pdw] ^ a2[pdw]) & htonl((0xffffffff) << (32 - pbi))))
 		return false;
 
 	return true;
@@ -612,13 +608,13 @@ static inline void ipv6_addr_set_v4mapped(const __be32 addr,
  */
 static inline int __ipv6_addr_diff32(const void *token1, const void *token2, int addrlen)
 {
-	const struct in6_addr *a1 = token1, *a2 = token2;
+	const __be32 *a1 = token1, *a2 = token2;
 	int i;
 
 	addrlen >>= 2;
 
 	for (i = 0; i < addrlen; i++) {
-		__be32 xb = a1->s6_addr32[i] ^ a2->s6_addr32[i];
+		__be32 xb = a1[i] ^ a2[i];
 		if (xb)
 			return i * 32 + 31 - __fls(ntohl(xb));
 	}
@@ -787,18 +783,17 @@ static inline int ip6_default_np_autolabel(struct net *net)
 static inline void ip6_flow_hdr(struct ipv6hdr *hdr, unsigned int tclass,
 				__be32 flowlabel)
 {
-	net_hdr_word((__be32 *)hdr) =
-		htonl(0x60000000 | (tclass << 20)) | flowlabel;
+	*(__be32 *)hdr = htonl(0x60000000 | (tclass << 20)) | flowlabel;
 }
 
 static inline __be32 ip6_flowinfo(const struct ipv6hdr *hdr)
 {
-	return net_hdr_word((__be32 *)hdr) & IPV6_FLOWINFO_MASK;
+	return *(__be32 *)hdr & IPV6_FLOWINFO_MASK;
 }
 
 static inline __be32 ip6_flowlabel(const struct ipv6hdr *hdr)
 {
-	return net_hdr_word((__be32 *)hdr) & IPV6_FLOWLABEL_MASK;
+	return *(__be32 *)hdr & IPV6_FLOWLABEL_MASK;
 }
 
 static inline u8 ip6_tclass(__be32 flowinfo)
@@ -858,7 +853,7 @@ static inline struct sk_buff *ip6_finish_skb(struct sock *sk)
 
 int ip6_dst_lookup(struct net *net, struct sock *sk, struct dst_entry **dst,
 		   struct flowi6 *fl6);
-struct dst_entry *ip6_dst_lookup_flow(struct net *net, const struct sock *sk, struct flowi6 *fl6,
+struct dst_entry *ip6_dst_lookup_flow(const struct sock *sk, struct flowi6 *fl6,
 				      const struct in6_addr *final_dst);
 struct dst_entry *ip6_sk_dst_lookup_flow(struct sock *sk, struct flowi6 *fl6,
 					 const struct in6_addr *final_dst);
@@ -920,8 +915,6 @@ int compat_ipv6_setsockopt(struct sock *sk, int level, int optname,
 int compat_ipv6_getsockopt(struct sock *sk, int level, int optname,
 			   char __user *optval, int __user *optlen);
 
-int __ip6_datagram_connect(struct sock *sk, struct sockaddr *addr,
-			   int addr_len);
 int ip6_datagram_connect(struct sock *sk, struct sockaddr *addr, int addr_len);
 int ip6_datagram_connect_v6_only(struct sock *sk, struct sockaddr *addr,
 				 int addr_len);

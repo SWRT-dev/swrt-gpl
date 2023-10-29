@@ -154,8 +154,8 @@ int xfrm_parse_spi(struct sk_buff *skb, u8 nexthdr, __be32 *spi, __be32 *seq)
 	if (!pskb_may_pull(skb, hlen))
 		return -EINVAL;
 
-	*spi = net_hdr_word(skb_transport_header(skb) + offset);
-	*seq = net_hdr_word(skb_transport_header(skb) + offset_seq);
+	*spi = *(__be32 *)(skb_transport_header(skb) + offset);
+	*seq = *(__be32 *)(skb_transport_header(skb) + offset_seq);
 	return 0;
 }
 
@@ -207,15 +207,15 @@ int xfrm_input(struct sk_buff *skb, int nexthdr, __be32 spi, int encap_type)
 	family = XFRM_SPI_SKB_CB(skb)->family;
 
 	/* if tunnel is present override skb->mark value with tunnel i_key */
-	switch (family) {
-	case AF_INET:
-		if (XFRM_TUNNEL_SKB_CB(skb)->tunnel.ip4)
+	if (XFRM_TUNNEL_SKB_CB(skb)->tunnel.ip4) {
+		switch (family) {
+		case AF_INET:
 			mark = be32_to_cpu(XFRM_TUNNEL_SKB_CB(skb)->tunnel.ip4->parms.i_key);
-		break;
-	case AF_INET6:
-		if (XFRM_TUNNEL_SKB_CB(skb)->tunnel.ip6)
+			break;
+		case AF_INET6:
 			mark = be32_to_cpu(XFRM_TUNNEL_SKB_CB(skb)->tunnel.ip6->parms.i_key);
-		break;
+			break;
+		}
 	}
 
 	/* Allocate new secpath or COW existing one. */
@@ -302,7 +302,7 @@ resume:
 		dev_put(skb->dev);
 
 		spin_lock(&x->lock);
-		if (nexthdr < 0) {
+		if (nexthdr <= 0) {
 			if (nexthdr == -EBADMSG) {
 				xfrm_audit_state_icvfail(x, skb,
 							 x->type->proto);
@@ -315,7 +315,7 @@ resume:
 		/* only the first xfrm gets the encap type */
 		encap_type = 0;
 
-		if (x->repl->recheck(x, skb, seq)) {
+		if (async && x->repl->recheck(x, skb, seq)) {
 			XFRM_INC_STATS(net, LINUX_MIB_XFRMINSTATESEQERROR);
 			goto drop_unlock;
 		}

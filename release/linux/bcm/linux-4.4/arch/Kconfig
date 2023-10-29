@@ -524,6 +524,11 @@ config HAVE_COPY_THREAD_TLS
 	  normal C parameter passing, rather than extracting the syscall
 	  argument from pt_regs.
 
+config HAVE_EXIT_THREAD
+	bool
+	help
+	  An architecture implements exit_thread.
+
 #
 # ABI hall of shame
 #

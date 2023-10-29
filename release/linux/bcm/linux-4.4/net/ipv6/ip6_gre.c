@@ -125,7 +125,6 @@ static struct ip6_tnl *ip6gre_tunnel_lookup(struct net_device *dev,
 	int dev_type = (gre_proto == htons(ETH_P_TEB)) ?
 		       ARPHRD_ETHER : ARPHRD_IP6GRE;
 	int score, cand_score = 4;
-	struct net_device *ndev;
 
 	for_each_ip_tunnel_rcu(t, ign->tunnels_r_l[h0 ^ h1]) {
 		if (!ipv6_addr_equal(local, &t->parms.laddr) ||
@@ -228,9 +227,9 @@ static struct ip6_tnl *ip6gre_tunnel_lookup(struct net_device *dev,
 	if (cand)
 		return cand;
 
-	ndev = READ_ONCE(ign->fb_tunnel_dev);
-	if (ndev && ndev->flags & IFF_UP)
-		return netdev_priv(ndev);
+	dev = ign->fb_tunnel_dev;
+	if (dev->flags & IFF_UP)
+		return netdev_priv(dev);
 
 	return NULL;
 }
@@ -350,6 +349,7 @@ static struct ip6_tnl *ip6gre_tunnel_locate(struct net *net,
 	if (!(nt->parms.o_flags & GRE_SEQ))
 		dev->features |= NETIF_F_LLTX;
 
+	dev_hold(dev);
 	ip6gre_tunnel_link(ign, nt);
 	return nt;
 
@@ -364,8 +364,6 @@ static void ip6gre_tunnel_uninit(struct net_device *dev)
 	struct ip6gre_net *ign = net_generic(t->net, ip6gre_net_id);
 
 	ip6gre_tunnel_unlink(ign, t);
-	if (ign->fb_tunnel_dev == dev)
-		WRITE_ONCE(ign->fb_tunnel_dev, NULL);
 	dst_cache_reset(&t->dst_cache);
 	dev_put(dev);
 }
@@ -394,7 +392,7 @@ static void ip6gre_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
 		key_off = grehlen + offset;
 		grehlen += 4;
 	}
-	
+
 	if (!pskb_may_pull(skb, offset + grehlen))
 		return;
 	ipv6h = (const struct ipv6hdr *)skb->data;
@@ -486,11 +484,11 @@ static int ip6gre_rcv(struct sk_buff *skb)
 			offset += 4;
 		}
 		if (flags&GRE_KEY) {
-			key = net_hdr_word(h + offset);
+			key = *(__be32 *)(h + offset);
 			offset += 4;
 		}
 		if (flags&GRE_SEQ) {
-			seqno = ntohl(net_hdr_word(h + offset));
+			seqno = ntohl(*(__be32 *)(h + offset));
 			offset += 4;
 		}
 	}
@@ -752,7 +750,7 @@ static netdev_tx_t ip6gre_xmit2(struct sk_buff *skb,
 
 		if (tunnel->parms.o_flags&GRE_SEQ) {
 			++tunnel->o_seqno;
-			net_hdr_word(ptr) = htonl(tunnel->o_seqno);
+			*ptr = htonl(tunnel->o_seqno);
 			ptr--;
 		}
 		if (tunnel->parms.o_flags&GRE_KEY) {
@@ -804,6 +802,8 @@ static inline int ip6gre_xmit_ipv4(struct sk_buff *skb, struct net_device *dev)
 	if (t->parms.flags & IP6_TNL_F_USE_ORIG_FWMARK)
 		fl6.flowi6_mark = skb->mark;
 
+	fl6.flowi6_uid = sock_net_uid(dev_net(dev), NULL);
+
 	err = ip6gre_xmit2(skb, dev, dsfield, &fl6, encap_limit, &mtu);
 	if (err != 0) {
 		/* XXX: send ICMP error even if DF is not set. */
@@ -848,11 +848,13 @@ static inline int ip6gre_xmit_ipv6(struct sk_buff *skb, struct net_device *dev)
 
 	dsfield = ipv6_get_dsfield(ipv6h);
 	if (t->parms.flags & IP6_TNL_F_USE_ORIG_TCLASS)
-		fl6.flowlabel |= net_hdr_word(ipv6h) & IPV6_TCLASS_MASK;
+		fl6.flowlabel |= (*(__be32 *) ipv6h & IPV6_TCLASS_MASK);
 	if (t->parms.flags & IP6_TNL_F_USE_ORIG_FLOWLABEL)
 		fl6.flowlabel |= ip6_flowlabel(ipv6h);
 	if (t->parms.flags & IP6_TNL_F_USE_ORIG_FWMARK)
 		fl6.flowi6_mark = skb->mark;
+
+	fl6.flowi6_uid = sock_net_uid(dev_net(dev), NULL);
 
 	err = ip6gre_xmit2(skb, dev, dsfield, &fl6, encap_limit, &mtu);
 	if (err != 0) {
@@ -1309,6 +1311,8 @@ static void ip6gre_fb_tunnel_init(struct net_device *dev)
 	strcpy(tunnel->parms.name, dev->name);
 
 	tunnel->hlen		= sizeof(struct ipv6hdr) + 4;
+
+	dev_hold(dev);
 }
 
 
@@ -1352,16 +1356,15 @@ static void ip6gre_destroy_tunnels(struct net *net, struct list_head *head)
 static int __net_init ip6gre_init_net(struct net *net)
 {
 	struct ip6gre_net *ign = net_generic(net, ip6gre_net_id);
-	struct net_device *ndev;
 	int err;
 
-	ndev = alloc_netdev(sizeof(struct ip6_tnl), "ip6gre0",
-			    NET_NAME_UNKNOWN, ip6gre_tunnel_setup);
-	if (!ndev) {
+	ign->fb_tunnel_dev = alloc_netdev(sizeof(struct ip6_tnl), "ip6gre0",
+					  NET_NAME_UNKNOWN,
+					  ip6gre_tunnel_setup);
+	if (!ign->fb_tunnel_dev) {
 		err = -ENOMEM;
 		goto err_alloc_dev;
 	}
-	ign->fb_tunnel_dev = ndev;
 	dev_net_set(ign->fb_tunnel_dev, net);
 	/* FB netdevice is special: we have one, and only one per netns.
 	 * Allowing to move it to another netns is clearly unsafe.
@@ -1381,7 +1384,7 @@ static int __net_init ip6gre_init_net(struct net *net)
 	return 0;
 
 err_reg_dev:
-	ip6gre_dev_free(ndev);
+	ip6gre_dev_free(ign->fb_tunnel_dev);
 err_alloc_dev:
 	return err;
 }

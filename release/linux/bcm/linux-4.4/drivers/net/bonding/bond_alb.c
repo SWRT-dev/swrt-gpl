@@ -41,7 +41,9 @@
 #include <net/bond_alb.h>
 
 
-
+#ifndef __long_aligned
+#define __long_aligned __attribute__((aligned((sizeof(long)))))
+#endif
 static const u8 mac_bcast[ETH_ALEN + 2] __long_aligned = {
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff
 };

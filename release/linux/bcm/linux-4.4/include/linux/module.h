@@ -22,7 +22,6 @@
 
 #include <linux/percpu.h>
 #include <asm/module.h>
-#include <linux/types.h>
 
 /* In stripped ARM and x86-64 modules, ~ is surprisingly rare. */
 #define MODULE_SIG_STRING "~Module signature appended~\n"
@@ -160,8 +159,8 @@ extern void cleanup_module(void);
 struct exception_table_entry;
 
 const struct exception_table_entry *
-search_extable(const struct exception_table_entry *base,
-	       const size_t num,
+search_extable(const struct exception_table_entry *first,
+	       const struct exception_table_entry *last,
 	       unsigned long value);
 void sort_extable(struct exception_table_entry *start,
 		  struct exception_table_entry *finish);
@@ -173,7 +172,7 @@ void trim_init_extable(struct module *m);
 #define MODULE_INFO_STRIP(tag, info) __MODULE_INFO_STRIP(tag, tag, info)
 
 /* For userspace: you can also call me... */
-#define MODULE_ALIAS(_alias) MODULE_INFO_STRIP(alias, _alias)
+#define MODULE_ALIAS(_alias) MODULE_INFO(alias, _alias)
 
 /* Soft module dependencies. See man modprobe.d for details.
  * Example: MODULE_SOFTDEP("pre: module-foo module-bar post: module-baz")
@@ -215,11 +214,11 @@ void trim_init_extable(struct module *m);
  * authors use multiple MODULE_AUTHOR() statements/lines.
  */
 #define MODULE_AUTHOR(_author) MODULE_INFO_STRIP(author, _author)
-  
+
 /* What your module does. */
 #define MODULE_DESCRIPTION(_description) MODULE_INFO_STRIP(description, _description)
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(CONFIG_MODULE_STRIPPED)
 /* Creates an alias so file2alias.c can find device table. */
 #define MODULE_DEVICE_TABLE(type, name)					\
 extern const typeof(name) __mod_##type##__##name##_device_table		\
@@ -793,7 +792,7 @@ static inline void module_bug_finalize(const Elf_Ehdr *hdr,
 static inline void module_bug_cleanup(struct module *mod) {}
 #endif	/* CONFIG_GENERIC_BUG */
 
-#ifdef CONFIG_RETPOLINE
+#ifdef RETPOLINE
 extern bool retpoline_module_ok(bool has_retpoline);
 #else
 static inline bool retpoline_module_ok(bool has_retpoline)

@@ -30,14 +30,7 @@ enum nf_ct_ext_id {
 #if IS_ENABLED(CONFIG_NETFILTER_SYNPROXY)
 	NF_CT_EXT_SYNPROXY,
 #endif
-#if IS_ENABLED(CONFIG_NF_CONNTRACK_RTCACHE)
-	NF_CT_EXT_RTCACHE,
-#endif
-#ifdef CONFIG_NF_CONNTRACK_DSCPREMARK_EXT
-	NF_CT_EXT_DSCPREMARK,
-#endif
-	NF_CT_EXT_CUSTOM,
-	NF_CT_EXT_NUM=NF_CT_EXT_CUSTOM+CONFIG_NF_CONNTRACK_CUSTOM,
+	NF_CT_EXT_NUM,
 };
 
 #define NF_CT_EXT_HELPER_TYPE struct nf_conn_help
@@ -50,8 +43,6 @@ enum nf_ct_ext_id {
 #define NF_CT_EXT_TIMEOUT_TYPE struct nf_conn_timeout
 #define NF_CT_EXT_LABELS_TYPE struct nf_conn_labels
 #define NF_CT_EXT_SYNPROXY_TYPE struct nf_conn_synproxy
-#define NF_CT_EXT_RTCACHE_TYPE struct nf_conn_rtcache
-#define NF_CT_EXT_DSCPREMARK_TYPE struct nf_ct_dscpremark_ext
 
 /* Extensions: optional stuff which isn't permanently in struct. */
 struct nf_ct_ext {
@@ -109,16 +100,12 @@ void *__nf_ct_ext_add_length(struct nf_conn *ct, enum nf_ct_ext_id id,
 
 #define NF_CT_EXT_F_PREALLOC	0x0001
 
-struct seq_file;
-
 struct nf_ct_ext_type {
 	/* Destroys relationships (can be NULL). */
 	void (*destroy)(struct nf_conn *ct);
 	/* Called when realloacted (can be NULL).
 	   Contents has already been moved. */
 	void (*move)(void *new, void *old);
-	/* Print custom info (can be NULL) */
-	unsigned int (*seq_print)(struct seq_file *s, const struct nf_conn *ct, int dir);
 
 	enum nf_ct_ext_id id;
 
@@ -131,8 +118,6 @@ struct nf_ct_ext_type {
 	u8 alloc_size;
 };
 
-unsigned int nf_ct_ext_seq_print(struct seq_file *s, const struct nf_conn *ct, int dir);
 int nf_ct_extend_register(struct nf_ct_ext_type *type);
-int nf_ct_extend_custom_register(struct nf_ct_ext_type *type,unsigned long int cid);
 void nf_ct_extend_unregister(struct nf_ct_ext_type *type);
 #endif /* _NF_CONNTRACK_EXTEND_H */

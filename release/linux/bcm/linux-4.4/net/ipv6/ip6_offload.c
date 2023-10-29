@@ -109,8 +109,6 @@ static struct sk_buff *ipv6_gso_segment(struct sk_buff *skb,
 	if (likely(ops && ops->callbacks.gso_segment)) {
 		skb_reset_transport_header(skb);
 		segs = ops->callbacks.gso_segment(skb, features);
-		if (!segs)
-			skb->network_header = skb_mac_header(skb) + nhoff - skb->head;
 	}
 
 	if (IS_ERR(segs))
@@ -169,11 +167,11 @@ static int ipv6_exthdrs_len(struct ipv6hdr *iph,
 	return len;
 }
 
-static struct sk_buff *ipv6_gro_receive(struct list_head *head,
-					struct sk_buff *skb)
+static struct sk_buff **ipv6_gro_receive(struct sk_buff **head,
+					 struct sk_buff *skb)
 {
 	const struct net_offload *ops;
-	struct sk_buff *pp = NULL;
+	struct sk_buff **pp = NULL;
 	struct sk_buff *p;
 	struct ipv6hdr *iph;
 	unsigned int nlen;
@@ -220,7 +218,7 @@ static struct sk_buff *ipv6_gro_receive(struct list_head *head,
 	flush--;
 	nlen = skb_network_header_len(skb);
 
-	list_for_each_entry(p, head, list) {
+	for (p = *head; p; p = p->next) {
 		const struct ipv6hdr *iph2;
 		__be32 first_word; /* <Version:4><Traffic_Class:8><Flow_Label:20> */
 
@@ -228,7 +226,7 @@ static struct sk_buff *ipv6_gro_receive(struct list_head *head,
 			continue;
 
 		iph2 = (struct ipv6hdr *)(p->data + off);
-		first_word = net_hdr_word(iph) ^ net_hdr_word(iph2);
+		first_word = *(__be32 *)iph ^ *(__be32 *)iph2;
 
 		/* All fields must match except length and Traffic Class.
 		 * XXX skbs on the gro_list have all been parsed and pulled
@@ -265,7 +263,7 @@ out:
 	return pp;
 }
 
-static struct sk_buff *sit_gro_receive(struct list_head *head,
+static struct sk_buff **sit_gro_receive(struct sk_buff **head,
 					struct sk_buff *skb)
 {
 	if (NAPI_GRO_CB(skb)->encap_mark) {

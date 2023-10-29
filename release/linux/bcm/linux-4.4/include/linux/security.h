@@ -182,13 +182,13 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
 extern int security_init(void);
 
 /* Security operations */
-int security_binder_set_context_mgr(const struct cred *mgr);
-int security_binder_transaction(const struct cred *from,
-				const struct cred *to);
-int security_binder_transfer_binder(const struct cred *from,
-				    const struct cred *to);
-int security_binder_transfer_file(const struct cred *from,
-				  const struct cred *to, struct file *file);
+int security_binder_set_context_mgr(struct task_struct *mgr);
+int security_binder_transaction(struct task_struct *from,
+				struct task_struct *to);
+int security_binder_transfer_binder(struct task_struct *from,
+				    struct task_struct *to);
+int security_binder_transfer_file(struct task_struct *from,
+				  struct task_struct *to, struct file *file);
 int security_ptrace_access_check(struct task_struct *child, unsigned int mode);
 int security_ptrace_traceme(struct task_struct *parent);
 int security_capget(struct task_struct *target,
@@ -317,6 +317,7 @@ int security_task_getscheduler(struct task_struct *p);
 int security_task_movememory(struct task_struct *p);
 int security_task_kill(struct task_struct *p, struct siginfo *info,
 			int sig, u32 secid);
+int security_task_wait(struct task_struct *p);
 int security_task_prctl(int option, unsigned long arg2, unsigned long arg3,
 			unsigned long arg4, unsigned long arg5);
 void security_task_to_inode(struct task_struct *p, struct inode *inode);
@@ -377,25 +378,25 @@ static inline int security_init(void)
 	return 0;
 }
 
-static inline int security_binder_set_context_mgr(const struct cred *mgr)
+static inline int security_binder_set_context_mgr(struct task_struct *mgr)
 {
 	return 0;
 }
 
-static inline int security_binder_transaction(const struct cred *from,
-					      const struct cred *to)
+static inline int security_binder_transaction(struct task_struct *from,
+					      struct task_struct *to)
 {
 	return 0;
 }
 
-static inline int security_binder_transfer_binder(const struct cred *from,
-						  const struct cred *to)
+static inline int security_binder_transfer_binder(struct task_struct *from,
+						  struct task_struct *to)
 {
 	return 0;
 }
 
-static inline int security_binder_transfer_file(const struct cred *from,
-						const struct cred *to,
+static inline int security_binder_transfer_file(struct task_struct *from,
+						struct task_struct *to,
 						struct file *file)
 {
 	return 0;
@@ -931,6 +932,11 @@ static inline int security_task_movememory(struct task_struct *p)
 static inline int security_task_kill(struct task_struct *p,
 				     struct siginfo *info, int sig,
 				     u32 secid)
+{
+	return 0;
+}
+
+static inline int security_task_wait(struct task_struct *p)
 {
 	return 0;
 }

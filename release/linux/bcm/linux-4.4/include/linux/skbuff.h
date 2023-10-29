@@ -560,7 +560,6 @@ struct sk_buff {
 			};
 		};
 		struct rb_node		rbnode; /* used in netem, ip4 defrag, and tcp stack */
-		struct list_head	list;
 	};
 
 #ifdef PKTC
@@ -619,12 +618,11 @@ struct sk_buff {
 #define BCM_FA_INVALID_IDX_VAL	0xFFF00000
 	__u32               napt_idx;
 	__u32               napt_flags;
+	__u32               nfcache;
 #endif /* HNDCTF || BCMFA */
 
 #if defined(CONFIG_NF_CONNTRACK) || defined(CONFIG_NF_CONNTRACK_MODULE)
 	struct nf_conntrack	*nfct;
-	/* Cache info */
-	__u32               nfcache;
 #endif
 #if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
 	struct nf_queue_entry	*nf_queue_entry;
@@ -693,19 +691,21 @@ struct sk_buff {
 	__u8			ipvs_property:1;
 
 	__u8			inner_protocol_type:1;
+#if defined(CONFIG_SHORTCUT_FE) || defined(CONFIG_SHORTCUT_FE_MODULE)
 	__u8			fast_forwarded:1;
+#endif
 	__u8			remcsum_offload:1;
 	__u8			gro_skip:1;
-	/* 1 or 2 bit hole */
+	/* 2 or 4 bit hole */
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+	__u8                    imq_flags:IMQ_F_BITS;
+#endif
 
 #ifdef CONFIG_NET_SCHED
 	__u16			tc_index;	/* traffic control index */
 #ifdef CONFIG_NET_CLS_ACT
 	__u16			tc_verd;	/* traffic control verdict */
 #endif
-#endif
-#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
-	__u8			imq_flags:IMQ_F_BITS;
 #endif
 
 	union {
@@ -851,29 +851,17 @@ static inline struct rtable *skb_rtable(const struct sk_buff *skb)
 	return (struct rtable *)skb_dst(skb);
 }
 
-#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
-extern int skb_save_cb(struct sk_buff *skb);
-extern int skb_restore_cb(struct sk_buff *skb);
-#endif
-
-/* decrement the reference count and return true if we can free the skb */
-static inline bool skb_unref(struct sk_buff *skb)
-{
-	if (unlikely(!skb))
-		return false;
-	if (likely(atomic_read(&skb->users) == 1))
-		smp_rmb();
-	else if (likely(!atomic_dec_and_test(&skb->users)))
-		return false;
-
-	return true;
-}
-
 void kfree_skb(struct sk_buff *skb);
 void kfree_skb_list(struct sk_buff *segs);
 void skb_tx_error(struct sk_buff *skb);
 void consume_skb(struct sk_buff *skb);
 void  __kfree_skb(struct sk_buff *skb);
+
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+int skb_save_cb(struct sk_buff *skb);
+int skb_restore_cb(struct sk_buff *skb);
+#endif
+
 extern struct kmem_cache *skbuff_head_cache;
 
 void kfree_skb_partial(struct sk_buff *skb, bool head_stolen);
@@ -940,7 +928,6 @@ static inline struct sk_buff *alloc_skb_head(gfp_t priority)
 struct sk_buff *skb_morph(struct sk_buff *dst, struct sk_buff *src);
 int skb_copy_ubufs(struct sk_buff *skb, gfp_t gfp_mask);
 struct sk_buff *skb_clone(struct sk_buff *skb, gfp_t priority);
-void skb_copy_header(struct sk_buff *new, const struct sk_buff *old);
 struct sk_buff *skb_copy(const struct sk_buff *skb, gfp_t priority);
 struct sk_buff *__pskb_copy_fclone(struct sk_buff *skb, int headroom,
 				   gfp_t gfp_mask, bool fclone);
@@ -1144,8 +1131,7 @@ static inline __u32 skb_get_hash_flowi4(struct sk_buff *skb, const struct flowi4
 	return skb->hash;
 }
 
-__u32 skb_get_hash_perturb(const struct sk_buff *skb,
-			   const siphash_key_t *perturb);
+__u32 skb_get_hash_perturb(const struct sk_buff *skb, u32 perturb);
 
 static inline __u32 skb_get_hash_raw(const struct sk_buff *skb)
 {
@@ -1191,12 +1177,6 @@ static inline unsigned int skb_end_offset(const struct sk_buff *skb)
 static inline struct skb_shared_hwtstamps *skb_hwtstamps(struct sk_buff *skb)
 {
 	return &skb_shinfo(skb)->hwtstamps;
-}
-
-static inline void skb_list_del_init(struct sk_buff *skb)
-{
-	__list_del_entry(&skb->list);
-	skb->next = NULL;
 }
 
 /**
@@ -1516,18 +1496,6 @@ static inline __u32 skb_queue_len(const struct sk_buff_head *list_)
 }
 
 /**
- *	skb_queue_len_lockless	- get queue length
- *	@list_: list to measure
- *
- *	Return the length of an &sk_buff queue.
- *	This variant can be used in lockless contexts.
- */
-static inline __u32 skb_queue_len_lockless(const struct sk_buff_head *list_)
-{
-	return READ_ONCE(list_->qlen);
-}
-
-/**
  *	__skb_queue_head_init - initialize non-spinlock portions of sk_buff_head
  *	@list: queue to initialize
  *
@@ -1579,7 +1547,7 @@ static inline void __skb_insert(struct sk_buff *newsk,
 	newsk->next = next;
 	newsk->prev = prev;
 	next->prev  = prev->next = newsk;
-	WRITE_ONCE(list->qlen, list->qlen + 1);
+	list->qlen++;
 }
 
 static inline void __skb_queue_splice(const struct sk_buff_head *list,
@@ -1730,7 +1698,7 @@ static inline void __skb_unlink(struct sk_buff *skb, struct sk_buff_head *list)
 {
 	struct sk_buff *next, *prev;
 
-	WRITE_ONCE(list->qlen, list->qlen - 1);
+	list->qlen--;
 	next	   = skb->next;
 	prev	   = skb->prev;
 	skb->next  = skb->prev = NULL;
@@ -1901,6 +1869,25 @@ static inline unsigned char *__skb_put(struct sk_buff *skb, unsigned int len)
 	SKB_LINEAR_ASSERT(skb);
 	skb->tail += len;
 	skb->len  += len;
+	return tmp;
+}
+
+static inline void *skb_put_zero(struct sk_buff *skb, unsigned int len)
+{
+	unsigned char *tmp = skb_put(skb, len);
+
+	memset(tmp, 0, len);
+
+	return tmp;
+}
+
+static inline void *skb_put_data(struct sk_buff *skb, const void *data,
+				 unsigned int len)
+{
+	unsigned char *tmp = skb_put(skb, len);
+
+	memcpy(tmp, data, len);
+
 	return tmp;
 }
 
@@ -2408,9 +2395,15 @@ static inline struct sk_buff *dev_alloc_skb(unsigned int length)
 }
 
 
-extern struct sk_buff *__netdev_alloc_skb_ip_align(struct net_device *dev,
-		unsigned int length, gfp_t gfp);
+static inline struct sk_buff *__netdev_alloc_skb_ip_align(struct net_device *dev,
+		unsigned int length, gfp_t gfp)
+{
+	struct sk_buff *skb = __netdev_alloc_skb(dev, length + NET_IP_ALIGN, gfp);
 
+	if (NET_IP_ALIGN && skb)
+		skb_reserve(skb, NET_IP_ALIGN);
+	return skb;
+}
 
 static inline struct sk_buff *netdev_alloc_skb_ip_align(struct net_device *dev,
 		unsigned int length)
@@ -2734,7 +2727,7 @@ static inline int skb_padto(struct sk_buff *skb, unsigned int len)
  *	is untouched. Otherwise it is extended. Returns zero on
  *	success. The skb is freed on error.
  */
-static inline int __must_check skb_put_padto(struct sk_buff *skb, unsigned int len)
+static inline int skb_put_padto(struct sk_buff *skb, unsigned int len)
 {
 	unsigned int size = skb->len;
 
@@ -2993,6 +2986,7 @@ void skb_split(struct sk_buff *skb, struct sk_buff *skb1, const u32 len);
 int skb_shift(struct sk_buff *tgt, struct sk_buff *skb, int shiftlen);
 void skb_scrub_packet(struct sk_buff *skb, bool xnet);
 unsigned int skb_gso_transport_seglen(const struct sk_buff *skb);
+bool skb_gso_validate_mtu(const struct sk_buff *skb, unsigned int mtu);
 struct sk_buff *skb_segment(struct sk_buff *skb, netdev_features_t features);
 struct sk_buff *skb_vlan_untag(struct sk_buff *skb);
 int skb_ensure_writable(struct sk_buff *skb, int write_len);
@@ -3483,10 +3477,6 @@ static inline void nf_reset(struct sk_buff *skb)
 #if defined(CONFIG_NF_CONNTRACK) || defined(CONFIG_NF_CONNTRACK_MODULE)
 	nf_conntrack_put(skb->nfct);
 	skb->nfct = NULL;
-#endif
-#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
-	skb->imq_flags = 0;
-	skb->nf_queue_entry = NULL;
 #endif
 #if IS_ENABLED(CONFIG_BRIDGE_NETFILTER)
 	nf_bridge_put(skb->nf_bridge);

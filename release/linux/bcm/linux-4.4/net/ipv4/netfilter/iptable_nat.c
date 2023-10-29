@@ -17,9 +17,6 @@
 #include <net/netfilter/nf_nat.h>
 #include <net/netfilter/nf_nat_core.h>
 #include <net/netfilter/nf_nat_l3proto.h>
-#if IS_ENABLED(CONFIG_IP_NF_TARGET_CONE)
-#include <linux/netfilter_ipv4/ipt_cone.h>
-#endif /* CONFIG_IP_NF_TARGET_CONE */
 
 static const struct xt_table nf_nat_ipv4_table = {
 	.name		= "nat",

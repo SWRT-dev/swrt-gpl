@@ -11,6 +11,7 @@
 #include <linux/types.h>
 #include <linux/timer.h>
 #include <linux/module.h>
+#include <linux/inetdevice.h>
 #include <linux/in.h>
 #include <linux/tcp.h>
 #include <linux/spinlock.h>
@@ -19,6 +20,7 @@
 #include <net/ip6_checksum.h>
 #include <asm/unaligned.h>
 
+#include <net/ip.h>
 #include <net/tcp.h>
 
 #include <linux/netfilter.h>
@@ -60,6 +62,11 @@ static int nf_ct_tcp_max_retrans __read_mostly = 3;
 
   /* FIXME: Examine ipfilter's timeouts and conntrack transitions more
      closely.  They're more complex. --RR */
+
+#ifndef IPV4_DEVCONF_DFLT
+	#define IPV4_DEVCONF_DFLT(net, attr) \
+	IPV4_DEVCONF((*net->ipv4.devconf_dflt), attr)
+#endif
 
 static const char *const tcp_conntrack_names[] = {
 	"NONE",
@@ -329,6 +336,8 @@ static void tcp_print_conntrack(struct seq_file *s, struct nf_conn *ct)
 	spin_lock_bh(&ct->lock);
 	state = ct->proto.tcp.state;
 	spin_unlock_bh(&ct->lock);
+	if (test_bit(IPS_OFFLOAD_BIT, &ct->status))
+		return;
 
 	seq_printf(s, "%s ", tcp_conntrack_names[state]);
 }
@@ -407,8 +416,8 @@ static void tcp_options(const struct sk_buff *skb,
 				 length, buff);
 	BUG_ON(ptr == NULL);
 
-	state->td_scale = 0;
-	state->flags &= IP_CT_TCP_FLAG_BE_LIBERAL;
+	state->td_scale =
+	state->flags = 0;
 
 	while (length > 0) {
 		int opcode=*ptr++;
@@ -466,7 +475,7 @@ static void tcp_sack(const struct sk_buff *skb, unsigned int dataoff,
 
 	/* Fast path for timestamp-only option */
 	if (length == TCPOLEN_TSTAMP_ALIGNED
-	    && net_hdr_word(ptr) == htonl((TCPOPT_NOP << 24)
+	    && *(__be32 *)ptr == htonl((TCPOPT_NOP << 24)
 				       | (TCPOPT_NOP << 16)
 				       | (TCPOPT_TIMESTAMP << 8)
 				       | TCPOLEN_TIMESTAMP))
@@ -529,6 +538,18 @@ static bool tcp_in_window(const struct nf_conn *ct,
 	__u32 seq, ack, sack, end, win, swin;
 	s32 receiver_offset;
 	bool res, in_recv_win;
+
+       if (net) {
+               if ((net->ipv4.devconf_all && net->ipv4.devconf_dflt && net->ipv6.devconf_all) &&
+                   net->ipv6.devconf_dflt) {
+                       if ((IPV4_DEVCONF_DFLT(net, FORWARDING) ||
+                            IPV4_DEVCONF_ALL(net, FORWARDING)) ||
+                            (net->ipv6.devconf_all->forwarding ||
+                             net->ipv6.devconf_dflt->forwarding)) {
+                               return true;
+                       }
+               }
+       }
 
 	if (nf_ct_tcp_no_window_check)
 		return true;
@@ -826,16 +847,6 @@ static unsigned int *tcp_get_timeouts(struct net *net)
 	return tcp_pernet(net)->timeouts;
 }
 
-static void nf_ct_tcp_state_reset(struct ip_ct_tcp_state *state)
-{
-	state->td_end		= 0;
-	state->td_maxend	= 0;
-	state->td_maxwin	= 0;
-	state->td_maxack	= 0;
-	state->td_scale		= 0;
-	state->flags		&= IP_CT_TCP_FLAG_BE_LIBERAL;
-}
-
 /* Returns verdict for packet, or -1 for invalid. */
 static int BCMFASTPATH_HOST tcp_packet(struct nf_conn *ct,
 		      const struct sk_buff *skb,
@@ -937,7 +948,8 @@ static int BCMFASTPATH_HOST tcp_packet(struct nf_conn *ct,
 			ct->proto.tcp.last_flags &= ~IP_CT_EXP_CHALLENGE_ACK;
 			ct->proto.tcp.seen[ct->proto.tcp.last_dir].flags =
 				ct->proto.tcp.last_flags;
-			nf_ct_tcp_state_reset(&ct->proto.tcp.seen[dir]);
+			memset(&ct->proto.tcp.seen[dir], 0,
+			       sizeof(struct ip_ct_tcp_state));
 			break;
 		}
 		ct->proto.tcp.last_index = index;
@@ -1509,12 +1521,6 @@ static struct ctl_table tcp_sysctl_table[] = {
 		.proc_handler	= proc_dointvec,
 	},
 	{
-		.procname       = "nf_conntrack_tcp_no_window_check",
-		.maxlen         = sizeof(unsigned int),
-		.mode           = 0644,
-		.proc_handler   = proc_dointvec,
-	},
-	{
 		.procname       = "nf_conntrack_tcp_be_liberal",
 		.maxlen         = sizeof(unsigned int),
 		.mode           = 0644,
@@ -1525,6 +1531,13 @@ static struct ctl_table tcp_sysctl_table[] = {
 		.maxlen		= sizeof(unsigned int),
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec,
+	},
+	{
+		.procname       = "nf_conntrack_tcp_no_window_check",
+		.data           = &nf_ct_tcp_no_window_check,
+		.maxlen         = sizeof(unsigned int),
+		.mode           = 0644,
+		.proc_handler   = proc_dointvec,
 	},
 	{ }
 };
@@ -1638,9 +1651,8 @@ static int tcp_kmemdup_sysctl_table(struct nf_proto_net *pn,
 	pn->ctl_table[8].data = &tn->timeouts[TCP_CONNTRACK_RETRANS];
 	pn->ctl_table[9].data = &tn->timeouts[TCP_CONNTRACK_UNACK];
 	pn->ctl_table[10].data = &tn->tcp_loose;
-	pn->ctl_table[11].data = &nf_ct_tcp_no_window_check;
-	pn->ctl_table[12].data = &tn->tcp_be_liberal;
-	pn->ctl_table[13].data = &tn->tcp_max_retrans;
+	pn->ctl_table[11].data = &tn->tcp_be_liberal;
+	pn->ctl_table[12].data = &tn->tcp_max_retrans;
 #endif
 	return 0;
 }

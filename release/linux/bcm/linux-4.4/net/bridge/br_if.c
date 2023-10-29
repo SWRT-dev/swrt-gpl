@@ -620,6 +620,7 @@ void br_port_flags_change(struct net_bridge_port *p, unsigned long mask)
 		nbp_update_port_count(br);
 }
 
+#if defined(CONFIG_SHORTCUT_FE) || defined(CONFIG_SHORTCUT_FE_MODULE)
 /* Update bridge statistics for bridge packets processed by offload engines */
 void br_dev_update_stats(struct net_device *dev, struct rtnl_link_stats64 *nlstats)
 {
@@ -643,3 +644,4 @@ void br_dev_update_stats(struct net_device *dev, struct rtnl_link_stats64 *nlsta
 	u64_stats_update_end(&stats->syncp);
 }
 EXPORT_SYMBOL_GPL(br_dev_update_stats);
+#endif

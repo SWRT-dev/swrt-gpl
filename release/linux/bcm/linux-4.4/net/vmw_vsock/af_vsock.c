@@ -61,6 +61,14 @@
  * function will also cleanup rejected sockets, those that reach the connected
  * state but leave it before they have been accepted.
  *
+ * - Lock ordering for pending or accept queue sockets is:
+ *
+ *     lock_sock(listener);
+ *     lock_sock_nested(pending, SINGLE_DEPTH_NESTING);
+ *
+ * Using explicit nested locking keeps lockdep happy since normally only one
+ * lock of a given class may be taken at a time.
+ *
  * - Sockets created by user action will be cleaned up when the user process
  * calls close(2), causing our release implementation to be called. Our release
  * implementation will perform some cleanup then drop the last reference so our
@@ -89,7 +97,6 @@
 #include <linux/mutex.h>
 #include <linux/net.h>
 #include <linux/poll.h>
-#include <linux/random.h>
 #include <linux/skbuff.h>
 #include <linux/smp.h>
 #include <linux/socket.h>
@@ -337,6 +344,16 @@ static bool vsock_in_connected_table(struct vsock_sock *vsk)
 	return ret;
 }
 
+void vsock_remove_sock(struct vsock_sock *vsk)
+{
+	if (vsock_in_bound_table(vsk))
+		vsock_remove_bound(vsk);
+
+	if (vsock_in_connected_table(vsk))
+		vsock_remove_connected(vsk);
+}
+EXPORT_SYMBOL_GPL(vsock_remove_sock);
+
 void vsock_for_each_connected_socket(void (*fn)(struct sock *sk))
 {
 	int i;
@@ -444,10 +461,12 @@ static void vsock_pending_work(struct work_struct *work)
 	cleanup = true;
 
 	lock_sock(listener);
-	lock_sock(sk);
+	lock_sock_nested(sk, SINGLE_DEPTH_NESTING);
 
 	if (vsock_is_pending(sk)) {
 		vsock_remove_pending(listener, sk);
+
+		listener->sk_ack_backlog--;
 	} else if (!vsk->rejected) {
 		/* We are not on the pending list and accept() did not reject
 		 * us, so we must have been accepted by our user process.  We
@@ -457,8 +476,6 @@ static void vsock_pending_work(struct work_struct *work)
 		cleanup = false;
 		goto out;
 	}
-
-	listener->sk_ack_backlog--;
 
 	/* We need to remove ourself from the global connected sockets list so
 	 * incoming packets can't find this socket, and to reduce the reference
@@ -484,12 +501,8 @@ out:
 static int __vsock_bind_stream(struct vsock_sock *vsk,
 			       struct sockaddr_vm *addr)
 {
-	static u32 port = 0;
+	static u32 port = LAST_RESERVED_PORT + 1;
 	struct sockaddr_vm new_addr;
-
-	if (!port)
-		port = LAST_RESERVED_PORT + 1 +
-			prandom_u32_max(U32_MAX - LAST_RESERVED_PORT);
 
 	vsock_addr_init(&new_addr, addr->svm_cid, addr->svm_port);
 
@@ -632,9 +645,8 @@ struct sock *__vsock_create(struct net *net,
 		vsk->trusted = psk->trusted;
 		vsk->owner = get_cred(psk->owner);
 		vsk->connect_timeout = psk->connect_timeout;
-		security_sk_clone(parent, sk);
 	} else {
-		vsk->trusted = ns_capable_noaudit(&init_user_ns, CAP_NET_ADMIN);
+		vsk->trusted = capable(CAP_NET_ADMIN);
 		vsk->owner = get_current_cred();
 		vsk->connect_timeout = VSOCK_DEFAULT_CONNECT_TIMEOUT;
 	}
@@ -660,12 +672,6 @@ static void __vsock_release(struct sock *sk)
 
 		vsk = vsock_sk(sk);
 		pending = NULL;	/* Compiler warning. */
-
-		if (vsock_in_bound_table(vsk))
-			vsock_remove_bound(vsk);
-
-		if (vsock_in_connected_table(vsk))
-			vsock_remove_connected(vsk);
 
 		transport->release(vsk);
 
@@ -819,12 +825,10 @@ static int vsock_shutdown(struct socket *sock, int mode)
 	 */
 
 	sk = sock->sk;
-
-	lock_sock(sk);
 	if (sock->state == SS_UNCONNECTED) {
 		err = -ENOTCONN;
 		if (sk->sk_type == SOCK_STREAM)
-			goto out;
+			return err;
 	} else {
 		sock->state = SS_DISCONNECTING;
 		err = 0;
@@ -833,8 +837,10 @@ static int vsock_shutdown(struct socket *sock, int mode)
 	/* Receive and send shutdowns are treated alike. */
 	mode = mode & (RCV_SHUTDOWN | SEND_SHUTDOWN);
 	if (mode) {
+		lock_sock(sk);
 		sk->sk_shutdown |= mode;
 		sk->sk_state_change(sk);
+		release_sock(sk);
 
 		if (sk->sk_type == SOCK_STREAM) {
 			sock_reset_flag(sk, SOCK_DONE);
@@ -842,8 +848,6 @@ static int vsock_shutdown(struct socket *sock, int mode)
 		}
 	}
 
-out:
-	release_sock(sk);
 	return err;
 }
 
@@ -1100,10 +1104,19 @@ static const struct proto_ops vsock_dgram_ops = {
 	.sendpage = sock_no_sendpage,
 };
 
+static int vsock_transport_cancel_pkt(struct vsock_sock *vsk)
+{
+	if (!transport->cancel_pkt)
+		return -EOPNOTSUPP;
+
+	return transport->cancel_pkt(vsk);
+}
+
 static void vsock_connect_timeout(struct work_struct *work)
 {
 	struct sock *sk;
 	struct vsock_sock *vsk;
+	int cancel = 0;
 
 	vsk = container_of(work, struct vsock_sock, connect_work.work);
 	sk = sk_vsock(vsk);
@@ -1114,8 +1127,11 @@ static void vsock_connect_timeout(struct work_struct *work)
 		sk->sk_state = SS_UNCONNECTED;
 		sk->sk_err = ETIMEDOUT;
 		sk->sk_error_report(sk);
+		cancel = 1;
 	}
 	release_sock(sk);
+	if (cancel)
+		vsock_transport_cancel_pkt(vsk);
 
 	sock_put(sk);
 }
@@ -1152,8 +1168,6 @@ static int vsock_stream_connect(struct socket *sock, struct sockaddr *addr,
 		 * non-blocking call.
 		 */
 		err = -EALREADY;
-		if (flags & O_NONBLOCK)
-			goto out;
 		break;
 	default:
 		if ((sk->sk_state == VSOCK_SS_LISTEN) ||
@@ -1208,14 +1222,7 @@ static int vsock_stream_connect(struct socket *sock, struct sockaddr *addr,
 			 * timeout fires.
 			 */
 			sock_hold(sk);
-
-			/* If the timeout function is already scheduled,
-			 * reschedule it, then ungrab the socket refcount to
-			 * keep it balanced.
-			 */
-			if (mod_delayed_work(system_wq, &vsk->connect_work,
-					     timeout))
-				sock_put(sk);
+			schedule_delayed_work(&vsk->connect_work, timeout);
 
 			/* Skip ahead to preserve error code set above. */
 			goto out_wait;
@@ -1229,11 +1236,13 @@ static int vsock_stream_connect(struct socket *sock, struct sockaddr *addr,
 			err = sock_intr_errno(timeout);
 			sk->sk_state = SS_UNCONNECTED;
 			sock->state = SS_UNCONNECTED;
+			vsock_transport_cancel_pkt(vsk);
 			goto out_wait;
 		} else if (timeout == 0) {
 			err = -ETIMEDOUT;
 			sk->sk_state = SS_UNCONNECTED;
 			sock->state = SS_UNCONNECTED;
+			vsock_transport_cancel_pkt(vsk);
 			goto out_wait;
 		}
 
@@ -1282,7 +1291,7 @@ static int vsock_accept(struct socket *sock, struct socket *newsock, int flags)
 	/* Wait for children sockets to appear; these are the new sockets
 	 * created upon connection establishment.
 	 */
-	timeout = sock_rcvtimeo(listener, flags & O_NONBLOCK);
+	timeout = sock_sndtimeo(listener, flags & O_NONBLOCK);
 	prepare_to_wait(sk_sleep(listener), &wait, TASK_INTERRUPTIBLE);
 
 	while ((connected = vsock_dequeue_accept(listener)) == NULL &&
@@ -1310,7 +1319,7 @@ static int vsock_accept(struct socket *sock, struct socket *newsock, int flags)
 	if (connected) {
 		listener->sk_ack_backlog--;
 
-		lock_sock(connected);
+		lock_sock_nested(connected, SINGLE_DEPTH_NESTING);
 		vconnected = vsock_sk(connected);
 
 		/* If the listener socket has received an error, then we should
@@ -2000,7 +2009,16 @@ void vsock_core_exit(void)
 }
 EXPORT_SYMBOL_GPL(vsock_core_exit);
 
+const struct vsock_transport *vsock_core_get_transport(void)
+{
+	/* vsock_register_mutex not taken since only the transport uses this
+	 * function and only while registered.
+	 */
+	return transport;
+}
+EXPORT_SYMBOL_GPL(vsock_core_get_transport);
+
 MODULE_AUTHOR("VMware, Inc.");
 MODULE_DESCRIPTION("VMware Virtual Socket Family");
-MODULE_VERSION("1.0.1.0-k");
+MODULE_VERSION("1.0.2.0-k");
 MODULE_LICENSE("GPL v2");

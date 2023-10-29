@@ -115,32 +115,24 @@ int rds_tcp_accept_one(struct socket *sock)
 	 * rds_tcp_state_change() will do that cleanup
 	 */
 	rs_tcp = (struct rds_tcp_connection *)conn->c_transport_data;
-	rds_conn_transition(conn, RDS_CONN_DOWN, RDS_CONN_CONNECTING);
-	if (rs_tcp->t_sock) {
-		/* Need to resolve a duelling SYN between peers.
-		 * We have an outstanding SYN to this peer, which may
-		 * potentially have transitioned to the RDS_CONN_UP state,
-		 * so we must quiesce any send threads before resetting
-		 * c_transport_data.
-		 */
-		wait_event(conn->c_waitq,
-			   !test_bit(RDS_IN_XMIT, &conn->c_flags));
-		if (ntohl(inet->inet_saddr) < ntohl(inet->inet_daddr)) {
-			struct sock *nsk = new_sock->sk;
+	if (rs_tcp->t_sock &&
+	    ntohl(inet->inet_saddr) < ntohl(inet->inet_daddr)) {
+		struct sock *nsk = new_sock->sk;
 
-			nsk->sk_user_data = NULL;
-			nsk->sk_prot->disconnect(nsk, 0);
-			tcp_done(nsk);
-			new_sock = NULL;
-			ret = 0;
-			goto out;
-		} else if (rs_tcp->t_sock) {
-			rds_tcp_restore_callbacks(rs_tcp->t_sock, rs_tcp);
-			conn->c_outgoing = 0;
-		}
+		nsk->sk_user_data = NULL;
+		nsk->sk_prot->disconnect(nsk, 0);
+		tcp_done(nsk);
+		new_sock = NULL;
+		ret = 0;
+		goto out;
+	} else if (rs_tcp->t_sock) {
+		rds_tcp_restore_callbacks(rs_tcp->t_sock, rs_tcp);
+		conn->c_outgoing = 0;
 	}
+
+	rds_conn_transition(conn, RDS_CONN_DOWN, RDS_CONN_CONNECTING);
 	rds_tcp_set_callbacks(new_sock, conn);
-	rds_connect_complete(conn); /* marks RDS_CONN_UP */
+	rds_connect_complete(conn);
 	new_sock = NULL;
 	ret = 0;
 

@@ -45,14 +45,15 @@ struct br_ip_list {
 #define BR_PROXYARP		BIT(8)
 #define BR_LEARNING_SYNC	BIT(9)
 #define BR_PROXYARP_WIFI	BIT(10)
-#define BR_ISOLATE_MODE		BIT(11)
+#define BR_ISOLATE_MODE	BIT(11)
 #define BR_MULTICAST_TO_UCAST	BIT(12)
-#define BR_BLOCK_BPDU		BIT(13)
 
 #define BR_DEFAULT_AGEING_TIME	(300 * HZ)
 
 extern void brioctl_set(int (*ioctl_hook)(struct net *, unsigned int, void __user *));
+#if defined(CONFIG_SHORTCUT_FE) || defined(CONFIG_SHORTCUT_FE_MODULE)
 extern void br_dev_update_stats(struct net_device *dev, struct rtnl_link_stats64 *nlstats);
+#endif
 
 typedef int br_should_route_hook_t(struct sk_buff *skb);
 extern br_should_route_hook_t __rcu *br_should_route_hook;

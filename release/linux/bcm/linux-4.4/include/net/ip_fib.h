@@ -112,7 +112,6 @@ struct fib_info {
 	unsigned char		fib_scope;
 	unsigned char		fib_type;
 	__be32			fib_prefsrc;
-	u32			fib_tb_id;
 	u32			fib_priority;
 	struct dst_metrics	*fib_metrics;
 #define fib_mtu fib_metrics->metrics[RTAX_MTU-1]
@@ -250,13 +249,6 @@ static inline int fib_lookup(struct net *net, const struct flowi4 *flp,
 	return err;
 }
 
-static inline bool fib4_rules_early_flow_dissect(struct net *net,
-						 struct sk_buff *skb,
-						 struct flowi4 *fl4,
-						 struct flow_keys *flkeys)
-{
-	return false;
-}
 #else /* CONFIG_IP_MULTIPLE_TABLES */
 int __net_init fib4_rules_init(struct net *net);
 void __net_exit fib4_rules_exit(struct net *net);
@@ -301,24 +293,6 @@ out:
 	return err;
 }
 
-static inline bool fib4_rules_early_flow_dissect(struct net *net,
-						 struct sk_buff *skb,
-						 struct flowi4 *fl4,
-						 struct flow_keys *flkeys)
-{
-	unsigned int flag = FLOW_DISSECTOR_F_STOP_AT_ENCAP;
-
-	if (!net->ipv4.fib_rules_require_fldissect)
-		return false;
-
-	skb_flow_dissect_flow_keys(skb, flkeys, flag);
-	fl4->fl4_sport = flkeys->ports.src;
-	fl4->fl4_dport = flkeys->ports.dst;
-	fl4->flowi4_proto = flkeys->basic.ip_proto;
-
-	return true;
-}
-
 #endif /* CONFIG_IP_MULTIPLE_TABLES */
 
 /* Exported by fib_frontend.c */
@@ -346,7 +320,7 @@ void fib_flush_external(struct net *net);
 /* Exported by fib_semantics.c */
 int ip_fib_check_default(__be32 gw, struct net_device *dev);
 int fib_sync_down_dev(struct net_device *dev, unsigned long event, bool force);
-int fib_sync_down_addr(struct net_device *dev, __be32 local);
+int fib_sync_down_addr(struct net *net, __be32 local);
 int fib_sync_up(struct net_device *dev, unsigned int nh_flags);
 void fib_sync_mtu(struct net_device *dev, u32 orig_mtu);
 

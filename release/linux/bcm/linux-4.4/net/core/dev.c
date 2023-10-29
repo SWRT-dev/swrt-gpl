@@ -82,7 +82,6 @@
 #include <linux/slab.h>
 #include <linux/sched.h>
 #include <linux/mutex.h>
-#include <linux/rwsem.h>
 #include <linux/string.h>
 #include <linux/mm.h>
 #include <linux/socket.h>
@@ -98,9 +97,6 @@
 #include <net/net_namespace.h>
 #include <net/sock.h>
 #include <linux/rtnetlink.h>
-#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
-#include <linux/imq.h>
-#endif
 #include <linux/stat.h>
 #include <net/dst.h>
 #include <net/dst_metadata.h>
@@ -141,6 +137,9 @@
 #include <linux/errqueue.h>
 #include <linux/hrtimer.h>
 #include <linux/netfilter_ingress.h>
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+#include <linux/imq.h>
+#endif
 
 #include "net-sysfs.h"
 
@@ -153,6 +152,7 @@
 #define BCMFASTPATH
 #endif
 
+/* Instead of increasing this, you should create a hash table. */
 #define MAX_GRO_SKBS 8
 
 /* This should be increased if a protocol with a bigger head is added. */
@@ -163,7 +163,6 @@ static DEFINE_SPINLOCK(offload_lock);
 struct list_head ptype_base[PTYPE_HASH_SIZE] __read_mostly;
 struct list_head ptype_all __read_mostly;	/* Taps */
 static struct list_head offload_base __read_mostly;
-static struct workqueue_struct *napi_workq __read_mostly;
 
 static int netif_rx_internal(struct sk_buff *skb);
 static int call_netdevice_notifiers_info(unsigned long val,
@@ -196,9 +195,9 @@ EXPORT_SYMBOL(dev_base_lock);
 static DEFINE_SPINLOCK(napi_hash_lock);
 
 static unsigned int napi_gen_id = NR_CPUS;
-static DEFINE_HASHTABLE(napi_hash, 8);
+static DEFINE_READ_MOSTLY_HASHTABLE(napi_hash, 8);
 
-static DECLARE_RWSEM(devnet_rename_sem);
+static seqcount_t devnet_rename_seq;
 
 static inline void dev_base_seq_inc(struct net *net)
 {
@@ -875,28 +874,33 @@ EXPORT_SYMBOL(dev_get_by_index);
  *	@net: network namespace
  *	@name: a pointer to the buffer where the name will be stored.
  *	@ifindex: the ifindex of the interface to get the name from.
+ *
+ *	The use of raw_seqcount_begin() and cond_resched() before
+ *	retrying is required as we want to give the writers a chance
+ *	to complete when CONFIG_PREEMPT is not set.
  */
 int netdev_get_name(struct net *net, char *name, int ifindex)
 {
 	struct net_device *dev;
-	int ret;
+	unsigned int seq;
 
-	down_read(&devnet_rename_sem);
+retry:
+	seq = raw_seqcount_begin(&devnet_rename_seq);
 	rcu_read_lock();
-
 	dev = dev_get_by_index_rcu(net, ifindex);
 	if (!dev) {
-		ret = -ENODEV;
-		goto out;
+		rcu_read_unlock();
+		return -ENODEV;
 	}
 
 	strcpy(name, dev->name);
-
-	ret = 0;
-out:
 	rcu_read_unlock();
-	up_read(&devnet_rename_sem);
-	return ret;
+	if (read_seqcount_retry(&devnet_rename_seq, seq)) {
+		cond_resched();
+		goto retry;
+	}
+
+	return 0;
 }
 
 /**
@@ -1161,10 +1165,10 @@ int dev_change_name(struct net_device *dev, const char *newname)
 	if (dev->flags & IFF_UP)
 		return -EBUSY;
 
-	down_write(&devnet_rename_sem);
+	write_seqcount_begin(&devnet_rename_seq);
 
 	if (strncmp(newname, dev->name, IFNAMSIZ) == 0) {
-		up_write(&devnet_rename_sem);
+		write_seqcount_end(&devnet_rename_seq);
 		return 0;
 	}
 
@@ -1172,7 +1176,7 @@ int dev_change_name(struct net_device *dev, const char *newname)
 
 	err = dev_get_valid_name(net, dev, newname);
 	if (err < 0) {
-		up_write(&devnet_rename_sem);
+		write_seqcount_end(&devnet_rename_seq);
 		return err;
 	}
 
@@ -1187,11 +1191,11 @@ rollback:
 	if (ret) {
 		memcpy(dev->name, oldname, IFNAMSIZ);
 		dev->name_assign_type = old_assign_type;
-		up_write(&devnet_rename_sem);
+		write_seqcount_end(&devnet_rename_seq);
 		return ret;
 	}
 
-	up_write(&devnet_rename_sem);
+	write_seqcount_end(&devnet_rename_seq);
 
 	netdev_adjacent_rename_links(dev, oldname);
 
@@ -1212,7 +1216,7 @@ rollback:
 		/* err >= 0 after dev_alloc_name() or stores the first errno */
 		if (err >= 0) {
 			err = ret;
-			down_write(&devnet_rename_sem);
+			write_seqcount_begin(&devnet_rename_seq);
 			memcpy(dev->name, oldname, IFNAMSIZ);
 			memcpy(oldname, newname, IFNAMSIZ);
 			dev->name_assign_type = old_assign_type;
@@ -2780,12 +2784,14 @@ static int xmit_one(struct sk_buff *skb, struct net_device *dev,
 {
 	unsigned int len;
 	int rc;
-
+	
+#if defined(CONFIG_SHORTCUT_FE) || defined(CONFIG_SHORTCUT_FE_MODULE)
 	/*
 	 * If this skb has been fast forwarded then we don't want it to
 	 * go to any taps (by definition we're trying to bypass them).
 	 */
 	if (!skb->fast_forwarded) {
+#endif
 #if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
 		if ((!list_empty(&ptype_all) || !list_empty(&dev->ptype_all)) &&
                        !(skb->imq_flags & IMQ_F_ENQUEUE))
@@ -2793,20 +2799,14 @@ static int xmit_one(struct sk_buff *skb, struct net_device *dev,
 		if (!list_empty(&ptype_all) || !list_empty(&dev->ptype_all))
 #endif
 			dev_queue_xmit_nit(skb, dev);
+#if defined(CONFIG_SHORTCUT_FE) || defined(CONFIG_SHORTCUT_FE_MODULE)
 	}
-
-#ifdef CONFIG_ETHERNET_PACKET_MANGLE
-		if (!dev->eth_mangle_tx ||
-		    (skb = dev->eth_mangle_tx(dev, skb)) != NULL)
-#else
-		if (1)
 #endif
-		{
-			len = skb->len;
-			trace_net_dev_start_xmit(skb, dev);
-			rc = netdev_start_xmit(skb, dev, txq, more);
-			trace_net_dev_xmit(skb, rc, dev, len);
-		}
+
+	len = skb->len;
+	trace_net_dev_start_xmit(skb, dev);
+	rc = netdev_start_xmit(skb, dev, txq, more);
+	trace_net_dev_xmit(skb, rc, dev, len);
 
 	return rc;
 }
@@ -2828,7 +2828,7 @@ struct sk_buff * BCMFASTPATH_HOST dev_hard_start_xmit(struct sk_buff *first, str
 		}
 
 		skb = next;
-		if (netif_tx_queue_stopped(txq) && skb) {
+		if (netif_xmit_stopped(txq) && skb) {
 			rc = NETDEV_TX_BUSY;
 			break;
 		}
@@ -3049,7 +3049,7 @@ static void skb_update_prio(struct sk_buff *skb)
 DEFINE_PER_CPU(int, xmit_recursion);
 EXPORT_SYMBOL(xmit_recursion);
 
-#define RECURSION_LIMIT 8
+#define RECURSION_LIMIT 10
 
 /**
  *	dev_loopback_xmit - loop back @skb
@@ -3895,8 +3895,10 @@ void netdev_rx_handler_unregister(struct net_device *dev)
 }
 EXPORT_SYMBOL_GPL(netdev_rx_handler_unregister);
 
+#if defined(CONFIG_SHORTCUT_FE) || defined(CONFIG_SHORTCUT_FE_MODULE)
 int (*fast_nat_recv)(struct sk_buff *skb) __rcu __read_mostly;
 EXPORT_SYMBOL_GPL(fast_nat_recv);
+#endif
 
 /*
  * Limit the use of PFMEMALLOC reserves to those protocols that implement
@@ -3940,12 +3942,13 @@ static int __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc)
 	bool deliver_exact = false;
 	int ret = NET_RX_DROP;
 	__be16 type;
+#if defined(CONFIG_SHORTCUT_FE) || defined(CONFIG_SHORTCUT_FE_MODULE)
 	int (*fast_recv)(struct sk_buff *skb);
+#endif
 
 	net_timestamp_check(!netdev_tstamp_prequeue, skb);
 
 	trace_netif_receive_skb(skb);
-
 
 	orig_dev = skb->dev;
 
@@ -3967,12 +3970,13 @@ another_round:
 		if (unlikely(!skb))
 			goto out;
 	}
-
+#if defined(CONFIG_SHORTCUT_FE) || defined(CONFIG_SHORTCUT_FE_MODULE)
 	fast_recv = rcu_dereference(fast_nat_recv);
 	if (fast_recv && fast_recv(skb)) {
 		ret = NET_RX_SUCCESS;
 		goto out;
 	}
+#endif
 
 #ifdef CONFIG_NET_CLS_ACT
 	if (skb->tc_verd & TC_NCLS) {
@@ -4168,27 +4172,6 @@ int BCMFASTPATH_HOST netif_receive_skb(struct sk_buff *skb)
 }
 EXPORT_SYMBOL(netif_receive_skb);
 
-/**
- *	netif_receive_skb_list - process many receive buffers from network
- *	@head: list of skbs to process.
- *
- *	For now, just calls netif_receive_skb() in a loop, ignoring the
- *	return value.
- *
- *	This function may only be called from softirq context and interrupts
- *	should be enabled.
- */
-void netif_receive_skb_list(struct list_head *head)
-{
-	struct sk_buff *skb, *next;
-
-	list_for_each_entry_safe(skb, next, head, list) {
-		skb_list_del_init(skb);
-		netif_receive_skb(skb);
-	}
-}
-EXPORT_SYMBOL(netif_receive_skb_list);
-
 /* Network device is going away, flush any packets still pending
  * Called with irqs disabled.
  */
@@ -4251,50 +4234,42 @@ out:
 	return netif_receive_skb_internal(skb);
 }
 
-static void BCMFASTPATH_HOST __napi_gro_flush_chain(struct napi_struct *napi, u32 index,
-				   bool flush_old)
-{
-	struct list_head *head = &napi->gro_hash[index].list;
-	struct sk_buff *skb, *p;
-
-	list_for_each_entry_safe_reverse(skb, p, head, list) {
-		if (flush_old && NAPI_GRO_CB(skb)->age == jiffies)
-			return;
-		list_del(&skb->list);
-		skb->next = NULL;
-		napi_gro_complete(skb);
-		napi->gro_hash[index].count--;
-	}
-
-	if (!napi->gro_hash[index].count)
-		__clear_bit(index, &napi->gro_bitmask);
-}
-
-/* napi->gro_hash[].list contains packets ordered by age.
+/* napi->gro_list contains packets ordered by age.
  * youngest packets at the head of it.
  * Complete skbs in reverse order to reduce latencies.
  */
 void BCMFASTPATH_HOST napi_gro_flush(struct napi_struct *napi, bool flush_old)
 {
-	u32 i;
+	struct sk_buff *skb, *prev = NULL;
 
-	for (i = 0; i < GRO_HASH_BUCKETS; i++) {
-		if (test_bit(i, &napi->gro_bitmask))
-			__napi_gro_flush_chain(napi, i, flush_old);
+	/* scan list and build reverse chain */
+	for (skb = napi->gro_list; skb != NULL; skb = skb->next) {
+		skb->prev = prev;
+		prev = skb;
 	}
+
+	for (skb = prev; skb; skb = prev) {
+		skb->next = NULL;
+
+		if (flush_old && NAPI_GRO_CB(skb)->age == jiffies)
+			return;
+
+		prev = skb->prev;
+		napi_gro_complete(skb);
+		napi->gro_count--;
+	}
+
+	napi->gro_list = NULL;
 }
 EXPORT_SYMBOL(napi_gro_flush);
 
-static struct list_head *gro_list_prepare(struct napi_struct *napi,
-					  struct sk_buff *skb)
+static void gro_list_prepare(struct napi_struct *napi, struct sk_buff *skb)
 {
+	struct sk_buff *p;
 	unsigned int maclen = skb->dev->hard_header_len;
 	u32 hash = skb_get_hash_raw(skb);
-	struct list_head *head;
-	struct sk_buff *p;
 
-	head = &napi->gro_hash[hash & (GRO_HASH_BUCKETS - 1)].list;
-	list_for_each_entry(p, head, list) {
+	for (p = napi->gro_list; p; p = p->next) {
 		unsigned long diffs;
 
 		NAPI_GRO_CB(p)->flush = 0;
@@ -4316,11 +4291,9 @@ static struct list_head *gro_list_prepare(struct napi_struct *napi,
 				       maclen);
 		NAPI_GRO_CB(p)->same_flow = !diffs;
 	}
-
-	return head;
 }
 
-static inline void skb_gro_reset_offset(struct sk_buff *skb, u32 nhoff)
+static void skb_gro_reset_offset(struct sk_buff *skb)
 {
 	const struct skb_shared_info *pinfo = skb_shinfo(skb);
 	const skb_frag_t *frag0 = &pinfo->frags[0];
@@ -4329,9 +4302,9 @@ static inline void skb_gro_reset_offset(struct sk_buff *skb, u32 nhoff)
 	NAPI_GRO_CB(skb)->frag0 = NULL;
 	NAPI_GRO_CB(skb)->frag0_len = 0;
 
-	if (!skb_headlen(skb) && pinfo->nr_frags &&
-	    !PageHighMem(skb_frag_page(frag0)) &&
-	    (!NET_IP_ALIGN || !((frag0->page_offset + nhoff) & 3))) {
+	if (skb_mac_header(skb) == skb_tail_pointer(skb) &&
+	    pinfo->nr_frags &&
+	    !PageHighMem(skb_frag_page(frag0))) {
 		NAPI_GRO_CB(skb)->frag0 = skb_frag_address(frag0);
 		NAPI_GRO_CB(skb)->frag0_len = min_t(unsigned int,
 						    skb_frag_size(frag0),
@@ -4360,36 +4333,14 @@ static void gro_pull_from_frag0(struct sk_buff *skb, int grow)
 	}
 }
 
-static void gro_flush_oldest(struct list_head *head)
-{
-	struct sk_buff *oldest;
-
-	oldest = list_last_entry(head, struct sk_buff, list);
-
-	/* We are called with head length >= MAX_GRO_SKBS, so this is
-	 * impossible.
-	 */
-	if (WARN_ON_ONCE(!oldest))
-		return;
-
-	/* Do not adjust napi->gro_hash[].count, caller is adding a new
-	 * SKB to the chain.
-	 */
-	list_del(&oldest->list);
-	oldest->next = NULL;
-	napi_gro_complete(oldest);
-}
-
 static enum gro_result BCMFASTPATH_HOST dev_gro_receive(struct napi_struct *napi, struct sk_buff *skb)
 {
-	u32 hash = skb_get_hash_raw(skb) & (GRO_HASH_BUCKETS - 1);
-	struct list_head *head = &offload_base;
+	struct sk_buff **pp = NULL;
 	struct packet_offload *ptype;
 	__be16 type = skb->protocol;
-	struct list_head *gro_head;
-	struct sk_buff *pp = NULL;
-	enum gro_result ret;
+	struct list_head *head = &offload_base;
 	int same_flow;
+	enum gro_result ret;
 	int grow;
 
 	if (skb->gro_skip)
@@ -4401,7 +4352,7 @@ static enum gro_result BCMFASTPATH_HOST dev_gro_receive(struct napi_struct *napi
 	if (skb_is_gso(skb) || skb_has_frag_list(skb) || skb->csum_bad)
 		goto normal;
 
-	gro_head = gro_list_prepare(napi, skb);
+	gro_list_prepare(napi, skb);
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(ptype, head, list) {
@@ -4415,7 +4366,6 @@ static enum gro_result BCMFASTPATH_HOST dev_gro_receive(struct napi_struct *napi
 		NAPI_GRO_CB(skb)->free = 0;
 		NAPI_GRO_CB(skb)->encap_mark = 0;
 		NAPI_GRO_CB(skb)->recursion_counter = 0;
-		NAPI_GRO_CB(skb)->is_fou = 0;
 		NAPI_GRO_CB(skb)->gro_remcsum_start = 0;
 
 		/* Setup for GRO checksum validation */
@@ -4434,7 +4384,7 @@ static enum gro_result BCMFASTPATH_HOST dev_gro_receive(struct napi_struct *napi
 			NAPI_GRO_CB(skb)->csum_valid = 0;
 		}
 
-		pp = ptype->callbacks.gro_receive(gro_head, skb);
+		pp = ptype->callbacks.gro_receive(&napi->gro_list, skb);
 		break;
 	}
 	rcu_read_unlock();
@@ -4446,10 +4396,12 @@ static enum gro_result BCMFASTPATH_HOST dev_gro_receive(struct napi_struct *napi
 	ret = NAPI_GRO_CB(skb)->free ? GRO_MERGED_FREE : GRO_MERGED;
 
 	if (pp) {
-		list_del(&pp->list);
-		pp->next = NULL;
-		napi_gro_complete(pp);
-		napi->gro_hash[hash].count--;
+		struct sk_buff *nskb = *pp;
+
+		*pp = nskb->next;
+		nskb->next = NULL;
+		napi_gro_complete(nskb);
+		napi->gro_count--;
 	}
 
 	if (same_flow)
@@ -4458,16 +4410,26 @@ static enum gro_result BCMFASTPATH_HOST dev_gro_receive(struct napi_struct *napi
 	if (NAPI_GRO_CB(skb)->flush)
 		goto normal;
 
-	if (unlikely(napi->gro_hash[hash].count >= MAX_GRO_SKBS)) {
-		gro_flush_oldest(gro_head);
+	if (unlikely(napi->gro_count >= MAX_GRO_SKBS)) {
+		struct sk_buff *nskb = napi->gro_list;
+
+		/* locate the end of the list to select the 'oldest' flow */
+		while (nskb->next) {
+			pp = &nskb->next;
+			nskb = *pp;
+		}
+		*pp = NULL;
+		nskb->next = NULL;
+		napi_gro_complete(nskb);
 	} else {
-		napi->gro_hash[hash].count++;
+		napi->gro_count++;
 	}
 	NAPI_GRO_CB(skb)->count = 1;
 	NAPI_GRO_CB(skb)->age = jiffies;
 	NAPI_GRO_CB(skb)->last = skb;
 	skb_shinfo(skb)->gso_size = skb_gro_len(skb);
-	list_add(&skb->list, gro_head);
+	skb->next = napi->gro_list;
+	napi->gro_list = skb;
 	ret = GRO_HELD;
 
 pull:
@@ -4475,13 +4437,6 @@ pull:
 	if (grow > 0)
 		gro_pull_from_frag0(skb, grow);
 ok:
-	if (napi->gro_hash[hash].count) {
-		if (!test_bit(hash, &napi->gro_bitmask))
-			__set_bit(hash, &napi->gro_bitmask);
-	} else if (test_bit(hash, &napi->gro_bitmask)) {
-		__clear_bit(hash, &napi->gro_bitmask);
-	}
-
 	return ret;
 
 normal:
@@ -4550,12 +4505,11 @@ static gro_result_t BCMFASTPATH_HOST napi_skb_finish(gro_result_t ret, struct sk
 	return ret;
 }
 
-
 gro_result_t BCMFASTPATH_HOST napi_gro_receive(struct napi_struct *napi, struct sk_buff *skb)
 {
 	trace_napi_gro_receive_entry(skb);
 
-	skb_gro_reset_offset(skb, 0);
+	skb_gro_reset_offset(skb);
 
 	return napi_skb_finish(dev_gro_receive(napi, skb), skb);
 }
@@ -4640,7 +4594,7 @@ static struct sk_buff *napi_frags_skb(struct napi_struct *napi)
 	napi->skb = NULL;
 
 	skb_reset_mac_header(skb);
-	skb_gro_reset_offset(skb, hlen);
+	skb_gro_reset_offset(skb);
 
 	if (unlikely(skb_gro_header_hard(skb, hlen))) {
 		eth = skb_gro_header_slow(skb, hlen, 0);
@@ -4808,11 +4762,6 @@ void __napi_schedule(struct napi_struct *n)
 {
 	unsigned long flags;
 
-	if (test_bit(NAPI_STATE_THREADED, &n->state)) {
-		queue_work(napi_workq, &n->work);
-		return;
-	}
-
 	local_irq_save(flags);
 	____napi_schedule(this_cpu_ptr(&softnet_data), n);
 	local_irq_restore(flags);
@@ -4827,15 +4776,7 @@ EXPORT_SYMBOL(__napi_schedule);
  */
 void __napi_schedule_irqoff(struct napi_struct *n)
 {
-	if (test_bit(NAPI_STATE_THREADED, &n->state)) {
-		queue_work(napi_workq, &n->work);
-		return;
-	}
-
-	if (!IS_ENABLED(CONFIG_PREEMPT_RT))
-		____napi_schedule(this_cpu_ptr(&softnet_data), n);
-	else
-		__napi_schedule(n);
+	____napi_schedule(this_cpu_ptr(&softnet_data), n);
 }
 EXPORT_SYMBOL(__napi_schedule_irqoff);
 
@@ -4860,7 +4801,7 @@ void napi_complete_done(struct napi_struct *n, int work_done)
 	if (unlikely(test_bit(NAPI_STATE_NPSVC, &n->state)))
 		return;
 
-	if (n->gro_bitmask) {
+	if (n->gro_list) {
 		unsigned long timeout = 0;
 
 		if (work_done)
@@ -4937,127 +4878,33 @@ static enum hrtimer_restart napi_watchdog(struct hrtimer *timer)
 	struct napi_struct *napi;
 
 	napi = container_of(timer, struct napi_struct, timer);
-	if (napi->gro_bitmask)
+	if (napi->gro_list)
 		napi_schedule(napi);
 
 	return HRTIMER_NORESTART;
 }
 
-static int __napi_poll(struct napi_struct *n, bool *repoll)
-{
-	int work, weight;
-
-	weight = n->weight;
-
-	/* This NAPI_STATE_SCHED test is for avoiding a race
-	 * with netpoll's poll_napi().  Only the entity which
-	 * obtains the lock and sees NAPI_STATE_SCHED set will
-	 * actually make the ->poll() call.  Therefore we avoid
-	 * accidentally calling ->poll() when NAPI is not scheduled.
-	 */
-	work = 0;
-	if (test_bit(NAPI_STATE_SCHED, &n->state)) {
-		work = n->poll(n, weight);
-		trace_napi_poll(n);
-	}
-
-	if (unlikely(work > weight))
-		pr_err_once("NAPI poll function %pS returned %d, exceeding its budget of %d.\n",
-			    n->poll, work, weight);
-
-	if (likely(work < weight))
-		return work;
-
-	/* Drivers must not modify the NAPI state if they
-	 * consume the entire weight.  In such cases this code
-	 * still "owns" the NAPI instance and therefore can
-	 * move the instance around on the list at-will.
-	 */
-	if (unlikely(napi_disable_pending(n))) {
-		napi_complete(n);
-		return work;
-	}
-
-	if (n->gro_bitmask) {
-		/* flush too old packets
-		 * If HZ < 1000, flush all packets.
-		 */
-		napi_gro_flush(n, HZ >= 1000);
-	}
-
-	/* Some drivers may have called napi_schedule
-	 * prior to exhausting their budget.
-	 */
-	if (unlikely(!list_empty(&n->poll_list))) {
-		pr_warn_once("%s: Budget exhausted after napi rescheduled\n",
-			     n->dev ? n->dev->name : "backlog");
-		return work;
-	}
-
-	*repoll = true;
-
-	return work;
-}
-
-static void napi_workfn(struct work_struct *work)
-{
-	struct napi_struct *n = container_of(work, struct napi_struct, work);
-	void *have;
-
-	for (;;) {
-		bool repoll = false;
-
-		local_bh_disable();
-
-		have = netpoll_poll_lock(n);
-		__napi_poll(n, &repoll);
-		netpoll_poll_unlock(have);
-
-		local_bh_enable();
-
-		if (!repoll)
-			return;
-
-		if (!need_resched())
-			continue;
-
-		/*
-		 * have to pay for the latency of task switch even if
-		 * napi is scheduled
-		 */
-		queue_work(napi_workq, work);
-		return;
-	}
-}
-
 void netif_napi_add(struct net_device *dev, struct napi_struct *napi,
 		    int (*poll)(struct napi_struct *, int), int weight)
 {
-	int i;
-
 	INIT_LIST_HEAD(&napi->poll_list);
 	hrtimer_init(&napi->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL_PINNED);
 	napi->timer.function = napi_watchdog;
-	napi->gro_bitmask = 0;
-	for (i = 0; i < GRO_HASH_BUCKETS; i++) {
-		INIT_LIST_HEAD(&napi->gro_hash[i].list);
-		napi->gro_hash[i].count = 0;
-	}
+	napi->gro_count = 0;
+	napi->gro_list = NULL;
 	napi->skb = NULL;
 	napi->poll = poll;
 	if (weight > NAPI_POLL_WEIGHT)
 		pr_err_once("netif_napi_add() called with weight %d on device %s\n",
 			    weight, dev->name);
 	napi->weight = weight;
+	list_add(&napi->dev_list, &dev->napi_list);
 	napi->dev = dev;
 #ifdef CONFIG_NETPOLL
 	spin_lock_init(&napi->poll_lock);
 	napi->poll_owner = -1;
 #endif
-	INIT_WORK(&napi->work, napi_workfn);
 	set_bit(NAPI_STATE_SCHED, &napi->state);
-	set_bit(NAPI_STATE_NPSVC, &napi->state);
-	list_add_rcu(&napi->dev_list, &dev->napi_list);
 }
 EXPORT_SYMBOL(netif_napi_add);
 
@@ -5077,44 +4924,74 @@ void napi_disable(struct napi_struct *n)
 }
 EXPORT_SYMBOL(napi_disable);
 
-static void flush_gro_hash(struct napi_struct *napi)
-{
-	int i;
-
-	for (i = 0; i < GRO_HASH_BUCKETS; i++) {
-		struct sk_buff *skb, *n;
-
-		list_for_each_entry_safe(skb, n, &napi->gro_hash[i].list, list)
-			kfree_skb(skb);
-		napi->gro_hash[i].count = 0;
-	}
-}
-
 void netif_napi_del(struct napi_struct *napi)
 {
-	cancel_work_sync(&napi->work);
 	list_del_init(&napi->dev_list);
 	napi_free_frags(napi);
 
-	flush_gro_hash(napi);
-	napi->gro_bitmask = 0;
+	kfree_skb_list(napi->gro_list);
+	napi->gro_list = NULL;
+	napi->gro_count = 0;
 }
 EXPORT_SYMBOL(netif_napi_del);
 
 static int napi_poll(struct napi_struct *n, struct list_head *repoll)
 {
-	bool do_repoll = false;
 	void *have;
-	int work;
+	int work, weight;
 
 	list_del_init(&n->poll_list);
 
 	have = netpoll_poll_lock(n);
 
-	work = __napi_poll(n, &do_repoll);
-	if (do_repoll)
-		list_add_tail(&n->poll_list, repoll);
+	weight = n->weight;
 
+	/* This NAPI_STATE_SCHED test is for avoiding a race
+	 * with netpoll's poll_napi().  Only the entity which
+	 * obtains the lock and sees NAPI_STATE_SCHED set will
+	 * actually make the ->poll() call.  Therefore we avoid
+	 * accidentally calling ->poll() when NAPI is not scheduled.
+	 */
+	work = 0;
+	if (test_bit(NAPI_STATE_SCHED, &n->state)) {
+		work = n->poll(n, weight);
+		trace_napi_poll(n);
+	}
+
+	WARN_ON_ONCE(work > weight);
+
+	if (likely(work < weight))
+		goto out_unlock;
+
+	/* Drivers must not modify the NAPI state if they
+	 * consume the entire weight.  In such cases this code
+	 * still "owns" the NAPI instance and therefore can
+	 * move the instance around on the list at-will.
+	 */
+	if (unlikely(napi_disable_pending(n))) {
+		napi_complete(n);
+		goto out_unlock;
+	}
+
+	if (n->gro_list) {
+		/* flush too old packets
+		 * If HZ < 1000, flush all packets.
+		 */
+		napi_gro_flush(n, HZ >= 1000);
+	}
+
+	/* Some drivers may have called napi_schedule
+	 * prior to exhausting their budget.
+	 */
+	if (unlikely(!list_empty(&n->poll_list))) {
+		pr_warn_once("%s: Budget exhausted after napi rescheduled\n",
+			     n->dev ? n->dev->name : "backlog");
+		goto out_unlock;
+	}
+
+	list_add_tail(&n->poll_list, repoll);
+
+out_unlock:
 	netpoll_poll_unlock(have);
 
 	return work;
@@ -6339,8 +6216,7 @@ static int __dev_set_mtu(struct net_device *dev, int new_mtu)
 	if (ops->ndo_change_mtu)
 		return ops->ndo_change_mtu(dev, new_mtu);
 
-	/* Pairs with all the lockless reads of dev->mtu in the stack */
-	WRITE_ONCE(dev->mtu, new_mtu);
+	dev->mtu = new_mtu;
 	return 0;
 }
 
@@ -6662,13 +6538,11 @@ static void netdev_sync_lower_features(struct net_device *upper,
 			netdev_dbg(upper, "Disabling feature %pNF on lower dev %s.\n",
 				   &feature, lower->name);
 			lower->wanted_features &= ~feature;
-			__netdev_update_features(lower);
+			netdev_update_features(lower);
 
 			if (unlikely(lower->features & feature))
 				netdev_WARN(upper, "failed to disable %pNF on %s!\n",
 					    &feature, lower->name);
-			else
-				netdev_features_change(lower);
 		}
 	}
 }
@@ -7057,13 +6931,6 @@ int register_netdevice(struct net_device *dev)
 		rcu_barrier();
 
 		dev->reg_state = NETREG_UNREGISTERED;
-		/* We should put the kobject that hold in
-		 * netdev_unregister_kobject(), otherwise
-		 * the net device cannot be freed when
-		 * driver calls free_netdev(), because the
-		 * kobject is being hold.
-		 */
-		kobject_put(&dev->dev.kobj);
 	}
 	/*
 	 *	Prevent userspace races by waiting until the network
@@ -7174,14 +7041,13 @@ static void netdev_wait_allrefs(struct net_device *dev)
 {
 	unsigned long rebroadcast_time, warning_time;
 	int refcnt;
-	int dead = 2;
 
 	linkwatch_forget_dev(dev);
 
 	rebroadcast_time = warning_time = jiffies;
 	refcnt = netdev_refcnt_read(dev);
 
-	while (refcnt != 0 && dead-- > 0) {
+	while (refcnt != 0) {
 		if (time_after(jiffies, rebroadcast_time + 1 * HZ)) {
 			rtnl_lock();
 
@@ -7860,9 +7726,6 @@ static struct hlist_head * __net_init netdev_create_hash(void)
 /* Initialize per network namespace state */
 static int __net_init netdev_init(struct net *net)
 {
-	BUILD_BUG_ON(GRO_HASH_BUCKETS >
-		     8 * FIELD_SIZEOF(struct napi_struct, gro_bitmask));
-
 	if (net != &init_net)
 		INIT_LIST_HEAD(&net->dev_base_head);
 
@@ -7993,7 +7856,7 @@ static void __net_exit default_device_exit(struct net *net)
 			continue;
 
 		/* Leave virtual devices for the generic cleanup */
-		if (dev->rtnl_link_ops && !dev->rtnl_link_ops->netns_refund)
+		if (dev->rtnl_link_ops)
 			continue;
 
 		/* Push remaining network devices to init_net */
@@ -8130,10 +7993,6 @@ static int __init net_dev_init(void)
 		sd->backlog.poll = process_backlog;
 		sd->backlog.weight = weight_p;
 	}
-
-	napi_workq = alloc_workqueue("napi_workq", WQ_UNBOUND | WQ_HIGHPRI,
-				     WQ_UNBOUND_MAX_ACTIVE);
-	BUG_ON(!napi_workq);
 
 	dev_boot_phase = 0;
 

@@ -18,7 +18,7 @@ obj-$(CONFIG_SHORTCUT_FE)	+= shortcut-fe/
 obj-$(CONFIG_WIREGUARD)		+= wireguard/
 obj-$(CONFIG_INET)		+= ipv4/
 obj-$(CONFIG_XFRM)		+= xfrm/
-obj-$(CONFIG_UNIX_SCM)		+= unix/
+obj-$(CONFIG_UNIX)		+= unix/
 obj-$(CONFIG_NET)		+= ipv6/
 obj-$(CONFIG_PACKET)		+= packet/
 obj-$(CONFIG_NET_KEY)		+= key/
@@ -69,16 +69,6 @@ obj-$(CONFIG_DNS_RESOLVER)	+= dns_resolver/
 obj-$(CONFIG_CEPH_LIB)		+= ceph/
 obj-$(CONFIG_BATMAN_ADV)	+= batman-adv/
 obj-$(CONFIG_NFC)		+= nfc/
-ifeq ($(CONFIG_RAETH),y)
-ifneq ($(CONFIG_RA_NAT_NONE),y)
-obj-y                           += nat/foe_hook/
-endif
-endif
-ifeq ($(CONFIG_RAETH),m)
-ifneq ($(CONFIG_RA_NAT_NONE),y)
-obj-y                           += nat/foe_hook/
-endif
-endif
 obj-$(CONFIG_OPENVSWITCH)	+= openvswitch/
 obj-$(CONFIG_VSOCKETS)	+= vmw_vsock/
 obj-$(CONFIG_MPLS)		+= mpls/

@@ -89,6 +89,7 @@
 #include <linux/netfilter_ipv4.h>
 #include <linux/random.h>
 #include <linux/slab.h>
+#include <linux/netfilter/xt_qtaguid.h>
 
 #include <asm/uaccess.h>
 
@@ -316,8 +317,7 @@ lookup_protocol:
 	}
 
 	err = -EPERM;
-	if (sock->type == SOCK_RAW && !kern &&
-	    !ns_capable(net->user_ns, CAP_NET_RAW))
+	if (sock->type == SOCK_RAW && !kern && !capable(CAP_NET_RAW))
 		goto out_rcu_unlock;
 
 	sock->ops = answer->ops;
@@ -406,6 +406,9 @@ int inet_release(struct socket *sock)
 	if (sk) {
 		long timeout;
 
+#ifdef CONFIG_NETFILTER_XT_MATCH_QTAGUID
+		qtaguid_untag(sock, true);
+#endif
 		/* Applications forget to leave groups before exiting */
 		ip_mc_drop_socket(sk);
 
@@ -1265,11 +1268,8 @@ static struct sk_buff BCMFASTPATH_HOST *inet_gso_segment(struct sk_buff *skb,
 		udpfrag = proto == IPPROTO_UDP && !skb->encapsulation;
 
 	ops = rcu_dereference(inet_offloads[proto]);
-	if (likely(ops && ops->callbacks.gso_segment)) {
+	if (likely(ops && ops->callbacks.gso_segment))
 		segs = ops->callbacks.gso_segment(skb, features);
-		if (!segs)
-			skb->network_header = skb_mac_header(skb) + nhoff - skb->head;
-	}
 
 	if (IS_ERR_OR_NULL(segs))
 		goto out;
@@ -1298,11 +1298,11 @@ out:
 	return segs;
 }
 
-static struct sk_buff BCMFASTPATH_HOST *inet_gro_receive(struct list_head *head,
+static struct sk_buff BCMFASTPATH_HOST **inet_gro_receive(struct sk_buff **head,
 					 struct sk_buff *skb)
 {
 	const struct net_offload *ops;
-	struct sk_buff *pp = NULL;
+	struct sk_buff **pp = NULL;
 	struct sk_buff *p;
 	const struct iphdr *iph;
 	unsigned int hlen;
@@ -1333,11 +1333,11 @@ static struct sk_buff BCMFASTPATH_HOST *inet_gro_receive(struct list_head *head,
 	if (unlikely(ip_fast_csum((u8 *)iph, 5)))
 		goto out_unlock;
 
-	id = ntohl(net_hdr_word(&iph->id));
-	flush = (u16)((ntohl(net_hdr_word(iph)) ^ skb_gro_len(skb)) | (id & ~IP_DF));
+	id = ntohl(*(__be32 *)&iph->id);
+	flush = (u16)((ntohl(*(__be32 *)iph) ^ skb_gro_len(skb)) | (id & ~IP_DF));
 	id >>= 16;
 
-	list_for_each_entry(p, head, list) {
+	for (p = *head; p; p = p->next) {
 		struct iphdr *iph2;
 
 		if (!NAPI_GRO_CB(p)->same_flow)
@@ -1395,8 +1395,8 @@ out:
 	return pp;
 }
 
-static struct sk_buff *ipip_gro_receive(struct list_head *head,
-					struct sk_buff *skb)
+static struct sk_buff **ipip_gro_receive(struct sk_buff **head,
+					 struct sk_buff *skb)
 {
 	if (NAPI_GRO_CB(skb)->encap_mark) {
 		NAPI_GRO_CB(skb)->flush = 1;
@@ -1781,10 +1781,6 @@ static int __init inet_init(void)
 
 	tcp_v4_init();
 
-	/* Initialise per-cpu ipv4 mibs */
-	if (init_ipv4_mibs())
-		panic("%s: Cannot init ipv4 mibs\n", __func__);
-
 	/* Setup TCP slab cache for open requests. */
 	tcp_init();
 
@@ -1813,6 +1809,12 @@ static int __init inet_init(void)
 
 	if (init_inet_pernet_ops())
 		pr_crit("%s: Cannot init ipv4 inet pernet ops\n", __func__);
+	/*
+	 *	Initialise per-cpu ipv4 mibs
+	 */
+
+	if (init_ipv4_mibs())
+		pr_crit("%s: Cannot init ipv4 mibs\n", __func__);
 
 	ipv4_proc_init();
 
@@ -1876,4 +1878,3 @@ static int __init ipv4_proc_init(void)
 #endif /* CONFIG_PROC_FS */
 
 MODULE_ALIAS_NETPROTO(PF_INET);
-

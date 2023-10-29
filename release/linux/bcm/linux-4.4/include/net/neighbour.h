@@ -263,10 +263,8 @@ static inline bool neigh_key_eq128(const struct neighbour *n, const void *pkey)
 	const u32 *n32 = (const u32 *)n->primary_key;
 	const u32 *p32 = pkey;
 
-	return ((n32[0] ^ net_hdr_word(&p32[0])) |
-		(n32[1] ^ net_hdr_word(&p32[1])) |
-		(n32[2] ^ net_hdr_word(&p32[2])) |
-		(n32[3] ^ net_hdr_word(&p32[3]))) == 0;
+	return ((n32[0] ^ p32[0]) | (n32[1] ^ p32[1]) |
+		(n32[2] ^ p32[2]) | (n32[3] ^ p32[3])) == 0;
 }
 
 static inline struct neighbour *___neigh_lookup_noref(
@@ -427,8 +425,8 @@ static inline int neigh_event_send(struct neighbour *neigh, struct sk_buff *skb)
 {
 	unsigned long now = jiffies;
 	
-	if (READ_ONCE(neigh->used) != now)
-		WRITE_ONCE(neigh->used, now);
+	if (neigh->used != now)
+		neigh->used = now;
 	if (!(neigh->nud_state&(NUD_CONNECTED|NUD_DELAY|NUD_PROBE)))
 		return __neigh_event_send(neigh, skb);
 	return 0;
@@ -456,7 +454,7 @@ static inline int neigh_hh_output(const struct hh_cache *hh, struct sk_buff *skb
 
 	do {
 		seq = read_seqbegin(&hh->hh_lock);
-		hh_len = READ_ONCE(hh->hh_len);
+		hh_len = hh->hh_len;
 		if (likely(hh_len <= HH_DATA_MOD)) {
 			hh_alen = HH_DATA_MOD;
 

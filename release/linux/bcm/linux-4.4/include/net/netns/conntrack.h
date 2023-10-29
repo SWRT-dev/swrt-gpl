@@ -100,7 +100,10 @@ struct netns_ct {
 	struct hlist_head	*expect_hash;
 	struct ct_pcpu __percpu *pcpu_lists;
 	struct ip_conntrack_stat __percpu *stat;
+	struct nf_ct_event_notifier __rcu *nf_conntrack_event_cb;
+#if defined(CONFIG_SHORTCUT_FE) || defined(CONFIG_SHORTCUT_FE_MODULE)
 	struct atomic_notifier_head nf_conntrack_chain;
+#endif
 	struct nf_exp_event_notifier __rcu *nf_expect_event_cb;
 	struct nf_ip_net	nf_ct_proto;
 #if defined(CONFIG_NF_CONNTRACK_LABELS)

@@ -61,7 +61,6 @@ psched_tdiff_bounded(psched_time_t tv1, psched_time_t tv2, psched_time_t bound)
 }
 
 struct qdisc_watchdog {
-	u64		last_expires;
 	struct hrtimer	timer;
 	struct Qdisc	*qdisc;
 };

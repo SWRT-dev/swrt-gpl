@@ -138,7 +138,7 @@ static __be32 addr_bit_set(const void *token, int fn_bit)
 	 * See include/asm-generic/bitops/le.h.
 	 */
 	return (__force __be32)(1 << ((~fn_bit ^ BITOP_BE32_SWIZZLE) & 0x1f)) &
-	       net_hdr_word(&addr[fn_bit >> 5]);
+	       addr[fn_bit >> 5];
 }
 
 static struct fib6_node *node_alloc(void)
@@ -780,7 +780,8 @@ static int fib6_add_rt2node(struct fib6_node *fn, struct rt6_info *rt,
 					found++;
 					break;
 				}
-				fallback_ins = fallback_ins ?: ins;
+				if (rt_can_ecmp)
+					fallback_ins = fallback_ins ?: ins;
 				goto next_iter;
 			}
 
@@ -820,9 +821,7 @@ next_iter:
 	}
 
 	if (fallback_ins && !found) {
-		/* No matching route with same ecmp-able-ness found, replace
-		 * first matching route
-		 */
+		/* No ECMP-able route found, replace first non-ECMP one */
 		ins = fallback_ins;
 		iter = *ins;
 		found++;
@@ -910,6 +909,7 @@ add:
 			fn->fn_flags |= RTN_RTINFO;
 		}
 		nsiblings = iter->rt6i_nsiblings;
+		iter->rt6i_node = NULL;
 		fib6_purge_rt(iter, fn, info->nl_net);
 		if (fn->rr_ptr == iter)
 			fn->rr_ptr = NULL;
@@ -924,6 +924,7 @@ add:
 					break;
 				if (rt6_qualify_for_ecmp(iter)) {
 					*ins = iter->dst.rt6_next;
+					iter->rt6i_node = NULL;
 					fib6_purge_rt(iter, fn, info->nl_net);
 					if (fn->rr_ptr == iter)
 						fn->rr_ptr = NULL;

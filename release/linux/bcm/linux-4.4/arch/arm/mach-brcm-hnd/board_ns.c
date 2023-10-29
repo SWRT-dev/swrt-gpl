@@ -271,6 +271,10 @@ static void __init brcm_setup(void)
 		/* For NS-Bx and NS47094. Chiprev 4 for NS-B0 and chiprev 6 for NS-B1 */
 		ns_acp_win_size = SZ_1G;
 	}
+	if(coherence_win_sz > CONFIG_DRAM_SIZE){
+		coherence_win_sz = CONFIG_DRAM_SIZE;
+		ns_acp_win_size = CONFIG_DRAM_SIZE;
+	}
 
 	printk(KERN_INFO "coherence_win_size = %X\n",coherence_win_sz);
 	printk(KERN_INFO "coherence_flag = %X\n", coherence_flag);
@@ -310,8 +314,6 @@ void __init board_init(void)
 
 void __init board_fixup(struct tag *t, char **cmdline)
 {
-	early_printk("board_fixup\n");
-
 	u32 mem_size, lo_size;
 	early_printk("board_fixup\n");
 

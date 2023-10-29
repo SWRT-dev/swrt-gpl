@@ -15,18 +15,8 @@
 enum {
 	XT_CONNMARK_SET = 0,
 	XT_CONNMARK_SAVE,
-	XT_CONNMARK_RESTORE
-};
-
-struct xt_connmark_target_info {
-	unsigned long mark;
-	unsigned long mask;
-	__u8 mode;
-};
-
-struct xt_connmark_info {
-	unsigned long mark, mask;
-	__u8 invert;
+	XT_CONNMARK_RESTORE,
+	XT_CONNMARK_SET_RETURN
 };
 
 struct xt_connmark_tginfo1 {

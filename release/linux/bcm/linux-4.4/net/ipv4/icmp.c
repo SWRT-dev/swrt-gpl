@@ -246,7 +246,7 @@ static struct {
 /**
  * icmp_global_allow - Are we allowed to send one more ICMP message ?
  *
- * Uses a token bucket to limit our ICMP messages to ~sysctl_icmp_msgs_per_sec.
+ * Uses a token bucket to limit our ICMP messages to sysctl_icmp_msgs_per_sec.
  * Returns false if we reached the limit and can not send another packet.
  * Note: called with BH disabled
  */
@@ -256,11 +256,10 @@ bool icmp_global_allow(void)
 	bool rc = false;
 
 	/* Check if token bucket is empty and cannot be refilled
-	 * without taking the spinlock. The READ_ONCE() are paired
-	 * with the following WRITE_ONCE() in this same function.
+	 * without taking the spinlock.
 	 */
-	if (!READ_ONCE(icmp_global.credit)) {
-		delta = min_t(u32, now - READ_ONCE(icmp_global.stamp), HZ);
+	if (!icmp_global.credit) {
+		delta = min_t(u32, now - icmp_global.stamp, HZ);
 		if (delta < HZ / 50)
 			return false;
 	}
@@ -268,20 +267,16 @@ bool icmp_global_allow(void)
 	spin_lock(&icmp_global.lock);
 	delta = min_t(u32, now - icmp_global.stamp, HZ);
 	if (delta >= HZ / 50) {
-		incr = READ_ONCE(sysctl_icmp_msgs_per_sec) * delta / HZ;
+		incr = sysctl_icmp_msgs_per_sec * delta / HZ ;
 		if (incr)
-			WRITE_ONCE(icmp_global.stamp, now);
+			icmp_global.stamp = now;
 	}
-	credit = min_t(u32, icmp_global.credit + incr,
-		       READ_ONCE(sysctl_icmp_msgs_burst));
+	credit = min_t(u32, icmp_global.credit + incr, sysctl_icmp_msgs_burst);
 	if (credit) {
-		/* We want to use a credit of one in average, but need to randomize
-		 * it for security reasons.
-		 */
-		credit = max_t(int, credit - prandom_u32_max(3), 0);
+		credit--;
 		rc = true;
 	}
-	WRITE_ONCE(icmp_global.credit, credit);
+	icmp_global.credit = credit;
 	spin_unlock(&icmp_global.lock);
 	return rc;
 }
@@ -430,6 +425,7 @@ static void icmp_reply(struct icmp_bxm *icmp_param, struct sk_buff *skb)
 	fl4.daddr = daddr;
 	fl4.saddr = saddr;
 	fl4.flowi4_mark = mark;
+	fl4.flowi4_uid = sock_net_uid(net, NULL);
 	fl4.flowi4_tos = RT_TOS(ip_hdr(skb)->tos);
 	fl4.flowi4_proto = IPPROTO_ICMP;
 	fl4.flowi4_oif = l3mdev_master_ifindex(skb->dev);
@@ -461,23 +457,6 @@ static int icmp_multipath_hash_skb(const struct sk_buff *skb)
 
 #endif
 
-/*
- * The device used for looking up which routing table to use for sending an ICMP
- * error is preferably the source whenever it is set, which should ensure the
- * icmp error can be sent to the source host, else lookup using the routing
- * table of the destination device, else use the main routing table (index 0).
- */
-static struct net_device *icmp_get_route_lookup_dev(struct sk_buff *skb)
-{
-	struct net_device *route_lookup_dev = NULL;
-
-	if (skb->dev)
-		route_lookup_dev = skb->dev;
-	else if (skb_dst(skb))
-		route_lookup_dev = skb_dst(skb)->dev;
-	return route_lookup_dev;
-}
-
 static struct rtable *icmp_route_lookup(struct net *net,
 					struct flowi4 *fl4,
 					struct sk_buff *skb_in,
@@ -486,7 +465,6 @@ static struct rtable *icmp_route_lookup(struct net *net,
 					int type, int code,
 					struct icmp_bxm *param)
 {
-	struct net_device *route_lookup_dev;
 	struct rtable *rt, *rt2;
 	struct flowi4 fl4_dec;
 	int err;
@@ -496,12 +474,12 @@ static struct rtable *icmp_route_lookup(struct net *net,
 		      param->replyopts.opt.opt.faddr : iph->saddr);
 	fl4->saddr = saddr;
 	fl4->flowi4_mark = mark;
+	fl4->flowi4_uid = sock_net_uid(net, NULL);
 	fl4->flowi4_tos = RT_TOS(tos);
 	fl4->flowi4_proto = IPPROTO_ICMP;
 	fl4->fl4_icmp_type = type;
 	fl4->fl4_icmp_code = code;
-	route_lookup_dev = icmp_get_route_lookup_dev(skb_in);
-	fl4->flowi4_oif = l3mdev_master_ifindex(route_lookup_dev);
+	fl4->flowi4_oif = l3mdev_master_ifindex(skb_in->dev);
 
 	security_skb_classify_flow(skb_in, flowi4_to_flowi(fl4));
 	rt = __ip_route_output_key_hash(net, fl4,
@@ -526,7 +504,7 @@ static struct rtable *icmp_route_lookup(struct net *net,
 	if (err)
 		goto relookup_failed;
 
-	if (inet_addr_type_dev_table(net, route_lookup_dev,
+	if (inet_addr_type_dev_table(net, skb_in->dev,
 				     fl4_dec.saddr) == RTN_LOCAL) {
 		rt2 = __ip_route_output_key(net, &fl4_dec);
 		if (IS_ERR(rt2))
@@ -1262,6 +1240,6 @@ static struct pernet_operations __net_initdata icmp_sk_ops = {
 };
 
 int __init icmp_init(void)
-{		
+{
 	return register_pernet_subsys(&icmp_sk_ops);
 }

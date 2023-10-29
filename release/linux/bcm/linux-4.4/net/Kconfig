@@ -25,12 +25,6 @@ menuconfig NET
 
 if NET
 
-config ETHERNET_PACKET_MANGLE
-	bool
-	help
-	  This option can be selected by phy drivers that need to mangle
-	  packets going in or out of an ethernet device.
-
 config WANT_COMPAT_NETLINK_MESSAGES
 	bool
 	help
@@ -85,13 +79,6 @@ config INET
 
 	  Short answer: say Y.
 
-config IFX_UDP_REDIRECT
-	bool "IFX Kernel Packet Interface for UDP redirection"
-	depends on LANTIQ
-	help
-	  You can say Y here if you want to use hooks from kernel for
-	  UDP redirection.
-
 if INET
 source "net/wireguard/Kconfig"
 source "net/ipv4/Kconfig"
@@ -100,8 +87,11 @@ source "net/netlabel/Kconfig"
 
 endif # if INET
 
-config SOCK_DIAG
-	bool
+config ANDROID_PARANOID_NETWORK
+	bool "Only allow certain groups to create sockets"
+	default y
+	help
+		none
 
 config NETWORK_SECMARK
 	bool "Security Marking"

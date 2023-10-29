@@ -84,8 +84,6 @@ static struct sk_buff *brcm_tag_xmit(struct sk_buff *skb, struct net_device *dev
 		brcm_tag[2] = BRCM_IG_DSTMAP2_MASK;
 	brcm_tag[3] = (1 << p->port) & BRCM_IG_DSTMAP1_MASK;
 
-	skb->offload_fwd_mark = 1;
-
 	return skb;
 
 out_free:
@@ -129,7 +127,7 @@ static int brcm_tag_rcv(struct sk_buff *skb, struct net_device *dev,
 	source_port = brcm_tag[3] & BRCM_EG_PID_MASK;
 
 	/* Validate port against switch setup, either the port is totally */
-	if (source_port >= DSA_MAX_PORTS || ds->ports[source_port] == NULL)
+	if (source_port >= DSA_MAX_PORTS || !ds->ports[source_port].netdev)
 		goto out_drop;
 
 	/* Remove Broadcom tag and update checksum */
@@ -142,7 +140,7 @@ static int brcm_tag_rcv(struct sk_buff *skb, struct net_device *dev,
 
 	skb_push(skb, ETH_HLEN);
 	skb->pkt_type = PACKET_HOST;
-	skb->dev = ds->ports[source_port];
+	skb->dev = ds->ports[source_port].netdev;
 	skb->protocol = eth_type_trans(skb, skb->dev);
 
 	skb->dev->stats.rx_packets++;

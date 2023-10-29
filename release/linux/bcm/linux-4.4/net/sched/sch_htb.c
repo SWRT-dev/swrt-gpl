@@ -94,7 +94,6 @@ struct htb_prio {
  * To reduce false sharing, place mostly read fields at beginning,
  * and mostly written ones at the end.
  */
- 
 struct htb_class {
 	struct Qdisc_class_common common;
 	struct psched_ratecfg	rate;
@@ -141,7 +140,6 @@ struct htb_class {
 	enum htb_cmode		cmode;		/* current mode of the class */
 	struct rb_node		pq_node;	/* node for event queue */
 	struct rb_node		node[TC_HTB_NUMPRIO];	/* node for self or feed tree */
-	unsigned int		overlimits;
 };
 
 struct htb_level {
@@ -164,8 +162,7 @@ struct htb_sched {
 
 	/* non shaped skbs; let them go directly thru */
 	struct sk_buff_head	direct_queue;
-	u32			direct_pkts;
-	u32			overlimits;
+	long			direct_pkts;
 
 	struct qdisc_watchdog	watchdog;
 
@@ -528,11 +525,6 @@ htb_change_class_mode(struct htb_sched *q, struct htb_class *cl, s64 *diff)
 	if (new_mode == cl->cmode)
 		return;
 
-	if (new_mode == HTB_CANT_SEND) {
-		cl->overlimits++;
-		q->overlimits++;
-	}
-
 	if (cl->prio_activity) {	/* not necessary: speed optimization */
 		if (cl->cmode != HTB_CANT_SEND)
 			htb_deactivate_prios(q, cl);
@@ -580,7 +572,6 @@ static inline void htb_deactivate(struct htb_sched *q, struct htb_class *cl)
 static int htb_enqueue(struct sk_buff *skb, struct Qdisc *sch)
 {
 	int uninitialized_var(ret);
-	unsigned int len = qdisc_pkt_len(skb);
 	struct htb_sched *q = qdisc_priv(sch);
 	struct htb_class *cl = htb_classify(skb, sch, &ret);
 
@@ -609,7 +600,7 @@ static int htb_enqueue(struct sk_buff *skb, struct Qdisc *sch)
 		htb_activate(q, cl);
 	}
 
-	sch->qstats.backlog += len;
+	qdisc_qstats_backlog_inc(sch, skb);
 	sch->q.qlen++;
 	return NET_XMIT_SUCCESS;
 }
@@ -936,10 +927,18 @@ ok:
 				goto ok;
 		}
 	}
-	if (likely(next_event > q->now))
-		qdisc_watchdog_schedule_ns(&q->watchdog, next_event, true);
-	else
+	qdisc_qstats_overlimit(sch);
+	if (likely(next_event > q->now)) {
+		if (!test_bit(__QDISC_STATE_DEACTIVATED,
+			      &qdisc_root_sleeping(q->watchdog.qdisc)->state)) {
+			ktime_t time = ns_to_ktime(next_event);
+			qdisc_throttled(q->watchdog.qdisc);
+			hrtimer_start(&q->watchdog.timer, time,
+				      HRTIMER_MODE_ABS_PINNED);
+		}
+	} else {
 		schedule_work(&q->work);
+	}
 fin:
 	return skb;
 }
@@ -1069,7 +1068,6 @@ static int htb_dump(struct Qdisc *sch, struct sk_buff *skb)
 	struct nlattr *nest;
 	struct tc_htb_glob gopt;
 
-	sch->qstats.overlimits = q->overlimits;
 	/* Its safe to not acquire qdisc lock. As we hold RTNL,
 	 * no change can happen on the qdisc parameters.
 	 */
@@ -1143,10 +1141,6 @@ htb_dump_class_stats(struct Qdisc *sch, unsigned long arg, struct gnet_dump *d)
 {
 	struct htb_class *cl = (struct htb_class *)arg;
 	__u32 qlen = 0;
-	struct gnet_stats_queue qs = {
-		.drops = cl->qstats.drops,
-		.overlimits = cl->overlimits,
-	};
 
 	if (!cl->level && cl->un.leaf.q)
 		qlen = cl->un.leaf.q->q.qlen;
@@ -1155,7 +1149,7 @@ htb_dump_class_stats(struct Qdisc *sch, unsigned long arg, struct gnet_dump *d)
 
 	if (gnet_stats_copy_basic(d, NULL, &cl->bstats) < 0 ||
 	    gnet_stats_copy_rate_est(d, NULL, &cl->rate_est) < 0 ||
-	    gnet_stats_copy_queue(d, NULL, &qs, qlen) < 0)
+	    gnet_stats_copy_queue(d, NULL, &cl->qstats, qlen) < 0)
 		return -1;
 
 	return gnet_stats_copy_app(d, &cl->xstats, sizeof(cl->xstats));

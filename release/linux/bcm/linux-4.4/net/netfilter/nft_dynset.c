@@ -121,9 +121,6 @@ static int nft_dynset_init(const struct nft_ctx *ctx,
 			return PTR_ERR(set);
 	}
 
-	if (set->ops->update == NULL)
-		return -EOPNOTSUPP;
-
 	if (set->flags & NFT_SET_CONSTANT)
 		return -EBUSY;
 
@@ -189,10 +186,8 @@ static int nft_dynset_init(const struct nft_ctx *ctx,
 		nft_set_ext_add_length(&priv->tmpl, NFT_SET_EXT_EXPR,
 				       priv->expr->ops->size);
 	if (set->flags & NFT_SET_TIMEOUT) {
-		if (timeout || set->timeout) {
-			nft_set_ext_add(&priv->tmpl, NFT_SET_EXT_TIMEOUT);
+		if (timeout || set->timeout)
 			nft_set_ext_add(&priv->tmpl, NFT_SET_EXT_EXPIRATION);
-		}
 	}
 
 	priv->timeout = timeout;

@@ -18,6 +18,11 @@
 #include <net/fib_rules.h>
 #include <net/ip_tunnels.h>
 
+static const struct fib_kuid_range fib_kuid_range_unset = {
+	KUIDT_INIT(0),
+	KUIDT_INIT(~0),
+};
+
 int fib_default_rule_add(struct fib_rules_ops *ops,
 			 u32 pref, u32 table, u32 flags)
 {
@@ -33,6 +38,7 @@ int fib_default_rule_add(struct fib_rules_ops *ops,
 	r->table = table;
 	r->flags = flags;
 	r->fr_net = ops->fro_net;
+	r->uid_range = fib_kuid_range_unset;
 
 	r->suppress_prefixlen = -1;
 	r->suppress_ifgroup = -1;
@@ -172,24 +178,32 @@ void fib_rules_unregister(struct fib_rules_ops *ops)
 }
 EXPORT_SYMBOL_GPL(fib_rules_unregister);
 
-static int nla_get_port_range(struct nlattr *pattr,
-			      struct fib_rule_port_range *port_range)
+static int uid_range_set(struct fib_kuid_range *range)
 {
-	const struct fib_rule_port_range *pr = nla_data(pattr);
-
-	if (!fib_rule_port_range_valid(pr))
-		return -EINVAL;
-
-	port_range->start = pr->start;
-	port_range->end = pr->end;
-
-	return 0;
+	return uid_valid(range->start) && uid_valid(range->end);
 }
 
-static int nla_put_port_range(struct sk_buff *skb, int attrtype,
-			      struct fib_rule_port_range *range)
+static struct fib_kuid_range nla_get_kuid_range(struct nlattr **tb)
 {
-	return nla_put(skb, attrtype, sizeof(*range), range);
+	struct fib_rule_uid_range *in;
+	struct fib_kuid_range out;
+
+	in = (struct fib_rule_uid_range *)nla_data(tb[FRA_UID_RANGE]);
+
+	out.start = make_kuid(current_user_ns(), in->start);
+	out.end = make_kuid(current_user_ns(), in->end);
+
+	return out;
+}
+
+static int nla_put_uid_range(struct sk_buff *skb, struct fib_kuid_range *range)
+{
+	struct fib_rule_uid_range out = {
+		from_kuid_munged(current_user_ns(), range->start),
+		from_kuid_munged(current_user_ns(), range->end)
+	};
+
+	return nla_put(skb, FRA_UID_RANGE, sizeof(out), &out);
 }
 
 static int fib_rule_match(struct fib_rule *rule, struct fib_rules_ops *ops,
@@ -207,6 +221,10 @@ static int fib_rule_match(struct fib_rule *rule, struct fib_rules_ops *ops,
 		goto out;
 
 	if (rule->tun_id && (rule->tun_id != fl->flowi_tun_key.tun_id))
+		goto out;
+
+	if (uid_lt(fl->flowi_uid, rule->uid_range.start) ||
+	    uid_gt(fl->flowi_uid, rule->uid_range.end))
 		goto out;
 
 	ret = ops->match(rule, fl, flags);
@@ -341,23 +359,6 @@ static int fib_nl_newrule(struct sk_buff *skb, struct nlmsghdr* nlh)
 			rule->oifindex = dev->ifindex;
 	}
 
-	if (tb[FRA_IP_PROTO])
-		rule->ip_proto = nla_get_u8(tb[FRA_IP_PROTO]);
-
-	if (tb[FRA_SPORT_RANGE]) {
-		err = nla_get_port_range(tb[FRA_SPORT_RANGE],
-					 &rule->sport_range);
-		if (err)
-			goto errout_free;
-	}
-
-	if (tb[FRA_DPORT_RANGE]) {
-		err = nla_get_port_range(tb[FRA_DPORT_RANGE],
-					 &rule->dport_range);
-		if (err)
-			goto errout_free;
-	}
-
 	if (tb[FRA_FWMARK]) {
 		rule->mark = nla_get_u32(tb[FRA_FWMARK]);
 		if (rule->mark)
@@ -407,6 +408,21 @@ static int fib_nl_newrule(struct sk_buff *skb, struct nlmsghdr* nlh)
 			unresolved = 1;
 	} else if (rule->action == FR_ACT_GOTO)
 		goto errout_free;
+
+	if (tb[FRA_UID_RANGE]) {
+		if (current_user_ns() != net->user_ns) {
+			err = -EPERM;
+			goto errout_free;
+		}
+
+		rule->uid_range = nla_get_kuid_range(tb);
+
+		if (!uid_range_set(&rule->uid_range) ||
+		    !uid_lte(rule->uid_range.start, rule->uid_range.end))
+			goto errout_free;
+	} else {
+		rule->uid_range = fib_kuid_range_unset;
+	}
 
 	err = ops->configure(rule, skb, frh, tb);
 	if (err < 0)
@@ -465,12 +481,11 @@ errout:
 static int fib_nl_delrule(struct sk_buff *skb, struct nlmsghdr* nlh)
 {
 	struct net *net = sock_net(skb->sk);
-	struct fib_rule_port_range sprange = {0, 0};
-	struct fib_rule_port_range dprange = {0, 0};
 	struct fib_rule_hdr *frh = nlmsg_data(nlh);
 	struct fib_rules_ops *ops = NULL;
 	struct fib_rule *rule, *tmp;
 	struct nlattr *tb[FRA_MAX+1];
+	struct fib_kuid_range range;
 	int err = -EINVAL;
 
 	if (nlh->nlmsg_len < nlmsg_msg_size(sizeof(*frh)))
@@ -490,18 +505,12 @@ static int fib_nl_delrule(struct sk_buff *skb, struct nlmsghdr* nlh)
 	if (err < 0)
 		goto errout;
 
-	if (tb[FRA_SPORT_RANGE]) {
-		err = nla_get_port_range(tb[FRA_SPORT_RANGE],
-					 &sprange);
-		if (err)
+	if (tb[FRA_UID_RANGE]) {
+		range = nla_get_kuid_range(tb);
+		if (!uid_range_set(&range))
 			goto errout;
-	}
-
-	if (tb[FRA_DPORT_RANGE]) {
-		err = nla_get_port_range(tb[FRA_DPORT_RANGE],
-					 &dprange);
-		if (err)
-			goto errout;
+	} else {
+		range = fib_kuid_range_unset;
 	}
 
 	list_for_each_entry(rule, &ops->rules_list, list) {
@@ -536,16 +545,9 @@ static int fib_nl_delrule(struct sk_buff *skb, struct nlmsghdr* nlh)
 		    (rule->tun_id != nla_get_be64(tb[FRA_TUN_ID])))
 			continue;
 
-		if (tb[FRA_IP_PROTO] &&
-		    (rule->ip_proto != nla_get_u8(tb[FRA_IP_PROTO])))
-			continue;
-
-		if (fib_rule_port_range_set(&sprange) &&
-		    !fib_rule_port_range_compare(&rule->sport_range, &sprange))
-			continue;
-
-		if (fib_rule_port_range_set(&dprange) &&
-		    !fib_rule_port_range_compare(&rule->dport_range, &dprange))
+		if (uid_range_set(&range) &&
+		    (!uid_eq(rule->uid_range.start, range.start) ||
+		     !uid_eq(rule->uid_range.end, range.end)))
 			continue;
 
 		if (!ops->compare(rule, frh, tb))
@@ -564,12 +566,6 @@ static int fib_nl_delrule(struct sk_buff *skb, struct nlmsghdr* nlh)
 
 		if (rule->tun_id)
 			ip_tunnel_unneed_metadata();
-
-		if (ops->delete) {
-			err = ops->delete(rule);
-			if (err)
-				goto errout;
-		}
 
 		list_del_rcu(&rule->list);
 
@@ -620,10 +616,8 @@ static inline size_t fib_rule_nlmsg_size(struct fib_rules_ops *ops,
 			 + nla_total_size(4) /* FRA_SUPPRESS_IFGROUP */
 			 + nla_total_size(4) /* FRA_FWMARK */
 			 + nla_total_size(4) /* FRA_FWMASK */
-			 + nla_total_size(8) /* FRA_TUN_ID */
-			 + nla_total_size(1) /* FRA_IP_PROTO */
-			 + nla_total_size(sizeof(struct fib_rule_port_range)) /* FRA_SPORT_RANGE */
-			 + nla_total_size(sizeof(struct fib_rule_port_range)); /* FRA_DPORT_RANGE */
+			 + nla_total_size(8); /* FRA_TUN_ID */
+			 + nla_total_size(sizeof(struct fib_kuid_range));
 
 	if (ops->nlmsg_payload)
 		payload += ops->nlmsg_payload(rule);
@@ -644,7 +638,7 @@ static int fib_nl_fill_rule(struct sk_buff *skb, struct fib_rule *rule,
 
 	frh = nlmsg_data(nlh);
 	frh->family = ops->family;
-	frh->table = rule->table < 256 ? rule->table : RT_TABLE_COMPAT;
+	frh->table = rule->table;
 	if (nla_put_u32(skb, FRA_TABLE, rule->table))
 		goto nla_put_failure;
 	if (nla_put_u32(skb, FRA_SUPPRESS_PREFIXLEN, rule->suppress_prefixlen))
@@ -682,11 +676,8 @@ static int fib_nl_fill_rule(struct sk_buff *skb, struct fib_rule *rule,
 	     nla_put_u32(skb, FRA_GOTO, rule->target)) ||
 	    (rule->tun_id &&
 	     nla_put_be64(skb, FRA_TUN_ID, rule->tun_id)) ||
-	    (fib_rule_port_range_set(&rule->sport_range) &&
-	     nla_put_port_range(skb, FRA_SPORT_RANGE, &rule->sport_range)) ||
-	    (fib_rule_port_range_set(&rule->dport_range) &&
-	     nla_put_port_range(skb, FRA_DPORT_RANGE, &rule->dport_range)) ||
-	    (rule->ip_proto && nla_put_u8(skb, FRA_IP_PROTO, rule->ip_proto)))
+	    (uid_range_set(&rule->uid_range) &&
+	     nla_put_uid_range(skb, &rule->uid_range)))
 		goto nla_put_failure;
 
 	if (rule->suppress_ifgroup != -1) {
@@ -774,7 +765,7 @@ static void notify_rule_change(int event, struct fib_rule *rule,
 {
 	struct net *net;
 	struct sk_buff *skb;
-	int err = -ENOMEM;
+	int err = -ENOBUFS;
 
 	net = ops->fro_net;
 	skb = nlmsg_new(fib_rule_nlmsg_size(ops, rule), GFP_KERNEL);

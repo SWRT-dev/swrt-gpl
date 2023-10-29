@@ -74,8 +74,6 @@ struct nft_regs {
 static inline void nft_data_copy(u32 *dst, const struct nft_data *src,
 				 unsigned int len)
 {
-	if (len % NFT_REG32_SIZE)
-		dst[len / NFT_REG32_SIZE] = 0;
 	memcpy(dst, src, len);
 }
 
@@ -650,8 +648,7 @@ struct nft_expr_ops {
  */
 struct nft_expr {
 	const struct nft_expr_ops	*ops;
-	unsigned char			data[]
-		__attribute__((aligned(__alignof__(u64))));
+	unsigned char			data[];
 };
 
 static inline void *nft_expr_priv(const struct nft_expr *expr)

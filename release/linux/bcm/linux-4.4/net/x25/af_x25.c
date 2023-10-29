@@ -100,7 +100,7 @@ int x25_parse_address_block(struct sk_buff *skb,
 	}
 
 	len = *skb->data;
-	needed = 1 + ((len >> 4) + (len & 0x0f) + 1) / 2;
+	needed = 1 + (len >> 4) + (len & 0x0f);
 
 	if (!pskb_may_pull(skb, needed)) {
 		/* packet is too short to hold the addresses it claims
@@ -288,7 +288,7 @@ static struct sock *x25_find_listener(struct x25_address *addr,
 	sk_for_each(s, &x25_list)
 		if ((!strcmp(addr->x25_addr,
 			x25_sk(s)->source_addr.x25_addr) ||
-				!strcmp(x25_sk(s)->source_addr.x25_addr,
+				!strcmp(addr->x25_addr,
 					null_x25_address.x25_addr)) &&
 					s->sk_state == TCP_LISTEN) {
 			/*
@@ -550,7 +550,7 @@ static int x25_create(struct net *net, struct socket *sock, int protocol,
 	if (protocol)
 		goto out;
 
-	rc = -ENOMEM;
+	rc = -ENOBUFS;
 	if ((sk = x25_alloc_socket(net, kern)) == NULL)
 		goto out;
 
@@ -679,21 +679,16 @@ static int x25_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 	int len, i, rc = 0;
 
 	if (addr_len != sizeof(struct sockaddr_x25) ||
-	    addr->sx25_family != AF_X25 ||
-	    strnlen(addr->sx25_addr.x25_addr, X25_ADDR_LEN) == X25_ADDR_LEN) {
+	    addr->sx25_family != AF_X25) {
 		rc = -EINVAL;
 		goto out;
 	}
 
-	/* check for the null_x25_address */
-	if (strcmp(addr->sx25_addr.x25_addr, null_x25_address.x25_addr)) {
-
-		len = strlen(addr->sx25_addr.x25_addr);
-		for (i = 0; i < len; i++) {
-			if (!isdigit(addr->sx25_addr.x25_addr[i])) {
-				rc = -EINVAL;
-				goto out;
-			}
+	len = strlen(addr->sx25_addr.x25_addr);
+	for (i = 0; i < len; i++) {
+		if (!isdigit(addr->sx25_addr.x25_addr[i])) {
+			rc = -EINVAL;
+			goto out;
 		}
 	}
 
@@ -765,17 +760,12 @@ static int x25_connect(struct socket *sock, struct sockaddr *uaddr,
 	if (sk->sk_state == TCP_ESTABLISHED)
 		goto out;
 
-	rc = -EALREADY;	/* Do nothing if call is already in progress */
-	if (sk->sk_state == TCP_SYN_SENT)
-		goto out;
-
 	sk->sk_state   = TCP_CLOSE;
 	sock->state = SS_UNCONNECTED;
 
 	rc = -EINVAL;
 	if (addr_len != sizeof(struct sockaddr_x25) ||
-	    addr->sx25_family != AF_X25 ||
-	    strnlen(addr->sx25_addr.x25_addr, X25_ADDR_LEN) == X25_ADDR_LEN)
+	    addr->sx25_family != AF_X25)
 		goto out;
 
 	rc = -ENETUNREACH;
@@ -816,7 +806,7 @@ static int x25_connect(struct socket *sock, struct sockaddr *uaddr,
 	/* Now the loop */
 	rc = -EINPROGRESS;
 	if (sk->sk_state != TCP_ESTABLISHED && (flags & O_NONBLOCK))
-		goto out;
+		goto out_put_neigh;
 
 	rc = x25_wait_for_connection_establishment(sk);
 	if (rc)
@@ -825,7 +815,7 @@ static int x25_connect(struct socket *sock, struct sockaddr *uaddr,
 	sock->state = SS_CONNECTED;
 	rc = 0;
 out_put_neigh:
-	if (rc && x25->neighbour) {
+	if (rc) {
 		read_lock_bh(&x25_list_lock);
 		x25_neigh_put(x25->neighbour);
 		x25->neighbour = NULL;
@@ -1049,7 +1039,6 @@ int x25_rx_call_request(struct sk_buff *skb, struct x25_neigh *nb,
 	makex25->lci           = lci;
 	makex25->dest_addr     = dest_addr;
 	makex25->source_addr   = source_addr;
-	x25_neigh_hold(nb);
 	makex25->neighbour     = nb;
 	makex25->facilities    = facilities;
 	makex25->dte_facilities= dte_facilities;
@@ -1799,15 +1788,10 @@ void x25_kill_by_neigh(struct x25_neigh *nb)
 
 	write_lock_bh(&x25_list_lock);
 
-	sk_for_each(s, &x25_list) {
-		if (x25_sk(s)->neighbour == nb) {
-			write_unlock_bh(&x25_list_lock);
-			lock_sock(s);
+	sk_for_each(s, &x25_list)
+		if (x25_sk(s)->neighbour == nb)
 			x25_disconnect(s, ENETUNREACH, 0, 0);
-			release_sock(s);
-			write_lock_bh(&x25_list_lock);
-		}
-	}
+
 	write_unlock_bh(&x25_list_lock);
 
 	/* Remove any related forwards */

@@ -63,15 +63,30 @@ struct nf_ct_event {
 	int report;
 };
 
+struct nf_ct_event_notifier {
+	int (*fcn)(unsigned int events, struct nf_ct_event *item);
+};
+
+#if defined(CONFIG_SHORTCUT_FE) || defined(CONFIG_SHORTCUT_FE_MODULE)
 extern int nf_conntrack_register_notifier(struct net *net, struct notifier_block *nb);
 extern int nf_conntrack_unregister_notifier(struct net *net, struct notifier_block *nb);
+#else
+int nf_conntrack_register_notifier(struct net *net,
+				   struct nf_ct_event_notifier *nb);
+void nf_conntrack_unregister_notifier(struct net *net,
+				      struct nf_ct_event_notifier *nb);
+#endif
 
 void nf_ct_deliver_cached_events(struct nf_conn *ct);
 
 static inline void
 nf_conntrack_event_cache(enum ip_conntrack_events event, struct nf_conn *ct)
 {
+	struct net *net = nf_ct_net(ct);
 	struct nf_conntrack_ecache *e;
+
+	if (!rcu_access_pointer(net->ct.nf_conntrack_event_cb))
+		return;
 
 	e = nf_ct_ecache_find(ct);
 	if (e == NULL)
@@ -86,13 +101,19 @@ nf_conntrack_eventmask_report(unsigned int eventmask,
 			      u32 portid,
 			      int report)
 {
+	int ret = 0;
+	struct net *net = nf_ct_net(ct);
+	struct nf_ct_event_notifier *notify;
 	struct nf_conntrack_ecache *e;
 
-	struct net *net = nf_ct_net(ct);
+	rcu_read_lock();
+	notify = rcu_dereference(net->ct.nf_conntrack_event_cb);
+	if (notify == NULL)
+		goto out_unlock;
 
 	e = nf_ct_ecache_find(ct);
 	if (e == NULL)
-		return 0;
+		goto out_unlock;
 
 	if (nf_ct_is_confirmed(ct) && !nf_ct_is_dying(ct)) {
 		struct nf_ct_event item = {
@@ -104,12 +125,28 @@ nf_conntrack_eventmask_report(unsigned int eventmask,
 		unsigned long missed = e->portid ? 0 : e->missed;
 
 		if (!((eventmask | missed) & e->ctmask))
-			return 0;
+			goto out_unlock;
 
-		atomic_notifier_call_chain(&net->ct.nf_conntrack_chain, eventmask | missed, &item);
+		ret = notify->fcn(eventmask | missed, &item);
+		if (unlikely(ret < 0 || missed)) {
+			spin_lock_bh(&ct->lock);
+			if (ret < 0) {
+				/* This is a destroy event that has been
+				 * triggered by a process, we store the PORTID
+				 * to include it in the retransmission. */
+				if (eventmask & (1 << IPCT_DESTROY) &&
+				    e->portid == 0 && portid != 0)
+					e->portid = portid;
+				else
+					e->missed |= eventmask;
+			} else
+				e->missed &= ~missed;
+			spin_unlock_bh(&ct->lock);
+		}
 	}
-
-	return 0;
+out_unlock:
+	rcu_read_unlock();
+	return ret;
 }
 
 static inline int
@@ -248,4 +285,3 @@ static inline void nf_conntrack_ecache_work(struct net *net)
 #endif /* CONFIG_NF_CONNTRACK_EVENTS */
 
 #endif /*_NF_CONNTRACK_ECACHE_H*/
-

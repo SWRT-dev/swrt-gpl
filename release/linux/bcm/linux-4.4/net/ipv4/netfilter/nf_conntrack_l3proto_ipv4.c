@@ -15,7 +15,6 @@
 #include <linux/skbuff.h>
 #include <linux/icmp.h>
 #include <linux/sysctl.h>
-#include <linux/unaligned/packed_struct.h>
 #include <net/route.h>
 #include <net/ip.h>
 
@@ -42,8 +41,8 @@ static bool ipv4_pkt_to_tuple(const struct sk_buff *skb, unsigned int nhoff,
 	if (ap == NULL)
 		return false;
 
-	tuple->src.u3.ip = net_hdr_word(ap++);
-	tuple->dst.u3.ip = net_hdr_word(ap);
+	tuple->src.u3.ip = ap[0];
+	tuple->dst.u3.ip = ap[1];
 
 	return true;
 }

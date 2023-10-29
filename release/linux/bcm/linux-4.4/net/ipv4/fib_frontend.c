@@ -299,7 +299,7 @@ __be32 fib_compute_spec_dst(struct sk_buff *skb)
 			.flowi4_iif = LOOPBACK_IFINDEX,
 			.flowi4_oif = l3mdev_master_ifindex_rcu(dev),
 			.daddr = ip_hdr(skb)->saddr,
-			.flowi4_tos = ip_hdr(skb)->tos & IPTOS_RT_MASK,
+			.flowi4_tos = RT_TOS(ip_hdr(skb)->tos),
 			.flowi4_scope = scope,
 			.flowi4_mark = vmark ? skb->mark : 0,
 		};
@@ -324,11 +324,10 @@ static int __fib_validate_source(struct sk_buff *skb, __be32 src, __be32 dst,
 				 u8 tos, int oif, struct net_device *dev,
 				 int rpf, struct in_device *idev, u32 *itag)
 {
-	struct net *net = dev_net(dev);
-	struct flow_keys flkeys;
 	int ret, no_addr;
 	struct fib_result res;
 	struct flowi4 fl4;
+	struct net *net;
 	bool dev_match;
 
 	fl4.flowi4_oif = 0;
@@ -345,14 +344,10 @@ static int __fib_validate_source(struct sk_buff *skb, __be32 src, __be32 dst,
 	no_addr = idev->ifa_list == NULL;
 
 	fl4.flowi4_mark = IN_DEV_SRC_VMARK(idev) ? skb->mark : 0;
-	if (!fib4_rules_early_flow_dissect(net, skb, &fl4, &flkeys)) {
-		fl4.flowi4_proto = 0;
-		fl4.fl4_sport = 0;
-		fl4.fl4_dport = 0;
-	}
 
 	trace_fib_validate_source(dev, &fl4);
 
+	net = dev_net(dev);
 	if (fib_lookup(net, &fl4, &res, 0))
 		goto last_resort;
 	if (res.type != RTN_UNICAST &&
@@ -514,7 +509,6 @@ static int rtentry_to_fib_config(struct net *net, int cmd, struct rtentry *rt,
 		if (!dev)
 			return -ENODEV;
 		cfg->fc_oif = dev->ifindex;
-		cfg->fc_table = l3mdev_fib_table(dev);
 		if (colon) {
 			struct in_ifaddr *ifa;
 			struct in_device *in_dev = __in_dev_get_rtnl(dev);
@@ -634,6 +628,7 @@ const struct nla_policy rtm_ipv4_policy[RTA_MAX + 1] = {
 	[RTA_FLOW]		= { .type = NLA_U32 },
 	[RTA_ENCAP_TYPE]	= { .type = NLA_U16 },
 	[RTA_ENCAP]		= { .type = NLA_NESTED },
+	[RTA_UID]		= { .type = NLA_U32 },
 };
 
 static int rtm_to_fib_config(struct net *net, struct sk_buff *skb,
@@ -1040,7 +1035,7 @@ no_promotions:
 			 * First of all, we scan fib_info list searching
 			 * for stray nexthop entries, then ignite fib_flush.
 			 */
-			if (fib_sync_down_addr(dev, ifa->ifa_local))
+			if (fib_sync_down_addr(dev_net(dev), ifa->ifa_local))
 				fib_flush(dev_net(dev));
 		}
 	}

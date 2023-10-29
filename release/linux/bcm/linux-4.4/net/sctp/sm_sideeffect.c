@@ -416,7 +416,7 @@ void sctp_generate_proto_unreach_event(unsigned long data)
 		/* Try again later.  */
 		if (!mod_timer(&transport->proto_unreach_timer,
 				jiffies + (HZ/20)))
-			sctp_transport_hold(transport);
+			sctp_association_hold(asoc);
 		goto out_unlock;
 	}
 
@@ -432,7 +432,7 @@ void sctp_generate_proto_unreach_event(unsigned long data)
 
 out_unlock:
 	bh_unlock_sock(sk);
-	sctp_transport_put(transport);
+	sctp_association_put(asoc);
 }
 
 
@@ -1333,10 +1333,8 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
 			/* Generate an INIT ACK chunk.  */
 			new_obj = sctp_make_init_ack(asoc, chunk, GFP_ATOMIC,
 						     0);
-			if (!new_obj) {
-				error = -ENOMEM;
-				break;
-			}
+			if (!new_obj)
+				goto nomem;
 
 			sctp_add_cmd_sf(commands, SCTP_CMD_REPLY,
 					SCTP_CHUNK(new_obj));
@@ -1358,8 +1356,7 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
 			if (!new_obj) {
 				if (cmd->obj.chunk)
 					sctp_chunk_free(cmd->obj.chunk);
-				error = -ENOMEM;
-				break;
+				goto nomem;
 			}
 			sctp_add_cmd_sf(commands, SCTP_CMD_REPLY,
 					SCTP_CHUNK(new_obj));
@@ -1406,10 +1403,8 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
 
 			/* Generate a SHUTDOWN chunk.  */
 			new_obj = sctp_make_shutdown(asoc, chunk);
-			if (!new_obj) {
-				error = -ENOMEM;
-				break;
-			}
+			if (!new_obj)
+				goto nomem;
 			sctp_add_cmd_sf(commands, SCTP_CMD_REPLY,
 					SCTP_CHUNK(new_obj));
 			break;
@@ -1738,17 +1733,11 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
 			break;
 		}
 
-		if (error) {
-			cmd = sctp_next_cmd(commands);
-			while (cmd) {
-				if (cmd->verb == SCTP_CMD_REPLY)
-					sctp_chunk_free(cmd->obj.chunk);
-				cmd = sctp_next_cmd(commands);
-			}
+		if (error)
 			break;
-		}
 	}
 
+out:
 	/* If this is in response to a received chunk, wait until
 	 * we are done with the packet to open the queue so that we don't
 	 * send multiple packets in response to a single request.
@@ -1759,5 +1748,8 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
 	} else if (local_cork)
 		error = sctp_outq_uncork(&asoc->outqueue);
 	return error;
+nomem:
+	error = -ENOMEM;
+	goto out;
 }
 

@@ -11,3 +11,4 @@ header-y += ip6t_ipv6header.h
 header-y += ip6t_mh.h
 header-y += ip6t_opts.h
 header-y += ip6t_rt.h
+header-y += ip6t_ROUTE.h

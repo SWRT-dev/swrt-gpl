@@ -305,7 +305,6 @@ static int ping_check_bind_addr(struct sock *sk, struct inet_sock *isk,
 	struct net *net = sock_net(sk);
 	if (sk->sk_family == AF_INET) {
 		struct sockaddr_in *addr = (struct sockaddr_in *) uaddr;
-		u32 tb_id = RT_TABLE_LOCAL;
 		int chk_addr_ret;
 
 		if (addr_len < sizeof(*addr))
@@ -319,8 +318,7 @@ static int ping_check_bind_addr(struct sock *sk, struct inet_sock *isk,
 		pr_debug("ping_check_bind_addr(sk=%p,addr=%pI4,port=%d)\n",
 			 sk, &addr->sin_addr.s_addr, ntohs(addr->sin_port));
 
-		tb_id = l3mdev_fib_table_by_index(net, sk->sk_bound_dev_if) ? : tb_id;
-		chk_addr_ret = inet_addr_type_table(net, addr->sin_addr.s_addr, tb_id);
+		chk_addr_ret = inet_addr_type(net, addr->sin_addr.s_addr);
 
 		if (addr->sin_addr.s_addr == htonl(INADDR_ANY))
 			chk_addr_ret = RTN_LOCAL;
@@ -357,14 +355,6 @@ static int ping_check_bind_addr(struct sock *sk, struct inet_sock *isk,
 		rcu_read_lock();
 		if (addr->sin6_scope_id) {
 			dev = dev_get_by_index_rcu(net, addr->sin6_scope_id);
-			if (!dev) {
-				rcu_read_unlock();
-				return -ENODEV;
-			}
-		}
-
-		if (!dev && sk->sk_bound_dev_if) {
-			dev = dev_get_by_index_rcu(net, sk->sk_bound_dev_if);
 			if (!dev) {
 				rcu_read_unlock();
 				return -ENODEV;
@@ -810,10 +800,8 @@ static int ping_v4_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
 
 	flowi4_init_output(&fl4, ipc.oif, sk->sk_mark, tos,
 			   RT_SCOPE_UNIVERSE, sk->sk_protocol,
-			   inet_sk_flowi_flags(sk), faddr, saddr, 0, 0);
-
-	fl4.fl4_icmp_type = user_icmph.type;
-	fl4.fl4_icmp_code = user_icmph.code;
+			   inet_sk_flowi_flags(sk), faddr, saddr, 0, 0,
+			   sk->sk_uid);
 
 	security_sk_classify_flow(sk, flowi4_to_flowi(&fl4));
 	rt = ip_route_output_flow(net, &fl4, sk);
@@ -988,7 +976,6 @@ bool ping_rcv(struct sk_buff *skb)
 	struct sock *sk;
 	struct net *net = dev_net(skb->dev);
 	struct icmphdr *icmph = icmp_hdr(skb);
-	bool rc = false;
 
 	/* We assume the packet has already been checked by icmp_rcv */
 
@@ -1003,15 +990,14 @@ bool ping_rcv(struct sk_buff *skb)
 		struct sk_buff *skb2 = skb_clone(skb, GFP_ATOMIC);
 
 		pr_debug("rcv on socket %p\n", sk);
-		if (skb2 && !ping_queue_rcv_skb(sk, skb2))
-			rc = true;
+		if (skb2)
+			ping_queue_rcv_skb(sk, skb2);
 		sock_put(sk);
+		return true;
 	}
+	pr_debug("no socket, dropping\n");
 
-	if (!rc)
-		pr_debug("no socket, dropping\n");
-
-	return rc;
+	return false;
 }
 EXPORT_SYMBOL_GPL(ping_rcv);
 

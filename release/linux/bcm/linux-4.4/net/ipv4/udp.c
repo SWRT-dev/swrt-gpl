@@ -114,9 +114,6 @@
 #include <net/busy_poll.h>
 #include "udp_impl.h"
 
-#if defined(CONFIG_IFX_UDP_REDIRECT) || defined(CONFIG_IFX_UDP_REDIRECT_MODULE)
-#include <linux/udp_redirect.h>
-#endif
 
 struct udp_table udp_table __read_mostly;
 EXPORT_SYMBOL(udp_table);
@@ -915,13 +912,7 @@ int udp_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
 	ipc.ttl = 0;
 	ipc.tos = -1;
 
-/* UDPREDIRECT */
-#if defined(CONFIG_IFX_UDP_REDIRECT) || defined(CONFIG_IFX_UDP_REDIRECT_MODULE)
-	if(udpredirect_getfrag_fn && sk->sk_user_data == UDP_REDIRECT_MAGIC)
-		getfrag = udpredirect_getfrag_fn;
-	else
-#endif /* IFX_UDP_REDIRECT */
-		getfrag = is_udplite ? udplite_getfrag : ip_generic_getfrag;
+	getfrag = is_udplite ? udplite_getfrag : ip_generic_getfrag;
 
 	fl4 = &inet->cork.fl.u.ip4;
 	if (up->pending) {
@@ -1037,7 +1028,8 @@ int udp_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
 		flowi4_init_output(fl4, ipc.oif, sk->sk_mark, tos,
 				   RT_SCOPE_UNIVERSE, sk->sk_protocol,
 				   flow_flags,
-				   faddr, saddr, dport, inet->inet_sport);
+				   faddr, saddr, dport, inet->inet_sport,
+				   sk->sk_uid);
 
 		if (!saddr && ipc.oif) {
 			err = l3mdev_get_saddr(net, ipc.oif, fl4);
@@ -1568,7 +1560,7 @@ int udp_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
 	/*
 	 * 	UDP-Lite specific tests, ignored on UDP sockets
 	 */
-	if ((up->pcflag & UDPLITE_RECV_CC)  &&  UDP_SKB_CB(skb)->partial_cov) {
+	if ((is_udplite & UDPLITE_RECV_CC)  &&  UDP_SKB_CB(skb)->partial_cov) {
 
 		/*
 		 * MIB statistics other than incrementing the error count are
@@ -1599,7 +1591,8 @@ int udp_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
 		}
 	}
 
-	if (udp_lib_checksum_complete(skb))
+	if (rcu_access_pointer(sk->sk_filter) &&
+	    udp_lib_checksum_complete(skb))
 		goto csum_error;
 
 	if (sk_rcvqueues_full(sk, sk->sk_rcvbuf)) {
@@ -1694,10 +1687,10 @@ static int __udp4_lib_mcast_deliver(struct net *net, struct sk_buff *skb,
 
 	if (use_hash2) {
 		hash2_any = udp4_portaddr_hash(net, htonl(INADDR_ANY), hnum) &
-			    udptable->mask;
-		hash2 = udp4_portaddr_hash(net, daddr, hnum) & udptable->mask;
+			    udp_table.mask;
+		hash2 = udp4_portaddr_hash(net, daddr, hnum) & udp_table.mask;
 start_lookup:
-		hslot = &udptable->hash2[hash2];
+		hslot = &udp_table.hash2[hash2];
 		offset = offsetof(typeof(*sk), __sk_common.skc_portaddr_node);
 	}
 
@@ -1763,11 +1756,8 @@ static inline int udp4_csum_init(struct sk_buff *skb, struct udphdr *uh,
 		}
 	}
 
-	/* Note, we are only interested in != 0 or == 0, thus the
-	 * force to int.
-	 */
-	return (__force int)skb_checksum_init_zero_check(skb, proto, uh->check,
-							 inet_compute_pseudo);
+	return skb_checksum_init_zero_check(skb, proto, uh->check,
+					    inet_compute_pseudo);
 }
 
 /*
@@ -1783,7 +1773,6 @@ int __udp4_lib_rcv(struct sk_buff *skb, struct udp_table *udptable,
 	struct rtable *rt = skb_rtable(skb);
 	__be32 saddr, daddr;
 	struct net *net = dev_net(skb->dev);
-	int ret = 0;
 
 	/*
 	 *  Validate the packet.
@@ -1834,15 +1823,6 @@ int __udp4_lib_rcv(struct sk_buff *skb, struct udp_table *udptable,
 	sk = __udp4_lib_lookup_skb(skb, uh->source, uh->dest, udptable);
 	if (sk) {
 		int ret;
-	/* UDPREDIRECT */
-#if defined(CONFIG_IFX_UDP_REDIRECT) || defined(CONFIG_IFX_UDP_REDIRECT_MODULE)
-      if(udp_do_redirect_fn && sk->sk_user_data == UDP_REDIRECT_MAGIC)
-      {
-         udp_do_redirect_fn(sk,skb);
-         kfree_skb(skb);
-         return(0);
-      }
-#endif
 
 		if (inet_get_convert_csum(sk) && uh->check && !IS_UDPLITE(sk))
 			skb_checksum_try_convert(skb, IPPROTO_UDP, uh->check,
@@ -2294,6 +2274,20 @@ unsigned int udp_poll(struct file *file, struct socket *sock, poll_table *wait)
 }
 EXPORT_SYMBOL(udp_poll);
 
+int udp_abort(struct sock *sk, int err)
+{
+	lock_sock(sk);
+
+	sk->sk_err = err;
+	sk->sk_error_report(sk);
+	udp_disconnect(sk, 0);
+
+	release_sock(sk);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(udp_abort);
+
 struct proto udp_prot = {
 	.name		   = "UDP",
 	.owner		   = THIS_MODULE,
@@ -2325,6 +2319,7 @@ struct proto udp_prot = {
 	.compat_getsockopt = compat_udp_getsockopt,
 #endif
 	.clear_sk	   = sk_prot_clear_portaddr_nulls,
+	.diag_destroy	   = udp_abort,
 };
 EXPORT_SYMBOL(udp_prot);
 EXPORT_SYMBOL(udp_rcv);

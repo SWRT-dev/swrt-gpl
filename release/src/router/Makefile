@@ -170,16 +170,16 @@ endif
 export comma=","
 
 # New Broadcom/Ralink/MTK/QCA/RTK platform.
-KPATH_2636_OR_3X = $(if $(or $(findstring linux-2.6.36,$(LINUXDIR)),$(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-4.1,$(LINUXDIR)),$(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4.198,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
+KPATH_2636_OR_3X = $(if $(or $(findstring linux-2.6.36,$(LINUXDIR)),$(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-4.1,$(LINUXDIR)),$(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4.198,$(LINUXDIR)),$(findstring linux-4.9.x,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
 
 # New Ralink/MTK/QCA platform.
-KPATH_2636X_OR_3X = $(if $(or $(findstring linux-2.6.36.x,$(LINUXDIR)),$(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4.198,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
+KPATH_2636X_OR_3X = $(if $(or $(findstring linux-2.6.36.x,$(LINUXDIR)),$(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4.198,$(LINUXDIR)),$(findstring linux-4.9.x,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
 
 # New Ralink/MTK/QCA/RTK platform.
-KPATH_3X = $(if $(or $(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4.198,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
+KPATH_3X = $(if $(or $(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4.198,$(LINUXDIR)),$(findstring linux-4.9.x,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
 
 KPATH_37_OR_ABOVE = $(if $(or $(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4.198,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
-KPATH_314_OR_ABOVE = $(if $(or $(findstring linux-3.14,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4.198,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
+KPATH_314_OR_ABOVE = $(if $(or $(findstring linux-3.14,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4.198,$(LINUXDIR)),$(findstring linux-4.9.x,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
 
 export KPATH_37_OR_ABOVE KPATH_314_OR_ABOVE
 
@@ -238,8 +238,8 @@ export KBUILD_VERBOSE := 1
 export BUILD_MFG := 0
 SUBMAKE_SETTINGS = SRCBASE=$(SRCBASE) BASEDIR=$(BASEDIR)
 else
-LINUX_VERSION=2_6_36
-LINUX_KERNEL=2.6.36
+LINUX_VERSION=4_4_302
+LINUX_KERNEL=4.4.302
 endif
 export PLATFORM_ARCH LIBDIR USRLIBDIR LINUX_VERSION
 
@@ -305,7 +305,7 @@ endif
 
 export LD_LIBRARY_PATH := $(TOOLS)/lib
 endif
-ifeq (2_6_36,$(LINUX_VERSION))
+ifeq (4_4_302,$(LINUX_VERSION))
 export BUILD_MFG := 0
 endif
 SUBMAKE_SETTINGS = SRCBASE=$(SRCBASE) BASEDIR=$(BASEDIR)
@@ -3095,8 +3095,9 @@ ipset-7.6/Makefile: ipset-7.6/configure
 	cd ipset-7.6 && \
 	libmnl_CFLAGS="-I$(STAGEDIR)/usr/include" \
 	libmnl_LIBS="-L$(STAGEDIR)/usr/lib -lmnl" \
-	CFLAGS="-Os -Wall $(EXTRACFLAGS) -ffunction-sections -fdata-sections" \
-	LDFLAGS="-Wl,--gc-sections" \
+	CFLAGS="-Os -Wall $(EXTRACFLAGS) -D_GNU_SOURCE -ffunction-sections -fdata-sections -Wl,--gc-sections -Drpl_malloc=malloc" \
+	CPPFLAGS="-Os -Wall $(EXTRACFLAGS) -ffunction-sections -fdata-sections -Wl,--gc-sections -Drpl_malloc=malloc" \
+	LDFLAGS=" -ffunction-sections -fdata-sections -Wl,--gc-sections" \
 	$(CONFIGURE) --prefix=/usr --disable-rpath \
 		--with-kmod=no --with-kbuild=$(LINUXDIR)
 

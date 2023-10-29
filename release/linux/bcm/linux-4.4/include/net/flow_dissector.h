@@ -3,8 +3,6 @@
 
 #include <linux/types.h>
 #include <linux/in6.h>
-#include <linux/siphash.h>
-#include <linux/string.h>
 #include <uapi/linux/if_ether.h>
 
 /**
@@ -148,7 +146,7 @@ struct flow_dissector {
 struct flow_keys {
 	struct flow_dissector_key_control control;
 #define FLOW_KEYS_HASH_START_FIELD basic
-	struct flow_dissector_key_basic basic __aligned(SIPHASH_ALIGNMENT);
+	struct flow_dissector_key_basic basic;
 	struct flow_dissector_key_tags tags;
 	struct flow_dissector_key_keyid keyid;
 	struct flow_dissector_key_ports ports;
@@ -185,13 +183,5 @@ static inline bool flow_keys_have_l4(struct flow_keys *keys)
 }
 
 u32 flow_hash_from_keys(struct flow_keys *keys);
-
-static inline void
-flow_dissector_init_keys(struct flow_dissector_key_control *key_control,
-			 struct flow_dissector_key_basic *key_basic)
-{
-	memset(key_control, 0, sizeof(*key_control));
-	memset(key_basic, 0, sizeof(*key_basic));
-}
 
 #endif

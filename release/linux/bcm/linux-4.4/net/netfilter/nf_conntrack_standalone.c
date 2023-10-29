@@ -17,6 +17,7 @@
 #include <linux/percpu.h>
 #include <linux/netdevice.h>
 #include <linux/security.h>
+#include <linux/inet.h>
 #include <net/net_namespace.h>
 #ifdef CONFIG_SYSCTL
 #include <linux/sysctl.h>
@@ -219,10 +220,12 @@ static int ct_seq_show(struct seq_file *s, void *v)
 	NF_CT_ASSERT(l4proto);
 
 	ret = -ENOSPC;
-	seq_printf(s, "%-8s %u %-8s %u %ld ",
+	seq_printf(s, "%-8s %u %-8s %u ",
 		   l3proto->name, nf_ct_l3num(ct),
-		   l4proto->name, nf_ct_protonum(ct),
-		   timer_pending(&ct->timeout)
+		   l4proto->name, nf_ct_protonum(ct));
+
+	if (!test_bit(IPS_OFFLOAD_BIT, &ct->status))
+		seq_printf(s, "%ld ", timer_pending(&ct->timeout)
 		   ? (long)(ct->timeout.expires - jiffies)/HZ : 0);
 
 	if (l4proto->print_conntrack)
@@ -236,7 +239,7 @@ static int ct_seq_show(struct seq_file *s, void *v)
 	if (seq_has_overflowed(s))
 		goto release;
 
-	if (nf_ct_ext_seq_print(s,ct,IP_CT_DIR_ORIGINAL))
+	if (seq_print_acct(s, ct, IP_CT_DIR_ORIGINAL))
 		goto release;
 
 	if (!(test_bit(IPS_SEEN_REPLY_BIT, &ct->status)))
@@ -247,10 +250,12 @@ static int ct_seq_show(struct seq_file *s, void *v)
 
 	ct_show_zone(s, ct, NF_CT_ZONE_DIR_REPL);
 
-	if (nf_ct_ext_seq_print(s,ct,IP_CT_DIR_REPLY))
+	if (seq_print_acct(s, ct, IP_CT_DIR_REPLY))
 		goto release;
 
-	if (test_bit(IPS_ASSURED_BIT, &ct->status))
+	if (test_bit(IPS_OFFLOAD_BIT, &ct->status))
+		seq_printf(s, "[OFFLOAD] ");
+	else if (test_bit(IPS_ASSURED_BIT, &ct->status))
 		seq_printf(s, "[ASSURED] ");
 
 	if (seq_has_overflowed(s))
@@ -263,10 +268,6 @@ static int ct_seq_show(struct seq_file *s, void *v)
 	ct_show_secctx(s, ct);
 	ct_show_zone(s, ct, NF_CT_DEFAULT_ZONE_DIR);
 	ct_show_delta_time(s, ct);
-#if defined(CONFIG_NETFILTER_XT_MATCH_LAYER7) || defined(CONFIG_NETFILTER_XT_MATCH_LAYER7_MODULE)
-	if(ct->layer7.app_proto)
-           seq_printf(s, "l7proto=%s ", ct->layer7.app_proto);
-#endif
 
 	seq_printf(s, "use=%u\n", atomic_read(&ct->ct_general.use));
 
@@ -292,10 +293,66 @@ static int ct_open(struct inode *inode, struct file *file)
 			sizeof(struct ct_iter_state));
 }
 
+struct kill_request {
+	u16 family;
+	union nf_inet_addr addr;
+};
+
+static int kill_matching(struct nf_conn *i, void *data)
+{
+	struct kill_request *kr = data;
+	struct nf_conntrack_tuple *t1 = &i->tuplehash[IP_CT_DIR_ORIGINAL].tuple;
+	struct nf_conntrack_tuple *t2 = &i->tuplehash[IP_CT_DIR_REPLY].tuple;
+
+	if (!kr->family)
+		return 1;
+
+	if (t1->src.l3num != kr->family)
+		return 0;
+
+	return (nf_inet_addr_cmp(&kr->addr, &t1->src.u3) ||
+	        nf_inet_addr_cmp(&kr->addr, &t1->dst.u3) ||
+	        nf_inet_addr_cmp(&kr->addr, &t2->src.u3) ||
+	        nf_inet_addr_cmp(&kr->addr, &t2->dst.u3));
+}
+
+static ssize_t ct_file_write(struct file *file, const char __user *buf,
+			     size_t count, loff_t *ppos)
+{
+	struct seq_file *seq = file->private_data;
+	struct net *net = seq_file_net(seq);
+	struct kill_request kr = { };
+	char req[INET6_ADDRSTRLEN] = { };
+
+	if (count == 0)
+		return 0;
+
+	if (count >= INET6_ADDRSTRLEN)
+		count = INET6_ADDRSTRLEN - 1;
+
+	if (copy_from_user(req, buf, count))
+		return -EFAULT;
+
+	if (strnchr(req, count, ':')) {
+		kr.family = AF_INET6;
+		if (!in6_pton(req, count, (void *)&kr.addr, '\n', NULL))
+			return -EINVAL;
+	} else if (strnchr(req, count, '.')) {
+		kr.family = AF_INET;
+		if (!in4_pton(req, count, (void *)&kr.addr, '\n', NULL))
+			return -EINVAL;
+	}
+
+	nf_ct_iterate_cleanup(net, kill_matching, &kr, 0, 0);
+
+	return count;
+}
+
 static const struct file_operations ct_file_ops = {
 	.owner   = THIS_MODULE,
 	.open    = ct_open,
 	.read    = seq_read,
+	.write	 = ct_file_write,
 	.llseek  = seq_lseek,
 	.release = seq_release_net,
 };
@@ -397,7 +454,7 @@ static int nf_conntrack_standalone_init_proc(struct net *net)
 {
 	struct proc_dir_entry *pde;
 
-	pde = proc_create("nf_conntrack", 0440, net->proc_net, &ct_file_ops);
+	pde = proc_create("nf_conntrack", 0660, net->proc_net, &ct_file_ops);
 	if (!pde)
 		goto out_nf_conntrack;
 

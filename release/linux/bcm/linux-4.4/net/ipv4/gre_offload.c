@@ -116,10 +116,10 @@ out:
 	return segs;
 }
 
-static struct sk_buff *gre_gro_receive(struct list_head *head,
-				       struct sk_buff *skb)
+static struct sk_buff **gre_gro_receive(struct sk_buff **head,
+					struct sk_buff *skb)
 {
-	struct sk_buff *pp = NULL;
+	struct sk_buff **pp = NULL;
 	struct sk_buff *p;
 	const struct gre_base_hdr *greh;
 	unsigned int hlen, grehlen;
@@ -149,14 +149,6 @@ static struct sk_buff *gre_gro_receive(struct list_head *head,
 	 * requiring GSO support to break it up correctly.
 	 */
 	if ((greh->flags & ~(GRE_KEY|GRE_CSUM)) != 0)
-		goto out;
-
-	/* We can only support GRE_CSUM if we can track the location of
-	 * the GRE header.  In the case of FOU/GUE we cannot because the
-	 * outer UDP header displaces the GRE header leaving us in a state
-	 * of limbo.
-	 */
-	if ((greh->flags & GRE_CSUM) && NAPI_GRO_CB(skb)->is_fou)
 		goto out;
 
 	type = greh->protocol;
@@ -192,7 +184,7 @@ static struct sk_buff *gre_gro_receive(struct list_head *head,
 
 	flush = 0;
 
-	list_for_each_entry(p, head, list) {
+	for (p = *head; p; p = p->next) {
 		const struct gre_base_hdr *greh2;
 
 		if (!NAPI_GRO_CB(p)->same_flow)

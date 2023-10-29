@@ -391,8 +391,7 @@ struct qdisc_rate_table *qdisc_get_rtab(struct tc_ratespec *r, struct nlattr *ta
 {
 	struct qdisc_rate_table *rtab;
 
-	if (tab == NULL || r->rate == 0 ||
-	    r->cell_log == 0 || r->cell_log >= 32 ||
+	if (tab == NULL || r->rate == 0 || r->cell_log == 0 ||
 	    nla_len(tab) != TC_RTAB_SIZE)
 		return NULL;
 
@@ -608,10 +607,6 @@ void qdisc_watchdog_schedule_ns(struct qdisc_watchdog *wd, u64 expires, bool thr
 	if (throttle)
 		qdisc_throttled(wd->qdisc);
 
-	if (wd->last_expires == expires)
-		return;
-
-	wd->last_expires = expires;
 	hrtimer_start(&wd->timer,
 		      ns_to_ktime(expires),
 		      HRTIMER_MODE_ABS_PINNED);
@@ -749,7 +744,8 @@ static u32 qdisc_alloc_handle(struct net_device *dev)
 	return 0;
 }
 
-void qdisc_tree_reduce_backlog(struct Qdisc *sch, int n, int len)
+void qdisc_tree_reduce_backlog(struct Qdisc *sch, unsigned int n,
+			       unsigned int len)
 {
 	const struct Qdisc_class_ops *cops;
 	unsigned long cl;

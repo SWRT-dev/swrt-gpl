@@ -55,7 +55,7 @@ struct fq_codel_sched_data {
 	struct fq_codel_flow *flows;	/* Flows table [flows_cnt] */
 	u32		*backlogs;	/* backlog table [flows_cnt] */
 	u32		flows_cnt;	/* number of flows */
-	siphash_key_t	perturbation;	/* hash perturbation */
+	u32		perturbation;	/* hash perturbation */
 	u32		quantum;	/* psched_mtu(qdisc_dev(sch)); */
 	u32		drop_batch_size;
 	u32		memory_limit;
@@ -73,7 +73,7 @@ struct fq_codel_sched_data {
 static unsigned int fq_codel_hash(const struct fq_codel_sched_data *q,
 				  struct sk_buff *skb)
 {
-	u32 hash = skb_get_hash_perturb(skb, &q->perturbation);
+	u32 hash = skb_get_hash_perturb(skb, q->perturbation);
 
 	return reciprocal_scale(hash, q->flows_cnt);
 }
@@ -219,7 +219,6 @@ static int fq_codel_enqueue(struct sk_buff *skb, struct Qdisc *sch)
 		list_add_tail(&flow->flowchain, &q->new_flows);
 		q->new_flow_count++;
 		flow->deficit = q->quantum;
-		flow->dropped = 0;
 	}
 	q->memory_usage += skb->truesize;
 	memory_limited = q->memory_usage > q->memory_limit;
@@ -311,21 +310,6 @@ begin:
 	flow->dropped += q->cstats.drop_count - prev_drop_count;
 	flow->dropped += q->cstats.ecn_mark - prev_ecn_mark;
 
-	/* If our qlen is 0 qdisc_tree_reduce_backlog() will deactivate
-	 * parent class, dequeue in parent qdisc will do the same if we
-	 * return skb. Temporary increment qlen if we have skb.
-	 */
-	if (q->cstats.drop_count) {
-		if (skb)
-			sch->q.qlen++;
-		qdisc_tree_reduce_backlog(sch, q->cstats.drop_count,
-					  q->cstats.drop_len);
-		if (skb)
-			sch->q.qlen--;
-		q->cstats.drop_count = 0;
-		q->cstats.drop_len = 0;
-	}
-
 	if (!skb) {
 		/* force a pass through old_flows to prevent starvation */
 		if ((head == &q->new_flows) && !list_empty(&q->old_flows))
@@ -336,6 +320,15 @@ begin:
 	}
 	qdisc_bstats_update(sch, skb);
 	flow->deficit -= qdisc_pkt_len(skb);
+	/* We cant call qdisc_tree_reduce_backlog() if our qlen is 0,
+	 * or HTB crashes. Defer it for next round.
+	 */
+	if (q->cstats.drop_count && sch->q.qlen) {
+		qdisc_tree_reduce_backlog(sch, q->cstats.drop_count,
+					  q->cstats.drop_len);
+		q->cstats.drop_count = 0;
+		q->cstats.drop_len = 0;
+	}
 	return skb;
 }
 
@@ -477,18 +470,10 @@ static int fq_codel_init(struct Qdisc *sch, struct nlattr *opt)
 
 	sch->limit = 10*1024;
 	q->flows_cnt = 1024;
-#if defined(CONFIG_X86) || defined(CONFIG_ALPINE)
-	q->memory_limit = 32 << 20; /* 32 MBytes */
-#elif defined(CONFIG_ARCH_QCOM) || defined(CONFIG_ARCH_CNS3XXX) || defined(CONFIG_SOC_IMX6)
-	q->memory_limit = 16 << 20; /* 16 MBytes */
-#elif (defined(CONFIG_MIPS) && !defined(CONFIG_64BIT)) || defined(CONFIG_ARCH_IXP4XX)
-	q->memory_limit = 1 << 18; /* 256kb */
-#else
 	q->memory_limit = 4 << 20; /* 4 MBytes */
-#endif
 	q->drop_batch_size = 64;
 	q->quantum = psched_mtu(qdisc_dev(sch));
-	get_random_bytes(&q->perturbation, sizeof(q->perturbation));
+	q->perturbation = prandom_u32();
 	INIT_LIST_HEAD(&q->new_flows);
 	INIT_LIST_HEAD(&q->old_flows);
 	codel_params_init(&q->cparams, sch);
@@ -662,7 +647,7 @@ static int fq_codel_dump_class_stats(struct Qdisc *sch, unsigned long cl,
 		qs.backlog = q->backlogs[idx];
 		qs.drops = flow->dropped;
 	}
-	if (gnet_stats_copy_queue(d, NULL, &qs, qs.qlen) < 0)
+	if (gnet_stats_copy_queue(d, NULL, &qs, 0) < 0)
 		return -1;
 	if (idx < q->flows_cnt)
 		return gnet_stats_copy_app(d, &xstats, sizeof(xstats));

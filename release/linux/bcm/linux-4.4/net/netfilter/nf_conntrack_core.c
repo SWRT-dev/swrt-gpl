@@ -48,7 +48,6 @@
 #include <net/netfilter/nf_conntrack_zones.h>
 #include <net/netfilter/nf_conntrack_timestamp.h>
 #include <net/netfilter/nf_conntrack_timeout.h>
-#include <net/netfilter/nf_conntrack_dscpremark_ext.h>
 #include <net/netfilter/nf_conntrack_labels.h>
 #include <net/netfilter/nf_conntrack_synproxy.h>
 #include <net/netfilter/nf_nat.h>
@@ -1161,14 +1160,6 @@ destroy_conntrack(struct nf_conntrack *nfct)
 	 */
 	nf_ct_remove_expectations(ct);
 
-	#if defined(CONFIG_NETFILTER_XT_MATCH_LAYER7) || defined(CONFIG_NETFILTER_XT_MATCH_LAYER7_MODULE)
-	if(ct->layer7.app_proto)
-		kfree(ct->layer7.app_proto);
-	if(ct->layer7.app_data)
-	kfree(ct->layer7.app_data);
-	#endif
-
-
 	nf_ct_del_from_dying_or_unconfirmed_list(ct);
 
 	NF_CT_STAT_INC(net, delete);
@@ -1596,6 +1587,8 @@ restart:
 		hlist_nulls_for_each_entry_rcu(h, n, &net->ct.hash[hash],
 					 hnnode) {
 			tmp = nf_ct_tuplehash_to_ctrack(h);
+			if (test_bit(IPS_OFFLOAD_BIT, &tmp->status))
+				continue;
 			if (!test_bit(IPS_ASSURED_BIT, &tmp->status) &&
 			    !nf_ct_is_dying(tmp) &&
 			    atomic_inc_not_zero(&tmp->ct_general.use)) {
@@ -1691,9 +1684,9 @@ __nf_conntrack_alloc(struct net *net,
 	/* Don't set timer yet: wait for confirmation */
 	setup_timer(&ct->timeout, death_by_timeout, (unsigned long)ct);
 	write_pnet(&ct->ct_net, net);
-	memset(&ct->__nfct_init_offset, 0,
+	memset(&ct->__nfct_init_offset[0], 0,
 	       offsetof(struct nf_conn, proto) -
-	       offsetof(struct nf_conn, __nfct_init_offset));
+	       offsetof(struct nf_conn, __nfct_init_offset[0]));
 
 	if (zone && nf_ct_zone_add(ct, GFP_ATOMIC, zone) < 0)
 		goto out_free;
@@ -1796,7 +1789,6 @@ init_conntrack(struct net *net, struct nf_conn *tmpl,
 	nf_ct_acct_ext_add(ct, GFP_ATOMIC);
 	nf_ct_tstamp_ext_add(ct, GFP_ATOMIC);
 	nf_ct_labels_ext_add(ct);
-	nf_ct_dscpremark_ext_add(ct, GFP_ATOMIC);
 
 	ecache = tmpl ? nf_ct_ecache_find(tmpl) : NULL;
 	nf_ct_ecache_ext_add(ct, ecache ? ecache->ctmask : 0,
@@ -2295,13 +2287,6 @@ void nf_ct_free_hashtable(void *hash, unsigned int size)
 }
 EXPORT_SYMBOL_GPL(nf_ct_free_hashtable);
 
-
-void nf_conntrack_flush(void)
-{
-	nf_ct_iterate_cleanup(&init_net, kill_all, NULL, 0, 0);
-}
-EXPORT_SYMBOL_GPL(nf_conntrack_flush);
-
 static int untrack_refs(void)
 {
 	int cnt = 0, cpu;
@@ -2331,7 +2316,6 @@ void nf_conntrack_cleanup_end(void)
 	nf_conntrack_proto_fini();
 	nf_conntrack_seqadj_fini();
 	nf_conntrack_labels_fini();
-	nf_conntrack_dscpremark_ext_fini();
 	nf_conntrack_helper_fini();
 	nf_conntrack_timeout_fini();
 	nf_conntrack_ecache_fini();
@@ -2513,16 +2497,15 @@ int nf_conntrack_init_start(void)
 		 * we use the old value of 8 to avoid reducing the max.
 		 * entries. */
 		max_factor = 4;
+#if defined(CONFIG_NETFILTER_XT_TARGET_FULLCONENAT) || defined(CONFIG_SWRT_FULLCONE)
+		nf_conntrack_htable_size = 16384;
+#endif
 	}
 	nf_conntrack_max = max_factor * nf_conntrack_htable_size;
 
 	printk(KERN_INFO "nf_conntrack version %s (%u buckets, %d max)\n",
 	       NF_CONNTRACK_VERSION, nf_conntrack_htable_size,
 	       nf_conntrack_max);
-
-	ret = nf_conntrack_dscpremark_ext_init();
-	if (ret < 0)
-		goto err_dscpremark_ext;
 
 	ret = nf_conntrack_expect_init();
 	if (ret < 0)
@@ -2596,8 +2579,6 @@ err_tstamp:
 err_acct:
 	nf_conntrack_expect_fini();
 err_expect:
-	nf_conntrack_dscpremark_ext_fini();
-err_dscpremark_ext:
 	return ret;
 }
 
@@ -2677,7 +2658,9 @@ int nf_conntrack_init_net(struct net *net)
 	ret = nf_conntrack_proto_pernet_init(net);
 	if (ret < 0)
 		goto err_proto;
+#if defined(CONFIG_SHORTCUT_FE) || defined(CONFIG_SHORTCUT_FE_MODULE)
 	ATOMIC_INIT_NOTIFIER_HEAD(&net->ct.nf_conntrack_chain);
+#endif
 	return 0;
 
 err_proto:

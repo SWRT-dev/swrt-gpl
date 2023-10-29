@@ -419,39 +419,11 @@ static const struct file_operations ct_cpu_seq_fops = {
 	.release = seq_release_net,
 };
 
-
-static int flush_show(struct seq_file *m, void *v)
-{
-	nf_conntrack_flush();
-	return 0;
-}
-
-static int flush_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, flush_show, NULL);
-}
-
-static const struct file_operations flush_fops = {
-	.open		= flush_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
-	.owner		= THIS_MODULE,
-};
-
-
-
-
-
 static int __net_init ip_conntrack_net_init(struct net *net)
 {
 	struct proc_dir_entry *proc, *proc_exp, *proc_stat;
 
 	proc = proc_create("ip_conntrack", 0440, net->proc_net, &ct_file_ops);
-	if (!proc)
-		goto err1;
-
-	proc = proc_create("ip_conntrack_flush", 0440, net->proc_net, &flush_fops);
 	if (!proc)
 		goto err1;
 
@@ -469,7 +441,6 @@ static int __net_init ip_conntrack_net_init(struct net *net)
 err3:
 	remove_proc_entry("ip_conntrack_expect", net->proc_net);
 err2:
-	remove_proc_entry("ip_conntrack_flush", net->proc_net);
 	remove_proc_entry("ip_conntrack", net->proc_net);
 err1:
 	return -ENOMEM;
@@ -486,8 +457,6 @@ static struct pernet_operations ip_conntrack_net_ops = {
 	.init = ip_conntrack_net_init,
 	.exit = ip_conntrack_net_exit,
 };
-
-
 
 int __init nf_conntrack_ipv4_compat_init(void)
 {

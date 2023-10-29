@@ -210,8 +210,11 @@ enum {
 	RTN_THROW,		/* Not in this table		*/
 	RTN_NAT,		/* Translate this address	*/
 	RTN_XRESOLVE,		/* Use external resolver	*/
+	RTN_POLICY_FAILED,	/* Failed ingress/egress policy */
 	__RTN_MAX
 };
+
+#define RTN_FAILED_POLICY RTN_POLICY_FAILED
 
 #define RTN_MAX (__RTN_MAX - 1)
 
@@ -311,6 +314,9 @@ enum rtattr_type_t {
 	RTA_PREF,
 	RTA_ENCAP_TYPE,
 	RTA_ENCAP,
+	RTA_EXPIRES,
+	RTA_PAD,
+	RTA_UID,
 	__RTA_MAX
 };
 

@@ -1290,7 +1290,7 @@ static struct sctp_transport *sctp_trans_elect_best(struct sctp_transport *curr,
 	if (score_curr > score_best)
 		return curr;
 	else if (score_curr == score_best)
-		return sctp_trans_elect_tie(best, curr);
+		return sctp_trans_elect_tie(curr, best);
 	else
 		return best;
 }
@@ -1575,15 +1575,12 @@ void sctp_assoc_rwnd_decrease(struct sctp_association *asoc, unsigned int len)
 int sctp_assoc_set_bind_addr_from_ep(struct sctp_association *asoc,
 				     sctp_scope_t scope, gfp_t gfp)
 {
-	struct sock *sk = asoc->base.sk;
 	int flags;
 
 	/* Use scoping rules to determine the subset of addresses from
 	 * the endpoint.
 	 */
-	flags = (PF_INET6 == sk->sk_family) ? SCTP_ADDR6_ALLOWED : 0;
-	if (!inet_v6_ipv6only(sk))
-		flags |= SCTP_ADDR4_ALLOWED;
+	flags = (PF_INET6 == asoc->base.sk->sk_family) ? SCTP_ADDR6_ALLOWED : 0;
 	if (asoc->peer.ipv4_address)
 		flags |= SCTP_ADDR4_PEERSUPP;
 	if (asoc->peer.ipv6_address)

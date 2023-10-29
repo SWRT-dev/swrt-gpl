@@ -27,7 +27,6 @@ nf_conntrack-$(CONFIG_NF_CONNTRACK_TIMEOUT) += nf_conntrack_timeout.o
 nf_conntrack-$(CONFIG_NF_CONNTRACK_TIMESTAMP) += nf_conntrack_timestamp.o
 nf_conntrack-$(CONFIG_NF_CONNTRACK_EVENTS) += nf_conntrack_ecache.o
 nf_conntrack-$(CONFIG_NF_CONNTRACK_LABELS) += nf_conntrack_labels.o
-nf_conntrack-$(CONFIG_NF_CONNTRACK_DSCPREMARK_EXT) += nf_conntrack_dscpremark_ext.o
 
 obj-$(CONFIG_NETFILTER) = netfilter.o
 
@@ -38,9 +37,6 @@ obj-$(CONFIG_NETFILTER_NETLINK_LOG) += nfnetlink_log.o
 
 # connection tracking
 obj-$(CONFIG_NF_CONNTRACK) += nf_conntrack.o
-
-# optional conntrack route cache extension
-obj-$(CONFIG_NF_CONNTRACK_RTCACHE) += nf_conntrack_rtcache.o
 
 # SCTP protocol connection tracking
 obj-$(CONFIG_NF_CT_PROTO_DCCP) += nf_conntrack_proto_dccp.o
@@ -64,10 +60,14 @@ obj-$(CONFIG_NF_CONNTRACK_BROADCAST) += nf_conntrack_broadcast.o
 obj-$(CONFIG_NF_CONNTRACK_NETBIOS_NS) += nf_conntrack_netbios_ns.o
 obj-$(CONFIG_NF_CONNTRACK_SNMP) += nf_conntrack_snmp.o
 obj-$(CONFIG_NF_CONNTRACK_PPTP) += nf_conntrack_pptp.o
+
+# ASUS_EXT
+obj-$(CONFIG_NF_CONNTRACK_QUAKE3) += nf_conntrack_quake3.o
+obj-$(CONFIG_NF_CONNTRACK_RTSP) += nf_conntrack_rtsp.o
+
 obj-$(CONFIG_NF_CONNTRACK_SANE) += nf_conntrack_sane.o
 obj-$(CONFIG_NF_CONNTRACK_SIP) += nf_conntrack_sip.o
 obj-$(CONFIG_NF_CONNTRACK_TFTP) += nf_conntrack_tftp.o
-obj-$(CONFIG_NF_CONNTRACK_RTSP) += nf_conntrack_rtsp.o
 
 nf_nat-y	:= nf_nat_core.o nf_nat_proto_unknown.o nf_nat_proto_common.o \
 		   nf_nat_proto_udp.o nf_nat_proto_tcp.o nf_nat_helper.o
@@ -117,6 +117,14 @@ obj-$(CONFIG_NFT_LOG)		+= nft_log.o
 obj-$(CONFIG_NFT_MASQ)		+= nft_masq.o
 obj-$(CONFIG_NFT_REDIR)		+= nft_redir.o
 
+# flow table infrastructure
+obj-$(CONFIG_NF_FLOW_TABLE)	+= nf_flow_table.o
+nf_flow_table-objs := nf_flow_table_core.o nf_flow_table_ip.o
+
+obj-$(CONFIG_NF_FLOW_TABLE_INET) += nf_flow_table_inet.o
+obj-$(CONFIG_NF_FLOW_TABLE_HW)	+= nf_flow_table_hw.o
+obj-$(CONFIG_NF_FLOW_TABLE_NETLINK)	+= nf_flow_table_netlink.o
+
 # generic X tables 
 obj-$(CONFIG_NETFILTER_XTABLES) += x_tables.o xt_tcpudp.o
 
@@ -133,6 +141,7 @@ obj-$(CONFIG_NETFILTER_XT_TARGET_CLASSIFY) += xt_CLASSIFY.o
 obj-$(CONFIG_NETFILTER_XT_TARGET_CONNSECMARK) += xt_CONNSECMARK.o
 obj-$(CONFIG_NETFILTER_XT_TARGET_CT) += xt_CT.o
 obj-$(CONFIG_NETFILTER_XT_TARGET_DSCP) += xt_DSCP.o
+obj-$(CONFIG_NETFILTER_XT_TARGET_FLOWOFFLOAD) += xt_FLOWOFFLOAD.o
 obj-$(CONFIG_NETFILTER_XT_TARGET_HL) += xt_HL.o
 obj-$(CONFIG_NETFILTER_XT_TARGET_HMARK) += xt_HMARK.o
 obj-$(CONFIG_NETFILTER_XT_TARGET_IMQ) += xt_IMQ.o
@@ -184,22 +193,30 @@ obj-$(CONFIG_NETFILTER_XT_MATCH_CGROUP) += xt_cgroup.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_PHYSDEV) += xt_physdev.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_PKTTYPE) += xt_pkttype.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_POLICY) += xt_policy.o
+obj-$(CONFIG_NETFILTER_XT_MATCH_QTAGUID) += xt_qtaguid_print.o xt_qtaguid.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_QUOTA) += xt_quota.o
+obj-$(CONFIG_NETFILTER_XT_MATCH_QUOTA2) += xt_quota2.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_RATEEST) += xt_rateest.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_REALM) += xt_realm.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_RECENT) += xt_recent.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_SCTP) += xt_sctp.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_SOCKET) += xt_socket.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_STATE) += xt_state.o
-obj-$(CONFIG_NETFILTER_XT_MATCH_LAYER7) += xt_layer7.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_STATISTIC) += xt_statistic.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_STRING) += xt_string.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_TCPMSS) += xt_tcpmss.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_TIME) += xt_time.o
 obj-$(CONFIG_NETFILTER_XT_MATCH_U32) += xt_u32.o
 
+# ASUS_EXT
+obj-$(CONFIG_NETFILTER_XT_MATCH_CONDITION) += xt_condition.o
+obj-$(CONFIG_NETFILTER_XT_MATCH_GEOIP) += xt_geoip.o
+obj-$(CONFIG_NETFILTER_XT_MATCH_WEBSTR) += xt_webstr.o
+obj-$(CONFIG_NETFILTER_XT_MATCH_ETHPORT) += xt_ethport.o
+
 # ipset
 obj-$(CONFIG_IP_SET) += ipset/
 
 # IPVS
 obj-$(CONFIG_IP_VS) += ipvs/
+obj-$(CONFIG_NETFILTER_XT_TARGET_FULLCONENAT) += xt_FULLCONENAT.o

@@ -177,16 +177,6 @@ sctp_chunk_length_valid(struct sctp_chunk *chunk,
 	return 1;
 }
 
-/* Check for format error in an ABORT chunk */
-static inline bool sctp_err_chunk_valid(struct sctp_chunk *chunk)
-{
-	struct sctp_errhdr *err;
-
-	sctp_walk_errors(err, chunk->chunk_hdr);
-
-	return (void *)err == (void *)chunk->chunk_end;
-}
-
 /**********************************************************
  * These are the state functions for handling chunk events.
  **********************************************************/
@@ -1793,13 +1783,12 @@ static sctp_disposition_t sctp_sf_do_dupcook_a(struct net *net,
 	/* Update the content of current association. */
 	sctp_add_cmd_sf(commands, SCTP_CMD_UPDATE_ASSOC, SCTP_ASOC(new_asoc));
 	sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP, SCTP_ULPEVENT(ev));
-	if ((sctp_state(asoc, SHUTDOWN_PENDING) ||
-	     sctp_state(asoc, SHUTDOWN_SENT)) &&
+	if (sctp_state(asoc, SHUTDOWN_PENDING) &&
 	    (sctp_sstate(asoc->base.sk, CLOSING) ||
 	     sock_flag(asoc->base.sk, SOCK_DEAD))) {
-		/* If the socket has been closed by user, don't
-		 * transition to ESTABLISHED. Instead trigger SHUTDOWN
-		 * bundled with COOKIE_ACK.
+		/* if were currently in SHUTDOWN_PENDING, but the socket
+		 * has been closed by user, don't transition to ESTABLISHED.
+		 * Instead trigger SHUTDOWN bundled with COOKIE_ACK.
 		 */
 		sctp_add_cmd_sf(commands, SCTP_CMD_REPLY, SCTP_CHUNK(repl));
 		return sctp_sf_do_9_2_start_shutdown(net, ep, asoc,
@@ -1851,8 +1840,7 @@ static sctp_disposition_t sctp_sf_do_dupcook_b(struct net *net,
 	sctp_add_cmd_sf(commands, SCTP_CMD_UPDATE_ASSOC, SCTP_ASOC(new_asoc));
 	sctp_add_cmd_sf(commands, SCTP_CMD_NEW_STATE,
 			SCTP_STATE(SCTP_STATE_ESTABLISHED));
-	if (asoc->state < SCTP_STATE_ESTABLISHED)
-		SCTP_INC_STATS(net, SCTP_MIB_CURRESTAB);
+	SCTP_INC_STATS(net, SCTP_MIB_CURRESTAB);
 	sctp_add_cmd_sf(commands, SCTP_CMD_HB_TIMERS_START, SCTP_NULL());
 
 	repl = sctp_make_cookie_ack(new_asoc, chunk);
@@ -2171,9 +2159,6 @@ sctp_disposition_t sctp_sf_shutdown_pending_abort(
 		    sctp_bind_addr_state(&asoc->base.bind_addr, &chunk->dest))
 		return sctp_sf_discard_chunk(net, ep, asoc, type, arg, commands);
 
-	if (!sctp_err_chunk_valid(chunk))
-		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
-
 	return __sctp_sf_do_9_1_abort(net, ep, asoc, type, arg, commands);
 }
 
@@ -2215,9 +2200,6 @@ sctp_disposition_t sctp_sf_shutdown_sent_abort(struct net *net,
 	if (SCTP_ADDR_DEL ==
 		    sctp_bind_addr_state(&asoc->base.bind_addr, &chunk->dest))
 		return sctp_sf_discard_chunk(net, ep, asoc, type, arg, commands);
-
-	if (!sctp_err_chunk_valid(chunk))
-		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
 
 	/* Stop the T2-shutdown timer. */
 	sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_STOP,
@@ -2484,9 +2466,6 @@ sctp_disposition_t sctp_sf_do_9_1_abort(struct net *net,
 		    sctp_bind_addr_state(&asoc->base.bind_addr, &chunk->dest))
 		return sctp_sf_discard_chunk(net, ep, asoc, type, arg, commands);
 
-	if (!sctp_err_chunk_valid(chunk))
-		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
-
 	return __sctp_sf_do_9_1_abort(net, ep, asoc, type, arg, commands);
 }
 
@@ -2503,9 +2482,15 @@ static sctp_disposition_t __sctp_sf_do_9_1_abort(struct net *net,
 
 	/* See if we have an error cause code in the chunk.  */
 	len = ntohs(chunk->chunk_hdr->length);
+	if (len >= sizeof(struct sctp_chunkhdr) + sizeof(struct sctp_errhdr)) {
 
-	if (len >= sizeof(struct sctp_chunkhdr) + sizeof(struct sctp_errhdr))
+		sctp_errhdr_t *err;
+		sctp_walk_errors(err, chunk->chunk_hdr);
+		if ((void *)err != (void *)chunk->chunk_end)
+			return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
+
 		error = ((sctp_errhdr_t *)chunk->skb->data)->cause;
+	}
 
 	sctp_add_cmd_sf(commands, SCTP_CMD_SET_SK_ERR, SCTP_ERROR(ECONNRESET));
 	/* ASSOC_FAILED will DELETE_TCB. */
@@ -4337,9 +4322,6 @@ sctp_disposition_t sctp_sf_violation(struct net *net,
 {
 	struct sctp_chunk *chunk = arg;
 
-	if (!sctp_vtag_verify(chunk, asoc))
-		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
-
 	/* Make sure that the chunk has a valid length. */
 	if (!sctp_chunk_length_valid(chunk, sizeof(sctp_chunkhdr_t)))
 		return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
@@ -6030,7 +6012,6 @@ static struct sctp_packet *sctp_ootb_pkt_new(struct net *net,
 		 * yet.
 		 */
 		switch (chunk->chunk_hdr->type) {
-		case SCTP_CID_INIT:
 		case SCTP_CID_INIT_ACK:
 		{
 			sctp_initack_chunk_t *initack;

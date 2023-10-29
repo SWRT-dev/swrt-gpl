@@ -39,6 +39,7 @@ if( lacp_support
 
 var jumbo_frame_enable_ori = '<% nvram_get("jumbo_frame_enable"); %>';
 var ctf_disable_force_ori = '<% nvram_get("ctf_disable"); %>';
+var sfe_enable_ori = '<% nvram_get("sfe_enable"); %>';
 var lacp_enabled_ori = '<% nvram_get("lacp_enabled"); %>';
 var wans_lanport = '<% nvram_get("wans_lanport"); %>';
 var iptv_port_settings_orig = '<%nvram_get("iptv_port_settings"); %>' == ""? "12": '<%nvram_get("iptv_port_settings"); %>';
@@ -152,9 +153,15 @@ function initial(){
 	else{
 		var ctf_disable = '<% nvram_get("ctf_disable"); %>';
 		var ctf_fa_mode = '<% nvram_get("ctf_fa_mode"); %>';
+		var sfe_enable = '<% nvram_get("sfe_enable"); %>';
 
 		if(ctf_disable == 1){
 			document.getElementById("ctfLevelDesc").innerHTML = "<#NAT_Acceleration_ctf_disable#>";
+		}else if(isSupport("sfe")){
+			if(sfe_enable == 0)
+				document.getElementById("sfeLevelDesc").innerHTML = "<#NAT_Acceleration_ctf_disable#>";
+			else
+				document.getElementById("sfeLevelDesc").innerHTML = "<#NAT_Acceleration_enable#>";
 		}
 		else{
 			if(ctf_fa_mode == '2')
@@ -227,6 +234,9 @@ function initial(){
 		if(hnd_support){
 			document.getElementById("ctf_tr").style.display = "none";
 			document.form.ctf_disable_force.disabled = true;
+		}else if(isSupport("sfe")){
+			document.getElementById("sfe_tr").style.display = "";
+			document.form.sfe_enable.disabled = false;
 		}
 		else{
 			if(sw_mode == "1" || sw_mode == "5"){
@@ -261,7 +271,7 @@ function applyRule(){
 	var setting_changed = false;
 	if((jumbo_frame_enable_ori != document.form.jumbo_frame_enable.value)
 	|| (ctf_disable_force_ori != document.form.ctf_disable_force.value)
-	|| (lacp_enabled_ori != document.form.lacp_enabled.value) ){
+	|| (lacp_enabled_ori != document.form.lacp_enabled.value) || (sfe_enable_ori != document.form.sfe_enable.value)){
 		setting_changed = true
 	}
 
@@ -409,6 +419,18 @@ function check_bonding_policy(obj){
 													</select>
 													&nbsp
 													<span id="ctfLevelDesc"></span>
+												</td>
+											</tr>
+											<tr id="sfe_tr" style="display: none;">
+		      									<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(29,2);"><#NAT_Acceleration#></a></th>
+												<td>
+													<select name="sfe_enable" class="input_option" disabled>
+														<option class="content_input_fd" value="0" <% nvram_match("sfe_enable", "0","selected"); %>><#WLANConfig11b_WirelessCtrl_buttonname#></option>
+														<option class="content_input_fd" value="1" <% nvram_match("sfe_enable", "1","selected"); %>>LAN</option>
+														<option class="content_input_fd" value="2" <% nvram_match("sfe_enable", "2","selected"); %>>LAN+WAN</option>
+													</select>
+													&nbsp
+													<span id="sfeLevelDesc"></span>
 												</td>
 											</tr>
 

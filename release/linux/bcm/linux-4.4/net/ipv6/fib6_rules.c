@@ -73,6 +73,10 @@ static int fib6_rule_action(struct fib_rule *rule, struct flowi *flp,
 		err = -EACCES;
 		rt = net->ipv6.ip6_prohibit_entry;
 		goto discard_pkt;
+	case FR_ACT_POLICY_FAILED:
+		err = -EACCES;
+		rt = net->ipv6.ip6_policy_failed_entry;
+		goto discard_pkt;
 	}
 
 	table = fib6_get_table(net, rule->table);
@@ -173,18 +177,6 @@ static int fib6_rule_match(struct fib_rule *rule, struct flowi *fl, int flags)
 
 	if (r->tclass && r->tclass != ip6_tclass(fl6->flowlabel))
 		return 0;
-
-	if (rule->ip_proto && (rule->ip_proto != fl6->flowi6_proto))
-		return 0;
-
-	if (fib_rule_port_range_set(&rule->sport_range) &&
-	    !fib_rule_port_inrange(&rule->sport_range, fl6->fl6_sport))
-		return 0;
-
-	if (fib_rule_port_range_set(&rule->dport_range) &&
-	    !fib_rule_port_inrange(&rule->dport_range, fl6->fl6_dport))
-		return 0;
-
 
 	return 1;
 }

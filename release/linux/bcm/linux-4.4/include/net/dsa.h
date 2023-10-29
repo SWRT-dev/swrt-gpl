@@ -26,6 +26,8 @@ enum dsa_tag_protocol {
 	DSA_TAG_PROTO_TRAILER,
 	DSA_TAG_PROTO_EDSA,
 	DSA_TAG_PROTO_BRCM,
+	DSA_TAG_PROTO_MTK,
+	DSA_TAG_LAST,		/* MUST BE LAST */
 };
 
 #define DSA_MAX_SWITCHES	4
@@ -84,6 +86,14 @@ struct dsa_platform_data {
 
 struct packet_type;
 
+struct dsa_device_ops {
+	struct sk_buff *(*xmit)(struct sk_buff *skb, struct net_device *dev);
+	int (*rcv)(struct sk_buff *skb, struct net_device *dev,
+		   struct packet_type *pt, struct net_device *orig_dev);
+	int (*flow_dissect)(const struct sk_buff *skb, __be16 *proto,
+			    int *offset);
+};
+
 struct dsa_switch_tree {
 	/*
 	 * Configuration data for the platform device that owns
@@ -100,7 +110,6 @@ struct dsa_switch_tree {
 				       struct net_device *dev,
 				       struct packet_type *pt,
 				       struct net_device *orig_dev);
-	enum dsa_tag_protocol	tag_protocol;
 
 	/*
 	 * The switch and port to which the CPU is attached.
@@ -119,6 +128,16 @@ struct dsa_switch_tree {
 	 * Data for the individual switch chips.
 	 */
 	struct dsa_switch	*ds[DSA_MAX_SWITCHES];
+
+	/*
+	 * Tagging protocol operations for adding and removing an
+	 * encapsulation tag.
+	 */
+	const struct dsa_device_ops *tag_ops;
+};
+
+struct dsa_port {
+	struct net_device	*netdev;
 };
 
 struct dsa_switch {
@@ -127,6 +146,12 @@ struct dsa_switch {
 	 */
 	struct dsa_switch_tree	*dst;
 	int			index;
+
+	/*
+	 * Give the switch driver somewhere to hang its private data
+	 * structure.
+	 */
+	void *priv;
 
 	/*
 	 * Tagging protocol understood by this switch
@@ -162,8 +187,8 @@ struct dsa_switch {
 	u32			dsa_port_mask;
 	u32			phys_port_mask;
 	u32			phys_mii_mask;
+	struct dsa_port		ports[DSA_MAX_PORTS];
 	struct mii_bus		*slave_mii_bus;
-	struct net_device	*ports[DSA_MAX_PORTS];
 };
 
 static inline bool dsa_is_cpu_port(struct dsa_switch *ds, int p)
@@ -178,7 +203,7 @@ static inline bool dsa_is_dsa_port(struct dsa_switch *ds, int p)
 
 static inline bool dsa_is_port_initialized(struct dsa_switch *ds, int p)
 {
-	return ds->phys_port_mask & (1 << p) && ds->ports[p];
+	return ds->phys_port_mask & (1 << p) && ds->ports[p].netdev;
 }
 
 static inline u8 dsa_upstream_port(struct dsa_switch *ds)
@@ -206,12 +231,12 @@ struct dsa_switch_driver {
 	struct list_head	list;
 
 	enum dsa_tag_protocol	tag_protocol;
-	int			priv_size;
 
 	/*
 	 * Probing and setup.
 	 */
-	char	*(*probe)(struct device *host_dev, int sw_addr);
+	char	*(*probe)(struct device *dsa_dev, struct device *host_dev,
+			  int sw_addr, void **priv);
 	int	(*setup)(struct dsa_switch *ds);
 	int	(*set_addr)(struct dsa_switch *ds, u8 *addr);
 	u32	(*get_phy_flags)(struct dsa_switch *ds, int port);
@@ -344,7 +369,7 @@ struct mii_bus *dsa_host_dev_to_mii_bus(struct device *dev);
 
 static inline void *ds_to_priv(struct dsa_switch *ds)
 {
-	return (void *)(ds + 1);
+	return ds->priv;
 }
 
 static inline bool dsa_uses_tagged_protocol(struct dsa_switch_tree *dst)

@@ -319,18 +319,28 @@ next_hook:
 		ret = NF_DROP_GETERR(verdict);
 		if (ret == 0)
 			ret = -EPERM;
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
 	} else if ((verdict & NF_VERDICT_MASK) == NF_QUEUE ||
-		   (verdict & NF_VERDICT_MASK) == NF_IMQ_QUEUE) {
+		(verdict & NF_VERDICT_MASK) == NF_IMQ_QUEUE) {
+#else
+	} else if ((verdict & NF_VERDICT_MASK) == NF_QUEUE) {
+#endif
 		int err = nf_queue(skb, elem, state,
-			       verdict >> NF_VERDICT_QBITS,
-			       verdict & NF_VERDICT_MASK);
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+				   verdict >> NF_VERDICT_QBITS,
+				  verdict & NF_VERDICT_MASK);
+#else
+				   verdict >> NF_VERDICT_QBITS);
+#endif
 		if (err < 0) {
 			if (err == -ESRCH &&
 			   (verdict & NF_VERDICT_FLAG_QUEUE_BYPASS))
 				goto next_hook;
 			kfree_skb(skb);
 		}
-	}
+	} else
+		ret = 0;
+
 	rcu_read_unlock();
 	return ret;
 }

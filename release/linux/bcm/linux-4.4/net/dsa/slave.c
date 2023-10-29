@@ -232,7 +232,7 @@ static int dsa_bridge_check_vlan_range(struct dsa_switch *ds,
 		if (member == DSA_MAX_PORTS)
 			continue;
 
-		dev = ds->ports[member];
+		dev = ds->ports[member].netdev;
 		p = netdev_priv(dev);
 		vlan_br = p->bridge_dev;
 		if (vlan_br == bridge)
@@ -403,9 +403,9 @@ static u32 dsa_slave_br_port_mask(struct dsa_switch *ds,
 		if (!dsa_is_port_initialized(ds, port))
 			continue;
 
-		p = netdev_priv(ds->ports[port]);
+		p = netdev_priv(ds->ports[port].netdev);
 
-		if (ds->ports[port]->priv_flags & IFF_BRIDGE_PORT &&
+		if (ds->ports[port].netdev->priv_flags & IFF_BRIDGE_PORT &&
 		    p->bridge_dev == bridge)
 			mask |= 1 << port;
 	}
@@ -620,14 +620,6 @@ static netdev_tx_t dsa_slave_xmit(struct sk_buff *skb, struct net_device *dev)
 
 	return NETDEV_TX_OK;
 }
-
-static struct sk_buff *dsa_slave_notag_xmit(struct sk_buff *skb,
-					    struct net_device *dev)
-{
-	/* Just return the original SKB */
-	return skb;
-}
-
 
 /* ethtool operations *******************************************************/
 static int
@@ -1031,7 +1023,7 @@ static int dsa_slave_phy_setup(struct dsa_slave_priv *p,
 	p->phy_interface = mode;
 
 	phy_dn = of_parse_phandle(port_dn, "phy-handle", 0);
-	if (!phy_dn && of_phy_is_fixed_link(port_dn)) {
+	if (of_phy_is_fixed_link(port_dn)) {
 		/* In the case of a fixed PHY, the DT node associated
 		 * to the fixed PHY is the Port DT node
 		 */
@@ -1041,7 +1033,7 @@ static int dsa_slave_phy_setup(struct dsa_slave_priv *p,
 			return ret;
 		}
 		phy_is_fixed = true;
-		phy_dn = of_node_get(port_dn);
+		phy_dn = port_dn;
 	}
 
 	if (ds->drv->get_phy_flags)
@@ -1060,7 +1052,6 @@ static int dsa_slave_phy_setup(struct dsa_slave_priv *p,
 			ret = dsa_slave_phy_connect(p, slave_dev, phy_id);
 			if (ret) {
 				netdev_err(slave_dev, "failed to connect to phy%d: %d\n", phy_id, ret);
-				of_node_put(phy_dn);
 				return ret;
 			}
 		} else {
@@ -1069,8 +1060,6 @@ static int dsa_slave_phy_setup(struct dsa_slave_priv *p,
 						phy_flags,
 						p->phy_interface);
 		}
-
-		of_node_put(phy_dn);
 	}
 
 	if (p->phy && phy_is_fixed)
@@ -1172,31 +1161,7 @@ int dsa_slave_create(struct dsa_switch *ds, struct device *parent,
 	p->parent = ds;
 	p->port = port;
 
-	switch (ds->dst->tag_protocol) {
-#ifdef CONFIG_NET_DSA_TAG_DSA
-	case DSA_TAG_PROTO_DSA:
-		p->xmit = dsa_netdev_ops.xmit;
-		break;
-#endif
-#ifdef CONFIG_NET_DSA_TAG_EDSA
-	case DSA_TAG_PROTO_EDSA:
-		p->xmit = edsa_netdev_ops.xmit;
-		break;
-#endif
-#ifdef CONFIG_NET_DSA_TAG_TRAILER
-	case DSA_TAG_PROTO_TRAILER:
-		p->xmit = trailer_netdev_ops.xmit;
-		break;
-#endif
-#ifdef CONFIG_NET_DSA_TAG_BRCM
-	case DSA_TAG_PROTO_BRCM:
-		p->xmit = brcm_netdev_ops.xmit;
-		break;
-#endif
-	default:
-		p->xmit	= dsa_slave_notag_xmit;
-		break;
-	}
+	p->xmit = ds->dst->tag_ops->xmit;
 
 	p->old_pause = -1;
 	p->old_link = -1;
@@ -1209,13 +1174,13 @@ int dsa_slave_create(struct dsa_switch *ds, struct device *parent,
 		return ret;
 	}
 
-	ds->ports[port] = slave_dev;
+	ds->ports[port].netdev = slave_dev;
 	ret = register_netdev(slave_dev);
 	if (ret) {
 		netdev_err(master, "error %d registering interface %s\n",
 			   ret, slave_dev->name);
 		phy_disconnect(p->phy);
-		ds->ports[port] = NULL;
+		ds->ports[port].netdev = NULL;
 		free_netdev(slave_dev);
 		return ret;
 	}

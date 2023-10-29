@@ -31,7 +31,7 @@
 #include <linux/hdlc/ioctl.h>
 
 /* For glibc compatibility. An empty enum does not compile. */
-#if __UAPI_DEF_IF_NET_DEVICE_FLAGS_LOWER_UP_DORMANT_ECHO != 0 || \
+#if __UAPI_DEF_IF_NET_DEVICE_FLAGS_LOWER_UP_DORMANT_ECHO != 0 && \
     __UAPI_DEF_IF_NET_DEVICE_FLAGS != 0
 /**
  * enum net_device_flags - &struct net_device flags
@@ -99,7 +99,7 @@ enum net_device_flags {
 	IFF_ECHO			= 1<<18, /* volatile */
 #endif /* __UAPI_DEF_IF_NET_DEVICE_FLAGS_LOWER_UP_DORMANT_ECHO */
 };
-#endif /* __UAPI_DEF_IF_NET_DEVICE_FLAGS_LOWER_UP_DORMANT_ECHO != 0 || __UAPI_DEF_IF_NET_DEVICE_FLAGS != 0 */
+#endif /* __UAPI_DEF_IF_NET_DEVICE_FLAGS_LOWER_UP_DORMANT_ECHO != 0 && __UAPI_DEF_IF_NET_DEVICE_FLAGS != 0 */
 
 /* for compatibility with glibc net/if.h */
 #if __UAPI_DEF_IF_NET_DEVICE_FLAGS
@@ -244,10 +244,6 @@ struct ifreq {
 		char	ifru_newname[IFNAMSIZ];
 		void __user *	ifru_data;
 		struct	if_settings ifru_settings;
-		struct {
-			__u16 weight;
-			char slave[IFNAMSIZ];	
-		} ifru_weight;
 	} ifr_ifru;
 };
 #endif /* __UAPI_DEF_IF_IFREQ */
@@ -257,8 +253,6 @@ struct ifreq {
 #define	ifr_addr	ifr_ifru.ifru_addr	/* address		*/
 #define	ifr_dstaddr	ifr_ifru.ifru_dstaddr	/* other end of p-p lnk	*/
 #define	ifr_broadaddr	ifr_ifru.ifru_broadaddr	/* broadcast address	*/
-#define	ifr_weight_weight ifr_ifru.ifru_weight.weight /* bonding weight*/
-#define	ifr_weight_slave  ifr_ifru.ifru_weight.slave  /* bonding weight slave */
 #define	ifr_netmask	ifr_ifru.ifru_netmask	/* interface net mask	*/
 #define	ifr_flags	ifr_ifru.ifru_flags	/* flags		*/
 #define	ifr_metric	ifr_ifru.ifru_ivalue	/* metric		*/
