@@ -10284,8 +10284,8 @@ static int get_client_detail_info(struct json_object *clients, struct json_objec
 		json_object_put(amasReClientDetailList);
 	json_object_put(allClientList);
 #endif
-	if(custom_attr_get)
-		json_object_put(custom_attr_get);
+//	if(custom_attr_get)
+//		json_object_put(custom_attr_get);
 	CLIENT_DPRINTF("get_client_detail_info finish\n");
 
 	return 0;
