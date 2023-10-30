@@ -170,6 +170,14 @@ int vprintk(const char *fmt, va_list args);
 asmlinkage __printf(1, 2) __cold
 int printk(const char *fmt, ...);
 
+#ifdef CONFIG_DUMP_PREV_OOPS_MSG
+extern int enable_oopsbuf(int onoff);
+extern int __init prepare_and_dump_previous_oops(void);
+#else
+static inline int enable_oopsbuf(int onoff) { return 0; }
+static inline int prepare_and_dump_previous_oops(void) { return 0; }
+#endif
+
 /*
  * Special printk facility for scheduler/timekeeping use only, _DO_NOT_USE_ !
  */

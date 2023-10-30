@@ -336,6 +336,11 @@ struct sk_buff *__alloc_skb(unsigned int size, gfp_t gfp_mask,
 
 		fclones->skb2.fclone = SKB_FCLONE_CLONE;
 	}
+
+#ifdef CONFIG_IP_NF_LFP
+	skb->nfcache = 0;
+#endif
+	skb->fast_forwarded = 0;
 out:
 	return skb;
 nodata:
@@ -369,6 +374,10 @@ static struct sk_buff *__build_skb_around(struct sk_buff *skb,
 	shinfo = skb_shinfo(skb);
 	memset(shinfo, 0, offsetof(struct skb_shared_info, dataref));
 	atomic_set(&shinfo->dataref, 1);
+#ifdef CONFIG_IP_NF_LFP
+	skb->nfcache = 0;
+#endif
+	skb->fast_forwarded = 0;
 
 	return skb;
 }
@@ -1851,6 +1860,10 @@ void skb_copy_header(struct sk_buff *new, const struct sk_buff *old)
 	skb_shinfo(new)->gso_size = skb_shinfo(old)->gso_size;
 	skb_shinfo(new)->gso_segs = skb_shinfo(old)->gso_segs;
 	skb_shinfo(new)->gso_type = skb_shinfo(old)->gso_type;
+#ifdef CONFIG_IP_NF_LFP
+	new->nfcache	= old->nfcache;
+#endif
+	new->fast_forwarded = old->fast_forwarded;
 }
 EXPORT_SYMBOL(skb_copy_header);
 

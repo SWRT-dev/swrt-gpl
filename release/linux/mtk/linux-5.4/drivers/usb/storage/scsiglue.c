@@ -115,6 +115,11 @@ static int slave_configure(struct scsi_device *sdev)
 		 */
 		blk_queue_max_hw_sectors(sdev->request_queue, 0x7FFFFF);
 	} else if (us->pusb_dev->speed >= USB_SPEED_SUPER) {
+		/* USB3 devices will be limited to 1024 sectors. This gives us
+		 * better throughput on most devices.
+		 */
+		blk_queue_max_hw_sectors(sdev->request_queue, 1024);
+	} else if (us->pusb_dev->speed >= USB_SPEED_SUPER) {
 		/*
 		 * USB3 devices will be limited to 2048 sectors. This gives us
 		 * better throughput on most devices.
@@ -644,7 +649,11 @@ static const struct scsi_host_template usb_stor_host_template = {
 	 * and Apple Mac OS X 10.11 limiting transfers to 256 sectors for USB2
 	 * and 2048 for USB3 devices.
 	 */
+#if defined(PGB_QUICK_PATH)
+	.max_sectors =                  512,
+#else
 	.max_sectors =                  240,
+#endif
 
 	/* emulated HBA */
 	.emulated =			1,

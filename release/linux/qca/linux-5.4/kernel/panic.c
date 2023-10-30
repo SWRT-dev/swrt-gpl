@@ -208,7 +208,7 @@ void panic(const char *fmt, ...)
 	va_start(args, fmt);
 	len = vscnprintf(buf, sizeof(buf), fmt, args);
 	va_end(args);
-
+	enable_oopsbuf(1);
 	if (len && buf[len - 1] == '\n')
 		buf[len - 1] = '\0';
 

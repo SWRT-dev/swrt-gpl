@@ -745,6 +745,9 @@ struct sk_buff {
 #if defined(CONFIG_NF_CONNTRACK) || defined(CONFIG_NF_CONNTRACK_MODULE)
 	unsigned long		 _nfct;
 #endif
+#if defined(CONFIG_IP_NF_LFP)
+	__u32			nfcache;
+#endif
 #if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
        struct nf_queue_entry   *nf_queue_entry;
 #endif
@@ -4295,6 +4298,9 @@ static inline void nf_reset_ct(struct sk_buff *skb)
 	nf_conntrack_put(skb_nfct(skb));
 	skb->_nfct = 0;
 #endif
+#ifdef CONFIG_IP_NF_LFP /* the only user */
+	skb->nfcache = 0;
+#endif
 }
 
 static inline void nf_reset_trace(struct sk_buff *skb)
@@ -4326,6 +4332,9 @@ static inline void __nf_copy(struct sk_buff *dst, const struct sk_buff *src,
 #if IS_ENABLED(CONFIG_NETFILTER_XT_TARGET_TRACE) || defined(CONFIG_NF_TABLES)
 	if (copy)
 		dst->nf_trace = src->nf_trace;
+#endif
+#if defined(CONFIG_IP_NF_LFP)
+	dst->nfcache = src->nfcache;
 #endif
 }
 

@@ -2150,6 +2150,9 @@ struct net_device {
 	struct lock_class_key	qdisc_xmit_lock_key;
 	struct lock_class_key	addr_list_lock_key;
 	bool			proto_down;
+#if 1 /* IPTV tag only NIC */
+	bool			vlan_only;
+#endif
 	unsigned		wol_enabled:1;
 };
 #define to_net_dev(d) container_of(d, struct net_device, dev)
@@ -2496,6 +2499,7 @@ struct packet_type {
 	struct net		*af_packet_net;
 	void			*af_packet_priv;
 	struct list_head	list;
+	bool			mcast_only;
 };
 
 struct offload_callbacks {

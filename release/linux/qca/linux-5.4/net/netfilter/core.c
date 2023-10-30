@@ -39,6 +39,11 @@ struct static_key nf_hooks_needed[NFPROTO_NUMPROTO][NF_MAX_HOOKS];
 EXPORT_SYMBOL(nf_hooks_needed);
 #endif
 
+#ifdef CONFIG_IP_NF_LFP
+typedef int (*lfpHitHook)(int pf, unsigned int hook, struct sk_buff *skb);
+extern lfpHitHook lfp_hit_hook;
+#endif
+
 static DEFINE_MUTEX(nf_hook_mutex);
 
 /* max hooks per family/hooknum */
@@ -509,6 +514,12 @@ int nf_hook_slow(struct sk_buff *skb, struct nf_hook_state *state,
 	unsigned int verdict;
 	int ret;
 
+#ifdef CONFIG_IP_NF_LFP
+	if(likely(lfp_hit_hook)) {
+		ret = lfp_hit_hook(state->pf, state->hook, skb);
+		if(unlikely(ret)) return 1;
+	}
+#endif
 	for (; s < e->num_hook_entries; s++) {
 		verdict = nf_hook_entry_hookfn(&e->hooks[s], skb, state);
 		switch (verdict & NF_VERDICT_MASK) {
@@ -519,6 +530,11 @@ int nf_hook_slow(struct sk_buff *skb, struct nf_hook_state *state,
 			ret = NF_DROP_GETERR(verdict);
 			if (ret == 0)
 				ret = -EPERM;
+			return ret;
+		case NF_IMQ_QUEUE:
+			ret = nf_queue(skb, state, s, verdict);
+			if (ret == -ECANCELED)
+				continue;
 			return ret;
 		case NF_QUEUE:
 			ret = nf_queue(skb, state, s, verdict);

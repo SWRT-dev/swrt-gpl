@@ -105,6 +105,12 @@ enum ip_conntrack_status {
 	IPS_OFFLOAD_BIT = 14,
 	IPS_OFFLOAD = (1 << IPS_OFFLOAD_BIT),
 
+	/* Trigger, not included in offical kernel.
+	 * Make sure bit number is not overlapped with anyone above.
+	 */
+	IPS_TRIGGER_BIT = 15,
+	IPS_TRIGGER = (1 << IPS_TRIGGER_BIT),
+
 	/* Be careful here, modifying these bits can make things messy,
 	 * so don't let users modify them directly.
 	 */

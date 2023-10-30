@@ -475,6 +475,107 @@ bool printk_percpu_data_ready(void)
 	return __printk_percpu_data_ready;
 }
 
+#ifdef CONFIG_DUMP_PREV_OOPS_MSG
+#include <linux/io.h>
+struct oopsbuf_s {
+	char sig[8];
+	uint32_t len;
+	char buf[0];
+};
+
+#define OOPSBUF_SIG	"OopsBuf"
+#define MAX_PREV_OOPS_MSG_LEN	(CONFIG_DUMP_PREV_OOPS_MSG_BUF_LEN - sizeof(struct oopsbuf_s))
+
+static struct oopsbuf_s *oopsbuf = NULL;
+static int save_oopsmsg = 0;
+
+int enable_oopsbuf(int onoff)
+{
+	int ret = save_oopsmsg;
+
+	save_oopsmsg = !!onoff;
+	return ret;
+}
+
+static void copy_msg_to_oopsbuf(const char *msg, unsigned int len)
+{
+	char *p;
+
+	if (likely(!save_oopsmsg || !oopsbuf))
+		return;
+	else if (unlikely(!msg || len <= 0))
+		return;
+
+	if ((oopsbuf->len + len + 1) >= MAX_PREV_OOPS_MSG_LEN)
+		len = MAX_PREV_OOPS_MSG_LEN - (oopsbuf->len + 1);
+
+	if (!len) // out of space
+		return;
+
+	p = oopsbuf->buf + oopsbuf->len;
+	memcpy(p, (void*) msg, len);
+	p += len;
+	*p = '\0';
+	oopsbuf->len += len;
+}
+
+int __init prepare_and_dump_previous_oops(void)
+{
+	int len;
+	unsigned char *u;
+	char *p, *q, log_prefix[] = "<?>>>>XXXXXX";
+
+	oopsbuf = memremap(CONFIG_DUMP_PREV_OOPS_MSG_BUF_ADDR, MAX_PREV_OOPS_MSG_LEN, MEMREMAP_WC);
+	if (!oopsbuf) {
+		printk(KERN_ERR "!!! Cannot allocate oopsbuf !!!\n");
+		return -1;
+	}
+
+	if (strncmp(oopsbuf->sig, OOPSBUF_SIG, strlen(OOPSBUF_SIG))) {
+		u = oopsbuf->sig;
+		printk("Invalid signature of oopsbuf: %02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X (len %d)\n",
+			u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7],
+			oopsbuf->len);
+	}
+
+	if (oopsbuf->len > 0 && oopsbuf->len < MAX_PREV_OOPS_MSG_LEN) {
+		/* Fix-up oops message.
+		 * If message is broken by NULL character, use space character instead.
+		 * If character is not printable, use the '.' character instead.
+		 */
+		for (p = oopsbuf->buf, len = oopsbuf->len; len > 0; len--, p++) {
+			if (*p == '\0')
+				*p = ' ';
+			else if (!isprint(*p) && *p != '\n')
+				*p = '.';
+		}
+		*p = '\0';
+
+		p = oopsbuf->buf;
+		printk("_ Reboot message ... _______________________________________________________\n");
+		while ((q = strsep(&p, "\n"))) {
+			if (q[0] == '<' && q[2] == '>' && q[1] >= '0' && q[1] <= '9') {
+				strncpy(log_prefix, q, 3);
+				log_prefix[3] = '\0';
+				q += 3;
+			} else {
+				log_prefix[0] = '\0';
+			}
+			printk("%s crash_log: %s\n", log_prefix, q);
+		}
+		printk("____________________________________________________________________________\n");
+	}
+
+	/* Initialize oopsbuf */
+	strcpy(oopsbuf->sig, OOPSBUF_SIG);
+	oopsbuf->len = 0;
+	memset(oopsbuf->buf, 0, MAX_PREV_OOPS_MSG_LEN);
+	return 0;
+}
+#else
+static inline void copy_msg_to_oopsbuf(char *msg, unsigned int len) { }
+#endif
+
 /* Return log buffer address */
 char *log_buf_addr_get(void)
 {
@@ -650,12 +751,15 @@ static int log_store(u32 caller_id, int facility, int level,
 	/* fill message */
 	msg = (struct printk_log *)(log_buf + log_next_idx);
 	memcpy(log_text(msg), text, text_len);
+	copy_msg_to_oopsbuf(text, text_len);
 	msg->text_len = text_len;
 	if (trunc_msg_len) {
 		memcpy(log_text(msg) + text_len, trunc_msg, trunc_msg_len);
+		copy_msg_to_oopsbuf(trunc_msg, trunc_msg_len);
 		msg->text_len += trunc_msg_len;
 	}
 	memcpy(log_dict(msg), dict, dict_len);
+	copy_msg_to_oopsbuf(dict, dict_len);
 	msg->dict_len = dict_len;
 	msg->facility = facility;
 	msg->level = level & 7;
@@ -673,6 +777,7 @@ static int log_store(u32 caller_id, int facility, int level,
 	/* insert message */
 	log_next_idx += msg->len;
 	log_next_seq++;
+	copy_msg_to_oopsbuf("\n", 1);
 
 	return msg->text_len;
 }

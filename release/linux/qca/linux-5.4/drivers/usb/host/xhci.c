@@ -33,6 +33,13 @@
 static int link_quirk;
 module_param(link_quirk, int, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(link_quirk, "Don't clear the chain bit on a link TRB");
+#if defined(CONFIG_USB_XHCI_HCD_MODULE)
+int u3intf = 0;
+#else // compile in version
+int u3intf = 1;
+#endif
+module_param(u3intf, int, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(u3intf, "USB3/2.4GHz interference");
 
 static unsigned long long quirks;
 module_param(quirks, ullong, S_IRUGO);

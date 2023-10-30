@@ -287,7 +287,7 @@ static void die_kernel_fault(const char *msg, unsigned long addr,
 			     unsigned int esr, struct pt_regs *regs)
 {
 	bust_spinlocks(1);
-
+	enable_oopsbuf(1);
 	pr_alert("Unable to handle kernel %s at virtual address %016lx\n", msg,
 		 addr);
 

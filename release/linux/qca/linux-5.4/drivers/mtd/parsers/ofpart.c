@@ -16,6 +16,51 @@
 #include <linux/slab.h>
 #include <linux/mtd/partitions.h>
 
+#if defined(RAX120) || defined(SWRT360V6)
+struct hack_nand_partition_entry {
+	u32 offset; /* bytes */
+	u32 size;   /* bytes */
+	char    *name;
+};
+
+struct hack_nand_partition_entry hack_nand_partition[] = {
+#if defined(RAX120)
+	{ 0x00000000, 0x00F80000, "Bootloader" },
+	{ 0x00d00000, 0x00080000, "appsblenv" },
+	{ 0x00f80000, 0x00080000, "art" },
+	{ 0x01180000, 0x00100000, "boarddata" },
+	{ 0x01980000, 0x06400000, "firmware" },
+	{ 0x01980000, 0x00620000, "kernel" },
+	{ 0x01fa0000, 0x05de0000, "rootfs" },
+	{ 0x0e880000, 0x11760000, "UBI_DEV" }
+#elif defined(SWRT360V6)
+	{ 0x00000000, 0x00180000, "0:SBL1" },
+	{ 0x00180000, 0x00100000, "0:MIBIB" },
+	{ 0x00280000, 0x00080000, "0:BOOTCONFIG" },
+	{ 0x00300000, 0x00080000, "0:BOOTCONFIG1" },
+	{ 0x00380000, 0x00380000, "0:QSEE" },
+	{ 0x00700000, 0x00380000, "0:QSEE_1" },
+	{ 0x00A80000, 0x00080000, "0:DEVCFG" },
+	{ 0x00B00000, 0x00080000, "0:DEVCFG_1" },
+	{ 0x00B80000, 0x00080000, "0:RPM" },
+	{ 0x00C00000, 0x00080000, "0:RPM_1" },
+	{ 0x00C80000, 0x00080000, "0:CDT" },
+	{ 0x00D00000, 0x00080000, "0:CDT_1" },
+	{ 0x00D80000, 0x00080000, "0:APPSBLENV" },
+	{ 0x00E00000, 0x00180000, "0:APPSBL" },
+	{ 0x00F80000, 0x00180000, "0:APPSBL_1" },
+	{ 0x01100000, 0x00080000, "0:ART" },
+//	{ 0x01180000, 0x02CA0000, "firmware" },
+//	{ 0x03E20000, 0x03520000, "UBI_DEV" },
+	{ 0x01180000, 0x05940000, "UBI_DEV" },
+	{ 0x06AC0000, 0x00880000, "jffsconcat1" },
+	{ 0x07340000, 0x00CC0000, "BACKUP" }
+#endif
+};
+#endif
+
+
+
 static bool node_has_compatible(struct device_node *pp)
 {
 	return of_get_property(pp, "compatible", NULL);
@@ -32,7 +77,9 @@ static int parse_fixed_partitions(struct mtd_info *master,
 	struct device_node *pp;
 	int nr_parts, i, ret = 0;
 	bool dedicated = true;
-
+#if defined(RAX120) || defined(SWRT360V6)
+	int count;
+#endif
 
 	/* Pull of_node from the master device node */
 	mtd_node = mtd_get_of_node(master);
@@ -67,7 +114,13 @@ static int parse_fixed_partitions(struct mtd_info *master,
 	if (nr_parts == 0)
 		return 0;
 
+#if defined(RAX120)
+	parts = kzalloc(35 * sizeof(*parts), GFP_KERNEL);
+#elif defined(SWRT360V6)
+	parts = kzalloc(24 * sizeof(*parts), GFP_KERNEL);
+#else
 	parts = kcalloc(nr_parts, sizeof(*parts), GFP_KERNEL);
+#endif
 	if (!parts)
 		return -ENOMEM;
 
@@ -123,6 +176,21 @@ static int parse_fixed_partitions(struct mtd_info *master,
 	if (!nr_parts)
 		goto ofpart_none;
 
+#if defined(RAX120) || defined(SWRT360V6)
+	count = sizeof(hack_nand_partition)/sizeof(struct hack_nand_partition_entry);
+	for (i = 0, nr_parts = 0; i < count; i++, nr_parts++) {
+		parts[nr_parts].offset = hack_nand_partition[i].offset;
+		parts[nr_parts].size = hack_nand_partition[i].size;
+		parts[nr_parts].name = hack_nand_partition[i].name;
+#if defined(RAX120)
+		if(i == 2 || i == 3)
+			parts[nr_parts].mask_flags |= MTD_WRITEABLE;
+#endif
+	}
+#if defined(SWRT360V6)
+	parts[nr_parts].mask_flags |= MTD_WRITEABLE;//lock factory
+#endif
+#endif
 	*pparts = parts;
 	return nr_parts;
 

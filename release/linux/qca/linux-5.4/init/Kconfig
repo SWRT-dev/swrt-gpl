@@ -1421,6 +1421,20 @@ config PRINTK_NMI
 	depends on PRINTK
 	depends on HAVE_NMI
 
+config DUMP_PREV_OOPS_MSG
+	default n
+	bool "Dump previous kernel oops message" if PRINTK
+
+config DUMP_PREV_OOPS_MSG_BUF_ADDR
+	hex "Buffer start address to store previous kernel oops message."
+	depends on DUMP_PREV_OOPS_MSG
+	default "0x4C800000"
+
+config DUMP_PREV_OOPS_MSG_BUF_LEN
+	hex "Buffer length to store previous kernel oops message."
+	depends on DUMP_PREV_OOPS_MSG
+	default "0x2000"
+
 config BUG
 	bool "BUG() support" if EXPERT
 	default y

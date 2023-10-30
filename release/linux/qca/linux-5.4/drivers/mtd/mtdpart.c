@@ -18,6 +18,9 @@
 #include <linux/magic.h>
 #include <linux/err.h>
 #include <linux/of.h>
+#ifdef CONFIG_MTD_ROOTFS_ROOT_DEV
+#include <linux/root_dev.h>
+#endif
 
 #include "mtdcore.h"
 #include "mtdsplit/mtdsplit.h"
@@ -862,6 +865,9 @@ int add_mtd_partitions(struct mtd_info *master,
 	struct mtd_part *slave;
 	uint64_t cur_offset = 0;
 	int i, ret;
+#ifdef CONFIG_MTD_ROOTFS_ROOT_DEV
+	dev_t *d = NULL;
+#endif
 
 	printk(KERN_NOTICE "Creating %d MTD partitions on \"%s\":\n", nbparts, master->name);
 
@@ -891,6 +897,16 @@ int add_mtd_partitions(struct mtd_info *master,
 		/* Look for subpartitions */
 		parse_mtd_partitions(&slave->mtd, parts[i].types, NULL);
 
+#ifdef CONFIG_MTD_ROOTFS_ROOT_DEV
+		d = NULL;
+		if (!strcmp(parts[i].name, "rootfs"))
+			d = &ROOTFS_DEV;
+		else if (!strcmp(parts[i].name, "rootfs2"))
+			d = &ROOTFS2_DEV;
+
+		if (d)
+			*d = MKDEV(MTD_BLOCK_MAJOR, slave->mtd.index);
+#endif
 		cur_offset = slave->offset + slave->mtd.size;
 	}
 

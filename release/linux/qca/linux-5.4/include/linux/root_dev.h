@@ -21,5 +21,8 @@ enum {
 };
 
 extern dev_t ROOT_DEV;
+#ifdef CONFIG_MTD_ROOTFS_ROOT_DEV
+extern dev_t ROOTFS_DEV, ROOTFS2_DEV;
+#endif
 
 #endif

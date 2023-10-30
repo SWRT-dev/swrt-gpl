@@ -664,6 +664,9 @@ asmlinkage __visible void __init start_kernel(void)
 	trap_init();
 	mm_init();
 
+#ifdef CONFIG_DUMP_PREV_OOPS_MSG
+	prepare_and_dump_previous_oops();
+#endif
 	ftrace_init();
 
 	/* trace_printk can be enabled here */

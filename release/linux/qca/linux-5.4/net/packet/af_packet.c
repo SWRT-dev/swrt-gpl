@@ -235,6 +235,9 @@ struct packet_skb_cb {
 static void __fanout_unlink(struct sock *sk, struct packet_sock *po);
 static void __fanout_link(struct sock *sk, struct packet_sock *po);
 
+#if defined(CONFIG_PLAX56XP4)
+static struct sock *plc_sock=NULL;
+#endif
 static int packet_direct_xmit(struct sk_buff *skb)
 {
 	return dev_direct_xmit(skb, packet_pick_tx_queue(skb));
@@ -2976,6 +2979,11 @@ static int packet_snd(struct socket *sock, struct msghdr *msg, size_t len)
 		goto out_free;
 	}
 
+#if defined(CONFIG_PLAX56XP4)
+	if (plc_sock == sk && sock->type == SOCK_RAW) {
+		skb->data[6] |= 0x2; // enable source MAC local administer bit
+	}
+#endif
 	skb->protocol = proto;
 	skb->dev = dev;
 	skb->priority = sk->sk_priority;
@@ -3099,6 +3107,11 @@ static int packet_release(struct socket *sock)
 	packet_free_pending(po);
 	sk_refcnt_debug_release(sk);
 
+#if defined(CONFIG_PLAX56XP4)
+	if (sk == plc_sock) {
+		plc_sock = NULL;
+	}
+#endif
 	sock_put(sk);
 	return 0;
 }
@@ -3144,6 +3157,11 @@ static int packet_do_bind(struct sock *sk, const char *name, int ifindex,
 	if (dev)
 		dev_hold(dev);
 
+#if defined(CONFIG_PLAX56XP4)
+	if (!strcmp(dev->name, "eth1") && !strcmp(current->comm, "lldpd")) {
+		plc_sock = sk;
+	}
+#endif
 	proto_curr = po->prot_hook.type;
 	dev_curr = po->prot_hook.dev;
 
@@ -3310,9 +3328,13 @@ static int packet_create(struct net *net, struct socket *sock, int protocol,
 
 	po->prot_hook.af_packet_priv = sk;
 	po->prot_hook.af_packet_net = sock_net(sk);
+	po->prot_hook.mcast_only = false;
 
 	if (proto) {
 		po->prot_hook.type = proto;
+		if ((sock->type == SOCK_RAW) && (proto == htons(ETH_P_ALL)) && !strcmp(current->comm, "lldpd")) {
+			po->prot_hook.mcast_only = true;
+		}
 		__register_prot_hook(sk);
 	}
 
