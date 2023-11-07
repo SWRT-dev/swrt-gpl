@@ -289,6 +289,7 @@ struct hci_dev {
 	unsigned long	quirks;
 
 	atomic_t	cmd_cnt;
+	unsigned int	cmdtimeoutcnt;
 	unsigned int	acl_cnt;
 	unsigned int	sco_cnt;
 	unsigned int	le_cnt;

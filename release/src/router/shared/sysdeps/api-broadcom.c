@@ -1763,7 +1763,7 @@ static char* mac_str_toupper(char *str)
 	char *c;
 	static char buf[18];
 
-	strncpy(buf, str, sizeof(buf) - 1);
+	strlcpy(buf, str, sizeof(buf));
 	for (c = buf; *c; ++c)
 		*c = toupper(*c);
 

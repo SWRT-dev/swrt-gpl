@@ -20904,9 +20904,6 @@ static void sysinit(void)
 		snprintf(s, sizeof(s), "/dev/%s", dn[i]);
 		chmod(s, 0666);
 	}
-#ifndef HND_ROUTER
-	chmod("/dev/gpio", 0660);
-#endif
 #ifdef RTCONFIG_HND_ROUTER_AX_6756
         eval("/etc/make_static_devnodes.sh");
 #endif
