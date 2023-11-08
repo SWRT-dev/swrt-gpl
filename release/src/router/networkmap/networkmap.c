@@ -1661,7 +1661,6 @@ int main(int argc, char *argv[])
 				}
 			}//End of arp_getlen != -1
 		} // End of while for flush buffer
-		NMP_DEBUG("main loop start\n");
 #ifdef NMP_DB
 		//RAwny: check delete signal
 		if(delete_sig) {
@@ -1696,7 +1695,6 @@ int main(int argc, char *argv[])
 		if(nvram_match("rescan_networkmap", "1"))
 			continue;
 		nvram_set("networkmap_status", "0");    // Done scanning and resolving
-		NMP_DEBUG("main loop end\n");
 		sleep(2);
 	} //End of main while loop
 	file_unlock(networkmap_lock);
