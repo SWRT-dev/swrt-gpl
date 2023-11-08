@@ -726,7 +726,7 @@ else ifeq ($(BUILD_NAME),RT-ACRH26)
 	cd $(INSTALLDIR)/www/require && mv menuTrees/menuTree_RT-ACRH26.js modules/menuTree.js
 else ifeq ($(BUILD_NAME),RT-AC65U)
 	cd $(INSTALLDIR)/www/require && mv menuTrees/menuTree_RT-AC65U.js modules/menuTree.js
-else ifeq ($(BUILD_NAME),GT-AXY16000)
+else ifeq ($(BUILD_NAME),$(filter $(BUILD_NAME), GT-AXY16000 RT-AX89U))
 	cd $(INSTALLDIR)/www/require && mv menuTrees/menuTree_ROG_AXY16000.js modules/menuTree.js
 else ifeq ($(RTCONFIG_ROG_UI),y)
 	cd $(INSTALLDIR)/www/require && mv menuTrees/menuTree_ROG.js modules/menuTree.js
