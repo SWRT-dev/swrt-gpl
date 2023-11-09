@@ -366,6 +366,8 @@ void MTK_stainfo(int unit)
 			wireless_type = 1;
 		else if(!strcmp(ifname, WIF_5G))
 			wireless_type = 2;
+//		else if(!strcmp(ifname, WIF_5G2))
+//			wireless_type = 3;
 		if(mp->Num > 0){
 			int hr, min, sec;
 			unsigned int tx_ratedata = 0;

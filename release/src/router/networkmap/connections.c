@@ -135,7 +135,7 @@ void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 #endif
 	if(offline == 0){
 		if(g_sta_info_tab){
-			for(i = 0; i < p_client_tab->detail_info_num; i++){
+			for(i = 0; i <= p_client_tab->detail_info_num; i++){
 				for(tmp = g_sta_info_tab; tmp != NULL; tmp = tmp->next){
 					if(memcmp(p_client_tab->mac_addr[i], tmp->mac_addr, sizeof(p_client_tab->mac_addr[0])))
 						continue;
@@ -155,7 +155,7 @@ void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 			conn_debug_info();
 	}else{
 		if(p_client_tab->detail_info_num > 0){
-			for(i = 0; i < p_client_tab->detail_info_num; i++){
+			for(i = 0; i <= p_client_tab->detail_info_num; i++){
 				if(p_client_tab->wireless[i] == 0)
 					continue;
 				if(g_show_sta_info == 0 && g_sta_info_tab == NULL){

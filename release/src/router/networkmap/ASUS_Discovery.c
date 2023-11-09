@@ -25,8 +25,13 @@
 #include <stdio.h>           //sprintf function
 #include <sys/socket.h>      //socket function
 //#include <sys/_endian.h>     //htons function
+#if defined(RTCONFIG_MUSL_LIBC) || defined(MUSL_LIBC)
+#include <errno.h>       //errorno function
+#include <poll.h> 
+#else
 #include <sys/errno.h>       //errorno function
 #include <sys/poll.h>        //struct pollfd
+#endif
 #include <netinet/in.h>      //const IPPROTO_UDP
 #include <unistd.h>          //close function
 #include "../shared/rtstate.h"

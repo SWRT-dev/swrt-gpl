@@ -6,7 +6,6 @@ struct get_stainfo_priv_s {
 
 static int handle_QCA_stainfo(const WLANCONFIG_LIST *src, void *arg)
 {
-	unsigned int wireless_type = 1;
 	struct get_stainfo_priv_s *priv = arg;
 	char buffer[18];
 	unsigned char macaddr[6];
@@ -24,11 +23,7 @@ static int handle_QCA_stainfo(const WLANCONFIG_LIST *src, void *arg)
 		strlcpy(buffer, src->addr, sizeof(buffer));
 		ether_atoe(buffer, macaddr);
 		memcpy(sta_info_tab->mac_addr, macaddr, sizeof(sta_info_tab->mac_addr));
-		if(priv->unit == 0)
-			wireless_type = 1;
-		else if(priv->unit == 1)
-			wireless_type = 2;
-		sta_info_tab->wireless = wireless_type;
+		sta_info_tab->wireless = priv->unit + 1;
 		printf("unit=%d,ifname=%s\n",priv->unit, priv->wlif_name);
 		if(g_show_sta_info && f_exists("/tmp/conn_debug"))
 			printf("%s[QCA] %02X%02X%02X%02X%02X%02X %s wl:%d %d, rx %s tx %s rssi %d conn_time %s\n", "[connection log]", sta_info_tab->mac_addr[0],

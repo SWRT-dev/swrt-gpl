@@ -60,17 +60,26 @@ int TRIGGER_FLAG;
 #include <json.h>
 
 #define vstrsep(buf, sep, args...) _vstrsep(buf, sep, args, NULL)
+#define MAX_SUBNET_SCAN		(24) /* 23..24 */
+#define NUM_CLIENTS_SCAN	(1U << (32U - MAX_SUBNET_SCAN))
 
 unsigned char my_hwaddr[6];
 unsigned char my_ipaddr[4];
 unsigned char my_ipmask[4];
 unsigned char gateway_ipaddr[4] = {0};
 unsigned char broadcast_hwaddr[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-int networkmap_fullscan, lock;
+volatile unsigned int scan_now = 0;
+static unsigned int scan_max = NUM_CLIENTS_SCAN - 1;
+static unsigned int scan_net = 0xC0A80A00;
+static volatile int scan_block = 0;
+static volatile int networkmap_fullscan = 0; //0=init,1=start scan,2=done,3=reset list and restart scan
+static volatile int daemon_exit = 0;
+static int arp_sockfd = -1;
+int lock;
 static int scan_count = 0, sw_mode = 0;
 static int delete_sig;
 int arp_full_scan = 0, update_oui = 0;
-int networkmap_lock, daemon_exit = 0;
+int networkmap_lock;
 struct json_object *nmp_cl_json = NULL, *networkmap_oui_json = NULL;
 CLIENT_DETAIL_INFO_TABLE *G_CLIENT_TAB = NULL;
 ac_state *g_conv_state = NULL, *g_bwdpi_state = NULL, *g_vendor_state= NULL;
@@ -761,7 +770,7 @@ void clean_client_list(int signo)
 }
 #endif
 
-
+#ifdef RTCONFIG_BWDPI
 void StringChk(char *chk_string)
 {
         char *ptr = chk_string;
@@ -772,7 +781,6 @@ void StringChk(char *chk_string)
         }
 }
 
-#ifdef RTCONFIG_BWDPI
 static int QueryBwdpiInfo(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, int x)
 {
 	bwdpi_device bwdpi_dev_info;
@@ -970,7 +978,7 @@ void check_asus_discovery(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int x)
 		NMP_DEBUG("check_asus_discovery:\n");
 		nv = nvp = strdup(nvram_safe_get("asus_device_list"));
 		if(nv){
-			sprintf(macaddr,"%02X:%02X:%02X:%02X:%02X:%02X", p_client_tab->mac_addr[x][0], p_client_tab->mac_addr[x][1],
+			snprintf(macaddr, sizeof(macaddr), "%02X:%02X:%02X:%02X:%02X:%02X", p_client_tab->mac_addr[x][0], p_client_tab->mac_addr[x][1],
 				p_client_tab->mac_addr[x][2], p_client_tab->mac_addr[x][3], p_client_tab->mac_addr[x][4], p_client_tab->mac_addr[x][5]);
 			NMP_DEBUG("search MAC= %s\n", macaddr);
 			if(strstr(nv, macaddr))
@@ -1013,7 +1021,7 @@ void check_asus_discovery(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int x)
 				json_object *vendor_nameobj= NULL;
 				NMP_DEBUG("check_oui_json_db:\n");
 				if(p_client_tab->mac_addr[x][0] || p_client_tab->mac_addr[x][1] || p_client_tab->mac_addr[x][2]){
-					sprintf(macaddr, "%02X%02X%02X", p_client_tab->mac_addr[x][0], p_client_tab->mac_addr[x][1], p_client_tab->mac_addr[x][2]);
+					snprintf(macaddr, sizeof(macaddr), "%02X%02X%02X", p_client_tab->mac_addr[x][0], p_client_tab->mac_addr[x][1], p_client_tab->mac_addr[x][2]);
 					json_object_object_get_ex(networkmap_oui_json, macaddr, &vendor_nameobj);
 					vendor_name = (char *)json_object_get_string(vendor_nameobj);
 					if(vendor_name){
@@ -1457,7 +1465,7 @@ void count_num_of_clients()
 			else if(p_client_tab->wireless[i] == 3)
 				nmp_wlan_5g_2++;
 			else
-				cprintf("[count_num_of_clients]Error!!Should not come here!!!\n");
+				_dprintf("[count_num_of_clients]Error!!Should not come here!!!\n");
 		}
 		if(i == MAX_NR_CLIENT_LIST){
 			NMP_CONSOLE_DEBUG("[count_num_of_clients]%d, %d, %d, %d\n", nmp_wired, nmp_wlan_2g, nmp_wlan_5g_1, nmp_wlan_5g_2);
@@ -1471,17 +1479,82 @@ void count_num_of_clients()
 	}
 }
 
-/******************************************/
-int main(int argc, char *argv[])
+int arp_loop(CLIENT_DETAIL_INFO_TABLE *p_client_tab, struct sockaddr_in router_addr)
 {
-	int arp_sockfd, arp_getlen, i, wifi_num = 0;
-	struct sockaddr_in router_addr, router_netmask;
-	char router_ipaddr[16], router_mac[18], buffer[ARP_BUFFER_SIZE];
+	int arp_getlen;
+	char buffer[ARP_BUFFER_SIZE];
 	unsigned char scan_ipaddr[4]; // scan ip
 	ARP_HEADER * arp_ptr;
 	struct timeval arp_timeout = {2, 0};
-	int shm_client_detail_info_id , refresh_networkmap;
-	int arp_scan_trigger = 1;
+
+	while(daemon_exit == 0){
+		if(scan_count == 0){
+			// (re)-start from the begining
+			NMP_DEBUG("Starting full scan!\n");
+			if(nvram_match("refresh_networkmap", "1")){//reset client tables
+				NMP_DEBUG("Flush arp!\n");
+				if(arp_full_scan == 0)
+					system("ip -s -s neigh flush all\n");
+				eval("asusdiscovery");	//find asus device
+				nvram_unset("refresh_networkmap");
+				NMP_DEBUG("networkmap: rescan client list!\n");
+				reset_client_list(G_CLIENT_TAB);
+				NMP_DEBUG("reset client list over\n");
+			}
+			memset(scan_ipaddr, 0x00, 4);
+			memcpy(scan_ipaddr, &router_addr.sin_addr, 3);
+			arp_timeout.tv_sec = 0;
+			arp_timeout.tv_usec = 60000;
+			setsockopt(arp_sockfd, SOL_SOCKET, SO_RCVTIMEO, &arp_timeout, sizeof(arp_timeout));//set receive timeout
+		}
+		if(nvram_match("rescan_networkmap", "1")){
+			nvram_unset("rescan_networkmap");
+			scan_count = 0;
+			continue;
+		}
+		scan_count++;
+		scan_ipaddr[3]++;	
+		if(scan_count < MAX_NR_CLIENT_LIST && memcmp(scan_ipaddr, my_ipaddr, 4)){
+			sent_arppacket(arp_sockfd, (unsigned char *)scan_ipaddr);
+			memset(buffer, 0, ARP_BUFFER_SIZE);
+			arp_getlen = recvfrom(arp_sockfd, buffer, ARP_BUFFER_SIZE, 0, NULL, NULL);
+			if(arp_getlen == -1 || arp_getlen < (int)(sizeof(ARP_HEADER))){
+				if(scan_count >= MAX_NR_CLIENT_LIST)
+					break;
+			}else{
+				arp_ptr = (ARP_HEADER*)(buffer);
+				if(p_client_tab->ip_mac_num < MAX_NR_CLIENT_LIST){
+					nmap_receive_arp(p_client_tab, arp_ptr, scan_count);
+				}else{
+					clean_client_list(0);
+					nvram_set("refresh_networkmap", "1");
+					continue;
+				}
+			}
+		}         
+		else if(scan_count >= MAX_NR_CLIENT_LIST){ //Scan completed
+			arp_timeout.tv_sec = 2;
+			arp_timeout.tv_usec = 0;
+			setsockopt(arp_sockfd, SOL_SOCKET, SO_RCVTIMEO, &arp_timeout, sizeof(arp_timeout));//set receive timeout
+			networkmap_fullscan = 2;
+			scan_count = 0;
+			arp_parser_scan(G_CLIENT_TAB, INTERFACE);//scan arp cache again
+			nvram_set("networkmap_fullscan", "2");
+			NMP_DEBUG("Finish full scan!\n");
+			break;
+		}
+	}
+	return 0;
+}
+
+/******************************************/
+int main(int argc, char *argv[])
+{
+	int i;
+	struct sockaddr_in router_addr, router_netmask;
+	char router_ipaddr[16], router_mac[18];
+	struct timeval arp_timeout = {2, 0};
+	int shm_client_detail_info_id;
 	int lock;
 #if defined(RTCONFIG_QCA) && defined(RTCONFIG_WIRELESSREPEATER)	
 	char *mac;
@@ -1490,13 +1563,9 @@ int main(int argc, char *argv[])
 	char word[128];
 	char *next;
 	CLIENT_DETAIL_INFO_TABLE *p_client_tab;
-	time_t scan_start_time, scan_sys_arp_time, refresh_scan_arp_time;
+	time_t scan_start_time;
 	sw_mode = sw_mode();
-	foreach(word, nvram_safe_get("wl_ifnames"), next)
-		wifi_num++;
 	scan_start_time = time(NULL);
-	scan_sys_arp_time = time(NULL);
-	refresh_scan_arp_time = time(NULL);
 	int nmp_deep_scan = nvram_get_int("nmp_deep_scan");
 	if(nmp_deep_scan == 0)
 		nmp_deep_scan = 300;
@@ -1572,8 +1641,7 @@ int main(int argc, char *argv[])
 	g_bwdpi_state = construct_ac_trie(&nmp_bwdpi_type[0]);
 	g_vendor_state = construct_ac_trie(&nmp_vendor_type[0]);
 	NMP_DEBUG("end of loading automata\n");
-	networkmap_fullscan = 1;
-	refresh_networkmap = 0;
+	networkmap_fullscan = 0;
 	nvram_unset("rescan_networkmap");
 	nvram_unset("refresh_networkmap");
 	nvram_set("networkmap_fullscan", "0");
@@ -1588,79 +1656,19 @@ int main(int argc, char *argv[])
 	eval("asusdiscovery");	//find asus device
 
 	while(daemon_exit == 0){
-//		scan_count = 0;
-//		arp_full_scan = 1;
-		while(arp_scan_trigger){
-			if(networkmap_fullscan == 3){
-				NMP_DEBUG("Clean share memory client list!\n");
-				lock = file_lock("networkmap");
-				memset(G_CLIENT_TAB, 0, sizeof(CLIENT_DETAIL_INFO_TABLE));
-				file_unlock(lock);
-				networkmap_fullscan = 1;
-			}
-			if(scan_count == 0)
-				arp_parser_scan(G_CLIENT_TAB, INTERFACE);//scan arp cache
-			if(networkmap_fullscan == 1){ //Scan all IP address in the subnetwork
-				if(scan_count == 0){
-					// (re)-start from the begining
-					NMP_DEBUG("Starting full scan!\n");
-					nvram_set("networkmap_fullscan", "1");
-					if(nvram_match("refresh_networkmap", "1")){//reset client tables
-						NMP_DEBUG("Flush arp!\n");
-						if(arp_full_scan == 0)
-							system("ip -s -s neigh flush all\n");
-						eval("asusdiscovery");	//find asus device
-						nvram_unset("refresh_networkmap");
-						refresh_networkmap = 1;
-						NMP_DEBUG("networkmap: rescan client list!\n");
-						reset_client_list(G_CLIENT_TAB);
-						NMP_DEBUG("reset client list over\n");
-					}
-					memset(scan_ipaddr, 0x00, 4);
-					memcpy(scan_ipaddr, &router_addr.sin_addr, 3);
-					arp_timeout.tv_sec = 0;
-					arp_timeout.tv_usec = 60000;
-					setsockopt(arp_sockfd, SOL_SOCKET, SO_RCVTIMEO, &arp_timeout, sizeof(arp_timeout));//set receive timeout
-				}
-				if(nvram_match("rescan_networkmap", "1")){
-					nvram_unset("rescan_networkmap");
-					scan_count = 0;
-					continue;
-				}
-				scan_count++;
-				scan_ipaddr[3]++;	
-				if(scan_count < MAX_NR_CLIENT_LIST && memcmp(scan_ipaddr, my_ipaddr, 4)){
-					sent_arppacket(arp_sockfd, (unsigned char *)scan_ipaddr);
-				}         
-				else if(scan_count >= MAX_NR_CLIENT_LIST){ //Scan completed
-					arp_timeout.tv_sec = 2;
-					arp_timeout.tv_usec = 0;
-					setsockopt(arp_sockfd, SOL_SOCKET, SO_RCVTIMEO, &arp_timeout, sizeof(arp_timeout));//set receive timeout
-					networkmap_fullscan = 0;
-					scan_count = 0;
-					arp_scan_trigger = 0;
-					arp_parser_scan(G_CLIENT_TAB, INTERFACE);//scan arp cache again
-					nvram_set("networkmap_fullscan", "2");
-					NMP_DEBUG("Finish full scan!\n");
-					break;
-				}
-			}// End of full scan
-			memset(buffer, 0, ARP_BUFFER_SIZE);
-			arp_getlen = recvfrom(arp_sockfd, buffer, ARP_BUFFER_SIZE, 0, NULL, NULL);
-			if(arp_getlen == -1 || arp_getlen < (int)(sizeof(ARP_HEADER))){
-				if(scan_count >= MAX_NR_CLIENT_LIST)
-					break;
-			}else{
-				arp_ptr = (ARP_HEADER*)(buffer);
-				if(p_client_tab->ip_mac_num < MAX_NR_CLIENT_LIST){
-					nmap_receive_arp(p_client_tab, arp_ptr, scan_count);
-				}else{
-					clean_client_list(0);
-					nvram_set("refresh_networkmap", "1");
-					continue;
-				}
-			}//End of arp_getlen != -1
-		} // End of while for flush buffer
+		if(networkmap_fullscan == 3){
+			NMP_DEBUG("Clean share memory client list!\n");
+			lock = file_lock("networkmap");
+			memset(G_CLIENT_TAB, 0, sizeof(CLIENT_DETAIL_INFO_TABLE));
+			file_unlock(lock);
+		}else if(networkmap_fullscan == 0){
+			networkmap_fullscan = 1;
+			nvram_set("networkmap_fullscan", "1");
+			arp_parser_scan(G_CLIENT_TAB, INTERFACE);//scan arp cache
+		}
+		if(networkmap_fullscan == 1){ //Scan all IP address in the subnetwork
+			arp_loop(p_client_tab, router_addr);
+		}
 #ifdef NMP_DB
 		//RAwny: check delete signal
 		if(delete_sig) {
@@ -1669,24 +1677,14 @@ int main(int argc, char *argv[])
 			delete_sig = 0;
 		}
 #endif
-		if(refresh_networkmap){
-			reset_networkmap(G_CLIENT_TAB);
-			eval("asusdiscovery");	//find asus device
-			refresh_networkmap = 0;
-		}else if(nmp_deep_scan < time(NULL) - scan_start_time){
+
+		if(nmp_deep_scan < time(NULL) - scan_start_time){
 			scan_start_time = time(NULL);
-			refresh_networkmap = 0;
-			arp_scan_trigger = 1;
+			networkmap_fullscan = 0;
 			nvram_set("networkmap_status", "1");
 			continue;
-		}else if(30 < time(NULL) - scan_sys_arp_time){
-			scan_sys_arp_time = time(NULL);
-			arp_parser_scan(G_CLIENT_TAB, INTERFACE);//scan arp cache again
-		}else if(1800 < time(NULL) - refresh_scan_arp_time){
-			refresh_scan_arp_time = time(NULL);
-			networkmap_fullscan = 3;
-			continue;
 		}
+		arp_parser_scan(G_CLIENT_TAB, INTERFACE);//scan arp cache again
 		deep_scan(G_CLIENT_TAB);
 		if(nvram_match("fb_nmp_scan", "1"))
 			count_num_of_clients();
