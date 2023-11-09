@@ -24,7 +24,7 @@
 #include <stdio.h>    //printf function
 #include "ASUS_Discovery_Debug.h"
 
-//#define _ASUS_DEVICE_DISCOVERY_DEBUG
+#define _ASUS_DEVICE_DISCOVERY_DEBUG
 
 void myAsusDiscoveryDebugPrint(char *pc)
 {

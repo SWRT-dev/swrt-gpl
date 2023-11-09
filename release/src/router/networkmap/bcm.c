@@ -1,6 +1,5 @@
 #ifndef dtoh16
-static int g_swap = 0;
-#define dtoh16(i) (g_swap?bcmswap16(i):(uint16)(i))
+#define dtoh16(i) (uint16)(i)
 #endif
 
 static sta_info_t *wl_sta_info(char *ifname, struct ether_addr *ea)
@@ -24,7 +23,7 @@ static sta_info_t *wl_sta_info(char *ifname, struct ether_addr *ea)
 	return sta;
 }
 
-static char *ratetostr(uint32_t rate, char *buf)
+static char *ratetostr(uint32_t rate, char *buf, int len)
 {
 	if(buf == NULL)
 		return NULL;
@@ -32,7 +31,7 @@ static char *ratetostr(uint32_t rate, char *buf)
 		strcpy(buf, "        ");
 		return buf;
 	}
-	sprintf(buf, "%dM", rate / 1000);
+	snprintf(buf, len, "%dM", rate / 1000);
 	return buf;
 }
 
@@ -80,11 +79,11 @@ int BCM_stainfo(void)
 									sta_info_tab->rssi = 0;
 								else
 									sta_info_tab->rssi = scb_val.val;
-								ratetostr(sta->tx_rate, sta_info_tab->rxrate);
-								ratetostr(sta->rx_rate, sta_info_tab->rxrate);
+								ratetostr(sta->tx_rate, sta_info_tab->txrate, sizeof(sta_info_tab->txrate));
+								ratetostr(sta->rx_rate, sta_info_tab->rxrate, sizeof(sta_info_tab->rxrate));
 								hr = (sta->in) / 3600;
 								min = (sta->in) % 3600 / 60;
-								sec = sta->in % 3600 % 60;
+								sec = sta->in - hr * 3600 - min * 60;
 								snprintf(sta_info_tab->conn_time, sizeof(sta_info_tab->conn_time), "%02d:%02d:%02d", hr, min, sec);
 								if(g_show_sta_info && f_exists("/tmp/conn_debug"))
 									printf("%s[%3d,BCM] %02X%02X%02X%02X%02X%02Xwl:%d %d, rx %s tx %s rssi %d conn_time %s\n", "[connection log]", count,
