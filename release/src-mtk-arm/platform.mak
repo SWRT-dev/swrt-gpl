@@ -2,7 +2,7 @@ export LINUXDIR := $(SRCBASE)/linux/linux-5.4.x
 
 ifeq ($(EXTRACFLAGS),)
 ifeq ($(MT798X),y)
-export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -march=armv8-a -mfpu=vfpv3-d16 -mfloat-abi=softfp -mcpu=cortex-a53
+export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -march=armv8-a -mfpu=vfpv3-d16 -mfloat-abi=softfp -mcpu=cortex-a53 -fsigned-char
 else
 export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -mips32 -mtune=mips32
 #export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -marm -march=armv7-a -msoft-float -mfloat-abi=soft -mtune=cortex-a7
@@ -85,7 +85,7 @@ ifeq ($(RT4GAC86U),y)
 EXTRA_CFLAGS += -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__
 endif
 ifeq ($(MT798X),y)
-EXTRA_CFLAGS += -Os -mcpu=cortex-a53 -march=armv8 -mfpu=vfpv3-d16 -mfloat-abi=softfp -D_GNU_SOURCE -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__ -DMUSL_LIBC
+EXTRA_CFLAGS += -Os -mcpu=cortex-a53 -march=armv8 -mfpu=vfpv3-d16 -mfloat-abi=softfp -D_GNU_SOURCE -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__ -DMUSL_LIBC -fsigned-char
 endif
 
 export CONFIG_LINUX26=y

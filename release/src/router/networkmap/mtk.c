@@ -342,8 +342,7 @@ void MTK_stainfo(int unit)
 	char mac[18];
 	RT_802_11_MAC_TABLE_5G *mp;
 	char *value;
-	char rssi, cnt;
-	int xTxR;
+	int rssi, cnt, xTxR;
 	char *ifname = NULL;
 	char prefix[] = "wlXXXXXXXXXX_", tmp[128];
 	STA_INFO_TABLE *sta_info_tab = NULL;
@@ -372,62 +371,58 @@ void MTK_stainfo(int unit)
 			int hr, min, sec;
 			unsigned int tx_ratedata = 0;
 			unsigned int rx_ratedata = 0;
+			unsigned short rxrate;
 			unsigned char phy, mcs, bw, vht_nss, sgi, stbc;
 			unsigned char r_phy, r_mcs, r_bw, r_vht_nss, r_sgi, r_stbc;
 			for(i = 0; i < mp->Num; i++){
 				sta_info_tab = (STA_INFO_TABLE *)calloc(1, sizeof(STA_INFO_TABLE));
 				if(sta_info_tab == NULL){
-					_dprintf("%s: calloc failed.\n", __func__);
+					printf("%s: calloc failed.\n", __func__);
 					return;
 				}
 				rssi = cnt = 0;
 				memcpy(sta_info_tab->mac_addr, mp->Entry[i].Addr, sizeof(sta_info_tab->mac_addr));
 				sta_info_tab->wireless = wireless_type;
 				if(mp->Entry[i].AvgRssi0 && cnt < xTxR){
-					rssi += mp->Entry[i].AvgRssi0;
+					rssi += (signed int)(signed char)mp->Entry[i].AvgRssi0;//fix char = unsigned char on arm64
 					cnt++;
 				}
 				if(mp->Entry[i].AvgRssi1 && cnt < xTxR){
-					rssi += mp->Entry[i].AvgRssi1;
+					rssi += (signed int)(signed char)mp->Entry[i].AvgRssi1;
 					cnt++;
 				}
 				if(mp->Entry[i].AvgRssi2 && cnt < xTxR){
-					rssi += mp->Entry[i].AvgRssi2;
+					rssi += (signed int)(signed char)mp->Entry[i].AvgRssi2;
 					cnt++;
 				}
-				if(cnt == 0)
+				if(cnt == 0){
+					free(sta_info_tab);
 					continue;	//skip this sta info
-				sta_info_tab->rssi = ~((unsigned int)rssi / cnt) + 1;
+				}
+				rssi = rssi / cnt;
+				sta_info_tab->rssi = (unsigned int)rssi;
 				tx_ratedata = (unsigned int)mp->Entry[i].TxRate.word;
-#if !defined(RTCONFIG_MT798X)
-				rx_ratedata = mp->Entry[i].LastRxRate;
-#endif
+				rxrate = (unsigned short)mp->Entry[i].LastRxRate;
+				rx_ratedata = (unsigned int)rxrate;
 				mtk_parse_ratedata(tx_ratedata, &phy, &mcs, &bw, &vht_nss, &sgi, &stbc);
-				if(rx_ratedata)
-					mtk_parse_ratedata(rx_ratedata, &r_phy, &r_mcs, &r_bw, &r_vht_nss, &r_sgi, &r_stbc);
+				mtk_parse_ratedata(rx_ratedata, &r_phy, &r_mcs, &r_bw, &r_vht_nss, &r_sgi, &r_stbc);
 				hr = (mp->Entry[i].ConnectedTime) / 3600;
 				min = (mp->Entry[i].ConnectedTime) % 3600 / 60;
 				sec = mp->Entry[i].ConnectedTime - hr * 3600 - min * 60;
 				snprintf(sta_info_tab->conn_time, sizeof(sta_info_tab->conn_time), "%02d:%02d:%02d", hr, min, sec);
 				if(wireless_type == 1){
 					snprintf(sta_info_tab->txrate, sizeof(sta_info_tab->txrate), "%dM", mtk_mcs_to_rate(mcs, phy, bw, sgi, vht_nss, 0));
-#if !defined(RTCONFIG_MT798X)
 					if(rx_ratedata)
 						snprintf(sta_info_tab->rxrate, sizeof(sta_info_tab->rxrate), "%dM", mtk_mcs_to_rate(r_mcs, r_phy, r_bw, r_sgi, r_vht_nss, 0));
-#endif
 				}else{
 					snprintf(sta_info_tab->txrate, sizeof(sta_info_tab->txrate), "%dM", mtk_mcs_to_rate(mcs, phy, bw, sgi, vht_nss, 1));
-#if !defined(RTCONFIG_MT798X)
 					if(rx_ratedata)
 						snprintf(sta_info_tab->rxrate, sizeof(sta_info_tab->rxrate), "%dM", mtk_mcs_to_rate(r_mcs, r_phy, r_bw, r_sgi, r_vht_nss, 1));
-#endif
 				}
-#if defined(RTCONFIG_MT798X)
-				snprintf(sta_info_tab->rxrate, sizeof(sta_info_tab->rxrate), "%ldM", mp->Entry[i].LastRxRate);
-#endif
 				if(g_show_sta_info && f_exists("/tmp/conn_debug"))
-					_dprintf("%s[%3d,MTK] %02X%02X%02X%02X%02X%02X, rssi: %d\n", "[connection log]", i, sta_info_tab->mac_addr[0], sta_info_tab->mac_addr[1],
-						sta_info_tab->mac_addr[2], sta_info_tab->mac_addr[3], sta_info_tab->mac_addr[4], sta_info_tab->mac_addr[5], sta_info_tab->rssi);
+					printf("%s[%3d,MTK] %02X%02X%02X%02X%02X%02X, rx: %s tx: %s, rssi: %d\n", "[connection log]", i, sta_info_tab->mac_addr[0], sta_info_tab->mac_addr[1],
+						sta_info_tab->mac_addr[2], sta_info_tab->mac_addr[3], sta_info_tab->mac_addr[4], sta_info_tab->mac_addr[5], 
+						sta_info_tab->rxrate, sta_info_tab->txrate, sta_info_tab->rssi);
 				sta_info_tab->next = NULL;
 				if(g_sta_info_tab == NULL){
 					g_sta_info_tab = sta_info_tab;

@@ -60,116 +60,9 @@ extern const char APCLI_2G[];
 #define BW_5            5
 #define BW_8080         6
 
-#if defined(RTCONFIG_RALINK_MT7622) || defined(RTCONFIG_WLMODULE_MT7629_AP)
-#define RT_802_11_MAC_ENTRY_for_5G			RT_802_11_MAC_ENTRY
-#define MACHTTRANSMIT_SETTING_for_5G		HTTRANSMIT_SETTING
-#define RT_802_11_MAC_ENTRY_for_2G			RT_802_11_MAC_ENTRY
-#define MACHTTRANSMIT_SETTING_for_2G		HTTRANSMIT_SETTING
-#define RT_802_11_MAC_TABLE_5G				RT_802_11_MAC_TABLE
-#define RT_802_11_MAC_TABLE_2G				RT_802_11_MAC_TABLE
-
 #define MAC_ADDR_LEN			6
 /* MIMO Tx parameter, ShortGI, MCS, STBC, etc.  these are fields in TXWI. Don't change this definition!!! */
-typedef union _HTTRANSMIT_SETTING {
-#ifdef RT_BIG_ENDIAN
-	struct {
-		unsigned short MODE:3;	/* Use definition MODE_xxx. */
-		unsigned short iTxBF:1;
-		unsigned short eTxBF:1;
-		unsigned short STBC:1;	/* only support in HT/VHT mode with MCS0~7 */
-		unsigned short ShortGI:1;
-		unsigned short BW:2;	/* channel bandwidth 20MHz/40/80 MHz */
-		unsigned short ldpc:1;
-		unsigned short MCS:6;	/* MCS */
-	} field;
-#else
-	struct {
-		unsigned short MCS:6;
-		unsigned short ldpc:1;
-		unsigned short BW:2;
-		unsigned short ShortGI:1;
-		unsigned short STBC:1;
-		unsigned short eTxBF:1;
-		unsigned short iTxBF:1;
-		unsigned short MODE:3;
-	} field;
-#endif
-	unsigned short word;
-} HTTRANSMIT_SETTING, *PHTTRANSMIT_SETTING;
-
-typedef struct _RT_802_11_MAC_ENTRY {
-	unsigned char ApIdx;
-	unsigned char Addr[MAC_ADDR_LEN];
-	unsigned char Aid;
-	unsigned char Psm;		/* 0:PWR_ACTIVE, 1:PWR_SAVE */
-	unsigned char MimoPs;		/* 0:MMPS_STATIC, 1:MMPS_DYNAMIC, 3:MMPS_Enabled */
-	signed char AvgRssi0;
-	signed char AvgRssi1;
-	signed char AvgRssi2;
-	unsigned int ConnectedTime;
-	HTTRANSMIT_SETTING TxRate;
-	unsigned int LastRxRate;
-	/*
-		sync with WEB UI's structure for ioctl usage.
-	*/
-	unsigned short StreamSnr[3];				/* BF SNR from RXWI. Units=0.25 dB. 22 dB offset removed */
-	unsigned short SoundingRespSnr[3];			/* SNR from Sounding Response. Units=0.25 dB. 22 dB offset removed */
-	/*	SHORT TxPER;	*/					/* TX PER over the last second. Percent */
-	/*	SHORT reserved;*/
-} RT_802_11_MAC_ENTRY, *PRT_802_11_MAC_ENTRY;
-
-typedef struct _RT_802_11_MAC_TABLE {
-	unsigned long Num;
-	RT_802_11_MAC_ENTRY Entry[MAX_NUMBER_OF_MAC];
-} RT_802_11_MAC_TABLE, *PRT_802_11_MAC_TABLE;
-
-#else
-#define INIC_VLAN_ID_START	4 //first vlan id used for RT3352 iNIC MII
-#define INIC_VLAN_IDX_START	2 //first available index to set vlan id and its group.
-
-#if defined(RTCONFIG_WLMODULE_MT7610_AP) || defined(RTCONFIG_WLMODULE_MT7663E_AP) || defined(RTCONFIG_WLMODULE_MT7615E_AP)
-#define RT_802_11_MAC_ENTRY_for_5G		RT_802_11_MAC_ENTRY_11AC
-#define MACHTTRANSMIT_SETTING_for_5G		MACHTTRANSMIT_SETTING_11AC
-#elif defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
-#define RT_802_11_MAC_ENTRY_for_5G		RT_802_11_MAC_ENTRY_11AX
-#define MACHTTRANSMIT_SETTING_for_5G		MACHTTRANSMIT_SETTING_11AX
-#else
-#define RT_802_11_MAC_ENTRY_for_5G		RT_802_11_MAC_ENTRY_RT3883
-#define MACHTTRANSMIT_SETTING_for_5G		MACHTTRANSMIT_SETTING_2G
-#endif
-
-#if defined(RTN65U)
-#define RT_802_11_MAC_ENTRY_for_2G		RT_802_11_MAC_ENTRY_RT3352_iNIC
-#elif defined(RTN56UB1) || defined(RTN56UB2) || defined(RTAC1200GA1) || defined(RTAC1200GU)
-#define RT_802_11_MAC_ENTRY_for_2G		RT_802_11_MAC_ENTRY_7603E
-#elif defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
-#define RT_802_11_MAC_ENTRY_for_2G		RT_802_11_MAC_ENTRY_11AX
-#else
-#define RT_802_11_MAC_ENTRY_for_2G		RT_802_11_MAC_ENTRY_2G
-#endif
-
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
-#define MACHTTRANSMIT_SETTING_for_2G		MACHTTRANSMIT_SETTING_11AX
-#else
-#define MACHTTRANSMIT_SETTING_for_2G		MACHTTRANSMIT_SETTING_2G
-#endif
-// MIMO Tx parameter, ShortGI, MCS, STBC, etc.  these are fields in TXWI. Don't change this definition!!!
 typedef union  _MACHTTRANSMIT_SETTING {
-	struct  {
-	unsigned short	MCS:7;	// MCS
-	unsigned short	BW:1;	//channel bandwidth 20MHz or 40 MHz
-	unsigned short	ShortGI:1;
-	unsigned short	STBC:2;	//SPACE
-	unsigned short  eTxBF:1;
-	unsigned short  rsv:1;
-	unsigned short  iTxBF:1;
-	unsigned short  MODE:2;	// Use definition MODE_xxx.
-	} field;
-	unsigned short	word;
- } MACHTTRANSMIT_SETTING, *PMACHTTRANSMIT_SETTING;
-
-// MIMO Tx parameter, ShortGI, MCS, STBC, etc.  these are fields in TXWI. Don't change this definition!!!
-typedef union  _MACHTTRANSMIT_SETTING_2G {
 	struct  {
 	unsigned short	MCS:7;	// MCS
 	unsigned short	BW:1;	//channel bandwidth 20MHz or 40 MHz
@@ -179,155 +72,9 @@ typedef union  _MACHTTRANSMIT_SETTING_2G {
 	unsigned short	MODE:2;	// Use definition MODE_xxx.
 	} field;
 	unsigned short	word;
- } MACHTTRANSMIT_SETTING_2G, *PMACHTTRANSMIT_SETTING_2G;
-
-typedef union  _MACHTTRANSMIT_SETTING_11AC {
-#if defined(RTCONFIG_WLMODULE_MT7663E_AP) || defined(RTCONFIG_WLMODULE_MT7615E_AP)
-	struct  {	/* refter to src-mtk3.5/linux/linux-3.10.108/driver/net/wireless/mtk/mt7663e/mt_wifi/embedded/include/oid.h: typedef union _HTTRANSMIT_SETTING{}; */
-	unsigned short MCS:6;
-	unsigned short ldpc:1;
-	unsigned short BW:2;
-	unsigned short ShortGI:1;
-	unsigned short STBC:1;
-	unsigned short eTxBF:1;
-	unsigned short iTxBF:1;
-	unsigned short MODE:3;
-	} field;
-#else
-	struct  {
-	unsigned short	MCS:7;	// MCS
-	unsigned short	BW:2;	//channel bandwidth 20MHz or 40 MHz
-	unsigned short	ShortGI:1;
-	unsigned short	STBC:1;	//SPACE
-	unsigned short	eTxBF:1;
-	unsigned short	iTxBF:1;
-	unsigned short	MODE:3;	// Use definition MODE_xxx.
-	} field;
-#endif
-	unsigned short	word;
- } MACHTTRANSMIT_SETTING_11AC, *PMACHTTRANSMIT_SETTING_11AC;
-
-typedef union  _MACHTTRANSMIT_SETTING_11AX {
-#ifdef RT_BIG_ENDIAN
-	struct {
-	unsigned short MODE:3;	/* Use definition MODE_xxx. */
-	unsigned short iTxBF:1;
-	unsigned short eTxBF:1;
-	unsigned short STBC:1;	/* only support in HT/VHT mode with MCS0~7 */
-	unsigned short ShortGI:1;	/* TBD: need to extend to 2 bits for HE GI */
-	unsigned short BW:2;	/* channel bandwidth 20MHz/40/80 MHz */
-	unsigned short ldpc:1;
-	unsigned short MCS:6;	/* MCS */
-	} field;
-#else
-	struct {
-	unsigned short MCS:6;
-	unsigned short ldpc:1;
-	unsigned short BW:2;
-	unsigned short ShortGI:1;
-	unsigned short STBC:1;
-	unsigned short eTxBF:1;
-	unsigned short iTxBF:1;
-	unsigned short MODE:3;
-} field;
-#endif
-	unsigned short	word;
- } MACHTTRANSMIT_SETTING_11AX, *PMACHTTRANSMIT_SETTING_11AX;
-
-typedef struct _RT_802_11_MAC_ENTRY_RT3352_iNIC {
-    unsigned char	ApIdx;
-    unsigned char	Addr[ETHER_ADDR_LEN];
-    unsigned char	Aid;
-    unsigned char	Psm;	// 0:PWR_ACTIVE, 1:PWR_SAVE
-    unsigned char	MimoPs;	// 0:MMPS_STATIC, 1:MMPS_DYNAMIC, 3:MMPS_Enabled
-    char		AvgRssi0;
-    char		AvgRssi1;
-    char		AvgRssi2;
-    unsigned int	ConnectedTime;
-    MACHTTRANSMIT_SETTING_2G	TxRate;
-    MACHTTRANSMIT_SETTING_2G	MaxTxRate;
-} RT_802_11_MAC_ENTRY_RT3352_iNIC, *PRT_802_11_MAC_ENTRY_RT3352_iNIC;
-
-typedef struct _RT_802_11_MAC_ENTRY_RT3883 {
-    unsigned char	ApIdx;
-    unsigned char	Addr[ETHER_ADDR_LEN];
-    unsigned char	Aid;
-    unsigned char	Psm;     // 0:PWR_ACTIVE, 1:PWR_SAVE
-    unsigned char	MimoPs;  // 0:MMPS_STATIC, 1:MMPS_DYNAMIC, 3:MMPS_Enabled
-    char		AvgRssi0;
-    char		AvgRssi1;
-    char		AvgRssi2;
-    unsigned int	ConnectedTime;
-    MACHTTRANSMIT_SETTING_2G       TxRate;
-    unsigned int	LastRxRate;
-    short		StreamSnr[3];
-    short		SoundingRespSnr[3];
-} RT_802_11_MAC_ENTRY_RT3883, *PRT_802_11_MAC_ENTRY_RT3883;
+ } MACHTTRANSMIT_SETTING, *PMACHTTRANSMIT_SETTING;
 
 typedef struct _RT_802_11_MAC_ENTRY {
-    unsigned char	ApIdx;
-    unsigned char	Addr[ETHER_ADDR_LEN];
-    unsigned char	Aid;
-    unsigned char	Psm;     // 0:PWR_ACTIVE, 1:PWR_SAVE
-    unsigned char	MimoPs;  // 0:MMPS_STATIC, 1:MMPS_DYNAMIC, 3:MMPS_Enabled
-    char		AvgRssi0;
-    char		AvgRssi1;
-    char		AvgRssi2;
-    unsigned int	ConnectedTime;
-    MACHTTRANSMIT_SETTING       TxRate;
-    unsigned int	LastRxRate;
-    int			StreamSnr[3];
-    int			SoundingRespSnr[3];
-} RT_802_11_MAC_ENTRY, *PRT_802_11_MAC_ENTRY;
-
-typedef struct _RT_802_11_MAC_ENTRY_2G {
-    unsigned char	ApIdx;
-    unsigned char	Addr[ETHER_ADDR_LEN];
-    unsigned char	Aid;
-    unsigned char	Psm;	/* 0:PWR_ACTIVE, 1:PWR_SAVE */
-    unsigned char	MimoPs;	/* 0:MMPS_STATIC, 1:MMPS_DYNAMIC, 3:MMPS_Enabled */
-    char		AvgRssi0;
-    char		AvgRssi1;
-    char		AvgRssi2;
-    unsigned int	ConnectedTime;
-    MACHTTRANSMIT_SETTING_2G	TxRate;
-    unsigned int	LastRxRate;
-    short		StreamSnr[3];	/* BF SNR from RXWI. Units=0.25 dB. 22 dB offset removed */
-    short		SoundingRespSnr[3];
-} RT_802_11_MAC_ENTRY_2G, *PRT_802_11_MAC_ENTRY_2G;
-
-typedef struct _RT_802_11_MAC_ENTRY_7603E {
-    unsigned char  ApIdx;
-    unsigned char Addr[ETHER_ADDR_LEN];
-    unsigned char Aid;
-    unsigned char Psm;              /* 0:PWR_ACTIVE, 1:PWR_SAVE */
-    unsigned char MimoPs;           /* 0:MMPS_STATIC, 1:MMPS_DYNAMIC, 3:MMPS_Enabled */
-    char AvgRssi0;
-    char AvgRssi1;
-    char AvgRssi2;
-    unsigned int ConnectedTime;
-    MACHTTRANSMIT_SETTING_2G    TxRate;
-    unsigned int LastRxRate;
-} RT_802_11_MAC_ENTRY_7603E, *PRT_802_11_MAC_ENTRY_7603E;
-
-
-typedef struct _RT_802_11_MAC_ENTRY_11AC {
-    unsigned char	ApIdx;
-    unsigned char	Addr[ETHER_ADDR_LEN];
-    unsigned char	Aid;
-    unsigned char	Psm;	/* 0:PWR_ACTIVE, 1:PWR_SAVE */
-    unsigned char	MimoPs;	/* 0:MMPS_STATIC, 1:MMPS_DYNAMIC, 3:MMPS_Enabled */
-    char		AvgRssi0;
-    char		AvgRssi1;
-    char		AvgRssi2;
-    unsigned int	ConnectedTime;
-    MACHTTRANSMIT_SETTING_11AC	TxRate;
-    unsigned int	LastRxRate;
-    short		StreamSnr[3];	/* BF SNR from RXWI. Units=0.25 dB. 22 dB offset removed */
-    short		SoundingRespSnr[3];
-} RT_802_11_MAC_ENTRY_11AC, *PRT_802_11_MAC_ENTRY_11AC;
-
-typedef struct _RT_802_11_MAC_ENTRY_11AX {
 	unsigned char ApIdx;
 	unsigned char Addr[ETHER_ADDR_LEN];
 	uint16_t Aid;
@@ -337,38 +84,29 @@ typedef struct _RT_802_11_MAC_ENTRY_11AX {
 	char AvgRssi1;
 	char AvgRssi2;
 	uint32_t ConnectedTime;
-	MACHTTRANSMIT_SETTING_11AX TxRate;
+	MACHTTRANSMIT_SETTING TxRate;
 	uint32_t LastRxRate;
 	short StreamSnr[3];				/* BF SNR from RXWI. Units=0.25 dB. 22 dB offset removed */
 	short SoundingRespSnr[3];			/* SNR from Sounding Response. Units=0.25 dB. 22 dB offset removed */
-} RT_802_11_MAC_ENTRY_11AX, *PRT_802_11_MAC_ENTRY_11AX;
+} RT_802_11_MAC_ENTRY, *PRT_802_11_MAC_ENTRY;
 
-typedef struct _RT_802_11_MAC_TABLE_5G {
+typedef struct _RT_802_11_MAC_TABLE {
     unsigned long	Num;
-    RT_802_11_MAC_ENTRY_for_5G	Entry[MAX_NUMBER_OF_MAC];
-} RT_802_11_MAC_TABLE_5G, *PRT_802_11_MAC_TABLE_5G;
+    RT_802_11_MAC_ENTRY	Entry[MAX_NUMBER_OF_MAC];
+} RT_802_11_MAC_TABLE, *PRT_802_11_MAC_TABLE;
 
-typedef struct _RT_802_11_MAC_TABLE_2G {
-    unsigned long	Num;
-    RT_802_11_MAC_ENTRY_for_2G	Entry[MAX_NUMBER_OF_MAC];
-} RT_802_11_MAC_TABLE_2G, *PRT_802_11_MAC_TABLE_2G;
-
-typedef struct _SITE_SURVEY_RT3352_iNIC
-{
-	char channel[4];
-	unsigned char ssid[33];
-	char bssid[20];
-	char authmode[15];	//security part1
-	char encryption[8];	//security part2 and need to shift data
-	char signal[9];
-	char wmode[8];
-	char extch[7];
-	char nt[3];
-	char wps[4];
-	char dpid[4];
-	char newline;
-} SITE_SURVEY_RT3352_iNIC;
+#define RT_802_11_MAC_ENTRY_for_5G			RT_802_11_MAC_ENTRY
+#define RT_802_11_MAC_ENTRY_for_2G			RT_802_11_MAC_ENTRY
+#define RT_802_11_MAC_TABLE_5G				RT_802_11_MAC_TABLE
+#define RT_802_11_MAC_TABLE_2G				RT_802_11_MAC_TABLE
+#define MACHTTRANSMIT_SETTING_for_2G		MACHTTRANSMIT_SETTING
+#define MACHTTRANSMIT_SETTING_for_5G		MACHTTRANSMIT_SETTING
+#if defined(RTCONFIG_RALINK_MT7622) || defined(RTCONFIG_WLMODULE_MT7629_AP)
+#else
+#define INIC_VLAN_ID_START	4 //first vlan id used for RT3352 iNIC MII
+#define INIC_VLAN_IDX_START	2 //first available index to set vlan id and its group.
 #endif
+
 typedef struct _SITE_SURVEY
 {
 	char channel[4];
