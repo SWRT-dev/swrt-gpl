@@ -3805,6 +3805,7 @@ int getSiteSurvey(int band, char* ofile)
 	memset(header, 0, sizeof(header));
 	hdrLen = sprintf(header, "%-4s%-33s%-20s%-23s%-9s%-12s%-7s%-3s%-4s%-5s\n", "Ch", "SSID", "BSSID", "Security", "Signal(%)", "W-Mode", "ExtCH", "NT", "WPS", "DPID");
 	dbg("\n%s", header);
+	dbg("\n%s", data);
 
 	if (wrq.u.data.length > 0 && strlen(wrq.u.data.pointer) > 0)
 	{
@@ -5161,13 +5162,11 @@ void write_rpt_wpa_supplicant_conf(int band, const char *prefix_mssid, char *pre
 {
 	FILE *fp_wpa;
 	char tmp[128];
-	char pid_path[32];
 	char *str;
 	int flag_wep = 0;
 	int i;
 
 	snprintf(tmp, sizeof(tmp), "/etc/Wireless/wpa_supplicant-%s.conf", get_staifname(band));
-	snprintf(pid_path, sizeof(pid_path), "/var/run/wifi-%s.pid", get_staifname(band));
 	if (!(fp_wpa = fopen(tmp, "w+")))
 		return;
 	ifconfig(get_staifname(band), 0, NULL, NULL);
@@ -5256,7 +5255,6 @@ void write_rpt_wpa_supplicant_conf(int band, const char *prefix_mssid, char *pre
 	}
 	fprintf(fp_wpa, "}\n");
 	fclose(fp_wpa);
-	eval("wpa_supplicant", "-B", "-P", pid_path, "-D", "nl80211", "-i", get_staifname(band), "-b", "br0", "-c", tmp);
 }
 #endif	/* RTCONFIG_WIRELESSREPEATER */
 
@@ -5621,6 +5619,26 @@ void ralink_hostapd_start(void)
 			}
 		}
 	}
+#if defined(RTCONFIG_WIRELESSREPEATER)
+	if(sw_mode() == SW_MODE_REPEATER
+#if defined(RTCONFIG_SWRTMESH)
+		|| (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1"))
+#endif
+	){
+		int wlc_band = nvram_get_int("wlc_band");
+		snprintf(wif, sizeof(wif), "%s", get_staifname(wlc_band));
+		ifconfig(wif, IFUP, NULL, NULL);//up ifname
+		eval("brctl", "addif", "br0", wif);//add to bridge
+		snprintf(pid_path, sizeof(pid_path), "/var/run/wifi-%s.pid", wif);
+		snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/wpa_supplicant-%s.conf", wif);
+		snprintf(log_path, sizeof(log_path), "/tmp/hostapd_%s.log", wif);
+		fprintf(fp, "while [ -z $(pidof wpa_supplicant) ]\n");
+		fprintf(fp, "do\n");
+		fprintf(fp, "wpa_supplicant -B -P %s -D nl80211 -i %s -b br0 -f %s -c %s\n", pid_path, wif, log_path, conf_path);
+		fprintf(fp, "sleep 1s\n");
+		fprintf(fp, "done\n");
+	}
+#endif
 	fclose(fp);
 	chmod("/tmp/postwifi.sh",0777);
 	_eval(argv, NULL, 0, &pid);
@@ -6029,6 +6047,53 @@ int get_apcli_status(int wlc_band)
 int get_apcli_status(void)
 #endif
 {
+#if defined(RTCONFIG_SWRTMESH)
+	int unit = nvram_get_int("wlc_band");
+	char buf[8192], sta[64];
+	FILE *fp;
+	int len;
+	char *pt1 = "95", *pt2;
+
+	if(!nvram_get_int("wlready")) return 0;
+
+	strlcpy(sta, get_staifname(unit), sizeof(sta));
+	snprintf(buf, sizeof(buf), "iwconfig %s", sta);
+	fp = PS_popen(buf, "r");
+	if (fp) {
+		memset(buf, 0, sizeof(buf));
+		len = fread(buf, 1, sizeof(buf), fp);
+		PS_pclose(fp);
+		if (len > 1) {
+			buf[len-1] = '\0';
+			pt1 = strstr(buf, "Access Point:");
+			if (pt1) {
+				pt2 = pt1 + strlen("Access Point:");
+				pt1 = strstr(pt2, "Not-Associated");
+				if (pt1) 
+				{
+					snprintf(buf, sizeof(buf), "ifconfig | grep %s", sta);
+				     	fp = PS_popen(buf, "r");
+					if(fp)
+				   	{
+						 memset(buf, 0, sizeof(buf));
+						 len = fread(buf, 1, sizeof(buf), fp);
+						 PS_pclose(fp);
+						 if(len>=1)
+						    return WLC_STATE_INITIALIZING;
+						 else
+						    return WLC_STATE_STOPPED;
+					}	
+				     	else	
+				   		return WLC_STATE_INITIALIZING;
+				}	
+				else
+				   	return WLC_STATE_CONNECTED;
+			}
+		}
+	}
+	
+	return WLC_STATE_STOPPED;
+#else
 #if !defined(RTCONFIG_CONCURRENTREPEATER)
 	int wlc_band;
 #endif
@@ -6062,12 +6127,12 @@ int get_apcli_status(void)
 		cprintf("%s: %s connStatus(%d --> %d)\n", __func__, ifname, old_status[wlc_band], status);
 		old_status[wlc_band] = status;
 	}
-
 	if (status == 6)	// APCLI_CTRL_CONNECTED
 		return WLC_STATE_CONNECTED;
 	else if (status == 4)	// APCLI_CTRL_ASSOC
 		return WLC_STATE_CONNECTING;
 	return WLC_STATE_INITIALIZING;
+#endif
 }
 
 char *wlc_nvname(char *keyword)

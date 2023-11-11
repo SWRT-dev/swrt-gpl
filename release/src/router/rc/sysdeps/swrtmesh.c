@@ -55,10 +55,11 @@ void auto_generate_config(void)
 int start_swrtmesh(void)
 {
 	int idx;
+	int sw_mode = sw_mode();
 	pid_t pid;
 	char *ubusd_argv[] = { "ubusd", NULL };
-	char *ieee1905_argv[] = { "ieee1905d", "-o", "/tmp/ieee1905.log", "--no-lo", NULL, NULL, NULL };
-	char *cntl_argv[] = { "mapcontroller", "-o", "/tmp/mapcontroller.log", NULL, NULL, NULL, NULL };
+	char *ieee1905_argv[] = { "ieee1905d", "--no-lo", NULL, NULL, NULL, NULL, NULL };
+	char *cntl_argv[] = { "mapcontroller", NULL, NULL, NULL, NULL, NULL, NULL };
 	char *tp_argv[] = { "topologyd", NULL };
 //	char *swrtmeshd_argv[] = { "swrtmeshd", NULL };
 
@@ -69,22 +70,34 @@ int start_swrtmesh(void)
 	if(nvram_match("swrtmesh_enable", "0") || nvram_match("x_Setting", "0"))
 		return 0;
 	stop_swrtmesh();
-	system("touch /tmp/SWRTMESHUTILS_DEBUG");
+	if(nvram_match("swrtmesh_debug", "1")){
+		system("touch /tmp/SWRTMESHUTILS_DEBUG");
+		idx = 2;
+		ieee1905_argv[idx] = "-o";
+		idx++;
+		ieee1905_argv[idx] = "/tmp/ieee1905.log";
+		idx++;
+		ieee1905_argv[idx] = "-f";
+		idx++;
+		ieee1905_argv[idx] = "-dddd";
+	}
 	auto_generate_config();
 //	swrtmesh_resync_config();
 	_eval(ubusd_argv, NULL, 0, &pid);
-//	idx = 4;
-//	ieee1905_argv[idx] = "-f";
-//	idx++;
-//	ieee1905_argv[idx] = "-dddd";
 	_eval(ieee1905_argv, NULL, 0, &pid);
 	_eval(tp_argv, NULL, 0, &pid);
-	if(nvram_match("swrtmesh_controller_enable", "1")){
+	if((sw_mode == SW_MODE_AP || sw_mode == SW_MODE_ROUTER) && nvram_match("swrtmesh_controller_enable", "1")){
 		char buf[2] = {0};
-		idx = 3;
-//		cntl_argv[idx] = "-d";
-//		idx++;
-//		cntl_argv[idx] = "-vvvv";
+		if(nvram_match("swrtmesh_debug", "1")){
+			idx = 1;
+			cntl_argv[idx] = "-o";
+			idx++;
+			cntl_argv[idx] = "/tmp/mapcontroller.log";
+			idx++;
+			cntl_argv[idx] = "-d";
+			idx++;
+			cntl_argv[idx] = "-vvvv";
+		}
 		swrtmesh_get_value_by_string("mapagent", "controller_select", "local", buf, sizeof(buf));
 		if(!strcmp(buf, "0")){
 			idx++;
@@ -102,8 +115,10 @@ int start_swrtmesh(void)
 			return -1;
 		fprintf(fp, "#!/bin/sh\n");
 		fprintf(fp, "dynbhd &\n");
-//		fprintf(fp, "mapagent -o /tmp/mapagent.log -d -vvvv &\n");
-		fprintf(fp, "mapagent -o /tmp/mapagent.log &\n");
+		if(nvram_match("swrtmesh_debug", "1"))
+			fprintf(fp, "mapagent -o /tmp/mapagent.log -d -vvvv &\n");
+		else
+			fprintf(fp, "mapagent &\n");
 		fclose(fp);
 		chmod("/tmp/agent.sh",0777);
 		_eval(argv, NULL, 0, &pid);

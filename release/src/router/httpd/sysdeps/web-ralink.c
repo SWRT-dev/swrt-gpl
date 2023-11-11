@@ -1835,8 +1835,10 @@ static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	char tmp[256], prefix[] = "wlXXXXXXXXXX_";
 	char *name;
 	char word[256], *next;
-	int rate=0;
+	int rate = 0;
+#if !defined(RTCONFIG_SWRTMESH)
 	int *status;
+#endif
 	char rate_buf[32];
 	int sw_mode = sw_mode();
 	int wlc_band = nvram_get_int("wlc_band");
@@ -1874,9 +1876,11 @@ static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 		dbG("can not get rate info of %s\n", name);
 		goto ERROR;
 	}
-
 	rate = wrq.u.bitrate.value;
 	memset(tmp, 0, sizeof(tmp));
+#if defined(RTCONFIG_SWRTMESH)
+	if (chk_assoc(name) > 0){
+#else
 	wrq.u.data.length = sizeof(tmp);
 	wrq.u.data.pointer = &tmp;
 	wrq.u.data.flags = ASUS_SUBCMD_CONN_STATUS;
@@ -1888,6 +1892,7 @@ static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	}
 	status = (unsigned int*)tmp;
 	if(*status == 6){
+#endif
 		if ((rate == -1) || (rate == 0))
 			strlcpy(rate_buf, "auto", sizeof(rate_buf));
 		else

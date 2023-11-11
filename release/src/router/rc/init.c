@@ -663,11 +663,18 @@ wl_defaults(void)
 			if(sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1") && subunit == 1){
 				nvram_set(strcat_r(prefix, "bss_enabled", tmp), "1");
 			}
+#elif defined(RTCONFIG_SWRTMESH)
+			if(sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1") && subunit == 1){
+				nvram_set(strcat_r(prefix, "bss_enabled", tmp), "1");
+			}
 #endif
 #ifdef RTCONFIG_WIRELESSREPEATER
 			if (sw_mode() == SW_MODE_REPEATER) {
 #ifdef RTCONFIG_REALTEK
 /* [MUST]: Why to do this ?  */
+				nvram_set(strcat_r(prefix, "bss_enabled", tmp), "0");
+#elif defined(RTCONFIG_RALINK)
+/* primary ap always is ap, no need to enable wlx.1 */
 				nvram_set(strcat_r(prefix, "bss_enabled", tmp), "0");
 #else
 				if (

@@ -69,7 +69,7 @@
 #endif
 
 #if defined(RTCONFIG_PTHSAFE_POPEN)
-#if defined(RTCONFIG_QCA)
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_SWRTMESH)
 #define	popen	PS_popen
 #define	pclose	PS_pclose
 #endif

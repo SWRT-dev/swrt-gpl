@@ -102,6 +102,16 @@ int wl_get_bw_cap(int unit, int *bwcap)
 
 int get_psta_status(int unit)
 {
+#if defined(RTCONFIG_SWRTMESH)
+	int ret;
+	const char *sta;
+
+	sta = get_staifname(unit);
+	ret = chk_assoc(sta);
+	if (ret < 0) return WLC_STATE_STOPPED;
+	if (ret > 0) return WLC_STATE_CONNECTED;
+	return ret;
+#else
 	const char *ifname;
 	char data[32];
 	struct iwreq wrq;
@@ -127,6 +137,7 @@ int get_psta_status(int unit)
 		return WLC_STATE_CONNECTING;
 
 	return WLC_STATE_INITIALIZING;
+#endif
 }
 
 enum {

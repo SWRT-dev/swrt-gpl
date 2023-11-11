@@ -4100,6 +4100,8 @@ define RouterOptions
 	if [ "$(SWRTMESH)" = "y" ]; then \
 		sed -i "/RTCONFIG_SWRTMESH/d" $(1); \
 		echo "RTCONFIG_SWRTMESH=y" >>$(1); \
+		sed -i "/RTCONFIG_PTHSAFE_POPEN/d" $(1); \
+		echo "RTCONFIG_PTHSAFE_POPEN=y" >>$(1); \
 	fi;
 	if [ "$(SFE)" = "y" ]; then \
 		sed -i "/RTCONFIG_SFE/d" $(1); \

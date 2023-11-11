@@ -221,7 +221,7 @@ static int un_tcpsock_connect(char *path, int nodelay)
 	return sock;
 }
 
-#if defined(RTCONFIG_QCA) || defined(CONFIG_BCMWL5)
+#if defined(RTCONFIG_QCA) || defined(CONFIG_BCMWL5) || defined(RTCONFIG_SWRTMESH)
 static int not_in_thread(void)
 {
 	struct stat task_stat;

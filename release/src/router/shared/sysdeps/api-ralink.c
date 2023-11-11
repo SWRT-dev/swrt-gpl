@@ -27,26 +27,30 @@
 
 typedef uint32_t __u32;
 
-#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTACRH18)  || defined(RT4GAC86U) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
-const char WIF_5G[]	= "rai0";
-const char WIF_2G[]	= "ra0";
-const char WDSIF_5G[]	= "wdsi";
-const char WDSIF_2G[]	= "wds";
-const char APCLI_5G[]	= "apclii0";
-const char APCLI_2G[]	= "apcli0";
-#elif defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_MT798X)
 const char WIF_5G[]	= "rax0";
 const char WIF_2G[]	= "ra0";
 const char WDSIF_5G[]	= "wdsx";
 const char WDSIF_2G[]	= "wds";
+#if defined(RTCONFIG_SWRTMESH)
+const char APCLI_5G[]	= "apclix";
+const char APCLI_2G[]	= "apcli";
+#else
 const char APCLI_5G[]	= "apclix0";
 const char APCLI_2G[]	= "apcli0";
+#endif
 #else
-const char WIF_5G[]	= "ra0";
-const char WIF_2G[]	= "rai0";
-const char WDSIF_5G[]	= "wds";
-const char APCLI_5G[]	= "apcli0";
-const char APCLI_2G[]	= "apclii0";
+const char WIF_5G[]	= "rai0";
+const char WIF_2G[]	= "ra0";
+const char WDSIF_5G[]	= "wdsi";
+const char WDSIF_2G[]	= "wds";
+#if defined(RTCONFIG_SWRTMESH)
+const char APCLI_5G[]	= "apclii";
+const char APCLI_2G[]	= "apcli";
+#else
+const char APCLI_5G[]	= "apclii0";
+const char APCLI_2G[]	= "apcli0";
+#endif
 #endif
 
 struct channel_info {
