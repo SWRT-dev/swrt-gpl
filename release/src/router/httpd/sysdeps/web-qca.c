@@ -1621,9 +1621,10 @@ int ej_wl_sta_list_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 #if defined(RTCONFIG_HAS_5G_2)
 	/* FIXME: I think it's not good to report 2-nd 5G station list in 1-st 5G station list. */
 	ej_wl_sta_list(2, wp);
-#endif
+#else
 	if(hook_get_json == 1)
 		websWrite(wp, "{}");
+#endif
 	return 0;
 }
 

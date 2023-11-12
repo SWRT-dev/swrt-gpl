@@ -1,0 +1,78 @@
+include:
+  - project: 'iopsys/gitlab-ci-pipeline'
+    file: '/static-code-analysis.yml'
+    ref: '0.27'
+
+stages:
+    - static_code_analysis
+    - unit_test
+    - functional_test
+    - api_test
+
+variables:
+  COMMON_IMAGE: "dev.iopsys.eu:5050/iopsys/gitlab-ci-pipeline/code-analysis:0.28"
+  DEBUG: 'TRUE'
+  SOURCE_FOLDER: "."
+  SUPERVISOR_LOG: "$CI_PROJECT_DIR/supervisord.log"
+  WIFIMNGR_LOG: "$CI_PROJECT_DIR/wifimngr.log"
+  RUN_CPPCHECK: "cppcheck --enable=all --error-exitcode=1 --suppress=unusedFunction --suppress=unreadVariable --suppress=variableScope --suppress=wrongPrintfScanfArgNum --suppress=uninitvar ."
+  CPPCHECK_OPTIONS: " --enable=all --error-exitcode=1 --suppress=unusedFunction --suppress=unreadVariable --suppress=variableScope --suppress=wrongPrintfScanfArgNum --suppress=uninitvar ."
+
+run_api_test:
+    stage: api_test
+    image: ${COMMON_IMAGE}
+    allow_failure: false
+    script:
+        - "./gitlab-ci/install-dependencies.sh"
+        - "./gitlab-ci/setup.sh"
+        - "./gitlab-ci/functional-api-test.sh"
+        - "cp -v /tmp/test.log ."
+
+    artifacts:
+        when: always
+        reports:
+            junit: ./report/tap.xml
+        paths:
+            - api-test-coverage.xml
+            - api-test-memory-report.xml
+            - timestamp.log
+            - coverage.tar.gz
+            - test.log
+            - $SUPERVISOR_LOG
+            - $WIFIMNGR_LOG
+    coverage: '/^TOTAL.+?(\d+\%)$/'
+
+run_unit_test:
+    stage: unit_test
+    image: ${COMMON_IMAGE}
+    allow_failure: false
+    script:
+        - "./gitlab-ci/install-dependencies.sh"
+        - "./gitlab-ci/setup.sh"
+        - "./gitlab-ci/unit-test.sh"
+
+    artifacts:
+        when: always
+        paths:
+            - unit-test-coverage.xml
+            - timestamp.log
+            - coverage.tar.gz
+    coverage: '/^TOTAL.+?(\d+\%)$/'
+
+run_functional_test:
+    stage: functional_test
+    image: ${COMMON_IMAGE}
+    allow_failure: false
+    script:
+        - "./gitlab-ci/install-dependencies.sh"
+        - "./gitlab-ci/setup.sh"
+        - "./gitlab-ci/functional-test.sh"
+
+    artifacts:
+        when: always
+        paths:
+            - functional-test-coverage.xml
+            - timestamp.log
+            - coverage.tar.gz
+            - $SUPERVISOR_LOG
+    coverage: '/^TOTAL.+?(\d+\%)$/'

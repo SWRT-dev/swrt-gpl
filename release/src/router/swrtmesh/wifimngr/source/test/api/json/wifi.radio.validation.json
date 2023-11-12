@@ -1,0 +1,37 @@
+{
+  "object": "wifi.radio.test5",
+  "methods": [
+    {
+      "method": "status",
+      "rc": 0
+    },
+    {
+      "method": "stats",
+      "rc": 0
+    },
+    {
+      "method": "scanresults",
+      "rc": 0
+    },
+    {
+      "method": "scanresults",
+      "args": {
+          "bssid": "00:61:62:63:64:65"
+      },
+      "rc": 0
+    },
+    {
+      "method": "get",
+      "rc": 0
+    },
+    {
+      "method": "autochannel",
+      "rc": 0
+    },
+    {
+      "method": "hello",
+      "rc": 3
+    } 
+  ]
+}
+

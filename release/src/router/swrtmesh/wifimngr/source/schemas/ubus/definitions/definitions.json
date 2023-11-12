@@ -1,0 +1,171 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://www.iopsys.eu/definitions.json",
+	"definitions": {
+		"channel_2_t": {
+			"title": "2.4GHz Channel",
+			"type": "integer",
+			"default": "auto",
+			"minimum": 1,
+			"maximum": 14
+		},
+		"channel_5_t": {
+			"title": "5GHz Channel",
+			"type": "integer",
+			"default": "auto",
+			"minimum": 32,
+			"maximum": 200
+		},
+		"channels_2_t": {
+			"title": "2.4GHz Channels",
+			"type": "array",
+			"items": { "$ref": "https://www.iopsys.eu/definitions.json#/definitions/channel_2_t"}
+		},
+		"channels_5_t": {
+			"title": "5GHz Channels",
+			"type": "array",
+			"items": { "$ref": "https://www.iopsys.eu/definitions.json#/definitions/channel_5_t"}
+		},
+		"macaddr_t": {
+			"title": "MAC Address",
+			"type": "string",
+			"minLength": 17,
+			"maxLength": 17,
+			"pattern":"^([0-9a-fA-F][0-9a-fA-F]:){5}[0-9a-fA-F][0-9a-fA-F]$"
+		},
+		"nasid_t": {
+			"title": "MAC Address",
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 48,
+			"pattern":"^([0-9a-fA-F]){1,48}$"
+		},
+		"iface_t": {
+			"title": "Interface",
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 16
+		},
+		"ssid_t": {
+			"title": "SSID",
+			"type": "string",
+			"minLength": 0,
+			"maxLength": 32
+		},
+		"nstations_t": {
+			"title": "Number of stations",
+			"type": "integer",
+			"minimum": 0,
+			"maximum": 2007
+		},
+		"bandwidth_2_t": {
+			"title": "Bandwidth",
+			"type": "integer",
+			"enum": [
+				20,
+				40
+			]
+		},
+		"bandwidth_5_t": {
+			"title": "Bandwidth",
+			"type": "integer",
+			"enum": [
+				20,
+				40,
+				80,
+				160
+			]
+		},
+		"rssi_t": {
+			"title": "RSSI",
+			"type": "integer",
+			"minimum": -128,
+			"maximum": 0
+		},
+		"noisepower_t": {
+			"title": "Noise",
+			"type": "integer",
+			"minimum": -127,
+			"maximum": 0
+		},
+		"band_t": {
+			"title": "WiFi Band",
+			"type": "string",
+			"enum": ["2.4GHz", "5GHz"]
+		},
+		"standards_2_t": {
+			"title": "2.4GHz WiFi Standards",
+			"type": "array",
+			"items": {
+				"type": "string",
+				"enum": ["b", "g", "n", "ax"]
+			}
+		},
+		"standards_5_t": {
+			"title": "5GHz WiFi Standards",
+			"type": "array",
+			"items": {
+				"type": "string",
+				"enum": ["a", "n", "ac", "ax"]
+			}
+		},
+		"rxtx_t": {
+			"type": "integer",
+			"minimum": 0
+		},
+		"pin_t": {
+			"type": "string",
+			"minLength": 8,
+			"maxLength": 8,
+			"pattern": "^[0-9]*$"
+		},
+		"bandwidth_t": {
+			"title": "Bandwidth",
+			"type": "integer",
+			"enum": [
+				20,
+				40,
+				80,
+				160
+			]
+		},
+		"aps_t": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"required": [
+					"ifname",
+					"status",
+					"ssid",
+					"bssid"
+				],
+				"properties": {
+					"ifname": {
+						"type": "string",
+						"minLength": 1,
+						"maxLength": 16
+					},
+					"status": { "type": "string" },
+					"ssid": {
+						"type": "string",
+						"minLength": 0,
+						"maxLength": 32
+					},
+					"bssid": { "bssid": { "$ref": "https://www.iopsys.eu/definitions.json#/definitions/macaddr_t" } }
+				}
+			}
+		},
+		"oui_t": {
+			"title": "Three byte oui",
+			"type": "string",
+			"minLength": 9,
+			"maxLength": 9,
+			"pattern":"^([0-9a-fA-F][0-9a-fA-F]){3}$"
+		},
+		"data_t": {
+			"title": "Hex String",
+			"type": "string",
+			"pattern": "^[0-9a-fA-F]+"
+		}
+	}
+}

@@ -1,0 +1,121 @@
+{
+    "wireless": [{
+            "section": "wifi-device",
+            "description": "Wifi Device Settings",
+            "multi": true,
+            "options": [{
+                    "name": "channel",
+                    "type": "integer or “auto”",
+                    "required": "yes",
+                    "default": "auto",
+                    "description": "Specifies the wireless channel to use. “auto” defaults to the lowest available channel."
+                },
+                {
+                    "name": "hwmode",
+                    "default": null,
+                    "description": "Selects the wireless protocol to use, possible values are 11b, 11g, and 11a. Note that 11ng and 11na are not available options.",
+                    "type": "string"
+                },
+                {
+                    "name": "country",
+                    "default": null,
+                    "description": "Specifies the country code, affects the available channels and transmission powers. For type broadcom a two letter country code is used (EN or DE). The madwifi driver expects a numeric code.",
+                    "type": "varies"
+                },
+                {
+                    "name": "band",
+                    "default": null,
+                    "description": "Whether radio operates at 2.4GHz or 5GHz.",
+                    "type": "string"
+                },
+                {
+                    "name": "bandwidth",
+                    "default": "80",
+                    "description": "Frequency at which the radio operates.",
+                    "type": "integer"
+                }
+            ]
+        },
+        {
+            "section": "wifi-iface",
+            "description": "Wifi Interface Settings",
+            "multi": true,
+            "options": [{
+                    "name": "device",
+                    "type": "string",
+                    "required": "yes",
+                    "default": "(first device id)",
+                    "description": "Specifies the used wireless adapter, must refer to one of the defined wifi-device sections"
+                },
+                {
+                    "name": "ifname",
+                    "type": "string",
+                    "required": "no",
+                    "default": "(driver default)",
+                    "description": "Specifies a custom name for the Wi-Fi interface, which is otherwise automatically named."
+                },
+                {
+                    "name": "mode",
+                    "required": "yes",
+                    "default": "ap",
+                    "description": "Selects the operation mode of the wireless network interface controller. Possible values are ap, sta, adhoc, wds, monitor, mesh",
+                    "type": "string"
+                },
+                {
+                    "name": "encryption",
+                    "default": null,
+                    "description": "Wireless encryption method. Possible values are: none, wep, psk, psk2. For WEP station mode the default is “open system” authentication. Use wep+shared or wep+open to force a specific mode.",
+                    "type": "string"
+                },
+                {
+                    "name": "wps",
+                    "description": "Enable wps_pushbutton and wps_label.",
+                    "type": "boolean",
+                    "default": true
+                },
+                {
+                    "name": "wps_config",
+                    "description": "List of configuration methods. Currentlly supported methods are: push_button.",
+                    "default": null,
+                    "type": "list"
+                },
+                {
+                    "name": "wps_device_name",
+                    "description": "User-friendly description of device; up to 32 octets encoded in UTF-8.",
+                    "type": "string",
+                    "default": "LEDE AP"
+                },
+                {
+                    "name": "wps_device_type",
+                    "description": "Primary device type. Examples: 1-0050F204-1 (Computer / PC), 1-0050F204-2 (Computer / Server), 5-0050F204-1 (Storage / NAS), 6-0050F204-1 (Network Infrastructure / AP)",
+                    "type": "string",
+                    "default": "6-0050F204-1"
+                },
+                {
+                    "name": "wps_label",
+                    "description": "Enable label configuration method.",
+                    "type": "boolean",
+                    "default": true
+                },
+                {
+                    "name": "wps_manufacturer",
+                    "description": "The manufacturer of the device (up to 64 ASCII characters).",
+                    "type": "string",
+                    "default": "lede-project.org"
+                },
+                {
+                    "name": "wps_pushbutton",
+                    "description": "Enable push-button configuration method.",
+                    "type": "boolean",
+                    "default": true
+                },
+                {
+                    "name": "wps_pin",
+                    "description": "The PIN to use with WPS-PIN (only in external registrar mode?)",
+                    "type": "string",
+                    "default": null
+                }
+            ]
+        }
+    ]
+}

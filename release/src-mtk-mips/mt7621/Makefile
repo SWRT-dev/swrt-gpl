@@ -15,6 +15,7 @@ pobj-y:=
 
 #pobj-y += mii_mgr regs switch wifi-fw
 pobj-$(RTCONFIG_RALINK_BSD) += bndstrg_plus
+pobj-$(RTCONFIG_SWRTMESH) += iw
 
 
 pobj-clean := $(foreach pobj, $(pobj-y) $(pobj-n) $(pobj-), $(pobj)-clean)

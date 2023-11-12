@@ -1,0 +1,25 @@
+config wifi-device 'test2'
+    option channel 'auto'
+    option hwmode 'auto'
+    option country 'DE'
+    option band 'a'
+    option bandwidth '80'
+
+config wifi-iface
+    option device 'test2'
+    option ifname 'test2'
+    option mode 'ap'
+    option encryption 'psk2'
+
+config wifi-device 'test5'
+    option channel 'auto'
+    option hwmode 'auto'
+    option country 'DE'
+    option band 'a'
+    option bandwidth '80'
+
+config wifi-iface
+    option device 'test5'
+    option ifname 'test5'
+    option mode 'ap'
+    option encryption 'psk2'

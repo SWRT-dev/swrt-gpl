@@ -58,6 +58,7 @@ int start_swrtmesh(void)
 	int sw_mode = sw_mode();
 	pid_t pid;
 	char *ubusd_argv[] = { "ubusd", NULL };
+	char *wifimngr_argv[] = { "wifimngr", NULL };
 	char *ieee1905_argv[] = { "ieee1905d", "--no-lo", NULL, NULL, NULL, NULL, NULL };
 	char *cntl_argv[] = { "mapcontroller", NULL, NULL, NULL, NULL, NULL, NULL };
 	char *tp_argv[] = { "topologyd", NULL };
@@ -68,6 +69,8 @@ int start_swrtmesh(void)
 		return 0;
 	}
 	if(nvram_match("swrtmesh_enable", "0") || nvram_match("x_Setting", "0"))
+		return 0;
+	if(sw_mode == SW_MODE_REPEATER || sw_mode == SW_MODE_HOTSPOT || sw_mode == SW_MODE_NONE)
 		return 0;
 	stop_swrtmesh();
 	if(nvram_match("swrtmesh_debug", "1")){
@@ -84,9 +87,10 @@ int start_swrtmesh(void)
 	auto_generate_config();
 //	swrtmesh_resync_config();
 	_eval(ubusd_argv, NULL, 0, &pid);
+	_eval(wifimngr_argv, NULL, 0, &pid);
 	_eval(ieee1905_argv, NULL, 0, &pid);
 	_eval(tp_argv, NULL, 0, &pid);
-	if((sw_mode == SW_MODE_AP || sw_mode == SW_MODE_ROUTER) && nvram_match("swrtmesh_controller_enable", "1")){
+	if(nvram_match("swrtmesh_controller_enable", "1")){
 		char buf[2] = {0};
 		if(nvram_match("swrtmesh_debug", "1")){
 			idx = 1;

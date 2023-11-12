@@ -386,34 +386,17 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 	ifname = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
 
-#if 0
-	if (nvram_match(strlcat_r(prefix, "radio", tmp, sizeof(tmp)), "0"))
-	{
-		ret+=websWrite(wp, "%s radio is disabled\n",
-			wl_nband_name(nvram_pf_get(prefix, "nband")));
-		return ret;
-	}
-#else
 	if (!get_radio_status(ifname))
 	{
-#if defined(BAND_2G_ONLY)
-		ret+=websWrite(wp, "2.4 GHz radio is disabled\n");
-#else
 		ret+=websWrite(wp, "%s radio is disabled\n",
 			wl_nband_name(nvram_pf_get(prefix, "nband")));
-#endif
 		return ret;
 	}
-#endif
 
 	if (wl_ioctl(ifname, SIOCGIWAP, &wrq0) < 0)
 	{
-#if defined(BAND_2G_ONLY)
-		ret+=websWrite(wp, "2.4 GHz radio is disabled\n");
-#else
 		ret+=websWrite(wp, "%s radio is disabled\n",
 			wl_nband_name(nvram_pf_get(prefix, "nband")));
-#endif
 		return ret;
 	}
 
@@ -1273,10 +1256,10 @@ int ej_wl_sta_list_5g(int eid, webs_t wp, int argc, char_t **argv)
 	}
 
 	/* error/exit */
-#endif	/* RTCONFIG_HAS_5G */
 exit:
 	if(hook_get_json == 1)
 		websWrite(wp, "}");
+#endif	/* RTCONFIG_HAS_5G */
 	return 0;
 }
 

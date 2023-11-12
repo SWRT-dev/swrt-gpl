@@ -1,0 +1,14 @@
+{
+  "object": "wifi",
+  "methods": [
+    {
+      "method": "status",
+      "rc": 0
+    },
+    {
+      "method": "hello",
+      "rc": 3
+    }
+  ]
+}
+

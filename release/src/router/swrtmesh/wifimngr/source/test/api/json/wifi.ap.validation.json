@@ -1,0 +1,61 @@
+{
+  "object": "wifi.ap.test5",
+  "methods": [
+    {
+      "method": "status",
+      "rc": 0
+    },
+    {
+      "method": "stats",
+      "rc": 0
+    },
+    {
+      "method": "assoclist",
+      "rc": 0
+    },
+    {
+      "method": "stations",
+      "rc": 0
+    },
+    {
+      "method": "stations",
+      "args": {
+         "sta":"50:31:32:33:34:35"
+      },
+      "rc": 0
+    },
+    {
+      "method": "list_neighbor"
+    },
+    {
+      "method": "list_neighbor",
+      "args": {
+         "client": "50:31:32:33:34:35"
+      },
+      "rc": 0
+    },
+    {
+      "method": "dump_beacon",
+      "rc": 0
+    },
+    {
+      "method": "monitor_get",
+      "rc": 0
+    },
+    {
+      "method": "monitor_get",
+      "args": {
+        "client": "11:22:33:44:55:66"
+     },
+      "rc": 0
+    },
+    {
+      "method": "hello",
+      "args": {
+         "bssid": "50:31:32:33:34:35"
+      },
+      "rc": 3
+    }
+  ]
+}
+

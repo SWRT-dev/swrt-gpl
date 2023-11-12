@@ -1,0 +1,1379 @@
+{
+    "definitions": {
+		"channel_2_t": {
+			"title": "2.4GHz Channel",
+			"type": "integer",
+			"default": "auto",
+			"minimum": 1,
+			"maximum": 14
+		},
+		"channel_5_t": {
+			"title": "5GHz Channel",
+			"type": "integer",
+			"default": "auto",
+			"minimum": 32,
+			"maximum": 200
+		},
+		"channels_2_t": {
+			"title": "2.4GHz Channels",
+			"type": "array",
+			"items": { "$ref": "#/definitions/channel_2_t"}
+		},
+		"channels_5_t": {
+			"title": "5GHz Channels",
+			"type": "array",
+			"items": { "$ref": "#/definitions/channel_5_t"}
+		},
+		"macaddr_t": {
+			"title": "MAC Address",
+			"type": "string",
+			"minLength": 17,
+			"maxLength": 17,
+			"pattern":"^([0-9a-fA-F][0-9a-fA-F]:){5}[0-9a-fA-F][0-9a-fA-F]$"
+		},
+		"nasid_t": {
+			"title": "MAC Address",
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 48,
+			"pattern":"^([0-9a-fA-F]){1,48}$"
+		},
+		"iface_t": {
+			"title": "Interface",
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 16
+		},
+		"ssid_t": {
+			"title": "SSID",
+			"type": "string",
+			"minLength": 0,
+			"maxLength": 32
+		},
+		"nstations_t": {
+			"title": "Number of stations",
+			"type": "integer",
+			"minimum": 0,
+			"maximum": 2007
+		},
+		"bandwidth_2_t": {
+			"title": "Bandwidth",
+			"type": "integer",
+			"enum": [
+				20,
+				40
+			]
+		},
+		"bandwidth_5_t": {
+			"title": "Bandwidth",
+			"type": "integer",
+			"enum": [
+				20,
+				40,
+				80,
+				160
+			]
+		},
+		"rssi_t": {
+			"title": "RSSI",
+			"type": "integer",
+			"minimum": -128,
+			"maximum": 0
+		},
+		"noisepower_t": {
+			"title": "Noise",
+			"type": "integer",
+			"minimum": -127,
+			"maximum": 0
+		},
+		"band_t": {
+			"title": "WiFi Band",
+			"type": "string",
+			"enum": ["2.4GHz", "5GHz"]
+		},
+		"standards_2_t": {
+			"title": "2.4GHz WiFi Standards",
+			"type": "array",
+			"items": {
+				"type": "string",
+				"enum": ["b", "g", "n", "ax"]
+			}
+		},
+		"standards_5_t": {
+			"title": "5GHz WiFi Standards",
+			"type": "array",
+			"items": {
+				"type": "string",
+				"enum": ["a", "n", "ac", "ax"]
+			}
+		},
+		"rxtx_t": {
+			"type": "integer",
+			"minimum": 0
+		},
+		"pin_t": {
+			"type": "string",
+			"minLength": 8,
+			"maxLength": 8,
+			"pattern": "^[0-9]*$"
+		},
+		"bandwidth_t": {
+			"title": "Bandwidth",
+			"type": "integer",
+			"enum": [
+				20,
+				40,
+				80,
+				160
+			]
+		},
+		"aps_t": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"required": [
+					"ifname",
+					"status",
+					"ssid",
+					"bssid"
+				],
+				"properties": {
+					"ifname": {
+						"type": "string",
+						"minLength": 1,
+						"maxLength": 16
+					},
+					"status": { "type": "string" },
+					"ssid": {
+						"type": "string",
+						"minLength": 0,
+						"maxLength": 32
+					},
+					"bssid": { "bssid": { "$ref": "#/definitions/macaddr_t" } }
+				}
+			}
+		},
+		"oui_t": {
+			"title": "Three byte oui",
+			"type": "string",
+			"minLength": 9,
+			"maxLength": 9,
+			"pattern":"^([0-9a-fA-F][0-9a-fA-F]){3}$"
+		},
+		"data_t": {
+			"title": "Hex String",
+			"type": "string",
+			"pattern": "^[0-9a-fA-F]+"
+        },
+        "rxtx_latest_t": {
+			"type": "object",
+			"properties": {
+                "rate":{
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 4294967295
+                },
+                "mcs":{
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                },
+                "bandwidth":{
+                    "$ref": "#/definitions/bandwidth_t"
+                },
+                "sgi":{
+                    "type": "integer",
+                    "enum": [
+                        0,
+                        1
+                    ]
+                },
+                "nss":{
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                },
+                "phy":{
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                }
+            }
+		}
+	},
+    "title": "wifi.ap.<name>",
+    "regex": true,
+    "object": "^wifi\\.ap\\..*",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://www.iopsys.eu/wifi.ap.json",
+    "additionalProperties": false,
+    "properties": {
+        "add_neighbor": {
+            "type": "object",
+            "properties": {
+                "input": {
+                    "type": "object",
+                    "required": [
+                        "bssid",
+                        "channel",
+                        "bssid_info",
+                        "reg",
+                        "phy"
+                    ],
+                    "properties": {
+                        "bssid": {
+                            "$ref": "#/definitions/macaddr_t"
+                        },
+                        "channel": {
+                            "oneOf": [
+                                {
+                                    "$ref": "#/definitions/channel_2_t"
+                                },
+                                {
+                                    "$ref": "#/definitions/channel_5_t"
+                                }
+                            ]
+                        },
+                        "bssid_info": {
+                            "type": "string"
+                        },
+                        "reg": {
+                            "type": "integer",
+                            "minimum": 0
+                        },
+                        "phy": {
+                            "type": "integer",
+                            "minimum": 0
+                        }
+                    }
+                },
+                "output": {
+                    "type": "object",
+                    "properties": {}
+                }
+            }
+        },
+        "del_neighbor": {
+            "type": "object",
+            "properties": {
+                "input": {
+                    "type": "object",
+                    "required": [
+                        "bssid"
+                    ],
+                    "properties": {
+                        "bssid": {
+                            "$ref": "#/definitions/macaddr_t"
+                        }
+                    }
+                },
+                "output": {
+                    "type": "object",
+                    "properties": {}
+                }
+            }
+        },
+        "request_neighbor": {
+            "type": "object",
+            "properties": {
+                "input": {
+                    "type": "object",
+                    "required": [
+                        "client"
+                    ],
+                    "properties": {
+                        "ssid": {
+                            "$ref": "#/definitions/ssid_t"
+                        },
+                        "client": {
+                            "$ref": "#/definitions/macaddr_t"
+                        }
+                    }
+                },
+                "output": {
+                    "type": "object",
+                    "properties": {}
+                }
+            }
+        },
+        "request_transition": {
+            "type": "object",
+            "properties": {
+                "input": {
+                    "type": "object",
+                    "required": [
+                        "client",
+                        "bssid"
+                    ],
+                    "properties": {
+                        "client": {
+                            "$ref": "#/definitions/macaddr_t"
+                        },
+                        "bssid": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/macaddr_t"
+                            }
+                        },
+                        "timeout": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "output": {
+                    "type": "object",
+                    "properties": {}
+                }
+            }
+        },
+        "monitor_add": {
+            "type": "object",
+            "properties": {
+                "intput": {
+                    "type": "object",
+                    "required": [
+                        "sta"
+                    ],
+                    "properties": {
+                        "sta": {
+                            "$ref": "#/definitions/macaddr_t"
+                        },
+                        "get": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "output": {
+                    "type": "object",
+                    "properties": {}
+                }
+            }
+        },
+        "monitor_del": {
+            "type": "object",
+            "properties": {
+                "intput": {
+                    "type": "object",
+                    "required": [
+                        "sta"
+                    ],
+                    "properties": {
+                        "sta": {
+                            "$ref": "#/definitions/macaddr_t"
+                        },
+                        "get": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "output": {
+                    "type": "object",
+                    "properties": {}
+                }
+            }
+        },
+        "monitor_get": {
+            "type": "object",
+            "properties": {
+                "intput": {
+                    "type": "object",
+                    "required": [
+                        "sta"
+                    ],
+                    "properties": {
+                        "sta": {
+                            "$ref": "#/definitions/macaddr_t"
+                        },
+                        "get": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "output": {
+                    "oneOf": [
+                        {
+                          "properties": {
+                            "stations": {
+                              "items": {
+                                "properties": {
+                                  "macaddr": {
+                                    "$ref": "#/definitions/macaddr_t"
+                                  },
+                                  "seen": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "rssi_avg": {
+                                    "$ref": "#/definitions/rssi_t"
+                                  },
+                                  "rssi": {
+                                    "type": "array",
+                                    "items": {
+                                      "$ref": "#/definitions/rssi_t"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "macaddr",
+                                  "seen",
+                                  "rssi_avg",
+                                  "rssi"
+                                ],
+                                "type": "object"
+                              },
+                              "type": "array"
+                            }
+                          },
+                          "required": [
+                            "stations"
+                          ]
+                        },
+                        {
+                          "properties": {
+                            "sta": {
+                              "properties": {
+                                  "macaddr": {
+                                    "$ref": "#/definitions/macaddr_t"
+                                  },
+                                  "seen": {
+                                    "type": "integer",
+                                    "minimum": 8
+                                  },
+                                  "rssi_avg": {
+                                    "$ref": "#/definitions/rssi_t"
+                                  },
+                                  "rssi": {
+                                    "type": "array",
+                                    "items": {
+                                      "$ref": "#/definitions/rssi_t"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "macaddr",
+                                  "seen",
+                                  "rssi_avg",
+                                  "rssi"
+                                ],
+                                "type": "object"
+                            }
+                          },
+                          "required": [
+                            "sta"
+                          ]
+                        }
+                      ],
+                      "type": "object"
+                }
+            }
+        },
+        "add_vendor_ie": {
+            "type": "object",
+            "properties": {
+                "input": {
+                    "type": "object",
+                    "required": [
+                        "mgmt",
+                        "oui",
+                        "data"
+                    ],
+                    "properties": {
+                        "mgmt": {
+                            "type": "integer"
+                        },
+                        "oui": {
+                            "$ref": "#/definitions/oui_t"
+                        },
+                        "data": {
+                            "$ref": "#/definitions/data_t"
+                        }
+                    }
+                },
+                "output": {
+                    "type": "object",
+                    "properties": {}
+                }
+            }
+        },
+        "del_vendor_ie": {
+            "type": "object",
+            "properties": {
+                "intput": {
+                    "type": "object",
+                    "required": [
+                        "mgmt",
+                        "oui",
+                        "data"
+                    ],
+                    "properties": {
+                        "mgmt": {
+                            "type": "integer"
+                        },
+                        "oui": {
+                            "$ref": "#/definitions/oui_t"
+                        },
+                        "data": {
+                            "$ref": "#/definitions/data_t"
+                        }
+                    }
+                },
+                "output": {
+                    "type": "object",
+                    "properties": {}
+                }
+            }
+        },
+        "disconnect": {
+            "type": "object",
+            "properties": {
+                "input": {
+                    "type": "object",
+                    "required": [
+                        "sta"
+                    ],
+                    "properties": {
+                        "sta": {
+                            "$ref": "#/definitions/macaddr_t"
+                        }
+                    }
+                },
+                "output": {
+                    "type": "object",
+                    "properties": {}
+                }
+            }
+        },
+        "status": {
+            "type": "object",
+            "properties": {
+                "input": {
+                    "type": "object",
+                    "properties": {}
+                },
+                "output": {
+                    "type": "object",
+                    "required": [
+                        "ifname",
+                        "status",
+                        "ssid",
+                        "bssid",
+                        "encryption",
+                        "bandwidth",
+                        "standard",
+                        "num_stations",
+                        "utilization",
+                        "adm_capacity",
+                        "hidden",
+                        "max_stations",
+                        "capabilities"
+                    ],
+                    "properties": {
+                        "ifname": {
+                            "$ref": "#/definitions/iface_t"
+                        },
+                        "status": {
+                            "type": "string"
+                        },
+                        "ssid": {
+                            "$ref": "#/definitions/ssid_t"
+                        },
+                        "bssid": {
+                            "$ref": "#/definitions/macaddr_t"
+                        },
+                        "encryption": {
+                            "type": "string"
+                        },
+                        "bandwidth": {
+                            "oneOf": [
+                                {
+                                    "$ref": "#/definitions/bandwidth_2_t"
+                                },
+                                {
+                                    "$ref": "#/definitions/bandwidth_5_t"
+                                }
+                            ]
+                        },
+                        "standard": {
+                            "type": "string"
+                        },
+                        "num_stations": {
+                            "$ref": "#/definitions/nstations_t"
+                        },
+                        "utilization": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 100
+                        },
+                        "adm_capacity": {
+                            "type": "integer"
+                        },
+                        "hidden": {
+                            "type": "boolean"
+                        },
+                        "max_stations": {
+                            "$ref": "#/definitions/nstations_t"
+                        },
+                        "capabilities": {
+                            "type": "object",
+                            "required": [
+                                "wmm",
+                                "apsd",
+                                "shortslot",
+                                "dot11h"
+                            ],
+                            "properties": {
+                                "wmm": {
+                                    "type": "boolean"
+                                },
+                                "apsd": {
+                                    "type": "boolean"
+                                },
+                                "shortslot": {
+                                    "type": "boolean"
+                                },
+                                "dot11h": {
+                                    "type": "boolean"
+                                },
+                                "dot11k": {
+                                    "required": [
+                                        "dot11k_link_meas",
+                                        "dot11k_nbr_report",
+                                        "dot11k_bcn_passive",
+                                        "dot11k_bcn_active",
+                                        "dot11k_bcn_table",
+                                        "dot11k_rcpi",
+                                        "dot11k_rsni"
+                                    ],
+                                    "type": "object",
+                                    "properties": {
+                                        "dot11k_link_meas": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11k_nbr_report": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11k_bcn_passive": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11k_bcn_active": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11k_bcn_table": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11k_rcpi": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11k_rsni": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                },
+                                "dot11n": {
+                                    "required": [
+                                        "dot11n_ldpc",
+                                        "dot11n_40",
+                                        "dot11n_ps",
+                                        "dot11n_sgi20",
+                                        "dot11n_sgi40",
+                                        "dot11n_tx_stbc",
+                                        "dot11n_rx_stbc"
+                                    ],
+                                    "type": "object",
+                                    "properties": {
+                                        "dot11n_ldpc": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11n_40": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11n_ps": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11n_sgi20": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11n_sgi40": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11n_tx_stbc": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11n_rx_stbc": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                },
+                                "dot11ac": {
+                                    "required": [
+                                        "dot11ac_160",
+                                        "dot11ac_8080",
+                                        "dot11ac_mpdu_max",
+                                        "dot11ac_sgi80",
+                                        "dot11ac_sgi160",
+                                        "dot11ac_rx_ldpc",
+                                        "dot11ac_tx_stbc",
+                                        "dot11ac_rx_stbc_1ss",
+                                        "dot11ac_rx_stbc_2ss",
+                                        "dot11ac_rx_stbc_3ss",
+                                        "dot11ac_rx_stbc_4ss",
+                                        "dot11ac_su_beamformer",
+                                        "dot11ac_su_beamformee",
+                                        "dot11ac_mu_beamformer",
+                                        "dot11ac_mu_beamformee"
+                                    ],
+                                    "type": "object",
+                                    "properties": {
+                                        "dot11ac_160": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11ac_8080": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11ac_mpdu_max": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 65535
+                                        },
+                                        "dot11ac_sgi80": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11ac_sgi160": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11ac_rx_ldpc": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11ac_tx_stbc": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11ac_rx_stbc_1ss": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11ac_rx_stbc_2ss": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11ac_rx_stbc_3ss": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11ac_rx_stbc_4ss": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11ac_su_beamformer": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11ac_su_beamformee": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11ac_mu_beamformer": {
+                                            "type": "boolean"
+                                        },
+                                        "dot11ac_mu_beamformee": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "stats": {
+            "type": "object",
+            "properties": {
+                "input": {
+                    "type": "object",
+                    "properties": {}
+                },
+                "output": {
+                    "type": "object",
+                    "required": [
+                        "tx_bytes",
+                        "tx_packets",
+                        "tx_unicast_packets",
+                        "tx_multicast_packets",
+                        "tx_broadcast_packets",
+                        "tx_error_packets",
+                        "tx_retrans_packets",
+                        "tx_retrans_fail_packets",
+                        "tx_retry_packets",
+                        "tx_multi_retry_packets",
+                        "tx_dropped_packets",
+                        "ack_fail_packets",
+                        "aggregate_packets",
+                        "rx_bytes",
+                        "rx_packets",
+                        "rx_unicast_packets",
+                        "rx_multicast_packets",
+                        "rx_broadcast_packets",
+                        "rx_error_packets",
+                        "rx_dropped_packets",
+                        "rx_unknown_packets"
+                    ],
+                    "properties": {
+                        "tx_bytes": {
+                            "$ref": "#/definitions/rxtx_t"
+                        },
+                        "tx_packets": {
+                            "$ref": "#/definitions/rxtx_t"
+                        },
+                        "tx_unicast_packets": {
+                            "$ref": "#/definitions/rxtx_t"
+                        },
+                        "tx_multicast_packets": {
+                            "$ref": "#/definitions/rxtx_t"
+                        },
+                        "tx_broadcast_packets": {
+                            "$ref": "#/definitions/rxtx_t"
+                        },
+                        "tx_error_packets": {
+                            "$ref": "#/definitions/rxtx_t"
+                        },
+                        "tx_retrans_packets": {
+                            "$ref": "#/definitions/rxtx_t"
+                        },
+                        "tx_retrans_fail_packets": {
+                            "$ref": "#/definitions/rxtx_t"
+                        },
+                        "tx_retry_packets": {
+                            "$ref": "#/definitions/rxtx_t"
+                        },
+                        "tx_multi_retry_packets": {
+                            "$ref": "#/definitions/rxtx_t"
+                        },
+                        "tx_dropped_packets": {
+                            "$ref": "#/definitions/rxtx_t"
+                        },
+                        "ack_fail_packets": {
+                            "$ref": "#/definitions/rxtx_t"
+                        },
+                        "aggregate_packets": {
+                            "$ref": "#/definitions/rxtx_t"
+                        },
+                        "rx_bytes": {
+                            "$ref": "#/definitions/rxtx_t"
+                        },
+                        "rx_packets": {
+                            "$ref": "#/definitions/rxtx_t"
+                        },
+                        "rx_unicast_packets": {
+                            "$ref": "#/definitions/rxtx_t"
+                        },
+                        "rx_multicast_packets": {
+                            "$ref": "#/definitions/rxtx_t"
+                        },
+                        "rx_broadcast_packets": {
+                            "$ref": "#/definitions/rxtx_t"
+                        },
+                        "rx_error_packets": {
+                            "$ref": "#/definitions/rxtx_t"
+                        },
+                        "rx_dropped_packets": {
+                            "$ref": "#/definitions/rxtx_t"
+                        },
+                        "rx_unknown_packets": {
+                            "$ref": "#/definitions/rxtx_t"
+                        }
+                    }
+                }
+            }
+        },
+        "stations": {
+            "type": "object",
+            "properties": {
+                "input": {
+                    "type": "object",
+                    "properties": {
+                        "sta": {
+                            "$ref": "#/definitions/macaddr_t"
+                        }
+                    }
+                },
+                "output": {
+                    "type": "object",
+                    "required": [
+                        "stations"
+                    ],
+                    "properties": {
+                        "stations": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "required": [
+                                    "macaddr",
+                                    "wdev",
+                                    "frequency",
+                                    "rssi",
+                                    "snr",
+                                    "idle",
+                                    "in_network",
+                                    "tx_airtime",
+                                    "rx_airtime",
+                                    "airtime",
+                                    "maxrate",
+                                    "nss",
+                                    "bandwidth",
+                                    "status",
+                                    "capabilities",
+                                    "stats",
+                                    "rssi_per_antenna"
+                                ],
+                                "properties": {
+                                    "macaddr": {
+                                        "$ref": "#/definitions/macaddr_t"
+                                    },
+                                    "wdev": {
+                                        "$ref": "#/definitions/iface_t"
+                                    },
+                                    "frequency": {
+                                        "type": "integer"
+                                    },
+                                    "rssi": {
+                                        "$ref": "#/definitions/rssi_t"
+                                    },
+                                    "snr": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 100
+                                    },
+                                    "idle": {
+                                        "type": "integer",
+                                        "minimum": 0
+                                    },
+                                    "in_network": {
+                                        "type": "integer",
+                                        "minimum": 0
+                                    },
+                                    "tx_airtime": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 100
+                                    },
+                                    "rx_airtime": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 100
+                                    },
+                                    "airtime": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 100
+                                    },
+                                    "maxrate": {
+                                        "type": "integer",
+                                        "minimum": 0
+                                    },
+                                    "nss": {
+                                        "type": "integer",
+                                        "minimum": 0
+                                    },
+                                    "bandwidth": {
+                                        "type": "integer",
+                                        "minimum": 0
+                                    },
+                                    "status": {
+                                        "type": "object",
+                                        "required": [
+                                            "wmm",
+                                            "ps"
+                                        ],
+                                        "properties": {
+                                            "wmm": {
+                                                "type": "boolean"
+                                            },
+                                            "ps": {
+                                                "type": "boolean"
+                                            }
+                                        }
+                                    },
+                                    "capabilities": {
+                                        "type": "object",
+                                        "required": [
+                                            "wmm",
+                                            "apsd",
+                                            "shortslot",
+                                            "dot11h",
+                                            "2040coex",
+                                            "psmp",
+                                            "proxy_arp",
+                                            "dot11v_btm"
+                                        ],
+                                        "properties": {
+                                            "wmm": {
+                                                "type": "boolean"
+                                            },
+                                            "apsd": {
+                                                "type": "boolean"
+                                            },
+                                            "shortslot": {
+                                                "type": "boolean"
+                                            },
+                                            "dot11h": {
+                                                "type": "boolean"
+                                            },
+                                            "dot11k": {
+                                                "required": [
+                                                    "dot11k_link_meas",
+                                                    "dot11k_nbr_report",
+                                                    "dot11k_bcn_passive",
+                                                    "dot11k_bcn_active",
+                                                    "dot11k_bcn_table",
+                                                    "dot11k_rcpi",
+                                                    "dot11k_rsni"
+                                                ],
+                                                "type": "object",
+                                                "properties": {
+                                                    "dot11k_link_meas": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11k_nbr_report": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11k_bcn_passive": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11k_bcn_active": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11k_bcn_table": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11k_rcpi": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11k_rsni": {
+                                                        "type": "boolean"
+                                                    }
+                                                }
+                                            },
+                                            "2040coex": {
+                                                "type": "boolean"
+                                            },
+                                            "psmp": {
+                                                "type": "boolean"
+                                            },
+                                            "proxy_arp": {
+                                                "type": "boolean"
+                                            },
+                                            "dot11v_btm": {
+                                                "type": "boolean"
+                                            },
+                                            "dot11n": {
+                                                "required": [
+                                                    "dot11n_ldpc",
+                                                    "dot11n_40",
+                                                    "dot11n_ps",
+                                                    "dot11n_sgi20",
+                                                    "dot11n_sgi40",
+                                                    "dot11n_tx_stbc",
+                                                    "dot11n_rx_stbc"
+                                                ],
+                                                "type": "object",
+                                                "properties": {
+                                                    "dot11n_ldpc": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11n_40": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11n_ps": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11n_sgi20": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11n_sgi40": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11n_tx_stbc": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11n_rx_stbc": {
+                                                        "type": "boolean"
+                                                    }
+                                                }
+                                            },
+                                            "dot11ac": {
+                                                "required": [
+                                                    "dot11ac_160",
+                                                    "dot11ac_8080",
+                                                    "dot11ac_mpdu_max",
+                                                    "dot11ac_sgi80",
+                                                    "dot11ac_sgi160",
+                                                    "dot11ac_rx_ldpc",
+                                                    "dot11ac_tx_stbc",
+                                                    "dot11ac_rx_stbc_1ss",
+                                                    "dot11ac_rx_stbc_2ss",
+                                                    "dot11ac_rx_stbc_3ss",
+                                                    "dot11ac_rx_stbc_4ss",
+                                                    "dot11ac_su_beamformer",
+                                                    "dot11ac_su_beamformee",
+                                                    "dot11ac_mu_beamformer",
+                                                    "dot11ac_mu_beamformee"
+                                                ],
+                                                "type": "object",
+                                                "properties": {
+                                                    "dot11ac_160": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11ac_8080": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11ac_mpdu_max": {
+                                                        "type": "integer",
+                                                        "minimum": 0,
+                                                        "maximum": 65535
+                                                    },
+                                                    "dot11ac_sgi80": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11ac_sgi160": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11ac_rx_ldpc": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11ac_tx_stbc": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11ac_rx_stbc_1ss": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11ac_rx_stbc_2ss": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11ac_rx_stbc_3ss": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11ac_rx_stbc_4ss": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11ac_su_beamformer": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11ac_su_beamformee": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11ac_mu_beamformer": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "dot11ac_mu_beamformee": {
+                                                        "type": "boolean"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "stats": {
+                                        "type": "object",
+                                        "required": [
+                                            "tx_total_pkts",
+                                            "tx_total_bytes",
+                                            "tx_failures",
+                                            "tx_pkts_retries",
+                                            "rx_data_pkts",
+                                            "rx_data_bytes",
+                                            "rx_failures",
+                                            "tx_rate_latest",
+                                            "rx_rate_latest"
+                                        ],
+                                        "properties": {
+                                            "tx_total_pkts": {
+                                                "$ref": "#/definitions/rxtx_t"
+                                            },
+                                            "tx_total_bytes": {
+                                                "$ref": "#/definitions/rxtx_t"
+                                            },
+                                            "tx_failures": {
+                                                "$ref": "#/definitions/rxtx_t"
+                                            },
+                                            "tx_pkts_retries": {
+                                                "$ref": "#/definitions/rxtx_t"
+                                            },
+                                            "rx_data_pkts": {
+                                                "$ref": "#/definitions/rxtx_t"
+                                            },
+                                            "rx_data_bytes": {
+                                                "$ref": "#/definitions/rxtx_t"
+                                            },
+                                            "rx_failures": {
+                                                "$ref": "#/definitions/rxtx_t"
+                                            },
+                                            "tx_rate_latest": {
+                                                "$ref": "#/definitions/rxtx_latest_t"
+                                            },
+                                            "rx_rate_latest": {
+                                                "$ref": "#/definitions/rxtx_latest_t"
+                                            }
+                                        }
+                                    },
+                                    "rssi_per_antenna": {
+                                        "type": "array",
+                                        "items": {
+                                            "$ref": "#/definitions/rssi_t"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "list_neighbor": {
+            "type": "object",
+            "properties": {
+                "input": {
+                    "type": "object",
+                    "properties": {
+                        "ssid": {
+                            "$ref": "#/definitions/ssid_t"
+                        },
+                        "client": {
+                            "$ref": "#/definitions/macaddr_t"
+                        }
+                    }
+                },
+                "output": {
+                    "type": "object",
+                    "required": [
+                        "neighbors"
+                    ],
+                    "oneOf": [
+                        {
+                            "properties": {
+                                "neighbors": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "required": [
+                                            "bssid",
+                                            "bss_info",
+                                            "regulatory",
+                                            "channel",
+                                            "phy"
+                                        ],
+                                        "properties": {
+                                            "bssid": {
+                                                "$ref": "#/definitions/macaddr_t"
+                                            },
+                                            "bss_info": {
+                                                "type": "integer",
+                                                "minimum": 0
+                                            },
+                                            "regulatory": {
+                                                "type": "integer",
+                                                "minimum": 0
+                                            },
+                                            "channel": {
+                                                "oneOf": [
+                                                    {
+                                                        "$ref": "#/definitions/channel_2_t"
+                                                    },
+                                                    {
+                                                        "$ref": "#/definitions/channel_5_t"
+                                                    }
+                                                ]
+                                            },
+                                            "phy": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "properties": {
+                                "neighbors": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "required": [
+                                            "bssid",
+                                            "rssi",
+                                            "rsni"
+                                        ],
+                                        "properties": {
+                                            "bssid": {
+                                                "$ref": "#/definitions/macaddr_t"
+                                            },
+                                            "rssi": {
+                                                "$ref": "#/definitions/rssi_t"
+                                            },
+                                            "rsni": {
+                                                "type": "integer"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "assoclist": {
+            "type": "object",
+            "properties": {
+                "input": {
+                    "type": "object",
+                    "properties": {}
+                },
+                "output": {
+                    "type": "object",
+                    "required": [
+                        "assoclist"
+                    ],
+                    "properties": {
+                        "assoclist": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "required": [
+                                    "wdev",
+                                    "macaddr"
+                                ],
+                                "properties": {
+                                    "wdev": {
+                                        "$ref": "#/definitions/iface_t"
+                                    },
+                                    "macaddr": {
+                                        "$ref": "#/definitions/macaddr_t"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "dump_beacon": {
+            "type": "object",
+            "properties": {
+                "input": {
+                    "type": "object",
+                    "properties": {}
+                },
+                "output": {
+                    "type": "object",
+                    "required": [
+                        "beacon-ies"
+                    ],
+                    "properties": {
+                        "beacon-ies": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "pattern":"^[0-9a-fA-F]+$"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

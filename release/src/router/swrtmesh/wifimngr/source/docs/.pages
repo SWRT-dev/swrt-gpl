@@ -1,0 +1,9 @@
+title: "WiFi Manager"
+
+nav:
+    - "index.md"
+    - "functionspec.md"
+    - "ubus.splash.md"
+    - "testspec.md"
+    - "api"
+    - "..."

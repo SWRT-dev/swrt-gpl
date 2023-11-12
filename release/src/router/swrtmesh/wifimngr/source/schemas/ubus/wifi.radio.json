@@ -1,0 +1,648 @@
+{
+	"definitions": {
+		"channel_2_t": {
+			"title": "2.4GHz Channel",
+			"type": "integer",
+			"default": "auto",
+			"minimum": 1,
+			"maximum": 14
+		},
+		"channel_5_t": {
+			"title": "5GHz Channel",
+			"type": "integer",
+			"default": "auto",
+			"minimum": 32,
+			"maximum": 200
+		},
+		"channels_2_t": {
+			"title": "2.4GHz Channels",
+			"type": "array",
+			"items": {
+				"$ref": "#/definitions/channel_2_t"
+			}
+		},
+		"channels_5_t": {
+			"title": "5GHz Channels",
+			"type": "array",
+			"items": {
+				"$ref": "#/definitions/channel_5_t"
+			}
+		},
+		"macaddr_t": {
+			"title": "MAC Address",
+			"type": "string",
+			"minLength": 17,
+			"maxLength": 17,
+			"pattern": "^([0-9a-fA-F][0-9a-fA-F]:){5}[0-9a-fA-F][0-9a-fA-F]$"
+		},
+		"nasid_t": {
+			"title": "MAC Address",
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 48,
+			"pattern": "^([0-9a-fA-F]){1,48}$"
+		},
+		"iface_t": {
+			"title": "Interface",
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 16
+		},
+		"ssid_t": {
+			"title": "SSID",
+			"type": "string",
+			"minLength": 0,
+			"maxLength": 32
+		},
+		"nstations_t": {
+			"title": "Number of stations",
+			"type": "integer",
+			"minimum": 0,
+			"maximum": 2007
+		},
+		"bandwidth_2_t": {
+			"title": "Bandwidth",
+			"type": "integer",
+			"enum": [
+				20,
+				40
+			]
+		},
+		"bandwidth_5_t": {
+			"title": "Bandwidth",
+			"type": "integer",
+			"enum": [
+				20,
+				40,
+				80,
+				160
+			]
+		},
+		"rssi_t": {
+			"title": "RSSI",
+			"type": "integer",
+			"minimum": -128,
+			"maximum": 0
+		},
+		"noisepower_t": {
+			"title": "Noise",
+			"type": "integer",
+			"minimum": -127,
+			"maximum": 0
+		},
+		"band_t": {
+			"title": "WiFi Band",
+			"type": "string",
+			"enum": [
+				"2.4GHz",
+				"5GHz"
+			]
+		},
+		"standards_2_t": {
+			"title": "2.4GHz WiFi Standards",
+			"type": "string",
+			"enum": [
+				"802.11b",
+				"802.11g",
+				"802.11n",
+				"802.11ax"
+			]
+		},
+		"standards_5_t": {
+			"title": "5GHz WiFi Standards",
+			"type": "string",
+			"enum": [
+				"802.11a",
+				"802.11n",
+				"802.11ac",
+				"802.11ax"
+			]
+		},
+		"guard_t": {
+			"title": "Guard interval",
+			"type": "string",
+			"enum": [
+				"400ns",
+				"800ns",
+				"1xLTF_800ns",
+				"1xLTF_1600ns",
+				"2xLTF_800ns",
+				"2xLTF_1600ns",
+				"4xLTF_800ns",
+				"4xLTF_3200ns",
+				"Auto"
+			]
+		},
+		"rxtx_t": {
+			"type": "integer",
+			"minimum": 0
+		},
+		"pin_t": {
+			"type": "string",
+			"minLength": 8,
+			"maxLength": 8,
+			"pattern": "^[0-9]*$"
+		},
+		"bandwidth_t": {
+			"title": "Bandwidth",
+			"type": "integer",
+			"enum": [
+				20,
+				40,
+				80,
+				160
+			]
+		},
+		"aps_t": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"required": [
+					"ifname",
+					"status",
+					"ssid",
+					"bssid"
+				],
+				"properties": {
+					"ifname": {
+						"type": "string",
+						"minLength": 1,
+						"maxLength": 16
+					},
+					"status": {
+						"type": "string"
+					},
+					"ssid": {
+						"type": "string",
+						"minLength": 0,
+						"maxLength": 32
+					},
+					"bssid": {
+						"bssid": {
+							"$ref": "#/definitions/macaddr_t"
+						}
+					}
+				}
+			}
+		},
+		"oui_t": {
+			"title": "Three byte oui",
+			"type": "string",
+			"minLength": 9,
+			"maxLength": 9,
+			"pattern": "^([0-9a-fA-F][0-9a-fA-F]){3}$"
+		},
+		"data_t": {
+			"title": "Hex String",
+			"type": "string",
+			"pattern": "^[0-9a-fA-F]+"
+		},
+		"scanresult_t": {
+			"type": "object",
+			"required": [
+				"standard",
+				"bandwidth",
+				"channel",
+				"ssid",
+				"bssid",
+				"encryption",
+				"band",
+				"rssi",
+				"load_stas",
+				"load_utilization",
+				"load_available"
+			],
+			"if": {
+				"properties": {
+					"band": {
+						"const": "2.4GHz"
+					}
+				}
+			},
+			"then": {
+				"properties": {
+					"standard": {
+						"$ref": "#/definitions/standards_2_t"
+					},
+					"bandwidth": {
+						"$ref": "#/definitions/bandwidth_2_t"
+					},
+					"channel": {
+						"$ref": "#/definitions/channel_2_t"
+					}
+				}
+			},
+			"else": {
+				"properties": {
+					"standard": {
+						"$ref": "#/definitions/standards_5_t"
+					},
+					"bandwidth": {
+						"$ref": "#/definitions/bandwidth_5_t"
+					},
+					"channel": {
+						"$ref": "#/definitions/channel_5_t"
+					}
+				}
+			},
+			"properties": {
+				"ssid": {
+					"$ref": "#/definitions/ssid_t"
+				},
+				"bssid": {
+					"$ref": "#/definitions/macaddr_t"
+				},
+				"encryption": {
+					"type": "string"
+				},
+				"band": {
+					"$ref": "#/definitions/band_t"
+				},
+				"rssi": {
+					"$ref": "#/definitions/rssi_t"
+				},
+				"load_stas": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"load_utilization": {
+					"type": "integer",
+					"minimum": 0,
+					"maximum": 100
+				},
+				"load_available": {
+					"type": "integer",
+					"minimum": 0
+				}
+			}
+		}
+	},
+	"object": "^wifi\\.radio\\..*",
+	"regex": true,
+	"title": "wifi.radio.<name>",
+	"description": "WiFi Radio Object",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://www.iopsys.eu/wifi.radio.json",
+	"additionalProperties": false,
+	"properties": {
+		"autochannel": {
+			"type": "object",
+			"properties": {
+				"input": {
+					"type": "object",
+					"properties": {
+						"interval": {
+							"type": "integer"
+						},
+						"algo": {
+							"type": "integer"
+						},
+						"scans": {
+							"type": "integer"
+						}
+					}
+				},
+				"output": {
+					"description": "Auto channel selection",
+					"type": "object",
+					"title": "wifi.radio.autochannel",
+					"required": [
+						"code",
+						"new_channel",
+						"status"
+					],
+					"properties": {
+						"code": {
+							"type": "integer"
+						},
+						"new_channel": {
+							"oneOf": [
+								{
+									"$ref": "#/definitions/channel_2_t"
+								},
+								{
+									"$ref": "#/definitions/channel_5_t"
+								}
+							]
+						},
+						"status": {
+							"type": "string"
+						}
+					}
+				}
+			}
+		},
+		"scan": {
+			"type": "object",
+			"properties": {
+				"input": {
+					"type": "object",
+					"properties": {
+						"ssid": {
+							"$ref": "#/definitions/ssid_t"
+						},
+						"bssid": {
+							"$ref": "#/definitions/macaddr_t"
+						},
+						"channel": {
+							"oneOf": [
+								{
+									"$ref": "#/definitions/channel_2_t"
+								},
+								{
+									"$ref": "#/definitions/channel_5_t"
+								}
+							]
+						}
+					}
+				},
+				"output": {
+					"description": "Trigger a scan",
+					"type": "object",
+					"properties": {}
+				}
+			}
+		},
+		"scanresults": {
+			"type": "object",
+			"properties": {
+				"input": {
+					"type": "object",
+					"properties": {}
+				},
+				"output": {
+					"description": "Show scan results",
+					"type": "object",
+					"oneOf": [
+						{
+							"required": [
+								"accesspoints"
+							],
+							"properties": {
+								"accesspoints": {
+									"type": "array",
+									"items": {
+										"$ref": "#/definitions/scanresult_t"
+									}
+								}
+							}
+						},
+						{
+							"$ref": "#/definitions/scanresult_t"
+						}
+					]
+				}
+			}
+		},
+		"stats": {
+			"type": "object",
+			"properties": {
+				"input": {
+					"type": "object",
+					"properties": {}
+				},
+				"output": {
+					"description": "Radio statistics",
+					"type": "object",
+					"title": "wifi.radio.iface",
+					"required": [
+						"tx_bytes",
+						"tx_packets",
+						"tx_error_packets",
+						"tx_dropped_packets",
+						"rx_bytes",
+						"rx_packets",
+						"rx_error_packets",
+						"rx_dropped_packets",
+						"rx_fcs_error_packets"
+					],
+					"properties": {
+						"tx_bytes": {
+							"$ref": "#/definitions/rxtx_t"
+						},
+						"tx_packets": {
+							"$ref": "#/definitions/rxtx_t"
+						},
+						"tx_error_packets": {
+							"$ref": "#/definitions/rxtx_t"
+						},
+						"tx_dropped_packets": {
+							"$ref": "#/definitions/rxtx_t"
+						},
+						"rx_bytes": {
+							"$ref": "#/definitions/rxtx_t"
+						},
+						"rx_packets": {
+							"$ref": "#/definitions/rxtx_t"
+						},
+						"rx_error_packets": {
+							"$ref": "#/definitions/rxtx_t"
+						},
+						"rx_dropped_packets": {
+							"$ref": "#/definitions/rxtx_t"
+						},
+						"rx_fcs_error_packets": {
+							"$ref": "#/definitions/rxtx_t"
+						}
+					}
+				}
+			}
+		},
+		"status": {
+			"type": "object",
+			"properties": {
+				"input": {
+					"type": "object",
+					"properties": {}
+				},
+				"output": {
+					"description": "Radio status",
+					"type": "object",
+					"title": "wifi.radio.iface",
+					"required": [
+						"radio",
+						"isup",
+						"band",
+						"channel",
+						"bandwidth",
+						"noise",
+						"maxrate",
+						"beacon_int",
+						"dtim_period",
+						"short_retry_limit",
+						"long_retry_limit",
+						"frag_threshold",
+						"rts_threshold",
+						"txpower",
+						"txpower_dbm",
+						"guard_int"
+					],
+					"if": {
+						"properties": {
+							"band": {
+								"const": "2.4GHz"
+							}
+						}
+					},
+					"then": {
+						"properties": {
+							"bandwidth": {
+								"$ref": "#/definitions/bandwidth_2_t"
+							},
+							"channel": {
+								"$ref": "#/definitions/channel_2_t"
+							}
+						}
+					},
+					"else": {
+						"properties": {
+							"bandwidth": {
+								"$ref": "#/definitions/bandwidth_5_t"
+							},
+							"channel": {
+								"$ref": "#/definitions/channel_5_t"
+							}
+						}
+					},
+					"properties": {
+						"radio": {
+							"$ref": "#/definitions/iface_t"
+						},
+						"isup": {
+							"type": "boolean"
+						},
+						"band": {
+							"$ref": "#/definitions/band_t"
+						},
+						"noise": {
+							"$ref": "#/definitions/noisepower_t"
+						},
+						"maxrate": {
+							"type": "integer",
+							"minimum": 0
+						},
+						"beacon_int": {
+							"type": "integer",
+							"default": 100,
+							"minimum": 1,
+							"maximum": 65535
+						},
+						"dtim_period": {
+							"type": "integer",
+							"default": 1,
+							"minimum": 1,
+							"maximum": 255
+						},
+						"short_retry_limit": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 255
+						},
+						"long_retry_limit": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 255
+						},
+						"frag_threshold": {
+							"type": "integer",
+							"default": 2346,
+							"minimum": 256,
+							"maximum": 65535
+						},
+						"rts_threshold": {
+							"type": "integer",
+							"default": 2347,
+							"minimum": 0,
+							"maximum": 65535
+						},
+						"txpower": {
+							"type": "integer",
+							"default": 100,
+							"minimum": 0,
+							"maximum": 100
+						},
+						"txpower_dbm": {
+							"type": "integer",
+							"default": 32,
+							"minimum": -50,
+							"maximum": 50
+						},
+						"guard_int": {
+							"$ref": "#/definitions/guard_t"
+						}
+					}
+				}
+			}
+		},
+		"get": {
+			"type": "object",
+			"properties": {
+				"input": {
+					"type": "object",
+					"properties": {
+						"param": {
+							"type": "string"
+						}
+					}
+				},
+				"output": {
+					"type": "object",
+					"properties": {
+						"status": {
+							"type": "integer"
+						},
+						"values": {
+							"type": "integer"
+						}
+					}
+				}
+			}
+		},
+		"add_iface": {
+			"type": "object",
+			"properties": {
+				"input": {
+					"type": "object",
+					"properties": {
+						"args": {
+							"type": "object",
+							"properties": { }
+						},
+						"config": {
+							"type": "boolean"
+						}
+					}
+				},
+				"output": {
+					"type": "object",
+					"properties": {	}
+				}
+			}
+		}
+		,
+		"del_iface": {
+			"type": "object",
+			"properties": {
+				"input": {
+					"type": "object",
+					"required": [
+						"ifname"
+					],
+					"properties": {
+						"ifname": {
+							"type": "string",
+							"maxLength": 16
+						},
+						"config": {
+							"type": "boolean"
+						}
+					}
+				},
+				"output": {
+					"type": "object",
+					"properties": {	}
+			}
+		}
+	}
+	}
+}

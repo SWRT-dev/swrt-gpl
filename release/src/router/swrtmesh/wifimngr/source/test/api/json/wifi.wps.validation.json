@@ -1,0 +1,49 @@
+{
+    "object": "wifi.wps",
+    "methods": [
+        {
+            "method": "status",
+            "rc": 0
+        },
+        {
+            "method": "status",
+            "args": {
+                "ifname": "test2"
+            },
+            "rc": 0
+        },
+        {
+            "method": "generate_pin",
+            "rc": 0
+        },
+        {
+            "method": "validate_pin",
+            "args": {
+                "pin": "1111111"
+            },
+            "rc": 0
+        },
+        {
+            "method": "validate_pin",
+            "args": {
+                "pin": "37780906"
+            },
+            "rc": 0
+        },
+        {
+            "method": "showpin",
+            "rc": 0
+        },
+        {
+            "method": "showpin",
+            "args": {
+                "ifname": "test2"
+            },
+            "rc": 0
+        },
+        {
+            "method": "hello",
+            "rc": 3
+        }
+    ]
+}

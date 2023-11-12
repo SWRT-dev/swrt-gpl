@@ -1,0 +1,13 @@
+{
+        "events" : [
+                {
+                        "type": "wifi-event",
+                        "name": "cfg09ac03",
+                        "ifname": "test5",
+                        "family": "easysoc",
+                        "group": [
+                                "notify"
+                        ]
+                }
+        ]
+}
