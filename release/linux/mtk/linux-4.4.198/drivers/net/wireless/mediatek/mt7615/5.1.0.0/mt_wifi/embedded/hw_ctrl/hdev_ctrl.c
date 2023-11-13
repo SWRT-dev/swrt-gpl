@@ -147,7 +147,7 @@ INT32 HcAcquireRadioForWdev(RTMP_ADAPTER *pAd, struct wifi_dev *wdev)
 	}
 
 #ifdef EXT_BUILD_CHANNEL_LIST
-	BuildChannelListEx(pAd);
+	BuildChannelListEx(pAd, wdev);
 #else
 	BuildChannelList(pAd, wdev);
 #endif

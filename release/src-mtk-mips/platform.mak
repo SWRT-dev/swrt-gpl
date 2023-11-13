@@ -1154,6 +1154,9 @@ define platformKernelConfig
 		echo "CONFIG_MTK_NAND_BLOCK2=y" >>$(1); \
 	fi; \
 	if [ "$(SWRTMESH)" = "y" ]; then \
+		if [ "$(FIRST_IF)" = "MT7615E" ]; then \
+			echo "# CONFIG_HOSTAPD_MAP_SUPPORT is not set" >>$(1); \
+		fi; \
 		sed -i "/CONFIG_CFG80211_SUPPORT/d" $(1); \
 		echo "CONFIG_CFG80211_SUPPORT=y" >>$(1); \
 		sed -i "/CONFIG_ENTERPRISE_AP_SUPPORT/d" $(1); \

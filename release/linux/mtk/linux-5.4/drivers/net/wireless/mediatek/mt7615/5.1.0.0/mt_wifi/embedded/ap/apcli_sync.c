@@ -285,7 +285,12 @@ static VOID ApCliPeerProbeRspAtJoinAction(
 		CHAR Rssi0 = ConvertToRssi(pAd, &Elem->rssi_info, RSSI_IDX_0);
 		CHAR Rssi1 = ConvertToRssi(pAd, &Elem->rssi_info, RSSI_IDX_1);
 		CHAR Rssi2 = ConvertToRssi(pAd, &Elem->rssi_info, RSSI_IDX_2);
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
+		CHAR Rssi3 = ConvertToRssi(pAd, &Elem->rssi_info, RSSI_IDX_3);
+		LONG RealRssi = (LONG)(RTMPMaxRssi(pAd, Rssi0, Rssi1, Rssi2, Rssi3));
+#else
 		LONG RealRssi = (LONG)(RTMPMaxRssi(pAd, Rssi0, Rssi1, Rssi2));
+#endif
 #endif
 		/* Update ScanTab */
 		{

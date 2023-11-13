@@ -5191,7 +5191,7 @@ void write_rpt_wpa_supplicant_conf(int band, const char *prefix_mssid, char *pre
 	nvram_pf_set(prefix_mssid, "bw", nvram_pf_safe_get(prefix_wlc, "nbw_cap"));
 
 
-	fprintf(fp_wpa,	"ctrl_interface=/var/run/wpa_supplicant-%s\n%s\nnetwork={\nssid=\"%s\"\n", get_staifname(band),	(addition ? : ""), 
+	fprintf(fp_wpa,	"ctrl_interface=/var/run/wpa_supplicant\n%s\nnetwork={\nssid=\"%s\"\n", (addition ? : ""), 
 		nvram_pf_get(prefix_wlc, "ssid") ? : "8f3610e3c9feabed953a6");
 
 	fprintf(fp_wpa,"\tscan_ssid=1\n");

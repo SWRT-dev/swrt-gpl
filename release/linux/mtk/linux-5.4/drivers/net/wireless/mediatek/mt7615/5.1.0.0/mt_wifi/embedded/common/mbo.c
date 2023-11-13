@@ -894,7 +894,7 @@ static VOID WextMboSendStaDisassocToDaemonEvent(
 		NdisCopyMemory(&pMboMsg->MboMsgBody.MboEvtStaDisassoc, pStaDisassocInfo, ReportBufLen);
 
 	if (pStaDisassocInfo && pStaDisassocInfo->mac_addr) {
-		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 				("%s [%02x:%02x:%02x:%02x:%02x:%02x] sizeof %u \
 					report_buf_len %d buflen %d msg_type %s\n",
 				__func__, PRINT_MAC(pStaDisassocInfo->mac_addr), (UINT32)sizeof(MBO_EVENT_STA_DISASSOC), ReportBufLen, buflen, MboMsgTypeToString(MsgType)));

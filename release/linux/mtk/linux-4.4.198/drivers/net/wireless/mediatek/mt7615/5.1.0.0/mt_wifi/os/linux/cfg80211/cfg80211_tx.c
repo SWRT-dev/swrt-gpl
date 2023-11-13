@@ -1709,7 +1709,7 @@ VOID CFG80211_AssocRespHandler(RTMP_ADAPTER *pAd, VOID *pData, ULONG Data)
 
 #ifdef MBO_SUPPORT
 	if (IS_MBO_ENABLE(wdev))
-		MakeMboOceIE(pAd, wdev, pOutBuffer+FrameLen, &FrameLen, MBO_FRAME_TYPE_ASSOC_RSP);
+		MakeMboOceIE(pAd, wdev, pEntry, pOutBuffer+FrameLen, &FrameLen, MBO_FRAME_TYPE_ASSOC_RSP);
 #endif /* MBO_SUPPORT */
 #ifdef WSC_AP_SUPPORT
 

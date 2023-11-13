@@ -1044,12 +1044,12 @@ static int CFG80211_OpsKeyAdd(
 	if ((pNdev->ieee80211_ptr->iftype == RT_CMD_80211_IFTYPE_AP) ||
 		(pNdev->ieee80211_ptr->iftype == RT_CMD_80211_IFTYPE_P2P_GO)) {
 		if (pMacAddr) {
-			CFG80211DBG(DBG_LVL_OFF, ("80211> KeyAdd STA(%02X:%02X:%02X:%02X:%02X:%02X) ==>\n",
+			CFG80211DBG(DBG_LVL_TRACE, ("80211> KeyAdd STA(%02X:%02X:%02X:%02X:%02X:%02X) ==>\n",
 									  PRINT_MAC(pMacAddr)));
 			NdisCopyMemory(KeyInfo.MAC, pMacAddr, MAC_ADDR_LEN);
 		}
 
-		CFG80211DBG(DBG_LVL_OFF, ("80211> AP Key Add\n"));
+		CFG80211DBG(DBG_LVL_TRACE, ("80211> AP Key Add\n"));
 		RTMP_DRIVER_80211_AP_KEY_ADD(pAd, &KeyInfo);
 	} else
 #endif /* CONFIG_AP_SUPPORT */
@@ -1171,7 +1171,7 @@ static int CFG80211_OpsKeyDel(
 	CFG80211DBG(DBG_LVL_TRACE, ("80211> %s ==>\n", __func__));
 
 	if (pMacAddr) {
-		CFG80211DBG(DBG_LVL_ERROR, ("80211> KeyDel STA(%02X:%02X:%02X:%02X:%02X:%02X) ==>\n", PRINT_MAC(pMacAddr)));
+		CFG80211DBG(DBG_LVL_TRACE, ("80211> KeyDel STA(%02X:%02X:%02X:%02X:%02X:%02X) ==>\n", PRINT_MAC(pMacAddr)));
 		NdisCopyMemory(KeyInfo.MAC, pMacAddr, MAC_ADDR_LEN);
 	}
 
@@ -2307,9 +2307,9 @@ static int CFG80211_OpsStaDel(
 
 	if (dev) {
 		rApStaDel.pWdev = RTMP_OS_NETDEV_GET_WDEV(dev);
-		CFG80211DBG(DBG_LVL_OFF, ("80211> %s ==> for bssid (%02X:%02X:%02X:%02X:%02X:%02X)\n", __func__, PRINT_MAC(rApStaDel.pWdev->bssid)));
+		CFG80211DBG(DBG_LVL_TRACE, ("80211> %s ==> for bssid (%02X:%02X:%02X:%02X:%02X:%02X)\n", __func__, PRINT_MAC(rApStaDel.pWdev->bssid)));
 	} else
-		CFG80211DBG(DBG_LVL_OFF, ("80211> %s ==>", __func__));
+		CFG80211DBG(DBG_LVL_TRACE, ("80211> %s ==>", __func__));
 
 	if (pMacAddr) {
 		CFG80211DBG(DBG_LVL_TRACE, ("80211> Delete STA(%02X:%02X:%02X:%02X:%02X:%02X) ==>\n",
@@ -2321,7 +2321,7 @@ static int CFG80211_OpsStaDel(
 #else
 			RTMP_DRIVER_80211_AP_STA_DEL(pAd, (VOID *)&rApStaDel, 0);
 #endif
-	CFG80211DBG(DBG_LVL_OFF, ("80211> %s <==", __func__));
+	CFG80211DBG(DBG_LVL_TRACE, ("80211> %s <==", __func__));
 
 	return 0;
 }

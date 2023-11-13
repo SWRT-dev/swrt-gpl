@@ -723,8 +723,9 @@ int ra_gpio_write_bit(int idx, int value);
 extern int wl_ioctl(const char *ifname, int cmd, struct iwreq *pwrq);
 
 //cal the rate from MACHTTRANSMIT_SETTING structure replied from ioctl(CMD_RTPRIV_IOCTL_GET_MAC_TABLE_STRUCT)
-extern int getRate(MACHTTRANSMIT_SETTING_for_5G HTSetting);
-extern int getRate_2g(MACHTTRANSMIT_SETTING_for_2G HTSetting);
+extern void mtk_parse_ratedata(unsigned int ratedata, unsigned char *phymode, unsigned char *mcs, unsigned char *bw,
+	unsigned char *vht_nss,	 unsigned char *sgi, unsigned char *stbc);
+extern unsigned int mtk_mcs_to_rate(unsigned char mcs, unsigned char phy_mode, unsigned char bw, unsigned char sgi, unsigned char vht_nss, int unit);
 
 /* for ATE Get_WanLanStatus command */
 #if defined(RTCONFIG_RALINK_MT7621)

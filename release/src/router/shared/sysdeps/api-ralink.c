@@ -44,7 +44,7 @@ const char WIF_5G[]	= "rai0";
 const char WIF_2G[]	= "ra0";
 const char WDSIF_5G[]	= "wdsi";
 const char WDSIF_2G[]	= "wds";
-#if defined(RTCONFIG_SWRTMESH)
+#if defined(RTCONFIG_SWRTMESH) && defined(RTCONFIG_WLMODULE_MT7915D_AP)
 const char APCLI_5G[]	= "apclii";
 const char APCLI_2G[]	= "apcli";
 #else

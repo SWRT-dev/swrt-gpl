@@ -1493,7 +1493,7 @@ INT CFG80211_StaPortSecured(
 	pEntry = MacTableLookup(pAd, pMac);
 
 	if (!pEntry)
-		MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("Can't find pEntry in CFG80211_StaPortSecured\n"));
+		MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("Can't find pEntry in CFG80211_StaPortSecured\n"));
 	else {
 		tr_entry = &pAd->MacTab.tr_entry[pEntry->wcid];
 
@@ -1572,7 +1572,7 @@ INT CFG80211_ApStaDel(
 				MlmeDeAuthAction(pAd, pEntry, reason_code, FALSE);
 }
 		} else
-			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 				("Can't find pEntry in ApStaDel\n"));
 
 		/* Find entry in radius tbl and delete it if found */
@@ -1660,7 +1660,7 @@ INT CFG80211_setApDefaultKey(
 		return FALSE;
 	}
 
-	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("Set Ap Default Key: %d\n", Data));
+	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("Set Ap Default Key: %d\n", Data));
 #if defined(MT7615) || defined(MT7622)
 
 	pAd->ApCfg.MBSSID[apidx].wdev.SecConfig.PairwiseKeyId = Data;

@@ -612,90 +612,7 @@ int MCSMappingRateTable_5G[] = {
 	20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37
 }; /* 3*3 */
 
-#define FN_GETRATE(_fn_, _st_, _if, _mcstbl)						\
-_fn_(_st_ HTSetting)							\
-{									\
-	unsigned char Antenna = 0;	\
-	unsigned char MCS = HTSetting.field.MCS;	\
-	int rate_count = sizeof(_mcstbl)/sizeof(int);	\
-	int rate_index = 0;						\
-	int value = 0;	\
-									\
-	if (HTSetting.field.MODE >= MODE_VHT)				\
-	{								\
-		if(_if == 1) {	\
-			MCS = HTSetting.field.MCS & 0xf;	\
-			Antenna = (HTSetting.field.MCS >> 4) + 1;	\
-														\
-			if (HTSetting.field.BW == BW_20) {	\
-				rate_index = 112 + ((Antenna - 1) * 10) + ((unsigned char)HTSetting.field.ShortGI * 160) + ((unsigned char)MCS);	\
-			} else if (HTSetting.field.BW == BW_40) {	\
-				rate_index = 152 + ((Antenna - 1) * 10) + ((unsigned char)HTSetting.field.ShortGI * 160) + ((unsigned char)MCS);	\
-			} else if (HTSetting.field.BW == BW_80) {	\
-				rate_index = 192 + ((Antenna - 1) * 10) + ((unsigned char)HTSetting.field.ShortGI * 160) + ((unsigned char)MCS);	\
-			} else if (HTSetting.field.BW == BW_160) {	\
-				rate_index = 232 + ((Antenna - 1) * 10) + ((unsigned char)HTSetting.field.ShortGI * 160) + ((unsigned char)MCS);	\
-			}	\
-		}	\
-		else	\
-		if (HTSetting.field.BW == BW_20) {			\
-			rate_index = 108 +				\
-			((unsigned char)HTSetting.field.ShortGI * 29) +	\
-			((unsigned char)HTSetting.field.MCS);		\
-		}							\
-		else if (HTSetting.field.BW == BW_40) {			\
-			rate_index = 117 +				\
-			((unsigned char)HTSetting.field.ShortGI * 29) +	\
-			((unsigned char)HTSetting.field.MCS);		\
-		}							\
-		else if (HTSetting.field.BW == BW_80) {			\
-			rate_index = 127 +				\
-			((unsigned char)HTSetting.field.ShortGI * 29) +	\
-			((unsigned char)HTSetting.field.MCS);		\
-		}							\
-	}								\
-	else								\
-	if (HTSetting.field.MODE >= MODE_HTMIX)				\
-	{								\
-		if(_if == 1)	\
-		{	\
-			MCS = HTSetting.field.MCS;	\
-			\
-			if ((HTSetting.field.MODE == MODE_HTMIX) || (HTSetting.field.MODE == MODE_HTGREENFIELD))	\
-				Antenna = (MCS >> 3) + 1;	\
-			\
-			/* map back to 1SS MCS , multiply by antenna numbers later */		\
-			if (MCS > 7)		\
-				MCS %= 8;		\
-			\
-			rate_index = 16 + ((unsigned char)HTSetting.field.BW * 24) + ((unsigned char)HTSetting.field.ShortGI * 48) + ((unsigned char)MCS);		\
-		}else	\
-			rate_index = 12 + ((unsigned char)HTSetting.field.BW *24) + ((unsigned char)HTSetting.field.ShortGI *48) + ((unsigned char)HTSetting.field.MCS);	\
-	}								\
-	else								\
-		if (HTSetting.field.MODE == MODE_OFDM)				\
-			rate_index = (unsigned char)(HTSetting.field.MCS) + 4;	\
-		else if (HTSetting.field.MODE == MODE_CCK)			\
-			rate_index = (unsigned char)(HTSetting.field.MCS);	\
-									\
-	if (rate_index < 0)						\
-		rate_index = 0;						\
-									\
-	if (rate_index >= rate_count)					\
-		rate_index = rate_count-1;				\
-	\
-	if(_if == 1)	{		\
-		if (HTSetting.field.MODE != MODE_VHT)	\
-			value = (_mcstbl[rate_index] * 5) / 10;	\
-		else	\
-			value =  _mcstbl[rate_index];	\
-	}else		\
-		value = (_mcstbl[rate_index] * 5) / 10;	\
-	\
-	return value;		\
-}
 #elif defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
-/* mt_wifi/embadded/common/cmm_info */
 int MCSMappingRateTable[] = {
 	2,  4, 11, 22, 12,  18,  24,  36, 48,  72,  96, 108, 109, 110, 111, 112,/* CCK and OFDM */
 	13, 26, 39, 52, 78, 104, 117, 130, 26,  52,  78, 104, 156, 208, 234, 260,
@@ -758,6 +675,7 @@ int MCSMappingRateTable[] = {
 	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
 	20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37
 }; /* 3*3 */
+#endif
 
 #define MAX_NUM_HE_BANDWIDTHS 4
 #define MAX_NUM_HE_SPATIAL_STREAMS 4
@@ -853,101 +771,95 @@ unsigned short he_mcs_phyrate_mapping_table[MAX_NUM_HE_BANDWIDTHS][MAX_NUM_HE_SP
 	}
 };
 
-#define FN_GETRATE(_fn_, _st_, _if, _mcstbl)						\
-_fn_(_st_ HTSetting)							\
-{									\
-	unsigned char Antenna = 0;	\
-	unsigned char MCS = HTSetting.field.MCS;	\
-	unsigned char BW = HTSetting.field.BW;	\
-	unsigned char NSS = ((HTSetting.field.MCS >> 4) & 0x3) + 1;		\
-	int rate_count = sizeof(_mcstbl)/sizeof(int);	\
-	int rate_index = 0;						\
-	int value = 0;	\
-									\
-	if (HTSetting.field.MODE >= MODE_HE)				\
-	{								\
-		NSS = ((HTSetting.field.MCS >> 4) & 0x3) + 1;		\
-		MCS = HTSetting.field.MCS & 0xf;	\
-		if (NSS == 0) {								\
-			NSS = 1;								\
-		}								\
-								\
-		if (MCS >= MAX_NUM_HE_MCS_ENTRIES)								\
-			MCS = MAX_NUM_HE_MCS_ENTRIES - 1;								\
-								\
-		if (NSS > MAX_NUM_HE_SPATIAL_STREAMS)								\
-			NSS = MAX_NUM_HE_SPATIAL_STREAMS;								\
-								\
-		if (BW >= MAX_NUM_HE_BANDWIDTHS)								\
-			BW = MAX_NUM_HE_BANDWIDTHS - 1;								\
-								\
-		NSS--;								\
-								\
-		value = he_mcs_phyrate_mapping_table[BW][NSS][MCS];								\
-	}								\
-	else								\
-	{								\
-		if (HTSetting.field.MODE >= MODE_VHT)				\
-		{				\
-			MCS = HTSetting.field.MCS & 0xf;	\
-			Antenna = (HTSetting.field.MCS >> 4) + 1;	\
-														\
-			if (HTSetting.field.BW == BW_20) {	\
-				rate_index = 112 + ((Antenna - 1) * 10) + ((unsigned char)HTSetting.field.ShortGI * 160) + ((unsigned char)MCS);	\
-			} else if (HTSetting.field.BW == BW_40) {	\
-				rate_index = 152 + ((Antenna - 1) * 10) + ((unsigned char)HTSetting.field.ShortGI * 160) + ((unsigned char)MCS);	\
-			} else if (HTSetting.field.BW == BW_80) {	\
-				rate_index = 192 + ((Antenna - 1) * 10) + ((unsigned char)HTSetting.field.ShortGI * 160) + ((unsigned char)MCS);	\
-			} else if (HTSetting.field.BW == BW_160) {	\
-				rate_index = 232 + ((Antenna - 1) * 10) + ((unsigned char)HTSetting.field.ShortGI * 160) + ((unsigned char)MCS);	\
-			}	\
-		}								\
-		else								\
-		if (HTSetting.field.MODE >= MODE_HTMIX)				\
-		{								\
-			MCS = HTSetting.field.MCS;	\
-			\
-			if ((HTSetting.field.MODE == MODE_HTMIX) || (HTSetting.field.MODE == MODE_HTGREENFIELD))	\
-				Antenna = (MCS >> 3) + 1;	\
-			\
-			/* map back to 1SS MCS , multiply by antenna numbers later */		\
-			if (MCS > 7)		\
-				MCS %= 8;		\
-			\
-			rate_index = 16 + ((unsigned char)HTSetting.field.BW * 24) + ((unsigned char)HTSetting.field.ShortGI * 48) + ((unsigned char)MCS);		\
-		}								\
-		else								\
-			if (HTSetting.field.MODE == MODE_OFDM)				\
-				rate_index = (unsigned char)(HTSetting.field.MCS) + 4;		\
-			else if (HTSetting.field.MODE == MODE_CCK)			\
-				rate_index = (unsigned char)(HTSetting.field.MCS);	\
-									\
-		if (rate_index < 0)						\
-			rate_index = 0;						\
-										\
-		if (rate_index >= rate_count)					\
-			rate_index = rate_count-1;				\
-		\
-		if (HTSetting.field.MODE < MODE_VHT)	\
-			value = (_mcstbl[rate_index] * 5) / 10;		\
-		else	\
-			value =  _mcstbl[rate_index];	\
-		\
-		if (HTSetting.field.MODE >= MODE_HTMIX && HTSetting.field.MODE < MODE_VHT)	\
-		value *= Antenna;	\
-	}								\
-	return value;		\
-}
-#endif
-
-#if defined(RTCONFIG_HAS_5G)
-#if !defined(RTCONFIG_WLMODULE_MT7915D_AP) && !defined(RTCONFIG_MT798X)
-int FN_GETRATE(getRate,      MACHTTRANSMIT_SETTING_for_5G, 1, MCSMappingRateTable_5G)		//getRate   (MACHTTRANSMIT_SETTING_for_5G)
+unsigned int mtk_mcs_to_rate(unsigned char mcs, unsigned char phy_mode, unsigned char bw, unsigned char sgi, unsigned char vht_nss, int unit)
+{
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+#define MCSMAPTAB_5G MCSMappingRateTable
 #else
-int FN_GETRATE(getRate,      MACHTTRANSMIT_SETTING_for_5G, 1, MCSMappingRateTable)		//getRate   (MACHTTRANSMIT_SETTING_for_5G)
+#define MCSMAPTAB_5G MCSMappingRateTable_5G
 #endif
-#endif	/* RTCONFIG_HAS_5G */
-int FN_GETRATE(getRate_2g,   MACHTTRANSMIT_SETTING_for_2G, 0, MCSMappingRateTable)		//getRate_2g(MACHTTRANSMIT_SETTING_for_2G)
+#define MCSMAPTAB MCSMappingRateTable
+
+	unsigned char Antenna = 0;
+	int rate_count;
+	int rate_index = 0;
+	int value = 0;
+
+	if(unit)
+		rate_count = sizeof(MCSMAPTAB_5G)/sizeof(int);
+	else
+		rate_count = sizeof(MCSMAPTAB)/sizeof(int);
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+	if (phy_mode >= MODE_HE){
+		if (vht_nss == 0) {	
+			vht_nss = 1;
+		}
+		if (mcs >= MAX_NUM_HE_MCS_ENTRIES)
+			mcs = MAX_NUM_HE_MCS_ENTRIES - 1;
+		if (vht_nss > MAX_NUM_HE_SPATIAL_STREAMS)
+			vht_nss = MAX_NUM_HE_SPATIAL_STREAMS;
+		if (bw >= MAX_NUM_HE_BANDWIDTHS)
+			bw = MAX_NUM_HE_BANDWIDTHS - 1;
+		vht_nss--;
+		value = he_mcs_phyrate_mapping_table[bw][vht_nss][mcs];
+		return value;
+	}else 
+#endif
+	if (phy_mode >= MODE_VHT){
+		if (bw == BW_20)
+			rate_index = 112 + ((vht_nss - 1) * 10) + (sgi * 160) + mcs;
+		else if (bw == BW_40)
+			rate_index = 152 + ((vht_nss - 1) * 10) + (sgi * 160) + mcs;
+		else if (bw == BW_80)
+			rate_index = 192 + ((vht_nss - 1) * 10) + (sgi * 160) + mcs;
+		else if (bw == BW_160)
+			rate_index = 232 + ((vht_nss - 1) * 10) + (sgi * 160) + mcs;
+	}else if (phy_mode >= MODE_HTMIX){
+		if ((phy_mode == MODE_HTMIX) || (phy_mode == MODE_HTGREENFIELD))
+			Antenna = (mcs >> 3) + 1;
+			/* map back to 1SS MCS , multiply by antenna numbers later */
+		if (mcs > 7)
+			mcs %= 8;
+		rate_index = 16 + (bw * 24) + (sgi * 48) + mcs;
+	}else if (phy_mode == MODE_OFDM)
+		rate_index = mcs + 4;
+	else if (phy_mode == MODE_CCK)
+		rate_index = mcs;
+	if (rate_index < 0)
+		rate_index = 0;
+	if (rate_index >= rate_count)
+		rate_index = rate_count-1;
+	if(unit){
+		if (phy_mode < MODE_VHT)
+			value = (MCSMAPTAB_5G[rate_index] * 5) / 10;
+		else
+			value =  MCSMAPTAB_5G[rate_index];
+	}else{
+		if (phy_mode < MODE_VHT)
+			value = (MCSMAPTAB[rate_index] * 5) / 10;
+		else
+			value =  MCSMAPTAB[rate_index];
+	}
+	if (phy_mode >= MODE_HTMIX && phy_mode < MODE_VHT)
+		value *= Antenna;
+	return value;
+}
+
+void mtk_parse_ratedata(unsigned int ratedata, unsigned char *phymode, unsigned char *mcs, unsigned char *bw,
+	unsigned char *vht_nss,	 unsigned char *sgi, unsigned char *stbc)
+{
+	*phymode = (ratedata >> 13) & 0x7;
+	*mcs = ratedata & 0x3F;
+	*bw = (ratedata >> 7) & 0x3;
+	*sgi = (ratedata >> 9) & 0x1;
+	*stbc = (ratedata >> 10) & 0x1;
+	*vht_nss = 0;
+
+	if ( *phymode >= MODE_VHT ) {
+		*vht_nss = ((*mcs & (0x3 << 4)) >> 4) + 1;
+		*mcs &= 0xF;
+	}
+}
 
 #ifdef RTCONFIG_AMAS
 double get_wifi_maxpower(int band_type)
