@@ -135,7 +135,7 @@ config RTCONFIG_DHDAP
 
 config RTCONFIG_BW160M
 	bool "Bandwidth 160MHz support"
-	depends on RTCONFIG_DHDAP || RTCONFIG_QCA || RTCONFIG_MT798X
+	depends on RTCONFIG_DHDAP || RTCONFIG_QCA || RTCONFIG_RALINK
 	default n
 
 config RTCONFIG_WLEXE

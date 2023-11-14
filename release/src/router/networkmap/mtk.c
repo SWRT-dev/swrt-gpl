@@ -38,9 +38,8 @@ void MTK_stainfo(int unit)
 //			wireless_type = 3;
 		if(mp->Num > 0){
 			int hr, min, sec;
-			unsigned int tx_ratedata = 0;
-			unsigned int rx_ratedata = 0;
-			unsigned short rxrate;
+			uint32_t tx_ratedata = 0;
+			uint32_t rx_ratedata = 0;
 			unsigned char phy, mcs, bw, vht_nss, sgi, stbc;
 			unsigned char r_phy, r_mcs, r_bw, r_vht_nss, r_sgi, r_stbc;
 			for(i = 0; i < mp->Num; i++){
@@ -70,11 +69,14 @@ void MTK_stainfo(int unit)
 				}
 				rssi = rssi / cnt;
 				sta_info_tab->rssi = (unsigned int)rssi;
-				tx_ratedata = (unsigned int)mp->Entry[i].TxRate.word;
-				rxrate = (unsigned short)mp->Entry[i].LastRxRate;
-				rx_ratedata = (unsigned int)rxrate;
+				tx_ratedata = (uint32_t)mp->Entry[i].TxRate.word;
+				rx_ratedata = (uint32_t)mp->Entry[i].LastRxRate;
 				mtk_parse_ratedata(tx_ratedata, &phy, &mcs, &bw, &vht_nss, &sgi, &stbc);
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+				mtk_parse_heratedata(rx_ratedata, &r_phy, &r_mcs, &r_bw, &r_vht_nss, &r_sgi, &r_stbc);
+#else
 				mtk_parse_ratedata(rx_ratedata, &r_phy, &r_mcs, &r_bw, &r_vht_nss, &r_sgi, &r_stbc);
+#endif
 				hr = (mp->Entry[i].ConnectedTime) / 3600;
 				min = (mp->Entry[i].ConnectedTime) % 3600 / 60;
 				sec = mp->Entry[i].ConnectedTime - hr * 3600 - min * 60;

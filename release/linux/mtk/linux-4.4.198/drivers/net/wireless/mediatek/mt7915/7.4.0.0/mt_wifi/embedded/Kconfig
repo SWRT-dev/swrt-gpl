@@ -1,7 +1,3 @@
-config CHIP_MT7915
-	bool
-	default y
-
 config MT_WIFI
 	tristate "MT WIFI Driver"
 	select WIFI_BASIC_FUNC if MT_WIFI

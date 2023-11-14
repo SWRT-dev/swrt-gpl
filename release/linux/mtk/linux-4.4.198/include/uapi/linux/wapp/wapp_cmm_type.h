@@ -57,7 +57,9 @@
 #define MAX_OP_CLASS 16
 #define MAX_LEN_OF_SSID 32
 #define MAX_NUM_OF_CHANNELS		59 // 14 channels @2.4G +  12@UNII(lower/middle) + 16@HiperLAN2 + 11@UNII(upper) + 0@Japan + 1 as NULL termination
+#ifndef ASSOC_REQ_LEN
 #define ASSOC_REQ_LEN 154
+#endif
 #define ASSOC_REQ_LEN_MAX 512
 #define PREQ_IE_LEN 128
 #define BCN_RPT_LEN 200

@@ -91,7 +91,7 @@ config MAC_REPEATER_SUPPORT
 
 config MWDS
     bool "Mixed WDS(MWDS)"
-    depends on CHIP_MT7615E
+    depends on CHIP_MT7615E || CHIP_MT7915
     depends on MT_AP_SUPPORT
     select APCLI_SUPPORT
     default n
@@ -251,7 +251,6 @@ config APCLI_STA_SUPPORT
 	bool "APCLI CFG80211 STA Support"
 	depends on APCLI_SUPPORT
 	depends on CFG80211_SUPPORT
-        depends on ENTERPRISE_AP_SUPPORT
 	default n
 
 #WDS STA
@@ -259,7 +258,6 @@ config WDS_STA_SUPPORT
 	bool "WDS STA Support"
 	depends on APCLI_SUPPORT
 	depends on CFG80211_SUPPORT
-        depends on ENTERPRISE_AP_SUPPORT
 	default n
 
 #WDS AP
@@ -267,7 +265,6 @@ config MBSS_AS_WDS_AP_SUPPORT
 	bool "MBSS AS WDS AP Support"
 	depends on MT_AP_SUPPORT
 	depends on MBSS_SUPPORT
-        depends on ENTERPRISE_AP_SUPPORT
 	default n
 
 #config DSCP_PRI_SUPPORT
@@ -433,6 +430,26 @@ config PROFILING_SUPPORT
 config MLME_MULTI_QUEUE_SUPPORT
 	bool "Mlme Multi Queue Support"
 	default n
+
+config 6G_SUPPORT
+	bool "WIFI 6G Support"
+	default n
+	help
+	  Supporting 6GHz Wi-Fi
+
+config BSSMGR_CROSS_MODULE_SUPPORT
+	bool "WIFI 6G BSS Manager Cross Module Support"
+	depends on 6G_SUPPORT
+	default n
+	help
+		Supporting 6GHz Wi-Fi BSS Manager Cross Module
+
+config MT7976_SUPPORT
+	bool "MT7976 Support"
+	depends on 6G_SUPPORT
+	default n
+	help
+		Supporting A-Die MT7976 confiuration
 
 #config WIFI_DIAG
 #	bool "CTC WIFI diagnose feature support"

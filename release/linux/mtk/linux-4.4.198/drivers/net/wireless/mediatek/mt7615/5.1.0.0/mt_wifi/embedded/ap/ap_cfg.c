@@ -4901,7 +4901,7 @@ INT RTMPAPSetInformation(
 		break;
 
 	case OID_802_11_VOW_BW_AT_EN: {
-		P_VOW_UI_CONFIG cfg;
+		P_VOW_UI_CONFIG cfg = NULL;
 		UCHAR buf[VOW_CMD_STR_LEN];
 		UINT8 group;
 
@@ -4929,7 +4929,7 @@ INT RTMPAPSetInformation(
 	break;
 
 	case OID_802_11_VOW_BW_TPUT_EN: {
-		P_VOW_UI_CONFIG cfg;
+		P_VOW_UI_CONFIG cfg = NULL;
 		UCHAR buf[VOW_CMD_STR_LEN];
 		UINT8 group;
 
@@ -4957,7 +4957,8 @@ INT RTMPAPSetInformation(
 	break;
 
 	case OID_802_11_VOW_ATF_EN: {
-		UCHAR *val, buf[VOW_CMD_STR_LEN];
+		UCHAR *val = NULL;
+		UCHAR buf[VOW_CMD_STR_LEN] = {0};
 
 		os_alloc_mem(val, (UCHAR **)&val, wrq->u.data.length);
 
@@ -4980,7 +4981,8 @@ INT RTMPAPSetInformation(
 	break;
 
 	case OID_802_11_VOW_RX_EN: {
-		UCHAR *val, buf[VOW_CMD_STR_LEN];
+		UCHAR *val = NULL;
+		UCHAR buf[VOW_CMD_STR_LEN] = {0};
 
 		os_alloc_mem(val, (UCHAR **)&val, wrq->u.data.length);
 
@@ -5003,7 +5005,7 @@ INT RTMPAPSetInformation(
 	break;
 
 	case OID_802_11_VOW_GROUP_MAX_RATE: {
-		P_VOW_UI_CONFIG cfg;
+		P_VOW_UI_CONFIG cfg = NULL;
 		UCHAR buf[VOW_CMD_STR_LEN];
 		UINT8 group;
 
@@ -5031,7 +5033,7 @@ INT RTMPAPSetInformation(
 	break;
 
 	case OID_802_11_VOW_GROUP_MIN_RATE: {
-		P_VOW_UI_CONFIG cfg;
+		P_VOW_UI_CONFIG cfg = NULL;
 		UCHAR buf[VOW_CMD_STR_LEN];
 		UINT8 group;
 
@@ -5059,7 +5061,7 @@ INT RTMPAPSetInformation(
 	break;
 
 	case OID_802_11_VOW_GROUP_MAX_RATIO: {
-		P_VOW_UI_CONFIG cfg;
+		P_VOW_UI_CONFIG cfg = NULL;
 		UCHAR buf[VOW_CMD_STR_LEN];
 		UINT8 group;
 
@@ -5087,7 +5089,7 @@ INT RTMPAPSetInformation(
 	break;
 
 	case OID_802_11_VOW_GROUP_MIN_RATIO: {
-		P_VOW_UI_CONFIG cfg;
+		P_VOW_UI_CONFIG cfg = NULL;
 		UCHAR buf[VOW_CMD_STR_LEN];
 		UINT8 group;
 
@@ -5285,7 +5287,7 @@ INT RTMPAPSetInformation(
 	case OID_802_11_VENDOR_IE_UPDATE:
 	case OID_802_11_VENDOR_IE_REMOVE:
 	{
-		UCHAR *Buf;
+		UCHAR *Buf = NULL;
 		struct vie_op_data_s *vie_op_data;
 		struct wifi_dev *wdev = &pAd->ApCfg.MBSSID[pObj->ioctl_if].wdev;
 		UINT32 length = 0;
@@ -17493,6 +17495,28 @@ INT RTMP_AP_IoctlHandle(
 		} else if ( subcmd == ASUS_SUBCMD_MACLIST ) {
 		} else if ( subcmd == ASUS_SUBCMD_GDFSNOPCHANNEL ) {
 		} else if ( subcmd == ASUS_SUBCMD_GCHANNELINFO ) {
+			struct channel_info {
+				UINT8 channel;
+				UINT8 bandwidth;
+				UINT8 extrach;
+			};
+			struct channel_info info;
+			POS_COOKIE pObj = (POS_COOKIE) pAd->OS_Cookie;
+			struct wifi_dev *wdev = get_wdev_by_ioctl_idx_and_iftype(pAd, pObj->ioctl_if, pObj->ioctl_if_type);
+			INT i = 0;
+			info.bandwidth = 0;
+			info.channel = wdev->channel;
+			info.extrach = 0;
+			for (i = 0; VALID_UCAST_ENTRY_WCID(pAd, i); i++) {
+				PMAC_TABLE_ENTRY pEntry = &pAd->MacTab.Content[i];
+				if(pEntry->wdev == wdev){
+					info.bandwidth = pEntry->MaxHTPhyMode.field.BW;
+					break;
+				}
+			}
+			wrq->u.data.length = sizeof(info);
+			if (copy_to_user(wrq->u.data.pointer, &info, wrq->u.data.length))
+				Status = -EFAULT;
 		} else if ( subcmd == ASUS_SUBCMD_GETSITESURVEY_VSIE ) {
 		} else if ( subcmd == ASUS_SUBCMD_GETAPCLIENABLE ) {
 		}
@@ -20847,4 +20871,3 @@ Error:
 	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("@@@ Failed to Set/Reset StaFastIdleCheckEnable\n"));
 	return FALSE;
 }
-

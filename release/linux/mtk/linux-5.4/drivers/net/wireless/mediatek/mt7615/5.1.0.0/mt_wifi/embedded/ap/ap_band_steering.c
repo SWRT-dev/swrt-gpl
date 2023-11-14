@@ -18,22 +18,9 @@
 #include "rt_config.h"
 
 #define BNDSTRG_DRIVER_VER	"3.1.3"
-#ifndef APMT2_PEER_PROBE_REQ
-#define APMT2_PEER_PROBE_REQ		0
-#endif
-#ifndef APMT2_PEER_DISASSOC_REQ
-#define APMT2_PEER_DISASSOC_REQ     1
-#endif
-#ifndef APMT2_PEER_ASSOC_REQ
-#define APMT2_PEER_ASSOC_REQ        2
-#endif
-#ifndef APMT2_PEER_AUTH_REQ
-#define APMT2_PEER_AUTH_REQ			3
-#endif
-
-static inline PBND_STRG_CLI_TABLE Get_BndStrgTableByBand(
+static inline PBND_STRG_CLI_TABLE Get_BndStrgTableByChannel(
 	PRTMP_ADAPTER	pAd,
-	UINT8           Band)
+	UINT8           Channel)
 {
 	PBND_STRG_CLI_TABLE table = NULL;
 	INT i;
@@ -41,7 +28,7 @@ static inline PBND_STRG_CLI_TABLE Get_BndStrgTableByBand(
 	for (i = 0; i < DBDC_BAND_NUM; i++) {
 		table = P_BND_STRG_TABLE(i);
 
-		if (table->bInitialized && (table->Band == Band))
+		if (table->bInitialized && (table->Channel == Channel))
 			return table;
 	}
 
@@ -53,14 +40,14 @@ inline PBND_STRG_CLI_TABLE Get_BndStrgTable(
 	INT             apidx)
 {
 	BSS_STRUCT *pMbss = NULL;
-	UINT8 Band;
+	UINT8 Channel;
 
-	if (VALID_MBSS(pAd, apidx))
+	if (apidx < HW_BEACON_MAX_NUM)
 		pMbss = &pAd->ApCfg.MBSSID[apidx];
 
 	if (pMbss) {
-		Band = WMODE_CAP_5G(pMbss->wdev.PhyMode)?BAND_5G : BAND_24G;
-		return Get_BndStrgTableByBand(pAd, Band);
+		Channel = pMbss->wdev.channel;
+		return Get_BndStrgTableByChannel(pAd, Channel);
 	}
 
 	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR, (RED("%s:(%d):invalid pMbss. apidx=%d\n"), __func__, __LINE__, apidx));
@@ -280,7 +267,7 @@ INT Show_BndStrg_Info(
 	pObj = (POS_COOKIE) pAd->OS_Cookie;
 	ifIndex = pObj->ioctl_if;
 
-	if (!VALID_MBSS(pAd, ifIndex))
+	if (ifIndex >= HW_BEACON_MAX_NUM)
 		return FALSE;
 
 	wdev = &pAd->ApCfg.MBSSID[ifIndex].wdev;
@@ -418,7 +405,7 @@ INT Set_BndStrg_Enable(
 
 		apidx = ifIndex;
 
-		if (VALID_MBSS(pAd, apidx))
+		if (apidx < HW_BEACON_MAX_NUM)
 			pMbss = &pAd->ApCfg.MBSSID[apidx];
 
 		if (pMbss == NULL) {
@@ -461,7 +448,7 @@ INT Set_BndStrg_Param(PRTMP_ADAPTER pAd, RTMP_STRING *arg)
 	pObj = (POS_COOKIE) pAd->OS_Cookie;
 	ifIndex = pObj->ioctl_if;
 
-	if (!VALID_MBSS(pAd, ifIndex))
+	if (ifIndex > HW_BEACON_MAX_NUM)
 		return FALSE;
 
 	table = Get_BndStrgTable(pAd, ifIndex);
@@ -476,14 +463,7 @@ INT Set_BndStrg_Param(PRTMP_ADAPTER pAd, RTMP_STRING *arg)
 	bndstrg_param->Band = table->Band;
 	bndstrg_param->Channel = table->Channel;
 	bndstrg_param->len = strlen(arg);
-	if (bndstrg_param->len >= sizeof(bndstrg_param->arg)) { /*reserve space for null-character*/
-		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-			 ("%s(): Invalid BndStrg param\n", __func__));
-		return FALSE;
-	}
-	strncpy(bndstrg_param->arg, arg, bndstrg_param->len);
-	bndstrg_param->arg[bndstrg_param->len] = '\0';
-
+	strncpy(bndstrg_param->arg, arg, sizeof(bndstrg_param->arg) - 1);
 	BndStrgSendMsg(pAd, &msg);
 
 	return TRUE;
@@ -542,11 +522,13 @@ INT BndStrg_Init(PRTMP_ADAPTER pAd)
 	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, (YLW("%s()\n"), __func__));
 
 	for (apidx = 0; apidx < max_mbss_check_num; apidx++) {
-		ret_val = BndStrg_TableInit(pAd, apidx);
-		if (ret_val != BND_STRG_SUCCESS) {
-			BND_STRG_MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-				("Error in %s(), error code = %d on apidx = %d\n",
-				__func__, ret_val, apidx));
+		if (pAd->ApCfg.BndStrgBssIdx[apidx]) {
+			ret_val = BndStrg_TableInit(pAd, apidx);
+			if (ret_val != BND_STRG_SUCCESS) {
+				BND_STRG_MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+								  ("Error in %s(), error code = %d on apidx = %d\n",
+								   __func__, ret_val, apidx));
+			}
 		}
 	}
 
@@ -554,16 +536,32 @@ INT BndStrg_Init(PRTMP_ADAPTER pAd)
 }
 
 #ifdef DOT11K_RRM_SUPPORT
-VOID BndStrg_InsertNeighborRepIE(PRTMP_ADAPTER pAd, PBND_STRG_CLI_TABLE init_table, INT apidx)
+VOID BndStrg_InsertNeighborRepIE(PRTMP_ADAPTER pAd, PBND_STRG_CLI_TABLE init_table)
 {
-	BNDSTRG_NEIGHBOR_REP_INFO NeighborRepInfo = {0};
+	RRM_NEIGHBOR_REP_INFO NeighborRepInfo = { {0} };
 	BSS_STRUCT *pMbss = NULL;
 	RRM_BSSID_INFO BssidInfo;
-	UINT8 CondensedPhyType = 0; /* 7:2G,9:5G */
+	UINT8 idx, CondensedPhyType = 0; /* 7:2G,9:5G */
 
-	pMbss = &pAd->ApCfg.MBSSID[apidx];
+	if (init_table->Channel == 0) {
+		BND_STRG_MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("[%s]Error zero channel\n", __func__));
+		return;
+	}
+
+	for (idx = 0; idx < HW_BEACON_MAX_NUM; idx++) {
+		pMbss = &pAd->ApCfg.MBSSID[idx];
+		if (pMbss->wdev.channel == init_table->Channel && pAd->ApCfg.BndStrgBssIdx[idx])
+			break;
+	}
+
+	if (idx >= HW_BEACON_MAX_NUM) {
+		BND_STRG_MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+			 ("[%s]Error no pMbss init to channel table channel:%d\n", __func__, init_table->Channel));
+		return;
+	}
+
 	COPY_MAC_ADDR(NeighborRepInfo.Bssid, pMbss->wdev.bssid);
-	CondensedPhyType = (WMODE_CAP_5G(pMbss->wdev.PhyMode)) ? 9:7; /* 7:2G,9:5G */
+	CondensedPhyType = (pMbss->wdev.channel > 14)?9:7; /* 7:2G,9:5G */
 	/* our own info */
 	BssidInfo.word = 0;
 	BssidInfo.field.APReachAble = 3;
@@ -581,11 +579,7 @@ VOID BndStrg_InsertNeighborRepIE(PRTMP_ADAPTER pAd, PBND_STRG_CLI_TABLE init_tab
 	NeighborRepInfo.ChNum = pMbss->wdev.channel;
 	NeighborRepInfo.PhyType = CondensedPhyType;
 
-	NeighborRepInfo.Idx = apidx;
-	NdisCopyMemory(NeighborRepInfo.Ssid, pMbss->Ssid, sizeof(pMbss->Ssid));
- 
-	NdisZeroMemory(&init_table->NeighborRepInfo[apidx], sizeof(BNDSTRG_NEIGHBOR_REP_INFO));
-	NdisCopyMemory(&init_table->NeighborRepInfo[apidx], &NeighborRepInfo, sizeof(BNDSTRG_NEIGHBOR_REP_INFO));
+	NdisCopyMemory(&init_table->NeighborRepInfo, &NeighborRepInfo, sizeof(RRM_NEIGHBOR_REP_INFO));
 }
 #endif
 
@@ -619,15 +613,11 @@ INT BndStrg_TableInit(PRTMP_ADAPTER pAd, INT apidx)
 			continue;
 		}
 
-		if (table->bInitialized && (table->Band == Band)) {
-			init_table = table;
-			break;
-		}
-
+		if (table->bInitialized && (table->Channel == Channel))
+			return BND_STRG_SUCCESS;
 	}
 
 	if (init_table) {
-		if (init_table->bInitialized == FALSE || (init_table->Band != Band)) {
 		NdisZeroMemory(init_table, sizeof(BND_STRG_CLI_TABLE));
 		OS_NdisAllocateSpinLock(&init_table->Lock);
 /* WPS_BandSteering Support */
@@ -640,15 +630,11 @@ INT BndStrg_TableInit(PRTMP_ADAPTER pAd, INT apidx)
 		init_table->Band = Band;
 		init_table->Channel = Channel;
 		init_table->bInitialized = TRUE;
-		}
 /* As in init time wdev may not be populated need to move when ap up complete */
 /* moved to BndStrg_SetInfFlags() function. */
 /*
 #ifdef DOT11K_RRM_SUPPORT
-		if (pAd->ApCfg.BndStrgBssIdx[apidx] || apidx == 0)
-			BndStrg_InsertNeighborRepIE(pAd, init_table, apidx);
-		if (init_table->bEnabled == TRUE)
-			BndStrg_Send_NeighborReport(pAd, init_table);
+		BndStrg_InsertNeighborRepIE(pAd, init_table);
 #endif
 */
 	}
@@ -659,10 +645,8 @@ INT BndStrg_Release(PRTMP_ADAPTER pAd)
 {
 	INT ret_val = BND_STRG_SUCCESS;
 	INT apidx;
-	PBND_STRG_CLI_TABLE table = NULL, init_table = NULL;
+	PBND_STRG_CLI_TABLE table = NULL;
 	BSS_STRUCT *pMbss = NULL;
-	UINT8 Band;
-	int i = 0;
 
 	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, (YLW("%s()\n"), __func__));
 
@@ -671,25 +655,11 @@ INT BndStrg_Release(PRTMP_ADAPTER pAd)
 
 		if (table) {
 			pMbss = &pAd->ApCfg.MBSSID[apidx];
-			Band = WMODE_CAP_5G(pMbss->wdev.PhyMode)?BAND_5G : BAND_24G;
 			BndStrg_SetInfFlags(pAd, &pMbss->wdev, table, FALSE);
 		}
 	}
-    for (i = 0; i < DBDC_BAND_NUM; i++) {
-		table = P_BND_STRG_TABLE(i);
 
-		if (!table->bInitialized && !init_table) {
-			init_table = table;
-			continue;
-		}
-
-		if (table->bInitialized && (table->Band == Band)) {
-			init_table = table;
-			break;
-		}
- 	}
-
-	if (init_table)
+	if (table)
 		BndStrg_TableRelease(table);
 
 	return ret_val;
@@ -719,7 +689,6 @@ INT BndStrg_TableRelease(PBND_STRG_CLI_TABLE table)
 	OS_NdisFreeSpinLock(&table->WpsWhiteListLock);
 	OS_NdisFreeSpinLock(&table->WhiteListLock);
 	OS_NdisFreeSpinLock(&table->BlackListLock);
-	table->DaemonPid = 0xffffffff;
 	table->bInitialized = FALSE;
 
 	if (ret_val != BND_STRG_SUCCESS) {
@@ -935,11 +904,13 @@ BOOLEAN BndStrg_CheckConnectionReq(
 
 	msg.Action = CLI_EVENT;
 
-	if (WMODE_CAP_2G(wdev->PhyMode)) {
+	if (WMODE_CAP_2G(wdev->PhyMode) &&
+		wdev->channel <= 14) {
 		cli_event->Band = BAND_24G;
 	}
 
-	if (WMODE_CAP_5G(wdev->PhyMode))
+	if (WMODE_CAP_5G(wdev->PhyMode) &&
+		wdev->channel > 14)
 		cli_event->Band = BAND_5G;
 
 	cli_event->Channel = wdev->channel;
@@ -961,14 +932,12 @@ BOOLEAN BndStrg_CheckConnectionReq(
 		memset(cli_probe->Rssi, 0x80, sizeof(cli_probe->Rssi));
 		for (i = 0; i < rssi_max; i++)
 			cli_probe->Rssi[i] = Rssi[i];
-		cli_event->FrameType = APMT2_PEER_PROBE_REQ;
 	} else if (FrameType == APMT2_PEER_AUTH_REQ) {
 		struct bnd_msg_cli_auth *cli_auth = &cli_event->data.cli_auth;
 
 		memset(cli_auth->Rssi, 0x80, sizeof(cli_auth->Rssi));
 		for (i = 0; i < rssi_max; i++)
 			cli_auth->Rssi[i] = Rssi[i];
-		cli_event->FrameType = APMT2_PEER_AUTH_REQ;
 	}
 	COPY_MAC_ADDR(cli_event->Addr, pSrcAddr);
 	BndStrgSendMsg(pAd, &msg);
@@ -986,6 +955,7 @@ BOOLEAN BndStrg_CheckConnectionReq(
 	}
 
 /* WPS_BandSteering Support */
+#ifdef WSC_AP_SUPPORT
 	{
 		PWSC_CTRL pWscControl;
 
@@ -1016,6 +986,7 @@ BOOLEAN BndStrg_CheckConnectionReq(
 			}
 		}
 	}
+#endif
 
 	if (table->BndStrgMode == POST_CONNECTION_STEERING) {
 		return TRUE;
@@ -1055,7 +1026,6 @@ INT BndStrg_Tbl_Enable(PBND_STRG_CLI_TABLE table, BOOLEAN enable, CHAR *IfName)
 	BNDSTRG_MSG msg = { 0 };
 	PRTMP_ADAPTER pAd = NULL;
 	struct bnd_msg_onoff *onoff = &msg.data.onoff;
-	UINT8 str_len = 0;
 
 	if (table == NULL)
 		return BND_STRG_TABLE_IS_NULL;
@@ -1072,14 +1042,8 @@ INT BndStrg_Tbl_Enable(PBND_STRG_CLI_TABLE table, BOOLEAN enable, CHAR *IfName)
 	}
 
 	if (enable) {
-		str_len = strlen(IfName);
-
-		if (str_len >= sizeof(table->ucIfName)) /*reserve space for null-character*/
-			return BND_STRG_INVALID_ARG;
-
 		table->bEnabled = TRUE;
-		strncpy(table->ucIfName, IfName, sizeof(table->ucIfName)); /* decide it by daemon */
-		table->ucIfName[str_len] = '\0';
+		strncpy(table->ucIfName, IfName, sizeof(table->ucIfName) - 1); /* decide it by daemon */
 	} else
 		table->bEnabled = FALSE;
 
@@ -1088,14 +1052,7 @@ INT BndStrg_Tbl_Enable(PBND_STRG_CLI_TABLE table, BOOLEAN enable, CHAR *IfName)
 	onoff->OnOff = table->bEnabled;
 	onoff->Band = table->Band;
 	onoff->Channel = table->Channel;
-	str_len = strlen(IfName);
-
-	if (str_len >= sizeof(onoff->ucIfName)) /*reserve space for null-character*/
-		return BND_STRG_INVALID_ARG;
-
-	strncpy(onoff->ucIfName, IfName, sizeof(onoff->ucIfName));
-	onoff->ucIfName[str_len] = '\0';
-
+	strncpy(onoff->ucIfName, IfName, sizeof(onoff->ucIfName) - 1);
 	RtmpOSWrielessEventSend(
 		pAd->net_dev,
 		RT_WLAN_EVENT_CUSTOM,
@@ -1161,11 +1118,9 @@ INT BndStrg_SetInfFlags(
 		return BND_STRG_SUCCESS;
 	}
 
-	wdev->bInfReady = bInfReady;
-
 	if (bInfReady) { /* Exec. by each interface up */
 		table->uIdx = wdev->func_idx;
-		table->Channel = wdev->channel;
+		/* table->Channel = wdev->channel; */
 
 		if (WMODE_CAP_5G(wdev->PhyMode) && WMODE_CAP_AC(wdev->PhyMode))
 			table->bVHTCapable = TRUE;
@@ -1175,26 +1130,31 @@ INT BndStrg_SetInfFlags(
 		table->ActiveCount++;
 /* Add Neighbor report*/
 #ifdef DOT11K_RRM_SUPPORT
-		BndStrg_Send_NeighborReport(pAd, table);
+		BndStrg_InsertNeighborRepIE(pAd, table);
 #endif
 	} else { /* Exec. by each interface down */
 		if (table->ActiveCount > 0)
 			table->ActiveCount--;
 	}
 
+	wdev->bInfReady = bInfReady;
+
 	table->nss = wlan_config_get_tx_stream(wdev);
 	msg.Action = INF_STATUS_RSP;
 
 	inf_status_rsp->band = Band;
 	inf_status_rsp->bInfReady = bInfReady;
-	inf_status_rsp->Idx = wdev->func_idx;
 	inf_status_rsp->Channel = wdev->channel;
 	inf_status_rsp->bVHTCapable = table->bVHTCapable;
 	inf_status_rsp->nss = table->nss;
 	inf_status_rsp->table_src_addr = (ULONG)table;
 	inf_status_rsp->table_size = BND_STRG_MAX_TABLE_SIZE;
 	strncpy(inf_status_rsp->ucIfName, wdev->if_dev->name, sizeof(inf_status_rsp->ucIfName));
+#ifdef VENDOR_FEATURE5_SUPPORT
+	inf_status_rsp->nvram_support = 1;
+#else
 	inf_status_rsp->nvram_support = 0;
+#endif
 	BndStrgSendMsg(pAd, &msg);
 	BND_STRG_MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF,
 					  (BLUE("%s(): BSS(%02X:%02X:%02X:%02X:%02X:%02X)")
@@ -1264,11 +1224,12 @@ void BndStrg_UpdateEntry(PRTMP_ADAPTER pAd,
 			cli_assoc->bVHTCapable = TRUE;
 		cli_assoc->Nss = Nss;
 /* WPS_BandSteering Support */
+#ifdef WSC_AP_SUPPORT
 		cli_assoc->bWpsAssoc = ie_list->bWscCapable;
+#endif
 #ifdef CONFIG_DOT11V_WNM
 		cli_assoc->BTMSupport = pEntry->BssTransitionManmtSupport;
 #endif
-		cli_assoc->IfIndex = pEntry->func_tb_idx;
 	} else {
 		cli_event->FrameType = APMT2_PEER_DISASSOC_REQ;
 	}
@@ -1299,6 +1260,162 @@ INT Set_BndStrg_BssIdx(
 
 	return TRUE;
 }
+
+#ifdef VENDOR_FEATURE5_SUPPORT
+INT Show_BndStrg_NvramTable(
+	PRTMP_ADAPTER	pAd,
+	RTMP_STRING		*arg)
+{
+	PBND_STRG_CLI_TABLE table;
+	POS_COOKIE		pObj;
+	UCHAR			ifIndex;
+	PBNDSTRG_NVRAM_CLIENT	table_nvram_client;
+	int i;
+	char PhyMode[10];
+
+	pObj = (POS_COOKIE) pAd->OS_Cookie;
+	ifIndex = pObj->ioctl_if;
+	table = Get_BndStrgTable(pAd, ifIndex);
+
+	if (!table)
+		return FALSE;
+
+	printk("%s bndstrg_nvram_client_count %d\n", __func__, table->bndstrg_nvram_client_count);
+	printk("Addr		Band\tPhymde\t\t\t\tNSS\tManipulable\n");
+
+	for (i = 0; i < table->bndstrg_nvram_client_count; i++) {
+		table_nvram_client = &table->nvram_entry[i];
+		memset(PhyMode, 0x00, 10);
+
+		if (table_nvram_client->PhyMode == fPhyMode_Legacy)
+			sprintf(PhyMode, "%s", "Legacy");
+		else if (table_nvram_client->PhyMode == fPhyMode_HT)
+			sprintf(PhyMode, "%s", "11n");
+		else if (table_nvram_client->PhyMode == fPhyMode_VHT)
+			sprintf(PhyMode, "%s", "11ac");
+
+		printk("%02x:%02x:%02x:%02x:%02x:%02x \t%-3s\t%-20s\t\t%d\t%s\n", PRINT_MAC(table_nvram_client->Addr),
+			   (IS_5G_BAND(table_nvram_client->Band) ? "5G":"2G"), PhyMode, table_nvram_client->Nss, (table_nvram_client->Manipulable ? "YES":"NO"));
+	}
+	return TRUE;
+}
+
+static BOOLEAN BndStrg_NvramTableLookup(PBND_STRG_CLI_TABLE table, unsigned char *pAddr)
+{
+	int i;
+
+	for (i = 0; i < NVRAM_TABLE_SIZE; i++) {
+		if (MAC_ADDR_EQUAL(table->nvram_entry[i].Addr, pAddr))
+			return TRUE;
+	}
+	return FALSE;
+}
+
+static BOOLEAN BndStrg_NvramInsertEntry(PBND_STRG_CLI_TABLE table,  PBNDSTRG_NVRAM_CLIENT msg)
+{
+	PBNDSTRG_NVRAM_CLIENT nvram_entry = NULL;
+	int i = 0;
+
+	if (!BndStrg_NvramTableLookup(table, msg->Addr)) {
+		if (table->bndstrg_nvram_client_count < NVRAM_TABLE_SIZE)	{
+			nvram_entry = &table->nvram_entry[table->bndstrg_nvram_client_count];
+			memset(nvram_entry, 0, sizeof(BNDSTRG_NVRAM_CLIENT));
+			memcpy(nvram_entry->Addr, msg->Addr, MAC_ADDR_LEN);
+			table->bndstrg_nvram_client_count++;
+		}
+	} else {
+		for (i = 0; i < table->bndstrg_nvram_client_count; i++) {
+			if (MAC_ADDR_EQUAL(table->nvram_entry[i].Addr, msg->Addr))
+				break;
+		}
+
+		nvram_entry = &table->nvram_entry[i];
+	}
+
+	if (nvram_entry) {
+		nvram_entry->Band = msg->Band;
+		nvram_entry->Nss = msg->Nss;
+		nvram_entry->Manipulable = msg->Manipulable;
+		nvram_entry->PhyMode = msg->PhyMode;
+	} else {
+		BND_STRG_MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s: nvram_entry is NULL!\n", __func__));
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+void BndStrg_SetNvram(PRTMP_ADAPTER pAd, RTMP_IOCTL_INPUT_STRUCT *wrq, INT apidx)
+{
+	BNDSTRG_NVRAM_CLIENT bsdmsg;
+	PBND_STRG_CLI_TABLE table = NULL;
+	BNDSTRG_MSG msg = { 0 };
+	struct bnd_msg_nvram_entry_update *entry_update = &msg.data.entry_update;
+	INT Status;
+
+	table = Get_BndStrgTable(pAd, apidx);
+
+	if (!table ||
+		(table->bInitialized == FALSE) ||
+		(wrq->u.data.length != sizeof(BNDSTRG_NVRAM_CLIENT)))
+		return;
+
+	Status = copy_from_user(&bsdmsg, wrq->u.data.pointer, wrq->u.data.length);
+
+	if ((BndStrg_NvramInsertEntry(table, &bsdmsg))) {
+		msg.Action = NVRAM_UPDATE;
+		memcpy(entry_update->nvram_entry.Addr, bsdmsg.Addr, MAC_ADDR_LEN);
+		memcpy(entry_update->Addr, bsdmsg.Addr, MAC_ADDR_LEN);
+		entry_update->nvram_entry.Band = bsdmsg.Band;
+		entry_update->nvram_entry.Manipulable = bsdmsg.Manipulable;
+		entry_update->nvram_entry.Nss = bsdmsg.Nss;
+		entry_update->nvram_entry.PhyMode = bsdmsg.PhyMode;
+		BndStrgSendMsg(pAd, &msg);
+	} else
+		BND_STRG_MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("%s: NVRAM table full\n", __func__));
+}
+
+void BndStrg_GetNvram(PRTMP_ADAPTER pAd, RTMP_IOCTL_INPUT_STRUCT *wrq, INT apidx)
+{
+	PBND_STRG_CLI_TABLE table = NULL;
+	BNDSTRG_NVRAM_LIST *nvram_list = NULL;
+	PBNDSTRG_NVRAM_CLIENT	nvram_client;
+	PBNDSTRG_NVRAM_CLIENT	table_nvram_client;
+	int i;
+
+	table = Get_BndStrgTable(pAd, apidx);
+
+	if (!table ||
+		(table->bInitialized == FALSE))
+		return;
+
+	os_alloc_mem(pAd, (UCHAR **)&nvram_list, sizeof(BNDSTRG_NVRAM_LIST));
+
+	if (nvram_list == NULL)
+		return;
+
+	NdisZeroMemory(nvram_list, sizeof(BNDSTRG_NVRAM_LIST));
+	nvram_list->Num = table->bndstrg_nvram_client_count;
+
+	for (i = 0; i < nvram_list->Num; i++) {
+		table_nvram_client = &table->nvram_entry[i];
+		nvram_client = &nvram_list->nvram_entry[i];
+		memcpy(nvram_client->Addr, table_nvram_client->Addr, MAC_ADDR_LEN);
+		nvram_client->Band = table_nvram_client->Band;
+		nvram_client->Manipulable = table_nvram_client->Manipulable;
+		nvram_client->PhyMode = table_nvram_client->PhyMode;
+		nvram_client->Nss = table_nvram_client->Nss;
+	}
+
+	wrq->u.data.length = sizeof(BNDSTRG_NVRAM_LIST);
+	copy_to_user(wrq->u.data.pointer, nvram_list, wrq->u.data.length);
+
+	if (nvram_list != NULL)
+		os_free_mem(nvram_list);
+
+	return;
+}
+#endif /* VENDOR_FEATURE5_SUPPORT */
 
 UINT8 GetNssFromHTCapRxMCSBitmask(UINT32 RxMCSBitmask)
 {
@@ -1367,7 +1484,7 @@ VOID BndStrg_CLIStatusRsp(PRTMP_ADAPTER pAd, PBND_STRG_CLI_TABLE table, BNDSTRG_
 							EXT_EVENT_TX_STATISTIC_RESULT_T rTxStatResult;
 							HTTRANSMIT_SETTING LastTxRate;
 							HTTRANSMIT_SETTING LastRxRate;
-							os_zero_mem(&rTxStatResult, sizeof(EXT_EVENT_TX_STATISTIC_RESULT_T));
+
 							MtCmdGetTxStatistic(pAd, GET_TX_STAT_ENTRY_TX_RATE, 0/*Don't Care*/, pEntry->wcid, &rTxStatResult);
 							LastTxRate.field.MODE = rTxStatResult.rEntryTxRate.MODE;
 							LastTxRate.field.BW = rTxStatResult.rEntryTxRate.BW;
@@ -1664,7 +1781,6 @@ VOID BndStrg_ChannelLoadStatusRsp(PRTMP_ADAPTER pAd, PBND_STRG_CLI_TABLE table, 
 			UINT32  MyRxAirTime[DBDC_BAND_NUM] = {0};
 			UINT32  EDCCATime[DBDC_BAND_NUM] = {0};
 			UCHAR   ChanBusyOccupyPercentage[DBDC_BAND_NUM] = {0};
-			UCHAR   ChanBusyOccupyPercentageCcaNavTx[DBDC_BAND_NUM] = {0};
 			UCHAR   ObssAirOccupyPercentage[DBDC_BAND_NUM] = {0};
 			UCHAR   MyAirOccupyPercentage[DBDC_BAND_NUM] = {0};
 			UCHAR   MyTxAirOccupyPercentage[DBDC_BAND_NUM] = {0};
@@ -1682,9 +1798,6 @@ VOID BndStrg_ChannelLoadStatusRsp(PRTMP_ADAPTER pAd, PBND_STRG_CLI_TABLE table, 
 
 			if (ChanBusyTime[i] != 0)
 				ChanBusyOccupyPercentage[i] = (ChanBusyTime[i]*100)/ONE_SEC_2_US;
-
-			if (ChanBusyTimeCcaNavTx[i] != 0)
-				ChanBusyOccupyPercentageCcaNavTx[i] = (ChanBusyTimeCcaNavTx[i]*100)/ONE_SEC_2_US;
 
 			if (ObssAirTime[i] != 0)
 				ObssAirOccupyPercentage[i] = (ObssAirTime[i]*100)/ONE_SEC_2_US;
@@ -1724,9 +1837,12 @@ VOID BndStrg_InfStatusRsp(PRTMP_ADAPTER pAd, PBND_STRG_CLI_TABLE table, BNDSTRG_
 		inf_status_rsp->nss = table->nss;
 		inf_status_rsp->table_src_addr = (ULONG)table;
 		inf_status_rsp->table_size = BND_STRG_MAX_TABLE_SIZE;
-		strncpy(inf_status_rsp->ucIfName, inf_status_req->ucIfName, sizeof(inf_status_rsp->ucIfName));
-		inf_status_rsp->ucIfName[sizeof(inf_status_rsp->ucIfName) - 1] = '\0';
+		strncpy(inf_status_rsp->ucIfName, inf_status_req->ucIfName, sizeof(inf_status_rsp->ucIfName) - 1);
+#ifdef VENDOR_FEATURE5_SUPPORT
+		inf_status_rsp->nvram_support = 1;
+#else
 		inf_status_rsp->nvram_support = 0;
+#endif
 		BND_STRG_MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("\n%s:INF [%s]STATUS QUERY ON\n", __func__, inf_status_req->ucIfName));
 		BndStrgSendMsg(pAd, &new_msg);
 	}
@@ -1782,7 +1898,7 @@ VOID BndStrg_handle_onoff_event(PRTMP_ADAPTER pAd, PBND_STRG_CLI_TABLE table, BN
 				BndStrg_KickOutAllSta(pAd, ap_idx, REASON_DEAUTH_STA_LEAVING);
 		}
 
-		for (i = 0; VALID_UCAST_ENTRY_WCID(pAd, i); i++) {
+		for (i = 1; VALID_UCAST_ENTRY_WCID(pAd, i); i++) {
 			MAC_TABLE_ENTRY *pEntry = &pAd->MacTab.Content[i];
 
 			if (IS_ENTRY_CLIENT(pEntry) && pAd->ApCfg.BndStrgBssIdx[pEntry->func_tb_idx] == TRUE) {
@@ -1961,6 +2077,15 @@ INT BndStrg_MsgHandle(PRTMP_ADAPTER pAd, RTMP_IOCTL_INPUT_STRUCT *wrq, INT apidx
 		if (table && table->bInitialized)
 			BndStrg_handle_onoff_event(pAd, table, msg);
 			break;
+#ifdef VENDOR_FEATURE5_SUPPORT
+		case NVRAM_UPDATE: {
+			struct bnd_msg_nvram_entry_update *entry_update = &msg->data.entry_update;
+
+			if (!(BndStrg_NvramInsertEntry(table, &entry_update->nvram_entry)))
+				BND_STRG_MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("%s: NVRAM table full\n", __func__));
+		}
+		break;
+#endif /* VENDOR_FEATURE5_SUPPORT */
 
 		case BNDSTRG_WNM_BTM:
 #ifdef CONFIG_DOT11V_WNM
@@ -2044,7 +2169,7 @@ void BndStrgSetProfileParam(struct _RTMP_ADAPTER *pAd, RTMP_STRING *tmpbuf, RTMP
 	if (RTMPGetKeyParameter("BndStrgBssIdx", tmpbuf, 50, pBuffer, TRUE)) {
 		MTWF_LOG(DBG_CAT_CFG, DBG_CAT_AP, DBG_LVL_OFF, ("BndStrgBssIdx=%s\n", tmpbuf));
 
-		for (i = 0, macptr = rstrtok(tmpbuf, ";"); macptr && (i < MAX_BEACON_NUM); macptr = rstrtok(NULL, ";"), i++)
+		for (i = 0, macptr = rstrtok(tmpbuf, ";"); macptr; macptr = rstrtok(NULL, ";"), i++)
 			pAd->ApCfg.BndStrgBssIdx[i] = simple_strtoul(macptr, 0, 10);
 
 		if (i == 0)
@@ -2061,6 +2186,9 @@ void BndStrg_send_BTM_req(
 	PBND_STRG_CLI_TABLE table)
 {
 	UCHAR *Buf;
+	POS_COOKIE pObj = (POS_COOKIE)pAd->OS_Cookie;
+	UCHAR APIndex = pObj->ioctl_if;
+	PWNM_CTRL pWNMCtrl = &pAd->ApCfg.MBSSID[APIndex].WNMCtrl;
 	BTM_EVENT_DATA *Event;
 	BTM_PEER_ENTRY *BTMPeerEntry;
 #ifdef DOT11K_RRM_SUPPORT
@@ -2070,20 +2198,6 @@ void BndStrg_send_BTM_req(
 	UINT32 Len = 0;
 	INT32 Ret;
 	BOOLEAN IsFound = FALSE;
-	BOOLEAN ret = FALSE;
-
-	MAC_TABLE_ENTRY  *pEntry = NULL;
-	UCHAR APIndex = 0;
-	PWNM_CTRL pWNMCtrl = NULL;
-
-	pEntry = MacTableLookup(pAd, PeerMACAddr);
-
-	if (pEntry != NULL)
-		APIndex = pEntry->wdev->func_idx;
-	else
-		goto error0;
-
-	pWNMCtrl = &pAd->ApCfg.MBSSID[APIndex].WNMCtrl;
 
 	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s\n", __func__));
 
@@ -2160,7 +2274,6 @@ void BndStrg_send_BTM_req(
 
 	BTMReq += BTMReqLen; /*advance pointer to neighbour report*/
 #ifdef DOT11K_RRM_SUPPORT
-	BTMReq += 34;
 	hex_dump("BndStrg_send_BTM_req NeighborReport", (unsigned char *)BTMReq, sizeof(RRM_NEIGHBOR_REP_INFO));
 	NeighborReport = (RRM_NEIGHBOR_REP_INFO *)BTMReq;
 
@@ -2186,9 +2299,7 @@ void BndStrg_send_BTM_req(
 #endif
 	hex_dump("BndStrg_send_BTM_req Enque", (unsigned char *)Buf, Len);
 	hex_dump("BndStrg_send_BTM_req Event length", (unsigned char *)Event->u.BTM_REQ_DATA.BTMReq, Event->u.BTM_REQ_DATA.BTMReqLen);
-	ret = MlmeEnqueue(pAd, BTM_STATE_MACHINE, BTM_REQ, Len, Buf, 0);
-	if (FALSE == ret)
-		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("enqueue MLME failed!\n"));
+	MlmeEnqueue(pAd, BTM_STATE_MACHINE, BTM_REQ, Len, Buf, 0);
 
 	os_free_mem(Buf);
 
@@ -2207,17 +2318,14 @@ void BndStrg_Send_NeighborReport(PRTMP_ADAPTER pAd, PBND_STRG_CLI_TABLE table)
 {
 #ifdef	DOT11K_RRM_SUPPORT
 	BNDSTRG_MSG msg = { 0 };
-	INT IdBss;
 	struct bnd_msg_neighbor_report *NeighborReport = &msg.data.Neighbor_Report;
 
 	msg.Action = BNDSTRG_NEIGHBOR_REPORT;
 
 	NeighborReport->Band = table->Band;
 	NeighborReport->Channel = table->Channel;
-	for (IdBss = 0; IdBss < pAd->ApCfg.BssidNum; IdBss++) {
-		NdisCopyMemory(NeighborReport->NeighborRepInfo, &table->NeighborRepInfo[IdBss], sizeof(BNDSTRG_NEIGHBOR_REP_INFO));
-		BndStrgSendMsg(pAd, &msg);
-	}
+	NdisCopyMemory(&NeighborReport->NeighborRepInfo, &table->NeighborRepInfo, sizeof(RRM_NEIGHBOR_REP_INFO));
+	BndStrgSendMsg(pAd, &msg);
 #endif
 	return;
 }

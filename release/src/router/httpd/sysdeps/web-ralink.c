@@ -670,15 +670,15 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	ret+=websWrite(wp, "%-18s%-4s%-8s%-4s%-4s%-5s%-7s%-12s\n",
 			   "MAC", "PSM", "PhyMode", "BW", "SGI", "STBC", "TxRate", "Connect Time");
 
-#define SHOW_STA_INFO(_p,_i,_st, _unit) {												\
+#define SHOW_STA_INFO(_p,_i,_st, _unit) {											\
 		int hr, min, sec;															\
 		unsigned char phy, mcs, bw, vht_nss, sgi, stbc;								\
-		unsigned int ratedata = 0;													\
+		uint32_t ratedata = 0;														\
 		_st *Entry = ((_st *)(_p)) + _i;											\
 		hr = Entry->ConnectedTime/3600;												\
 		min = (Entry->ConnectedTime % 3600)/60;										\
 		sec = Entry->ConnectedTime - hr*3600 - min*60;								\
-		ratedata = (unsigned int)Entry->TxRate.word;								\
+		ratedata = (uint32_t)Entry->TxRate.word;									\
 		mtk_parse_ratedata(ratedata, &phy, &mcs, &bw, &vht_nss, &sgi, &stbc);		\
 		ret+=websWrite(wp, "%02X:%02X:%02X:%02X:%02X:%02X %s %-7s %s %s %s  %3dM %02d:%02d:%02d\n",		\
 				Entry->Addr[0], Entry->Addr[1],										\

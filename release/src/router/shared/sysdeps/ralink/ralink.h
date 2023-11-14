@@ -723,9 +723,13 @@ int ra_gpio_write_bit(int idx, int value);
 extern int wl_ioctl(const char *ifname, int cmd, struct iwreq *pwrq);
 
 //cal the rate from MACHTTRANSMIT_SETTING structure replied from ioctl(CMD_RTPRIV_IOCTL_GET_MAC_TABLE_STRUCT)
-extern void mtk_parse_ratedata(unsigned int ratedata, unsigned char *phymode, unsigned char *mcs, unsigned char *bw,
+extern void mtk_parse_ratedata(uint32_t ratedata, unsigned char *phymode, unsigned char *mcs, unsigned char *bw,
 	unsigned char *vht_nss,	 unsigned char *sgi, unsigned char *stbc);
 extern unsigned int mtk_mcs_to_rate(unsigned char mcs, unsigned char phy_mode, unsigned char bw, unsigned char sgi, unsigned char vht_nss, int unit);
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+extern void mtk_parse_heratedata(uint32_t ratedata, unsigned char *phymode, unsigned char *mcs, unsigned char *bw,
+	unsigned char *vht_nss,	 unsigned char *sgi, unsigned char *stbc);
+#endif
 
 /* for ATE Get_WanLanStatus command */
 #if defined(RTCONFIG_RALINK_MT7621)

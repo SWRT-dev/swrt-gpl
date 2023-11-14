@@ -1342,7 +1342,9 @@ typedef struct _RT_802_11_MAC_ENTRY {
 	CHAR AvgRssi0;
 	CHAR AvgRssi1;
 	CHAR AvgRssi2;
+#ifdef CUSTOMER_DCC_FEATURE
 	CHAR AvgRssi3;
+#endif /* CUSTOMER_DCC_FEATURE */
 	UINT32 ConnectedTime;
 	HTTRANSMIT_SETTING TxRate;
 #ifdef CUSTOMER_DCC_FEATURE

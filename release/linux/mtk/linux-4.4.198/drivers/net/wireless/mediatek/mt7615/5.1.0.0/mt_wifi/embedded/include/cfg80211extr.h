@@ -214,7 +214,9 @@ VOID CFG80211_UpdateBeacon(
 INT CFG80211_ApStaDelSendEvent(PRTMP_ADAPTER pAd, const PUCHAR mac_addr, IN PNET_DEV pNetDevIn);
 INT CFG80211_FindMbssApIdxByNetDevice(RTMP_ADAPTER *pAd, PNET_DEV pNetDev);
 
-
+#ifdef APCLI_CFG80211_SUPPORT
+INT CFG80211_FindStaIdxByNetDevice(RTMP_ADAPTER *pAd, PNET_DEV pNetDev);
+#endif
 
 /* Information Releated */
 BOOLEAN CFG80211DRV_StaGet(
@@ -265,6 +267,12 @@ INT CFG80211_setApDefaultMgmtKey(
 #endif /*DOT11W_PMF_SUPPORT*/
 
 
+#ifdef CONFIG_STA_SUPPORT
+INT CFG80211_setStaDefaultKey(
+	VOID                        *pAdCB,
+	IN struct net_device		*pNetdev,
+	UINT                         Data);
+#endif /*CONFIG_STA_SUPPORT*/
 INT CFG80211_setPowerMgmt(
 	VOID                     *pAdCB,
 	UINT			Enable);
@@ -451,4 +459,3 @@ VOID CFG80211_InitTxSCallBack(RTMP_ADAPTER *pAd);
 #endif /* MT_MAC */
 
 #endif /* __CFG80211EXTR_H__ */
-

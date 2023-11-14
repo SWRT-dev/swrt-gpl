@@ -1558,7 +1558,9 @@ VOID APStopByBss(RTMP_ADAPTER *pAd, BSS_STRUCT *pMbss)
 #if defined(MESH_SUPPORT) || defined(APCLI_SUPPORT) || defined(BAND_STEERING)
 	INT idx = 0;
 	struct wifi_dev *wdev;
+#ifdef WSC_AP_SUPPORT
 	PWSC_CTRL pWscControl;
+#endif
 #endif
 #ifdef GREENAP_SUPPORT
 	struct greenap_ctrl *greenap = &pAd->ApCfg.greenap;
@@ -1595,12 +1597,12 @@ VOID APStopByBss(RTMP_ADAPTER *pAd, BSS_STRUCT *pMbss)
 #endif
 		for (idx = 0; idx < MAX_APCLI_NUM; idx++) {
 			wdev = &pAd->ApCfg.ApCliTab[idx].wdev;
-
+#ifdef WSC_AP_SUPPORT
 			/* WPS cli will disconnect and connect again */
 			pWscControl = &pAd->ApCfg.ApCliTab[idx].wdev.WscControl;
 			if (pWscControl->bWscTrigger == TRUE)
 				continue;
-
+#endif
 			if (wdev->channel == wdev_bss->channel) {
 				UINT8 enable = pAd->ApCfg.ApCliTab[idx].Enable;
 

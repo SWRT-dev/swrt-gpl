@@ -71,16 +71,16 @@ config MT_DFS_SUPPORT
         bool "Dynamic Frequency Selection Support"	
         depends on WIFI_DRIVER
         default y
-config MTK_OFFCHANNEL_SCAN_FEATURE
+config OFFCHANNEL_SCAN_FEATURE
 	bool "Channel Quality Monitor"
-	depends on MTK_WIFI_DRIVER
-	depends on MTK_MT_AP_SUPPORT
+	depends on WIFI_DRIVER
+	depends on MT_AP_SUPPORT
 	default n
 
-config MTK_DPP_SUPPORT
+config DPP_SUPPORT
 	bool "DPP Support"
-	depends on MTK_WIFI_DRIVER
-	depends on MTK_MT_AP_SUPPORT
+	depends on WIFI_DRIVER
+	depends on MT_AP_SUPPORT
 	select DOT11W_PMF_SUPPORT
 	default n
 #config WFA_VHT_R2_PF

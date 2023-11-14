@@ -267,7 +267,7 @@ static USHORT update_associated_mac_entry(
 			ie_list->operating_mode.rx_nss_type == 0) {
 			pEntry->operating_mode = ie_list->operating_mode;
 			pEntry->force_op_mode = TRUE;
-			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 					 ("%s(): Peer's OperatingMode=>RxNssType: %d, RxNss: %d, ChBW: %d\n",
 					  __func__, pEntry->operating_mode.rx_nss_type,
 					  pEntry->operating_mode.rx_nss,
@@ -2466,7 +2466,7 @@ assoc_post:
 		pEntry->IsReassocSta = isReassoc;
 		/* clear txBA bitmap */
 		pEntry->TXBAbitmap = 0;
-
+/*
 		if (pEntry->MaxHTPhyMode.field.MODE >= MODE_HTMIX) {
 			CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_WMM_CAPABLE);
 
@@ -2477,7 +2477,7 @@ assoc_post:
 
 			ba_ori_session_setup(pAd, pEntry, 5, 0, 10, FALSE);
 		}
-
+*/
 #ifdef DOT11R_FT_SUPPORT
 
 		/*	If the length of FTIE field of the (re)association-request frame
@@ -2868,7 +2868,7 @@ VOID APPeerDisassocReqAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 	MAC_TABLE_ENTRY *pEntry;
 	struct wifi_dev *wdev;
 
-	MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("ASSOC - 1 receive DIS-ASSOC request\n"));
+	MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("ASSOC - 1 receive DIS-ASSOC request\n"));
 
 	if (!PeerDisassocReqSanity(pAd, Elem->Msg, Elem->MsgLen, Addr1, Addr2, &SeqNum, &Reason))
 		return;
@@ -3260,4 +3260,3 @@ VOID APAssocStateMachineInit(
 	StateMachineSetAction(S, AP_ASSOC_IDLE, APMT2_PEER_REASSOC_REQ,  (STATE_MACHINE_FUNC)APPeerReassocReqAction);
 	/*  StateMachineSetAction(S, AP_ASSOC_IDLE, APMT2_CLS3ERR,           APCls3errAction); */
 }
-

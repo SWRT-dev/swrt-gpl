@@ -4621,7 +4621,7 @@ VOID RTMPCommSiteSurveyData(
 
 		sprintf(Ssid, "0x");
 
-		for (idx = 0; (idx < 14) && (idx < pBss->SsidLen); idx++)
+		for (idx = 0; (idx < 15) && (idx < pBss->SsidLen); idx++)
 			sprintf(Ssid + 2 + (idx * 2), "%02X", (UCHAR)pBss->Ssid[idx]);
 	}
 
@@ -5305,15 +5305,76 @@ USHORT RTMPGetLastTxRate(PRTMP_ADAPTER pAd, MAC_TABLE_ENTRY *pEntry)
 	return lastTxRate.word;
 }
 
+static VOID
+copy_mac_table_entry(PRTMP_ADAPTER pAd, RT_802_11_MAC_ENTRY *pDst, MAC_TABLE_ENTRY *pEntry)
+{
+	pDst->ApIdx = (UCHAR)pEntry->func_tb_idx;
+	COPY_MAC_ADDR(pDst->Addr, &pEntry->Addr);
+	pDst->Aid = (UCHAR)pEntry->Aid;
+	pDst->Psm = pEntry->PsMode;
+
+#ifdef DOT11_N_SUPPORT
+	pDst->MimoPs = pEntry->MmpsMode;
+#endif /* DOT11_N_SUPPORT */
+
+	/* Fill in RSSI per entry*/
+	pDst->AvgRssi0 = pEntry->RssiSample.AvgRssi[0];
+	pDst->AvgRssi1 = pEntry->RssiSample.AvgRssi[1];
+	pDst->AvgRssi2 = pEntry->RssiSample.AvgRssi[2];
+
+	/* the connected time per entry*/
+	pDst->ConnectedTime = pEntry->StaConnectTime;
+
+	pDst->TxRate.word = RTMPGetLastTxRate(pAd, pEntry);
+	pDst->LastRxRate = pEntry->LastRxRate;
+}
+
 VOID RTMPIoctlGetMacTableStaInfo(
 	IN PRTMP_ADAPTER pAd,
 	IN RTMP_IOCTL_INPUT_STRUCT *wrq)
 {
-	INT i;
-	BOOLEAN need_send = FALSE;
+	INT i, MacTabWCID;
 	RT_802_11_MAC_TABLE *pMacTab = NULL;
 	PRT_802_11_MAC_ENTRY pDst;
 	MAC_TABLE_ENTRY *pEntry;
+	UINT16 wrq_len = wrq->u.data.length;
+	POS_COOKIE pObj = (POS_COOKIE)pAd->OS_Cookie;
+
+	wrq->u.data.length = 0;
+
+#ifdef APCLI_SUPPORT
+	if (pObj->ioctl_if_type == INT_APCLI)
+	{
+		STA_TR_ENTRY *tr_entry;
+		
+		if (wrq_len < sizeof(RT_802_11_MAC_ENTRY))
+			return;
+		if (pObj->ioctl_if >= MAX_APCLI_NUM)
+			return;
+		if (pAd->ApCfg.ApCliTab[pObj->ioctl_if].CtrlCurrState != APCLI_CTRL_CONNECTED)
+			return;
+		MacTabWCID = pAd->ApCfg.ApCliTab[pObj->ioctl_if].MacTabWCID;
+		if (!VALID_WCID(MacTabWCID))
+			return;
+		if (!VALID_TR_WCID(MacTabWCID))
+			return;
+		pEntry = &pAd->MacTab.Content[MacTabWCID];
+		tr_entry = &pAd->MacTab.tr_entry[MacTabWCID];
+		if (IS_ENTRY_APCLI(pEntry) && (pEntry->Sst == SST_ASSOC) && (tr_entry->PortSecured == WPA_802_1X_PORT_SECURED))
+		{
+			RT_802_11_MAC_ENTRY MacEntry;
+			
+			pDst = &MacEntry;
+			copy_mac_table_entry(pAd, pDst, pEntry);
+			
+			wrq->u.data.length = sizeof(RT_802_11_MAC_ENTRY);
+			copy_to_user(wrq->u.data.pointer, pDst, wrq->u.data.length);
+		}
+		
+		return;
+	}
+#endif
+
 	/* allocate memory */
 	os_alloc_mem(NULL, (UCHAR **)&pMacTab, sizeof(RT_802_11_MAC_TABLE));
 
@@ -5327,14 +5388,7 @@ VOID RTMPIoctlGetMacTableStaInfo(
 	for (i = 0; VALID_UCAST_ENTRY_WCID(pAd, i); i++) {
 		pEntry = &(pAd->MacTab.Content[i]);
 
-		if (pEntry->wdev != NULL) {
-			/* As per new GUI design ifname with index as ra0/ra1/rai0/rai1/... (may not work with older GUI)*/
-			if (!strcmp(wrq->ifr_ifrn.ifrn_name, pEntry->wdev->if_dev->name))
-				need_send = TRUE;
-			else
-				need_send = FALSE;
-		}
-		if (IS_ENTRY_CLIENT(pEntry) && (pEntry->Sst == SST_ASSOC) && (need_send == TRUE)) {
+		if (IS_ENTRY_CLIENT(pEntry) && (pEntry->Sst == SST_ASSOC)) {
 			pDst = &pMacTab->Entry[pMacTab->Num];
 			pDst->ApIdx = pEntry->func_tb_idx;
 			COPY_MAC_ADDR(pDst->Addr, &pEntry->Addr);
@@ -5347,7 +5401,6 @@ VOID RTMPIoctlGetMacTableStaInfo(
 			pDst->AvgRssi0 = pEntry->RssiSample.AvgRssi[0];
 			pDst->AvgRssi1 = pEntry->RssiSample.AvgRssi[1];
 			pDst->AvgRssi2 = pEntry->RssiSample.AvgRssi[2];
-			pDst->AvgRssi3 = pEntry->RssiSample.AvgRssi[3];
 			/* the connected time per entry*/
 			pDst->ConnectedTime = pEntry->StaConnectTime;
 			pDst->TxRate.word = RTMPGetLastTxRate(pAd, pEntry);
@@ -8882,6 +8935,7 @@ void wifi_dump_info(void)
 
 	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s--------------------\n", __func__));
 
+#ifdef MULTI_INF_SUPPORT
 	for (idx = 0; idx < MAX_NUM_OF_INF; idx++) {
 		if (adapt_list[idx]) {
 			pAd = adapt_list[idx];
@@ -8902,6 +8956,7 @@ void wifi_dump_info(void)
 #endif
 		}
 	}
+#endif
 }
 
 INT show_tpinfo_proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
@@ -14436,11 +14491,6 @@ INT	Set_Led_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 		if (i >= 8)
 			break;
 	}
-
-	printk("\n%s\n", __func__);
-
-	for (j = 0; j < i; j++)
-		printk("%02x\n", (UINT)led_param[j]);
 
 #if defined(MT7615) || defined(MT7622)
 	if (IS_MT7615(pAd))

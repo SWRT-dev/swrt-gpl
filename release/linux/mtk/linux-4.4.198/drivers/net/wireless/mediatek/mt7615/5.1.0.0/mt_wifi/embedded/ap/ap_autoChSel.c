@@ -74,7 +74,8 @@ ULONG AutoChBssSearchWithSSID(
 	IN UCHAR Channel,
 	IN struct wifi_dev *pwdev)
 {
-	UCHAR i;
+	//UCHAR i;
+	UINT i;
 	UCHAR BandIdx = HcGetBandByWdev(pwdev);
 	AUTO_CH_CTRL *pAutoChCtrl = HcGetAutoChCtrlbyBandIdx(pAd, BandIdx);
 	PBSSINFO pBssInfoTab = pAutoChCtrl->pBssInfoTab;
@@ -2677,7 +2678,7 @@ VOID AutoChSelBuildChannelListFor5G(
 
 			pACSChList[ChIdx].CentralChannel = vht_cent_ch_freq(pACSChList[ChIdx].Channel, VHT_BW_80);
 		} else if ((cfg_vht_bw == VHT_BW_160)
-				   && vht80_channel_group(pAd, pACSChList[ChIdx].Channel)) {
+				   && vht160_channel_group(pAd, pACSChList[ChIdx].Channel)) {
 			pACSChList[ChIdx].Bw = BW_160;
 			idx = 0;
 			count = 0;

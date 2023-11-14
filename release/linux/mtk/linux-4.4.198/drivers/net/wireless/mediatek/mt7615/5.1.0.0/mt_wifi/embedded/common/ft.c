@@ -1297,11 +1297,10 @@ VOID FT_RrbHandler(
 	PUCHAR pDA;
 	PUCHAR pSA;
 	PFT_ACTION pFtAction;
-	UCHAR Wcid;
+	ULONG Wcid;
 	struct wifi_dev *wdev;
-	UINT16 ft_act_len = ntohs(pRrb->FTActLen);
 
-	if (ApIdx >= pAd->ApCfg.BssidNum || ApIdx < 0) {
+	if (ApIdx >= pAd->ApCfg.BssidNum) {
 		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_FT, DBG_LVL_OFF,
 				 ("%s: Unkown ApIdx(=%d)\n",
 				  __func__, ApIdx));
@@ -1328,38 +1327,31 @@ VOID FT_RrbHandler(
 	else
 		Wcid = RESERVED_WCID;
 
-	MTWF_LOG(DBG_CAT_PROTO, CATPROTO_FT, DBG_LVL_TRACE,
-			("%s(): Wcid %d, da=%02x:%02x:%02x:%02x:%02x:%02x, sa=%02x:%02x:%02x:%02x:%02x:%02x\n",
-			__func__, Wcid, PRINT_MAC(pDA), PRINT_MAC(pSA)));
-	if ((ft_act_len + sizeof(HEADER_802_11)) < MAX_MGMT_PKT_LEN) {
-		/* Make 802.11 header. */
-		ActHeaderInit(pAd, &Hdr, pDA, pSA, pRrb->APAdr);
-		/* Make ft action frame. */
-		MakeOutgoingFrame(pOutBuffer,				&FrameLen,
+	/* Make 802.11 header. */
+	ActHeaderInit(pAd, &Hdr, pDA, pSA, pRrb->APAdr);
+	/* Make ft action frame. */
+	MakeOutgoingFrame(pOutBuffer,				&FrameLen,
 					  sizeof(HEADER_802_11),		&Hdr,
 					  pRrb->FTActLen,				(PUCHAR)pRrb->Oct,
 					  END_OF_ARGS);
-		/* enqueue it into FT action state machine. */
-		if (pEntry) {
+	/* enqueue it into FT action state machine. */
+	if (pEntry) {
 #if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
-			REPORT_MGMT_FRAME_TO_MLME(pAd, Wcid, pOutBuffer, FrameLen,
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, OPMODE_AP, wdev, pEntry->HTPhyMode.field.MODE);
+		REPORT_MGMT_FRAME_TO_MLME(pAd, Wcid, pOutBuffer, FrameLen,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, OPMODE_AP, wdev, pEntry->HTPhyMode.field.MODE);
 #else
-			REPORT_MGMT_FRAME_TO_MLME(pAd, Wcid, pOutBuffer, FrameLen,
-				0, 0, 0, 0, 0, 0, OPMODE_AP, wdev, pEntry->HTPhyMode.field.MODE);
+		REPORT_MGMT_FRAME_TO_MLME(pAd, Wcid, pOutBuffer, FrameLen,
+			0, 0, 0, 0, 0, 0, OPMODE_AP, wdev, pEntry->HTPhyMode.field.MODE);
 #endif
-		} else {
-			/* Report basic phymode if pEntry = NULL  */
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
-			REPORT_MGMT_FRAME_TO_MLME(pAd, Wcid, pOutBuffer, FrameLen,
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, OPMODE_AP, wdev, WMODE_CAP_5G(wdev->PhyMode) ? MODE_OFDM : MODE_CCK);
-#else
-			REPORT_MGMT_FRAME_TO_MLME(pAd, Wcid, pOutBuffer, FrameLen,
-				0, 0, 0, 0, 0, 0, OPMODE_AP, wdev, WMODE_CAP_5G(wdev->PhyMode) ? MODE_OFDM : MODE_CCK);
-#endif
-		}
 	} else {
-		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_FT, DBG_LVL_OFF, ("%s(): len is overflow\n", __func__));
+		/* Report basic phymode if pEntry = NULL  */
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
+		REPORT_MGMT_FRAME_TO_MLME(pAd, Wcid, pOutBuffer, FrameLen,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, OPMODE_AP, wdev, WMODE_CAP_5G(wdev->PhyMode) ? MODE_OFDM : MODE_CCK);
+#else
+		REPORT_MGMT_FRAME_TO_MLME(pAd, Wcid, pOutBuffer, FrameLen,
+			0, 0, 0, 0, 0, 0, OPMODE_AP, wdev, WMODE_CAP_5G(wdev->PhyMode) ? MODE_OFDM : MODE_CCK);
+#endif
 	}
 
 	if (pOutBuffer)
@@ -1383,7 +1375,7 @@ VOID FT_R1KHInfoMaintenance(
 {
 	INT HashIdx;
 	PFT_R1HK_ENTRY pEntry = NULL;
-	PMAC_TABLE_ENTRY pMacEntry = NULL;
+	PMAC_TABLE_ENTRY pMacEntry;
 	PFT_TAB pFtTab;
 
 	pFtTab = &pAd->ApCfg.FtTab;
@@ -3126,4 +3118,3 @@ INT	Show_FTConfig_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 #endif /* CONFIG_AP_SUPPORT */
 
 #endif /* DOT11R_FT_SUPPORT */
-
