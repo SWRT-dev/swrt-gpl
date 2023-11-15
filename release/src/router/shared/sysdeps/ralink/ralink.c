@@ -873,7 +873,7 @@ void mtk_parse_heratedata(uint32_t ratedata, unsigned char *phymode, unsigned ch
 	*vht_nss = ratedata & 0x7;
 
 	if ((*phymode == MODE_VHT && (*mcs & 0xF) > 9) || (*phymode >= MODE_HE && (*mcs & 0xF) > 11)) {
-		*vht_nss = (*vht_nss + 1) / (stbc + 1)
+		*vht_nss = (*vht_nss + 1) / (*stbc + 1)
 	}
 }
 #endif
