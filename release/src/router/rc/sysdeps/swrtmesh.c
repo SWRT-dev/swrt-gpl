@@ -156,10 +156,29 @@ void stop_swrtmesh(void)
 int start_mapcontroller(void)
 {
 	pid_t pid;
-	char *cntl_argv[] = { "mapcontroller", "-o", "/tmp/mapcontroller.log", "-d", "-vvvv", NULL, NULL };
-	if(nvram_match("swrtmesh_agent_enable", "1"))
-		cntl_argv[5] = "-w";
+	char *cntl_argv[] = { "mapcontroller", NULL, NULL, NULL, NULL, NULL, NULL };
+	if(nvram_match("swrtmesh_controller_enable", "1")){
+		int idx;
+		char buf[2] = {0};
+		if(nvram_match("swrtmesh_debug", "1")){
+			idx = 1;
+			cntl_argv[idx] = "-o";
+			idx++;
+			cntl_argv[idx] = "/tmp/mapcontroller.log";
+			idx++;
+			cntl_argv[idx] = "-d";
+			idx++;
+			cntl_argv[idx] = "-vvvv";
+		}
+		swrtmesh_get_value_by_string("mapagent", "controller_select", "local", buf, sizeof(buf));
+		if(!strcmp(buf, "0")){
+			idx++;
+			cntl_argv[idx] = "-w";
+		}
+	}
 	_eval(cntl_argv, NULL, 0, &pid);
+	if(check_if_file_exist("/proc/sys/net/netfilter/nf_conntrack_timestamp"))
+		system("echo 1 >/proc/sys/net/netfilter/nf_conntrack_timestamp");
 	return 0;
 }
 
