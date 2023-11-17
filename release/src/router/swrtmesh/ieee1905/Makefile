@@ -69,8 +69,8 @@ ifneq ($(wildcard source/src/Makefile),)
 	install -m 755 $(PKG_BUILD_DIR)/extensions/snoop/snoop.so $(STAGEDIR)/usr/lib/ieee1905/
 	install -m 755 $(PKG_BUILD_DIR)/extensions/topology/topology.so $(STAGEDIR)/usr/lib/ieee1905/
 else
-	install -m 644 prebuilt/$(BUILD_NAME)/{cmdu,cmdu_ackq,1905_tlvs,i1905_wsc,bufutil,timer_impl,i1905_extension}.h $(STAGEDIR)/usr/include
-	install -m 644 prebuilt/$(BUILD_NAME)/extensions/map/{easymesh,map_module,cntlrsync}.h $(STAGEDIR)/usr/include
+#	install -m 644 prebuilt/$(BUILD_NAME)/{cmdu,cmdu_ackq,1905_tlvs,i1905_wsc,bufutil,timer_impl,i1905_extension}.h $(STAGEDIR)/usr/include
+#	install -m 644 prebuilt/$(BUILD_NAME)/extensions/map/{easymesh,map_module,cntlrsync}.h $(STAGEDIR)/usr/include
 	install -m 755 prebuilt/$(BUILD_NAME)/libieee1905.so $(STAGEDIR)/usr/lib/
 	install -m 755 prebuilt/$(BUILD_NAME)/libmidgen.so $(STAGEDIR)/usr/lib/
 	install -m 755 prebuilt/$(BUILD_NAME)/libmaputil.so $(STAGEDIR)/usr/lib/

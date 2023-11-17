@@ -5852,7 +5852,7 @@ fi;
 		echo "# CONFIG_BRIDGE_EBT_LOG is not set" >>$(1); \
 		sed -i "/CONFIG_BRIDGE_EBT_NFLOG/d" $(1); \
 		echo "# CONFIG_BRIDGE_EBT_NFLOG is not set" >>$(1); \
-		if [ "$(MT7621)" = "y" ]; then \
+		if [ "$(MT7621)" = "y" ] || [ "$(IPQ40XX)" = "y" ]; then \
 			echo "# CONFIG_NFT_EXTHDR is not set" >>$(1); \
 			echo "# CONFIG_NFT_META is not set" >>$(1); \
 			echo "# CONFIG_NFT_RBTREE is not set" >>$(1); \
