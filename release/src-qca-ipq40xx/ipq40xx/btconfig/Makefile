@@ -17,9 +17,9 @@ endif
 	touch stamp-h1
 
 install:
-	@[ -d $(INSTALLDIR)/usr/sbin ] || install -d $(INSTALLDIR)/usr/sbin
-	@install -D $(PKG_BUILD_DIR)/btconfig $(INSTALLDIR)/usr/sbin
-	@$(STRIP) $(INSTALLDIR)/usr/sbin/btconfig
+	@[ -d $(INSTALLDIR)/usr/bin ] || install -d $(INSTALLDIR)/usr/bin
+	@install -D $(PKG_BUILD_DIR)/btconfig $(INSTALLDIR)/usr/bin
+	@$(STRIP) $(INSTALLDIR)/usr/bin/btconfig
 
 clean:
 
