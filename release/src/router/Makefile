@@ -810,7 +810,7 @@ obj-y += wireless_tools$(WTOOL_SUFFIX)
 obj-y += libnl-tiny-0.1
 
 ifeq ($(RTCONFIG_SOC_IPQ40XX),y)
-obj-y += jansson-2.7 lldpd-0.9.8 amas-utils #for networkmap
+obj-y += jansson-2.7 lldpd-0.9.8
 #obj-y += libnl-bf
 endif
 
@@ -7822,7 +7822,7 @@ bluez-5.41-install: btconfig bluez-5.41
 	install -D bluez-5.41/tools/sdptool $(INSTALLDIR)/bluez-5.41/usr/bin/sdptool
 	install -D bluez-5.41/tools/btmgmt $(INSTALLDIR)/bluez-5.41/usr/bin/btmgmt
 ifeq ($(RTCONFIG_SOC_IPQ40XX),y)
-	install -D bluez-5.41/btconfig_1.16 $(INSTALLDIR)/bluez-5.41/usr/bin/btconfig
+#	install -D bluez-5.41/btconfig_1.16 $(INSTALLDIR)/bluez-5.41/usr/bin/btconfig
 	install -D bluez-5.41/btchk.sh $(INSTALLDIR)/bluez-5.41/usr/bin/btchk.sh
 else ifeq ($(RTCONFIG_BT_CONN_UART),y)
 	install -D bluez-5.41/btchk_uart.sh $(INSTALLDIR)/bluez-5.41/usr/bin/btchk_uart.sh
@@ -7922,7 +7922,7 @@ else
 	cd udev-173 && $(CONFIGURE)\
 		--libdir=/usr/lib --prefix=/usr --exec_prefix=/usr --bindir=/usr/bin --sbindir=/usr/sbin --libexecdir=/usr/lib --sysconfdir=/etc\
 		--datadir=/usr/share --localstatedir=/var --mandir=/usr/man --infodir=/usr/info --disable-nls --prefix=/usr --exec-prefix= --sysconfdir=/etc --disable-hwdb\
-		--disable-keymap --disable-gudev --disable-introspection --libexecdir=/lib/udev --disable-gtk-doc-html --sbindir=/sbin
+		--disable-keymap --disable-gudev --disable-introspection --libexecdir=/lib/udev --disable-gtk-doc-html --sbindir=/sbin $(if $(RTCONFIG_MUSL_LIBC),CFLAGS="-DRTCONFIG_MUSL_LIBC")
 endif
 
 udev-173: udev-173/Makefile
@@ -8174,6 +8174,8 @@ glib-2.37.7/configure:
 
 ifeq ($(HND_ROUTER_AX_6756),y)
 GLIB_2.37.7_CFLAGS_EXT := -Wno-format-nonliteral -DRTCONFIG_HND_ROUTER_AX_6756
+else ifeq ($(RTCONFIG_MUSL_LIBC),y)
+GLIB_2.37.7_CFLAGS_EXT := -Wno-format-nonliteral -DRTCONFIG_MUSL_LIBC
 else
 GLIB_2.37.7_CFLAGS_EXT :=
 endif

@@ -32,7 +32,7 @@
 #ifdef HAVE_SYS_MKDEV_H
 #include <sys/mkdev.h>
 #endif
-#ifdef RTCONFIG_HND_ROUTER_AX_6756
+#if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_MUSL_LIBC)
 #include <sys/sysmacros.h>
 #endif
 #ifdef HAVE_UNISTD_H

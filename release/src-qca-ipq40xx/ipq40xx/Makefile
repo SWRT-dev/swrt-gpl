@@ -51,6 +51,9 @@ pobj-y += qca-wrapd-10.4
 ifeq ($(RTCONFIG_EASYMESH),y)
 pobj-y += qca-ezmesh $(PKGDEP_QCA_EZMESH)
 endif
+ifeq ($(RTCONFIG_BT_CONN),y)
+pobj-y += btconfig
+endif
 
 
 pobj-clean := $(foreach pobj, $(pobj-y) $(pobj-n) $(pobj-), $(pobj)-clean)

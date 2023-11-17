@@ -18,7 +18,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <sys/stat.h>
-#if defined(RTCONFIG_HND_ROUTER_AX_6756)
+#if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_MUSL_LIBC)
 #include <sys/sysmacros.h>
 #endif
 

@@ -23,7 +23,7 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#if defined(RTCONFIG_HND_ROUTER_AX_6756)
+#if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_MUSL_LIBC)
 #include <sys/sysmacros.h>
 #endif
 #include <linux/sockios.h>

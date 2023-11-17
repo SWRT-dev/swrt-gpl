@@ -29,7 +29,7 @@
 #include <dirent.h>
 #include <fnmatch.h>
 #include <time.h>
-#if defined(RTCONFIG_HND_ROUTER_AX_6756)
+#if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_MUSL_LIBC)
 #include <sys/sysmacros.h>
 #endif
 

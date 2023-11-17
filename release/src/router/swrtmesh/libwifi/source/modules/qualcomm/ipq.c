@@ -530,8 +530,8 @@ static int radio_simulate_radar(const char *name, struct wifi_radar_args *radar)
 		    name, __func__, radar->channel, radar->bandwidth, radar->type,
 		    radar->subband_mask);
 	
-	doSystem("radartool -i %s bangradar", name);;
-	return 0；
+	doSystem("radartool -i %s bangradar", name);
+	return 0;
 }
 
 static int radio_get_param(const char *name, const char *param, int *len, void *val)

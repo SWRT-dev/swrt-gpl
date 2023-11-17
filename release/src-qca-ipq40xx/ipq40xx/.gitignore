@@ -1,11 +1,4 @@
-qca-hostap-10.4/
-!qca-hostap-10.4/prebuild/*/
-qca-wifi-10.4/
-!qca-hostap-10.4/Makefile
-!qca-hostap-10.4/prebuild
-qca-wrapd-10.4/*.c
-qca-wrapd-10.4/*.h
+*/src/*
 wlan/*
-!qca-ssdk/src/*
-!qca-ssdk-shell/src/*
-qca-ezmesh/source
+!qca-ssdk/src/
+btconfig/source/*
