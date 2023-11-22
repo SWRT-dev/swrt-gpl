@@ -4436,3 +4436,4 @@ SmartDNS_dis_ipv6=禁用ipv6解析
 SmartDNS_prefetch=域名预加载
 SmartDNS_dualstackip=双栈IP优选
 SmartDNS_serverdesc=上游服务器列表
+SmartDNS_responsemode=首次查詢回應模式

@@ -51,6 +51,7 @@ do
 	sed -i '/SmartDNS_prefetch/d' $i
 	sed -i '/SmartDNS_dualstackip/d' $i
 	sed -i '/SmartDNS_serverdesc/d' $i
+	sed -i '/SmartDNS_responsemode/d' $i
 	if [ "$i" = "CN.dict" ];then
 		echo "Softcenter=软件中心" >> $i
 		echo "Softcenter_tool=工具箱" >> $i
@@ -100,6 +101,7 @@ do
 		echo "SmartDNS_prefetch=域名预加载" >> $i
 		echo "SmartDNS_dualstackip=双栈IP优选" >> $i
 		echo "SmartDNS_serverdesc=上游服务器列表" >> $i
+		echo "SmartDNS_responsemode=首次查询响应模式" >> $i
 	elif [ "$i" = "TW.dict" ];then
 		echo "Softcenter=軟體中心" >> $i
 		echo "Softcenter_tool=工具箱" >> $i
@@ -149,6 +151,7 @@ do
 		echo "SmartDNS_prefetch=域名预加载" >> $i
 		echo "SmartDNS_dualstackip=双栈IP优选" >> $i
 		echo "SmartDNS_serverdesc=上游服务器列表" >> $i
+		echo "SmartDNS_responsemode=首次查詢回應模式" >> $i
 	elif [ "$i" = "RU.dict" ];then
 		echo "Softcenter=Softcenter" >> $i
 		echo "Softcenter_tool=Инструменты" >> $i
@@ -198,6 +201,7 @@ do
 		echo "SmartDNS_prefetch=Предзагрузка домена" >> $i
 		echo "SmartDNS_dualstackip=Выбор двойного стека ip" >> $i
 		echo "SmartDNS_serverdesc=Список вышестоящих DNS-серверов" >> $i
+		echo "SmartDNS_responsemode=Режим ответа на первый запрос" >> $i
 	else
 		echo "Softcenter=Softcenter" >> $i
 		echo "Softcenter_tool=Tools" >> $i
@@ -247,6 +251,7 @@ do
 		echo "SmartDNS_prefetch=Domain prefetch" >> $i
 		echo "SmartDNS_dualstackip=Dualstack ip selection" >> $i
 		echo "SmartDNS_serverdesc=Upstream DNS server list" >> $i
+		echo "SmartDNS_responsemode=First query response mode" >> $i
 	fi
 done
 

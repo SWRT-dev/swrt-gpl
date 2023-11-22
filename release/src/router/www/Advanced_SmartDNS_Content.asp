@@ -114,6 +114,7 @@ function applyRule(){
 	postdata["smartdns_dis_ipv6"] = document.form.smartdns_dis_ipv6.value;
 	postdata["smartdns_prefetch"] = document.form.smartdns_prefetch.value;
 	postdata["smartdns_dualstackip"] = document.form.smartdns_dualstackip.value;
+	postdata["smartdns_responsemode"] = document.form.smartdns_responsemode.value;
 	for(i = 1; document.getElementById('smartdns_list_table').rows[i - 1]; i += 1){
 		postdata["smartdns_server_" + i] = document.getElementById('smartdns_list_table').rows[i -1].cells[0].innerHTML;
 		postdata["smartdns_port_" + i] = document.getElementById('smartdns_list_table').rows[i -1].cells[1].innerHTML;
@@ -225,6 +226,16 @@ function applyRule(){
 													<select name="smartdns_dualstackip" class="input_option">
 														<option value="1" <% nvram_match("smartdns_dualstackip", "1","selected"); %>><#checkbox_Yes#></option>
 														<option value="0" <% nvram_match("smartdns_dualstackip", "0","selected"); %>><#checkbox_No#></option>
+													</select>
+												</td>
+											</tr>
+											<tr id="smartdns_responsemode_tr">
+												<th width="40%"><#SmartDNS_responsemode#></th>
+												<td>
+													<select name="smartdns_responsemode" class="input_option">
+														<option value="0" <% nvram_match("smartdns_responsemode", "0","selected"); %>>first-ping</option>
+														<option value="1" <% nvram_match("smartdns_responsemode", "1","selected"); %>>fastest-ip</option>
+														<option value="2" <% nvram_match("smartdns_responsemode", "2","selected"); %>>fastest-response</option>
 													</select>
 												</td>
 											</tr>

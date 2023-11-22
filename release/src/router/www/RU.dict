@@ -4436,3 +4436,4 @@ SmartDNS_dis_ipv6=Отключить результаты запроса IPv6
 SmartDNS_prefetch=Предзагрузка домена
 SmartDNS_dualstackip=Выбор двойного стека ip
 SmartDNS_serverdesc=Список вышестоящих DNS-серверов
+SmartDNS_responsemode=Режим ответа на первый запрос

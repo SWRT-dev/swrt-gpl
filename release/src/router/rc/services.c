@@ -6154,6 +6154,12 @@ void start_smartdns(void)
 		fprintf(fp, "dualstack-ip-selection yes\n");
 	else
 		fprintf(fp, "dualstack-ip-selection no\n");
+	if(nvram_match("smartdns_responsemode", "0"))
+		fprintf(fp, "response-mode first-ping\n");
+	else if(nvram_match("smartdns_responsemode", "1"))
+		fprintf(fp, "response-mode fastest-ip\n");
+	else if(nvram_match("smartdns_responsemode", "2"))
+		fprintf(fp, "response-mode fastest-response\n");
 	//fprintf(fp, "edns-client-subnet 1.0.0.0/16\n");
 	//fprintf(fp, "rr-ttl 300\n");
 	//fprintf(fp, "rr-ttl-min 60\n");

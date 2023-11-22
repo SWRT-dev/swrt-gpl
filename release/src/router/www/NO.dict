@@ -4436,3 +4436,4 @@ SmartDNS_dis_ipv6=Disable ipv6 query results
 SmartDNS_prefetch=Domain prefetch
 SmartDNS_dualstackip=Dualstack ip selection
 SmartDNS_serverdesc=Upstream DNS server list
+SmartDNS_responsemode=First query response mode
