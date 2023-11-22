@@ -33,7 +33,7 @@ extern uint8_t *strtob(char *str, int len, uint8_t *bytes);
  * @param[out] str output buffer to write the hex string.
  * @return hex string or %NULL on error.
  */
-extern char *btostr(uint8_t *bytes, int len, char *str);
+extern char *btostr(const uint8_t *bytes, int len, char *str);
 
 
 /** Convert macaddress from ':' separated string to byte array
@@ -159,21 +159,33 @@ extern int unset_sighandler(int sig);
 
 extern char *trim(char *str);
 extern void remove_newline(char *buf);
-extern void runCmd(const char *format, ...);
+extern int runCmd(const char *format, ...);
 extern char *chrCmd(char *output, size_t output_size, const char *format, ...);
 extern int Cmd(char *output, size_t output_size, const char *format, ...);
 
+struct getopt_option {
+	int argc;
+	int next;
+	char *value;
+};
+
+extern int getopt_r(int argc, char * const argv[], const char *optstring,
+		    struct getopt_option *opt);
+
 #if defined(RTCONFIG_SWRTMESH)
 extern int easy_base64_encode(const unsigned char *src, size_t len,
-				unsigned char *out, size_t *out_len);
+                               unsigned char *out, size_t *out_len);
 extern int easy_base64_decode(const unsigned char *src, size_t len,
-				unsigned char *out, size_t *out_len);
+                               unsigned char *out, size_t *out_len);
 #else
 extern int base64_encode(const unsigned char *src, size_t len,
 				unsigned char *out, size_t *out_len);
 extern int base64_decode(const unsigned char *src, size_t len,
 				unsigned char *out, size_t *out_len);
 #endif
+
+extern int base64url_encode(uint8_t *out, uint8_t *data, size_t len);
+extern int base64url_decode(uint8_t *out, uint8_t *data, int len);
 
 #ifdef __cplusplus
 }

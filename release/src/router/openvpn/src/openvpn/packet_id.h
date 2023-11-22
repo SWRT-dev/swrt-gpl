@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -27,8 +27,6 @@
  * attempts to replay them back later.
  */
 
-#ifdef ENABLE_CRYPTO
-
 #ifndef PACKET_ID_H
 #define PACKET_ID_H
 
@@ -36,11 +34,6 @@
 #include "buffer.h"
 #include "error.h"
 #include "otime.h"
-
-/*
- * Enables OpenVPN to be compiled in special packet_id test mode.
- */
-/*#define PID_TEST*/
 
 #if 1
 /*
@@ -260,12 +253,12 @@ bool packet_id_read(struct packet_id_net *pin, struct buffer *buf, bool long_for
  * @param p             Packet ID state.
  * @param buf           Buffer to write the packet ID too
  * @param long_form     If true, also update and write time_t to buf
- * @param prepend       If true, prepend to buffer, otherwise apppend.
+ * @param prepend       If true, prepend to buffer, otherwise append.
  *
  * @return true if successful, false otherwise.
  */
 bool packet_id_write(struct packet_id_send *p, struct buffer *buf,
-        bool long_form, bool prepend);
+                     bool long_form, bool prepend);
 
 /*
  * Inline functions.
@@ -296,12 +289,22 @@ packet_id_persist_save_obj(struct packet_id_persist *p, const struct packet_id *
     }
 }
 
+/**
+ * Reset the current send packet id to its initial state.
+ * Use very carefully (e.g. in the standalone reset packet context) to
+ * avoid sending more than one packet with the same packet id (that is not
+ * also a resend like the reset packet)
+ *
+ * @param p the packet structure to modify
+ */
+static inline void
+reset_packet_id_send(struct packet_id_send *p)
+{
+    p->time = 0;
+    p->id = 0;
+}
+
 const char *packet_id_net_print(const struct packet_id_net *pin, bool print_timestamp, struct gc_arena *gc);
-
-#ifdef PID_TEST
-void packet_id_interactive_test(void);
-
-#endif
 
 static inline int
 packet_id_size(bool long_form)
@@ -342,4 +345,3 @@ packet_id_reap_test(struct packet_id_rec *p)
 }
 
 #endif /* PACKET_ID_H */
-#endif /* ENABLE_CRYPTO */

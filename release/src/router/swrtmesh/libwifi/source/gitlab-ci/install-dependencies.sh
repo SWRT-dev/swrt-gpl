@@ -22,5 +22,5 @@ mkdir -p /usr/include/easy
 exec_cmd git clone -b devel https://dev.iopsys.eu/hal/libeasy.git
 cd libeasy
 exec_cmd make CFLAGS+="-I/usr/include/libnl3"
+exec_cmd cp easy.h event.h utils.h if_utils.h debug.h hlist.h bufutil.h cryptutil.h ecc_cryptutil.h /usr/include/easy
 exec_cmd cp -a libeasy*.so* /usr/lib
-exec_cmd cp -a easy.h event.h utils.h if_utils.h debug.h hlist.h /usr/include/easy/

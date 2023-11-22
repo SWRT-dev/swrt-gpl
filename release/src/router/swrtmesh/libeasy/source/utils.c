@@ -1,3 +1,11 @@
+/*
+ * cryptutil.c - crypto utility functions
+ *
+ * Copyright (C) 2023 IOPSYS Software Solutions AB. All rights reserved.
+ *
+ * See LICENSE file for license related information.
+ */
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -68,7 +76,7 @@ LIBEASY_API uint8_t *strtob(char *str, int len, uint8_t *bytes)
 	return bytes;
 }
 
-LIBEASY_API char *btostr(uint8_t *bytes, int len, char *str)
+LIBEASY_API char *btostr(const uint8_t *bytes, int len, char *str)
 {
 	size_t i;
 
@@ -306,7 +314,7 @@ int vsnsystemf(char *output, size_t output_size, const char *format, va_list ap)
 	while (1) {
 		memset(cmdline, 0, cmdline_size);
 
-		n = vsnprintf(cmdline, cmdline_size, format, ap);
+		n = vsnprintf(cmdline, cmdline_size, format, ap); /* Flawfinder: ignore */
 
 		if (n < 0)
 			goto out_cmdline;
@@ -375,13 +383,17 @@ int vsystemf(const char *format, va_list ap)
 
 
 /* runCmd is an alias for systemf, calls directly vsystemf */
-void LIBEASY_API runCmd(const char *format, ...)
+int LIBEASY_API runCmd(const char *format, ...)
 {
+	int rv;
+
 	va_list ap;
 
 	va_start(ap, format);
-	vsystemf(format, ap);
+	rv = vsystemf(format, ap);
 	va_end(ap);
+
+	return rv;
 }
 
 /* chrCmd is an alias for snsystemf, calls directly vsnsystemf */
@@ -398,8 +410,8 @@ LIBEASY_API char *chrCmd(char *output, size_t output_size, const char *format, .
 	return output;
 }
 
-LIBEASY_API int Cmd(char *output, size_t output_size, const char *format, ...)
- {
+int LIBEASY_API Cmd(char *output, size_t output_size, const char *format, ...)
+{
 	int rv;
 	va_list ap;
 
@@ -411,4 +423,42 @@ LIBEASY_API int Cmd(char *output, size_t output_size, const char *format, ...)
 	trim(output);
 
 	return rv;
- }
+}
+
+int LIBEASY_API getopt_r(int argc, char * const argv[], const char *optstring,
+			 struct getopt_option *opt)
+{
+	char *oname = NULL;
+	char *o = NULL;
+
+	if (opt->argc != argc) {
+		memset(opt, 0, sizeof(*opt));
+		opt->argc = argc;
+		opt->next = 0;
+		opt->value = NULL;
+	}
+
+	if (opt->next >= argc)
+		return -1;
+
+	if (strlen(argv[opt->next]) < 2 || *argv[opt->next] != '-')
+		return -1;
+
+	oname = argv[opt->next] + 1;
+	o = strstr(optstring, oname);
+	if (!o)
+		return -1;
+
+	if (o[1] == ':') {
+		if (opt->next + 1 == argc)
+			return -1;
+
+		opt->value = argv[opt->next + 1];
+		opt->next += 2;
+		return o[0];
+	}
+
+	opt->value = NULL;
+	opt->next++;
+	return o[0];
+}

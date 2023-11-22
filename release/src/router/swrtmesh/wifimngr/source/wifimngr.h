@@ -23,6 +23,8 @@
 #ifndef WIFIMNGR_H
 #define WIFIMNGR_H
 
+#include <linux/limits.h>
+
  #define wifimngr_err(...)  pr_error("wifimngr: " __VA_ARGS__)
  #define wifimngr_warn(...) pr_warn("wifimngr: " __VA_ARGS__)
  #define wifimngr_info(...) pr_info("wifimngr: " __VA_ARGS__)
@@ -41,6 +43,8 @@ struct wifimngr {
 	struct ubus_object *wifi;
 	struct list_head radiolist;  /* list of wifi_ubus_objects */
 	struct list_head iflist;     /* list of wifi_ubus_objects */
+	struct ubus_context *ubus_ctx;
+	char evmap_file[PATH_MAX];
 };
 
 #define WIFI_DEV_MAX_NUM        16
@@ -49,6 +53,7 @@ struct wifimngr {
 struct wifimngr_device {
 	char device[16];
 	char phy[16];
+	char band[16];
 };
 
 enum iface_mode {
@@ -107,5 +112,10 @@ extern int wifimngr_events_register(void *ctx, const char *ifname,
 extern int wifimngr_event_register(void *ctx, const char *ifname,
 				   const char *family, const char *group);
 extern void wifimngr_event_unregister(const char *ifname);
-
+extern bool wifimngr_match_interface_object(struct wifimngr_iface *ifs, int num_ifs,
+					    struct wifi_ubus_object *wobj);
+extern void wifimngr_del_object(struct ubus_context *ctx,
+				struct wifi_ubus_object *wobj);
+bool wifimngr_match_radio_object(char devs[][WIFI_DEV_MAX_NUM], int num_radios,
+				 struct wifi_ubus_object *wobj);
 #endif /* WIFIMNGR_H */

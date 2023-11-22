@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -23,14 +23,13 @@
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
-#elif defined(_MSC_VER)
-#include "config-msvc.h"
 #endif
 
 #include "syshead.h"
 
 #ifdef ENABLE_FRAGMENT
 
+#include "crypto.h"
 #include "misc.h"
 #include "fragment.h"
 #include "integer.h"
@@ -94,9 +93,6 @@ fragment_init(struct frame *frame)
     /* code that initializes other parts of
      * fragment_master assume an initial CLEAR */
     ALLOC_OBJ_CLEAR(ret, struct fragment_master);
-
-    /* add in the size of our contribution to the expanded frame size */
-    frame_add_to_extra_frame(frame, sizeof(fragment_header_type));
 
     /*
      * Outgoing sequence ID is randomized to reduce
@@ -177,7 +173,7 @@ fragment_incoming(struct fragment_master *f, struct buffer *buf,
 
             if (flags & (FRAG_SEQ_ID_MASK | FRAG_ID_MASK))
             {
-                FRAG_ERR("spurrious FRAG_WHOLE flags");
+                FRAG_ERR("spurious FRAG_WHOLE flags");
             }
         }
         else if (frag_type == FRAG_YES_NOTLAST || frag_type == FRAG_YES_LAST)
@@ -213,7 +209,7 @@ fragment_incoming(struct fragment_master *f, struct buffer *buf,
                 frag->defined = true;
                 frag->max_frag_size = size;
                 frag->map = 0;
-                ASSERT(buf_init(&frag->buf, FRAME_HEADROOM_ADJ(frame, FRAME_HEADROOM_MARKER_FRAGMENT)));
+                ASSERT(buf_init(&frag->buf, frame->buf.headroom));
             }
 
             /* copy the data to fragment buffer */
@@ -334,17 +330,17 @@ fragment_outgoing(struct fragment_master *f, struct buffer *buf,
             msg(D_FRAG_ERRORS, "FRAG: outgoing buffer is not empty, len=[%d,%d]",
                 buf->len, f->outgoing.len);
         }
-        if (buf->len > PAYLOAD_SIZE_DYNAMIC(frame)) /* should we fragment? */
+        if (buf->len > frame->max_fragment_size) /* should we fragment? */
         {
             /*
              * Send the datagram as a series of 2 or more fragments.
              */
-            f->outgoing_frag_size = optimal_fragment_size(buf->len, PAYLOAD_SIZE_DYNAMIC(frame));
+            f->outgoing_frag_size = optimal_fragment_size(buf->len, frame->max_fragment_size);
             if (buf->len > f->outgoing_frag_size * MAX_FRAGS)
             {
                 FRAG_ERR("too many fragments would be required to send datagram");
             }
-            ASSERT(buf_init(&f->outgoing, FRAME_HEADROOM(frame)));
+            ASSERT(buf_init(&f->outgoing, frame->buf.headroom));
             ASSERT(buf_copy(&f->outgoing, buf));
             f->outgoing_seq_id = modulo_add(f->outgoing_seq_id, 1, N_SEQ_ID);
             f->outgoing_frag_id = 0;
@@ -393,7 +389,7 @@ fragment_ready_to_send(struct fragment_master *f, struct buffer *buf,
 
         /* initialize return buffer */
         *buf = f->outgoing_return;
-        ASSERT(buf_init(buf, FRAME_HEADROOM(frame)));
+        ASSERT(buf_init(buf, frame->buf.headroom));
         ASSERT(buf_copy_n(buf, &f->outgoing, size));
 
         /* fragment flags differ based on whether or not we are sending the last fragment */
@@ -434,11 +430,5 @@ fragment_wakeup(struct fragment_master *f, struct frame *frame)
 {
     /* delete fragments with expired TTLs */
     fragment_ttl_reap(f);
-}
-
-#else  /* ifdef ENABLE_FRAGMENT */
-static void
-dummy(void)
-{
 }
 #endif /* ifdef ENABLE_FRAGMENT */

@@ -9,9 +9,11 @@ LDFLAGS += -L$(STAGEDIR)/usr/lib
 LIBEASY_CFLAGS = -fvisibility=hidden -Werror
 
 LIBS += -lnl-3 -lnl-route-3 -lnl-genl-3
+LIBS += -lssl -lcrypto
 VFLAGS=$(shell ./genversion.sh)
 
 objs_lib = event.o base64.o utils.o if_utils.o debug.o
+objs_lib += cryptutil.o aes-siv.o base64url.o ecc_cryptutil.o
 
 ver=$(shell cat ./VERSION)
 maj=$(shell cat ./VERSION | cut -f1 -d.)

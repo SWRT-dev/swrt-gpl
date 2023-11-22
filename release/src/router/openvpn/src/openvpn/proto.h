@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -60,8 +60,30 @@ struct openvpn_ethhdr
 #define OPENVPN_ETH_P_IPV4   0x0800   /* IPv4 protocol */
 #define OPENVPN_ETH_P_IPV6   0x86DD   /* IPv6 protocol */
 #define OPENVPN_ETH_P_ARP    0x0806   /* ARP protocol */
+#define OPENVPN_ETH_P_8021Q  0x8100   /* 802.1Q protocol */
     uint16_t proto;                   /* packet type ID field */
 };
+
+struct openvpn_8021qhdr
+{
+    uint8_t dest[OPENVPN_ETH_ALEN];     /* destination ethernet addr */
+    uint8_t source[OPENVPN_ETH_ALEN];   /* source ethernet addr */
+
+    uint16_t tpid;                      /* 802.1Q Tag Protocol Identifier */
+#define OPENVPN_8021Q_MASK_PCP htons(0xE000) /* mask PCP out of pcp_cfi_vid */
+#define OPENVPN_8021Q_MASK_CFI htons(0x1000) /* mask CFI out of pcp_cfi_vid */
+#define OPENVPN_8021Q_MASK_VID htons(0x0FFF) /* mask VID out of pcp_cfi_vid */
+    uint16_t pcp_cfi_vid;               /* bit fields, see IEEE 802.1Q */
+    uint16_t proto;                     /* contained packet type ID field */
+};
+
+/*
+ * Size difference between a regular Ethernet II header and an Ethernet II
+ * header with additional IEEE 802.1Q tagging.
+ */
+#define SIZE_ETH_TO_8021Q_HDR (sizeof(struct openvpn_8021qhdr) \
+                               - sizeof(struct openvpn_ethhdr))
+
 
 struct openvpn_arp {
 #define ARP_MAC_ADDR_TYPE 0x0001
@@ -95,9 +117,10 @@ struct openvpn_iphdr {
 
     uint8_t ttl;
 
-#define OPENVPN_IPPROTO_IGMP 2  /* IGMP protocol */
-#define OPENVPN_IPPROTO_TCP  6  /* TCP protocol */
-#define OPENVPN_IPPROTO_UDP 17  /* UDP protocol */
+#define OPENVPN_IPPROTO_IGMP    2  /* IGMP protocol */
+#define OPENVPN_IPPROTO_TCP     6  /* TCP protocol */
+#define OPENVPN_IPPROTO_UDP    17  /* UDP protocol */
+#define OPENVPN_IPPROTO_ICMPV6 58 /* ICMPV6 protocol */
     uint8_t protocol;
 
     uint16_t check;
@@ -120,6 +143,24 @@ struct openvpn_ipv6hdr {
     struct  in6_addr daddr;
 };
 
+/*
+ * ICMPv6 header
+ */
+struct openvpn_icmp6hdr {
+#define OPENVPN_ICMP6_DESTINATION_UNREACHABLE       1
+#define OPENVPN_ND_ROUTER_SOLICIT                 133
+#define OPENVPN_ND_ROUTER_ADVERT                  134
+#define OPENVPN_ND_NEIGHBOR_SOLICIT               135
+#define OPENVPN_ND_NEIGHBOR_ADVERT                136
+#define OPENVPN_ND_INVERSE_SOLICIT                141
+#define OPENVPN_ND_INVERSE_ADVERT                 142
+    uint8_t icmp6_type;
+#define OPENVPN_ICMP6_DU_NOROUTE                    0
+#define OPENVPN_ICMP6_DU_COMMUNICATION_PROHIBTED    1
+    uint8_t icmp6_code;
+    uint16_t icmp6_cksum;
+    uint8_t icmp6_dataun[4];
+};
 
 /*
  * UDP header
@@ -207,21 +248,10 @@ struct ip_tcp_udp_hdr {
 }
 
 /*
- * We are in a "liberal" position with respect to MSS,
- * i.e. we assume that MSS can be calculated from MTU
- * by subtracting out only the IP and TCP header sizes
- * without options.
- *
- * (RFC 879, section 7).
- */
-#define MTU_TO_MSS(mtu) (mtu - sizeof(struct openvpn_iphdr) \
-                         - sizeof(struct openvpn_tcphdr))
-
-/*
  * This returns an ip protocol version of packet inside tun
  * and offset of IP header (via parameter).
  */
-inline static int
+static inline int
 get_tun_ip_ver(int tunnel_type, struct buffer *buf, int *ip_hdr_offset)
 {
     int ip_ver = -1;
@@ -265,6 +295,23 @@ bool is_ipv4(int tunnel_type, struct buffer *buf);
 
 bool is_ipv6(int tunnel_type, struct buffer *buf);
 
+/**
+ *  Calculates an IP or IPv6 checksum with a pseudo header as required by
+ *  TCP, UDP and ICMPv6
+ *
+ * @param af            - Address family for which the checksum is calculated
+ *                        AF_INET or AF_INET6
+ * @param payload       - the TCP, ICMPv6 or UDP packet
+ * @param len_payload   - length of payload
+ * @param src_addr      - Source address of the packet
+ * @param dest_addr     - Destination address of the packet
+ * @param proto next    - header or IP protocol of the packet
+ * @return The calculated checksum in host order
+ */
+uint16_t
+ip_checksum(const sa_family_t af, const uint8_t *payload, const int len_payload,
+            const uint8_t *src_addr, const uint8_t *dest_addr,  const int proto);
+
 #ifdef PACKET_TRUNCATION_CHECK
 void ipv4_packet_size_verify(const uint8_t *data,
                              const int size,
@@ -274,5 +321,8 @@ void ipv4_packet_size_verify(const uint8_t *data,
                              counter_type *errors);
 
 #endif
+
+#define OPENVPN_8021Q_MIN_VID 1
+#define OPENVPN_8021Q_MAX_VID 4094
 
 #endif /* ifndef PROTO_H */

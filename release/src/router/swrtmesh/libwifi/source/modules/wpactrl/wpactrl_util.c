@@ -32,8 +32,10 @@
 #include <stdlib.h>
 #include <endian.h>
 #include <dirent.h>
+#if defined(RTCONFIG_SWRTMESH)
 #include <netlink/genl/genl.h>
 #include <netlink/genl/ctrl.h>
+#endif
 #include <easy/easy.h>
 #include "wifiutils.h"
 #include "wifi.h"
@@ -377,9 +379,9 @@ static int ctrl_iface_set(const char *ifname, const char *cmd, bool check_ok, bo
 
 	p = strstr(cmd, "raw");
 	if (p)
-		strlcpy(cmdbuf, p + strlen("raw"), sizeof(cmdbuf));
+		strncpy(cmdbuf, p + strlen("raw"), sizeof(cmdbuf));
 	else
-		strlcpy(cmdbuf, cmd, sizeof(cmdbuf));
+		strncpy(cmdbuf, cmd, sizeof(cmdbuf));
 
 	trim(cmdbuf);
 	upstr_cmd(cmdbuf);
@@ -426,9 +428,9 @@ static int ctrl_iface_get(const char *ifname, const char *cmd, char *out, size_t
 
 	p = strstr(cmd, "raw");
 	if (p)
-		strlcpy(cmdbuf, p + strlen("raw"), sizeof(cmdbuf));
+		strncpy(cmdbuf, p + strlen("raw"), sizeof(cmdbuf));
 	else
-		strlcpy(cmdbuf, cmd, sizeof(cmdbuf));
+		strncpy(cmdbuf, cmd, sizeof(cmdbuf));
 
 	trim(cmdbuf);
 	upstr_cmd(cmdbuf);
@@ -2204,3 +2206,12 @@ int hostapd_cli_get_4addr_parent(const char* ifname, char* parent) {
 	closedir(d);
 	return -1;
 }
+
+int hostapd_cli_rrm_lm_req(const char *ifname, uint8_t *sta) {
+	char cmd[64] = { 0 };
+
+	snprintf(cmd, sizeof(cmd), "RRM_LM_REQ " MACSTR, MAC2STR(sta)); /* Flawfinder: ignore */
+
+	return hostapd_cli_set(ifname, cmd, false);
+}
+

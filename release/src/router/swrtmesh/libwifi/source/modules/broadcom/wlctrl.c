@@ -3915,9 +3915,13 @@ int bcmwl_recv_event(const char *ifname, void *evhandle)
 	return 0;
 }
 
+#ifndef WL_EVENTING_MASK_MAX_LEN
+#define WL_EVENTING_MASK_MAX_LEN 64
+#endif
+
 static int bcmwl_event_bit(const char *ifname, unsigned int bit, int set)
 {
-	int mask_len = (WLC_E_LAST + 7) / 8; // WL_EVENTING_MASK_EXT_LEN
+	int mask_len = WL_EVENTING_MASK_MAX_LEN;
 	eventmsgs_ext_t *ext;
 	int ret = -1;
 
@@ -4242,10 +4246,12 @@ static int bcmwl_get_sta_info_rspec(struct wifi_rate *rate, uint32_t rspec)
 	switch (rspec & WL_RSPEC_ENCODING_MASK) {
 	case WL_RSPEC_ENCODE_RATE:
 		phy = PHY_OFDM;
+		bw = 20;
+		nss = 1;
 		break;
 	case WL_RSPEC_ENCODE_HT:
 		gi = ((rspec & WL_RSPEC_SGI)  != 0) ? WIFI_SGI : WIFI_LGI;
-		nss = rate->rate / 8;
+		nss = 1 + rate->rate / 8;
 		mcs = rate->rate % 8;
 		phy = PHY_HT;
 		break;
@@ -4288,6 +4294,8 @@ static int bcmwl_get_sta_info_rspec(struct wifi_rate *rate, uint32_t rspec)
 	switch (phy) {
 	case PHY_OFDM:
 		rate->rate /= 2;
+		rate->m.nss = nss;
+		rate->m.bw = bw;
 		break;
 	default:
 		rate->m.bw = bw;

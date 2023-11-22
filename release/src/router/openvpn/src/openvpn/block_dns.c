@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
  *                2015-2016  <iam@valdikss.org.ru>
  *                2016 Selva Nair <selva.nair@gmail.com>
  *
@@ -25,11 +25,6 @@
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
-#elif defined(_MSC_VER)
-#include "config-msvc.h"
-#endif
-#ifdef HAVE_CONFIG_VERSION_H
-#include "config-version.h"
 #endif
 
 #include "syshead.h"
@@ -108,9 +103,6 @@ DEFINE_GUID(
     );
 
 static WCHAR *FIREWALL_NAME = L"OpenVPN";
-
-VOID NETIOAPI_API_
-InitializeIpInterfaceEntry(PMIB_IPINTERFACE_ROW Row);
 
 /*
  * Default msg handler does nothing

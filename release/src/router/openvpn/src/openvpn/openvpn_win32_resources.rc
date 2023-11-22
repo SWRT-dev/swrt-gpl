@@ -1,11 +1,11 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
-#else
-#include <config-msvc-version.h>
 #endif
 #include <winresrc.h>
 
 #pragma code_page(65001) /* UTF8 */
+
+1 RT_MANIFEST "openvpn.manifest"
 
 LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
 

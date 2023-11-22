@@ -1500,14 +1500,21 @@ define RouterOptions
 		sed -i "/RTCONFIG_INTERNETCTRL/d" $(1); \
 		echo "RTCONFIG_INTERNETCTRL=y" >>$(1); \
 	fi;
-	if [ "$(OPENSSL)" = "11" -o "$(OPENSSL11)" = "y" ]; then \
+	if [ "$(OPENSSL)" = "3" -o "$(OPENSSL3)" = "y" ]; then \
+		sed -i "/RTCONFIG_OPENSSL/d" $(1); \
+		echo "# RTCONFIG_OPENSSL10 is not set" >>$(1); \
+		echo "# RTCONFIG_OPENSSL11 is not set" >>$(1); \
+		echo "RTCONFIG_OPENSSL3=y" >>$(1); \
+	elif [ "$(OPENSSL)" = "11" -o "$(OPENSSL11)" = "y" ]; then \
 		sed -i "/RTCONFIG_OPENSSL/d" $(1); \
 		echo "# RTCONFIG_OPENSSL10 is not set" >>$(1); \
 		echo "RTCONFIG_OPENSSL11=y" >>$(1); \
+		echo "# RTCONFIG_OPENSSL3 is not set" >>$(1); \
 	elif [ "$(OPENSSL)" = "10" -o "$(OPENSSL10)" = "y" ]; then \
 		sed -i "/RTCONFIG_OPENSSL/d" $(1); \
 		echo "RTCONFIG_OPENSSL10=y" >>$(1); \
 		echo "# RTCONFIG_OPENSSL11 is not set" >>$(1); \
+		echo "# RTCONFIG_OPENSSL3 is not set" >>$(1); \
 	fi;
 	if [ "$(YANDEXDNS)" = "y" ]; then \
 		sed -i "/RTCONFIG_YANDEXDNS/d" $(1); \
@@ -4102,6 +4109,9 @@ define RouterOptions
 		echo "RTCONFIG_SWRTMESH=y" >>$(1); \
 		sed -i "/RTCONFIG_PTHSAFE_POPEN/d" $(1); \
 		echo "RTCONFIG_PTHSAFE_POPEN=y" >>$(1); \
+		sed -i "/RTCONFIG_OPENSSL11/d" $(1); \
+		echo "# RTCONFIG_OPENSSL11 is not set" >>$(1); \
+		echo "RTCONFIG_OPENSSL3=y" >>$(1); \
 	fi;
 	if [ "$(SFE)" = "y" ]; then \
 		sed -i "/RTCONFIG_SFE/d" $(1); \
@@ -6276,4 +6286,3 @@ get_extendno:
 .PHONY: a b c d m Makefile allversions
 .PHONY: tags
 .PHONY: dummy
-

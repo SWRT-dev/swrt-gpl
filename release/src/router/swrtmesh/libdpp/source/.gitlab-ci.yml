@@ -1,0 +1,35 @@
+include:
+  - project: 'iopsys/gitlab-ci-pipeline'
+    file: '/static-code-analysis.yml'
+    ref: '0.31'
+
+stages:
+    - static_code_analysis
+    - compile_test
+      #- unit_test
+      #- functional_test
+      #- api_test
+
+variables:
+  DEBUG: 'TRUE'
+  SOURCE_FOLDER: "lib"
+  SUPERVISOR_LOG: "$CI_PROJECT_DIR/supervisord.log"
+  LIDPP_LOG: "$CI_PROJECT_DIR/libdpp.log"
+  CPPCHECK_OPTIONS: " --enable=all --suppress=unmatchedSuppression --error-exitcode=1 --suppress=unusedFunction --suppress=unreadVariable --suppress=variableScope --suppress=noValidConfiguration --suppress=missingInclude -ilib/test/responder.c"
+  CPD_OPTIONS: " --minimum-tokens 1000 --language c --files"
+
+run_compile_test:
+    stage: compile_test
+    image: dev.iopsys.eu:5050/iopsys/gitlab-ci-pipeline/code-analysis
+    allow_failure: false
+    script:
+        - "./gitlab-ci/install-dependencies.sh"
+        - "./gitlab-ci/compile-test.sh"
+
+    artifacts:
+        when: always
+        paths:
+            - functional-test-coverage.xml
+            - timestamp.log
+            - coverage.tar.gz
+

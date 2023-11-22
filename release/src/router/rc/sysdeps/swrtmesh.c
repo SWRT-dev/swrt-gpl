@@ -38,6 +38,8 @@ void auto_generate_config(void)
 {
 	if(!check_if_dir_exist("/var/run/multiap"))
 		eval("mkdir", "-p", "/var/run/multiap");
+	if(!check_if_dir_exist("/etc/multiap"))
+		eval("mkdir", "-p", "/etc/multiap");
 	if(!check_if_file_exist("/etc/config/wireless"))
 		swrtmesh_generate_wireless_config();
 	if(!check_if_file_exist("/etc/config/ieee1905"))
@@ -76,13 +78,13 @@ int start_swrtmesh(void)
 	if(nvram_match("swrtmesh_debug", "1")){
 		system("touch /tmp/SWRTMESHUTILS_DEBUG");
 		idx = 2;
+		ieee1905_argv[idx] = "-dddd";
+		idx++;
 		ieee1905_argv[idx] = "-o";
 		idx++;
 		ieee1905_argv[idx] = "/tmp/ieee1905.log";
 		idx++;
 		ieee1905_argv[idx] = "-f";
-		idx++;
-		ieee1905_argv[idx] = "-dddd";
 	}
 	auto_generate_config();
 //	swrtmesh_resync_config();

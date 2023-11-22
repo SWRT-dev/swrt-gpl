@@ -57,6 +57,7 @@ int wifi_apload_set_from_ie(uint8_t *ies, size_t ies_len, struct wifi_ap_load *l
 
 const char * wifi_band_to_str(enum wifi_band band);
 const char * wifi_bw_to_str(enum wifi_bw bw);
+void correct_oper_std_by_band(enum wifi_band band, uint8_t *std);
 
 #ifndef BIT
 #define BIT(n)	(1U << (n))

@@ -629,6 +629,9 @@ struct wifi_iface {
 	char name[16];
 	enum wifi_mode mode;
 	enum wifi_band band;
+	uint8_t channel;
+	uint32_t frequency;
+	int link_id;
 };
 
 /* limit max interfaces per radio */
@@ -1142,6 +1145,21 @@ struct chan_switch_param {
 
 #define OUI_LEN		3
 
+/** struct ie - information element structure */
+struct ie {
+	__u8 eid;
+	__u8 len;
+	__u8 data[];
+} __attribute__ ((packed));
+
+/* struct ext_ie - extended information element structure */
+struct ext_ie {
+	__u8 eid;
+	__u8 len;
+	__u8 eid_ext;
+	__u8 data[];
+} __attribute__((packed));;
+
 /** struct vendor_ie - vendor ie struct */
 struct vendor_ie {
 	struct {
@@ -1347,15 +1365,21 @@ enum wifi_mbo_disallow_assoc_reason {
 #define IE_SUPP_RATES                1
 #define IE_DS_PARAM                  3
 #define IE_BSS_LOAD                  11
+#define IE_TCLAS                     14
+#define IE_TCLAS_PROCESSING          44
 #define IE_HT_CAP                    45
 #define IE_RSN                       48
 #define IE_MDE                       54
 #define IE_HT_OPER                   61
 #define IE_RRM                       70
 #define IE_EXT_CAP                   127
+#define IE_SCS_DESC                  185
 #define IE_VHT_CAP                   191
 #define IE_VEND_SPEC                 221
 #define IE_EXT                       255
+
+#define WFA_OUI                      { 0x50, 0x6F, 0x9A }
+#define WFA_OUI_TYPE                 1
 
 /* elements id extension */
 #define IE_EXT_HE_CAP                35
@@ -1363,9 +1387,222 @@ enum wifi_mbo_disallow_assoc_reason {
 #define IE_EXT_MU_EDCA               38
 #define IE_EXT_MULTI_BSSID           55
 #define IE_EXT_6G_CAPS               59
+#define IE_EXT_MSCS_DESC             88
 #define IE_EXT_EHT_OPER              106
 #define IE_EXT_ML                    107
 #define IE_EXT_EHT_CAP               108
+
+/* QoS Management Information element */
+struct qos_mgmt_ie {
+	struct ie hdr;
+	uint8_t oui[3];
+	uint8_t oui_type;
+	uint8_t data[];
+} __attribute__((packed));
+
+/* TCLAS element - Type 4 (IPv4) */
+struct tclas_type4_ipv4 {
+	uint32_t src_ip;
+	uint32_t dst_ip;
+	uint16_t src_port;
+	uint16_t dst_port;
+	uint8_t dscp;
+	uint8_t protocol;
+	uint8_t param_mask;
+};
+
+/* TCLAS element - Type 4 (IPv6) */
+struct tclas_type4_ipv6 {
+	uint8_t src_ip[16];
+	uint8_t dst_ip[16];
+	uint16_t src_port;
+	uint16_t dst_port;
+	uint8_t dscp;
+	uint8_t next_header;
+	uint8_t flow_label[3];
+	uint8_t param_mask;
+};
+
+/* TCLAS element - generalized Type 4 */
+struct tclas_type4 {
+	uint8_t classifier_mask;
+	uint8_t ip_version;
+	union {
+		struct tclas_type4_ipv4 ipv4;
+		struct tclas_type4_ipv6 ipv6;
+	};
+};
+
+/* TCLAS element - frame classifier types */
+enum tclas_frame_classifier_type {
+	TCLAS_FRAME_CLASSIFIER_TYPE_ETH = 0,
+	TCLAS_FRAME_CLASSIFIER_TYPE_TCP_UDP_IP = 1,
+	TCLAS_FRAME_CLASSIFIER_TYPE_8021Q = 2,
+	TCLAS_FRAME_CLASSIFIER_TYPE_FILTER_OFFSET = 3,
+	TCLAS_FRAME_CLASSIFIER_TYPE_IP = 4,
+	TCLAS_FRAME_CLASSIFIER_TYPE_8021DQ = 5,
+	TCLAS_FRAME_CLASSIFIER_TYPE_8021MAC = 6,
+	TCLAS_FRAME_CLASSIFIER_TYPE_DL_PV1 = 7,
+	TCLAS_FRAME_CLASSIFIER_TYPE_UL_PV1 = 8,
+	TCLAS_FRAME_CLASSIFIER_TYPE_PV1_FULL = 9,
+	TCLAS_FRAME_CLASSIFIER_TYPE_IP_EXT = 10,
+};
+
+/* TCLAS element - generalized frame classifier */
+struct tclas_frame_classifier {
+	uint8_t type; /**< Belongs to tclas_frame_classifier_type enumeration */
+	/*
+	 * classifier mask is put into specific classifier type for proper structure
+	 * packing
+	 */
+	union {
+		struct tclas_type4 params4;
+	};
+};
+
+/* TCLAS element */
+struct tclas_elem {
+	uint8_t user_priority;
+	struct tclas_frame_classifier classifier;
+};
+
+/* SCS descriptor - request types */
+enum scs_desc_req_type {
+	SCS_DESC_REQ_TYPE_ADD = 0,
+	SCS_DESC_REQ_TYPE_REMOVE = 1,
+	SCS_DESC_REQ_TYPE_CHANGE = 2,
+};
+
+/* Separate TCLAS processing field */
+struct tclas_processing {
+	uint8_t processing;
+};
+
+/**
+ * Part 11: Wireless LAN Medium Access Control
+ *          (MAC) and Physical Layer (PHY) Specifications
+ * 9.4.2.121 SCS Descriptor element part, required just
+ *           to avoid the problem of flexible array
+ *           at the end of structure.
+ */
+struct scs_desc_add_change_hdr {
+	uint32_t intra_access_category_priority:24;
+
+	/* Please note that elements must be wrapped in ie */
+	struct tclas_elem tclas_elems[];
+};
+
+/**
+ * Part 11: Wireless LAN Medium Access Control
+ *          (MAC) and Physical Layer (PHY) Specifications
+ * 9.4.2.121 SCS Descriptor element part
+ */
+struct scs_desc_add_change {
+	struct scs_desc_add_change_hdr hdr;
+	struct ie processing_element; /* tclas_processing */
+};
+
+/**
+ * Part 11: Wireless LAN Medium Access Control
+ *          (MAC) and Physical Layer (PHY) Specifications
+ * 9.4.2.121 SCS Descriptor element
+ */
+struct scs_desc {
+	uint8_t scsid;
+	uint8_t request_type;	/* belongs to scs_desc_req_type enum */
+	union {
+		struct scs_desc_add_change add_change;
+		uint8_t dummy[0]; /* This field is added in order to stress the fact
+		                     that there might be no data after 'request_type' */
+	};
+};
+
+/**
+ * Part 11: Wireless LAN Medium Access Control
+ *          (MAC) and Physical Layer (PHY) Specifications
+ * 9.4.2.243 MSCS Descriptor element
+ */
+struct mscs_desc {
+	uint8_t request_type;	/* belongs to scs_desc_req_type enum */
+	uint8_t up_bitmap;
+	uint8_t up_limit;
+	int32_t stream_timeout;
+
+	/*
+	 * These elements are TCLAS Mask Elements (9.4.2.242), not TCLAS Elements
+	 * directly
+	 */
+	struct tclas_elem tclas_elems[];
+};
+
+/* User-friendly structures that might be used in configuration parsing */
+struct scs_desc_usr {
+	uint8_t scsid;
+	uint32_t intra_access_category_priority;
+
+	/* TCLAS elements */
+	uint32_t tclas_elems_count;
+	struct tclas_elem *tclas_elems;
+
+	/* Processing part */
+	uint8_t processing;
+	uint8_t processing_present;
+};
+
+struct mscs_desc_usr {
+	uint8_t up_bitmap;
+	uint8_t up_limit;
+	int32_t stream_timeout;
+
+	uint32_t tclas_elems_count;
+	struct tclas_elem *tclas_elems;
+};
+
+/** Possible QoS management attribute IDs */
+enum qos_mgmt_attr_id {
+	QOS_MGMT_ATTR_ID_PORT_RANGE = 1,
+	QOS_MGMT_ATTR_ID_DSCP_POLICY = 2,
+	QOS_MGMT_ATTR_ID_TCLAS = 3,
+	QOS_MGMT_ATTR_ID_DOMAIN_NAME = 4,
+};
+
+/**
+ * Single QoS management attribute - user-friendly container
+ */
+struct qos_mgmt_attr_usr {
+	uint8_t attribute_id; /* belongs to qos_mgmt_attr_id enumeration */
+	union {
+		struct {
+			uint16_t start_port;    /**< Start port in port range */
+			uint16_t end_port;      /**< End port in port range */
+		} port_range;
+		struct {
+			uint8_t dscp_policy_id; /**< DSCP policy ID */
+			uint8_t request_type;   /* practically, this field is not needed
+			                           here, but we keep it here in order to
+			                           have just one structure for write/recv
+			                           functions */
+			uint8_t dscp;           /**< Target DSCP value */
+		} dscp_policy;
+		struct {
+			struct tclas_frame_classifier classifier; /**< Complete TCLAS
+			                                               classifier */
+		} tclas;
+		struct {
+			uint32_t domain_name_len;   /**< Target domain name length */
+			uint8_t *domain_name;       /**< Target domain name */
+		} domain_name;
+	};
+};
+
+/**
+ * QoS management attribute container
+ */
+struct qos_mgmt_usr {
+	uint32_t attributes_count;  /**< Number of attributes in attributes
+	                                  field */
+	struct qos_mgmt_attr_usr *attributes;  /**< Array of attributes */
+};
 
 struct radio_entry {
 	char name[16];
@@ -1436,9 +1673,11 @@ struct wifi_opclass {
 struct wifi_mlo_link {
 	uint32_t id;			/**< MLO link id */
 	uint8_t macaddr[6];         	/**< MLO link macaddress */
+	uint32_t frequency;		/**< MLO link frequency */
 	enum wifi_band band;		/**< MLO link band */
 	uint32_t channel;		/**< MLO link channel */
 	enum wifi_bw bandwidth;		/**< MLO link bandwidth */
+	char ssid[64];			/**< MLO ssid */
 };
 
 /** Get valid channels for given country, band and bandwidth */

@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -22,14 +22,12 @@
  */
 
 /*
- * Win32-specific OpenVPN code, targetted at the mingw
+ * Win32-specific OpenVPN code, targeted at the mingw
  * development environment.
  */
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
-#elif defined(_MSC_VER)
-#include "config-msvc.h"
 #endif
 
 #include "syshead.h"
@@ -39,9 +37,10 @@
 #include "buffer.h"
 #include "error.h"
 #include "mtu.h"
+#include "run_command.h"
 #include "sig.h"
+#include "win32-util.h"
 #include "win32.h"
-#include "misc.h"
 #include "openvpn-msg.h"
 
 #include "memdbg.h"
@@ -101,6 +100,12 @@ struct semaphore netcmd_semaphore; /* GLOBAL */
  */
 static char *win_sys_path = NULL; /* GLOBAL */
 
+/**
+ * Set OpenSSL environment variables to a safe directory
+ */
+static void
+set_openssl_env_vars();
+
 void
 init_win32(void)
 {
@@ -110,6 +115,8 @@ init_win32(void)
     }
     window_title_clear(&window_title);
     win32_signal_clear(&win32_signal);
+
+    set_openssl_env_vars();
 }
 
 void
@@ -164,8 +171,7 @@ init_security_attributes_allow_all(struct security_attributes *obj)
 void
 overlapped_io_init(struct overlapped_io *o,
                    const struct frame *frame,
-                   BOOL event_state,
-                   bool tuntap_buffer)  /* if true: tuntap buffer, if false: socket buffer */
+                   BOOL event_state)
 {
     CLEAR(*o);
 
@@ -177,7 +183,7 @@ overlapped_io_init(struct overlapped_io *o,
     }
 
     /* allocate buffer for overlapped I/O */
-    alloc_buf_sock_tun(&o->buf_init, frame, tuntap_buffer, 0);
+    alloc_buf_sock_tun(&o->buf_init, frame);
 }
 
 void
@@ -501,19 +507,19 @@ win32_signal_open(struct win32_signal *ws,
         && !HANDLE_DEFINED(ws->in.read) && exit_event_name)
     {
         struct security_attributes sa;
+        struct gc_arena gc = gc_new();
+        const wchar_t *exit_event_nameW = wide_string(exit_event_name, &gc);
 
         if (!init_security_attributes_allow_all(&sa))
         {
             msg(M_ERR, "Error: win32_signal_open: init SA failed");
         }
 
-        ws->in.read = CreateEvent(&sa.sa,
-                                  TRUE,
-                                  exit_event_initial_state ? TRUE : FALSE,
-                                  exit_event_name);
+        ws->in.read = CreateEventW(&sa.sa, TRUE, exit_event_initial_state ? TRUE : FALSE,
+                                   exit_event_nameW);
         if (ws->in.read == NULL)
         {
-            msg(M_WARN|M_ERRNO, "NOTE: CreateEvent '%s' failed", exit_event_name);
+            msg(M_WARN|M_ERRNO, "NOTE: CreateEventW '%s' failed", exit_event_name);
         }
         else
         {
@@ -526,6 +532,7 @@ win32_signal_open(struct win32_signal *ws,
                 ws->mode = WSO_MODE_SERVICE;
             }
         }
+        gc_free(&gc);
     }
     /* set the ctrl handler in both console and service modes */
     if (!SetConsoleCtrlHandler((PHANDLER_ROUTINE) win_ctrl_handler, true))
@@ -633,51 +640,44 @@ int
 win32_signal_get(struct win32_signal *ws)
 {
     int ret = 0;
-    if (siginfo_static.signal_received)
+
+    if (ws->mode == WSO_MODE_SERVICE)
     {
-        ret = siginfo_static.signal_received;
-    }
-    else
-    {
-        if (ws->mode == WSO_MODE_SERVICE)
+        if (win32_service_interrupt(ws))
         {
-            if (win32_service_interrupt(ws))
-            {
+            ret = SIGTERM;
+        }
+    }
+    else if (ws->mode == WSO_MODE_CONSOLE)
+    {
+        switch (win32_keyboard_get(ws))
+        {
+            case 0x3B: /* F1 -> USR1 */
+                ret = SIGUSR1;
+                break;
+
+            case 0x3C: /* F2 -> USR2 */
+                ret = SIGUSR2;
+                break;
+
+            case 0x3D: /* F3 -> HUP */
+                ret = SIGHUP;
+                break;
+
+            case 0x3E: /* F4 -> TERM */
                 ret = SIGTERM;
-            }
-        }
-        else if (ws->mode == WSO_MODE_CONSOLE)
-        {
-            switch (win32_keyboard_get(ws))
-            {
-                case 0x3B: /* F1 -> USR1 */
-                    ret = SIGUSR1;
-                    break;
+                break;
 
-                case 0x3C: /* F2 -> USR2 */
-                    ret = SIGUSR2;
-                    break;
-
-                case 0x3D: /* F3 -> HUP */
-                    ret = SIGHUP;
-                    break;
-
-                case 0x3E: /* F4 -> TERM */
-                    ret = SIGTERM;
-                    break;
-
-                case 0x03: /* CTRL-C -> TERM */
-                    ret = SIGTERM;
-                    break;
-            }
-        }
-        if (ret)
-        {
-            siginfo_static.signal_received = ret;
-            siginfo_static.source = SIG_SOURCE_HARD;
+            case 0x03: /* CTRL-C -> TERM */
+                ret = SIGTERM;
+                break;
         }
     }
-    return ret;
+    if (ret)
+    {
+        throw_signal(ret); /* this will update signinfo_static.signal received */
+    }
+    return (siginfo_static.signal_received);
 }
 
 void
@@ -880,92 +880,6 @@ netcmd_semaphore_release(void)
 }
 
 /*
- * Return true if filename is safe to be used on Windows,
- * by avoiding the following reserved names:
- *
- * CON, PRN, AUX, NUL, COM1, COM2, COM3, COM4, COM5, COM6, COM7, COM8, COM9,
- * LPT1, LPT2, LPT3, LPT4, LPT5, LPT6, LPT7, LPT8, LPT9, and CLOCK$
- *
- * See: http://msdn.microsoft.com/en-us/library/aa365247.aspx
- *  and http://msdn.microsoft.com/en-us/library/86k9f82k(VS.80).aspx
- */
-
-static bool
-cmp_prefix(const char *str, const bool n, const char *pre)
-{
-    size_t i = 0;
-
-    if (!str)
-    {
-        return false;
-    }
-
-    while (true)
-    {
-        const int c1 = pre[i];
-        int c2 = str[i];
-        ++i;
-        if (c1 == '\0')
-        {
-            if (n)
-            {
-                if (isdigit(c2))
-                {
-                    c2 = str[i];
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            return c2 == '\0' || c2 == '.';
-        }
-        else if (c2 == '\0')
-        {
-            return false;
-        }
-        if (c1 != tolower(c2))
-        {
-            return false;
-        }
-    }
-}
-
-bool
-win_safe_filename(const char *fn)
-{
-    if (cmp_prefix(fn, false, "con"))
-    {
-        return false;
-    }
-    if (cmp_prefix(fn, false, "prn"))
-    {
-        return false;
-    }
-    if (cmp_prefix(fn, false, "aux"))
-    {
-        return false;
-    }
-    if (cmp_prefix(fn, false, "nul"))
-    {
-        return false;
-    }
-    if (cmp_prefix(fn, true, "com"))
-    {
-        return false;
-    }
-    if (cmp_prefix(fn, true, "lpt"))
-    {
-        return false;
-    }
-    if (cmp_prefix(fn, false, "clock$"))
-    {
-        return false;
-    }
-    return true;
-}
-
-/*
  * Service functions for openvpn_execve
  */
 
@@ -1125,13 +1039,13 @@ openvpn_execve(const struct argv *a, const struct env_set *es, const unsigned in
                 }
                 else
                 {
-                    msg(M_WARN|M_ERRNO, "openvpn_execve: GetExitCodeProcess %S failed", cmd);
+                    msg(M_WARN|M_ERRNO, "openvpn_execve: GetExitCodeProcess %ls failed", cmd);
                 }
                 CloseHandle(proc_info.hProcess);
             }
             else
             {
-                msg(M_WARN|M_ERRNO, "openvpn_execve: CreateProcess %S failed", cmd);
+                msg(M_WARN|M_ERRNO, "openvpn_execve: CreateProcess %ls failed", cmd);
             }
             free(env);
             gc_free(&gc);
@@ -1139,7 +1053,7 @@ openvpn_execve(const struct argv *a, const struct env_set *es, const unsigned in
         else
         {
             ret = OPENVPN_EXECVE_NOT_ALLOWED;
-            if (!exec_warn && (script_security < SSEC_SCRIPTS))
+            if (!exec_warn && (script_security() < SSEC_SCRIPTS))
             {
                 msg(M_WARN, SCRIPT_SECURITY_WARNING);
                 exec_warn = true;
@@ -1151,15 +1065,6 @@ openvpn_execve(const struct argv *a, const struct env_set *es, const unsigned in
         msg(M_WARN, "openvpn_execve: called with empty argv");
     }
     return ret;
-}
-
-WCHAR *
-wide_string(const char *utf8, struct gc_arena *gc)
-{
-    int n = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, NULL, 0);
-    WCHAR *ucs16 = gc_malloc(n * sizeof(WCHAR), false, gc);
-    MultiByteToWideChar(CP_UTF8, 0, utf8, -1, ucs16, n);
-    return ucs16;
 }
 
 /*
@@ -1267,7 +1172,6 @@ win_get_tempdir(void)
 static bool
 win_block_dns_service(bool add, int index, const HANDLE pipe)
 {
-    DWORD len;
     bool ret = false;
     ack_message_t ack;
     struct gc_arena gc = gc_new();
@@ -1281,11 +1185,8 @@ win_block_dns_service(bool add, int index, const HANDLE pipe)
         .iface = { .index = index, .name = "" }
     };
 
-    if (!WriteFile(pipe, &data, sizeof(data), &len, NULL)
-        || !ReadFile(pipe, &ack, sizeof(ack), &len, NULL))
+    if (!send_msg_iservice(pipe, &data, sizeof(data), &ack, "Block_DNS"))
     {
-        msg(M_WARN, "Block_DNS: could not talk to service: %s [%lu]",
-            strerror_win32(GetLastError(), &gc), GetLastError());
         goto out;
     }
 
@@ -1421,24 +1322,119 @@ win32_version_info(void)
     {
         return WIN_7;
     }
-    else
+
+    if (!IsWindows8Point1OrGreater())
     {
         return WIN_8;
     }
+
+    if (!IsWindows10OrGreater())
+    {
+        return WIN_8_1;
+    }
+
+    return WIN_10;
 }
 
-bool
-win32_is_64bit(void)
+typedef enum {
+    ARCH_X86,
+    ARCH_AMD64,
+    ARCH_ARM64,
+    ARCH_NATIVE, /* means no emulation, makes sense for host arch */
+    ARCH_UNKNOWN
+} arch_t;
+
+static void
+win32_get_arch(arch_t *process_arch, arch_t *host_arch)
 {
-#if defined(_WIN64)
-    return true;  /* 64-bit programs run only on Win64 */
+    *process_arch = ARCH_UNKNOWN;
+    *host_arch = ARCH_NATIVE;
+
+    typedef BOOL (WINAPI *is_wow64_process2_t)(HANDLE, USHORT *, USHORT *);
+    is_wow64_process2_t is_wow64_process2 = (is_wow64_process2_t)
+                                            GetProcAddress(GetModuleHandle("Kernel32.dll"), "IsWow64Process2");
+
+    USHORT process_machine = 0;
+    USHORT native_machine = 0;
+
+#ifdef _ARM64_
+    *process_arch = ARCH_ARM64;
+#elif defined(_WIN64)
+    *process_arch = ARCH_AMD64;
+    if (is_wow64_process2)
+    {
+        /* this could be amd64 on arm64 */
+        BOOL is_wow64 = is_wow64_process2(GetCurrentProcess(),
+                                          &process_machine, &native_machine);
+        if (is_wow64 && native_machine == IMAGE_FILE_MACHINE_ARM64)
+        {
+            *host_arch = ARCH_ARM64;
+        }
+    }
 #elif defined(_WIN32)
-    /* 32-bit programs run on both 32-bit and 64-bit Windows */
-    BOOL f64 = FALSE;
-    return IsWow64Process(GetCurrentProcess(), &f64) && f64;
-#else  /* if defined(_WIN64) */
-    return false; /* Win64 does not support Win16 */
-#endif
+    *process_arch = ARCH_X86;
+
+    if (is_wow64_process2)
+    {
+        /* check if we're running on arm64 or amd64 machine */
+        BOOL is_wow64 = is_wow64_process2(GetCurrentProcess(),
+                                          &process_machine, &native_machine);
+        if (is_wow64)
+        {
+            switch (native_machine)
+            {
+                case IMAGE_FILE_MACHINE_ARM64:
+                    *host_arch = ARCH_ARM64;
+                    break;
+
+                case IMAGE_FILE_MACHINE_AMD64:
+                    *host_arch = ARCH_AMD64;
+                    break;
+
+                default:
+                    *host_arch = ARCH_UNKNOWN;
+                    break;
+            }
+        }
+    }
+    else
+    {
+        BOOL w64 = FALSE;
+        BOOL is_wow64 = IsWow64Process(GetCurrentProcess(), &w64) && w64;
+        if (is_wow64)
+        {
+            /* we are unable to differentiate between arm64 and amd64
+             * machines here, so assume we are running on amd64 */
+            *host_arch = ARCH_AMD64;
+        }
+    }
+#endif /* _ARM64_ */
+}
+
+static void
+win32_print_arch(arch_t arch, struct buffer *out)
+{
+    switch (arch)
+    {
+        case ARCH_X86:
+            buf_printf(out, "x86");
+            break;
+
+        case ARCH_AMD64:
+            buf_printf(out, "amd64");
+            break;
+
+        case ARCH_ARM64:
+            buf_printf(out, "arm64");
+            break;
+
+        case ARCH_UNKNOWN:
+            buf_printf(out, "(unknown)");
+            break;
+
+        default:
+            break;
+    }
 }
 
 const char *
@@ -1462,7 +1458,15 @@ win32_version_string(struct gc_arena *gc, bool add_name)
             break;
 
         case WIN_8:
-            buf_printf(&out, "6.2%s", add_name ? " (Windows 8 or greater)" : "");
+            buf_printf(&out, "6.2%s", add_name ? " (Windows 8)" : "");
+            break;
+
+        case WIN_8_1:
+            buf_printf(&out, "6.3%s", add_name ? " (Windows 8.1)" : "");
+            break;
+
+        case WIN_10:
+            buf_printf(&out, "10.0%s", add_name ? " (Windows 10 or greater)" : "");
             break;
 
         default:
@@ -1471,9 +1475,166 @@ win32_version_string(struct gc_arena *gc, bool add_name)
             break;
     }
 
-    buf_printf(&out, win32_is_64bit() ? " 64bit" : " 32bit");
+    buf_printf(&out, ", ");
+
+    arch_t process_arch, host_arch;
+    win32_get_arch(&process_arch, &host_arch);
+    win32_print_arch(process_arch, &out);
+
+    buf_printf(&out, " executable");
+
+    if (host_arch != ARCH_NATIVE)
+    {
+        buf_printf(&out, " running on ");
+        win32_print_arch(host_arch, &out);
+        buf_printf(&out, " host");
+    }
 
     return (const char *)out.data;
 }
 
+bool
+send_msg_iservice(HANDLE pipe, const void *data, size_t size,
+                  ack_message_t *ack, const char *context)
+{
+    struct gc_arena gc = gc_new();
+    DWORD len;
+    bool ret = true;
+
+    if (!WriteFile(pipe, data, size, &len, NULL)
+        || !ReadFile(pipe, ack, sizeof(*ack), &len, NULL))
+    {
+        msg(M_WARN, "%s: could not talk to service: %s [%lu]",
+            context ? context : "Unknown",
+            strerror_win32(GetLastError(), &gc), GetLastError());
+        ret = false;
+    }
+
+    gc_free(&gc);
+    return ret;
+}
+
+bool
+openvpn_swprintf(wchar_t *const str, const size_t size, const wchar_t *const format, ...)
+{
+    va_list arglist;
+    int len = -1;
+    if (size > 0)
+    {
+        va_start(arglist, format);
+        len = vswprintf(str, size, format, arglist);
+        va_end(arglist);
+        str[size - 1] = L'\0';
+    }
+    return (len >= 0 && len < size);
+}
+
+static BOOL
+get_install_path(WCHAR *path, DWORD size)
+{
+    WCHAR reg_path[256];
+    HKEY key;
+    BOOL res = FALSE;
+    openvpn_swprintf(reg_path, _countof(reg_path), L"SOFTWARE\\" PACKAGE_NAME);
+
+    LONG status = RegOpenKeyExW(HKEY_LOCAL_MACHINE, reg_path, 0, KEY_READ, &key);
+    if (status != ERROR_SUCCESS)
+    {
+        return res;
+    }
+
+    /* The default value of REG_KEY is the install path */
+    status = RegGetValueW(key, NULL, NULL, RRF_RT_REG_SZ, NULL, (LPBYTE)path, &size);
+    res = status == ERROR_SUCCESS;
+
+    RegCloseKey(key);
+
+    return res;
+}
+
+static void
+set_openssl_env_vars()
+{
+    const WCHAR *ssl_fallback_dir = L"C:\\Windows\\System32";
+
+    WCHAR install_path[MAX_PATH] = { 0 };
+    if (!get_install_path(install_path, _countof(install_path)))
+    {
+        /* if we cannot find installation path from the registry,
+         * use Windows directory as a fallback
+         */
+        openvpn_swprintf(install_path, _countof(install_path), L"%ls", ssl_fallback_dir);
+    }
+
+    if ((install_path[wcslen(install_path) - 1]) == L'\\')
+    {
+        install_path[wcslen(install_path) - 1] = L'\0';
+    }
+
+    static struct {
+        WCHAR *name;
+        WCHAR *value;
+    } ossl_env[] = {
+        {L"OPENSSL_CONF", L"openssl.cnf"},
+        {L"OPENSSL_ENGINES", L"engines"},
+        {L"OPENSSL_MODULES", L"modules"}
+    };
+
+    for (size_t i = 0; i < SIZE(ossl_env); ++i)
+    {
+        size_t size = 0;
+
+        _wgetenv_s(&size, NULL, 0, ossl_env[i].name);
+        if (size == 0)
+        {
+            WCHAR val[MAX_PATH] = {0};
+            openvpn_swprintf(val, _countof(val), L"%ls\\ssl\\%ls", install_path, ossl_env[i].value);
+            _wputenv_s(ossl_env[i].name, val);
+        }
+    }
+}
+
+void
+win32_sleep(const int n)
+{
+    if (n < 0)
+    {
+        return;
+    }
+
+    /* Sleep() is not interruptible. Use a WAIT_OBJECT to catch signal */
+
+    if (!HANDLE_DEFINED(win32_signal.in.read))
+    {
+        if (n > 0)
+        {
+            Sleep(n*1000);
+        }
+        return;
+    }
+
+    update_time();
+    time_t expire = now + n;
+
+    while (expire >= now)
+    {
+        DWORD status = WaitForSingleObject(win32_signal.in.read, (expire-now)*1000);
+        if ((status == WAIT_OBJECT_0 && win32_signal_get(&win32_signal))
+            || status == WAIT_TIMEOUT)
+        {
+            return;
+        }
+
+        update_time();
+
+        if (status != WAIT_OBJECT_0) /* wait failed or some unexpected error ? */
+        {
+            if (expire > now)
+            {
+                Sleep((expire-now)*1000);
+            }
+            return;
+        }
+    }
+}
 #endif /* ifdef _WIN32 */

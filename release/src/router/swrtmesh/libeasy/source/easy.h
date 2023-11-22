@@ -13,6 +13,10 @@
 #include "debug.h"
 #include "hlist.h"
 
+#include "bufutil.h"
+#include "cryptutil.h"
+#include "ecc_cryptutil.h"
+
 #define libeasy_err(...)	pr_error("libeasy: " __VA_ARGS__)
 #define libeasy_warn(...)	pr_warn("libeasy: " __VA_ARGS__)
 #define libeasy_info(...)	pr_info("libeasy: " __VA_ARGS__)

@@ -2317,6 +2317,9 @@ config RTCONFIG_OPENSSL10
 config RTCONFIG_OPENSSL11
 	bool "OpenSSL 1.1.x"
 
+config RTCONFIG_OPENSSL3
+	bool "OpenSSL 3.x.x"
+
 endchoice
 
 config RTCONFIG_NO_PTHREAD_TIMEDWAIT
@@ -2772,7 +2775,7 @@ config RTCONFIG_NLBWMON
 
 config RTCONFIG_SWRTMESH
 	bool "swrtmesh is a cross-chip implementation of easymesh for swrt"
-	depends on !RTCONFIG_EASYMESH && !RTCONFIG_AMAS
+	depends on !RTCONFIG_EASYMESH && !RTCONFIG_AMAS && RTCONFIG_OPENSSL3
 	default n
 
 config RTCONFIG_SFE

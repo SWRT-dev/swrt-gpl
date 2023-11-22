@@ -5,9 +5,9 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
  *  Copyright (C) 2014-2015 David Sommerseth <davids@redhat.com>
- *  Copyright (C) 2016-2018 David Sommerseth <davids@openvpn.net>
+ *  Copyright (C) 2016-2023 David Sommerseth <davids@openvpn.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -21,7 +21,7 @@
  *  You should have received a copy of the GNU General Public License along
  *  with this program; if not, write to the Free Software Foundation, Inc.,
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-*/
+ */
 
 #ifndef CONSOLE_H
 #define CONSOLE_H
@@ -33,9 +33,9 @@
  */
 struct _query_user {
     char *prompt;             /**< Prompt to present to the user */
-    size_t prompt_len;        /**< Lenght of the prompt string */
+    size_t prompt_len;        /**< Length of the prompt string */
     char *response;           /**< The user's response */
-    size_t response_len;      /**< Lenght the of the user reposone */
+    size_t response_len;      /**< Length the of the user response */
     bool echo;                /**< True: The user should see what is being typed, otherwise mask it */
 };
 
@@ -55,7 +55,7 @@ void query_user_clear(void);
  * @param prompt     Prompt to display to the user
  * @param prompt_len Length of the prompt string
  * @param resp       String containing the user response
- * @param resp_len   Lenght of the response string
+ * @param resp_len   Length of the response string
  * @param echo       Should the user input be echoed to the user?  If False, input will be masked
  *
  */

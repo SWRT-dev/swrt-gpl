@@ -158,25 +158,6 @@ static int radio_get_iface_extch(const char *netdev, struct wifi_radio *radio)
 	return 0;
 }
 
-static void correct_oper_std_by_band(enum wifi_band band, uint8_t *std)
-{
-	switch (band) {
-	case BAND_2:
-		*std &= ~(WIFI_A | WIFI_AC);
-		break;
-	case BAND_5:
-		if (*std & WIFI_G)
-			*std |= WIFI_A;
-		*std &= ~(WIFI_G | WIFI_B);
-		break;
-	case BAND_6:
-		*std &= ~(WIFI_B | WIFI_G | WIFI_A | WIFI_AC);
-		break;
-	default:
-		break;
-	}
-}
-
 /* Radio callbacks */
 static int radio_info_band(const char *name, enum wifi_band band, struct wifi_radio *radio)
 {
@@ -942,6 +923,18 @@ static int iface_set_vlan(const char *ifname, struct vlan_param vlan)
 	return -1;
 }
 
+static int iface_link_measure(const char *ifname, uint8_t *sta)
+{
+	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+
+	if (!sta || hwaddr_is_zero(sta)) {
+		libwifi_dbg("[%s] %s invalid arg\n", ifname, __func__);
+		return -1;
+	}
+
+	return hostapd_cli_rrm_lm_req(ifname, sta);
+}
+
 /* ap interface ops */
 static int iface_ap_info(const char *ifname, struct wifi_ap *ap)
 {
@@ -1470,6 +1463,7 @@ const struct wifi_driver qca_driver = {
 	.get_4addr = iface_get_4addr,
 	.get_4addr_parent = iface_get_4addr_parent,
 	.set_vlan = iface_set_vlan,
+	.link_measure = iface_link_measure,
 
         /* Interface/vif ap callbacks */
 	.iface.ap_info = iface_ap_info,

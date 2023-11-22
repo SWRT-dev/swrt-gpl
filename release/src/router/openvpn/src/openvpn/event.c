@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -23,8 +23,6 @@
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
-#elif defined(_MSC_VER)
-#include "config-msvc.h"
 #endif
 
 #include "syshead.h"
@@ -34,6 +32,10 @@
 #include "integer.h"
 #include "event.h"
 #include "fdmisc.h"
+
+#if EPOLL
+#include <sys/epoll.h>
+#endif
 
 #include "memdbg.h"
 
@@ -555,7 +557,10 @@ ep_del(struct event_set *es, event_t event)
 
     ASSERT(!eps->fast);
     CLEAR(ev);
-    epoll_ctl(eps->epfd, EPOLL_CTL_DEL, event, &ev);
+    if (epoll_ctl(eps->epfd, EPOLL_CTL_DEL, event, &ev) < 0)
+    {
+        msg(M_WARN|M_ERRNO, "EVENT: epoll_ctl EPOLL_CTL_DEL failed, sd=%d", (int)event);
+    }
 }
 
 static void
@@ -844,7 +849,8 @@ po_wait(struct event_set *es, const struct timeval *tv, struct event_set_return 
             }
             else if (pfdp->revents)
             {
-                msg(D_EVENT_ERRORS, "Error: poll: unknown revents=0x%04x", (unsigned int)pfdp->revents);
+                msg(D_EVENT_ERRORS, "Error: poll: unknown revents=0x%04x for fd=%d",
+                    (unsigned int)pfdp->revents, pfdp->fd);
             }
             ++pfdp;
         }
@@ -1041,10 +1047,10 @@ se_wait_fast(struct event_set *es, const struct timeval *tv, struct event_set_re
     struct timeval tv_tmp = *tv;
     int stat;
 
-    dmsg(D_EVENT_WAIT, "SE_WAIT_FAST maxfd=%d tv=%d/%d",
+    dmsg(D_EVENT_WAIT, "SE_WAIT_FAST maxfd=%d tv=%" PRIi64 "/%ld",
          ses->maxfd,
-         (int)tv_tmp.tv_sec,
-         (int)tv_tmp.tv_usec);
+         (int64_t)tv_tmp.tv_sec,
+         (long)tv_tmp.tv_usec);
 
     stat = select(ses->maxfd + 1, &ses->readfds, &ses->writefds, NULL, &tv_tmp);
 
@@ -1065,8 +1071,8 @@ se_wait_scalable(struct event_set *es, const struct timeval *tv, struct event_se
     fd_set write = ses->writefds;
     int stat;
 
-    dmsg(D_EVENT_WAIT, "SE_WAIT_SCALEABLE maxfd=%d tv=%d/%d",
-         ses->maxfd, (int)tv_tmp.tv_sec, (int)tv_tmp.tv_usec);
+    dmsg(D_EVENT_WAIT, "SE_WAIT_SCALEABLE maxfd=%d tv=%" PRIi64 "/%ld",
+         ses->maxfd, (int64_t)tv_tmp.tv_sec, (long)tv_tmp.tv_usec);
 
     stat = select(ses->maxfd + 1, &read, &write, NULL, &tv_tmp);
 

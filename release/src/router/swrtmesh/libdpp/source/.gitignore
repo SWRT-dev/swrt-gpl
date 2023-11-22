@@ -1,0 +1,12 @@
+.built
+.built_check
+.configured_
+.dep_files
+.git_update
+.prepared_*
+ipkg-*
+**/*.o
+**/*.so
+lib/tags
+.configured_*
+.pkgdir

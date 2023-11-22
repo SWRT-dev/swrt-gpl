@@ -240,6 +240,12 @@ CFLAGS += -DCONFIG_OCV
 OBJS += ../src/common/ocv.o
 endif
 
+#ifdef CONFIG_CUSTOMIZED_SUPPLICANT
+CFLAGS += -DCONFIG_CUSTOMIZED_SUPPLICANT
+#endif
+#ifdef CONFIG_MTK_WPA3_SUPPORT
+CFLAGS += -DMTK_WPA3_SUPPORT
+#endif
 ifdef CONFIG_IEEE80211R
 CFLAGS += -DCONFIG_IEEE80211R
 OBJS += ../src/rsn_supp/wpa_ft.o
@@ -1118,8 +1124,8 @@ ifdef NEED_FIPS186_2_PRF
 OBJS += ../src/crypto/fips_prf_openssl.o
 endif
 NEED_TLS_PRF_SHA256=y
-LIBS += -lcrypto
-LIBS_p += -lcrypto
+LIBS += -lcrypto -latomic
+LIBS_p += -lcrypto -latomic
 ifdef CONFIG_TLS_ADD_DL
 LIBS += -ldl
 LIBS_p += -ldl

@@ -106,6 +106,7 @@ int hostapd_ubus_iface_unsubscribe_frame(const char *ifname, uint8_t type, uint8
 int hostapd_cli_iface_chan_switch(const char *ifname, struct chan_switch_param *param);
 int hostapd_cli_get_security_cap(const char *name, uint32_t *sec);
 int hostapd_cli_get_4addr_parent(const char* ifname, char* parent);
+int hostapd_cli_rrm_lm_req(const char *ifname, uint8_t *sta);
 
 int supplicant_sta_info(const char *ifname, struct wifi_sta *info);
 int supplicant_cli_get_oper_std(const char *ifname, uint8_t *std);

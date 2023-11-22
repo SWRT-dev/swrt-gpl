@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -28,8 +28,6 @@
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
-#elif defined(_MSC_VER)
-#include "config-msvc.h"
 #endif
 
 #include "syshead.h"
@@ -38,6 +36,7 @@
 
 #include "error.h"
 #include "common.h"
+#include "crypto.h"
 #include "misc.h"
 #include "otime.h"
 #include "gremlin.h"
@@ -231,11 +230,5 @@ corrupt_gremlin(struct buffer *buf, int flags)
             } while (flip(2));  /* a 50% chance we will corrupt again */
         }
     }
-}
-
-#else  /* ifdef ENABLE_DEBUG */
-static void
-dummy(void)
-{
 }
 #endif /* ifdef ENABLE_DEBUG */

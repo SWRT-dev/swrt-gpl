@@ -70,7 +70,7 @@
 4. 使用 `git clone https://github.com/SWRT-dev/qca-toolchains` 命令下载toolchains
 
 5. 分别执行 `cd qca-toolchains`
-	`sudo ln -sf $(pwd)/openwrt-gcc520_musl.arm /opt/`
+	`sudo ln -sf $(pwd)/toolchain-arm_cortex-a7_gcc-5.2.0_musl_eabi /opt/`
 
 6. 然后 `cd ../swrt-gpl/release/src-qca-ipq40xx` 进入目录
 

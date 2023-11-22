@@ -79,7 +79,7 @@ sudo apt-get -y install build-essential asciidoc binutils bison bzip2 gawk gette
 
 5. Run `cd qca-toolchains` to enter the directory, and follow commands step by step 
 
-	`sudo ln -sf $(pwd)/openwrt-gcc520_musl.arm /opt/`
+	`sudo ln -sf $(pwd)/toolchain-arm_cortex-a7_gcc-5.2.0_musl_eabi /opt/`
 
 6. Run `cd ../swrt-gpl/release/src-qca-ipq40xx` to enter the directory
 

@@ -2,7 +2,8 @@ CC		= gcc
 WIFIMNGR_LIB_DIR	?= $(shell dirname $(PWD))
 WIFIMNGR_LIB	= -lwifimngr -L$(WIFIMNGR_LIB_DIR)
 CMOCKA_LIB	= -l cmocka
-LIBS		= $(WIFIMNGR_LIB) $(CMOCKA_LIB) -lwifi-7 \
+LIBS		= $(WIFIMNGR_LIB) $(CMOCKA_LIB) \
+		  -lssl -lcrypto -leasy -lwifi-7 \
 		  -luci -lubus -lubox -ljson-c -lblobmsg_json \
 		  -lnl-genl-3 -lnl-3 \
 		  -ljson-validator -ljson-schema-validator -ljson-editor

@@ -2,10 +2,6 @@
   "object": "wifi.radio.test5",
   "methods": [
     {
-      "method": "status",
-      "rc": 0
-    },
-    {
       "method": "stats",
       "rc": 0
     },

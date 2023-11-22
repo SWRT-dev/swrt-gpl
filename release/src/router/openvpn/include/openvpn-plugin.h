@@ -6,7 +6,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -27,7 +27,6 @@
 
 #define OPENVPN_PLUGIN_VERSION 3
 
-#ifdef ENABLE_CRYPTO
 #ifdef ENABLE_CRYPTO_MBEDTLS
 #include <mbedtls/x509_crt.h>
 #ifndef __OPENVPN_X509_CERT_T_DECLARED
@@ -39,7 +38,6 @@ typedef mbedtls_x509_crt openvpn_x509_cert_t;
 #ifndef __OPENVPN_X509_CERT_T_DECLARED
 #define __OPENVPN_X509_CERT_T_DECLARED
 typedef X509 openvpn_x509_cert_t;
-#endif
 #endif
 #endif
 
@@ -54,8 +52,8 @@ extern "C" {
  * This is will not be the complete version
  */
 #define OPENVPN_VERSION_MAJOR 2
-#define OPENVPN_VERSION_MINOR 4
-#define OPENVPN_VERSION_PATCH ".12"
+#define OPENVPN_VERSION_MINOR 6
+#define OPENVPN_VERSION_PATCH ".7"
 
 /*
  * Plug-in types.  These types correspond to the set of script callbacks
@@ -74,7 +72,6 @@ extern "C" {
  * New Client Connection:
  *
  * FUNC: openvpn_plugin_client_constructor_v1
- * FUNC: openvpn_plugin_func_v1 OPENVPN_PLUGIN_ENABLE_PF
  * FUNC: openvpn_plugin_func_v1 OPENVPN_PLUGIN_TLS_VERIFY (called once for every cert
  *                                                     in the server chain)
  * FUNC: openvpn_plugin_func_v1 OPENVPN_PLUGIN_AUTH_USER_PASS_VERIFY
@@ -87,11 +84,13 @@ extern "C" {
  * FUNC: openvpn_plugin_func_v1 OPENVPN_PLUGIN_CLIENT_CONNECT_V2
  * FUNC: openvpn_plugin_func_v1 OPENVPN_PLUGIN_LEARN_ADDRESS
  *
+ * The OPENVPN_PLUGIN_CLIENT_CRRESPONSE function is called when the client sends
+ * the CR_RESPONSE message, this is *typically* after OPENVPN_PLUGIN_TLS_FINAL
+ * but may also occur much later.
+ *
  * [Client session ensues]
  *
  * For each "TLS soft reset", according to reneg-sec option (or similar):
- *
- * FUNC: openvpn_plugin_func_v1 OPENVPN_PLUGIN_ENABLE_PF
  *
  * FUNC: openvpn_plugin_func_v1 OPENVPN_PLUGIN_TLS_VERIFY (called once for every cert
  *                                                     in the server chain)
@@ -119,20 +118,23 @@ extern "C" {
  * FUNC: openvpn_plugin_client_destructor_v1 (top-level "generic" client)
  * FUNC: openvpn_plugin_close_v1
  */
-#define OPENVPN_PLUGIN_UP                    0
-#define OPENVPN_PLUGIN_DOWN                  1
-#define OPENVPN_PLUGIN_ROUTE_UP              2
-#define OPENVPN_PLUGIN_IPCHANGE              3
-#define OPENVPN_PLUGIN_TLS_VERIFY            4
-#define OPENVPN_PLUGIN_AUTH_USER_PASS_VERIFY 5
-#define OPENVPN_PLUGIN_CLIENT_CONNECT        6
-#define OPENVPN_PLUGIN_CLIENT_DISCONNECT     7
-#define OPENVPN_PLUGIN_LEARN_ADDRESS         8
-#define OPENVPN_PLUGIN_CLIENT_CONNECT_V2     9
-#define OPENVPN_PLUGIN_TLS_FINAL             10
-#define OPENVPN_PLUGIN_ENABLE_PF             11
-#define OPENVPN_PLUGIN_ROUTE_PREDOWN         12
-#define OPENVPN_PLUGIN_N                     13
+#define OPENVPN_PLUGIN_UP                        0
+#define OPENVPN_PLUGIN_DOWN                      1
+#define OPENVPN_PLUGIN_ROUTE_UP                  2
+#define OPENVPN_PLUGIN_IPCHANGE                  3
+#define OPENVPN_PLUGIN_TLS_VERIFY                4
+#define OPENVPN_PLUGIN_AUTH_USER_PASS_VERIFY     5
+#define OPENVPN_PLUGIN_CLIENT_CONNECT            6
+#define OPENVPN_PLUGIN_CLIENT_DISCONNECT         7
+#define OPENVPN_PLUGIN_LEARN_ADDRESS             8
+#define OPENVPN_PLUGIN_CLIENT_CONNECT_V2         9
+#define OPENVPN_PLUGIN_TLS_FINAL                10
+/*#define OPENVPN_PLUGIN_ENABLE_PF                11 *REMOVED FEATURE* */
+#define OPENVPN_PLUGIN_ROUTE_PREDOWN            12
+#define OPENVPN_PLUGIN_CLIENT_CONNECT_DEFER     13
+#define OPENVPN_PLUGIN_CLIENT_CONNECT_DEFER_V2  14
+#define OPENVPN_PLUGIN_CLIENT_CRRESPONSE        15
+#define OPENVPN_PLUGIN_N                        16
 
 /*
  * Build a mask out of a set of plug-in types.
@@ -424,9 +426,9 @@ struct openvpn_plugin_args_open_return
  * per_client_context : the per-client context pointer which was returned by
  *        openvpn_plugin_client_constructor_v1, if defined.
  *
- * current_cert_depth : Certificate depth of the certificate being passed over (only if compiled with ENABLE_CRYPTO defined)
+ * current_cert_depth : Certificate depth of the certificate being passed over
  *
- * *current_cert : X509 Certificate object received from the client (only if compiled with ENABLE_CRYPTO defined)
+ * *current_cert : X509 Certificate object received from the client
  *
  */
 struct openvpn_plugin_args_func_in
@@ -436,13 +438,8 @@ struct openvpn_plugin_args_func_in
     const char **const envp;
     openvpn_plugin_handle_t handle;
     void *per_client_context;
-#ifdef ENABLE_CRYPTO
     int current_cert_depth;
     openvpn_x509_cert_t *current_cert;
-#else
-    int __current_cert_depth_disabled; /* Unused, for compatibility purposes only */
-    void *__current_cert_disabled; /* Unused, for compatibility purposes only */
-#endif
 };
 
 
@@ -563,12 +560,29 @@ OPENVPN_PLUGIN_DEF openvpn_plugin_handle_t OPENVPN_PLUGIN_FUNC(openvpn_plugin_op
  * OPENVPN_PLUGIN_FUNC_SUCCESS on success, OPENVPN_PLUGIN_FUNC_ERROR on failure
  *
  * In addition, OPENVPN_PLUGIN_FUNC_DEFERRED may be returned by
- * OPENVPN_PLUGIN_AUTH_USER_PASS_VERIFY.  This enables asynchronous
- * authentication where the plugin (or one of its agents) may indicate
- * authentication success/failure some number of seconds after the return
- * of the OPENVPN_PLUGIN_AUTH_USER_PASS_VERIFY handler by writing a single
- * char to the file named by auth_control_file in the environmental variable
- * list (envp).
+ * OPENVPN_PLUGIN_AUTH_USER_PASS_VERIFY, OPENVPN_PLUGIN_CLIENT_CONNECT and
+ * OPENVPN_PLUGIN_CLIENT_CONNECT_V2. This enables asynchronous
+ * authentication or client connect  where the plugin (or one of its agents)
+ * may indicate authentication success/failure or client configuration some
+ * number of seconds after the return of the function handler.
+ * For OPENVPN_PLUGIN_AUTH_USER_PASS_VERIFY and OPENVPN_PLUGIN_CLIENT_CONNECT
+ * this is done by writing a single char to the file named by
+ * auth_control_file/client_connect_deferred_file
+ * in the environmental variable list (envp).
+ *
+ * Additionally the auth_pending_file can be written, which causes the openvpn
+ * server to send a pending auth request to the client. See doc/management.txt
+ * for more details on this authentication mechanism. The format of the
+ * auth_pending_file is
+ * line 1: timeout in seconds
+ * line 2: Pending auth method the client needs to support (e.g. openurl)
+ * line 3: EXTRA (e.g. WEBAUTH::http://www.example.com)
+ *
+ * In addition the OPENVPN_PLUGIN_CLIENT_CONNECT_DEFER and
+ * OPENVPN_PLUGIN_CLIENT_CONNECT_DEFER_V2 are called when OpenVPN tries to
+ * get the deferred result. For a V2 call implementing this function is
+ * required as information is not passed by files. For the normal version
+ * the call is optional.
  *
  * first char of auth_control_file:
  * '0' -- indicates auth failure
@@ -576,49 +590,8 @@ OPENVPN_PLUGIN_DEF openvpn_plugin_handle_t OPENVPN_PLUGIN_FUNC(openvpn_plugin_op
  *
  * OpenVPN will delete the auth_control_file after it goes out of scope.
  *
- * If an OPENVPN_PLUGIN_ENABLE_PF handler is defined and returns success
- * for a particular client instance, packet filtering will be enabled for that
- * instance.  OpenVPN will then attempt to read the packet filter configuration
- * from the temporary file named by the environmental variable pf_file.  This
- * file may be generated asynchronously and may be dynamically updated during the
- * client session, however the client will be blocked from sending or receiving
- * VPN tunnel packets until the packet filter file has been generated.  OpenVPN
- * will periodically test the packet filter file over the life of the client
- * instance and reload when modified.  OpenVPN will delete the packet filter file
- * when the client instance goes out of scope.
- *
- * Packet filter file grammar:
- *
- * [CLIENTS DROP|ACCEPT]
- * {+|-}common_name1
- * {+|-}common_name2
- * . . .
- * [SUBNETS DROP|ACCEPT]
- * {+|-}subnet1
- * {+|-}subnet2
- * . . .
- * [END]
- *
- * Subnet: IP-ADDRESS | IP-ADDRESS/NUM_NETWORK_BITS
- *
- * CLIENTS refers to the set of clients (by their common-name) which
- * this instance is allowed ('+') to connect to, or is excluded ('-')
- * from connecting to.  Note that in the case of client-to-client
- * connections, such communication must be allowed by the packet filter
- * configuration files of both clients.
- *
- * SUBNETS refers to IP addresses or IP address subnets which this
- * instance may connect to ('+') or is excluded ('-') from connecting
- * to.
- *
- * DROP or ACCEPT defines default policy when there is no explicit match
- * for a common-name or subnet.  The [END] tag must exist.  A special
- * purpose tag called [KILL] will immediately kill the client instance.
- * A given client or subnet rule applies to both incoming and outgoing
- * packets.
- *
- * See plugin/defer/simple.c for an example on using asynchronous
- * authentication and client-specific packet filtering.
+ * See sample/sample-plugins/defer/multi-auth.c for an example on using
+ * asynchronous authentication.
  */
 OPENVPN_PLUGIN_DEF int OPENVPN_PLUGIN_FUNC(openvpn_plugin_func_v2)
     (openvpn_plugin_handle_t handle,
@@ -692,49 +665,8 @@ OPENVPN_PLUGIN_DEF int OPENVPN_PLUGIN_FUNC(openvpn_plugin_open_v3)
  *
  * OpenVPN will delete the auth_control_file after it goes out of scope.
  *
- * If an OPENVPN_PLUGIN_ENABLE_PF handler is defined and returns success
- * for a particular client instance, packet filtering will be enabled for that
- * instance.  OpenVPN will then attempt to read the packet filter configuration
- * from the temporary file named by the environmental variable pf_file.  This
- * file may be generated asynchronously and may be dynamically updated during the
- * client session, however the client will be blocked from sending or receiving
- * VPN tunnel packets until the packet filter file has been generated.  OpenVPN
- * will periodically test the packet filter file over the life of the client
- * instance and reload when modified.  OpenVPN will delete the packet filter file
- * when the client instance goes out of scope.
- *
- * Packet filter file grammar:
- *
- * [CLIENTS DROP|ACCEPT]
- * {+|-}common_name1
- * {+|-}common_name2
- * . . .
- * [SUBNETS DROP|ACCEPT]
- * {+|-}subnet1
- * {+|-}subnet2
- * . . .
- * [END]
- *
- * Subnet: IP-ADDRESS | IP-ADDRESS/NUM_NETWORK_BITS
- *
- * CLIENTS refers to the set of clients (by their common-name) which
- * this instance is allowed ('+') to connect to, or is excluded ('-')
- * from connecting to.  Note that in the case of client-to-client
- * connections, such communication must be allowed by the packet filter
- * configuration files of both clients.
- *
- * SUBNETS refers to IP addresses or IP address subnets which this
- * instance may connect to ('+') or is excluded ('-') from connecting
- * to.
- *
- * DROP or ACCEPT defines default policy when there is no explicit match
- * for a common-name or subnet.  The [END] tag must exist.  A special
- * purpose tag called [KILL] will immediately kill the client instance.
- * A given client or subnet rule applies to both incoming and outgoing
- * packets.
- *
  * See sample/sample-plugins/defer/simple.c for an example on using
- * asynchronous authentication and client-specific packet filtering.
+ * asynchronous authentication.
  */
 OPENVPN_PLUGIN_DEF int OPENVPN_PLUGIN_FUNC(openvpn_plugin_func_v3)
     (const int version,

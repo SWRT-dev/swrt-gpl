@@ -1,7 +1,7 @@
 include:
   - project: 'iopsys/gitlab-ci-pipeline'
     file: '/static-code-analysis.yml'
-    ref: '0.27'
+    ref: '0.31'
 
 stages:
     - static_code_analysis
@@ -11,7 +11,7 @@ stages:
       #- api_test
 
 variables:
-  COMMON_IMAGE: "dev.iopsys.eu:5050/iopsys/gitlab-ci-pipeline/code-analysis:0.28"
+  COMMON_IMAGE: "dev.iopsys.eu:5050/iopsys/gitlab-ci-pipeline/code-analysis:0.31"
   DEBUG: 'TRUE'
   SOURCE_FOLDER: "."
   SUPERVISOR_LOG: "$CI_PROJECT_DIR/supervisord.log"
@@ -19,10 +19,11 @@ variables:
   RUN_CPPCHECK: "cppcheck --enable=all --error-exitcode=1 --suppress=unusedFunction --suppress=unreadVariable --suppress=variableScope --suppress=redundantInitialization --suppress=unusedLabel --suppress=unusedStructMember ."
   CPPCHECK_OPTIONS: " --enable=all --error-exitcode=1 --suppress=unusedFunction --suppress=unreadVariable --suppress=variableScope --suppress=redundantInitialization --suppress=unusedLabel --suppress=unusedStructMember ."
   RUN_CPD: "/home/user/pmd-bin-6.19.0/bin/run.sh cpd --minimum-tokens 1000 --language c --files"
+  CPD_OPTIONS: " --minimum-tokens 1000 --language c --files"
 
 run_compile_test:
     stage: compile_test
-    image: dev.iopsys.eu:5050/iopsys/gitlab-ci-pipeline/code-analysis:0.27
+    image: dev.iopsys.eu:5050/iopsys/gitlab-ci-pipeline/code-analysis:0.31
     allow_failure: false
     script:
         - "./gitlab-ci/install-dependencies.sh"

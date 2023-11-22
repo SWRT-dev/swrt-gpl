@@ -32,7 +32,7 @@ LIBS	=	-lnsl -pthread
 endif
 OPENSSLDIR = ../openssl
 OPENSSLINC = $(OPENSSLDIR)/include
-LIBS	+=	-L$(OPENSSLDIR)/ -lssl -lcrypto
+LIBS	+=	-L$(OPENSSLDIR)/ -lssl -lcrypto -latomic
 CFLAGS	+=	-I$(OPENSSLINC)
 endif
 

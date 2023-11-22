@@ -1388,3 +1388,22 @@ const char * wifi_bw_to_str(enum wifi_bw bw)
 	}
 }
 #undef C2S
+
+void correct_oper_std_by_band(enum wifi_band band, uint8_t *std)
+{
+	switch (band) {
+	case BAND_2:
+		*std &= ~(WIFI_A | WIFI_AC);
+		break;
+	case BAND_5:
+		if (*std & WIFI_G)
+			*std |= WIFI_A;
+		*std &= ~(WIFI_G | WIFI_B);
+		break;
+	case BAND_6:
+		*std &= ~(WIFI_B | WIFI_G | WIFI_A | WIFI_AC);
+		break;
+	default:
+		break;
+	}
+}

@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2016 Selva Nair <selva.nair@gmail.com>
+ *  Copyright (C) 2016-2023 Selva Nair <selva.nair@gmail.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -65,5 +65,5 @@ DWORD
 set_interface_metric(const NET_IFINDEX index, const ADDRESS_FAMILY family,
                      const ULONG metric);
 
-#endif
-#endif
+#endif /* ifndef OPENVPN_BLOCK_DNS_H */
+#endif /* ifdef _WIN32 */

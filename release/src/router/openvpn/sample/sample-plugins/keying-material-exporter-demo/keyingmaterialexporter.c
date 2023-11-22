@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -27,10 +27,9 @@
  * See the README file for build instructions.
  */
 
-#define ENABLE_CRYPTO
-
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include <stdlib.h>
 
 #include "openvpn-plugin.h"
@@ -56,7 +55,7 @@ struct plugin {
 
 struct session {
     char user[48];
-    char key [48];
+    char key[48];
 };
 
 /*
@@ -106,7 +105,7 @@ openvpn_plugin_open_v3(const int version,
     plugin->mask  = OPENVPN_PLUGIN_MASK(OPENVPN_PLUGIN_TLS_FINAL);
     plugin->mask |= OPENVPN_PLUGIN_MASK(OPENVPN_PLUGIN_TLS_VERIFY);
 
-    ovpn_note("vpn endpoint type=%s",plugin->type == CLIENT ? "client" : "server");
+    ovpn_note("vpn endpoint type=%s", plugin->type == CLIENT ? "client" : "server");
 
     rv->type_mask = plugin->mask;
     rv->handle = (void *)plugin;
@@ -156,7 +155,7 @@ session_user_set(struct session *sess, X509 *x509)
 
         if (!strncasecmp(objbuf, "CN", 2))
         {
-            snprintf(sess->user, sizeof(sess->user) - 1, (char *)buf);
+            strncpy(sess->user, (char *)buf, sizeof(sess->user) - 1);
         }
 
         OPENSSL_free(buf);
@@ -235,10 +234,11 @@ tls_final(struct openvpn_plugin_args_func_in const *args,
         return OPENVPN_PLUGIN_FUNC_ERROR;
     }
 
-    snprintf(sess->key, sizeof(sess->key) - 1, "%s", key);
+    strncpy(sess->key, key, sizeof(sess->key) - 1);
     ovpn_note("app session key:  %s", sess->key);
 
-    switch (plugin->type) {
+    switch (plugin->type)
+    {
         case SERVER:
             server_store(args);
             break;
@@ -257,7 +257,8 @@ openvpn_plugin_func_v3(const int version,
                        struct openvpn_plugin_args_func_in const *args,
                        struct openvpn_plugin_args_func_return *rv)
 {
-    switch (args->type) {
+    switch (args->type)
+    {
         case OPENVPN_PLUGIN_TLS_VERIFY:
             return tls_verify(args);
 

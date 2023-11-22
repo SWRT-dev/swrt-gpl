@@ -4039,7 +4039,7 @@ void init_syspara(void)
 #endif
 #endif
 
-#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_QCA_VAP_LOCALMAC)
+#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_QCA_VAP_LOCALMAC) || defined(RTCONFIG_SWRTMESH)
 #if defined(RTCONFIG_QCA_VAP_LOCALMAC)
 	nvram_set("wl0macaddr", macaddr);
 	nvram_set("wl1macaddr", macaddr2);

@@ -52,20 +52,96 @@
 #endif
 static struct wifimngr *this = NULL;
 
-static int wifimngr_cmd_main(struct ubus_context *ctx)
+static struct uloop_timeout reconfig_timer;
+
+int wifimngr_event_main(void *ctx, const char *evmap_file);
+
+static void reconfig_timer_handler(struct uloop_timeout *timeout)
 {
-	int ret;
+	wifimngr_dbg("%s called\n", __func__);
+	wifimngr_event_exit();
+	wifimngr_event_main(this->ubus_ctx, this->evmap_file);
+}
+
+static void wifimngr_reconfig_cmd(void)
+{
+	int ret = 0;
 	char radios[16][WIFI_DEV_MAX_NUM];
 	struct wifimngr_iface ifs[WIFI_IF_MAX_NUM];
+	struct wifi_ubus_object *p, *tmp;
 	int i;
 	int num_radios;
 	int num_ifs;
+
+	if (this == NULL)
+		return;
+
+	/* enumerate radios/interfaces from wireless config */
+	num_radios = wifimngr_get_wifi_devices(radios);
+	if (num_radios < 0) {
+		wifimngr_err("get_wifi_devices() ret = %d\n", ret);
+		return;
+	}
+
+	for (i = 0; i < num_radios; i++) {
+		ret = wifimngr_add_radio_object(this, this->ubus_ctx, radios[i]);
+		if (ret) {
+			wifimngr_err("Failed to add 'wifi.radio' ubus object: %s\n",
+				ubus_strerror(ret));
+			return;
+		}
+	}
+	list_for_each_entry_safe(p, tmp, &this->radiolist, list) {
+		if (!wifimngr_match_radio_object(radios, num_radios, p)) {
+			wifimngr_del_object(this->ubus_ctx, p);
+		}
+	}
+
+	num_ifs = wifimngr_get_wifi_interfaces(ifs);
+	if (num_ifs < 0) {
+		wifimngr_err("get_wifi_interfaces() ret = %d\n", ret);
+		return;
+	}
+
+	for (i = 0; i < num_ifs; i++) {
+		if (ifs[i].disabled)
+			continue;
+
+		ret = wifimngr_add_interface_object(this, this->ubus_ctx, &ifs[i]);
+		if (ret) {
+			wifimngr_err("Failed to add 'wifi.ap' ubus object: %s\n",
+				ubus_strerror(ret));
+			return;
+		}
+	}
+
+	list_for_each_entry_safe(p, tmp, &this->iflist, list) {
+		if (!wifimngr_match_interface_object(ifs, num_ifs, p)) {
+			wifimngr_del_object(this->ubus_ctx, p);
+		}
+	}
+}
+
+int wifimngr_event_main(void *ctx, const char *evmap_file);
+
+static void wifimngr_reconfig(void)
+{
+	wifimngr_reconfig_cmd();
+
+	reconfig_timer.cb = reconfig_timer_handler;
+	uloop_timeout_set(&reconfig_timer, 0);
+}
+
+static int wifimngr_cmd_main(struct ubus_context *ctx)
+{
+	int ret;
 	struct wifimngr *wmngr;
 
 	ret = wifimngr_init(&wmngr);
 	if (ret != 0)
 		return ret;
 
+	wmngr->ubus_ctx = ctx;
 	this = wmngr;
 	ret = wifimngr_add_object(wmngr, ctx, "wifi", add_wifi_methods);
 	if (ret) {
@@ -81,39 +157,7 @@ static int wifimngr_cmd_main(struct ubus_context *ctx)
 				goto out_exit;
 	}
 
-	/* enumerate radios/interfaces from wireless config */
-	num_radios = wifimngr_get_wifi_devices(radios);
-	if (num_radios < 0) {
-		wifimngr_err("get_wifi_devices() ret = %d\n", ret);
-		goto out_exit;
-	}
-
-	for (i = 0; i < num_radios; i++) {
-		ret = wifimngr_add_radio_object(wmngr, ctx, radios[i]);
-		if (ret) {
-			wifimngr_err("Failed to add 'wifi.radio' ubus object: %s\n",
-				ubus_strerror(ret));
-			goto out_exit;
-		}
-	}
-
-	num_ifs = wifimngr_get_wifi_interfaces(ifs);
-	if (num_ifs < 0) {
-		wifimngr_err("get_wifi_interfaces() ret = %d\n", ret);
-		goto out_exit;
-	}
-
-	for (i = 0; i < num_ifs; i++) {
-		if (ifs[i].disabled)
-			continue;
-
-		ret = wifimngr_add_interface_object(wmngr, ctx, &ifs[i]);
-		if (ret) {
-			wifimngr_err("Failed to add 'wifi.ap' ubus object: %s\n",
-				ubus_strerror(ret));
-			goto out_exit;
-		}
-	}
+	wifimngr_reconfig_cmd();
 
 	return 0;
 
@@ -225,6 +269,9 @@ static void wifimngr_sighandler(int sig)
 	case SIGINT:
 		wifimngr_clean_exit();
 		break;
+	case SIGHUP:
+		wifimngr_reconfig();
+		break;
 	default:
 		break;
 	}
@@ -271,8 +318,10 @@ int main(int argc, char **argv)
 		wifimngr_exit(this);
 		return 0;
 	}
+	strncpy(this->evmap_file, evmap_file, (PATH_MAX - 1));
 
 	set_sighandler(SIGPIPE, SIG_DFL);
+	set_sighandler(SIGHUP, wifimngr_sighandler);
 	set_sighandler(SIGINT, wifimngr_sighandler);
 	set_sighandler(SIGTERM, wifimngr_sighandler);
 

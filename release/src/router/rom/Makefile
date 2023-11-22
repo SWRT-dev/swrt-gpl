@@ -268,7 +268,11 @@ else
 endif
 
 ifeq ($(RTCONFIG_HTTPS),y)
+ifeq ($(RTCONFIG_OPENSSL3),y)
+	sed 's/#.*//g;s/[ \t]\+/ /g;s/^[ \t]*//;s/[ \t]*$$//;/^$$/d' < openssl3.cnf > $(INSTALLDIR)/rom/etc/openssl.cnf
+else
 	sed 's/#.*//g;s/[ \t]\+/ /g;s/^[ \t]*//;s/[ \t]*$$//;/^$$/d' < rom/etc/openssl.cnf > $(INSTALLDIR)/rom/etc/openssl.cnf
+endif
 else
 	rm -f $(INSTALLDIR)/rom/etc/openssl.cnf
 endif

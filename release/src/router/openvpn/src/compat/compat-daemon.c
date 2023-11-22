@@ -23,8 +23,6 @@
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
-#elif defined(_MSC_VER)
-#include "config-msvc.h"
 #endif
 
 #ifndef HAVE_DAEMON
@@ -33,9 +31,7 @@
 #include <unistd.h>
 #endif
 
-#ifdef HAVE_STDLIB_H
 #include <stdlib.h>
-#endif
 
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -49,9 +45,7 @@
 #include <fcntl.h>
 #endif
 
-#ifdef HAVE_ERRNO_H
 #include <errno.h>
-#endif
 
 int
 daemon(int nochdir, int noclose)
@@ -76,7 +70,10 @@ daemon(int nochdir, int noclose)
 
     if (!nochdir)
     {
-        chdir("/");
+        if (chdir("/") == -1)
+        {
+            return (-1);
+        }
     }
 
     if (!noclose)
@@ -106,4 +103,3 @@ daemon(int nochdir, int noclose)
 }
 
 #endif /* ifndef HAVE_DAEMON */
-

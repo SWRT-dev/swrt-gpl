@@ -148,6 +148,7 @@ static int radio_info(const char *name, struct wifi_radio *radio)
 		uint8_t he = 0;
 
 		WARN_ON(bcmwl_ap_get_oper_stds(netdev, &radio->oper_std));
+		correct_oper_std_by_band(radio->oper_band, &radio->oper_std);
 		he = !!(radio->oper_std & WIFI_AX);
 		WARN_ON(bcmwl_radio_get_gi(name, he, &radio->gi));
 		return 0;
@@ -160,6 +161,12 @@ static int radio_info(const char *name, struct wifi_radio *radio)
 
 	radio->oper_std = radio->supp_std;
 	return 0;
+}
+
+static int radio_info_band(const char *name, enum wifi_band band, struct wifi_radio *radio)
+{
+	libwifi_dbg("[%s, %s] %s called\n", name, wifi_band_to_str(band), __func__);
+	return radio_info(name, radio);
 }
 
 static int radio_get_supp_band(const char *name, uint32_t *bands)
@@ -189,13 +196,16 @@ static int radio_get_supp_stds(const char *name, uint8_t *std)
 static int radio_get_oper_stds(const char *name, uint8_t *std)
 {
 	char netdev[16];
+	enum wifi_band oper_band;
 	int ret;
 
 	libwifi_dbg("[%s] %s called\n", name, __func__);
 
+	WARN_ON(bcmwl_get_oper_band(name, &oper_band));
 	ret = nlwifi_phy_to_netdev_with_type(name, netdev, sizeof(netdev), NLWIFI_MODE_AP);
 	if (ret == 0) {
 		ret = bcmwl_ap_get_oper_stds(netdev, std);
+		correct_oper_std_by_band(oper_band, std);
 	} else {
 		ret = bcmwl_get_supp_stds(name, std);
 	}
@@ -221,6 +231,13 @@ static int radio_get_channel(const char *name, uint32_t *channel, enum wifi_bw *
 	nlwifi_phy_to_netdev(name, netdev, sizeof(netdev));
 	libwifi_dbg("[%s, %s] %s called\n", name, netdev, __func__);
 	return bcmwl_radio_get_channel(netdev, channel, bw);
+}
+
+static int radio_get_band_channel(const char *name, enum wifi_band band,
+				  uint32_t *channel, enum wifi_bw *bw)
+{
+	libwifi_dbg("[%s, %s] %s called\n", name, wifi_band_to_str(band), __func__);
+	return bcmwl_radio_get_channel(name, channel, bw);
 }
 
 static int radio_set_channel(const char *name, uint32_t channel, enum wifi_bw bw)
@@ -260,6 +277,12 @@ static int radio_get_bandwidth(const char *name, enum wifi_bw *bw)
 	nlwifi_phy_to_netdev(name, netdev, sizeof(netdev));
 	libwifi_dbg("[%s, %s] %s called\n", name, netdev, __func__);
 	return bcmwl_radio_get_channel(netdev, &channel, bw);
+}
+
+static int radio_get_band_supp_bandwidths(const char *name, enum wifi_band band, uint32_t *supp_bw)
+{
+	libwifi_dbg("[%s, %s] %s called\n", name, wifi_band_to_str(band), __func__);
+	return bcmwl_radio_get_supp_bw(name, supp_bw);
 }
 
 static int radio_get_maxrate(const char *name, unsigned long *rate_Mbps)
@@ -532,6 +555,13 @@ static int radio_list_iface(const char *name, struct iface_entry *iface, int *nu
 	return 0;
 }
 
+static int radio_channels_info_band(const char *name, enum wifi_band band,
+				    struct chan_entry *channel, int *num)
+{
+	libwifi_dbg("[%s, %s] %s called\n", name, wifi_band_to_str(band), __func__);
+	return bcmwl_radio_channels_info(name, channel, num);
+}
+
 /* common iface callbacks */
 
 static int iface_start_wps(const char *ifname, struct wps_param wps)
@@ -753,6 +783,7 @@ static int iface_ap_info(const char *ifname, struct wifi_ap *ap)
 	*	ap->isolate_enabled
 	*/
 	struct wifi_bss *bss;
+	enum wifi_band oper_band;
 	uint32_t ch = 0;
 
 	libwifi_dbg("[%s] %s called\n", ifname, __func__);
@@ -762,7 +793,11 @@ static int iface_ap_info(const char *ifname, struct wifi_ap *ap)
 
 	bss = &ap->bss;
 	memset(bss, 0, sizeof(*bss));
-	bcmwl_iface_ap_info(ifname, ap);
+
+	/* Fallback to hostapd_cli in case of fail */
+	if (bcmwl_iface_ap_info(ifname, ap))
+		hostapd_cli_iface_ap_info(ifname, ap);
+
 	nlwifi_get_bssid(ifname, bss->bssid);
 	nlwifi_get_ssid(ifname, (char *)bss->ssid);
 	radio_get_channel(ifname, &ch, &bss->curr_bw);
@@ -770,6 +805,9 @@ static int iface_ap_info(const char *ifname, struct wifi_ap *ap)
 	bcmwl_get_supp_stds(ifname, &ap->bss.supp_std);
 	if (hostapd_cli_get_security_cap(ifname, &ap->sec.supp_modes))
 		bcmwl_get_supported_security_const(ifname, &ap->sec.supp_modes);
+
+	bcmwl_get_oper_band(ifname, &oper_band);
+	correct_oper_std_by_band(oper_band, &ap->bss.oper_std);
 
 	return 0;
 }
@@ -1088,6 +1126,7 @@ const struct wifi_driver brcm_driver = {
 
 	/* Radio/phy callbacks */
 	.radio.info = radio_info,
+	.radio.info_band = radio_info_band,
 	.get_supp_band = radio_get_supp_band,
 	.get_oper_band = radio_get_oper_band,
 	.radio.get_caps = radio_get_caps,
@@ -1097,6 +1136,7 @@ const struct wifi_driver brcm_driver = {
 	.get_country = radio_get_country,
 	.get_countrylist = radio_get_countrylist,
 	.get_channel = radio_get_channel,
+	.radio.get_band_channel = radio_get_band_channel,
 	.set_channel = radio_set_channel,
 	.get_supp_channels = radio_get_supp_channels,
 	.get_oper_channels = radio_get_oper_channels,
@@ -1105,6 +1145,7 @@ const struct wifi_driver brcm_driver = {
 
 	.get_bandwidth = radio_get_bandwidth,
 	.get_supp_bandwidths = bcmwl_radio_get_supp_bw,
+	.radio.get_band_supp_bandwidths = radio_get_band_supp_bandwidths,
 	.get_maxrate = radio_get_maxrate,
 	.radio.get_basic_rates = radio_get_basic_rates,
 	.radio.get_oper_rates = radio_get_oper_rates,
@@ -1131,6 +1172,7 @@ const struct wifi_driver brcm_driver = {
 	.del_iface = radio_del_iface,
 	.list_iface = radio_list_iface,
 	.channels_info = bcmwl_radio_channels_info,
+	.radio.channels_info_band = radio_channels_info_band,
 
 	/* Interface/vif common callbacks */
 	.iface.start_wps = iface_start_wps,

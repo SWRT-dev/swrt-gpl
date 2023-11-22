@@ -676,10 +676,19 @@ SEP=printf "\033[41;1m   $@   \033[0m\n"
 export BUSYBOX ?= busybox
 export BUSYBOX_DIR := $(BUSYBOX)
 # core packages
+
+ifeq ($(RTCONFIG_OPENSSL11),y)
 OPENSSL := openssl-1.1
+else ifeq ($(RTCONFIG_OPENSSL10),y)
+OPENSSL := openssl-1.0
+else ifeq ($(RTCONFIG_OPENSSL3),y)
+OPENSSL := openssl-3.0.11
+else
+$(error OpenSSL is not defined)
+endif
 obj-y += busybox
 obj-y += zlib
-obj-y += openssl openssl-1.1 libev-4.33
+obj-y += openssl $(OPENSSL) libev-4.33
 obj-y += json-c curl sqlite
 obj-y += shared
 obj-y += nvram$(BCMEX)
@@ -2205,6 +2214,19 @@ endif
 ifneq ($(RTCONFIG_SNMPD),y)
 	rm -f $(TARGETDIR)/usr/lib/libnmp.so
 endif
+ifeq ($(RTCONFIG_OPENSSL3),y)
+ifneq ($(wildcard $(LIBDIR)/libatomic.so.1.1.0),)
+	install $(LIBDIR)/libatomic.so.1.1.0 $(TARGETDIR)/lib/
+	@cd $(TARGETDIR)/lib/ && ln -sf libatomic.so.1.1.0 libatomic.so.1 && ln -sf libatomic.so.1.1.0 libatomic.so
+	$(STRIP) $(TARGETDIR)/lib/libatomic.so.1.1.0
+else ifneq ($(wildcard $(LIBDIR)/libatomic.so.1.2.0),)
+	install $(LIBDIR)/libatomic.so.1.2.0 $(TARGETDIR)/lib/
+	@cd $(TARGETDIR)/lib/ && ln -sf libatomic.so.1.2.0 libatomic.so.1 && ln -sf libatomic.so.1.2.0 libatomic.so
+	$(STRIP) $(TARGETDIR)/lib/libatomic.so.1.2.0
+else
+	$(error libatomic.so not found)
+endif
+endif
 
 # uClibc
 ifeq ($(or $(RTL8197F),$(UCLIBC_NG)), y) # Realtek RTL8197F or UCLIBC_NG platform.
@@ -3168,7 +3190,7 @@ endif
 #      no-ec no-ecdh no-ecdsa no-err no-hw no-jpake no-threads \
 #      no-zlib no-engine no-engines no-sse2 no-perlasm \
 #      no-dtls1 no-store no-psk no-md2 no-mdc2 no-ts
-OPENSSL_CIPHERS := no-ssl2 no-gost no-heartbeats no-err no-unit-test
+OPENSSL_CIPHERS := no-ssl2 no-gost no-heartbeats no-err no-unit-test no-tests
 ifeq ($(RTCONFIG_OPENVPN),y)
 OPENSSL_CIPHERS += enable-rc5
 endif
@@ -3179,25 +3201,25 @@ else
 INSTALLSUBDIR = /openssl
 endif
 
-openssl: openssl-1.1/Makefile $(if $(filter y,$(HND_ROUTER)),fsbuild,)
+openssl: $(OPENSSL)/Makefile $(if $(filter y,$(HND_ROUTER)),fsbuild,)
 	@$(SEP)
-	[ "$(notdir $(realpath $@))" = "openssl-1.1" ] || (rm -f $@ && ln -s openssl-1.1 $@)
-	$(MAKE) openssl-1.1
+	[ "$(notdir $(realpath $@))" = "$OPENSSL" ] || (rm -f $@ && ln -s $(OPENSSL) $@)
+	$(MAKE) $(OPENSSL)
 
 openssl-clean:
-	@$(MAKE) openssl-1.1-clean
+	@$(MAKE) $(OPENSSL)-clean
 	rm -f openssl
 
 openssl-install:
-	@$(MAKE) openssl-1.1-install
+	@$(MAKE) $(OPENSSL)-install
 ifeq ($(HND_ROUTER),y)
 	mkdir -p $(BCM_FSBUILD_DIR)/public/include/openssl
-	cp -u openssl-1.1/include/openssl/* $(BCM_FSBUILD_DIR)/public/include/openssl
+	cp -u $(OPENSSL)/include/openssl/* $(BCM_FSBUILD_DIR)/public/include/openssl
 endif
 	install -D -m 0500 httpd/gencert.sh $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/gencert.sh
 
 openssl-stage:
-	@$(MAKE) openssl-1.1-stage
+	@$(MAKE) $(OPENSSL)-stage
 
 openssl-1.1/Makefile:
 	cd openssl-1.1 && \
@@ -3205,7 +3227,7 @@ openssl-1.1/Makefile:
 	$(if $(filter y,$(RTCONFIG_SFP) $(RTCONFIG_4M_SFP) $(RTCONFIG_8M_SFP)),-Os,-O3) \
 	-ffunction-sections -fdata-sections -Wl,--gc-sections \
 	shared $(OPENSSL_CIPHERS) --api=1.0.0 \
-	    no-aria no-sm2 no-sm3 no-sm4 no-tests \
+	    no-aria no-sm2 no-sm3 no-sm4 \
 	    $(if $(or $(RTCONFIG_RALINK),$(RTCONFIG_QCA),$(RTCONFIG_LANTIQ),$(RTCONFIG_HND_ROUTER)),enable-devcryptoeng -I$(TOP)/cryptodev-linux/src) \
 	    $(if $(filter y,$(RTCONFIG_WTFAST)),-DRTCONFIG_WTFAST,) \
 	    $(if $(filter y,$(HND_ROUTER)),,-DOPENSSL_PREFER_CHACHA_OVER_GCM)
@@ -3236,6 +3258,44 @@ endif
 
 openssl-1.1-stage:
 	$(MAKE) -C openssl-1.1 install_sw DESTDIR=$(STAGEDIR)
+
+openssl-3.0.11/Makefile:
+	cd openssl-3.0.11 && \
+	./Configure $(HOSTCONFIG)-swrt --prefix=/usr --openssldir=/etc --cross-compile-prefix=' ' \
+	$(if $(filter y,$(RTCONFIG_SFP) $(RTCONFIG_4M_SFP) $(RTCONFIG_8M_SFP)),-Os,-O3) \
+	-ffunction-sections -fdata-sections -Wl,--gc-sections \
+	shared $(OPENSSL_CIPHERS) --api=1.0.0 \
+	    no-aria no-sm2 no-sm3 no-sm4 \
+	    $(if $(or $(RTCONFIG_RALINK),$(RTCONFIG_QCA),$(RTCONFIG_LANTIQ),$(RTCONFIG_HND_ROUTER)),enable-devcryptoeng -I$(TOP)/cryptodev-linux/src) \
+	    $(if $(filter y,$(RTCONFIG_WTFAST)),-DRTCONFIG_WTFAST,) \
+	    $(if $(filter y,$(HND_ROUTER)),,-DOPENSSL_PREFER_CHACHA_OVER_GCM)
+	@$(MAKE) -C openssl-3.0.11 depend
+	@$(MAKE) -C openssl-3.0.11 clean
+	@touch $@
+
+openssl-3.0.11: openssl-3.0.11/Makefile
+	$(MAKE) $(PARALLEL_BUILD) -C openssl-3.0.11 && $(MAKE) $@-stage
+
+openssl-3.0.11-clean:
+	[ ! -f openssl-3.0.11/Makefile ] || $(MAKE) -C openssl-3.0.11 clean
+	@rm -f openssl-3.0.11/Makefile
+
+openssl-3.0.11-install:
+	install -D openssl-3.0.11/libcrypto.so.3 $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libcrypto.so.3
+	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libcrypto.so.3
+ifeq ($(or $(RTCONFIG_WEBDAV),$(RTCONFIG_FTP_SSL),$(RTCONFIG_OPENVPN),$(RTCONFIG_HTTPS)),y)
+	install -D openssl-3.0.11/libssl.so.3 $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.3
+	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.3
+endif
+	cd $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib && rm -f libcrypto.so && ln -sf libcrypto.so.3 libcrypto.so.1.1 && ln -sf libcrypto.so.3 libcrypto.so
+	[ ! -f $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.3 ] || \
+		cd $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib && rm -f libssl.so && ln -sf libssl.so.3 libssl.so.1.1 && ln -sf libssl.so.3 libssl.so
+	install -D openssl-3.0.11/apps/openssl $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/openssl
+	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/openssl
+	chmod 0500 $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/openssl
+
+openssl-3.0.11-stage:
+	$(MAKE) -C openssl-3.0.11 install_sw DESTDIR=$(STAGEDIR)
 
 mbedtls:
 	$(MAKE) -C $@ SHARED=1 no_test && $(MAKE) $@-stage
@@ -4395,11 +4455,11 @@ odhcp6c-clean:
 ndisc6/stamp-h1:
 ifeq ($(RTCONFIG_BCMARM),y)
 	cd ndisc6 && autoreconf -i -f && CFLAGS="-Os $(EXTRACFLAGS) -ffunction-sections -fdata-sections -I$(SRCBASE)/include -I$(TOP)/shared $(if $(RTCONFIG_HTTPS),-I$(TOP)/openssl/include/openssl)" \
-	LDFLAGS="-ffunction-sections -fdata-sections -Wl,--gc-sections $(if $(RTCONFIG_HTTPS),-L$(TOP)/openssl -lcrypto -lssl)" \
+	LDFLAGS="-ffunction-sections -fdata-sections -Wl,--gc-sections $(if $(RTCONFIG_HTTPS),-L$(TOP)/openssl -lcrypto -lssl -latomic)" \
 	$(CONFIGURE) --prefix="" --disable-dependency-tracking
 else
 	cd ndisc6 && autoreconf -i -f && CFLAGS="-Os $(if $(QCA),$(EXTRACFLAGS)) -ffunction-sections -fdata-sections -I$(SRCBASE)/include -I$(TOP)/shared $(if $(RTCONFIG_HTTPS),-I$(TOP)/openssl/include/openssl)" \
-	LDFLAGS="-ffunction-sections -fdata-sections -Wl,--gc-sections -L$(TOP)/nvram$(BCMEX) -L$(TOP)/shared $(if $(RTCONFIG_HTTPS),-L$(TOP)/openssl -lcrypto -lssl)" \
+	LDFLAGS="-ffunction-sections -fdata-sections -Wl,--gc-sections -L$(TOP)/nvram$(BCMEX) -L$(TOP)/shared $(if $(RTCONFIG_HTTPS),-L$(TOP)/openssl -lcrypto -lssl -latomic)" \
 	$(CONFIGURE) --prefix="" LIBS='-lnvram -lshared' --disable-dependency-tracking
 endif
 	-@$(MAKE) -C ndisc6 clean
@@ -6373,6 +6433,35 @@ lz4-install:
 	cd $(INSTALLDIR)/lz4/usr/lib && ln -sf liblz4.so.1.8.3 liblz4.so.1
 	cd $(INSTALLDIR)/lz4/usr/lib && ln -sf liblz4.so.1.8.3 liblz4.so
 
+libcap-ng/configure:
+	cd libcap-ng && autoreconf -i -f ; \
+	CFLAGS="-O3 -Wall $(EXTRACFLAGS)" $(CONFIGURE) --enable-shared \
+		--prefix=/usr \
+		--bindir=/usr/sbin \
+		--libdir=/usr/lib \
+		ac_cv_prog_swig_found=no --without-python --without-python3
+	touch $@
+
+libcap-ng: libcap-ng/configure
+	@$(SEP)
+	$(MAKE) -C $@
+
+libcap-ng-clean:
+	$(MAKE) -C libcap-ng clean
+	@rm -f libcap-ng/configure
+
+libcap-ng-install: libcap-ng
+	install -D libcap-ng/src/.libs/libcap-ng.so.0.0.0 $(INSTALLDIR)/libcap-ng/usr/lib/libcap-ng.so.0.0.0
+	$(STRIP) $(INSTALLDIR)/libcap-ng/usr/lib/libcap-ng.so.0.0.0
+	cd $(INSTALLDIR)/libcap-ng/usr/lib && ln -sf libcap-ng.so.0.0.0 libcap-ng.so.0 && \
+		ln -sf libcap-ng.so.0.0.0 libcap-ng.so
+ifneq ($(wildcard libcap-ng/src/.libs/libdrop_ambient.so.0.0.0),)
+	install -D libcap-ng/src/.libs/libdrop_ambient.so.0.0.0 $(INSTALLDIR)/libcap-ng/usr/lib/libdrop_ambient.so.0.0.0
+	$(STRIP) $(INSTALLDIR)/libcap-ng/usr/lib/libdrop_ambient.so.0.0.0
+	cd $(INSTALLDIR)/libcap-ng/usr/lib && ln -sf libdrop_ambient.so.0.0.0 libdrop_ambient.so.0 && \
+		ln -sf libdrop_ambient.so.0.0.0 libdrop_ambient.so
+endif
+
 openpam: openpam/Makefile
 	$(MAKE) $(PARALLEL_BUILD) -C $@ && $(MAKE) $@-stage
 
@@ -6410,7 +6499,7 @@ easy-rsa-install:
 openvpn/dh2048.pem:
 	openssl dhparam -dsaparam -out $@ 2048
 
-openvpn: shared $(if $(BCM_502L07P2),ethctl_lib) openssl lzo$(LZO_VER) openpam zlib openvpn/dh2048.pem openvpn/Makefile
+openvpn: shared $(if $(BCM_502L07P2),ethctl_lib) openssl lzo$(LZO_VER) libcap-ng openpam zlib openvpn/Makefile openvpn/dh2048.pem
 	$(MAKE) $(PARALLEL_BUILD) -C $@
 
 openvpn/Makefile:
@@ -6423,18 +6512,21 @@ openvpn/Makefile:
 		LZO_LIBS="-L$(TOP)/lzo$(LZO_VER)/src/.libs -llzo2" \
 		LZ4_CFLAGS="-I$(TOP)/lz4/lib" \
 		LZ4_LIBS="-L$(TOP)/lz4/lib -llz4" \
+		LIBCAPNG_CFLAGS="-I$(TOP)/libcap-ng/src" \
+		LIBCAPNG_LIBS="-L$(TOP)/libcap-ng/src/.libs -lcap-ng" \
 		CFLAGS="-Os -Wall $(EXTRACFLAGS) -ffunction-sections -fdata-sections -std=gnu99 \
 			-DASUSWRT" \
 		LDFLAGS="$(EXTRALDFLAGS) -ffunction-sections -fdata-sections \
 			-Wl,--gc-sections \
 			-lpthread -ldl \
 			-L$(TOP)/zlib -lz" \
-		IPROUTE="/usr/sbin/ip" IFCONFIG="/sbin/ifconfig" ROUTE="/sbin/route" \
+		IPROUTE="/usr/sbin/ip" \
 		$(CONFIGURE) --prefix=/usr --bindir=/usr/sbin --libdir=/usr/lib \
 			--disable-debug --enable-management --disable-small \
-			--disable-selinux --disable-socks --enable-password-save \
+			--disable-selinux --disable-dco \
 			--enable-plugin-auth-pam \
 			ac_cv_lib_resolv_gethostbyname=no \
+			--enable-iproute2 \
 	)
 
 openvpn-clean:
@@ -6962,7 +7054,8 @@ curl/Makefile: curl/configure
 		LDFLAGS="-Wl$(if $(RTCONFIG_TR069),$(comma)-rpath=$(STAGEDIR)/usr/lib,),--gc-sections $(LDFLAGS) -L$(STAGEDIR)/usr/lib" \
 		LIBS="-ldl -lpthread \
 			   $(if $(RTCONFIG_MBEDTLS),-lmbedcrypto -lmbedx509 -lmbedtls,) \
-			   $(if $(RTCONFIG_WOLFSSL),-lwolfssl,)"
+			   $(if $(RTCONFIG_WOLFSSL),-lwolfssl,) \
+				$(if $(RTCONFIG_OPENSSL3),-latomic,)"
 
 curl: openssl $(if $(RTCONFIG_TR069),libssh2,) $(if $(RTCONFIG_MBEDTLS),mbedtls,) $(if $(RTCONFIG_WOLFSSL),wolfssl,) curl/Makefile
 	@$(SEP)
@@ -9437,7 +9530,7 @@ libubus-install:
 	$(STRIP) $(INSTALLDIR)/libubus/usr/sbin/ubusd
 
 ifeq ($(RTCONFIG_SWRTMESH),y)
-swrtmesh: json-c libubox libubus libnl libuci openssl avahi libmnl-1.0.4 libnfnetlink-1.0.1 libnetfilter_conntrack-1.0.7 ebtables
+swrtmesh: json-c libubox libubus libnl libuci openssl libgcrypt-1.5.1 avahi libmnl-1.0.4 libnfnetlink-1.0.1 libnetfilter_conntrack-1.0.7 ebtables
 	$(MAKE) -C swrtmesh all
 endif
 

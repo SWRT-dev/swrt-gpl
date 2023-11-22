@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -27,8 +27,6 @@
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
-#elif defined(_MSC_VER)
-#include "config-msvc.h"
 #endif
 
 #include "syshead.h"
@@ -36,38 +34,48 @@
 #include "common.h"
 #include "error.h"
 #include "route.h"
-#include "misc.h"
+#include "run_command.h"
 #include "socket.h"
 #include "manage.h"
 #include "win32.h"
 #include "options.h"
+#include "networking.h"
 
 #include "memdbg.h"
 
 #if defined(TARGET_LINUX) || defined(TARGET_ANDROID)
-//typedef  uint64_t __u64;
+#if !defined(ASUSWRT)
+typedef  uint64_t __u64;
+#endif
 #include <linux/rtnetlink.h>            /* RTM_GETROUTE etc. */
 #endif
 
 #if defined(TARGET_NETBSD)
-#include <net/route.h>			/* RT_ROUNDUP(), RT_ADVANCE() */
+#include <net/route.h>                  /* RT_ROUNDUP(), RT_ADVANCE() */
 #endif
 
 #ifdef _WIN32
 #include "openvpn-msg.h"
 
 #define METRIC_NOT_USED ((DWORD)-1)
-static bool add_route_service(const struct route_ipv4 *, const struct tuntap *);
+static int add_route_service(const struct route_ipv4 *, const struct tuntap *);
 
 static bool del_route_service(const struct route_ipv4 *, const struct tuntap *);
 
-static bool add_route_ipv6_service(const struct route_ipv6 *, const struct tuntap *);
+static int add_route_ipv6_service(const struct route_ipv6 *, const struct tuntap *);
 
 static bool del_route_ipv6_service(const struct route_ipv6 *, const struct tuntap *);
 
+static int route_ipv6_ipapi(bool add, const struct route_ipv6 *, const struct tuntap *);
+
+static int add_route_ipapi(const struct route_ipv4 *r, const struct tuntap *tt, DWORD adapter_index);
+
+static bool del_route_ipapi(const struct route_ipv4 *r, const struct tuntap *tt);
+
+
 #endif
 
-static void delete_route(struct route_ipv4 *r, const struct tuntap *tt, unsigned int flags, const struct route_gateway_info *rgi, const struct env_set *es);
+static void delete_route(struct route_ipv4 *r, const struct tuntap *tt, unsigned int flags, const struct route_gateway_info *rgi, const struct env_set *es, openvpn_net_ctx_t *ctx);
 
 static void get_bypass_addresses(struct route_bypass *rb, const unsigned int flags);
 
@@ -88,6 +96,11 @@ print_bypass_addresses(const struct route_bypass *rb)
 }
 
 #endif
+
+/* Route addition return status codes */
+#define RTA_ERROR   0   /* route addition failed */
+#define RTA_SUCCESS 1   /* route addition succeeded */
+#define RTA_EEXIST  2   /* route not added as it already exists */
 
 static bool
 add_bypass_address(struct route_bypass *rb, const in_addr_t a)
@@ -309,7 +322,7 @@ init_route(struct route_ipv4 *r,
     const in_addr_t default_netmask = IPV4_NETMASK_HOST;
     bool status;
     int ret;
-    struct in_addr special;
+    struct in_addr special = {0};
 
     CLEAR(*r);
     r->option = ro;
@@ -456,11 +469,6 @@ init_route_ipv6(struct route_ipv6 *r6,
     else if (rl6->spec_flags & RTSA_REMOTE_ENDPOINT)
     {
         r6->gateway = rl6->remote_endpoint_ipv6;
-    }
-    else
-    {
-        msg(M_WARN, PACKAGE_NAME " ROUTE6: " PACKAGE_NAME " needs a gateway parameter for a --route-ipv6 option and no default was specified by either --route-ipv6-gateway or --ifconfig-ipv6 options");
-        goto fail;
     }
 
     /* metric */
@@ -622,7 +630,8 @@ init_route_list(struct route_list *rl,
                 const char *remote_endpoint,
                 int default_metric,
                 in_addr_t remote_host,
-                struct env_set *es)
+                struct env_set *es,
+                openvpn_net_ctx_t *ctx)
 {
     struct gc_arena gc = gc_new();
     bool ret = true;
@@ -643,9 +652,9 @@ init_route_list(struct route_list *rl,
         rl->spec.flags |= RTSA_DEFAULT_METRIC;
     }
 
-    get_default_gateway(&rl->rgi);
+    get_default_gateway(&rl->rgi, ctx);
 #ifdef ASUSWRT
-    setenv_unsigned(es, "rgi_flags", rl->rgi.flags);
+    setenv_long_long(es, "rgi_flags", rl->rgi.flags);
 #endif
     if (rl->rgi.flags & RGI_ADDR_DEFINED)
     {
@@ -780,7 +789,8 @@ init_route_ipv6_list(struct route_ipv6_list *rl6,
                      const char *remote_endpoint,
                      int default_metric,
                      const struct in6_addr *remote_host_ipv6,
-                     struct env_set *es)
+                     struct env_set *es,
+                     openvpn_net_ctx_t *ctx)
 {
     struct gc_arena gc = gc_new();
     bool ret = true;
@@ -805,7 +815,7 @@ init_route_ipv6_list(struct route_ipv6_list *rl6,
     msg(D_ROUTE, "GDG6: remote_host_ipv6=%s",
         remote_host_ipv6 ?  print_in6_addr(*remote_host_ipv6, 0, &gc) : "n/a" );
 
-    get_default_gateway_ipv6(&rl6->rgi6, remote_host_ipv6);
+    get_default_gateway_ipv6(&rl6->rgi6, remote_host_ipv6, ctx);
     if (rl6->rgi6.flags & RGI_ADDR_DEFINED)
     {
         setenv_str(es, "net_gateway_ipv6", print_in6_addr(rl6->rgi6.gateway.addr_ipv6, 0, &gc));
@@ -906,14 +916,15 @@ init_route_ipv6_list(struct route_ipv6_list *rl6,
     return ret;
 }
 
-static void
+static bool
 add_route3(in_addr_t network,
            in_addr_t netmask,
            in_addr_t gateway,
            const struct tuntap *tt,
            unsigned int flags,
            const struct route_gateway_info *rgi,
-           const struct env_set *es)
+           const struct env_set *es,
+           openvpn_net_ctx_t *ctx)
 {
     struct route_ipv4 r;
     CLEAR(r);
@@ -921,7 +932,7 @@ add_route3(in_addr_t network,
     r.network = network;
     r.netmask = netmask;
     r.gateway = gateway;
-    add_route(&r, tt, flags, rgi, es);
+    return add_route(&r, tt, flags, rgi, es, ctx);
 }
 
 static void
@@ -931,7 +942,8 @@ del_route3(in_addr_t network,
            const struct tuntap *tt,
            unsigned int flags,
            const struct route_gateway_info *rgi,
-           const struct env_set *es)
+           const struct env_set *es,
+           openvpn_net_ctx_t *ctx)
 {
     struct route_ipv4 r;
     CLEAR(r);
@@ -939,31 +951,28 @@ del_route3(in_addr_t network,
     r.network = network;
     r.netmask = netmask;
     r.gateway = gateway;
-    delete_route(&r, tt, flags, rgi, es);
+    delete_route(&r, tt, flags, rgi, es, ctx);
 }
 
-static void
+static bool
 add_bypass_routes(struct route_bypass *rb,
                   in_addr_t gateway,
                   const struct tuntap *tt,
                   unsigned int flags,
                   const struct route_gateway_info *rgi,
-                  const struct env_set *es)
+                  const struct env_set *es,
+                  openvpn_net_ctx_t *ctx)
 {
-    int i;
-    for (i = 0; i < rb->n_bypass; ++i)
+    int ret = true;
+    for (int i = 0; i < rb->n_bypass; ++i)
     {
         if (rb->bypass[i])
         {
-            add_route3(rb->bypass[i],
-                       IPV4_NETMASK_HOST,
-                       gateway,
-                       tt,
-                       flags | ROUTE_REF_GW,
-                       rgi,
-                       es);
+            ret = add_route3(rb->bypass[i], IPV4_NETMASK_HOST, gateway, tt,
+                             flags | ROUTE_REF_GW, rgi, es, ctx) && ret;
         }
     }
+    return ret;
 }
 
 static void
@@ -972,7 +981,8 @@ del_bypass_routes(struct route_bypass *rb,
                   const struct tuntap *tt,
                   unsigned int flags,
                   const struct route_gateway_info *rgi,
-                  const struct env_set *es)
+                  const struct env_set *es,
+                  openvpn_net_ctx_t *ctx)
 {
     int i;
     for (i = 0; i < rb->n_bypass; ++i)
@@ -985,15 +995,19 @@ del_bypass_routes(struct route_bypass *rb,
                        tt,
                        flags | ROUTE_REF_GW,
                        rgi,
-                       es);
+                       es,
+                       ctx);
         }
     }
 }
 
-static void
-redirect_default_route_to_vpn(struct route_list *rl, const struct tuntap *tt, unsigned int flags, const struct env_set *es)
+static bool
+redirect_default_route_to_vpn(struct route_list *rl, const struct tuntap *tt,
+                              unsigned int flags, const struct env_set *es,
+                              openvpn_net_ctx_t *ctx)
 {
-    const char err[] = "NOTE: unable to redirect default gateway --";
+    const char err[] = "NOTE: unable to redirect IPv4 default gateway --";
+    bool ret = true;
 
     if (rl && rl->flags & RG_ENABLE)
     {
@@ -1002,6 +1016,7 @@ redirect_default_route_to_vpn(struct route_list *rl, const struct tuntap *tt, un
         if (!(rl->spec.flags & RTSA_REMOTE_ENDPOINT) && (rl->flags & RG_REROUTE_GW))
         {
             msg(M_WARN, "%s VPN gateway parameter (--route-gateway or --ifconfig) is missing", err);
+            ret = false;
         }
         /*
          * check if a default route is defined, unless:
@@ -1012,6 +1027,7 @@ redirect_default_route_to_vpn(struct route_list *rl, const struct tuntap *tt, un
                  && (rl->spec.flags & RTSA_REMOTE_HOST))
         {
             msg(M_WARN, "%s Cannot read current default gateway from system", err);
+            ret = false;
         }
         else
         {
@@ -1038,13 +1054,9 @@ redirect_default_route_to_vpn(struct route_list *rl, const struct tuntap *tt, un
                 if ((rl->spec.flags & RTSA_REMOTE_HOST)
                     && rl->spec.remote_host != IPV4_INVALID_ADDR)
                 {
-                    add_route3(rl->spec.remote_host,
-                               IPV4_NETMASK_HOST,
-                               rl->rgi.gateway.addr,
-                               tt,
-                               flags | ROUTE_REF_GW,
-                               &rl->rgi,
-                               es);
+                    ret = add_route3(rl->spec.remote_host, IPV4_NETMASK_HOST,
+                                     rl->rgi.gateway.addr, tt, flags | ROUTE_REF_GW,
+                                     &rl->rgi, es, ctx);
                     rl->iflags |= RL_DID_LOCAL;
                 }
                 else
@@ -1055,29 +1067,20 @@ redirect_default_route_to_vpn(struct route_list *rl, const struct tuntap *tt, un
 #endif /* ifndef TARGET_ANDROID */
 
             /* route DHCP/DNS server traffic through original default gateway */
-            add_bypass_routes(&rl->spec.bypass, rl->rgi.gateway.addr, tt, flags, &rl->rgi, es);
+            ret = add_bypass_routes(&rl->spec.bypass, rl->rgi.gateway.addr, tt, flags,
+                                    &rl->rgi, es, ctx) && ret;
 
             if (rl->flags & RG_REROUTE_GW)
             {
                 if (rl->flags & RG_DEF1)
                 {
                     /* add new default route (1st component) */
-                    add_route3(0x00000000,
-                               0x80000000,
-                               rl->spec.remote_endpoint,
-                               tt,
-                               flags,
-                               &rl->rgi,
-                               es);
+                    ret = add_route3(0x00000000, 0x80000000, rl->spec.remote_endpoint,
+                                     tt, flags, &rl->rgi, es, ctx) && ret;
 
                     /* add new default route (2nd component) */
-                    add_route3(0x80000000,
-                               0x80000000,
-                               rl->spec.remote_endpoint,
-                               tt,
-                               flags,
-                               &rl->rgi,
-                               es);
+                    ret = add_route3(0x80000000, 0x80000000, rl->spec.remote_endpoint,
+                                     tt, flags, &rl->rgi, es, ctx) && ret;
                 }
                 else
                 {
@@ -1086,17 +1089,12 @@ redirect_default_route_to_vpn(struct route_list *rl, const struct tuntap *tt, un
                     {
                         /* delete default route */
                         del_route3(0, 0, rl->rgi.gateway.addr, tt,
-                                   flags | ROUTE_REF_GW, &rl->rgi, es);
+                                   flags | ROUTE_REF_GW, &rl->rgi, es, ctx);
                     }
 
                     /* add new default route */
-                    add_route3(0,
-                               0,
-                               rl->spec.remote_endpoint,
-                               tt,
-                               flags,
-                               &rl->rgi,
-                               es);
+                    ret = add_route3(0, 0, rl->spec.remote_endpoint, tt,
+                                     flags, &rl->rgi, es, ctx) && ret;
                 }
             }
 
@@ -1104,10 +1102,14 @@ redirect_default_route_to_vpn(struct route_list *rl, const struct tuntap *tt, un
             rl->iflags |= RL_DID_REDIRECT_DEFAULT_GATEWAY;
         }
     }
+    return ret;
 }
 
 static void
-undo_redirect_default_route_to_vpn(struct route_list *rl, const struct tuntap *tt, unsigned int flags, const struct env_set *es)
+undo_redirect_default_route_to_vpn(struct route_list *rl,
+                                   const struct tuntap *tt, unsigned int flags,
+                                   const struct env_set *es,
+                                   openvpn_net_ctx_t *ctx)
 {
     if (rl && rl->iflags & RL_DID_REDIRECT_DEFAULT_GATEWAY)
     {
@@ -1120,12 +1122,14 @@ undo_redirect_default_route_to_vpn(struct route_list *rl, const struct tuntap *t
                        tt,
                        flags | ROUTE_REF_GW,
                        &rl->rgi,
-                       es);
+                       es,
+                       ctx);
             rl->iflags &= ~RL_DID_LOCAL;
         }
 
         /* delete special DHCP/DNS bypass route */
-        del_bypass_routes(&rl->spec.bypass, rl->rgi.gateway.addr, tt, flags, &rl->rgi, es);
+        del_bypass_routes(&rl->spec.bypass, rl->rgi.gateway.addr, tt, flags,
+                          &rl->rgi, es, ctx);
 
         if (rl->flags & RG_REROUTE_GW)
         {
@@ -1138,7 +1142,8 @@ undo_redirect_default_route_to_vpn(struct route_list *rl, const struct tuntap *t
                            tt,
                            flags,
                            &rl->rgi,
-                           es);
+                           es,
+                           ctx);
 
                 /* delete default route (2nd component) */
                 del_route3(0x80000000,
@@ -1147,7 +1152,8 @@ undo_redirect_default_route_to_vpn(struct route_list *rl, const struct tuntap *t
                            tt,
                            flags,
                            &rl->rgi,
-                           es);
+                           es,
+                           ctx);
             }
             else
             {
@@ -1158,12 +1164,13 @@ undo_redirect_default_route_to_vpn(struct route_list *rl, const struct tuntap *t
                            tt,
                            flags,
                            &rl->rgi,
-                           es);
+                           es,
+                           ctx);
                 /* restore original default route if there was any */
                 if (rl->rgi.flags & RGI_ADDR_DEFINED)
                 {
                     add_route3(0, 0, rl->rgi.gateway.addr, tt,
-                               flags | ROUTE_REF_GW, &rl->rgi, es);
+                               flags | ROUTE_REF_GW, &rl->rgi, es, ctx);
                 }
             }
         }
@@ -1172,13 +1179,23 @@ undo_redirect_default_route_to_vpn(struct route_list *rl, const struct tuntap *t
     }
 }
 
-void
-add_routes(struct route_list *rl, struct route_ipv6_list *rl6, const struct tuntap *tt, unsigned int flags, const struct env_set *es)
+bool
+add_routes(struct route_list *rl, struct route_ipv6_list *rl6,
+           const struct tuntap *tt, unsigned int flags,
+           const struct env_set *es, openvpn_net_ctx_t *ctx)
 {
-    redirect_default_route_to_vpn(rl, tt, flags, es);
+    bool ret = redirect_default_route_to_vpn(rl, tt, flags, es, ctx);
     if (rl && !(rl->iflags & RL_ROUTES_ADDED) )
     {
         struct route_ipv4 *r;
+
+        if (rl->routes && !tt->did_ifconfig_setup)
+        {
+            msg(M_INFO, "WARNING: OpenVPN was configured to add an IPv4 "
+                "route. However, no IPv4 has been configured for %s, "
+                "therefore the route installation may fail or may not work "
+                "as expected.", tt->actual_name);
+        }
 
 #ifdef ENABLE_MANAGEMENT
         if (management && rl->routes)
@@ -1198,9 +1215,9 @@ add_routes(struct route_list *rl, struct route_ipv6_list *rl6, const struct tunt
             check_subnet_conflict(r->network, r->netmask, "route");
             if (flags & ROUTE_DELETE_FIRST)
             {
-                delete_route(r, tt, flags, &rl->rgi, es);
+                delete_route(r, tt, flags, &rl->rgi, es, ctx);
             }
-            add_route(r, tt, flags, &rl->rgi, es);
+            ret = add_route(r, tt, flags, &rl->rgi, es, ctx) && ret;
         }
         rl->iflags |= RL_ROUTES_ADDED;
     }
@@ -1211,38 +1228,40 @@ add_routes(struct route_list *rl, struct route_ipv6_list *rl6, const struct tunt
         if (!tt->did_ifconfig_ipv6_setup)
         {
             msg(M_INFO, "WARNING: OpenVPN was configured to add an IPv6 "
-                "route over %s. However, no IPv6 has been configured for "
-                "this interface, therefore the route installation may "
-                "fail or may not work as expected.", tt->actual_name);
+                "route. However, no IPv6 has been configured for %s, "
+                "therefore the route installation may fail or may not work "
+                "as expected.", tt->actual_name);
         }
 
         for (r = rl6->routes_ipv6; r; r = r->next)
         {
             if (flags & ROUTE_DELETE_FIRST)
             {
-                delete_route_ipv6(r, tt, flags, es);
+                delete_route_ipv6(r, tt, flags, es, ctx);
             }
-            add_route_ipv6(r, tt, flags, es);
+            ret = add_route_ipv6(r, tt, flags, es, ctx) && ret;
         }
         rl6->iflags |= RL_ROUTES_ADDED;
     }
+    return ret;
 }
 
 void
 delete_routes(struct route_list *rl, struct route_ipv6_list *rl6,
-              const struct tuntap *tt, unsigned int flags, const struct env_set *es)
+              const struct tuntap *tt, unsigned int flags,
+              const struct env_set *es, openvpn_net_ctx_t *ctx)
 {
     if (rl && rl->iflags & RL_ROUTES_ADDED)
     {
         struct route_ipv4 *r;
         for (r = rl->routes; r; r = r->next)
         {
-            delete_route(r, tt, flags, &rl->rgi, es);
+            delete_route(r, tt, flags, &rl->rgi, es, ctx);
         }
         rl->iflags &= ~RL_ROUTES_ADDED;
     }
 
-    undo_redirect_default_route_to_vpn(rl, tt, flags, es);
+    undo_redirect_default_route_to_vpn(rl, tt, flags, es, ctx);
 
     if (rl)
     {
@@ -1254,7 +1273,7 @@ delete_routes(struct route_list *rl, struct route_ipv6_list *rl6,
         struct route_ipv6 *r6;
         for (r6 = rl6->routes_ipv6; r6; r6 = r6->next)
         {
-            delete_route_ipv6(r6, tt, flags, es);
+            delete_route_ipv6(r6, tt, flags, es, ctx);
         }
         rl6->iflags &= ~RL_ROUTES_ADDED;
     }
@@ -1331,7 +1350,7 @@ print_default_gateway(const int msglevel,
 #ifdef _WIN32
         if (rgi->flags & RGI_IFACE_DEFINED)
         {
-            buf_printf(&out, " I=%u", (unsigned int)rgi->adapter_index);
+            buf_printf(&out, " I=%lu", rgi->adapter_index);
         }
 #else
         if (rgi->flags & RGI_IFACE_DEFINED)
@@ -1362,7 +1381,7 @@ print_default_gateway(const int msglevel,
 #ifdef _WIN32
         if (rgi6->flags & RGI_IFACE_DEFINED)
         {
-            buf_printf(&out, " I=%u", (unsigned int)rgi6->adapter_index);
+            buf_printf(&out, " I=%lu", rgi6->adapter_index);
         }
 #else
         if (rgi6->flags & RGI_IFACE_DEFINED)
@@ -1450,6 +1469,13 @@ setenv_route_ipv6(struct env_set *es, const struct route_ipv6 *r6, int i)
 
         buf_printf( &name2, "route_ipv6_gateway_%d", i );
         setenv_str( es, BSTR(&name2), print_in6_addr( r6->gateway, 0, &gc ));
+
+        if (r6->flags & RT_METRIC_DEFINED)
+        {
+            struct buffer name3 = alloc_buf_gc( 256, &gc );
+            buf_printf( &name3, "route_ipv6_metric_%d", i);
+            setenv_int( es, BSTR(&name3), r6->metric);
+        }
     }
     gc_free(&gc);
 }
@@ -1521,44 +1547,42 @@ local_route(in_addr_t network,
     return LR_NOMATCH;
 }
 
-/* Return true if the "on-link" form of the route should be used.  This is when the gateway for a
+/* Return true if the "on-link" form of the route should be used.  This is when the gateway for
  * a route is specified as an interface rather than an address. */
+#if defined(TARGET_LINUX) || defined(_WIN32) || defined(TARGET_DARWIN)
 static inline bool
 is_on_link(const int is_local_route, const unsigned int flags, const struct route_gateway_info *rgi)
 {
     return rgi && (is_local_route == LR_MATCH || ((flags & ROUTE_REF_GW) && (rgi->flags & RGI_ON_LINK)));
 }
+#endif
 
-void
+bool
 add_route(struct route_ipv4 *r,
           const struct tuntap *tt,
           unsigned int flags,
           const struct route_gateway_info *rgi,  /* may be NULL */
-          const struct env_set *es)
+          const struct env_set *es,
+          openvpn_net_ctx_t *ctx)
 {
-    struct gc_arena gc;
-    struct argv argv = argv_new();
-    const char *network;
-#if !defined(ENABLE_IPROUTE) && !defined(TARGET_AIX)
-    const char *netmask;
-#endif
-    const char *gateway;
-    bool status = false;
+    int status = 0;
     int is_local_route;
 
     if (!(r->flags & RT_DEFINED))
     {
-        argv_reset(&argv);
-        return;
+        return true; /* no error */
     }
 
-    gc_init(&gc);
+    struct argv argv = argv_new();
+    struct gc_arena gc = gc_new();
 
-    network = print_in_addr_t(r->network, 0, &gc);
-#if !defined(ENABLE_IPROUTE) && !defined(TARGET_AIX)
-    netmask = print_in_addr_t(r->netmask, 0, &gc);
+#if !defined(TARGET_LINUX)
+    const char *network = print_in_addr_t(r->network, 0, &gc);
+#if !defined(TARGET_AIX)
+    const char *netmask = print_in_addr_t(r->netmask, 0, &gc);
 #endif
-    gateway = print_in_addr_t(r->gateway, 0, &gc);
+    const char *gateway = print_in_addr_t(r->gateway, 0, &gc);
+#endif
 
     is_local_route = local_route(r->network, r->netmask, r->gateway, rgi);
     if (is_local_route == LR_ERROR)
@@ -1567,64 +1591,51 @@ add_route(struct route_ipv4 *r,
     }
 
 #if defined(TARGET_LINUX)
-#ifdef ENABLE_IPROUTE
-    argv_printf(&argv, "%s route add %s/%d",
-                iproute_path,
-                network,
-                netmask_to_netbits2(r->netmask));
-
-    if (r->flags & RT_METRIC_DEFINED)
-    {
-        argv_printf_cat(&argv, "metric %d", r->metric);
-    }
+    const char *iface = NULL;
+    int metric = -1;
 
     if (is_on_link(is_local_route, flags, rgi))
     {
-        argv_printf_cat(&argv, "dev %s", rgi->iface);
-    }
-    else
-    {
-        argv_printf_cat(&argv, "via %s", gateway);
-    }
-#else  /* ifdef ENABLE_IPROUTE */
-    argv_printf(&argv, "%s add -net %s netmask %s",
-                ROUTE_PATH,
-                network,
-                netmask);
-    if (r->flags & RT_METRIC_DEFINED)
-    {
-        argv_printf_cat(&argv, "metric %d", r->metric);
-    }
-    if (is_on_link(is_local_route, flags, rgi))
-    {
-        argv_printf_cat(&argv, "dev %s", rgi->iface);
-    }
-    else
-    {
-        argv_printf_cat(&argv, "gw %s", gateway);
+        iface = rgi->iface;
     }
 
-#endif  /*ENABLE_IPROUTE*/
-    argv_msg(D_ROUTE, &argv);
-    status = openvpn_execve_check(&argv, es, 0, "ERROR: Linux route add command failed");
+    if (r->flags & RT_METRIC_DEFINED)
+    {
+        metric = r->metric;
+    }
+
+    status = RTA_SUCCESS;
+    int ret = net_route_v4_add(ctx, &r->network, netmask_to_netbits2(r->netmask),
+                               &r->gateway, iface, 0, metric);
+    if (ret == -EEXIST)
+    {
+        msg(D_ROUTE, "NOTE: Linux route add command failed because route exists");
+        status = RTA_EEXIST;
+    }
+    else if (ret < 0)
+    {
+        msg(M_WARN, "ERROR: Linux route add command failed");
+        status = RTA_ERROR;
+    }
 
 #elif defined (TARGET_ANDROID)
-    struct buffer out = alloc_buf_gc(128, &gc);
+    char out[128];
 
     if (rgi)
     {
-        buf_printf(&out, "%s %s %s dev %s", network, netmask, gateway, rgi->iface);
+        openvpn_snprintf(out, sizeof(out), "%s %s %s dev %s", network, netmask, gateway, rgi->iface);
     }
     else
     {
-        buf_printf(&out, "%s %s %s", network, netmask, gateway);
+        openvpn_snprintf(out, sizeof(out), "%s %s %s", network, netmask, gateway);
     }
-    management_android_control(management, "ROUTE", buf_bptr(&out));
+    bool ret = management_android_control(management, "ROUTE", out);
+    status = ret ? RTA_SUCCESS : RTA_ERROR;
 
 #elif defined (_WIN32)
     {
         DWORD ai = TUN_ADAPTER_INDEX_INVALID;
-        argv_printf(&argv, "%s%sc ADD %s MASK %s %s",
+        argv_printf(&argv, "%s%s ADD %s MASK %s %s",
                     get_win_sys_path(),
                     WIN_ROUTE_PATH_SUFFIX,
                     network,
@@ -1637,42 +1648,53 @@ add_route(struct route_ipv4 *r,
         if (is_on_link(is_local_route, flags, rgi))
         {
             ai = rgi->adapter_index;
-            argv_printf_cat(&argv, "IF %u", (unsigned int)ai);
+            argv_printf_cat(&argv, "IF %lu", ai);
         }
 
         argv_msg(D_ROUTE, &argv);
 
+        const char *method = "service";
         if ((flags & ROUTE_METHOD_MASK) == ROUTE_METHOD_SERVICE)
         {
             status = add_route_service(r, tt);
-            msg(D_ROUTE, "Route addition via service %s", status ? "succeeded" : "failed");
         }
         else if ((flags & ROUTE_METHOD_MASK) == ROUTE_METHOD_IPAPI)
         {
             status = add_route_ipapi(r, tt, ai);
-            msg(D_ROUTE, "Route addition via IPAPI %s", status ? "succeeded" : "failed");
+            method = "ipapi";
         }
         else if ((flags & ROUTE_METHOD_MASK) == ROUTE_METHOD_EXE)
         {
             netcmd_semaphore_lock();
-            status = openvpn_execve_check(&argv, es, 0, "ERROR: Windows route add command failed");
+            bool ret = openvpn_execve_check(&argv, es, 0,
+                                            "ERROR: Windows route add command failed");
+            status = ret ? RTA_SUCCESS : RTA_ERROR;
             netcmd_semaphore_release();
+            method = "route.exe";
         }
         else if ((flags & ROUTE_METHOD_MASK) == ROUTE_METHOD_ADAPTIVE)
         {
             status = add_route_ipapi(r, tt, ai);
-            msg(D_ROUTE, "Route addition via IPAPI %s [adaptive]", status ? "succeeded" : "failed");
-            if (!status)
+            method = "ipapi [adaptive]";
+            if (status == RTA_ERROR)
             {
                 msg(D_ROUTE, "Route addition fallback to route.exe");
                 netcmd_semaphore_lock();
-                status = openvpn_execve_check(&argv, es, 0, "ERROR: Windows route add command failed [adaptive]");
+                bool ret = openvpn_execve_check(&argv, es, 0,
+                                                "ERROR: Windows route add command failed [adaptive]");
+                status = ret ? RTA_SUCCESS : RTA_ERROR;
                 netcmd_semaphore_release();
+                method = "route.exe";
             }
         }
         else
         {
             ASSERT(0);
+        }
+        if (status != RTA_ERROR) /* error is logged upstream */
+        {
+            msg(D_ROUTE, "Route addition via %s %s", method,
+                (status == RTA_SUCCESS) ? "succeeded" : "failed because route exists");
         }
     }
 
@@ -1701,7 +1723,9 @@ add_route(struct route_ipv4 *r,
     }
 
     argv_msg(D_ROUTE, &argv);
-    status = openvpn_execve_check(&argv, es, 0, "ERROR: Solaris route add command failed");
+    bool ret = openvpn_execve_check(&argv, es, 0,
+                                    "ERROR: Solaris route add command failed");
+    status = ret ? RTA_SUCCESS : RTA_ERROR;
 
 #elif defined(TARGET_FREEBSD)
 
@@ -1723,7 +1747,9 @@ add_route(struct route_ipv4 *r,
     /* FIXME -- add on-link support for FreeBSD */
 
     argv_msg(D_ROUTE, &argv);
-    status = openvpn_execve_check(&argv, es, 0, "ERROR: FreeBSD route add command failed");
+    bool ret = openvpn_execve_check(&argv, es, 0,
+                                    "ERROR: FreeBSD route add command failed");
+    status = ret ? RTA_SUCCESS : RTA_ERROR;
 
 #elif defined(TARGET_DRAGONFLY)
 
@@ -1745,7 +1771,9 @@ add_route(struct route_ipv4 *r,
     /* FIXME -- add on-link support for Dragonfly */
 
     argv_msg(D_ROUTE, &argv);
-    status = openvpn_execve_check(&argv, es, 0, "ERROR: DragonFly route add command failed");
+    bool ret = openvpn_execve_check(&argv, es, 0,
+                                    "ERROR: DragonFly route add command failed");
+    status = ret ? RTA_SUCCESS : RTA_ERROR;
 
 #elif defined(TARGET_DARWIN)
 
@@ -1777,7 +1805,9 @@ add_route(struct route_ipv4 *r,
     }
 
     argv_msg(D_ROUTE, &argv);
-    status = openvpn_execve_check(&argv, es, 0, "ERROR: OS X route add command failed");
+    bool ret = openvpn_execve_check(&argv, es, 0,
+                                    "ERROR: OS X route add command failed");
+    status = ret ? RTA_SUCCESS : RTA_ERROR;
 
 #elif defined(TARGET_OPENBSD) || defined(TARGET_NETBSD)
 
@@ -1799,7 +1829,9 @@ add_route(struct route_ipv4 *r,
     /* FIXME -- add on-link support for OpenBSD/NetBSD */
 
     argv_msg(D_ROUTE, &argv);
-    status = openvpn_execve_check(&argv, es, 0, "ERROR: OpenBSD/NetBSD route add command failed");
+    bool ret = openvpn_execve_check(&argv, es, 0,
+                                    "ERROR: OpenBSD/NetBSD route add command failed");
+    status = ret ? RTA_SUCCESS : RTA_ERROR;
 
 #elif defined(TARGET_AIX)
 
@@ -1809,7 +1841,9 @@ add_route(struct route_ipv4 *r,
                     ROUTE_PATH,
                     network, netbits, gateway);
         argv_msg(D_ROUTE, &argv);
-        status = openvpn_execve_check(&argv, es, 0, "ERROR: AIX route add command failed");
+        bool ret = openvpn_execve_check(&argv, es, 0,
+                                        "ERROR: AIX route add command failed");
+        status = ret ? RTA_SUCCESS : RTA_ERROR;
     }
 
 #else  /* if defined(TARGET_LINUX) */
@@ -1817,7 +1851,7 @@ add_route(struct route_ipv4 *r,
 #endif /* if defined(TARGET_LINUX) */
 
 done:
-    if (status)
+    if (status == RTA_SUCCESS)
     {
         r->flags |= RT_ADDED;
     }
@@ -1825,8 +1859,12 @@ done:
     {
         r->flags &= ~RT_ADDED;
     }
-    argv_reset(&argv);
+    argv_free(&argv);
     gc_free(&gc);
+    /* release resources potentially allocated during route setup */
+    net_ctx_reset(ctx);
+
+    return (status != RTA_ERROR);
 }
 
 
@@ -1835,7 +1873,7 @@ route_ipv6_clear_host_bits( struct route_ipv6 *r6 )
 {
     /* clear host bit parts of route
      * (needed if routes are specified improperly, or if we need to
-     * explicitely setup/clear the "connected" network routes on some OSes)
+     * explicitly setup/clear the "connected" network routes on some OSes)
      */
     int byte = 15;
     int bits_to_clear = 128 - r6->netbits;
@@ -1853,26 +1891,24 @@ route_ipv6_clear_host_bits( struct route_ipv6 *r6 )
     }
 }
 
-void
-add_route_ipv6(struct route_ipv6 *r6, const struct tuntap *tt, unsigned int flags, const struct env_set *es)
+bool
+add_route_ipv6(struct route_ipv6 *r6, const struct tuntap *tt,
+               unsigned int flags, const struct env_set *es,
+               openvpn_net_ctx_t *ctx)
 {
-    struct gc_arena gc;
-    struct argv argv = argv_new();
-
-    const char *network;
-    const char *gateway;
-    bool status = false;
-    const char *device = tt->actual_name;
-
+    int status = 0;
     bool gateway_needed = false;
 
     if (!(r6->flags & RT_DEFINED) )
     {
-        argv_reset(&argv);
-        return;
+        return true; /* no error */
     }
 
+    struct argv argv = argv_new();
+    struct gc_arena gc = gc_new();
+
 #ifndef _WIN32
+    const char *device = tt->actual_name;
     if (r6->iface != NULL)              /* vpn server special route */
     {
         device = r6->iface;
@@ -1883,12 +1919,9 @@ add_route_ipv6(struct route_ipv6 *r6, const struct tuntap *tt, unsigned int flag
     }
 #endif
 
-    gc_init(&gc);
-
     route_ipv6_clear_host_bits(r6);
-
-    network = print_in6_addr( r6->network, 0, &gc);
-    gateway = print_in6_addr( r6->gateway, 0, &gc);
+    const char *network = print_in6_addr( r6->network, 0, &gc);
+    const char *gateway = print_in6_addr( r6->gateway, 0, &gc);
 
 #if defined(TARGET_DARWIN)    \
     || defined(TARGET_FREEBSD) || defined(TARGET_DRAGONFLY)    \
@@ -1908,8 +1941,14 @@ add_route_ipv6(struct route_ipv6 *r6, const struct tuntap *tt, unsigned int flag
     }
 #endif
 
+#ifndef _WIN32
     msg( M_INFO, "add_route_ipv6(%s/%d -> %s metric %d) dev %s",
          network, r6->netbits, gateway, r6->metric, device );
+#else
+    msg( M_INFO, "add_route_ipv6(%s/%d -> %s metric %d) IF %lu",
+         network, r6->netbits, gateway, r6->metric,
+         r6->adapter_index ? r6->adapter_index : tt->adapter_index);
+#endif
 
     /*
      * Filter out routes which are essentially no-ops
@@ -1928,46 +1967,44 @@ add_route_ipv6(struct route_ipv6 *r6, const struct tuntap *tt, unsigned int flag
         gateway_needed = true;
     }
 
-#if defined(TARGET_LINUX)
-#ifdef ENABLE_IPROUTE
-    argv_printf(&argv, "%s -6 route add %s/%d dev %s",
-                iproute_path,
-                network,
-                r6->netbits,
-                device);
-    if (gateway_needed)
+    if (gateway_needed && IN6_IS_ADDR_UNSPECIFIED(&r6->gateway))
     {
-        argv_printf_cat(&argv, "via %s", gateway);
-    }
-    if ( (r6->flags & RT_METRIC_DEFINED) && r6->metric > 0)
-    {
-        argv_printf_cat(&argv, " metric %d", r6->metric);
+        msg(M_WARN, "ROUTE6 WARNING: " PACKAGE_NAME " needs a gateway "
+            "parameter for a --route-ipv6 option and no default was set via "
+            "--ifconfig-ipv6 or --route-ipv6-gateway option.  Not installing "
+            "IPv6 route to %s/%d.", network, r6->netbits);
+        status = 0;
+        goto done;
     }
 
-#else  /* ifdef ENABLE_IPROUTE */
-    argv_printf(&argv, "%s -A inet6 add %s/%d dev %s",
-                ROUTE_PATH,
-                network,
-                r6->netbits,
-                device);
-    if (gateway_needed)
+#if defined(TARGET_LINUX)
+    int metric = -1;
+    if ((r6->flags & RT_METRIC_DEFINED) && (r6->metric > 0))
     {
-        argv_printf_cat(&argv, "gw %s", gateway);
+        metric = r6->metric;
     }
-    if ( (r6->flags & RT_METRIC_DEFINED) && r6->metric > 0)
+
+    status = RTA_SUCCESS;
+    int ret = net_route_v6_add(ctx, &r6->network, r6->netbits,
+                               gateway_needed ? &r6->gateway : NULL,
+                               device, 0, metric);
+    if (ret == -EEXIST)
     {
-        argv_printf_cat(&argv, " metric %d", r6->metric);
+        msg(D_ROUTE, "NOTE: Linux route add command failed because route exists");
+        status = RTA_EEXIST;
     }
-#endif  /*ENABLE_IPROUTE*/
-    argv_msg(D_ROUTE, &argv);
-    status = openvpn_execve_check(&argv, es, 0, "ERROR: Linux route -6/-A inet6 add command failed");
+    else if (ret < 0)
+    {
+        msg(M_WARN, "ERROR: Linux route add command failed");
+        status = RTA_ERROR;
+    }
 
 #elif defined (TARGET_ANDROID)
-    struct buffer out = alloc_buf_gc(64, &gc);
+    char out[64];
 
-    buf_printf(&out, "%s/%d %s", network, r6->netbits, device);
+    openvpn_snprintf(out, sizeof(out), "%s/%d %s", network, r6->netbits, device);
 
-    management_android_control(management, "ROUTE6", buf_bptr(&out));
+    status = management_android_control(management, "ROUTE6", out);
 
 #elif defined (_WIN32)
 
@@ -1977,59 +2014,8 @@ add_route_ipv6(struct route_ipv6 *r6, const struct tuntap *tt, unsigned int flag
     }
     else
     {
-        struct buffer out = alloc_buf_gc(64, &gc);
-        if (r6->adapter_index)          /* vpn server special route */
-        {
-            buf_printf(&out, "interface=%lu", r6->adapter_index );
-            gateway_needed = true;
-        }
-        else
-        {
-            buf_printf(&out, "interface=%lu", tt->adapter_index );
-        }
-        device = buf_bptr(&out);
-
-        /* netsh interface ipv6 add route 2001:db8::/32 MyTunDevice */
-        argv_printf(&argv, "%s%sc interface ipv6 add route %s/%d %s",
-                    get_win_sys_path(),
-                    NETSH_PATH_SUFFIX,
-                    network,
-                    r6->netbits,
-                    device);
-
-        /* next-hop depends on TUN or TAP mode:
-         * - in TAP mode, we use the "real" next-hop
-         * - in TUN mode we use a special-case link-local address that the tapdrvr
-         *   knows about and will answer ND (neighbor discovery) packets for
-         */
-        if (tt->type == DEV_TYPE_TUN && !gateway_needed)
-        {
-            argv_printf_cat( &argv, " %s", "fe80::8" );
-        }
-        else if (!IN6_IS_ADDR_UNSPECIFIED(&r6->gateway) )
-        {
-            argv_printf_cat( &argv, " %s", gateway );
-        }
-
-#if 0
-        if (r6->flags & RT_METRIC_DEFINED)
-        {
-            argv_printf_cat(&argv, " METRIC %d", r->metric);
-        }
-#endif
-
-        /* in some versions of Windows, routes are persistent across reboots by
-         * default, unless "store=active" is set (pointed out by Tony Lim, thanks)
-         */
-        argv_printf_cat( &argv, " store=active" );
-
-        argv_msg(D_ROUTE, &argv);
-
-        netcmd_semaphore_lock();
-        status = openvpn_execve_check(&argv, es, 0, "ERROR: Windows route add ipv6 command failed");
-        netcmd_semaphore_release();
+        status = route_ipv6_ipapi(true, r6, tt);
     }
-
 #elif defined (TARGET_SOLARIS)
 
     /* example: route add -inet6 2001:db8::/32 somegateway 0 */
@@ -2056,7 +2042,9 @@ add_route_ipv6(struct route_ipv6 *r6, const struct tuntap *tt, unsigned int flag
     }
 
     argv_msg(D_ROUTE, &argv);
-    status = openvpn_execve_check(&argv, es, 0, "ERROR: Solaris route add -inet6 command failed");
+    bool ret = openvpn_execve_check(&argv, es, 0,
+                                    "ERROR: Solaris route add -inet6 command failed");
+    status = ret ? RTA_SUCCESS : RTA_ERROR;
 
 #elif defined(TARGET_FREEBSD) || defined(TARGET_DRAGONFLY)
 
@@ -2075,7 +2063,9 @@ add_route_ipv6(struct route_ipv6 *r6, const struct tuntap *tt, unsigned int flag
     }
 
     argv_msg(D_ROUTE, &argv);
-    status = openvpn_execve_check(&argv, es, 0, "ERROR: *BSD route add -inet6 command failed");
+    bool ret = openvpn_execve_check(&argv, es, 0,
+                                    "ERROR: *BSD route add -inet6 command failed");
+    status = ret ? RTA_SUCCESS : RTA_ERROR;
 
 #elif defined(TARGET_DARWIN)
 
@@ -2093,7 +2083,9 @@ add_route_ipv6(struct route_ipv6 *r6, const struct tuntap *tt, unsigned int flag
     }
 
     argv_msg(D_ROUTE, &argv);
-    status = openvpn_execve_check(&argv, es, 0, "ERROR: MacOS X route add -inet6 command failed");
+    bool ret = openvpn_execve_check(&argv, es, 0,
+                                    "ERROR: MacOS X route add -inet6 command failed");
+    status = ret ? RTA_SUCCESS : RTA_ERROR;
 
 #elif defined(TARGET_OPENBSD)
 
@@ -2102,7 +2094,9 @@ add_route_ipv6(struct route_ipv6 *r6, const struct tuntap *tt, unsigned int flag
                 network, r6->netbits, gateway );
 
     argv_msg(D_ROUTE, &argv);
-    status = openvpn_execve_check(&argv, es, 0, "ERROR: OpenBSD route add -inet6 command failed");
+    bool ret = openvpn_execve_check(&argv, es, 0,
+                                    "ERROR: OpenBSD route add -inet6 command failed");
+    status = ret ? RTA_SUCCESS : RTA_ERROR;
 
 #elif defined(TARGET_NETBSD)
 
@@ -2111,7 +2105,9 @@ add_route_ipv6(struct route_ipv6 *r6, const struct tuntap *tt, unsigned int flag
                 network, r6->netbits, gateway );
 
     argv_msg(D_ROUTE, &argv);
-    status = openvpn_execve_check(&argv, es, 0, "ERROR: NetBSD route add -inet6 command failed");
+    bool ret = openvpn_execve_check(&argv, es, 0,
+                                    "ERROR: NetBSD route add -inet6 command failed");
+    status = ret ? RTA_SUCCESS : RTA_ERROR;
 
 #elif defined(TARGET_AIX)
 
@@ -2119,13 +2115,16 @@ add_route_ipv6(struct route_ipv6 *r6, const struct tuntap *tt, unsigned int flag
                 ROUTE_PATH,
                 network, r6->netbits, gateway);
     argv_msg(D_ROUTE, &argv);
-    status = openvpn_execve_check(&argv, es, 0, "ERROR: AIX route add command failed");
+    bool ret = openvpn_execve_check(&argv, es, 0,
+                                    "ERROR: AIX route add command failed");
+    status = ret ? RTA_SUCCESS : RTA_ERROR;
 
 #else  /* if defined(TARGET_LINUX) */
     msg(M_FATAL, "Sorry, but I don't know how to do 'route ipv6' commands on this operating system.  Try putting your routes in a --route-up script");
 #endif /* if defined(TARGET_LINUX) */
 
-    if (status)
+done:
+    if (status == RTA_SUCCESS)
     {
         r6->flags |= RT_ADDED;
     }
@@ -2133,8 +2132,12 @@ add_route_ipv6(struct route_ipv6 *r6, const struct tuntap *tt, unsigned int flag
     {
         r6->flags &= ~RT_ADDED;
     }
-    argv_reset(&argv);
+    argv_free(&argv);
     gc_free(&gc);
+    /* release resources potentially allocated during route setup */
+    net_ctx_reset(ctx);
+
+    return (status != RTA_ERROR);
 }
 
 static void
@@ -2142,16 +2145,19 @@ delete_route(struct route_ipv4 *r,
              const struct tuntap *tt,
              unsigned int flags,
              const struct route_gateway_info *rgi,
-             const struct env_set *es)
+             const struct env_set *es,
+             openvpn_net_ctx_t *ctx)
 {
-    struct gc_arena gc;
-    struct argv argv = argv_new();
+#if !defined(TARGET_LINUX)
     const char *network;
-#if !defined(ENABLE_IPROUTE) && !defined(TARGET_AIX)
+#if !defined(TARGET_AIX)
     const char *netmask;
 #endif
-#if !defined(TARGET_LINUX) && !defined(TARGET_ANDROID)
+#if !defined(TARGET_ANDROID)
     const char *gateway;
+#endif
+#else  /* if !defined(TARGET_LINUX) */
+    int metric;
 #endif
     int is_local_route;
 
@@ -2160,14 +2166,17 @@ delete_route(struct route_ipv4 *r,
         return;
     }
 
-    gc_init(&gc);
+    struct gc_arena gc = gc_new();
+    struct argv argv = argv_new();
 
+#if !defined(TARGET_LINUX)
     network = print_in_addr_t(r->network, 0, &gc);
-#if !defined(ENABLE_IPROUTE) && !defined(TARGET_AIX)
+#if !defined(TARGET_AIX)
     netmask = print_in_addr_t(r->netmask, 0, &gc);
 #endif
-#if !defined(TARGET_LINUX) && !defined(TARGET_ANDROID)
+#if !defined(TARGET_ANDROID)
     gateway = print_in_addr_t(r->gateway, 0, &gc);
+#endif
 #endif
 
     is_local_route = local_route(r->network, r->netmask, r->gateway, rgi);
@@ -2177,27 +2186,20 @@ delete_route(struct route_ipv4 *r,
     }
 
 #if defined(TARGET_LINUX)
-#ifdef ENABLE_IPROUTE
-    argv_printf(&argv, "%s route del %s/%d",
-                iproute_path,
-                network,
-                netmask_to_netbits2(r->netmask));
-#else
-    argv_printf(&argv, "%s del -net %s netmask %s",
-                ROUTE_PATH,
-                network,
-                netmask);
-#endif /*ENABLE_IPROUTE*/
+    metric = -1;
     if (r->flags & RT_METRIC_DEFINED)
     {
-        argv_printf_cat(&argv, "metric %d", r->metric);
+        metric = r->metric;
     }
-    argv_msg(D_ROUTE, &argv);
-    openvpn_execve_check(&argv, es, 0, "ERROR: Linux route delete command failed");
 
+    if (net_route_v4_del(ctx, &r->network, netmask_to_netbits2(r->netmask),
+                         &r->gateway, NULL, 0, metric) < 0)
+    {
+        msg(M_WARN, "ERROR: Linux route delete command failed");
+    }
 #elif defined (_WIN32)
 
-    argv_printf(&argv, "%s%sc DELETE %s MASK %s %s",
+    argv_printf(&argv, "%s%s DELETE %s MASK %s %s",
                 get_win_sys_path(),
                 WIN_ROUTE_PATH_SUFFIX,
                 network,
@@ -2306,8 +2308,9 @@ delete_route(struct route_ipv4 *r,
     openvpn_execve_check(&argv, es, 0, "ERROR: OpenBSD/NetBSD route delete command failed");
 
 #elif defined(TARGET_ANDROID)
-    msg(M_NONFATAL, "Sorry, deleting routes on Android is not possible. The VpnService API allows routes to be set on connect only.");
-
+    msg(D_ROUTE_DEBUG, "Deleting routes on Android is not possible/not "
+        "needed. The VpnService API allows routes to be set "
+        "on connect only and will clean up automatically.");
 #elif defined(TARGET_AIX)
 
     {
@@ -2325,19 +2328,18 @@ delete_route(struct route_ipv4 *r,
 
 done:
     r->flags &= ~RT_ADDED;
-    argv_reset(&argv);
+    argv_free(&argv);
     gc_free(&gc);
+    /* release resources potentially allocated during route cleanup */
+    net_ctx_reset(ctx);
 }
 
 void
-delete_route_ipv6(const struct route_ipv6 *r6, const struct tuntap *tt, unsigned int flags, const struct env_set *es)
+delete_route_ipv6(const struct route_ipv6 *r6, const struct tuntap *tt,
+                  unsigned int flags, const struct env_set *es,
+                  openvpn_net_ctx_t *ctx)
 {
-    struct gc_arena gc;
-    struct argv argv = argv_new();
     const char *network;
-    const char *gateway;
-    const char *device = tt->actual_name;
-    bool gateway_needed = false;
 
     if ((r6->flags & (RT_DEFINED|RT_ADDED)) != (RT_DEFINED|RT_ADDED))
     {
@@ -2345,17 +2347,36 @@ delete_route_ipv6(const struct route_ipv6 *r6, const struct tuntap *tt, unsigned
     }
 
 #ifndef _WIN32
+#if !defined(TARGET_LINUX)
+    const char *gateway;
+#else
+    int metric;
+#endif
+    bool gateway_needed = false;
+    const char *device = tt->actual_name;
     if (r6->iface != NULL)              /* vpn server special route */
     {
         device = r6->iface;
         gateway_needed = true;
     }
+
+    /* if we used a gateway on "add route", we also need to specify it on
+     * delete, otherwise some OSes will refuse to delete the route
+     */
+    if (tt->type == DEV_TYPE_TAP
+        && !( (r6->flags & RT_METRIC_DEFINED) && r6->metric == 0 ) )
+    {
+        gateway_needed = true;
+    }
 #endif
 
-    gc_init(&gc);
+    struct gc_arena gc = gc_new();
+    struct argv argv = argv_new();
 
     network = print_in6_addr( r6->network, 0, &gc);
+#if !defined(TARGET_LINUX) && !defined(_WIN32)
     gateway = print_in6_addr( r6->gateway, 0, &gc);
+#endif
 
 #if defined(TARGET_DARWIN)    \
     || defined(TARGET_FREEBSD) || defined(TARGET_DRAGONFLY)    \
@@ -2377,44 +2398,19 @@ delete_route_ipv6(const struct route_ipv6 *r6, const struct tuntap *tt, unsigned
 
     msg( M_INFO, "delete_route_ipv6(%s/%d)", network, r6->netbits );
 
-    /* if we used a gateway on "add route", we also need to specify it on
-     * delete, otherwise some OSes will refuse to delete the route
-     */
-    if (tt->type == DEV_TYPE_TAP
-        && !( (r6->flags & RT_METRIC_DEFINED) && r6->metric == 0 ) )
-    {
-        gateway_needed = true;
-    }
-
-
 #if defined(TARGET_LINUX)
-#ifdef ENABLE_IPROUTE
-    argv_printf(&argv, "%s -6 route del %s/%d dev %s",
-                iproute_path,
-                network,
-                r6->netbits,
-                device);
-    if (gateway_needed)
+    metric = -1;
+    if ((r6->flags & RT_METRIC_DEFINED) && (r6->metric > 0))
     {
-        argv_printf_cat(&argv, "via %s", gateway);
+        metric = r6->metric;
     }
-#else  /* ifdef ENABLE_IPROUTE */
-    argv_printf(&argv, "%s -A inet6 del %s/%d dev %s",
-                ROUTE_PATH,
-                network,
-                r6->netbits,
-                device);
-    if (gateway_needed)
+
+    if (net_route_v6_del(ctx, &r6->network, r6->netbits,
+                         gateway_needed ? &r6->gateway : NULL, device, 0,
+                         metric) < 0)
     {
-        argv_printf_cat(&argv, "gw %s", gateway);
+        msg(M_WARN, "ERROR: Linux route v6 delete command failed");
     }
-    if ( (r6->flags & RT_METRIC_DEFINED) && r6->metric > 0)
-    {
-        argv_printf_cat(&argv, " metric %d", r6->metric);
-    }
-#endif  /*ENABLE_IPROUTE*/
-    argv_msg(D_ROUTE, &argv);
-    openvpn_execve_check(&argv, es, 0, "ERROR: Linux route -6/-A inet6 del command failed");
 
 #elif defined (_WIN32)
 
@@ -2424,61 +2420,8 @@ delete_route_ipv6(const struct route_ipv6 *r6, const struct tuntap *tt, unsigned
     }
     else
     {
-        struct buffer out = alloc_buf_gc(64, &gc);
-        if (r6->adapter_index)          /* vpn server special route */
-        {
-            buf_printf(&out, "interface=%lu", r6->adapter_index );
-            gateway_needed = true;
-        }
-        else
-        {
-            buf_printf(&out, "interface=%lu", tt->adapter_index );
-        }
-        device = buf_bptr(&out);
-
-        /* netsh interface ipv6 delete route 2001:db8::/32 MyTunDevice */
-        argv_printf(&argv, "%s%sc interface ipv6 delete route %s/%d %s",
-                    get_win_sys_path(),
-                    NETSH_PATH_SUFFIX,
-                    network,
-                    r6->netbits,
-                    device);
-
-        /* next-hop depends on TUN or TAP mode:
-         * - in TAP mode, we use the "real" next-hop
-         * - in TUN mode we use a special-case link-local address that the tapdrvr
-         *   knows about and will answer ND (neighbor discovery) packets for
-         * (and "route deletion without specifying next-hop" does not work...)
-         */
-        if (tt->type == DEV_TYPE_TUN && !gateway_needed)
-        {
-            argv_printf_cat( &argv, " %s", "fe80::8" );
-        }
-        else if (!IN6_IS_ADDR_UNSPECIFIED(&r6->gateway) )
-        {
-            argv_printf_cat( &argv, " %s", gateway );
-        }
-
-#if 0
-        if (r6->flags & RT_METRIC_DEFINED)
-        {
-            argv_printf_cat(&argv, "METRIC %d", r->metric);
-        }
-#endif
-
-        /* Windows XP to 7 "just delete" routes, wherever they came from, but
-         * in Windows 8(.1?), if you create them with "store=active", this is
-         * how you should delete them as well (pointed out by Cedric Tabary)
-         */
-        argv_printf_cat( &argv, " store=active" );
-
-        argv_msg(D_ROUTE, &argv);
-
-        netcmd_semaphore_lock();
-        openvpn_execve_check(&argv, es, 0, "ERROR: Windows route delete ipv6 command failed");
-        netcmd_semaphore_release();
+        route_ipv6_ipapi(false, r6, tt);
     }
-
 #elif defined (TARGET_SOLARIS)
 
     /* example: route delete -inet6 2001:db8::/32 somegateway */
@@ -2554,13 +2497,18 @@ delete_route_ipv6(const struct route_ipv6 *r6, const struct tuntap *tt, unsigned
                 network, r6->netbits, gateway);
     argv_msg(D_ROUTE, &argv);
     openvpn_execve_check(&argv, es, 0, "ERROR: AIX route add command failed");
-
+#elif defined(TARGET_ANDROID)
+    msg(D_ROUTE_DEBUG, "Deleting routes on Android is not possible/not "
+        "needed. The VpnService API allows routes to be set "
+        "on connect only and will clean up automatically.");
 #else  /* if defined(TARGET_LINUX) */
     msg(M_FATAL, "Sorry, but I don't know how to do 'route ipv6' commands on this operating system.  Try putting your routes in a --route-down script");
 #endif /* if defined(TARGET_LINUX) */
 
-    argv_reset(&argv);
+    argv_free(&argv);
     gc_free(&gc);
+    /* release resources potentially allocated during route cleanup */
+    net_ctx_reset(ctx);
 }
 
 /*
@@ -2653,7 +2601,11 @@ test_routes(const struct route_list *rl, const struct tuntap *tt)
         ret = true;
         adapter_up = true;
 
-        if (rl)
+        /* we do this test only if we have IPv4 routes to install, and if
+         * the tun/tap interface has seen IPv4 ifconfig - because if we
+         * have no IPv4, the check will always fail, failing tun init
+         */
+        if (rl && tt->did_ifconfig_setup)
         {
             struct route_ipv4 *r;
             for (r = rl->routes, len = 0; r; r = r->next, ++len)
@@ -2686,12 +2638,11 @@ get_default_gateway_row(const MIB_IPFORWARDTABLE *routes)
     struct gc_arena gc = gc_new();
     DWORD lowest_metric = MAXDWORD;
     const MIB_IPFORWARDROW *ret = NULL;
-    int i;
     int best = -1;
 
     if (routes)
     {
-        for (i = 0; i < routes->dwNumEntries; ++i)
+        for (DWORD i = 0; i < routes->dwNumEntries; ++i)
         {
             const MIB_IPFORWARDROW *row = &routes->table[i];
             const in_addr_t net = ntohl(row->dwForwardDest);
@@ -2699,7 +2650,7 @@ get_default_gateway_row(const MIB_IPFORWARDTABLE *routes)
             const DWORD index = row->dwForwardIfIndex;
             const DWORD metric = row->dwForwardMetric1;
 
-            dmsg(D_ROUTE_DEBUG, "GDGR: route[%d] %s/%s i=%d m=%d",
+            dmsg(D_ROUTE_DEBUG, "GDGR: route[%lu] %s/%s i=%d m=%d",
                  i,
                  print_in_addr_t((in_addr_t) net, 0, &gc),
                  print_in_addr_t((in_addr_t) mask, 0, &gc),
@@ -2722,7 +2673,7 @@ get_default_gateway_row(const MIB_IPFORWARDTABLE *routes)
 }
 
 void
-get_default_gateway(struct route_gateway_info *rgi)
+get_default_gateway(struct route_gateway_info *rgi, openvpn_net_ctx_t *ctx)
 {
     struct gc_arena gc = gc_new();
 
@@ -2809,7 +2760,7 @@ windows_route_find_if_index(const struct route_ipv4 *r, const struct tuntap *tt)
  */
 void
 get_default_gateway_ipv6(struct route_ipv6_gateway_info *rgi6,
-                         const struct in6_addr *dest)
+                         const struct in6_addr *dest, openvpn_net_ctx_t *ctx)
 {
     struct gc_arena gc = gc_new();
     MIB_IPFORWARD_ROW2 BestRoute;
@@ -2828,7 +2779,7 @@ get_default_gateway_ipv6(struct route_ipv6_gateway_info *rgi6,
         DestinationAddress.Ipv6.sin6_addr = *dest;
     }
 
-    status = GetBestInterfaceEx( &DestinationAddress, &BestIfIndex );
+    status = GetBestInterfaceEx( (struct sockaddr *)&DestinationAddress, &BestIfIndex );
 
     if (status != NO_ERROR)
     {
@@ -2877,11 +2828,12 @@ done:
     gc_free(&gc);
 }
 
-bool
+/* Returns RTA_SUCCESS on success, RTA_EEXIST if route exists, RTA_ERROR on error */
+static int
 add_route_ipapi(const struct route_ipv4 *r, const struct tuntap *tt, DWORD adapter_index)
 {
     struct gc_arena gc = gc_new();
-    bool ret = false;
+    int ret = RTA_ERROR;
     DWORD status;
     const DWORD if_index = (adapter_index == TUN_ADAPTER_INDEX_INVALID) ? windows_route_find_if_index(r, tt) : adapter_index;
 
@@ -2915,7 +2867,11 @@ add_route_ipapi(const struct route_ipv4 *r, const struct tuntap *tt, DWORD adapt
 
         if (status == NO_ERROR)
         {
-            ret = true;
+            ret = RTA_SUCCESS;
+        }
+        else if (status == ERROR_OBJECT_ALREADY_EXISTS)
+        {
+            ret = RTA_EEXIST;
         }
         else
         {
@@ -2934,7 +2890,7 @@ add_route_ipapi(const struct route_ipv4 *r, const struct tuntap *tt, DWORD adapt
                         msg(D_ROUTE, "ROUTE: CreateIpForwardEntry succeeded with dwForwardMetric1=%u and dwForwardType=%u",
                             (unsigned int)fr.dwForwardMetric1,
                             (unsigned int)fr.dwForwardType);
-                        ret = true;
+                        ret = RTA_SUCCESS;
                         goto doublebreak;
                     }
                     else if (status != ERROR_BAD_ARGUMENTS)
@@ -2947,10 +2903,16 @@ add_route_ipapi(const struct route_ipv4 *r, const struct tuntap *tt, DWORD adapt
 doublebreak:
             if (status != NO_ERROR)
             {
-                msg(M_WARN, "ROUTE: route addition failed using CreateIpForwardEntry: %s [status=%u if_index=%u]",
-                    strerror_win32(status, &gc),
-                    (unsigned int)status,
-                    (unsigned int)if_index);
+                if (status == ERROR_OBJECT_ALREADY_EXISTS)
+                {
+                    ret = RTA_EEXIST;
+                }
+                else
+                {
+                    msg(M_WARN, "ERROR: route addition failed using CreateIpForwardEntry: "
+                        "%s [status=%u if_index=%u]", strerror_win32(status, &gc),
+                        (unsigned int)status, (unsigned int)if_index);
+                }
             }
         }
     }
@@ -2959,7 +2921,7 @@ doublebreak:
     return ret;
 }
 
-bool
+static bool
 del_route_ipapi(const struct route_ipv4 *r, const struct tuntap *tt)
 {
     struct gc_arena gc = gc_new();
@@ -2986,7 +2948,7 @@ del_route_ipapi(const struct route_ipv4 *r, const struct tuntap *tt)
         }
         else
         {
-            msg(M_WARN, "ROUTE: route deletion failed using DeleteIpForwardEntry: %s",
+            msg(M_WARN, "ERROR: route deletion failed using DeleteIpForwardEntry: %s",
                 strerror_win32(status, &gc));
         }
     }
@@ -2995,44 +2957,46 @@ del_route_ipapi(const struct route_ipv4 *r, const struct tuntap *tt)
     return ret;
 }
 
-static bool
+/* Returns RTA_SUCCESS on success, RTA_EEXIST if route exists, RTA_ERROR on error */
+static int
 do_route_service(const bool add, const route_message_t *rt, const size_t size, HANDLE pipe)
 {
-    DWORD len;
-    bool ret = false;
+    int ret = RTA_ERROR;
     ack_message_t ack;
     struct gc_arena gc = gc_new();
 
-    if (!WriteFile(pipe, rt, size, &len, NULL)
-        || !ReadFile(pipe, &ack, sizeof(ack), &len, NULL))
+    if (!send_msg_iservice(pipe, rt, size, &ack, "ROUTE"))
     {
-        msg(M_WARN, "ROUTE: could not talk to service: %s [%lu]",
-            strerror_win32(GetLastError(), &gc), GetLastError());
         goto out;
     }
 
     if (ack.error_number != NO_ERROR)
     {
-        msg(M_WARN, "ROUTE: route %s failed using service: %s [status=%u if_index=%d]",
-            (add ? "addition" : "deletion"), strerror_win32(ack.error_number, &gc),
-            ack.error_number, rt->iface.index);
+        ret = (ack.error_number == ERROR_OBJECT_ALREADY_EXISTS) ? RTA_EEXIST : RTA_ERROR;
+        if (ret == RTA_ERROR)
+        {
+            msg(M_WARN, "ERROR: route %s failed using service: %s [status=%u if_index=%d]",
+                (add ? "addition" : "deletion"), strerror_win32(ack.error_number, &gc),
+                ack.error_number, rt->iface.index);
+        }
         goto out;
     }
 
-    ret = true;
+    ret = RTA_SUCCESS;
 
 out:
     gc_free(&gc);
     return ret;
 }
 
-static bool
+/* Returns RTA_SUCCESS on success, RTA_EEXIST if route exists, RTA_ERROR on error */
+static int
 do_route_ipv4_service(const bool add, const struct route_ipv4 *r, const struct tuntap *tt)
 {
     DWORD if_index = windows_route_find_if_index(r, tt);
     if (if_index == ~0)
     {
-        return false;
+        return RTA_ERROR;
     }
 
     route_message_t msg = {
@@ -3057,10 +3021,90 @@ do_route_ipv4_service(const bool add, const struct route_ipv4 *r, const struct t
     return do_route_service(add, &msg, sizeof(msg), tt->options.msg_channel);
 }
 
-static bool
+/* Add or delete an ipv6 route
+ * Returns RTA_SUCCESS on success, RTA_EEXIST if route exists, RTA_ERROR on error
+ */
+static int
+route_ipv6_ipapi(const bool add, const struct route_ipv6 *r, const struct tuntap *tt)
+{
+    DWORD err;
+    int ret = RTA_ERROR;
+    PMIB_IPFORWARD_ROW2 fwd_row;
+    struct gc_arena gc = gc_new();
+
+    fwd_row = gc_malloc(sizeof(*fwd_row), true, &gc);
+
+    fwd_row->ValidLifetime = 0xffffffff;
+    fwd_row->PreferredLifetime = 0xffffffff;
+    fwd_row->Protocol = MIB_IPPROTO_NETMGMT;
+    fwd_row->Metric = ((r->flags & RT_METRIC_DEFINED) ? r->metric : -1);
+    fwd_row->DestinationPrefix.Prefix.si_family = AF_INET6;
+    fwd_row->DestinationPrefix.Prefix.Ipv6.sin6_addr = r->network;
+    fwd_row->DestinationPrefix.PrefixLength = (UINT8) r->netbits;
+    fwd_row->NextHop.si_family = AF_INET6;
+    fwd_row->NextHop.Ipv6.sin6_addr = r->gateway;
+    fwd_row->InterfaceIndex = r->adapter_index ? r->adapter_index : tt->adapter_index;
+
+    /* In TUN mode we use a special link-local address as the next hop.
+     * The tapdrvr knows about it and will answer neighbor discovery packets.
+     * (only do this for routes actually using the tun/tap device)
+     */
+    if (tt->type == DEV_TYPE_TUN && !r->adapter_index)
+    {
+        inet_pton(AF_INET6, "fe80::8", &fwd_row->NextHop.Ipv6.sin6_addr);
+    }
+
+    /* Use LUID if interface index not available */
+    if (fwd_row->InterfaceIndex == TUN_ADAPTER_INDEX_INVALID && strlen(tt->actual_name))
+    {
+        NET_LUID luid;
+        err = ConvertInterfaceAliasToLuid(wide_string(tt->actual_name, &gc), &luid);
+        if (err != NO_ERROR)
+        {
+            goto out;
+        }
+        fwd_row->InterfaceLuid = luid;
+        fwd_row->InterfaceIndex = 0;
+    }
+
+    if (add)
+    {
+        err = CreateIpForwardEntry2(fwd_row);
+    }
+    else
+    {
+        err = DeleteIpForwardEntry2(fwd_row);
+    }
+
+out:
+    if (err != NO_ERROR)
+    {
+        ret = (err == ERROR_OBJECT_ALREADY_EXISTS) ? RTA_EEXIST : RTA_ERROR;
+        if (ret == RTA_ERROR)
+        {
+            msg(M_WARN, "ERROR: route %s failed using ipapi: %s [status=%lu if_index=%lu]",
+                (add ? "addition" : "deletion"), strerror_win32(err, &gc), err,
+                fwd_row->InterfaceIndex);
+        }
+        else if (add)
+        {
+            msg(D_ROUTE, "IPv6 route addition using ipapi failed because route exists");
+        }
+    }
+    else
+    {
+        msg(D_ROUTE, "IPv6 route %s using ipapi", add ? "added" : "deleted");
+        ret = RTA_SUCCESS;
+    }
+    gc_free(&gc);
+    return ret;
+}
+
+/* Returns RTA_SUCCESS on success, RTA_EEXIST if route exists, RTA_ERROR on error */
+static int
 do_route_ipv6_service(const bool add, const struct route_ipv6 *r, const struct tuntap *tt)
 {
-    bool status;
+    int status;
     route_message_t msg = {
         .header = {
             (add ? msg_add_route : msg_del_route),
@@ -3085,7 +3129,7 @@ do_route_ipv6_service(const bool add, const struct route_ipv6 *r, const struct t
      * (only do this for routes actually using the tun/tap device)
      */
     if (tt->type == DEV_TYPE_TUN
-	 && msg.iface.index == tt->adapter_index )
+        && msg.iface.index == tt->adapter_index)
     {
         inet_pton(AF_INET6, "fe80::8", &msg.gateway.ipv6);
     }
@@ -3097,13 +3141,17 @@ do_route_ipv6_service(const bool add, const struct route_ipv6 *r, const struct t
     }
 
     status = do_route_service(add, &msg, sizeof(msg), tt->options.msg_channel);
-    msg(D_ROUTE, "IPv6 route %s via service %s",
-        add ? "addition" : "deletion",
-        status ? "succeeded" : "failed");
+    if (status != RTA_ERROR)
+    {
+        msg(D_ROUTE, "IPv6 route %s via service %s",
+            add ? "addition" : "deletion",
+            (status == RTA_SUCCESS) ? "succeeded" : "failed because route exists");
+    }
     return status;
 }
 
-static bool
+/* Returns RTA_SUCCESS on success, RTA_EEXIST if route exists, RTA_ERROR on error */
+static int
 add_route_service(const struct route_ipv4 *r, const struct tuntap *tt)
 {
     return do_route_ipv4_service(true, r, tt);
@@ -3115,7 +3163,8 @@ del_route_service(const struct route_ipv4 *r, const struct tuntap *tt)
     return do_route_ipv4_service(false, r, tt);
 }
 
-static bool
+/* Returns RTA_SUCCESS on success, RTA_EEXIST if route exists, RTA_ERROR on error */
+static int
 add_route_ipv6_service(const struct route_ipv6 *r, const struct tuntap *tt)
 {
     return do_route_ipv6_service(true, r, tt);
@@ -3156,14 +3205,13 @@ void
 show_routes(int msglev)
 {
     struct gc_arena gc = gc_new();
-    int i;
 
     const MIB_IPFORWARDTABLE *rt = get_windows_routing_table(&gc);
 
     msg(msglev, "SYSTEM ROUTING TABLE");
     if (rt)
     {
-        for (i = 0; i < rt->dwNumEntries; ++i)
+        for (DWORD i = 0; i < rt->dwNumEntries; ++i)
         {
             msg(msglev, "%s", format_route_entry(&rt->table[i], &gc));
         }
@@ -3171,78 +3219,11 @@ show_routes(int msglev)
     gc_free(&gc);
 }
 
-#elif defined(TARGET_LINUX) || defined(TARGET_ANDROID)
+#elif defined(TARGET_ANDROID)
 
 void
-get_default_gateway(struct route_gateway_info *rgi)
+get_default_gateway(struct route_gateway_info *rgi, openvpn_net_ctx_t *ctx)
 {
-    struct gc_arena gc = gc_new();
-    int sd = -1;
-    char best_name[16];
-    best_name[0] = 0;
-
-    CLEAR(*rgi);
-
-#ifndef TARGET_ANDROID
-    /* get default gateway IP addr */
-    {
-        FILE *fp = fopen("/proc/net/route", "r");
-        if (fp)
-        {
-            char line[256];
-            int count = 0;
-            unsigned int lowest_metric = UINT_MAX;
-            in_addr_t best_gw = 0;
-            bool found = false;
-            while (fgets(line, sizeof(line), fp) != NULL)
-            {
-                if (count)
-                {
-                    unsigned int net_x = 0;
-                    unsigned int mask_x = 0;
-                    unsigned int gw_x = 0;
-                    unsigned int metric = 0;
-                    unsigned int flags = 0;
-                    char name[16];
-                    name[0] = 0;
-                    const int np = sscanf(line, "%15s\t%x\t%x\t%x\t%*s\t%*s\t%d\t%x",
-                                          name,
-                                          &net_x,
-                                          &gw_x,
-                                          &flags,
-                                          &metric,
-                                          &mask_x);
-                    if (np == 6 && (flags & IFF_UP))
-                    {
-                        const in_addr_t net = ntohl(net_x);
-                        const in_addr_t mask = ntohl(mask_x);
-                        const in_addr_t gw = ntohl(gw_x);
-
-                        if (!net && !mask && metric < lowest_metric)
-                        {
-                            found = true;
-                            best_gw = gw;
-                            strcpy(best_name, name);
-                            lowest_metric = metric;
-                        }
-                    }
-                }
-                ++count;
-            }
-            fclose(fp);
-
-            if (found)
-            {
-                rgi->gateway.addr = best_gw;
-                rgi->flags |= RGI_ADDR_DEFINED;
-                if (!rgi->gateway.addr && best_name[0])
-                {
-                    rgi->flags |= RGI_ON_LINK;
-                }
-            }
-        }
-    }
-#else  /* ifndef TARGET_ANDROID */
     /* Android, set some pseudo GW, addr is in host byte order,
      * Determining the default GW on Android 5.0+ is non trivial
      * and serves almost no purpose since OpenVPN only uses the
@@ -3251,10 +3232,55 @@ get_default_gateway(struct route_gateway_info *rgi)
      * (127.'d'.'g'.'w') for the default GW make detecting
      * these routes easier from the controlling app.
      */
+    CLEAR(*rgi);
+
     rgi->gateway.addr = 127 << 24 | 'd' << 16 | 'g' << 8 | 'w';
-    rgi->flags |= RGI_ADDR_DEFINED;
-    strcpy(best_name, "android-gw");
-#endif /* ifndef TARGET_ANDROID */
+    rgi->flags = RGI_ADDR_DEFINED | RGI_IFACE_DEFINED;
+    strcpy(rgi->iface, "android-gw");
+
+    /* Skip scanning/fetching interface from loopback interface we do
+     * normally on Linux.
+     * It always fails and "ioctl(SIOCGIFCONF) failed" confuses users
+     */
+
+}
+
+void
+get_default_gateway_ipv6(struct route_ipv6_gateway_info *rgi6,
+                         const struct in6_addr *dest, openvpn_net_ctx_t *ctx)
+{
+    /* Same for ipv6 */
+
+    CLEAR(*rgi6);
+
+    /* Use a fake link-local address */
+    ASSERT(inet_pton(AF_INET6, "fe80::ad", &rgi6->addrs->addr_ipv6) == 1);
+    rgi6->addrs->netbits_ipv6 = 64;
+    rgi6->flags = RGI_ADDR_DEFINED | RGI_IFACE_DEFINED;
+    strcpy(rgi6->iface, "android-gw");
+}
+
+#elif defined(TARGET_LINUX)
+
+void
+get_default_gateway(struct route_gateway_info *rgi, openvpn_net_ctx_t *ctx)
+{
+    struct gc_arena gc = gc_new();
+    int sd = -1;
+    char best_name[IFNAMSIZ];
+
+    CLEAR(*rgi);
+    CLEAR(best_name);
+
+    /* get default gateway IP addr */
+    if (net_route_v4_best_gw(ctx, NULL, &rgi->gateway.addr, best_name) == 0)
+    {
+        rgi->flags |= RGI_ADDR_DEFINED;
+        if (!rgi->gateway.addr && best_name[0])
+        {
+            rgi->flags |= RGI_ON_LINK;
+        }
+    }
 
     /* scan adapter list */
     if (rgi->flags & RGI_ADDR_DEFINED)
@@ -3303,7 +3329,7 @@ get_default_gateway(struct route_gateway_info *rgi)
                 if (rgi->flags & RGI_ON_LINK)
                 {
                     /* check that interface name of current interface
-                     * matches interface name of best default route */
+                    * matches interface name of best default route */
                     if (strcmp(ifreq.ifr_name, best_name))
                     {
                         continue;
@@ -3380,164 +3406,35 @@ struct rtreq {
 
 void
 get_default_gateway_ipv6(struct route_ipv6_gateway_info *rgi6,
-                         const struct in6_addr *dest)
+                         const struct in6_addr *dest, openvpn_net_ctx_t *ctx)
 {
-    int nls = -1;
-    struct rtreq rtreq;
-    struct rtattr *rta;
-
-    char rtbuf[2000];
-    ssize_t ssize;
+    int flags;
 
     CLEAR(*rgi6);
 
-    nls = socket( PF_NETLINK, SOCK_RAW, NETLINK_ROUTE );
-    if (nls < 0)
+    if (net_route_v6_best_gw(ctx, dest, &rgi6->gateway.addr_ipv6,
+                             rgi6->iface) == 0)
     {
-        msg(M_WARN|M_ERRNO, "GDG6: socket() failed" ); goto done;
-    }
-
-    /* bind() is not needed, no unsolicited msgs coming in */
-
-    /* request best matching route, see netlink(7) for explanations
-     */
-    CLEAR(rtreq);
-    rtreq.nh.nlmsg_type = RTM_GETROUTE;
-    rtreq.nh.nlmsg_flags = NLM_F_REQUEST;       /* best match only */
-    rtreq.rtm.rtm_family = AF_INET6;
-    rtreq.rtm.rtm_src_len = 0;                  /* not source dependent */
-    rtreq.rtm.rtm_dst_len = 128;                /* exact dst */
-    rtreq.rtm.rtm_table = RT_TABLE_MAIN;
-    rtreq.rtm.rtm_protocol = RTPROT_UNSPEC;
-    rtreq.nh.nlmsg_len = NLMSG_SPACE(sizeof(rtreq.rtm));
-
-    /* set RTA_DST for target IPv6 address we want */
-    rta = (struct rtattr *)(((char *) &rtreq)+NLMSG_ALIGN(rtreq.nh.nlmsg_len));
-    rta->rta_type = RTA_DST;
-    rta->rta_len = RTA_LENGTH(16);
-    rtreq.nh.nlmsg_len = NLMSG_ALIGN(rtreq.nh.nlmsg_len)
-                         +RTA_LENGTH(16);
-
-    if (dest == NULL)                   /* ::, unspecified */
-    {
-        memset( RTA_DATA(rta), 0, 16 ); /* :: = all-zero */
-    }
-    else
-    {
-        memcpy( RTA_DATA(rta), (void *)dest, 16 );
-    }
-
-    /* send and receive reply */
-    if (send( nls, &rtreq, rtreq.nh.nlmsg_len, 0 ) < 0)
-    {
-        msg(M_WARN|M_ERRNO, "GDG6: send() failed" ); goto done;
-    }
-
-    ssize = recv(nls, rtbuf, sizeof(rtbuf), MSG_TRUNC);
-
-    if (ssize < 0)
-    {
-        msg(M_WARN|M_ERRNO, "GDG6: recv() failed" ); goto done;
-    }
-
-    if (ssize > sizeof(rtbuf))
-    {
-        msg(M_WARN, "get_default_gateway_ipv6: returned message too big for buffer (%d>%d)", (int)ssize, (int)sizeof(rtbuf) );
-        goto done;
-    }
-
-    struct nlmsghdr *nh;
-
-    for (nh = (struct nlmsghdr *)rtbuf;
-         NLMSG_OK(nh, ssize);
-         nh = NLMSG_NEXT(nh, ssize))
-    {
-        struct rtmsg *rtm;
-        int attrlen;
-
-        if (nh->nlmsg_type == NLMSG_DONE)
+        if (!IN6_IS_ADDR_UNSPECIFIED(&rgi6->gateway.addr_ipv6))
         {
-            break;
+            rgi6->flags |= RGI_ADDR_DEFINED;
         }
 
-        if (nh->nlmsg_type == NLMSG_ERROR)
+        if (strlen(rgi6->iface) > 0)
         {
-            struct nlmsgerr *ne = (struct nlmsgerr *)NLMSG_DATA(nh);
-
-            /* since linux-4.11 -ENETUNREACH is returned when no route can be
-             * found. Don't print any error message in this case */
-            if (ne->error != -ENETUNREACH)
-            {
-                msg(M_WARN, "GDG6: NLMSG_ERROR: error %s\n",
-                    strerror(-ne->error));
-            }
-            break;
-        }
-
-        if (nh->nlmsg_type != RTM_NEWROUTE)
-        {
-            /* shouldn't happen */
-            msg(M_WARN, "GDG6: unexpected msg_type %d", nh->nlmsg_type );
-            continue;
-        }
-
-        rtm = (struct rtmsg *)NLMSG_DATA(nh);
-        attrlen = RTM_PAYLOAD(nh);
-
-        /* we're only looking for routes in the main table, as "we have
-         * no IPv6" will lead to a lookup result in "Local" (::/0 reject)
-         */
-        if (rtm->rtm_family != AF_INET6
-            || rtm->rtm_table != RT_TABLE_MAIN)
-        {
-            continue;
-        }                               /* we're not interested */
-
-        for (rta = RTM_RTA(rtm);
-             RTA_OK(rta, attrlen);
-             rta = RTA_NEXT(rta, attrlen))
-        {
-            if (rta->rta_type == RTA_GATEWAY)
-            {
-                if (RTA_PAYLOAD(rta) != sizeof(struct in6_addr) )
-                {
-                    msg(M_WARN, "GDG6: RTA_GW size mismatch"); continue;
-                }
-                rgi6->gateway.addr_ipv6 = *(struct in6_addr *) RTA_DATA(rta);
-                rgi6->flags |= RGI_ADDR_DEFINED;
-            }
-            else if (rta->rta_type == RTA_OIF)
-            {
-                char ifname[IF_NAMESIZE+1];
-                int oif;
-                if (RTA_PAYLOAD(rta) != sizeof(oif) )
-                {
-                    msg(M_WARN, "GDG6: oif size mismatch"); continue;
-                }
-
-                memcpy(&oif, RTA_DATA(rta), sizeof(oif));
-                if_indextoname(oif,ifname);
-                strncpy( rgi6->iface, ifname, sizeof(rgi6->iface)-1 );
-                rgi6->flags |= RGI_IFACE_DEFINED;
-            }
+            rgi6->flags |= RGI_IFACE_DEFINED;
         }
     }
 
     /* if we have an interface but no gateway, the destination is on-link */
-    if ( ( rgi6->flags & (RGI_IFACE_DEFINED|RGI_ADDR_DEFINED) ) ==
-         RGI_IFACE_DEFINED)
+    flags = rgi6->flags & (RGI_IFACE_DEFINED | RGI_ADDR_DEFINED);
+    if (flags == RGI_IFACE_DEFINED)
     {
         rgi6->flags |= (RGI_ADDR_DEFINED | RGI_ON_LINK);
         if (dest)
         {
             rgi6->gateway.addr_ipv6 = *dest;
         }
-    }
-
-done:
-    if (nls >= 0)
-    {
-        close(nls);
     }
 }
 
@@ -3598,10 +3495,10 @@ struct rtmsg {
 #define ADVANCE(x, n) (x += ROUNDUP((n)->sa_len))
 #endif
 
-#define max(a,b) ((a) > (b) ? (a) : (b))
+#define max(a, b) ((a) > (b) ? (a) : (b))
 
 void
-get_default_gateway(struct route_gateway_info *rgi)
+get_default_gateway(struct route_gateway_info *rgi, openvpn_net_ctx_t *ctx)
 {
     struct gc_arena gc = gc_new();
     struct rtmsg m_rtmsg;
@@ -3821,7 +3718,7 @@ done:
 
 void
 get_default_gateway_ipv6(struct route_ipv6_gateway_info *rgi6,
-                         const struct in6_addr *dest)
+                         const struct in6_addr *dest, openvpn_net_ctx_t *ctx)
 {
 
     struct rtmsg m_rtmsg;
@@ -4001,13 +3898,13 @@ done:
  * may be disabled by missing items.
  */
 void
-get_default_gateway(struct route_gateway_info *rgi)
+get_default_gateway(struct route_gateway_info *rgi, openvpn_net_ctx_t *ctx)
 {
     CLEAR(*rgi);
 }
 void
 get_default_gateway_ipv6(struct route_ipv6_gateway_info *rgi6,
-                         const struct in6_addr *dest)
+                         const struct in6_addr *dest, openvpn_net_ctx_t *ctx)
 {
     msg(D_ROUTE, "no support for get_default_gateway_ipv6() on this system");
     CLEAR(*rgi6);
@@ -4163,8 +4060,7 @@ test_local_addr(const in_addr_t addr, const struct route_gateway_info *rgi)
     const MIB_IPFORWARDTABLE *rt = get_windows_routing_table(&gc);
     if (rt)
     {
-        int i;
-        for (i = 0; i < rt->dwNumEntries; ++i)
+        for (DWORD i = 0; i < rt->dwNumEntries; ++i)
         {
             const MIB_IPFORWARDROW *row = &rt->table[i];
             const in_addr_t net = ntohl(row->dwForwardDest);

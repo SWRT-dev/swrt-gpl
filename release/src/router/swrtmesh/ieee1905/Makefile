@@ -13,7 +13,7 @@ TARGET_CFLAGS += -DIEEE1905_CMDU_FRAGMENT_TLV_BOUNDARY -DWIFI_EASYMESH -DDYNAMIC
 ifeq ($(RTCONFIG_SWRTMESH),y)
 TARGET_CFLAGS += -DRTCONFIG_SWRTMESH
 endif
-ifeq ($(or $(RTCONFIG_RALINK_EN7561),$(RTCONFIG_RALINK_EN7562),$(RTCONFIG_RALINK_MT7621)),y)
+ifeq ($(or $(RTCONFIG_RALINK_EN7561),$(RTCONFIG_RALINK_MT7621),$(RTCONFIG_SOC_IPQ40XX),$(RTCONFIG_LANTIQ)),y)
 TARGET_CFLAGS += -DEASYMESH_VERSION=2
 else
 TARGET_CFLAGS += -DEASYMESH_VERSION=4
@@ -60,7 +60,7 @@ endif
 stage:
 	[ -d $(STAGEDIR)/usr/lib/ieee1905 ] || install -d $(STAGEDIR)/usr/lib/ieee1905
 ifneq ($(wildcard source/src/Makefile),)
-	install -m 644 $(PKG_BUILD_DIR)/{cmdu,cmdu_ackq,1905_tlvs,i1905_wsc,bufutil,timer_impl,i1905_extension}.h $(STAGEDIR)/usr/include
+	install -m 644 $(PKG_BUILD_DIR)/{cmdu,cmdu_ackq,1905_tlvs,i1905_wsc,timer_impl,i1905_extension}.h $(STAGEDIR)/usr/include
 	install -m 644 $(PKG_BUILD_DIR)/extensions/map/{easymesh,map_module,cntlrsync}.h $(STAGEDIR)/usr/include
 	install -m 755 $(PKG_BUILD_DIR)/libieee1905.so $(STAGEDIR)/usr/lib/
 	install -m 755 $(PKG_BUILD_DIR)/libmidgen.so $(STAGEDIR)/usr/lib/

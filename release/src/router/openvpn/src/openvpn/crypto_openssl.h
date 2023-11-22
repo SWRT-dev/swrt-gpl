@@ -5,8 +5,8 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
- *  Copyright (C) 2010-2018 Fox Crypto B.V. <openvpn@fox-it.com>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2010-2021 Fox Crypto B.V. <openvpn@foxcrypto.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -33,12 +33,9 @@
 #include <openssl/hmac.h>
 #include <openssl/md5.h>
 #include <openssl/sha.h>
-
-/** Generic cipher key type %context. */
-typedef EVP_CIPHER cipher_kt_t;
-
-/** Generic message digest key type %context. */
-typedef EVP_MD md_kt_t;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#include <openssl/provider.h>
+#endif
 
 /** Generic cipher %context. */
 typedef EVP_CIPHER_CTX cipher_ctx_t;
@@ -47,7 +44,31 @@ typedef EVP_CIPHER_CTX cipher_ctx_t;
 typedef EVP_MD_CTX md_ctx_t;
 
 /** Generic HMAC %context. */
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 typedef HMAC_CTX hmac_ctx_t;
+
+/* Use a dummy type for the provider */
+typedef void provider_t;
+#else
+typedef struct {
+    OSSL_PARAM params[3];
+    uint8_t key[EVP_MAX_KEY_LENGTH];
+    EVP_MAC_CTX *ctx;
+} hmac_ctx_t;
+
+typedef OSSL_PROVIDER provider_t;
+#endif
+
+/* In OpenSSL 3.0 the method that returns EVP_CIPHER, the cipher needs to be
+ * freed afterwards, thus needing a non-const type. In constrast OpenSSL 1.1.1
+ * and lower returns a const type, needing a const type */
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+typedef const EVP_CIPHER evp_cipher_type;
+typedef const EVP_MD evp_md_type;
+#else
+typedef EVP_CIPHER evp_cipher_type;
+typedef EVP_MD evp_md_type;
+#endif
 
 /** Maximum length of an IV */
 #define OPENVPN_MAX_IV_LENGTH   EVP_MAX_IV_LENGTH
@@ -61,12 +82,8 @@ typedef HMAC_CTX hmac_ctx_t;
 /** Cipher is in CFB mode */
 #define OPENVPN_MODE_CFB        EVP_CIPH_CFB_MODE
 
-#ifdef HAVE_AEAD_CIPHER_MODES
-
 /** Cipher is in GCM mode */
 #define OPENVPN_MODE_GCM        EVP_CIPH_GCM_MODE
-
-#endif /* HAVE_AEAD_CIPHER_MODES */
 
 /** Cipher should encrypt */
 #define OPENVPN_OP_ENCRYPT      1
@@ -100,6 +117,5 @@ void crypto_print_openssl_errors(const unsigned int flags);
         crypto_print_openssl_errors(nonfatal(flags)); \
         msg((flags), __VA_ARGS__); \
     } while (false)
-
 
 #endif /* CRYPTO_OPENSSL_H_ */

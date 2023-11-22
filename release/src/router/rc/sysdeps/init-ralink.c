@@ -1446,6 +1446,15 @@ void init_syspara(void)
 		ether_etoa(buffer, macaddr2);
 	}
 #endif
+#if  defined(RTCONFIG_SWRTMESH)
+	/* Hack et0macaddr/et1macaddr after MAC address checking of wl_mssid. */
+	ether_atoe(macaddr, buffer);
+	buffer[5] += 1;
+	ether_etoa(buffer, macaddr);
+	ether_atoe(macaddr2, buffer);
+	buffer[5] += 1;
+	ether_etoa(buffer, macaddr2);
+#endif
 #if defined(RTAC1200) || defined(RTAC1200V2) || defined(RTAC53) || defined(RTACRH18) || defined(RT4GAC86U) || defined(RTAX53U) || defined(RT4GAX56) || defined(RTAX54) ||defined(XD4S)
 	nvram_set("et0macaddr", macaddr2);
 	nvram_set("et1macaddr", macaddr);
@@ -1461,7 +1470,7 @@ void init_syspara(void)
 	nvram_set("bh1macaddr", macaddrbh2);
 #endif
 
-#if !defined(RTCONFIG_MT798X)
+#if 0 //!defined(RTCONFIG_MT798X)
 	if (FRead(dst, OFFSET_MAC_GMAC0, bytes)<0)
 		dbg("READ MAC address GMAC0: Out of scope\n");
 	else

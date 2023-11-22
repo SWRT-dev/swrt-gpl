@@ -12,7 +12,7 @@ CFLAGS += -I$(SRCBASE)/shared/bcmwifi/include -DTYPEDEF_FLOAT_T
 endif
 LDFLAGS += $(EXTRALDFLAGS) -L$(TOP_PLATFORM)/nvram${BCMEX}${EX7} -lnvram -L$(TOP)/shared -lshared
 LDFLAGS += -lcrypt
-LDFLAGS += -L$(TOP)/openssl -lcrypto -lssl
+LDFLAGS += -L$(TOP)/openssl -lcrypto -lssl $(if $(or $(RTCONFIG_OPENSSL11),$(RTCONFIG_OPENSSL3)),-lpthread,)
 
 INSTALL = install
 

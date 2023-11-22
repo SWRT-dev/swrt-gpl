@@ -11,7 +11,7 @@ CFLAGS += -I$(TOP)/openssl/include
 LDFLAGS += $(EXTRALDFLAGS) -L$(TOP)/shared -lshared
 LDFLAGS += -L$(TOP_PLATFORM)/nvram$(BCMEX)${EX7} ${EXTRA_NV_LDFLAGS} -lnvram
 LDFLAGS += -lcrypt
-LDFLAGS += -L$(TOP)/openssl -lcrypto -lssl $(if $(RTCONFIG_OPENSSL11),-lpthread,)
+LDFLAGS += -L$(TOP)/openssl -lcrypto -lssl $(if $(or $(RTCONFIG_OPENSSL11),$(RTCONFIG_OPENSSL3)),-lpthread -latomic,)
 
 
 INSTALL = install

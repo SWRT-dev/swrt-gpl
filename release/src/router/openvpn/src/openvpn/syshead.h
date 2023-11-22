@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -29,8 +29,8 @@
 
 /* branch prediction hints */
 #if defined(__GNUC__)
-#define likely(x)       __builtin_expect((x),1)
-#define unlikely(x)     __builtin_expect((x),0)
+#define likely(x)       __builtin_expect((x), 1)
+#define unlikely(x)     __builtin_expect((x), 0)
 #else
 #define likely(x)      (x)
 #define unlikely(x)    (x)
@@ -39,6 +39,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <winsock2.h>
+#include <tlhelp32.h>
 #define sleep(x) Sleep((x)*1000)
 #define random rand
 #define srandom srand
@@ -76,9 +77,7 @@
 #include <sys/time.h>
 #endif
 
-#ifdef HAVE_TIME_H
 #include <time.h>
-#endif
 
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
@@ -100,54 +99,23 @@
 #include <fcntl.h>
 #endif
 
-#ifdef HAVE_DIRECT_H
-#include <direct.h>
-#endif
-
-#ifdef HAVE_IO_H
-#include <io.h>
-#endif
-
 #ifdef HAVE_SYS_FILE_H
 #include <sys/file.h>
 #endif
 
-#ifdef HAVE_STDLIB_H
+/* These headers belong to C99 and should be always be present */
 #include <stdlib.h>
-#endif
-
-#ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
-#elif defined(HAVE_STDINT_H)
 #include <stdint.h>
-#endif
-
-#ifdef HAVE_STDARG_H
 #include <stdarg.h>
-#endif
+#include <signal.h>
+#include <limits.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <errno.h>
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
-#endif
-
-#ifdef HAVE_SIGNAL_H
-#include <signal.h>
-#endif
-
-#ifdef HAVE_LIMITS_H
-#include <limits.h>
-#endif
-
-#ifdef HAVE_STDIO_H
-#include <stdio.h>
-#endif
-
-#ifdef HAVE_CTYPE_H
-#include <ctype.h>
-#endif
-
-#ifdef HAVE_ERRNO_H
-#include <errno.h>
 #endif
 
 #ifdef HAVE_ERR_H
@@ -178,16 +146,8 @@
 #include <resolv.h>
 #endif
 
-#ifdef HAVE_SYS_POLL_H
-#if defined(__GLIBC__) || defined(__UCLIBC__) /* not musl */
-#include <sys/poll.h>
-#else
+#ifdef HAVE_POLL_H
 #include <poll.h>
-#endif
-#endif
-
-#ifdef HAVE_SYS_EPOLL_H
-#include <sys/epoll.h>
 #endif
 
 #ifdef ENABLE_SELINUX
@@ -203,9 +163,7 @@
 #include <strings.h>
 #endif
 #else
-#ifdef HAVE_STRING_H
 #include <string.h>
-#endif
 #endif
 
 #ifdef HAVE_ARPA_INET_H
@@ -367,14 +325,16 @@
 
 #ifdef _WIN32
 /* Missing declarations for MinGW 32. */
-/* #if !defined(__MINGW64_VERSION_MAJOR) || __MINGW64_VERSION_MAJOR < 2 */
+#if defined(__MINGW32__)
 typedef int MIB_TCP_STATE;
-/* #endif */
+#endif
 #include <naptypes.h>
 #include <ntddndis.h>
 #include <iphlpapi.h>
 #include <wininet.h>
 #include <shellapi.h>
+#include <io.h>
+
 /* The following two headers are needed of PF_INET6 */
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -394,8 +354,6 @@ typedef int MIB_TCP_STATE;
 #ifdef PEDANTIC
 #undef HAVE_CPP_VARARG_MACRO_GCC
 #undef HAVE_CPP_VARARG_MACRO_ISO
-#undef EMPTY_ARRAY_SIZE
-#define EMPTY_ARRAY_SIZE 1
 #undef inline
 #define inline
 #endif
@@ -403,23 +361,16 @@ typedef int MIB_TCP_STATE;
 /*
  * Do we have the capability to support the --passtos option?
  */
-#if defined(IPPROTO_IP) && defined(IP_TOS) && defined(HAVE_SETSOCKOPT)
+#if defined(IPPROTO_IP) && defined(IP_TOS)
 #define PASSTOS_CAPABILITY 1
 #else
 #define PASSTOS_CAPABILITY 0
 #endif
 
 /*
- * Do we have nanoseconds gettimeofday?
- */
-#if defined(HAVE_GETTIMEOFDAY) || defined(_WIN32)
-#define HAVE_GETTIMEOFDAY_NANOSECONDS 1
-#endif
-
-/*
  * Do we have the capability to report extended socket errors?
  */
-#if defined(HAVE_LINUX_TYPES_H) && defined(HAVE_LINUX_ERRQUEUE_H) && defined(HAVE_SOCK_EXTENDED_ERR) && defined(HAVE_MSGHDR) && defined(HAVE_CMSGHDR) && defined(CMSG_FIRSTHDR) && defined(CMSG_NXTHDR) && defined(IP_RECVERR) && defined(MSG_ERRQUEUE) && defined(SOL_IP) && defined(HAVE_IOVEC)
+#if defined(HAVE_LINUX_TYPES_H) && defined(HAVE_LINUX_ERRQUEUE_H)
 #define EXTENDED_SOCKET_ERROR_CAPABILITY 1
 #else
 #define EXTENDED_SOCKET_ERROR_CAPABILITY 0
@@ -429,7 +380,7 @@ typedef int MIB_TCP_STATE;
  * Does this platform support linux-style IP_PKTINFO
  * or bsd-style IP_RECVDSTADDR ?
  */
-#if defined(ENABLE_MULTIHOME) && ((defined(HAVE_IN_PKTINFO) && defined(IP_PKTINFO)) || defined(IP_RECVDSTADDR)) && defined(HAVE_MSGHDR) && defined(HAVE_CMSGHDR) && defined(HAVE_IOVEC) && defined(CMSG_FIRSTHDR) && defined(CMSG_NXTHDR) && defined(HAVE_RECVMSG) && defined(HAVE_SENDMSG)
+#if ((defined(HAVE_IN_PKTINFO) && defined(IP_PKTINFO)) || defined(IP_RECVDSTADDR)) && defined(HAVE_MSGHDR) && defined(HAVE_CMSGHDR) && defined(CMSG_FIRSTHDR) && defined(CMSG_NXTHDR) && defined(HAVE_RECVMSG) && defined(HAVE_SENDMSG)
 #define ENABLE_IP_PKTINFO 1
 #else
 #define ENABLE_IP_PKTINFO 0
@@ -478,9 +429,11 @@ typedef unsigned short sa_family_t;
  * Directory separation char
  */
 #ifdef _WIN32
-#define OS_SPECIFIC_DIRSEP '\\'
+#define PATH_SEPARATOR '\\'
+#define PATH_SEPARATOR_STR "\\"
 #else
-#define OS_SPECIFIC_DIRSEP '/'
+#define PATH_SEPARATOR '/'
+#define PATH_SEPARATOR_STR "/"
 #endif
 
 /*
@@ -488,9 +441,11 @@ typedef unsigned short sa_family_t;
  */
 #ifdef _WIN32
 #define SOCKET_UNDEFINED (INVALID_SOCKET)
+#define SOCKET_PRINTF "%" PRIxPTR
 typedef SOCKET socket_descriptor_t;
 #else
 #define SOCKET_UNDEFINED (-1)
+#define SOCKET_PRINTF "%d"
 typedef int socket_descriptor_t;
 #endif
 
@@ -501,11 +456,6 @@ socket_defined(const socket_descriptor_t sd)
 }
 
 /*
- * Should statistics counters be 64 bits?
- */
-#define USE_64_BIT_COUNTERS
-
-/*
  * Should we enable the use of execve() for calling subprocesses,
  * instead of system()?
  */
@@ -514,75 +464,17 @@ socket_defined(const socket_descriptor_t sd)
 #endif
 
 /*
- * Do we have point-to-multipoint capability?
- */
-
-#if defined(ENABLE_CRYPTO) && defined(HAVE_GETTIMEOFDAY_NANOSECONDS)
-#define P2MP 1
-#else
-#define P2MP 0
-#endif
-
-#if P2MP && !defined(ENABLE_CLIENT_ONLY)
-#define P2MP_SERVER 1
-#else
-#define P2MP_SERVER 0
-#endif
-
-/*
  * HTTPS port sharing capability
  */
-#if defined(ENABLE_PORT_SHARE) && P2MP_SERVER && defined(SCM_RIGHTS) && defined(HAVE_MSGHDR) && defined(HAVE_CMSGHDR) && defined(HAVE_IOVEC) && defined(CMSG_FIRSTHDR) && defined(CMSG_NXTHDR) && defined(HAVE_RECVMSG) && defined(HAVE_SENDMSG)
+#if defined(ENABLE_PORT_SHARE) && defined(SCM_RIGHTS) && defined(HAVE_MSGHDR) && defined(HAVE_CMSGHDR) && defined(CMSG_FIRSTHDR) && defined(CMSG_NXTHDR) && defined(HAVE_RECVMSG) && defined(HAVE_SENDMSG)
 #define PORT_SHARE 1
 #else
 #define PORT_SHARE 0
 #endif
 
-/*
- * Enable deferred authentication?
- */
-#if defined(ENABLE_DEF_AUTH) && P2MP_SERVER && defined(ENABLE_PLUGIN)
-#define PLUGIN_DEF_AUTH
-#endif
-#if defined(ENABLE_DEF_AUTH) && P2MP_SERVER && defined(ENABLE_MANAGEMENT)
-#define MANAGEMENT_DEF_AUTH
-#endif
-#if !defined(PLUGIN_DEF_AUTH) && !defined(MANAGEMENT_DEF_AUTH)
-#undef ENABLE_DEF_AUTH
-#endif
-
-/*
- * Enable external private key
- */
-#if defined(ENABLE_MANAGEMENT) && defined(ENABLE_CRYPTO)
-#define MANAGMENT_EXTERNAL_KEY
-#endif
-
-/* Enable mbed TLS RNG prediction resistance support */
 #ifdef ENABLE_CRYPTO_MBEDTLS
 #define ENABLE_PREDICTION_RESISTANCE
 #endif /* ENABLE_CRYPTO_MBEDTLS */
-
-/*
- * MANAGEMENT_IN_EXTRA allows the management interface to
- * read multi-line inputs from clients.
- */
-#if defined(MANAGEMENT_DEF_AUTH) || defined(MANAGMENT_EXTERNAL_KEY)
-#define MANAGEMENT_IN_EXTRA
-#endif
-
-/*
- * Enable packet filter?
- */
-#if defined(ENABLE_PF) && P2MP_SERVER && defined(ENABLE_PLUGIN) && defined(HAVE_STAT)
-#define PLUGIN_PF
-#endif
-#if defined(ENABLE_PF) && P2MP_SERVER && defined(MANAGEMENT_DEF_AUTH)
-#define MANAGEMENT_PF
-#endif
-#if !defined(PLUGIN_PF) && !defined(MANAGEMENT_PF)
-#undef ENABLE_PF
-#endif
 
 /*
  * Do we support Unix domain sockets?
@@ -594,39 +486,29 @@ socket_defined(const socket_descriptor_t sd)
 #endif
 
 /*
- * Should we include OCC (options consistency check) code?
- */
-#define ENABLE_OCC
-
-/*
  * Should we include NTLM proxy functionality
  */
-#if defined(ENABLE_CRYPTO)
 #define NTLM 1
-#else
-#define NTLM 0
-#endif
 
 /*
  * Should we include proxy digest auth functionality
  */
-#if defined(ENABLE_CRYPTO)
 #define PROXY_DIGEST_AUTH 1
-#else
-#define PROXY_DIGEST_AUTH 0
-#endif
 
 /*
  * Do we have CryptoAPI capability?
  */
-#if defined(_WIN32) && defined(ENABLE_CRYPTO) && defined(ENABLE_CRYPTO_OPENSSL)
+#if defined(_WIN32) && defined(ENABLE_CRYPTO_OPENSSL)    \
+    && !defined(ENABLE_CRYPTO_WOLFSSL)
 #define ENABLE_CRYPTOAPI
 #endif
 
 /*
  * Is poll available on this platform?
+ * (Note: on win32 select is faster than poll and we avoid
+ * using poll there)
  */
-#if defined(HAVE_POLL) && defined(HAVE_SYS_POLL_H)
+#if defined(HAVE_POLL_H) || !defined(_WIN32)
 #define POLL 1
 #else
 #define POLL 0
@@ -639,57 +521,6 @@ socket_defined(const socket_descriptor_t sd)
 #define EPOLL 1
 #else
 #define EPOLL 0
-#endif
-
-/* Disable EPOLL */
-#if 0
-#undef EPOLL
-#define EPOLL 0
-#endif
-
-/*
- * Reduce sensitivity to system clock instability
- * and backtracks.
- */
-#if defined(HAVE_GETTIMEOFDAY_NANOSECONDS)
-#define TIME_BACKTRACK_PROTECTION 1
-#endif
-
-/*
- * Enable traffic shaper.
- */
-#if defined(HAVE_GETTIMEOFDAY_NANOSECONDS)
-#define ENABLE_FEATURE_SHAPER 1
-#endif
-
-/*
- * Is non-blocking connect() supported?
- */
-#if defined(HAVE_GETSOCKOPT) && defined(SOL_SOCKET) && defined(SO_ERROR) && defined(EINPROGRESS) && defined(ETIMEDOUT)
-#define CONNECT_NONBLOCK
-#endif
-
-/*
- * Do we have the capability to support the AUTO_USERID feature?
- */
-#if defined(ENABLE_AUTO_USERID)
-#define AUTO_USERID 1
-#else
-#define AUTO_USERID 0
-#endif
-
-/*
- * Do we support challenge/response authentication as client?
- */
-#if defined(ENABLE_MANAGEMENT)
-#define ENABLE_CLIENT_CR
-#endif
-
-/*
- * Do we support pushing peer info?
- */
-#if defined(ENABLE_CRYPTO)
-#define ENABLE_PUSH_PEER_INFO
 #endif
 
 /*

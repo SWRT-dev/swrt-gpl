@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2013-2018 Heiko Hund <heiko.hund@sophos.com>
+ *  Copyright (C) 2013-2023 Heiko Hund <heiko.hund@sophos.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -39,6 +39,10 @@ typedef enum {
     msg_del_block_dns,
     msg_register_dns,
     msg_enable_dhcp,
+    msg_register_ring_buffers,
+    msg_set_mtu,
+    msg_add_wins_cfg,
+    msg_del_wins_cfg
 } message_type_t;
 
 typedef struct {
@@ -87,6 +91,13 @@ typedef struct {
 typedef struct {
     message_header_t header;
     interface_t iface;
+    int addr_len;
+    inet_address_t addr[4]; /* support up to 4 dns addresses */
+} wins_cfg_message_t;
+
+typedef struct {
+    message_header_t header;
+    interface_t iface;
     int disable_nbt;
     int nbt_type;
     char scope_id[256];
@@ -116,5 +127,21 @@ typedef struct {
     message_header_t header;
     interface_t iface;
 } enable_dhcp_message_t;
+
+typedef struct {
+    message_header_t header;
+    HANDLE device;
+    HANDLE send_ring_handle;
+    HANDLE receive_ring_handle;
+    HANDLE send_tail_moved;
+    HANDLE receive_tail_moved;
+} register_ring_buffers_message_t;
+
+typedef struct {
+    message_header_t header;
+    interface_t iface;
+    short family;
+    int mtu;
+} set_mtu_message_t;
 
 #endif /* ifndef OPENVPN_MSG_H_ */

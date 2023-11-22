@@ -22,8 +22,6 @@
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
-#elif defined(_MSC_VER)
-#include "config-msvc.h"
 #endif
 
 #include "syshead.h"
@@ -67,28 +65,25 @@ create_des_keys(const unsigned char *hash, unsigned char *key)
     key[5] = ((hash[4] & 31) << 3) | (hash[5] >> 5);
     key[6] = ((hash[5] & 63) << 2) | (hash[6] >> 6);
     key[7] = ((hash[6] & 127) << 1);
-    key_des_fixup(key, 8, 1);
 }
 
 static void
 gen_md4_hash(const uint8_t *data, int data_len, uint8_t *result)
 {
     /* result is 16 byte md4 hash */
-    const md_kt_t *md4_kt = md_kt_get("MD4");
     uint8_t md[MD4_DIGEST_LENGTH];
 
-    md_full(md4_kt, data, data_len, md);
+    md_full("MD4", data, data_len, md);
     memcpy(result, md, MD4_DIGEST_LENGTH);
 }
 
 static void
-gen_hmac_md5(const uint8_t *data, int data_len, const uint8_t *key, int key_len,
+gen_hmac_md5(const uint8_t *data, int data_len, const uint8_t *key,
              uint8_t *result)
 {
-    const md_kt_t *md5_kt = md_kt_get("MD5");
     hmac_ctx_t *hmac_ctx = hmac_ctx_new();
 
-    hmac_ctx_init(hmac_ctx, key, key_len, md5_kt);
+    hmac_ctx_init(hmac_ctx, key, "MD5");
     hmac_ctx_update(hmac_ctx, data, data_len);
     hmac_ctx_final(hmac_ctx, result);
     hmac_ctx_cleanup(hmac_ctx);
@@ -143,6 +138,19 @@ my_strupr(char *str)
     }
 }
 
+/**
+ * This function expects a null-terminated string in src and will
+ * copy it (including the terminating NUL byte),
+ * alternating it with 0 to dst.
+ *
+ * This basically will transform a ASCII string into valid UTF-16.
+ * Characters that are 8bit in src, will get the same treatment, resulting in
+ * invalid or wrong unicode code points.
+ *
+ * @note the function will blindly assume that dst has double
+ * the space of src.
+ * @return  the length of the number of bytes written to dst
+ */
 static int
 unicodize(char *dst, const char *src)
 {
@@ -199,7 +207,6 @@ ntlm_phase_3(const struct http_proxy_info *p, const char *phase_2,
      */
 
     char pwbuf[sizeof(p->up.password) * 2]; /* for unicode password */
-    uint8_t buf2[128]; /* decoded reply from proxy */
     uint8_t phase3[464];
 
     uint8_t md4_hash[MD4_DIGEST_LENGTH + 5];
@@ -221,8 +228,6 @@ ntlm_phase_3(const struct http_proxy_info *p, const char *phase_2,
     char *separator;
 
     bool ntlmv2_enabled = (p->auth_method == HTTP_AUTH_NTLM2);
-
-    CLEAR(buf2);
 
     ASSERT(strlen(p->up.username) > 0);
     ASSERT(strlen(p->up.password) > 0);
@@ -256,6 +261,12 @@ ntlm_phase_3(const struct http_proxy_info *p, const char *phase_2,
     /* pad to 21 bytes */
     memset(md4_hash + MD4_DIGEST_LENGTH, 0, 5);
 
+    /* If the decoded challenge is shorter than required by the protocol,
+     * the missing bytes will be NULL, as buf2 is known to be zeroed
+     * when this decode happens.
+     */
+    uint8_t buf2[128]; /* decoded reply from proxy */
+    CLEAR(buf2);
     ret_val = openvpn_base64_decode(phase_2, buf2, -1);
     if (ret_val < 0)
     {
@@ -288,7 +299,7 @@ ntlm_phase_3(const struct http_proxy_info *p, const char *phase_2,
         }
         unicodize(userdomain_u, userdomain);
         gen_hmac_md5((uint8_t *)userdomain_u, 2 * strlen(userdomain), md4_hash,
-                     MD5_DIGEST_LENGTH, ntlmv2_hash);
+                     ntlmv2_hash);
 
         /* NTLMv2 Blob */
         memset(ntlmv2_blob, 0, 128);                        /* Clear blob buffer */
@@ -314,8 +325,8 @@ ntlm_phase_3(const struct http_proxy_info *p, const char *phase_2,
          * byte order on the wire for the NTLM header is LE.
          */
         const size_t hoff = 0x14;
-        unsigned long flags = buf2[hoff] | (buf2[hoff + 1] << 8) |
-                              (buf2[hoff + 2] << 16) | (buf2[hoff + 3] << 24);
+        unsigned long flags = buf2[hoff] | (buf2[hoff + 1] << 8)
+                              |(buf2[hoff + 2] << 16) | (buf2[hoff + 3] << 24);
         if ((flags & 0x00800000) == 0x00800000)
         {
             tib_len = buf2[0x28];            /* Get Target Information block size */
@@ -353,7 +364,7 @@ ntlm_phase_3(const struct http_proxy_info *p, const char *phase_2,
 
         /* hmac-md5 */
         gen_hmac_md5(&ntlmv2_response[8], ntlmv2_blob_size + 8, ntlmv2_hash,
-                     MD5_DIGEST_LENGTH, ntlmv2_hmacmd5);
+                     ntlmv2_hmacmd5);
 
         /* Add hmac-md5 result to the blob.
          * Note: This overwrites challenge previously written at
@@ -411,11 +422,5 @@ ntlm_phase_3(const struct http_proxy_info *p, const char *phase_2,
 
     return ((const char *)make_base64_string2((unsigned char *)phase3,
                                               phase3_bufpos, gc));
-}
-
-#else  /* if NTLM */
-static void
-dummy(void)
-{
 }
 #endif /* if NTLM */

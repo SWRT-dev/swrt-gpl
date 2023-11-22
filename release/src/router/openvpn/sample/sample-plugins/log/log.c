@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -161,11 +161,15 @@ show(const int type, const char *argv[], const char *envp[])
 
     printf("ARGV\n");
     for (i = 0; argv[i] != NULL; ++i)
+    {
         printf("%d '%s'\n", (int)i, argv[i]);
+    }
 
     printf("ENVP\n");
     for (i = 0; envp[i] != NULL; ++i)
+    {
         printf("%d '%s'\n", (int)i, envp[i]);
+    }
 }
 
 OPENVPN_EXPORT int

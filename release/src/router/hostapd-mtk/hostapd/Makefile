@@ -736,10 +736,10 @@ ifdef NEED_FIPS186_2_PRF
 OBJS += ../src/crypto/fips_prf_openssl.o
 endif
 NEED_TLS_PRF_SHA256=y
-LIBS += -lcrypto
-LIBS_h += -lcrypto
-LIBS_n += -lcrypto
-LIBS_s += -lcrypto
+LIBS += -lcrypto -latomic
+LIBS_h += -lcrypto -latomic
+LIBS_n += -lcrypto -latomic
+LIBS_s += -lcrypto -latomic
 ifdef CONFIG_TLS_ADD_DL
 LIBS += -ldl
 LIBS_h += -ldl

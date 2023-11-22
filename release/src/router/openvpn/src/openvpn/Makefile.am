@@ -5,7 +5,7 @@
 #             packet encryption, packet authentication, and
 #             packet compression.
 #
-#  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+#  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
 #  Copyright (C) 2006-2012 Alon Bar-Lev <alon.barlev@gmail.com>
 #
 
@@ -15,8 +15,7 @@ MAINTAINERCLEANFILES = \
 	$(srcdir)/Makefile.in
 
 EXTRA_DIST = \
-	openvpn.vcxproj \
-	openvpn.vcxproj.filters
+	openvpn.manifest
 
 AM_CPPFLAGS = \
 	-I$(top_srcdir)/include \
@@ -40,6 +39,7 @@ sbin_PROGRAMS = openvpn
 
 openvpn_SOURCES = \
 	argv.c argv.h \
+	auth_token.c auth_token.h \
 	base64.c base64.h \
 	basic.h \
 	buffer.c buffer.h \
@@ -51,12 +51,18 @@ openvpn_SOURCES = \
 	crypto.c crypto.h crypto_backend.h \
 	crypto_openssl.c crypto_openssl.h \
 	crypto_mbedtls.c crypto_mbedtls.h \
+	dco.c dco.h dco_internal.h \
+	dco_freebsd.c dco_freebsd.h \
+	dco_linux.c dco_linux.h \
+	dco_win.c dco_win.h \
 	dhcp.c dhcp.h \
+	dns.c dns.h \
+	env_set.c env_set.h \
 	errlevel.h \
 	error.c error.h \
 	event.c event.h \
 	fdmisc.c fdmisc.h \
-	forward.c forward.h forward-inline.h \
+	forward.c forward.h \
 	fragment.c fragment.h \
 	gremlin.c gremlin.h \
 	helper.c helper.h \
@@ -71,6 +77,9 @@ openvpn_SOURCES = \
 	mbuf.c mbuf.h \
 	memdbg.h \
 	misc.c misc.h \
+	ovpn_dco_freebsd.h \
+	ovpn_dco_linux.h \
+	ovpn_dco_win.h \
 	platform.c platform.h \
 	console.c console.h console_builtin.c console_systemd.c \
 	mroute.c mroute.h \
@@ -80,19 +89,23 @@ openvpn_SOURCES = \
 	mtu.c mtu.h \
 	mudp.c mudp.h \
 	multi.c multi.h \
+	networking_freebsd.c \
+	networking_iproute2.c networking_iproute2.h \
+	networking_sitnl.c networking_sitnl.h \
+	networking.h \
 	ntlm.c ntlm.h \
-	occ.c occ.h occ-inline.h \
+	occ.c occ.h \
 	openssl_compat.h \
 	pkcs11.c pkcs11.h pkcs11_backend.h \
 	pkcs11_openssl.c \
 	pkcs11_mbedtls.c \
 	openvpn.c openvpn.h \
 	options.c options.h \
+	options_util.c options_util.h \
 	otime.c otime.h \
 	packet_id.c packet_id.h \
 	perf.c perf.h \
-	pf.c pf.h pf-inline.h \
-	ping.c ping.h ping-inline.h \
+	ping.c ping.h \
 	plugin.c plugin.h \
 	pool.c pool.h \
 	proto.c proto.h \
@@ -100,8 +113,10 @@ openvpn_SOURCES = \
 	ps.c ps.h \
 	push.c push.h \
 	pushlist.h \
+	reflect_filter.c reflect_filter.h \
 	reliable.c reliable.h \
 	route.c route.h \
+	run_command.c run_command.h \
 	schedule.c schedule.h \
 	session_id.c session_id.h \
 	shaper.c shaper.h \
@@ -111,6 +126,9 @@ openvpn_SOURCES = \
 	ssl.c ssl.h  ssl_backend.h \
 	ssl_openssl.c ssl_openssl.h \
 	ssl_mbedtls.c ssl_mbedtls.h \
+	ssl_ncp.c ssl_ncp.h \
+	ssl_pkt.c ssl_pkt.h \
+	ssl_util.c ssl_util.h \
 	ssl_common.h \
 	ssl_verify.c ssl_verify.h ssl_verify_backend.h \
 	ssl_verify_openssl.c ssl_verify_openssl.h \
@@ -119,7 +137,11 @@ openvpn_SOURCES = \
 	syshead.h \
 	tls_crypt.c tls_crypt.h \
 	tun.c tun.h \
+	vlan.c vlan.h \
+	xkey_provider.c xkey_common.h \
+	xkey_helper.c \
 	win32.h win32.c \
+	win32-util.h win32-util.c \
 	cryptoapi.h cryptoapi.c
 openvpn_LDADD = \
 	$(top_builddir)/src/compat/libcompat.la \
@@ -133,6 +155,6 @@ openvpn_LDADD = \
 	$(OPTIONAL_DL_LIBS) \
 	$(OPTIONAL_INOTIFY_LIBS)
 if WIN32
-openvpn_SOURCES += openvpn_win32_resources.rc block_dns.c block_dns.h
-openvpn_LDADD += -lgdi32 -lws2_32 -lwininet -lcrypt32 -liphlpapi -lwinmm -lfwpuclnt -lrpcrt4 -lncrypt
+openvpn_SOURCES += openvpn_win32_resources.rc block_dns.c block_dns.h ring_buffer.h
+openvpn_LDADD += -lgdi32 -lws2_32 -lwininet -lcrypt32 -liphlpapi -lwinmm -lfwpuclnt -lrpcrt4 -lncrypt -lsetupapi -lbcrypt
 endif

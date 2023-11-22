@@ -5,8 +5,8 @@
 #             packet encryption, packet authentication, and
 #             packet compression.
 #
-#  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
-#  Copyright (C) 2010      David Sommerseth <dazo@users.sourceforge.net>
+#  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
+#  Copyright (C) 2010-2023 David Sommerseth <dazo@eurephia.org>
 #  Copyright (C) 2006-2012 Alon Bar-Lev <alon.barlev@gmail.com>
 #
 #  This program is free software; you can redistribute it and/or modify
@@ -23,9 +23,6 @@
 #  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 
-# This option prevents autoreconf from overriding our COPYING and
-# INSTALL targets:
-AUTOMAKE_OPTIONS = foreign 1.9
 ACLOCAL_AMFLAGS = -I m4
 
 MAINTAINERCLEANFILES = \
@@ -44,20 +41,22 @@ CLEANFILES = \
 
 EXTRA_DIST = \
 	contrib \
-	debug
+	debug \
+	CMakeLists.txt \
+	CMakePresets.json \
+	config.h.cmake.in
 
-.PHONY: config-version.h
+.PHONY: config-version.h doxygen
 
 if GIT_CHECKOUT
 BUILT_SOURCES = \
 	config-version.h
 endif
 
-SUBDIRS = build distro include src sample doc vendor tests
+SUBDIRS = build distro include src sample doc tests
 
 dist_doc_DATA = \
 	README \
-	README.IPv6 \
 	README.mbedtls \
 	Changes.rst \
 	COPYRIGHT.GPL \
@@ -66,17 +65,13 @@ dist_doc_DATA = \
 dist_noinst_DATA = \
 	.gitignore \
 	.gitattributes \
+	CONTRIBUTING.rst \
 	PORTS \
-	README.IPv6 TODO.IPv6 \
-	README.mbedtls \
-	openvpn.sln \
-	msvc-env.bat \
-	msvc-dev.bat \
-	msvc-build.bat
-
-dist_noinst_HEADERS = \
-	config-msvc.h \
-	config-msvc-version.h.in
+	README.cmake.md \
+	README.dco.md \
+	README.ec \
+	README.wolfssl \
+	README.mbedtls
 
 if WIN32
 rootdir=$(prefix)
@@ -96,3 +91,6 @@ config-version.h:
 	else \
 		rm -f config-version.h.tmp; \
 	fi
+
+doxygen:
+	$(MAKE) -C doc/doxygen doxygen

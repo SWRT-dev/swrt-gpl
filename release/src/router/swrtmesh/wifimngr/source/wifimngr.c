@@ -32,6 +32,10 @@
 #include <libubus.h>
 #include <uci.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include <easy/easy.h>
 #include <wifi.h>
 
@@ -183,17 +187,21 @@ const char *operstate_str[] = {
 	"error",
 };
 
-const int32_t bw_int[] = {
-	20,
-	40,
-	80,
-	160,
-	0,
-	-1,
-	-1,
-	8080,
-	-99,
-};
+static uint32_t bw_value(enum wifi_bw bw)
+{
+	switch (bw) {
+	case BW20: return 20;
+	case BW40: return 40;
+	case BW80: return 80;
+	case BW160: return 160;
+	case BW320: return 320;
+	case BW8080: return 8080;
+	case BW_AUTO:
+	case BW_UNKNOWN:
+	default:
+		return 0;
+	}
+}
 
 static const char *ifstatus_str(ifstatus_t f)
 {
@@ -269,6 +277,72 @@ static const char *wifi_radio_phyname(const char *radio)
 	return NULL;
 }
 
+static enum wifi_band uci_to_radio_band(const char *uci_band)
+{
+	if (!uci_band)
+		return BAND_UNKNOWN;
+
+	if (!strcmp(uci_band, "2g"))
+		return BAND_2;
+	else if (!strcmp(uci_band, "5g"))
+		return BAND_5;
+	else if (!strcmp(uci_band, "6g"))
+		return BAND_6;
+	else
+		return BAND_UNKNOWN;
+}
+
+static enum wifi_band wifi_radio_band(const char *radio)
+{
+	const char *cfgband = NULL;
+	int i;
+
+	if (!radio || radio[0] == '\0')
+		goto out;
+
+	if (wifi_device_num == 0) {
+		char radios[WIFI_DEV_MAX_NUM][16] = {0};
+		int num_radios;
+
+		num_radios = wifimngr_get_wifi_devices(radios);
+		if (num_radios < 0)
+			goto out;
+	}
+
+	for (i = 0; i < WIFI_DEV_MAX_NUM; i++) {
+		if (!strncmp(wifi_device[i].device, radio, 16)) {
+			cfgband = wifi_device[i].band;
+			break;
+		}
+	}
+
+out:
+	return uci_to_radio_band(cfgband);
+}
+
+enum wifi_band wifi_iface_band(const char *iface)
+{
+	struct wifimngr_iface ifs[WIFI_IF_MAX_NUM];
+	const char *device = NULL;
+	int num_ifs;
+	int i;
+
+	num_ifs = wifimngr_get_wifi_interfaces(ifs);
+	if (num_ifs <= 0)
+		return BAND_UNKNOWN;
+
+	/* Find device name */
+	for (i = 0; i < num_ifs; i++) {
+		if (strcmp(iface, ifs[i].iface))
+			continue;
+
+		device = ifs[i].device;
+		break;
+	}
+
+	return wifi_radio_band(device);
+}
+
 static const char *ubus_objname_to_ifname(struct ubus_object *obj)
 {
 	if (strstr(obj->name, "wifi.radio."))
@@ -287,6 +361,85 @@ static const char *ubus_objname_to_ifname(struct ubus_object *obj)
 #define ubus_ap_to_ifname(o)	ubus_objname_to_ifname(o)
 #define ubus_sta_to_ifname(o)	ubus_objname_to_ifname(o)
 
+static int ieee80211_readint(const char *path)
+{
+	int fd;
+	int rv = -1;
+	char buffer[16];
+
+	if ((fd = open(path, O_RDONLY)) > -1)
+	{
+		if (read(fd, buffer, sizeof(buffer)) > 0)
+			rv = atoi(buffer);
+
+		close(fd);
+	}
+
+	return rv;
+}
+
+static const char *ieee80211_phy_path_str(const char *phyname)
+{
+	static char path[PATH_MAX];
+	const char *prefix = "/sys/devices/";
+	int prefix_len = strlen(prefix);
+	int buf_len, offset;
+	struct dirent *e;
+	char buf[512], *link;
+	int phy_idx;
+	int seq = 0;
+	DIR *d;
+
+	snprintf(buf, sizeof(buf), "/sys/class/ieee80211/%s/index", phyname);
+	phy_idx = ieee80211_readint(buf);
+	if (phy_idx < 0)
+		return NULL;
+
+	buf_len = snprintf(buf, sizeof(buf), "/sys/class/ieee80211/%s/device", phyname);
+	link = realpath(buf, path);
+	if (!link)
+		return NULL;
+
+	if (strncmp(link, prefix, prefix_len) != 0)
+		return NULL;
+
+	link += prefix_len;
+
+	prefix = "platform/";
+	prefix_len = strlen(prefix);
+	if (!strncmp(link, prefix, prefix_len) && strstr(link, "/pci"))
+		link += prefix_len;
+
+	snprintf(buf + buf_len, sizeof(buf) - buf_len, "/ieee80211");
+	d = opendir(buf);
+	if (!d)
+		return link;
+
+	while ((e = readdir(d)) != NULL) {
+		int cur_idx;
+
+		snprintf(buf, sizeof(buf), "/sys/class/ieee80211/%s/index", e->d_name);
+		cur_idx = ieee80211_readint(buf);
+		if (cur_idx < 0)
+			continue;
+
+		if (cur_idx >= phy_idx)
+			continue;
+
+		seq++;
+	}
+
+	closedir(d);
+
+	if (!seq)
+		return link;
+
+	offset = link - path + strlen(link);
+	snprintf(path + offset, sizeof(path) - offset, "+%d", seq);
+
+	return link;
+}
+
 static int find_phy_from_device_path(char *path, char *phy)
 {
 	bool found = false;
@@ -299,8 +452,7 @@ static int find_phy_from_device_path(char *path, char *phy)
 		return -1;
 
 	while ((p = readdir(d))) {
-		char buf[PATH_MAX] = {0};
-		char *phypath;
+		const char *phypath;
 
 		if (!strcmp(p->d_name, "."))
 			continue;
@@ -308,16 +460,15 @@ static int find_phy_from_device_path(char *path, char *phy)
 		if (!strcmp(p->d_name, ".."))
 			continue;
 
-		snprintf(buf, PATH_MAX, "/sys/class/ieee80211/%s/device", p->d_name);
-		phypath = realpath(buf, NULL);
-		 if (phypath) {
-			if (strstr(phypath, path)) {
-				strncpy(phy, p->d_name, 15);
-				found = true;
-			}
+		phypath = ieee80211_phy_path_str(p->d_name);
+		if (!phypath)
+			continue;
 
-			free(phypath);
-		 }
+		wifimngr_dbg("%s called |%s| vs |%s|\n", __func__, phypath, path);
+		if (!strcmp(phypath, path)) {
+			strncpy(phy, p->d_name, 15);
+			found = true;
+		}
 
 		 if (found)
 			 break;
@@ -400,6 +551,16 @@ static int uci_get_wifi_devices(char devlist[][16])
 							strncpy(wifi_device[wifi_device_num].phy, phy, 15);
 						}
 					}
+				}
+			}
+
+			/* Get band */
+			uci_foreach_element(&s->options, x) {
+				op = uci_to_option(x);
+				if (!strncmp(x->name, "band", 4) &&
+				    op->type == UCI_TYPE_STRING) {
+					memset(wifi_device[wifi_device_num].band, 0, 15);
+					strncpy(wifi_device[wifi_device_num].band, op->v.string, 15);
 				}
 			}
 
@@ -1005,6 +1166,24 @@ static void wifi_print_radio_supp_bw(struct blob_buf *bb,
 	blobmsg_close_array(bb, a);
 }
 
+static void wifi_print_band(struct blob_buf *bb, enum wifi_band band)
+{
+	switch (band) {
+	case BAND_2:
+		blobmsg_add_string(bb, "band", "2.4GHz");
+		break;
+	case BAND_5:
+		blobmsg_add_string(bb, "band", "5GHz");
+		break;
+	case BAND_6:
+		blobmsg_add_string(bb, "band", "6GHz");
+		break;
+	default:
+		blobmsg_add_string(bb, "band", "unknown");
+		break;
+	}
+}
+
 static void wifi_print_radio_cac_methods(struct blob_buf *bb,
 					 uint32_t cac_methods)
 {
@@ -1039,41 +1218,59 @@ int wl_radio_status(struct ubus_context *ctx, struct ubus_object *obj,
 	unsigned long maxrate;
 	int noise;
 	struct wifi_metainfo minfo = {0};
-	struct wifi_radio radio;
-	struct wifi_opclass opclass;
+	struct wifi_radio radio = {};
+	struct wifi_opclass opclass = {};
 	struct wifi_opclass supp_opclass[64] = {0};
-	int num_opclass;
+	int num_opclass = ARRAY_SIZE(supp_opclass);
 	struct blob_buf bb;
 	void *c, *d, *dd;
+	bool multiband = false;
 	int i, j;
 
 
-	memset(&bb, 0, sizeof(bb));
 	wldev = ubus_radio_to_ifname(obj);
 	radioname = ubus_objname_to_ifname(obj);
+	band = wifi_radio_band(radioname);
 
+	/* Get required information */
+	wifi_driver_info(wldev, &minfo);
+	wifi_radio_is_multiband(wldev, &multiband);
 	wifi_radio_get_ifstatus(wldev, &ifs);
-	wifi_get_channel(wldev, &channel, &bw);
-	wifi_get_maxrate(wldev, &maxrate);
-	wifi_get_noise(wldev, &noise);
-
-	memset(&radio, 0, sizeof(struct wifi_radio));
-	wifi_radio_info(wldev, &radio);
-
-	band = radio.oper_band;
-
 	if (wifi_radio_get_hwaddr(wldev, hwaddr) != 0)
 		if_gethwaddr(wldev, hwaddr);
+
+	if (multiband) {
+		wifi_get_band_channel(wldev, band, &channel, &bw);
+		wifi_get_band_maxrate(wldev, band, &maxrate);
+		wifi_get_band_noise(wldev, band, &noise);
+		wifi_radio_info_band(wldev, band, &radio);
+		wifi_get_band_curr_opclass(wldev, band, &opclass);
+		wifi_get_band_supp_opclass(wldev, band, &num_opclass, supp_opclass);
+
+		/* Temporary workaround for multiband/single wiphy device */
+		switch (band) {
+		case BAND_5:
+			hwaddr[5] += 1;
+			break;
+		case BAND_6:
+			hwaddr[5] += 2;
+			break;
+		default:
+			break;
+		}
+	} else {
+		wifi_get_channel(wldev, &channel, &bw);
+		wifi_get_maxrate(wldev, &maxrate);
+		wifi_get_noise(wldev, &noise);
+		wifi_radio_info(wldev, &radio);
+		wifi_get_curr_opclass(wldev, &opclass);
+		wifi_get_supp_opclass(wldev, &num_opclass, supp_opclass);
+	}
+
 	hwaddr_ntoa(hwaddr, hwaddr_str);
 
-	memset(&opclass, 0, sizeof(struct wifi_opclass));
-	wifi_get_curr_opclass(wldev, &opclass);
-
-	num_opclass = ARRAY_SIZE(supp_opclass);
-	wifi_get_supp_opclass(wldev, &num_opclass, supp_opclass);
-
-	wifi_driver_info(wldev, &minfo);
-
+	/* Print required information */
+	memset(&bb, 0, sizeof(bb));
 	blob_buf_init(&bb, 0);
 	blobmsg_add_string(&bb, "radio", radioname);
 	blobmsg_add_string(&bb, "phyname", wldev);
@@ -1083,10 +1280,7 @@ int wl_radio_status(struct ubus_context *ctx, struct ubus_object *obj,
 	blobmsg_add_string(&bb, "device_id", minfo.device_id);
 
 	blobmsg_add_u8(&bb, "isup", (ifs & IFF_UP) ? true : false);
-	blobmsg_add_string(&bb, "band",
-			!!(band & BAND_5) ? "5GHz" :
-			!!(band & BAND_6) ? "6GHz" :
-			!!(band & BAND_2) ? "2.4GHz" : "Unknown");
+	wifi_print_band(&bb, band);
 
 	snprintf(std_buf2 + strlen(std_buf2), 31, "%s",
 		etostr(radio.oper_std, std_buf, sizeof(std_buf), WIFI_NUM_STD, standard_str));
@@ -1113,7 +1307,7 @@ int wl_radio_status(struct ubus_context *ctx, struct ubus_object *obj,
 
 	blobmsg_add_u32(&bb, "opclass", opclass.g_opclass);
 	blobmsg_add_u32(&bb, "channel", channel);
-	blobmsg_add_u32(&bb, "bandwidth", bw_int[bw]);
+	blobmsg_add_u32(&bb, "bandwidth", bw_value(bw));
 	blobmsg_add_string(&bb, "channel_ext",
 			radio.extch == EXTCH_NONE ? "none" :
 			radio.extch == EXTCH_ABOVE ? "above" :
@@ -1150,7 +1344,7 @@ int wl_radio_status(struct ubus_context *ctx, struct ubus_object *obj,
 	for (i = 0; i < num_opclass; i++) {
 		d = blobmsg_open_table(&bb, "");
 		blobmsg_add_u32(&bb, "opclass", supp_opclass[i].g_opclass);
-		blobmsg_add_u32(&bb, "bandwidth", bw_int[supp_opclass[i].bw]);
+		blobmsg_add_u32(&bb, "bandwidth", bw_value(supp_opclass[i].bw));
 		blobmsg_add_u32(&bb, "txpower", supp_opclass[i].opchannel.txpower);
 		dd = blobmsg_open_array(&bb, "channels");
 		for (j = 0; j < supp_opclass[i].opchannel.num; j++)
@@ -1206,13 +1400,24 @@ static int wl_radio_stats(struct ubus_context *ctx, struct ubus_object *obj,
 		struct blob_attr *msg)
 {
 	const char *ifname;
+	const char *radioname;
+	enum wifi_band band;
 	struct wifi_radio_stats s;
 	struct blob_buf bb;
+	bool multiband = false;
 	int ret;
 
 	ifname = ubus_radio_to_ifname(obj);
-	ret = wifi_radio_get_stats(ifname, &s);
-	if (ret != 0)
+	radioname = ubus_objname_to_ifname(obj);
+	band = wifi_radio_band(radioname);
+
+	wifi_radio_is_multiband(ifname, &multiband);
+	if (multiband)
+		ret = wifi_radio_get_band_stats(ifname, band, &s);
+	else
+		ret = wifi_radio_get_stats(ifname, &s);
+
+	if (ret)
 		return UBUS_STATUS_UNKNOWN_ERROR;
 
 	memset(&bb, 0, sizeof(bb));
@@ -1247,8 +1452,10 @@ static int dump_beacon(struct ubus_context *ctx, struct ubus_object *obj,
 		return UBUS_STATUS_UNKNOWN_ERROR;
 
 	ret = wifi_get_beacon_ies(ifname, bcn, &len);
-	if (ret)
+	if (ret) {
+		free(bcn);
 		return UBUS_STATUS_UNKNOWN_ERROR;
+	}
 
 	blob_buf_init(&bb, 0);
 	a = blobmsg_open_array(&bb, "beacon-ies");
@@ -1400,7 +1607,7 @@ static int wl_ap_status(struct ubus_context *ctx, struct ubus_object *obj,
 	}
 
 	blobmsg_add_u32(&bb, "channel", channel);
-	blobmsg_add_u32(&bb, "bandwidth", bw_int[bw]);
+	blobmsg_add_u32(&bb, "bandwidth", bw_value(bw));
 	//blobmsg_add_u64(&bb, "rate", rate);
 	snprintf(std_buf2 + strlen(std_buf2), 31, "%s",
 		etostr(ap.bss.oper_std, std_buf, sizeof(std_buf), WIFI_NUM_STD, standard_str));
@@ -1512,12 +1719,13 @@ static int wl_assoclist(struct ubus_context *ctx, struct ubus_object *obj,
 	struct blob_buf bb;
 
 	memset(&bb, 0, sizeof(bb));
-	blob_buf_init(&bb, 0);
 
 	ifname = ubus_ap_to_ifname(obj);
 
 	if (wifi_get_assoclist(ifname, stas, &nr) != 0)
 		return UBUS_STATUS_UNKNOWN_ERROR;
+
+	blob_buf_init(&bb, 0);
 
 	a = blobmsg_open_array(&bb, "assoclist");
 	for (i = 0; i < nr; i++) {
@@ -1675,7 +1883,7 @@ static int wl_dump_stations(struct blob_buf *bb, const char *ifname,
 		blobmsg_add_u32(bb, "airtime", sx.airtime);
 		blobmsg_add_u32(bb, "maxrate", sx.maxrate);
 		blobmsg_add_u32(bb, "nss", sx.rate.m.nss);
-		blobmsg_add_u32(bb, "bandwidth", bw_int[sx.rate.m.bw]);
+		blobmsg_add_u32(bb, "bandwidth", bw_value(sx.rate.m.bw));
 		blobmsg_add_u32(bb, "est_rx_thput", sx.est_rx_thput);
 		blobmsg_add_u32(bb, "est_tx_thput", sx.est_tx_thput);
 
@@ -2072,7 +2280,7 @@ static void wl_scanresult_print(struct blob_buf *bb, void *buf, bool detail)
 	hwaddr_ntoa(b->bssid, bssid_str);
 	blobmsg_add_string(bb, "bssid", bssid_str);
 	blobmsg_add_u32(bb, "channel", b->channel);
-	blobmsg_add_u32(bb, "bandwidth", bw_int[b->curr_bw]);
+	blobmsg_add_u32(bb, "bandwidth", bw_value(b->curr_bw));
 	//wifi_security_str(b->sec, b->enc, b->g_enc, sec_str);
 	wifi_security_str(b->security, sec_str);
 
@@ -2080,10 +2288,7 @@ static void wl_scanresult_print(struct blob_buf *bb, void *buf, bool detail)
 
 	blobmsg_add_string(bb, "encryption", sec_str);
 	blobmsg_add_string(bb, "ciphers", cstr);
-	blobmsg_add_string(bb, "band",
-			!!(b->band & BAND_5) ? "5GHz" :
-			!!(b->band & BAND_6) ? "6GHz" :
-			!!(b->band & BAND_2) ? "2.4GHz" : "Unknown");
+	wifi_print_band(bb, b->band);
 	blobmsg_add_u32(bb, "rssi", b->rssi);
 	//blobmsg_add_u32(bb, "snr", b->snr);
 	snprintf(std_buf2 + strlen(std_buf2), 31, "%s",
@@ -2699,18 +2904,28 @@ int wl_channels_info(struct ubus_context *ctx, struct ubus_object *obj,
 		     struct blob_attr *msg)
 {
 	struct chan_entry channels[32] = {};
+	int num = ARRAY_SIZE(channels);
 	struct chan_entry *entry;
 	struct blob_buf bb;
 	const char *device;
+	const char *radioname;
+	enum wifi_band band;
+	bool multiband = false;
 	void *a;
 	void *t;
-	int num;
 	int ret;
 	int i;
 
 	device = ubus_radio_to_ifname(obj);
-	num = ARRAY_SIZE(channels);
-	ret = wifi_channels_info(device, channels, &num);
+	radioname = ubus_objname_to_ifname(obj);
+	band = wifi_radio_band(radioname);
+
+	wifi_radio_is_multiband(device, &multiband);
+	if (multiband)
+		ret = wifi_channels_info_band(device, band, channels, &num);
+	else
+		ret = wifi_channels_info(device, channels, &num);
+
 	if (ret)
 		return UBUS_STATUS_UNKNOWN_ERROR;
 
@@ -2748,16 +2963,28 @@ int wl_opclass_preferences(struct ubus_context *ctx, struct ubus_object *obj,
 			   struct blob_attr *msg)
 {
 	struct wifi_opclass supp_opclass[64] = {0};
+	int num_opclass = ARRAY_SIZE(supp_opclass);
 	void *a, *t, *aa, *tt, *aaa;
 	struct blob_buf bb;
 	const char *radio;
-	int num_opclass;
+	const char *radioname;
+	enum wifi_band band;
+	bool multiband = false;
 	int i, j, k;
+	int ret;
 
 	radio = ubus_radio_to_ifname(obj);
+	radioname = ubus_objname_to_ifname(obj);
+	band = wifi_radio_band(radioname);
 
-	num_opclass = ARRAY_SIZE(supp_opclass);
-	if (wifi_get_opclass_preferences(radio, supp_opclass, &num_opclass))
+	wifi_radio_is_multiband(radio, &multiband);
+
+	if (multiband)
+		ret = wifi_get_band_opclass_preferences(radio, band, supp_opclass, &num_opclass);
+	else
+		ret = wifi_get_opclass_preferences(radio, supp_opclass, &num_opclass);
+
+	if (ret)
 		return UBUS_STATUS_UNKNOWN_ERROR;
 
 	memset(&bb, 0, sizeof(bb));
@@ -2767,7 +2994,7 @@ int wl_opclass_preferences(struct ubus_context *ctx, struct ubus_object *obj,
 	for (i = 0; i < num_opclass; i++) {
 		t = blobmsg_open_table(&bb, "");
 		blobmsg_add_u32(&bb, "opclass", supp_opclass[i].g_opclass);
-		blobmsg_add_u32(&bb, "bandwidth", bw_int[supp_opclass[i].bw]);
+		blobmsg_add_u32(&bb, "bandwidth", bw_value(supp_opclass[i].bw));
 		blobmsg_add_u32(&bb, "txpower", supp_opclass[i].opchannel.txpower);
 		aa = blobmsg_open_array(&bb, "channels");
 		for (j = 0; j < supp_opclass[i].opchannel.num; j++) {
@@ -2892,9 +3119,8 @@ static const struct blobmsg_policy nbr_req_policy[__NBR_REQ_MAX] = {
 
 /* send btm request policy */
 enum {
-	BTM_REQ_CLIENT,
-	BTM_REQ_BSSID,
-	BTM_REQ_NEIGHBOR,
+	BTM_REQ_STA,
+	BTM_REQ_TARGET,
 	BTM_REQ_MODE,
 	BTM_DISASSOC_TMO,
 	BTM_VALIDITY_INT,
@@ -2906,9 +3132,8 @@ enum {
 };
 
 static const struct blobmsg_policy btmreq_policy[__BTM_REQ_MAX] = {
-	[BTM_REQ_CLIENT] = { .name = "client", .type = BLOBMSG_TYPE_STRING },
-	[BTM_REQ_BSSID] = { .name = "bssid", .type = BLOBMSG_TYPE_ARRAY },
-	[BTM_REQ_NEIGHBOR] = { .name = "neighbor", .type = BLOBMSG_TYPE_ARRAY },
+	[BTM_REQ_STA] = { .name = "sta", .type = BLOBMSG_TYPE_STRING },
+	[BTM_REQ_TARGET] = { .name = "target_ap", .type = BLOBMSG_TYPE_ARRAY },
 	[BTM_REQ_MODE] = { .name = "mode", .type = BLOBMSG_TYPE_INT32 },
 	[BTM_DISASSOC_TMO] = { .name = "disassoc_tmo", .type = BLOBMSG_TYPE_INT32 },
 	[BTM_VALIDITY_INT] = { .name = "validity_int", .type = BLOBMSG_TYPE_INT32 },
@@ -3730,6 +3955,25 @@ out:
 	return ret;
 }
 
+/* btm_request
+ *
+ * Example calls:
+ *
+ * ubus call wifi.ap.wl0 "request_btm" '{"sta":"00:0a:52:06:2f:ab",
+ *	"target_ap":[{"bssid":"7a:d4:37:6a:f7:df", "reg":128, "channel":36}]}'
+ *
+ * ubus call wifi.ap.wl0 "request_btm" '{"sta":"00:0a:52:06:2f:ab",
+ *	"target_ap":[{"bssid":"7a:d4:37:6a:f7:df"}]}'
+ *
+ * ubus call wifi.ap.wl0 "request_btm" '{"sta":"00:0a:52:06:2f:ab",
+ *	"target_ap":[{"bssid":"7a:d4:37:6a:f7:df"},
+ *	             {"bssid":"44:d4:37:6a:f4:cf", "channel":36}]}'
+ *
+ * ubus call wifi.ap.wl0 "request_btm" '{"sta":"00:0a:52:06:2f:ab",
+ *	"target_ap":[{"bssid":"7a:d4:37:6a:f7:df", "reg":128, "channel":36},
+ *	             {"bssid":"44:d4:37:6a:f4:cf", "bssid_info":6319, "phy":14}],
+ *	"mode":12,"disassoc_tmo":300,"bssterm_dur":1}'
+ */
 #define MAX_BTM_BSS_NUM 12
 int btm_request(struct ubus_context *ctx, struct ubus_object *obj,
 		      struct ubus_request_data *req, const char *method,
@@ -3739,11 +3983,8 @@ int btm_request(struct ubus_context *ctx, struct ubus_object *obj,
 	const char *ifname;
 	char sta_macstr[18] = {0};
 	uint8_t sta[6] = {0};
-	uint8_t t_bss[6] = {0};
-	char bss_str[18] = {0};
-	struct blob_attr *attr;
 	int rem;
-	int i = 0;
+	int bss_idx = 0;
 	struct wifi_btmreq param = {};
 	struct nbr bsss[MAX_BTM_BSS_NUM] = {0};
 
@@ -3751,43 +3992,24 @@ int btm_request(struct ubus_context *ctx, struct ubus_object *obj,
 	blobmsg_parse(btmreq_policy, __BTM_REQ_MAX, tb,
 					blob_data(msg), blob_len(msg));
 
-	if (!(tb[BTM_REQ_CLIENT]))
+	/* STA mac address */
+	if (!(tb[BTM_REQ_STA]))
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
-	if (tb[BTM_REQ_BSSID] && tb[BTM_REQ_NEIGHBOR]) {
-		wifimngr_err("%s(): Either bssid or nbr allowed\n",
-					__func__);
+	strncpy(sta_macstr, blobmsg_data(tb[BTM_REQ_STA]), sizeof(sta_macstr)-1);
+	if (hwaddr_aton(sta_macstr, sta) == NULL)
 		return UBUS_STATUS_INVALID_ARGUMENT;
-	}
 
-	if (tb[BTM_REQ_BSSID]) {
-		blobmsg_for_each_attr(attr, tb[BTM_REQ_BSSID], rem) {
-			if (blobmsg_type(attr) != BLOBMSG_TYPE_STRING)
-				continue;
-
-			strncpy(bss_str, blobmsg_data(attr), sizeof(bss_str)-1);
-			if (hwaddr_aton(bss_str, t_bss) == NULL)
-				return UBUS_STATUS_INVALID_ARGUMENT;
-
-			memcpy(&bsss[i].bssid, t_bss, 6);
-
-			if (++i >= MAX_BTM_BSS_NUM)
-				break;
-		}
-
-		param.flags &= ~BTMREQ_F_NBR_PARAM_SET;
-	}
-
-	if (tb[BTM_REQ_NEIGHBOR]) {
-		int num_neighbor = blobmsg_check_array(
-				tb[BTM_REQ_NEIGHBOR], BLOBMSG_TYPE_TABLE);
+	/* Target BSSID and optional params */
+	if (tb[BTM_REQ_TARGET]) {
 		struct blob_attr *cur;
+		char bss_str[18] = {0};
+		uint8_t tbss[6] = {0};
+		int num_bss = blobmsg_check_array(tb[BTM_REQ_TARGET], BLOBMSG_TYPE_TABLE);
 
-		wifimngr_dbg("btm_request: num_neighbor = %d\n", num_neighbor);
+		wifimngr_dbg("btm_request: num of BSSID = %d\n", num_bss);
 
-		param.flags |= BTMREQ_F_NBR_PARAM_SET;
-
-		blobmsg_for_each_attr(cur, tb[BTM_REQ_NEIGHBOR], rem) {
+		blobmsg_for_each_attr(cur, tb[BTM_REQ_TARGET], rem) {
 			struct blob_attr *data[5];
 			static const struct blobmsg_policy supp_attrs[5] = {
 				[0] = { .name = "bssid", .type = BLOBMSG_TYPE_STRING },
@@ -3800,37 +4022,30 @@ int btm_request(struct ubus_context *ctx, struct ubus_object *obj,
 			blobmsg_parse(supp_attrs, 5, data, blobmsg_data(cur),
 					blobmsg_data_len(cur));
 
-			/* bssid */
 			if (!data[0])
-				continue;
-
-			if (blobmsg_type(data[0]) != BLOBMSG_TYPE_STRING)
 				return UBUS_STATUS_INVALID_ARGUMENT;
 
+			/* Pass the params */
 			strncpy(bss_str, blobmsg_data(data[0]), sizeof(bss_str)-1);
-			if (hwaddr_aton(bss_str, t_bss) == NULL)
+			if (hwaddr_aton(bss_str, tbss) == NULL)
 				return UBUS_STATUS_INVALID_ARGUMENT;
-			memcpy(&bsss[i].bssid, t_bss, 6);
+			memcpy(&bsss[bss_idx].bssid, tbss, 6);
 
-			/* rest of the params */
-			if (data[1] && data[2] && data[3] && data[4]) {
-				bsss[i].bssid_info = blobmsg_get_u32(data[1]);
-				bsss[i].reg = (uint8_t) blobmsg_get_u32(data[2]);
-				bsss[i].channel = (uint8_t) blobmsg_get_u32(data[3]);
-				bsss[i].phy = (uint8_t) blobmsg_get_u32(data[4]);
-			} else {
-				/* all nbrs must have all params set or use bssids only */
-				param.flags &= ~BTMREQ_F_NBR_PARAM_SET;
-			}
+			if (data[1])
+				bsss[bss_idx].bssid_info = blobmsg_get_u32(data[1]);
+			if (data[2])
+				bsss[bss_idx].reg = (uint8_t) blobmsg_get_u32(data[2]);
+			if (data[3])
+				bsss[bss_idx].channel = (uint8_t) blobmsg_get_u32(data[3]);
+			if (data[4])
+				bsss[bss_idx].phy = (uint8_t) blobmsg_get_u32(data[4]);
 
-			if (++i >= MAX_BTM_BSS_NUM)
+			if (++bss_idx >= MAX_BTM_BSS_NUM)
 				break;
 		}
 	}
 
-	strncpy(sta_macstr, blobmsg_data(tb[BTM_REQ_CLIENT]), sizeof(sta_macstr)-1);
-	if (hwaddr_aton(sta_macstr, sta) == NULL)
-		return UBUS_STATUS_INVALID_ARGUMENT;
+	wifimngr_dbg("btm_request: bss_idx = %d\n", bss_idx);
 
 	if (tb[BTM_REQ_MODE])
 		param.mode = blobmsg_get_u32(tb[BTM_REQ_MODE]);
@@ -3854,7 +4069,7 @@ int btm_request(struct ubus_context *ctx, struct ubus_object *obj,
 			|| param.mbo.reassoc_delay <= 65535)
 		param.mbo.valid = true;
 
-	if (wifi_req_btm(ifname, sta, i, bsss, &param) != 0)
+	if (wifi_req_btm(ifname, sta, bss_idx, bsss, &param) != 0)
 		return UBUS_STATUS_UNKNOWN_ERROR;
 
 	return UBUS_STATUS_OK;
@@ -4144,7 +4359,7 @@ static int wl_sta_status(struct ubus_context *ctx, struct ubus_object *obj,
 		blobmsg_add_string(&bb, "bssid", par_macstr);
 		blobmsg_add_string(&bb, "ssid", ssid);
 		blobmsg_add_u32(&bb, "channel", channel);
-		blobmsg_add_u32(&bb, "bandwidth", bw_int[bw]);
+		blobmsg_add_u32(&bb, "bandwidth", bw_value(bw));
 		blobmsg_add_u32(&bb, "frequency", wifi_channel_to_freq_ex(channel, band));
 		blobmsg_add_u32(&bb, "rssi", rssi);
 		blobmsg_add_u32(&bb, "noise", sta.noise[0] == 0 ? noise : sta.noise[0]);
@@ -4333,7 +4548,6 @@ static int wl_status(struct ubus_context *ctx, struct ubus_object *obj,
 		char *phyname;
 		ifstatus_t ifstat = 0;
 		enum wifi_band band = BAND_2;
-		enum wifi_band chband = BAND_2;
 		uint32_t supp_band = 0;
 		uint8_t supp_std = 0;
 		unsigned long maxrate;
@@ -4347,42 +4561,48 @@ static int wl_status(struct ubus_context *ctx, struct ubus_object *obj,
 		struct wifi_caps radiocaps;
 		char alpha2[3] = {0};
 		const char *country;
-		int nr = 0;
+		bool multiband = false;
+		int nr = ARRAY_SIZE(channels);
 		int j;
 
 		phyname = (char *) wifi_radio_phyname(radios[i]);
 		if (!phyname)
 			continue;
 
-		wifi_radio_get_ifstatus(phyname, &ifstat);
-		wifi_get_channel(phyname, &channel, &bw);
-		wifi_get_oper_band(phyname, &band);
-		wifi_get_bandwidth(phyname, &bw);
+		band = wifi_radio_band(radios[i]);
 
+		wifi_radio_is_multiband(phyname, &multiband);
+		wifi_radio_get_ifstatus(phyname, &ifstat);
+		wifi_get_supp_band(phyname, &supp_band);
 		if (!wifi_get_country(phyname, alpha2))
 			country = alpha2;
 		else
 			country = uci_get_wifi_option("wifi-device", phyname,
 								"country");
 
-		wifi_radio_get_caps(phyname, &radiocaps);
-		wifi_get_supp_stds(phyname, &supp_std);
+		/* In case no country set in UCI and driver use alpha2 */
+		if (!country)
+			country = alpha2;
 
-		wifi_get_supp_band(phyname, &supp_band);
-		if ((supp_band & BAND_2) && (supp_band & BAND_5))
-			chband = BAND_DUAL;
-		else
-			chband = band;
-
-		/* TODO pass band mask instead of single band */
-		nr = ARRAY_SIZE(channels);
 		wifi_get_supp_channels(phyname, channels, &nr,
 					country == NULL ? "" : country,
-					chband, bw);
+					band, bw);
 
-		wifi_get_maxrate(phyname, &maxrate);
-		wifi_get_noise(phyname, &noise);
-		wifi_get_oper_stds(phyname, &s);
+		if (multiband) {
+			wifi_get_band_channel(phyname, band, &channel, &bw);
+			wifi_get_band_supp_stds(phyname, band, &supp_std);
+			wifi_radio_get_band_caps(phyname, band, &radiocaps);
+			wifi_get_band_maxrate(phyname, band, &maxrate);
+			wifi_get_band_noise(phyname, band, &noise);
+			wifi_get_band_oper_stds(phyname, band, &s);
+		} else {
+			wifi_get_channel(phyname, &channel, &bw);
+			wifi_get_supp_stds(phyname, &supp_std);
+			wifi_radio_get_caps(phyname, &radiocaps);
+			wifi_get_maxrate(phyname, &maxrate);
+			wifi_get_noise(phyname, &noise);
+			wifi_get_oper_stds(phyname, &s);
+		}
 
 		ttt = blobmsg_open_table(&bb, "");
 
@@ -4395,14 +4615,11 @@ static int wl_status(struct ubus_context *ctx, struct ubus_object *obj,
 			etostr(s, std_buf, sizeof(std_buf), WIFI_NUM_STD, standard_str));
 		blobmsg_add_string(&bb, "standard", std_buf2);
 		blobmsg_add_string(&bb, "country", country);
-		blobmsg_add_string(&bb, "band",
-			!!(band & BAND_5) ? "5GHz" :
-			!!(band & BAND_6) ? "6GHz" :
-			!!(band & BAND_2) ? "2.4GHz" : "Unknown");
+		wifi_print_band(&bb, band);
 
 		blobmsg_add_u32(&bb, "channel", channel);
 		blobmsg_add_u32(&bb, "frequency", wifi_channel_to_freq_ex(channel, band));
-		blobmsg_add_u32(&bb, "bandwidth", bw_int[bw]);
+		blobmsg_add_u32(&bb, "bandwidth", bw_value(bw));
 		blobmsg_add_u32(&bb, "noise", noise);
 		blobmsg_add_u64(&bb, "maxrate", maxrate);
 		wifi_print_radio_supp_bands(&bb, supp_band);
@@ -4648,7 +4865,7 @@ static int add_radio_methods(struct ubus_object *radio_obj,
 		return -1;
 	}
 
-	wifi_get_oper_band(phyname, &band);
+	band = wifi_radio_band(radioname);
 
 	UBUS_METHOD_ADD(radio_methods, n_methods,
 		UBUS_METHOD_NOARG("status", wl_radio_status));
@@ -4716,6 +4933,20 @@ static int add_radio_methods(struct ubus_object *radio_obj,
 	return 0;
 }
 
+bool wifimngr_match_radio_object(char devs[][WIFI_DEV_MAX_NUM], int num_radios,
+				 struct wifi_ubus_object *wobj)
+{
+	const char *radioname = ubus_objname_to_ifname(&wobj->obj);
+	int i;
+
+	for (i = 0; i < num_radios; i++) {
+		if (strcmp(radioname, devs[i]) == 0)
+			return true;
+	}
+
+	return false;
+}
+
 int wifimngr_add_radio_object(struct wifimngr *w,
 				struct ubus_context *ctx,
 				const char *radioname)
@@ -4723,12 +4954,18 @@ int wifimngr_add_radio_object(struct wifimngr *w,
 	struct wifi_ubus_object *wobj;
 	int ret;
 	char objname[32] = {0};
+	uint32_t id;
+
+	snprintf(objname, 28, "wifi.radio.%s", radioname);
+
+	/* Already added */
+	if (ubus_lookup_id(ctx, objname, &id) == UBUS_STATUS_OK)
+		return 0;
 
 	wobj = calloc(1, sizeof(struct wifi_ubus_object));
 	if (!wobj)
 		return -ENOMEM;
 
-	snprintf(objname, 28, "wifi.radio.%s", radioname);
 	wobj->obj.name = strdup(objname);
 	add_radio_methods(&wobj->obj, radioname);
 
@@ -5018,6 +5255,23 @@ int wifimngr_add_interface_subobject(
 }
 #endif /* WIFIMNGR_GRANULAR_OBJECTS */
 
+bool wifimngr_match_interface_object(struct wifimngr_iface *ifs, int num_ifs,
+				     struct wifi_ubus_object *wobj)
+{
+	const char *ifname = ubus_objname_to_ifname(&wobj->obj);
+	int i;
+
+	for (i = 0; i < num_ifs; i++) {
+		if (ifs[i].disabled)
+			continue;
+
+		if (strcmp(ifname, ifs[i].iface) == 0)
+			return true;
+	}
+
+	return false;
+}
+
 int wifimngr_add_interface_object(struct wifimngr *w,
 				struct ubus_context *ctx,
 				struct wifimngr_iface *iface)
@@ -5025,22 +5279,29 @@ int wifimngr_add_interface_object(struct wifimngr *w,
 	struct wifi_ubus_object *wobj;
 	int ret;
 	char objname[32] = {0};
+	uint32_t id;
+
+	if (iface->mode == WIFI_AP) {
+		snprintf(objname, 25, "wifi.ap.%s", iface->iface);
+	} else if (iface->mode == WIFI_STA) {
+		snprintf(objname, 31, "wifi.backhaul.%s", iface->iface);
+	} else {
+		/* unhandled wifi mode */
+		return -EINVAL;
+	}
+
+	/* Already added */
+	if (ubus_lookup_id(ctx, objname, &id) == UBUS_STATUS_OK)
+		return 0;
 
 	wobj = calloc(1, sizeof(struct wifi_ubus_object));
 	if (!wobj)
 		return -ENOMEM;
 
-	if (iface->mode == WIFI_AP) {
-		snprintf(objname, 25, "wifi.ap.%s", iface->iface);
+	if (iface->mode == WIFI_AP)
 		add_ap_methods(&wobj->obj, iface->iface);
-	} else if (iface->mode == WIFI_STA) {
-		snprintf(objname, 31, "wifi.backhaul.%s", iface->iface);
+	else
 		add_sta_methods(&wobj->obj, iface->iface);
-	} else {
-		/* unhandled wifi mode */
-		free(wobj);
-		return -EINVAL;
-	}
 
 	wobj->obj.name = strdup(objname);
 	wobj->obj_type.name = wobj->obj.name;
@@ -5069,6 +5330,37 @@ int wifimngr_add_interface_object(struct wifimngr *w,
 #endif
 
 	return ret;
+}
+
+void wifimngr_del_object(struct ubus_context *ctx,
+			 struct wifi_ubus_object *wobj)
+{
+	int ret;
+
+#ifdef WIFIMNGR_GRANULAR_OBJECTS
+	struct wifi_ubus_object *p, *tmp;
+
+	list_for_each_entry_safe(p, tmp, &wobj->sobjlist, list) {
+		ret = ubus_remove_object(ctx, &p->obj);
+		if (!ret)
+		{
+			list_del(&p->list);
+			if (p->obj.methods)
+				free((void *)p->obj.methods);
+			free(p);
+		}
+	}
+
+	list_del_init(&w->sobjlist);
+#endif
+	ret = ubus_remove_object(ctx, &wobj->obj);
+	if (!ret)
+	{
+		list_del(&wobj->list);
+		if (wobj->obj.methods)
+			free((void *)wobj->obj.methods);
+		free(wobj);
+	}
 }
 
 int wifimngr_init(struct wifimngr **w)
@@ -5119,6 +5411,7 @@ int wifimngr_exit(struct wifimngr *w)
 		free(w->wifi);
 	}
 
+	w->ubus_ctx = NULL;
 	free(w);
 
 	return 0;

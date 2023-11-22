@@ -5,8 +5,8 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
- *  Copyright (C) 2010-2018 Fox Crypto B.V. <openvpn@fox-it.com>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2010-2021 Fox Crypto B.V. <openvpn@foxcrypto.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -29,8 +29,6 @@
 #ifndef OPENVPN_SSL_H
 #define OPENVPN_SSL_H
 
-#if defined(ENABLE_CRYPTO)
-
 #include "basic.h"
 #include "common.h"
 #include "crypto.h"
@@ -44,42 +42,17 @@
 
 #include "ssl_common.h"
 #include "ssl_backend.h"
+#include "ssl_pkt.h"
+#include "tls_crypt.h"
 
 /* Used in the TLS PRF function */
 #define KEY_EXPANSION_ID "OpenVPN"
-
-/* packet opcode (high 5 bits) and key-id (low 3 bits) are combined in one byte */
-#define P_KEY_ID_MASK                  0x07
-#define P_OPCODE_SHIFT                 3
-
-/* packet opcodes -- the V1 is intended to allow protocol changes in the future */
-#define P_CONTROL_HARD_RESET_CLIENT_V1 1     /* initial key from client, forget previous state */
-#define P_CONTROL_HARD_RESET_SERVER_V1 2     /* initial key from server, forget previous state */
-#define P_CONTROL_SOFT_RESET_V1        3     /* new key, graceful transition from old to new key */
-#define P_CONTROL_V1                   4     /* control channel packet (usually TLS ciphertext) */
-#define P_ACK_V1                       5     /* acknowledgement for packets received */
-#define P_DATA_V1                      6     /* data channel packet */
-#define P_DATA_V2                      9     /* data channel packet with peer-id */
-
-/* indicates key_method >= 2 */
-#define P_CONTROL_HARD_RESET_CLIENT_V2 7     /* initial key from client, forget previous state */
-#define P_CONTROL_HARD_RESET_SERVER_V2 8     /* initial key from server, forget previous state */
-
-/* define the range of legal opcodes */
-#define P_FIRST_OPCODE                 1
-#define P_LAST_OPCODE                  9
 
 /*
  * Set the max number of acknowledgments that can "hitch a ride" on an outgoing
  * non-P_ACK_V1 control packet.
  */
 #define CONTROL_SEND_ACK_MAX 4
-
-/*
- * Define number of buffers for send and receive in the reliability layer.
- */
-#define TLS_RELIABLE_N_SEND_BUFFERS  4 /* also window size for reliability layer */
-#define TLS_RELIABLE_N_REC_BUFFERS   8
 
 /*
  * Various timeouts
@@ -89,30 +62,55 @@
                                  * every packet sent/received action */
 
 /*
- * The SSL/TLS worker thread will wait at most this many seconds for the
- * interprocess communication pipe to the main thread to be ready to accept
- * writes.
- */
-#define TLS_MULTI_THREAD_SEND_TIMEOUT 5
-
-/* Interval that tls_multi_process should call tls_authentication_status */
-#define TLS_MULTI_AUTH_STATUS_INTERVAL 10
-
-/*
  * Buffer sizes (also see mtu.h).
  */
 
 /* Maximum length of OCC options string passed as part of auth handshake */
 #define TLS_OPTIONS_LEN 512
 
+/* Definitions of the bits in the IV_PROTO bitfield
+ *
+ * In older OpenVPN versions this used in a comparison
+ * IV_PROTO >= 2 to determine if DATA_V2 is supported.
+ * Therefore any client announcing any of the flags must
+ * also announce IV_PROTO_DATA_V2. We also treat bit 0
+ * as reserved for this reason */
+
+/** Support P_DATA_V2 */
+#define IV_PROTO_DATA_V2        (1<<1)
+
+/** Assume client will send a push request and server does not need
+ * to wait for a push-request to send a push-reply */
+#define IV_PROTO_REQUEST_PUSH   (1<<2)
+
+/** Supports key derivation via TLS key material exporter [RFC5705] */
+#define IV_PROTO_TLS_KEY_EXPORT (1<<3)
+
+/** Supports signaling keywords with AUTH_PENDING, e.g. timeout=xy */
+#define IV_PROTO_AUTH_PENDING_KW (1<<4)
+
+/** Support doing NCP in P2P mode. This mode works by both peers looking at
+ * each other's IV_ variables and deterministically deciding both on the same
+ * result. */
+#define IV_PROTO_NCP_P2P         (1<<5)
+
+/** Supports the --dns option introduced in version 2.6 */
+#define IV_PROTO_DNS_OPTION      (1<<6)
+
+/** Support for explicit exit notify via control channel
+ *  This also includes support for the protocol-flags pushed option */
+#define IV_PROTO_CC_EXIT_NOTIFY  (1<<7)
+
+/** Support for AUTH_FAIL,TEMP messages */
+#define IV_PROTO_AUTH_FAIL_TEMP  (1<<8)
+
+/** Support to dynamic tls-crypt (renegotiation with TLS-EKM derived tls-crypt key) */
+#define IV_PROTO_DYN_TLS_CRYPT   (1<<9)
+
 /* Default field in X509 to be username */
 #define X509_USERNAME_FIELD_DEFAULT "CN"
 
-/*
- * Range of key exchange methods
- */
-#define KEY_METHOD_MIN 1
-#define KEY_METHOD_MAX 2
+#define KEY_METHOD_2  2
 
 /* key method taken from lower 4 bits */
 #define KEY_METHOD_MASK 0x0F
@@ -121,16 +119,6 @@
  * Measure success rate of TLS handshakes, for debugging only
  */
 /* #define MEASURE_TLS_HANDSHAKE_STATS */
-
-/*
- * Used in --mode server mode to check tls-auth signature on initial
- * packets received from new clients.
- */
-struct tls_auth_standalone
-{
-    struct tls_wrap_ctx tls_wrap;
-    struct frame frame;
-};
 
 /*
  * Prepare the SSL library for use
@@ -146,7 +134,7 @@ void free_ssl_lib(void);
  * Build master SSL context object that serves for the whole of OpenVPN
  * instantiation
  */
-void init_ssl(const struct options *options, struct tls_root_ctx *ctx);
+void init_ssl(const struct options *options, struct tls_root_ctx *ctx, bool in_chroot);
 
 /** @addtogroup control_processor
  *  @{ */
@@ -175,17 +163,16 @@ struct tls_multi *tls_multi_init(struct tls_options *tls_options);
  * @ingroup control_processor
  *
  * This function initializes the \c TM_ACTIVE \c tls_session, and in
- * server mode also the \c TM_UNTRUSTED \c tls_session, associated with
+ * server mode also the \c TM_INITIAL \c tls_session, associated with
  * this \c tls_multi structure.  It also configures the control channel's
  * \c frame structure based on the data channel's \c frame given in
  * argument \a frame.
  *
  * @param multi        - The \c tls_multi structure of which to finalize
  *                       initialization.
- * @param frame        - The data channel's \c frame structure.
+ * @param tls_mtu      - maximum allowed size for control channel packets
  */
-void tls_multi_init_finalize(struct tls_multi *multi,
-                             const struct frame *frame);
+void tls_multi_init_finalize(struct tls_multi *multi, int tls_mtu);
 
 /*
  * Initialize a standalone tls-auth verification object.
@@ -193,11 +180,17 @@ void tls_multi_init_finalize(struct tls_multi *multi,
 struct tls_auth_standalone *tls_auth_standalone_init(struct tls_options *tls_options,
                                                      struct gc_arena *gc);
 
-/*
- * Finalize a standalone tls-auth verification object.
+/**
+ * Frees a standalone tls-auth verification object.
+ * @param tas   the object to free. May be NULL.
  */
-void tls_auth_standalone_finalize(struct tls_auth_standalone *tas,
-                                  const struct frame *frame);
+void tls_auth_standalone_free(struct tls_auth_standalone *tas);
+
+/*
+ * Setups the control channel frame size parameters from the data channel
+ * parameters
+ */
+void tls_init_control_channel_frame_parameters(struct frame *frame, int tls_mtu);
 
 /*
  * Set local and remote option compatibility strings.
@@ -229,6 +222,7 @@ void tls_multi_free(struct tls_multi *multi, bool clear);
 #define TLSMP_INACTIVE 0
 #define TLSMP_ACTIVE   1
 #define TLSMP_KILL     2
+#define TLSMP_RECONNECT 3
 
 /*
  * Called by the top-level event loop.
@@ -307,41 +301,6 @@ bool tls_pre_decrypt(struct tls_multi *multi,
 /** @name Functions for managing security parameter state for data channel packets
  *  @{ */
 
-/**
- * Inspect an incoming packet for which no VPN tunnel is active, and
- * determine whether a new VPN tunnel should be created.
- * @ingroup data_crypto
- *
- * This function receives the initial incoming packet from a client that
- * wishes to establish a new VPN tunnel, and determines the packet is a
- * valid initial packet.  It is only used when OpenVPN is running in
- * server mode.
- *
- * The tests performed by this function are whether the packet's opcode is
- * correct for establishing a new VPN tunnel, whether its key ID is 0, and
- * whether its size is not too large.  This function also performs the
- * initial HMAC firewall test, if configured to do so.
- *
- * The incoming packet and the local VPN tunnel state are not modified by
- * this function.  Its sole purpose is to inspect the packet and determine
- * whether a new VPN tunnel should be created.  If so, that new VPN tunnel
- * instance will handle processing of the packet.
- *
- * @param tas - The standalone TLS authentication setting structure for
- *     this process.
- * @param from - The source address of the packet.
- * @param buf - A buffer structure containing the incoming packet.
- *
- * @return
- * @li True if the packet is valid and a new VPN tunnel should be created
- *     for this client.
- * @li False if the packet is not valid, did not pass the HMAC firewall
- *     test, or some other error occurred.
- */
-bool tls_pre_decrypt_lite(const struct tls_auth_standalone *tas,
-                          const struct link_socket_actual *from,
-                          const struct buffer *buf);
-
 
 /**
  * Choose the appropriate security parameters with which to process an
@@ -359,6 +318,16 @@ bool tls_pre_decrypt_lite(const struct tls_auth_standalone *tas,
 void tls_pre_encrypt(struct tls_multi *multi,
                      struct buffer *buf, struct crypto_options **opt);
 
+/**
+ * Selects the primary encryption that should be used to encrypt data of an
+ * outgoing packet.
+ * @ingroup data_crypto
+ *
+ * If no key is found NULL is returned instead.
+ *
+ * @param multi - The TLS state for this packet's destination VPN tunnel.
+ */
+struct key_state *tls_select_encryption_key(struct tls_multi *multi);
 
 /**
  * Prepend a one-byte OpenVPN data channel P_DATA_V1 opcode to the packet.
@@ -411,11 +380,16 @@ void tls_post_encrypt(struct tls_multi *multi, struct buffer *buf);
  */
 void pem_password_setup(const char *auth_file);
 
+/* Enables the use of user/password authentication */
+void enable_auth_user_pass();
+
 /*
  * Setup authentication username and password. If auth_file is given, use the
- * credentials stored in the file.
+ * credentials stored in the file, however, if is_inline is true then auth_file
+ * contains the username/password inline.
  */
-void auth_user_pass_setup(const char *auth_file, const struct static_challenge_info *sc_info);
+void auth_user_pass_setup(const char *auth_file, bool is_inline,
+                          const struct static_challenge_info *sc_info);
 
 /*
  * Ensure that no caching is performed on authentication information
@@ -425,12 +399,17 @@ void ssl_set_auth_nocache(void);
 /*
  * Purge any stored authentication information, both for key files and tunnel
  * authentication. If PCKS #11 is enabled, purge authentication for that too.
+ * Note that auth_token is not cleared.
  */
 void ssl_purge_auth(const bool auth_user_pass_only);
 
 void ssl_set_auth_token(const char *token);
 
-#ifdef ENABLE_CLIENT_CR
+void ssl_set_auth_token_user(const char *username);
+
+bool ssl_clean_auth_token(void);
+
+#ifdef ENABLE_MANAGEMENT
 /*
  * ssl_get_auth_challenge will parse the server-pushed auth-failed
  * reason string and return a dynamically allocated
@@ -438,21 +417,14 @@ void ssl_set_auth_token(const char *token);
  */
 void ssl_purge_auth_challenge(void);
 
-bool ssl_clean_auth_token(void);
-
 void ssl_put_auth_challenge(const char *cr_str);
 
 #endif
 
 /*
- * Reserve any extra space required on frames.
- */
-void tls_adjust_frame_parameters(struct frame *frame);
-
-/*
  * Send a payload over the TLS control channel
  */
-bool tls_send_payload(struct tls_multi *multi,
+bool tls_send_payload(struct key_state *ks,
                       const uint8_t *data,
                       int size);
 
@@ -476,84 +448,46 @@ void tls_update_remote_addr(struct tls_multi *multi,
  * channel keys based on the supplied options. Does nothing if keys are already
  * generated.
  *
+ * @param multi           The TLS object for this instance.
  * @param session         The TLS session to update.
  * @param options         The options to use when updating session.
  * @param frame           The frame options for this session (frame overhead is
  *                        adjusted based on the selected cipher/auth).
  * @param frame_fragment  The fragment frame options.
+ * @param lsi             link socket info to adjust MTU related options
+ *                        depending on the current protocol
  *
  * @return true if updating succeeded or keys are already generated, false otherwise.
  */
-bool tls_session_update_crypto_params(struct tls_session *session,
+bool tls_session_update_crypto_params(struct tls_multi *multi,
+                                      struct tls_session *session,
                                       struct options *options,
                                       struct frame *frame,
-                                      struct frame *frame_fragment);
-
-/**
- * "Poor man's NCP": Use peer cipher if it is an allowed (NCP) cipher.
- * Allows non-NCP peers to upgrade their cipher individually.
- *
- * Make sure to call tls_session_update_crypto_params() after calling this
- * function.
- */
-void tls_poor_mans_ncp(struct options *o, const char *remote_ciphername);
-
-#ifdef MANAGEMENT_DEF_AUTH
-static inline char *
-tls_get_peer_info(const struct tls_multi *multi)
-{
-    return multi->peer_info;
-}
-#endif
-
-/**
- * Return the Negotiable Crypto Parameters version advertised in the peer info
- * string, or 0 if none specified.
- */
-int tls_peer_info_ncp_ver(const char *peer_info);
-
-/**
- * Check whether the ciphers in the supplied list are supported.
- *
- * @param list          Colon-separated list of ciphers
- *
- * @returns true iff all ciphers in list are supported.
- */
-bool tls_check_ncp_cipher_list(const char *list);
-
-/**
- * Return true iff item is present in the colon-separated zero-terminated
- * cipher list.
- */
-bool tls_item_in_cipher_list(const char *item, const char *list);
-
-/**
- * Check whether the ciphers in the supplied list are supported.
- *
- * @param list          Colon-separated list of ciphers
- * @parms gc            gc_arena to allocate the returned string
- *
- * @returns             colon separated string of normalised (via
- *                      translate_cipher_name_from_openvpn) and
- *                      zero terminated string iff all ciphers
- *                      in list are supported and the total length
- *                      is short than MAX_NCP_CIPHERS_LENGTH. NULL
- *                      otherwise.
- */
-char *
-mutate_ncp_cipher_list(const char *list, struct gc_arena *gc);
-
-/**
- * The maximum length of a ncp-cipher string that is accepted.
- *
- * Since this list needs to be pushed as IV_CIPHERS, we are conservative
- * about its length.
- */
-#define MAX_NCP_CIPHERS_LENGTH 127
+                                      struct frame *frame_fragment,
+                                      struct link_socket_info *lsi);
 
 /*
  * inline functions
  */
+
+/** Free the elements of a tls_wrap_ctx structure */
+static inline void
+tls_wrap_free(struct tls_wrap_ctx *tls_wrap)
+{
+    if (packet_id_initialized(&tls_wrap->opt.packet_id))
+    {
+        packet_id_free(&tls_wrap->opt.packet_id);
+    }
+
+    if (tls_wrap->cleanup_key_ctx)
+    {
+        free_key_ctx_bi(&tls_wrap->opt.key_ctx_bi);
+    }
+
+    free_buf(&tls_wrap->tls_crypt_v2_metadata);
+    free_buf(&tls_wrap->work);
+    secure_memzero(&tls_wrap->original_wrap_keydata, sizeof(tls_wrap->original_wrap_keydata));
+}
 
 static inline bool
 tls_initial_packet_received(const struct tls_multi *multi)
@@ -561,23 +495,12 @@ tls_initial_packet_received(const struct tls_multi *multi)
     return multi->n_sessions > 0;
 }
 
-static inline bool
-tls_test_auth_deferred_interval(const struct tls_multi *multi)
-{
-    if (multi)
-    {
-        const struct key_state *ks = &multi->session[TM_ACTIVE].key[KS_PRIMARY];
-        return now < ks->auth_deferred_expire;
-    }
-    return false;
-}
-
 static inline int
 tls_test_payload_len(const struct tls_multi *multi)
 {
     if (multi)
     {
-        const struct key_state *ks = &multi->session[TM_ACTIVE].key[KS_PRIMARY];
+        const struct key_state *ks = get_primary_key(multi);
         if (ks->state >= S_ACTIVE)
         {
             return BLEN(&ks->plaintext_read_buf);
@@ -620,18 +543,11 @@ void show_tls_performance_stats(void);
 void extract_x509_field_test(void);
 
 /**
- * Given a key_method, return true if opcode represents the required form of
- * hard_reset.
+ * Given a key_method, return true if opcode represents the one of the
+ * hard_reset op codes for key-method 2
  *
- * If key_method == 0, return true if any form of hard reset is used.
  */
-bool is_hard_reset(int op, int key_method);
-
-/**
- * Cleans the saved user/password unless auth-nocache is in use.
- */
-void ssl_clean_user_pass(void);
-
+bool is_hard_reset_method2(int op);
 
 /*
  * Show the TLS ciphers that are available for us to use in the SSL
@@ -645,6 +561,33 @@ void
 show_available_tls_ciphers(const char *cipher_list,
                            const char *cipher_list_tls13,
                            const char *tls_cert_profile);
-#endif /* ENABLE_CRYPTO */
+
+
+/**
+ * Generate data channel keys for the supplied TLS session.
+ *
+ * This erases the source material used to generate the data channel keys, and
+ * can thus be called only once per session.
+ */
+bool
+tls_session_generate_data_channel_keys(struct tls_multi *multi,
+                                       struct tls_session *session);
+
+void
+tls_session_soft_reset(struct tls_multi *multi);
+
+/**
+ * Load ovpn.xkey provider used for external key signing
+ */
+void
+load_xkey_provider(void);
+
+/* Special method to skip the three way handshake RESET stages. This is
+ * used by the HMAC code when seeing a packet that matches the previous
+ * HMAC based stateless server state */
+bool
+session_skip_to_pre_start(struct tls_session *session,
+                          struct tls_pre_decrypt_state *state,
+                          struct link_socket_actual *from);
 
 #endif /* ifndef OPENVPN_SSL_H */

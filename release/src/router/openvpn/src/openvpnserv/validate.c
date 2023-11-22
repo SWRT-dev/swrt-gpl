@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2016 Selva Nair <selva.nair@gmail.com>
+ *  Copyright (C) 2016-2023 Selva Nair <selva.nair@gmail.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -51,6 +51,7 @@ static const WCHAR *white_list[] =
 };
 
 static BOOL IsUserInGroup(PSID sid, const PTOKEN_GROUPS groups, const WCHAR *group_name);
+
 static PTOKEN_GROUPS GetTokenGroups(const HANDLE token);
 
 /*
@@ -67,8 +68,7 @@ CheckConfigPath(const WCHAR *workdir, const WCHAR *fname, const settings_t *s)
     /* convert fname to full path */
     if (PathIsRelativeW(fname) )
     {
-        swprintf(tmp, _countof(tmp), L"%s\\%s", workdir, fname);
-        tmp[_countof(tmp)-1] = L'\0';
+        openvpn_swprintf(tmp, _countof(tmp), L"%ls\\%ls", workdir, fname);
         config_file = tmp;
     }
     else
@@ -76,16 +76,7 @@ CheckConfigPath(const WCHAR *workdir, const WCHAR *fname, const settings_t *s)
         config_file = fname;
     }
 
-#ifdef UNICODE
     config_dir = s->config_dir;
-#else
-    if (MultiByteToWideChar(CP_UTF8, 0, s->config_dir, -1, widepath, MAX_PATH) == 0)
-    {
-        MsgToEventLog(M_SYSERR, TEXT("Failed to convert config_dir name to WideChar"));
-        return FALSE;
-    }
-    config_dir = widepath;
-#endif
 
     if (wcsncmp(config_dir, config_file, wcslen(config_dir)) == 0
         && wcsstr(config_file + wcslen(config_dir), L"..") == NULL)
@@ -191,7 +182,7 @@ IsAuthorizedUser(PSID sid, const HANDLE token, const WCHAR *ovpn_admin_group)
         ret = IsUserInGroup(sid, token_groups, admin_group[i]);
         if (ret)
         {
-            MsgToEventLog(M_INFO, TEXT("Authorizing user '%s@%s' by virtue of membership in group '%s'"),
+            MsgToEventLog(M_INFO, TEXT("Authorizing user '%ls@%ls' by virtue of membership in group '%ls'"),
                           username, domain, admin_group[i]);
             goto out;
         }
@@ -300,18 +291,18 @@ IsUserInGroup(PSID sid, const PTOKEN_GROUPS token_groups, const WCHAR *group_nam
             break;
         }
         /* If a match is already found, ret == TRUE and the loop is skipped */
-        for (int i = 0; i < nread && !ret; ++i)
+        for (DWORD i = 0; i < nread && !ret; ++i)
         {
             ret = EqualSid(members[i].lgrmi0_sid, sid);
         }
         NetApiBufferFree(members);
-    /* MSDN says the lookup should always iterate until err != ERROR_MORE_DATA */
+        /* MSDN says the lookup should always iterate until err != ERROR_MORE_DATA */
     } while (err == ERROR_MORE_DATA && nloop++ < 100);
 
     if (err != NERR_Success && err != NERR_GroupNotFound)
     {
         SetLastError(err);
-        MsgToEventLog(M_SYSERR, TEXT("In NetLocalGroupGetMembers for group '%s'"), group_name);
+        MsgToEventLog(M_SYSERR, TEXT("In NetLocalGroupGetMembers for group '%ls'"), group_name);
     }
 
     return ret;

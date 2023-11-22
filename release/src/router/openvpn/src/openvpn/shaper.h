@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -25,8 +25,6 @@
 #define SHAPER_H
 
 /*#define SHAPER_DEBUG*/
-
-#ifdef ENABLE_FEATURE_SHAPER
 
 #include "basic.h"
 #include "integer.h"
@@ -147,11 +145,11 @@ shaper_wrote_bytes(struct shaper *s, int nbytes)
         tv_add(&s->wakeup, &tv);
 
 #ifdef SHAPER_DEBUG
-        dmsg(D_SHAPER_DEBUG, "SHAPER shaper_wrote_bytes bytes=%d delay=%d sec=%d usec=%d",
+        dmsg(D_SHAPER_DEBUG, "SHAPER shaper_wrote_bytes bytes=%d delay=%ld sec=%" PRIi64 " usec=%ld",
              nbytes,
-             (int)tv.tv_usec,
-             (int)s->wakeup.tv_sec,
-             (int)s->wakeup.tv_usec);
+             (long)tv.tv_usec,
+             (int64_t)s->wakeup.tv_sec,
+             (long)s->wakeup.tv_usec);
 #endif
     }
 }
@@ -172,7 +170,5 @@ shaper_change_pct(struct shaper *s, int pct)
     return s->bytes_per_second != orig_bandwidth;
 }
 #endif
-
-#endif /* ENABLE_FEATURE_SHAPER */
 
 #endif /* ifndef SHAPER_H */

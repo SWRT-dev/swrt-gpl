@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -45,7 +45,6 @@
 #include "pool.h"
 #include "plugin.h"
 #include "manage.h"
-#include "pf.h"
 
 /*
  * Our global key schedules, packaged thusly
@@ -54,7 +53,6 @@
 
 struct key_schedule
 {
-#ifdef ENABLE_CRYPTO
     /* which cipher, HMAC digest, and key sizes are we using? */
     struct key_type key_type;
 
@@ -67,9 +65,12 @@ struct key_schedule
     /* optional TLS control channel wrapping */
     struct key_type tls_auth_key_type;
     struct key_ctx_bi tls_wrap_key;
-#else                           /* ENABLE_CRYPTO */
-    int dummy;
-#endif                          /* ENABLE_CRYPTO */
+    /** original tls-crypt key preserved to xored into the tls_crypt
+     * renegotiation key */
+    struct key2 original_wrap_keydata;
+    struct key_ctx tls_crypt_v2_server_key;
+    struct buffer tls_crypt_v2_wkc;             /**< Wrapped client key */
+    struct key_ctx auth_token_key;
 };
 
 /*
@@ -96,10 +97,8 @@ struct context_buffers
     struct buffer aux_buf;
 
     /* workspace buffers used by crypto routines */
-#ifdef ENABLE_CRYPTO
     struct buffer encrypt_buf;
     struct buffer decrypt_buf;
-#endif
 
     /* workspace buffers for compression */
 #ifdef USE_COMP
@@ -192,13 +191,9 @@ struct context_1
     struct socks_proxy_info *socks_proxy;
     bool socks_proxy_owned;
 
-#if P2MP
-
-#if P2MP_SERVER
     /* persist --ifconfig-pool db to file */
     struct ifconfig_pool_persist *ifconfig_pool_persist;
     bool ifconfig_pool_persist_owned;
-#endif
 
     /* if client mode, hash of option strings we pulled from server */
     struct sha256_digest pulled_options_digest_save;
@@ -209,19 +204,22 @@ struct context_1
     struct user_pass *auth_user_pass;
     /**< Username and password for
      *   authentication. */
-
-    const char *ciphername;     /**< Data channel cipher from config file */
-    const char *authname;       /**< Data channel auth from config file */
-    int keysize;                /**< Data channel keysize from config file */
-#endif
 };
+
+
+static inline bool
+is_cas_pending(enum multi_status cas)
+{
+    return cas == CAS_PENDING || cas == CAS_PENDING_DEFERRED
+           || cas == CAS_PENDING_DEFERRED_PARTIAL;
+}
 
 /**
  * Level 2 %context containing state that is reset on both \c SIGHUP and
  * \c SIGUSR1 restarts.
  *
  * This structure is initialized at the top of the \c
- * tunnel_point_to_point(), \c tunnel_server_udp_single_threaded(), and \c
+ * tunnel_point_to_point(), \c tunnel_server_udp(), and \c
  * tunnel_server_tcp() functions.  In other words, it is reset for every
  * iteration of the \c main() function's inner \c SIGUSR1 loop.
  */
@@ -236,25 +234,13 @@ struct context_2
     int event_set_max;
     bool event_set_owned;
 
-    /* event flags returned by io_wait */
-#define SOCKET_READ       (1<<0)
-#define SOCKET_WRITE      (1<<1)
-#define TUN_READ          (1<<2)
-#define TUN_WRITE         (1<<3)
-#define ES_ERROR          (1<<4)
-#define ES_TIMEOUT        (1<<5)
-#ifdef ENABLE_MANAGEMENT
-#define MANAGEMENT_READ  (1<<6)
-#define MANAGEMENT_WRITE (1<<7)
-#endif
-#ifdef ENABLE_ASYNC_PUSH
-#define FILE_CLOSED       (1<<8)
-#endif
-
+    /* bitmask for event status. Check event.h for possible values */
     unsigned int event_set_status;
 
     struct link_socket *link_socket;     /* socket used for TCP/UDP connection to remote */
     bool link_socket_owned;
+
+    /** This variable is used instead link_socket->info for P2MP UDP childs */
     struct link_socket_info *link_socket_info;
     const struct link_socket *accept_from; /* possibly do accept() on a parent link_socket */
 
@@ -263,22 +249,17 @@ struct context_2
 
     /* MTU frame parameters */
     struct frame frame;                         /* Active frame parameters */
-    struct frame frame_initial;                 /* Restored on new session */
 
 #ifdef ENABLE_FRAGMENT
     /* Object to handle advanced MTU negotiation and datagram fragmentation */
     struct fragment_master *fragment;
     struct frame frame_fragment;
-    struct frame frame_fragment_initial;
-    struct frame frame_fragment_omit;
 #endif
 
-#ifdef ENABLE_FEATURE_SHAPER
     /*
      * Traffic shaper object.
      */
     struct shaper shaper;
-#endif
 
     /*
      * Statistics
@@ -286,8 +267,10 @@ struct context_2
     counter_type tun_read_bytes;
     counter_type tun_write_bytes;
     counter_type link_read_bytes;
+    counter_type dco_read_bytes;
     counter_type link_read_bytes_auth;
     counter_type link_write_bytes;
+    counter_type dco_write_bytes;
 #ifdef PACKET_TRUNCATION_CHECK
     counter_type n_trunc_tun_read;
     counter_type n_trunc_tun_write;
@@ -305,9 +288,13 @@ struct context_2
 
     /* --inactive */
     struct event_timeout inactivity_interval;
-    int inactivity_bytes;
+    int64_t inactivity_bytes;
 
-#ifdef ENABLE_OCC
+    struct event_timeout session_interval;
+
+    /* auth token renewal timer */
+    struct event_timeout auth_token_renewal_interval;
+
     /* the option strings must match across peers */
     char *options_string_local;
     char *options_string_remote;
@@ -315,7 +302,6 @@ struct context_2
     int occ_op;                 /* INIT to -1 */
     int occ_n_tries;
     struct event_timeout occ_interval;
-#endif
 
     /*
      * Keep track of maximum packet size received so far
@@ -327,15 +313,12 @@ struct context_2
     int max_send_size_local;    /* max packet size sent */
     int max_send_size_remote;   /* max packet size sent by remote */
 
-#ifdef ENABLE_OCC
+
     /* remote wants us to send back a load test packet of this size */
     int occ_mtu_load_size;
 
     struct event_timeout occ_mtu_load_test_interval;
     int occ_mtu_load_n_tries;
-#endif
-
-#ifdef ENABLE_CRYPTO
 
     /*
      * TLS-mode crypto objects.
@@ -354,6 +337,12 @@ struct context_2
      *   received from a new client.  See the
      *   \c --tls-auth commandline option. */
 
+
+    hmac_ctx_t *session_id_hmac;
+    /**< the HMAC we use to generate and verify our syn cookie like
+     * session ids from the server.
+     */
+
     /* used to optimize calls to tls_multi_process */
     struct interval tmp_int;
 
@@ -367,8 +356,6 @@ struct context_2
      *   process data channel packet. */
 
     struct event_timeout packet_id_persist_interval;
-
-#endif /* ENABLE_CRYPTO */
 
 #ifdef USE_COMP
     struct compress_context *comp_context;
@@ -406,7 +393,9 @@ struct context_2
      * Event loop info
      */
 
-    /* how long to wait on link/tun read before we will need to be serviced */
+    /** Time to next event of timers and similar. This is used to determine
+     *  how long to wait on event wait (select/poll on link/tun read)
+     *  before this context wants to be serviced. */
     struct timeval timeval;
 
     /* next wakeup for processing coarse timers (>1 sec resolution) */
@@ -424,13 +413,11 @@ struct context_2
     /* indicates that the do_up_delay function has run */
     bool do_up_ran;
 
-#ifdef ENABLE_OCC
     /* indicates that we have received a SIGTERM when
      * options->explicit_exit_notification is enabled,
      * but we have not exited yet */
     time_t explicit_exit_notification_time_wait;
     struct event_timeout explicit_exit_notification_interval;
-#endif
 
     /* environmental variables to pass to scripts */
     struct env_set *es;
@@ -439,14 +426,8 @@ struct context_2
     /* don't wait for TUN/TAP/UDP to be ready to accept write */
     bool fast_io;
 
-#if P2MP
-
-#if P2MP_SERVER
     /* --ifconfig endpoints to be pushed to client */
-    bool push_reply_deferred;
-#ifdef ENABLE_ASYNC_PUSH
     bool push_request_received;
-#endif
     bool push_ifconfig_defined;
     time_t sent_push_reply_expiry;
     in_addr_t push_ifconfig_local;
@@ -458,18 +439,8 @@ struct context_2
     int push_ifconfig_ipv6_netbits;
     struct in6_addr push_ifconfig_ipv6_remote;
 
-    /* client authentication state, CAS_SUCCEEDED must be 0 */
-#define CAS_SUCCEEDED 0
-#define CAS_PENDING   1
-#define CAS_FAILED    2
-#define CAS_PARTIAL   3  /* at least one client-connect script/plugin
-                          * succeeded while a later one in the chain failed */
-    int context_auth;
-#endif /* if P2MP_SERVER */
-
     struct event_timeout push_request_interval;
-    int n_sent_push_requests;
-    bool did_pre_pull_restore;
+    time_t push_request_timeout;
 
     /* hash of pulled options, so we can compare when options change */
     bool pulled_options_digest_init_done;
@@ -478,14 +449,10 @@ struct context_2
 
     struct event_timeout scheduled_exit;
     int scheduled_exit_signal;
-#endif /* if P2MP */
 
     /* packet filter */
-#ifdef ENABLE_PF
-    struct pf_context pf;
-#endif
 
-#ifdef MANAGEMENT_DEF_AUTH
+#ifdef ENABLE_MANAGEMENT
     struct man_def_auth_context mda_context;
 #endif
 
@@ -531,6 +498,8 @@ struct context
 
     struct env_set *es;         /**< Set of environment variables. */
 
+    openvpn_net_ctx_t net_ctx;  /**< Networking API opaque context */
+
     struct signal_info *sig;    /**< Internal error signaling object. */
 
     struct plugin_list *plugins; /**< List of plug-ins. */
@@ -567,30 +536,13 @@ struct context
  * have been compiled in.
  */
 
-#ifdef ENABLE_CRYPTO
 #define TLS_MODE(c) ((c)->c2.tls_multi != NULL)
 #define PROTO_DUMP_FLAGS (check_debug_level(D_LINK_RW_VERBOSE) ? (PD_SHOW_DATA|PD_VERBOSE) : 0)
 #define PROTO_DUMP(buf, gc) protocol_dump((buf), \
                                           PROTO_DUMP_FLAGS   \
                                           |(c->c2.tls_multi ? PD_TLS : 0)   \
-                                          |(c->options.tls_auth_file ? c->c1.ks.key_type.hmac_length : 0), \
+                                          |(c->options.tls_auth_file ? md_kt_size(c->c1.ks.key_type.digest) : 0), \
                                           gc)
-#else  /* ifdef ENABLE_CRYPTO */
-#define TLS_MODE(c) (false)
-#define PROTO_DUMP(buf, gc) format_hex(BPTR(buf), BLEN(buf), 80, gc)
-#endif
-
-#ifdef ENABLE_CRYPTO
-#define MD5SUM(buf, len, gc) md5sum((buf), (len), 0, (gc))
-#else
-#define MD5SUM(buf, len, gc) "[unavailable]"
-#endif
-
-#ifdef ENABLE_CRYPTO
-#define CIPHER_ENABLED(c) (c->c1.ks.key_type.cipher != NULL)
-#else
-#define CIPHER_ENABLED(c) (false)
-#endif
 
 /* this represents "disabled peer-id" */
 #define MAX_PEER_ID 0xFFFFFF

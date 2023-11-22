@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+include $(TOP)/common.mak
 BIN=smartdns 
 
 OBJS_LIB=lib/rbtree.o lib/art.o lib/bitops.o lib/radix.o lib/conf.o
@@ -35,6 +35,9 @@ CXXFLAGS +=-Iinclude
 #else
 LDFLAGS += -lssl -lcrypto -lpthread -ldl
 #endif
+ifeq ($(RTCONFIG_OPENSSL3),y)
+LDFLAGS += -latomic
+endif
 
 all: $(BIN)
  

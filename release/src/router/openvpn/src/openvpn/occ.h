@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -23,8 +23,6 @@
 
 #ifndef OCC_H
 #define OCC_H
-
-#ifdef ENABLE_OCC
 
 #include "forward.h"
 
@@ -90,5 +88,85 @@ is_occ_msg(const struct buffer *buf)
 
 void process_received_occ_msg(struct context *c);
 
-#endif /* ifdef ENABLE_OCC */
+void check_send_occ_req_dowork(struct context *c);
+
+void check_send_occ_load_test_dowork(struct context *c);
+
+void check_send_occ_msg_dowork(struct context *c);
+
+/*
+ * Inline functions
+ */
+
+static inline int
+occ_reset_op(void)
+{
+    return -1;
+}
+
+/*
+ * Should we send an OCC_REQUEST message?
+ */
+static inline void
+check_send_occ_req(struct context *c)
+{
+    if (event_timeout_defined(&c->c2.occ_interval)
+        && event_timeout_trigger(&c->c2.occ_interval,
+                                 &c->c2.timeval,
+                                 (!TO_LINK_DEF(c) && c->c2.occ_op < 0) ? ETT_DEFAULT : 0))
+    {
+        check_send_occ_req_dowork(c);
+    }
+}
+
+/*
+ * Should we send an MTU load test?
+ */
+static inline void
+check_send_occ_load_test(struct context *c)
+{
+    if (event_timeout_defined(&c->c2.occ_mtu_load_test_interval)
+        && event_timeout_trigger(&c->c2.occ_mtu_load_test_interval,
+                                 &c->c2.timeval,
+                                 (!TO_LINK_DEF(c) && c->c2.occ_op < 0) ? ETT_DEFAULT : 0))
+    {
+        check_send_occ_load_test_dowork(c);
+    }
+}
+
+/*
+ * Should we send an OCC message?
+ */
+static inline void
+check_send_occ_msg(struct context *c)
+{
+    if (c->c2.occ_op >= 0)
+    {
+        if (!TO_LINK_DEF(c))
+        {
+            check_send_occ_msg_dowork(c);
+        }
+        else
+        {
+            tv_clear(&c->c2.timeval); /* ZERO-TIMEOUT */
+        }
+    }
+}
+
+/**
+ * Small helper function to determine if we should send the exit notification
+ * via control channel.
+ * @return control channel exit message should be used */
+static inline bool
+cc_exit_notify_enabled(struct context *c)
+{
+    /* Check if we have TLS active at all */
+    if (!c->c2.tls_multi)
+    {
+        return false;
+    }
+
+    const struct key_state *ks = get_primary_key(c->c2.tls_multi);
+    return (ks->crypto_options.flags & CO_USE_CC_EXIT_NOTIFY);
+}
 #endif /* ifndef OCC_H */

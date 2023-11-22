@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -23,8 +23,6 @@
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
-#elif defined(_MSC_VER)
-#include "config-msvc.h"
 #endif
 
 #include "syshead.h"
@@ -34,8 +32,6 @@
 #include "memdbg.h"
 
 time_t now = 0;            /* GLOBAL */
-
-#if TIME_BACKTRACK_PROTECTION
 
 static time_t now_adj = 0; /* GLOBAL */
 time_t now_usec = 0;       /* GLOBAL */
@@ -79,8 +75,6 @@ update_now_usec(struct timeval *tv)
     }
 }
 
-#endif /* TIME_BACKTRACK_PROTECTION */
-
 /*
  * Return a numerical string describing a struct timeval.
  */
@@ -88,9 +82,9 @@ const char *
 tv_string(const struct timeval *tv, struct gc_arena *gc)
 {
     struct buffer out = alloc_buf_gc(64, gc);
-    buf_printf(&out, "[%d/%d]",
-               (int) tv->tv_sec,
-               (int )tv->tv_usec);
+    buf_printf(&out, "[%" PRIi64 "/%ld]",
+               (int64_t)tv->tv_sec,
+               (long)tv->tv_usec);
     return BSTR(&out);
 }
 
@@ -103,7 +97,7 @@ const char *
 tv_string_abs(const struct timeval *tv, struct gc_arena *gc)
 {
     return time_string((time_t) tv->tv_sec,
-                       (int) tv->tv_usec,
+                       (long) tv->tv_usec,
                        true,
                        gc);
 }
@@ -127,12 +121,15 @@ time_string(time_t t, int usec, bool show_usec, struct gc_arena *gc)
     }
 
     t = tv.tv_sec;
-    buf_printf(&out, "%s", ctime(&t));
-    buf_rmtail(&out, '\n');
+    struct tm *tm = localtime(&t);
+
+    buf_printf(&out, "%04d-%02d-%02d %02d:%02d:%02d",
+               tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday,
+               tm->tm_hour, tm->tm_min, tm->tm_sec);
 
     if (show_usec && tv.tv_usec)
     {
-        buf_printf(&out, " us=%d", (int)tv.tv_usec);
+        buf_printf(&out, " us=%ld", (long)tv.tv_usec);
     }
 
     return BSTR(&out);
@@ -198,10 +195,10 @@ time_test(void)
         t = time(NULL);
         gettimeofday(&tv, NULL);
 #if 1
-        msg(M_INFO, "t=%u s=%u us=%u",
-            (unsigned int)t,
-            (unsigned int)tv.tv_sec,
-            (unsigned int)tv.tv_usec);
+        msg(M_INFO, "t=%" PRIi64 " s=%" PRIi64 " us=%ld",
+            (int64_t)t,
+            (int64_t)tv.tv_sec,
+            (long)tv.tv_usec);
 #endif
     }
 }

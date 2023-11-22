@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -31,6 +31,7 @@
 #define EVENT_AUTH_FAILED         1
 #define EVENT_TLS_ERROR           2
 #define EVENT_NET_CONN            3
+#define EVENT_CONF_ERROR          4
 void update_nvram_status(int event);
 #endif
 
@@ -76,8 +77,6 @@ struct status_output *status_open(const char *filename,
                                   const int msglevel,
                                   const struct virtual_output *vout,
                                   const unsigned int flags);
-
-bool status_trigger_tv(struct status_output *so, struct timeval *tv);
 
 bool status_trigger(struct status_output *so);
 

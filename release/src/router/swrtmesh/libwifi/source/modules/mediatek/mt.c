@@ -38,6 +38,8 @@
 #include <ctype.h>
 #include <linux/limits.h>
 #include <linux/nl80211.h>
+#include <linux/ethtool.h>
+#include <linux/sockios.h>
 #include <netlink/genl/genl.h>
 
 #include <easy/easy.h>
@@ -214,6 +216,7 @@ et_map_init(void)
 		}
 		et_n_stats[bidx] = (size_t)drvinfo.n_stats;
 		next:
+		continue;
 	}
 
 	return;
@@ -234,7 +237,7 @@ read_int_from_file(const char *fmt, ...)
 	uint64_t res;
 
 	va_start(ap, fmt);
-	vsnprintf(str, sizeof(str), fmt, ap);
+	vsnprintf(str, sizeof(str), fmt, ap); /* Flawfinder: ignore */
 	va_end(ap);
 
 	if ((f = fopen(str, "r")) == NULL)
@@ -284,7 +287,7 @@ static int iface_get_stats_internal(const char *ifname, const char *phy,
 	*p_bidx = bidx;
 	*p_stats = stats;
 
-	strcpy(req.ifr_name, ifname);
+	strcpy(req.ifr_name, ifname); /* Flawfinder: ignore */
 	stats->cmd = ETHTOOL_GSTATS;
 	stats->n_stats = et_n_stats[bidx];
 	req.ifr_data = (void *)stats;
@@ -406,7 +409,7 @@ read_int_from_file(const char *fmt, ...)
 	int      res;
 
 	va_start(ap, fmt);
-	vsnprintf(str, sizeof(str), fmt, ap);
+	vsnprintf(str, sizeof(str), fmt, ap); /* Flawfinder: ignore */
 	va_end(ap);
 
 	if ((f = fopen(str, "r")) == NULL)
@@ -674,13 +677,11 @@ const struct wifi_driver mt_driver = {
 
 	/* Interface/vif common callbacks */
 
+#if !defined(MT_USE_ETHTOOL_STATS) && defined(MT7915_VENDOR_EXT)
 	/* Interface/vif ap callbacks */
-
 	.iface.get_stats = apif_get_stats,
 
 	/* Interface/vif sta callbacks */
-
-#ifndef MT_USE_ETHTOOL_STATS
 	.iface.sta_get_ifstats = staif_get_stats,
 #endif
 

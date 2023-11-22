@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -32,13 +32,9 @@
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
-#elif defined(_MSC_VER)
-#include "config-msvc.h"
 #endif
 
 #include "syshead.h"
-
-#ifdef ENABLE_CRYPTO
 
 #include "packet_id.h"
 #include "misc.h"
@@ -55,11 +51,14 @@
 #define SEQ_UNSEEN  ((time_t)0)
 #define SEQ_EXPIRED ((time_t)1)
 
+#ifdef ENABLE_DEBUG
 static void packet_id_debug_print(int msglevel,
                                   const struct packet_id_rec *p,
                                   const struct packet_id_net *pin,
                                   const char *message,
                                   int value);
+
+#endif /* ENABLE_DEBUG */
 
 static inline void
 packet_id_debug(int msglevel,
@@ -105,10 +104,7 @@ packet_id_free(struct packet_id *p)
     if (p)
     {
         dmsg(D_PID_DEBUG, "PID packet_id_free");
-        if (p->rec.seq_list)
-        {
-            free(p->rec.seq_list);
-        }
+        free(p->rec.seq_list);
         CLEAR(*p);
     }
 }
@@ -349,7 +345,7 @@ packet_id_send_update(struct packet_id_send *p, bool long_form)
 
 bool
 packet_id_write(struct packet_id_send *p, struct buffer *buf, bool long_form,
-        bool prepend)
+                bool prepend)
 {
     if (!packet_id_send_update(p, long_form))
     {
@@ -608,14 +604,14 @@ packet_id_debug_print(int msglevel,
         }
         buf_printf(&out, "%c", c);
     }
-    buf_printf(&out, "] " time_format ":" packet_id_format, (time_type)p->time, (packet_id_print_type)p->id);
+    buf_printf(&out, "] %" PRIi64 ":" packet_id_format, (int64_t)p->time, (packet_id_print_type)p->id);
     if (pin)
     {
-        buf_printf(&out, " " time_format ":" packet_id_format, (time_type)pin->time, (packet_id_print_type)pin->id);
+        buf_printf(&out, " %" PRIi64 ":" packet_id_format, (int64_t)pin->time, (packet_id_print_type)pin->id);
     }
 
-    buf_printf(&out, " t=" time_format "[%d]",
-               (time_type)prev_now,
+    buf_printf(&out, " t=%" PRIi64 "[%d]",
+               (int64_t)prev_now,
                (int)(prev_now - tv.tv_sec));
 
     buf_printf(&out, " r=[%d,%d,%d,%d,%d]",
@@ -639,61 +635,3 @@ packet_id_debug_print(int msglevel,
 }
 
 #endif /* ifdef ENABLE_DEBUG */
-
-#ifdef PID_TEST
-
-void
-packet_id_interactive_test(void)
-{
-    struct packet_id pid;
-    struct packet_id_net pin;
-    bool long_form;
-    bool count = 0;
-    bool test;
-
-    const int seq_backtrack = 10;
-    const int time_backtrack = 10;
-
-    packet_id_init(&pid, seq_backtrack, time_backtrack);
-
-    while (true)
-    {
-        char buf[80];
-        if (!fgets(buf, sizeof(buf), stdin))
-        {
-            break;
-        }
-        update_time();
-        if (sscanf(buf, "%lu,%u", &pin.time, &pin.id) == 2)
-        {
-            packet_id_reap_test(&pid.rec);
-            test = packet_id_test(&pid.rec, &pin);
-            printf("packet_id_test (" time_format ", " packet_id_format ") returned %d\n",
-                   (time_type)pin.time,
-                   (packet_id_print_type)pin.id,
-                   test);
-            if (test)
-            {
-                packet_id_add(&pid.rec, &pin);
-            }
-        }
-        else
-        {
-            long_form = (count < 20);
-            packet_id_alloc_outgoing(&pid.send, &pin, long_form);
-            printf("(" time_format "(" packet_id_format "), %d)\n",
-                   (time_type)pin.time,
-                   (packet_id_print_type)pin.id,
-                   long_form);
-            if (pid.send.id == 10)
-            {
-                pid.send.id = 0xFFFFFFF8;
-            }
-            ++count;
-        }
-    }
-    packet_id_free(&pid);
-}
-#endif /* ifdef PID_TEST */
-
-#endif /* ENABLE_CRYPTO */

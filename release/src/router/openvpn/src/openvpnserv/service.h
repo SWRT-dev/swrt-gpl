@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2013-2018 Heiko Hund <heiko.hund@sophos.com>
+ *  Copyright (C) 2013-2023 Heiko Hund <heiko.hund@sophos.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -24,12 +24,16 @@
 #ifndef _SERVICE_H
 #define _SERVICE_H
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#elif defined(_MSC_VER)
-#include "config-msvc.h"
+/* We do not support non-unicode builds */
+#ifndef UNICODE
+#define UNICODE
 #endif
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include <winsock2.h>
 #include <windows.h>
 #include <stdlib.h>
 #include <tchar.h>
@@ -47,7 +51,6 @@
 #define M_ERR     (MSG_FLAGS_ERROR)                    /* error */
 
 typedef enum {
-    automatic,
     interactive,
     _service_max
 } openvpn_service_type;
@@ -71,19 +74,18 @@ typedef struct {
     BOOL append;
 } settings_t;
 
-extern openvpn_service_t automatic_service;
 extern openvpn_service_t interactive_service;
 extern LPCTSTR service_instance;
 
-VOID WINAPI ServiceStartAutomaticOwn(DWORD argc, LPTSTR *argv);
-VOID WINAPI ServiceStartAutomatic(DWORD argc, LPTSTR *argv);
-
 VOID WINAPI ServiceStartInteractiveOwn(DWORD argc, LPTSTR *argv);
+
 VOID WINAPI ServiceStartInteractive(DWORD argc, LPTSTR *argv);
 
-int openvpn_vsntprintf(LPTSTR str, size_t size, LPCTSTR format, va_list arglist);
+BOOL openvpn_vsntprintf(LPTSTR str, size_t size, LPCTSTR format, va_list arglist);
 
-int openvpn_sntprintf(LPTSTR str, size_t size, LPCTSTR format, ...);
+BOOL openvpn_sntprintf(LPTSTR str, size_t size, LPCTSTR format, ...);
+
+BOOL openvpn_swprintf(wchar_t *const str, const size_t size, const wchar_t *const format, ...);
 
 DWORD GetOpenvpnSettings(settings_t *s);
 

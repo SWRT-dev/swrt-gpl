@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -23,8 +23,6 @@
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
-#elif defined(_MSC_VER)
-#include "config-msvc.h"
 #endif
 
 #include "syshead.h"
@@ -126,7 +124,7 @@ recv_line(socket_descriptor_t sd,
         }
 
         /* read single char */
-        size = recv(sd, &c, 1, MSG_NOSIGNAL);
+        size = recv(sd, (void *)&c, 1, MSG_NOSIGNAL);
 
         /* error? */
         if (size != 1)
@@ -318,7 +316,6 @@ static int
 get_proxy_authenticate(socket_descriptor_t sd,
                        int timeout,
                        char **data,
-                       struct gc_arena *gc,
                        volatile int *signal_received)
 {
     char buf[256];
@@ -341,14 +338,14 @@ get_proxy_authenticate(socket_descriptor_t sd,
             if (!strncmp(buf+20, "Basic ", 6))
             {
                 msg(D_PROXY, "PROXY AUTH BASIC: '%s'", buf);
-                *data = string_alloc(buf+26, gc);
+                *data = string_alloc(buf+26, NULL);
                 ret = HTTP_AUTH_BASIC;
             }
 #if PROXY_DIGEST_AUTH
             else if (!strncmp(buf+20, "Digest ", 7))
             {
                 msg(D_PROXY, "PROXY AUTH DIGEST: '%s'", buf);
-                *data = string_alloc(buf+27, gc);
+                *data = string_alloc(buf+27, NULL);
                 ret = HTTP_AUTH_DIGEST;
             }
 #endif
@@ -367,10 +364,7 @@ get_proxy_authenticate(socket_descriptor_t sd,
 static void
 store_proxy_authenticate(struct http_proxy_info *p, char *data)
 {
-    if (p->proxy_authenticate)
-    {
-        free(p->proxy_authenticate);
-    }
+    free(p->proxy_authenticate);
     p->proxy_authenticate = data;
 }
 
@@ -523,6 +517,8 @@ http_proxy_new(const struct http_proxy_options *o)
 #if NTLM
         else if (!strcmp(o->auth_method_string, "ntlm"))
         {
+            msg(M_INFO, "NTLM v1 authentication is deprecated and will be removed in "
+                "OpenVPN 2.7");
             p->auth_method = HTTP_AUTH_NTLM;
         }
         else if (!strcmp(o->auth_method_string, "ntlm2"))
@@ -638,7 +634,7 @@ establish_http_proxy_passthru(struct http_proxy_info *p,
                               const char *port,          /* openvpn server port */
                               struct event_timeout *server_poll_timeout,
                               struct buffer *lookahead,
-                              volatile int *signal_received)
+                              struct signal_info *sig_info)
 {
     struct gc_arena gc = gc_new();
     char buf[512];
@@ -648,6 +644,7 @@ establish_http_proxy_passthru(struct http_proxy_info *p,
     int nparms;
     bool ret = false;
     bool processed = false;
+    volatile int *signal_received = &sig_info->signal_received;
 
     /* get user/pass if not previously given */
     if (p->auth_method == HTTP_AUTH_BASIC
@@ -885,10 +882,10 @@ establish_http_proxy_passthru(struct http_proxy_info *p,
                 const char *algor = get_pa_var("algorithm", pa, &gc);
                 const char *opaque = get_pa_var("opaque", pa, &gc);
 
-                if ( !realm || !nonce )
+                if (!realm || !nonce)
                 {
                     msg(D_LINK_ERRORS, "HTTP proxy: digest auth failed, malformed response "
-                            "from server: realm= or nonce= missing" );
+                        "from server: realm= or nonce= missing" );
                     goto error;
                 }
 
@@ -997,7 +994,6 @@ establish_http_proxy_passthru(struct http_proxy_info *p,
             const int method = get_proxy_authenticate(sd,
                                                       get_server_poll_remaining_time(server_poll_timeout),
                                                       &pa,
-                                                      NULL,
                                                       signal_received);
             if (method != HTTP_AUTH_NONE)
             {
@@ -1082,10 +1078,7 @@ done:
     return ret;
 
 error:
-    if (!*signal_received)
-    {
-        *signal_received = SIGUSR1; /* SOFT-SIGUSR1 -- HTTP proxy error */
-    }
+    register_signal(sig_info, SIGUSR1, "HTTP proxy error"); /* SOFT-SIGUSR1 -- HTTP proxy error */
     gc_free(&gc);
     return ret;
 }

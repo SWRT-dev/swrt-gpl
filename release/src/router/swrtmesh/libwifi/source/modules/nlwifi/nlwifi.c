@@ -29,6 +29,7 @@
 #include <byteswap.h>
 #include <fcntl.h>
 #include <net/if.h>
+#include <netlink/msg.h>
 #include <netlink/genl/genl.h>
 #include <netlink/genl/ctrl.h>
 #include <netpacket/packet.h>
@@ -99,6 +100,9 @@ struct mlo_links_data {
 static int nlwifi_get_survey(const char *name, struct survey_data *survey_data);
 static int nlwifi_get_phy(const char *name, char *phy, size_t phy_size);
 static int nlwifi_get_supp_channels_cb(struct nl_msg *msg, void *data);
+static int nlwifi_iface_mlo_link(const char *ifname, enum wifi_band band,
+				 struct wifi_mlo_link *mlo);
+static enum wifi_band ieee80211_frequency_to_band(int freq);
 
 static enum wifi_band nlwifi_band_to_wifi_band(enum nl80211_band nlband)
 {
@@ -177,7 +181,21 @@ int nlwifi_get_phy_wifi_ifaces(const char *name, enum wifi_band band, struct wif
 		if (strcmp(phy, netdevphy))
 			continue;
 
+		iface[i].link_id = -1;
+
 		nlwifi_iface_get_band(p->d_name, &iface[i].band);
+		if (band != BAND_ANY && iface[i].band == BAND_UNKNOWN) {
+			struct wifi_mlo_link link = {};
+
+			if (WARN_ON(nlwifi_iface_mlo_link(p->d_name, band, &link)))
+				continue;
+
+			iface[i].link_id = link.id;
+			iface[i].frequency = link.frequency;
+			iface[i].band = ieee80211_frequency_to_band(link.frequency);
+
+			libwifi_dbg("[%s, %s] %s fallback link id %d\n", name, wifi_band_to_str(link.band), __func__, link.id);
+		}
 		if (band && band != BAND_ANY && band != iface[i].band)
 			continue;
 
@@ -257,6 +275,15 @@ int nlwifi_phy_to_netdev_with_type_and_band(const char *phy, char *netdev, size_
 		ret = nlwifi_iface_get_band(p->d_name, &b);
 		if (WARN_ON(ret))
 			continue;
+		if (band != BAND_ANY && b == BAND_UNKNOWN) {
+			struct wifi_mlo_link link = {};
+
+			if (WARN_ON(nlwifi_iface_mlo_link(p->d_name, band, &link)))
+				continue;
+
+			b = ieee80211_frequency_to_band(link.frequency);
+			libwifi_dbg("[%s, %s] %s fallback link id %d\n", p->d_name, wifi_band_to_str(b), __func__, link.id);
+		}
 
 		if (band != BAND_ANY && b != band)
 			continue;
@@ -1139,6 +1166,25 @@ int nlwifi_get_freq_from_survey(const char *ifname, uint32_t *freq)
 	return 0;
 }
 
+static int nlwifi_iface_mlo_link(const char *ifname, enum wifi_band band,
+				 struct wifi_mlo_link *mlo)
+{
+	struct wifi_mlo_link mlo_link[8];
+	int mlo_link_num = ARRAY_SIZE(mlo_link);
+	int ret;
+
+	ret = nlwifi_get_mlo_links(ifname, band, mlo_link, &mlo_link_num);
+	if (WARN_ON(ret))
+		return ret;
+
+	if (WARN_ON(mlo_link_num == 0))
+		return -1;
+
+	*mlo = mlo_link[0];
+	libwifi_dbg("[%s, %s] mlo link id %d freq %u\n", ifname, wifi_band_to_str(band), mlo->id, mlo->frequency);
+	return 0;
+}
+
 int nlwifi_get_channel_freq(const char *ifname, uint32_t *control_freq)
 {
 	uint32_t freq = 0;
@@ -1218,7 +1264,11 @@ static int nlwifi_get_mlo_links_cb(struct nl_msg *msg, void *data)
 		else
 			width = 20;
 
+		if (tb[NL80211_ATTR_SSID])
+			memcpy(l->ssid, nla_data(tb[NL80211_ATTR_SSID]), nla_len(tb[NL80211_ATTR_SSID]));
+
 		l->id =  nla_get_u32(tb_msg[NL80211_ATTR_MLO_LINK_ID]);
+		l->frequency = freq;
 		l->channel = wifi_freq_to_channel(freq);
 		l->band = ieee80211_frequency_to_band(freq);
 		l->bandwidth = nlwifi_width_to_wifi_bw(width);
@@ -1590,7 +1640,19 @@ int nlwifi_get_band_channel(const char *phyname, enum wifi_band band,
 	if (WARN_ON(ret))
 		return ret;
 
-	nlwifi_get_bandwidth(netdev, bw);
+	if (freq == 0) {
+		struct wifi_mlo_link mlo = {};
+
+		ret = nlwifi_iface_mlo_link(netdev, band, &mlo);
+		if (WARN_ON(ret))
+			return ret;
+
+		freq = mlo.frequency;
+		*bw = mlo.bandwidth;
+	} else {
+		nlwifi_get_bandwidth(netdev, bw);
+	}
+
 	*channel = wifi_freq_to_channel(freq);
 
 	return ret;
@@ -2843,28 +2905,13 @@ static int _nlwifi_get_country(struct nl_msg *msg, void *resp)
 
 int nlwifi_get_country(const char *name, char *alpha2)
 {
-	struct nl_sock *nl;
-	struct nl_msg *msg;
-	int ret = -1;
+	struct nlwifi_ctx ctx = {
+		.cmd = NL80211_CMD_GET_REG,
+		.cb = _nlwifi_get_country,
+		.data = alpha2,
+	};
 
-	nl = nlwifi_socket();
-	if (!nl)
-		goto out;
-
-	msg = nlwifi_alloc_msg(nl, NL80211_CMD_GET_REG, 0, 0);
-	if (!msg)
-		goto out_msg_failure;
-
-	ret = nlwifi_send_msg(nl, msg, _nlwifi_get_country, alpha2);
-	if (ret < 0)
-		goto out_msg_failure;
-
-	ret = 0;
-	nlmsg_free(msg);
-out_msg_failure:
-	nl_socket_free(nl);
-out:
-	return ret;
+	return nlwifi_cmd(name, &ctx);
 }
 
 static int nlwifi_get_survey_cb(struct nl_msg *msg, void *data)

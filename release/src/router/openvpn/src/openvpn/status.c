@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2002-2023 OpenVPN Inc <sales@openvpn.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -23,8 +23,6 @@
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
-#elif defined(_MSC_VER)
-#include "config-msvc.h"
 #endif
 
 #include "syshead.h"
@@ -146,19 +144,6 @@ status_trigger(struct status_output *so)
     }
 }
 
-bool
-status_trigger_tv(struct status_output *so, struct timeval *tv)
-{
-    if (so)
-    {
-        return event_timeout_trigger(&so->et, tv, ETT_DEFAULT);
-    }
-    else
-    {
-        return false;
-    }
-}
-
 void
 status_reset(struct status_output *so)
 {
@@ -216,10 +201,8 @@ status_close(struct status_output *so)
                 ret = false;
             }
         }
-        if (so->filename)
-        {
-            free(so->filename);
-        }
+        free(so->filename);
+
         if (buf_defined(&so->read_buf))
         {
             free_buf(&so->read_buf);
@@ -336,37 +319,66 @@ status_read(struct status_output *so, struct buffer *buf)
 #define ERRNO_SSL                4
 #define ERRNO_AUTH               6
 #define ERRNO_NET_CONN           8
+#define ST_RUNNING		2
+#define ERRNO_CONF		7
 void update_nvram_status(int event)
 {
 	char cmd[128] = {0};
 	char name[16] = {0};
 	char *p = NULL;
+	int is_client = 0;
+	static int last_state = 1;
 
 	prctl(PR_GET_NAME, name);	//e.g. vpnserverX or vpnclientX
 
-	if(strstr(name, "server"))
-		return;
-
 	p = name + 3;
+
+	if (!strncmp(p, "client", 6))
+		is_client = 1;
 
 	switch(event) {
 	case EVENT_AUTH_FAILED:
-		snprintf(cmd, sizeof(cmd), "nvram set vpn_%s_errno=%d", p, ERRNO_AUTH);
-		system(cmd);
-		snprintf(cmd, sizeof(cmd), "nvram set vpn_%s_state=%d", p, ST_ERROR);
-		system(cmd);
+		if (is_client && last_state != ST_ERROR) {
+			snprintf(cmd, sizeof(cmd), "nvram set vpn_%s_errno=%d", p, ERRNO_AUTH);
+			system(cmd);
+			snprintf(cmd, sizeof(cmd), "nvram set vpn_%s_state=%d", p, ST_ERROR);
+			system(cmd);
+			last_state = ST_ERROR;
+		}
 		break;
 	case EVENT_TLS_ERROR:
-		snprintf(cmd, sizeof(cmd), "nvram set vpn_%s_errno=%d", p, ERRNO_SSL);
-		system(cmd);
-		snprintf(cmd, sizeof(cmd), "nvram set vpn_%s_state=%d", p, ST_ERROR);
-		system(cmd);
+		if (is_client && last_state != ST_ERROR) {
+			snprintf(cmd, sizeof(cmd), "nvram set vpn_%s_errno=%d", p, ERRNO_SSL);
+			system(cmd);
+			snprintf(cmd, sizeof(cmd), "nvram set vpn_%s_state=%d", p, ST_ERROR);
+			system(cmd);
+			last_state = ST_ERROR;
+		}
 		break;
 	case EVENT_NET_CONN:
-		snprintf(cmd, sizeof(cmd), "nvram set vpn_%s_errno=%d", p, ERRNO_NET_CONN);
+		if (is_client && last_state != ST_ERROR) {
+			snprintf(cmd, sizeof(cmd), "nvram set vpn_%s_errno=%d", p, ERRNO_NET_CONN);
+			system(cmd);
+			snprintf(cmd, sizeof(cmd), "nvram set vpn_%s_state=%d", p, ST_ERROR);
+			system(cmd);
+			last_state = ST_ERROR;
+		}
+		break;
+	case EVENT_CONF_ERROR:
+		if (last_state != ST_ERROR) {
+			snprintf(cmd, sizeof(cmd), "nvram set vpn_%s_errno=%d", p, ERRNO_CONF);
+			system(cmd);
+			snprintf(cmd, sizeof(cmd), "nvram set vpn_%s_state=%d", p, ST_ERROR);
+			system(cmd);
+			last_state = ST_ERROR;
+		}
+		break;
+	case 0:
+		snprintf(cmd, sizeof(cmd), "nvram set vpn_%s_errno=%d", p, 0);
 		system(cmd);
-		snprintf(cmd, sizeof(cmd), "nvram set vpn_%s_state=%d", p, ST_ERROR);
+		snprintf(cmd, sizeof(cmd), "nvram set vpn_%s_state=%d", p, ST_RUNNING);
 		system(cmd);
+		last_state = ST_RUNNING;
 		break;
 	default:
 		break;
