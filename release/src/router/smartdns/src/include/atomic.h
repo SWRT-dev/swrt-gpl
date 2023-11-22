@@ -1,6 +1,6 @@
 /*************************************************************************
  *
- * Copyright (C) 2018-2020 Ruilin Peng (Nick) <pymumu@gmail.com>.
+ * Copyright (C) 2018-2023 Ruilin Peng (Nick) <pymumu@gmail.com>.
  *
  * smartdns is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,6 +20,11 @@
 #ifndef _GENERIC_ATOMIC_H
 #define _GENERIC_ATOMIC_H
 
+#define ACCESS_ONCE(x) (*(volatile typeof(x) *)&(x))
+
+#define READ_ONCE(x) \
+({ typeof(x) ___x = ACCESS_ONCE(x); ___x; })
+
 /**
  * Atomic type.
  */
@@ -35,14 +40,20 @@ typedef struct {
  *
  * Atomically reads the value of @v.
  */
-#define atomic_read(v) ((v)->counter)
+static inline int atomic_read(const atomic_t *v)
+{
+	return READ_ONCE((v)->counter);
+}
 
 /**
  * Set atomic variable
  * @param v pointer of type atomic_t
  * @param i required value
  */
-#define atomic_set(v,i) (((v)->counter) = (i))
+static inline void atomic_set(atomic_t *v, int i)
+{
+    v->counter = i;
+}
 
 /**
  * Add to the atomic variable

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (C) 2018-2020 Ruilin Peng (Nick) <pymumu@gmail.com>.
+# Copyright (C) 2018-2023 Ruilin Peng (Nick) <pymumu@gmail.com>.
 #
 # smartdns is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,7 +43,9 @@ build()
 	mkdir $ROOT/etc/default/ -p
 	mkdir $ROOT/lib/systemd/system/ -p
 
-	sed -i "s/Version:.*/Version: $VER/" $ROOT/DEBIAN/control
+
+	pkgver=$(echo ${VER}| sed 's/^1\.//g')
+	sed -i "s/Version:.*/Version: ${pkgver}/" $ROOT/DEBIAN/control
 	sed -i "s/Architecture:.*/Architecture: $ARCH/" $ROOT/DEBIAN/control
 	chmod 0755 $ROOT/DEBIAN/prerm
 

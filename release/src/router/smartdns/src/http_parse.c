@@ -1,6 +1,6 @@
 /*************************************************************************
  *
- * Copyright (C) 2018-2020 Ruilin Peng (Nick) <pymumu@gmail.com>.
+ * Copyright (C) 2018-2023 Ruilin Peng (Nick) <pymumu@gmail.com>.
  *
  * smartdns is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,9 +19,9 @@
 #include "http_parse.h"
 #include "hash.h"
 #include "hashtable.h"
-#include "util.h"
 #include "jhash.h"
 #include "list.h"
+#include "util.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -108,13 +108,13 @@ struct http_head_fields *http_head_first_fields(struct http_head *http_head)
 
 const char *http_head_get_fields_value(struct http_head *http_head, const char *name)
 {
-	unsigned long key;
+	uint32_t key;
 	struct http_head_fields *filed;
 
-	key = hash_string(name);
+	key = hash_string_case(name);
 	hash_for_each_possible(http_head->field_map, filed, node, key)
 	{
-		if (strncmp(filed->name, name, 128) == 0) {
+		if (strncasecmp(filed->name, name, 128) == 0) {
 			return filed->value;
 		}
 	}
@@ -193,7 +193,7 @@ int http_head_get_data_len(struct http_head *http_head)
 
 static int _http_head_add_fields(struct http_head *http_head, char *name, char *value)
 {
-	unsigned long key = 0;
+	uint32_t key = 0;
 	struct http_head_fields *fields = NULL;
 	fields = malloc(sizeof(*fields));
 	if (fields == NULL) {
@@ -205,7 +205,7 @@ static int _http_head_add_fields(struct http_head *http_head, char *name, char *
 	fields->value = value;
 
 	list_add_tail(&fields->list, &http_head->field_head.list);
-	key = hash_string(name);
+	key = hash_string_case(name);
 	hash_add(http_head->field_map, &fields->node, key);
 
 	return 0;
@@ -230,7 +230,7 @@ static int _http_head_parse_response(struct http_head *http_head, char *key, cha
 		if (*tmp_ptr != ' ') {
 			continue;
 		}
-		
+
 		*tmp_ptr = '\0';
 		ret_code = field_start;
 		ret_msg = tmp_ptr + 1;
@@ -384,6 +384,10 @@ int http_head_parse(struct http_head *http_head, const char *data, int data_len)
 	if (http_head->head_ok == 0) {
 		for (i = 0; i < data_len; i++, data++) {
 			*(buff_end + i) = *data;
+			if (isprint(*data) == 0 && isspace(*data) == 0) {
+				return -2;
+			}
+
 			if (*data == '\n') {
 				if (http_head->buff_len + i < 2) {
 					continue;

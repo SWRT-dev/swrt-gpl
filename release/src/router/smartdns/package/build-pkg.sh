@@ -81,7 +81,7 @@ build()
 
 main()
 {
-	OPTS=`getopt -o o:h --long arch:,filearch:,ver:,platform:,cross-tool:,static,only-package,outputdir: \
+	OPTS=`getopt -o o:h --long arch:,filearch:,ver:,platform:,cross-tool:,with-nftables,static,only-package,outputdir: \
 		-n  "" -- "$@"`
 
 	if [ "$#" -le "1" ]; then
