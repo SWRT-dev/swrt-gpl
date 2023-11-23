@@ -36,8 +36,10 @@
 #include <time.h>
 #include <unistd.h>
 #include <linux/version.h>
-#if LINUX_KERNEL_VERSION >= KERNEL_VERSION(4,4,0)
-#ifdef NFNL_SUBSYS_NFTABLES
+#ifndef LINUX_KERNEL_VERSION
+#define LINUX_KERNEL_VERSION LINUX_VERSION_CODE
+#endif
+#if defined(NFNL_SUBSYS_NFTABLES) && LINUX_KERNEL_VERSION >= KERNEL_VERSION(4,4,0)
 #include <linux/netfilter/nf_tables.h>
 
 struct nlmsgreq {
@@ -611,5 +613,4 @@ int nftset_del(const char *familyname, const char *tablename, const char *setnam
 	return 0;
 }
 
-#endif
 #endif
