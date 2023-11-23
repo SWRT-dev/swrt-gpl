@@ -478,6 +478,9 @@ int build_temp_rootfs(const char *newroot)
 #if defined(RTCONFIG_LIBASUSLOG)
 			     " libasuslog.so*"
 #endif
+#if defined(RTCONFIG_SWRTMESH)
+			" libatomic.so*"
+#endif
 		;
 	const char *usrbin = "killall which expr find fuser lsof"
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
@@ -553,6 +556,9 @@ int build_temp_rootfs(const char *newroot)
 			     " libev.so.4.0.0"
 			     " libev.so.4"
 			     " libcodb.so"
+#if defined(RTCONFIG_SWRTMESH)
+			" libswrtmesh.so*"
+#endif
 		;
 	const char *kmod = "find /lib/modules -name '*.ko'|"
 		"grep '\\("
@@ -6126,9 +6132,12 @@ void start_smartdns(void)
 		return;
 	}
 	fprintf(fp, "server-name SWRT-smartdns\n");
-	fprintf(fp, "conf-file /etc/blacklist-ip.conf\n");
-	fprintf(fp, "conf-file /etc/whitelist-ip.conf\n");
-	fprintf(fp, "conf-file /etc/seconddns.conf\n");
+	if (f_exists("/etc/blacklist-ip.conf"))
+		fprintf(fp, "conf-file /etc/blacklist-ip.conf\n");
+	if (f_exists("/etc/whitelist-ip.conf"))
+		fprintf(fp, "conf-file /etc/whitelist-ip.conf\n");
+	if (f_exists("/etc/seconddns.conf"))
+		fprintf(fp, "conf-file /etc/seconddns.conf\n");
 #if defined(RTCONFIG_IPV6)
 	fprintf(fp, "bind [::]:9053 -group master\n");
 	fprintf(fp, "bind-tcp [::]:9053 -group master\n");
