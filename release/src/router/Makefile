@@ -3216,7 +3216,11 @@ ifeq ($(HND_ROUTER),y)
 	mkdir -p $(BCM_FSBUILD_DIR)/public/include/openssl
 	cp -u $(OPENSSL)/include/openssl/* $(BCM_FSBUILD_DIR)/public/include/openssl
 endif
+ifeq ($(RTCONFIG_OPENSSL3),y)
+	install -D -m 0500 httpd/gencert_openssl3.sh $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/gencert.sh
+else
 	install -D -m 0500 httpd/gencert.sh $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/gencert.sh
+endif
 
 openssl-stage:
 	@$(MAKE) $(OPENSSL)-stage
@@ -3287,6 +3291,10 @@ ifeq ($(or $(RTCONFIG_WEBDAV),$(RTCONFIG_FTP_SSL),$(RTCONFIG_OPENVPN),$(RTCONFIG
 	install -D openssl-3.0.11/libssl.so.3 $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.3
 	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.3
 endif
+	install -D openssl-3.0.11/engines/devcrypto.so $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/engines-3/devcrypto.so
+	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/engines-3/devcrypto.so
+	install -D openssl-3.0.11/providers/legacy.so $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/ossl-modules/legacy.so
+	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/ossl-modules/legacy.so
 	cd $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib && rm -f libcrypto.so && ln -sf libcrypto.so.3 libcrypto.so.1.1 && ln -sf libcrypto.so.3 libcrypto.so
 	[ ! -f $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.3 ] || \
 		cd $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib && rm -f libssl.so && ln -sf libssl.so.3 libssl.so.1.1 && ln -sf libssl.so.3 libssl.so
