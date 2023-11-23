@@ -35,6 +35,8 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <linux/version.h>
+#if LINUX_KERNEL_VERSION >= KERNEL_VERSION(4,4,0)
 #ifdef NFNL_SUBSYS_NFTABLES
 #include <linux/netfilter/nf_tables.h>
 
@@ -609,4 +611,5 @@ int nftset_del(const char *familyname, const char *tablename, const char *setnam
 	return 0;
 }
 
+#endif
 #endif
