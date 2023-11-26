@@ -75,6 +75,13 @@ objs_dir += wpactrl nlwifi
 objs_lib += modules/wpactrl/wpactrl_util.o modules/nlwifi/nlwifi.o
 endif
 
+ifneq (,$(findstring IPQ40XX,$(WIFI_TYPE)))
+objs_dir += qualcomm
+LIBWIFI_CFLAGS += -DWIFI_QUALCOMM
+objs_lib += modules/qualcomm/ipq40xx.o
+objs_lib += modules/qualcomm/wpactrl_util.o
+endif
+
 ifneq (,$(findstring INTEL,$(WIFI_TYPE)))
 objs_dir += intel
 LIBWIFI_CFLAGS += -Imodules/nlwifi -Imodules/wext -DWIFI_INTEL

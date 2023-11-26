@@ -61,7 +61,7 @@ int start_swrtmesh(void)
 	pid_t pid;
 	char *ubusd_argv[] = { "ubusd", NULL };
 	char *wifimngr_argv[] = { "wifimngr", NULL };
-	char *ieee1905_argv[] = { "ieee1905d", "--no-lo", NULL, NULL, NULL, NULL, NULL };
+	char *ieee1905_argv[] = { "ieee1905d", NULL, NULL, NULL, NULL, NULL, NULL };
 	char *cntl_argv[] = { "mapcontroller", NULL, NULL, NULL, NULL, NULL, NULL };
 	char *tp_argv[] = { "topologyd", NULL };
 //	char *swrtmeshd_argv[] = { "swrtmeshd", NULL };
@@ -77,14 +77,18 @@ int start_swrtmesh(void)
 	stop_swrtmesh();
 	if(nvram_match("swrtmesh_debug", "1")){
 		system("touch /tmp/SWRTMESHUTILS_DEBUG");
-		idx = 2;
+		idx = 1;
+		if(nvram_match("swrtmesh_agent_enable", "0") || nvram_match("swrtmesh_controller_enable", "0")){
+			ieee1905_argv[idx] = "---no-lo";//there is no controller or agent on the local device, skip lo(less logging).
+			idx++;
+		}
 		ieee1905_argv[idx] = "-dddd";
 		idx++;
 		ieee1905_argv[idx] = "-o";
 		idx++;
 		ieee1905_argv[idx] = "/tmp/ieee1905.log";
-		idx++;
-		ieee1905_argv[idx] = "-f";
+		//idx++;
+		//ieee1905_argv[idx] = "-f";
 	}
 	auto_generate_config();
 //	swrtmesh_resync_config();
@@ -196,7 +200,7 @@ int wl_isup(char* ifname)
 	snprintf(path, sizeof(path), "/sys/class/net/%s/operstate", ifname);
 	if(!f_exists(path))
 		return 0;
-	if(f_read_string(path, buf, sizeof(buf) > 0 && !strcmp(buf, "up")))
+	if(f_read_string(path, buf, sizeof(buf)) > 0 && !strcmp(buf, "up"))
 		return 1;
 	return 0;
 }
