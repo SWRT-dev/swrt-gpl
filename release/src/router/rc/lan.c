@@ -2698,6 +2698,9 @@ void hotplug_net(void)
 	char *link;
 	bool link_down;
 #endif
+#if defined(RTCONFIG_SWRTMESH)
+	char *link;
+#endif
 #if 0
 #ifdef RTCONFIG_AMAS
 	int set_cost_res = 0;
@@ -2705,6 +2708,17 @@ void hotplug_net(void)
 #endif
 
 	snprintf(lan_ifname, sizeof(lan_ifname), "%s", nvram_safe_get("lan_ifname"));
+
+#if defined(RTCONFIG_SWRTMESH)
+	link = getenv("LINK");
+	if(link && interface && sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1") && nvram_match("swrtmesh_agent_enable", "1")){
+		if(pids("ieee1905d") && !strcmp(nvram_safe_get("eth_ifnames"), interface)){
+			//swrtmesh_dynamic_bh_discovery(interface, link);
+			//swrtmesh_dynamic_bh_switch(interface, link);
+		}
+		return;
+	}
+#endif
 
 	if (!(interface = getenv("INTERFACE")) ||
 	    !(action = getenv("ACTION")))

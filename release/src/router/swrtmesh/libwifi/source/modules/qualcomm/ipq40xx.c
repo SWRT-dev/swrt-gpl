@@ -203,7 +203,7 @@ static int radio_get_supp_band(const char *name, uint32_t *bands)
 		*bands |= BAND_5;
 	}
 #if defined(RTCONFIG_HAS_5G_2)
-	else if(!strcmp(name, WIF_5G2) || !strcmp(name, VPHY_5G2)){
+	else if(!strcmp(name, WIF_5G2) || !strcmp(name, VPHY_5G2) || !strcmp(name, STA_5G2)){
 		*bands |= BAND_5;
 	}
 #endif
@@ -228,7 +228,7 @@ static int radio_info_band(const char *name, enum wifi_band band, struct wifi_ra
 		snprintf(prefix, sizeof(prefix), "wl%d_", 1);
 	}
 #if defined(RTCONFIG_HAS_5G_2)
-	else if(!strcmp(name, WIF_5G2) || !strcmp(name, VPHY_5G2)){
+	else if(!strcmp(name, WIF_5G2) || !strcmp(name, VPHY_5G2) || !strcmp(name, STA_5G2)){
 		radio->supp_band |= BAND_5;
 		radio->oper_band = BAND_5;
 		snprintf(path, sizeof(path), "/sys/class/net/%s/hwmodes", VPHY_5G2);
@@ -285,7 +285,11 @@ static int radio_info_band(const char *name, enum wifi_band band, struct wifi_ra
 	radio->num_iface = 1;
 	radio->iface[0].band = radio->oper_band;
 	memcpy(radio->iface[0].name, name, 15);
-	if(!strcmp(name, STA_2G) || !strcmp(name, STA_5G))
+	if(!strcmp(name, STA_2G) || !strcmp(name, STA_5G)
+#if defined(RTCONFIG_HAS_5G_2)
+		|| !strcmp(name, STA_5G2)
+#endif
+	)
 		radio->iface[0].mode = WIFI_MODE_STA;
 	else
 		radio->iface[0].mode = WIFI_MODE_AP;
@@ -306,7 +310,11 @@ static int radio_info_band(const char *name, enum wifi_band band, struct wifi_ra
 
 	snprintf(radio->regdomain, sizeof(radio->regdomain), "%s", nvram_pf_safe_get(prefix, "country_code"));
 
-	if(!strcmp(name, STA_2G) || !strcmp(name, STA_5G))
+	if(!strcmp(name, STA_2G) || !strcmp(name, STA_5G)
+#if defined(RTCONFIG_HAS_5G_2)
+		|| !strcmp(name, STA_5G2)
+#endif
+	)
 		supplicant_cli_get_oper_std(name, &radio->oper_std);
 	else
 		hostapd_cli_get_oper_stds(name, &radio->oper_std);
@@ -331,7 +339,7 @@ static int radio_get_oper_band(const char *name, enum wifi_band *band)
 		*band = BAND_5;
 	}
 #if defined(RTCONFIG_HAS_5G_2)
-	else if(!strcmp(name, WIF_5G2) || !strcmp(name, VPHY_5G2)){
+	else if(!strcmp(name, WIF_5G2) || !strcmp(name, VPHY_5G2) || !strcmp(name, STA_5G2)){
 		*band = BAND_5;
 	}
 #endif
@@ -342,10 +350,14 @@ static int radio_get_band_caps(const char *name, enum wifi_band band, struct wif
 	uint32_t capsext;
 	char ifname[16];
 	libwifi_dbg("[%s] %s called\n", name, __func__);
-	if(!strcmp(name, STA_2G))
+	if(!strcmp(name, STA_2G) || !strcmp(name, VPHY_2G))
 		snprintf(ifname, sizeof(ifname), "%s", WIF_2G);
-	else if(!strcmp(name, STA_5G))
+	else if(!strcmp(name, STA_5G) || !strcmp(name, VPHY_5G))
 		snprintf(ifname, sizeof(ifname), "%s", WIF_5G);
+#if defined(RTCONFIG_HAS_5G_2)
+	else if(!strcmp(name, STA_5G2) || !strcmp(name, VPHY_5G2))
+		snprintf(ifname, sizeof(ifname), "%s", WIF_5G2);
+#endif
 	else
 		snprintf(ifname, sizeof(ifname), "%s", name);
 	get80211param(ifname, IEEE80211_PARAM_SWRT_GET_CAPSEXT, &capsext, sizeof(capsext));
@@ -405,7 +417,11 @@ static int radio_get_band_oper_stds(const char *name, enum wifi_band band, uint8
 {
 	libwifi_dbg("[%s, %s] %s called\n", name, wifi_band_to_str(band), __func__);
 
-	if(!strcmp(name, STA_2G) || !strcmp(name, STA_5G))
+	if(!strcmp(name, STA_2G) || !strcmp(name, STA_5G)
+#if defined(RTCONFIG_HAS_5G_2)
+		|| !strcmp(name, STA_5G2)
+#endif
+	)
 		radio_get_supp_stds(name, std);
 	else
 		hostapd_cli_get_oper_stds(name, std);
@@ -430,7 +446,7 @@ static int radio_get_country(const char *name, char *alpha2)
 		snprintf(prefix, sizeof(prefix), "wl%d_", 1);
 	}
 #if defined(RTCONFIG_HAS_5G_2)
-	else if(!strcmp(name, WIF_5G2) || !strcmp(name, VPHY_5G2)){
+	else if(!strcmp(name, WIF_5G2) || !strcmp(name, VPHY_5G2) || !strcmp(name, STA_5G2)){
 		snprintf(prefix, sizeof(prefix), "wl%d_", 2);
 	}
 #endif
@@ -618,7 +634,11 @@ static int radio_get_band_maxrate(const char *name, enum wifi_band band, unsigne
 
 	libwifi_dbg("[%s, %s] %s called\n", name, wifi_band_to_str(band), __func__);
 	radio_get_oper_band(name, &radio.oper_band);
-	if(!strcmp(name, STA_2G) || !strcmp(name, STA_5G))
+	if(!strcmp(name, STA_2G) || !strcmp(name, STA_5G)
+#if defined(RTCONFIG_HAS_5G_2)
+		|| !strcmp(name, STA_5G2)
+#endif
+	)
 		radio_get_supp_stds(name, &radio.oper_std);
 	else
 		hostapd_cli_get_oper_stds(name, &radio.oper_std);
@@ -739,7 +759,7 @@ static int radio_scan(const char *name, struct scan_param *p)
 		band = 1;
 	}
 #if defined(RTCONFIG_HAS_5G_2)
-	else if(!strcmp(name, WIF_5G2) || !strcmp(name, VPHY_5G2)){
+	else if(!strcmp(name, WIF_5G2) || !strcmp(name, VPHY_5G2) || !strcmp(name, STA_5G2)){
 		band = 2;
 	}
 #endif
@@ -1200,7 +1220,7 @@ static int radio_channels_info_band(const char *name, enum wifi_band band, struc
 			snprintf(vap, sizeof(vap), "%s", WIF_5G);
 		}
 #if defined(RTCONFIG_HAS_5G_2)
-		else if(!strcmp(name, WIF_5G2) || !strcmp(name, VPHY_5G2)){
+		else if(!strcmp(name, WIF_5G2) || !strcmp(name, VPHY_5G2) || !strcmp(name, STA_5G2)){
 			snprintf(vap, sizeof(vap), "%s", WIF_5G2);
 		}
 #endif
@@ -1317,7 +1337,11 @@ static int iface_get_caps(const char *ifname, struct wifi_caps *caps)
 static int iface_get_mode(const char *ifname, enum wifi_mode *mode)
 {
 	libwifi_dbg("[%s] %s called\n", ifname, __func__);
-	if(!strcmp(ifname, STA_2G) || !strcmp(ifname, STA_5G))
+	if(!strcmp(ifname, STA_2G) || !strcmp(ifname, STA_5G)
+#if defined(RTCONFIG_HAS_5G_2)
+		|| !strcmp(ifname, STA_5G2)
+#endif
+	)
 		*mode = WIFI_MODE_STA;
 	else
 		*mode = WIFI_MODE_AP;
