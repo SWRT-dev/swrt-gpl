@@ -9,6 +9,9 @@
 
 #include <linux/bitops.h>
 
+/* ethernet wrap register */
+#define ETH_RESET		0x8
+
 /* Values of Egress TAG Control */
 #define ETAG_CTRL_UNTAG			0
 #define ETAG_CTRL_TAG			2

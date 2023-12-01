@@ -360,7 +360,7 @@ static const char *ubus_objname_to_ifname(struct ubus_object *obj)
 #define ubus_radio_to_ifname(o)	wifi_radio_phyname(ubus_objname_to_ifname(o))
 #define ubus_ap_to_ifname(o)	ubus_objname_to_ifname(o)
 #define ubus_sta_to_ifname(o)	ubus_objname_to_ifname(o)
-
+#if !defined(RTCONFIG_SWRTMESH)
 static int ieee80211_readint(const char *path)
 {
 	int fd;
@@ -504,6 +504,7 @@ static bool phy_dir_exist(char *phy)
 	closedir(d);
 	return found;
 }
+#endif
 
 static int uci_get_wifi_devices(char devlist[][16])
 {
@@ -536,7 +537,7 @@ static int uci_get_wifi_devices(char devlist[][16])
 
 			strncpy(wifi_device[wifi_device_num].device, s->e.name, 15);
 			strncpy(wifi_device[wifi_device_num].phy, s->e.name, 15);
-
+#if !defined(RTCONFIG_SWRTMESH)
 			if (!phy_dir_exist(s->e.name)) {
 				uci_foreach_element(&s->options, x) {
 					op = uci_to_option(x);
@@ -553,6 +554,7 @@ static int uci_get_wifi_devices(char devlist[][16])
 					}
 				}
 			}
+#endif
 
 			/* Get band */
 			uci_foreach_element(&s->options, x) {

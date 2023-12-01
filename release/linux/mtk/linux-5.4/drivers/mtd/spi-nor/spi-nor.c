@@ -2305,11 +2305,6 @@ static const struct flash_info spi_nor_ids[] = {
 			SPI_NOR_4B_OPCODES | SPI_NOR_HAS_LOCK | SPI_NOR_HAS_TB)
 			.fixups = &gd25q256_fixups,
 	},
-	{
-		"gd25q512", INFO(0xc84020, 0, 64 * 1024, 1024,
-			SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ |
-			SPI_NOR_HAS_LOCK | SPI_NOR_HAS_TB | SPI_NOR_4B_OPCODES)
-	},
 
 	/* Intel/Numonyx -- xxxs33b */
 	{ "160s33b",  INFO(0x898911, 0, 64 * 1024,  32, 0) },
@@ -4898,6 +4893,20 @@ static void spi_nor_debugfs_init(struct spi_nor *nor,
 					 info->id_len, info->id);
 }
 
+static int spi_nor_cal_read(void *priv, u32 *addr, int addrlen, u8 *buf, int readlen)
+{
+	int ret;
+	struct spi_nor *nor = (struct spi_nor *)priv;
+
+	nor->reg_proto = SNOR_PROTO_1_1_1;
+	nor->read_proto = SNOR_PROTO_1_1_1;
+	nor->read_opcode = SPINOR_OP_READ;
+	nor->addr_width = 3;
+	nor->read_dummy = 0;
+
+	return spi_nor_read_raw(nor, *addr, readlen, buf);
+}
+
 static const struct flash_info *spi_nor_get_flash_info(struct spi_nor *nor,
 						       const char *name)
 {
@@ -4971,6 +4980,9 @@ int spi_nor_scan(struct spi_nor *nor, const char *name,
 				      GFP_KERNEL);
 	if (!nor->bouncebuf)
 		return -ENOMEM;
+
+	if(nor->spimem)
+		spi_mem_do_calibration(nor->spimem, spi_nor_cal_read, nor);
 
 	info = spi_nor_get_flash_info(nor, name);
 	if (IS_ERR(info))

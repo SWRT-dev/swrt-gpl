@@ -14,13 +14,15 @@ int gpy211_phy_probe(struct phy_device *phydev)
 
 	/* enable 2.5G SGMII rate adaption */
 	phy_write_mmd(phydev, MDIO_MMD_VEND1, 8, 0x24e2);
-#if defined(CONFIG_TUFAX4200) || defined(CONFIG_TUFAX6000)
+#if 0 //defined(CONFIG_TUFAX4200) || defined(CONFIG_TUFAX6000)
 	if (phydev->mdio.addr == 5) {
 		/* 2.5G LAN */
 		phy_write_mmd(phydev, 0, 0x1B, 0x0000);	/* disable LED function and turn off LED */
+		phy_write_mmd(phydev, 0x7, 0x3c, 0x0);	/* disable 100M/1000M EEE advertisement  */
 	} else if (phydev->mdio.addr == 6) {
 		/* 2.5G WAN, active low */
 		phy_write_mmd(phydev, 0, 0x1B, 0x1000);	/* disable LED function and turn off LED */
+		phy_write_mmd(phydev, 0x7, 0x3c, 0x0);	/* disable 100M/1000M EEE advertisement  */
 	}
 #endif
 

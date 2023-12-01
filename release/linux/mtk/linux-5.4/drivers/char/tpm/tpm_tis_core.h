@@ -106,6 +106,7 @@ struct tpm_tis_phy_ops {
 	int (*read16)(struct tpm_tis_data *data, u32 addr, u16 *result);
 	int (*read32)(struct tpm_tis_data *data, u32 addr, u32 *result);
 	int (*write32)(struct tpm_tis_data *data, u32 addr, u32 src);
+	int (*do_calibration)(struct tpm_tis_data *data, struct device *dev);
 };
 
 static inline int tpm_tis_read_bytes(struct tpm_tis_data *data, u32 addr,
@@ -158,6 +159,7 @@ static inline bool is_bsw(void)
 }
 
 void tpm_tis_remove(struct tpm_chip *chip);
+int tpm_tis_cal_read(void *priv, u32 *addr, int addrlen, u8 *buf, int readlen);
 int tpm_tis_core_init(struct device *dev, struct tpm_tis_data *priv, int irq,
 		      const struct tpm_tis_phy_ops *phy_ops,
 		      acpi_handle acpi_dev_handle);

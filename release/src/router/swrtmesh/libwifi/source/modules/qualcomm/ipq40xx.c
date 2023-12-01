@@ -54,11 +54,34 @@
 #endif
 
 #define	IEEE80211_IOCTL_GETPARAM	(SIOCIWFIRSTPRIV+1)
+#define	IEEE80211_IOCTL_GETCHANINFO	(SIOCIWFIRSTPRIV+7)
 #define	IEEE80211_PARAM_SWRT_GET_CAPS		562
 #define	IEEE80211_PARAM_SWRT_GET_CAPSEXT	563
 #define	IEEE80211_PARAM_SWRT_GET_HTCAPS		564
 #define	IEEE80211_PARAM_SWRT_GET_HTCAPSEXT	565
 #define	IEEE80211_PARAM_SWRT_GET_VHTCAPS	566
+
+#define IEEE80211_CHAN_MAX      255
+typedef unsigned int	u_int;
+struct ieee80211_ath_channel {
+    uint16_t       ic_freq;        /* setting in Mhz */
+    uint32_t       ic_flags;       /* see below */
+    uint16_t       ic_flagext;     /* see below */
+    uint8_t        ic_ieee;        /* IEEE channel number */
+    int8_t          ic_maxregpower; /* maximum regulatory tx power in dBm */
+    int8_t          ic_maxpower;    /* maximum tx power in dBm */
+    int8_t          ic_minpower;    /* minimum tx power in dBm */
+    uint8_t        ic_regClassId;  /* regClassId of this channel */ 
+    uint8_t        ic_antennamax;  /* antenna gain max from regulatory */
+    uint8_t        ic_vhtop_ch_freq_seg1;         /* Channel Center frequency */
+    uint8_t        ic_vhtop_ch_freq_seg2;         /* Channel Center frequency applicable
+                                                  * for 80+80MHz mode of operation */ 
+};
+
+struct ieee80211req_chaninfo {
+	u_int	ic_nchans;
+	struct ieee80211_ath_channel ic_chans[IEEE80211_CHAN_MAX];
+};
 
 struct event_ctx {
 	void *handle;
@@ -210,6 +233,27 @@ static int radio_get_supp_band(const char *name, uint32_t *bands)
 	return 0;
 }
 
+int radio_get_txpower(const char *name, int8_t *txpower_dbm, int8_t *txpower_percent)
+{
+	struct ieee80211req_chaninfo chans = {0};
+	struct iwreq wrq;
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+
+	if (!txpower_dbm || !txpower_percent)
+		return -EINVAL;
+	*txpower_dbm = 0;
+	*txpower_percent = 100;
+	memset(&wrq, 0, sizeof(wrq));
+	wrq.u.data.pointer = (void *)&chans;
+	wrq.u.data.length = sizeof(chans);
+	if (wl_ioctl(name, IEEE80211_IOCTL_GETCHANINFO, &wrq) < 0)
+		return -1;
+
+	*txpower_dbm = chans.ic_chans[0].ic_maxregpower;
+
+	return 0;
+}
+
 /* Radio callbacks */
 static int radio_info_band(const char *name, enum wifi_band band, struct wifi_radio *radio)
 {
@@ -307,7 +351,7 @@ static int radio_info_band(const char *name, enum wifi_band band, struct wifi_ra
 		/* Don't report CAC methods for non 5GHz */
 		radio->cac_methods = 0;
 	}
-
+	radio_get_txpower(name, &radio->txpower_dbm, &radio->txpower);
 	snprintf(radio->regdomain, sizeof(radio->regdomain), "%s", nvram_pf_safe_get(prefix, "country_code"));
 
 	if(!strcmp(name, STA_2G) || !strcmp(name, STA_5G)
@@ -415,17 +459,21 @@ static int radio_get_supp_stds(const char *name, uint8_t *std)
 
 static int radio_get_band_oper_stds(const char *name, enum wifi_band band, uint8_t *std)
 {
-	libwifi_dbg("[%s, %s] %s called\n", name, wifi_band_to_str(band), __func__);
+	libwifi_dbg("[%s] %s called\n", name, __func__);
+	struct wifi_caps caps = {};
+	uint32_t bands = 0;
 
-	if(!strcmp(name, STA_2G) || !strcmp(name, STA_5G)
-#if defined(RTCONFIG_HAS_5G_2)
-		|| !strcmp(name, STA_5G2)
-#endif
-	)
-		radio_get_supp_stds(name, std);
+	*std = 0;
+
+	if (WARN_ON(radio_get_band_caps(name, band, &caps)))
+		return -1;
+
+	if (band == BAND_ANY)
+		radio_get_supp_band(name, &bands);
 	else
-		hostapd_cli_get_oper_stds(name, std);
-	correct_oper_std_by_band(band, std);
+		bands = band;
+
+	_radio_set_supp_stds(bands, &caps, std);
 
 	return 0;
 }

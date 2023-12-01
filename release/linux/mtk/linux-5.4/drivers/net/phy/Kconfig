@@ -350,6 +350,11 @@ config AIROHA_EN8801S_PHY
 	---help---
 	  Currently supports the Airoha EN8801S PHY.
 
+config AIROHA_EN8801SC_PHY
+        tristate "Drivers for Airoha EN8801S Gigabit PHYs for MT7981 SoC."
+        ---help---
+          Currently supports the Airoha EN8801S PHY for MT7981 SoC.
+
 config ADIN_PHY
 	tristate "Analog Devices Industrial Ethernet PHYs"
 	help
@@ -367,7 +372,56 @@ config AMD_PHY
 config AQUANTIA_PHY
 	tristate "Aquantia PHYs"
 	---help---
-	  Currently supports the Aquantia AQ1202, AQ2104, AQR105, AQR405
+	  Currently supports the Aquantia AQ1202, AQ2104, AQR105, AQR405, AQR113C
+
+config AQUANTIA_PHY_MDI_SWAP
+	tristate "MDI Swap Enable"
+	depends on AQUANTIA_PHY
+	---help---
+	  Currently supports the Aquantia AQR113C
+
+choice
+	prompt "Swap mode"
+	default AQUANTIA_PHY_MDI_REVERSED
+	depends on AQUANTIA_PHY_MDI_SWAP
+
+	config AQUANTIA_PHY_MDI_NORMAL
+		bool "Normal"
+
+	config AQUANTIA_PHY_MDI_REVERSED
+		bool "Reversed"
+endchoice
+
+config AQUANTIA_PHY_FW_DOWNLOAD
+	tristate "Firmware Download Enable"
+	depends on AQUANTIA_PHY
+	---help---
+	  Currently supports the Aquantia AQR113C
+
+choice
+	prompt "Download mode"
+	default AQUANTIA_PHY_FW_DOWNLOAD_GANG
+	depends on AQUANTIA_PHY_FW_DOWNLOAD
+
+	config AQUANTIA_PHY_FW_DOWNLOAD_SINGLE
+		bool "Single"
+		---help---
+		  If you would like to download firmware in sequential way,
+		  please select this option.
+
+	config AQUANTIA_PHY_FW_DOWNLOAD_GANG
+		bool "Gang"
+		---help---
+		  If you would like to download firmware in parallel way,
+		  please select this option.
+endchoice
+
+config AQUANTIA_PHY_FW_FILE
+	string "FW File"
+	depends on AQUANTIA_PHY
+	default "Rhe-05.06-Candidate7-AQR_Mediatek_23B_StartOff_ID45623_VER36657.cld"
+	---help---
+	  Currently supports the Aquantia AQR113c
 
 config AX88796B_PHY
 	tristate "Asix PHYs"
@@ -511,6 +565,12 @@ config MARVELL_10G_PHY
 	---help---
 	  Support for the Marvell Alaska MV88X3310 and compatible PHYs.
 
+config MAXLINEAR_GPHY
+	tristate "Maxlinear Ethernet PHYs"
+	help
+	  Support for the Maxlinear GPY115, GPY211, GPY212, GPY215,
+	  GPY241, GPY245 PHYs.
+
 config MESON_GXL_PHY
 	tristate "Amlogic Meson GXL Internal PHY"
 	depends on ARCH_MESON || COMPILE_TEST
@@ -521,6 +581,11 @@ config MEDIATEK_GE_PHY
 	tristate "MediaTek Gigabit Ethernet PHYs"
 	help
 	  Supports the MediaTek Gigabit Ethernet PHYs.
+
+config MEDIATEK_2P5GE_PHY
+	tristate "MediaTek 2.5Gb Ethernet PHYs"
+	---help---
+	  Supports MediaTek internal 2.5Gb Ethernet PHYs.
 
 config MICREL_PHY
 	tristate "Micrel PHYs"

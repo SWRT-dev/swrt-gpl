@@ -117,7 +117,9 @@ struct b53_device {
 	u8 jumbo_pm_reg;
 	u8 jumbo_size_reg;
 	int reset_gpio;
-	u8 num_arl_entries;
+	u8 num_arl_bins;
+	u16 num_arl_buckets;
+	enum dsa_tag_protocol tag_protocol;
 
 	/* used ports mask */
 	u16 enabled_ports;
@@ -211,6 +213,11 @@ static inline int is58xx(struct b53_device *dev)
 #define B53_CPU_PORT_25	5
 #define B53_CPU_PORT	8
 
+static inline unsigned int b53_max_arl_entries(struct b53_device *dev)
+{
+	return dev->num_arl_buckets * dev->num_arl_bins;
+}
+
 struct b53_device *b53_switch_alloc(struct device *base,
 				    const struct b53_io_ops *ops,
 				    void *priv);
@@ -250,7 +257,7 @@ b53_build_op(write48, u64);
 b53_build_op(write64, u64);
 
 struct b53_arl_entry {
-	u8 port;
+	u16 port;
 	u8 mac[ETH_ALEN];
 	u16 vid;
 	u8 is_valid:1;
@@ -353,9 +360,16 @@ int b53_fdb_del(struct dsa_switch *ds, int port,
 		const unsigned char *addr, u16 vid);
 int b53_fdb_dump(struct dsa_switch *ds, int port,
 		 dsa_fdb_dump_cb_t *cb, void *data);
+int b53_mdb_prepare(struct dsa_switch *ds, int port,
+		    const struct switchdev_obj_port_mdb *mdb);
+void b53_mdb_add(struct dsa_switch *ds, int port,
+		 const struct switchdev_obj_port_mdb *mdb);
+int b53_mdb_del(struct dsa_switch *ds, int port,
+		const struct switchdev_obj_port_mdb *mdb);
 int b53_mirror_add(struct dsa_switch *ds, int port,
 		   struct dsa_mall_mirror_tc_entry *mirror, bool ingress);
-enum dsa_tag_protocol b53_get_tag_protocol(struct dsa_switch *ds, int port);
+enum dsa_tag_protocol b53_get_tag_protocol(struct dsa_switch *ds, int port,
+					   enum dsa_tag_protocol mprot);
 void b53_mirror_del(struct dsa_switch *ds, int port,
 		    struct dsa_mall_mirror_tc_entry *mirror);
 int b53_enable_port(struct dsa_switch *ds, int port, struct phy_device *phy);

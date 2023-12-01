@@ -23,6 +23,18 @@ struct flow_offload_entry {
 static DEFINE_MUTEX(flowtable_lock);
 static LIST_HEAD(flowtables);
 
+static u32 flow_offload_dst_cookie(struct flow_offload_tuple *flow_tuple)
+{
+	const struct rt6_info *rt;
+
+	if (flow_tuple->l3proto == NFPROTO_IPV6) {
+		rt = (const struct rt6_info *)flow_tuple->dst_cache;
+		return rt6_get_cookie(rt);
+	}
+
+	return 0;
+}
+
 static void
 flow_offload_fill_dir(struct flow_offload *flow, struct nf_conn *ct,
 		      struct nf_flow_route *route,
@@ -55,6 +67,7 @@ flow_offload_fill_dir(struct flow_offload *flow, struct nf_conn *ct,
 
 	ft->iifidx = other_dst->dev->ifindex;
 	ft->dst_cache = dst;
+	ft->dst_cookie = flow_offload_dst_cookie(ft);
 }
 
 struct flow_offload *

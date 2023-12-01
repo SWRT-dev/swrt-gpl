@@ -88,6 +88,15 @@ config MODEL_RTAX59U
 		bool "Panther RT-AX59U"
         default n
 
+config MODEL_PRTAX57_GO
+	bool "Cheetah PRT-AX57_GO"
+
+config MODEL_RTAX52
+	bool "Cheetah RT-AX52"
+
+config MODEL_RTAX57M
+	bool "Cheetah RT-AX57M"
+
 config  ASUS_EXT
         bool "ASUS_EXT"
         default n

@@ -7,6 +7,10 @@
 #include <linux/kernel.h>
 #include <linux/delay.h>
 #include <linux/hrtimer.h>
+#include <linux/of_platform.h>
+#include <linux/mfd/syscon.h>
+#include <linux/regmap.h>
+#include <linux/of_address.h>
 
 #include "mt753x.h"
 #include "mt753x_regs.h"
@@ -706,6 +710,24 @@ static int mt7531_sw_detect(struct gsw_mt753x *gsw, struct chip_rev *crev)
 	return -ENODEV;
 }
 
+static int mt7988_sw_detect(struct gsw_mt753x *gsw, struct chip_rev *crev)
+{
+	const char *model;
+	struct device_node *np;
+
+	np = of_find_compatible_node(NULL, NULL, "mediatek,mt7988-switch");
+	if (!np)
+		return -ENODEV;
+
+	of_node_put(np);
+
+	crev->rev = 0;
+	crev->name = "MT7988";
+	gsw->direct_access = true;
+
+	return 0;
+}
+
 static void pinmux_set_mux_7531(struct gsw_mt753x *gsw, u32 pin, u32 mode)
 {
 	u32 val;
@@ -834,7 +856,8 @@ static void mt7531_phy_setting(struct gsw_mt753x *gsw)
 	u32 val;
 
 	for (i = 0; i < MT753X_NUM_PHYS; i++) {
-		mt7531_phy_100m_eye_diag_setting(gsw, i);
+		if (!gsw->direct_access)
+			mt7531_phy_100m_eye_diag_setting(gsw, i);
 
 		/* Enable HW auto downshift */
 		gsw->mii_write(gsw, i, 0x1f, 0x1);
@@ -858,10 +881,14 @@ static void mt7531_phy_setting(struct gsw_mt753x *gsw)
 		val |= PHY_LINKDOWN_POWER_SAVING_EN;
 		gsw->mii_write(gsw, i, PHY_EXT_REG_17, val);
 
-		val = gsw->mmd_read(gsw, i, PHY_DEV1E, PHY_DEV1E_REG_0C6);
-		val &= ~PHY_POWER_SAVING_M;
-		val |= PHY_POWER_SAVING_TX << PHY_POWER_SAVING_S;
-		gsw->mmd_write(gsw, i, PHY_DEV1E, PHY_DEV1E_REG_0C6, val);
+		if (!gsw->direct_access) {
+			val = gsw->mmd_read(gsw, i, PHY_DEV1E,
+					    PHY_DEV1E_REG_0C6);
+			val &= ~PHY_POWER_SAVING_M;
+			val |= PHY_POWER_SAVING_TX << PHY_POWER_SAVING_S;
+			gsw->mmd_write(gsw, i, PHY_DEV1E, PHY_DEV1E_REG_0C6,
+				       val);
+		}
 
 		/* Timing Recovery for GbE slave mode */
 		mt753x_tr_write(gsw, i, PMA_CH, PMA_NOD, PMA_01, 0x6fb90a);
@@ -895,7 +922,8 @@ static void mt7531_adjust_line_driving(struct gsw_mt753x *gsw, u32 port)
 	gsw->mmd_write(gsw, port, PHY_DEV1F, TXVLD_DA_273, 0x3000);
 
 	/* Adjust RX Echo path filter */
-	gsw->mmd_write(gsw, port, PHY_DEV1E, PHY_DEV1E_REG_0FE, 0x2);
+	if (!gsw->direct_access)
+		gsw->mmd_write(gsw, port, PHY_DEV1E, PHY_DEV1E_REG_0FE, 0x2);
 
 	/* Adjust RX HVGA bias current */
 	gsw->mmd_write(gsw, port, PHY_DEV1E, PHY_DEV1E_REG_41, 0x3333);
@@ -976,7 +1004,8 @@ static int mt7531_sw_init(struct gsw_mt753x *gsw)
 	gsw->mmd_read = mt753x_mmd_read;
 	gsw->mmd_write = mt753x_mmd_write;
 
-	gsw->hw_phy_cal = of_property_read_bool(gsw->dev->of_node, "mediatek,hw_phy_cal");
+	gsw->hw_phy_cal = of_property_read_bool(gsw->dev->of_node,
+						"mediatek,hw_phy_cal");
 
 	for (i = 0; i < MT753X_NUM_PHYS; i++) {
 		val = gsw->mii_read(gsw, i, MII_BMCR);
@@ -990,7 +1019,7 @@ static int mt7531_sw_init(struct gsw_mt753x *gsw)
 
 	/* Switch soft reset */
 	mt753x_reg_write(gsw, SYS_CTRL, SW_SYS_RST | SW_REG_RST);
-	usleep_range(10, 20);
+	udelay(20);
 
 	/* Enable MDC input Schmitt Trigger */
 	val = mt753x_reg_read(gsw, SMT0_IOLB);
@@ -1000,6 +1029,7 @@ static int mt7531_sw_init(struct gsw_mt753x *gsw)
 	mt7531_set_gpio_pinmux(gsw);
 
 	mt7531_core_pll_setup(gsw);
+
 	mt7531_mac_port_setup(gsw, 5, &gsw->port5_cfg);
 	mt7531_mac_port_setup(gsw, 6, &gsw->port6_cfg);
 
@@ -1023,6 +1053,89 @@ static int mt7531_sw_init(struct gsw_mt753x *gsw)
 	return 0;
 }
 
+static int mt7988_sw_init(struct gsw_mt753x *gsw)
+{
+	struct device_node *switch_node = NULL;
+	struct platform_device *pdev;
+	int i;
+	u32 val;
+	u32 pmcr;
+	u32 speed;
+
+	pdev = container_of(gsw->dev, struct platform_device, dev);
+	switch_node = of_find_node_by_name(NULL, "switch0");
+	if (switch_node == NULL) {
+		dev_err(&pdev->dev, "switch node invaild\n");
+		return -ENOENT;
+	}
+
+	gsw->base = of_iomap(switch_node, 0);
+	if (IS_ERR(gsw->base)) {
+		dev_err(&pdev->dev, "switch ioremap failed\n");
+		return -EIO;
+	}
+
+	gsw->sysctrl_base = syscon_regmap_lookup_by_phandle(pdev->dev.of_node,
+							"mediatek,sysctrl");
+	if (IS_ERR(gsw->sysctrl_base)) {
+		dev_err(&pdev->dev, "no sysctl regmap found\n");
+		return -ENODEV;
+	}
+
+	/* reset control */
+	regmap_write(gsw->sysctrl_base, ETH_RESET, 0x200);
+	udelay(20);
+	regmap_write(gsw->sysctrl_base, ETH_RESET, 0);
+	udelay(20);
+
+	gsw->phy_base = (gsw->smi_addr + 1) & MT753X_SMI_ADDR_MASK;
+
+	gsw->mii_read = mt753x_mii_read;
+	gsw->mii_write = mt753x_mii_write;
+	gsw->mmd_read = mt753x_mmd_read;
+	gsw->mmd_write = mt753x_mmd_write;
+
+	for (i = 0; i < MT753X_NUM_PHYS; i++) {
+		val = gsw->mii_read(gsw, i, MII_BMCR);
+		val |= BMCR_ISOLATE;
+		gsw->mii_write(gsw, i, MII_BMCR, val);
+	}
+
+	speed = MAC_SPD_1000;
+	pmcr = (IPG_96BIT_WITH_SHORT_IPG << IPG_CFG_S) |
+		MAC_MODE | MAC_TX_EN | MAC_RX_EN | BKOFF_EN |
+		BACKPR_EN | FORCE_MODE_LNK | FORCE_LINK | FORCE_MODE_SPD |
+		FORCE_MODE_DPX | FORCE_MODE_RX_FC | FORCE_MODE_TX_FC |
+		FORCE_RX_FC | FORCE_TX_FC | (speed << FORCE_SPD_S) | FORCE_DPX;
+
+	mt753x_reg_write(gsw, PMCR(6), pmcr);
+
+	/* Global mac control settings */
+	mt753x_reg_write(gsw, GMACCR,
+			 (15 << MTCC_LMT_S) | (15 << MAX_RX_JUMBO_S) |
+			 RX_PKT_LEN_MAX_JUMBO);
+
+	/* Enable Collision Poll */
+	val = mt753x_reg_read(gsw, CPGC_CTRL);
+	val |= COL_CLK_EN;
+	mt753x_reg_write(gsw, CPGC_CTRL, val);
+	val |= COL_RST_N;
+	mt753x_reg_write(gsw, CPGC_CTRL, val);
+	val |= COL_EN;
+	mt753x_reg_write(gsw, CPGC_CTRL, val);
+
+	/* Disable AFIFO reset for extra short IPG */
+	mt7531_afifo_reset(gsw, 0);
+
+	/* PHY force slave 1G*/
+	for (i = 0; i < MT753X_NUM_PHYS; i++) {
+		gsw->mii_write(gsw, i, MII_CTRL1000, 0x1200);
+		gsw->mii_write(gsw, i, MII_BMCR, 0x140);
+	}
+
+	return 0;
+}
+
 static int mt7531_sw_post_init(struct gsw_mt753x *gsw)
 {
 	int i;
@@ -1040,7 +1153,8 @@ static int mt7531_sw_post_init(struct gsw_mt753x *gsw)
 	val |= POWER_ON_OFF;
 	gsw->mmd_write(gsw, 0, PHY_DEV1F, PHY_DEV1F_REG_403, val);
 
-	mt7531_phy_pll_setup(gsw);
+	if (!gsw->direct_access)
+		mt7531_phy_pll_setup(gsw);
 
 	/* Enable Internal PHYs before phy setting */
 	val = gsw->mmd_read(gsw, 0, PHY_DEV1F, PHY_DEV1F_REG_403);
@@ -1065,7 +1179,14 @@ static int mt7531_sw_post_init(struct gsw_mt753x *gsw)
 	for (i = 0; i < MT753X_NUM_PHYS; i++)
 		gsw->mmd_write(gsw, i, PHY_DEV1E, PHY_DEV1E_REG_141, 0x0);
 
-	mt7531_internal_phy_calibration(gsw);
+	if (!gsw->direct_access)
+		mt7531_internal_phy_calibration(gsw);
+
+	/* PHY force slave disable, restart AN*/
+	for (i = 0; i < MT753X_NUM_PHYS; i++) {
+		gsw->mii_write(gsw, i, MII_CTRL1000, 0x200);
+		gsw->mii_write(gsw, i, MII_BMCR, 0x1240);
+	}
 
 	return 0;
 }
@@ -1074,6 +1195,13 @@ struct mt753x_sw_id mt7531_id = {
 	.model = MT7531,
 	.detect = mt7531_sw_detect,
 	.init = mt7531_sw_init,
+	.post_init = mt7531_sw_post_init
+};
+
+struct mt753x_sw_id mt7988_id = {
+	.model = MT7988,
+	.detect = mt7988_sw_detect,
+	.init = mt7988_sw_init,
 	.post_init = mt7531_sw_post_init
 };
 

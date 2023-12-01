@@ -2189,7 +2189,7 @@ static bool nmbm_check_lower_members(struct nmbm_lower_device *nld)
 		return false;
 	}
 
-	if (!nld->oobsize || !is_power_of_2(nld->oobsize)) {
+	if (!nld->oobsize) {
 		nmbm_log_lower(nld, NMBM_LOG_ERR,
 			       "Page spare size %u is not valid\n", nld->oobsize);
 		return false;

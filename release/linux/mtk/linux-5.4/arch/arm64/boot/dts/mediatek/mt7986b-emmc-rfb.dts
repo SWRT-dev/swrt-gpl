@@ -87,6 +87,7 @@
 			compatible = "ethernet-phy-id67c9.de0a";
 			reg = <5>;
 			reset-gpios = <&pio 6 1>;
+			reset-assert-us = <600>;
 			reset-deassert-us = <20000>;
 			phy-mode = "2500base-x";
 		};

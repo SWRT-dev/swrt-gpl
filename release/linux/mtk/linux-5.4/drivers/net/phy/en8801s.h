@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-/* FILE NAME:  airoha.h
+/* FILE NAME:  en8801s.h
  * PURPOSE:
  *      Define EN8801S driver function
  *
@@ -7,11 +7,13 @@
  *
  */
 
-#ifndef __AIROHA_H
-#define __AIROHA_H
+#ifndef __EN8801S_H
+#define __EN8801S_H
 
 /* NAMING DECLARATIONS
  */
+#define EN8801S_DRIVER_VERSION  "1.1.0"
+
 #define PHY_ADDRESS_RANGE       0x18
 #define EN8801S_PBUS_DEFAULT_ID 0x1e
 #define EN8801S_MDIO_PHY_ID     0x18       /* Range PHY_ADDRESS_RANGE .. 0x1e */
@@ -36,12 +38,15 @@
 #define LINK_UP                 1
 #define LINK_DOWN               0
 
+//#define TEST_BOARD
 #if defined(TEST_BOARD)
+/* SFP sample for verification */
 #define EN8801S_TX_POLARITY     1
 #define EN8801S_RX_POLARITY     0
 #else
+/* chip on board */
 #define EN8801S_TX_POLARITY     0
-#define EN8801S_RX_POLARITY     1 /* The ping default assignment is set to 1 */
+#define EN8801S_RX_POLARITY     1       /* The pin default assignment is set to 1 */
 #endif
 
 #define MAX_RETRY               5
@@ -150,4 +155,4 @@ typedef union
     u16 DATA;
 } gephy_all_REG_dev1Eh_reg017h, *Pgephy_all_REG_dev1Eh_reg017h;
 
-#endif /* End of __AIROHA_H */
+#endif /* End of __EN8801S_H */

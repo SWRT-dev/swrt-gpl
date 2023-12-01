@@ -1433,6 +1433,7 @@ static int fuse_get_user_pages(struct fuse_args_pages *ap, struct iov_iter *ii,
 			(PAGE_SIZE - ret) & (PAGE_SIZE - 1);
 	}
 
+	ap->args.user_pages = true;
 	if (write)
 		ap->args.in_pages = 1;
 	else
@@ -3237,6 +3238,10 @@ static long fuse_file_fallocate(struct file *file, int mode, loff_t offset,
 		if (err)
 			goto out;
 	}
+
+	err = file_modified(file);
+	if (err)
+		goto out;
 
 	if (!(mode & FALLOC_FL_KEEP_SIZE))
 		set_bit(FUSE_I_SIZE_UNSTABLE, &fi->state);

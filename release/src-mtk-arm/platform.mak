@@ -313,13 +313,18 @@ define platformKernelConfig
 		sed -i "/CONFIG_RT_FIRST_CARD/d" $(1); \
 		echo "CONFIG_RT_FIRST_CARD=7981" >>$(1); \
 		sed -i "/CONFIG_CHIP_MT7986/d" $(1); \
+		echo "# CONFIG_CHIP_MT7986 is not set" >>$(1); \
 		echo "CONFIG_CHIP_MT7981=y" >>$(1); \
 		sed -i "/CONFIG_WARP_CHIPSET/d" $(1); \
 		echo "CONFIG_WARP_CHIPSET=\"mt7981\"" >>$(1); \
 		sed -i "/CONFIG_COMMON_CLK_MT7986/d" $(1); \
+		echo "# CONFIG_COMMON_CLK_MT7986 is not set" >>$(1); \
 		echo "CONFIG_COMMON_CLK_MT7981=y" >>$(1); \
 		sed -i "/CONFIG_PINCTRL_MT7986/d" $(1); \
+		echo "# CONFIG_PINCTRL_MT7986 is not set" >>$(1); \
 		echo "CONFIG_PINCTRL_MT7981=y" >>$(1); \
+		echo "# CONFIG_AIROHA_EN8801S_PHY is not set" >>$(1); \
+		echo "CONFIG_AIROHA_EN8801S_PHY=y" >>$(1); \
 	fi; \
 	if [ "$(RMAX6000)" = "y" ]; then \
 		sed -i "/CONFIG_MODEL_RMAX6000/d" $(1); \
@@ -343,10 +348,27 @@ define platformKernelConfig
 	if [ "$(BUILD_NAME)" = "RM-AX6000" ]; then \
 		sed -i "/CONFIG_LEDS_CLASS_MULTICOLOR\>/d" $(1); \
 		echo "CONFIG_LEDS_CLASS_MULTICOLOR=y" >>$(1); \
+		sed -i "/CONFIG_BLK_DEV_RAM\>/d" $(1); \
+		echo "CONFIG_BLK_DEV_RAM=y" >>$(1); \
+		echo "CONFIG_BLK_DEV_RAM_COUNT=1" >>$(1); \
+		echo "CONFIG_BLK_DEV_RAM_SIZE=16384" >>$(1); \
+		sed -i "/CONFIG_NMBM\>/d" $(1); \
+		echo "CONFIG_NMBM=y" >>$(1); \
+		echo "# CONFIG_NMBM_LOG_LEVEL_DEBUG is not set" >>$(1); \
+		echo "CONFIG_NMBM_LOG_LEVEL_INFO=y" >>$(1); \
+		echo "# CONFIG_NMBM_LOG_LEVEL_WARN is not set" >>$(1); \
+		echo "# CONFIG_NMBM_LOG_LEVEL_ERR is not set" >>$(1); \
+		echo "# CONFIG_NMBM_LOG_LEVEL_EMERG is not set" >>$(1); \
+		echo "# CONFIG_NMBM_LOG_LEVEL_NONE is not set" >>$(1); \
+		echo "CONFIG_NMBM_MTD=y" >>$(1); \
 	fi; \
 	if [ "$(BUILD_NAME)" = "SWRT360-T7" ]; then \
 		sed -i "/CONFIG_MODEL_SWRT360T7/d" $(1); \
 		echo "CONFIG_MODEL_SWRT360T7=y" >>$(1); \
+		sed -i "/CONFIG_BLK_DEV_RAM\>/d" $(1); \
+		echo "CONFIG_BLK_DEV_RAM=y" >>$(1); \
+		echo "CONFIG_BLK_DEV_RAM_COUNT=1" >>$(1); \
+		echo "CONFIG_BLK_DEV_RAM_SIZE=16384" >>$(1); \
 	fi; \
 	if [ "$(DUMP_OOPS_MSG)" = "y" ]; then \
 		echo "CONFIG_DUMP_PREV_OOPS_MSG=y" >>$(1); \
@@ -364,6 +386,7 @@ define platformKernelConfig
 		echo "# CONFIG_MTK_HNAT_FORCE_CT_ACCOUNTING is not set" >>$(1); \
 	fi; \
 	if [ "$(WIREGUARD)" = "y" ]; then \
+		echo "CONFIG_ARM64_CRYPTO=y" >>$(1); \
 		echo "CONFIG_CRYPTO_SHA256_ARM64=y" >>$(1); \
 		echo "CONFIG_CRYPTO_SHA512_ARM64=y" >>$(1); \
 		echo "CONFIG_CRYPTO_SHA1_ARM64_CE=y" >>$(1); \

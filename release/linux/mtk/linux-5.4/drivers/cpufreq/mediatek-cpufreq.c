@@ -15,6 +15,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/thermal.h>
+#include <linux/nvmem-consumer.h>
 
 #define MIN_VOLT_SHIFT		(100000)
 #define MAX_VOLT_SHIFT		(200000)
@@ -38,6 +39,7 @@ struct mtk_cpu_dvfs_info {
 	struct regulator *proc_reg;
 	struct regulator *sram_reg;
 	struct clk *cpu_clk;
+	struct clk *cci_clk;
 	struct clk *inter_clk;
 	struct list_head list_head;
 	int intermediate_voltage;
@@ -205,15 +207,24 @@ static int mtk_cpufreq_set_target(struct cpufreq_policy *policy,
 	struct cpufreq_frequency_table *freq_table = policy->freq_table;
 	struct clk *cpu_clk = policy->clk;
 	struct clk *armpll = clk_get_parent(cpu_clk);
+	struct clk *cci_clk = ERR_PTR(-ENODEV);
+	struct clk *ccipll;
 	struct mtk_cpu_dvfs_info *info = policy->driver_data;
 	struct device *cpu_dev = info->cpu_dev;
 	struct dev_pm_opp *opp;
-	long freq_hz, old_freq_hz;
+	long freq_hz, old_freq_hz, cci_freq_hz, cci_old_freq_hz;
 	int vproc, old_vproc, inter_vproc, target_vproc, ret;
 
 	inter_vproc = info->intermediate_voltage;
 
 	old_freq_hz = clk_get_rate(cpu_clk);
+
+	if (!IS_ERR(info->cci_clk)) {
+		cci_clk = info->cci_clk;
+		ccipll = clk_get_parent(cci_clk);
+		cci_old_freq_hz = clk_get_rate(cci_clk);
+	}
+
 	old_vproc = regulator_get_voltage(info->proc_reg);
 	if (old_vproc < 0) {
 		pr_err("%s: invalid Vproc value: %d\n", __func__, old_vproc);
@@ -221,6 +232,7 @@ static int mtk_cpufreq_set_target(struct cpufreq_policy *policy,
 	}
 
 	freq_hz = freq_table[index].frequency * 1000;
+	cci_freq_hz = freq_table[index].frequency * 600;
 
 	opp = dev_pm_opp_find_freq_ceil(cpu_dev, &freq_hz);
 	if (IS_ERR(opp)) {
@@ -246,6 +258,18 @@ static int mtk_cpufreq_set_target(struct cpufreq_policy *policy,
 		}
 	}
 
+	/* Reparent the CCI clock to intermediate clock. */
+	if (!IS_ERR(cci_clk)) {
+		ret = clk_set_parent(cci_clk, info->inter_clk);
+		if (ret) {
+			pr_err("cpu%d: failed to re-parent cci clock!\n",
+			       policy->cpu);
+			mtk_cpufreq_set_voltage(info, old_vproc);
+			WARN_ON(1);
+			return ret;
+		}
+	}
+
 	/* Reparent the CPU clock to intermediate clock. */
 	ret = clk_set_parent(cpu_clk, info->inter_clk);
 	if (ret) {
@@ -266,6 +290,18 @@ static int mtk_cpufreq_set_target(struct cpufreq_policy *policy,
 		return ret;
 	}
 
+	/* Set the original PLL to target rate. */
+	if (!IS_ERR(cci_clk)) {
+		ret = clk_set_rate(ccipll, cci_freq_hz);
+		if (ret) {
+			pr_err("cpu%d: failed to scale cci clock rate!\n",
+			       policy->cpu);
+			clk_set_parent(cci_clk, ccipll);
+			mtk_cpufreq_set_voltage(info, old_vproc);
+			return ret;
+		}
+	}
+
 	/* Set parent of CPU clock back to the original PLL. */
 	ret = clk_set_parent(cpu_clk, armpll);
 	if (ret) {
@@ -276,6 +312,17 @@ static int mtk_cpufreq_set_target(struct cpufreq_policy *policy,
 		return ret;
 	}
 
+	/* Set parent of CCI clock back to the original PLL. */
+	if (!IS_ERR(cci_clk)) {
+		ret = clk_set_parent(cci_clk, ccipll);
+		if (ret) {
+			pr_err("cpu%d: failed to re-parent cci clock!\n",
+			       policy->cpu);
+			mtk_cpufreq_set_voltage(info, inter_vproc);
+			WARN_ON(1);
+			return ret;
+		}
+	}
 	/*
 	 * If the new voltage is lower than the intermediate voltage or the
 	 * original voltage, scale down to the new voltage.
@@ -285,9 +332,20 @@ static int mtk_cpufreq_set_target(struct cpufreq_policy *policy,
 		if (ret) {
 			pr_err("cpu%d: failed to scale down voltage!\n",
 			       policy->cpu);
+			if (!IS_ERR(cci_clk))
+				clk_set_parent(cci_clk, info->inter_clk);
+
 			clk_set_parent(cpu_clk, info->inter_clk);
 			clk_set_rate(armpll, old_freq_hz);
+
+			if (!IS_ERR(cci_clk))
+				clk_set_rate(ccipll, cci_old_freq_hz);
+
 			clk_set_parent(cpu_clk, armpll);
+
+			if (!IS_ERR(cci_clk))
+				clk_set_parent(cci_clk, ccipll);
+
 			return ret;
 		}
 	}
@@ -303,6 +361,7 @@ static int mtk_cpu_dvfs_info_init(struct mtk_cpu_dvfs_info *info, int cpu)
 	struct regulator *proc_reg = ERR_PTR(-ENODEV);
 	struct regulator *sram_reg = ERR_PTR(-ENODEV);
 	struct clk *cpu_clk = ERR_PTR(-ENODEV);
+	struct clk *cci_clk = ERR_PTR(-ENODEV);
 	struct clk *inter_clk = ERR_PTR(-ENODEV);
 	struct dev_pm_opp *opp;
 	unsigned long rate;
@@ -338,6 +397,8 @@ static int mtk_cpu_dvfs_info_init(struct mtk_cpu_dvfs_info *info, int cpu)
 		goto out_free_resources;
 	}
 
+	cci_clk = clk_get(cpu_dev, "cci");
+
 	proc_reg = regulator_get_optional(cpu_dev, "proc");
 	if (IS_ERR(proc_reg)) {
 		if (PTR_ERR(proc_reg) == -EPROBE_DEFER)
@@ -348,6 +409,12 @@ static int mtk_cpu_dvfs_info_init(struct mtk_cpu_dvfs_info *info, int cpu)
 			       cpu);
 
 		ret = PTR_ERR(proc_reg);
+		goto out_free_resources;
+	}
+
+	ret = regulator_enable(proc_reg);
+	if (ret) {
+		dev_warn(cpu_dev, "cpu%d: failed to enable vproc\n", cpu);
 		goto out_free_resources;
 	}
 
@@ -368,13 +435,28 @@ static int mtk_cpu_dvfs_info_init(struct mtk_cpu_dvfs_info *info, int cpu)
 		goto out_free_resources;
 	}
 
+	ret = clk_prepare_enable(cpu_clk);
+	if (ret)
+		goto out_free_opp_table;
+
+	ret = clk_prepare_enable(inter_clk);
+
+	if (ret)
+		goto out_disable_mux_clock;
+
+	if(!(IS_ERR(cci_clk))) {
+		ret = clk_prepare_enable(cci_clk);
+		if(ret)
+			goto out_disable_inter_clock;
+	}
+
 	/* Search a safe voltage for intermediate frequency. */
 	rate = clk_get_rate(inter_clk);
 	opp = dev_pm_opp_find_freq_ceil(cpu_dev, &rate);
 	if (IS_ERR(opp)) {
 		pr_err("failed to get intermediate opp for cpu%d\n", cpu);
 		ret = PTR_ERR(opp);
-		goto out_free_opp_table;
+		goto out_disable_cci_clock;
 	}
 	info->intermediate_voltage = dev_pm_opp_get_voltage(opp);
 	dev_pm_opp_put(opp);
@@ -383,6 +465,7 @@ static int mtk_cpu_dvfs_info_init(struct mtk_cpu_dvfs_info *info, int cpu)
 	info->proc_reg = proc_reg;
 	info->sram_reg = IS_ERR(sram_reg) ? NULL : sram_reg;
 	info->cpu_clk = cpu_clk;
+	info->cci_clk = cci_clk;
 	info->inter_clk = inter_clk;
 
 	/*
@@ -393,10 +476,27 @@ static int mtk_cpu_dvfs_info_init(struct mtk_cpu_dvfs_info *info, int cpu)
 
 	return 0;
 
+out_disable_cci_clock:
+	if(!IS_ERR(cci_clk))
+		clk_disable_unprepare(cci_clk);
+
+out_disable_inter_clock:
+	if(!IS_ERR(inter_clk))
+		clk_disable_unprepare(inter_clk);
+
+out_disable_mux_clock:
+	if(!IS_ERR(cpu_clk))
+		clk_disable_unprepare(cpu_clk);
+
 out_free_opp_table:
 	dev_pm_opp_of_cpumask_remove_table(&info->cpus);
 
 out_free_resources:
+	if (!IS_ERR(proc_reg)) {
+		if (regulator_is_enabled(proc_reg))
+			regulator_disable(proc_reg);
+	}
+
 	if (!IS_ERR(proc_reg))
 		regulator_put(proc_reg);
 	if (!IS_ERR(sram_reg))
@@ -405,20 +505,32 @@ out_free_resources:
 		clk_put(cpu_clk);
 	if (!IS_ERR(inter_clk))
 		clk_put(inter_clk);
+	if (!IS_ERR(cci_clk))
+		clk_put(cci_clk);
 
 	return ret;
 }
 
 static void mtk_cpu_dvfs_info_release(struct mtk_cpu_dvfs_info *info)
 {
-	if (!IS_ERR(info->proc_reg))
+	if (!IS_ERR(info->proc_reg)){
+		regulator_disable(info->proc_reg);
 		regulator_put(info->proc_reg);
+	}
 	if (!IS_ERR(info->sram_reg))
 		regulator_put(info->sram_reg);
-	if (!IS_ERR(info->cpu_clk))
+	if (!IS_ERR(info->cpu_clk)){
+		clk_disable_unprepare(info->cpu_clk);
 		clk_put(info->cpu_clk);
-	if (!IS_ERR(info->inter_clk))
+	}
+	if (!IS_ERR(info->inter_clk)){
+		clk_disable_unprepare(info->inter_clk);
 		clk_put(info->inter_clk);
+	}
+	if (!IS_ERR(info->cci_clk)){
+		clk_disable_unprepare(info->cci_clk);
+		clk_put(info->cci_clk);
+	}
 
 	dev_pm_opp_of_cpumask_remove_table(&info->cpus);
 }
@@ -428,12 +540,33 @@ static int mtk_cpufreq_init(struct cpufreq_policy *policy)
 	struct mtk_cpu_dvfs_info *info;
 	struct cpufreq_frequency_table *freq_table;
 	int ret;
+	int target_vproc;
+	u8 reg_val;
+	struct nvmem_cell *cell;
+	size_t len;
+	u8 *buf;
 
 	info = mtk_cpu_dvfs_info_lookup(policy->cpu);
 	if (!info) {
 		pr_err("dvfs info for cpu%d is not initialized.\n",
 		       policy->cpu);
 		return -EINVAL;
+	}
+
+	cell = nvmem_cell_get(info->cpu_dev, "calibration-data");
+	if (!IS_ERR(cell)) {
+		buf = (u8 *)nvmem_cell_read(cell, &len);
+		nvmem_cell_put(cell);
+		if (!IS_ERR(buf)) {
+			reg_val = buf[0] & 0x1f;
+			pr_debug("%s: read vbinning value: %d\n", __func__, reg_val);
+			if (reg_val > 0) {
+				target_vproc = 850000 + reg_val * 10000;
+				dev_pm_opp_remove(info->cpu_dev, 1800000000);
+				dev_pm_opp_add(info->cpu_dev, 1800000000, target_vproc);
+			}
+			kfree(buf);
+		}
 	}
 
 	ret = dev_pm_opp_init_cpufreq_table(info->cpu_dev, &freq_table);
@@ -537,6 +670,7 @@ static const struct of_device_id mtk_cpufreq_machines[] __initconst = {
 	{ .compatible = "mediatek,mt8176", },
 	{ .compatible = "mediatek,mt8183", },
 	{ .compatible = "mediatek,mt8516", },
+	{ .compatible = "mediatek,mt7988", },
 
 	{ }
 };
@@ -573,6 +707,7 @@ static int __init mtk_cpufreq_driver_init(void)
 	pdev = platform_device_register_simple("mtk-cpufreq", -1, NULL, 0);
 	if (IS_ERR(pdev)) {
 		pr_err("failed to register mtk-cpufreq platform device\n");
+		platform_driver_unregister(&mtk_cpufreq_platdrv);
 		return PTR_ERR(pdev);
 	}
 

@@ -1508,6 +1508,11 @@ dev_nvram_do_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		unsigned int nvram_space = NVRAM_SPACE;
 		copy_to_user((unsigned int *)arg, &nvram_space, sizeof(nvram_space));
 		return 0;
+	} else if (cmd == 0x0003) {
+		nvram_free();
+		/* reload nvram */
+		_nvram_init(sbh);
+		return 0;
 	}
 	if (cmd != NVRAM_MAGIC)
 		return -EINVAL;

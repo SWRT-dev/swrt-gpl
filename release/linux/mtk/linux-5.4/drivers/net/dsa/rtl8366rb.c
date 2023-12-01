@@ -962,7 +962,8 @@ static int rtl8366rb_setup(struct dsa_switch *ds)
 }
 
 static enum dsa_tag_protocol rtl8366_get_tag_protocol(struct dsa_switch *ds,
-						      int port)
+						      int port,
+						      enum dsa_tag_protocol mp)
 {
 	/* This switch uses the 4 byte protocol A Realtek DSA tag */
 	return DSA_TAG_PROTO_RTL4_A;

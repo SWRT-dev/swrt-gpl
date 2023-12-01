@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 VERSION = 5
 PATCHLEVEL = 4
-SUBLEVEL = 182
+SUBLEVEL = 225
 EXTRAVERSION =
 NAME = Kleptomaniac Octopus
 
@@ -733,11 +733,11 @@ export PGB_QUICK_PATH=y
 endif
 
 ifdef CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE
-KBUILD_CFLAGS += -O2 $(EXTRA_OPTIMIZATION)
+KBUILD_CFLAGS += -O2
 else ifdef CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE_O3
-KBUILD_CFLAGS += -O3 $(EXTRA_OPTIMIZATION)
+KBUILD_CFLAGS += -O3
 else ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
-KBUILD_CFLAGS += -Os -fno-reorder-blocks -fno-tree-ch $(EXTRA_OPTIMIZATION)
+KBUILD_CFLAGS += -Os
 endif
 
 # Tell gcc to never replace conditional load with a non-conditional one
@@ -816,7 +816,9 @@ DEBUG_CFLAGS	+= -gsplit-dwarf
 else
 DEBUG_CFLAGS	+= -g
 endif
-ifneq ($(LLVM_IAS),1)
+ifeq ($(LLVM_IAS),1)
+KBUILD_AFLAGS	+= -g
+else
 KBUILD_AFLAGS	+= -Wa,-gdwarf-2
 endif
 endif
@@ -945,6 +947,9 @@ KBUILD_CFLAGS   += $(KCFLAGS)
 
 KBUILD_LDFLAGS_MODULE += --build-id
 LDFLAGS_vmlinux += --build-id
+
+KBUILD_LDFLAGS	+= -z noexecstack
+KBUILD_LDFLAGS	+= $(call ld-option,--no-warn-rwx-segments)
 
 ifeq ($(CONFIG_STRIP_ASM_SYMS),y)
 LDFLAGS_vmlinux	+= $(call ld-option, -X,)
@@ -1087,7 +1092,7 @@ PHONY += autoksyms_recursive
 ifdef CONFIG_TRIM_UNUSED_KSYMS
 autoksyms_recursive: descend modules.order
 	$(Q)$(CONFIG_SHELL) $(srctree)/scripts/adjust_autoksyms.sh \
-	  "$(MAKE) -f $(srctree)/Makefile vmlinux"
+	  "$(MAKE) -f $(srctree)/Makefile autoksyms_recursive"
 endif
 
 # For the kernel to actually contain only the needed exported symbols,

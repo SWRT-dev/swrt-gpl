@@ -49,6 +49,9 @@ static void display_port_link_status(struct gsw_mt753x *gsw, u32 port)
 	case MAC_SPD_2500:
 		speed = "2.5Gbps";
 		break;
+	default:
+		dev_info(gsw->dev, "Invalid speed\n");
+		return;
 	}
 
 	if (pmsr & MAC_LNK_STS) {

@@ -22,6 +22,10 @@
 #include "xhci.h"
 #include "xhci-mtk.h"
 #include "xhci-mtk-test.h"
+/* COMPLIANCE_CP5_CP7_TXDEEMPH_10G register */
+#define COMPLIANCE_CP5_CP7_TXDEEMPH_10G  0x2428
+#define CP5_CP7_TXDEEMPH_10G		 GENMASK(17, 0)
+#define CP5_CP7_TXDEEMPH_10G_VAL(val)	((val) & 0x03FFFF)
 
 /* ip_pw_ctrl0 register */
 #define CTRL0_IP_SW_RST	BIT(0)
@@ -414,6 +418,7 @@ static int xhci_mtk_setup(struct usb_hcd *hcd)
 {
 	struct xhci_hcd_mtk *mtk = hcd_to_mtk(hcd);
 	int ret;
+	u32 val;
 
 	if (usb_hcd_is_primary_hcd(hcd)) {
 		ret = xhci_mtk_ssusb_config(mtk);
@@ -429,6 +434,15 @@ static int xhci_mtk_setup(struct usb_hcd *hcd)
 		ret = xhci_mtk_sch_init(mtk);
 		if (ret)
 			return ret;
+	}
+
+	/* change COMPLIANCE_CP5_CP7_TXDEEMPH_10G  as Gen1 instead Gen2 */
+	if (mtk->p0_speed_fixup) {
+		val  = readl(mtk->hcd->regs + COMPLIANCE_CP5_CP7_TXDEEMPH_10G);
+		val &= ~CP5_CP7_TXDEEMPH_10G;
+		val |= 0x00001;
+		val = CP5_CP7_TXDEEMPH_10G_VAL(val);
+		writel(val, mtk->hcd->regs + COMPLIANCE_CP5_CP7_TXDEEMPH_10G);
 	}
 
 	return ret;
@@ -476,7 +490,8 @@ static int xhci_mtk_probe(struct platform_device *pdev)
 	/* optional property, ignore the error if it does not exist */
 	of_property_read_u32(node, "mediatek,u3p-dis-msk",
 			     &mtk->u3p_dis_msk);
-
+	mtk->p0_speed_fixup = of_property_read_bool(node,
+						    "mediatek,p0_speed_fixup");
 	ret = usb_wakeup_of_property_parse(mtk, node);
 	if (ret) {
 		dev_err(dev, "failed to parse uwk property\n");

@@ -28,7 +28,13 @@ obj-$(CONFIG_PWM_LPSS)		+= pwm-lpss.o
 obj-$(CONFIG_PWM_LPSS_PCI)	+= pwm-lpss-pci.o
 obj-$(CONFIG_PWM_LPSS_PLATFORM)	+= pwm-lpss-platform.o
 obj-$(CONFIG_PWM_MESON)		+= pwm-meson.o
+ifeq ($(CONFIG_PWM_MTK_MM),y)
+obj-$(CONFIG_PWM_MEDIATEK)	+= pwm-mtk.o
+pwm-mtk-objs			:= pwm-mediatek.o
+pwm-mtk-objs			+= .objs/pwm-mtk-mm.o
+else
 obj-$(CONFIG_PWM_MEDIATEK)	+= pwm-mediatek.o
+endif
 obj-$(CONFIG_PWM_MEDIATEK_RAMIPS)	+= pwm-mediatek-ramips.o
 obj-$(CONFIG_PWM_MTK_DISP)	+= pwm-mtk-disp.o
 obj-$(CONFIG_PWM_MXS)		+= pwm-mxs.o
@@ -56,3 +62,4 @@ obj-$(CONFIG_PWM_TWL)		+= pwm-twl.o
 obj-$(CONFIG_PWM_TWL_LED)	+= pwm-twl-led.o
 obj-$(CONFIG_PWM_VT8500)	+= pwm-vt8500.o
 obj-$(CONFIG_PWM_ZX)		+= pwm-zx.o
+

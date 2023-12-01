@@ -798,6 +798,16 @@ config REGULATOR_RT5033
 	  RT5033 PMIC. The device supports multiple regulators like
 	  current source, LDO and Buck.
 
+config REGULATOR_RT5190A
+	tristate "Richtek RT5190A PMIC"
+	depends on I2C
+       select REGMAP_I2C
+	help
+	  This add support for voltage regulator in Ritchtek RT5190A PMIC.
+	  It integrates 1 channel buck controller, 3 channels high efficiency
+	  buck converters, 1 LDO, mute AC OFF depop function, with the general
+	  I2C control interface.
+
 config REGULATOR_S2MPA01
 	tristate "Samsung S2MPA01 voltage regulator"
 	depends on MFD_SEC_CORE

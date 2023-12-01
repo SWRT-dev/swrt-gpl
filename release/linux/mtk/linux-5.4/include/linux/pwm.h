@@ -60,6 +60,12 @@ struct pwm_state {
 	unsigned int duty_cycle;
 	enum pwm_polarity polarity;
 	bool enabled;
+#ifdef CONFIG_PWM_MTK_MM
+	char mm_type[16];
+	char mm_fint[8];
+	char mm_config[16];
+	bool mm_enabled;
+#endif
 };
 
 /**
@@ -274,6 +280,14 @@ struct pwm_ops {
 			    enum pwm_polarity polarity);
 	int (*enable)(struct pwm_chip *chip, struct pwm_device *pwm);
 	void (*disable)(struct pwm_chip *chip, struct pwm_device *pwm);
+#ifdef CONFIG_PWM_MTK_MM
+	int (*mm_pwmbuf)(struct pwm_chip *chip, struct pwm_device *pwm,
+		      const char *type);
+	int (*mm_config)(struct pwm_chip *chip, struct pwm_device *pwm,
+		      const char *config);
+	int (*mm_fint)(struct pwm_chip *chip, struct pwm_device *pwm,
+		      const char *fint);
+#endif
 };
 
 /**
@@ -318,6 +332,9 @@ struct pwm_device *pwm_request(int pwm_id, const char *label);
 void pwm_free(struct pwm_device *pwm);
 int pwm_apply_state(struct pwm_device *pwm, const struct pwm_state *state);
 int pwm_adjust_config(struct pwm_device *pwm);
+#ifdef CONFIG_PWM_MTK_MM
+int pwm_apply_mm(struct pwm_device *pwm, const struct pwm_state *state);
+#endif
 
 /**
  * pwm_config() - change a PWM device configuration

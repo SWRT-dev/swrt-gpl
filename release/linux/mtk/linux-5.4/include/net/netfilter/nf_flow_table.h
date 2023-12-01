@@ -62,7 +62,10 @@ struct flow_offload_tuple {
 
 	u16				mtu;
 
-	struct dst_entry		*dst_cache;
+	struct {
+		struct dst_entry *dst_cache;
+		u32		dst_cookie;
+	};
 };
 
 struct flow_offload_tuple_rhash {

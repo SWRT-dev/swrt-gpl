@@ -231,6 +231,7 @@ struct mtk_pll_data {
 	uint32_t pcw_reg;
 	int pcw_shift;
 	uint32_t pcw_chg_reg;
+	int pcw_chg_shift;
 	const struct mtk_pll_div_table *div_table;
 	const char *parent_name;
 };

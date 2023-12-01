@@ -130,11 +130,8 @@ static int cmd_alloc_index(struct mlx5_cmd *cmd)
 
 static void cmd_free_index(struct mlx5_cmd *cmd, int idx)
 {
-	unsigned long flags;
-
-	spin_lock_irqsave(&cmd->alloc_lock, flags);
+	lockdep_assert_held(&cmd->alloc_lock);
 	set_bit(idx, &cmd->bitmask);
-	spin_unlock_irqrestore(&cmd->alloc_lock, flags);
 }
 
 static void cmd_ent_get(struct mlx5_cmd_work_ent *ent)
@@ -144,17 +141,21 @@ static void cmd_ent_get(struct mlx5_cmd_work_ent *ent)
 
 static void cmd_ent_put(struct mlx5_cmd_work_ent *ent)
 {
+	struct mlx5_cmd *cmd = ent->cmd;
+	unsigned long flags;
+
+	spin_lock_irqsave(&cmd->alloc_lock, flags);
 	if (!refcount_dec_and_test(&ent->refcnt))
-		return;
+		goto out;
 
 	if (ent->idx >= 0) {
-		struct mlx5_cmd *cmd = ent->cmd;
-
 		cmd_free_index(cmd, ent->idx);
 		up(ent->page_queue ? &cmd->pages_sem : &cmd->sem);
 	}
 
 	cmd_free_ent(ent);
+out:
+	spin_unlock_irqrestore(&cmd->alloc_lock, flags);
 }
 
 static struct mlx5_cmd_layout *get_inst(struct mlx5_cmd *cmd, int idx)
@@ -1681,12 +1682,17 @@ void mlx5_cmd_flush(struct mlx5_core_dev *dev)
 	struct mlx5_cmd *cmd = &dev->cmd;
 	int i;
 
-	for (i = 0; i < cmd->max_reg_cmds; i++)
-		while (down_trylock(&cmd->sem))
+	for (i = 0; i < cmd->max_reg_cmds; i++) {
+		while (down_trylock(&cmd->sem)) {
 			mlx5_cmd_trigger_completions(dev);
+			cond_resched();
+		}
+	}
 
-	while (down_trylock(&cmd->pages_sem))
+	while (down_trylock(&cmd->pages_sem)) {
 		mlx5_cmd_trigger_completions(dev);
+		cond_resched();
+	}
 
 	/* Unlock cmdif */
 	up(&cmd->pages_sem);
@@ -1849,7 +1855,7 @@ void mlx5_cmd_init_async_ctx(struct mlx5_core_dev *dev,
 	ctx->dev = dev;
 	/* Starts at 1 to avoid doing wake_up if we are not cleaning up */
 	atomic_set(&ctx->num_inflight, 1);
-	init_waitqueue_head(&ctx->wait);
+	init_completion(&ctx->inflight_done);
 }
 EXPORT_SYMBOL(mlx5_cmd_init_async_ctx);
 
@@ -1863,8 +1869,8 @@ EXPORT_SYMBOL(mlx5_cmd_init_async_ctx);
  */
 void mlx5_cmd_cleanup_async_ctx(struct mlx5_async_ctx *ctx)
 {
-	atomic_dec(&ctx->num_inflight);
-	wait_event(ctx->wait, atomic_read(&ctx->num_inflight) == 0);
+	if (!atomic_dec_and_test(&ctx->num_inflight))
+		wait_for_completion(&ctx->inflight_done);
 }
 EXPORT_SYMBOL(mlx5_cmd_cleanup_async_ctx);
 
@@ -1875,7 +1881,7 @@ static void mlx5_cmd_exec_cb_handler(int status, void *_work)
 
 	work->user_callback(status, work);
 	if (atomic_dec_and_test(&ctx->num_inflight))
-		wake_up(&ctx->wait);
+		complete(&ctx->inflight_done);
 }
 
 int mlx5_cmd_exec_cb(struct mlx5_async_ctx *ctx, void *in, int in_size,
@@ -1891,7 +1897,7 @@ int mlx5_cmd_exec_cb(struct mlx5_async_ctx *ctx, void *in, int in_size,
 	ret = cmd_exec(ctx->dev, in, in_size, out, out_size,
 		       mlx5_cmd_exec_cb_handler, work, false);
 	if (ret && atomic_dec_and_test(&ctx->num_inflight))
-		wake_up(&ctx->wait);
+		complete(&ctx->inflight_done);
 
 	return ret;
 }

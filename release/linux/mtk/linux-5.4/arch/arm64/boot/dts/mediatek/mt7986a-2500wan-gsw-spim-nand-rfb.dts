@@ -33,6 +33,11 @@
 	};
 };
 
+&fan {
+	pwms = <&pwm 1 50000 0>;
+	status = "disabled";
+};
+
 &pwm {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pwm0_pin &pwm1_pin_g1>;
@@ -52,7 +57,7 @@
 &uart2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart2_pins>;
-	status = "okay";
+	status = "disabled";
 };
 
 &i2c0 {
@@ -86,6 +91,9 @@
 			speed = <2500>;
 			full-duplex;
 			pause;
+			link-gpio = <&pio 47 0>;
+			phy-handle = <&phy5>;
+			label = "lan5";
 		};
 	};
 
@@ -93,32 +101,25 @@
 		compatible = "mediatek,eth-mac";
 		reg = <1>;
 		phy-mode = "2500base-x";
-
-		fixed-link {
-			speed = <2500>;
-			full-duplex;
-			pause;
-		};
+		phy-handle = <&phy6>;
 	};
 
 	mdio: mdio-bus {
 		#address-cells = <1>;
 		#size-cells = <0>;
 
+		reset-gpios = <&pio 6 1>;
+		reset-delay-us = <600>;
+
 		phy5: phy@5 {
 			compatible = "ethernet-phy-id67c9.de0a";
 			reg = <5>;
-			reset-gpios = <&pio 6 1>;
-			reset-deassert-us = <20000>;
-			phy-mode = "2500base-x";
 		};
 
 		phy6: phy@6 {
-			compatible = "ethernet-phy-id67c9.de0a";
+			compatible = "ethernet-phy-ieee802.3-c45";
 			reg = <6>;
-			phy-mode = "2500base-x";
 		};
-
 	};
 };
 
@@ -140,7 +141,6 @@
 			speed = <2500>;
 			full-duplex;
 		};
-
 	};
 
 	port6: port@6 {

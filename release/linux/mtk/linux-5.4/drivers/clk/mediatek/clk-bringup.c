@@ -31,7 +31,7 @@ MODULE_DEVICE_TABLE(of, bring_up_id_table);
 
 static int bring_up_probe(struct platform_device *pdev)
 {
-	const int NR_CLKS = 300;
+	const int NR_CLKS = 400;
 	char clk_name_buf[16];
 	struct clk *clk;
 	int i, r;

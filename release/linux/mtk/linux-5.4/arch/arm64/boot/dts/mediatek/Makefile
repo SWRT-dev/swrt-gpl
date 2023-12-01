@@ -15,6 +15,12 @@ else ifeq ($(CONFIG_MODEL_RMAX6000),y)
 dtb-y += mt7986a-RM-AX6000.dtb
 else ifeq ($(CONFIG_MODEL_SWRT360T7),y)
 dtb-y += mt7986a-SWRT360-T7.dtb
+else ifeq ($(CONFIG_MODEL_PRTAX57_GO),y)
+dtb-y += mt7981-PRT-AX57_GO.dtb
+else ifeq ($(CONFIG_MODEL_RTAX52),y)
+dtb-y += mt7981-RT-AX52.dtb
+else ifeq ($(CONFIG_MODEL_RTAX57M),y)
+dtb-y += mt7981-RT-AX57M.dtb
 else
 dtb-$(CONFIG_ARCH_MEDIATEK) += mt2712-evb.dtb
 dtb-$(CONFIG_ARCH_MEDIATEK) += mt6755-evb.dtb

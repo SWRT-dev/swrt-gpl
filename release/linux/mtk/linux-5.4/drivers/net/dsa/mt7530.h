@@ -16,6 +16,7 @@ enum mt753x_id {
 	ID_MT7530 = 0,
 	ID_MT7621 = 1,
 	ID_MT7531 = 2,
+	ID_MT7988 = 3,
 };
 
 #define	NUM_TRGMII_CTRL			5
@@ -51,11 +52,11 @@ enum mt753x_id {
 #define  MT7531_MIRROR_PORT_SET(x)	(((x) & MIRROR_MASK) << 16)
 #define  MT7531_CPU_PMAP_MASK		GENMASK(7, 0)
 
-#define MT753X_MIRROR_REG(id)		(((id) == ID_MT7531) ? \
+#define MT753X_MIRROR_REG(id)		((((id) == ID_MT7531) || ((id) == ID_MT7988)) ? \
 					 MT7531_CFC : MT7530_MFC)
-#define MT753X_MIRROR_EN(id)		(((id) == ID_MT7531) ? \
+#define MT753X_MIRROR_EN(id)		((((id) == ID_MT7531) || ((id) == ID_MT7988)) ? \
 					 MT7531_MIRROR_EN : MIRROR_EN)
-#define MT753X_MIRROR_MASK(id)		(((id) == ID_MT7531) ? \
+#define MT753X_MIRROR_MASK(id)		((((id) == ID_MT7531) || ((id) == ID_MT7988)) ? \
 					 MT7531_MIRROR_MASK : MIRROR_MASK)
 
 /* Registers for BPDU and PAE frame control*/
@@ -261,7 +262,7 @@ enum mt7530_vlan_port_attr {
 					 MT7531_FORCE_DPX | \
 					 MT7531_FORCE_RX_FC | \
 					 MT7531_FORCE_TX_FC)
-#define  PMCR_FORCE_MODE_ID(id)		(((id) == ID_MT7531) ? \
+#define  PMCR_FORCE_MODE_ID(id)		((((id) == ID_MT7531) || ((id) == ID_MT7988)) ? \
 					 MT7531_FORCE_MODE : \
 					 PMCR_FORCE_MODE)
 #define  PMCR_LINK_SETTINGS_MASK	(PMCR_TX_EN | PMCR_FORCE_SPEED_1000 | \
@@ -733,6 +734,8 @@ struct mt7530_priv {
 	struct regulator	*core_pwr;
 	struct regulator	*io_pwr;
 	struct gpio_desc	*reset;
+	void  __iomem *base;
+	int   direct_access;
 	const struct mt753x_info *info;
 	unsigned int		id;
 	bool			mcm;
@@ -783,4 +786,12 @@ static inline void INIT_MT7530_DUMMY_POLL(struct mt7530_dummy_poll *p,
 }
 
 int mt7531_phy_setup(struct dsa_switch *ds);
+u32 mt7530_read(struct mt7530_priv *priv, u32 reg);
+void mt7530_write(struct mt7530_priv *priv, u32 reg, u32 val);
+int mt7531_ind_c45_phy_read(struct mt7530_priv *priv, int port, int devad, int regnum);
+int mt7531_ind_c45_phy_write(struct mt7530_priv *priv, int port, int devad, int regnum, u32 data);
+int mt7531_ind_c22_phy_read(struct mt7530_priv *priv, int port, int regnum);
+int mt7531_ind_c22_phy_write(struct mt7530_priv *priv, int port, int regnum, u16 data);
+
+
 #endif /* __MT7530_H */

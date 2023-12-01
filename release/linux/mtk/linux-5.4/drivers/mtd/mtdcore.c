@@ -590,6 +590,60 @@ static int mtd_nvmem_add(struct mtd_info *mtd)
 	return 0;
 }
 
+static void mtd_check_of_node(struct mtd_info *mtd)
+{
+	struct device_node *partitions, *parent_dn, *mtd_dn = NULL;
+	const char *pname, *prefix = "partition-";
+	int plen, mtd_name_len, offset, prefix_len;
+
+	/* Check if MTD already has a device node */
+	if (mtd_get_of_node(mtd))
+		return;
+
+	if (!mtd_is_partition(mtd))
+		return;
+
+	parent_dn = of_node_get(mtd_get_of_node(mtd_get_master(mtd)));
+	if (!parent_dn)
+		return;
+
+	if (mtd_is_partition(mtd_get_master(mtd)))
+		partitions = of_node_get(parent_dn);
+	else
+		partitions = of_get_child_by_name(parent_dn, "partitions");
+	if (!partitions)
+		goto exit_parent;
+
+	prefix_len = strlen(prefix);
+	mtd_name_len = strlen(mtd->name);
+
+	/* Search if a partition is defined with the same name */
+	for_each_child_of_node(partitions, mtd_dn) {
+		/* Skip partition with no/wrong prefix */
+		if (!of_node_name_prefix(mtd_dn, prefix))
+			continue;
+
+		/* Label have priority. Check that first */
+		if (!of_property_read_string(mtd_dn, "label", &pname)) {
+			offset = 0;
+		} else {
+			pname = mtd_dn->name;
+			offset = prefix_len;
+		}
+
+		plen = strlen(pname) - offset;
+		if (plen == mtd_name_len &&
+		    !strncmp(mtd->name, pname + offset, plen)) {
+			mtd_set_of_node(mtd, mtd_dn);
+			break;
+		}
+	}
+
+	of_node_put(partitions);
+exit_parent:
+	of_node_put(parent_dn);
+}
+
 /**
  *	add_mtd_device - register an MTD device
  *	@mtd: pointer to new MTD device info structure
@@ -673,6 +727,7 @@ int add_mtd_device(struct mtd_info *mtd)
 	mtd->dev.devt = MTD_DEVT(i);
 	dev_set_name(&mtd->dev, "mtd%d", i);
 	dev_set_drvdata(&mtd->dev, mtd);
+	mtd_check_of_node(mtd);
 	of_node_get(mtd_get_of_node(mtd));
 	error = device_register(&mtd->dev);
 	if (error)
@@ -1014,6 +1069,34 @@ int __get_mtd_device(struct mtd_info *mtd)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(__get_mtd_device);
+
+/**
+ * of_get_mtd_device_by_node - obtain an MTD device associated with a given node
+ *
+ * @np: device tree node
+ */
+struct mtd_info *of_get_mtd_device_by_node(struct device_node *np)
+{
+	struct mtd_info *mtd = NULL;
+	struct mtd_info *tmp;
+	int err;
+
+	mutex_lock(&mtd_table_mutex);
+
+	err = -EPROBE_DEFER;
+	mtd_for_each_device(tmp) {
+		if (mtd_get_of_node(tmp) == np) {
+			mtd = tmp;
+			err = __get_mtd_device(mtd);
+			break;
+		}
+	}
+
+	mutex_unlock(&mtd_table_mutex);
+
+	return err ? ERR_PTR(err) : mtd;
+}
+EXPORT_SYMBOL_GPL(of_get_mtd_device_by_node);
 
 /**
  *	get_mtd_device_nm - obtain a validated handle for an MTD device by

@@ -22,6 +22,7 @@
 #define PHY_ID_AQR107	0x03a1b4e0
 #define PHY_ID_AQCS109	0x03a1b5c2
 #define PHY_ID_AQR405	0x03a1b4b0
+#define PHY_ID_AQR113C	0x31c31c12
 
 #define MDIO_PHYXS_VEND_IF_STATUS		0xe812
 #define MDIO_PHYXS_VEND_IF_STATUS_TYPE_MASK	GENMASK(7, 3)
@@ -34,6 +35,8 @@
 #define MDIO_AN_VEND_PROV			0xc400
 #define MDIO_AN_VEND_PROV_1000BASET_FULL	BIT(15)
 #define MDIO_AN_VEND_PROV_1000BASET_HALF	BIT(14)
+#define MDIO_AN_VEND_PROV_5000BASET_FULL	BIT(11)
+#define MDIO_AN_VEND_PROV_2500BASET_FULL	BIT(10)
 #define MDIO_AN_VEND_PROV_DOWNSHIFT_EN		BIT(4)
 #define MDIO_AN_VEND_PROV_DOWNSHIFT_MASK	GENMASK(3, 0)
 #define MDIO_AN_VEND_PROV_DOWNSHIFT_DFLT	4
@@ -69,18 +72,6 @@
 
 #define MDIO_AN_RX_VEND_STAT3			0xe832
 #define MDIO_AN_RX_VEND_STAT3_AFR		BIT(0)
-
-/* MDIO_MMD_C22EXT */
-#define MDIO_C22EXT_STAT_SGMII_RX_GOOD_FRAMES		0xd292
-#define MDIO_C22EXT_STAT_SGMII_RX_BAD_FRAMES		0xd294
-#define MDIO_C22EXT_STAT_SGMII_RX_FALSE_CARRIER		0xd297
-#define MDIO_C22EXT_STAT_SGMII_TX_GOOD_FRAMES		0xd313
-#define MDIO_C22EXT_STAT_SGMII_TX_BAD_FRAMES		0xd315
-#define MDIO_C22EXT_STAT_SGMII_TX_FALSE_CARRIER		0xd317
-#define MDIO_C22EXT_STAT_SGMII_TX_COLLISIONS		0xd318
-#define MDIO_C22EXT_STAT_SGMII_TX_LINE_COLLISIONS	0xd319
-#define MDIO_C22EXT_STAT_SGMII_TX_FRAME_ALIGN_ERR	0xd31a
-#define MDIO_C22EXT_STAT_SGMII_TX_RUNT_FRAMES		0xd31b
 
 /* Vendor specific 1, MDIO_MMD_VEND1 */
 #define VEND1_GLOBAL_FW_ID			0x0020
@@ -120,31 +111,6 @@
 #define VEND1_GLOBAL_INT_VEND_MASK_GLOBAL1	BIT(2)
 #define VEND1_GLOBAL_INT_VEND_MASK_GLOBAL2	BIT(1)
 #define VEND1_GLOBAL_INT_VEND_MASK_GLOBAL3	BIT(0)
-
-struct aqr107_hw_stat {
-	const char *name;
-	int reg;
-	int size;
-};
-
-#define SGMII_STAT(n, r, s) { n, MDIO_C22EXT_STAT_SGMII_ ## r, s }
-static const struct aqr107_hw_stat aqr107_hw_stats[] = {
-	SGMII_STAT("sgmii_rx_good_frames",	    RX_GOOD_FRAMES,	26),
-	SGMII_STAT("sgmii_rx_bad_frames",	    RX_BAD_FRAMES,	26),
-	SGMII_STAT("sgmii_rx_false_carrier_events", RX_FALSE_CARRIER,	 8),
-	SGMII_STAT("sgmii_tx_good_frames",	    TX_GOOD_FRAMES,	26),
-	SGMII_STAT("sgmii_tx_bad_frames",	    TX_BAD_FRAMES,	26),
-	SGMII_STAT("sgmii_tx_false_carrier_events", TX_FALSE_CARRIER,	 8),
-	SGMII_STAT("sgmii_tx_collisions",	    TX_COLLISIONS,	 8),
-	SGMII_STAT("sgmii_tx_line_collisions",	    TX_LINE_COLLISIONS,	 8),
-	SGMII_STAT("sgmii_tx_frame_alignment_err",  TX_FRAME_ALIGN_ERR,	16),
-	SGMII_STAT("sgmii_tx_runt_frames",	    TX_RUNT_FRAMES,	22),
-};
-#define AQR107_SGMII_STAT_SZ ARRAY_SIZE(aqr107_hw_stats)
-
-struct aqr107_priv {
-	u64 sgmii_stats[AQR107_SGMII_STAT_SZ];
-};
 
 static int aqr107_get_sset_count(struct phy_device *phydev)
 {
@@ -230,9 +196,20 @@ static int aqr_config_aneg(struct phy_device *phydev)
 			      phydev->advertising))
 		reg |= MDIO_AN_VEND_PROV_1000BASET_HALF;
 
+	/* Handle the case when the 2.5G and 5G speeds are not advertised */
+	if (linkmode_test_bit(ETHTOOL_LINK_MODE_2500baseT_Full_BIT,
+			      phydev->advertising))
+		reg |= MDIO_AN_VEND_PROV_2500BASET_FULL;
+
+	if (linkmode_test_bit(ETHTOOL_LINK_MODE_5000baseT_Full_BIT,
+			      phydev->advertising))
+		reg |= MDIO_AN_VEND_PROV_5000BASET_FULL;
+
 	ret = phy_modify_mmd_changed(phydev, MDIO_MMD_AN, MDIO_AN_VEND_PROV,
 				     MDIO_AN_VEND_PROV_1000BASET_HALF |
-				     MDIO_AN_VEND_PROV_1000BASET_FULL, reg);
+				     MDIO_AN_VEND_PROV_1000BASET_FULL |
+				     MDIO_AN_VEND_PROV_2500BASET_FULL |
+				     MDIO_AN_VEND_PROV_5000BASET_FULL, reg);
 	if (ret < 0)
 		return ret;
 	if (ret > 0)
@@ -375,6 +352,13 @@ static int aqr107_read_status(struct phy_device *phydev)
 		break;
 	}
 
+	/* Handle the case when the link speed is unknown */
+	if (phydev->speed == SPEED_UNKNOWN) {
+		val = aqr107_read_rate(phydev);
+		if (val < 0)
+			return val;
+	}
+
 	val = aqr107_read_downshift_event(phydev);
 	if (val <= 0)
 		return val;
@@ -484,6 +468,17 @@ static void aqr107_chip_info(struct phy_device *phydev)
 		   fw_major, fw_minor, build_id, prov_id);
 }
 
+int aqr107_config_mdi(struct phy_device *phydev)
+{
+#ifdef CONFIG_AQUANTIA_PHY_MDI_REVERSED
+	return phy_modify_mmd(phydev, MDIO_MMD_PMAPMD, PMAPMD_RSVD_VEND_PROV,
+			     PMAPMD_RSVD_VEND_PROV_MDI_CONF, 1);
+#else
+	return phy_modify_mmd(phydev, MDIO_MMD_PMAPMD, PMAPMD_RSVD_VEND_PROV,
+			     PMAPMD_RSVD_VEND_PROV_MDI_CONF, 0);
+#endif
+}
+
 static int aqr107_config_init(struct phy_device *phydev)
 {
 	int ret;
@@ -502,6 +497,14 @@ static int aqr107_config_init(struct phy_device *phydev)
 	ret = aqr107_wait_reset_complete(phydev);
 	if (!ret)
 		aqr107_chip_info(phydev);
+
+#if !defined(CONFIG_AQUANTIA_PHY_FW_DOWNLOAD) && defined(CONFIG_AQUANTIA_PHY_MDI_SWAP)
+	aqr107_config_mdi(phydev);
+#endif
+
+#ifdef CONFIG_AQUANTIA_PHY_FW_DOWNLOAD
+	aqr_firmware_download(phydev);
+#endif
 
 	/* ensure that a latched downshift event is cleared */
 	aqr107_read_downshift_event(phydev);
@@ -682,6 +685,24 @@ static struct phy_driver aqr_driver[] = {
 	.ack_interrupt	= aqr_ack_interrupt,
 	.read_status	= aqr_read_status,
 },
+{
+	PHY_ID_MATCH_MODEL(PHY_ID_AQR113C),
+	.name           = "Aquantia AQR113C",
+	.probe          = aqr107_probe,
+	.config_init    = aqr107_config_init,
+	.config_aneg    = aqr_config_aneg,
+	.config_intr    = aqr_config_intr,
+	.ack_interrupt  = aqr_ack_interrupt,
+	.read_status    = aqr107_read_status,
+	.get_tunable    = aqr107_get_tunable,
+	.set_tunable    = aqr107_set_tunable,
+	.suspend        = aqr107_suspend,
+	.resume         = aqr107_resume,
+	.get_sset_count = aqr107_get_sset_count,
+	.get_strings    = aqr107_get_strings,
+	.get_stats      = aqr107_get_stats,
+	.link_change_notify = aqr107_link_change_notify,
+},
 };
 
 module_phy_driver(aqr_driver);
@@ -694,6 +715,7 @@ static struct mdio_device_id __maybe_unused aqr_tbl[] = {
 	{ PHY_ID_MATCH_MODEL(PHY_ID_AQR107) },
 	{ PHY_ID_MATCH_MODEL(PHY_ID_AQCS109) },
 	{ PHY_ID_MATCH_MODEL(PHY_ID_AQR405) },
+	{ PHY_ID_MATCH_MODEL(PHY_ID_AQR113C) },
 	{ }
 };
 

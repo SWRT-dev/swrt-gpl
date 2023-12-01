@@ -28,6 +28,12 @@ int dbg_cpu_reason;
 int hook_toggle;
 int mape_toggle;
 int qos_toggle;
+int qos_dl_toggle = 1;
+int qos_ul_toggle = 1;
+//// DPI + HWNAT workaround
+int dpi_using = 0;
+u_int64_t dpi_limit_bytes = 1500 * 30;
+//// end of DPI+HWNAT workaround
 unsigned int dbg_cpu_reason_cnt[MAX_CRSN_NUM];
 
 static const char * const entry_state[] = { "INVALID", "UNBIND", "BIND", "FIN" };
@@ -35,12 +41,13 @@ static const char * const entry_state[] = { "INVALID", "UNBIND", "BIND", "FIN" }
 static const char * const packet_type[] = {
 	"IPV4_HNAPT",    "IPV4_HNAT",     "IPV6_1T_ROUTE", "IPV4_DSLITE",
 	"IPV6_3T_ROUTE", "IPV6_5T_ROUTE", "REV",	   "IPV6_6RD",
-	"IPV4_MAP_T",    "IPV4_MAP_E",
+	"IPV4_MAP_T",    "IPV4_MAP_E",    "IPV6_HNAPT",    "IPV6_HNAT",
 };
 
 static uint8_t *show_cpu_reason(struct sk_buff *skb)
 {
 	static u8 buf[32];
+	int ret;
 
 	switch (skb_hnat_reason(skb)) {
 	case TTL_0:
@@ -89,8 +96,12 @@ static uint8_t *show_cpu_reason(struct sk_buff *skb)
 		return "Pre bind\n";
 	}
 
-	sprintf(buf, "CPU Reason Error - %X\n", skb_hnat_entry(skb));
-	return buf;
+	ret = snprintf(buf, sizeof(buf), "CPU Reason Error - %X\n",
+		       skb_hnat_entry(skb));
+	if (ret == strlen(buf))
+		return buf;
+	else
+		return "CPU Reason Error\n";
 }
 
 uint32_t foe_dump_pkt(struct sk_buff *skb)
@@ -402,10 +413,10 @@ int entry_detail(u32 ppe_id, int index)
 			entry->ipv4_dslite.tunnel_dipv6_1,
 			entry->ipv4_dslite.tunnel_dipv6_2,
 			entry->ipv4_dslite.tunnel_dipv6_3);
-#if defined(CONFIG_MEDIATEK_NETSYS_V2)
+#if defined(CONFIG_MEDIATEK_NETSYS_V2) || defined(CONFIG_MEDIATEK_NETSYS_V3)
 	} else if (IS_IPV4_MAPE(entry)) {
-		nsaddr = htonl(entry->ipv4_dslite.new_sip);
-		ndaddr = htonl(entry->ipv4_dslite.new_dip);
+		nsaddr = htonl(entry->ipv4_mape.new_sip);
+		ndaddr = htonl(entry->ipv4_mape.new_dip);
 
 		pr_info("Information Block 2: %08X\n",
 			entry->ipv4_dslite.info_blk2);
@@ -414,8 +425,8 @@ int entry_detail(u32 ppe_id, int index)
 			&saddr,	entry->ipv4_dslite.sport,
 			&daddr,	entry->ipv4_dslite.dport);
 		pr_info("IPv4 MAP-E New IP/Port: %pI4:%d->%pI4:%d\n",
-			&nsaddr, entry->ipv4_dslite.new_sport,
-			&ndaddr, entry->ipv4_dslite.new_dport);
+			&nsaddr, entry->ipv4_mape.new_sport,
+			&ndaddr, entry->ipv4_mape.new_dport);
 		pr_info("EG DIPv6: %08X:%08X:%08X:%08X->%08X:%08X:%08X:%08X\n",
 			entry->ipv4_dslite.tunnel_sipv6_0,
 			entry->ipv4_dslite.tunnel_sipv6_1,
@@ -465,7 +476,92 @@ int entry_detail(u32 ppe_id, int index)
 			entry->ipv6_6rd.sport, entry->ipv6_6rd.ipv6_dip0,
 			entry->ipv6_6rd.ipv6_dip1, entry->ipv6_6rd.ipv6_dip2,
 			entry->ipv6_6rd.ipv6_dip3, entry->ipv6_6rd.dport);
+#if defined(CONFIG_MEDIATEK_NETSYS_V3)
+	} else if (IS_IPV6_HNAPT(entry)) {
+		pr_info("Information Block 2: %08X (FP=%d FQOS=%d QID=%d)",
+			entry->ipv6_hnapt.info_blk2,
+			entry->ipv6_hnapt.iblk2.dp,
+			entry->ipv6_hnapt.iblk2.fqos,
+			entry->ipv6_hnapt.iblk2.qid);
+		pr_info("Create IPv6 HNAPT entry\n");
+		pr_info("IPv6 Org IP/Port: %08X:%08X:%08X:%08X:%d -> %08X:%08X:%08X:%08X:%d",
+			entry->ipv6_hnapt.ipv6_sip0,
+			entry->ipv6_hnapt.ipv6_sip1,
+			entry->ipv6_hnapt.ipv6_sip2,
+			entry->ipv6_hnapt.ipv6_sip3,
+			entry->ipv6_hnapt.sport,
+			entry->ipv6_hnapt.ipv6_dip0,
+			entry->ipv6_hnapt.ipv6_dip1,
+			entry->ipv6_hnapt.ipv6_dip2,
+			entry->ipv6_hnapt.ipv6_dip3,
+			entry->ipv6_hnapt.dport);
+
+		if (entry->ipv6_hnapt.eg_ipv6_dir == IPV6_SNAT) {
+			pr_info("IPv6 New IP/Port: %08X:%08X:%08X:%08X:%d -> %08X:%08X:%08X:%08X:%d\n",
+				entry->ipv6_hnapt.new_ipv6_ip0,
+				entry->ipv6_hnapt.new_ipv6_ip1,
+				entry->ipv6_hnapt.new_ipv6_ip2,
+				entry->ipv6_hnapt.new_ipv6_ip3,
+				entry->ipv6_hnapt.new_sport,
+				entry->ipv6_hnapt.ipv6_dip0,
+				entry->ipv6_hnapt.ipv6_dip1,
+				entry->ipv6_hnapt.ipv6_dip2,
+				entry->ipv6_hnapt.ipv6_dip3,
+				entry->ipv6_hnapt.new_dport);
+		} else if (entry->ipv6_hnapt.eg_ipv6_dir == IPV6_DNAT) {
+			pr_info("IPv6 New IP/Port: %08X:%08X:%08X:%08X:%d -> %08X:%08X:%08X:%08X:%d\n",
+				entry->ipv6_hnapt.ipv6_sip0,
+				entry->ipv6_hnapt.ipv6_sip1,
+				entry->ipv6_hnapt.ipv6_sip2,
+				entry->ipv6_hnapt.ipv6_sip3,
+				entry->ipv6_hnapt.new_sport,
+				entry->ipv6_hnapt.new_ipv6_ip0,
+				entry->ipv6_hnapt.new_ipv6_ip1,
+				entry->ipv6_hnapt.new_ipv6_ip2,
+				entry->ipv6_hnapt.new_ipv6_ip3,
+				entry->ipv6_hnapt.new_dport);
+		}
+	} else if (IS_IPV6_HNAT(entry)) {
+		pr_info("Information Block 2: %08X (FP=%d FQOS=%d QID=%d)",
+			entry->ipv6_hnapt.info_blk2,
+			entry->ipv6_hnapt.iblk2.dp,
+			entry->ipv6_hnapt.iblk2.fqos,
+			entry->ipv6_hnapt.iblk2.qid);
+		pr_info("Create IPv6 HNAT entry\n");
+		pr_info("IPv6 Org IP: %08X:%08X:%08X:%08X -> %08X:%08X:%08X:%08X",
+			entry->ipv6_hnapt.ipv6_sip0,
+			entry->ipv6_hnapt.ipv6_sip1,
+			entry->ipv6_hnapt.ipv6_sip2,
+			entry->ipv6_hnapt.ipv6_sip3,
+			entry->ipv6_hnapt.ipv6_dip0,
+			entry->ipv6_hnapt.ipv6_dip1,
+			entry->ipv6_hnapt.ipv6_dip2,
+			entry->ipv6_hnapt.ipv6_dip3);
+
+		if (entry->ipv6_hnapt.eg_ipv6_dir == IPV6_SNAT) {
+			pr_info("IPv6 New IP: %08X:%08X:%08X:%08X -> %08X:%08X:%08X:%08X\n",
+				entry->ipv6_hnapt.new_ipv6_ip0,
+				entry->ipv6_hnapt.new_ipv6_ip1,
+				entry->ipv6_hnapt.new_ipv6_ip2,
+				entry->ipv6_hnapt.new_ipv6_ip3,
+				entry->ipv6_hnapt.ipv6_dip0,
+				entry->ipv6_hnapt.ipv6_dip1,
+				entry->ipv6_hnapt.ipv6_dip2,
+				entry->ipv6_hnapt.ipv6_dip3);
+		} else if (entry->ipv6_hnapt.eg_ipv6_dir == IPV6_DNAT) {
+			pr_info("IPv6 New IP: %08X:%08X:%08X:%08X -> %08X:%08X:%08X:%08X\n",
+				entry->ipv6_hnapt.ipv6_sip0,
+				entry->ipv6_hnapt.ipv6_sip1,
+				entry->ipv6_hnapt.ipv6_sip2,
+				entry->ipv6_hnapt.ipv6_sip3,
+				entry->ipv6_hnapt.new_ipv6_ip0,
+				entry->ipv6_hnapt.new_ipv6_ip1,
+				entry->ipv6_hnapt.new_ipv6_ip2,
+				entry->ipv6_hnapt.new_ipv6_ip3);
+		}
+#endif
 	}
+
 	if (IS_IPV4_HNAPT(entry) || IS_IPV4_HNAT(entry)) {
 		*((u32 *)h_source) = swab32(entry->ipv4_hnapt.smac_hi);
 		*((u16 *)&h_source[4]) = swab16(entry->ipv4_hnapt.smac_lo);
@@ -487,6 +583,12 @@ int entry_detail(u32 ppe_id, int index)
 			entry->ipv4_hnapt.bfib1.udp == 0 ?
 			"TCP" :	entry->ipv4_hnapt.bfib1.udp == 1 ?
 			"UDP" : "Unknown");
+#if defined(CONFIG_MEDIATEK_NETSYS_V3)
+		pr_info("tport_id = %d, tops_entry = %d, cdrt_id = %d\n",
+			entry->ipv4_hnapt.tport_id,
+			entry->ipv4_hnapt.tops_entry,
+			entry->ipv4_hnapt.cdrt_id);
+#endif
 		pr_info("=========================================\n\n");
 	} else {
 		*((u32 *)h_source) = swab32(entry->ipv6_5t_route.smac_hi);
@@ -510,6 +612,12 @@ int entry_detail(u32 ppe_id, int index)
 			entry->ipv6_5t_route.bfib1.udp == 0 ?
 			"TCP" :	entry->ipv6_5t_route.bfib1.udp == 1 ?
 			"UDP" :	"Unknown");
+#if defined(CONFIG_MEDIATEK_NETSYS_V3)
+		pr_info("tport_id = %d, tops_entry = %d, cdrt_id = %d\n",
+			entry->ipv6_5t_route.tport_id,
+			entry->ipv6_5t_route.tops_entry,
+			entry->ipv6_5t_route.cdrt_id);
+#endif
 		pr_info("=========================================\n\n");
 	}
 	return 0;
@@ -707,7 +815,7 @@ int read_mib(struct mtk_hnat *h, u32 ppe_id,
 	     u32 index, u64 *bytes, u64 *packets)
 {
 	int ret;
-	u32 val, cnt_r0, cnt_r1, cnt_r2;
+	u32 val, cnt_r0, cnt_r1, cnt_r2, cnt_r3;
 
 	if (ppe_id >= CFG_PPE_NUM)
 		return -EINVAL;
@@ -723,8 +831,16 @@ int read_mib(struct mtk_hnat *h, u32 ppe_id,
 	cnt_r0 = readl(h->ppe_base[ppe_id] + PPE_MIB_SER_R0);
 	cnt_r1 = readl(h->ppe_base[ppe_id] + PPE_MIB_SER_R1);
 	cnt_r2 = readl(h->ppe_base[ppe_id] + PPE_MIB_SER_R2);
-	*bytes = cnt_r0 + ((u64)(cnt_r1 & 0xffff) << 32);
-	*packets = ((cnt_r1 & 0xffff0000) >> 16) + ((cnt_r2 & 0xffffff) << 16);
+
+	if (hnat_priv->data->version == MTK_HNAT_V3) {
+		cnt_r3 = readl(h->ppe_base[ppe_id] + PPE_MIB_SER_R3);
+		*bytes = cnt_r0 + ((u64)cnt_r1 << 32);
+		*packets = cnt_r2 + ((u64)cnt_r3 << 32);
+	} else {
+		*bytes = cnt_r0 + ((u64)(cnt_r1 & 0xffff) << 32);
+		*packets = ((cnt_r1 & 0xffff0000) >> 16) +
+			   ((u64)(cnt_r2 & 0xffffff) << 16);
+	}
 
 	return 0;
 
@@ -739,6 +855,9 @@ struct hnat_accounting *hnat_get_count(struct mtk_hnat *h, u32 ppe_id,
 	if (ppe_id >= CFG_PPE_NUM)
 		return NULL;
 
+	if (index >= hnat_priv->foe_etry_num)
+		return NULL;
+
 	if (!hnat_priv->data->per_flow_accounting)
 		return NULL;
 
@@ -747,7 +866,7 @@ struct hnat_accounting *hnat_get_count(struct mtk_hnat *h, u32 ppe_id,
 
 	h->acct[ppe_id][index].bytes += bytes;
 	h->acct[ppe_id][index].packets += packets;
-	
+
 	if (diff) {
 		diff->bytes = bytes;
 		diff->packets = packets;
@@ -917,6 +1036,138 @@ static int __hnat_debug_show(struct seq_file *m, void *private, u32 ppe_id)
 				   ntohs(entry->ipv6_5t_route.etype),
 				   entry->ipv6_5t_route.info_blk1,
 				   entry->ipv6_5t_route.info_blk2);
+#if defined(CONFIG_MEDIATEK_NETSYS_V3)
+		} else if (IS_IPV6_HNAPT(entry)) {
+			u32 ipv6_sip0 = entry->ipv6_hnapt.ipv6_sip0;
+			u32 ipv6_sip1 = entry->ipv6_hnapt.ipv6_sip1;
+			u32 ipv6_sip2 = entry->ipv6_hnapt.ipv6_sip2;
+			u32 ipv6_sip3 = entry->ipv6_hnapt.ipv6_sip3;
+			u32 ipv6_dip0 = entry->ipv6_hnapt.ipv6_dip0;
+			u32 ipv6_dip1 = entry->ipv6_hnapt.ipv6_dip1;
+			u32 ipv6_dip2 = entry->ipv6_hnapt.ipv6_dip2;
+			u32 ipv6_dip3 = entry->ipv6_hnapt.ipv6_dip3;
+			u32 new_ipv6_ip0 = entry->ipv6_hnapt.new_ipv6_ip0;
+			u32 new_ipv6_ip1 = entry->ipv6_hnapt.new_ipv6_ip1;
+			u32 new_ipv6_ip2 = entry->ipv6_hnapt.new_ipv6_ip2;
+			u32 new_ipv6_ip3 = entry->ipv6_hnapt.new_ipv6_ip3;
+
+			*((u32 *)h_source) = swab32(entry->ipv6_hnapt.smac_hi);
+			*((u16 *)&h_source[4]) =
+				swab16(entry->ipv6_hnapt.smac_lo);
+			*((u32 *)h_dest) = swab32(entry->ipv6_hnapt.dmac_hi);
+			*((u16 *)&h_dest[4]) =
+				swab16(entry->ipv6_hnapt.dmac_lo);
+			PRINT_COUNT(m, acct);
+
+			if (entry->ipv6_hnapt.eg_ipv6_dir == IPV6_SNAT) {
+				seq_printf(m,
+					   "addr=0x%p|ppe=%d|index=%d|state=%s|type=%s|SIP=%08x:%08x:%08x:%08x(sp=%d)->DIP=%08x:%08x:%08x:%08x(dp=%d)|NEW_SIP=%08x:%08x:%08x:%08x(sp=%d)->NEW_DIP=%08x:%08x:%08x:%08x(dp=%d)|%pM=>%pM|etype=0x%04x|info1=0x%x|info2=0x%x|vlan1=%d|vlan2=%d\n",
+					   entry, ppe_id, ei(entry, end),
+					   es(entry), pt(entry),
+					   ipv6_sip0, ipv6_sip1,
+					   ipv6_sip2, ipv6_sip3,
+					   entry->ipv6_hnapt.sport,
+					   ipv6_dip0, ipv6_dip1,
+					   ipv6_dip2, ipv6_dip3,
+					   entry->ipv6_hnapt.dport,
+					   new_ipv6_ip0, new_ipv6_ip1,
+					   new_ipv6_ip2, new_ipv6_ip3,
+					   entry->ipv6_hnapt.new_sport,
+					   ipv6_dip0, ipv6_dip1,
+					   ipv6_dip2, ipv6_dip3,
+					   entry->ipv6_hnapt.new_dport,
+					   h_source, h_dest,
+					   ntohs(entry->ipv6_hnapt.etype),
+					   entry->ipv6_hnapt.info_blk1,
+					   entry->ipv6_hnapt.info_blk2,
+					   entry->ipv6_hnapt.vlan1,
+					   entry->ipv6_hnapt.vlan2);
+			} else if (entry->ipv6_hnapt.eg_ipv6_dir == IPV6_DNAT) {
+				seq_printf(m,
+					   "addr=0x%p|ppe=%d|index=%d|state=%s|type=%s|SIP=%08x:%08x:%08x:%08x(sp=%d)->DIP=%08x:%08x:%08x:%08x(dp=%d)|NEW_SIP=%08x:%08x:%08x:%08x(sp=%d)->NEW_DIP=%08x:%08x:%08x:%08x(dp=%d)|%pM=>%pM|etype=0x%04x|info1=0x%x|info2=0x%x|vlan1=%d|vlan2=%d\n",
+					   entry, ppe_id, ei(entry, end),
+					   es(entry), pt(entry),
+					   ipv6_sip0, ipv6_sip1,
+					   ipv6_sip2, ipv6_sip3,
+					   entry->ipv6_hnapt.sport,
+					   ipv6_dip0, ipv6_dip1,
+					   ipv6_dip2, ipv6_dip3,
+					   entry->ipv6_hnapt.dport,
+					   ipv6_sip0, ipv6_sip1,
+					   ipv6_sip2, ipv6_sip3,
+					   entry->ipv6_hnapt.new_sport,
+					   new_ipv6_ip0, new_ipv6_ip1,
+					   new_ipv6_ip2, new_ipv6_ip3,
+					   entry->ipv6_hnapt.new_dport,
+					   h_source, h_dest,
+					   ntohs(entry->ipv6_hnapt.etype),
+					   entry->ipv6_hnapt.info_blk1,
+					   entry->ipv6_hnapt.info_blk2,
+					   entry->ipv6_hnapt.vlan1,
+					   entry->ipv6_hnapt.vlan2);
+			}
+		} else if (IS_IPV6_HNAT(entry)) {
+			u32 ipv6_sip0 = entry->ipv6_hnapt.ipv6_sip0;
+			u32 ipv6_sip1 = entry->ipv6_hnapt.ipv6_sip1;
+			u32 ipv6_sip2 = entry->ipv6_hnapt.ipv6_sip2;
+			u32 ipv6_sip3 = entry->ipv6_hnapt.ipv6_sip3;
+			u32 ipv6_dip0 = entry->ipv6_hnapt.ipv6_dip0;
+			u32 ipv6_dip1 = entry->ipv6_hnapt.ipv6_dip1;
+			u32 ipv6_dip2 = entry->ipv6_hnapt.ipv6_dip2;
+			u32 ipv6_dip3 = entry->ipv6_hnapt.ipv6_dip3;
+			u32 new_ipv6_ip0 = entry->ipv6_hnapt.new_ipv6_ip0;
+			u32 new_ipv6_ip1 = entry->ipv6_hnapt.new_ipv6_ip1;
+			u32 new_ipv6_ip2 = entry->ipv6_hnapt.new_ipv6_ip2;
+			u32 new_ipv6_ip3 = entry->ipv6_hnapt.new_ipv6_ip3;
+
+			*((u32 *)h_source) = swab32(entry->ipv6_hnapt.smac_hi);
+			*((u16 *)&h_source[4]) =
+				swab16(entry->ipv6_hnapt.smac_lo);
+			*((u32 *)h_dest) = swab32(entry->ipv6_hnapt.dmac_hi);
+			*((u16 *)&h_dest[4]) =
+				swab16(entry->ipv6_hnapt.dmac_lo);
+			PRINT_COUNT(m, acct);
+
+			if (entry->ipv6_hnapt.eg_ipv6_dir == IPV6_SNAT) {
+				seq_printf(m,
+					   "addr=0x%p|ppe=%d|index=%d|state=%s|type=%s|SIP=%08x:%08x:%08x:%08x->DIP=%08x:%08x:%08x:%08x|NEW_SIP=%08x:%08x:%08x:%08x->NEW_DIP=%08x:%08x:%08x:%08x|%pM=>%pM|etype=0x%04x|info1=0x%x|info2=0x%x|vlan1=%d|vlan2=%d\n",
+					   entry, ppe_id, ei(entry, end),
+					   es(entry), pt(entry),
+					   ipv6_sip0, ipv6_sip1,
+					   ipv6_sip2, ipv6_sip3,
+					   ipv6_dip0, ipv6_dip1,
+					   ipv6_dip2, ipv6_dip3,
+					   new_ipv6_ip0, new_ipv6_ip1,
+					   new_ipv6_ip2, new_ipv6_ip3,
+					   ipv6_dip0, ipv6_dip1,
+					   ipv6_dip2, ipv6_dip3,
+					   h_source, h_dest,
+					   ntohs(entry->ipv6_hnapt.etype),
+					   entry->ipv6_hnapt.info_blk1,
+					   entry->ipv6_hnapt.info_blk2,
+					   entry->ipv6_hnapt.vlan1,
+					   entry->ipv6_hnapt.vlan2);
+			} else if (entry->ipv6_hnapt.eg_ipv6_dir == IPV6_DNAT) {
+				seq_printf(m,
+					   "addr=0x%p|ppe=%d|index=%d|state=%s|type=%s|SIP=%08x:%08x:%08x:%08x->DIP=%08x:%08x:%08x:%08x|NEW_SIP=%08x:%08x:%08x:%08x->NEW_DIP=%08x:%08x:%08x:%08x|%pM=>%pM|etype=0x%04x|info1=0x%x|info2=0x%x|vlan1=%d|vlan2=%d\n",
+					   entry, ppe_id, ei(entry, end),
+					   es(entry), pt(entry),
+					   ipv6_sip0, ipv6_sip1,
+					   ipv6_sip2, ipv6_sip3,
+					   ipv6_dip0, ipv6_dip1,
+					   ipv6_dip2, ipv6_dip3,
+					   ipv6_sip0, ipv6_sip1,
+					   ipv6_sip2, ipv6_sip3,
+					   new_ipv6_ip0, new_ipv6_ip1,
+					   new_ipv6_ip2, new_ipv6_ip3,
+					   h_source, h_dest,
+					   ntohs(entry->ipv6_hnapt.etype),
+					   entry->ipv6_hnapt.info_blk1,
+					   entry->ipv6_hnapt.info_blk2,
+					   entry->ipv6_hnapt.vlan1,
+					   entry->ipv6_hnapt.vlan2);
+			}
+#endif
 		} else if (IS_IPV4_DSLITE(entry)) {
 			__be32 saddr = htonl(entry->ipv4_hnapt.sip);
 			__be32 daddr = htonl(entry->ipv4_hnapt.dip);
@@ -946,12 +1197,12 @@ static int __hnat_debug_show(struct seq_file *m, void *private, u32 ppe_id)
 				   ntohs(entry->ipv6_5t_route.etype),
 				   entry->ipv6_5t_route.info_blk1,
 				   entry->ipv6_5t_route.info_blk2);
-#if defined(CONFIG_MEDIATEK_NETSYS_V2)
+#if defined(CONFIG_MEDIATEK_NETSYS_V2) || defined(CONFIG_MEDIATEK_NETSYS_V3)
 		} else if (IS_IPV4_MAPE(entry)) {
 			__be32 saddr = htonl(entry->ipv4_dslite.sip);
 			__be32 daddr = htonl(entry->ipv4_dslite.dip);
-			__be32 nsaddr = htonl(entry->ipv4_dslite.new_sip);
-			__be32 ndaddr = htonl(entry->ipv4_dslite.new_dip);
+			__be32 nsaddr = htonl(entry->ipv4_mape.new_sip);
+			__be32 ndaddr = htonl(entry->ipv4_mape.new_dip);
 			u32 ipv6_tsip0 = entry->ipv4_dslite.tunnel_sipv6_0;
 			u32 ipv6_tsip1 = entry->ipv4_dslite.tunnel_sipv6_1;
 			u32 ipv6_tsip2 = entry->ipv4_dslite.tunnel_sipv6_2;
@@ -974,8 +1225,8 @@ static int __hnat_debug_show(struct seq_file *m, void *private, u32 ppe_id)
 				   es(entry), pt(entry),
 				   &saddr, entry->ipv4_dslite.sport,
 				   &daddr, entry->ipv4_dslite.dport,
-				   &nsaddr, entry->ipv4_dslite.new_sport,
-				   &ndaddr, entry->ipv4_dslite.new_dport,
+				   &nsaddr, entry->ipv4_mape.new_sport,
+				   &ndaddr, entry->ipv4_mape.new_dport,
 				   ipv6_tsip0, ipv6_tsip1, ipv6_tsip2,
 				   ipv6_tsip3, ipv6_tdip0, ipv6_tdip1,
 				   ipv6_tdip2, ipv6_tdip3, h_source, h_dest,
@@ -1051,7 +1302,7 @@ static ssize_t hnat_whnat_write(struct file *file, const char __user *buf,
 	if (copy_from_user(line, buf, length))
 		return -EFAULT;
 
-	if (sscanf(line, "%s %d", name, &enable) != 2)
+	if (sscanf(line, "%15s %1d", name, &enable) != 2)
 		return -EFAULT;
 
 	line[length] = '\0';
@@ -1231,17 +1482,17 @@ void dbg_dump_entry(struct seq_file *m, struct foe_entry *entry,
 			   entry->ipv4_dslite.tunnel_dipv6_1,
 			   entry->ipv4_dslite.tunnel_dipv6_2,
 			   entry->ipv4_dslite.tunnel_dipv6_3);
-#if defined(CONFIG_MEDIATEK_NETSYS_V2)
+#if defined(CONFIG_MEDIATEK_NETSYS_V2) || defined(CONFIG_MEDIATEK_NETSYS_V3)
 	} else if (IS_IPV4_MAPE(entry)) {
-		nsaddr = htonl(entry->ipv4_dslite.new_sip);
-		ndaddr = htonl(entry->ipv4_dslite.new_dip);
+		nsaddr = htonl(entry->ipv4_mape.new_sip);
+		ndaddr = htonl(entry->ipv4_mape.new_dip);
 
 		seq_printf(m,
 			   "IPv4 MAP-E(%d): %pI4:%d->%pI4:%d => %pI4:%d->%pI4:%d | Tunnel=%08X:%08X:%08X:%08X->%08X:%08X:%08X:%08X\n",
 			   index, &saddr, entry->ipv4_dslite.sport,
 			   &daddr, entry->ipv4_dslite.dport,
-			   &nsaddr, entry->ipv4_dslite.new_sport,
-			   &ndaddr, entry->ipv4_dslite.new_dport,
+			   &nsaddr, entry->ipv4_mape.new_sport,
+			   &ndaddr, entry->ipv4_mape.new_dport,
 			   entry->ipv4_dslite.tunnel_sipv6_0,
 			   entry->ipv4_dslite.tunnel_sipv6_1,
 			   entry->ipv4_dslite.tunnel_sipv6_2,
@@ -1285,6 +1536,96 @@ void dbg_dump_entry(struct seq_file *m, struct foe_entry *entry,
 			   entry->ipv6_6rd.ipv6_dip0, entry->ipv6_6rd.ipv6_dip1,
 			   entry->ipv6_6rd.ipv6_dip2, entry->ipv6_6rd.ipv6_dip3,
 			   entry->ipv6_6rd.dport);
+#if defined(CONFIG_MEDIATEK_NETSYS_V3)
+	} else if (IS_IPV6_HNAPT(entry)) {
+		if (entry->ipv6_hnapt.eg_ipv6_dir == IPV6_SNAT) {
+			seq_printf(m,
+				   "IPv6_HNAPT(%d): %08X:%08X:%08X:%08X:%d->%08X:%08X:%08X:%08X:%d => %08X:%08X:%08X:%08X:%d -> %08X:%08X:%08X:%08X:%d\n",
+				   index, entry->ipv6_hnapt.ipv6_sip0,
+				   entry->ipv6_hnapt.ipv6_sip1,
+				   entry->ipv6_hnapt.ipv6_sip2,
+				   entry->ipv6_hnapt.ipv6_sip3,
+				   entry->ipv6_hnapt.sport,
+				   entry->ipv6_hnapt.ipv6_dip0,
+				   entry->ipv6_hnapt.ipv6_dip1,
+				   entry->ipv6_hnapt.ipv6_dip2,
+				   entry->ipv6_hnapt.ipv6_dip3,
+				   entry->ipv6_hnapt.dport,
+				   entry->ipv6_hnapt.new_ipv6_ip0,
+				   entry->ipv6_hnapt.new_ipv6_ip1,
+				   entry->ipv6_hnapt.new_ipv6_ip2,
+				   entry->ipv6_hnapt.new_ipv6_ip3,
+				   entry->ipv6_hnapt.new_sport,
+				   entry->ipv6_hnapt.ipv6_dip0,
+				   entry->ipv6_hnapt.ipv6_dip1,
+				   entry->ipv6_hnapt.ipv6_dip2,
+				   entry->ipv6_hnapt.ipv6_dip3,
+				   entry->ipv6_hnapt.new_dport);
+		} else if (entry->ipv6_hnapt.eg_ipv6_dir == IPV6_DNAT) {
+			seq_printf(m,
+				   "IPv6_HNAPT(%d): %08X:%08X:%08X:%08X:%d->%08X:%08X:%08X:%08X:%d => %08X:%08X:%08X:%08X:%d -> %08X:%08X:%08X:%08X:%d\n",
+				   index, entry->ipv6_hnapt.ipv6_sip0,
+				   entry->ipv6_hnapt.ipv6_sip1,
+				   entry->ipv6_hnapt.ipv6_sip2,
+				   entry->ipv6_hnapt.ipv6_sip3,
+				   entry->ipv6_hnapt.sport,
+				   entry->ipv6_hnapt.ipv6_dip0,
+				   entry->ipv6_hnapt.ipv6_dip1,
+				   entry->ipv6_hnapt.ipv6_dip2,
+				   entry->ipv6_hnapt.ipv6_dip3,
+				   entry->ipv6_hnapt.dport,
+				   entry->ipv6_hnapt.ipv6_sip0,
+				   entry->ipv6_hnapt.ipv6_sip1,
+				   entry->ipv6_hnapt.ipv6_sip2,
+				   entry->ipv6_hnapt.ipv6_sip3,
+				   entry->ipv6_hnapt.new_sport,
+				   entry->ipv6_hnapt.new_ipv6_ip0,
+				   entry->ipv6_hnapt.new_ipv6_ip1,
+				   entry->ipv6_hnapt.new_ipv6_ip2,
+				   entry->ipv6_hnapt.new_ipv6_ip3,
+				   entry->ipv6_hnapt.new_dport);
+		}
+	} else if (IS_IPV6_HNAT(entry)) {
+		if (entry->ipv6_hnapt.eg_ipv6_dir == IPV6_SNAT) {
+			seq_printf(m,
+				   "IPv6_HNAT(%d): %08X:%08X:%08X:%08X->%08X:%08X:%08X:%08X => %08X:%08X:%08X:%08X -> %08X:%08X:%08X:%08X\n",
+				   index, entry->ipv6_hnapt.ipv6_sip0,
+				   entry->ipv6_hnapt.ipv6_sip1,
+				   entry->ipv6_hnapt.ipv6_sip2,
+				   entry->ipv6_hnapt.ipv6_sip3,
+				   entry->ipv6_hnapt.ipv6_dip0,
+				   entry->ipv6_hnapt.ipv6_dip1,
+				   entry->ipv6_hnapt.ipv6_dip2,
+				   entry->ipv6_hnapt.ipv6_dip3,
+				   entry->ipv6_hnapt.new_ipv6_ip0,
+				   entry->ipv6_hnapt.new_ipv6_ip1,
+				   entry->ipv6_hnapt.new_ipv6_ip2,
+				   entry->ipv6_hnapt.new_ipv6_ip3,
+				   entry->ipv6_hnapt.ipv6_dip0,
+				   entry->ipv6_hnapt.ipv6_dip1,
+				   entry->ipv6_hnapt.ipv6_dip2,
+				   entry->ipv6_hnapt.ipv6_dip3);
+		} else if (entry->ipv6_hnapt.eg_ipv6_dir == IPV6_DNAT) {
+			seq_printf(m,
+				   "IPv6_HNAT(%d): %08X:%08X:%08X:%08X->%08X:%08X:%08X:%08X => %08X:%08X:%08X:%08X -> %08X:%08X:%08X:%08X\n",
+				   index, entry->ipv6_hnapt.ipv6_sip0,
+				   entry->ipv6_hnapt.ipv6_sip1,
+				   entry->ipv6_hnapt.ipv6_sip2,
+				   entry->ipv6_hnapt.ipv6_sip3,
+				   entry->ipv6_hnapt.ipv6_dip0,
+				   entry->ipv6_hnapt.ipv6_dip1,
+				   entry->ipv6_hnapt.ipv6_dip2,
+				   entry->ipv6_hnapt.ipv6_dip3,
+				   entry->ipv6_hnapt.ipv6_sip0,
+				   entry->ipv6_hnapt.ipv6_sip1,
+				   entry->ipv6_hnapt.ipv6_sip2,
+				   entry->ipv6_hnapt.ipv6_sip3,
+				   entry->ipv6_hnapt.new_ipv6_ip0,
+				   entry->ipv6_hnapt.new_ipv6_ip1,
+				   entry->ipv6_hnapt.new_ipv6_ip2,
+				   entry->ipv6_hnapt.new_ipv6_ip3);
+		}
+#endif
 	}
 }
 
@@ -1678,8 +2019,17 @@ static ssize_t hnat_sched_write(struct file *file, const char __user *buf,
 	if (copy_from_user(line, buf, length))
 		return -EFAULT;
 
-	if (sscanf(line, "%d %s %d", &enable, scheduling, &rate) != 3)
+	if (sscanf(line, "%1d %3s %9d", &enable, scheduling, &rate) != 3)
 		return -EFAULT;
+
+#if defined(CONFIG_MEDIATEK_NETSYS_V3)
+	if (rate > 100000000 || rate < 0 ||
+	    rate > 100000000 || rate < 0)
+#else
+	if (rate > 10000000 || rate < 0 ||
+	    rate > 10000000 || rate < 0)
+#endif
+		return -EINVAL;
 
 	while (rate > 127) {
 		rate /= 10;
@@ -1769,7 +2119,7 @@ static ssize_t hnat_queue_show(struct file *file, char __user *user_buf,
 			 "scheduler: %d\nhw resv: %d\nsw resv: %d\n", scheduler,
 			 (qtx_cfg >> 8) & 0xff, qtx_cfg & 0xff);
 
-	if (hnat_priv->data->version != MTK_HNAT_V1) {
+	if (hnat_priv->data->version != MTK_HNAT_V1_1) {
 		/* Switch to debug mode */
 		cr_set_field(h->fe_base + QTX_MIB_IF, MIB_ON_QTX_CFG, 1);
 		cr_set_field(h->fe_base + QTX_MIB_IF, VQTX_MIB_EN, 1);
@@ -1830,6 +2180,15 @@ static ssize_t hnat_queue_write(struct file *file, const char __user *buf,
 		return -EFAULT;
 
 	line[length] = '\0';
+
+#if defined(CONFIG_MEDIATEK_NETSYS_V3)
+	if (max_rate > 100000000 || max_rate < 0 ||
+	    min_rate > 100000000 || min_rate < 0)
+#else
+	if (max_rate > 10000000 || max_rate < 0 ||
+	    min_rate > 10000000 || min_rate < 0)
+#endif
+		return -EINVAL;
 
 	while (max_rate > 127) {
 		max_rate /= 10;
@@ -2041,9 +2400,77 @@ static const struct file_operations hnat_hook_toggle_fops = {
 	.release = single_release,
 };
 
+//// DPI + HWNAT workaround
+static int hnat_dpi_using_read(struct seq_file *m, void *private)
+{
+	seq_printf(m, "%d\n", !!dpi_using);
+
+	return 0;
+}
+
+static int hnat_dpi_using_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, hnat_dpi_using_read, file->private_data);
+}
+
+static ssize_t hnat_dpi_using_write(struct file *file, const char __user *buffer,
+				      size_t count, loff_t *data)
+{
+	char buf[2] = {0};
+	int len = count;
+
+	if ((len > 2) || copy_from_user(buf, buffer, len))
+		return -EFAULT;
+
+	if (buf[0] == '1' && !dpi_using)
+		dpi_using = 1;
+	else if (buf[0] == '0' && dpi_using)
+		dpi_using = 0;
+
+	return len;
+}
+
+static const struct file_operations hnat_dpi_using_fops = {
+	.open = hnat_dpi_using_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.write = hnat_dpi_using_write,
+	.release = single_release,
+};
+//// end of DPI+HWNAT workaround
+
+static void hnat_qos_toggle_usage(void)
+{
+	pr_info("\nHQoS toggle Command Usage:\n");
+	pr_info("Show HQoS mode:\n");
+	pr_info("    cat /sys/kernel/debug/hnat/qos_toggle\n");
+	pr_info("Disable HQoS mode:\n");
+	pr_info("    echo 0 > /sys/kernel/debug/hnat/qos_toggle\n");
+	pr_info("Enable HQoS on bidirection:\n");
+	pr_info("    echo 1 > /sys/kernel/debug/hnat/qos_toggle\n");
+	pr_info("Enable HQoS on uplink only:\n");
+	pr_info("    echo 1 uplink > /sys/kernel/debug/hnat/qos_toggle\n");
+	pr_info("Enable HQoS on downlink only:\n");
+	pr_info("    echo 1 downlink > /sys/kernel/debug/hnat/qos_toggle\n");
+	pr_info("Enable Per-port-per-queue mode:\n");
+	pr_info("    echo 2 > /sys/kernel/debug/hnat/qos_toggle\n");
+	pr_info("Show HQoS toggle usage:\n");
+	pr_info("    echo 3 > /sys/kernel/debug/hnat/qos_toggle\n\n");
+}
+
 static int hnat_qos_toggle_read(struct seq_file *m, void *private)
 {
-	pr_info("value=%d, HQoS is %s now!\n", qos_toggle, (qos_toggle) ? "enabled" : "disabled");
+	if (qos_toggle == 0) {
+		pr_info("HQoS is disabled now!\n");
+	} else if (qos_toggle == 1) {
+		pr_info("HQoS is enabled now!\n");
+		pr_info("HQoS uplink is %s now!\n",
+				qos_ul_toggle ? "enabled" : "disabled");
+		pr_info("HQoS downlink is %s now!\n",
+				qos_dl_toggle ? "enabled" : "disabled");
+	} else if (qos_toggle == 2) {
+		pr_info("Per-port-per-queue mode is enabled!\n");
+	}
 
 	return 0;
 }
@@ -2121,23 +2548,63 @@ static void hnat_qos_pppq_enable(void)
 static ssize_t hnat_qos_toggle_write(struct file *file, const char __user *buffer,
 				     size_t count, loff_t *data)
 {
-	char buf[8];
+	char buf[32] = {0}, tmp[32];
 	int len = count;
+	char *p_buf = NULL, *p_token = NULL;
 
-	if ((len > 8) || copy_from_user(buf, buffer, len))
+	if (len  >= sizeof(buf))
 		return -EFAULT;
 
+	if (copy_from_user(buf, buffer, len))
+		return -EFAULT;
+
+	buf[len] = '\0';
+
 	if (buf[0] == '0') {
-		pr_info("HQoS is going to be disabled !\n");
+		pr_info("HQoS is going to be disabled!\n");
 		qos_toggle = 0;
+		qos_dl_toggle = 0;
+		qos_ul_toggle = 0;
 		hnat_qos_disable();
 	} else if (buf[0] == '1') {
-		pr_info("HQoS mode is going to be enabled !\n");
+		p_buf = buf;
+		p_token = strsep(&p_buf, " \t");
+		if (p_buf) {
+			memcpy(tmp, p_buf, strlen(p_buf));
+			tmp[len] = '\0';
+			if (!strncmp(tmp, "uplink", 6)) {
+				qos_dl_toggle = 0;
+				qos_ul_toggle = 1;
+			} else if (!strncmp(tmp, "downlink", 8)) {
+				qos_ul_toggle = 0;
+				qos_dl_toggle = 1;
+			} else {
+				pr_info("Direction should be uplink or downlink.\n");
+				hnat_qos_toggle_usage();
+				return len;
+			}
+		} else {
+			qos_ul_toggle = 1;
+			qos_dl_toggle = 1;
+		}
+		pr_info("HQoS mode is going to be enabled!\n");
+		pr_info("HQoS uplink is going to be %s!\n",
+				qos_ul_toggle ? "enabled" : "disabled");
+		pr_info("HQoS downlink is going to be %s!\n",
+				qos_dl_toggle ? "enabled" : "disabled");
 		qos_toggle = 1;
 	} else if (buf[0] == '2') {
-		pr_info("Per-port-per-queue mode is going to be enabled !\n");
+		pr_info("Per-port-per-queue mode is going to be enabled!\n");
+		pr_info("PPPQ use qid 0~5 (scheduler 0).\n");
 		qos_toggle = 2;
+		qos_dl_toggle = 1;
+		qos_ul_toggle = 1;
 		hnat_qos_pppq_enable();
+	} else if (buf[0] == '3') {
+		hnat_qos_toggle_usage();
+	} else {
+		pr_info("Input error!\n");
+		hnat_qos_toggle_usage();
 	}
 
 	return len;
@@ -2167,6 +2634,196 @@ static const struct file_operations hnat_version_fops = {
 	.open = hnat_version_open,
 	.read = seq_read,
 	.llseek = seq_lseek,
+	.release = single_release,
+};
+
+static u32 hnat_get_ppe_hash(u32 sip, u32 dip, u32 sport, u32 dport)
+{
+	u32 hv1 = sport << 16 | dport;
+	u32 hv2 = dip;
+	u32 hv3 = sip;
+	u32 hash;
+
+	hash = (hv1 & hv2) | ((~hv1) & hv3);
+	hash = (hash >> 24) | ((hash & 0xffffff) << 8);
+	hash ^= hv1 ^ hv2 ^ hv3;
+	hash ^= hash >> 16;
+	hash <<= 2;
+	hash &= hnat_priv->foe_etry_num - 1;
+
+	return hash;
+}
+
+static u32 hnat_char2hex(const char c)
+{
+	switch (c) {
+	case '0'...'9':
+		return 0x0 + (c - '0');
+	case 'a'...'f':
+		return 0xa + (c - 'a');
+	case 'A'...'F':
+		return 0xa + (c - 'A');
+	default:
+		pr_info("MAC format error\n");
+		return 0;
+	}
+}
+
+static void hnat_parse_mac(char *str, char *mac)
+{
+	int i;
+
+	for (i = 0; i < ETH_ALEN; i++) {
+		mac[i] = (hnat_char2hex(str[i * 3]) << 4) +
+			 (hnat_char2hex(str[i * 3 + 1]));
+	}
+}
+
+static void hnat_static_entry_help(void)
+{
+	pr_info("-------------------- Usage --------------------\n");
+#if defined(CONFIG_MEDIATEK_NETSYS_V3)
+	pr_info("echo $0 $1 $2 ... $15 > /sys/kernel/debug/hnat/static_entry\n\n");
+#else
+	pr_info("echo $0 $1 $2 ... $12 > /sys/kernel/debug/hnat/static_entry\n\n");
+#endif
+
+	pr_info("-------------------- Parameters --------------------\n");
+	pr_info("$0:	HASH		OCT\n");
+	pr_info("$1:	INFO1		HEX\n");
+	pr_info("$2:	ING SIPv4	HEX\n");
+	pr_info("$3:	ING DIPv4	HEX\n");
+	pr_info("$4:	ING SP		HEX\n");
+	pr_info("$5:	ING DP		HEX\n");
+	pr_info("$6:	INFO2		HEX\n");
+	pr_info("$7:	EG SIPv4	HEX\n");
+	pr_info("$8:	EG DIPv4	HEX\n");
+	pr_info("$9:	EG SP		HEX\n");
+	pr_info("$10:	EG DP		HEX\n");
+	pr_info("$11:	DMAC		STR (00:11:22:33:44:55)\n");
+	pr_info("$12:	SMAC		STR (00:11:22:33:44:55)\n");
+#if defined(CONFIG_MEDIATEK_NETSYS_V3)
+	pr_info("$13:	TPORT IDX	HEX\n");
+	pr_info("$14:	TOPS ENTRY	HEX\n");
+	pr_info("$15:	CDRT IDX	HEX\n");
+#endif
+}
+
+static int hnat_static_entry_read(struct seq_file *m, void *private)
+{
+	hnat_static_entry_help();
+
+	return 0;
+}
+
+static int hnat_static_entry_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, hnat_static_entry_read, file->private_data);
+}
+
+static ssize_t hnat_static_entry_write(struct file *file,
+				       const char __user *buffer,
+				       size_t count, loff_t *data)
+{
+	struct foe_entry *foe, entry = { 0 };
+	char buf[256], dmac_str[18], smac_str[18], dmac[6], smac[6];
+	int len = count, hash, coll = 0;
+	u32 ppe_id = 0;
+#if defined(CONFIG_MEDIATEK_NETSYS_V3)
+	u32 tport_id, tops_entry, cdrt_id;
+#endif
+
+	if (len >= sizeof(buf) || copy_from_user(buf, buffer, len)) {
+		pr_info("Input handling fail!\n");
+		len = sizeof(buf) - 1;
+		return -EFAULT;
+	}
+
+	buf[len] = '\0';
+#if defined(CONFIG_MEDIATEK_NETSYS_V3)
+	if (sscanf(buf,
+		   "%5d %8x %8x %8x %hx %hx %8x %8x %8x %hx %hx %18s %18s %4x %4x %4x",
+		   &hash,
+		   &entry.ipv4_hnapt.info_blk1,
+		   &entry.ipv4_hnapt.sip,
+		   &entry.ipv4_hnapt.dip,
+		   &entry.ipv4_hnapt.sport,
+		   &entry.ipv4_hnapt.dport,
+		   &entry.ipv4_hnapt.info_blk2,
+		   &entry.ipv4_hnapt.new_sip,
+		   &entry.ipv4_hnapt.new_dip,
+		   &entry.ipv4_hnapt.new_sport,
+		   &entry.ipv4_hnapt.new_dport,
+		   dmac_str, smac_str, &tport_id, &tops_entry, &cdrt_id) != 16)
+		return -EFAULT;
+
+	if ((hash >= (int)hnat_priv->foe_etry_num) || (hash < -1) ||
+	    (TPORT_ID(tport_id) != tport_id) ||
+	    (TOPS_ENTRY(tops_entry) != tops_entry) ||
+	    (CDRT_ID(cdrt_id) != cdrt_id)) {
+		hnat_static_entry_help();
+		return -EFAULT;
+	}
+
+	entry.ipv4_hnapt.tport_id = tport_id;
+	entry.ipv4_hnapt.tops_entry = tops_entry;
+	entry.ipv4_hnapt.cdrt_id = cdrt_id;
+#else
+	if (sscanf(buf,
+		   "%5d %8x %8x %8x %hx %hx %8x %8x %8x %hx %hx %18s %18s",
+		   &hash,
+		   &entry.ipv4_hnapt.info_blk1,
+		   &entry.ipv4_hnapt.sip,
+		   &entry.ipv4_hnapt.dip,
+		   &entry.ipv4_hnapt.sport,
+		   &entry.ipv4_hnapt.dport,
+		   &entry.ipv4_hnapt.info_blk2,
+		   &entry.ipv4_hnapt.new_sip,
+		   &entry.ipv4_hnapt.new_dip,
+		   &entry.ipv4_hnapt.new_sport,
+		   &entry.ipv4_hnapt.new_dport,
+		   dmac_str, smac_str) != 13)
+		return -EFAULT;
+
+	if ((hash >= (int)hnat_priv->foe_etry_num) || (hash < -1)) {
+		hnat_static_entry_help();
+		return -EFAULT;
+	}
+#endif
+
+	hnat_parse_mac(smac_str, smac);
+	hnat_parse_mac(dmac_str, dmac);
+	entry.ipv4_hnapt.dmac_hi = swab32(*((u32 *)dmac));
+	entry.ipv4_hnapt.dmac_lo = swab16(*((u16 *)&dmac[4]));
+	entry.ipv4_hnapt.smac_hi = swab32(*((u32 *)smac));
+	entry.ipv4_hnapt.smac_lo = swab16(*((u16 *)&smac[4]));
+
+	if (hash == -1) {
+		hash = hnat_get_ppe_hash(entry.ipv4_hnapt.sip,
+					 entry.ipv4_hnapt.dip,
+					 entry.ipv4_hnapt.sport,
+					 entry.ipv4_hnapt.dport);
+	}
+
+	foe = &hnat_priv->foe_table_cpu[ppe_id][hash];
+	while ((foe->ipv4_hnapt.bfib1.state == BIND) && (coll < 4)) {
+		hash++;
+		coll++;
+		foe = &hnat_priv->foe_table_cpu[ppe_id][hash];
+	};
+	memcpy(foe, &entry, sizeof(entry));
+
+	debug_level = 7;
+	entry_detail(ppe_id, hash);
+
+	return len;
+}
+
+static const struct file_operations hnat_static_fops = {
+	.open = hnat_static_entry_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.write = hnat_static_entry_write,
 	.release = single_release,
 };
 
@@ -2286,8 +2943,12 @@ int hnat_init_debugfs(struct mtk_hnat *h)
 		h->regset[i]->nregs = ARRAY_SIZE(hnat_regs);
 		h->regset[i]->base = h->ppe_base[i];
 
-		snprintf(name, sizeof(name), "regdump%ld", i);
-		file = debugfs_create_regset32(name, S_IRUGO,
+		ret = snprintf(name, sizeof(name), "regdump%ld", i);
+		if (ret != strlen(name)) {
+			ret = -ENOMEM;
+			goto err1;
+		}
+		file = debugfs_create_regset32(name, 0444,
 					       root, h->regset[i]);
 		if (!file) {
 			dev_notice(h->dev, "%s:err at %d\n", __func__, __LINE__);
@@ -2296,39 +2957,51 @@ int hnat_init_debugfs(struct mtk_hnat *h)
 		}
 	}
 
-	debugfs_create_file("all_entry", S_IRUGO, root, h, &hnat_debug_fops);
-	debugfs_create_file("external_interface", S_IRUGO, root, h,
+	debugfs_create_file("all_entry", 0444, root, h, &hnat_debug_fops);
+	debugfs_create_file("external_interface", 0444, root, h,
 			    &hnat_ext_fops);
-	debugfs_create_file("whnat_interface", S_IRUGO, root, h,
+	debugfs_create_file("whnat_interface", 0444, root, h,
 			    &hnat_whnat_fops);
-	debugfs_create_file("cpu_reason", S_IFREG | S_IRUGO, root, h,
+	debugfs_create_file("cpu_reason", 0444, root, h,
 			    &cpu_reason_fops);
-	debugfs_create_file("hnat_entry", S_IRUGO | S_IRUGO, root, h,
+	debugfs_create_file("hnat_entry", 0444, root, h,
 			    &hnat_entry_fops);
-	debugfs_create_file("hnat_setting", S_IRUGO | S_IRUGO, root, h,
+	debugfs_create_file("hnat_setting", 0444, root, h,
 			    &hnat_setting_fops);
-	debugfs_create_file("mcast_table", S_IRUGO | S_IRUGO, root, h,
+	debugfs_create_file("mcast_table", 0444, root, h,
 			    &hnat_mcast_fops);
-	debugfs_create_file("hook_toggle", S_IRUGO | S_IRUGO, root, h,
+	debugfs_create_file("hook_toggle", 0444, root, h,
 			    &hnat_hook_toggle_fops);
-	debugfs_create_file("mape_toggle", S_IRUGO | S_IRUGO, root, h,
+	debugfs_create_file("dpi_using", 0444, root, h,
+			    &hnat_dpi_using_fops);
+	debugfs_create_file("mape_toggle", 0444, root, h,
 			    &hnat_mape_toggle_fops);
-	debugfs_create_file("qos_toggle", S_IRUGO | S_IRUGO, root, h,
+	debugfs_create_file("qos_toggle", 0444, root, h,
 			    &hnat_qos_toggle_fops);
-	debugfs_create_file("hnat_version", S_IRUGO | S_IRUGO, root, h,
+	debugfs_create_file("hnat_version", 0444, root, h,
 			    &hnat_version_fops);
-	debugfs_create_file("hnat_ppd_if", S_IRUGO | S_IRUGO, root, h,
+	debugfs_create_file("hnat_ppd_if", 0444, root, h,
 			    &hnat_ppd_if_fops);
+	debugfs_create_file("static_entry", 0444, root, h,
+			    &hnat_static_fops);
 
 	for (i = 0; i < hnat_priv->data->num_of_sch; i++) {
-		snprintf(name, sizeof(name), "qdma_sch%ld", i);
-		debugfs_create_file(name, S_IRUGO, root, (void *)i,
+		ret = snprintf(name, sizeof(name), "qdma_sch%ld", i);
+		if (ret != strlen(name)) {
+			ret = -ENOMEM;
+			goto err1;
+		}
+		debugfs_create_file(name, 0444, root, (void *)i,
 				    &hnat_sched_fops);
 	}
 
 	for (i = 0; i < MTK_QDMA_TX_NUM; i++) {
-		snprintf(name, sizeof(name), "qdma_txq%ld", i);
-		debugfs_create_file(name, S_IRUGO, root, (void *)i,
+		ret = snprintf(name, sizeof(name), "qdma_txq%ld", i);
+		if (ret != strlen(name)) {
+			ret = -ENOMEM;
+			goto err1;
+		}
+		debugfs_create_file(name, 0444, root, (void *)i,
 				    &hnat_queue_fops);
 	}
 

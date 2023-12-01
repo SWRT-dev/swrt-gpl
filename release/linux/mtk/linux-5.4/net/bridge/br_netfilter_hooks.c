@@ -384,6 +384,7 @@ static int br_nf_pre_routing_finish(struct net *net, struct sock *sk, struct sk_
 				/* - Bridged-and-DNAT'ed traffic doesn't
 				 *   require ip_forwarding. */
 				if (rt->dst.dev == dev) {
+					skb_dst_drop(skb);
 					skb_dst_set(skb, &rt->dst);
 					goto bridged_dnat;
 				}
@@ -413,6 +414,7 @@ bridged_dnat:
 			kfree_skb(skb);
 			return 0;
 		}
+		skb_dst_drop(skb);
 		skb_dst_set_noref(skb, &rt->dst);
 	}
 
@@ -1012,9 +1014,24 @@ int br_nf_hook_thresh(unsigned int hook, struct net *net,
 		return okfn(net, sk, skb);
 
 	ops = nf_hook_entries_get_hook_ops(e);
-	for (i = 0; i < e->num_hook_entries &&
-	      ops[i]->priority <= NF_BR_PRI_BRNF; i++)
-		;
+	for (i = 0; i < e->num_hook_entries; i++) {
+		/* These hooks have already been called */
+		if (ops[i]->priority < NF_BR_PRI_BRNF)
+			continue;
+
+		/* These hooks have not been called yet, run them. */
+		if (ops[i]->priority > NF_BR_PRI_BRNF)
+			break;
+
+		/* take a closer look at NF_BR_PRI_BRNF. */
+		if (ops[i]->hook == br_nf_pre_routing) {
+			/* This hook diverted the skb to this function,
+			 * hooks after this have not been run yet.
+			 */
+			i++;
+			break;
+		}
+	}
 
 	nf_hook_state_init(&state, hook, NFPROTO_BRIDGE, indev, outdev,
 			   sk, net, okfn);
@@ -1082,9 +1099,16 @@ static struct ctl_table brnf_table[] = {
 
 static inline void br_netfilter_sysctl_default(struct brnf_net *brnf)
 {
+#if defined(CONFIG_MODEL_TUFAX4200) || defined(CONFIG_MODEL_TUFAX6000) || defined(CONFIG_MODEL_RTAX59U) || defined(CONFIG_MODEL_PRTAX57_GO) \
+	|| defined(CONFIG_MODEL_RTAX52) || defined(CONFIG_MODEL_RTAX57M)
+	brnf->call_iptables = 0;
+	brnf->call_ip6tables = 0;
+	brnf->call_arptables = 0;
+#else
 	brnf->call_iptables = 1;
 	brnf->call_ip6tables = 1;
 	brnf->call_arptables = 1;
+#endif
 	brnf->filter_vlan_tagged = 0;
 	brnf->filter_pppoe_tagged = 0;
 	brnf->pass_vlan_indev = 0;

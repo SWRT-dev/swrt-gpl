@@ -67,7 +67,11 @@ aquantia-objs			+= aquantia_main.o
 ifdef CONFIG_HWMON
 aquantia-objs			+= aquantia_hwmon.o
 endif
+ifdef CONFIG_AQUANTIA_PHY_FW_DOWNLOAD
+aquantia-objs			+= aquantia_firmware.o
+endif
 obj-$(CONFIG_AIROHA_EN8801S_PHY)	+= en8801s.o
+obj-$(CONFIG_AIROHA_EN8801SC_PHY)	+= en8801sc.o
 obj-$(CONFIG_AQUANTIA_PHY)	+= aquantia.o
 obj-$(CONFIG_AX88796B_PHY)	+= ax88796b.o
 obj-$(CONFIG_AT803X_PHY)	+= at803x.o
@@ -94,7 +98,9 @@ obj-$(CONFIG_LSI_ET1011C_PHY)	+= et1011c.o
 obj-$(CONFIG_LXT_PHY)		+= lxt.o
 obj-$(CONFIG_MARVELL_PHY)	+= marvell.o
 obj-$(CONFIG_MARVELL_10G_PHY)	+= marvell10g.o
+obj-$(CONFIG_MAXLINEAR_GPHY)	+= mxl-gpy.o
 obj-$(CONFIG_MEDIATEK_GE_PHY)	+= mediatek-ge.o
+obj-$(CONFIG_MEDIATEK_2P5GE_PHY)+= mediatek-2p5ge.o
 obj-$(CONFIG_MESON_GXL_PHY)	+= meson-gxl.o
 obj-$(CONFIG_MICREL_KS8995MA)	+= spi_ks8995.o
 obj-$(CONFIG_MICREL_PHY)	+= micrel.o

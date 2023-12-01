@@ -173,8 +173,16 @@ static int bcm_sf2_port_setup(struct dsa_switch *ds, int port,
 	core_writel(priv, reg, CORE_MEM_PSM_VDD_CTRL);
 
 	/* Enable Broadcom tags for that port if requested */
-	if (priv->brcm_tag_mask & BIT(port))
+	if (priv->brcm_tag_mask & BIT(port)) {
 		b53_brcm_hdr_setup(ds, port);
+
+		/* Disable learning on ASP port */
+		if (port == 7) {
+			reg = core_readl(priv, CORE_DIS_LEARN);
+			reg |= BIT(port);
+			core_writel(priv, reg, CORE_DIS_LEARN);
+		}
+	}
 
 	/* Configure Traffic Class to QoS mapping, allow each priority to map
 	 * to a different queue number
@@ -346,6 +354,18 @@ static int bcm_sf2_sw_rst(struct bcm_sf2_priv *priv)
 {
 	unsigned int timeout = 1000;
 	u32 reg;
+	int ret;
+
+	/* The watchdog reset does not work on 7278, we need to hit the
+	 * "external" reset line through the reset controller.
+	 */
+	if (priv->type == BCM7278_DEVICE_ID && !IS_ERR(priv->rcdev)) {
+		ret = reset_control_assert(priv->rcdev);
+		if (ret)
+			return ret;
+
+		return reset_control_deassert(priv->rcdev);
+	}
 
 	reg = core_readl(priv, CORE_WATCHDOG_CTRL);
 	reg |= SOFTWARE_RESET | EN_CHIP_RST | EN_SW_RESET;
@@ -602,6 +622,11 @@ force_link:
 		reg |= LINK_STS;
 	if (state->duplex == DUPLEX_FULL)
 		reg |= DUPLX_MODE;
+	if (state->pause & MLO_PAUSE_TXRX_MASK) {
+		if (state->pause & MLO_PAUSE_TX)
+			reg |= TXFLOW_CNTL;
+		reg |= RXFLOW_CNTL;
+	}
 
 	core_writel(priv, reg, offset);
 }
@@ -978,6 +1003,9 @@ static const struct dsa_switch_ops bcm_sf2_ops = {
 	.set_rxnfc		= bcm_sf2_set_rxnfc,
 	.port_mirror_add	= b53_mirror_add,
 	.port_mirror_del	= b53_mirror_del,
+	.port_mdb_prepare	= b53_mdb_prepare,
+	.port_mdb_add		= b53_mdb_add,
+	.port_mdb_del		= b53_mdb_del,
 };
 
 struct bcm_sf2_of_data {
@@ -1092,6 +1120,11 @@ static int bcm_sf2_sw_probe(struct platform_device *pdev)
 	priv->reg_offsets = data->reg_offsets;
 	priv->core_reg_align = data->core_reg_align;
 	priv->num_cfp_rules = data->num_cfp_rules;
+
+	priv->rcdev = devm_reset_control_get_optional_exclusive(&pdev->dev,
+								"switch");
+	if (PTR_ERR(priv->rcdev) == -EPROBE_DEFER)
+		return PTR_ERR(priv->rcdev);
 
 	/* Auto-detection using standard registers will not work, so
 	 * provide an indication of what kind of device we are for
@@ -1231,6 +1264,8 @@ static int bcm_sf2_sw_remove(struct platform_device *pdev)
 	dsa_unregister_switch(priv->dev->ds);
 	bcm_sf2_cfp_exit(priv->dev->ds);
 	bcm_sf2_mdio_unregister(priv);
+	if (priv->type == BCM7278_DEVICE_ID && !IS_ERR(priv->rcdev))
+		reset_control_assert(priv->rcdev);
 
 	return 0;
 }

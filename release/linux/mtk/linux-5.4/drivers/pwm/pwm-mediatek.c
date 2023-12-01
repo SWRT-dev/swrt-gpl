@@ -67,13 +67,13 @@ static const unsigned int mtk_pwm_reg_offset_v2[] = {
 	0x0080, 0x00c0, 0x0100, 0x0140, 0x0180, 0x1c0, 0x200, 0x0240
 };
 
-static inline struct pwm_mediatek_chip *
+inline struct pwm_mediatek_chip *
 to_pwm_mediatek_chip(struct pwm_chip *chip)
 {
 	return container_of(chip, struct pwm_mediatek_chip, chip);
 }
 
-static int pwm_mediatek_clk_enable(struct pwm_chip *chip,
+int pwm_mediatek_clk_enable(struct pwm_chip *chip,
 				   struct pwm_device *pwm)
 {
 	struct pwm_mediatek_chip *pc = to_pwm_mediatek_chip(chip);
@@ -101,7 +101,7 @@ disable_clk_top:
 	return ret;
 }
 
-static void pwm_mediatek_clk_disable(struct pwm_chip *chip,
+void pwm_mediatek_clk_disable(struct pwm_chip *chip,
 				     struct pwm_device *pwm)
 {
 	struct pwm_mediatek_chip *pc = to_pwm_mediatek_chip(chip);
@@ -111,7 +111,7 @@ static void pwm_mediatek_clk_disable(struct pwm_chip *chip,
 	clk_disable_unprepare(pc->clk_top);
 }
 
-static inline u32 pwm_mediatek_readl(struct pwm_mediatek_chip *chip,
+inline u32 pwm_mediatek_readl(struct pwm_mediatek_chip *chip,
 				     unsigned int num, unsigned int offset)
 {
 	u32 pwm_offset;
@@ -129,7 +129,7 @@ static inline u32 pwm_mediatek_readl(struct pwm_mediatek_chip *chip,
 	return readl(chip->regs + pwm_offset + offset);
 }
 
-static inline void pwm_mediatek_writel(struct pwm_mediatek_chip *chip,
+inline void pwm_mediatek_writel(struct pwm_mediatek_chip *chip,
 				       unsigned int num, unsigned int offset,
 				       u32 value)
 {
@@ -152,8 +152,11 @@ static int pwm_mediatek_config(struct pwm_chip *chip, struct pwm_device *pwm,
 			       int duty_ns, int period_ns)
 {
 	struct pwm_mediatek_chip *pc = to_pwm_mediatek_chip(chip);
-	u32 clkdiv = 0, cnt_period, cnt_duty, reg_width = PWMDWIDTH,
-	    reg_thres = PWMTHRES;
+	/* The source clock is divided by 2^clkdiv or iff the clksel bit
+	 * is set by (2^clkdiv*1625)
+	 */
+	u32 clkdiv = 0, clksel = 0, cnt_period, cnt_duty,
+	    reg_width = PWMDWIDTH, reg_thres = PWMTHRES;
 	u64 resolution;
 	int ret;
 
@@ -164,12 +167,30 @@ static int pwm_mediatek_config(struct pwm_chip *chip, struct pwm_device *pwm,
 
 	/* Using resolution in picosecond gets accuracy higher */
 	resolution = (u64)NSEC_PER_SEC * 1000;
+	/* Calculate resolution based on current clock frequency */
 	do_div(resolution, clk_get_rate(pc->clk_pwms[pwm->hwpwm]));
-
+	/* Using resolution to calculate cnt_period which represents
+	 * the effective range of the PWM period counter
+	 */
 	cnt_period = DIV_ROUND_CLOSEST_ULL((u64)period_ns * 1000, resolution);
 	while (cnt_period > 8191) {
+		/* Using clkdiv to reduce clock frequency and calculate
+		 * new resolution based on new clock speed
+		 */
 		resolution *= 2;
 		clkdiv++;
+		if (clkdiv > PWM_CLK_DIV_MAX && !clksel) {
+			/* Using clksel to divide the pwm source clock by
+			 * an additional 1625, and recalculate new clkdiv
+			 * and resolution
+			 */
+			clksel = 1;
+			clkdiv = 0;
+			resolution = (u64)NSEC_PER_SEC * 1000 * 1625;
+			do_div(resolution,
+				clk_get_rate(pc->clk_pwms[pwm->hwpwm]));
+		}
+		/* Calculate cnt_period based on resolution */
 		cnt_period = DIV_ROUND_CLOSEST_ULL((u64)period_ns * 1000,
 						   resolution);
 	}
@@ -189,8 +210,13 @@ static int pwm_mediatek_config(struct pwm_chip *chip, struct pwm_device *pwm,
 		reg_thres = PWM45THRES_FIXUP;
 	}
 
+	/* Calculate cnt_duty based on resolution */
 	cnt_duty = DIV_ROUND_CLOSEST_ULL((u64)duty_ns * 1000, resolution);
-	pwm_mediatek_writel(pc, pwm->hwpwm, PWMCON, BIT(15) | clkdiv);
+	if (clksel)
+		pwm_mediatek_writel(pc, pwm->hwpwm, PWMCON, BIT(15) | BIT(3) |
+				    clkdiv);
+	else
+		pwm_mediatek_writel(pc, pwm->hwpwm, PWMCON, BIT(15) | clkdiv);
 	pwm_mediatek_writel(pc, pwm->hwpwm, reg_width, cnt_period);
 	pwm_mediatek_writel(pc, pwm->hwpwm, reg_thres, cnt_duty);
 
@@ -228,10 +254,22 @@ static void pwm_mediatek_disable(struct pwm_chip *chip, struct pwm_device *pwm)
 	pwm_mediatek_clk_disable(chip, pwm);
 }
 
+#ifdef CONFIG_PWM_MTK_MM
+int pwm_mtk_mm_pwmbuf(struct pwm_chip *chip, struct pwm_device *pwm, const char *type);
+int pwm_mtk_mm_config(struct pwm_chip *chip, struct pwm_device *pwm, const char *config);
+int pwm_mtk_mm_fint(struct pwm_chip *chip, struct pwm_device *pwm, const char *fint);
+int init_pwm_mtk_mm(struct platform_device *pdev);
+#endif /* CONFIG_PWM_MTK_MM */
+
 static const struct pwm_ops pwm_mediatek_ops = {
 	.config = pwm_mediatek_config,
 	.enable = pwm_mediatek_enable,
 	.disable = pwm_mediatek_disable,
+#ifdef CONFIG_PWM_MTK_MM
+	.mm_pwmbuf = pwm_mtk_mm_pwmbuf,
+	.mm_config = pwm_mtk_mm_config,
+	.mm_fint = pwm_mtk_mm_fint,
+#endif
 	.owner = THIS_MODULE,
 };
 
@@ -298,6 +336,14 @@ static int pwm_mediatek_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+#ifdef CONFIG_PWM_MTK_MM
+	ret = init_pwm_mtk_mm(pdev);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "init_pwm_mtk_mm() failed: %d\n", ret);
+		return ret;
+	}
+#endif /* CONFIG_PWM_MTK_MM */
+
 	return 0;
 }
 
@@ -347,6 +393,12 @@ static const struct pwm_mediatek_of_data mt7981_pwm_data = {
 static const struct pwm_mediatek_of_data mt7986_pwm_data = {
 	.num_pwms = 2,
 	.pwm45_fixup = false,
+	.reg_ver = REG_V1,
+};
+
+static const struct pwm_mediatek_of_data mt7988_pwm_data = {
+	.num_pwms = 8,
+	.pwm45_fixup = false,
 	.reg_ver = REG_V2,
 };
 
@@ -364,6 +416,7 @@ static const struct of_device_id pwm_mediatek_of_match[] = {
 	{ .compatible = "mediatek,mt7629-pwm", .data = &mt7629_pwm_data },
 	{ .compatible = "mediatek,mt7981-pwm", .data = &mt7981_pwm_data },
 	{ .compatible = "mediatek,mt7986-pwm", .data = &mt7986_pwm_data },
+	{ .compatible = "mediatek,mt7988-pwm", .data = &mt7988_pwm_data },
 	{ .compatible = "mediatek,mt8516-pwm", .data = &mt8516_pwm_data },
 	{ },
 };

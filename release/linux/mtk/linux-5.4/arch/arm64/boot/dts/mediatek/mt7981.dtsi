@@ -18,6 +18,8 @@
 #include <dt-bindings/reset/ti-syscon.h>
 #include <dt-bindings/clock/mt7981-clk.h>
 #include <dt-bindings/pinctrl/mt65xx.h>
+#include <dt-bindings/input/linux-event-codes.h>
+#include <dt-bindings/gpio/gpio.h>
 / {
 	compatible = "mediatek,mt7981-rfb";
 	interrupt-parent = <&gic>;
@@ -221,7 +223,7 @@
 	timer {
 		compatible = "arm,armv8-timer";
 		interrupt-parent = <&gic>;
-		clock-frequency = <12986200>;
+		clock-frequency = <12996791>;
 		interrupts = <GIC_PPI 13 IRQ_TYPE_LEVEL_LOW>,
 			     <GIC_PPI 14 IRQ_TYPE_LEVEL_LOW>,
 			     <GIC_PPI 11 IRQ_TYPE_LEVEL_LOW>,

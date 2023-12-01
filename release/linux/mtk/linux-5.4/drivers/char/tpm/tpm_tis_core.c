@@ -817,6 +817,21 @@ static const struct tpm_class_ops tpm_tis = {
 	.clk_enable = tpm_tis_clkrun_enable,
 };
 
+int tpm_tis_cal_read(void *priv, u32 *addr, int addrlen, u8 *buf, int readlen)
+{
+	int rc;
+	u32 vendor;
+
+	rc = tpm_tis_read32((struct tpm_tis_data *)priv, TPM_DID_VID(0), &vendor);
+	if (rc < 0)
+		return -EIO;
+
+	buf[0] = (vendor >> 24) & 0xff;
+	buf[1] = (vendor >> 16) & 0xff;
+
+	return 0;
+}
+
 int tpm_tis_core_init(struct device *dev, struct tpm_tis_data *priv, int irq,
 		      const struct tpm_tis_phy_ops *phy_ops,
 		      acpi_handle acpi_dev_handle)
@@ -863,6 +878,10 @@ int tpm_tis_core_init(struct device *dev, struct tpm_tis_data *priv, int irq,
 
 	if (chip->ops->clk_enable != NULL)
 		chip->ops->clk_enable(chip, true);
+
+	rc = priv->phy_ops->do_calibration(priv, dev);
+	if (rc)
+		goto out_err;
 
 	if (wait_startup(chip, 0) != 0) {
 		rc = -ENODEV;

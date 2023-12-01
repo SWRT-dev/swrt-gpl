@@ -500,6 +500,10 @@ static int __ext4_ext_check(const char *function, unsigned int line,
 		error_msg = "invalid eh_entries";
 		goto corrupted;
 	}
+	if (unlikely((eh->eh_entries == 0) && (depth > 0))) {
+		error_msg = "eh_entries is 0 but eh_depth is > 0";
+		goto corrupted;
+	}
 	if (!ext4_valid_extent_entries(inode, eh, lblk, &pblk, depth)) {
 		error_msg = "invalid extent entries";
 		goto corrupted;
@@ -4932,12 +4936,14 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
 		     FALLOC_FL_INSERT_RANGE))
 		return -EOPNOTSUPP;
 
-	if (mode & FALLOC_FL_PUNCH_HOLE)
-		return ext4_punch_hole(inode, offset, len);
-
+	inode_lock(inode);
 	ret = ext4_convert_inline_data(inode);
+	inode_unlock(inode);
 	if (ret)
 		return ret;
+
+	if (mode & FALLOC_FL_PUNCH_HOLE)
+		return ext4_punch_hole(inode, offset, len);
 
 	if (mode & FALLOC_FL_COLLAPSE_RANGE)
 		return ext4_collapse_range(inode, offset, len);

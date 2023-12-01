@@ -516,7 +516,12 @@ static int mtk_build_gpiochip(struct mtk_pinctrl *hw, struct device_node *np)
 	chip->set		= mtk_gpio_set;
 	chip->to_irq		= mtk_gpio_to_irq,
 	chip->set_config	= mtk_gpio_set_config,
+#if defined(CONFIG_MODEL_TUFAX4200) || defined(CONFIG_MODEL_TUFAX6000) || defined(CONFIG_MODEL_RTAX59U) || defined(CONFIG_MODEL_PRTAX57_GO) \
+	|| defined(CONFIG_MODEL_RTAX52) || defined(CONFIG_MODEL_RTAX57M)
+	chip->base		= 0;
+#else
 	chip->base		= -1;
+#endif
 	chip->ngpio		= hw->soc->npins;
 	chip->of_node		= np;
 	chip->of_gpio_n_cells	= 2;

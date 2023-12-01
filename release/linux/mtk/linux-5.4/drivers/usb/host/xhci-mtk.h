@@ -20,14 +20,12 @@
 #define XHCI_MTK_MAX_ESIT	64
 
 /**
- * @ss_bit_map: used to avoid start split microframes overlay
  * @fs_bus_bw: array to keep track of bandwidth already used for FS
  * @ep_list: Endpoints using this TT
  * @usb_tt: usb TT related
  * @tt_port: TT port number
  */
 struct mu3h_sch_tt {
-	DECLARE_BITMAP(ss_bit_map, XHCI_MTK_MAX_ESIT);
 	u32 fs_bus_bw[XHCI_MTK_MAX_ESIT];
 	struct list_head ep_list;
 	struct usb_tt *usb_tt;
@@ -158,8 +156,9 @@ struct xhci_hcd_mtk {
 	struct regmap *uwk;
 	u32 uwk_reg_base;
 	u32 uwk_vers;
+	bool p0_speed_fixup;
 
-#ifdef CONFIG_USB_XHCI_MTK_DEBUGFS
+#if defined(CONFIG_USB_XHCI_MTK_DEBUGFS) || defined(CONFIG_USB_XHCI_MTK_DEBUGFS_MODULE)
 	int     test_mode;
 	size_t  hqa_size;
 	u32     hqa_pos;

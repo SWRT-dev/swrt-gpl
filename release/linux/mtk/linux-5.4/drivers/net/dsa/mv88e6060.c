@@ -43,7 +43,8 @@ static const char *mv88e6060_get_name(struct mii_bus *bus, int sw_addr)
 }
 
 static enum dsa_tag_protocol mv88e6060_get_tag_protocol(struct dsa_switch *ds,
-							int port)
+							int port,
+							enum dsa_tag_protocol m)
 {
 	return DSA_TAG_PROTO_TRAILER;
 }
@@ -116,6 +117,9 @@ static int mv88e6060_setup_port(struct mv88e6060_priv *priv, int p)
 {
 	int addr = REG_PORT(p);
 	int ret;
+
+	if (dsa_is_unused_port(priv->ds, p))
+		return 0;
 
 	/* Do not force flow control, disable Ingress and Egress
 	 * Header tagging, disable VLAN tunneling, and set the port

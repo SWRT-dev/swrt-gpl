@@ -1,11 +1,4 @@
 &pio {
-	wifi_led_pins: wifi_led-pins-1-2 {
-		mux {
-			function = "led";
-			groups = "wifi_led";
-		};
-	};
-
 	i2c_pins: i2c-pins-3-4 {
 		mux {
 			function = "i2c";

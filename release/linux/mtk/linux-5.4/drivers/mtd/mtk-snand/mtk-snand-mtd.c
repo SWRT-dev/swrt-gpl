@@ -494,10 +494,17 @@ static struct mtk_snand_of_id mt7986_soc_id = {
 	.en_nfi_hclk = true
 };
 
+static struct mtk_snand_of_id mt7988_soc_id = {
+	.soc = SNAND_SOC_MT7988,
+	.en_ecc_clk = false,
+	.en_nfi_hclk = false
+};
+
 static const struct of_device_id mtk_snand_ids[] = {
 	{ .compatible = "mediatek,mt7622-snand", .data = &mt7622_soc_id },
 	{ .compatible = "mediatek,mt7629-snand", .data = &mt7629_soc_id },
 	{ .compatible = "mediatek,mt7986-snand", .data = &mt7986_soc_id },
+	{ .compatible = "mediatek,mt7988-snand", .data = &mt7988_soc_id },
 	{ },
 };
 

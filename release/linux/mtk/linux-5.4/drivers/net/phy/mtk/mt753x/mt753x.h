@@ -13,6 +13,7 @@
 #include <linux/of_mdio.h>
 #include <linux/workqueue.h>
 #include <linux/gpio/consumer.h>
+#include <linux/phy.h>
 
 #ifdef CONFIG_SWCONFIG
 #include <linux/switch.h>
@@ -30,12 +31,13 @@ struct gsw_mt753x;
 
 enum mt753x_model {
 	MT7530 = 0x7530,
-	MT7531 = 0x7531
+	MT7531 = 0x7531,
+	MT7988 = 0x7988,
 };
 
 struct mt753x_port_cfg {
 	struct device_node *np;
-	int phy_mode;
+	phy_interface_t phy_mode;
 	u32 enabled: 1;
 	u32 force_link: 1;
 	u32 speed: 2;
@@ -60,6 +62,10 @@ struct gsw_mt753x {
 	u32 smi_addr;
 	u32 phy_base;
 	int direct_phy_access;
+	bool direct_access;
+
+	void __iomem *base;
+	struct regmap *sysctrl_base;
 
 	enum mt753x_model model;
 	const char *name;
@@ -70,7 +76,7 @@ struct gsw_mt753x {
 	bool hw_phy_cal;
 	bool phy_status_poll;
 	struct mt753x_phy phys[MT753X_NUM_PHYS];
-//	int phy_irqs[PHY_MAX_ADDR]; //FIXME 
+//	int phy_irqs[PHY_MAX_ADDR]; //FIXME
 
 	int phy_link_sts;
 

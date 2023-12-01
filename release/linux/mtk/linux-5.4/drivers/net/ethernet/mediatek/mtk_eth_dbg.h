@@ -24,6 +24,8 @@
 #define MTK_FE_CDM2_FSM			0x224
 #define MTK_FE_CDM3_FSM			0x238
 #define MTK_FE_CDM4_FSM			0x298
+#define MTK_FE_CDM5_FSM			0x318
+#define MTK_FE_CDM6_FSM			0x328
 #define MTK_FE_GDM1_FSM			0x228
 #define MTK_FE_GDM2_FSM			0x22C
 #define MTK_FE_PSE_FREE			0x240
@@ -35,7 +37,7 @@
 #define MTK_SGMII_EFUSE			0x11D008C8
 #define MTK_WED_RTQM_GLO_CFG		0x15010B00
 
-#if defined(CONFIG_MEDIATEK_NETSYS_V2)
+#if defined(CONFIG_MEDIATEK_NETSYS_V2) || defined(CONFIG_MEDIATEK_NETSYS_V3)
 #define MTK_PSE_IQ_STA(x)		(0x180 + (x) * 0x4)
 #define MTK_PSE_OQ_STA(x)		(0x1A0 + (x) * 0x4)
 #else
@@ -267,9 +269,9 @@ static inline bool mt7530_exist(struct mtk_eth *eth)
 }
 #endif
 
-extern u32 _mtk_mdio_read(struct mtk_eth *eth, u16 phy_addr, u16 phy_reg);
-extern u32 _mtk_mdio_write(struct mtk_eth *eth, u16 phy_addr,
-		    u16 phy_register, u16 write_data);
+extern u32 _mtk_mdio_read(struct mtk_eth *eth, int phy_addr, int phy_reg);
+extern u32 _mtk_mdio_write(struct mtk_eth *eth, int phy_addr,
+		    int phy_reg, u16 write_data);
 
 extern u32 mtk_cl45_ind_read(struct mtk_eth *eth, u16 port, u16 devad, u16 reg, u16 *data);
 extern u32 mtk_cl45_ind_write(struct mtk_eth *eth, u16 port, u16 devad, u16 reg, u16 data);
@@ -281,7 +283,7 @@ void debug_proc_exit(void);
 int mtketh_debugfs_init(struct mtk_eth *eth);
 void mtketh_debugfs_exit(struct mtk_eth *eth);
 int mtk_do_priv_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd);
-void hw_lro_stats_update(u32 ring_no, struct mtk_rx_dma *rxd);
-void hw_lro_flush_stats_update(u32 ring_no, struct mtk_rx_dma *rxd);
+void hw_lro_stats_update(u32 ring_no, struct mtk_rx_dma_v2 *rxd);
+void hw_lro_flush_stats_update(u32 ring_no, struct mtk_rx_dma_v2 *rxd);
 
 #endif /* MTK_ETH_DBG_H */

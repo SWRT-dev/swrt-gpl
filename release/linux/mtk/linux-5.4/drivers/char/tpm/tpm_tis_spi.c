@@ -184,12 +184,19 @@ static int tpm_tis_spi_write32(struct tpm_tis_data *data, u32 addr, u32 value)
 	return rc;
 }
 
+int tpm_tis_spi_do_calibration(struct tpm_tis_data *priv, struct device *dev) {
+	struct spi_device *spi = container_of(dev,
+                                         struct spi_device, dev);
+	return spi_do_calibration(spi->master, spi, tpm_tis_cal_read, priv);
+}
+
 static const struct tpm_tis_phy_ops tpm_spi_phy_ops = {
 	.read_bytes = tpm_tis_spi_read_bytes,
 	.write_bytes = tpm_tis_spi_write_bytes,
 	.read16 = tpm_tis_spi_read16,
 	.read32 = tpm_tis_spi_read32,
 	.write32 = tpm_tis_spi_write32,
+	.do_calibration = tpm_tis_spi_do_calibration,
 };
 
 static int tpm_tis_spi_probe(struct spi_device *dev)

@@ -510,9 +510,11 @@
 			<0 0x11c20000 0 0x1000>;
 		interrupts = <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&topckgen CK_TOP_EMMC_416M>,
-			<&topckgen CK_TOP_EMMC_250M>,
-			<&infracfg_ao CK_INFRA_MSDC_CK>;
-		clock-names = "source", "hclk", "source_cg";
+			<&infracfg_ao CK_INFRA_MSDC_HCK_CK>,
+			<&infracfg_ao CK_INFRA_MSDC_CK>,
+			<&infracfg_ao CK_INFRA_MSDC_66M_CK>,
+			<&infracfg_ao CK_INFRA_MSDC_133M_CK>;
+		clock-names = "source", "hclk", "source_cg", "sys_cg", "axi_cg";
 		assigned-clocks = <&topckgen CK_TOP_EMMC_416M_SEL>,
 				  <&topckgen CK_TOP_EMMC_250M_SEL>;
 		assigned-clock-parents = <&topckgen CK_TOP_CB_M_416M>,

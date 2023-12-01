@@ -35,6 +35,27 @@ u32 binary_write_width1(u32 __iomem *addr, u32 shift, const char *buf)
 	return val;
 }
 
+u32 binary_write_width2(u32 __iomem *addr, u32 shift, const char *buf)
+{
+	u32 val = 0;
+
+	if (!strncmp(buf, STRNG_0_WIDTH_2, BIT_WIDTH_2))
+		val = 0;
+	else if (!strncmp(buf, STRNG_1_WIDTH_2, BIT_WIDTH_2))
+		val = 1;
+	else if (!strncmp(buf, STRNG_2_WIDTH_2, BIT_WIDTH_2))
+		val = 2;
+	else if (!strncmp(buf, STRNG_3_WIDTH_2, BIT_WIDTH_2))
+		val = 3;
+	else
+		val = 0xFFFFFFFF;
+
+	if (val <= 3)
+		val = usb20hqa_write(addr, shift, MSK_WIDTH_2, val);
+
+	return val;
+}
+
 u32 binary_write_width3(u32 __iomem *addr, u32 shift, const char *buf)
 {
 	u32 val = 0;

@@ -294,6 +294,63 @@ u64 dma_get_required_mask(struct device *dev)
 }
 EXPORT_SYMBOL_GPL(dma_get_required_mask);
 
+#define MAX_CSIZE 10
+typedef struct {
+	int alloc;
+	void *ptr;
+	int use;
+	dma_addr_t daddr;
+	gfp_t flag;
+} dma_pt;
+
+static dma_pt dcs[MAX_ORDER][MAX_CSIZE] = {0};
+static int dcs_get(struct device *dev, size_t size, void **ptr, dma_addr_t *daddr, gfp_t flag)
+{
+	int idx;
+	int order = get_order(size);
+	for (idx = 0; idx < MAX_CSIZE; idx++) {
+		if (dcs[order][idx].alloc && dcs[order][idx].use == 0 && dcs[order][idx].flag == flag) {
+			if (dcs[order][idx].ptr) {
+				*ptr = dcs[order][idx].ptr;
+				*daddr = dcs[order][idx].daddr;
+				dcs[order][idx].use = 1;
+				memset(*ptr, 0x00, PAGE_ALIGN(size));
+				return 1;
+			}
+		}
+	}
+	return 0;
+}
+
+static void dcs_append(struct device *dev, int order, void *ptr, dma_addr_t daddr, gfp_t flag)
+{
+	int idx;
+	if (ptr) {
+		for (idx = 0; idx < MAX_CSIZE; idx++) {
+			if (dcs[order][idx].alloc == 0) {
+				dcs[order][idx].alloc = 1;
+				dcs[order][idx].ptr = ptr;
+				dcs[order][idx].daddr = daddr;
+				dcs[order][idx].flag = flag;
+				dcs[order][idx].use = 1;
+				return;
+			}
+		}
+	}
+}
+
+static int dcs_put(struct device *dev, int order, void *ptr)
+{
+	int idx;
+	for (idx = 0; idx < MAX_CSIZE; idx++) {
+		if (dcs[order][idx].alloc && dcs[order][idx].use && dcs[order][idx].ptr == ptr) {
+			dcs[order][idx].use = 0;
+			return 1;
+		}
+	}
+	return 0;
+}
+
 void *dma_alloc_attrs(struct device *dev, size_t size, dma_addr_t *dma_handle,
 		gfp_t flag, unsigned long attrs)
 {
@@ -309,12 +366,16 @@ void *dma_alloc_attrs(struct device *dev, size_t size, dma_addr_t *dma_handle,
 	flag &= ~(__GFP_DMA | __GFP_DMA32 | __GFP_HIGHMEM);
 
 	if (dma_is_direct(ops))
+	{
+		if (!dcs_get(dev, size, &cpu_addr, dma_handle, flag)) {
 		cpu_addr = dma_direct_alloc(dev, size, dma_handle, flag, attrs);
+		dcs_append(dev, get_order(size), cpu_addr, *dma_handle, flag);
+		}
+	}
 	else if (ops->alloc)
 		cpu_addr = ops->alloc(dev, size, dma_handle, flag, attrs);
 	else
 		return NULL;
-
 	debug_dma_alloc_coherent(dev, size, *dma_handle, cpu_addr);
 	return cpu_addr;
 }
@@ -341,7 +402,10 @@ void dma_free_attrs(struct device *dev, size_t size, void *cpu_addr,
 
 	debug_dma_free_coherent(dev, size, cpu_addr, dma_handle);
 	if (dma_is_direct(ops))
+	{
+		if (!dcs_put(dev, get_order(size), cpu_addr))
 		dma_direct_free(dev, size, cpu_addr, dma_handle, attrs);
+	}
 	else if (ops->free)
 		ops->free(dev, size, cpu_addr, dma_handle, attrs);
 }

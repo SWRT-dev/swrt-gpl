@@ -17,6 +17,7 @@
 #include <linux/of_device.h>
 #include <linux/phy/phy.h>
 #include <linux/platform_device.h>
+#include <linux/mfd/syscon.h>
 #include <linux/regmap.h>
 
 /* version V1 sub-banks offset base address */
@@ -220,6 +221,14 @@
 #define P3D_RG_RXDET_STB2_SET_P3	GENMASK(8, 0)
 #define P3D_RG_RXDET_STB2_SET_P3_VAL(x)	(0x1ff & (x))
 
+#define U3P_U3_PHYD_REG19		0x338
+#define P3D_RG_PLL_SSC_DELTA1           GENMASK(15, 0)
+#define P3D_RG_PLL_SSC_DELTA1_VAL(x)	(0xffff & (x))
+
+#define U3P_U3_PHYD_REG21		0x340
+#define P3D_RG_PLL_SSC_DELTA            GENMASK(31, 16)
+#define P3D_RG_PLL_SSC_DELTA_VAL(x)	((0xffff & (x)) << 16)
+
 #define U3P_SPLLC_XTALCTL3		0x018
 #define XC3_RG_U3_XTAL_RX_PWD		BIT(9)
 #define XC3_RG_U3_FRC_XTAL_RX_PWD	BIT(8)
@@ -377,6 +386,8 @@ struct mtk_phy_instance {
 	int eye_vrt;
 	int eye_term;
 	bool bc12_en;
+	bool u3_pll_ssc_delta;
+	bool u3_pll_ssc_delta1;
 };
 
 struct mtk_tphy {
@@ -518,6 +529,20 @@ static void u3_phy_instance_init(struct mtk_tphy *tphy,
 	tmp &= ~P3D_RG_RXDET_STB2_SET_P3;
 	tmp |= P3D_RG_RXDET_STB2_SET_P3_VAL(0x10);
 	writel(tmp, u3_banks->phyd + U3P_U3_PHYD_RXDET2);
+
+	if (instance->u3_pll_ssc_delta1) {
+		tmp = readl(u3_banks->phyd + U3P_U3_PHYD_REG19);
+		tmp &= ~P3D_RG_PLL_SSC_DELTA1;
+		tmp |= P3D_RG_PLL_SSC_DELTA1_VAL(0x1c3);
+		writel(tmp, u3_banks->phyd + U3P_U3_PHYD_REG19);
+	}
+
+	if (instance->u3_pll_ssc_delta) {
+		tmp = readl(u3_banks->phyd + U3P_U3_PHYD_REG21);
+		tmp &= ~P3D_RG_PLL_SSC_DELTA;
+		tmp |= P3D_RG_PLL_SSC_DELTA_VAL(0x1c3);
+		writel(tmp, u3_banks->phyd + U3P_U3_PHYD_REG21);
+	}
 
 	dev_dbg(tphy->dev, "%s(%d)\n", __func__, instance->index);
 }
@@ -951,6 +976,19 @@ static void phy_parse_property(struct mtk_tphy *tphy,
 {
 	struct device *dev = &instance->phy->dev;
 
+	if (instance->type == PHY_TYPE_USB3) {
+		instance->u3_pll_ssc_delta =
+			device_property_read_bool(dev,
+				"mediatek,usb3-pll-ssc-delta");
+		instance->u3_pll_ssc_delta1 =
+			device_property_read_bool(dev,
+				"mediatek,usb3-pll-ssc-delta1");
+
+		dev_dbg(dev, "u3_pll_ssc_delta:%i, u3_pll_ssc_delta1:%i\n",
+					instance->u3_pll_ssc_delta,
+					instance->u3_pll_ssc_delta1);
+	}
+
 	if (instance->type != PHY_TYPE_USB2)
 		return;
 
@@ -1335,6 +1373,7 @@ static void phy_efuse_set(struct mtk_phy_instance *instance)
 		dev_warn(dev, "no sw efuse for type %d\n", instance->type);
 	}
 }
+
 
 static int mtk_phy_init(struct phy *phy)
 {

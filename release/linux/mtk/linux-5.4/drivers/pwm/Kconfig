@@ -325,6 +325,14 @@ config PWM_MEDIATEK_RAMIPS
 	  To compile this driver as a module, choose M here: the module
 	  will be called pwm-mxs.
 
+config PWM_MTK_MM
+	bool "MediaTek PWM support Memory Mode"
+	depends on PWM_MEDIATEK
+
+config PWM_MTK_IRQ
+	bool "MediaTek PWM support interrupt of Memory Mode"
+	depends on PWM_MTK_MM
+
 config PWM_MXS
 	tristate "Freescale MXS PWM support"
 	depends on ARCH_MXS && OF

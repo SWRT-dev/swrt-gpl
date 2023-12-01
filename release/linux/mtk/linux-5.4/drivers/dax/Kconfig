@@ -4,7 +4,7 @@ config DAX_DRIVER
 	bool
 
 menuconfig DAX
-	tristate "DAX: direct access to differentiated memory"
+	bool "DAX: direct access to differentiated memory"
 	select SRCU
 	default m if NVDIMM_DAX
 

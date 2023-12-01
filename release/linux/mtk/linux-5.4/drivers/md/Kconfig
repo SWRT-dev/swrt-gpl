@@ -200,7 +200,7 @@ config BLK_DEV_DM_BUILTIN
 	bool
 
 config BLK_DEV_DM
-	tristate "Device mapper support"
+	bool "Device mapper support"
 	select BLK_DEV_DM_BUILTIN
 	depends on DAX || DAX=n
 	---help---
@@ -486,7 +486,7 @@ config DM_FLAKEY
          A target that intermittently fails I/O for debugging purposes.
 
 config DM_VERITY
-	tristate "Verity target support"
+	bool "Verity target support"
 	depends on BLK_DEV_DM
 	select CRYPTO
 	select CRYPTO_HASH

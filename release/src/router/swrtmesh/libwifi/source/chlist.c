@@ -898,7 +898,11 @@ int wifi_get_opclass_internal(enum wifi_regdomain reg, enum wifi_band b,
 		break;
 	case REG_CN:
 		//TODO
-#if !defined(RTCONFIG_SWRTMESH)
+#if defined(RTCONFIG_SWRTMESH)
+		tab = (struct wifi_opclass *)wifi_opclass_us;
+		tabsize = wifi_opclass_us_size;
+		break;
+#else
 		tab = NULL;
 		tabsize = 0;
 		break;
@@ -1064,9 +1068,15 @@ int wifi_get_supported_opclass_internal(enum wifi_regdomain reg,
 		break;
 	case REG_CN:
 		//TODO
+#if defined(RTCONFIG_SWRTMESH)
+		tab = (struct wifi_opclass *)wifi_opclass_us;
+		tabsize = wifi_opclass_us_size;
+		break;
+#else
 		tab = NULL;
 		tabsize = 0;
 		break;
+#endif
 	case REG_GLOBAL:
 	default:
 		tab = (struct wifi_opclass *)wifi_opclass_global;

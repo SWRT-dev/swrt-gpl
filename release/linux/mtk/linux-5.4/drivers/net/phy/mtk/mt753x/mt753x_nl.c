@@ -75,8 +75,10 @@ static int mt753x_nl_list_devs(char *buff, int size)
 		len = snprintf(buf, sizeof(buf),
 			       "id: %d, model: %s, node: %s\n",
 			       gsw->id, gsw->name, gsw->dev->of_node->name);
-		strncat(buff, buf, size - total);
-		total += len;
+		if (len == strlen(buf)) {
+			strncat(buff, buf, size - total);
+			total += len;
+		}
 	}
 
 	mt753x_put_gsw();
@@ -362,7 +364,7 @@ static int mt753x_nl_response(struct sk_buff *skb, struct genl_info *info)
 	return ret;
 }
 
-int __init mt753x_nl_init(void)
+int mt753x_nl_init(void)
 {
 	int ret;
 
@@ -375,7 +377,7 @@ int __init mt753x_nl_init(void)
 	return 0;
 }
 
-void __exit mt753x_nl_exit(void)
+void mt753x_nl_exit(void)
 {
 	genl_unregister_family(&mt753x_nl_family);
 }
