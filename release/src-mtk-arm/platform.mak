@@ -183,6 +183,11 @@ define platformRouterOptions
 	elif [ "$(BUILD_NAME)" = "RT-AX59U" ] ; then \
 		sed -i "/RTCONFIG_PWM_RGBLED\>/d" $(1); \
 		echo "RTCONFIG_PWM_RGBLED=y" >>$(1); \
+	elif [ "$(BUILD_NAME)" = "PRT-AX57_GO" ] ; then \
+		sed -i "/RTCONFIG_ZENWIFI_RGBLED\>/d" $(1); \
+		echo "RTCONFIG_ZENWIFI_RGBLED=y" >>$(1); \
+		sed -i "/RTCONFIG_PWMX3_RGBLED\>/d" $(1); \
+		echo "RTCONFIG_PWMX3_RGBLED=y" >>$(1); \
 	fi; \
 	)
 endef
@@ -419,6 +424,18 @@ define platformKernelConfig
 		echo "# CONFIG_OVERLAY_FS_XINO_AUTO is not set" >>$(1); \
 		sed -i "/CONFIG_OVERLAY_FS_METACOPY\>/d" $(1); \
 		echo "# CONFIG_OVERLAY_FS_METACOPY is not set" >>$(1); \
+	fi; \
+	if [ "$(BUILD_NAME)" = "TUF-AX6000" ]; then \
+		sed -i "/CONFIG_PWM_MTK_MM\>/d" $(1); \
+		echo "CONFIG_PWM_MTK_MM=y" >>$(1); \
+		sed -i "/CONFIG_PWM_MTK_IRQ\>/d" $(1); \
+		echo "CONFIG_PWM_MTK_IRQ=y" >>$(1); \
+	elif [ "$(BUILD_NAME)" = "RT-AX59U" ] ; then \
+		sed -i "/CONFIG_PWM_MTK_MM\>/d" $(1); \
+		echo "CONFIG_PWM_MTK_MM=y" >>$(1); \
+	elif [ "$(BUILD_NAME)" = "PRT-AX57_GO" ] ; then \
+		sed -i "/CONFIG_PWM_MTK_MM\>/d" $(1); \
+		echo "CONFIG_PWM_MTK_MM=y" >>$(1); \
 	fi; \
 	if [ "$(SWRTMESH)" = "y" ]; then \
 		sed -i "/CONFIG_CFG80211_SUPPORT/d" $(1); \
