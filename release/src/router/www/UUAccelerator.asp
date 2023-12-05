@@ -33,8 +33,12 @@ function uuRegister(mac){
 		window.open('https://router.uu.163.com/asus/pc.html#/acce?gwSn=' + _mac + '&type=asuswrt', '_blank');
 }
 function applyRule() {
-	showLoading();
-	document.form.submit();
+	var postdata = {};
+	postdata["uu_enable"] = document.form.uu_enable.value;
+	postdata["action_mode"] = "apply";
+	postdata["rc_service"] = "restart_uuacc;";
+	httpApi.nvramSet(postdata);
+	showLoading(5);
 }
 </script>
 </head>

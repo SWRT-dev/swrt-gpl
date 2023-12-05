@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <html xmlns:v>
 <head>
@@ -301,6 +301,7 @@ if(based_modelid === 'GT-AXE16000'){
 }
 var label_mac = <% get_label_mac(); %>;
 var CNSku = in_territory_code("CN");
+var modelname = "<% nvram_get("modelname"); %>";
 
 for(i=0;i<30;i++){
 	var temp = [];
@@ -364,7 +365,7 @@ function initial(){
 	if($("#aura_field").css("display") == "none")
 		$('#pingMap').height('430px');
 
-	if(uu_support && based_modelid == 'GT-AC5300'){
+	if(uu_support && (based_modelid == 'GT-AC5300' || based_modelid == 'RT-AX89U' || based_modelid == 'RAX120')){
 		$('#uu_field').show();
 	}
 
@@ -795,6 +796,7 @@ var netoolApiDashBoard = {
 		$.getJSON("/netool.cgi", {"type":0,"target":fileName})
 			.done(function(data){
 				if(data.result.length == 0) return false;
+				
 				var thisTarget = targetData[obj.target];
 				var pingVal = (data.result[0].ping !== "") ? parseFloat(data.result[0].ping) : 0;
 				var jitterVal = (thisTarget.points.length === 0) ? 0 : Math.abs(pingVal - thisTarget.points[thisTarget.points.length-1]).toFixed(1);
@@ -1094,7 +1096,13 @@ function hideEventTriggerDesc(){
 }
 function uuRegister(mac){
 	var _mac = mac.toLowerCase();
-	window.open('https://router.uu.163.com/asus/pc.html#/acce?gwSn=' + _mac + '&type=asuswrt', '_blank');
+	if(modelname.indexOf("RTAC") != -1 || modelname.indexOf("RTAX") != -1 || modelname.indexOf("GTAC") != -1 || modelname.indexOf("GTAX") != -1 || modelname.indexOf("BLUE") != -1 || modelname.indexOf("ZEN") != -1  || modelname.indexOf("XT") != -1  )
+		window.open('https://router.uu.163.com/asus/pc.html#/acce?gwSn=' + _mac + '&type=asuswrt', '_blank');
+	else
+		window.open('https://router.uu.163.com/asus/pc.html#/acce?gwSn=' + _mac + '&type=asuswrt-merlin', '_blank');
+}
+function enableuu(){
+	window.open("http://"+window.location.hostname+"/Advanced_System_Content.asp");
 }
 </script>
 </head>
@@ -1424,11 +1432,17 @@ function uuRegister(mac){
 										<div style="margin: 24px 0 36px 18px;">
 											<img src="/images/uu_accelerator.png" alt="">
 										</div>
-										<div style="font-size:16px;margin: 0 6px;">UU路由器插件为三大主机PS4、Switch、Xbox One提供加速。可实现多台主机同时加速，NAT类型All Open。畅享全球联机超快感！</div>
+										<div style="font-size:16px;margin: 0 6px;"><#UU_Accelerator_desc#></div>
 										<div style="margin:6px;">
 											<a href="https://uu.163.com/router/" target="_blank" style="color:#4A90E2;text-decoration: underline">FAQ</a>
 										</div>
-										<div class="content-action-container" onclick="uuRegister(label_mac);" style="margin-top:36px;">
+										<div class="content-action-container" onclick="enableuu();" style="margin-top:0px;">
+											<div class="button-container button-container-sm" style="margin: 0 auto;">
+												<div class="button-icon icon-go"></div>
+												<div class="button-text"><#CTL_Enabled#> UU</div>
+											</div>
+										</div>
+										<div class="content-action-container" onclick="uuRegister(label_mac);" style="margin-top:10px;">
 											<div class="button-container button-container-sm" style="margin: 0 auto;">
 												<div class="button-icon icon-go"></div>
 												<div class="button-text"><#btn_go#></div>
@@ -1486,3 +1500,4 @@ function uuRegister(mac){
 </form>
 </body>
 </html>
+
