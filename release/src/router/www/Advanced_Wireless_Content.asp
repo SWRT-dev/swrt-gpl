@@ -58,6 +58,16 @@ wl_channel_list_2g = '<% channel_list_2g(); %>';
 wl_channel_list_5g = '<% channel_list_5g(); %>';
 wl_channel_list_5g_2 = '<% channel_list_5g_2(); %>';
 wl_channel_list_60g = '<% channel_list_60g(); %>';
+var acs_ch13_support = (function(){
+    var ch_2g = JSON.parse(wl_channel_list_2g);
+    for(var element of ch_2g){
+        if(element > 11){
+            return true;
+        }
+    }
+    
+    return false;
+})();
 var wl_unit_value = '<% nvram_get("wl_unit"); %>';
 var wl_subunit_value = '<% nvram_get("wl_subunit"); %>';
 var wlc_band_value = '<% nvram_get("wlc_band"); %>';
@@ -150,6 +160,65 @@ function initial(){
 
 	limit_auth_method();	
 	wl_auth_mode_change(1);
+
+	if(wpa3_support){
+		var confirm_flag = 0;
+		var confirm_content = "";
+		if(!band6g_support || wl_unit != '2'){	// not for 6 GHz
+			confirm_flag=1;
+			confirm_content += "<b>WPA3-Personal</b><br>";
+			confirm_content += "<#WLANConfig11b_AuthenticationMethod_wpa3#><br><br>";
+			confirm_content += "<b>WPA2/WPA3-Personal</b><br>";
+			confirm_content += "<#WLANConfig11b_AuthenticationMethod_wpa32#><br><br>";
+			confirm_content += "<b>WPA2-Personal</b><br>";
+			confirm_content += "<#WLANConfig11b_AuthenticationMethod_wpa2#><br><br>";
+			confirm_content += "<b>WPA-Auto-Personal</b><br>";
+			confirm_content += "<#WLANConfig11b_AuthenticationMethod_wpa21#>";
+
+			$(".setup_help_icon").show();
+			$(".setup_help_icon").click(
+				function() {
+					if(confirm_flag==1){
+						if($(".confirm_block").length > 0){
+							$(".confirm_block").remove();
+						}
+						if(window.scrollTo)
+							window.scrollTo(0,0);
+						htmlbodyforIE = document.getElementsByTagName("html");
+						htmlbodyforIE[0].style.overflow = "hidden";
+
+						$("#Loading").css('visibility', 'visible');
+						$("#loadingBlock").css('visibility', 'hidden');
+
+						confirm_asus({
+							title: "<#WLANConfig11b_AuthenticationMethod_itemname#>",
+							contentA: confirm_content,
+							contentC: "",
+							left_button: "Hidden",
+							left_button_callback: function(){
+							},
+							left_button_args: {},
+							right_button: "<#CTL_ok#>",
+							right_button_callback: function(){
+								confirm_cancel();
+								htmlbodyforIE = document.getElementsByTagName("html");
+								htmlbodyforIE[0].style.overflow = "";
+								$("#Loading").css('visibility', 'hidden');
+								return false;
+							},
+							right_button_args: {},
+							iframe: "",
+							margin: "100px 0px 0px 25px",
+							note_display_flag: 0
+						});
+
+						$(".confirm_block").css( "zIndex", 10001 );
+					}
+				}
+			);
+		}
+	}
+
 	//mbss_display_ctrl();
 	if(optimizeXbox_support){
 		document.getElementById("wl_optimizexbox_span").style.display = "";
@@ -181,10 +250,27 @@ function initial(){
 		document.form.wl_gmode_check.checked = true;
 		document.getElementById("wl_gmode_check").disabled = false;
 	}
-	if(document.form.wl_gmode_protection.value == "auto")
-		document.form.wl_gmode_check.checked = true;
-	else
-		document.form.wl_gmode_check.checked = false;
+	if(is_unit_24g(wl_unit_value)){
+		if(document.form.wl_gmode_protection.value == "auto"){
+			document.form.wl_gmode_check.checked = true;
+		}
+		else{
+			document.form.wl_gmode_check.checked = false;
+		}
+
+		document.getElementById("wl_gmode_checkbox").style.display = "";
+
+		if(disable11b_support){
+			if(document.form.wl_rateset.value == "ofdm"){
+				document.form.wl_rateset_check.checked = true;
+			}
+			else{
+				document.form.wl_rateset_check.checked = false;
+			}
+
+			wl_mode_change(document.form.wl_nmode_x.value);
+		}
+	}
 
 	if(!band5g_support)	
 		document.getElementById("wl_unit_field").style.display = "none";
@@ -234,7 +320,7 @@ function initial(){
 	var skip_channel_2g = '<% nvram_get("skip_channel_2g"); %>';
 	var skip_channel_5g = '<% nvram_get("skip_channel_5g"); %>';
 
-	if(skip_channel_2g == "CH13" && wl_unit_value == "0"){
+	if(acs_ch13_support && wl_unit_value == "0"){
 		document.getElementById("acs_ch13_checkbox").style = "";
 	}
 
@@ -253,12 +339,24 @@ function initial(){
 			document.getElementById('dfs_checkbox').style.display = "";
 			check_DFS_support(document.form.acs_dfs_checkbox);
 		}
+
+		if(amesh_support && httpApi.hasAiMeshNode() && !wl_info.band5g_2_support){
+			var _wl_channel_list_5g = '<% channel_list_5g(); %>';
+			if((wl_unit == '1' && has_dfs_channel(_wl_channel_list_5g))){
+				document.getElementById('dfs_checkbox').style.display = "";
+				check_DFS_support(document.form.acs_dfs_checkbox);
+			}
+
+		}
 	}
 
 	if(smart_connect_support && (isSwMode("rt") || isSwMode("ap"))){
 		var flag = '<% get_parameter("flag"); %>';		
 		var smart_connect_flag_t;
-		document.getElementById("smartcon_enable_field").style.display = "";
+		if(based_modelid.indexOf('EBG') == -1){
+			document.getElementById("smartcon_enable_field").style.display = "";
+		}
+		
 		if(flag == '')
 			smart_connect_flag_t = '<% nvram_get("smart_connect_x"); %>';
 		else
@@ -426,10 +524,14 @@ function genBWTable(_unit){
 				bws.push(4);
 				bwsDesc.push("80+80 MHz");
 			}
+		
 			if(vht160_support && array_160m.length/4 >= 1 && enable_bw_160){
 				bwsDesc[0] = "20/40/80/160 MHz";
 				bws.push(5);
 				bwsDesc.push("160 MHz");
+			}
+			else if(array_160m.length/4 < 1){
+				document.getElementById('enable_160_field').style.display = 'none';
 			}
 		}
 
@@ -1159,6 +1261,28 @@ function regen_5G_mode(obj,flag){	//please sync to initial() : //Change wireless
 	obj.value = '<% nvram_get("wl_nmode_x"); %>';
 }
 
+function wl_mode_change(mode){
+	if(is_unit_24g(wl_unit_value)){
+		if(mode == '0'){
+			document.form.wl_rateset.disabled = false;
+			document.getElementById("wl_rateset_checkbox").style.display = "";
+		}
+		else{
+			document.form.wl_rateset.disabled = true;
+			document.getElementById("wl_rateset_checkbox").style.display = "none";
+		}
+	}
+}
+
+function wl_disable11b(obj){
+	if(obj.checked){
+		document.form.wl_rateset.value = 'ofdm';
+	}
+	else{
+		document.form.wl_rateset.value = 'default';
+	}
+}
+
 function change_wl_nmode(o){
 	if(Bcmwifi_support) {
 		if(o.value == '2')
@@ -1322,6 +1446,7 @@ function handleMFP(){
 <input type="hidden" name="wps_band" value="<% nvram_get("wps_band_x"); %>" disabled>
 <input type="hidden" name="wps_multiband" value="<% nvram_get("wps_multiband"); %>" disabled>
 <input type="hidden" name="w_Setting" value="1">
+<input type="hidden" name="wl_rateset" value="<% nvram_get("wl_rateset"); %>" >
 <input type="hidden" name="w_apply" value="1">
 <input type="hidden" name="smart_connect_x" value="<% nvram_get("smart_connect_x"); %>">
 
@@ -1453,6 +1578,7 @@ function handleMFP(){
 						</select>
 						<span id="wl_optimizexbox_span" style="display:none"><input type="checkbox" name="wl_optimizexbox_ckb" id="wl_optimizexbox_ckb" value="<% nvram_get("wl_optimizexbox"); %>" onclick="document.form.wl_optimizexbox.value=(this.checked==true)?1:0;"> <#WLANConfig11b_x_Mode_xbox#></input></span>
 						<span id="wl_gmode_checkbox" style="display:none;"><input type="checkbox" name="wl_gmode_check" id="wl_gmode_check" value="" onClick="wl_gmode_protection_check();"> <#WLANConfig11b_x_Mode_protectbg#></input></span>
+						<span id="wl_rateset_checkbox" style="display:none;"><input type="checkbox" name="wl_rateset_check" id="wl_rateset_check" value="<% nvram_get("wl_rateset"); %>" onClick="wl_disable11b(this);">Disable 11b</span>
 						<span id="wl_nmode_x_hint" style="display:none;"><br><#WLANConfig11n_automode_limition_hint#><br></span>
 						<span id="wl_NOnly_note" style="display:none;"></span>
 						<!-- [N only] is not compatible with current guest network authentication method(TKIP or WEP),  Please go to <a id="gn_link" href="/Guest_network.asp?af=wl_NOnly_note" target="_blank" style="color:#FFCC00;font-family:Lucida Console;text-decoration:underline;">guest network</a> and change the authentication method. -->
@@ -1562,6 +1688,7 @@ function handleMFP(){
 							<option value="wpawpa2" <% nvram_match("wl_auth_mode_x", "wpawpa2","selected"); %>>WPA-Auto-Enterprise</option>
 							<option value="radius"  <% nvram_match("wl_auth_mode_x", "radius", "selected"); %>>Radius with 802.1x</option>
 				  		</select>
+				  		<div class="setup_help_icon" style="display:none;"></div>
 					</td>
 			  	</tr>
 			  	
@@ -1715,4 +1842,3 @@ function handleMFP(){
 </script>
 </body>
 </html>
-

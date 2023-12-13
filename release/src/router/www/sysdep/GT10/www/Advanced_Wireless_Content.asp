@@ -59,7 +59,7 @@ wl_channel_list_2g = <% channel_list_2g(); %>;
 wl_channel_list_5g = <% channel_list_5g(); %>;
 
 var meshBackhaulAutoSupport = false;
-if(based_modelid == 'XT8PRO' || based_modelid == 'BM68'){
+if(based_modelid == 'XT8PRO' || based_modelid == 'BT12' || based_modelid == 'BQ16' || based_modelid == 'BM68'){
 	meshBackhaulAutoSupport = true;
 }
 
@@ -159,6 +159,64 @@ function initial(){
 
 	wl_auth_mode_change(1);
 
+	if(wpa3_support){
+		var confirm_flag = 0;
+		var confirm_content = "";
+		if(!band6g_support || wl_unit != '2'){	// not for 6 GHz
+			confirm_flag=1;
+			confirm_content += "<b>WPA3-Personal</b><br>";
+			confirm_content += "<#WLANConfig11b_AuthenticationMethod_wpa3#><br><br>";
+			confirm_content += "<b>WPA2/WPA3-Personal</b><br>";
+			confirm_content += "<#WLANConfig11b_AuthenticationMethod_wpa32#><br><br>";
+			confirm_content += "<b>WPA2-Personal</b><br>";
+			confirm_content += "<#WLANConfig11b_AuthenticationMethod_wpa2#><br><br>";
+			confirm_content += "<b>WPA-Auto-Personal</b><br>";
+			confirm_content += "<#WLANConfig11b_AuthenticationMethod_wpa21#>";
+
+			$(".setup_help_icon").show();
+			$(".setup_help_icon").click(
+				function() {
+					if(confirm_flag==1){
+						if($(".confirm_block").length > 0){
+							$(".confirm_block").remove();
+						}
+						if(window.scrollTo)
+							window.scrollTo(0,0);
+						htmlbodyforIE = document.getElementsByTagName("html");
+						htmlbodyforIE[0].style.overflow = "hidden";
+
+						$("#Loading").css('visibility', 'visible');
+						$("#loadingBlock").css('visibility', 'hidden');
+
+						confirm_asus({
+							title: "<#WLANConfig11b_AuthenticationMethod_itemname#>",
+							contentA: confirm_content,
+							contentC: "",
+							left_button: "Hidden",
+							left_button_callback: function(){
+							},
+							left_button_args: {},
+							right_button: "<#CTL_ok#>",
+							right_button_callback: function(){
+								confirm_cancel();
+								htmlbodyforIE = document.getElementsByTagName("html");
+								htmlbodyforIE[0].style.overflow = "";
+								$("#Loading").css('visibility', 'hidden');
+								return false;
+							},
+							right_button_args: {},
+							iframe: "",
+							margin: "100px 0px 0px 25px",
+							note_display_flag: 0
+						});
+
+						$(".confirm_block").css( "zIndex", 10001 );
+					}
+				}
+			);
+		}
+	}
+
 	if(optimizeXbox_support){
 		document.getElementById("wl_optimizexbox_span").style.display = "";
 		document.form.wl_optimizexbox_ckb.checked = ('<% nvram_get("wl_optimizexbox"); %>' == 1) ? true : false;
@@ -229,7 +287,7 @@ function initial(){
 
 	if(wl_info[wl_unit].bw_160_support){
 		document.getElementById('enable_160_field').style.display = "";
-		if((based_modelid == 'GT-AX11000' || based_modelid == 'RT-AX92U' || based_modelid == 'RT-AX95Q' || based_modelid == 'XT8PRO' || based_modelid == 'BM68' || based_modelid == 'XT8_V2' || based_modelid == 'GT-AXE11000' || based_modelid == 'GT-AX11000_PRO' || based_modelid == 'ET12' || based_modelid == 'XT12' || based_modelid == 'GT-AXE16000') && wl2.channel_160m == "" && wl_unit == '2'){
+		if((based_modelid == 'GT-AX11000' || based_modelid == 'RT-AX92U' || based_modelid == 'RT-AX95Q' || based_modelid == 'XT8PRO' || based_modelid == 'BT12' || based_modelid == 'BQ16' || based_modelid == 'BM68' || based_modelid == 'XT8_V2' || based_modelid == 'GT-AXE11000' || based_modelid == 'GT-AX11000_PRO' || based_modelid == 'ET12' || based_modelid == 'XT12' || based_modelid == 'GT-AXE16000' || based_modelid == 'GT-BE98' || based_modelid == 'GT-BE98_PRO' || based_modelid == 'GT-BE96') && wl2.channel_160m == "" && wl_unit == '2'){
 				document.getElementById('enable_160_field').style.display = "none";
 		}
 	}				
@@ -239,13 +297,13 @@ function initial(){
 			document.getElementById('acs_band3_checkbox').style.display = "";
 		}		
 	}
-	else if(based_modelid == 'RT-AX88U' || based_modelid == 'GT-AX11000' || (based_modelid == 'RT-AX92U' && wl_unit == '2') || (based_modelid == 'GT-AC2900' && wl_unit == '1') || ((based_modelid == 'RT-AX58U' || based_modelid == 'RT-AX58U_V2' || based_modelid == 'RT-AX3000N' || based_modelid == 'TUF-AX3000' || based_modelid == 'TUF-AX3000_V2' || based_modelid == 'TUF-AX5400' || based_modelid == "TUF-AX5400_V2" || based_modelid == "RT-AX5400" || based_modelid == "DSL-AX82U" || based_modelid == "RT-AX82U" || based_modelid == "RT-AX82U_V2" || based_modelid == "GS-AX3000" || based_modelid == "GS-AX5400") && wl_unit == '1') || based_modelid == 'GT-AXE11000' || based_modelid == "GT-AX6000" || based_modelid == 'GT-AX11000_PRO' || based_modelid == 'ET12' || based_modelid == 'XT12' || based_modelid == 'GT-AXE16000' || (based_modelid == 'RT-AXE7800' && wl_unit != '0') || (based_modelid == 'GT10' && wl_unit != '2')){
+	else if(based_modelid == 'RT-AX88U' || based_modelid == 'GT-AX11000' || (based_modelid == 'RT-AX92U' && wl_unit == '2') || (based_modelid == 'GT-AC2900' && wl_unit == '1') || ((based_modelid == 'RT-AX58U' || based_modelid == 'RT-AX58U_V2' || based_modelid == 'RT-AX3000N' || based_modelid == 'TUF-AX3000' || based_modelid == 'TUF-AX3000_V2' || based_modelid == 'TUF-AX5400' || based_modelid == "TUF-AX5400_V2" || based_modelid == "RT-AX5400" || based_modelid == "DSL-AX82U" || based_modelid == "RT-AX82U" || based_modelid == "RT-AX82U_V2" || based_modelid == "GS-AX3000" || based_modelid == "GS-AX5400") && wl_unit == '1') || based_modelid == 'GT-AXE11000' || based_modelid == "GT-AX6000" || based_modelid == 'GT-AX11000_PRO' || based_modelid == 'ET12' || based_modelid == 'XT12' || based_modelid == 'GT-AXE16000' || based_modelid == 'GT-BE98' || based_modelid == 'GT-BE98_PRO' || (based_modelid == 'RT-AXE7800' && wl_unit != '0') || (based_modelid == 'GT10' && wl_unit != '2') || (based_modelid == 'RT-AX9000' && wl_unit != '2') || based_modelid == 'RT-BE96U' || based_modelid == 'GT-BE96'){
 		if(bw_160_support){
 			document.getElementById('enable_160_field').style.display = "";
 			$("#enable_160mhz").attr("checked", enable_bw_160);
 		}
 
-		if(document.form.wl_channel.value  == '0' && ((wl_unit == '0' && based_modelid != 'RT-AX92U') || wl_unit == '1')){
+		if(document.form.wl_channel.value  == '0' && ((wl_unit == '0' && based_modelid != 'RT-AX92U') || wl_unit == '0')){
 			document.getElementById('dfs_checkbox').style.display = "";
 			check_DFS_support(document.form.acs_dfs_checkbox);
 		}
@@ -263,6 +321,7 @@ function initial(){
 		}
 	}
 
+	
 	if(wl_unit == '1' && band5g2_support){
 		if(document.form.acs_band3.value == '1'){
 			document.form.acs_dfs_checkbox.checked = true;
@@ -387,20 +446,20 @@ function initial(){
 		if (band0_channel == '0') {
 			$('#band0_autoChannel').show();
 			if(odmpid === 'GT6'){
-				$('#band0_autoChannel').html('Current Control Channel: ' + cur_control_channel[2]);
+				$('#band0_autoChannel').html('<#wireless_control_channel#>: ' + cur_control_channel[2]);
 			}
 			else{
-				$('#band0_autoChannel').html('Current Control Channel: ' + cur_control_channel[0]);
+				$('#band0_autoChannel').html('<#wireless_control_channel#>: ' + cur_control_channel[0]);
 			}			
 		}
 
 		if (band1_channel == '0') {
 			$('#band1_autoChannel').show();
 			if(odmpid === 'GT6'){
-				$('#band1_autoChannel').html('Current Control Channel: ' + cur_control_channel[0]);
+				$('#band1_autoChannel').html('<#wireless_control_channel#>: ' + cur_control_channel[0]);
 			}
 			else{
-				$('#band1_autoChannel').html('Current Control Channel: ' + cur_control_channel[1]);
+				$('#band1_autoChannel').html('<#wireless_control_channel#>: ' + cur_control_channel[1]);
 			}				
 		}
 
@@ -409,10 +468,10 @@ function initial(){
 			if (band2_channel == '0') {
 				$('#band2_autoChannel').show();
 				if(odmpid === 'GT6'){
-					$('#band2_autoChannel').html('Current Control Channel: ' + cur_control_channel[1]);
+					$('#band2_autoChannel').html('<#wireless_control_channel#>: ' + cur_control_channel[1]);
 				}
 				else{
-					$('#band2_autoChannel').html('Current Control Channel: ' + cur_control_channel[2]);
+					$('#band2_autoChannel').html('<#wireless_control_channel#>: ' + cur_control_channel[2]);
 				}				
 			}
 		}		
@@ -433,10 +492,10 @@ function initial(){
 			if (band1_channel == '0') {
 				$('#band1_autoChannel').show();
 				if(odmpid === 'GT6'){
-					$('#band1_autoChannel').html('Current Control Channel: ' + cur_control_channel[0]);
+					$('#band1_autoChannel').html('<#wireless_control_channel#>: ' + cur_control_channel[0]);
 				}
 				else{
-					$('#band1_autoChannel').html('Current Control Channel: ' + cur_control_channel[1]);
+					$('#band1_autoChannel').html('<#wireless_control_channel#>: ' + cur_control_channel[1]);
 				}				
 			}
 
@@ -445,10 +504,10 @@ function initial(){
 				if (band2_channel == '0') {
 					$('#band2_autoChannel').show();
 					if(odmpid === 'GT6'){
-						$('#band2_autoChannel').html('Current Control Channel: ' + cur_control_channel[1]);
+						$('#band2_autoChannel').html('<#wireless_control_channel#>: ' + cur_control_channel[1]);
 					}
 					else{
-						$('#band2_autoChannel').html('Current Control Channel: ' + cur_control_channel[2]);
+						$('#band2_autoChannel').html('<#wireless_control_channel#>: ' + cur_control_channel[2]);
 					}					
 				}
 			}
@@ -677,7 +736,7 @@ function genBWTable(_unit){
 				based_modelid == "RT-AC66U" || 
 				based_modelid == "RT-AC3200" || 
 				based_modelid == "RT-AC3100" || based_modelid == "RT-AC88U" || based_modelid == "RT-AX88U" || based_modelid == "RT-AC86U" || based_modelid == "GT-AC2900" ||
-				based_modelid == "RT-AC5300" || based_modelid == "GT-AC5300" || based_modelid == "GT-AX11000" || based_modelid == "RT-AX92U" || based_modelid == "RT-AX95Q" || based_modelid == "XT8PRO" || based_modelid == "BM68" || based_modelid == "XT8_V2" || based_modelid == "RT-AXE95Q" || based_modelid == "ET8PRO" || based_modelid == "ET8_V2" || based_modelid == "RT-AX56_XD4" || based_modelid == "XD4PRO" || based_modelid == "CT-AX56_XD4" || based_modelid == "RT-AX58U" || based_modelid == 'RT-AX58U_V2' || based_modelid == 'RT-AX3000N' || based_modelid == "TUF-AX3000" || based_modelid == 'TUF-AX3000_V2' || based_modelid == 'TUF-AX5400' || based_modelid == "TUF-AX5400_V2" || based_modelid == "RT-AX5400" || based_modelid == "DSL-AX82U" || based_modelid == "RT-AX82U" || based_modelid == "RT-AX82U_V2" || based_modelid == "RT-AX56U" || based_modelid == "GT-AXE11000" || based_modelid == "GS-AX3000" || based_modelid == "GS-AX5400" || based_modelid == "GT-AX6000" || based_modelid == 'GT-AX11000_PRO' || based_modelid == 'ET12' || based_modelid == 'XT12' || based_modelid == 'GT-AXE16000' || based_modelid == "RT-AXE7800" || based_modelid == "GT10" || based_modelid == "RT-AC53U") && document.form.wl_nmode_x.value == 1){		//N only
+				based_modelid == "RT-AC5300" || based_modelid == "GT-AC5300" || based_modelid == "GT-AX11000" || based_modelid == "RT-AX92U" || based_modelid == "RT-AX95Q" || based_modelid == "XT8PRO" || based_modelid == "BT12" || based_modelid == "BQ16" || based_modelid == "BM68" || based_modelid == "XT8_V2" || based_modelid == "RT-AXE95Q" || based_modelid == "ET8PRO" || based_modelid == "ET8_V2" || based_modelid == "RT-AX56_XD4" || based_modelid == "XD4PRO" || based_modelid == "CT-AX56_XD4" || based_modelid == "RT-AX58U" || based_modelid == 'RT-AX58U_V2' || based_modelid == 'RT-AX3000N' || based_modelid == "TUF-AX3000" || based_modelid == 'TUF-AX3000_V2' || based_modelid == 'TUF-AX5400' || based_modelid == "TUF-AX5400_V2" || based_modelid == "RT-AX5400" || based_modelid == "DSL-AX82U" || based_modelid == "RT-AX82U" || based_modelid == "RT-AX82U_V2" || based_modelid == "RT-AX56U" || based_modelid == "GT-AXE11000" || based_modelid == "GS-AX3000" || based_modelid == "GS-AX5400" || based_modelid == "GT-AX6000" || based_modelid == 'GT-AX11000_PRO' || based_modelid == 'ET12' || based_modelid == 'XT12' || based_modelid == 'GT-AXE16000' || based_modelid == 'GT-BE98' || based_modelid == 'GT-BE98_PRO' || based_modelid == "RT-AXE7800" || based_modelid == "GT10" || based_modelid == "RT-AX9000" || based_modelid == "RT-AC53U" || based_modelid == "RT-BE96U" || based_modelid == "XC5" || based_modelid == 'GT-BE96') && document.form.wl_nmode_x.value == 1){		//N only
 				bws = [0, 1, 2];
 				bwsDesc = ["20/40 MHz", "20 MHz", "40 MHz"];
 				
@@ -689,14 +748,26 @@ function genBWTable(_unit){
 				}
 				else if(band5g_11ax_support || bw_160_support){
 					if(enable_bw_160){
-						if( (wl_unit == 1 && wl1.channel_160m == '') ||(wl_unit == 2 && wl2.channel_160m == '')){
-							bws = [0, 1, 2, 3];
-							bwsDesc = ["20/40/80 MHz", "20 MHz", "40 MHz", "80 MHz"];
+						if(based_modelid == 'GT10' || based_modelid == 'RT-AX9000'){
+							if( (wl_unit == 0 && wl1.channel_160m == '') ||(wl_unit == 1 && wl2.channel_160m == '')){
+								bws = [0, 1, 2, 3];
+								bwsDesc = ["20/40/80 MHz", "20 MHz", "40 MHz", "80 MHz"];
+							}
+							else{
+								bws = [0, 1, 2, 3, 5];
+								bwsDesc = ["20/40/80/160 MHz", "20 MHz", "40 MHz", "80 MHz", "160 MHz"];
+							}
 						}
 						else{
-							bws = [0, 1, 2, 3, 5];
-							bwsDesc = ["20/40/80/160 MHz", "20 MHz", "40 MHz", "80 MHz", "160 MHz"];
-						}	
+							if( (wl_unit == 1 && wl1.channel_160m == '') ||(wl_unit == 2 && wl2.channel_160m == '')){
+								bws = [0, 1, 2, 3];
+								bwsDesc = ["20/40/80 MHz", "20 MHz", "40 MHz", "80 MHz"];
+							}
+							else{
+								bws = [0, 1, 2, 3, 5];
+								bwsDesc = ["20/40/80/160 MHz", "20 MHz", "40 MHz", "80 MHz", "160 MHz"];
+							}
+						}		
 					}
 					else{
 						bws = [0, 1, 2, 3];
@@ -785,7 +856,7 @@ function applyRule(){
 
 			var radio_value = (document.form.wl_closed[0].checked) ? 1 : 0;
 			if(document.form.wps_enable.value == 1) {
-				if(radio_value) {
+				if(radio_value && dwb_info.band != wl_unit) {
 					//if(!AiMesh_confirm_msg("Wireless_Hide_WPS", radio_value))
 						//return false;
 					confirm_flag=7;
@@ -793,7 +864,7 @@ function applyRule(){
 				}
 			}
 			else {
-				if(radio_value) {
+				if(radio_value && !(document.form.wl_unit.value == dwb_info.band && document.form.fh_ap_enabled.value == 0)) {
 					//if(!AiMesh_confirm_msg("Wireless_Hide", radio_value))
 						//return false;
 					confirm_flag=6;
@@ -939,147 +1010,299 @@ function applyRule(){
 		}
 
 		if(document.form.smart_connect_x.value != '0'){
-			if(document.form.smart_connect_t.value == '1'){
-				variable['smart_connect_x'] = document.form.smart_connect_t.value;
-				variable['wl2_ssid'] = document.form.wl_ssid.value;
-				variable['wl2_bw'] = document.form.band0_bw.value;
-				if(document.form.band0_bw.value == '1'){
-					variable['wl2_chanspec'] = document.form.band0_channel.value;
+			if(document.form.smart_connect_t.value == '1'){	
+				variable['smart_connect_x'] = document.form.smart_connect_t.value;	
+				if(isSupport("amas_fronthaul_network") && $(".fronthaul_ap").length > 0){
+					if(wl_unit == 0){						
+						variable['wl2_ssid'] = document.form.wl_ssid.value;
+						variable['wl2_bw'] = document.form.band0_bw.value;
+						if(document.form.band0_bw.value == '1'){
+							variable['wl2_chanspec'] = document.form.band0_channel.value;
+						}
+						else{
+							variable['wl2_chanspec'] = document.form.band0_channel.value + document.form.band0_extChannel.value;
+						}
+
+						variable['wl2_auth_mode_x'] = document.form.wl_auth_mode_x.value;
+						variable['wl2_closed'] = document.form.wl_closed.value;
+						variable['wl2_nmode_x'] = document.form.wl_nmode_x.value;
+						variable['wl2_11ax'] = document.form.wl_11ax.value;
+						variable['wl2_mbo_enable'] = document.form.wl_mbo_enable.value;
+						variable['wl2_twt'] = document.form.wl_twt.value;
+						if($('#band0_acs_ch13').is(':visible')){
+							if($("#band0_acs_ch13_checkbox").is(':checked')){
+								variable['acs_ch13'] = '1'
+							}
+							else{
+								variable['acs_ch13'] = '0'
+							}
+						}			
+											
+						variable['wl0_ssid'] = document.form.wl_ssid.value;
+						variable['wl0_bw'] = document.form.band1_bw.value;
+						variable['wl0_chanspec'] = document.form.band1_channel.value;
+						variable['wl0_auth_mode_x'] = document.form.wl_auth_mode_x.value;
+						variable['wl0_closed'] = document.form.wl_closed.value;
+						variable['wl0_nmode_x'] = document.form.wl_nmode_x.value;
+						variable['wl0_11ax'] = document.form.wl_11ax.value;
+						variable['wl0_mbo_enable'] = document.form.wl_mbo_enable.value;
+						variable['wl0_twt'] = document.form.wl_twt.value
+						if($('#band1_acsDFS').is(':visible')){
+							if(band6g_support){
+								if($('#band1_acsDFS_checkbox').is(':checked')){							
+									document.form.acs_dfs.value = 1;
+									document.form.acs_band3.value = 1;
+								}
+								else{
+									document.form.acs_dfs.value = 0;
+									document.form.acs_band3.value = 0;
+								}
+							}
+							else{
+								if($('#band1_acsDFS_checkbox').is(':checked')){
+									variable['acs_dfs'] = '1';
+								}
+								else{
+									variable['acs_dfs'] = '0';
+								}
+							}
+						}
+
+						if ($('#band1_160').is(':checked')) {
+							variable['wl0_bw_160'] = '1';
+						}
+						else {
+							variable['wl0_bw_160'] = '0';
+						}
+
+						if(document.form.wl_auth_mode_x.value == 'psk2'
+						|| document.form.wl_auth_mode_x.value == 'sae'
+						|| document.form.wl_auth_mode_x.value == 'pskpsk2'
+						|| document.form.wl_auth_mode_x.value == 'psk2sae'){
+							variable['wl2_crypto'] = document.form.wl_crypto.value;
+							variable['wl2_wpa_psk'] = document.form.wl_wpa_psk.value;
+							variable['wl2_mfp'] = document.form.wl_mfp.value;
+							variable['wl2_wpa_gtk_rekey'] = document.form.wl_wpa_gtk_rekey.value;
+							variable['wl0_crypto'] = document.form.wl_crypto.value;
+							variable['wl0_wpa_psk'] = document.form.wl_wpa_psk.value;
+							variable['wl0_mfp'] = document.form.wl_mfp.value;
+							variable['wl0_wpa_gtk_rekey'] = document.form.wl_wpa_gtk_rekey.value;
+						}
+						else if(document.form.wl_auth_mode_x.value == 'wpa2'
+							|| document.form.wl_auth_mode_x.value == 'wpawpa2'){
+							variable['wl2_crypto'] = document.form.wl_crypto.value;
+							variable['wl2_radius_ipaddr'] = document.form.wl_radius_ipaddr.value;
+							variable['wl2_radius_port'] = document.form.wl_radius_port.value;
+							variable['wl2_radius_key'] = document.form.wl_radius_key.value;
+							variable['wl2_mfp'] = document.form.wl_mfp.value;
+							variable['wl2_wpa_gtk_rekey'] = document.form.wl_wpa_gtk_rekey.value;
+							variable['wl0_crypto'] = document.form.wl_crypto.value;
+							variable['wl0_radius_ipaddr'] = document.form.wl_radius_ipaddr.value;
+							variable['wl0_radius_port'] = document.form.wl_radius_port.value;
+							variable['wl0_radius_key'] = document.form.wl_radius_key.value;
+							variable['wl0_mfp'] = document.form.wl_mfp.value;
+							variable['wl0_wpa_gtk_rekey'] = document.form.wl_wpa_gtk_rekey.value;
+						}
+					}
+					else if(wl_unit === 1){						
+						variable['wl1_ssid'] = document.form.wl_ssid.value;
+						variable['wl1_bw'] = document.form.band2_bw.value;
+						variable['wl1_chanspec'] = document.form.band2_channel.value;
+						variable['wl1_auth_mode_x'] = document.form.wl_auth_mode_x.value;
+						variable['wl1_closed'] = document.form.wl_closed.value;
+						variable['wl1_nmode_x'] = document.form.wl_nmode_x.value;
+						variable['wl1_11ax'] = document.form.wl_11ax.value;
+						variable['wl1_mbo_enable'] = document.form.wl_mbo_enable.value;
+						variable['wl1_twt'] = document.form.wl_twt.value
+						variable['fh_ap_enabled'] = document.form.fh_ap_enabled.value
+
+						if ($('#dfs_checkbox').is(':visible')) {
+							if (document.form.acs_dfs_checkbox.checked){
+								variable['acs_band3'] = '1';
+							}
+							else {
+								variable['acs_band3'] = '0';
+							}
+						}
+
+						if ($('#acs_unii4_field').is(':visible')) {
+							if ($('#acs_unii4_checkbox').is(':checked')) {
+								variable['acs_unii4'] = '1';
+								document.form.acs_unii4.value = "1";
+							}
+							else {
+								variable['acs_unii4'] = '0';
+								document.form.acs_unii4.value = "0";
+							}
+						}
+
+						if ($('#enable_160mhz').is(':checked')){
+							variable['wl1_bw_160'] = '1';
+						}
+						else {
+							variable['wl1_bw_160'] = '0';
+						}
+
+						if(document.form.wl_auth_mode_x.value == 'psk2'
+						|| document.form.wl_auth_mode_x.value == 'sae'
+						|| document.form.wl_auth_mode_x.value == 'pskpsk2'
+						|| document.form.wl_auth_mode_x.value == 'psk2sae'){
+							variable['wl1_crypto'] = document.form.wl_crypto.value;
+							variable['wl1_wpa_psk'] = document.form.wl_wpa_psk.value;
+							variable['wl1_mfp'] = document.form.wl_mfp.value;
+							variable['wl1_wpa_gtk_rekey'] = document.form.wl_wpa_gtk_rekey.value;
+						}
+						else if(document.form.wl_auth_mode_x.value == 'wpa2'
+							|| document.form.wl_auth_mode_x.value == 'wpawpa2'){
+							variable['wl1_crypto'] = document.form.wl_crypto.value;
+							variable['wl1_radius_ipaddr'] = document.form.wl_radius_ipaddr.value;
+							variable['wl1_radius_port'] = document.form.wl_radius_port.value;
+							variable['wl1_radius_key'] = document.form.wl_radius_key.value;
+							variable['wl1_mfp'] = document.form.wl_mfp.value;
+							variable['wl1_wpa_gtk_rekey'] = document.form.wl_wpa_gtk_rekey.value;
+						}
+					}
 				}
 				else{
-					variable['wl2_chanspec'] = document.form.band0_channel.value + document.form.band0_extChannel.value;
-				}
-
-				variable['wl2_auth_mode_x'] = document.form.wl_auth_mode_x.value;
-				variable['wl2_closed'] = document.form.wl_closed.value;
-				variable['wl2_nmode_x'] = document.form.wl_nmode_x.value;
-				variable['wl2_11ax'] = document.form.wl_11ax.value;
-				variable['wl2_mbo_enable'] = document.form.wl_mbo_enable.value;
-				variable['wl2_twt'] = document.form.wl_twt.value;
-								
-				if($('#band0_acs_ch13').is(':visible')){
-					if($("#band0_acs_ch13_checkbox").is(':checked')){
-						variable['acs_ch13'] = '1'
+					variable['wl2_ssid'] = document.form.wl_ssid.value;
+					variable['wl2_bw'] = document.form.band0_bw.value;
+					if(document.form.band0_bw.value == '1'){
+						variable['wl2_chanspec'] = document.form.band0_channel.value;
 					}
 					else{
-						variable['acs_ch13'] = '0'
+						variable['wl2_chanspec'] = document.form.band0_channel.value + document.form.band0_extChannel.value;
 					}
-				}
 
-				variable['wl0_ssid'] = document.form.wl_ssid.value;
-				variable['wl0_bw'] = document.form.band1_bw.value;
-				variable['wl0_chanspec'] = document.form.band1_channel.value;
-				variable['wl0_auth_mode_x'] = document.form.wl_auth_mode_x.value;
-				variable['wl0_closed'] = document.form.wl_closed.value;
-				variable['wl0_nmode_x'] = document.form.wl_nmode_x.value;
-				variable['wl0_11ax'] = document.form.wl_11ax.value;
-				variable['wl0_mbo_enable'] = document.form.wl_mbo_enable.value;
-				variable['wl0_twt'] = document.form.wl_twt.value
-
-				if($('#band1_acsDFS').is(':visible')){
-					if(band6g_support){
-						if($('#band1_acsDFS_checkbox').is(':checked')){							
-							document.form.acs_dfs.value = 1;
-							document.form.acs_band3.value = 1;
+					variable['wl2_auth_mode_x'] = document.form.wl_auth_mode_x.value;
+					variable['wl2_closed'] = document.form.wl_closed.value;
+					variable['wl2_nmode_x'] = document.form.wl_nmode_x.value;
+					variable['wl2_11ax'] = document.form.wl_11ax.value;
+					variable['wl2_mbo_enable'] = document.form.wl_mbo_enable.value;
+					variable['wl2_twt'] = document.form.wl_twt.value;
+					if($('#band0_acs_ch13').is(':visible')){
+						if($("#band0_acs_ch13_checkbox").is(':checked')){
+							variable['acs_ch13'] = '1'
 						}
 						else{
-							document.form.acs_dfs.value = 0;
-							document.form.acs_band3.value = 0;
+							variable['acs_ch13'] = '0'
 						}
 					}
-					else{
-						if($('#band1_acsDFS_checkbox').is(':checked')){
-							variable['acs_dfs'] = '1';
+					
+					variable['wl0_ssid'] = document.form.wl_ssid.value;
+					variable['wl0_bw'] = document.form.band1_bw.value;
+					variable['wl0_chanspec'] = document.form.band1_channel.value;
+					variable['wl0_auth_mode_x'] = document.form.wl_auth_mode_x.value;
+					variable['wl0_closed'] = document.form.wl_closed.value;
+					variable['wl0_nmode_x'] = document.form.wl_nmode_x.value;
+					variable['wl0_11ax'] = document.form.wl_11ax.value;
+					variable['wl0_mbo_enable'] = document.form.wl_mbo_enable.value;
+					variable['wl0_twt'] = document.form.wl_twt.value
+
+					if($('#band1_acsDFS').is(':visible')){
+						if(band6g_support){
+							if($('#band1_acsDFS_checkbox').is(':checked')){							
+								document.form.acs_dfs.value = 1;
+								document.form.acs_band3.value = 1;
+							}
+							else{
+								document.form.acs_dfs.value = 0;
+								document.form.acs_band3.value = 0;
+							}
 						}
 						else{
-							variable['acs_dfs'] = '0';
+							if($('#band1_acsDFS_checkbox').is(':checked')){
+								variable['acs_dfs'] = '1';
+							}
+							else{
+								variable['acs_dfs'] = '0';
+							}
 						}
 					}
-				}
 
 
-				if ($('#band1_160').is(':checked')) {
-					variable['wl0_bw_160'] = '1';
-				}
-				else {
-					variable['wl0_bw_160'] = '0';
-				}
-
-
-				variable['wl1_ssid'] = document.form.wl_ssid.value;
-				variable['wl1_bw'] = document.form.band2_bw.value;
-				variable['wl1_chanspec'] = document.form.band2_channel.value;
-				variable['wl1_auth_mode_x'] = document.form.wl_auth_mode_x.value;
-				variable['wl1_closed'] = document.form.wl_closed.value;
-				variable['wl1_nmode_x'] = document.form.wl_nmode_x.value;
-				variable['wl1_11ax'] = document.form.wl_11ax.value;
-				variable['wl1_mbo_enable'] = document.form.wl_mbo_enable.value;
-				variable['wl1_twt'] = document.form.wl_twt.value
-
-				if ($('#band2_acsDFS').is(':visible')) {
-					if ($('#band2_acsDFS_checkbox').is(':checked')){
-						variable['acs_band3'] = '1';
+					if ($('#band1_160').is(':checked')) {
+						variable['wl0_bw_160'] = '1';
 					}
 					else {
-						variable['acs_band3'] = '0';
+						variable['wl0_bw_160'] = '0';
 					}
-				}
 
-				if ($('#band2_acs_unii4_field').is(':visible')) {
-					if ($('#band2_acs_unii4_checkbox').is(':checked')) {
-						variable['acs_unii4'] = '1';
+					variable['wl1_ssid'] = document.form.wl_ssid.value;
+					variable['wl1_bw'] = document.form.band2_bw.value;
+					variable['wl1_chanspec'] = document.form.band2_channel.value;
+					variable['wl1_auth_mode_x'] = document.form.wl_auth_mode_x.value;
+					variable['wl1_closed'] = document.form.wl_closed.value;
+					variable['wl1_nmode_x'] = document.form.wl_nmode_x.value;
+					variable['wl1_11ax'] = document.form.wl_11ax.value;
+					variable['wl1_mbo_enable'] = document.form.wl_mbo_enable.value;
+					variable['wl1_twt'] = document.form.wl_twt.value
+
+					if ($('#dfs_checkbox').is(':visible')) {
+						if (document.form.acs_dfs_checkbox.checked){
+							variable['acs_band3'] = '1';
+						}
+						else {
+							variable['acs_band3'] = '0';
+						}
+					}
+
+					if ($('#acs_unii4_field').is(':visible')) {
+						if ($('#acs_unii4_checkbox').is(':checked')) {
+							variable['acs_unii4'] = '1';
+							document.form.acs_unii4.value = "1";
+						}
+						else {
+							variable['acs_unii4'] = '0';
+							document.form.acs_unii4.value = "0";
+						}
+					}
+
+					if ($('#enable_160mhz').is(':checked')){
+						variable['wl1_bw_160'] = '1';
 					}
 					else {
-						variable['acs_unii4'] = '0';
+						variable['wl1_bw_160'] = '0';
 					}
-				}
 
-				if ($('#band2_160').is(':checked')){
-					variable['wl1_bw_160'] = '1';
-				}
-				else {
-					variable['wl1_bw_160'] = '0';
-				}
-
-
-				if(document.form.wl_auth_mode_x.value == 'psk2'
-				|| document.form.wl_auth_mode_x.value == 'sae'
-				|| document.form.wl_auth_mode_x.value == 'pskpsk2'
-				|| document.form.wl_auth_mode_x.value == 'psk2sae'){
-					variable['wl2_crypto'] = document.form.wl_crypto.value;
-					variable['wl2_wpa_psk'] = document.form.wl_wpa_psk.value;
-					variable['wl2_mfp'] = document.form.wl_mfp.value;
-					variable['wl2_wpa_gtk_rekey'] = document.form.wl_wpa_gtk_rekey.value;
-					variable['wl0_crypto'] = document.form.wl_crypto.value;
-					variable['wl0_wpa_psk'] = document.form.wl_wpa_psk.value;
-					variable['wl0_mfp'] = document.form.wl_mfp.value;
-					variable['wl0_wpa_gtk_rekey'] = document.form.wl_wpa_gtk_rekey.value;
-					variable['wl1_crypto'] = document.form.wl_crypto.value;
-					variable['wl1_wpa_psk'] = document.form.wl_wpa_psk.value;
-					variable['wl1_mfp'] = document.form.wl_mfp.value;
-					variable['wl1_wpa_gtk_rekey'] = document.form.wl_wpa_gtk_rekey.value;
-				}
-				else if(document.form.wl_auth_mode_x.value == 'wpa2'
-			    	 || document.form.wl_auth_mode_x.value == 'wpawpa2'){
-					variable['wl2_crypto'] = document.form.wl_crypto.value;
-					variable['wl2_radius_ipaddr'] = document.form.wl_radius_ipaddr.value;
-					variable['wl2_radius_port'] = document.form.wl_radius_port.value;
-					variable['wl2_radius_key'] = document.form.wl_radius_key.value;
-					variable['wl2_mfp'] = document.form.wl_mfp.value;
-					variable['wl2_wpa_gtk_rekey'] = document.form.wl_wpa_gtk_rekey.value;
-					variable['wl0_crypto'] = document.form.wl_crypto.value;
-					variable['wl0_radius_ipaddr'] = document.form.wl_radius_ipaddr.value;
-					variable['wl0_radius_port'] = document.form.wl_radius_port.value;
-					variable['wl0_radius_key'] = document.form.wl_radius_key.value;
-					variable['wl0_mfp'] = document.form.wl_mfp.value;
-					variable['wl0_wpa_gtk_rekey'] = document.form.wl_wpa_gtk_rekey.value;
-					variable['wl1_crypto'] = document.form.wl_crypto.value;
-					variable['wl1_radius_ipaddr'] = document.form.wl_radius_ipaddr.value;
-					variable['wl1_radius_port'] = document.form.wl_radius_port.value;
-					variable['wl1_radius_key'] = document.form.wl_radius_key.value;
-					variable['wl1_mfp'] = document.form.wl_mfp.value;
-					variable['wl1_wpa_gtk_rekey'] = document.form.wl_wpa_gtk_rekey.value;
-				}
+					if(document.form.wl_auth_mode_x.value == 'psk2'
+					|| document.form.wl_auth_mode_x.value == 'sae'
+					|| document.form.wl_auth_mode_x.value == 'pskpsk2'
+					|| document.form.wl_auth_mode_x.value == 'psk2sae'){
+						variable['wl2_crypto'] = document.form.wl_crypto.value;
+						variable['wl2_wpa_psk'] = document.form.wl_wpa_psk.value;
+						variable['wl2_mfp'] = document.form.wl_mfp.value;
+						variable['wl2_wpa_gtk_rekey'] = document.form.wl_wpa_gtk_rekey.value;
+						variable['wl0_crypto'] = document.form.wl_crypto.value;
+						variable['wl0_wpa_psk'] = document.form.wl_wpa_psk.value;
+						variable['wl0_mfp'] = document.form.wl_mfp.value;
+						variable['wl0_wpa_gtk_rekey'] = document.form.wl_wpa_gtk_rekey.value;
+						variable['wl1_crypto'] = document.form.wl_crypto.value;
+						variable['wl1_wpa_psk'] = document.form.wl_wpa_psk.value;
+						variable['wl1_mfp'] = document.form.wl_mfp.value;
+						variable['wl1_wpa_gtk_rekey'] = document.form.wl_wpa_gtk_rekey.value;
+					}
+					else if(document.form.wl_auth_mode_x.value == 'wpa2'
+						|| document.form.wl_auth_mode_x.value == 'wpawpa2'){
+						variable['wl2_crypto'] = document.form.wl_crypto.value;
+						variable['wl2_radius_ipaddr'] = document.form.wl_radius_ipaddr.value;
+						variable['wl2_radius_port'] = document.form.wl_radius_port.value;
+						variable['wl2_radius_key'] = document.form.wl_radius_key.value;
+						variable['wl2_mfp'] = document.form.wl_mfp.value;
+						variable['wl2_wpa_gtk_rekey'] = document.form.wl_wpa_gtk_rekey.value;
+						variable['wl0_crypto'] = document.form.wl_crypto.value;
+						variable['wl0_radius_ipaddr'] = document.form.wl_radius_ipaddr.value;
+						variable['wl0_radius_port'] = document.form.wl_radius_port.value;
+						variable['wl0_radius_key'] = document.form.wl_radius_key.value;
+						variable['wl0_mfp'] = document.form.wl_mfp.value;
+						variable['wl0_wpa_gtk_rekey'] = document.form.wl_wpa_gtk_rekey.value;
+						variable['wl1_crypto'] = document.form.wl_crypto.value;
+						variable['wl1_radius_ipaddr'] = document.form.wl_radius_ipaddr.value;
+						variable['wl1_radius_port'] = document.form.wl_radius_port.value;
+						variable['wl1_radius_key'] = document.form.wl_radius_key.value;
+						variable['wl1_mfp'] = document.form.wl_mfp.value;
+						variable['wl1_wpa_gtk_rekey'] = document.form.wl_wpa_gtk_rekey.value;
+					}
+				}				
 			}
 			else if(document.form.smart_connect_t.value == '2'){
 				variable['smart_connect_x'] = document.form.smart_connect_t.value;
@@ -1150,8 +1373,8 @@ function applyRule(){
 				variable['wl1_mbo_enable'] = document.form.wl_mbo_enable.value;
 				variable['wl1_twt'] = document.form.wl_twt.value
 
-				if ($('#band2_acsDFS').is(':visible')) {
-					if ($('#band2_acsDFS_checkbox').is(':checked')){
+				if ($('#dfs_checkbox').is(':visible')) {
+					if (document.form.acs_dfs_checkbox.checked){
 						variable['acs_band3'] = '1';
 					}
 					else {
@@ -1159,16 +1382,18 @@ function applyRule(){
 					}
 				}
 
-				if ($('#band2_acs_unii4_field').is(':visible')) {
-					if ($('#band2_acs_unii4_checkbox').is(':checked')) {
+				if ($('#acs_unii4_field').is(':visible')) {
+					if ($('#acs_unii4_checkbox').is(':checked')) {
 						variable['acs_unii4'] = '1';
+						document.form.acs_unii4.value = "1";
 					}
 					else {
 						variable['acs_unii4'] = '0';
+						document.form.acs_unii4.value = "0";
 					}
 				}
 
-				if ($('#band2_160').is(':checked')){
+				if ($('#enable_160mhz').is(':checked')){
 					variable['wl1_bw_160'] = '1';
 				}
 				else {
@@ -1279,9 +1504,14 @@ function applyRule(){
 				stopFlag = '0';
 				detect_qtn_ready();
 			}
-			else{				
+			else{			
 				if(document.form.smart_connect_x.value === '1' 
 				|| document.form.smart_connect_x.value === '2' && (wl_unit === 0 || wl_unit === 1)){
+
+					if(!$('.fronthaul_ap').is(':visible') && wl_unit == dwb_info.band){
+						variable.fh_ap_enabled = "0";
+					}
+
 					postObj = Object.assign(postObj, variable);
 					httpApi.nvramSet(postObj, function(){
 						showLoading(rc_time);
@@ -1559,10 +1789,18 @@ function regen_5G_mode(obj,flag){	//please sync to initial() : //Change wireless
 }
 
 function check_DFS_support(obj){
-	if(obj.checked)
-		document.form.acs_dfs.value = 1;
-	else
-		document.form.acs_dfs.value = 0;
+	if(document.form.smart_connect_x.value == '1' && wl_unit == '1'){
+		if(obj.checked)
+			document.form.acs_band3.value = 1;
+		else
+			document.form.acs_band3.value = 0;
+	}
+	else{
+		if(obj.checked)
+			document.form.acs_dfs.value = 1;
+		else
+			document.form.acs_dfs.value = 0;
+	}	
 }
 
 function check_acs_band1_support(obj){
@@ -1667,7 +1905,7 @@ function enableSmartCon(val, isInitial){
 		if(wl_unit != 2){
 			if(wl_info[wl_unit].bw_160_support){
 				$("#enable_160_field").show();
-				if((based_modelid == 'GT-AX11000' || based_modelid == 'RT-AX92U' || based_modelid == 'RT-AX95Q' || based_modelid == 'XT8PRO' || based_modelid == 'BM68' || based_modelid == 'XT8_V2' || based_modelid == 'RT-AXE95Q' || based_modelid == 'ET8PRO' || based_modelid == 'ET8_V2' || based_modelid == 'GT-AXE11000' || based_modelid == 'GT-AX11000_PRO' || based_modelid == 'ET12' || based_modelid == 'XT12' || based_modelid == 'GT-AXE16000') && wl2.channel_160m == '' && wl_unit == '2'){
+				if((based_modelid == 'GT-AX11000' || based_modelid == 'RT-AX92U' || based_modelid == 'RT-AX95Q' || based_modelid == 'XT8PRO' || based_modelid == 'BT12' || based_modelid == 'BQ16' || based_modelid == 'BM68' || based_modelid == 'XT8_V2' || based_modelid == 'RT-AXE95Q' || based_modelid == 'ET8PRO' || based_modelid == 'ET8_V2' || based_modelid == 'GT-AXE11000' || based_modelid == 'GT-AX11000_PRO' || based_modelid == 'ET12' || based_modelid == 'XT12' || based_modelid == 'GT-AXE16000' || based_modelid == 'GT-BE98' || based_modelid == 'GT-BE98_PRO' || based_modelid == 'GT-BE96') && wl2.channel_160m == '' && wl_unit == '2'){
 					$("#enable_160_field").hide();
 				}
 			}
@@ -1714,7 +1952,7 @@ function enableSmartCon(val, isInitial){
 		document.getElementById("smart_connect_field").style.display = "";
 		document.getElementById("smartcon_rule_link").style.display = "table-cell";
 		$("#enable_160_field").hide();
-		if ((wl_unit == '0' && val == '2') || based_modelid == "RT-AC3200" || ((based_modelid == "RT-AX92U" || based_modelid == "RT-AX95Q" || based_modelid == "XT8PRO" || based_modelid == "BM68" || based_modelid == "XT8_V2" || based_modelid == "RT-AXE95Q" || based_modelid == "ET8PRO" || based_modelid == "ET8_V2") && country != "EU" && wl_unit == "1")) {
+		if ((wl_unit == '0' && val == '2') || based_modelid == "RT-AC3200" || ((based_modelid == "RT-AX92U" || based_modelid == "RT-AX95Q" || based_modelid == "XT8PRO" || based_modelid == "BT12" || based_modelid == "BQ16" || based_modelid == "BM68" || based_modelid == "XT8_V2" || based_modelid == "RT-AXE95Q" || based_modelid == "ET8PRO" || based_modelid == "ET8_V2") && country != "EU" && wl_unit == "1")) {
 			$("#dfs_checkbox").hide();
 		}
 		else {
@@ -1731,7 +1969,7 @@ function enableSmartCon(val, isInitial){
 		
 		if(dwb_info.mode && wl_unit == dwb_info.band && wl_unit != 2 && bw_160_support) {
 			$("#enable_160_field").show();
-			if((based_modelid == 'GT-AX11000' || based_modelid == 'RT-AX92U' || based_modelid == 'RT-AX95Q' || based_modelid == 'XT8PRO' || based_modelid == 'BM68' || based_modelid == 'XT8_V2' || based_modelid == 'RT-AXE95Q' || based_modelid == 'ET8PRO' || based_modelid == 'ET8_V2' || based_modelid == 'GT-AXE11000' || based_modelid == 'GT-AX11000_PRO' || based_modelid == 'ET12' || based_modelid == 'XT12' || based_modelid == 'GT-AXE16000') && wl2.channel_160m == '' && wl_unit == '2'){
+			if((based_modelid == 'GT-AX11000' || based_modelid == 'RT-AX92U' || based_modelid == 'RT-AX95Q' || based_modelid == 'XT8PRO' || based_modelid == 'BT12' || based_modelid == 'BQ16' || based_modelid == 'BM68' || based_modelid == 'XT8_V2' || based_modelid == 'RT-AXE95Q' || based_modelid == 'ET8PRO' || based_modelid == 'ET8_V2' || based_modelid == 'GT-AXE11000' || based_modelid == 'GT-AX11000_PRO' || based_modelid == 'ET12' || based_modelid == 'XT12' || based_modelid == 'GT-AXE16000' || based_modelid == 'GT-BE98' || based_modelid == 'GT-BE98_PRO' || based_modelid == 'GT-BE96') && wl2.channel_160m == '' && wl_unit == '2'){
 				$("#enable_160_field").hide();
 			}
 		}
@@ -1766,12 +2004,12 @@ function enableSmartCon(val, isInitial){
 
 			if (band0_channel == '0') {
 				$('#band0_autoChannel').show();
-				$('#band0_autoChannel').html('Current Control Channel: ' + cur_control_channel[2]);
+				$('#band0_autoChannel').html('<#wireless_control_channel#>: ' + cur_control_channel[2]);
 			}
 
 			if (band1_channel == '0') {
 				$('#band1_autoChannel').show();
-				$('#band1_autoChannel').html('Current Control Channel: ' + cur_control_channel[0]);
+				$('#band1_autoChannel').html('<#wireless_control_channel#>: ' + cur_control_channel[0]);
 			}
 
 			if (wl_info.band5g_2_support || wl_info.band6g_support) {
@@ -1782,7 +2020,7 @@ function enableSmartCon(val, isInitial){
 
 				if (band2_channel == '0') {
 					$('#band2_autoChannel').show();
-					$('#band2_autoChannel').html('Current Control Channel: ' + cur_control_channel[1]);
+					$('#band2_autoChannel').html('<#wireless_control_channel#>: ' + cur_control_channel[1]);
 				}
 			}
 
@@ -1815,7 +2053,7 @@ function enableSmartCon(val, isInitial){
 					$('#band2_bandwidth_field').hide();
 					$('#band2_channel_field').hide();
 					$('#band2_extChannel_field').hide();
-					if(wl_unit == '2'){
+					if(wl_unit == '1'){
 						inputCtrl(document.form.wl_bw, 1);
 						inputCtrl(document.form.wl_channel, 1);
 						inputCtrl(document.form.wl_nctrlsb, 1);
@@ -1843,6 +2081,7 @@ function enableSmartCon(val, isInitial){
 			}
 		}
 		else if(val == '2'){
+			
 			if(wl_unit == '2'){
 				inputCtrl(document.form.wl_bw, 1);
 				inputCtrl(document.form.wl_channel, 1);
@@ -1871,7 +2110,7 @@ function enableSmartCon(val, isInitial){
 
 				if (band1_channel == '0') {
 					$('#band1_autoChannel').show();
-					$('#band1_autoChannel').html('Current Control Channel: ' + cur_control_channel[0]);
+					$('#band1_autoChannel').html('<#wireless_control_channel#>: ' + cur_control_channel[0]);
 				}
 
 				if (wl_info.band5g_2_support || wl_info.band6g_support) {
@@ -1883,7 +2122,7 @@ function enableSmartCon(val, isInitial){
 
 					if (band2_channel == '0') {
 						$('#band2_autoChannel').show();
-						$('#band2_autoChannel').html('Current Control Channel: ' + cur_control_channel[1]);
+						$('#band2_autoChannel').html('<#wireless_control_channel#>: ' + cur_control_channel[1]);
 					}
 				}
 
@@ -3173,6 +3412,7 @@ function gen_fronthaul_ap(_value){
 								<option value="radius"  <% nvram_match("wl_auth_mode_x", "radius", "selected"); %>>Radius with 802.1x</option>
 					  		</select>
 				  		</div>
+				  		<div class="setup_help_icon" style="display:none;"></div>
 				  		<div id="no_wp3_hint" style="display:none">
 							<span><#AiMesh_confirm_msg10#></span>
 							<script>
@@ -3319,7 +3559,7 @@ function gen_fronthaul_ap(_value){
 					<th><#WLANConfig11b_Channel_itemname#></th>
 					<td>
 						<select name="band0_channel" class="input_option" onChange="separateChannelHandler('0', this.value);"></select>
-						<span id="band0_autoChannel" style="display:none;margin-left:10px;">Current Control Channel</span><br>
+						<span id="band0_autoChannel" style="display:none;margin-left:10px;"><#wireless_control_channel#></span><br>
 						<span id="band0_acs_ch13"><input id="band0_acs_ch13_checkbox" type="checkbox" <%
 							 nvram_match("acs_ch13", "1" , "checked" ); %>><#WLANConfig11b_EChannel_acs_ch13#></span>
 					</td>
@@ -3354,7 +3594,7 @@ function gen_fronthaul_ap(_value){
 					<th><#WLANConfig11b_Channel_itemname#></th>
 					<td>
 						<select name="band1_channel" class="input_option" onChange="separateChannelHandler('1', this.value);"></select>
-						<span id="band1_autoChannel" style="display:none;margin-left:10px;">Current Control Channel</span><br>
+						<span id="band1_autoChannel" style="display:none;margin-left:10px;"><#wireless_control_channel#></span><br>
 						<span id="band1_acsDFS"><input id="band1_acsDFS_checkbox" type="checkbox" <%
 							 nvram_match("acs_dfs", "1" , "checked" ); %>><#WLANConfig11b_EChannel_dfs#></span>
 					</td>
@@ -3391,7 +3631,7 @@ function gen_fronthaul_ap(_value){
 					<th><#WLANConfig11b_Channel_itemname#></th>
 					<td>
 						<select name="band2_channel" class="input_option" onChange="separateChannelHandler('2', this.value);"></select>
-						<span id="band2_autoChannel" style="display:none;margin-left:10px;">Current Control Channel</span><br>
+						<span id="band2_autoChannel" style="display:none;margin-left:10px;"><#wireless_control_channel#></span><br>
 						<span id="band2_acsDFS"><input id="band2_acsDFS_checkbox" type="checkbox" <% nvram_match("acs_band3", "1" , "checked" ); %>><#WLANConfig11b_EChannel_dfs#></span>
 						<span id="band2_psc6g" style="display:none"><input id="band2_psc6g_checkbox" type="checkbox" onclick="separateGenChannel('2', document.form.band2_channel.value, document.form.band2_bw.value);" <% nvram_match("psc6g", "1" , "checked" ); %>><#Enable_PSC_Hint#> <#PSC_Faq#></span>
 						<span id="band2_acs_unii4_field" style="display:none;"><br><input id="band2_acs_unii4_checkbox" type="checkbox" onClick="handleUNII4Hint(this.checked)" <% nvram_match("acs_unii4", "1", "checked"); %>><#WLANConfig11b_EChannel_U-NII-4#></span>

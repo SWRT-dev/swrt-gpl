@@ -51,10 +51,10 @@ define(function(){
 				]
 			},
 			{
-				menuName: "<#Guest_Network#>",
+				menuName: Guest_Network_naming,
 				index: "menu_GuestNetwork",
 				tab: [
-					{url: "Guest_network.asp", tabName: "<#Guest_Network#>"},
+					{url: (isSupport("mtlancfg") ? "SDN.asp" : "Guest_network.asp"), tabName: Guest_Network_naming},
 					{url: "Captive_Portal.asp", tabName: "Free WiFi"},
 					{url: "Captive_Portal_Advanced.asp", tabName: "<#Captive_Portal#>"},
 					{url: "Guest_network_fbwifi.asp", tabName: "Facebook WiFi"},
@@ -235,6 +235,7 @@ define(function(){
 					{url: "Advanced_TR069_Content.asp", tabName: "TR-069"},
 					{url: "Advanced_Notification_Content.asp", tabName: "Notification"},
 					{url: "Advanced_Privacy.asp", tabName: "<#menu_privacy#>"},
+					{url: "Advanced_MultiFuncBtn.asp", tabName: "Multi-Function Button"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				]
 			},
@@ -289,7 +290,7 @@ define(function(){
 					retArray.push("menu_APP");
 				}
 
-				if((!cloudsync_support && !aicloudipk_support) || nocloudsync_support){
+				if((!cloudsync_support && !aicloudipk_support) || nocloudsync_support || isSupport("BUSINESS")){
 					retArray.push("menu_AiCloud");
 				}
 
@@ -567,6 +568,25 @@ define(function(){
 
 				if(!dnsfilter_support)
 					retArray.push("DNSFilter.asp");
+
+				if(isSupport("mtlancfg")){
+					retArray.push("Captive_Portal.asp");
+					retArray.push("Captive_Portal_Advanced.asp");
+					retArray.push("Guest_network_fbwifi.asp");
+				}
+
+				if(isSupport("BUSINESS")){
+					retArray.push("APP_Installation.asp");
+					retArray.push("aidisk.asp");
+					retArray.push("PrinterServer.asp");
+					retArray.push("Advanced_Modem_Content.asp");
+					retArray.push("Advanced_TimeMachine.asp");
+					retArray.push("fileflex.asp");
+				}
+
+				if(!isSupport("sw_btn")){
+					retArray.push("Advanced_MultiFuncBtn.asp");
+				}
 
 				/* Operation Mode */
 				if(isSwMode("re")){

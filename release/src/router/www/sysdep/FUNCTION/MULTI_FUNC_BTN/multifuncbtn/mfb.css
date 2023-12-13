@@ -1,0 +1,196 @@
+﻿.profile_item_container .item_text_container:before,
+.profile_item_container .item_text_container:after,
+.item_text_container .main_info:before{
+	content: initial;
+}
+.profile_list_container .title_container .title_text{
+	display: contents;
+}
+.profile_item_container{
+	cursor: pointer;
+}
+.profile_item_container .item_text_container{
+	margin-left: 0%;
+	width: 90%;
+	font-size: 18px;
+}
+.profile_group > .profile_hint{
+	width: 90%;
+	margin: auto;
+	padding-bottom: 8px;
+	color: #FC0;
+	height: auto;
+	word-wrap: break-word;
+	line-height: 140%;
+}
+.profile_setting_title{
+	height: 60px;
+}
+.profile_title_item{
+	min-height: initial;
+	padding: 10px 0;
+}
+.item_tag_container > .item_tag:before{
+	position: absolute;
+	content: "";
+	width: 14px;
+	height: 100%;
+	background-repeat: no-repeat;
+	background-size: 120%;
+	background-position: 50%;
+	left: 5px;
+}
+.item_tag_container > .item_tag.link:before{
+	background-image: url(/images/New_ui/SDN/dark_theme/Content/link.svg);
+}
+.VPN_list_container{
+	background: rgba(0, 0, 0, 0.1);
+	display: flex;
+	flex-flow: wrap;
+	padding-top: 8px;
+	font-size: 16px;
+	font-weight: 500;
+	position: relative;
+}
+.VPN_list_container:before{
+	position: absolute;
+	content: "";
+	bottom: 0;
+	width: 100%;
+	border-bottom: 1px solid rgba(171, 180, 194, 0.2);
+}
+.VPN_list_container .profile_group{
+	width: 100%;
+	display: flex;
+	flex-flow: wrap;
+	position: relative;
+}
+.VPN_list_container .profile_group:not(:first-child){
+	margin-top: 20px;
+}
+.VPN_list_container .profile_group:not(:first-child):before{
+	position: absolute;
+	content: "";
+	width: 100%;
+	border-top: 1px solid rgba(171, 180, 194, 0.2);
+	top: -8px;
+}
+.VPN_list_container .title{
+	font-weight: 600;
+	font-size: 12px;
+	text-transform: uppercase;
+	color: #BBD4E3;
+	margin-left: 4%;
+	width: 100%;
+}
+.VPN_list_container .profile_container{
+	background: rgba(0, 0, 0, 0.1);
+	width: 100%;
+}
+.VPN_list_container .profile_item{
+	display: flex;
+	position: relative;
+	height: 56px;
+	cursor: pointer;
+	width: 100%;
+	justify-content: space-between;
+}
+.VPN_list_container .profile_item:before{
+	position: absolute;
+	content: "";
+	bottom: 0;
+	width: 100%;
+	border-bottom: 1px solid rgba(171, 180, 194, 0.2);
+}
+.VPN_list_container .profile_item > div{
+	display: flex;
+	align-items: center;
+}
+.VPN_list_container .profile_item .text_container{
+	margin-left: 4%;
+	height: 100%;
+	flex-direction: column;
+	flex-grow: 1;
+	align-items: flex-start;
+	justify-content: center;
+}
+.VPN_list_container .profile_item .text_container > div{
+	display: flex;
+	align-items: center;
+}
+.VPN_list_container .profile_item .select_container{
+	justify-content: flex-end;
+	display: flex;
+	margin-right: 4%;
+}
+.VPN_list_container .profile_item .select_container > div{
+	margin-right: 12px;
+}
+.VPN_list_container .default_conn{
+	min-height: 80px;
+}
+.VPN_list_container .default_conn .default_conn_text{
+	border-radius: 11px;
+	border: 1px solid #61ADFF;
+	color: #61ADFF;
+	padding: 0 6px;
+	height: 24px;
+	line-height: initial;
+	font-size: 12px;
+	font-style: normal;
+	font-weight: 500;
+	letter-spacing: 0.8px;
+	margin-top: 4px;
+}
+.VPN_list_container .error_hint_container{
+	position: absolute;
+	width: 92%;
+	margin: auto;
+	left: 4%;
+	top: 8px;
+}
+.profile_setting_two_item{
+	height: auto;
+	min-height: initial;
+	padding-top: 10px;
+}
+.profile_setting_two_item > .content_container{
+	display: flex;
+	justify-content: center;
+}
+.profile_setting_item.schematic{
+	height: auto;
+	min-height: initial;
+	padding: 10px 0;
+}
+.schematic_container{
+	width: 92%;
+	border: 1px solid rgb(84, 103, 117);
+	border-radius: 8px;
+	margin: auto;
+}
+.schematic_container .img_item{
+	width: 100%;
+	height: 140px;
+	background-repeat: no-repeat;
+	background-position: center;
+	background-image: url(/images/New_ui/multifuncbtn/dark_theme/img_multi_func_btn.svg);
+	background-size: contain;
+	margin: 8px 0;
+}
+.schematic_container .notice_item{
+	color: #FC0;
+	font-size: 11px;
+	font-style: normal;
+	font-weight: 500;
+	text-align: center;
+}
+.schematic_container .fun_desc_item{
+	font-size: 14px;
+	font-style: normal;
+	font-weight: 500;
+	line-height: 20px;
+	letter-spacing: 0.25px;
+	text-transform: capitalize;
+	margin: 8px 16px;
+}

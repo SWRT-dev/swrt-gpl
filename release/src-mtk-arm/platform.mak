@@ -72,6 +72,7 @@ endif
 
 # for OpenWRT SDK
 export DTS_DIR := $(LINUXDIR)/arch/$(ARCH)/boot/dts
+export STAGING_DIR:=$(TOOLS)
 
 #ifeq ($(RT4GAC86U),y)
 EXTRA_CFLAGS := -DLINUX26 -DCONFIG_RALINK -pipe -DDEBUG_NOISY -DDEBUG_RCTEST
@@ -85,7 +86,7 @@ ifeq ($(RT4GAC86U),y)
 EXTRA_CFLAGS += -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__
 endif
 ifeq ($(MT798X),y)
-EXTRA_CFLAGS += -Os -mcpu=cortex-a53 -march=armv8 -mfpu=neon -mfloat-abi=softfp -D_GNU_SOURCE -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__ -DMUSL_LIBC -fsigned-char
+EXTRA_CFLAGS += -Os -mcpu=cortex-a53 -march=armv8 -mfpu=neon -mfloat-abi=softfp -D_GNU_SOURCE -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__ -DMUSL_LIBC -fsigned-char  -DKERNEL5_MUSL64
 endif
 
 export CONFIG_LINUX26=y
@@ -174,8 +175,8 @@ define platformRouterOptions
 		echo "# RTCONFIG_SOC_MT7981 is not set" >>$(1); \
 	fi; \
 	if [ "$(BUILD_NAME)" = "RM-AX6000" ]; then \
-		sed -i "/RTCONFIG_FIXED_BRIGHTNESS_RGBLED\>/d" $(1); \
-		echo "RTCONFIG_FIXED_BRIGHTNESS_RGBLED=y" >>$(1); \
+		sed -i "/RTCONFIG_ZENWIFI_RGBLED\>/d" $(1); \
+		echo "RTCONFIG_ZENWIFI_RGBLED=y" >>$(1); \
 	fi; \
 	if [ "$(BUILD_NAME)" = "TUF-AX6000" ]; then \
 		sed -i "/RTCONFIG_PWMX2_GPIOX1_RGBLED\>/d" $(1); \

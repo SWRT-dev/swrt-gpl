@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+        <link rel="shortcut icon" href="images/favicon.png" />
+        <title><#Web_Title#></title>
+
+        <script src="./js/jquery.js"></script>
+        <script src="./js/httpApi.js"></script>
+        <script src="./js/bootstrap.bundle.min.js"></script>
+
+        <script src="./js/asus.js"></script>
+        <script src="./js/basic.js"></script>
+        <script src="./js/wireless.js"></script>
+
+        <link rel="stylesheet" href="./css/bootstrap.min.css" />
+        <link rel="stylesheet" href="./css/bootstrap-customize.css" />
+        <link rel="stylesheet" href="./css/architecture.css" />
+        <script>
+            let urlParameter = new URLSearchParams(window.location.search);
+            /* DECIDE THEME */
+            let theme = (function () {
+                let array = ["dark", "white", "rog", "tuf"];
+                let default_theme = (function () {
+                    return isSupport("rog") ? "rog" : isSupport("tuf") ? "tuf" : "dark";
+                })();
+
+                let theme_string = (urlParameter.get("current_theme") || "").toLowerCase(); // handle null without parameter
+                let matched = array.find((element) => element === theme_string);
+
+                return matched === undefined ? default_theme : matched;
+            })();
+
+            document.querySelector("html").className = theme;
+        </script>
+    </head>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            let urlPath = urlParameter.get("url") ? urlParameter.get("url") : "dashboard";
+            for (let item of menuList) {
+                if (item.url === urlPath) {
+                    item.clicked = true;
+                    break;
+                }
+            }
+
+            genArchitecture();
+            fetch(`./pages/${urlPath}.html`)
+                .then((response) => response.text())
+                .then((data) => {
+                    let target = document.querySelector("main");
+                    target.innerHTML = data;
+
+                    let arrayScript = target.querySelectorAll("script");
+                    let arrayLink = target.querySelectorAll("link");
+
+                    // set script tag
+                    for (let item of arrayScript) {
+                        let scriptElement = document.createElement("script");
+                        let src = item.getAttribute("src");
+
+                        if (src) {
+                            scriptElement.src = src;
+                        } else {
+                            scriptElement.textContent = item.innerText;
+                        }
+
+                        target.removeChild(item); // remove previous script tag
+                        target.appendChild(scriptElement);
+
+                        // scriptElement.onload = () => {
+                        //     console.log(scriptElement);
+                        // };
+                    }
+
+                    // set link tag
+                    for (let item of arrayLink) {
+                        let linkElement = document.createElement("link");
+                        linkElement.rel = "stylesheet";
+                        linkElement.href = item.getAttribute("href");
+                        target.removeChild(item);
+                        target.appendChild(linkElement);
+                    }
+                });
+
+            // hide header while page launched by APP
+            if (
+                window.appInterface || // from Android app
+                (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.appInterface) // for iOS app
+            ) {
+                document.querySelector("header").classList.add("d-none");
+            }
+        });
+    </script>
+    <script src="js/chart.min.js"></script>
+    <body>
+        <header class="container-fluid d-flex align-items-center p-3"></header>
+        <article class="container-fluid d-flex p-0">
+            <!-- MENU -->
+            <nav class="nav-menu-hide"></nav>
+            <section>
+                <!-- UPPER SIDE STATUS FIELD -->
+                <div role="info-banner" class="d-flex align-items-center flex-grow"></div>
+                <!-- MAIN PAGE CONTENT -->
+                <main class="container-fluid"></main>
+            </section>
+            <!-- NOTIFICATION -->
+            <aside></aside>
+        </article>
+        <footer></footer>
+    </body>
+</html>

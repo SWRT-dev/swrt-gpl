@@ -194,7 +194,8 @@ helpcontent[11] = new Array("",
 							"<#usb_HDD_Hibernation_Desc#>",
 							"If there is no client connection for more than 1 minute, the PLC will enter sleep mode (power saving). The PLC will not wake up until the client connects. (It takes about ten seconds to wake up the PLC)", /* untranslated */
 							"Enable Login CAPTCHA is to ensure only human users to pass through and prevent brute force login attack.", /* untranslated */
-							"<#FW_auto_upgrade_desc#>");
+							"<#FW_auto_upgrade_desc#>",
+							"<#Secur_Stab_auto_upgrade_desc#>");	//15
 //Log
 helpcontent[12] = new Array("",
 							"<#General_x_SystemUpTime_itemdesc#>",

@@ -74,6 +74,7 @@ start_nas(void)
 #ifdef RTCONFIG_BRCM_HOSTAPD
 		if (!nvram_match("hapd_enable", "0")) {
 			start_hapd_wpasupp(0);
+			start_wps_pbcd();
 			return 0;
 		} else
 #endif
@@ -87,9 +88,10 @@ void
 stop_nas(void)
 {
 #ifdef RTCONFIG_BRCM_HOSTAPD
-	if (!nvram_match("hapd_enable", "0")) {
+        if (!nvram_match("hapd_enable", "0")) {
 		stop_hapd_wpasupp();
-	} else
+		stop_wps_pbcd();
+        } else
 #endif
 	if(pids("nas"))
 		killall_tk("nas");
@@ -306,8 +308,8 @@ _dprintf("%s: Start to run...\n", __FUNCTION__);
 	signal(SIGTERM, wlcconnect_safeleave);
 #if (defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA)) \
  && !defined(RTCONFIG_CONCURRENTREPEATER)
-//	signal(SIGTSTP, wlcconnect_sig_handle);
-//	signal(SIGCONT, wlcconnect_sig_handle);
+	signal(SIGTSTP, wlcconnect_sig_handle);
+	signal(SIGCONT, wlcconnect_sig_handle);
 #endif
 
 	nvram_set_int("wlc_state", WLC_STATE_INITIALIZING);
@@ -513,4 +515,3 @@ int dump_txbftable(void)
 	return 0;
 }
 #endif
-

@@ -820,10 +820,13 @@ width:122px;
 }
 
 .block_filter_name{
-		text-align:center;
-		padding-top:5px;
-		color:#CCCCCC;
-		font-size:14px
+	text-align:center;
+	color:#CCCCCC;
+	font-size:14px;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 } 
 
 .block_filter_name:hover{

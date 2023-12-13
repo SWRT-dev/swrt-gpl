@@ -4107,7 +4107,7 @@ int startScan(int band)
     	snprintf(prefix, sizeof(prefix), "wlc%d_", band);
 		have_ssid = nvram_pf_get_int(prefix, "closed");
 		ifname = get_staifname(band);
-		//if(get_channel(band))
+		//if(ra_get_channel(band))
 			//eval("iwpriv", ifname, "set", "Channel=0");
 	}else{
     	snprintf(prefix, sizeof(prefix), "wl%d_", band);
@@ -4407,7 +4407,7 @@ int site_survey_for_channel(int n, const char *wif, int *HT_EXT)
 }
 #endif	/* RTCONFIG_WIRELESSREPEATER */
 
-int get_channel(int band)
+int ra_get_channel(int band)
 {
 	int channel;
 	struct iw_range	range;
@@ -5724,7 +5724,7 @@ void stop_wifi_wpa_supplicant(void)
 	}
 }
 
-void gen_ra_config(const char* wif)
+void gen_ra_config(const char *ifname)
 {
 	char word[256], *next;
 
@@ -5788,7 +5788,7 @@ void set_wlpara_ra(const char* wif, int band)
 #if 0
 	if (nvram_match(strcat_r(prefix, "bw", tmp), "2"))
 	{
-		int channel = get_channel(band);
+		int channel = ra_get_channel(band);
 
 		if (channel)
 			eval("iwpriv", (char *)wif, "set", "HtBw=1");
@@ -5880,25 +5880,6 @@ void apcli_start(void)
 
 	if(sw_mode() == SW_MODE_REPEATER)
 	{
-#if defined(RTCONFIG_CONCURRENTREPEATER)
-		int wlc_express = nvram_get_int("wlc_express");
-		if (wlc_express == 0) {		// concurrent
-			aif = nvram_safe_get("wl0_ifname");
-			enable_apcli(aif, 0);
-			aif = nvram_safe_get("wl1_ifname");
-			enable_apcli(aif, 1);
-		}
-		else if (wlc_express == 1) {	// 2.4G express way
-			aif = nvram_safe_get("wl0_ifname");
-			enable_apcli(aif, 0);
-		}
-		else if (wlc_express == 2) {	// 5G express way
-			aif = nvram_safe_get("wl1_ifname");
-			enable_apcli(aif, 1);
-		}
-		else
-			fprintf(stderr,"## No correct wlc_express for apcli ##\n");
-#else /* RTCONFIG_CONCURRENTREPEATER */
 		int wlc_band = nvram_get_int("wlc_band");
 		aif = get_staifname(wlc_band);
 #if defined(RTCONFIG_MT798X)
@@ -5921,7 +5902,6 @@ void apcli_start(void)
 		}
 		else
 			fprintf(stderr, "## Can not find pap's ssid ##\n");
-#endif /* RTCONFIG_CONCURRENTREPEATER */
 	}
 }
 
@@ -6041,11 +6021,7 @@ void Gen_fail_log(const char *logStr, int max, struct FAIL_LOG *log)
 #endif //RTCONFIG_RALINK
 
 #ifdef RTCONFIG_WIRELESSREPEATER
-#if defined(RTCONFIG_CONCURRENTREPEATER)
 int get_apcli_status(int wlc_band)
-#else
-int get_apcli_status(void)
-#endif
 {
 #if defined(RTCONFIG_SWRTMESH)
 	int unit = nvram_get_int("wlc_band");
@@ -6094,17 +6070,11 @@ int get_apcli_status(void)
 	
 	return WLC_STATE_STOPPED;
 #else
-#if !defined(RTCONFIG_CONCURRENTREPEATER)
-	int wlc_band;
-#endif
 	const char *ifname;
 	char data[32];
 	struct iwreq wrq;
 	int status;
 	static int old_status[2] = {-1, -1};
-#if !defined(RTCONFIG_CONCURRENTREPEATER)
-	wlc_band = nvram_get_int("wlc_band");
-#endif
 	if (wlc_band == 1)
 		ifname = APCLI_5G;
 	else
@@ -6222,7 +6192,6 @@ int select_wlc_band()
 //	wireless ap monitor to connect to ap
 //	when wlc_list, then connect to it according to priority
 #define FIND_CHANNEL_INTERVAL	15
-#ifdef RTCONFIG_CONCURRENTREPEATER
 
 /*
  * like: iwpriv [wif] set [pv_pair]
@@ -6246,7 +6215,6 @@ int ap_set(char *wif, const char *pv_pair)
 		return 1;
 }
 
-
 int getPapState(int band)
 {
 	int ret;
@@ -6263,11 +6231,7 @@ int getPapState(int band)
 		   || (Uptime < lastUptime[band] && Uptime < FIND_CHANNEL_INTERVAL))
 			return ret;
 
-#if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_RALINK_EN7561)
 		if(band == 0)
-#else
-		if(band == 1)
-#endif
 			aif = "apcli0";
 		else
 #if defined(RTCONFIG_MT798X)
@@ -6302,7 +6266,6 @@ int getPapState(int band)
 
 	return ret;
 }
-#endif
 
 int wlcconnect_core(void)
 {
@@ -6370,20 +6333,17 @@ int wlcconnect_core(void)
 	int ht_ext = -1;
 	static long lastUptime = -FIND_CHANNEL_INTERVAL; // doing "site survey" takes time. use this to prolong interval between site survey.
 	long Uptime;
+	int wlc_band = nvram_get_int("wlc_band");
 
 	Uptime = uptime();
-	if((ret = get_apcli_status())==0) //init
+	if((ret = get_apcli_status(wlc_band))==0) //init
 	{
 		if ((Uptime > lastUptime && Uptime < lastUptime + FIND_CHANNEL_INTERVAL)
 		   || (Uptime < lastUptime && Uptime < FIND_CHANNEL_INTERVAL))
 			return ret;
 
-		band = nvram_get_int("wlc_band");
-#if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_MT7628) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_RALINK_EN7561)
+		band = wlc_band;
 		if(band == 0)
-#else
-		if(band == 1)
-#endif
 			aif = "apcli0";
 		else
 #if defined(RTCONFIG_MT798X)
@@ -6695,7 +6655,7 @@ void wlcconnect_sig_handle(int sig)
 			sleep(20);
 		}
 	}else if(sig == SIGTSTP){
-		pap_channel = get_channel(wlc_band);
+		pap_channel = ra_get_channel(wlc_band);
 		pause();
 	}else
 		dbg("%s: received an invalid signal!\n", get_staifname(wlc_band));

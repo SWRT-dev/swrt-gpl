@@ -117,7 +117,7 @@ static int erp_check_wl_stat(int model)
 	if (nvram_get_int("wl0_radio")) ret++;
 	if (nvram_get_int("wl1_radio")) ret++;
 
-#ifdef RTCONFIG_HAS_5G_2
+#if defined(RTCONFIG_HAS_5G_2) || defined(RTCONFIG_HAS_6G_2)
 	if (nvram_get_int("wl2_radio")) ret++;
 #endif
 #ifdef RTCONFIG_QUADBAND
@@ -636,10 +636,15 @@ static int ERP_CHECK_MODEL_LIST()
 		|| model == MODEL_RTN66U
 		|| model == MODEL_GTAC5300
 		|| model == MODEL_RTAX88U
+		|| model == MODEL_BC109
+		|| model == MODEL_BC105
+		|| model == MODEL_EBG19
 		|| model == MODEL_GTAX11000
 		|| model == MODEL_RTAX92U
 		|| model == MODEL_RTAX95Q
 		|| model == MODEL_XT8PRO
+		|| model == MODEL_BT12
+		|| model == MODEL_BQ16
 		|| model == MODEL_BM68
 		|| model == MODEL_XT8_V2
 		|| model == MODEL_RTAXE95Q
@@ -647,15 +652,20 @@ static int ERP_CHECK_MODEL_LIST()
 		|| model == MODEL_ET8_V2
 		|| model == MODEL_RTAX56_XD4
 		|| model == MODEL_XD4PRO
+		|| model == MODEL_XC5
 		|| model == MODEL_CTAX56_XD4
+		|| model == MODEL_EBA63
 		|| model == MODEL_RTAX58U
 		|| model == MODEL_RTAX82U_V2
 		|| model == MODEL_TUFAX5400_V2
+		|| model == MODEL_RTAX5400
 		|| model == MODEL_RTAX82_XD6S
 		|| model == MODEL_XD6_V2
 		|| model == MODEL_GT10
+		|| model == MODEL_RTAX9000
 		|| model == MODEL_RTAX58U_V2
 		|| model == MODEL_RTAX3000N
+		|| model == MODEL_BR63
 		|| model == MODEL_RTAXE7800
 		|| model == MODEL_TUFAX3000_V2
 		|| model == MODEL_RTAX55
@@ -666,10 +676,14 @@ static int ERP_CHECK_MODEL_LIST()
 		|| model == MODEL_GTAX6000
 		|| model == MODEL_GTAX11000_PRO
 		|| model == MODEL_GTAXE16000
+		|| model == MODEL_GTBE98
+		|| model == MODEL_GTBE98_PRO
 		|| model == MODEL_ET12
 		|| model == MODEL_XT12
 		|| model == MODEL_RTAX86U_PRO
 		|| model == MODEL_RTAX88U_PRO
+		|| model == MODEL_RTBE96U
+		|| model == MODEL_GTBE96
 #endif
 	) {
 		ret = 1;
@@ -719,12 +733,18 @@ static void erp_standby_mode(int model)
 		case MODEL_GTAX11000_PRO:
 		case MODEL_RTAX86U_PRO:
 		case MODEL_RTAX88U_PRO:
+		case MODEL_RTBE96U:
 			eval("wl", "-i", "eth6", "down");
 			eval("wl", "-i", "eth7", "down"); // turn off 5g radio
 			break;
 		case MODEL_GTAXE16000:
 			eval("wl", "-i", "eth10", "down");
 			eval("wl", "-i", "eth7", "down"); // turn off 5g radio
+			break;
+		case MODEL_GTBE98:
+		case MODEL_GTBE98_PRO:
+			eval("wl", "-i", nvram_safe_get("wl3_ifname"), "down");
+			eval("wl", "-i", nvram_safe_get("wl0_ifname"), "down"); // turn off 5g radio
 			break;
 		case MODEL_RTAX95Q:
 		case MODEL_XT8PRO:
@@ -735,12 +755,23 @@ static void erp_standby_mode(int model)
 		case MODEL_ET8_V2:
 		case MODEL_ET12:
 		case MODEL_XT12:
+		case MODEL_GTBE96:
 			eval("wl", "-i", "eth4", "down");
 			eval("wl", "-i", "eth5", "down"); // turn off 5g radio
 			break;
+		case MODEL_BT12:
+			eval("wl", "-i", "wl0", "down");
+			eval("wl", "-i", "wl1", "down"); // turn off 5g radio
+			break;
+		case MODEL_BQ16:
+			eval("wl", "-i", "wl0", "down");
+			eval("wl", "-i", "wl1", "down"); // turn off 5g radio
+			break;
 		case MODEL_RTAX56_XD4:
 		case MODEL_XD4PRO:
+		case MODEL_XC5:
 		case MODEL_CTAX56_XD4:
+		case MODEL_EBA63:
 			eval("wl", "-i", "wl0", "down");
 			eval("wl", "-i", "wl1", "down"); // turn off 5g radio
 			break;
@@ -749,10 +780,16 @@ static void erp_standby_mode(int model)
 			eval("wl", "-i", "eth5", "down");
 			eval("wl", "-i", "eth6", "down");
 			break;
+		case MODEL_RTAX9000:
+			eval("wl", "-i", "eth6", "down");
+			eval("wl", "-i", "eth7", "down");
+			eval("wl", "-i", "eth8", "down");
+			break;
 		case MODEL_RTAX58U:
 		case MODEL_TUFAX3000_V2:
 		case MODEL_RTAX82U_V2:
 		case MODEL_TUFAX5400_V2:
+		case MODEL_RTAX5400:
 		case MODEL_XD6_V2:
 			eval("wl", "-i", "eth5", "down");
 			eval("wl", "-i", "eth6", "down"); // turn off 5g radio
@@ -766,6 +803,7 @@ static void erp_standby_mode(int model)
 		case MODEL_RTAX58U_V2:
 		case MODEL_RTAX82_XD6S:
 		case MODEL_RTAX3000N:
+		case MODEL_BR63:
 			eval("wl", "-i", "eth2", "down");
 			eval("wl", "-i", "eth3", "down"); // turn off 5g radio
 			break;
@@ -805,7 +843,7 @@ static void erp_standby_mode(int model)
 		eval("wl", "-i", "eth8", "down"); // turn off 5g-2 radio
 	}
 
-	if (model == MODEL_GTAX11000_PRO) {
+	if (model == MODEL_GTAX11000_PRO || model == MODEL_RTBE96U) {
 		// triple band
 		eval("wl", "-i", "eth8", "down"); // turn off 5g-2 radio
 	}
@@ -813,9 +851,34 @@ static void erp_standby_mode(int model)
 	if (model == MODEL_GTAXE16000) {
 		// triple band
 		eval("wl", "-i", "eth8", "down"); // turn off 5g-2 radio
+		eval("wl", "-i", "eth9", "down"); // turn off 6g radio
 	}
 
-	if (model == MODEL_ET12 || model == MODEL_XT12) {
+#if defined(GTBE98)	/* avoid compile error for non WL_6G_BAND WIFI7 model */
+	if (model == MODEL_GTBE98) {
+		char nv_wlif[12]; 
+		snprintf(nv_wlif, sizeof(nv_wlif), "wl%d_ifname", WL_5G_2_BAND);
+		eval("wl", "-i", nvram_safe_get(nv_wlif), "down");	// turn off 5g-2 radio
+#ifdef RTCONFIG_WIFI7
+		snprintf(nv_wlif, sizeof(nv_wlif), "wl%d_ifname", WL_6G_BAND);
+		eval("wl", "-i", nvram_safe_get(nv_wlif), "down");	// turn off 6g radio
+#endif
+	}
+#endif
+
+#if defined(GTBE98_PRO)	/* avoid compile error for non WL_6G_BAND WIFI7 model */
+	if (model == MODEL_GTBE98_PRO) {
+		char nv_wlif[12]; 
+		snprintf(nv_wlif, sizeof(nv_wlif), "wl%d_ifname", WL_5G_BAND);
+		eval("wl", "-i", nvram_safe_get(nv_wlif), "down");	// turn off 5g radio
+#ifdef RTCONFIG_WIFI7
+		snprintf(nv_wlif, sizeof(nv_wlif), "wl%d_ifname", WL_6G_BAND);
+		eval("wl", "-i", nvram_safe_get(nv_wlif), "down");	// turn off 6g-1 radio
+#endif
+	}
+#endif
+
+	if (model == MODEL_ET12 || model == MODEL_XT12 || model == MODEL_GTBE96) {
 		// triple band
 		eval("wl", "-i", "eth6", "down"); // turn off 5g-2 radio
 	}
@@ -830,7 +893,17 @@ static void erp_standby_mode(int model)
 		eval("wl", "-i", "eth4", "down"); // turn off 2g radio
 	}
 
-	if (model == MODEL_RTAX56_XD4 || model == MODEL_XD4PRO || model == MODEL_CTAX56_XD4) {
+	if (model == MODEL_BT12) {
+		// triple band
+		eval("wl", "-i", "wl0", "down"); // turn off 2g radio
+	}
+
+	if (model == MODEL_BQ16) {
+		// triple band
+		eval("wl", "-i", "wl0", "down"); // turn off 2g radio
+	}
+
+	if (model == MODEL_RTAX56_XD4 || model == MODEL_XD4PRO || model == MODEL_CTAX56_XD4 || model == MODEL_XC5 || model == MODEL_EBA63) {
 		// triple band
 		eval("wl", "-i", "wl0", "down"); // turn off 2g radio
 	}

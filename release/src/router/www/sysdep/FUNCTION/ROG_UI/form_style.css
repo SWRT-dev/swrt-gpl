@@ -498,7 +498,6 @@
 .button_gen:hover{
 	font-weight: bolder;
 	height:33px;
- 	width:122px;
  	padding:0 .70em 0 .70em;
  	background-position:0px;
 	cursor:pointer;
@@ -517,7 +516,6 @@
 	font-family:Verdana,Bold;
 	font-size:12px;
   padding:0 .70em 0 .70em;
- 	width:122px;
   overflow:visible;
 	/*cursor:pointer;*/
 	outline: none; /* for Firefox */
@@ -1013,7 +1011,7 @@ color:#FFFFFF;
 	display: block;
 	padding: 5px 5px 0 12px;
 	line-height: 20px;
-	font-family: Arial, Helvetica, MS UI Gothic, MS P Gothic, Microsoft Yahei UI, sans-serif;
+	font-family: Microsoft Yahei UI, Arial, Helvetica, MS UI Gothic, MS P Gothic, sans-serif;
 	font-size: 13px;
 	border-radius: 5px 5px 0 0;
 }
@@ -1026,7 +1024,7 @@ color:#FFFFFF;
 
 .tabclick_NW {
 	font-weight: bolder;
-	font-family: Verdana, MS UI Gothic, MS P Gothic, Microsoft Yahei UI, sans-serif;
+	font-family: Microsoft Yahei UI, Verdana, MS UI Gothic, MS P Gothic, sans-serif;
 	color: White;
 	display: block;
 	float: left;
@@ -1044,7 +1042,7 @@ color:#FFFFFF;
 	font-weight: bolder;
 	white-space:nowrap;
 	font-weight: bolder;
-	font-family: Arial, Helvetica, MS UI Gothic, MS P Gothic, Microsoft Yahei UI, sans-serif;
+	font-family: Microsoft Yahei UI, Arial, Helvetica, MS UI Gothic, MS P Gothic, sans-serif;
 	display: block;
 	padding: 5px 5px 0 12px;
 	line-height: 20px;
@@ -2323,4 +2321,9 @@ padding-top:1px;
     padding: 12px 24px;
     background-color: #141618;
     cursor: pointer;
+}
+
+#asus_pp_EULA_modal {
+	border: 3px solid #5C0C0B;
+	background: #000b !important;
 }

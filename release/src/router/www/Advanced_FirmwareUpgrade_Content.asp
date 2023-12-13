@@ -12,6 +12,7 @@
 <link rel="stylesheet" type="text/css" href="index_style.css">
 <link rel="stylesheet" type="text/css" href="form_style.css">
 <link rel="stylesheet" type="text/css" href="css/confirm_block.css">
+<link rel="stylesheet" type="text/css" href="device-map/device-map.css">
 <style>
 .FormTable{
  	margin-top:10px;	
@@ -80,6 +81,26 @@
         text-decoration: underline;
         cursor: pointer;
 }
+
+#rbk_Block{
+	font-family: Microsoft Yahei UI, Arial, Helvetica, MS UI Gothic, MS P Gothic, sans-serif;
+	width:800px;
+	margin-top: -945px;
+}
+.rbk_title{
+	margin-top:15px;
+	margin-left:15px;
+	float:left;
+	font-size:18px;
+	color:#93A9B1;
+}
+.rbk_close{
+	float:right;
+}
+.td_rbk_fwver{
+	text-decoration: underline;
+	cursor: pointer;	
+}
 </style>
 
 <script language="JavaScript" type="text/javascript" src="/state.js"></script>
@@ -93,6 +114,8 @@
 <script language="JavaScript" type="text/javascript" src="/form.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/httpApi.js"></script>
 <script language="JavaScript" type="text/javascript" src="/replaceisp.js"></script>
+<script language="JavaScript" type="text/javascript" src="/js/asus_eula.js"></script>
+<!-- script language="JavaScript" type="text/javascript" src="/ajax/get_rbk_info.asp"></script -->
 <script>
 $(function () {
 	if(amesh_support && (isSwMode("rt") || isSwMode("ap")) && ameshRouter_support) {
@@ -138,10 +161,10 @@ if(pipefw_support || urlfw_support){
 var webs_update_enable_orig = httpApi.nvramGet(["webs_update_enable"],1).webs_update_enable;
 var webs_update_time_orig = httpApi.nvramGet(["webs_update_time"],1).webs_update_time;
 
-var update_time_hour_orig = webs_update_time_orig.split(":")[0].replace(/^0+/, '');
+var update_time_hour_orig = webs_update_time_orig.split(":")[0].replace(/^0/, '');
 update_time_hour_orig = (update_time_hour_orig=="")? "2":update_time_hour_orig;
 
-var update_time_min_orig = (webs_update_time_orig.split(":").length==2)? webs_update_time_orig.split(":")[1].replace(/^0+/, ''):"";
+var update_time_min_orig = (webs_update_time_orig.split(":").length==2)? webs_update_time_orig.split(":")[1].replace(/^0/, ''):"";
 update_time_min_orig = (update_time_min_orig=="")? "0":update_time_min_orig;
 
 var amesh_offline_flag = false;
@@ -191,6 +214,13 @@ if(support_site_modelid == "GT-AC2900_SH"){
 	afwupg_support=false;
 	betaupg_support=false;
 	revertfw_support=false;
+}
+
+var rbk_count = 0;
+var _rollback_info = 0;
+if(rbkfw_support){
+	_rollback_info = JSON.parse('<% get_rbkList(); %>');
+	rbk_count = Object.keys(_rollback_info).length;
 }
 
 function checkUnderREQ(){
@@ -282,7 +312,7 @@ function save_update_enable(flag){
 			
 	document.firmware_form.submit();
 	if(flag == "on" || flag == "off"){
-		setTimeout("refreshpage()", 500);
+		// setTimeout("refreshpage()", 500);
 	}
 }
 function change_beta_path(flag){
@@ -316,12 +346,26 @@ function initial(){
 							 .click(show_revertfw_release_note);
 		$("#update_div").css("margin-left", "220px");
 	}
+
+	if(rbkfw_support){
+		if($('.label-fw_rbk')){
+			$('.label-fw_rbk').remove();
+		}
+		if(rbk_count > 0 && httpApi.nvramGet(["webs_state_odm"],1).webs_state_odm != 0 && httpApi.nvramGet(["webs_state_odm"],1).webs_state_odm != "" ){
+			$("#FWString").append("<span class='label-fw_rbk'><#FW_rollback#></span>");
+			$(".label-fw_rbk").css("margin-left", "10px")
+							 .css("cursor", "pointer")
+							 .css("text-decoration", "underline")
+							 .click(show_rbk_selector);
+			$("#update_div").css("margin-left", "220px");
+		}
+	}
 	
 	var exist_update = 0;
 	if(amesh_support && (isSwMode("rt") || isSwMode("ap")) && ameshRouter_support) {
 		
 		var have_node = false;
-		var get_cfg_clientlist = httpApi.hookGet("get_cfg_clientlist", true);		
+		var get_cfg_clientlist = httpApi.hookGet("get_cfg_clientlist");		
 		$("#fw_version_tr").empty();
 		var html = "";
 		html += "<tr id='update_div' style='display:none;'>";
@@ -339,7 +383,6 @@ function initial(){
 		html += '<span id="update_states"></span>';
 		html += '<img id="update_scan" style="display:none;" src="images/InternetScan.gif" />';
 		html += '</div>';
-		html += '<div style="height:15px;"></div>';
 		html += "</td>";
 		html += "</tr>";
 		$("#fw_version_tr").before(html);
@@ -356,8 +399,11 @@ function initial(){
 		html += "</th>";
 		html += "<td id='amas_" + mac_id + "' current_online='1'>";
 		html += "<div id='current_version'><#ADSL_FW_item1#> : <span class='checkFWCurrent'>" + FWString + "</span>";
-		if(revertfw_support && RevertFWver != "" && !isSame_org && !isUnderREQ){
-			html += "<span class='aimesh_fw_revert'>Revert</span>";
+		if(revertfw_support){
+			html += "<span class='aimesh_fw_revert' style='display:none;'>Revert</span>";	//Untranslated
+		}
+		if(rbkfw_support){
+			html += "<span class='aimesh_fw_rbk' style='display:none;'><#FW_rollback#></span>";
 		}
 		html += "</div>";
 		html += "<div id='amesh_manual_upload_fw'>";
@@ -373,8 +419,12 @@ function initial(){
 			$("#amas_" + mac_id + "").children().find(".checkFWCurrent").click({"model_name": "<#Web_Title2#>", "fwver": FWString}, show_current_release_note);
 		}
 		if(revertfw_support && RevertFWver != "" && !isSame_org && !isUnderREQ){
-			//$("#amas_" + mac_id + "").children().find(".aimesh_fw_revert").click({"model_name": frsmodel, "newfwver": RevertFWver}, show_revertfw_release_note);
 			$("#amas_" + mac_id + "").children().find(".aimesh_fw_revert").click(show_revertfw_release_note);
+			$("#amas_" + mac_id + "").children().find(".aimesh_fw_revert").show();
+		}
+		if(rbkfw_support && rbk_count > 0 && httpApi.nvramGet(["webs_state_odm"],1).webs_state_odm != 0 && httpApi.nvramGet(["webs_state_odm"],1).webs_state_odm != ""){
+			$("#amas_" + mac_id + "").children().find(".aimesh_fw_rbk").click(show_rbk_selector);
+			$("#amas_" + mac_id + "").children().find(".aimesh_fw_rbk").show();
 		}
 
 		for (var idx in get_cfg_clientlist) {
@@ -420,6 +470,7 @@ function initial(){
 				html += "<td id='amas_" + mac_id + "' current_online='" + online + "'>";
 				html += "<div id='current_version'><#ADSL_FW_item1#> : <span class='checkFWCurrent'>" + fwver + "</span>";
 				html += "<span class='aimesh_fw_revert_node'></span>";
+				html += "<span class='aimesh_fw_rbk_node'></span>";
 				html += "</div>";
 				html += "<div id='manual_firmware_update'>";
 				var support_manual_fw = check_AiMesh_fw_version(fwver);
@@ -444,18 +495,30 @@ function initial(){
 
 				if(online == 1){
 					if(capability_value & 128){	//revertfw_support
-						if(!revertfw_support){
-							//do nothing for nodes
+						if(revertfw_support){
+							$("#amas_" + mac_id + "").children().find(".aimesh_fw_revert_node").html("Revert"); 	/* Untranslated */
+							$("#amas_" + mac_id + "").children().find(".aimesh_fw_revert_node").click(get_cfg_clientlist[idx], open_AiMesh_node_revertfw);
 						}
 						else{
-							$("#amas_" + mac_id + "").children().find(".aimesh_fw_revert_node").html(gen_AiMesh_revertfw_status( ip, online ));
+							$("#amas_" + mac_id + "").children().find(".aimesh_fw_revert_node").remove();
 						}
 					}
+					else{
+							$("#amas_" + mac_id + "").children().find(".aimesh_fw_revert_node").remove();
+					}
+
 					if(capability_value & 4096){     //no_fw_manual_support
 						$("#amas_" + mac_id + "").children("#manual_firmware_update").empty();
 					}
 					if(capability_value & 8192){     //live_update_support
 						exist_update++;
+					}
+					
+					if(capability_value & 16384){     //rbkfw_support
+						if(rbkfw_support){
+							$("#amas_" + mac_id + "").children().find(".aimesh_fw_rbk_node").html("<#FW_rollback#>");
+							$("#amas_" + mac_id + "").children().find(".aimesh_fw_rbk_node").click(get_cfg_clientlist[idx], open_AiMesh_node_rbkfw);
+						}
 					}
 				}
 
@@ -577,13 +640,6 @@ function initial(){
 	if(based_modelid == "DSL-N55U" || based_modelid == "DSL-N55U-B"){
 		$("#dsl_n55u_fwver").show();
 		$("#dsl_n55u_ras").show();
-	}
-
-	if(!afwupg_support){
-		$("table").remove("#auto_upgrade_setting");
-	}
-	else{
-		showclock();
 	}
 
 	if(!betaupg_support){
@@ -1023,14 +1079,18 @@ function check_zip(obj){
 }
 
 function submitForm(){
-	if(!check_zip(document.form.file))
-			return;
-	else {
-		var status = onSubmitCtrlOnly(document.form.upload, 'Upload1');
-		if(amesh_support && status && (isSwMode("rt") || isSwMode("ap")) && ameshRouter_support) {
-			if(interval_update_AiMesh_fw_status) {
-				clearInterval(interval_update_AiMesh_fw_status);
-				interval_update_AiMesh_fw_status = false;
+	if(isSupport("demoui"))
+		return;
+	else{
+		if(!check_zip(document.form.file))
+				return;
+		else {
+			var status = onSubmitCtrlOnly(document.form.upload, 'Upload1');
+			if(amesh_support && status && (isSwMode("rt") || isSwMode("ap")) && ameshRouter_support) {
+				if(interval_update_AiMesh_fw_status) {
+					clearInterval(interval_update_AiMesh_fw_status);
+					interval_update_AiMesh_fw_status = false;
+				}
 			}
 		}
 	}
@@ -1286,8 +1346,39 @@ function show_amas_fw_result() {
 						$("#amas_" + mac_id + "").children("#checkNewFW").css("display", "");
 				}
 			}
+			if(rbkfw_support && rbk_count > 0 && httpApi.nvramGet(["webs_state_odm"],1).webs_state_odm != 0 && httpApi.nvramGet(["webs_state_odm"],1).webs_state_odm != ""){
+				$("#amas_" + mac_id + "").children().find(".aimesh_fw_rbk").click(show_rbk_selector);
+				$("#amas_" + mac_id + "").children().find(".aimesh_fw_rbk").show();
+			}
 		}
 	});
+}
+
+function show_rbk_release_note(event) {
+	if($(".confirm_block").length > 0)
+		$(".confirm_block").remove();
+
+	document.amas_release_note.model.value = event.data.model_name;
+	document.amas_release_note.version.value = event.data.fwver;
+	document.amas_release_note.submit();
+	confirm_asus({
+		title: "Release Note",
+		//contentA: "<#exist_new#><br>",
+		contentA: event.data.model_name+" : "+event.data.fwver,
+		//contentC: "<br><#ADSL_FW_note#> <#Main_alert_proceeding_desc5#>",
+		contentC: "",
+		left_button: "",
+		left_button_callback: {},
+		left_button_args: {},
+		right_button: "<#CTL_close#>",
+		right_button_callback: function(){confirm_cancel();},
+		right_button_args: {},
+		iframe: "get_release_note_amas.asp",
+		margin: "100px 0px 0px 25px",
+		note_display_flag: note_display
+	});
+	$(".confirm_block").css( "zIndex", 10001 );
+	setTimeout(function(){check_current_release_note_status();}, 2000);
 }
 
 function show_current_release_note(event) {
@@ -1466,22 +1557,167 @@ function urlExists(url, callback){
 		}
 	});
 }
-function open_AiMesh_node_revertfw(_ip) {
-	var url = "http://" + _ip + "/AiMesh_Node_RevertFirmware.asp";
+
+function show_rbk_selector(){
+
+	$("#rbk_Block").remove();
+	$("html, body").animate({ scrollTop: 0 }, "fast");
+	document.body.style.overflow = 'hidden';
+	$("#Loading").css('visibility', 'visible');
+	$("#loadingBlock").css('visibility', 'hidden');
+
+	var divObj = document.createElement("div");
+	divObj.setAttribute("id","rbk_Block");
+	divObj.className = "clientlist_viewlist";
+	document.body.appendChild(divObj);
+	$("#rbk_Block").css('zIndex', '10000');
+	//cal_panel_block("rbk_Block", 0.045);
+	cal_panel_block("rbk_Block", 0.2);
+
+	create_rbkfw_view();
+}
+function create_rbkfw_view(){
+	
+	rbk_Block_view_hide_flag = false;
+
+	document.getElementById("rbk_Block").onclick = function() {show_rbk_Block();}
+
+	var divObj = document.createElement("div");
+	divObj.id = "div_rbk_title";
+	divObj.className = "rbk_title";
+	divObj.innerHTML = "<#FW_rollback_selector#>";
+	$(divObj).appendTo('#rbk_Block');
+
+	var divObj2 = document.createElement("div");
+	divObj2.className = "rbk_close";
+	divObj2.innerHTML = "<img src='/images/button-close.gif' style='width:30px;cursor:pointer' onclick='close_rbk_selector();'>";
+	$(divObj2).appendTo('#rbk_Block');	
+
+	var divObj3 = document.createElement("div");
+	divObj3.className = "splitLine";
+	divObj3.style = "margin: 40px 0 10px 15px";
+	$(divObj3).appendTo('#rbk_Block');
+
+
+	var tableObj = document.createElement("table");
+	tableObj.id = 'table_panel'; 
+	tableObj.border = '0';
+	tableObj.align = 'center';
+	tableObj.cellpadding = '0';
+	tableObj.cellspacing='0';
+	tableObj.style = "width:100%;padding:0 15px 15px 15px;";
+	$(tableObj).appendTo('#rbk_Block');
+
+	var tableObj2 = document.createElement("table");
+	tableObj2.id = 'table_rbk';
+	tableObj2.className = "FormTable_table";
+	tableObj2.border = '1';
+	tableObj2.align = 'center';
+	tableObj2.cellpadding = '0';
+	tableObj2.cellspacing='0';
+	tableObj2.style = "width:100%;margin-top:15px;";
+	$(tableObj2).appendTo('#table_panel');
+
+	var theadObj = document.createElement("thead");
+	theadObj.innerHTML = "<tr height='28px'><td id='td_all_list_title' colspan='2'><#FW_rollback_choose#></td></tr>";
+	$(theadObj).appendTo('#table_rbk');
+
+	var trObj = document.createElement("tr");
+	trObj.id = 'tr_title';
+	trObj.height = "40px";
+	$(trObj).appendTo('#table_rbk');
+
+	var thObj = document.createElement("th");
+	thObj.className = 'IE8HACK';
+	thObj.width = "10%";
+	$(thObj).appendTo('#tr_title');
+
+	var thObj2 = document.createElement("th");
+	thObj2.className = 'IE8HACK';
+	thObj2.width = "90%";
+	thObj2.innerHTML = "Firmware Version";
+	$(thObj2).appendTo('#tr_title');
+
+	var rbk_tr_list = new Array;
+	var rbk_td_radio = new Array;
+	var rbk_td_fwver = new Array;
+	for (var j = 0; j < rbk_count-1; j++)
+	{
+		rbk_tr_list[j] = document.createElement("tr");
+		rbk_tr_list[j].id = 'tr_rbk_option'+j;
+		rbk_tr_list[j].height = "40px";
+		$(rbk_tr_list[j]).appendTo('#table_rbk');
+
+		rbk_td_radio[j] = document.createElement("td");
+		rbk_td_radio[j].Name = "rbk_opt";
+		rbk_td_radio[j].id = "rbk_option"+j;
+		rbk_td_radio[j].innerHTML = "<input name='rbk_opt' id='rbk_select_"+j+"' type='radio' class='input' value='"+_rollback_info[j]+"'>";
+		$(rbk_td_radio[j]).appendTo('#tr_rbk_option'+j);
+
+		rbk_td_fwver[j] = document.createElement("td");
+		rbk_td_fwver[j].className = "td_rbk_fwver";
+		rbk_td_fwver[j].style = "padding:10px;text-align:left";
+		rbk_td_fwver[j].innerHTML = _rollback_info[j];
+		$(rbk_td_fwver[j]).appendTo('#tr_rbk_option'+j);
+		$('#tr_rbk_option'+j).children('td').eq(1).click(
+			{"model_name": httpApi.nvramGet(["webs_state_odm"],1).webs_state_odm, "fwver": _rollback_info[j] }, show_rbk_release_note
+		);
+	}
+
+
+	var divObj_bot = document.createElement("div");
+	divObj_bot.id = "div_rbk_bot";
+	divObj_bot.style = "margin-top:10px;margin-bottom:20px;width:100%;text-align:center;";
+	divObj_bot.innerHTML = "<input class='button_gen' type='button' onclick='close_rbk_selector()' value='<#CTL_Cancel#>'><input class='button_gen' type='button' onclick='rbk_fw_confirm()' style='margin-left:15px;' value='<#FW_rollback#>'>";
+	$(divObj_bot).appendTo('#rbk_Block');
+
+}
+var rbk_Block_view_hide_flag = false;
+function hide_rbk_Block() {
+	if(rbk_Block_view_hide_flag)
+	{
+		close_rbk_selector();
+	}
+	rbk_Block_view_hide_flag=true;
+}
+function show_rbk_Block() {
+	rbk_Block_view_hide_flag = false;
+}
+function close_rbk_selector() {
+	location.reload();
+}
+function rbk_fw_confirm(){
+	if($('input[name=rbk_opt]:checked').val() != undefined){
+		document.rollback_fw.model.value = httpApi.nvramGet(["webs_state_odm"],1).webs_state_odm;
+		document.rollback_fw.version.value = $('input[name=rbk_opt]:checked').val();
+		$("#rbk_Block").fadeOut();
+		$("#Loading").css('visibility', 'hidden');
+		startRevertDownloading();
+		document.rollback_fw.submit();
+	}
+	else{
+		alert("<#JS_fieldblank#>");
+		return;
+	}
+}
+
+function open_AiMesh_node_rbkfw(event) {
+	var url = httpApi.aimesh_get_win_open_url(event.data, "AiMesh_Node_RbkFirmware.asp");
+	var window_width = 1080;
+	var window_height = 640;
+	var window_top = screen.availHeight / 2 - window_height / 2;
+	var window_left = screen.availWidth / 2 - window_width / 2;
+	window.open(url, '_new' ,'width=' + window_width + ',height=' + window_height + ', top=' + window_top + ',left=' + window_left + ',menubar=yes,scrollbars=no,toolbar=yes,resizable=yes,status=yes,location=no');
+}
+
+function open_AiMesh_node_revertfw(event) {	
+	var url = httpApi.aimesh_get_win_open_url(event.data, "AiMesh_Node_RevertFirmware.asp");
 	var window_width = 720;
 	var window_height = 720;
 	var window_top = screen.availHeight / 2 - window_height / 2;
 	var window_left = screen.availWidth / 2 - window_width / 2;
-	window.open(url, '_new' ,'width=' + window_width + ',height=' + window_height + ', top=' + window_top + ',left=' + window_left + ',menubar=no,scrollbars=yes,toolbar=no,resizable=no,status=no,location=no,rel=noreferrer');
+	window.open(url, '_new' ,'width=' + window_width + ',height=' + window_height + ', top=' + window_top + ',left=' + window_left + ',menubar=no,scrollbars=yes,toolbar=no,resizable=no,status=no,location=no');
 }
-function gen_AiMesh_revertfw_status(_node_ip, _online) {
-	var html = "";
-	if(_online == "1") {
-		html += "<span class='aimesh_fw_update_offline' style='margin-left:0px;' onclick='open_AiMesh_node_revertfw(\"" + _node_ip + "\");'>Revert</span>";
-	}
-	return html;
-}
-
 
 function open_AiMesh_node_fw_upgrade(event) {
 	var url = httpApi.aimesh_get_win_open_url(event.data, "AiMesh_Node_FirmwareUpgrade.asp");
@@ -1561,15 +1797,29 @@ function update_AiMesh_fw() {
 						}
 						else{
 							if(capability_value & 128){	//revertfw_support
-								if(!revertfw_support){
-									//do nothing
+								if(online == "1"){
+									$("#amas_" + mac_id + "").children().find(".aimesh_fw_revert_node").html("Revert");
+									$("#amas_" + mac_id + "").children().find(".aimesh_fw_revert_node").click(get_cfg_clientlist[idx], open_AiMesh_node_revertfw);
 								}
 								else{
-									$("#amas_" + mac_id + "").children().find(".aimesh_fw_revert_node").html(gen_AiMesh_revertfw_status( ip, online ));
+									$("#amas_" + mac_id + "").children().find(".aimesh_fw_revert_node").remove();
 								}
+							}
+							else{
+								$("#amas_" + mac_id + "").children().find(".aimesh_fw_revert_node").remove();
 							}
 						}
 					}
+
+					if(rbkfw_support){
+						if(capability_value & 16384){     //rbkfw_support
+							if(online == "1"){
+								$("#amas_" + mac_id + "").children().find(".aimesh_fw_rbk_node").html("<#FW_rollback#>");
+								$("#amas_" + mac_id + "").children().find(".aimesh_fw_rbk_node").click(get_cfg_clientlist[idx], open_AiMesh_node_rbkfw);
+							}
+						}
+					}
+
 				}
 			}
 		}
@@ -1704,6 +1954,7 @@ function get_mobile_fw_upgrade_status(){
 					<li><#FW_n1#></li>
 					<li id="fw_note2"><#FW_n2#>&nbsp;<#FW_n3#></li>
 					<li id="fw_note3"><#FW_desc0#></li>
+					<li id="fw_note5"><#FW_n5#></li>
 				</ol>
 		  </div>
 		  <br>
@@ -1715,12 +1966,21 @@ function get_mobile_fw_upgrade_status(){
 			</tr>	
 			</thead>
 			<tr>
-				<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(11, 14);"><#FW_auto_upgrade#></a></th>
+				<th><#FW_auto_upgrade#></th>
 				<td>
 					<div align="center" class="left" style="width:75px; float:left; cursor:pointer;" id="switch_webs_update_enable"></div>
 					<script type="text/javascript">
 					$('#switch_webs_update_enable').iphoneSwitch('<% nvram_get("webs_update_enable"); %>',
 						function(){
+							ASUS_EULA.config(function(){
+								hide_upgrade_opt(1);
+								save_update_enable('on');
+							},
+								refreshpage
+							)
+
+							if(!ASUS_EULA.check("asus_pp", "AUTOUPGRADE")) return false;
+
 							hide_upgrade_opt(1);
 							save_update_enable('on');
 						},
@@ -1735,11 +1995,53 @@ function get_mobile_fw_upgrade_status(){
 			<tr>
 				<th><#FW_auto_time#></th>
 				<td>
-					<select name="webs_update_time_x_hour" class="input_option" onchange="save_update_enable();"></select> : 
-					<select name="webs_update_time_x_min" class="input_option" onchange="save_update_enable();"></select>
+					<select id="webs_update_time_x_hour" name="webs_update_time_x_hour" class="input_option" onchange="save_update_enable();"></select> : 
+					<select id="webs_update_time_x_min" name="webs_update_time_x_min" class="input_option" onchange="save_update_enable();"></select>
 					<span id="system_time" class="devicepin" style="color:#FFFFFF;"></span>
 					<br><span id="dstzone" style="display:none;margin-left:5px;color:#FFFFFF;"></span>
 				</td>	
+			</tr>
+
+			<tr>
+				<td colspan="2">
+					<#FW_auto_upgrade_desc#>
+				</td>
+			</tr>
+		</table>
+
+		<table id="secur_stab_setting" width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable">
+			<thead>
+			<tr>
+				<td colspan="2"><#Secur_Stab_auto_upgrade#></td>
+			</tr>	
+			</thead>
+			<tr>
+				<th><#Secur_Stab_auto_upgrade#></th>
+				<td>
+					<div align="center" class="left" style="width:75px; float:left; cursor:pointer;" id="switch_security_update_enable"></div>
+					<script type="text/javascript">
+					$('#switch_security_update_enable').iphoneSwitch(httpApi.securityUpdate.get(),
+						function(){
+							//on
+							ASUS_EULA.config(function(){httpApi.securityUpdate.set(1);},refreshpage)
+							if(!ASUS_EULA.check("asus_pp", "ASD")) return false;
+							if(!ASUS_EULA.check("asus_pp", "AHS")) return false;
+
+							httpApi.securityUpdate.set(1);
+						},
+						function(){
+							//off
+							httpApi.securityUpdate.set(0);
+						}
+					);
+					</script>
+				</td>	
+			</tr>
+
+			<tr>
+				<td colspan="2">
+					<#Secur_Stab_auto_upgrade_desc#>
+				</td>
 			</tr>
 		</table>
 
@@ -1808,7 +2110,7 @@ function get_mobile_fw_upgrade_status(){
 				</td>
 			</tr>
 		</table>
-		<div class="aimesh_manual_fw_update_hint" style="display:none;">
+		<div class="warning_desc aimesh_manual_fw_update_hint" style="display:none;">
 			<#FW_note#> <#FW_note_AiMesh#>
 		</div>
 		
@@ -1913,6 +2215,15 @@ function get_mobile_fw_upgrade_status(){
 <input type="hidden" name="action_mode" value="revertfw_release_note">
 <input type="hidden" name="model" value="" disabled>
 <input type="hidden" name="version" value="" disabled>
+</form>
+<form method="post" name="rollback_fw" action="/applyapp.cgi" target="hidden_frame">
+<input type="hidden" name="productid" value="<% nvram_get("productid"); %>">
+<input type="hidden" name="current_page" value="Advanced_FirmwareUpgrade_Content.asp">
+<input type="hidden" name="next_page" value="Advanced_FirmwareUpgrade_Content.asp">
+<input type="hidden" name="action_mode" value="rbk_fw">
+<input type="hidden" name="action_wait" value="">
+<input type="hidden" name="model" value="">
+<input type="hidden" name="version" value="">
 </form>
 </body>
 </html>

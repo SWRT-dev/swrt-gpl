@@ -637,27 +637,33 @@ send_headers( int status, char* title, char* extra_header, char* mime_type, int 
     (void) fprintf( conn_fp, "Server: %s\r\n", SERVER_NAME );
     (void) fprintf( conn_fp, "x-frame-options: SAMEORIGIN\r\n");
     (void) fprintf( conn_fp, "x-xss-protection: 1; mode=block\r\n");
+
     if (fromapp != 0){
-	(void) fprintf( conn_fp, "Cache-Control: no-store\r\n");	
-	(void) fprintf( conn_fp, "Pragma: no-cache\r\n");
-	if(fromapp == FROM_DUTUtil || fromapp == FROM_MyASUS){
-		(void) fprintf( conn_fp, "AiHOMEAPILevel: %d\r\n", EXTEND_AIHOME_API_LEVEL );
-		(void) fprintf( conn_fp, "Httpd_AiHome_Ver: %d\r\n", EXTEND_HTTPD_AIHOME_VER );
-		(void) fprintf( conn_fp, "Model_Name: %s\r\n", get_productid() );
-	}else if(fromapp == FROM_ASSIA){
-		(void) fprintf( conn_fp, "ASSIA_API_Level: %d\r\n", EXTEND_ASSIA_API_LEVEL );
-	}
+		if(fromapp == FROM_DUTUtil || fromapp == FROM_MyASUS){
+			(void) fprintf( conn_fp, "AiHOMEAPILevel: %d\r\n", EXTEND_AIHOME_API_LEVEL );
+			(void) fprintf( conn_fp, "Httpd_AiHome_Ver: %d\r\n", EXTEND_HTTPD_AIHOME_VER );
+			(void) fprintf( conn_fp, "Model_Name: %s\r\n", get_productid() );
+		}else if(fromapp == FROM_ASSIA){
+			(void) fprintf( conn_fp, "ASSIA_API_Level: %d\r\n", EXTEND_ASSIA_API_LEVEL );
+		}
     }
+
     now = time( (time_t*) 0 );
     (void) strftime( timebuf, sizeof(timebuf), RFC1123FMT, gmtime( &now ) );
     (void) fprintf( conn_fp, "Date: %s\r\n", timebuf );
-    if ( extra_header != (char*) 0 )
-	(void) fprintf( conn_fp, "%s\r\n", extra_header );
+
+	if ( extra_header != (char*) 0 ){
+		if(!strcmp(extra_header, cache_object) && fromapp != 0){
+			extra_header = cache_long_object;
+		}
+		(void) fprintf( conn_fp, "%s\r\n", extra_header );
+	}
+
     if ( mime_type != (char*) 0 ){
-	if(fromapp != FROM_BROWSER && fromapp != FROM_WebView)
-		(void) fprintf( conn_fp, "Content-Type: %s\r\n", "application/json;charset=UTF-8" );		
-	else
-		(void) fprintf( conn_fp, "Content-Type: %s\r\n", mime_type );
+		if(fromapp != FROM_BROWSER && fromapp != FROM_WebView)
+			(void) fprintf( conn_fp, "Content-Type: %s\r\n", "application/json;charset=UTF-8" );
+		else
+			(void) fprintf( conn_fp, "Content-Type: %s\r\n", mime_type );
 	}
 
 	(void) fprintf( conn_fp, "Connection: close\r\n" );
@@ -690,15 +696,9 @@ send_token_headers( int status, char* title, char* extra_header, char* mime_type
 {
 	time_t now;
 	char timebuf[100];
-	char asus_token[32]={0};
-	memset(asus_token,0,sizeof(asus_token));
+	char asus_token[32]={0}, token_cookie[128] = {0};
 
-	if(nvram_match("x_Setting", "0") && strcmp( gen_token, "") != 0){
-		strncpy(asus_token, gen_token, sizeof(asus_token));
-	}else{
-		generate_token(asus_token, sizeof(asus_token));
-	}
-	add_asus_token(asus_token);
+	gen_asus_token_cookie(asus_token, sizeof(asus_token), token_cookie, sizeof(token_cookie));
 
     (void) fprintf( conn_fp, "%s %d %s\r\n", PROTOCOL, status, title );
     (void) fprintf( conn_fp, "Server: %s\r\n", SERVER_NAME );
@@ -717,7 +717,7 @@ send_token_headers( int status, char* title, char* extra_header, char* mime_type
     if ( mime_type != (char*) 0 )
 	(void) fprintf( conn_fp, "Content-Type: %s\r\n", mime_type );
 
-    (void) fprintf( conn_fp, "Set-Cookie: asus_token=%s; HttpOnly;\r\n",asus_token );
+    (void) fprintf( conn_fp, "Set-Cookie: %s\r\n", token_cookie);
 
     (void) fprintf( conn_fp, "Connection: close\r\n" );
     (void) fprintf( conn_fp, "\r\n" );
@@ -1395,8 +1395,11 @@ handle_request(void)
 	mime_exception = 0;
 	do_referer = 0;
 
+#if defined(RTCONFIG_UIDEBUG) || defined(RTCONFIG_DEMOUI)
+	if(0) {
+#else
 	if(!fromapp) {
-
+#endif
 		lock_status = check_lock_status(&login_dt);
 
 		if(lock_status == FORCELOCK || lock_status == LOGINLOCK){
@@ -1408,16 +1411,6 @@ handle_request(void)
 
 		http_login_timeout(&login_uip_tmp, cookies, fromapp);	// 2008.07 James.
 		login_state = http_login_check();
-		// for each page, mime_exception is defined to do exception handler
-
-		// check exception first
-		for (exhandler = &except_mime_handlers[0]; exhandler->pattern; exhandler++) {
-			if(match(exhandler->pattern, url))
-			{
-				mime_exception = exhandler->flag;
-				break;
-			}
-		}
 
 		// check doreferer first
 		for (doreferer = &mime_referers[0]; doreferer->pattern; doreferer++) {
@@ -1426,6 +1419,16 @@ handle_request(void)
 				do_referer = doreferer->flag;
 				break;
 			}
+		}
+	}
+
+	// for each page, mime_exception is defined to do exception handler
+	// check exception first
+	for (exhandler = &except_mime_handlers[0]; exhandler->pattern; exhandler++) {
+		if(match(exhandler->pattern, url))
+		{
+			mime_exception = exhandler->flag;
+			break;
 		}
 	}
 
@@ -1476,7 +1479,7 @@ handle_request(void)
 			}
 			if (handler->auth) {
 				url_do_auth = 1;
-#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX6000) || defined(GTAXE16000) || defined(GTAX11000_PRO) || defined(GT10) || defined(RTAX82U_V2)
+#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX6000) || defined(GTAXE16000) || defined(GTBE98) || defined(GTBE98_PRO) || defined(GTAX11000_PRO) || defined(GT10) || defined(RTAX82U_V2) || defined(TUFAX5400_V2) || defined(GTBE96)
 				switch_ledg(LEDG_QIS_FINISH);
 #endif
 				if ((mime_exception&MIME_EXCEPTION_NOAUTH_FIRST)&&!x_Setting) {
@@ -1515,6 +1518,7 @@ handle_request(void)
 							return;
 						}
 					}
+#ifndef RTCONFIG_DEMOUI
 					auth_result = auth_check(url, file, cookies, fromapp, &add_try);
 					if (auth_result != 0)
 					{
@@ -1524,6 +1528,7 @@ handle_request(void)
 						send_login_page(fromapp, auth_result, url, file, auth_check_dt, add_try);
 						return;
 					}
+#endif
 				}
 
 				if(!fromapp) {
@@ -1597,9 +1602,6 @@ handle_request(void)
 #ifdef RTCONFIG_DSL_TCLINUX
 					&& !strstr(file, "TCC.log")
 #endif
-#ifdef RTCONFIG_IPSEC
-					&& !strstr(file, "ipsec.log")
-#endif
 #if defined(RTCONFIG_IFTTT) || defined(RTCONFIG_ALEXA) || defined(RTCONFIG_GOOGLE_ASST)
 					&& !strstr(file, "asustitle.png")
 #endif
@@ -1614,6 +1616,9 @@ handle_request(void)
 #ifdef RTCONFIG_IPSEC
 					&& !strstr(file, "renew_ikev2_cert_mobile.pem") && !strstr(file, "ikev2_cert_mobile.pem")
 					&& !strstr(file, "renew_ikev2_cert_windows.der") && !strstr(file, "ikev2_cert_windows.der")
+					&& !strstr(file, "ipsec_s2s.conf")
+					&& !strstr(file, "server_ipsec.cert")
+					&& !strstr(file, "ipsec.log")
 #endif
 					&& !strstr(file, "get_download_info")
 					&& !strstr(file, "INO")
@@ -2375,7 +2380,15 @@ void check_alive()
 		check_alive_count = 0;
 	}
 	else if(check_alive_count > 20){
+		struct in_addr ip_addr, temp_ip_addr, app_temp_ip_addr;
+		ip_addr.s_addr = login_ip;
+		app_temp_ip_addr.s_addr = app_login_ip;
+		temp_ip_addr.s_addr = login_ip_tmp;
+		//dbg("slow_post_read_count(%d) > 3\n", slow_post_read_count);
+		HTTPD_FB_DEBUG("login_ip = %s(%lu), app_login_ip = %s(%lu)\n", inet_ntoa(ip_addr), login_ip, inet_ntoa(app_temp_ip_addr), app_login_ip);
+		HTTPD_FB_DEBUG("login_ip_tmp = %s(%lu), url = %s\n", inet_ntoa(temp_ip_addr), login_ip_tmp, url);
 		logmessage("HTTPD", "waitting 10 minitues and restart\n");
+		check_lock_state();
 		notify_rc("restart_httpd");
 	}
 	else{
@@ -2476,6 +2489,7 @@ int main(int argc, char **argv)
 	//websSetVer();
 	//2008.08 magic
 	nvram_unset("login_timestamp");
+	nvram_unset("app_login_timestamp");
 	nvram_unset("login_ip"); /* IPv6 compat */
 	nvram_unset("login_ip_str");
 
@@ -2727,8 +2741,6 @@ int main(int argc, char **argv)
 }
 
 #ifdef RTCONFIG_HTTPS
-#define HTTPS_CA_JFFS  "/jffs/cert.tgz"
-
 void save_cert(void)
 {
 	eval("tar", "-C", "/", "-czf", HTTPS_CA_JFFS, "etc/cert.pem", "etc/key.pem");
@@ -2772,7 +2784,11 @@ void start_ssl(int http_port)
 		save = nvram_match("https_crt_save", "1");
 
 		/* check key/cert pairs */
-		if ((!f_exists("/etc/cert.pem")) || (!f_exists("/etc/key.pem")) || !mssl_cert_key_match("/etc/cert.pem", "/etc/key.pem")) {
+		if ((!f_exists("/etc/cert.pem")) || (!f_exists("/etc/key.pem"))
+#if !defined(RTCONFIG_ECC256)
+			|| !mssl_cert_key_match("/etc/cert.pem", "/etc/key.pem")
+#endif
+		) {
 			ok = 0;
 			if (save) {
 				logmessage("httpd", "Save SSL certificate...%d", http_port);
@@ -2780,11 +2796,16 @@ void start_ssl(int http_port)
 						system("cat /etc/key.pem /etc/cert.pem > /etc/server.pem");
 						system("cp /etc/cert.pem /etc/cert.crt"); // openssl self-signed certificate for router.asus.com LAN access
 
+#if !defined(RTCONFIG_ECC256)
 						// check key and cert pair, if they are mismatched, regenerate key and cert
 						if (mssl_cert_key_match("/etc/cert.pem", "/etc/key.pem")) {
 							logmessage("httpd", "mssl_cert_key_match : PASS");
 							ok = 1;
 						}
+#else
+					_dprintf("httpd: skip check key and cert pair...\n");
+					ok = 1;
+#endif
 					}
 
 					int save_intermediate_crt = nvram_match("https_intermediate_crt_save", "1");
@@ -2839,7 +2860,7 @@ int check_current_ip_is_lan_or_wan()
 		if (inet_aton(nvram_safe_get("lan_ipaddr"), &lan) == 0 ||
 		    inet_aton(nvram_safe_get("lan_netmask"), &mask) == 0)
 			return -1;
-		return (lan.s_addr & mask.s_addr) == (login_uip_tmp.in.s_addr & mask.s_addr);
+		return ((lan.s_addr & mask.s_addr) == (login_uip_tmp.in.s_addr & mask.s_addr))?0:1;
 #ifdef RTCONFIG_IPV6
 	case AF_INET6:
 		/* IPv6 addresses are dynamic, must be bind to bind to interface */

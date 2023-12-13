@@ -13,14 +13,14 @@
 <link rel="stylesheet" type="text/css" href="index_style.css"> 
 <link rel="stylesheet" type="text/css" href="form_style.css">
 <link rel="stylesheet" type="text/css" href="device-map/device-map.css">
+<script type="text/javascript" src="/js/jquery.js"></script>
+<script type="text/javascript" src="/js/httpApi.js"></script>
 <script language="JavaScript" type="text/javascript" src="/state.js"></script>
 <script language="JavaScript" type="text/javascript" src="/general.js"></script>
 <script language="JavaScript" type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" language="JavaScript" src="/help.js"></script>
 <script type="text/javascript" language="JavaScript" src="/validator.js"></script>
 <script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
-<script type="text/javascript" src="/js/jquery.js"></script>
-<script type="text/javascript" src="/js/httpApi.js"></script>
 <style>
 .sort_border{
 	position: relative;
@@ -248,7 +248,7 @@ function del_Row(r){
 		});
 
 		if(policy_flag){
-			if(!confirm("Remove the client's IP binding will also delete the client's policy in the exception list of <#VPN_Fusion#>. Are you sure you want to delete?"))/*untranslated*/
+			if(!confirm(stringSafeGet("<#VPN_Fusion_IP_Binding_Delete_And_Exception_Policy#>")))
 				return false;
 		}
 	}
@@ -291,7 +291,7 @@ function showdhcp_staticlist(){
 	else {
 		//user icon
 		var userIconBase64 = "NoIcon";
-		var clientName, deviceType, deviceVender;
+		var clientName, deviceType, deviceVendor;
 		var sortData = Object.keys(manually_dhcp_list_array).sort(
 			function(a, b){
 				if(manually_dhcp_sort_type == 0)
@@ -312,12 +312,12 @@ function showdhcp_staticlist(){
 			if(clientList[clientMac]) {
 				clientName = (clientList[clientMac].nickName == "") ? clientList[clientMac].name : clientList[clientMac].nickName;
 				deviceType = clientList[clientMac].type;
-				deviceVender = clientList[clientMac].vendor;
+				deviceVendor = clientList[clientMac].vendor;
 			}
 			else {
 				clientName = "New device";
 				deviceType = 0;
-				deviceVender = "";
+				deviceVendor = "";
 			}
 			code += '<tr><td width="30%" align="center">';
 			code += '<table style="width:100%;"><tr><td style="width:35%;height:56px;border:0px;">';
@@ -329,20 +329,24 @@ function showdhcp_staticlist(){
 					userIconBase64 = getUploadIcon(clientMac.replace(/\:/g, ""));
 				}
 				if(userIconBase64 != "NoIcon") {
-					code += '<div id="' + clientIconID + '" style="text-align:center;"><img class="imgUserIcon_card" src="' + userIconBase64 + '"></div>';
-				}
-				else if(deviceType != "0" || deviceVender == "") {
-					code += '<div id="' + clientIconID + '" class="clientIcon type' + deviceType + '"></div>';
-				}
-				else if(deviceVender != "" ) {
-					var venderIconClassName = getVenderIconClassName(deviceVender.toLowerCase());
-					if(venderIconClassName != "" && !downsize_4m_support) {
-						code += '<div id="' + clientIconID + '" class="venderIcon ' + venderIconClassName + '"></div>';
-					}
-					else {
-						code += '<div id="' + clientIconID + '" class="clientIcon type' + deviceType + '"></div>';
-					}
-				}
+                    if(clientList[clientMac].isUserUplaodImg){
+                        code += '<div id="' + clientIconID + '" class="clientIcon"><img class="imgUserIcon_card" src="' + userIconBase64 + '"></div>';
+                    }else{
+                        code += '<div id="' + clientIconID + '" class="clientIcon"><i class="type" style="--svg:url(' + userIconBase64 + ')"></i></div>';
+                    }
+                }
+                else if(deviceType != "0" || deviceVendor == "") {
+                    code += '<div id="' + clientIconID + '" class="clientIcon"><i class="type'+deviceType+'"></i></div>';
+                }
+                else if(deviceVendor != "" ) {
+                    var vendorIconClassName = getVendorIconClassName(deviceVendor.toLowerCase());
+                    if(vendorIconClassName != "" && !downsize_4m_support) {
+                        code += '<div id="' + clientIconID + '" class="clientIcon"><i class="vendor-icon '+ vendorIconClassName +'"></i></div>';
+                    }
+                    else {
+                        code += '<div id="' + clientIconID + '" class="clientIcon"><i class="type' + deviceType + '"></i></div>';
+                    }
+                }
 			}
 			code += '</td><td style="width:65%;border:0px;">';
 			code += '<div>' + clientName + '</div>';
@@ -559,7 +563,7 @@ function setClientIP(macaddr, ipaddr){
 }
 
 function hideClients_Block(){
-	document.getElementById("pull_arrow").src = "/images/arrow-down.gif";
+	document.getElementById("pull_arrow").src = "/images/unfold_more.svg";
 	document.getElementById('ClientList_Block_PC').style.display='none';
 }
 
@@ -567,7 +571,7 @@ function pullLANIPList(obj){
 	var element = document.getElementById('ClientList_Block_PC');
 	var isMenuopen = element.offsetWidth > 0 || element.offsetHeight > 0;
 	if(isMenuopen == 0){		
-		obj.src = "/images/arrow-top.gif"
+		obj.src = "/images/unfold_less.svg"
 		element.style.display = 'block';		
 		document.form.dhcp_staticmac_x_0.focus();		
 	}
@@ -853,9 +857,11 @@ function sortClientIP(){
 				<tr>
 					<!-- client info -->
 					<td width="30%">
-						<input type="text" class="input_20_table" maxlength="17" name="dhcp_staticmac_x_0" style="margin-left:-20px;width:190px;" onKeyPress="return validator.isHWAddr(this,event)" onClick="hideClients_Block();" autocorrect="off" autocapitalize="off" placeholder="ex: <% nvram_get("lan_hwaddr"); %>">
-						<img id="pull_arrow" height="14px;" src="/images/arrow-down.gif" style="position:absolute;*margin-left:-3px;*margin-top:1px;" onclick="pullLANIPList(this);" title="<#select_MAC#>">
-						<div id="ClientList_Block_PC" class="clientlist_dropdown" style="margin-left:-1px;"></div>
+                        <div class="clientlist_dropdown_main" style="width: 100%">
+                            <input type="text" class="input_20_table" maxlength="17" name="dhcp_staticmac_x_0" onKeyPress="return validator.isHWAddr(this,event)" onClick="hideClients_Block();" autocorrect="off" autocapitalize="off" placeholder="ex: <% nvram_get("lan_hwaddr"); %>">
+                            <img id="pull_arrow" height="14px;" src="/images/unfold_more.svg" onclick="pullLANIPList(this);" title="<#select_MAC#>">
+                            <div id="ClientList_Block_PC" class="clientlist_dropdown"></div>
+						</div>
 					</td>
 					<td width="20%">
 						<input type="text" class="input_15_table" maxlength="15" name="dhcp_staticip_x_0" onkeypress="return validator.isIPAddr(this,event)" autocorrect="off" autocapitalize="off">

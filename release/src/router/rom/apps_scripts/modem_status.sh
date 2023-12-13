@@ -27,6 +27,8 @@ sim_order=`nvram get modem_sim_order`
 
 usb_gobi2=`nvram get usb_gobi2`
 
+usb_path1_manufacturer=`nvram get usb_path1_manufacturer`
+
 stop_lock=`nvram get stop_atlock`
 if [ -n "$stop_lock" ] && [ "$stop_lock" -eq "1" ]; then
 	at_lock=""
@@ -564,8 +566,22 @@ elif [ "$1" == "fullsignal" ]; then
 			lac=`echo -n "$fullstr" |awk 'BEGIN{FS=","}{print $5}' 2>/dev/null`
 			rsrp=`echo -n "$fullstr" |awk 'BEGIN{FS=","}{print $13}' 2>/dev/null`
 			rsrq=`echo -n "$fullstr" |awk 'BEGIN{FS=","}{print $14}' 2>/dev/null`
-			rssi=0
-			sinr=0
+			if [ "$usb_path1_manufacturer" == "Fibocom" ]; then
+				rsrp=$(($rsrp-141))
+				rsrq=$(($rsrq/2-20))
+			fi
+			if [ "$mode" -eq "4" ]; then
+				at_ret=`/usr/sbin/modem_at.sh +GTCAINFO? "$modem_reg_time" 2>&1`
+				ret=`echo -n "$at_ret" |grep "OK" 2>/dev/null`
+				if [ -z "$ret" ]; then
+					echo "Fail to get the CA band from $modem_act_node."
+					exit 16
+				fi
+				rssi=`echo -n "$at_ret" |grep "PCC" |awk 'BEGIN{FS="SCC"}{print $1}' |awk 'BEGIN{FS=","}{print $9}' 2>/dev/null`
+			else
+				rssi=0
+			fi
+			sinr=`echo -n "$fullstr" |awk 'BEGIN{FS=","}{print $11}' 2>/dev/null`
 		elif [ "$mode" -eq "1" ]; then #GSM
 			lac=`echo -n "$fullstr" |awk 'BEGIN{FS=","}{print $5}' 2>/dev/null`
 			rsrp=0
@@ -596,13 +612,13 @@ elif [ "$1" == "fullsignal" ]; then
 		echo "sinr=$sinr."
 
 		#nvram set ${prefix}act_operation=$operation
-		#nvram set ${prefix}act_band=$band
+		#nvram set ${prefix}act_band="BAND $band"
 		nvram set ${prefix}act_cellid=$cellid
 		nvram set ${prefix}act_lac=$lac
 		nvram set ${prefix}act_rsrp=$rsrp
 		nvram set ${prefix}act_rsrq=$rsrq
 		nvram set ${prefix}act_rssi=$rssi
-		nvram set ${prefix}act_sinr=$sinr
+		nvram set ${prefix}act_sinr=$(($sinr/2))
 
 		echo "done."
 	elif [ "$is_gobi" -eq "1" ]; then
@@ -788,7 +804,7 @@ elif [ "$1" == "operation" ]; then
 		echo "band=$band."
 
 		nvram set ${prefix}act_operation="$operation"
-		nvram set ${prefix}act_band="$band"
+		nvram set ${prefix}act_band="BAND $band"
 
 		echo "done."
 	elif [ "$is_gobi" -eq "1" ]; then
@@ -1270,9 +1286,12 @@ elif [ "$1" == "caband" ]; then
 		echo "pcc=$pcc_band."
 		echo "scc=$scc_band."
 
-		nvram set ${prefix}act_pcc="$pcc_band"
-		nvram set ${prefix}act_scc="$scc_band"
-
+		nvram set ${prefix}act_pcc="BAND $(($pcc_band-100))"
+		if [ "$scc_band" == "100" ] || [ "$scc_band" == "" ]; then
+			nvram set ${prefix}act_scc=""
+		else
+			nvram set ${prefix}act_scc="BAND $(($scc_band-100))"
+		fi
 		echo "done."
 	fi
 elif [ "$1" == "band" ]; then

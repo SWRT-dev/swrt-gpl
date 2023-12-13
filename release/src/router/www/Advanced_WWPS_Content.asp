@@ -112,6 +112,12 @@ function initial(){
 	if("<% nvram_get("wl_closed"); %>" == 1){
 		document.getElementById('WPS_hideSSID_hint').style.display = "";	
 	}	
+
+	if(based_modelid == "PRT-AX57_GO"){
+		$("#wpsDesc").html(`<#WPS_add_cli#>`);
+		$("input[name=wps_method][value=0]").parent().hide();
+		$("input[name=wps_method][value=1]").click();
+	}
 }
 
 function SwitchBand(){
@@ -779,7 +785,7 @@ function checkWLReady(){
 		  <div style="margin:10px 0 10px 5px;" class="splitLine"></div>
 		  <div class="formfontdesc"><#WLANConfig11b_display6_sectiondesc#></div>
 		  <div id="lantiq_ready" style="display:none;color:#FC0;margin-left:5px;font-size:13px;">Wireless is setting...</div>
-		  <div id="WPS_hideSSID_hint" class="formfontdesc" style="display:none;color:#FFCC00;"></div>		  
+		  <div id="WPS_hideSSID_hint" class="hint-color formfontdesc" style="display:none;color:#FFCC00;"></div>		  
 
 		<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0"  class="FormTable">
 			<tr>
@@ -869,7 +875,7 @@ function checkWLReady(){
 										}					
 									}
 									
-									if( !SG_mode || (SG_mode && confirm('Enabling WPS may result in the leak of your WiFi network password. Do you still want to proceed?'))){
+									if( !SG_mode || (SG_mode && confirm(stringSafeGet("<#note_turn_on_WPS#>")))){
 										document.form.wps_enable.value = "1";
 										enableWPS();
 									}
@@ -921,8 +927,8 @@ function checkWLReady(){
 								<div class="devicepin" style="color:#FFF;" id="wps_config_td"></div>
 							</td>
 							<td style="border:0px">
-								<input class="button_gen" type="button" onClick="resetWPS();" id="Reset_OOB" name="Reset_OOB" value="<#CTL_Reset_OOB#>" style="padding:0 0.3em 0 0.3em;" >
-								<br><span id="Reset_OOB_desc"><#WLANConfig11b_x_ResetWPS_desc#></span>
+								<input class="btn_subusage button_gen" type="button" onClick="resetWPS();" id="Reset_OOB" name="Reset_OOB" value="<#CTL_Reset_OOB#>" style="padding:0 0.3em 0 0.3em;" >
+								<div id="Reset_OOB_desc"><#WLANConfig11b_x_ResetWPS_desc#></div>
 							</td>
 						</tr></table>
 					</div>
@@ -949,11 +955,11 @@ function checkWLReady(){
 				<th>
 			  	<span id="wps_method"><a class="hintstyle" href="javascript:void(0);" onclick="openHint(13,2);"><#WLANConfig11b_x_WPSMode_itemname#></a></span>
 			  </th>
-			  <td>
-					<input type="radio" name="wps_method" onclick="changemethod(0);" value="0"><#WLANConfig11b_x_WPS_pushbtn#>
-					<input type="radio" name="wps_method" onclick="changemethod(1);" value="1"><#WLANConfig11b_x_WPSPIN_itemname#>
-			  	<input type="text" name="wps_sta_pin" id="wps_sta_pin" value="" size="9" maxlength="9" class="input_15_table" autocorrect="off" autocapitalize="off">
-				  <div id="starBtn" style="margin-top:10px;"><input class="button_gen" type="button" style="margin-left:5px;" onClick="configCommand();" id="addEnrolleebtn_client" name="addEnrolleebtn"  value="<#wps_start_btn#>"></div>
+				<td>
+					<label><input type="radio" name="wps_method" onclick="changemethod(0);" value="0"><#WLANConfig11b_x_WPS_pushbtn#></label>
+					<label><input type="radio" name="wps_method" onclick="changemethod(1);" value="1"><#WLANConfig11b_x_WPSPIN_itemname#></label>
+					<input type="text" name="wps_sta_pin" id="wps_sta_pin" value="" size="9" maxlength="9" class="input_15_table" autocorrect="off" autocapitalize="off">
+					<div id="starBtn" style="margin-top:10px;"><input class="button_gen" type="button" style="margin-left:5px;" onClick="configCommand();" id="addEnrolleebtn_client" name="addEnrolleebtn"  value="<#wps_start_btn#>"></div>
 				</td>
 			</tr>
 

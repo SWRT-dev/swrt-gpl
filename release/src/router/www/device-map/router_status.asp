@@ -17,7 +17,6 @@
 	<script src="../state.js" type="text/javascript"></script>
 	<script src="../js/device.js" type="text/javascript"></script>
 <script>
-
 /*Initialize array*/
 var cpu_info_old = new Array();
 var core_num = '<%cpu_core_num();%>';
@@ -54,6 +53,17 @@ $(document).ready(function(){
 	if(isSupport("ledg")){
 		$("#light_effect_tab").show();
 	}  
+
+	if(parent.businessWrapper){
+		$("body").hide().css("visibility", "visible").fadeIn();
+		$("#wireless_tab").parent().hide()
+		$("#cpu_field").hide()
+		$("#ram_field").hide()
+		$("#plc_ports").hide()
+		$("#led_field").hide()
+		$("#hw_information_field").hide()
+		$("#yadns_field").hide()
+	}
 });
 
 var nvram = new Object();
@@ -76,7 +86,7 @@ function getVariable(){
 		_array.push.apply(_array, _element);
 	}
 
-	if(system.band60gSupport || system.modelName === 'GT-AXE16000'){
+	if(system.band60gSupport || system.modelName === 'GT-AXE16000' || system.modelName === 'GT-BE98' || system.modelName === 'GT-BE98_PRO'){
 		_element = ['wl3_hwaddr'];
 		_array.push.apply(_array, _element);
 	}
@@ -123,8 +133,11 @@ function genElement(){
 	// MAC Address
 	code += '<div class="info-block"><div class="info-title">LAN <#MAC_Address#></div><div class="info-content">'+ variable.lan_hwaddr +'</div></div>';
 	if(system.band2gSupport){
-		if(system.modelName === 'GT-AXE16000'){
+		if(system.modelName === 'GT-AXE16000' || system.modelName === 'GT-BE98' || system.modelName === 'GT-BE98_PRO'){
 			code += '<div class="info-block"><div class="info-title">2.4 GHz <#MAC_Address#></div><div class="info-content">'+ variable.wl3_hwaddr +'</div></div>';
+		}
+		else if(odmpid === 'GT6'){
+			code += '<div class="info-block"><div class="info-title">2.4 GHz <#MAC_Address#></div><div class="info-content">'+ variable.wl2_hwaddr +'</div></div>';
 		}
 		else{
 			code += '<div class="info-block"><div class="info-title">2.4 GHz <#MAC_Address#></div><div class="info-content">'+ variable.wl0_hwaddr +'</div></div>';
@@ -137,11 +150,23 @@ function genElement(){
 			code += '<div class="info-block"><div class="info-title">6 GHz <#MAC_Address#></div><div class="info-content">'+ variable.wl2_hwaddr +'</div></div>';
 		}
 		else{
-			code += '<div class="info-block"><div class="info-title">5 GHz-1 <#MAC_Address#></div><div class="info-content">'+ variable.wl1_hwaddr +'</div></div>';
-			code += '<div class="info-block"><div class="info-title">5 GHz-2 <#MAC_Address#></div><div class="info-content">'+ variable.wl2_hwaddr +'</div></div>';
+			if(system.modelName == 'MAP-AC2200')
+			{
+				code += '<div class="info-block"><div class="info-title">5 GHz-1 <#MAC_Address#></div><div class="info-content">'+ variable.wl2_hwaddr +'</div></div>';
+				code += '<div class="info-block"><div class="info-title">5 GHz-2 <#MAC_Address#></div><div class="info-content">'+ variable.wl1_hwaddr +'</div></div>';
+			}
+			else if(odmpid === 'GT6'){
+				code += '<div class="info-block"><div class="info-title">5 GHz-1 <#MAC_Address#></div><div class="info-content">'+ variable.wl0_hwaddr +'</div></div>';
+				code += '<div class="info-block"><div class="info-title">5 GHz-2 <#MAC_Address#></div><div class="info-content">'+ variable.wl1_hwaddr +'</div></div>';
+			}
+			else
+			{
+				code += '<div class="info-block"><div class="info-title">5 GHz-1 <#MAC_Address#></div><div class="info-content">'+ variable.wl1_hwaddr +'</div></div>';
+				code += '<div class="info-block"><div class="info-title">5 GHz-2 <#MAC_Address#></div><div class="info-content">'+ variable.wl2_hwaddr +'</div></div>';
+			}
 		}	
 	}
-	else if(system.modelName === 'GT-AXE16000'){
+	else if(system.modelName === 'GT-AXE16000' || system.modelName === 'GT-BE98' || system.modelName === 'GT-BE98_PRO'){
 		code += '<div class="info-block"><div class="info-title">5 GHz-1 <#MAC_Address#></div><div class="info-content">'+ variable.wl0_hwaddr +'</div></div>';
 		code += '<div class="info-block"><div class="info-title">5 GHz-2 <#MAC_Address#></div><div class="info-content">'+ variable.wl1_hwaddr +'</div></div>';
 		code += '<div class="info-block"><div class="info-title">6 GHz <#MAC_Address#></div><div class="info-content">'+ variable.wl2_hwaddr +'</div></div>';
@@ -493,13 +518,26 @@ function get_ethernet_ports() {
 								$("<span>").addClass("port_text").html(htmlEnDeCode.htmlEncode(port_item.special_port_name)).appendTo($port_bg);
 						}
 						else if(port_item.cap_support.LAN){
-							if(port_item.special_port_name != "")
-								$("<span>").addClass("port_text").html(htmlEnDeCode.htmlEncode(port_item.special_port_name)).appendTo($port_bg);
-							else
+							if(top.businessWrapper){
+								if(port_item.special_port_name != ""){
+									$("<span>").addClass("port_text").html(htmlEnDeCode.htmlEncode(port_item.special_port_name)).appendTo($port_bg);
+								}
 								$("<div>").addClass("lan_idx").html(htmlEnDeCode.htmlEncode(port_item.label_idx)).appendTo($port_icon);
+							}
+							else{
+								if(port_item.special_port_name != "")
+									$("<span>").addClass("port_text").html(htmlEnDeCode.htmlEncode(port_item.special_port_name)).appendTo($port_bg);
+								else
+									$("<div>").addClass("lan_idx").html(htmlEnDeCode.htmlEncode(port_item.label_idx)).appendTo($port_icon);
+							}
 						}
 						else if(port_item.cap_support.USB){
 							$port_icon.addClass("USB");
+							if(port_item.special_port_name != "")
+								$("<span>").addClass("port_text").html(htmlEnDeCode.htmlEncode(port_item.special_port_name)).appendTo($port_bg);
+						}
+						else if(port_item.cap_support.MOCA){
+							$port_icon.addClass("MoCa");
 							if(port_item.special_port_name != "")
 								$("<span>").addClass("port_text").html(htmlEnDeCode.htmlEncode(port_item.special_port_name)).appendTo($port_bg);
 						}
@@ -512,8 +550,11 @@ function get_ethernet_ports() {
 				});
 
 				var $port_status_icon_desc = $("<div>").addClass("port_status_icon_desc").appendTo($("#phy_ports"));
+				if(top.businessWrapper){
+					$port_status_icon_desc.addClass("businessWrapper");
+				}
 				$("<div>").addClass("conn").html("<#Connected#>").appendTo($port_status_icon_desc);
-				$("<div>").addClass("warn").html("Warnings").appendTo($port_status_icon_desc);/* untranslated */
+				$("<div>").addClass("warn").html("<#Notice#>").appendTo($port_status_icon_desc);/* untranslated */
 				$("<div>").addClass("unplug").html("<#Status_Unplugged#>").appendTo($port_status_icon_desc);
 
 				if(show_notice){

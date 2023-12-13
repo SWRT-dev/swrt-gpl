@@ -260,6 +260,10 @@ ul{
 }
 </style>
 <script type="text/javascript">
+/* String replace &#39; with ' for dict */
+function stringSafeGet(str){
+	return str.replace(new RegExp("&#39;", 'g'), "'");
+}
 var bwdpi_support = ('<% nvram_get("rc_support"); %>'.search('bwdpi') == -1) ? false : true;
 var mac_parameter = '<% get_parameter("mac"); %>'.toUpperCase();
 var casenum = '<% get_parameter("cat_id"); %>';
@@ -412,7 +416,7 @@ function show_information(){
 	if(target_info.category_type == "Parental Controls"){	//Webs Apps filter
 		code_title = "<div class='er_title' style='height:auto;'><#block_PC_Title#></div>";
 		code_suggestion = "<ul>";
-		code_suggestion += "<li><span><#block_PC_suggest1#></span></li>";
+		code_suggestion += stringSafeGet("<li><span><#block_PC_suggest1#></span></li>");
 		code_suggestion += "<li><span><#block_TS_suggest3#></span></li>";
 		code_suggestion += '<li><#AiProtection_parental_control_report_desc#><a href="https://global.sitesafety.trendmicro.com/index.php" target="_blank"><#AiProtection_parental_control_report_tm#></a></li>';
 		code_suggestion += "</ul>";
@@ -445,7 +449,7 @@ function show_information(){
 		if(bwdpi_support)
 			parental_string = "<#Time_Scheduling#>";
 		else
-			parental_string = "<#Parental_Control#>";
+			parental_string = stringSafeGet("<#Parental_Control#>");
 
 		code_suggestion += "<li><span><#block_TS_suggest1#> "+ parental_string +" <#block_TS_suggest2#></span></li>";
 		code_suggestion += "<li><span><#block_TS_suggest3#></span></li>";

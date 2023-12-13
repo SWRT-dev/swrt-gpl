@@ -150,6 +150,14 @@ static int string_to_hex(char *string, unsigned char *key, int len)
 
 char *nvram_get(const char *name)
 {
+
+#ifdef RTCONFIG_NVRAM_ENCRYPT
+	if(invalid_nvram_get_program(name)){
+		printf("nvram_get:name = %s fail\n",name);
+		return NULL;
+	}
+#endif
+
 	char tmp[100];
 	char *value;
 	size_t count = strlen(name) + 1;
@@ -192,8 +200,70 @@ char *nvram_get(const char *name)
 	return value;
 }
 
+char *nvram_get_salt(void)
+{
+  char name[][16] = {{'n', 'v', 'r', 'a', 'm', '_', 's', 'a', 'l', 't', '\0'}};
+
+#ifdef RTCONFIG_NVRAM_ENCRYPT
+	if(invalid_program_check()){
+		dbg("nvram_get_salt: fail\n");
+		return NULL;
+	}
+#endif
+
+	char tmp[100];
+	char *value;
+	size_t count = strlen(name) + 1;
+	unsigned long *off = (unsigned long *)tmp;
+#if defined(RTCONFIG_REALTEK) && !defined(RPAC92)
+	if(strncmp(name,"rtk_mac",strlen("rtk_mac"))==0)
+	{
+		unsigned char tmpMac[6]={0};
+		int offset=get_rtk_mac_offset(name);
+		if(!offset)
+			return NULL;
+		bzero(hw_mac,sizeof(hw_mac));
+		rtk_flash_read(tmpMac,offset,sizeof(tmpMac));
+		sprintf(hw_mac,"%02x%02x%02x%02x%02x%02x",tmpMac[0],tmpMac[1],tmpMac[2],tmpMac[3],tmpMac[4],tmpMac[5]);
+		return hw_mac;
+	}
+#endif /* RTCONFIG_REALTEK */
+
+	if (nvram_fd < 0) {
+		if (nvram_init(NULL) != 0) return NULL;
+	}
+
+	if (count > sizeof(tmp)) {
+		if ((off = malloc(count)) == NULL) return NULL;
+	}
+
+	/* Get offset into mmap() space */
+	strcpy((char *) off, name);
+	count = read(nvram_fd, off, count);
+
+	if (count == sizeof(*off)) {
+		value = &nvram_buf[*off];
+	}
+	else {
+		value = NULL;
+		if (count < 0) perror(PATH_DEV_NVRAM);
+	}
+
+	if (off != (unsigned long *)tmp) free(off);
+	return value;
+}
+
+
 int nvram_getall(char *buf, int count)
 {
+
+#ifdef RTCONFIG_NVRAM_ENCRYPT
+	if(invalid_program_check()){
+		printf("nvram_getall: fail\n");
+		return -1;
+	}
+#endif
+
 	int r;
 	
 	if (count <= 0) return 0;
@@ -248,6 +318,10 @@ static int _nvram_set(const char *name, const char *value)
 	char tmp[100];
 	char *buf = tmp;
 	int ret;
+
+	if (name == NULL || *name == '\0')
+		return 0;
+
 #if defined(RTCONFIG_REALTEK) && !defined(RPAC92)
 	if(strncmp(name,"rtk_mac",strlen("rtk_mac"))==0)
 	{

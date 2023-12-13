@@ -107,11 +107,27 @@ typedef unsigned short u16;
 #include <linux/mii.h>
 #include <linux/if_vlan.h>
 #include <linux/sockios.h>
-#include "ethctl.h"
+
+/* RTCONFIG_HND_ROUTER_BE_4916 */
+#if defined(WIFI7_SDK_20230426)
+#include <rtconfig.h>
+#else	/* WIFI7_SDK_20230426 */
 #include "boardparms.h"
+#endif	/* WIFI7_SDK_20230426 */
+
 #include "bcmnet.h"
 #include "bcm/bcmswapitypes.h"
 #include <rtconfig.h>
+#ifdef RTCONFIG_BCM_502L07P2
+#undef __USE_MISC
+#include "ethctl_api.h"
+#endif
+#include "ethctl.h"
+
+#if defined(WIFI7_SDK_20230426)
+/* copy from SDK 17.10.305.16 */
+#define BCM_PHY_ID_M             0x1F
+#endif
 
 #define PORT        "port"
 static const char *media_names[] = {
@@ -121,6 +137,7 @@ static const char *media_names[] = {
 
 static struct ethctl_data ethctl;
 
+#if !defined(RTCONFIG_BCM_502L07P2)
 static int mdio_read(int skfd, struct ifreq *ifr, int phy_id, int location)
 {
     struct mii_ioctl_data *mii = (void *)&ifr->ifr_data;
@@ -159,6 +176,7 @@ static void mdio_write(int skfd, struct ifreq *ifr, int phy_id, int location, in
             strerror(errno));
     }
 }
+
 
 static int et_dev_subports_query(int skfd, struct ifreq *ifr)
 {
@@ -240,6 +258,7 @@ static int et_get_phyid(int skfd, struct ifreq *ifr, int sub_port)
 
     return et_get_phyid2(skfd, ifr, sub_port);
 }
+#endif // RTCONFIG_BCM_502L07P2
 
 static int parse_media_options(char *option)
 {
@@ -767,7 +786,10 @@ static int et_cmd_vport_enable(int skfd, struct ifreq *ifr)
 {
     int err = 0;
 
+	/* RTCONFIG_HND_ROUTER_BE_4916 */
+#if !defined(WIFI7_SDK_20230426)
     err = ioctl(skfd, SIOCGENABLEVLAN, ifr);
+#endif
 
     return err;
 }
@@ -776,7 +798,10 @@ static int et_cmd_vport_disable(int skfd, struct ifreq *ifr)
 {
     int err = 0;
 
+	/* RTCONFIG_HND_ROUTER_BE_4916 */
+#if !defined(WIFI7_SDK_20230426)
     err = ioctl(skfd, SIOCGDISABLEVLAN, ifr);
+#endif
 
     return err;
 }
@@ -787,7 +812,10 @@ static int et_cmd_vport_query(int skfd, struct ifreq *ifr)
     int ports = 0;
 
     ifr->ifr_data = (char*)&ports;
+	/* RTCONFIG_HND_ROUTER_BE_4916 */
+#if !defined(WIFI7_SDK_20230426)
     err = ioctl(skfd, SIOCGQUERYNUMVLANPORTS, ifr);
+#endif
     if (err == 0)
         printf("%u\n", ports);
 

@@ -69,6 +69,9 @@
 #include <PMS_DBAPIs.h>
 #endif
 
+#ifdef RTCONFIG_TRUSTZONE
+#include <libatee.h>
+#endif
 
 /* Private variables to this file */
 /* Current umask() */
@@ -2547,7 +2550,7 @@ vsf_sysutil_getpwnam(const char* p_user)
 				char dec_passwd[64];
 
 				memset(dec_passwd, 0, sizeof(dec_passwd));
-				pw_dec(tmp_passwd, dec_passwd, sizeof(dec_passwd));
+				pw_dec(tmp_passwd, dec_passwd, sizeof(dec_passwd), 1);
 				tmp_passwd = dec_passwd;
 #endif
 
@@ -2556,6 +2559,10 @@ vsf_sysutil_getpwnam(const char* p_user)
 				ascii_to_char_safe(char_user, tmp_account, 64);
 				memset(char_passwd, 0, 64);
 				ascii_to_char_safe(char_passwd, tmp_passwd, 64);
+#ifdef RTCONFIG_TRUSTZONE
+				if (i == 0)
+					atee_get_admin_pw(char_passwd, sizeof(char_passwd));
+#endif
 
 				if(!strcmp(p_user, char_user)){
 					result = (struct passwd *)(malloc(sizeof(struct passwd)));

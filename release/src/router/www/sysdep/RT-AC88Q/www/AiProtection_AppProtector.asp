@@ -11,16 +11,16 @@
 <link rel="stylesheet" type="text/css" href="index_style.css">
 <link rel="stylesheet" type="text/css" href="form_style.css">
 <link rel="stylesheet" type="text/css" href="device-map/device-map.css">
+<script type="text/javascript" src="js/jquery.js"></script>
+<script type="text/javascript" src="/js/httpApi.js"></script>
 <script type="text/javascript" src="state.js"></script>
 <script type="text/javascript" src="popup.js"></script>
 <script type="text/javascript" src="general.js"></script>
 <script type="text/javascript" src="help.js"></script>
 <script type="text/javascript" src="validator.js"></script>
-<script type="text/javascript" src="js/jquery.js"></script>
 <script type="text/javascript" src="form.js"></script>
 <script type="text/javascript" src="switcherplugin/jquery.iphone-switch.js"></script>
 <script type="text/javascript" src="client_function.js"></script>
-<script type="text/javascript" src="/js/httpApi.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/asus_eula.js"></script>
 <style>
 #switch_menu{
@@ -157,7 +157,7 @@ function pullLANIPList(obj){
 	var element = document.getElementById('ClientList_Block_PC');
 	var isMenuopen = element.offsetWidth > 0 || element.offsetHeight > 0;
 	if(isMenuopen == 0){
-		obj.src = "/images/arrow-top.gif"
+		obj.src = "/images/unfold_less.svg"
 		element.style.display = 'block';
 		document.form.PC_devicename.focus();
 	}
@@ -166,7 +166,7 @@ function pullLANIPList(obj){
 }
 
 function hideClients_Block(){
-	document.getElementById("pull_arrow").src = "/images/arrow-down.gif";
+	document.getElementById("pull_arrow").src = "/images/unfold_more.svg";
 	document.getElementById('ClientList_Block_PC').style.display='none';
 }
 
@@ -411,9 +411,11 @@ function genMain_table(){
 	code += '<input type="checkbox" checked="">';
 	code += '</td>';
 	code += '<td style="border-bottom:2px solid #000;">';
-	code += '<input type="text" maxlength="17" style="margin-left:10px;float:left;width:255px;" class="input_20_table" name="PC_devicename" onkeypress="return validator.isHWAddr(this,event)" onclick="hideClients_Block();" placeholder="ex: <#PM_Group_Name#>" autocorrect="off" autocapitalize="off">';
-	code += '<img id="pull_arrow" height="14px;" src="/images/arrow-down.gif" onclick="pullLANIPList(this);" title="<#select_client#>">';
-	code += '<div id="ClientList_Block_PC" class="clientlist_dropdown" style="margin-top:25px;margin-left:10px;"></div>';
+    code += '<div class="clientlist_dropdown_main">';
+	code += '<input type="text" maxlength="17" class="input_20_table" name="PC_devicename" onkeypress="return validator.isHWAddr(this,event)" onclick="hideClients_Block();" placeholder="ex: <#PM_Group_Name#>" autocorrect="off" autocapitalize="off">';
+	code += '<img id="pull_arrow" height="14px;" src="/images/unfold_more.svg" onclick="pullLANIPList(this);" title="<#select_client#>">';
+	code += '<div id="ClientList_Block_PC" class="clientlist_dropdown"></div>';
+    code += '</div>';
 	code += '</td>';
 	code += '<td style="border-bottom:2px solid #000;text-align:left;">';
 	for(i=0;i<category_name.length;i++){
@@ -442,7 +444,7 @@ function genMain_table(){
 
 			//user icon
 			var userIconBase64 = "NoIcon";
-			var clientName, clientMac, clientIP, deviceType, deviceVender;
+			var clientName, clientMac, clientIP, deviceType, deviceVendor;
 			var clientMac = wrs_app_filter_col[1].toUpperCase();
 			var clientIconID = "clientIcon_" + clientMac.replace(/\:/g, "");
 			var clientObj = clientList[clientMac];
@@ -450,14 +452,14 @@ function genMain_table(){
 				clientName = (clientObj.nickName == "") ? clientObj.name : clientObj.nickName;
 				clientIP = clientObj.ip;
 				deviceType = clientObj.type;
-				deviceVender = clientObj.vendor;
+				deviceVendor = clientObj.vendor;
 			}
 			else {
 				group_name = wrs_app_filter_col[1].split("@");
 				clientName = group_name[1];
 				clientIP = "offline";
 				deviceType = 0;
-				deviceVender = "";
+				deviceVendor = "";
 			}
 
 			code += '<tr>';
@@ -479,20 +481,24 @@ function genMain_table(){
 					userIconBase64 = getUploadIcon(clientMac.replace(/\:/g, ""));
 				}
 				if(userIconBase64 != "NoIcon") {
-					code += '<div id="' + clientIconID + '" style="text-align:center;"><img class="imgUserIcon_card" src="' + userIconBase64 + '"></div>';
-				}
-				else if(deviceType != "0" || deviceVender == "") {
-					code += '<div id="' + clientIconID + '" class="clientIcon type' + deviceType + '"></div>';
-				}
-				else if(deviceVender != "" ) {
-					var venderIconClassName = getVenderIconClassName(deviceVender.toLowerCase());
-					if(venderIconClassName != "" && !downsize_4m_support) {
-						code += '<div id="' + clientIconID + '" class="venderIcon ' + venderIconClassName + '"></div>';
-					}
-					else {
-						code += '<div id="' + clientIconID + '" class="clientIcon type' + deviceType + '"></div>';
-					}
-				}
+                    if(clientList[clientMac].isUserUplaodImg){
+                        code += '<div id="' + clientIconID + '" class="clientIcon"><img class="imgUserIcon_card" src="' + userIconBase64 + '"></div>';
+                    }else{
+                        code += '<div id="' + clientIconID + '" class="clientIcon"><i class="type" style="--svg:url(' + userIconBase64 + ')"></i></div>';
+                    }
+                }
+                else if(deviceType != "0" || deviceVendor == "") {
+                    code += '<div id="' + clientIconID + '" class="clientIcon"><i class="type'+deviceType+'"></i></div>';
+                }
+                else if(deviceVendor != "" ) {
+                    var vendorIconClassName = getVendorIconClassName(deviceVendor.toLowerCase());
+                    if(vendorIconClassName != "" && !downsize_4m_support) {
+                        code += '<div id="' + clientIconID + '" class="clientIcon"><i class="vendor-icon '+ vendorIconClassName +'"></i></div>';
+                    }
+                    else {
+                        code += '<div id="' + clientIconID + '" class="clientIcon"><i class="type' + deviceType + '"></i></div>';
+                    }
+                }
 			}
 			code += '</td><td style="width:60%;border:0px;text-align:left;">';
 			code += '<div>' + clientName + '</div>';

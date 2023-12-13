@@ -278,7 +278,7 @@ function Reload_pdesc(obj, url){
 		desclist.push(["<#Traffic_Analyzer#>/<#Menu_TrafficManager#>","Traffic Analyzer/Manager"]);
 		url_group.push(["TrafficMonitor"]);
 
-		desclist.push(["<#Parental_Control#>","Parental Ctrl"]);
+		desclist.push([stringSafeGet("<#Parental_Control#>"),"Parental Ctrl"]);
 		url_group.push(["ParentalControl"]);
 
 		desclist.push(["<#Menu_usb_application#>","USB Application"]);		//10
@@ -668,8 +668,7 @@ function applyRule(){
 
 		if(document.form.fb_pdesc.value == "tech_ASUS"){
 
-			var re_asus = new RegExp(/^[A-Za-z][A-Za-z0-9\-]+$/i);
-			var re_crs = new RegExp("^[0-9]{5}","gi");
+			var re_asus = new RegExp(/^[A-Za-z0-9\-]{8,}$/i);
 			var re_valid = 0;
 			document.form.fb_tech_account.disabled = "";
 			document.form.fb_tech_account.value = "";
@@ -682,11 +681,8 @@ function applyRule(){
 				if(!re_asus.test(document.form.fb_serviceno.value)){
 					re_valid++;				
 				}
-				if(document.form.fb_serviceno.value.length != 5 || !re_crs.test(document.form.fb_serviceno.value)){
-					re_valid++;				
-				}
 
-				if(re_valid == 2){
+				if(re_valid > 0){
 					alert("<#JS_validchar#>");
 					document.form.fb_serviceno.focus();
 					return false;
@@ -1367,8 +1363,8 @@ function CheckFBSize(){
 		<div class="dblog_disabled_status">
 			<input type='radio' name='dblog_enable' id='dblog_status_en' value="1" onclick="diag_change_dblog_status();"><label for='dblog_status_en'><#checkbox_Yes#></label>
 			<input type='radio' name='dblog_enable' id='dblog_status_dis' value="0" onclick="diag_change_dblog_status();" checked><label for='dblog_status_dis'><#checkbox_No#></label>
-			<label class="storeUSBHint hint-color"><input type="checkbox" name="dblog_tousb_cb" value="1" onclick="diag_change_storeUSB();" checked><#feedback_debug_log_inDisk#></label>
-			<span class="noUSBHint hint-color">* <#no_usb_found#></span>
+			<label class="storeUSBHint"><input type="checkbox" name="dblog_tousb_cb" value="1" onclick="diag_change_storeUSB();" checked><#feedback_debug_log_inDisk#></label>
+			<span class="noUSBHint">* <#no_usb_found#></span>
 		</div>
 		<div class="dblog_enabled_status">
 			<span>* <#feedback_current_capturing#></span>
@@ -1463,7 +1459,7 @@ function CheckFBSize(){
 <tr style="display:none;">
 <th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(34,2);"><#ASUS_Service_No#></a></th>
 <td>
-	<input type="text" name="fb_serviceno" maxlength="32" class="input_20_table" value="" autocorrect="off" autocapitalize="off">
+	<input type="text" name="fb_serviceno" maxlength="32" class="input_20_table" placeholder="E1234567890-1234" value="" autocorrect="off" autocapitalize="off">
 </td>
 </tr>
 
@@ -1480,27 +1476,31 @@ function CheckFBSize(){
 	</th>
 	<td>
 		<textarea name="fb_comment" maxlength="2000" cols="55" rows="8" class="textarea_ssh_table" style="font-family:'Courier New', Courier, mono; font-size:13px;" onKeyDown="textCounter(this,document.form.msglength,2000);" onKeyUp="textCounter(this,document.form.msglength,2000)"></textarea>
-		<span class="hint-color"><#feedback_max_counts#> : </span>
-		<input type="text" class="input_6_table" name="msglength" id="msglength" maxlength="4" value="2000" autocorrect="off" autocapitalize="off" readonly>
+		<span><#feedback_max_counts#> : </span>
+		<input type="text" class="input_6_table short_input" name="msglength" id="msglength" maxlength="4" value="2000" autocorrect="off" autocapitalize="off" readonly>
 	</td>
 </tr>
 
 <tr>
 	<td colspan="2">
-		<div>
-			<div style="float: left;"><input type="checkbox" name="eula_checkbox"/></div>
-			<div id="eula_content" style="margin-left: 20px;"><#feedback_eula#></div>
+		<div style="display: flex; align-items: center;">
+			<div style="display: flex; flex-direction: row; padding: 16px;">
+				<div style="float: left;"><input type="checkbox" name="eula_checkbox"/></div>
+				<div id="eula_content" style="margin-left: 20px;"><#feedback_eula#></div>
+			</div>
+			<input class="btn_subusage button_gen" name="btn_send" onclick="applyRule()" type="button" value="<#btn_send#>"/>
 		</div>
-		<input class="button_gen" style="margin-left: 305px; margin-top:5px;" name="btn_send" onclick="applyRule()" type="button" value="<#btn_send#>"/>
 	</td>
 </tr>
 
 <tr>
 	<td colspan="2">
-		<strong><#FW_note#></strong>
+		<div class="warning_desc">
+		<strong class="warning_title"><#FW_note#></strong>
 		<ul>
 			<li><#feedback_note4#><br><a id="call_link" style="font-weight: bolder;text-decoration:underline;cursor:pointer;" href="" target="_blank">https://www.asus.com/support/CallUs/</a></li>
 		</ul>
+	</div>
 	</td>
 </tr>	
 </table>

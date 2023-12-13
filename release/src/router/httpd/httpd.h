@@ -313,6 +313,12 @@ typedef struct kw_s     {
 }
 #endif  // defined TRANSLATE_ON_FLY
 
+struct HTTPD_FILE_LOCK_TABLE {
+	char *Process_name;
+	char *lock_file;
+	char *rc_service;
+	int kill_process;
+};
 
 /* Regular file handler */
 extern void do_file(char *path, FILE *stream);
@@ -349,7 +355,7 @@ extern struct ej_handler ej_handlers[];
 #define LOCK_LOGIN_LAN 	0x01
 #define LOCK_LOGIN_WAN 	0x02
 
-#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX6000) || defined(GTAXE16000) || defined(GTAX11000_PRO) || defined(GT10) || defined(RTAX82U_V2)
+#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX6000) || defined(GTAXE16000) || defined(GTBE98) || defined(GTBE98_PRO) || defined(GTAX11000_PRO) || defined(GT10) || defined(RTAX82U_V2) || defined(TUFAX5400_V2) || defined(GTBE96)
 enum {
         LEDG_QIS_RUN = 1,
         LEDG_QIS_FINISH
@@ -436,6 +442,12 @@ extern int uaddr_is_localhost(uaddr *uip);
 extern int uaddr_is_equal(uaddr *a, uaddr *b);
 extern uaddr *uaddr_getpeer(webs_t wp, uaddr *uip);
 
+#if defined(RTCONFIG_ECC256)
+#define HTTPS_CA_JFFS  "/jffs/cert_ecdsa.tgz"
+#else
+#define HTTPS_CA_JFFS  "/jffs/cert.tgz"
+#endif
+
 /* web.c */
 extern int ej_lan_leases(int eid, webs_t wp, int argc, char_t **argv);
 extern int get_nat_vserver_table(int eid, webs_t wp, int argc, char_t **argv);
@@ -463,6 +475,10 @@ extern int check_AiMesh_whitelist(char *page);
 #endif
 extern int check_cmd_injection_blacklist(char *para);
 extern void __validate_apply_set_wl_var(char *nv, char *val) __attribute__((weak));
+#ifdef RTCONFIG_BWDPI
+extern int check_bwdpi_status_app_name(char *name);
+#endif
+extern int validate_apply_input_value(char *name, char *value);
 
 /* web-*.c */
 extern int ej_wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit);
@@ -527,6 +543,8 @@ extern time_t auth_check_dt;
 extern int lock_flag;
 extern int max_lock_time;
 extern int login_error_status;
+extern char cache_object[];
+extern char cache_long_object[];
 extern char* ipisdomain(char* hostname, char* str);
 #ifdef RTCONFIG_AMAS
 extern char* iscap(char* str);
@@ -568,7 +586,7 @@ extern void do_endpoint_request_token_cgi(char *url, FILE *stream);
 #ifdef RTCONFIG_CAPTCHA
 extern int is_captcha_match(char *catpch);
 #endif
-#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX6000) || defined(GTAXE16000) || defined(GTAX11000_PRO) || defined(GT10) || defined(RTAX82U_V2)
+#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX6000) || defined(GTAXE16000) || defined(GTBE98) || defined(GTBE98_PRO) || defined(GTAX11000_PRO) || defined(GT10) || defined(RTAX82U_V2) || defined(TUFAX5400_V2) || defined(GTBE96)
 extern void switch_ledg(int action);
 #endif
 #ifdef RTCONFIG_SAVE_WL_NVRAM_BOTH
@@ -606,7 +624,9 @@ extern int redirect_service_page(char *next_page, webs_t wp);
 extern void store_file_var(char *login_url, char *file);
 extern int save_changed_param(json_object *cfg_root, char *param, const char *value);
 extern int get_active_wan_unit(void);
+extern int check_lock_status(time_t *dt);
 extern int last_time_lock_warning(void);
 extern int check_lock_status(time_t *dt);
+extern void check_lock_state();
+extern int gen_asus_token_cookie(char *asus_token, int asus_token_len, char *token_cookie, int cookie_len);
 #endif /* _httpd_h_ */
-

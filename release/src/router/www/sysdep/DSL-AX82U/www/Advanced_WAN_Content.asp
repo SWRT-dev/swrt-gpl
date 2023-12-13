@@ -47,6 +47,8 @@ var wan_proto_orig = '<% nvram_get("wan_proto"); %>';
 var original_wan_type = wan_proto_orig;
 var wan_unit_tmp="";
 
+var cellColor = parent.businessWrapper ? "#262626" : "white";
+
 if(dnspriv_support){
 	//var dot_servers_array = [];
 	var dnspriv_rulelist_array = '<% nvram_get("dnspriv_rulelist"); %>';
@@ -267,6 +269,13 @@ function del_pvc_sub(pvc_to_del) {
 	var answer = confirm (msg);
 	if (answer == false)
 		return;
+
+	if (mtppp_support && pvc_to_del < 10) {
+		document.form.wan_ppp_conn.disabled = false;
+	}
+	else {
+		document.form.wan_ppp_conn.disabled = true;
+	}
 	
 	document.form.wan_unit.value = pvc_to_del.toString();
 	document.form.wan_enable.value = "0";
@@ -290,7 +299,7 @@ function showMSWANList(){
 			addRow = document.getElementById('MS_WAN_table').insertRow(2);	//0:thead 1:th 2:the 1st rule
 			cell[0] = addRow.insertCell(0);
 			cell[0].colSpan = "8";
-			cell[0].style.color = "white";
+			cell[0].style.color = cellColor;
 			cell[0].innerHTML = '<center><input class="add_btn" onclick="add_pvc_0();" value=""/></center>';
 		}
 	}
@@ -306,14 +315,14 @@ function showMSWANList(){
 				row_count++;
 				cell[0] = addRow.insertCell(0);
 				cell[0].innerHTML = "<center>"+i+"</center>";
-				cell[0].style.color = "white";
+				cell[0].style.color = cellColor;
 				cell[1] = addRow.insertCell(1);
 				if (MSWANList[i][2]=="1") cell[1].innerHTML = "<center><#checkbox_Yes#></center>";
 				else cell[1].innerHTML = "<center><#checkbox_No#></center>";
-				cell[1].style.color = "white";
+				cell[1].style.color = cellColor;
 				cell[2] = addRow.insertCell(2);
 				cell[2].innerHTML = "<center>"+MSWANList[i][3]+"</center>";
-				cell[2].style.color = "white";
+				cell[2].style.color = cellColor;
 				cell[3] = addRow.insertCell(3);
 				if (MSWANList[i][1]=="pppoe") cell[3].innerHTML = "<center>PPPoE</center>";
 				else if (MSWANList[i][1]=="dhcp") cell[3].innerHTML = "<center><#BOP_ctype_title1#></center>";
@@ -322,7 +331,7 @@ function showMSWANList(){
 				else if (MSWANList[i][1]=="pptp") cell[3].innerHTML = "<center>PPTP</center>";
 				else if (MSWANList[i][1]=="l2tp") cell[3].innerHTML = "<center>L2TP</center>";
 				else cell[3].innerHTML = "Unknown";
-				cell[3].style.color = "white";
+				cell[3].style.color = cellColor;
 
 				cell[4] = addRow.insertCell(4);
 				if (i==0) {
@@ -331,7 +340,7 @@ function showMSWANList(){
 				else{
 					cell[4].innerHTML = "";
 				}
-				cell[4].style.color = "white";
+				cell[4].style.color = cellColor;
 
 				cell[5] = addRow.insertCell(5);
 				if (i==0) {
@@ -340,14 +349,14 @@ function showMSWANList(){
 				else{
 					cell[5].innerHTML = "<center><img src=images/checked.gif border=0></center>";
 				}
-				cell[5].style.color = "white";
+				cell[5].style.color = cellColor;
 
 				cell[6] = addRow.insertCell(6);
 				if(i==0)
 					cell[6].innerHTML = '<center><span style="cursor:pointer;" onclick="chg_pvc_unit('+load_wan_unit+');"><input class="edit_btn"></span></center>';
 				else
 					cell[6].innerHTML = '<center><span style="cursor:pointer;" onclick="chg_pvc_unit('+ms_pvc+');"><input class="edit_btn"></span></center>';
-				cell[6].style.color = "white";
+				cell[6].style.color = cellColor;
 
 				if(!isSupport("is_ax5400_i1")){
 					cell[7] = addRow.insertCell(7);
@@ -355,7 +364,7 @@ function showMSWANList(){
 						cell[7].innerHTML = '<center><input class="remove_btn" onclick="del_pvc_sub('+load_wan_unit+');" value=""/></center>';
 					else
 						cell[7].innerHTML = '<center><input class="remove_btn" onclick="del_pvc_sub('+ms_pvc+');" value=""/></center>';
-					cell[7].style.color = "white";
+					cell[7].style.color = cellColor;
 				}
 			}
 		}
@@ -365,7 +374,7 @@ function showMSWANList(){
 				addRow = document.getElementById('MS_WAN_table').insertRow(row_count+2);
 				cell[0] = addRow.insertCell(0);
 				cell[0].colSpan = "8";
-				cell[0].style.color = "white";
+				cell[0].style.color = cellColor;
 				if(MSWANList[0][0] != "0"){
 					cell[0].innerHTML = '<center><input class="add_btn" onclick="add_pvc();" value=""/></center>';
 				}
@@ -436,7 +445,7 @@ function initial(){
 						var click_dns_ip = $(this).children("strong").attr("dns_ip");
 						var idx = $(this).closest(".dns_server_list_dropdown").attr("id").replace("dns_server_list", "");
 						$("input[name='wan_dns" + idx + "_x']").val(click_dns_ip);
-						$(".dns_pull_arrow").attr("src","/images/arrow-down.gif");
+						$(".dns_pull_arrow").attr("src","/images/unfold_more.svg");
 						$(".dns_server_list_dropdown").hide();
 					});
 					var $dns_text = $("<strong>");
@@ -450,9 +459,11 @@ function initial(){
 		}
 	);
 	$("body").click(function() {
-		$(".dns_pull_arrow").attr("src","/images/arrow-down.gif");
+		$(".dns_pull_arrow").attr("src","/images/unfold_more.svg");
 		$(".dns_server_list_dropdown").hide();
 	});
+
+	$("#pvc_sel").css({color: cellColor})
 }
 
 function change_wan_unit(obj){
@@ -775,6 +786,16 @@ function enable_all_ctrl(pvc) {
 		inputCtrl(document.form.dnspriv_enable, 0);
 		change_dnspriv_enable(0);
 	}
+
+	if (mtppp_support && pvc < 10) {
+		document.getElementById("ppp_conn_tr").style.display = "";
+		document.form.wan_ppp_conn.disabled = false;
+	}
+	else {
+		document.getElementById("ppp_conn_tr").style.display = "none";
+		document.form.wan_ppp_conn.disabled = true;
+	}
+
 }
 
 function change_wan_proto_type(proto_type){
@@ -812,6 +833,10 @@ function change_wan_proto_type(proto_type){
 		inputCtrl(document.form.wan_vpndhcp[0], 1);
 		inputCtrl(document.form.wan_vpndhcp[1], 1);
 		inputCtrl(document.form.wan_dhcp_qry, 0);
+		if(mswan_support){
+			inputCtrl(document.form.wan_dhcpfilter_enable[0], 0);
+			inputCtrl(document.form.wan_dhcpfilter_enable[1], 0);
+		}
 	}
 	else if(proto_type == "pptp"){
 		inputCtrl(document.form.wan_dnsenable_x[0], 1);
@@ -843,6 +868,10 @@ function change_wan_proto_type(proto_type){
 		// 2008.03 James. patch for Oleg's patch. }
 		inputCtrl(document.form.wan_ppp_echo, 1);
 		ppp_echo_control();
+		if(mswan_support){
+			inputCtrl(document.form.wan_dhcpfilter_enable[0], 0);
+			inputCtrl(document.form.wan_dhcpfilter_enable[1], 0);
+		}
 	}
 	else if(proto_type == "l2tp"){
 		inputCtrl(document.form.wan_dnsenable_x[0], 1);
@@ -874,6 +903,10 @@ function change_wan_proto_type(proto_type){
 		// 2008.03 James. patch for Oleg's patch. }
 		inputCtrl(document.form.wan_ppp_echo, 1);
 		ppp_echo_control();
+		if(mswan_support){
+			inputCtrl(document.form.wan_dhcpfilter_enable[0], 0);
+			inputCtrl(document.form.wan_dhcpfilter_enable[1], 0);
+		}
 	}
 	else if(proto_type == "static"){
 		inputCtrl(document.form.wan_dnsenable_x[0], 0);
@@ -904,6 +937,10 @@ function change_wan_proto_type(proto_type){
 		inputCtrl(document.form.wan_vpndhcp[0], 0);
 		inputCtrl(document.form.wan_vpndhcp[1], 0);
 		inputCtrl(document.form.wan_dhcp_qry, 0);
+		if(mswan_support){
+			inputCtrl(document.form.wan_dhcpfilter_enable[0], 0);
+			inputCtrl(document.form.wan_dhcpfilter_enable[1], 0);
+		}
 	}
 	else if(proto_type == "dhcp"){
 		inputCtrl(document.form.wan_dnsenable_x[0], 1);
@@ -936,6 +973,10 @@ function change_wan_proto_type(proto_type){
 		inputCtrl(document.form.wan_vpndhcp[0], 0);
 		inputCtrl(document.form.wan_vpndhcp[1], 0);
 		inputCtrl(document.form.wan_dhcp_qry, 1);
+		if(mswan_support){
+			inputCtrl(document.form.wan_dhcpfilter_enable[0], 0);
+			inputCtrl(document.form.wan_dhcpfilter_enable[1], 0);
+		}
 	}
 	else if(proto_type == "bridge") {
 		inputCtrl(document.form.wan_dnsenable_x[0], 0);
@@ -966,6 +1007,14 @@ function change_wan_proto_type(proto_type){
 		inputCtrl(document.form.wan_vpndhcp[0], 1);
 		inputCtrl(document.form.wan_vpndhcp[1], 1);
 		inputCtrl(document.form.wan_dhcp_qry, 0);
+		if(mswan_support){
+			inputCtrl(document.form.wan_dhcpfilter_enable[0], 1);
+			inputCtrl(document.form.wan_dhcpfilter_enable[1], 1);
+		}
+		else{
+			inputCtrl(document.form.wan_dhcpfilter_enable[0], 0);
+			inputCtrl(document.form.wan_dhcpfilter_enable[1], 0);
+		}
 	}
 	else {
 		alert("error");
@@ -1341,16 +1390,16 @@ function show_dnspriv_rulelist(){
 function pullDNSList(_this) {
 	event.stopPropagation();
 	var idx = $(_this).attr("id").replace("dns_pull_arrow", "");
-	$(".dns_pull_arrow:not(#dns_pull_arrow" + idx + ")").attr("src","/images/arrow-down.gif");
+	$(".dns_pull_arrow:not(#dns_pull_arrow" + idx + ")").attr("src","/images/unfold_more.svg");
 	$(".dns_server_list_dropdown:not(#dns_server_list" + idx + ")").hide();
 	var $element = $("#dns_server_list" + idx + "");
 	var isMenuopen = $element[0].offsetWidth > 0 || $element[0].offsetHeight > 0;
 	if(isMenuopen == 0) {
-		$(_this).attr("src","/images/arrow-top.gif");
+		$(_this).attr("src","/images/unfold_less.svg");
 		$element.show();
 	}
 	else {
-		$(_this).attr("src","/images/arrow-down.gif");
+		$(_this).attr("src","/images/unfold_more.svg");
 		$element.hide();
 	}
 }
@@ -1466,7 +1515,7 @@ function showDiableDHCPclientID(clientid_enable){
 										</thead>
 										<tr>
 											<th>PVC</th>
-											<td><span id="pvc_sel" style="color:white;"></span></td>
+											<td><span id="pvc_sel"></span></td>
 										</tr>
 										<tr>
 											<th><#Layer3Forwarding_x_ConnectionType_itemname#></th>
@@ -1498,6 +1547,13 @@ function showDiableDHCPclientID(clientid_enable){
 											<td>
 												<input type="radio" name="wan_upnp_enable" class="input" value="1" onclick="return change_common_radio(this, 'LANHostConfig', 'wan_upnp_enable', '1')" <% nvram_match("wan_upnp_enable", "1", "checked"); %>><#checkbox_Yes#>
 												<input type="radio" name="wan_upnp_enable" class="input" value="0" onclick="return change_common_radio(this, 'LANHostConfig', 'wan_upnp_enable', '0')" <% nvram_match("wan_upnp_enable", "0", "checked"); %>><#checkbox_No#>
+											</td>
+										</tr>
+										<tr style="display: none;">
+											<th><a class="hintstyle" href="javascript:void(0);" onClick=""><#BasicConfig_EnableMediaServer_itemname#></a></th>
+											<td>
+												<input type="radio" name="wan_dhcpfilter_enable" class="input" value="1" <% nvram_match("wan_dhcpfilter_enable", "1", "checked"); %>><#checkbox_Yes#>
+												<input type="radio" name="wan_dhcpfilter_enable" class="input" value="0" <% nvram_match("wan_dhcpfilter_enable", "0", "checked"); %>><#checkbox_No#>
 											</td>
 										</tr>
 									</table>
@@ -1583,7 +1639,7 @@ function showDiableDHCPclientID(clientid_enable){
 											</th>
 											<td>
 												<input type="text" maxlength="15" class="input_15_table" name="wan_dns1_x" value="<% nvram_get("wan_dns1_x"); %>" onkeypress="return validator.isIPAddr(this,event)" autocorrect="off" autocapitalize="off"/>
-												<img id="dns_pull_arrow1" class="dns_pull_arrow" src="/images/arrow-down.gif" onclick="pullDNSList(this);">
+												<img id="dns_pull_arrow1" class="dns_pull_arrow" src="/images/unfold_more.svg" onclick="pullDNSList(this);">
 												<div id="dns_server_list1" class="dns_server_list_dropdown"></div>
 											</td>
 										</tr>
@@ -1593,7 +1649,7 @@ function showDiableDHCPclientID(clientid_enable){
 											</th>
 											<td>
 												<input type="text" maxlength="15" class="input_15_table" name="wan_dns2_x" value="<% nvram_get("wan_dns2_x"); %>" onkeypress="return validator.isIPAddr(this,event)" autocorrect="off" autocapitalize="off"/>
-												<img id="dns_pull_arrow2" class="dns_pull_arrow" src="/images/arrow-down.gif" onclick="pullDNSList(this);">
+												<img id="dns_pull_arrow2" class="dns_pull_arrow" src="/images/unfold_more.svg" onclick="pullDNSList(this);">
 												<div id="dns_server_list2" class="dns_server_list_dropdown"></div>
 											</td>
 										</tr>
@@ -1810,6 +1866,10 @@ function showDiableDHCPclientID(clientid_enable){
 											<td>
 												<input type="text" name="wan_pppoe_options_x" value="<% nvram_get("wan_pppoe_options_x"); %>" class="input_32_table" maxlength="255" onKeyPress="return validator.isString(this, event)" onBlur="validator.string(this)" autocorrect="off" autocapitalize="off">
 											</td>
+										</tr>
+										<tr id="ppp_conn_tr" style="display:none;">
+											<th>Number of PPP Connection</th>
+											<td><input type="text" maxlength="1" name="wan_ppp_conn" class="input_3_table" value="<% nvram_get("wan_ppp_conn"); %>" onKeyPress="return validator.isNumber(this,event);" autocorrect="off" autocapitalize="off"/></td>
 										</tr>
 										<!-- 2008.03 James. patch for Oleg's patch. } -->
 									</table>

@@ -49,6 +49,29 @@
 
 extern struct nvram_tuple router_defaults[];
 
+#ifdef RTCONFIG_MULTILAN_CFG
+MTLAN_T *get_ovpn_mtlan(ovpn_type_t type, int unit, MTLAN_T *pmtl, size_t *mtl_sz)
+{
+	int idx;
+	MTLAN_T *p;
+	SDNFT_TYPE type;
+
+	if(type == OVPN_TYPE_CLIENT){
+		idx = get_vpnc_idx_by_proto_unit(VPN_PROTO_OVPN, unit);
+		type = SDNFT_TYPE_VPNC;
+	}else{
+		idx = get_vpns_idx_by_proto_unit(VPN_PROTO_OVPN, unit);
+		type = SDNFT_TYPE_VPNS;
+	}
+	if(!get_mtlan_by_idx(type, idx, pmtl, mtl_sz)){
+		p = pmtl;
+		pmtl = NULL;
+		FREE_MTLAN(p);
+		_dprintf("get mtlan by idx(%d) failed!!!\n", idx);
+	}
+	return pmtl;
+}
+#endif
 
 ovpn_sconf_common_t* get_ovpn_sconf_common(ovpn_sconf_common_t* conf)
 {
@@ -130,6 +153,10 @@ ovpn_sconf_t* get_ovpn_sconf(int unit, ovpn_sconf_t* conf)
 	char *enable = NULL, *name = NULL, *network = NULL, *netmask = NULL, *push = NULL;
 	char buf[4096];
 	char prefix[32];
+#ifdef RTCONFIG_MULTILAN_CFG
+	MTLAN_T *pmtl;
+	size_t mtl_sz;
+#endif
 
 	memset(prefix, 0, sizeof(prefix));
 	memset(buf, 0, sizeof(buf));
@@ -200,8 +227,21 @@ ovpn_sconf_t* get_ovpn_sconf(int unit, ovpn_sconf_t* conf)
 		conf->tls_keysize = 1024;
 	strlcpy(conf->firewall, nvram_pf_safe_get(prefix, "firewall"), sizeof(conf->firewall));
 	conf->poll = nvram_pf_get_int(prefix, "poll");
-	strlcpy(conf->lan_ipaddr, nvram_safe_get("lan_ipaddr"), sizeof(conf->lan_ipaddr));
-	strlcpy(conf->lan_netmask, nvram_safe_get("lan_netmask"), sizeof(conf->lan_netmask));
+#ifdef RTCONFIG_MULTILAN_CFG
+	pmtl = (MTLAN_T *)INIT_MTLAN(sizeof(MTLAN_T));
+	if(get_ovpn_mtlan(OVPN_TYPE_SERVER, unit, pmtl, &mtl_sz){
+		if(mtl_sz != 1 && conf->if_type == OVPN_IF_TAP)
+			_dprintf("%s: WARNING: MTLAN size %u\n", __func__, mtl_sz);
+		strlcpy(conf->lan_ipaddr, pmtl->nw_t.addr, sizeof(conf->lan_ipaddr));
+		strlcpy(conf->lan_netmask, pmtl->nw_t.netmask, sizeof(conf->lan_netmask));
+		strlcpy(conf->lan_subnet, pmtl->nw_t.subnet, sizeof(conf->lan_subnet));
+	}else
+#endif
+	{
+		strlcpy(conf->lan_ipaddr, nvram_safe_get("lan_ipaddr"), sizeof(conf->lan_ipaddr));
+		strlcpy(conf->lan_netmask, nvram_safe_get("lan_netmask"), sizeof(conf->lan_netmask));
+		get_lan_subnet(conf->lan_subnet, sizeof(conf->lan_subnet));
+	}
 	if(get_ipv6_service())
 		conf->ipv6_enable = nvram_pf_get_int(prefix, "ip6") != 0;
 	else
@@ -295,7 +335,7 @@ void reset_ovpn_setting(ovpn_type_t type, int unit){
 		snprintf(prefix, sizeof(prefix), "vpn_server%d_", unit);
 	}
 
-	logmessage("openvpn","Resetting VPN %s %d to default settings", service, unit);
+	logmessage("openvpn", "Resetting VPN %s %d to default settings", service, unit);
 	len = strlen(service);
 	for (t = router_defaults; t->name; t++) {
 		if (len > strlen(t->name) && strncmp(t->name, service, len) == 0 && !strstr(t->name, "unit"))
@@ -635,7 +675,7 @@ ovpn_accnt_info_t* get_ovpn_accnt(ovpn_accnt_info_t *accnt_info)
 					snprintf(accnt_info->account[accnt_info->count].username, sizeof(accnt_info->account[0].username), "%s", username);
 					snprintf(accnt_info->account[accnt_info->count].password, sizeof(accnt_info->account[0].password), "%s", password);
 					++accnt_info->count;
-					if(accnt_info->count >= 15)
+					if(accnt_info->count >= OVPN_ACCNT_MAX)
 						break;
 				}
 			}

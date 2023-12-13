@@ -56,9 +56,13 @@ int re_wpsc_main(int argc, char *argv[])
 
 	//stop_wlcconnect();
 
-	start_wlcscan();
-	sleep(3);
-
+#ifdef RTCONFIG_AMAS
+	if (nvram_get_int("wps_enrollee") != 1)
+#endif
+	{
+		start_wlcscan();
+		sleep(3);
+	}
 
 	/* 0: Repeater. 1: Express way 2.4G 2: Express way 5G */
 	int wlc_express = nvram_get_int("wlc_express");
@@ -167,13 +171,15 @@ int re_wpsc_main(int argc, char *argv[])
 						wps_first_success = 1;
 						stop_wps_method();
 #ifdef RTCONFIG_AMAS
-                        if (nvram_get_int("wps_enrollee") == 1)
-                            obd_SetWpsResult(i, aif);
-                        else
-				mtk_set_wps_result(i, aif);
-#else
-			mtk_set_wps_result(i, aif);
+			if (nvram_get_int("wps_enrollee") == 1) {
+				obd_SetWpsResult(i, aif);
+				nvram_set("wps_cli_state", "2");
+				nvram_set_int("wps_e_success", 1);
+				nvram_set_int("obd_Setting", 1);
+			}
+			else
 #endif
+			{
 			mtk_set_wps_result(i, aif);
 			nvram_set_int("led_status", LED_RESTART_WL);
 			sleep(3);
@@ -182,12 +188,9 @@ int re_wpsc_main(int argc, char *argv[])
 			start_lan_wl();
 			unlink(REWPSC_PID_FILE);
 			nvram_set("wps_cli_state", "2");
-#ifdef RTCONFIG_AMAS
-                        nvram_set_int("wps_e_success", 1);
-				        nvram_set_int("obd_Setting", 1);
-#endif
 						sleep(30);
 						nvram_set_int("led_status", LED_BOOTED);
+			}
 						return 0;
 					}
 			}

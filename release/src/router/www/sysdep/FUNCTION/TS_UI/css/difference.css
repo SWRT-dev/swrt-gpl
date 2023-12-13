@@ -252,7 +252,7 @@ input[type="checkbox"]:checked + label{
 }
 
 .checkbox.on{
-	box-shadow: 0 0 0 1.5px #29F4DA;
+	border: 1px solid #29F4DA;
 	background-color: #29F4DA;
 }
 
@@ -262,7 +262,7 @@ input[type="checkbox"]:checked + label{
 }
 
 .textInput:focus{
-	box-shadow: 0 0 3px#2ED9C3;
+	box-shadow: 0 0 3px #2ED9C3;
 	border: 1px solid #2ED9C3;
 }
 

@@ -23,7 +23,8 @@ $(document).ready(function(){
 
 function load_page(){
 	document.getElementById("internetSpeed_iframe").style.height = document.getElementById("FormTitle").style.height;
-	document.getElementById("internetSpeed_iframe").src = "internet_speed.html";
+	var curTheme = (top.businessWrapper) ? "?current_theme=white" : "";
+	document.getElementById("internetSpeed_iframe").src = "internet_speed.html" + curTheme;
 }
 
 function initial(){

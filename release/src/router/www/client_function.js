@@ -1,4 +1,4 @@
-/* Plugin */
+﻿/* Plugin */
 if (!Object.keys) {
   Object.keys = (function() {
     'use strict';
@@ -40,6 +40,195 @@ if (!Object.keys) {
   }());
 }
 
+String.prototype.toArray = function(){
+	var ret = eval(this.toString());
+	if(Object.prototype.toString.apply(ret) === '[object Array]')
+		return ret;
+	return [];
+}
+
+var wl_nband_title = [];
+var wl_nband_array = "<% wl_nband_info(); %>".toArray();
+var band2g_count = 0;
+var band5g_count = 0;
+var band6g_count = 0;
+var band60g_count = 0;
+for (var j=0; j<wl_nband_array.length; j++) {
+	if(wl_nband_array[j] == '2'){
+		band2g_count++;
+		wl_nband_title.push("2.4 GHz" + ((band2g_count > 1) ? ("-" + band2g_count) : ""));
+	}
+	else if(wl_nband_array[j] == '1'){
+		band5g_count++;
+		wl_nband_title.push("5 GHz" + ((band5g_count > 1) ? ("-" + band5g_count) : ""));
+	}
+	else if(wl_nband_array[j] == '4'){
+		band6g_count++;
+		wl_nband_title.push("6 GHz");
+	}
+	else if(wl_nband_array[j] == '6'){
+		band60g_count++;
+		wl_nband_title.push("60 GHz" + ((band60g_count > 1) ? ("-" + band60g_count) : ""));
+	}
+}
+
+if(wl_nband_title.indexOf("2.4 GHz-2") > 0) wl_nband_title[wl_nband_title.indexOf("2.4 GHz")] = "2.4 GHz-1";
+if(wl_nband_title.indexOf("5 GHz-2") > 0) wl_nband_title[wl_nband_title.indexOf("5 GHz")] = "5 GHz-1";
+if(wl_nband_title.indexOf("60 GHz-2") > 0) wl_nband_title[wl_nband_title.indexOf("60 GHz")] = "60 GHz-1";
+
+function get_wl_unit_by_band(_band){
+	if(_band == undefined)
+		return "";
+
+	_band = (_band).toString().toUpperCase();
+	var wl_nband = "";
+	switch(_band){
+		case "2G":
+			wl_nband = "2";
+			break;
+		case "5G":
+		case "5G1":
+		case "5G2":
+			wl_nband = "1";
+			break;
+		case "6G":
+			wl_nband = "4";
+			break;
+		case "60G":
+			wl_nband = "6";
+			break;
+	}
+	if(wl_nband == "")
+		return "";
+
+	var wl_unit = "";
+	var suffix_num = _band.substr(_band.indexOf("G") + 1);
+	var ordinal_num = (suffix_num == "") ? 1 : parseInt(suffix_num);
+	var count = 1;
+	var wl_nband_array = httpApi.hookGet("wl_nband_info");
+	$.each(wl_nband_array, function(wlx, value){
+		if(value == wl_nband){
+			if(count == ordinal_num){
+				wl_unit = wlx;
+				return false;
+			}
+			else{
+				count+=1;
+			}
+		}
+	});
+	return wl_unit.toString();
+}
+
+function inet_network(ip_str) {
+	if (!ip_str) return -1;
+
+	var re = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/;
+	if (re.test(ip_str)) {
+		var v1 = parseInt(RegExp.$1);
+		var v2 = parseInt(RegExp.$2);
+		var v3 = parseInt(RegExp.$3);
+		var v4 = parseInt(RegExp.$4);
+
+		if (v1 < 256 && v2 < 256 && v3 < 256 && v4 < 256)
+			return v1 * 256 * 256 * 256 + v2 * 256 * 256 + v3 * 256 + v4;
+	}
+
+	return -2;
+}
+
+var isSwMode = function(mode){
+	var ui_sw_mode = "rt";
+	var sw_mode = '<% nvram_get("sw_mode"); %>';
+	var wlc_psta = '<% nvram_get("wlc_psta"); %>' == '' ? 0 : '<% nvram_get("wlc_psta"); %>';
+	var wlc_express = '<% nvram_get("wlc_express"); %>' == '' ? 0 : '<% nvram_get("wlc_express"); %>';
+
+	if(((sw_mode == '2' && wlc_psta == '0') || (sw_mode == '3' && wlc_psta == '2')) && wlc_express == '0'){	// Repeater
+		ui_sw_mode = "re";
+	} 
+	else if((sw_mode == '3' && wlc_psta == '0') || (sw_mode == '3' && wlc_psta == '')){	// Access Point
+		ui_sw_mode = "ap";
+	}
+	else if((sw_mode == '3' && wlc_psta == '1' && wlc_express == '0') || (sw_mode == '3' && wlc_psta == '3' && wlc_express == '0') || (sw_mode == '2' && wlc_psta == '1' && wlc_express == '0')){	// MediaBridge
+		ui_sw_mode = "mb";
+	}
+	else if(sw_mode == '2' && wlc_psta == '0' && wlc_express == '1'){	// Express Way 2G
+		ui_sw_mode = "ew2";
+	}
+	else if(sw_mode == '2' && wlc_psta == '0' && wlc_express == '2'){	// Express Way 5G
+		ui_sw_mode = "ew5";
+	}
+	else if(sw_mode == '5'){	// Hotspot
+		ui_sw_mode = 'hs'; 
+	}
+	else ui_sw_mode = "rt"; // Router
+
+	return (ui_sw_mode.search(mode) !== -1);
+}
+
+function isSupport(_ptn){
+	var ui_support = [<% get_ui_support(); %>][0];
+	return (ui_support[_ptn]) ? ui_support[_ptn] : 0;
+}
+
+var htmlEnDeCode = (function() {
+	var charToEntityRegex,
+		entityToCharRegex,
+		charToEntity,
+		entityToChar;
+
+	function resetCharacterEntities() {
+		charToEntity = {};
+		entityToChar = {};
+		// add the default set
+		addCharacterEntities({
+			'&amp;'	 :   '&',
+			'&gt;'	  :   '>',
+			'&lt;'	  :   '<',
+			'&quot;'	:   '"',
+			'&#39;'	 :   "'"
+		});
+	}
+
+	function addCharacterEntities(newEntities) {
+		var charKeys = [],
+			entityKeys = [],
+			key, echar;
+		for (key in newEntities) {
+			echar = newEntities[key];
+			entityToChar[key] = echar;
+			charToEntity[echar] = key;
+			charKeys.push(echar);
+			entityKeys.push(key);
+		}
+		charToEntityRegex = new RegExp('(' + charKeys.join('|') + ')', 'g');
+		entityToCharRegex = new RegExp('(' + entityKeys.join('|') + '|&#[0-9]{1,5};' + ')', 'g');
+	}
+
+	function htmlEncode(value){
+		var htmlEncodeReplaceFn = function(match, capture) {
+			return charToEntity[capture];
+		};
+
+		return (!value) ? value : String(value).replace(charToEntityRegex, htmlEncodeReplaceFn);
+	}
+
+	function htmlDecode(value) {
+		var htmlDecodeReplaceFn = function(match, capture) {
+			return (capture in entityToChar) ? entityToChar[capture] : String.fromCharCode(parseInt(capture.substr(2), 10));
+		};
+
+		return (!value) ? value : String(value).replace(entityToCharRegex, htmlDecodeReplaceFn);
+	}
+
+	resetCharacterEntities();
+
+	return {
+		htmlEncode: htmlEncode,
+		htmlDecode: htmlDecode
+	};
+})();
+
 var isJsonChanged = function(objNew, objOld){
 	for(var i in objOld){	
 		if(typeof objOld[i] == "object" && i != "fromNetworkmapd"){
@@ -77,7 +266,7 @@ ipState["DHCP"] = "<#BOP_ctype_title1#>";
 ipState["Manual"] = "<#Clientlist_IPMAC_Binding#>";
 ipState["OffLine"] = "<#Clientlist_OffLine_Hint#>";
 
-var venderArrayRE = /(adobe|amazon|apple|asus|belkin|bizlink|buffalo|dell|d-link|fujitsu|google|hon hai|htc|huawei|ibm|lenovo|nec|microsoft|panasonic|pioneer|ralink|samsung|sony|synology|toshiba|tp-link|vmware)/;
+var vendorArrayRE = /(adobe|amazon|apple|asus|belkin|bizlink|buffalo|dell|d-link|fujitsu|google|hon hai|htc|huawei|ibm|lenovo|nec|microsoft|panasonic|pioneer|ralink|samsung|sony|synology|toshiba|tp-link|vmware)/;
 
 var networkmap_fullscan = '<% nvram_get("networkmap_fullscan"); %>';
 
@@ -191,6 +380,7 @@ var setClientAttr = function(){
 	this.amesh_papMac = "";
 	this.amesh_bind_mac = "";
 	this.amesh_bind_band = "0";
+	this.sdn_idx = "0";
 	this.ROG = false;
 }
 
@@ -201,6 +391,8 @@ function genClientList(){
 	totalClientNum.wired = 0;
 	totalClientNum.wireless = 0;
 	AiMeshTotalClientNum = [];
+	var uploadIconMacList = getUploadIconList().replace(/\.log/g, "");
+
 	for(var index in isWL_map){
 		if(index == "0")//filter wired
 			continue;
@@ -231,7 +423,7 @@ function genClientList(){
 			if(clientList[thisClientMacAddr].isOnline)
 				totalClientNum.online++;
 
-			if(!downsize_4m_support) {
+			if(!isSupport("sfp4m")) {
 				clientList[thisClientMacAddr].type = thisClient.type;
 				clientList[thisClientMacAddr].defaultType = thisClient.defaultType;
 			}
@@ -252,9 +444,11 @@ function genClientList(){
 			clientList[thisClientMacAddr].vendor = thisClient.vendor;
 			clientList[thisClientMacAddr].rssi = parseInt(thisClient.rssi);
 			clientList[thisClientMacAddr].isWL = parseInt(thisClient.isWL);
+			clientList[thisClientMacAddr].sdn_idx = parseInt(thisClient.sdn_idx);
+
 			if(isSupport("amas"))
 				clientList[thisClientMacAddr].isGN = ((thisClient.isGN != "") ? parseInt(thisClient.isGN) : "");
-			if(amesh_support && isSupport("dualband") && clientList[thisClientMacAddr].isWL == 3)
+			if(isSupport("amas") && isSupport("dualband") && clientList[thisClientMacAddr].isWL == 3)
 				clientList[thisClientMacAddr].isWL = 2;
 			if(clientList[thisClientMacAddr].isOnline) {
 				if(clientList[thisClientMacAddr].isWL > 0) {
@@ -272,17 +466,20 @@ function genClientList(){
 			clientList[thisClientMacAddr].callback = thisClient.callback;
 			clientList[thisClientMacAddr].keeparp = thisClient.keeparp;
 			clientList[thisClientMacAddr].ipMethod = thisClient.ipMethod;
+			if(clientList[thisClientMacAddr].sdn_idx > 0){
+				clientList[thisClientMacAddr].ipMethod = "DHCP";
+			}
 			clientList[thisClientMacAddr].qosLevel = thisClient.qosLevel;
 			clientList[thisClientMacAddr].wtfast = parseInt(thisClient.wtfast);
 			clientList[thisClientMacAddr].internetMode = thisClient.internetMode;
 			clientList[thisClientMacAddr].internetState = thisClient.internetState;
-			if(stainfo_support) {
+			if(isSupport("stainfo")) {
 				clientList[thisClientMacAddr].curTx = (thisClient.curTx == "") ? "": thisClient.curTx;
 				clientList[thisClientMacAddr].curRx = (thisClient.curRx == "") ? "": thisClient.curRx;
 				clientList[thisClientMacAddr].wlConnectTime = thisClient.wlConnectTime;
 			}
 
-			if(amesh_support) {
+			if(isSupport("amas")) {
 				if(thisClient.amesh_isRe != undefined) {
 					clientList[thisClientMacAddr].amesh_isRe = (thisClient.amesh_isRe == "1") ? true : false;
 					if(clientList[thisClientMacAddr].amesh_isRe && clientList[thisClientMacAddr].isOnline) { // re set amesh re device to offline
@@ -303,7 +500,9 @@ function genClientList(){
 				if(thisClient.amesh_isReClient != undefined && thisClient.amesh_papMac != undefined) {
 					clientList[thisClientMacAddr].amesh_isReClient = (thisClient.amesh_isReClient == "1") ? true : false;
 					clientList[thisClientMacAddr].amesh_papMac = thisClient.amesh_papMac;
-
+					if(clientList[thisClientMacAddr].amesh_papMac == ""){
+						clientList[thisClientMacAddr].amesh_papMac = '<% get_lan_hwaddr(); %>';
+					}
 					if(clientList[thisClientMacAddr].isOnline) {
 						if(AiMeshTotalClientNum[thisClient.amesh_papMac] == undefined)
 							AiMeshTotalClientNum[thisClient.amesh_papMac] = 1;
@@ -319,6 +518,7 @@ function genClientList(){
 			}
 
 			clientList[thisClientMacAddr].ROG = (thisClient.ROG == "1");
+			clientList[thisClientMacAddr].isUserUplaodImg = (uploadIconMacList.indexOf(thisClient.mac.toUpperCase().replace(/\:/g, "")) >= 0) ? true : false;
 		}
 	}
 
@@ -338,13 +538,15 @@ function genClientList(){
 				var thisClientType = (typeof thisClient.type == "undefined") ? "0" : thisClient.type;
 				var thisClientDefaultType = (typeof thisClient.defaultType == "undefined") ? thisClientType : thisClient.defaultType;
 				var thisClientName = (typeof thisClient.name == "undefined") ? thisClientMacAddr : (thisClient.name.trim() == "") ? thisClientMacAddr : thisClient.name.trim();
+				thisClientName = htmlEnDeCode.htmlEncode(thisClientName);
 				var thisClientNickName = (typeof thisClient.nickName == "undefined") ? "" : (thisClient.nickName.trim() == "") ? "" : thisClient.nickName.trim();
+				thisClientNickName = htmlEnDeCode.htmlEncode(thisClientNickName);
 				var thisClientReNode = (typeof thisClient.amesh_isRe == "undefined") ? false : ((thisClient.amesh_isRe == "1") ? true : false);
 
 				clientList.push(thisClientMacAddr);
 				clientList[thisClientMacAddr] = new setClientAttr();
 				clientList[thisClientMacAddr].from = thisClient.from;
-				if(!downsize_4m_support) {
+				if(!isSupport("sfp4m")) {
 					clientList[thisClientMacAddr].type = thisClientType;
 					clientList[thisClientMacAddr].defaultType = thisClientDefaultType;
 				}
@@ -352,7 +554,7 @@ function genClientList(){
 				clientList[thisClientMacAddr].name = thisClientName;
 				clientList[thisClientMacAddr].nickName = thisClientNickName;
 				clientList[thisClientMacAddr].vendor = thisClient.vendor.trim();
-				if(amesh_support) {
+				if(isSupport("amas")) {
 					clientList[thisClientMacAddr].amesh_isRe = thisClientReNode;
 					if(isSupport("force_roaming") && isSupport("sta_ap_bind")) {
 						clientList[thisClientMacAddr].amesh_bind_mac = (typeof thisClient.amesh_bind_mac == "undefined") ? "" : thisClient.amesh_bind_mac;
@@ -361,6 +563,7 @@ function genClientList(){
 				}
 
 				clientList[thisClientMacAddr].ROG = (thisClient.ROG == "1");
+				clientList[thisClientMacAddr].isUserUplaodImg = (uploadIconMacList.indexOf(thisClient.mac.toUpperCase().replace(/\:/g, "")) >= 0) ? true : false;
 				nmpCount++;
 			}
 			else if(!clientList[thisClientMacAddr].isOnline) {
@@ -371,7 +574,7 @@ function genClientList(){
 	}
 
 	//initial Gateway client
-	if(amesh_support) {
+	if(isSupport("amas")) {
 		var cap_mac = '<% nvram_get("lan_hwaddr"); %>';
 		if(typeof clientList[cap_mac] == "undefined"){
 			clientList.push(cap_mac);
@@ -389,30 +592,56 @@ genClientList();
 function getUploadIcon(clientMac) {
 	var result = "NoIcon";
 	$.ajax({
-		url: '/ajax_uploadicon.asp?clientmac=' + clientMac,
+		url: '/appGet.cgi?hook=get_upload_icon()&clientmac=' + clientMac,
+		dataType: 'json',
 		async: false,
-		dataType: 'script',
-		error: function(xhr){
-			setTimeout("getUploadIcon('" + clientMac + "');", 1000);
-		},
 		success: function(response){
-			result = htmlEnDeCode.htmlEncode(upload_icon);
+			var base64_image = htmlEnDeCode.htmlEncode(response.get_upload_icon);
+			result = (isImageBase64(base64_image)) ? base64_image : "NoIcon";
 		}
 	});
-	return result
+	return result;
+
+	function isImageBase64(str){
+		var str_tmp = str.slice();
+		if(str_tmp.substring(0,11) == "data:image/"){
+			var str_tmp_arr = str_tmp.substring(11).split(";");
+			if(str_tmp_arr.length != 2){
+				return false;
+			}
+			var mimeTypeRegExp = /(jpg|jpeg|gif|png|bmp|ico)/;
+			var mimeType_str = str_tmp_arr[0];
+			if(mimeType_str.length > 5){
+				return false;
+			}
+			var match_data = mimeType_str.match(mimeTypeRegExp);
+			if(!Boolean(match_data)){
+				return false;
+			}
+			var base64_str = str_tmp_arr[1];
+			if(base64_str != undefined && (base64_str.substring(0,7) == "base64,")){
+				var img_str = base64_str.substring(7);//filter base64,
+				var len = img_str.length;
+				if(!len || len % 4 != 0 || /[^A-Z0-9+\/=]/i.test(img_str)){
+					return false;
+				}
+				var firstPaddingChar = img_str.indexOf('=');
+				return (firstPaddingChar === -1 || firstPaddingChar === len - 1 || (firstPaddingChar === len - 2 && img_str[len - 1] === '='));
+			}
+		}
+		return false;
+	}
 }
 
 function getUploadIconCount() {
 	var count = 0;
 	$.ajax({
-		url: '/ajax_uploadicon.asp',
+		url: '/appGet.cgi?hook=get_upload_icon_count_list()',
+		dataType: 'json',
 		async: false,
-		dataType: 'script',
-		error: function(xhr){
-			setTimeout("getUploadIconCount();", 1000);
-		},
 		success: function(response){
-			count = upload_icon_count;
+			count = parseInt(response.get_upload_icon_count_list.upload_icon_count);
+			if(isNaN(count)) count = 0;
 		}
 	});
 	return count
@@ -421,31 +650,28 @@ function getUploadIconCount() {
 function getUploadIconList() {
 	var list = "";
 	$.ajax({
-		url: '/ajax_uploadicon.asp',
+		url: '/appGet.cgi?hook=get_upload_icon_count_list()',
+		dataType: 'json',
 		async: false,
-		dataType: 'script',
-		error: function(xhr){
-			setTimeout("getUploadIconList();", 1000);
-		},
 		success: function(response){
-			list = upload_icon_list;
+			list = response.get_upload_icon_count_list.upload_icon_list;
 		}
 	});
 	return list
 }
 
-function getVenderIconClassName(venderName) {
-	var vender_class_name = "";
-	var match_data = venderName.match(venderArrayRE);
+function getVendorIconClassName(vendorName) {
+	var vendor_class_name = "";
+	var match_data = vendorName.match(vendorArrayRE);
 	if(Boolean(match_data) && match_data[0] != undefined) {
-		vender_class_name = match_data[0];
-		if(vender_class_name == "hon hai")
-			vender_class_name = "honhai";
+		vendor_class_name = match_data[0];
+		if(vendor_class_name == "hon hai")
+			vendor_class_name = "honhai";
 	}
 	else {
-		vender_class_name = "";
+		vendor_class_name = "";
 	}
-	return vender_class_name;
+	return vendor_class_name;
 }
 
 function removeElement(element) {
@@ -460,8 +686,8 @@ function hide_edit_client_block() {
 			temp_clickedObj.className = temp_clickedObj.className.replace("clientIcon_clicked","clientIcon");
 			temp_clickedObj.className = temp_clickedObj.className.replace(" card_clicked", "");
 		}
-		else if(temp_clickedObj.className.search("venderIcon") != -1) {
-			temp_clickedObj.className = temp_clickedObj.className.replace("venderIcon_clicked","venderIcon");
+		else if(temp_clickedObj.className.search("vendorIcon") != -1) {
+			temp_clickedObj.className = temp_clickedObj.className.replace("vendorIcon_clicked","vendorIcon");
 			temp_clickedObj.className = temp_clickedObj.className.replace(" card_clicked", "");
 		}
 		document.body.onclick = null;
@@ -574,6 +800,7 @@ function popClientListEditTable(event) {
 	code += '<span id="card_client_printer" class="ipMethodTag" style="color:#FFFFFF;margin-right:5px;"></span>';
 	code += '<span id="card_client_iTunes" class="ipMethodTag" style="color:#FFFFFF;margin-right:5px;"></span>';
 	code += '<span id="card_client_opMode" class="ipMethodTag" style="color:#FFFFFF;margin-right:5px;"></span>';
+	code += '<span id="card_client_sdnIdx" class="ipMethodTag" style="color:#FFFFFF;margin-right:5px;"></span>';
 	code += '</div>';
 	code += '<div id="card_client_interface" style="height:28px;width:28px;float:right;"></div>';
 	code += '</td>';
@@ -587,14 +814,13 @@ function popClientListEditTable(event) {
 	//device icon and device info. start
 	code += '<tr>';
 	code += '<td style="text-align:center;vertical-align:top;width:85px;">';
-	if(!downsize_4m_support)
+	if(!isSupport("sfp4m"))
 		code += '<div id="card_client_preview_icon" class="client_preview_icon" title="Change client icon" onclick="card_show_custom_image();">';
 	else
 		code += '<div id="card_client_preview_icon" class="client_preview_icon" title="Change client icon">';
 	code += '<div id="card_client_image" style="width:85px;height:85px;margin:0 auto;cursor:pointer;"></div>';
-	code += '<canvas id="card_canvas_user_icon" class="client_canvasUserIcon" width="85px" height="85px"></canvas>';
 	code += '</div>';
-	if(!downsize_4m_support) {
+	if(!isSupport("sfp4m")) {
 		code += '<div class="changeClientIcon">';
 		code += '<span title="Change to default client icon" onclick="card_setDefaultIcon();"><#CTL_Default#></span>';
 		code += '<span id="card_changeIconTitle" title="Change client icon" style="margin-left:10px;" onclick="card_show_custom_image();"><#CTL_Change#></span>';
@@ -649,8 +875,8 @@ function popClientListEditTable(event) {
 		var block_internet_hint = "Enable this button to block this device to access internet.";/* untranslated */
 		var time_scheduling_hint = "<#ParentalCtrl_Desc_TS#>";
 		var ip_binding_hint = "Enable this button to bind specific IP with MAC Address of this device.";/* untranslated */
-		var internetTimeScheduling_title = (bwdpi_support) ? "<#Time_Scheduling#>" : "<#Parental_Control#>";
-		code += '<tr>';
+		var internetTimeScheduling_title = (isSupport("bwdpi")) ? "<#Time_Scheduling#>" : "<#Parental_Control#>";
+		code += '<tr id="tr_adv_setting">';
 		code += '<td colspan="3">';
 		code += '<div class="clientList_line"></div>';
 		code += '<div style="height:33px;width:100%;margin:5px 0;">';
@@ -660,7 +886,7 @@ function popClientListEditTable(event) {
 		code += '<div class="left" style="cursor:pointer;float:right;" id="card_radio_BlockInternet_enable"></div>';
 		code += '</div>';
 		code += '<div class="clientList_line"></div>';
-		code += '<div style="height:33px;width:100%;margin:5px 0;">';
+		code += '<div id="div_card_time_scheduling" style="height:33px;width:100%;margin:5px 0;">';
 		code += '<div style="width:65%;float:left;line-height:33px;">';
 		code += "<span onmouseover='return overlib(\"" + htmlEnDeCode.htmlEncode(time_scheduling_hint) + "\");' onmouseout='return nd();'>" + internetTimeScheduling_title + "</span>";
 		code += '</div>';
@@ -668,7 +894,7 @@ function popClientListEditTable(event) {
 		code += '<div id="card_internetTimeScheduling" class="internetTimeEdit" style="float:right;margin-right:10px;" title="<#Time_Scheduling#>"></div>';
 		code += '</div>';
 		code += '<div class="clientList_line"></div>';
-		code += '<div style="height:33px;width:100%;margin:5px 0;">';
+		code += '<div id="div_card_ipmac_binding" style="height:33px;width:100%;margin:5px 0;">';
 		code += '<div style="width:65%;float:left;line-height:33px;">';
 		code += "<span onmouseover='return overlib(\"" + htmlEnDeCode.htmlEncode(ip_binding_hint) +"\");' onmouseout='return nd();'><#Clientlist_IPMAC_Binding#></span>";
 		code += '</div>';
@@ -682,9 +908,11 @@ function popClientListEditTable(event) {
 
 	code += '<tr>';
 	code += '<td colspan="3" style="text-align: center;">';
+	code +=  '<div style="display:flex;justify-content:center;align-items:center;">';
 	code += '<input class="button_gen" type="button" style="margin-right:5px;" onclick="card_closeClientListView();" value="<#CTL_Cancel#>">';
 	code += '<input id="card_client_confirm" class="button_gen" type="button" value="<#CTL_apply#>">';
-	code += '<img id="card_client_loadingIcon" style="margin-left:5px;display:none;" src="/images/InternetScan.gif">';
+	code += '<img id="card_client_loadingIcon" style="margin-left:5px;width:24px;height:24px;display:none;" src="/images/InternetScan.gif">';
+	code +=  '</div>'
 	code += '</td>';
 	code += '</tr>';
 	code += '</tbody></table>';
@@ -706,8 +934,8 @@ function popClientListEditTable(event) {
 			temp_clickedObj.className = temp_clickedObj.className.replace("clientIcon_clicked","clientIcon");
 			temp_clickedObj.className = temp_clickedObj.className.replace(" card_clicked", "");
 		}
-		else if(temp_clickedObj.className.search("venderIcon") != -1) {
-			temp_clickedObj.className = temp_clickedObj.className.replace("venderIcon_clicked","venderIcon");
+		else if(temp_clickedObj.className.search("vendorIcon") != -1) {
+			temp_clickedObj.className = temp_clickedObj.className.replace("vendorIcon_clicked","vendorIcon");
 			temp_clickedObj.className = temp_clickedObj.className.replace(" card_clicked", "");
 		}
 		temp_clickedObj = null;
@@ -717,8 +945,8 @@ function popClientListEditTable(event) {
 		obj.className = obj.className.replace("clientIcon","clientIcon_clicked");
 		obj.className = obj.className  + " card_clicked";
 	}
-	else if(obj.className.search("venderIcon") != -1) {
-		obj.className = obj.className.replace("venderIcon","venderIcon_clicked");
+	else if(obj.className.search("vendorIcon") != -1) {
+		obj.className = obj.className.replace("vendorIcon","vendorIcon_clicked");
 		obj.className = obj.className  + " card_clicked";
 	}
 	
@@ -729,7 +957,7 @@ function popClientListEditTable(event) {
 	document.getElementById("edit_client_block").onclick = function() {show_edit_client_block();}
 
 	//build device icon list start
-	if(!downsize_4m_support) {
+	if(!isSupport("sfp4m")) {
 		custom_icon_list_api.paramObj.container = $('#edit_client_block').find("#card_custom_image");
 		custom_icon_list_api.paramObj.source = "local";
 		custom_icon_list_api.paramObj.select_icon_callBack = card_select_custom_icon;
@@ -760,6 +988,7 @@ function popClientListEditTable(event) {
 	document.getElementById("card_client_printer").style.display = "none";
 	document.getElementById("card_client_iTunes").style.display = "none";
 	document.getElementById("card_client_opMode").style.display = "none";
+	document.getElementById("card_client_sdnIdx").style.display = "none";
 	if(clientInfo.isOnline) {
 		var rssi_t = 0;
 		var connectModeTip = "";
@@ -784,7 +1013,7 @@ function popClientListEditTable(event) {
 					connectModeTip = "<#Radio#>: <#PASS_score4#>\n";
 					break;
 			}
-			if(stainfo_support) {
+			if(isSupport("stainfo")) {
 				if(clientInfo.curTx != "")
 					connectModeTip += "Tx Rate: " + clientInfo.curTx + "\n"; /*untranslated*/
 				if(clientInfo.curRx != "")
@@ -795,10 +1024,11 @@ function popClientListEditTable(event) {
 
 		if(sw_mode != 4){
 			var radioIcon_css = "radioIcon";
-			if(clientInfo.isGN != "" && clientInfo.isGN != undefined)
+			if((clientInfo.isGN != "" && clientInfo.isGN != undefined) || (isSupport("mtlancfg") && clientInfo.sdn_idx > 0)){
 				radioIcon_css += " GN";
+			}
 			clientIconHtml += '<div class="' + radioIcon_css + ' radio_' + rssi_t +'" title="' + connectModeTip + '"></div>';
-			if(clientInfo.isWL != 0) {
+			if(clientInfo.isWL != 0 || (isSupport("mtlancfg") && clientInfo.sdn_idx > 0)){
 				var bandClass = (navigator.userAgent.toUpperCase().match(/CHROME\/([\d.]+)/)) ? "band_txt_chrome" : "band_txt";
 				clientIconHtml += '<div class="band_block"><span class="' + bandClass + '" style="color:#000000;">' + isWL_map[clientInfo.isWL]["text"] + '</span></div>';
 			}
@@ -839,13 +1069,20 @@ function popClientListEditTable(event) {
 		document.getElementById("card_client_opMode").style.display = "";
 		document.getElementById("card_client_opMode").innerHTML = opModeDes[clientInfo.opMode];
 	}
+	if(clientInfo.sdn_idx > 0) {
+		document.getElementById('card_client_sdnIdx').style.display = "";
+		document.getElementById('card_client_sdnIdx').innerHTML = "SDN " + sdn_rl_for_clientlist[clientInfo.sdn_idx].apg_rl.ssid;
+		$('#tr_adv_setting').hide();
+	}else{
+		$('#tr_adv_setting').show();
+	}
 	//device title info. end
 
 	//device icon and device info. start
 	document.getElementById("card_client_ipaddr_field_orig").value = clientInfo.ip;
 	document.getElementById("card_client_ipaddr_field").value = clientInfo.ip;
 	document.getElementById("card_client_macaddr_field").value = clientInfo.mac;
-	select_image("type" + parseInt(clientInfo.type), clientInfo.vendor);
+	select_image(clientInfo);
 	if(card_client_variable.manual_dhcp_list[clientInfo.mac] != undefined) {
 		var client_manual_ip = card_client_variable.manual_dhcp_list[clientInfo.mac].ip;
 		//handle device offine but dhcp had been setted.
@@ -899,7 +1136,7 @@ function popClientListEditTable(event) {
 						function(){
 							if(card_client_variable.manual_dhcp_list[mac] == undefined) {
 								if(manual_dhcp_list_num == 64) {
-									if(confirm("The max limit is 64 rule. Please check your client list on DHCP server.")) { /*untranslated*/
+									if(confirm(stringSafeGet("<#Clientlist_IPMAC_Binding_max#>"))) {
 										location.href = "/Advanced_DHCP_Content.asp" ;
 									}
 									else {
@@ -923,7 +1160,7 @@ function popClientListEditTable(event) {
 						function(){
 							if(card_client_variable.MULTIFILTER_MAC.search(mac) == -1) {
 								if(client_MULTIFILTER_num == 16) {
-									if(confirm("The max limit is 16 clients. Please check your client list on time scheduling.")) { /*untranslated*/
+									if(confirm(stringSafeGet("<#Clientlist_block_internet_max#>"))) {
 										location.href = "/ParentalControl.asp" ;
 									}
 									else {
@@ -947,7 +1184,7 @@ function popClientListEditTable(event) {
 						function(){
 							if(card_client_variable.MULTIFILTER_MAC.search(mac) == -1) {
 								if(client_MULTIFILTER_num == 16) {
-									if(confirm("The max limit is 16 clients. Please check your client list on time scheduling.")) { /*untranslated*/
+									if(confirm(stringSafeGet("<#Clientlist_block_internet_max#>"))) {
 										location.href = "/ParentalControl.asp" ;
 									}
 									else {
@@ -1009,7 +1246,7 @@ function popClientListEditTable(event) {
 
 	//setting user upload icon attribute start.
 	//1.check rc_support
-	if(usericon_support) {
+	if(isSupport("usericon")) {
 		//2.check browswer support File Reader and Canvas or not.
 		if(isSupportFileReader() && isSupportCanvas()) {
 			//Setting drop event
@@ -1027,12 +1264,15 @@ function popClientListEditTable(event) {
 						reader.onload = function (event) {
 							var img = document.createElement("img");
 							img.src = event.target.result;
+							img.className="clientIcon_no_hover";
 							var mimeType = img.src.split(",")[0].split(":")[1].split(";")[0];
-							var canvas = document.getElementById("card_canvas_user_icon");
+							let canvas = document.createElement('canvas');
+							canvas.width=85;
+							canvas.height=85;
 							var ctx = canvas.getContext("2d");
 							ctx.clearRect(0,0,85,85);
-							document.getElementById("card_client_image").style.display = "none";
-							document.getElementById("card_canvas_user_icon").style.display = "";
+							$("#card_client_image").empty();
+							$("#card_client_image").append(img);
 							setTimeout(function() {
 								ctx.drawImage(img, 0, 0, 85, 85);
 								var dataURL = canvas.toDataURL(mimeType);
@@ -1115,13 +1355,15 @@ function previewCardUploadIcon($obj) {
 			fileReader.onload = function (fileReader) {
 				var img = document.createElement("img");
 				img.src = fileReader.target.result;
+				img.className="clientIcon_no_hover";
 				var mimeType = img.src.split(",")[0].split(":")[1].split(";")[0];
-				var canvas = document.getElementById("card_canvas_user_icon");
+				let canvas = document.createElement('canvas');
+				canvas.width=85;
+				canvas.height=85;
 				var ctx = canvas.getContext("2d");
 				ctx.clearRect(0,0,85,85);
-				$("#card_client_image").find(".flash").remove();
-				document.getElementById("card_client_image").style.display = "none";
-				document.getElementById("card_canvas_user_icon").style.display = "";
+				$("#card_client_image").empty();
+				$("#card_client_image").append(img);
 				setTimeout(function() {
 					ctx.drawImage(img, 0, 0, 85, 85);
 					var dataURL = canvas.toDataURL(mimeType);
@@ -1212,7 +1454,7 @@ function card_confirm(event) {
 			return false;
 		}
 
-		if(utf8_ssid_support){
+		if(isSupport("utf8_ssid")){
 			var len = validator.lengthInUtf8(document.getElementById('card_client_name').value);
 			if(len > 32){
 				alert("Username cannot be greater than 32 characters.");/* untranslated */
@@ -1237,11 +1479,13 @@ function card_confirm(event) {
 		var originalCustomListArray = new Array();
 		var onEditClient = new Array();
 		var clientTypeNum = "";
-		if(document.getElementById('card_client_image').className.search("venderIcon") != -1) {
+		if(document.getElementById('card_client_image').className.search("vendorIcon") != -1) {
 			clientTypeNum = "0";
 		}
 		else {
-			clientTypeNum = document.getElementById("card_client_image").className.replace("clientIcon_no_hover type", "");
+			if($('#card_client_image i').length>0) {
+				clientTypeNum = $('#card_client_image i').attr('class').replace("type", "");
+			}
 		}
 
 		var clientName = document.getElementById("card_client_name").value.trim();
@@ -1418,7 +1662,7 @@ function card_confirm(event) {
 
 		// handle user image
 		document.card_clientlist_form.custom_usericon.disabled = true;
-		if(usericon_support) {
+		if(isSupport("usericon")) {
 			var clientMac = document.getElementById("card_client_macaddr_field").value.replace(/\:/g, "");
 			document.card_clientlist_form.custom_usericon.disabled = false;
 			if(card_client_variable.userIconBase64 != "NoIcon" && (card_client_variable.userIconBase64 != card_client_variable.userIconBase64_ori)) {
@@ -1518,13 +1762,7 @@ function card_confirm(event) {
 }
 function card_setDefaultIcon() {
 	var mac = document.getElementById("card_client_macaddr_field").value;
-	var defaultType = "0";
-	var defaultDpiVender = "";
-	if(clientList[mac] != undefined) {
-		defaultType = clientList[mac].defaultType;
-		defaultDpiVender = clientList[mac].vendor;
-	}
-	select_image("type" + defaultType, defaultDpiVender);
+	select_image(clientList[mac], true);
 }
 
 //check user icon num is over 100 or not.
@@ -1544,7 +1782,7 @@ function userIconNumLimit(mac) {
 }
 function showUploadIconList() {
 	var confirmFlag = true;
-	confirmFlag = confirm("The client icon over upload limting, please remove at least one client icon then try to upload again."); /*untranslated*/
+	confirmFlag = confirm(stringSafeGet("<#Client_Icon_overload#>"));
 	if(confirmFlag) {
 
 		hide_edit_client_block();
@@ -1600,7 +1838,7 @@ function showUploadIconsTable() {
 	var custom_usericon_length = custom_usericon_row.length;
 	code +='<table width="95%" cellspacing="0" cellpadding="4" align="center" class="list_table" id="cardUploadIcons_table">';
 	if(custom_usericon_length == 1) {
-		code +='<tr><td style="color:#FFCC00;" colspan="4"><#IPConnection_VSList_Norule#></td></tr>';
+		code +='<tr><td class="hintColor" colspan="4"><#IPConnection_VSList_Norule#></td></tr>';
 		document.getElementById('edit_uploadicons_block').style.height = "170px";
 	}
 	else {
@@ -1636,7 +1874,7 @@ function delUploadIcon(rowdata) {
 	if(trCount == 0) {
 		var code = "";
 		code +='<table width="95%" cellspacing="0" cellpadding="4" align="center" class="list_table" id="cardUploadIcons_table">';
-		code +='<tr><td style="color:#FFCC00;" colspan="4"><#IPConnection_VSList_Norule#></td></tr>';
+		code +='<tr><td class="hintColor" colspan="4"><#IPConnection_VSList_Norule#></td></tr>';
 		code +='</table>';
 		document.getElementById('edit_uploadicons_block').style.height = "170px";
 		document.getElementById("card_usericons_block").innerHTML = code;
@@ -1662,47 +1900,42 @@ function uploadIcon_cancel() {
 	document.getElementById("edit_uploadicons_block").style.display = "none";
 }
 function card_select_custom_icon($obj){
-	var type = $obj.attr("class")
-	var icon_rul = $obj.css('background-image').replace('url(','').replace(')','').replace(/\"/gi, "");
-	$("#card_client_image").css("background-image","url(" + icon_rul + ")");
-	$("#card_client_image").find(".flash").remove();
-	$("#card_client_image").removeClass().addClass("clientIcon_no_hover").addClass(type).css("background-size", "");
-	$("#card_client_image").show();
-	$("#card_canvas_user_icon").hide();
-	card_client_variable.userIconBase64 = icon_rul;
+	var type = $obj.find('i').attr("class");
+	var icon_url = $obj.find('i').css("mask").replace('url(','').replace(')','').replace(/\"/gi, "");
+	$("#card_client_image").empty();
+	$("#card_client_image").append($('<i>').addClass(type).attr('style','--svg:url(' + icon_url + ')'));
+	$("#card_client_image").removeClass().addClass("clientIcon_no_hover");
+	card_client_variable.userIconBase64 = icon_url;
 	card_client_variable.userUploadFlag = false;
 }
-function select_image(type,  vender) {
-	var sequence = type.substring(4,type.length);
-	$("#card_client_image").find(".flash").remove();
-	$("#card_client_image").css("background-image","");
-	document.getElementById("card_client_image").style.display = "none";
-	document.getElementById("card_canvas_user_icon").style.display = "none";
-	document.getElementById("card_client_image").style.backgroundSize = "";
-	document.getElementById("card_client_image").className = "clientIcon_no_hover "+ type;
-	if(vender != "" && type == "type0" && !downsize_4m_support) {
-		var venderIconClassName = getVenderIconClassName(vender.toLowerCase());
-		if(venderIconClassName != "") {
-			document.getElementById("card_client_image").className = "venderIcon_no_hover "+ venderIconClassName;
-			document.getElementById("card_client_image").style.backgroundSize = "180%";
+function select_image(clientObj,useDefaultType=false) {
+	let type = (useDefaultType) ? "type" + clientObj.defaultType : "type" + clientObj.type;
+	let vendor =  clientObj.vendor;
+	$("#card_client_image").empty();
+	$("#card_client_image").empty();
+	$("#card_client_image").append($('<i>').addClass(type));
+	$("#card_client_image").removeClass().addClass("clientIcon_no_hover");
+	if(vendor != "" && type == "type0" && !isSupport("sfp4m")) {
+		var vendorIconClassName = getVendorIconClassName(vendor.toLowerCase());
+		if(vendorIconClassName != "") {
+			$("#card_client_image").empty();
+			$("#card_client_image").append($('<i>').addClass("vendor-icon").addClass(vendorIconClassName));
+			$("#card_client_image").removeClass().addClass("vendorIcon_no_hover");
 		}
 	}
 
 	var userImageFlag = false;
 	if(!card_client_variable.firstTimeOpenBlock) {
-		if(usericon_support) {
-			var clientMac = document.getElementById('card_client_macaddr_field').value.replace(/\:/g, "");
-			card_client_variable.userIconBase64 = getUploadIcon(clientMac);
+		if(isSupport("usericon")) {
+			card_client_variable.userIconBase64 = getUploadIcon(clientObj.mac.replace(/\:/g, ""));
 			card_client_variable.userIconBase64_ori = card_client_variable.userIconBase64 ;
 			if(card_client_variable.userIconBase64 != "NoIcon") {
-				var img = document.createElement("img");
-				img.src = card_client_variable.userIconBase64;
-				var canvas = document.getElementById("card_canvas_user_icon");
-				var ctx = canvas.getContext("2d");
-				ctx.clearRect(0,0,85,85);
-				document.getElementById("card_client_image").style.display = "none";
-				document.getElementById("card_canvas_user_icon").style.display = "";
-				ctx.drawImage(img, 0, 0, 85, 85);
+				$("#card_client_image").empty();
+				if(clientObj.isUserUplaodImg){
+					$('#card_client_image').append($('<img>').addClass('clientIcon_no_hover').attr('src',card_client_variable.userIconBase64));
+				}else{
+					$('#card_client_image').append($('<i>').addClass(type).attr('style','--svg:url('+card_client_variable.userIconBase64+');'));
+				}
 				userImageFlag = true;
 			}
 		}
@@ -1710,9 +1943,8 @@ function select_image(type,  vender) {
 
 	if(!userImageFlag) {
 		card_client_variable.userIconBase64 = "NoIcon";
-		document.getElementById("card_client_image").style.display = "";
 		if(type == "type36")
-			$("#card_client_image").append($("<div>").addClass("flash"));
+			$("#card_client_image").find("i").addClass("flash");
 	}
 }
 
@@ -1721,7 +1953,7 @@ function oui_query_card(mac) {
 	if(mac != document.getElementById("card_client_macaddr_field").value) //avoid click two device quickly
 		oui_query_card(document.getElementById("card_client_macaddr_field").value);
 	else{
-		$.getJSON("/ajax/ouiDB.json", function(data){
+		$.getJSON("https://nw-dlcdnet.asus.com/plugin/js/ouiDB.json", function(data){
 			if(data != "" && data[queryStr] != undefined){
         if(document.getElementById("edit_client_block") == null) return true;
 				var vendor_name = data[queryStr].trim();
@@ -1959,15 +2191,26 @@ var sorter = {
 				sorter.sortingMethod = (sorter.sortingMethod == "increase") ? "decrease" : "increase";
 				break;
 			case "wired" :
-				sorterLastIndex = sorter.wired_index;
-				sorter.wired_index = sorterClickIndex;
-				sorter.sortingMethod_wired = (sorter.sortingMethod_wired == "increase") ? "decrease" : "increase";
+			case "sc" :
+				sorterLastIndex = sorter[""+clickItem+"_index"];
+				sorter[""+clickItem+"_index"] = sorterClickIndex;
+				sorter["sortingMethod_"+clickItem+""] = (sorter["sortingMethod_"+clickItem+""] == "increase") ? "decrease" : "increase";
 				break;
-		}
-		if(clickItem.substr(0,2) == "wl" || isSupport("amas") && clickItem.substr(0,2) == "gn"){
-			sorterLastIndex = sorter[""+clickItem+"_index"];
-			sorter[""+clickItem+"_index"] = sorterClickIndex;
-			sorter["sortingMethod_"+clickItem+""] = (sorter["sortingMethod_"+clickItem+""] == "increase") ? "decrease" : "increase";
+			default :
+				var interface_item = "";
+				if(clickItem.substr(0,3) == "sdn")
+						interface_item = "sdn";
+				else if(clickItem.substr(0,2) == "gn")
+						interface_item = "gn";
+				else if(clickItem.substr(0,2) == "wl")
+						interface_item = "wl";
+
+				if(interface_item != ""){
+					sorterLastIndex = sorter[""+clickItem+"_index"];
+					sorter[""+clickItem+"_index"] = sorterClickIndex;
+					sorter["sortingMethod_"+clickItem+""] = (sorter["sortingMethod_"+clickItem+""] == "increase") ? "decrease" : "increase";
+				}
+				break
 		}
 		obj.parentNode.childNodes[sorterLastIndex].style.boxShadow = "";
 	},
@@ -1981,13 +2224,23 @@ var sorter = {
 				clickSortingMethod = sorter.sortingMethod;
 				break;
 			case "wired" :
-				clickIndex = sorter.wired_index;
-				clickSortingMethod = sorter.sortingMethod_wired;
+			case "sc" :
+				clickIndex = sorter[""+clickItem+"_index"];
+				clickSortingMethod = sorter["sortingMethod_"+clickItem+""];
 				break;
-		}
-		if(_arrayName.substr(0,2) == "wl" || isSupport("amas") && _arrayName.substr(0,2) == "gn"){
-			clickIndex = sorter[""+_arrayName.substr(0,3)+"_index"];
-			clickSortingMethod = sorter["sortingMethod_"+_arrayName.substr(0,3)+""];
+			default :
+				var interface_idx = "";
+				if(clickItem.substr(0,3) == "sdn")
+					interface_idx = _arrayName.substr(0,4);
+				else if(clickItem.substr(0,2) == "gn")
+					interface_idx = _arrayName.substr(0,3);
+				else if(clickItem.substr(0,2) == "wl")
+					interface_idx = _arrayName.substr(0,3);
+				if(interface_idx != ""){
+					clickIndex = sorter[""+interface_idx+"_index"];
+					clickSortingMethod = sorter["sortingMethod_"+interface_idx+""];
+				}
+				break;
 		}
 		var boxShadowTopCss = "0 1px 0 #FC0 inset";
 		var boxShadowBottomCss = "0 -1px 0 #FC0 inset";
@@ -2007,10 +2260,16 @@ var sorter = {
 		else if(clienlistViewMode == "ByInterface") {
 			if(_arrayName == "wired_list")
 				eval(""+_arrayName+".sort(sorter."+_Method+"_"+sorter.sortingMethod_wired+");");
+			else if(_arrayName.substr(0,2) == "sc")
+				eval(""+_arrayName+".sort(sorter."+_Method+"_"+sorter.sortingMethod_sc+");");
 			else if(_arrayName.substr(0,2) == "wl")
 				eval("wl_list['"+_arrayName.substr(0,3)+"'].sort(sorter."+_Method+"_"+sorter["sortingMethod_"+_arrayName.substr(0,3)+""]+");");
-			else if(isSupport("amas") && _arrayName.substr(0,2) == "gn")
-				eval("gn_list['"+_arrayName.substr(0,3)+"'].sort(sorter."+_Method+"_"+sorter["sortingMethod_"+_arrayName.substr(0,3)+""]+");");
+			else if(isSupport("amas")){
+				if(isSupport("mtlancfg") && _arrayName.substr(0,3) == "sdn")
+					eval("sdn_list['"+_arrayName.substr(0,4)+"'].sort(sorter."+_Method+"_"+sorter["sortingMethod_"+_arrayName.substr(0,4)+""]+");");
+				else if(_arrayName.substr(0,2) == "gn")
+					eval("gn_list['"+_arrayName.substr(0,3)+"'].sort(sorter."+_Method+"_"+sorter["sortingMethod_"+_arrayName.substr(0,3)+""]+");");
+			}
 		}
 		drawClientListBlock(_arrayName);
 		sorter.drawBorder(_arrayName);
@@ -2034,26 +2293,113 @@ var sorter = {
 }
 var wired_list = new Array();
 var wl_list = [];
-for(var index in isWL_map){
-	if(index == "0"){
-		sorter["wired_index"] = 3;
-		sorter["wired_display"] = true;
-		sorter["ssortingMethod_wired"] = "increase";
-	}
-	else{
-		wl_list["wl" + index + ""] = new Array();
-		sorter["wl" + index + "_index"] = 3;
-		sorter["wl" + index + "_display"] = true;
-		sorter["sortingMethod_wl" + index + ""] = "increase";
-	}
+var sdn_rl_for_clientlist = [];
+if(isSupport("smart_connect") || isSupport("bandstr")){
+	var sc_list = [];
 }
 if(isSupport("amas")){
-	var gn_list = [];
-	for(var i=1; i<multissid_count+1; i++){
-		gn_list["gn" + i + ""] = new Array();
-		sorter["gn" + i + "_index"] = 3;
-		sorter["gn" + i + "_display"] = true;
-		sorter["sortingMethod_gn" + i + ""] = "increase";
+	if(isSupport("mtlancfg")){
+		var sdn_list = [];
+		init_sdn_all_list_client();
+	}
+	else
+		var gn_list = [];
+}
+function init_clientlist_listview_array(){
+	wired_list = [];
+	wl_list = [];
+	for(var index in isWL_map){
+		if(index == "0"){
+			sorter["wired_index"] = 3;
+			sorter["wired_display"] = true;
+			sorter["ssortingMethod_wired"] = "increase";
+		}
+		else{
+			wl_list["wl" + index + ""] = new Array();
+			sorter["wl" + index + "_index"] = 3;
+			sorter["wl" + index + "_display"] = true;
+			sorter["sortingMethod_wl" + index + ""] = "increase";
+		}
+	}
+	if(isSupport("smart_connect") || isSupport("bandstr")){
+		sorter["sc_index"] = 3;
+		sorter["sc_display"] = true;
+		sorter["sortingMethod_sc"] = "increase";
+	}
+	if(isSupport("amas")){
+			if(isSupport("mtlancfg")){
+				sdn_list = [];
+				$.each(sdn_rl_for_clientlist, function(index, sdn_all_rl){
+						if(sdn_all_rl.sdn_rl.idx == "0")
+							return true;
+						sdn_list["sdn" + sdn_all_rl.sdn_rl.idx + ""] = new Array();
+						sorter["sdn" + sdn_all_rl.sdn_rl.idx + "_index"] = 3;
+						sorter["sdn" + sdn_all_rl.sdn_rl.idx + "_display"] = true;
+						sorter["sortingMethod_sdn" + sdn_all_rl.sdn_rl.idx + ""] = "increase";
+				});
+			}
+			else{
+				gn_list = [];
+				for(var i=1; i<multissid_count+1; i++){
+					gn_list["gn" + i + ""] = new Array();
+					sorter["gn" + i + "_index"] = 3;
+					sorter["gn" + i + "_display"] = true;
+					sorter["sortingMethod_gn" + i + ""] = "increase";
+				}
+			}
+	}
+}
+
+function init_sdn_all_list_client(){
+	var sdn_rl_attr = function(){
+		this.idx = "0";
+		this.sdn_name = "";
+		this.apg_idx = "0";
+	};
+	var apg_rl_attr = function(){
+		this.apg_idx = "";
+		this.ssid = "";
+	};
+	sdn_rl_for_clientlist = [];
+
+	var sdn_all_rl_info = httpApi.nvramCharToAscii(["sdn_rl"], true);
+	var sdn_rl = decodeURIComponent(sdn_all_rl_info.sdn_rl);
+	var each_sdn_rl = sdn_rl.split("<");
+	$.each(each_sdn_rl, function(index, value){
+		if(value != ""){
+			var sdn_all_rl = {sdn_rl:{}, apg_rl:{}};
+			var profile_data = value.split(">");
+			var sdn_rl_profile = set_sdn_profile(profile_data);
+			sdn_all_rl.sdn_rl = sdn_rl_profile;
+
+			var apg_rl_list = get_apg_rl_list(sdn_rl_profile.apg_idx);
+			var specific_apg = apg_rl_list.filter(function(item, index, array){
+				return (item.apg_idx == sdn_rl_profile.apg_idx);
+			})[0];
+			if(specific_apg != undefined){
+				sdn_all_rl.apg_rl = specific_apg;
+			}
+			sdn_rl_for_clientlist.push(sdn_all_rl);
+		}
+	});
+
+	function set_sdn_profile(profile_data){
+		var sdn_profile = JSON.parse(JSON.stringify(new sdn_rl_attr()));
+		sdn_profile.idx = profile_data[0];
+		sdn_profile.sdn_name = profile_data[1];
+		sdn_profile.apg_idx = profile_data[5];
+		return sdn_profile;
+	}
+	function get_apg_rl_list(_apg_idx){
+		var apg_rl_list = [];
+		if(parseInt(_apg_idx) > 0){
+			var apg_profile = new apg_rl_attr();
+			var apg_info = httpApi.nvramCharToAscii(["apg" + _apg_idx + "_ssid"], true);
+			apg_profile.apg_idx = _apg_idx.toString();
+			apg_profile.ssid = decodeURIComponent(apg_info["apg" + _apg_idx + "_ssid"]);
+			apg_rl_list.push(JSON.parse(JSON.stringify(apg_profile)));
+		}
+		return apg_rl_list;
 	}
 }
 
@@ -2093,14 +2439,27 @@ function changeClientListViewMode() {
 		else
 			sorter["wl" + index + "_display"] = true;
 	});
+	if(isSupport("smart_connect") || isSupport("bandstr")){
+		sorter["sc_display"] = true;
+	}
 	if(isSupport("amas")){
-		for(var i=1; i<multissid_count+1; i++)
-			sorter["gn" + i + "_display"] = true;
+		if(isSupport("mtlancfg")){
+			$.each(sdn_rl_for_clientlist, function(index, sdn_all_rl){
+					if(sdn_all_rl.sdn_rl.idx == "0")
+						return true;
+					sorter["sdn" + sdn_all_rl.sdn_rl.idx + "_display"] = true;
+			});
+		}
+		else{
+			for(var i=1; i<multissid_count+1; i++)
+				sorter["gn" + i + "_display"] = true;
+		}
 	}
 }
 
 var interval_clientlist_listview_update = null;
 function pop_clientlist_listview() {
+	init_clientlist_listview_array();
 	if(document.getElementById("clientlist_viewlist_content") != null) {
 		removeElement(document.getElementById("clientlist_viewlist_content"));
 	}
@@ -2108,7 +2467,6 @@ function pop_clientlist_listview() {
 	var divObj = document.createElement("div");
 	divObj.setAttribute("id","clientlist_viewlist_content");
 	divObj.className = "clientlist_viewlist";
-	divObj.setAttribute("onselectstart","return false");
 	document.body.appendChild(divObj);
 	fadeIn(document.getElementById("clientlist_viewlist_content"));
 	cal_panel_block_clientList("clientlist_viewlist_content", 0.045);
@@ -2150,14 +2508,14 @@ function pop_clientlist_listview() {
 
 function exportClientListLog() {
 	var data = [["Internet access state", "Device Type", "Client Name", "Client IP address", "IP Method", "Clients MAC Address", "Interface", "Tx Rate", "Rx Rate", "Access time"]];
-	var tempArray = new Array();
+	var csv_items = data[0].length;
 	var ipStateExport = new Array();
 	ipStateExport["Static"] =  "Static IP";
 	ipStateExport["DHCP"] =  "Automatic IP";
 	ipStateExport["Manual"] =  "MAC-IP Binding";
 	var setArray = function(array) {
 		for(var i = 0; i < array.length; i += 1) {
-			tempArray = [];
+			var tempArray = new Array(csv_items).fill("-");
 			tempArray[0] = (array[i][0] == 1) ? "Allow Internet access" : "Block Internet access";
 			tempArray[1] = array[i][1].replace(",", "");
 			tempArray[2] = array[i][2];
@@ -2166,24 +2524,19 @@ function exportClientListLog() {
 			tempArray[5] = array[i][4];
 			if(!(isSwMode('mb') || isSwMode('ew'))) {
 				var if_name = "";
-				if(array[i][9] == 0)
+				if(array[i][9] == 0){
 					if_name = "Wired";
+				}
 				else{
-					if(isSupport("amas") && array[i][13] != "")
-						if_name = isWL_map[array[i][9]]["text"].replace("G", " GHz") + " Guest Network - " +  array[i][13];
-					else
-						if_name = isWL_map[array[i][9]]["text"].replace("G", " GHz");
+					if_name = isWL_map[array[i][9]]["text"].replace("G", " GHz");
 				}
 				tempArray[6] = if_name;
 				tempArray[7] = (array[i][6] == "") ? "-" : array[i][6];
 				tempArray[8] = (array[i][7] == "") ? "-" : array[i][7];
-				tempArray[9] = (array[i][9] == 0) ? "-" : array[i][8];
+				tempArray[9] = (array[i][9] == 0) ? "-" : (array[i][8] == "" ? "00:00:00" : array[i][8]);
 			}
 			else {
 				tempArray[6] = "Wired";
-				tempArray[7] = "-";
-				tempArray[8] = "-";
-				tempArray[9] = "-";
 			}
 			data.push(tempArray);
 		}
@@ -2200,8 +2553,17 @@ function exportClientListLog() {
 					setArray(wl_list["wl"+index+""]);
 			});
 			if(isSupport("amas")){
-				for(var i=1; i<multissid_count+1; i++)
-					setArray(gn_list["gn"+i+""]);
+				if(isSupport("mtlancfg")){
+					$.each(sdn_rl_for_clientlist, function(index, sdn_all_rl){
+							if(sdn_all_rl.sdn_rl.idx == "0")
+								return true;
+							setArray(sdn_list["sdn" + sdn_all_rl.sdn_rl.idx + ""]);
+					});
+				}
+				else{
+					for(var i=1; i<multissid_count+1; i++)
+						setArray(gn_list["gn"+i+""]);
+				}
 			}
 			break;
 	}
@@ -2259,9 +2621,22 @@ function sorterClientList() {
 						sorter.doSorter(sorter["wl" + index + "_index"], indexMapType[sorter["wl" + index + "_index"]], "wl" + index + "_list");
 				}
 			});
+			if(isSupport("smart_connect") || isSupport("bandstr")){
+				if($("#clientlist_sc_list_Block").length > 0)
+					sorter.doSorter(sorter["sc_index"], indexMapType[sorter["sc_index"]], "sc_list");
+			}
 			if(isSupport("amas")){
-				for(var i=1; i<multissid_count+1; i++)
-					sorter.doSorter(sorter["gn"+i+"_index"], indexMapType[sorter["gn"+i+"_index"]], 'gn'+i+'_list');
+				if(isSupport("mtlancfg")){
+					$.each(sdn_rl_for_clientlist, function(index, sdn_all_rl){
+							if(sdn_all_rl.sdn_rl.idx == "0")
+								return true;
+							sorter.doSorter(sorter["sdn"+sdn_all_rl.sdn_rl.idx+"_index"], indexMapType[sorter["sdn"+sdn_all_rl.sdn_rl.idx+"_index"]], 'sdn'+sdn_all_rl.sdn_rl.idx+'_list');
+					});
+				}
+				else{
+					for(var i=1; i<multissid_count+1; i++)
+						sorter.doSorter(sorter["gn"+i+"_index"], indexMapType[sorter["gn"+i+"_index"]], 'gn'+i+'_list');
+				}
 			}
 			break;
 	}
@@ -2275,9 +2650,21 @@ function create_clientlist_listview() {
 		else
 			wl_list["wl"+index+""] = [];
 	});
+	if(isSupport("smart_connect") || isSupport("bandstr")){
+		sc_list = [];
+	}
 	if(isSupport("amas")){
-		for(var i=1; i<multissid_count+1; i++)
-			gn_list["gn"+i+""] = [];
+		if(isSupport("mtlancfg")){
+			$.each(sdn_rl_for_clientlist, function(index, sdn_all_rl){
+					if(sdn_all_rl.sdn_rl.idx == "0")
+						return true;
+					sdn_list["sdn"+sdn_all_rl.sdn_rl.idx+""] = [];
+			});
+		}
+		else{
+			for(var i=1; i<multissid_count+1; i++)
+				gn_list["gn"+i+""] = [];
+		}
 	}
 
 	if(document.getElementById("clientlist_viewlist_block") != null) {
@@ -2289,30 +2676,30 @@ function create_clientlist_listview() {
 
 	var obj_width_map = [["15%", "20%", "25%", "20%", "20%"],["10%", "10%", "30%", "20%", "20%", "10%"],["6%", "6%", "27%", "20%", "15%", "6%", "6%", "6%", "8%"]];
 	if(top.isIE8) obj_width_map = [["", "", "40%", "40%", "20%"],["", "", "40%", "30%", "20%", "10%"],["", "", "33%", "26%", "15%", "6%", "6%", "6%", "8%"]];
-	var obj_width = stainfo_support ? obj_width_map[2] : obj_width_map[1];
-	var wl_colspan = stainfo_support ? 9 : 6;
+	var obj_width = isSupport("stainfo") ? obj_width_map[2] : obj_width_map[1];
+	var wl_colspan = isSupport("stainfo") ? 9 : 6;
 
 	var code = "";
 
 	var drawSwitchMode = function(mode) {
 		var drawSwitchModeHtml = "";
 
-		drawSwitchModeHtml += "<div style='margin-top:15px;margin-left:15px;float:left;'>";
+		drawSwitchModeHtml += "<div style='margin-top:15px;margin-left:15px;float:left; display: flex;'>";
 
 		if(mode == "All") {
-			drawSwitchModeHtml += "<div class='block_filter_pressed clientlist_All'>";
+			drawSwitchModeHtml += "<div class='block_filter_pressed clientlist_All me-2'>";
 			drawSwitchModeHtml += "<div class='block_filter_name' style='color:#93A9B1;'><#All#></div>";
 			drawSwitchModeHtml += "</div>";
-			drawSwitchModeHtml += "<div class='block_filter clientlist_ByInterface' style='cursor:pointer'>";
-			drawSwitchModeHtml += "<div class='block_filter_name' onclick='changeClientListViewMode();'><#wan_interface#></div>";
+			drawSwitchModeHtml += "<div class='block_filter clientlist_ByInterface m-0' style='cursor:pointer'>";
+			drawSwitchModeHtml += "<div class='block_filter_name' onclick='changeClientListViewMode();'>" + (isSupport("mtlancfg") ? "<#Network#>" : "<#wan_interface#>") + "</div>";
 			drawSwitchModeHtml += "</div>";
 		}
 		else {							
-			drawSwitchModeHtml += "<div class='block_filter clientlist_All' style='cursor:pointer'>";
+			drawSwitchModeHtml += "<div class='block_filter clientlist_All me-2' style='cursor:pointer'>";
 			drawSwitchModeHtml += "<div class='block_filter_name' onclick='changeClientListViewMode();'><#All#></div>";
 			drawSwitchModeHtml += "</div>";
 			drawSwitchModeHtml += "<div class='block_filter_pressed clientlist_ByInterface'>";
-			drawSwitchModeHtml += "<div class='block_filter_name' style='color:#93A9B1;'><#wan_interface#></div>";
+			drawSwitchModeHtml += "<div class='block_filter_name' style='color:#93A9B1;'>" + (isSupport("mtlancfg") ? "<#Network#>" : "<#wan_interface#>") + "</div>";
 			drawSwitchModeHtml += "</div>";
 		}
 		drawSwitchModeHtml += "</div>";
@@ -2321,7 +2708,7 @@ function create_clientlist_listview() {
 
 	if(!(isSwMode('mb') || isSwMode('ew')))
 		code += drawSwitchMode(clienlistViewMode);
-	code += "<div style='float:right;'><img src='/images/button-close.gif' style='width:30px;cursor:pointer' onclick='closeClientListView();'></div>";
+	code += "<div class='closeBtn' style='float:right;'><img src='/images/button-close.gif' style='width:30px;cursor:pointer' onclick='closeClientListView();'></div>";
 	code += "<table border='0' align='center' cellpadding='0' cellspacing='0' style='width:100%;padding:0 15px 15px 15px;'><tbody><tr><td>";
 
 	switch (clienlistViewMode) {
@@ -2338,7 +2725,7 @@ function create_clientlist_listview() {
 			code += "<th width=" + obj_width[4] + " onclick='sorter.addBorder(this);sorter.doSorter(4, \"str\", \"all_list\");' style='cursor:pointer;'><#ParentalCtrl_hwaddr#></th>";
 			if(!(isSwMode('mb') || isSwMode('ew')))
 				code += "<th width=" + obj_width[5] + " onclick='sorter.addBorder(this);sorter.doSorter(5, \"num\", \"all_list\");' style='cursor:pointer;'><#wan_interface#></th>";
-			if(stainfo_support && !(isSwMode('mb') || isSwMode('ew'))) {
+			if(isSupport("stainfo") && !(isSwMode('mb') || isSwMode('ew'))) {
 				code += "<th width=" + obj_width[6] + " onclick='sorter.addBorder(this);sorter.doSorter(6, \"num\", \"all_list\");' style='cursor:pointer;' title='The transmission rates of your wireless device'>Tx Rate (Mbps)</th>";/*untranslated*/
 				code += "<th width=" + obj_width[7] + " onclick='sorter.addBorder(this);sorter.doSorter(7, \"num\", \"all_list\");' style='cursor:pointer;' title='The receive rates of your wireless device'>Rx Rate (Mbps)</th>";/*untranslated*/
 				code += "<th width=" + obj_width[8] + " onclick='sorter.addBorder(this);sorter.doSorter(8, \"num\", \"all_list\");' style='cursor:pointer;'><#Access_Time#></th>";
@@ -2360,7 +2747,7 @@ function create_clientlist_listview() {
 			code += "<th width=" + obj_width[4] + " onclick='sorter.addBorder(this);sorter.doSorter(4, \"str\", \"wired_list\");' style='cursor:pointer;'><#ParentalCtrl_hwaddr#></th>";
 			if(!(isSwMode('mb') || isSwMode('ew')))
 				code += "<th width=" + obj_width[5] + " ><#wan_interface#></th>";
-			if(stainfo_support && !(isSwMode('mb') || isSwMode('ew'))) {
+			if(isSupport("stainfo") && !(isSwMode('mb') || isSwMode('ew'))) {
 				code += "<th width=" + obj_width[6] + " title='The transmission rates of your wireless device'>Tx Rate (Mbps)</th>";/*untranslated*/
 				code += "<th width=" + obj_width[7] + " title='The receive rates of your wireless device'>Rx Rate (Mbps)</th>";/*untranslated*/
 				code += "<th width=" + obj_width[8] + "><#Access_Time#></th>";
@@ -2370,51 +2757,130 @@ function create_clientlist_listview() {
 			code += "<div id='clientlist_wired_list_Block'></div>";
 	
 			var wl_map = {"2.4 GHz": "1",  "5 GHz": "2", "5 GHz-1": "2", "5 GHz-2": "3", "6 GHz": "4"};
-			obj_width = stainfo_support ? obj_width_map[2] : obj_width_map[1];
-			for(var i = 0; i < wl_nband_title.length; i += 1) {
+			obj_width = isSupport("stainfo") ? obj_width_map[2] : obj_width_map[1];
+			var smart_connect_x = httpApi.nvramGet(["smart_connect_x"]).smart_connect_x;
+			if((isSupport("smart_connect") || isSupport("bandstr")) && smart_connect_x == "1"){
+				var wl_ssid_parm = "wl" +  get_wl_unit_by_band("2G") + "_ssid";
+				var tr_title = htmlEnDeCode.htmlEncode(decodeURIComponent(httpApi.nvramCharToAscii([wl_ssid_parm])[wl_ssid_parm]));
 				code += "<table width='100%' border='1' align='center' cellpadding='0' cellspacing='0' class='FormTable_table' style='margin-top:15px;'>";
-				code += "<thead><tr height='23px'><td colspan='" + wl_colspan + "'>" + wl_nband_title[i];
-				code += "<a id='wl" + wl_map[wl_nband_title[i]] + "_expander' class='clientlist_expander' onclick='showHideContent(\"clientlist_wl" + wl_map[wl_nband_title[i]] + "_list_Block\", this);'>[ <#Clientlist_Hide#> ]</a>";
+				code += "<thead><tr height='23px'><td colspan='" + wl_colspan + "'>" + tr_title;
+				code += "<a id='sc_expander' class='clientlist_expander' onclick='showHideContent(\"clientlist_sc_list_Block\", this);'>[ <#Clientlist_Hide#> ]</a>";
 				code += "</td></tr></thead>";
-				code += "<tr id='tr_wl" + wl_map[wl_nband_title[i]] + "_title' height='40px'>";
+				code += "<tr id='tr_sc_title' height='40px'>";
 				code += "<th class='IE8HACK' width=" + obj_width[0] + "><#Internet#></th>";
 				code += "<th class='IE8HACK' width=" + obj_width[1] + "><#Client_Icon#></th>";
-				code += "<th width=" + obj_width[2] + " onclick='sorter.addBorder(this);sorter.doSorter(2, \"str\", \"wl"+wl_map[wl_nband_title[i]]+"_list\");' style='cursor:pointer;'><#ParentalCtrl_username#></th>";
-				code += "<th width=" + obj_width[3] + " onclick='sorter.addBorder(this);sorter.doSorter(3, \"num\", \"wl"+wl_map[wl_nband_title[i]]+"_list\");' style='cursor:pointer;'><#vpn_client_ip#></th>";
-				code += "<th width=" + obj_width[4] + " onclick='sorter.addBorder(this);sorter.doSorter(4, \"str\", \"wl"+wl_map[wl_nband_title[i]]+"_list\");' style='cursor:pointer;'><#ParentalCtrl_hwaddr#></th>";
+				code += "<th width=" + obj_width[2] + " onclick='sorter.addBorder(this);sorter.doSorter(2, \"str\", \"sc_list\");' style='cursor:pointer;'><#ParentalCtrl_username#></th>";
+				code += "<th width=" + obj_width[3] + " onclick='sorter.addBorder(this);sorter.doSorter(3, \"num\", \"sc_list\");' style='cursor:pointer;'><#vpn_client_ip#></th>";
+				code += "<th width=" + obj_width[4] + " onclick='sorter.addBorder(this);sorter.doSorter(4, \"str\", \"sc_list\");' style='cursor:pointer;'><#ParentalCtrl_hwaddr#></th>";
 				if(!(isSwMode('mb') || isSwMode('ew')))
-					code += "<th width=" + obj_width[5] + " onclick='sorter.addBorder(this);sorter.doSorter(5, \"num\", \"wl"+wl_map[wl_nband_title[i]]+"_list\");' style='cursor:pointer;'><#wan_interface#></th>";
-				if(stainfo_support && !(isSwMode('mb') || isSwMode('ew'))) {
-					code += "<th width=" + obj_width[6] + " onclick='sorter.addBorder(this);sorter.doSorter(6, \"num\", \"wl"+wl_map[wl_nband_title[i]]+"_list\");' style='cursor:pointer;' title='The transmission rates of your wireless device'>Tx Rate (Mbps)</th>";/*untranslated*/
-					code += "<th width=" + obj_width[7] + " onclick='sorter.addBorder(this);sorter.doSorter(7, \"num\", \"wl"+wl_map[wl_nband_title[i]]+"_list\");' style='cursor:pointer;' title='The receive rates of your wireless device'>Rx Rate (Mbps)</th>";/*untranslated*/
-					code += "<th width=" + obj_width[8] + " onclick='sorter.addBorder(this);sorter.doSorter(8, \"num\", \"wl"+wl_map[wl_nband_title[i]]+"_list\");' style='cursor:pointer;'><#Access_Time#></th>";
+					code += "<th width=" + obj_width[5] + " onclick='sorter.addBorder(this);sorter.doSorter(5, \"num\", \"sc_list\");' style='cursor:pointer;'><#wan_interface#></th>";
+				if(isSupport("stainfo") && !(isSwMode('mb') || isSwMode('ew'))) {
+					code += "<th width=" + obj_width[6] + " onclick='sorter.addBorder(this);sorter.doSorter(6, \"num\", \"sc_list\");' style='cursor:pointer;' title='The transmission rates of your wireless device'>Tx Rate (Mbps)</th>";/*untranslated*/
+					code += "<th width=" + obj_width[7] + " onclick='sorter.addBorder(this);sorter.doSorter(7, \"num\", \"sc_list\");' style='cursor:pointer;' title='The receive rates of your wireless device'>Rx Rate (Mbps)</th>";/*untranslated*/
+					code += "<th width=" + obj_width[8] + " onclick='sorter.addBorder(this);sorter.doSorter(8, \"num\", \"sc_list\");' style='cursor:pointer;'><#Access_Time#></th>";
 				}
 				code += "</tr>";
 				code += "</table>";
-				code += "<div id='clientlist_wl" + wl_map[wl_nband_title[i]] + "_list_Block'></div>";
+				code += "<div id='clientlist_sc_list_Block'></div>";
 			}
-			if(isSupport("amas")){
-				for(var i=1; i<multissid_count+1; i++){
+			else{
+				for(var i = 0; i < wl_nband_title.length; i += 1) {
+					var tr_title = wl_nband_title[i];
+					if(isSupport("amas") && isSupport("mtlancfg")){
+						var wl_if = "";
+						switch(wl_map[wl_nband_title[i]]){
+							case "1":
+								wl_if = "2G";
+								break;
+							case "2":
+								wl_if = "5G";
+								break;
+							case "3":
+								wl_if = "5G2";
+								break;
+							case "4":
+								wl_if = "6G";
+								break;
+						}
+						if(wl_if != ""){
+							var wl_ssid_parm = "wl" +  get_wl_unit_by_band(wl_if) + "_ssid";
+							tr_title = htmlEnDeCode.htmlEncode(decodeURIComponent(httpApi.nvramCharToAscii([wl_ssid_parm])[wl_ssid_parm])) + " (" + tr_title + ")";
+						}
+					}
 					code += "<table width='100%' border='1' align='center' cellpadding='0' cellspacing='0' class='FormTable_table' style='margin-top:15px;'>";
-					code += "<thead><tr height='23px'><td colspan='" + wl_colspan + "'><#Guest_Network#> - " + i;
-					code += "<a id='gn" + i + "_expander' class='clientlist_expander' onclick='showHideContent(\"clientlist_gn" + i + "_list_Block\", this);'>[ <#Clientlist_Hide#> ]</a>";
+					code += "<thead><tr height='23px'><td colspan='" + wl_colspan + "'>" + tr_title;
+					code += "<a id='wl" + wl_map[wl_nband_title[i]] + "_expander' class='clientlist_expander' onclick='showHideContent(\"clientlist_wl" + wl_map[wl_nband_title[i]] + "_list_Block\", this);'>[ <#Clientlist_Hide#> ]</a>";
 					code += "</td></tr></thead>";
-					code += "<tr id='tr_gn" + i + "_title' height='40px'>";
+					code += "<tr id='tr_wl" + wl_map[wl_nband_title[i]] + "_title' height='40px'>";
 					code += "<th class='IE8HACK' width=" + obj_width[0] + "><#Internet#></th>";
 					code += "<th class='IE8HACK' width=" + obj_width[1] + "><#Client_Icon#></th>";
-					code += "<th width=" + obj_width[2] + " onclick='sorter.addBorder(this);sorter.doSorter(2, \"str\", \"gn"+i+"_list\");' style='cursor:pointer;'><#ParentalCtrl_username#></th>";
-					code += "<th width=" + obj_width[3] + " onclick='sorter.addBorder(this);sorter.doSorter(3, \"num\", \"gn"+i+"_list\");' style='cursor:pointer;'><#vpn_client_ip#></th>";
-					code += "<th width=" + obj_width[4] + " onclick='sorter.addBorder(this);sorter.doSorter(4, \"str\", \"gn"+i+"_list\");' style='cursor:pointer;'><#ParentalCtrl_hwaddr#></th>";
+					code += "<th width=" + obj_width[2] + " onclick='sorter.addBorder(this);sorter.doSorter(2, \"str\", \"wl"+wl_map[wl_nband_title[i]]+"_list\");' style='cursor:pointer;'><#ParentalCtrl_username#></th>";
+					code += "<th width=" + obj_width[3] + " onclick='sorter.addBorder(this);sorter.doSorter(3, \"num\", \"wl"+wl_map[wl_nband_title[i]]+"_list\");' style='cursor:pointer;'><#vpn_client_ip#></th>";
+					code += "<th width=" + obj_width[4] + " onclick='sorter.addBorder(this);sorter.doSorter(4, \"str\", \"wl"+wl_map[wl_nband_title[i]]+"_list\");' style='cursor:pointer;'><#ParentalCtrl_hwaddr#></th>";
 					if(!(isSwMode('mb') || isSwMode('ew')))
-						code += "<th width=" + obj_width[5] + " onclick='sorter.addBorder(this);sorter.doSorter(5, \"num\", \"gn"+i+"_list\");' style='cursor:pointer;'><#wan_interface#></th>";
-					if(stainfo_support && !(isSwMode('mb') || isSwMode('ew'))) {
-						code += "<th width=" + obj_width[6] + " onclick='sorter.addBorder(this);sorter.doSorter(6, \"num\", \"gn"+i+"_list\");' style='cursor:pointer;' title='The transmission rates of your wireless device'>Tx Rate (Mbps)</th>";/*untranslated*/
-						code += "<th width=" + obj_width[7] + " onclick='sorter.addBorder(this);sorter.doSorter(7, \"num\", \"gn"+i+"_list\");' style='cursor:pointer;' title='The receive rates of your wireless device'>Rx Rate (Mbps)</th>";/*untranslated*/
-						code += "<th width=" + obj_width[8] + " onclick='sorter.addBorder(this);sorter.doSorter(8, \"num\", \"gn"+i+"_list\");' style='cursor:pointer;'><#Access_Time#></th>";
+						code += "<th width=" + obj_width[5] + " onclick='sorter.addBorder(this);sorter.doSorter(5, \"num\", \"wl"+wl_map[wl_nband_title[i]]+"_list\");' style='cursor:pointer;'><#wan_interface#></th>";
+					if(isSupport("stainfo") && !(isSwMode('mb') || isSwMode('ew'))) {
+						code += "<th width=" + obj_width[6] + " onclick='sorter.addBorder(this);sorter.doSorter(6, \"num\", \"wl"+wl_map[wl_nband_title[i]]+"_list\");' style='cursor:pointer;' title='The transmission rates of your wireless device'>Tx Rate (Mbps)</th>";/*untranslated*/
+						code += "<th width=" + obj_width[7] + " onclick='sorter.addBorder(this);sorter.doSorter(7, \"num\", \"wl"+wl_map[wl_nband_title[i]]+"_list\");' style='cursor:pointer;' title='The receive rates of your wireless device'>Rx Rate (Mbps)</th>";/*untranslated*/
+						code += "<th width=" + obj_width[8] + " onclick='sorter.addBorder(this);sorter.doSorter(8, \"num\", \"wl"+wl_map[wl_nband_title[i]]+"_list\");' style='cursor:pointer;'><#Access_Time#></th>";
 					}
 					code += "</tr>";
 					code += "</table>";
-					code += "<div id='clientlist_gn" + i + "_list_Block'></div>";
+					code += "<div id='clientlist_wl" + wl_map[wl_nband_title[i]] + "_list_Block'></div>";
+				}
+			}
+
+			if(isSupport("amas")){
+				if(isSupport("mtlancfg")){
+					$.each(sdn_rl_for_clientlist, function(index, sdn_all_rl){
+						if(sdn_all_rl.sdn_rl.idx == "0")
+							return true;
+						var sdn_idx = sdn_all_rl.sdn_rl.idx;
+						code += "<table width='100%' border='1' align='center' cellpadding='0' cellspacing='0' class='FormTable_table' style='margin-top:15px;'>";
+						code += "<thead><tr height='23px'><td colspan='" + wl_colspan + "'>" + sdn_all_rl.apg_rl.ssid;
+						code += "<a id='sdn" + sdn_idx + "_expander' class='clientlist_expander' onclick='showHideContent(\"clientlist_sdn" + sdn_idx + "_list_Block\", this);'>[ <#Clientlist_Hide#> ]</a>";
+						code += "</td></tr></thead>";
+						code += "<tr id='tr_sdn" + sdn_idx + "_title' height='40px'>";
+						code += "<th class='IE8HACK' width=" + obj_width[0] + "><#Internet#></th>";
+						code += "<th class='IE8HACK' width=" + obj_width[1] + "><#Client_Icon#></th>";
+						code += "<th width=" + obj_width[2] + " onclick='sorter.addBorder(this);sorter.doSorter(2, \"str\", \"sdn"+sdn_idx+"_list\");' style='cursor:pointer;'><#ParentalCtrl_username#></th>";
+						code += "<th width=" + obj_width[3] + " onclick='sorter.addBorder(this);sorter.doSorter(3, \"num\", \"sdn"+sdn_idx+"_list\");' style='cursor:pointer;'><#vpn_client_ip#></th>";
+						code += "<th width=" + obj_width[4] + " onclick='sorter.addBorder(this);sorter.doSorter(4, \"str\", \"sdn"+sdn_idx+"_list\");' style='cursor:pointer;'><#ParentalCtrl_hwaddr#></th>";
+						if(!(isSwMode('mb') || isSwMode('ew')))
+							code += "<th width=" + obj_width[5] + " onclick='sorter.addBorder(this);sorter.doSorter(5, \"num\", \"sdn"+sdn_idx+"_list\");' style='cursor:pointer;'><#wan_interface#></th>";
+						if(isSupport("stainfo") && !(isSwMode('mb') || isSwMode('ew'))) {
+							code += "<th width=" + obj_width[6] + " onclick='sorter.addBorder(this);sorter.doSorter(6, \"num\", \"sdn"+sdn_idx+"_list\");' style='cursor:pointer;' title='The transmission rates of your wireless device'>Tx Rate (Mbps)</th>";/*untranslated*/
+							code += "<th width=" + obj_width[7] + " onclick='sorter.addBorder(this);sorter.doSorter(7, \"num\", \"sdn"+sdn_idx+"_list\");' style='cursor:pointer;' title='The receive rates of your wireless device'>Rx Rate (Mbps)</th>";/*untranslated*/
+							code += "<th width=" + obj_width[8] + " onclick='sorter.addBorder(this);sorter.doSorter(8, \"num\", \"sdn"+sdn_idx+"_list\");' style='cursor:pointer;'><#Access_Time#></th>";
+						}
+						code += "</tr>";
+						code += "</table>";
+						code += "<div id='clientlist_sdn" + sdn_idx + "_list_Block'></div>";
+					});
+				}
+				else{
+					for(var i=1; i<multissid_count+1; i++){
+						code += "<table width='100%' border='1' align='center' cellpadding='0' cellspacing='0' class='FormTable_table' style='margin-top:15px;'>";
+						code += "<thead><tr height='23px'><td colspan='" + wl_colspan + "'><#Guest_Network#> - " + i;
+						code += "<a id='gn" + i + "_expander' class='clientlist_expander' onclick='showHideContent(\"clientlist_gn" + i + "_list_Block\", this);'>[ <#Clientlist_Hide#> ]</a>";
+						code += "</td></tr></thead>";
+						code += "<tr id='tr_gn" + i + "_title' height='40px'>";
+						code += "<th class='IE8HACK' width=" + obj_width[0] + "><#Internet#></th>";
+						code += "<th class='IE8HACK' width=" + obj_width[1] + "><#Client_Icon#></th>";
+						code += "<th width=" + obj_width[2] + " onclick='sorter.addBorder(this);sorter.doSorter(2, \"str\", \"gn"+i+"_list\");' style='cursor:pointer;'><#ParentalCtrl_username#></th>";
+						code += "<th width=" + obj_width[3] + " onclick='sorter.addBorder(this);sorter.doSorter(3, \"num\", \"gn"+i+"_list\");' style='cursor:pointer;'><#vpn_client_ip#></th>";
+						code += "<th width=" + obj_width[4] + " onclick='sorter.addBorder(this);sorter.doSorter(4, \"str\", \"gn"+i+"_list\");' style='cursor:pointer;'><#ParentalCtrl_hwaddr#></th>";
+						if(!(isSwMode('mb') || isSwMode('ew')))
+							code += "<th width=" + obj_width[5] + " onclick='sorter.addBorder(this);sorter.doSorter(5, \"num\", \"gn"+i+"_list\");' style='cursor:pointer;'><#wan_interface#></th>";
+						if(isSupport("stainfo") && !(isSwMode('mb') || isSwMode('ew'))) {
+							code += "<th width=" + obj_width[6] + " onclick='sorter.addBorder(this);sorter.doSorter(6, \"num\", \"gn"+i+"_list\");' style='cursor:pointer;' title='The transmission rates of your wireless device'>Tx Rate (Mbps)</th>";/*untranslated*/
+							code += "<th width=" + obj_width[7] + " onclick='sorter.addBorder(this);sorter.doSorter(7, \"num\", \"gn"+i+"_list\");' style='cursor:pointer;' title='The receive rates of your wireless device'>Rx Rate (Mbps)</th>";/*untranslated*/
+							code += "<th width=" + obj_width[8] + " onclick='sorter.addBorder(this);sorter.doSorter(8, \"num\", \"gn"+i+"_list\");' style='cursor:pointer;'><#Access_Time#></th>";
+						}
+						code += "</tr>";
+						code += "</table>";
+						code += "<div id='clientlist_gn" + i + "_list_Block'></div>";
+					}
 				}
 			}
 			break;
@@ -2455,19 +2921,49 @@ function create_clientlist_listview() {
 			var clientName = (clientList[clientList[i]].nickName == "") ? clientList[clientList[i]].name : clientList[clientList[i]].nickName;
 			var tempArray = [clientList[clientList[i]].internetState, deviceTypeName, clientName, clientList[clientList[i]].ip, 
 							clientList[clientList[i]].mac, clientList[clientList[i]].rssi, clientList[clientList[i]].curTx, clientList[clientList[i]].curRx, 
-							clientList[clientList[i]].wlConnectTime, clientList[clientList[i]].isWL, clientList[clientList[i]].vendor, clientList[clientList[i]].type, 
-							clientList[clientList[i]].macRepeat, clientList[clientList[i]].isGN];
+							clientList[clientList[i]].wlConnectTime, clientList[clientList[i]].isWL, clientList[clientList[i]].vendor, clientList[clientList[i]].type,
+							clientList[clientList[i]].macRepeat, clientList[clientList[i]].isGN, clientList[clientList[i]].sdn_idx, clientList[clientList[i]].isUserUplaodImg];
 			switch (clienlistViewMode) {
 				case "All" :
 					all_list.push(tempArray);
 					break;
 				case "ByInterface" :
-					if(isSupport("amas") && clientList[clientList[i]].isWL != 0 && clientList[clientList[i]].isGN != "")
-						gn_list["gn"+clientList[clientList[i]].isGN+""].push(tempArray);
-					else if(clientList[clientList[i]].isWL == 0)
-						wired_list.push(tempArray);
-					else
-						wl_list["wl"+clientList[clientList[i]].isWL+""].push(tempArray);
+					if(isSupport("amas")){
+						if(isSupport("mtlancfg")){
+								if(clientList[clientList[i]].sdn_idx > 0)
+									sdn_list["sdn"+clientList[clientList[i]].sdn_idx+""].push(tempArray);
+								else if(clientList[clientList[i]].isWL == 0)
+									wired_list.push(tempArray);
+								else{
+									wl_list["wl"+clientList[clientList[i]].isWL+""].push(tempArray);
+									if(isSupport("smart_connect") || isSupport("bandstr")){
+										sc_list.push(tempArray);
+									}
+								}
+						}
+						else{
+							if(clientList[clientList[i]].isWL != 0 && clientList[clientList[i]].isGN != "")
+								gn_list["gn"+clientList[clientList[i]].isGN+""].push(tempArray);
+							else if(clientList[clientList[i]].isWL == 0)
+								wired_list.push(tempArray);
+							else{
+								wl_list["wl"+clientList[clientList[i]].isWL+""].push(tempArray);
+								if(isSupport("smart_connect") || isSupport("bandstr")){
+									sc_list.push(tempArray);
+								}
+							}
+						}
+					}
+					else{
+						if(clientList[clientList[i]].isWL == 0)
+							wired_list.push(tempArray);
+						else{
+							wl_list["wl"+clientList[clientList[i]].isWL+""].push(tempArray);
+							if(isSupport("smart_connect") || isSupport("bandstr")){
+								sc_list.push(tempArray);
+							}
+						}
+					}
 					break;
 			}
 		}
@@ -2494,11 +2990,29 @@ function create_clientlist_listview() {
 				}
 			}
 		});
+		if(isSupport("smart_connect") || isSupport("bandstr")){
+			if(!sorter["sc_display"]){
+				document.getElementById("clientlist_sc_list_Block").style.display = "none";
+				document.getElementById("sc_expander").innerHTML = "[ <#Clientlist_Show#> ]";
+			}
+		}
 		if(isSupport("amas")){
-			for(var i=1; i<multissid_count+1; i++){
-				if(!sorter["gn"+i+"_display"]){
-					document.getElementById("clientlist_gn"+i+"_list_Block").style.display = "none";
-					document.getElementById("gn"+i+"_expander").innerHTML = "[ <#Clientlist_Show#> ]";
+			if(isSupport("mtlancfg")){
+				$.each(sdn_rl_for_clientlist, function(index, sdn_all_rl){
+						if(sdn_all_rl.sdn_rl.idx == "0")
+							return true;
+						if(!sorter["sdn"+sdn_all_rl.sdn_rl.idx+"_display"]){
+							document.getElementById("clientlist_sdn"+sdn_all_rl.sdn_rl.idx+"_list_Block").style.display = "none";
+							document.getElementById("sdn"+sdn_all_rl.sdn_rl.idx+"_expander").innerHTML = "[ <#Clientlist_Show#> ]";
+						}
+				});
+			}
+			else{
+				for(var i=1; i<multissid_count+1; i++){
+					if(!sorter["gn"+i+"_display"]){
+						document.getElementById("clientlist_gn"+i+"_list_Block").style.display = "none";
+						document.getElementById("gn"+i+"_expander").innerHTML = "[ <#Clientlist_Show#> ]";
+					}
 				}
 			}
 		}
@@ -2518,14 +3032,24 @@ function drawClientListBlock(objID) {
 	}
 	if(sortArray == "" && objID.substr(0,2) == "wl")
 		sortArray = wl_list[objID.substr(0,3)];
+	if(sortArray == "" && (isSupport("smart_connect") || isSupport("bandstr"))){
+		if(objID.substr(0,2) == "sc")
+			sortArray = sc_list;
+	}
 	if(sortArray == "" && isSupport("amas")){
-		if(objID.substr(0,2) == "gn")
-			sortArray = gn_list[objID.substr(0,3)];
+		if(isSupport("mtlancfg")){
+			if(objID.substr(0,3) == "sdn")
+				sortArray = sdn_list[objID.substr(0,4)];
+		}
+		else{
+			if(objID.substr(0,2) == "gn")
+				sortArray = gn_list[objID.substr(0,3)];
+		}
 	}
 	var listViewProfile = function(_profile) {
 		if(_profile == null)
-			_profile = ["", "", "", "", "", "", "", "", "", "", "", "", "", ""];
-		
+			_profile = new Array(16).fill("");
+
 		this.internetState = _profile[0];
 		this.deviceTypeName = _profile[1];
 		this.name = _profile[2];
@@ -2536,10 +3060,12 @@ function drawClientListBlock(objID) {
 		this.curRx = _profile[7];
 		this.wlConnectTime = _profile[8];
 		this.isWL = _profile[9];
-		this.vender = _profile[10];
+		this.vendor = _profile[10];
 		this.type = _profile[11];
 		this.macRepeat = _profile[12];
 		this.isGN = _profile[13];
+		this.sdn_idx = _profile[14];
+		this.isUserUplaodImg = _profile[15];
 	}
 
 	if(document.getElementById("clientlist_" + objID + "_Block") != null) {
@@ -2548,16 +3074,16 @@ function drawClientListBlock(objID) {
 		}
 		var obj_width_map = [["15%", "20%", "25%", "20%", "20%"],["10%", "10%", "30%", "20%", "20%", "10%"],["6%", "6%", "27%", "20%", "15%", "6%", "6%", "6%", "8%"]];
 		if(top.isIE8) obj_width_map = [["", "", "40%", "40%", "20%"],["", "", "40%", "30%", "20%", "10%"],["", "", "33%", "26%", "15%", "6%", "6%", "6%", "8%"]];
-		//var obj_width = (objID == "wired_list") ? obj_width_map[0] : ((stainfo_support) ? obj_width_map[2] : obj_width_map[1]);
-		var obj_width = (stainfo_support) ? obj_width_map[2] : obj_width_map[1];
-		var wl_colspan = stainfo_support ? 9 : 6;
+		//var obj_width = (objID == "wired_list") ? obj_width_map[0] : ((isSupport("stainfo")) ? obj_width_map[2] : obj_width_map[1]);
+		var obj_width = (isSupport("stainfo")) ? obj_width_map[2] : obj_width_map[1];
+		var wl_colspan = isSupport("stainfo") ? 9 : 6;
 		var clientListCode = "";
 		//user icon
 		var listView_userIconBase64 = "NoIcon";
 
 		clientListCode += "<table width='100%' cellspacing='0' cellpadding='0' align='center' class='list_table' id='tb_" + objID + "'>";
 		if(sortArray.length == 0) {
-			clientListCode += "<tr id='tr_" + objID + "'><td style='color:#FFCC00;' colspan='" + wl_colspan + "'><#IPConnection_VSList_Norule#></td></tr>";
+			clientListCode += "<tr id='tr_" + objID + "'><td class='hintColor' colspan='" + wl_colspan + "'><#IPConnection_VSList_Norule#></td></tr>";
 		}
 		else {
 			clientlist_sort = new Array();
@@ -2568,7 +3094,7 @@ function drawClientListBlock(objID) {
 			for(var j = 0; j < clientlist_sort.length; j += 1) {
 				clientListCode += "<tr height='48px'>";
 
-				if(usericon_support) {
+				if(isSupport("usericon")) {
 					if(clientListViewMacUploadIcon[clientlist_sort[j].mac] == undefined) {
 						var clientMac = clientlist_sort[j].mac.replace(/\:/g, "");
 						listView_userIconBase64 = getUploadIcon(clientMac);
@@ -2606,25 +3132,30 @@ function drawClientListBlock(objID) {
 
 				if(listView_userIconBase64 != "NoIcon") {
 					clientListCode += "<div style='height:42px;width:42px;' title='"+ clientlist_sort[j].deviceTypeName +"'>";
-					clientListCode += "<img class='imgUserIcon_viewlist' src=" + listView_userIconBase64 + "";
-					clientListCode += ">";
+					if(clientlist_sort[j].isUserUplaodImg) {
+						clientListCode += '<img class="imgUserIcon_viewlist" src="' + listView_userIconBase64 + '">';
+					}else{
+						clientListCode += '<div class="imgUserIcon_viewlist"><i class="type" style="--svg:url(' + listView_userIconBase64 + ')"></div>';
+					}
 					clientListCode += "</div>";
 				}
-				else if( clientlist_sort[j].type != "0" || clientlist_sort[j].vender == "") {
+				else if( clientlist_sort[j].type != "0" || clientlist_sort[j].vendor == "") {
 					var icon_type = "type" + clientlist_sort[j].type;
-					clientListCode += "<div style='height:40px;width:40px;cursor:default;' class='clientIcon_no_hover " + icon_type + "' title='"+ clientlist_sort[j].deviceTypeName +"'>";
+					clientListCode += "<div style='height:40px;width:40px;cursor:default;' class='clientIcon_no_hover' title='"+ clientlist_sort[j].deviceTypeName +"'><i class='" + icon_type + "'></i>";
 					if(clientlist_sort[j].type == "36")
 						clientListCode += "<div class='flash'></div>";
 					clientListCode += "</div>";
 				}
-				else if(clientlist_sort[j].vender != "" ) {
-					var venderIconClassName = getVenderIconClassName(clientlist_sort[j].vender.toLowerCase());
-					if(venderIconClassName != "" && !downsize_4m_support) {
-						clientListCode += "<div style='height:42px;width:42px;background-size:77px;cursor:default;' class='venderIcon_no_hover " + venderIconClassName + "' title='"+ clientlist_sort[j].deviceTypeName +"'></div>";
+				else if(clientlist_sort[j].vendor != "" ) {
+					var vendorIconClassName = getVendorIconClassName(clientlist_sort[j].vendor.toLowerCase());
+					if(vendorIconClassName != "" && !isSupport("sfp4m")) {
+						clientListCode += "<div style='height:42px;width:42px;background-size:100%;cursor:default;' class='vendorIcon_no_hover' title='"+ clientlist_sort[j].deviceTypeName +"'>";
+						clientListCode += "<i class='vendor-icon "+ vendorIconClassName +"'></i>";
+						clientListCode += "</div>";
 					}
 					else {
 						var icon_type = "type" + clientlist_sort[j].type;
-						clientListCode += "<div style='height:40px;width:40px;cursor:default;' class='clientIcon_no_hover " + icon_type + "' title='"+ clientlist_sort[j].deviceTypeName +"'></div>";
+						clientListCode += "<div style='height:40px;width:40px;cursor:default;' class='clientIcon_no_hover' title='"+ clientlist_sort[j].deviceTypeName +"'><i class='" + icon_type + "'></i></div>";
 					}				
 				}
 				clientListCode += "</td>";
@@ -2653,16 +3184,17 @@ function drawClientListBlock(objID) {
 					else
 						rssi_t = client_convRSSI(clientlist_sort[j].rssi);
 					var radioIcon_css = "radioIcon";
-					if(clientlist_sort[j].isGN != "" && clientlist_sort[j].isGN != undefined)
+					if((clientlist_sort[j].isGN != "" && clientlist_sort[j].isGN != undefined) || (isSupport("mtlancfg") && clientlist_sort[j].sdn_idx > 0)){
 						radioIcon_css += " GN";
-					clientListCode += "<td width='" + obj_width[5] + "' align='center'><div style='height:28px;width:28px'><div class='" +  radioIcon_css + " radio_" + rssi_t + "'></div>";
-					if(clientlist_sort[j].isWL != 0) {
+					}
+					clientListCode += "<td width='" + obj_width[5] + "' align='center'><div class='interface_container'><div class='" +  radioIcon_css + " radio_" + rssi_t + "'></div>";
+					if(clientlist_sort[j].isWL != 0 || (isSupport("mtlancfg") && clientlist_sort[j].sdn_idx > 0)){
 						var bandClass = (navigator.userAgent.toUpperCase().match(/CHROME\/([\d.]+)/)) ? "band_txt_chrome" : "band_txt";
 						clientListCode += "<div class='band_block'><span class='" + bandClass + "'>" + isWL_map[clientlist_sort[j].isWL]["text"] + "</span></div>";
 					}
 					clientListCode += "</div></td>";
 				}
-				if(stainfo_support && !(isSwMode('mb') || isSwMode('ew'))) {
+				if(isSupport("stainfo") && !(isSwMode('mb') || isSwMode('ew'))) {
 					var txRate = "";
 					var rxRate = "";
 					if(clientlist_sort[j].isWL != 0) {
@@ -2841,7 +3373,7 @@ function saveClientName(index, type, mac) {
 		return false;
 	}
 
-	if(utf8_ssid_support){
+	if(isSupport("utf8_ssid")){
 		var len = validator.lengthInUtf8(client_name_obj.value);
 		if(len > 32){
 			alert("Username cannot be greater than 32 characters.");/* untranslated */
@@ -2968,7 +3500,7 @@ function control_dropdown_client_block(_containerID, _pullArrowID, _evt) {
 			var pullArrow_state = document.getElementById(_pullArrowID).src;
 			if(container_state == "block") {
 				document.getElementById(_containerID).style.display = "none";
-				document.getElementById(_pullArrowID).src = "/images/arrow-down.gif";
+				document.getElementById(_pullArrowID).src = "/images/unfold_more.svg";
 			}
 		}
 	}
@@ -3662,7 +4194,7 @@ var custom_icon_list_api = {
 						if($category_obj.children(".category_content").children(".type" + icon.num + "").length > 0)
 							return;
 
-						var $item_obj = $("<div>").addClass("type" + icon.num + "");
+						var $item_obj = $("<div>").append($("<i>").addClass("type" + icon.num + ""));
 						if(icon.title != "")
 							$item_obj.attr("title", icon.title);
 						if(icon.translation != ""){
@@ -3674,7 +4206,7 @@ var custom_icon_list_api = {
 							}
 						}
 						if(_paramObj.source == "cloud" && src != ""){
-							$item_obj.css("background-image", "url(" + src + ")");
+							$item_obj.find('i').get(0).style.setProperty("--svg", "url(" + src + ")");
 						}
 
 						$content_obj.appendTo($category_obj);

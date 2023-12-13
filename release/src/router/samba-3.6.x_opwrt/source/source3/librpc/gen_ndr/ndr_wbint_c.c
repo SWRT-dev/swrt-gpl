@@ -4007,9 +4007,9 @@ static void dcerpc_wbint_DsGetDcName_done(struct tevent_req *subreq);
 struct tevent_req *dcerpc_wbint_DsGetDcName_send(TALLOC_CTX *mem_ctx,
 						 struct tevent_context *ev,
 						 struct dcerpc_binding_handle *h,
-						 const char *_domain_name /* [in] [charset(UTF8),ref] */,
+						 const char *_domain_name /* [in] [ref,charset(UTF8)] */,
 						 struct GUID *_domain_guid /* [in] [unique] */,
-						 const char *_site_name /* [in] [charset(UTF8),unique] */,
+						 const char *_site_name /* [in] [unique,charset(UTF8)] */,
 						 uint32_t _flags /* [in]  */,
 						 struct netr_DsRGetDCNameInfo **_dc_info /* [out] [ref] */)
 {
@@ -4112,9 +4112,9 @@ NTSTATUS dcerpc_wbint_DsGetDcName_recv(struct tevent_req *req,
 
 NTSTATUS dcerpc_wbint_DsGetDcName(struct dcerpc_binding_handle *h,
 				  TALLOC_CTX *mem_ctx,
-				  const char *_domain_name /* [in] [charset(UTF8),ref] */,
+				  const char *_domain_name /* [in] [ref,charset(UTF8)] */,
 				  struct GUID *_domain_guid /* [in] [unique] */,
-				  const char *_site_name /* [in] [charset(UTF8),unique] */,
+				  const char *_site_name /* [in] [unique,charset(UTF8)] */,
 				  uint32_t _flags /* [in]  */,
 				  struct netr_DsRGetDCNameInfo **_dc_info /* [out] [ref] */,
 				  NTSTATUS *result)
@@ -4237,7 +4237,7 @@ struct tevent_req *dcerpc_wbint_LookupRids_send(TALLOC_CTX *mem_ctx,
 						struct dcerpc_binding_handle *h,
 						struct dom_sid *_domain_sid /* [in] [ref] */,
 						struct wbint_RidArray *_rids /* [in] [ref] */,
-						const char **_domain_name /* [out] [ref,charset(UTF8)] */,
+						const char **_domain_name /* [out] [charset(UTF8),ref] */,
 						struct wbint_Principals *_names /* [out] [ref] */)
 {
 	struct tevent_req *req;
@@ -4341,7 +4341,7 @@ NTSTATUS dcerpc_wbint_LookupRids(struct dcerpc_binding_handle *h,
 				 TALLOC_CTX *mem_ctx,
 				 struct dom_sid *_domain_sid /* [in] [ref] */,
 				 struct wbint_RidArray *_rids /* [in] [ref] */,
-				 const char **_domain_name /* [out] [ref,charset(UTF8)] */,
+				 const char **_domain_name /* [out] [charset(UTF8),ref] */,
 				 struct wbint_Principals *_names /* [out] [ref] */,
 				 NTSTATUS *result)
 {

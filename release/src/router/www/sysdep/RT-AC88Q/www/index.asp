@@ -109,8 +109,8 @@
 <script type="text/javascript" src="/help.js"></script>
 <script type="text/javascript" src="/validator.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/jquery.js"></script>
-<script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/httpApi.js"></script>
+<script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script language="JavaScript" type="text/javascript" src="/form.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/asus_eula.js"></script>
@@ -120,7 +120,7 @@ if(usb_support) addNewScript("/disk_functions.js");
 var userIconBase64 = "NoIcon";
 var userIconBase64_ori = "NoIcon";
 var userUploadFlag = false;
-var verderIcon = "";
+var vendorIcon = "";
 var userIconHideFlag = false;
 var custom_usericon_del = "";
 var firstTimeOpenBlock = false;
@@ -1185,11 +1185,13 @@ function edit_confirm(){
 		var originalCustomListArray = new Array();
 		var onEditClient = new Array();
 		var clientTypeNum = "";
-		if(document.getElementById('client_image').className.search("venderIcon_no_hover") != -1) {
+		if($('#client_image.vendorIcon_no_hover').length > 0) {
 			clientTypeNum = "0";
 		}
 		else {
-			clientTypeNum = document.getElementById('client_image').className.replace("clientIcon_no_hover type", "");
+            if($('#client_image.clientIcon_no_hover i').length > 0){
+			    clientTypeNum = $('#client_image.clientIcon_no_hover i').attr('class').replace("type", "");
+            }
 		}
 		var clientMac = document.getElementById('macaddr_field').value.toUpperCase();
 		originalCustomListArray = custom_name.split('<');
@@ -1442,47 +1444,40 @@ function show_custom_image() {
 	}
 }
 function select_custom_icon($obj){
-	var type = $obj.attr("class")
-	var icon_rul = $obj.css("background-image").replace('url(','').replace(')','').replace(/\"/gi, "");
-	$("#client_image").css("background-image","url(" + icon_rul + ")");
-	$("#client_image").find(".flash").remove();
-	$("#client_image").removeClass().addClass("clientIcon_no_hover").addClass(type).css("background-size", "");
-	$("#client_image").show();
-	$("#canvasUserIcon").hide();
-	userIconBase64 = icon_rul;
+	var type = $obj.find('i').attr("class");
+	var icon_url = $obj.find('i').css("mask").replace('url(','').replace(')','').replace(/\"/gi, "");
+    $("#client_image").empty();
+    $("#client_image").append($('<i>').addClass(type).attr('style','--svg:url(' + icon_url + ')'));
+	$("#client_image").removeClass().addClass("clientIcon_no_hover");
+	userIconBase64 = icon_url;
 	userUploadFlag = false;
 }
-function select_image(type){
-	var sequence = type.substring(4,type.length);
-	$("#client_image").find(".flash").remove();
-	$("#client_image").css("background-image","");
-	document.getElementById("client_image").style.display = "none";
-	document.getElementById("canvasUserIcon").style.display = "none";
-	document.getElementById('client_image').style.backgroundSize = "";
-	document.getElementById('client_image').className = "clientIcon_no_hover " + type;
-	if(verderIcon != "" && type == "type0" && !downsize_4m_support) {
-		var venderIconClassName = getVenderIconClassName(verderIcon.toLowerCase());
-		if(venderIconClassName != "") {
-			document.getElementById('client_image').className = "venderIcon_no_hover " + venderIconClassName;
-			document.getElementById('client_image').style.backgroundSize = "180%";
+function select_image(clientObj, useDefaultType=false){
+    let type = (useDefaultType) ? "type" + clientObj.defaultType : "type" + clientObj.type;
+	$("#client_image").empty();
+    $("#client_image").append($('<i>').addClass(type));
+    $("#client_image").removeClass().addClass("clientIcon_no_hover");
+	if(vendorIcon != "" && type == "type0" && !downsize_4m_support) {
+		var vendorIconClassName = getVendorIconClassName(vendorIcon.toLowerCase());
+		if(vendorIconClassName != "") {
+            $("#client_image").empty();
+            $("#client_image").append($('<i>').addClass("vendor-icon").addClass(vendorIconClassName));
+            $("#client_image").removeClass().addClass("vendorIcon_no_hover");
 		}
 	}
 
 	var userImageFlag = false;
 	if(!firstTimeOpenBlock) {
 		if(usericon_support) {
-			var clientMac = document.getElementById('macaddr_field').value.replace(/\:/g, "");
-			userIconBase64 = getUploadIcon(clientMac);
+			userIconBase64 = getUploadIcon(clientObj.mac.replace(/\:/g, ""));
 			userIconBase64_ori = userIconBase64;
 			if(userIconBase64 != "NoIcon") {
-				var img = document.createElement("img");
-				img.src = userIconBase64;
-				var canvas = document.getElementById("canvasUserIcon");
-				var ctx = canvas.getContext("2d");
-				ctx.clearRect(0,0,85,85);
-				document.getElementById("client_image").style.display = "none";
-				document.getElementById("canvasUserIcon").style.display = "";
-				ctx.drawImage(img, 0, 0, 85, 85);
+                $("#client_image").empty();
+                if(clientObj.isUserUplaodImg){
+                    $('#client_image').append($('<img>').addClass('clientIcon_no_hover').attr('src',userIconBase64));
+                }else{
+                    $('#client_image').append($('<i>').addClass(type).attr('style','--svg:url('+userIconBase64+');'));
+                }
 				userImageFlag = true;
 			}
 		}
@@ -1490,9 +1485,8 @@ function select_image(type){
 
 	if(!userImageFlag) {
 		userIconBase64 = "NoIcon";
-		document.getElementById("client_image").style.display = "";
 		if(type == "type36")
-			$("#client_image").append($("<div>").addClass("flash"));
+			$("#client_image").find("i").addClass("flash");
 	}
 }
 
@@ -1595,10 +1589,10 @@ function popupEditBlock(clientObj){
 
 		if(sw_mode != 4){
 			var radioIcon_css = "radioIcon";
-			if(clientObj.isGN != "" && clientObj.isGN != undefined)
+			if((clientObj.isGN != "" && clientObj.isGN != undefined) || (isSupport("mtlancfg") && clientObj.sdn_idx > 0))
 				radioIcon_css += " GN";
 			clientIconHtml += '<div class="' + radioIcon_css + ' radio_' + rssi_t +'" title="' + connectModeTip + '"></div>';
-			if(clientObj.isWL != 0) {
+			if(clientObj.isWL != 0 || (isSupport("mtlancfg") && clientObj.sdn_idx > 0)){
 				var bandClass = "band_txt";
 				if(navigator.userAgent.toUpperCase().match(/CHROME\/([\d.]+)/)){
 					bandClass = "band_txt_chrome";
@@ -1687,7 +1681,7 @@ function popupEditBlock(clientObj){
 						function(){
 							if(dhcp_staticlist_orig.search(mac) == -1) {
 								if(dhcp_staticlist_num == 64) {
-									if(confirm("The max limit is 64 rule. Please check your client list on DHCP server.")) { /*untranslated*/
+									if(confirm(stringSafeGet("<#Clientlist_IPMAC_Binding_max#>"))) {
 										location.href = "Advanced_DHCP_Content.asp" ;
 									}
 									else {
@@ -1711,7 +1705,7 @@ function popupEditBlock(clientObj){
 						function(){
 							if(MULTIFILTER_MAC_orig.search(mac) == -1) {
 								if(MULTIFILTER_num == 16) {
-									if(confirm("The max limit is 16 clients. Please check your client list on time scheduling.")) { /*untranslated*/
+									if(confirm(stringSafeGet("<#Clientlist_block_internet_max#>"))) {
 										location.href = "ParentalControl.asp" ;
 									}
 									else {
@@ -1735,7 +1729,7 @@ function popupEditBlock(clientObj){
 						function(){
 							if(MULTIFILTER_MAC_orig.search(mac) == -1) {
 								if(MULTIFILTER_num == 16) {
-									if(confirm("The max limit is 16 clients. Please check your client list on time scheduling.")) { /*untranslated*/
+									if(confirm(stringSafeGet("<#Clientlist_block_internet_max#>"))) {
 										location.href = "ParentalControl.asp" ;
 									}
 									else {
@@ -1788,9 +1782,9 @@ function popupEditBlock(clientObj){
 				break;
 		}
 
-		verderIcon = clientObj.vendor;
+		vendorIcon = clientObj.vendor;
 
-		select_image("type" + parseInt(clientObj.type));
+		select_image(clientObj);
 
 		//setting user upload icon attribute start.
 		//1.check rc_support
@@ -1810,20 +1804,22 @@ function popupEditBlock(clientObj){
 						if(file.type.search("image") != -1) {
 							var reader = new FileReader();
 							reader.onload = function (event) {
-								var img = document.createElement("img");
-								img.src = event.target.result;
-								var mimeType = img.src.split(",")[0].split(":")[1].split(";")[0];
-								var canvas = document.getElementById("canvasUserIcon");
-								var ctx = canvas.getContext("2d");
-								ctx.clearRect(0,0,85,85);
-								$("#client_image").find(".flash").remove();
-								document.getElementById("client_image").style.display = "none";
-								document.getElementById("canvasUserIcon").style.display = "";
-								setTimeout(function() {
-									ctx.drawImage(img, 0, 0, 85, 85);
-									var dataURL = canvas.toDataURL(mimeType);
-									userIconBase64 = dataURL;
-								}, 100); //for firefox FPS(Frames per Second) issue need delay
+                                var img = document.createElement("img");
+                                img.src = event.target.result;
+                                img.className="clientIcon_no_hover";
+                                var mimeType = img.src.split(",")[0].split(":")[1].split(";")[0];
+                                let canvas = document.createElement('canvas');
+                                canvas.width=85;
+                                canvas.height=85;
+                                var ctx = canvas.getContext("2d");
+                                ctx.clearRect(0,0,85,85);
+                                $("#client_image").empty();
+                                $("#client_image").append(img);
+                                setTimeout(function() {
+                                    ctx.drawImage(img, 0, 0, 85, 85);
+                                    var dataURL = canvas.toDataURL(mimeType);
+                                    userIconBase64 = dataURL;
+                                }, 100); //for firefox FPS(Frames per Second) issue need delay
 							};
 							reader.readAsDataURL(file);
 							userUploadFlag = true;
@@ -1877,7 +1873,7 @@ function popupEditBlock(clientObj){
 }
 
 function check_usb3(){
-	if(based_modelid == "DSL-AC68U" || based_modelid == "RT-AC3200" || based_modelid == "RT-AC87U" || based_modelid == "RT-AC68U" || based_modelid == "RT-AC68A" || based_modelid == "RT-AC56S" || based_modelid == "RT-AC56U" || based_modelid == "RT-AC55U" || based_modelid == "RT-AC55UHP" || based_modelid == "RT-N18U" || based_modelid == "RT-AC88U" || based_modelid == "RT-AC86U" || based_modelid == "GT-AC2900" || based_modelid == "RT-AC3100" || based_modelid == "RT-AC5300" || based_modelid == "RP-AC68U" || based_modelid == "RT-AC58U" || based_modelid == "RT-AC82U" || based_modelid == "RT-AC85U" || based_modelid == "RT-AC65U" || based_modelid == "4G-AC68U" || based_modelid == "BLUECAVE" || based_modelid == "PL-AX56_XP4"){
+	if(based_modelid == "DSL-AC68U" || based_modelid == "RT-AC3200" || based_modelid == "RT-AC87U" || based_modelid == "RT-AC68U" || based_modelid == "RT-AC68A" || based_modelid == "RT-AC56S" || based_modelid == "RT-AC56U" || based_modelid == "RT-AC55U" || based_modelid == "RT-AC55UHP" || based_modelid == "RT-N18U" || based_modelid == "RT-AC88U" || based_modelid == "RT-AC86U" || based_modelid == "GT-AC2900" || based_modelid == "RT-AC3100" || based_modelid == "RT-AC5300" || based_modelid == "RP-AC68U" || based_modelid == "RT-AC58U" || based_modelid == "RT-AC82U" || based_modelid == "RT-AC85U" || based_modelid == "RT-AC65U" || based_modelid == "4G-AC68U" || based_modelid == "BLUECAVE" || based_modelid == "PL-AX56_XP4" || based_modelid == "GT-AX11000_PRO"){
 		document.getElementById('usb_text_1').innerHTML = "USB 3.0";
 	}
 	else if(based_modelid == "RT-AC88Q" || based_modelid == "RT-AD7200" || based_modelid == "RT-N65U" || based_modelid == "GT-AC5300" || based_modelid == "GT-AC9600"){
@@ -1940,7 +1936,7 @@ function addToBlockMacList(macAddr){
 
 function showClientIconList() {
 	var confirmFlag = true;
-	confirmFlag = confirm("The client icon over upload limting, please remove at least one client icon then try to upload again.");
+	confirmFlag = confirm(stringSafeGet("<#Client_Icon_overload#>"));
 	if(confirmFlag) {
 		edit_cancel();
 		$("#edit_usericon_block").fadeIn(10);
@@ -2050,13 +2046,15 @@ function previewImage($obj) {
 			fileReader.onload = function (fileReader) {
 				var img = document.createElement("img");
 				img.src = fileReader.target.result;
+                img.className="clientIcon_no_hover";
 				var mimeType = img.src.split(",")[0].split(":")[1].split(";")[0];
-				var canvas = document.getElementById("canvasUserIcon");
+                let canvas = document.createElement('canvas');
+                canvas.width=85;
+                canvas.height=85;
 				var ctx = canvas.getContext("2d");
 				ctx.clearRect(0,0,85,85);
-				$("#client_image").find(".flash").remove();
-				document.getElementById("client_image").style.display = "none";
-				document.getElementById("canvasUserIcon").style.display = "";
+				$("#client_image").empty();
+                $("#client_image").append(img);
 				setTimeout(function() {
 					ctx.drawImage(img, 0, 0, 85, 85);
 					var dataURL = canvas.toDataURL(mimeType);
@@ -2084,9 +2082,8 @@ function updateClientsCount() {
 	setTimeout("updateClientsCount();", 5000);
 }
 function setDefaultIcon() {
-	$("#client_image").css("background-image","");
 	var mac = document.getElementById("macaddr_field").value;
-	select_image("type" + parseInt(clientList[mac].defaultType));
+	select_image(clientList[mac], true);
 }
 function closeClientDetailView() {
 	edit_cancel();
@@ -2242,7 +2239,6 @@ function closeClientDetailView() {
 			<td style="text-align:center;vertical-align:top;width:85px;">
 				<div id="divDropClientImage" class="client_preview_icon" title="Change client icon" onclick="show_custom_image();">
 					<div id="client_image" style="width:85px;height:85px;margin:0 auto;"></div>
-					<canvas id="canvasUserIcon" class="client_canvasUserIcon" width="85px" height="85px"></canvas>
 				</div>
 				<div id="changeClientIconControl" class="changeClientIcon">
 					<span title="Change to default client icon" class="IE8HACK" onclick="setDefaultIcon();"><#CTL_Default#></span>

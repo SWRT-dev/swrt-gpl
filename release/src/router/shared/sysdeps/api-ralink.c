@@ -327,7 +327,7 @@ int get_radio(int unit, int subunit)
 
 void set_radio(int on, int unit, int subunit)
 {
-	char /*tmp[100],*/ prefix[] = "wlXXXXXXXXXXXXXX";
+	char tmp[100], prefix[] = "wlXXXXXXXXXXXXXX";
 
 	if (subunit > 0)
 		snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, subunit);
@@ -339,15 +339,24 @@ void set_radio(int on, int unit, int subunit)
 	// TODO: handle subunit
 #if defined(RTCONFIG_WLMODULE_MT7629_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_WLMODULE_MT7615E_AP)
 	// MTK suggested MT7629/MT7915D use ifconfig down/up to instead RadioOn=0/1
-	doSystem("ifconfig %s %s", unit ? WIF_5G: WIF_2G, on ? "up":"down");
+	if (subunit > 0)
+                doSystem("ifconfig %s %s", nvram_safe_get(strcat_r(prefix, "ifname", tmp)), on ? "up":"down");
+        else
+		doSystem("ifconfig %s %s", unit ? WIF_5G: WIF_2G, on ? "up":"down");
 #else
-	if(unit==0)
-		doSystem("iwpriv %s set RadioOn=%d", WIF_2G, on);
-	else doSystem("iwpriv %s set RadioOn=%d", WIF_5G, on);
+	if (subunit > 0) 
+		doSystem("iwpriv %s set RadioOn=%d", nvram_safe_get(strcat_r(prefix, "ifname", tmp)), on);
+	else {
+		if(unit==0)
+			doSystem("iwpriv %s set RadioOn=%d", WIF_2G, on);
+		else doSystem("iwpriv %s set RadioOn=%d", WIF_5G, on);
+	}
 #endif
 
 #if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTACRH18) || defined(RTCONFIG_WLMODULE_MT7915D_AP) //5G:7612E 2G:7603E
-	led_onoff(unit);
+	if (subunit <= 0) {
+		led_onoff(unit);
+	}
 #endif	
 }
 
@@ -1174,8 +1183,8 @@ int set_acl_entry(const char *ifname, char *addr)
 
 	return 1;
 }
-#if 0
-int set_channel(const char* ifname, int channel)
+
+int shared_set_channel(const char* ifname, int channel)
 {
 	struct iwreq wrq;
 	char data[32];
@@ -1193,7 +1202,7 @@ int set_channel(const char* ifname, int channel)
 
 	return 0;
 }
-#endif
+
 int set_bandwidth(const char* ifname, int ht_bw, int vht_bw)
 {
 	struct iwreq wrq;
@@ -1521,3 +1530,15 @@ int get_ch_cch_bw(const char *wlif_name, int *ch, int *cch, int *bw)
 	return cnt;
 }
 
+unsigned long long get_bitrate(const char *ifname)
+{
+	struct iwreq wrq;
+
+	if (ifname == NULL)
+		return -1;
+
+	if (wl_ioctl(ifname, SIOCGIWRATE, &wrq))
+		return -1;
+
+	return wrq.u.bitrate.value;
+}

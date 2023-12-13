@@ -20,6 +20,7 @@
 #
 # These are automatically sedded in by the "configure" script, but you
 # may need to change them if you're on a strange version of UNIX.
+include ../../.config
 
 
 PACKAGE=LPRng
@@ -94,15 +95,25 @@ CFLAGS:= \
 	-I${SRC}/include -I${SRC}/common -I$(TOP)/shared -I$(SRCBASE)/include \
 	 -g -W -Wall  -Wno-unused  -g -O2 -g -W -Wall  -Wno-unused  -DHAVE_CONFIG_H -DWINDOW_1 -DTEST_WRITE -DNODEBUG -DLPR_with_ASUS ${GLOBAL_OPTIONS} #-DRETURNOK -DUSBONLY
 
-USER_OBJS := 
-LDFLAGS   := -L$(TOP)/shared -lshared -L$(TOP)/nvram${BCMEX}${EX7} -lnvram
-ifeq ($(HND_ROUTER),y)
-LDFLAGS += -L$(TOP)/wlcsm -lwlcsm -lgcc_s
+ifeq ($(HND_ROUTER_BE_4916), y)
+CFLAGS+= -fcommon
 endif
 
-include ../../common.mak
+USER_OBJS := 
+LDFLAGS   := -L$(TOP)/shared -lshared -L$(TOP_PLATFORM)/nvram${BCMEX}${EX7} -lnvram
+ifeq ($(RTCONFIG_BCM_502L07P2),y)
+LDFLAGS += -L$(TOP_PLATFORM)/ethctl_lib -lethctl
+endif
+ifeq ($(HND_ROUTER),y)
+LDFLAGS += -L$(TOP_PLATFORM)/wlcsm -lwlcsm -lgcc_s
+endif
+
 ifeq ($(RTCONFIG_QTN),y)
 LDFLAGS += -L$(TOP)/libqcsapi_client -lqcsapi_client
+endif
+
+ifeq ($(RTCONFIG_TRUSTZONE),y)
+LDFLAGS += -L$(TOP)/ateed/ -latee
 endif
 
 FILTER_DIR = ${libexecdir}/filters

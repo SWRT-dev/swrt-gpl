@@ -127,7 +127,7 @@ function update_ipsec_log() {
 }
 function set_ig_config(_status){
 	if(_status == "0"){
-		var confirmFlag = confirm("Turn off feature will make all Instant Guard clients disconnect. You can turn on the feature again by clicking connection button on Instant Guard app.\n<#Setting_factorydefault_hint2#>");/*untranslated*/
+		var confirmFlag = confirm(stringSafeGet("<#Instant_Guard_off#>\n<#Setting_factorydefault_hint2#>"));
 		if(!confirmFlag){
 			$('#radio_IG_enable').find('.iphone_switch').animate({backgroundPosition: 0}, "slow");
 			curState = "1";

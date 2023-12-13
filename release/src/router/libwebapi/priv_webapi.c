@@ -97,6 +97,9 @@ struct JFFS_BACKUP_PROFILE_S jffs_backup_profile_t[] = {
 	{"openvpn", "openvpn", "all", "", "restart_openvpnd;restart_chpass", 1},
 	{"ipsec", "ca_files", "all", "", "ipsec_restart", 2},
 	{"usericon", "usericon", "all", "", "", 3},
+#ifdef RTCONFIG_AMAS
+	{"amascntrl", ".sys/cfg_mnt", "all", ".sys/cfg_mnt/cfg_dbg.log", "restart_cfgsync", 4},
+#endif
 	{NULL, NULL, NULL, NULL, NULL, 0},
 };
 extern const struct tcode_location_s tcode_location_list[];
@@ -391,6 +394,11 @@ int mssid_count(void)
 int is_amas_support(void)
 {
 #ifdef RTCONFIG_AMAS
+	char buf[2];
+	strlcpy(buf, nvram_safe_get("amas_support"), sizeof(buf));
+	if(buf[0])
+		return atoi(buf);
+	nvram_set_int("amas_support", getAmasSupportMode());
 	return getAmasSupportMode();
 #else
 	return 0;
@@ -537,16 +545,22 @@ int acs_dfs_support()
 	return 0;
 }
 
+int is_AWV_SDN()
+{
+	return check_if_file_exist("/www/SDN/sdn.html");
+}
+
 int get_ui_support_info(struct json_object *ui_support_obj)
 {
 	char *next;
 	char word[256];
 	char *list[] = {"dpi_mals", "dpi_vp", "dpi_cc", "adaptive_qos", "traffic_analyzer", "webs_filter", "apps_filter", "web_history", "bandwidth_monitor"};
-	int i;
+	int i, version;
 #if defined(RTCONFIG_AMAS)
 	int amasmode, amasRouter, cfgsync;
 #endif
 	struct json_object *ax_support = NULL;
+	struct ASUS_PP_table *p_pp;
 
   	memset(word, 0, sizeof(word));
 	foreach(word, nvram_safe_get("rc_support"), next){
@@ -673,6 +687,10 @@ int get_ui_support_info(struct json_object *ui_support_obj)
 	json_object_object_add(ui_support_obj, "MaxLen_http_passwd", json_object_new_int(32));
 	json_object_object_add(ui_support_obj, "CHPASS", json_object_new_int(1));
 	json_object_object_add(ui_support_obj, "MaxRule_VPN_FUSION_Conn", json_object_new_int(nvram_get_int("vpnc_max_conn")));
+#if defined(RTCONFIG_MULTILAN_CFG)
+	json_object_object_add(ui_support_obj, "MaxRule_SDN", json_object_new_int(19));
+	json_object_object_add(ui_support_obj, "AWV_SDN", json_object_new_int(is_AWV_SDN()));
+#endif
 #if defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER)
 	json_object_object_add(ui_support_obj, "bcm470x", json_object_new_int(1));
 #endif
@@ -714,12 +732,18 @@ noamas:
 	json_object_object_add(ui_support_obj, "NEW_PHYMAP", json_object_new_int(1));
 #endif
 	json_object_object_add(ui_support_obj, "FAMILY_GROUP", json_object_new_int(1));
+#if defined(RTCONFIG_AWSIOT)
+	json_object_object_add(ui_support_obj, "awsiot", json_object_new_int(1));
+#endif
 #if defined(RTCONFIG_ACCOUNT_BINDING)
 	json_object_object_add(ui_support_obj, "account_binding", json_object_new_int(2));
 #endif
-#if defined(RTCONFIG_AMAS)
+	json_object_object_add(ui_support_obj, "ddns", json_object_new_int(1));
+#if defined(RTCONFIG_NOTIFICATION_CENTER)
 	json_object_object_add(ui_support_obj, "nt_center", json_object_new_int(5));
 	json_object_object_add(ui_support_obj, "nt_center_ui", json_object_new_int(0));
+#endif
+#if defined(RTCONFIG_AMAS)
 	json_object_object_add(ui_support_obj, "wps_method_ob", json_object_new_int(1));
 #endif
 	if(json_object_object_get_ex(ui_support_obj, "11AX", &ax_support))
@@ -728,6 +752,11 @@ noamas:
 	}
 	if(!strncmp(nvram_safe_get("territory_code"), "CH", 2))
 		json_object_object_add(ui_support_obj, "v6only", json_object_new_int(1));
+#if defined(TUFAX4200)
+	if(!strcmp(get_productid(), "TUF-AX4200Q"))
+		json_object_object_add(ui_support_obj, "cobrand_change", json_object_new_int(1));
+	else
+#endif
 	if(nvram_get_int("CoBrand")){
 		char file[128];
 		memset(file, 0, sizeof(file));
@@ -742,6 +771,20 @@ noamas:
 	json_object_object_add(ui_support_obj, "5g2_dfs", json_object_new_int(acs_dfs_support()));
 	json_object_object_add(ui_support_obj, "cd_iperf", json_object_new_int(0));
 	json_object_object_add(ui_support_obj, "rwd_mapping", json_object_new_int(0));
+	for(p_pp = &ASUS_PP_t[0]; p_pp->name; ++p_pp){
+		if(safe_atoi(p_pp->version) > version)
+			version = safe_atoi(p_pp->version);
+	}
+	json_object_object_add(ui_support_obj, "asus_pp", json_object_new_int(version));
+//	if(!strcmp(get_productid(), "ExpertWiFi_EBG15") || !strcmp(get_productid(), "ExpertWiFi_EBG19"))
+//		json_object_object_add(ui_support_obj, "noAP", json_object_new_int(1));
+	json_object_object_add(ui_support_obj, "noWiFi", json_object_new_int(0));
+	json_object_object_add(ui_support_obj, "app_mnt", json_object_new_int(1));
+#if defined(RTCONFIG_SW_BTN)
+	json_object_object_add(ui_support_obj, "sw_btn", json_object_new_int(1));
+#else
+	json_object_object_add(ui_support_obj, "sw_btn", json_object_new_int(0));
+#endif
 	return 0;
 }
 
@@ -1245,4 +1288,12 @@ int start_config_sync_cgi()
 		notify_rc("reboot");
 	}
 	return ret;
+}
+
+int get_ASUS_privacy_policy_obj(struct json_object *ASUS_privacy_policy_obj)
+{
+	struct ASUS_PP_table *p_pp;
+	for(p_pp = &ASUS_PP_t[0]; p_pp->name; ++p_pp)
+		json_object_object_add(a1, p_pp->name, json_object_new_string(p_pp->version));
+	return 0;
 }

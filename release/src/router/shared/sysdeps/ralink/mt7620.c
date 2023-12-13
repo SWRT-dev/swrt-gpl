@@ -362,7 +362,7 @@ static unsigned int get_lan_port_mask(void)
 	int sw_mode = sw_mode();
 	unsigned int m = nvram_get_int("lanports_mask");
 
-	if (sw_mode == SW_MODE_AP || __mediabridge_mode(sw_mode))
+	if ((!__aimesh_re_node(sw_mode)) && (sw_mode == SW_MODE_AP || __mediabridge_mode(sw_mode)))
 		m = 0x1F;
 
 #if defined(RTCONFIG_RALINK_MT7621)
@@ -952,6 +952,102 @@ static void build_wan_lan_mask(int stb)
 	nvram_set_int("lanports_mask", lan_mask);
 }
 
+void set_switch_pvid(int port, int pvid)
+{
+	unsigned int reg = 0;
+	unsigned int value = 0;
+
+	if (switch_init() < 0)
+		return;
+
+	reg = REG_ESW_PORT_PPBV1_P0 + port * 0x100;
+
+#if defined(RTCONFIG_RALINK_MT7620)
+	mt7620_reg_read(reg, &value);
+#elif defined(RTCONFIG_RALINK_MT7621)
+	mt7621_reg_read(reg, &value);
+#endif
+
+	value &= 0xfffff000;
+	value |= pvid;
+
+#if defined(RTCONFIG_RALINK_MT7620)
+	mt7620_reg_write(reg, value);
+#elif defined(RTCONFIG_RALINK_MT7621)
+	mt7621_reg_write(reg, value);
+#endif
+
+	switch_fini();
+}
+
+void set_switch_isolate(unsigned int portmask)
+{
+#define MAX_PORTMAP 16
+
+	int i, j;
+    unsigned int n = 0;
+    unsigned int v = 0;
+    unsigned int offset = 0;
+    unsigned int value = 0;
+
+	if (switch_init() < 0)
+		return;
+
+	for (i=0; i<MAX_PORTMAP; i++) {
+		if (portmask & (1<<i)) {
+			offset = REG_ESW_PORT_PCR_P0 + i * 0x100;
+#if defined(RTCONFIG_RALINK_MT7620)
+			mt7620_reg_read(offset, &value);
+#elif defined(RTCONFIG_RALINK_MT7621)
+			mt7621_reg_read(offset, &value);
+#endif
+
+			for (j=0; j<MAX_PORTMAP; j++) {
+				if (portmask & (1<<j)) {
+					v = 1 << (j+16);
+					value &= ~v;
+				}
+			}
+
+#if defined(RTCONFIG_RALINK_MT7620)
+			mt7620_reg_write(offset, value);
+#elif defined(RTCONFIG_RALINK_MT7621)
+			mt7621_reg_write(offset, value);
+#endif
+		}
+	}
+
+	switch_fini();
+	return;	
+
+}
+
+void unset_switch_vlan(int vid, unsigned int portmask)
+{
+	unsigned int value = 0;
+	char portmap[MAX_PORTMAP+1];
+
+	if (switch_init() < 0)
+		return;
+
+	build_wan_lan_mask(0);
+	// detele VLAN
+#if defined(RTCONFIG_RALINK_MT7620)     
+	mt7620_reg_write(REG_ESW_VLAN_VAWD1, 0);
+	value = (0x80001000 + vid); //w_vid_cmd
+#elif defined(RTCONFIG_RALINK_MT7621)     
+	mt7621_reg_write(REG_ESW_VLAN_VAWD1, 0);
+	value = (0x80001000 + vid); //w_vid_cmd
+#endif	
+	write_VTCR(value);
+
+	// initialize Vlan
+	memset(portmap, 0, sizeof(portmap));
+	__create_port_map(0xC0 | lan_mask, portmap);	
+	mt7621_vlan_set(0, 1, portmap, 1);
+
+	switch_fini();
+}
 /* bit 0:1
 b00 : admit all frames
 b01 : admit only vlan-tagged frames
@@ -1208,6 +1304,111 @@ static void config_mt7621_esw_LANWANPartition(int type)
 	}
 	switch_fini();
 }
+
+#ifdef RTCONFIG_MULTILAN_CFG
+
+void __apg_switch_vlan_set(int vid, unsigned int default_portmask, unsigned int trunk_portmask, unsigned int access_portmask)
+{
+#define MAX_PORTMAP 	16
+	
+	int i;
+	char portmap[MAX_PORTMAP+1] = "0000000000000000\0", *p = &portmap[0];
+
+	portmap[6] = '1';	// CPU port 6
+	for (i=0; i<MAX_PORTMAP; i++, p++) {
+		// default mode
+		if (default_portmask & (1<<i)) {
+			*p = '1';
+			// port attribute:user port
+			set_switch_vlan_port_attribute(i, 0); 
+			// egresstag:tag
+			set_switch_vlan_egresstag(i, 2);
+			// acceptable_frame:admit all frames
+			set_acceptable_frame_type(i, 0);
+			// pvid:1 (forward to VLAN1(vid=1)) 
+			set_switch_pvid(i, 1);
+		}
+
+		// trunk mode
+		if (trunk_portmask & (1<<i)) {
+			*p = '1';
+			// port attribute:user port
+			set_switch_vlan_port_attribute(i, 0); 
+			// egresstag:tag
+			set_switch_vlan_egresstag(i, 2);
+			// acceptable_frame:admit only vlan-tagged frames
+			set_acceptable_frame_type(i, 1);
+			// pvid
+			set_switch_pvid(i, vid);
+		}
+
+		// access mode 
+		if (access_portmask & (1<<i)) {
+			*p = '1';
+			// port attribute:user port
+			set_switch_vlan_port_attribute(i, 0); 
+			// egresstag:untag
+			set_switch_vlan_egresstag(i, 0);
+			// acceptable_frame:admit only untagged or priority-tagged frames
+			set_acceptable_frame_type(i, 2);
+			// pvid
+			set_switch_pvid(i, vid);
+		}
+	}
+
+	if (switch_init() >= 0) {
+#if defined(RTCONFIG_RALINK_MT7620)
+		mt7620_vlan_set(0, vid, portmap, 0);
+#elif defined(RTCONFIG_RALINK_MT7621)
+		mt7621_vlan_set(0, vid, portmap, 0);
+#endif
+		mt762x_vlan_set(-1, 1, portmap, 0, default_portmask);
+		switch_fini();
+	}
+
+	return;
+}
+
+void __apg_switch_vlan_unset(int vid, unsigned int portmask)
+{
+	int i;
+	for(i=0; i<MAX_PORTMAP; i++)
+	{
+		if(portmask & (1<<i))
+		{
+			// transparent port
+			set_switch_vlan_port_attribute(i, 0);
+			// eg untag
+			set_switch_vlan_egresstag(i, 0);
+			// acceptable_frame:admit only untagged or priority-tagged frames
+			set_acceptable_frame_type(i, 2);
+			// pvid 1
+			set_switch_pvid(i, 1);
+		}
+	}
+
+	// detele VLAN
+	unset_switch_vlan(vid, portmask);
+
+	return;
+}
+
+void __apg_switch_isolation(int enable, unsigned int portmask)
+{
+	int i, j;	
+    unsigned int n = 0;
+    unsigned int v = 0;
+    unsigned int offset = 0;
+    unsigned int value = 0;
+
+	if (!enable)
+		return;
+
+	set_switch_isolate(portmask);
+	return;	
+}
+
+#endif	// RTCONFIG_MULTILAN_CFG
 
 #ifdef RTCONFIG_AMAS_WGN
 void __wgn_sysdep_swtich_set(int vid)
@@ -2463,6 +2664,100 @@ rtkswitch_Reset_Storm_Control(void)
 
 	return 0;
 }
+
+/**
+ * @link:
+ *  0:  no-link
+ *  1:  link-up
+ * @speed:
+ *  0,10:       10Mbps      ==> 'M'
+ *  1,100:      100Mbps     ==> 'M'
+ *  2,1000:     1000Mbps    ==> 'G'
+ *  3,10000:    10Gbps      ==> 'T'
+ *  4,2500:     2.5Gbps     ==> 'Q'
+ *  5,5000:     5Gbps       ==> 'F'
+ */
+static char conv_speed(unsigned int link, unsigned int speed)
+{   
+    char ret = 'X';
+    
+    if (link != 1)
+        return ret;
+    
+    if (speed == 2 || speed == 1000)
+        ret = 'G'; 
+    else if (speed == 3 || speed == 10000)
+        ret = 'T'; 
+    else if (speed == 4 || speed == 2500)
+        ret = 'Q'; 
+    else if (speed == 5 || speed == 5000)
+        ret = 'F';
+    else
+        ret = 'M';
+    
+    return ret;
+}
+
+#ifdef RTCONFIG_NEW_PHYMAP
+
+void ATE_port_status(int verbose, phy_info_list *list)
+{   
+    int i, len;
+    char buf[64];
+	unsigned int value;
+    char cap_buf[64] = {0};
+    phyState pS;
+
+    phy_port_mapping port_mapping;
+    get_phy_port_mapping(&port_mapping);
+
+    if (switch_init() < 0)
+        return;
+
+    for (i = 0; i < (NR_WANLAN_PORT+dv); i++) {
+        pS.link[i] = 0;
+        pS.speed[i] = 0;
+#if defined(RTCONFIG_RALINK_MT7620)
+        mt7620_reg_read((REG_ESW_MAC_PMSR_P0 + 0x100*i), &value);
+#elif defined(RTCONFIG_RALINK_MT7621)
+        mt7621_reg_read((REG_ESW_MAC_PMSR_P0 + 0x100*i), &value);
+#endif
+        pS.link[i] = value & 0x1;
+        pS.speed[i] = (value >> 2) & 0x3;
+    }
+
+    len = 0; 
+    for (i = 0; i < port_mapping.count && i<MAX_PORT; i++) {
+        // Only handle WAN/LAN ports
+        if (((port_mapping.port[i].cap & PHY_PORT_CAP_WAN) == 0) && ((port_mapping.port[i].cap & PHY_PORT_CAP_LAN) == 0))
+            continue;
+        if (list) {
+            list->phy_info[i].phy_port_id = port_mapping.port[i].phy_port_id;
+            list->phy_info[i].link_rate = pS.link[i];
+			snprintf(list->phy_info[i].state, sizeof(list->phy_info[i].state), "%s", (pS.link[i]==1)?"up":"down");
+			snprintf(list->phy_info[i].label_name, sizeof(list->phy_info[i].label_name), "%s",
+                port_mapping.port[i].label_name);
+            list->phy_info[i].cap = port_mapping.port[i].cap;
+            snprintf(list->phy_info[i].cap_name, sizeof(list->phy_info[i].cap_name), "%s",
+                get_phy_port_cap_name(port_mapping.port[i].cap, cap_buf, sizeof(cap_buf)));
+            if (pS.link[i] == 1 && !list->status_and_speed_only) {
+                // TODO not complete
+            }
+
+            list->count++;
+        }
+        len += sprintf(buf+len, "%s=%C;", port_mapping.port[i].label_name,
+            conv_speed(pS.link[i], pS.speed[i]));
+    }
+	
+	switch_fini();
+
+    if (verbose)
+        puts(buf);
+}
+
+#endif
+
 #if defined(RTCONFIG_RALINK_MT7620)
 void ATE_mt7620_esw_port_status(void)
 #elif defined(RTCONFIG_RALINK_MT7621)
@@ -2643,4 +2938,3 @@ void usage(char *cmd)
 	exit(0);
 }
 #endif
-

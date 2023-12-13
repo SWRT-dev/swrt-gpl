@@ -142,7 +142,7 @@ function Get_Component_Feature_Desc_IPSec(){
 
 	var $popup_title_container = $("<div>").addClass("popup_title_container");
 	$popup_title_container.appendTo($container);
-	$("<div>").addClass("title").html("About Feature").appendTo($popup_title_container);/* untranslated */
+	$("<div>").addClass("title").html("<#NewFeatureAbout#>").appendTo($popup_title_container);
 	var $close_btn = $("<div>").addClass("vpn_icon_all_collect close_btn");
 	$close_btn.appendTo($popup_title_container);
 	$close_btn.unbind("click").click(function(e){
@@ -157,7 +157,7 @@ function Get_Component_Feature_Desc_IPSec(){
 	var $feature_desc = $("<div>").addClass("feature_desc");
 	$feature_desc.appendTo($popup_content_container);
 
-	$("<div>").addClass("title").html("Feature Description").appendTo($feature_desc);/* untranslated */
+	$("<div>").addClass("title").html("<#NewFeatureDesc#>").appendTo($feature_desc);
 
 	$("<div>").addClass("desc").html( $("#ipsec_desc").html()).appendTo($feature_desc);
 
@@ -167,7 +167,7 @@ function Get_Component_Feature_Desc_IPSec(){
 		$("<div>").addClass("desc").html($privateIP_notes.html()).appendTo($feature_desc);
 	}
 
-	$("<div>").addClass("title").html("HOW TO SETUP").appendTo($feature_desc);/* untranslated */
+	$("<div>").addClass("title").html("<#HOWTOSETUP#>").appendTo($feature_desc);
 
 	var $step_text_container = $("<div>").addClass("step_text_container");
 		$step_text_container.appendTo($feature_desc);
@@ -713,7 +713,7 @@ function validate_format_IPSec(_obj, _validField){
 		}
 		if(psk_length != psk_length_trim){
 			testResult.isError = true;
-			testResult.errReason = "<#JS_PSK64Hex_whiteSpace#>";
+			testResult.errReason = stringSafeGet("<#JS_PSK64Hex_whiteSpace#>");
 			return testResult;
 		}
 		if(psk_length == 64 && !check_is_hex(str)){
@@ -1117,7 +1117,7 @@ function Get_Component_Setting_Profile_IPSec(_type){
 
 	var $detail_general = $("<div>").attr("detail_mode","1").appendTo($content_container);
 
-	var help_parm = {"title":"How to setup"};/* untranslated */
+	var help_parm = {"title":"<#HOWTOSETUP#>"};
 	Get_Component_Help(help_parm)
 		.appendTo($detail_general)
 		.find(".vpnc_help_icon").unbind("click").click(function(e){

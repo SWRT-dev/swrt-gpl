@@ -400,7 +400,8 @@ function do_save_draft(idx){
 }
 
 function check_mobile_number(obj){
-	if(!validator.isMobileNumber(obj.value)){
+	//if(!validator.isMobileNumber(obj.value)){
+	if(obj.value == ""){
 		alert("<#SMS_wrong_number#>");
 		obj.focus();
 		obj.select();

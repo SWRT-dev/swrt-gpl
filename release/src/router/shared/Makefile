@@ -2,7 +2,7 @@ include ../common.mak
 include $(SRCBASE)/.config
 include ../.config
 
-CFLAGS += -Os -Wall $(EXTRACFLAGS) -fPIC
+CFLAGS += $(if $(RTCONFIG_DEBUG),-g,-Os) -Wall $(EXTRACFLAGS) -fPIC
 #CFLAGS += $(PRIVATE_EXTRACFLAGS)
 CFLAGS += -I. -I$(TOP)/shared -I$(SRCBASE)/include
 
@@ -161,13 +161,21 @@ OBJS += nvparse.o
 OBJS += bwdpi_utils.o
 OBJS += bwdpi_utils.o
 OBJS += mac_name_tbl.o
-OBJS += stun.o
+OBJS += stun.
+OBJS += llist.o
 OBJS += $(if $(wildcard notify_rc.c),notify_rc.o,prebuild/notify_rc.o)
+ifeq ($(RTCONFIG_MULTILAN_CFG),y)
+OBJS += mtlan_utils.o
+endif
 ifeq ($(RTCONFIG_AHS),y)
 OBJS += notify_ahs.o
 endif
-ifeq ($(RTCONFIG_AMAS_WGN),y)
+#ifeq ($(RTCONFIG_AMAS_WGN),y)
+ifeq ($(or $(RTCONFIG_AMAS_WGN),$(RTCONFIG_MULTILAN_CFG)),y)
 OBJS += $(if $(wildcard amas_wgn_shared.c),amas_wgn_shared.o,prebuild/amas_wgn_shared.o)
+endif
+ifeq ($(RTCONFIG_MULTILAN_CFG), y)
+OBJS += $(if $(wildcard apg_shared.c),apg_shared.o,prebuild/apg_shared.o)
 endif
 ifeq ($(RTCONFIG_RGBLED),y)
 OBJS += $(if $(wildcard aura_rgb.c),aura_rgb.o,prebuild/aura_rgb.o)
@@ -204,9 +212,6 @@ OBJS += mt7622.o
 else ifeq ($(RTCONFIG_SWITCH_MT7986_MT7531),y)
 CFLAGS += -I$(SRCBASE)/$(PLATFORM_ROUTER)/mii_mgr/source
 OBJS += mt7986_mt7531.o
-else ifeq ($(RTCONFIG_SOC_MT7981),y)
-CFLAGS += -I$(SRCBASE)/$(PLATFORM_ROUTER)/mii_mgr/source
-OBJS += mt7981_mt7531.o
 else ifeq ($(BB_SOC),y)
 OBJS += econet.o
 else
@@ -261,6 +266,7 @@ OBJS += api-tclinux.o
 endif
 ifeq ($(RTCONFIG_EXT_RTL8365MB),y)
 CFLAGS += -I$(LINUXDIR)/drivers/char/rtl8365mb
+CFLAGS += -I$(SRCBASE)/common/include/proto
 OBJS += rtl_8365mb.o
 endif
 ifeq ($(RTCONFIG_EXT_RTL8370MB),y)
@@ -313,11 +319,11 @@ endif
 ifeq ($(RTCONFIG_BLINK_LED),y)
 CFLAGS	+= -I$(TOP)/bled
 OBJS	+= bled.o
-else ifeq ($(RTCONFIG_FIXED_BRIGHTNESS_RGBLED),y)
+else ifeq ($(RTCONFIG_SWRT_LED_RGB),y)
 OBJS	+= swrtrgb.o
 endif
 
-ifeq ($(RTCONFIG_PWM_RGBLED),y)
+ifeq ($(or $(RTCONFIG_PWMX1_GPIOX3_RGBLED),$(RTCONFIG_PWMX3_RGBLED)),y)
 OBJS	+= pwm_led.o
 endif
 
@@ -390,9 +396,9 @@ OBJS += api-mesh.o
 vpath %.c sysdeps/swrtmesh
 endif
 
-ifeq ($(RTCONFIG_SCHED_V2),y)
+#ifeq ($(RTCONFIG_SCHED_V2),y)
 OBJS += sched_v2.o
-endif
+#endif
 
 vpath %.c sysdeps $(SRCBASE)/shared/ $(WLAN_ComponentSrcDirs)
 ifeq ($(RTCONFIG_RALINK),y)
@@ -417,8 +423,13 @@ else
 vpath %.c sysdeps/broadcom  $(SRCBASE)/shared/bcmwifi/src
 ifeq ($(RTCONFIG_HND_ROUTER_AX),y)
 OBJS += bcmxtlv.o bcmutils.o
-ifeq ($(or $(RTAX55),$(RTAX1800),$(RTAX58U_V2)),y)
+ifeq ($(or $(RTAX55),$(RTAX1800),$(RTAX58U_V2),$(RTAX3000N),$(BR63),$(RTCONFIG_EXT_RTL8367S)),y)
 OBJS += rtkswitch.o
+else ifeq ($(BUILD_NAME),$(filter $(BUILD_NAME),GT-BE98 GT-BE98_PRO GT-BE96))
+OBJS += rtkswitch.o
+endif
+ifeq ($(and $(BR63),$(NEW_SWITCH_ORDER)),y)
+CFLAGS += -DNEW_SWITCH_ORDER
 endif
 endif
 endif
@@ -430,7 +441,7 @@ vpath %.c $(TOP)/sw-hw-auth
 endif
 
 ifeq ($(RTCONFIG_TUNNEL),y)
-#OBJS += aae_ipc.o
+OBJS += aae_ipc.o
 CFLAGS  += -I$(TOP)/aaews
 vpath %.c $(TOP)/aaews
 endif
@@ -463,13 +474,21 @@ endif
 ifeq ($(TURKT),y)
 CFLAGS += -DTURKT
 endif
+ifneq ($(CUSTOM_MODEL),)
+CFLAGS += -DCUSTOM_MODEL
+endif
 
 ifeq ($(RT4GAC86U),y)
 OBJS += $(LIBDIR)/libc_nonshared.a
 endif
 
-ifneq ($(CUSTOM_MODEL),)
-CFLAGS += -DCUSTOM_MODEL
+ifeq ($(RTCONFIG_TRUSTZONE),y)
+CFLAGS += -I$(TOP)/ateed/
+LDFLAGS += -L$(TOP)/ateed/ -latee
+endif
+
+ifeq ($(RTCONFIG_NVSW_IN_JFFS),y)
+OBJS += nvsw.o
 endif
 
 all: libshared.so libshared.a
@@ -494,7 +513,7 @@ install: all
 	@echo " [shared] Installing as $(INSTALLDIR)/usr/lib/libshared.so"
 	@install -d $(INSTALLDIR)/usr/lib
 	@install -m 755 libshared.so $(INSTALLDIR)/usr/lib
-	@$(STRIP) $(INSTALLDIR)/usr/lib/libshared.so
+	$(if $(RTCONFIG_DEBUG),,@$(STRIP) $(INSTALLDIR)/usr/lib/libshared.so)
 
 clean:
 	rm -f *.o *.so *.a .*.depend *.prep sysdeps/*.o sysdeps/broadcom/*.o sysdeps/ralink/*.o
@@ -573,4 +592,3 @@ endif
 ifneq ($(RT4GAC86U),y)
 -include $(OBJS:%.o=.%.depend)
 endif
-

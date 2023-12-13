@@ -296,11 +296,14 @@ void start_ubifs(void)
 	    && (sf.f_type != 0x73717368 /* squashfs */ )) {
 		// already mounted
 		notice_set("ubifs", format ? "Formatted" : "Loaded");
-#if defined(RTCONFIG_HND_ROUTER_AX_6756)
+#if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_HND_ROUTER_BE_4916)
 		goto skip_mnt;
 #endif
 		return;
 	}
+#if defined(TUFAX6000) || defined(TUFAX4200) || defined(PRTAX57_GO) || defined(RTAX52)
+//why?
+#else
 	if (nvram_get_int("ubifs_clean_fs")) {
 		if (ubifs_unlock(dev, part)) {
 			error("unlocking");
@@ -311,6 +314,7 @@ void start_ubifs(void)
 		nvram_commit_x();
 #endif
 	}
+#endif
 	sprintf(s, "/dev/ubi%d_%d", dev, part);
 
 	if (mount(s, UBIFS_MNT_DIR, UBIFS_FS_TYPE, MS_NOATIME, "") != 0) {
@@ -329,7 +333,7 @@ void start_ubifs(void)
 	}
 
 
-#if defined(RTCONFIG_HND_ROUTER_AX_6756)
+#if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_HND_ROUTER_BE_4916)
 skip_mnt:
 #endif
 
@@ -346,16 +350,16 @@ BRCM_UBI:
 		// This refer to jffs2.c. 
 		// Because ubifs_unlock (erase) doesn't be called if ISP_CUSTOMIZE=y.
 		// We use rm command (remove file includes hidden files.) instead.
-		//if((0 == nvram_get_int("x_Setting")) && (check_if_file_exist("/jffs/remove_hidden_flag")))
-		//{
+		if((0 == nvram_get_int("x_Setting")) && (check_if_file_exist("/jffs/remove_hidden_flag")))
+		{
 #if defined(RTCONFIG_ISP_CUSTOMIZE_TOOL) || defined(RTCONFIG_ISP_CUSTOMIZE)
 			// Remove hidden folder but excluding /jffs/.ac and /jffs/.package.
 			system("find /jffs/ -name '.*' -a ! -name '.ict' -a ! -name '.package' -a ! -name '.package.tar.gz' -a ! -name 'package.tar.gz' -exec rm -rf {} \\;");
 			_dprintf("Clean /jffs/.*\n");
 #else
-			//system("rm -rf /jffs/.*");
+			system("rm -rf /jffs/.*");
 #endif
-		//}
+		}
 		_dprintf("Clean /jffs/*\n");
 		system("rm -fr /jffs/*");
 		nvram_unset("ubifs_clean_fs");

@@ -43,6 +43,7 @@ release/src/router/rc/sysdeps/*/fw*
 release/src/router/rc/sysdeps/*/roamast-*.c
 release/src/router/rc/sysdeps/*/swrt-*.c
 release/src/router/rc/sysdeps/*/tcode_*.c
+release/src/router/shared/apg_shared.c
 release/src/router/shared/notify_ahs.c
 release/src/router/shared/notify_rc.c
 release/src/router/shared/shutils_private.c

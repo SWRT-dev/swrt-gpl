@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0,  user-scalable=no" />
+        <link rel="stylesheet" href="css/clients.css" />
+    </head>
+    <body>
+        <script>
+            let date = new Date();
+            let time = {
+                currentTimestamp: parseInt(date.getTime() / 1000),
+                dateISOString: date.toISOString().substr(0, 10),
+            };
+
+            document.querySelector('[type="date"]').value = time.dateISOString;
+            let allClients = [],
+                allApps = [],
+                routerAllTraffic = {
+                    periodData: [],
+                    upTotal: 0,
+                    downTotal: 0,
+                    total: 0,
+                };
+
+            let duration = (function () {
+                let duraType = document.getElementById("dura_type").value,
+                    mappingTable = {
+                        daily: { length: 24, type: "hour" },
+                        weekly: { length: 7, type: "day" },
+                        monthly: { length: 31, type: "day" },
+                    };
+
+                return mappingTable[duraType];
+            })();
+
+            // Top 5 CLIENTS
+            getStatData("app", "all", "detail", duration.length, time.currentTimestamp).then((res) => {
+                allClients = res;
+                // descending order
+                allClients.sort(function (pre, cur) {
+                    return cur[1] + cur[2] - (pre[1] + pre[2]);
+                });
+
+                drawChartTop5Client();
+            });
+
+            // // Top 5 Apps
+            getStatData("wan", "all", "detail", duration.length, time.currentTimestamp).then((res) => {
+                allApps = res;
+                // descending order
+                allApps.sort(function (pre, cur) {
+                    return cur[1] + cur[2] - (pre[1] + pre[2]);
+                });
+
+                darwChartTop5App();
+            });
+
+            // Router ALL Traffic, 24 hours/ 7 days / 31 days
+            getStatData("wan", "all", "hour", duration.length, time.currentTimestamp).then((res) => {
+                routerAllTraffic.periodData = res;
+                // descending order
+                routerAllTraffic.periodData.sort(function (pre, cur) {
+                    return cur[1] + cur[2] - (pre[1] + pre[2]);
+                });
+
+                for (let data of routerAllTraffic.periodData) {
+                    routerAllTraffic.upTotal += data[0];
+                    routerAllTraffic.downTotal += data[1];
+                    routerAllTraffic.total += data[0] + data[1];
+                }
+
+                drawLineChartClient();
+
+                // APPs, default is 'all', the data of 'all' is same as Clients
+                drawLineChartApp();
+            });
+
+            // // // Taffic of Specified device
+            // getStatData("wan", "FC:34:97:DD:42:61", "hour", "24", "1688367993");
+
+            // // // Detail Information of Specified device
+            // getStatData("wan", "FC:34:97:DD:42:61", "detail", "24", "1688367993");
+
+            // // // Traffic of Specified App
+            // getStatData("app", "youtube", "hour", "24", "1688367993");
+
+            // // // Detail Information of Specified App
+            // getStatData("app", "youtube", "detail", "24", "1688367993");
+
+            async function getStatData(type, client, mode, duration, time) {
+                let statData = [],
+                    dnsDpiPostfix = system.dnsDpiSupport ? "_Dns" : "",
+                    pageName = type === "wan" ? "getWanTraffic" : "getAppTraffic",
+                    url = `../ajax/${pageName}${dnsDpiPostfix}.asp?client=${client}&mode=${mode}&dura=${duration}&date=${time}`;
+
+                await fetch(url)
+                    .then((res) => res.json())
+                    .then((data) => {
+                        statData = data;
+                    });
+
+                return statData;
+            }
+
+            const chartColor1 = `${getComputedStyle(document.querySelector(":root")).getPropertyValue("--circle-chart-color-1")}`;
+            const chartColor2 = `${getComputedStyle(document.querySelector(":root")).getPropertyValue("--circle-chart-color-2")}`;
+            const chartColor3 = `${getComputedStyle(document.querySelector(":root")).getPropertyValue("--circle-chart-color-3")}`;
+            const chartColor4 = `${getComputedStyle(document.querySelector(":root")).getPropertyValue("--circle-chart-color-4")}`;
+            const chartColor5 = `${getComputedStyle(document.querySelector(":root")).getPropertyValue("--circle-chart-color-5")}`;
+            const labelColor = `${getComputedStyle(document.querySelector(":root")).getPropertyValue("--text-title-color")}`;
+            // relations of draw Top5 clients
+            const ctxTop5Client = document.getElementById("top5_client_chart");
+            function drawChartTop5Client() {
+                let length = allClients.length < 5 ? allClients.length : 5;
+                const dataTop5Client = {
+                    datasets: [
+                        {
+                            data: (() => {
+                                let array = [];
+                                for (let i = 0; i < length; i++) {
+                                    array.push(allClients[i][1] + allClients[i][2]);
+                                }
+
+                                return array;
+                            })(),
+                            backgroundColor: [chartColor1, chartColor2, chartColor3, chartColor4, chartColor5],
+                            hoverOffset: 4,
+                            borderColor: "transparent",
+                            name: (() => {
+                                let array = [];
+                                for (let i = 0; i < length; i++) {
+                                    let mac = allClients[i][0];
+                                    if (system.client.detail[mac] && system.client.detail[mac].name !== "") {
+                                        array.push(system.client.detail[mac].name);
+                                    } else {
+                                        array.push(mac);
+                                    }
+                                }
+
+                                return array;
+                            })(),
+                        },
+                    ],
+                };
+
+                const chartTop5Client = new Chart(ctxTop5Client, {
+                    type: "doughnut",
+                    data: dataTop5Client,
+                    options: {
+                        plugins: {
+                            legend: {
+                                display: false,
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        let index = context.dataIndex;
+                                        return `${context.dataset.name[index]}: ${convertTrafficUnit(context.parsed)}`;
+                                    },
+                                },
+                            },
+                        },
+                        responsive: true,
+                        maintainAspectRatio: false,
+                    },
+                });
+
+                genListTop5Client();
+            }
+
+            function genListTop5Client() {
+                let length = allClients.length < 5 ? allClients.length : 5;
+                code = "";
+                for (let i = 0; i < length; i++) {
+                    let mac = allClients[i][0],
+                        value = convertTrafficUnit(allClients[i][1] + allClients[i][2]),
+                        titleString = "",
+                        name = (() => {
+                            if (system.client.detail[mac] && system.client.detail[mac].name !== "") {
+                                titleString = mac;
+                                return system.client.detail[mac].name;
+                            }
+
+                            return mac;
+                        })();
+
+                    code += `
+                        <div class="d-flex align-items-center py-2">
+                            <div class="d-xl-flex">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-2 list-square-tab list-square-color-${i + 1}"></div>
+                                    <div class="ms-1 chart-sub-content-title text-truncate" title="${titleString}">${name}</div>
+                                </div>
+                            </div>
+                            <div class="ms-auto card-data-value">
+                                <span>${value}</span>
+                            </div>
+                        </div>
+                        <div class="divide-line"></div>
+                    `;
+                }
+
+                document.getElementById("top5_client_list").innerHTML = code;
+            }
+
+            // relations of draw Top5 App
+            const ctxTop5App = document.getElementById("top5_app_chart");
+            function darwChartTop5App() {
+                const length = 5;
+                const dataTop5App = {
+                    datasets: [
+                        {
+                            data: (() => {
+                                let array = [];
+                                for (let i = 0; i < length; i++) {
+                                    array.push(allApps[i][1] + allApps[i][2]);
+                                }
+
+                                return array;
+                            })(),
+                            backgroundColor: [chartColor1, chartColor2, chartColor3, chartColor4, chartColor5],
+                            hoverOffset: 4,
+                            borderColor: "transparent",
+                            name: (() => {
+                                let array = [];
+                                for (let i = 0; i < length; i++) {
+                                    array.push(allApps[i][0]);
+                                }
+
+                                return array;
+                            })(),
+                        },
+                    ],
+                };
+
+                const chartTop5App = new Chart(ctxTop5App, {
+                    type: "doughnut",
+                    data: dataTop5App,
+                    options: {
+                        plugins: {
+                            legend: {
+                                display: false,
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        let index = context.dataIndex;
+                                        return `${context.dataset.name[index]}: ${convertTrafficUnit(context.parsed)}`;
+                                    },
+                                },
+                            },
+                        },
+                        responsive: true,
+                        maintainAspectRatio: false,
+                    },
+                });
+
+                genListTop5App();
+            }
+
+            function genListTop5App() {
+                let length = 5,
+                    code = "";
+
+                for (let i = 0; i < length; i++) {
+                    let name = allApps[i][0],
+                        value = convertTrafficUnit(allApps[i][1] + allApps[i][2]);
+
+                    code += `
+                        <div class="d-flex align-items-center py-2">
+                            <div class="d-xl-flex">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-2 list-square-tab list-square-color-${i + 1}"></div>
+                                    <div class="ms-1 chart-sub-content-title text-truncate">${name}</div>
+                                </div>
+                            </div>
+                            <div class="ms-auto card-data-value">
+                                <span>${value}</span>
+                            </div>
+                        </div>
+                        <div class="divide-line"></div>
+                    `;
+                }
+
+                document.getElementById("top5_app_list").innerHTML = code;
+            }
+
+            const ctxLineChartClient = document.getElementById("client_line_chart");
+            function drawLineChartClient() {
+                const dataLineChartClient = {
+                    labels: (function () {
+                        let array = [],
+                            length = routerAllTraffic.periodData.length,
+                            curTimestamp = time.currentTimestamp;
+
+                        for (let i = 0; i < length; i++) {
+                            let hour = new Date(curTimestamp * 1000).getHours();
+                            array.unshift(hour);
+                            curTimestamp -= 3600;
+                        }
+
+                        return array;
+                    })(),
+                    datasets: (function () {
+                        let upArray = [],
+                            downArray = [],
+                            timeArray = [],
+                            length = routerAllTraffic.periodData.length,
+                            curTimestamp = time.currentTimestamp;
+
+                        for (let data of routerAllTraffic.periodData) {
+                            let dateObj = new Date(curTimestamp * 1000);
+                            let timeString = (function () {
+                                let year = dateObj.getFullYear();
+                                let month = dateObj.getMonth() + 1;
+                                month = month < 10 ? "0" + month : month;
+                                let date = dateObj.getDate();
+                                let hour = dateObj.getHours();
+                                hour = hour < 10 ? "0" + hour + ":00" : hour + ":00";
+
+                                return `${year} ${month}-${date} ${hour}`;
+                            })();
+
+                            upArray.push(data[0]);
+                            downArray.push(data[1]);
+                            timeArray.unshift(timeString);
+                            curTimestamp -= 3600;
+                        }
+
+                        return [
+                            {
+                                label: "UL",
+                                data: upArray,
+                                backgroundColor: [`${chartColor1}`],
+                                borderWidth: 1,
+                                borderColor: `${chartColor1}`,
+                                fill: true,
+                                order: 2,
+                                tooltipTitle: timeArray,
+                            },
+                            {
+                                label: "DL",
+                                data: downArray,
+                                backgroundColor: [`${chartColor2}`],
+                                borderWidth: 1,
+                                borderColor: `${chartColor2}`,
+                                fill: true,
+                                order: 0,
+                                tooltipTitle: timeArray,
+                            },
+                        ];
+                    })(),
+                };
+
+                const lineChartClient = new Chart(ctxLineChartClient, {
+                    type: "line",
+                    data: dataLineChartClient,
+                    options: {
+                        plugins: {
+                            legend: {
+                                display: false,
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        let label = context.dataset.label,
+                                            value = context.raw;
+
+                                        return `${label}: ${convertTrafficUnit(value, 1)}`;
+                                    },
+                                    title: function (context) {
+                                        let index = context[0].dataIndex,
+                                            sum = 0;
+
+                                        // get UL + DL value
+                                        for (let item of context) {
+                                            sum += item.raw;
+                                        }
+
+                                        showChartHeaderInfo("client_traffic_current", "client_traffic_percentage", sum);
+                                        return context[0].dataset.tooltipTitle[index];
+                                    },
+                                },
+                                position: "nearest",
+                            },
+                        },
+                        scales: {
+                            y: {
+                                ticks: {
+                                    color: labelColor,
+                                    callback: function (value, index, ticks) {
+                                        return convertTrafficUnit(value, 0);
+                                    },
+
+                                    beginAtZero: true,
+                                    count: 5,
+                                },
+                            },
+                            x: {
+                                ticks: {
+                                    color: labelColor,
+                                },
+                            },
+                        },
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: "index" },
+                    },
+                });
+
+                document.getElementById("client_traffic_total").innerHTML = convertTrafficUnit(routerAllTraffic.total);
+                genOptionClients();
+                genTableClientDetailApps();
+            }
+
+            function genOptionClients() {
+                let code = "<option value='all'><#All_Client#></option>";
+                for (let item of allClients) {
+                    let mac = item[0],
+                        name = (() => {
+                            if (system.client.detail[mac] && system.client.detail[mac].name !== "") {
+                                titleString = mac;
+                                return system.client.detail[mac].name;
+                            }
+
+                            return mac;
+                        })();
+
+                    code += `<option value="${mac}">${name}</option>`;
+                }
+
+                document.getElementById("client_list_option").innerHTML = code;
+            }
+
+            function genTableClientDetailApps() {
+                let code = "";
+
+                for (let item of allApps) {
+                    let name = item[0],
+                        ulValue = item[1],
+                        dlValue = item[2],
+                        totalValue = item[1] + item[2];
+                    code += `
+                        <tr>
+                            <td>${name}</td>
+                            <td>${convertTrafficUnit(ulValue, 1)}</td>
+                            <td>${convertTrafficUnit(dlValue, 1)}</td>
+                            <td>${convertTrafficUnit(totalValue, 1)}</td>
+                        </tr>
+                    `;
+                }
+
+                document.getElementById("client_detail_apps_table").innerHTML = code;
+            }
+
+            const ctxLineChartApp = document.getElementById("app_line_chart");
+            function drawLineChartApp() {
+                const dataLineChartApp = {
+                    labels: (function () {
+                        let array = [],
+                            length = routerAllTraffic.periodData.length,
+                            curTimestamp = time.currentTimestamp;
+
+                        for (let i = 0; i < length; i++) {
+                            let hour = new Date(curTimestamp * 1000).getHours();
+                            array.unshift(hour);
+                            curTimestamp -= 3600;
+                        }
+
+                        return array;
+                    })(),
+                    datasets: (function () {
+                        let upArray = [],
+                            downArray = [],
+                            timeArray = [],
+                            length = routerAllTraffic.periodData.length,
+                            curTimestamp = time.currentTimestamp;
+
+                        for (let data of routerAllTraffic.periodData) {
+                            let dateObj = new Date(curTimestamp * 1000);
+                            let timeString = (function () {
+                                let year = dateObj.getFullYear();
+                                let month = dateObj.getMonth() + 1;
+                                month = month < 10 ? "0" + month : month;
+                                let date = dateObj.getDate();
+                                let hour = dateObj.getHours();
+                                hour = hour < 10 ? "0" + hour + ":00" : hour + ":00";
+
+                                return `${year} ${month}-${date} ${hour}`;
+                            })();
+
+                            upArray.push(data[0]);
+                            downArray.push(data[1]);
+                            timeArray.unshift(timeString);
+                            curTimestamp -= 3600;
+                        }
+
+                        return [
+                            {
+                                label: "UL",
+                                data: upArray,
+                                backgroundColor: [`${chartColor1}`],
+                                borderWidth: 1,
+                                borderColor: `${chartColor1}`,
+                                fill: true,
+                                order: 2,
+                                tooltipTitle: timeArray,
+                            },
+                            {
+                                label: "DL",
+                                data: downArray,
+                                backgroundColor: [`${chartColor2}`],
+                                borderWidth: 1,
+                                borderColor: `${chartColor2}`,
+                                fill: true,
+                                order: 0,
+                                tooltipTitle: timeArray,
+                            },
+                        ];
+                    })(),
+                };
+
+                const lineChartApp = new Chart(ctxLineChartApp, {
+                    type: "line",
+                    data: dataLineChartApp,
+                    options: {
+                        plugins: {
+                            legend: {
+                                display: false,
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        let label = context.dataset.label,
+                                            value = context.raw;
+
+                                        return `${label}: ${convertTrafficUnit(value, 1)}`;
+                                    },
+                                    title: function (context) {
+                                        let index = context[0].dataIndex,
+                                            sum = 0;
+
+                                        // get UL + DL value
+                                        for (let item of context) {
+                                            sum += item.raw;
+                                        }
+
+                                        showChartHeaderInfo("app_traffic_current", "app_traffic_percentage", sum);
+                                        return context[0].dataset.tooltipTitle[index];
+                                    },
+                                },
+                                position: "nearest",
+                            },
+                        },
+                        scales: {
+                            y: {
+                                ticks: {
+                                    color: labelColor,
+                                    callback: function (value, index, ticks) {
+                                        return convertTrafficUnit(value, 0);
+                                    },
+
+                                    beginAtZero: true,
+                                    count: 5,
+                                },
+                            },
+                            x: {
+                                ticks: {
+                                    color: labelColor,
+                                },
+                            },
+                        },
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: "index" },
+                    },
+                });
+
+                document.getElementById("app_traffic_total").innerHTML = convertTrafficUnit(routerAllTraffic.total);
+                genOptionApps();
+                genTableAppDetailClients();
+            }
+
+            function genOptionApps() {
+                let code = "<option value='all'><#All_Client#></option>";
+                for (let item of allApps) {
+                    let name = item[0];
+                    code += `<option value="${name}">${name}</option>`;
+                }
+
+                document.getElementById("app_list_option").innerHTML = code;
+            }
+
+            function genTableAppDetailClients() {
+                let code = "";
+
+                for (let item of allClients) {
+                    let mac = item[0],
+                        name = (() => {
+                            if (system.client.detail[mac] && system.client.detail[mac].name !== "") {
+                                titleString = mac;
+                                return system.client.detail[mac].name;
+                            }
+
+                            return mac;
+                        })(),
+                        ulValue = item[1],
+                        dlValue = item[2],
+                        totalValue = item[1] + item[2];
+
+                    code += `
+                        <tr>
+                            <td>${name}</td>
+                            <td>${convertTrafficUnit(ulValue, 1)}</td>
+                            <td>${convertTrafficUnit(dlValue, 1)}</td>
+                            <td>${convertTrafficUnit(totalValue, 1)}</td>
+                        </tr>
+                    `;
+                }
+
+                document.getElementById("app_detail_clients_table").innerHTML = code;
+            }
+
+            function showChartHeaderInfo(id, idUsage, data) {
+                let total = routerAllTraffic.total;
+                document.getElementById(id).innerHTML = convertTrafficUnit(data);
+                document.getElementById(idUsage).innerHTML = `${((data / total) * 100).toFixed(1)}%`;
+            }
+
+            function convertTrafficUnit(value, precision = 1) {
+                // the default unit of vlaue in here is 'Bytes'
+                let count = 0,
+                    scale = ["Byte", "KB", "MB", "GB"];
+
+                while (value > 1024 && count < 3) {
+                    value = value / 1024;
+                    count++;
+                }
+
+                return `${value.toFixed(precision)} ${scale[count]}`;
+            }
+        </script>
+        <div class="d-flex align-items-center">
+            <div class="page-title py-3"><#Statistic#></div>
+            <!-- <div role="icon" class="icon-size-24 icon-add-chart ms-3" onclick="addCard()"></div>
+            <div role="icon" class="icon-size-24 icon-settings ms-3" onclick="databaseSetting()"></div> -->
+        </div>
+        <div class="d-flex align-items-center">
+            <div>
+                <label for="birthday"><#Statistic_last_date#>:</label>
+                <input type="date" class="form-date" onchange="" />
+            </div>
+            <div class="d-flex align-items-center ms-5">
+                <div><#Statistic_show_type#></div>
+                <select class="form-select w-auto" id="dura_type">
+                    <option value="monthly"><#diskUtility_monthly#></option>
+                    <option value="weekly"><#diskUtility_weekly#></option>
+                    <option value="daily" selected><#diskUtility_daily#></option>
+                </select>
+            </div>
+        </div>
+        <div class="row">
+            <!-- Top 5 Information -->
+            <div class="col-12 col-md-6 mb-3">
+                <div class="card pt-2 h-100">
+                    <h5 class="card-header d-flex align-items-center justify-content-between">Top 5 Clients</h5>
+                    <div class="card-body">
+                        <div class="row">
+                            <div style="height: 300px" class="col-12 col-xl-6">
+                                <canvas id="top5_client_chart"></canvas>
+                            </div>
+                            <div class="col-12 col-xl-6" id="top5_client_list"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 mb-3">
+                <div class="card pt-2 h-100">
+                    <h5 class="card-header d-flex align-items-center justify-content-between">Top 5 Apps</h5>
+                    <div class="card-body">
+                        <div class="row">
+                            <div style="height: 300px" class="col-12 col-xl-6">
+                                <canvas id="top5_app_chart"></canvas>
+                            </div>
+                            <div class="col-12 col-xl-6" id="top5_app_list"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CLIENTS TRAFFIC -->
+            <div class="col-12 mb-3">
+                <div class="card pt-2 h-100">
+                    <h5 class="card-header d-flex align-items-center justify-content-between">CLIENTS</h5>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="d-flex align-items-center col-12 col-xl-3">
+                                <div class="ms-1 me-3 content-data-title"><#Traffic_Analyzer_usedpercent#></div>
+                                <div class="fs-5 content-data-value" id="client_traffic_percentage">- %</div>
+                            </div>
+                            <div class="d-flex align-items-center col-12 col-xl-3">
+                                <div class="ms-1 me-3 content-data-title"><#Traffic_Analyzer_current#></div>
+                                <div class="fs-5 content-data-value" id="client_traffic_current">-</div>
+                            </div>
+                            <div class="d-flex align-items-center col-12 col-xl-3">
+                                <div class="ms-1 me-3 content-data-title"><#Traffic_Analyzer_daily#></div>
+                                <div class="fs-5 content-data-value" id="client_traffic_total">-</div>
+                            </div>
+                            <div class="d-flex align-items-center col-12 col-xl-3">
+                                <div class="ms-1 me-3 content-data-title">
+                                    <select class="form-select w-auto" id="client_list_option"></select>
+                                </div>
+                            </div>
+                            <div class="mt-2" style="height: 300px">
+                                <canvas id="client_line_chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CLIENTS DETAIL -->
+            <div class="col-12 mb-3">
+                <div class="card pt-2 h-100">
+                    <h5 class="card-header d-flex align-items-center justify-content-between">CLIENTS Detail</h5>
+                    <div class="card-body">
+                        <div class="text-center"><#Client_Name#></div>
+                        <div class="table-responsive" style="height: 400px">
+                            <table class="table">
+                                <thead class="table-primary" style="position: sticky; top: 0">
+                                    <th><#traffic_analysis_appname#></th>
+                                    <th><#option_upload#></th>
+                                    <th><#option_download#></th>
+                                    <th><#Total#></th>
+                                </thead>
+                                <tbody id="client_detail_apps_table"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- APP TRAFFIC -->
+            <div class="col-12 mb-3">
+                <div class="card pt-2 h-100">
+                    <h5 class="card-header d-flex align-items-center justify-content-between">Apps</h5>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="d-flex align-items-center col-12 col-xl-3">
+                                <div class="ms-1 me-3 content-data-title"><#Traffic_Analyzer_usedpercent#></div>
+                                <div class="fs-5 content-data-value" id="app_traffic_percentage">- %</div>
+                            </div>
+                            <div class="d-flex align-items-center col-12 col-xl-3">
+                                <div class="ms-1 me-3 content-data-title"><#Traffic_Analyzer_current#></div>
+                                <div class="fs-5 content-data-value" id="app_traffic_current">-</div>
+                            </div>
+                            <div class="d-flex align-items-center col-12 col-xl-3">
+                                <div class="ms-1 me-3 content-data-title"><#Traffic_Analyzer_daily#></div>
+                                <div class="fs-5 content-data-value" id="app_traffic_total">-</div>
+                            </div>
+                            <div class="d-flex align-items-center col-12 col-xl-3">
+                                <div class="ms-1 me-3 content-data-title">
+                                    <select class="form-select w-auto" id="app_list_option"></select>
+                                </div>
+                            </div>
+                            <div class="mt-2" style="height: 300px">
+                                <canvas id="app_line_chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Apps DETAIL -->
+            <div class="col-12 mb-3">
+                <div class="card pt-2 h-100">
+                    <h5 class="card-header d-flex align-items-center justify-content-between">Apps Detail</h5>
+                    <div class="card-body">
+                        <div class="text-center"><#traffic_analysis_appname#></div>
+                        <div class="table-responsive" style="height: 400px">
+                            <table class="table">
+                                <thead class="table-primary" style="position: sticky; top: 0">
+                                    <th><#Client_Name#></th>
+                                    <th><#option_upload#></th>
+                                    <th><#option_download#></th>
+                                    <th><#Total#></th>
+                                </thead>
+                                <tbody id="app_detail_clients_table"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script src="js/chart.min.js"></script>
+    </body>
+</html>

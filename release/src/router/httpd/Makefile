@@ -110,7 +110,17 @@ endif
 CFLAGS += -D _FILE_OFFSET_BITS=64
 
 ifneq ($(findstring CONFIG_BCM_KF_NETFILTER=, $(shell cat $(LINUXDIR)/.config)),)
+ifeq ($(or $(RTCONFIG_HND_ROUTER_AX_6756),$(RTCONFIG_HND_ROUTER_BE_4916)),y)
+else
 export CFLAGS += -DBCM_KF_NETFILTER
+endif
+endif
+
+ifeq ($(HND_ROUTER_BE_4916), y)
+CFLAGS+= -fcommon
+ifeq ($(ASUSWRT_BRCM_SDK_VERSION),WIFI7_SDK_20230426)
+CFLAGS += -DWIFI7_SDK_20230426
+endif
 endif
 
 OBJS = httpd.o cgi.o ej.o 
@@ -129,7 +139,7 @@ OBJS += web-alpine.o
 else ifeq ($(CONFIG_LANTIQ),y)
 OBJS += $(if $(wildcard sysdeps/web-lantiq.c),web-lantiq.o,prebuild/web-lantiq.o)
 else
-ifeq ($(or $(RTCONFIG_HND_ROUTER_AX_675X),$(RTCONFIG_HND_ROUTER_AX_6756),$(RTCONFIG_HND_ROUTER_AX_6710),$(RTCONFIG_BCM_502L07P2)),y)
+ifeq ($(or $(RTCONFIG_HND_ROUTER_AX_675X),$(RTCONFIG_HND_ROUTER_AX_6756),$(RTCONFIG_HND_ROUTER_BE_4916),$(RTCONFIG_HND_ROUTER_AX_6710),$(RTCONFIG_BCM_502L07P2)),y)
 OBJS += $(if $(wildcard sysdeps/web-broadcom_private.c),web-broadcom_private.o,prebuild/web-broadcom_private.o)
 endif
 OBJS += $(if $(wildcard sysdeps/web-broadcom.c),web-broadcom.o,prebuild/web-broadcom.o)
@@ -184,7 +194,7 @@ ifeq ($(HND_ROUTER),y)
 LIBS += -L$(TOP_PLATFORM)/wlcsm -lwlcsm
 endif
 
-ifeq ($(or $(RTCONFIG_HND_ROUTER_AX_6756),$(RTCONFIG_BCM_502L07P2)),y)
+ifeq ($(or $(RTCONFIG_HND_ROUTER_AX_675X),$(RTCONFIG_BCM_502L07P2),$(RTCONFIG_HND_ROUTER_AX_6756),$(RTCONFIG_HND_ROUTER_BE_4916)),y)
 LIBS += -L$(TOP_PLATFORM)/bcm_flashutil -lbcm_flashutil -L$(TOP_PLATFORM)/gen_util -lgen_util -L$(TOP_PLATFORM)/sys_util -lsys_util -L$(TOP_PLATFORM)/bcm_util -lbcm_util -L$(TOP_PLATFORM)/bcm_boardctl -lbcm_boardctl
 endif
 
@@ -206,7 +216,7 @@ CFLAGS += -I$(SRCBASE)/wl/sys
 CFLAGS += -I$(SRCBASE)/../../43684/src/wl/sys
 endif
 LIBS += -lgcc_s
-ifeq ($(or $(RTCONFIG_HND_ROUTER_AX_6756),$(RTCONFIG_BCM_502L07P2)),y)
+ifeq ($(or $(RTCONFIG_HND_ROUTER_AX_675X),$(RTCONFIG_BCM_502L07P2),$(RTCONFIG_HND_ROUTER_AX_6756),$(RTCONFIG_HND_ROUTER_BE_4916)),y)
 CFLAGS += -I$(TOP_PLATFORM)/bcm_flashutil -I$(HND_SRC)/userspace/public/include -I$(HND_SRC)/userspace/public/include/linux 
 endif
 ifeq ($(RTCONFIG_QTN),y)
@@ -368,7 +378,7 @@ httpd: $(OBJS)
 install: all
 	@echo " [httpd] Installing to $(INSTALLDIR)"
 	@install -D httpd $(INSTALLDIR)/usr/sbin/httpd
-	@$(STRIP) $(INSTALLDIR)/usr/sbin/httpd
+	$(if $(RTCONFIG_DEBUG),,@$(STRIP) $(INSTALLDIR)/usr/sbin/httpd)
 	@cd $(INSTALLDIR)/usr/sbin/; ln -sf httpd httpds
 	@chmod 0500 $(INSTALLDIR)/usr/sbin/httpd
 	#@install -m 0755 test_apps $(INSTALLDIR)/usr/sbin
@@ -398,4 +408,3 @@ endif
 	@$(CC) $(CFLAGS) -M $< > $@
 
 -include $(OBJS:%.o=.%.depend)
-

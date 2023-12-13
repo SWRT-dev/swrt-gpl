@@ -101,6 +101,38 @@
 	background-repeat: no-repeat;
 	background-image: url("data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAF92lUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNi4wLWMwMDYgNzkuMTY0NjQ4LCAyMDIxLzAxLzEyLTE1OjUyOjI5ICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdEV2dD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlRXZlbnQjIiB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iIHhtbG5zOnBob3Rvc2hvcD0iaHR0cDovL25zLmFkb2JlLmNvbS9waG90b3Nob3AvMS4wLyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgMjIuMiAoTWFjaW50b3NoKSIgeG1wOkNyZWF0ZURhdGU9IjIwMjEtMDgtMDRUMTU6MTQ6NDArMDg6MDAiIHhtcDpNZXRhZGF0YURhdGU9IjIwMjEtMDgtMDRUMTU6MTQ6NDArMDg6MDAiIHhtcDpNb2RpZnlEYXRlPSIyMDIxLTA4LTA0VDE1OjE0OjQwKzA4OjAwIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOmYwOTZmYjFhLTY3ZDktNDkyZS1hNDk5LTdiZjUwMGU0NWNlMCIgeG1wTU06RG9jdW1lbnRJRD0iYWRvYmU6ZG9jaWQ6cGhvdG9zaG9wOmYzNDJlYWZiLTA3YmItMWI0NS05ZWI4LTY3ODExYjcxODg3MSIgeG1wTU06T3JpZ2luYWxEb2N1bWVudElEPSJ4bXAuZGlkOmEwODg4MWYwLTEwYWQtNGI4OC04MTFmLWIyZWQ3ZWVkZjliMCIgZGM6Zm9ybWF0PSJpbWFnZS9wbmciIHBob3Rvc2hvcDpDb2xvck1vZGU9IjMiIHBob3Rvc2hvcDpJQ0NQcm9maWxlPSJzUkdCIElFQzYxOTY2LTIuMSI+IDx4bXBNTTpIaXN0b3J5PiA8cmRmOlNlcT4gPHJkZjpsaSBzdEV2dDphY3Rpb249ImNyZWF0ZWQiIHN0RXZ0Omluc3RhbmNlSUQ9InhtcC5paWQ6YTA4ODgxZjAtMTBhZC00Yjg4LTgxMWYtYjJlZDdlZWRmOWIwIiBzdEV2dDp3aGVuPSIyMDIxLTA4LTA0VDE1OjE0OjQwKzA4OjAwIiBzdEV2dDpzb2Z0d2FyZUFnZW50PSJBZG9iZSBQaG90b3Nob3AgMjIuMiAoTWFjaW50b3NoKSIvPiA8cmRmOmxpIHN0RXZ0OmFjdGlvbj0ic2F2ZWQiIHN0RXZ0Omluc3RhbmNlSUQ9InhtcC5paWQ6ZjA5NmZiMWEtNjdkOS00OTJlLWE0OTktN2JmNTAwZTQ1Y2UwIiBzdEV2dDp3aGVuPSIyMDIxLTA4LTA0VDE1OjE0OjQwKzA4OjAwIiBzdEV2dDpzb2Z0d2FyZUFnZW50PSJBZG9iZSBQaG90b3Nob3AgMjIuMiAoTWFjaW50b3NoKSIgc3RFdnQ6Y2hhbmdlZD0iLyIvPiA8L3JkZjpTZXE+IDwveG1wTU06SGlzdG9yeT4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz5gqlrZAAABEklEQVQ4jYWRsU4CQRRF7yCJ2hAKQ2Vpb0UDVnRE/4ZCWwsTwgf4CTRbQkGDf7MJLYSwwWKPBYNel2W41e688+7ceS/ojIAbSfeSSkl5CGF/jq02DoAF8M2f9sAM6Kcam8AnlzUBGnUG3rwCRkAPeALegNzq47rYrh0wqDAtYGlM14sLu3mXMGlHBiD7nbYNbBTTpEzeY217PHiwWD17Uq0JMDS+09Bhz0c1JCmE8CXpRVIh6VbS3Ex8A6WAaw57BnitGe6/JMBH/F87OIuHOdBKmBTAJn5PHerbu5ZAu8akMKYEHlWBJgas4rSHwHOMvbF6pqqAK2BMWiWQAc0TAzPqRmhrjWtgehL7koAOcJdifgCrvyzQ8BT7EAAAAABJRU5ErkJggg==");
 }
+
+.tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip .tooltiptext {
+  display: none;
+  width: 60px;
+  background-color: black;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px;
+  position: absolute;
+  z-index: 1;
+  bottom: 150%;
+  left: 50%;
+  margin-left: -40px;
+}
+
+.tooltip .tooltiptext::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: black transparent transparent transparent;
+}
+
 </style>
 <script type="text/javascript" src="/md5.js"></script>
 <script type="text/javascript" src="/state.js"></script>
@@ -109,8 +141,8 @@
 <script type="text/javascript" src="/help.js"></script>
 <script type="text/javascript" src="/validator.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/jquery.js"></script>
-<script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/httpApi.js"></script>
+<script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script language="JavaScript" type="text/javascript" src="/form.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/asus_eula.js"></script>
@@ -120,7 +152,7 @@ if(usb_support) addNewScript("/disk_functions.js");
 var userIconBase64 = "NoIcon";
 var userIconBase64_ori = "NoIcon";
 var userUploadFlag = false;
-var verderIcon = "";
+var vendorIcon = "";
 var userIconHideFlag = false;
 var custom_usericon_del = "";
 var firstTimeOpenBlock = false;
@@ -359,32 +391,26 @@ function initial(){
 
 	showMapWANStatus(sw_mode);
 
-	if(sw_mode != "1"){
+	if(
+		!isSwMode("rt") ||
+		isSupport("wisp") && isSwMode("rt") && wlc_band != ""
+	){
 		document.getElementById("wanIP_div").style.display = "none";
 		document.getElementById("ddnsHostName_div").style.display = "none";
 		document.getElementById("NM_connect_title").style.fontSize = "14px";
-		document.getElementById("NM_connect_status").style.fontSize = "20px";
-		if(sw_mode == 2 || sw_mode == 4){
+
+		if(sw_mode == 2 || sw_mode == 4 || (isSupport("wisp") && isSwMode("rt") && wlc_band != "")){
 			document.getElementById('wlc_band_div').style.display = "";
 			document.getElementById('dataRate_div').style.display = "";
 			if(Rawifi_support || Qcawifi_support)
 				document.getElementById('rssi_div').style.display = "none";
 			else
 				document.getElementById('rssi_div').style.display = "";
-				
-			if(wlc_band == 0){
-				document.getElementById('wlc_band_status').innerHTML = "2.4 GHz"; 
-			}
-			else{
-				if(band6g_support && wlc_band == '2'){
-					document.getElementById('wlc_band_status').innerHTML = "6 GHz";
-				}
-				else{
-					document.getElementById('wlc_band_status').innerHTML = "5 GHz";
-				}				
-			}
+
+			document.getElementById('wlc_band_status').innerHTML = wl_nband_title[wlc_band]; 
 		}
-		document.getElementById('NM_connect_title').innerHTML = "<#parent_AP_status#> :";
+
+		document.getElementById('NM_connect_title').innerHTML = `<#parent_AP_status#> :`;
 	}
 	else{
 		document.getElementById("index_status").innerHTML = '<span style="word-break:break-all;">' + wanlink_ipaddr + '</span>'
@@ -483,6 +509,12 @@ function initial(){
 	var MULTIFILTER_BLOCK_ALL = httpApi.nvramGet(["MULTIFILTER_BLOCK_ALL"]).MULTIFILTER_BLOCK_ALL;
 	if(MULTIFILTER_BLOCK_ALL == "1")
 		$(".block_all_icon").css("display", "flex");
+
+	if(cookie.get("show_phone_as_modem_hints") == "1"){
+		$("#phone_as_modem_instructions").load("/phone_as_modem_instructions.html", function(){
+			$("#phone_as_modem_div").css("display", "flex");
+		});
+	}
 }
 
 function check_eula(){
@@ -521,18 +553,22 @@ function show_ddns_status(){
 	var ddnsName = decodeURIComponent('<% nvram_char_to_ascii("", "ddns_hostname_x"); %>');
 
 	document.getElementById("ddns_fail_hint").className = "notificationoff";
-	if( ddns_enable == '0')
+	if( ddns_enable == '0'){
         document.getElementById("ddnsHostName").innerHTML = '<a style="color:#FFF;text-decoration:underline;" href="/Advanced_ASUSDDNS_Content.asp?af=ddns_enable_x"><#btn_go#></a>';
-    else if(ddnsName == '')
+        $('#copyDdns').hide();
+    }else if(ddnsName == '')
         document.getElementById("ddnsHostName").innerHTML = '<a style="color:#FFF;text-decoration:underline;" href="/Advanced_ASUSDDNS_Content.asp?af=DDNSName"><#sign_up#></a>';
     else if(ddnsName == isMD5DDNSName())
         document.getElementById("ddnsHostName").innerHTML = '<a style="color:#FFF;text-decoration:underline;" href="/Advanced_ASUSDDNS_Content.asp?af=DDNSName"><#sign_up#></a>';
     else{
 		if(ddns_server_x == "WWW.DNSOMATIC.COM"){
 			document.getElementById("ddnsHostName").innerHTML = '<a style="color:#FFF;text-decoration:underline;" href="https://dnsomatic.com/" target="_blank"><#btn_go#></a>';
+            $('#copyDdns').hide();
 		}
-		else
-			document.getElementById("ddnsHostName").innerHTML = '<span>'+ ddnsName +'</span>';
+		else{
+            document.getElementById("ddnsHostName").innerHTML = '<span>'+ ddnsName +'</span>';
+            $('#copyDdns').show();
+		}
 
 		if(ddns_enable == '1'){
 			if((link_status != undefined || link_auxstatus != undefined) && !((link_status == "2" && link_auxstatus == "0") || (link_status == "2" && link_auxstatus == "2")) ) //link down
@@ -614,6 +650,12 @@ function show_middle_status(auth_mode, wl_wep_x){
 		case "open":
 				security_mode = "Open System";
 				break;
+		case "openowe":
+				security_mode = "Enhanced Open Transition";
+				break;
+		case "owe":
+				security_mode = "Enhanced Open";
+				break;				
 		case "shared":
 				security_mode = "Shared Key";
 				break;
@@ -639,18 +681,28 @@ function show_middle_status(auth_mode, wl_wep_x){
 		case "wpa2":
 				security_mode = "WPA2-Enterprise";
 				break;
+		case "wpa3":
+				security_mode = "WPA3-Enterprise";
+				break;
+		case "suite-b":
+				security_mode = "WPA3-Enterprise 192-bit";
+				document.getElementById("wl_securitylevel_span").style.fontSize = "16px";
+				break;			
 		case "wpawpa2":
 				security_mode = "WPA-Auto-Enterprise";
 				document.getElementById("wl_securitylevel_span").style.fontSize = "16px";
 				break;
+		case "wpa2wpa3":
+				security_mode = "WPA2/WPA3-Enterprise";
+				document.getElementById("wl_securitylevel_span").style.fontSize = "16px";
+				break;		
 		case "radius":
 				security_mode = "Radius with 802.1x";
 				document.getElementById("wl_securitylevel_span").style.fontSize = "16px";
 				break;
 		case "unknown":
 				security_mode = "<#CTL_Disconnect#>";
-				break;
-				
+				break;				
 		default:
 				security_mode = "Unknown Auth";	
 	}
@@ -1146,14 +1198,7 @@ function validForm(){
 	showtext(document.getElementById("alert_msg1"), "");
 
 	document.getElementById('client_name').value = document.getElementById('client_name').value.trim();
-	if(document.getElementById('client_name').value.length == 0){
-		alert("<#File_Pop_content_alert_desc1#>");
-		document.getElementById('client_name').focus();
-		document.getElementById('client_name').select();
-		document.getElementById('client_name').value = "";
-		return false;
-	}
-	else if(document.getElementById('client_name').value.indexOf(">") != -1 || document.getElementById('client_name').value.indexOf("<") != -1){
+	if(document.getElementById('client_name').value.indexOf(">") != -1 || document.getElementById('client_name').value.indexOf("<") != -1){
 		alert("<#JS_validstr2#> '<', '>'");
 		document.getElementById('client_name').focus();
 		document.getElementById('client_name').select();
@@ -1190,11 +1235,13 @@ function edit_confirm(){
 		var originalCustomListArray = new Array();
 		var onEditClient = new Array();
 		var clientTypeNum = "";
-		if(document.getElementById('client_image').className.search("venderIcon_no_hover") != -1) {
+		if($('#client_image.vendorIcon_no_hover').length > 0) {
 			clientTypeNum = "0";
 		}
 		else {
-			clientTypeNum = document.getElementById('client_image').className.replace("clientIcon_no_hover type", "");
+            if($('#client_image.clientIcon_no_hover i').length > 0){
+			    clientTypeNum = $('#client_image.clientIcon_no_hover i').attr('class').replace("type", "");
+            }
 		}
 		var clientMac = document.getElementById('macaddr_field').value.toUpperCase();
 		originalCustomListArray = custom_name.split('<');
@@ -1447,47 +1494,40 @@ function show_custom_image() {
 	}
 }
 function select_custom_icon($obj){
-	var type = $obj.attr("class")
-	var icon_rul = $obj.css("background-image").replace('url(','').replace(')','').replace(/\"/gi, "");
-	$("#client_image").css("background-image","url(" + icon_rul + ")");
-	$("#client_image").find(".flash").remove();
-	$("#client_image").removeClass().addClass("clientIcon_no_hover").addClass(type).css("background-size", "");
-	$("#client_image").show();
-	$("#canvasUserIcon").hide();
-	userIconBase64 = icon_rul;
+	var type = $obj.find('i').attr("class");
+	var icon_url = $obj.find('i').css("mask").replace('url(','').replace(')','').replace(/\"/gi, "");
+    $("#client_image").empty();
+    $("#client_image").append($('<i>').addClass(type).attr('style','--svg:url(' + icon_url + ')'));
+	$("#client_image").removeClass().addClass("clientIcon_no_hover");
+	userIconBase64 = icon_url;
 	userUploadFlag = false;
 }
-function select_image(type){
-	var sequence = type.substring(4,type.length);
-	$("#client_image").find(".flash").remove();
-	$("#client_image").css("background-image","");
-	document.getElementById("client_image").style.display = "none";
-	document.getElementById("canvasUserIcon").style.display = "none";
-	document.getElementById('client_image').style.backgroundSize = "";
-	document.getElementById('client_image').className = "clientIcon_no_hover " + type;
-	if(verderIcon != "" && type == "type0" && !downsize_4m_support) {
-		var venderIconClassName = getVenderIconClassName(verderIcon.toLowerCase());
-		if(venderIconClassName != "") {
-			document.getElementById('client_image').className = "venderIcon_no_hover " + venderIconClassName;
-			document.getElementById('client_image').style.backgroundSize = "180%";
+function select_image(clientObj, useDefaultType=false){
+    let type = (useDefaultType) ? "type" + clientObj.defaultType : "type" + clientObj.type;
+	$("#client_image").empty();
+    $("#client_image").append($('<i>').addClass(type));
+    $("#client_image").removeClass().addClass("clientIcon_no_hover");
+	if(vendorIcon != "" && type == "type0" && !downsize_4m_support) {
+		var vendorIconClassName = getVendorIconClassName(vendorIcon.toLowerCase());
+		if(vendorIconClassName != "") {
+            $("#client_image").empty();
+            $("#client_image").append($('<i>').addClass("vendor-icon").addClass(vendorIconClassName));
+            $("#client_image").removeClass().addClass("vendorIcon_no_hover");
 		}
 	}
 
 	var userImageFlag = false;
 	if(!firstTimeOpenBlock) {
 		if(usericon_support) {
-			var clientMac = document.getElementById('macaddr_field').value.replace(/\:/g, "");
-			userIconBase64 = getUploadIcon(clientMac);
+			userIconBase64 = getUploadIcon(clientObj.mac.replace(/\:/g, ""));
 			userIconBase64_ori = userIconBase64;
 			if(userIconBase64 != "NoIcon") {
-				var img = document.createElement("img");
-				img.src = userIconBase64;
-				var canvas = document.getElementById("canvasUserIcon");
-				var ctx = canvas.getContext("2d");
-				ctx.clearRect(0,0,85,85);
-				document.getElementById("client_image").style.display = "none";
-				document.getElementById("canvasUserIcon").style.display = "";
-				ctx.drawImage(img, 0, 0, 85, 85);
+                $("#client_image").empty();
+                if(clientObj.isUserUplaodImg){
+                    $('#client_image').append($('<img>').addClass('clientIcon_no_hover').attr('src',userIconBase64));
+                }else{
+                    $('#client_image').append($('<i>').addClass(type).attr('style','--svg:url('+userIconBase64+');'));
+                }
 				userImageFlag = true;
 			}
 		}
@@ -1495,9 +1535,8 @@ function select_image(type){
 
 	if(!userImageFlag) {
 		userIconBase64 = "NoIcon";
-		document.getElementById("client_image").style.display = "";
 		if(type == "type36")
-			$("#client_image").append($("<div>").addClass("flash"));
+			$("#client_image").find("i").addClass("flash");
 	}
 }
 
@@ -1512,7 +1551,7 @@ function hideEditBlock(){
 function oui_query(mac){
 	var queryStr = mac.replace(/\:/g, "").splice(6,6,"");
 
-	$.getJSON("/ajax/ouiDB.json", function(data){
+	$.getJSON("https://nw-dlcdnet.asus.com/plugin/js/ouiDB.json", function(data){
 		if(data != "" && data[queryStr] != undefined){
 			if(document.getElementById("edit_client_block").style.display == "none") return true;
 			var vendor_name = data[queryStr].trim();
@@ -1596,10 +1635,10 @@ function popupEditBlock(clientObj){
 
 		if(sw_mode != 4){
 			var radioIcon_css = "radioIcon";
-			if(clientObj.isGN != "" && clientObj.isGN != undefined)
+			if((clientObj.isGN != "" && clientObj.isGN != undefined) || (isSupport("mtlancfg") && clientObj.sdn_idx > 0))
 				radioIcon_css += " GN";
 			clientIconHtml += '<div class="' + radioIcon_css + ' radio_' + rssi_t +'" title="' + connectModeTip + '"></div>';
-			if(clientObj.isWL != 0) {
+			if(clientObj.isWL != 0 || (isSupport("mtlancfg") && clientObj.sdn_idx > 0)){
 				var bandClass = "band_txt";
 				if(navigator.userAgent.toUpperCase().match(/CHROME\/([\d.]+)/)){
 					bandClass = "band_txt_chrome";
@@ -1615,6 +1654,7 @@ function popupEditBlock(clientObj){
 		document.getElementById('client_printer').style.display = "none";
 		document.getElementById('client_iTunes').style.display = "none";
 		document.getElementById('client_opMode').style.display = "none";
+		document.getElementById('client_sdnIdx').style.display = "none";
 		if(sw_mode == "1") {
 			document.getElementById('client_ipMethod').style.display = "";
 			document.getElementById('client_ipMethod').innerHTML = clientObj.ipMethod;
@@ -1632,6 +1672,13 @@ function popupEditBlock(clientObj){
 		if(clientObj.isITunes) {
 			document.getElementById('client_iTunes').style.display = "";
 			document.getElementById('client_iTunes').innerHTML = "iTunes";
+		}
+		if(clientObj.sdn_idx > 0) {
+			document.getElementById('client_sdnIdx').style.display = "";
+			document.getElementById('client_sdnIdx').innerHTML = "SDN " + sdn_rl_for_clientlist[clientObj.sdn_idx].apg_rl.ssid;
+            $('#tr_adv_setting').hide();
+		}else{
+            $('#tr_adv_setting').show();
 		}
 
 		if(clientObj.opMode != 0) {
@@ -1688,7 +1735,7 @@ function popupEditBlock(clientObj){
 						function(){
 							if(dhcp_staticlist_orig.search(mac) == -1) {
 								if(dhcp_staticlist_num == 64) {
-									if(confirm("The max limit is 64 rule. Please check your client list on DHCP server.")) { /*untranslated*/
+									if(confirm(stringSafeGet("<#Clientlist_IPMAC_Binding_max#>"))) {
 										location.href = "Advanced_DHCP_Content.asp" ;
 									}
 									else {
@@ -1712,7 +1759,7 @@ function popupEditBlock(clientObj){
 						function(){
 							if(MULTIFILTER_MAC_orig.search(mac) == -1) {
 								if(MULTIFILTER_num == 16) {
-									if(confirm("The max limit is 16 clients. Please check your client list on time scheduling.")) { /*untranslated*/
+									if(confirm(stringSafeGet("<#Clientlist_block_internet_max#>"))) {
 										location.href = "ParentalControl.asp" ;
 									}
 									else {
@@ -1736,7 +1783,7 @@ function popupEditBlock(clientObj){
 						function(){
 							if(MULTIFILTER_MAC_orig.search(mac) == -1) {
 								if(MULTIFILTER_num == 16) {
-									if(confirm("The max limit is 16 clients. Please check your client list on time scheduling.")) { /*untranslated*/
+									if(confirm(stringSafeGet("<#Clientlist_block_internet_max#>"))) {
 										location.href = "ParentalControl.asp" ;
 									}
 									else {
@@ -1789,9 +1836,9 @@ function popupEditBlock(clientObj){
 				break;
 		}
 
-		verderIcon = clientObj.vendor;
+		vendorIcon = clientObj.vendor;
 
-		select_image("type" + parseInt(clientObj.type));
+		select_image(clientObj);
 
 		//setting user upload icon attribute start.
 		//1.check rc_support
@@ -1811,20 +1858,22 @@ function popupEditBlock(clientObj){
 						if(file.type.search("image") != -1) {
 							var reader = new FileReader();
 							reader.onload = function (event) {
-								var img = document.createElement("img");
-								img.src = event.target.result;
-								var mimeType = img.src.split(",")[0].split(":")[1].split(";")[0];
-								var canvas = document.getElementById("canvasUserIcon");
-								var ctx = canvas.getContext("2d");
-								ctx.clearRect(0,0,85,85);
-								$("#client_image").find(".flash").remove();
-								document.getElementById("client_image").style.display = "none";
-								document.getElementById("canvasUserIcon").style.display = "";
-								setTimeout(function() {
-									ctx.drawImage(img, 0, 0, 85, 85);
-									var dataURL = canvas.toDataURL(mimeType);
-									userIconBase64 = dataURL;
-								}, 100); //for firefox FPS(Frames per Second) issue need delay
+                                var img = document.createElement("img");
+                                img.src = event.target.result;
+                                img.className="clientIcon_no_hover";
+                                var mimeType = img.src.split(",")[0].split(":")[1].split(";")[0];
+                                let canvas = document.createElement('canvas');
+                                canvas.width=85;
+                                canvas.height=85;
+                                var ctx = canvas.getContext("2d");
+                                ctx.clearRect(0,0,85,85);
+                                $("#client_image").empty();
+                                $("#client_image").append(img);
+                                setTimeout(function() {
+                                    ctx.drawImage(img, 0, 0, 85, 85);
+                                    var dataURL = canvas.toDataURL(mimeType);
+                                    userIconBase64 = dataURL;
+                                }, 100); //for firefox FPS(Frames per Second) issue need delay
 							};
 							reader.readAsDataURL(file);
 							userUploadFlag = true;
@@ -1878,10 +1927,10 @@ function popupEditBlock(clientObj){
 }
 
 function check_usb3(){
-	if(based_modelid == "DSL-AC68U" || based_modelid == "RT-AC3200" || based_modelid == "RT-AC87U" || based_modelid == "RT-AC68U" || based_modelid == "RT-AC68U_V4" || based_modelid == "RT-AC68A" || based_modelid == "RT-AC56S" || based_modelid == "RT-AC56U" || based_modelid == "RT-AC55U" || based_modelid == "RT-AC55UHP" || based_modelid == "RT-N18U" || based_modelid == "RT-AC88U" || based_modelid == "RT-AC86U" || based_modelid == "GT-AC2900" || based_modelid == "RT-AC3100" || based_modelid == "RT-AC5300" || based_modelid == "RP-AC68U" || based_modelid == "RT-AC58U" || based_modelid == "RT-AC82U" || based_modelid == "MAP-AC3000" || based_modelid == "RT-AC85P" || based_modelid == "RT-AC85U" || based_modelid == "RT-AC65U" || based_modelid == "4G-AC68U" || based_modelid == "BLUECAVE" || based_modelid == "RT-AX92U" || based_modelid == "RT-ACRH26" || based_modelid == "RT-AX95Q" || based_modelid == "XT8PRO" || based_modelid == "BM68" || based_modelid == "XT8_V2" || based_modelid == "RT-AXE95Q" || based_modelid == "ET8PRO" || based_modelid == "ET8_V2" || based_modelid == "RT-AX56_XD4" || based_modelid == "XD4PRO" || based_modelid == "CT-AX56_XD4" || based_modelid == "RT-AX58U" || based_modelid == "RT-AX58U_V2" || based_modelid == "TUF-AX3000" || based_modelid == "TUF-AX3000_V2" || based_modelid == "TUF-AX3000_V2" || based_modelid == "TUF-AX5400" || based_modelid == "DSL-AX82U" || based_modelid == "RT-AX82U" || based_modelid == "RT-AX82U_V2"  || based_modelid == "RT-AX56U" || based_modelid == "RT-ACRH18" || based_modelid == "GS-AX3000" || based_modelid == "GS-AX5400" || based_modelid == "PL-AX56_XP4" || productid == "RT-AX86S" || based_modelid == "RT-AX68U" || based_modelid == "GT-AX6000" || based_modelid == "RT-AXE7800" || based_modelid == "GT10" || based_modelid == "GT-AXE16000" || based_modelid == "RT-AX86U_PRO" || based_modelid == "TUF-AX4200" || based_modelid == "TUF-AX6000" || based_modelid == "RT-AX59U" || based_modelid == "XC5" || based_modelid == "RM-AC2100" || based_modelid == "R6800" || based_modelid == "R7000P" || based_modelid == "SBRAC3200P"){
+	if(based_modelid == "DSL-AC68U" || based_modelid == "RT-AC3200" || based_modelid == "RT-AC87U" || based_modelid == "RT-AC68U" || based_modelid == "RT-AC68U_V4" || based_modelid == "RT-AC68A" || based_modelid == "RT-AC56S" || based_modelid == "RT-AC56U" || based_modelid == "RT-AC55U" || based_modelid == "RT-AC55UHP" || based_modelid == "RT-N18U" || based_modelid == "RT-AC88U" || based_modelid == "RT-AC86U" || based_modelid == "GT-AC2900" || based_modelid == "RT-AC3100" || based_modelid == "RT-AC5300" || based_modelid == "RP-AC68U" || based_modelid == "RT-AC58U" || based_modelid == "RT-AC82U" || based_modelid == "MAP-AC3000" || based_modelid == "RT-AC85P" || based_modelid == "RT-AC85U" || based_modelid == "RT-AC65U" || based_modelid == "4G-AC68U" || based_modelid == "BLUECAVE" || based_modelid == "RT-AX92U" || based_modelid == "RT-ACRH26" || based_modelid == "RT-AX95Q" || based_modelid == "XT8PRO" || based_modelid == "BT12" || based_modelid == "BQ16" || based_modelid == "BM68" || based_modelid == "XT8_V2" || based_modelid == "RT-AXE95Q" || based_modelid == "ET8PRO" || based_modelid == "ET8_V2" || based_modelid == "RT-AX56_XD4" || based_modelid == "XD4PRO" || based_modelid == "CT-AX56_XD4" || based_modelid == "RT-AX58U" || based_modelid == "RT-AX58U_V2" || based_modelid == "TUF-AX3000" || based_modelid == "TUF-AX3000_V2" || based_modelid == "TUF-AX3000_V2" || based_modelid == "TUF-AX5400" || based_modelid == "TUF-AX5400_V2" || based_modelid == "DSL-AX82U" || based_modelid == "RT-AX82U" || based_modelid == "RT-AX82U_V2"  || based_modelid == "RT-AX56U" || based_modelid == "RT-ACRH18" || based_modelid == "GS-AX3000" || based_modelid == "GS-AX5400" || based_modelid == "PL-AX56_XP4" || productid == "RT-AX86S" || based_modelid == "RT-AX68U" || based_modelid == "GT-AX6000" || based_modelid == "RT-AXE7800" || based_modelid == "GT10" || based_modelid == "RT-AX9000" || based_modelid == "GT-AXE16000" || based_modelid == "GT-BE98" || based_modelid == "GT-BE98_PRO" || based_modelid == "RT-AX86U_PRO" || based_modelid == "TUF-AX4200" || based_modelid == "TUF-AX6000" || based_modelid == "RT-AX59U" || based_modelid == "RT-AX88U_PRO" || based_modelid == "RT-BE96U" || based_modelid == "XC5" || based_modelid == "EBG15" || based_modelid == "EBG19" || based_modelid == "PRT-AX57_GO" || based_modelid == "GT-BE96" || based_modelid == "GT-AX11000_PRO" || based_modelid == "RM-AC2100" || based_modelid == "R6800" || based_modelid == "R7000P" || based_modelid == "SBRAC3200P"){
 		document.getElementById('usb_text_1').innerHTML = "USB 3.0";
 	}
-	else if(based_modelid == "RT-AC88Q" || based_modelid == "RT-AX89U" || based_modelid == "RT-AD7200" || based_modelid == "RT-N65U" || based_modelid == "GT-AC5300" || based_modelid == "RT-AX88U" || based_modelid == "GT-AX11000" || based_modelid == "GT-AC9600" || based_modelid == "GT-AXY16000" || productid == "RT-AX86U" || based_modelid == "GT-AXE11000" || based_modelid == "GT-AX11000_PRO"){
+	else if(based_modelid == "RT-AC88Q" || based_modelid == "RT-AX89U" || based_modelid == "RT-AD7200" || based_modelid == "RT-N65U" || based_modelid == "GT-AC5300" || based_modelid == "RT-AX88U" || based_modelid == "GT-AX11000" || based_modelid == "GT-AC9600" || based_modelid == "GT-AXY16000" || productid == "RT-AX86U" || based_modelid == "GT-AXE11000"){
 		document.getElementById('usb_text_1').innerHTML = "USB 3.0";
 		document.getElementById('usb_text_2').innerHTML = "USB 3.0";
 	}
@@ -1941,7 +1990,7 @@ function addToBlockMacList(macAddr){
 
 function showClientIconList() {
 	var confirmFlag = true;
-	confirmFlag = confirm("The client icon over upload limting, please remove at least one client icon then try to upload again.");
+	confirmFlag = confirm(stringSafeGet("<#Client_Icon_overload#>"));
 	if(confirmFlag) {
 		edit_cancel();
 		$("#edit_usericon_block").fadeIn(10);
@@ -2051,13 +2100,15 @@ function previewImage($obj) {
 			fileReader.onload = function (fileReader) {
 				var img = document.createElement("img");
 				img.src = fileReader.target.result;
+                img.className="clientIcon_no_hover";
 				var mimeType = img.src.split(",")[0].split(":")[1].split(";")[0];
-				var canvas = document.getElementById("canvasUserIcon");
+                let canvas = document.createElement('canvas');
+                canvas.width=85;
+                canvas.height=85;
 				var ctx = canvas.getContext("2d");
 				ctx.clearRect(0,0,85,85);
-				$("#client_image").find(".flash").remove();
-				document.getElementById("client_image").style.display = "none";
-				document.getElementById("canvasUserIcon").style.display = "";
+				$("#client_image").empty();
+                $("#client_image").append(img);
 				setTimeout(function() {
 					ctx.drawImage(img, 0, 0, 85, 85);
 					var dataURL = canvas.toDataURL(mimeType);
@@ -2085,9 +2136,8 @@ function updateClientsCount() {
 	setTimeout("updateClientsCount();", 5000);
 }
 function setDefaultIcon() {
-	$("#client_image").css("background-image","");
 	var mac = document.getElementById("macaddr_field").value;
-	select_image("type" + parseInt(clientList[mac].defaultType));
+	select_image(clientList[mac], true);
 }
 function closeClientDetailView() {
 	edit_cancel();
@@ -2128,6 +2178,33 @@ function notice_apply(){
 	iframe.contentWindow.document.form.next_page.value = "index.asp";
 	iframe.contentWindow.document.form.submit();
 }
+
+function close_phone_as_modem_hint(){
+	$("#phone_as_modem_div").hide();
+	cookie.unset("show_phone_as_modem_hints");
+}
+
+function copyDdnsName(e) {
+	var ddnsName = decodeURIComponent('<% nvram_char_to_ascii("", "ddns_hostname_x"); %>');
+	if (window.isSecureContext && navigator.clipboard) {
+		navigator.clipboard.writeText(ddnsName);
+	} else {
+		const textArea = document.createElement("textarea");
+		textArea.value = ddnsName;
+		document.body.appendChild(textArea);
+		textArea.select();
+		try {
+			document.execCommand('copy')
+		} catch (err) {
+			console.error('Unable to copy to clipboard', err)
+		}
+		document.body.removeChild(textArea)
+	}
+    let span = $("<span>").addClass("tooltiptext").html($(e).data('title'));
+    $(e).parent().append(span);
+    span.show().fadeOut(1500, function() { $(this).remove(); });
+}
+
 </script>
 </head>
 
@@ -2159,6 +2236,15 @@ function notice_apply(){
 		</tr>
 	</table>
 <!--[if lte IE 6.5]><iframe class="hackiframe"></iframe><![endif]-->
+</div>
+<div id="phone_as_modem_div" class="phone_as_modem" style="display: none;">
+	<div style="width: 95%; margin-bottom: 20px;">
+		<div class="phone_as_modem_top">
+			<div><#Mobile_modem_desc#></div>
+			<div><img src='/images/button-close.gif' style='width:30px; cursor:pointer' onclick='close_phone_as_modem_hint();'></div>
+		</div>
+		<div id="phone_as_modem_instructions"></div>
+	</div>
 </div>
 
 <iframe name="hidden_frame" id="hidden_frame" width="0" height="0" frameborder="0" scrolling="no"></iframe>
@@ -2286,6 +2372,7 @@ function notice_apply(){
 					<span id="client_printer" class="ipMethodTag " ></span>
 					<span id="client_iTunes" class="ipMethodTag " ></span>
 					<span id="client_opMode" class="ipMethodTag "></span>
+					<span id="client_sdnIdx" class="ipMethodTag "></span>
 				</div>
 				<div id="client_interface" style="height:28px;width:28px;float:right;"></div>
 			</td>
@@ -2299,7 +2386,6 @@ function notice_apply(){
 			<td style="text-align:center;vertical-align:top;width:85px;">
 				<div id="divDropClientImage" class="client_preview_icon" title="Change client icon" onclick="show_custom_image();">
 					<div id="client_image" style="width:85px;height:85px;margin:0 auto;"></div>
-					<canvas id="canvasUserIcon" class="client_canvasUserIcon" width="85px" height="85px"></canvas>
 				</div>
 				<div id="changeClientIconControl" class="changeClientIcon">
 					<span title="Change to default client icon" class="IE8HACK" onclick="setDefaultIcon();"><#CTL_Default#></span>
@@ -2353,7 +2439,7 @@ function notice_apply(){
 					<div class="left" style="cursor:pointer;float:right;" id="radio_BlockInternet_enable"></div>
 				</div>
 				<div class="clientList_line"></div>
-				<div style="height:32px;width:100%;margin:5px 0;">
+				<div id="div_time_scheduling" style="height:32px;width:100%;margin:5px 0;">
 					<div style="width:65%;float:left;line-height:32px;">
 						<span id="time_scheduling_title" onmouseover='return overlib("<#ParentalCtrl_Desc_TS#>");' onmouseout="return nd();"><#Parental_Control#></span>
 					</div>
@@ -2361,7 +2447,7 @@ function notice_apply(){
 					<div id="internetTimeScheduling" class="internetTimeEdit" style="float:right;margin-right:10px;" title="<#Time_Scheduling#>" onclick="redirectTimeScheduling(document.getElementById('macaddr_field').value);" ></div>
 				</div>
 				<div class="clientList_line"></div>
-				<div style="height:32px;width:100%;margin:5px 0;">
+				<div id="div_ipmac_binding" style="height:32px;width:100%;margin:5px 0;">
 					<div style="width:65%;float:left;line-height:32px;">
 						<span onmouseover="return overlib('Enable this button to bind specific IP with MAC Address of this device.');" onmouseout="return nd();"><#Clientlist_IPMAC_Binding#></span><!--untranslated-->
 					</div>
@@ -2461,17 +2547,20 @@ function notice_apply(){
 						<div>
 							<span id="NM_connect_title" style="font-size:12px;font-family: Verdana, Arial, Helvetica, sans-serif;"><#statusTitle_Internet#>:</span>
 							<br>
-							<strong id="NM_connect_status" class="index_status" style="font-size:14px;"><#QIS_step2#>...</strong>
+							<strong id="NM_connect_status" class="index_status" style="font-size:15px;"><#QIS_step2#>...</strong>
 						</div>
 						<div id="wanIP_div" style="margin-top:5px;">
 							<span style="font-size:12px;font-family: Verdana, Arial, Helvetica, sans-serif;">WAN IP:</span>
 							<strong id="index_status" class="index_status" style="font-size:14px;"></strong>
 						</div>
-						<div id="ddnsHostName_div" style="margin-top:5px;word-break:break-all;word-wrap:break-word;width:180px;">
+						<div id="ddnsHostName_div" style="margin-top:5px;word-break:break-all;word-wrap:break-word;width:180px; display: inline-flex; align-items: center; gap: 3px; flex-direction: row; flex-wrap: wrap;">
 							<span style="font-size:12px;font-family: Verdana, Arial, Helvetica, sans-serif;">DDNS:</span>
 							<strong id="ddnsHostName" class="index_status" style="font-size:14px;"><#QIS_detectWAN_desc2#></strong>
-							<span id="ddns_fail_hint" class="notificationoff" onClick="show_ddns_fail_hint();" onMouseOut="nd();"></span>
-							<span><img id="le_icon" src="images/New_ui/networkmap/LE_badge_color.svg" style="width:25px; height:25px; display:none;"></span>
+							<div class="icon-group-center">
+                                <div id="copyDdns" class="tooltip"><a onClick="copyDdnsName(this)" data-toggle="tooltip" data-title="Copied!"><i class="icon-copy"></i></a></div>
+                                <span id="ddns_fail_hint" class="notificationoff" onClick="show_ddns_fail_hint();" onMouseOut="nd();"></span>
+                                <span><img id="le_icon" src="images/New_ui/networkmap/LE_badge_color.svg" style="width:25px; height:25px;"></span>
+							</div>
 						</div>
 						<div id="wlc_band_div" style="margin-top:5px;display:none">
 							<span style="font-size:14px;font-family: Verdana, Arial, Helvetica, sans-serif;"><#Interface#>:</span>
@@ -2519,7 +2608,7 @@ function notice_apply(){
 						</div>
 
 						<div id="wlSecurityContext">
-							<span style="font-size:14px;font-family: Verdana, Arial, Helvetica, sans-serif;"><#Security_Level#>: </span>
+							<span style="font-size:14px;font-family: Verdana, Arial, Helvetica, sans-serif;"><#Security#>: </span>
 							<br/>  
 							<strong id="wl_securitylevel_span" class="index_status"></strong>
 							<img id="iflock">
@@ -2632,4 +2721,3 @@ function notice_apply(){
 </script>
 </body>
 </html>
-

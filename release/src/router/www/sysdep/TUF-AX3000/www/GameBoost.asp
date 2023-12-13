@@ -8,10 +8,12 @@
 <meta HTTP-EQUIV="Expires" CONTENT="-1">
 <link rel="shortcut icon" href="images/favicon.png">
 <link rel="icon" href="images/favicon.png"><title><#Web_Title#> - <#Game_Boost#></title>
+<link rel="stylesheet" type="text/css" href="css/basic.css">
 <link rel="stylesheet" type="text/css" href="index_style.css">
 <link rel="stylesheet" type="text/css" href="form_style.css">
 <link rel="stylesheet" type="text/css" href="usp_style.css">
 <link rel="stylesheet" type="text/css" href="device-map/device-map.css">
+<link rel="stylesheet" type="text/css" href="css/gameBoost.css">
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" src="/help.js"></script>
@@ -22,108 +24,6 @@
 <script type="text/javascript" src="/client_function.js"></script>
 <script type="text/javascript" src="/form.js"></script>
 <script type="text/javascript" src="/validator.js"></script>
-<style>
-*{
-	box-sizing: content-box;
-}
-body{
-	margin: 0;
-	color:#FFF;
-}
-.switch{
-	position: relative;
-	width: 200px;
-	height: 70px;
-}
-
-.switch input{
-	cursor: pointer;
-	height: 100%;
-	opacity: 0;
-	position: absolute;
-	width: 100%;
-	z-index: 100;
-	left:0;
-}
-.container{
-	background-color: #444;
-	width:100%;
-	height:100%;
-}
-.container::after{
-	content: '';
-	background-color:#999;
-	width:50px;
-	height:40px;
-	position:absolute;
-	left: 0;
-	top: 0;
-	border-top-left-radius:5px;
-	border-bottom-left-radius:5px;
-}
-@-moz-document url-prefix(){ 		/*Firefox Hack*/
-	.container::after{
-		top:0;
-	}
-}
-@supports (-ms-accelerator:true) {		/*Edge Browser Hack, not work on Edge 38*/
-  	.container::after{
-		top:0;
-	}
-}
-
-.switch input:checked~.container{
-	background: rgb(255,165,35);
-}
-.switch input:checked~.container::after{
-	left: 50px;
-	border-top-right-radius:5px;
-	border-bottom-right-radius:5px;
-}
-@media all and (-ms-high-contrast:none)
-{
-    *::-ms-backdrop, .container::after { margin-top: 0px} /* IE11 */
-}
-.btn{
-	background-color: rgba(0,0,0,0.6);
-	border: 1px solid rgb(255,165,35);
-	color: #EBE8E8;
-	border-radius: 12px;
-
-
-}
-.btn:hover{
-	background-color: #D0982C;
-	color: #FFF;
-	
-}
-
-#gameList_block{
-	position: absolute;
-	width: 700px;
-	height: 600px;
-	background-color: #444f53;
-	z-index: 199;
-	padding: 12px 18px;
-	overflow-y: auto;
-	margin-top: -40px;
-}
-
-.qr_code{
-	margin: 8px auto;
-	background-image: url('images/New_ui/asus_router_android_qr.png');
-	width: 124px;
-	height: 124px;
-	background-size: 100%;
-}
-.qr_android{
-	background-image: url('images/New_ui/asus_router_android_qr.png');
-}
-.qr_android_cn{
-	background-image: url('images/New_ui/asus_router_android_qr_cn.png');
-}
-</style>
-
 <script>
 window.onresize = function() {
 	cal_panel_block("gameList_block", 0.23);
@@ -161,7 +61,7 @@ function initial(){
 		$('#android_cn_link').show();
 	}
 
-	if(wtfast_support){
+	if(wtfast_support || wtfast_v2_support){
 		$('#wtfast_1').show();
 		$('#wtfast_2').show();
 		$('#wtfast_3').show();
@@ -202,7 +102,7 @@ function setClientIP(macaddr){
 }
 
 function hideClients_Block(){
-	document.getElementById("pull_arrow").src = "/images/arrow-down.gif";
+	document.getElementById("pull_arrow").src = "/images/unfold_more.svg";
 	document.getElementById('ClientList_Block_PC').style.display='none';
 }
 
@@ -211,7 +111,7 @@ function pullLANIPList(obj){
 	var isMenuopen = element.offsetWidth > 0 || element.offsetHeight > 0;
 
 	if(isMenuopen == 0){		
-		obj.src = "/images/arrow-top.gif"
+		obj.src = "/images/unfold_less.svg"
 		element.style.display = 'block';		
 		document.getElementById('client').focus();		
 	}
@@ -236,20 +136,24 @@ function genGameList(){
 	code += '</tr>';
 	code += '<tr>';
 	code += '<td width="40%">';
-	code += '<input type="text" class="input_20_table" maxlength="17" id="client" style="margin-left:-12px;width:255px;" onKeyPress="return validator.isHWAddr(this,event)" onClick="hideClients_Block();" autocorrect="off" autocapitalize="off" placeholder="ex: <% nvram_get("lan_hwaddr"); %>">';
-	code += '<img id="pull_arrow" height="14px;" src="/images/arrow-down.gif" style="position:absolute;*margin-left:-3px;*margin-top:1px;" onclick="pullLANIPList(this);" title="<#select_MAC#>">';
-	code += '<div id="ClientList_Block_PC" class="clientlist_dropdown" style="margin-left:138px;"></div>';
-	code += '</td>';
+    code += '<div style="display: flex; justify-content: center">';
+    code += '<div class="clientlist_dropdown_main">';
+    code += '<input type="text" class="input_20_table" maxlength="17" id="client" onKeyPress="return validator.isHWAddr(this,event)" onClick="hideClients_Block();" autocorrect="off" autocapitalize="off" placeholder="ex: <% nvram_get("lan_hwaddr"); %>">';
+    code += '<img id="pull_arrow" height="14px;" src="/images/unfold_more.svg" onclick="pullLANIPList(this);" title="<#select_MAC#>">';
+    code += '<div id="ClientList_Block_PC" class="clientlist_dropdown"></div>';
+    code += '</div>';
+    code += '</div>';
+    code += '</td>';
 	code += '<td width="10%">';
 	code += '<div><input type="button" class="add_btn" onClick="addGameList(64);"></div>';
 	code += '</td>';
 	code += '</tr>';
 		
-	if(list_array.length == '0'){
+	if(list_array == ''){
 		code += '<tr><td colspan="2" style="color:#FFCC00;">No data in table.</td></tr>';
 	}
 	else{
-		for(i=1; i<list_array.length; i++){
+		for(i=0; i<list_array.length; i++){
 			code += '<tr>';
 			code += '<td>';
 			code += '<div style="display:flex;align-items: center;justify-content: center;padding-left:30px;">';
@@ -296,7 +200,13 @@ function addGameList(){
 		}
 	}
 
-	gameList = '<' + mac + gameList;
+	if(gameList === ''){
+		gameList = mac;
+	}
+	else{
+		gameList += '<' + mac ;
+	}
+
 	if(adaptiveqos_support){
 		genGameList();
 	}
@@ -321,14 +231,14 @@ function addGameList(){
 function delGameList(target){
 	var mac = target;
 	var list_array = gameList.split('<');
-	var temp = '';
-	for(i=1; i<list_array.length; i++){
+	var temp = [];
+	for(i=0; i<list_array.length; i++){
 		if(list_array[i] != mac){
-			temp += '<' + list_array[i];
+			temp.push(list_array[i]);
 		}	
 	}
 
-	gameList = temp;
+	gameList = temp.join('<');
 	if(adaptiveqos_support){
 		genGameList();
 	}
@@ -487,7 +397,22 @@ function applyRule(){
 	document.form.submit();
 }
 
+var faq_fref = "https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Faq&lang="+ui_lang+"&kw=&num=152";
+var wtfast_v2_go = "https://nw-dlcdnet.asus.com/support/forward.html?model=&type=GO&lang="+ui_lang+"&kw=&num=";
+var siteInfo = [faq_fref,
+				'Advanced_WTFast_Content.asp',
+				'QoS_EZQoS.asp',
+				outfox_site,
+				wtfast_v2_go];
+
 function redirectSite(url){
+	if(url == "wtfast"){
+		if(wtfast_v2_support)
+			url = siteInfo[4];
+		else if(wtfast_support)
+			url = siteInfo[1];
+	}
+
 	window.open(url, '_blank');
 }
 </script>
@@ -541,7 +466,7 @@ function redirectSite(url){
 				<div id="tabMenu" style="*margin-top: -160px;"></div>
 				<br>
 		<!--=====Beginning of Main Content=====-->
-				<div id="FormTitle" style="background:url('images/New_ui/mainimage_img_Game.jpg');background-repeat: no-repeat;margin-top:-15px;border-radius:3px;background-size: cover;">
+				<div id="FormTitle" class="FormTitle_gb">
 					<table style="padding-left:10px;">
 						<tr>
 							<td class="formfonttitle">
@@ -549,8 +474,7 @@ function redirectSite(url){
 									<table width="730px">
 										<tr>
 											<td align="left">
-
-												<div style="display:table-cell;background:url('/images/New_ui/game.svg');width:77px;height:77px;background-size: 100%;"></div>
+												<div class="gBIcon"></div>
 												<div class="formfonttitle" style="display:table-cell;font-size:26px;font-weight:bold;color:#EBE8E8;vertical-align:middle">Game</div>
 											</td>
 										</tr>
@@ -567,29 +491,29 @@ function redirectSite(url){
 											<!-- Gear Accelerator -->
 											<tr>
 												<td style="width:200px">
-													<div style="padding: 5px 0;font-size:20px;"><#Gear_Accelerator#></div>
+													<div class="gB_title_left"><#Gear_Accelerator#></div>
 												</td>
 												<td colspan="2">
-													<div style="padding: 5px 10px;font-size:20px;color:rgb(5,252,238)"><#Gear_Accelerator_desc#></div>
+													<div class="gB_title_right""><#Gear_Accelerator_desc#></div>
 												</td>
 											</tr>
 											<tr>
 												<td colspan="3">
-													<div style="width:100%;height:1px;background-color:rgb(228,144,30)"></div>
+													<div class="gB_SplitLine"></div>
 												</td>
 											</tr>
 											<tr>
 												<td align="center">
-													<div style="width:85px;height: 85px;background-image: url('images/New_ui/GameBoost_gamePriority.svg');background-size: 100%;"></div>													
+													<div style="width:85px;height: 85px;background-image: url('images/New_ui/GameBoost_gamePriority.svg');background-size: 100%;"></div>
 												</td>
 												<td style="width:400px;height:120px;">
-													<div style="font-size:16px;color:#949393;padding-left:10px;"><#Gear_Accelerator_desc1#></div>
+													<div class="gB_desc"><#Gear_Accelerator_desc1#></div>
 													<div onclick="showGameListField();" class="btn" style="margin: 12px 0;width:100px;height:40px;line-height: 40px;text-align: center;border-radius: 5px;font-size:18px;"><#CTL_add#></div>
 												</td>
 												<td>
 													<div class="switch" style="margin:auto;width:100px;height:40px;text-align:center;line-height:40px;font-size:18px">
 														<input id="game_priority_enable" type="checkbox" onclick="enableGamePriority();">
-														<div class="container" style="display:table;border-radius:5px;">
+														<div class="container_gb">
 															<div style="display:table-cell;width:50%;">
 																<div>ON</div>
 															</div>
@@ -604,15 +528,15 @@ function redirectSite(url){
 											<tr style="height:50px;"></tr>
 											<tr>
 												<td style="width:200px">
-													<div style="padding: 5px 0;font-size:20px;"><#GB_mobile#></div>
+													<div class="gB_title_left"><#GB_mobile#></div>
 												</td>
 												<td colspan="2">
-													<div style="padding: 5px 10px;font-size:20px;color:rgb(5,252,238)"><#GB_mobile_desc#></div>
+													<div class="gB_title_right"><#GB_mobile_desc#></div>
 												</td>
 											</tr>
 											<tr>
 												<td colspan="3">
-													<div style="width:100%;height:1px;background-color:rgb(228,144,30)"></div>
+													<div class="gB_SplitLine"></div>
 												</td>
 											</tr>
 											<tr>
@@ -621,7 +545,7 @@ function redirectSite(url){
 													<!-- <img style="padding-right:10px;;" src="/images/New_ui/GameBoost_WTFast.png" > -->
 												</td>
 												<td style="width:400px;height:120px;">
-													<div style="font-size:16px;color:#949393;padding-left:10px;"><#GB_mobile_desc1#></div>
+													<div class="gB_desc"><#GB_mobile_desc1#></div>
 												</td>
 												<td>
 													<div style="display:flex;align-items: center;">
@@ -631,7 +555,7 @@ function redirectSite(url){
 																<div style="width:124px;height:36px;background:url('images/googleplay.png') no-repeat;;background-size:100%;"></div>
 															</a>
 															<a id="android_cn_link" style="display:none" href="https://dlcdnets.asus.com/pub/ASUS/LiveUpdate/Release/Wireless/ASUSRouter_Android_Release.apk" target="_blank">
-																<div style="width:124px;height:36px;border:1px solid #BDBDBD;border-radius: 6px;text-align: center;line-height: 36px;font-size:20px;">Android</div>
+																<div class="android_font">Android</div>
 															</a>
 														</div>
 														<div style="margin: 0 12px">
@@ -650,15 +574,15 @@ function redirectSite(url){
 											<tr style="height:50px;"></tr>
 											<tr>
 												<td style="width:200px">
-													<div style="padding: 5px 0;font-size:20px;">Open NAT</div>
+													<div class="gB_title_left">Open NAT</div>
 												</td>
 												<td colspan="2">
-													<div style="padding: 5px 10px;font-size:20px;color:rgb(5,252,238)"><#GB_OpenNAT_desc#></div>
+													<div class="gB_title_right"><#GB_OpenNAT_desc#></div>
 												</td>
 											</tr>
 											<tr>
 												<td colspan="3">
-													<div style="width:100%;height:1px;background-color:rgb(228,144,30)"></div>
+													<div class="gB_SplitLine"></div>
 												</td>
 											</tr>
 											<tr>
@@ -666,7 +590,7 @@ function redirectSite(url){
 													<div style="width:85px;height: 85px;background-image: url('images/New_ui/GameBoost_openNAT.svg');background-size: 100%;"></div>
 												</td>
 												<td style="width:400px;height:120px;">
-													<div style="font-size:16px;color:#949393;padding-left:10px;"><#GB_OpenNAT_desc1#></div>
+													<div class="gB_desc"><#GB_OpenNAT_desc1#></div>
 												</td>
 												<td>
 													<div class="btn" style="margin:auto;width:100px;height:40px;text-align:center;line-height:40px;font-size:18px;cursor:pointer;border-radius:5px;" onclick="location.href='GameProfile.asp';"><#btn_go#></div>
@@ -677,32 +601,33 @@ function redirectSite(url){
 											<tr style="height:50px;"></tr>
 											<tr id='wtfast_1' style="display:none">
 												<td style="width:200px">
-													<div style="padding: 5px 0;font-size:20px;"><#Game_Boost_internet#></div>
+													<div class="gB_title_left"><#Game_Boost_internet#></div>
 												</td>
 												<td colspan="2">
-													<div style="padding: 5px 10px;font-size:20px;color:rgb(5,252,238)">WTFast GPN</div>
+													<div class="gB_title_right">WTFast GPN</div>
 												</td>
 											</tr>
 											<tr id='wtfast_2' style="display:none">
 												<td colspan="3">
-													<div style="width:100%;height:1px;background-color:rgb(228,144,30)"></div>
+													<div class="gB_SplitLine"></div>
 												</td>
 											</tr>
 											<tr id='wtfast_3' style="display:none">
 												<td align="center" style="width:85px">
-													<img style="padding-right:10px;;" src="/images/New_ui/GameBoost_WTFast.png" >
+													<img style="padding-right:10px;;" src="/images/New_ui/triLv3_wtfast.png" >
 												</td>
 												<td style="width:400px;height:120px;">
-													<div style="font-size:16px;color:#949393;padding-left:10px;"><#Game_Boost_desc#></div>
+													<div class="gB_desc" style="margin-top: 10px;"><#Game_WTFast_desc#></div>
+													<div class="gB_desc" style="margin-top: 15px; margin-bottom: 10px;">*Please be aware this is a third-party service provided by WTFast®, and WTFast® is fully responsible for warranties and liabilities of this game server acceleration service.</div><!--untranslated-->
 												</td>
 												<td>
-													<div class="btn" style="margin:auto;width:100px;height:40px;text-align:center;line-height:40px;font-size:18px;cursor:pointer;border-radius:5px;" onclick="location.href='Advanced_WTFast_Content.asp';"><#btn_go#></div>
+													<div class="btn" style="margin:auto;width:100px;height:40px;text-align:center;line-height:40px;font-size:18px;cursor:pointer;border-radius:5px;" onclick="redirectSite('wtfast');"><#btn_go#></div>
 												</td>
 											</tr>
 											<!-- Tencent -->
 											<tr id="qmacc_1" style="margin-top: 50px; display: none;">
 												<td style="width:200px">
-													<div style="padding: 5px 0;font-size:20px;"><#Game_Boost_internet#></div>
+													<div class="gB_title_left"><#Game_Boost_internet#></div>
 												</td>
 												<td colspan="2">
 													<div style="padding: 5px 10px;font-size:20px;color:rgb(5,252,238)">腾讯网游加速器</div>
@@ -710,7 +635,7 @@ function redirectSite(url){
 											</tr>
 											<tr id="qmacc_2" style="display: none;">
 												<td colspan="3">
-													<div style="width:100%;height:1px;background-color:rgb(228,144,30)"></div>
+													<div class="gB_SplitLine"></div>
 												</td>
 											</tr>
 											<tr id="qmacc_3" style="display: none;">
@@ -718,7 +643,7 @@ function redirectSite(url){
 													<div style="height: 85px;background-image: url('images/tencent/logo_tencent-2_line.png');background-size: 90%;background-repeat: no-repeat; background-position: center;"></div>
 												</td>
 												<td style="width:400px;height:120px;">
-													<div style="font-size:16px;color:#949393;padding-left:10px; padding-top: 5px; padding-bottom: 10px;">腾讯网游加速器——腾讯官方出品的海外网络加速工具。一机畅玩全平台游戏（PC、手游和主机），独享金融级专线，节点全球覆盖，有效解决游戏中出现的延迟、卡顿、丢包等问题，全方位满足用户在各种网络情况下的游戏体验。让你随时开黑，游戏快人一步。</div>
+													<div class="gB_desc" style="padding-top: 5px; padding-bottom: 10px;">腾讯网游加速器——腾讯官方出品的海外网络加速工具。一机畅玩全平台游戏（PC、手游和主机），独享金融级专线，节点全球覆盖，有效解决游戏中出现的延迟、卡顿、丢包等问题，全方位满足用户在各种网络情况下的游戏体验。让你随时开黑，游戏快人一步。</div>
 												</td>
 												<td>
 													<div class="btn" style="margin:auto;width:100px;height:40px;text-align:center;line-height:40px;font-size:18px;cursor:pointer;border-radius:5px;" onclick="location.href='GameBoost_Tencent.asp';"><#btn_go#></div>
@@ -727,15 +652,15 @@ function redirectSite(url){
 											<!-- Outfox -->
 											<tr id="outfox_1" style="margin-top: 50px; display: none;">
 												<td style="width:200px">
-													<div style="padding: 5px 0;font-size:20px;"><#Game_Boost_internet#></div>
+													<div class="gB_title_left"><#Game_Boost_internet#></div>
 												</td>
 												<td colspan="2">
-													<div style="padding: 5px 10px;font-size:20px;color:rgb(5,252,238)">Outfox</div>
+													<div class="gB_title_right">Outfox</div>
 												</td>
 											</tr>
 											<tr id="outfox_2" style="display: none;">
 												<td colspan="3">
-													<div style="width:100%;height:1px;background-color:rgb(228,144,30)"></div>
+													<div class="gB_SplitLine"></div>
 												</td>
 											</tr>
 											<tr id="outfox_3" style="display: none;">
@@ -743,7 +668,7 @@ function redirectSite(url){
 													<div style="height: 85px;background-image: url('images/outfox_dark.png');background-size: 90%;background-repeat: no-repeat; background-position: center;"></div>
 												</td>
 												<td style="width:400px;height:120px;">
-													<div style="font-size:16px;color:#949393;padding-left:10px; padding-top: 5px; padding-bottom: 10px;"><#Game_Boost_outfox_trial#></div>
+													<div class="gB_desc" style="padding-top: 5px; padding-bottom: 10px;"><#Game_Boost_outfox_trial#></div>
 												</td>
 												<td>
 													<div class="btn" style="margin:auto;width:100px;height:40px;text-align:center;line-height:40px;font-size:18px;cursor:pointer;border-radius:5px;" onclick="redirectSite(outfox_site)"><#btn_go#></div>

@@ -28,6 +28,7 @@ endif
 TARGET_LDFLAGS = -ffunction-sections -fdata-sections -Wl,--gc-sections
 ifeq ($(RTCONFIG_BCMARM), y)
 TARGET_CFLAGS += -DNO_DEF_IFADDRS
+TARGET_CFLAGS += -DBRCM_PATCH
 TARGET_LDFLAGS += -lgcc_s
 
 DEF_FCNTL = -DSHMEM_SIZE=524288 -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE=1 -D_LARGEFILE64_SOURCE=1 -D_LARGE_FILES=1
@@ -35,6 +36,10 @@ FUNC_GETIFADDRS=no
 SHARED_MODULES=
 endif
 
+ifeq ($(or $(RTCONFIG_RALINK),$(RTCONFIG_REALTEK)),y)
+TARGET_CFLAGS += -Wl,-z,relro,-z,now #-Wno-error=unused-but-set-variable	// msdk-linux-gcc: No option -Wunused-but-set-variable
+MAKE_FLAGS = DYNEXP= PICFLAG= MODULES=
+endif
 
 CONFIGURE_VARS = \
 	ac_cv_lib_attr_getxattr=no \

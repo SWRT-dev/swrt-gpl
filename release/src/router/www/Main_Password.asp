@@ -11,6 +11,7 @@
 <link rel="icon" href="images/favicon.png">
 <title>ASUS Login</title>
 <script language="JavaScript" type="text/javascript" src="/js/jquery.js"></script>
+<script type="text/javascript" src="/require/require.min.js"></script>
 <script type="text/javascript" src="/js/httpApi.js"></script>
 <script type="text/javascript" src="/js/https_redirect/https_redirect.js"></script>
 <style>
@@ -101,6 +102,10 @@ body{
 .main_content .btn_bg > div{
 	margin-right: 8px;
 	height: 100%;
+}
+
+.businessInput{
+	background-color: #CCC;
 }
 /*for mobile device*/
 @media screen and (max-width: 1000px){
@@ -204,6 +209,16 @@ function isSupport(_ptn){
 var gobi_support = isSupport("gobi");
 
 function initial(){
+	if(isSupport("BUSINESS")){
+		$(".title_name").css({"color": "#000"})
+		$(".sub_title_name").css({"color": "#000"})
+		$(".form_input").css({
+			"color": "#000",
+			"border": "1px solid #ccc"
+		})
+		$(".businessStyle").css({"color": "#000"})
+	}
+
 	if(is_KR_sku || is_SG_sku || is_AA_sku)
 		$("#KRHint").show();
 
@@ -312,6 +327,8 @@ function validForm(){
 		return false;
 	}
 	
+	if($("#defpassCheckbox").prop('checked')) return true;
+	
 	if(document.form.http_passwd_x.value == ""){
 			showError("<#File_Pop_content_alert_desc6#>");
 			document.form.http_passwd_x.value = "";
@@ -368,7 +385,17 @@ function validForm(){
 
 var showLoading_time = 3000;
 function submitForm(){
-	var postData = {"restart_httpd": "0", "new_username":document.form.http_username_x.value, "new_passwd":document.form.http_passwd_x.value};
+	var postData = {
+		"restart_httpd": "0", 
+		"new_username":document.form.http_username_x.value, 
+		"new_passwd":document.form.http_passwd_x.value,
+		"defpass_enable": $("#defpassCheckbox").prop('checked') ? "1" : "0"
+	};
+	
+	var sw_mode = '<% nvram_get("sw_mode"); %>';
+
+	if(sw_mode == 3 && '<% nvram_get("wlc_psta"); %>' == 2)
+		sw_mode = 2;
 
 	if(validForm()){
 		$("#error_status_field").hide();
@@ -397,7 +424,10 @@ function submitForm(){
 		}, 100);
 
 		setTimeout(function(){
-			location.href = "/";
+			if('<% nvram_get("w_Setting"); %>' == '0' && sw_mode != 2)
+				location.href = '/QIS_wizard.htm?flag=wireless';
+			else
+				location.href = "/";
 		}, showLoading_time);
 	}
 	else
@@ -571,6 +601,7 @@ function showError(str){
 <input name="foilautofill" style="display: none;" type="password">
 <input type="hidden" name="time_zone" value="" disabled>
 <input type="hidden" name="time_zone_dst" value="" disabled>
+<input type="hidden" name="cfg_pause" value="0">
 <table id="loginTable" align="center" cellpadding="0" cellspacing="0" style="display:none">
 	<tr>
 		<td>
@@ -602,6 +633,46 @@ function showError(str){
 				<div>
 					<input type="password" autocapitalize="off" autocomplete="off" value="" name="http_passwd_2_x" tabindex="3" class="form_input" maxlength="33" onkeyup="" onpaste="return false;"/ onBlur="" placeholder="<#Confirmpassword#>">
 				</div>
+				<div style="font-size: 16pt; display:none" class="businessStyle">
+					<input id="defpassCheckbox" type="checkbox" style="height:30px;width:30px;vertical-align: middle;">Use the default settings
+				</div>
+				<script>
+					$("#defpassCheckbox").change(function(){
+						var status = $(this).is(':checked');
+						if(status){
+							$("[name='http_passwd_x']")
+								.val("")
+								.prop('disabled', true)
+								.css({opacity: "0.3"})
+
+							$("[name='http_passwd_2_x']")
+								.val("")
+								.prop('disabled', true)
+								.css({opacity: "0.3"})
+
+							$("[name='http_passwd_x']").addClass("businessInput")
+							$("[name='http_passwd_2_x']").addClass("businessInput")
+						}
+						else{
+							$("[name='http_passwd_x']")
+								.prop('disabled', false)
+								.css({opacity: "1"})
+
+							$("[name='http_passwd_2_x']")
+								.prop('disabled', false)
+								.css({opacity: "1"})						
+
+							$("[name='http_passwd_x']").removeClass("businessInput")
+							$("[name='http_passwd_2_x']").removeClass("businessInput")
+						}
+					})
+
+					if(isSupport("defpass")){
+						$("#defpassCheckbox").parent().show();
+						$("#defpassCheckbox").prop('checked', true).change()
+					}
+				</script>
+
 				<div id="error_status_field"></div>
 				<div class="btn_bg">
 					<div id="btn_modify">

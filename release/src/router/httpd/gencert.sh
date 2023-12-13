@@ -4,18 +4,27 @@ SECS=1262278080
 cd /etc
 
 NVCN=`nvram get local_domain`
+LANIP=$(nvram get lan_ipaddr)
+
 if [ "$NVCN" == "" ]; then
 	NVCN="www.asusrouter.com"
 fi
 
 cp -L openssl.cnf openssl.config
 
-I=0
-for CN in $NVCN; do
-        echo "$I.commonName=CN" >> openssl.config
-        echo "$I.commonName_value=$CN" >> openssl.config
-        I=$(($I + 1))
-done
+add_san() {
+	sed -i "/\[alt_names\]/a$1" openssl.config
+}
+
+I=18
+echo "$I.commonName=CN" >> openssl.config
+echo "$I.commonName_value=$CN" >> openssl.config
+I=$(($I + 1))
+add_san "IP.1 = $LANIP"
+add_san "DNS.$I = $LANIP"
+
+# add startdate option for certificate
+echo "default_startdate=`date +%Y%m%d%H%M%S%Z`" >> openssl.config
 
 # create the key and certificate request
 #openssl req -new -out /tmp/cert.csr -config openssl.config -keyout /tmp/privkey.pem -newkey rsa:1024 -passout pass:password

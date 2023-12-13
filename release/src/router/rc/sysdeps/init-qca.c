@@ -373,7 +373,7 @@ static int write_cont_null_strings(FILE *fp, const char *s)
 int __update_ini_file(const char *filename, char **params)
 {
 	const unsigned char end_mark[2] = { 0, 0 };
-	long flen = 0, params_tlen = 0;
+	long flen = 0, params_tlen = 0, alen;
 	int ret = 0, i, found, copy;
 	FILE *fp;
 	size_t l, key_len;
@@ -398,14 +398,15 @@ int __update_ini_file(const char *filename, char **params)
 	fseek(fp, 0, SEEK_END);
 	flen = ftell(fp);
 
+	alen = flen + params_tlen + 1;
 	for (i = 0, src = &bc[0]; i < ARRAY_SIZE(bc); ++i, ++src) {
-		src->buf = malloc(flen + params_tlen);
+		src->buf = malloc(alen);
 		if (!src->buf) {
 			ret = -3;
 			break;
 		}
 
-		src->remain = src->tlen = flen + params_tlen + 1;
+		src->remain = src->tlen = alen;
 		*src->buf = '\0';
 	}
 
@@ -449,6 +450,8 @@ int __update_ini_file(const char *filename, char **params)
 			break;
 		}
 
+		if (!(p = strchr(*v, '=')))
+			continue;
 		key_len = p - *v + 1;
 		found = 0;
 		src = &bc[0 ^ (i & 1)];
@@ -715,7 +718,7 @@ static void qca_ol_tmode_param_hook(char ***pv, char **ps, int *plen)
  *     -1:	invalid parameter
  *  otherwise:	error
  */
-static int __update_hw_mode_id(const char *basedir, const struct dirent *de, void *arg)
+static int __update_hw_mode_id(const char *basedir, const struct dirent *de, size_t de_size, void *arg)
 {
 	int v = -1, *hw_mode_id = arg;
 	char val[16];	/* see hw_modes in wifi_soc_hw_modes_show() */
@@ -733,6 +736,13 @@ static int __update_hw_mode_id(const char *basedir, const struct dirent *de, voi
 		{ NULL, -1 }
 	}, *p;
 
+	if (sizeof(*de) != de_size) {
+		/* If size of struct dirent mismatch, make sure readdir_wrapper() and this function see same struct dirent.h.
+		 * e.g., it's different in uclibc if _FILE_OFFSET_BITS=64 is defined or not.
+		 */
+		dbg("%s: size of struct dirent mismatch (%u v.s. %u)!\n", __func__, sizeof(*de), de_size);
+		return -1;
+	}
 	if (!arg)
 		return -1;
 
@@ -1457,6 +1467,15 @@ void config_switch(void)
 					/* IPTV:	untag: P0;   port: P0, P4 */
 					__setup_vlan(600, 0, 0x00010011);
 				}
+				else if (strstr(nvram_safe_get("switch_wantag"), "biz_voip")) {
+					system("rtkswitch 40 1");		/* admin all frames on all ports */
+					system("rtkswitch 38 2");		/* VoIP: P1  2 = 0x10 */
+					/* Internet:	untag: P9;   port: P4, P9 */
+					__setup_vlan(500, 0, 0x02000210);
+					/* VoIP:	untag: P1;  port: P1, P4 */
+					//VoIP Port: P1 untag (special case)
+					__setup_vlan(400, 0, 0x00020012);
+				}
 				else {
 					/* No IPTV. Business package */
 					/* Internet:	untag: P9;   port: P4, P9 */
@@ -1603,7 +1622,8 @@ void config_switch(void)
 				/* Vodafone:	untag: P1;   port: P0, P1, P4 */
 				__setup_vlan(105, 1, 0x00020013);
 			}
-			else if (!strcmp(nvram_safe_get("switch_wantag"), "hinet")) { /* Hinet MOD */
+			else if (!strcmp(nvram_safe_get("switch_wantag"), "hinet")
+			      || !strcmp(nvram_safe_get("switch_wantag"), "nowtv")) {
 				if (sw_bridge_iptv_different_switches()) {
 					/* Bridge:	untag: P0, P4, P9;	port: P0, P4, P9
 					 * WAN:		no VLAN (hacked in API for SW based IPTV)
@@ -2378,7 +2398,7 @@ static int do_cold_boot_calibration(char *mod, int is_ftm)
 #endif
 #if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK) \
  || defined(RTCONFIG_SPF11_3_QSDK)
-	char testmode[] = "7", ftm_testmode[] = "10";
+	char testmode[] __attribute__((unused))= "7", ftm_testmode[] __attribute__((unused)) = "10";
 	char testmode_param[] = "testmode=7", ftm_testmode_param[] = "testmode=10";
 #endif
 	int cold_boot = 0, daemon = 0;
@@ -3108,6 +3128,21 @@ static void __load_wifi_driver(int testmode)
 
 	/* update the ini nss info */
 	update_ini_nss_info(hk_ol_num);
+
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+	/* Target-Wake Time
+	 * Always use wl0_twt and make sure wlX_twt equal to each other due to all bands share same global.ini.
+	 * This controls "TWT Responder Support" of octet 10 of Extended Capabilities.
+	 */
+
+	if (nvram_match("wl0_twt", "1")) {
+		update_ini_file(GLOBAL_INI, "twt_enable=1");
+		update_ini_file(GLOBAL_INI, "bcast_twt_enable=1");
+	} else {
+		update_ini_file(GLOBAL_INI, "twt_enable=0");
+		update_ini_file(GLOBAL_INI, "bcast_twt_enable=0");
+	}
+#endif
 #endif	/* RTCONFIG_GLOBAL_INI */
 
 #if defined(RTCONFIG_WIFI_QCA9990_QCA9990) || \
@@ -3268,10 +3303,11 @@ static void __load_wifi_driver(int testmode)
 #if defined(RTCONFIG_WIFI_SON)
 			if (sw_mode()!=SW_MODE_REPEATER && nvram_match("wifison_ready", "1")) {
 #if defined(RTCONFIG_HIDDEN_BACKHAUL)
-		        	if(strlen(nvram_safe_get("cfg_group"))){
+		        	if(strlen(nvram_safe_get("cfg_group")))
 #else
-				if(nvram_get_int("x_Setting")) {
+				if(nvram_get_int("x_Setting"))
 #endif
+				{
 				eval(IWPRIV, (char*) VPHY_2G, "no_vlan", "1");
 				eval(IWPRIV, (char*) VPHY_5G, "no_vlan", "1");
 				//send RCSA to uplink/CAP/PAP when detect radar
@@ -3305,12 +3341,17 @@ static void __load_wifi_driver(int testmode)
 	f_write_string("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor", "performance", 0, 0); // for throughput
 	f_write_string("/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq", "716000", 0, 0); // for throughput
 #endif
+
+	save_wl_params_for_testing_reload_wifi_drv();
 }
 
 void load_wifi_driver(void)
 {
 #if defined(RTCONFIG_SOC_IPQ8074)
-	f_write_string("/proc/sys/vm/pagecache_ratio", "25", 0, 0);
+	char val[4];
+
+	snprintf(val, sizeof(val), "%d", min(get_pagecache_ratio(), 25));
+	f_write_string("/proc/sys/vm/pagecache_ratio", val, 0, 0);
 	f_write_string("/proc/net/skb_recycler/flush", "1", 0, 0);	/* remove skb and pause skb recycler. */
 #elif defined(RTCONFIG_SOC_IPQ8064)
 	f_write_string("/proc/sys/vm/pagecache_ratio", "25", 0, 0);
@@ -3562,7 +3603,7 @@ void init_wl(void)
 
 #ifdef RTCONFIG_WIRELESSREPEATER
 #if !defined(RTCONFIG_CONCURRENTREPEATER) && !defined(RTCONFIG_REPEATER_STAALLBAND)
-		if (sw_mode() == SW_MODE_REPEATER && nvram_get_int("x_Setting")) {
+		if ((sw_mode() == SW_MODE_REPEATER || wisp_mode()) && nvram_get_int("x_Setting")) {
 		  	wlc_band=nvram_get_int("wlc_band");
 			if (wlc_band != WL_60G_BAND) {
 				create_vap(get_staifname(wlc_band), wlc_band, "sta");
@@ -3739,6 +3780,15 @@ skip_wifison:
 	return ;
 }
 
+#if defined(RTCONFIG_NO_RELOAD_WIFI_DRV_IF_POSSIBLE)
+static inline int need_to_reload_wifi_drv(void)
+{
+	if (__need_to_reload_wifi_drv() || IS_ATE_FACTORY_MODE())
+		return 1;
+	return 0;
+}
+#endif
+
 void fini_wl(void)
 {
 	int i;
@@ -3764,7 +3814,13 @@ void fini_wl(void)
 		nvram_set("restwifi_qis","1");
 		nvram_commit();
 		bg=0;
-                return ;
+
+#if defined(RTCONFIG_PRELINK)
+		if (nvram_invmatch("smart_connect_x", "0"))
+#endif
+		{
+                	return ;
+		}
         }
 	else
 		bg=0;
@@ -3837,20 +3893,22 @@ void fini_wl(void)
 	ifconfig(WIF_60G, 0, NULL, NULL);
 #endif
 
+	if (need_to_reload_wifi_drv()) {
 #if !defined(RTCONFIG_QCA_WLAN_SCRIPTS)
-	for (i = ARRAY_SIZE(load_wifi_kmod_seq)-1, wp = &load_wifi_kmod_seq[i]; i >= 0; --i, --wp) {
-		if (!module_loaded(wp->kmod_name))
-			continue;
+		for (i = ARRAY_SIZE(load_wifi_kmod_seq)-1, wp = &load_wifi_kmod_seq[i]; i >= 0; --i, --wp) {
+			if (!module_loaded(wp->kmod_name))
+				continue;
 
-		if (!(wp->flags & QWIFI_STICK)) {
-			eval("rmmod", wp->kmod_name);
-			if (wp->remove_sleep)
-				sleep(wp->remove_sleep);
+			if (!(wp->flags & QWIFI_STICK)) {
+				eval("rmmod", wp->kmod_name);
+				if (wp->remove_sleep)
+					sleep(wp->remove_sleep);
+			}
 		}
-	}
 #else
-	eval("unloadwifi.sh");
+		eval("unloadwifi.sh");
 #endif
+	}
 }
 
 static void chk_valid_country_code(char *country_code)
@@ -3929,6 +3987,51 @@ static int sfunc_datecode(char *nv_name, unsigned char *buf)
 
 	nvram_set(nv_name, buf);
 	return 0;
+}
+
+void set_et0macaddr(char *macaddr, char *macaddr5g)
+{
+	unsigned char buffer[18];
+#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_QCA_VAP_LOCALMAC)
+#if defined(RTCONFIG_QCA_VAP_LOCALMAC)
+	if (macaddr)
+		nvram_set("wl0macaddr", macaddr);
+	if (macaddr5g)
+		nvram_set("wl1macaddr", macaddr5g);
+#endif
+	/* Hack et0macaddr/et1macaddr after MAC address checking of wl_mssid. */
+	if (macaddr) {
+		ether_atoe(macaddr, buffer);
+		buffer[5] += 1;
+		ether_etoa(buffer, macaddr);
+	}
+	if (macaddr5g) {
+		ether_atoe(macaddr5g, buffer);
+		buffer[5] += 1;
+		ether_etoa(buffer, macaddr5g);
+	}
+#endif
+
+
+#if 0	// single band
+	nvram_set("et0macaddr", macaddr);
+	nvram_set("et1macaddr", macaddr);
+#elif defined(RTAC59_CD6R) || defined(RTAC59_CD6N)
+	/* SYNC WAN/LAN as 2.4G */
+	nvram_set("et0macaddr", nvram_get("wl0macaddr"));
+	nvram_set("et1macaddr", nvram_get("wl0macaddr"));
+#elif defined(RTAC95U)
+	/* SYNC LAN as 2.4G */
+	if (macaddr)
+		nvram_set("et0macaddr", macaddr);
+	nvram_set("et1macaddr", nvram_get("wl0macaddr"));
+#else
+	//TODO: separate for different chipset solution
+	if (macaddr)
+		nvram_set("et0macaddr", macaddr);
+	if (macaddr5g)
+		nvram_set("et1macaddr", macaddr5g);
+#endif
 }
 
 void init_syspara(void)
@@ -4039,41 +4142,7 @@ void init_syspara(void)
 #endif
 #endif
 
-#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_QCA_VAP_LOCALMAC) || defined(RTCONFIG_SWRTMESH)
-#if defined(RTCONFIG_QCA_VAP_LOCALMAC)
-	nvram_set("wl0macaddr", macaddr);
-	nvram_set("wl1macaddr", macaddr2);
-#endif
-	/* Hack et0macaddr/et1macaddr after MAC address checking of wl_mssid. */
-	ether_atoe(macaddr, buffer);
-	buffer[5] += 1;
-	ether_etoa(buffer, macaddr);
-	ether_atoe(macaddr2, buffer);
-	buffer[5] += 1;
-	ether_etoa(buffer, macaddr2);
-#endif
-
-#if defined(RTCONFIG_QCA953X) || defined(RTCONFIG_QCA956X) || defined(RTCONFIG_QCN550X)
-	/* set et1macaddr the same as et0macaddr (for cpu connect to switch only use single RGMII) */
-	strcpy(macaddr2, macaddr);
-#endif
-
-#if 0	// single band
-	nvram_set("et0macaddr", macaddr);
-	nvram_set("et1macaddr", macaddr);
-#elif defined(RTAC59_CD6R) || defined(RTAC59_CD6N)
-	/* SYNC WAN/LAN as 2.4G */
-	nvram_set("et0macaddr", nvram_get("wl0macaddr"));
-	nvram_set("et1macaddr", nvram_get("wl0macaddr"));
-#elif defined(RTAC95U)
-	/* SYNC LAN as 2.4G */
-	nvram_set("et0macaddr", macaddr);
-	nvram_set("et1macaddr", nvram_get("wl0macaddr"));
-#else
-	//TODO: separate for different chipset solution
-	nvram_set("et0macaddr", macaddr);
-	nvram_set("et1macaddr", macaddr2);
-#endif
+	set_et0macaddr(macaddr, macaddr2); //macaddr2 is 5G MAC
 
 #if defined(VZWAC1300) /* bad eeprom fix, temp workaround */
 	{
@@ -4320,6 +4389,8 @@ void init_syspara(void)
 		nvram_set("IpAddr_Lan", ipaddr_lan);
 	else
 		nvram_unset("IpAddr_Lan");
+
+	getSN();
 }
 
 #ifdef RTCONFIG_ATEUSB3_FORCE
@@ -5029,4 +5100,3 @@ void set_tagged_based_vlan_config(char *interface)
 #endif
 
 #endif
-

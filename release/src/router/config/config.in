@@ -138,6 +138,10 @@ config RTCONFIG_BW160M
 	depends on RTCONFIG_DHDAP || RTCONFIG_QCA || RTCONFIG_RALINK
 	default n
 
+config RTCONFIG_BW320M
+	bool "Bandwidth 320MHz support"
+	default n
+
 config RTCONFIG_WLEXE
 	bool "dhd wl exe"
 	default n
@@ -219,10 +223,6 @@ config RTCONFIG_DDNS
 config RTCONFIG_INADYN
 	bool "Dynamic DNS"
 	depends on RTCONFIG_DDNS
-	default n
-
-config RTCONFIG_ASUSDDNS_ACCOUNT_BASE
-	bool "ASUS DDNS for Account base"
 	default n
 
 config RTCONFIG_L7
@@ -372,6 +372,11 @@ config RTCONFIG_CONCURRENTREPEATER
 	bool "Concurrent Repeater"
 	default n
 
+config RTCONFIG_WISP
+	bool "WISP Mode"
+	depends on RTCONFIG_WIRELESSREPEATER
+	default n
+
 config RTCONFIG_VHT80_80
 	bool "80+80MHz bandwidth support"
 	default n
@@ -513,6 +518,10 @@ config RTCONFIG_USB
 	bool "USB Support"
 	default y
 
+config RTCONFIG_USB_WAN_BACKUP
+	bool "USB WAN Backkup Support"
+	default n
+
 config RTCONFIG_USBRESET
 	bool "USB Power Reset Support"
 	default n
@@ -603,6 +612,11 @@ config RTCONFIG_SAMBASRV
 config RTCONFIG_SAMBA3
 	bool "Compile with Samba 3"
 	depends on RTCONFIG_SAMBASRV
+	default n
+
+
+config RTCONFIG_AWSIOT
+	bool "Compile with aws-iot"
 	default n
 
 config RTCONFIG_SAMBA36X
@@ -980,6 +994,11 @@ config RTCONFIG_WIFI_QCA9994_QCA9994
 	depends on RTCONFIG_QCA
 	default n
 
+config RTCONFIG_NO_RELOAD_WIFI_DRV_IF_POSSIBLE
+	bool "Don't reload WiFi driver if possible"
+	depends on RTCONFIG_QCA
+	default n
+
 config RTCONFIG_CFG80211
 	bool "Qualcomm Atheros cfg80211 support"
 	depends on RTCONFIG_QCA
@@ -1085,6 +1104,10 @@ config RTCONFIG_AIR_TIME_FAIRNESS
 
 config RTCONFIG_POWER_SAVE
 	bool "Power Save"
+	default n
+
+config RTCONFIG_PAGECACHE_RATIO
+	bool "Control maximum page cache ratio"
 	default n
 
 config RTCONFIG_QCA8033
@@ -1346,6 +1369,10 @@ config RTCONFIG_DUAL_TRX2
 	depends on RTCONFIG_DUAL_TRX
 	default n
 
+config RTCONFIG_TEST_FLIPBITS
+	bool "Test NAND Flash bit-flip"
+	default n
+
 config RTCONFIG_UBI
 	bool "Unsorted Block Images"
 	default n
@@ -1431,6 +1458,22 @@ config RTCONFIG_MULTIWAN_CFG
 	bool "Seperate WAN related configurations to different sets of nvram variables"
 	default n
 
+config RTCONFIG_MULTILAN_CFG
+	bool "Multiple Network Base Support"
+	default n
+
+config RTCONFIG_MULTIWAN_IF
+	bool "Independent WAN interface mechanism"
+	default n
+
+config RTCONFIG_MULTIWAN_PROFILE
+	bool "Multiple WAN backup or balance rules support"
+	default n
+
+config RTCONFIG_BUSINESS
+	bool "BUSINESS Model Support"
+	default n
+
 config RTCONFIG_TFTP_SERVER
 	bool "TFTP daemon"
 	default n
@@ -1513,6 +1556,14 @@ config RTCONFIG_DEBUG
 	bool "debug mode"
 	default n
 
+config RTCONFIG_DMALLOC
+	bool "Link with dmalloc that is used to detect memory leak."
+	default n
+
+config RTCONFIG_VALGRIND
+	bool "Compiled valgrind"
+	default n
+
 config RTCONFIG_HAS_5G
 	bool "has 5G band"
 	default y
@@ -1584,6 +1635,14 @@ config RTCONFIG_UIDEBUG
 	bool "Enable UI debug mode"
 	default n
 
+config RTCONFIG_DEMOUI
+	bool "Enable Demo UI"
+	default n
+
+config RTCONFIG_TS_UI
+    bool "TS theme support"
+    default n
+
 config RTCONFIG_ROG
 	bool "Get APP Traffic from ROG client"
 	default n
@@ -1591,6 +1650,10 @@ config RTCONFIG_ROG
 config RTCONFIG_ROG_UI
 	bool "ROG theme support"
 	default n
+
+config RTCONFIG_TUF_UI
+        bool "TUF theme support"
+        default n
 
 config RTCONFIG_GEOIP
 	bool "determine country by IP address"
@@ -1624,6 +1687,10 @@ config RTCONFIG_EXT_RTL8370MB
 
 config RTCONFIG_EXT_BCM53134
 	bool "BCM53134 external switch"
+	default n
+
+config RTCONFIG_EXT_RTL8367S
+	bool "rtl8367s external switch"
 	default n
 
 config RTCONFIG_RTL8221VB
@@ -1835,6 +1902,11 @@ config RTCONFIG_SOFTWIRE46
 	depends on RTCONFIG_IPV6
 	default n
 
+config RTCONFIG_OCNVC
+	bool "IPoE - OCN Virtual Connect support"
+	depends on RTCONFIG_SOFTWIRE46
+	default n
+
 config RTCONFIG_PORT_BASED_VLAN
 	bool "Port based vlan support"
 	default n
@@ -1886,6 +1958,13 @@ config RTCONFIG_ALL_DEF_LAN50
 config RTCONFIG_VPN_FUSION
 	bool "Enable VPN Fusion"
 	default n
+
+config RTCONFIG_VPN_FUSION_SUPPORT_INTERFACE
+	bool "VPN Fusion support interface policy"
+	default n
+	depends on RTCONFIG_VPN_FUSION
+	help
+	VPN Fusion support interface policy(IG share secure connection feature)
 
 config RTCONFIG_LBR_AGGR
 	bool "Low bit rate aggregation support"
@@ -1977,16 +2056,28 @@ config RTCONFIG_LP5523
 	bool "Have LP5523 LED controller"
 	default n
 
-config RTCONFIG_FIXED_BRIGHTNESS_RGBLED
-	bool "Have RGB LED with uncontrollable brightness"
+config RTCONFIG_ZENWIFI_RGBLED
+	bool "RGB LED behavior of ZenWiFi series"
 	default n
 
-config RTCONFIG_PWM_RGBLED
-	bool "Have RGB LED with controllable brightness"
+config RTCONFIG_AURA_RGBLED
+	bool "RGB LED behavior of Aura/TUF"
+	default n
+
+config RTCONFIG_GPIOX3_RGBLED
+	bool "Have RGB LED with GPIO x 3"
+	default n
+
+config RTCONFIG_PWMX1_GPIOX3_RGBLED
+	bool "Have RGB LED with PWM x 1 and GPIO x 3"
 	default n
 
 config RTCONFIG_PWMX2_GPIOX1_RGBLED
 	bool "Have RGB LED with PWM x 2 and GPIO x 1"
+	default n
+
+config RTCONFIG_PWMX3_RGBLED
+	bool "Have RGB LED with PWM x 3"
 	default n
 
 config RTCONFIG_SINGLE_SSID
@@ -2365,6 +2456,14 @@ config RTCONFIG_TCPLUGIN
 	bool "Tencent plugin support"
 	default n
 
+config RTCONFIG_TC_GAME_ACC
+	bool "Tencent game download acceleration"
+	default n
+
+config RTCONFIG_TC_DOWNLOAD
+	bool "TC download mechanism"
+	default n
+
 config RTCONFIG_ATEFROMWAN
 	bool "Set IP in default for device only one WAN port"
 	default n
@@ -2469,6 +2568,14 @@ config RTCONFIG_MULTIFW
 	bool "Multiple Firmware"
 	default n
 
+config RTCONFIG_OVS
+	bool "OpenVSwitch"
+	default n	
+    
+config RTCONFIG_OPENSYNC
+	bool "OpenSync"
+	default n	
+
 config RTCONFIG_RE_RECONNECT
 	bool "enable re reconnect"
 	default n
@@ -2488,8 +2595,24 @@ config RTCONFIG_VIF_ONBOARDING
 	bool "onboarding via virtual interface"
 	default n
 
+config RTCONFIG_OUTFOX
+	bool "Outfox game acceleration support"
+	default n
+
+config RTCONFIG_CAPTCHA
+	bool "Web UI supports captcha"
+	default n
+
+config RTCONFIG_DISAPPCAPT
+	bool "Disable APP captcha"
+	default n
+
 config RTCONFIG_WIFI6E
 	bool "WiFi 6E"
+	default n
+
+config RTCONFIG_WIFI7
+	bool "WiFi 7"
 	default n
 
 config RTCONFIG_SYSCLASSGPIO
@@ -2524,6 +2647,10 @@ config RTCONFIG_NEW_PHYMAP
 	bool "New phy port mapping system dependent function"
 	default n
 
+config RTCONFIG_LIB_CODB
+	bool "codb library"
+	default n
+
 config RTCONFIG_INSTANT_GUARD
 	bool "IPSEC VPN INSTANT GUARD support"
 	default n
@@ -2538,6 +2665,14 @@ config RTCONFIG_BHSWITCH_RE_SELFOPT
 
 config RTCONFIG_PREFERAP_RE_SELFOPT
 	bool "Notify RE do self optimization based on prefer ap condition"
+	default n
+
+config RTCONFIG_SYSCLASSGPIO
+	bool "enable sys class gpio"
+	default n
+
+config RTCONFIG_MTK_NAND_BLOCK2
+	bool "For MTK nand using 2 block"
 	default n
 
 config RTCONFIG_SCHED_DAEMON
@@ -2568,6 +2703,20 @@ config RTCONFIG_FIBOCOM_FG621
 	bool "LTE module FIBOCOM FG621"
 	default n
 
+config RTCONFIG_TIME_QUOTA
+	bool "Parental Control Time Quota"
+	default n
+
+config RTCONFIG_SPF11_3_QSDK
+	bool "SPF11.3 QSDK"
+	depends on RTCONFIG_QCA
+	default n
+
+config RTCONFIG_SPF11_4_QSDK
+	bool "SPF11.4 QSDK"
+	depends on RTCONFIG_QCA
+	default n
+
 config RTCONFIG_QSDK_LM256
 	bool "LM256 for RAM 256MB hardware design"
 	default n
@@ -2592,6 +2741,14 @@ config RTCONFIG_OWE_TRANS
 
 config RTCONFIG_TPVPN
 	bool "3rd party VPN support"
+	default n
+
+config RTCONFIG_HMA
+	bool "3rd party VPN HMA support"
+	default n
+
+config RTCONFIG_NORDVPN
+	bool "3rd party VPN NordVPN support"
 	default n
 
 config RTCONFIG_SPECIFIC_PPPOE
@@ -2645,8 +2802,24 @@ config RTCONFIG_3LANPORT_DEVICE
 	bool "3 LAN Port device"
 	default n
 
+config RTCONFIG_DNS_PING
+	bool "Ping DNS servers and store the result into database"
+	default n
+
+config RTCONFIG_CALC_NVRAM
+	bool "calculate nvram size"
+	default n
+
 config RTCONFIG_HW_DOG
 	bool "CPU hardward watchdog daemon"
+	default n
+
+config RTCONFIG_MSSID_REALMAC
+	bool "MSSID with real MAC address"
+	default n
+
+config RTCONFIG_NCURSES_6_1
+	bool "ncurses 6.1"
 	default n
 
 config RTCONFIG_GRE
@@ -2688,6 +2861,62 @@ config RTCONFIG_SOC_MT7981
 config RTCONFIG_SWITCH_MT7986_MT7531
 	bool "MTK SoC MT7986 + MT7531"
 	depends on RTCONFIG_MT798X
+	default n
+
+config RTCONFIG_FSCRYPTCTL
+        bool "fscryptctl tool"
+        default n
+
+config RTCONFIG_AVOID_TZ_ENV
+	bool "Not use setenv(TZ) but use timezone in /etc/TZ"
+	default n
+
+config RTCONFIG_BSC_SR
+        bool " sync bsscolor and enable spatial-reuse"
+        default n
+
+config RTCONFIG_WPA3_ENTERPRISE
+	bool "WPA3 enterprise mode/transition mode/suite-b 192 bit mode"
+	default n
+
+config RTCONFIG_MULTI_PPP
+	bool "Multiple PPP connection on single WAN port"
+	default n
+
+config RTCONFIG_INTEL_EVO
+	bool "configuration for Intel EVO program certificate"
+	default n
+
+config RTCONFIG_SW_SPDLED
+	bool "sw speed led"
+	default n
+
+config RTCONFIG_HAS_6G_2
+	bool "has 2-nd 6G band"
+	default n
+
+config RTCONFIG_CHECK_PAP_WPAPSK
+	bool "QIS check selected AP password"
+	depends on RTCONFIG_WIRELESSREPEATER
+	default n
+
+config RTCONFIG_ECC256
+	bool "Support ECC256 CA"
+	depends on RTCONFIG_HTTPS
+	default n
+
+config RTCONFIG_AUTO_WANPORT
+	bool "Automatically detect where the WAN port is"
+	default n
+
+config RTCONFIG_PASS_V2
+	bool "Use PASS V2 for encryption"
+	depends on RTCONFIG_RALINK
+	default n
+
+config RTCONFIG_NVSW_IN_JFFS
+	bool "multiple profile in JFFS, nvram switching mechainsm"
+	depends on RTCONFIG_RALINK
 	default n
 
 config RTCONFIG_SOFTCENTER

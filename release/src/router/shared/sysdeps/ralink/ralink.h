@@ -18,6 +18,7 @@
 #define RTXXXXH
 
 #include <iwlib.h>
+#include <rtconfig.h>
 
 
 extern const char WIF_2G[];
@@ -204,6 +205,7 @@ enum ASUS_IOCTL_SUBCMD {
     ASUS_SUBCMD_GET_RCLASS,
     ASUS_SUBCMD_DFS_CH_STATUS,				//24
     ASUS_SUBCMD_GET_CH_BW,				//25
+	ASUS_SUBCMD_GET_BSCANING,			//26
 	ASUS_SUBCMD_MAX
 };
 
@@ -571,7 +573,13 @@ struct GNU_PACKED wnm_command {
 #define OFFSET_PSK		(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xff80) //15bytes
 #endif
 
+
+#define MAX_PASS_LEN 32
+#define MAX_PASS_ENC_LEN 64
+
 #if defined(RTCONFIG_WLMODULE_MT7915D_AP)
+#define OFFSET_PASS_ENC		0x6fee0	// 64 bytes (MAX_PASS_ENC_LEN) including space of OFFSET_PASS 32 bytes 
+#define OFFSET_PASS		0x6ff10	// 32 bytes (MAX_PASS_LEN)
 #define OFFSET_EISN		0x6ff70	// 32 bytes
 #define OFFSET_TERRITORY_CODE	0x6ff90	/* 5 bytes, e.g., US/01, US/02, TW/01, etc. */
 #define OFFSET_DEV_FLAGS	0x6ffa0 //device dependent flags
@@ -591,6 +599,8 @@ struct GNU_PACKED wnm_command {
 #define OFFSET_32BYTES_ODMPID   0x6FE47 // 32 bytes
 #endif
 #elif defined(RT4GAC86U)
+#define OFFSET_PASS_ENC		0x5fee0	// 64 bytes (MAX_PASS_ENC_LEN) including space of OFFSET_PASS 32 bytes
+#define OFFSET_PASS		0x5ff10	// 32 bytes (MAX_PASS_LEN)
 #define OFFSET_EISN		0x5ff70	// 32 bytes
 #define OFFSET_TERRITORY_CODE	0x5ff90	/* 5 bytes, e.g., US/01, US/02, TW/01, etc. */
 #define OFFSET_DEV_FLAGS	0x5ffa0 //device dependent flags
@@ -606,6 +616,8 @@ struct GNU_PACKED wnm_command {
 #define OFFSET_HW_BOM	0x5FE0C	// 32 bytes
 #define OFFSET_HW_DATE_CODE	0x5FE3E	// 8 bytes
 #else
+#define OFFSET_PASS_ENC		(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xfee0)	// 64 bytes for the encrypt length of 32 char.
+#define OFFSET_PASS		(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xff50)	// 32 bytes
 #define OFFSET_EISN		(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xff70)	// 32 bytes
 #define OFFSET_TERRITORY_CODE	(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xff90)	/* 5 bytes, e.g., US/01, US/02, TW/01, etc. */
 #define OFFSET_DEV_FLAGS	(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xffa0) //device dependent flags
@@ -632,6 +644,16 @@ struct GNU_PACKED wnm_command {
 #define OFFSET_AMAS_BUNDLE_KEY		0x6fd00
 #endif
 #endif // RTCONFIG_AMAS
+
+
+#if defined(RTCONFIG_PASS_V2)
+#define PASS_OFFSET	OFFSET_PASS_ENC
+#define PASS_LEN	MAX_PASS_ENC_LEN
+#else
+#define PASS_OFFSET	OFFSET_PASS
+#define PASS_LEN	MAX_PASS_LEN
+#endif
+
 
 #ifdef RTCONFIG_ASUSCTRL
 #if defined(RTCONFIG_MT798X)
@@ -745,4 +767,3 @@ typedef struct {
 } phyState;
 
 #endif
-

@@ -1038,7 +1038,7 @@ function check_vpn_conflict() {		//if conflict with LAN ip & DHCP ip pool & stat
 	<table width="95%" border="1" align="center" cellpadding="4" cellspacing="0" class="FormTable" style="margin-top:8px;">
 		<thead>
 			<tr>
-				<td colspan="2">Static Route (Optional)</td>
+				<td colspan="2"><#RouterConfig_GWStatic#> (<#feedback_optional#>)</td>
 			</tr>
 		</thead>
 		<tr>

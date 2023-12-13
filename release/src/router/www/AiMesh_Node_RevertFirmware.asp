@@ -123,7 +123,7 @@ var FWString = '';
 FWString = firmver+"."+buildno;
 FWString += "_"+extendno;
 
-var frsmodel =  (httpApi.nvramGet(["webs_state_odm"]).webs_state_odm != "")? httpApi.nvramGet(["webs_state_odm"]).webs_state_odm:httpApi.nvramGet(["productid"]).productid;
+var frsmodel =  (httpApi.nvramGet(["webs_update_odm"]).webs_update_odm != "")? httpApi.nvramGet(["webs_update_odm"]).webs_update_odm:httpApi.nvramGet(["productid"]).productid;
 var firmver_org =  httpApi.nvramGet(["firmver_org"]).firmver_org;
 var buildno_org =  httpApi.nvramGet(["buildno_org"]).buildno_org;
 var extendno_org =  httpApi.nvramGet(["extendno_org"]).extendno_org;
@@ -248,7 +248,7 @@ function LoadingProgress(seconds) {
 		else{
 			document.getElementById("proceeding_img_text").innerHTML = "<#Main_alert_proceeding_desc3#>";
 			y = 0;
-			if(location.pathname.indexOf("AiMesh_Node_FirmwareUpgrade") < 0) {
+			if(location.pathname.indexOf("AiMesh_Node_RevertFirmware") < 0) {
 				setTimeout("hideLoadingBar();",1000);
 				window.open(location, '_self').close();
 			}

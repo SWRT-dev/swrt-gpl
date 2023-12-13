@@ -9,13 +9,16 @@ endif
 #CFLAGS += -g -DDEBUG
 CFLAGS  += -s
 ifeq ($(CONFIG_RTR_OPTIMIZE_SIZE),y)
-CFLAGS  += -Os
+CFLAGS  += $(if $(RTCONFIG_DEBUG),-g,-Os)
 else
-CFLAGS  += -O2
+CFLAGS  += $(if $(RTCONFIG_DEBUG),-g,-O2)
 endif
 LDFLAGS += -L. -L$(TOP)/shared -lshared
 
 CFLAGS += -I$(TOP)/shared
+ifeq ($(RTACRH18),y)
+CFLAGS += -I$(TOP)/kernel_header/include
+endif
 
 ifeq ($(STATIC),1)
 CFLAGS += -static
@@ -50,8 +53,8 @@ endif
 install: all
 	install -D libnvram.so $(INSTALLDIR)/usr/lib/libnvram.so
 	install -D nvram $(INSTALLDIR)/bin/nvram
-	$(STRIP) $(INSTALLDIR)/usr/lib/libnvram.so
-	$(STRIP) $(INSTALLDIR)/bin/nvram
+	$(if $(RTCONFIG_DEBUG),,$(STRIP) $(INSTALLDIR)/usr/lib/libnvram.so)
+	$(if $(RTCONFIG_DEBUG),,$(STRIP) $(INSTALLDIR)/bin/nvram)
 	chmod 0555 $(INSTALLDIR)/bin/nvram
 
 clean:

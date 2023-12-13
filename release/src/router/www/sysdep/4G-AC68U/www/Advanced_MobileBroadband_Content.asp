@@ -12,6 +12,7 @@
 <link rel="stylesheet" type="text/css" href="index_style.css"> 
 <link rel="stylesheet" type="text/css" href="form_style.css">
 <link rel="stylesheet" type="text/css" href="other.css">
+<link rel="stylesheet" type="text/css" href="device-map/device-map.css">
 <style>
 .contentM_qis{
 	position:absolute;
@@ -25,43 +26,7 @@
 	margin-top: 10px;
 	width:650px;
 }
-#ClientList_Block_PC{
-	border:1px outset #999;
-	background-color:#576D73;
-	position:absolute;
-	*margin-top:26px;	
-	margin-left:2px;
-	*margin-left:-189px;
-	width:181px;
-	text-align:left;	
-	height:auto;
-	overflow-y:auto;
-	z-index:200;
-	padding: 1px;
-	display:none;
-}
-#ClientList_Block_PC div{
-	background-color:#576D73;
-	height:auto;
-	*height:20px;
-	line-height:20px;
-	text-decoration:none;
-	font-family: Lucida Console;
-	padding-left:2px;
-}
 
-#ClientList_Block_PC a{
-	background-color:#EFEFEF;
-	color:#FFF;
-	font-size:12px;
-	font-family:Arial, Helvetica, sans-serif;
-	text-decoration:none;	
-}
-#ClientList_Block_PC div:hover, #ClientList_Block a:hover{
-	background-color:#3366FF;
-	color:#FFFFFF;
-	cursor:default;
-}
 .contentM_qis{
 	position:absolute;
 	-webkit-border-radius: 5px;
@@ -585,7 +550,7 @@ function showLANIPList(isp_order){
 function pullLANIPList(obj){
 	
 	if(isMenuopen == 0){		
-		obj.src = "/images/arrow-top.gif"
+		obj.src = "/images/unfold_less.svg"
 		document.getElementById("ClientList_Block_PC").style.display = 'block';		
 		document.form.modem_apn.focus();		
 		isMenuopen = 1;
@@ -597,7 +562,7 @@ function pullLANIPList(obj){
 var over_var = 0;
 var isMenuopen = 0;
 function hideClients_Block(){
-	document.getElementById("pull_arrow").src = "/images/arrow-down.gif";
+	document.getElementById("pull_arrow").src = "/images/unfold_more.svg";
 	document.getElementById('ClientList_Block_PC').style.display='none';
 	isMenuopen = 0;
 }
@@ -2085,9 +2050,11 @@ function update_lte_fw(){
           			<tr>
 						<th><a class="hintstyle"  href="javascript:void(0);" onClick="openHint(21,3);"><#HSDPAConfig_private_apn_itemname#></a></th>
             		<td>
-            			<input id="modem_apn" name="modem_apn" class="input_20_table" style="margin-left:0px;" type="text" value="" autocorrect="off" autocapitalize="off"/>
-           				<img id="pull_arrow" height="14px;" src="/images/arrow-down.gif" style="position:absolute;*margin-left:-3px;*margin-top:1px;" onclick="pullLANIPList(this);" title="<#select_APN_service#>" onmouseover="over_var=1;" onmouseout="over_var=0;">
-							<div id="ClientList_Block_PC" class="ClientList_Block_PC"></div>
+            			<div class="clientlist_dropdown_main" style="width: 100%;">
+                            <input id="modem_apn" name="modem_apn" class="input_20_table" type="text" value="" autocorrect="off" autocapitalize="off"/>
+                            <img id="pull_arrow" height="14px;" src="/images/unfold_more.svg" onclick="pullLANIPList(this);" title="<#select_APN_service#>" onmouseover="over_var=1;" onmouseout="over_var=0;">
+                            <div id="ClientList_Block_PC" class="clientlist_dropdown"></div>
+                        </div>
 					</td>
 					</tr>
 

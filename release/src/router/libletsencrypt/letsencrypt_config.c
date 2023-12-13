@@ -97,34 +97,35 @@ le_auxsts_t check_le_status(void)
 	return LE_AUX_INTERNET;
 }
 
-le_conf_t* get_le_conf(le_conf_t* get_le_conf)
+le_conf_t* get_le_conf(le_conf_t* conf)
 {
-	get_le_conf->enable = nvram_match("le_enable", "1") != 0;
+	conf->enable = nvram_match("le_enable", "1") != 0;
 	if(nvram_match("le_acme_auth", "dns") || nvram_match("ddns_server_x", "WWW.ASUS.COM") || nvram_match("ddns_server_x", "WWW.ASUS.COM.CN"))
-		get_le_conf->authtype = LE_ACME_AUTH_DNS;
+		conf->authtype = LE_ACME_AUTH_DNS;
 	else if(nvram_match("le_acme_auth", "tls"))
-		get_le_conf->authtype = LE_ACME_AUTH_TLS;
+		conf->authtype = LE_ACME_AUTH_TLS;
 	else
-		get_le_conf->authtype  = LE_ACME_AUTH_HTTP;
-	get_le_conf->force = nvram_get_int("le_acme_force") != 0;
-	get_le_conf->renew_force = nvram_get_int("le_acme_renew_force") != 0;
-	get_le_conf->staging = nvram_get_int("le_acme_stage") != 0;
+		conf->authtype  = LE_ACME_AUTH_HTTP;
+	conf->ecc = nvram_get_int("le_acme_ecc") != 0;
+	conf->force = nvram_get_int("le_acme_force") != 0;
+	conf->renew_force = nvram_get_int("le_acme_renew_force") != 0;
+	conf->staging = nvram_get_int("le_acme_stage") != 0;
 	if(nvram_get_int("le_acme_debug") == 1)
-		get_le_conf->debug = 1;
+		conf->debug = 1;
 	else if(nvram_get_int("le_acme_debug") < 1)
-		get_le_conf->debug = 0;
+		conf->debug = 0;
 	else
-		get_le_conf->debug = 2;
-	snprintf(get_le_conf->acme_logpath, sizeof(get_le_conf->acme_logpath), "%s", nvram_safe_get("le_acme_logpath"));
-	get_le_conf->ddns_enabled = nvram_get_int("ddns_enable_x") != 0;
-	snprintf(get_le_conf->ddns_hostname, sizeof(get_le_conf->ddns_hostname), "%s", nvram_safe_get("ddns_hostname_x"));
-	get_le_conf->https_enabled = nvram_get_int("http_enable") > 0;
+		conf->debug = 2;
+	snprintf(conf->acme_logpath, sizeof(conf->acme_logpath), "%s", nvram_safe_get("le_acme_logpath"));
+	conf->ddns_enabled = nvram_get_int("ddns_enable_x") != 0;
+	snprintf(conf->ddns_hostname, sizeof(conf->ddns_hostname), "%s", nvram_safe_get("ddns_hostname_x"));
+	conf->https_enabled = nvram_get_int("http_enable") > 0;
 	if(nvram_get_int("enable_webdav") || nvram_get_int("webdav_aidisk") || nvram_get_int("webdav_proxy"))
-		get_le_conf->webdav_enabled = 1;
+		conf->webdav_enabled = 1;
 	else
-		get_le_conf->webdav_enabled = 0;
-	snprintf(get_le_conf->lan_ipaddr, sizeof(get_le_conf->lan_ipaddr), "%s", nvram_safe_get("lan_ipaddr"));
-	return get_le_conf;
+		conf->webdav_enabled = 0;
+	snprintf(conf->lan_ipaddr, sizeof(conf->lan_ipaddr), "%s", nvram_safe_get("lan_ipaddr"));
+	return conf;
 }
 
 int check_le_configure(le_conf_t* conf)
@@ -140,19 +141,19 @@ int check_le_configure(le_conf_t* conf)
 
 char* get_path_le_domain_fullchain(char* path, size_t len)
 {
-	snprintf(path, len, "%s/%s/%s", LE_ACME_CERT_HOME, nvram_safe_get("ddns_hostname_x"), LE_ACME_DOMAIN_FULLCHAIN);
+	snprintf(path, len, "%s/%s%s/%s", LE_ACME_CERT_HOME, nvram_safe_get("ddns_hostname_x"), nvram_get_int("le_acme_ecc") ? "_ecc" : "", LE_ACME_DOMAIN_FULLCHAIN);
 	return path;
 }
 
 char* get_path_le_domain_cert(char* path, size_t len)
 {
-	snprintf(path, len, "%s/%s/%s.cer", LE_ACME_CERT_HOME, nvram_safe_get("ddns_hostname_x"), nvram_safe_get("ddns_hostname_x"));
+	snprintf(path, len, "%s/%s%s/%s.cer", LE_ACME_CERT_HOME, nvram_safe_get("ddns_hostname_x"), nvram_get_int("le_acme_ecc") ? "_ecc" : "", nvram_safe_get("ddns_hostname_x"));
 	return path;
 }
 
 char* get_path_le_domain_key(char* path, size_t len)
 {
-	snprintf(path, len, "%s/%s/%s", LE_ACME_CERT_HOME, nvram_safe_get("ddns_hostname_x"), LE_ACME_DOMAIN_KEY);
+	snprintf(path, len, "%s/%s%s/%s", LE_ACME_CERT_HOME, nvram_safe_get("ddns_hostname_x"), nvram_get_int("le_acme_ecc") ? "_ecc" : "", LE_ACME_DOMAIN_KEY);
 	return path;
 }
 

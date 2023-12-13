@@ -14,15 +14,15 @@
 <link rel="stylesheet" type="text/css" href="usp_style.css">
 <link href="other.css"  rel="stylesheet" type="text/css">
 <link rel="stylesheet" type="text/css" href="/device-map/device-map.css">
-<script type="text/javascript" src="/state.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/jquery.js"></script>
+<script type="text/javascript" src="js/httpApi.js"></script>
+<script type="text/javascript" src="/state.js"></script>
 <script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
 <script type="text/javascript" src="/help.js"></script>
 <script type="text/javascript" src="/general.js"></script>
 <script type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" src="/md5.js"></script>
 <script type="text/javascript" src="/validator.js"></script>
-<script type="text/javascript" src="js/httpApi.js"></script>
 <style>
 </style>
 <script>
@@ -33,12 +33,17 @@ var wl0_nmode_x = '<% nvram_get("wl0_nmode_x"); %>';
 if(wl_info.band5g_2_support || wl_info.band6g_support){
 	var wl2_nmode_x = '<% nvram_get("wl2_nmode_x"); %>';
 }
-if(based_modelid === 'GT-AXE16000'){
+if(based_modelid === 'GT-AXE16000' || based_modelid === 'GT-BE98' || based_modelid === 'GT-BE98_PRO'){
 	var wl3_nmode_x = '<% nvram_get("wl3_nmode_x"); %>';
 	radio_2 = '<% nvram_get("wl3_radio"); %>';
 	radio_5 = '<% nvram_get("wl0_radio"); %>';
 	var radio_5_2 = '<% nvram_get("wl1_radio"); %>';
 	var radio_6 = '<% nvram_get("wl2_radio"); %>';
+}
+else if(based_modelid === 'GT10' || based_modelid === 'RT-AX9000'){
+	radio_2 = '<% nvram_get("wl2_radio"); %>';
+	radio_5 = '<% nvram_get("wl0_radio"); %>';
+	var radio_5_2 = '<% nvram_get("wl1_radio"); %>';
 }
 <% wl_get_parameter(); %>
 
@@ -113,7 +118,7 @@ function initial(){
 	if(document.form.preferred_lang.value == "JP"){    //use unique font-family for JP
 		document.getElementById('2g_radio_hint').style.fontFamily = "MS UI Gothic,MS P Gothic";
 		document.getElementById('5g_radio_hint').style.fontFamily = "MS UI Gothic,MS P Gothic";
-		if(based_modelid === 'GT-AXE16000'){
+		if(based_modelid === 'GT-AXE16000' || based_modelid === 'GT-BE98' || based_modelid === 'GT-BE98_PRO'){
 			document.getElementById('5g_2_radio_hint').style.fontFamily = "MS UI Gothic,MS P Gothic";
 			document.getElementById('6g_radio_hint').style.fontFamily = "MS UI Gothic,MS P Gothic";
 		}
@@ -300,6 +305,13 @@ function gen_gntable_tr(unit, gn_array, slicesb){
 	else
 		GN_band = 5;
 	
+	if(based_modelid === 'GT-AXE16000' || based_modelid === 'GT-BE98' || based_modelid === 'GT-BE98_PRO'){
+		unit = (unit+3)%4;
+	}
+	else if(based_modelid === 'GT10' || based_modelid === 'RT-AX9000'){
+		unit = (unit+2)%3;
+	}
+
 	htmlcode += '<table align="left" style="margin-left:-10px;border-collapse:collapse;width:720px;';
 	if(slicesb > 0)
 		htmlcode += 'margin-top:20px;';	
@@ -515,6 +527,19 @@ function gen_gntable(){
 	var gn_array_5g_tmp = gn_array_5g;
 	var gn_array_5g_2_tmp = gn_array_5g_2;
 	var gn_array_60g_tmp = gn_array_60g;
+	
+	if(based_modelid === 'GT-AXE16000' || based_modelid === 'GT-BE98' || based_modelid === 'GT-BE98_PRO'){
+		gn_array_2g_tmp = gn_array_60g;
+		gn_array_5g_tmp = gn_array_2g;
+		gn_array_5g_2_tmp = gn_array_5g;
+		var gn_array_6g_tmp = gn_array_5g_2;
+	}
+	else if(based_modelid === 'GT10' || based_modelid === 'RT-AX9000'){
+		gn_array_2g_tmp = gn_array_5g_2;
+		gn_array_5g_tmp = gn_array_2g;
+		gn_array_5g_2_tmp = gn_array_5g;
+	}
+	
 	var band2sb = 0;
 	var band5sb = 0;
 	var band5sb_2 = 0;
@@ -609,7 +634,7 @@ function gen_gntable(){
 		check_bw_status(gn_array_5g_2_tmp);
 	}
 
-	if(based_modelid === 'GT-AXE16000'){	
+	if(based_modelid === 'GT-AXE16000' || based_modelid === 'GT-BE98' || based_modelid === 'GT-BE98_PRO'){	
 		if(gn_array_6g_tmp.length > 0){
 			htmlcode6 += '<table style="margin-left:20px;margin-bottom:25px;" width="95%" align="center" cellpadding="4" cellspacing="0" class="gninfo_head_table" id="gninfo_table_6g">';
 			htmlcode6 += '<tr id="6g_title"><td align="left" style="color:#5AD; font-size:16px; border-bottom:1px dashed #AAA;">';
@@ -1202,19 +1227,19 @@ function show_wl_maclist_x(){
 	else{
 		//user icon
 		var userIconBase64 = "NoIcon";
-		var clientName, deviceType, deviceVender;
+		var clientName, deviceType, deviceVendor;
 		Object.keys(manually_maclist_list_array).forEach(function(key) {
 			var clientMac = key.toUpperCase();
 			var clientIconID = "clientIcon_" + clientMac.replace(/\:/g, "");
 			if(clientList[clientMac]) {
 				clientName = (clientList[clientMac].nickName == "") ? clientList[clientMac].name : clientList[clientMac].nickName;
 				deviceType = clientList[clientMac].type;
-				deviceVender = clientList[clientMac].vendor;
+				deviceVendor = clientList[clientMac].vendor;
 			}
 			else {
 				clientName = "New device";
 				deviceType = 0;
-				deviceVender = "";
+				deviceVendor = "";
 			}
 			code += '<tr id="row_'+clientMac+'">';
 			code += '<td width="80%" align="center">';
@@ -1227,20 +1252,24 @@ function show_wl_maclist_x(){
 					userIconBase64 = getUploadIcon(clientMac.replace(/\:/g, ""));
 				}
 				if(userIconBase64 != "NoIcon") {
-					code += '<div id="' + clientIconID + '" style="text-align:center;"><img class="imgUserIcon_card" src="' + userIconBase64 + '"></div>';
-				}
-				else if(deviceType != "0" || deviceVender == "") {
-					code += '<div id="' + clientIconID + '" class="clientIcon type' + deviceType + '"></div>';
-				}
-				else if(deviceVender != "" ) {
-					var venderIconClassName = getVenderIconClassName(deviceVender.toLowerCase());
-					if(venderIconClassName != "" && !downsize_4m_support) {
-						code += '<div id="' + clientIconID + '" class="venderIcon ' + venderIconClassName + '"></div>';
-					}
-					else {
-						code += '<div id="' + clientIconID + '" class="clientIcon type' + deviceType + '"></div>';
-					}
-				}
+                    if(clientList[clientMac].isUserUplaodImg){
+                        code += '<div id="' + clientIconID + '" class="clientIcon"><img class="imgUserIcon_card" src="' + userIconBase64 + '"></div>';
+                    }else{
+                        code += '<div id="' + clientIconID + '" class="clientIcon"><i class="type" style="--svg:url(' + userIconBase64 + ')"></i></div>';
+                    }
+                }
+                else if(deviceType != "0" || deviceVendor == "") {
+                    code += '<div id="' + clientIconID + '" class="clientIcon"><i class="type'+deviceType+'"></i></div>';
+                }
+                else if(deviceVendor != "" ) {
+                    var vendorIconClassName = getVendorIconClassName(deviceVendor.toLowerCase());
+                    if(vendorIconClassName != "" && !downsize_4m_support) {
+                        code += '<div id="' + clientIconID + '" class="clientIcon"><i class="vendor-icon '+ vendorIconClassName +'"></i></div>';
+                    }
+                    else {
+                        code += '<div id="' + clientIconID + '" class="clientIcon"><i class="type' + deviceType + '"></i></div>';
+                    }
+                }
 			}
 			code += '</td><td style="width:60%;border:0px;">';
 			code += '<div>' + clientName + '</div>';
@@ -1364,7 +1393,7 @@ function pullWLMACList(obj){
 	var element = document.getElementById('WL_MAC_List_Block');
 	var isMenuopen = element.offsetWidth > 0 || element.offsetHeight > 0;	
 	if(isMenuopen == 0){		
-		obj.src = "/images/arrow-top.gif"
+		obj.src = "/images/unfold_less.svg"
 		element.style.display = "block";
 		document.form.wl_maclist_x_0.focus();		
 	}
@@ -1373,7 +1402,7 @@ function pullWLMACList(obj){
 }
 
 function hideClients_Block(){
-	document.getElementById("pull_arrow").src = "/images/arrow-down.gif";
+	document.getElementById("pull_arrow").src = "/images/unfold_more.svg";
 	document.getElementById("WL_MAC_List_Block").style.display="none";
 }
 
@@ -1921,9 +1950,11 @@ function apply_amazon_wss(){
 									</tr>
 									<tr>
 										<td width="80%">
-											<input type="text" maxlength="17" class="input_macaddr_table" name="wl_maclist_x_0" onKeyPress="return validator.isHWAddr(this,event)" onClick="hideClients_Block();" autocorrect="off" autocapitalize="off" placeholder="ex: <% nvram_get("lan_hwaddr"); %>" style="width:255px;">
-											<img id="pull_arrow" height="14px;" src="/images/arrow-down.gif" style="position:absolute;display:none;" onclick="pullWLMACList(this);" title="<#select_wireless_MAC#>">
-											<div id="WL_MAC_List_Block" class="clientlist_dropdown" style="margin-left:107px;"></div>
+										    <div class="clientlist_dropdown_main" style="width: 100%;">
+                                                <input type="text" maxlength="17" class="input_macaddr_table" name="wl_maclist_x_0" onKeyPress="return validator.isHWAddr(this,event)" onClick="hideClients_Block();" autocorrect="off" autocapitalize="off" placeholder="ex: <% nvram_get("lan_hwaddr"); %>">
+                                                <img id="pull_arrow" height="14px;" src="/images/unfold_more.svg" onclick="pullWLMACList(this);" title="<#select_wireless_MAC#>">
+                                                <div id="WL_MAC_List_Block" class="clientlist_dropdown"></div>
+											</div>
 										</td>
 										<td width="20%">	
 											<input type="button" class="add_btn" onClick="addRow(document.form.wl_maclist_x_0, 16);" value="">

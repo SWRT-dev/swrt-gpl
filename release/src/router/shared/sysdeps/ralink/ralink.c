@@ -6,6 +6,42 @@
 #include "shared.h"
 #include <ralink.h>
 
+#if defined(RTCONFIG_MT798X)
+extern int iface_name_to_vport(const char *iface);
+#endif
+
+
+#if defined(RTCONFIG_AMAS_ETHDETECT)
+
+#if defined(PRTAX57_GO)
+#define PORT_UNITS 2
+#elif defined(TUFAX4200) || defined(TUFAX6000)
+#define PORT_UNITS 6
+#elif defined(RTAX59U)
+#define PORT_UNITS 4
+#else
+#define PORT_UNITS 6
+#endif
+
+//Aimesh RE: vport to eth name
+static const char *query_ifname[PORT_UNITS] = { //Aimesh RE
+//      L1      L2      L3      L4     WAN1    WAN2   
+#if defined(PRTAX57_GO)
+//      L1      WAN1    
+        "eth0", "eth1"
+#elif defined(TUFAX4200) || defined(TUFAX6000)
+	"lan5", "lan4", "lan3", "lan2", "lan1", "eth1"
+#elif defined(RTAX59U)
+        "lan3", "lan2", "lan1", "eth1"	
+#else
+//      P0      P1      P2      P3      P4      P5
+//        NULL,   NULL,   NULL,   NULL,   NULL,   NULL
+#error define query_ifname
+#endif
+};
+#endif
+
+
 struct channel_info {
 	unsigned char channel;
 	unsigned char bandwidth;
@@ -89,7 +125,12 @@ int wl_get_bw_cap(int unit, int *bwcap)
 	if (unit == 0)
 		*bwcap = 0x01 | 0x02;		/* 40MHz */
 	else if (unit == 1)
+	{
 		*bwcap = 0x01 | 0x02 | 0x04;	/* 11AC 80MHz */
+#if defined(RTCONFIG_MT798X)
+		*bwcap |= 0x08;
+#endif
+	}
 #ifdef RTCONFIG_HAS_5G_2
 	else if (unit == 2)
 		*bwcap = 0x01 | 0x02 | 0x04;	/* 11AC 80MHz */
@@ -98,6 +139,33 @@ int wl_get_bw_cap(int unit, int *bwcap)
 		return -1;
 
 	return 0;
+}
+
+int wl_set_ch_bw(const char *ifname, int channel, int bw, int nctrlsb)
+{
+	if (set_bw_nctrlsb(ifname, bw, nctrlsb) < 0) {
+		dbg("set %s bw (%d) or nctrlsb (%d) failed", ifname, bw, nctrlsb);
+		return -1;
+	}
+
+	if (set_channel(ifname, channel) < 0) {
+		dbg("set %s channel (%d) failed", ifname, channel);
+		return -1;
+	}
+
+	return 0;
+}
+
+void sync_control_channel(int unit, int channel, int bw, int nctrlsb)
+{
+	char ifname[IFNAMSIZ];
+	int ret __attribute__ ((unused));
+
+	if (unit < 0 || unit >= MAX_NR_WL_IF)
+		return;
+
+	__get_wlifname(unit, 0, ifname);
+	ret = wl_set_ch_bw(ifname, channel, bw, nctrlsb);
 }
 
 int get_psta_status(int unit)
@@ -343,11 +411,72 @@ void set_wlan_service_status(int bssidx, int vifidx, int enabled)
         snprintf(prefix, sizeof(prefix), "wl%d_", bssidx);
 
     ifname = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
-	eval("ifconfig", ifname, enabled? "up":"down");
+    if (!enabled && bssidx)
+        doSystem("iwpriv %s set DfsCacClean=1", ifname);
+    eval("ifconfig", ifname, enabled? "up":"down");
 }
 
 
 #ifdef RTCONFIG_BHCOST_OPT
+#ifdef RTCONFIG_AMAS_ETHDETECT
+unsigned int get_uplinkports_linkrate(char *ifname)
+{
+        unsigned int link_rate = 0;
+        int connect=0 ,speed=0;
+        int vport = 0;
+
+        for (vport = 0; vport < PORT_UNITS; vport++) 
+	{
+                if (vport >= ARRAY_SIZE(query_ifname)) {
+                        dbg("%s: don't know vport %d\n", __func__, vport);
+                        return 0;
+                }
+                if (query_ifname[vport] != NULL && strstr(query_ifname[vport],ifname)) 
+		{
+#if defined(RTCONFIG_MT798X)
+			get_mt7986_mt7531_vport_info(iface_name_to_vport(ifname), &connect, &speed, NULL);
+			if(connect)
+			{	
+				link_rate=speed;
+				break;
+			}
+#else
+#error port status and linkrate
+#endif			
+                }
+        }
+        return link_rate;
+}
+/**
+ * @brief Get the uplinkports status
+ *
+ * @param ifname ethernet uplink ifname
+ * @return int connnected(1) or not(0)
+ */
+
+int get_uplinkports_status(char *ifname)
+{
+        int vport = 0;
+        int connect=0 ,speed=0;
+        for (vport = 0; vport < PORT_UNITS; vport++) {
+                if (vport >= ARRAY_SIZE(query_ifname)) {
+                        dbg("%s: don't know vport %d\n", __func__, vport);
+                        return 0;
+                }
+                if (query_ifname[vport] != NULL && strstr(query_ifname[vport],ifname)) 
+		{
+#if defined(RTCONFIG_MT798X)
+			get_mt7986_mt7531_vport_info(iface_name_to_vport(ifname), &connect, &speed, NULL);
+			if(connect)
+				return 1;
+#else
+#error port status and linkrate
+#endif			
+                }
+        }
+        return 0;
+}
+#else
 unsigned int get_uplinkports_linkrate(char *ifname)
 {
 	int speed;
@@ -358,8 +487,22 @@ unsigned int get_uplinkports_linkrate(char *ifname)
 		speed = rtkswitch_WanPort_phySpeed();
 	return speed;
 }
+
+/**
+ * @brief Get the uplinkports status
+ *
+ * @param ifname ethernet uplink ifname
+ * @return int connnected(1) or not(0)
+ */
+int get_uplinkports_status(char *ifname)
+{
+        int wan_unit = wan_primary_ifunit();
+
+        return get_wanports_status(wan_unit);
+}
+#endif  /* RTCONFIG_AMAS_ETHDETECT */
 #endif	/* RTCONFIG_BHCOST_OPT */
-#endif
+#endif 
 
 #ifdef RTCONFIG_CFGSYNC
 void update_macfilter_relist(void)
@@ -471,44 +614,54 @@ void get_phy_port_mapping(phy_port_mapping *port_mapping)
 #if defined(RT4GAX56)
 		.count = 6,
 		.is_mobile_router = 1,
-		.port[0] = { .phy_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[1] = { .phy_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[2] = { .phy_port_id = -1, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[3] = { .phy_port_id = -1, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[4] = { .phy_port_id = -1, .label_name = "L4", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[5] = { .phy_port_id = -1, .label_name = "M1", .cap = PHY_PORT_CAP_MOBILE, .max_rate = 480, .ifname = NULL }
+		.port[0] = { .phy_port_id = -1, .ext_port_id = 0, .label_name = "W0", .cap = PHY_PORT_CAP_WAN, .max_rate = 1000, .ifname = "eth1", .flag = 0 },
+		.port[1] = { .phy_port_id = -1, .ext_port_id = 1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth0", .flag = 0 },
+		.port[2] = { .phy_port_id = -1, .ext_port_id = 2, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth0", .flag = 0 },
+		.port[3] = { .phy_port_id = -1, .ext_port_id = 3, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth0", .flag = 0 },
+		.port[4] = { .phy_port_id = -1, .ext_port_id = 4, .label_name = "L4", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth0", .flag = 0 },
+		.port[5] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "M1", .cap = PHY_PORT_CAP_MOBILE, .max_rate = 480, .ifname = "usb0", .flag = 0 }
 #elif defined(RT4GAC86U)
 		.count = 7,
 		.is_mobile_router = 1,
-		.port[0] = { .phy_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[1] = { .phy_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[2] = { .phy_port_id = -1, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[3] = { .phy_port_id = -1, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[4] = { .phy_port_id = -1, .label_name = "L4", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[5] = { .phy_port_id = -1, .label_name = "U1", .cap = PHY_PORT_CAP_USB, .max_rate = 480, .ifname = NULL },
-		.port[6] = { .phy_port_id = -1, .label_name = "M1", .cap = PHY_PORT_CAP_MOBILE, .max_rate = 480, .ifname = NULL }
-#elif defined(RTAX54)
+		.port[0] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[1] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[2] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[3] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[4] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L4", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[5] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "U1", .cap = PHY_PORT_CAP_USB, .max_rate = 480, .ifname = NULL, .flag = 0 },
+		.port[6] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "M1", .cap = PHY_PORT_CAP_MOBILE, .max_rate = 480, .ifname = NULL, .flag = 0 }
+#elif defined(RTAX54) || defined(R6800)
 		.count = 5,
-		.port[0] = { .phy_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[1] = { .phy_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[2] = { .phy_port_id = -1, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[3] = { .phy_port_id = -1, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[4] = { .phy_port_id = -1, .label_name = "L4", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
+		.port[0] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[1] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[2] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[3] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[4] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L4", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
 #elif defined(RTAX53U)
 		.count = 5,
-		.port[0] = { .phy_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[1] = { .phy_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[2] = { .phy_port_id = -1, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[3] = { .phy_port_id = -1, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[4] = { .phy_port_id = -1, .label_name = "U1", .cap = PHY_PORT_CAP_USB, .max_rate = 480, .ifname = NULL },
+		.port[0] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[1] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[2] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[3] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[4] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "U1", .cap = PHY_PORT_CAP_USB, .max_rate = 480, .ifname = NULL, .flag = 0 },
 #elif defined(RTACRH18)
 		.count = 6,
-		.port[0] = { .phy_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[1] = { .phy_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[2] = { .phy_port_id = -1, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[3] = { .phy_port_id = -1, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[4] = { .phy_port_id = -1, .label_name = "L4", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL },
-		.port[5] = { .phy_port_id = -1, .label_name = "U1", .cap = PHY_PORT_CAP_USB, .max_rate = 5000, .ifname = NULL },
+		.port[0] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[1] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[2] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[3] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[4] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L4", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[5] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "U1", .cap = PHY_PORT_CAP_USB, .max_rate = 5000, .ifname = NULL, .flag = 0 },
+#elif defined(XD4S)
+		.count = 2,
+		.port[0] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[1] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+#elif defined(RTCONFIG_3LANPORT_DEVICE)
+		.count = 4,
+		.port[0] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[1] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[2] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[3] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
 #else
 		#error "port_mapping is not defined."
 #endif
@@ -896,4 +1049,24 @@ double get_wifi_6G_maxpower()
 	return 0;
 }
 #endif
+
+#ifdef RTCONFIG_MULTILAN_CFG
+void apg_switch_vlan_set(int vid, unsigned int default_portmask, unsigned int trunk_portmask, unsigned int access_portmask)
+{
+	if (__apg_switch_vlan_set)
+		__apg_switch_vlan_set(vid, default_portmask, trunk_portmask, access_portmask);
+}
+
+void apg_switch_vlan_unset(int vid, unsigned int portmask)
+{
+	if (__apg_switch_vlan_unset)
+		__apg_switch_vlan_unset(vid, portmask);
+}
+
+void apg_switch_isolation(int enable, unsigned int portmask)
+{
+	if (__apg_switch_isolation)
+		__apg_switch_isolation(enable, portmask);
+}
+#endif /* RTCONFIG_MULTILAN_CFG */
 

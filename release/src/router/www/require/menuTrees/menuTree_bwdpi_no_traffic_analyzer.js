@@ -1,4 +1,4 @@
-/* menuTree_bwdpi_no_traffic_analyzer.js */
+﻿/* menuTree_bwdpi_no_traffic_analyzer.js */
 define(function(){
 	var menuTree = {
 		list: [
@@ -51,13 +51,21 @@ define(function(){
 				]
 			},
 			{
-				menuName: "<#Guest_Network#>",
+				menuName: Guest_Network_naming,
 				index: "menu_GuestNetwork",
 				tab: [
-					{url: "Guest_network.asp", tabName: "<#Guest_Network#>"},
+					{url: (isSupport("mtlancfg") ? "SDN.asp" : "Guest_network.asp"), tabName: Guest_Network_naming},
 					{url: "Captive_Portal.asp", tabName: "Free WiFi"},
 					{url: "Captive_Portal_Advanced.asp", tabName: "<#Captive_Portal#>"},
 					{url: "Guest_network_fbwifi.asp", tabName: "Facebook WiFi"},
+					{url: "NULL", tabName: "__INHERIT__"}
+				]
+			},
+			{
+				menuName: "<#AiProtection_title_Dashboard_title#>",
+				index: "menu_NewDashboard",
+				tab: [
+					{url: "index.html", tabName: "__HIDE__"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				]
 			},
@@ -85,10 +93,10 @@ define(function(){
 				] 
 			},
 			{
-				menuName: "<#UU_Accelerator#>",
+				menuName: "网易UU加速器",
 				index: "menu_UU", 
 				tab: [
-					{url: "UUAccelerator.asp", tabName: "<#UU_Accelerator#>"},
+					{url: "UUAccelerator.asp", tabName: "网易UU加速器"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
@@ -121,10 +129,10 @@ define(function(){
 				] 
 			},
 			{
-				menuName: "<#TencentAcceleration#>",
+				menuName: "腾讯网游加速器",
 				index: "menu_TencentAcceleration",
 				tab: [
-					{url: "GameBoost_Tencent.asp", tabName: "<#TencentAcceleration#>"},
+					{url: "GameBoost_Tencent.asp", tabName: "Tencent Game Acceleration"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				]
 			},
@@ -153,15 +161,6 @@ define(function(){
 					{url: "cloud_router_sync.asp", tabName: "<#Server_Sync#>"},
 					{url: "cloud_settings.asp", tabName: "<#Settings#>"},
 					{url: "cloud_syslog.asp", tabName: "<#Log#>"},
-					{url: "NULL", tabName: "__INHERIT__"}
-				] 
-			},
-			{
-				menuName: "<#Softcenter_tool#>",
-				index: "menu_Tools",
-				tab: [
-					{url: "Tools_Sysinfo.asp", tabName: "Sysinfo"},
-					{url: "Softcenter.asp", tabName: "<#Softcenter_tool#>"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
@@ -199,7 +198,8 @@ define(function(){
 					{url: "Advanced_GWStaticRoute_Content.asp", tabName: "<#menu5_2_3#>"},
 					{url: "Advanced_IPTV_Content.asp", tabName: "IPTV"},
 					{url: "Advanced_SwitchCtrl_Content.asp", tabName: "<#Switch_itemname#>"},
-					{url: "Advanced_SmartDNS_Content.asp", tabName: "SmartDNS"},
+					{url: "Advanced_VLAN_Switch_Content.asp", tabName: "VLAN"},
+					{url: "Advanced_VLAN_Profile_Content.asp", tabName: "__INHERIT__"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
@@ -276,6 +276,7 @@ define(function(){
 					{url: "Advanced_TR069_Content.asp", tabName: "TR-069"},
 					{url: "Advanced_Notification_Content.asp", tabName: "Notification"},
 					{url: "Advanced_Privacy.asp", tabName: "<#menu_privacy#>"},
+					{url: "Advanced_MultiFuncBtn.asp", tabName: "Multi-Function Button"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				]
 			},
@@ -305,39 +306,6 @@ define(function(){
 					{url: "Advanced_Smart_Connect.asp", tabName: "<#smart_connect_rule#>"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				]
-			},
-			{
-				menuName: "Entware",
-				index: "menu_Split",
-				tab: [
-					{url: "NULL", tabName: "__HIDE__"}
-				]
-			},
-			{
-				menuName: "Entware",
-				index: "menu_Entware",
-				tab: [
-					{url: "Entware_start.asp", tabName: "<#Entware_home#>"},
-					{url: "Entware_installed.asp", tabName: "<#Entware_installed#>"},
-					{url: "Entware_list.asp", tabName: "<#Entware_list#>"},
-					{url: "NULL", tabName: "__INHERIT__"}
-				] 
-			},
-			{
-				menuName: "<#Softcenter#>",
-				index: "menu_Split",
-				tab: [
-					{url: "NULL", tabName: "__HIDE__"}
-				]
-			},
-			{
-				menuName: "<#Softcenter#>",
-				index: "menu_Softcenter",
-				tab: [
-					{url: "Main_Soft_center.asp", tabName: "<#Softcenter#>"},
-					{url: "Main_Soft_setting.asp", tabName: "Offline Mode"},
-					{url: "NULL", tabName: "__INHERIT__"}
-				]
 			}
 		],
 
@@ -351,6 +319,10 @@ define(function(){
 
 				if(!multissid_support){
 					retArray.push("menu_GuestNetwork");
+				}
+
+				if(!dashboard_support){
+					retArray.push("menu_NewDashboard");
 				}
 
 				if(!bwdpi_support){
@@ -371,7 +343,7 @@ define(function(){
 					retArray.push("menu_APP");
 				}
 
-				if((!cloudsync_support && !aicloudipk_support) || nocloudsync_support){
+				if((!cloudsync_support && !aicloudipk_support) || nocloudsync_support || isSupport("BUSINESS")){
 					retArray.push("menu_AiCloud");
 				}
 
@@ -473,16 +445,6 @@ define(function(){
 						retArray.push("menu_Alexa_IFTTT");
 					}
 				}
-				if (!softcenter_support || '<% nvram_get("sc_installed"); %>' != '1'){
-					retArray.push("menu_Softcenter");
-				}
-				if (!entware_support){
-					retArray.push("menu_Entware");
-					for(i=0; i<menuTree.list.length; i++){
-						if(menuTree.list[i].menuName == 'Entware')
-							menuTree.list.splice(i,1);
-					}
-				}
 
 				return retArray;
 			},
@@ -491,9 +453,6 @@ define(function(){
 				var retArray = [];
 
 				/* By RC Support */
-				if (!smartdns_support){
-					retArray.push("Advanced_SmartDNS_Content.asp");
-				}
 				if(!bwdpi_support){
 					retArray.push("AdaptiveQoS_Bandwidth_Monitor.asp");
 					retArray.push("AdaptiveQoS_WebHistory.asp");
@@ -674,6 +633,11 @@ define(function(){
 					retArray.push("Guest_network_fbwifi.asp");
 				}
 
+				if(!mtlancfg_support){
+					retArray.push("Advanced_VLAN_Switch_Content.asp");
+					retArray.push("Advanced_VLAN_Profile_Content.asp");
+				}
+
 				if(!tagged_based_vlan){
 					retArray.push("Advanced_TagBasedVLAN_Content.asp");
 					retArray.push("Advanced_MultiSubnet_Content.asp");
@@ -720,6 +684,25 @@ define(function(){
 				if(!dnsfilter_support)
 					retArray.push("DNSFilter.asp");
 
+				if(isSupport("mtlancfg")){
+					retArray.push("Captive_Portal.asp");
+					retArray.push("Captive_Portal_Advanced.asp");
+					retArray.push("Guest_network_fbwifi.asp");
+				}
+
+				if(isSupport("BUSINESS")){
+					retArray.push("APP_Installation.asp");
+					retArray.push("aidisk.asp");
+					retArray.push("PrinterServer.asp");
+					retArray.push("Advanced_Modem_Content.asp");
+					retArray.push("Advanced_TimeMachine.asp");
+					retArray.push("fileflex.asp");
+				}
+
+				if(!isSupport("sw_btn")){
+					retArray.push("Advanced_MultiFuncBtn.asp");
+				}
+
 				/* Operation Mode */
 				if(isSwMode("re")){
 					retArray.push("GameBoost.asp");
@@ -728,6 +711,8 @@ define(function(){
 					retArray.push("Advanced_MultiSubnet_Content.asp");
 					retArray.push("Advanced_GWStaticRoute_Content.asp");
 					retArray.push("Advanced_IPTV_Content.asp");
+					retArray.push("Advanced_VLAN_Switch_Content.asp");
+					retArray.push("Advanced_VLAN_Profile_Content.asp");
 					retArray.push("Main_DHCPStatus_Content.asp");
 					retArray.push("Main_IPV6Status_Content.asp");
 					retArray.push("Main_RouteStatus_Content.asp");
@@ -774,6 +759,8 @@ define(function(){
 					retArray.push("Advanced_MultiSubnet_Content.asp");
 					retArray.push("Advanced_GWStaticRoute_Content.asp");
 					retArray.push("Advanced_IPTV_Content.asp");
+					retArray.push("Advanced_VLAN_Switch_Content.asp");
+					retArray.push("Advanced_VLAN_Profile_Content.asp");
 					retArray.push("Main_DHCPStatus_Content.asp");
 					retArray.push("Main_IPV6Status_Content.asp");
 					retArray.push("Main_RouteStatus_Content.asp");
@@ -809,4 +796,3 @@ define(function(){
 
 	return menuTree;
 });
-

@@ -542,12 +542,13 @@
 	width: 16px;
 	height: 16px;
 	border-radius: 1px;
-	box-shadow: 0 0 0 1.5px #fff;
+	border: 1px solid #FFF;
 	cursor: pointer;
 	position: relative;
+	border-radius: 4px;
 }
 .checkbox.on{
-	box-shadow: 0 0 0 1.5px rgb(0, 145, 255);
+	border: 1px solid rgb(0, 145, 255);
 	background-color: rgb(0, 145, 255);
 }
 .checkbox.on:before, .checkbox.disable:before{
@@ -658,18 +659,11 @@
 	align-items: center;
 }
 .btn_item .btn_container .text.create_ssk_account{
-	color: rgb(255, 255, 255);
-	font-size: 12px;
-	letter-spacing: 1.25px;
-	position: relative;
 	width: 155px;
-	height: 100%;
-	word-break: break-word;
-	display: flex;
-	justify-content: flex-start;
-	align-items: center;
 }
-.btn_item .btn_container .text.import_file:before, .btn_item .btn_container .text.create_account:before{
+.btn_item .btn_container .text.import_file:before,
+.btn_item .btn_container .text.create_account:before,
+.text.create_ssk_account:before{
 	position: absolute;
 	content: "";
 	background-image: url(/images/New_ui/vpn_icon_all_collect.svg);
@@ -680,14 +674,7 @@
 	left: -40px;
 }
 .text.create_ssk_account:before{
-	position: absolute;
-	content: "";
-	background-image: url(/images/New_ui/vpn_icon_all_collect.svg);
-	background-repeat: no-repeat;
-	background-position: -50px -163px;
-	width: 24px;
-	height: 24px;
-	left: -40px;
+	background-position: -54px -163px !important;
 }
 .btn_item .btn_container .text.create_account:before{
 	background-position: -54px -163px;
@@ -706,6 +693,10 @@
 	margin-left: 4%;
 	margin-bottom: 2%;
 	position: relative;
+}
+.input_container.two_component{
+	display: flex;
+	align-items: center;
 }
 .profile_setting_item.nowrap .input_container{
 	flex: 0 0 60%;
@@ -1004,6 +995,13 @@
 	right: 0;
 	align-items: center;
 	line-height: 180%;
+	-webkit-tap-highlight-color: transparent;
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
 }
 .popup_container.popup_element_second{
 	z-index: 500;
@@ -1178,7 +1176,7 @@
 	color: #ffffff;
 }
 .del_profile .action_btn_container .cancel{
-	box-shadow: 0 0 0 1px rgb(164 183 195 / 60%);
+	border: 1px solid rgb(164 183 195 / 60%);
 	color: rgba(164, 183, 195, 0.6);
 }
 .customize_alert .desc{
@@ -1200,14 +1198,22 @@
 	font-weight: normal;
 	margin-left: 2%;
 }
-.function_desc_container .vpnc_help_icon, .get_start_container .sub_info_container .vpnc_help_icon{
+.function_desc_container .vpnc_help_icon,
+.get_start_container .sub_info_container .vpnc_help_icon,
+.input_container .vpnc_help_icon{
 	background-position: -324px 0px;
 	width: 24px;
 	height: 24px;
 	margin-right: 16px;
 	cursor: pointer;
 }
-.function_desc_container .vpnc_help_icon:hover, .get_start_container .sub_info_container .vpnc_help_icon:hover{
+.input_container .vpnc_help_icon{
+	margin-right: initial;
+	margin-left: 6px;
+}
+.function_desc_container .vpnc_help_icon:hover,
+.get_start_container .sub_info_container .vpnc_help_icon:hover,
+.input_container .vpnc_help_icon:hover{
 	background-position: -324px -54px;
 }
 .function_desc_container:before{
@@ -1282,10 +1288,6 @@
 	background-color: rgb(89, 110, 116);
 	box-shadow: 0px 0px 0px 1px rgb(89, 110, 116);
 	background-position: 50%;
-}
-.client_icon_container.vender_icon{
-	background-image: url(/images/New_ui/networkmap/vender-list.png);
-	background-size: 180%;
 }
 .client_container .client_info_container{
 	width: 70%;
@@ -1465,7 +1467,8 @@
 		margin: initial;
 	}
 	.server_list_container{
-		width: 100%;
+		width: 94% !important;
+		margin: auto;
 	}
 	.svr_item_container, .svr_item_container.active, .svr_item_container.selected{
 		background: #1E2A41;
@@ -1544,7 +1547,7 @@
 		color: inherit;
 	}
 	.del_profile .action_btn_container .cancel{
-		box-shadow: inherit;
+		border: inherit;
 		color: inherit;
 	}
 	.del_profile .desc{

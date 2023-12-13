@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -235,7 +235,7 @@ function change_disk_system() {
 		if(temp_label.length > 12)
 			document.form.disk_name.value = temp_label.substr(0, 11);
 	}
-	else if(disk_system == "tntfs") {
+	else if(disk_system == "tntfs" || disk_system == "ntfs3") {
 		document.form.disk_name.maxLength = 32;
 	}
 	else if(disk_system == "thfsplus") {

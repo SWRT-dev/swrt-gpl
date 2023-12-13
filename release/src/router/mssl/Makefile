@@ -5,9 +5,9 @@ LIBS =
 LDFLAGS	= 
 
 CFLAGS	+= -I$(TOP)/openssl/include
-LIBS += -L$(TOP)/openssl -lssl -lcrypto $(if $(or $(RTCONFIG_OPENSSL11),$(RTCONFIG_OPENSSL3)),-lpthread,)
+LIBS += -L$(TOP)/openssl -lssl -lcrypto $(if $(RTCONFIG_OPENSSL11),-lpthread,)
 
-ifneq ($(RTCONFIG_HND_ROUTER),y)
+ifneq ($(RTCONFIG_BCMARM),y)
 LIBS += -lpthread
 endif
 OBJ = mssl.o
@@ -15,7 +15,15 @@ OBJ = mssl.o
 all: libmssl.so libmssl.a
 
 libmssl.so: $(OBJ)
+ifeq ($(RTCONFIG_BCMARM),y)
+ifeq ($(HND_ROUTER),y)
 	$(CC) -shared -o $@ $^ $(LIBS)
+else
+	$(LD) $(LIBS) -shared -o $@ $^
+endif
+else
+	$(CC) -shared -o $@ $^ $(LIBS)
+endif
 	$(STRIP) $@
 	$(CPTMP)
 
@@ -29,7 +37,9 @@ clean:
 install: all
 	@echo " [mssl] Installing..."
 	install -D libmssl.so $(INSTALLDIR)/usr/lib/libmssl.so
+ifneq ($(RTCONFIG_BCMARM),y)
 	$(STRIP) $(INSTALLDIR)/usr/lib/libmssl.so
+endif
 
 %.o: %.c .%.depend
 	@echo " [mssl] CC $@"

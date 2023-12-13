@@ -1005,10 +1005,22 @@ var pie_flag;
 						if(ChartElements[0].strokeColor == "#095877"){		//for traffic chart
 							var current_traffic = translate_traffic(ChartElements[0].value);		
 							document.getElementById('current_traffic_field').innerHTML = current_traffic[0] + " " + current_traffic[1];
+
 							if(router_total_traffic == 0)
 								document.getElementById('current_traffic_percent_field').innerHTML = "0.00 %";
 							else
 								document.getElementById('current_traffic_percent_field').innerHTML = ((ChartElements[0].value/router_total_traffic)*100).toFixed(2) + " %";
+
+							if(parent.businessWrapper){
+								parent.document.getElementById('bui_ta_current').innerHTML = current_traffic[0] + " " + current_traffic[1];
+
+								if(router_total_traffic == 0)
+									parent.document.getElementById('bui_ta_percent').innerHTML = "0.00 %";
+								else
+									parent.document.getElementById('bui_ta_percent').innerHTML = ((ChartElements[0].value/router_total_traffic)*100).toFixed(2) + " %";
+							}
+
+
 
 							new Chart.Tooltip({
 								x: Math.round(tooltipPosition.x),
@@ -2688,7 +2700,7 @@ var pie_flag;
 				width : this.chart.width,
 				ctx : this.chart.ctx,
 				//textColor : this.options.scaleFontColor,
-				textColor : "#FFF",
+				textColor : (parent.businessWrapper) ? "#000" : "#FFF",
 				fontSize : this.options.scaleFontSize,
 				fontStyle : this.options.scaleFontStyle,
 				fontFamily : this.options.scaleFontFamily,

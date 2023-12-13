@@ -58,7 +58,15 @@
 #include "ethswctl.h"
 #include "ethswctl_api.h"
 #include "bcm/bcmswapistat.h"
+#include "rtconfig.h"
+
+/* RTCONFIG_HND_ROUTER_BE_4916 */
+#if defined(WIFI7_SDK_20230426)
+#include <rtconfig.h>
+#else	/* WIFI7_SDK_20230426 */
 #include "boardparms.h"
+#endif	/* WIFI7_SDK_20230426 */
+
 
 void outputJumboStatus_MIPS(unsigned int regVal)
 {

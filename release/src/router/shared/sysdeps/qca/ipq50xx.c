@@ -803,7 +803,6 @@ static void create_Vlan(int bitmask)
 {
 	const int vid = nvram_get_int("vlan_vid");
 	const int prio = nvram_get_int("vlan_prio") & 0x7;
-	const int stb_x = nvram_get_int("switch_stb_x");
 	unsigned int mbr = bitmask & 0xffff;
 	unsigned int untag = (bitmask >> 16) & 0xffff;
 	unsigned int mbr_qca, untag_qca;
@@ -815,8 +814,7 @@ static void create_Vlan(int bitmask)
 	mbr_qca   = convert_n56u_portmask_to_model_portmask(mbr);
 	untag_qca = convert_n56u_portmask_to_model_portmask(untag);
 	dbg("%s: mbr_qca:%08x, untag_qca:%08x\n", __func__, mbr_qca, untag_qca);
-	if ((nvram_match("switch_wantag", "none") && stb_x > 0) ||
-	    nvram_match("switch_wantag", "hinet")) {
+	if (untag & 0x10) {
 		vtype = VLAN_TYPE_WAN_NO_VLAN;
 	} else if (mbr & RTN56U_WAN_GMAC) {
 		/* setup VLAN for WAN (WAN1 or WAN2), not VoIP/STB */

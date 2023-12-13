@@ -1208,7 +1208,7 @@ int wl_wlif_unblock_mac(char *ifname, struct ether_addr addr, int flag)
 
 	return TRUE;
 }
-
+#if 0
 /* get the Max NSS */
 int
 wl_wlif_get_max_nss(wl_bss_info_t *bi)
@@ -1259,6 +1259,7 @@ wl_wlif_get_max_nss(wl_bss_info_t *bi)
 
 	return nss;
 }
+#endif
 #endif
 
 #if defined(CONFIG_HOSTAPD) && defined(BCA_HNDROUTER)
@@ -1492,6 +1493,23 @@ wl_wlif_save_wpa_settings(char *type, char *val, wlif_wps_nw_creds_t *creds)
 			creds->encr |= WLIF_WPA_ENCR_AES;
 		}
 	}
+}
+
+/* convert ascii string to hex string */
+void wl_ascii_str_to_hex_str(char *ascii_str, uint16 ascii_len, char *hex_str, uint16 hex_len)
+{
+	int i = 0;
+
+	if (!ascii_str || !hex_str || !ascii_len || !hex_len) {
+		return;
+	}
+
+	while (ascii_str[i] != '\0' && i < (ascii_len - 1) && (i * 2) < (hex_len - 1)) {
+		snprintf((hex_str + i*2), 3,"%02X", ascii_str[i]);
+		i = i + 1;
+	}
+	hex_str[hex_len - 1] = '\0';
+	return;
 }
 
 /* Apply the network credentials to radio interface received from the wps session */
@@ -2747,18 +2765,20 @@ double get_wifi_5GH_maxpower()
 
 double get_wifi_6G_maxpower()
 {
-#if defined(RTCONFIG_WIFI6E)
+#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
 	return get_wifi_maxpower(WL_6G_BAND);
 #else
 	return 0;
 #endif
 }
-
-
-#endif
-
-int wl_bssid(char *name, unsigned char *hwaddr)
+#ifdef RTCONFIG_HAS_6G_2
+double get_wifi_6GH_maxpower()
 {
-	wl_ioctl(name, WLC_GET_BSSID, hwaddr, ETHER_ADDR_LEN);
+#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
+	return get_wifi_maxpower(WL_6G_2_BAND);
+#else
 	return 0;
+#endif
 }
+#endif
+#endif

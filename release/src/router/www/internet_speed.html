@@ -1,5 +1,5 @@
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta http-equiv="X-UA-Compatible" content="ie=edge">
 <link rel="stylesheet" type="text/css" href="css/internetSpeed.css">
 <script language="JavaScript" type="text/javascript" src="/state.js"></script>
@@ -31,6 +31,14 @@ $(function(){
 
 	if(CoBrand == "8")
 		$('link').last().after('<link rel="stylesheet" type="text/css" href="css/difference.css">');
+
+	if(top.businessWrapper){
+		$('link').last().after('<link rel="stylesheet" type="text/css" href="/css/business-white.css">');
+
+		setTimeout(function(){
+			$("body").css({"visibility":"visible"})
+		}, 1000)
+	}
 
 	if(internetSpeed_lite_support){
 		$("#history_desc").hide();

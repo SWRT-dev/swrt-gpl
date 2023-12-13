@@ -868,7 +868,7 @@ function check_smtp_server_type(){
 }
 
 function erase_traffic(){
-	if(confirm("Are you sure you want to clear data? ")){
+	if(confirm("<#AiProtection_TrafficLimiter_clear#>")){
 		document.form.action = "apply.cgi?interface=" + info.current_wan.ifname;
 		document.form.action_mode.value = "traffic_resetcount";
 		document.form.submit();

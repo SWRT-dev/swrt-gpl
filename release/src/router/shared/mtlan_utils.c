@@ -106,7 +106,7 @@ static struct in_addr calc_network(struct in_addr addr, int prefix)
 static char *calc_subnet(char *addr, unsigned int prefix, char *ret, size_t retsz)
 {
         struct in_addr ip, network;
-        char subnet[INET_ADDRSTRLEN + 1];
+        char subnet[INET_ADDRSTRLEN];
 
 	if (!ret || !addr)
 		return NULL;
@@ -136,20 +136,25 @@ void FREE_MTLAN(void *p)
 	if(p) free(p);
 }
 
-static VLAN_T *get_mtvlan(VLAN_T *vlst, size_t *sz)
+VLAN_T *get_mtvlan(VLAN_T *vlst, size_t *sz, const int is_rm)
 {
 	char *nv = NULL, *nvp = NULL, *b;
+
+	/* basic necessary parameters */
 	char *idx, *vid;
+	/* continue to add parameters */
+	char *port_isolation = NULL;
+
 	size_t cnt = 0;
 
 	if (sz)
 		*sz = 0;
 
-	if (!(nv = nvp = strdup(nvram_safe_get("vlan_rl"))))
+	if (!(nv = nvp = strdup((!is_rm) ? nvram_safe_get("vlan_rl") : nvram_safe_get("vlan_rl_x"))))
 		return NULL;
 
 	while ((b = strsep(&nvp, "<")) != NULL) {
-		if (vstrsep(b, ">", &idx, &vid) != VLAN_LIST_MAX_PARAM)
+		if (vstrsep(b, ">", &idx, &vid, &port_isolation) < VLAN_LIST_BASIC_PARAM)
 			continue;
 
 		if (cnt >= MTLAN_MAXINUM)
@@ -159,6 +164,8 @@ static VLAN_T *get_mtvlan(VLAN_T *vlst, size_t *sz)
 			vlst[cnt].idx = strtol(idx, NULL, 10);
 		if (vid && *vid)
 			vlst[cnt].vid = strtol(vid, NULL, 10);
+		if (port_isolation && *port_isolation)
+			vlst[cnt].port_isolation = strtol(port_isolation, NULL, 10);
 
 		cnt++;
 	}
@@ -169,13 +176,21 @@ static VLAN_T *get_mtvlan(VLAN_T *vlst, size_t *sz)
 	return vlst;
 }
 
-SUBNET_T *get_mtsubnet(SUBNET_T *sublst, size_t *lst_sz)
+SUBNET_T *get_mtsubnet(SUBNET_T *sublst, size_t *lst_sz, const int is_rm)
 {
 	char *nv = NULL, *nvp = NULL, *b;
+
+	/* basic necessary parameters */
 	char *idx, *ifname, *addr, *netmask;
 	char *dhcp_enable, *dhcp_min, *dhcp_max, *dhcp_lease;
 	char *domain_name, *dns, *wins, *dhcp_res, *dhcp_res_idx;
-	char subnet[INET_ADDRSTRLEN + 1];
+
+	/* continue to add parameters */
+	char *v6_enable = NULL, *v6_autoconf = NULL, *addr6 = NULL;
+	char *dhcp6_min = NULL, *dhcp6_max = NULL, *dns6 = NULL;
+	char *dot_enable = NULL, *dot_tls = NULL;
+
+	char subnet[INET_ADDRSTRLEN];
 
 	int dnscnt = 0;
 	char *duptr, *subptr, *dnstr;
@@ -185,12 +200,18 @@ SUBNET_T *get_mtsubnet(SUBNET_T *sublst, size_t *lst_sz)
 	if (lst_sz)
 		*lst_sz = 0;
 
-	if (!(nv = nvp = strdup(nvram_safe_get("subnet_rl"))))
+	if (!(nv = nvp = strdup((!is_rm) ? nvram_safe_get("subnet_rl") : nvram_safe_get("subnet_rl_x"))))
 		return NULL;
 
 	while ((b = strsep(&nvp, "<")) != NULL) {
+		/* init */
+		v6_enable = v6_autoconf = addr6 = NULL;
+		dhcp6_min = dhcp6_max = dns6 = NULL;
+
 		if (vstrsep(b, ">", &idx, &ifname, &addr, &netmask, &dhcp_enable, &dhcp_min, &dhcp_max,
-			            &dhcp_lease, &domain_name, &dns, &wins, &dhcp_res, &dhcp_res_idx) != SUBNET_LIST_MAX_PARAM)
+			            &dhcp_lease, &domain_name, &dns, &wins, &dhcp_res, &dhcp_res_idx,
+			            &v6_enable, &v6_autoconf, &addr6, &dhcp6_min, &dhcp6_max, &dns6,
+				    &dot_enable, &dot_tls) < SUBNET_LIST_BASIC_PARAM)
 			continue;
 
 		if (cnt >= MTLAN_MAXINUM)
@@ -198,8 +219,10 @@ SUBNET_T *get_mtsubnet(SUBNET_T *sublst, size_t *lst_sz)
 
 		if (idx && *idx)
 			sublst[cnt].idx = strtol(idx, NULL, 10);
-		if (ifname && *ifname)
+		if (ifname && *ifname) {
 			strlcpy(sublst[cnt].ifname, ifname, sizeof(sublst[cnt].ifname));
+			strlcpy(sublst[cnt].br_ifname, ifname, sizeof(sublst[cnt].br_ifname));
+		}
 		if (addr && *addr)
 			strlcpy(sublst[cnt].addr, addr, sizeof(sublst[cnt].addr));
 		if (netmask && *netmask)
@@ -214,7 +237,7 @@ SUBNET_T *get_mtsubnet(SUBNET_T *sublst, size_t *lst_sz)
 			sublst[cnt].dhcp_lease = strtol(dhcp_lease, NULL, 10);
 		if (domain_name && *domain_name)
 			strlcpy(sublst[cnt].domain_name, domain_name, sizeof(sublst[cnt].domain_name));
-		if (dns && *dns)
+		if (dns && *dns) {
 			dnscnt = 0;
 			duptr = subptr = strdup(dns);
 			if (duptr) {
@@ -226,6 +249,7 @@ SUBNET_T *get_mtsubnet(SUBNET_T *sublst, size_t *lst_sz)
 				}
 				free(duptr);
 			}
+		}
 		if (wins && *wins)
 			strlcpy(sublst[cnt].wins, wins, sizeof(sublst[cnt].wins));
 		if (dhcp_res && *dhcp_res)
@@ -235,6 +259,35 @@ SUBNET_T *get_mtsubnet(SUBNET_T *sublst, size_t *lst_sz)
 
 		strlcpy(sublst[cnt].subnet, calc_subnet(addr, v4mask2int(netmask), subnet, sizeof(subnet)), sizeof(sublst[cnt].subnet));
 		sublst[cnt].prefixlen = v4mask2int(netmask);
+
+		if (dot_enable && *dot_enable)
+			sublst[cnt].dot_enable = (strtol(dot_enable, NULL, 10) == 0) ? 0 : 1;
+		if (dot_tls && *dot_tls)
+			sublst[cnt].dot_tls = (strtol(dot_tls, NULL, 10) == 0) ? 0 : 1;
+
+		if (v6_enable && *v6_enable)
+			sublst[cnt].v6_enable = strtol(v6_enable, NULL, 10);
+		if (v6_autoconf && *v6_autoconf)
+			sublst[cnt].v6_autoconf = strtol(v6_autoconf, NULL, 10);
+		if (addr6 && *addr6)
+			strlcpy(sublst[cnt].addr6, addr6, sizeof(sublst[cnt].addr6));
+		if (dhcp6_min && *dhcp6_min)
+			strlcpy(sublst[cnt].dhcp6_min, dhcp6_min, sizeof(sublst[cnt].dhcp6_min));
+		if (dhcp6_max && *dhcp6_max)
+			strlcpy(sublst[cnt].dhcp6_max, dhcp6_max, sizeof(sublst[cnt].dhcp6_max));
+		if (dns6 && *dns6) {
+			dnscnt = 0;
+			duptr = subptr = strdup(dns6);
+			if (duptr) {
+				while ((dnstr = strsep(&subptr, ",")) != NULL) {
+					if (dnscnt > 2)
+						break;
+					strlcpy(sublst[cnt].dns6[dnscnt], dnstr, sizeof(sublst[cnt].dns6[dnscnt]));
+					dnscnt++;
+				}
+				free(duptr);
+			}
+		}
 
 		cnt++;
 	}
@@ -247,13 +300,14 @@ SUBNET_T *get_mtsubnet(SUBNET_T *sublst, size_t *lst_sz)
 
 static SUBNET_T *get_default_lan(SUBNET_T *ptr)
 {
-	char subnet[INET_ADDRSTRLEN + 1];
+	char subnet[INET_ADDRSTRLEN];
 
 	if (!ptr)
 		return NULL;
 
 	memset(ptr, 0, sizeof(SUBNET_T));
 
+	/* IPv4 */
 	strlcpy(ptr->ifname, nvram_safe_get("lan_ifname"), sizeof(ptr->ifname));
 	strlcpy(ptr->addr, nvram_safe_get("lan_ipaddr"), sizeof(ptr->addr));
 	strlcpy(ptr->netmask, nvram_safe_get("lan_netmask"), sizeof(ptr->netmask));
@@ -269,6 +323,12 @@ static SUBNET_T *get_default_lan(SUBNET_T *ptr)
 	strlcpy(ptr->wins, nvram_safe_get("dhcp_wins_x"), sizeof(ptr->wins));
 	ptr->dhcp_res = nvram_get_int("dhcp_static_x");
 	ptr->dhcp_res_idx = 0; /* no reference */
+	ptr->dot_enable = nvram_get_int("dnspriv_enable");
+	ptr->dot_tls = nvram_get_int("dnspriv_profile");
+
+	/* IPv6 */
+	ptr->v6_enable = nvram_invmatch(ipv6_nvname("ipv6_service"), "disabled");
+	ptr->v6_autoconf = nvram_get_int("ipv6_autoconf_type");
 
 	return ptr;
 }
@@ -305,7 +365,7 @@ static VLAN_T *get_vlan_by_idx(int idx, VLAN_T *lst, size_t lst_sz)
 	return NULL;
 }
 
-MTLAN_T *get_mtlan(MTLAN_T *nwlst, size_t *lst_sz)
+static MTLAN_T *__get_mtlan(MTLAN_T *nwlst, size_t *lst_sz, int is_rm)
 {
 	char *nv = NULL, *nvp = NULL, *b;
 
@@ -316,7 +376,8 @@ MTLAN_T *get_mtlan(MTLAN_T *nwlst, size_t *lst_sz)
 	/* continue to add parameters */
 	char *vpnc_idx = NULL, *vpns_idx = NULL, *dnsf_idx = NULL, *urlf_idx = NULL, *nwf_idx = NULL;
 	char *cp_idx = NULL, *gre_idx = NULL, *fw_idx = NULL, *killsw_sw = NULL, *ahs_sw = NULL;
-	char *wan_idx = NULL;
+	char *wan_idx = NULL, *ppprelay_sw = NULL, *wan6_idx = NULL, *createby= NULL, *mtwan_idx = NULL;
+	char *mswan_idx = NULL;
 
 	char idx[4], *next;
 
@@ -339,15 +400,15 @@ MTLAN_T *get_mtlan(MTLAN_T *nwlst, size_t *lst_sz)
 		goto MTEND;
 	}
 
-	if (!get_mtvlan(pvlan_rl, &vlan_sz)) {
+	if (!get_mtvlan(pvlan_rl, &vlan_sz, is_rm)) {
 		nwlst = NULL;
 		goto MTEND;
 	}
-	if (!get_mtsubnet(psubnet_rl, &subnet_sz)) {
+	if (!get_mtsubnet(psubnet_rl, &subnet_sz, is_rm)) {
 		nwlst = NULL;
 		goto MTEND;
 	}
-	if (!(nvp = nv = strdup(nvram_safe_get("sdn_rl")))) {
+	if (!(nvp = nv = strdup((!is_rm) ? nvram_safe_get("sdn_rl") : nvram_safe_get("sdn_rl_x")))) {
 		nwlst = NULL;
 		goto MTEND;
 	}
@@ -358,12 +419,14 @@ MTLAN_T *get_mtlan(MTLAN_T *nwlst, size_t *lst_sz)
 		/* init */
 		vpnc_idx = vpns_idx = dnsf_idx = urlf_idx = nwf_idx = NULL;
 		cp_idx = gre_idx = fw_idx = killsw_sw = ahs_sw = NULL;
-		wan_idx = NULL;
+		wan_idx = ppprelay_sw = wan6_idx = createby = mtwan_idx = NULL;
+		mswan_idx = NULL;
 
 		if (vstrsep(b, ">", &sdn_idx, &sdn_name, &sdn_enable, &vlan_idx, &subnet_idx,
 				    &apg_idx, &vpnc_idx, &vpns_idx, &dnsf_idx,
 				    &urlf_idx, &nwf_idx, &cp_idx, &gre_idx, &fw_idx,
-				    &killsw_sw, &ahs_sw, &wan_idx) < SDN_LIST_BASIC_PARAM)
+				    &killsw_sw, &ahs_sw, &wan_idx, &ppprelay_sw, &wan6_idx,
+				    &createby, &mtwan_idx, &mswan_idx) < SDN_LIST_BASIC_PARAM)
 			continue;
 
 		if (cnt >= MTLAN_MAXINUM)
@@ -381,6 +444,7 @@ MTLAN_T *get_mtlan(MTLAN_T *nwlst, size_t *lst_sz)
 				continue;
 
 			memcpy(&nwlst[cnt].vid, &pvlan_rl_idx->vid, sizeof(nwlst[cnt].vid));
+			memcpy(&nwlst[cnt].port_isolation, &pvlan_rl_idx->port_isolation, sizeof(nwlst[cnt].port_isolation));
 			memcpy(&nwlst[cnt].nw_t, psubnet_rl_idx, sizeof(nwlst[cnt].nw_t));
 
 		} else { /* Get Default LAN Info */
@@ -388,10 +452,13 @@ MTLAN_T *get_mtlan(MTLAN_T *nwlst, size_t *lst_sz)
 			if (!get_default_lan(&nwlst[cnt].nw_t))
 				continue;
 			nwlst[cnt].vid = 0;
+			nwlst[cnt].port_isolation = 0;
 		}
 
 		if (sdn_enable && *sdn_enable)
 			nwlst[cnt].enable = strtol(sdn_enable, NULL, 10);
+		if (createby && *createby)
+			strlcpy(nwlst[cnt].createby, createby, sizeof(nwlst[cnt].createby));
 		if (sdn_idx && *sdn_idx)
 			nwlst[cnt].sdn_t.sdn_idx = strtol(sdn_idx, NULL, 10);
 		if (apg_idx && *apg_idx)
@@ -413,8 +480,19 @@ MTLAN_T *get_mtlan(MTLAN_T *nwlst, size_t *lst_sz)
 			nwlst[cnt].sdn_t.urlf_idx = strtol(urlf_idx, NULL, 10);
 		if (nwf_idx && *nwf_idx)
 			nwlst[cnt].sdn_t.nwf_idx = strtol(nwf_idx, NULL, 10);
-		if (cp_idx && *cp_idx)
+		if (cp_idx && *cp_idx) {
 			nwlst[cnt].sdn_t.cp_idx = strtol(cp_idx, NULL, 10);
+			// update chilli interface
+			switch (nwlst[cnt].sdn_t.cp_idx) {
+				case 2:
+				case 4:
+					strlcpy(nwlst[cnt].nw_t.ifname, "tun22", sizeof(nwlst[cnt].nw_t.ifname));
+					break;
+				case 1:
+					strlcpy(nwlst[cnt].nw_t.ifname, "tun23", sizeof(nwlst[cnt].nw_t.ifname));
+					break;
+			}
+		}
 		if (gre_idx && *gre_idx) {
 			__cnt = 0;
 			__foreach (idx, gre_idx, next, ",") {
@@ -432,7 +510,14 @@ MTLAN_T *get_mtlan(MTLAN_T *nwlst, size_t *lst_sz)
 			nwlst[cnt].sdn_t.ahs_sw = strtol(ahs_sw, NULL, 10);
 		if (wan_idx && *wan_idx)
 			nwlst[cnt].sdn_t.wan_idx = strtol(wan_idx, NULL, 10);
-
+		if (ppprelay_sw && *ppprelay_sw)
+			nwlst[cnt].sdn_t.ppprelay_sw = strtol(ppprelay_sw, NULL, 10);
+		if (wan6_idx && *wan6_idx)
+			nwlst[cnt].sdn_t.wan6_idx = strtol(wan6_idx, NULL, 10);
+		if (mtwan_idx && *mtwan_idx)
+			nwlst[cnt].sdn_t.mtwan_idx = strtol(mtwan_idx, NULL, 10);
+		if (mswan_idx && *mswan_idx)
+			nwlst[cnt].sdn_t.mswan_idx = strtol(mswan_idx, NULL, 10);
 		cnt++;
 	}
 
@@ -446,7 +531,7 @@ MTEND:
 	return nwlst;
 }
 
-MTLAN_T *get_mtlan_by_vid(const unsigned int vid, MTLAN_T *nwlst, size_t *lst_sz)
+static MTLAN_T *__get_mtlan_by_vid(const unsigned int vid, MTLAN_T *nwlst, size_t *lst_sz, const int is_rm)
 {
 	int i;
 	size_t r = 0, mtl_sz = 0;
@@ -456,9 +541,16 @@ MTLAN_T *get_mtlan_by_vid(const unsigned int vid, MTLAN_T *nwlst, size_t *lst_sz
 	if (lst_sz)
 		*lst_sz = 0;
 
-	if (!get_mtlan(pmtl, &mtl_sz)) {
-		FREE_MTLAN((void *)pmtl);
-		return NULL;
+	if (!is_rm) {
+		if (!__get_mtlan(pmtl, &mtl_sz, 0)) {
+			FREE_MTLAN((void *)pmtl);
+			return NULL;
+		}
+	} else {
+		if (!__get_mtlan(pmtl, &mtl_sz, 1)) {
+			FREE_MTLAN((void *)pmtl);
+			return NULL;
+		}
 	}
 
 	for (i = 0; i < mtl_sz; i++) {
@@ -473,7 +565,7 @@ MTLAN_T *get_mtlan_by_vid(const unsigned int vid, MTLAN_T *nwlst, size_t *lst_sz
 	return nwlst;
 }
 
-MTLAN_T *get_mtlan_by_idx(SDNFT_TYPE type, const unsigned int idx, MTLAN_T *nwlst, size_t *lst_sz)
+static MTLAN_T *__get_mtlan_by_idx(SDNFT_TYPE type, const unsigned int idx, MTLAN_T *nwlst, size_t *lst_sz, const int is_rm)
 {
 	int i, j;
 	size_t r = 0;
@@ -487,9 +579,16 @@ MTLAN_T *get_mtlan_by_idx(SDNFT_TYPE type, const unsigned int idx, MTLAN_T *nwls
 
 	MTLAN_T *pmtl = (MTLAN_T *)INIT_MTLAN(sizeof(MTLAN_T));
 
-	if (!get_mtlan(pmtl, &mtl_sz)) {
-		FREE_MTLAN((void *)pmtl);
-		return NULL;
+	if (!is_rm) {
+		if (!__get_mtlan(pmtl, &mtl_sz, 0)) {
+			FREE_MTLAN((void *)pmtl);
+			return NULL;
+		}
+	} else {
+		if (!__get_mtlan(pmtl, &mtl_sz, 1)) {
+			FREE_MTLAN((void *)pmtl);
+			return NULL;
+		}
 	}
 
 	for (i = 0; i < mtl_sz; i++) {
@@ -554,6 +653,26 @@ MTLAN_T *get_mtlan_by_idx(SDNFT_TYPE type, const unsigned int idx, MTLAN_T *nwls
 				memcpy(&nwlst[r], &pmtl[i], sizeof(MTLAN_T));
 				r++;
 			}
+		} else if (type == SDNFT_TYPE_PPPRELAY) {
+			if (pmtl[i].sdn_t.ppprelay_sw == idx) {
+				memcpy(&nwlst[r], &pmtl[i], sizeof(MTLAN_T));
+				r++;
+			}
+		} else if (type == SDNFT_TYPE_WAN6) {
+			if (pmtl[i].sdn_t.wan6_idx == idx) {
+				memcpy(&nwlst[r], &pmtl[i], sizeof(MTLAN_T));
+				r++;
+			}
+		} else if (type == SDNFT_TYPE_MTWAN) {
+			if (pmtl[i].sdn_t.mtwan_idx == idx) {
+				memcpy(&nwlst[r], &pmtl[i], sizeof(MTLAN_T));
+				r++;
+			}
+		} else if (type == SDNFT_TYPE_MSWAN) {
+			if (pmtl[i].sdn_t.mswan_idx == idx) {
+				memcpy(&nwlst[r], &pmtl[i], sizeof(MTLAN_T));
+				r++;
+			}
 		}
 	}
 
@@ -561,6 +680,36 @@ MTLAN_T *get_mtlan_by_idx(SDNFT_TYPE type, const unsigned int idx, MTLAN_T *nwls
 	FREE_MTLAN((void *)pmtl);
 
 	return nwlst;
+}
+
+MTLAN_T *get_mtlan(MTLAN_T *nwlst, size_t *lst_sz)
+{
+	return __get_mtlan(nwlst, lst_sz, 0);
+}
+
+MTLAN_T *get_rm_mtlan(MTLAN_T *nwlst, size_t *lst_sz)
+{
+	return __get_mtlan(nwlst, lst_sz, 1);
+}
+
+MTLAN_T *get_mtlan_by_vid(const unsigned int vid, MTLAN_T *nwlst, size_t *lst_sz)
+{
+	return __get_mtlan_by_vid(vid, nwlst, lst_sz, 0);
+}
+
+MTLAN_T *get_rm_mtlan_by_vid(const unsigned int vid, MTLAN_T *nwlst, size_t *lst_sz)
+{
+	return __get_mtlan_by_vid(vid, nwlst, lst_sz, 1);
+}
+
+MTLAN_T *get_mtlan_by_idx(SDNFT_TYPE type, const unsigned int idx, MTLAN_T *nwlst, size_t *lst_sz)
+{
+	return __get_mtlan_by_idx(type, idx, nwlst, lst_sz, 0);
+}
+
+MTLAN_T *get_rm_mtlan_by_idx(SDNFT_TYPE type, const unsigned int idx, MTLAN_T *nwlst, size_t *lst_sz)
+{
+	return __get_mtlan_by_idx(type, idx, nwlst, lst_sz, 1);
 }
 
 size_t get_mtlan_cnt()
@@ -573,6 +722,38 @@ size_t get_mtlan_cnt()
 		cnt++;
 	free(nv);
 	return (cnt - 1);
+}
+
+size_t get_rm_mtlan_cnt()
+{
+	char *nv = NULL, *nvp = NULL, *b;
+	size_t cnt = 0;
+	if (!(nvp = nv = strdup(nvram_safe_get("sdn_rl_x"))))
+		return 0;
+	while ((b = strsep(&nvp, "<")) != NULL)
+		cnt++;
+	free(nv);
+	return cnt;
+}
+
+int sdn_enable(void)
+{
+	int i, enable = 0;
+	size_t  mtl_sz = 0;
+	MTLAN_T *pmtl = (MTLAN_T *)INIT_MTLAN(sizeof(MTLAN_T));
+
+	if (get_mtlan(pmtl, &mtl_sz) && mtl_sz > 0) {
+		/* skip DEFAULT */
+		for (i = 1; i < mtl_sz; i++) {
+			if (pmtl[i].enable) {
+				enable = 1;
+				break;
+			}
+		}
+	}
+	FREE_MTLAN((void *)pmtl);
+
+	return enable;
 }
 
 static VPN_PROTO_T _get_real_vpn_proto(const char* proto)
@@ -593,6 +774,8 @@ static VPN_PROTO_T _get_real_vpn_proto(const char* proto)
 		return VPN_PROTO_WG;
 	else if (!strcmp(proto, VPN_PROTO_IPSEC_STR))
 		return VPN_PROTO_IPSEC;
+	else if (!strcmp(proto, VPN_PROTO_SURFSHARK_STR))
+		return VPN_PROTO_WG;
 	else
 		return VPN_PROTO_UNKNOWN;
 }
@@ -895,4 +1078,336 @@ VPN_VPNX_T* get_vpnx_by_gre_idx(VPN_VPNX_T* vpnx, int gre_idx)
 	}
 
 	return (ret) ? vpnx : NULL;
+}
+
+//for freewifi start
+CP_TYPE_RL *get_cp_type_byidx(int index, CP_TYPE_RL *lst)
+{
+	_dprintf("[FUN:%s][LINE:%d]-----index=%d------\n",__FUNCTION__,__LINE__,index);
+	int found = 0;
+	char *b = NULL;
+	char *nvp = NULL;
+	char *nv = NULL;
+
+	char *idx = NULL;
+	char *ctype = NULL;
+	
+	if (index < 0 || !lst)
+		return NULL;
+
+	nv = nvp = strdup(nvram_safe_get("cp_type_rl"));
+	if (!nv) 
+		return NULL;
+
+	while ((b = strsep(&nvp, "<")) != NULL) {
+		if (vstrsep(b, ">", &idx, &ctype) < 1)
+			continue;
+
+		if (!idx || strlen(idx) <= 0)
+			continue;
+
+		if (atoi(idx) != index)
+			continue;
+
+		found = 1;
+		// idx
+		lst->cp_idx = (idx && strlen(idx)>0) ? atoi(idx) : 0;
+		// type
+		lst->cp_type = (ctype && strlen(ctype)>0) ? atoi(ctype) : 0;
+		
+		break;
+	}
+ 
+	free(nv);
+	return (found==1) ? lst : NULL;
+}
+
+CP_PROFILE *get_cpX_profile_by_cpidx(int index, CP_PROFILE *lst)
+{
+	_dprintf("[FUN:%s][LINE:%d]-----index=%d------\n",__FUNCTION__,__LINE__,index);
+	int found = 0;
+	char *nv = NULL, *nvp = NULL, *b;
+	char *cp_able = NULL, *cp_au_tp = NULL, *cp_ctimeout = NULL, *cp_idtimeout = NULL, *cp_atimeout = NULL, *cp_rdirecturl = NULL, *cp_enable_tservice = NULL, *cp_blimit_ul = NULL, *cp_blimt_dl = NULL, *cp_nid = NULL, *cp_idx_cusui = NULL;
+
+	char profile_name[32];
+	memset(profile_name, 0, sizeof(profile_name));
+	snprintf(profile_name, sizeof(profile_name), "cp%d_profile",index);
+	char *pf = profile_name;
+	_dprintf("[FUN:%s][LINE:%d]-----pf=%s------\n",__FUNCTION__,__LINE__,pf);
+
+	if (index < 0 || !lst)
+		return NULL;
+
+
+	if (!(nv = nvp = strdup(nvram_safe_get(pf))))
+		return NULL;
+
+	while ((b = strsep(&nvp, "<")) != NULL) {
+		if(vstrsep(b, ">", &cp_able, &cp_au_tp, &cp_ctimeout, &cp_idtimeout, &cp_atimeout, &cp_rdirecturl, &cp_enable_tservice, &cp_blimit_ul, &cp_blimt_dl, &cp_nid, &cp_idx_cusui) < 1)
+			continue;
+		
+			if (!cp_able || strlen(cp_able) <= 0)
+				continue;
+
+			found = 1;
+
+			if (cp_able && *cp_able)
+				lst->cp_enable = strtol(cp_able, NULL, 10);
+			if (cp_au_tp && *cp_au_tp)
+				lst->cp_auth_type = strtol(cp_au_tp, NULL, 10);
+			if (cp_ctimeout && *cp_ctimeout)
+				lst->cp_conntimeout = strtol(cp_ctimeout, NULL, 10);
+			if (cp_idtimeout && *cp_idtimeout)
+				lst->cp_idletimeout = strtol(cp_idtimeout, NULL, 10);
+			if (cp_idtimeout && *cp_idtimeout)
+				lst->cp_idletimeout = strtol(cp_idtimeout, NULL, 10);
+			if (cp_atimeout && *cp_atimeout)
+				lst->cp_authtimeout = strtol(cp_atimeout, NULL, 10);
+			if (cp_rdirecturl && *cp_rdirecturl)
+				strlcpy(lst->redirecturl , cp_rdirecturl, sizeof(lst->redirecturl));	
+			if (cp_enable_tservice && *cp_enable_tservice)
+				lst->cp_term_service = strtol(cp_enable_tservice, NULL, 10);		
+			if (cp_blimit_ul && *cp_blimit_ul)
+				lst->cp_bw_limit_ul = strtol(cp_blimit_ul, NULL, 10);	
+			if (cp_blimt_dl && *cp_blimt_dl)
+				lst->cp_bw_limit_dl = strtol(cp_blimt_dl, NULL, 10);
+			if (cp_nid && *cp_nid)
+				strlcpy(lst->cp_nas_id , cp_nid, sizeof(lst->cp_nas_id));	
+			if (cp_idx_cusui && *cp_idx_cusui)
+				strlcpy(lst->cp_idx_ui_customizes , cp_idx_cusui, sizeof(lst->cp_idx_ui_customizes));
+		
+			break;
+	}
+ 
+	free(nv);
+	return (found==1) ? lst : NULL;
+}
+
+//type 0:close 1:freewifi 2:cp
+CP_LOCAL_AUTH *get_cp_localauth_bytype(CP_LOCAL_AUTH *lst, int index, int type)
+{
+	_dprintf("[FUN:%s][LINE:%d]-----index=%d------\n",__FUNCTION__,__LINE__,index);
+	int found = 0;
+	char *passcode;
+	char buf_f[128];
+	char *dst = NULL;
+
+	char profile_name[32];
+	memset(profile_name, 0, sizeof(profile_name));
+	snprintf(profile_name, sizeof(profile_name), "cp%d_local_auth_profile",index);
+	char *pf = profile_name;
+
+	if (index < 0 || !lst)
+		return NULL;
+
+	if((type == 1) || (type == 2)){
+		//free wifi 
+		memset(buf_f, '\0', sizeof(buf_f));
+		strncpy(buf_f, nvram_safe_get(pf), sizeof(buf_f));
+		char *temp = strtok(buf_f," < ");
+		while(temp)
+		{
+			printf("%s\n",temp);
+			dst = temp;
+			found = 1;
+			break;
+		}
+
+		if (dst && *dst){
+			strlcpy(lst->passcode , dst, sizeof(lst->passcode));
+		}
+
+	}else
+		return NULL;
+
+ 
+	return (found==1) ? lst : NULL;
+}
+
+char *match_vif_from_rulelist(size_t *sz, int v_id)
+{
+	char *nv = NULL, *nvp = NULL, *b;
+	size_t cnt = 0;
+	char *vid, *ifname, *portif;
+	static char res[512];
+	memset(res, 0, sizeof(res));
+
+	if (sz)
+		*sz = 0;
+
+	if (!(nv = nvp = strdup(nvram_safe_get("ap_rulelist"))))
+		return NULL;
+
+	while ((b = strsep(&nvp, "<")) != NULL) {
+		if(vstrsep(b, ">", &vid, &ifname, &portif) < 1)
+			continue;
+		
+		if (cnt >= MTLAN_MAXINUM)
+			break;
+		
+		if((atoi(vid) == v_id) && ifname && *ifname){
+			strlcpy(res , ifname, sizeof(res ));	
+			return res;
+		}
+
+		cnt++;
+		
+	}
+
+	*sz = cnt;
+	free(nv);
+
+	return res;
+
+}
+//for freewifi end
+
+int mtlan_extend_prefix_by_subnet_idx(const char* prefix, int prefix_length, uint8_t subnet_idx, int subnet_length, char* buf, size_t len)
+{
+	uint8_t addr[16] = {0};
+	uint8_t subnet[16] = {0};
+	int n = 0;
+	int i;
+
+	if (inet_pton(AF_INET6, prefix, addr) < 0)
+		return 0;
+	if (subnet_length != 8 && subnet_length != 16)
+		return 0;
+	if (prefix_length + subnet_length > 104)
+		return 0;
+
+	n = prefix_length / 8;
+	n += (prefix_length % 8) ? 1:0;
+	n += (subnet_length > 8) ? 1:0;
+	subnet[n] = subnet_idx;
+
+	for (i = 0; i < 16; i++) {
+		addr[i] |= subnet[i];
+	}
+
+	if (inet_ntop(AF_INET6, addr, buf, len) < 0)
+		return 0;
+
+	return ((n+1)*8);
+}
+
+CP_RADIUS_PROFILE *get_cpX_radius_profile(CP_RADIUS_PROFILE *cpX_radius_profile, int idx)
+{
+	char *nv = NULL, *nvp = NULL, *b;
+	char *radius_idx = NULL;
+	int found = 0;
+
+	char profile_name[32];
+	memset(profile_name, 0, sizeof(profile_name));
+	snprintf(profile_name, sizeof(profile_name), "cp%d_radius_profile",idx);
+	char *pf = profile_name;
+		_dprintf("[FUN:%s][LINE:%d]----------pf=%s------------\n",__FUNCTION__,__LINE__,pf);
+
+	if (idx < 0 || !cpX_radius_profile)
+		return NULL;
+
+	if (!(nv = nvp = strdup(nvram_safe_get(pf))))
+		return NULL;
+
+	while ((b = strsep(&nvp, "<")) != NULL) {
+		if(vstrsep(b, ">", &radius_idx) < 1)
+			continue;
+
+		if (!radius_idx || strlen(radius_idx) <= 0)
+			continue;
+
+		if (atoi(radius_idx) != idx)
+			continue;
+
+		found = 1;
+
+		if (radius_idx && *radius_idx)
+			cpX_radius_profile->radius_idx = strtol(radius_idx, NULL, 10);
+	_dprintf("[FUN:%s][LINE:%d]----------radius_idx=%s---------------\n",__FUNCTION__,__LINE__,radius_idx);
+		
+		break;
+
+	}
+
+	free(nv);
+
+	return (found==1) ? cpX_radius_profile : NULL;
+}
+
+CP_RADIUS_LIST *match_radius_rl_by_cpidx(CP_RADIUS_LIST *cp_radius_rl, int idx)
+{
+
+	_dprintf("[FUN:%s][LINE:%d]------------------------------\n",__FUNCTION__,__LINE__);
+	int found = 0;
+	char *nv = NULL, *nvp = NULL, *b;
+	char *cprl_idx = NULL, *ipaddr = NULL, *port = NULL, *key = NULL, *acct_ipaddr = NULL, *acct_port = NULL, *acct_key = NULL, *ipaddr2 = NULL, *port2 = NULL, *key2 = NULL, *acct_ipaddr2 = NULL, *acct_port2 = NULL, *acct_key2 = NULL;
+
+
+	if (idx < 0 || !cp_radius_rl)
+		return NULL;
+
+	if (!(nv = nvp = strdup(nvram_safe_get("radius_list"))))
+		return NULL;
+
+	while ((b = strsep(&nvp, "<")) != NULL) {
+		if(vstrsep(b, ">", &cprl_idx, &ipaddr, &port, &key, &acct_ipaddr, &acct_port, &acct_key, &ipaddr2, &port2, &key2, &acct_ipaddr2, &acct_port2, &acct_key2) < 12)
+			continue;
+		
+		
+		if (!cprl_idx || strlen(cprl_idx) <= 0)
+			continue;
+
+		if (atoi(cprl_idx) != idx)
+			continue;
+		
+		found = 1;
+		
+		if (cprl_idx && *cprl_idx)
+			cp_radius_rl->idx = strtol(cprl_idx, NULL, 10);
+	_dprintf("[FUN:%s][LINE:%d]-----------cprl_idx=%s---------idx=%d----------\n",__FUNCTION__,__LINE__,cprl_idx,idx);
+
+		//strlcpy(lst->redirecturl , cp_rdirecturl, sizeof(lst->redirecturl));	
+		//lst->cp_authtimeout = strtol(cp_atimeout, NULL, 10);
+		if (ipaddr && *ipaddr)
+			strlcpy(cp_radius_rl->authipaddr1 , ipaddr, sizeof(cp_radius_rl->authipaddr1));
+		if (port && *port)
+			cp_radius_rl->authport1 = strtol(port, NULL, 10);
+		if (key && *key)
+			strlcpy(cp_radius_rl->authkey1 , key, sizeof(cp_radius_rl->authkey1));
+
+	_dprintf("[FUN:%s][LINE:%d]-----------ipaddr=%s---------port=%s---key=%s------\n",__FUNCTION__,__LINE__,ipaddr,port,key);
+
+		if (acct_ipaddr && *acct_ipaddr)
+			strlcpy(cp_radius_rl->acct_ipaddr1, acct_ipaddr, sizeof(cp_radius_rl->acct_ipaddr1));
+		if (acct_port && *acct_port)
+			cp_radius_rl->acct_port1 = strtol(acct_port, NULL, 10);
+		if (acct_key && *acct_key)
+			strlcpy(cp_radius_rl->acct_key1, acct_key, sizeof(cp_radius_rl->acct_key1));
+	_dprintf("[FUN:%s][LINE:%d]-----acct_ipaddr=%s------acct_port=%s----key=%s--\n",__FUNCTION__,__LINE__,acct_ipaddr,acct_port,acct_key);
+
+
+		if (ipaddr2 && *ipaddr2)
+			strlcpy(cp_radius_rl->authipaddr2, ipaddr2, sizeof(cp_radius_rl->authipaddr2));
+		if (port2 && *port2)
+			cp_radius_rl->authport2 = strtol(port2, NULL, 10);
+		if (key2 && *key2)
+			strlcpy(cp_radius_rl->authkey2 , key2, sizeof(cp_radius_rl->authkey2));
+	_dprintf("[FUN:%s][LINE:%d]-----ipaddr2=%s------port2=%s----key2=%s--\n",__FUNCTION__,__LINE__,ipaddr2,port2,key2);
+
+
+		if (acct_ipaddr2 && *acct_ipaddr2)
+			strlcpy(cp_radius_rl->acct_ipaddr2, acct_ipaddr2, sizeof(cp_radius_rl->acct_ipaddr2));
+		if (acct_port2 && *acct_port2)
+			cp_radius_rl->acct_port2 = strtol(acct_port2, NULL, 10);
+		if (acct_key2 && *acct_key2)
+			strlcpy(cp_radius_rl->acct_key2, acct_key2, sizeof(cp_radius_rl->acct_key2));
+	_dprintf("[FUN:%s][LINE:%d]-----acct_ipaddr2=%s------acct_port2=%s----acct_key2=%s--\n",__FUNCTION__,__LINE__,acct_ipaddr2,acct_port2,acct_key2);
+
+		break;
+	}
+
+
+	_dprintf("[FUN:%s][LINE:%d]--------------end----------------\n",__FUNCTION__,__LINE__);
+	free(nv);
+	return (found==1) ? cp_radius_rl : NULL;
 }

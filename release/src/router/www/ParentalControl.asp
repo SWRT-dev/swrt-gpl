@@ -17,6 +17,7 @@
 <link rel="stylesheet" type="text/css" href="/device-map/device-map.css">
 <script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/calendar/jquery-ui.js"></script> 
+<script type="text/javascript" src="/js/httpApi.js"></script>
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" src="/help.js"></script>
@@ -24,7 +25,6 @@
 <script type="text/javascript" src="/client_function.js"></script>
 <script type="text/javascript" src="/validator.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
-<script type="text/javascript" src="/js/httpApi.js"></script>
 <style>
   #selectable .ui-selecting { background: #FECA40; }
   #selectable .ui-selected { background: #F39814; color: white; }
@@ -204,7 +204,7 @@ function initial(){
 	}
 
 	if(bwdpi_support){
-		document.getElementById('guest_image').style.background = "url(images/New_ui/TimeLimits.png)";
+		document.getElementById('guest_image').style.background = "url(images/New_ui/TimeLimits.png) no-repeat";
 		document.getElementById('content_title').innerHTML = "<#Parental_Control#> - <#Time_Scheduling#>";
 		document.getElementById('desc_title').innerHTML = "<#ParentalCtrl_Desc_TS#>";
 		document.getElementById('web_title').innerHTML = "<#Web_Title#> - <#Time_Scheduling#>";
@@ -260,7 +260,7 @@ function pullLANIPList(obj){
 	var element = document.getElementById('ClientList_Block_PC');
 	var isMenuopen = element.offsetWidth > 0 || element.offsetHeight > 0;
 	if(isMenuopen == 0){		
-		obj.src = "/images/arrow-top.gif"
+		obj.src = "/images/unfold_less.svg"
 		element.style.display = 'block';		
 		document.form.PC_mac.focus();		
 	}
@@ -269,7 +269,7 @@ function pullLANIPList(obj){
 }
 
 function hideClients_Block(){
-	document.getElementById("pull_arrow").src = "/images/arrow-down.gif";
+	document.getElementById("pull_arrow").src = "/images/unfold_more.svg";
 	document.getElementById('ClientList_Block_PC').style.display='none';
 }
 /*----------} Mouse event of fake LAN IP select menu-----------------*/
@@ -298,9 +298,13 @@ function gen_mainTable(){
 	code += '<option value="2"><#Block#></option>';
 	code += '</select>';
 	code += '</td>';
-	code +='<td style="border-bottom:2px solid #000;"><input type="text" maxlength="17" style="margin-left:0px;width:255px;" class="input_20_table" name="PC_mac" onKeyPress="return validator.isHWAddr(this,event)" onClick="hideClients_Block();" autocorrect="off" autocapitalize="off" placeholder="ex: <% nvram_get("lan_hwaddr"); %>">';
-	code +='<img id="pull_arrow" height="14px;" src="/images/arrow-down.gif" style="position:absolute;" onclick="pullLANIPList(this);" title="<#select_client#>">';
-	code +='<div id="ClientList_Block_PC" style="margin:0 0 0 32px" class="clientlist_dropdown"></div></td>';
+	code += '<td style="border-bottom:2px solid #000;">';
+    code += '<div class="clientlist_dropdown_main" style="width: 100%">';
+    code += '<input type="text" maxlength="17" class="input_20_table" name="PC_mac" onKeyPress="return validator.isHWAddr(this,event)" onClick="hideClients_Block();" autocorrect="off" autocapitalize="off" placeholder="ex: <% nvram_get("lan_hwaddr"); %>">';
+	code += '<img id="pull_arrow" height="14px;" src="/images/unfold_more.svg" onclick="pullLANIPList(this);" title="<#select_client#>">';
+	code += '<div id="ClientList_Block_PC" class="clientlist_dropdown"></div>';
+    code += '</div>';
+	code += '</td>';
 	code +='<td style="border-bottom:2px solid #000;">--</td>';
 	code +='<td style="border-bottom:2px solid #000;"><input class="add_btn" type="button" onClick="addRow_main(16)" value=""></td></tr>';
 	if(MULTIFILTER_DEVICENAME == "" && MULTIFILTER_MAC == "")
@@ -308,18 +312,18 @@ function gen_mainTable(){
 	else{
 		//user icon
 		var userIconBase64 = "NoIcon";
-		var clientName, deviceType, deviceVender; 
+		var clientName, deviceType, deviceVendor;
 		for(var i=0; i<MULTIFILTER_DEVICENAME_row.length; i++){
 			var clientIconID = "clientIcon_" + MULTIFILTER_MAC_row[i].replace(/\:/g, "");
 			if(clientList[MULTIFILTER_MAC_row[i]]) {
 				clientName = (clientList[MULTIFILTER_MAC_row[i]].nickName == "") ? clientList[MULTIFILTER_MAC_row[i]].name : clientList[MULTIFILTER_MAC_row[i]].nickName;
 				deviceType = clientList[MULTIFILTER_MAC_row[i]].type;
-				deviceVender = clientList[MULTIFILTER_MAC_row[i]].vendor;
+				deviceVendor = clientList[MULTIFILTER_MAC_row[i]].vendor;
 			}
 			else {
 				clientName = MULTIFILTER_DEVICENAME_row[i];
 				deviceType = 0;
-				deviceVender = "";
+				deviceVendor = "";
 			}
 			code += '<tr id="row'+i+'">';
 			code += '<td>';
@@ -340,20 +344,24 @@ function gen_mainTable(){
 					userIconBase64 = getUploadIcon(MULTIFILTER_MAC_row[i].replace(/\:/g, ""));
 				}
 				if(userIconBase64 != "NoIcon") {
-					code += '<div id="' + clientIconID + '" style="text-align:center;"><img class="imgUserIcon_card" src="' + userIconBase64 + '"></div>';
-				}
-				else if(deviceType != "0" || deviceVender == "") {
-					code += '<div id="' + clientIconID + '" class="clientIcon type' + deviceType + '"></div>';
-				}
-				else if(deviceVender != "" ) {
-					var venderIconClassName = getVenderIconClassName(deviceVender.toLowerCase());
-					if(venderIconClassName != "" && !downsize_4m_support) {
-						code += '<div id="' + clientIconID + '" class="venderIcon ' + venderIconClassName + '"></div>';
-					}
-					else {
-						code += '<div id="' + clientIconID + '" class="clientIcon type' + deviceType + '"></div>';
-					}
-				}
+                    if(clientList[MULTIFILTER_MAC_row[i]].isUserUplaodImg){
+                        code += '<div id="' + clientIconID + '" class="clientIcon"><img class="imgUserIcon_card" src="' + userIconBase64 + '"></div>';
+                    }else{
+                        code += '<div id="' + clientIconID + '" class="clientIcon"><i class="type" style="--svg:url(' + userIconBase64 + ')"></i></div>';
+                    }
+                }
+                else if(deviceType != "0" || deviceVendor == "") {
+                    code += '<div id="' + clientIconID + '" class="clientIcon"><i class="type'+deviceType+'"></i></div>';
+                }
+                else if(deviceVendor != "" ) {
+                    var vendorIconClassName = getVendorIconClassName(deviceVendor.toLowerCase());
+                    if(vendorIconClassName != "" && !downsize_4m_support) {
+                        code += '<div id="' + clientIconID + '" class="clientIcon"><i class="vendor-icon '+ vendorIconClassName +'"></i></div>';
+                    }
+                    else {
+                        code += '<div id="' + clientIconID + '" class="clientIcon"><i class="type' + deviceType + '"></i></div>';
+                    }
+                }
 			}
 			code += '</td><td id="client_info_'+i+'" style="width:65%;text-align:left;border:0;">';
 			code += '<div>' + clientName + '</div>';
@@ -1052,7 +1060,7 @@ function show_inner_tab(){
 			<table width="700px" style="margin-left:25px;">
 				<tr>
 					<td>
-						<div id="guest_image" style="background: url(images/New_ui/parental-control.png);width: 130px;height: 87px;"></div>
+						<div id="guest_image" style="background: url(images/New_ui/parental-control.png) no-repeat; width: 130px;height: 87px;"></div>
 					</td>
 					<td>&nbsp;&nbsp;</td>
 					<td style="font-size: 14px;">

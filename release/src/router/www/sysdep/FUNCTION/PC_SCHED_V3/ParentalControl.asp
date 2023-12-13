@@ -18,6 +18,7 @@
 <link rel="stylesheet" type="text/css" href="/js/weekSchedule/weekSchedule.css">
 <script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/calendar/jquery-ui.js"></script> 
+<script type="text/javascript" src="/js/httpApi.js"></script>
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" src="/help.js"></script>
@@ -27,7 +28,6 @@
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script type="text/javascript" src="/js/weekSchedule/weekSchedule.js"></script>
 <script type="text/javascript" src="/form.js"></script>
-<script type="text/javascript" src="/js/httpApi.js"></script>
 <style>
   #selectable .ui-selecting { background: #FECA40; }
   #selectable .ui-selected { background: #F39814; color: white; }
@@ -153,8 +153,10 @@ function initial(){
 		$("<li>").html("<#PC_SCHED_Desc3#>").appendTo($desc_item);
 
 		$("#desc_note_item").find("li:eq(0)").remove();
-		if($("#nat_desc").css("display") == "none")
+		if($("#nat_desc").css("display") == "none"){
 			$("#desc_note").hide();
+			$("#desc_note_item").hide();
+		}
 	}
 	document.getElementById('disable_NAT').href = "Advanced_SwitchCtrl_Content.asp?af=ctf_disable_force";	//this id is include in string : #ParentalCtrl_disable_NAT#
 
@@ -206,7 +208,7 @@ function pullLANIPList(obj){
 	var element = document.getElementById('ClientList_Block_PC');
 	var isMenuopen = element.offsetWidth > 0 || element.offsetHeight > 0;
 	if(isMenuopen == 0){		
-		obj.src = "/images/arrow-top.gif"
+		obj.src = "/images/unfold_less.svg"
 		element.style.display = 'block';		
 		document.form.PC_mac.focus();		
 	}
@@ -215,7 +217,7 @@ function pullLANIPList(obj){
 }
 
 function hideClients_Block(){
-	document.getElementById("pull_arrow").src = "/images/arrow-down.gif";
+	document.getElementById("pull_arrow").src = "/images/unfold_more.svg";
 	document.getElementById('ClientList_Block_PC').style.display='none';
 }
 /*----------} Mouse event of fake LAN IP select menu-----------------*/
@@ -244,9 +246,13 @@ function gen_mainTable(){
 	code += '<option value="2"><#Block#></option>';
 	code += '</select>';
 	code += '</td>';
-	code +='<td style="border-bottom:2px solid #000;"><input type="text" maxlength="17" style="margin-left:0px;width:255px;" class="input_20_table" name="PC_mac" onKeyPress="return validator.isHWAddr(this,event)" onClick="hideClients_Block();" autocorrect="off" autocapitalize="off" placeholder="ex: <% nvram_get("lan_hwaddr"); %>">';
-	code +='<img id="pull_arrow" height="14px;" src="/images/arrow-down.gif" style="position:absolute;" onclick="pullLANIPList(this);" title="<#select_client#>">';
-	code +='<div id="ClientList_Block_PC" style="margin:0 0 0 32px" class="clientlist_dropdown"></div></td>';
+	code += '<td style="border-bottom:2px solid #000;">';
+    code += '<div class="clientlist_dropdown_main" style="width: 100%">';
+    code += '<input type="text" maxlength="17" class="input_20_table" name="PC_mac" onKeyPress="return validator.isHWAddr(this,event)" onClick="hideClients_Block();" autocorrect="off" autocapitalize="off" placeholder="ex: <% nvram_get("lan_hwaddr"); %>">';
+    code += '<img id="pull_arrow" height="14px;" src="/images/unfold_more.svg" onclick="pullLANIPList(this);" title="<#select_client#>">';
+    code += '<div id="ClientList_Block_PC" class="clientlist_dropdown"></div>';
+    code += '</div>';
+    code += '</td>';
 	code +='<td style="border-bottom:2px solid #000;">--</td>';
 	code +='<td style="border-bottom:2px solid #000;"><input class="add_btn" type="button" onClick="addRow_main()" value=""></td></tr>';
 	if(client_time_sche_json.length == 0)
@@ -254,7 +260,7 @@ function gen_mainTable(){
 	else{
 		//user icon
 		var userIconBase64 = "NoIcon";
-		var clientName, deviceType, deviceVender;
+		var clientName, deviceType, deviceVendor;
 		$.each(client_time_sche_json, function( index, value ) {
 			var client_time_obj = value;
 			var container_id = client_time_obj.mac.replace(/\:/g, "-");
@@ -266,11 +272,11 @@ function gen_mainTable(){
 			if(clientList[client_mac]) {
 				clientName = (clientList[client_mac].nickName == "") ? clientList[client_mac].name : clientList[client_mac].nickName;
 				deviceType = clientList[client_mac].type;
-				deviceVender = clientList[client_mac].vendor;
+				deviceVendor = clientList[client_mac].vendor;
 			}
 			else {
 				deviceType = 0;
-				deviceVender = "";
+				deviceVendor = "";
 			}
 			code += '<tr id="'+clientRowID+'">';
 			code += '<td>';
@@ -291,20 +297,24 @@ function gen_mainTable(){
 					userIconBase64 = getUploadIcon(client_mac.replace(/\:/g, ""));
 				}
 				if(userIconBase64 != "NoIcon") {
-					code += '<div id="' + clientIconID + '" style="text-align:center;"><img class="imgUserIcon_card" src="' + userIconBase64 + '"></div>';
-				}
-				else if(deviceType != "0" || deviceVender == "") {
-					code += '<div id="' + clientIconID + '" class="clientIcon type' + deviceType + '"></div>';
-				}
-				else if(deviceVender != "" ) {
-					var venderIconClassName = getVenderIconClassName(deviceVender.toLowerCase());
-					if(venderIconClassName != "" && !downsize_4m_support) {
-						code += '<div id="' + clientIconID + '" class="venderIcon ' + venderIconClassName + '" style="margin-left:-2px;"></div>';
-					}
-					else {
-						code += '<div id="' + clientIconID + '" class="clientIcon type' + deviceType + '"></div>';
-					}
-				}
+                    if(clientList[client_mac].isUserUplaodImg){
+                        code += '<div id="' + clientIconID + '" class="clientIcon"><img class="imgUserIcon_card" src="' + userIconBase64 + '"></div>';
+                    }else{
+                        code += '<div id="' + clientIconID + '" class="clientIcon"><i class="type" style="--svg:url(' + userIconBase64 + ')"></i></div>';
+                    }
+                }
+                else if(deviceType != "0" || deviceVendor == "") {
+                    code += '<div id="' + clientIconID + '" class="clientIcon"><i class="type'+deviceType+'"></i></div>';
+                }
+                else if(deviceVendor != "" ) {
+                    var vendorIconClassName = getVendorIconClassName(deviceVendor.toLowerCase());
+                    if(vendorIconClassName != "" && !downsize_4m_support) {
+                        code += '<div id="' + clientIconID + '" class="clientIcon"><i class="vendor-icon '+ vendorIconClassName +'"></i></div>';
+                    }
+                    else {
+                        code += '<div id="' + clientIconID + '" class="clientIcon"><i class="type' + deviceType + '"></i></div>';
+                    }
+                }
 			}
 			code += '</td><td style="width:65%;text-align:left;border:0;">';
 			code += '<div>' + clientName + '</div>';
@@ -728,7 +738,7 @@ function show_inner_tab(){
 						<!-- Content -->
 						<div id="mainTable" style="margin-top:10px;"></div>
 						<br>
-						<div id="ctrlBtn" style="text-align:center;"></div>
+						<div id="ctrlBtn" class="apply_gen" style="text-align:center;"></div>
 						<!-- Content -->
 					</td>
 				</tr>

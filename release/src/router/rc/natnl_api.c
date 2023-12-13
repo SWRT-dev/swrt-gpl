@@ -1,4 +1,4 @@
-
+#include <shared.h>
 #include "rc.h"
 #include "mastiff.h"
 #ifdef RTCONFIG_TUNNEL
@@ -74,16 +74,24 @@ void stop_aae_sip_conn(int sdk_deinit)
 #define WAIT_TIMEOUT 5
 	int time_count = 0;
 	if (pids("aaews")) {
-		if (sdk_deinit)
-			nvram_set_int("aae_action", AAEWS_ACTION_SDK_DEINIT);
-		else
-			nvram_set_int("aae_action", AAEWS_ACTION_SIP_UNREGISTER);
-		killall("aaews", AAEWS_SIG_ACTION);
-		while(time_count < WAIT_TIMEOUT && nvram_match("aae_sip_connected", "1")) {
-			sleep(1);
-			//_dprintf("%s: wait sip unregister...\n", __FUNCTION__);
-			time_count++;
+#if defined(RTCONFIG_ACCOUNT_BINDING) && defined(RTCONFIG_AWSIOT)
+		if (is_account_bound()) {
+			killall("aaews", SIGKILL);
+		} else
+#endif
+		{
+			if (sdk_deinit)
+				nvram_set_int("aae_action", AAEWS_ACTION_SDK_DEINIT);
+			else
+				nvram_set_int("aae_action", AAEWS_ACTION_SIP_UNREGISTER);
+			killall("aaews", AAEWS_SIG_ACTION);
+			while(time_count < WAIT_TIMEOUT && nvram_match("aae_sip_connected", "1")) {
+				sleep(1);
+				//_dprintf("%s: wait sip unregister...\n", __FUNCTION__);
+				time_count++;
+			}
 		}
+
 	}
 }
 
@@ -101,7 +109,7 @@ void stop_aae_gently()
 		}
 
 		time_count = 0;
-		killall("aaews", SIGTERM);
+		killall("aaews", SIGKILL);
 		while(time_count < WAIT_TIMEOUT && pids("aaews")) {
 			sleep(1);
 			//_dprintf("%s: wait aaews end...\n", __FUNCTION__);
@@ -165,4 +173,93 @@ void restart_mastiff()
 	stop_mastiff();
 	start_mastiff();
 }
+
+#ifdef RTCONFIG_UAC_TUNNEL
+void start_aaeuac(int argc, char *argv[])
+{
+	char *cmd[16];
+	int cmd_cnt = 0;
+	int pid;
+
+	if(nvram_get_int("aae_disable_force"))
+		return;
+
+	cmd[cmd_cnt] = "aaeuac";
+	_dprintf("cmd[%d]=%s\n", cmd_cnt, cmd[cmd_cnt]);
+	for (cmd_cnt = 1; cmd_cnt < argc && argc < (sizeof(cmd) / sizeof(char *)); cmd_cnt++) {
+		cmd[cmd_cnt] = argv[cmd_cnt];
+		_dprintf("cmd[%d]=%s\n", cmd_cnt, cmd[cmd_cnt]);
+	}
+	cmd[cmd_cnt] = NULL;
+	_dprintf("cmd[%d]=%s\n", cmd_cnt, cmd[cmd_cnt]);
+
+	if ( !pids("aaeuac" )){
+		_eval(cmd, NULL, 0, &pid);
+	}
+}
+
+void stop_aaeuac()
+{
+	killall_tk("aaeuac");
+}
+
+void restart_aaeuac(int argc, char *argv[])
+{
+	stop_aaeuac();
+	start_aaeuac(argc, argv);
+}
+
+#define WG_S2S_AAEUAC_PORT_PATH "/tmp/wg_s2s_aaeuac_port"
+int start_aaeuac_by_vpn_prof(char *type, int unit)
+{
+	int count = 0;
+	char *cmd[16];
+	char idx_buf[8];
+	int check_count = 5;
+	char aaeuac_port[10] = {0};
+	char *port_path = NULL;
+	if (!type || !unit)
+		return -1;
+
+	if (!strcmp(type, "WireGuard"))
+		port_path = WG_S2S_AAEUAC_PORT_PATH;
+	else
+		return -2;
+
+	snprintf(idx_buf, sizeof(idx_buf), "%d", unit);
+
+	cmd[count++] = "aaeuac";
+	cmd[count++] = type;
+	cmd[count++] = &idx_buf[0];
+	cmd[count++] = port_path;
+	cmd[count++] = NULL;
+	unlink(port_path);
+
+	start_aaeuac(count, cmd);
+
+	while(check_count>0){
+		if(f_read_string(port_path, aaeuac_port, sizeof(aaeuac_port)) > 0){
+			if(!isValid_digit_string(aaeuac_port) && atoi(aaeuac_port)<0 && atoi(aaeuac_port)>65535){
+				return -3;
+			}
+			break;
+		}
+		sleep(2);
+		if (!pids("aaeuac"))
+			return -4;
+		check_count--;
+	}
+	if(aaeuac_port[0] == '\0'){
+		return -5;
+	}
+
+	return 0;
+}
+
+void stop_aaeuac_by_vpn_prof(char *type, int unit)
+{
+	// TODO, stop by each vpn profile
+	stop_aaeuac();
+}
+#endif
 #endif

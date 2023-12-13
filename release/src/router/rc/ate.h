@@ -7,6 +7,7 @@ enum ate_led_color {
 	LED_COLOR_RED,
 	LED_COLOR_GREEN,
 	LED_COLOR_ORANGE,
+	LED_COLOR_PURPLE,
 
 	LED_COLOR_MAX
 };
@@ -82,5 +83,12 @@ static inline int getOutfoxCode(void) { return -1; }
 static inline int setOutfoxCode(const char *outfox_code) { return -1; }
 #endif
 
-#endif
+#ifdef HND_ROUTER
+enum {
+	ATE_NON_SECURE = 1,
+	ATE_MFG_SECURE,
+	ATE_FLD_SECURE
+};
 
+#endif
+#endif

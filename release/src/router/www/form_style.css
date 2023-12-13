@@ -1352,13 +1352,10 @@ padding-top:1px;
 	cursor: pointer;
 }
 .notificationon{
-	position: absolute;
-	display:inline;
+	display:inline-block;
 	background-image:url(images/New_ui/notification.png);
 	background-repeat:no-repeat;
 	background-position:2px 2px;
-	margin-top:-5px;
-	margin-top:3px \9;	/*IE*/
 	height:30px;
 	width:30px;
 	cursor: pointer;
@@ -2058,7 +2055,12 @@ padding-top:1px;
 #asus_eula_content{
 	line-height: 20px;
 }
-
+.sc_rule_link{
+	font-family:Lucida Console;
+	color:#FC0;
+	text-decoration:underline;
+	cursor:pointer;
+}
 #bottom_border{
 	border-bottom:5px #2A3539 solid;
 	padding:5px 10px 5px 10px;
@@ -2227,4 +2229,82 @@ padding-top:1px;
 	 word-break: break-all;
 	 line-height: 33px;
 	 text-align: center;
+}
+
+div.icon-circle-mask {
+	display: inline-block;
+	border-radius: 50%;
+	padding: 0.5em;
+	background: #43525D;
+}
+
+i.icon-comments {
+	-webkit-mask: url(/images/New_ui/icon_comments.svg) no-repeat;
+	mask: url(/images/New_ui/icon_comments.svg) no-repeat;
+	height: 20px;
+	width: 20px;
+	display: inline-block;
+	background-color: #FFFFFF;
+}
+
+i.icon-copy {
+	-webkit-mask: url(/images/New_ui/icon_copy.svg) no-repeat;
+	mask: url(/images/New_ui/icon_copy.svg) no-repeat;
+	height: 20px;
+	width: 20px;
+	display: inline-block;
+	background-color: #92a0a5;
+}
+
+i.icon-copy:hover{
+	background-color: #FFFFFF;
+}
+
+i.icon_help {
+	-webkit-mask: url(/images/New_ui/SDN/dark_theme/Action/help_outline.svg) no-repeat;
+	mask: url(/images/New_ui/SDN/dark_theme/Action/help_outline.svg) no-repeat;
+	height: 24px;
+	width: 24px;
+	display: inline-block;
+	background-color: #92a0a5;
+}
+
+a i:hover {
+	cursor: pointer;
+}
+
+.text-list {
+	display: flex;
+	align-items: center;
+	margin: 10px 0px;
+	gap: 5px;
+}
+
+.text-list i {
+	height: 15px;
+	width: 15px;
+}
+
+.text-list a {
+	margin-left: 5px;
+	text-decoration: underline;
+}
+
+.formfonttitle_help {
+	text-align: right;
+}
+
+.formfonttitle_help i:hover {
+	background-color: #FFFFFF;
+	cursor: pointer;
+}
+
+.icon-group-center {
+	display: inline-flex;
+	align-items: center;
+}
+
+#asus_pp_EULA_modal {
+	border: 3px solid #4D5C63;
+	background: #232E32 !important;
 }

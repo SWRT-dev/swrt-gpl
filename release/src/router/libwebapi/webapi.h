@@ -34,6 +34,22 @@ enum {
 	HTTP_DM_SVR_FAIL
 };
 
+#ifndef RTCONFIG_BWDPI
+/* dpi_support index */
+enum{
+        INDEX_ALL = 0,
+        INDEX_MALS = 1,
+        INDEX_VP,
+        INDEX_CC,
+        INDEX_ADAPTIVE_QOS,
+        INDEX_TRAFFIC_ANALYZER,
+        INDEX_WEBS_FILTER,
+        INDEX_APPS_FILTER,
+        INDEX_WEB_HISTORY,        // NOTE: will remove in the future, replaced by web_mon
+        INDEX_BANDWIDTH_MONITOR
+};
+#endif
+
 struct RWD_MAPPING_TABLE {
         char *name;
         char *path;
@@ -86,9 +102,7 @@ extern int upload_server_ipsec_cert_cgi();
 extern int gen_server_ipsec_file();
 #endif /* RTCONFIG_IPSEC */
 
-#ifdef RTCONFIG_AMAS_CENTRAL_CONTROL
 #define CFG_CNTRL_EXPORT_FILE	"/tmp/cfg_cntrl.bak"
-#endif
 
 extern struct nvram_tuple router_defaults[];
 #define BLACKLIST_CONFIG_FILE "/tmp/blacklist_config.json"
@@ -114,4 +128,5 @@ extern int delete_wireguard_client(int wgc_index);
 extern int get_wgc_connect_status(struct json_object *wgc_connect_status_obj);
 extern int del_wgsc_list(int s_unit, int c_unit);
 extern int get_wgsc_list(int s_unit, struct json_object *wgsc_list_array);
+extern int get_ASUS_privacy_policy_obj(struct json_object *ASUS_privacy_policy_obj);
 #endif /* !__WEBAPI_H__ */

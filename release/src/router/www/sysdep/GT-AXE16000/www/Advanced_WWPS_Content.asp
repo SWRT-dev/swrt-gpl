@@ -868,7 +868,7 @@ function checkWLReady(){
 										}					
 									}
 									
-									if( !SG_mode || (SG_mode && confirm('Enabling WPS may result in the leak of your WiFi network password. Do you still want to proceed?'))){
+									if( !SG_mode || (SG_mode && confirm(stringSafeGet("<#note_turn_on_WPS#>")))){
 										document.form.wps_enable.value = "1";
 										enableWPS();
 									}

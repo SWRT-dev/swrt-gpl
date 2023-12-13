@@ -29,12 +29,14 @@
 #endif
 #if defined(RTCONFIG_BCM_502L07P2)
 #include "ethernet.h"
-#include <wpsdefs.h>
 #else
 #include "bcm_usched.h"
 #include "proto/ethernet.h"
 #endif
 #include <wlioctl.h>
+#ifdef RTCONFIG_HND_ROUTER_AX
+#include <wpsdefs.h>
+#endif
 
 #ifndef IFNAMSIZ
 #define IFNAMSIZ 16
@@ -46,7 +48,7 @@
 
 #if defined(RTCONFIG_BCM_502L07P2)
 #define WLIFU_MAX_NO_BRIDGE		16
-#elif defined(RTCONFIG_AMAS_WGN)
+#elif defined(RTCONFIG_AMAS_WGN) || defined(RTCONFIG_MULTILAN_CFG)
 #define WLIFU_MAX_NO_BRIDGE		8
 #else
 #define WLIFU_MAX_NO_BRIDGE		2
@@ -136,7 +138,9 @@ extern bool wl_wlif_is_wet_ap(char *ifname);
  * Params:
  * @bi: BSS info.
  */
+#if 0
 extern int wl_wlif_get_max_nss(wl_bss_info_t* bi);
+#endif
 #if !defined(RTCONFIG_HND_ROUTER_AX)
 extern bool wl_wlif_is_psr_ap(char *ifname);
 extern int wl_wlif_do_bss_trans(void *hdl, char *ifname, uint8 rclass, chanspec_t chanspec, struct ether_addr bssid, struct ether_addr addr, int timeout, int event_fd);
@@ -230,6 +234,16 @@ typedef enum wlif_wps_mode {
 	WLIF_WPS_REGISTRAR	= 2
 } wlif_wps_mode_t;
 
+#if defined(RTCONFIG_HND_ROUTER_BE_4916)
+enum dpp_netrole {
+        DPP_NETROLE_STA,
+        DPP_NETROLE_AP,
+        DPP_NETROLE_CONFIGURATOR,
+        DPP_NETROLE_MAPAGENT,
+        DPP_NETROLE_MAP_BH_STA,
+};
+#endif
+
 // Struct to hold the network settings received using wps.
 typedef struct wlif_wps_nw_settings {
 	char ssid[WLIF_SSID_MAX_SZ + /* '\0' */ 1];	// SSID.
@@ -250,6 +264,9 @@ typedef struct wlif_dpp_config_settings {
 	char dpp_pp_key[WLIF_DPP_PARAMS_MAX_SIZE];		// DPP PP key
 	unsigned char dpp_psk[WLIF_PSK_MAX_SZ + /* '\0' */ 1];	// PSK
 	char dpp_pass[2*WLIF_PSK_MAX_SZ + /* '\0' */ 1];	// PASS
+#if defined(RTCONFIG_HND_ROUTER_BE_4916)
+	enum dpp_netrole netrole;				// DPP netrole
+#endif
 } wlif_dpp_creds_t;
 
 /* Struct to store the bss info */
@@ -266,10 +283,8 @@ void wl_wlif_set_ap_as_configured(char *ifname);
 int wl_wlif_get_wps_status_code();
 /* Updates the nvram value of wps_proc_status which is used to update ui */
 void wl_wlif_update_wps_ui(wlif_wps_ui_status_code_id_t idx);
-#if defined(RTCONFIG_BCM_502L07P2)
 /* Updates the nvram value of dpp_status which is used to update ui */
 void wl_wlif_update_dpp_ui(DPP_UI_SCSTATE idx, char *ifname);
-#endif
 /* Function to parse the hostapd config file */
 int wl_wlif_parse_hapd_config(char *ifname, wlif_wps_nw_creds_t *creds);
 /* Function to parse the  wpa_supplicant config file */
@@ -279,12 +294,11 @@ int wl_wlif_apply_creds(wlif_bss_t *bss, wlif_wps_nw_creds_t *creds);
 /* Invokes the hostapd/wpa_supplicant wps session */
 int wl_wlif_wps_pbc_hdlr(char *wps_ifname, char *bh_ifname);
 /* Stops the hostapd/wpa_supplicant wps session */
-#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_BCM_502L07P2)
+#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_HND_ROUTER_BE_4916) || defined(RTCONFIG_BCM_502L07P2)
 int wl_wlif_wps_stop_session(char *wps_ifname, bool bUpdateUI);
 #else
 int wl_wlif_wps_stop_session(char *wps_ifname);
 #endif
-/* Function pointer to be provided to the thread creation routine */
 typedef void* (*wlif_thrd_func)(void *arg);
 /* Thread creation routine */
 int wl_wlif_create_thrd(pthread_t *thread_id, wlif_thrd_func fptr, void *arg, bool is_detached);
@@ -296,12 +310,11 @@ int wl_wlif_map_configure_backhaul_sta_interface(wlif_bss_t *bss, wlif_wps_nw_cr
 /* Gets the timeout value for the multiap repeter */
 int wl_wlif_wps_map_timeout();
 #endif	/* MULTIAP */
+void wl_ascii_str_to_hex_str(char *ascii_str, uint16 ascii_len, char *hex_str, uint16 hex_len);
 #ifdef RTCONFIG_HND_ROUTER_AX
 /* Applies DPP credentials to the interface provided in bss */
 int wl_wlif_apply_dpp_creds(wlif_bss_t *bss, wlif_dpp_creds_t *dpp_creds);
-#if defined(RTCONFIG_BCM_502L07P2)
 /* convert ascii string to hex string */
-void wl_ascii_str_to_hex_str(char *ascii_str, uint16 ascii_len, char *hex_str, uint16 hex_len);
 /* convert hex string to ascii */
 int wl_wlif_hexstr2ascii(const char *hex_str, unsigned char *buf, size_t len);
 
@@ -309,7 +322,6 @@ int get_all_lanifname_sz(void);
 int get_all_lanifname(char *ifnames, int ifnames_sz);
 int get_all_lanifnames_listsz(void);
 int get_all_lanifnames_list(char *ifnames_list, int ifnames_listsz);
-#endif
 #endif
 
 /* wps session timeout */
@@ -329,7 +341,7 @@ void wl_wlif_wps_gpio_cleanup(int board_fp);
 #endif	/* BCA_HNDROUTER */
 #endif	/* CONFIG_HOSTAPD */
 
-#if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_BCM_502L07P2)
+#if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_HND_ROUTER_BE_4916) || defined(RTCONFIG_BCM_502L07P2)
 #if !defined(RTCONFIG_SDK504L02_188_1303)
 /* LGI supported rate bitmap control feature */
 typedef enum _bits {
@@ -357,13 +369,11 @@ typedef union wl_rateset_args_u {
 
 #define WLIF_NVRAM_SUPPORT_RATE_BITMAP	"support_rate_bitmap"
 
-#if defined(RTCONFIG_BCM_502L07P2)
 int wl_rateset_get_bitmap_index(bit2rate_map_t *tbl, int tbl_sz, int i, int *l);
 void wl_rateset_init_fields(wl_rateset_args_u_t* rs, int rsver);
 void wl_rateset_get_fields(wl_rateset_args_u_t *rs, int rsver, uint32 **rscount, uint8 **rsrates,
 		uint8 **rsmcs, uint16 **rsvht_mcs, uint16 **rshe_mcs);
 int wl_rateset_get_args_info(void *wl, int *rs_len, int *rs_ver);
-#endif
 bool rateset_overwrite_by_supportedRatesBitmap(char *name, char *prefix);
 double wl_get_txpwr_target_max(char *name);
 double get_wifi_maxpower(int target_unit);

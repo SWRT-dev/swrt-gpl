@@ -12,45 +12,7 @@
 <link rel="stylesheet" type="text/css" href="index_style.css"> 
 <link rel="stylesheet" type="text/css" href="form_style.css">
 <link rel="stylesheet" type="text/css" href="other.css">
-<style>
-#ClientList_Block_PC{
-	border:1px outset #999;
-	background-color:#576D73;
-	position:absolute;
-	*margin-top:26px;	
-	margin-left:2px;
-	*margin-left:-189px;
-	width:181px;
-	text-align:left;	
-	height:auto;
-	overflow-y:auto;
-	z-index:200;
-	padding: 1px;
-	display:none;
-}
-#ClientList_Block_PC div{
-	background-color:#576D73;
-	height:auto;
-	*height:20px;
-	line-height:20px;
-	text-decoration:none;
-	font-family: Lucida Console;
-	padding-left:2px;
-}
-
-#ClientList_Block_PC a{
-	background-color:#EFEFEF;
-	color:#FFF;
-	font-size:12px;
-	font-family:Arial, Helvetica, sans-serif;
-	text-decoration:none;	
-}
-#ClientList_Block_PC div:hover, #ClientList_Block a:hover{
-	background-color:#3366FF;
-	color:#FFFFFF;
-	cursor:default;
-}	
-</style>	
+<link rel="stylesheet" type="text/css" href="device-map/device-map.css">
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/general.js"></script>
 <script type="text/javascript" src="/popup.js"></script>
@@ -59,6 +21,7 @@
 <script type="text/javaScript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script type="text/javascript" src="/validator.js"></script>
+<script type="text/javascript" src="/js/httpApi.js"></script>
 <script>
 
 var modem = '<% nvram_get("Dev3G"); %>';
@@ -142,7 +105,6 @@ function initial(){
 		}
 		else{
 			hide_usb_settings(1);
-			document.getElementById("android_desc").style.display="";
 		}
 	}
 	else{
@@ -170,7 +132,6 @@ function initial(){
 				change_apn_mode();
 			}
 			else{
-				document.getElementById("android_desc").style.display="";
 				hide_usb_settings(1);
 			}
 		},
@@ -207,6 +168,8 @@ function initial(){
 	if(based_modelid == "BRT-AC828") {
 		document.getElementById("back_app_installation").style.display = "none";
 	}
+
+	httpApi.faqURL("1050074", function(url){document.getElementById("usb_tethering_faq").href = url;});
 }
 
 function reloadProfile(){
@@ -560,7 +523,7 @@ function showLANIPList(isp_order){
 function pullLANIPList(obj){
 	
 	if(isMenuopen == 0){		
-		obj.src = "/images/arrow-top.gif"
+		obj.src = "/images/unfold_less.svg"
 		document.getElementById("ClientList_Block_PC").style.display = 'block';		
 		document.form.modem_apn.focus();		
 		isMenuopen = 1;
@@ -572,7 +535,7 @@ function pullLANIPList(obj){
 var over_var = 0;
 var isMenuopen = 0;
 function hideClients_Block(){
-	document.getElementById("pull_arrow").src = "/images/arrow-down.gif";
+	document.getElementById("pull_arrow").src = "/images/unfold_more.svg";
 	document.getElementById('ClientList_Block_PC').style.display='none';
 	isMenuopen = 0;
 }
@@ -655,10 +618,8 @@ function select_usb_device(obj){
 		gen_country_list();
 		reloadProfile();
 		change_apn_mode();
-		document.getElementById("android_desc").style.display="none";
 	}
 	else{
-		document.getElementById("android_desc").style.display="";
 		hide_usb_settings(1);
 	}
 
@@ -816,17 +777,12 @@ function change_apn_mode(){
 					<tr id="modem_android_tr" style="display:none;">
 						<th><#select_usb_device#></th>
 						<td align="left">
-							<select id="modem_android" name="modem_android" class="input_option" onChange="select_usb_device(this);">
-								<option value="0" <% nvram_match("modem_android", "0", "selected"); %>><#menu5_4_4#></option>
-								<option value="1" <% nvram_match("modem_android", "1", "selected"); %>><#Android_phone#></option>
-							</select>
-							<div  class="formfontdesc" id="android_desc" style="display:none; color:#FFCC00;margin-top:5px;">
-								<#usb_tethering_hint0#>
-								<ol style="margin-top: 0px;">
-								<li><#usb_tethering_hint1#></li>
-								<li><#usb_tethering_hint2#></li>
-								<li><#usb_tethering_hint3#></li>
-								</ol>
+							<div style="display: flex; align-items: center;">
+								<select id="modem_android" name="modem_android" class="input_option" onChange="select_usb_device(this);">
+									<option value="0" <% nvram_match("modem_android", "0", "selected"); %>><#Auto#></option>
+									<option value="1" <% nvram_match("modem_android", "1", "selected"); %>>Legacy</option><!--untranslated-->
+								</select>
+								<div style="margin-left: 5px; cursor: pointer;"><a id = "usb_tethering_faq" href="" target="_blank"><img src="/images/New_ui/bottom_help.png"></a></div>
 							</div>
 						</td>
 					</tr>
@@ -873,9 +829,11 @@ function change_apn_mode(){
           			<tr>
 						<th><a class="hintstyle"  href="javascript:void(0);" onClick="openHint(21,3);"><#HSDPAConfig_private_apn_itemname#></a></th>
             			<td>
-            				<input id="modem_apn" name="modem_apn" class="input_20_table" maxlength="32" type="text" value="" autocorrect="off" autocapitalize="off"/>
-           					<img id="pull_arrow" height="14px;" src="/images/arrow-down.gif" style="position:absolute;*margin-left:-3px;*margin-top:1px;" onclick="pullLANIPList(this);" title="<#select_APN_service#>" onmouseover="over_var=1;" onmouseout="over_var=0;">
-							<div id="ClientList_Block_PC" class="ClientList_Block_PC"></div>
+            			    <div class="clientlist_dropdown_main">
+                                <input id="modem_apn" name="modem_apn" class="input_20_table" maxlength="32" type="text" value="" autocorrect="off" autocapitalize="off"/>
+                                <img id="pull_arrow" height="14px;" src="/images/unfold_more.svg" onclick="pullLANIPList(this);" title="<#select_APN_service#>" onmouseover="over_var=1;" onmouseout="over_var=0;">
+                                <div id="ClientList_Block_PC" class="clientlist_dropdown"></div>
+							</div>
 						</td>
 					</tr>
 

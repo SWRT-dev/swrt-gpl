@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -10,7 +10,7 @@ span{
 	border:0px solid #FFFFFF;
 	color:#FFFFFF;
 	font-size:12px;
-	font-family: Arial, Helvetica, MS UI Gothic, MS P Gothic, Microsoft Yahei UI, sans-serif;
+	font-family: Microsoft Yahei UI, Arial, Helvetica, MS UI Gothic, MS P Gothic, sans-serif;
 	/*width:27px;*/
 	text-align:right;
 	margin:0px auto;
@@ -590,7 +590,9 @@ function QKfinish_load_body(){
 	// disable click button for low-end HW SPEC
 	if(document.restartForm.productid.value == "RT-AC51U+"
 	|| document.restartForm.productid.value == "RT-ACRH26"
-	|| document.restartForm.productid.value == "RT-AC85P"){
+	|| document.restartForm.productid.value == "RT-AC85P"
+	|| document.restartForm.productid.value == "R6800"
+	|| document.restartForm.productid.value == "RM-AC2100"){
 		$("#nextButton").hide();
 		$("#loadingIcon").show();
 

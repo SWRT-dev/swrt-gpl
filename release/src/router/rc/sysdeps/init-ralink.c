@@ -70,13 +70,24 @@ void init_others(void)
     // mii_mgr_cl45 -s -p 0 -d 0x1f -r 25 -v C13F --> WAN LED LED0 Blinking Control Register
     eval("mii_mgr_cl45", "-s", "-p", "0", "-d", "0x1f", "-r", "25", "-v", "c13f");
 #elif defined(RTAX53U) || defined(RTAX54) || defined(XD4S)
+	if(nvram_match("AllLED", "1"))
+	{
+		//mii_mgr -s -p 0 -r 13 -v 0x1f
+		eval("mii_mgr", "-s", "-p", "0", "-r", "13", "-v", "0x1f");
+		//mii_mgr -s -p 0 -r 14 -v 0x24
+		eval("mii_mgr", "-s", "-p", "0", "-r", "14", "-v", "0x24");
+		//mii_mgr -s -p 0 -r 13 -v 0x401f
+		eval("mii_mgr", "-s", "-p", "0", "-r", "13", "-v", "0x401f");
+		//mii_mgr -s -p 0 -r 14 -v 0xc007
+		eval("mii_mgr", "-s", "-p", "0", "-r", "14", "-v", "0xc007");
+	}
+	//mii_mgr -s -p 0 -r 13 -v 0x1f
 	eval("mii_mgr", "-s", "-p", "0", "-r", "13", "-v", "0x1f");
-	eval("mii_mgr", "-s", "-p", "0", "-r", "14", "-v", "0x24");
-	eval("mii_mgr", "-s", "-p", "0", "-r", "13", "-v", "0x401f");
-	eval("mii_mgr", "-s", "-p", "0", "-r", "14", "-v", "0xc007");
-	eval("mii_mgr", "-s", "-p", "0", "-r", "13", "-v", "0x1f");
+	//mii_mgr -s -p 0 -r 14 -v 0x25
 	eval("mii_mgr", "-s", "-p", "0", "-r", "14", "-v", "0x25");
+	//mii_mgr -s -p 0 -r 13 -v 0x401f
 	eval("mii_mgr", "-s", "-p", "0", "-r", "13", "-v", "0x401f");
+	//mii_mgr -s -p 0 -r 14 -v 0xc007
 	eval("mii_mgr", "-s", "-p", "0", "-r", "14", "-v", "0x3f");
 #elif defined(RTAC85U) || defined(RTAC85P) || defined(R6800) || defined(RMAC2100)
 //fix me
@@ -94,8 +105,9 @@ void init_others(void)
 	}
 #endif
 #if defined(TUFAX6000)
-	if (nvram_match("odmpid", "TX-AX6000"))
+	if (nvram_match("odmpid", "TX-AX6000")) {
 		mount("overlay", "/www/images", "overlay", MS_MGC_VAL, "lowerdir=/TX-AX6000/images:/www/images");
+	}
 #endif
 	if (nvram_match("lacp_enabled", "1") && f_exists("/sys/kernel/no_dsa_offload"))
 		f_write_string("/sys/kernel/no_dsa_offload", "1", 0, 0);
@@ -185,23 +197,27 @@ void generate_switch_para(void)
 
 static void init_switch_ralink(void)
 {
+        char *wl_ifnames;
+        char word[8], *next = NULL;
+	
 	generate_switch_para();
 
 	// TODO: replace to nvram controlled procedure later
-#if 0
-	eval("ifconfig", "eth2", "hw", "ether", get_lan_hwaddr());
-#else
 	eval("ifconfig", "eth0", "hw", "ether", get_lan_hwaddr());
-#endif
 #if !defined(RTCONFIG_CONCURRENTREPEATER)		
 #if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
 	if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1")) {
-		if(strlen(nvram_safe_get("eth_ifnames"))) {
-			if (!nvram_match("et1macaddr", ""))
-				eval("ifconfig", nvram_safe_get("eth_ifnames"), "hw", "ether", nvram_safe_get("et1macaddr"));
-			else
-				eval("ifconfig", nvram_safe_get("eth_ifnames"), "hw", "ether", nvram_safe_get("et0macaddr"));
-		}
+                wl_ifnames = strdup(nvram_safe_get("eth_ifnames"));
+                if (wl_ifnames) {
+                        foreach (word, wl_ifnames, next)
+                        {
+                                if (!nvram_match("et1macaddr", ""))
+                                        eval("ifconfig", word, "hw", "ether", nvram_safe_get("et1macaddr"));
+                                else
+                                        eval("ifconfig", word, "hw", "ether", nvram_safe_get("et0macaddr"));
+                        }
+                        free(wl_ifnames);
+                }
 	}
 	else
 #endif
@@ -215,11 +231,7 @@ static void init_switch_ralink(void)
 	}
 #endif
 //workaround, let network device initialize before config_switch()
-#if 0
-	eval("ifconfig", "eth2", "up");
-#else
 	eval("ifconfig", "eth0", "up");
-#endif
 	sleep(1);
 
 
@@ -281,6 +293,8 @@ void config_hwctl_led(void)
 	eval("switch", "phy", "cl45", "w", "0", "0x1f", "0x25",    "0x0");	/* LED0, none of any events blink */
 	eval("switch", "phy", "cl45", "w", "0", "0x1f", "0x26", "0xc007");	/* Enable LED1, active high, link 10M/100M/1G ON */
 	eval("switch", "phy", "cl45", "w", "0", "0x1f", "0x27",   "0x3f");	/* LED1, blinks on 10M/100M/1G TX/RX activity */
+#elif defined(RTAX52)
+	set_mt7531_led(nvram_match("AllLED", "0") ? 0 : 1, 0);
 #endif
 }
 
@@ -387,6 +401,8 @@ int lan_port_bit_shift = 1;
 #if defined(RTCONFIG_PORT2_DEVICE)
 #if defined(XD4S)
 int lan_port_bit_shift = 3; //in order to specify LAN1 of switch_port_mapping
+#elif defined(PRTAX57_GO)
+int lan_port_bit_shift = 0; 
 #else
 //TBD
 #endif
@@ -560,6 +576,21 @@ void config_switch()
 						/* IPTV:	untag: P0;   port: P0, P4 */
 						vlan_bitmask = vlan_bitmask_shift(0x00010011);
 						__setup_vlan(600, 0, vlan_bitmask);
+					}
+					else if (strstr(nvram_safe_get("switch_wantag"), "biz_voip")) {
+						system("rtkswitch 40 1");		/* admin all frames on all ports */
+						stb_bitmask = stb_bitmask_shift(2);
+						snprintf(stb_bitmask_str, sizeof(stb_bitmask_str), "0x%x", stb_bitmask);
+						eval("rtkswitch", "38", stb_bitmask_str);	/* VoIP: P1  2 = 0x10 */
+
+						/* Internet:	untag: P9;   port: P4, P9 */
+						vlan_bitmask = vlan_bitmask_shift(0x02000210);
+						__setup_vlan(500, 0, vlan_bitmask);
+
+						/* VoIP:	untag: P1;  port: P1, P4 */
+						//VoIP Port: P1 untag (special case)
+						vlan_bitmask = vlan_bitmask_shift(0x00020012);
+						__setup_vlan(400, 0, vlan_bitmask);
 					}
 					else {
 						/* No IPTV. Business package */
@@ -760,7 +791,8 @@ void config_switch()
 					vlan_bitmask = vlan_bitmask_shift(0x00020013);
 					__setup_vlan(105, 1, vlan_bitmask);
 				}
-				else if (!strcmp(nvram_safe_get("switch_wantag"), "hinet")) { /* Hinet MOD */
+				else if (!strcmp(nvram_safe_get("switch_wantag"), "hinet")
+				      || !strcmp(nvram_safe_get("switch_wantag"), "nowtv")) {
 					if (sw_bridge_iptv_different_switches()) {
 						/* Bridge:	untag: P0, P4, P9;	port: P0, P4, P9
 						 * WAN:		no VLAN (hacked in API for SW based IPTV)
@@ -987,6 +1019,89 @@ void config_switch()
 }
 #endif //RTCONFIG_SWCONFIG
 
+#if defined(RTCONFIG_MT798X)
+void wan_force_link_sp(int unit)
+{
+	int wan_force_link, value;
+	int port;
+
+	if (find_word(nvram_safe_get("rc_support"), "wan_sp") == NULL)
+		return;
+
+	if (unit != 0)
+		return;
+
+#if defined(TUFAX4200) || defined(TUFAX6000)
+	port = 6;
+#elif defined(RTAX59U) || defined(RTAX52)
+	port = 1;
+#elif defined(PRTAX57_GO)
+	port = 0;
+#else
+#error port need to be defined
+#endif
+
+	wan_force_link = nvram_get_int("wan0_force_link");
+	switch (wan_force_link) {
+		case 1:	//10Mbps
+			value = 0;
+			break;
+		case 2:	//100Mbps
+			value = 0x2000;
+			break;
+		case 3:	//1000Mbps
+			value = 0x0040;
+			break;
+		case 4:	//2500Mbps
+			value = 0x2040;
+			break;
+		case 0:	//auto
+		default:
+			value = 0x3040;
+			break;
+	}
+	doSystem("mii_mgr -s -p %d -d 0 -r 0 -v 0x%x", port, value);
+}
+#endif	//RTCONFIG_MT798X
+
+#ifdef RTCONFIG_MULTILAN_CFG
+int get_vlan(char *vlan_format)
+{
+       char *nv = NULL, *nvp=NULL, *b;
+       char vlan[5];
+       /* basic necessary parameters */
+       char *idx, *vid;
+       /* continue to add parameters */
+       char *port_isolation = NULL;
+       size_t cnt = 0;
+
+       if (!(nvp = nv = strdup(nvram_safe_get("vlan_rl"))))
+       {
+	       printf("sdn vlan get fail\n");
+	       return -1;
+       }
+
+       while ((b = strsep(&nvp, "<")) != NULL) {
+	       if (vstrsep(b, ">", &idx, &vid, &port_isolation) < VLAN_LIST_BASIC_PARAM)
+		       continue;
+
+	       if (cnt >= MTLAN_MAXINUM)
+		       break;
+
+	       if (vid && *vid)
+	       {
+		       if(cnt!=0)
+			       strncat(vlan_format,">",1);
+		       snprintf(vlan,sizeof(vlan),"%d",strtol(vid, NULL, 10));
+		       strncat(vlan_format,vlan,strlen(vlan));
+	       }
+	       cnt++;
+        }
+       free(nv);
+       return 0;
+}
+#endif
+
 int
 switch_exist(void)
 {
@@ -1010,6 +1125,9 @@ void init_wl(void)
 	char tmpStr3[24];
 	char cmd[1024];
 	int i;
+#if defined(RTCONFIG_MT798X)
+	char iptv_vids[32], vid[100], str[120];
+#endif
 
 	memset(tmpStr1, 0, sizeof(tmpStr1));
 	memset(tmpStr2, 0, sizeof(tmpStr2));
@@ -1097,6 +1215,32 @@ void init_wl(void)
 	}else
 		printf("init_devs: can't find Factory MTD partition\n");
 #endif
+#if defined(RTCONFIG_MT798X)
+	*vid = '\0';
+#ifdef RTCONFIG_MULTILAN_CFG
+	get_vlan(vid);
+#endif
+	if (iptv_enabled()) {
+		int i, v;
+		char nv[sizeof("switch_wanXtagidXXX")], tmp[sizeof("4096<XX")];
+
+		*iptv_vids = '\0';
+		for (i = 1; i <= 2; ++i) {
+			snprintf(nv, sizeof(nv), "switch_wan%dtagid", i);
+			v = nvram_get_int(nv);
+			if (v > 1 && v < 4096) {
+				snprintf(tmp, sizeof(tmp), "%s%d", (*vid == '\0')? "" : ">", v);
+				strlcat(iptv_vids, tmp, sizeof(iptv_vids));
+			}
+		}
+
+		if (*iptv_vids != '\0')
+			strlcpy(vid, iptv_vids, sizeof(vid));
+	}
+	snprintf(str, sizeof(str), "vids=\"%s\"", vid);
+	modprobe("mtkhnat", str);
+#endif	/* RTCONFIG_MT798X */
+
 #if defined (RTCONFIG_WLMODULE_MT7603E_AP)
 	if (!module_loaded("rlt_wifi_7603e"))
 		modprobe("rlt_wifi_7603e");
@@ -1137,7 +1281,11 @@ void init_wl(void)
 #if defined(RTCONFIG_MT798X)
 	int mtd_part = 0, mtd_size = 0;
 	if (mtd_getinfo("Factory", &mtd_part, &mtd_size)){
+#if defined(RMAX6000)
 		snprintf(cmd, sizeof(cmd), "dd if=/dev/mtdblock%d of=/lib/firmware/e2p bs=720896 skip=0 count=1", mtd_part);
+#else
+		snprintf(cmd, sizeof(cmd), "dd if=/dev/mtdblock%d of=/lib/firmware/e2p bs=655360 skip=0 count=1", mtd_part);
+#endif
 		system(cmd);
 		system("ln -sf /rom/etc/wireless/mediatek /etc/wireless/");
 		doSystem("cp -s /rom/firmware/* /lib/firmware/");
@@ -1155,11 +1303,10 @@ void init_wl(void)
 	sleep(1);
 }
 
-
 void wl_ifdown(void)
 {
 	char *wl_ifnames;
-	char nv[32], vif[IFNAMSIZ];
+	char nv[32], vif[512];
 	int unit;
 	char word[8], *next = NULL;
 	int vidx;
@@ -1206,7 +1353,12 @@ void wl_ifdown(void)
 		snprintf(nv, sizeof(nv), "wl%d_vifs", unit);
 		snprintf(vif, sizeof(vif), "%s", nvram_safe_get(nv));
 		if (strlen(vif))
-			ifconfig(vif, 0, NULL, NULL);
+		{
+			foreach (word, vif, next)
+			{	
+                                ifconfig(word, 0, NULL, NULL);
+			}	
+		}	
 	}
 #endif
 
@@ -1230,9 +1382,9 @@ void fini_wl(void)
 	if (module_loaded("mapfilter"))
 		modprobe_r("mapfilter");
 #endif
-	if (module_loaded("mtkhnat")){
+	if (module_loaded(MTK_HNAT_MOD)){
 		unregister_hnat_wlifaces();
-		modprobe_r("mtkhnat");
+		modprobe_r(MTK_HNAT_MOD);
 	}
 #if defined (RTCONFIG_WLMODULE_MT7615E_AP)
 	if (module_loaded("mt_wifi_7615E"))
@@ -1244,13 +1396,18 @@ void fini_wl(void)
 #endif
 #if defined(RTCONFIG_MT798X)
 	if (module_loaded("mtk_warp_proxy"))
+	{
+		__ctrl_hwnat(1); //force enable hwnat to avoid error when remove the hook of "mtk_warp_proxy" from "mtkhnat" module
 		modprobe_r("mtk_warp_proxy");
+	}
 	if (module_loaded("mtk_warp"))
 		modprobe_r("mtk_warp");
 	if (module_loaded("mt_wifi"))
 		modprobe_r("mt_wifi");
 	if (module_loaded("conninfra"))
 		modprobe_r("conninfra");
+	if (is_hwnat_loaded())
+		modprobe_r(MTK_HNAT_MOD);
 #endif
 #if defined (RTCONFIG_WLMODULE_MT7610_AP)
 	if (module_loaded("MT7610_ap"))
@@ -1325,6 +1482,23 @@ void gen_ra_sku(const char *reg_spec)
 }
 #endif	/* RA_SINGLE_SKU */
 
+void set_et0macaddr(char *macaddr2, char *macaddr)
+{
+#if defined(RTAC1200) || defined(RTAC1200V2) || defined(RTAC53) || defined(RTACRH18) || defined(RT4GAC86U) || defined(RTAX53U) || defined(RT4GAX56) || defined(RTAX54) ||defined(XD4S)
+	if (macaddr2)
+		nvram_set("et0macaddr", macaddr2);
+	if (macaddr)
+		nvram_set("et1macaddr", macaddr);
+#else
+
+	//TODO: separate for different chipset solution
+	if (macaddr)
+		nvram_set("et0macaddr", macaddr);
+	if (macaddr2)
+		nvram_set("et1macaddr", macaddr2);
+#endif
+}
+
 #if defined(TUFAX4200) || defined(TUFAX6000) // EEPROM runtime fix
 void eeprom_check(void);
 #endif
@@ -1361,13 +1535,15 @@ void init_syspara(void)
 	char value_str[MAX_REGSPEC_LEN+1];
 	memset(value_str, 0, sizeof(value_str));
 
+#if defined(TUFAX4200) || defined(TUFAX6000)
+	boot_version_ck();
+#endif
+
 #if defined(RTCONFIG_ASUSCTRL)
 	fix_location_code();
 #endif
 
-#if defined(TUFAX4200) || defined(TUFAX6000)
 	config_hwctl_led();
-#endif
 #if defined(TUFAX4200) || defined(TUFAX6000) // EEPROM runtime fix
 	if (nvram_get_int("no_e2pfix") == 0)
 		eeprom_check();
@@ -1455,14 +1631,8 @@ void init_syspara(void)
 	buffer[5] += 1;
 	ether_etoa(buffer, macaddr2);
 #endif
-#if defined(RTAC1200) || defined(RTAC1200V2) || defined(RTAC53) || defined(RTACRH18) || defined(RT4GAC86U) || defined(RTAX53U) || defined(RT4GAX56) || defined(RTAX54) ||defined(XD4S)
-	nvram_set("et0macaddr", macaddr2);
-	nvram_set("et1macaddr", macaddr);
-#else
-	//TODO: separate for different chipset solution
-	nvram_set("et0macaddr", macaddr);
-	nvram_set("et1macaddr", macaddr2);
-#endif
+
+	set_et0macaddr(macaddr2, macaddr);
 #if defined(RTCONFIG_EASYMESH)
 	ether_cal(macaddr, macaddrbh1, 14);
 	ether_cal(macaddr2, macaddrbh2, 18);
@@ -1949,13 +2119,20 @@ void reinit_hwnat(int unit)
 	if(!is_wan_connect(prim_unit))
 		return;
 
+#if defined(RTCONFIG_MT798X) && defined(RTCONFIG_BWDPI)
+	/* disable at default */
+	f_write_string("/proc/sys/net/netfilter/nf_conntrack_acct", "0", 0, 0);
+	f_write_string("/sys/kernel/debug/hnat/dpi_using", "0", 0, 0);
+#endif
 	/* If QoS is enabled, disable hwnat. */
 	if (nvram_get_int("qos_enable") == 1)
 		act = 0;
 #if defined(RTCONFIG_MT798X) && defined(RTCONFIG_BWDPI)
 	/* MTK798X pure software for DPI */
-	else if (check_bwdpi_nvram_setting() == 1)
-		act = 0;
+	else if (check_bwdpi_nvram_setting() == 1) {
+		f_write_string("/proc/sys/net/netfilter/nf_conntrack_acct", "1", 0, 0);
+		f_write_string("/sys/kernel/debug/hnat/dpi_using", "1", 0, 0);
+	}
 #endif
 
 #if defined(RTCONFIG_MT798X)
@@ -2144,12 +2321,23 @@ void reinit_hwnat(int unit)
 	}
 #else //4.4.x
 	if (act){
-		if (!module_loaded("mtkhnat")) {
-			modprobe("mtkhnat");
+		if (!module_loaded(MTK_HNAT_MOD)) {
+			doSystem("echo 1 > /sys/kernel/debug/hnat/hook_toggle");
+			modprobe(MTK_HNAT_MOD);
+#if defined(RTCONFIG_SOFTWIRE46)
+			switch (get_ipv4_service()) {
+			case WAN_MAPE:
+			case WAN_V6PLUS:
+			case WAN_OCNVC:
+				doSystem("echo %d > /sys/kernel/debug/hnat/mape_toggle", 1);
+				break;
+			}
+#endif
 		}		
 	} else {
-		if (module_loaded("mtkhnat")) {
-			modprobe_r("mtkhnat");
+		if (module_loaded(MTK_HNAT_MOD)) {
+			doSystem("echo 0 > /sys/kernel/debug/hnat/hook_toggle");
+			modprobe_r(MTK_HNAT_MOD);
 			sleep(1);
 		}
 	}
@@ -3519,4 +3707,3 @@ void easymesh_agent(void)
 }
 
 #endif
-

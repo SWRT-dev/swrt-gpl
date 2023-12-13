@@ -97,9 +97,14 @@ $(function () {
 var sw_mode_orig = '<% nvram_get("sw_mode"); %>';
 var wlc_express_orig = '<% nvram_get("wlc_express"); %>';
 var wlc_psta_orig = '<% nvram_get("wlc_psta"); %>';
+var wlc_band_orig = '<% nvram_get("wlc_band"); %>';
 if( ((sw_mode_orig == 2 || sw_mode_orig == 3) && '<% nvram_get("wlc_psta"); %>' == 1)
    || sw_mode_orig == 3 && wlc_psta_orig == 3){	
 	sw_mode_orig = 4;
+}
+
+if(wlc_band_orig != "" && sw_mode_orig == "1"){
+	sw_mode_orig = 6;
 }
 
 var tcode = '<% nvram_get("territory_code"); %>';
@@ -113,6 +118,8 @@ window.onresize = function() {
 } 
 if(sw_mode_orig == 3 && '<% nvram_get("wlc_psta"); %>' == 2)
 	sw_mode_orig = 2;
+
+
 
 function initial(){
 	show_menu();
@@ -152,6 +159,22 @@ function initial(){
 				"text" : (amesh_support && ameshRouter_support) ? "<#AiMesh_GW_item#>" : "<#OP_GW_item#>"
 			},
 			"mode" : "1",
+			"express" : "0",
+			"css_list" : {"margin":"0px 10px 5px 0px", "display":"block"}
+		},
+		"wispMode" : {
+			"span" : {
+				"id" : "wispMode"
+			},
+			"input" : {
+				"id" : "sw_mode6_radio",
+				"name" : "sw_mode_radio",
+				"value" : "6"
+			},
+			"label" : {
+				"text" : "Public WiFi Mode (WISP)"
+			},
+			"mode" : "6",
 			"express" : "0",
 			"css_list" : {"margin":"0px 10px 5px 0px", "display":"block"}
 		},
@@ -259,8 +282,13 @@ function initial(){
 	$("#operation_mode_bg").append(gen_operation_mode(operation_array["rp_express_2g"], sw_mode_orig));
 	$("#operation_mode_bg").append(gen_operation_mode(operation_array["rp_express_5g"], sw_mode_orig));
 	$("#operation_mode_bg").append(gen_operation_mode(operation_array["mbMode"], sw_mode_orig));
+
 	if(amesh_support && ameshNode_support)
 		$("#operation_mode_bg").append(gen_operation_mode(operation_array["AiMeshMode"], sw_mode_orig));
+
+	if(isSupport("wisp"))
+		$("#operation_mode_bg").append(gen_operation_mode(operation_array["wispMode"], sw_mode_orig));
+
 
 	setScenerion(sw_mode_orig, document.form.wlc_express.value);
 
@@ -292,6 +320,10 @@ function initial(){
 	if(isSupport("noAP")){
 		$("#apMode").hide();
 		$("#sw_mode3_radio").attr("disabled", true);
+	}
+
+	if(!ameshNode_support && !repeater_support && !psta_support && isSupport("noAP")){
+		$("#op_title_desc").hide();
 	}
 }
 
@@ -373,7 +405,16 @@ function saveMode(){
 		return false;
 	}
 	else if(document.form.sw_mode.value == 3){
-		parent.location.href = '/QIS_wizard.htm?flag=lanip';
+		var confirmFlag = true;
+		if(isSupport("mtlancfg") && sw_mode_orig == "1"){
+			var hint_text = "<#AiProtection_title#>, <#vpnc_title#>, <#BOP_isp_heart_item#>, and <#EzQoS_type_QoS#> are not available. The profile list of " + Guest_Network_naming + " will be cleared. Please reconfigure it. We recommend that you download and save the configuration file before switching to #OPMODE.".replace("#OPMODE", "<#WLANConfig11b_x_APMode_itemname#>");
+			hint_text += "\n";
+			hint_text += "<#Setting_factorydefault_hint2#>";
+			confirmFlag = confirm(hint_text);
+		}
+		if(confirmFlag){
+			parent.location.href = '/QIS_wizard.htm?flag=lanip';
+		}
 		return false;
 	}
 	else if(document.form.sw_mode.value == 4){
@@ -384,93 +425,13 @@ function saveMode(){
 		parent.location.href = '/QIS_wizard.htm?flag=amasnode_page';
 		return false;
 	}
+	else if(document.form.sw_mode.value == 6){
+		parent.location.href = '/QIS_wizard.htm?flag=wispMode';
+		return false;
+	}
 	else{ // default router
-		document.form.lan_proto.value = '<% nvram_default_get("lan_proto"); %>';
-		document.form.lan_ipaddr.value = document.form.lan_ipaddr_rt.value;
-		document.form.lan_netmask.value = document.form.lan_netmask_rt.value;
-		document.form.lan_gateway.value = document.form.lan_ipaddr_rt.value;
-		document.form.wlc_psta.value = 0;
-		document.form.wlc_psta.disabled = false;
-
-		if(amesh_support && ameshRouter_support) {
-			document.form.cfg_master.disabled = false;
-			document.form.cfg_master.value = 1;
-		}
-
-		if(sw_mode_orig == '2' || sw_mode_orig == '4'){
-			inputCtrl(document.form.wl0_ssid,1);	
-			inputCtrl(document.form.wl0_auth_mode_x,1);	
-			inputCtrl(document.form.wl0_crypto,1);	
-			inputCtrl(document.form.wl0_wpa_psk,1);
-
-			if(sw_mode_orig == '2'){
-				restore_wl_config("wl0.1_");
-				restore_wl_config_wep("wl0_");
-				
-				if(band5g_support){
-					restore_wl_config_wep("wl1_");
-					restore_wl_config("wl1.1_");
-				}
-				if(wl_info.band5g_2_support || wl_info.band6g_support){
-					restore_wl_config_wep("wl2_");
-					restore_wl_config("wl2.1_");
-				}
-				document.form.w_Setting.value = 0;				
-			}
-			
-			close_guest_unit(0,1);
-			if(band5g_support){
-				inputCtrl(document.form.wl1_ssid,1);
-				inputCtrl(document.form.wl1_crypto,1);
-				inputCtrl(document.form.wl1_wpa_psk,1);
-				inputCtrl(document.form.wl1_auth_mode_x,1);
-				close_guest_unit(1,1);
-			}
-			
-			if(wl_info.band5g_2_support || wl_info.band6g_support){
-				inputCtrl(document.form.wl2_ssid,1);
-				inputCtrl(document.form.wl2_crypto,1);
-				inputCtrl(document.form.wl2_wpa_psk,1);
-				inputCtrl(document.form.wl2_auth_mode_x,1);
-				close_guest_unit(2,1);
-			}	
-
-			if(!band5g_support){			
-				document.getElementById('wl_unit_field_1').style.display="none";
-				document.getElementById('wl_unit_field_2').style.display="none";
-				document.getElementById('wl_unit_field_3').style.display="none";	
-				document.getElementById('routerSSID').style.height="370px";				
-			}
-
-			if(wl_info.band5g_2_support || wl_info.band6g_support){
-				if(band6g_support){
-					document.getElementById("5g2_title").innerHTML = '6 GHz - <#Security#>';
-				}
-				
-				document.getElementById("wl_unit_field_4").style.display = "";
-				document.getElementById("wl_unit_field_5").style.display = "";
-				document.getElementById("wl_unit_field_6").style.display = "";	
-				document.getElementById("wl_unit_field_1_1").innerHTML = '5 GHz-1 - <#Security#>';
-				document.getElementById("syncCheckbox").innerHTML = "<#qis_ssid_desc1#>";
-				document.getElementById("syncCheckbox_5_2").innerHTML = "<#qis_ssid_desc2#>";
-				document.getElementById('routerSSID').style.height="520px";
-				document.getElementById("smart_connect_table").style.display="";
-				document.getElementById('routerSSID').style.height="620px";
-				change_smart_con('<% nvram_get("smart_connect_x"); %>');
-			}
-
-			/*if(smart_connect_support){
-				document.getElementById("smart_connect_table").style.display="";
-				document.getElementById('routerSSID').style.height="620px";
-				change_smart_con('<% nvram_get("smart_connect_x"); %>');
-			}*/
-			
-			cal_panel_block("routerSSID", 0.25);
-			$("#routerSSID").fadeIn(300);
-			$("#forSSID_bg").fadeIn(300);
-			document.getElementById("forSSID_bg").style.visibility = "visible";	
-			return true;			
-		}
+		parent.location.href = '/QIS_wizard.htm?flag=rtMode';
+		return false;		
 	}
 
 	applyRule();
@@ -682,6 +643,23 @@ function setScenerion(mode, express){
 		desc += "2. <#AiMesh_Node_desc2#>";
 		$("#mode_desc").html(desc);
 		$("input[name=sw_mode_radio][value=5]").prop('checked', true);
+	}
+	else if(mode == '6') {
+		document.form.sw_mode.value = 6;
+		
+		$("#Senario").css({
+			"height": "305px", 
+			"background": "url(/images/New_ui/re.jpg) center no-repeat", 
+			"margin": "auto", 
+			"margin-bottom": "0px"
+		});
+
+		var desc = "<#OP_WISP_desc1#>";
+		desc += "<br>";
+		desc += "<#OP_WISP_desc2#>";
+
+		$("#mode_desc").html(desc);
+		$("input[name=sw_mode_radio][value=6]").prop('checked', true);
 	}
 	else{ // Default: Router
 		document.form.sw_mode.value = 1;
@@ -945,17 +923,17 @@ function change_smart_con(v){
 								<div>&nbsp;</div>
 								<div class="formfonttitle"><#menu5_6#> - <#menu5_6_1_title#></div>
 								<div style="margin:10px 0 10px 5px;" class="splitLine"></div>
-								<div class="formfontdesc"><#OP_desc1#></div>
+								<div class="formfontdesc" id="op_title_desc"><#OP_desc1#></div>
 							</td>
 						</tr>
 						<tr bgcolor="#4D595D" valign="top" style="height:15%">
 							<td>
 								<div style="width:95%; margin:0 auto; padding-bottom:3px;">
-									<span style="font-size:16px; font-weight:bold;color:white;text-shadow:1px 1px 0px black">
+									<span style="font-size:16px; font-weight:bold;color:white;">
 										<div id="operation_mode_bg"></div>
 									</span>
 									<br/>
-									<span style="word-wrap:break-word;word-break:break-all"><label id="mode_desc"></label></span>
+									<span style="word-wrap:break-word;word-break:break-all"><div class="formfontdesc" id="mode_desc"></div></span>
 								</div>
 							</td>
 						</tr>

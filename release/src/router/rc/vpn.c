@@ -80,7 +80,7 @@ void write_chap_secret(char *file)
 				continue;
 #ifdef RTCONFIG_NVRAM_ENCRYPT
 			memset(dec_passwd, 0, sizeof(dec_passwd));
-			pw_dec(passwd, dec_passwd, sizeof(dec_passwd));
+			pw_dec(passwd, dec_passwd, sizeof(dec_passwd), 1);
 			passwd = dec_passwd;
 #endif
 			fprintf(fp, "'%s' * '%s' *\n",
@@ -140,9 +140,9 @@ void start_pptpd(void)
 #endif
 
 #ifdef RTCONFIG_MULTILAN_CFG
-	if (get_mtlan_by_idx(SDNFT_TYPE_VPNS, vpns_idx, pmtl, &mtl_sz)) {
+	if (get_mtlan_by_idx(SDNFT_TYPE_VPNS, vpns_idx, pmtl, &mtl_sz) && mtl_sz) {
 		if (mtl_sz != 1)
-			_dprintf("%s: wrong MTLAN size %u\n", __FUNCTION__, mtl_sz);
+			logmessage("PPTPD", "NOTE: only %s full function.", pmtl[0].nw_t.ifname);
 		strlcpy(lanip, pmtl[0].nw_t.addr, sizeof(lanip));
 		strlcpy(lan_ifname, pmtl[0].nw_t.ifname, sizeof(lan_ifname));
 	}

@@ -271,6 +271,9 @@ int _eval(char *const argv[], const char *path, int timeout, int *ppid)
 		chld = signal(SIGCHLD, SIG_DFL);
 	}
 
+#if defined(RTCONFIG_VALGRIND)
+	setenv("USER", nvram_get("http_username")? : "admin", 1);
+#endif
 #ifdef HND_ROUTER
 	p = nvram_safe_get("env_path");
 	snprintf(s, sizeof(s), "%s%s/sbin:/bin:/usr/sbin:/usr/bin:/opt/sbin:/opt/bin", *p ? p : "", *p ? ":" : "");
@@ -1670,10 +1673,10 @@ static void put_ulong(strbuf_t *buf, unsigned long int value, int base,
  *	the first call, msize can be set to -1.
  */
 
-static int dsnprintf(char **s, int size, char *fmt, va_list arg, int msize)
+static int dsnprintf(char **s, int size, const char *fmt, va_list arg, int msize)
 {
 	strbuf_t	buf;
-	char		c;
+	char	c;
 
 	assert(s);
 	assert(fmt);
@@ -1865,7 +1868,7 @@ static int dsnprintf(char **s, int size, char *fmt, va_list arg, int msize)
  *	point, like %e, %f, %g...
  */
 
-int fmtAlloc(char **s, int n, char *fmt, ...)
+int fmtAlloc(char **s, int n, const char *fmt, ...)
 {
 	va_list	ap;
 	int		result;
@@ -1885,7 +1888,7 @@ int fmtAlloc(char **s, int n, char *fmt, ...)
  *	A vsprintf replacement.
  */
 
-int fmtValloc(char **s, int n, char *fmt, va_list arg)
+int fmtValloc(char **s, int n, const char *fmt, va_list arg)
 {
 	assert(s);
 	assert(fmt);
@@ -1897,7 +1900,7 @@ int fmtValloc(char **s, int n, char *fmt, va_list arg)
 /*
  *  * description: parse va and do system
  *  */
-int doSystem(char *fmt, ...)
+int doSystem(const char *fmt, ...)
 {
 	va_list		vargs;
 	char		*cmd = NULL;
@@ -2441,6 +2444,18 @@ int remove_kmods(char *kmods_list)
 
 int num_of_wl_if()
 {
+#if defined(RTCONFIG_NOWL)
+	char prefix[sizeof("wlXXXXX_")];
+	int band, count = 0;
+
+	for (band = 0; band < MAX_NR_WL_BAND; band++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", band);
+		if (nvram_pf_get_int(prefix, "nband") > 0)
+			count++;
+		else
+			break;
+	}
+#else
 	char word[256], *next;
 	int count = 0;
 	char wl_ifnames[32] = { 0 };
@@ -2448,6 +2463,7 @@ int num_of_wl_if()
 	strlcpy(wl_ifnames, nvram_safe_get("wl_ifnames"), sizeof(wl_ifnames));
 	foreach (word, wl_ifnames, next)
 		count++;
+#endif	/* RTCONFIG_NOWL */
 
 	return count;
 }
@@ -2467,6 +2483,19 @@ int num_of_wan_if()
 
 int num_of_5g_if()
 {
+#if defined(RTCONFIG_NOWL)
+	char prefix[sizeof("wlXXXXX_")];
+	int band, count = 0;
+
+	for (band = 0; band < MAX_NR_WL_BAND; band++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", band);
+		if (nvram_pf_match(prefix, "nband", "1"))
+			count++;
+
+		if (nvram_pf_get_int(prefix, "nband") == 0)
+			break;
+	}
+#else
 #if !defined(CONFIG_BCMWL5)
 	char prefix[] = "wlXXXXXXXXXXXX_";
 	int band, count = 0;
@@ -2479,17 +2508,18 @@ int num_of_5g_if()
 	}
 #else
 	char word[256], *next;
-	int count = 0;
 	char wl_ifnames[32] = { 0 };
-	int band;
+	char prefix[] = "wlXXXXXXXXXXXX_", tmp[128];
+	int idx = 0, count = 0;
 
 	strlcpy(wl_ifnames, nvram_safe_get("wl_ifnames"), sizeof(wl_ifnames));
 	foreach (word, wl_ifnames, next) {
-		wl_ioctl(word, WLC_GET_BAND, &band, sizeof(band));
-		if(band == WLC_BAND_5G)
+		snprintf(prefix, sizeof(prefix), "wl%d_", idx++);
+		if (nvram_match(strcat_r(prefix, "nband", tmp), "1"))
 			count++;
 	}
 #endif
+#endif	/* RTCONFIG_NOWL */
 	return count;
 }
 
@@ -2874,7 +2904,7 @@ int parse_ping_content(char *fname, ping_result_t *out)
 		{
 			if(strstr(linebuf, "PING "))
 			{
-				snprintf(scan_format, sizeof(scan_format), "PING %%%us (%%%u[^)]", sizeof(alias) -1, sizeof(ip_addr) -1);
+				snprintf(scan_format, sizeof(scan_format), "PING %%%zus (%%%zu[^)]", sizeof(alias) -1, sizeof(ip_addr) -1);
 				n = sscanf(linebuf, scan_format, alias, ip_addr);
 				if(n == 2)
 				{
@@ -3015,5 +3045,57 @@ int ping_target_with_size(char *target, unsigned int pkt_size, unsigned int ping
 			return 0;
 		}
 	}
+	return 1;
 }
 
+/*******************************************************************
+* NAME: replace_literal_newline
+* AUTHOR: Renjie Lee
+* CREATE DATE: 2023/03/21
+* DESCRIPTION: Replace literal newline(s) ("\n")  with newline character(s) ('\n').
+*                        That is to say, from "\n" to '\n'.
+* INPUT:  inputstr, the string to be replaced.
+*         output, the replaced string will be stored in 'output'.
+*         buflen, the size of 'output' buffer.
+* OUTPUT: None
+* RETURN: -1 or -2, if something went wrong; 1, function works correctly.
+* NOTE:
+*******************************************************************/
+int replace_literal_newline(char *inputstr, char *output, int buflen)
+{
+	int in = 0;
+	int out = 0;
+	int len = 0;
+
+	if((!inputstr) || (strlen(inputstr) <= 0))
+	{
+		logmessage("replace_literal_newline", "Wrong inputstr.\n");
+		return -1;
+	}
+
+	if((!output) || (buflen == 0))
+	{
+		logmessage("replace_literal_newline", "Wrong output buffer\n");
+		return -2;
+	}
+
+	len = strlen(inputstr);
+	for(in = 0; (in < len) && (out < buflen); in++, out++)
+	{
+		if(in == len -1)
+		{
+			//boundary condition
+			output[out] = inputstr[in];
+		}
+		else if((inputstr[in] == '\\') && (inputstr[in+1] == 'n'))
+		{
+			output[out] = '\n';
+			in++;
+		}
+		else
+		{
+			output[out] = inputstr[in];
+		}
+	}
+	return 1;
+}

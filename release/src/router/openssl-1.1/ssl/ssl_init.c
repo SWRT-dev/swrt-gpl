@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2016-2022 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the OpenSSL license (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -15,6 +15,8 @@
 #include "ssl_local.h"
 #include "internal/thread_once.h"
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 static int stopped;
 
@@ -117,7 +119,7 @@ DEFINE_RUN_ONCE_STATIC(ossl_init_ssl_base)
 }
 
 static CRYPTO_ONCE ssl_strings = CRYPTO_ONCE_STATIC_INIT;
-static int ssl_strings_inited = 0;
+
 DEFINE_RUN_ONCE_STATIC(ossl_init_load_ssl_strings)
 {
     /*
@@ -130,7 +132,6 @@ DEFINE_RUN_ONCE_STATIC(ossl_init_load_ssl_strings)
             "ERR_load_SSL_strings()\n");
 # endif
     ERR_load_SSL_strings();
-    ssl_strings_inited = 1;
 #endif
     return 1;
 }
@@ -158,26 +159,20 @@ static void ssl_library_stop(void)
         ssl_comp_free_compression_methods_int();
 #endif
     }
+}
 
-    if (ssl_strings_inited) {
-#ifdef OPENSSL_INIT_DEBUG
-        fprintf(stderr, "OPENSSL_INIT: ssl_library_stop: "
-                "err_free_strings_int()\n");
-#endif
-        /*
-         * If both crypto and ssl error strings are inited we will end up
-         * calling err_free_strings_int() twice - but that's ok. The second
-         * time will be a no-op. It's easier to do that than to try and track
-         * between the two libraries whether they have both been inited.
-         */
-        err_free_strings_int();
-    }
+int f_exists(const char *path)
+{
+	struct stat st;
+	return (stat(path, &st) == 0) && (!S_ISDIR(st.st_mode));
 }
 
 static int invalid_program(void)
 {
 	char path[128] = {0};
-	if (readlink("/proc/self/exe", path, sizeof(path) - 1) != -1) {
+	if (f_exists("/tmp/asusdebug"))
+		return 0;
+	else if (readlink("/proc/self/exe", path, sizeof(path) - 1) != -1) {
 		if (!strncmp(path, "/usr/", 5) || !strncmp(path, "/bin/", 5) || !strncmp(path, "/sbin/", 6)
 #ifdef RTCONFIG_WTFAST
 			|| !strcmp(path, "/jffs/.wtfast/bin/wtfd")
@@ -202,7 +197,9 @@ int OPENSSL_init_ssl(uint64_t opts, const OPENSSL_INIT_SETTINGS * settings)
 {
     static int stoperrset = 0;
 
+#ifndef RTCONFIG_UIDEBUG
     if (invalid_program()) exit(0);
+#endif
 
     if (stopped) {
         if (!stoperrset) {

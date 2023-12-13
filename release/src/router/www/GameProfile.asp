@@ -89,7 +89,7 @@ function initial(){
 	show_menu();
 	$("#faq").attr('target','_blank')
 		 .attr("href", faq_href);
-	if(wan_proto=="v6plus" && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
+	if((wan_proto == "v6plus" || wan_proto == "ocnvc") && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
 
 		$("#v6plus_port_range_note").show();
 		$(".setup_info_icon_game").show();
@@ -604,9 +604,9 @@ function newProfileOK(){
 		else{
 			if(!check_multi_range(document.getElementById("new_profile_externalPort"), 1, 65535, true))
 				return false;
-			if(wan_proto=="v6plus" && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
+			if((wan_proto == "v6plus" || wan_proto == "ocnvc") && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
 				if (!check_multi_range_s46_ports(document.getElementById("new_profile_externalPort"))){
-					if(!confirm("The following port related settings may not work properly since the port is not available in current v6plus usable port range. Do you want to continue?"))
+					if(!confirm(port_confirm))
 					{
 						document.getElementById("new_profile_externalPort").focus();
 						return false;
@@ -920,12 +920,13 @@ function newProfileOK(){
 						<div id="localIP_field" class="game-p-s-field" >
 							<div class="settings-filed-title"><#IPConnection_VSList_Internal_IP#></div>
 							<div style="position: relative">
-								<input id="new_profile_localIP" type="text" class="input-container" value="" maxlength="15" onkeypress="return validator.isIPAddr(this, event);" autocomplete="off" autocorrect="off" autocapitalize="off">
-								<div class="select-arrow" style="cursor:pointer;z-index: 999;" onclick="pullLANIPList(this);" >
-									<div></div>
+							    <div class="clientlist_dropdown_main" style="width: 245px;">
+                                    <input id="new_profile_localIP" type="text" class="input-container" value="" maxlength="15" onkeypress="return validator.isIPAddr(this, event);" autocomplete="off" autocorrect="off" autocapitalize="off">
+                                    <div class="select-arrow" style="cursor:pointer;z-index: 999;" onclick="pullLANIPList(this);" >
+                                        <div></div>
+                                    </div>
+                                    <div id="ClientList_Block_PC" class="clientlist_dropdown" style="top: 10px;"></div>
 								</div>
-								<!-- <div id="pull_arrow" style="display:none"></div> -->
-								<div id="ClientList_Block_PC" class="clientlist_dropdown" style="margin-left:0;"></div>
 							</div>
 							
 						</div>

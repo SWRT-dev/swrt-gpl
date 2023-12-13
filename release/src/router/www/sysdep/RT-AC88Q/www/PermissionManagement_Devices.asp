@@ -13,6 +13,7 @@
 <link rel="stylesheet" type="text/css" href="form_style.css">
 <link rel="stylesheet" type="text/css" href="/device-map/device-map.css">
 <script type="text/javascript" src="js/jquery.js"></script>
+<script type="text/javascript" src="/js/httpApi.js"></script>
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/general.js"></script>
 <script type="text/javascript" src="/popup.js"></script>
@@ -430,7 +431,7 @@ function pullLANIPList(obj){
 	var element = document.getElementById('ClientList_Block_PC');
 	var isMenuopen = element.offsetWidth > 0 || element.offsetHeight > 0;
 	if(isMenuopen == 0){		
-		obj.src = "/images/arrow-top.gif"
+		obj.src = "/images/unfold_less.svg"
 		element.style.display = 'block';		
 		document.getElementById("device_mac").focus();		
 	}
@@ -439,7 +440,7 @@ function pullLANIPList(obj){
 }
 
 function hideClients_Block(){
-	document.getElementById("pull_arrow").src = "/images/arrow-down.gif";
+	document.getElementById("pull_arrow").src = "/images/unfold_more.svg";
 	document.getElementById('ClientList_Block_PC').style.display='none';
 }
 
@@ -515,9 +516,11 @@ function enable_group_all(obj){
 			<tr>
 				<th width="30%" style="font-family: Calibri;font-weight: bolder;"><#ShareNode_DeviceName_itemname#></th>			
 				<td>
-					<input id="device_name" type="text" maxlength="32"class="input_32_table" style="height: 23px;" value="" autocorrect="off" autocapitalize="off">
-					<img id="pull_arrow" height="14px;" src="/images/arrow-down.gif" style="position:absolute;" onclick="pullLANIPList(this);" title="<#select_client#>">
-					<div id="ClientList_Block_PC" style="margin:0 0 0 2px" class="clientlist_dropdown"></div>
+				    <div class="clientlist_dropdown_main" style="width: 100%;">
+                        <input id="device_name" type="text" maxlength="32"class="input_32_table" value="" autocorrect="off" autocapitalize="off">
+                        <img id="pull_arrow" height="14px;" src="/images/unfold_more.svg" onclick="pullLANIPList(this);" title="<#select_client#>">
+                        <div id="ClientList_Block_PC" class="clientlist_dropdown"></div>
+					</div>
 					<div style="color:#FC0;padding: 3px 0 0 2px"><#ADSL_FW_note#> <#ShareNode_WorkGroup_note#><a id="faq" target="_blank" style="padding-left:5px;color: #FFF;text-decoration: underline;"><#ShareNode_WorkGroup_faq#></a></div>
 				</td>
 			</tr>

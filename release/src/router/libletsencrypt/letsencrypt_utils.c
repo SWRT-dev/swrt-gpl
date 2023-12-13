@@ -31,6 +31,7 @@
 #include <dirent.h>
 #include <string.h>
 #include <time.h>
+#include <regex.h>
 
 #include <rtconfig.h>
 #include <stdio.h>
@@ -140,4 +141,27 @@ u_int16_t pick_random_port(void)
 	}
 	close(skfd);
 	return ntohs(addr.sin_port);
+}
+
+int is_ecc(char *s, char *domain, size_t sz)
+{
+	int ret;
+	regmatch_t pmatch;
+	regex_t reg;
+
+	memset(domain, 0, sz);
+	regcomp(&reg, "_ecc$", REG_EXTENDED);
+	ret = regexec(&reg, s, 1, &pmatch, 0);
+	if(ret == REG_NOMATCH){
+		strncpy(domain, s, sz);
+		ret = 0;
+	}else(ret == 0){
+		ret = 1;
+		if(pmatch.rm_eo > sz)
+			strncpy(domain, s, sz);
+		else
+			strncpy(domain, s, pmatch.rm_so);
+	}
+	regfree(&reg);
+	return ret;
 }

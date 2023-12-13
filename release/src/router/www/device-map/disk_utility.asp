@@ -35,7 +35,7 @@ a:active {
 	border-bottom: 1px solid #929eA1;
 }
 .font_style{
-	font-family: Verdana, Arial, Helvetica, Microsoft Yahei UI, MS UI Gothic, MS P Gothic, sans-serif;
+	font-family: Verdana, Microsoft Yahei UI, Arial, Helvetica, MS UI Gothic, MS P Gothic, sans-serif;
 }
 </style>
 <script type="text/javascript" src="/require/require.min.js"></script>

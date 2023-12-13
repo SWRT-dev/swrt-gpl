@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <ctype.h>	//isdigit()
 #include <inttypes.h>
 #include <time.h>
 #include <json.h>

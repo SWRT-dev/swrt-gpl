@@ -117,6 +117,14 @@ int is_android_phone(const int mode, const unsigned int vid, const unsigned int 
 	return 0;
 }
 
+int is_apple_device(const int mode, const unsigned int vid, const unsigned int pid)
+{
+	if(vid == 0x05ac)
+		return 1;
+
+	return 0;
+}
+
 int is_storage_cd(const unsigned int vid, const unsigned int pid)
 {
 	static const struct {
@@ -3295,56 +3303,6 @@ after_change_xhcimode:
 		usb_dbg("(%s): Had Storage interfaces(%s) on Port %s.\n", device_name, nvram_value, usb_port);
 
 	if(!isdigit(*ptr)){ // disk
-#if defined(RTCONFIG_NOTIFICATION_CENTER) && defined(RTCONFIG_CLOUDSYNC)
-		char buf[MAX_NVRAM_SPACE], str[32];
-		char *name;
-		int plugged_disk = 0;
-		int ntevent_firstdisk = nvram_get_int("ntevent_firstdisk");
-		int ntevent_nodiskuse = nvram_get_int("ntevent_nodiskuse");
-#if defined(RTCONFIG_USB_XHCI) || defined(RTCONFIG_ETRON_XHCI)
-		int ntevent_disableusb3 = nvram_get_int("ntevent_disableusb3");
-		int usb_usb3 = nvram_get_int("usb_usb3");
-#endif
-
-		if(!ntevent_firstdisk){
-			nvram_getall(buf, sizeof(buf));
-			for(name = buf; *name; name += strlen(name)+1){
-				// non usb nvrams
-				if(strncmp(name, "usb_path", 8))
-					continue;
-
-				// non disk utility nvrams
-				if(strstr(name, "_diskmon_"))
-					continue;
-
-				if(!isdigit(*(name+8)))
-					continue;
-
-				plugged_disk = 1;
-				break;
-			}
-
-			if(!plugged_disk){
-				usb_dbg("(%s): Got the first storage on Port %s.\n", device_name, usb_port);
-				snprintf(str, sizeof(str), "0x%x", HINT_USB_FIRSTIME_CHECK_EVENT);
-				eval("Notify_Event2NC", str, "");
-				nvram_set("ntevent_firstdisk", "1");
-
-				if(!ntevent_nodiskuse)
-					nvram_set("ntevent_nodiskuse", "1");
-
-#if defined(RTCONFIG_USB_XHCI) || defined(RTCONFIG_ETRON_XHCI)
-				if(!usb_usb3 && !ntevent_disableusb3){
-					snprintf(str, sizeof(str), "0x%x", HINT_USB3_WITHOUT_ENHANCE_EVENT);
-					eval("Notify_Event2NC", str, "");
-					nvram_set("ntevent_disableusb3", "1");
-				}
-#endif
-
-				nvram_commit();
-			}
-		}
-#endif
 
 		// set USB common nvram.
 		set_usb_common_nvram(action, device_name, usb_node, "storage");
@@ -3480,6 +3438,11 @@ int asus_lp(const char *device_name, const char *action)
 		file_unlock(isLock);
 		return 0;
 	}
+
+#if defined(RTCONFIG_TUXERA_SMBD)
+	stop_samba(1);
+	start_samba();
+#endif
 
 	u2ec_fifo = open(U2EC_FIFO, O_WRONLY | O_NONBLOCK);
 	write(u2ec_fifo, "a", 1);
@@ -3641,6 +3604,12 @@ int asus_sg(const char *device_name, const char *action)
 			sleep(2);
 			usb_dbg("(%s): Running usb_modeswitch twice...\n", device_name);
 			xstart("usb_modeswitch", "-c", switch_file);
+#elif defined(RTCONFIG_RALINK_MT7621)
+			sleep(4);
+			if(!access(switch_file, F_OK)){
+				usb_dbg("(%s): Running usb_modeswitch twice...\n", device_name);
+				xstart("usb_modeswitch", "-c", switch_file);
+			}
 #endif
 		}
 	}
@@ -4537,6 +4506,33 @@ int asus_usb_interface(const char *device_name, const char *action)
 		strcpy(device_type, nvram_safe_get(prefix));
 
 #ifdef RTCONFIG_USB_MODEM
+		vid = strtoul(nvram_safe_get(strcat_r(prefix, "_vid", tmp)), NULL, 16);
+		pid = strtoul(nvram_safe_get(strcat_r(prefix, "_pid", tmp)), NULL, 16);
+
+		usb_dbg("(%s): Remove the usb interface: 0x%4x/0x%4x.\n", device_name, vid, pid);
+
+		if(vid == 0 || pid == 0){
+			usb_dbg("(%s): Skip to unset the temporary usb interface.\n", device_name);
+
+			file_unlock(isLock);
+			return 0;
+		}
+		else
+		if(is_apple_device(0, vid, pid)){
+			if(strstr(device_name, ":1.0")){
+				usb_dbg("(%s): Skip to unset apple temporary interface information.\n", device_name);
+
+				file_unlock(isLock);
+				return 0;
+			}
+			else if(!strstr(device_name, ".0")){
+				usb_dbg("(%s): Skip to unset apple multi-interface information.\n", device_name);
+
+				file_unlock(isLock);
+				return 0;
+			}
+		}
+
 		snprintf(conf_file, sizeof(conf_file), "%s.%s", USB_MODESWITCH_CONF, port_path);
 		unlink(conf_file);
 
@@ -4548,6 +4544,7 @@ int asus_usb_interface(const char *device_name, const char *action)
 				snprintf(buf, sizeof(buf), "%s", nvram_safe_get(strcat_r(prefix, "_act", tmp)));
 
 				// remove the device between adding interface and adding tty.
+				usb_dbg("(%s): Remove the usb serial modules.\n", device_name);
 				modprobe_r("option");
 #if LINUX_KERNEL_VERSION >= KERNEL_VERSION(2,6,36)
 				modprobe_r("usb_wwan");
@@ -4557,6 +4554,7 @@ int asus_usb_interface(const char *device_name, const char *action)
 #ifdef RTCONFIG_USB_BECEEM
 				vid = atoi(nvram_safe_get(strcat_r(prefix2, "act_vid", tmp2)));
 				pid = atoi(nvram_safe_get(strcat_r(prefix2, "act_pid", tmp2)));
+
 				if(is_samsung_dongle(1, vid, pid) || is_gct_dongle(1, vid, pid)){
 					modprobe_r("drxvi314");
 
@@ -4617,7 +4615,23 @@ int asus_usb_interface(const char *device_name, const char *action)
 		file_unlock(isLock);
 		return 0;
 	}
+	usb_dbg("(%s): add the usb interface: 0x%4x/0x%4x.\n", device_name, vid, pid);
 
+	if(is_apple_device(0, vid, pid)){
+		if(strstr(device_name, ":1.0")){
+			usb_dbg("(%s): Skip to set apple temporary interface information.\n", device_name);
+
+			file_unlock(isLock);
+			return 0;
+		}
+		else if(!strstr(device_name, ".0")){
+			usb_dbg("(%s): Skip to set apple multi-interface information.\n", device_name);
+
+			file_unlock(isLock);
+			return 0;
+		}
+	}
+	else
 	// there is no any bounded drivers with Some Sierra dongles in the default state.
 	if(vid == 0x1199 && isStorageInterface(device_name)){
 		if(init_3g_param(port_path, vid, pid)){
@@ -4636,8 +4650,7 @@ int asus_usb_interface(const char *device_name, const char *action)
 			return 0;
 		}
 	}
-#endif
-
+	else
 #ifdef RTCONFIG_INTERNAL_GOBI
 	if(is_gobi_dongle(vid, pid)){
 		if(get_usb_interface_order(device_name) != 2){
@@ -4648,6 +4661,7 @@ int asus_usb_interface(const char *device_name, const char *action)
 	}
 	else
 #endif
+#endif // RTCONFIG_USB_MODEM
 	{
 #ifdef RTCONFIG_USB_PRINTER
 		if (nvram_get_int("usb_printer") && !module_loaded(USBPRINTER_MOD)) {
@@ -4659,7 +4673,7 @@ int asus_usb_interface(const char *device_name, const char *action)
 		// Wait if there is the printer/modem interface.
 #if defined(RTCONFIG_USB) || defined(RTCONFIG_USB_PRINTER) || defined(RTCONFIG_USB_MODEM)
 		retry = 0;
-		while(retry < MAX_WAIT_MODULE){
+		while(!nvram_get_int("stop_wait_usb_modules") && retry < MAX_WAIT_MODULE){
 			if(isStorageInterface(device_name)){
 				usb_dbg("(%s): Is Storage interface on Port %s.\n", device_name, usb_node);
 				file_unlock(isLock);
@@ -4699,7 +4713,8 @@ int asus_usb_interface(const char *device_name, const char *action)
 	}
 
 #ifdef RTCONFIG_USB_MODEM
-	if(!isSerialInterface(device_name, 1, vid, pid)
+	if(!is_apple_device(0, vid, pid)
+			&& !isSerialInterface(device_name, 1, vid, pid)
 			&& !isACMInterface(device_name, 1, vid, pid)
 			&& !isRNDISInterface(device_name, vid, pid)
 			&& !isQMIInterface(device_name)
@@ -4827,7 +4842,10 @@ int asus_usb_interface(const char *device_name, const char *action)
 	}
 	else
 #endif
-	if(is_android_phone(0, vid, pid)){
+	if(is_apple_device(0, vid, pid)){
+		usb_dbg("(%s): do nothing with the Apple device.\n", device_name);
+	}
+	else if(is_android_phone(0, vid, pid)){
 		usb_dbg("(%s): do nothing with the MTP mode.\n", device_name);
 	}
 	else if(isRNDISInterface(device_name, vid, pid)){

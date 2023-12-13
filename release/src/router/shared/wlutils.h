@@ -30,7 +30,7 @@
 #include <wlioctl.h>
 extern int wl_ioctl(char *name, int cmd, void *buf, int len);
 #endif //RTCONFIG_REALTEK
-#ifdef RTCONFIG_BCMARM
+#ifdef CONFIG_BCMWL5
 #include <typedefs.h>
 #ifdef RTCONFIG_HND_ROUTER_AX
 #include <ethernet.h>
@@ -244,5 +244,29 @@ extern int wl_iovar_xtlv_getint(char *ifname, char *iovar, uint16 version, uint1
 #ifdef __CONFIG_DHDAP__
 extern int dhd_probe(char *name);
 #endif
-#endif /* RTCONFIG_BCMARM */
+#endif /* CONFIG_BCMWL5 */
 #endif /* _wlutils_h_ */
+
+#if defined(RTCONFIG_HND_ROUTER_BE_4916)
+/*
+ * Set EHT related commands
+ * @param	ifname		interface name
+ * @param	iovar		variable name
+ * @param	subcmd		eht subcommand
+ * @param	val		val or val pointer for int routines
+ * @return	success == 0, failure != 0
+ */
+extern int wl_ehtiovar_setint(char *ifname, char *iovar, char *subcmd, int val);
+
+/*
+ * Set MLO related commands
+ * @param	ifname		interface name
+ * @param	iovar		variable name
+ * @param	subcmd		mlo subcommand
+ * @param	val		val or val pointer for int routines
+ * @return	success == 0, failure != 0
+ */
+extern int wl_mloiovar_setint(char *ifname, char *iovar, char *subcmd, int val);
+
+#endif
+

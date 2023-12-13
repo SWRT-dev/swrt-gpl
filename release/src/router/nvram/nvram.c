@@ -388,6 +388,24 @@ static int _convert_data(const char *name, char *value, size_t value_len)
 	//value is username@domain.tld
 	const char pppoe_username_token[] = "pppoe_username";
 
+#if defined(RTCONFIG_QCA)
+	const char *token3[] = {
+		"wlc0_wpa_psk", "wlc1_wpa_psk",
+#if defined(RTCONFIG_HAS_5G_2)
+		"wlc2_wpa_psk",
+#endif
+#if defined(RTCONFIG_DWB) 
+		"dwb_wlc0_wpa_psk", "dwb_wlc1_wpa_psk", 
+#if defined(RTCONFIG_HAS_5G_2)
+		"dwb_wlc2_wpa_psk",
+#endif
+#if defined(RTCONFIG_NO_TRY_DWB_PROFILE)
+		"wsbh_wpa_psk", "wsfh_wpa_psk",
+#endif
+#endif
+		NULL };
+#endif
+
 	if(!value)
 		return 0;
 
@@ -460,6 +478,16 @@ static int _convert_data(const char *name, char *value, size_t value_len)
 		return 1;
 	}
 
+#if defined(RTCONFIG_QCA)
+	//check the first token group
+	for (i = 0; token3[i]; i++) {
+		if (strcmp(name, token3[i]) == 0) {
+			memset(value, PROTECT_CHAR, strlen(value));
+			return 1;
+		}
+	}
+#endif
+
 	return 0;
 }
 
@@ -521,11 +549,10 @@ static int _secure_conf(char* buf, size_t len)
 	memset(tmp, 0, len);
 	b = tmp;
 	
-	while(1)
+	while(p && *p != '\0')
 	{
 		p = _get_attr(p, name, sizeof(name), value, CKN_STR_MAX);
 
-		if(name[0] != '\0')
 		{
 			//handle data
 			_convert_data(name, value, CKN_STR_MAX);
@@ -538,8 +565,6 @@ static int _secure_conf(char* buf, size_t len)
 			
 			b += (tmp_len + 1);	//Add NULL at the end of the value
 		}
-		else
-			break;
 	}
 
 	memcpy(buf, tmp, len);
@@ -898,6 +923,10 @@ main(int argc, char **argv)
 	/* Process the remaining arguments. */
 	for (; *argv; argv++) {
 		if (!strncmp(*argv, "get", 3)) {
+#ifdef RTCONFIG_NVRAM_ENCRYPT
+			if(invalid_nvram_get_name(*argv))
+				return 0;
+#endif
 			if (*++argv) {
 				if ((value = nvram_get(*argv)))
 					puts(value);
@@ -1013,9 +1042,22 @@ main(int argc, char **argv)
 			system("nvram_erase");
 		}
 		else if (!strncmp(*argv, "show", 4) || !strncmp(*argv, "getall", 6)) {
+#ifdef RTCONFIG_NVRAM_ENCRYPT
+			char name_tmp[128] = {0};
+			char *name_t = NULL, *value;
+#endif
 			nvram_getall(buf, nvram_space);
-			for (name = buf; *name; name += strlen(name) + 1)
+			for (name = buf; *name; name += strlen(name) + 1){
+#ifdef RTCONFIG_NVRAM_ENCRYPT
+				strlcpy(name_tmp, name, sizeof(name_tmp));
+				name_t = value = name_tmp;
+				name_t = strsep(&value, "=");
+
+				if(invalid_nvram_get_name(name_t))
+					continue;
+#endif
 				puts(name);
+			}
 			size = sizeof(struct nvram_header) + (long) (name - buf);
 			fprintf(stderr, "size: %d bytes (%d left)\n", size, nvram_space - size);
 		}

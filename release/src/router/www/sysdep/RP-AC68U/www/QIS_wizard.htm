@@ -159,6 +159,11 @@ String.prototype.repeat = function(times) {
    return (new Array(times + 1)).join(this);
 };
 
+/* String replace &#39; with ' for dict */
+function stringSafeGet(str){
+    return str.replace(new RegExp("&#39;", 'g'), "'");
+}
+
 var htmlEnDeCode = (function() {
     var charToEntityRegex,
         entityToCharRegex,
@@ -1878,7 +1883,7 @@ function submit_language(obj){
 		}
 	}
 	else{
-		alert("No change LANGUAGE!");
+		alert(stringSafeGet("<#LANG_select_fail#>"));
 	}
 }
 

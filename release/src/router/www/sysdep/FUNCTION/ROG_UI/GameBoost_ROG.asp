@@ -13,16 +13,16 @@
 <link rel="stylesheet" type="text/css" href="form_style.css">
 <link rel="stylesheet" type="text/css" href="usp_style.css">
 <link rel="stylesheet" type="text/css" href="/device-map/device-map.css" />
+<script type="text/javascript" src="/js/jquery.js"></script>
+<script type="text/javascript" src="/js/httpApi.js"></script>
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" src="/help.js"></script>
 <script type="text/javascript" src="/general.js"></script>
-<script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/client_function.js"></script>
 <script type="text/javascript" src="/calendar/jquery-ui.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script type="text/javascript" src="/form.js"></script>
-<script type="text/javascript" src="/js/httpApi.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/asus_eula.js"></script>
 <style type="text/css">
 .appIcons{
@@ -407,40 +407,45 @@ function show_clients(priority_type){
 			userIconBase64 = getUploadIcon(clientMac);
 		}
 		if(userIconBase64 != "NoIcon") {
-			if(top.isIE8){
-				code += '<div id="icon_' + i + '" onclick="show_apps(this);" class="closed qosLevel' + clientObj.qosLevel + ' clientIconIE8HACK" ';
-			}
-			else{
-				code += '<div id="icon_' + i + '" onclick="show_apps(this);" class="closed qosLevel' + clientObj.qosLevel + ' divUserIcon" ';
-			}
-			code += 'style="background-image:url('+userIconBase64+');background-size:50px;">';
-			code += '</div>';
-		}
-		else if(clientObj.type != "0" || clientObj.vendor == "") {
-			if(top.isIE8){
-				code += '<div id="icon_' + i + '" onclick="show_apps(this);" class="closed clientIconIE8HACK' + ' qosLevel' + clientObj.qosLevel + '"></div>';
-			}
-			else{
-				code += '<div id="icon_' + i + '" onclick="show_apps(this);" class="closed clientIcon type' + clientObj.type + ' qosLevel' + clientObj.qosLevel + '"></div>';
-			}
-		}
-		else if(clientObj.vendor != "") {
-			var clientListCSS = "";
-			var venderIconClassName = getVenderIconClassName(clientObj.vendor.toLowerCase());
-			if(venderIconClassName != "" && !downsize_4m_support) {
-				clientListCSS = "venderIcon " + venderIconClassName;
-			}
-			else {
-				clientListCSS = "clientIcon type" + clientObj.type;
-			}
+            if(top.isIE8){
+                code += '<div id="icon_' + i + '" onclick="show_apps(this);" class="closed qosLevel' + clientObj.qosLevel + ' clientIconIE8HACK" ';
+            }
+            else{
+                code += '<div id="icon_' + i + '" onclick="show_apps(this);" class="closed qosLevel' + clientObj.qosLevel + ' clientIcon" ';
+            }
+            code += '>';
+            if(clientObj.isUserUplaodImg){
+                code += '<img class="clientIcon" src="' + userIconBase64 + '">';
+            }else{
+                code += '<i class="type" style="--svg:url(' + userIconBase64 + ')"></i>';
+            }
+            code += '</div>';
+        }
+        else if(clientObj.type != "0" || clientObj.vendor == "") {
+            if(top.isIE8){
+                code += '<div id="icon_' + i + '" onclick="show_apps(this);" class="closed clientIconIE8HACK' + ' qosLevel' + clientObj.qosLevel + '"></div>';
+            }
+            else{
+                code += '<div id="icon_' + i + '" onclick="show_apps(this);" class="closed clientIcon qosLevel' + clientObj.qosLevel + '"><i class="type' + clientObj.type + '"></i></div>';
+            }
+        }
+        else if(clientObj.vendor != "") {
+            var clientListCSS = "";
+            var vendorIconClassName = getVendorIconClassName(clientObj.vendor.toLowerCase());
+            if(vendorIconClassName != "" && !downsize_4m_support) {
+                clientListCSS = "vendor-icon " + vendorIconClassName;
+            }
+            else {
+                clientListCSS = "type" + clientObj.type;
+            }
 
-			if(top.isIE8){
-				code += '<div id="icon_' + i + '" onclick="show_apps(this);" class="closed clientIconIE8HACK qosLevel' + clientObj.qosLevel + '"></div>';
-			}
-			else{
-				code += '<div id="icon_' + i + '" onclick="show_apps(this);" class="closed ' + clientListCSS + ' qosLevel' + clientObj.qosLevel + '"></div>';
-			}
-		}
+            if(top.isIE8){
+                code += '<div id="icon_' + i + '" onclick="show_apps(this);" class="closed clientIconIE8HACK qosLevel' + clientObj.qosLevel + '"></div>';
+            }
+            else{
+                code += '<div id="icon_' + i + '" onclick="show_apps(this);" class="closed qosLevel clientIcon' + clientObj.qosLevel + '"><i class="' + clientListCSS + '"></i></div>';
+            }
+        }
 
 		if(clientObj.wtfast && wtfast_support) {
 			code += '<div class="boost_tag_BM">BOOST</div>';/*untranslated*/
@@ -550,9 +555,9 @@ function show_apps(obj){
 			}
 			else if(clientObj.vendor != "") {
 				var clientListCSS = "";
-				var venderIconClassName = getVenderIconClassName(clientObj.vendor.toLowerCase());
-				if(venderIconClassName != "" && !downsize_4m_support) {
-					clientListCSS = "venderIcon " + venderIconClassName;
+				var vendorIconClassName = getVendorIconClassName(clientObj.vendor.toLowerCase());
+				if(vendorIconClassName != "" && !downsize_4m_support) {
+					clientListCSS = "vendorIcon " + vendorIconClassName;
 				}
 				else {
 					clientListCSS = "clientIcon type" + clientObj.type;
@@ -590,9 +595,9 @@ function show_apps(obj){
 			}
 			else if(clientObj.vendor != "") {
 				var clientListCSS = "";
-				var venderIconClassName = getVenderIconClassName(clientObj.vendor.toLowerCase());
-				if(venderIconClassName != "" && !downsize_4m_support) {
-					clientListCSS = "venderIcon_clicked " + venderIconClassName;
+				var vendorIconClassName = getVendorIconClassName(clientObj.vendor.toLowerCase());
+				if(vendorIconClassName != "" && !downsize_4m_support) {
+					clientListCSS = "vendorIcon_clicked " + vendorIconClassName;
 				}
 				else {
 					clientListCSS = "clientIcon_clicked type" + clientObj.type;
@@ -638,9 +643,9 @@ function cancel_previous_device_apps(obj){
 		}
 		else if(clientObj.vendor != "") {
 			var clientListCSS = "";
-			var venderIconClassName = getVenderIconClassName(clientObj.vendor.toLowerCase());
-			if(venderIconClassName != "" && !downsize_4m_support) {
-				clientListCSS = "venderIcon " + venderIconClassName;
+			var vendorIconClassName = getVendorIconClassName(clientObj.vendor.toLowerCase());
+			if(vendorIconClassName != "" && !downsize_4m_support) {
+				clientListCSS = "vendorIcon " + vendorIconClassName;
 			}
 			else {
 				clientListCSS = "clientIcon type" + clientObj.type;

@@ -70,7 +70,7 @@ if(lacp_support){
 		var bonding_port_settings = [{"val": "4", "text": "LAN5"}, {"val": "3", "text": "LAN6"}];
 	else if(based_modelid == "RT-AC86U" || based_modelid == "GT-AC2900")
 		var bonding_port_settings = [{"val": "4", "text": "LAN1"}, {"val": "3", "text": "LAN2"}];
-	else if(based_modelid == "XT8PRO" || based_modelid == "BM68")
+	else if(based_modelid == "XT8PRO" || based_modelid == "BT12" || based_modelid == "BQ16" || based_modelid == "BM68")
 		var bonding_port_settings = [{"val": "2", "text": "LAN2"}, {"val": "3", "text": "LAN3"}];
 	else
 		var bonding_port_settings = [{"val": "1", "text": "LAN1"}, {"val": "2", "text": "LAN2"}];
@@ -92,7 +92,9 @@ for(var i = 1; i < MSWAN_List_Pri.length; i++){
 
 function initial(){
 	show_menu();
-	get_cloud_profiles();
+	if(!dsl_support) {
+		get_cloud_profiles();
+	}
 	create_stb_select(original_switch_stb_x);
 	if(mswan_support){
 		update_mr_mswan_idx();
@@ -573,6 +575,9 @@ function check_port_conflicts(){
 	var lacp_port_conflict = false;
 	var iptv_port = document.form.switch_stb_x.value;
 	var iptv_port_settings = document.form.iptv_port_settings.value;
+	var autowan_enable = httpApi.nvramGet(["autowan_enable"], true).autowan_enable;
+	var autowan_detected_ifname = httpApi.nvramGet(["autowan_detected_ifname"], true).autowan_detected_ifname;
+	var autowan_detected_label = httpApi.nvramGet(["autowan_detected_label"], true).autowan_detected_label;
 
 	if(dualWAN_support){	// dualwan LAN port should not be equal to IPTV port
 		var tmp_pri_if = wans_dualwan_orig.split(" ")[0].toUpperCase();
@@ -612,7 +617,7 @@ function check_port_conflicts(){
 		}
 	}
 
-	if(based_modelid == "GT10" && wans_extwan == "1"){//Ethernet LAN1
+	if(autowan_enable != "1" && (based_modelid == "GT10" || based_modelid == "RT-AXE7800") && wans_extwan == "1"){//Ethernet LAN1
 		if(iptv_port == "1")
 			wan_port_conflict = true;
 		else{
@@ -624,6 +629,13 @@ function check_port_conflicts(){
 							wan_port_conflict = true;
 					}
 				}
+			}
+		}
+	}
+	else if(autowan_enable == "1" && autowan_detected_ifname != "" && autowan_detected_label != ""){
+		for(var i = 0; i < stbPortMappings.length; i++){
+			if(iptv_port == stbPortMappings[i].value && stbPortMappings[i].name.indexOf(autowan_detected_label) != -1){
+				wan_port_conflict = true;
 			}
 		}
 	}
@@ -639,8 +651,8 @@ function check_port_conflicts(){
 	}
 
 	if(wan_port_conflict || lacp_port_conflict){
-		var hint_str1 = "%1$@ and %2$@ cannot be configured as the same port.";//untranslated
-		var hint_str2 = "Please choose other options and try again.";//untranslated
+		var hint_str1 = "<#PortConflict_SamePort_Hint#>";
+		var hint_str2 = "<#ChooseOthers_Hint#>";
 		var alert_msg = "";
 
 		if(wan_port_conflict){
@@ -1366,7 +1378,7 @@ function change_port_settings(val, changed){
 	}
 	else if(val == "56"){
 		if(changed){
-			var msg="<#NAT_lacp_disable_note#>";	/*Untranslated*/
+			var msg="<#NAT_lacp_disable_note#>";
 			if(lacp_enabled){
 				if(!confirm(msg)){
 					document.form.iptv_port_settings.value = "12";

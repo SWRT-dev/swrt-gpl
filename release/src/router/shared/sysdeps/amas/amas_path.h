@@ -56,6 +56,8 @@ enum {
     CONN_PRI_WIFI_6G = 400,
     /* PLC 10000X, X: index, 10000: Connection Priority */
     CONN_PRI_PLC = 10000,
+    /* MOCA 20000X, X: index, 20000: Connection Priority */
+    CONN_PRI_MOCA = 20000,
     CONN_PRI_CUSTOM = 0xFFFFFFFF
 };
 
@@ -72,7 +74,8 @@ enum {
     ETH_TYPE_5G      = 16,
     ETH_TYPE_10G     = 32,
     ETH_TYPE_10GPLUS = 64,	/* 10G SFP+ */
-    ETH_TYPE_PLC     = 65536
+    ETH_TYPE_PLC     = 65536,
+    ETH_TYPE_MOCA    = 131072
 };
 
 /**
@@ -203,6 +206,10 @@ AUTO_RSSISCORE:
 #define ACTION_DISCONNECT				"DISCONNECT_BAND"
 #define ACTION_START_BY_DRIVER			"START_CONNECTING_BY_DRIVER"
 #define ACTION_START_FOLLOW_CONNECTION	"START_FOLLOW_CONNECTION"
+#ifdef RTCONFIG_AMAS_CENTRAL_OPTMZ
+#define ACTION_START_OPTIMIZATION_SITE_SURVEY	"START_OPTIMIZATION_SITE_SURVEY"
+#define ACTION_START_OPTIMIZATION_CONNECT		"START_OPTIMIZATION_CONNECT"
+#endif
 
 
 #define START_CONNECTING				0x01
@@ -212,6 +219,10 @@ AUTO_RSSISCORE:
 #define STOP_SELF_OPTIMIZATION			0x05
 #define DISCONNECT_BAND 				0x06
 #define START_CONNECTING_BY_DRIVER		0x07
+#ifdef RTCONFIG_AMAS_CENTRAL_OPTMZ
+#define START_OPTIMIZATION_SITE_SURVEY	0x08
+#define START_OPTIMIZATION_CONNECT		0x09
+#endif
 
 /*amas_wlc_action_state for amas_wlcconnect*/
 #define IDLE						0x00
@@ -234,4 +245,27 @@ typedef struct uplinkport_capval_s {
     int val;
 } uplinkport_capval_s;
 
+#ifdef RTCONFIG_AMAS_CHANNEL_PLAN
+/**
+ * @brief Channel Plan
+ *
+ **/
+enum {
+	CHANNEL_PLAN_OFF = 0,
+	CHANNEL_PLAN_ON = 1,
+	CHANNEL_PLAN_MANUAL = 2,
+	CHANNEL_PLAN_CENTRAL = 3,
+	CHANNEL_PLAN_MAX
+};
+#endif
+
 /* Uplink Port capbility End */
+
+#ifdef RTCONFIG_AMAS_CENTRAL_OPTMZ
+enum optFollow {
+	OPT_FOLLOW_NONE = 0,
+	OPT_FOLLOW_OLD,
+	OPT_FOLLOW_NEW,
+	OPT_FOLLOW_MAX
+};
+#endif

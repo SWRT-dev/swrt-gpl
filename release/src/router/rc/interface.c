@@ -657,12 +657,24 @@ int start_vlan(void)
 #endif
 
 #if (defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK))
-	if(!nvram_match("switch_wantag", "none")&&!nvram_match("switch_wantag", "")&&!nvram_match("switch_wantag", "hinet"))
-	{
+	if (!nvram_match("switch_wantag", "none")
+	 && !nvram_match("switch_wantag", "")
+	 && !nvram_match("switch_wantag", "hinet")
+	 && !nvram_match("switch_wantag", "nowtv")) {
 		char wan_base_if[IFNAMSIZ] = "";
 
 		strlcpy(wan_base_if, get_wan_base_if(), sizeof(wan_base_if));
 		set_wan_tag(wan_base_if);
+	}
+#endif
+#ifdef RTCONFIG_DUPVIF
+	if (nvram_match("switch_wantag", "hinet_mesh")) {
+		if (!module_loaded("dupvif")) {
+			char prefix[] = "wanXXX_", params[16];
+			snprintf(prefix, sizeof(prefix), "wan%d_", WAN_UNIT_IPTV);
+			snprintf(params, sizeof(params), "nic=%s", nvram_pf_get(prefix, "ifname"));
+			modprobe("dupvif", params);
+		}
 	}
 #endif
 #ifdef CONFIG_BCMWL5
@@ -702,6 +714,9 @@ int start_vlan(void)
 		*/
 		ifconfig(wan_if_eth(), IFUP, NULL, NULL);
 		set_wan_tag(wan_if_eth());
+#ifdef RTCONFIG_MULTIWAN_PROFILE
+		mtwan_init_nvram();
+#endif
 	}
 #elif defined(BLUECAVE)
 	if(!nvram_match("switch_wantag", "") && (nvram_get_int("switch_stb_x") > 0 || nvram_match("switch_wantag", "unifi_biz") || 
@@ -746,6 +761,14 @@ int stop_vlan(void)
 
 	if ((strtoul(nvram_safe_get("boardflags"), NULL, 0) & BFL_ENETVLAN) == 0) return 0;
 	
+#ifdef RTCONFIG_DUPVIF
+	if (nvram_match("switch_wantag", "hinet_mesh")) {
+		if (module_loaded("dupvif")) {
+			modprobe_r("dupvif");
+		}
+	}
+#endif
+
 	for (i = 0; i <= VLAN_MAXVID; i ++) {
 		/* get the address of the EMAC on which the VLAN sits */
 		snprintf(nvvar_name, sizeof(nvvar_name), "vlan%dhwname", i);

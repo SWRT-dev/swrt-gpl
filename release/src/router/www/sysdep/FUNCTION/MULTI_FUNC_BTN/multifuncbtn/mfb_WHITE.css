@@ -1,0 +1,37 @@
+﻿.item_tag_container > .item_tag.link:before{
+	background-image: url(/images/New_ui/SDN/white_theme/Content/link.svg);
+}
+.VPN_list_container{
+	background: #F5F5F5;
+}
+.VPN_list_container:before{
+	border-bottom: 1px solid #DCDCDC;
+}
+.VPN_list_container .profile_group:not(:first-child):before{
+	border-top: 1px solid #DCDCDC;
+}
+.VPN_list_container .title{
+	color: #006CE1;
+}
+.VPN_list_container .profile_container{
+	background: #FFF;
+}
+.VPN_list_container .profile_item:before{
+	border-bottom: 1px solid #DCDCDC;
+}
+.VPN_list_container .default_conn .default_conn_text{
+	border: 1px solid #006CE1;
+	color: #006CE1;
+}
+.schematic_container{
+	border: 1px solid rgb(204, 204, 204);
+}
+.schematic_container .img_item{
+	background-image: url(/images/New_ui/multifuncbtn/white_theme/img_multi_func_btn.svg);
+}
+.schematic_container .notice_item{
+	color: #E75B4B;
+}
+.schematic_container .fun_desc_item{
+	color: #000000;
+}

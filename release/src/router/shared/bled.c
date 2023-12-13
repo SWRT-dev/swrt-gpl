@@ -1016,7 +1016,7 @@ void set_wifiled(int mode)
 		}
 	}
 }
-#elif defined(RTCONFIG_FIXED_BRIGHTNESS_RGBLED)
+#elif defined(RTCONFIG_GPIOX3_RGBLED)
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(ary) (sizeof(ary) / sizeof((ary)[0]))
 #endif
@@ -1036,6 +1036,7 @@ void set_rgbled(unsigned int mode)
 		{1000,	"1 1"},		/* on */
 		{500,	"0 1"},		/* off:0.5s, on:0.5s */
 		{250,	"0 1 1 1"},	/* off:0.25s, on:0.75s */
+		{125,	"0 1"},		/* off:0.125s, on:0.125s */
 		{3000,	"0 1"},		/* off:3s, on:3s */
 		{0,		NULL}
 	};
@@ -1175,8 +1176,11 @@ void set_rgbled(unsigned int mode)
 	case RGBLED_3ON1OFF:
 		uidx = 2;
 		break;
-	case RGBLED_3ON3OFF:
+	case RGBLED_FBLINK:
 		uidx = 3;
+		break;
+	case RGBLED_3ON3OFF:
+		uidx = 4;
 		break;
 	default:
 		;
@@ -1201,8 +1205,6 @@ struct pwm_conf {
 	char config[16];
 };
 
-unsigned int rgbled_mode = 0;
-
 static void set_pwm(int pwmx, struct pwm_conf pc)
 {
 	char pwmdev[sizeof(SYS_PWMCHIP"/pwmXXX")];
@@ -1224,7 +1226,6 @@ static void set_pwm(int pwmx, struct pwm_conf pc)
 
 void set_rgbled(unsigned int mode)
 {
-	int u = 1;
 #if defined(TUFAX6000)
 	int i;
 	struct pwm_conf p[2][5] = {
@@ -1256,22 +1257,22 @@ void set_rgbled(unsigned int mode)
 		break;
 	/* static blue */
 	case RGBLED_DEFAULT_STANDBY:
-		if (rgbled_mode == RGBLED_QIS_RUN) {
-			u = 0;
+		if (nvram_match("rgbled_qis_running", "1"))
 			break;
-		}
 		for (i = 0; i < 2; i++)
 			set_pwm(i, p[i][0]);
 		led_control(LED_BLUE, LED_ON);
 		break;
 	/* rainbow */
 	case RGBLED_QIS_RUN:
+		nvram_set("rgbled_qis_running", "1");
 		for (i = 0; i < 2; i++)
 			set_pwm(i, p[i][2]);
 		led_control(LED_BLUE, LED_OFF);
 		break;
 	/* blinking blue on/off 0.5s */
 	case RGBLED_QIS_FINISH:
+		nvram_unset("rgbled_qis_running");
 		for (i = 0; i < 2; i++)
 			set_pwm(i, p[i][0]);
 		for (i = 0; i < 3; i++) {
@@ -1331,6 +1332,12 @@ void set_rgbled(unsigned int mode)
 			/* water flow */
 			case LEDG_SCHEME_WATER_FLOW:
 				pidx = 1;
+				if (nvram_match("odmpid", "TX-AX6000")) {
+					snprintf(p[0][pidx].type, sizeof(p[0][pidx].type), "5-11-0");
+					snprintf(p[0][pidx].config, sizeof(p[0][pidx].config), "0x0-48-48");
+					snprintf(p[0][pidx].fint, sizeof(p[0][pidx].fint), "2-1");
+					snprintf(p[1][pidx].type, sizeof(p[1][pidx].type), "1-32-0");
+				}
 				break;
 			/* rainbow */
 			case LEDG_SCHEME_RAINBOW:
@@ -1351,10 +1358,43 @@ void set_rgbled(unsigned int mode)
 		;
 	}
 #endif
+}
+#endif
 
-	if (u)
-		rgbled_mode = mode;
+#if defined(RTCONFIG_AMAS)
+/*
+ * LED blinking by bled
+ * @led_nvram:		nvram string, e.g. "led_wps_gpio"
+ * @led_id:		enum led_id, e.g. LED_WPS
+ * @ifname:		interface name, e.g. sta0, apcli0
+ * @interval:		blinking interval. (unit: ms)
+ * @pattern:		user defined pattern, e.g. "1 0 1 1 0 0"
+ */
+void led_blinking_by_bled(char *led_nvram, int led_id, char *ifname,
+			  unsigned int interval, char *pattern)
+{
+	if (nvram_match(led_nvram, "255")
+	 || (!interval && !(nvram_get_int(led_nvram) & GPIO_BLINK_LED)))
+		return;
+
+	/* enable bled */
+	if (interval && !(nvram_get_int(led_nvram) & GPIO_BLINK_LED)) {
+		config_netdev_bled(led_nvram, ifname);
+		led_control(led_id, LED_ON);
+	}
+
+	/* blinking */
+	if (interval && pattern) {
+		set_bled_udef_pattern(led_nvram, interval, pattern);
+		set_bled_udef_trigger(led_nvram, "1");
+		set_bled_udef_pattern_mode(led_nvram);
+	}
+
+	/* disable bled */
+	if (!interval && (nvram_get_int(led_nvram) & GPIO_BLINK_LED)) {
+		del_bled(extract_gpio_pin(led_nvram));
+		__update_gpio_nv_var(led_nvram, 0);
+	}
 }
 #endif
 #endif	/* RTCONFIG_BLINK_LED */
-

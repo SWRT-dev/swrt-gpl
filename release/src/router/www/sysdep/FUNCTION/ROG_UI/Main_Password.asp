@@ -527,6 +527,7 @@ function showError(str){
 <input type="hidden" name="flag" value="">
 <input type="hidden" name="login_authorization" value="">
 <input name="foilautofill" style="display: none;" type="password">
+<input type="hidden" name="cfg_pause" value="0">
 <div class="main-field-bg">
 	<div class="main-field-padding">
 		<div class="logo-container">

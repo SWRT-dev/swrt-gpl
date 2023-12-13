@@ -12,6 +12,8 @@
 <link rel="stylesheet" type="text/css" href="index_style.css"> 
 <link rel="stylesheet" type="text/css" href="form_style.css">
 <link rel="stylesheet" type="text/css" href="device-map/device-map.css">
+<script type="text/javascript" language="JavaScript" src="/js/jquery.js"></script>
+<script type="text/javascript" src="/js/httpApi.js"></script>
 <script language="JavaScript" type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" language="JavaScript" src="/help.js"></script>
 <script language="JavaScript" type="text/javascript" src="/general.js"></script>
@@ -19,8 +21,6 @@
 <script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
 <script language="JavaScript" type="text/javascript" src="/validator.js"></script>
 <script language="JavaScript" type="text/javascript" src="/form.js"></script>
-<script type="text/javascript" language="JavaScript" src="/js/jquery.js"></script>
-<script type="text/javascript" src="/js/httpApi.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <style type="text/css">
 .contentM_qis{
@@ -127,7 +127,7 @@ function initial(){
 		gen_vts_ruleTable_Block(key);
 	});
 
-	if(wan_proto=="v6plus" && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
+	if((wan_proto == "v6plus" || wan_proto == "ocnvc") && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
 		$(".setup_info_icon").show();
 		$(".setup_info_icon").click(
 			function() {				
@@ -315,7 +315,7 @@ function pullLANIPList(obj){
 	var element = document.getElementById('ClientList_Block');
 	var isMenuopen = element.offsetWidth > 0 || element.offsetHeight > 0;
 	if(isMenuopen == 0) {
-		obj.src = "/images/arrow-top.gif"
+		obj.src = "/images/unfold_less.svg"
 		element.style.display = 'block';
 		document.getElementById("vts_ipaddr_x").focus();
 	}
@@ -324,7 +324,7 @@ function pullLANIPList(obj){
 }
 
 function hideClients_Block(){
-	document.getElementById("pull_arrow").src = "/images/arrow-down.gif";
+	document.getElementById("pull_arrow").src = "/images/unfold_more.svg";
 	document.getElementById('ClientList_Block').style.display = 'none';
 	validator.validIPForm(document.getElementById("vts_ipaddr_x"), 0);
 }
@@ -565,7 +565,7 @@ function editProfile(_mode, _this) {
 			}
 			else{
 				$("#vts_port_x").parent().parent().find('th').html('<#IPConnection_VSList_External_Port#><div class="setup_info_icon" style="display:none;"></div>');
-				if(wan_proto=="v6plus" && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
+				if((wan_proto == "v6plus" || wan_proto == "ocnvc") && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
 					$(".setup_info_icon").show();
 					$(".setup_info_icon").click(
 						function() {
@@ -696,9 +696,9 @@ function saveProfile(_mode, _wanIdx, _rowIdx) {
 	else{
 		if(!check_multi_range(document.getElementById("vts_port_x"), 1, 65535, true))
 			return false;
-		if(wan_proto=="v6plus" && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
+		if((wan_proto == "v6plus" || wan_proto == "ocnvc") && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
 			if (!check_multi_range_s46_ports(document.getElementById("vts_port_x"))){
-				if(!confirm("The following port related settings may not work properly since the port is not available in current v6plus usable port range. Do you want to continue?")){
+				if(!confirm(port_confirm)){
 					document.getElementById("vts_port_x").focus();
 					return false;
 				}
@@ -839,17 +839,15 @@ function cancelProfile() {
 								<div style="margin:10px 0 10px 5px;" class="splitLine"></div>
 								<div>
 									<div id="ftpPortConflict" class="formfontdesc" style="display:none;color:#FFCC00;"></div>
-									<div class="formfontdesc"><#IPConnection_VServerEnable_sectiondesc#></div>
-									<ul style="margin-left:-25px; *margin-left:10px;">
-										<div class="formfontdesc"><li><#FirewallConfig_Port80_itemdesc#></div>
-										<div class="formfontdesc" id="FTP_desc"><li><#FirewallConfig_FTPPrompt_itemdesc#></div>
-									</ul>
+									<div class="formfontdesc">
+										<div><#IPConnection_VServerEnable_sectiondesc#></div>
+										<div><#FirewallConfig_Port80_itemdesc#></div>
+										<div id="FTP_desc"><#FirewallConfig_FTPPrompt_itemdesc#></div>
+										<a id="faq" href="" target="_blank" style="font-family:Lucida Console;text-decoration:underline;"><#menu5_3_4#>&nbspFAQ</a>
+									</div>
 								</div>
 
-								<div class="formfontdesc" style="margin-top:-10px;">
-									<a id="faq" href="" target="_blank" style="font-family:Lucida Console;text-decoration:underline;"><#menu5_3_4#>&nbspFAQ</a>
-								</div>
-								<div class="formfontdesc" id="lb_note" style="color:#FFCC00; display:none;"><#lb_note_portForwarding#></div>
+								<div class="formfontdesc hint-color" id="lb_note" style="color:#FFCC00; display:none;"><#lb_note_portForwarding#></div>
 
 								<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" class="FormTable">
 									<thead>
@@ -965,9 +963,11 @@ function cancelProfile() {
 		<tr>
 			<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(7,25);"><#IPConnection_VSList_Internal_IP#></a></th>
 			<td>
-				<input type="text" maxlength="15" class="input_25_table" id="vts_ipaddr_x" align="left" onkeypress="return validator.isIPAddr(this, event);" style="float:left;" onClick="hideClients_Block();" autocomplete="off" autocorrect="off" autocapitalize="off">
-				<img id="pull_arrow" class="pull_arrow" height="16px;" src="images/arrow-down.gif" align="right" onclick="pullLANIPList(this);" title="<#select_IP#>">
-				<div id="ClientList_Block" class="clientlist_dropdown" style="margin-left:2px;margin-top:27px;width:238px;"></div>
+                <div class="clientlist_dropdown_main">
+                    <input type="text" maxlength="15" class="input_25_table" id="vts_ipaddr_x" align="left" onkeypress="return validator.isIPAddr(this, event);" onClick="hideClients_Block();" autocomplete="off" autocorrect="off" autocapitalize="off">
+                    <img id="pull_arrow" class="pull_arrow" height="16px;" src="images/unfold_more.svg" align="right" onclick="pullLANIPList(this);" title="<#select_IP#>">
+                    <div id="ClientList_Block" class="clientlist_dropdown"></div>
+				</div>
 			</td>
 		</tr>
 		<tr>

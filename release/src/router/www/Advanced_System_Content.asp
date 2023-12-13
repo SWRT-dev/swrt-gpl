@@ -18,11 +18,11 @@
 <script language="JavaScript" type="text/javascript" src="/general.js"></script>
 <script language="JavaScript" type="text/javascript" src="/popup.js"></script>
 <script language="JavaScript" type="text/javascript" src="/help.js"></script>
+<script language="JavaScript" type="text/javascript" src="/js/jquery.js"></script>
+<script type="text/javascript" src="/js/httpApi.js"></script>
 <script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
 <script language="JavaScript" type="text/javascript" src="/validator.js"></script>
-<script language="JavaScript" type="text/javascript" src="/js/jquery.js"></script>
 <script language="JavaScript" type="text/javascript" src="/md5.js"></script>
-<script type="text/javascript" src="/js/httpApi.js"></script>
 <style>
 .cancel{
 	border: 2px solid #898989;
@@ -256,7 +256,7 @@ function initial(){
 	}
 
 	var WPSArray = ['WPS'];
-	var ez_mode = httpApi.nvramGet (['btn_ez_mode']).btn_ez_mode;
+	var ez_mode = httpApi.nvramGet(['btn_ez_mode']).btn_ez_mode;
 	var ez_radiotoggle = httpApi.nvramGet (['btn_ez_radiotoggle']).btn_ez_radiotoggle;
 	if(!wifi_tog_btn_support && !wifi_hw_sw_support && sw_mode != 2 && sw_mode != 4){
 		WPSArray.push('WiFi');
@@ -265,6 +265,9 @@ function initial(){
 	if(cfg_wps_btn_support){
 		WPSArray.push('LED');
 	}
+
+	// should find a system variable to hide #btn_ez_radiotoggle_tr.
+	if(based_modelid == "PRT-AX57_GO") WPSArray = []
 
 	if(WPSArray.length > 1){
 		$('#btn_ez_radiotoggle_tr').show();
@@ -301,7 +304,7 @@ function initial(){
 	}
 	else{
 
-		if(wan_proto=="v6plus" && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
+		if((wan_proto == "v6plus" || wan_proto == "ocnvc") && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
 			$(".setup_info_icon.https").show();
 			$(".setup_info_icon.https").click(
 				function() {
@@ -326,7 +329,7 @@ function initial(){
 	if(ssh_support){
 		check_sshd_enable('<% nvram_get("sshd_enable"); %>');
 
-		if(wan_proto=="v6plus" && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
+		if((wan_proto == "v6plus" || wan_proto == "ocnvc") && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
 			$(".setup_info_icon.ssh").show();
 			$(".setup_info_icon.ssh").click(
 				function() {
@@ -384,16 +387,27 @@ function initial(){
 	}
 	else{
 		document.getElementById("pwrsave_tr").style.display = "none";
-		document.form.pwrsave_mode[0].disabled = false;
-		document.form.pwrsave_mode[1].disabled = false;
+		document.form.pwrsave_mode[0].disabled = true;
+		document.form.pwrsave_mode[1].disabled = true;
+	}
+
+	if (pagecache_ratio_support) {
+		document.getElementById("pagecache_ratio_tr").style.display = "";
+		document.form.pagecache_ratio.disabled = false;
+	} else {
+		document.getElementById("pagecache_ratio_tr").style.display = "none";
+		document.form.pagecache_ratio.disabled = true;
 	}
 
 	if(hdspindown_support) {
 		$("#hdd_spindown_table").css("display", "");
-		change_hddSpinDown($('select[name="usb_idle_enable"]').val());
-		$('select[name="usb_idle_enable"]').prop("disabled", false);
-		$('input[name="usb_idle_timeout"]').prop("disabled", false);
+		if($("#usb_idle_enable_tr").css("display") != "none"){
+			change_hddSpinDown($('select[name="usb_idle_enable"]').val());
+			$('select[name="usb_idle_enable"]').prop("disabled", false);
+			$('input[name="usb_idle_timeout"]').prop("disabled", false);
+		}
 	}
+
 	if(isSupport("bcm470x")){
 		var code = "";
 		var model = '<% cpu_plltype("null"); %>';
@@ -429,7 +443,15 @@ function initial(){
 	document.getElementById("http_passwd_new").maxLength = max_pwd_length + 1;
 	document.getElementById("http_passwd_re").maxLength = max_pwd_length + 1;
 
-
+	var sysInfo = httpApi.nvramGet(["serial_no", "secret_code"]);
+	if(sysInfo.serial_no){
+		$("#serialnumber").html(sysInfo.serial_no);
+		$("#serialnumber").parent().parent().show();
+	}
+	if(sysInfo.secret_code){
+		$("#pincode").html(sysInfo.secret_code);
+		$("#pincode").parent().parent().show();
+	}
 }
 
 var time_zone_tmp="";
@@ -639,6 +661,8 @@ function applyRule(){
 
 		if(pwrsave_support)
 			action_script_tmp += "pwrsave;";
+		if(pagecache_ratio_support)
+			action_script_tmp += "pagecache_ratio;";
 
 		if(isSupport("bcm470x")){
 			if ('<% nvram_get("bcm_overclock"); %>' != document.form.bcm_overclock.value)
@@ -663,7 +687,7 @@ function applyRule(){
 }
 
 function validForm(){
-	if(hdspindown_support) {
+	if(hdspindown_support && $("#usb_idle_enable_tr").css("display") != "none") {
 		if($('select[name="usb_idle_enable"]').val() == 1) {
 			$('input[name="usb_idle_timeout"]').prop("disabled", false);
 			if (!validator.range($('input[name="usb_idle_timeout"]')[0], 60, 3600))
@@ -698,9 +722,9 @@ function validForm(){
 			return false;
 		}
 
-		if(wan_proto=="v6plus" && s46_ports_check_flag && array_ipv6_s46_ports.length > 1 && document.form.sshd_enable.value == 1){
+		if((wan_proto == "v6plus" || wan_proto == "ocnvc") && s46_ports_check_flag && array_ipv6_s46_ports.length > 1 && document.form.sshd_enable.value == 1){
 			if (!validator.range_s46_ports(document.form.sshd_port, "none")){
-				if(!confirm("The following port related settings may not work properly since the port is not available in current v6plus usable port range. Do you want to continue?")){
+				if(!confirm(port_confirm)){
 					document.form.sshd_port.focus();
 					return false;
 				}
@@ -727,9 +751,9 @@ function validForm(){
 			if (!validator.range(document.form.misc_httpsport_x, 1024, 65535))
 				return false;
 
-			if (wan_proto=="v6plus" && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
+			if ((wan_proto == "v6plus" || wan_proto == "ocnvc") && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
 				if (!validator.range_s46_ports(document.form.misc_httpsport_x, "none")){
-					if(!confirm("The following port related settings may not work properly since the port is not available in current v6plus usable port range. Do you want to continue?")){
+					if(!confirm(port_confirm)){
 						document.form.misc_httpsport_x.focus();
 						return false;
 					}
@@ -783,6 +807,13 @@ function validForm(){
 	}
 	else if(!validator.rangeAllowZero(document.form.http_autologout, 10, 999, '<% nvram_get("http_autologout"); %>'))
 		return false;
+
+	if (pagecache_ratio_support) {
+		if (parseInt(document.form.pagecache_ratio.value) < 5)
+			document.form.pagecache_ratio.value = "5";
+		else if (parseInt(document.form.pagecache_ratio.value) > 90)
+			document.form.pagecache_ratio.value = "90";
+	}
 
 	if(reboot_schedule_support){
 		if(!document.form.reboot_date_x_Sun.checked && !document.form.reboot_date_x_Mon.checked &&
@@ -850,7 +881,7 @@ var timezones = [
 	["PST8DST",	"(GMT-08:00) <#TZ05#>"],
 	["MST7DST_1",	"(GMT-07:00) <#TZ06#>"],
 	["MST7_2",	"(GMT-07:00) <#TZ07#>"],
-	["MST7DST_3",	"(GMT-07:00) <#TZ08#>"],
+	["MST7_3",	"(GMT-07:00) <#TZ08#>"],	//MST7DST_3
 	["CST6_2",	"(GMT-06:00) <#TZ10#>"],
 	["CST6_3",	"(GMT-06:00) <#TZ11#>"],	//CST6DST_3
 	["CST6_3_1",	"(GMT-06:00) <#TZ12#>"],	//CST6DST_3_1
@@ -866,7 +897,7 @@ var timezones = [
 	["NST3.30DST",	"(GMT-03:30) <#TZ20#>"],
 	["EBST3",	"(GMT-03:00) <#TZ21#>"],	//EBST3DST_1
 	["UTC3",	"(GMT-03:00) <#TZ22#>"],
-	["EBST3DST_2",	"(GMT-03:00) <#TZ23#>"],
+	["UTC2_1",	"(GMT-02:00) <#TZ23#>"],	//EBST3DST_2
 	["UTC2",	"(GMT-02:00) <#TZ24#>"],
 	["UTC2DST",	"(GMT-02:00) <#TZ87#>"],
 	["EUT1DST",	"(GMT-01:00) <#TZ25#>"],
@@ -900,7 +931,7 @@ var timezones = [
 	["UTC-3_5",     "(GMT+03:00) <#TZ45#>"],        //UTC-4_7
 	["IST-3",	"(GMT+03:00) <#TZ48#>"],
 	["UTC-3_6",	"(GMT+03:00) <#TZ48_1#>"],
-	["UTC-3.30DST",	"(GMT+03:30) <#TZ49#>"],	
+	["UTC-3.30",	"(GMT+03:30) <#TZ49#>"],	//UTC-3.30DST	
 	["UTC-4_1",	"(GMT+04:00) <#TZ50#>"],
 	["UTC-4_5",	"(GMT+04:00) <#TZ50_2#>"],
 	["UTC-4_4",	"(GMT+04:00) <#TZ50_1#>"],
@@ -1227,7 +1258,7 @@ function setClientIP(ipaddr){
 }
 
 function hideClients_Block(){
-	document.getElementById("pull_arrow").src = "/images/arrow-down.gif";
+	document.getElementById("pull_arrow").src = "/images/unfold_more.svg";
 	document.getElementById('ClientList_Block_PC').style.display='none';
 }
 
@@ -1235,7 +1266,7 @@ function pullLANIPList(obj){
 	var element = document.getElementById('ClientList_Block_PC');
 	var isMenuopen = element.offsetWidth > 0 || element.offsetHeight > 0;
 	if(isMenuopen == 0){
-		obj.src = "/images/arrow-top.gif"
+		obj.src = "/images/unfold_less.svg"
 		element.style.display = 'block';
 		document.form.http_client_ip_x_0.focus();
 	}
@@ -1624,14 +1655,14 @@ function setPingTarget(ipaddr){
 }
 
 function hidePingTargetList(){
-	document.getElementById("ping_pull_arrow").src = "/images/arrow-down.gif";
+	document.getElementById("ping_pull_arrow").src = "/images/unfold_more.svg";
 	document.getElementById('TargetList_Block_PC').style.display='none';
 	isPingListOpen = 0;
 }
 
 function pullPingTargetList(obj){
 	if(isPingListOpen == 0){
-		obj.src = "/images/arrow-top.gif"
+		obj.src = "/images/unfold_less.svg"
 		document.getElementById("TargetList_Block_PC").style.display = 'block';
 		document.form.wandog_target.focus();
 		isPingListOpen = 1;
@@ -1655,7 +1686,7 @@ function save_cert_key(){
 }
 
 function clear_cert_key(){
-	if(confirm("You will be automatically logged out for the renewal, are you sure you want to continue?")){
+	if(confirm(stringSafeGet("<#Local_access_certificate_renewl#>"))){
 		$.ajax({url: "clear_file.cgi?clear_file_name=cert.tgz"})
 		showLoading();
 		setTimeout(refreshpage, 1000);
@@ -1686,14 +1717,14 @@ function setNTP(ntp_url){
 var over_var = 0;
 var isMenuopen = 0;
 function hideNTP_Block(){
-	document.getElementById("ntp_pull_arrow").src = "/images/arrow-down.gif";
+	document.getElementById("ntp_pull_arrow").src = "/images/unfold_more.svg";
 	document.getElementById('NTPList_Block_PC').style.display='none';
 	isMenuopen = 0;
 }
 
 function pullNTPList(obj){
 	if(isMenuopen == 0){
-		obj.src = "/images/arrow-top.gif"
+		obj.src = "/images/unfold_less.svg"
 		document.getElementById("NTPList_Block_PC").style.display = 'block';		
 		document.form.ntp_server0.focus();
 		isMenuopen = 1;
@@ -1760,7 +1791,12 @@ function check_httpd(){
 			setTimeout("check_httpd();", 1000);
 		},
 		success: function(response){
-			setTimeout("location.href='Main_Login.asp'", 500);
+			if(top.businessWrapper){
+				setTimeout("top.location.href='Main_Login.asp'", 500);
+			}
+			else{
+				setTimeout("location.href='Main_Login.asp'", 500);
+			}
 		}
 	});
 }
@@ -1958,7 +1994,7 @@ function change_passwd(){
 function check_password_length(obj){
 
 	if(is_KR_sku || is_SG_sku || is_AA_sku){     /* MODELDEP by Territory Code */
-		showtext(document.getElementById("new_pwd_msg"),"");
+		showtext(document.getElementById("new_pwd_msg"),"<#JS_validLoginPWD#>");
 		return;
 	}
 	
@@ -2015,8 +2051,8 @@ function check_password_length(obj){
 	<tr id="pwd_input" style="display: none;">
 		<td>
 			<input type="password" autocomplete="off" id="http_passwd_new" tabindex="2" onkeydown="" onKeyPress="return validator.isString(this, event);" onkeyup="chkPass(this.value, 'http_passwd'); check_password_length(this);" onblur="check_password_length(this);" onpaste="setTimeout('paste_password();', 10)" class="input_18_table" style="width:200px;" maxlength="33" onBlur="clean_scorebar(this);" autocorrect="off" autocapitalize="off"/>
-			<div id="scorebarBorder" style="margin-left:224px; margin-top:-25px; display:none;" title="<#LANHostConfig_x_Password_itemSecur#>">
-				<div id="score" style="margin-top: 5px;"></div>
+			<div id="scorebarBorder" class="busiess_scorebarBorder" style="margin-left:224px; margin-top:-25px; display:none;" title="<#LANHostConfig_x_Password_itemSecur#>">
+				<div id="score" class="business_score" style="margin-top: 5px;"></div>
 				<div id="scorebar">&nbsp;</div>
 			</div>
 		</td>
@@ -2046,7 +2082,7 @@ function check_password_length(obj){
 		</td>
 	</tr>
 </table>
-<div style="padding-bottom:10px;width:100%;text-align:center;">
+<div style="padding-bottom:10px;width:100%;text-align:center;" class="change_pass_business">
 	<input class="button_gen" type="button" onclick="close_chpass();" value="<#CTL_Cancel#>">
 	<input id="apply_chpass" class="button_gen" type="button" onclick="" value="<#CTL_ok#>">
 	<img id="loadingIcon_sim" style="margin-left:10px; display:none;" src="/images/InternetScan.gif">
@@ -2163,7 +2199,7 @@ function check_password_length(obj){
 					  <td colspan="2"><#USB_Setting#></td>
 					</tr>
 				</thead>
-				<tr>
+				<tr id="usb_idle_enable_tr" style="display: none;">
 					<th width="40%"><a class="hintstyle" href="javascript:void(0);" onClick="openHint(11,11)"><#usb_HDD_Hibernation#></a></th>
 					<td>
 						<select name="usb_idle_enable" class="input_option" onchange="change_hddSpinDown(this.value);" disabled>
@@ -2172,7 +2208,7 @@ function check_password_length(obj){
 						</select>
 					</td>
 				</tr>
-				<tr id="usb_idle_timeout_tr">
+				<tr id="usb_idle_timeout_tr"  style="display: none;">
 					<th width="40%"><#TimePeriod#></th>
 					<td>
 						<input type="text" class="input_6_table" maxlength="4" name="usb_idle_timeout" onKeyPress="return validator.isNumber(this,event);" value='<% nvram_get("usb_idle_timeout"); %>' autocorrect="off" autocapitalize="off" disabled><#Second#>
@@ -2212,12 +2248,22 @@ function check_password_length(obj){
 					  <td colspan="2"><#t2BC#></td>
 					</tr>
 				</thead>
+
+				<tr style="display:none">
+					<th><#Serial_Number#></th>
+					<td><div id="serialnumber"></div></td>
+				</tr>
+				<tr style="display:none">
+					<th><#PIN_code#></th>
+					<td><div id="pincode"></div></td>
+				</tr>
+
 				<tr>
 					<th><a class="hintstyle"  href="javascript:void(0);" onClick="openHint(11,2)"><#LANHostConfig_x_TimeZone_itemname#></a></th>
 					<td>
 						<select name="time_zone_select" class="input_option" onchange="select_time_zone();"></select>
 						<div>
-							<span id="timezone_hint" style="display:none;"></span>
+							<span id="timezone_hint" class="warning_desc" style="display:none;"></span>
 						</div>
 					</td>
 				</tr>
@@ -2279,7 +2325,7 @@ function check_password_length(obj){
 					<th><a class="hintstyle"  href="javascript:void(0);" onClick="openHint(11,3)"><#LANHostConfig_x_NTPServer_itemname#></a></th>
 					<td>
 						<input type="text" maxlength="256" class="input_32_table" name="ntp_server0" value="<% nvram_get("ntp_server0"); %>" onKeyPress="return validator.isString(this, event);" autocorrect="off" autocapitalize="off">
-						<img id="ntp_pull_arrow" height="14px;" src="/images/arrow-down.gif" style="position:absolute;*margin-left:-3px;*margin-top:1px;display:none;" onclick="pullNTPList(this);" title="<#LANHostConfig_x_NTPServer_itemname#>" onmouseover="over_var=1;" onmouseout="over_var=0;">
+						<img id="ntp_pull_arrow" height="14px;" src="/images/unfold_more.svg" style="position:absolute;*margin-left:-3px;*margin-top:1px;display:none;" onclick="pullNTPList(this);" title="<#LANHostConfig_x_NTPServer_itemname#>" onmouseover="over_var=1;" onmouseout="over_var=0;">
 						<div id="NTPList_Block_PC" class="NTPList_Block_PC"></div>
 						<br>
 						<a href="javascript:openLink('x_NTPServer1')"  name="x_NTPServer1_link" style=" margin-left:5px; text-decoration: underline;"><#LANHostConfig_x_NTPServer1_linkname#></a>
@@ -2311,9 +2357,11 @@ function check_password_length(obj){
 				<tr id="ping_tr" style="display: none;">
 					<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(26,2);"><#Ping_Target#></a></th>
 					<td>
+					    <div class="clientlist_dropdown_main">
 							<input type="text" class="input_25_table" name="wandog_target" maxlength="15" value="<% nvram_get("wandog_target"); %>" placeholder="ex: www.google.com (8.8.8.8)" autocorrect="off" autocapitalize="off">
-							<img id="ping_pull_arrow" class="pull_arrow" height="14px;" src="/images/arrow-down.gif" style="position:absolute;*margin-left:-3px;*margin-top:1px;" onclick="pullPingTargetList(this);" title="<#select_network_host#>">
-							<div id="TargetList_Block_PC" name="TargetList_Block_PC" class="clientlist_dropdown" style="margin-left: 2px; width: 348px;display: none;"></div>
+							<img id="ping_pull_arrow" class="pull_arrow" height="14px;" src="/images/unfold_more.svg" onclick="pullPingTargetList(this);" title="<#select_network_host#>">
+							<div id="TargetList_Block_PC" name="TargetList_Block_PC" class="clientlist_dropdown"></div>
+                        </div>
 					</td>
 				</tr>
 				<tr>
@@ -2368,6 +2416,12 @@ function check_password_length(obj){
 							<option value="1" <% nvram_match("pwrsave_mode", "1","selected"); %> ><#Auto#></option>
 							<option value="2" <% nvram_match("pwrsave_mode", "2","selected"); %> ><#usb_Power_Save#></option>
 						</select>
+					</td>
+				</tr>
+				<tr id="pagecache_ratio_tr" style="display:none;">
+					<th align="right"><a class="hintstyle" href="javascript:void(0);" onClick="overlib('Lower page cache ratio, poor NAS performance.');" onmouseout="nd();">Maximum page cache ratio</th>
+					<td>
+						<input type="text" class="input_3_table" maxlength="3" name="pagecache_ratio" value='<% nvram_get("pagecache_ratio"); %>' onblur="return validator.numberRange(this, 5, 90);" autocorrect="off" autocapitalize="off"> %
 					</td>
 				</tr>
 				<tr id="reboot_schedule_enable_tr">
@@ -2514,8 +2568,8 @@ function check_password_length(obj){
 				<tr id="https_download_cert" style="display: none;">
 					<th><#Local_access_certificate_download#></th>
 					<td>
-						<input id="download_cert_btn" class="button_gen" onclick="save_cert_key();" type="button" value="<#btn_Export#>" />
-						<input id="clear_cert_btn" class="button_gen" style="margin-left:10px" onclick="clear_cert_key();" type="button" value="<#CTL_renew#>" />
+						<input id="download_cert_btn" class="button_gen buttonInTable" onclick="save_cert_key();" type="button" value="<#btn_Export#>" />
+						<input id="clear_cert_btn" class="button_gen buttonInTable" style="margin-left:10px" onclick="clear_cert_key();" type="button" value="<#CTL_renew#>" />
 						<span id="download_cert_desc"><#Local_access_certificate_desc#></span><a id="creat_cert_link" href="" style="font-family:Lucida Console;text-decoration:underline;color:#FFCC00; margin-left: 5px;" target="_blank">FAQ</a>
 					</td>
 				</tr>
@@ -2546,7 +2600,7 @@ function check_password_length(obj){
 					<td>
 						<span style="margin-left:5px; display:none;" id="http_port"><input type="text" maxlength="5" name="misc_httpport_x" class="input_6_table" value="<% nvram_get("misc_httpport_x"); %>" onKeyPress="return validator.isNumber(this,event);" autocorrect="off" autocapitalize="off" disabled/>&nbsp;&nbsp;</span>
 						<span style="margin-left:5px; display:none;" id="https_port"><input type="text" maxlength="5" id="misc_httpsport_x" name="misc_httpsport_x" class="input_6_table" value="<% nvram_get("misc_httpsport_x"); %>" onKeyPress="return validator.isNumber(this,event);" onBlur="change_url(this.value, 'https_wan');" autocorrect="off" autocapitalize="off" disabled/></span>
-						<span id="wan_access_url"></span>
+						<span id="wan_access_url" class="explain_desc2"></span>
 					</td>
 				</tr>
 				<tr>
@@ -2576,9 +2630,11 @@ function check_password_length(obj){
 					<!-- client info -->
 					<td width="10%">-</td>
 					<td width="40%">
-						<input type="text" class="input_25_table" maxlength="18" name="http_client_ip_x_0"  onKeyPress="" onClick="hideClients_Block();" autocorrect="off" autocapitalize="off">
-						<img id="pull_arrow" height="14px;" src="/images/arrow-down.gif" style="position:absolute;*margin-left:-3px;*margin-top:1px;" onclick="pullLANIPList(this);" title="<#select_client#>">	
-						<div id="ClientList_Block_PC" class="clientlist_dropdown" style="margin-left:27px;width:235px;"></div>	
+                        <div class="clientlist_dropdown_main" style="width: 100%;">
+                            <input type="text" class="input_25_table" maxlength="18" name="http_client_ip_x_0"  onKeyPress="" onClick="hideClients_Block();" autocorrect="off" autocapitalize="off">
+                            <img id="pull_arrow" height="14px;" src="/images/unfold_more.svg" onclick="pullLANIPList(this);" title="<#select_client#>">
+                            <div id="ClientList_Block_PC" class="clientlist_dropdown"></div>
+						</div>
 					</td>
 					<td width="40%">
 						<input type="checkbox" name="access_webui" class="input access_type" value="1"><#System_WebUI#>
@@ -2612,4 +2668,3 @@ function check_password_length(obj){
 <div id="footer"></div>
 </body>
 </html>
-

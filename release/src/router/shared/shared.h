@@ -14,8 +14,6 @@
 #include <net/ethernet.h>	//struct ethjdr
 #include <netinet/if_ether.h>	//struct ethhdr
 #include <netinet/ether.h>	//struct ether_addr
-#elif defined(RTCONFIG_RALINK)
-#include <net/ethernet.h>
 #endif
 #ifndef _LINUX_IF_H
 #include <net/if.h>
@@ -40,9 +38,13 @@
 #include <tld_utils.h>
 #endif
 
-#ifdef RTCONFIG_AMAS_WGN
+#if defined(RTCONFIG_AMAS_WGN) || defined(RTCONFIG_MULTILAN_CFG)
 #include "amas_wgn_shared.h"
 #endif	/* RTCONFIG_AMAS_WGN */
+
+#ifdef RTCONFIG_MULTILAN_CFG
+#include "amas_apg_shared.h"
+#endif	/* RTCONFIG_MULTILAN_CFG */
 
 #ifdef RTCONFIG_LP5523
 #include "lp5523led.h"
@@ -55,6 +57,10 @@
 #include <sys/stat.h>
 #include <ftw.h>
 #include "network_utility.h"
+
+#ifdef RTCONFIG_MULTILAN_CFG
+#include "mtlan_utils.h"
+#endif /* RTCONFIG_MULTILAN_CFG */
 
 #ifdef RTCONFIG_AHS
 #include "notify_ahs.h"
@@ -84,7 +90,7 @@ extern int PS_pclose(FILE *);
 
 #if defined(RTCONFIG_EXTPHY_BCM84880)
 // BCM84880, BCM54991, BCM50991, BCM84891L
-#ifdef GTAX6000
+#if defined(GTAX6000) || defined(RTAX88U_PRO) || defined(GTAX11000_PRO) || defined(RTBE86U)
 #define EXTPHY_ADDR 0x13
 #define EXTPHY_ADDR_STR "0x13"
 #elif defined(GTAXE16000)
@@ -103,7 +109,7 @@ extern int PS_pclose(FILE *);
 #define EXTPHY_RTL_ADDR 0x03
 #define EXTPHY_RTL_ADDR_STR "0x03"
 
-#if defined(GTAX11000)
+#if defined(GTAX11000) || defined(RTAX88U_PRO)
 #define PHY_ID_54991E "3590:5099"
 #elif defined(RTAX86U) || defined(GTAXE11000)
 #define PHY_ID_54991EL "3590:5089"
@@ -112,12 +118,12 @@ extern int PS_pclose(FILE *);
 #define PHY_ID_50991EL "3590:51cd"
 #endif
 #endif // RTCONFIG_EXTPHY_BCM84880
-#if defined(GTAX11000_PRO) || defined(ET12) || defined(XT12) || defined(GTAX6000)
+#if defined(ET12) || defined(XT12) || defined(GTAX6000)
 #define PHY_ID_50991EL "3590:50c9"
 #endif
 
 #ifdef CONFIG_BCMWL5
-#if defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4) || defined(XC5)
+#if defined(RTAX56_XD4) || defined(XD4PRO) || defined(CTAX56_XD4) || defined(BT12) || defined(BQ16)|| defined(XC5) || defined(EBA63)
 #define WL_IF_PREFIX "wl%d"
 #define WL_IF_PREFIX_2 "wl"
 #else
@@ -237,7 +243,7 @@ extern int PS_pclose(FILE *);
 #define FAN_CUR_STATE		SYS_COOLINGDEV "/cur_state"
 #define FAN_RPM			"/sys/devices/platform/gpio-fan/hwmon/hwmon0/fan1_input"
 
-#if defined(RTCONFIG_RALINK)
+#if defined(RTCONFIG_RALINK_MT7621) || defined(RMAX6000) || defined(SWRT360T7)
 #define LINUX_MTD_NAME      "Kernel"
 #define LINUX2_MTD_NAME     "Kernel2"
 #else
@@ -283,7 +289,12 @@ static inline char *wan_if_eth(void)
  * 2.	bit  6~7 :	Facebook Wi-Fi, FBWIFI_MARK_*
  * 3.	bit  0~5 :	QoS (T.QoS: bit 0~2, BWLIT: bit 0~5)
  * 4.   bit 31~8 :	TrendMicro adaptive QoS needs bit 8~31.
+ * 5.   bit 31~26 :	Multiple PPP connection Load-balance rule.
  */
+#define IPTABLES_MARK_MTWAN_SET(x,y) (((((x)&0xFU)|0x8)<<28)|(((y)&0x7)<<24)) //bit 31 is always 1, x: wan index (28~30), y: ppp/ms index (24~26)
+#define IPTABLES_MARK_MTWAN_MASK (0xF7<<24)
+#define IPTABLES_MARK_MTPPP_SET(x,y) (((((x)&0xFU)|0x8)<<28)|(((y)&0x7)<<24)) //bit 31 is always 1, x: wan index (28~30), y: ppp index (24~26)
+#define IPTABLES_MARK_MTPPP_MASK (0xF7<<24)
 #define IPTABLES_MARK_LB_SET(x)	((((x)&0xFU)|0x8)<<28)			/* mark for load-balance, bit 28~31, bit31 is always 1. */
 #define IPTABLES_MARK_LB_MASK	IPTABLES_MARK_LB_SET(0xf)
 #define FBWIFI_MARK_SET(x)	(((x)&0x3U)<<6)				/* Facebook Wi-Fi: bit 6~7 */
@@ -302,6 +313,7 @@ static inline char *wan_if_eth(void)
 #define IS_NON_AQOS()           (nvram_get_int("qos_enable") == 1 && nvram_get_int("qos_type") != 1)   // non A.QoS = others QoS (T.QoS / bandwidth monitor ... etc.)
 #define IS_NON_FC_QOS()         (nvram_get_int("qos_enable") == 1 && nvram_get_int("qos_type") != 1 && nvram_get_int("qos_type") != 2) // non FC QoS= others QoS except A.QOS / BW QOS
 #define IS_ROG_QOS()            (nvram_get_int("qos_enable") == 0 && nvram_get_int("rog_enable") == 1) // QoS Disable, Gear Accelerator enable
+#define IS_RB_QOS()             (IS_AQOS() && nvram_get_int("rb_enable") == 1)   // Router Boost QoS (OPPO)
 
 /* Guest network mark */
 #define GUEST_INIT_MARKNUM 10   /*10 ~ 30 for Guest Network. */
@@ -369,6 +381,9 @@ static inline char *wan_if_eth(void)
 #elif defined(RTCONFIG_CONCURRENTREPEATER)
 #define DUT_DOMAIN_NAME "www.asusrouter.com"
 #define OLD_DUT_DOMAIN_NAME "repeater.asus.com"
+#elif defined(RTCONFIG_BUSINESS)
+#define DUT_DOMAIN_NAME "expertwifi.net"
+#define OLD_DUT_DOMAIN_NAME "www.asusrouter.com"
 #else
 #define DUT_DOMAIN_NAME "www.asusrouter.com"
 #define OLD_DUT_DOMAIN_NAME "router.asus.com"
@@ -386,6 +401,8 @@ static inline char *wan_if_eth(void)
 #else
 #define SSID_PREFIX	"ASUS"
 #endif
+
+#define PSK_PREFIX	"ASUS"
 
 //version.c
 extern const char *rt_version;
@@ -531,6 +548,12 @@ enum {
 #define CFG_PREFIX      "CFG"
 #define AMAS_PORTSTATUS_PREFIX	"PORTSTATUS"
 #define CFG_ALLCHANRADAR		"ALLCHANRADAR"
+
+#define CFG_CONNDIAG_MIX_MODE 0xF000  // same with DIAGMODE_MIX in rc/conn_diag.h
+#define CFG_CONNDIAG_PREFIX_PORTSTATUS "<PORTSTATUS"
+#define CFG_CONNDIAG_PORTSTATUS "cd_portstatus_resend"
+#define CFG_CONNDIAG_PORTSTATUS_PATH "/tmp/cd_portstatus_resend.json"
+
 /* string for wl band */
 #define CFG_WL_STR_2G	"2G"
 #define CFG_WL_STR_5G	"5G"
@@ -559,6 +582,7 @@ enum conndiagEvent {
 	EID_CD_CFG_RADAR_ALL,
 	EID_CD_PS_CD_RET,
 	EID_CD_PS_USB_CHANGE,
+	EID_CD_PS_MOCA_CHANGE,
 	EID_CD_MAX
 };
 #define RAST_IPC_MAX_CONNECTION		5
@@ -568,6 +592,7 @@ enum conndiagEvent {
 #define RAST_INTERNAL_IPC_SOCKET_PATH	"/var/run/rast_internal_ipc_socket"
 #define CONNDIAG_IPC_SOCKET_PATH	"/var/run/conndiag_ipc_socket"
 #define CABLEDIAG_IPC_SOCKET_PATH	"/var/run/cablediag_ipc_socket"
+#define RBD_IPC_SOCKET_PATH	"/var/run/rbd_ipc_socket"
 #define RAST_PREFIX     "RAST"
 #define CHKSTA_PREFIX   "CHKSTA"
 #define EXT_DATA   "EXT_DATA"
@@ -577,6 +602,7 @@ enum conndiagEvent {
 #define RAST_STA        "STA"
 #define RAST_STA_2G	"STA_2G"
 #define RAST_STA_5G	"STA_5G"
+#define RAST_STA_6G     "STA_6G"
 #define RAST_AP         "AP"
 #define RAST_RSSI       "RSSI"
 #define RAST_BAND       "BAND"
@@ -618,6 +644,7 @@ enum conndiagEvent {
 #define CD_PS_CHANGE "PORTSTATUS_CHANGE"
 #define CD_PS_CD_RET "CABLEDIAG_RET"
 #define CD_PS_USB_CHANGE "PORTSTATUS_USB_CHANGE"
+#define CD_PS_MOCA_CHANGE "PORTSTATUS_MOCA_CHANGE"
 
 #ifdef RTCONFIG_HND_ROUTER_AX
 #define RMD_IPC_SOCKET_PATH    "/etc/rmd_ipc_socket"
@@ -651,6 +678,12 @@ enum conndiagEvent {
 
 #ifdef RTCONFIG_AMAS
 #define OUI_ASUS      "\xF8\x32\xE4"
+#endif
+
+/* OPPO */
+#ifdef RTCONFIG_ROUTERBOOST 
+#define OUI_OPPO      "\xFC\xA5\xD0"
+#define ROUTERBOOST_OUI_STR  "149BF3"
 #endif
 
 #ifdef RTCONFIG_STA_AP_BAND_BIND
@@ -755,16 +788,16 @@ struct vlan_rule_s {
 	int	enable;
 	char	br_if[IFNAMSIZ];	/* maybe empty string if this rule is not enabled. */
 #if defined(RTCONFIG_TAGGED_BASED_VLAN)
-/* vlan_rulelist example
- * 	<1>1>0>0000>00010001>000F>000F>default>1>0
- * 	<1>2>0>0000>00020002>0000>0000>192.168.5.88/24>1>0
- * 	<1>3>0>0000>00040004>0000>0000>192.168.6.88/24>1>0
- * 	<1>4>0>0000>00080008>0000>0000>192.168.7.88/24>1>0
- * 	<1>5>0>0000>00100010>0000>0000>192.168.8.88/24>1>0
- * 	<1>6>0>0000>00200020>0000>0000>192.168.9.88/24>1>0
- * 	<1>7>0>0000>00400040>0000>0000>192.168.11.88/24>1>0
- * 	<1>8>0>0000>00800080>0000>0000>192.168.12.88/24>1>0
- */
+	/* vlan_rulelist example
+	 * 	<1>1>0>0000>00010001>000F>000F>default>1>0
+	 * 	<1>2>0>0000>00020002>0000>0000>192.168.5.88/24>1>0
+	 * 	<1>3>0>0000>00040004>0000>0000>192.168.6.88/24>1>0
+	 * 	<1>4>0>0000>00080008>0000>0000>192.168.7.88/24>1>0
+	 * 	<1>5>0>0000>00100010>0000>0000>192.168.8.88/24>1>0
+	 * 	<1>6>0>0000>00200020>0000>0000>192.168.9.88/24>1>0
+	 * 	<1>7>0>0000>00400040>0000>0000>192.168.11.88/24>1>0
+	 * 	<1>8>0>0000>00800080>0000>0000>192.168.12.88/24>1>0
+	 */
 	char	vid[8];
 	char	prio[4];
 	char	wanportset[6];
@@ -828,6 +861,7 @@ static inline int legal_vlanid(int vid) { return (vid < 0 || vid >= 4096)? 0 : 1
 extern in_addr_t inet_addr_(const char *addr);
 extern int inet_equal(const char *addr1, const char *mask1, const char *addr2, const char *mask2);
 extern int inet_intersect(const char *addr1, const char *mask1, const char *addr2, const char *mask2);
+extern int inet_overlap(const char *addr1, const char *mask1, const char *addr2, const char *mask2);
 extern int inet_deconflict(const char *addr1, const char *mask1, const char *addr2, const char *mask2, struct in_addr *result);
 
 extern void chld_reap(int sig);
@@ -843,11 +877,18 @@ extern char *ipv6_nvname(const char *name);
 extern char *ipv6_nvname_by_unit(const char *name, int unit);
 extern int get_ipv6_service(void);
 extern int get_ipv6_service_by_unit(int unit);
+#ifdef RTCONFIG_MULTIWAN_IF
+extern int ipv6_enabled();
+#else
 #define ipv6_enabled()	(get_ipv6_service() != IPV6_DISABLED)
+#endif
+#define ipv6x_enabled(unit)	(get_ipv6_service_by_unit(unit) != IPV6_DISABLED)
 extern const char *ipv6_router_address(struct in6_addr *in6addr);
 extern const char *ipv6_gateway_address(void);
+extern const char *ipv6_router_address_by_unit(struct in6_addr *in6addr, int wan_unit);
 #else
 #define ipv6_enabled()	(0)
+#define ipv6x_enabled(int unit)	(0)
 #endif
 extern void notice_set(const char *path, const char *format, ...);
 #if defined(RTAC1200HP)
@@ -910,6 +951,10 @@ extern int nvram_valid_get_int(const char *key, int min, int max, int def);
 #ifdef HND_ROUTER
 extern char *nvram_split_get(const char *key, char *buffer, int maxlen, int maxinst);
 extern int nvram_split_set(const char *key, char *value, int size, int maxinst);
+
+/* sysdeps/api-broadcom.c */
+extern int wl_get_band(char* wlif);
+extern int wl_get_chlist_band(char* wlif);
 #endif
 
 //	extern long nvram_xget_long(const char *name, long min, long max, long def);
@@ -941,7 +986,6 @@ extern int modprobe_r(const char *mod);
 extern int load_kmods(char *kmods_list);
 extern int remove_kmods(char *kmods_list);
 extern int num_of_wl_if(void);
-extern int num_of_wan_if(void);
 extern int num_of_5g_if(void);
 
 // usb.c
@@ -1103,7 +1147,9 @@ enum btn_id {
 	BTN_EJUSB1,
 	BTN_EJUSB2,	/* If two USB LED and two EJECT USB button are true, map USB3 port to this button. */
 #endif
-
+#if defined(PRTAX57_GO)
+        BTN_SWITCH,
+#endif
 	BTN_ID_MAX,	/* last item */
 };
 
@@ -1135,7 +1181,7 @@ enum led_id {
 	FAN,
 	HAVE_FAN,
 	LED_WAN,
-#if defined(RTCONFIG_WANLEDX2)
+#if defined(RTCONFIG_WANLEDX2) || defined(RTAXE7800)
 	LED_WAN2,
 #endif
 #ifdef HND_ROUTER
@@ -1163,7 +1209,7 @@ enum led_id {
 #else
 	LED_LAN,
 #endif
-#if defined(RTAX86U) || defined(RTAX5700)
+#if defined(RTAX86U) || defined(RTAX86U_PRO)
 	LED_LAN,
 #endif
 #ifdef RTCONFIG_LOGO_LED
@@ -1225,7 +1271,7 @@ enum led_id {
 	LED_5G_GREEN,
 	LED_5G_ORANGE,
 	LED_5G_RED,
-#elif defined(RTCONFIG_FIXED_BRIGHTNESS_RGBLED) || defined(RTCONFIG_PWM_RGBLED) || defined(RTCONFIG_PWMX2_GPIOX1_RGBLED)
+#elif defined(RTCONFIG_ZENWIFI_RGBLED) || defined(RTCONFIG_AURA_RGBLED)
 	LED_BLUE,
 	LED_GREEN,
 	LED_RED,
@@ -1306,12 +1352,17 @@ enum led_id {
 	PWR_USB,
 #endif
 #if defined(RTCONFIG_USB) \
- && (defined(RTAX89U) || defined(GTAXY16000))
+ && (defined(RTAX89U) || defined(GTAXY16000) || defined(BR63) || defined(RAX120))
 	PWR_USB2,
 #endif
-#if defined(RTAX95Q) || defined(XT8PRO) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(RTAX82_XD6) || defined(RTAX82_XD6S) || defined(ET12) || defined(XT12)
+#if defined(RTAX95Q) || defined(XT8PRO) || defined(BT12) || defined(BQ16) || defined(BM68) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(ET8_V2) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(RTAX82_XD6) || defined(RTAX82_XD6S) || defined(ET12) || defined(XT12) || defined(XD6_V2)|| defined(XC5)
 	BT_RESET,
 	BT_DISABLE,
+	LED_RGB1_RED,
+	LED_RGB1_GREEN,
+	LED_RGB1_BLUE,
+#endif
+#if defined(EBA63)
 	LED_RGB1_RED,
 	LED_RGB1_GREEN,
 	LED_RGB1_BLUE,
@@ -1327,6 +1378,12 @@ enum led_id {
 	LED_SIDE2_WHITE,
 	LED_SIDE3_WHITE,
 #endif
+#ifdef GT10
+	LED_RGB1_RED,
+	LED_RGB1_GREEN,
+	LED_RGB1_BLUE,
+	LED_WHITE,
+#endif
 #if defined(CTAX56_XD4)
 	BT_RESET,
 	BT_DISABLE,
@@ -1334,22 +1391,22 @@ enum led_id {
 	LED_RGB1_GREEN,
 	LED_RGB1_BLUE,
 #endif
-#if defined(RTAX56_XD4) || defined(XD4PRO)
+#if defined(RTAX56_XD4) || defined(XD4PRO) || defined(XC5)
 	IND_BT,
 	IND_PA,
 #endif
-#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX11000_PRO) || defined(GTAXE16000) || defined(GTAX6000)
+#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX11000_PRO) || defined(GTAXE16000) || defined(GTBE98) || defined(GTBE98_PRO) || defined(GTAX6000) || defined(GT10) || defined(RTAX82U_V2) || defined(TUFAX5400_V2) || defined(GTBE96)
 	LED_GROUP1_RED,
 	LED_GROUP1_GREEN,
 	LED_GROUP1_BLUE,
-#ifndef TUFAX5400
+#if !defined(TUFAX5400) && !defined(TUFAX5400_V2)
 	LED_GROUP2_RED,
 	LED_GROUP2_GREEN,
 	LED_GROUP2_BLUE,
 	LED_GROUP3_RED,
 	LED_GROUP3_GREEN,
 	LED_GROUP3_BLUE,
-#if !defined(GTAXE11000_PRO) && !defined(GTAXE16000) && !defined(GTAX6000)
+#if !defined(GTAX11000_PRO) && !defined(GTAXE16000) && !defined(GTBE98) && !defined(GTBE98_PRO) && !defined(GTAX6000) && !defined(GT10) && !defined(GTBE96)
 	LED_GROUP4_RED,
 	LED_GROUP4_GREEN,
 	LED_GROUP4_BLUE,
@@ -1370,13 +1427,42 @@ enum led_id {
 #if defined(DSL_AX82U)
 	LED_WIFI,
 #endif
-#if defined(GTAXE16000) || defined(GTAX11000_PRO)
+#if defined(GTAXE16000) || defined(GTBE98) || defined(GTBE98_PRO) || defined(GTAX11000_PRO) || defined(GTBE96)
 	LED_WAN_RGB_RED,
 	LED_WAN_RGB_GREEN,
 	LED_WAN_RGB_BLUE,
 	LED_10G_RGB_RED,
 	LED_10G_RGB_GREEN,
 	LED_10G_RGB_BLUE,
+	LED_10G_WHITE,
+#endif
+#if defined(RTBE96U)
+	LED_10G_WHITE,
+#endif
+#if defined(BC109) || defined(BC105)
+        LED_53134_INT,
+        LED_SPD_G0,
+        LED_SPD_G1,
+        LED_SPD_G2,
+        LED_SPD_G3,
+        LED_SPD_G4,
+        LED_53134_RST,
+        LED_AR3012_DIS,
+        LED_ACT_G0,
+        LED_ACT_G1,
+        LED_ACT_G2,
+        LED_ACT_G3,
+        LED_ACT_G4,
+        LED_AR3012_RST,
+        LED_ETHALL,
+#endif
+#if defined(EBG15) || defined(EBG19)
+        LED_AR3012_DIS,
+        LED_AR3012_RST,
+        LED_ETHALL,
+#endif
+#if defined(RTBE96U) || defined(GTBE98) || defined(GTBE98_PRO)
+	LED_AFC,
 #endif
 	LED_ID_MAX,	/* last item */
 };
@@ -1416,6 +1502,11 @@ static inline int have_usb3_led(int model)
 		case MODEL_RTAC5300:
 		case MODEL_GTAC5300:
 		case MODEL_RTAX88U:
+		case MODEL_BC109:
+		case MODEL_BC105:
+		case MODEL_EBG19:
+		case MODEL_EBG15:
+		case MODEL_EBP15:
 		case MODEL_R7000P:
 			return 1;
 	}
@@ -1491,10 +1582,29 @@ static inline int max_no_mssid(void)
 /* brcm qualband machines need to re-define this table by its own case */
 /* wl_band_id must be 0, 1, 2 for 2G, 5G-1, 5G-2 on QCA/MTK platform respectively even some band don't exist. */
 enum wl_band_id {
-#ifdef GTAXE16000
+#if defined(GTAXE16000) || defined(GTBE98) || defined(EBG15) || defined(EBG19)
 	WL_5G_BAND = 0,
 	WL_5G_2_BAND = 1,
 	WL_6G_BAND = 2,
+	WL_2G_BAND = 3,
+#elif defined(GTBE98_PRO)
+	WL_5G_BAND = 0,
+	WL_5G_2_BAND = 0,
+	WL_6G_BAND = 1,
+	WL_6G_2_BAND = 2,
+	WL_2G_BAND = 3,
+#elif defined(GT10) || defined(RTAX9000)
+	WL_5G_BAND = 0,
+	WL_5G_2_BAND = 1,
+	WL_2G_BAND = 2,
+#elif defined(BT12)
+	WL_2G_BAND = 0,
+	WL_5G_BAND = 1,
+	WL_5G_2_BAND = 2,
+#elif defined(BQ16)
+	WL_6G_BAND = 0,
+	WL_5G_BAND = 1,
+	WL_5G_2_BAND = 2,
 	WL_2G_BAND = 3,
 #elif defined(RTCONFIG_QCA) || defined(RTCONFIG_MTK)
 	WL_2G_BAND = 0,
@@ -1505,7 +1615,7 @@ enum wl_band_id {
 	WL_2G_BAND = 0,
 	WL_5G_BAND = 1,
 	WL_5G_2_BAND = 2,
-#if defined(RTCONFIG_WIFI6E)
+#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
 #if defined(RTCONFIG_BCMWL6)
 	WL_6G_BAND = 2,
 #else
@@ -1522,13 +1632,15 @@ enum wl_band_id {
 	WL_NR_BANDS				/* Maximum number of Wireless bands of all models. */
 };
 
-#ifdef RTCONFIG_WIFI6E
+#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
 static inline int is_6g(int unit)
 {
 	char prefix[] = "wlXXXXXXXXXXXX_";
 
+#if !defined(BT12)
 	if (unit == WL_6G_BAND)
 		return 1;
+#endif
 
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 	if (nvram_pf_match(prefix, "nband", "4"))
@@ -1848,7 +1960,7 @@ static inline int wisp_mode(void) { return 0; }
 static inline int __access_point_mode(int sw_mode)
 {
 	return (sw_mode == SW_MODE_AP
-#if defined(RTCONFIG_PROXYSTA)
+#if defined(RTCONFIG_PROXYSTA) || defined(EBG15) || defined(EBG19)
 		&& !nvram_get_int("wlc_psta")
 #endif
 		);
@@ -2032,6 +2144,9 @@ static inline int dualwan_unit__nonusbif(int unit)
 #endif
 #ifdef RTCONFIG_MULTISERVICE_WAN
 		|| (WAN_UNIT_MULTISRV_BASE < unit && unit < WAN_UNIT_MULTISRV_MAX)
+#ifdef RTCONFIG_MULTIWAN_IF
+		|| (WAN_UNIT_MTWAN0_MS_BASE < unit && unit < WAN_UNIT_MTWAN_MS_MAX)
+#endif
 #endif
 			);
 }
@@ -2261,7 +2376,7 @@ extern int set_pwr_usb(int boolOn);
 extern int set_pwr_modem(int boolOn);
 #endif
 extern int button_pressed(int which);
-#if defined(RTAX86U) || defined(RTAX5700)
+#if defined(RTAX86U) || defined(RTAX86U_PRO)
 void config_ext_wan_led(int onoff);
 #endif
 extern int led_control(int which, int mode);
@@ -2275,13 +2390,14 @@ extern uint32_t gpio_dir2(uint32_t gpio, int dir);
 extern uint32_t set_gpio(uint32_t gpio, uint32_t value);
 extern uint32_t set_leds_gpio(int which, int mode);
 extern uint32_t get_gpio(uint32_t gpio);
-#if defined(RTCONFIG_HND_ROUTER_AX_6710) || defined(BCM6750) || defined(BCM6756) || defined(GTAX6000)
+#if defined(RTCONFIG_HND_ROUTER_AX_6710) || defined(BCM6750) || defined(BCM6756) || defined(GTAX6000) || defined(RTAX86U_PRO) || defined(BCM6855) || defined(RTAX88U_PRO) || defined(RTCONFIG_HND_ROUTER_BE_4916)
 extern uint32_t get_gpio2(uint32_t gpio);
 #endif
 extern int get_switch_model(void);
 
 /* phy port related start */
 #define MAX_PHY_PORT 16
+#define MAX_MOCA_DEVICES 1
 // Hardware capability
 #define PHY_PORT_CAP_WAN					(1U << 0)
 #define PHY_PORT_CAP_LAN					(1U << 1)
@@ -2293,6 +2409,7 @@ extern int get_switch_model(void);
 #define PHY_PORT_CAP_USB					(1U << 7)
 #define PHY_PORT_CAP_MOBILE					(1U << 8)
 #define PHY_PORT_CAP_WANLAN					(1U << 9)
+#define PHY_PORT_CAP_MOCA					(1U << 10)
 
 // Software capability
 #define PHY_PORT_CAP_IPTV_BRIDGE			(1U << 26)
@@ -2300,6 +2417,9 @@ extern int get_switch_model(void);
 #define PHY_PORT_CAP_IPTV_STB				(1U << 28)
 #define PHY_PORT_CAP_DUALWAN_SECONDARY_WAN	(1U << 29)
 #define PHY_PORT_CAP_DUALWAN_PRIMARY_WAN	(1U << 30)
+
+// PHY_PROT FLAG
+#define PHY_PORT_FLAG_BYPASS_CABLE_DIAG		(1U << 0)
 typedef struct _usb_device_info usb_device_info_t;
 
 #if 1
@@ -2344,8 +2464,12 @@ typedef struct _phy_info {
 	uint64_t tx_bytes;
 	uint64_t rx_bytes;
 	uint32_t crc_errors;
+	uint32_t flag;
 #ifdef RTCONFIG_USB
 	usb_device_info_t usb_devices[MAX_USB_HUB_PORT];
+#endif
+#ifdef RTCONFIG_MOCA
+	MOCA_NODE_INFO moca_devices[MAX_MOCA_DEVICES];
 #endif
 } phy_info;
 
@@ -2397,6 +2521,7 @@ extern void force_gpy211_led_onoff(int port, int mode);
 extern void force_mt7531_led_onoff(int mode);
 extern void set_gpy211_led_onoff(int port, int mode);
 extern void set_mt7531_led_onoff(int mode);
+extern void set_mt7531_led(int mode, int onoff);
 extern int wl_max_no_vifs(int unit);
 extern const char *bs_port_id_to_iface(enum bs_port_id bs_port);
 extern int set_netdev_sysfs_param(const char *iface, const char *param, const char *val);
@@ -2407,6 +2532,14 @@ extern char *get_5g_hwaddr(void);
 extern char *get_lan_hwaddr(void);
 extern char *get_wan_hwaddr(void);
 extern char *get_label_mac(void);
+#if defined(RTCONFIG_RALINK) && defined(RTCONFIG_MULTILAN_CFG)
+extern void __apg_switch_vlan_set(int vid, unsigned int default_portmask, unsigned int trunk_portmask, unsigned int access_portmask) __attribute__((weak));
+extern void __apg_switch_vlan_unset(int vid, unsigned int portmask) __attribute__((weak));
+extern void __apg_switch_isolation(int enable, unsigned int portmask) __attribute__((weak));
+extern void apg_switch_vlan_set(int vid, unsigned int default_portmask, unsigned int trunk_portmask, unsigned int access_portmask);
+extern void apg_switch_vlan_unset(int vid, unsigned int portmask);
+extern void apg_switch_isolation(int enable, unsigned int portmask);
+#endif /* RTCONFIG_RALINK & RTCONFIG_MULTILAN_CFG */
 extern void __wgn_sysdep_swtich_unset(int vid) __attribute__((weak));
 extern void __wgn_sysdep_swtich_set(int vid) __attribute__((weak));
 #if defined(RTCONFIG_FITFDT)
@@ -2421,6 +2554,8 @@ extern int get_ap_mac(const char *ifname, struct iwreq *pwrq);
 #endif
 extern int chk_assoc(const char *ifname);
 extern int get_ch_cch_bw(const char *wlif_name, int *ch, int *cch, int *bw);
+extern int shartd_get_channel(const char *ifname);
+extern unsigned long long get_bitrate(const char *ifname);
 #endif
 #if defined(RTCONFIG_QCA)
 extern char *__get_wlifname(int band, int subunit, char *buf);
@@ -2478,6 +2613,17 @@ extern int get_mt7620_wan_unit_bytecount(int unit, unsigned long long *tx, unsig
 #elif defined(RTCONFIG_RALINK_MT7621)
 extern int get_mt7621_wan_unit_bytecount(int unit, unsigned long long *tx, unsigned long long *rx);
 #endif
+#if defined(RTCONFIG_QCA)
+extern int find_vap_by_sta(char *sta_addr, char *vap);
+#if defined(RTCONFIG_NO_RELOAD_WIFI_DRV_IF_POSSIBLE)
+extern int __need_to_reload_wifi_drv(void);
+extern int save_wl_params_for_testing_reload_wifi_drv(void);
+#else
+static inline int __need_to_reload_wifi_drv(void) { return 1; }
+static inline int need_to_reload_wifi_drv(void) { return 1; }
+static inline int save_wl_params_for_testing_reload_wifi_drv(void) { return 0; }
+#endif	/* RTCONFIG_NO_RELOAD_WIFI_DRV_IF_POSSIBLE */
+#endif	/* RTCONFIG_QCA */
 #ifdef RTCONFIG_AMAS
 static inline int rtconfig_amas(void) { return 1; }
 extern int aimesh_re_mode(void);
@@ -2495,9 +2641,18 @@ extern int get_psta_status(int unit);
 extern void Pty_stop_wlc_connect(int band);
 #ifdef RTCONFIG_BHCOST_OPT
 extern void Pty_start_wlc_connect(int band, char* bssid);
+#if defined(RTCONFIG_RALINK)
+void set_channel_before_Pty_start_wlc_connect(int band, int channel);
+#else
+static inline void set_channel_before_Pty_start_wlc_connect(int band, int channel) { return; }
+#endif
 extern void trans_to_bhmode(int *amas_eth_bhmode, int *amas_wifi_bhmode, int *amas_costmode, int *amas_rssiscoremode);
 extern int amas_dfs_status(int band);
+#ifdef RTCONFIG_MOCA
+extern unsigned int get_uplinkports_linkrate(char *ifname, MOCA_NODE_INFO *node);
+#else
 extern unsigned int get_uplinkports_linkrate(char *ifname);
+#endif
 extern void trigger_opt();
 extern int gen_uplinkport_describe(char *port_def, char *type, char *subtype, int index);
 extern float cal_plc_cost(float pap_cost, int rate);
@@ -2520,11 +2675,18 @@ extern int get_wl_count();
 extern int get_eth_count();
 extern int cal_space(char *s1);
 extern int is_self_optmz_stage(int band);
+#ifdef RTCONFIG_AMAS_CENTRAL_OPTMZ
+extern int is_optmz_ss_stage(int band);
+extern int is_optmz_conn_stage(int band);
+#endif
 extern int enable_ETH_U(int unit);
 extern void add_led_ctrl_capability(int val);
 extern void del_led_ctrl_capability(int val);
+#ifdef RTCONFIG_PRELINK
+extern int get_prelink_unit();
 #ifdef RTCONFIG_MSSID_PRELINK
 extern void check_mssid_prelink_reset(uint32_t sf);
+#endif
 #endif
 extern void unset_selected_channel_info();
 extern int get_unit_by_wlc_bandindex(int bandindex);
@@ -2619,6 +2781,11 @@ extern void create_amas_sys_folder();
 				(ea).octet[5]
 #endif
 
+#if defined(RTCONFIG_AMAS_CHANNEL_PLAN)
+extern void set_channel_by_manual();
+#endif
+extern void sync_control_channel(int unit, int channel, int bw, int nctrlsb);
+
 #else	/* !RTCONFIG_AMAS */
 static inline int rtconfig_amas(void) { return 0; }
 #endif	/* RTCONFIG_AMAS */
@@ -2688,6 +2855,7 @@ extern int rtkswitch_ioctl(int val, int val2);
 extern unsigned int rtkswitch_wanPort_phyStatus(int wan_unit);
 extern unsigned int rtkswitch_lanPorts_phyStatus(void);
 extern unsigned int rtkswitch_WanPort_phySpeed(void);
+extern unsigned int __rtkswitch_WanPort_phySpeed(int wan_unit);
 extern int rtkswitch_WanPort_linkUp(void);
 extern int rtkswitch_WanPort_linkDown(void);
 extern int rtkswitch_LanPort_linkUp(void);
@@ -2714,6 +2882,7 @@ extern int get_channel_list(int unit, int ch_list[], int size);
 extern uint64_t get_channel_list_mask(enum wl_band_id band);
 extern int get_radar_channel_list(int, int radar_list[], int size);
 extern int set_acl_entry(const char *ifname, char *addr);
+extern int shared_set_channel(const char* ifname, int channel);
 extern int set_bw_nctrlsb(const char* ifname, int bw, int nctrlsb);
 extern int get_channel_info(const char *ifname, int *channel, int *bw, int *nctrlsb);
 extern char *get_wififname(int band);
@@ -2795,7 +2964,11 @@ static inline void set_power_save_mode(void) { }
 #define REG_OFFSET_RX_MULTICAST_PACKETS 0x98
 #define REG_OFFSET_RX_UNICAST_PACKETS 0x94
 #define REG_OFFSET_RX_FCS_ERROR 0x84
-#ifdef RTCONFIG_WIFI6E
+
+#if defined(RTCONFIG_WIFI7)
+#define TMPBUFSIZ 4096
+#define TMPBUFSMSIZ 512
+#elif defined(RTCONFIG_WIFI6E)
 #define TMPBUFSIZ 3072
 #define TMPBUFSMSIZ 512
 #else
@@ -2806,8 +2979,119 @@ static inline void set_power_save_mode(void) { }
 extern int get_fa_rev(void);
 extern int get_fa_dump(void);
 #endif
-#if defined(RTAX55) || defined(RTAX1800) || defined(RTCONFIG_EXT_RTL8365MB) || defined(RTCONFIG_EXT_RTL8370MB) || defined(RTAX58U_V2) || defined(RTAX3000N)
+#if defined(RTAX55) || defined(RTAX1800) || defined(RTCONFIG_EXT_RTL8365MB) || defined(RTCONFIG_EXT_RTL8370MB) || defined(RTAX58U_V2) || defined(RTAX3000N) || defined(BR63) || defined(GTBE98) || defined(GTBE98_PRO) || defined(EBG19) || defined(GTBE96)
 /* port statistic counter structure */
+#if defined(GTBE98) || defined(GTBE98_PRO) || defined(GTBE96)
+unsigned int rtkswitch_serdes_status(void);
+typedef struct rtk_stat_port_cntr_s
+{
+	uint32 ifInOctets_H;	// 0
+	uint32 ifInOctets_L;
+	uint32 ifOutOctets_H;
+	uint32 ifOutOctets_L;
+	uint32 ifInUcastPkts_H;
+	uint32 ifInUcastPkts_L;
+	uint32 ifInMulticastPkts_H;
+	uint32 ifInMulticastPkts_L;
+	uint32 ifInBroadcastPkts_H;
+	uint32 ifInBroadcastPkts_L;
+	uint32 ifOutUcastPkts_H;
+	uint32 ifOutUcastPkts_L;
+	uint32 ifOutMulticastPkts_H;
+	uint32 ifOutMulticastPkts_L;
+	uint32 ifOutBroadcastPkts_H;
+	uint32 ifOutBroadcastPkts_L;
+
+	uint32 ifOutDiscards;
+	uint32 dot1dTpPortInDiscards;
+	uint32 dot3StatsSingleCollisionFrames;
+	uint32 dot3StatMultipleCollisionFrames;
+	uint32 dot3sDeferredTransmissions;
+	uint32 dot3StatsLateCollisions;
+	uint32 dot3StatsExcessiveCollisions;
+	uint32 dot3StatsSymbolErrors;
+	uint32 dot3ControlInUnknownOpcodes;
+	uint32 dot3InPauseFrames;
+	uint32 dot3OutPauseFrames;
+	uint32 etherStatsDropEvents;
+	uint32 tx_etherStatsBroadcastPkts;
+	uint32 tx_etherStatsMulticastPkts;
+	uint32 tx_etherStatsCRCAlignErrors;
+	uint32 rx_etherStatsCRCAlignErrors;
+	uint32 tx_etherStatsUndersizePkts;
+	uint32 rx_etherStatsUndersizePkts;
+	uint32 tx_etherStatsOversizePkts;
+	uint32 rx_etherStatsOversizePkts;
+	uint32 tx_etherStatsFragments;
+	uint32 rx_etherStatsFragments;
+	uint32 tx_etherStatsJabbers;
+	uint32 rx_etherStatsJabbers;
+	uint32 tx_etherStatsCollisions;
+	uint32 tx_etherStatsPkts64Octets;
+	uint32 rx_etherStatsPkts64Octets;
+	uint32 tx_etherStatsPkts65to127Octets;
+	uint32 rx_etherStatsPkts65to127Octets;
+	uint32 tx_etherStatsPkts128to255Octets;
+	uint32 rx_etherStatsPkts128to255Octets;
+	uint32 tx_etherStatsPkts256to511Octets;
+	uint32 rx_etherStatsPkts256to511Octets;
+	uint32 tx_etherStatsPkts512to1023Octets;
+	uint32 rx_etherStatsPkts512to1023Octets;
+	uint32 tx_etherStatsPkts1024to1518Octets;
+	uint32 rx_etherStatsPkts1024to1518Octets;
+
+	uint32 rx_etherStatsUndersizedropPkts;	// 54
+	uint32 tx_etherStatsPkts1519toMaxOctets;
+	uint32 rx_etherStatsPkts1519toMaxOctets;
+	uint32 tx_etherStatsPktsOverMaxOctets;
+	uint32 rx_etherStatsPktsOverMaxOctets;
+	uint32 tx_etherStatsPktsFlexibleOctetsSET1;
+	uint32 rx_etherStatsPktsFlexibleOctetsSET1;
+	uint32 tx_etherStatsPktsFlexibleOctetsCRCSET1;
+	uint32 rx_etherStatsPktsFlexibleOctetsCRCSET1;
+	uint32 tx_etherStatsPktsFlexibleOctetsSET0;
+	uint32 rx_etherStatsPktsFlexibleOctetsSET0;
+	uint32 tx_etherStatsPktsFlexibleOctetsCRSET0C;
+	uint32 rx_etherStatsPktsFlexibleOctetsCRSET0C;
+	uint32 lengthFieldError;
+	uint32 falseCarrieimes;
+	uint32 underSizeOctets;
+	uint32 framingErrors;
+
+	uint32 rxMacDiscards;		// 72
+	uint32 rxMacIPGShortDropRT;
+
+	uint32 dot1dTpLearnedEntryDiscards;	// 75
+	uint32 egrQueue7DropPktRT;
+	uint32 egrQueue6DropPktRT;
+	uint32 egrQueue5DropPktRT;
+	uint32 egrQueue4DropPktRT;
+	uint32 egrQueue3DropPktRT;
+	uint32 egrQueue2DropPktRT;
+	uint32 egrQueue1DropPktRT;
+	uint32 egrQueue0DropPktRT;
+	uint32 egrQueue7OutPktRT;
+	uint32 egrQueue6OutPktRT;
+	uint32 egrQueue5OutPktRT;
+	uint32 egrQueue4OutPktRT;
+	uint32 egrQueue3OutPktRT;
+	uint32 egrQueue2OutPktRT;
+	uint32 egrQueue1OutPktRT;
+	uint32 egrQueue0OutPktRT;
+	uint32 TxGoodCnt_H;
+	uint32 TxGoodCnt_L;
+	uint32 RxGoodCnt_H;
+	uint32 RxGoodCnt_L;
+	uint32 RxErrorCnt;
+	uint32 TxErrorCnt;
+	uint32 TxGoodCnt_phy_H;
+	uint32 TxGoodCnt_phy_L;
+	uint32 RxGoodCnt_phy_H;
+	uint32 RxGoodCnt_phy_L;
+	uint32 RxErrorCnt_phy;
+	uint32 TxErrorCnt_phy;
+}rtk_stat_port_cntr_t;
+#else
 typedef struct rtk_stat_port_cntr_s
 {
 	uint64 ifInOctets;
@@ -2874,18 +3158,30 @@ typedef struct rtk_stat_port_cntr_s
 	uint32 ifOutDiscards;
 } rtk_stat_port_cntr_t;
 #endif
+#endif
 #ifdef HND_ROUTER
-#if defined(RTCONFIG_HND_ROUTER_AX_6710) || defined(BCM4912)
-extern uint32_t hnd_get_phy_status(char *ifname);
-extern uint32_t hnd_get_phy_speed(char *ifname);
-extern uint32_t hnd_get_phy_duplex(char *ifname);
-extern uint64_t hnd_get_phy_mib(char *ifname, char *type);
-#elif defined(RTCONFIG_HND_ROUTER_AX_675X) || defined(BCM6756) || defined(BCM6855) || defined(BCM6750)
+#if defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2) || defined(RTAX3000N) || defined(BR63) || defined(GTBE98) || defined(GTBE98_PRO) || defined(EBG19) || defined(GTBE96)
+extern uint32_t rtk_get_phy_status(int port);
+extern uint32_t rtk_get_phy_speed(int port);
+extern uint32_t rtk_get_phy_duplex(int port);
+extern uint64_t rtk_get_phy_mib(int port, char *type);
+#endif
+#if defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2) || defined(RTAX3000N) || defined(BR63)
 extern uint32_t hnd_get_phy_status(int port);
 extern uint32_t hnd_get_phy_speed(int port);
 extern uint32_t hnd_get_phy_duplex(int port);
 extern uint64_t hnd_get_phy_mib(int port, char *type);
-#if defined(RTAX55) || defined(RTAX1800) || defined(RTCONFIG_EXT_RTL8365MB) || defined(RTCONFIG_EXT_RTL8370MB) || defined(RTAX58U_V2) || defined(RTAX3000N)
+#elif defined(RTCONFIG_HND_ROUTER_AX_6710) || defined(BCM4912) || defined(BCM6756) || defined(RTCONFIG_HND_ROUTER_BE_4916) || defined(BCM4906_504) || defined(RTCONFIG_MULTIWAN_IF) 
+extern uint32_t hnd_get_phy_status(char *ifname);
+extern uint32_t hnd_get_phy_speed(char *ifname);
+extern uint32_t hnd_get_phy_duplex(char *ifname);
+extern uint64_t hnd_get_phy_mib(char *ifname, char *type);
+#elif defined(RTCONFIG_HND_ROUTER_AX_675X) || defined(BCM6855) || defined(BCM6750)
+extern uint32_t hnd_get_phy_status(int port);
+extern uint32_t hnd_get_phy_speed(int port);
+extern uint32_t hnd_get_phy_duplex(int port);
+extern uint64_t hnd_get_phy_mib(int port, char *type);
+#if defined(RTAX55) || defined(RTAX1800) || defined(RTCONFIG_EXT_RTL8365MB) || defined(RTCONFIG_EXT_RTL8370MB) || defined(RTAX58U_V2) || defined(RTAX3000N) || defined(BR63)
 extern int rtkswitch_port_speed(int port);
 extern int rtkswitch_port_duplex(int port);
 extern int rtkswitch_port_stat(int port);
@@ -2897,6 +3193,9 @@ extern uint32_t hnd_get_phy_status(int port, int offs, unsigned int regv, unsign
 extern uint32_t hnd_get_phy_speed(int port, int offs, unsigned int regv, unsigned int pmdv);
 extern uint32_t hnd_get_phy_duplex(int port, int offs, unsigned int regv, unsigned int pmdv);
 extern uint64_t hnd_get_phy_mib(int port, int offs, char *type);
+#endif
+#ifdef RTCONFIG_SW_SPDLED
+extern uint32_t hnd_get_phy_speed_rc(char *ifname);
 #endif
 extern uint32_t set_ex53134_ctrl(uint32_t portmask, int ctrl);
 extern int ethctl_phy_op(char* phy_type, int addr, unsigned int reg, unsigned int value, int wr);
@@ -3061,6 +3360,7 @@ extern int nvram_set_file(const char *key, const char *fname, int max);
 #endif
 extern int free_caches(const char *clean_mode, const int clean_time, const unsigned int threshold);
 extern int update_6rd_info(void);
+extern int update_6rd_info_by_unit(int unit);
 extern int is_private_subnet(const char *ip);
 extern const char *get_wanface(void);
 extern const char *get_wanip(void);
@@ -3071,11 +3371,16 @@ extern int illegal_ipv4_netmask(char *netmask);
 extern void convert_mac_string(char *mac);
 extern int test_and_get_free_uint_network(int t_class, uint32_t *exp_ip, uint32_t exp_cidr, uint32_t excl);
 extern int test_and_get_free_char_network(int t_class, char *ip_cidr_str, uint32_t excl);
+extern int min_cidr(char *ipaddr);
+extern char *min_netmask(char *ipaddr, char *mask, size_t mask_len);
+extern char *network_addr(char *ipaddr, char *mask, char *nwaddr, size_t nwaddr_len);
 extern enum wan_unit_e get_first_connected_public_wan_unit(void);
+extern enum wan_unit_e get_first_connected_dual_wan_unit(void);
 #ifdef RTCONFIG_IPV6
 extern const char *get_wan6face(void);
 extern const char *ipv6_address(const char *ipaddr6);
 extern const char *ipv6_prefix(struct in6_addr *in6addr);
+extern const char *ipv6_prefix_by_unit(struct in6_addr *in6addr, int wan_unit);
 #if 0 /* unused */
 extern const char *ipv6_prefix(const char *ifname);
 extern int ipv6_prefix_len(const char *ifname);
@@ -3093,6 +3398,12 @@ extern int set_crt_parsed(const char *name, char *file_path);
 #endif
 extern int get_upstream_wan_unit(void);
 extern int __get_upstream_wan_unit(void) __attribute__((weak));
+#if defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033)
+extern char *calc_sfpp_iface_ipaddr(char *ipaddr, size_t ipaddr_len);
+extern int sfpp_iface_in_wan(void);
+extern int add_nat_rule_for_gpon_sfp_module(FILE *fp);
+extern int add_filter_rule_for_gpon_sfp_module(FILE *fp);
+#endif
 extern int get_wifi_unit(char *wif);
 #if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
 #ifdef RTCONFIG_DPSTA
@@ -3107,7 +3418,7 @@ extern int psr_exist(void);
 extern int psr_exist_except(int unit);
 #endif
 
-#if defined(RTCONFIG_VPN_FUSION)
+#if defined(RTCONFIG_VPN_FUSION) || defined(RTCONFIG_TPVPN) || defined(RTCONFIG_IG_SITE2SITE) || defined(RTCONFIG_WIREGUARD)
 #define VPNC_LOAD_CLIENT_LIST          0x01
 #define VPNC_LOAD_PPTP_OPT                     0x02
 extern int _get_new_vpnc_index(void);
@@ -3166,7 +3477,7 @@ extern int exec_and_return_string(const char *cmd, const char *keyword, char *bu
 extern int exec_and_parse(const char *cmd, const char *keyword, const char *fmt, int cnt, ...);
 extern char *iwpriv_get(const char *iface, char *cmd);
 extern int iwpriv_get_int(const char *iface, char *cmd, int *result);
-extern int readdir_wrapper(const char *path, const char *keyword, int (*handler)(const char *path, const struct dirent *de, void *arg), void *arg);
+extern int readdir_wrapper(const char *path, const char *keyword, int (*handler)(const char *path, const struct dirent *de, size_t de_size, void *arg), void *arg);
 extern char *get_qos_prefix(int unit, char *buf);
 extern int internet_ready(void);
 extern void set_no_internet_ready(void);
@@ -3230,7 +3541,7 @@ extern char *__bitmask2chlist2g(uint64_t mask, char *sep, char *ch_list, size_t 
 extern char *__bitmask2chlist5g(uint64_t mask, char *sep, char *ch_list, size_t ch_list_len);
 extern char *bitmask2chlist2g(uint64_t mask, char *sep);
 extern char *bitmask2chlist5g(uint64_t mask, char *sep);
-#if defined(RTCONFIG_WIFI6E)
+#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
 extern int ch6g2bit(int ch);
 extern uint64_t ch6g2bitmask(int ch);
 extern int bit2ch6g(int bit);
@@ -3287,7 +3598,8 @@ extern int get_ispctrl();
 extern unsigned short get_extend_cap();
 extern void wl_vif_to_subnet(const char *ifname, char *net, int len);
 extern int get_string_in_62(char *in_list, int idx, char *out, int out_len);
-extern int vpnc_use_tunnel(void);
+extern int vpns_use_tunnel(void);
+extern int vpnc_use_tunnel(int vpnc_unit, const char *proto);
 
 /* scripts.c */
 extern void run_custom_script(char *name, int timeout, char *arg1, char *arg2);
@@ -3316,8 +3628,8 @@ extern int notify_rc_and_period_wait(const char *event_name, int wait);
 
 /* wl.c */
 #ifdef CONFIG_BCMWL5
-#ifdef __CONFIG_DHDAP__
 extern int dhd_probe(char *name);
+#ifdef __CONFIG_DHDAP__
 extern int dhd_ioctl(char *name, int cmd, void *buf, int len);
 extern int dhd_iovar_setbuf(char *ifname, char *iovar, void *param, int paramlen, void *bufptr, int buflen);
 extern int dhd_iovar_setint(char *ifname, char *iovar, int val);
@@ -3338,10 +3650,12 @@ extern int get_nr_wan_unit(void);
 #ifdef RTCONFIG_NEW_PHYMAP
 typedef struct _phy_port {
 	int phy_port_id;     // port id for driver
+	int ext_port_id;     // port id for external switch driver
 	char *label_name;    // could be W0, L1, ..., L8
 	uint32_t cap;        // hardware or software capability. because multiple capabilities are supported, mutliple bits will be set.
 	int max_rate;        // max support link rate (ex. 10, 100, 1000, 2500, 10000)
 	char *ifname;        // the mapping interface name
+	uint32_t flag;       // flag for special marks.
 } phy_port;
 typedef struct _phy_port_mapping {
 	int count;           // the amount of phy port
@@ -3382,6 +3696,8 @@ static inline char *get_phy_port_cap_name(uint32_t cap, char *buf, int buf_len)
 		len += snprintf(buf+len, buf_len-len, len ? ",%s" : "%s", "mobile");
 	if (cap & PHY_PORT_CAP_WANLAN)
 		len += snprintf(buf+len, buf_len-len, len ? ",%s" : "%s", "wanlan");
+	if (cap & PHY_PORT_CAP_MOCA)
+		len += snprintf(buf+len, buf_len-len, len ? ",%s" : "%s", "moca");
 
 	// Software configure capability
 	if (cap & PHY_PORT_CAP_DUALWAN_PRIMARY_WAN)
@@ -3512,13 +3828,12 @@ static inline void add_sw_cap(phy_port_mapping *port_mapping)
 {
 	clear_all_sw_cap(port_mapping);
 
+	// Add software capability
+#if defined(RTCONFIG_DUALWAN)
 	if (!is_router_mode()) {
 		add_default_primary_wan(port_mapping);
 		return;
 	}
-
-	// Add software capability
-#if defined(RTCONFIG_DUALWAN)
 	char *wans_dualwan = nvram_safe_get("wans_dualwan");
 	if (strlen(wans_dualwan)) {
 		int unit;
@@ -3539,6 +3854,9 @@ static inline void add_sw_cap(phy_port_mapping *port_mapping)
 			}
 		}
 	}
+#else
+	if (!strcmp(nvram_safe_get("wans_cap"), "wan"))
+		add_sw_wan_cap(port_mapping, WANS_DUALWAN_IF_WAN, PHY_PORT_CAP_DUALWAN_PRIMARY_WAN);
 #endif
 #if defined(RTCONFIG_MULTICAST_IPTV)
 	add_sw_iptv_cap(port_mapping, nvram_safe_get("iptv_stb_port"), PHY_PORT_CAP_IPTV_STB);
@@ -3606,6 +3924,7 @@ extern int get_nr_guest_network(int band);
 extern int get_gate_num(void);
 extern void set_lan_phy(char *phy);
 extern void add_lan_phy(char *phy);
+extern void del_lan_phy(const char *phy);
 extern void set_wan_phy(char *phy);
 extern void add_wan_phy(char *phy);
 #if defined(RTCONFIG_SWRT_I2CLED)
@@ -3750,7 +4069,7 @@ static inline int turbo_led_control(int onoff)
 
 static inline int boost_led_control(int onoff)
 {
-#if defined(GTAX11000) || defined(GTAXE11000) || defined(GTAX11000_PRO) || defined(GTAXE16000)
+#if defined(GTAX11000) || defined(GTAXE11000)
 	return led_control(LED_LOGO, onoff);
 #else
 	return turbo_led_control(onoff);
@@ -3768,7 +4087,7 @@ static inline int inhibit_led_on(void) { return 0; }
 #endif
 
 /* bled.c */
-#if defined(RTCONFIG_BLINK_LED) || defined(RTCONFIG_FIXED_BRIGHTNESS_RGBLED)
+#if defined(RTCONFIG_BLINK_LED)
 extern int __config_netdev_bled(const char *led_gpio, const char *ifname, unsigned int min_blink_speed, unsigned int interval);
 extern int config_netdev_bled(const char *led_gpio, const char *ifname);
 extern int set_bled_udef_pattern(const char *led_gpio, unsigned int interval, const char *pattern);
@@ -3900,6 +4219,9 @@ static inline const char *vport_to_iface_name(__attribute__ ((unused)) unsigned 
 #endif
 static inline unsigned int vportmask_to_rportmask(unsigned int vportmask) { return vportmask; };
 #endif
+#ifdef RTCONFIG_AMAS
+extern void led_blinking_by_bled(char *led_nvram, int led_id, char *ifname, unsigned int interval, char *pattern);
+#endif
 
 #else	/* !RTCONFIG_BLINK_LED */
 static inline int __config_netdev_bled(__attribute__ ((unused)) const char *led_gpio, __attribute__ ((unused)) const char *ifname, __attribute__ ((unused)) unsigned int min_blink_speed, __attribute__ ((unused)) unsigned int interval) { return 0; }
@@ -3933,7 +4255,7 @@ static inline int add_gpio_to_bled(__attribute__ ((unused)) const char *main_led
 
 #endif	/* RTCONFIG_BLINK_LED */
 
-#if defined(RTCONFIG_FIXED_BRIGHTNESS_RGBLED) || defined(RTCONFIG_PWM_RGBLED)
+#if defined(RTCONFIG_ZENWIFI_RGBLED)
 /* color */
 #define RGBLED_OFF			0x0
 #define RGBLED_BLED			0x1
@@ -3944,8 +4266,10 @@ static inline int add_gpio_to_bled(__attribute__ ((unused)) const char *main_led
 #define RGBLED_BLUE			RGBLED_BLED
 #define RGBLED_GREEN			RGBLED_GLED
 #define RGBLED_RED			RGBLED_RLED
-#if defined(PLAX56_XP4) || defined(RTAX59U)
+#if defined(PLAX56_XP4) || defined(RTAX59U) 
 #define RGBLED_WHITE			RGBLED_COLOR_MESK
+#elif defined(PRTAX57_GO)
+#define RGBLED_WHITE			RGBLED_WLED
 #else
 #define RGBLED_WHITE			(RGBLED_BLED | RGBLED_GLED | RGBLED_RLED)
 #endif
@@ -3957,18 +4281,21 @@ static inline int add_gpio_to_bled(__attribute__ ((unused)) const char *main_led
 #define RGBLED_3ON1OFF			0x20
 #define RGBLED_ATE_MODE			0x40
 #define RGBLED_3ON3OFF			0x80
-#define RGBLED_BREATHING		0x100
-#define RGBLED_BLINK_MESK		(RGBLED_SBLINK | RGBLED_3ON1OFF | RGBLED_ATE_MODE | RGBLED_3ON3OFF | RGBLED_BREATHING)
+#define RGBLED_BREATHING		RGBLED_3ON3OFF
+#define RGBLED_FBLINK			0x100
+#define RGBLED_BLINK_MESK		(RGBLED_SBLINK | RGBLED_3ON1OFF | RGBLED_ATE_MODE | RGBLED_3ON3OFF | RGBLED_FBLINK)
 /* color+blink */
 #define RGBLED_GREEN_3ON1OFF		(RGBLED_GREEN | RGBLED_3ON1OFF)
 #define RGBLED_GREEN_3ON3OFF		(RGBLED_GREEN | RGBLED_3ON3OFF)
 #define RGBLED_GREEN_BREATHING		(RGBLED_GREEN | RGBLED_BREATHING)
+#define RGBLED_GREEN_FBLINK		(RGBLED_GREEN | RGBLED_FBLINK)
 #define RGBLED_BLUE_3ON1OFF		(RGBLED_BLUE | RGBLED_3ON1OFF)
 #define RGBLED_BLUE_3ON3OFF		(RGBLED_BLUE | RGBLED_3ON3OFF)
 #define RGBLED_PURPLE_3ON1OFF		(RGBLED_PURPLE | RGBLED_3ON1OFF)
 #define RGBLED_WHITE_SBLINK		(RGBLED_WHITE | RGBLED_SBLINK)
 #define RGBLED_BLUE_SBLINK		(RGBLED_BLUE | RGBLED_SBLINK)
 #define RGBLED_YELLOW_SBLINK		(RGBLED_YELLOW | RGBLED_SBLINK)
+#define RGBLED_BLUE_FBLINK		(RGBLED_BLUE | RGBLED_FBLINK)
 /* event */
 #if defined(MAPAC1750)
 #define RGBLED_BOOTING			RGBLED_BLUE_3ON3OFF
@@ -3979,6 +4306,7 @@ static inline int add_gpio_to_bled(__attribute__ ((unused)) const char *main_led
 #define RGBLED_RST_EVENT		RGBLED_YELLOW
 #define RGBLED_WPS_EVENT		RGBLED_GREEN_3ON1OFF
 #define RGBLED_SYNC_EVENT		RGBLED_WPS_EVENT
+#define RGBLED_OBD_SELECTED_RE		RGBLED_GREEN_FBLINK
 #define RGBLED_RE_JOIN			RGBLED_GREEN		/* unnecessary */
 #define RGBLED_CONNECTED		RGBLED_NIAGARA_BLUE
 #define RGBLED_DISCONNECTED		RGBLED_RED
@@ -3986,11 +4314,7 @@ static inline int add_gpio_to_bled(__attribute__ ((unused)) const char *main_led
 #define RGBLED_ETH_BACKHAUL		RGBLED_GREEN
 #define RGBLED_WEAK_BACKHAUL		RGBLED_YELLOW		/* unnecessary */
 #else /* ZenWiFi series */
-#ifdef RTCONFIG_PWM_RGBLED
-#define RGBLED_BOOTING			RGBLED_GREEN_BREATHING
-#else
 #define RGBLED_BOOTING			RGBLED_GREEN_3ON3OFF
-#endif
 #define RGBLED_DEFAULT_STANDBY		RGBLED_BLUE
 #define RGBLED_APPLY_EVENT		RGBLED_BOOTING
 #define RGBLED_BT_CONNECT		RGBLED_BLUE_SBLINK
@@ -3998,6 +4322,7 @@ static inline int add_gpio_to_bled(__attribute__ ((unused)) const char *main_led
 #define RGBLED_RST_EVENT		RGBLED_YELLOW
 #define RGBLED_WPS_EVENT		RGBLED_BLUE_3ON1OFF
 #define RGBLED_SYNC_EVENT		RGBLED_WPS_EVENT
+#define RGBLED_OBD_SELECTED_RE		RGBLED_BLUE_FBLINK
 #define RGBLED_RE_JOIN			RGBLED_GREEN
 #define RGBLED_CONNECTED		RGBLED_WHITE
 #define RGBLED_DISCONNECTED		RGBLED_RED
@@ -4006,7 +4331,7 @@ static inline int add_gpio_to_bled(__attribute__ ((unused)) const char *main_led
 #define RGBLED_WEAK_BACKHAUL		RGBLED_YELLOW
 #endif
 extern void set_rgbled(unsigned int mode);
-#elif defined(RTCONFIG_PWMX2_GPIOX1_RGBLED)
+#elif defined(RTCONFIG_AURA_RGBLED)
 #define RGBLED_ATE_MODE			0x1
 #define RGBLED_DEFAULT_STANDBY		0x2
 #define RGBLED_QIS_RUN			0x3
@@ -4127,6 +4452,7 @@ extern void ac68u_cofs();
 extern int is_ax5400_i1();
 extern int is_ax5400_i1d();
 extern int is_ax5400_i1n();
+extern int is_custom_i2();
 #endif
 
 #ifdef RTAX86U
@@ -4146,21 +4472,29 @@ extern void erase_symbol(char *old, char *sym);
 
 /* pwenc.c */
 #if defined(RTCONFIG_NVRAM_ENCRYPT) || defined(RTCONFIG_ASD)
-extern int pw_enc(const char *input, char *output);
-extern int pw_dec(const char *input, char *output, int len);
+extern int pw_enc(const char *input, char *output, int with_salt);
+extern int pw_dec(const char *input, char *output, int len, int with_salt);
 extern int pw_enc_blen(const char *input);
 extern int pw_dec_len(const char *input);
 #endif
 #ifdef RTCONFIG_NVRAM_ENCRYPT
+struct INVALID_NVRAM_GET_TABLE {
+        char *name;
+        char *exclude_process;
+};
 #define NVRAM_ENC_LEN	1024
 #define NVRAM_ENC_MAXLEN	4096
 extern int set_enc_nvram(char *name, char *input, char *output);
 extern int enc_nvram(char *name, char *input, char *output);
 extern int dec_nvram(char *name, char *input, char *output);
 extern int start_enc_nvram(void);
-extern int start_dec_nvram(void);
 extern int init_enc_nvram(void);
+extern int invalid_nvram_get_name(char *name);
+extern int invalid_nvram_get_program(char *name);
+extern int invalid_program_check(void);
+extern char *str_to_md5(const char *string, int length, char *out);
 #endif
+extern void c(char *buf, size_t len, ...);
 
 /* amas_utils.c */
 #ifdef RTCONFIG_AMAS
@@ -4174,6 +4508,8 @@ extern int gen_uplinkport_describe(char *port_def, char *type, char *subtype, in
 #ifdef RTCONFIG_ISP_CUSTOMIZE
 extern char *find_customize_setting_by_name(const char *name);
 #endif
+
+#define MAX_SSID_LEN 32
 
 enum {
 	CKN_STR_DEFAULT = 0,
@@ -4380,6 +4716,10 @@ typedef struct __amaslib_notification__t_
 #define AMASLIB_PID_PATH           "/var/run/amas_lib.pid"
 #define AMASLIB_SOCKET_PATH        "/var/run/amas_lib_socket"
 
+#if defined(RTCONFIG_NOWL)
+#define MAX_NR_WL_BAND			8
+#endif
+
 #endif /* defined(RTCONFIG_AMAS) */
 
 #if defined(RTCONFIG_TIME_QUOTA)
@@ -4390,90 +4730,6 @@ typedef struct __amaslib_notification__t_
 #define TQ_PROFILE_LIST_LOCK	"tq_profile_list"
 #define TQ_RULE_PERSIST_LOCK	"tq_rules_persist"
 #endif /* defined(RTCONFIG_TIME_QUOTA) */
-
-#ifdef RTCONFIG_TUNNEL
-
-#define AWSIOT_IPC_SOCKET_PATH  "/var/run/awsiot_ipc_socket"
-#define MASTIFF_IPC_SOCKET_PATH  "/var/run/mastiff_ipc_socket"
-#define MASTIFF_IPC_MAX_CONNECTION       10
-
-#define AAE_MAX_IPC_PACKET_SIZE   2048
-
-/* for ipc packet handler */
-struct aaeIpcArgStruct {
-  unsigned char data[AAE_MAX_IPC_PACKET_SIZE];
-  size_t dataLen;
-  char waitResp;
-  int sock;
-}aaeIpcArgs;
-
-#define AAE_IPC_EVENT_ID "eid"
-#define AAE_IPC_STATUS "status"
-
-#ifdef RTCONFIG_AWSIOT
-#define AWSIOT_PREFIX "awsiot"
-enum awsiotEventType {
-	EID_AWSIOT_NONE = 0,
-	EID_AWSIOT_TUNNEL_ENABLE = 1,
-	EID_AWSIOT_MAX
-};
-#define AWSIOT_GENERIC_MSG	 "{\""AWSIOT_PREFIX"\":{\""AAE_IPC_EVENT_ID"\":%d}}"
-#endif
-
-#ifdef RTCONFIG_ACCOUNT_BINDING
-#define AAE_DDNS_PREFIX "ddns"
-enum aaeDdnsEventType {
-	AAE_EID_DDNS_NONE = 0,
-	AAE_EID_DDNS_REFRESH_TOKEN = 1,
-	AAE_EID_DDNS_MAX
-};
-#define AAE_DDNS_GENERIC_MSG	 "{\""AAE_DDNS_PREFIX"\":{\""AAE_IPC_EVENT_ID"\":%d}}"
-#define AAE_DDNS_GENERIC_RESP_MSG	 "{\""AAE_DDNS_PREFIX"\":{\""AAE_IPC_EVENT_ID"\":%d, \""AAE_IPC_STATUS"\":\"%s\"}}"
-
-#define AAE_NTC_PREFIX "nt_center"
-enum aaeNtcEventType {
-	AAE_EID_NTC_NONE = 0,
-	AAE_EID_NTC_REFRESH_DEVICE_TICKET = 1,
-	AAE_EID_NTC_MAX
-};
-#define AAE_NTC_GENERIC_MSG	 "{\""AAE_NTC_PREFIX"\":{\""AAE_IPC_EVENT_ID"\":%d}}"
-#define AAE_NTC_GENERIC_RESP_MSG	 "{\""AAE_NTC_PREFIX"\":{\""AAE_IPC_EVENT_ID"\":%d, \""AAE_IPC_STATUS"\":\"%s\"}}"
-
-#define AAE_HTTPD_PREFIX "httpd"
-#define AAE_HTTPD_PAYLOAD2_PREFIX "payload2"
-
-#define AAE_HTTPD_ACCOUNT_REG_PREFIX "account_reg"
-#define OAUTH_TYPE "oauth_type"
-#define OAUTH_USERNAME "username"
-#define OAUTH_PASSWORD "password"
-#define OAUTH_CUSID "cusid"
-#define OAUTH_REFRESH_TICKET "refresh_ticket"
-#define OAUTH_USER_TICKET "user_ticket"
-
-#define AAE_HTTPD_FBWIFI2_REG_PREFIX "fbwifi2_reg"
-#define AAE_HTTPD_REFRESH_DEVICE_TICKET_PREFIX "refresh_device_ticket"
-enum aaeHttpdEventType {
-	AAE_EID_HTTPD_NONE = 0,
-	AAE_EID_HTTPD_PAYLOAD2 = 1,
-	AAE_EID_HTTPD_FBWIFI2_REG = 2,
-	AAE_EID_HTTPD_ACCOUNT_REG = 3,
-	AAE_EID_HTTPD_REFRESH_DEVICE_TICKET = 4,
-	AAE_EID_HTTPD_MAX
-};
-
-#define AAE_HTTPD_PAYLOAD2_MSG	 "{\""AAE_HTTPD_PREFIX"\":{\""AAE_IPC_EVENT_ID"\":%d, \""AAE_HTTPD_PAYLOAD2_PREFIX"\":%s}}"
-#define AAE_HTTPD_PAYLOAD2_RESP_MSG	 "{\""AAE_HTTPD_PREFIX"\":{\""AAE_IPC_EVENT_ID"\":%d, \""AAE_IPC_STATUS"\":\"%s\"}}"
-#define AAE_HTTPD_ACCOUNT_REG_MSG	 "{\""AAE_HTTPD_PREFIX"\":{\""AAE_IPC_EVENT_ID"\":%d, \""AAE_HTTPD_ACCOUNT_REG_PREFIX"\":%s}}"
-#define AAE_HTTPD_ACCOUNT_REG_RESP_MSG	 "{\""AAE_HTTPD_PREFIX"\":{\""AAE_IPC_EVENT_ID"\":%d, \""AAE_IPC_STATUS"\":\"%s\", \""AAE_HTTPD_ACCOUNT_REG_PREFIX"\":%s}}"
-#define AAE_HTTPD_ACCOUNT_REG_RESP_RAW	 "{\""OAUTH_CUSID"\":\"%s\", \""OAUTH_REFRESH_TICKET"\":\"%s\", \""OAUTH_USER_TICKET"\":\"%s\"}"
-#define AAE_HTTPD_FBWIFI2_REG_MSG	 "{\""AAE_HTTPD_PREFIX"\":{\""AAE_IPC_EVENT_ID"\":%d, \""AAE_HTTPD_FBWIFI2_REG_PREFIX"\":%s}}"
-#define AAE_HTTPD_FBWIFI2_REG_RESP_MSG	 "{\""AAE_HTTPD_PREFIX"\":{\""AAE_IPC_EVENT_ID"\":%d, \""AAE_IPC_STATUS"\":\"%s\", \""AAE_HTTPD_FBWIFI2_REG_PREFIX"\":%s}}"
-#define AAE_HTTPD_REFRESH_DEVICE_TICKET_MSG	 "{\""AAE_HTTPD_PREFIX"\":{\""AAE_IPC_EVENT_ID"\":%d}}"
-#define AAE_HTTPD_REFRESH_DEVICE_TICKET_RESP_MSG	 "{\""AAE_HTTPD_PREFIX"\":{\""AAE_IPC_EVENT_ID"\":%d, \""AAE_IPC_STATUS"\":\"%s\"}}"
-#endif
-
-int aae_sendIpcMsgAndWaitResp(char *ipcPath, char *data, int dataLen, char *out, int outLen, int timeout_sec);
-#endif //#ifdef RTCONFIG_TUNNEL
 
 extern int get_discovery_ssid(char *ssid_g, int size);
 extern int get_index_page(char *page, int size);
@@ -4497,6 +4753,9 @@ enum {
 	BCM_CLED_BLUE,
 	BCM_CLED_YELLOW,
 	BCM_CLED_WHITE,
+#ifdef RPAX58
+	BCM_CLED_PURPLE,
+#endif
 	BCM_CLED_OFF,
 	BCM_CLED_END
 };
@@ -4514,7 +4773,13 @@ enum {
 extern int amazon_wss_ap_isolate_support(char *prefix);
 extern void firmware_downgrade_check(uint32_t sf);
 
-#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX11000_PRO) || defined(GTAXE16000) || defined(GTAX6000) || defined(GT10) || defined(RTAX82U_V2) || defined(TUFAX6000)
+#ifdef GTAX6000
+#define ANTLED_SCHEME_OFF               0
+#define ANTLED_SCHEME_STATIC            1
+#define ANTLED_SCHEME_RSSI              2
+#endif
+
+#if defined(RTAX82U) || defined(DSL_AX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX11000_PRO) || defined(GTAXE16000) || defined(GTBE98) || defined(GTBE98_PRO) || defined(GTAX6000) || defined(GT10) || defined(RTAX82U_V2) || defined(TUFAX5400_V2) || defined(TUFAX6000) || defined(GTBE96)
 #define LEDG_OFF			0
 #define LEDG_STEADY_MODE		1
 #define LEDG_FADING_REVERSE_MODE	2
@@ -4599,6 +4864,7 @@ extern void gen_bcmbsd_def_policy(int sel);
 #define SMRTCONN_SEL_5G		0x0002
 #define SMRTCONN_SEL_5G2	0x0004
 #define SMRTCONN_SEL_6G		0x0008
+#define SMRTCONN_SEL_6G2         0x0010
 
 enum {
 	BCMBSD_SELIF_2G_5G1_5G2_6G = 1,
@@ -4615,22 +4881,6 @@ enum {
 	BCMBSD_SELIF_MAX 	   = 12
 };
 
-/* which wlunit to set the corresponding rule */
-enum {
-#if defined(GTAXE16000)
-	WLIF_2G	 = 3,
-	WLIF_5G1 = 0,
-	WLIF_5G2 = 1,
-	WLIF_6G	 = 2,
-#else
-	WLIF_2G	 = 0,
-	WLIF_5G1 = 1,
-	WLIF_5G2 = 2,
-	WLIF_6G	 = 3,
-#endif
-	WLIF_MAX = 4
-};
-
 /* rule idx of bcmbsd_def_policy table */
 enum {
 	RULE_2G = 0,
@@ -4642,6 +4892,33 @@ enum {
 
 #endif
 #endif
+
+/* which wlunit to set the corresponding rule */
+enum {
+#if defined(GTAXE16000) || defined(GTBE98)
+	WLIF_2G	 = 3,
+	WLIF_5G1 = 0,
+	WLIF_5G2 = 1,
+	WLIF_6G	 = 2,
+#elif defined(GTBE98_PRO)
+	WLIF_2G	 = 3,
+	WLIF_5G1 = 0,
+	WLIF_5G2 = 0,
+	WLIF_6G	 = 1,
+	WLIF_6G2 = 2,
+#elif defined(GT10) || defined(RTAX9000)
+	WLIF_2G  = 2,
+	WLIF_5G1 = 0,
+	WLIF_5G2 = 1,
+	WLIF_6G  = 3,
+#else
+	WLIF_2G	 = 0,
+	WLIF_5G1 = 1,
+	WLIF_5G2 = 2,
+	WLIF_6G	 = 3,
+#endif
+	WLIF_MAX = 4
+};
 
 #define WL_NBAND_2G 2
 #define WL_NBAND_5G 1
@@ -4675,6 +4952,7 @@ extern char *server6_table[][2];
 #endif
 
 extern void sync_profile_update_time(int feat);
+
 /* conn diag bw */
 enum {
 	CDIAG_BW_NONE	= 0,
@@ -4700,9 +4978,110 @@ enum {
 extern int is_tpvpn_configured(int provider, const char* region, const char* conntype, int unit);
 #endif
 
+//keep original priority and route table id without RTCONFIG_MULTIWAN_IF
+//ip rule pref
+#define IP_RULE_PREF_SDN_ROUTE								20		//routing table for sdn 
+#define IP_RULE_PREF_VPNC_POLICY_CLIENT 	100		//used by vpn fusion
+#define IP_RULE_PREF_VPNC_POLICY_IF 				1000	//used by vpn fusion
+#define IP_RULE_PREF_DEFAULT_CONN					999 	//used by vpn fusion for br0
+#define IP_RULE_PREF_MAIN 											32766		//default ip rule
+#define IP_RULE_PREF_DEFAULT 									32767		//default ip rule
+
+#ifdef RTCONFIG_MULTIWAN_IF
+#define IP_RULE_PREF_LOCAL										0			//defaule ip rule
+#define IP_RULE_PREF_TMP										5			//temporary ip rule
+#define IP_RULE_PREF_STATIC_ROUTE						10			//routing table for static routing rule
+#define IP_RULE_PREF_DET_INTERNET						50		//used by detect internet
+#define IP_RULE_PREF_VPNC_OVER_MTWAN				1200	//used by vpn client over multi wan
+#define IP_RULE_PREF_MTWAN_MARK_BASE				5000	//used by multi wan mark
+#define IP_RULE_PREF_MTWAN_LB_BASE					14900	//used by multi wan lb route
+#define IP_RULE_PREF_MTWAN_ROUTE					15000	//used by multi wan
+#define IP_RULE_PREF_DUALWAN_ROUTE				20100	//used by dual wan
+#define IP_RULE_PREF_DUALWAN_LB						20150	//used by dual wan
+#define IP_RULE_PREF_DUALWAN_FROM_WAN	20200	//used by dual wan
+#define IP_RULE_PREF_DUALWAN_ISP_ROUTE		20300	//used by dual wan
+#define IP_RULE_PREF_DUALWAN_TO_WAN				20400	//used by dual wan
+#else
+#define IP_RULE_PREF_DUALWAN_ROUTE				100	//used by dual wan
+#define IP_RULE_PREF_DUALWAN_LB						150	//used by dual wan
+#define IP_RULE_PREF_DUALWAN_FROM_WAN	200	//used by dual wan
+#define IP_RULE_PREF_DUALWAN_ISP_ROUTE		300	//used by dual wan
+#define IP_RULE_PREF_DUALWAN_TO_WAN				400	//used by dual wan
+#endif
+
+//ip route table id
+#define IP_ROUTE_TABLE_ID_SDN						8437
+
+#ifdef RTCONFIG_MULTIWAN_IF
+#define IP_ROUTE_TABLE_ID_VPNC_BASE				1000
+#define IP_ROUTE_TABLE_ID_DUALWAN_BASE	1500
+#define IP_ROUTE_TABLE_ID_MTWAN_BASE	2000
+#define IP_ROUTE_TABLE_ID_MTWAN_LB_BASE	4000
+#else
+#define IP_ROUTE_TABLE_ID_VPNC_BASE				0
+#define IP_ROUTE_TABLE_ID_DUALWAN_BASE	100
+#endif
+
+#ifdef RTCONFIG_MULTI_PPP
+#define IP_RULE_PREF_MTPPP_BASE		5000
+#define IP_ROUTE_TABLE_ID_MTPPP_BASE	5000
+#endif
+
+#if defined(RTCONFIG_AMAS_CENTRAL_ADS)
+struct ads_info {
+	int tx_rssi[4];
+	int tx_datarate;
+};
+#endif
+
 #if defined(RTCONFIG_ACCOUNT_BINDING)
 extern int is_account_bound();
 #endif
+
+#ifdef RTCONFIG_SW_SPDLED
+struct devif_spdled {
+	char *ifname;
+	int  gpio;
+};
+extern struct devif_spdled devif_spdled_list[];
+
+#endif
+
+#if defined(XT8_V2)
+int check_pkgtb_boardid(char *ptr_pkgtb);
+#endif
+
+extern char *make_salt(char *scheme_id, char *buf, size_t size);
+extern int asus_openssl_crypt(char *key, char *salt, char *out, int out_len);
+
+enum{
+	ASUS_NV_PP_1 = 1,
+	ASUS_NV_PP_2,
+	ASUS_NV_PP_3,
+	ASUS_NV_PP_4,
+	ASUS_NV_PP_5,
+	ASUS_NV_PP_MAX
+};
+
+enum{
+	ASUS_PP_AUTOUPGRADE,
+	ASUS_PP_ASD,
+	ASUS_PP_AHS
+};
+
+struct ASUS_PP_table {
+	char *name;
+	char *version;
+	int id;
+};
+extern struct ASUS_PP_table ASUS_PP_t[];
+
+extern int webapi_get_b(const int id, char *buf, size_t len);
+extern int get_ASUS_privacy_policy_state(const int id);
+extern int get_ASUS_privacy_policy(void);
+extern int get_ASUS_privacy_policy_ver(const int id);
+
+extern int adjust_62_nv_list(char *name);
 
 #if defined(RTCONFIG_SWRT_I2CLED)
 enum {
@@ -4757,4 +5136,3 @@ extern int cpu_plltype(void);
 #define unlikely(x) __builtin_expect((x), 0)
 #endif
 #endif	/* !__SHARED_H__ */
-

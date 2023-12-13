@@ -704,7 +704,7 @@ if [ "$modem_type" == "tty" -o "$modem_type" == "qmi" -o "$modem_type" == "mbim"
 			echo "$modem_type: Fail to set +GTRNDIS=1,1 to connect."
 			exit 0
 		fi
-		
+
 		at_ret=`/usr/sbin/modem_at.sh '+GTRNDIS?' "$modem_reg_time" 2>&1`
 		ret=`echo -n "$at_ret" |grep "GTRNDIS: 1," |awk 'BEGIN{FS=","}{print $3}' |awk 'BEGIN{RS="\""}{print $1}' | grep "\." 2>/dev/null`
 		if [ -z "$ret" ]; then

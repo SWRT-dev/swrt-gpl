@@ -29,7 +29,7 @@
 
 #ifdef RTCONFIG_BRCM_NAND_JFFS2
 #ifdef HND_ROUTER
-#ifdef RTCONFIG_HND_ROUTER_AX_6756
+#if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_HND_ROUTER_BE_4916)
 #define JFFS2_PARTITION "jffs"
 #else
 #define JFFS2_PARTITION	"misc2"
@@ -90,6 +90,7 @@ unsigned int get_root_type(void)
 		case MODEL_RTACRH18:
 		case MODEL_RT4GAC86U:
 		case MODEL_RTAX53U:
+		case MODEL_XD4S:
 		case MODEL_RTAX54:
 		case MODEL_RT4GAX56:
 		case MODEL_RTN11P_B1:
@@ -105,17 +106,30 @@ unsigned int get_root_type(void)
 		case MODEL_GTAC5300:
 		case MODEL_RTAC86U:
 		case MODEL_RTAX88U:
+		case MODEL_BC109:
+		case MODEL_BC105:
+		case MODEL_EBG19:
 		case MODEL_GTAX11000:
 		case MODEL_RTAX92U:
 		case MODEL_RTAX95Q:
 		case MODEL_XT8PRO:
+		case MODEL_BT12:
+		case MODEL_BQ16:
+		case MODEL_BM68:
+		case MODEL_XT8_V2:
 		case MODEL_RTAXE95Q:
 		case MODEL_ET8PRO:
+		case MODEL_ET8_V2:
 		case MODEL_RTAX56_XD4:
 		case MODEL_XD4PRO:
+		case MODEL_XC5:
 		case MODEL_CTAX56_XD4:
+		case MODEL_EBA63:
 		case MODEL_RTAX58U:
+		case MODEL_RTAX82_XD6S:
 		case MODEL_RTAX58U_V2:
+		case MODEL_RTAX3000N:
+		case MODEL_BR63:
 		case MODEL_RTAX55:
 		case MODEL_RTAX56U:
 		case MODEL_RPAX56:
@@ -124,8 +138,16 @@ unsigned int get_root_type(void)
 		case MODEL_GTAX6000:
 		case MODEL_GTAX11000_PRO:
 		case MODEL_GTAXE16000:
+		case MODEL_GTBE98:
+		case MODEL_GTBE98_PRO:
 		case MODEL_ET12:
 		case MODEL_XT12:
+		case MODEL_RTAX86U:
+		case MODEL_RTAX68U:
+		case MODEL_RTAX86U_PRO:
+		case MODEL_RTAX88U_PRO:
+		case MODEL_RTBE96U:
+		case MODEL_GTBE96:
 			return 0x24051905;      /* ubifs */
 		case MODEL_DSLAX82U:
 		{
@@ -270,6 +292,8 @@ enum {
 	JFFS2_END
 };
 
+#if !defined(RTCONFIG_UBIFS) && !defined(RTCONFIG_YAFFS)
+#if defined(RTCONFIG_JFFS2) || defined(RTCONFIG_JFFSV1) || defined(RTCONFIG_BRCM_NAND_JFFS2)
 void start_jffs2(void)
 {
 	if (!nvram_match("jffs2_on", "1")) {
@@ -439,12 +463,10 @@ void start_jffs2(void)
 	notice_set("jffs", format ? "Formatted" : "Loaded");
 	jffs2_fail = 0;
 
-#if defined(HND_ROUTER) || defined(DSL_AC68U)
 #ifdef RTCONFIG_JFFS_NVRAM
 	system("rm -rf /jffs/nvram_war");
 	jffs_nvram_init();
 	system("touch /jffs/nvram_war");
-#endif
 #endif
 
 #if 0 /* disable legacy & asus autoexec */
@@ -512,3 +534,5 @@ void stop_jffs2(int stop)
 #endif
 }
 
+#endif // defined(RTCONFIG_JFFS2) || defined(RTCONFIG_JFFSV1) || defined(RTCONFIG_BRCM_NAND_JFFS2)
+#endif // !defined(RTCONFIG_UBIFS) && !defined(RTCONFIG_YAFFS)

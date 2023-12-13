@@ -48,6 +48,8 @@ static const struct model_s model_list[] = {
 	{ "TUF-AX4200",		MODEL_TUFAX4200		},
 	{ "TUF-AX6000",		MODEL_TUFAX6000		},
 	{ "RT-AX59U",		MODEL_RTAX59U		},
+	{ "PRT-AX57_GO",	MODEL_PRTAX57GO		},
+	{ "RT-AX52",		MODEL_RTAX52		},
 	{ "RT-AC59U",		MODEL_RTAC59U		},
 	{ "RT-AC59U_V2",	MODEL_RTAC59U		},
 	{ "PL-AX56_XP4",	MODEL_PLAX56XP4		},
@@ -92,6 +94,8 @@ static const struct model_s model_list[] = {
 	{ "ET8PRO",		MODEL_ET8PRO		},
 	{ "RT-AX56_XD4",	MODEL_RTAX56_XD4	},
 	{ "XD4PRO",	MODEL_XD4PRO	},
+        { "XC5",     		MODEL_XC5    		},
+	{ "EBA63",		MODEL_EBA63	},
 	{ "CT-AX56_XD4",	MODEL_CTAX56_XD4	},
 	{ "RT-AX58U",		MODEL_RTAX58U		},
 	{ "TUF-AX3000",		MODEL_RTAX58U		},
@@ -109,6 +113,7 @@ static const struct model_s model_list[] = {
 	{ "TUF-AX3000_V2",	MODEL_TUFAX3000_V2	},
 	{ "RT-AXE7800",		MODEL_RTAXE7800		},
 	{ "GT10",		MODEL_GT10		},
+	{ "RT-AX9000",		MODEL_RTAX9000		},
 	{ "RT-AX56U",		MODEL_RTAX56U		},
 	{ "RP-AX56",            MODEL_RPAX56            },
 	{ "RP-AX58",            MODEL_RPAX58            },
@@ -137,6 +142,12 @@ static const struct model_s model_list[] = {
 	{ "EBG15",		MODEL_EBG15		},
 	{ "EBP15",		MODEL_EBP15		},
 	{ "BC105",		MODEL_BC105		},
+	{ "GT-BE98",		MODEL_GTBE98		},
+	{ "RT-BE96U",		MODEL_RTBE96U		},
+	{ "GT-BE98_PRO",	MODEL_GTBE98_PRO	},
+	{ "BT12",		MODEL_BT12		},
+	{ "BQ16",		MODEL_BQ16		},
+	{ "GT-BE96",		MODEL_GTBE96		},
 	{ "K3", 			MODEL_K3 			},
 	{ "XWR3100", 		MODEL_XWR3100 		},
 	{ "R7000P", 		MODEL_R7000P 		},
@@ -449,6 +460,14 @@ int get_cf_id(int model, char *name) {
 #endif
 	}
 
+#ifdef RTCONFIG_HND_ROUTER_AX
+	if(model == MODEL_RTBE96U) {
+		if(hnd_boardid_cmp("RT-BE96U") == 0)
+			return model + CFID_BASE_3;
+		else
+			return model + CFID_BASE_3 + 1;
+	}
+#endif
 	for(i = 0; i < MAX_FTYPE; ++i) {	// for those independent modelid and defined in cfid table
 		if((strncmp(tmp, comfw_modid_s[i], strlen(tmp)) == 0) && (strlen(tmp)==strlen(comfw_modid_s[i])))
 			return i;

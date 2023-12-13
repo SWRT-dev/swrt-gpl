@@ -35,12 +35,11 @@ p{
 	padding: 2px 3px;
 	border-radius: 3px;
 }
-.imgUserIcon_card{
-	left: 17px; 
-}
+
 </style>
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/js/jquery.js"></script>
+<script language="JavaScript" type="text/javascript" src="/js/httpApi.js"></script>
 <script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
 <script type="text/javascript" src="/help.js"></script>
 <script>
@@ -89,7 +88,7 @@ function generate_wireless_band_list(){
 }
 
 function initial(){
-	parent.hideEditBlock();
+	if(parent.hideEditBlock) parent.hideEditBlock();
 	generate_wireless_band_list();
 	updateClientList();
 	setTimeout(function(){parent.httpApi.updateClientList();}, 5000);//delay to update client list, in order to avoiding the wired client disappeared
@@ -149,39 +148,39 @@ function drawClientList(tab){
 			clientHtmlTd += '"></div>';
 		}
 		else if(userIconBase64 != "NoIcon") {
-			clientHtmlTd += '<div title="'+ deviceTitle + '"">';
-			clientHtmlTd += '<img id="imgUserIcon_'+ i +'" class="imgUserIcon_card" src="' + userIconBase64 + '"';
+			clientHtmlTd += '<div title="'+ deviceTitle + '" class="clientIcon">';
+            if(clientObj.isUserUplaodImg){
+                clientHtmlTd += '<img id="imgUserIcon_'+ i +'" class="imgUserIcon_card" src="' + userIconBase64 + '" />';
+            }else{
+                clientHtmlTd += '<div id="imgUserIcon_'+ i +'" class="imgUserIcon_card"><i class="type" style="--svg:url(' + userIconBase64 + ')"></i></div>';
+            }
 			clientHtmlTd += '</div>';
 		}
 		else if(clientObj.type != "0" || clientObj.vendor == "") {
-			clientHtmlTd += '<div class="clientIcon type';
-			clientHtmlTd += clientObj.type;
-			clientHtmlTd += '" title="';
+			clientHtmlTd += '<div class="clientIcon"';
+			clientHtmlTd += ' title="';
 			clientHtmlTd += deviceTitle;
 			clientHtmlTd += '">';
+            clientHtmlTd += '<i class="type'+ clientObj.type +'"></i>';
 			if(clientObj.type == "36")
 				clientHtmlTd += '<div class="flash"></div>';
 			clientHtmlTd += '</div>';
 		}
 		else if(clientObj.vendor != "") {
-			var venderIconClassName = getVenderIconClassName(clientObj.vendor.toLowerCase());
-			if(venderIconClassName != "" && !downsize_4m_support) {
-				clientHtmlTd += '<div class="venderIcon ';
-				clientHtmlTd += venderIconClassName;
-				clientHtmlTd += '" title="';
-				clientHtmlTd += deviceTitle;
-				clientHtmlTd += '"></div>';
+			var vendorIconClassName = getVendorIconClassName(clientObj.vendor.toLowerCase());
+			if(vendorIconClassName != "" && !downsize_4m_support) {
+				clientHtmlTd += '<div class="vendorIcon" title="'+deviceTitle+'">';
+				clientHtmlTd += '<div class="imgUserIcon_card"><i class="vendor-icon '+ vendorIconClassName +'"></i></div>';
+				clientHtmlTd += '</div>';
 			}
 			else {
-				clientHtmlTd += '<div class="clientIcon type';
-				clientHtmlTd += clientObj.type;
-				clientHtmlTd += '" title="';
-				clientHtmlTd += deviceTitle;
-				clientHtmlTd += '"></div>';
+				clientHtmlTd += '<div class="clientIcon" title="'+ deviceTitle+'">';
+				clientHtmlTd += '<div class="imgUserIcon_card"><i class="type'+ clientObj.type +'"></i></div>';
+				clientHtmlTd += '</div>';
 			}
 		}
 
-		clientHtmlTd += '</td><td style="height:30px;font-size:11px;word-break:break-all;"><div>';
+			clientHtmlTd += (parent.businessWrapper) ? '</td><td style="height:30px;font-size:16px;font-weight: bold;word-break:break-all;"><div>' : '</td><td style="height:30px;font-size:11px;word-break:break-all;"><div>';
 		clientHtmlTd += clientName;
 		clientHtmlTd += '</div></td>';
 		
@@ -240,10 +239,10 @@ function drawClientList(tab){
 		if(parent.sw_mode != 4) {
 			clientHtmlTd += '<div style="height:28px;width:28px;float:right;margin-right:5px;margin-bottom:-20px;">';
 			var radioIcon_css = "radioIcon";
-			if(clientObj.isGN != "" && clientObj.isGN != undefined)
+			if((clientObj.isGN != "" && clientObj.isGN != undefined) || (isSupport("mtlancfg") && clientObj.sdn_idx > 0))
 				radioIcon_css += " GN";
 			clientHtmlTd += '<div class="' + radioIcon_css + ' radio_' + rssi_t +'" title="' + connectModeTip + '"></div>';
-			if(clientObj.isWL != 0) {
+			if(clientObj.isWL != 0 || (isSupport("mtlancfg") && clientObj.sdn_idx > 0)) {
 				var bandClass = (navigator.userAgent.toUpperCase().match(/CHROME\/([\d.]+)/)) ? "band_txt_chrome" : "band_txt";
 				clientHtmlTd += '<div class="band_block"><span class='+bandClass+'>' + isWL_map[clientObj.isWL]["text"] + '</span></div>';
 			}
@@ -279,6 +278,9 @@ function drawClientList(tab){
 			clientHtmlTd = '<div style="color:#FC0;height:30px;text-align:center;margin-top:15px"><#Device_Searching#><img src="/images/InternetScan.gif"></div>';
 		else
 			clientHtmlTd = '<div style="color:#FC0;height:30px;text-align:center;margin-top:15px"><#IPConnection_VSList_Norule#></div>';
+
+		if(parent.businessWrapper)
+			clientHtmlTd = '<div style="color:#000;height:30px;text-align:center;margin-top:50px;font-size: 22px;"><#IPConnection_VSList_Norule#></div>';
 	}
 
 	clientHtml += clientHtmlTd;
@@ -404,7 +406,7 @@ function oui_query_full_vendor(mac){
 		if('<% nvram_get("x_Setting"); %>' == '1' && wanConnectStatus && clientList[mac].internetState) {
 			var queryStr = mac.replace(/\:/g, "").splice(6,6,"");
 			var overlibStrTmp = retOverLibStr(clientList[mac]);
-			$.getJSON("/ajax/ouiDB.json", function(data){
+			$.getJSON("https://nw-dlcdnet.asus.com/plugin/js/ouiDB.json", function(data){
 				if(data != "" && data[queryStr] != undefined){
 					if(overlib.isOut) return nd();
 					var vendor_name = data[queryStr].trim();
@@ -433,7 +435,7 @@ function updateClientList(e){
 
 			if(isJsonChanged(originData, originDataTmp) || originData.fromNetworkmapd == ""){
 				drawClientList();
-				parent.show_client_status(totalClientNum.online);
+				if(parent.show_client_status) parent.show_client_status(totalClientNum.online);
 			}
 
 			if(networkmap_fullscan == 0) parent.manualUpdate = false; 
@@ -579,7 +581,29 @@ function updateClientList(e){
 			document.form.submit();
 		}
 
-		if(parent.document.stopNetworkmapd.networkmap_enable.value == 0 && disnwmd_support) $("#refresh_list").hide()
+		if(parent.document.stopNetworkmapd){
+			if(parent.document.stopNetworkmapd.networkmap_enable.value == 0 && disnwmd_support) $("#refresh_list").hide()
+		}
+		else{
+			var pagesVar = {
+				curTab: "online",
+				CLIENTSPERPAGE: 255,
+				startIndex: 0,
+				endIndex: 255, /* refer to startIndex + CLIENTSPERPAGE */
+				startArray: [0],
+
+				resetVar: function(){
+					pagesVar.CLIENTSPERPAGE = 255;
+					pagesVar.startIndex = 0;
+					pagesVar.endIndex = pagesVar.startIndex + pagesVar.CLIENTSPERPAGE;
+					pagesVar.startArray = [0];
+
+					document.getElementById("select_wlclient_band").style.display = "none";
+				}
+			}
+
+			$("#refresh_list").remove();
+		}
 	</script>
 <img src="/images/InternetScan.gif" id="loadingIcon" style="visibility:hidden">
 <img height="25" id="rightBtn" onclick="updatePagesVar('+');" style="cursor:pointer;margin-left:25px;" src="/images/arrow-right.png">

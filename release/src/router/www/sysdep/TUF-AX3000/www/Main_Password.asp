@@ -301,6 +301,8 @@ function check_common_string(pwd, flag){
 // ---------- Viz add common string check for password 2015.09 end--------
 
 function validForm(){
+	if($("#defpassCheckbox").prop('checked')) return true;
+
 	if(!validator.chkLoginId(document.form.http_username_x)){
 		return false;
 	}
@@ -361,6 +363,10 @@ function validForm(){
 
 function submitForm(){
 	var postData = {"restart_httpd": "0", "new_username":document.form.http_username_x.value, "new_passwd":document.form.http_passwd_x.value};
+	var sw_mode = '<% nvram_get("sw_mode"); %>';
+
+	if(sw_mode == 3 && '<% nvram_get("wlc_psta"); %>' == 2)
+		sw_mode = 2;
 
 	if(validForm()){
 		document.getElementById("error_status_field").style.display = "none";
@@ -372,7 +378,10 @@ function submitForm(){
 		}, 100);
 
 		setTimeout(function(){
-			location.href = "/";
+			if('<% nvram_get("w_Setting"); %>' == '0' && sw_mode != 2)
+				location.href = '/QIS_wizard.htm?flag=wireless';
+			else
+				location.href = "/";
 		}, 3000);
 	}
 	else
@@ -524,6 +533,7 @@ function showError(str){
 <input name="foilautofill" style="display: none;" type="password">
 <input type="hidden" name="http_username" value="">
 <input type="hidden" name="http_passwd" value="">
+<input type="hidden" name="cfg_pause" value="0">
 <div class="main-field-bg">
 	<div class="main-field-padding">
 		<div class="logo-container">
@@ -548,6 +558,48 @@ function showError(str){
 			<div class="input-container">
 				<input type="password" id="http_passwd_2_x" name="http_passwd_2_x" tabindex="3" class="form-input" maxlength="33" autocapitalize="off" autocomplete="off" placeholder="<#Confirmpassword#>">
 			</div>
+			<div style="font-size: 16pt; display:none">
+				<input id="defpassCheckbox" type="checkbox" style="height:30px;width:30px;vertical-align: middle;">Use the default settings
+			</div>
+			<script>
+				$("#defpassCheckbox").change(function(){
+					var status = $(this).is(':checked');
+					if(status){
+						$("[name='http_username_x']")
+							.val("")
+							.prop('disabled', true)
+							.css({opacity: "0.3"})
+
+						$("[name='http_passwd_x']")
+							.val("")
+							.prop('disabled', true)
+							.css({opacity: "0.3"})
+
+						$("[name='http_passwd_2_x']")
+							.val("")
+							.prop('disabled', true)
+							.css({opacity: "0.3"})
+					}
+					else{
+						$("[name='http_username_x']")
+							.prop('disabled', false)
+							.css({opacity: "1"})
+
+						$("[name='http_passwd_x']")
+							.prop('disabled', false)
+							.css({opacity: "1"})
+
+						$("[name='http_passwd_2_x']")
+							.prop('disabled', false)
+							.css({opacity: "1"})						
+					}
+				})
+
+				if(isSupport("defpass")){
+					$("#defpassCheckbox").parent().show();
+					$("#defpassCheckbox").prop('checked', true).change()
+				}
+			</script>
 			<div id="error_status_field" class="error-hint-bg" style="display: none;" ></div>
 			<div id="btn_modify" class="login-btn-bg" onclick="submitForm();"><#CTL_modify#></div>
 			<div id="loadingIcon" class="loading-icon" style="display:none;">

@@ -30,6 +30,9 @@
 #define DIAG_CLOUD_UPLOAD  DIAG_CLOUD_DIR"/upload"
 #define DIAG_CLOUD_DOWNLOAD  DIAG_CLOUD_DIR"/download"
 #endif
+
+#define DIAG_PORT_STATUS_FILE "/tmp/diag_port_status.json"
+
 int check_if_cable_diag_can_run(void);
 enum {
 	INIT_DB_NO=0,
@@ -45,6 +48,24 @@ enum {
 	DB_TH_TYPE_END
 };
 
+#define DIAG_MAX_USB_HUB_PORT 6
+#define DIAG_MAX_MOCA_DEVICES 1
+
+#define DIAG_MAX_MOCA_NODES 16
+#define DIAG_MAX_MOCA_NUM_CHANNELS	5
+
+typedef struct _DIAG_MOCA_NODE_INFO
+{
+	int active;
+	int node_id;
+	char macaddr[18];
+	char moca_ver[8];
+	int phyrate[DIAG_MAX_MOCA_NODES];
+	char node_mac[DIAG_MAX_MOCA_NODES][18];
+	char node_moca_ver[DIAG_MAX_MOCA_NODES][8];
+	unsigned char rx_snr[DIAG_MAX_MOCA_NODES][DIAG_MAX_MOCA_NUM_CHANNELS];
+}DIAG_MOCA_NODE_INFO;
+
 struct amas_eth_port {
 	char label_name[8];
 	unsigned int cap;
@@ -59,9 +80,8 @@ struct amas_eth_port {
 	int green_len;
 	int orange;
 	int orange_len;
-#ifdef RTCONFIG_USB
-	usb_device_info_t usb_devices[MAX_USB_HUB_PORT];
-#endif
+	usb_device_info_t usb_devices[DIAG_MAX_USB_HUB_PORT];
+	DIAG_MOCA_NODE_INFO moca_devices[DIAG_MAX_MOCA_DEVICES];
 	struct amas_eth_port *next;
 	int cable_diag_triger_link_st;
 	time_t cmd_time;
@@ -126,6 +146,8 @@ enum {
 	DB_IPERF_SERVER,
 	DB_IPERF_CLIENT,
 	DB_WLC_EVENT,
+	DB_WIFI_CBP,
+        DB_PORT_STATUS_MOCA_CHANGE,
 	DB_MAX
 };
 
@@ -249,3 +271,14 @@ extern int exec_iperf(char* caller, char *server_mac,char *client_mac);
 
 extern int query_stainfo(char *sta_mac,char **buf);
 extern void free_stainfo(char **buf);
+
+struct json_object* get_byte_field_string_json_object(unsigned char value, char *buf, int buf_len);
+struct json_object* get_int_field_string_json_object(int value, char *buf, int buf_len);
+struct json_object* get_uint_field_string_json_object(unsigned int value, char *buf, int buf_len);
+struct json_object* get_uint64_field_string_json_object(unsigned long long value, char *buf, int buf_len);
+struct json_object* get_rate_field_string_json_object(double value, char *buf, int buf_len);
+extern int _get_node_eth_port_status(char *node_mac,char **buf);
+
+#ifdef RTCONFIG_AWSIOT
+extern int wifi_dfs_on_all_channels_process();
+#endif

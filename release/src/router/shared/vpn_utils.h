@@ -78,6 +78,7 @@ typedef struct _vpnc_profile{
 	int vpnc_idx;	// 1 ~ MAX_VPNC_PROFILE
 	VPNC_PROTO protocol;
 	VPNC_BASIC_CONF basic;
+	int wan_idx;
 	union {
 		VPNC_PPTP pptp;
 		VPNC_OVPN ovpn;
@@ -133,6 +134,10 @@ extern int vpnc_set_iif_routing_rule(const int vpnc_idx, const char* br_ifname);
 #define WG_CLIENT_NVRAM_PREFIX "wgc"
 extern int read_wgc_config_file(const char* file_path, int wgc_unit);
 extern int is_wgc_connected(int unit);
+#endif
+
+#if defined(RTCONFIG_MULTILAN_CFG) && defined(RTCONFIG_VPN_FUSION)
+#define VPNC_IPSET_PREFIX   "vpnc_ipset"
 #endif
 
 #endif

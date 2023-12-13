@@ -414,7 +414,7 @@ function initial(){
 						var click_dns_ip = $(this).children("strong").attr("dns_ip");
 						var idx = $(this).closest(".dns_server_list_dropdown").attr("id").replace("dns_server_list", "");
 						$("input[name='dsl_dns" + idx + "']").val(click_dns_ip);
-						$(".dns_pull_arrow").attr("src","/images/arrow-down.gif");
+						$(".dns_pull_arrow").attr("src","/images/unfold_more.svg");
 						$(".dns_server_list_dropdown").hide();
 					});
 					var $dns_text = $("<strong>");
@@ -428,7 +428,7 @@ function initial(){
 		}
 	);
 	$("body").click(function() {
-		$(".dns_pull_arrow").attr("src","/images/arrow-down.gif");
+		$(".dns_pull_arrow").attr("src","/images/unfold_more.svg");
 		$(".dns_server_list_dropdown").hide();
 	});
 }
@@ -1246,16 +1246,16 @@ function show_dnspriv_rulelist(){
 function pullDNSList(_this) {
 	event.stopPropagation();
 	var idx = $(_this).attr("id").replace("dns_pull_arrow", "");
-	$(".dns_pull_arrow:not(#dns_pull_arrow" + idx + ")").attr("src","/images/arrow-down.gif");
+	$(".dns_pull_arrow:not(#dns_pull_arrow" + idx + ")").attr("src","/images/unfold_more.svg");
 	$(".dns_server_list_dropdown:not(#dns_server_list" + idx + ")").hide();
 	var $element = $("#dns_server_list" + idx + "");
 	var isMenuopen = $element[0].offsetWidth > 0 || $element[0].offsetHeight > 0;
 	if(isMenuopen == 0) {
-		$(_this).attr("src","/images/arrow-top.gif");
+		$(_this).attr("src","/images/unfold_less.svg");
 		$element.show();
 	}
 	else {
-		$(_this).attr("src","/images/arrow-down.gif");
+		$(_this).attr("src","/images/unfold_more.svg");
 		$element.hide();
 	}
 }
@@ -1511,7 +1511,7 @@ function showDiableDHCPclientID(clientid_enable){
 											</th>
 											<td>
 												<input type="text" maxlength="15" class="input_15_table" name="dsl_dns1" value="<% nvram_get("dsl_dns1"); %>" onkeypress="return validator.isIPAddr(this,event)" autocorrect="off" autocapitalize="off"/>
-												<img id="dns_pull_arrow1" class="dns_pull_arrow" src="/images/arrow-down.gif" onclick="pullDNSList(this);">
+												<img id="dns_pull_arrow1" class="dns_pull_arrow" src="/images/unfold_more.svg" onclick="pullDNSList(this);">
 												<div id="dns_server_list1" class="dns_server_list_dropdown"></div>
 											</td>
 										</tr>
@@ -1521,7 +1521,7 @@ function showDiableDHCPclientID(clientid_enable){
 											</th>
 											<td>
 												<input type="text" maxlength="15" class="input_15_table" name="dsl_dns2" value="<% nvram_get("dsl_dns2"); %>" onkeypress="return validator.isIPAddr(this,event)" autocorrect="off" autocapitalize="off"/>
-												<img id="dns_pull_arrow2" class="dns_pull_arrow" src="/images/arrow-down.gif" onclick="pullDNSList(this);">
+												<img id="dns_pull_arrow2" class="dns_pull_arrow" src="/images/unfold_more.svg" onclick="pullDNSList(this);">
 												<div id="dns_server_list2" class="dns_server_list_dropdown"></div>
 											</td>
 										</tr>

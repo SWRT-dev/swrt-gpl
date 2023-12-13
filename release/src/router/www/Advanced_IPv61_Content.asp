@@ -1021,8 +1021,8 @@ function genWANSoption(){
 				<div>&nbsp;</div>
 				<div class="formfonttitle">IPv6</div>
 	      		<div style="margin:10px 0 10px 5px;" class="splitLine"></div>
-	      <div class="formfontdesc"><#LANHostConfig_display6_sectiondesc#></div>
-				<div class="formfontdesc" style="margin-top:-10px;">
+	      		<div class="formfontdesc">
+					<div><#LANHostConfig_display6_sectiondesc#></div>
 					<a id="faq" href="" target="_blank" style="font-family:Lucida Console;text-decoration:underline;">IPv6 FAQ</a>
 				</div>
 				  

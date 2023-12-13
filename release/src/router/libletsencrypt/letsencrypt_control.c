@@ -86,7 +86,7 @@ static void _le_jobs_install(int min, char *hostname)
 		}
 	}else
 		snprintf(jobs, sizeof(jobs), "*/%d * * * * service restart_letsencrypt", jobs_min);
-	_eval(le_jobs_argv, NULL, 0, 0);
+	_eval(le_jobs_argv, NULL, 0, NULL);
 }
 
 static void _le_add_fw_rule(le_conf_t *conf, uint16_t port)
@@ -207,23 +207,35 @@ static void _le_acme_term(int no)
 
 static int _le_acme_need_revoke(le_conf_t *conf, char *path, size_t len)
 {
-	int ret = 0;
+	int ret = 0, ecc;
+	char tmp[128];
 	DIR *dir;
 	struct dirent *dirent;
+	memset(tmp, 0, sizeof(tmp));
 	dir = opendir(LE_ACME_CERT_HOME);
 	if(dir){
 		while((dirent = readdir(dir)) != NULL){
 			if((dirent->d_type == DT_DIR || d_exists(dirent->d_name)) && strcmp(dirent->d_name, ".") && strcmp(dirent->d_name, "..") 
 				&& strcmp(dirent->d_name, conf->ddns_hostname)){
-				snprintf(path, len, "%s/%s/%s.cer", LE_ACME_CERT_HOME, dirent->d_name, dirent->d_name);
-				if(is_le_cert(path)){
-					ret = 1;
-					update_le_st(LE_ST_NONE);
-					break;
+				ecc = is_ecc(dirent->d_name, tmp, sizeof(tmp));
+				if(!strcmp(tmp, conf->ddns_hostname)){
+					if(ecc != conf->ecc){
+						_dprintf("[%s(%d)] conf->ecc:[%d] ecc:[%d] host:[%s] ddns_host:[%s]\n", __func__, __LINE__, conf->ecc, ecc, tmp, conf->ddns_hostname);
+						ret = 1;
+						update_le_st(LE_ST_NONE);
+						break;
+					}
+				}else{
+					snprintf(path, len, "%s/%s/%s.cer", LE_ACME_CERT_HOME, dirent->d_name, dirent->d_name);
+					if(is_le_cert(path)){
+						ret = 1;
+						update_le_st(LE_ST_NONE);
+						break;
+					}
+					snprintf(path, len, "%s/%s", LE_ACME_CERT_HOME, dirent->d_name);
+					_dprintf("[%s(%d)] rm :[%s]\n", __func__, __LINE__, path);
+					eval("rm", "-rf", path);
 				}
-				snprintf(path, len, "%s/%s", LE_ACME_CERT_HOME, dirent->d_name);
-				_dprintf("[%s(%d)] rm :[%s]\n", __func__, __LINE__, path);
-				eval("rm", "-rf", path);
 			}
 		}
 		closedir(dir);
@@ -233,56 +245,80 @@ static int _le_acme_need_revoke(le_conf_t *conf, char *path, size_t len)
 
 static void _le_acme_do(int action, le_conf_t *conf)
 {
-	int idx;
+	int idx = 19;
 	char acckey[256] = {0}, accconf[256] = {0}, fullchain[256] = {0}, domainkey[256] = {0}, revoke_hostname[256] = {0}, cmd[512];
 	char *le_argv[] = { "/usr/sbin/acme.sh", "--home", "/tmp/.le", "--certhome", LE_ACME_CERT_HOME, "--accountkey", acckey, "--accountconf", accconf,
 			"--domain", revoke_hostname, "--useragent", "asusrouter/0.2", "--fullchain-file", fullchain, "--key-file", domainkey, "--dnssleep", "10",
-			NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+			NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 	snprintf(acckey, sizeof(acckey), "%s/%s", LE_ACME_CERT_HOME, LE_ACME_ACC_KEY);
 	snprintf(accconf, sizeof(accconf), "%s/%s", LE_ACME_CERT_HOME, LE_ACME_ACC_CONF);
-	snprintf(fullchain, sizeof(fullchain), "%s/%s/%s", LE_ACME_CERT_HOME, conf->ddns_hostname, LE_ACME_DOMAIN_FULLCHAIN);
-	snprintf(domainkey, sizeof(domainkey), "%s/%s/%s", LE_ACME_CERT_HOME, conf->ddns_hostname, LE_ACME_DOMAIN_KEY);
+	snprintf(fullchain, sizeof(fullchain), "%s/%s%s/%s", LE_ACME_CERT_HOME, conf->ddns_hostname, conf->ecc ? "_ecc" : "", LE_ACME_DOMAIN_FULLCHAIN);
+	snprintf(domainkey, sizeof(domainkey), "%s/%s%s/%s", LE_ACME_CERT_HOME, conf->ddns_hostname, conf->ecc ? "_ecc" : "", LE_ACME_DOMAIN_KEY);
 	if(action == 2){
+		snprintf(fullchain, sizeof(fullchain), "%s/%s%s/%s", LE_ACME_CERT_HOME, conf->ddns_hostname, conf->re_ecc ? "_ecc" : "", LE_ACME_DOMAIN_FULLCHAIN);
+		snprintf(domainkey, sizeof(domainkey), "%s/%s%s/%s", LE_ACME_CERT_HOME, conf->ddns_hostname, conf->re_ecc ? "_ecc" : "", LE_ACME_DOMAIN_KEY);
 		snprintf(revoke_hostname, sizeof(revoke_hostname), "%s", conf->revoke_hostname);
 		_dprintf("%s %d %s\n", __func__, action, conf->revoke_hostname);
-		le_argv[19] = "--revoke";
-		idx = 20;
+		le_argv[idx] = "--revoke";
+		idx++;
+		if(conf->re_ecc){
+			le_argv[idx] = "--ecc";
+			idx++;
+		}
 	}else{
 		snprintf(revoke_hostname, sizeof(revoke_hostname), "%s", conf->ddns_hostname);
 		_dprintf("%s %d %s\n", __func__, action, conf->ddns_hostname);
 		if(action){
-			snprintf(cmd, sizeof(cmd), "sed -i '/Le_HTTPPort=/d' %s/%s/%s.conf", LE_ACME_CERT_HOME, conf->ddns_hostname, conf->ddns_hostname);
+			snprintf(cmd, sizeof(cmd), "sed -i '/Le_HTTPPort=/d' %s/%s%s/%s.conf", LE_ACME_CERT_HOME, conf->ddns_hostname, conf->ecc ? "_ecc" : "", conf->ddns_hostname);
 			system(cmd);
-			le_argv[19] = "--renew";
-		}else
-			le_argv[19] = "--issue";
+			le_argv[idx] = "--renew";
+			if(conf->ecc){
+				idx++;
+				le_argv[idx] = "--ecc";
+				idx++;
+			}
+		}else{
+			le_argv[idx] = "--issue";
+			idx++;
+			if(conf->ecc){
+				le_argv[idx] = "--keylength";
+				idx++;
+				le_argv[idx] = "ec-256";
+				idx++;
+			}
+		}
 		if(conf->authtype == LE_ACME_AUTH_DNS){
-			le_argv[20] = "--dns";
+			le_argv[idx] = "--dns";
+			idx++;
 			if(nvram_match("ddns_server_x", "WWW.ASUS.COM") || nvram_match("ddns_server_x", "WWW.ASUS.COM.CN")){
-				idx = 22;
-				le_argv[21] = "dns_asusapi";
-			}else
-				idx = 21;
+				le_argv[idx] = "dns_asusapi";
+				idx++;
+			}
 		}else if(conf->authtype == LE_ACME_AUTH_TLS){
 			snprintf(cmd, sizeof(cmd), "%u", conf->port);
-			le_argv[22] = cmd;
-			le_argv[20] = "--alpn";
-			le_argv[21] = "--tlsport";
+			le_argv[idx] = "--alpn";
+			idx++;
+			le_argv[idx] = "--tlsport";
+			idx++;
+			le_argv[idx] = cmd;
+			idx++;
 			_dprintf("%s challenge with tls port %s\n", __func__, cmd);
-			idx = 23;
 		}else if(conf->authtype == LE_ACME_AUTH_HTTP){
 			snprintf(cmd, sizeof(cmd), "%u", conf->port);
-			le_argv[22] = cmd;
-			le_argv[20] = "--standalone";
-			le_argv[21] = "--httpport";
+			le_argv[idx] = "--standalone";
+			idx++;
+			le_argv[idx] = "--httpport";
+			idx++;
+			le_argv[idx] = cmd;
+			idx++;
 			_dprintf("%s challenge with http port %s\n", __func__, cmd);
-			idx = 23;
-		}else
-			idx = 20;
+		}
 	}
 	if(conf->debug > 0){
-		le_argv[idx++] = "--debug";
-		le_argv[idx++] = nvram_safe_get("le_acme_debug");
+		le_argv[idx] = "--debug";
+		idx++;
+		le_argv[idx] = nvram_safe_get("le_acme_debug");
+		idx++;
 	}
 	if(conf->force || conf->renew_force)
 		le_argv[idx++] = "--force";
@@ -296,23 +332,28 @@ static void _le_acme_do(int action, le_conf_t *conf)
 	}
 	_dprintf("\n=====\n");
 	if(conf->acme_logpath[0])
-		_eval(le_argv, conf->acme_logpath, 0, 0);
+		_eval(le_argv, conf->acme_logpath, 0, NULL);
 	else
-		_eval(le_argv, "/dev/kmsg", 0, 0);
+		_eval(le_argv, "/dev/kmsg", 0, NULL);
 }
 
 static int _le_acme_do_revoke(le_conf_t *conf, char *path, size_t len)
 {
+	int ecc;
 	DIR *dir;
+	char tmp[128];
 	struct dirent *dirent;
+	memset(tmp, 0, sizeof(tmp));
 	dir = opendir(LE_ACME_CERT_HOME);
 	if(dir){
 		while((dirent = readdir(dir)) != NULL){
 			if((dirent->d_type == DT_DIR || d_exists(dirent->d_name)) && strcmp(dirent->d_name, ".") && strcmp(dirent->d_name, "..")){
-				if(strcmp(dirent->d_name, conf->ddns_hostname) || conf->force){
-					snprintf(path, len, "%s/%s/%s.cer", LE_ACME_CERT_HOME, dirent->d_name, dirent->d_name);
+				ecc = is_ecc(dirent->d_name, tmp, sizeof(tmp));
+				snprintf(path, len, "%s/%s/%s.cer", LE_ACME_CERT_HOME, dirent->d_name, tmp);
+				if(strcmp(tmp, conf->ddns_hostname) || conf->force){
 					if(f_exists(path)){
-						snprintf(conf->revoke_hostname, sizeof(conf->revoke_hostname), "%s", dirent->d_name);
+						conf->re_ecc = ecc;
+						snprintf(conf->re_hostname, sizeof(conf->re_hostname), "%s", tmp);
 						_le_acme_do(2, conf);
 						snprintf(path, len, "%s/%s", LE_ACME_CERT_HOME, dirent->d_name);
 						_dprintf("[%s(%d)] rm :[%s]\n", __func__, __LINE__, path);
@@ -321,6 +362,13 @@ static int _le_acme_do_revoke(le_conf_t *conf, char *path, size_t len)
 						_dprintf("[%s(%d)] rm :[%s]\n", __func__, __LINE__, path);
 					}
 					eval("rm", "-rf", path);
+				}else if(ecc != conf->ecc){
+					conf->re_ecc = ecc;
+					snprintf(conf->re_hostname, sizeof(conf->re_hostname), "%s", tmp);
+					_le_acme_do(2, conf);
+					_dprintf("[%s(%d)][ECC Different] rm :[%s]\n", __func__, __LINE__, LE_ACME_CERT_HOME);
+					eval("rm", "-rf", LE_ACME_CERT_HOME);
+					break;
 				}
 			}
 		}
@@ -459,7 +507,7 @@ int le_acme_main(int argc, char **argv)
 				update_le_sts(LE_STS_WAIT_RENEW);
 				update_le_auxsts(LE_AUX_NONE);
 				get_path_le_domain_fullchain(path, sizeof(path));
-				if(f_diff("/etc/cert.pem", path) && cp_le_cert(2, "/etc/cert.pem") && !cp_le_cert(0, "/etc/key.pem")){
+				if(f_diff("/etc/cert.pem", path) && cp_le_cert(LE_FULLCHAIN, "/etc/cert.pem") && !cp_le_cert(LE_KEY, "/etc/key.pem")){
 					if(conf.https_enabled){
 						nvram_set("le_restart_httpd", "1");
 						sleep(6);
@@ -482,11 +530,11 @@ int cp_le_cert(int type, char* dst_path)
 	char path[256];
 	memset(path, 0, sizeof(path));
 
-	if(type == 1)
+	if(type == LE_CERT)
 		get_path_le_domain_cert(path, sizeof(path));
-	else if(type == 2)
+	else if(type == LE_FULLCHAIN)
 		get_path_le_domain_fullchain(path, sizeof(path));
-	else if(type == 0)
+	else if(type == LE_KEY)
     	get_path_le_domain_key(path, sizeof(path));
 	else
 		return -1;
@@ -542,6 +590,8 @@ int cert_key_match(const char *cert_path, const char *key_path)
 	RSA *rsa_pri = NULL;
 	DSA *dsa_pub = NULL;
 	DSA *dsa_pri = NULL;
+	EC_KEY *ec_pub = NULL;
+	EC_KEY *ec_pri = NULL;
 	if(!f_exists(cert_path) || !f_exists(key_path))
 		return 0;
 	//get x509 from cert file
@@ -586,6 +636,11 @@ int cert_key_match(const char *cert_path, const char *key_path)
 		//_dprintf("DSA public key\n");
 		dsa_pub = EVP_PKEY_get1_DSA(pkey);
 	}
+	else if(EVP_PKEY_id(pkey) == EVP_PKEY_EC)
+	{
+		//_dprintf("EC public key\n");
+		ec_pub = EVP_PKEY_get1_EC_KEY(pkey);
+	}
 	EVP_PKEY_free(pkey);
 	pkey = NULL;
 	//get private key from key file
@@ -622,6 +677,11 @@ int cert_key_match(const char *cert_path, const char *key_path)
 		//_dprintf("DSA private key\n");
 		dsa_pri = EVP_PKEY_get1_DSA(pkey);
 	}
+	else if(EVP_PKEY_id(pkey) == EVP_PKEY_EC)
+	{
+		//_dprintf("EC private key\n");
+		ec_pri = EVP_PKEY_get1_EC_KEY(pkey);
+	}
 	EVP_PKEY_free(pkey);
 	pkey = NULL;
 	//compare modulus
@@ -651,6 +711,19 @@ int cert_key_match(const char *cert_path, const char *key_path)
 			ret = 1;
 		}
 	}
+	else if(ec_pub && ec_pri)
+	{
+		if(EC_POINT_cmp(EC_KEY_get0_group(ec_pub), EC_KEY_get0_public_key(ec_pub), EC_KEY_get0_public_key(ec_pri)))
+		{
+			_dprintf("[mssl] ec modulus not match\n");
+			ret = 0;
+		}
+		else
+		{
+			_dprintf("[mssl] ec modulus match\n");
+			ret = 1;
+		}
+	}
 	else
 	{
 		_dprintf("compare failed");
@@ -665,10 +738,14 @@ end:
 		RSA_free(rsa_pub);
 	if(dsa_pub)
 		DSA_free(dsa_pub);
+	if(ec_pub)
+		EC_KEY_free(ec_pub);
 	if(rsa_pri)
 		RSA_free(rsa_pri);
 	if(dsa_pri)
 		DSA_free(dsa_pri);
+	if(ec_pri)
+		EC_KEY_free(ec_pri);
 
 	return ret;
 }

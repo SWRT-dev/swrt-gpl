@@ -714,11 +714,13 @@
 .profile_setting_item.export_mode{
 	height: auto !important;
 	padding: 16px 0;
+	justify-content: center;
 }
 .export_mode_container .desc{
 	font-size: 16px;
 	color: rgb(255, 255, 255);
 	margin-bottom: 12px;
+	width: 100%;
 }
 .qr_code_container{
 	display: flex;
@@ -744,21 +746,23 @@
 	border: 1px solid #00DEDA;
 	border-radius: 6px;
 	margin-bottom: 12px;
-	padding: 6px;
-	padding-left: 18px;
 	font-weight: 500;
 	font-size: 12px;
+	width: 100%;
 }
 .notice_container .notice_title{
 	color: #00DEDA;
+	margin: 6px 18px;
 }
 .notice_container .notice_desc{
 	color: #FFFFFF;
 	line-height: 160%;
+	margin: 0px 18px 6px;
 }
 .export_btn_container{
 	display: flex;
 	justify-content: space-between;
+	width: 100%;
 }
 .export_btn_container > .desc{
 	flex-basis: 60%;
@@ -774,7 +778,8 @@
 	justify-content: center;
 }
 .export_btn_container > .export_btn:hover{
-	background-color: rgb(37 151 255);;
+	background-color: rgb(37 151 255);
+	color: #FFF;
 }
 .export_btn_container > .export_btn .text{
 	position: relative;
@@ -1116,6 +1121,13 @@
 	right: 0;
 	align-items: center;
 	line-height: 180%;
+	-webkit-tap-highlight-color: transparent;
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
 }
 .popup_container.popup_element_second{
 	z-index: 500;
@@ -1192,7 +1204,8 @@
 }
 .popup_container .btn_options_container,
 .popup_container .export_mode_container{
-	max-width: 495px !important;
+	max-width: initial !important;
+	margin-left: 0;
 }
 .feature_desc .title{
 	height: 16px;
@@ -1466,7 +1479,8 @@
 		margin: initial;
 	}
 	.server_list_container{
-		width: 100%;
+		width: 94% !important;
+		margin: auto;
 	}
 	.svr_item_container, .svr_item_container.selected{
 		background: #1E2A41;
@@ -1534,11 +1548,14 @@
 	.profile_setting_item.help_item .input_container,
 	.profile_setting_item.acc_pwd .input_container,
 	.profile_setting_item.keys_item .input_container,
-	.profile_setting_item.two_btn_switch .btn_options_container,
-	.profile_setting_item .export_mode_container{
+	.profile_setting_item.two_btn_switch .btn_options_container{
 		flex: 0 0 93%;
 		max-width: 470px;
 		margin-left: 4%;
+		min-width: initial;
+	}
+	.profile_setting_item .export_mode_container{
+		flex: 0 0 93%;
 		min-width: initial;
 	}
 	.profile_setting_item.clientlist .client_content_bg,

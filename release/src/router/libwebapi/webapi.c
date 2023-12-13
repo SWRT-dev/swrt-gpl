@@ -19,6 +19,18 @@ void httpd_nvram_commit(void){
 	sync_profile_update_time(0);
 }
 
+#ifndef RTCONFIG_BWDPI
+int check_tcode_blacklist()
+{
+	return 0;
+}
+
+int dump_dpi_support(int index)
+{
+	return 0;
+}
+#endif
+
 int get_nvram_dlen(char *name)
 {
 	struct nvram_tuple *t;
@@ -292,11 +304,11 @@ static int get_sdn_rwd_cap_array(struct json_object *sdn_rwd_cap_array){
 
 	const char *sdn_rwd_cap[] = {
 #ifdef RTCONFIG_BUSINESS
-		"Employee", "Portal", "Sched", "Customized",
+		"Employee", "Portal", "Sched",
 #else
 		 "Kids",
 #endif
-		"Guest", "IoT", "VPN",
+		"Guest", "IoT", "VPN", "Customized",
 		NULL};
 
 	int i = 0;
@@ -329,7 +341,10 @@ struct RWD_MAPPING_TABLE rwd_mapping_t[] =
 	{"SDN", "SDN/sdn.html", "SDN/sdn_WHITE.css"},
 #endif
 #ifdef RTCONFIG_DASHBOARD
-	{"Dashboard", "index.html?url=dashboard", NULL},
+	{"Dashboard", "index.html?url=dashboard", "css/business-white.css"},
+#endif
+#ifdef RTCONFIG_SW_BTN
+	{"MultiFuncBtn", "multifuncbtn/mfb.html", "multifuncbtn/mfb_WHITE.css"},
 #endif
 	{NULL, NULL, NULL}
 };
@@ -594,20 +609,29 @@ int get_wgc_connect_status(struct json_object *wgc_connect_status_obj){
 #ifdef RTCONFIG_WIREGUARD
 	char vpnc_clientlist[CKN_STR8192] = {0};
 	char word[1024]={0}, word_tmp[1024] = {0}, *next = NULL;
-	char vpn_name[16] = {0}, wgc_index[8] = {0}, ifname[8] = {0};
+	char vpn_caller[8] = {0}, wgc_enable[2] = {0}, vpn_proto[16] = {0}, wgc_index[8] = {0}, ifname[8] = {0};
 
 	strlcpy(vpnc_clientlist, nvram_safe_get("vpnc_clientlist"), sizeof(vpnc_clientlist));
 
 	foreach_60(word, vpnc_clientlist, next){
 		strlcpy(word_tmp, word, sizeof(word_tmp));
-		get_string_in_62(word_tmp, 1, vpn_name, sizeof(vpn_name));
+		get_string_in_62(word_tmp, 1, vpn_proto, sizeof(vpn_proto));
 		get_string_in_62(word_tmp, 2, wgc_index, sizeof(wgc_index));
-		if(!strcmp(vpn_name, "WireGuard")){
+		get_string_in_62(word_tmp, 5, wgc_enable, sizeof(wgc_enable));
+		get_string_in_62(word_tmp, 11, vpn_caller, sizeof(vpn_caller));
+		if(!strcmp(vpn_proto, "WireGuard")){
 			snprintf(ifname, sizeof(ifname), "%s%s", WG_CLIENT_IF_PREFIX, wgc_index);
+
+			struct json_object *wgc_obj = json_object_new_object();
+			json_object_object_add(wgc_obj, "caller", json_object_new_string(vpn_caller));
+			json_object_object_add(wgc_obj, "enable", json_object_new_string(wgc_enable));
+
 			if(is_wgc_connected(safe_atoi(wgc_index)))
-				json_object_object_add(wgc_connect_status_obj, ifname, json_object_new_string("1"));
+				json_object_object_add(wgc_obj, "connected", json_object_new_string("1"));
 			else
-				json_object_object_add(wgc_connect_status_obj, ifname, json_object_new_string("0"));
+				json_object_object_add(wgc_obj, "connected", json_object_new_string("0"));
+
+			json_object_object_add(wgc_connect_status_obj, ifname, wgc_obj);
 		}
 	}
 

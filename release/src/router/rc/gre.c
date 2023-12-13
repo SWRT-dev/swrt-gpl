@@ -62,6 +62,7 @@ void start_l2gre(int unit)
 	int v6 = 0;
 	int vlanid = 0;
 	char br_ifname[16] = {0};
+	char *gre_argv[] = {"grekad", "-i", ifname, "-p", NULL, "-r", NULL, "-n", NULL};
 #ifdef RTCONFIG_MULTILAN_CFG
 	int gre_idx = get_gre_idx_by_proto_unit(VPN_PROTO_L2GRE, unit);
 	MTLAN_T *pmtl = (MTLAN_T *)INIT_MTLAN(sizeof(MTLAN_T));
@@ -89,7 +90,7 @@ void start_l2gre(int unit)
 #ifdef RTCONFIG_MULTILAN_CFG
 	get_mtlan_by_idx(SDNFT_TYPE_GRE, gre_idx, pmtl, &mtl_sz);
 	if (mtl_sz)
-		strlcpy(br_ifname, pmtl[0].nw_t.ifname, sizeof(br_ifname));
+		strlcpy(br_ifname, pmtl[0].nw_t.br_ifname, sizeof(br_ifname));
 	else
 #endif
 	strlcpy(br_ifname, nvram_safe_get("lan_ifname"), sizeof(br_ifname));
@@ -106,13 +107,25 @@ void start_l2gre(int unit)
 		eval("brctl", "addif", br_ifname, ifname);
 	}
 
+	// keepalive
+	nvram_pf_set(prefix, "state", "0");
+	if (nvram_pf_get_int(prefix, "ka_enable")) {
+		gre_argv[4] = nvram_pf_safe_get(prefix, "ka_period");
+		gre_argv[6] = nvram_pf_safe_get(prefix, "ka_retries");
+		_eval(gre_argv, ">/dev/console", 0, NULL);
+	}
 }
 
 void stop_l2gre(int unit)
 {
 	char ifname[16] = {0};
+	char path[128] = {0};
+
 	snprintf(ifname, sizeof(ifname), "%s%d", L2GRE_IF_PREFIX, unit);
 	_gre_tunnel_destroy(ifname);
+
+	snprintf(path, sizeof(path), "/var/run/grekad-%s.pid", ifname);
+	kill_pidfile_tk(path);
 }
 
 static void _gre_nf_bind_sdn(FILE* fp, const char* gre_ifname, const char* sdn_ifname)
@@ -240,6 +253,7 @@ void start_l3gre(int unit)
 	char buf[64] = {0};
 	char *next;
 	char routes[1024] = {0};
+	char *gre_argv[] = {"grekad", "-i", ifname, "-p", NULL, "-r", NULL, "-n", NULL};
 
 	snprintf(prefix, sizeof(prefix), "%s%d_", L3GRE_NVRAM_PREFIX, unit);
 	snprintf(ifname, sizeof(ifname), "%s%d", L3GRE_IF_PREFIX, unit);
@@ -273,14 +287,31 @@ void start_l3gre(int unit)
 
 	// netfilter
 	_gre_nf_add(unit, prefix, ifname);
+
+	// keepalive
+	nvram_pf_set(prefix, "state", "0");
+	if (nvram_pf_get_int(prefix, "ka_enable")) {
+		gre_argv[4] = nvram_pf_safe_get(prefix, "ka_period");
+		gre_argv[6] = nvram_pf_safe_get(prefix, "ka_retries");
+		_eval(gre_argv, ">/dev/console", 0, NULL);
+	}
+	if (v6 == 0) {
+		snprintf(buf, sizeof(buf), "/proc/sys/net/ipv4/conf/%s/accept_local", ifname);
+		f_write_string(buf, "1", 0, 0);
+	}
 }
 
 void stop_l3gre(int unit)
 {
 	char ifname[16] = {0};
+	char path[128] = {0};
+
 	snprintf(ifname, sizeof(ifname), "%s%d", L3GRE_IF_PREFIX, unit);
 	_gre_tunnel_destroy(ifname);
 	_gre_nf_del(ifname);
+
+	snprintf(path, sizeof(path), "/var/run/grekad-%s.pid", ifname);
+	kill_pidfile_tk(path);
 }
 
 void restart_gre(int v6)
@@ -428,7 +459,7 @@ void update_gre_by_sdn(MTLAN_T *pmtl, size_t mtl_sz, int restart_all_sdn)
 		}
 
 		if (bind)
-			_gre_set_to_bridge(gre_ifname, pmtl[bind_mtl_i].nw_t.ifname);
+			_gre_set_to_bridge(gre_ifname, pmtl[bind_mtl_i].nw_t.br_ifname);
 		else {
 #if 1		// ui block setting l2gre to 2+ SDN. If setting 2+ SDN, need to restart all sdn to recover
 			_gre_set_to_bridge(gre_ifname, nvram_safe_get("lan_ifname"));
@@ -437,7 +468,7 @@ void update_gre_by_sdn(MTLAN_T *pmtl, size_t mtl_sz, int restart_all_sdn)
 			MTLAN_T *pmtl_l2gre = (MTLAN_T *)INIT_MTLAN(sizeof(MTLAN_T));
 			size_t mtl_sz_l2gre;
 			if (get_mtlan_by_idx(SDNFT_TYPE_VPNC, gre_idx, pmtl_l2gre, &mtl_sz_l2gre) && mtl_sz_l2gre)
-				_gre_set_to_bridge(gre_ifname, pmtl_l2gre[0].nw_t.ifname);
+				_gre_set_to_bridge(gre_ifname, pmtl_l2gre[0].nw_t.br_ifname);
 			else
 				_gre_set_to_bridge(gre_ifname, nvram_safe_get("lan_ifname"));
 			FREE_MTLAN((void *)pmtl_l2gre);
@@ -517,6 +548,92 @@ void update_gre_by_sdn(MTLAN_T *pmtl, size_t mtl_sz, int restart_all_sdn)
 			}
 		}
 
+	}
+}
+
+void update_gre_by_sdn_remove(MTLAN_T *pmtl, size_t mtl_sz)
+{
+	int unit, i, j;
+	char prefix[16] = {0};
+	char gre_ifname[IFNAMSIZ] = {0};
+	int vlanid = 0;
+	VPN_VPNX_T vpnx;
+	int binded = 0;
+	char fpath[128] = {0};
+	FILE *fp;
+	int sdn_rule_exist = 0;
+
+	// L2GRE
+	for (unit = 1; unit <= L2GRE_MAX; unit++) {
+		snprintf(prefix, sizeof(prefix), "%s%d_", L2GRE_NVRAM_PREFIX, unit);
+		vlanid = nvram_pf_get_int(prefix, "vlanid");
+		if (vlanid)
+			snprintf(gre_ifname, sizeof(gre_ifname), "%s%d.%d", L2GRE_IF_PREFIX, unit, vlanid);
+		else
+			snprintf(gre_ifname, sizeof(gre_ifname), "%s%d", L2GRE_IF_PREFIX, unit);
+
+		if (!nvram_pf_get_int(prefix, "enable"))
+			continue;
+
+		binded = 0;
+		for (i = 0; i < mtl_sz; i++) {
+			if (!pmtl[i].enable)
+				continue;
+			for (j = 0; j < MTLAN_GRE_MAXINUM; j++) {
+				if (pmtl[i].sdn_t.gre_idx_rl[j]
+				&& get_vpnx_by_gre_idx(&vpnx, pmtl[i].sdn_t.gre_idx_rl[j])
+				&& vpnx.proto == VPN_PROTO_L2GRE
+				&& vpnx.unit == unit) {
+					binded = 1;
+					break;
+				}
+			}
+			if (binded)
+				break;
+		}
+
+		if (binded)
+			_gre_set_to_bridge(gre_ifname, nvram_safe_get("lan_ifname"));
+	}
+
+	// L3GRE
+	for (unit = 1; unit <= L3GRE_MAX; unit++) {
+		snprintf(prefix, sizeof(prefix), "%s%d_", L3GRE_NVRAM_PREFIX, unit);
+		snprintf(gre_ifname, sizeof(gre_ifname), "%s%d", L3GRE_IF_PREFIX, unit);
+
+		if (!nvram_pf_get_int(prefix, "enable"))
+			continue;
+
+		/// remove rule if binded with the removed SDN.
+		for (i = 0; i < mtl_sz; i++) {
+			snprintf(fpath, sizeof(fpath), "%s/fw_%s_sdn%d.sh", GRE_DIR_CONF, gre_ifname, pmtl[i].nw_t.idx);
+			if(f_exists(fpath)) {
+				eval("sed", "-i", "s/-I/-D/", fpath);
+				eval(fpath);
+				unlink(fpath);
+			}
+		}
+
+		/// if not bind with other SDN, add rule for all SDN.
+		sdn_rule_exist = 0;
+		for (i = 0; i < MTLAN_MAXINUM; i++) {
+			snprintf(fpath, sizeof(fpath), "%s/fw_%s_sdn%d.sh", GRE_DIR_CONF, gre_ifname, i);
+			if (f_exists(fpath))
+				sdn_rule_exist = 1;
+		}
+		if (sdn_rule_exist == 0) {
+			snprintf(fpath, sizeof(fpath), "%s/fw_%s_none.sh", GRE_DIR_CONF, gre_ifname);
+			if (!f_exists(fpath)) {	//bind -> none
+				fp = fopen(fpath, "w");
+				if (fp) {
+					fprintf(fp, "#!/bin/sh\n\n");
+					_gre_nf_bind_sdn(fp, gre_ifname, NULL);
+					fclose(fp);
+					chmod(fpath, S_IRUSR|S_IWUSR|S_IXUSR);
+					eval(fpath);
+				}
+			}
+		}
 	}
 }
 #endif

@@ -27,11 +27,27 @@ var bw_160_support = (function(){
 	return false;
 })();
 
+var band6gBW160_limit = (function(){
+	if(isSupport('wifi6e') || isSupport('wifi7')){
+		if(based_modelid == "GT-AXE11000" 
+		|| based_modelid == "RT-AXE7800" 
+		|| based_modelid == "RT-AXE95Q" 
+		|| based_modelid == "ET8_V2" 
+		|| based_modelid == "ET8PRO" 
+		|| based_modelid == "ET12"){
+			return true
+		}
+	}
+	
+	return false;
+})();
+
 var wl1 = {
 	"channel_20m": [],
 	"channel_40m": [],
 	"channel_80m": [],
-	"channel_160m": []
+	"channel_160m": [],
+	"channel_320m": []
 }
 
 if(band2g_support){
@@ -89,12 +105,13 @@ for(i=0;i<_chanspecs_5g.length;i++){
 		}
 	}
 }
-if(wl_info.band5g_2_support || isSupport('wifi6e')){
+if(wl_info.band5g_2_support || isSupport('wifi6e') || isSupport('wifi7')){
 	var wl2 = {
 		"channel_20m": [],
 		"channel_40m": [],
 		"channel_80m": [],
-		"channel_160m": []
+		"channel_160m": [],
+		"channel_320m": []
 	}
 
 	wl_info['2'] = new Object;
@@ -116,12 +133,26 @@ if(wl_info.band5g_2_support || isSupport('wifi6e')){
 		return (count != 0) ? true : false;
 	})();
 
+	wl_info['2'].bw_320_support = (function(){
+		var count = 0;
+		for(i=0;i<_chanspecs_5g_2.length;i++){
+			if(_chanspecs_5g_2[i].indexOf('/320') != -1){
+				count++;
+			}
+		}
+
+		return (count != 0) ? true : false;
+	})();
+
 	for(i=0;i<_chanspecs_5g_2.length;i++){
 		if(_chanspecs_5g_2[i].indexOf("/80") != -1){
 			wl2.channel_80m.push(_chanspecs_5g_2[i]);
 		}
 		else if(_chanspecs_5g_2[i].indexOf("/160") != -1){
 			wl2.channel_160m.push(_chanspecs_5g_2[i]);
+		}
+		else if(_chanspecs_5g_2[i].indexOf("/320") != -1){			
+			wl2.channel_320m.push(_chanspecs_5g_2[i]);
 		}
 		else if(_chanspecs_5g_2[i].indexOf("u")!= -1 || _chanspecs_5g_2[i].indexOf("l") != -1 || _chanspecs_5g_2[i].indexOf("/40") != -1){
 			wl2.channel_40m.push(_chanspecs_5g_2[i]);
@@ -132,12 +163,13 @@ if(wl_info.band5g_2_support || isSupport('wifi6e')){
 	}	
 }
 
-if(isSupport('wifi6e')){
+if(isSupport('wifi6e') || based_modelid == 'GT-BE98_PRO' || based_modelid == 'GT-BE98'){
 	var wl3 = {
 		"channel_20m": [],
 		"channel_40m": [],
 		"channel_80m": [],
-		"channel_160m": []
+		"channel_160m": [],
+		"channel_320m": []
 	}
 
 	wl_info['3'] = new Object;
@@ -159,12 +191,26 @@ if(isSupport('wifi6e')){
 		return (count != 0) ? true : false;
 	})();
 
+	wl_info['3'].bw_320_support = (function(){
+		var count = 0;
+		for(i=0;i<_chanspecs_6g.length;i++){
+			if(_chanspecs_6g[i].indexOf('/320') != -1){
+				count++;
+			}
+		}
+
+		return (count != 0) ? true : false;
+	})();
+
 	for(i=0;i<_chanspecs_6g.length;i++){
 		if(_chanspecs_6g[i].indexOf("/80") != -1){
 			wl3.channel_80m.push(_chanspecs_6g[i]);
 		}
 		else if(_chanspecs_6g[i].indexOf("/160") != -1){
 			wl3.channel_160m.push(_chanspecs_6g[i]);
+		}
+		else if(_chanspecs_6g[i].indexOf("/320") != -1){			
+			wl3.channel_320m.push(_chanspecs_6g[i]);
 		}
 		else if(_chanspecs_6g[i].indexOf("u")!= -1 || _chanspecs_6g[i].indexOf("l") != -1 || _chanspecs_6g[i].indexOf("/40") != -1){
 			wl3.channel_40m.push(_chanspecs_6g[i]);
@@ -176,17 +222,17 @@ if(isSupport('wifi6e')){
 }
 
 try{
-	var mesh_5g = JSON.parse('<% get_wl_channel_list_2g(); %>');
+	var mesh_5g = JSON.parse('<% get_wl_channel_list_5g(); %>');
 }catch(e){
 	var mesh_5g = {};
 }
 try{
-	var mesh_5g2 = JSON.parse('<% get_wl_channel_list_5g(); %>');
+	var mesh_5g2 = JSON.parse('<% get_wl_channel_list_5g_2(); %>');
 }catch(e){
 	var mesh_5g2 = {};
 }
 try{
-	var mesh_6g = JSON.parse('<% get_wl_channel_list_5g_2(); %>');
+	var mesh_6g = JSON.parse('<% get_wl_channel_list_6g(); %>');
 }catch(e){
 	var mesh_6g = {};
 }
@@ -225,10 +271,16 @@ function wl_chanspec_list_change(){
 					document.getElementById('wl_nctrlsb_field').style.display = "";
 					if(amesh_support && httpApi.hasAiMeshNode() && !wl_info.band5g_2_support){
 						var _wl_channel = new Array();
+						var _unii4 = false;
 						for(j=1; j<mesh_5g.auto.chanspec.length; j++){
 							_wl_channel.push(mesh_5g.auto.chanspec[j]);
+
+							if(parseInt(mesh_5g.auto.chanlist[j]) > 165){
+								_unii4 = true;
+							}
 						}
 
+						unii4Support = _unii4;
 						wl_channel_list_5g = _wl_channel;	
 					}
 					else{
@@ -445,7 +497,13 @@ function wl_chanspec_list_change(){
 			wl_channel_list_6g = JSON.parse('<% channel_list_5g_2(); %>');
 			if(band6g_support){		// due to GT-AXE11000 does not support
 				if(document.getElementById('psc6g_checkbox').checked){
-					wl_channel_list_6g = ['37', '53', '69', '85', '101', '117', '133', '149', '165', '181', '197', '213'];
+					if(band6gBW160_limit){
+						wl_channel_list_6g = ['37', '53', '69', '85', '101', '117', '133', '149', '165', '181', '197', '213'];
+					}
+					else{
+						wl_channel_list_6g = ['5', '21', '37', '53', '69', '85', '101', '117', '133', '149', '165', '181', '197', '213', '229'];
+					}
+
 					if(is_EU_sku || ttc.indexOf('AU') != -1 || ttc.indexOf('AA') != -1){
 						wl_channel_list_6g = ['5', '21', '37', '53', '69', '85'];
 					}
@@ -458,7 +516,7 @@ function wl_chanspec_list_change(){
 							wl_channel_list_6g.splice(i, 1);
 						}
 					}
-					else if(_channel < 30 || _channel > 221){	// remove 1, 5, 9, 13, 17, 21, 25, 29, 225, 229, 233
+					else if(band6gBW160_limit && (_channel < 30 || _channel > 221)){	// remove 1, 5, 9, 13, 17, 21, 25, 29, 225, 229, 233
 						wl_channel_list_6g.splice(i, 1);
 					}
 				}
@@ -471,6 +529,7 @@ function wl_chanspec_list_change(){
 				document.getElementById('wl_nctrlsb_field').style.display = "";
 				if(amesh_support && httpApi.hasAiMeshNode()){
 					var _wl_channel = new Array();
+					var _unii4 = false;
 					for(j=1; j<mesh_6g.auto.chanspec.length; j++){
 						if(band6g_support && document.getElementById('psc6g_checkbox').checked){
                             for(var k=wl_channel_list_6g.length-1; k>=0; k--){
@@ -484,8 +543,13 @@ function wl_chanspec_list_change(){
                         else{
                             _wl_channel.push(mesh_6g.auto.chanspec[j]);
                         }
+
+						if(parseInt(mesh_5g2.auto.chanlist[j]) > 165){
+							_unii4 = true;
+						}
 					}
 
+					unii4Support = _unii4
 					wl_channel_list_6g = _wl_channel;	
 				}
 				else{

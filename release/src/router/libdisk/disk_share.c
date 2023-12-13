@@ -2349,8 +2349,8 @@ extern int add_account(const char *const account, const char *const password){
 	char enc_passwd[enclen];
 	char passwdbuf[NVRAM_ENC_MAXLEN];
 
-	if(!pw_dec(password, passwdbuf, sizeof(passwdbuf))){
-		pw_enc(ascii_passwd, enc_passwd);
+	if(!pw_dec(password, passwdbuf, sizeof(passwdbuf), 1)){
+		pw_enc(ascii_passwd, enc_passwd, 1);
 		strlcpy(ascii_passwd, enc_passwd, sizeof(ascii_passwd));
 	}else{
 		strlcpy(ascii_passwd, password, sizeof(ascii_passwd));
@@ -2672,7 +2672,8 @@ extern int del_account(const char *const account){
 
 #ifdef RTCONFIG_PERMISSION_MANAGEMENT
 // "new_account" can be the same with "account" and only change the password!
-extern int mod_account(const char *const account, const char *const new_account, const char *const new_password){
+int mod_account(const char *const account, const char *const new_account, const char *const new_password)
+{
 	disk_info_t *disk_list, *follow_disk;
 	partition_info_t *follow_partition;
 	char *var_file, *new_var_file;
@@ -2803,7 +2804,8 @@ extern int mod_account(const char *const account, const char *const new_account,
 	return 0;
 }
 #else	/* !RTCONFIG_PERMISSION_MANAGEMENT */
-extern int mod_account(const char *const account, const char *const new_account, const char *const new_password){
+int mod_account(const char *const account, const char *const new_account, const char *const new_password)
+{
 	disk_info_t *disk_list, *follow_disk;
 	partition_info_t *follow_partition;
 	int acc_num;
@@ -2862,7 +2864,7 @@ extern int mod_account(const char *const account, const char *const new_account,
 				char enc_passwd[256] = {0};
 
 				memset(enc_passwd, 0, sizeof(enc_passwd));
-				pw_enc(ascii_passwd, enc_passwd);
+				pw_enc(ascii_passwd, enc_passwd, 1);
 				set_passwd = enc_passwd;
 #else
 				set_passwd = ascii_passwd;

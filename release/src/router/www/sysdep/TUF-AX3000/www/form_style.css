@@ -464,7 +464,6 @@
 .button_gen:hover{
 	font-weight: bolder;
 	height:33px;
- 	width:122px;
  	padding:0 .70em 0 .70em;
  	background-position:0px;
 	cursor:pointer;
@@ -2267,4 +2266,9 @@ padding-top:1px;
 	 word-break: break-all;
 	 line-height: 33px;
 	 text-align: center;
+}
+
+#asus_pp_EULA_modal {
+	border: 3px solid #92650F;
+	background: #000b !important;
 }

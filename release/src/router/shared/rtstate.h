@@ -56,6 +56,52 @@ enum {
 #endif
 	WAN_UNIT_MULTISRV_MAX
 };
+
+#ifdef RTCONFIG_MULTIWAN_IF
+enum {
+	WAN_UNIT_MTWAN_MS_BASE=1000,
+	WAN_UNIT_MTWAN0_MS_BASE=1500,
+	WAN_UNIT_MTWAN0_MS_START=1501,
+	WAN_UNIT_MTWAN0_MS_END=1507,
+#if MAX_MULTI_WAN_NUM > 1
+	WAN_UNIT_MTWAN1_MS_BASE=1510,
+	WAN_UNIT_MTWAN1_MS_START=1511,
+	WAN_UNIT_MTWAN1_MS_END=1517,
+#if MAX_MULTI_WAN_NUM > 2
+	WAN_UNIT_MTWAN2_MS_BASE=1520,
+	WAN_UNIT_MTWAN2_MS_START=1521,
+	WAN_UNIT_MTWAN2_MS_END=1527,
+#if MAX_MULTI_WAN_NUM > 3
+	WAN_UNIT_MTWAN3_MS_BASE=1530,
+	WAN_UNIT_MTWAN3_MS_START=1531,
+	WAN_UNIT_MTWAN3_MS_END=1537,
+#if MAX_MULTI_WAN_NUM > 4
+	WAN_UNIT_MTWAN4_MS_BASE=1540,
+	WAN_UNIT_MTWAN4_MS_START=1541,
+	WAN_UNIT_MTWAN4_MS_END=1547,
+#endif	//MAX_MULTI_WAN_NUM > 4
+#endif	//MAX_MULTI_WAN_NUM > 3
+#endif	//MAX_MULTI_WAN_NUM > 2
+#endif	//MAX_MULTI_WAN_NUM > 1
+	WAN_UNIT_MTWAN_MS_MAX
+};
+#endif
+#endif
+
+#ifdef RTCONFIG_MULTI_PPP
+#define WAN_MULTIPPP_MAX             8
+enum {
+	WAN_UNIT_MULTIPPP_BASE=30,
+	WAN_UNIT_FIRST_MULTIPPP_BASE=30,
+	WAN_UNIT_FIRST_MULTIPPP_START=31,
+	WAN_UNIT_FIRST_MULTIPPP_END=37,
+#if defined(RTCONFIG_DUALWAN)
+	WAN_UNIT_SECOND_MULTIPPP_BASE=40,
+	WAN_UNIT_SECOND_MULTIPPP_START=41,
+	WAN_UNIT_SECOND_MULTIPPP_END=47,
+#endif
+	WAN_UNIT_MULTIPPP_MAX
+};
 #endif
 
 enum {
@@ -119,6 +165,15 @@ enum S46_HGW_CASE {
 	S46_CASE_MAP_HGW_ON	= 2,
 	S46_CASE_MAP_HGW_OFF	= 3,
 	S46_CASE_MAP_CE_ON	= 6
+};
+
+enum {
+	WAN46DET_STATE_INITIALIZING=0,
+	WAN46DET_STATE_NOLINK,
+	WAN46DET_STATE_UNKNOW,
+	WAN46DET_STATE_V6PLUS,
+	WAN46DET_STATE_HGW_V6PLUS,
+	WAN46DET_STATE_OCNVC
 };
 #endif
 #endif
@@ -347,6 +402,60 @@ enum {
 };
 #endif
 
+#ifdef RTCONFIG_MOCA
+#define MAX_MOCA_NODES 16
+#define MAX_MOCA_NUM_CHANNELS	5
+enum	//moca_dev_state
+{
+	MOCA_STATE_UNKNOW,
+	MOCA_STATE_INIT_ENV,
+	MOCA_STATE_INIT_DEV,
+	MOCA_STATE_DEV_READY,
+	MOCA_STATE_ERR_DEV_FAIL,
+	MOCA_STATE_ERR,
+};
+
+enum	//moca_conn_state
+{
+	MOCA_CONN_STATE_UNKNOWN,
+	MOCA_CONN_STATE_PAIRED,
+	MOCA_CONN_STATE_UNPAIRED,
+};
+
+enum //moca_mps_report
+{
+	MOCA_MPS_REPORT_INVALID,
+	MOCA_MPS_REPORT_SCANNING,
+	MOCA_MPS_REPORT_IN_PROGRESS,
+	MOCA_MPS_REPORT_MPS_TRIGGER_FWD_NC,
+	MOCA_MPS_REPORT_MPS_PRIVACY_CHANGE,
+	MOCA_MPS_REPORT_SUCCESS,
+	MOCA_MPS_REPORT_TIMEOUT,
+	MOCA_MPS_REPORT_FAIL,
+};
+
+typedef struct _MOCA_NODE_INFO
+{
+	int active;
+	int node_id;
+	char macaddr[18];
+	char moca_ver[8];
+	int phyrate[MAX_MOCA_NODES];
+	char node_mac[MAX_MOCA_NODES][18];
+	char node_moca_ver[MAX_MOCA_NODES][8];
+	unsigned char rx_snr[MAX_MOCA_NODES][MAX_MOCA_NUM_CHANNELS];
+}MOCA_NODE_INFO;
+
+typedef struct _MOCA_MIB_DATA
+{
+	unsigned int tx_bytes;
+	unsigned int rx_bytes;
+	unsigned int tx_packets;
+	unsigned int rx_packets;
+	unsigned int rx_crc;
+}MOCA_MIB_DATA;
+#endif
+
 // the following definition is for wans_cap
 #define WANSCAP_DSL	0x01
 #define WANSCAP_WAN	0x02
@@ -370,6 +479,14 @@ enum {
 #define WANS_DUALWAN_IF_USB2    8
 #define WANS_DUALWAN_IF_SFPP	9
 
+#ifdef RTCONFIG_MULTIWAN_IF
+#define MULTI_WAN_START_IDX 50
+//#define MAX_MULTI_WAN_NUM //defined by MTWANIF
+#ifdef RTCONFIG_MULTIWAN_PROFILE
+#define MAX_MTWAN_PROFILE_NUM	4
+#endif
+#endif
+
 // the following definition is for free_caches()
 #define FREE_MEM_NONE  "0"	/* kernel < v2.6.39 */
 #define FREE_MEM_PAGE  "1"
@@ -379,7 +496,7 @@ enum {
 #ifdef RTCONFIG_DEFAULT_REPEATER_MODE
 #define sw_mode()            (nvram_get("sw_mode") ? nvram_get_int("sw_mode") : SW_MODE_REPEATER)
 #else
-#define sw_mode()            (nvram_get("sw_mode") ? nvram_get_int("sw_mode") : SW_MODE_ROUTER)
+#define sw_mode()            (nvram_get("sw_mode") ? nvram_get_int("sw_mode") : atoi(nvram_default_get("sw_mode")))
 #endif
 #define is_routing_enabled() (sw_mode()==SW_MODE_ROUTER||sw_mode()==SW_MODE_HOTSPOT)
 #define is_router_mode()     (sw_mode()==SW_MODE_ROUTER)
@@ -415,6 +532,7 @@ extern int get_wan_unit(char *ifname);
 extern char *get_wan_ifname(int unit);
 #ifdef RTCONFIG_IPV6
 extern char *get_wan6_ifname(int unit);
+extern int get_wan6_unit(char* ifname);
 #endif
 extern int get_ports_status(unsigned int port_status);
 extern int get_wanports_status(int wan_unit);
@@ -455,16 +573,26 @@ extern char *get_userdns_r(const char *prefix, char *buf, size_t buflen);
 extern int asus_ctrl_en(int cid);
 
 int is_bridged(const char *brif, const char *ifname);
+int del_from_bridge(const char* ifname);
 #ifdef RTCONFIG_BROOP
 int netlink_broop(char ctrl, int val);
 int detect_broop();
 #endif
 
+#ifdef RTCONFIG_MULTI_PPP
+int is_mtppp_base_unit(int wan_unit);
+int is_mtppp_unit(int wan_unit);
+int get_mtppp_base_unit(int wan_unit);
+int get_mtppp_wan_unit(int base_wan_unit, int idx);
+int get_mtppp_idx_by_wan_unit(int wan_unit);
+#endif
+
 #ifdef RTCONFIG_MULTISERVICE_WAN
+int is_ms_base_unit(int wan_unit);
+int is_ms_wan_unit(int wan_unit);
 int get_ms_base_unit(int wan_unit);
 int get_ms_wan_unit(int base_wan_unit, int idx);
 int get_ms_idx_by_wan_unit(int wan_unit);
 #endif
 
 #endif	/* !__RTSTATE_H__ */
-

@@ -1,0 +1,1 @@
+../../GT-AXE16000/www/chanspec.js

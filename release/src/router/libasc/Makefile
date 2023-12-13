@@ -1,9 +1,8 @@
 include ../common.mak
-include $(SRCBASE)/.config
 
 OBJ = libasc.o
 
-CFLAGS += -idirafter$(LINUXDIR)/include -I$(TOP)/shared  -I$(SRCBASE)/include
+CFLAGS += $(if $(RTCONFIG_DEBUG),-g) -idirafter$(LINUXDIR)/include -I$(TOP)/shared  -I$(SRCBASE)/include
 CFLAGS += -I$(TOP)/curl/include
 CFLAGS += -I$(TOP)/openssl/include
 CFLAGS +=  -shared
@@ -29,6 +28,9 @@ endif
 
 LDFLAGS += -lpthread -lm
 LDFLAGS += $(LIBS) -L$(TOP)/shared -lshared -L$(TOP)/nvram -lnvram
+ifeq ($(RTCONFIG_BCM_502L07P2),y)
+LDFLAGS += -L$(TOP_PLATFORM)/ethctl_lib -lethctl
+endif
 LDFLAGS += -L$(TOP)/curl/lib/.libs -lcurl -L$(TOP)/
 LDFLAGS += -L$(TOP)/openssl -lcrypto -lssl
 
@@ -50,14 +52,11 @@ $(TARGET): $(OBJ)
 	$(CC) -o $@ $(OBJ) $(CFLAGS) $(LIBS) $(LDFLAGS)
 
 install:
-	$(STRIP) $(TARGET)
+	$(if $(RTCONFIG_DEBUG),,$(STRIP) $(TARGET))
 	install -D $(TARGET) $(INSTALLDIR)/libasc/usr/lib/$(TARGET)
 
 clean:
 	-rm *.o $(TARGET)
 
 .PHONY: all clean
-
-
-
 

@@ -445,6 +445,7 @@ void add_usb_modem_modules(void)
 	if(nvram_get_int("usb_qmi"))
 		modprobe("qmi_wwan");
 	modprobe("cdc_mbim");
+	modprobe("ipheth");
 #endif
 }
 
@@ -470,6 +471,7 @@ void remove_usb_modem_modules(void)
 	modprobe_r("drxvi314");
 #endif
 #if !defined(RTCONFIG_INTERNAL_GOBI) || defined(RTCONFIG_USB_MULTIMODEM)
+	modprobe_r("ipheth");
 	modprobe_r("cdc_mbim");
 	modprobe_r("qmi_wwan");
 	modprobe_r("cdc_wdm");
@@ -712,7 +714,7 @@ void start_usb(int mode)
 	char param[32];
 	int i;
 
-	_dprintf("%s\n", __func__);
+	_dprintf("%s w/ mode %d\n", __func__, mode);
 
 #ifdef RTAC68U
 	if (!hw_usb_cap())
@@ -762,7 +764,7 @@ void start_usb(int mode)
 		f_write_string("/proc/sys/fs/inotify/max_user_watches", "100000", 0, 0);
 #endif
 
-#if defined(RTCONFIG_SAMBASRV) || defined(RTCONFIG_FTP)
+#if defined(RTCONFIG_SAMBASRV) || defined(RTCONFIG_TUXERA_SMBD) || defined(RTCONFIG_FTP)
 		if (nvram_get_int("usb_storage")) {
 			/* insert scsi and storage modules before usb drivers */
 			modprobe(SCSI_MOD);
@@ -912,7 +914,7 @@ void remove_usb_prn_module(void)
 
 void remove_usb_storage_module(void)
 {
-#if defined(RTCONFIG_SAMBASRV) || defined(RTCONFIG_FTP)
+#if defined(RTCONFIG_SAMBASRV) || defined(RTCONFIG_TUXERA_SMBD) || defined(RTCONFIG_FTP)
 #ifdef RTCONFIG_USB_CDROM
 	modprobe_r("isofs");
 	modprobe_r("udf");
@@ -990,7 +992,7 @@ void remove_usb_storage_module(void)
 #endif
 	modprobe_r("fuse");
 	sleep(1);
-#ifdef RTCONFIG_SAMBASRV
+#if defined(RTCONFIG_SAMBASRV) || defined(RTCONFIG_TUXERA_SMBD)
 	modprobe_r("nls_cp437");
 	modprobe_r("nls_cp850");
 	modprobe_r("nls_cp852");
@@ -1066,7 +1068,7 @@ void remove_usb_module(void)
 #ifdef RTCONFIG_USB_PRINTER
 	remove_usb_prn_module();
 #endif
-#if defined(RTCONFIG_SAMBASRV) || defined(RTCONFIG_FTP)
+#if defined(RTCONFIG_SAMBASRV) || defined(RTCONFIG_TUXERA_SMBD) || defined(RTCONFIG_FTP)
 	remove_usb_storage_module();
 #endif
 	remove_usb_led_module();
@@ -1177,7 +1179,7 @@ void stop_usb(int f_force)
 	remove_usb_prn_module();
 #endif
 
-#if defined(RTCONFIG_SAMBASRV) || defined(RTCONFIG_FTP)
+#if defined(RTCONFIG_SAMBASRV) || defined(RTCONFIG_TUXERA_SMBD) || defined(RTCONFIG_FTP)
 	// only stop storage services if disabled
 	if (disabled || !nvram_get_int("usb_storage") || f_force) {
 		// Unmount all partitions
@@ -1357,10 +1359,11 @@ int mount_r(char *mnt_dev, char *mnt_dir, char *_type)
 			sprintf(options + strlen(options), ",allow_utime=0022" + (options[0] ? 0 : 1));
 #endif
 
-			if (nvram_invmatch("smbd_cset", ""))
-				sprintf(options + strlen(options), ",iocharset=%s%s",
-						isdigit(nvram_get("smbd_cset")[0]) ? "cp" : "",
-						nvram_get("smbd_cset"));
+			if(nvram_match("smbd_cset", "utf8"))
+				sprintf(options + strlen(options), ",utf8" + (options[0] ? 0 : 1));
+			else
+			if(nvram_invmatch("smbd_cset", ""))
+				sprintf(options + strlen(options), ",iocharset=%s%s", isdigit(nvram_get("smbd_cset")[0]) ? "cp" : "", nvram_get("smbd_cset"));
 
 			if (nvram_invmatch("smbd_cpage", "")) {
 				char cp[16];
@@ -1427,30 +1430,33 @@ int mount_r(char *mnt_dev, char *mnt_dir, char *_type)
 						nvram_get("smbd_cset"));
 			sprintf(options + strlen(options), "%s%s", options[0] ? "," : "", "force,prealloc,sparse");
 #else
-			if (nvram_invmatch("smbd_cset", ""))
-				sprintf(options + strlen(options), "%snls=%s%s", options[0] ? "," : "",
-						isdigit(nvram_get("smbd_cset")[0]) ? "cp" : "",
-						nvram_get("smbd_cset"));
+			if(nvram_match("smbd_cset", "utf8"))
+				sprintf(options + strlen(options), ",utf8" + (options[0] ? 0 : 1));
+			else{
+				if(nvram_invmatch("smbd_cset", ""))
+						sprintf(options + strlen(options), "%snls=%s%s", options[0] ? "," : "", isdigit(nvram_get("smbd_cset")[0]) ? "cp" : "", nvram_get("smbd_cset"));
 #endif
 #if defined(RTCONFIG_REALTEK) && defined(RTCONFIG_TUXERA_NTFS)
 			/* TUXERA module not support codepage options. */
-#else			
-			if (nvram_invmatch("smbd_cpage", "")) {
-				char cp[16];
+#else
+				if (nvram_invmatch("smbd_cpage", "")) {
+					char cp[16];
 
-				snprintf(cp, sizeof(cp), "%s", nvram_safe_get("smbd_cpage"));
-				sprintf(options + strlen(options), ",codepage=%s" + (options[0] ? 0 : 1), cp);
-				snprintf(flagfn, sizeof(flagfn), "nls_cp%s", cp);
-				TRACE_PT("USB %s(%s) is setting the code page to %s!\n", mnt_dev, type, flagfn);
+					snprintf(cp, sizeof(cp), "%s", nvram_safe_get("smbd_cpage"));
+					sprintf(options + strlen(options), ",codepage=%s" + (options[0] ? 0 : 1), cp);
+					snprintf(flagfn, sizeof(flagfn), "nls_cp%s", cp);
+					TRACE_PT("USB %s(%s) is setting the code page to %s!\n", mnt_dev, type, flagfn);
 
-				snprintf(cp, sizeof(cp), "%s", nvram_safe_get("smbd_nlsmod"));
-				if(strlen(cp) > 0 && (strcmp(cp, flagfn) != 0))
-					modprobe_r(cp);
+					snprintf(cp, sizeof(cp), "%s", nvram_safe_get("smbd_nlsmod"));
+					if(strlen(cp) > 0 && (strcmp(cp, flagfn) != 0))
+						modprobe_r(cp);
 
-				modprobe(flagfn);
-				nvram_set("smbd_nlsmod", flagfn);
-			}
+					modprobe(flagfn);
+					nvram_set("smbd_nlsmod", flagfn);
+				}
 #endif
+			}
+
 #ifndef RTCONFIG_BCMARM
 			sprintf(options + strlen(options), ",noatime" + (options[0] ? 0 : 1));
 #endif
@@ -1540,7 +1546,10 @@ int mount_r(char *mnt_dev, char *mnt_dir, char *_type)
 #ifdef RTCONFIG_OPENPLUS_TFAT
 				else
 #endif
+				{
 					ret = eval("mount", "-t", "tfat", "-o", options, mnt_dev, mnt_dir);
+					_dprintf("%s: fat options: %s, ret: %d.\n", __func__, options, ret);
+				}
 #endif
 
 				if(ret != 0){
@@ -1568,8 +1577,9 @@ int mount_r(char *mnt_dev, char *mnt_dir, char *_type)
 					else
 #endif
 					{
-						//ret = eval("mount", "-t", "tntfs", "-o", options, mnt_dev, mnt_dir);
-						ret = eval("mount", "-t", "tntfs", "-o", "nodev", mnt_dev, mnt_dir);
+						ret = eval("mount", "-t", "tntfs", "-o", options, mnt_dev, mnt_dir);
+						//ret = eval("mount", "-t", "tntfs", "-o", "nodev", mnt_dev, mnt_dir);
+						_dprintf("%s: ntfs options: %s, ret: %d.\n", __func__, options, ret);
 					}
 #endif
 #if defined(RTCONFIG_PARAGON_NTFS)
@@ -2311,7 +2321,7 @@ _dprintf("usb_path: 4. don't set %s.\n", tmp);
 		nvram_set("sc_mount_sig", "1");
 #endif
 
-#if defined(RTCONFIG_APP_PREINSTALLED) && defined(RTCONFIG_CLOUDSYNC)
+#if defined(RTCONFIG_CLOUDSYNC)
 		char word[PATH_MAX], *next_word;
 		char cloud_setting[2048], *b, *nvp, *nv;
 		int type = 0, rule = 0, enable = 0;
@@ -2447,6 +2457,11 @@ _dprintf("cloudsync: wait a second...\n");
 _dprintf("%s: start_cloudsync.\n", __func__);
 			start_cloudsync(0);
 		}
+#endif
+
+#ifdef DEBUG_RCTEST
+		stop_httpd();
+		start_httpd();
 #endif
 	}
 #ifdef RTCONFIG_USBRESET
@@ -2745,6 +2760,7 @@ void hotplug_usb(void)
 #if (!defined(LINUX30) && LINUX_VERSION_CODE < KERNEL_VERSION(2,6,36))
 		&& strcmp(getenv("PHYSDEVBUS") ? : "", "scsi") == 0
 #endif
+		&& device
 		)
 	{
 		/* scsi partition */
@@ -2753,6 +2769,7 @@ void hotplug_usb(void)
 		char *d, dev[32], nv_name[32];
 
 		/* strip trail digits */
+		dev[0] = '\0';
 		strlcpy(dev, device, sizeof(dev));
 #ifdef RTCONFIG_USB_CDROM
 		if (major != USB_CDROM_MAJOR)
@@ -2762,7 +2779,7 @@ void hotplug_usb(void)
 			while (d > dev && isdigit(*d))
 				*d-- = '\0';
 		}
-		sprintf(nv_name, "ignore_nas_service_%s", dev);
+		snprintf(nv_name, sizeof(nv_name), "ignore_nas_service_%s", dev);
 
 		snprintf(devname, sizeof(devname), "/dev/%s", device);
 		lock = file_lock("usb");
@@ -2815,7 +2832,7 @@ _dprintf("restart_nas_services(%d): test 6.\n", getpid());
 		file_unlock(lock);
 	}
 #endif
-	else if (strncmp(interface ? : "", "8/", 2) == 0) {	/* usb storage */
+	else if (interface && strncmp(interface, "8/", 2) == 0) {	/* usb storage */
 		run_nvscript("script_usbhotplug", NULL, 2);
 #ifndef LINUX26
 		hotplug_usb_storage_device(host, add, (add ? EFH_HP_ADD : EFH_HP_REMOVE) | (host < 0 ? EFH_HUNKNOWN : 0));
@@ -3137,7 +3154,7 @@ void stop_tftpd(int force)
 
 // !!TB - Samba
 
-#ifdef RTCONFIG_SAMBASRV
+#if defined(RTCONFIG_SAMBASRV) || defined(RTCONFIG_TUXERA_SMBD)
 #ifdef RTCONFIG_PERMISSION_MANAGEMENT
 #define PMS_GRP_DNAME     "default"       // group default name
 #define PMS_GRP_DGID      "500"           // group default gid
@@ -3327,6 +3344,10 @@ void create_custom_passwd(void)
 
 static void kill_samba(int sig)
 {
+#if defined(RTCONFIG_TUXERA_SMBD)
+	killall_tk("tsmb-server");
+	eval("rmmod", "tsmb");
+#else
 	if (sig == SIGTERM) {
 		killall_tk("smbd");
 		killall_tk("nmbd");
@@ -3335,6 +3356,7 @@ static void kill_samba(int sig)
 		killall("smbd", sig);
 		killall("nmbd", sig);
 	}
+#endif
 }
 
 #if defined(RTCONFIG_GROCTRL) && !defined(RTCONFIG_HND_ROUTER)
@@ -3417,6 +3439,7 @@ start_samba(void)
 {
 	int acc_num;
 	char cmd[256];
+#if !defined(RTCONFIG_TUXERA_SMBD)
 #if defined(SMP)
 	char cpu_list[4];
 #if defined(RTCONFIG_BCMARM) || defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074)
@@ -3428,6 +3451,7 @@ start_samba(void)
 #endif
 #endif
 	char smbd_cmd[32];
+#endif // !defined(RTCONFIG_TUXERA_SMBD)
 
 	if (getpid() != 1) {
 		notify_rc_after_wait("start_samba");
@@ -3471,7 +3495,10 @@ start_samba(void)
 	system("/sbin/write_smb_conf");
 
 	/* write smbpasswd  */
-#if defined(RTCONFIG_SAMBA36X)
+#if defined(RTCONFIG_TUXERA_SMBD)
+	system("echo \"\" |tsmb-passwd -c /etc/smb.conf -G -s -a");
+	system("tsmb-passwd -c /etc/smb.conf -G -z nobody");
+#elif defined(RTCONFIG_SAMBA36X)
 	// use samba-3.6.x_opwrt to replace from samba-3.6.x
 	//system("echo -e \"\n\n\" |/usr/sbin/smbpasswd -s -a nobody");
 	system("/usr/sbin/smbpasswd nobody \"\"");
@@ -3545,16 +3572,22 @@ start_samba(void)
 #ifdef RTCONFIG_NVRAM_ENCRYPT
 			char dec_passwd[64];
 			memset(dec_passwd, 0, sizeof(dec_passwd));
-			pw_dec(tmp_ascii_passwd, dec_passwd, sizeof(dec_passwd));
+			pw_dec(tmp_ascii_passwd, dec_passwd, sizeof(dec_passwd), 1);
 			tmp_ascii_passwd = dec_passwd;
 #endif
 			memset(char_passwd, 0, 64);
 			ascii_to_char_safe(char_passwd, tmp_ascii_passwd, 64);
+#ifdef RTCONFIG_TRUSTZONE
+			if (i == 0)
+				atee_get_admin_pw(char_passwd, sizeof(char_passwd));
+#endif
 
 			memset(suit_passwd, 0, 64);
 			suit_double_quote(suit_passwd, char_passwd, 64);
 
-#if defined(RTCONFIG_SAMBA36X)
+#if defined(RTCONFIG_TUXERA_SMBD)
+			snprintf(cmd, sizeof(cmd), "echo \"%s\" |tsmb-passwd -c /etc/smb.conf -s -a \"%s\"", suit_passwd, suit_user);
+#elif defined(RTCONFIG_SAMBA36X)
 			// use samba-3.6.x_opwrt to replace from samba-3.6.x
 			//snprintf(cmd, sizeof(cmd), "echo -e \"%s\n%s\n\"  |/usr/sbin/smbpasswd -s -a \"%s\"", suit_passwd, suit_passwd, suit_user);
 			snprintf(cmd, sizeof(cmd), "/usr/sbin/smbpasswd \"%s\" \"%s\"", suit_user, suit_passwd);
@@ -3573,22 +3606,23 @@ start_samba(void)
 		free(nv);
 #endif
 
-#if defined(RTCONFIG_SAMBA36X) || defined(RTCONFIG_SAMBA4)
+#if defined(RTCONFIG_TUXERA_SMBD)
+	mkdir_if_none("/var/lib/tsmb/run");
+
+	system("insmod tsmb");
+	system("tsmb-server -c /etc/smb.conf -B");
+#elif defined(RTCONFIG_SAMBA36X) || defined(RTCONFIG_SAMBA4)
+	mkdir_if_none("/var/run/samba");
+
 	xstart("/usr/sbin/nmbd", "-D", "-s", "/etc/smb.conf");
 	snprintf(smbd_cmd, sizeof(smbd_cmd), "%s/smbd", "/usr/sbin");
 #else
 	xstart("nmbd", "-D", "-s", "/etc/smb.conf");
 
-#if defined(RTCONFIG_TFAT) || defined(RTCONFIG_TUXERA_NTFS) || defined(RTCONFIG_TUXERA_HFS) || defined(RTCONFIG_TUXERA_APFS)
-	if(nvram_get_int("enable_samba_tuxera") == 1)
-		snprintf(smbd_cmd, sizeof(smbd_cmd), "%s/smbd", "/usr/bin");
-	else
-		snprintf(smbd_cmd, sizeof(smbd_cmd), "%s/smbd", "/usr/sbin");
-#else
 	snprintf(smbd_cmd, sizeof(smbd_cmd), "%s/smbd", "/usr/sbin");
 #endif
-#endif
 
+#if !defined(RTCONFIG_TUXERA_SMBD)
 #if defined(SMP)
 #if defined(RTCONFIG_BCMARM) || defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074)
 #if defined(RTCONFIG_HND_ROUTER_AX_675X) || defined(BCM6750)
@@ -3625,6 +3659,7 @@ start_samba(void)
 #endif
 
 	start_wsdd();
+#endif // !defined(RTCONFIG_TUXERA_SMBD)
 
 	logmessage("Samba Server", "daemon is started");
 
@@ -3658,7 +3693,7 @@ void stop_samba(int force)
 	enable_gro(0);
 #endif
 }
-#endif	// RTCONFIG_SAMBASRV
+#endif	// defined(RTCONFIG_SAMBASRV) || defined(RTCONFIG_TUXERA_SMBD)
 
 #ifdef RTCONFIG_MEDIA_SERVER
 #define MEDIA_SERVER_APP	"minidlna"
@@ -3912,9 +3947,8 @@ void start_dms(void)
 			fprintf(f,
 				"serial=%s\n"
 				"uuid=%s\n"
-				"model_number=%s.%s\n",
-				serial, uuid,
-				rt_version, rt_serialno);
+				"model_number=%s\n",
+				serial, uuid, get_productid());
 
 			nv = nvram_safe_get("dms_sort");
 			if (!*nv || isdigit(*nv))
@@ -4004,7 +4038,7 @@ write_mt_daapd_conf(char *servername)
 	dec_passwd = malloc(declen);
 	if(dec_passwd){
 		memset(dec_passwd, 0, declen);
-		pw_dec(http_passwd, dec_passwd, declen);
+		pw_dec(http_passwd, dec_passwd, declen, 1);
 		strlcpy(http_passwd, dec_passwd, sizeof(http_passwd));
 	}
 #endif
@@ -4186,7 +4220,7 @@ void write_webdav_permissions()
 			int declen = strlen(tmp_ascii_passwd);
 			char dec_passwd[declen];
 			memset(dec_passwd, 0, sizeof(dec_passwd));
-			pw_dec(tmp_ascii_passwd, dec_passwd, sizeof(dec_passwd));
+			pw_dec(tmp_ascii_passwd, dec_passwd, sizeof(dec_passwd), 1);
 			tmp_ascii_passwd = dec_passwd;
 #endif
 			ascii_to_char_safe(char_passwd, tmp_ascii_passwd, 64);
@@ -4526,7 +4560,7 @@ void start_cloudsync(int fromUI)
 				int got_mount = 0;
 
 				memset(check_target, 0, PATH_MAX);
-				sprintf(check_target, " %s ", mounted_path);
+				snprintf(check_target, sizeof(check_target), " %s ", mounted_path);
 
 				if((fp = fopen(MOUNT_FILE, "r")) == NULL){
 					logmessage("Cloudsync client", "Could read the disk's data");
@@ -4739,7 +4773,7 @@ void start_nas_services(int force)
 	}
 
 	setup_passwd();
-#ifdef RTCONFIG_SAMBASRV
+#if defined(RTCONFIG_SAMBASRV) || defined(RTCONFIG_TUXERA_SMBD)
 	start_samba();
 #endif
 
@@ -4790,7 +4824,7 @@ void stop_nas_services(int force)
 	stop_tftpd(force);
 #endif
 
-#ifdef RTCONFIG_SAMBASRV
+#if defined(RTCONFIG_SAMBASRV) || defined(RTCONFIG_TUXERA_SMBD)
 	stop_samba(force);
 #endif
 #ifdef RTCONFIG_WEBDAV
@@ -4824,7 +4858,7 @@ void restart_sambaftp(int stop, int start)
 
 	/* restart all NAS applications */
 	if (stop) {
-#ifdef RTCONFIG_SAMBASRV
+#if defined(RTCONFIG_SAMBASRV) || defined(RTCONFIG_TUXERA_SMBD)
 		stop_samba(0);
 #endif
 #ifdef RTCONFIG_FTP
@@ -5726,8 +5760,7 @@ int start_app(void)
 	if(strlen(apps_dev) <= 0 || strlen(apps_mounted_path) <= 0)
 		return -1;
 
-	memset(cmd, 0, PATH_MAX);
-	sprintf(cmd, "%s/.asusrouter %s %s", nvram_safe_get("apps_local_space"), apps_dev, apps_mounted_path);
+	snprintf(cmd, sizeof(cmd), "%s/.asusrouter %s %s", nvram_safe_get("apps_local_space"), apps_dev, apps_mounted_path);
 	system(cmd);
 
 	return 0;
@@ -5762,7 +5795,7 @@ void usb_notify(){
 			continue;
 
 		memset(target, 0, 128);
-		sprintf(target, "%s/%s", target_dir, entry->d_name);
+		snprintf(target, sizeof(target), "%s/%s", target_dir, entry->d_name);
 
 		if(!pids(entry->d_name)){
 			unlink(target);
@@ -5873,4 +5906,3 @@ void stop_wsdd() {
 	if (pids("wsdd2"))
 		killall_tk("wsdd2");
 }
-

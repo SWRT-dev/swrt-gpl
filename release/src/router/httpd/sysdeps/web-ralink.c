@@ -1844,7 +1844,7 @@ static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 #ifdef RTCONFIG_CONCURRENTREPEATER
 	if (sw_mode == SW_MODE_REPEATER || sw_mode == SW_MODE_HOTSPOT)
 #else	
-	if (wlc_band == unit && (sw_mode == SW_MODE_REPEATER || sw_mode == SW_MODE_HOTSPOT))
+	if (wlc_band == unit && (sw_mode == SW_MODE_REPEATER || sw_mode == SW_MODE_HOTSPOT|| wisp_mode()))
 #endif		
 		snprintf(prefix, sizeof(prefix), "wl%d.1_", unit);
 	else
@@ -1856,6 +1856,10 @@ static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	if(*name == 0)
 		name = get_staifname(unit);
 #endif
+#if defined(RTCONFIG_WISP)
+	if(wisp_mode())
+		name = get_staifname(unit);
+#endif		
 
 	wrq.u.bitrate.value=-1;
 	if (wl_ioctl(name, SIOCGIWRATE, &wrq))
@@ -1898,7 +1902,7 @@ ERROR:
 int
 ej_wl_rate_2g(int eid, webs_t wp, int argc, char_t **argv)
 {
-	if(sw_mode() == SW_MODE_REPEATER)
+	if(sw_mode() == SW_MODE_REPEATER|| wisp_mode())
 		return ej_wl_rate(eid, wp, argc, argv, 0);
 	else
 	   	return 0;
@@ -1907,7 +1911,7 @@ ej_wl_rate_2g(int eid, webs_t wp, int argc, char_t **argv)
 int
 ej_wl_rate_5g(int eid, webs_t wp, int argc, char_t **argv)
 {
-	if(sw_mode() == SW_MODE_REPEATER)
+	if(sw_mode() == SW_MODE_REPEATER|| wisp_mode())
 		return ej_wl_rate(eid, wp, argc, argv, 1);
 	else
 	   	return 0;
@@ -1916,7 +1920,7 @@ ej_wl_rate_5g(int eid, webs_t wp, int argc, char_t **argv)
 int
 ej_wl_rate_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 {
-	if(sw_mode() == SW_MODE_REPEATER)
+	if(sw_mode() == SW_MODE_REPEATER|| wisp_mode())
 		return ej_wl_rate(eid, wp, argc, argv, 2);
 	else
 		return 0;
@@ -1925,7 +1929,7 @@ ej_wl_rate_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 int
 ej_wl_rate_6g(int eid, webs_t wp, int argc, char_t **argv)
 {
-	if(sw_mode() == SW_MODE_REPEATER)
+	if(sw_mode() == SW_MODE_REPEATER|| wisp_mode())
 		return ej_wl_rate(eid, wp, argc, argv, 3);
 	else
 		return 0;
@@ -2008,4 +2012,3 @@ ej_wl_auth_psta(int eid, webs_t wp, int argc, char_t **argv)
 	return retval;
 }
 #endif
-

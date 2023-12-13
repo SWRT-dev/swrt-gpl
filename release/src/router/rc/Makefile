@@ -1,6 +1,19 @@
 include ../common.mak
 
-CFLAGS += -Wall -Os $(EXTRACFLAGS)
+ifeq ($(HND_ROUTER_BE_4916),y)
+-include sdk_profile.mak
+endif
+
+ifeq ($(HND_ROUTER_BE_4916),y)
+export RC_HOSTAPD_BE := y
+endif
+
+ifeq ($(HND_ROUTER_AX),y)
+ifeq ($(BRCM_CHIP),$(filter $(BRCM_CHIP),4908 4912))
+CFLAGS += -DBCM49XX
+endif
+endif
+CFLAGS += -Wall $(if $(RTCONFIG_DEBUG),-g,-Os) $(EXTRACFLAGS)
 CFLAGS += -I. -I$(TOP)/shared -I$(SRCBASE)/include -I$(TOP)/networkmap
 ifneq ($(HND_ROUTER),y)
 CFLAGS += -idirafter$(LINUXDIR)/include
@@ -87,12 +100,15 @@ CFLAGS += -I$(HND_SRC)/shared/opensource/include/$(BRCM_BOARD)
 ifeq ($(RTCONFIG_BCM_502L07P2),y)
 LDFLAGS += -L$(TOP_PLATFORM)/ethctl_lib -lethctl
 endif
-ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6756),$(HND_ROUTER_AX_6710),$(BCM_502L07P2)),y)
+ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6756),$(HND_ROUTER_BE_4916),$(HND_ROUTER_AX_6710),$(BCM_502L07P2)),y)
 LDFLAGS += -L$(TOP_PLATFORM)/gen_util -lgen_util -L$(TOP_PLATFORM)/sys_util -lsys_util
 endif
 ifeq ($(HND_ROUTER_AX_6756),y)
 LDFLAGS += -L$(TOP_PLATFORM)/wlcsm -lwlcsm -L$(TOP_PLATFORM)/bcm_flashutil -lbcm_flashutil -L$(TOP_PLATFORM)/bcm_util $(if $(HND_ROUTER_AX_6756),-lbcm_util) -L$(TOP_PLATFORM)/bcm_boardctl -lbcm_boardctl
 CFLAGS += -I$(TOP_PLATFORM)/bcm_flashutil -I$(HND_SRC)/userspace/public/include -I$(HND_SRC)/userspace/public/include/linux
+else ifeq ($(HND_ROUTER_BE_4916),y)
+LDFLAGS += -L$(TOP_PLATFORM)/wlcsm -lwlcsm -L$(TOP_PLATFORM)/bcm_flashutil -lbcm_flashutil -L$(TOP_PLATFORM)/bcm_util $(if $(HND_ROUTER_BE_4916),-lbcm_util) -L$(TOP_PLATFORM)/bcm_boardctl -lbcm_boardctl
+CFLAGS += -I$(TOP_PLATFORM)/bcm_flashutil -I$(HND_SRC)/userspace/public/include -I$(HND_SRC)/userspace/public/libs/cms_util/ -I$(HND_SRC)/userspace/public/include/linux
 else
 LDFLAGS += -L$(TOP_PLATFORM)/wlcsm -lwlcsm -L$(TOP_PLATFORM)/bcm_flashutil -lbcm_flashutil -L$(TOP_PLATFORM)/bcm_util $(if $(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6710),$(BCM_502L07P2)),-lbcm_util,-lbcm_crc) -L$(TOP_PLATFORM)/bcm_boardctl -lbcm_boardctl
 endif
@@ -108,11 +124,27 @@ CFLAGS += -I$(HND_SRC)/bcmdrivers/opensource/include/bcm963xx -I$(HND_SRC)/share
 CFLAGS += -I$(WPA_SUPPLICANT_DIR)/src/common
 LDFLAGS += -L$(WPA_SUPPLICANT_DIR)/wpa_supplicant -L$(INSTALLDIR)/wpa_supplicant/usr/lib
 WPS_PBCD := wps_pbcd
-ifeq ($(or $(RTCONFIG_WIFI6E),$(HND_ROUTER_AX_6756),$(RTCONFIG_BCM_502L07P2)),y)
+ifeq ($(or $(RTCONFIG_WIFI6E),$(HND_ROUTER_AX_6756),$(HND_ROUTER_BE_4916),$(RTCONFIG_BCM_502L07P2)),y)
+ifeq ($(RC_HOSTAPD_BE),y)
+ifeq ($(ASUSWRT_BRCM_SDK_VERSION),WIFI7_SDK_20230426)
+OBJS_WPS_PBCD := $(if $(wildcard sysdeps/broadcom/wps_pbcd_be.c),wps_pbcd_be.o,prebuild/wps_pbcd_be.o)
+OBJS_WPS_PBCD += $(if $(wildcard sysdeps/broadcom/hostapd_config_be.c),hostapd_config_be.o,prebuild/hostapd_config_be.o)
+else # WIFI7_SDK_20230426
+OBJS_WPS_PBCD := $(if $(wildcard sysdeps/broadcom/wps_pbcd_be_305_16.c),wps_pbcd_be_305_16.o,prebuild/wps_pbcd_be_305_16.o)
+OBJS_WPS_PBCD += $(if $(wildcard sysdeps/broadcom/hostapd_config_be_305_16.c),hostapd_config_be_305_16.o,prebuild/hostapd_config_be_305_16.o)
+endif # WIFI7_SDK_20230426
+else
 OBJS_WPS_PBCD := $(if $(wildcard sysdeps/broadcom/wps_pbcd_6e.c),wps_pbcd_6e.o,prebuild/wps_pbcd_6e.o)
 OBJS_WPS_PBCD += $(if $(wildcard sysdeps/broadcom/hostapd_config_6e.c),hostapd_config_6e.o,prebuild/hostapd_config_6e.o)
+endif
+ifeq ($(HND_ROUTER_BE_4916),y)
+CFLAGS += -DCONFIG_DRIVER_BRCM_MLO
+endif
 ifeq ($(RTCONFIG_AMAS_WGN), y)
 OBJS_WPS_PBCD += $(if $(wildcard amas_wgn.c),amas_wgn.o,prebuild/amas_wgn.o)
+endif
+ifeq ($(RTCONFIG_MULTILAN_CFG), y)
+OBJS_WPS_PBCD += $(if $(wildcard amas_apg.c),amas_apg.o,prebuild/amas_apg.o)
 endif
 else
 OBJS_WPS_PBCD := $(if $(wildcard sysdeps/broadcom/wps_pbcd.c),wps_pbcd.o,prebuild/wps_pbcd.o)
@@ -178,9 +210,9 @@ ifeq ($(RTCONFIG_4352_5G),y)
 CFLAGS += -DBCM4352
 endif
 
+CFLAGS += -I$(TOP)/libdisk
 ifeq ($(RTCONFIG_USB),y)
 CFLAGS += -DU2EC
-CFLAGS += -I$(TOP)/libdisk
 LDFLAGS += -L$(TOP)/libdisk -ldisk
 ifeq ($(BCM_MMC),y)
 CFLAGS += -DBCM_MMC
@@ -231,7 +263,7 @@ CFLAGS  += -I$(TOP)/protect_srv/include
 endif
 
 ifeq ($(RTCONFIG_BT_CONN),y)
-CFLAGS  += -I$(TOP)/bluez-5.41/lib
+CFLAGS  += -I$(TOP)/bluez-5.56/lib
 endif
 
 #CFLAGS += -DRC_BUILDTIME=$(shell date -d "now" +"%s")
@@ -295,16 +327,45 @@ CFLAGS += -I$(TOP)/sw-hw-auth
 endif
 
 ifneq ($(findstring CONFIG_BCM_KF_NETFILTER=, $(shell cat $(LINUXDIR)/.config)),)
+ifeq ($(or $(HND_ROUTER_AX_6756),$(HND_ROUTER_BE_4916)),y)
+else
 CFLAGS         += -DBCM_KF_NETFILTER
 endif
+endif
+
+ifeq ($(and $(BR63),$(NEW_SWITCH_ORDER)),y)
+CFLAGS += -DNEW_SWITCH_ORDER
+endif
+
 ifneq ($(findstring CONFIG_SWRT_FULLCONE=, $(shell cat $(LINUXDIR)/.config)),)
 CFLAGS         += -DBCM_KF_NETFILTER
 endif
 
-OBJS := rc.o init.o interface.o lan.o wireless.o wan.o pppd.o auth.o services.o
+ifeq ($(HND_ROUTER_BE_4916), y)
+CFLAGS+= -fcommon
+ifeq ($(ASUSWRT_BRCM_SDK_VERSION),WIFI7_SDK_20230426)
+CFLAGS += -DWIFI7_SDK_20230426
+endif
+endif
+
+ifeq ($(or $(HND_ROUTER_AX_6756),$(HND_ROUTER_BE_4916)),y)
+CFLAGS += -DJFFS2_UBI_VOLUME_SIZE=$(JFFS2_UBI_VOLUME_SIZE)
+endif
+
+OBJS := rc.o init.o interface.o lan.o wireless.o $(if $(RTCONFIG_SOFTWIRE46), s46comm.o) wan.o pppd.o auth.o services.o
 OBJS += firewall.o ppp.o services.o common.o
-OBJS += watchdog.o check_watchdog.o ntp.o $(if $(RTCONFIG_MULTIWAN_CFG),qos_multiwan.o,qos.o) udhcpc.o ate.o
+OBJS += watchdog.o check_watchdog.o ntp.o udhcpc.o ate.o
+ifeq ($(RTCONFIG_MULTIWAN_IF),y)
+OBJS += qos_multi_wan_if.o
+else ifeq ($(RTCONFIG_MULTIWAN_CFG),y)
+OBJS += qos_multiwan.o
+else
+OBJS += qos.o
+endif
 OBJS += format.o
+ifeq ($(RTCONFIG_SINGLEIMG_B),y)
+OBJS += fwupg_flashing.o
+endif
 ifeq ($(RTCONFIG_CONNTRACK),y)
 OBJS += pctime.o
 endif
@@ -342,11 +403,11 @@ OBJS += amas-ssd-broadcom.o
 endif
 endif
 ifeq ($(RTCONFIG_BCM_MFG),y)
-ifeq ($(BUILD_NAME),$(filter $(BUILD_NAME),RT-AC68U RT-AC3200 4G-AC68U GT-AC2900 RT-AX58U TUF-AX3000 TUF-AX5400 RT-AX82U RT-AX55 RT-AX1800 DSL-AX82U GS-AX3000 GS-AX5400))
+ifeq ($(BUILD_NAME),$(filter $(BUILD_NAME),RT-AC68U RT-AC3200 4G-AC68U GT-AC2900 RT-AX58U TUF-AX3000 TUF-AX5400 RT-AX82U RT-AX55 RT-AX1800 DSL-AX82U GS-AX3000 GS-AX5400 GT-AX6000))
 OBJS += cfe.o
 endif
 else
-ifeq ($(BUILD_NAME),$(filter $(BUILD_NAME),RT-AC68U RT-AC3200 4G-AC68U GT-AC2900 RT-AX58U TUF-AX3000 RT-AX82U DSL-AX82U GS-AX3000 GS-AX5400 RP-AX56 RP-AX58))
+ifeq ($(BUILD_NAME),$(filter $(BUILD_NAME),RT-AC68U RT-AC3200 4G-AC68U GT-AC2900 RT-AX58U TUF-AX3000 RT-AX82U DSL-AX82U GS-AX3000 GS-AX5400 GT-AX6000))
 OBJS += cfe.o
 endif
 endif
@@ -501,6 +562,7 @@ endif
 
 ifeq ($(RTCONFIG_TPVPN),y)
 CFLAGS += -I$(TOP)/libasc
+CFLAGS += -I$(TOP)/libdisk
 LDFLAGS += -L$(TOP)/libasc -lasc
 OBJS += tpvpn.o
 endif
@@ -520,6 +582,15 @@ endif
 
 ifeq ($(RTCONFIG_INTERNETCTRL),y)
 OBJS += ic.o
+endif
+
+ifeq ($(RTCONFIG_MXL371X), y)
+CFLAGS += -I$(TOP)/mxl371x_sdk/MxLWare/lib -I$(TOP)/mxl371x_sdk/MxLWare/inc
+LDFLAGS += -lclnkapi -L$(TOP)/mxl371x_sdk/MxLWare/lib
+endif
+
+ifeq ($(RTCONFIG_MOCA), y)
+OBJS += moca.o
 endif
 
 #ifeq ($(RTCONFIG_HTTPS),y)
@@ -611,6 +682,10 @@ endif
 ifeq ($(RTCONFIG_VPNC),y)
 ifeq ($(RTCONFIG_VPN_FUSION),y)
 OBJS += vpnc_fusion.o
+ifeq ($(RTCONFIG_MULTILAN_CFG),y)
+OBJS += sdn.o
+OBJS += firewall_sdn.o
+endif
 else
 OBJS += vpnc.o
 endif
@@ -689,8 +764,8 @@ ifeq ($(or $(RTCONFIG_FRS_LIVE_UPDATE),$(RTCONFIG_FRS_FEEDBACK),$(RTCONFIG_URLFW
 CFLAGS += -I$(TOP)/curl-7.21.7/include
 LDFLAGS += -L$(TOP)/curl-7.21.7/lib/.libs -lcurl
 ifeq ($(RTCONFIG_TR069),y)
-CFLAGS += -I$(TOP)/libssh2-1.9.0/include -I$(TOP)/zlib/include
-LDFLAGS += -L$(TOP)/libssh2-1.9.0/src/.libs -lssh2 -L$(TOP)/zlib -lz
+CFLAGS += -I$(TOP)/libssh2-1.10.0/include -I$(TOP)/zlib/include
+LDFLAGS += -L$(TOP)/libssh2-1.10.0/src/.libs -lssh2 -L$(TOP)/zlib -lz
 endif
 endif
 
@@ -703,7 +778,7 @@ endif
 ifeq ($(RTCONFIG_SOFTWIRE46),y)
 CFLAGS += -I$(STAGEDIR)/usr/include/json-c
 LDFLAGS += -L$(STAGEDIR)/usr/lib -ljson-c
-OBJS += s46comm.o v6plusd.o ocnvcd.o
+OBJS += v6plusd.o ocnvcd.o
 endif
 
 ifeq ($(RTCONFIG_INTERNAL_GOBI),y)
@@ -761,6 +836,16 @@ OBJS += dualwan.o
 endif
 endif
 
+ifeq ($(RTCONFIG_MULTIWAN_IF),y)
+OBJS += multi_wan.o
+OBJS += mtwanduck.o
+OBJS += det_dns.o
+OBJS += mtwan_detect_internet.o
+ifeq ($(RTCONFIG_IPV6),y)
+OBJS += multi_wan_ipv6.o
+endif
+endif
+
 ifeq ($(RTCONFIG_ADTBW),y)
 OBJS += adtbw.o
 endif
@@ -793,6 +878,18 @@ endif
 ifeq ($(RTCONFIG_TC_DOWNLOAD), y)
 OBJS += tc_utils.o
 CFLAGS += -D _FILE_OFFSET_BITS=64
+endif
+
+ifeq ($(RTCONFIG_MULTILAN_CFG), y)
+OBJS += amas_apg.o
+endif
+
+# _FILE_OFFSET_BITS=64 is defined in shared, it must be defined in rc accordingly if shared pass pointer to struct dirent to rc,
+# e.g., readdir_wrapper() v.s. find_uboot_for_next_fw().
+CFLAGS += $(if $(RTCONFIG_QCA),-D _FILE_OFFSET_BITS=64)
+
+ifeq ($(RTCONFIG_HND_ROUTER_AX),y)
+OBJS += gpy211_war.o
 endif
 
 ifeq ($(RTCONFIG_BCMARM),y)
@@ -870,8 +967,16 @@ CFLAGS += -I$(TOP)/libasuslog
 endif
 
 ifeq ($(RTCONFIG_BRCM_HOSTAPD),y)
-ifeq ($(or $(RTCONFIG_WIFI6E),$(HND_ROUTER_AX_6756),$(RTCONFIG_BCM_502L07P2)),y)
+ifeq ($(or $(RTCONFIG_WIFI6E),$(HND_ROUTER_AX_6756),$(HND_ROUTER_BE_4916),$(RTCONFIG_BCM_502L07P2)),y)
+ifeq ($(RC_HOSTAPD_BE),y)
+ifeq ($(ASUSWRT_BRCM_SDK_VERSION),WIFI7_SDK_20230426)
+OBJS += $(if $(wildcard sysdeps/broadcom/hostapd_config_be.c),hostapd_config_be.o,prebuild/hostapd_config_be.o)
+else # WIFI7_SDK_20230426
+OBJS += $(if $(wildcard sysdeps/broadcom/hostapd_config_be_305_16.c),hostapd_config_be_305_16.o,prebuild/hostapd_config_be_305_16.o)
+endif # WIFI7_SDK_20230426
+else # RC_HOSTAPD_BE
 OBJS += $(if $(wildcard sysdeps/broadcom/hostapd_config_6e.c),hostapd_config_6e.o,prebuild/hostapd_config_6e.o)
+endif # RC_HOSTAPD_BE
 else
 OBJS += $(if $(wildcard sysdeps/broadcom/hostapd_config.c),hostapd_config.o,prebuild/hostapd_config.o)
 endif
@@ -958,13 +1063,23 @@ endif
 DIAG_OBJS += conn_diag-sql.o
 endif
 
-ifeq ($(or $(RTAX82U),$(GSAX3000),$(GSAX5400),$(TUFAX5400),$(GTAX11000_PRO),$(GTAXE16000),$(GTAX6000)),y)
+ifeq ($(BUILD_NAME), GT10)
+export GT10=y
+endif
+
+ifeq ($(BUILD_NAME),$(filter $(BUILD_NAME),RT-AX82U RT-AX82U_V2 GS-AX3000 GS-AX5400 TUF-AX5400 TUF-AX5400_V2 GT-AX11000_PRO GT-AXE16000 GT-BE98 GT-AX6000 GT10 GT-BE98_PRO GT-BE96))
 LDFLAGS += -lm
 OBJS += ledg.o
 OBJS += ledbtn.o
 endif
 ifeq ($(DSL_AX82U),y)
 OBJS += ledg.o
+endif
+ifeq ($(GTAX6000),y)
+OBJS += antled.o
+endif
+ifeq ($(BUILD_NAME),$(filter $(BUILD_NAME),GT-BE98 GT-BE98_PRO GT-BE96))
+OBJS += rtkmonitor.o
 endif
 
 OBJS += dhcpc_vc_query.o
@@ -974,6 +1089,8 @@ LDFLAGS += -L$(STAGEDIR)/usr/lib -ljson-c
 ifeq ($(RTCONFIG_MULTISERVICE_WAN),y)
 ifeq ($(CONFIG_BCMWL5),y)
 OBJS += mswan-broadcom.o
+else ifeq ($(RTCONFIG_RALINK),y)
+OBJS += mswan-ralink.o
 endif
 endif
 
@@ -1063,7 +1180,7 @@ rc: $(OBJS) $(if $(RTCONFIG_CONNDIAG),libconn_diag.so,)
 install: all
 	@echo "[rc] Installing..."
 	@install -D rc $(INSTALLDIR)/sbin/rc
-	@$(STRIP) $(INSTALLDIR)/sbin/rc
+	$(if $(RTCONFIG_DEBUG),,@$(STRIP) $(INSTALLDIR)/sbin/rc)
 	@chmod 0500 $(INSTALLDIR)/sbin/rc
 ifeq ($(RTCONFIG_BRCM_HOSTAPD),y)
 	@install $(WPS_PBCD) $(INSTALLDIR)/sbin
@@ -1072,7 +1189,7 @@ endif
 
 ifeq ($(RTCONFIG_CONNDIAG),y)
 	@install -D libconn_diag.so $(INSTALLDIR)/usr/lib/libconn_diag.so
-	@$(STRIP) $(INSTALLDIR)/usr/lib/libconn_diag.so
+	$(if $(RTCONFIG_DEBUG),,@$(STRIP) $(INSTALLDIR)/usr/lib/libconn_diag.so)
 endif
 
 	@cd $(INSTALLDIR)/sbin && ln -sf rc init
@@ -1175,6 +1292,9 @@ endif
 ifeq ($(RTCONFIG_DETWAN),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc detwan
 endif
+ifeq ($(RTCONFIG_AUTO_WANPORT),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc autowan
+endif
 	@cd $(INSTALLDIR)/sbin && ln -sf rc ddns_updated
 	@cd $(INSTALLDIR)/sbin && ln -sf rc ddns_custom_updated
 
@@ -1232,8 +1352,17 @@ endif
 ifeq ($(RTCONFIG_EXT_RTL8370MB),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc rtkswitch
 endif
-ifeq ($(or $(RTAX55),$(RTAX1800),$(RTAX58U_V2)),y)
+#ifeq ($(RTCONFIG_EXT_RTL8367S),y)
+#	@cd $(INSTALLDIR)/sbin && ln -sf rc rtkswitch
+#endif
+ifeq ($(or $(RTAX55),$(RTAX1800),$(RTAX58U_V2),$(RTAX3000N)),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc rtkswitch
+endif
+ifeq ($(BUILD_NAME),$(filter $(BUILD_NAME),BR63 GT-BE98 GT-BE98_PRO GT-BE96))
+	@cd $(INSTALLDIR)/sbin && ln -sf rc rtkswitch
+endif
+ifeq ($(BUILD_NAME),$(filter $(BUILD_NAME),GT-BE98 GT-BE98_PRO GT-BE96))
+	@cd $(INSTALLDIR)/sbin && ln -sf rc rtkmonitor
 endif
 ifeq ($(RTCONFIG_QCA),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc rtkswitch
@@ -1241,6 +1370,10 @@ endif
 	@cd $(INSTALLDIR)/sbin && ln -sf rc delay_exec
 
 	@cd $(INSTALLDIR)/sbin && ln -sf rc wanduck
+ifeq ($(RTCONFIG_MULTIWAN_IF),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc mtwanduck
+	@cd $(INSTALLDIR)/sbin && ln -sf rc det_dns
+endif
 ifeq ($(RTCONFIG_CONNDIAG),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc conn_diag
 	@cd $(INSTALLDIR)/sbin && ln -sf rc diag_data
@@ -1280,12 +1413,17 @@ ifeq ($(RTCONFIG_APP_PREINSTALLED)$(RTCONFIG_APP_NETINSTALLED),y)
 endif
 endif
 	@cd $(INSTALLDIR)/sbin && ln -sf rc restart_wireless
-
+ifeq ($(BUILD_NAME),$(filter $(BUILD_NAME),RT-AX55 RT-AX1800 RT-AX58U_V2 RT-AX3000N BR63 GT-BE98 GT-BE98_PRO GT-BE96))
+	@cd $(INSTALLDIR)/sbin && ln -sf rc config_switch
+endif
 ifeq ($(RTCONFIG_HW_DOG), y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc hwdog
 endif
 ifeq ($(RTCONFIG_PTHSAFE_POPEN), y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc PS_pod
+endif
+ifeq ($(RTCONFIG_SW_BTN), y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc sw_btnd
 endif
 ifeq ($(RTCONFIG_WIFI_SON),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc hive_cap
@@ -1319,6 +1457,9 @@ endif
 ifeq ($(or $(RTCONFIG_RALINK),$(RTCONFIG_QCA)),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc FWRITE
 	@cd $(INSTALLDIR)/sbin && ln -sf rc FREAD
+endif
+ifeq ($(RTCONFIG_NVSW_IN_JFFS),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc nvsw
 endif
 ifeq ($(RTCONFIG_RALINK),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc asuscfe_2g
@@ -1410,6 +1551,8 @@ endif
 ifeq ($(RTCONFIG_SOC_IPQ8074),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc test_blu
 	@cd $(INSTALLDIR)/sbin && ln -sf rc split_q6mem
+endif
+ifeq ($(or $(RTCONFIG_QCA),$(RTCONFIG_RALINK)),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc test_wifi_stats_log
 endif
 ifeq ($(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033),y)
@@ -1512,6 +1655,9 @@ ifeq ($(RTCONFIG_LETSENCRYPT),y)
 endif
 
 ifeq ($(RTCONFIG_SOFTWIRE46),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc init_wan46
+	@cd $(INSTALLDIR)/sbin && ln -sf rc auto46det
+	@cd $(INSTALLDIR)/sbin && ln -sf rc s46reset
 	@cd $(INSTALLDIR)/sbin && ln -sf rc mapcalc
 	@cd $(INSTALLDIR)/sbin && ln -sf rc v6plusd
 	@cd $(INSTALLDIR)/sbin && ln -sf rc ocnvcd
@@ -1564,10 +1710,10 @@ endif
 	@cd $(INSTALLDIR)/sbin && ln -sf rc collect_debuglog
 
 ifeq ($(RTCONFIG_TPVPN),y)
-ifeq ($(RTCONFIG_OPENVPN),y)
+ifeq ($(RTCONFIG_HMA),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc hmavpn
 endif
-ifeq ($(RTCONFIG_WIREGUARD),y)
+ifeq ($(RTCONFIG_NORDVPN),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc nordvpn
 endif
 endif
@@ -1585,6 +1731,39 @@ ifeq ($(RTCONFIG_ISP_CUSTOMIZE_TOOL),y)
 		install -D $(TOP)/rom/ict/package.tar.gz $(INSTALLDIR)/../rom/${EX_ROM}/ict/package.tar.gz ; \
 	fi;
 endif
+
+ifeq ($(RTCONFIG_MULTILAN_CFG),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc reset_mtlan
+	@cd $(INSTALLDIR)/sbin && ln -sf rc reset_rm_mtlan
+	@cd $(INSTALLDIR)/sbin && ln -sf rc get_mtsubnet
+	@cd $(INSTALLDIR)/sbin && ln -sf rc get_mtlan
+	@cd $(INSTALLDIR)/sbin && ln -sf rc get_mtlan_by_vid
+	@cd $(INSTALLDIR)/sbin && ln -sf rc get_mtlan_by_idx
+	@cd $(INSTALLDIR)/sbin && ln -sf rc get_rm_mtsubnet
+	@cd $(INSTALLDIR)/sbin && ln -sf rc get_rm_mtlan
+	@cd $(INSTALLDIR)/sbin && ln -sf rc get_rm_mtlan_by_vid
+	@cd $(INSTALLDIR)/sbin && ln -sf rc get_rm_mtlan_by_idx
+	@cd $(INSTALLDIR)/sbin && ln -sf rc apg_get_status
+	@cd $(INSTALLDIR)/sbin && ln -sf rc check_wifi_band_cap
+	@cd $(INSTALLDIR)/sbin && ln -sf rc check_lan_port_cap
+endif
+
+ifeq ($(RTCONFIG_IG_SITE2SITE),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc ig_s2s_client
+endif
+
+ifeq ($(RTCONFIG_GETREALIP),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc realip
+endif
+
+ifeq ($(HND_ROUTER),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc gpy211_monitor
+endif
+
+ifeq ($(RTCONFIG_MOCA),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc moca_monitor
+endif
+
 ifeq ($(RTCONFIG_EASYMESH),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc easymesh
 	@cd $(INSTALLDIR)/sbin && ln -sf rc easymesh_agent
@@ -1660,6 +1839,13 @@ ifneq ($(wildcard ./prebuild/amas_wgn.o),)
 amas_wgn:
 	@-cp -f ./prebuild/amas_wgn.o .
 endif	
+endif
+
+ifeq ($(RTCONFIG_MULTILAN_CFG), y)
+ifneq ($(wildcard ./prebuild/amas_apg.o),)
+amas_apg:
+	@-cp -f ./prebuild/amas_apg.o .
+endif
 endif
 
 # asustest command is for DSL models only, debugging purpose.
@@ -1838,6 +2024,13 @@ ifeq ($(and $(CONFIG_BCMWL5),$(RTCONFIG_DUALWAN)),y)
 ifneq ($(wildcard ./prebuild/dualwan.o),)
 dualwan.o:
 	@-cp -f ./prebuild/dualwan.o .
+endif
+endif
+
+ifeq ($(RTCONFIG_MULTIWAN_IF),y)
+ifneq ($(wildcard ./prebuild/multi_wan.o),)
+multi_wan.o:
+	@-cp -f ./prebuild/multi_wan.o .
 endif
 endif
 

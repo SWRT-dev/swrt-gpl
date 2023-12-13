@@ -73,6 +73,88 @@ static int _ovpn_is_running(ovpn_type_t type, int unit)
 	return 0;
 }
 
+#ifdef RTCONFIG_MULTILAN_CFG
+static void _ovpn_client_set_tap_to_bridge(char *ifname, char *br_ifname)
+{
+	char fpath[128] = {0};
+	DIR *dirp;
+	struct dirent *direntp;
+	int inbr = 0;
+	int i;
+	char old_br_ifname[8] = {0};
+
+	// check ifname already in br_ifname or not.
+	snprintf(fpath, sizeof(fpath), "/sys/class/net/%s/brif", br_ifname);
+	if ((dirp = opendir(fpath)) != NULL) {
+		while((direntp = readdir(dirp)) != NULL) {
+			if (direntp->d_name[0] == '.'
+			 && (direntp->d_name[1] == '\0'
+			 || (direntp->d_name[1] == '.' && direntp->d_name[2] == '\0')))
+				continue;
+
+			if (!strcmp(ifname, direntp->d_name)) {
+				inbr = 1;
+				break;
+			}
+		}
+		closedir(dirp);
+	}
+
+	if (inbr)
+		return;
+
+	// find ifname in which bridge, remove it from this bridge
+	inbr = 0;
+	for (i = 0; i < MTLAN_MAXINUM; i++) {
+		snprintf(old_br_ifname, sizeof(old_br_ifname), "br%d", i ? MTLAN_IFUNIT_BASE + i : 0);
+		snprintf(fpath, sizeof(fpath), "/sys/class/net/%s/brif", old_br_ifname);
+		if ((dirp = opendir(fpath)) != NULL) {
+			while((direntp = readdir(dirp)) != NULL) {
+				if (direntp->d_name[0] == '.'
+				 && (direntp->d_name[1] == '\0'
+				 || (direntp->d_name[1] == '.' && direntp->d_name[2] == '\0')))
+					continue;
+
+				if (!strcmp(ifname, direntp->d_name)) {
+					inbr = 1;
+					break;
+				}
+			}
+			closedir(dirp);
+		}
+		if (inbr)
+			break;
+	}
+	if (inbr) {
+		eval("brctl", "delif", old_br_ifname, ifname);
+	}
+
+	// add to new bridge.
+	eval("brctl", "addif", br_ifname, ifname);
+}
+
+static int ovpn_get_sdn_subnet_mask(ovpn_type_t type, int unit, char *buf, size_t len)
+{
+	int ret = 0, i;
+	size_t mtl_sz;
+	MTLAN_T *pmtl = (MTLAN_T *)INIT_MTLAN(sizeof(MTLAN_T));
+	if(get_ovpn_mtlan(type, unit, pmtl, &mtl_sz)){
+		memset(buf, 0, len);
+		for(i = 0; i < mtl_sz; i++){
+			strlcat(buf, pmtl[i].nw_t.subnet, len);
+			strlcat(buf, " ", len);
+			strlcat(buf, pmtl[i].nw_t.netmask, len);
+			strlcat(buf, ",", len);
+		}
+		FREE_MTLAN(pmtl);
+		ret = 1;
+		_dprintf("%s: %s\n", __func__, buf);
+	}
+	FREE_MTLAN(pmtl);
+	return ret;
+}
+#endif
+
 static void _ovpn_check_dir(ovpn_type_t type, int unit)
 {
 	char path[128];
@@ -165,7 +247,7 @@ static int _ovpn_client_write_keys(int unit, ovpn_cconf_t *conf)
 				return -1;
 		}
 		else{
-			logmessage_normal(conf->progname, "Get CA failed");
+			logmessage(conf->progname, "Get CA failed");
 			return -1;
 		}
 
@@ -182,7 +264,7 @@ static int _ovpn_client_write_keys(int unit, ovpn_cconf_t *conf)
 					return -2;
 			}
 			else{
-				logmessage_normal(conf->progname, "Get Key failed");
+				logmessage(conf->progname, "Get Key failed");
 				return -2;
 			}
 
@@ -198,7 +280,7 @@ static int _ovpn_client_write_keys(int unit, ovpn_cconf_t *conf)
 					return -3;
 			}
 			else{
-				logmessage_normal(conf->progname, "Get Certificate failed");
+				logmessage(conf->progname, "Get Certificate failed");
 				return -3;
 			}
 			if(get_ovpn_key(OVPN_TYPE_CLIENT, unit, OVPN_CLIENT_EXTRA, buf, sizeof(buf))) {
@@ -255,7 +337,7 @@ static int _ovpn_client_write_keys(int unit, ovpn_cconf_t *conf)
 				return -6;
 		}
 		else{
-			logmessage_normal(conf->progname, "Get static key failed");
+			logmessage(conf->progname, "Get static key failed");
 			return -6;
 		}
 	}
@@ -283,7 +365,7 @@ static int _ovpn_server_write_keys(int unit, ovpn_sconf_t *conf)
 				return -1;
 		}
 		else{
-			logmessage_normal(conf->progname, "Get CA Key failed");
+			logmessage(conf->progname, "Get CA Key failed");
 			return -1;
 		}
 
@@ -299,7 +381,7 @@ static int _ovpn_server_write_keys(int unit, ovpn_sconf_t *conf)
 				return -2;
 		}
 		else{
-			logmessage_normal(conf->progname, "Get CA failed");
+			logmessage(conf->progname, "Get CA failed");
 			return -2;
 		}
 
@@ -315,7 +397,7 @@ static int _ovpn_server_write_keys(int unit, ovpn_sconf_t *conf)
 				return -3;
 		}
 		else{
-			logmessage_normal(conf->progname, "Get Key failed");
+			logmessage(conf->progname, "Get Key failed");
 			return -3;
 		}
 
@@ -331,7 +413,7 @@ static int _ovpn_server_write_keys(int unit, ovpn_sconf_t *conf)
 				return -4;
 		}
 		else{
-			logmessage_normal(conf->progname, "Get Certificate failed");
+			logmessage(conf->progname, "Get Certificate failed");
 			return -4;
 		}
 
@@ -361,7 +443,7 @@ static int _ovpn_server_write_keys(int unit, ovpn_sconf_t *conf)
 				return -6;
 		}
 		else{
-			logmessage_normal(conf->progname, "Get DH parameters failed");
+			logmessage(conf->progname, "Get DH parameters failed");
 			return -6;
 		}
 	}
@@ -382,7 +464,7 @@ static int _ovpn_server_write_keys(int unit, ovpn_sconf_t *conf)
 				return -7;
 		}
 		else{
-			logmessage_normal(conf->progname, "Get static key failed");
+			logmessage(conf->progname, "Get static key failed");
 			return -7;
 		}
 	}
@@ -654,6 +736,16 @@ end:
 	return valid;
 }
 
+#ifdef RTCONFIG_MULTILAN_CFG
+static void ovpn_client_fw_rule_bind_sdn(FILE *fp, char *if_name, char *vlan_if)
+{
+	fprintf(fp, "iptables -I OVPNCF -i %s -o %s -j ACCEPT\n", if_name, vlan_if);
+	fprintf(fp, "iptables -I OVPNCF -o %s -i %s -j ACCEPT\n", if_name, vlan_if);
+	fprintf(fp, "ip6tables -I OVPNCF -i %s -o %s -j ACCEPT\n", if_name, vlan_if);
+	fprintf(fp, "ip6tables -I OVPNCF -o %s -i %s -j ACCEPT\n", if_name, vlan_if);
+}
+#endif
+
 /* e.g.
  * iptables -t nat -I PREROUTING -p tcp --dport 1194 -j ACCEPT
  * iptables -I INPUT -p tcp --dport 1194 -j ACCEPT
@@ -664,7 +756,12 @@ static void _ovpn_server_fw_rule_add(int unit, ovpn_sconf_t *conf)
 {
 	FILE* fp;
 	char fpath[128];
-
+#ifdef RTCONFIG_MULTILAN_CFG
+	size_t mtl_sz = 0;
+	MTLAN_T *pmtl = (MTLAN_T *)INIT_MTLAN(sizeof(MTLAN_T));
+	int idx, i;
+	idx = get_vpns_idx_by_proto_unit(VPN_PROTO_OVPN, unit);
+#endif
 	snprintf(fpath, sizeof(fpath), "/etc/openvpn/server%d/fw.sh", unit);
 	fp = fopen(fpath, "w");
 	if(fp){
@@ -678,12 +775,34 @@ static void _ovpn_server_fw_rule_add(int unit, ovpn_sconf_t *conf)
 		);
 		fprintf(fp, "iptables -I OVPNSI -i %s -j ACCEPT\n", conf->if_name);
 		fprintf(fp, "ip6tables -I OVPNSI -i %s -j ACCEPT\n", conf->if_name);
-		fprintf(fp, "iptables -I OVPNSF -i %s -j ACCEPT\n", conf->if_name);
-		fprintf(fp, "ip6tables -I OVPNSF -i %s -j ACCEPT\n", conf->if_name);
-		fprintf(fp, "iptables -I OVPNSF -o %s -j ACCEPT\n", conf->if_name);
-		fprintf(fp, "ip6tables -I OVPNSF -o %s -j ACCEPT\n", conf->if_name);
-		if(conf->if_type == OVPN_IF_TUN && conf->ipv6_enable && conf->nat6)
-			fprintf(fp, "ip6tables -t nat -I POSTROUTING -s %s -o %s -j MASQUERADE\n", conf->network6, conf->wan6_ifname);
+#ifdef RTCONFIG_MULTILAN_CFG
+		get_mtlan_by_idx(SDNFT_TYPE_VPNS, idx, pmtl, &lst_sz);
+		if(mtl_sz){
+			char buf[128];
+			for(i = 0; i < mtl_sz; i++){
+				fprintf(fp, "iptables -I OVPNSF -i %s -o %s -j ACCEPT\n", conf->if_name, pmtl[i].nw_t.ifname);
+				fprintf(fp, "iptables -I OVPNSF -o %s -i %s -j ACCEPT\n", conf->if_name, pmtl[i].nw_t.ifname);
+				fprintf(fp, "iptables -A OVPNSF -o %s -j DROP\n", conf->if_name);
+				fprintf(fp, "ip6tables -I OVPNSF -i %s -o %s -j ACCEPT\n", conf->if_name, pmtl[i].nw_t.ifname);
+				fprintf(fp, "ip6tables -I OVPNSF -o %s -i %s -j ACCEPT\n", conf->if_name, pmtl[i].nw_t.ifname);
+				fprintf(fp, "ip6tables -A OVPNSF -o %s -j DROP\n", conf->if_name);
+				snprintf(buf, sizeof(buf), "%s/server%d/sdn%d", OVPN_DIR_CONF, unit, pmtl[i].nw_t.idx);
+				f_write_string(buf, "", 0, 0);
+			}
+			strlcpy(buf, get_wan_ifname(wan_primary_ifunit()), sizeof(buf));
+			if(buf[0])
+				fprintf(fp, "iptables -I OVPNSF -i %s -o %s -j ACCEPT\n", conf->if_name, buf);
+			strlcpy(buf, get_wan6_ifname(wan_primary_ifunit()), sizeof(buf));
+			if(buf[0])
+				fprintf(fp, "ip6tables -I OVPNSF -i %s -o %s -j ACCEPT\n", conf->if_name, buf);
+		}else
+#endif
+		{
+			fprintf(fp, "iptables -I OVPNSF -i %s -j ACCEPT\n", conf->if_name);
+			fprintf(fp, "ip6tables -I OVPNSF -i %s -j ACCEPT\n", conf->if_name);
+			fprintf(fp, "iptables -I OVPNSF -o %s -j ACCEPT\n", conf->if_name);
+			fprintf(fp, "ip6tables -I OVPNSF -o %s -j ACCEPT\n", conf->if_name);
+		}
 		fclose(fp);
 		chmod(fpath, S_IRUSR|S_IWUSR|S_IXUSR);
 		eval(fpath);
@@ -699,6 +818,9 @@ static void _ovpn_server_fw_rule_add(int unit, ovpn_sconf_t *conf)
 			eval(fpath);
 		}
 	}
+#ifdef RTCONFIG_MULTILAN_CFG
+	FREE_MTLAN((void *)pmtl);
+#endif
 }
 
 static void _ovpn_server_fw_rule_del(int unit)
@@ -721,37 +843,88 @@ static void _ovpn_server_fw_rule_del(int unit)
 	}
 }
 
+
 static void _ovpn_client_fw_rule_add(int unit, ovpn_cconf_t *conf)
 {
 	FILE* fp;
-	char fpath[128];
+	char fpath[128], tmp[32] = {0};
+#ifdef RTCONFIG_MULTILAN_CFG
+	int vpnc_idx, i;
+	MTLAN_T *pmtl = NULL;
+	size_t mtl_sz = 0;
+
+	vpnc_idx = get_vpnc_idx_by_proto_unit(VPN_PROTO_OVPN, unit);
+	pmtl = (MTLAN_T *)INIT_MTLAN(sizeof(MTLAN_T));
+#endif
 
 	snprintf(fpath, sizeof(fpath), "/etc/openvpn/client%d/fw.sh", unit);
 	fp = fopen(fpath, "w");
 	if(fp){
 		fprintf(fp, "#!/bin/sh\n\n");
 		fprintf(fp, "iptables -I OVPNCI -i %s -j ACCEPT\n", conf->if_name);
+		fprintf(fp, "ip6tables -I OVPNCI -i %s -j ACCEPT\n", conf->if_name);
+#ifdef RTCONFIG_MULTILAN_CFG
+		snprintf(tmp, sizeof(tmp), "%s%d", "vpnc_ipset", vpnc_idx);
+		fprintf(fp, "iptables -I OVPNCF -m set --match-set %s dst -i %s -j ACCEPT\n", tmp, conf->if_name);
+		fprintf(fp, "iptables -I OVPNCF -m set --match-set %s src -o %s -j ACCEPT\n", tmp, conf->if_name);
+		fprintf(fp, "iptables -A OVPNCF -i %s -j DROP\n", conf->if_name);
+		fprintf(fp, "iptables -A OVPNCF -o %s -j DROP\n", conf->if_name);
+		fprintf(fp, "ip6tables -A OVPNCF -i %s -j DROP\n", conf->if_name);
+		fprintf(fp, "ip6tables -A OVPNCF -o %s -j DROP\n", conf->if_name);
+#else
 		fprintf(fp, "iptables -I OVPNCF -i %s -j ACCEPT\n", conf->if_name);
 		fprintf(fp, "iptables -I OVPNCF -o %s -j ACCEPT\n", conf->if_name);
-		fprintf(fp, "ip6tables -I OVPNCI -i %s -j ACCEPT\n", conf->if_name);
 		fprintf(fp, "ip6tables -I OVPNCF -i %s -j ACCEPT\n", conf->if_name);
 		fprintf(fp, "ip6tables -I OVPNCF -o %s -j ACCEPT\n", conf->if_name);
+#endif
 		fclose(fp);
 		chmod(fpath, S_IRUSR|S_IWUSR|S_IXUSR);
 		eval(fpath);
 	}
+#ifdef RTCONFIG_MULTILAN_CFG
+	get_mtlan_by_idx(SDNFT_TYPE_VPNC, vpnc_idx, pmtl, &mtl_sz);
+	if(mtl_sz){
+		for(i = 0; i < mtl_sz; i++){
+			snprintf(fpath, sizeof(fpath), "%s/client%d/fw_sdn%d.sh", OVPN_DIR_CONF, unit, pmtl[i].nw_t.idx);
+			fp = fopen(fpath, "w");
+			if(fp){
+				fprintf(fp, "#!/bin/sh\n\n");
+				ovpn_client_fw_rule_bind_sdn(fp, conf->if_name, pmtl[i].nw_t.ifname);
+				fclose(fp);
+				chmod(fpath, S_IRUSR|S_IWUSR|S_IXUSR);
+				eval(fpath);
+			}
+		}
+	}
+	FREE_MTLAN((void *)pmtl);
+#endif
 }
 
 static void _ovpn_client_fw_rule_del(int unit)
 {
+#ifdef RTCONFIG_MULTILAN_CFG
+	int i;
+#endif
 	char fpath[128];
 
 	snprintf(fpath, sizeof(fpath), "/etc/openvpn/client%d/fw.sh", unit);
 	if(f_exists(fpath)) {
 		eval("sed", "-i", "s/-I/-D/", fpath);
+		eval("sed", "-i", "s/-A/-D/", fpath);
 		eval(fpath);
 		unlink(fpath);
 	}
+#ifdef RTCONFIG_MULTILAN_CFG
+	for(i = 0; i <= MTLAN_MAXINUM; i++){
+		snprintf(fpath, sizeof(fpath), "%s/client%d/fw_sdn%d.sh", OVPN_DIR_CONF, unit, i);
+		if(f_exists(fpath)) {
+			eval("sed", "-i", "s/-I/-D/", fpath);
+			eval("sed", "-i", "s/-A/-D/", fpath);
+			eval(fpath);
+			unlink(fpath);
+		}
+	}
+#endif
 }
 
 static void _ovpn_cron_job_add(ovpn_type_t type, int unit, void *conf)
@@ -997,15 +1170,24 @@ static int _ovpn_server_gen_conf(int unit, ovpn_sconf_t *conf)
 
 		//router LAN
 		if(conf->push_lan && conf->if_type == OVPN_IF_TUN){
-			get_lan_cidr(buf, sizeof(buf));
-			*strchr(buf, '/') = 0;
+#ifdef RTCONFIG_MULTILAN_CFG
+			char buffer[10000];
+			if(ovpn_get_sdn_subnet_mask(OVPN_TYPE_SERVER, unit, buffer, sizeof(buffer))){
+				char word[32], *next;
+				foreach_44(word, buffer, next){
+					fprintf(fp, "push \"route %s vpn_gateway %d\"\n", word, PUSH_LAN_METRIC);
+				}
+			}else
+#endif
 			fprintf(fp, "push \"route %s %s vpn_gateway %d\"\n",
-				buf, conf->lan_netmask, PUSH_LAN_METRIC);
+				conf->lan_subnet, conf->lan_netmask, PUSH_LAN_METRIC);
+#if !defined(RTCONFIG_MULTILAN_CFG)
 			if(conf->ipv6_enable){
 				get_lan_cidr6(buf, sizeof(buf));
 				if(strlen(buf) > 1)
 					fprintf(fp, "push \"route-ipv6 %s\"\n", buf);
 			}
+#endif
 		}
 
 		//router as gateway
@@ -1146,9 +1328,7 @@ static int _ovpn_client_gen_conf(int unit, ovpn_cconf_t *conf)
 		return -1;
 
 // Tunnel options
-	fprintf(fp,
-		"# Automatically generated configuration\n\n# Tunnel options\n"
-	);
+	fprintf(fp, "# Automatically generated configuration\n\n# Tunnel options\n");
 
 	//remote
 	fprintf(fp, "remote %s\n", conf->addr);
@@ -1418,10 +1598,10 @@ void create_ovpn_passwd()
 	int uid = 200;
 	int i;
 
-	strcpy(salt, "$1$");
-	f_read("/dev/urandom", s, 6);
-	base64_encode(s, salt + 3, 6);
-	salt[3 + 8] = 0;
+	strcpy(salt, "$5$");
+	f_read("/dev/urandom", s, 12);
+	base64_encode(s, salt + 3, 12);
+	salt[3 + 16] = 0;
 	p = salt;
 	while(*p){
 		if(*p == '+') *p = '.';
@@ -1567,7 +1747,7 @@ void start_ovpn_client(int unit)
     {
 		conf.poll = 1;
 		_ovpn_cron_job_add(OVPN_TYPE_CLIENT, unit, &conf);
-		logmessage_normal(conf.progname, "Time not sync yet. Retry later");
+		logmessage(conf.progname, "Time not sync yet. Retry later");
 		return;
     }
 	//initializing
@@ -1585,7 +1765,7 @@ void start_ovpn_client(int unit)
 
 	//generate config and script files
 	if(_ovpn_client_gen_conf(unit, &conf) < 0){
-		logmessage_normal(conf.progname, "config failed");
+		logmessage(conf.progname, "config failed");
 		update_ovpn_status(OVPN_TYPE_CLIENT, unit, OVPN_STS_ERROR, OVPN_ERRNO_CONF);
 		_ovpn_cron_job_add(OVPN_TYPE_CLIENT, unit, NULL);
 		return;
@@ -1608,7 +1788,7 @@ void start_ovpn_client(int unit)
 		_cpu_mask_eval(argv, NULL, 0, NULL, cpumask);
 	}
 	else {
-		_eval(argv+1, NULL, 0, NULL);
+		_eval(argv, NULL, 0, NULL);
 	}
 
 	//firewall
@@ -1823,7 +2003,7 @@ int write_ovpn_resolv_dnsmasq(FILE* fp_servers)
 	char path[128];
 
 	for(unit = 1; unit <= OVPN_CLIENT_MAX; unit++){
-		snprintf(path, sizeof(path), "%s/client%d/resolv.dnsmasq", "/etc/openvpn", unit);
+		snprintf(path, sizeof(path), "%s/client%d/resolv.dnsmasq", OVPN_DIR_CONF, unit);
 		fp = fopen(path, "r");
 		if(fp){
 			while(!feof(fp)){
@@ -1865,10 +2045,8 @@ static void _ovpn_client_fw_rule_add_nat(int unit, const char *dev, const char *
 {
 	FILE *fp;
 	char path[256];
-	if(isipv6)
-		snprintf(path, sizeof(path), "/etc/openvpn/client%d/fw_nat6.sh", unit);
-	else
-		snprintf(path, sizeof(path), "/etc/openvpn/client%d/fw_nat.sh", unit);
+
+	snprintf(path, sizeof(path), "/etc/openvpn/client%d/fw_nat%s.sh", unit, isipv6 ? "6" : "");
 	if((fp = fopen(path, "w")) != NULL){
 		fprintf(fp, "#!/bin/sh\n\n");
 		fprintf(fp, "%s -t nat -I POSTROUTING ! -s %s -o %s -j MASQUERADE", isipv6 ? "ip6tables" : "iptables", ip, dev);
@@ -1881,10 +2059,8 @@ static void _ovpn_client_fw_rule_add_nat(int unit, const char *dev, const char *
 static void _ovpn_client_fw_rule_del_nat(int unit, const char *dev, const char *ip, int isipv6)
 {
 	char path[256];
-	if(isipv6)
-		snprintf(path, sizeof(path), "/etc/openvpn/client%d/fw_nat6.sh", unit);
-	else
-		snprintf(path, sizeof(path), "/etc/openvpn/client%d/fw_nat.sh", unit);
+
+	snprintf(path, sizeof(path), "/etc/openvpn/client%d/fw_nat%s.sh", unit, isipv6 ? "6" : "");
 	if(f_exists(path)){
 		eval("sed", "-i", "s/-I/-D/", path);
 		eval(path);
@@ -1973,7 +2149,7 @@ void ovpn_down_handler()
 	int nat = atoi(safe_getenv("nat"));
 
 	if(ovpn_type == OVPN_TYPE_CLIENT){
-		snprintf(path, sizeof(path), "%s/client%d/resolv.dnsmasq", "/etc/openvpn", unit);
+		snprintf(path, sizeof(path), "%s/client%d/resolv.dnsmasq", OVPN_DIR_CONF, unit);
 		unlink(path);
 		if(nat){
 			if(!strcmp(safe_getenv("dev_type"), "tun")){
@@ -2007,6 +2183,7 @@ void ovpn_route_up_handler()
 		snprintf(progname, sizeof(progname), "vpnclient%d", unit);
 	else
 		snprintf(progname, sizeof(progname), "vpnserver%d", unit);
+#if 0
 	if(rt_table){
 		snprintf(cmd, sizeof(cmd), "ip route flush table %d", rt_table);
 		system(cmd);
@@ -2020,6 +2197,7 @@ void ovpn_route_up_handler()
 		}
 		unlink("/tmp/route_tmp");
 	}
+#endif
 	while(1){
 		snprintf(prefix, sizeof(prefix), "route_network_%d", i);
 		pnw = safe_getenv(prefix);
@@ -2034,10 +2212,10 @@ void ovpn_route_up_handler()
 			if(current_route(sa_network.sin_addr.s_addr, sa_netmask.sin_addr.s_addr) || current_addr(sa_network.sin_addr.s_addr)){
 				if((sa_network.sin_addr.s_addr & sa_netmask.sin_addr.s_addr) != 0){
 					_dprintf("route conflict: %s/%s\n", pnw, pnm);
-					logmessage_normal(progname, "WARNING: Ignore conflicted routing rule: %s %s gw %s", pnw, pnm, pgw);
+					logmessage(progname, "WARNING: Ignore conflicted routing rule: %s %s gw %s", pnw, pnm, pgw);
 				}else{
 					_dprintf("Detect default gateway: %s/%s\n", pnw, pnm);
-					logmessage_normal(progname, "WARNING: Replace default vpn gateway by using 0.0.0.0/1 and 128.0.0.0/1");
+					logmessage(progname, "WARNING: Replace default vpn gateway by using 0.0.0.0/1 and 128.0.0.0/1");
 					routes_flags |= 36;
 				}
 				update_ovpn_status(ovpn_type, unit, OVPN_STS_ERROR, OVPN_ERRNO_ROUTE);
@@ -2163,3 +2341,142 @@ void ovpn_route_pre_down_handler()
 {
 	_ovpn_route_down_handler();
 }
+
+#ifdef RTCONFIG_MULTILAN_CFG
+void update_ovpn_client_by_sdn(MTLAN_T *pmtl, size_t mtl_sz, int restart_all_sdn)
+{
+	int unit, idx, i, found = 0;
+	char tmp[32] = {0}, path[128] = {0};
+	ovpn_cconf_t conf;
+	VPN_VPNX_T vpnx;
+
+	if(restart_all_sdn)
+		eval("iptables", "-F", "OVPNCF");
+
+	for(unit = 1; unit <= OVPN_CLIENT_MAX; ++unit){
+		if(get_ovpn_cconf(unit, &conf)){
+			if(conf.enable){
+				idx = get_vpnc_idx_by_proto_unit(VPN_PROTO_OVPN, unit);
+				if(restart_all_sdn){
+					snprintf(tmp, sizeof(tmp), "%s%d", "vpnc_ipset", idx);
+					eval("iptables", "-I", "OVPNCF", "-m", "set", "--match-set", tmp, "dst", "-i", (char*)conf.if_name, "-j", "ACCEPT");
+					eval("iptables", "-I", "OVPNCF", "-m", "set", "--match-set", tmp, "src", "-o", (char*)conf.if_name, "-j", "ACCEPT");
+					eval("iptables", "-A", "OVPNCF", "-i", (char*)conf.if_name, "-j", "DROP");
+					eval("iptables", "-A", "OVPNCF", "-o", (char*)conf.if_name, "-j", "DROP");
+				}
+				for(i = 0; i < mtl_sz; ++i){
+					snprintf(path, sizeof(path), "%s/client%d/fw_sdn%d.sh", OVPN_DIR_CONF, unit, pmtl[i].nw_t.idx);
+					if(f_exists(path)){
+						eval("sed", "-i", "s/-I/-D/", path);
+						eval("sed", "-i", "s/-A/-D/", path);
+						eval(path);
+						unlink(path);
+					}
+					if(pmtl[i].enable && pmtl[i].sdn_t.vpnc_idx && get_vpnx_by_vpnc_idx(&vpnx, pmtl[i].sdn_t.vpnc_idx) && vpnx.proto == VPN_PROTO_OVPN && vpnx.unit == unit){
+						fp = fopen(path, "w");
+						if(fp){
+							fprintf(fp, "#!/bin/sh\n\n");
+							ovpn_client_fw_rule_bind_sdn(fp, conf.if_name, pmtl[i].nw_t.ifname);
+							fclose(fp);
+							chmod(path, S_IRUSR|S_IWUSR|S_IXUSR);
+							eval(path);
+							found = 1;//found client
+						}
+					}
+				}
+				if(conf.if_type == OVPN_IF_TAP && conf.bridge){
+					if(found)
+						_ovpn_client_set_tap_to_bridge(conf.if_name, pmtl[i].nw_t.br_ifname);
+					else{
+						size_t mtl_sz2;
+						MTLAN_T *pmtl2 = (MTLAN_T *)INIT_MTLAN(sizeof(MTLAN_T));
+						if(get_mtlan_by_idx(SDNFT_TYPE_VPNC, idx, pmtl2, &mtl_sz2) && mtl_sz2)
+							_ovpn_client_set_tap_to_bridge(conf.if_name, pmtl2->nw_t.br_ifname);
+						else
+							_ovpn_client_set_tap_to_bridge(conf.if_name, "br0");
+						FREE_MTLAN(pmtl2);
+					}
+				}
+			}
+		}else
+			_dprintf("get_ovpn_cconf failed\n");
+	}
+}
+
+void update_ovpn_server_by_sdn(MTLAN_T *pmtl, size_t mtl_sz, int restart_all_sdn)
+{
+	int i, j, found = 0;
+	char path[128];
+
+	if(!restart_all_sdn && nvram_get_int("VPNServer_enable")){
+		for(i = 0; i < mtl_sz; ++i){
+			for(j = 0; j < MTLAN_VPNS_MAXINUM; j++){
+				if(pmtl[i].sdn_t.vpns_idx_rl[j] && get_vpnx_by_vpns_idx(&vpnx, pmtl[i].sdn_t.vpns_idx_rl[j]) && vpnx.proto == VPN_PROTO_OVPN && vpnx.unit == OVPN_SERVER_MAX)
+					found = 1;
+			}
+	 	}
+		for(i = 0; i < mtl_sz; ++i){
+			snprintf(path, sizeof(path), "%s/server%d/sdn%d", OVPN_DIR_CONF, OVPN_SERVER_MAX, pmtl[i].nw_t.idx);
+			if(f_exists(path))
+				restart_all_sdn = 1;
+		}
+		if(found || restart_all_sdn){
+			stop_ovpn_server(OVPN_SERVER_MAX);
+			start_ovpn_server(OVPN_SERVER_MAX);
+		}
+	}
+}
+
+void update_ovpn_client_by_sdn_remove(MTLAN_T *pmtl, size_t mtl_sz)
+{
+	int unit, idx, i, found = 0;
+	char tmp[32] = {0}, path[128] = {0};
+	ovpn_cconf_t conf;
+	VPN_VPNX_T vpnx;
+
+	for(unit = 1; unit <= OVPN_CLIENT_MAX; unit++){
+		if(get_ovpn_cconf(unit, &conf)){
+			if(conf.enable){
+				for(i = 0; i < mtl_sz; ++i){
+					snprintf(path, sizeof(path), "%s/client%d/fw_sdn%d.sh", OVPN_DIR_CONF, unit, pmtl[i].nw_t.idx);
+					if(f_exists(path)){
+						eval("sed", "-i", "s/-I/-D/", path);
+						eval("sed", "-i", "s/-A/-D/", path);
+						found = 1;
+						eval(path);
+						unlink(path);
+					}
+				}
+				if(conf.if_type == OVPN_IF_TAP && conf.bridge && found){
+					size_t mtl_sz2;
+					MTLAN_T *pmtl2 = (MTLAN_T *)INIT_MTLAN(sizeof(MTLAN_T));
+					idx = get_vpnc_idx_by_proto_unit(VPN_PROTO_OVPN, unit);
+					if(get_mtlan_by_idx(SDNFT_TYPE_VPNC, idx, pmtl2, &mtl_sz2) && mtl_sz2)
+						_ovpn_client_set_tap_to_bridge(conf.if_name, pmtl2->nw_t.br_ifname);
+					else
+						_ovpn_client_set_tap_to_bridge(conf.if_name, "br0");
+					FREE_MTLAN(pmtl2);
+				}
+			}
+		}else
+			_dprintf("get_ovpn_cconf failed\n");
+	}
+}
+
+void update_ovpn_server_by_sdn_remove(MTLAN_T *pmtl, size_t mtl_sz)
+{
+	int i, found = 0;
+	char path[128];
+	if(nvram_get_int("VPNServer_enable")){
+		for(i = 0; i < mtl_sz; ++i){
+			snprintf(path, sizeof(path), "%s/server%d/sdn%d", OVPN_DIR_CONF, OVPN_SERVER_MAX, pmtl[i].nw_t.idx);
+			if(f_exists(path))
+				found = 1;
+		}
+		if(found){
+			stop_ovpn_server(OVPN_SERVER_MAX);
+			start_ovpn_server(OVPN_SERVER_MAX);
+		}
+	}
+}
+#endif

@@ -65,7 +65,6 @@ static int qos_action_manual()
 	return ret;
 }
 
-#ifdef RTCONFIG_AMAS_WGN
 static void WGN_ifname(int i, int j, char *wl_if)
 {
 	if (nvram_get_int("re_mode") == 1) {
@@ -92,7 +91,7 @@ static void add_iptables_AMAS_WGN(FILE *fn, const char *action)
 	char mssid_mark[4] = {0};
 	int  i = 0;
 	int  j = 1;
-	char net[20] = {0};
+	char net[64] = {0};
 
 	/*
 	example:
@@ -107,7 +106,7 @@ static void add_iptables_AMAS_WGN(FILE *fn, const char *action)
 
 			if(nvram_get_int(strcat_r(wlv, "_bss_enabled", tmp)) && 
 			   nvram_get_int(strcat_r(wlv, "_bw_enabled" , tmp))) {
-				wgn_subnet(wlv, net, sizeof(net)); // move API to shared/amas_wgn_shared.c
+				wl_vif_to_subnet(wlv, net, sizeof(net)); // shared/misc.c
 				snprintf(mssid_mark, sizeof(mssid_mark), "%d", guest_mark);
 				if (!strcmp(net, "")) continue;
 				fprintf(fn, "-A PREROUTING -s %s -j %s %s\n", net, action, mssid_mark);
@@ -119,7 +118,6 @@ static void add_iptables_AMAS_WGN(FILE *fn, const char *action)
 		i++; j = 1;
 	}
 }
-#endif
 
 /*
 	ip / mac / ip-range status
@@ -178,9 +176,9 @@ static int isSubnet(char *sub)
 
 /*
 	ip_range_checker:
-	1. 192.168.1.*    = 192.168.1.1-254 (subnet)
-	2. 192.168.1.0/24 = 192.168.1.1-254 (subnet)
-	3. 192.168.1.10-20                  (short)
+	1. 192.168.1.*    = 192.168.1.1-254           (subnet)
+	2. 192.168.1.0/24 = 192.168.1.1-192.168.1.254 (subnet)
+	3. 192.168.1.10-20                            (short)
 */
 static int ip_range_checker(char *old, char *new, int len)
 {
@@ -212,7 +210,7 @@ static int ip_range_checker(char *old, char *new, int len)
 		// validate value is valid IP num
 		if (isIPnum(a) == -1) {
 			QOSLOG("fail case : a=%s, len_total=%d", a, len_total);
-			goto end;
+			goto END;
 		}
 		g += len_to_dot + 1;
 	}
@@ -220,14 +218,14 @@ static int ip_range_checker(char *old, char *new, int len)
 	/* copy head */
 	strncpy(head, old, len_total);
 
-	/* case1 : x.x.x.0/24 subnet */
+	/* case1 : x.x.x.* subnet */
 	if (*g == '*') {
 		snprintf(new, len, "%s1-%s254", head, head);
 		ret = 1;
-		goto end;
+		goto END;
 	}
 
-	/* case2 : IP subnetting */
+	/* case2 : IP subnetting, x.x.x.0/24 */
 	p = NULL;
 	p = strchr(g, '/');
 	if (p != NULL) {
@@ -238,13 +236,13 @@ static int ip_range_checker(char *old, char *new, int len)
 		// validate value is valid IP num
 		if (isIPnum(a) == -1) {
 			QOSLOG("case 2: p+=%s, g=%s, a=%s", p+1, g, a);
-			goto end;
+			goto END;
 		}
 
 		// get mask and mask_addr
 		g += len_to_dot + 1;
 		mask = isSubnet(p+1);
-		if (mask == 0) goto end;
+		if (mask == 0) goto END;
 		snprintf(host, sizeof(host), "%s%s", head, a);
 		mask_t = ntohl(inet_addr(host));
 		mask_addr = mask_t & (0xffffffff & (0xffffffff << (32 - mask)));
@@ -256,12 +254,13 @@ static int ip_range_checker(char *old, char *new, int len)
 		QOSLOG("case 2: mask=%d, mask_addr=%x, host_start=%x, host_end=%x", mask, mask_addr, host_start, host_end);
 
 		start = inet_ntoa(inet_src);
-		strncpy(new, start, strlen(start));
-		strncpy(new + strlen(start), "-", 1);
+		strncat(new, start, strlen(start));
+		strncat(new, "-", 1);
 		end = inet_ntoa(inet_dst);
-		strncpy(new + strlen(start) + 1, end, strlen(end));
+		strncat(new, end, strlen(end));
+		QOSLOG("case 2: new=%s, end=%s", new, end);
 		ret = 1;
-		goto end;
+		goto END;
 	}
 
 	/* case3 : find minus in tail */
@@ -275,15 +274,15 @@ static int ip_range_checker(char *old, char *new, int len)
 		// validate value is valid IP num
 		if (isIPnum(a) == -1) {
 			QOSLOG("case 3: p+=%s, g=%s, a=%s", p+1, g, a);
-			goto end;
+			goto END;
 		}
 
 		snprintf(new, len, "%s%s-%s%s", head, a, head, (p+1));
 		ret = 1;
-		goto end;
+		goto END;
 	}
 
-end:
+END:
 	if (buf) free(buf);
 
 	QOSLOG("new=%s", new);
@@ -473,11 +472,7 @@ void add_EbtablesRules_BW()
 
 			if(nvram_get_int(strcat_r(wlv, "_bss_enabled", tmp)) && 
 			   nvram_get_int(strcat_r(wlv, "_bw_enabled" , tmp))) {
-#ifdef RTCONFIG_AMAS_WGN
 				WGN_ifname(i, j, wl_if);
-#else
-				get_wlxy_ifname(i, j, wl_if);
-#endif
 				if (!strcmp(wl_if, "")) continue;
 				snprintf(mssid_mark, sizeof(mssid_mark), "%d", guest_mark);
 				eval("ebtables", "-t", "nat", "-D", "PREROUTING",  "-i", wl_if, "-j", "mark", "--set-mark", mssid_mark, "--mark-target", "ACCEPT");
@@ -1093,6 +1088,10 @@ static int start_tqos(void)
 		fprintf(f, "\t$TQA parent 1:%d handle %d: $SCH\n", x, x);
 		fprintf(f, "\t$TFA parent 1: prio %d u32 match mark %d 0x%x flowid 1:%d\n", x, i + 1, QOS_MASK, x);
 	}
+// add for test
+#if 1
+		fprintf(f, "\t$TFA parent 1: prio 10 u32 match ip protocol 17 0xff match ip tos 0xC8 0xff flowid 1:10\n");
+#endif
 	free(buf);
 
 	/*
@@ -1190,6 +1189,12 @@ static int start_tqos(void)
 					i, rate, x, x, u, v, x);
 #endif
 		}
+
+// add for test
+#if 1
+		fprintf(f, "\t$TFADL parent 2: prio 10 u32 match ip protocol 17 0xff match ip tos 0xC8 0xff flowid 2:10\n");
+#endif
+
 		free(buf);
 	}
 
@@ -1237,6 +1242,20 @@ void stop_iQos(void)
 #ifdef HND_ROUTER
 	config_obw_off();
 #endif
+/* OPPO */
+#if 0
+#ifdef RTCONFIG_ROUTERBOOST 	
+	if (!IS_RB_QOS()
+#ifdef RTCONFIG_AMAS
+			|| (aimesh_re_node() == 1 && nvram_get_int("qos_type") == 4)
+#endif			
+	) {
+	    system("rmmod deDupTx");
+	    stop_asus_rbd();
+	}
+#endif
+#endif
+
 }
 
 static int add_bandwidth_limiter_rules(char *pcWANIF)
@@ -1351,10 +1370,8 @@ static int add_bandwidth_limiter_rules(char *pcWANIF)
 	}
 	free(buf);
 
-#ifdef RTCONFIG_AMAS_WGN
 	// AMAS non-RE mode
 	if (nvram_get_int("re_mode") == 0) add_iptables_AMAS_WGN(fn, action);
-#endif
 
 	fprintf(fn, "COMMIT\n");
 	fclose(fn);
@@ -1636,7 +1653,6 @@ static int start_bandwidth_limiter(void)
 	return 0;
 }
 
-#ifdef RTCONFIG_AMAS_WGN
 static int start_bandwidth_limiter_AMAS_WGN(void)
 {
 	FILE *f = NULL;
@@ -1774,7 +1790,6 @@ static int start_bandwidth_limiter_AMAS_WGN(void)
 
 	return 0;
 }
-#endif
 
 #ifdef RTCONFIG_GEFORCENOW
 static int nvfgn_GetQoSChannelPort(char *str)
@@ -2009,6 +2024,160 @@ static int start_GeForce_QoS(void)
 
 	return 0;
 }
+#endif
+
+/* OPPO */
+#ifdef RTCONFIG_ROUTERBOOST
+static int start_RouterBoost_QoS(void)
+{
+	FILE *f = NULL;
+	unsigned int ibw = 0, obw = 0;
+	
+	_dprintf("[RB] start RouterBoost QoS ...\n");
+	ibw = strtoul(nvram_safe_get("qos_ibw"), NULL, 10);
+	obw = strtoul(nvram_safe_get("qos_obw"), NULL, 10);
+	
+	/* If this value doesn't exist or 0 or empty, will give 1Gbps as default value */
+	if (ibw == 0) ibw = 10240000;
+	if (obw == 0) obw = 10240000;
+	
+	/* If this value exist and it is less then 1Mbps, will force into 1Mbps */
+	if (ibw < 1024 && ibw != 0) ibw = 1024;
+	if (obw < 1024 && obw != 0) obw = 1024;
+	
+	if ((f = fopen(qosfn, "w")) == NULL) return -2;
+	fprintf(f,
+		"#!/bin/sh\n"
+		"WAN=%s\n"
+		"LAN=%s\n"
+		"\n"
+		"TQAU=\"tc qdisc add dev $WAN\"\n"
+		"TCAU=\"tc class add dev $WAN\"\n"
+		"TFAU=\"tc filter add dev $WAN\"\n"
+		"SFQ=\"sfq perturb 10\"\n"
+		"TQA=\"tc qdisc add dev $LAN\"\n"
+		"TCA=\"tc class add dev $LAN\"\n"
+		"TFA=\"tc filter add dev $LAN\"\n"
+		"\n"
+		, get_wan_ifname(wan_primary_ifunit())
+		, nvram_safe_get("lan_ifname")
+	);
+
+	fprintf(f,
+		"start()\n"
+		"{\n"
+		"echo \"root ...\"\n"
+		"$TQA root handle 1: htb default 20\n"
+		"$TCA parent 1: classid 1:1 htb rate %ukbit\n"
+		"\n"
+		"$TQAU root handle 2: htb default 20\n"
+		"$TCAU parent 2: classid 2:1 htb rate %ukbit\n"
+		"\n"
+		"echo \"download ...\"\n"
+		"# 1:10\n"
+		"$TCA parent 1:1 classid 1:10 htb rate %fkbit ceil %ukbit prio 1\n"
+		"$TQA parent 1:10 handle 10: $SFQ\n"
+		//"$TFA parent 1: prio 1 protocol ip handle 10 fw flowid 1:10\n"
+		"\n"
+		"# 1:20\n"
+		"$TCA parent 1:1 classid 1:20 htb rate %fkbit ceil %ukbit prio 2\n"
+		"$TQA parent 1:20 handle 20: $SFQ\n"
+		//"$TFA parent 1: prio 2 protocol ip handle 20 fw flowid 1:20\n"
+		"\n"
+		, ibw             // 1:
+		, obw             // 2:
+		, 0.20*ibw,  ibw   // 1:10
+		, 0.20*ibw, ibw   // 1:20
+	);
+
+	/* mark */
+	fprintf(f, "$TFA parent 1: prio 10 protocol ip u32 match mark %d 0x%x flowid 1:%d\n", 6, QOS_MASK, 10);
+
+	/* DSCP / TOS  */
+	fprintf(f, "$TFA parent 1: prio 1 protocol ip u32 match ip protocol 17 0xff match ip tos 0xb8 0xff flowid 1:10\n");
+	fprintf(f, "$TFA parent 1: prio 1 protocol ip u32 match ip protocol 17 0xff match ip tos 0xa0 0xff flowid 1:10\n");
+	fprintf(f, "$TFA parent 1: prio 2 protocol ip u32 match ip protocol 17 0xff match ip tos 0x00 0xff flowid 1:20\n");
+	
+	fprintf(f,
+		"\n"
+		"echo \"upload ...\"\n"
+		"# 2:10\n"
+		"$TCAU parent 2:1 classid 2:10 htb rate %fkbit ceil %ukbit prio 1\n"
+		"$TQAU parent 2:10 handle 10: $SFQ\n"
+		//"$TFAU parent 2: prio 1 protocol ip handle 10 fw flowid 2:10\n"
+		"\n"
+		"# 2:20\n"
+		"$TCAU parent 2:1 classid 2:20 htb rate %fkbit ceil %ukbit prio 2\n"
+		"$TQAU parent 2:20 handle 20: $SFQ\n"
+		//"$TFAU parent 2: prio 2 protocol ip handle 20 fw flowid 2:20\n"
+		"\n"
+		, 0.20*obw, obw   // 2:10
+		, 0.20*obw, obw   // 2:20
+	);
+
+	/* mark */
+	fprintf(f, "$TFAU parent 2: prio 1 protocol ip u32 match mark %d 0x%x flowid 2:%d\n", 10, QOS_MASK, 10);
+
+	/* DSCP / TOS */
+	fprintf(f, "$TFAU parent 2: prio 1 protocol ip u32 match ip protocol 17 0xff match ip tos 0xc8 0xff flowid 2:10\n");
+	fprintf(f, "$TFAU parent 2: prio 2 protocol ip u32 match ip protocol 17 0xff match ip tos 0x00 0xff flowid 2:20\n");
+	
+	fprintf(f, "}\n"); // start() end
+
+	fprintf(f,
+		"\n"
+		"stop()\n"
+		"{\n"
+		"echo \"stop ...\"\n"
+		"tc qdisc del dev $WAN root 2>/dev/null\n"
+		"tc qdisc del dev $WAN ingress 2>/dev/null\n"
+		"tc qdisc del dev $LAN root 2>/dev/null\n"
+		"tc qdisc del dev $LAN ingress 2>/dev/null\n"
+		"}\n"
+		"\n"
+		"up()\n"
+		"{\n"
+		"echo \"upload ...\"\n"
+		"tc qdisc ls dev $WAN\n"
+		"tc class ls dev $WAN\n"
+		"tc filter ls dev $WAN\n"
+		"}\n"
+		"\n"
+		"down()\n"
+		"{\n"
+		"echo \"down ...\"\n"
+		"tc qdisc ls dev $LAN\n"
+		"tc class ls dev $LAN\n"
+		"tc filter ls dev $LAN\n"
+		"}\n"
+		"\n"
+		"if [ $# != 1 ]; then\n"
+		"echo \"Usage: $0 start/stop/restart/up/down\"\n"
+		"else\n"
+		"if [ $1 = \"start\" ]; then\n"
+		"start\n"
+		"elif [ $1 = \"stop\" ]; then\n"
+		"stop\n"
+		"elif [ $1 = \"restart\" ]; then\n"
+		"stop\n"
+		"start\n"
+		"elif [ $1 = \"up\" ]; then\n"
+		"up\n"
+		"elif [ $1 = \"down\" ]; then\n"
+		"down\n"
+		"fi\n"
+		"fi\n"
+	);
+
+	fclose(f);
+	chmod(qosfn, 0700);
+	eval((char *)qosfn, "restart");
+	QOSDBG("[RB] Execute RouterBoost QoS Done.\n");
+
+	
+	return 0;
+}
+
 #endif
 
 static int add_rog_qos_rules(char *pcWANIF)
@@ -2297,7 +2466,18 @@ int add_iQosRules(char *pcWANIF)
 	else if (IS_BW_QOS()) {
 		status = add_bandwidth_limiter_rules(pcWANIF);
 	}
-	
+/* OPPO */
+#if 0
+#ifdef RTCONFIG_ROUTERBOOST
+	else if (IS_RB_QOS()
+#ifdef RTCONFIG_AMAS
+			&&(aimesh_re_node() == 0)
+#endif	
+	) {
+		status = system("insmod deDupTx");
+	}
+#endif
+#endif
 	if (status < 0) _dprintf("[%s] status = %d\n", __FUNCTION__, status);
 
 	return status;
@@ -2327,11 +2507,9 @@ int start_iQos(void)
 		// AMAS non-RE mode
 		if (nvram_get_int("re_mode") == 0)
 			status = start_bandwidth_limiter();
-#ifdef RTCONFIG_AMAS_WGN
 		// AMAS RE mode
 		if (nvram_get_int("re_mode") == 1)
 			status = start_bandwidth_limiter_AMAS_WGN();
-#endif
 	}
 #ifdef RTCONFIG_GEFORCENOW
 	else if (IS_GFN_QOS()) {
@@ -2339,6 +2517,19 @@ int start_iQos(void)
 	}
 #endif
 
+/* OPPO */
+#if 0
+#ifdef RTCONFIG_ROUTERBOOST
+	else if (IS_RB_QOS()
+#ifdef RTCONFIG_AMAS
+             &&(aimesh_re_node() == 0)
+#endif				
+	) {
+		start_asus_rbd();
+		status = start_RouterBoost_QoS();
+	}
+#endif
+#endif
 	if (status < 0) _dprintf("[%s] status = %d\n", __FUNCTION__, status);
 
 	return status;

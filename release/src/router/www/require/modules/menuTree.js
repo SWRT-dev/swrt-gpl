@@ -51,10 +51,10 @@ define(function(){
 				]
 			},
 			{
-				menuName: "<#Guest_Network#>",
+				menuName: Guest_Network_naming,
 				index: "menu_GuestNetwork",
 				tab: [
-					{url: "Guest_network.asp", tabName: "<#Guest_Network#>"},
+					{url: (isSupport("mtlancfg") ? "SDN.asp" : "Guest_network.asp"), tabName: Guest_Network_naming},
 					{url: "Captive_Portal.asp", tabName: "Free WiFi"},
 					{url: "Captive_Portal_Advanced.asp", tabName: "<#Captive_Portal#>"},
 					{url: "Guest_network_fbwifi.asp", tabName: "Facebook WiFi"},
@@ -196,6 +196,8 @@ define(function(){
 					{url: "Advanced_GWStaticRoute_Content.asp", tabName: "<#menu5_2_3#>"},
 					{url: "Advanced_IPTV_Content.asp", tabName: "IPTV"},
 					{url: "Advanced_SwitchCtrl_Content.asp", tabName: "<#Switch_itemname#>"},
+					{url: "Advanced_VLAN_Switch_Content.asp", tabName: "VLAN"},
+					{url: "Advanced_VLAN_Profile_Content.asp", tabName: "__INHERIT__"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
@@ -273,6 +275,7 @@ define(function(){
 					{url: "Advanced_TR069_Content.asp", tabName: "TR-069"},
 					{url: "Advanced_Notification_Content.asp", tabName: "Notification"},
 					{url: "Advanced_Privacy.asp", tabName: "<#menu_privacy#>"},
+					{url: "Advanced_MultiFuncBtn.asp", tabName: "Multi-Function Button"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				]
 			},
@@ -330,7 +333,7 @@ define(function(){
 					retArray.push("menu_APP");
 				}
 
-				if((!cloudsync_support && !aicloudipk_support) || nocloudsync_support){
+				if((!cloudsync_support && !aicloudipk_support) || nocloudsync_support || isSupport("BUSINESS")){
 					retArray.push("menu_AiCloud");
 				}
 
@@ -603,6 +606,11 @@ define(function(){
 					retArray.push("Guest_network_fbwifi.asp");
 				}
 
+				if(!mtlancfg_support){
+					retArray.push("Advanced_VLAN_Switch_Content.asp");
+					retArray.push("Advanced_VLAN_Profile_Content.asp");	
+				}
+
 				if(!tagged_based_vlan){
 					retArray.push("Advanced_TagBasedVLAN_Content.asp");
 					retArray.push("Advanced_MultiSubnet_Content.asp");
@@ -649,6 +657,25 @@ define(function(){
 				if(!dnsfilter_support)
 					retArray.push("DNSFilter.asp");
 
+				if(isSupport("mtlancfg")){
+					retArray.push("Captive_Portal.asp");
+					retArray.push("Captive_Portal_Advanced.asp");
+					retArray.push("Guest_network_fbwifi.asp");
+				}
+
+				if(isSupport("BUSINESS")){
+					retArray.push("APP_Installation.asp");
+					retArray.push("aidisk.asp");
+					retArray.push("PrinterServer.asp");
+					retArray.push("Advanced_Modem_Content.asp");
+					retArray.push("Advanced_TimeMachine.asp");
+					retArray.push("fileflex.asp");
+				}
+
+				if(!isSupport("sw_btn")){
+					retArray.push("Advanced_MultiFuncBtn.asp");
+				}
+
 				/* Operation Mode */
 				if(isSwMode("re")){
 					retArray.push("GameBoost.asp");
@@ -658,6 +685,8 @@ define(function(){
 					retArray.push("Advanced_GWStaticRoute_Content.asp");
 					retArray.push("Advanced_IPTV_Content.asp");
 					retArray.push("Advanced_SwitchCtrl_Content.asp");
+					retArray.push("Advanced_VLAN_Switch_Content.asp");
+					retArray.push("Advanced_VLAN_Profile_Content.asp");
 					retArray.push("Main_DHCPStatus_Content.asp");
 					retArray.push("Main_IPV6Status_Content.asp");
 					retArray.push("Main_RouteStatus_Content.asp");
@@ -705,6 +734,8 @@ define(function(){
 					retArray.push("Advanced_GWStaticRoute_Content.asp");
 					retArray.push("Advanced_IPTV_Content.asp");
 					retArray.push("Advanced_SwitchCtrl_Content.asp");
+					retArray.push("Advanced_VLAN_Switch_Content.asp");
+					retArray.push("Advanced_VLAN_Profile_Content.asp");
 					retArray.push("Main_DHCPStatus_Content.asp");
 					retArray.push("Main_IPV6Status_Content.asp");
 					retArray.push("Main_RouteStatus_Content.asp");

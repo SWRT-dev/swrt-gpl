@@ -141,6 +141,31 @@ function change_l3gre_unit(unit){
 								<input type="text" maxlength="4" name="l2gre_vlanid" id="l2gre_vlanid" class="input_6_table" value="<% nvram_get("l2gre_vlanid"); %>" autocorrect="off" autocapitalize="off"></input>
 							</td>
 						</tr>
+						<tr id="l2gre_ka_enable">
+							<th>Enable Keep Alive</th>
+							<td>
+								<input type="radio" value="1" name="l2gre_ka_enable" class="input" <% nvram_match("l2gre_ka_enable", "1", "checked"); %>><#checkbox_Yes#></input>
+								<input type="radio" value="0" name="l2gre_ka_enable" class="input" <% nvram_match("l2gre_ka_enable", "0", "checked"); %>><#checkbox_No#></input>
+							</td>
+						</tr>
+						<tr id="l2gre_ka_period">
+							<th>Peroid of sending Keep Alive</th>
+							<td>
+								<input type="text" maxlength="5" name="l2gre_ka_period" id="l2gre_ka_period" class="input_6_table" value="<% nvram_get("l2gre_ka_period"); %>" autocorrect="off" autocapitalize="off"></input>
+							</td>
+						</tr>
+						<tr id="l2gre_ka_retries">
+							<th>Retry attempts</th>
+							<td>
+								<input type="text" maxlength="5" name="l2gre_ka_retries" id="l2gre_ka_retries" class="input_6_table" value="<% nvram_get("l2gre_ka_retries"); %>" autocorrect="off" autocapitalize="off"></input>
+							</td>
+						</tr>
+						<tr id="l2gre_state">
+							<th>Remote Status</th>
+							<td>
+								<div id="l2gre_state"><% nvram_get("l2gre_state"); %></div>
+							</td>
+						</tr>
 					</table>
 					<div class="apply_gen" id="apply_l2gre">
 						<input class="button_gen" onclick="apply_l2gre();" type="button" value="<#CTL_apply#>"/>
@@ -199,6 +224,31 @@ function change_l3gre_unit(unit){
 							<th>Routing Rules</th>
 							<td>
 								<input type="text" maxlength="1023" name="l3gre_routes" id="l3gre_routes" class="input_32_table" value="<% nvram_get("l3gre_routes"); %>" autocorrect="off" autocapitalize="off"></input>
+							</td>
+						</tr>
+						<tr id="l3gre_ka_enable">
+							<th>Enable Keep Alive</th>
+							<td>
+								<input type="radio" value="1" name="l3gre_ka_enable" class="input" <% nvram_match("l3gre_ka_enable", "1", "checked"); %>><#checkbox_Yes#></input>
+								<input type="radio" value="0" name="l3gre_ka_enable" class="input" <% nvram_match("l3gre_ka_enable", "0", "checked"); %>><#checkbox_No#></input>
+							</td>
+						</tr>
+						<tr id="l3gre_ka_period">
+							<th>Peroid of sending Keep Alive</th>
+							<td>
+								<input type="text" maxlength="5" name="l3gre_ka_period" id="l3gre_ka_period" class="input_6_table" value="<% nvram_get("l3gre_ka_period"); %>" autocorrect="off" autocapitalize="off"></input>
+							</td>
+						</tr>
+						<tr id="l3gre_ka_retries">
+							<th>Retry attempts</th>
+							<td>
+								<input type="text" maxlength="5" name="l3gre_ka_retries" id="l3gre_ka_retries" class="input_6_table" value="<% nvram_get("l3gre_ka_retries"); %>" autocorrect="off" autocapitalize="off"></input>
+							</td>
+						</tr>
+						<tr id="l3gre_state">
+							<th>Remote Status</th>
+							<td>
+								<div id="l3gre_state"><% nvram_get("l3gre_state"); %></div>
 							</td>
 						</tr>
 					</table>

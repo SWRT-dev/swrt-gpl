@@ -1,5 +1,4 @@
 include ../common.mak
-include $(SRCBASE)/.config
 
 OBJS = usb_info.o disk_io_tools.o disk_initial.o disk_share.o
 PROGS = libdisk.so write_smb_conf test_of_var_files
@@ -19,6 +18,9 @@ CFLAGS += -fPIC $(EXTRACFLAGS)
 CFLAGS += -I. -I$(TOP)/shared -I$(SRCBASE)/include -I$(KERNEL_HEADER_DIR) -Wall
 #CFLAGS += $(PRIVATE_EXTRACFLAGS)
 LDFLAGS_SO = -L$(TOP_PLATFORM)/nvram${BCMEX}${EX7} -lnvram -L$(TOP)/shared -lshared
+ifeq ($(RTCONFIG_BCM_502L07P2),y)
+LDFLAGS_SO += -L$(TOP_PLATFORM)/ethctl_lib -lethctl
+endif
 ifeq ($(HND_ROUTER),y)
 LDFLAGS_SO += -L$(TOP_PLATFORM)/wlcsm -lwlcsm
 LDFLAGS_SO += -lgcc_s
@@ -44,6 +46,14 @@ CFLAGS += -I$(TOP)/PMS_DBapis
 LDFLAGS += -L$(TOP)/openssl -lcrypto
 LDFLAGS += -L$(TOP)/sqlCipher/.libs -lsqlcipher
 LDFLAGS += -L$(TOP)/PMS_DBapis -lpms_sql
+endif
+
+ifeq ($(HND_ROUTER_BE_4916), y)
+CFLAGS+= -fcommon
+endif
+
+ifeq ($(RTCONFIG_TRUSTZONE),y)
+LDFLAGS += -L$(TOP)/ateed/ -latee
 endif
 
 #SHARE_STATIC=y

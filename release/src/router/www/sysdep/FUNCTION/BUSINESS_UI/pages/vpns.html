@@ -1,0 +1,14 @@
+<html>
+	<iframe id="settingsWindow" style="
+		width:100%;
+		height:calc(100vh - 115px);
+		min-width:760px;
+	" src="/VPN/vpns.html?current_theme=white"></iframe>
+
+	<script>
+		var businessWrapper = true;
+		$("#settingsWindow").on("load", function(){
+			$("#settingsWindow").contents().find("body").hide().css("visibility", "visible").fadeIn();
+		})
+	</script>
+</html>
