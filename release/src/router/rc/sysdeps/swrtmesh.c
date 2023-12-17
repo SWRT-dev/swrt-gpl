@@ -56,7 +56,7 @@ void auto_generate_config(void)
 
 int start_swrtmesh(void)
 {
-	int idx;
+	int idx = 1;
 	int sw_mode = sw_mode();
 	pid_t pid;
 	char *ubusd_argv[] = { "ubusd", NULL };
@@ -77,7 +77,6 @@ int start_swrtmesh(void)
 	stop_swrtmesh();
 	if(nvram_match("swrtmesh_debug", "1")){
 		system("touch /tmp/SWRTMESHUTILS_DEBUG");
-		idx = 1;
 		if(nvram_match("swrtmesh_agent_enable", "0") || nvram_match("swrtmesh_controller_enable", "0")){
 			ieee1905_argv[idx] = "---no-lo";//there is no controller or agent on the local device, skip lo(less logging).
 			idx++;
@@ -164,10 +163,9 @@ int start_mapcontroller(void)
 	pid_t pid;
 	char *cntl_argv[] = { "mapcontroller", NULL, NULL, NULL, NULL, NULL, NULL };
 	if(nvram_match("swrtmesh_controller_enable", "1")){
-		int idx;
+		int idx = 1;
 		char buf[2] = {0};
 		if(nvram_match("swrtmesh_debug", "1")){
-			idx = 1;
 			cntl_argv[idx] = "-o";
 			idx++;
 			cntl_argv[idx] = "/tmp/mapcontroller.log";

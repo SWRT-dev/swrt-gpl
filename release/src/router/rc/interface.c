@@ -30,7 +30,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <net/if_arp.h>
-#include <proto/ethernet.h>
+//#include <proto/ethernet.h>
 
 #include <shutils.h>
 #include <bcmnvram.h>

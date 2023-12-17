@@ -25450,6 +25450,7 @@ void reset_button_state(void) {
 }
 #endif
 
+#if defined(RTCONFIG_HND_ROUTER_AX) || defined(RTCONFIG_WIFI7)
 void reconfig_manual_wan_ifnames(void) {
 
 	int model = get_model();
@@ -25766,3 +25767,4 @@ void reconfig_manual_wan_ifnames(void) {
 			break;
 	}
 }
+#endif

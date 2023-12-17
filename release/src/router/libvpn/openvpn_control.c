@@ -132,27 +132,6 @@ static void _ovpn_client_set_tap_to_bridge(char *ifname, char *br_ifname)
 	// add to new bridge.
 	eval("brctl", "addif", br_ifname, ifname);
 }
-
-static int ovpn_get_sdn_subnet_mask(ovpn_type_t type, int unit, char *buf, size_t len)
-{
-	int ret = 0, i;
-	size_t mtl_sz;
-	MTLAN_T *pmtl = (MTLAN_T *)INIT_MTLAN(sizeof(MTLAN_T));
-	if(get_ovpn_mtlan(type, unit, pmtl, &mtl_sz)){
-		memset(buf, 0, len);
-		for(i = 0; i < mtl_sz; i++){
-			strlcat(buf, pmtl[i].nw_t.subnet, len);
-			strlcat(buf, " ", len);
-			strlcat(buf, pmtl[i].nw_t.netmask, len);
-			strlcat(buf, ",", len);
-		}
-		FREE_MTLAN(pmtl);
-		ret = 1;
-		_dprintf("%s: %s\n", __func__, buf);
-	}
-	FREE_MTLAN(pmtl);
-	return ret;
-}
 #endif
 
 static void _ovpn_check_dir(ovpn_type_t type, int unit)
@@ -776,7 +755,7 @@ static void _ovpn_server_fw_rule_add(int unit, ovpn_sconf_t *conf)
 		fprintf(fp, "iptables -I OVPNSI -i %s -j ACCEPT\n", conf->if_name);
 		fprintf(fp, "ip6tables -I OVPNSI -i %s -j ACCEPT\n", conf->if_name);
 #ifdef RTCONFIG_MULTILAN_CFG
-		get_mtlan_by_idx(SDNFT_TYPE_VPNS, idx, pmtl, &lst_sz);
+		get_mtlan_by_idx(SDNFT_TYPE_VPNS, idx, pmtl, &mtl_sz);
 		if(mtl_sz){
 			char buf[128];
 			for(i = 0; i < mtl_sz; i++){
@@ -2167,7 +2146,6 @@ void ovpn_down_handler()
 
 void ovpn_route_up_handler()
 {
-	FILE *fp;
 	int i = 1;
 	int unit = atoi(safe_getenv("unit"));
 	ovpn_type_t ovpn_type = strcmp(safe_getenv("ovpn_type"), "0") ? OVPN_TYPE_CLIENT : OVPN_TYPE_SERVER;
@@ -2373,7 +2351,7 @@ void update_ovpn_client_by_sdn(MTLAN_T *pmtl, size_t mtl_sz, int restart_all_sdn
 						unlink(path);
 					}
 					if(pmtl[i].enable && pmtl[i].sdn_t.vpnc_idx && get_vpnx_by_vpnc_idx(&vpnx, pmtl[i].sdn_t.vpnc_idx) && vpnx.proto == VPN_PROTO_OVPN && vpnx.unit == unit){
-						fp = fopen(path, "w");
+						FILE *fp = fopen(path, "w");
 						if(fp){
 							fprintf(fp, "#!/bin/sh\n\n");
 							ovpn_client_fw_rule_bind_sdn(fp, conf.if_name, pmtl[i].nw_t.ifname);
@@ -2407,6 +2385,7 @@ void update_ovpn_server_by_sdn(MTLAN_T *pmtl, size_t mtl_sz, int restart_all_sdn
 {
 	int i, j, found = 0;
 	char path[128];
+	VPN_VPNX_T vpnx;
 
 	if(!restart_all_sdn && nvram_get_int("VPNServer_enable")){
 		for(i = 0; i < mtl_sz; ++i){
@@ -2430,9 +2409,8 @@ void update_ovpn_server_by_sdn(MTLAN_T *pmtl, size_t mtl_sz, int restart_all_sdn
 void update_ovpn_client_by_sdn_remove(MTLAN_T *pmtl, size_t mtl_sz)
 {
 	int unit, idx, i, found = 0;
-	char tmp[32] = {0}, path[128] = {0};
+	char path[128] = {0};
 	ovpn_cconf_t conf;
-	VPN_VPNX_T vpnx;
 
 	for(unit = 1; unit <= OVPN_CLIENT_MAX; unit++){
 		if(get_ovpn_cconf(unit, &conf)){

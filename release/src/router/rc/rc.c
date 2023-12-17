@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <inttypes.h>
 #include <string.h>
 #include <time.h>
 #include <limits.h>
@@ -32,10 +33,21 @@
 #include <lp5523led.h>
 #endif
 
+#if defined(RTCONFIG_CONNDIAG)
+#include "conn_diag-sql.h"
+#endif
+
 #if defined(RTCONFIG_SOC_IPQ8074)
 #include <sys/vfs.h>
-#include <inttypes.h>
 #include <sys/reboot.h>
+#endif
+
+
+#if (defined(RTCONFIG_TUNNEL) && defined(RTCONFIG_ACCOUNT_BINDING)) || defined(RTCONFIG_MULTILAN_CFG)
+#include <json.h>
+#endif
+#if defined(RTCONFIG_MULTILAN_CFG)
+#include "swrt_mtlan.h"
 #endif
 
 #ifdef RTCONFIG_USB
@@ -47,7 +59,17 @@
 #if defined(RTCONFIG_SWRT)
 #include "swrt.h"
 #endif
+#ifdef RTCONFIG_COMFW
+#include <comfw.h>
+#endif
 #include <model.h>
+
+#if defined(RTCONFIG_TUNNEL) && defined(RTCONFIG_ACCOUNT_BINDING)
+#include <aae_ipc.h>
+#endif
+#ifdef RTCONFIG_MULTIWAN_IF
+#include "multi_wan.h"
+#endif
 
 #ifndef ARRAYSIZE
 #define ARRAYSIZE(a) (sizeof(a) / sizeof(a[0]))
@@ -438,12 +460,43 @@ static int rctest_main(int argc, char *argv[])
 	else if (strcmp(argv[1], "rc_service")==0) {
 		notify_rc(argv[2]);
 	}
-#if defined(CONFIG_BCMWL5) && defined(HND_ROUTER)
+#if defined(RTCONFIG_MULTILAN_CFG)
+	else if (strcmp(argv[1], "apg_start")==0) {
+		apg_start();
+	}
+	else if (strcmp(argv[1], "apg_stop")==0) {
+		apg_stop();
+	}
+	else if (strcmp(argv[1], "wgn_to_sdn")==0) {
+		check_convert_WGN_to_SDN();
+	}
+	else if (strcmp(argv[1], "sync_apgx_to_wlunit")==0) {
+		sync_apgx_to_wlunit();	
+	}
+	else if (strcmp(argv[1], "check_sdn_ifcap")==0) {
+		create_sdn_ifcap();
+		if (check_wifi_band_cap(argv[2]) == 0)
+			_dprintf("OK\n");
+		else 
+			_dprintf("NG\n");
+		if (check_lan_port_cap(argv[2]) == 0)
+			_dprintf("OK\n");
+		else 
+			_dprintf("NG\n");
+	}
+#endif
+#ifdef RTCONFIG_HND_ROUTER_AX
 	else if (strcmp(argv[1], "gpy211")==0) {
 		GPY211_INIT_SPEED();
 	}
-	else if (strcmp(argv[1], "gpy211_wan")==0) {
-		GPY211_WAN_SPEED();
+	else if (strcmp(argv[1], "gpy211_1g")==0) {
+		GPY211_SPEED_WAR_1G();
+	}
+	else if (strcmp(argv[1], "gpy211_auto")==0) {
+		GPY211_SPEED_WAR_AUTO();
+	}
+	else if (strcmp(argv[1], "gpy211_aneg")==0) {
+		GPY211_WAR_ANEG();
 	}
 #endif
 #if defined(RTCONFIG_FRS_FEEDBACK)
@@ -474,9 +527,23 @@ static int rctest_main(int argc, char *argv[])
 	}
 #if defined(RTCONFIG_AMAS) && defined(RTCONFIG_BHCOST_OPT)
 	else if (strcmp(argv[1], "linkrate")==0) {
+#ifdef RTCONFIG_MOCA
+		MOCA_NODE_INFO node;
+		int is_moca;
+#endif
 		if(argv[2]) {
 			int rate = 0;
+#ifdef RTCONFIG_MOCA
+			is_moca = (strcmp(argv[2], nvram_safe_get("moca_ifname")) == 0);
+			rate = get_uplinkports_linkrate(argv[2], &node);
+			if(is_moca)
+			{
+				for(int i = 0; i < MAX_MOCA_NODES; ++i)
+					printf("node.node_mac[%d]=%s, node.phyrate[%d]=%04d\n", i, node.node_mac[i], i, node.phyrate[i]);
+			}
+#else
 			rate = get_uplinkports_linkrate(argv[2]);
+#endif
 			printf("portif[%s] link rate is %d\n", argv[2], rate);
 		}
 	}
@@ -487,6 +554,63 @@ static int rctest_main(int argc, char *argv[])
 		const char *dws[]={"dw", argv[2]};
 		_memaccess(2, dws);
 	}
+#ifdef RTCONFIG_RTL_UMGMT
+	else if (strcmp(argv[1], "rtl_vadd")==0) {
+        	char ethif[5], ifname[12];
+        	int vid, prio, p_mode, i;
+		char nvbuf[12];
+		int ext_ports = 4;
+
+        	zero_extrtl_vlan();
+
+		_dprintf("rtl vlan test add:\n");
+		for(i = 0; i < ext_ports; ++i) {
+			sprintf(nvbuf, "p%d_vid", i);
+			vid = nvram_get_int(nvbuf);
+
+			sprintf(nvbuf, "p%d_prio", i);
+			prio = nvram_get_int(nvbuf);
+
+			sprintf(ifname, "ethsw_%d", i);
+
+			sprintf(nvbuf, "p%d_mode", i);
+        		p_mode = nvram_get_int(nvbuf);
+
+			if(vid) {
+        			add_extrtl_vlan(vid, prio, ifname, p_mode, ethif);
+        			_dprintf("setup vid[%d], prio[%d], ifname[%s], p_mode[%d], ethif[%s]\n", vid, prio, ifname, p_mode, ethif);
+			}
+		}
+
+        	dump_extVlan();
+        	start_extrtl_vlan();	
+		_dprintf("done\n");
+	}
+	else if (strcmp(argv[1], "rtl_vrem")==0) {
+        	char ethif[5], ifname[12];
+        	int vid, prio, p_mode, i;
+		char nvbuf[12];
+		int ext_ports = 4;
+		int ret = 0;
+
+		_dprintf("rtl vlan test rem:\n");
+		for(i = 0; i < ext_ports; ++i) {
+			sprintf(nvbuf, "p%d_vid_rm", i);
+			vid = nvram_get_int(nvbuf);
+
+			sprintf(ifname, "ethsw_%d", i);
+
+			if(vid) {
+        			ret = rem_extrtl_vlan(vid, ifname, ethif);
+        			_dprintf("remv(%d): from vid[%d], ifname[%s], ethif[%s]\n", ret, vid, ifname, ethif);
+			}
+		}
+
+        	dump_extVlan();
+        	start_extrtl_vlan();	
+		_dprintf("done\n");
+	}
+#endif
 #endif
 	else if (strcmp(argv[1], "get_phy_status")==0) {
 		int mask;
@@ -548,6 +672,61 @@ static int rctest_main(int argc, char *argv[])
 #endif
 #endif
 #ifdef HND_ROUTER
+	else if (strcmp(argv[1], "dump_defaults")==0) {
+		struct nvram_tuple *t;
+		char *substr = NULL;
+		int total = 0;
+		FILE *fp;
+		char buf[256];
+
+		if(argv[2] && *argv[2])
+			substr = argv[2];
+
+		fp = fopen("/tmp/defaults.txt", "w");
+		if(!fp)
+			return 0;
+
+		_dprintf("dump router_defaults w/ substr[%s]\n", substr?:"[none]");
+
+		for (t = router_defaults; t->name; t++) {
+			if(substr) {
+				if(strncmp(t->name, substr, strlen(substr)) == 0) {
+					sprintf(buf, "%s\n", t->name);
+					fwrite(buf, 1, strlen(buf), fp);
+					total++;
+				}
+			} else {
+				sprintf(buf, "%s\n", t->name);
+				fwrite(buf, 1, strlen(buf), fp);
+				total++;
+			}
+		}
+		sprintf(buf, "totally printed %d defaults\n", total);
+		fwrite(buf, 1, strlen(buf), fp);
+		if(fp)
+			fclose(fp);
+
+		_dprintf("totally printed %d defaults\n", total);
+	}
+#ifdef EBG19
+	else if (strcmp(argv[1], "chk_duplex")==0) {
+		int port = atoi(argv[2]);
+		int rtkval = 0;
+
+		_dprintf("chk port[%d] duplex\n", port);
+		rtkval = rtk_get_phy_duplex(port);
+		_dprintf("rtkval is %d\n", rtkval);
+	}
+	else if (strcmp(argv[1], "chk_mib")==0) {
+		int port = atoi(argv[2]);
+		char *type = argv[3];
+		unsigned long long rtkval = 0;
+
+		_dprintf("chk port[%d] mib[%s]\n", port, type);
+		rtkval = rtk_get_phy_mib(port, type);
+		_dprintf("rtkval is %llu\n", rtkval);
+	}
+#endif
 	else if (strcmp(argv[1], "regr")==0) {
 		unsigned int reg;
 		sscanf(argv[2], "%x", &reg);
@@ -564,14 +743,14 @@ static int rctest_main(int argc, char *argv[])
 	else if (strcmp(argv[1], "pregr")==0) {
 		unsigned int reg;
 		sscanf(argv[2], "%x", &reg);
-		_dprintf("pregaccess rd 0x%x\n", reg);
+		_dprintf("pmdioaccess rd 0x%x\n", reg);
 		hnd_ethswctl(PMDIOACCESS, reg, 2, 0, 0);
 	}
 	else if (strcmp(argv[1], "pregw")==0) {
 		unsigned int reg, data;
 		sscanf(argv[2], "%x", &reg);
 		sscanf(argv[3], "%x", &data);
-		_dprintf("pregaccess wr 0x%x, 0x%x\n", reg, data);
+		_dprintf("pmdioaccess wr 0x%x, 0x%x\n", reg, data);
 		hnd_ethswctl(PMDIOACCESS, reg, 2, 1, data);
 	}
 	else if (strcmp(argv[1], "set_phy_ctrl")==0) {
@@ -648,6 +827,7 @@ static int rctest_main(int argc, char *argv[])
 		int utime = atoi(argv[3])?:0;
 		int no_fork = atoi(argv[4]);
 
+		pid = getpid();
 		if(no_fork) {
 			begin = clock();
 			for(i=0; i<loops; ++i) {
@@ -655,53 +835,60 @@ static int rctest_main(int argc, char *argv[])
 				nvp = nvram_safe_get("ppap1\n");
 				if(nvram_get_int("ppap1")!=1) {
 					err++;
-					_dprintf("pid_%d get wrong nv_ppap1=%s(%d)\n", pid, nvp, err);
+					printf("pid_%d get wrong nv_ppap1=%s(%d)\n", pid, nvp, err);
 				}
 				if(utime)
 					usleep(utime);
 			}
 			end = clock();
-			_dprintf("pid_%d, clock counts=%d\n", pid, (int)(end-begin));
+			printf("pid_%d, clock counts=%d\n", pid, (int)(end-begin));
+			fflush(stdout);
 			return 0;
 		} 
 
-		_dprintf("(NVP)fork nv test w/ loops(%d), usleep(%d)\n", loops, utime);
+		printf("fork nv test w/ loops(%d), usleep(%d)\n", loops, utime);
+		fflush(stdout);
 
 		pid = fork();
 
 		if(pid == 0) {
+			printf("child start\n");
 			begin = clock();
 			for(i=0; i<loops; ++i) {
 				nvram_set("ppap1", "1");
 				nvp = nvram_safe_get("ppap1\n");
 				if(nvram_get_int("ppap1")!=1) {
 					err++;
-					_dprintf("pid_%d get wrong nv_ppap1=%s(%d)\n", pid, nvp, err);
+					printf("child get wrong nv_ppap1=%s(%d)\n", nvp, err);
 				}
 				if(utime)
 					usleep(utime);
 			}
 			end = clock();
-			_dprintf("pid_%d, clock counts=%d\n", pid, (int)(end-begin));
+			printf("child, clock counts=%d\n", (int)(end-begin));
+			fflush(stdout);
 		} else if(pid > 0) {
+			printf("parent start\n");
 			begin = clock();
 			for(i=0; i<loops; ++i) {
 				nvram_set("ppap2", "2");
 				nvp = nvram_safe_get("ppap2\n");
 				if(nvram_get_int("ppap2")!=2) {
 					err++;
-					_dprintf("pid_%d get wrong nv_ppap2=%s(%d)\n", pid, nvp, err);
+					printf("parent get wrong nv_ppap2=%s(%d)\n", nvp, err);
 				}
 				if(utime)
 					usleep(utime);
 			}
 			end = clock();
-			_dprintf("pid_%d, clock counts=%d\n", pid, (int)(end-begin));
+			printf("parent, clock counts=%d\n", (int)(end-begin));
+			fflush(stdout);
 		} else {
-			_dprintf("wrong fork.\n");
+			printf("wrong fork.\n");
 		}
 
-		_dprintf("pid_%d exit\n", pid);
+		printf("%s exit\n", pid?"parent":"child");
+		fflush(stdout);
 	}
 #endif
 	else if (strcmp(argv[1], "nvramhex")==0) {
@@ -1027,7 +1214,46 @@ static int rctest_main(int argc, char *argv[])
 		}
 		json_object_put(root);
 	}
+#ifdef RTCONFIG_NEWSITE_PROVISIONING
+	else if (strcmp(argv[1], "get_provision_pincode")==0) {
+		char event[AAE_MAX_IPC_PACKET_SIZE];
+		char out[AAE_MAX_IPC_PACKET_SIZE];
+		snprintf(event, sizeof(event), AAE_HTTPD_GET_PROVISION_PINCODE_MSG, AAE_EID_HTTPD_GET_PROVISION_PINCODE);
+		aae_sendIpcMsgAndWaitResp(MASTIFF_IPC_SOCKET_PATH, event, strlen(event), out, sizeof(out), 5);
+		printf("finish get_provision_pincode\n");
+		
+		// json_object *root = NULL;
+		// json_object *httpdObj = NULL;
+		// json_object *eidObj = NULL;
+		// json_object *stsObj = NULL;
+		// root = json_tokener_parse((char *)out);
+		// json_object_object_get_ex(root, AAE_HTTPD_PREFIX, &httpdObj);
+		// json_object_object_get_ex(httpdObj, AAE_IPC_EVENT_ID, &eidObj);
+		// json_object_object_get_ex(httpdObj, AAE_IPC_STATUS, &stsObj);
+		// if (!httpdObj || !eidObj || !stsObj)
+		// 	printf("Failed to get_provision_pincode\n");
+		// else {
+		// 	int eid = json_object_get_int(eidObj);
+		// 	const char *status = json_object_get_string(stsObj);
+		// 	if ((eid == AAE_EID_HTTPD_GET_PROVISION_PINCODE) && (!strcmp(status, "0")))
+		// 		printf("Success to get_provision_pincode\n");
+		// 	else
+		// 		printf("Failed to get_provision_pincode\n");
+		// }
+		// json_object_put(root);
+	}
 #endif
+	else if (strcmp(argv[1], "aae_tunnel_test")==0) {
+		char event[AAE_MAX_IPC_PACKET_SIZE];
+		snprintf(event, sizeof(event), AAE_AWSIOT_TNL_TEST_MSG, EID_AWSIOT_TUNNEL_TEST, (argv[2] ? : "204f0a0bde0b06a1f6fa261f729b2862"));
+		aae_sendIpcMsg(MASTIFF_IPC_SOCKET_PATH, event, strlen(event));
+	}
+#endif
+	else if (strcmp(argv[1], "access_time")==0) {
+		if (argv[2]) {
+			fprintf(stderr, "on_off=%d\n", check_expire_on_off(argv[2]));
+		}
+	}
 #ifdef RTCONFIG_GRE
 	else if (strcmp(argv[1], "l2gre") == 0) {
 		int unit;
@@ -1059,8 +1285,47 @@ static int rctest_main(int argc, char *argv[])
 			handle_sdn_feature(sdn_idx, features, action);
 		}
 	}
+	else if (strcmp(argv[1], "sdn_del") == 0) {
+		remove_sdn();
+	}
 #endif
-#ifdef RTCONFIG_CONNDIAG
+#ifdef RTCONFIG_MULTIWAN_IF
+	else if (strcmp(argv[1], "mtwan_status")==0) {
+		if (argv[2])
+			_dprintf("mtwan status: %d\n", mtwanduck_get_mtwan_status(atoi(argv[2])));
+		else {
+			int i;
+			_dprintf("mtwan status: ");
+			for(i = MULTI_WAN_START_IDX; i < MULTI_WAN_START_IDX + MAX_MULTI_WAN_NUM; ++i)
+				_dprintf(" %d", mtwanduck_get_phy_status(i));
+			_dprintf("\n");
+		}
+	}
+	else if (strcmp(argv[1], "mtwan_phy")==0) {
+		if (argv[2])
+			_dprintf("mtwan phy status: %d\n", mtwanduck_get_phy_status(atoi(argv[2])));
+		else {
+			int i;
+			_dprintf("mtwan phy status: ");
+			for(i = MULTI_WAN_START_IDX; i < MULTI_WAN_START_IDX + MAX_MULTI_WAN_NUM; ++i)
+				_dprintf(" %d", mtwanduck_get_phy_status(i));
+			_dprintf("\n");
+		}
+	}
+#endif
+#ifdef RTCONFIG_MULTIWAN_PROFILE
+	else if (strcmp(argv[1], "mtwan_profile")==0) {
+		mtwan_update_profile();
+	}
+	else if (strcmp(argv[1], "mtwan_conn")==0) {
+		mtwan_init_profile();
+		if (argv[2] && argv[3])
+			mtwan_handle_wan_conn(atoi(argv[2]), atoi(argv[3]));
+		else
+			_dprintf("<wan_unit> <connection status>\n");
+	}
+#endif
+#if defined(RTCONFIG_CONNDIAG)
 	else if (strcmp(argv[1], "diag_stainfo")==0) {
 		char *stainfo_buf = NULL;
 		if(argv[2] && query_stainfo((!strcmp(argv[2], "all") ? NULL : argv[2]), &stainfo_buf) > 0){
@@ -1069,8 +1334,98 @@ static int rctest_main(int argc, char *argv[])
 		}
 	}
 #endif
+#if defined(RTCONFIG_TRUSTZONE)
+	else if (strcmp(argv[1], "atee")==0) {
+		if (argv[2]) {
+			if (!strcmp(argv[2], "clear_all"))
+				atee_clear_all();
+			else if (!strcmp(argv[2], "def"))
+				printf("%d\n", atee_check_admin_def_pw_exist());
+			else if (!strcmp(argv[2], "user"))
+				printf("%d\n", atee_check_admin_user_pw_exist());
+			else if (!strcmp(argv[2], "app"))
+				printf("%d\n", atee_check_admin_app_pw_exist());
+			else if (!strcmp(argv[2], "data") && argv[3])
+				printf("%d\n", atee_check_common_data_exist(atoi(argv[3])));
+			else if (!strcmp(argv[2], "match") && argv[3])
+				printf("%d\n", atee_check_admin_pw_match(argv[3]));
+			else if (!strcmp(argv[2], "match_def") && argv[3])
+				printf("%d\n", atee_check_admin_def_pw_match(argv[3]));
+			else if (!strcmp(argv[2], "match_user") && argv[3])
+				printf("%d\n", atee_check_admin_user_pw_match(argv[3]));
+			else if (!strcmp(argv[2], "match_app") && argv[3])
+				printf("%d\n", atee_check_admin_app_pw_match(argv[3]));
+			else if (!strcmp(argv[2], "set_def") && argv[3])
+				atee_set_admin_def_pw(argv[3]);
+			else if (!strcmp(argv[2], "set_user") && argv[3])
+				atee_set_admin_user_pw(argv[3]);
+			else if (!strcmp(argv[2], "set_app") && argv[3])
+				atee_set_admin_app_pw(argv[3]);
+			else if (!strcmp(argv[2], "set_data") && argv[3] && argv[4])
+				atee_set_common_data(atoi(argv[3]), argv[4], strlen(argv[4]));
+			else if (!strcmp(argv[2], "crypt")) {
+				char buf[64] = {0};
+				atee_get_admin_crypt(argv[3], buf, sizeof(buf));
+				if (buf[0])
+					printf("%s\n", buf);
+			}
+			else if (!strcmp(argv[2], "get_pw")) {
+				char buf[64] = {0};
+				atee_get_admin_pw(buf, sizeof(buf));
+				if (buf[0])
+					printf("%s\n", buf);
+			}
+			else if (!strcmp(argv[2], "get_user")) {
+				char buf[64] = {0};
+				atee_get_admin_user_pw(buf, sizeof(buf));
+				if (buf[0])
+					printf("%s\n", buf);
+			}
+			else if (!strcmp(argv[2], "get_user_md5")) {
+				char buf[64] = {0};
+				atee_get_admin_user_pw_md5(buf, sizeof(buf));
+				if (buf[0])
+					printf("%s\n", buf);
+			}
+			else if (!strcmp(argv[2], "get_app_md5")) {
+				char buf[64] = {0};
+				atee_get_admin_app_pw_md5(buf, sizeof(buf));
+				if (buf[0])
+					printf("%s\n", buf);
+			}
+			else if (!strcmp(argv[2], "get_data") && argv[3]) {
+				char buf[64] = {0};
+				atee_get_common_data(atoi(argv[3]), (uint8_t*)buf, sizeof(buf));
+				if (buf[0])
+					printf("%s\n", buf);
+			}
+			else if (!strcmp(argv[2], "test")) {
+				int loop = 10000;
+				uint8_t tmp[32] = {0};
+				char buf[64] = {0};
+				while (loop--) {
+					if (loop%2) {
+						memset(tmp, 0, sizeof(tmp));
+						f_read_string("/dev/urandom", tmp, sizeof(tmp));
+						hex2str(tmp, buf, sizeof(tmp)-1);
+						printf("[%04d]set: [%s]\n", loop, buf);
+						atee_set_common_data(0, (uint8_t*)buf, strlen(buf));
+					}
+					else {
+						memset(buf, 0, sizeof(buf));
+						atee_get_common_data(0, (uint8_t*)buf, sizeof(buf));
+						printf("[%04d]get: [%s]\n", loop, buf);
+					}
+				}
+			}
+		}
+	}
+#endif
 	else {
-		on = atoi(argv[2]);
+		if(argv[2])
+			on = atoi(argv[2]);
+		else
+			on = 0;
 		_dprintf("%s %d\n", argv[1], on);
 
 		if (strcmp(argv[1], "vlan") == 0)
@@ -1098,6 +1453,9 @@ static int rctest_main(int argc, char *argv[])
 			else stop_wan_port();
 		}
 		else if (strcmp(argv[1], "firewall") == 0) {
+			int wan_unit = (argv[3]) ? atoi(argv[3]) : wan_primary_ifunit();
+			int lan_unit = (argv[4]) ? atoi(argv[4]) : 0;
+			start_firewall(wan_unit, lan_unit);
 			//if (on) start_firewall();
 			//else stop_firewall();
 		}
@@ -1108,6 +1466,10 @@ static int rctest_main(int argc, char *argv[])
 		else if (strcmp(argv[1], "check_watchdog") == 0) {
 			if (on) start_check_watchdog();
 			else stop_check_watchdog();
+		}
+		else if (strcmp(argv[1], "fwupg_flashing") == 0) {
+			printf("go rc applt: fwupg_flashing\n");
+			start_fwupg_flashing();
 		}
 #ifdef RTAC87U
 		else if (strcmp(argv[1], "watchdog02") == 0) {
@@ -1164,6 +1526,11 @@ static int rctest_main(int argc, char *argv[])
 #endif
 				}
 #endif
+#ifdef RTCONFIG_MULTIWAN_IF
+				int unit = (argv[3]) ? atoi(argv[3]) : 0;
+				add_iQosRules(get_wan_ifname(unit));
+				start_mtwan_iQos(unit);
+#else
 			add_iQosRules(get_wan_ifname(wan_primary_ifunit()));
 #ifdef RTCONFIG_BWDPI
 				if (nvram_get_int("qos_type") == 1)
@@ -1171,6 +1538,7 @@ static int rctest_main(int argc, char *argv[])
 				else
 #endif
 				start_iQos();
+#endif
 			}
 			else
 			{
@@ -1197,6 +1565,11 @@ static int rctest_main(int argc, char *argv[])
 					}
 				}
 #endif
+#ifdef RTCONFIG_MULTIWAN_IF
+				int unit = (argv[3]) ? atoi(argv[3]) : 0;
+				stop_mtwan_iQos(unit);
+				del_mtwan_iQosRules(unit);
+#else
 #ifdef RTCONFIG_BWDPI
 				if (nvram_get_int("qos_type") == 1) {
 					stop_dpi_engine_service(1);
@@ -1205,6 +1578,7 @@ static int rctest_main(int argc, char *argv[])
 #endif
 				stop_iQos();
 				del_iQosRules();
+#endif
 			}
 		}
 #ifdef RTCONFIG_WEBDAV
@@ -1260,6 +1634,17 @@ static int rctest_main(int argc, char *argv[])
 
 			_dprintf("done(%d)\n", strcmp(argv[2], (const char *) dec_buf));
 		}
+#ifdef RTCONFIG_NVRAM_ENCRYPT
+		else if (strcmp(argv[1], "enc_nv") == 0 && argc == 4) {
+			char enc_buf[ENC_WORDS_LEN];
+			char dec_buf[DATA_WORDS_LEN + 1];
+
+			_dprintf("get enc(%d) str:[%s]\n", enc_nvram(argv[2], argv[3], (char *) enc_buf), enc_buf);
+			_dprintf("get dec(%d) str:[%s]\n", dec_nvram(argv[2], (char *) enc_buf, (char *) dec_buf), dec_buf);
+
+			_dprintf("done(%d)\n", strcmp(argv[3], (const char *) dec_buf));
+		}
+#endif
 #ifdef RTCONFIG_BCMFA
 //		else if (strcmp(argv[1], "fa_rev") == 0) {
 //			_dprintf("(%d) done.\n", get_fa_rev());
@@ -1329,6 +1714,15 @@ static int rctest_main(int argc, char *argv[])
 			_dprintf("chk txpwr_target_max of unit-%d is %f ...\n", unit, max_txpwr);
 		}
 #endif
+		else if (strcmp(argv[1], "discover_pppoe") == 0) {
+			if(argc != 3){
+				_dprintf("Usage: %s %s <net interface>\n", argv[0], argv[1]);
+				return 0;
+			}
+
+			int ret = discover_pppoe(argv[2]);
+			_dprintf("result: %s\n", (ret == 1)?"PPPoE":(ret == 0)?"No":"Failed");
+		}
 		else {
 			printf("what?\n");
 		}
@@ -1373,10 +1767,10 @@ char *fix_fw_name(char *orig_fw_name)
 static inline char *fix_fw_name(char *orig_fw_name) { return orig_fw_name; }
 #endif
 
-#if defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTAX95Q) || defined(XT8PRO) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(RTAX55) || defined(RTAX1800)
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTAX95Q) || defined(XT8PRO) || defined(BT12) || defined(BQ16) || defined(BM68) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(ET8_V2) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(RTAX55) || defined(RTAX1800) || defined(BC109) || defined(EBG19) || defined(BC105) || defined(EBG15) || defined(XC5) || defined(EBA63)
 /* download firmware */
 #ifndef FIRMWARE_DIR
-#if defined(RTCONFIG_QCA) || defined(RTAX95Q) || defined(XT8PRO) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(RTAX55) || defined(RTAX1800)
+#if defined(RTCONFIG_QCA) || defined(RTAX95Q) || defined(XT8PRO) || defined(BT12) || defined(BQ16) || defined(BM68) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(ET8_V2) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(RTAX55) || defined(RTAX1800) || defined(BC109) || defined(EBG19) || defined(BC105) || defined(EBG15) || defined(XC5) || defined(EBA63)
 #define FIRMWARE_DIR	"/lib/firmware"
 #else
 #define FIRMWARE_DIR	"/tmp"
@@ -1484,12 +1878,19 @@ err_exit1:
 #endif
 
 #if defined(RTCONFIG_SOC_IPQ8074)
-static int count_q6mem_size(const char *basedir, const struct dirent *de, void *arg)
+static int count_q6mem_size(const char *basedir, const struct dirent *de, size_t de_size, void *arg)
 {
 	uint64_t *space = arg;
 	struct stat s = { 0 };
 	char path[sizeof("/jffs/dmesg_YYYYMMDD_HHMMSS.txtXXX")];
 
+	if (sizeof(*de) != de_size) {
+		/* If size of struct dirent mismatch, make sure readdir_wrapper() and this function see same struct dirent.h.
+		 * e.g., it's different in uclibc if _FILE_OFFSET_BITS=64 is defined or not.
+		 */
+		dbg("%s: size of struct dirent mismatch (%u v.s. %u)!\n", __func__, sizeof(*de), de_size);
+		return -1;
+	}
 	if (!basedir || !de || !arg)
 		return -1;
 
@@ -1504,10 +1905,17 @@ static int count_q6mem_size(const char *basedir, const struct dirent *de, void *
 	return 0;
 }
 
-static int del_q6mem(const char *basedir, const struct dirent *de, void *arg)
+static int del_q6mem(const char *basedir, const struct dirent *de, size_t de_size, void *arg)
 {
 	char path[sizeof("/jffs/dmesg_YYYYMMDD_HHMMSS.txtXXX")];
 
+	if (sizeof(*de) != de_size) {
+		/* If size of struct dirent mismatch, make sure readdir_wrapper() and this function see same struct dirent.h.
+		 * e.g., it's different in uclibc if _FILE_OFFSET_BITS=64 is defined or not.
+		 */
+		dbg("%s: size of struct dirent mismatch (%u v.s. %u)!\n", __func__, sizeof(*de), de_size);
+		return -1;
+	}
 	if (!basedir || !de)
 		return -1;
 
@@ -1792,7 +2200,7 @@ static int hotplug_main(int argc, char *argv[])
 			return coma_uevent();
 #endif /* LINUX_2_6_36 */
 #endif
-#if defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTAX95Q) || defined(XT8PRO) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(RTAX55) || defined(RTAX1800)
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTAX95Q) || defined(XT8PRO) || defined(BT12) || defined(BQ16) || defined(BM68) || defined(XT8_V2) || defined(RTAXE95Q) || defined(ET8PRO) || defined(ET8_V2) || defined(RTAX56_XD4) || defined(XD4PRO) || defined(RTAX55) || defined(RTAX1800) || defined(BC109) || defined(EBG19) || defined(BC105) || defined(EBG15) || defined(XC5) || defined(EBA63)
 		else if(!strcmp(argv[1], "firmware")) {
 			hotplug_firmware();
 		}
@@ -1959,10 +2367,10 @@ static const applets_t applets[] = {
 	{ "ovpn-route-pre-down",ovpn_route_pre_down_main	},
 #endif
 #ifdef RTCONFIG_TPVPN
-#ifdef RTCONFIG_OPENVPN
+#ifdef RTCONFIG_HMA
 	{ "hmavpn",				hmavpn_main					},
 #endif
-#ifdef RTCONFIG_WIREGUARD
+#ifdef RTCONFIG_NORDVPN
 	{ "nordvpn",			nordvpn_main				},
 #endif
 #endif
@@ -2037,6 +2445,9 @@ static const applets_t applets[] = {
 	{ "radio",			radio_main			},
 	{ "udhcpc_wan",			udhcpc_wan			},
 	{ "udhcpc_lan",			udhcpc_lan			},
+#ifdef RTCONFIG_WISP
+	{ "udhcpc_wisp",		udhcpc_wisp			},
+#endif
 	{ "zcip",			zcip_wan			},
 #ifdef RTCONFIG_IPV6
 	{ "dhcp6c",			dhcp6c_wan			},
@@ -2070,10 +2481,11 @@ static const applets_t applets[] = {
 	{ "netool", 			netool_main			},
 #endif
 #ifdef RTCONFIG_SOFTWIRE46
+	{ "auto46det", 			auto46det_main			},
 	{ "v6plusd", 			v6plusd_main			},
 	{ "ocnvcd", 			ocnvcd_main			},
 #endif
-#if defined(RTCONFIG_RALINK) || defined(RTCONFIG_EXT_RTL8365MB) || defined(RTCONFIG_EXT_RTL8370MB) || defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2)
+#if defined(RTCONFIG_RALINK) || defined(RTCONFIG_EXT_RTL8365MB) || defined(RTCONFIG_EXT_RTL8370MB) || defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2) || defined(RTAX3000N) || defined(BR63) || defined(GTBE98) || defined(GTBE98_PRO) || defined(GTBE96)
 	{ "rtkswitch",			config_rtkswitch		},
 #if defined(RTAC53) || defined(RTAC51UP)
 	{ "mtkswitch",			config_mtkswitch		},
@@ -2084,6 +2496,11 @@ static const applets_t applets[] = {
 	{ "delay_exec",			delay_main			},
 
 	{ "wanduck",			wanduck_main			},
+
+#ifdef RTCONFIG_MULTIWAN_IF
+	{ "mtwanduck",			mtwanduck_main			},
+	{ "det_dns",			det_dns_main			},
+#endif
 #if defined(RTCONFIG_CONNDIAG) && defined(RTCONFIG_ADV_RAST)
 	{ "conn_diag",			conn_diag_main			},
 	{ "diag_data",			diag_data_main			},
@@ -2098,6 +2515,9 @@ static const applets_t applets[] = {
 #endif
 #ifdef RTCONFIG_QCA_PLC_UTILS
 	{ "autodet_plc", 		autodet_plc_main		},
+#endif
+#ifdef RTCONFIG_AUTO_WANPORT
+	{ "autowan",			autowan_main			},
 #endif
 #ifdef RTCONFIG_CIFS
 	{ "mount-cifs",			mount_cifs_main			},
@@ -2138,7 +2558,7 @@ static const applets_t applets[] = {
 	{ "test_blu",			test_bl_updater_main		},
 	{ "split_q6mem",		split_q6mem_main		},
 #endif
-#if defined(RTCONFIG_SOC_IPQ8074)
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 	{ "test_switch_log",		test_switch_log_main		},
 	{ "test_wifi_stats_log",	test_wifi_stats_log_main	},
 #endif
@@ -2189,11 +2609,9 @@ static const applets_t applets[] = {
  ||  (defined(RTCONFIG_SOC_IPQ8074))
 	{ "erp_monitor",		erp_monitor_main		},
 #endif
-#ifdef RTCONFIG_WIFI_SON
 #if defined(MAPAC2200)
 	{ "dpdt_ant",			dpdt_ant_main		},
 #endif
-#endif	
 #if defined(MAPAC1300) || defined(VZWAC1300) || defined(SHAC1300)
 	{ "thermal_txpwr",		thermal_txpwr_main		},
 #endif
@@ -2222,12 +2640,512 @@ static const applets_t applets[] = {
 #if defined(RTCONFIG_TUNNEL) && defined(RTCONFIG_ACCOUNT_BINDING)
 	{ "update_asus_ddns_token",		update_asus_ddns_token_main			},
 #endif
+#if defined(RTCONFIG_IG_SITE2SITE)
+	{ "ig_s2s_client",      ig_s2s_client_main      },
+ #endif
 #ifdef RTCONFIG_IPSEC
 	{ "ipsec_updown",		ipsec_updown_main      },
 #endif
+#ifdef RTCONFIG_GETREALIP
+	{ "realip",				realip_main				},
+#endif
+#ifdef RTCONFIG_HND_ROUTER_AX
+	{ "gpy211_monitor",		gpy211_monitor_main      },
+#endif
+#ifdef RTCONFIG_MOCA
+	{ "moca_monitor",		moca_monitor_main      },
+#endif 
+
 	{ "toolbox",			swrt_toolbox		},
 	{NULL, NULL}
 };
+
+#ifdef RTCONFIG_MULTILAN_CFG
+void create_sdn_ifcap() 
+{
+	json_object *root = NULL; 
+	json_object *wificap = NULL;
+	json_object *lancap = NULL;
+	char str[81];
+
+	if (!(root = json_object_new_object()))
+		goto create_sdn_ifcap_exit;
+
+	if (!(wificap = json_object_new_object()))
+		goto create_sdn_ifcap_exit;
+
+	if (!(lancap = json_object_new_object()))
+		goto create_sdn_ifcap_exit;
+
+	if (!gen_wifi_band_cap(wificap) || !gen_lan_port_cap(lancap))
+		goto create_sdn_ifcap_exit;
+
+	json_object_object_add(root, "26", wificap);
+
+	json_object_object_add(root, "27", lancap);
+	
+	memset(str, 0, sizeof(str));
+	snprintf(str, sizeof(str), "/tmp/%s.cap", get_own_mac());
+	json_object_to_file(str, root);
+	json_object_put(root);
+	return;
+
+create_sdn_ifcap_exit:
+	if (root) json_object_put(root);
+	if (wificap) json_object_put(wificap);
+	if (lancap) json_object_put(lancap);
+	return;
+}
+
+
+int check_wifi_band_cap()
+{
+#define WIFI_CAP 26	
+	json_object *in = NULL;
+	json_object *root = NULL;
+	json_object *wifiBandCapObj = NULL;
+	json_object *bandObj = NULL;
+	json_object *band = NULL;
+	json_object *count = NULL;
+	json_object *vifObj = NULL;
+	json_object *type = NULL;
+	json_object *prefixObj = NULL;
+	
+	int fh_subunit = -1, prelink_subunit = -1, obvif_subunit = -1, fh_dbg_subunit = -1, main_vif = -1;
+	int max_vif = 7;
+	int unit = -1, sunit = -1;
+
+	char s[81];
+
+/*
+	if (!capability || strlen(capability) <= 0)
+		goto check_wifi_band_cap_exit;
+
+	if (!(in = json_tokener_parse(capability)))
+		goto check_wifi_band_cap_exit;
+*/
+	if (nvram_get_int("re_mode") == 1)
+		create_sdn_ifcap();
+
+	memset(s, 0, sizeof(s));
+	snprintf(s, sizeof(s), "/tmp/%s.cap", get_own_mac());
+	if (!(in = json_object_from_file(s)))
+		goto check_wifi_band_cap_exit;
+	
+	memset(s, 0, sizeof(s));
+	snprintf(s, sizeof(s), "%d", WIFI_CAP);
+	if (json_object_object_get_ex(in, s, &wifiBandCapObj) == FALSE) 
+		goto check_wifi_band_cap_exit;
+
+	if (json_object_object_get_ex(wifiBandCapObj, "wifi_band", &root) == FALSE)
+		goto check_wifi_band_cap_exit;
+
+#ifdef RTCONFIG_FRONTHAUL_DWB
+	if (IS_RE()) 
+		fh_subunit = nvram_get_int("fh_re_mssid_subunit");
+	else 
+		fh_subunit = nvram_get_int("fh_cap_mssid_subunit");
+#endif
+
+#ifdef RTCONFIG_MSSID_PRELINK
+	if (IS_RE()) 
+		prelink_subunit = nvram_get_int("plk_re_subunit");
+	else 
+		prelink_subunit = nvram_get_int("plk_cap_subunit");
+#endif
+
+#ifdef RTCONFIG_VIF_ONBOARDING
+	if (IS_RE())
+		obvif_subunit = nvram_get_int("obvif_re_subunit");
+	else 
+		obvif_subunit = nvram_get_int("obvif_cap_subunit");
+#endif
+
+#ifdef RTCONFIG_FRONTHAUL_DBG
+	if (IS_RE()) fh_dbg_subunit = nvram_get_int("fh_re_dbg_subunit");
+#endif
+
+	if (IS_RE()) main_vif = 1;
+ 
+	json_object_object_foreach(root, k1, v1) {
+		bandObj = v1;
+		if (json_object_object_get_ex(bandObj, "band", &band) == FALSE)
+			goto check_wifi_band_cap_exit;
+
+		if (json_object_object_get_ex(bandObj, "count", &count) == FALSE)
+			goto check_wifi_band_cap_exit;
+
+		if (json_object_get_int(count) != max_vif)
+			goto check_wifi_band_cap_exit;
+
+		if (json_object_object_get_ex(bandObj, "vif", &vifObj) == FALSE)
+			goto check_wifi_band_cap_exit;
+
+		json_object_object_foreach(vifObj, k2, v2) {
+			if (json_object_object_get_ex(v2, "type", &type) == FALSE)
+				goto check_wifi_band_cap_exit;
+
+			if (json_object_object_get_ex(v2, "prefix", &prefixObj) == FALSE)
+				goto check_wifi_band_cap_exit;
+
+			unit = sunit = -1;
+			sscanf(json_object_get_string(prefixObj), "wl%d.%d_%*s", &unit, &sunit);
+			if (unit < 0 || sunit < 1)
+				goto check_wifi_band_cap_exit;
+
+			memset(s, 0, sizeof(s));
+			snprintf(s, sizeof(s), "wl%d.%d_ifname", unit, sunit);
+			if (strcmp(k2, nvram_safe_get(s)))
+				goto check_wifi_band_cap_exit;
+
+			if (json_object_get_int(band) == WIFI_BAND_2G) {
+				if (sunit == obvif_subunit) {
+					if (json_object_get_int(type) != VIF_TYPE_OB)
+						goto check_wifi_band_cap_exit;
+				} 
+				else if (sunit == fh_dbg_subunit) {
+					if (json_object_get_int(type) != VIF_TYPE_DEBUG)
+						goto check_wifi_band_cap_exit;
+				}
+				else {
+					if (IS_RE() && sunit == 1) {
+						if (json_object_get_int(type) != VIF_TYPE_MAIN)
+							goto check_wifi_band_cap_exit;
+					}
+					else {
+						if (json_object_get_int(type) != VIF_TYPE_NO_USED)
+							goto check_wifi_band_cap_exit;
+					}
+				}
+			}
+			else if (json_object_get_int(band) == WIFI_BAND_5GH) {
+				if (sunit == fh_subunit) {
+					if (json_object_get_int(type) != VIF_TYPE_FRONTHAUL)
+						goto check_wifi_band_cap_exit;
+				}
+				else if (sunit == prelink_subunit) {
+					if (json_object_get_int(type) != VIF_TYPE_PRELINK)
+						goto check_wifi_band_cap_exit;
+				}
+				else {
+					if (IS_RE() && sunit == 1) {
+						if (json_object_get_int(type) != VIF_TYPE_MAIN)
+							goto check_wifi_band_cap_exit;
+					}
+					else {
+						if (json_object_get_int(type) != VIF_TYPE_NO_USED)
+							goto check_wifi_band_cap_exit;
+					}
+				}
+			}
+			else {
+				if (IS_RE() && sunit == 1) {
+					if (json_object_get_int(type) != VIF_TYPE_MAIN)
+						goto check_wifi_band_cap_exit;
+				}
+				else {
+					if (json_object_get_int(type) != VIF_TYPE_NO_USED)
+						goto check_wifi_band_cap_exit;
+				}
+			}
+		}
+	}
+
+	json_object_put(in);
+	return 0;
+
+check_wifi_band_cap_exit:
+	if (in) json_object_put(in);
+	return -1;
+}
+
+int check_lan_port_cap()
+{
+#define LAN_CAP 27
+	json_object *in = NULL;
+	json_object *lanCapObj = NULL;
+	json_object *root = NULL;
+	json_object *lanInfoObj = NULL;
+	json_object *portIdxObj = NULL;
+	json_object *ifnameObj = NULL;
+	json_object *labelObj = NULL;
+	json_object *maxrateObj = NULL;
+	json_object *portidObj = NULL;
+
+	phy_port_mapping port_mapping;
+	phy_port *port = NULL;
+
+	char s[81];
+	int i = 0;
+	int found = 0;
+
+//	if (!capability || strlen(capability) <= 0)
+//		goto check_lan_port_cap_exit;
+
+	if (nvram_get_int("re_mode") == 1)
+		create_sdn_ifcap();
+
+	memset(s, 0, sizeof(s));
+	snprintf(s, sizeof(s), "/tmp/%s.cap", get_own_mac());
+	if (!(in = json_object_from_file(s)))
+		goto check_lan_port_cap_exit;
+
+	memset(&port_mapping, 0, sizeof(phy_port_mapping));
+	get_phy_port_mapping(&port_mapping);
+	if (port_mapping.count <= 0)
+		goto check_lan_port_cap_exit;
+
+//	if (!(in = json_tokener_parse(capability)))
+//		goto check_lan_port_cap_exit;
+
+	memset(s, 0, sizeof(s));
+	snprintf(s, sizeof(s), "%d", LAN_CAP);
+	if (json_object_object_get_ex(in, s, &lanCapObj) == FALSE) 
+		goto check_lan_port_cap_exit;
+
+	if (json_object_object_get_ex(lanCapObj, "lan_port", &root) == FALSE)
+		goto check_lan_port_cap_exit;
+
+	json_object_object_foreach(root, k1, v1) {
+		lanInfoObj = v1;
+		if (json_object_object_get_ex(lanInfoObj, "ifname", &ifnameObj) == FALSE)
+			goto check_lan_port_cap_exit;
+
+		for (found=0, i=0; i<port_mapping.count; i++) {
+			if (!(port = &port_mapping.port[i]))
+				continue;
+
+			if (!port->ifname || strlen(port->ifname)<=0)
+				continue;
+
+			if ((found = (strcmp(json_object_get_string(ifnameObj), port->ifname)==0)))
+				break;
+		}
+
+		if (!found)
+			goto check_lan_port_cap_exit;
+
+		if (json_object_object_get_ex(lanInfoObj, "label_name", &labelObj) == FALSE)
+			goto check_lan_port_cap_exit;
+
+		if (strcmp(port->label_name, json_object_get_string(labelObj)))
+			goto check_lan_port_cap_exit;
+
+		if (json_object_object_get_ex(lanInfoObj, "max_rate", &maxrateObj) == FALSE)
+			goto check_lan_port_cap_exit;
+
+		if (port->max_rate != json_object_get_int(maxrateObj))
+			goto check_lan_port_cap_exit;
+
+		if (json_object_object_get_ex(lanInfoObj, "phy_port_id", &portidObj) == FALSE)
+			goto check_lan_port_cap_exit;
+
+		if (port->phy_port_id != json_object_get_int(portidObj))
+			goto check_lan_port_cap_exit;
+	}
+
+	json_object_put(in);
+	return 0;
+
+check_lan_port_cap_exit:
+	if (in) json_object_put(in);
+	return -1;
+}
+
+
+void show_apg_usage(const char *name) 
+{
+	if (!name || strlen(name) <= 0)
+		return;
+
+	printf("Usage %s VLAN ID\n", name);
+	return;
+}
+
+void print_check_sdn_ifcap_usage(const char *name) 
+{
+	if (name && strlen(name) > 0) 
+		printf("Usage %s capability data\n", name);
+}
+
+static print_mtsubnet(SUBNET_T *prl, size_t sz)
+{
+	int i, j;
+	for (i = 0; i < sz; i++) {
+		printf("[%d]idx:[%d]\n", i, prl[i].idx);
+		printf("[%d]ifname:[%s]\n", i, prl[i].ifname);
+		printf("[%d]addr:[%s]\n", i, prl[i].addr);
+		printf("[%d]subnet:[%s]\n", i, prl[i].subnet);
+		printf("[%d]netmask:[%s]\n", i, prl[i].netmask);
+		printf("[%d]prefixlen:[%d]\n", i, prl[i].prefixlen);
+		printf("[%d]dhcp_enable:[%d]\n", i, prl[i].dhcp_enable);
+		printf("[%d]dhcp_min:[%s]\n", i, prl[i].dhcp_min);
+		printf("[%d]dhcp_max:[%s]\n", i, prl[i].dhcp_max);
+		printf("[%d]dhcp_lease:[%d]\n", i, prl[i].dhcp_lease);
+		printf("[%d]domain_name:[%s]\n", i, prl[i].domain_name);
+		printf("[%d]dns:", i);
+		for (j = 0; j < 2; j++)
+			printf("[%s]", prl[i].dns[j]);
+		printf("\n");
+		printf("[%d]wins:[%s]\n", i, prl[i].wins);
+		printf("[%d]dhcp_res:[%d]\n", i, prl[i].dhcp_res);
+		printf("[%d]dhscp_res_idx:[%d]\n", i, prl[i].dhcp_res_idx);
+		printf("[%d]dot_enable:[%d]\n", i, prl[i].dot_enable);
+		printf("[%d]dot_tls:[%d]\n", i, prl[i].dot_tls);
+		printf("[%d]v6_enable:[%d]\n", i, prl[i].v6_enable);
+		printf("[%d]v6_autoconf:[%d]\n", i, prl[i].v6_autoconf);
+		printf("[%d]addr6:[%s]\n", i, prl[i].addr6);
+		printf("[%d]dhcp6_min:[%s]\n", i, prl[i].dhcp6_min);
+		printf("[%d]dhcp6_max:[%s]\n", i, prl[i].dhcp6_max);
+		printf("[%d]dns6:", i);
+		for (j = 0; j < 3; j++)
+			printf("[%s]", prl[i].dns6[j]);
+		printf("\n");
+		printf("---------------------------------------\n");
+	}
+}
+
+static print_mtlan(MTLAN_T *pmtl, size_t mtl_sz)
+{
+	int i, j;
+	for (i = 0; i < mtl_sz; i++) {
+		printf("|-enable:[%d]\n", pmtl[i].enable);
+		printf("|-vid:[%d]\n", pmtl[i].vid);
+		printf("|-port_isolation:[%d]\n", pmtl[i].port_isolation);
+		printf("|-createby:[%s]\n", pmtl[i].createby);
+		printf("|-*Network:\n");
+		printf("  |--IPv4:\n");
+		printf("\t|-idx:[%d]\n", pmtl[i].nw_t.idx);
+		printf("\t|-ifname:[%s]\n", pmtl[i].nw_t.ifname);
+		printf("\t|-br_ifname:[%s]\n", pmtl[i].nw_t.br_ifname);
+		printf("\t|-addr:[%s]\n", pmtl[i].nw_t.addr);
+		printf("\t|-subnet:[%s]\n", pmtl[i].nw_t.subnet);
+		printf("\t|-netmask:[%s]\n", pmtl[i].nw_t.netmask);
+		printf("\t|-prefixlen:[%d]\n", pmtl[i].nw_t.prefixlen);
+		printf("\t|-dhcp_enable:[%d]\n", pmtl[i].nw_t.dhcp_enable);
+		printf("\t|-dhcp_min:[%s]\n", pmtl[i].nw_t.dhcp_min);
+		printf("\t|-dhcp_max:[%s]\n", pmtl[i].nw_t.dhcp_max);
+		printf("\t|-dhcp_lease:[%d]\n", pmtl[i].nw_t.dhcp_lease);
+		printf("\t|-domain_name:[%s]\n", pmtl[i].nw_t.domain_name);
+		printf("\t|-dns:");
+		for (j = 0; j < 2; j++)
+			printf("[%s]", pmtl[i].nw_t.dns[j]);
+		printf("\n");
+		printf("\t|-wins:[%s]\n", pmtl[i].nw_t.wins);
+		printf("\t|-dhcp_res:[%d]\n", pmtl[i].nw_t.dhcp_res);
+		printf("\t|-dhscp_res_idx:[%d]\n", pmtl[i].nw_t.dhcp_res_idx);
+		printf("\t|-dot_enable:[%d]\n", pmtl[i].nw_t.dot_enable);
+		printf("\t|-dot_tls:[%d]\n", pmtl[i].nw_t.dot_tls);
+		printf("  |--IPv6:\n");
+		printf("\t|-v6_enable:[%d]\n", pmtl[i].nw_t.v6_enable);
+		printf("\t|-v6_autoconf:[%d]\n", pmtl[i].nw_t.v6_autoconf);
+		printf("\t|-addr6:[%s]\n", pmtl[i].nw_t.addr6);
+		printf("\t|-dhcp6_min:[%s]\n", pmtl[i].nw_t.dhcp6_min);
+		printf("\t|-dhcp6_max:[%s]\n", pmtl[i].nw_t.dhcp6_max);
+		printf("\t|-dns6:");
+		for (j = 0; j < 3; j++)
+			printf("[%s]", pmtl[i].nw_t.dns6[j]);
+		printf("\n");
+		printf("|-*SDN Feature Index/Switch:\n");
+		printf("\t|-sdn_idx:[%d]\n", pmtl[i].sdn_t.sdn_idx);
+		printf("\t|-apg_idx:[%d]\n", pmtl[i].sdn_t.apg_idx);
+		printf("\t|-vpnc_idx:[%d]\n", pmtl[i].sdn_t.vpnc_idx);
+		printf("\t|-vpns_idx:");
+		for (j = 0; j < MTLAN_VPNS_MAXINUM; j++) {
+			printf("[%d]", pmtl[i].sdn_t.vpns_idx_rl[j]);
+		}
+		printf("\n");
+		printf("\t|-dnsf_idx:[%d]\n", pmtl[i].sdn_t.dnsf_idx);
+		printf("\t|-urlf_idx:[%d]\n", pmtl[i].sdn_t.urlf_idx);
+		printf("\t|-nwf_idx:[%d]\n", pmtl[i].sdn_t.nwf_idx);
+		printf("\t|-cp_idx:[%d]\n", pmtl[i].sdn_t.cp_idx);
+		printf("\t|-gre_idx:");
+		for (j = 0; j < MTLAN_GRE_MAXINUM; j++) {
+			printf("[%d]", pmtl[i].sdn_t.gre_idx_rl[j]);
+		}
+		printf("\n");
+		printf("\t|-fw_idx:[%d]\n", pmtl[i].sdn_t.fw_idx);
+		printf("\t|-killsw_sw:[%d]\n", pmtl[i].sdn_t.killsw_sw);
+		printf("\t|-ahs_sw:[%d]\n", pmtl[i].sdn_t.ahs_sw);
+		printf("\t|-wan_idx:[%d]\n", pmtl[i].sdn_t.wan_idx);
+		printf("\t|-ppprelay_sw:[%d]\n", pmtl[i].sdn_t.ppprelay_sw);
+		printf("\t|-wan6_idx:[%d]\n", pmtl[i].sdn_t.wan6_idx);
+		printf("\t|-mtwan_idx:[%d]\n", pmtl[i].sdn_t.mtwan_idx);
+		printf("\t|-mswan_idx:[%d]\n", pmtl[i].sdn_t.mswan_idx);
+		printf("---------------------------------------\n");
+	}
+}
+
+void print_mtlan_by_idx_usage(const char *name)
+{
+	printf("Invalid!!!\n");
+	printf("Usage: %s [sdn|apg|vpnc|vpns|urlf|nwf|gre|fw|killsw|ahs|wan|ppprelay|wan6|mtwan|mswan] [idx/switch]\n", name);
+	return;
+}
+
+void __rc_get_mtlan_by_idx(const char *idx_name, const int idx, const int is_rm)
+{
+	size_t  mtl_sz = 0;
+	SDNFT_TYPE type;
+
+	if (!strcmp(idx_name, "sdn")) {
+		type = SDNFT_TYPE_SDN;
+	} else if (!strcmp(idx_name, "apg")) {
+		type = SDNFT_TYPE_APG;
+	} else if (!strcmp(idx_name, "vpnc")) {
+		type = SDNFT_TYPE_VPNC;
+	} else if (!strcmp(idx_name, "vpns")) {
+		type = SDNFT_TYPE_VPNS;
+	} else if (!strcmp(idx_name, "urlf")) {
+		type = SDNFT_TYPE_URLF;
+	} else if (!strcmp(idx_name, "nwf")) {
+		type = SDNFT_TYPE_NWF;
+	} else if (!strcmp(idx_name, "gre")) {
+		type = SDNFT_TYPE_GRE;
+	} else if (!strcmp(idx_name, "fw")) {
+		type = SDNFT_TYPE_FW;
+	} else if (!strcmp(idx_name, "killsw")) {
+		type = SDNFT_TYPE_KILLSW;
+	} else if (!strcmp(idx_name, "ahs")) {
+		type = SDNFT_TYPE_AHS;
+	} else if (!strcmp(idx_name, "wan")) {
+		type = SDNFT_TYPE_WAN;
+	} else if (!strcmp(idx_name, "ppprelay")) {
+		type = SDNFT_TYPE_PPPRELAY;
+	} else if (!strcmp(idx_name, "wan6")) {
+		type = SDNFT_TYPE_WAN6;
+	} else if (!strcmp(idx_name, "mtwan")) {
+		type = SDNFT_TYPE_MTWAN;
+	} else if (!strcmp(idx_name, "mswan")) {
+		type = SDNFT_TYPE_MSWAN;
+	} else {
+		if (!is_rm)
+			print_mtlan_by_idx_usage("get_mtlan_by_idx");
+		else
+			print_mtlan_by_idx_usage("get_rm_mtlan_by_idx");
+		return;
+	}
+
+	MTLAN_T *pmtl = (MTLAN_T *)INIT_MTLAN(sizeof(MTLAN_T));
+
+	if (!is_rm) {
+		if (!get_mtlan_by_idx(type, idx, pmtl, &mtl_sz)) {
+			FREE_MTLAN((void *)pmtl);
+			printf("Invalid!!!\n");
+			return;
+		}
+	} else {
+		if (!get_rm_mtlan_by_idx(type, idx, pmtl, &mtl_sz)) {
+			FREE_MTLAN((void *)pmtl);
+			printf("Invalid!!!\n");
+			return;
+		}
+	}
+	print_mtlan(pmtl, mtl_sz);
+	FREE_MTLAN((void *)pmtl);
+	return;
+}
+#endif
 
 extern void gen_spcmd(char *);
 int main(int argc, char **argv)
@@ -2325,6 +3243,13 @@ int main(int argc, char **argv)
 		return 0;
 	}
 #endif
+
+#if defined(RTCONFIG_SW_BTN)
+	if(!strcmp(base, "sw_btnd")){
+		btn_switch_main();
+		return 0;
+	}
+#endif	
 
 #ifdef RTCONFIG_WIFI_SON
         if(!strcmp(base, "hive_cap")){
@@ -2701,6 +3626,12 @@ int main(int argc, char **argv)
 		restart_wireless();
 		return 0;
 	}
+#if defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2) || defined(RTAX3000N) || defined(BR63) || defined(GTBE98) || defined(GTBE98_PRO) || defined(GTBE96)
+	else if (!strcmp(base, "config_switch")) {
+		config_switch();
+		return 0;
+	}
+#endif
 #if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
 	else if (!strcmp(base, "sendarp")) {
 		send_arpreq();
@@ -2986,6 +3917,11 @@ int main(int argc, char **argv)
 		return 0;
 	}
 #endif	/* RTCONFIG_RALINK || RTCONFIG_QCA */
+#if defined(RTCONFIG_NVSW_IN_JFFS)
+	else if (!strcmp(base, "nvsw")) {
+		return nvsw_cmd(argc-1, &argv[1]);
+	}
+#endif
 #if defined(RTCONFIG_RALINK)
 #if defined(RTCONFIG_HAS_5G)
 	else if (!strcmp(base, "asuscfe_5g")) {
@@ -3222,7 +4158,7 @@ int main(int argc, char **argv)
 	else if (!strcmp(base, "amas_misc")) {
 		return amas_misc_main();
 	}
-#endif    
+#endif
 #endif
 #ifdef CONFIG_BCMWL5
 	else if (!strcmp(base, "setup_dnsmq")) {
@@ -3239,6 +4175,8 @@ int main(int argc, char **argv)
 			return add_multi_routes(0, -1);
 	}
 	else if (!strcmp(base, "led_ctrl")) {
+		if(strcmp(argv[1], "?") == 0)
+			return dump_led_enum();
 		return do_led_ctrl(atoi(argv[1]), atoi(argv[2]));
 	}
 #ifdef RTCONFIG_INTERNAL_GOBI
@@ -3608,7 +4546,7 @@ _dprintf("LED_NOMOBILE=%d, LED_2G_YELLOW=%d, LED_3G_BLUE=%d, LED_4G_WHITE=%d.\n"
 
 		ret = extphy_bit_op(reg, val, wr, start_bit, end_bit, wait_ms);
 
-#if defined(RTAX86U) || defined(RTAX5700)
+#if defined(RTAX86U)
 		if(!strcmp(get_productid(), "RT-AX86S")) ;
 		else if(nvram_get_int("ext_phy_model") == EXT_PHY_GPY211)
 			_dprintf("addr=0x%02x, reg=0x%06x, val=0x%04x\n", EXTPHY_GPY_ADDR, reg, ret);
@@ -3621,7 +4559,7 @@ _dprintf("LED_NOMOBILE=%d, LED_2G_YELLOW=%d, LED_3G_BLUE=%d, LED_4G_WHITE=%d.\n"
 			_dprintf("addr=0x%02x, reg=0x%06x, val=0x%04x\n", EXTPHY_GPY_ADDR, reg, ret);
 		else
 #endif
-		    _dprintf("addr=0x%02x, reg=0x%06x, val=0x%04x\n", EXTPHY_ADDR, reg, ret);
+			_dprintf("addr=0x%02x, reg=0x%06x, val=0x%04x\n", EXTPHY_ADDR, reg, ret);
 
 		return 0;
 	}
@@ -3631,6 +4569,19 @@ _dprintf("LED_NOMOBILE=%d, LED_2G_YELLOW=%d, LED_3G_BLUE=%d, LED_4G_WHITE=%d.\n"
 	}
 #endif
 #if RTCONFIG_SOFTWIRE46
+	else if (!strcmp(base, "init_wan46")) {
+		init_wan46();
+		return 0;
+	}
+	else if (!strcmp(base, "s46reset")) {
+		if (argc != 2) {
+			printf("Usage: %s <wan unit>.\n", argv[0]);
+			return 0;
+		}
+		s46reset(atoi(argv[1]));
+		printf("WAN Unit:[%d] MAP nvarm is reset.\n", atoi(argv[1]));
+		return 0;
+	}
 	else if (!strcmp(base, "mapcalc")) {
 		char peerbuf[INET6_ADDRSTRLEN];
 		char addr6buf[INET6_ADDRSTRLEN];
@@ -3650,7 +4601,7 @@ _dprintf("LED_NOMOBILE=%d, LED_2G_YELLOW=%d, LED_3G_BLUE=%d, LED_4G_WHITE=%d.\n"
 			wan_proto = WAN_OCNVC;
 
 		while (fgets(rules, sizeof(rules), stdin) != NULL) {
-			if (s46_mapcalc(wan_proto, rules, peerbuf, sizeof(peerbuf), addr6buf, sizeof(addr6buf),
+			if (s46_mapcalc(0, wan_proto, rules, peerbuf, sizeof(peerbuf), addr6buf, sizeof(addr6buf),
 					addr4buf, sizeof(addr4buf), &offset, &psidlen, &psid, &fmrs, draft) <= 0) {
 				peerbuf[0] = addr6buf[0] = addr4buf[0] = '\0';
 				offset = 0, psidlen = 0, psid = 0;
@@ -3679,6 +4630,179 @@ _dprintf("LED_NOMOBILE=%d, LED_2G_YELLOW=%d, LED_3G_BLUE=%d, LED_4G_WHITE=%d.\n"
 		return 0;
 	}
 #endif
+#if defined(RTCONFIG_HND_ROUTER_AX)
+	else if (!strcmp(base, "set_cable_media")) {
+		if(argc != 3)
+			return 0;
+
+		set_cable_media(argv[1], argv[2]);
+		return 0;
+	}
+#endif
+#ifdef RTCONFIG_MULTILAN_CFG
+	else if (!strcmp(base, "reset_mtlan")) {
+		nvram_set("sdn_rl", nvram_default_get("sdn_rl"));
+		nvram_set("vlan_rl", nvram_default_get("vlan_rl"));
+		nvram_set("subnet_rl", nvram_default_get("subnet_rl"));
+		printf("reset mtlan done.\n");
+		return 0;
+	}
+	else if (!strcmp(base, "reset_rm_mtlan")) {
+		nvram_set("sdn_rl_x", nvram_default_get("sdn_rl_x"));
+		nvram_set("vlan_rl_x", nvram_default_get("vlan_rl_x"));
+		nvram_set("subnet_rl_x", nvram_default_get("subnet_rl_x"));
+		printf("reset rm mtlan done.\n");
+		return 0;
+	}
+	else if (!strcmp(base, "get_mtsubnet")) {
+		size_t  sz;
+
+		SUBNET_T *prl = (SUBNET_T *)INIT_MTLAN(sizeof(SUBNET_T));
+		if (!get_mtsubnet(prl, &sz, 0)) {
+			printf("Invalid!!!\n");
+			FREE_MTLAN((void *)prl);
+			return 0;
+		}
+		print_mtsubnet(prl, sz);
+		FREE_MTLAN((void *)prl);
+		return 0;
+	}
+	else if (!strcmp(base, "get_rm_mtsubnet")) {
+		size_t  sz;
+
+		SUBNET_T *prl = (SUBNET_T *)INIT_MTLAN(sizeof(SUBNET_T));
+		if (!get_mtsubnet(prl, &sz, 1)) {
+			printf("Invalid!!!\n");
+			FREE_MTLAN((void *)prl);
+			return 0;
+		}
+		print_mtsubnet(prl, sz);
+		FREE_MTLAN((void *)prl);
+		return 0;
+	}
+	else if (!strcmp(base, "get_mtlan")) {
+		size_t  mtl_sz = 0;
+
+		MTLAN_T *pmtl = (MTLAN_T *)INIT_MTLAN(sizeof(MTLAN_T));
+
+		if (!get_mtlan(pmtl, &mtl_sz)) {
+			printf("Invalid!!!\n");
+			FREE_MTLAN((void *)pmtl);
+			return 0;
+		}
+		print_mtlan(pmtl, mtl_sz);
+		FREE_MTLAN((void *)pmtl);
+		return 0;
+	}
+	else if (!strcmp(base, "get_rm_mtlan")) {
+		size_t  mtl_sz = 0;
+		MTLAN_T *pmtl = (MTLAN_T *)INIT_MTLAN(sizeof(MTLAN_T));
+		if (!get_rm_mtlan(pmtl, &mtl_sz)) {
+			printf("Invalid!!!\n");
+			FREE_MTLAN((void *)pmtl);
+			return 0;
+		}
+		print_mtlan(pmtl, mtl_sz);
+		FREE_MTLAN((void *)pmtl);
+		return 0;
+	}
+	else if (!strcmp(base, "get_mtlan_by_vid")) {
+		if (argv[1]) {
+
+			size_t  mtl_sz = 0;
+			MTLAN_T *pmtl = (MTLAN_T *)INIT_MTLAN(sizeof(MTLAN_T));
+
+			if (!get_mtlan_by_vid(atoi(argv[1]), pmtl, &mtl_sz)) {
+				printf("Invalid!!!\n");
+				FREE_MTLAN((void *)pmtl);
+				return 0;
+			}
+			print_mtlan(pmtl, mtl_sz);
+			FREE_MTLAN((void *)pmtl);
+		}
+		return 0;
+	}
+	else if (!strcmp(base, "get_rm_mtlan_by_vid")) {
+		if (argv[1]) {
+
+			size_t  mtl_sz = 0;
+			MTLAN_T *pmtl = (MTLAN_T *)INIT_MTLAN(sizeof(MTLAN_T));
+
+			if (!get_rm_mtlan_by_vid(atoi(argv[1]), pmtl, &mtl_sz)) {
+				printf("Invalid!!!\n");
+				FREE_MTLAN((void *)pmtl);
+				return 0;
+			}
+			print_mtlan(pmtl, mtl_sz);
+			FREE_MTLAN((void *)pmtl);
+		}
+		return 0;
+	}
+	else if (!strcmp(base, "get_mtlan_by_idx")) {
+		if (!(argv[1] && argv[2])) {
+			print_mtlan_by_idx_usage(argv[0]);
+			return 0;
+		}
+		__rc_get_mtlan_by_idx(argv[1], atoi(argv[2]), 0);
+		return 0;
+	}
+	else if (!strcmp(base, "get_rm_mtlan_by_idx")) {
+		if (!(argv[1] && argv[2])) {
+			print_mtlan_by_idx_usage(argv[0]);
+			return 0;
+		}
+		__rc_get_mtlan_by_idx(argv[1], atoi(argv[2]), 1);
+		return 0;
+	}
+	else if (!strcmp(base, "apg_get_status")) {
+		if (!(argv[1])) {
+			show_apg_usage(argv[0]);
+			return 0;
+		}
+
+		if (apg_get_status(atoi(argv[1]), NULL, 0) == 0)
+			printf("OK\n");
+		else
+			printf("NG\n");
+		return 0;
+	}
+	else if (!strcmp(base, "check_wifi_band_cap")) {
+//		if (!(argv[1])) {
+//			print_check_sdn_ifcap_usage(argv[0]);
+//			return 0;
+//		}
+
+//		create_sdn_ifcap();
+//		if (check_wifi_band_cap(argv[1]) == 0)
+//			printf("OK\n");
+//		else 
+//			printf("NG\n");
+//		return 0;
+		if (check_wifi_band_cap() == 0)	
+			printf("OK\n");
+		else 
+			printf("NG\n"); 
+		return 0;
+	}
+	else if (!strcmp(base, "check_lan_port_cap")) {
+//		if (!(argv[1])) {
+//			print_check_sdn_ifcap_usage(argv[0]);
+//			return 0;
+//		}
+
+//		create_sdn_ifcap();
+//		if (check_lan_port_cap(argv[1]) == 0)
+//			printf("OK\n");
+//		else 
+//			printf("NG\n");
+//		return 0;
+		if (check_lan_port_cap() == 0)
+			printf("OK\n");
+		else 
+			printf("NG\n");
+		return 0;
+	}
+#endif
 	else if (!strcmp(base, "collect_debuglog")) {
 		if (argv[1]) {
 			if (!strcmp(argv[1], "klog"))
@@ -3695,6 +4819,20 @@ _dprintf("LED_NOMOBILE=%d, LED_2G_YELLOW=%d, LED_3G_BLUE=%d, LED_4G_WHITE=%d.\n"
 		}
 		return 0;
 	}
+#if defined(RTCONFIG_AMAS_CENTRAL_ADS)
+	else if (!strcmp(base, "start_ds_measure")) {
+		start_ds_measure();
+		return 0;
+	}
+	else if (!strcmp(base, "monitor_ds_sta_status")) {
+		monitor_ds_sta_status();
+		return 0;
+	}
+	else if (!strcmp(base, "monitor_ds_ap_status")) {
+		monitor_ds_ap_status();
+		return 0;
+	}
+#endif
 	printf("Unknown applet: %s\n", base);
 	return 0;
 }
@@ -3797,4 +4935,3 @@ void exe_eu_wa_rr(void){
 
 }
 #endif
-

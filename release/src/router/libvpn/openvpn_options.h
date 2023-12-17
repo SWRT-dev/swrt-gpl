@@ -26,7 +26,9 @@
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 
 #define streq(x, y) (!strcmp((x), (y)))
+#ifndef likely
 #define likely(x)       __builtin_expect((x),1)
+#endif
 
 struct buffer
 {

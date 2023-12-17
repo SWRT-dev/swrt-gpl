@@ -608,7 +608,7 @@ int string_to_htmlencode(char *dest, const char *src, size_t len)
 	if(src == NULL || strlen(src) > len)
 		return 0;
 
-	replace_char(src, '+', ' ');
+	replace_char((char *)src, '+', ' ');
 	for (; *src; src++) {
 		if(*src == '"')
 			ret += strlcat(dest, "&quot;", len);
@@ -10265,7 +10265,8 @@ static int get_wireless_client_info(char *mac, char *wireless) {
 				json_object_object_get_ex(brMacObj, "is_wireless", &wlObj);
 				json_object_object_get_ex(brMacObj, "conn_ts", &tsObj);
 				if(wlObj && tsObj) {
-					snprintf(wireless, sizeof(wireless), "%s", json_object_get_string(wlObj));
+					//snprintf(wireless, sizeof(wireless), "%s", json_object_get_string(wlObj));
+					sprintf(wireless, "%s", json_object_get_string(wlObj));
 					conn_ts = json_object_get_int(tsObj);
 
 					if(memcmp(wireless, "0", 1)) {
@@ -10273,7 +10274,8 @@ static int get_wireless_client_info(char *mac, char *wireless) {
 						_dprintf("mac = %s, get wireless = %s, conn_ts = %d\n", mac, wireless, conn_ts);
 					}
 				} else {
-					snprintf(wireless, sizeof(wireless), "%s", "0");
+					//snprintf(wireless, sizeof(wireless), "%s", "0");
+					sprintf(wireless, "%s", "0");
 					conn_ts = 0;
 				}
 				break;
@@ -10462,7 +10464,8 @@ static int get_client_detail_info(struct json_object *clients, struct json_objec
 			snprintf(sdn_idx, sizeof(sdn_idx), "%d", p_client_info_tab->sdn_idx[i]);
 			snprintf(sdn_type, sizeof(sdn_type), "%s", p_client_info_tab->sdn_type[i]);
 #endif
-			snprintf(online, sizeof(online), "%d", p_client_info_tab->online[i]);
+			//snprintf(online, sizeof(online), "%d", p_client_info_tab->online[i]);
+			snprintf(online, sizeof(online), "%d", p_client_info_tab->device_flag[i]&(1<<FLAG_EXIST));
 			snprintf(type, sizeof(type), "%d", p_client_info_tab->type[i]);
 			snprintf(defaultType, sizeof(defaultType), "%d", p_client_info_tab->type[i]);
 			snprintf(macRepeat, sizeof(macRepeat), "%d", check_macrepeat(macArray, mac_buf));
@@ -13370,7 +13373,7 @@ apply_cgi(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
 		action_para = get_cgi_json("rc_service",root);
 		config_name = get_cgi_json("nvram_config", root);
 		str = get_cgi_json("action_wait", root);
-		val = str? safe_atoi(str) : "-1";
+		val = str? safe_atoi(str) : -1;
 		if (val > 0 && val < 300)
 			action_wait = val;
 
@@ -26474,7 +26477,7 @@ struct mime_handler mime_handlers[] = {
 #endif
 #endif
 	{ "wlc_status.json", "application/json", no_cache_IE7, do_html_post_and_get, do_ej, do_auth },
-	{ "get_webdavInfo.asp", "text/html", no_cache_IE7, do_html_post_and_get, do_ej, NULL },
+	{ "get_webdavInfo.asp", "text/html", no_cache_IE7, do_html_post_and_get, do_webdavInfo_asp, NULL },
 #ifdef RTCONFIG_SOFTCENTER
 //1.1
 	{ "dbconf", "text/javascript", no_cache_IE7 , do_html_post_and_get, do_dbconf, NULL },
@@ -36968,15 +36971,31 @@ static int filter_5g_channel_by_bw(struct json_object *output_channel_array, str
 	return 0;
 }
 
-static int filter_6g_channel_by_bw(struct json_object *output_channel_array, struct json_object *channel_array, int bw)
+static int filter_6g_channel_by_bw(struct json_object *output_channel_array, struct json_object *channel_array, int bw, int channelIndex)
 {
-
 	int i=0, j=0;
-	int del=0, d=0, nr_ch=0, cn_len=0, channel_tmp_int=0;
+	int del=0, d=0, nr_ch=0, channel_tmp_int=0, cn_len=0;
 	int ch[29]={0}, cnt[29]={0};
+	char *chanspec = NULL;
+	char channel_tmp_buf[32] = {0};
 	struct json_object *channel_tmp=NULL;
 
-	if(bw == 160){
+	if (bw == 320) {
+		d = 60;
+		nr_ch = 16;
+		if (channelIndex == 1) {
+			int ch_t[4]={1,65,129,193};
+			cn_len = sizeof(ch_t)/sizeof(int);
+			for(i=0;i<cn_len;i++) ch[i] = ch_t[i];
+		}
+		else
+		{
+			int ch_t[3]={33,97,161};
+			cn_len = sizeof(ch_t)/sizeof(int);
+			for(i=0;i<cn_len;i++) ch[i] = ch_t[i];
+		}
+	}
+	else if (bw == 160) {
 		int ch_t[7]={1,33,65,97,129,161,193};
 		d = 28;
 		nr_ch=8;
@@ -37381,7 +37400,7 @@ ej_get_wl_channel_list(int eid, webs_t wp, int argc, char **argv, int unit) {
 					strlcpy(chanspec_auto_buf, chanspec_buf, sizeof(chanspec_auto_buf));
 #endif
 				if(ch_hit == 0){
-					json_object_array_add(chan_320m_array, json_object_new_string(json_object_get_string(chan_tmp));
+					json_object_array_add(chan_320m_array, json_object_new_string(json_object_get_string(chan_tmp)));
 					ch_hit = 1;
 				}
 
@@ -37471,7 +37490,6 @@ ej_get_wl_channel_list(int eid, webs_t wp, int argc, char **argv, int unit) {
 			json_object_object_add(chanspec_obj, "chan_320m", chan_320m_obj);
 		}
 	}
-#endif
 
 	websWrite(wp,"%s", json_object_to_json_string(chanspec_obj));
 

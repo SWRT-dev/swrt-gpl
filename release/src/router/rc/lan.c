@@ -2430,6 +2430,7 @@ _dprintf("nat_rule: stop_nat_rules 1.\n");
 
 #ifdef RTCONFIG_MULTILAN_CFG
     apg_start();
+#ifdef RTCONFIG_AMAS
     if (nvram_get_int("re_mode") == 1
 #if defined(RTCONFIG_PRELINK)
         || strcmp(nvram_safe_get("amas_bdlkey"), "")
@@ -2437,6 +2438,7 @@ _dprintf("nat_rule: stop_nat_rules 1.\n");
     ) {
         start_amas_lldpd();
     }
+#endif
 #ifdef RTCONFIG_IPV6
 	add_ip6_lanaddr();
 #endif
@@ -2530,6 +2532,7 @@ void stop_lan(void)
 #endif
 #ifdef RTCONFIG_AMAS_WGN
 	wgn_stop();
+#ifdef RTCONFIG_AMAS
 	if (nvram_get_int("re_mode") == 1
 #if defined(RTCONFIG_PRELINK)
 		|| strcmp(nvram_safe_get("amas_bdlkey"), "")
@@ -2538,9 +2541,11 @@ void stop_lan(void)
 		stop_amas_lldpd();
 	}
 #endif
+#endif
 
 #ifdef RTCONFIG_MULTILAN_CFG
     apg_stop();
+#ifdef RTCONFIG_AMAS
     if (nvram_get_int("re_mode") == 1
 #if defined(RTCONFIG_PRELINK)
         || strcmp(nvram_safe_get("amas_bdlkey"), "")
@@ -2548,6 +2553,7 @@ void stop_lan(void)
     ) {
         start_amas_lldpd();
     }
+#endif
 #endif
 
 	ifconfig(lan_ifname, 0, NULL, NULL);
@@ -2873,6 +2879,9 @@ void hotplug_net(void)
 #ifdef RTCONFIG_SW_SPDLED
 	int act_low=1, gpio=-1, speed=0;
 #endif
+#endif
+#if defined(RTCONFIG_SWRTMESH)
+	char *link;
 #endif
 
 #if defined(RTCONFIG_AMAS_WGN) || defined(RTCONFIG_MULTILAN_CFG)
@@ -4697,6 +4706,7 @@ void stop_lan_wl(void)
 #endif	
 #ifdef RTCONFIG_MULTILAN_CFG
     apg_stop();
+#ifdef RTCONFIG_AMAS
     if (nvram_get_int("re_mode") == 1
 #if defined(RTCONFIG_PRELINK)
         || strcmp(nvram_safe_get("amas_bdlkey"), "")
@@ -4704,6 +4714,7 @@ void stop_lan_wl(void)
     ) {
         start_amas_lldpd();
     }
+#endif
 #endif
 #if defined(RTCONFIG_EASYMESH)
 	stop_easymesh();
@@ -5625,6 +5636,7 @@ gmac3_no_swbr:
 
 #ifdef RTCONFIG_MULTILAN_CFG
     apg_start();
+#ifdef RTCONFIG_AMAS
     if (nvram_get_int("re_mode") == 1
 #if defined(RTCONFIG_PRELINK)
         || strcmp(nvram_safe_get("amas_bdlkey"), "")
@@ -5632,6 +5644,7 @@ gmac3_no_swbr:
     ) {
         start_amas_lldpd();
     }
+#endif
 #ifdef RTCONFIG_IPV6
 	add_ip6_lanaddr();
 #endif

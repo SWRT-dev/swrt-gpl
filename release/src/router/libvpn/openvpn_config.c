@@ -54,16 +54,16 @@ MTLAN_T *get_ovpn_mtlan(ovpn_type_t type, int unit, MTLAN_T *pmtl, size_t *mtl_s
 {
 	int idx;
 	MTLAN_T *p;
-	SDNFT_TYPE type;
+	SDNFT_TYPE sdntype;
 
 	if(type == OVPN_TYPE_CLIENT){
 		idx = get_vpnc_idx_by_proto_unit(VPN_PROTO_OVPN, unit);
-		type = SDNFT_TYPE_VPNC;
+		sdntype = SDNFT_TYPE_VPNC;
 	}else{
 		idx = get_vpns_idx_by_proto_unit(VPN_PROTO_OVPN, unit);
-		type = SDNFT_TYPE_VPNS;
+		sdntype = SDNFT_TYPE_VPNS;
 	}
-	if(!get_mtlan_by_idx(type, idx, pmtl, mtl_sz)){
+	if(!get_mtlan_by_idx(sdntype, idx, pmtl, mtl_sz)){
 		p = pmtl;
 		pmtl = NULL;
 		FREE_MTLAN(p);
@@ -229,7 +229,7 @@ ovpn_sconf_t* get_ovpn_sconf(int unit, ovpn_sconf_t* conf)
 	conf->poll = nvram_pf_get_int(prefix, "poll");
 #ifdef RTCONFIG_MULTILAN_CFG
 	pmtl = (MTLAN_T *)INIT_MTLAN(sizeof(MTLAN_T));
-	if(get_ovpn_mtlan(OVPN_TYPE_SERVER, unit, pmtl, &mtl_sz){
+	if(get_ovpn_mtlan(OVPN_TYPE_SERVER, unit, pmtl, &mtl_sz)){
 		if(mtl_sz != 1 && conf->if_type == OVPN_IF_TAP)
 			_dprintf("%s: WARNING: MTLAN size %u\n", __func__, mtl_sz);
 		strlcpy(conf->lan_ipaddr, pmtl->nw_t.addr, sizeof(conf->lan_ipaddr));
@@ -670,7 +670,7 @@ ovpn_accnt_info_t* get_ovpn_accnt(ovpn_accnt_info_t *accnt_info)
 			if(vstrsep(ptr, ">", &username, &password) == 2){
 				if(*username && *password){
 					memset(passwd, 0, sizeof(passwd));
-					pw_dec(password, passwd, sizeof(passwd));
+					pw_dec(password, passwd, sizeof(passwd), 1);
 					password = passwd;
 					snprintf(accnt_info->account[accnt_info->count].username, sizeof(accnt_info->account[0].username), "%s", username);
 					snprintf(accnt_info->account[accnt_info->count].password, sizeof(accnt_info->account[0].password), "%s", password);
@@ -718,3 +718,27 @@ char *get_lan_subnet(char *buf, size_t len)
 	snprintf(buf, len, "%s", inet_ntoa(in));
 	return buf;
 }
+
+#ifdef RTCONFIG_MULTILAN_CFG
+char* ovpn_get_sdn_subnet_mask(ovpn_type_t type, int unit, char *buf, size_t len)
+{
+	int i;
+	size_t mtl_sz;
+	char *ret = NULL;
+	MTLAN_T *pmtl = (MTLAN_T *)INIT_MTLAN(sizeof(MTLAN_T));
+	if(get_ovpn_mtlan(type, unit, pmtl, &mtl_sz)){
+		memset(buf, 0, len);
+		for(i = 0; i < mtl_sz; i++){
+			strlcat(buf, pmtl[i].nw_t.subnet, len);
+			strlcat(buf, " ", len);
+			strlcat(buf, pmtl[i].nw_t.netmask, len);
+			strlcat(buf, ",", len);
+		}
+		FREE_MTLAN(pmtl);
+		ret = buf;
+		_dprintf("%s: %s\n", __func__, buf);
+	}
+	FREE_MTLAN(pmtl);
+	return ret;
+}
+#endif

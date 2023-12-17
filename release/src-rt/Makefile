@@ -78,7 +78,10 @@ export CUR_CHIP_PROFILE_RAW
 endif
 
 -include .config
-
+#force disable MTLANCFG
+MTLANCFG=n
+#force disable NEW_PHYMAP
+NEW_PHYMAP=n
 ifeq ($(HND_ROUTER_BE_4916),y)
 -include sdk_profile.mak
 endif
@@ -205,7 +208,7 @@ ifneq ($(BETA),)
 KERNEL_VER := $(KERNEL_VER_BETA)
 endif
 
-REPO_RESULT := $(shell repo list 2>&1 > /dev/null && echo y)
+REPO_RESULT := n
 export UNDER_REPO_ENV := $(shell echo "$(REPO_RESULT)" | tail -c 2)
 ifeq ($(UNDER_REPO_ENV),y)
 export ASUSWRT_SRC_GIT := "--git-dir=../../.git"
@@ -791,11 +794,11 @@ else
 endif
 
 ifeq ($(HND_ROUTER),y)
-all: cfe_sysdep wl_sysdep rt_ver mkenv prebuild_checks all_postcheck1
+all: $(if $(NCURSES_TOOLS),pre_tools) cfe_sysdep wl_sysdep rt_ver mkenv prebuild_checks all_postcheck1
 else ifeq ($(or $(BCM_7114),$(BCM7)),y)
-all: dhd_sysdep rt_ver $(if $(CONFIG_BCMWL5),rt_ver_ntools)
+all: $(if $(NCURSES_TOOLS),pre_tools) dhd_sysdep rt_ver $(if $(CONFIG_BCMWL5),rt_ver_ntools)
 else
-all: rt_ver $(if $(CONFIG_BCMWL5),rt_ver_ntools)
+all: $(if $(NCURSES_TOOLS),pre_tools) rt_ver $(if $(CONFIG_BCMWL5),rt_ver_ntools)
 endif
 	echo ""
 	echo "Building $(BUILD_NAME)_$(KERNEL_VER).$(FS_VER)_$(SERIALNO).trx"
@@ -1372,6 +1375,13 @@ else
 bin_file:
 	[ ! -e .bin/$(BUILD_NAME)/Makefile ] || $(MAKE) -C .bin/$(BUILD_NAME) O=$(SRCBASE)/image FW_FN=$(IMGNAME).trx
 endif
+
+pre_tools:
+	[ -e pre_tools ] || ln -sf ../src/pre_tools pre_tools
+	@echo -------------------------------
+	$(MAKE) -C pre_tools clean
+	$(MAKE) -C pre_tools
+	@echo -------------------------------
 
 ifneq ($(HND_ROUTER),y)
 clean:
@@ -6979,4 +6989,5 @@ get_extendno:
 .PHONY: a b c d m Makefile allversions
 .PHONY: tags
 .PHONY: dummy
+.PHONY: pre_tools
 .PHONY: get_extendno

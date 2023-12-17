@@ -709,7 +709,7 @@ extern void set_wlpara_ra(const char* wif, int band);
 extern int wlconf_ra(const char* wif);
 extern void enable_apcli(char *aif, int wlc_band);
 extern void apcli_start(void);
-extern int site_survey_for_channel(int n, const char *wif, int *HT_EXT);
+extern int site_survey_for_channel(int band, const char *wif);
 extern void stop_wds_ra(const char* lan_ifname, const char* wif);
 extern void start_wds_ra(void);
 extern int get_apcli_status(int band);
@@ -726,7 +726,6 @@ extern int send_beacon_request(int bssidx, int vifidx);
 #ifdef RTCONFIG_BTM_11V
 extern int amas_11v(int band, int vidx, char *sta, char *bssid);
 #endif
-#endif	/* RTCONFIG_RALINK */
 #if defined(RTCONFIG_EASYMESH)
 extern void start_wapp(void);
 extern void start_mapd(void);
@@ -738,7 +737,7 @@ extern void ralink_hostapd_start(void);
 extern void ralink_hostapd_stop(void);
 extern void gen_ralink_wifi_cfgs(void);
 #endif
-#endif
+#endif	/* RTCONFIG_RALINK */
 
 /* board API under sysdeps/qca/qca.c */
 #if defined(RTCONFIG_QCA)
@@ -3602,7 +3601,6 @@ extern void oauth_google_update_token(void);
 extern int oauth_google_send_message(const char* receiver, const char* subject, const char* message, const char* attached_files[], int attached_files_count);
 extern void oauth_google_check_token_status(void);
 extern void oauth_google_drive_check_token_status(void);
-
 #endif
 #ifdef RTCONFIG_MULTI_PPP
 extern void add_multi_ppp_routes(int wan_unit);
@@ -3613,6 +3611,7 @@ extern void set_mtppp_load_balance();
 #ifdef RTCONFIG_UUPLUGIN
 extern void start_uu();
 extern void stop_uu();
+extern void exec_uu();
 #endif
 
 #if defined(RTCONFIG_QCA_LBD)

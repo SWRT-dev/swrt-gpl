@@ -131,6 +131,8 @@ define platformRouterOptions
 		echo "RTCONFIG_QAM256_2G=y" >>$(1); \
 		sed -i "/RTCONFIG_QAM1024_5G\>/d" $(1); \
 		echo "RTCONFIG_QAM1024_5G=y" >>$(1); \
+		sed -i "/RTCONFIG_MFP\>/d" $(1); \
+		echo "RTCONFIG_MFP=y" >>$(1); \
 		if [ "$(MT7986_AX4200)" = "y" ]; then \
 			sed -i "/CONFIG_MTK_WIFI_SKU_TYPE=/d" $(1); \
 			echo "CONFIG_MTK_WIFI_SKU_TYPE=\"AX4200\"" >> $(1); \

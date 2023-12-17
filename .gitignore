@@ -51,6 +51,7 @@ release/src/router/shared/spwenc.c
 release/src/router/shared/sysdeps/*/nvpriv.c
 release/src/router/shared/sysdeps/*/bcmutils.c
 release/src/router/shared/sysdeps/*/private.c
+release/src/router/shared/swrt_mtlan.c
 release/src/router/shared/tcode.c
 release/src/router/sw-hw-auth/*.c
 release/src/router/swrtmesh/ieee1905/source

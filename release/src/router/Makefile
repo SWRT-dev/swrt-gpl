@@ -9999,7 +9999,7 @@ wpa_supplicant2-install:
 wpa_supplicant2-clean:
 	$(MAKE) -C hostapd2/wpa_supplicant clean
 
-htop/Makefile:ncurses-6.0
+htop/Makefile:ncurses-6.1
 	cd htop && ./autogen.sh && $(CONFIGURE) \
 		--prefix=/usr \
 		--bindir=/usr/sbin \
@@ -10012,8 +10012,8 @@ htop/Makefile:ncurses-6.0
 		--disable-unwind \
 		--disable-hwloc \
 		ac_cv_header_ncurses_ncurses_h=yes \
-		LDFLAGS="-L$(TOP)/ncurses-6.0/lib/" \
-		CPPFLAGS="-I$(TOP)/ncurses-6.0/include/"
+		LDFLAGS="-L$(TOP)/ncurses-6.1/lib/" \
+		CPPFLAGS="-I$(TOP)/ncurses-6.1/include/"
 
 htop:htop/Makefile
 	$(MAKE) -C htop

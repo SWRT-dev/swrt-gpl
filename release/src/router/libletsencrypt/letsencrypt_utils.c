@@ -155,7 +155,7 @@ int is_ecc(char *s, char *domain, size_t sz)
 	if(ret == REG_NOMATCH){
 		strncpy(domain, s, sz);
 		ret = 0;
-	}else(ret == 0){
+	}else if(ret == 0){
 		ret = 1;
 		if(pmatch.rm_eo > sz)
 			strncpy(domain, s, sz);

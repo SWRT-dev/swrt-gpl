@@ -65,7 +65,11 @@ static void _le_jobs_install(int min, char *hostname)
 		if(min == 0){
 			f_read("/dev/urandom", &urandom1, sizeof(urandom1));
 			f_read("/dev/urandom", &urandom2, sizeof(urandom2));
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_SOC_IPQ50XX) || defined(RTCONFIG_SOC_IPQ60XX) || defined(RTCONFIG_SOC_IPQ8074)
+			snprintf(jobs, sizeof(jobs), "%lu %lu */%d * * service restart_letsencrypt", urandom2 % 60, urandom1 % 24, 7);
+#else
 			snprintf(jobs, sizeof(jobs), "%llu %llu */%d * * service restart_letsencrypt", urandom2 % 60, urandom1 % 24, 7);
+#endif
 		}else if(nvram_get_int("le_auxstate_t") != LE_AUX_ACME)
 			snprintf(jobs, sizeof(jobs), "*/%d * * * * service restart_letsencrypt", min);
 		else if(le_retry && sscanf(le_retry, "%s %u", tmp, &le_time) == 2 && !strncmp(hostname, tmp, sizeof(tmp))){
@@ -257,8 +261,8 @@ static void _le_acme_do(int action, le_conf_t *conf)
 	if(action == 2){
 		snprintf(fullchain, sizeof(fullchain), "%s/%s%s/%s", LE_ACME_CERT_HOME, conf->ddns_hostname, conf->re_ecc ? "_ecc" : "", LE_ACME_DOMAIN_FULLCHAIN);
 		snprintf(domainkey, sizeof(domainkey), "%s/%s%s/%s", LE_ACME_CERT_HOME, conf->ddns_hostname, conf->re_ecc ? "_ecc" : "", LE_ACME_DOMAIN_KEY);
-		snprintf(revoke_hostname, sizeof(revoke_hostname), "%s", conf->revoke_hostname);
-		_dprintf("%s %d %s\n", __func__, action, conf->revoke_hostname);
+		snprintf(revoke_hostname, sizeof(revoke_hostname), "%s", conf->re_hostname);
+		_dprintf("%s %d %s\n", __func__, action, conf->re_hostname);
 		le_argv[idx] = "--revoke";
 		idx++;
 		if(conf->re_ecc){
@@ -713,7 +717,7 @@ int cert_key_match(const char *cert_path, const char *key_path)
 	}
 	else if(ec_pub && ec_pri)
 	{
-		if(EC_POINT_cmp(EC_KEY_get0_group(ec_pub), EC_KEY_get0_public_key(ec_pub), EC_KEY_get0_public_key(ec_pri)))
+		if(EC_POINT_cmp(EC_KEY_get0_group(ec_pub), EC_KEY_get0_public_key(ec_pub), EC_KEY_get0_public_key(ec_pri), NULL))
 		{
 			_dprintf("[mssl] ec modulus not match\n");
 			ret = 0;

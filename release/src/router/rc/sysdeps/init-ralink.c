@@ -1037,6 +1037,8 @@ void wan_force_link_sp(int unit)
 	port = 1;
 #elif defined(PRTAX57_GO)
 	port = 0;
+#elif defined(RMAX6000) || defined(SWRT360T7)
+	port = 0;//just fix compilation failure
 #else
 #error port need to be defined
 #endif
@@ -1530,8 +1532,9 @@ void init_syspara(void)
 #endif
 	const char *reg_spec_def;
 	const int NEED_eu2cn = 0;
-
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
 	char brstp;
+#endif
 	char value_str[MAX_REGSPEC_LEN+1];
 	memset(value_str, 0, sizeof(value_str));
 

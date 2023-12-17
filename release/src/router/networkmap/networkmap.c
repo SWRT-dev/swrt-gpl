@@ -174,6 +174,7 @@ convType nmp_conv_type[] = {
 	{1, "pc", BASE_TYPE_WINDOW},
 	{1, "nb", BASE_TYPE_WINDOW},
 	{2, "rt-", BASE_TYPE_DEFAULT},
+	{2, "dsl-", BASE_TYPE_DEFAULT},
 	{2, "pl-", BASE_TYPE_DEFAULT},
 	{4, "storage", BASE_TYPE_DEFAULT},
 	{4, "nas", BASE_TYPE_DEFAULT},
@@ -263,12 +264,14 @@ struct vc_list_s vendorclasslist[] = {
 extern int nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline);
 extern int FindDevice(unsigned char *pIP, unsigned char *pMac, int replaceMac);
 
+#if 0
 static int is_same_subnet(struct in_addr *ip1, struct in_addr *ip2, struct in_addr *msk)
 {
 	unsigned int mask = ntohl(msk->s_addr);
 
 	return ((ntohl(ip1->s_addr) & mask) == (ntohl(ip2->s_addr) & mask)) ? 1 : 0;
 }
+#endif
 
 static int check_db_size()
 {

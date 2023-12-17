@@ -12,12 +12,12 @@ OBJS = cosql_utils.o codb_utils.o log.o
 
 CFLAGS += -g -fPIC
 CFLAGS += -I$(TOP)/sqlite
-CFLAGS += -I$(TOP)/json-c
+CFLAGS += -I$(STAGEDIR)/usr/include/json-c
 CFLAGS += -I$(TOP)/shared
 CFLAGS += -I$(SRCBASE)/include
 
 LDFLAGS += -L$(TOP)/sqlite/.libs -lsqlite3
-LDFLAGS += -L$(TOP)/json-c/.libs -ljson-c
+LDFLAGS += -L$(STAGEDIR)/usr/lib -ljson-c
 LDFLAGS += -L$(TOP)/shared -lshared
 
 ifeq ($(RTCONFIG_BCMARM),y)

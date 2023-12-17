@@ -881,7 +881,8 @@ CFLAGS += -D _FILE_OFFSET_BITS=64
 endif
 
 ifeq ($(RTCONFIG_MULTILAN_CFG), y)
-OBJS += amas_apg.o
+OBJS += swrt_apg.o
+OBJS += swrt_mtlan.o
 endif
 
 # _FILE_OFFSET_BITS=64 is defined in shared, it must be defined in rc accordingly if shared pass pointer to struct dirent to rc,

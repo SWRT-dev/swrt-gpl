@@ -232,7 +232,7 @@ static int _secure_conf(char* buf)
 
 	//name is token
 	const char *token1[] = {"wan_pppoe_passwd", "modem_pass", "modem_pincode",
-		"http_passwd", "wan0_pppoe_passwd", "dslx_pppoe_passwd", "ddns_passwd_x",
+		"http_passwd", "wan0_pppoe_passwd", "wan1_pppoe_passwd", "dslx_pppoe_passwd", "ddns_passwd_x",
 		"wl_wpa_psk",	"wlc_wpa_psk",  "wlc_wep_key",
 		"wl0_wpa_psk", "wl0.1_wpa_psk", "wl0.2_wpa_psk", "wl0.3_wpa_psk",
 		"wl1_wpa_psk", "wl1.1_wpa_psk", "wl1.2_wpa_psk", "wl1.3_wpa_psk",
@@ -348,7 +348,7 @@ static int _convert_data(const char *name, char *value, size_t value_len)
 
 	//name is token
 	const char *token1[] = {"wan_pppoe_passwd", "modem_pass", "modem_pincode",
-		"http_passwd", "wan0_pppoe_passwd", "dslx_pppoe_passwd", "ddns_passwd_x",
+		"http_passwd", "wan0_pppoe_passwd", "wan1_pppoe_passwd","dslx_pppoe_passwd", "ddns_passwd_x",
 		"wl_wpa_psk",	"wlc_wpa_psk",  "wlc_wep_key",
 		"wl0_wpa_psk", "wl0.1_wpa_psk", "wl0.2_wpa_psk", "wl0.3_wpa_psk",
 		"wl1_wpa_psk", "wl1.1_wpa_psk", "wl1.2_wpa_psk", "wl1.3_wpa_psk",
@@ -648,6 +648,7 @@ int issyspara(char *p)
 	// skip checking for wl[]_, wan[], lan[]_
 	if ((strstr(p, "wl") && strncmp(p+3, "_failed", 7)) || strstr(p, "wan") || strstr(p, "lan")
 		|| strstr(p, "vpn_server") || strstr(p, "vpn_client")
+		|| !strncmp(p, "wgs", 3) || !strncmp(p, "wgc", 3)
 #ifdef RTCONFIG_DSL
 		|| !strncmp(p, "dsl", 3)
 #endif
@@ -792,6 +793,10 @@ main(int argc, char **argv)
 	/* Process the arguments */
 	for (; *argv; ++argv) {
 		if (!strcmp(*argv, "get")) {
+#ifdef RTCONFIG_NVRAM_ENCRYPT
+			if(invalid_nvram_get_name(*argv))
+				return 0;
+#endif
 			if (*++argv) {
 				if ((value = nvram_get(*argv)))
 					puts(value);
@@ -879,9 +884,22 @@ main(int argc, char **argv)
 			system("nvram_erase");
 		} else if (!strcmp(*argv, "show") ||
 		           !strcmp(*argv, "dump")) {
+#ifdef RTCONFIG_NVRAM_ENCRYPT
+			char name_tmp[128] = {0};
+			char *name_t = NULL, *value;
+#endif
 			dev_nvram_getall(buf, sizeof(buf));
-			for (name = buf; *name; name += strlen(name) + 1)
+			for (name = buf; *name; name += strlen(name) + 1){
+#ifdef RTCONFIG_NVRAM_ENCRYPT
+				strlcpy(name_tmp, name, sizeof(name_tmp));
+				name_t = value = name_tmp;
+				name_t = strsep(&value, "=");
+
+				if(invalid_nvram_get_name(name_t))
+					continue;
+#endif
 				puts(name);
+			}		
 			size = sizeof(struct nvram_header) + (int) name - (int) buf;
 			if (**argv != 'd')
 				fprintf(stderr, "size: %d bytes (%d left)\n",

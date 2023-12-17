@@ -103,6 +103,7 @@ struct JFFS_BACKUP_PROFILE_S jffs_backup_profile_t[] = {
 	{NULL, NULL, NULL, NULL, NULL, 0},
 };
 extern const struct tcode_location_s tcode_location_list[];
+extern int is_CN_sku(void);
 
 static int check_ip_cidr(const char *ip, int check_cidr)
 {
@@ -555,7 +556,7 @@ int get_ui_support_info(struct json_object *ui_support_obj)
 	char *next;
 	char word[256];
 	char *list[] = {"dpi_mals", "dpi_vp", "dpi_cc", "adaptive_qos", "traffic_analyzer", "webs_filter", "apps_filter", "web_history", "bandwidth_monitor"};
-	int i, version;
+	int i, version = 0;
 #if defined(RTCONFIG_AMAS)
 	int amasmode, amasRouter, cfgsync;
 #endif
@@ -1272,7 +1273,7 @@ int start_config_sync_cgi()
 #ifdef RTCONFIG_NVRAM_ENCRYPT
 				memset(buf, 0, sizeof(buf));
 				if(t->enc == CKN_ENC_SVR){
-					set_enc_nvram(t->name, json_object_get_string(tmp_value), buf);
+					set_enc_nvram(t->name, (char *)json_object_get_string(tmp_value), buf);
 					nvram_set(t->name, buf);
 				}else
 #endif
@@ -1294,6 +1295,6 @@ int get_ASUS_privacy_policy_obj(struct json_object *ASUS_privacy_policy_obj)
 {
 	struct ASUS_PP_table *p_pp;
 	for(p_pp = &ASUS_PP_t[0]; p_pp->name; ++p_pp)
-		json_object_object_add(a1, p_pp->name, json_object_new_string(p_pp->version));
+		json_object_object_add(ASUS_privacy_policy_obj, p_pp->name, json_object_new_string(p_pp->version));
 	return 0;
 }

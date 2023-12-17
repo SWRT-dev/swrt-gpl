@@ -159,6 +159,12 @@ dev_nvram_get(const char *name)
 char *
 nvram_get(const char *name)
 {
+#ifdef RTCONFIG_NVRAM_ENCRYPT
+	if(invalid_nvram_get_program(name)){
+		printf("nvram_get:name = %s fail\n",name);
+		return NULL;
+	}
+#endif
 #ifdef RTCONFIG_JFFS_NVRAM
 	if (large_nvram(name)) {
 		char *ret = NULL;
@@ -220,6 +226,12 @@ dev_nvram_getall(char *buf, int count)
 int
 nvram_getall(char *buf, int count)
 {
+#ifdef RTCONFIG_NVRAM_ENCRYPT
+	if(invalid_program_check()){
+		printf("nvram_getall: fail\n");
+		return -1;
+	}
+#endif
 #ifdef RTCONFIG_JFFS_NVRAM
 	int len;
 	char *name;
@@ -409,3 +421,15 @@ nvram_commit(void)
 
 	return ret;
 }
+
+char *nvram_get_salt(void)
+{
+#ifdef RTCONFIG_NVRAM_ENCRYPT
+	if(invalid_program_check()){
+		dbg("nvram_get_salt: fail\n");
+		return NULL;
+	}
+#endif
+	return dev_nvram_get("nvram_salt");
+}
+

@@ -20,7 +20,9 @@
 extern const char dmservers[];
 
 const char sdn_dir[] = "/tmp/.sdn";
+#ifdef RTCONFIG_DNSPRIVACY
 static int _handle_sdn_stubby(const MTLAN_T *pmtl, const int action);
+#endif
 static int _handle_sdn_dnsmasq(const MTLAN_T *pmtl, const int action);
 static int _handle_sdn_wan(const MTLAN_T *pmtl, const char *logdrop, const char *logaccept);
 static int _remove_sdn_routing_table(const MTLAN_T *pmtl);
@@ -110,11 +112,13 @@ int handle_sdn_feature(const int sdn_idx, const unsigned long features, const in
 					_handle_sdn_dnsmasq(&pmtl[i], action);
 				}
 			}
+#ifdef RTCONFIG_DNSPRIVACY
 			if (features & SDN_FEATURE_DNSPRIV)
 			{
 				_dprintf("[%s][%d]DO: SDN DNSPRIV(stubby)\n", __FUNCTION__, pmtl[i].sdn_t.sdn_idx);
 				_handle_sdn_stubby(&pmtl[i], action);
 			}
+#endif
 			if (features & SDN_FEATURE_SDN_IPTABLES)
 			{
 				if (pmtl[i].sdn_t.sdn_idx) // ignore  main LAN

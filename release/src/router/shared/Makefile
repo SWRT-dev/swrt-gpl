@@ -161,7 +161,7 @@ OBJS += nvparse.o
 OBJS += bwdpi_utils.o
 OBJS += bwdpi_utils.o
 OBJS += mac_name_tbl.o
-OBJS += stun.
+OBJS += stun.o
 OBJS += llist.o
 OBJS += $(if $(wildcard notify_rc.c),notify_rc.o,prebuild/notify_rc.o)
 ifeq ($(RTCONFIG_MULTILAN_CFG),y)
@@ -175,7 +175,7 @@ ifeq ($(or $(RTCONFIG_AMAS_WGN),$(RTCONFIG_MULTILAN_CFG)),y)
 OBJS += $(if $(wildcard amas_wgn_shared.c),amas_wgn_shared.o,prebuild/amas_wgn_shared.o)
 endif
 ifeq ($(RTCONFIG_MULTILAN_CFG), y)
-OBJS += $(if $(wildcard apg_shared.c),apg_shared.o,prebuild/apg_shared.o)
+OBJS += $(if $(wildcard swrt_apg_shared.c),swrt_apg_shared.o,prebuild/swrt_apg_shared.o)
 endif
 ifeq ($(RTCONFIG_RGBLED),y)
 OBJS += $(if $(wildcard aura_rgb.c),aura_rgb.o,prebuild/aura_rgb.o)

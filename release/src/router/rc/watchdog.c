@@ -3849,13 +3849,14 @@ void btn_check(void)
 
 			char msg[256], config[128];
 
+#ifdef RTCONFIG_AMAS
 			if (nvram_get_int("re_mode") == 1) {
 				snprintf(config, sizeof(config), "{\"led_val\":\"%s\"}", nvram_safe_get("led_val"));
 				snprintf(msg, sizeof(msg), RC_CONFIG_CHANGED_MSG, EID_RC_CONFIG_CHANGED, config);
 				(void)send_cfgmnt_event(msg);
 			}
 #endif
-
+#endif
 			return;
 		}
 	}
@@ -8035,9 +8036,10 @@ static void auto_firmware_check()
 		period_retry = 0;
 	}
 #else
-	if(local.tm_hour == (2 + rand_hr) && local.tm_min == rand_min) //at 2 am + random offset to check
+	if(local.tm_hour == (2 + rand_hr) && local.tm_min == rand_min){ //at 2 am + random offset to check
 		periodic_check = 1;
 		period_retry = 0;
+	}
 #endif
 	//FAUPGRADE_DBG("periodic_check = %d, period_retry = %d, bootup_check = %d", periodic_check, period_retry, bootup_check);
 #ifndef RTCONFIG_FW_JUMP
