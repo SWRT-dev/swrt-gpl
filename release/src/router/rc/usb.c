@@ -1455,8 +1455,9 @@ int mount_r(char *mnt_dev, char *mnt_dir, char *_type)
 					nvram_set("smbd_nlsmod", flagfn);
 				}
 #endif
+#if !defined(RTCONFIG_NTFS3)
 			}
-
+#endif
 #ifndef RTCONFIG_BCMARM
 			sprintf(options + strlen(options), ",noatime" + (options[0] ? 0 : 1));
 #endif

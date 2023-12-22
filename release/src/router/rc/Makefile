@@ -185,7 +185,7 @@ endif
 
 ifeq ($(RTCONFIG_HTTPS),y)
 CFLAGS += -I$(TOP)/openssl/include
-LDFLAGS += -L$(TOP)/openssl -lcrypto -lssl $(if $(or $(RTCONFIG_OPENSSL11),$(RTCONFIG_OPENSSL3)),-lpthread,)
+LDFLAGS += -L$(TOP)/openssl -lcrypto -lssl $(if $(or $(RTCONFIG_OPENSSL11),$(RTCONFIG_OPENSSL3)),-lpthread,) $(if $(RTCONFIG_OPENSSL3),-latomic,)
 endif
 
 ifeq ($(RTCONFIG_BWDPI),y)

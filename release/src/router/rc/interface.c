@@ -30,7 +30,9 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <net/if_arp.h>
-//#include <proto/ethernet.h>
+#ifdef RTCONFIG_BCMARM
+#include <proto/ethernet.h>
+#endif
 
 #include <shutils.h>
 #include <bcmnvram.h>

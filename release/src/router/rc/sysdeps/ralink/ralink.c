@@ -2275,9 +2275,9 @@ int gen_ralink_config(int band, int is_iNIC)
 	}
 
 #if defined(RTCONFIG_EASYMESH)
-	fprintf(fp, "VLANTag=%d\n", is_wgn_enabled());	
-	if(mesh_re_node())
-		fprintf(fp, "STAVLANTag=%d\n", is_wgn_enabled());	
+//	fprintf(fp, "VLANTag=%d\n", is_wgn_enabled());	
+//	if(mesh_re_node())
+//		fprintf(fp, "STAVLANTag=%d\n", is_wgn_enabled());	
 #elif defined(RTCONFIG_MULTILAN_CFG)
 	fprintf(fp, "VLANTag=%d\n", sdn_enable());
 	if(mesh_re_node())

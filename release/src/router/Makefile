@@ -963,7 +963,11 @@ obj-$(RTCONFIG_BT_CONN) += pcre-8.31
 obj-$(RTCONFIG_BT_CONN) += glib-2.59.0
 obj-$(RTCONFIG_BT_CONN) += udev-173
 obj-$(RTCONFIG_BT_CONN) += libical-2.0.0
+ifeq ($(RTCONFIG_NCURSES_6_1),y)
 obj-$(RTCONFIG_BT_CONN) += ncurses-6.1
+else
+obj-$(RTCONFIG_BT_CONN) += ncurses-6.3
+endif
 obj-$(RTCONFIG_BT_CONN) += readline-6.2
 obj-$(RTCONFIG_BT_CONN) += bluez-5.56
 ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6756)),y)
@@ -973,7 +977,7 @@ ifneq ($(RTCONFIG_LANTIQ),y)
 obj-$(RTCONFIG_BT_CONN) += i2c-tools-2013-12-15
 endif
 #FIXME, flag for AR3012
-ifeq ($(RTCONFIG_QCA)$(RTCONFIG_LANTIQ)$(HND_ROUTER_AX_675X)$(HND_ROUTER_AX_6756),y)
+ifeq ($(RTCONFIG_QCA)$(RTCONFIG_LANTIQ)$(HND_ROUTER_AX),y)
 obj-$(RTCONFIG_BT_CONN) += qca-ar3k-fw
 endif
 
@@ -8041,7 +8045,7 @@ libfapi-0.1-install:
 	cd libfapi-0.1; make clean; make
 	install -D libfapi-0.1/libfapi.so $(TARGETDIR)/usr/lib/
 
-fapi_wlan_common-05.04.00.131: ncurses-6.0 readline-6.2 libhelper-1.4.0.2
+fapi_wlan_common-05.04.00.131: ncurses-6.3 readline-6.2 libhelper-1.4.0.2
 	cd fapi_wlan_common-05.04.00.131; make clean; make
 
 fapi_wlan_common-05.04.00.131-install:
@@ -9859,7 +9863,7 @@ libimobiledevice-1.3.0-configure:
 		libusbmuxd_CFLAGS="-I$(TOP)/libusbmuxd-2.0.2/include" \
 		libusbmuxd_LIBS="-L$(TOP)/libusbmuxd-2.0.2/src/.libs -lusbmuxd-2.0" \
 		openssl_CFLAGS="-I$(TOP)/openssl/include" \
-		openssl_LIBS="-L$(TOP)/openssl -lssl -lcrypto"
+		openssl_LIBS="-L$(TOP)/openssl -lssl -lcrypto  $(if $(or $(RTCONFIG_OPENSSL11),$(RTCONFIG_OPENSSL3)),-lpthread,) $(if $(RTCONFIG_OPENSSL3),-latomic,)"
 
 libimobiledevice-1.3.0/Makefile:
 	$(MAKE) libimobiledevice-1.3.0-configure

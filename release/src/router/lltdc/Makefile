@@ -15,7 +15,7 @@ LDFLAGS += -L$(TOP_PLATFORM)/wlcsm$(EXHND) -lwlcsm
 endif
 
 ifeq ($(RTCONFIG_BCMARM),y)
-LDFLAGS += -lgcc_s
+CFLAGS += -I$(SRCBASE)/shared/bcmwifi/include
 endif
 
 ifeq ($(RTCONFIG_QTN),y)

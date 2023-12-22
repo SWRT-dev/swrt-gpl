@@ -4682,3 +4682,9 @@ void wl_fail_db(int unit, int state, int count)
 }
 #endif
 
+int get_wisp_status(void)
+{
+	char ifname[16] = {0}; 
+	wl_ifname(nvram_get_int("wlc_band"), 0, ifname);
+	return get_wlc_status(ifname) == WLC_STATE_CONNECTED;
+}

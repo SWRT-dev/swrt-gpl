@@ -521,7 +521,7 @@ function initial(){
 			inputCtrl(document.form.wl_txbf, 1);	
 		}
 
-		if (based_modelid == "TUF-AX4200" || based_modelid == "TUF-AX6000" || based_modelid == "RT-AX59U" || based_modelid == "RT-AX52" || based_modelid == "PRT-AX57_GO" || based_modelid == "PRT-AX57_GO") {
+		if (based_modelid == "TUF-AX4200" || based_modelid == "TUF-AX6000" || based_modelid == "RT-AX59U" || based_modelid == "RT-AX52" || based_modelid == "PRT-AX57_GO" || based_modelid == "RM-AX6000") {
 			inputCtrl(document.form.wl_itxbf, 1);
 		}
 

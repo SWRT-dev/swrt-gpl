@@ -35,7 +35,7 @@
 /* RTCONFIG_HND_ROUTER_BE_4916 */
 #if defined(WIFI7_SDK_20230426)
 #include <rtconfig.h>
-#else
+#elif defined(RTCONFIG_HND_ROUTER)
 #include "boardparms.h"
 #endif
 

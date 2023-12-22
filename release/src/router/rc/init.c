@@ -1240,7 +1240,7 @@ restore_defaults_wifi(int all)
 	int unit, subunit;
 	unsigned int max_mssid;
 	char prefix[]="wlXXXXXX_", tmp[100];
-#if (defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)) && defined(RTCONFIG_PRELINK)
+#if defined(RTCONFIG_AMAS) && defined(RTCONFIG_PRELINK)
 	int prelink = nvram_invmatch("amas_bdlkey", "");
 	int plk_unit = get_prelink_unit();
 #endif
@@ -1284,7 +1284,7 @@ restore_defaults_wifi(int all)
 		nvram_set(strcat_r(prefix, "wpa_psk", tmp), psk);
 #endif
 
-#if (defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)) && defined(RTCONFIG_PRELINK) && !defined(RTCONFIG_MSSID_PRELINK)
+#if defined(RTCONFIG_AMAS) && defined(RTCONFIG_PRELINK) && !defined(RTCONFIG_MSSID_PRELINK)
 		/* set prelink config on main */
 		if (prelink && plk_unit == unit)
 			set_prelink_config(prefix);
@@ -1312,7 +1312,7 @@ restore_defaults_wifi(int all)
 				nvram_set(strcat_r(prefix, "wpa_psk", tmp), nvram_safe_get("wifi_psk"));
 			}
 
-#if (defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)) && defined(RTCONFIG_PRELINK) && defined(RTCONFIG_MSSID_PRELINK)
+#if defined(RTCONFIG_AMAS) && defined(RTCONFIG_PRELINK) && defined(RTCONFIG_MSSID_PRELINK)
 			/* set prelink config on max mssid */
 			if (prelink && plk_unit == unit && nvram_get_int("plk_cap_subunit") == subunit) {
 #ifdef RTCONFIG_FRONTHAUL_DWB

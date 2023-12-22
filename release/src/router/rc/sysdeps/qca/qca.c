@@ -58,6 +58,7 @@
 int bg = 0;
 
 #ifdef RTCONFIG_WIRELESSREPEATER
+int sta_status = 0;
 char *wlc_nvname(char *keyword);
 #endif
 
@@ -147,7 +148,6 @@ struct chattr_s {
 
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
 struct bandx_defval_s {
-	char *handler;
 	short qam;
 	short intop;
 	short shortgi;
@@ -177,10 +177,13 @@ struct bandx_defval_s {
 	short uapsd;
 	short ap_bridge;
 	short mcastenhance;
+	short pad7;
+	short ext_nss;
+	short pad8;
 };
 
 struct bandx_defval_s bandx_defval[] = {
-	{ "/sbin/vap_evhandler", 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 3, 0, 0, 1, 1, 2347, 2346, 1, 100, 1, 0, 0, 0, 0, 1, 1, 0, 1 }
+	{ 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 3, 0, 0, 1, 1, 2347, 2346, 1, 100, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0 }
 };
 
 struct bandx_defval_s *wldefval_tbl[] = { bandx_defval, bandx_defval, bandx_defval, bandx_defval };
@@ -759,6 +762,7 @@ void write_rpt_wpa_supplicant_conf(int band, const char *prefix_mssid, const cha
 	char *str;
 	int flag_wep = 0;
 	int i;
+	int ieee80211w = 0;
 
 	snprintf(tmp, sizeof(tmp), "/etc/Wireless/conf/wpa_supplicant-%s.conf", get_staifname(band));
 	if (!(fp_wpa = fopen(tmp, "w+")))
@@ -791,7 +795,7 @@ void write_rpt_wpa_supplicant_conf(int band, const char *prefix_mssid, const cha
 		"network={\n"
 		"ssid=\"%s\"\n",
 		get_staifname(band),
-		(addition?:""),
+		(addition ? "disabled=1" : ""),
 		((str = nvram_get(strcat_r(prefix_wlc, "ssid", tmp))) && strcmp(str, "")) ?
 			str : "8f3610e3c9feabed953a6");
 
@@ -812,6 +816,22 @@ void write_rpt_wpa_supplicant_conf(int band, const char *prefix_mssid, const cha
 			fprintf(fp_wpa,"\tkey_mgmt=NONE\n");		//shared
 			fprintf(fp_wpa,"\tauth_alg=SHARED\n");
 		}
+		else if(!strcmp(str, "sae") || strstr(str, "wpa3") || !strcmp(str, "psk2sae")
+          || strstr(str, "wpa2wpa3") || !strcmp(str, "wpawpa2wpa3")){
+          	if(!strncmp(str, "sae", 3) || !strncmp(str, "wpa3", 4)){
+				fprintf(fp_wpa,"\tkey_mgmt=SAE\n");
+				ieee80211w = 2;
+          	}else{
+				fprintf(fp_wpa,"\tkey_mgmt=WPA-PSK SAE\n");
+				ieee80211w = 1;
+          	}
+			fprintf(fp_wpa,"\tproto=RSN\n");
+			if(strlen(nvram_pf_safe_get(prefix_wlc, "wpa_psk")) == 64)
+				fprintf(fp_wpa,"\tsae_password=%s\n", nvram_pf_safe_get(prefix_wlc, "wpa_psk"));
+			else
+				fprintf(fp_wpa,"\tsae_password=\"%s\"\n", nvram_pf_safe_get(prefix_wlc, "wpa_psk"));
+ 			fprintf(fp_wpa,"\ttieee80211w=%d\n", ieee80211w);
+        }
 		else if (!strcmp(str, "psk") || !strcmp(str, "psk2")) {
 			fprintf(fp_wpa,"\tkey_mgmt=WPA-PSK\n");
 			if (!strcmp(str, "psk"))
@@ -841,6 +861,8 @@ void write_rpt_wpa_supplicant_conf(int band, const char *prefix_mssid, const cha
 
 			//key
 			fprintf(fp_wpa, "\tpsk=\"%s\"\n",nvram_safe_get(strcat_r(prefix_wlc, "wpa_psk", tmp)));
+			if(nvram_contains_word("rc_support", "wpa3"))
+ 				fprintf(fp_wpa,"\ttieee80211w=1\n");
 		}
 		else
 			fprintf(fp_wpa,"\tkey_mgmt=NONE\n");		//open/none
@@ -966,7 +988,7 @@ void
 gen_qca_wifi_cfgs(void)
 {
 	pid_t pid;
-	char *argv[]={"/sbin/delay_exec","1","/tmp/postwifi.sh",NULL};
+	char *argv[]={"/sbin/delay_exec","1","nice -10 /tmp/postwifi.sh",NULL};
 	char path2[50];
 	char wif[256], *next, lan_ifnames[512];
 	FILE *fp,*fp2;
@@ -1147,10 +1169,13 @@ gen_qca_wifi_cfgs(void)
 			fprintf(fp2, "iwconfig %s channel auto\n", __get_wlifname(i, 0, wif));
 	}
 
-#if defined(RTCONFIG_SOC_IPQ8064)
-	fprintf(fp2, "echo 90 > /proc/sys/vm/pagecache_ratio\n");
-	fprintf(fp2, "echo -1 > /proc/net/skb_recycler/max_skbs\n");
-#endif
+//	if(nvram_match("smart_connect_x", "1") && sw_mode() != SW_MODE_REPEATER)
+//		fprintf(fp2, "rc rc_service restart_qca_lbd &\n");
+	if(nvram_get_int("pagecache_ratio") > 4 && nvram_get_int("pagecache_ratio") <= 90)
+		fprintf(fp2, "echo %d > /proc/sys/vm/pagecache_ratio\n", nvram_get_int("pagecache_ratio"));
+	else
+		fprintf(fp2, "echo %d > /proc/sys/vm/pagecache_ratio\n", 30);
+	fprintf(fp2, "echo 0 > /proc/net/skb_recycler/flush\n");
 
 #if !defined(RTCONFIG_CONCURRENTREPEATER)
 #if defined(RTCONFIG_WPS_ALLLED_BTN)
@@ -1221,7 +1246,27 @@ gen_qca_wifi_cfgs(void)
 	fclose(fp2);
 	chmod("/tmp/prewifi.sh",0777);
 	chmod("/tmp/postwifi.sh",0777);
-
+#if defined(RTCONFIG_SOC_IPQ8074)
+	set_irq_smp_affinity_by_name("reo2host-destination-ring4", 0, 8);
+	set_irq_smp_affinity_by_name("reo2host-destination-ring3", 0, 8);
+	set_irq_smp_affinity_by_name("reo2host-destination-ring2", 0, 4);
+	set_irq_smp_affinity_by_name("reo2host-destination-ring1", 0, 2);
+	set_irq_smp_affinity_by_name("wbm2host-tx-completions-ring3", 0, 8);
+	set_irq_smp_affinity_by_name("wbm2host-tx-completions-ring2", 0, 4);
+	set_irq_smp_affinity_by_name("wbm2host-tx-completions-ring1", 0, 2);
+	set_irq_smp_affinity_by_name("ppdu-end-interrupts-mac3", 0, 8);
+	set_irq_smp_affinity_by_name("ppdu-end-interrupts-mac2", 0, 4);
+	set_irq_smp_affinity_by_name("ppdu-end-interrupts-mac1", 0, 2);
+	set_irq_smp_affinity_by_name("rxdma2host-monitor-status-ring-mac3", 0, 8);
+	set_irq_smp_affinity_by_name("rxdma2host-monitor-status-ring-mac2", 0, 4);
+	set_irq_smp_affinity_by_name("rxdma2host-monitor-status-ring-mac1", 0, 2);
+	set_irq_smp_affinity_by_name("rxdma2host-monitor-destination-mac1", 0, 8);
+	set_irq_smp_affinity_by_name("rxdma2host-monitor-destination-mac2", 0, 4);
+	set_irq_smp_affinity_by_name("rxdma2host-monitor-destination-mac3", 0, 2);
+	set_irq_smp_affinity_by_name("host2rxdma-monitor-ring1", 0, 8);
+	set_irq_smp_affinity_by_name("host2rxdma-monitor-ring2", 0, 4);
+	set_irq_smp_affinity_by_name("host2rxdma-monitor-ring3", 0, 2);
+#endif
 	for (unit = 0; unit < ARRAY_SIZE(wl_mask); ++unit) {
 		max_sunit = num_of_mssid_support(unit);
 		for (sunit = 0; sunit <= max_sunit; ++sunit) {
@@ -1353,7 +1398,11 @@ gen_qca_wifi_cfgs(void)
 
 #ifdef RTCONFIG_WIRELESSREPEATER
 				if(sw_mode() == SW_MODE_REPEATER) {
+#if defined(RTCONFIG_CFG80211)
+					doSystem("cfg80211tool %s athnewind 1", wif);
+#else
 					doSystem("iwpriv %s athnewind 1", wif);
+#endif
 #if defined(RTCONFIG_CONCURRENTREPEATER)
 					/* workaround for default to avoid 2G can't connect */
 					if (!strcmp(wif, WIF_2G) && nvram_match("x_Setting", "0"))
@@ -1371,6 +1420,25 @@ gen_qca_wifi_cfgs(void)
 					continue;
 				if (!(fp = fopen(path2, "a")))
 					continue;
+
+#if defined(RTCONFIG_CFG80211)
+				fprintf(fp, "cfg80211tool %s rrm 1\n", wif);
+				sprintf(conf_path, "/etc/Wireless/conf/hostapd_%s.conf", wif);
+				fprintf(fp, "/usr/bin/wpa_cli -g %s raw ADD bss_config=%s:%s\n", wif, conf_path);
+#ifdef RTCONFIG_BW160M
+				if(unit == 1 || unit == 2){
+					int ext_nss = 0;
+					struct bandx_defval_s *bandx_p = wldefval_tbl[4];
+					if(bandx_p){
+						ext_nss = nvram_pf_get_int(main_prefix, "ext_nss");
+						if(ext_nss)
+							ext_nss = 1;
+						if(ext_nss != bandx_p->ext_nss)
+							fprintf(fp, "cfg80211tool %s ext_nss_sup %d\n", wif, ext_nss);
+					}
+				}
+#endif
+#else
 
 				/* hostapd of QCA Wi-Fi 10.2 and 10.4 driver is not required if
 				 * 1. Open system and WPS is disabled.
@@ -1414,7 +1482,7 @@ gen_qca_wifi_cfgs(void)
 					fprintf(fp, "delay_exec 5 hostapd_cli -i%s -a/usr/sbin/qca_hostapd_event_handler.sh -B &\n", wif);
 				}
 #endif	/* RTCONFIG_AMAS */
-
+#endif
 				/* Hostapd will up VAP interface automatically.
 				 * So, down VAP interface if radio is not on and
 				 * not to up VAP interface anymore.
@@ -1565,6 +1633,7 @@ int gen_ath_config(int band, int subnet)
 	char path4[50];
 	int acs_dfs = nvram_get_int("acs_dfs");
 	int memtotal = get_meminfo_item("MemTotal");
+	int soc_ver = get_soc_version_major();
 	int nss_en = nss_wifi_offloading();
 	struct bandx_defval_s *wldefval = wldefval_tbl[band];
 #endif
@@ -5201,7 +5270,7 @@ skip_init:
 			if(pt2)
 	  		{
 				if(strstr(pt2+strlen("Authentication Suites"),"SAE")!=NULL)
-			   		strcat(auth,"WPA3-Personal");
+			   		strlcpy(auth,"WPA3-Personal", sizeof(auth));
 				else if(strstr(pt2+strlen("Authentication Suites"),"PSK")!=NULL)
 			   		strcat(auth,"Personal");
 				else if(strstr(pt2+strlen("Authentication Suites"),"802.1x")!=NULL)
@@ -5802,8 +5871,9 @@ int wlcconnect_core(void)
 #endif
 	}
 #else
-	unit=nvram_get_int("wlc_band");
-	ret=getPapState(unit);
+	unit = nvram_get_int("wlc_band");
+	ret = getPapState(unit);
+	sta_status = ret;
 #endif
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
 	if(ret!=2){
@@ -5826,7 +5896,12 @@ int wlcconnect_core(void)
 			}
 		}
 		if(!reconnected && nvram_match(strcat_r(prefix, "nband", buf), "1")){
-			doSystem("cfg80211tool %s mode %s", ifname, "AUTO");
+#if defined(RTCONFIG_BW160M)
+			if(unit > 0 && unit <= 2)
+				doSystem("cfg80211tool %s mode %s", ifname, "11AHE160");
+			else
+#endif
+				doSystem("cfg80211tool %s mode %s", ifname, "AUTO");
 			reconnected = 1;
 		}
 	}
@@ -6183,7 +6258,10 @@ int en_multi_profile()
 }
 
 
-int __fastcall write_wpa_supplicant_network(int result, int a2, char *src, int a4, char *a5, const char *a6, int a7)
+int write_wpa_supplicant_network(int result, int a2, char *src, int a4, char *a5, const char *a6, int a7)
+{
+	return 0;
+}
 
 #ifdef RTCONFIG_BHCOST_OPT
 void apply_config_to_driver(int band)
@@ -6441,3 +6519,22 @@ void thermal_monitor(void)
 {
 }
 #endif
+
+void wlcconnect_sig_handle(int sig)
+{
+	int wlc_band = nvram_get_int("wlc_band");
+	if(sig == SIGCONT){
+		if(!sta_status)
+			sleep(5);
+		else
+			sleep(20);
+	}else if(sig == SIGTSTP){
+		pause();
+	}else
+		dbg("%s: received an invalid signal!\n", get_staifname(wlc_band));
+}
+
+int get_wisp_status(void)
+{
+	return getPapState(nvram_get_int("wlc_band")) == WLC_STATE_CONNECTED;
+}

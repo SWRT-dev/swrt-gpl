@@ -17,7 +17,7 @@ LDFLAGS += -L$(TOP_PLATFORM)/ethctl_lib -lethctl
 endif
 LDFLAGS += -L$(TOP_PLATFORM)/nvram$(BCMEX)${EX7} ${EXTRA_NV_LDFLAGS} -lnvram
 LDFLAGS += -lcrypt
-LDFLAGS += -L$(TOP)/openssl -lcrypto -lssl $(if $(or $(RTCONFIG_OPENSSL11),$(RTCONFIG_OPENSSL3)),-lpthread -latomic,)
+LDFLAGS += -L$(TOP)/openssl -lcrypto -lssl $(if $(or $(RTCONFIG_OPENSSL11),$(RTCONFIG_OPENSSL3)),-lpthread,) $(if $(RTCONFIG_OPENSSL3),-latomic,)
 
 
 INSTALL = install

@@ -1854,6 +1854,7 @@ int diff_current_bssid(int unit, char bssid_str[])
 
 	return 1;
 }
+#endif
 
 int wl_get_bw(int unit)
 {
@@ -2346,7 +2347,6 @@ void sync_control_channel(int unit, int channel, int bw, int nctrlsb)
 	ret = wl_set_ch_bw(athfix, channel, bw, nctrlsb);
 }
 
-#endif
 
 #ifdef RTCONFIG_CFGSYNC
 

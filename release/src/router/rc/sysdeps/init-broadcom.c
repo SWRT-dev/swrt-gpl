@@ -3483,42 +3483,32 @@ void init_others(void)
 }
 #else // HND_ROUTER
 
-
-void init_others(void)
+static void overclock(void)
 {
-	if (nvram_match("enable_samba", "1"))
-		nvram_set("txworkq", "1");
-	else
-		nvram_unset("txworkq");
-#if defined(RTAC68U) && !defined(RTAC68A) && !defined(RT4GAC68U)
-	update_cfe();
-#endif
-#ifdef RTAC3200
-	update_cfe_ac3200();
-	update_cfe_ac3200_128k();
-#endif
-#if defined(SBRAC3200P)
-	ac3200p_patch_cfe();
-#endif
-#ifdef RTAC68U
-	ac68u_cofs();
-#endif
-#if defined(R7000P)
-	r7000p_nvram_patch();
-#endif
-#if !defined(RTCONFIG_HND_ROUTER)
-	_dprintf("Overclocking started\n");
-
+	char dup[10] = {0}, mem[4] = {0};
+	int i, set = 1;
+	int clk, cclk;
 	int rev = cpu_plltype();
+	_dprintf("Overclocking started\n");
 
 	if (rev < 7 || rev > 11)
 		return;		// unsupported
 
-	if (!nvram_get("bcm_overclock") || nvram_match("bcm_overclock", "") || !nvram_get("clkfreq") || nvram_match("clkfreq", ""))
+	if (!nvram_get("clkfreq") || nvram_match("clkfreq", ""))
 		return;
-	int i, set = 1;
-	int clk = nvram_get_int("bcm_overclock"), cclk;
-	char dup[10] = {0}, mem[4] = {0};
+	if (!nvram_get("bcm_overclock") || nvram_match("bcm_overclock", "")){
+		strlcpy(dup, nvram_safe_get("clkfreq"), sizeof(dup));
+		for (i = 0; i < strlen(dup); i++){
+			if (dup[i] == ','){
+				dup[i] = 0;
+				break;
+			}
+		}
+		nvram_set("bcm_overclock", dup);
+	}
+
+	clk = nvram_get_int("bcm_overclock");
+
 	strlcpy(dup, nvram_safe_get("clkfreq"), sizeof(dup));
 
 	for (i = 0; i < strlen(dup); i++){
@@ -3600,7 +3590,31 @@ void init_others(void)
 		fprintf(stderr, "Overclocking done, rebooting...\n");
 		reboot(RB_AUTOBOOT);
 	}
+}
+
+void init_others(void)
+{
+	if (nvram_match("enable_samba", "1"))
+		nvram_set("txworkq", "1");
+	else
+		nvram_unset("txworkq");
+#if defined(RTAC68U) && !defined(RTAC68A) && !defined(RT4GAC68U)
+	update_cfe();
 #endif
+#ifdef RTAC3200
+	update_cfe_ac3200();
+	update_cfe_ac3200_128k();
+#endif
+#if defined(SBRAC3200P)
+	ac3200p_patch_cfe();
+#endif
+#ifdef RTAC68U
+	ac68u_cofs();
+#endif
+#if defined(R7000P)
+	r7000p_nvram_patch();
+#endif
+	overclock();
 }
 #endif	// HND_ROUTER
 #endif	// RTCONFIG_BCMARM
@@ -3718,6 +3732,12 @@ int find_user_unit(char *ustr)
 
 	_dprintf("%s: no results\n", __func__);
 	return 0;
+}
+
+/* adjust for triband 43684/6715 backhaul connection */
+void adjust_txbf_bfe_cap(int unit, char *orig_txbf_bfe_cap)
+{
+	;
 }
 
 void generate_wl_para(char *ifname, int unit, int subunit)
@@ -4344,6 +4364,7 @@ void generate_wl_para(char *ifname, int unit, int subunit)
 			nvram_set(strcat_r(prefix, "bw_320", tmp), !nvram_match(strcat_r(prefix, "nband", tmp2), "4") ? "0" : "1");
 #else
 			nvram_set(strcat_r(prefix, "bw_160", tmp), nvram_match(strcat_r(prefix, "nband", tmp2), "2") ? "0" : "1");
+#endif
 		}
 #endif
 
@@ -8111,7 +8132,7 @@ void set_acs_ifnames()
 	char acs_ifnames[64];
 	char acs_ifnames2[64];
 	char word[256], *next;
-	char tmp[128], tmp2[128], prefix[] = "wlXXXXXXXXXX_";
+	char tmp[128], prefix[] = "wlXXXXXXXXXX_";
 	int unit = 0;
 	char wlvif[] = "wlxxxx";
 	char list[1024], list2[1024], list_5g_band1_chans[1024], list_5g_band2_chans[1024], list_5g_band3_chans[1024];
@@ -8158,7 +8179,7 @@ void set_acs_ifnames()
 	snprintf(prefix_6g2, sizeof(prefix_6g2), "wl%d_", WL_6G_2_BAND);
 #endif
 
-	war = nvram_match(strcat_r(prefix_5g, "bw_160", tmp), "1") && nvram_match("acs_dfs", "0");
+	war = nvram_pf_match(prefix_5g, "bw_160", "1") && nvram_match("acs_dfs", "0");
 
 	wl_check_5g_band_group();
 
@@ -8183,9 +8204,6 @@ void set_acs_ifnames()
 #endif
 
 	foreach (word, nvram_safe_get("wl_ifnames"), next) {
-#ifdef RTCONFIG_QTN
-		if (!strcmp(word, "wifi0")) break;
-#endif
 		unit = -1;
 		wl_ioctl(word, WLC_GET_INSTANCE, &unit, sizeof(unit));
 		if (unit == -1)
@@ -8194,16 +8212,16 @@ void set_acs_ifnames()
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 
 #ifdef RTCONFIG_AVBLCHAN
-		cfg_excl = nvram_safe_get(strcat_r(prefix, "acs_excl_chans_cfg", tmp));
+		cfg_excl = nvram_pf_safe_get(prefix, "acs_excl_chans_cfg");
 		if(*cfg_excl) {
 			init_cfg_excl(cfg_excl, cfg_excl_chans, unit);
 		}
 #endif
-		if (nvram_match(strcat_r(prefix, "radio", tmp), "1") &&
-			((nvram_match(strcat_r(prefix, "mode", tmp), "ap") &&
-			 (nvram_match(strcat_r(prefix, "chanspec", tmp), "0") ||
-			 (nvram_match(strcat_r(prefix, "bw", tmp), "0") &&
-			  nvram_match(strcat_r(prefix, "nband", tmp2), "2"))))
+		if (nvram_pf_match(prefix, "radio", "1") &&
+			((nvram_pf_match(prefix, "mode", "ap") &&
+			 (nvram_pf_match(prefix, "chanspec", "0") ||
+			 (nvram_pf_match(prefix, "bw", "0") &&
+			  nvram_pf_match(prefix, "nband", "2"))))
 			|| dpsta_mode()
 #if defined(RTCONFIG_PROXYSTA) && defined(RTCONFIG_AMAS)
 			|| (dpsr_mode() && strlen(nvram_safe_get("cfg_group")) > 0)
@@ -8223,17 +8241,16 @@ void set_acs_ifnames()
 				snprintf(acs_ifnames2, sizeof(acs_ifnames2), "%s%s%s", acs_ifnames, strlen(acs_ifnames) ? " " : "", wlvif);
 			}
 			else
-#endif
 				snprintf(acs_ifnames2, sizeof(acs_ifnames2), "%s%s%s", acs_ifnames, strlen(acs_ifnames) ? " " : "", word);
 			strlcpy(acs_ifnames, acs_ifnames2, sizeof(acs_ifnames));
 		}
 
 #if !defined(RTCONFIG_BCM_7114) && !defined(RTCONFIG_HND_ROUTER_AX)
-		nvram_set(strcat_r(prefix, "acs_pol", tmp), "-65 40 -1 -100 -100 -1 -100 50 -100 0 1 0");
+		nvram_pf_set(prefix, "acs_pol", "-65 40 -1 -100 -100 -1 -100 50 -100 0 1 0");
 #endif
-		if (nvram_match(strcat_r(prefix, "nband", tmp), "2"))
+		if (nvram_pf_match(prefix, "nband", "2"))
 			/* exclude acsd from selecting chanspec 12, 12u, 13, 13u, 14, 14u */
-			nvram_set(strcat_r(prefix, "acs_excl_chans", tmp), nvram_match("acs_ch13", "1") ? "" : "0x100c,0x190a,0x100d,0x190b,0x100e,0x190c");
+			nvram_pf_set(prefix, "acs_excl_chans", nvram_match("acs_ch13", "1") ? "" : "0x100c,0x190a,0x100d,0x190b,0x100e,0x190c");
 	}
 
 	nvram_set("acs_ifnames", acs_ifnames);
@@ -8243,18 +8260,18 @@ void set_acs_ifnames()
 #ifdef RTCONFIG_QUADBAND
 		|| (num_of_wl_if() > 3
 #ifdef RTCONFIG_HAS_5G_2
-		   && wl_get_band(nvram_safe_get(strcat_r(prefix_5g2, "ifname", tmp))) == WLC_BAND_5G
+		   && wl_get_band(nvram_pf_safe_get(prefix_5g2, "ifname")) == WLC_BAND_5G
 		   && !(nvram_get_hex(strcat_r(prefix_5g2, "band5grp", tmp)) & WL_5G_BAND_4)
 #endif
 		)
 #else
 #ifdef RTCONFIG_HAS_5G_2
 		|| (num_of_wl_if() == 3 &&
-		    ((wl_get_band(nvram_safe_get(strcat_r(prefix_5g2, "ifname", tmp))) == WLC_BAND_5G &&
+		    ((wl_get_band(nvram_pf_safe_get(prefix_5g2, "ifname")) == WLC_BAND_5G &&
 		     !(nvram_get_hex(strcat_r(prefix_5g2, "band5grp", tmp)) & WL_5G_BAND_4))
 #if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
-		     || (wl_get_band(nvram_safe_get(strcat_r(prefix_5g2, "ifname", tmp))) == WLC_BAND_6G &&
-		      wl_get_band(nvram_safe_get(strcat_r(prefix_5g, "ifname", tmp))) == WLC_BAND_5G &&
+		     || (wl_get_band(nvram_pf_safe_get(prefix_5g2, "ifname")) == WLC_BAND_6G &&
+		      wl_get_band(nvram_pf_safe_get(prefix_5g, "ifname")) == WLC_BAND_5G &&
 		     !(nvram_get_hex(strcat_r(prefix_5g, "band5grp", tmp)) & WL_5G_BAND_4))
 #endif
 		     ))
@@ -8265,7 +8282,7 @@ void set_acs_ifnames()
 
 #if defined(RTCONFIG_HAS_5G_2) && !defined(RTCONFIG_WIFI6E) && !defined(RTCONFIG_WIFI7)
 	/* band 2 */
-	nvram_set(strcat_r(prefix_5g, "acs_excl_chans", tmp), nvram_match("acs_dfs", "1") ? "" : list_5g_band2_chans);
+	nvram_pf_set(prefix_5g, "acs_excl_chans", nvram_match("acs_dfs", "1") ? "" : list_5g_band2_chans);
 	nvram_set("wl_acs_excl_chans_dfs", nvram_match("acs_dfs", "1") ? "" : list_5g_band2_chans);
 
 	/* band 4, UNII-4 */
@@ -8287,7 +8304,7 @@ void set_acs_ifnames()
 	/* band 3 */
 	snprintf(list2, sizeof(list2), strlen(list_5g_band3_chans) ? "%s,%s" : "%s", list, list_5g_band3_chans);
 
-	nvram_set(strcat_r(prefix_5g2, "acs_excl_chans", tmp), nvram_match("acs_band3", "1") ? list : list2);
+	nvram_pf_set(prefix_5g2, "acs_excl_chans", nvram_match("acs_band3", "1") ? list : list2);
 	nvram_set("wl_acs_excl_chans_dfs_2", nvram_match("acs_band3", "1") ? list : list2);
 #elif (defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7))
 	/* band 4, UNII-4 */
@@ -8311,19 +8328,19 @@ void set_acs_ifnames()
 	/* band 2 */
 	snprintf(list3, sizeof(list3), strlen(list_5g_band2_chans) ? "%s,%s" : "%s", list2, list_5g_band2_chans);
 #ifdef RTCONFIG_QUADBAND
-	nvram_set(strcat_r(prefix_5g, "acs_excl_chans", tmp), nvram_match("acs_dfs", "1") ? "" : list3);
+	nvram_pf_set(prefix_5g, "acs_excl_chans", nvram_match("acs_dfs", "1") ? "" : list3);
 #ifdef RTCONFIG_HAS_5G_2
-	nvram_set(strcat_r(prefix_5g2, "acs_excl_chans", tmp), nvram_match("acs_band3", "1") ? list : list2);
+	nvram_pf_set(prefix_5g2, "acs_excl_chans", nvram_match("acs_band3", "1") ? list : list2);
 #endif
 #else
-	nvram_set(strcat_r(prefix_5g, "acs_excl_chans", tmp), nvram_match("acs_dfs", "1") ? (nvram_match("acs_band3", "1") ? list : list2) : list3);
+	nvram_pf_set(prefix_5g, "acs_excl_chans", nvram_match("acs_dfs", "1") ? (nvram_match("acs_band3", "1") ? list : list2) : list3);
 #endif
 	nvram_set("wl_acs_excl_chans_dfs", nvram_match("acs_dfs", "1") ? (nvram_match("acs_band3", "1") ? list : list2) : list3);
 
 	/* WAR: exclude acsd from selecting chanspec 6g1, 6g5, 6g9, 6g13, 6g17, 6g21, 6g25, 6g29 bw20/40/80/160, also 6g233 bw20 */
 	/* add exclude 6g225, 6g229, 6g225/40, 6g229/40 */
 	if (!strncmp(nvram_safe_get("territory_code"), "EU", 2)) {
-		nvram_set(strcat_r(prefix_6g, "acs_excl_chans", tmp), "0x50e9,0x50e1,0x50e5,0x58e3,0x59e3");
+		nvram_pf_set(prefix_6g, "acs_excl_chans", "0x50e9,0x50e1,0x50e5,0x58e3,0x59e3");
 		nvram_set("wl_acs_excl_chans_dfs_2", "0x50e9,0x50e1,0x50e5,0x58e3,0x59e3");
 	} else {
 #if defined(RTCONFIG_BW320M)
@@ -8337,50 +8354,50 @@ void set_acs_ifnames()
 			snprintf(list6g, sizeof(list6g), "0x5001,0x5002,0x5005,0x5009,0x500d,0x5011,0x5015,0x5019,0x501d,0x5803,0x5903,0x580b,0x590b,0x5813,0x5913,0x581b,0x591b,0x6007,0x6107,0x6207,0x6307,0x6017,0x6117,0x6217,0x6317,0x680f,0x690f,0x6a0f,0x6b0f,0x6c0f,0x6d0f,0x6e0f,0x6f0f,0x7000,0x7040,0x7080,0x70c0,0x7100,0x7140,0x7180,0x71c0,0x7200,0x7240,0x7280,0x72c0,0x7300,0x7340,0x7380,0x73c0,0x50e9,0x50e1,0x50e5,0x58e3,0x59e3");
 		}
 
-		nvram_set(strcat_r(prefix_6g, "acs_excl_chans", tmp), list6g);
+		nvram_pf_set(prefix_6g, "acs_excl_chans", list6g);
 		nvram_set("wl_acs_excl_chans_dfs_2", list6g);
 #else
 		/* exclude acsd from selecting chanspec 6g1, 6g5, 6g9, 6g13, 6g17, 6g21, 6g25, 6g29 bw20/40/80/160/320 and 6g33-6g61 bw320, also 6g225, 6g229 bw20/40, 6g233 bw20 */
-		nvram_set(strcat_r(prefix_6g, "acs_excl_chans", tmp), "0x5001,0x5002,0x5005,0x5009,0x500d,0x5011,0x5015,0x5019,0x501d,0x5803,0x5903,0x580b,0x590b,0x5813,0x5913,0x581b,0x591b,0x6007,0x6107,0x6207,0x6307,0x6017,0x6117,0x6217,0x6317,0x680f,0x690f,0x6a0f,0x6b0f,0x6c0f,0x6d0f,0x6e0f,0x6f0f,0x7000,0x7040,0x7080,0x70c0,0x7100,0x7140,0x7180,0x71c0,0x7200,0x7240,0x7280,0x72c0,0x7300,0x7340,0x7380,0x73c0,0x50e9,0x50e1,0x50e5,0x58e3,0x59e3");
+		nvram_pf_set(prefix_6g, "acs_excl_chans", "0x5001,0x5002,0x5005,0x5009,0x500d,0x5011,0x5015,0x5019,0x501d,0x5803,0x5903,0x580b,0x590b,0x5813,0x5913,0x581b,0x591b,0x6007,0x6107,0x6207,0x6307,0x6017,0x6117,0x6217,0x6317,0x680f,0x690f,0x6a0f,0x6b0f,0x6c0f,0x6d0f,0x6e0f,0x6f0f,0x7000,0x7040,0x7080,0x70c0,0x7100,0x7140,0x7180,0x71c0,0x7200,0x7240,0x7280,0x72c0,0x7300,0x7340,0x7380,0x73c0,0x50e9,0x50e1,0x50e5,0x58e3,0x59e3");
 		nvram_set("wl_acs_excl_chans_dfs_2", "0x5001,0x5002,0x5005,0x5009,0x500d,0x5011,0x5015,0x5019,0x501d,0x5803,0x5903,0x580b,0x590b,0x5813,0x5913,0x581b,0x591b,0x6007,0x6107,0x6207,0x6307,0x6017,0x6117,0x6217,0x6317,0x680f,0x690f,0x6a0f,0x6b0f,0x6c0f,0x6d0f,0x6e0f,0x6f0f,0x7000,0x7040,0x7080,0x70c0,0x7100,0x7140,0x7180,0x71c0,0x7200,0x7240,0x7280,0x72c0,0x7300,0x7340,0x7380,0x73c0,0x50e9,0x50e1,0x50e5,0x58e3,0x59e3");
 #endif //defined(RTBE96U)
 #else
-		nvram_set(strcat_r(prefix_6g, "acs_excl_chans", tmp), "0x5001,0x5002,0x5005,0x5009,0x500d,0x5011,0x5015,0x5019,0x501d,0x5803,0x5903,0x580b,0x590b,0x5813,0x5913,0x581b,0x591b,0x6007,0x6107,0x6207,0x6307,0x6017,0x6117,0x6217,0x6317,0x680f,0x690f,0x6a0f,0x6b0f,0x6c0f,0x6d0f,0x6e0f,0x6f0f,0x50e9,0x50e1,0x50e5,0x58e3,0x59e3");
+		nvram_pf_set(prefix_6g, "acs_excl_chans", "0x5001,0x5002,0x5005,0x5009,0x500d,0x5011,0x5015,0x5019,0x501d,0x5803,0x5903,0x580b,0x590b,0x5813,0x5913,0x581b,0x591b,0x6007,0x6107,0x6207,0x6307,0x6017,0x6117,0x6217,0x6317,0x680f,0x690f,0x6a0f,0x6b0f,0x6c0f,0x6d0f,0x6e0f,0x6f0f,0x50e9,0x50e1,0x50e5,0x58e3,0x59e3");
 		nvram_set("wl_acs_excl_chans_dfs_2", "0x5001,0x5002,0x5005,0x5009,0x500d,0x5011,0x5015,0x5019,0x501d,0x5803,0x5903,0x580b,0x590b,0x5813,0x5913,0x581b,0x591b,0x6007,0x6107,0x6207,0x6307,0x6017,0x6117,0x6217,0x6317,0x680f,0x690f,0x6a0f,0x6b0f,0x6c0f,0x6d0f,0x6e0f,0x6f0f,0x50e9,0x50e1,0x50e5,0x58e3,0x59e3");
 #endif //defined(RTCONFIG_BW320M)
 	}
 #else
-	if (nvram_match(strcat_r(prefix_5g, "band5grp", tmp), "7")) {		// EU, JP, UA
+	if (nvram_pf_match(prefix_5g, "band5grp", "7")) {		// EU, JP, UA
 #ifdef RTAC66U
-		if (!nvram_match(strcat_r(prefix_5g, "dfs", tmp), "1"))
+		if (!nvram_pf_match(prefix_5g, "dfs", "1"))
 			nvram_set("acs_dfs", "0");
 #endif
 		snprintf(list, sizeof(list), "%s,%s", list_5g_band2_chans, list_5g_band3_chans);
 		if (!strncmp(nvram_safe_get("territory_code"), "UA", 2) || nvram_match("location_code", "RU")) {
 			/* exclude acsd from selecting chanspec 100, 100l, 100/80, 100/160, 104, 104u, 104/80, 104/160, 108, 108l, 108/80, 108/160, 112, 112u, 112/80, 112/160, 116, 116l, 116/80, 116/160, 120, 120u, 120/80, 120/160, 124, 124l, 124/80, 124/160, 128, 128u, 128/80, 128/160, 132, 132l, 136, 136u, 140 */
-			nvram_set(strcat_r(prefix_5g, "acs_excl_chans", tmp), nvram_match("acs_dfs", "1") ? (nvram_match("acs_band3", "1") ? "" : list_5g_band3_chans) : list);
+			nvram_pf_set(prefix_5g, "acs_excl_chans", nvram_match("acs_dfs", "1") ? (nvram_match("acs_band3", "1") ? "" : list_5g_band3_chans) : list);
 			nvram_set("wl_acs_excl_chans_dfs", nvram_match("acs_dfs", "1") ? (nvram_match("acs_band3", "1") ? "" : list_5g_band3_chans) : list);
 		} else {
 #if defined(RTAX55) || defined(RTAX1800) || defined(RTAX86U) || defined(TUFAX5400) || defined(TUFAX5400_V2) || defined(GTAX6000) || defined(RTAX86U_PRO) || defined(RTAX3000N) || defined(BR63) || defined(RTAX88U_PRO) || defined(RTAX5400)
 			if (!strncmp(nvram_safe_get("territory_code"), "JP", 2)
 				|| !strncmp(nvram_safe_get("territory_code"), "KR", 2)) {
 				/* exclude acsd from selecting chanspec 132/80 136/80 140l 140/80 144 144u 144/80 by default */
-				nvram_set(strcat_r(prefix_5g, "acs_excl_chans", tmp), nvram_match("acs_dfs", "1") ? (nvram_match("acs_dfs_144", "1") ? "" :  "0xe08a,0xe18a,0xe28a,0xd88e,0xd090,0xe38a,0xd98e") : list);
+				nvram_pf_set(prefix_5g, "acs_excl_chans", nvram_match("acs_dfs", "1") ? (nvram_match("acs_dfs_144", "1") ? "" :  "0xe08a,0xe18a,0xe28a,0xd88e,0xd090,0xe38a,0xd98e") : list);
 				nvram_set("wl_acs_excl_chans_dfs", nvram_match("acs_dfs", "1") ? (nvram_match("acs_dfs_144", "1") ? "" :  "0xe08a,0xe18a,0xe28a,0xd88e,0xd090,0xe38a,0xd98e") : list);
 			} else {
 #endif
 				/* exclude acsd from selecting chanspec 52, 52l, 52/80, 52/160, 56, 56u, 56/80, 56/160, 60, 60l, 60/80, 60/160, 64, 64u, 64/80, 64/160, 100, 100l, 100/80, 100/160, 104, 104u, 104/80, 104/160, 108, 108l, 108/80, 108/160, 112, 112u, 112/80, 112/160, 116, 116l, 116/80, 116/160, 120, 120u, 120/80, 120/160, 124, 124l, 124/80, 124/160, 128, 128u, 128/80, 128/160, 132, 132l, 136, 136u, 140 */
-				nvram_set(strcat_r(prefix_5g, "acs_excl_chans", tmp), nvram_match("acs_dfs", "1") ? "" : list);
+				nvram_pf_set(prefix_5g, "acs_excl_chans", nvram_match("acs_dfs", "1") ? "" : list);
 				nvram_set("wl_acs_excl_chans_dfs", nvram_match("acs_dfs", "1") ? "" : list);
 #if defined(RTAX55) || defined(RTAX1800) || defined(RTAX86U) || defined(TUFAX5400) || defined(TUFAX5400_V2) || defined(GTAX6000) || defined(RTAX86U_PRO) || defined(RTAX3000N) || defined(BR63) || defined(RTAX88U_PRO) || defined(RTAX5400)
 			}
 #endif
 		}
-	} else if (nvram_match(strcat_r(prefix_5g, "band5grp", tmp), "9")) {	// US, CA, TW, SG, KR, AU (FCC)
-		if (nvram_match(strcat_r(prefix_5g, "country_code", tmp), "US") ||
-		    nvram_match(strcat_r(prefix_5g, "country_code", tmp), "Q1") || 
-		    nvram_match(strcat_r(prefix_5g, "country_code", tmp), "Q2") ||
-		    nvram_match(strcat_r(prefix_5g, "country_code", tmp), "SG") ||
+	} else if (nvram_pf_match(prefix_5g, "band5grp", "9")) {	// US, CA, TW, SG, KR, AU (FCC)
+		if (nvram_pf_match(prefix_5g, "country_code", "US") ||
+		    nvram_pf_match(prefix_5g, "country_code", "Q1") || 
+		    nvram_pf_match(prefix_5g, "country_code", "Q2") ||
+		    nvram_pf_match(prefix_5g, "country_code", "SG") ||
 		    !strncmp(nvram_safe_get("territory_code"), "US", 2) ||
 		    !strncmp(nvram_safe_get("territory_code"), "AU", 2))
 			// enable band 1 for US region
@@ -8388,17 +8405,17 @@ void set_acs_ifnames()
 
 		/* exclude acsd from selecting chanspec 36, 36l, 36/80, 36/160, 40, 40u, 40/80, 40/160, 44, 44l, 44/80, 44/160, 48, 48u, 48/80, 48/160, 165 for non-US region by default */
 		snprintf(list, sizeof(list), "%s,0xd0a5", list_5g_band1_chans);
-		nvram_set(strcat_r(prefix_5g, "acs_excl_chans", tmp), nvram_match("acs_band1", "1") ? "0xd0a5" : list);
-	} else if (nvram_match(strcat_r(prefix_5g, "band5grp", tmp), "b")) {
+		nvram_pf_set(prefix_5g, "acs_excl_chans", nvram_match("acs_band1", "1") ? "0xd0a5" : list);
+	} else if (nvram_pf_match(prefix_5g, "band5grp", "b")) {
 		snprintf(list, sizeof(list), "%s,0xd0a5", list_5g_band2_chans);
-		nvram_set(strcat_r(prefix_5g, "acs_excl_chans", tmp), nvram_match("acs_dfs", "1") ? "0xd0a5" : list);
+		nvram_pf_set(prefix_5g, "acs_excl_chans", nvram_match("acs_dfs", "1") ? "0xd0a5" : list);
 #if defined(RTCONFIG_HND_ROUTER_AX)
-	} else if (nvram_match(strcat_r(prefix_5g, "band5grp", tmp), "f")) {	// AU (NEW), FCC-DFS
+	} else if (nvram_pf_match(prefix_5g, "band5grp", "f")) {	// AU (NEW), FCC-DFS
 		/* exclude acsd from selecting chanspec 100, 100l, 100/80, 100/160, 104, 104u, 104/80, 104/160, 108, 108l, 108/80, 108/160, 112, 112u, 112/80, 112/160, 116, 116l, 116/80, 116/160, 120, 120u, 120/80, 120/160, 124, 124l, 124/80, 124/160, 128, 128u, 128/80, 128/160, 132, 132l, 136, 136u, 140, 165 */
 		snprintf(list, sizeof(list), "%s,0xd0a5", list_5g_band3_chans);
 		snprintf(list2, sizeof(list2), "%s,%s,0xd0a5", list_5g_band2_chans, list_5g_band3_chans);
-		nvram_set(strcat_r(prefix_5g, "acs_excl_chans", tmp), nvram_match("acs_dfs", "1") ? (nvram_match("acs_band3", "1") ? "" : list) : list2);
-	} else if (nvram_match(strcat_r(prefix_5g, "band5grp", tmp), "1f")) {	// FCC-DFS including UNII-4
+		nvram_pf_set(prefix_5g, "acs_excl_chans", nvram_match("acs_dfs", "1") ? (nvram_match("acs_band3", "1") ? "" : list) : list2);
+	} else if (nvram_pf_match(prefix_5g, "band5grp", "1f")) {	// FCC-DFS including UNII-4
 		/* exclude acsd from selecting chanspec 100, 100l, 100/80, 100/160, 104, 104u, 104/80, 104/160, 108, 108l, 108/80, 108/160, 112, 112u, 112/80, 112/160, 116, 116l, 116/80, 116/160, 120, 120u, 120/80, 120/160, 124, 124l, 124/80, 124/160, 128, 128u, 128/80, 128/160, 132, 132l, 136, 136u, 140, 165, 165l, 165/80, 165/160, and UNII-4 chanspecs */
 		if (!nvram_get_int("acs_unii4")
 #ifdef RTCONFIG_AMAS_ADTBW
@@ -8416,20 +8433,18 @@ void set_acs_ifnames()
 		}
 		snprintf(list2, sizeof(list2), strlen(list_5g_band3_chans) ? "%s,%s" : "%s", list, list_5g_band3_chans);
 		snprintf(list3, sizeof(list3), strlen(list_5g_band2_chans) ? "%s,%s" : "%s", list2, list_5g_band2_chans);
-		nvram_set(strcat_r(prefix_5g, "acs_excl_chans", tmp), nvram_match("acs_dfs", "1") ? (nvram_match("acs_band3", "1") ? list : list2) : list3);
+		nvram_pf_set(prefix_5g, "acs_excl_chans", nvram_match("acs_dfs", "1") ? (nvram_match("acs_band3", "1") ? list : list2) : list3);
 #else
-	} else if (nvram_match(strcat_r(prefix_5g, "band5grp", tmp), "f")) {	// AU (NEW)
+	} else if (nvram_pf_match(prefix_5g, "band5grp", "f")) {	// AU (NEW)
 		/* exclude acsd from selecting chanspec 52, 52l, 52/80, 56, 56u, 56/80, 60, 60l, 60/80, 64, 64u, 64/80, 100, 100l, 100/80, 104, 104u, 104/80, 108, 108l, 108/80, 112, 112u, 112/80, 116, 132, 132l, 136, 136u, 140, 165 */
 		snprintf(list, sizeof(list), "%s,%s,0xd0a5", list_5g_band2_chans, list_5g_band3_chans);
-		nvram_set(strcat_r(prefix_5g, "acs_excl_chans", tmp), nvram_match("acs_dfs", "1") ? "0xd0a5" : list);
+		nvram_pf_set(prefix_5g, "acs_excl_chans", nvram_match("acs_dfs", "1") ? "0xd0a5" : list);
 #endif
 	} else {					// CN, AU (FCC + CE)
 		/* exclude acsd from selecting chanspec 165 */
-		nvram_set(strcat_r(prefix_5g, "acs_excl_chans", tmp), "0xd0a5");
+		nvram_pf_set(prefix_5g, "acs_excl_chans", "0xd0a5");
 	}
 #endif
-
-#ifdef RTCONFIG_AVBLCHAN
 
 #ifdef RTCONFIG_AVBLCHAN
 	int i, excinit = 0;
@@ -8446,10 +8461,10 @@ void set_acs_ifnames()
 
 	//dump_acs_excl_chans("rc-aft-cfg");
 #endif
-	nvram_set_int(strcat_r(prefix_2g, "acs_dfs", tmp), 0);
-	nvram_set_int(strcat_r(prefix_5g, "acs_dfs", tmp), nvram_match(strcat_r(prefix_5g, "reg_mode", tmp2), "h") ? 1 : 0);
+	nvram_pf_set_int(prefix_2g, "acs_dfs", 0);
+	nvram_pf_set_int(prefix_5g, "acs_dfs", nvram_pf_match(prefix_5g, "reg_mode", "h") ? 1 : 0);
 #ifdef RTCONFIG_HAS_5G_2
-	nvram_set_int(strcat_r(prefix_5g2, "acs_dfs", tmp), nvram_match(strcat_r(prefix_5g2, "reg_mode", tmp2), "h") ? 1 : 0);
+	nvram_pf_set_int(prefix_5g2, "acs_dfs", nvram_pf_match(prefix_5g2, "reg_mode", "h") ? 1 : 0);
 #endif
 
 	/* workaround to 675x/49xx dual band models */
@@ -8466,7 +8481,6 @@ void set_acs_ifnames()
 	nvram_set("avblchan_reset", "");
 #endif
 }
-#endif
 
 #ifdef RTCONFIG_PORT_BASED_VLAN
 int check_used_stb_voip_port(int lan)
@@ -9035,13 +9049,12 @@ void wl_driver_mode_update(void)
 #endif
 
 #ifdef BCM_BSD
-void smart_connect_realign_ifnames() {
-
+void smart_connect_realign_ifnames()
+{
 	int wlif_count = num_of_wl_if();
 	int i = 0, j = 0, bandtype;
 	char tmp[32], prefix[]="wlXXXXXXX_";
-	char tmp2[32], prefix2[]="wlXXXXXXX_";
-	char tmp3[32];
+	char prefix2[]="wlXXXXXXX_";
 	char bsd_ifnames[32];
 	char bsd_if_sel[32];
 #if defined(RTCONFIG_BCMBSD_V2)
@@ -9067,16 +9080,16 @@ void smart_connect_realign_ifnames() {
 	memset(bsd_ifnames, 0, sizeof(bsd_ifnames));
 	for (i = 0; i < wlif_count; i++) {
 		snprintf(prefix, sizeof(prefix), "wl%d_", i);
-		bandtype = nvram_get_int(strcat_r(prefix, "nband", tmp));
+		bandtype = nvram_pf_get_int(prefix, "nband");
 		if((bandtype == WLC_BAND_2G && smartconnect_selif_x & SMRTCONN_SEL_2G))
-			add_to_list(nvram_safe_get(strcat_r(prefix, "ifname", tmp)) , bsd_ifnames, sizeof(bsd_ifnames));
+			add_to_list(nvram_pf_safe_get(prefix, "ifname") , bsd_ifnames, sizeof(bsd_ifnames));
 		if(bandtype == WLC_BAND_5G) {
 			if( idx_5g == 0 && smartconnect_selif_x & SMRTCONN_SEL_5G 
 #if defined(RTCONFIG_HAS_5G_2)
 			 || idx_5g == 1 && smartconnect_selif_x & SMRTCONN_SEL_5G2
 #endif
 			) {
-				add_to_list(nvram_safe_get(strcat_r(prefix, "ifname", tmp)) , bsd_ifnames, sizeof(bsd_ifnames));
+				add_to_list(nvram_pf_safe_get(prefix, "ifname") , bsd_ifnames, sizeof(bsd_ifnames));
 				idx_5g++;
 			}
 		}
@@ -9087,7 +9100,7 @@ void smart_connect_realign_ifnames() {
 			 || idx_6g == 1 && smartconnect_selif_x & SMRTCONN_SEL_6G2
 #endif
 			) {
-				add_to_list(nvram_safe_get(strcat_r(prefix, "ifname", tmp)) , bsd_ifnames, sizeof(bsd_ifnames));
+				add_to_list(nvram_pf_safe_get(prefix, "ifname") , bsd_ifnames, sizeof(bsd_ifnames));
 				idx_6g++;
 			}
 		}
@@ -9111,8 +9124,8 @@ void smart_connect_realign_ifnames() {
 	for (i = 0; i < wlif_count; i++) {
 		memset(bsd_if_sel, 0, sizeof(bsd_if_sel));
 		snprintf(prefix, sizeof(prefix), "wl%d_", i);
-		snprintf(ifname, sizeof(ifname), "%s", nvram_safe_get(strcat_r(prefix, "ifname", tmp)));
-		bandtype = nvram_get_int(strcat_r(prefix, "nband", tmp));
+		snprintf(ifname, sizeof(ifname), "%s", nvram_pf_safe_get(prefix, "ifname"));
+		bandtype = nvram_pf_get_int(prefix, "nband");
 
 		/* 2.4G */
 		if(bandtype == WLC_BAND_2G && smartconnect_selif_x & SMRTCONN_SEL_2G) { // 2.4G is selected (smart_connect_x: 1)
@@ -9122,23 +9135,23 @@ void smart_connect_realign_ifnames() {
 			 || smartconnect_selif_x & SMRTCONN_SEL_6G
 			 || smartconnect_selif_x & SMRTCONN_SEL_6G2
 			) {
-				if(!strlen(nvram_safe_get(strcat_r(prefix, "bsd_if_select_policy", tmp)))) {
+				if(!strlen(nvram_pf_safe_get(prefix, "bsd_if_select_policy"))) {
 					for (j = wlif_count - 1; j >= 0; j--) {
 						if(j == i)
 							continue;
 						snprintf(prefix2, sizeof(prefix2), "wl%d_", j);
-						if((nvram_get_int(strcat_r(prefix2, "nband", tmp2)) == WLC_BAND_5G ||
-							nvram_get_int(strcat_r(prefix2, "nband", tmp2)) == WLC_BAND_6G) &&
-							find_in_list(bsd_ifnames, (nvram_safe_get(strcat_r(prefix2, "ifname", tmp2))))) 
+						if((nvram_pf_get_int(prefix2, "nband") == WLC_BAND_5G ||
+							nvram_pf_get_int(prefix2, "nband") == WLC_BAND_6G) &&
+							find_in_list(bsd_ifnames, (nvram_pf_safe_get(prefix2, "ifname")))) 
 						{
-							_dprintf("%s: add [%s] into target ifname\n", ifname, nvram_safe_get(strcat_r(prefix2, "ifname", tmp2)));
-							add_to_list(nvram_safe_get(strcat_r(prefix2, "ifname", tmp2)) , bsd_if_sel, sizeof(bsd_if_sel));
+							_dprintf("%s: add [%s] into target ifname\n", ifname, nvram_pf_safe_get(prefix2, "ifname"));
+							add_to_list(nvram_pf_safe_get(prefix2, "ifname") , bsd_if_sel, sizeof(bsd_if_sel));
 						}
 
 					}
 					if(strlen(bsd_if_sel)) {
-						_dprintf("%s: %s=[%s]\n", ifname, strcat_r(prefix, "bsd_if_select_policy", tmp), bsd_if_sel);
-						nvram_set(strcat_r(prefix, "bsd_if_select_policy", tmp), bsd_if_sel);
+						_dprintf("%s: %s%s=[%s]\n", ifname, prefix, "bsd_if_select_policy", bsd_if_sel);
+						nvram_pf_set(prefix, "bsd_if_select_policy", bsd_if_sel);
 					}
 				}
 			}
@@ -9150,26 +9163,26 @@ void smart_connect_realign_ifnames() {
 		|| (bandtype == WLC_BAND_6G && ((smartconnect_selif_x & SMRTCONN_SEL_6G) || (smartconnect_selif_x & SMRTCONN_SEL_6G2))) // 6G or 6G-2 is selected
 #endif
 		) {
-			if(!strlen(nvram_safe_get(strcat_r(prefix, "bsd_if_select_policy", tmp)))) {
+			if(!strlen(nvram_pf_safe_get(prefix, "bsd_if_select_policy"))) {
 				for (j = wlif_count - 1; j >= 0; j--) {
 					if(j == i)
 						continue;
 					snprintf(prefix2, sizeof(prefix2), "wl%d_", j);
-					if (find_in_list(bsd_ifnames, (nvram_safe_get(strcat_r(prefix2, "ifname", tmp2)))))
+					if (find_in_list(bsd_ifnames, (nvram_pf_safe_get(prefix2, "ifname"))))
 					{
-						_dprintf("%s: add [%s] into target ifname\n", ifname, nvram_safe_get(strcat_r(prefix2, "ifname", tmp2)));
-						if( nvram_get_int(strcat_r(prefix2, "nband", tmp2)) == WLC_BAND_2G && strlen(bsd_if_sel) > 0) {
-							strncpy(tmp3, bsd_if_sel, strlen(tmp3));
-							snprintf(bsd_if_sel, sizeof(bsd_if_sel), "%s %s", strcat_r(prefix2, "ifname", tmp2), tmp3);
+						_dprintf("%s: add [%s] into target ifname\n", ifname, nvram_pf_safe_get(prefix2, "ifname"));
+						if( nvram_pf_get_int(prefix2, "nband") == WLC_BAND_2G && strlen(bsd_if_sel) > 0) {
+							strncpy(tmp, bsd_if_sel, strlen(tmp));
+							snprintf(bsd_if_sel, sizeof(bsd_if_sel), "%s%s %s", prefix2, "ifname", tmp);
 						}
 						else
-							add_to_list(nvram_safe_get(strcat_r(prefix2, "ifname", tmp2)) , bsd_if_sel, sizeof(bsd_if_sel));
+							add_to_list(nvram_pf_safe_get(prefix2, "ifname") , bsd_if_sel, sizeof(bsd_if_sel));
 					}
 
 				}
 				if(strlen(bsd_if_sel)) {
-					_dprintf("%s: %s=[%s]\n", ifname, strcat_r(prefix, "bsd_if_select_policy", tmp), bsd_if_sel);
-					nvram_set(strcat_r(prefix, "bsd_if_select_policy", tmp), bsd_if_sel);
+					_dprintf("%s: %s%s=[%s]\n", ifname, prefix, "bsd_if_select_policy", bsd_if_sel);
+					nvram_pf_set(prefix, "bsd_if_select_policy", bsd_if_sel);
 				}
 			}
 		}
@@ -9189,9 +9202,9 @@ void smart_connect_realign_ifnames() {
 		for (i = 0; i < wlif_count; i++) {
 			memset(bsd_if_sel, 0, sizeof(bsd_if_sel));
 			snprintf(prefix, sizeof(prefix), "wl%d_", i);
-			bandtype = nvram_get_int(strcat_r(prefix, "nband", tmp));
+			bandtype = nvram_pf_get_int(prefix, "nband");
 			if(bandtype == 2 || bandtype == 1)
-				add_to_list(nvram_safe_get(strcat_r(prefix, "ifname", tmp)) , bsd_ifnames, sizeof(bsd_ifnames));
+				add_to_list(nvram_pf_safe_get(prefix, "ifname") , bsd_ifnames, sizeof(bsd_ifnames));
 			else
 				continue;
 
@@ -9199,13 +9212,13 @@ void smart_connect_realign_ifnames() {
 				snprintf(prefix2, sizeof(prefix2), "wl%d_", j);
 				if (j == i)
 				    continue;
-				bandtype = nvram_get_int(strcat_r(prefix2, "nband", tmp2));
+				bandtype = nvram_pf_get_int(prefix2, "nband");
 				if(bandtype == 2 || bandtype == 1)
-					add_to_list(nvram_safe_get(strcat_r(prefix2, "ifname", tmp2)) , bsd_if_sel, sizeof(bsd_if_sel));
+					add_to_list(nvram_pf_safe_get(prefix2, "ifname") , bsd_if_sel, sizeof(bsd_if_sel));
 			}
 
 			if(strlen(bsd_if_sel))
-				nvram_set(strcat_r(prefix, "bsd_if_select_policy", tmp), bsd_if_sel);
+				nvram_pf_set(prefix, "bsd_if_select_policy", bsd_if_sel);
 		}
 
 		if(strlen(bsd_ifnames))
@@ -9215,10 +9228,10 @@ void smart_connect_realign_ifnames() {
 #endif
 }
 
-void smart_connect_sync_config(int unit) {
-
-	char tmp[100], prefix[]="wlXXXXXXX_";
-	char tmp2[100], prefix2[]="wlXXXXXXX_";
+void smart_connect_sync_config(int unit)
+{
+	char prefix[]="wlXXXXXXX_";
+	char prefix2[]="wlXXXXXXX_";
 	int wlif_count = num_of_wl_if();
 	int i = 0;
 #if defined(RTCONFIG_AMAS) && defined(RTCONFIG_PRELINK) && !defined(RTCONFIG_MSSID_PRELINK)
@@ -9259,55 +9272,55 @@ void smart_connect_sync_config(int unit) {
 #endif
 			snprintf(prefix2, sizeof(prefix2), "wl%d_", i);
 #if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
-			if (nvram_get_int("smart_connect_x") == SMRTCONN_2G_AND_5G && nvram_get_int(strcat_r(prefix2, "nband", tmp2)) != 1) { // only sync 5G with 2.4G
+			if (nvram_get_int("smart_connect_x") == SMRTCONN_2G_AND_5G && nvram_pf_get_int(prefix2, "nband") != 1) { // only sync 5G with 2.4G
 				continue;
 			}
 
-			if (nvram_get_int(strcat_r(prefix2, "nband", tmp2)) == 4) { // 6G band, convert to supported auth mode
-				if (!strcmp(nvram_safe_get(strcat_r(prefix, "auth_mode_x", tmp)), "open") ||
-				    !strcmp(nvram_safe_get(strcat_r(prefix, "auth_mode_x", tmp)), "openowe")) {
-					nvram_set(strcat_r(prefix2, "auth_mode_x", tmp2), "owe");
-					nvram_set(strcat_r(prefix2, "crypto", tmp2), "");
+			if (nvram_pf_get_int(prefix2, "nband") == 4) { // 6G band, convert to supported auth mode
+				if (!strcmp(nvram_pf_safe_get(prefix, "auth_mode_x"), "open") ||
+				    !strcmp(nvram_pf_safe_get(prefix, "auth_mode_x"), "openowe")) {
+					nvram_pf_set(prefix2, "auth_mode_x", "owe");
+					nvram_pf_set(prefix2, "crypto", "");
 				}
 				else {
-					nvram_set(strcat_r(prefix2, "auth_mode_x", tmp2), "sae");
-					nvram_set(strcat_r(prefix2, "crypto", tmp2), "aes");
+					nvram_pf_set(prefix2, "auth_mode_x", "sae");
+					nvram_pf_set(prefix2, "crypto", "aes");
 				}
 			}
 			else
 #endif
 			{
-				nvram_set(strcat_r(prefix2, "auth_mode_x", tmp2), nvram_safe_get(strcat_r(prefix, "auth_mode_x", tmp)));
-				nvram_set(strcat_r(prefix2, "crypto", tmp2), nvram_safe_get(strcat_r(prefix, "crypto", tmp)));
+				nvram_pf_set(prefix2, "auth_mode_x", nvram_pf_safe_get(prefix, "auth_mode_x"));
+				nvram_pf_set(prefix2, "crypto", nvram_pf_safe_get(prefix, "crypto"));
 			}
-			nvram_set(strcat_r(prefix2, "ssid", tmp2), nvram_safe_get(strcat_r(prefix, "ssid", tmp)));
-			nvram_set(strcat_r(prefix2, "wep_x", tmp2), nvram_safe_get(strcat_r(prefix, "wep_x", tmp)));
-			nvram_set(strcat_r(prefix2, "key", tmp2), nvram_safe_get(strcat_r(prefix, "key", tmp)));
-			nvram_set(strcat_r(prefix2, "key1", tmp2), nvram_safe_get(strcat_r(prefix, "key1", tmp)));
-			nvram_set(strcat_r(prefix2, "key2", tmp2), nvram_safe_get(strcat_r(prefix, "key2", tmp)));
-			nvram_set(strcat_r(prefix2, "key3", tmp2), nvram_safe_get(strcat_r(prefix, "key3", tmp)));
-			nvram_set(strcat_r(prefix2, "key4", tmp2), nvram_safe_get(strcat_r(prefix, "key4", tmp)));
-			nvram_set(strcat_r(prefix2, "phrase_x", tmp2), nvram_safe_get(strcat_r(prefix, "phrase_x", tmp)));
-			nvram_set(strcat_r(prefix2, "wpa_psk", tmp2), nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp)));
-			nvram_set(strcat_r(prefix2, "radius_ipaddr", tmp2), nvram_safe_get(strcat_r(prefix, "radius_ipaddr", tmp)));
-			nvram_set(strcat_r(prefix2, "radius_key", tmp2), nvram_safe_get(strcat_r(prefix, "radius_key", tmp)));
-			nvram_set(strcat_r(prefix2, "radius_port", tmp2), nvram_safe_get(strcat_r(prefix, "radius_port", tmp)));
+			nvram_pf_set(prefix2, "ssid", nvram_pf_safe_get(prefix, "ssid"));
+			nvram_pf_set(prefix2, "wep_x", nvram_pf_safe_get(prefix, "wep_x"));
+			nvram_pf_set(prefix2, "key", nvram_pf_safe_get(prefix, "key"));
+			nvram_pf_set(prefix2, "key1", nvram_pf_safe_get(prefix, "key1"));
+			nvram_pf_set(prefix2, "key2", nvram_pf_safe_get(prefix, "key2"));
+			nvram_pf_set(prefix2, "key3", nvram_pf_safe_get(prefix, "key3"));
+			nvram_pf_set(prefix2, "key4", nvram_pf_safe_get(prefix, "key4"));
+			nvram_pf_set(prefix2, "phrase_x", nvram_pf_safe_get(prefix, "phrase_x"));
+			nvram_pf_set(prefix2, "wpa_psk", nvram_pf_safe_get(prefix, "wpa_psk"));
+			nvram_pf_set(prefix2, "radius_ipaddr", nvram_pf_safe_get(prefix, "radius_ipaddr"));
+			nvram_pf_set(prefix2, "radius_key", nvram_pf_safe_get(prefix, "radius_key"));
+			nvram_pf_set(prefix2, "radius_port", nvram_pf_safe_get(prefix, "radius_port"));
 #if defined(RTCONFIG_MULTILAN_CFG)
-			nvram_set(strcat_r(prefix2, "radius_acct_ipaddr", tmp2), nvram_safe_get(strcat_r(prefix, "radius_acct_ipaddr", tmp)));
-			nvram_set(strcat_r(prefix2, "radius_acct_key", tmp2), nvram_safe_get(strcat_r(prefix, "radius_acct_key", tmp)));
-			nvram_set(strcat_r(prefix2, "radius_acct_port", tmp2), nvram_safe_get(strcat_r(prefix, "radius_acct_port", tmp)));
-			nvram_set(strcat_r(prefix2, "radius2_ipaddr", tmp2), nvram_safe_get(strcat_r(prefix, "radius2_ipaddr", tmp)));
-			nvram_set(strcat_r(prefix2, "radius2_key", tmp2), nvram_safe_get(strcat_r(prefix, "radius2_key", tmp)));
-			nvram_set(strcat_r(prefix2, "radius2_port", tmp2), nvram_safe_get(strcat_r(prefix, "radius2_port", tmp)));
-			nvram_set(strcat_r(prefix2, "radius2_acct_ipaddr", tmp2), nvram_safe_get(strcat_r(prefix, "radius2_acct_ipaddr", tmp)));
-			nvram_set(strcat_r(prefix2, "radius2_acct_key", tmp2), nvram_safe_get(strcat_r(prefix, "radius2_acct_key", tmp)));
-			nvram_set(strcat_r(prefix2, "radius2_acct_port", tmp2), nvram_safe_get(strcat_r(prefix, "radius2_acct_port", tmp)));
+			nvram_pf_set(prefix2, "radius_acct_ipaddr", nvram_pf_safe_get(prefix, "radius_acct_ipaddr"));
+			nvram_pf_set(prefix2, "radius_acct_key", nvram_pf_safe_get(prefix, "radius_acct_key"));
+			nvram_pf_set(prefix2, "radius_acct_port", nvram_pf_safe_get(prefix, "radius_acct_port"));
+			nvram_pf_set(prefix2, "radius2_ipaddr", nvram_pf_safe_get(prefix, "radius2_ipaddr"));
+			nvram_pf_set(prefix2, "radius2_key", nvram_pf_safe_get(prefix, "radius2_key"));
+			nvram_pf_set(prefix2, "radius2_port", nvram_pf_safe_get(prefix, "radius2_port"));
+			nvram_pf_set(prefix2, "radius2_acct_ipaddr", nvram_pf_safe_get(prefix, "radius2_acct_ipaddr"));
+			nvram_pf_set(prefix2, "radius2_acct_key", nvram_pf_safe_get(prefix, "radius2_acct_key"));
+			nvram_pf_set(prefix2, "radius2_acct_port", nvram_pf_safe_get(prefix, "radius2_acct_port"));
 #endif
-			nvram_set(strcat_r(prefix2, "closed", tmp2), nvram_safe_get(strcat_r(prefix, "closed", tmp)));
+			nvram_pf_set(prefix2, "closed", nvram_pf_safe_get(prefix, "closed"));
 #if defined(RTCONFIG_HND_ROUTER_AX)
-			nvram_set(strcat_r(prefix2, "11ax", tmp2), nvram_safe_get(strcat_r(prefix, "11ax", tmp)));
-			nvram_set(strcat_r(prefix2, "mbo_enable", tmp2), nvram_safe_get(strcat_r(prefix, "mbo_enable", tmp)));
-			nvram_set(strcat_r(prefix2, "mfp", tmp2), nvram_safe_get(strcat_r(prefix, "mfp", tmp)));
+			nvram_pf_set(prefix2, "11ax", nvram_pf_safe_get(prefix, "11ax"));
+			nvram_pf_set(prefix2, "mbo_enable", nvram_pf_safe_get(prefix, "mbo_enable"));
+			nvram_pf_set(prefix2, "mfp", nvram_pf_safe_get(prefix, "mfp"));
 #endif
 		}
 #if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)

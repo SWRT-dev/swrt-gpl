@@ -3488,6 +3488,28 @@ char *get_modemlog_fname(void){
 }
 #endif
 
+#if defined(RTCONFIG_NOWL) || (defined(RTCONFIG_BCMWL6) && !defined(RTCONFIG_PROXYSTA))
+int is_dpsta(int unit)
+{
+	return 0;
+}
+
+int is_dpsr(int unit)
+{
+	return 0;
+}
+
+int is_psr(int unit)
+{
+	return 0;
+}
+
+int is_psta(int unit)
+{
+	return 0;
+}
+#endif
+
 #if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
 #ifdef RTCONFIG_DPSTA
 int is_dpsta(int unit)

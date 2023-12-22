@@ -486,7 +486,7 @@ int build_temp_rootfs(const char *newroot)
 #if defined(RTCONFIG_LIBASUSLOG)
 			     " libasuslog.so*"
 #endif
-#if defined(RTCONFIG_SWRTMESH)
+#if defined(RTCONFIG_OPENSSL3)
 			" libatomic.so*"
 #endif
 		;
@@ -969,12 +969,13 @@ void create_passwd(void)
 	m = umask(066); /* 600 */
 
 	/* /etc/shadow */
+//5->sha256,1->md5
 	if ((fp = fopen("/etc/shadow", "w")) != NULL) {
 #ifdef RTCONFIG_TRUSTZONE
-		atee_get_admin_crypt(make_salt("5", salt, sizeof(salt)), crypt_buf, sizeof(crypt_buf));
+		atee_get_admin_crypt(make_salt("1", salt, sizeof(salt)), crypt_buf, sizeof(crypt_buf));
 		crypt_string = crypt_buf;
 #else
-		crypt_string = crypt(http_passwd, make_salt("5", salt, sizeof(salt)));
+		crypt_string = crypt(http_passwd, make_salt("1", salt, sizeof(salt)));
 		if(crypt_string == NULL || *crypt_string == '\0'){
 			asus_openssl_crypt(http_passwd, salt, crypt_buf, sizeof(crypt_buf));
 			crypt_string = crypt_buf;
@@ -983,7 +984,7 @@ void create_passwd(void)
 		fprintf(fp, "%s:%s:0:0:99999:7:0:0:\n",
 			http_user, crypt_string);
 		if (*shell_user && *shell_passwd) {
-			crypt_string = crypt(shell_passwd, make_salt("5", salt, sizeof(salt)));
+			crypt_string = crypt(shell_passwd, make_salt("1", salt, sizeof(salt)));
 			if(crypt_string == NULL || *crypt_string == '\0'){
 				asus_openssl_crypt(http_passwd, salt, crypt_buf, sizeof(crypt_buf));
 				crypt_string = crypt_buf;
