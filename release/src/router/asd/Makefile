@@ -47,8 +47,8 @@ TARGET = asd libasd.so
 
 ifeq ($(wildcard $(SRCBASE)/router/asd/*.c),)
 all:
-	-cp -f prebuild/asd ./
-	-cp -f prebuild/libasd.so ./
+	-cp -f prebuild/$(BUILD_NAME)/asd ./
+	-cp -f prebuild/$(BUILD_NAME)/libasd.so ./
 else
 all: $(TARGET)
 endif

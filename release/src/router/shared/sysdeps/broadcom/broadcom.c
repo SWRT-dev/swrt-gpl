@@ -88,10 +88,10 @@ int gpio_read(int pin)
 }
 
 
-static bool g_swap = FALSE;
-#define htod32(i) (g_swap?bcmswap32(i):(uint32)(i))
-#define dtoh32(i) (g_swap?bcmswap32(i):(uint32)(i))
-#define dtoh16(i) (g_swap?bcmswap16(i):(uint16)(i))
+//static bool g_swap = FALSE;
+//#define htod32(i) (g_swap?bcmswap32(i):(uint32)(i))
+//#define dtoh32(i) (g_swap?bcmswap32(i):(uint32)(i))
+//#define dtoh16(i) (g_swap?bcmswap16(i):(uint16)(i))
 #ifdef RTCONFIG_AMAS
 
 char *get_pap_bssid(int unit, char bssid_str[])
@@ -1962,7 +1962,7 @@ void retrieve_static_maclist_from_nvram(int idx,struct maclist *maclist,int macl
 {
 	char prefix[16]={0};
 	struct ether_addr *ea;
-	char *buf = maclist;
+	char *buf = (char *)maclist;
 	char tmp[100];
 	char var[80], *next;
 	unsigned char sta_ea[6] = {0};

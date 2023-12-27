@@ -539,7 +539,7 @@ extern void _nvram_exit(void);
 
 /* Globals */
 static DEFINE_SPINLOCK(nvram_lock);
-static struct mutex nvram_sem;
+static struct semaphore nvram_sem;
 static unsigned long nvram_offset = 0;
 static int nvram_major = -1;
 static struct class *nvram_class = NULL;
@@ -740,7 +740,7 @@ nvram_nflash_commit(void)
 		return -ENOMEM;
 	}
 
-	mutex_lock(&nvram_sem);
+	down(&nvram_sem);
 
 	offset = 0;
 	header = (struct nvram_header *)buf;
@@ -765,7 +765,7 @@ nvram_nflash_commit(void)
 	}
 
 done:
-	mutex_unlock(&nvram_sem);
+	up(&nvram_sem);
 	MMFREE(buf);
 
 	return ret;
@@ -801,14 +801,14 @@ nvram_commit(void)
 	if (nvram_mtd->type == MTD_NANDFLASH)
 		return nvram_nflash_commit();
 #endif
-	mutex_lock(&nvram_sem);
 	/* Backup sector blocks to be erased */
 	erasesize = ROUNDUP(nvram_space, nvram_mtd->erasesize);
 	if (!(buf = MMALLOC(erasesize))) {
 		printk(KERN_WARNING "nvram_commit: out of memory\n");
-		mutex_unlock(&nvram_sem);
 		return -ENOMEM;
 	}
+
+	down(&nvram_sem);
 
 	if ((i = erasesize - nvram_space) > 0) {
 		offset = nvram_mtd->size - erasesize;
@@ -908,7 +908,7 @@ nvram_commit(void)
 	ret = mtd_read(nvram_mtd, offset, 4, &len, buf);
 
 done:
-	mutex_unlock(&nvram_sem);
+	up(&nvram_sem);
 	MMFREE(buf);
 	return ret;
 }
@@ -949,8 +949,7 @@ dev_nvram_read(struct file *file, char *buf, size_t count, loff_t *ppos)
 		if (!(name = MMALLOC(count+1)))
 			return -ENOMEM;
 	}
-	if (name == tmp)
-		mutex_lock(&nvram_sem);
+
 	if (copy_from_user(name, buf, count)) {
 		ret = -EFAULT;
 		goto done;
@@ -985,8 +984,6 @@ dev_nvram_read(struct file *file, char *buf, size_t count, loff_t *ppos)
 	flush_cache_all();
 #endif
 done:
-	if (name == tmp)
-		mutex_unlock(&nvram_sem);
 	if (name != tmp)
 		MMFREE(name);
 
@@ -1168,7 +1165,7 @@ dev_nvram_init(void)
 	spin_lock_init(&nvram_lock);
 
 	/* Initialize commit semaphore */
-	mutex_init(&nvram_sem);
+	sema_init(&nvram_sem, 1);
 
 	/* Register char device */
 	if ((nvram_major = register_chrdev(229, "nvram", &dev_nvram_fops)) < 0) {
@@ -1433,7 +1430,7 @@ static int cfe_commit(void)
                 return -EINVAL;
         }
 
-	mutex_lock(&nvram_sem);
+	down(&nvram_sem);
 
         /* Backup sector blocks to be erased */
         erasesize = ROUNDUP(CFE_NVRAM_SPACE, cfe_mtd->erasesize);
@@ -1472,7 +1469,7 @@ static int cfe_commit(void)
         }
 
 done:
-	mutex_unlock(&nvram_sem);
+	up(&nvram_sem);
         if (cfe_mtd != NULL)
         {
                 put_mtd_device(cfe_mtd);

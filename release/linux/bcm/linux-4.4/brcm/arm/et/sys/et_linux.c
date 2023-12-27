@@ -194,7 +194,7 @@ typedef struct et_info {
 	uint8       fa_bhdr_sz;
 	bool        fa_aux_dev;
 #endif /* ET_FA */
-	struct mutex sem;		/* use semaphore to allow sleep */
+	struct semaphore sem;		/* use semaphore to allow sleep */
 	spinlock_t	lock;		/* per-device perimeter lock */
 	spinlock_t	txq_lock;	/* lock for txq protection */
 	spinlock_t	isr_lock;	/* lock for irq reentrancy protection */
@@ -238,7 +238,7 @@ static et_info_t *et_list = NULL;
 #define ET_LOCK(et) \
 do { \
 	if (ET_ALL_PASSIVE_ENAB(et)) \
-		mutex_lock(&(et)->sem); \
+		down(&(et)->sem); \
 	else \
 		spin_lock_bh(&(et)->lock); \
 } while (0)
@@ -246,7 +246,7 @@ do { \
 #define ET_UNLOCK(et) \
 do { \
 	if (ET_ALL_PASSIVE_ENAB(et)) \
-		mutex_unlock(&(et)->sem); \
+		up(&(et)->sem); \
 	else \
 		spin_unlock_bh(&(et)->lock); \
 } while (0)
@@ -838,7 +838,7 @@ et_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 		goto fail;
 	}
 
-	mutex_init(&et->sem);
+	sema_init(&et->sem, 1);
 	spin_lock_init(&et->lock);
 	spin_lock_init(&et->txq_lock);
 	spin_lock_init(&et->isr_lock);
@@ -1848,9 +1848,6 @@ et_sendnext(et_info_t *et)
 	}
 
 	ET_TXQ_UNLOCK(et);
-
-// debug do tx reclaim in this work queue.
-	(*etc->chops->txreclaim)(etc->ch, FALSE);
 }
 
 void
@@ -3045,11 +3042,10 @@ et_dpc(ulong data)
 		nrx = et_rxevent(ch, quota, chops, et);
 	}
 
-// debug remove for performance
-//	if (et->events & INTR_TX)
-//		(*chops->txreclaim)(ch, FALSE);
+	if (et->events & INTR_TX)
+		(*chops->txreclaim)(ch, FALSE);
 
-//	(*chops->rxfill)(ch);
+	(*chops->rxfill)(ch);
 
 	/* handle error conditions, if reset required leave interrupts off! */
 	if (et->events & INTR_ERROR) {

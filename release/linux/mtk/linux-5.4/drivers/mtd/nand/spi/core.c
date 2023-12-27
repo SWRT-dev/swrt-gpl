@@ -21,6 +21,8 @@
 #include <linux/spi/spi-mem.h>
 
 #if defined(CONFIG_SOC_MT7621)
+#define SPINAND_MFR_MICRON		0x2c
+#define SPINAND_MFR_GIGADEVICE			0xC8
 #define SPINAND_PAGE_READ_FROM_CACHE_OP_NOR_EMU(fast, addr, ndummy, buf, len)	\
 	SPI_MEM_OP(SPI_MEM_OP_CMD(fast ? 0x0b : 0x03, 1),		\
 		   SPI_MEM_OP_ADDR(3, addr, 1),				\
@@ -839,9 +841,9 @@ static struct spinand_info *mt7621_spinand_nor_emu_table = NULL;
 
 static void mt7621_spinand_generate_nor_emu_table(const struct spinand_info *table, unsigned int table_size, u8 mfrid)
 {
-	static struct spinand_info *info = mt7621_spinand_nor_emu_table;
+	static struct spinand_info *info = NULL;
 	unsigned int i;
-
+	info = mt7621_spinand_nor_emu_table;
 	memcpy(mt7621_spinand_nor_emu_table, table, table_size);
 
 	for (i = 0; i < table_size; i++) {
@@ -918,7 +920,7 @@ static int mt7621_spinand_read_from_cache(struct spinand_device *spinand,
 }
 
 static int mt7621_spinand_detect_nor_emu(struct spinand_device *spinand,
-					 u16 devid, int *enabled, const struct spinand_info *table, unsigned int table_size)
+					 u8 devid, int *enabled, const struct spinand_info *table, unsigned int table_size)
 {
 	struct device *dev = &spinand->spimem->spi->dev;
 	unsigned int i, num_ffs = 0, num_zeros = 0, len = 0;
@@ -928,7 +930,7 @@ static int mt7621_spinand_detect_nor_emu(struct spinand_device *spinand,
 	for (i = 0; i < table_size; i++) {
 		const struct spinand_info *info = &table[i];
 
-		if (devid != info->devid)
+		if (devid != info->devid.id)
 			continue;
 
 		len = info->memorg.pagesize + info->memorg.oobsize;
@@ -1035,7 +1037,7 @@ static int spinand_manufacturer_match(struct spinand_device *spinand,
 		mt7621_spinand_nor_emu_table = kmalloc(manufacturer->nchips + 1, GFP_KERNEL);
 		if (!mt7621_spinand_nor_emu_table)
 			return -ENOMEM;
-		ret = mt7621_spinand_detect_nor_emu(spinand, rdid_method, &nor_read, manufacturer->chips, manufacturer->nchips);
+		ret = mt7621_spinand_detect_nor_emu(spinand, id[2], &nor_read, manufacturer->chips, manufacturer->nchips);
 		if (ret)
 			nor_read = 0;
 

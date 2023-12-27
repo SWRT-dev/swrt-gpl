@@ -77,10 +77,6 @@
 	};
 };
 
-&bch {
-	status = "okay";
-};
-
 &eth {
         status = "okay";
 
@@ -162,15 +158,10 @@
 
 &nand {
 	status = "okay";
-
-	nandflash: flash@0 {
-		reg = <0>;
-		nand-ecc-mode = "hw";
-		partitions {
-			compatible = "fixed-partitions";
-			#address-cells = <1>;
-			#size-cells = <1>;
-		};
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
 	};
 };
 
@@ -203,19 +194,11 @@
 	};
 };
 
-&uartfull1 {
-	status = "okay";
-};
-
-&uartfull2 {
+&uartlite2 {
 	status = "okay";
 };
 
 &pcie {
-	status = "okay";
-};
-
-&u3phy1 {
 	status = "okay";
 };
 

@@ -1505,6 +1505,7 @@ uint64_t get_phy_mib(int port, char *type)
 
 	//_dprintf("get_phy_speed %x %x\n", vecarg[1], portmask);
 #endif
+
 	return value;
 }
 
@@ -1916,9 +1917,9 @@ char *get_wlxy_ifname(int x, int y, char *buf)
 }
 
 #define	IW_MAX_FREQUENCIES	32
-static bool g_swap = FALSE;
-#define htod32(i) (g_swap?bcmswap32(i):(uint32)(i))
-#define dtoh32(i) (g_swap?bcmswap32(i):(uint32)(i))
+//static bool g_swap = FALSE;
+//#define htod32(i) (g_swap?bcmswap32(i):(uint32)(i))
+//#define dtoh32(i) (g_swap?bcmswap32(i):(uint32)(i))
 int get_channel_list_via_driver(int unit, char *buffer, int len)
 {
 	int channels[MAXCHANNEL+1];
@@ -2310,7 +2311,7 @@ int wl_get_band(char* wlif)
 int wl_get_ifname_unit(char *wlif)
 {
         int unit = 0;
-        char nv_wlif[16], *wlx_ifname[16], word[64], *next;
+        char nv_wlif[16], wlx_ifname[16], word[64], *next;
         char wl_ifnames[32] = { 0 };
 
         strlcpy(wl_ifnames, nvram_safe_get("wl_ifnames"), sizeof(wl_ifnames));
@@ -2759,6 +2760,9 @@ char *get_cpu_model(void)
 			return "BCM4708A";
 		case 11:
 			return "BCM47189";
+		default:
+			break;
 	}
+	return "Unknown";
 }
 #endif

@@ -113,7 +113,7 @@ main(int ac, char *av[])
 		fprintf(stderr, "et interface not found\n");
 		exit(1);
 	}
-
+	fprintf(stderr, "et : %s\n", av[optind]);
 	if (strcmp(av[optind], "up") == 0) {
 		if (ioctl(s, SIOCSETCUP, (caddr_t)&ifr) < 0)
 			syserr("etcup");
@@ -138,6 +138,7 @@ main(int ac, char *av[])
 		if (ioctl(s, SIOCSETGETVAR, (caddr_t)&ifr) < 0) {
 			DUMP_BUF_FREE(dbuf_alloc, dbuf);
 			syserr("etcdump");
+			return -1;
 		}
 
 		printf("%s\n", dbuf);
@@ -441,6 +442,7 @@ main(int ac, char *av[])
 		if (ioctl(s, SIOCSETGETVAR, (caddr_t)&ifr) < 0) {
 			DUMP_BUF_FREE(dbuf_alloc, dbuf);
 			syserr("counters");
+			return -1;
 		}
 
 		printf("%s\n", dbuf);
@@ -461,6 +463,7 @@ main(int ac, char *av[])
 			if (ioctl(s, SIOCSETGETVAR, (caddr_t)&ifr) < 0) {
 				DUMP_BUF_FREE(dbuf_alloc, dbuf);
 				syserr("dump ctf");
+				return -1;
 			}
 
 			printf("%s\n", dbuf);
@@ -479,14 +482,17 @@ main(int ac, char *av[])
 			if (ioctl(s, SIOCSETGETVAR, (caddr_t)&ifr) < 0) {
 				DUMP_BUF_FREE(dbuf_alloc, dbuf);
 				syserr("dump ctrace");
+				return -1;
 			}
 
 			printf("%s\n", dbuf);
 		} else if (strcmp(av[optind + 1], "fa") == 0) {
 			if (ac == (optind + 2))
 				var.set = 0;
-			else
+			else {
 				syserr("dump fa");
+				return -1;
+			}
 
 			DUMP_BUF_ALLOC(dbuf_alloc, dbuf, dbuf_len);
 			var.cmd = IOV_FA_DUMP;
@@ -497,14 +503,17 @@ main(int ac, char *av[])
 			if (ioctl(s, SIOCSETGETVAR, (caddr_t)&ifr) < 0) {
 				DUMP_BUF_FREE(dbuf_alloc, dbuf);
 				syserr("dump fa");
+				return -1;
 			}
 
 			printf("%s\n", dbuf);
 		} else if (strcmp(av[optind + 1], "fwd") == 0) {
 			if (ac == (optind + 2))
 				var.set = 0;
-			else
+			else {
 				syserr("dump fwd");
+				return -1;
+			}
 
 			DUMP_BUF_ALLOC(dbuf_alloc, dbuf, dbuf_len);
 			var.cmd = IOV_DUMP_FWDER;
@@ -515,6 +524,7 @@ main(int ac, char *av[])
 			if (ioctl(s, SIOCSETGETVAR, (caddr_t)&ifr) < 0) {
 				DUMP_BUF_FREE(dbuf_alloc, dbuf);
 				syserr("dump fwd");
+				return -1;
 			}
 
 			printf("%s\n", dbuf);
@@ -558,6 +568,7 @@ main(int ac, char *av[])
 		if (ioctl(s, SIOCSETGETVAR, (caddr_t)&ifr) < 0) {
 			DUMP_BUF_FREE(dbuf_alloc, dbuf);
 			syserr("cap");
+			return -1;
 		}
 
 		printf("%s\n", dbuf);
@@ -710,3 +721,4 @@ syserr(char *s)
 	perror(s);
 	exit(1);
 }
+

@@ -2,6 +2,7 @@
 
 #include "mt7621.dtsi"
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/gpio/gpio.h>
 
 / {
 	compatible = "mediatek,mt7621-pgb-m1", "mediatek,mt7621-soc";
@@ -19,7 +20,7 @@
 
 		reset {
 			label = "reset";
-			gpios = <&gpio0 7 0>;
+			gpios = <&gpio 7 0>;
 			linux,code = <KEY_RESTART>;
 		};
 	};
@@ -30,19 +31,19 @@
 		power_usb3 {
 			gpio-export,name = "power_usb3";
 			gpio-export,output = <1>;
-			gpios = <&gpio0 8 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio 8 GPIO_ACTIVE_HIGH>;
 		};
 
 		power_lte {
 			gpio-export,name = "power_lte";
 			gpio-export,output = <1>;
-			gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio 6 GPIO_ACTIVE_HIGH>;
 		};
 /*
 		power_nvme {
 			gpio-export,name = "power_nvme";
 			gpio-export,output = <1>;
-			gpios = <&gpio0 0 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio 0 GPIO_ACTIVE_HIGH>;
 		};
 */
 	};
@@ -61,10 +62,6 @@
 			};
 		};
 	};
-};
-
-&bch {
-	status = "okay";
 };
 
 &eth {
@@ -150,52 +147,41 @@
 &nand {
 	status = "okay";
 
-	nandflash: flash@0 {
-		reg = <0>;
-		nand-ecc-mode = "hw";
-		partitions {
-			compatible = "fixed-partitions";
-			#address-cells = <1>;
-			#size-cells = <1>;
-
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
 			partition@0 {
-				label = "Bootloader";
-				reg = <0x00000 0xe0000>;
-			};
-
+			label = "Bootloader";
+			reg = <0x00000 0xe0000>;
+		};
 			partition@E0000 {
-				label = "nvram";
-				reg = <0xE0000 0x100000>;
-			};
-
+			label = "nvram";
+			reg = <0xE0000 0x100000>;
+		};
 			factory: partition@1E00000 {
-				label = "Factory";
-				reg = <0x1E0000 0x100000>;
-			};
-
+			label = "Factory";
+			reg = <0x1E0000 0x100000>;
+		};
 			factory2: partition@2E0000  {
-				label = "Factory2";
-				reg = <0x2E0000 0x100000>;
-			};
-			partition@3E0000 {
-				label = "Kernel";
-				reg = <0x3E0000 0x2300000>;
-			};
-
+			label = "Factory2";
+			reg = <0x2E0000 0x100000>;
+		};
+		partition@3E0000 {
+			label = "Kernel";
+			reg = <0x3E0000 0x2300000>;
+		};
 			jffsconcat0: partition@26E0000 {
-				label = "jffsconcat0";
-				reg = <0x26E0000 0xF00000>;
-			};
-
+			label = "jffsconcat0";
+			reg = <0x26E0000 0xF00000>;
+		};
 			partition@35E0000 {
-				label = "Kernel2";
-				reg = <0x35E0000 0x2300000>;
-			};
-
+			label = "Kernel2";
+			reg = <0x35E0000 0x2300000>;
+		};
 			jffsconcat1: partition@58E0000 {
-				label = "jffsconcat1";
-				reg = <0x58E0000 0x2700000>;
-			};
+			label = "jffsconcat1";
+			reg = <0x58E0000 0x2700000>;
 		};
 	};
 };
@@ -235,15 +221,11 @@
 	};
 };
 
-&uartfull1 {
+&uartlite2 {
 	status = "okay";
 };
 
 &pcie {
-	status = "okay";
-};
-
-&u3phy1 {
 	status = "okay";
 };
 

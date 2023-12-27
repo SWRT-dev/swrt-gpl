@@ -2,6 +2,7 @@
 
 #include "mt7621.dtsi"
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/gpio/gpio.h>
 
 / {
 	compatible = "mediatek,mt7621-xm-cr660x", "mediatek,mt7621-soc";
@@ -19,20 +20,16 @@
 
 		reset {
 			label = "reset";
-			gpios = <&gpio0 18 0>;
+			gpios = <&gpio 18 0>;
 			linux,code = <KEY_RESTART>;
 		};
 
 		wps {
 			label = "wps";
-			gpios = <&gpio0 7 0>;
+			gpios = <&gpio 7 0>;
 			linux,code = <KEY_WPS_BUTTON>;
 		};
 	};
-};
-
-&bch {
-	status = "okay";
 };
 
 &eth {
@@ -146,11 +143,7 @@
 	};
 };
 
-&uartfull1 {
-	status = "okay";
-};
-
-&uartfull2 {
+&uartlite2 {
 	status = "okay";
 };
 
@@ -160,51 +153,37 @@
 
 
 &nand {
-	status = "okay";
-
-	nandflash: flash@0 {
-		reg = <0>;
-		nand-ecc-mode = "hw";
-		mediatek,jffs2-fixup;
-		partitions {
-			compatible = "fixed-partitions";
-			#address-cells = <1>;
-			#size-cells = <1>;
-
-			partition@0 {
-				label = "Bootloader";
-				reg = <0x00000 0xC0000>;
-			};
-
-			partition@C0000 {
-				label = "Bdata";
-				reg = <0xC0000 0x40000>;
-			};
-
-			partition@140000 {
-				label = "nvram";
-				reg = <0x140000 0x40000>;
-			};
-
-			factory: partition@100000 {
-				label = "Factory";
-				reg = <0x100000 0x40000>;
-			};
-
-			factory2: partition@180000  {
-				label = "Factory2";
-				reg = <0x180000 0x40000>;
-			};
-
-			partition@200000 {
-				label = "Kernel";
-				reg = <0x200000 0x2C00000>;
-			};
-
-			partition@2E00000 {
-				label = "jffs2";
-				reg = <0x2E00000 0x5100000>;
-			};
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		partition@0 {
+			label = "Bootloader";
+			reg = <0x00000 0xC0000>;
+		};
+		partition@C0000 {
+			label = "Bdata";
+			reg = <0xC0000 0x40000>;
+		};
+		partition@140000 {
+			label = "nvram";
+			reg = <0x140000 0x40000>;
+		};
+		factory: partition@100000 {
+			label = "Factory";
+			reg = <0x100000 0x40000>;
+		};
+		factory2: partition@180000  {
+			label = "Factory2";
+			reg = <0x180000 0x40000>;
+		};
+		partition@200000 {
+			label = "Kernel";
+			reg = <0x200000 0x2C00000>;
+		};
+		partition@2E00000 {
+			label = "jffs2";
+			reg = <0x2E00000 0x5100000>;
 		};
 	};
 };

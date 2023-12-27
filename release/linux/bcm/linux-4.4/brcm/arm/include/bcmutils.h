@@ -55,7 +55,11 @@ extern "C" {
 #define _BCM_X	0x40	/* hex digit */
 #define _BCM_SP	0x80	/* hard space (0x20) */
 
+#if defined(BCMROMBUILD)
+extern const unsigned char BCMROMDATA(bcm_ctype)[];
+#else
 extern const unsigned char bcm_ctype[];
+#endif
 #define bcm_ismask(x)	(bcm_ctype[(int)(unsigned char)(x)])
 
 #define bcm_isalnum(c)	((bcm_ismask(c)&(_BCM_U|_BCM_L|_BCM_D)) != 0)
@@ -235,12 +239,12 @@ extern uint pktsetprio_qms(void *pkt, uint8* up_table, bool update_vtag);
 extern bool pktgetdscp(uint8 *pktdata, uint pktlen, uint8 *dscp);
 
 /* string */
-extern int bcm_atoi(const char *s);
-extern ulong bcm_strtoul(const char *cp, char **endp, uint base);
-extern char *bcmstrstr(const char *haystack, const char *needle);
-extern char *bcmstrnstr(const char *s, uint s_len, const char *substr, uint substr_len);
-extern char *bcmstrcat(char *dest, const char *src);
-extern char *bcmstrncat(char *dest, const char *src, uint size);
+extern int BCMROMFN(bcm_atoi)(const char *s);
+extern ulong BCMROMFN(bcm_strtoul)(const char *cp, char **endp, uint base);
+extern char *BCMROMFN(bcmstrstr)(const char *haystack, const char *needle);
+extern char *BCMROMFN(bcmstrnstr)(const char *s, uint s_len, const char *substr, uint substr_len);
+extern char *BCMROMFN(bcmstrcat)(char *dest, const char *src);
+extern char *BCMROMFN(bcmstrncat)(char *dest, const char *src, uint size);
 extern ulong wchar2ascii(char *abuf, ushort *wbuf, ushort wbuflen, ulong abuflen);
 char* bcmstrtok(char **string, const char *delimiters, char *tokdelim);
 int bcmstricmp(const char *s1, const char *s2);
@@ -773,9 +777,9 @@ xor_128bit_block(const uint8 *src1, const uint8 *src2, uint8 *dst)
 
 /* externs */
 /* crc */
-extern uint8 hndcrc8(uint8 *p, uint nbytes, uint8 crc);
-extern uint16 hndcrc16(uint8 *p, uint nbytes, uint16 crc);
-extern uint32 hndcrc32(uint8 *p, uint nbytes, uint32 crc);
+extern uint8 BCMROMFN(hndcrc8)(uint8 *p, uint nbytes, uint8 crc);
+extern uint16 BCMROMFN(hndcrc16)(uint8 *p, uint nbytes, uint16 crc);
+extern uint32 BCMROMFN(hndcrc32)(uint8 *p, uint nbytes, uint32 crc);
 
 /* format/print */
 #if defined(BCMDBG) || defined(DHD_DEBUG) || defined(BCMDBG_ERR) || \
@@ -856,11 +860,11 @@ typedef struct bcm_xtlvbuf bcm_xtlvbuf_t;
 	 ((int)(buflen) >= (int)(BCM_TLV_HDR_SIZE + (elt)->len)))
 
 
-extern bcm_tlv_t *bcm_next_tlv(bcm_tlv_t *elt, int *buflen);
-extern bcm_tlv_t *bcm_parse_tlvs(void *buf, int buflen, uint key);
-extern bcm_tlv_t *bcm_parse_tlvs_min_bodylen(void *buf, int buflen, uint key, int min_bodylen);
+extern bcm_tlv_t *BCMROMFN(bcm_next_tlv)(bcm_tlv_t *elt, int *buflen);
+extern bcm_tlv_t *BCMROMFN(bcm_parse_tlvs)(void *buf, int buflen, uint key);
+extern bcm_tlv_t *BCMROMFN(bcm_parse_tlvs_min_bodylen)(void *buf, int buflen, uint key, int min_bodylen);
 
-extern bcm_tlv_t *bcm_parse_ordered_tlvs(void *buf, int buflen, uint key);
+extern bcm_tlv_t *BCMROMFN(bcm_parse_ordered_tlvs)(void *buf, int buflen, uint key);
 
 extern bcm_tlv_t *bcm_find_vendor_ie(void *tlvs, int tlvs_len, const char *voui, uint8 *type,
 	int type_len);
@@ -964,13 +968,13 @@ extern void bcm_print_bytes(const char *name, const uchar *cdata, int len);
 typedef  uint32 (*bcmutl_rdreg_rtn)(void *arg0, uint arg1, uint32 offset);
 extern uint bcmdumpfields(bcmutl_rdreg_rtn func_ptr, void *arg0, uint arg1, struct fielddesc *str,
                           char *buf, uint32 bufsize);
-extern uint bcm_bitcount(uint8 *bitmap, uint bytelength);
+extern uint BCMROMFN(bcm_bitcount)(uint8 *bitmap, uint bytelength);
 
 extern int bcm_bprintf(struct bcmstrbuf *b, const char *fmt, ...);
 
 /* power conversion */
-extern uint16 bcm_qdbm_to_mw(uint8 qdbm);
-extern uint8 bcm_mw_to_qdbm(uint16 mw);
+extern uint16 BCMROMFN(bcm_qdbm_to_mw)(uint8 qdbm);
+extern uint8 BCMROMFN(bcm_mw_to_qdbm)(uint16 mw);
 extern uint bcm_mkiovar(const char *name, char *data, uint datalen, char *buf, uint len);
 
 unsigned int process_nvram_vars(char *varbuf, unsigned int len);

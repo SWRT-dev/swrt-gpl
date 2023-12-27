@@ -963,6 +963,8 @@ define platformKernelConfig
 		echo "CONFIG_MTD_UBI_GLUEBI=y" >>$(1); \
 		sed -i "/CONFIG_FACTORY_CHECKSUM/d" $(1); \
 		echo "CONFIG_FACTORY_CHECKSUM=y" >>$(1); \
+		sed -i "/CONFIG_FACTORY_NR_LEB/d" $(1); \
+		echo "CONFIG_FACTORY_NR_LEB=2" >>$(1); \
 		if [ "$(UBI_DEBUG)" = "y" ]; then \
 			sed -i "/CONFIG_MTD_UBI_DEBUG/d" $(1); \
 			echo "CONFIG_MTD_UBI_DEBUG=y" >>$(1); \
@@ -1148,6 +1150,10 @@ define platformKernelConfig
 	if [ "$(JFFS2)" != "y" ]; then \
 		sed -i "/CONFIG_JFFS2/d" $(1); \
 		echo "# CONFIG_JFFS2_FS is not set" >>$(1); \
+	fi; \
+	if [ "$(BUILD_NAME)" = "PGB-M1" ] ; then \
+		sed -i "/CONFIG_MTD_SPI_NAND/d" $(1); \
+		echo "CONFIG_MTD_SPI_NAND=y" >>$(1); \
 	fi; \
 	if [ "$(BUILD_NAME)" = "RT-AX53U" ] || [ "$(BUILD_NAME)" = "RT-AX54" ] || [ "$(BUILD_NAME)" = "4G-AX56" ] || [ "$(BUILD_NAME)" = "H3C-TX1801" ] || [ "$(BUILD_NAME)" = "JCG-Q10PRO" ] || [ "$(BUILD_NAME)" = "PGB-M1" ] || [ "$(BUILD_NAME)" = "XM-CR660X" ] || [ "$(BUILD_NAME)" = "JCG-Q20" ] ; then \
 		sed -i "/CONFIG_MTK_NAND_BLOCK2/d" $(1); \

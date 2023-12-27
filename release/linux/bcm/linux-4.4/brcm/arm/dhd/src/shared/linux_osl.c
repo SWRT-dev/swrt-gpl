@@ -103,7 +103,7 @@ extern spinlock_t l2x0_reg_lock;
 #define STATIC_BUF_TOTAL_LEN	(STATIC_BUF_MAX_NUM * STATIC_BUF_SIZE)
 
 typedef struct bcm_static_buf {
-	struct mutex static_sem;
+	struct semaphore static_sem;
 	unsigned char *buf_ptr;
 	unsigned char buf_use[STATIC_BUF_MAX_NUM];
 } bcm_static_buf_t;
@@ -125,7 +125,7 @@ typedef struct bcm_static_pkt {
 #ifdef ENHANCED_STATIC_BUF
 	struct sk_buff *skb_16k;
 #endif
-	struct mutex osl_pkt_sem;
+	struct semaphore osl_pkt_sem;
 	unsigned char pkt_use[STATIC_PKT_MAX_NUM * 2 + STATIC_PKT_4PAGE_NUM];
 } bcm_static_pkt_t;
 
@@ -529,7 +529,7 @@ int osl_static_mem_init(osl_t *osh, void *adapter)
 				printk("alloc static buf at %x!\n", (unsigned int)bcm_static_buf);
 
 
-			mutex_init(&bcm_static_buf->static_sem);
+			sema_init(&bcm_static_buf->static_sem, 1);
 
 			bcm_static_buf->buf_ptr = (unsigned char *)bcm_static_buf + STATIC_BUF_SIZE;
 		}
@@ -553,7 +553,7 @@ int osl_static_mem_init(osl_t *osh, void *adapter)
 			for (i = 0; i < STATIC_PKT_MAX_NUM * 2 + STATIC_PKT_4PAGE_NUM; i++)
 				bcm_static_skb->pkt_use[i] = 0;
 
-			mutex_init(&bcm_static_skb->osl_pkt_sem);
+			sema_init(&bcm_static_skb->osl_pkt_sem, 1);
 		}
 #endif /* CONFIG_DHD_USE_STATIC_BUF */
 
@@ -1207,7 +1207,7 @@ osl_pktget_static(osl_t *osh, uint len)
 		return osl_pktget(osh, len);
 	}
 
-	mutex_lock(&bcm_static_skb->osl_pkt_sem);
+	down(&bcm_static_skb->osl_pkt_sem);
 
 	if (len <= DHD_SKB_1PAGE_BUFSIZE) {
 		for (i = 0; i < STATIC_PKT_MAX_NUM; i++) {
@@ -1226,7 +1226,7 @@ osl_pktget_static(osl_t *osh, uint len)
 #endif /* NET_SKBUFF_DATA_USES_OFFSET */
 			skb->len = len;
 
-			mutex_unlock(&bcm_static_skb->osl_pkt_sem);
+			up(&bcm_static_skb->osl_pkt_sem);
 			return skb;
 		}
 	}
@@ -1248,7 +1248,7 @@ osl_pktget_static(osl_t *osh, uint len)
 #endif /* NET_SKBUFF_DATA_USES_OFFSET */
 			skb->len = len;
 
-			mutex_unlock(&bcm_static_skb->osl_pkt_sem);
+			up(&bcm_static_skb->osl_pkt_sem);
 			return skb;
 		}
 	}
@@ -1265,12 +1265,12 @@ osl_pktget_static(osl_t *osh, uint len)
 #endif /* NET_SKBUFF_DATA_USES_OFFSET */
 		skb->len = len;
 
-		mutex_unlock(&bcm_static_skb->osl_pkt_sem);
+		up(&bcm_static_skb->osl_pkt_sem);
 		return skb;
 	}
 #endif /* ENHANCED_STATIC_BUF */
 
-	mutex_unlock(&bcm_static_skb->osl_pkt_sem);
+	up(&bcm_static_skb->osl_pkt_sem);
 	printk("%s: all static pkt in use!\n", __FUNCTION__);
 	return osl_pktget(osh, len);
 }
@@ -1284,11 +1284,11 @@ osl_pktfree_static(osl_t *osh, void *p, bool send)
 		return;
 	}
 
-	mutex_lock(&bcm_static_skb->osl_pkt_sem);
+	down(&bcm_static_skb->osl_pkt_sem);
 	for (i = 0; i < STATIC_PKT_MAX_NUM; i++) {
 		if (p == bcm_static_skb->skb_4k[i]) {
 			bcm_static_skb->pkt_use[i] = 0;
-			mutex_unlock(&bcm_static_skb->osl_pkt_sem);
+			up(&bcm_static_skb->osl_pkt_sem);
 			return;
 		}
 	}
@@ -1296,18 +1296,18 @@ osl_pktfree_static(osl_t *osh, void *p, bool send)
 	for (i = 0; i < STATIC_PKT_MAX_NUM; i++) {
 		if (p == bcm_static_skb->skb_8k[i]) {
 			bcm_static_skb->pkt_use[i + STATIC_PKT_MAX_NUM] = 0;
-			mutex_unlock(&bcm_static_skb->osl_pkt_sem);
+			up(&bcm_static_skb->osl_pkt_sem);
 			return;
 		}
 	}
 #ifdef ENHANCED_STATIC_BUF
 	if (p == bcm_static_skb->skb_16k) {
 		bcm_static_skb->pkt_use[STATIC_PKT_MAX_NUM * 2] = 0;
-		mutex_unlock(&bcm_static_skb->osl_pkt_sem);
+		up(&bcm_static_skb->osl_pkt_sem);
 		return;
 	}
 #endif
-	mutex_unlock(&bcm_static_skb->osl_pkt_sem);
+	up(&bcm_static_skb->osl_pkt_sem);
 	osl_pktfree(osh, p, send);
 }
 #endif /* CONFIG_DHD_USE_STATIC_BUF */
@@ -1449,7 +1449,7 @@ osl_malloc(osl_t *osh, uint size)
 		int i = 0;
 		if ((size >= PAGE_SIZE)&&(size <= STATIC_BUF_SIZE))
 		{
-			mutex_lock(&bcm_static_buf->static_sem);
+			down(&bcm_static_buf->static_sem);
 
 			for (i = 0; i < STATIC_BUF_MAX_NUM; i++)
 			{
@@ -1459,13 +1459,13 @@ osl_malloc(osl_t *osh, uint size)
 
 			if (i == STATIC_BUF_MAX_NUM)
 			{
-				mutex_unlock(&bcm_static_buf->static_sem);
+				up(&bcm_static_buf->static_sem);
 				printk("all static buff in use!\n");
 				goto original;
 			}
 
 			bcm_static_buf->buf_use[i] = 1;
-			mutex_unlock(&bcm_static_buf->static_sem);
+			up(&bcm_static_buf->static_sem);
 
 			bzero(bcm_static_buf->buf_ptr+STATIC_BUF_SIZE*i, size);
 			if (osh)
@@ -1516,9 +1516,9 @@ osl_mfree(osl_t *osh, void *addr, uint size)
 
 			buf_idx = ((unsigned char *)addr - bcm_static_buf->buf_ptr)/STATIC_BUF_SIZE;
 
-			mutex_lock(&bcm_static_buf->static_sem);
+			down(&bcm_static_buf->static_sem);
 			bcm_static_buf->buf_use[buf_idx] = 0;
-			mutex_unlock(&bcm_static_buf->static_sem);
+			up(&bcm_static_buf->static_sem);
 
 			if (osh && osh->cmn) {
 				ASSERT(osh->magic == OS_HANDLE_MAGIC);

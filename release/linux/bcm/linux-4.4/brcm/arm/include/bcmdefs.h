@@ -102,6 +102,7 @@ extern bool preattach_part_reclaimed;
 #define BCMUNINITFN(_fn)	_fn
 
 #define BCMFASTPATH
+#define BCMSPEEDOPT
 #else /* DONGLEBUILD */
 
 #define bcmreclaimed 		0
@@ -111,10 +112,14 @@ extern bool preattach_part_reclaimed;
 #define BCMPREATTACHFN(_fn)	_fn
 #define BCMINITDATA(_data)	_data
 #define BCMINITFN(_fn)		_fn
+#define BCMROMDATA(_data)	_data
+#define BCMROMFN(_fn)		_fn
 #define BCMUNINITFN(_fn)	_fn
 #define	BCMNMIATTACHFN(_fn)	_fn
 #define	BCMNMIATTACHDATA(_data)	_data
 #define CONST	const
+
+#define BCMSPEEDOPT
 
 #if defined(__ARM_ARCH_7A__) && !defined(OEM_ANDROID)
 #ifndef BCM_SECURE_DMA
@@ -431,7 +436,7 @@ typedef struct {
 
 #ifdef BCMPCIEDEV /* BCMPCIEDEV support enab macros */
 extern bool _pciedevenab;
-	#if defined(WL_ENAB_RUNTIME_CHECK)
+	#if defined(WL_ENAB_RUNTIME_CHECK) || !defined(DONGLEBUILD)
 		#define BCMPCIEDEV_ENAB() (_pciedevenab)
 	#elif defined(BCMPCIEDEV_ENABLED)
 		#define BCMPCIEDEV_ENAB()	1

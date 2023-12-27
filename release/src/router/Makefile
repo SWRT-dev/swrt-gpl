@@ -897,7 +897,7 @@ obj-y += libnl-tiny-0.1
 obj-y += libubox
 obj-y += libuci
 obj-y += swconfig
-endif	
+endif
 
 ifeq ($(RT4GAX56),y)
 obj-y += libnl-tiny-0.1 libubox libuci swconfig
@@ -6075,7 +6075,7 @@ pci-utils:
 	$(MAKE) -C pciutils-3.5.0
 
 snooper:
-ifeq ($(or $(RTCONFIG_QCA),$(RTCONFIG_LANTIQ)),y)
+ifeq ($(or $(RTCONFIG_QCA),$(RTCONFIG_LANTIQ),$(RTCONFIG_BCMARM)),y)
 	@true
 else
 	$(MAKE) -C snooper EXTRACFLAGS="-I$(SRCBASE)/include $(EXTRACFLAGS)" \
@@ -6083,7 +6083,7 @@ else
 endif
 
 snooper-install:
-ifeq ($(or $(RTCONFIG_QCA),$(RTCONFIG_LANTIQ)),y)
+ifeq ($(or $(RTCONFIG_QCA),$(RTCONFIG_LANTIQ),$(RTCONFIG_BCMARM)),y)
 	@true
 else
 	install -D snooper/snooper $(INSTALLDIR)/snooper/usr/sbin/snooper
