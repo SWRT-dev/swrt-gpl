@@ -70,6 +70,7 @@
 #ifdef RTCONFIG_MULTIWAN_IF
 #include "multi_wan.h"
 #endif
+#include <libswrt.h>
 
 #ifndef ARRAYSIZE
 #define ARRAYSIZE(a) (sizeof(a) / sizeof(a[0]))
@@ -2655,7 +2656,9 @@ static const applets_t applets[] = {
 #ifdef RTCONFIG_MOCA
 	{ "moca_monitor",		moca_monitor_main      },
 #endif 
-
+#if defined(RTCONFIG_NEW_PHYMAP)
+	{ "conn_diag",			conn_diag_main			},
+#endif 
 	{ "toolbox",			swrt_toolbox		},
 	{NULL, NULL}
 };

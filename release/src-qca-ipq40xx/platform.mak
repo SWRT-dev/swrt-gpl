@@ -32,12 +32,12 @@ export ENTRYADDR := $(LOADADDR)
 # OpenWRT's toolchain needs STAGING_DIR environment variable that points to top directory of toolchain.
 export STAGING_DIR=$(TOOLS)
 
-EXTRA_CFLAGS := -DLINUX26 -DCONFIG_QCA -pipe -DDEBUG_NOISY -DDEBUG_RCTEST -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=softfp -march=armv7-a -D_GNU_SOURCE -D_BSD_SOURCE -DMUSL_LIBC -D__BIT_TYPES_DEFINED__
+EXTRA_CFLAGS := -DLINUX26 -DCONFIG_QCA -pipe -DDEBUG_NOISY -DDEBUG_RCTEST -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=softfp -march=armv7-a -DMUSL_LIBC
 
 export CONFIG_LINUX26=y
 export CONFIG_QCA=y
 export TOOLCHAIN_TARGET_GCCVER := 5.2.0
-EXTRA_CFLAGS += -DLINUX30
+#EXTRA_CFLAGS += -DLINUX30
 export CONFIG_LINUX30=y
 
 define platformRouterOptions

@@ -1466,6 +1466,8 @@ void ATE_port_status(int verbose, phy_info_list *list)
 #ifdef RTCONFIG_NEW_PHYMAP
 	phy_port_mapping port_mapping;
 	get_phy_port_mapping(&port_mapping);
+	if (list)
+		list->count = 0;
 
 	len = 0;
 	for (i = 0; i < port_mapping.count; i++) {

@@ -2539,6 +2539,7 @@ extern void __apg_switch_isolation(int enable, unsigned int portmask) __attribut
 extern void apg_switch_vlan_set(int vid, unsigned int default_portmask, unsigned int trunk_portmask, unsigned int access_portmask);
 extern void apg_switch_vlan_unset(int vid, unsigned int portmask);
 extern void apg_switch_isolation(int enable, unsigned int portmask);
+extern char *lowerCase(char *s);
 #endif /* RTCONFIG_RALINK & RTCONFIG_MULTILAN_CFG */
 extern void __wgn_sysdep_swtich_unset(int vid) __attribute__((weak));
 extern void __wgn_sysdep_swtich_set(int vid) __attribute__((weak));

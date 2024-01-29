@@ -10318,10 +10318,10 @@ static int get_client_detail_info(struct json_object *clients, struct json_objec
 	char node_mac[32]={0};
 	char band_index[4]={0};
 #endif
+#endif
 #ifdef RTCONFIG_MULTILAN_CFG
 	struct json_object *wirelessClientList = NULL, *wiredClientList = NULL;
 	char sdn_idx[8], sdn_type[32] = {0};
-#endif
 #endif
 
 	//get custom_clientlist
@@ -10464,8 +10464,8 @@ static int get_client_detail_info(struct json_object *clients, struct json_objec
 			snprintf(sdn_idx, sizeof(sdn_idx), "%d", p_client_info_tab->sdn_idx[i]);
 			snprintf(sdn_type, sizeof(sdn_type), "%s", p_client_info_tab->sdn_type[i]);
 #endif
-			//snprintf(online, sizeof(online), "%d", p_client_info_tab->online[i]);
-			snprintf(online, sizeof(online), "%d", p_client_info_tab->device_flag[i]&(1<<FLAG_EXIST));
+			snprintf(online, sizeof(online), "%d", p_client_info_tab->online[i]);
+			//snprintf(online, sizeof(online), "%d", p_client_info_tab->device_flag[i]&(1<<FLAG_EXIST));
 			snprintf(type, sizeof(type), "%d", p_client_info_tab->type[i]);
 			snprintf(defaultType, sizeof(defaultType), "%d", p_client_info_tab->type[i]);
 			snprintf(macRepeat, sizeof(macRepeat), "%d", check_macrepeat(macArray, mac_buf));
@@ -37258,7 +37258,7 @@ ej_get_wl_channel_list(int eid, webs_t wp, int argc, char **argv, int unit) {
 		for (j = 0; j < json_object_array_length(chan_above_array); j++)
 		{
 			chan_compare_tmp = json_object_array_get_idx(chan_above_array, j);
-			if((unit != WL_2G_BAND) && !is_avaiable_channel(filter_channel_40, json_object_get_string(chan_compare_tmp)))
+			if((unit != WL_2G_BAND) && !is_avaiable_channel(filter_channel_40, (char *)json_object_get_string(chan_compare_tmp)))
 				continue;
 
 			if (!strcmp(json_object_get_string(chan_tmp), json_object_get_string(chan_compare_tmp)))
@@ -37282,7 +37282,7 @@ ej_get_wl_channel_list(int eid, webs_t wp, int argc, char **argv, int unit) {
 			for (j = 0; j < json_object_array_length(chan_40m_tmp); j++)
 			{
 				chan_compare_tmp = json_object_array_get_idx(chan_40m_tmp, j);
-				if(unit> 0 && !is_avaiable_channel(filter_channel_40, json_object_get_string(chan_compare_tmp)))
+				if(unit> 0 && !is_avaiable_channel(filter_channel_40, (char *)json_object_get_string(chan_compare_tmp)))
 					continue;
 
 				if (!strcmp(json_object_get_string(chan_tmp), json_object_get_string(chan_compare_tmp)))
@@ -37301,7 +37301,7 @@ ej_get_wl_channel_list(int eid, webs_t wp, int argc, char **argv, int unit) {
 			for (j = 0; j < json_object_array_length(chan_below_array); j++)
 			{
 				chan_compare_tmp = json_object_array_get_idx(chan_below_array, j);
-				if((unit != WL_2G_BAND) && !is_avaiable_channel(filter_channel_40, json_object_get_string(chan_compare_tmp)))
+				if((unit != WL_2G_BAND) && !is_avaiable_channel(filter_channel_40, (char *)json_object_get_string(chan_compare_tmp)))
 					continue;
 
 				if (!strcmp(json_object_get_string(chan_tmp), json_object_get_string(chan_compare_tmp)))
@@ -37326,7 +37326,7 @@ ej_get_wl_channel_list(int eid, webs_t wp, int argc, char **argv, int unit) {
 		for (j = 0; j < json_object_array_length(chan_80m_tmp); j++)
 		{
 			chan_compare_tmp = json_object_array_get_idx(chan_80m_tmp, j);
-			if((unit != WL_2G_BAND) && !is_avaiable_channel(filter_channel_80, json_object_get_string(chan_compare_tmp)))
+			if((unit != WL_2G_BAND) && !is_avaiable_channel(filter_channel_80, (char *)json_object_get_string(chan_compare_tmp)))
 				continue;
 
 			if (!strcmp(json_object_get_string(chan_tmp), json_object_get_string(chan_compare_tmp)))
@@ -37347,7 +37347,7 @@ ej_get_wl_channel_list(int eid, webs_t wp, int argc, char **argv, int unit) {
 		for (j = 0; j < json_object_array_length(chan_160m_tmp); j++)
 		{
 			chan_compare_tmp = json_object_array_get_idx(chan_160m_tmp, j);
-			if((unit != WL_2G_BAND) && !is_avaiable_channel(filter_channel_160, json_object_get_string(chan_compare_tmp)))
+			if((unit != WL_2G_BAND) && !is_avaiable_channel(filter_channel_160, (char *)json_object_get_string(chan_compare_tmp)))
 				continue;
 
 			if (!strcmp(json_object_get_string(chan_tmp), json_object_get_string(chan_compare_tmp)))
@@ -38801,6 +38801,7 @@ static int ej_get_sdn_all_list(int eid, webs_t wp, int argc, char **argv)
 	return 0;
 }
 
+#if defined(RTCONFIG_AMAS)
 int aimesh_get_node_wifi_band(json_object *allcapability_Obj){
 
 	int i = 0, lock = 0, shm_client_tbl_id = 0;
@@ -38884,13 +38885,14 @@ int aimesh_get_node_wifi_band(json_object *allcapability_Obj){
 
 	return 0;
 }
+#endif
 
 static int ej_get_node_wifi_band(int eid, webs_t wp, int argc, char **argv)
 {
 	struct json_object *allcapability_Obj = json_object_new_object();
-
+#if defined(RTCONFIG_AMAS)
 	aimesh_get_node_wifi_band(allcapability_Obj);
-
+#endif
 	websWrite(wp, "%s", json_object_to_json_string(allcapability_Obj));
 
 	if(allcapability_Obj)

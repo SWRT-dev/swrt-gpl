@@ -1146,37 +1146,37 @@ CP_PROFILE *get_cpX_profile_by_cpidx(int index, CP_PROFILE *lst)
 		if(vstrsep(b, ">", &cp_able, &cp_au_tp, &cp_ctimeout, &cp_idtimeout, &cp_atimeout, &cp_rdirecturl, &cp_enable_tservice, &cp_blimit_ul, &cp_blimt_dl, &cp_nid, &cp_idx_cusui) < 1)
 			continue;
 		
-			if (!cp_able || strlen(cp_able) <= 0)
-				continue;
+		if (!cp_able || strlen(cp_able) <= 0)
+			continue;
 
-			found = 1;
+		found = 1;
 
-			if (cp_able && *cp_able)
-				lst->cp_enable = strtol(cp_able, NULL, 10);
-			if (cp_au_tp && *cp_au_tp)
-				lst->cp_auth_type = strtol(cp_au_tp, NULL, 10);
-			if (cp_ctimeout && *cp_ctimeout)
-				lst->cp_conntimeout = strtol(cp_ctimeout, NULL, 10);
-			if (cp_idtimeout && *cp_idtimeout)
-				lst->cp_idletimeout = strtol(cp_idtimeout, NULL, 10);
-			if (cp_idtimeout && *cp_idtimeout)
-				lst->cp_idletimeout = strtol(cp_idtimeout, NULL, 10);
-			if (cp_atimeout && *cp_atimeout)
-				lst->cp_authtimeout = strtol(cp_atimeout, NULL, 10);
-			if (cp_rdirecturl && *cp_rdirecturl)
-				strlcpy(lst->redirecturl , cp_rdirecturl, sizeof(lst->redirecturl));	
-			if (cp_enable_tservice && *cp_enable_tservice)
-				lst->cp_term_service = strtol(cp_enable_tservice, NULL, 10);		
-			if (cp_blimit_ul && *cp_blimit_ul)
-				lst->cp_bw_limit_ul = strtol(cp_blimit_ul, NULL, 10);	
-			if (cp_blimt_dl && *cp_blimt_dl)
-				lst->cp_bw_limit_dl = strtol(cp_blimt_dl, NULL, 10);
-			if (cp_nid && *cp_nid)
-				strlcpy(lst->cp_nas_id , cp_nid, sizeof(lst->cp_nas_id));	
-			if (cp_idx_cusui && *cp_idx_cusui)
-				strlcpy(lst->cp_idx_ui_customizes , cp_idx_cusui, sizeof(lst->cp_idx_ui_customizes));
+		if (cp_able && *cp_able)
+			lst->cp_enable = strtol(cp_able, NULL, 10);
+		if (cp_au_tp && *cp_au_tp)
+			lst->cp_auth_type = strtol(cp_au_tp, NULL, 10);
+		if (cp_ctimeout && *cp_ctimeout)
+			lst->cp_conntimeout = strtol(cp_ctimeout, NULL, 10);
+		if (cp_idtimeout && *cp_idtimeout)
+			lst->cp_idletimeout = strtol(cp_idtimeout, NULL, 10);
+		if (cp_idtimeout && *cp_idtimeout)
+			lst->cp_idletimeout = strtol(cp_idtimeout, NULL, 10);
+		if (cp_atimeout && *cp_atimeout)
+			lst->cp_authtimeout = strtol(cp_atimeout, NULL, 10);
+		if (cp_rdirecturl && *cp_rdirecturl)
+			strlcpy(lst->redirecturl , cp_rdirecturl, sizeof(lst->redirecturl));	
+		if (cp_enable_tservice && *cp_enable_tservice)
+			lst->cp_term_service = strtol(cp_enable_tservice, NULL, 10);		
+		if (cp_blimit_ul && *cp_blimit_ul)
+			lst->cp_bw_limit_ul = strtol(cp_blimit_ul, NULL, 10);	
+		if (cp_blimt_dl && *cp_blimt_dl)
+			lst->cp_bw_limit_dl = strtol(cp_blimt_dl, NULL, 10);
+		if (cp_nid && *cp_nid)
+			strlcpy(lst->cp_nas_id , cp_nid, sizeof(lst->cp_nas_id));	
+		if (cp_idx_cusui && *cp_idx_cusui)
+			strlcpy(lst->cp_idx_ui_customizes , cp_idx_cusui, sizeof(lst->cp_idx_ui_customizes));
 		
-			break;
+		break;
 	}
  
 	free(nv);

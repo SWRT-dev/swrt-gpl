@@ -124,7 +124,7 @@ extern void gen_arch_conf(void);
 extern void show_boraddata(void);
 extern void fix_boraddata(char *key, char *value);
 #endif
-#if defined(RAX200)
+#if defined(RAX200) || defined(RAX80)
 extern void fan_watchdog(void);
 #endif
 #if defined(RTCONFIG_BCMARM)

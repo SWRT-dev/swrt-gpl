@@ -21,6 +21,7 @@
 #if defined(RTCONFIG_BCMWL6) && (defined(RTCONFIG_HAS_5G_2) || defined(RTCONFIG_HAS_6G_2))
 #include <wlioctl.h>
 #endif
+#include <libswrt.h>
 
 #define MULTICAST_BIT  0x0001
 #define UNIQUE_OUI_BIT 0x0002

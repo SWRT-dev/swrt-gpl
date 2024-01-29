@@ -82,13 +82,13 @@ void MTK_stainfo(int unit)
 				sec = mp->Entry[i].ConnectedTime - hr * 3600 - min * 60;
 				snprintf(sta_info_tab->conn_time, sizeof(sta_info_tab->conn_time), "%02d:%02d:%02d", hr, min, sec);
 				if(wireless_type == 1){
-					snprintf(sta_info_tab->txrate, sizeof(sta_info_tab->txrate), "%dM", mtk_mcs_to_rate(mcs, phy, bw, sgi, vht_nss, 0));
+					snprintf(sta_info_tab->txrate, sizeof(sta_info_tab->txrate), "%5u", mtk_mcs_to_rate(mcs, phy, bw, sgi, vht_nss, 0));
 					if(rx_ratedata)
-						snprintf(sta_info_tab->rxrate, sizeof(sta_info_tab->rxrate), "%dM", mtk_mcs_to_rate(r_mcs, r_phy, r_bw, r_sgi, r_vht_nss, 0));
+						snprintf(sta_info_tab->rxrate, sizeof(sta_info_tab->rxrate), "%5u", mtk_mcs_to_rate(r_mcs, r_phy, r_bw, r_sgi, r_vht_nss, 0));
 				}else{
-					snprintf(sta_info_tab->txrate, sizeof(sta_info_tab->txrate), "%dM", mtk_mcs_to_rate(mcs, phy, bw, sgi, vht_nss, 1));
+					snprintf(sta_info_tab->txrate, sizeof(sta_info_tab->txrate), "%5u", mtk_mcs_to_rate(mcs, phy, bw, sgi, vht_nss, 1));
 					if(rx_ratedata)
-						snprintf(sta_info_tab->rxrate, sizeof(sta_info_tab->rxrate), "%dM", mtk_mcs_to_rate(r_mcs, r_phy, r_bw, r_sgi, r_vht_nss, 1));
+						snprintf(sta_info_tab->rxrate, sizeof(sta_info_tab->rxrate), "%5u", mtk_mcs_to_rate(r_mcs, r_phy, r_bw, r_sgi, r_vht_nss, 1));
 				}
 				if(g_show_sta_info && f_exists("/tmp/conn_debug"))
 					printf("%s[%3d,MTK] %02X%02X%02X%02X%02X%02X, rx: %s tx: %s, rssi: %d\n", "[connection log]", i, sta_info_tab->mac_addr[0], sta_info_tab->mac_addr[1],

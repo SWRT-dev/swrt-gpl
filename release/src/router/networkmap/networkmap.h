@@ -11,6 +11,7 @@
 #include <version.h>
 #include <shared.h>
 #include <sm.h>
+#include <json.h>
 
 #ifndef FALSE
 #define FALSE	0
@@ -83,6 +84,14 @@ enum
 #define USERAGENT			"Asuswrt/networkmap"
 #define NMP_VC_FILE_LOCK		"nmpvc"
 
+#define CFG_FILE_LOCK                "cfg_mnt"
+#define ALLWEVENT_FILE_LOCK          "allwevent"
+#define ALLWCLIENT_LIST_JSON_PATH    "/tmp/allwclientlist.json"
+#define CLIENTLIST_FILE_LOCK         "clientlist"
+#define CLIENT_LIST_JSON_PATH        "/tmp/clientlist.json"
+#define WIREDCLIENTLIST_FILE_LOCK    "wiredclientlist"
+#define WIRED_CLIENT_LIST_JSON_PATH  "/tmp/wiredclientlist.json"
+#define BRCTL_TABLE_PATH             "/tmp/nmp_brctl_table"
 
 #define NCL_LIMIT		14336   //database limit to 14KB to avoid UI glitch
 
@@ -99,7 +108,13 @@ enum
 #define NMP_CL_JSON_FILE		"/tmp/nmp_cl_json.js"
 #define NMP_VC_JSON_FILE		"/tmp/nmp_vc_json.js"
 #endif
+
+#define DEV_TYPE_PATH		"/jffs/dev_type_query.json"
 #define ARP_PATH			"/proc/net/arp"
+
+#ifdef RTCONFIG_MULTILAN_CFG
+#define APG_IFNAMES_USED_FILE			"/jffs/.sys/cfg_mnt/apg_ifnames_used.json"
+#endif
 
 #define NMP_CONSOLE_DEBUG(fmt, args...) do{ \
 	if(nvram_match("nmp_debug", "1")) { \
@@ -179,6 +194,8 @@ enum
 #define TYPE_WINDOWS		30
 #define TYPE_ANDROID		31
 
+#define SUCCESS		0
+
 enum
 {
 	BASE_TYPE_DEFAULT = 0,
@@ -200,6 +217,11 @@ typedef struct {
 	unsigned char	device_type[MAX_NR_CLIENT_LIST][32];
 	unsigned char	vendorClass[MAX_NR_CLIENT_LIST][32];
 	unsigned char	os_type[MAX_NR_CLIENT_LIST];
+#ifdef RTCONFIG_MULTILAN_CFG
+	unsigned char	sdn_idx[MAX_NR_CLIENT_LIST];
+	unsigned char	sdn_type[MAX_NR_CLIENT_LIST][32];
+#endif
+	unsigned char	online[MAX_NR_CLIENT_LIST];
 	unsigned char	type[MAX_NR_CLIENT_LIST];
 	unsigned char	ipMethod[MAX_NR_CLIENT_LIST][7];
 	unsigned char	opMode[MAX_NR_CLIENT_LIST];
@@ -214,6 +236,10 @@ typedef struct {
 /* wireless: 0:wired 1:2.4G 2:5G 3:5G-2
 */
 	unsigned char	wireless[MAX_NR_CLIENT_LIST];
+
+	unsigned char	is_wireless[MAX_NR_CLIENT_LIST];
+	int        		conn_ts[MAX_NR_CLIENT_LIST];		// connect  timestamp
+	int        		offline_time[MAX_NR_CLIENT_LIST];
 /* wireless log information
 */
 #ifdef RTCONFIG_LANTIQ
@@ -255,9 +281,42 @@ typedef struct
 	unsigned char	dest_ipaddr[4];
 } ARP_HEADER;
 
-int FindHostname(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab);
+int FindHostname(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, int i);
 int FindDevice(unsigned char *pIP, unsigned char *pMac, int replaceMac);
 void find_wireless_device(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, int offline);
+void rc_diag_stainfo(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, int i);
 void type_filter(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, int x, unsigned char type, unsigned char base, int isDev);
 int isBaseType(int type);
+
+int QueryConvTypes(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, int i);
+
+
+#ifdef RTCONFIG_MULTILAN_CFG
+void get_subnet_ifname(const int subnet_idx, char * subnet_ifname, int ifname_len);
+void get_ip_from_arp_table(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, const int i, const char *subnet);
+int get_sdn_type(const int sdn_idx, char *sdn_type, int sdn_type_len);
+int get_sdn_idx_form_apg(char *papMac, char *ifname);
+#endif
+
+int get_brctl_macs(char * mac);
+
+int check_wrieless_info(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, const int i, const int is_file, struct json_object *clients);
+
+#ifdef RTCONFIG_MULTILAN_CFG
+int check_wrie_client_sdn_idx(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, const int i);
+#endif
+
+void regularly_check_devices(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab);
+
+void check_clientlist_offline(CLIENT_DETAIL_INFO_TABLE *p_client_detail_info_tab);
+
+int check_wireless_clientlist(CLIENT_DETAIL_INFO_TABLE *p_client_detail_info_tab);
+
+void check_brctl_mac_online(CLIENT_DETAIL_INFO_TABLE *p_client_detail_info_tab);
+
+void network_ip_scan();
+
+int json_checker(const char *json_str);
+
+int check_brctl_macs(CLIENT_DETAIL_INFO_TABLE *p_client_detail_info_tab);
 #endif  /*__NETWORKMAP_H__*/

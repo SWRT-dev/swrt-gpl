@@ -3916,4 +3916,8 @@ extern void stop_mapcontroller(void);
 extern int is_hostapd_running(const char *ifname);
 extern void restart_hostapd(const char *ifname);
 #endif
+#if defined(RTCONFIG_NEW_PHYMAP)
+extern int conn_diag_main(int argc, char *argv[]);
+extern void update_port_event(char *state, char *interface);
+#endif
 #endif	/* __RC_H__ */

@@ -114,6 +114,7 @@
 #include <plc_utils.h>
 #endif
 #include "swrt.h"
+#include <libswrt.h>
 
 #if defined(RTCONFIG_SW_CTRL_ALLLED)
 extern int send_cfgmnt_event(char *msg);
@@ -8859,7 +8860,7 @@ void cfgsync_check()
 }
 #endif /* RTCONFIG_CFGSYNC */
 
-#ifdef RTCONFIG_CONNDIAG
+#if defined(RTCONFIG_CONNDIAG) || defined(RTCONFIG_NEW_PHYMAP)
 void conn_diag_check()
 {
 	if (!pids("conn_diag"))
@@ -10356,6 +10357,9 @@ wdp:
 #if !defined(SWRT_VER_MAJOR_B)
 	cfgsync_check();
 #endif
+#endif
+#if defined(RTCONFIG_CONNDIAG) || defined(RTCONFIG_NEW_PHYMAP)
+	conn_diag_check();
 #endif
 #ifdef RTCONFIG_TUNNEL
 	mastiff_check();

@@ -6633,6 +6633,9 @@ stop_misc(void)
 	stop_conn_diag();
 #endif
 #endif
+#if defined(RTCONFIG_NEW_PHYMAP)
+	stop_conn_diag();
+#endif
 	stop_pppoe_relay();
 	if (pids("igmpproxy"))
 		killall_tk("igmpproxy");
@@ -12753,6 +12756,9 @@ start_services(void)
 	start_conn_diag();
 #endif
 #endif
+#if defined(RTCONFIG_NEW_PHYMAP)
+	start_conn_diag();
+#endif
 
 #if !(defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_REALTEK)) \
  ||  (defined(RTCONFIG_SOC_IPQ8074))
@@ -13161,6 +13167,9 @@ stop_services(void)
 #endif
 	stop_cfgsync();
 #endif
+#if defined(RTCONFIG_NEW_PHYMAP)
+	stop_conn_diag();
+#endif
 #ifdef RTCONFIG_NEW_USER_LOW_RSSI
 	stop_roamast();
 #endif
@@ -13477,6 +13486,9 @@ stop_services_mfg(void)
 	stop_jitterentropy();
 #endif
 #ifdef RTCONFIG_CONNDIAG
+	stop_conn_diag();
+#endif
+#if defined(RTCONFIG_NEW_PHYMAP)
 	stop_conn_diag();
 #endif
 #ifdef RTCONFIG_AWSIOT
@@ -15088,6 +15100,9 @@ again:
 #endif
 			stop_cfgsync();
 #endif
+#if defined(RTCONFIG_NEW_PHYMAP)
+			stop_conn_diag();
+#endif
 #if defined(RTCONFIG_AMAS) && (defined(RTCONFIG_BCMWL6) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_QCA) || defined(RTCONFIG_REALTEK))
 			stop_obd();
 #endif
@@ -15824,6 +15839,9 @@ script_allnet:
 			if (!strstr(nvram_safe_get("rc_service"), "start_cfgsync"))
 				stop_cfgsync();
 #endif
+#if defined(RTCONFIG_NEW_PHYMAP)
+			stop_conn_diag();
+#endif
 #ifdef RTCONFIG_CAPTIVE_PORTAL
 			stop_chilli();
 			stop_CP();
@@ -15997,6 +16015,9 @@ script_allnet:
 			start_conn_diag();
 #endif
 #endif
+#if defined(RTCONFIG_NEW_PHYMAP)
+			start_conn_diag();
+#endif
 #if defined(RTCONFIG_AMAS)
 			start_amas_lib();
 #ifdef RTCONFIG_VIF_ONBOARDING
@@ -16085,6 +16106,9 @@ script_allnet:
 #endif
 			if (!strstr(nvram_safe_get("rc_service"), "start_cfgsync"))
 				stop_cfgsync();
+#endif
+#if defined(RTCONFIG_NEW_PHYMAP)
+			stop_conn_diag();
 #endif
 			stop_wan();
 			stop_lan();
@@ -16243,6 +16267,9 @@ script_allnet:
 			start_conn_diag();
 #endif
 #endif
+#if defined(RTCONFIG_NEW_PHYMAP)
+			start_conn_diag();
+#endif
 #if defined(RTCONFIG_AMAS)
 			start_amas_lib();
 #ifdef RTCONFIG_VIF_ONBOARDING
@@ -16378,6 +16405,9 @@ script_allnet:
 #endif
 			if (!strstr(nvram_safe_get("rc_service"), "start_cfgsync"))
 				stop_cfgsync();
+#endif
+#if defined(RTCONFIG_NEW_PHYMAP)
+			stop_conn_diag();
 #endif
 #if defined(RTCONFIG_AMAS)
 			stop_amas_lib();
@@ -16550,6 +16580,9 @@ script_allnet:
 #ifdef RTCONFIG_CONNDIAG
 			start_conn_diag();
 #endif
+#endif
+#if defined(RTCONFIG_NEW_PHYMAP)
+			start_conn_diag();
 #endif
 #if defined(RTCONFIG_NFCM)
             start_nfcm();
@@ -19321,6 +19354,9 @@ retry_wps_enr:
 #endif
 			stop_cfgsync();
 #endif
+#if defined(RTCONFIG_NEW_PHYMAP)
+			stop_conn_diag();
+#endif
 #if defined(RTCONFIG_AMAS)
 			stop_amas_lib();
 #endif
@@ -20290,6 +20326,12 @@ _dprintf("test 2. turn off the USB power during %d seconds.\n", reset_seconds[re
 	else if (strcmp(script,"amas_portstatus") == 0){
 		if(action&RC_SERVICE_STOP) stop_amas_portstatus();
 		if(action&RC_SERVICE_START) start_amas_portstatus();
+	}
+#endif
+#if defined(RTCONFIG_NEW_PHYMAP)
+	else if (strcmp(script,"conn_diag") == 0){
+		if(action&RC_SERVICE_STOP) stop_conn_diag();
+		if(action&RC_SERVICE_START) start_conn_diag();
 	}
 #endif
 	else if (strcmp(script, "apply_amaslib") == 0)
@@ -24339,6 +24381,22 @@ void start_conn_diag(void){
 	//start_amas_portstatus();
 }
 #endif
+#endif
+
+#if defined(RTCONFIG_NEW_PHYMAP)
+void stop_conn_diag(void){
+	if(pids("conn_diag"))
+		killall_tk("conn_diag");
+}
+
+void start_conn_diag(void){
+	char *cmd[] = {"conn_diag", NULL};
+	pid_t pid;
+
+	stop_conn_diag();
+
+	_eval(cmd, NULL, 0, &pid);
+}
 #endif
 
 #ifdef RTCONFIG_USB_SWAP

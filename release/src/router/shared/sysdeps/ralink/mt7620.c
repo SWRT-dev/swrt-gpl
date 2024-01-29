@@ -2710,6 +2710,8 @@ void ATE_port_status(int verbose, phy_info_list *list)
 
     phy_port_mapping port_mapping;
     get_phy_port_mapping(&port_mapping);
+	if (list)
+		list->count = 0;
 
     if (switch_init() < 0)
         return;
@@ -2733,21 +2735,27 @@ void ATE_port_status(int verbose, phy_info_list *list)
             continue;
         if (list) {
             list->phy_info[i].phy_port_id = port_mapping.port[i].phy_port_id;
-            list->phy_info[i].link_rate = pS.link[i];
-			snprintf(list->phy_info[i].state, sizeof(list->phy_info[i].state), "%s", (pS.link[i]==1)?"up":"down");
+			if(pS.link[port_mapping.port[i].phy_port_id] == 1){
+				list->phy_info[i].link_rate = pS.speed[port_mapping.port[i].phy_port_id] == 2 ? 1000 : 100;
+				snprintf(list->phy_info[i].state, sizeof(list->phy_info[i].state), "%s", "up");
+			}else{
+				list->phy_info[i].link_rate = 0;
+				snprintf(list->phy_info[i].state, sizeof(list->phy_info[i].state), "%s", "down");
+			}
 			snprintf(list->phy_info[i].label_name, sizeof(list->phy_info[i].label_name), "%s",
                 port_mapping.port[i].label_name);
             list->phy_info[i].cap = port_mapping.port[i].cap;
             snprintf(list->phy_info[i].cap_name, sizeof(list->phy_info[i].cap_name), "%s",
                 get_phy_port_cap_name(port_mapping.port[i].cap, cap_buf, sizeof(cap_buf)));
-            if (pS.link[i] == 1 && !list->status_and_speed_only) {
-                // TODO not complete
+            if (pS.link[port_mapping.port[i].phy_port_id] == 1 && !list->status_and_speed_only) {
+				// TODO not complete
+				//get_mt7621_port_mib(port_mapping.port[i].phy_port_id, &list->phy_info[i]);
             }
 
             list->count++;
         }
         len += sprintf(buf+len, "%s=%C;", port_mapping.port[i].label_name,
-            conv_speed(pS.link[i], pS.speed[i]));
+            conv_speed(pS.link[port_mapping.port[i].phy_port_id], pS.speed[port_mapping.port[i].phy_port_id]));
     }
 	
 	switch_fini();
@@ -2898,6 +2906,108 @@ void restore_esw(void)
 
 	switch_fini();
 }
+
+#ifdef RTCONFIG_NEW_PHYMAP
+void mt7621_get_phy_port_mapping(phy_port_mapping *port_mapping)
+{
+	int i, id;
+	static phy_port_mapping port_mapping_static = {
+#if defined(RT4GAX56)
+		.count = 6,
+		.is_mobile_router = 1,
+		.port[0] = { .phy_port_id = -1, .ext_port_id = 0, .label_name = "W0", .cap = PHY_PORT_CAP_WAN, .max_rate = 1000, .ifname = "eth1", .flag = 0 },
+		.port[1] = { .phy_port_id = -1, .ext_port_id = 1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth0", .flag = 0 },
+		.port[2] = { .phy_port_id = -1, .ext_port_id = 2, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth0", .flag = 0 },
+		.port[3] = { .phy_port_id = -1, .ext_port_id = 3, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth0", .flag = 0 },
+		.port[4] = { .phy_port_id = -1, .ext_port_id = 4, .label_name = "L4", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth0", .flag = 0 },
+		.port[5] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "M1", .cap = PHY_PORT_CAP_MOBILE, .max_rate = 480, .ifname = "usb0", .flag = 0 }
+#elif defined(RT4GAC86U)
+		.count = 7,
+		.is_mobile_router = 1,
+		.port[0] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[1] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[2] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[3] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[4] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L4", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[5] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "U1", .cap = PHY_PORT_CAP_USB, .max_rate = 480, .ifname = NULL, .flag = 0 },
+		.port[6] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "M1", .cap = PHY_PORT_CAP_MOBILE, .max_rate = 480, .ifname = NULL, .flag = 0 }
+#elif defined(RTACRH18)
+		.count = 6,
+		.port[0] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[1] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[2] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[3] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[4] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L4", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[5] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "U1", .cap = PHY_PORT_CAP_USB, .max_rate = 5000, .ifname = NULL, .flag = 0 },
+#elif defined(XD4S)
+		.count = 2,
+		.port[0] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+		.port[1] = { .phy_port_id = -1, .ext_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0 },
+#elif defined(RTCONFIG_3LANPORT_DEVICE)
+		.count = 4,
+		.port[0] = { .phy_port_id = WAN_PORT, .ext_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_WAN, .max_rate = 1000, .ifname = "eth0", .flag = 0 },
+		.port[1] = { .phy_port_id = LAN1_PORT, .ext_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "vlan1", .flag = 0 },
+		.port[2] = { .phy_port_id = LAN2_PORT, .ext_port_id = -1, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "vlan1", .flag = 0 },
+		.port[3] = { .phy_port_id = LAN3_PORT, .ext_port_id = -1, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "vlan1", .flag = 0 },
+#else
+		.count = 5,
+		.port[0] = { .phy_port_id = WAN_PORT, .ext_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_WAN, .max_rate = 1000, .ifname = "eth0", .flag = 0 },
+		.port[1] = { .phy_port_id = LAN1_PORT, .ext_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "vlan1", .flag = 0 },
+		.port[2] = { .phy_port_id = LAN2_PORT, .ext_port_id = -1, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "vlan1", .flag = 0 },
+		.port[3] = { .phy_port_id = LAN3_PORT, .ext_port_id = -1, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "vlan1", .flag = 0 },
+		.port[4] = { .phy_port_id = LAN4_PORT, .ext_port_id = -1, .label_name = "L4", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "vlan1", .flag = 0 },
+#endif
+	};
+	if (!port_mapping)
+		return;
+
+///////////////// copy all Ethernet port here ////////////////////////
+	memcpy(port_mapping, &port_mapping_static, sizeof(phy_port_mapping));
+
+///////////////// finetune Ethernet port here ////////////////////////
+#if defined(TUFAX4200)
+	if (nvram_match("HwId", "A")) { // disable 2.5G LAN
+		port_mapping->count = NR_WANLAN_PORT-1;
+		port_mapping->port[port_mapping->count].phy_port_id = -1;
+	}
+#endif
+
+///////////////// Add USB port define here ////////////////////////
+#if defined(RTAX53U)
+	i = port_mapping->count++;
+	port_mapping->port[i].phy_port_id = -1;
+	port_mapping->port[i].label_name = "U1";
+	port_mapping->port[i].cap = PHY_PORT_CAP_USB;
+	port_mapping->port[i].max_rate = 480;
+	port_mapping->port[i].ifname = NULL;
+#elif defined(RTAC85P) || defined(R6800)
+	i = port_mapping->count++;
+	port_mapping->port[i].phy_port_id = -1;
+	port_mapping->port[i].label_name = "U1";
+	port_mapping->port[i].cap = PHY_PORT_CAP_USB;
+	port_mapping->port[i].max_rate = 5000;
+	port_mapping->port[i].ifname = NULL;
+#elif defined(PANTHERA) || defined(RTAX59U)
+////  1 USB3 + 1 USB2 port device
+	i = port_mapping->count++;
+	port_mapping->port[i].phy_port_id = -1;
+	port_mapping->port[i].label_name = "U1";
+	port_mapping->port[i].cap = PHY_PORT_CAP_USB;
+	port_mapping->port[i].max_rate = 5000;
+	port_mapping->port[i].ifname = NULL;
+	i = port_mapping->count++;
+	port_mapping->port[i].phy_port_id = -1;
+	port_mapping->port[i].label_name = "U2";
+	port_mapping->port[i].cap = PHY_PORT_CAP_USB;
+	port_mapping->port[i].max_rate = 480;
+	port_mapping->port[i].ifname = NULL;
+#endif
+
+	add_sw_cap(port_mapping);
+	swap_wanlan(port_mapping);
+	return;
+}
+#endif // end of RTCONFIG_NEW_PHYMAP
 
 #if 0
 void usage(char *cmd)

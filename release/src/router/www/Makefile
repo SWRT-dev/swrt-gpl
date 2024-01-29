@@ -832,9 +832,12 @@ endif
 	ln -sf /tmp/fb_data.tgz.gz.part.d $(INSTALLDIR)/www/fb_data.tgz.gz.part.d
 
 ifneq ($(RTCONFIG_AMAS), y)
+
 	rm -rf $(INSTALLDIR)/www/device-map/amesh.asp
 	rm -rf $(INSTALLDIR)/www/device-map/amesh.css
+ifneq ($(RTCONFIG_NEW_PHYMAP), y)
 	rm -rf $(INSTALLDIR)/www/images/New_ui/amesh
+endif
 	rm -rf $(INSTALLDIR)/www/require/modules/amesh.js
 	rm -rf $(INSTALLDIR)/www/ajax_onboarding.asp
 	rm -rf $(INSTALLDIR)/www/get_release_note_amas.asp

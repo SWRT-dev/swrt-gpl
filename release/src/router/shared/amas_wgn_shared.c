@@ -898,8 +898,8 @@ char *wgn_guest_all_ifnames(
 		return NULL;
 
 	memset(vlan_list, 0, sizeof(struct wgn_vlan_rule_t) * WGN_MAXINUM_VLAN_RULELIST);
-    if (!wgn_vlan_list_get_from_nvram(vlan_list, WGN_MAXINUM_VLAN_RULELIST, &vlan_total))
-        return NULL;
+	if (!wgn_vlan_list_get_from_nvram(vlan_list, WGN_MAXINUM_VLAN_RULELIST, &vlan_total))
+		return NULL;
 
 	for (i=0, offset=0; i<vlan_total && offset<ifnames_bsize; i++) {
 		unit = subunit = -1;

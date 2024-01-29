@@ -1945,7 +1945,7 @@ int  __attribute__((weak)) setNetLed(void)
 }
 #endif
 
-#if defined(RAX200)
+#if defined(RAX200) || defined(RAX80)
 void fan_watchdog(void)
 {
 	FILE *fp;

@@ -144,7 +144,7 @@ ifeq ($(RTCONFIG_AMAS_WGN), y)
 OBJS_WPS_PBCD += $(if $(wildcard amas_wgn.c),amas_wgn.o,prebuild/amas_wgn.o)
 endif
 ifeq ($(RTCONFIG_MULTILAN_CFG), y)
-OBJS_WPS_PBCD += $(if $(wildcard amas_apg.c),amas_apg.o,prebuild/amas_apg.o)
+#OBJS_WPS_PBCD += $(if $(wildcard amas_apg.c),amas_apg.o,prebuild/amas_apg.o)
 endif
 else
 OBJS_WPS_PBCD := $(if $(wildcard sysdeps/broadcom/wps_pbcd.c),wps_pbcd.o,prebuild/wps_pbcd.o)
@@ -267,6 +267,9 @@ CFLAGS  += -I$(TOP)/bluez-5.56/lib
 endif
 
 #CFLAGS += -DRC_BUILDTIME=$(shell date -d "now" +"%s")
+
+CFLAGS  += -I$(TOP)/libswrt -I$(TOP)/sqlite
+LDFLAGS += -L$(TOP)/libswrt -L$(TOP)/sqlite/.libs -lsqlite3 -lswrt
 
 ifneq ($(findstring NET_CLS_POLICE=, $(shell cat $(LINUXDIR)/.config)),)
 else
@@ -881,8 +884,10 @@ CFLAGS += -D _FILE_OFFSET_BITS=64
 endif
 
 ifeq ($(RTCONFIG_MULTILAN_CFG), y)
-OBJS += swrt_apg.o
-OBJS += swrt_mtlan.o
+OBJS += $(if $(wildcard swrt_apg.c),swrt_apg.o,prebuild/swrt_apg.o)
+endif
+ifeq ($(RTCONFIG_NEW_PHYMAP), y)
+OBJS += $(if $(wildcard conn_diag.c),conn_diag.o,prebuild/conn_diag.o)
 endif
 
 # _FILE_OFFSET_BITS=64 is defined in shared, it must be defined in rc accordingly if shared pass pointer to struct dirent to rc,
@@ -1769,6 +1774,9 @@ ifeq ($(RTCONFIG_EASYMESH),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc easymesh
 	@cd $(INSTALLDIR)/sbin && ln -sf rc easymesh_agent
 	@cd $(INSTALLDIR)/sbin && ln -sf rc easymesh_agentctrl
+endif
+ifeq ($(RTCONFIG_NEW_PHYMAP), y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc conn_diag
 endif
 	@cd $(INSTALLDIR)/sbin && ln -sf rc toolbox
 

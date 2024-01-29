@@ -362,6 +362,9 @@ endif
 CFLAGS += -I$(TOP)/libwebapi
 LIBS += -L$(TOP)/libwebapi -lwebapi
 
+CFLAGS += -I$(TOP)/sqlite -I$(TOP)/libswrt
+LIBS += -L$(TOP)/sqlite/.libs -lsqlite3 -L$(TOP)/libswrt -lswrt
+
 all: httpd #test_apps
 
 #test_apps: apps.c

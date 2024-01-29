@@ -46,7 +46,7 @@ extern char *ether_cal(const char *e, char *a, int i);
 extern int set_site_survey(const char *wif, char *ssid);
 extern int use_partial_scan(const char *wif);
 extern int partial_scan_status(const char *wif);
-extern int get_site_survey(const char *wif, char *buffer, size_t len, SSA *ssap, int *count);
+extern int get_site_survey(const char *wif, char *buffer, size_t len, SSA **ssap, int *count);
 #endif
 
 #undef OLD_ACL  //for standalone acl policy
@@ -3788,7 +3788,6 @@ int getSiteSurvey(int band, char* ofile)
 	int wl_authorized = 0;
 	const char *wif = get_wifname(band);
 	memset(data, 0, sizeof(data));
-
 #ifdef RTCONFIG_MTK_REP
 	    char folder_path[] = "/tmp/ssidList";
 	    char file_ssidlist[30]={0};
@@ -3823,9 +3822,9 @@ int getSiteSurvey(int band, char* ofile)
 		dbg(".");
 	}
 	dbg(".\n\n");
-	if(get_site_survey(wif, data, sizeof(data), ssap, &apCount))
+	if(get_site_survey(wif, data, sizeof(data), &ssap, &apCount))
 		return -1;
-	if (apCount == 0)
+	if (apCount > 0)
 	{
 		for (i=0;i<apCount;i++)
 		{
@@ -4239,7 +4238,7 @@ int site_survey_for_channel(int band, const char *wif)
 		fprintf(stderr, ".");
 	}
 	fprintf(stderr, "\n");
-	if(get_site_survey(wif, data, sizeof(data), ssap, &apCount) || !apCount)
+	if(get_site_survey(wif, data, sizeof(data), &ssap, &apCount) || !apCount)
 		return -1;
 	if (apCount) {
 		for (i = 0; i < apCount; i++) {

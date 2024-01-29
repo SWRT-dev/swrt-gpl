@@ -2880,7 +2880,7 @@ void hotplug_net(void)
 	int act_low=1, gpio=-1, speed=0;
 #endif
 #endif
-#if defined(RTCONFIG_SWRTMESH)
+#if defined(RTCONFIG_SWRTMESH) || defined(RTCONFIG_NEW_PHYMAP)
 	char *link;
 #endif
 
@@ -2896,8 +2896,12 @@ void hotplug_net(void)
 
 	snprintf(lan_ifname, sizeof(lan_ifname), "%s", nvram_safe_get("lan_ifname"));
 
-#if defined(RTCONFIG_SWRTMESH)
+#if defined(RTCONFIG_SWRTMESH) || defined(RTCONFIG_NEW_PHYMAP)
 	link = getenv("LINK");
+#if defined(RTCONFIG_NEW_PHYMAP)
+	update_port_event(link, interface);
+#endif
+#if defined(RTCONFIG_SWRTMESH)
 	if(link && interface && sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1") && nvram_match("swrtmesh_agent_enable", "1")){
 		if(pids("ieee1905d") && !strcmp(nvram_safe_get("eth_ifnames"), interface)){
 			//swrtmesh_dynamic_bh_discovery(interface, link);
@@ -2905,6 +2909,7 @@ void hotplug_net(void)
 		}
 		return;
 	}
+#endif
 #endif
 
 	if (!(interface = getenv("INTERFACE")) ||

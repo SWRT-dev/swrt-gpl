@@ -106,6 +106,11 @@ int start_swrtmesh(void)
 			cntl_argv[idx] = "-d";
 			idx++;
 			cntl_argv[idx] = "-vvvv";
+		}else{
+			idx = 1;
+			cntl_argv[idx] = "-o";
+			idx++;
+			cntl_argv[idx] = "/dev/null";
 		}
 		swrtmesh_get_value_by_string("mapagent", "controller_select", "local", buf, sizeof(buf));
 		if(!strcmp(buf, "0")){
@@ -127,7 +132,7 @@ int start_swrtmesh(void)
 		if(nvram_match("swrtmesh_debug", "1"))
 			fprintf(fp, "mapagent -o /tmp/mapagent.log -d -vvvv &\n");
 		else
-			fprintf(fp, "mapagent &\n");
+			fprintf(fp, "mapagent -o /dev/null &\n");
 		fclose(fp);
 		chmod("/tmp/agent.sh",0777);
 		_eval(argv, NULL, 0, &pid);
@@ -173,6 +178,10 @@ int start_mapcontroller(void)
 			cntl_argv[idx] = "-d";
 			idx++;
 			cntl_argv[idx] = "-vvvv";
+		}else{
+			cntl_argv[idx] = "-o";
+			idx++;
+			cntl_argv[idx] = "/dev/null";
 		}
 		swrtmesh_get_value_by_string("mapagent", "controller_select", "local", buf, sizeof(buf));
 		if(!strcmp(buf, "0")){

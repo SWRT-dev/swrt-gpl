@@ -15,8 +15,8 @@
  * MA 02111-1307 USA
  *
  * Copyright 2019, ASUSTeK Inc.
- * Copyright 2023, SWRTdev.
- * Copyright 2023, paldier <paldier@hotmail.com>.
+ * Copyright 2023-2024, SWRTdev.
+ * Copyright 2023-2024, paldier <paldier@hotmail.com>.
  * All Rights Reserved.
  *
  */
@@ -144,6 +144,7 @@ void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 					strlcpy(p_client_tab->rxrate[i], tmp->rxrate, sizeof(p_client_tab->rxrate[0]));
 					p_client_tab->rssi[i] = tmp->rssi;
 					strlcpy(p_client_tab->conn_time[i], tmp->conn_time, sizeof(p_client_tab->conn_time[0]));
+					p_client_tab->online[i] = 1;
 					if(g_show_sta_info && f_exists("/tmp/conn_debug")){
 						_dprintf("###%d client wl: %d, rx %s tx %s rssi %d conn_time %s \n", i, p_client_tab->wireless[i], 
 							p_client_tab->rxrate[i], p_client_tab->txrate[i], p_client_tab->rssi[i], p_client_tab->conn_time[i]);
@@ -163,7 +164,7 @@ void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 					continue;
 				}
 				if(f_exists("/tmp/conn_debug"))
-					_dprintf(" ###%d wireless client check: %02x%02x%02x%02x%02x%02x \n", i, p_client_tab->mac_addr[i][0], p_client_tab->mac_addr[i][1],
+					_dprintf(" ###%d wireless client mac check: %02x%02x%02x%02x%02x%02x \n", i, p_client_tab->mac_addr[i][0], p_client_tab->mac_addr[i][1],
 						p_client_tab->mac_addr[i][2], p_client_tab->mac_addr[i][3], p_client_tab->mac_addr[i][4], p_client_tab->mac_addr[i][5]);
 				if(g_sta_info_tab){
 					tmp = g_sta_info_tab;
@@ -183,11 +184,12 @@ void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 					strlcpy(p_client_tab->rxrate[i], tmp->rxrate, sizeof(p_client_tab->rxrate[0]));
 					strlcpy(p_client_tab->conn_time[i], tmp->conn_time, sizeof(p_client_tab->conn_time[0]));
 					if(g_show_sta_info && f_exists("/tmp/conn_debug"))
-						_dprintf("### check: %d client wireless: %d\n", i, p_client_tab->wireless[i]);
-					p_client_tab->device_flag[i] |= 8;
+						_dprintf("### check: %d client wireless: %d, type = %d\n", i, p_client_tab->wireless[i], p_client_tab->type[i]);
+					p_client_tab->device_flag[i] |= (1<<FLAG_EXIST);
+					p_client_tab->online[i] = 1;
 				}else{
 					if(g_show_sta_info && f_exists("/tmp/conn_debug"))
-						_dprintf("### %d client leave! wireless: %d\n", i, p_client_tab->wireless[i]);		
+						_dprintf("### check: %d client leave! wireless: %d\n", i, p_client_tab->wireless[i]);		
 					p_client_tab->device_flag[i] &= 0xf7;
 				}
 			}

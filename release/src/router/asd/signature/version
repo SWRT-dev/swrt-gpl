@@ -1,0 +1,29 @@
+##########################################################################################
+# Copyright 2023, ASUSTeK Inc.
+# All Rights Reserved.
+#
+# This is UNPUBLISHED PROPRIETARY SOURCE CODE of ASUSTeK Inc.;
+# the contents of this file may not be disclosed to third parties, copied
+# or duplicated in any form, in whole or in part, without the prior
+# written permission of ASUSTeK Inc..
+##########################################################################################
+{
+	"version":"2021083001",
+	"feature_list":[
+		{
+		"feature":"monitorproc",
+		"version":"2021083001",
+		"checksum":"9b0a51909f3ceb8283ba57ad8b0a3e57b982bebc038bc51d0d0e686f0d0555bd"
+		},
+		{
+		"feature":"chknvram",
+		"version":"2021083002",
+		"checksum":"c0be37f0895b29fb025e28dbeb48f994a8958758762865e1f6465f933aff545b"
+		},
+		{
+		"feature":"blockfile",
+		"version":"2021083101",
+		"checksum":""
+		}		
+	]
+}
