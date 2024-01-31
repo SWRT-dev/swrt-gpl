@@ -45,7 +45,7 @@ LDFLAGS += -L$(TOP)/libdisk -ldisk
 TARGET = libswrt.so
 
 
-ifneq ($(wildcard $(SRCBASE)/router/libswrt/$(BUILD_NAME)/libswrt.o),)
+ifneq ($(wildcard $(SRCBASE)/router/libswrt/prebuild/$(BUILD_NAME)/libswrt.o),)
 all: copy_prebuild $(TARGET)
 
 copy_prebuild:
