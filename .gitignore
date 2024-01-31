@@ -19,7 +19,8 @@ release/src/router/easymesh/*/source/*.h
 release/src/router/envram/*.c
 release/src/router/envram/*.h
 release/src/router/libasc/*.c
-release/src/router/libswrt/*.c
+release/src/router/libswrt/libswrt.c
+release/src/router/libswrt/swrt_mtlan.c
 release/src/router/i2cled/driver/*.c
 release/src/router/nas_arm/*.c
 release/src/router/nas_arm/*.h
