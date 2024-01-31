@@ -78,10 +78,6 @@ export CUR_CHIP_PROFILE_RAW
 endif
 
 -include .config
-#force disable MTLANCFG
-MTLANCFG=n
-#force disable NEW_PHYMAP
-NEW_PHYMAP=n
 ifeq ($(HND_ROUTER_BE_4916),y)
 -include sdk_profile.mak
 endif
