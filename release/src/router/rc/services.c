@@ -6653,6 +6653,9 @@ stop_misc(void)
 	if (pids("fsmd"))
 		killall_tk("fsmd");
 #endif
+#if defined(RTCONFIG_SWRTMESH)
+	stop_swrtmesh();
+#endif
 #ifdef RTCONFIG_AMAS
 	stop_amas_lib();
 	stop_amas_bhctrl();

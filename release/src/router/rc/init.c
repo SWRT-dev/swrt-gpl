@@ -5573,9 +5573,6 @@ int init_nvram(void)
 #if defined(RTCONFIG_AMAS)
 		add_rc_support("smart_connect");
 #endif
-#if defined(RTCONFIG_WISP)
-		add_rc_support("wisp");
-#endif
 		// the following values is model dep. so move it from default.c to here
 		nvram_set("wl0_HT_TxStream", "2");
 		nvram_set("wl0_HT_RxStream", "2");
@@ -22178,6 +22175,9 @@ NO_USB_CAP:
 #endif
 #if defined(RTCONFIG_SFE)
 	add_rc_support("sfe");
+#endif
+#if defined(RTCONFIG_WISP)
+	add_rc_support("wisp");
 #endif
 
 	return 0;
