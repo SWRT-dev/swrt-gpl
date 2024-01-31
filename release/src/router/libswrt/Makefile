@@ -46,8 +46,11 @@ TARGET = libswrt.so
 
 
 ifneq ($(wildcard $(SRCBASE)/router/libswrt/$(BUILD_NAME)/libswrt.o),)
-all:
+all: copy_prebuild $(TARGET)
+
+copy_prebuild:
 	-cp -f prebuild/$(BUILD_NAME)/*.o ./
+
 else
 all: $(TARGET)
 endif

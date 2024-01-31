@@ -37,7 +37,7 @@ struct swrt_eth_port {
 	int orange;
 	int orange_len;
 	usb_device_info_t usb_devices[DIAG_MAX_USB_HUB_PORT];
-	DIAG_MOCA_NODE_INFO moca_devices[DIAG_MAX_MOCA_DEVICES];
+	//DIAG_MOCA_NODE_INFO moca_devices[DIAG_MAX_MOCA_DEVICES];
 	struct swrt_eth_port *next;
 	int cable_diag_triger_link_st;
 	time_t cmd_time;
