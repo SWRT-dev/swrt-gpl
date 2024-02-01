@@ -25295,3 +25295,22 @@ int set_cable_media(const char *eth_inf, const char *media_type){
 	return 0;
 }
 #endif
+#ifdef RTCONFIG_WISP
+/* QIS check IP conflict on WISP mode */
+void check_wisp_ipconflict(const char *ifname)
+{
+	int t = 10;
+
+	symlink("/sbin/rc", "/tmp/udhcpc_wisp");
+	nvram_set("wisp_ipconflict", "");
+	doSystem("udhcpc -i %s -p /tmp/udhcpc_wisp.pid -s /tmp/udhcpc_wisp", ifname);
+
+	do {
+		sleep(1);
+	} while (nvram_match("wisp_ipconflict", "") && --t);
+
+	kill_pidfile_tk("/tmp/udhcpc_wisp.pid");
+	unlink("/tmp/udhcpc_wisp");
+}
+#endif
+

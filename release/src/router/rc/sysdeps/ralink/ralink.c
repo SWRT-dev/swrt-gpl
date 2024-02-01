@@ -964,6 +964,7 @@ int gen_ralink_config(int band, int is_iNIC)
 		for (i = 0; i < MAX_NO_MSSID; i++)
 		{
 			if (sw_mode == SW_MODE_REPEATER
+
 	#if defined(RTCONFIG_WIRELESSREPEATER) && defined(RTCONFIG_CONCURRENTREPEATER)
 				&& (wlc_express == 0 || (wlc_express - 1) != band)
 	#else
@@ -1260,7 +1261,11 @@ int gen_ralink_config(int band, int is_iNIC)
 	{
 		str = nvram_pf_get(prefix, "channel");
 
-		if (sw_mode == SW_MODE_REPEATER
+		if ((sw_mode == SW_MODE_REPEATER
+#if defined(RTCONFIG_WISP)
+			|| wisp_mode()
+#endif
+			)
 #if defined(RTCONFIG_WIRELESSREPEATER) && defined(RTCONFIG_CONCURRENTREPEATER)
 			&& (wlc_express == 0 || (wlc_express - 1) != band)
 #else
@@ -2453,7 +2458,7 @@ int gen_ralink_config(int band, int is_iNIC)
 	#if defined(RTCONFIG_WIRELESSREPEATER) && defined(RTCONFIG_CONCURRENTREPEATER)
 			&& (wlc_express == 0 || (wlc_express - 1) != band)
 	#else
-			&& !((sw_mode == SW_MODE_REPEATER) && (wlc_band == band))
+			&& !(sw_mode == SW_MODE_REPEATER && (wlc_band == band))
 	#endif
 			)
 			fprintf(fp, "HT_BSSCoexistence=%d\n", 0);
@@ -3031,16 +3036,16 @@ int gen_ralink_config(int band, int is_iNIC)
 	}
 	else
 #else // RTCONFIG_CONCURRENTREPEATER
-	if ((sw_mode == SW_MODE_REPEATER && wlc_band == band) || nvram_invmatch("wlc_ssid", "") || (wisp_mode() && wlc_band == band))
+	if ((sw_mode == SW_MODE_REPEATER && wlc_band == band && nvram_invmatch("wlc_ssid", "")) || (wisp_mode() && wlc_band == band))
 	{
 		int flag_wep = 0;
 		int p;
 	// convert wlc_xxx to wlX_ according to wlc_band == band
 		nvram_set("ure_disable", "0");
 		if((sw_mode == SW_MODE_REPEATER && nvram_invmatch("wlc_ssid", "")) || wisp_mode())
-			snprintf(prefix, sizeof(prefix_wlc), "wlc_");
+			snprintf(prefix_wlc, sizeof(prefix_wlc), "wlc_");
 		else
-			snprintf(prefix, sizeof(prefix_wlc), "wlc%d_", band);
+			snprintf(prefix_wlc, sizeof(prefix_wlc), "wlc%d_", band);
 		if(!wisp_mode()){
 			nvram_pf_set(prefix, "ssid", nvram_pf_safe_get(prefix_wlc, "ssid"));
 			nvram_pf_set(prefix, "auth_mode_x", nvram_pf_safe_get(prefix_wlc, "auth_mode"));
@@ -3058,71 +3063,65 @@ int gen_ralink_config(int band, int is_iNIC)
 //nbw_cap is null or empty in qisv3, set bw to auto
 //			nvram_pf_set(prefix, "bw", nvram_pf_get(prefix_wlc, "nbw_cap"));
 			nvram_pf_set(prefix, "bw", "1");
+			//nvram_pf_set(prefix, "hide_pap", nvram_pf_safe_get(prefix_wlc, "hide_pap"));
 			if(strlen(nvram_pf_safe_get(prefix_wlc, "wifipxy")))
 				nvram_pf_set(prefix, "wifipxy", nvram_pf_get(prefix_wlc, "wifipxy"));
+		}
+		fprintf(fp, "ApCliEnable=0\n");
+		fprintf(fp, "ApCliSsid=%s\n", nvram_pf_safe_get(prefix_wlc, "ssid"));
+		fprintf(fp, "ApCliBssid=\n");
+		fprintf(fp, "MACRepeaterEn=%s\n", nvram_pf_safe_get(prefix_wlc, "wifipxy"));
 
-			fprintf(fp, "ApCliEnable=0\n");
-			fprintf(fp, "ApCliSsid=%s\n", nvram_pf_safe_get(prefix_wlc, "ssid"));
-			fprintf(fp, "ApCliBssid=\n");
-			fprintf(fp, "MACRepeaterEn=%s\n", nvram_pf_safe_get(prefix_wlc, "wifipxy"));
-
-			str = nvram_pf_safe_get(prefix_wlc, "auth_mode");
-			if (str && strlen(str))
-			{
-				if (!strcmp(str, "open") && nvram_pf_match(prefix_wlc, "wep", "0"))
-				{
-					fprintf(fp, "ApCliAuthMode=%s\n", "OPEN");
-					fprintf(fp, "ApCliEncrypType=%s\n", "NONE");
-				}
-				else if (!strcmp(str, "open") || !strcmp(str, "shared"))
-				{
-					flag_wep = 1;
-					fprintf(fp, "ApCliAuthMode=%s\n", "WEPAUTO");
-					fprintf(fp, "ApCliEncrypType=%s\n", "WEP");
-				}
-				else if (!strcmp(str, "psk") || !strcmp(str, "psk2")
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
-				|| !strcmp(str, "pskpsk2") || !strcmp(str, "sae") || !strcmp(str, "psk2sae")
-#endif
-				)
-				{
-					if (!strcmp(str, "psk")){
-						fprintf(fp, "ApCliAuthMode=%s\n", "WPAPSK");
-						fprintf(fp, "ApCliPMFMFPR=%s\n", "0");
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
-					}else if( !strcmp(str, "pskpsk2") ){
-						fprintf(fp, "ApCliAuthMode=%s\n", "WPAPSKWPA2PSK");
-						fprintf(fp, "ApCliPMFMFPR=%s\n", "0");
-					}else if( !strcmp(str, "sae") ){
-						fprintf(fp, "ApCliAuthMode=%s\n", "WPA3PSK");
-						fprintf(fp, "ApCliPMFMFPR=%s\n", "1");
-					}else if( !strcmp(str, "psk2sae") ){
-						fprintf(fp, "ApCliAuthMode=%s\n", "WPA2PSKWPA3PSK");
-						fprintf(fp, "ApCliPMFMFPR=%s\n", "0");
-#endif
-					}else{
-						fprintf(fp, "ApCliAuthMode=%s\n", "WPA2PSK");
-						fprintf(fp, "ApCliPMFMFPR=%s\n", "0");
-					}
-					fprintf(fp, "ApCliPMFMFPC=%s\n", "1");
-					fprintf(fp, "ApCliPMFSHA256=%s\n", "0");
-					//EncrypType
-					if (nvram_pf_match(prefix_wlc, "crypto", "tkip"))
-						fprintf(fp, "ApCliEncrypType=%s\n", "TKIP");
-					else if (nvram_pf_match(prefix_wlc, "crypto", "aes"))
-						fprintf(fp, "ApCliEncrypType=%s\n", "AES");
-					else if (nvram_pf_match(prefix_wlc, "crypto", "tkip+aes"))
-						fprintf(fp, "ApCliEncrypType=%s\n", "TKIPAES");
-
-					//WPAPSK
-					fprintf(fp, "ApCliWPAPSK=%s\n", nvram_pf_safe_get(prefix_wlc, "wpa_psk"));
-					fprintf(fp, "ApCliWPAPSK%d=%s\n", 1, nvram_pf_safe_get(prefix_wlc, "wpa_psk"));
-				}
-			}
-			else
+		str = nvram_pf_safe_get(prefix_wlc, "auth_mode");
+		if (str && strlen(str))
+		{
+			if (!strcmp(str, "open") && nvram_pf_match(prefix_wlc, "wep", "0"))
 			{
 				fprintf(fp, "ApCliAuthMode=%s\n", "OPEN");
 				fprintf(fp, "ApCliEncrypType=%s\n", "NONE");
+			}
+			else if (!strcmp(str, "open") || !strcmp(str, "shared"))
+			{
+				flag_wep = 1;
+				fprintf(fp, "ApCliAuthMode=%s\n", "WEPAUTO");
+				fprintf(fp, "ApCliEncrypType=%s\n", "WEP");
+			}
+			else if (!strcmp(str, "psk") || !strcmp(str, "psk2")
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+			|| !strcmp(str, "pskpsk2") || !strcmp(str, "sae") || !strcmp(str, "psk2sae")
+#endif
+			)
+			{
+				if (!strcmp(str, "psk")){
+					fprintf(fp, "ApCliAuthMode=%s\n", "WPAPSK");
+					fprintf(fp, "ApCliPMFMFPR=%s\n", "0");
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+				}else if( !strcmp(str, "pskpsk2") ){
+					fprintf(fp, "ApCliAuthMode=%s\n", "WPAPSKWPA2PSK");
+					fprintf(fp, "ApCliPMFMFPR=%s\n", "0");
+				}else if( !strcmp(str, "sae") ){
+					fprintf(fp, "ApCliAuthMode=%s\n", "WPA3PSK");
+					fprintf(fp, "ApCliPMFMFPR=%s\n", "1");
+				}else if( !strcmp(str, "psk2sae") ){
+					fprintf(fp, "ApCliAuthMode=%s\n", "WPA2PSKWPA3PSK");
+					fprintf(fp, "ApCliPMFMFPR=%s\n", "0");
+#endif
+				}else{
+					fprintf(fp, "ApCliAuthMode=%s\n", "WPA2PSK");
+					fprintf(fp, "ApCliPMFMFPR=%s\n", "0");
+				}
+				fprintf(fp, "ApCliPMFMFPC=%s\n", "1");
+				fprintf(fp, "ApCliPMFSHA256=%s\n", "0");
+				//EncrypType
+				if (nvram_pf_match(prefix_wlc, "crypto", "tkip"))
+					fprintf(fp, "ApCliEncrypType=%s\n", "TKIP");
+				else if (nvram_pf_match(prefix_wlc, "crypto", "aes"))
+					fprintf(fp, "ApCliEncrypType=%s\n", "AES");
+				else if (nvram_pf_match(prefix_wlc, "crypto", "tkip+aes"))
+					fprintf(fp, "ApCliEncrypType=%s\n", "TKIPAES");
+					//WPAPSK
+				fprintf(fp, "ApCliWPAPSK=%s\n", nvram_pf_safe_get(prefix_wlc, "wpa_psk"));
+				fprintf(fp, "ApCliWPAPSK%d=%s\n", 1, nvram_pf_safe_get(prefix_wlc, "wpa_psk"));
 			}
 		}
 		else
@@ -4210,9 +4209,11 @@ int site_survey_for_channel(int band, const char *wif)
 	char commch[4];
 	SSA *ssap = NULL;
 
+#ifdef RTCONFIG_WISP
 	if(wisp_mode())
 		snprintf(prefix, sizeof(prefix), "wlc_");
 	else
+#endif
 		snprintf(prefix, sizeof(prefix), "wl%d_", band);
 	ssid = nvram_pf_safe_get(prefix, "ssid");
 
@@ -5025,6 +5026,9 @@ void write_rpt_wpa_supplicant_conf(int band, const char *prefix_mssid, char *pre
 	if (!(fp_wpa = fopen(tmp, "w+")))
 		return;
 	ifconfig(get_staifname(band), 0, NULL, NULL);
+#if defined(RTCONFIG_WISP)
+	if(!wisp_mode()){
+#endif
 	if (strlen(nvram_pf_safe_get(prefix_wlc, "ssid")))
 		nvram_set("wl_ssid", nvram_pf_safe_get(prefix_wlc, "ssid"));
 	nvram_pf_set(prefix_mssid, "ssid", nvram_pf_safe_get(prefix_wlc, "ssid"));
@@ -5044,7 +5048,9 @@ void write_rpt_wpa_supplicant_conf(int band, const char *prefix_mssid, char *pre
 	nvram_pf_set(prefix_mssid, "crypto", nvram_pf_safe_get(prefix_wlc, "crypto"));
 	nvram_pf_set(prefix_mssid, "wpa_psk", nvram_pf_safe_get(prefix_wlc, "wpa_psk"));
 	nvram_pf_set(prefix_mssid, "bw", nvram_pf_safe_get(prefix_wlc, "nbw_cap"));
-
+#if defined(RTCONFIG_WISP)
+	}
+#endif
 
 	fprintf(fp_wpa,	"ctrl_interface=/var/run/wpa_supplicant\n%s\nnetwork={\nssid=\"%s\"\n", (addition ? : ""), 
 		nvram_pf_get(prefix_wlc, "ssid") ? : "8f3610e3c9feabed953a6");
@@ -5232,7 +5238,11 @@ int gen_hostapd_config(int band, int subunit)
 #endif
 
 #ifdef RTCONFIG_WIRELESSREPEATER
-	if (rep_mode == 1) {
+	if (rep_mode == 1
+#if defined(RTCONFIG_WISP)
+		|| wisp_mode()
+#endif
+	) {
 		char prefix_wlc[] = "wlXXXXXXX_";
 		snprintf(prefix, sizeof(prefix), "wl%d_", band);
 		snprintf(prefix_wlc, sizeof(prefix_wlc), "wlc_");
@@ -5478,10 +5488,16 @@ void ralink_hostapd_start(void)
 #if defined(RTCONFIG_SWRTMESH)
 		|| (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1"))
 #endif
+#if defined(RTCONFIG_WISP)
+		|| wisp_mode()
+#endif
 	){
 		int wlc_band = nvram_get_int("wlc_band");
 		snprintf(wif, sizeof(wif), "%s", get_staifname(wlc_band));
 		ifconfig(wif, IFUP, NULL, NULL);//up ifname
+#if defined(RTCONFIG_WISP)
+		if(!wisp_mode())
+#endif
 		eval("brctl", "addif", "br0", wif);//add to bridge
 		snprintf(pid_path, sizeof(pid_path), "/var/run/wifi-%s.pid", wif);
 		snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/wpa_supplicant-%s.conf", wif);
@@ -5989,18 +6005,7 @@ unsigned int get_conn_link_quality(int unit)
 	char data[16];
 	struct iwreq wrq;
 
-#if defined(RTCONFIG_RALINK_MT7620) || defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_RALINK_EN7561)
-	if(unit == 0)
-#else
-	if(unit == 1)
-#endif
-		aif = "apcli0";
-	else
-#if defined(RTCONFIG_MT798X)
-		aif = "apclix0";
-#else
-		aif = "apclii0";
-#endif
+	aif = get_staifname(band);
 
 	memset(data, 0x00, sizeof(data));
 	wrq.u.data.length = sizeof(data);
@@ -6086,13 +6091,7 @@ int getPapState(int band)
 			return ret;
 
 		if(band == 0)
-			aif = "apcli0";
-		else
-#if defined(RTCONFIG_MT798X)
-			aif = "apclix0";
-#else
-			aif = "apclii0";
-#endif
+			aif = get_staifname(band);
 
 		ch = site_survey_for_channel(band, aif);
 		if(ch != -1)

@@ -22258,7 +22258,10 @@ int init_nvram2(void)
 		break;
 	}
 #endif
-
+#if defined(RTCONFIG_WISP)
+	if(nvram_match("wlc_band", ""))//wisp mode -> router mode
+		nvram_set("wlc_ssid", "");
+#endif
 #if defined(RTCONFIG_CONCURRENTREPEATER)
 	if (sw_mode() == SW_MODE_REPEATER) {
 		if (nvram_get_int("wlc_express") == 0) {
