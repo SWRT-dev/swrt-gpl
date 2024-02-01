@@ -2815,7 +2815,7 @@ static inline void disable_hwnat(void) { }
 
 static inline int is_hwnat_loaded(void) { return module_loaded(MTK_HNAT_MOD); }
 
-#if 0/*defined (RTCONFIG_WLMODULE_MT7615E_AP)*/
+#if defined(RTCONFIG_RALINK_MT7621) && (defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP))
 #if !defined(RTCONFIG_RALINK_MT7622)
 /* @ctrl: 0: unregister, 1: register */
 static inline void __register_hnat_wlifaces(int ctrl)

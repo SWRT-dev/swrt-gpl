@@ -2288,66 +2288,56 @@ void reinit_hwnat(int unit)
 
 	if (act < 0)
 		return;
-#if 0 //3.10.x
+
 	switch (act) {
 	case 0:		/* remove hwnat */
-
-		if (module_loaded("hw_nat")) {
-#if defined (RTCONFIG_WLMODULE_MT7615E_AP)
+		if (module_loaded(MTK_HNAT_MOD))
+		{
+#if defined(RTCONFIG_RALINK_MT7621) && (defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP))
 			doSystem("iwpriv %s set hw_nat_register=%d", get_wifname(0), 0);
 #ifdef RTCONFIG_HAS_5G
 			doSystem("iwpriv %s set hw_nat_register=%d", get_wifname(1), 0);
 #endif
 #endif
-			modprobe_r("hw_nat");
+			doSystem("echo %d > /sys/kernel/debug/hnat/hook_toggle", 0);
 			sleep(1);
 		}
 		break;
 	default:	/* load hwnat */
-		if (!module_loaded("hw_nat")) {
-			modprobe("hw_nat");
+		doSystem("echo %d > /sys/kernel/debug/hnat/hook_toggle", 1);
+		if (!module_loaded(MTK_HNAT_MOD))
+		{
+			modprobe(MTK_HNAT_MOD);
 			sleep(1);
 		}
-#if defined (RTCONFIG_WLMODULE_MT7615E_AP)
+#if defined(RTCONFIG_SOFTWIRE46)
+		switch (get_ipv4_service()) {
+		case WAN_MAPE:
+		case WAN_V6PLUS:
+		case WAN_OCNVC:
+			doSystem("echo %d > /sys/kernel/debug/hnat/mape_toggle", 1);
+			break;
+		}
+#endif
+#if defined(RTCONFIG_RALINK_MT7621) && (defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP))
 		doSystem("iwpriv %s set hw_nat_register=%d", get_wifname(0), 1);
 #ifdef RTCONFIG_HAS_5G
 		doSystem("iwpriv %s set hw_nat_register=%d", get_wifname(1), 1);
 #endif
 #endif
-#if defined (RTCONFIG_WLMODULE_MT7615E_AP)
+#if defined(RTCONFIG_RALINK_MT7622) && defined(RTCONFIG_WLMODULE_MT7615E_AP)
 		doSystem("iwpriv %s set LanNatSpeedUpEn=%d", get_wifname(0), 1);
 #ifdef RTCONFIG_HAS_5G
 		doSystem("iwpriv %s set LanNatSpeedUpEn=%d", get_wifname(1), 1);
 #endif
 #endif		
 		adjust_hwnat_wifi_offloading();
+	
 	}
-#else //4.4.x
-	if (act){
-		if (!module_loaded(MTK_HNAT_MOD)) {
-			doSystem("echo 1 > /sys/kernel/debug/hnat/hook_toggle");
-			modprobe(MTK_HNAT_MOD);
-#if defined(RTCONFIG_SOFTWIRE46)
-			switch (get_ipv4_service()) {
-			case WAN_MAPE:
-			case WAN_V6PLUS:
-			case WAN_OCNVC:
-				doSystem("echo %d > /sys/kernel/debug/hnat/mape_toggle", 1);
-				break;
-			}
-#endif
-		}		
-	} else {
-		if (module_loaded(MTK_HNAT_MOD)) {
-			doSystem("echo 0 > /sys/kernel/debug/hnat/hook_toggle");
-			modprobe_r(MTK_HNAT_MOD);
-			sleep(1);
-		}
-	}
-#endif
 }
 
-int wl_exist(char *ifname, int band)
+int
+wl_exist(char *ifname, int band)
 {
 	int ret = 0;
 	ret = eval("iwpriv", ifname, "stat");
