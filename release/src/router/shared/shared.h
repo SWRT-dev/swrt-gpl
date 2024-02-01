@@ -2557,6 +2557,8 @@ extern int chk_assoc(const char *ifname);
 extern int get_ch_cch_bw(const char *wlif_name, int *ch, int *cch, int *bw);
 extern int shartd_get_channel(const char *ifname);
 extern unsigned long long get_bitrate(const char *ifname);
+extern char *get_wififname(int band);
+extern char *get_staifname(int band);
 #endif
 #if defined(RTCONFIG_QCA)
 extern char *__get_wlifname(int band, int subunit, char *buf);
@@ -2886,8 +2888,6 @@ extern int set_acl_entry(const char *ifname, char *addr);
 extern int shared_set_channel(const char* ifname, int channel);
 extern int set_bw_nctrlsb(const char* ifname, int bw, int nctrlsb);
 extern int get_channel_info(const char *ifname, int *channel, int *bw, int *nctrlsb);
-extern char *get_wififname(int band);
-extern char *get_staifname(int band);
 extern int get_regular_class(const char* ifname);
 extern int check_trx(char *buf);
 #elif defined(RTCONFIG_QCA)
