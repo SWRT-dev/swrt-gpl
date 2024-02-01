@@ -2827,7 +2827,7 @@ static inline void __register_hnat_wlifaces(int ctrl)
 		, -1 };
 
 	for (i = 0; bands[i] >= 0; ++i)
-		doSystem("iwpriv %s set hw_nat_register=%d", get_wifname(i), ctrl);
+		doSystem("iwpriv %s set hw_nat_register=%d", get_wififname(i), ctrl);
 }
 #else	/* RTCONFIG_RALINK_MT7622 */
 /* @ctrl: 0: unregister, 1: register */
@@ -2840,7 +2840,7 @@ static inline void __register_hnat_wlifaces(int ctrl)
 		, -1 };
 
 	for (i = 0; bands[i] >= 0; ++i)
-		doSystem("iwpriv %s set LanNatSpeedUpEn=%d", get_wifname(0), ctrl);
+		doSystem("iwpriv %s set LanNatSpeedUpEn=%d", get_wififname(0), ctrl);
 }
 #endif	/* !RTCONFIG_RALINK_MT7622 */
 
