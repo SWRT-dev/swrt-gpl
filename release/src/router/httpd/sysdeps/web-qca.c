@@ -2330,7 +2330,7 @@ static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	int wlc_band = nvram_get_int("wlc_band");
 	int from_app = 0;
 
-	if (sw_mode != SW_MODE_REPEATER && sw_mode != SW_MODE_HOTSPOT)
+	if (sw_mode != SW_MODE_REPEATER && sw_mode != SW_MODE_HOTSPOT && !wisp_mode())
 		goto ERROR;
 	if (absent_band(unit))
 		goto ERROR;
@@ -2355,6 +2355,10 @@ static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 #else
 	snprintf(prefix, sizeof(prefix), "wl%d.1_", unit);
 	name = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
+#endif
+#if defined(RTCONFIG_WISP)
+	if(wisp_mode())
+		name = get_staifname(unit);
 #endif
 #if defined(RTCONFIG_SOC_IPQ40XX)
 	snprintf(tmp, sizeof(tmp), "iwconfig %s | grep Rate", name);
@@ -2400,7 +2404,7 @@ ERROR:
 int
 ej_wl_rate_2g(int eid, webs_t wp, int argc, char_t **argv)
 {
-	if(sw_mode() == SW_MODE_REPEATER)
+	if(sw_mode() == SW_MODE_REPEATER || wisp_mode())
 		return ej_wl_rate(eid, wp, argc, argv, 0);
 	else if(check_user_agent(user_agent) != FROM_BROWSER)
 		return websWrite(wp, "\"\"");
@@ -2411,7 +2415,7 @@ ej_wl_rate_2g(int eid, webs_t wp, int argc, char_t **argv)
 int
 ej_wl_rate_5g(int eid, webs_t wp, int argc, char_t **argv)
 {
-	if(sw_mode() == SW_MODE_REPEATER)
+	if(sw_mode() == SW_MODE_REPEATER || wisp_mode())
 		return ej_wl_rate(eid, wp, argc, argv, 1);
 	else if(check_user_agent(user_agent) != FROM_BROWSER)
 		return websWrite(wp, "\"\"");
@@ -2422,7 +2426,7 @@ ej_wl_rate_5g(int eid, webs_t wp, int argc, char_t **argv)
 int
 ej_wl_rate_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 {
-	if(sw_mode() == SW_MODE_REPEATER)
+	if(sw_mode() == SW_MODE_REPEATER || wisp_mode())
 		return ej_wl_rate(eid, wp, argc, argv, 2);
 	else if(check_user_agent(user_agent) != FROM_BROWSER)
 		return websWrite(wp, "\"\"");
@@ -2433,7 +2437,7 @@ ej_wl_rate_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 int
 ej_wl_rate_6g(int eid, webs_t wp, int argc, char_t **argv)
 {
-	if(sw_mode() == SW_MODE_REPEATER)
+	if(sw_mode() == SW_MODE_REPEATER || wisp_mode())
 		return ej_wl_rate(eid, wp, argc, argv, 3);
 	else if(check_user_agent(user_agent) != FROM_BROWSER)
 		return websWrite(wp, "\"\"");

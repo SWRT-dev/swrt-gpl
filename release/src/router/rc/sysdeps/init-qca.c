@@ -3826,7 +3826,10 @@ void fini_wl(void)
 		bg=0;
 #endif
 #endif 
-
+#if defined(RTCONFIG_WISP)
+	if (wisp_mode())
+		ifconfig(get_staifname(nvram_get_int("wlc_band")), 0, NULL, NULL);
+#endif
 #if defined(RTCONFIG_QCA_LBD)
 	stop_qca_lbd();
 #endif
