@@ -154,11 +154,14 @@ int GetPhyStatus(int verbose, phy_info_list *list)
 	return wanlan_staus;
 #else
 #ifdef RTCONFIG_NEW_PHYMAP
-	int i, ret, lret=0, mask;
-	char out_buf[30], tmp[30];
+	int i, ret, lret = 0, mask, len = 0;
+	char out_buf[30];
 #if defined(RTCONFIG_EXT_RTL8365MB) || defined(RTCONFIG_EXT_RTL8370MB)
 	char PStatus[5]="XXXXX";
 #endif
+	if(list) {
+		list->count = 0;
+	}
 	memset(out_buf, 0, sizeof(out_buf));
 	for (i = 0; i < port_mapping.count; i++) {
 		// Only handle WAN/LAN ports
@@ -174,27 +177,17 @@ int GetPhyStatus(int verbose, phy_info_list *list)
 				get_phy_port_cap_name(port_mapping.port[i].cap, cap_buf, sizeof(cap_buf)));
 		}
 		mask = 0;
-		mask |= 0x0001 << port_mapping.port[i].phy_port_id;
-		if (get_phy_status(port_mapping.port[i].phy_port_id)==0) {/*Disconnect*/
+		mask |= 0x0001 << list->phy_info[i].phy_port_id;
+		if (get_phy_status(mask)==0) {/*Disconnect*/
 			snprintf(list->phy_info[i].state, sizeof(list->phy_info[i].state), "%s", "down");
-			if (i==0)
-				sprintf(out_buf, "W0=X;");
-			else {
-				sprintf(tmp, "%s", out_buf);//fix musl bug
-				sprintf(out_buf, "%sL%d=X;", tmp, i);
-			}
+			len += sprintf(out_buf + len, "%s=X;", list->phy_info[i].label_name);
 		} else { /*Connect, keep check speed*/
+			lret |= 1 << i; 
 			mask = 0;
-			mask |= (0x0003 << (port_mapping.port[i].phy_port_id * 2));
+			mask |= (0x0003 << (list->phy_info[i].phy_port_id * 2));
 			ret = get_phy_speed(mask);
-			ret >>= (port_mapping.port[i].phy_port_id * 2);
-			if (i==0)
-				sprintf(out_buf, "W0=%s;", (ret & 2)? "G":"M");
-			else {
-				lret = 1;
-				sprintf(tmp, "%s", out_buf);
-				sprintf(out_buf, "%sL%d=%s;", tmp, i, (ret & 2)? "G":"M");
-			}
+			ret >>= (list->phy_info[i].phy_port_id * 2);
+			len += sprintf(out_buf + len, "%s=%s;", list->phy_info[i].label_name, (ret & 2)? "G":"M");
 			if(list) {
 				snprintf(list->phy_info[i].state, sizeof(list->phy_info[i].state), "up");
 				list->phy_info[i].link_rate = (ret & 2) ? 1000 : 100;

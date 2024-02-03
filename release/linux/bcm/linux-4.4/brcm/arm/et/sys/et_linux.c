@@ -1848,6 +1848,9 @@ et_sendnext(et_info_t *et)
 	}
 
 	ET_TXQ_UNLOCK(et);
+
+// debug do tx reclaim in this work queue.
+	(*etc->chops->txreclaim)(etc->ch, FALSE);
 }
 
 void
@@ -3042,10 +3045,11 @@ et_dpc(ulong data)
 		nrx = et_rxevent(ch, quota, chops, et);
 	}
 
-	if (et->events & INTR_TX)
-		(*chops->txreclaim)(ch, FALSE);
+// debug remove for performance
+//	if (et->events & INTR_TX)
+//		(*chops->txreclaim)(ch, FALSE);
 
-	(*chops->rxfill)(ch);
+//	(*chops->rxfill)(ch);
 
 	/* handle error conditions, if reset required leave interrupts off! */
 	if (et->events & INTR_ERROR) {
