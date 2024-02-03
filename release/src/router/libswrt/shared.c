@@ -177,17 +177,18 @@ int GetPhyStatus(int verbose, phy_info_list *list)
 				get_phy_port_cap_name(port_mapping.port[i].cap, cap_buf, sizeof(cap_buf)));
 		}
 		mask = 0;
-		mask |= 0x0001 << list->phy_info[i].phy_port_id;
+		mask |= 0x0001 << port_mapping.port[i].phy_port_id;
 		if (get_phy_status(mask)==0) {/*Disconnect*/
-			snprintf(list->phy_info[i].state, sizeof(list->phy_info[i].state), "%s", "down");
-			len += sprintf(out_buf + len, "%s=X;", list->phy_info[i].label_name);
+			if(list)
+				snprintf(list->phy_info[i].state, sizeof(list->phy_info[i].state), "%s", "down");
+			len += sprintf(out_buf + len, "%s=X;", port_mapping.port[i].label_name);
 		} else { /*Connect, keep check speed*/
 			lret |= 1 << i; 
 			mask = 0;
-			mask |= (0x0003 << (list->phy_info[i].phy_port_id * 2));
+			mask |= (0x0003 << (port_mapping.port[i].phy_port_id * 2));
 			ret = get_phy_speed(mask);
-			ret >>= (list->phy_info[i].phy_port_id * 2);
-			len += sprintf(out_buf + len, "%s=%s;", list->phy_info[i].label_name, (ret & 2)? "G":"M");
+			ret >>= (port_mapping.port[i].phy_port_id * 2);
+			len += sprintf(out_buf + len, "%s=%s;", port_mapping.port[i].label_name, (ret & 2)? "G":"M");
 			if(list) {
 				snprintf(list->phy_info[i].state, sizeof(list->phy_info[i].state), "up");
 				list->phy_info[i].link_rate = (ret & 2) ? 1000 : 100;
