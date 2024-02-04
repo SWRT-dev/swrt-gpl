@@ -1687,6 +1687,9 @@ define RouterOptions
 	if [ "$(WISP)" = "y" ]; then \
 		sed -i "/RTCONFIG_WISP/d" $(1); \
 		echo "RTCONFIG_WISP=y" >>$(1); \
+	else \
+		sed -i "/RTCONFIG_WISP/d" $(1); \
+		echo "# RTCONFIG_WISPS is not set" >>$(1); \
 	fi;
 	if [ "$(REPEATER_STAALLBAND)" = "y" ]; then \
 		sed -i "/RTCONFIG_REPEATER_STAALLBAND/d" $(1); \
