@@ -17519,6 +17519,20 @@ INT RTMP_AP_IoctlHandle(
 				Status = -EFAULT;
 		} else if ( subcmd == ASUS_SUBCMD_GETSITESURVEY_VSIE ) {
 		} else if ( subcmd == ASUS_SUBCMD_GETAPCLIENABLE ) {
+		} else if ( subcmd == ASUS_SUBCMD_GETSITESURVEY_VSIE_COUNT ) {
+		} else if ( subcmd == ASUS_SUBCMD_DFS_STATUS ) {
+		} else if ( subcmd == ASUS_SUBCMD_RRM_BCN_RESP ) {
+		} else if ( subcmd == ASUS_SUBCMD_GET_RCLASS ) {
+		} else if ( subcmd == ASUS_SUBCMD_DFS_CH_STATUS ) {
+		} else if ( subcmd == ASUS_SUBCMD_GET_CH_BW ) {
+		} else if ( subcmd == ASUS_SUBCMD_GET_BSCANING ) {
+			UCHAR		ifIndex;
+			UINT32 pCurrState = 0;
+			if(pAd->ScanCtrl.PartialScan.bScanning == TRUE)
+				pCurrState = 1;
+			wrq->u.data.length = sizeof(UINT32);
+			if (copy_to_user(wrq->u.data.pointer, &pCurrState, wrq->u.data.length))
+				Status = -EFAULT;
 		}
 		break;
 

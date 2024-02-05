@@ -2588,7 +2588,7 @@ int gen_ralink_config(int band, int is_iNIC)
 	if (band) {
 		if (wl_bw > 0)
 		{
-			if (wl_bw == 2)	// 40 MHz					
+			if (wl_bw == 2)	// 40 MHz
 				enum_sname_mvalue_w_fixed_value(fp, ssid_num, "VHT_BW", "0");
 #if defined(RTCONFIG_VHT160) && !defined(RALINK_DBDC_MODE)
 			else if (sw_mode != SW_MODE_REPEATER && (wl_bw == 5 || nvram_match(strcat_r(prefix, "bw_160", tmp), "1"))) // 20/40/80/160 MHz
@@ -3067,7 +3067,11 @@ int gen_ralink_config(int band, int is_iNIC)
 			if(strlen(nvram_pf_safe_get(prefix_wlc, "wifipxy")))
 				nvram_pf_set(prefix, "wifipxy", nvram_pf_get(prefix_wlc, "wifipxy"));
 		}
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
 		fprintf(fp, "ApCliEnable=0\n");
+#else
+		fprintf(fp, "ApCliEnable=1\n");
+#endif
 		fprintf(fp, "ApCliSsid=%s\n", nvram_pf_safe_get(prefix_wlc, "ssid"));
 		fprintf(fp, "ApCliBssid=\n");
 		fprintf(fp, "MACRepeaterEn=%s\n", nvram_pf_safe_get(prefix_wlc, "wifipxy"));
@@ -3095,10 +3099,10 @@ int gen_ralink_config(int band, int is_iNIC)
 				if (!strcmp(str, "psk")){
 					fprintf(fp, "ApCliAuthMode=%s\n", "WPAPSK");
 					fprintf(fp, "ApCliPMFMFPR=%s\n", "0");
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
 				}else if( !strcmp(str, "pskpsk2") ){
 					fprintf(fp, "ApCliAuthMode=%s\n", "WPAPSKWPA2PSK");
 					fprintf(fp, "ApCliPMFMFPR=%s\n", "0");
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
 				}else if( !strcmp(str, "sae") ){
 					fprintf(fp, "ApCliAuthMode=%s\n", "WPA3PSK");
 					fprintf(fp, "ApCliPMFMFPR=%s\n", "1");
@@ -3110,7 +3114,11 @@ int gen_ralink_config(int band, int is_iNIC)
 					fprintf(fp, "ApCliAuthMode=%s\n", "WPA2PSK");
 					fprintf(fp, "ApCliPMFMFPR=%s\n", "0");
 				}
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
 				fprintf(fp, "ApCliPMFMFPC=%s\n", "1");
+#else
+				fprintf(fp, "ApCliPMFMFPC=%s\n", "0");
+#endif
 				fprintf(fp, "ApCliPMFSHA256=%s\n", "0");
 				//EncrypType
 				if (nvram_pf_match(prefix_wlc, "crypto", "tkip"))
@@ -5747,9 +5755,18 @@ void apcli_start(void)
 	int ch;
 	char *aif;
 
-	if(sw_mode() == SW_MODE_REPEATER)
-	{
+	if(sw_mode() == SW_MODE_REPEATER
+#if defined(RTCONFIG_WISP) && (defined(RTCONFIG_WLMODULE_MT7603E_AP) || defined(RTCONFIG_WLMODULE_MT7615E_AP))
+		|| wisp_mode()
+#endif
+		){
 		int wlc_band = nvram_get_int("wlc_band");
+#if defined(RTCONFIG_WISP) && (defined(RTCONFIG_WLMODULE_MT7603E_AP) || defined(RTCONFIG_WLMODULE_MT7615E_AP))
+		if(wisp_mode()){
+			doSystem("echo %d > /sys/kernel/debug/hnat/hook_toggle", 0);//disable hnat for old hw
+			modprobe_r("mtkhnat");
+		}
+#endif
 		aif = get_staifname(wlc_band);
 #if defined(RTCONFIG_MT798X)
 		ifconfig(aif, IFUP, NULL, NULL);//up ifname
@@ -6090,9 +6107,7 @@ int getPapState(int band)
 		   || (Uptime < lastUptime[band] && Uptime < FIND_CHANNEL_INTERVAL))
 			return ret;
 
-		if(band == 0)
-			aif = get_staifname(band);
-
+		aif = get_staifname(band);
 		ch = site_survey_for_channel(band, aif);
 		if(ch != -1)
 		{

@@ -2288,7 +2288,13 @@ void reinit_hwnat(int unit)
 
 	if (act < 0)
 		return;
-
+#if defined(RTCONFIG_RALINK_MT7621) && (defined(RTCONFIG_WLMODULE_MT7603E_AP) || defined(RTCONFIG_WLMODULE_MT7615E_AP))
+	if(wisp_mode()){
+		doSystem("echo %d > /sys/kernel/debug/hnat/hook_toggle", 0);
+		modprobe_r(MTK_HNAT_MOD);
+		return;
+	}
+#endif
 	switch (act) {
 	case 0:		/* remove hwnat */
 		if (module_loaded(MTK_HNAT_MOD))
