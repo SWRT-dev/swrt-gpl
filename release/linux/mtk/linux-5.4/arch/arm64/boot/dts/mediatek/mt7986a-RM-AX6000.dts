@@ -18,8 +18,8 @@
 
 	chosen {
 		/*bootargs = "serial0:115200n8";*/
-		bootargs-override = "console=ttyS0,115200n8 loglevel=8 ubi.mtd=ubi ubi.mtd=UBI_DEV rootfstype=squashfs";
-		/*bootargs-override = "console=ttyS0,115200n8 loglevel=8 ubi.mtd=ubi ubi.mtd=UBI_DEV root=/dev/ram0 rw";*/
+		bootargs-override = "console=ttyS0,115200n8 loglevel=8 ubi.mtd=ubi rootfstype=squashfs";
+		/*bootargs-override = "console=ttyS0,115200n8 loglevel=8 ubi.mtd=ubi root=/dev/ram0 rw";*/
 	};
 
 	memory {
@@ -96,12 +96,7 @@
 			/* ubi, ubi1 + overlay */
             partition@600000 {
                 label = "ubi";
-                reg = <0x600000 0x1e00000>;
-            };
-
-            partition@2400000 {
-                label = "UBI_DEV";
-                reg = <0x2400000 0x5000000>;
+                reg = <0x600000 0x6e00000>;
             };
         };
     };

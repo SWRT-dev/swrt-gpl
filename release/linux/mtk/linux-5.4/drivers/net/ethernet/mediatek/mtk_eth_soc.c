@@ -1794,7 +1794,11 @@ static int mtk_poll_rx(struct napi_struct *napi, int budget,
 			goto release_desc;
 
 		/* alloc new buffer */
+#if defined(CONFIG_PINCTRL_MT7981)
 		new_data = kmalloc(ring->frag_size, GFP_ATOMIC);
+#else // MT7986
+		new_data = napi_alloc_frag(ring->frag_size);
+#endif
 		if (unlikely(!new_data)) {
 			netdev->stats.rx_dropped++;
 			goto release_desc;
@@ -1805,7 +1809,11 @@ static int mtk_poll_rx(struct napi_struct *napi, int budget,
 					  ring->buf_size,
 					  DMA_FROM_DEVICE);
 		if (unlikely(dma_mapping_error(eth->dev, dma_addr))) {
+#if defined(CONFIG_PINCTRL_MT7981)
 			kfree(new_data);
+#else // MT7986
+			skb_free_frag(new_data);
+#endif
 			netdev->stats.rx_dropped++;
 			goto release_desc;
 		}
@@ -1818,9 +1826,17 @@ static int mtk_poll_rx(struct napi_struct *napi, int budget,
 				 ring->buf_size, DMA_FROM_DEVICE);
 
 		/* receive data */
+#if defined(CONFIG_PINCTRL_MT7981)
 		skb = build_skb(data, 0);
+#else // MT7986
+		skb = build_skb(data, ring->frag_size);
+#endif
 		if (unlikely(!skb)) {
+#if defined(CONFIG_PINCTRL_MT7981)
 			kfree(data);
+#else // MT7986
+			skb_free_frag(data);
+#endif
 			netdev->stats.rx_dropped++;
 			goto skip_rx;
 		}
@@ -2272,7 +2288,11 @@ static int mtk_rx_alloc(struct mtk_eth *eth, int ring_no, int rx_flag)
 		return -ENOMEM;
 
 	for (i = 0; i < rx_dma_size; i++) {
+#if defined(CONFIG_PINCTRL_MT7981)
 		ring->data[i] = kmalloc(ring->frag_size, GFP_ATOMIC);
+#else // MT7986
+		ring->data[i] = netdev_alloc_frag(ring->frag_size);
+#endif
 		if (!ring->data[i])
 			return -ENOMEM;
 	}
@@ -2376,7 +2396,11 @@ static void mtk_rx_clean(struct mtk_eth *eth, struct mtk_rx_ring *ring, int in_s
 					 (u64)(rxd->rxd1 | addr64),
 					 ring->buf_size,
 					 DMA_FROM_DEVICE);
+#if defined(CONFIG_PINCTRL_MT7981)
 			kfree(ring->data[i]);
+#else // MT7986
+			skb_free_frag(ring->data[i]);
+#endif
 		}
 		kfree(ring->data);
 		ring->data = NULL;

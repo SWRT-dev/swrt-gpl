@@ -359,7 +359,7 @@ define platformKernelConfig
 		sed -i "/CONFIG_BLK_DEV_RAM\>/d" $(1); \
 		echo "CONFIG_BLK_DEV_RAM=y" >>$(1); \
 		echo "CONFIG_BLK_DEV_RAM_COUNT=1" >>$(1); \
-		echo "CONFIG_BLK_DEV_RAM_SIZE=16384" >>$(1); \
+		echo "CONFIG_BLK_DEV_RAM_SIZE=26624" >>$(1); \
 		sed -i "/CONFIG_NMBM\>/d" $(1); \
 		echo "CONFIG_NMBM=y" >>$(1); \
 		echo "# CONFIG_NMBM_LOG_LEVEL_DEBUG is not set" >>$(1); \
@@ -376,7 +376,7 @@ define platformKernelConfig
 		sed -i "/CONFIG_BLK_DEV_RAM\>/d" $(1); \
 		echo "CONFIG_BLK_DEV_RAM=y" >>$(1); \
 		echo "CONFIG_BLK_DEV_RAM_COUNT=1" >>$(1); \
-		echo "CONFIG_BLK_DEV_RAM_SIZE=16384" >>$(1); \
+		echo "CONFIG_BLK_DEV_RAM_SIZE=26624" >>$(1); \
 	fi; \
 	if [ "$(DUMP_OOPS_MSG)" = "y" ]; then \
 		echo "CONFIG_DUMP_PREV_OOPS_MSG=y" >>$(1); \
