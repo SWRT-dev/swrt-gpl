@@ -2331,8 +2331,8 @@ void update_ovpn_client_by_sdn(MTLAN_T *pmtl, size_t mtl_sz, int restart_all_sdn
 	if(restart_all_sdn)
 		eval("iptables", "-F", "OVPNCF");
 
-	for(unit = 1; unit <= OVPN_CLIENT_MAX; ++unit){
-		if(get_ovpn_cconf(unit, &conf)){
+	for(unit = 1; unit <= OVPN_CLIENT_MAX; unit++){
+		if(get_ovpn_cconf(unit, &conf) != NULL){
 			if(conf.enable){
 				idx = get_vpnc_idx_by_proto_unit(VPN_PROTO_OVPN, unit);
 				if(restart_all_sdn){
@@ -2342,7 +2342,7 @@ void update_ovpn_client_by_sdn(MTLAN_T *pmtl, size_t mtl_sz, int restart_all_sdn
 					eval("iptables", "-A", "OVPNCF", "-i", (char*)conf.if_name, "-j", "DROP");
 					eval("iptables", "-A", "OVPNCF", "-o", (char*)conf.if_name, "-j", "DROP");
 				}
-				for(i = 0; i < mtl_sz; ++i){
+				for(i = 0; i < mtl_sz; i++){
 					snprintf(path, sizeof(path), "%s/client%d/fw_sdn%d.sh", OVPN_DIR_CONF, unit, pmtl[i].nw_t.idx);
 					if(f_exists(path)){
 						eval("sed", "-i", "s/-I/-D/", path);
@@ -2413,7 +2413,7 @@ void update_ovpn_client_by_sdn_remove(MTLAN_T *pmtl, size_t mtl_sz)
 	ovpn_cconf_t conf;
 
 	for(unit = 1; unit <= OVPN_CLIENT_MAX; unit++){
-		if(get_ovpn_cconf(unit, &conf)){
+		if(get_ovpn_cconf(unit, &conf) != NULL){
 			if(conf.enable){
 				for(i = 0; i < mtl_sz; ++i){
 					snprintf(path, sizeof(path), "%s/client%d/fw_sdn%d.sh", OVPN_DIR_CONF, unit, pmtl[i].nw_t.idx);

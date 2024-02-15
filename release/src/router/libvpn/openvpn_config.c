@@ -265,7 +265,7 @@ ovpn_cconf_t* get_ovpn_cconf(int unit, ovpn_cconf_t* conf)
 
 	if(conf == NULL)
 		return NULL;
-	memset(conf, 0, sizeof(ovpn_sconf_t));
+	memset(conf, 0, sizeof(ovpn_cconf_t));
 	snprintf(prefix, sizeof(prefix), "vpn_client%d_", unit);
 	nvram_get_r("vpn_clientx_eas", vpn_clientx_list, sizeof(vpn_clientx_list));
 	ptr = strtok(vpn_clientx_list, ",");
@@ -298,8 +298,8 @@ ovpn_cconf_t* get_ovpn_cconf(int unit, ovpn_cconf_t* conf)
 		conf->auth_mode = OVPN_AUTH_TLS;
 	conf->userauth = nvram_pf_get_int(prefix, "userauth");
 	conf->useronly = nvram_pf_get_int(prefix, "useronly");
-	snprintf(conf->username, sizeof(conf->username), "%s", nvram_pf_safe_get(prefix, "username"));
-	snprintf(conf->password, sizeof(conf->password), "%s", nvram_pf_safe_get(prefix, "password"));
+	strlcpy(conf->username, nvram_pf_safe_get(prefix, "username"), sizeof(conf->username));
+	strlcpy(conf->password, nvram_pf_safe_get(prefix, "password"), sizeof(conf->password));
 	conf->direction = nvram_pf_get_int(prefix, "hmac");
 	strlcpy(conf->cipher, nvram_pf_safe_get(prefix, "cipher"), sizeof(conf->cipher));
 	strlcpy(conf->digest, nvram_pf_safe_get(prefix, "digest"), sizeof(conf->digest));

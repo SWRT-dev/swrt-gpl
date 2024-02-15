@@ -531,7 +531,7 @@ int build_temp_rootfs(const char *newroot)
 #if defined(RTCONFIG_NOTIFICATION_CENTER) || defined(RTCONFIG_BWDPI) || \
     defined(RTCONFIG_TRAFFIC_LIMITER) || defined(RTCONFIG_MEDIA_SERVER) || \
     defined(RTCONFIG_FREERADIUS) || defined(RTCONFIG_CAPTIVE_PORTAL) || \
-    defined(RTCONFIG_WEBDAV)
+    defined(RTCONFIG_WEBDAV) || defined(RTCONFIG_NEW_PHYMAP)
 			     " libsqlite*"
 #endif
 #if defined(RTCONFIG_PERMISSION_MANAGEMENT)
@@ -567,8 +567,9 @@ int build_temp_rootfs(const char *newroot)
 			     " libev.so.4.0.0"
 			     " libev.so.4"
 			     " libcodb.so"
+			     " libswrt.so"
 #if defined(RTCONFIG_SWRTMESH)
-			" libswrtmesh.so*"
+				 " libswrtmesh.so*"
 #endif
 		;
 	const char *kmod = "find /lib/modules -name '*.ko'|"
