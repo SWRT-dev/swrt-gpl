@@ -14,8 +14,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  *
- * Copyright 2018-2023, SWRTdev.
- * Copyright 2018-2023, paldier <paldier@hotmail.com>.
+ * Copyright 2018-2024, SWRTdev.
+ * Copyright 2018-2024, paldier <paldier@hotmail.com>.
  * All Rights Reserved.
  * 
  */
@@ -37,9 +37,16 @@
 #include <bcmutils.h>
 #include <httpd.h>
 #include <swrt.h>
-#if defined(RTCONFIG_SOFTCENTER)
 #include <shared.h>
+#if defined(RTCONFIG_MULTILAN_CFG)
+#include <amas_apg_shared.h>
+#endif
+#if defined(RTCONFIG_SOFTCENTER)
 #include <dbapi.h>
+#endif
+
+#ifdef RTCONFIG_ODMPID
+extern void replace_productid(char *GET_PID_STR, char *RP_PID_STR, int len);
 #endif
 
 //unlock all languages for cn
@@ -919,5 +926,392 @@ void get_traffic_hook(char *mode, char *name, char *dura, char *date, int *retva
 		return get_client_hook(retval, wp, "", name);
 	else
 		websWrite(wp, "[]");
+}
+#endif
+
+#if defined(RTCONFIG_MULTILAN_CFG)
+void escape_json_char(char *orig, char *conv, int percent_only)
+{
+	int i = 0, j = 0;
+
+	while(orig[i] != '\0')
+	{
+		if (percent_only) {
+			switch(orig[i])
+			{
+				case '%':
+					conv[j]='%';
+					++j;
+					conv[j]='%';
+					break;
+				default:
+					conv[j] = orig[i];
+					break;
+			}
+		}
+		else
+		{
+			switch(orig[i])
+			{
+				case '"':
+					conv[j] = '\\';
+					++j;
+					conv[j] = '\"';
+					break;
+				case '\\':
+					conv[j]='\\';
+					++j;
+					conv[j]='\\';
+					break;
+				case '%':
+					conv[j]='%';
+					++j;
+					conv[j]='%';
+					break;
+				default:
+					conv[j] = orig[i];
+					break;
+			}
+		}
+		++i;
+		++j;
+	}
+
+	conv[j] = '\0';
+}
+/*
+{
+"get_cfg_clientlist":[{"alias":"9C:C9:EB:F5:06:BE","model_name":"RAX120","ui_model_name":"RAX120","icon_model_name":"","product_id":"RT-AX89U","frs_model_name":"","fwver":"3.0.0.4.388_RAX120_R5.2.5-gd91c7","newfwver":"","ip":"192.168.50.1","mac":"9C:C9:EB:F5:06:BE","online":"1","ap2g":"9C:C9:EB:F5:06:B9","ap5g":"9C:C9:EB:F5:06:BD","ap5g1":"","apdwb":"","ap6g":"","wired_mac":["C8:5B:A0:E8:8C:6D"],"pap2g":"","rssi2g":"","pap5g":"","rssi5g":"","pap6g":"","rssi6g":"","level":"0","re_path":"0","config":{},"sta2g":"","sta5g":"","sta6g":"","capability":{"3":3,"2":1,"16":1,"17":1,"19":1,"20":1,"1":31,"4":10111,"22":3,"23":1},"ap2g_ssid":"DreamBox","ap5g_ssid":"DreamBox_5G","ap5g1_ssid":"","ap6g_ssid":"","pap2g_ssid":"","pap5g_ssid":"","pap6g_ssid":"","wired_port":{},"plc_status":{},"band_num":"2","tcode":"CN/01","misc_info":{"2":"1"},"ap2g_fh":"9C:C9:EB:F5:06:B9","ap5g_fh":"9C:C9:EB:F5:06:BD","ap5g1_fh":"","ap6g_fh":"","ap2g_ssid_fh":"DreamBox","ap5g_ssid_fh":"DreamBox_5G","ap5g1_ssid_fh":"","ap6g_ssid_fh":"","band_info":{"0":{"unit":0},"1":{"unit":1}}}]
+}
+*/
+int ej_get_cfg_clientlist(int eid, webs_t wp, int argc, char **argv)
+{
+	int lock;
+	int i, j = 0;
+	char ip_buf[16] = {0};
+	char alias_buf[33] = {0};
+	char rmac_buf[32] = {0};
+	char ap2g_buf[32], ap5g_buf[32], ap5g1_buf[32], apdwb_buf[32], ap6g_buf[32];
+	char pap2g_buf[32], pap5g_buf[32], pap6g_buf[32];
+	char rssi2g_buf[8], rssi5g_buf[8], rssi6g_buf[8];
+	char model_name_buf[33] = {0}, product_id_buf[33] = {0}, frs_model_name_buf[33] = {0};
+	char ui_model_name_buf[33] = {0};
+	char alias_conv_buf[65];
+	json_object *allBrMacListObj = NULL;
+	json_object *macEntryObj = NULL;
+	json_object *capabilityObj = NULL, *wiredPortObj = NULL;
+	json_object *miscInfoObj = NULL, *bandInfoObj = NULL;
+	int online = 0;
+	int rePath = 0;
+	char macList[1024] = {0};
+	char *p = NULL;
+	struct json_object *entry;
+	char sta2g_buf[32], sta5g_buf[32], sta6g_buf[32];
+	char capability_file_name[64] = {0};
+	char capability_buf[4096] = {0};
+	char ap2g_ssid_buf[33], ap5g_ssid_buf[33], ap5g1_ssid_buf[33], ap6g_ssid_buf[33];
+	char ap2g_ssid_conv_buf[65], ap5g_ssid_conv_buf[65], ap5g1_ssid_conv_buf[65], ap6g_ssid_conv_buf[65];
+	char pap2g_ssid_conv_buf[65], pap5g_ssid_conv_buf[65], pap6g_ssid_conv_buf[65];
+	char word[256], *next = NULL, prefix[16];
+	int unit = 0, subunit, bandNum = 0;
+	char file_name[64] = {0}, wired_port_buf[512] = {0};
+	char tcode_buf[16] = {0};
+	int nband = 0;
+	char misc_info_buf[256] = {0};
+	int num5g = 0;
+	char band_info_buf[256] = {0};
+
+	lock = file_lock("cfg_clientlist");
+
+	allBrMacListObj = json_object_from_file("/tmp/maclist.json");
+
+	websWrite(wp, "[");
+	p = NULL;
+	memset(macList, 0, sizeof(macList));
+	memset(alias_buf, 0, sizeof(alias_buf));
+	memset(ip_buf, 0, sizeof(ip_buf));
+	memset(rmac_buf, 0, sizeof(rmac_buf));
+	memset(ap2g_buf, 0, sizeof(ap2g_buf));
+	memset(ap5g_buf, 0, sizeof(ap5g_buf));
+	memset(ap5g1_buf, 0, sizeof(ap5g1_buf));
+	memset(apdwb_buf, 0, sizeof(apdwb_buf));
+	memset(ap6g_buf, 0, sizeof(ap6g_buf));
+	memset(pap2g_buf, 0, sizeof(pap2g_buf));
+	memset(pap5g_buf, 0, sizeof(pap5g_buf));
+	memset(pap6g_buf, 0, sizeof(pap6g_buf));
+	memset(rssi2g_buf, 0, sizeof(rssi2g_buf));
+	memset(rssi5g_buf, 0, sizeof(rssi5g_buf));
+	memset(rssi6g_buf, 0, sizeof(rssi6g_buf));
+	memset(sta2g_buf, 0, sizeof(sta2g_buf));
+	memset(sta5g_buf, 0, sizeof(sta5g_buf));
+	memset(sta6g_buf, 0, sizeof(sta6g_buf));
+	memset(alias_conv_buf, 0, sizeof(alias_conv_buf));
+	memset(ap2g_ssid_buf, 0, sizeof(ap2g_ssid_buf));
+	memset(ap5g_ssid_buf, 0, sizeof(ap5g_ssid_buf));
+	memset(ap5g1_ssid_buf, 0, sizeof(ap5g1_ssid_buf));
+	memset(ap6g_ssid_buf, 0, sizeof(ap6g_ssid_buf));
+	memset(ap2g_ssid_conv_buf, 0, sizeof(ap2g_ssid_conv_buf));
+	memset(ap5g_ssid_conv_buf, 0, sizeof(ap5g_ssid_conv_buf));
+	memset(ap5g1_ssid_conv_buf, 0, sizeof(ap5g1_ssid_conv_buf));
+	memset(ap6g_ssid_conv_buf, 0, sizeof(ap6g_ssid_conv_buf));
+	memset(pap2g_ssid_conv_buf, 0, sizeof(pap2g_ssid_conv_buf));
+	memset(pap5g_ssid_conv_buf, 0, sizeof(pap5g_ssid_conv_buf));
+	memset(pap6g_ssid_conv_buf, 0, sizeof(pap6g_ssid_conv_buf));
+
+	//strlcpy(alias_buf, get_own_mac(), sizeof(alias_buf));
+	/* get ssid of 2g & 5g & 5g1 & 6g */
+	unit = 0;
+	foreach (word, nvram_safe_get("wl_ifnames"), next) {
+		SKIP_ABSENT_BAND_AND_INC_UNIT(unit);
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		nband = nvram_pf_get_int(prefix, "nband");
+		if (nband == 2) {
+			strlcpy(ap2g_ssid_buf, nvram_pf_safe_get(prefix, "ssid"), sizeof(ap2g_ssid_buf));
+		}
+		else if (nband == 1)
+		{
+			num5g++;
+			if (num5g == 1) {
+				strlcpy(ap5g_ssid_buf, nvram_pf_safe_get(prefix, "ssid"), sizeof(ap5g_ssid_buf));
+			}
+			else if (num5g == 2)
+			{
+				strlcpy(ap5g1_ssid_buf, nvram_pf_safe_get(prefix, "ssid"), sizeof(ap5g1_ssid_buf));
+			}
+		}
+		else if (nband == 4)
+		{
+			strlcpy(ap6g_ssid_buf, nvram_pf_safe_get(prefix, "ssid"), sizeof(ap6g_ssid_buf));
+		}
+		unit++;
+	}
+	escape_json_char(alias_buf, alias_conv_buf, 0);
+	escape_json_char(ap2g_ssid_buf, ap2g_ssid_conv_buf, 0);
+	escape_json_char(ap5g_ssid_buf, ap5g_ssid_conv_buf, 0);
+	escape_json_char(ap5g1_ssid_buf, ap5g1_ssid_conv_buf, 0);
+	escape_json_char(ap6g_ssid_buf, ap6g_ssid_conv_buf, 0);
+	strlcpy(ip_buf, nvram_safe_get("lan_ipaddr"), sizeof(ip_buf));
+	strlcpy(rmac_buf, get_own_mac(), sizeof(rmac_buf));
+
+	/* get capability */
+	memset(capability_buf, 0, sizeof(capability_buf));
+	snprintf(capability_file_name, sizeof(capability_file_name), "/tmp/%s.cap", rmac_buf);
+	capabilityObj = json_object_from_file(capability_file_name);
+	if (capabilityObj) {
+#ifdef RTCONFIG_BHCOST_OPT
+		/* Transfer capbality CONN_UPLINK_PORTS(21) value to easy-to-read */
+		covert_bitmap_describe(capabilityObj);
+#endif
+		snprintf(capability_buf, sizeof(capability_buf), "%s", json_object_to_json_string_ext(capabilityObj, 0));
+		json_object_put(capabilityObj);
+	}else{
+		char tmp[16];
+		phy_port_mapping port_mapping;
+		json_object *wificap = NULL, *lancap = NULL, *portinfo = NULL, *portobj = NULL;
+		json_object *wifiinfo = NULL, *wifiobj = NULL, *vifobj = NULL, *vifinfoobj = NULL;
+		capabilityObj = json_object_new_object();
+		wificap = json_object_new_object();
+		lancap = json_object_new_object();
+		portinfo = json_object_new_object();
+		wifiinfo = json_object_new_object();
+		unit = 0;
+		foreach (word, nvram_safe_get("wl_ifnames"), next) {
+			wifiobj = json_object_new_object();
+			SKIP_ABSENT_BAND_AND_INC_UNIT(unit);
+			snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+			nband = nvram_pf_get_int(prefix, "nband");
+			if (nband == 2) {
+				json_object_object_add(wifiobj, "band", json_object_new_int(WIFI_BAND_2G));
+			}
+			else if (nband == 1)
+			{
+#if defined(RTCONFIG_HAS_5G_2)
+				num5g++;
+				if (num5g == 1) {
+					json_object_object_add(wifiobj, "band", json_object_new_int(WIFI_BAND_5GL));
+				}
+				else if (num5g == 2)
+				{
+					json_object_object_add(wifiobj, "band", json_object_new_int(WIFI_BAND_5GH));
+				}
+#else
+				json_object_object_add(wifiobj, "band", json_object_new_int(WIFI_BAND_5G));
+#endif
+			}
+			else if (nband == 4)
+			{
+				json_object_object_add(wifiobj, "band", json_object_new_int(WIFI_BAND_6G));
+			}
+			for(subunit = 0; subunit < num_of_mssid_support(unit) && subunit < MAX_DUT_LIST_SIZE; subunit++){
+				vifobj = json_object_new_object();
+				vifinfoobj = json_object_new_object();
+				memset(tmp, 0, sizeof(tmp));
+				if(subunit == 0){
+					snprintf(tmp, sizeof(tmp), "%s", get_wififname(unit));
+					json_object_object_add(vifinfoobj, "type", json_object_new_int(VIF_TYPE_MAIN));
+				}else{
+					snprintf(tmp, sizeof(tmp), "wl%d.%d_ifname", unit, subunit);
+					json_object_object_add(vifinfoobj, "type", json_object_new_int(VIF_TYPE_NO_USED));
+				}
+				json_object_object_add(vifinfoobj, "prefix", json_object_new_string(nvram_safe_get(tmp)));
+				json_object_object_add(vifobj, nvram_safe_get(tmp), vifinfoobj);
+				json_object_object_add(wifiobj, "vif", vifobj);
+			}
+			memset(tmp, 0, sizeof(tmp));
+			snprintf(tmp, sizeof(tmp), "%d", unit);
+			json_object_object_add(wifiobj, "count", json_object_new_int(subunit));
+			json_object_object_add(wifiinfo, tmp, wifiobj);
+			unit++;
+		}
+		json_object_object_add(wificap, "wifi_band", wifiinfo);
+		json_object_object_add(capabilityObj, "26", wificap);
+
+		get_phy_port_mapping(&port_mapping);
+		for(i = 1; i < port_mapping.count; i++){//skip wan
+			memset(tmp, 0, sizeof(tmp));
+			snprintf(tmp, sizeof(tmp), "%d", i);
+			portobj = json_object_new_object();
+			json_object_object_add(portobj, "index", json_object_new_string(tmp));
+			json_object_object_add(portobj, "if_name", json_object_new_string(port_mapping.port[i].ifname ? : ""));
+			json_object_object_add(portobj, "phy_port_id", json_object_new_int(port_mapping.port[i].phy_port_id));
+			json_object_object_add(portobj, "label_name", json_object_new_string(port_mapping.port[i].label_name));
+			json_object_object_add(portobj, "max_rate", json_object_new_int(port_mapping.port[i].max_rate));
+
+			json_object_object_add(portinfo, tmp, portobj);
+		}
+		json_object_object_add(lancap, "lan_port", portinfo);
+		json_object_object_add(capabilityObj, "27", lancap);
+		snprintf(capability_buf, sizeof(capability_buf), "%s", json_object_to_json_string_ext(capabilityObj, 0));
+		json_object_put(capabilityObj);
+	}
+	strlcpy(ap2g_buf, nvram_safe_get("wl0_hwaddr"), sizeof(ap2g_buf));
+	strlcpy(ap5g_buf, nvram_safe_get("wl1_hwaddr"), sizeof(ap5g_buf));
+	strlcpy(ap5g1_buf, nvram_safe_get("wl2_hwaddr"), sizeof(ap5g1_buf));
+	strlcpy(ap6g_buf, nvram_safe_get("wl2_hwaddr"), sizeof(ap6g_buf));
+
+	/* modle name */
+	strlcpy(model_name_buf, get_productid(), sizeof(model_name_buf));
+	memset(ui_model_name_buf, 0, sizeof(ui_model_name_buf));
+#ifdef RTCONFIG_ODMPID
+	replace_productid(model_name_buf, ui_model_name_buf, sizeof(ui_model_name_buf));
+#else
+	snprintf(ui_model_name_buf, sizeof(ui_model_name_buf), "%s", model_name_buf);
+#endif
+
+	/* product id */
+	strlcpy(product_id_buf, rt_buildname, sizeof(product_id_buf));
+
+	if (allBrMacListObj) {
+		json_object_object_get_ex(allBrMacListObj, rmac_buf, &macEntryObj);
+		if (macEntryObj) {
+			int macEntryLen = json_object_array_length(macEntryObj);
+			if (macEntryLen) {
+				memset(macList, 0, sizeof(macList));
+				p = macList;
+				p += snprintf(p, sizeof(macList), "[");
+				for (j = 0; j < macEntryLen; j++) {
+					entry = json_object_array_get_idx(macEntryObj, j);
+					if(strlen(macList)+3+strlen(json_object_get_string(entry)) > sizeof(macList) -2)
+					{
+						_dprintf("too many macList entries. \n");
+						break;
+					}
+					if (j) p += snprintf(p, sizeof(macList), ",");
+					p += snprintf(p, sizeof(macList), "\"%s\"", json_object_get_string(entry));
+				}
+				p += snprintf(p, sizeof(macList), "]");
+			}
+		}
+	}
+
+	/* wired port */
+	memset(wired_port_buf, 0, sizeof(wired_port_buf));
+	snprintf(file_name, sizeof(file_name), "/tmp/%s.port", rmac_buf);
+	wiredPortObj = json_object_from_file(file_name);
+	if (wiredPortObj) {
+		snprintf(wired_port_buf, sizeof(wired_port_buf), "%s", json_object_to_json_string_ext(wiredPortObj, 0));
+		json_object_put(wiredPortObj);
+	}
+
+	/* get misc info */
+	memset(misc_info_buf, 0, sizeof(misc_info_buf));
+	snprintf(file_name, sizeof(file_name), "/tmp/misc.json");
+	if (check_if_file_exist(file_name)) {
+		miscInfoObj = json_object_from_file(file_name);
+		if (miscInfoObj) {
+			snprintf(misc_info_buf, sizeof(misc_info_buf), "%s", json_object_to_json_string_ext(miscInfoObj, 0));
+			json_object_put(miscInfoObj);
+		}
+	}
+
+	online = 1;
+
+	/* band num */
+#if defined(RTCONFIG_HAS_5G_2) || defined(RTCONFIG_WIFI6E)
+	bandNum = 3;
+#else
+	bandNum = 2;
+#endif
+
+	/* territory code */
+	strlcpy(tcode_buf, nvram_safe_get("territory_code"), sizeof(tcode_buf));
+
+	/* get band index */
+	snprintf(file_name, sizeof(file_name), "/tmp/%s.bi", rmac_buf);
+	bandInfoObj = json_object_from_file(file_name);
+	if (bandInfoObj) {
+		memset(band_info_buf, 0, sizeof(band_info_buf));
+		snprintf(band_info_buf, sizeof(band_info_buf), "%s", json_object_to_json_string_ext(bandInfoObj, 0));
+		json_object_put(bandInfoObj);
+	}
+
+	websWrite(wp, "{");
+	websWrite(wp, "\"alias\":\"%s\",", strlen(alias_conv_buf) ? alias_conv_buf : rmac_buf);
+	websWrite(wp, "\"model_name\":\"%s\",", model_name_buf);
+	websWrite(wp, "\"ui_model_name\":\"%s\",", ui_model_name_buf);
+	websWrite(wp, "\"product_id\":\"%s\",", product_id_buf);
+	websWrite(wp, "\"frs_model_name\":\"%s\",", frs_model_name_buf);
+	websWrite(wp, "\"ip\":\"%s\",", ip_buf);
+	websWrite(wp, "\"mac\":\"%s\",", rmac_buf);
+	websWrite(wp, "\"online\":\"%d\",", online);
+	websWrite(wp, "\"ap2g\":\"%s\",", strcmp(ap2g_buf, "00:00:00:00:00:00") ? ap2g_buf : "");
+	websWrite(wp, "\"ap5g\":\"%s\",", strcmp(ap5g_buf, "00:00:00:00:00:00") ? ap5g_buf : "");
+	websWrite(wp, "\"ap5g1\":\"%s\",", strcmp(ap5g1_buf, "00:00:00:00:00:00") ? ap5g1_buf : "");
+	websWrite(wp, "\"apdwb\":\"%s\",", strcmp(apdwb_buf, "00:00:00:00:00:00") ? apdwb_buf : "");
+	websWrite(wp, "\"ap6g\":\"%s\",", strcmp(ap6g_buf, "00:00:00:00:00:00") ? ap6g_buf : "");
+	websWrite(wp, "\"wired_mac\":%s,", strlen(macList) ? macList : "[]");
+	websWrite(wp, "\"pap2g\":\"%s\",", strlen(pap2g_buf) ? pap2g_buf : "");
+	websWrite(wp, "\"rssi2g\":\"%s\",", strlen(rssi2g_buf) ? rssi2g_buf : "");
+	websWrite(wp, "\"pap5g\":\"%s\",", strlen(pap5g_buf) ? pap5g_buf : "");
+	websWrite(wp, "\"rssi5g\":\"%s\",", strlen(rssi5g_buf) ? rssi5g_buf : "");
+	websWrite(wp, "\"pap6g\":\"%s\",", strlen(pap6g_buf) ? pap6g_buf : "");
+	websWrite(wp, "\"rssi6g\":\"%s\",", strlen(rssi6g_buf) ? rssi6g_buf : "");
+	websWrite(wp, "\"re_path\":\"%d\",", rePath);
+	websWrite(wp, "\"config\":%s,", "{}");
+	websWrite(wp, "\"sta2g\":\"%s\",", strcmp(sta2g_buf, "00:00:00:00:00:00") ? sta2g_buf : "");
+	websWrite(wp, "\"sta5g\":\"%s\",", strcmp(sta5g_buf, "00:00:00:00:00:00") ? sta5g_buf : "");
+	websWrite(wp, "\"sta6g\":\"%s\",", strcmp(sta6g_buf, "00:00:00:00:00:00") ? sta6g_buf : "");
+	websWrite(wp, "\"capability\":%s,", strlen(capability_buf) ? capability_buf : "{}");
+	websWrite(wp, "\"ap2g_ssid\":\"%s\",", strlen(ap2g_ssid_conv_buf) ? ap2g_ssid_conv_buf : "");
+	websWrite(wp, "\"ap5g_ssid\":\"%s\",", strlen(ap5g_ssid_conv_buf) ? ap5g_ssid_conv_buf : "");
+	websWrite(wp, "\"ap5g1_ssid\":\"%s\",", strlen(ap5g1_ssid_conv_buf) ? ap5g1_ssid_conv_buf : "");
+	websWrite(wp, "\"ap6g_ssid\":\"%s\",", strlen(ap6g_ssid_conv_buf) ? ap6g_ssid_conv_buf : "");
+	websWrite(wp, "\"pap2g_ssid\":\"%s\",", strlen(pap2g_ssid_conv_buf) ? pap2g_ssid_conv_buf : "");
+	websWrite(wp, "\"pap5g_ssid\":\"%s\",", strlen(pap5g_ssid_conv_buf) ? pap5g_ssid_conv_buf : "");
+	websWrite(wp, "\"pap6g_ssid\":\"%s\",", strlen(pap6g_ssid_conv_buf) ? pap6g_ssid_conv_buf : "");
+	websWrite(wp, "\"wired_port\":%s,", strlen(wired_port_buf) ? wired_port_buf : "{}");
+	websWrite(wp, "\"band_num\":\"%d\",", bandNum);
+	websWrite(wp, "\"tcode\":\"%s\",", strlen(tcode_buf) ? tcode_buf : "");
+	websWrite(wp, "\"misc_info\":%s,", strlen(misc_info_buf) ? misc_info_buf : "{}");
+	websWrite(wp, "\"band_info\":%s", strlen(band_info_buf) ? band_info_buf : "{}");
+	websWrite(wp, "}");
+	websWrite(wp, "]");
+
+	if (allBrMacListObj)
+		json_object_put(allBrMacListObj);
+
+	file_unlock(lock);
+ 
+	return 0;
 }
 #endif

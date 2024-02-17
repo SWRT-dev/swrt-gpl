@@ -39467,6 +39467,9 @@ struct ej_handler ej_handlers[] = {
 	{ "dbus_get_def", ej_dbus_get_def},
 	{ "dbus_match", ej_dbus_match},
 #endif
+#if defined(RTCONFIG_MULTILAN_CFG)
+	{ "get_cfg_clientlist", ej_get_cfg_clientlist},
+#endif
 	{ NULL, NULL }
 };
 

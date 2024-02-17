@@ -14,7 +14,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  *
- * Copyright 2018-2023, paldier <paldier@hotmail.com>.
+ * Copyright 2018-2024, paldier <paldier@hotmail.com>.
  * All Rights Reserved.
  * 
  */
@@ -47,5 +47,8 @@ extern void do_entware_cgi(char *url, FILE *stream);
 #endif
 #if defined(RTCONFIG_NLBWMON)
 extern void get_traffic_hook(char *mode, char *name, char *dura, char *date, int *retval, webs_t wp);
+#endif
+#if defined(RTCONFIG_MULTILAN_CFG)
+extern int ej_get_cfg_clientlist(int eid, webs_t wp, int argc, char **argv);
 #endif
 #endif
