@@ -757,7 +757,7 @@ function gen_VLAN_port_table(port_profile) {
 				})
 				$port_table_thead2.html("<#AiMesh_Node#>");
 			} else {
-				$port_table_thead2.html("<#AiMesh_Router#>");
+				$port_table_thead2.html("<#Device_type_02_RT#>");
 			}
 
 			//table content : status
