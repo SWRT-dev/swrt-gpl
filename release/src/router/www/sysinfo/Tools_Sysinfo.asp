@@ -60,6 +60,7 @@ var odmpid = "<% nvram_get("odmpid");%>";
 var ctf_fa = "<% nvram_get("ctf_fa_mode"); %>";
 var modelname = "<% nvram_get("modelname"); %>";
 var sc_mount = "<% nvram_get("sc_mount"); %>";
+var sfe_enable = "<% nvram_get("sfe_enable"); %>";
 overlib_str_tmp = "";
 overlib.isOut = true;
 function initial(){
@@ -171,6 +172,13 @@ function hwaccel_state(){
 
 		code += state;
 		code += "</span>";
+	} else if(sfe_enable != ""){
+		if (sfe_enable == "1")
+			code = "<span>Enabled (LAN)</span>";
+		else if (sfe_enable == "2")
+			code = "<span>Enabled (LAN + WLAN)</span>";
+		else
+			code = "Disabled";
 	} else {
 		if (ctf_dis == "1") {
 			code = "Disabled";

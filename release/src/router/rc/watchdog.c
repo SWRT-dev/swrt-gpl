@@ -3948,7 +3948,7 @@ void btn_check(void)
 		TRACE_PT("button BTN_LED pressed\n");
 #if defined(RTAC68U)
 		if (((!nvram_match("cpurev", "c0") || nvram_get_int("PA") == 5023 || (nvram_match("cpurev", "c0") && !nvram_get_int("PA"))) && LED_status == LED_status_on) ||
-		      (nvram_match("cpurev", "c0") && nvram_get_int("PA") != 5023 && nvram_get_int("PA") != 0 && LED_status_on))
+		      (nvram_match("cpurev", "c0") && nvram_get_int("PA") != 5023 && nvram_get_int("PA") != 0 && LED_status_on)){
 			nvram_set_int("AllLED", 1);
 			nvram_set_int("led_disable", 0);
 		}else{

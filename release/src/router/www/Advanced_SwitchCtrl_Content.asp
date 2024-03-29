@@ -449,7 +449,7 @@ function check_bonding_policy(obj){
 													<select name="sfe_enable" class="input_option" disabled>
 														<option class="content_input_fd" value="0" <% nvram_match("sfe_enable", "0","selected"); %>><#WLANConfig11b_WirelessCtrl_buttonname#></option>
 														<option class="content_input_fd" value="1" <% nvram_match("sfe_enable", "1","selected"); %>>LAN</option>
-														<option class="content_input_fd" value="2" <% nvram_match("sfe_enable", "2","selected"); %>>LAN+WAN</option>
+														<option class="content_input_fd" value="2" <% nvram_match("sfe_enable", "2","selected"); %>>LAN+WLAN</option>
 													</select>
 													&nbsp
 													<span id="sfeLevelDesc"></span>

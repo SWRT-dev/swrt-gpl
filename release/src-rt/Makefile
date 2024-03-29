@@ -779,7 +779,7 @@ rt_ver_ntools:
 ifeq ($(FAKEID),y)
 	-@echo 'KERNEL_IMAGE = $(BUILD_NAME)_$(KERNEL_VER).$(FS_VER)_$(FORCE_SN)_$(FORCE_EN).trx' >> ntools/version
 else
-	-@echo 'KERNEL_IMAGE = $(BUILD_NAME)_$(KERNEL_VER).$(FS_VER)_$(SERIALNO)_$(EXTENDNO).trx' >> ntools/version
+	-@echo 'KERNEL_IMAGE = $(BUILD_NAME)_$(KERNEL_VER).$(FS_VER)_$(SERIALNO)_$(SWRTEXTENDNO).trx' >> ntools/version
 endif
 
 dhd_sysdep:
@@ -1081,7 +1081,7 @@ ifeq ($(or $(IPQ40XX),$(IPQ60XX),$(IPQ50XX)),y)
 	# create empty tail
 	@echo -n "" > image/tail_info
 ifeq ($(TRX_TAIL_INFO),y)
-	asustools/mktail -o image/tail_info -t 1 -f 0 -b $(SERIALNO) -e $(EXTENDNO) -r 0 -r $(SFINFO)
+	asustools/mktail -o image/tail_info -t 1 -f 0 -b $(SERIALNO) -e $(SWRTEXTENDNO) -r 0 -r $(SFINFO)
 	cat image/tail_info >> image/$(IMGNAME).img
 endif
 	#generate ASUS Image
@@ -1157,7 +1157,7 @@ else
 	# create empty tail
 	@echo -n "" > image/tail_info
 ifeq ($(TRX_TAIL_INFO),y)
-	asustools/mktail -o image/tail_info -t 1 -f 0 -b $(SERIALNO) -e $(EXTENDNO) -r 0 -r $(SFINFO)
+	asustools/mktail -o image/tail_info -t 1 -f 0 -b $(SERIALNO) -e $(SWRTEXTENDNO) -r 0 -r $(SFINFO)
 	cat image/tail_info >> $(PLATFORMDIR)/zImage.img
 endif
 	# generate ASUS Image
@@ -1208,14 +1208,15 @@ else
 	ctools/objcopy -O binary -R .reginfo -R .note -R .comment -R .mdebug -S $(LINUXDIR)/vmlinux $(PLATFORMDIR)/piggy
 endif
 ifneq (,$(filter y,$(BCMWL6) $(BCMWL6A) $(BOOTLZMA) $(ARM)))
-	ctools/lzma_4k e $(PLATFORMDIR)/piggy $(PLATFORMDIR)/vmlinuz-lzma
+#	ctools/lzma_4k e $(PLATFORMDIR)/piggy $(PLATFORMDIR)/vmlinuz-lzma
+	ctools/lzma_4k e $(LINUXDIR)/arch/arm/boot/zImage $(PLATFORMDIR)/vmlinuz-lzma
 	ctools/trx -o image/linux-lzma.trx $(PLATFORMDIR)/vmlinuz-lzma $(PLATFORMDIR)/target.image
 else
 	ctools/lzma_9k e $(PLATFORMDIR)/piggy $(PLATFORMDIR)/vmlinuz-lzma -eos -lc2 -lp2 -pb2 -mfbt2
 	ctools/trx -o image/linux-lzma.trx lzma-loader/loader.gz $(PLATFORMDIR)/vmlinuz-lzma $(PLATFORMDIR)/target.image
 endif
 ifneq ($(CONFIG_BCMWL5),)
-	ctools/trx_asus -i image/linux-lzma.trx -r $(BUILD_NAME),$(KERNEL_VER).$(FS_VER),$(SERIALNO),$(EXTENDNO),$(SFINFO),image/$(IMGNAME).trx
+	ctools/trx_asus -i image/linux-lzma.trx -r $(BUILD_NAME),$(KERNEL_VER).$(FS_VER),$(SERIALNO),$(SWRTEXTENDNO),$(SFINFO),image/$(IMGNAME).trx
 ifeq ($(BUILD_NAME),R7000P)
 	ctools/trx_asus -i image/linux-lzma.trx -r RT-AC3100,$(KERNEL_VER).$(FS_VER),$(SERIALNO),$(EXTENDNO),$(SFINFO),image/R7000P_swrt_upgrade.trx
 else ifeq ($(BUILD_NAME),SBRAC3200P)
@@ -2989,6 +2990,10 @@ define RouterOptions
 		else \
 			echo "# RTCONFIG_DFS_US is not set" >>$(1); \
 		fi; \
+	fi;
+	if [ "$(BCM4708)" = "y" ] || [ "$(BCM4708)" = "n" ]; then \
+		sed -i "/RTCONFIG_BCMBSD/d" $(1); \
+		echo "RTCONFIG_BCMBSD=y" >>$(1); \
 	fi;
 	if [ "$(HND_ROUTER_AX)" = "y" ]; then \
 		sed -i "/RTCONFIG_HND_ROUTER_AX/d" $(1); \
