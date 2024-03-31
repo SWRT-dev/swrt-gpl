@@ -33,7 +33,7 @@
 #include <rtk_switch.h>
 #include <rtk_types.h>
 
-#include <ethernet.h>
+//#include <ethernet.h>
 
 #define RTKSWITCH_DEV	"/dev/rtkswitch"
 
@@ -43,7 +43,7 @@ char *rtk_switch_cmds[] = RTK_SWITCH_CMDS;
 unsigned int rtk_cmds_pa[MAX_REQ];
 
 void usage(char *cmd);
-int rtkswitch_port_mactable(int port);
+//int rtkswitch_port_mactable(int port);
 
 int rtkswitch_ioctl(int val, int val2, int val3)
 {
@@ -59,8 +59,8 @@ int rtkswitch_ioctl(int val, int val2, int val3)
 	}
 
 	switch (val) {
-	case DUMP_MACTABLE: /* Dump L2 lookup table of specified LAN port */
-		return rtkswitch_port_mactable(val2 + 1);
+//	case DUMP_MACTABLE: /* Dump L2 lookup table of specified LAN port */
+//		return rtkswitch_port_mactable(val2 + 1);
 
 	/* w/ no options */
 	case INIT_SWITCH:
@@ -363,6 +363,7 @@ int  ext_rtk_phyState(int verbose, char* BCMPorts, phy_info_list *list)
 	return ret;
 }
 
+#if 0
 typedef struct {
 	uint32  count;
 	struct  ether_addr ea[256];
@@ -405,6 +406,7 @@ int rtkswitch_port_mactable(int port)
 
 	return 0;
 }
+#endif
 
 void usage(char *cmd)
 {
@@ -424,7 +426,7 @@ void usage(char *cmd)
 		case GET_PHY_REG9:
 		case GET_TMODE:
 		case SET_GREEN_ETHERNET:
-		case DUMP_MACTABLE:
+//		case DUMP_MACTABLE:
 			rtk_cmds_pa[ci] = 1;
                 	break;
 

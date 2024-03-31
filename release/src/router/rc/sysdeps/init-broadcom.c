@@ -4694,7 +4694,11 @@ void generate_wl_para(char *ifname, int unit, int subunit)
 					}
 					else
 #endif
+#if defined(RTCONFIG_BW160M)
+					nvram_set(strcat_r(prefix, "bw_cap", tmp), (hw_vht_cap() || hw_he_cap()) ? "15" : "7");	// 160M
+#else
 					nvram_set(strcat_r(prefix, "bw_cap", tmp), hw_vht_cap() ? "7" : "3");		// 80M
+#endif
 				} else
 #endif
 				if (nvram_match(strcat_r(prefix, "nmode", tmp), "-1"))
@@ -7531,7 +7535,6 @@ _dprintf("*** Multicast IPTV: config Singtel TR069 on wan port ***\n");
 			sprintf(vlan_entry, "%d", wan_vid);
 #ifdef RTCONFIG_RGMII_BRCM5301X
 			eval("swconfig", "dev", "switch0", "vlan", port_id, "set", "ports", "4 7");/* f: 4, 7 */
-
 #else
 			eval("swconfig", "dev", "switch0", "vlan", port_id, "set", "ports", "4 5");/* f: 4, 5 */
 #endif

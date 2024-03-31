@@ -3879,7 +3879,7 @@ int init_nvram(void)
 #if defined(RTCONFIG_WANPORT2) || defined(PLAX56_XP4) || defined(TUFAX4200) || defined(TUFAX6000) || defined(RTAX59U) || defined(RMAX6000)
 	char *wan0, *wan1 __attribute__((unused)), *lan_1, *lan_2, lan_ifs[IFNAMSIZ * 4];
 #endif
-#ifdef RTCONFIG_GMAC3
+#if defined(RTCONFIG_GMAC3) || defined(RTCONFIG_RGMII_BRCM5301X)
 	char *hw_name = "et0";
 #endif
 

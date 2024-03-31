@@ -750,6 +750,7 @@ void setAllLedNormal(void) {
 			eval("wl", "-i", "eth7", "ledbh", "9", "7");
 #elif defined(RTCONFIG_BCM_7114)
 			eval("wl", "-i", "eth2", "ledbh", "9", "7");
+#else
 #error missing model
 #endif
 		else
@@ -4427,7 +4428,7 @@ void setAllLedBrightness(void)
 {
 }
 
-#if defined(HND_ROUTER) || defined(RTCONFIG_BCM_7114) || defined(RTCONFIG_BCM4708)
+#if defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_BCM_7114) || defined(RTCONFIG_BCM4708)
 void dump_WlGetDriverStats(int fb, int count)
 {
 }
@@ -4447,3 +4448,13 @@ int get_wisp_status(void)
 	wl_ifname(nvram_get_int("wlc_band"), 0, ifname);
 	return get_wlc_status(ifname) == WLC_STATE_CONNECTED;
 }
+
+#if !defined(RTCONFIG_HND_ROUTER) && !defined(RTCONFIG_BCM_7114) && !defined(RTCONFIG_BCM7)
+int fw_check_main(int argc, char *argv[])
+{
+	if(argc != 1)
+		return -1;
+	fw_check();
+	return 0;
+}
+#endif

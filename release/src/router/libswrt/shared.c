@@ -10,6 +10,9 @@
 #include <disk_initial.h>
 #include "libswrt.h"
 
+#if defined(RTCONFIG_EXT_RTL8365MB) || defined(RTCONFIG_EXT_RTL8370MB)
+extern int ext_rtk_phyState(int verbose, char* BCMPorts, phy_info_list *list);
+#endif
 
 int GetPhyStatus(int verbose, phy_info_list *list)
 {
@@ -167,6 +170,10 @@ int GetPhyStatus(int verbose, phy_info_list *list)
 		// Only handle WAN/LAN ports
 		if (((port_mapping.port[i].cap & PHY_PORT_CAP_WAN) == 0) && ((port_mapping.port[i].cap & PHY_PORT_CAP_LAN) == 0))
 			continue;
+#if defined(RTCONFIG_EXT_RTL8365MB) || defined(RTCONFIG_EXT_RTL8370MB)
+		if(port_mapping.port[i].phy_port_id > 8)
+			continue;//skip external switch
+#endif
 		if(list) {
 			++list->count;
 			list->phy_info[i].phy_port_id = port_mapping.port[i].phy_port_id;
@@ -178,6 +185,7 @@ int GetPhyStatus(int verbose, phy_info_list *list)
 		}
 		mask = 0;
 		mask |= 0x0001 << port_mapping.port[i].phy_port_id;
+
 		if (get_phy_status(mask)==0) {/*Disconnect*/
 			if(list)
 				snprintf(list->phy_info[i].state, sizeof(list->phy_info[i].state), "%s", "down");
@@ -213,7 +221,7 @@ int GetPhyStatus(int verbose, phy_info_list *list)
 
 #if defined(RTCONFIG_EXT_RTL8365MB) || defined(RTCONFIG_EXT_RTL8370MB)
 	if (get_model() == MODEL_RTAC88U || get_model() == MODEL_RTAC5300)
-		lret |= ext_rtk_phyState(verbose, PStatus);
+		lret |= ext_rtk_phyState(verbose, PStatus, list);
 #endif
 	return lret;
 #else
@@ -325,7 +333,7 @@ int GetPhyStatus(int verbose, phy_info_list *list)
 
 #if defined(RTCONFIG_EXT_RTL8365MB) || defined(RTCONFIG_EXT_RTL8370MB)
 	if (ext)
-		lret |= ext_rtk_phyState(verbose, PStatus);
+		lret |= ext_rtk_phyState(verbose, PStatus, list);
 #endif
 #endif
 	return lret;
