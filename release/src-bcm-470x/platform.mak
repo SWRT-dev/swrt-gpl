@@ -95,6 +95,21 @@ endef
 
 define platformKernelConfig
 	if [ "$(DEBUG)" = "y" ] ; then \
+		sed -i "/CONFIG_BUG/d" $(1); \
+		echo "CONFIG_BUG=y" >>$(1); \
+		sed -i "/CONFIG_DEVKMEM/d" $(1); \
+		echo "CONFIG_DEVKMEM=y" >>$(1); \
+		sed -i "/CONFIG_PRINTK_TIME/d" $(1); \
+		echo "CONFIG_PRINTK_TIME=y" >>$(1); \
+		echo "# CONFIG_DEBUG_INFO is not set" >>$(1); \
+		sed -i "/CONFIG_ENABLE_WARN_DEPRECATED/d" $(1); \
+		echo "CONFIG_ENABLE_WARN_DEPRECATED=y" >>$(1); \
+		sed -i "/CONFIG_STRIP_ASM_SYMS/d" $(1); \
+		echo "# CONFIG_STRIP_ASM_SYMS is not set" >>$(1); \
+		sed -i "/CONFIG_DEBUG_KERNEL/d" $(1); \
+		echo "CONFIG_DEBUG_KERNEL=y" >>$(1); \
+		sed -i "/CONFIG_STACKTRACE/d" $(1); \
+		echo "CONFIG_STACKTRACE=y" >>$(1); \
 		sed -i "/CONFIG_DEBUG_RT_MUTEXES/d" $(1); \
 		echo "CONFIG_DEBUG_RT_MUTEXES=y" >>$(1); \
 		sed -i "/CONFIG_DEBUG_SPINLOCK/d" $(1); \
@@ -110,15 +125,15 @@ define platformKernelConfig
 		sed -i "/CONFIG_LOCK_STAT/d" $(1); \
 		echo "CONFIG_LOCK_STAT=y" >>$(1); \
 		echo "CONFIG_DEBUG_LOCKDEP=y" >>$(1); \
+		echo "CONFIG_DEBUG_BUGVERBOSE=y" >>$(1); \
 		echo "# CONFIG_PROVE_RCU_REPEATEDLY is not set" >>$(1); \
 	fi; \
-	if [ "$(SFE)" = "y" ] ; then \
-		sed -i "/CONFIG_BCM_CTF\>/d" $(1); \
-		echo "# CONFIG_BCM_CTF is not set" >>$(1); \
-	fi; \
-	if [ "$(R7000P)" = "y" ] || [ "$(SBRAC3200P)" = "y" ] ; then \
+	if [ "$(R7000P)" = "y" ] || [ "$(SBRAC3200P)" = "y" ] || [ "$(RTAC68U)" = "y" ] ; then \
 		sed -i "/CONFIG_DRAM_SIZE/d" $(1); \
 		echo "CONFIG_DRAM_SIZE=0x10000000" >>$(1); \
+	elif [ "$(RTAC88U)" = "y" ] || [ "$(RTAC3100)" = "y" ] || [ "$(RTAC5300)" = "y" ] ; then \
+		sed -i "/CONFIG_DRAM_SIZE/d" $(1); \
+		echo "CONFIG_DRAM_SIZE=0x20000000" >>$(1); \
 	fi; \
 	if [ "$(WIREGUARD)" = "y" ]; then \
 		echo "# CONFIG_CRYPTO_SHA1_ARM_NEON is not set" >>$(1); \

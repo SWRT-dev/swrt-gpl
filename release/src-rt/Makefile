@@ -1218,16 +1218,16 @@ endif
 ifneq ($(CONFIG_BCMWL5),)
 	ctools/trx_asus -i image/linux-lzma.trx -r $(BUILD_NAME),$(KERNEL_VER).$(FS_VER),$(SERIALNO),$(SWRTEXTENDNO),$(SFINFO),image/$(IMGNAME).trx
 ifeq ($(BUILD_NAME),R7000P)
-	ctools/trx_asus -i image/linux-lzma.trx -r RT-AC3100,$(KERNEL_VER).$(FS_VER),$(SERIALNO),$(EXTENDNO),$(SFINFO),image/R7000P_swrt_upgrade.trx
+	ctools/trx_asus -i image/linux-lzma.trx -r RT-AC3100,$(KERNEL_VER).$(FS_VER),$(SERIALNO),$(SWRTEXTENDNO),$(SFINFO),image/R7000P_swrt_upgrade.trx
 else ifeq ($(BUILD_NAME),SBRAC3200P)
-	ctools/trx_asus -i image/linux-lzma.trx -r RT-AC3200,$(KERNEL_VER).$(FS_VER),$(SERIALNO),$(EXTENDNO),$(SFINFO),image/SBRAC3200P_swrt_upgrade.trx
+	ctools/trx_asus -i image/linux-lzma.trx -r RT-AC3200,$(KERNEL_VER).$(FS_VER),$(SERIALNO),$(SWRTEXTENDNO),$(SFINFO),image/SBRAC3200P_swrt_upgrade.trx
 endif
 else
 	ctools/trx_asus -i image/linux-lzma.trx -r $(BUILD_NAME),$(KERNEL_VER).$(FS_VER),image/$(IMGNAME).trx
 endif
 	@rm -f image/linux-lzma.trx
 endif
-	md5sum image/$(IMGNAME).trx > image/$(IMGNAME).md5
+#	md5sum image/$(IMGNAME).trx > image/$(IMGNAME).md5
 
 #general rsasign file
 ifneq ($(LIVE_UPDATE_RSA),)
@@ -5894,7 +5894,7 @@ fi;
 		echo "# CONFIG_BCM_GMAC3 is not set" >>$(1); \
 		if [ "$(HND_ROUTER)" != "y" ]; then \
 			sed -i "/CONFIG_BCM_FA/d" $(1); \
-			echo "CONFIG_BCM_FA=y" >>$(1); \
+			echo "# CONFIG_BCM_FA is not set" >>$(1); \
 		fi; \
 	fi;
 	if [ "$(NODHD)" = "y" ]; then \

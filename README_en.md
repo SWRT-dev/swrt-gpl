@@ -19,25 +19,27 @@ NOTE：
 
 1. Install Ubuntu 64bit，Ubuntu 18 LTS x64 and Mint 19.1 are recommended
 
-2. Run `sudo apt-get update` in terminal, and then run
+2. Run`sudo ln -sf /bin/bash /bin/sh` in terminal
+
+3. Run `sudo apt-get update` in terminal, and then run
 
 `
 sudo apt-get -y install build-essential asciidoc binutils bison bzip2 gawk gettext git libncurses5-dev libz-dev patch python3.5 python2.7 unzip zlib1g-dev lib32gcc1 libc6-dev-i386 subversion flex uglifyjs git-core gcc-multilib p7zip p7zip-full msmtp libssl-dev texinfo libglib2.0-dev xmlto qemu-utils upx libelf-dev autoconf automake libtool autopoint device-tree-compiler g++-multilib antlr3 gperf wget libncurses5:i386 libelf1:i386 lib32z1 lib32stdc++6 gtk-doc-tools intltool binutils-dev cmake lzma liblzma-dev lzma-dev uuid-dev liblzo2-dev xsltproc dos2unix libstdc++5 docbook-xsl-* sharutils autogen shtool gengetopt libltdl-dev libtool-bin
 `
 
-3. Run `git clone https://github.com/SWRT-dev/swrt-gpl` to clone the source code 
+4. Run `git clone https://github.com/SWRT-dev/swrt-gpl` to clone the source code 
    
 #### MTK7621
 
-4. Run `git clone https://github.com/SWRT-dev/mtk-toolchains` to clone the toolchains
+5. Run `git clone https://github.com/SWRT-dev/mtk-toolchains` to clone the toolchains
 
-5. Run `cd mtk-toolchains` to enter the directory, and follow commands step by step 
+6. Run `cd mtk-toolchains` to enter the directory, and follow commands step by step 
 
 	`sudo ln -sf $(pwd)/toolchain-mipsel_24kc_gcc-5.4.0_musl-1.1.24 /opt/`
 
-6. Run `cd ../swrt-gpl/release/src-mtk-mips` to enter the directory
+7. Run `cd ../swrt-gpl/release/src-mtk-mips` to enter the directory
 
-7. Build firmware
+8. Build firmware
 
 	rt-ax53u : `make rt-ax53u`
 
@@ -55,53 +57,55 @@ sudo apt-get -y install build-essential asciidoc binutils bison bzip2 gawk gette
 
    jcg-q20 : `make swrt-jcg-q20`
 
-8. Build result will be produced to `swrt-gpl/release/src-mtk-mips/image` directory
+9. Build result will be produced to `swrt-gpl/release/src-mtk-mips/image` directory
 
 #### MTK7986
 
-4. Run `git clone https://github.com/SWRT-dev/mtk-toolchains` to clone the toolchains
+5. Run `git clone https://github.com/SWRT-dev/mtk-toolchains` to clone the toolchains
 
-5. Run `cd mtk-toolchains` to enter the directory, and follow commands step by step 
+6. Run `cd mtk-toolchains` to enter the directory, and follow commands step by step 
 
    `sudo ln -sf $(pwd)/toolchain-aarch64_cortex-a53_gcc-8.4.0_musl /opt/`
 
-6. Run `cd ../swrt-gpl/release/src-mtk-arm` to enter the directory
+7. Run `cd ../swrt-gpl/release/src-mtk-arm` to enter the directory
 
-7. Build firmware
+8. Build firmware
 
 	rm-ax6000 : `make swrt-rm-ax6000`
 
-8. Build result will be produced to `swrt-gpl/release/src-mtk-arm/image` directory
+9. Build result will be produced to `swrt-gpl/release/src-mtk-arm/image` directory
 
 #### QCA
 
-4. Run `git clone https://github.com/SWRT-dev/qca-toolchains` to clone the toolchains
+5. Run `git clone https://github.com/SWRT-dev/qca-toolchains` to clone the toolchains
 
-5. Run `cd qca-toolchains` to enter the directory, and follow commands step by step 
+6. Run `cd qca-toolchains` to enter the directory, and follow commands step by step 
 
 	`sudo ln -sf $(pwd)/toolchain-arm_cortex-a7_gcc-5.2.0_musl_eabi /opt/`
 
-6. Run `cd ../swrt-gpl/release/src-qca-ipq40xx` to enter the directory
+7. Run `cd ../swrt-gpl/release/src-qca-ipq40xx` to enter the directory
 
-7. Build firmware
+8. Build firmware
 
 	rt-ac82u : `make rt-ac82u`
 
 	rt-ac95u : `make rt-ac95u`
 
-8. Build result will be produced to `swrt-gpl/release/src-qca-ipq40xx/image` directory
+9. Build result will be produced to `swrt-gpl/release/src-qca-ipq40xx/image` directory
 
 #### BCM470X
 
-4. Run `cd ../swrt-gpl/release/src-bcm-470x`  to enter the directory
+5. Run `cd ../swrt-gpl/release/src-bcm-470x`  to enter the directory
 
-5. Build firmware
+6. Build firmware
 
 	sbrac3200p : `make swrt-sbrac3200p`
 
 	r7000p : `make swrt-r7000p`
 
-6. Build result will be produced to `swrt-gpl/release/src-bcm-470x/image` directory
+	rt-ac68u : `make rt-ac68u`
+
+7. Build result will be produced to `swrt-gpl/release/src-bcm-470x/image` directory
 
 
 This source code is promised to be compiled successfully.

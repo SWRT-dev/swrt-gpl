@@ -1399,7 +1399,7 @@ fwder_flood(fwder_t * fwder, struct sk_buff * skb, void * osh, bool clone,
 
 /** Fixup a packet received from a GMAC forwarder. */
 void
-fwder_fixup(fwder_t * fwder, struct sk_buff * skb)
+fwder_fixup(fwder_t * fwder, struct sk_buff * skb, uint32 len)
 {
 	FWDER_PTRACE(("%s fwder<%p,%s> skb<%p>\n", __FUNCTION__,
 	              fwder, __SSTR(fwder, name), skb));
@@ -1410,7 +1410,10 @@ fwder_fixup(fwder_t * fwder, struct sk_buff * skb)
 	/* strip off 4Byte CRC32 at tail end */
 	skb_trim(skb, skb->len - ETHER_CRC_LEN);
 
-	PKTCLRFWDERBUF(fwder->osh, skb); /* redundant, but safe */
+	if (PKTISFWDERBUF(fwder->osh, skb)) {
+		OSL_CACHE_INV_NOACP(skb->data, len);
+		PKTCLRFWDERBUF(fwder->osh, skb);
+	}
 }
 
 /** Downstream forwarder discarding a packet in the context of GMAC forwarder */
