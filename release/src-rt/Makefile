@@ -788,6 +788,12 @@ ifeq ($(BCM7),y)
 else
 	-cp -f $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/dhd_pcie_4366.o $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/dhd_pcie.o
 endif
+ifeq ($(R7000P),y)
+ifeq ($(wildcard $(LINUXDIR)/brcm/arm/wl/clm/src/*.c),)
+	rm -rf $(LINUXDIR)/brcm/arm/wl
+	cp -rf $(LINUXDIR)/brcm/arm/r7000p $(LINUXDIR)/brcm/arm/wl
+endif
+endif
 
 ifeq ($(HND_ROUTER),y)
 all: $(if $(NCURSES_TOOLS),pre_tools) cfe_sysdep wl_sysdep rt_ver mkenv prebuild_checks all_postcheck1

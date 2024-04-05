@@ -115,7 +115,7 @@ UPDATESH   := $(WLCFGDIR)/diffupdate.sh
 
 WLTUNEFILE ?= wltunable_lx_router.h
 
-$(obj)/$(WLCONF_O): cp_prebuilt $(obj)/$(WLCONF_H) FORCE
+$(obj)/$(WLCONF_O): $(obj)/$(WLCONF_H) FORCE
 
 $(obj)/$(WLCONF_H): $(WLCFGDIR)/$(WLTUNEFILE) FORCE
 	[ ! -f $@ ] || chmod +w $@
@@ -127,14 +127,6 @@ $(obj)/$(WLCONF_H): $(WLCFGDIR)/$(WLTUNEFILE) FORCE
 	-$(UPDATESH) wltemp $@
 
 FORCE:
-
-cp_prebuilt:
-ifeq ($(R7000P),y)
-ifeq ($(wildcard $(src)/$(SRCBASE_OFFSET)/wl/clm/src/*.c),)
-	rm -rf $(src)/$(SRCBASE_OFFSET)/wl
-	cp -rf $(src)/$(SRCBASE_OFFSET)/r7000p $(src)/$(SRCBASE_OFFSET)/wl
-endif
-endif
 
 
 clean-files += $(SRCBASE_OFFSET)/wl/sys/*.o $(SRCBASE_OFFSET)/wl/phy/*.o $(SRCBASE_OFFSET)/wl/sys/.*.*.cmd $(SRCBASE_OFFSET)/wl/phy/.*.*.cmd $(SRCBASE_OFFSET)/bcmcrypto/.*.*.cmd $(SRCBASE_OFFSET)/wl/clm/src/*.o $(SRCBASE_OFFSET)/wl/clm/src/.*.*.cmd $(SRCBASE_OFFSET)/shared/bcmwifi/src/.*.*.cmd $(SRCBASE_OFFSET)/shared/bcmwifi/src/.*.*.cmd $(WLCONF_H) $(WLCONF_O)
