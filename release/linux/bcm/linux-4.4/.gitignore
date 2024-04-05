@@ -125,5 +125,9 @@ all.config
 !/brcm/arm/wl/*/*
 !/brcm/arm/wl/*/*/*
 !/brcm/arm/wl/*/*/*/*
+!/brcm/arm/r7000p/*
+!/brcm/arm/r7000p/*/*
+!/brcm/arm/r7000p/*/*/*
+!/brcm/arm/r7000p/*/*/*/*
 !/drivers/char/rtl8365mb/*.o
 !/net/swrt_fastpath/*.o
