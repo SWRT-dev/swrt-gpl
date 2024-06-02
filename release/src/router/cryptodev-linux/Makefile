@@ -29,11 +29,12 @@ HWCHIP=MT798X
 else ifeq ($(RTCONFIG_LANTIQ),y)
 HWCHIP=LANTIQ
 else
+$(warning $(BRCM_CHIP))
 ifneq (,$(wildcard $(LINUXDIR)/../bcmkernel/Makefile))
 #bcmsdk5.04
 BCMSDK_INC=-I$(LINUXDIR)/../bcmkernel/include
 endif
-ifeq ($(BRCM_CHIP),$(filter $(BRCM_CHIP),63178 47622 6756 6750))
+ifeq ($(BRCM_CHIP),$(filter $(BRCM_CHIP),63178 47622 6756 6750 6765 6766))
 HWCHIP=BCM675X
 else ifeq ($(BRCM_CHIP),$(filter $(BRCM_CHIP),4908))
 HWCHIP=BCM49XX
@@ -48,6 +49,10 @@ else ifeq ($(BRCM_CHIP),$(filter $(BRCM_CHIP),4912))
 HWCHIP=BCM49XX
 ARM64CC=/opt/toolchains/crosstools-aarch64-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/bin/aarch64-buildroot-linux-gnu-
 SYSROOT=/opt/toolchains/crosstools-aarch64-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/aarch64-buildroot-linux-gnu/sysroot/usr/include
+else ifeq ($(BRCM_CHIP),$(filter $(BRCM_CHIP),4916 6813))
+HWCHIP=BCM49XX
+ARM64CC=/opt/toolchains/crosstools-aarch64-gcc-10.3-linux-4.19-glibc-2.32-binutils-2.36.1/bin/aarch64-buildroot-linux-gnu-
+SYSROOT=/opt/toolchains/crosstools-aarch64-gcc-10.3-linux-4.19-glibc-2.32-binutils-2.36.1/aarch64-buildroot-linux-gnu/sysroot/usr/include
 else
 #bcm470x?
 HWCHIP=UNSUPPORTED

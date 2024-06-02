@@ -14,9 +14,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  *
- * Copyright 2018-2023, SWRT.
- * Copyright 2018-2023, paldier <paldier@hotmail.com>.
- * Copyright 2018-2023, lostlonger<lostlonger.g@gmail.com>.
+ * Copyright 2018-2024, SWRT.
+ * Copyright 2018-2024, paldier <paldier@hotmail.com>.
+ * Copyright 2018-2024, lostlonger<lostlonger.g@gmail.com>.
  * All Rights Reserved.
  *
  */
@@ -305,6 +305,13 @@ void swrt_init_pre()
 		nvram_set("modelname", "GT6");
 #elif defined(RTAXE7800)
 		nvram_set("modelname", "RTAXE7800");
+#elif defined(RTBE88U)
+		nvram_set("modelname", "RTBE88U");
+#elif defined(GTBE98_PRO)
+		nvram_set("modelname", "GTBE98PRO");
+#elif defined(RTBE96U) || defined(GTBE19000)
+		nvram_set("modelname", "RTBE96U");
+#elif defined(GTBE96)
 #endif
 	if(!nvram_get("swrt_beta"))
 		nvram_set("swrt_beta", "0");
@@ -2008,12 +2015,29 @@ void get_nvramstr(int unit, char *buf, size_t len, int which)
 {
 	char *str = NULL;
 #if defined(GTAXE16000)
-const unsigned int devpath_idx[4] = {3, 4, 2, 1};    // 2.4G, 5G-1, 5G-2, 6G
+const unsigned int devpath_idx[4] = {4, 2, 1, 3};    // 5G-1, 5G-2, 6G, 2.4G
+#elif defined(GTBE98)
+const unsigned int devpath_idx[4] = {1, 4, 2, 3};    // 5G-1, 5G-2, 6G, 2.4G
+#elif defined(BT10)
+const unsigned int devpath_idx[3] = {ENVRAM_2G_DEVPATH, ENVRAM_5G_DEVPATH, ENVRAM_6G_DEVPATH};    // 2G, 5G, 6G (devpath, not wlx index)
+#elif defined(BQ16)
+const unsigned int devpath_idx[4] = {0, 2, 1, 3};    // 5G-1, 5G-2, 6G, 2.4G
+#elif defined(BQ16_PRO)
+const unsigned int devpath_idx[4] = {0, 1, 2, 3};    // 5G, 6G-1, 6G-2, 2.4G
+#elif defined(GTBE98_PRO)
+const unsigned int devpath_idx[4] = {1, 2, 4, 3};    // 5G, 6G-1, 6G-2, 2.4G
 #elif defined(GTAX11000_PRO)
 const unsigned int devpath_idx[4] = {3, 4, 1, 2};    // 2.4G, 5G-1, 5G-2
-#elif defined(GT10)
-const unsigned int devpath_idx[4] = {0, 1, 2};    // 2.4G, 5G-1, 5G-2
+#elif defined(GT10) || defined(RTAX9000)
+const unsigned int devpath_idx[4] = {1, 2, 0};    // 2.4G, 5G-1, 5G-2
+#elif defined(RTBE96U) || defined(GTBE19000)
+const unsigned int devpath_idx[4] = {3, 4, 2, 1};    // 2.4G, 5G, 6G
+#elif defined(GTBE96)
+const unsigned int devpath_idx[4] = {3, 1, 4};	// 2.4G, 5G-1, 5G-2
+#elif defined(RTBE88U)
+const unsigned int devpath_idx[4] = {0, 1};	// 2.4G, 5G
 #endif
+
 	if(which == SUFFIX_TXPWR){
 		if(unit == 0)
 			str = "maxp2ga0";
@@ -2067,6 +2091,8 @@ const unsigned int devpath_idx[4] = {0, 1, 2};    // 2.4G, 5G-1, 5G-2
 		case MODEL_RTAX68U:
 		case MODEL_RTAC68U_V4:
 		case MODEL_RTAX86U_PRO:
+		case MODEL_BT12:
+		case MODEL_RTBE86U:
 #if defined(RTAC3200) || defined(SBRAC3200P)
 			if (unit < 2)
 				snprintf(buf, len, "%d:%s", 1 - unit, str);
@@ -2100,13 +2126,32 @@ const unsigned int devpath_idx[4] = {0, 1, 2};    // 2.4G, 5G-1, 5G-2
 #endif
 			snprintf(buf, len, "%d:%s", unit + 1, str);
 			break;
-#if defined(GTAXE16000) || defined(GTAX11000_PRO) || defined(GT10)
-		case MODEL_GTAX11000_PRO:
-		case MODEL_GTAXE16000:
-		case MODEL_GT10:
+#if defined(GTAXE16000) || defined(GTAX11000_PRO) || defined(GT10) || defined(RTAX9000) || defined(GTBE98) || defined(RTBE96U) || defined(GTBE98_PRO) || defined(GTBE96) || defined(RTBE88U) || defined(BQ16) || defined(BQ16_PRO) || defined(BT10)
+			case MODEL_GTAX11000_PRO:
+			case MODEL_GTAXE16000:
+			case MODEL_GTBE98:
+			case MODEL_GTBE98_PRO:
+			case MODEL_GT10:
+			case MODEL_RTBE96U:
+			case MODEL_RTAX9000:
+			case MODEL_GTBE96:
+			case MODEL_RTBE88U:
+			case MODEL_BT10:
+			case MODEL_BQ16:
+			case MODEL_BQ16_PRO:
+			case MODEL_GTBE19000:
 			snprintf(buf, len, "%d:%s", devpath_idx[unit], str);
 			break;
 #endif
+		case MODEL_RTBE58U:
+			snprintf(buf, len, "sb/%d/%s", 1 - unit, str);
+			break;
+		case MODEL_RTBE92U:
+			if (unit)	/* 5G / 6G */
+				snprintf(buf, len, "sb/%d/%s", 2 - unit, str);
+			else		/* 2.4G */
+				snprintf(buf, len, "1:%s", str);
+			break;
 		default:
 			snprintf(buf, len, "%d:%s", unit, str);
 			break;

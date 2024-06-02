@@ -71,10 +71,6 @@ typedef unsigned long long u64;
 
 #include "sysinfo.h"
 
-#ifdef RTCONFIG_QTN
-#include "web-qtn.h"
-#endif
-
 #ifdef RTCONFIG_EXT_RTL8365MB
 #include <linux/major.h>
 #include <rtk_switch.h>
@@ -93,16 +89,15 @@ typedef struct {
 unsigned int get_phy_temperature(int radio);
 unsigned int get_wifi_clients(int unit, int querytype);
 
-#ifdef RTCONFIG_QTN
-unsigned int get_qtn_temperature(void);
-unsigned int get_qtn_version(char *version, int len);
-int GetPhyStatus_qtn(void);
-#endif
-
 #ifdef RTCONFIG_EXT_RTL8365MB
 void GetPhyStatus_rtk(int *states);
 #endif
 
+#ifdef RTCONFIG_MULTILAN_CFG
+#define MAX_GUEST_SUBUNITS APG_MAXINUM
+#else
+#define MAX_GUEST_SUBUNITS 4
+#endif
 
 #define MBYTES (1024 * 1024)
 #define KBYTES 1024
@@ -111,6 +106,66 @@ void GetPhyStatus_rtk(int *states);
 #define SI_WL_QUERY_AUTHE 2
 #define SI_WL_QUERY_AUTHO 3
 
+static const char * const meminfo_name[MI_MAX] =
+{
+	[MI_MemTotal] = "MemTotal",
+	[MI_MemFree] = "MemFree",
+	[MI_MemAvailable] = "MemAvailable",
+	[MI_Buffers] = "Buffers",
+	[MI_Cached] = "Cached",
+	[MI_SwapCached] = "SwapCached",
+	[MI_SwapTotal] = "SwapTotal",
+	[MI_SwapFree] = "SwapFree",
+	[MI_Shmem] = "Shmem",
+	[MI_SReclaimable] = "SReclaimable"
+};
+
+void read_meminfo(meminfo_t *m)
+{
+	FILE *f;
+	char field[64];
+	int i, size;
+
+	for (i = 0; i < MI_MAX; i++) {
+		(*m)[i] = -1;
+	}
+
+	f = fopen("/proc/meminfo", "r");
+	if (!f)
+		return;
+
+	while (fscanf(f, " %63[^:]: %d kB", field, &size) == 2) {
+		for (i = 0; i < MI_MAX; i++) {
+			if (strcmp(field, meminfo_name[i]) == 0) {
+				(*m)[i] = size;
+				break;
+			}
+		}
+	}
+
+	fclose(f);
+}
+
+int meminfo_compute_simple_free(const meminfo_t *m)
+{
+	// Compute a simple free memory number similarly to htop -
+	// this corresponds to its "cached" + "buffered" + "free"
+	// Total minus this is then its "used" + "shared"
+	int mfree = (*m)[MI_MemFree] + (*m)[MI_Cached] - (*m)[MI_Shmem] + (*m)[MI_SReclaimable] + (*m)[MI_Buffers];
+	// In case something goes out-of-range with that calculation, use the basic free number
+	if (mfree < 0 || mfree > (*m)[MI_MemTotal])
+		mfree = (*m)[MI_MemFree];
+	return mfree;
+}
+
+static void write_kb_or_qq(char *result, int size)
+{
+	if (size >= 0) {
+		sprintf(result, "%.2f", (size / (float)KBYTES));
+	} else {
+		strcpy(result, "??");
+	}
+}
 
 int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 {
@@ -118,6 +173,7 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 	char result[2048];
 	int retval = 0;
 	struct sysinfo sys;
+	meminfo_t mem;
 	char *tmp;
 
 	strcpy(result,"None");
@@ -136,6 +192,8 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 				char model[64];
 #if defined(BCM4912)
 					strcpy(model, "BCM4912 - Cortex A53 ARMv8");
+#elif defined(RTCONFIG_HND_ROUTER_BE_4916)
+					strcpy(model, "BCM4916 - Cortex A53 ARMv8");
 #elif defined(RTCONFIG_BCMARM) || defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK_MT7622) || defined(RTCONFIG_MT798X)
 					char impl[8], arch[8], variant[8], part[10], revision[4];
 					impl[0]='\0'; arch[0]='\0'; variant[0]='\0'; part[0]='\0';
@@ -249,6 +307,10 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 			if (1)
 				strcpy(result, "2000");
 			else
+#elif defined(RTCONFIG_HND_ROUTER_BE_4916)
+			if (1)
+				strcpy(result, "2600");
+			else
 #elif defined(RTCONFIG_HND_ROUTER)
 			int freq = 0;
 			char *buffer;
@@ -318,18 +380,17 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 			sysinfo(&sys);
 			sprintf(result,"%.2f",(float) (sys.totalswap - sys.freeswap) * sys.mem_unit / MBYTES);
 		} else if(strcmp(type,"memory.cache") == 0) {
-			int size = 0;
-			char *buffer = read_whole_file("/proc/meminfo");
-
-			if (buffer) {
-				tmp = strstr(buffer, "Cached");
-				if (tmp)
-					sscanf(tmp, "Cached:            %d kB\n", &size);
-				free(buffer);
-				sprintf(result,"%.2f", (size / (float)KBYTES));
-			} else {
-				strcpy(result,"??");
-			}
+			read_meminfo(&mem);
+			write_kb_or_qq(result, mem[MI_Cached]);
+		} else if(strcmp(type,"memory.available") == 0) {
+			read_meminfo(&mem);
+			write_kb_or_qq(result, mem[MI_MemAvailable]);
+		} else if(strcmp(type,"memory.simple.free") == 0) {
+			read_meminfo(&mem);
+			write_kb_or_qq(result, meminfo_compute_simple_free(&mem));
+		} else if(strcmp(type,"memory.simple.used") == 0) {
+			read_meminfo(&mem);
+			write_kb_or_qq(result, mem[MI_MemTotal] - meminfo_compute_simple_free(&mem));
 		} else if(strcmp(type,"cpu.load.1") == 0) {
 			sysinfo(&sys);
 			sprintf(result,"%.2f",(sys.loads[0] / (float)(1<<SI_LOAD_SHIFT)));
@@ -340,7 +401,7 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 			sysinfo(&sys);
 			sprintf(result,"%.2f",(sys.loads[2] / (float)(1<<SI_LOAD_SHIFT)));
 		} else if(strcmp(type,"nvram.total") == 0) {
-			sprintf(result,"%d",MAX_NVRAM_SPACE);
+			sprintf(result,"%d",NVRAM_SPACE);
 		} else if(strcmp(type,"nvram.used") == 0) {
 			int size = 0;
 #ifdef HND_ROUTER
@@ -350,15 +411,11 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 			{
 				char *buf;
 
-			buf = malloc(MAX_NVRAM_SPACE);
-			if (buf) {
-#if defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
-				nvram_getall(buf, MAX_NVRAM_SPACE);
-#else
-				dev_nvram_getall(buf, MAX_NVRAM_SPACE);
-#endif
-				tmp = buf;
-				while (*tmp) tmp += strlen(tmp) +1;
+				buf = malloc(NVRAM_SPACE);
+				if (buf) {
+					nvram_getall(buf, NVRAM_SPACE);
+					tmp = buf;
+					while (*tmp) tmp += strlen(tmp) +1;
 
 					size = sizeof(struct nvram_header) + (int) tmp - (int) buf;
 					free(buf);
@@ -379,6 +436,24 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 
 			if (mount_info) free(mount_info);
 
+		} else if(strcmp(type,"jffs.total") == 0) {
+			struct statvfs fiData;
+
+			if (statvfs("/jffs",&fiData) == 0 ) {
+				sprintf(result,"%.2f",((float) fiData.f_blocks * fiData.f_frsize / MBYTES));
+			} else {
+				strcpy(result,"-1");
+			}
+
+		} else if(strcmp(type,"jffs.free") == 0) {
+			struct statvfs fiData;
+
+			if (statvfs("/jffs",&fiData) == 0 ) {
+				sprintf(result,"%.2f",((float) fiData.f_bfree * fiData.f_frsize / MBYTES));
+			} else {
+				strcpy(result,"-1");
+			}
+
 		} else if(strncmp(type,"temperature",11) == 0) {
 			unsigned int temperature;
 			int radio;
@@ -386,14 +461,7 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 			if (sscanf(type,"temperature.%d", &radio) != 1)
 				temperature = 0;
 			else
-			{
-#ifdef RTCONFIG_QTN
-				if (radio == 1)
-					temperature = get_qtn_temperature();
-				else
-#endif
-					temperature = get_phy_temperature(radio);
-			}
+				temperature = get_phy_temperature(radio);
 			if (temperature == 0)
 				strcpy(result,"<i>disabled</i>");
 			else
@@ -465,21 +533,34 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 			else
 				sprintf(result,"%d",count);
 #endif
-		} else if(strcmp(type,"driver_version") == 0 ) {
+		} else if(strncmp(type,"driver_version",14) == 0 ) {
 #if defined(RTCONFIG_BCMARM) || defined(RTCONFIG_HND_ROUTER)
-			system("/usr/sbin/wl ver >/tmp/output.txt");
+			int radio = 0;
+			char buf[32], buf2[64];
 
-			char *buffer = read_whole_file("/tmp/output.txt");
+			sscanf(type,"driver_version.%d", &radio);
+			sprintf(buf, "wl%d_ifname", radio);
+			tmp = nvram_safe_get(buf);
+			if (*tmp) {
+				snprintf(buf2, sizeof (buf2), "/usr/sbin/wl -i %s ver >/tmp/output.txt", tmp);
+				system(buf2);
 
-			if (buffer) {
-				if ((tmp = strstr(buffer, "\n")))
-					strlcpy(result, tmp+1, sizeof result);
-				else
-					strlcpy(result, buffer, sizeof result);
+				char *buffer = read_whole_file("/tmp/output.txt");
 
-				free(buffer);
+				if (buffer) {
+					if ((tmp = strstr(buffer, "\n")))
+						strlcpy(result, tmp+1, sizeof result);
+					else
+						strlcpy(result, buffer, sizeof result);
+
+					if (tmp = strstr(result, "FWID"))
+						*tmp = '\0';
+
+					replace_char(result, '\n', ' ');
+					free(buffer);
+				}
+				unlink("/tmp/output.txt");
 			}
-			unlink("/tmp/output.txt");
 #elif defined(RTCONFIG_LANTIQ)
 			char *buffer = read_whole_file("/rom/opt/lantiq/etc/wave_components.ver");
 
@@ -507,12 +588,6 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 					strcpy(result,buffer);
 			} else
 				strcpy(result,"Unknow");
-#endif
-#ifdef RTCONFIG_QTN
-                } else if(strcmp(type,"qtn_version") == 0 ) {
-
-			if (!get_qtn_version(result, sizeof(result)))
-				strcpy(result,"<unknown>");
 #endif
 #if defined(RTCONFIG_BCMARM) || defined(RTCONFIG_HND_ROUTER)
 		} else if(strcmp(type,"cfe_version") == 0 ) {
@@ -597,6 +672,26 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 					}
 				}
 			}
+
+#if RTCONFIG_WIREGUARD
+		} else if(strncmp(type,"wgcstatus",9) == 0 ) {
+			int num = 0;
+
+			sscanf(type,"wgcstatus.%d", &num);
+
+                        if (num > 0)
+			{
+				if (is_wgc_connected(num))
+				{
+					strlcpy(result, "1", sizeof(result));
+				} else {
+					strlcpy(result, "0", sizeof(result));
+				}
+			} else {
+				strlcpy(result, "0", sizeof(result));
+			}
+#endif
+
 		} else if(strcmp(type,"ethernet.rtk") == 0 ) {
 #ifdef RTCONFIG_EXT_RTL8365MB
 			int states[4];
@@ -630,14 +725,7 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 				for (j=0; (j < len); j++) {
 					if (buffer[j] == '\n') buffer[j] = '>';
 				}
-#ifdef RTCONFIG_QTN
-				j = GetPhyStatus_qtn();
-				snprintf(result, sizeof result, (j > 0 ? "%sPort 10: %dFD enabled stp: none vlan: 1 jumbo: off mac: 00:00:00:00:00:00>" :
-							 "%sPort 10: DOWN enabled stp: none vlan: 1 jumbo: off mac: 00:00:00:00:00:00>"),
-							  buffer, j);
-#else
                                 strlcpy(result, buffer, sizeof result);
-#endif
                                 free(buffer);
 
 			}
@@ -657,7 +745,7 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 				system("/bin/fc status | grep \"HW Acceleration\" >/tmp/output.txt");
 #endif
 			else if (!strcmp(&type[8], "fc"))
-#if defined(RTCONFIG_HND_ROUTER_AX_6756)
+#if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_HND_ROUTER_BE_4916)
 				system("/bin/fc status | grep \"Flow Ucast Learning\" >/tmp/output.txt");
 #else
 				system("/bin/fc status | grep \"Flow Learning\" >/tmp/output.txt");
@@ -685,58 +773,6 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 	return retval;
 }
 
-#ifdef RTCONFIG_QTN
-unsigned int get_qtn_temperature(void)
-{
-        int temp_external, temp_internal, temp_bb;
-	if (!rpc_qtn_ready())
-		return 0;
-
-        if (qcsapi_get_temperature_info(&temp_external, &temp_internal, &temp_bb) >= 0)
-		return temp_internal / 1000000.0f;
-
-	return 0;
-}
-
-int GetPhyStatus_qtn(void)
-{
-	int ret;
-
-	if (!rpc_qtn_ready()) {
-		return -1;
-	}
-	ret = qcsapi_wifi_run_script("set_test_mode", "get_eth_1000m");
-	if (ret < 0) {
-		ret = qcsapi_wifi_run_script("set_test_mode", "get_eth_100m");
-		if (ret < 0) {
-			ret = qcsapi_wifi_run_script("set_test_mode", "get_eth_10m");
-			if (ret < 0) {
-				// fprintf(stderr, "ATE command error\n");
-				return 0;
-			}else{
-				return 10;
-			}
-		}else{
-			return 100;
-		}
-		return -1;
-	}else{
-		return 1000;
-	}
-	return 0;
-}
-
-unsigned int get_qtn_version(char *version, int len)
-{
-        if (!rpc_qtn_ready())
-                return 0;
-
-        if (qcsapi_firmware_get_version(version, len) >= 0)
-                return 1;
-
-        return 0;
-}
-#endif
 
 unsigned int get_phy_temperature(int radio)
 {
@@ -752,17 +788,16 @@ unsigned int get_phy_temperature(int radio)
 		interface = nvram_safe_get("wl0_ifname");
 	} else if (radio == 1) {
 		interface = nvram_safe_get("wl1_ifname");
-#if defined(RTCONFIG_HAS_5G_2) || defined(RTCONFIG_WIFI6E)
 	} else if (radio == 2) {
 		interface = nvram_safe_get("wl2_ifname");
-#endif
-#if defined(GTAXE16000)
 	} else if (radio == 3) {
 		interface = nvram_safe_get("wl3_ifname");
-#endif
 	} else {
 		return 0;
 	}
+
+	if (*interface == '\0')
+		return 0;
 
 	if ((ret = wl_ioctl(interface, WLC_GET_VAR, buf, sizeof(buf)))) {
 		return 0;
@@ -807,13 +842,12 @@ unsigned int get_phy_temperature(int radio)
         case 1:
             band = 1;
             break;
-#if defined(RTCONFIG_HAS_5G_2) || defined(RTCONFIG_WIFI6E)
         case 2:
             band = 2;
             break;
-#endif
         default:
-			return 0;
+            band = 0;
+            break;
     }
 
 	if((wifi_if = get_vphyifname(band)) == NULL)
@@ -833,10 +867,8 @@ unsigned int get_phy_temperature(int radio)
 		interface = nvram_get("wl0_ifname");
 	else if (radio == 1)
 		interface = nvram_get("wl1_ifname");
-#if defined(RTCONFIG_HAS_5G_2) || defined(RTCONFIG_WIFI6E)
 	else if (radio == 2)
 		interface = nvram_get("wl2_ifname");
-#endif
 
 	if(interface == NULL || *interface == 0)
 		return 0;
@@ -862,9 +894,6 @@ unsigned int get_wifi_clients(int unit, int querytype)
 	struct maclist *clientlist;
 	int max_sta_count, maclist_size;
 	int val, count = 0, subunit;
-#ifdef RTCONFIG_QTN
-	qcsapi_unsigned_int association_count = 0;
-#endif
 #ifdef RTCONFIG_WIRELESSREPEATER
 	int isrepeater = 0;
 #endif
@@ -877,7 +906,7 @@ unsigned int get_wifi_clients(int unit, int querytype)
 	if (!clientlist)
 		return 0;
 
-	for (subunit = 0; subunit < 4; subunit++) {
+	for (subunit = 0; subunit < MAX_GUEST_SUBUNITS; subunit++) {
 #ifdef RTCONFIG_WIRELESSREPEATER
 		if ((nvram_get_int("sw_mode") == SW_MODE_REPEATER) && (unit == nvram_get_int("wlc_band"))) {
 			if (subunit == 0)
@@ -896,20 +925,6 @@ unsigned int get_wifi_clients(int unit, int querytype)
 
 		name = nvram_pf_safe_get(prefix, "ifname");
 		if (*name == '\0') continue;
-
-#ifdef RTCONFIG_QTN
-		if (unit == 1) {
-			if ((nvram_match("wl1_radio", "0")) || (!rpc_qtn_ready()))
-				count = -1;
-			else if ((querytype == SI_WL_QUERY_ASSOC) &&
-				 (qcsapi_wifi_get_count_associations(name, &association_count) >= 0))
-					count = association_count;
-			else	// All other queries aren't support by QTN
-				count = -1;
-
-			goto exit;
-		}
-#endif
 
 		if (subunit == 0) {
 			wl_ioctl(name, WLC_GET_RADIO, &val, sizeof(val));

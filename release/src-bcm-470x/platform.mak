@@ -4,7 +4,7 @@ export LINUXDIR := $(SRCBASE)/linux/linux-4.4.x
 export BUILD := $(shell (gcc -dumpmachine))
 
 ifeq ($(EXTRACFLAGS),)
-export EXTRACFLAGS := -DBCMWPA2 -DBCMARM -fno-delete-null-pointer-checks -marm -DRTCONFIG_MUSL_LIBC -DLINUX26 -DCONFIG_BCMWL5 -DMUSL_LIBC -mno-unaligned-access
+export EXTRACFLAGS := -DBCMWPA2 -DBCMARM -fno-delete-null-pointer-checks -marm -DRTCONFIG_MUSL_LIBC -DLINUX26 -DCONFIG_BCMWL5 -DMUSL_LIBC -mno-unaligned-access -msoft-float -mfloat-abi=soft -fno-caller-saves -fno-plt -fcommon -fno-unwind-tables -fno-asynchronous-unwind-tables
 endif
 
 export KERNEL_BINARY=$(LINUXDIR)/arch/arm/boot/zImage
@@ -33,7 +33,7 @@ export PLATFORM := $(PLATFORM_ARCH)
 endif
 export PLATFORM_ROUTER := bcm470x
 
-EXTRA_CFLAGS := -DLINUX26 -DCONFIG_BCMWL5 -DDEBUG_NOISY -DDEBUG_RCTEST -D_GNU_SOURCE -D_BSD_SOURCE -pipe -DTTEST -mcpu=cortex-a9 -mtune=cortex-a9  -msoft-float -mfloat-abi=soft -fno-caller-saves -fno-plt -fcommon -DRTCONFIG_MUSL_LIBC -DMUSL_LIBC -D__BIT_TYPES_DEFINED__ -mno-unaligned-access
+EXTRA_CFLAGS := -DLINUX26 -DCONFIG_BCMWL5 -DDEBUG_NOISY -DDEBUG_RCTEST -D_GNU_SOURCE -D_BSD_SOURCE -pipe -DTTEST -mcpu=cortex-a9 -mtune=cortex-a9  -msoft-float -mfloat-abi=soft -fno-caller-saves -fno-plt -fcommon -DRTCONFIG_MUSL_LIBC -DMUSL_LIBC -D__BIT_TYPES_DEFINED__ -mno-unaligned-access -fno-unwind-tables -fno-asynchronous-unwind-tables
 
 export CONFIG_LINUX26=y
 export CONFIG_LINUX30=y

@@ -1,4 +1,5 @@
 etherstate = "<% sysinfo("ethernet"); %>";
+rtkswitch = <% sysinfo("ethernet.rtk"); %>;
 hndswitch = <% get_wan_lan_status(); %>;
 
 wlc_0_arr = ["<% sysinfo("conn.wifi.0.assoc"); %>", "<% sysinfo("conn.wifi.0.autho"); %>", "<% sysinfo("conn.wifi.0.authe"); %>"];
@@ -10,6 +11,8 @@ conn_stats_arr = ["<% sysinfo("conn.total"); %>","<% sysinfo("conn.active"); %>"
 
 mem_stats_arr = ["<% sysinfo("memory.total"); %>",  "<% sysinfo("memory.free"); %>", "<% sysinfo("memory.buffer"); %>", 
                  "<% sysinfo("memory.cache"); %>", "<% sysinfo("memory.swap.used"); %>", "<% sysinfo("memory.swap.total"); %>",
-	         "<% sysinfo("nvram.used"); %>", "<% sysinfo("jffs.usage"); %>"];
+	         "<% sysinfo("nvram.used"); %>", "<% sysinfo("jffs.free"); %>",
+	         "<% sysinfo("memory.simple.used"); %>", "<% sysinfo("memory.available"); %>"];
 
 cpu_stats_arr = ["<% sysinfo("cpu.load.1"); %>", "<% sysinfo("cpu.load.5"); %>", "<% sysinfo("cpu.load.15"); %>"];
+

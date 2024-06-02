@@ -789,7 +789,7 @@ obj-y += www
 obj-y += dnsmasq
 obj-y += libdisk
 obj-y += haveged
-obj-y += ncurses-6.1 readline-6.2
+obj-y += ncurses-6.3 readline-6.2
 obj-y += libpasswd
 obj-y += htop
 obj-y += wget
@@ -2074,7 +2074,7 @@ endif
 else	# RTCONFIG_BCMARM
 	(echo '.NOTPARALLEL:' ; cat ${LINUXDIR}/Makefile) |\
 		$(MAKE) $(PARALLEL_BUILD) -C ${LINUXDIR} -f - $(SUBMAKE_SETTINGS) zImage
-	+$(MAKE) CONFIG_SQUASHFS=$(CONFIG_SQUASHFS) -C $(SRCBASE)/router/compressed ARCH=$(ARCH)
+#	+$(MAKE) CONFIG_SQUASHFS=$(CONFIG_SQUASHFS) -C $(SRCBASE)/router/compressed ARCH=$(ARCH)
 
 	$(if $(shell grep "CONFIG_MODULES=y" ${LINUXDIR}/.config), \
 	(echo '.NOTPARALLEL:' ; cat ${LINUXDIR}/Makefile) | $(MAKE) $(PARALLEL_BUILD) -C ${LINUXDIR} -f - $(SUBMAKE_SETTINGS) MFG_WAR=1 zImage ; \
@@ -4099,7 +4099,7 @@ skipdbv2-install: skipdbv2
 	$(STRIP) $(INSTALLDIR)/skipdbv2/usr/sbin/dbus
 
 lua:
-	$(MAKE) -C lua/src CFLAGS="$(CFLAGS) -DLUA_USE_LINUX -std=gnu99 -fPIC -I./ -DNO_TLS" PKG_VERSION="5.1.5" MYLDFLAGS="$(LDFLAGS) $(if $(RTCONFIG_HND_ROUTER),-ldl -lm -lcrypt)" linux
+	$(MAKE) -C lua/src CFLAGS="$(CFLAGS) -DLUA_USE_LINUX -std=gnu99 -fPIC -I./ -DNO_TLS" PKG_VERSION="5.1.5" MYLDFLAGS="$(LDFLAGS) $(if $(RTCONFIG_HND_ROUTER),-ldl -lm -lcrypt)" all
 
 lua-clean:
 	$(MAKE) -C lua/src clean
@@ -8346,10 +8346,10 @@ ncurses-6.3/progs/tic:
 	cd ncurses-6.3 && \
 	mkdir -p build_tic && \
 	cd build_tic && \
-	CC=gcc RANLIB=ranlib CFLAGS='-O3 -Wall' ../$(CONFIGURE) && \
+	CC=gcc RANLIB=ranlib CFLAGS='-O3 -Wall' ../configure && \
 	make -C include && \
 	make -C progs tic && \
-	cp $(SRCBASE)/router/ncurses-6.3/build_tic/progs/tic $(SRCBASE)/router/ncurses-6.3/progs/ && \
+	cp $(SRCBASE)/router/ncurses-6.3/build_tic/progs/tic $(SRCBASE)/router/ncurses-6.3/progs/
 	rm -rf $(SRCBASE)/router/ncurses-6.3/build_tic/
 
 ncurses-6.3/Makefile: ncurses-6.3/configure
@@ -8362,7 +8362,7 @@ ncurses-6.3/Makefile: ncurses-6.3/configure
 		LDFLAGS="-L$(STAGEDIR)/usr/local/lib -ldl -lpthread"
 
 ncurses-6.3: ncurses-6.3/progs/tic ncurses-6.3/Makefile
-	export TIC_PATH=$(SRCBASE)/router/ncurses-6.3/progs/tic && $(MAKE) -C $@ && $(MAKE) $@-stage
+	export TIC_PATH=$(SRCBASE)/router/ncurses-6.3/progs/tic && $(MAKE) -C $@ $(PARALLEL_BUILD) && $(MAKE) $@-stage
 
 ncurses-6.3-clean:
 	[ ! -f ncurses-6.3/Makefile ] || $(MAKE) -C ncurses-6.3 distclean
@@ -10017,7 +10017,7 @@ wpa_supplicant2-install:
 wpa_supplicant2-clean:
 	$(MAKE) -C hostapd2/wpa_supplicant clean
 
-htop/Makefile:ncurses-6.1
+htop/Makefile:ncurses-6.3
 	cd htop && ./autogen.sh && $(CONFIGURE) \
 		--prefix=/usr \
 		--bindir=/usr/sbin \
@@ -10030,8 +10030,8 @@ htop/Makefile:ncurses-6.1
 		--disable-unwind \
 		--disable-hwloc \
 		ac_cv_header_ncurses_ncurses_h=yes \
-		LDFLAGS="-L$(TOP)/ncurses-6.1/lib/" \
-		CPPFLAGS="-I$(TOP)/ncurses-6.1/include/"
+		LDFLAGS="-L$(TOP)/ncurses-6.3/lib/" \
+		CFLAGS="-I$(TOP)/ncurses-6.3/include/"
 
 htop:htop/Makefile
 	$(MAKE) -C htop
@@ -10117,3 +10117,4 @@ $(obj-y) $(obj-n) $(obj-clean) $(obj-install): dummy
 .PHONY: all clean distclean mrproper install package image
 .PHONY: conf mconf oldconf kconf kmconf config menuconfig oldconfig
 .PHONY: dummy libnet libpcap
+
