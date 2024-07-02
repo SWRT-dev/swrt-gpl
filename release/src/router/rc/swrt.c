@@ -2092,7 +2092,9 @@ const unsigned int devpath_idx[4] = {0, 1};	// 2.4G, 5G
 		case MODEL_RTAC68U_V4:
 		case MODEL_RTAX86U_PRO:
 		case MODEL_BT12:
+#if defined(RTCONFIG_HND_ROUTER_BE_4916)
 		case MODEL_RTBE86U:
+#endif
 #if defined(RTAC3200) || defined(SBRAC3200P)
 			if (unit < 2)
 				snprintf(buf, len, "%d:%s", 1 - unit, str);
@@ -2143,6 +2145,7 @@ const unsigned int devpath_idx[4] = {0, 1};	// 2.4G, 5G
 			snprintf(buf, len, "%d:%s", devpath_idx[unit], str);
 			break;
 #endif
+#if defined(RTCONFIG_HND_ROUTER_BE_4916)
 		case MODEL_RTBE58U:
 			snprintf(buf, len, "sb/%d/%s", 1 - unit, str);
 			break;
@@ -2152,6 +2155,7 @@ const unsigned int devpath_idx[4] = {0, 1};	// 2.4G, 5G
 			else		/* 2.4G */
 				snprintf(buf, len, "1:%s", str);
 			break;
+#endif
 		default:
 			snprintf(buf, len, "%d:%s", unit, str);
 			break;

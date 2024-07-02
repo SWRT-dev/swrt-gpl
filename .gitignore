@@ -37,6 +37,7 @@ release/src/router/rc/conn_diag.c
 release/src/router/rc/dsl_fb.c
 release/src/router/rc/frs.c
 release/src/router/rc/private.c
+release/src/router/rc/prebuild/hack.sh
 release/src/router/rc/swrtex.c
 release/src/router/rc/swrtex.h
 release/src/router/rc/swrt_apg.c

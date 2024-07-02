@@ -124,7 +124,7 @@ int vpnc_load_profile(VPNC_PROFILE *list, const int list_size, const int prof_ve
 			{
 				list[cnt].protocol = VPNC_PROTO_L2TP;
 			}
-			else if (!strcmp(proto, PROTO_OVPN))
+			else if (!strcmp(proto, PROTO_OVPN) || !strcmp(proto, PROTO_CYBERGHOST))
 			{
 				list[cnt].protocol = VPNC_PROTO_OVPN;
 				list[cnt].config.ovpn.ovpn_idx = atoi(server);
@@ -357,6 +357,8 @@ int read_wgc_config_file(const char* file_path, int wgc_unit)
 			}
 			else if (!strncmp(buf, "PersistentKeepalive", 19))
 				nvram_pf_set(wgc_prefix, "alive", _get_wgconf_val(buf));
+			else if (!strncmp(buf, "MTU", 3))
+				nvram_pf_set(wgc_prefix, "mtu", _get_wgconf_val(buf));
 			else
 			{
 				cprintf("[WG] Unsupport: [%s]\n", buf);

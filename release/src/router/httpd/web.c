@@ -18,14 +18,6 @@
  * ASUS Home Gateway Reference Design
  * Web Page Configuration Support Routines
  *
- * Copyright 2001, ASUSTeK Inc.
- * All Rights Reserved.
- *
- * This is UNPUBLISHED PROPRIETARY SOURCE CODE of ASUSTeK Inc.;
- * the contents of this file may not be disclosed to third parties, copied or
- * duplicated in any form, in whole or in part, without the prior written
- * permission of ASUSTeK Inc..
- *
  * $Id: web_ex.c,v 1.4 2007/04/09 12:01:50 shinjung Exp $
  */
 #ifndef _GNU_SOURCE
@@ -3453,7 +3445,21 @@ void copy_index_to_unindex(char *prefix, int unit, int subunit)
 			}
 			else if(!strncmp(name, "wgsc_", 5))
 			{
-				char defval[64];
+				char defval[128] = {0};
+				int v6 = 0;
+				char v6_prefix[INET6_ADDRSTRLEN] = {0};
+
+#ifdef RTCONFIG_IPV6
+				snprintf(tmp, sizeof(tmp), "%s%d_nat6", WG_SERVER_NVRAM_PREFIX, unit);
+				v6 = (ipv6_enabled() && (nvram_get_int(tmp) || nvram_get_int("wgs_nat6"))) ? 1 : 0;
+				strlcpy(v6_prefix, nvram_safe_get("ipv6_ula_random"), sizeof(v6_prefix));
+				if (v6_prefix[0])
+				{
+					*(v6_prefix + strlen(v6_prefix) - 1) = '\0';
+					snprintf(v6_prefix + strlen(v6_prefix), sizeof(v6_prefix) - strlen(v6_prefix), "%x:", WG_SERVER_SUBNET6_BASE + unit);
+				}
+#endif
+
 				if (strlen(t->value))
 				{
 					nvram_set(name, t->value);
@@ -3461,16 +3467,22 @@ void copy_index_to_unindex(char *prefix, int unit, int subunit)
 				else if (!strcmp(name+5, "addr"))
 				{
 					snprintf(defval, sizeof(defval), "10.6.%d.%d/32", unit - 1, subunit + 1);
+					if (v6)
+						snprintf(defval + strlen(defval), sizeof(defval) - strlen(defval), ",%s:%d/128", v6_prefix, subunit + 1);
 					nvram_set(name, defval);
 				}
 				else if (!strcmp(name+5, "aips"))
 				{
 					snprintf(defval, sizeof(defval), "10.6.%d.%d/32", unit - 1, subunit + 1);
+					if (v6)
+						snprintf(defval + strlen(defval), sizeof(defval) - strlen(defval), ",%s:%d/128", v6_prefix, subunit + 1);
 					nvram_set(name, defval);
 				}
 				else if (!strcmp(name+5, "caips"))
 				{
 					snprintf(defval, sizeof(defval), "0.0.0.0/0");
+					if (v6)
+						strlcat(defval, ",::/0", sizeof(defval));
 					nvram_set(name, defval);
 				}
 				else if (!strcmp(name+5, "name"))
@@ -4944,6 +4956,11 @@ int validate_apply(webs_t wp, json_object *root)
 #endif
 
 #if defined(RTCONFIG_MULTILAN_CFG)
+				if (!strcmp(name, "vlan_rl")) {
+					dbG("nvram set %s = %s\n", name, value);
+					nvram_modified_sdn = nvram_modified = 1;
+				}
+
 				if (!strcmp(name, "sdn_rl")) {
 					dbG("nvram set %s = %s\n", name, value);
 					nvram_modified_sdn = nvram_modified = 1;
@@ -4958,8 +4975,8 @@ int validate_apply(webs_t wp, json_object *root)
 						snprintf(nv, sizeof(nv), "apg%d_security", apg_idx);
 #ifdef RTCONFIG_CFGSYNC
                     	save_changed_param(cfg_root, nv, NULL);
-						nvram_modified_sdn = nvram_modified = 1;
 #endif
+						nvram_modified_sdn = nvram_modified = 1;
 					}
 				}
 
@@ -4985,10 +5002,9 @@ int validate_apply(webs_t wp, json_object *root)
 		memset(name, 0, 64);
 		snprintf(name, sizeof(name), "%s", t->name);
 
-		value = websGetVar(wp, name, NULL);
+		value = get_cgi_json(name, root);
 
 		if(value) {
-
 			memset(dec_passwd, 0, sizeof(dec_passwd));
 
 			if((ckn_ret = nvram_check(name, value, t, dec_passwd)) == 1) {
@@ -7425,12 +7441,22 @@ static int login_state_hook(int eid, webs_t wp, int argc, char_t **argv)
 //	login_port = (unsigned int)atol(nvram_safe_get("login_port"));
 
 	if (!uaddr_is_unspecified(&uip)) {
+		int i=0;
 		FILE *fp;
 		char line[256];
 #ifdef RTCONFIG_IPV6
 		char *p, *save_ptr;
+		char lan_ifname[128] = {0};
 
-		snprintf(line, sizeof(line), "ip neigh show to %s dev %s 2>/dev/null", ip_str, nvram_safe_get("lan_ifname"));
+		strlcpy(lan_ifname, nvram_safe_get("lan_ifname"), sizeof(lan_ifname));
+
+		for (i=0 ; lan_ifname[i] != '\0'; i++){
+			if (isalnum(lan_ifname[i]) == 0 && lan_ifname[i] != '.' && isspace(lan_ifname[i]) == 0){
+				return 0;
+			}
+		}
+
+		snprintf(line, sizeof(line), "ip neigh show to %s dev %s 2>/dev/null", ip_str, lan_ifname);
 		fp = popen(line, "r");
 		if (fp != NULL) {
 			while (fgets(line, sizeof(line), fp) != NULL) {
@@ -7577,14 +7603,11 @@ static int get_cpu_temperature(int eid, webs_t wp, int argc, char_t **argv)
 #if defined(RTCONFIG_SOC_IPQ40XX)
 	return websWrite(wp, "0");//not support
 #else
-	FILE *fp;
-	int temperature;
+	char temperature[6] = { 0 };
 
-	if ((fp = fopen("/sys/class/thermal/thermal_zone0/temp", "r")) != NULL) {
-		fscanf(fp, "%d", &temperature);
-		fclose(fp);
-	}
-	return websWrite(wp, "%d", temperature);
+	if (f_read_string("/sys/class/thermal/thermal_zone0/temp", temperature, sizeof(temperature)) <= 0)
+		*temperature = '\0';
+	return websWrite(wp, "%d", safe_atoi(temperature));
 #endif
 #elif defined(RTCONFIG_LANTIQ)
 	FILE *fp;
@@ -8129,10 +8152,20 @@ END:
 
 static void get_ipv6_client_info()
 {
+	int i = 0;
 	FILE *fp;
-	char buffer[128], ipv6_addr[128], mac[32];
+	char buffer[128], ipv6_addr[128], mac[32], lan_ifname[128] = {0};
 	char *ptr_end, hostname[64];
-	doSystem("ip -f inet6 neigh show dev %s > %s", nvram_safe_get("lan_ifname"), IPV6_CLIENT_NEIGH);
+
+	strlcpy(lan_ifname, nvram_safe_get("lan_ifname"), sizeof(lan_ifname));
+
+	for (i=0 ; lan_ifname[i] != '\0'; i++){
+		if (isalnum(lan_ifname[i]) == 0 && lan_ifname[i] != '.' && isspace(lan_ifname[i]) == 0){
+			return;
+		}
+	}
+
+	doSystem("ip -f inet6 neigh show dev %s > %s", lan_ifname, IPV6_CLIENT_NEIGH);
 	usleep(1000);
 
 	if ((fp = fopen(IPV6_CLIENT_NEIGH, "r")) == NULL)
@@ -8221,6 +8254,88 @@ static int ipv6_client_numbers(void)
 	return numbers;
 }
 #endif
+
+int ej_wan_ipv6_network(int eid, webs_t wp, int argc, char_t **argv)
+{
+	int ret = 0, service = 0, i = 0;
+	char *wan_type = NULL;
+	char IPv6_Address[256] = {0}, Link_Local_Address[256] = {0}, IPv6_Gateway[256] = {0}, wan_dns[256] = {0};
+	char dnsbuf[INET6_ADDRSTRLEN*3 + 3], *next = NULL;
+	struct json_object *wan_ipv6_obj = json_object_new_object();
+
+	if (!(ipv6_enabled() && is_routing_enabled())) {
+		json_object_object_add(wan_ipv6_obj, "status", json_object_new_string("0"));
+		json_object_object_add(wan_ipv6_obj, "Connection_Type", json_object_new_string(""));
+		json_object_object_add(wan_ipv6_obj, "IPv6_Address", json_object_new_string(""));
+		json_object_object_add(wan_ipv6_obj, "Link_Local_Address", json_object_new_string(""));
+		json_object_object_add(wan_ipv6_obj, "IPv6_Gateway", json_object_new_string(""));
+		json_object_object_add(wan_ipv6_obj, "DNS_Servers", json_object_new_string(""));
+		goto FINISH;
+	}
+
+	service = get_ipv6_service();
+
+	switch (service) {
+	case IPV6_NATIVE_DHCP:
+		wan_type = nvram_get_int(ipv6_nvname("ipv6_dhcp_pd")) ? "Native with DHCP-PD" : "Native"; break;
+#ifdef RTCONFIG_6RELAYD
+	case IPV6_PASSTHROUGH:
+		wan_type = "Passthrough"; break;
+#endif
+	case IPV6_6TO4:
+		wan_type = "Tunnel 6to4"; break;
+	case IPV6_6IN4:
+		wan_type = "Tunnel 6in4"; break;
+	case IPV6_6RD:
+		wan_type = "Tunnel 6rd"; break;
+	case IPV6_MANUAL:
+		wan_type = "Static"; break;
+	default:
+		wan_type = "Disabled"; break;
+	}
+
+	strlcpy(IPv6_Address, getifaddr(get_wan6face(), AF_INET6, GIF_PREFIXLEN) ? : ((service == IPV6_MANUAL) ? nvram_safe_get(ipv6_nvname("ipv6_ipaddr")) : ""), sizeof(IPv6_Address));
+	strlcpy(Link_Local_Address, getifaddr(get_wan6face(), AF_INET6, GIF_LINKLOCAL | GIF_PREFIXLEN) ? : "", sizeof(Link_Local_Address));
+	strlcpy(IPv6_Gateway, ipv6_gateway_address() ? : "", sizeof(IPv6_Gateway));
+
+	switch (service) {
+	case IPV6_NATIVE_DHCP:
+#ifdef RTCONFIG_6RELAYD
+	case IPV6_PASSTHROUGH:
+#endif
+		if (nvram_get_int(ipv6_nvname("ipv6_dnsenable"))) {
+			strlcpy(wan_dns, nvram_safe_get(ipv6_nvname("ipv6_get_dns")), sizeof(wan_dns));
+			//wan_domain = nvram_safe_get(ipv6_nvname("ipv6_get_domain"));
+			break;
+		}
+		/* fall through */
+	default:
+		dnsbuf[0] = '\0';
+		next = dnsbuf;
+		for (i = 1; i <= 3; i++) {
+			char tmp[sizeof("ipv6_dnsXXX")];
+			snprintf(tmp, sizeof(tmp), "ipv6_dns%d", i);
+			next += snprintf(next, sizeof(dnsbuf) + dnsbuf - next,
+				    *dnsbuf ? " %s" : "%s", nvram_safe_get(ipv6_nvname(tmp)));
+		}
+		strlcpy(wan_dns, dnsbuf, sizeof(wan_dns));
+		//wan_domain = "";
+		break;
+	}
+
+	json_object_object_add(wan_ipv6_obj, "status", json_object_new_string("1"));
+	json_object_object_add(wan_ipv6_obj, "Connection_Type", json_object_new_string(wan_type));
+	json_object_object_add(wan_ipv6_obj, "IPv6_Address", json_object_new_string(IPv6_Address));
+	json_object_object_add(wan_ipv6_obj, "Link_Local_Address", json_object_new_string(Link_Local_Address));
+	json_object_object_add(wan_ipv6_obj, "IPv6_Gateway", json_object_new_string(IPv6_Gateway));
+	json_object_object_add(wan_ipv6_obj, "DNS_Servers", json_object_new_string(wan_dns));
+
+FINISH:
+	websWrite(wp, "%s", json_object_to_json_string(wan_ipv6_obj));
+
+	if(wan_ipv6_obj)
+		json_object_put(wan_ipv6_obj);
+}
 
 int
 ej_lan_ipv6_network(int eid, webs_t wp, int argc, char_t **argv)
@@ -9667,6 +9782,8 @@ static int get_amas_re_client_info(struct json_object *json_object_ptr) { //get 
 						json_object_object_add(amas_re_client_attr, "isWL", json_object_new_string("3"));
 					else if (!strcmp(band_buf, "6G"))
 						json_object_object_add(amas_re_client_attr, "isWL", json_object_new_string("4"));
+					else if (!strcmp(band_buf, "6G1"))
+						json_object_object_add(amas_re_client_attr, "isWL", json_object_new_string("5"));
 					else
 						json_object_object_add(amas_re_client_attr, "isWL", json_object_new_string("0"));
 					json_object_object_add(amas_re_client_attr, "papMac", json_object_new_string(papMac));
@@ -9886,6 +10003,10 @@ static int get_amas_re_client_detail_info(struct json_object *json_object_ptr) {
 						else if (!strcmp(band_buf, "6G")) {
 							json_object_object_add(amas_re_client_detail_attr, "isWL", json_object_new_string("4"));
 							isWL = 4;
+						}
+						else if (!strcmp(band_buf, "6G1")) {
+							json_object_object_add(amas_re_client_detail_attr, "isWL", json_object_new_string("5"));
+							isWL = 5;
 						}
 						else {
 							json_object_object_add(amas_re_client_detail_attr, "isWL", json_object_new_string("0"));
@@ -30300,7 +30421,7 @@ int ej_qos_packet(int eid, webs_t wp, int argc, char_t **argv)
 	int n;
 	char comma;
 	char *a[1];
-	int ret=0, unit;
+	int ret=0, unit, i=0;
 	char tmp[100], prefix[] = "wanXXXXXXXXXX_";
 	char wan_ifname[16];
 
@@ -30312,8 +30433,19 @@ int ej_qos_packet(int eid, webs_t wp, int argc, char_t **argv)
 	a[0] = "1";
 	asp_ctcount(wp, 1, a);
 
+	char wan_ifname_buf[128] = {0};
+
+	strlcpy(wan_ifname_buf, nvram_safe_get(wan_ifname), sizeof(wan_ifname_buf));
+
+	for (i=0 ; wan_ifname_buf[i] != '\0'; i++){
+		if (isalnum(wan_ifname_buf[i]) == 0 && wan_ifname_buf[i] != '.' && isspace(wan_ifname_buf[i]) == 0){
+			return 0;
+		}
+	}
+
+
 	memset(rates, 0, sizeof(rates));
-	snprintf(s, sizeof(s), "tc -s class ls dev %s", nvram_safe_get(wan_ifname));
+	snprintf(s, sizeof(s), "tc -s class ls dev %s", wan_ifname_buf);
 	if ((f = popen(s, "r")) != NULL) {
 		n = 1;
 		while (fgets(s, sizeof(s), f)) {
@@ -39996,3 +40128,4 @@ int last_time_lock_warning(void)
 	}
 	return 0;
 }
+
