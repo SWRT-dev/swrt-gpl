@@ -570,7 +570,7 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 					sscanf(tmp, "wave_release_minor=%s", result);
 				else
 					strcpy(result,"Unknow");
-
+				replace_char(result, '\n', ' ');
 				free(buffer);
 			}
 			unlink("/rom/opt/lantiq/etc/wave_components.ver");
@@ -579,13 +579,16 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 
 			if (buffer) {
 				strlcpy(result, buffer, sizeof(result));
+				replace_char(result, '\n', ' ');
 				free(buffer);
 			}
 #elif defined(RTCONFIG_RALINK)
 			char buffer[16] = {0};
 			if(get_mtk_wifi_driver_version(buffer, sizeof(buffer))>0){
-				if(*buffer)
-					strcpy(result,buffer);
+				if(*buffer){
+					strlcpy(result, buffer, sizeof(result));
+					replace_char(result, '\n', ' ');
+				}
 			} else
 				strcpy(result,"Unknow");
 #endif
