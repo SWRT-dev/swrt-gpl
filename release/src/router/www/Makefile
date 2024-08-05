@@ -61,10 +61,10 @@ endif
 	# INSTALL MODEL DEPENDENT files
 	cp ../www/sysdep/$(BUILD_NAME)/www $(INSTALLDIR)/. -rfL || true
 	cp ../www/sysdep/$(SWRT_NAME)/www $(INSTALLDIR)/. -rfL || true
-ifeq ($(or $(RTCONFIG_LANTIQ),$(RTCONFIG_QCA),$(RTCONFIG_RALINK)),y)
-	cp ../www/sysinfo/lantiq/Tools_Sysinfo.asp $(INSTALLDIR)/www/. -rfL || true
-else
+ifeq ($(RTCONFIG_BCMARM),y)
 	cp ../www/sysinfo/Tools_Sysinfo.asp $(INSTALLDIR)/www/. -rfL || true
+else
+	cp ../www/sysinfo/lantiq/Tools_Sysinfo.asp $(INSTALLDIR)/www/. -rfL || true
 endif
 	rm -rf $(INSTALLDIR)/www/sysinfo
 	rm -rf $(INSTALLDIR)/www/Makefile

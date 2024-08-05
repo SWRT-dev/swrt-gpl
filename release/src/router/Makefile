@@ -8341,7 +8341,7 @@ ncurses-6.1-install: ncurses-6.1
 		ln -sf libpanel.so.6.1 libpanel.so.6 &&\
 		ln -sf libpanel.so.6.1 libpanel.so
 
-#build the “tic” program on the build host
+#build the "tic" program on the build host
 ncurses-6.3/progs/tic:
 	cd ncurses-6.3 && \
 	mkdir -p build_tic && \

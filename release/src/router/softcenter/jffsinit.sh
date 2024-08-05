@@ -139,7 +139,7 @@ chmod 755 /jffs/softcenter/configs/*.sh
 chmod 755 /jffs/softcenter/bin/*
 chmod 755 /jffs/softcenter/init.d/*
 chmod 755 /jffs/softcenter/automount.sh
-echo 1.4.9 > /jffs/softcenter/.soft_ver
+echo 1.5.2 > /jffs/softcenter/.soft_ver
 dbus set softcenter_api="1.5"
 dbus set softcenter_version=`cat /jffs/softcenter/.soft_ver`
 nvram set sc_installed=1
