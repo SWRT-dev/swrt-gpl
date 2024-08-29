@@ -605,7 +605,7 @@ static int dbapi_isid(int id, char *result)
 {
 	char str[20] = {0};
 	if(id > 0 && result){
-		itoa(id, str, 10);
+		snprintf(str, sizeof(str), "%d", id);
 		if(!strcmp(str, result))
 			return 1;
 	}
