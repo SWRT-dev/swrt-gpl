@@ -859,7 +859,7 @@ void setup_conntrack(void)
 		ct_modprobe_r("pptp");
 		ct_modprobe_r("proto_gre");
 	}
-#if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_HND_ROUTER_BE_4916) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 	f_write_string("/proc/sys/net/netfilter/nf_conntrack_helper", "1", 0, 0);
 #endif
 
@@ -1197,7 +1197,7 @@ int gettzoffset(char *tzstr, char *tzstr1, int size1)
 #endif
 
 
-#ifdef HND_ROUTER
+//#ifdef HND_ROUTER
 #define LOCALTIME_FILE "/etc/localtime"
 #define ZONEINFO_PATH "/rom/usr/share/zoneinfo/"
 typedef struct zoneinfo {
@@ -1227,7 +1227,8 @@ const zoneinfo_t tz_list[] = {
         {"UTC4DST_2",	"America/Santiago"},	// (GMT-04:00) Santiago
         {"NST3.30DST",	"Canada/Newfoundland"},	// (GMT-03:30) Newfoundland
         {"EBST3",	"America/Araguaina"},	// (GMT-03:00) Brasilia //EBST3DST_1
-	{"UTC3",	"America/Araguaina"},	// (GMT-03:00) Buenos Aires, Georgetown
+		{"UTC3DST",     "America/Saint-Pierre-et-Miquelon"},    // (GMT-03:00) Saint Pierre	//UTC2DST
+		{"UTC3",	"America/Araguaina"},	// (GMT-03:00) Buenos Aires, Georgetown
         {"UTC2_1",	"America/Godthab"},	// (GMT-03:00) Greenland	//EBST3DST_2
         {"UTC2",	"Atlantic/South_Georgia"},	// (GMT-02:00) South Georgia
         {"EUT1DST",     "Atlantic/Azores"},	// (GMT-01:00) Azores
@@ -1288,7 +1289,7 @@ const zoneinfo_t tz_list[] = {
         {"UTC-8_1",     "Asia/Irkutsk"},	// (GMT+08:00) Irkutsk
         {"UTC-9_1",     "Asia/Seoul"},		// (GMT+09:00) Seoul
         {"UTC-9_3",     "Asia/Yakutsk"},	// (GMT+09:00) Yakutsk
-        {"JST",         "Asia/Tokyo"},		// (GMT+09:00) Osaka, Sapporo, Tokyo
+        {"JST-9",       "Asia/Tokyo"},		// (GMT+09:00) Osaka, Sapporo, Tokyo
         {"CST-9.30",    "Australia/Darwin"},	// (GMT+09:30) Darwin
         {"UTC-9.30DST", "Australia/Adelaide"},	// (GMT+09:30) Adelaide
         {"UTC-10DST_1", "Australia/Canberra"},	// (GMT+10:00) Canberra, Melbourne, Sydney
@@ -1307,7 +1308,7 @@ const zoneinfo_t tz_list[] = {
 	{"UTC-13",      "Pacific/Tongatapu"},	// (GMT+13:00) Nuku'alofa
 	{ NULL }
 };
-#endif
+//#endif
 
 void time_zone_x_mapping(void)
 {
@@ -1316,7 +1317,7 @@ void time_zone_x_mapping(void)
 	char *ptr;
 	int len;
 
-#ifdef HND_ROUTER
+//#ifdef HND_ROUTER
 	int idx;
 	char cmd[128];
 	const zoneinfo_t *pzlist = tz_list;
@@ -1334,7 +1335,7 @@ void time_zone_x_mapping(void)
 			}
 		}
 	}
-#endif
+//#endif
 
 	/* pre mapping because time_zone area changed*/
 	if (nvram_match("time_zone", "UTC-3.30DST")){
@@ -1411,6 +1412,13 @@ void time_zone_x_mapping(void)
 	else if (nvram_match("time_zone", "UTC-6_2")){  /*Novosibirsk*/
 		nvram_set("time_zone", "UTC-7_3");
 	}
+	else if (nvram_match("time_zone", "UTC2DST")){  /*Saint-Pierre-et-Miquelon*/
+		nvram_set("time_zone", "UTC3DST");
+	}
+	else if (nvram_match("time_zone", "JST")){	/* convert JST to JST-9 */
+		nvram_set("time_zone", "JST-9");
+	}
+
 
 	len = snprintf(tmpstr, sizeof(tmpstr), "%s", nvram_safe_get("time_zone"));
 	/* replace . with : */
@@ -1431,16 +1439,6 @@ void time_zone_x_mapping(void)
 #endif
 
 	nvram_set("time_zone_x", tmpstr);
-
-	/* special mapping */
-	if (nvram_match("time_zone", "JST"))
-		nvram_set("time_zone_x", "UCT-9");
-#if 0
-	else if (nvram_match("time_zone", "TST-10TDT"))
-		nvram_set("time_zone_x", "UCT-10");
-	else if (nvram_match("time_zone", "CST-9:30CDT"))
-		nvram_set("time_zone_x", "UCT-9:30");
-#endif
 
 	if ((fp = fopen("/etc/TZ", "w")) != NULL) {
 		fprintf(fp, "%s\n", tmpstr);
@@ -1901,7 +1899,7 @@ void envsave(const char* path)
 
 int remove_ip_rules(const int pref, const int v6)
 {
-	char tmp[256], pref_str[8], tmp2[256];
+	char tmp[256], pref_str[8];
 	FILE *fp;
 	static const char iprule_tmp[] = "/tmp/iprule_tmp";
 
@@ -1922,3 +1920,4 @@ int remove_ip_rules(const int pref, const int v6)
 	unlink(iprule_tmp);
 	return 0;
 }
+

@@ -29,6 +29,7 @@ mkdir -p -m 0755 mmc
 mkdir -p -m 0755 usr/local
 ln -sf /tmp/share usr/share
 ln -sf /tmp/share usr/local/share
+ln -sf /rom/usr/share/zoneinfo usr/share/zoneinfo
 
 ln -sf tmp/mnt mnt
 ln -sf tmp/home home
