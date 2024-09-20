@@ -2208,6 +2208,11 @@ int mount_main(int argc UNUSED_PARAM, char **argv)
 		if (argv[1]) {
 			if (nonroot)
 				bb_error_msg_and_die(bb_msg_you_must_be_root);
+			if(asus_invalid_mnt_path(argv[1]) == 1)
+			{
+				bb_error_msg("Invalid mount path(%s).\n", argv[1]);
+				return EXIT_FAILURE;
+			}
 			mtpair->mnt_fsname = argv[0];
 			mtpair->mnt_dir = argv[1];
 			mtpair->mnt_type = fstype;

@@ -168,3 +168,22 @@ int asus_check_caller(void)
 	}
 	return 0;
 }
+
+int asus_invalid_mnt_path(const char* path)
+{
+	const char *invalid_path[] = {"/bin", "/usr", "/sbin", NULL};
+	int i = 0;
+
+	if(path)
+	{
+		while(invalid_path[i])
+		{
+			if(!strncmp(path, invalid_path[i], sizeof(invalid_path[i])))
+			{
+				return 1;
+			}
+			++i;
+		}
+	}
+	return 0;
+}
