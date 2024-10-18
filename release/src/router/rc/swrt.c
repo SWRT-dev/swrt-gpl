@@ -2131,17 +2131,19 @@ const unsigned int devpath_idx[4] = {0, 1};	// 2.4G, 5G
 #if defined(GTAXE16000) || defined(GTAX11000_PRO) || defined(GT10) || defined(RTAX9000) || defined(GTBE98) || defined(RTBE96U) || defined(GTBE98_PRO) || defined(GTBE96) || defined(RTBE88U) || defined(BQ16) || defined(BQ16_PRO) || defined(BT10)
 			case MODEL_GTAX11000_PRO:
 			case MODEL_GTAXE16000:
+			case MODEL_GT10:
+			case MODEL_RTAX9000:
+#if defined(RTCONFIG_HND_ROUTER_BE_4916)
 			case MODEL_GTBE98:
 			case MODEL_GTBE98_PRO:
-			case MODEL_GT10:
 			case MODEL_RTBE96U:
-			case MODEL_RTAX9000:
 			case MODEL_GTBE96:
 			case MODEL_RTBE88U:
 			case MODEL_BT10:
 			case MODEL_BQ16:
 			case MODEL_BQ16_PRO:
 			case MODEL_GTBE19000:
+#endif
 			snprintf(buf, len, "%d:%s", devpath_idx[unit], str);
 			break;
 #endif
