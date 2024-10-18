@@ -13,12 +13,12 @@
 <link rel="stylesheet" type="text/css" href="form_style.css">
 <link rel="stylesheet" type="text/css" href="other.css">
 <link rel="stylesheet" type="text/css" href="device-map/device-map.css">
+<script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/general.js"></script>
 <script type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" src="/help.js"></script>
 <script type="text/javascript" src="/wcdma_list.js"></script>
-<script type="text/javaScript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script type="text/javascript" src="/validator.js"></script>
 <script type="text/javascript" src="/js/httpApi.js"></script>
@@ -54,6 +54,13 @@ else{
 }
 var modem_android_orig = '<% nvram_get("modem_android"); %>';
 
+if(isSupport("multiwan")){
+	var wans_mt_ioport_array =  httpApi.nvramGet(["wans_mt_ioport"], true).wans_mt_ioport.split(" ");
+	var dut_mac = (httpApi.hookGet('get_lan_hwaddr')) ? httpApi.hookGet('get_lan_hwaddr') : '';
+}
+
+var orig_wan_unit = '<% nvram_get("wan_unit"); %>';
+
 function change_usb_unit(){
 	document.form.wan_unit.value = usb_index;
 	FormActions("apply.cgi", "change_wan_unit", "", "");
@@ -63,30 +70,53 @@ function change_usb_unit(){
 }
 
 function genWANSoption(){
-	for(i=0; i<wans_dualwan.split(" ").length; i++){
-	var wans_dualwan_NAME = wans_dualwan.split(" ")[i].toUpperCase();
-		//MODELDEP: DSL-N55U, DSL-N55U-B, DSL-AC68U, DSL-AC68R
-		if(wans_dualwan_NAME == "LAN" && 
-			(productid == "DSL-N55U" || productid == "DSL-N55U-B" || productid == "DSL-AC68U" || productid == "DSL-AC68R"))	
-			wans_dualwan_NAME = "Ethernet WAN";
-		else if(wans_dualwan_NAME == "LAN")
-			wans_dualwan_NAME = "Ethernet LAN";
-		document.form.wan_unit.options[i] = new Option(wans_dualwan_NAME, i);
+	if(isSupport("multiwan")){
+		httpApi.get_port_status_array(dut_mac, function(port_info){
+			$.each(port_info, function(label){
+				$.each(port_info[label], function(index, port_item){
+					var port_value = port_item.label + port_item.label_idx;
+					var port_name = port_item.label_port_name;
+					var wans_NAME = "NONE";
+					for(i = 0; i  <wans_mt_ioport_array.length; i++){
+						if(wans_mt_ioport_array[i] == port_value){
+							var wan_port_unit = (i == 0)? i : (i+50);
+							document.form.wan_unit.options[i] = new Option(port_name, wan_port_unit);
+
+							if(orig_wan_unit == wan_port_unit){
+								document.form.wan_unit.selectedIndex = i;
+							}
+							break;
+						}
+					}
+				});
+			});
+		});
 	}
-	document.form.wan_unit.selectedIndex = '<% nvram_get("wan_unit"); %>';
+	else{
+		for(i=0; i<wans_dualwan.split(" ").length; i++){
+			var wans_dualwan_NAME = wans_dualwan.split(" ")[i].toUpperCase();
+			//MODELDEP: DSL-N55U, DSL-N55U-B, DSL-AC68U, DSL-AC68R
+			if(wans_dualwan_NAME == "LAN" &&
+				(productid == "DSL-N55U" || productid == "DSL-N55U-B" || productid == "DSL-AC68U" || productid == "DSL-AC68R"))
+				wans_dualwan_NAME = "Ethernet WAN";
+			else if(wans_dualwan_NAME == "LAN")
+				wans_dualwan_NAME = "Ethernet LAN";
+			document.form.wan_unit.options[i] = new Option(wans_dualwan_NAME, i);
+		}
+		document.form.wan_unit.selectedIndex = '<% nvram_get("wan_unit"); %>';
+	}
 }
 /* end of DualWAN */ 
 	
 function initial(){
 	show_menu();
 
-	if(dualWAN_support && '<% nvram_get("wans_dualwan"); %>'.search("none") < 0){
+	if(usb_index != -1){
 		genWANSoption();
-		if(document.form.wan_unit.value != usb_index && usb_index != -1)
-			change_usb_unit();
-		else if(usb_index == -1){
-			document.getElementById("WANscap").style.display = "none";
-		}
+		setTimeout(function(){
+					if(document.form.wan_unit.value != usb_index)
+						change_usb_unit();
+					}, 300);
 	}
 	else{
 		document.form.wan_unit.disabled = true;
@@ -116,7 +146,58 @@ function initial(){
 
 	$('#usb_modem_switch').iphoneSwitch(usb_modem_enable,
 		function() {
-			if(dualWAN_support)
+			if(isSupport("multiwan")){
+				const orig_wans_mt_ioport_array = httpApi.nvramGet(["wans_mt_ioport"], true).wans_mt_ioport.split(" ");
+
+				$('<input>').attr({
+					type: 'hidden',
+					name: "mtwan_unit",
+					value: "1"
+				}).appendTo('form');
+
+				$('<input>').attr({
+					type: 'hidden',
+					name: "mtwan_enable",
+					value: "1"
+				}).appendTo('form');
+
+				$('<input>').attr({
+					type: 'hidden',
+					name: "mtwan_mode",
+					value: "1"
+				}).appendTo('form');
+
+				$('<input>').attr({
+					type: 'hidden',
+					name: "mtwan_fb",
+					value: "0"
+				}).appendTo('form');
+
+				$('<input>').attr({
+					type: 'hidden',
+					name: "wans_mt_ioport",
+					value: orig_wans_mt_ioport_array[0] + " U1"
+				}).appendTo('form');
+
+				$('<input>').attr({
+					type: 'hidden',
+					name: "mtwan_mt_group",
+					value:  "1 2"
+				}).appendTo('form');
+
+				$('<input>').attr({
+					type: 'hidden',
+					name: "mtwan_mt_weight",
+					value:  "1 1"
+				}).appendTo('form');
+
+				$('<input>').attr({
+					type: 'hidden',
+					name: "mtwan_order",
+					value:  "1 2"
+				}).appendTo('form');
+			}
+			else if(dualWAN_support)
 				document.form.wans_dualwan.value = wans_dualwan_array[0]+" usb";
 			else
 				document.form.modem_enable.value = "1";
@@ -136,7 +217,28 @@ function initial(){
 			}
 		},
 		function() {
-			if(dualWAN_support){
+			if(isSupport("multiwan")){
+				const orig_wans_mt_ioport_array = httpApi.nvramGet(["wans_mt_ioport"], true).wans_mt_ioport.split(" ");
+
+				$('<input>').attr({
+					type: 'hidden',
+					name: "mtwan_unit",
+					value: "1"
+				}).appendTo('form');
+
+				$('<input>').attr({
+					type: 'hidden',
+					name: "mtwan_enable",
+					value: "0"
+				}).appendTo('form');
+
+				$('<input>').attr({
+					type: 'hidden',
+					name: "wans_mt_ioport",
+					value: orig_wans_mt_ioport_array[0]
+				}).appendTo('form');
+			}
+			else if(dualWAN_support){
 				if(usb_index == 0){
 					if(wans_dualwan_array[1] != "none" && wans_dualwan_array[1] != "lan")
 						document.form.wans_dualwan.value = wans_dualwan_array[1] +" none";
@@ -274,7 +376,7 @@ function switch_modem_mode(mode){
 		inputCtrl(document.form.Dev3G, 1);
 		inputCtrl(document.form.modem_country, 1);
 		inputCtrl(document.form.modem_isp, 1);
-		inputCtrl(document.form.modem_apn, 1);
+		$("#apn_manual_setting_tr").show();
 		if(pin_opt) inputCtrl(document.form.modem_pincode, 1);
 		inputCtrl(document.form.modem_dialnum, 1);
 		inputCtrl(document.form.modem_user, 1);
@@ -287,7 +389,7 @@ function switch_modem_mode(mode){
 		inputCtrl(document.form.Dev3G, 1);
 		inputCtrl(document.form.modem_country, 1);
 		inputCtrl(document.form.modem_isp, 1);
-		inputCtrl(document.form.modem_apn, 1);
+		$("#apn_manual_setting_tr").show();
 		if(pin_opt) inputCtrl(document.form.modem_pincode, 1);
 		inputCtrl(document.form.modem_dialnum, 1);
 		inputCtrl(document.form.modem_user, 1);
@@ -300,7 +402,7 @@ function switch_modem_mode(mode){
 		inputCtrl(document.form.Dev3G, 1);
 		inputCtrl(document.form.modem_country, 1);
 		inputCtrl(document.form.modem_isp, 1);
-		inputCtrl(document.form.modem_apn, 1);
+		$("#apn_manual_setting_tr").show();
 		if(pin_opt) inputCtrl(document.form.modem_pincode, 1);
 		inputCtrl(document.form.modem_dialnum, 1);
 		inputCtrl(document.form.modem_user, 1);
@@ -313,7 +415,7 @@ function switch_modem_mode(mode){
 		inputCtrl(document.form.Dev3G, 1);
 		inputCtrl(document.form.modem_country, 1);
 		inputCtrl(document.form.modem_isp, 1);
-		inputCtrl(document.form.modem_apn, 0);
+		$("#apn_manual_setting_tr").hide();
 		if(pin_opt) inputCtrl(document.form.modem_pincode, 1);
 		inputCtrl(document.form.modem_dialnum, 0);
 		inputCtrl(document.form.modem_user, 1);
@@ -326,7 +428,7 @@ function switch_modem_mode(mode){
 		inputCtrl(document.form.Dev3G, 0);
 		inputCtrl(document.form.modem_country, 0);
 		inputCtrl(document.form.modem_isp, 0);
-		inputCtrl(document.form.modem_apn, 0);
+		$("#apn_manual_setting_tr").hide();
 		if(pin_opt) inputCtrl(document.form.modem_pincode, 0);
 		inputCtrl(document.form.modem_dialnum, 0);
 		inputCtrl(document.form.modem_user, 0);
@@ -554,9 +656,12 @@ function change_wan_unit(obj){
 		document.form.dsltmp_transmode.style.display = "none";
 	}
 
-	if(obj.options[obj.selectedIndex].text == "WAN" ||	obj.options[obj.selectedIndex].text == "Ethernet LAN"){
+	if(obj.options[obj.selectedIndex].text.indexOf("WAN") != -1
+		|| obj.options[obj.selectedIndex].text == "Ethernet LAN"
+		|| obj.options[obj.selectedIndex].text.indexOf("LAN") != -1){
 		document.form.current_page.value = "Advanced_WAN_Content.asp";
-	}else	if(obj.options[obj.selectedIndex].text == "USB") {
+	}
+	else if(obj.options[obj.selectedIndex].text.indexOf("USB") != -1) {
 		return false;
 	}
 
@@ -594,7 +699,7 @@ function hide_usb_settings(_flag){
 	inputCtrl(document.form.modem_enable_option, 0);
 	inputCtrl(document.form.modem_country, 0);
 	inputCtrl(document.form.modem_isp, 0);
-	inputCtrl(document.form.modem_apn, 0);
+	$("#apn_manual_setting_tr").hide();
 	if(pin_opt) inputCtrl(document.form.modem_pincode, 0);
 	inputCtrl(document.form.modem_dialnum, 0);
 	inputCtrl(document.form.modem_user, 0);
@@ -630,7 +735,7 @@ function change_apn_mode(){
 		var modem_enable_str = "";
 		inputCtrl(document.form.modem_country, 0);
 		inputCtrl(document.form.modem_isp, 0);
-		inputCtrl(document.form.modem_apn, 0);
+		$("#apn_manual_setting_tr").hide();
 		inputCtrl(document.form.modem_dialnum, 0);
 		inputCtrl(document.form.modem_user, 0);
 		inputCtrl(document.form.modem_pass, 0);
@@ -659,7 +764,7 @@ function change_apn_mode(){
 		else{
 			inputCtrl(document.form.modem_isp, 1);
 		}
-		inputCtrl(document.form.modem_apn, 1);
+		$("#apn_manual_setting_tr").show();
 		inputCtrl(document.form.modem_dialnum, 1);
 		inputCtrl(document.form.modem_user, 1);
 		inputCtrl(document.form.modem_pass, 1);
@@ -825,8 +930,8 @@ function change_apn_mode(){
 							
 							<br/><span id="hsdpa_hint" style="display:none;"><#HSDPAConfig_hsdpa_enable_hint2#></span>
 						</td>
-					</tr>					
-          			<tr>
+					</tr>
+					<tr id="apn_manual_setting_tr" style="display:none;">
 						<th><a class="hintstyle"  href="javascript:void(0);" onClick="openHint(21,3);"><#HSDPAConfig_private_apn_itemname#></a></th>
             			<td>
             			    <div class="clientlist_dropdown_main">

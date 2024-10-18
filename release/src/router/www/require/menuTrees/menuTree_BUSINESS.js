@@ -46,6 +46,7 @@ define(function(){
 					{url: "Advanced_WAdvanced_Content.asp", tabName: "<#menu5_1_6#>"},
 					{url: "Advanced_WProxy_Content.asp", tabName: "<#WiFi_Proxy_item#>"},
 					{url: "Advanced_Roaming_Block_Content.asp", tabName: "<#WiFi_Roaming_Block_List#>"},
+					{url: "MLO.asp", tabName: `MLO`},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
@@ -72,9 +73,10 @@ define(function(){
 					{url: "Advanced_WAN_Content.asp", tabName: "<#menu5_3_1#>"},
 					{url: "Advanced_DSL_Content.asp", tabName: "<#menu5_3_1#>"},
 					{url: "Advanced_VDSL_Content.asp", tabName: "<#menu5_3_1#>"},
-					{url: "Advanced_Modem_Content.asp", tabName: "<#menu5_3_1#>"},
-					{url: "Advanced_MobileBroadband_Content.asp", tabName: "<#menu5_3_1#>"},
+					{url: "Advanced_Modem_Content.asp", tabName: "__INHERIT__"},
+					{url: "Advanced_MobileBroadband_Content.asp", tabName: "__INHERIT__"},
 					{url: "Advanced_WANPort_Content.asp", tabName: "<#dualwan#>"},
+					{url: "MultiGroup_WAN.asp", tabName: "Multi-WAN"},
 					{url: "Advanced_PortTrigger_Content.asp", tabName: "<#menu5_3_3#>"},
 					{url: "Advanced_VirtualServer_Content.asp", tabName: "<#menu5_3_4#>"},
 					{url: "Advanced_Exposed_Content.asp", tabName: "<#menu5_3_5#>"},
@@ -100,10 +102,10 @@ define(function(){
 				]
 			},
 			{
-				menuName: ((isSupport("mtlancfg")) ? ((isSupport("BUSINESS")) ? "<#GuestNetwork_SDN_title#>" : "Guest Network Pro") : "<#Guest_Network#>"),
+				menuName: ((isSupport("mtlancfg")) ? ((isSupport("BUSINESS")) ? "<#GuestNetwork_SDN_title#>" : "<#GuestNetwork_PRO_title#>") : "<#Guest_Network#>"),
 				index: "menu_GuestNetwork",
 				tab: [
-					{url: (isSupport("mtlancfg") ? "SDN.asp" : "Guest_network.asp"), tabName: ((isSupport("mtlancfg")) ? ((isSupport("BUSINESS")) ? "<#GuestNetwork_SDN_title#>" : "Guest Network Pro") : "<#Guest_Network#>")},
+					{url: (isSupport("mtlancfg") ? "SDN.asp" : "Guest_network.asp"), tabName: ((isSupport("mtlancfg")) ? ((isSupport("BUSINESS")) ? "<#GuestNetwork_SDN_title#>" : "<#GuestNetwork_PRO_title#>") : "<#Guest_Network#>")},
 					{url: "Captive_Portal.asp", tabName: "Free WiFi"},
 					{url: "Captive_Portal_Advanced.asp", tabName: "<#Captive_Portal#>"},
 					{url: "Guest_network_fbwifi.asp", tabName: "Facebook WiFi"},
@@ -628,10 +630,9 @@ define(function(){
 				if(noftp_support){
 					retArray.push("Advanced_AiDisk_ftp.asp");
 				}
-				
+
 				if(!dualWAN_support){
 					retArray.push("Advanced_WANPort_Content.asp");
-					retArray.push("Advanced_MobileBroadband_Content.asp");
 				}
 				else{
 					if(!dualwan_enabled && usb_index == 0){
@@ -640,15 +641,37 @@ define(function(){
 							retArray.push("Advanced_DSL_Content.asp");
 						if(vdsl_support)
 							retArray.push("Advanced_VDSL_Content.asp");
+						if(!gobi_support){
+							replaceTabNameByUrl("menu_WAN", "Advanced_Modem_Content.asp", "<#menu5_3_1#>");
+						}
+						else{
+							replaceTabNameByUrl("menu_WAN", "Advanced_MobileBroadband_Content.asp", "<#menu5_3_1#>");
+						}
+					}
+
+					if(usb_index < 0){
+						retArray.push("Advanced_MobileBroadband_Content.asp");
+						retArray.push("Advanced_Modem_Content.asp");
+					}
+					else{
 						if(!gobi_support)
 							retArray.push("Advanced_MobileBroadband_Content.asp");
 						else
 							retArray.push("Advanced_Modem_Content.asp");
 					}
-					else{
-						retArray.push("Advanced_MobileBroadband_Content.asp");
-						retArray.push("Advanced_Modem_Content.asp");
-					}
+				}
+
+				if(isSupport("multiwan"))
+					retArray.push("Advanced_WANPort_Content.asp");
+				else
+					retArray.push("MultiGroup_WAN.asp");
+
+				if(isSupport("noWiFi")){
+					retArray.push("Advanced_WWPS_Content.asp");
+					retArray.push("Advanced_WMode_Content.asp");
+					retArray.push("Advanced_WSecurity_Content.asp");
+					retArray.push("Advanced_WAdvanced_Content.asp");
+					retArray.push("Main_WStatus_Content.asp");
 				}
 
 				if(!SwitchCtrl_support){
@@ -671,7 +694,7 @@ define(function(){
 					retArray.push("Advanced_Notification_Content.asp");
 				}
 
-				if(!smart_connect_support || Qcawifi_support || Rawifi_support){
+				if((!smart_connect_support && !smart_connect_v2_support) || Qcawifi_support || Rawifi_support){
 					retArray.push("Advanced_Smart_Connect.asp");
 				}
 				
@@ -742,7 +765,7 @@ define(function(){
 					retArray.push("Guest_network_fbwifi.asp");
 				}
 
-				if(!mtlancfg_support){
+				if(!mtlancfg_support || isSupport("SMART_HOME_MASTER_UI")){
 					retArray.push("Advanced_VLAN_Switch_Content.asp");
 					retArray.push("Advanced_VLAN_Profile_Content.asp");
 				}
@@ -805,6 +828,15 @@ define(function(){
 
 				if(!isSupport("sw_btn")){
 					retArray.push("Advanced_MultiFuncBtn.asp");
+				}
+
+				if(!isSupport("mtlancfg") || !isSupport("mlo")){
+					retArray.push("MLO.asp");
+				}
+
+				if(isSupport("wifi7")){
+					retArray.push("cloud_sync.asp");
+					retArray.push("cloud_router_sync.asp");
 				}
 
 				/* Operation Mode */
@@ -918,6 +950,30 @@ define(function(){
 				}
 
 				return retArray;
+			}
+		}
+	}
+
+	function removeTabByUrl(idx, url){
+		for(var i in menuTree.list){
+			if(menuTree.list[i].index == idx){
+				for(var j in menuTree.list[i].tab){
+					if(menuTree.list[i].tab[j].url == url){
+						menuTree.list[i].tab.splice(j, 1);
+					}
+				}
+			}
+		}
+	}
+
+	function replaceTabNameByUrl(idx, url, tabName){
+		for(var i in menuTree.list){
+			if(menuTree.list[i].index == idx){
+				for(var j in menuTree.list[i].tab){
+					if(menuTree.list[i].tab[j].url == url){
+						menuTree.list[i].tab[j].tabName = tabName;
+					}
+				}
 			}
 		}
 	}

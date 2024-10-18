@@ -11,12 +11,12 @@
 <title><#Web_Title#> - <#menu5_3_1#></title>
 <link rel="stylesheet" type="text/css" href="index_style.css">
 <link rel="stylesheet" type="text/css" href="form_style.css">
+<script type="text/javaScript" src="js/jquery.js"></script>
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/general.js"></script>
 <script type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" src="/help.js"></script>
 <script type="text/javascript" src="/validator.js"></script>
-<script type="text/javascript" src="/js/jquery.js"></script>
 <style>
 .FormTable{
 	margin-top:10px;
@@ -47,7 +47,7 @@ var wan_proto_orig = '<% nvram_get("wan_proto"); %>';
 var original_wan_type = wan_proto_orig;
 var wan_unit_tmp="";
 
-var cellColor = parent.businessWrapper ? "#262626" : "white";
+var cellColor = parent.webWrapper ? "#262626" : "white";
 
 if(dnspriv_support){
 	//var dot_servers_array = [];
@@ -1327,6 +1327,9 @@ function addRow_Group(upper){
 		return false;
 	}
 	else{
+		if(document.form.dnspriv_hostname_0.value.indexOf("tls://") != -1){
+			document.form.dnspriv_hostname_0.value = document.form.dnspriv_hostname_0.value.replace("tls://", "");
+		}
 		addRow(document.form.dnspriv_server_0, 1);
 		addRow(document.form.dnspriv_port_0, 0);
 		addRow(document.form.dnspriv_hostname_0, 0);

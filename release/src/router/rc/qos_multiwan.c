@@ -1251,7 +1251,7 @@ static int start_tqos(void)
 		bw = obw;
 
 #if defined(RTCONFIG_HND_ROUTER_AX) \
- || defined(RTCONFIG_SOC_IPQ8074)
+ || defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ53XX)
 		qsched = "fq_codel quantum 300 limit 1000 noecn";
 #else
 		qsched = "sfq perturb 10";
@@ -1271,6 +1271,7 @@ static int start_tqos(void)
 			"TQADL=\"tc qdisc add dev $DLIF\"\n"
 			"TCADL=\"tc class add dev $DLIF\"\n"
 			"TFADL=\"tc filter add dev $DLIF\"\n"
+#else
 #endif
 			"case \"$1\" in\n"
 			"start)\n"
@@ -1712,7 +1713,7 @@ static int start_bandwidth_limiter(void)
 	guest = 3;	/* 3 ~ 12 ==> egress from guest network, handle (qdisc-id) */
 
 #if defined(RTCONFIG_HND_ROUTER_AX) \
- || defined(RTCONFIG_SOC_IPQ8074)
+ || defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ53XX)
 	qsched = "fq_codel quantum 300 limit 1000 noecn";
 #else
 	qsched = "sfq perturb 10";
@@ -2264,7 +2265,7 @@ static int start_rog_qos()
 		 */
 
 #if defined(RTCONFIG_HND_ROUTER_AX) \
- || defined(RTCONFIG_SOC_IPQ8074)
+ || defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ53XX)
 		qsched = "fq_codel quantum 300 limit 1000 noecn";
 #else
 		qsched = "sfq perturb 10";
@@ -2380,7 +2381,7 @@ static int start_bandwidth_limiter_AMAS_WGN(void)
 {
 	FILE *f = NULL;
 	char wl_ifname[IFNAMSIZ];
-#if defined(RTCONFIG_SOC_IPQ8074)
+#if defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ53XX)
 	char *qsched = "fq_codel quantum 300 limit 1000 noecn";
 #else
 	char *qsched = "sfq perturb 10";

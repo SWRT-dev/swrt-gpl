@@ -39,14 +39,14 @@
 	margin-top: 10px;
 	width:650px;
 }	
-</style>	
+</style>
+<script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="state.js"></script>
 <script type="text/javascript" src="general.js"></script>
 <script type="text/javascript" src="popup.js"></script>
 <script type="text/javascript" src="help.js"></script>
 <script type="text/javascript" src="validator.js"></script>
 <script type="text/javascript" src="wcdma_list.js"></script>
-<script type="text/javaScript" src="js/jquery.js"></script>
 <script type="text/javascript" src="./js/httpApi.js"></script>
 <script type="text/javascript" src="switcherplugin/jquery.iphone-switch.js"></script>
 <script>
@@ -497,7 +497,7 @@ function applyRule(){
 		document.form.modem_bytes_data_warning.value = document.form.data_warning.value*MBytes;
 
 	if(document.form.modem_bytes_data_limit.value != modem_bytes_data_limit){
-		cookie.unset(keystr);
+		window.localStorage.removeItem(keystr);
 	}
 
 	if(document.form.modem_country.value == ""){
@@ -1515,7 +1515,7 @@ function change_autoAPN(autoAPN){
 }
 
 function reset_usage(){
-	cookie.unset(keystr);
+	window.localStorage.removeItem(keystr);
 	document.simact_form.action_mode.value = "restart_resetcount";
 	document.getElementById("reset_usage_btn").style.display = "none";
 	document.getElementById("loadingIcon_reset").style.display = "";

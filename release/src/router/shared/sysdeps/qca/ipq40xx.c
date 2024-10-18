@@ -1502,7 +1502,7 @@ int re_port_status(int re_iface)
 
 void ATE_port_status(int verbose, phy_info_list *list)
 {
-	int i;
+	int i, j, len = 0;
 	char buf[32] = {0};
 #ifdef RTCONFIG_NEW_PHYMAP
 	char cap_buf[64] = {0};
@@ -1515,8 +1515,8 @@ void ATE_port_status(int verbose, phy_info_list *list)
 #ifdef RTCONFIG_NEW_PHYMAP
 	phy_port_mapping port_mapping;
 	get_phy_port_mapping(&port_mapping);
-
-	for (i = 0; i < port_mapping.count; i++) {
+	j = port_mapping.count;//gcc compiler loop optimization introduce bug, port_mapping.count becomes 0.
+	for (i = 0; i < j; i++) {
 		// Only handle WAN/LAN ports
 		if (((port_mapping.port[i].cap & PHY_PORT_CAP_WAN) == 0) && ((port_mapping.port[i].cap & PHY_PORT_CAP_LAN) == 0))
 			continue;
@@ -1533,13 +1533,11 @@ void ATE_port_status(int verbose, phy_info_list *list)
 			if (pS.link[i] == 1 && !list->status_and_speed_only)
 				get_ipq40xx_port_mib(port_mapping.port[i].phy_port_id, &list->phy_info[i]);
 			list->phy_info[i].flag = port_mapping.port[i].flag;
-
 			list->count++;
 		}
-		sprintf(buf, "%s%s=%C;", buf, port_mapping.port[i].label_name,
+		len += sprintf(buf+len, "%s=%C;", port_mapping.port[i].label_name,
 			(pS.link[i] == 1) ? (pS.speed[i] == 2) ? 'G' : 'M': 'X');
 	}
-
 #else
 	for (i = 0; i < NR_WANLAN_PORT; i++) {
 		pS.link[i] = 0;
@@ -1732,25 +1730,25 @@ void get_phy_port_mapping(phy_port_mapping *port_mapping)
 	static phy_port_mapping port_mapping_static = {
 #if defined(RT4GAC53U)
 		.count = 2,
-		.port[0] = { .phy_port_id = WAN_PORT,  .ext_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth1", .flag = 0 },
-		.port[1] = { .phy_port_id = LAN4_PORT, .ext_port_id = -1, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth1", .flag = 0 }
+		.port[0] = { .phy_port_id = WAN_PORT,  .ext_port_id = WAN_PORT,  .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth1", .flag = 0, .seq_no = -1, .ui_display = NULL },
+		.port[1] = { .phy_port_id = LAN4_PORT, .ext_port_id = LAN4_PORT, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth1", .flag = 0, .seq_no = -1, .ui_display = NULL }
 #elif defined(MAPAC1300) || defined(MAPAC2200) || defined(VZWAC1300) || defined(SHAC1300) /* for Lyra */
 		.count = 2,
-		.port[0] = { .phy_port_id = WAN_PORT,  .ext_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_WAN, .max_rate = 1000, .ifname = "eth0", .flag = 0 },
-		.port[1] = { .phy_port_id = LAN4_PORT, .ext_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth1", .flag = 0 }
+		.port[0] = { .phy_port_id = WAN_PORT,  .ext_port_id = WAN_PORT,  .label_name = "W0", .cap = PHY_PORT_CAP_WAN, .max_rate = 1000, .ifname = "eth0", .flag = 0, .seq_no = -1, .ui_display = NULL },
+		.port[1] = { .phy_port_id = LAN4_PORT, .ext_port_id = LAN4_PORT, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth1", .flag = 0, .seq_no = -1, .ui_display = NULL }
 #elif defined(RTAC95U)
 		.count = 4,
-		.port[0] = { .phy_port_id = WAN_PORT,  .ext_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_WAN, .max_rate = 1000, .ifname = "eth0", .flag = 0 },
-		.port[1] = { .phy_port_id = LAN1_PORT, .ext_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth1", .flag = 0 },
-		.port[2] = { .phy_port_id = LAN2_PORT, .ext_port_id = -1, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth1", .flag = 0 },
-		.port[3] = { .phy_port_id = LAN3_PORT, .ext_port_id = -1, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth1", .flag = 0 }
+		.port[0] = { .phy_port_id = WAN_PORT,  .ext_port_id = WAN_PORT,  .label_name = "W0", .cap = PHY_PORT_CAP_WAN, .max_rate = 1000, .ifname = "eth0", .flag = 0, .seq_no = -1, .ui_display = NULL },
+		.port[1] = { .phy_port_id = LAN1_PORT, .ext_port_id = LAN1_PORT, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth1", .flag = 0, .seq_no = -1, .ui_display = NULL },
+		.port[2] = { .phy_port_id = LAN2_PORT, .ext_port_id = LAN2_PORT, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth1", .flag = 0, .seq_no = -1, .ui_display = NULL },
+		.port[3] = { .phy_port_id = LAN3_PORT, .ext_port_id = LAN3_PORT, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth1", .flag = 0, .seq_no = -1, .ui_display = NULL }
 #else
 		.count = 5,
-		.port[0] = { .phy_port_id = WAN_PORT,  .ext_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_WAN, .max_rate = 1000, .ifname = "eth0", .flag = 0 },
-		.port[1] = { .phy_port_id = LAN1_PORT, .ext_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth1", .flag = 0 },
-		.port[2] = { .phy_port_id = LAN2_PORT, .ext_port_id = -1, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth1", .flag = 0 },
-		.port[3] = { .phy_port_id = LAN3_PORT, .ext_port_id = -1, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth1", .flag = 0 },
-		.port[4] = { .phy_port_id = LAN4_PORT, .ext_port_id = -1, .label_name = "L4", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth1", .flag = 0 }
+		.port[0] = { .phy_port_id = WAN_PORT,  .ext_port_id = WAN_PORT,  .label_name = "W0", .cap = PHY_PORT_CAP_WAN, .max_rate = 1000, .ifname = "eth0", .flag = 0, .seq_no = -1, .ui_display = NULL },
+		.port[1] = { .phy_port_id = LAN1_PORT, .ext_port_id = LAN1_PORT, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth1", .flag = 0, .seq_no = -1, .ui_display = NULL },
+		.port[2] = { .phy_port_id = LAN2_PORT, .ext_port_id = LAN2_PORT, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth1", .flag = 0, .seq_no = -1, .ui_display = NULL },
+		.port[3] = { .phy_port_id = LAN3_PORT, .ext_port_id = LAN3_PORT, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth1", .flag = 0, .seq_no = -1, .ui_display = NULL },
+		.port[4] = { .phy_port_id = LAN4_PORT, .ext_port_id = LAN4_PORT, .label_name = "L4", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = "eth1", .flag = 0, .seq_no = -1, .ui_display = NULL }
 #endif
 	};
 
@@ -1836,7 +1834,7 @@ rtkswitch_Port_phyLinkRate(unsigned int port_mask)
 
 	return speed;
 }
-
+#if !defined(RTCONFIG_MULTILAN_CFG)
 char* get_all_lan_ifnames(void)
 {
 	char *wgn_ifnames = NULL, *lan_ifnames=NULL;
@@ -1869,3 +1867,63 @@ char* get_all_lan_ifnames(void)
 	result[strlen(result)-1] = '\0';
 	return strdup(result);
 }
+#endif
+#ifdef RTCONFIG_MULTILAN_CFG
+void __apg_switch_vlan_set(int vid, unsigned int default_portmask, unsigned int trunk_portmask, unsigned int access_portmask)
+{
+	int i;
+	unsigned int m;
+
+	doSystem("ssdk_sh vlan entry create %d", vid);
+	doSystem("ssdk_sh vlan member add %d %d tagged", vid, CPU_PORT);
+
+	if (default_portmask) {
+		m = default_portmask;
+		for (i = 0; i <= MAX_WANLAN_PORT; i++, m >>= 1) {
+			if (m & 1) {
+				doSystem("ssdk_sh vlan member add %d %d tagged", vid, i);
+			}
+		}
+	}
+
+	if (trunk_portmask) {
+		m = trunk_portmask;
+		for (i = 0; i <= MAX_WANLAN_PORT; i++, m >>= 1) {
+			if (m & 1) {
+				doSystem("ssdk_sh vlan member del 1 %d", i);
+				doSystem("ssdk_sh vlan member add %d %d tagged", vid, i);
+			}
+		}
+	}
+
+	if (access_portmask) {
+		m = access_portmask;
+		for (i = 0; i <= MAX_WANLAN_PORT; i++, m >>= 1) {
+			if (m & 1) {
+				doSystem("ssdk_sh vlan member del 1 %d", i);
+				doSystem("ssdk_sh vlan member add %d %d untagged", vid, i);
+				doSystem("ssdk_sh portVlan defaultCVid set %d %d", i, vid);
+			}
+		}
+	}
+}
+
+void __apg_switch_vlan_unset(int vid, unsigned int portmask)
+{
+	int i;
+	unsigned int m;
+
+	doSystem("ssdk_sh vlan entry del %d", vid);
+
+	if (portmask) {
+		m = portmask;
+		for (i = 0; i <= MAX_WANLAN_PORT; i++, m >>= 1) {
+			if (m & 1) {
+				doSystem("ssdk_sh vlan member add 1 %d untagged", i);
+				doSystem("ssdk_sh portVlan defaultCVid set %d 1", i);
+			}
+		}
+	}
+}
+#endif /* RTCONFIG_MULTILAN_CFG */
+

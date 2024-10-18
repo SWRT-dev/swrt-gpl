@@ -184,7 +184,7 @@
 }
 
 .popup_bg{
-	background-color: rgb(255 255 255 / 90%);
+	background-color: rgba(38, 38, 38, 0.9);
 }
 .hidden_mask{
 	background: linear-gradient(0deg, #000000 9.46%, rgba(15, 15, 17, 0.99) 55.88%);
@@ -222,7 +222,8 @@
 		linear-gradient(0deg, rgba(25, 53, 255, 0.05), rgba(25, 53, 255, 0.05)),
 		linear-gradient(0deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.08)) !important;
 }
-.customize_alert .action_btn_container .ok{
+.customize_alert .action_btn_container .ok,
+.customize_alert.confirm .action_btn_container .ok{
 	border: initial;
 	box-shadow: 0 0 0 1px #B3B3B3;
 	color: #EBEBEB;
@@ -242,7 +243,8 @@
 	color: #EBEBEB;
 	border-radius: 0;
 }
-.del_profile .action_btn_container .cancel{
+.del_profile .action_btn_container .cancel,
+.customize_alert.confirm .action_btn_container .cancel{
 	border: 1px solid #FF3535;
 	background: #FF3535;
 	border-radius: 0;
@@ -300,18 +302,18 @@
 	border-radius: 0px;
 }
 .icon_switch.off{
-	background: none;
-	border: 2px solid #4d4d4d;
+	background: #0B0B0B;
+	border: 2px solid #666666;
 }
 .icon_switch.on{
-	background: none;
+	background: #000;
 	border: 2px solid #FF3535;
 }
 .icon_switch.on:before{
 	background: #FF3535;
 }
 .icon_switch:before{
-	background: #999999;
+	background: #666666;
 	border-radius: 0%;
 }
 .icon_eye.close{
@@ -358,23 +360,23 @@
 	border-top: 2px solid #999999;
 	border-right: 2px solid #999999;
 }
-.icon_radio{
+.rwd_icon_radio{
 	border: 1px solid #9CA3AF;
 }
-.icon_radio.clicked{
+.rwd_icon_radio.clicked{
 	border: 2px solid #FF3535 !important;
 }
-.icon_radio.disabled{
+.rwd_icon_radio.disabled{
 	border: 2px solid #FF3535;
 }
-.icon_radio.clicked:before,
-.icon_radio.disabled:before{
+.rwd_icon_radio.clicked:before,
+.rwd_icon_radio.disabled:before{
 	background-color: #FF3535;
 }
-.icon_radio.disabled{
+.rwd_icon_radio.disabled{
 	border: 2px solid #999999;
 }
-.icon_radio.disabled:before{
+.rwd_icon_radio.disabled:before{
 	background-color: #999999;
 }
 .icon_arrow_right{

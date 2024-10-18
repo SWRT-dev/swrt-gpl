@@ -184,6 +184,7 @@ define(function(){
 					{url: "Advanced_WAdvanced_Content.asp", tabName: "<#menu5_1_6#>"},
 					{url: "Advanced_WProxy_Content.asp", tabName: "<#WiFi_Proxy_item#>"},
 					{url: "Advanced_Roaming_Block_Content.asp", tabName: "<#WiFi_Roaming_Block_List#>"},
+					{url: "MLO.asp", tabName: `MLO`},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
@@ -328,13 +329,12 @@ define(function(){
 				if(!bwdpi_support){
 					retArray.push("menu_AiProtection");
 					retArray.push("menu_TrafficAnalyzer");
-					retArray.push("menu_BandwidthMonitor");
 				}
 
 				if(!adaptiveqos_support){	
 					for(i=0; i<menuTree.list.length; i++){
 						if(menuTree.list[i].menuName == '<#Adaptive_QoS#>'){
-							menuTree.list[i].menuName = '<#menu5_3_2#>';
+							menuTree.list[i].menuName = '<#Menu_TrafficManager#>';
 						}
 					}
 				}
@@ -544,14 +544,21 @@ define(function(){
 						else
 							retArray.push("Advanced_Modem_Content.asp");
 					}
-					else{
+
+					if(usb_index < 0){
 						retArray.push("Advanced_MobileBroadband_Content.asp");
 						retArray.push("Advanced_Modem_Content.asp");
+					}
+					else{
+						if(!gobi_support)
+							retArray.push("Advanced_MobileBroadband_Content.asp");
+						else
+							retArray.push("Advanced_Modem_Content.asp");
 					}
 				}
 
 				if(!SwitchCtrl_support){
-					retArray.push("Advanced_SwitchCtrl_Content.asp");		
+					retArray.push("Advanced_SwitchCtrl_Content.asp");
 				}
 
 				if(!tr069_support){
@@ -566,7 +573,7 @@ define(function(){
 					retArray.push("Advanced_Notification_Content.asp");
 				}
 
-				if(!smart_connect_support || Qcawifi_support || Rawifi_support){
+				if((!smart_connect_support && !smart_connect_v2_support) || Qcawifi_support || Rawifi_support){
 					retArray.push("Advanced_Smart_Connect.asp");
 				}
 				
@@ -633,7 +640,7 @@ define(function(){
 					retArray.push("Guest_network_fbwifi.asp");
 				}
 
-				if(!mtlancfg_support){
+				if(!mtlancfg_support || isSupport("SMART_HOME_MASTER_UI")){
 					retArray.push("Advanced_VLAN_Switch_Content.asp");
 					retArray.push("Advanced_VLAN_Profile_Content.asp");
 				}
@@ -690,6 +697,10 @@ define(function(){
 					retArray.push("Guest_network_fbwifi.asp");
 				}
 
+				if(!isSupport("mtlancfg") || !isSupport("mlo")){
+					retArray.push("MLO.asp");
+				}
+
 				if(isSupport("BUSINESS")){
 					retArray.push("APP_Installation.asp");
 					retArray.push("aidisk.asp");
@@ -701,6 +712,11 @@ define(function(){
 
 				if(!isSupport("sw_btn")){
 					retArray.push("Advanced_MultiFuncBtn.asp");
+				}
+
+				if(isSupport("wifi7")){
+					retArray.push("cloud_sync.asp");
+					retArray.push("cloud_router_sync.asp");
 				}
 
 				/* Operation Mode */

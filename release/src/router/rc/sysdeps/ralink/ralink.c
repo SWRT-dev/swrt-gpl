@@ -4147,11 +4147,12 @@ int getSiteSurveyVSIEcount(int band)
 	return 0;
 }
 
-int getSiteSurveyVSIE(int band, struct _SITESURVEY_VSIE *result, int length)
+int getSiteSurveyVSIE(int band, char *buf, int length)
 {
 	const char *ifname;
 	char data[SITE_SURVEY_APS_MAX];
 	struct iwreq wrq;
+	struct _SITESURVEY_VSIE *result = (struct _SITESURVEY_VSIE *)buf;
 #if defined(RTCONFIG_AMAS)
 	if(aimesh_re_node())
 #elif defined(RTCONFIG_EASYMESH) || defined(RTCONFIG_SWRTMESH)

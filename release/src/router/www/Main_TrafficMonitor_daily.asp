@@ -11,13 +11,13 @@
 <link rel="stylesheet" type="text/css" href="tmmenu.css">
 <link rel="shortcut icon" href="images/favicon.png">
 <link rel="icon" href="images/favicon.png">
+<script type="text/javascript" src="/js/jquery.js"></script>
 <script language="JavaScript" type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/help.js"></script>
 <script language="JavaScript" type="text/javascript" src="/general.js"></script>
 <script language="JavaScript" type="text/javascript" src="/tmmenu.js"></script>
 <script language="JavaScript" type="text/javascript" src="/tmhist.js"></script>
 <script language="JavaScript" type="text/javascript" src="/popup.js"></script>
-<script language="JavaScript" type="text/javascript" src="/js/jquery.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/httpApi.js"></script>
 
 <script type='text/javascript'>
@@ -82,7 +82,7 @@ function init(){
 	var s;
 
 	if (nvram.rstats_enable != '1') return;
-	if ((s = cookie.get('daily')) != null) {
+	if ((s = window.localStorage.getItem('daily')) != null) {
 		if (s.match(/^([0-2])$/)) {
 			E('scale').value = scale = RegExp.$1 * 1;
 		}

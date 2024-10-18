@@ -166,6 +166,7 @@ define(function(){
 					{url: "Advanced_WAdvanced_Content.asp", tabName: "<#menu5_1_6#>"},
 					{url: "Advanced_WProxy_Content.asp", tabName: "<#WiFi_Proxy_item#>"},
 					{url: "Advanced_Roaming_Block_Content.asp", tabName: "<#WiFi_Roaming_Block_List#>"},
+					{url: "MLO.asp", tabName: `MLO`},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
@@ -479,7 +480,7 @@ define(function(){
 					retArray.push("Advanced_Notification_Content.asp");
 				}
 
-				if(!smart_connect_support){
+				if(!smart_connect_support && !smart_connect_v2_support){
 					retArray.push("Advanced_Smart_Connect.asp");
 				}
 				
@@ -590,6 +591,10 @@ define(function(){
 					retArray.push("Guest_network_fbwifi.asp");
 				}
 
+				if(!isSupport("mtlancfg") || !isSupport("mlo")){
+					retArray.push("MLO.asp");
+				}
+
 				if(isSupport("BUSINESS")){
 					retArray.push("APP_Installation.asp");
 					retArray.push("aidisk.asp");
@@ -601,6 +606,11 @@ define(function(){
 
 				if(!isSupport("sw_btn")){
 					retArray.push("Advanced_MultiFuncBtn.asp");
+				}
+
+				if(isSupport("wifi7")){
+					retArray.push("cloud_sync.asp");
+					retArray.push("cloud_router_sync.asp");
 				}
 
 				/* Operation Mode */

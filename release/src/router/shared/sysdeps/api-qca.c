@@ -35,23 +35,27 @@ typedef uint32_t __u32;
 #define IEEE80211_IOCTL_GETCHANINFO     (SIOCIWFIRSTPRIV+7)
 typedef unsigned int	u_int;
 
-#if defined(RTCONFIG_SPF12_2_QSDK)
+#if (SPF_VER >= SPF_VER_ID(12,2))
 /* SPF12.2 or above, sync with qca-wifi's struct ieee80211_channel_info */
-struct ieee80211_channel {
-    u_int16_t       ic_freq;        /* setting in Mhz */
-    u_int32_t       ic_flags;       /* see below */
-    u_int8_t        ic_flagext;     /* see below */
-    u_int8_t        ic_ieee;        /* IEEE channel number */
-    int8_t          ic_maxregpower; /* maximum regulatory tx power in dBm */
-    int8_t          ic_maxpower;    /* maximum tx power in dBm */
-    int8_t          ic_minpower;    /* minimum tx power in dBm */
-    u_int8_t        ic_regClassId;  /* regClassId of this channel */ 
-    u_int8_t        ic_antennamax;  /* antenna gain max from regulatory */
-    u_int8_t        ic_vhtop_ch_freq_seg1;         /* Channel Center frequency */
-    u_int8_t        ic_vhtop_ch_freq_seg2;         /* Channel Center frequency applicable
-                                                  * for 80+80MHz mode of operation */ 
+#define MAX_AP_PWR_TYPE 3
+struct reg_power_val {
+    uint8_t psd_flag;
+    uint16_t psd_eirp;
+    uint32_t tx_power;
 };
-#elif defined(RTCONFIG_SOC_IPQ50XX) || defined(RTCONFIG_SPF11_4_QSDK)
+
+struct ieee80211_channel {
+	uint8_t ieee;
+	uint16_t ic_freq;
+	uint64_t flags;
+	uint32_t flags_ext;
+	uint8_t vhtop_ch_num_seg1;
+	uint8_t vhtop_ch_num_seg2;
+	struct reg_power_val reg_powers[MAX_AP_PWR_TYPE];
+	uint8_t supp_power_modes;
+};
+#elif defined(RTCONFIG_SOC_IPQ50XX) \
+   || ((SPF_VER >= SPF_VER_ID(11,4)) && (SPF_VER <= SPF_VER_ID(11,5)))
 /* SPF11.4 or above, sync with qca-wifi's struct ieee80211_channel_info */
 struct ieee80211_channel {
     uint8_t ieee;
@@ -133,7 +137,10 @@ ieee80211_mhz2ieee(u_int freq)
 }
 /////////////
 
-#if defined(RTCONFIG_WIFI_QCA9557_QCA9882) || defined(RTCONFIG_QCA953X) || defined(RTCONFIG_QCA956X) || defined(RTCONFIG_QCN550X) || defined(RTCONFIG_SOC_IPQ40XX)
+#if defined(RTCONFIG_WIFI_QCA9557_QCA9882) \
+ || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274) \
+ || defined(RTCONFIG_QCA953X) || defined(RTCONFIG_QCA956X) || defined(RTCONFIG_QCN550X) \
+ || defined(RTCONFIG_SOC_IPQ40XX)
 const char WIF_5G[] = "ath1";
 const char WIF_2G[] = "ath0";
 const char STA_5G[] = "sta1";
@@ -252,6 +259,8 @@ const char VPHY_60G[] = "xxx";
 const char WSUP_DRV_60G[] = "xxx";
 #endif
 
+const char *max_2g_be_mode = "11GEHT";	/* B,G,N,AX,BE */
+const char *max_5g_be_mode = "11AEHT";	/* A,N,AC,AX,BE */
 const char *max_2g_ax_mode = "11GHE";	/* B,G,N,AX */
 const char *max_5g_ax_mode = "11AHE";	/* A,N,AC,AX */
 const char *max_2g_n_mode = "11NG";	/* B,G,N */
@@ -1447,7 +1456,12 @@ char *get_wan_base_if(void)
  */
 char *get_lan_mac_name(void)
 {
+#if defined(RTCONFIG_WIFI7)
+	/* App team asks to keep LAN MAC consistent with 2G MAC (label MAC). */
+	char *mac_name = "et0macaddr";	/* Use 2G MAC address as LAN MAC address. */
+#else
 	char *mac_name = "et1macaddr";	/* Use 5G(+x) MAC address as LAN MAC address. */
+#endif
 	return mac_name;
 }
 
@@ -1456,7 +1470,11 @@ char *get_lan_mac_name(void)
  */
 char *get_wan_mac_name(void)
 {
+#if defined(RTCONFIG_WIFI7)
+	char *mac_name = "et1macaddr";	/* Use 5G(+x) MAC address as WAN MAC address. */
+#else
 	char *mac_name = "et0macaddr";	/* Use 2G(+x) MAC address as WAN MAC address. */
+#endif
 	return mac_name;
 }
 
@@ -1470,12 +1488,12 @@ char *get_2g_hwaddr(void)
 	mac[5] &= 0xFC;
 	ether_etoa(mac, mac_str);
 	return mac_str;
-#else
-#if defined(RTCONFIG_QCA_VAP_LOCALMAC)
+#elif defined(RTCONFIG_WIFI7)
+        return nvram_safe_get(get_lan_mac_name());
+#elif defined(RTCONFIG_QCA_VAP_LOCALMAC)
         return nvram_safe_get("wl0macaddr");
 #else
         return nvram_safe_get(get_wan_mac_name());
-#endif
 #endif
 }
 
@@ -1489,12 +1507,12 @@ char *get_5g_hwaddr(void)
 	mac[5] &= 0xFC;
 	ether_etoa(mac, mac_str);
 	return mac_str;
-#else
-#if defined(RTCONFIG_QCA_VAP_LOCALMAC)
+#elif defined(RTCONFIG_WIFI7)
+        return nvram_safe_get(get_wan_mac_name());
+#elif defined(RTCONFIG_QCA_VAP_LOCALMAC)
         return nvram_safe_get("wl1macaddr");
 #else
         return nvram_safe_get(get_lan_mac_name());
-#endif
 #endif
 }
 
@@ -1758,6 +1776,43 @@ int is_vphy_ifname(const char *ifname)
 	}
 	return 0;
 }
+
+#if defined(RTCONFIG_WIFI7)
+/**
+ * Return true if @ifname is IoT interface name and the band is supported.
+ * @return:
+ * 	0:	@ifname is not IoT interface name
+ * 	1:	@ifname is IoT interface name.
+ *  otherwise:	not defined.
+ */
+int is_iot_ifname(const char *ifname)
+{
+	int band, subunit = -1;
+
+	if (!ifname)
+		return 0;
+	for (band = 0; band < MAX_NR_WL_IF; ++band) {
+		SKIP_ABSENT_BAND(band);
+
+		if ((subunit = get_wlsubnet(band, ifname)) > 0
+		 && get_apg_vid_by_ifname((char *)ifname) == 0)
+			return 1;
+	}
+	return 0;
+}
+
+/**
+ * Return true if IoT vap exists
+ * In our system, IoT interface name must be ath001/ath101
+ */
+int iot_exists(void)
+{
+	if (is_iot_ifname("ath001"))
+		return 1;
+	else
+		return 0;
+}
+#endif
 
 /**
  * Input @band and @ifname and return Y of wlX.Y.
@@ -2176,7 +2231,12 @@ int create_vap(char *ifname, int unit, char *mode)
 #if defined(RTCONFIG_CFG80211)
 	char iwmode[sizeof("managedXXXXX")] = { 0 };
 	char iwphy[IFNAMSIZ] = { 0 };
+#ifdef RTCONFIG_MLO	
+	char *iwargv[11] = { "iw", "phy", iwphy, "interface", "add", ifname, "type", iwmode,  NULL };
+	char **mld =&iwargv[8];
+#else
 	char *iwargv[] = { "iw", "phy", iwphy, "interface", "add", ifname, "type", iwmode, NULL };
+#endif
 #endif
 
 	if (!ifname || !mode || unit < 0 || unit >= MAX_NR_WL_IF)
@@ -2185,10 +2245,42 @@ int create_vap(char *ifname, int unit, char *mode)
 	if (!strcmp(mode, "ap")) {
 #if defined(RTCONFIG_CFG80211)
 	       strlcpy(iwmode, "__ap", sizeof(iwmode));
+#ifdef RTCONFIG_MLO  
+	       if(nvram_get_int("mld_enable"))
+	       {	
+		       if(mld_iface(unit,ifname))
+		       {       
+				if(strlen(ifname)<5)
+				{	
+					if((sw_mode() != SW_MODE_REPEATER && chk_mlo_condition() ==1)|| (repeater_mode() && rep_ssid_match()==1))
+					{
+		   				*mld++ = "mld_addr";
+						*mld++ = nvram_safe_get("mld_ap_addr");
+					}	
+
+				}
+				else
+				{
+		   			*mld++ = "mld_addr";
+					*mld++ = nvram_safe_get("mld_sdn_addr");
+				}	
+		       }	
+	       }	
+#endif
 #endif
 	} else if (!strcmp(mode, "sta")) {
 #if defined(RTCONFIG_CFG80211)
 		strlcpy(iwmode, "managed", sizeof(iwmode));
+#ifdef RTCONFIG_MLO
+	       if(nvram_get_int("mld_enable"))
+	       {	       
+		       if(mld_iface(unit,ifname))
+		       {       
+		   		*mld++ = "mld_addr";
+				*mld++ = nvram_safe_get("mld_sta_addr");
+		       }
+	       }	
+#endif
 #endif
 #if !defined(RTCONFIG_SOC_IPQ40XX)
 		*v++ = "nosbeacon";
@@ -2500,25 +2592,25 @@ int get_bw_nctrlsb(const char *ifname, int *bw, int *nctrlsb)
 		return -3;
 	p += 2;
 
-	if((p2 = strstr(p, "HE")) != NULL) {	/* 11AHE, 11GHE */
-	}
-	else
-	if((p2 = strstr(p, "HT")) == NULL) {	/* 11A, 11B, 11G */
+	if ((p2 = strstr(p, "HE")) != NULL) {		/* 11AHE, 11GHE */
+	} else if((p2 = strstr(p, "HT")) == NULL) {	/* 11A, 11B, 11G */
 		*bw = 20;
 		return *bw;
 	}
 	p = p2 + 2;
 
-	if(memcmp(p, "20", 2) == 0)		/* 11NGHT20, 11NAHT20, 11ACVHT20 */
+	if (!memcmp(p, "20", 2))		/* 11NGHT20, 11AXG_HE20, 11BEG_EHT20, 11NAHT20, 11ACVHT20, 11BEA_EHT20 */
 		*bw = 20;
-	else if(memcmp(p, "40", 2) == 0)	/* 11NGHT40, 11NAHT40, 11ACVHT40 */
+	else if (!memcmp(p, "40", 2))		/* 11NGHT40, 11AXG_HE40, 11BEG_EHT40, 11NAHT40, 11ACVHT40, 11BEA_EHT40 */
 		*bw = 40;
-	else if(memcmp(p, "80_80", 5) == 0)	/* 11ACVHT80_80 */
+	else if (!memcmp(p, "80_80", 5))	/* 11ACVHT80_80, 11AXA_HE80_80 */
 		*bw = 160;
-	else if(memcmp(p, "80", 2) == 0)	/* 11ACVHT80 */
+	else if (!memcmp(p, "80", 2))		/* 11ACVHT80, 11AXA_HE80, 11BEA_EHT80 */
 		*bw = 80;
-	else if(memcmp(p, "160", 3) == 0)	/* 11ACVHT160 */
+	else if (!memcmp(p, "160", 3))		/* 11ACVHT160, 11AXA_HE160, 11BEA_EHT160 */
 		*bw = 160;
+	else if (!memcmp(p, "320", 3))		/* 11BEA_EHT320 */
+		*bw = 320;
 	else					/* 11A, 11B, 11G */
 		*bw = 20;
 
@@ -2605,7 +2697,9 @@ void set_wpa_cli_cmd(int band, const char *cmd, int chk_reply)
 	get_wpa_ctrl_sk(band, ctrl_sk, sizeof(ctrl_sk));
 	sta = get_staifname(band);
 	if (chk_reply) {
-#if defined(RTCONFIG_QCN550X) || defined(RTCONFIG_SOC_IPQ40XX) || defined(RTCONFIG_SOC_IPQ8074) // newer QCA platform with AMAS capability
+#if defined(RTCONFIG_QCN550X) || defined(RTCONFIG_SOC_IPQ40XX) || defined(RTCONFIG_SOC_IPQ8074) \
+ || defined(RTCONFIG_SOC_IPQ53XX)
+		// newer QCA platform with AMAS capability
 		if (strcmp(cmd, "scan") == 0) { // check if scan_events is supported
 			char *rpt;
 			snprintf(fcmd, sizeof(fcmd), "/usr/bin/wpa_cli -p %s -i %s scan_events", ctrl_sk, sta);
@@ -2842,9 +2936,11 @@ void set_macfilter_all(FILE *fp)
 static struct nat_accel_kmod_s {
 	char *kmod_name;
 } nat_accel_kmod[] = {
-#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074) || defined (RTCONFIG_SOC_IPQ60XX) || defined (RTCONFIG_SOC_IPQ50XX)
+#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ60XX) \
+ || defined(RTCONFIG_SOC_IPQ50XX) || defined(RTCONFIG_SOC_IPQ53XX)
 	{ "ecm" },
-#elif defined(RTCONFIG_SOC_QCA9557) || defined(RTCONFIG_QCA953X) || defined(RTCONFIG_QCA956X) || defined(RTCONFIG_QCN550X) || defined(RTCONFIG_SOC_IPQ40XX)
+#elif defined(RTCONFIG_SOC_QCA9557) || defined(RTCONFIG_QCA953X) || defined(RTCONFIG_QCA956X) \
+ || defined(RTCONFIG_QCN550X) || defined(RTCONFIG_SOC_IPQ40XX)
 	{ "shortcut_fe" },
 #else
 #error Implement nat_accel_kmod[]
@@ -2875,7 +2971,8 @@ int nat_acceleration_status(void)
 	if (hwnat) {
 #if defined(RTCONFIG_SOC_IPQ8064)
 		const char *v4_stop_fn = "/sys/kernel/debug/ecm/ecm_nss_ipv4/stop", *v6_stop_fn = "/sys/kernel/debug/ecm/ecm_nss_ipv6/stop";
-#elif defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ60XX) || defined(RTCONFIG_SOC_IPQ50XX)
+#elif defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ60XX) || defined(RTCONFIG_SOC_IPQ50XX) \
+   || defined(RTCONFIG_SOC_IPQ53XX)
 		const char *v4_stop_fn = "/sys/kernel/debug/ecm/front_end_ipv4_stop", *v6_stop_fn = "/sys/kernel/debug/ecm/front_end_ipv6_stop";
 #endif
 		int s1, s2;
@@ -3101,6 +3198,354 @@ void execute_bt_bscp()
 		_dprintf("%s, Generate bt_bscp_conf fail.\n", __func__);
 }
 #endif
+#ifdef RTCONFIG_MLO
+int init_mld_macaddr(void)
+{
+	int i;
+	char mld_addr[18];
+	int m[6],addr;
+	const char *mld[] = { "mld_ap_addr", "mld_sdn_addr", "mld_sta_addr" };
+	if(sscanf(get_2g_hwaddr(), "%02X:%02X:%02X:%02X:%02X:%02X",&m[0],&m[1],&m[2],&m[3],&m[4],&m[5]) != 6) 
+	{
+		_dprintf("invalid init mld mac address\n");
+		return -1;	
+	}
+	addr=0x2; //local admin bit
+	for(i=0;i<3;i++)
+	{	
+		memset(mld_addr,0,sizeof(mld_addr));
+		snprintf(mld_addr,sizeof(mld_addr),"%02X:%02X:%02X:%02X:%02X:%02X",addr,m[1],m[2],m[3],m[4],m[5]);
+		nvram_set(mld[i],mld_addr);
+		addr+=0x4;
+	}
+	return 0;
+}	
+
+int get_mldphy(char* phyname,int band)
+{
+        int ret=-1;
+        char val[16]={0};
+        char phy[sizeof("/sys/class/net/XXXXXX/mldphy_name")];
+
+        snprintf(phy, sizeof(phy), "/sys/class/net/%s/mldphy_name", get_vphyifname(band));
+
+        if (!f_exists(phy))
+                return ret;
+        if (f_read_string(phy, val, sizeof(val)) <= 0)
+                return ret;
+
+        if(strlen(val))
+        {
+                strncpy(phyname,val,strlen(val));
+                ret=1;
+        }
+        return ret;
+}
+
+int create_mld_vap(void)
+{	
+	char mld_phy[16];
+	if(nvram_get_int("mld_enable"))
+	{
+		if((sw_mode() != SW_MODE_REPEATER && chk_mlo_condition() ==1)|| (repeater_mode() && rep_ssid_match()==1))	
+		{
+
+			dbG("init_wl: create mld ap interface-> mld0 \n");
+			memset(mld_phy,0,sizeof(mld_phy));
+			get_mldphy(mld_phy,0);
+			eval("iw", "phy", mld_phy, "interface", "add", MLD_AP, "type", "__ap", "mld_addr", nvram_safe_get("mld_ap_addr"));
+			sleep(1);
+			eval("ifconfig", MLD_AP "up");
+		}
+		
+		if(strlen(nvram_safe_get("mlo_rl")))
+		{
+			dbG("init_wl: create mld sdn interface-> mld1 \n");
+			memset(mld_phy,0,sizeof(mld_phy));
+			get_mldphy(mld_phy,0);
+			eval("iw", "phy", mld_phy, "interface", "add", MLD_SDN, "type", "__ap", "mld_addr", nvram_safe_get("mld_sdn_addr"));
+			sleep(1);
+			eval("ifconfig", MLD_SDN "up");
+		
+		}	
+
+		if((nvram_get_int("re_mode") || nvram_get_int("qca_mlo_mb")) && nvram_get_int("qca_mlo_sta"))
+		{
+			dbG("init_wl: create mld sta interface-> mld2 \n");
+			memset(mld_phy,0,sizeof(mld_phy));
+			get_mldphy(mld_phy,0);
+			eval("iw", "phy", mld_phy, "interface", "add", MLD_STA, "type", "managed", "mld_addr", nvram_safe_get("mld_sta_addr"));
+			sleep(1);
+			eval("ifconfig", MLD_STA "up");
+		}
+	}
+	return 0;
+}
+
+int destroy_mld_vap(void)
+{	
+	if (iface_exist(MLD_AP))
+        {
+                dbG("fini_wl: destroy mld ap interface-> mld0\n");
+		eval("ifconfig", MLD_AP "down");
+                eval("iw", "dev", MLD_AP, "del");
+	}
+
+	if (iface_exist(MLD_SDN))
+        {
+                dbG("fini_wl: destroy mld sdn interface-> mld1\n");
+		eval("ifconfig", MLD_SDN "down");
+                eval("iw", "dev", MLD_SDN, "del");
+	}
+
+	if (iface_exist(MLD_STA))
+	{	
+    		dbG("fini_wl: destroy mld sta interface-> mld2\n");
+		eval("ifconfig", MLD_STA "down");
+		eval("iw", "dev", MLD_STA, "del");
+        }
+	return 0;
+}
+
+int mld_iface(int unit,char *iface)
+{
+	char wifbuf[32];
+	//check sta
+	if(strstr(iface,"sta"))
+	{	
+		if(nvram_get_int("qca_mlo_sta") 
+#if 0				
+				for RE, check wlx.1_mlo_enable each band??
+#endif	
+		)
+		{
+			//mlo sta
+			return 1;
+		}	
+		else
+			//normal sta
+			return 0;
+	}	
+	else
+	{//check ap		
+		memset(wifbuf,0,sizeof(wifbuf));
+		__get_wlifname(unit, 0, wifbuf);
+		if(strcmp(wifbuf,iface)==0) //wifi7 main interface
+			return 1;	
+		else{
+			if(chk_mlo_enable_by_sdn_wif(iface))
+				return 1;
+						
+		}	
+	}	
+	return 0;
+}
+
+
+char *get_ap_hwaddr(int unit, int sub)
+{
+	char prefix[sizeof("wlXXXXXXXXXXXXX_")],tmp[100];
+	if(sub>0){
+		snprintf(prefix, sizeof(prefix), "wl%d.%d_",unit,sub);
+		return  nvram_safe_get(strcat_r(prefix, "hwaddr", tmp));
+	}
+	else{
+		if(unit==0)
+			return nvram_safe_get(get_lan_mac_name());
+		else
+			return nvram_safe_get(get_wan_mac_name());	
+	}
+	return NULL;
+}
+
+char* get_apg_br_by_vid(int vid)
+{
+	int found;
+	MTLAN_T *p_mtlan = NULL, *pp = NULL;
+	size_t mtlan_sz = 0;
+	char br_name[64];
+	 
+	found=0;
+	mtlan_sz = 0;
+	memset(br_name, 0, sizeof(br_name));
+	
+	p_mtlan = (MTLAN_T *)INIT_MTLAN(sizeof(MTLAN_T));
+	if (p_mtlan && get_mtlan_by_vid(vid, p_mtlan, &mtlan_sz) && mtlan_sz > 0) 
+	{
+		 pp = p_mtlan;
+		 strlcpy(br_name, pp->nw_t.br_ifname, sizeof(br_name));
+		 found=1;
+	}
+	
+	if (p_mtlan)
+       		FREE_MTLAN((void*)p_mtlan);
+
+	if(found)
+		return strdup(br_name);
+	else
+		return nvram_safe_get("lan_ifname");
+
+
+}
+
+int get_vid_by_vlan_idx(int vlan_idx)
+{
+
+	char *nv = NULL;
+        char *nvp = NULL;
+        char *b = NULL;
+        char *idx = NULL;
+        char *vid = NULL;
+	char *port_iso=NULL;
+	int vlan_id;
+
+	vlan_id=0; //vlan id=0 is not within vlan_rl
+        nv = nvp = strdup(nvram_safe_get("vlan_rl"));
+        if (!nv)
+                return -1;
+
+	while ((b = strsep(&nvp, "<")) != NULL) {
+                if (vstrsep(b, ">", &idx, &vid, &port_iso) < 3)
+                        continue;
+		if(vlan_idx == atoi(idx)){
+			vlan_id=atoi(vid);
+			break;
+		}	
+        }
+	
+        free(nv);
+        return vlan_id;
+}
+
+//check mlo sdn enable and get/verify its vlan id
+int chk_mlo_sdn(int sdn_idx)
+{
+	char *nv = NULL;
+        char *nvp = NULL;
+        char *b = NULL;
+        char *idx = NULL;
+        char *sdn_type = NULL;
+        char *sdn_enable = NULL;
+        char *vlan_idx = NULL;
+	int vid;
+	
+	vid=-1;
+        nv = nvp = strdup(nvram_safe_get("sdn_rl"));
+        if (!nv)
+                return vid;
+
+	while ((b = strsep(&nvp, "<")) != NULL) {
+                if (vstrsep(b, ">", &idx, &sdn_type, &sdn_enable, &vlan_idx) < 4)
+                        continue;
+		if(strcmp(sdn_type,"MLO")==0 && atoi(idx) == sdn_idx){
+			if(atoi(sdn_enable))
+				vid=get_vid_by_vlan_idx(atoi(vlan_idx));
+			break;
+		}	
+        }
+
+        free(nv);
+        return vid;
+
+}	
+
+
+//only one of mlo-SDNs is actived at the same time
+int chk_mlo_enable_by_sdn_wif(char* wif)
+{
+	int i,sdn_idx,found = 0, total = 0;
+	char word[64], *next = NULL, tmp[100];
+	ap_wifi_rule_st ap_wifi_rl[MAX_AP_RULE_LIST];
+
+	memset(ap_wifi_rl, 0, (sizeof(ap_wifi_rule_st) * MAX_AP_RULE_LIST));
+	sdn_idx=-1;
+	if (!get_ap_wifi_rl_from_nvram(ap_wifi_rl, MAX_AP_RULE_LIST, &total) || total <= 0)
+                return 0;
+	  
+	for (i=0; i<total; i++) {
+                foreach_44 (word, ap_wifi_rl[i].wlif_set, next) {
+                        if ((found = (!strcmp(wif, nvram_safe_get(strcat_r(word, "_ifname", tmp))))))
+                                break;
+                }
+
+                if (found) {
+			sdn_idx=ap_wifi_rl[i].sdn_idx;
+                        break;
+                }
+        }
+
+	if(sdn_idx==-1) //sdn profile idx not found
+		return 0;
+
+	if(chk_mlo_sdn(sdn_idx)!=-1) 
+		return 1;	
+
+	return 0;
+}
+//check MLO for ssid/radio 
+int chk_mlo_condition(void)
+{
+	int i;
+	int wlc_band=nvram_get_int("wlc_band");
+	char tmp[100], prefix[] = "wlXXXXXXXXXXXXXX", ssid[MAX_NR_WL_IF][33] = { };
+	int radio[MAX_NR_WL_IF]={};
+
+	for (i = WL_2G_BAND; i < MAX_NR_WL_IF; ++i) 
+	{
+		snprintf(prefix, sizeof(prefix), "wl%d_", i);
+		strcpy(ssid[i],nvram_safe_get(strcat_r(prefix, "ssid", tmp)));
+		radio[i]=nvram_get_int(strcat_r(prefix, "radio", tmp));
+	}
+
+	for (i = WL_2G_BAND+1; i < MAX_NR_WL_IF; ++i) 
+	{
+		if(strcmp(ssid[WL_2G_BAND],ssid[i])!=0)
+		{
+			_dprintf("MLO: AP's ssid mismatch\n");
+			return -1;
+		}	
+
+		if((radio[WL_2G_BAND]&radio[i])==0)
+		{
+			_dprintf("MLO: AP's radio disable\n");
+			return -1;
+		}	
+	}
+	return 1;
+}
+	
+
+//for repeater's MLO AP, ssid should be the same for all bands   
+int rep_ssid_match(void)
+{
+	int i;
+	int wlc_band=nvram_get_int("wlc_band");
+	char tmp[100], prefix[] = "wlXXXXXXXXXXXXXX", ssid[MAX_NR_WL_IF][33] = { };
+
+	for (i = WL_2G_BAND; i < MAX_NR_WL_IF; ++i) 
+	{
+	  	if (i==wlc_band && nvram_invmatch("wlc_ssid", ""))
+			snprintf(prefix, sizeof(prefix), "wl%d.1_", i);
+		else
+			snprintf(prefix, sizeof(prefix), "wl%d_", i);
+
+		strcpy(ssid[i],nvram_safe_get(strcat_r(prefix, "ssid", tmp)));
+
+	}
+	
+	for (i = WL_2G_BAND+1; i < MAX_NR_WL_IF; ++i) 
+	{
+		if(strcmp(ssid[WL_2G_BAND],ssid[i])!=0)
+		{
+			_dprintf("Repeater: AP's ssid mismatch !!!\n");
+			return -1;
+		}	
+	}
+
+	return 1;
+}	
+
+#endif
 
 
 static void update_leds_gpio(char *ledname, char *trigger, int port_mask, char *device_name, char *mode)
@@ -3205,3 +3650,4 @@ uint32_t set_leds_gpio(int which, int mode)
 	}
 	return 0;
 }
+

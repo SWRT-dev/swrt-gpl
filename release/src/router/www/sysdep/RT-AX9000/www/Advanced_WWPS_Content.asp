@@ -11,11 +11,11 @@
 <title><#Web_Title#> - <#menu5_1_2#></title>
 <link rel="stylesheet" type="text/css" href="index_style.css"> 
 <link rel="stylesheet" type="text/css" href="form_style.css">
+<script type="text/javaScript" src="js/jquery.js"></script>
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/general.js"></script>
 <script type="text/javascript" src="/help.js"></script>
 <script type="text/javascript" src="/popup.js"></script>
-<script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script><% wl_get_parameter(); %>
 $(function () {
@@ -67,7 +67,8 @@ function initial(){
 		if(wl_info.band5g_2_support || wl_info.band6g_support){	//Tri-band, RT-AC3200
 			if(band6g_support){
 				document.getElementById("wps_opt1").innerHTML = '5 GHz';
-				document.getElementById("wps_opt2").innerHTML = '6 GHz';
+				// document.getElementById("wps_opt2").innerHTML = '6 GHz';
+				document.getElementById("wps_opt2").remove();
 			}
 			
 			document.getElementById("wps_switch").style.display = "none";	

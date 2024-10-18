@@ -12,7 +12,7 @@ jQuery.fn.iphoneSwitch = function(start_state, switched_on_callback, switched_of
 		borderSize: "7"
 	};
 
-	if(parent.businessWrapper){
+	if(parent.webWrapper){
 		settings.switch_container_path = '/switcherplugin/iphone_switch_container_on.svg';
 		settings.switch_path = '/switcherplugin/iphone_switch.svg';
 		settings.borderSize = "50";

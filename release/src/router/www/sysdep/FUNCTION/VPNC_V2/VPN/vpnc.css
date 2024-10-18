@@ -47,7 +47,7 @@
 .server_list_container{
 	width: 50%;
 	height: auto;
-	min-width: 360px;
+	min-width: 300px;
 }
 .server_list_container .svr_item_horizontal_line{
 	width: 90%;
@@ -505,7 +505,7 @@
 }
 .switch{
 	border-radius: 50px;
-	width: 36px;
+	width: 40px;
 	height: 20px;
 	position: relative;
 	-webkit-transition: all 0.6s;
@@ -513,42 +513,41 @@
 	cursor: pointer;
 }
 .switch.off{
-	background: rgb(255 255 255 / 0.3);
+	background: rgba(127, 143, 164, 1);
 }
 .switch.on{
-	background: rgb(30, 162, 255);
+	background: #248DFF;
 }
 .switch:before{
 	border-radius: 50%;
 	display: block;
 	position: absolute;
 	content: "";
-	height: 16px;
-	width: 16px;
-	left: 2px;
-	top: 2px;
+	height: 12px;
+	width: 12px;
+	left: 4px;
+	top: 4px;
 	-webkit-transition: 0.6s;
 	transition: all 0.6s;
 	-webkit-transition-delay: 0.01s;
 	transition-delay: 0.01s;
-	background: #f7f7f7;
+	background: rgb(48 61 67);
 }
 .switch.on:before{
-	-webkit-transform: translateX(16px);
-	-ms-transform: translateX(16px);
-	transform: translateX(16px);
+	-webkit-transform: translateX(20px);
+	-ms-transform: translateX(20px);
+	transform: translateX(20px);
 }
 .checkbox, .checkbox.off{
 	width: 16px;
 	height: 16px;
 	border-radius: 1px;
-	border: 1px solid #FFF;
+	box-shadow: 0 0 0 1.5px #fff;
 	cursor: pointer;
 	position: relative;
-	border-radius: 4px;
 }
 .checkbox.on{
-	border: 1px solid rgb(0, 145, 255);
+	box-shadow: 0 0 0 1.5px rgb(0, 145, 255);
 	background-color: rgb(0, 145, 255);
 }
 .checkbox.on:before, .checkbox.disable:before{
@@ -584,6 +583,18 @@
 	min-width: 360px;
 	position: relative;
 }
+.profile_policy_item {
+	display: flex;
+	align-items: center;
+	height: 56px;
+	border-bottom: 1px solid rgba(171, 180, 194, 0.2);
+}
+
+.profile_policy_item .text_content {
+	font-weight: 100;
+	font-size: 12px;
+	margin-left: 4%;
+}
 .profile_setting_item.nowrap{
 	height: 48px !important;
 	flex-wrap: nowrap !important;
@@ -612,7 +623,7 @@
 }
 .profile_setting_item.nowrap .title{
 	flex: 0 0 30%;
-	max-width: 160px;
+	max-width: 30%;
 	margin-top: initial;
 }
 .profile_setting_item.nowrap.switch_item .title{
@@ -844,7 +855,8 @@
 	cursor: pointer;
 }
 .action_container .btn_container.valid_fail{
-	background: rgba(239, 246, 255, 0.6);
+	cursor: not-allowed;
+	background-color: rgba(239, 246, 255, 0.6);
 }
 .action_container.loading{
 	position: relative;
@@ -1470,10 +1482,15 @@
 		width: 94% !important;
 		margin: auto;
 	}
+	.svr_list_title_container, .client_list_title_container{
+		width: initial;
+	}
 	.svr_item_container, .svr_item_container.active, .svr_item_container.selected{
 		background: #1E2A41;
 		box-shadow: 0px 4px 5px 0px rgb(0 0 0 / 14%), 0px 1px 10px 0px rgb(0 0 0 / 12%), 0px 2px 4px -1px rgb(0 0 0 / 20%);
 		border-color: rgb(54, 71, 82);
+		margin-right: initial;
+		width: initial;
 	}
 	.item_tag_container > .item_tag{
 		background: #1E2A41;
@@ -1482,6 +1499,7 @@
 		border: 1px solid;
 		border-color: rgb(54, 71, 82);
 		border-top: initial;
+		width: initial;
 	}
 	.action_container{
 		justify-content: space-around;
@@ -1583,18 +1601,18 @@
 		max-width: 540px;
 	}
 	.profile_setting_item .title{
-		flex: 0 0 30%;
-		max-width: 160px;
+		flex: 0 0 40%;
+		max-width: 30%;
 		margin-top: initial;
 	}
 	.input_container{
-		flex: 0 0 70%;
-		max-width: 312px;
+		flex: 0 0 60%;
+		max-width: none;
 		margin: initial;
 	}
 	.profile_setting_item.keys_item .input_container{
-		flex: 0 0 93%;
-		max-width: 470px;
+		flex: 0 0 92%;
+		max-width: none;
 		margin-left: 4%;
 		min-width: initial;
 	}
@@ -1611,5 +1629,22 @@
 	}
 	.profile_setting_container{
 		width: 60%;
+	}
+}
+@media (max-width: 360px) {
+	.server_list_container,
+	.popup_container{
+		min-width: 320px;
+		width: 96% !important;
+	}
+	.popup_container{
+		width: 92% !important;
+	}
+	.profile_setting_item.nowrap.switch_item .input_container,
+	.profile_setting_item.keys_item .input_container{
+		min-width: initial !important;
+	}
+	#ssk_promote_img{
+		width: 280px !important;
 	}
 }

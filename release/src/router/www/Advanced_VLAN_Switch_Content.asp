@@ -11,12 +11,12 @@
 <link rel="stylesheet" type="text/css" href="index_style.css"> 
 <link rel="stylesheet" type="text/css" href="form_style.css">
 <link rel="stylesheet" type="text/css" href="other.css">
+<script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/general.js"></script>
 <script type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" src="/help.js"></script>
 <script type="text/javascript" src="/detect.js"></script>
-<script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/js/httpApi.js"></script>
 <style>
 	li {
@@ -34,6 +34,20 @@
 	.status_note {
 		color:#A4B7C3;
 		margin-top:18px;
+	}
+	.status_note_status_idx_null {
+		color:#A4B7C3;
+		margin-top:39px;
+	}
+	.status_note_white {
+		color:#A4B7C3;
+		margin-top:2px;
+		font-size:12px;
+	}
+	.status_note_white_status_idx_null {
+		color:#A4B7C3;
+		margin-top:26px;
+		font-size:12px;
 	}
 
 	.ul-align{
@@ -144,113 +158,42 @@ var str_port_binding_note = stringSafeGet("<#VLAN_port_binding_note#>");
 var str_modify = stringSafeGet(" <#web_redirect_suggestion_modify#>");
 
 var rate_map = [
-		{
-			value: 'X',
-			text: '<#Status_Unplugged#>'
-		},
-		{
-			value: '10',
-			text: '10 Mbps'
-		},
-		{
-			value: '100',
-			text: '100 Mbps'
-		},
-		{
-			value: '1000',
-			text: '1 Gbps'
-		},
-		{
-			value: '2500',
-			text: '2.5 Gbps'
-		},
-		{
-			value: '5000',
-			text: '5 Gbps'
-		},
-		{
-			value: '10000',
-			text: '10 Gbps'
-		}
+		{value:'10',text:'10 Mbps'},
+		{value:'100',text:'100 Mbps'},
+		{value:'1000',text:'1 Gbps'},
+		{value:'2500',text:'2.5 Gbps'},
+		{value:'5000',text:'5 Gbps'	},
+		{value:'10000',text:'10 Gbps'}
 ];
 
-httpApi.get_port_status = function(mac) {
+httpApi.get_VLAN_port_status = function(mac) {
 	var retData = {};
 
-	var capability_map = [{
-			type: 'WAN',
-			bit: 0
-		},
-		{
-			type: 'LAN',
-			bit: 1
-		},
-		{
-			type: 'GAME',
-			bit: 2
-		},
-		{
-			type: 'PLC',
-			bit: 3
-		},
-		{
-			type: 'WAN2',
-			bit: 4
-		},
-		{
-			type: 'WAN3',
-			bit: 5
-		},
-		{
-			type: 'SFPP',
-			bit: 6
-		},
-		{
-			type: 'USB',
-			bit: 7
-		},
-		{
-			type: 'MOBILE',
-			bit: 8
-		},
-		{
-			type: 'IPTV_BRIDGE',
-			bit: 26
-		},
-		{
-			type: 'IPTV_VOIP',
-			bit: 27
-		},
-		{
-			type: 'IPTV_STB',
-			bit: 28
-		},
-		{
-			type: 'DUALWAN_SECONDARY_WAN',
-			bit: 29
-		},
-		{
-			type: 'DUALWAN_PRIMARY_WAN',
-			bit: 30
-		},
+	var capability_map = [
+		{type:'WAN', bit:0},
+		{type:'LAN', bit:1},
+		{type:'GAME', bit:2},
+		{type:'PLC', bit:3},
+		{type:'WAN2', bit:4},
+		{type:'WAN3', bit:5},
+		{type:'SFPP', bit:6},
+		{type:'USB', bit:7},
+		{type:'MOBILE', bit:8},
+		{type:'WANLAN', bit:9},
+		{type:'MOCA', bit:10},
+		{type:'POE', bit:11},
+		{type:'IPTV_BRIDGE', bit:26},
+		{type:'IPTV_VOIP', bit:27},
+		{type:'IPTV_STB', bit:28},
+		{type:'DUALWAN_SECONDARY_WAN', bit:29},
+		{type:'DUALWAN_PRIMARY_WAN', bit:30}
 	];
 
-	var rate_map_USB = [{
-			value: '480',
-			text: 'USB2.0'
-		},
-		{
-			value: '5000',
-			text: 'USB3.0'
-		},
-		{
-			value: '10000',
-			text: 'USB3.1'
-		},
-		{
-			value: '20000',
-			text: 'USB3.2'
-		},
+	var rate_map_USB = [
+		{value:'480', text:'USB2.0'},
+		{value:'5000', text:'USB3.0'},
+		{value:'10000',	text:'USB3.1'},
+		{value:'20000', text:'USB3.2'}
 	];
 
 	function get_port_status_handler(response) {
@@ -258,11 +201,7 @@ httpApi.get_port_status = function(mac) {
 		var port_info_temp = {};
 		if (response_temp["port_info"] != undefined) {
 			if (response_temp["port_info"][mac] != undefined) {
-				port_info_temp = {
-					"WAN": [],
-					"LAN": [],
-					"USB": []
-				};
+				port_info_temp = {"WAN": [], "LAN": [],	"USB": []};
 				var port_info = response_temp["port_info"][mac];
 				$.each(port_info, function(index, data) {
 					var label = index.substr(0, 1);
@@ -276,73 +215,87 @@ httpApi.get_port_status = function(mac) {
 								return "WAN";
 							else
 								return "WAN " + label_idx;
-						} else if (data.cap_support.LAN) {
+						}
+						else if (data.cap_support.LAN) {
 							return "LAN " + label_idx;
-						} else if (data.cap_support.USB) {
+						}
+						else if (data.cap_support.USB) {
 							return "USB";
 						}
 					})();
+
+					data["ui_display_text"] = "";
+					if (data.ui_display != undefined && data.ui_display != "") {
+						data["ui_display_text"] = data.ui_display;
+					}
+					data["phy_port_id"] = data.phy_port_id;
+					data["ext_port_id"] = data.ext_port_id;
+
+					var link_rate = isNaN(parseInt(data.link_rate)) ? 0 : parseInt(data.link_rate);
+					var max_rate = isNaN(parseInt(data.max_rate)) ? 0 : parseInt(data.max_rate);
+					data["link_rate_text"] = (data.is_on == "1") ? "0 Mbps" : "";
+
 					var link_rate_data = rate_map.filter(function(item, index, array) {
 						return (item.value == data.link_rate);
 					})[0];
 
-					data["link_rate_text"] = "";
-					if (link_rate_data != undefined) {
+					if(link_rate_data != undefined){
 						data["link_rate_text"] = link_rate_data.text;
 					}
 
 					if (data.cap_support.USB) {
+						data["link_rate_text"] = ((data.is_on == "1") ? (link_rate + " Mbps") : "");
 						var max_rate_data = rate_map_USB.filter(function(item, index, array) {
-							return (item.value == data.max_rate);
+							return (item.value == max_rate);
 						})[0];
 					} else {
 						var max_rate_data = rate_map.filter(function(item, index, array) {
-							return (item.value == data.max_rate);
+							return (item.value == max_rate);
 						})[0];
 					}
 
-					data["max_rate_text"] = "";
+					data["max_rate_text"] = "0 Mbps";
 					if (max_rate_data != undefined) {
 						data["max_rate_text"] = max_rate_data.text;
 						data["special_port_name"] = "";
 						if (data["cap_support"]["GAME"] == true) {
-							data["special_port_name"] = "Gaming Port";
-						} else {
+							data["special_port_name"] = `<#Port_Gaming#>`;
+						}
+						else {
 							if (data.cap_support.USB) {
-								data["special_port_name"] = max_rate_data.text;
-							} else {
-								var max_rate = parseInt(max_rate_data.value);
-								if (max_rate > 1000) {
-									data["special_port_name"] = max_rate_data.text.replace(" Gbps", "");
-									if (max_rate == 10000) {
-										if (data["cap_support"]["SFPP"] == true)
-											data["special_port_name"] = data["special_port_name"] + "G SFP+";
-										else
-											data["special_port_name"] = data["special_port_name"] + "G baseT";
-									} else
-										data["special_port_name"] = data["special_port_name"] + "G";
-								}
+								data["special_port_name"] = (data.is_on == "1") ? "USB Modem" : max_rate_data.text;
+							}
+							else {
+								var max_rate_value = parseInt(max_rate_data.value);
+								data["special_port_name"] = max_rate_data.text.replace(" Gbps", "");
+								if (max_rate == 10000) {
+									if (data["cap_support"]["SFPP"] == true)
+										data["special_port_name"] = data["special_port_name"] + "G SFP+";
+									else
+										data["special_port_name"] = data["special_port_name"] + "G baseT";
+								} else
+									data["special_port_name"] = data["special_port_name"] + "G";
+								
 							}
 						}
 					}
 
-					var link_rate = isNaN(parseInt(data.link_rate)) ? 0 : parseInt(data.link_rate);
-					var max_rate = isNaN(parseInt(data.max_rate)) ? 0 : parseInt(data.max_rate);
 					data["link_rate_status"] = 1; //normal
-					if (max_rate == 2500)
-						max_rate = 1000;
-
-					if (data.is_on == "1" && link_rate < max_rate)
-						data["link_rate_status"] = 0; //abnormal
+					if(!(data.cap_support.USB)){
+						if(data.is_on == "1" && link_rate < 1000)
+							data["link_rate_status"] = 0;//abnormal
+					}
 
 					var sort_key = "";
 					if (data.cap_support.DUALWAN_PRIMARY_WAN || data.cap_support.DUALWAN_SECONDARY_WAN) {
 						port_info_temp["WAN"].push(data);
 						sort_key = "WAN";
-					} else if (data.cap_support.USB) {
+					}
+					else if (data.cap_support.USB) {
 						port_info_temp['USB'].push(data);
 						sort_key = 'USB';
-					} else {
+					}
+					else {
 						port_info_temp["LAN"].push(data);
 						sort_key = "LAN";
 					}
@@ -367,30 +320,36 @@ httpApi.get_port_status = function(mac) {
 		return response;
 	}
 
+	var set_cap_support = function(_port_info){
+		$.each(_port_info, function(index, data){
+			var cap = data.cap;
+			if(data["cap_support"] == undefined)
+				data["cap_support"] = {};
+			$.each(capability_map, function(index, capability_item){
+				data["cap_support"][capability_item.type] = ((parseInt(cap) & (1 << parseInt(capability_item.bit))) > 0) ? true : false;
+			});
+		});
+	};
+
 	$.ajax({
 		url: "/get_port_status.cgi?node_mac=" + mac,
 		dataType: 'json',
 		async: false,
 		error: function() {},
 		success: function(response) {
+
 			if (response["port_info"] != undefined) {
-				if (response["port_info"][mac] != undefined) {
-					var port_info = response["port_info"][mac];
-
-					//temporary to handle 'cd_good_to_go', wait it move to new JSON structure
-					if (port_info.cd_good_to_go !== undefined) {
-						delete port_info.cd_good_to_go;
-					}
-
-					$.each(port_info, function(index, data) {
-						var cap = data.cap;
-						if (data["cap_support"] == undefined)
-							data["cap_support"] = {};
-						$.each(capability_map, function(index, capability_item) {
-							data["cap_support"][capability_item.type] = ((parseInt(cap) & (1 << parseInt(capability_item.bit))) > 0) ? true : false;
-						});
+				if(mac == "all"){
+					$.each(response["port_info"], function(node_mac, node_port_info){
+						set_cap_support(response["port_info"][node_mac]);
 					});
 				}
+				else{
+					if(response["port_info"][mac] != undefined){
+						set_cap_support(response["port_info"][mac]);
+					}
+				}
+
 			}
 
 			retData = response;
@@ -483,19 +442,25 @@ $.each(meshNodelist, function(idx, meshNode) {
 	var oneNode = {};
 	oneNode.macAddress = meshNode.mac;
 	oneNode.model = meshNode.model_name;
+	oneNode.productid = meshNode.product_id;
 	oneNode.location = meshNode.alias;
 	oneNode.connection = meshNode.online;
+	oneNode.capability = meshNode.capability;
+	oneNode.config = meshNode.config;
+    var capability_value = (oneNode.capability["4"]=="")?0:oneNode.capability["4"];
 	oneNode.port = [];
 
-	if (httpApi.get_port_status(oneNode.macAddress).node_info != undefined) { //Viz add for disconnected node
-		var oneNode_port_status = httpApi.get_port_status(oneNode.macAddress).port_info[oneNode.macAddress];
+	if (httpApi.get_VLAN_port_status(oneNode.macAddress).node_info != undefined &&
+		!(capability_value & 4194304) ) { //capability bit(22)
+
+		var oneNode_port_status = httpApi.get_VLAN_port_status(oneNode.macAddress).port_info[oneNode.macAddress];
 		for (var key in oneNode_port_status) {
 			if (key.indexOf("L") == -1) continue;
 
 			var oneLanPort = {};
 			var portIndex = 0;
 			portIndex = key.charAt(key.length - 1);
-			oneLanPort.portLabel = key.replace("L", "LAN ");
+			oneLanPort.portLabel = key;
 			oneLanPort.status = oneNode_port_status[key].is_on;
 			var link_rate_tmp = rate_map.filter(function(item, index, array) {
 				return (item.value == oneNode_port_status[key].link_rate);
@@ -506,6 +471,13 @@ $.each(meshNodelist, function(idx, meshNode) {
 				return (item.value == oneNode_port_status[key].max_rate);
 			})[0];
 			max_rate_tmp = (max_rate_tmp == undefined)? rate_map[0]:max_rate_tmp;	//<#Status_Unplugged#>
+			var ui_display_tmp = "";
+			if(oneNode_port_status[key].ui_display != undefined && oneNode_port_status[key].ui_display != ""){
+				ui_display_tmp = oneNode_port_status[key].ui_display;
+			}
+			oneLanPort.ui_display = ui_display_tmp;
+			oneLanPort.phy_port_id = oneNode_port_status[key].phy_port_id;
+			oneLanPort.ext_port_id = oneNode_port_status[key].ext_port_id;
 			oneLanPort.max_rate = max_rate_tmp.text;
 			oneLanPort.detail = oneNode_port_status[key];
 			oneLanPort.profile = "0";
@@ -518,10 +490,11 @@ $.each(meshNodelist, function(idx, meshNode) {
 			//oneNode.port.push(oneLanPort);
 			oneNode.port[portIndex - 1] = oneLanPort;
 		}
-	}
 
-	VLAN_port_status[meshNode.mac] = oneNode;
-	meshList.push(meshNode.mac)
+		VLAN_port_status[meshNode.mac] = oneNode;
+		meshList.push(meshNode.mac);
+
+	}
 })
 
 //Collect VLAN_Profile_select from sdn_rl
@@ -574,27 +547,30 @@ for (var key in apg_dutList) {
 	var apgIdx = key.replace("apg", "").replace("_dut_list", "");
 	var vlanId = "";
 	var vlanIdx = "";
-
 	$.each(sdn_rl_json, function(idx, sdn) {
 		if (sdn.apg_idx == apgIdx) {
 			vlanId = sdn.vlan_idx;
 			return false;
 		}
 	})
-
 	$.each(vlan_rl_json, function(idx, vlan) {
 		if (vlan.vlan_idx == vlanId) {
 			vlanIdx = vlan.vid;
 			return false;
 		}
 	})
-
 	$.each(dutList, function(idx, node) {
 		if (node.lanport != "") {
 			var lanPortArray = node.lanport.split(",");
 			for (var i = 0; i < lanPortArray.length; i++) {
 				if(VLAN_port_status[node.mac].port.length > 0){
-					VLAN_port_status[node.mac].port[lanPortArray[i] - 1].profile = vlanIdx;
+					if(isNaN(lanPortArray[i])){
+						var port_idx_p = findKeyByPortLabel(VLAN_port_status[node.mac].port, lanPortArray[i]);
+						VLAN_port_status[node.mac].port[port_idx_p].profile = vlanIdx;
+					}
+					else{	//for old version
+						VLAN_port_status[node.mac].port[parseInt(lanPortArray[i]) - 1].profile = vlanIdx;
+					}
 				}
 			}
 		}
@@ -607,7 +583,13 @@ for (var key in apg_dutList) {
 			lanport_array = node.lanport.split(",");
 			for (var a = 0; a < lanport_array.length; a++) {
 				if (lanport_array[a] != "" && VLAN_port_status[node.mac].port.length > 0) {
-					VLAN_port_status[node.mac].port[lanport_array[a] - 1].mode = "Access";
+					if(isNaN(lanport_array[a])){
+						var port_idx_m = findKeyByPortLabel(VLAN_port_status[node.mac].port, lanport_array[a]);
+						VLAN_port_status[node.mac].port[port_idx_m].mode = "Access";
+					}
+					else{	//for old version
+						VLAN_port_status[node.mac].port[parseInt(lanport_array[a]) - 1].mode = "Access";
+					}
 				}
 			}
 		})
@@ -629,18 +611,39 @@ if (vlan_trunklist_array.length > 1) {
 			if (c > 0) {
 				vlan_rl_vid_array_tmp = vlan_rl_vid_array;
 				vlan_trunklist_port = vlan_trunklist_port_array[c].split("#")[0];
-				vlan_trunklist_port_vid_array = vlan_trunklist_port_array[c].split("#")[1].split(",");
-				
-				if(VLAN_port_status[vlan_trunklist_port_array[0]].port[parseInt(vlan_trunklist_port) - 1]){
-					VLAN_port_status[vlan_trunklist_port_array[0]].port[parseInt(vlan_trunklist_port) - 1].mode = "Trunk";
-					VLAN_port_status[vlan_trunklist_port_array[0]].port[parseInt(vlan_trunklist_port) - 1].profile = vlan_trunklist_port_vid_array;
+				vlan_trunklist_port_vid = vlan_trunklist_port_array[c].split("#")[1];
+
+				if(isNaN(parseInt(vlan_trunklist_port))){
+					var port_idx_v = findKeyByPortLabel(VLAN_port_status[vlan_trunklist_port_array[0]].port, vlan_trunklist_port);
+					if(VLAN_port_status[vlan_trunklist_port_array[0]].port[port_idx_v]){
+						VLAN_port_status[vlan_trunklist_port_array[0]].port[port_idx_v].mode = "Trunk";
+						VLAN_port_status[vlan_trunklist_port_array[0]].port[port_idx_v].profile = vlan_trunklist_port_vid;
+					}
+					else{
+						console.log(vlan_trunklist_port_array[0]+" L: Not exist.");
+					}
 				}
 				else{
-					console.log(vlan_trunklist_port_array[0]+": Not exist.");
+					if(VLAN_port_status[vlan_trunklist_port_array[0]].port[parseInt(vlan_trunklist_port) - 1]){
+						VLAN_port_status[vlan_trunklist_port_array[0]].port[parseInt(vlan_trunklist_port) - 1].mode = "Trunk";
+						VLAN_port_status[vlan_trunklist_port_array[0]].port[parseInt(vlan_trunklist_port) - 1].profile = vlan_trunklist_port_vid;
+					}
+					else{
+						console.log(vlan_trunklist_port_array[0]+": Not exist.");
+					}
 				}
 			}
 		}
 	}
+}
+
+function findKeyByPortLabel(data, targetLabel) {
+	for (const key in data) {
+		if (data.hasOwnProperty(key) && data[key].portLabel === targetLabel) {
+			return key;
+		}
+	}
+	return null; // Return null if the portLabel is not found
 }
 
 var vlan_rl_vid_array_tmp = [];
@@ -691,7 +694,7 @@ function update_VLAN_ports() { //ajax update VLAN ports
 function gen_VLAN_port_table(port_profile) {
 	var mesh_mac = Object.keys(port_profile);
 
-	var role_str, model_str, macaddr_str, loc_str, connected_flag = "";
+	var role_str, model_str, macaddr_str, loc_val, loc_str, specific_location, connected_flag = "";
 	var port_length = 0;
 
 	if (mesh_mac.length == 0) {
@@ -706,7 +709,16 @@ function gen_VLAN_port_table(port_profile) {
 			role_str = (i == 0) ? "<#Device_type_02_RT#>" : "<#AiMesh_Node#>";
 			model_str = port_profile[mesh_mac[i]].model;
 			macaddr_str = port_profile[mesh_mac[i]].macAddress;
-			loc_str = port_profile[mesh_mac[i]].location;
+			loc_val = port_profile[mesh_mac[i]].location;
+			specific_location = aimesh_location_arr.filter(function(item, index, _array){
+				return (item.value == loc_val);
+			})[0];
+			if(specific_location != undefined){
+				loc_str = specific_location.text;
+			}
+			else{
+				loc_str = loc_val;
+			}
 			connected_flag = port_profile[mesh_mac[i]].connection;
 			port_length = port_profile[mesh_mac[i]].port.length;
 
@@ -757,14 +769,14 @@ function gen_VLAN_port_table(port_profile) {
 				})
 				$port_table_thead2.html("<#AiMesh_Node#>");
 			} else {
-				$port_table_thead2.html("<#Device_type_02_RT#>");
+				$port_table_thead2.html("<#AiMesh_Router#>");
 			}
 
 			//table content : status
 			var $port_table_tr_status = $("<tr>").appendTo($port_table_bg);
 			var $port_table_th_status = $("<th>").appendTo($port_table_tr_status);
 			$port_table_th_status.css({"width":"20%"});
-			$port_table_th_status.html("<ul class='ul-align'><li>" + model_str + "</li><li>" + macaddr_str + "</li></ul>");
+			$port_table_th_status.html("<ul class='ul-align'><li>" + model_str + "</li><li>" + macaddr_str + "</li><li>"+ loc_str +"</li></ul>");
 
 			//table content : mode
 			var $port_table_tr_mode = $("<tr>").appendTo($port_table_bg);
@@ -782,264 +794,357 @@ function gen_VLAN_port_table(port_profile) {
 			var wan_aggregation_array = [];
 			var link_aggregation_array = [];
 			var iptv_array = [];
+			var wan_array = [];
+			var ext_switch_array = [];
 
-			if (port_length > 0) { //With port_info
-				//ports 1st row
-				for (var j = 0; j < 4; j++) {
+			var wan_aggregation_ui_display = [];
+			var link_aggregation_ui_display = [];
+			var iptv_ui_display = [];
+			var wan_ui_display = [];
+			var ext_switch_ui_display = [];	
 
-					if (j < port_length) {
+			if (port_length > 0) { //With port_info //with empty 0 item
 
-						//gen port status 
+				var col_count=0;
+				// Convert the JSON object into an array of key-value pairs (entries)
+				const port_info = Object.entries(port_profile[mesh_mac[i]].port);
+				port_info.forEach(([key, value]) => {
+					col_count++;
+					var icon_lanport_idx = "";
+					var lanport_idx = port_profile[mesh_mac[i]].port[key].portLabel.replace("L", "");
+					if(col_count<=4){
+						
 						var $port_table_td_status = $("<td>").appendTo($port_table_tr_status);
 						$port_table_td_status.css("width", "100px");
-						//gen profile selector
 						var $port_table_td_profile = $("<td>").appendTo($port_table_tr_profile);
 						var $port_table_td_mode = $("<td>").appendTo($port_table_tr_mode);
-
 						var $port_status_title, $port_status_icon, $port_status_idx, $port_status_note;
-						var $port_max_rate;
 						var aggressive_tag = 0;
-
 						$port_status_title = $("<div>").appendTo($port_table_td_status);
-						$port_status_title
-							.css({
+						$port_status_title.css({
+							"width": "30px",
+							"border-bottom": "0px #000 solid !important",
+							"margin": "0 auto"
+						})
+							.addClass("port_status_bg")
+							.addClass("port_status_bg_vlan")
+						var port_rate_txt = "";
+						if (port_profile[mesh_mac[i]].port[key].speed) {
+							port_rate_txt = port_profile[mesh_mac[i]].port[key].speed;
+						}
+
+						var port_ui_display_txt = "";
+						var port_max_rate_txt = "";
+						if (port_profile[mesh_mac[i]].port[key].ui_display) {
+							port_ui_display_txt = port_profile[mesh_mac[i]].port[key].ui_display;
+							icon_lanport_idx = "";
+						}
+						else if (port_profile[mesh_mac[i]].port[key].max_rate) {
+							port_max_rate_txt = port_profile[mesh_mac[i]].port[key].max_rate;
+							icon_lanport_idx = lanport_idx;
+						}
+						switch (port_profile[mesh_mac[i]].port[key].status) {
+							case '0': //unplug
+						
+									$port_status_icon = $("<div>").appendTo($port_status_title);
+									$port_status_icon.addClass("port_icon unplug");
+									$("<div>").html((port_ui_display_txt=="")? port_max_rate_txt:port_ui_display_txt).appendTo($port_table_td_status);
+									break;
+							case '1': //connected
+									$port_status_title.attr("title", port_rate_txt);
+									$port_status_icon = $("<div>").appendTo($port_status_title);
+									$port_status_icon.addClass("port_icon conn");
+									$("<div>").html((port_ui_display_txt=="")? port_max_rate_txt:port_ui_display_txt).appendTo($port_table_td_status);
+									break;
+							case '2': //warning
+									$port_status_title.attr("title", port_rate_txt);
+									$port_status_icon = $("<div>").appendTo($port_status_title);
+									$port_status_icon.addClass("port_icon warn");
+									$("<div>").html((port_ui_display_txt=="")? port_max_rate_txt:port_ui_display_txt).appendTo($port_table_td_status);
+									break;
+							default: //unplug
+									$port_status_icon = $("<div>").appendTo($port_status_title);
+									$port_status_icon.addClass("port_icon unplug");
+									break;
+						}
+						$port_status_idx = $("<div>").appendTo($port_status_icon);
+						//$port_status_idx.html(j + 1)
+						$port_status_idx.html(icon_lanport_idx).addClass("status_idx");
+						//if( i == 0 && orig_wans_dualwan.indexOf("lan") >= 0 && orig_wans_lanport == (j+1) ) //for CAP only
+						if( i == 0 && orig_wans_dualwan.indexOf("lan") >= 0 && orig_wans_lanport == (lanport_idx) ) //for CAP only
+						{
+							port_profile[mesh_mac[i]].port[key].wans_lanport = '1';
+							aggressive_tag = 1;
+							$port_status_note = $("<div>").appendTo($port_status_icon);
+							if(top.webWrapper){
+								if($port_status_idx.html() != "")
+									$port_status_note.html("Aggregation").addClass("status_note_white");
+								else
+									$port_status_note.html("Aggregation").addClass("status_note_white_status_idx_null");
+							}
+							else{
+								if($port_status_idx.html() != "")
+									$port_status_note.html("Aggregation").addClass("status_note");
+								else
+									$port_status_note.html("Aggregation").addClass("status_note_status_idx_null");
+							}
+						}
+						if( i == 0 && key == 3 && orig_aggregation.bond_wan == 1 ){ //CAP only because have no info for RE, general LAN4
+							port_profile[mesh_mac[i]].port[key].wan_bonding = '1';
+						}
+
+						var select_node_capability = httpApi.aimesh_get_node_capability(port_profile[mesh_mac[i]]);
+						var lacp = manage_get_lacp(port_profile[mesh_mac[i]], select_node_capability);
+						if((i == 0 && orig_aggregation.lacp_enabled == 1) || (lacp.support && lacp.value == "1") ) { //lacp for CAP || for RE
+							const bonding_port_settings = get_bonding_ports(port_profile[mesh_mac[i]].productid);
+							for(var b = 0; b < bonding_port_settings.length; b++){
+                                if(lanport_idx == bonding_port_settings[b].val){
+                                  port_profile[mesh_mac[i]].port[key].link_aggregation = '1';
+                                }
+							}
+						}
+						if( i == 0 && original_stb_port.switch_stb_x != 0){ //with iptv settings
+							if(original_stb_port.iptv_stb_port.indexOf(lanport_idx) > 0 || original_stb_port.iptv_voip_port.indexOf(lanport_idx) > 0 || original_stb_port.iptv_bridge_port.indexOf(lanport_idx) > 0){
+								port_profile[mesh_mac[i]].port[key].iptv = '1';
+							}
+						}
+
+						if (port_profile[mesh_mac[i]].port[key].wan_bonding == '1' || port_profile[mesh_mac[i]].port[key].link_aggregation == '1' ||
+						port_profile[mesh_mac[i]].port[key].iptv == '1') {
+							aggressive_tag = 1;
+							$port_status_note = $("<div>").appendTo($port_status_icon);
+							if(top.webWrapper){
+								if($port_status_idx.html() != "")
+									$port_status_note.html("Aggregation").addClass("status_note_white");
+								else
+									$port_status_note.html("Aggregation").addClass("status_note_white_status_idx_null");
+							}
+							else{
+								if($port_status_idx.html() != "")
+									$port_status_note.html("Aggregation").addClass("status_note");
+								else
+									$port_status_note.html("Aggregation").addClass("status_note_status_idx_null");
+							}
+							if (port_profile[mesh_mac[i]].port[key].wan_bonding == '1') {
+								wan_aggregation_array.push(lanport_idx);
+								if(port_ui_display_txt!="")
+									wan_aggregation_ui_display.push(port_ui_display_txt);
+							}
+							if (port_profile[mesh_mac[i]].port[key].link_aggregation == '1') {
+								link_aggregation_array.push(lanport_idx);
+								if(port_ui_display_txt!="")
+									link_aggregation_ui_display.push(port_ui_display_txt);
+							}
+							if (port_profile[mesh_mac[i]].port[key].iptv == '1') {
+								iptv_array.push(lanport_idx);
+								if(port_ui_display_txt!="")
+									iptv_ui_display.push(port_ui_display_txt);
+							}
+						}
+
+						// 1. (cap with bit PHY_PORT_CAP_WAN)
+						//console.log("cap_WAN: "+port_profile[mesh_mac[i]].port[key].detail.cap_support.WAN);
+						if(port_profile[mesh_mac[i]].port[key].detail.cap_support.WAN){
+							aggressive_tag = 2;
+							wan_array.push(lanport_idx);
+							if(port_ui_display_txt!="")
+								wan_ui_display.push(port_ui_display_txt);
+						}
+
+						// 2. (cap with bit PHY_PORT_CAP_LAN  && with bit PHY_PORT_CAP_WANLAN) && ext_port_id != -1 
+						if(port_profile[mesh_mac[i]].port[key].detail.cap_support.LAN &&
+							port_profile[mesh_mac[i]].port[key].detail.cap_support.WANLAN &&
+							port_profile[mesh_mac[i]].port[key].ext_port_id != -1){
+							aggressive_tag = 3;
+							ext_switch_array.push(lanport_idx);
+							if(port_ui_display_txt!="")
+								ext_switch_ui_display.push(port_ui_display_txt);
+						}
+
+						$port_table_td_mode.empty();
+						$port_table_td_mode.append(insert_vlan_mode_selector(macaddr_str, lanport_idx, port_profile[mesh_mac[i]].port[key].mode, aggressive_tag));
+						$port_table_td_profile.empty();
+						$port_table_td_profile.append(insert_vlan_profile_selector(macaddr_str, lanport_idx, port_profile[mesh_mac[i]].port[key].profile, aggressive_tag));
+					}
+
+				});	//forEach
+
+				const col2_count = [0];	//row 0 already done.
+				if(port_info.length > 4){
+
+					var $port_table_tr_status = [];
+					var $port_table_tr_mode = [];
+					var $port_table_tr_profile = [];
+					// Determine the row for 4 ports
+					var rowCount = Math.ceil((port_info.length) / 4);
+					for(var r=1; r<rowCount; r++){
+
+					//table content : status
+					$port_table_tr_status[r] = $("<tr>").appendTo($port_table_bg);
+					var $port_table_th_status = $("<th>").appendTo($port_table_tr_status[r]);
+					$port_table_th_status.css({"width":"20%"});
+					$port_table_th_status.html("<ul class='ul-align'><li>" + macaddr_str + "</li></ul>");	//<li>" + loc_str + "</li>
+					//table content : mode
+					$port_table_tr_mode[r] = $("<tr>").appendTo($port_table_bg);
+					var $port_table_th_mode = $("<th>").appendTo($port_table_tr_mode[r]);
+					$port_table_th_mode.css({"width":"20%"});
+					$port_table_th_mode.html("<#DSL_Mode#>");
+					//table content : profile
+					$port_table_tr_profile[r] = $("<tr>").appendTo($port_table_bg);
+					var $port_table_th_profile = $("<th>").appendTo($port_table_tr_profile[r]);
+					$port_table_th_profile.css({"width":"20%"});
+					$port_table_th_profile.html("SDN (VLAN) Profile");
+
+					col2_count[r]=0;
+					port_info.forEach(([key, value]) => {
+						col2_count[r]++;
+						var icon_lanport_idx = "";
+						var lanport_idx = port_profile[mesh_mac[i]].port[key].portLabel.replace("L", "");
+
+						// Determine the group based on colX_count
+						var row_colStart = Math.floor((col2_count[r] - 1) / 4) * 4 + 1;
+						var row_colEnd = row_colStart + 3;
+						
+						if(row_colStart > 4*r && col2_count[r] >= row_colStart && col2_count[r] <= row_colEnd && row_colStart <= 4*(r+1)){
+							
+							var $port_table_td_status = $("<td>").appendTo($port_table_tr_status[r]);
+							$port_table_td_status.css("width", "100px");
+							var $port_table_td_mode = $("<td>").appendTo($port_table_tr_mode[r]);
+							var $port_table_td_profile = $("<td>").appendTo($port_table_tr_profile[r]);
+							var $port_status_title, $port_status_icon, $port_status_idx, $port_status_note;
+							var aggressive_tag = 0;
+							$port_status_title = $("<div>").appendTo($port_table_td_status);
+							$port_status_title.css({
 								"width": "30px",
 								"border-bottom": "0px #000 solid !important",
 								"margin": "0 auto"
 							})
-							.addClass("port_status_bg")
-							.addClass("port_status_bg_vlan")
-
-						var port_rate_txt = "";
-						if (port_profile[mesh_mac[i]].port[j].speed) {
-							port_rate_txt = port_profile[mesh_mac[i]].port[j].speed;
-						}
-
-						var port_max_rate_txt = "";
-						if (port_profile[mesh_mac[i]].port[j].max_rate) {
-							port_max_rate_txt = port_profile[mesh_mac[i]].port[j].max_rate;
-						}
-
-						switch (port_profile[mesh_mac[i]].port[j].status) {
-							case '0': //unplug
-
-								//title: speed
-								$port_status_title.attr("title", port_rate_txt);
-								//port_icon unplug
-								$port_status_icon = $("<div>").appendTo($port_status_title);
-								$port_status_icon.addClass("port_icon unplug");
-								$("<div>").html(port_max_rate_txt).appendTo($port_table_td_status);
-								break;
-							case '1': //connected
-
-								//title: speed
-								$port_status_title.attr("title", port_rate_txt);
-								//port_icon conn
-								$port_status_icon = $("<div>").appendTo($port_status_title);
-								$port_status_icon.addClass("port_icon conn");
-								$("<div>").html(port_max_rate_txt).appendTo($port_table_td_status);
-								break;
-							case '2': //warning
-
-								//title: speed
-								$port_status_title.attr("title", port_rate_txt);
-								//port_icon warn
-								$port_status_icon = $("<div>").appendTo($port_status_title);
-								$port_status_icon.addClass("port_icon warn");
-								$("<div>").html(port_max_rate_txt).appendTo($port_table_td_status);
-								break;
-							default: //unplug
-
-								//port_icon unplug
-								$port_status_icon = $("<div>").appendTo($port_status_title);
-								$port_status_icon.addClass("port_icon unplug");
-								break;
-						}
-
-						//lan_idx
-						$port_status_idx = $("<div>").appendTo($port_status_icon);
-						$port_status_idx.html(j + 1)
-							.addClass("status_idx");
-
-						//wans_lanport
-						if( i == 0 && orig_wans_dualwan.indexOf("lan") >= 0 && orig_wans_lanport == (j+1) )	//for CAP only
-						{
-							port_profile[mesh_mac[i]].port[j].wans_lanport = '1';
-							aggressive_tag = 1;
-							$port_status_note = $("<div>").appendTo($port_status_icon);
-							$port_status_note.html("Aggregation") /* Untranslated */
-								.addClass("status_note");							
-						}
-
-						//wan_bonding
-						if( i == 0 && j == 3 && orig_aggregation.bond_wan == 1 ){	//CAP only because have no info for RE, general LAN4
-							port_profile[mesh_mac[i]].port[j].wan_bonding = '1';
-						}	
-
-						//link aggregation
-						if ( i == 0 && (j == 0 || j == 1)  && orig_aggregation.lacp_enabled == 1 ) {	//CAP only because have no info for RE, general LAN1 & LAN2
-							port_profile[mesh_mac[i]].port[j].link_aggregation = '1';
-						}
-
-						//iptv
-						if( i == 0 && original_stb_port.switch_stb_x != 0){	//with iptv settings
-							if(original_stb_port.iptv_stb_port.indexOf(j+1) > 0 || original_stb_port.iptv_voip_port.indexOf(j+1) > 0 || original_stb_port.iptv_bridge_port.indexOf(j+1) > 0){
-								port_profile[mesh_mac[i]].port[j].iptv = '1';
-							}
-						}
-
-						//Aggregation tag
-						if (port_profile[mesh_mac[i]].port[j].wan_bonding == '1' || port_profile[mesh_mac[i]].port[j].link_aggregation == '1' ||
-							port_profile[mesh_mac[i]].port[j].iptv == '1') {
-
-							aggressive_tag = 1;
-							$port_status_note = $("<div>").appendTo($port_status_icon);
-							$port_status_note.html("Aggregation") /* Untranslated */
-								.addClass("status_note");
-							//Note:Modify port array
-							if (port_profile[mesh_mac[i]].port[j].wan_bonding == '1') {
-								wan_aggregation_array.push(j + 1);
-							}
-							if (port_profile[mesh_mac[i]].port[j].link_aggregation == '1') {
-								link_aggregation_array.push(j + 1);
-							}
-							if (port_profile[mesh_mac[i]].port[j].iptv == '1') {
-								iptv_array.push(j + 1);
-							}
-						}
-
-						$port_table_td_mode.empty();
-						$port_table_td_mode.append(insert_vlan_mode_selector(macaddr_str, j + 1, port_profile[mesh_mac[i]].port[j].mode, aggressive_tag));
-
-						$port_table_td_profile.empty();
-						$port_table_td_profile.append(insert_vlan_profile_selector(macaddr_str, j + 1, port_profile[mesh_mac[i]].port[j].profile, aggressive_tag));
-					}
-				}
-
-				if (port_length > 4) { //ports 2nd row
-					//table content : status
-					var $port_table_tr_status = $("<tr>").appendTo($port_table_bg);
-					var $port_table_th_status = $("<th>").appendTo($port_table_tr_status);
-					$port_table_th_status.css({"width":"20%"});
-					$port_table_th_status.html("<ul class='ul-align'><li>" + macaddr_str + "</li><li>" + loc_str + "</li></ul>");
-
-					//table content : mode
-					var $port_table_tr_mode = $("<tr>").appendTo($port_table_bg);
-					var $port_table_th_mode = $("<th>").appendTo($port_table_tr_mode);
-					$port_table_th_mode.css({"width":"20%"});
-					$port_table_th_mode.html("<#DSL_Mode#>");
-
-					//table content : profile
-					var $port_table_tr_profile = $("<tr>").appendTo($port_table_bg);
-					var $port_table_th_profile = $("<th>").appendTo($port_table_tr_profile);
-					$port_table_th_profile.css({"width":"20%"});
-					$port_table_th_profile.html("SDN (VLAN) Profile"); /* Untranslated */
-
-					//ports 2nd row
-					for (var j = 4; j < 8; j++) {
-
-						if (j < port_length) {
-
-							//gen port status
-							var $port_table_td_status = $("<td>").appendTo($port_table_tr_status);
-							$port_table_td_status.css("width", "100px");
-							//gen profile selector
-							var $port_table_td_profile = $("<td>").appendTo($port_table_tr_profile);
-							var $port_table_td_mode = $("<td>").appendTo($port_table_tr_mode);
-
-							var $port_status_title, $port_status_icon, $port_status_idx, $port_status_note;
-							var aggressive_tag = 0;
-
-
-							//console.log(port_profile[mesh_mac[i]].port[j].status);
-							$port_status_title = $("<div>").appendTo($port_table_td_status);
-							$port_status_title
-								.css({
-									"width": "30px",
-									"border-bottom": "0px #000 solid !important",
-									"margin": "0 auto"
-								})
 								.addClass("port_status_bg")
 								.addClass("port_status_bg_vlan")
-
 							var port_rate_txt = "";
-							if (port_profile[mesh_mac[i]].port[j].speed) {
-								port_rate_txt = port_profile[mesh_mac[i]].port[j].speed;
+							if (port_profile[mesh_mac[i]].port[key].speed) {
+								port_rate_txt = port_profile[mesh_mac[i]].port[key].speed;
 							}
 
+							var port_ui_display_txt = "";
 							var port_max_rate_txt = "";
-							if (port_profile[mesh_mac[i]].port[j].max_rate) {
-								port_max_rate_txt = port_profile[mesh_mac[i]].port[j].max_rate;
+							if (port_profile[mesh_mac[i]].port[key].ui_display) {
+								port_ui_display_txt = port_profile[mesh_mac[i]].port[key].ui_display;
+								icon_lanport_idx = "";
 							}
-
-							switch (port_profile[mesh_mac[i]].port[j].status) {
+							else if (port_profile[mesh_mac[i]].port[key].max_rate) {
+								port_max_rate_txt = port_profile[mesh_mac[i]].port[key].max_rate;
+								icon_lanport_idx = lanport_idx;
+							}
+							switch (port_profile[mesh_mac[i]].port[key].status) {
 								case '0': //unplug
 
-									//title: speed
-									$port_status_title.attr("title", port_rate_txt);
-									//port_icon unplug
-									$port_status_icon = $("<div>").appendTo($port_status_title);
-									$port_status_icon.addClass("port_icon unplug");
-									$("<div>").html(port_max_rate_txt).appendTo($port_table_td_status);
-									break;
+										$port_status_icon = $("<div>").appendTo($port_status_title);
+										$port_status_icon.addClass("port_icon unplug");
+										$("<div>").html((port_ui_display_txt=="")? port_max_rate_txt:port_ui_display_txt).appendTo($port_table_td_status);
+										break;
 								case '1': //connected
-
-									//title: speed
-									$port_status_title.attr("title", port_rate_txt);
-									//port_icon conn
-									$port_status_icon = $("<div>").appendTo($port_status_title);
-									$port_status_icon.addClass("port_icon conn");
-									$("<div>").html(port_max_rate_txt).appendTo($port_table_td_status);
-									break;
+										$port_status_title.attr("title", port_rate_txt);
+										$port_status_icon = $("<div>").appendTo($port_status_title);
+										$port_status_icon.addClass("port_icon conn");
+										$("<div>").html((port_ui_display_txt=="")? port_max_rate_txt:port_ui_display_txt).appendTo($port_table_td_status);
+										break;
 								case '2': //warning
-
-									//title: speed
-									$port_status_title.attr("title", port_rate_txt);
-									//port_icon warn
-									$port_status_icon = $("<div>").appendTo($port_status_title);
-									$port_status_icon.addClass("port_icon warn");
-									$("<div>").html(port_max_rate_txt).appendTo($port_table_td_status);
-									break;
+										$port_status_title.attr("title", port_rate_txt);
+										$port_status_icon = $("<div>").appendTo($port_status_title);
+										$port_status_icon.addClass("port_icon warn");
+										$("<div>").html((port_ui_display_txt=="")? port_max_rate_txt:port_ui_display_txt).appendTo($port_table_td_status);
+										break;
 								default: //unplug
-
-									//port_icon unplug
-									$port_status_icon = $("<div>").appendTo($port_status_title);
-									$port_status_icon.addClass("port_icon unplug");
-									break;
-							}
-							//lan_idx
+										$port_status_icon = $("<div>").appendTo($port_status_title);
+										$port_status_icon.addClass("port_icon unplug");
+										break;
+							}	
 							$port_status_idx = $("<div>").appendTo($port_status_icon);
-							$port_status_idx.html(j + 1)
-								.addClass("status_idx");
+							$port_status_idx.html(icon_lanport_idx).addClass("status_idx");
 
-							//Aggregation tag
-							if (port_profile[mesh_mac[i]].port[j].wan_bonding == '1' || port_profile[mesh_mac[i]].port[j].link_aggregation == '1' ||
-								port_profile[mesh_mac[i]].port[j].iptv == '1') {
+
+							var select_node_capability = httpApi.aimesh_get_node_capability(port_profile[mesh_mac[i]]);
+							var lacp = manage_get_lacp(port_profile[mesh_mac[i]], select_node_capability);
+							if( (i == 0 && orig_aggregation.lacp_enabled == 1) || (lacp.support && lacp.value == "1") ) { //lacp for CAP || for RE
+								const bonding_port_settings = get_bonding_ports(port_profile[mesh_mac[i]].productid);
+								for(var c = 0; c < bonding_port_settings.length; c++){
+									if(lanport_idx == bonding_port_settings[c].val){
+										port_profile[mesh_mac[i]].port[key].link_aggregation = '1';
+									}
+								}
+							}
+
+							if( i == 0 && original_stb_port.switch_stb_x != 0){ //with iptv settings
+								if(original_stb_port.iptv_stb_port.indexOf(lanport_idx) > 0 || original_stb_port.iptv_voip_port.indexOf(lanport_idx) > 0 || original_stb_port.iptv_bridge_port.indexOf(lanport_idx) > 0){
+									port_profile[mesh_mac[i]].port[key].iptv = '1';
+								}
+							}
+
+							if (port_profile[mesh_mac[i]].port[key].wan_bonding == '1' || port_profile[mesh_mac[i]].port[key].link_aggregation == '1' ||
+							port_profile[mesh_mac[i]].port[key].iptv == '1') {
 								aggressive_tag = 1;
 								$port_status_note = $("<div>").appendTo($port_status_icon);
-								$port_status_note.html("Aggregation") /* Untranslated */
-									.addClass("status_note");
-								//Note:Modify port array
-								if (port_profile[mesh_mac[i]].port[j].wan_bonding == '1') {
-									wan_aggregation_array.push(j + 1);
+								if(top.webWrapper){
+									if($port_status_idx.html() != "")
+										$port_status_note.html("Aggregation").addClass("status_note_white");
+									else
+										$port_status_note.html("Aggregation").addClass("status_note_white_status_idx_null");
 								}
-								if (port_profile[mesh_mac[i]].port[j].link_aggregation == '1') {
-									link_aggregation_array.push(j + 1);
+								else{
+									if($port_status_idx.html() != "")
+										$port_status_note.html("Aggregation").addClass("status_note");
+									else
+										$port_status_note.html("Aggregation").addClass("status_note_status_idx_null");
 								}
-								if (port_profile[mesh_mac[i]].port[j].iptv == '1') {
-									iptv_array.push(j + 1);
+								if (port_profile[mesh_mac[i]].port[key].wan_bonding == '1') {
+									wan_aggregation_array.push(lanport_idx);
+									if(port_ui_display_txt!="")
+										wan_aggregation_ui_display.push(port_ui_display_txt);
 								}
+								if (port_profile[mesh_mac[i]].port[key].link_aggregation == '1') {
+									link_aggregation_array.push(lanport_idx);
+									if(port_ui_display_txt!="")
+										link_aggregation_ui_display.push(port_ui_display_txt);
+								}
+								if (port_profile[mesh_mac[i]].port[key].iptv == '1') {
+									iptv_array.push(lanport_idx);
+									if(port_ui_display_txt!="")
+										iptv_ui_display.push(port_ui_display_txt);
+								}
+							}
+
+							// 1. cap with bit PHY_PORT_CAP_WAN
+							//console.log("cap_WAN: "+port_profile[mesh_mac[i]].port[key].detail.cap_support.WAN);
+							if(port_profile[mesh_mac[i]].port[key].detail.cap_support.WAN){
+								aggressive_tag = 2;
+								wan_array.push(lanport_idx);
+								if(port_ui_display_txt!="")
+									wan_ui_display.push(port_ui_display_txt);
+							}
+
+							// 2. (cap with bit PHY_PORT_CAP_LAN  && with bit PHY_PORT_CAP_WANLAN) && ext_port_id != -1
+							if(port_profile[mesh_mac[i]].port[key].detail.cap_support.LAN &&
+								port_profile[mesh_mac[i]].port[key].detail.cap_support.WANLAN &&
+								port_profile[mesh_mac[i]].port[key].ext_port_id != -1){
+								aggressive_tag = 3;
+								ext_switch_array.push(lanport_idx);
+								if(port_ui_display_txt!="")
+									ext_switch_ui_display.push(port_ui_display_txt);
 							}
 
 							$port_table_td_mode.empty();
-							$port_table_td_mode.append(insert_vlan_mode_selector(macaddr_str, j + 1, port_profile[mesh_mac[i]].port[j].mode, aggressive_tag));
-
+							$port_table_td_mode.append(insert_vlan_mode_selector(macaddr_str, lanport_idx, port_profile[mesh_mac[i]].port[key].mode, aggressive_tag));
 							$port_table_td_profile.empty();
-							$port_table_td_profile.append(insert_vlan_profile_selector(macaddr_str, j + 1, port_profile[mesh_mac[i]].port[j].profile, aggressive_tag));
+							$port_table_td_profile.append(insert_vlan_profile_selector(macaddr_str, lanport_idx, port_profile[mesh_mac[i]].port[key].profile, aggressive_tag));
+
 						}
 
-					}
+					});	//forEach
+
+					}// for r
 				}
+
 			} 
 			else{ //without port_profile
 
@@ -1064,7 +1169,10 @@ function gen_VLAN_port_table(port_profile) {
 			var note_wans_lanport = "";
 			var note_wan_aggregation = "";
 			var note_link_aggregation = "";
-			var note_iptv = "";			
+			var note_iptv = "";
+
+			var note_WAN_port = "";
+			var note_ext_switch = "";
 
 			if( i == 0 && orig_wans_dualwan.indexOf("lan") >= 0 && orig_wans_lanport != "")	//for CAP only
 			{
@@ -1086,8 +1194,15 @@ function gen_VLAN_port_table(port_profile) {
 					for (var b = 0; b < wan_aggregation_array.length; b++) {
 						if (b > 0)
 							note_wan_aggregation += " / ";
-						note_wan_aggregation += "<b>LAN ";
-						note_wan_aggregation += wan_aggregation_array[b];
+
+						if(link_aggregation_ui_display[a]){
+							note_link_aggregation += "<b>";
+							note_link_aggregation += link_aggregation_ui_display[a];
+						}
+						else{
+							note_link_aggregation += "<b>LAN ";
+							note_link_aggregation += link_aggregation_array[a];
+						}
 						note_wan_aggregation += "</b>";
 					}
 					note_wan_aggregation += ": ";
@@ -1102,13 +1217,24 @@ function gen_VLAN_port_table(port_profile) {
 				}
 			}	
 
-			if ( i == 0 && orig_aggregation.lacp_enabled ==1 ) {	//CAP only because have no info for RE
+
+			var select_node_capability_for_note = httpApi.aimesh_get_node_capability(port_profile[mesh_mac[i]]);
+			var lacp_for_note = manage_get_lacp(port_profile[mesh_mac[i]], select_node_capability_for_note);
+			if ( (i == 0 && orig_aggregation.lacp_enabled ==1) || (lacp_for_note.support && lacp_for_note.value == "1") ) { //lacp for CAP || for RE
 				if(link_aggregation_array.length) {
 					for (var a = 0; a < link_aggregation_array.length; a++) {
 						if (a > 0)
 							note_link_aggregation += " / ";
-						note_link_aggregation += "<b>LAN ";
-						note_link_aggregation += link_aggregation_array[a];
+
+						if(link_aggregation_ui_display[a]){
+							note_link_aggregation += "<b>";
+							note_link_aggregation += link_aggregation_ui_display[a];
+						}
+						else{
+							note_link_aggregation += "<b>LAN ";
+							note_link_aggregation += link_aggregation_array[a];
+						}
+
 						note_link_aggregation += "</b>";
 					}
 					note_link_aggregation += ": ";
@@ -1122,8 +1248,15 @@ function gen_VLAN_port_table(port_profile) {
 				for (var c = 0; c < iptv_array.length; c++) {
 					if (c > 0)
 						note_iptv += " / ";
-					note_iptv += "<b>LAN ";
-					note_iptv += iptv_array[c];
+
+					if(iptv_ui_display[c]){
+						note_iptv += "<b>";
+						note_iptv += iptv_ui_display[c];
+					}
+					else{
+						note_iptv += "<b>LAN ";
+						note_iptv += iptv_array[c];
+					}
 					note_iptv += "</b>";
 				}
 				note_iptv += ": ";
@@ -1135,6 +1268,48 @@ function gen_VLAN_port_table(port_profile) {
 					.css("color", "#FFCC00")
 					.css("cursor", "pointer")
 					.css("text-decoration", "underline");
+			}
+
+			if ( wan_array.length) {
+				for (var w = 0; w < wan_array.length; w++) {
+					if (w > 0)
+						note_WAN_port += " / ";
+
+					if(wan_ui_display[w]){
+						note_WAN_port += "<b>";
+						note_WAN_port += wan_ui_display[w];
+					}
+					else{
+						note_WAN_port += "<b>LAN ";
+						note_WAN_port += wan_array[w];
+					}
+					note_WAN_port += "</b>";
+				}
+				note_WAN_port += ": ";
+				str_port_binding_note_tmp = str_port_binding_note.replace("%@", "<#Ethernet_wan#>");
+				note_WAN_port += str_port_binding_note_tmp;
+				$("<div>").html(note_WAN_port).appendTo($target_div).css('text-align','left');
+			}
+
+			if ( ext_switch_array.length) {
+				for (var e = 0; e < ext_switch_array.length; e++) {
+					if (e > 0)
+						note_ext_switch += " / ";
+
+					if(ext_switch_ui_display[e]){
+						note_ext_switch += "<b>";
+						note_ext_switch += ext_switch_ui_display[e];
+					}
+					else{
+						note_ext_switch += "<b>LAN ";
+						note_ext_switch += ext_switch_array[e];
+					}
+					note_ext_switch += "</b>";
+				}
+				note_ext_switch += ": ";
+				str_port_binding_note_tmp = str_port_binding_note.replace("%@", "external switch port");	/* Untranslated */
+				note_ext_switch += str_port_binding_note_tmp;
+				$("<div>").html(note_ext_switch).appendTo($target_div).css('text-align','left');
 			}
 
 			$("<br><br>").appendTo($target_div);
@@ -1412,33 +1587,30 @@ function collect_assigned_from_table_array(){	//check if all ports were assigned
 var mac_id_str = "";
 function collect_Access_mode_from_table_array() {
 	clean_apgX_dut_list_lanport(apg_dutList);
-	for (var y = 0; y < Object.keys(VLAN_port_status).length; y++) {	//how many macAddr
+	for (var y = 0; y < Object.keys(VLAN_port_status).length; y++) { //how many macAddr
 		mac_id_str = Object.keys(VLAN_port_status)[y].replace(/\:/g, '');
-		for (var x = 1; x < VLAN_port_status[Object.keys(VLAN_port_status)[y]].port.length + 1; x++) {	//each port
 
-			if ($("#switch_mode_" + mac_id_str + "_" + x).val() == "Access") {
-
+		const port_info = Object.entries(VLAN_port_status[Object.keys(VLAN_port_status)[y]].port);
+		port_info.forEach(([key, value]) => {		//each port
+			var lanport_idx = VLAN_port_status[Object.keys(VLAN_port_status)[y]].port[key].portLabel.replace("L", "");
+			if ($("#switch_mode_" + mac_id_str + "_" + lanport_idx).val() == "Access") {
 				for (var z = 0; z < VLAN_Profile_select.length; z++) {
-
-					if (VLAN_Profile_select[z].vid == $("#switch_vlan_" + mac_id_str + "_" + x).val()) {
+					if (VLAN_Profile_select[z].vid == $("#switch_vlan_" + mac_id_str + "_" + lanport_idx).val()) {
 						var apgX = VLAN_Profile_select[z].apgIdx;
 						for (var i = 0; i < apg_dutList['apg' + apgX + '_dut_list'].length; i++) {
-
 							if (apg_dutList['apg' + apgX + '_dut_list'][i].mac == Object.keys(VLAN_port_status)[y]) {
 								if (apg_dutList['apg' + apgX + '_dut_list'][i].lanport == "") {
-									apg_dutList['apg' + apgX + '_dut_list'][i].lanport = x;
-								} else {
-									apg_dutList['apg' + apgX + '_dut_list'][i].lanport = apg_dutList['apg' + apgX + '_dut_list'][i].lanport + "," + x;
+									apg_dutList['apg' + apgX + '_dut_list'][i].lanport = VLAN_port_status[Object.keys(VLAN_port_status)[y]].port[key].portLabel;
+								}
+								else{
+									apg_dutList['apg' + apgX + '_dut_list'][i].lanport = apg_dutList['apg' + apgX + '_dut_list'][i].lanport + "," + VLAN_port_status[Object.keys(VLAN_port_status)[y]].port[key].portLabel;
 								}
 							}
-
 						}
 					}
 				}
-
 			}
-
-		}
+		});
 	}
 }
 
@@ -1477,19 +1649,20 @@ function getvlanTrunkListPostData() {
 		mac_id_str = Object.keys(VLAN_port_status)[y].replace(/\:/g, '');
 		var TrunkListByLanport = "";
 		var TrunkListbyMac = "";
-		for (var x = 1; x < VLAN_port_status[Object.keys(VLAN_port_status)[y]].port.length + 1; x++) {	//by port
-
-			if ($("#switch_mode_" + mac_id_str + "_" + x).val() == "Trunk" && $("#switch_vlan_" + mac_id_str + "_" + x).val() != "all") {
+		const port_info = Object.entries(VLAN_port_status[Object.keys(VLAN_port_status)[y]].port);
+		port_info.forEach(([key, value]) => {		//each port
+			var lanport_idx = VLAN_port_status[Object.keys(VLAN_port_status)[y]].port[key].portLabel.replace("L", "");
+			if ($("#switch_mode_" + mac_id_str + "_" + lanport_idx).val() == "Trunk" && $("#switch_vlan_" + mac_id_str + "_" + lanport_idx).val() != "all") {
 				for (var z = 0; z < VLAN_Profile_select.length; z++) {
-					TrunkListByLanport = getTrunkListVID($("#switch_vlan_" + mac_id_str + "_" + x).val());
+					TrunkListByLanport = getTrunkListVID($("#switch_vlan_" + mac_id_str + "_" + lanport_idx).val());
 				}
-
-				TrunkListbyMac += ">" + x + "#" + TrunkListByLanport;
+				TrunkListbyMac += ">" + VLAN_port_status[Object.keys(VLAN_port_status)[y]].port[key].portLabel + "#" + TrunkListByLanport;
 			}
-			else if ($("#switch_mode_" + mac_id_str + "_" + x).val() == "Trunk" && $("#switch_vlan_" + mac_id_str + "_" + x).val() == "all") {
-				TrunkListbyMac += ">" + x + "#all";
+			else if ($("#switch_mode_" + mac_id_str + "_" + lanport_idx).val() == "Trunk" && $("#switch_vlan_" + mac_id_str + "_" + lanport_idx).val() == "all") {
+				TrunkListbyMac += ">" + VLAN_port_status[Object.keys(VLAN_port_status)[y]].port[key].portLabel + "#all";
 			}
-		}
+		});
+		
 		if (TrunkListbyMac != "") {
 			TrunkListPostData += "<" + Object.keys(VLAN_port_status)[y] + TrunkListbyMac;
 		}
@@ -1572,6 +1745,26 @@ function check_isAlive_and_redirect(_parm){
 			httpApi.isAlive("", lan_ipaddr, function(){ clearInterval(interval_isAlive); top.location.href = "/" + page + "";});
 		}, 1000*interval_time);
 	}, 1000*(time - interval_time));
+}
+
+function manage_get_lacp(_node_info, _node_capability){
+	var result = {"support": false, "value": 0};
+	var lacp = _node_capability.lacp;
+	if(lacp)
+		result.support = true;
+
+	if("config" in _node_info) {
+		if("link_aggregation" in _node_info.config) {
+			if("lacp_enabled" in _node_info.config.link_aggregation) {
+				result.value = parseInt(_node_info.config.link_aggregation.lacp_enabled);
+			}
+		}
+	}
+
+	if(isNaN(result.value))
+		result.value = 0;
+
+	return result;
 }
 </script>
 </head>

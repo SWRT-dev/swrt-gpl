@@ -153,7 +153,7 @@ var weekScheduleApi = {
 
 		$("#" + weekScheduleApi.obj_id + "").find(".gridview_mode").hide();
 		$("#" + weekScheduleApi.obj_id + "").find(".overview_mode").show();
-		var select_mode = cookie.get(weekScheduleApi.obj_id);
+		var select_mode = window.localStorage.getItem(weekScheduleApi.obj_id);
 		if(select_mode != null){
 			if(select_mode == "gridview"){
 				$("#" + weekScheduleApi.obj_id + "").find(".gridview_mode").show();
@@ -1355,7 +1355,7 @@ var weekScheduleApi = {
 		$overview_icon.click(function(e){
 			e = e || event;
 			e.stopPropagation();
-			cookie.set(weekScheduleApi.obj_id, "overview", 365);
+			window.localStorage.setItem(weekScheduleApi.obj_id, "overview", 365);
 			$(".popup_edit_weekSchedule").hide();
 			$("#" + weekScheduleApi.obj_id + "").find(".gridview_mode").hide();
 			$("#" + weekScheduleApi.obj_id + "").find(".overview_mode").show();
@@ -1374,7 +1374,7 @@ var weekScheduleApi = {
 		$gridview_icon.click(function(e){
 			e = e || event;
 			e.stopPropagation();
-			cookie.set(weekScheduleApi.obj_id, "gridview", 365);
+			window.localStorage.setItem(weekScheduleApi.obj_id, "gridview", 365);
 			$(".popup_edit_weekSchedule").hide();
 			$("#" + weekScheduleApi.obj_id + "").find(".gridview_mode").show();
 			$("#" + weekScheduleApi.obj_id + "").find(".overview_mode").hide();

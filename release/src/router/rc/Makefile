@@ -73,7 +73,7 @@ endif
 
 ifeq ($(RTCONFIG_QCA),y)
 CFLAGS += -I$(TOP)/shared/sysdeps/qca -I$(TOP)/wireless_tools$(WTOOL_SUFFIX)
-CFLAGS += $(if $(or $(RTCONFIG_SOC_IPQ8064),$(RTCONFIG_SOC_IPQ8074)),-DSMP)
+CFLAGS += $(if $(or $(RTCONFIG_SOC_IPQ8064),$(RTCONFIG_SOC_IPQ8074),$(RTCONFIG_SOC_IPQ53XX)),-DSMP)
 endif
 ifeq ($(RTCONFIG_WBD),y)
 CFLAGS += -D__CONFIG_WBD__
@@ -456,6 +456,11 @@ endif
 ifeq ($(RTCONFIG_DSL),y)
 OBJS += init-ralink-dsl.o
 endif
+ifeq ($(RTCONFIG_NL80211),y)
+OBJS += nl80211-ralink.o
+CFLAGS += -I$(STAGEDIR)/usr/include/libnl-tiny
+LDFLAGS += -L$(STAGING_DIR)/usr/lib -lnl-tiny
+endif
 else ifeq ($(RTCONFIG_QCA),y)
 OBJS += init-qca.o wps-qca.o qca.o ate-qca.o ctl.o
 ifeq ($(RTCONFIG_AMAS),y)
@@ -500,7 +505,7 @@ endif
 OBJS += wanduck.o
 OBJS += tcpcheck.o
 
-ifeq ($(or $(RTCONFIG_SOC_IPQ8064),$(RTCONFIG_SOC_IPQ8074)),y)
+ifeq ($(or $(RTCONFIG_SOC_IPQ8064),$(RTCONFIG_SOC_IPQ8074),$(RTCONFIG_SOC_IPQ53XX)),y)
 CFLAGS += -DBUILD_READMEM
 OBJS += readmem.o
 endif
@@ -781,7 +786,7 @@ endif
 ifeq ($(RTCONFIG_SOFTWIRE46),y)
 CFLAGS += -I$(STAGEDIR)/usr/include/json-c
 LDFLAGS += -L$(STAGEDIR)/usr/lib -ljson-c
-OBJS += v6plusd.o ocnvcd.o
+OBJS += v6plusd.o ocnvcd.o dslited.o
 endif
 
 ifeq ($(RTCONFIG_INTERNAL_GOBI),y)
@@ -1124,6 +1129,9 @@ endif
 ifeq ($(RTCONFIG_GRE),y)
 OBJS += gre.o
 endif
+ifeq ($(RTCONFIG_IG_SITE2SITE),y)
+OBJS += ig_s2s_client.o
+endif
 
 ifeq ($(RTCONFIG_EASYMESH),y)
 CFLAGS += -I$(TOP)/shared/sysdeps/swrtmesh
@@ -1379,6 +1387,9 @@ endif
 ifeq ($(RTCONFIG_MULTIWAN_IF),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc mtwanduck
 	@cd $(INSTALLDIR)/sbin && ln -sf rc det_dns
+ifeq ($(RTCONFIG_MULTIWAN_PROFILE),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc mtwan6_neighbor
+endif
 endif
 ifeq ($(RTCONFIG_CONNDIAG),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc conn_diag
@@ -1548,20 +1559,26 @@ ifeq ($(HND_ROUTER),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc memdw
 endif
 	@cd $(INSTALLDIR)/sbin && ln -sf rc firmware_check
-ifeq ($(or $(RTCONFIG_SOC_IPQ8064),$(RTCONFIG_SOC_IPQ8074)),y)
+ifeq ($(or $(RTCONFIG_SOC_IPQ8064),$(RTCONFIG_SOC_IPQ8074),$(RTCONFIG_SOC_IPQ53XX)),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc readmem
 endif
-ifeq ($(or $(RTCONFIG_WIFI_QCN5024_QCN5054),$(RTCONFIG_QCA_AXCHIP)),y)
+ifeq ($(or $(RTCONFIG_WIFI_QCN5024_QCN5054),$(RTCONFIG_WIFI_IPQ53XX_QCN6274),$(RTCONFIG_QCA_AXCHIP)),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc stress_pktgen
 endif
-ifeq ($(RTCONFIG_SOC_IPQ8074),y)
+ifeq ($(or $(RTCONFIG_SOC_IPQ8074)),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc test_blu
 	@cd $(INSTALLDIR)/sbin && ln -sf rc split_q6mem
+endif
+ifeq ($(and $(RTCONFIG_DEBUG),$(RTCONFIG_SOC_IPQ53XX)),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc fix_caldata
 endif
 ifeq ($(or $(RTCONFIG_QCA),$(RTCONFIG_RALINK)),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc test_wifi_stats_log
 endif
-ifeq ($(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033),y)
+ifeq ($(and $(RTCONFIG_DEBUG),$(RTCONFIG_SOC_IPQ53XX)),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc test_acs
+endif
+ifeq ($(or $(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033),$(RTCONFIG_SWITCH_QCA8386)),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc test_switch_log
 endif
 ifeq ($(RTCONFIG_HTTPS),y)
@@ -1667,6 +1684,7 @@ ifeq ($(RTCONFIG_SOFTWIRE46),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc mapcalc
 	@cd $(INSTALLDIR)/sbin && ln -sf rc v6plusd
 	@cd $(INSTALLDIR)/sbin && ln -sf rc ocnvcd
+	@cd $(INSTALLDIR)/sbin && ln -sf rc dslited
 endif
 
 ifeq ($(RTCONFIG_WLCSCAN_RSSI),y)
@@ -2204,6 +2222,10 @@ ifneq ($(wildcard ./prebuild/ocnvcd.o),)
 ocnvcd.o:
 	@-cp -f ./prebuild/ocnvcd.o .
 endif
+ifneq ($(wildcard ./prebuild/dslited.o),)
+dslited.o:
+	@-cp -f ./prebuild/dslited.o .
+endif
 endif
 ifeq ($(RTCONFIG_TPVPN),y)
 ifneq ($(wildcard ./prebuild/tpvpn.o),)
@@ -2216,6 +2238,12 @@ ifeq ($(RTCONFIG_SCHED_DAEMON),y)
 ifneq ($(wildcard ./prebuild/sched_daemon.o),)
 sched_daemon.o.o:
 	@-cp -f ./prebuild/sched_daemon.o .
+endif
+endif
+ifeq ($(RTCONFIG_IG_SITE2SITE),y)
+ifneq ($(wildcard ./prebuild/ig_s2s_client.o),)
+ig_s2s_client.o:
+	@-cp -f ./prebuild/ig_s2s_client.o .
 endif
 endif
 

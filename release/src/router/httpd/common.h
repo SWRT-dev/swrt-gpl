@@ -14,14 +14,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  */
-/*  Copyright 2001, ASUSTeK Inc.
-    All Rights Reserved.
-    
-    This is UNPUBLISHED PROPRIETARY SOURCE CODE of ASUSTeK Inc.;
-    the contents of this file may not be disclosed to third parties, copied or
-    duplicated in any form, in whole or in part, without the prior written
-    permission of ASUSTeK Inc..
-*/
 /*
  * NVRAM variable manipulation
  *
@@ -57,6 +49,8 @@
 #define HTTPD_DEBUG_FILE                  "/tmp/HTTPD_DEBUG.log"
 #endif
 
+#define HTTPD_FB_DEBUG_FILE             "/jffs/HTTPD_FB_DEBUG.log"
+
 /* DEBUG FUNCTION */
 #ifdef RTCONFIG_LIBASUSLOG
 #define HTTPD_DBG(fmt, arg...) do {\
@@ -85,7 +79,6 @@ extern void Debug2File(const char *path, const char *fmt, ...);
 })
 #endif
 
-#define HTTPD_FB_DEBUG_FILE             "/jffs/HTTPD_FB_DEBUG.log"
 #define HTTPD_FB_DEBUG(fmt, arg...) do {\
 	int save_errno = errno; \
 		asusdebuglog(LOG_INFO, HTTPD_FB_DEBUG_FILE, LOG_CUSTOM, LOG_SHOWTIME, 0, "[%s(%d)]:"fmt"\n", __FUNCTION__, __LINE__ , ##arg); \
@@ -205,3 +198,4 @@ char *GetGroupVariable(int sid, struct variable *gvs, char *name);
 #endif
 
 #endif /* _COMMON_H_ */
+

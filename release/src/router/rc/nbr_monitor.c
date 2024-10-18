@@ -1,4 +1,5 @@
 #include "shared.h"
+#include "rc.h"
 #include <json.h>
 #include <sys/un.h>
 static void nbr_ipc_receive(int sockfd)
@@ -97,4 +98,5 @@ int nbr_monitor_main(int argc, char *argv[])
 */
 
 	nbr_start_ipc_socket();
+	return 0;
 }

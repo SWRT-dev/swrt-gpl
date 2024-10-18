@@ -11,9 +11,9 @@
 #include <endian.h>
 #include <dirent.h>
 #if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
-#include <net/ethernet.h>	//struct ethjdr
+#include <net/ethernet.h>	//struct ether_addr
 #include <netinet/if_ether.h>	//struct ethhdr
-#include <netinet/ether.h>	//struct ether_addr
+#include <netinet/ether.h>	//struct ether_XXX()
 #endif
 #ifndef _LINUX_IF_H
 #include <net/if.h>
@@ -70,6 +70,12 @@
 #include "sched_v2.h"
 #endif /* RTCONFIG_SCHED_V2 */
 
+#ifdef RTCONFIG_MLO
+#define MLD_AP		"mld0"
+#define MLD_SDN		"mld1"
+#define MLD_STA		"mld2"
+#endif
+
 #if defined(RTCONFIG_VPN_FUSION) || defined(RTCONFIG_TPVPN) || defined(RTCONFIG_IG_SITE2SITE) || defined(RTCONFIG_WIREGUARD)
 #include "vpn_utils.h"
 #endif
@@ -83,6 +89,9 @@
 extern FILE *PS_popen(const char *, const char *);
 extern int PS_pclose(FILE *);
 #endif
+
+#define ON			1
+#define OFF			0
 
 // GPY211
 #define EXTPHY_GPY_ADDR 0x19
@@ -235,6 +244,30 @@ extern int PS_pclose(FILE *);
 #define GPIO_PWM_DEFSHIFT       200
 #endif
 
+#if defined(RTCONFIG_QCA)
+#define SPF_VER_ID(maj,min)	(((maj) << 8) + (min))
+
+#if defined(RTCONFIG_SPF8_QSDK)
+#define SPF_VER			SPF_VER_ID(8,0)
+#elif defined(RTCONFIG_SPF10_QSDK)
+#define SPF_VER			SPF_VER_ID(10,0)
+#elif defined(RTCONFIG_SPF11_QSDK)
+#define SPF_VER			SPF_VER_ID(10,0)
+#elif defined(RTCONFIG_SPF11_1_QSDK)
+#define SPF_VER			SPF_VER_ID(11,1)
+#elif defined(RTCONFIG_SPF11_3_QSDK)
+#define SPF_VER			SPF_VER_ID(11,3)
+#elif defined(RTCONFIG_SPF11_4_QSDK)
+#define SPF_VER			SPF_VER_ID(11,4)
+#elif defined(RTCONFIG_SPF11_5_QSDK)
+#define SPF_VER			SPF_VER_ID(11,5)
+#elif defined(RTCONFIG_SPF12_2_QSDK)
+#define SPF_VER			SPF_VER_ID(12,2)
+#else
+#warning SPF_VER is not defined!
+#endif	/* RTCONFIG_SPF8_QSDK */
+#endif	/* RTCONFIG_QCA */
+
 #define PROC_IRQ		"/proc/irq"
 #define SYS_CLASS_MTD		"/sys/class/mtd"
 #define SYS_CLASS_NET		"/sys/class/net"
@@ -313,7 +346,7 @@ static inline char *wan_if_eth(void)
 #define IS_NON_AQOS()           (nvram_get_int("qos_enable") == 1 && nvram_get_int("qos_type") != 1)   // non A.QoS = others QoS (T.QoS / bandwidth monitor ... etc.)
 #define IS_NON_FC_QOS()         (nvram_get_int("qos_enable") == 1 && nvram_get_int("qos_type") != 1 && nvram_get_int("qos_type") != 2) // non FC QoS= others QoS except A.QOS / BW QOS
 #define IS_ROG_QOS()            (nvram_get_int("qos_enable") == 0 && nvram_get_int("rog_enable") == 1) // QoS Disable, Gear Accelerator enable
-#define IS_RB_QOS()             (IS_AQOS() && nvram_get_int("rb_enable") == 1)   // Router Boost QoS (OPPO)
+#define IS_RB_QOS()             (nvram_get_int("rb_enable") == 1)   // Router Boost QoS (OPPO)
 
 /* Guest network mark */
 #define GUEST_INIT_MARKNUM 10   /*10 ~ 30 for Guest Network. */
@@ -443,6 +476,7 @@ enum {
 	WAN_MAPE,
 	WAN_V6PLUS,
 	WAN_OCNVC,
+	WAN_DSLITE,
 };
 
 #ifdef RTCONFIG_IPV6
@@ -457,6 +491,50 @@ enum {
 	IPV6_MANUAL,
 	IPV6_PASSTHROUGH
 };
+
+#if !defined(BIT_XX)
+#define BIT_XX(x)  ((1 << x))
+#endif
+
+#define WIFI_BAND_2G    BIT_XX(0)
+#define WIFI_BAND_5G    BIT_XX(1)
+#define WIFI_BAND_5GL   BIT_XX(2)
+#define WIFI_BAND_5GH   BIT_XX(3)
+#define WIFI_BAND_6G    BIT_XX(4)
+#define WIFI_BAND_6GL	BIT_XX(5)
+#define WIFI_BAND_6GH	BIT_XX(6)
+
+#define WIFI_BAND_ARRAY_SIZE    7
+const static unsigned short WIFI_BAND_ARRAY[] = {
+    WIFI_BAND_2G, 
+    WIFI_BAND_5G, 
+    WIFI_BAND_5GL, 
+    WIFI_BAND_5GH, 
+    WIFI_BAND_6G, 
+	WIFI_BAND_6GL,
+	WIFI_BAND_6GH
+};
+
+#ifdef RTCONFIG_MLO
+struct mlo_band_mapping_s {
+	int all_band;
+	int mlo_band;
+	int mlo_fh_band;
+};
+
+static struct mlo_band_mapping_s mlo_band_mapping_list[] __attribute__ ((unused)) = {
+	{ WIFI_BAND_2G | WIFI_BAND_5GL | WIFI_BAND_5GH | WIFI_BAND_6G,	WIFI_BAND_2G | WIFI_BAND_5GH | WIFI_BAND_6G,	WIFI_BAND_2G | WIFI_BAND_5GH | WIFI_BAND_6G}, //2556, mlo:2/5-2/6
+#if defined(RTCONFIG_MLO_CONFIG_566)
+	{ WIFI_BAND_2G | WIFI_BAND_5G | WIFI_BAND_6GL | WIFI_BAND_6GH,	WIFI_BAND_5G | WIFI_BAND_6GL | WIFI_BAND_6GH,	WIFI_BAND_2G | WIFI_BAND_5G | WIFI_BAND_6GL}, //2566, mlo:5/6-1/6-2
+#else
+	{ WIFI_BAND_2G | WIFI_BAND_5G | WIFI_BAND_6GL | WIFI_BAND_6GH,	WIFI_BAND_2G | WIFI_BAND_5G | WIFI_BAND_6GL,	WIFI_BAND_2G | WIFI_BAND_5G | WIFI_BAND_6GL}, //2566, mlo:2/5/6-1
+#endif
+	{ WIFI_BAND_2G | WIFI_BAND_5G | WIFI_BAND_6G,					WIFI_BAND_2G | WIFI_BAND_5G | WIFI_BAND_6G, 	WIFI_BAND_2G | WIFI_BAND_5G | WIFI_BAND_6G}, //256, mlo:2/5/6
+	{ WIFI_BAND_2G | WIFI_BAND_5GL | WIFI_BAND_5GH,					WIFI_BAND_2G | WIFI_BAND_5GL | WIFI_BAND_5GH, 	WIFI_BAND_2G | WIFI_BAND_5GL | WIFI_BAND_5GH}, //255, mlo:2/5/5-2
+	{ WIFI_BAND_2G | WIFI_BAND_5G,									WIFI_BAND_2G | WIFI_BAND_5G, 					WIFI_BAND_2G | WIFI_BAND_5G}, //25, mlo:2/5
+	{ -1, 		-1}
+};
+#endif
 
 #ifndef RTF_UP
 /* Keep this in sync with /usr/src/linux/include/linux/route.h */
@@ -559,6 +637,7 @@ enum {
 #define CFG_WL_STR_5G	"5G"
 #define CFG_WL_STR_5G1	"5G1"
 #define CFG_WL_STR_6G	"6G"
+#define CFG_WL_STR_6G1	"6G1"
 
 #ifdef RTCONFIG_ADV_RAST
 enum romaingEvent {
@@ -570,6 +649,8 @@ enum romaingEvent {
 	EID_RM_STA_EX_AP_CHECK = 6,
 	EID_RM_STA_FORCE_ROAMING = 7,
 	EID_RM_STA_BINDING_UPDATE = 8,
+	EID_RM_11K_REQ = 9,
+	EID_RM_11V_REQ = 10,
 	EID_RM_MAX
 };
 enum conndiagEvent {
@@ -583,6 +664,7 @@ enum conndiagEvent {
 	EID_CD_PS_CD_RET,
 	EID_CD_PS_USB_CHANGE,
 	EID_CD_PS_MOCA_CHANGE,
+	EID_CD_PS_POE_CHANGE,
 	EID_CD_MAX
 };
 #define RAST_IPC_MAX_CONNECTION		5
@@ -645,6 +727,7 @@ enum conndiagEvent {
 #define CD_PS_CD_RET "CABLEDIAG_RET"
 #define CD_PS_USB_CHANGE "PORTSTATUS_USB_CHANGE"
 #define CD_PS_MOCA_CHANGE "PORTSTATUS_MOCA_CHANGE"
+#define CD_PS_POE_CHANGE "PORTSTATUS_POE_CHANGE"
 
 #ifdef RTCONFIG_HND_ROUTER_AX
 #define RMD_IPC_SOCKET_PATH    "/etc/rmd_ipc_socket"
@@ -674,6 +757,7 @@ enum conndiagEvent {
 #define BTM_CMD_FAIL	3
 #define BTM_TIMEOUT		4
 #define BTM_OTHER		5
+#define BTM_FAIL_MIN    29
 #endif
 
 #ifdef RTCONFIG_AMAS
@@ -715,6 +799,8 @@ enum {
 	FROM_WebView,
 	FROM_ATE,
 	FROM_MyASUS,
+	FROM_BLE,
+	FROM_AWSIOT,
 	FROM_UNKNOWN
 };
 
@@ -941,8 +1027,8 @@ extern int nvram_get_int(const char *key);
 extern int nvram_pf_get_int(const char *prefix, const char *key);
 extern int nvram_set_int(const char *key, int value);
 extern int nvram_pf_set_int(const char *prefix, const char *key, int value);
-extern int nvram_pf_match(char *prefix, char *name, char *match);
-extern int nvram_pf_invmatch(char *prefix, char *name, char *invmatch);
+extern int nvram_pf_match(const char *prefix, char *name, char *match);
+extern int nvram_pf_invmatch(const char *prefix, char *name, char *invmatch);
 extern double nvram_get_double(const char *key);
 extern int nvram_set_double(const char *key, double value);
 extern int nvram_get_hex(const char *key);
@@ -987,6 +1073,7 @@ extern int load_kmods(char *kmods_list);
 extern int remove_kmods(char *kmods_list);
 extern int num_of_wl_if(void);
 extern int num_of_5g_if(void);
+extern int num_of_6g_if(void);
 
 // usb.c
 #ifdef RTCONFIG_USB
@@ -1557,6 +1644,9 @@ static inline int max_no_mssid(void)
 #if defined(RTCONFIG_SWRTMESH)
 //	max_no_mssid++;
 #endif
+#ifdef RTCONFIG_MULTILAN_CFG
+	max_no_mssid=8;
+#endif	
 	return max_no_mssid;
 }
 
@@ -1570,7 +1660,7 @@ static inline int max_no_mssid(void)
  * can be used to test.  But, non-QCA platform haven't support RTCONFIG_HAS_5G_2.
  */
 #define MAX_NR_WL_IF			4
-#elif defined(RTCONFIG_HAS_5G_2)
+#elif defined(RTCONFIG_HAS_5G_2) || ((defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)) && (defined(RTCONFIG_WIFI6E) || (defined(RTCONFIG_WIFI7) && !defined(RTCONFIG_WIFI7_NO_6G))))
 #define MAX_NR_WL_IF			3
 #elif defined(RTCONFIG_HAS_5G)
 #define MAX_NR_WL_IF			2
@@ -1606,16 +1696,20 @@ enum wl_band_id {
 	WL_5G_BAND = 1,
 	WL_5G_2_BAND = 2,
 	WL_2G_BAND = 3,
-#elif defined(RTCONFIG_QCA) || defined(RTCONFIG_MTK)
+#elif defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 	WL_2G_BAND = 0,
 	WL_5G_BAND = 1,
 	WL_5G_2_BAND = 2,
+#if defined(RTCONFIG_WIFI6E) || (defined(RTCONFIG_WIFI7) && !defined(RTCONFIG_WIFI7_NO_6G))
+	WL_6G_BAND = 2,
+#else
 	WL_6G_BAND = 3,
+#endif
 #else
 	WL_2G_BAND = 0,
 	WL_5G_BAND = 1,
 	WL_5G_2_BAND = 2,
-#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
+#if defined(RTCONFIG_WIFI6E) || (defined(RTCONFIG_WIFI7) && !defined(RTCONFIG_WIFI7_NO_6G))
 #if defined(RTCONFIG_BCMWL6)
 	WL_6G_BAND = 2,
 #else
@@ -1632,12 +1726,14 @@ enum wl_band_id {
 	WL_NR_BANDS				/* Maximum number of Wireless bands of all models. */
 };
 
-#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
+#if defined(RTCONFIG_WIFI7_NO_6G)
+static inline int is_6g(int unit) { return 0; }
+#elif defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
 static inline int is_6g(int unit)
 {
 	char prefix[] = "wlXXXXXXXXXXXX_";
 
-#if !defined(BT12)
+#if !defined(BT12) && !defined(RTCONFIG_WIFI7_NO_6G)
 	if (unit == WL_6G_BAND)
 		return 1;
 #endif
@@ -1658,10 +1754,12 @@ enum wl_bandwidth_id {
 	WL_BW_80 = 3,
 	WL_BW_80_80 = 4,
 	WL_BW_160 = 5,
-	WL_BW_2160 = 6,		/* 60G: 2.16GHz */
-	WL_BW_4320 = 7,		/* 60G: 4.32GHz */
-	WL_BW_6480 = 8,		/* 60G: 6.48GHz */
-	WL_BW_8640 = 9,		/* 60G: 8.64GHz */
+	WL_BW_320 = 6,
+
+	WL_BW_2160 = 10,	/* 60G: 2.16GHz */
+	WL_BW_4320 = 11,	/* 60G: 4.32GHz */
+	WL_BW_6480 = 12,	/* 60G: 6.48GHz */
+	WL_BW_8640 = 13,	/* 60G: 8.64GHz */
 
 	WL_NR_BW
 };
@@ -1673,6 +1771,7 @@ enum wl_bandwidth_id {
 	WL_BW_80 = 3,
 	WL_BW_80_80 = 4,
 	WL_BW_160 = 5,
+	WL_BW_320 = 6,
 
 	WL_NR_BW
 };
@@ -1749,7 +1848,7 @@ static inline int get_pagecache_ratio(void) { return 90; }
  */
 static inline int __absent_band(enum wl_band_id band)
 {
-	if (band < WL_2G_BAND || band >= WL_NR_BANDS)
+	if (band < 0 || band >= WL_NR_BANDS)
 		return 1;
 #if defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA)
 	if (band >= MAX_NR_WL_IF)
@@ -1863,15 +1962,26 @@ static inline int __is_rp_wlc_band(int __attribute__((unused)) sw_mode, int __at
 static inline int is_rp_wlc_band(int __attribute__((unused)) band) { return 0; }
 #endif	/* RTCONFIG_WIRELESSREPEATER */
 
-#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) && !defined(RTCONFIG_SOC_IPQ60XX)
+#if defined(RTCONFIG_WIFI_IPQ53XX_QCN6274)
 static inline char *sta_default_mode(int band)
 {
-	if (band == WL_5G_BAND || band == WL_5G_2_BAND)
-		return "11AHE160";
-	else
-		return "AUTO";
+	if (band == WL_5G_BAND || band == WL_5G_2_BAND) {
+#if defined(RTCONFIG_BW160M)
+		return "11AEHT160";
+#else
+		return "11AEHT80";
+#endif
+	} else
+	{	
+#if defined(RTCONFIG_MLO)		
+		if(band == WL_2G_BAND && nvram_get_int("qca_mlo_sta"))
+			return "11GEHT40";
+		else	
+#endif			
+			return "AUTO";
+	}	
 }
-#elif defined(RTCONFIG_QCA_AXCHIP)
+#elif defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
 static inline char *sta_default_mode(int band)
 {
 	if (band == WL_5G_BAND || band == WL_5G_2_BAND) {
@@ -2410,6 +2520,8 @@ extern int get_switch_model(void);
 #define PHY_PORT_CAP_MOBILE					(1U << 8)
 #define PHY_PORT_CAP_WANLAN					(1U << 9)
 #define PHY_PORT_CAP_MOCA					(1U << 10)
+#define PHY_PORT_CAP_POE					(1U << 11)
+#define PHY_PORT_CAP_WANAUTO				(1U << 12)
 
 // Software capability
 #define PHY_PORT_CAP_IPTV_BRIDGE			(1U << 26)
@@ -2451,6 +2563,18 @@ struct _usb_device_info {
 };
 #endif
 
+typedef struct _POE_INFO
+{
+	int8 poe_seq_no;
+	unsigned char poe_enable;	/* disable, enable */
+	unsigned char poe_link;	/* has poe client plug in*/
+	unsigned int mA;
+	unsigned int V;
+	unsigned int sys_power_remain;
+	unsigned int sys_power_limit;
+	unsigned int port_power_limit;
+}POE_INFO;
+
 typedef struct _phy_info {
 	int phy_port_id;     // port id for driver
 	char label_name[8];  // could be W0, L1, ..., L8
@@ -2471,6 +2595,7 @@ typedef struct _phy_info {
 #ifdef RTCONFIG_MOCA
 	MOCA_NODE_INFO moca_devices[MAX_MOCA_DEVICES];
 #endif
+	POE_INFO poe_info;
 } phy_info;
 
 #define PHY_INFO_GET_STATUS 1 << 0
@@ -2483,6 +2608,19 @@ typedef struct _phy_info_list {
 	int status_and_speed_only;
 } phy_info_list;
 /* phy port related end.*/
+
+struct CHANNEL_MAPPING_TABLE {
+	int nband;
+	int channel;
+	int bandtype;  /*1:LOW 2:HIGH*/
+};
+
+static struct CHANNEL_MAPPING_TABLE channel_mapping_list[] __attribute__ ((unused)) = {
+	{ 2,	13,		-1 },
+	{ 1,	100,	-1 },
+	{ 4,	129,	-1 },
+	{ -1, -1, -1 }
+};
 
 #if defined(RTCONFIG_ALPINE) || defined(RTCONFIG_LANTIQ)
 extern uint32_t get_phy_status(int wan_unit);
@@ -2532,7 +2670,7 @@ extern char *get_5g_hwaddr(void);
 extern char *get_lan_hwaddr(void);
 extern char *get_wan_hwaddr(void);
 extern char *get_label_mac(void);
-#if defined(RTCONFIG_RALINK) && defined(RTCONFIG_MULTILAN_CFG)
+#if defined(RTCONFIG_MULTILAN_CFG)
 extern void __apg_switch_vlan_set(int vid, unsigned int default_portmask, unsigned int trunk_portmask, unsigned int access_portmask) __attribute__((weak));
 extern void __apg_switch_vlan_unset(int vid, unsigned int portmask) __attribute__((weak));
 extern void __apg_switch_isolation(int enable, unsigned int portmask) __attribute__((weak));
@@ -2571,6 +2709,10 @@ extern int get_sta_ifname_unit(const char *ifname);
 extern int is_vap_ifname(const char *ifname);
 extern int is_sta_ifname(const char *ifname);
 extern int is_vphy_ifname(const char *ifname);
+#if defined(RTCONFIG_WIFI7)
+extern int is_iot_ifname(const char *ifname);
+extern int iot_exists(void);
+#endif
 extern const char *get_5ghigh_ifname(int band);
 #ifdef RTCONFIG_POWER_SAVE
 extern void set_cpufreq_attr(char *attr, char *val);
@@ -2600,8 +2742,20 @@ extern void set_wpa_cli_cmd(int band, const char *cmd, int chk_reply);
 extern void execute_bt_bscp();
 #endif
 extern uint32_t pwm_export(uint8_t channel, uint32_t period, uint32_t duty_cycle);
+#ifdef RTCONFIG_MLO
+extern int init_mld_macaddr(void);
+extern int get_mldphy(char* phyname, int band);
+extern int create_mld_vap(void);
+extern int destroy_mld_vap(void);
+extern int mld_iface(int unit,char *iface);
+extern char *get_ap_hwaddr(int unit, int sub);
+extern char *get_apg_br_by_vid(int vid);
+extern int chk_mlo_sdn(int sdn_idx);
+extern int chk_mlo_enable_by_sdn_wif(char* wif);
+extern int rep_ssid_match(void);
+#endif
 #endif // end of RTCONFIG_QCA
-#if defined(RTCONFIG_RALINK) && defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_RALINK) && (defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X))
 extern uint32_t is_pwm_exported(uint8_t channel);
 extern uint32_t pwm_export(uint8_t channel, uint32_t period, uint32_t duty_cycle);
 #endif // end of RTCONFIG_RALINK
@@ -2633,9 +2787,15 @@ extern int aimesh_re_mode(void);
 extern void add_beacon_vsie(char *hexdata);
 extern void add_beacon_vsie_by_unit(int unit, int subunit, char *hexdata);
 extern void add_beacon_vsie_guest(char *hexdata);
+#ifdef RTCONFIG_MLO
+extern void add_beacon_vsie_dwb(char *hexdata);
+#endif
 extern void del_beacon_vsie(char *hexdata);
 extern void del_beacon_vsie_by_unit(int unit, int subunit, char *hexdata);
 extern void del_beacon_vsie_guest(char *hexdata);
+#ifdef RTCONFIG_MLO
+extern void del_beacon_vsie_dwb(char *hexdata);
+#endif
 #ifdef RTCONFIG_RALINK
 extern void add_probe_req_vsie(char *hexdata);
 extern void del_probe_req_vsie(char *hexdata);
@@ -2724,7 +2884,20 @@ extern const char *phymode_str(int phymode);
 extern int get_bw_by_mode_str(char *mode);
 extern int get_bw_by_phymode(int unit, int phymode);
 #endif
+extern int get_max_bw_by_chlist(int band, uint64_t avbl_ch_mask);
+extern int acs_and_change_bw_if_need(int band, const char *vap, uint64_t avbl_ch_mask);
 extern int wl_get_bw_cap(int unit, int *bwcap);
+#ifdef RTCONFIG_MLO
+extern int gen_mlo_band();
+extern int get_mlo_fh_band();
+#if !defined(RTCONFIG_MLO_BH)
+extern void init_mld_enable();
+#endif
+extern void check_mlo_config();
+extern int is_mlo_dwb_mssid(char *ifname);
+extern int is_compatible_network(char *ifname);
+extern int isMloConnectionMode();
+#endif
 
 #if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
 extern int get_psta_status(int unit);
@@ -2784,21 +2957,28 @@ extern void create_amas_sys_folder();
 				(ea).octet[5]
 #endif
 
+extern int dwb_band_exist();
 #if defined(RTCONFIG_AMAS_CHANNEL_PLAN)
 extern void set_channel_by_manual();
 #endif
 extern void sync_control_channel(int unit, int channel, int bw, int nctrlsb);
+extern void get_control_channel(int unit, int *channel, int *bw, int *nctrlsb);
+
+#if defined(RTCONFIG_MLO)
+extern char *get_mld_mac_by_sta(char *ap_ifname, char *sta_mac, char *mld_mac, int mld_mac_len);
+#endif	/* RTCONFIG_MLO */
 
 #else	/* !RTCONFIG_AMAS */
 static inline int rtconfig_amas(void) { return 0; }
 #endif	/* RTCONFIG_AMAS */
+extern int wl_get_bw(int unit);
 
 /* sysdeps/ralink/ *.c */
 #if defined(RTCONFIG_RALINK)
 #if defined(RTCONFIG_RALINK_MT7622) || defined(RTCONFIG_WLMODULE_MT7622_AP) \
  || defined(RTCONFIG_RALINK_MT7629) || defined(RTCONFIG_WLMODULE_MT7629_AP) \
  || defined (RTCONFIG_WLMODULE_MT7915D_AP) \
- || defined(RTCONFIG_MT798X) || defined(RTCONFIG_RALINK_MT7621)
+ || defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X) || defined(RTCONFIG_RALINK_MT7621)
 #define MTK_HNAT_MOD "mtkhnat"
 static inline void __ctrl_hwnat(int ctrl)
 {
@@ -2816,6 +2996,7 @@ static inline void disable_hwnat(void) { }
 #endif
 
 static inline int is_hwnat_loaded(void) { return module_loaded(MTK_HNAT_MOD); }
+extern void ATE_port_status(int verbose, phy_info_list *list);
 
 #if defined(RTCONFIG_RALINK_MT7621) && (defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP))
 #if !defined(RTCONFIG_RALINK_MT7622)
@@ -2888,6 +3069,9 @@ extern int set_acl_entry(const char *ifname, char *addr);
 extern int shared_set_channel(const char* ifname, int channel);
 extern int set_bw_nctrlsb(const char* ifname, int bw, int nctrlsb);
 extern int get_channel_info(const char *ifname, int *channel, int *bw, int *nctrlsb);
+extern char *get_wififname(int band);
+extern char *get_staifname(int band);
+extern int get_sta_ifname_unit(const char *ifname);
 extern int get_regular_class(const char* ifname);
 extern int check_trx(char *buf);
 #elif defined(RTCONFIG_QCA)
@@ -3320,6 +3504,11 @@ extern int mdio_phy_speed(unsigned int phy);
 extern int ipq8074_port_speed(unsigned int port);
 extern int qca8337_port_speed(unsigned int port);
 extern int aqr_phy_speed(unsigned int phy);
+#elif defined(RTCONFIG_SWITCH_QCA8386)
+static inline int is_aqr_phy_exist(void) { return 0; }
+extern int parse_ssdk_sh(const char *cmd, const char *fmt, int cnt, ...);
+extern int read_phy_reg(unsigned int phy, unsigned int reg);
+extern int write_phy_reg(unsigned int phy, unsigned int reg, unsigned int value);
 #elif defined(RTCONFIG_SWITCH_QCA8075_PHY_AQR111)
 extern int is_aqr_phy_exist(void);
 extern int aqr_phy_addr(void);
@@ -3363,12 +3552,56 @@ extern int free_caches(const char *clean_mode, const int clean_time, const unsig
 extern int update_6rd_info(void);
 extern int update_6rd_info_by_unit(int unit);
 extern int is_private_subnet(const char *ip);
+extern int is_private_subnet6(const char *address);
 extern const char *get_wanface(void);
 extern const char *get_wanip(void);
 extern int is_intf_up(const char* ifname);
 extern uint32_t crc_calc(uint32_t crc, const char *buf, int len);
 extern int illegal_ipv4_address(char *addr);
 extern int illegal_ipv4_netmask(char *netmask);
+
+#define HTTPS_CA_JFFS  "/jffs/cert.tgz"
+
+/* Same compile option for lan_ipaddr in shared/defaults.c */
+#if defined(RTN300) || defined(RTCONFIG_ALL_DEF_LAN50) || defined(RTN300)
+#define DEFAULT_LAN_IP_PARM	"-L", "192.168.50.1"
+#elif defined(RTCONFIG_WIFI_SON) || defined(RTCONFIG_LYRA_HIDE)
+#define DEFAULT_LAN_IP_PARM	"-L", "192.168.72.1"
+#else
+#define DEFAULT_LAN_IP_PARM	"-L", "192.168.1.1"
+#endif
+
+#define GENCERT_SH(args...)		({ char *argv[] = { "gencert.sh", DEFAULT_LAN_IP_PARM, ## args, NULL }; _eval(argv, NULL, 0, NULL); })
+#define GENCERT_SH_AND_RELOAD(args...)	({ char *argv[] = { "gencert.sh", DEFAULT_LAN_IP_PARM, "-l", ## args, NULL }; _eval(argv, NULL, 0, NULL); })
+#define GENCERT_SH_AND_BACKUP(args...)	({ char *argv[] = { "gencert.sh", DEFAULT_LAN_IP_PARM, "-b", ## args, NULL }; _eval(argv, NULL, 0, NULL); })
+#define GENCERT_SH_AND_BACKUP_RELOAD(args...)	({ char *argv[] = { "gencert.sh", DEFAULT_LAN_IP_PARM, "-b", "-l", ## args, NULL }; _eval(argv, NULL, 0, NULL); })
+#define GENCERT_SH_AND_BACKUP_RELOAD_AFTER_LOGOUT(args...)	({ char *argv[] = { "gencert.sh", DEFAULT_LAN_IP_PARM, "-b", "-l", "2", ## args, NULL }; _eval(argv, NULL, 0, NULL); })
+#if defined(RTCONFIG_HTTPS)
+extern void reset_last_cert_nvars(void);
+extern int restore_cert(void);
+extern void save_cert(void);
+extern void erase_cert(void);
+extern void remove_all_uploaded_cert_from_jffs(void);
+extern int illegal_cert_and_key(const char *cert_fn, const char *key_fn);
+extern void update_srv_cert_if_ddns_changed(void);
+extern void update_srv_cert_if_lan_ip_changed(void);
+extern void update_srv_cert_if_wan_ip_changed(int unit);
+#else
+static inline  void reset_last_cert_nvars(void) { }
+static inline int restore_cert(void) { return 0; }
+static inline void save_cert(void) { }
+static inline void erase_cert(void) { }
+static inline void remove_all_uploaded_cert_from_jffs(void) { }
+static inline int illegal_cert_and_key(char *cert_fn, char *key_fn) { return 0; }
+static inline void update_srv_cert_if_ddns_changed(void) { }
+static inline void update_srv_cert_if_lan_ip_changed(void) { }
+static inline void update_srv_cert_if_wan_ip_changed(int unit) { }
+#endif
+#if defined(RTCONFIG_HTTPS) && defined(RTCONFIG_IPV6)
+extern void update_srv_cert_if_wan_ipv6_changed(int unit);
+#else
+static inline void update_srv_cert_if_wan_ipv6_changed(int unit) { }
+#endif
 extern void convert_mac_string(char *mac);
 extern int test_and_get_free_uint_network(int t_class, uint32_t *exp_ip, uint32_t exp_cidr, uint32_t excl);
 extern int test_and_get_free_char_network(int t_class, char *ip_cidr_str, uint32_t excl);
@@ -3594,6 +3827,8 @@ extern int isValidEnableOption(const char* option, int range);
 extern int isValid_digit_string(const char *string);
 extern int is_valid_hostname(const char *name);
 extern int is_valid_domainname(const char *name);
+extern int is_valid_oauth_code(char *code);
+extern int is_valid_email_address(char *address);
 extern char *get_ddns_hostname(void);
 extern int get_ispctrl();
 extern unsigned short get_extend_cap();
@@ -3657,6 +3892,9 @@ typedef struct _phy_port {
 	int max_rate;        // max support link rate (ex. 10, 100, 1000, 2500, 10000)
 	char *ifname;        // the mapping interface name
 	uint32_t flag;       // flag for special marks.
+	int seq_no;          // sequence nubmer of port WAN, LAN, ...
+	char *ui_display;    // UI display striing of port.
+	int8 poe_seq_no;     // PoE sequence number
 } phy_port;
 typedef struct _phy_port_mapping {
 	int count;           // the amount of phy port
@@ -3727,6 +3965,22 @@ static inline void clear_all_sw_cap(phy_port_mapping *port_mapping)
 	}
 }
 
+#if defined(RTCONFIG_MULTISERVICE_WAN)
+static inline int is_mswan_enabled()
+{
+	int unit = 0;
+	char wan_prefix[16] = {0};
+
+	for (unit = WAN_UNIT_FIRST_MULTISRV_BASE; unit < WAN_UNIT_MULTISRV_MAX; unit++)
+	{
+		snprintf(wan_prefix, sizeof(wan_prefix), "wan%d_", unit);
+		if (nvram_pf_get_int(wan_prefix, "enable"))
+			return 1;
+	}
+	return 0;
+}
+#endif
+
 static inline void add_sw_wan_cap(phy_port_mapping *port_mapping, int wan, uint32_t cap)
 {
 	int i;
@@ -3754,6 +4008,20 @@ static inline void add_sw_wan_cap(phy_port_mapping *port_mapping, int wan, uint3
 				//_dprintf("%s 2WANS_DUALWAN_IF_WAN is wan. cap1=%u, cap2=%u\n", port_mapping->port[i].label_name, cap, port_mapping->port[i].cap);
 					break;
 				}
+#if defined(RTCONFIG_MULTISERVICE_WAN)
+				else if (is_mswan_enabled() && (port_mapping->port[i].cap & PHY_PORT_CAP_WAN)) {
+					port_mapping->port[i].cap |= cap;
+				//_dprintf("%s 3WANS_DUALWAN_IF_WAN is wan. cap1=%u, cap2=%u\n", port_mapping->port[i].label_name, cap, port_mapping->port[i].cap);
+					break;
+				}
+#endif
+#if !defined(RTCONFIG_DUALWAN)
+				else if ((port_mapping->port[i].cap & PHY_PORT_CAP_WAN)) {
+					port_mapping->port[i].cap |= cap;
+				//_dprintf("%s 1WANS_DUALWAN_IF_WAN is wan. cap1=%u, cap2=%u\n", port_mapping->port[i].label_name, cap, port_mapping->port[i].cap);
+					break;
+				}
+#endif
 			}
 		}
 		else if (wan == WANS_DUALWAN_IF_LAN && (port_mapping->port[i].cap & PHY_PORT_CAP_LAN) > 0) {
@@ -3792,6 +4060,22 @@ static inline void add_sw_wan_cap(phy_port_mapping *port_mapping, int wan, uint3
 	}
 }
 
+#ifdef RTCONFIG_MULTIWAN_PROFILE
+static inline void add_sw_mtwan_cap(phy_port_mapping *port_mapping, char *label_name, uint32_t cap)
+{
+	int i;
+	if (!label_name)
+		return;
+	for(i = 0; i < port_mapping->count; i++) {
+		if (!strcmp(port_mapping->port[i].label_name, label_name)) {
+			port_mapping->port[i].cap |= cap;
+			//_dprintf("%s WANS_DUALWAN_IF_SFPP is wan. cap1=%u, cap2=%u\n", port_mapping->port[i].label_name, cap, port_mapping->port[i].cap);
+			break;
+		}
+	}
+}
+#endif
+
 static inline void add_sw_iptv_cap(phy_port_mapping *port_mapping, char *ports, uint32_t cap)
 {
 	int i;
@@ -3817,10 +4101,27 @@ static inline void add_sw_iptv_cap(phy_port_mapping *port_mapping, char *ports, 
 static inline void add_default_primary_wan(phy_port_mapping *port_mapping)
 {
 	int i;
-	for(i = 0; i < port_mapping->count; i++) {
-		if (!strcmp(port_mapping->port[i].label_name, "W0")) {
-			port_mapping->port[i].cap |= PHY_PORT_CAP_DUALWAN_PRIMARY_WAN;
-			return;
+
+	// If RE mode, use amas_ifname to find the port as primary wan.
+	if (nvram_get_int("re_mode") == 1) {
+		char amas_ifname[16] = {0};
+		snprintf(amas_ifname, sizeof(amas_ifname), "%s", nvram_safe_get("amas_ifname"));
+		if (strlen(amas_ifname)) {
+			for(i = 0; i < port_mapping->count; i++) {
+				if (port_mapping->port[i].ifname && 
+					!strcmp(port_mapping->port[i].ifname, amas_ifname)) {
+					port_mapping->port[i].cap |= PHY_PORT_CAP_DUALWAN_PRIMARY_WAN;
+					return;
+				}
+			}
+		}
+	} else {
+		for(i = 0; i < port_mapping->count; i++) {
+			if (((port_mapping->port[i].cap & PHY_PORT_CAP_WAN) > 0) || 
+				(!strncmp(port_mapping->port[i].label_name, "W", 1))) {
+				port_mapping->port[i].cap |= PHY_PORT_CAP_DUALWAN_PRIMARY_WAN;
+				return;
+			}
 		}
 	}
 }
@@ -3831,31 +4132,46 @@ static inline void add_sw_cap(phy_port_mapping *port_mapping)
 
 	// Add software capability
 #if defined(RTCONFIG_DUALWAN)
-	if (!is_router_mode()) {
-		add_default_primary_wan(port_mapping);
-		return;
-	}
-	char *wans_dualwan = nvram_safe_get("wans_dualwan");
-	if (strlen(wans_dualwan)) {
-		int unit;
-		for(unit = WAN_UNIT_FIRST; unit < WAN_UNIT_MAX; ++unit) {
-			int wan = get_dualwan_by_unit(unit);
-			if (wan == WANS_DUALWAN_IF_WAN ||
-					wan == WANS_DUALWAN_IF_LAN ||
-					wan == WANS_DUALWAN_IF_USB ||
-					wan == WANS_DUALWAN_IF_WAN2 ||
-					wan == WANS_DUALWAN_IF_SFPP) {
-				if (unit == WAN_UNIT_FIRST) { // main wan
-					//_dprintf("unit=%d, wan=%d, eth_wantype=1, cap=%llu\n", unit, wan, PHY_PORT_CAP_DUALWAN_PRIMARY_WAN);
-					add_sw_wan_cap(port_mapping, wan, PHY_PORT_CAP_DUALWAN_PRIMARY_WAN);
-				} else if (unit == WAN_UNIT_SECOND) {  // second wan
-					//_dprintf("unit=%d, wan=%d, eth_wantype=1, cap=%llu\n", unit, wan, PHY_PORT_CAP_DUALWAN_SECONDARY_WAN);
-					add_sw_wan_cap(port_mapping, wan, PHY_PORT_CAP_DUALWAN_SECONDARY_WAN);
+#ifdef RTCONFIG_MULTIWAN_PROFILE
+	char mt_ioport[256] = {0};
+	//wans_mt_ioport=W0 L1 U1
+	// if label name exists in wans_mt_ioport, treat it as primary wan.
+	nvram_safe_get_r("wans_mt_ioport", mt_ioport, sizeof(mt_ioport));
+	if (strlen(mt_ioport) > 0) {
+		char word[16] = {0}, *next = NULL;
+		foreach(word, mt_ioport, next)
+		{
+			add_sw_mtwan_cap(port_mapping, word, PHY_PORT_CAP_DUALWAN_PRIMARY_WAN);
+		}
+	} else
+#endif // RTCONFIG_MULTIWAN_PROFILE
+	{
+		if (!is_router_mode()) {
+			add_default_primary_wan(port_mapping);
+			return;
+		}
+		char *wans_dualwan = nvram_safe_get("wans_dualwan");
+		if (strlen(wans_dualwan)) {
+			int unit;
+			for(unit = WAN_UNIT_FIRST; unit < WAN_UNIT_MAX; ++unit) {
+				int wan = get_dualwan_by_unit(unit);
+				if (wan == WANS_DUALWAN_IF_WAN ||
+						wan == WANS_DUALWAN_IF_LAN ||
+						wan == WANS_DUALWAN_IF_USB ||
+						wan == WANS_DUALWAN_IF_WAN2 ||
+						wan == WANS_DUALWAN_IF_SFPP) {
+					if (unit == WAN_UNIT_FIRST) { // main wan
+						//_dprintf("unit=%d, wan=%d, eth_wantype=1, cap=PRIMARY\n", unit, wan);
+						add_sw_wan_cap(port_mapping, wan, PHY_PORT_CAP_DUALWAN_PRIMARY_WAN);
+					} else if (unit == WAN_UNIT_SECOND) {  // second wan
+						//_dprintf("unit=%d, wan=%d, eth_wantype=1, cap=SECONDARY\n", unit, wan);
+						add_sw_wan_cap(port_mapping, wan, PHY_PORT_CAP_DUALWAN_SECONDARY_WAN);
+					}
 				}
 			}
 		}
 	}
-#else
+#else //#if defined(RTCONFIG_DUALWAN)
 	if (!strcmp(nvram_safe_get("wans_cap"), "wan"))
 		add_sw_wan_cap(port_mapping, WANS_DUALWAN_IF_WAN, PHY_PORT_CAP_DUALWAN_PRIMARY_WAN);
 #endif
@@ -3872,6 +4188,10 @@ static inline void swap_wanlan(phy_port_mapping *port_mapping)
 	char *tmp_label_name;
 	//int tmp_max_rate;
 	int i, j;
+
+#ifdef RTCONFIG_MULTIWAN_PROFILE
+	return;
+#endif
 
 	for(i = 0; i < port_mapping->count; i++) {
 		if (((port_mapping->port[i].cap & PHY_PORT_CAP_WAN) > 0) &&
@@ -4205,6 +4525,7 @@ static inline int config_usbbus_bled(const char *led_gpio, char *bus_list)
 
 /* model-specific helper function for bled */
 #if defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033) \
+ || (defined(RTCONFIG_SOC_IPQ53XX) && defined(RTCONFIG_SWITCH_QCA8386)) \
  || defined(RTCONFIG_SWITCH_IPQ50XX_QCA8337)
 /* Implement below functions for bled in model-specific code if and only if
  * it has complex network infrastructure and virtual port mask is used to
@@ -4213,7 +4534,7 @@ static inline int config_usbbus_bled(const char *led_gpio, char *bus_list)
 extern const char *vport_to_iface_name(unsigned int vport);
 extern unsigned int vportmask_to_rportmask(unsigned int vportmask);
 #else
-#if defined(RTCONFIG_SOC_IPQ60XX) || defined(RTCONFIG_SOC_IPQ50XX) || defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_SOC_IPQ60XX) || defined(RTCONFIG_SOC_IPQ50XX) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 extern const char *vport_to_iface_name(unsigned int vport);
 #else
 static inline const char *vport_to_iface_name(__attribute__ ((unused)) unsigned int vport) { return NULL; }
@@ -4352,11 +4673,13 @@ extern int check_bwdpi_nvram_setting();
 extern int check_wan_2P5G_10G_speed();
 extern int check_AQoS_only_enabled();
 extern int check_WRS_only_enabled();
+extern void tm_recycle_stuck_process();
 #endif
 extern void erase_symbol(char *old, char *sym);
 extern void StampToDate(unsigned long timestamp, char *date);
 extern int check_filesize_over(char *path, long int size);
 extern time_t get_last_month_timestamp();
+extern void TstampToNvram(char *name);
 
 #if defined(RTCONFIG_USB)
 static inline int is_usb3_port(char *usb_node)
@@ -4425,12 +4748,77 @@ extern int FindBrifByWlif(const char *wl_ifname, char *brif_name, int size);
 #endif
 
 #ifdef RTCONFIG_HTTPS
-#define HTTPD_CERT	"/etc/cert.pem"
-#define HTTPD_KEY	"/etc/key.pem"
+/* auto-generated root certificate and key. */
+#define HTTPD_ROOTCA_GEN_CERT	"/etc/cacert_gen.pem"
+#define HTTPD_ROOTCA_GEN_KEY	"/etc/cakey_gen.pem"
+
+/* This certificate and key is used to sign end-entity certificate and key.
+ * could be auto-generated root certificate and key, or uploaded root/intermediate
+ * certificate and key.
+ */
+#define HTTPD_ROOTCA_CERT	"/etc/cacert.pem"
+#define HTTPD_ROOTCA_KEY	"/etc/cakey.pem"
+
+/* auto-generated end-entity certificate and key. Signed by auto-generated
+ * root certificate and key.
+ */
+#define HTTPD_GEN_CERT		"/etc/cert_gen.pem"
+#define HTTPD_GEN_KEY		"/etc/key_gen.pem"
+
+/* Currently using end-entity certificate and key. It is used when
+ * router mode: all httpds if le_enable == 0, or le_enable == 2 and uploaded
+ *              certificate is root/intermediate ceritificate.
+ * another mode, including AP/RP/MB/RE: all httpds, le_enable value is ignored.
+ */
+#define HTTPD_CERT		"/etc/cert.pem"
+#define HTTPD_KEY		"/etc/key.pem"
+
+/* Overwrite HTTPD_CERT and HTTPD_KEY with end-entity certificate, which is
+ * signed by Let's encrypt, in ACME_CERTHOME on all httpds when le_enable =1.
+ * Modern browser reject the certificate, error code SSL_ERROR_BAD_CERT_DOMAIN,
+ * when it connects to LAN side by domain name and IP address or when it
+ * connects to WAN side by IP address. Because connection to WAN side https
+ * port is redirected to port of LAN side https, and real URL is defined in HTTP
+ * header, it's impossible to use different certificate based on destination in
+ * URL respectively.
+ * Created by prepare_cert_in_etc() at run-time by copying LE_FULLCHAIN and
+ * LE_KEY to LE_HTTPD_CERT and LE_HTTPD_KEY respectively.
+ */
+#define LE_HTTPD_CERT		HTTPD_CERT
+#define LE_HTTPD_KEY		HTTPD_KEY
+/* Use uploaded certificate on all httpds when le_enable = 2. If it's
+ * root/intermediate certificate, it is used to sign end-entity a certificate at
+ * run-time and saved in UPLOAD_GEN_KEY. If it's a end-entity certificate, use
+ * it directly by overwrite HTTPD_CERT, user is incharge of fill DNS/IP for all
+ * httpds to subjectAltName of the certificates, otherwise, the certificate is
+ * rejected by modern browser, error code SSL_ERROR_BAD_CERT_DOMAIN. It is reject
+ * if the end-entity certificate was signed by public key of itself. keyUsage of
+ * root certificate must has keyCertSign, otherwise, SEC_ERROR_INADEQUATE_KEY_USAGE.
+ * Created by prepare_cert_in_etc() at run-time by copying UPLOAD_GEN_CERT or
+ * UPLOAD_CERT to UL_HTTPD_CERT respectively.
+ */
+#define UL_HTTPD_CERT		HTTPD_CERT
+#define UL_HTTPD_KEY		HTTPD_KEY
+
+/* Used by tar via system()/eval() respectively, leading '/' shouldn't be added,
+ * otherwise, it can't be used to extract specific files from tar-ball. It's is
+ * used to backup cert. and key to /jffs, and will be restore to /etc, all possible
+ * cert. and key should be backup.
+ */
+#define HTTPD_CERTS_KEYS_STR	"etc/cacert.pem etc/cakey.pem etc/cert.pem etc/key.pem etc/cacert_gen.pem etc/cakey_gen.pem etc/cert_gen.pem etc/key_gen.pem"
+#define HTTPD_CERTS_KEYS_ARGS	"etc/cacert.pem", "etc/cakey.pem", "etc/cert.pem", "etc/key.pem", "etc/cacert_gen.pem", "etc/cakey_gen.pem", "etc/cert_gen.pem", "etc/key_gen.pem"
+
 #define LIGHTTPD_CERTKEY	"/etc/server.pem"
 #define UPLOAD_CERT_FOLDER	"/jffs/.cert"
-#define UPLOAD_CERT	"/jffs/.cert/cert.pem"
-#define UPLOAD_KEY	"/jffs/.cert/key.pem"
+/* Uploaded cert is root/intermediate. */
+#define UPLOAD_CACERT		"/jffs/.cert/cacert.pem"
+#define UPLOAD_CAKEY		"/jffs/.cert/cakey.pem"
+/* End-entity certificate that is signed by uploaded root/intermediate certificate. */
+#define UPLOAD_GEN_CERT		"/jffs/.cert/cert_gen.pem"
+#define UPLOAD_GEN_KEY		"/jffs/.cert/key_gen.pem"
+/* Uploaded end-entity cert or signed by uploaded root/intermediate certificate. */
+#define UPLOAD_CERT		"/jffs/.cert/cert.pem"
+#define UPLOAD_KEY		"/jffs/.cert/key.pem"
 #ifdef RTCONFIG_LETSENCRYPT
 #define ACME_CERTHOME	"/jffs/.le"
 #endif
@@ -4505,6 +4893,12 @@ extern void set_deauth_sta(int bssidx, int vifidx, char *mac_addr);
 #ifdef RTCONFIG_BHCOST_OPT
 extern int gen_uplinkport_describe(char *port_def, char *type, char *subtype, int index);
 #endif
+extern int get_type_by_channel(int nbandnum, int nbandn);
+extern int get_bandnum_by_nband(int num);
+extern void check_wlx_nband_type();
+extern int check_band_use_by_channel_set(int unit);
+extern int check_band_use_by_channel_plan(int unit, int band);
+extern void set_channel_by_manual();
 
 #ifdef RTCONFIG_ISP_CUSTOMIZE
 extern char *find_customize_setting_by_name(const char *name);
@@ -4575,6 +4969,7 @@ extern void deauth_guest_sta(char *, char *);
 #ifdef RTCONFIG_CFGSYNC
 #define MAX_RELIST_NUM	9
 #define	CFGSYNC_GROUPID_LEN	CKN_STR32
+#define	CFGSYNC_KEY_LEN	CKN_STR32
 #define CLIENT_STALIST_JSON_PATH	"/tmp/stalist.json"
 #define CFG_RELIST_FILE		"/tmp/cfg_relist"
 #define CFG_RELIST_X_FILE		"/tmp/cfg_relist_x"
@@ -4965,6 +5360,12 @@ enum {
 	CDIAG_BW_MAX	= 6
 };
 
+#define sys_upload(image) eval("nvram", "restore", image)
+#define sys_download(file) eval("nvram", "save", file)
+#define sys_reboot() notify_rc("reboot");
+void backup_rpt_setting();
+void restore_rpt_setting();
+
 #define SAFE_FREE(x)	if(x) {free(x); x=NULL;}
 #if defined(RTCONFIG_AMAS) && defined(RTCONFIG_AMAS_ADTBW)
 #define ACSD_SCORE_FILE	"/tmp/auto_chan_score.txt"
@@ -4988,6 +5389,8 @@ extern int is_tpvpn_configured(int provider, const char* region, const char* con
 #define IP_RULE_PREF_MAIN 											32766		//default ip rule
 #define IP_RULE_PREF_DEFAULT 									32767		//default ip rule
 
+#define IP_RULE_PREF_VPNS							90
+
 #ifdef RTCONFIG_MULTIWAN_IF
 #define IP_RULE_PREF_LOCAL										0			//defaule ip rule
 #define IP_RULE_PREF_TMP										5			//temporary ip rule
@@ -4996,7 +5399,8 @@ extern int is_tpvpn_configured(int provider, const char* region, const char* con
 #define IP_RULE_PREF_VPNC_OVER_MTWAN				1200	//used by vpn client over multi wan
 #define IP_RULE_PREF_MTWAN_MARK_BASE				5000	//used by multi wan mark
 #define IP_RULE_PREF_MTWAN_LB_BASE					14900	//used by multi wan lb route
-#define IP_RULE_PREF_MTWAN_ROUTE					15000	//used by multi wan
+#define IP_RULE_PREF_MTWAN_ROUTE					15000	//used by multi wan, ~16999
+#define IP_RULE_PREF_MTWAN_DNS_ROUTE				18000	//used by multi wan dns, ~19999
 #define IP_RULE_PREF_DUALWAN_ROUTE				20100	//used by dual wan
 #define IP_RULE_PREF_DUALWAN_LB						20150	//used by dual wan
 #define IP_RULE_PREF_DUALWAN_FROM_WAN	20200	//used by dual wan
@@ -5061,13 +5465,23 @@ enum{
 	ASUS_NV_PP_3,
 	ASUS_NV_PP_4,
 	ASUS_NV_PP_5,
+	ASUS_NV_PP_6,
+	ASUS_NV_PP_7,
+	ASUS_NV_PP_8,
+	ASUS_NV_PP_9,
+	ASUS_NV_PP_10,
+	ASUS_NV_PP_11,
 	ASUS_NV_PP_MAX
 };
 
 enum{
 	ASUS_PP_AUTOUPGRADE,
 	ASUS_PP_ASD,
-	ASUS_PP_AHS
+	ASUS_PP_AHS,
+	ASUS_PP_ACCOUNT_BINDING,
+	ASUS_PP_CONFIG_TRANSFER,
+	ASUS_PP_DDNS,
+	ASUS_PP_MAX,
 };
 
 struct ASUS_PP_table {
@@ -5083,6 +5497,9 @@ extern int get_ASUS_privacy_policy(void);
 extern int get_ASUS_privacy_policy_ver(const int id);
 
 extern int adjust_62_nv_list(char *name);
+extern char *get_ddns_macaddr(void);
+extern char *rfctime(const time_t *timep, char *ts_string, int len);
+extern void update_ntp_ts(time_t bf_time, int ntp_diff_ts);
 
 #if defined(RTCONFIG_SWRT_I2CLED)
 enum {
@@ -5137,3 +5554,4 @@ extern int cpu_plltype(void);
 #define unlikely(x) __builtin_expect((x), 0)
 #endif
 #endif	/* !__SHARED_H__ */
+

@@ -100,6 +100,10 @@
 #define SSH_EXT_INFO_C "ext-info-c"
 #define SSH_SERVER_SIG_ALGS "server-sig-algs"
 
+/* OpenSSH strict KEX feature */
+#define SSH_STRICT_KEX_S "kex-strict-s-v00@openssh.com"
+#define SSH_STRICT_KEX_C "kex-strict-c-v00@openssh.com"
+
 /* service types */
 #define SSH_SERVICE_USERAUTH "ssh-userauth"
 #define SSH_SERVICE_USERAUTH_LEN 12
@@ -126,3 +130,8 @@
 #define SSH2_AGENT_SIGN_RESPONSE		14
 
 #define SSH2_AGENT_FAILURE			30
+
+/* Flags defined by OpenSSH U2F key/signature format */
+#define SSH_SK_USER_PRESENCE_REQD       0x01
+#define SSH_SK_USER_VERIFICATION_REQD   0x04
+#define SSH_SK_RESIDENT_KEY             0x20

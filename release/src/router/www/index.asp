@@ -102,6 +102,30 @@
 	background-image: url("data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAF92lUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNi4wLWMwMDYgNzkuMTY0NjQ4LCAyMDIxLzAxLzEyLTE1OjUyOjI5ICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdEV2dD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlRXZlbnQjIiB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iIHhtbG5zOnBob3Rvc2hvcD0iaHR0cDovL25zLmFkb2JlLmNvbS9waG90b3Nob3AvMS4wLyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgMjIuMiAoTWFjaW50b3NoKSIgeG1wOkNyZWF0ZURhdGU9IjIwMjEtMDgtMDRUMTU6MTQ6NDArMDg6MDAiIHhtcDpNZXRhZGF0YURhdGU9IjIwMjEtMDgtMDRUMTU6MTQ6NDArMDg6MDAiIHhtcDpNb2RpZnlEYXRlPSIyMDIxLTA4LTA0VDE1OjE0OjQwKzA4OjAwIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOmYwOTZmYjFhLTY3ZDktNDkyZS1hNDk5LTdiZjUwMGU0NWNlMCIgeG1wTU06RG9jdW1lbnRJRD0iYWRvYmU6ZG9jaWQ6cGhvdG9zaG9wOmYzNDJlYWZiLTA3YmItMWI0NS05ZWI4LTY3ODExYjcxODg3MSIgeG1wTU06T3JpZ2luYWxEb2N1bWVudElEPSJ4bXAuZGlkOmEwODg4MWYwLTEwYWQtNGI4OC04MTFmLWIyZWQ3ZWVkZjliMCIgZGM6Zm9ybWF0PSJpbWFnZS9wbmciIHBob3Rvc2hvcDpDb2xvck1vZGU9IjMiIHBob3Rvc2hvcDpJQ0NQcm9maWxlPSJzUkdCIElFQzYxOTY2LTIuMSI+IDx4bXBNTTpIaXN0b3J5PiA8cmRmOlNlcT4gPHJkZjpsaSBzdEV2dDphY3Rpb249ImNyZWF0ZWQiIHN0RXZ0Omluc3RhbmNlSUQ9InhtcC5paWQ6YTA4ODgxZjAtMTBhZC00Yjg4LTgxMWYtYjJlZDdlZWRmOWIwIiBzdEV2dDp3aGVuPSIyMDIxLTA4LTA0VDE1OjE0OjQwKzA4OjAwIiBzdEV2dDpzb2Z0d2FyZUFnZW50PSJBZG9iZSBQaG90b3Nob3AgMjIuMiAoTWFjaW50b3NoKSIvPiA8cmRmOmxpIHN0RXZ0OmFjdGlvbj0ic2F2ZWQiIHN0RXZ0Omluc3RhbmNlSUQ9InhtcC5paWQ6ZjA5NmZiMWEtNjdkOS00OTJlLWE0OTktN2JmNTAwZTQ1Y2UwIiBzdEV2dDp3aGVuPSIyMDIxLTA4LTA0VDE1OjE0OjQwKzA4OjAwIiBzdEV2dDpzb2Z0d2FyZUFnZW50PSJBZG9iZSBQaG90b3Nob3AgMjIuMiAoTWFjaW50b3NoKSIgc3RFdnQ6Y2hhbmdlZD0iLyIvPiA8L3JkZjpTZXE+IDwveG1wTU06SGlzdG9yeT4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz5gqlrZAAABEklEQVQ4jYWRsU4CQRRF7yCJ2hAKQ2Vpb0UDVnRE/4ZCWwsTwgf4CTRbQkGDf7MJLYSwwWKPBYNel2W41e688+7ceS/ojIAbSfeSSkl5CGF/jq02DoAF8M2f9sAM6Kcam8AnlzUBGnUG3rwCRkAPeALegNzq47rYrh0wqDAtYGlM14sLu3mXMGlHBiD7nbYNbBTTpEzeY217PHiwWD17Uq0JMDS+09Bhz0c1JCmE8CXpRVIh6VbS3Ex8A6WAaw57BnitGe6/JMBH/F87OIuHOdBKmBTAJn5PHerbu5ZAu8akMKYEHlWBJgas4rSHwHOMvbF6pqqAK2BMWiWQAc0TAzPqRmhrjWtgehL7koAOcJdifgCrvyzQ8BT7EAAAAABJRU5ErkJggg==");
 }
 
+i.icon-clone {
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+	-webkit-mask-size: 100%;
+	mask-size: 100%;
+	-webkit-mask-image: url(/images/clone.svg);
+	mask-image: url(/images/clone.svg);
+	height: 20px;
+	width: 20px;
+	display: inline-block;
+}
+
+.icon-group-center {
+	display: inline-flex;
+	align-items: center;
+}
+
+.icon-clone{
+    background: #c0c0c0!important;
+}
+.icon-clone:hover{
+    background: #FFFFFF!important;
+}
+
 .tooltip {
   position: relative;
   display: inline-block;
@@ -134,18 +158,18 @@
 }
 
 </style>
+<script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/md5.js"></script>
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/general.js"></script>
 <script type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" src="/help.js"></script>
 <script type="text/javascript" src="/validator.js"></script>
-<script language="JavaScript" type="text/javascript" src="/js/jquery.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/httpApi.js"></script>
 <script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script language="JavaScript" type="text/javascript" src="/form.js"></script>
-<script language="JavaScript" type="text/javascript" src="/js/asus_eula.js"></script>
+<script type="text/javascript" src="/js/asus_clientlist.js"></script>
 <script>
 if(usb_support) addNewScript("/disk_functions.js");
 
@@ -215,7 +239,8 @@ if(gobi_support) {
 	var dualwan_second_if = wans_dualwan_array[1];
 }
 
-var wans_flag = (wans_dualwan_orig.search("none") != -1 || !parent.dualWAN_support) ? 0 : 1;
+var wans_flag = (wans_dualwan_orig.search("none") != -1 || !isSupport("dualwan")) ? 0 : 1;
+var wan_ipv6_network_json =('<% wan_ipv6_network(); %>' != '{}')? JSON.parse('<% wan_ipv6_network(); %>'):{};
 
 // USB function
 var currentUsbPort = new Number();
@@ -251,8 +276,17 @@ function initial(){
 	if(isIE6)
 		alert("<#ALERT_TO_CHANGE_BROWSER#>");
 
-	if(dualWAN_support && sw_mode == 1){
+	if(dualwan_enabled && sw_mode == 1){
 		check_dualwan(wans_flag);
+
+		if(wans_dualwan_array[0] == 'usb'){
+			if(document.getElementById("iconInternet_primary")) 
+				document.getElementById("iconInternet_primary").style.background = "url('images/New_ui/networkmap/Mobile-Broadband.png') no-repeat 0% 0%";
+		}
+		else if(wans_dualwan_array[1] == 'usb'){
+			if(document.getElementById("iconInternet_secondary")) 
+				document.getElementById("iconInternet_secondary").style.background = "url('images/New_ui/networkmap/Mobile-Broadband.png') no-repeat 0% 0%";
+		}
 	}
 
 	if(concurrent_pap){
@@ -413,7 +447,18 @@ function initial(){
 		document.getElementById('NM_connect_title').innerHTML = `<#parent_AP_status#> :`;
 	}
 	else{
-		document.getElementById("index_status").innerHTML = '<span style="word-break:break-all;">' + wanlink_ipaddr + '</span>'
+		document.getElementById("index_status").innerHTML = '<span style="word-break:break-all;">' + wanlink_ipaddr + '</span>';
+		if(is_CH_sku && wan_ipv6_network_json.status != "0" && wan_ipv6_network_json.IPv6_Address != ""){
+			document.getElementById("wanIP_ipv6_div").style.display = "";
+			document.getElementById("index_ipv6_status").style.display = "";
+			document.getElementById("index_ipv6_status").innerHTML += '<span style="word-break:break-all;">' + wan_ipv6_network_json.IPv6_Address + '</span>';
+		}
+		if(is_CH_sku && wan_ipv6_network_json.status != "0" && wan_ipv6_network_json.Link_Local_Address != ""){
+			document.getElementById("wanIP_ipv6_div").style.display = "";
+			document.getElementById("index_ipv6_ll_status").style.display = "";
+			document.getElementById("index_ipv6_ll_status").innerHTML += '<span style="word-break:break-all;">' + wan_ipv6_network_json.Link_Local_Address + '</span>';
+		}
+
 		setTimeout("show_ddns_status();", 1);
 		
 		if(wanlink_ipaddr == '0.0.0.0' || wanlink_ipaddr == '')
@@ -488,7 +533,6 @@ function initial(){
 	}
 
 	orig_NM_container_height = parseInt($(".NM_radius_bottom_container").css("height"));
-	setTimeout(check_eula, 100);
 
 	if(!downsize_4m_support){
 		custom_icon_list_api.paramObj.container = $(".custom_icon_list_bg");
@@ -510,29 +554,14 @@ function initial(){
 	if(MULTIFILTER_BLOCK_ALL == "1")
 		$(".block_all_icon").css("display", "flex");
 
-	if(cookie.get("show_phone_as_modem_hints") == "1"){
+	if(window.localStorage.getItem("show_phone_as_modem_hints") == "1"){
 		$("#phone_as_modem_instructions").load("/phone_as_modem_instructions.html", function(){
 			$("#phone_as_modem_div").css("display", "flex");
 		});
 	}
 }
 
-function check_eula(){
-	ASUS_EULA.config(check_eula, check_eula);
 
-	var asus_status = httpApi.nvramGet(["ASUS_EULA", "ASUS_EULA_time", "ddns_enable_x", "ddns_server_x"], true);
-	if( (asus_status.ASUS_EULA == "1" && asus_status.ASUS_EULA_time == "") ||
-		(asus_status.ASUS_EULA != "1" && asus_status.ddns_enable_x == "1" && asus_status.ddns_server_x == "WWW.ASUS.COM") ){
-		ASUS_EULA.check("asus");
-		return false;
-	}
-
-	var tm_status = httpApi.nvramGet(["TM_EULA", "TM_EULA_time"], true);
-	if(tm_status.TM_EULA == "1" &&  tm_status.TM_EULA_time == ""){
-		ASUS_EULA.check("tm");
-		return false;
-	}
-}
 
 function show_smart_connect_status(){
 	document.getElementById("SmartConnectName").style.display = "";
@@ -651,7 +680,7 @@ function show_middle_status(auth_mode, wl_wep_x){
 				security_mode = "Open System";
 				break;
 		case "openowe":
-				security_mode = "Enhanced Open Transition";
+				security_mode = "<#WLANConfig11b_AuthenticationMethod_EOT#>";
 				break;
 		case "owe":
 				security_mode = "Enhanced Open";
@@ -1496,48 +1525,77 @@ function show_custom_image() {
 function select_custom_icon($obj){
 	var type = $obj.find('i').attr("class");
 	var icon_url = $obj.find('i').css("mask").replace('url(','').replace(')','').replace(/\"/gi, "");
+    icon_url = icon_url.replace(/\s*50%\s+50%\s*\/\s*contain\s+no-repeat\s*/, '');
     $("#client_image").empty();
     $("#client_image").append($('<i>').addClass(type).attr('style','--svg:url(' + icon_url + ')'));
 	$("#client_image").removeClass().addClass("clientIcon_no_hover");
 	userIconBase64 = icon_url;
 	userUploadFlag = false;
 }
-function select_image(clientObj, useDefaultType=false){
-    let type = (useDefaultType) ? "type" + clientObj.defaultType : "type" + clientObj.type;
-	$("#client_image").empty();
-    $("#client_image").append($('<i>').addClass(type));
-    $("#client_image").removeClass().addClass("clientIcon_no_hover");
-	if(vendorIcon != "" && type == "type0" && !downsize_4m_support) {
-		var vendorIconClassName = getVendorIconClassName(vendorIcon.toLowerCase());
-		if(vendorIconClassName != "") {
-            $("#client_image").empty();
-            $("#client_image").append($('<i>').addClass("vendor-icon").addClass(vendorIconClassName));
-            $("#client_image").removeClass().addClass("vendorIcon_no_hover");
-		}
-	}
+function select_image(clientObj, useDefaultType = false){
 
-	var userImageFlag = false;
-	if(!firstTimeOpenBlock) {
-		if(usericon_support) {
-			userIconBase64 = getUploadIcon(clientObj.mac.replace(/\:/g, ""));
-			userIconBase64_ori = userIconBase64;
-			if(userIconBase64 != "NoIcon") {
+    function useTypeIcon(clientObj){
+        let type = (useDefaultType) ? "type" + clientObj.defaultType : "type" + clientObj.type;
+
+        $("#client_image").empty();
+        $("#client_image").append($('<i>').addClass(type));
+        $("#client_image").removeClass().addClass("clientIcon_no_hover");
+        if(vendorIcon != "" && type == "type0" && !downsize_4m_support) {
+            var vendorIconClassName = getVendorIconClassName(vendorIcon.toLowerCase());
+            if(vendorIconClassName != "") {
                 $("#client_image").empty();
-                if(clientObj.isUserUplaodImg){
-                    $('#client_image').append($('<img>').addClass('clientIcon_no_hover').attr('src',userIconBase64));
-                }else{
-                    $('#client_image').append($('<i>').addClass(type).attr('style','--svg:url('+userIconBase64+');'));
-                }
-				userImageFlag = true;
-			}
-		}
-	}
+                $("#client_image").append($('<i>').addClass("vendor-icon").addClass(vendorIconClassName));
+                $("#client_image").removeClass().addClass("vendorIcon_no_hover");
+            }
+        }
 
-	if(!userImageFlag) {
-		userIconBase64 = "NoIcon";
-		if(type == "type36")
-			$("#client_image").find("i").addClass("flash");
-	}
+        let userImageFlag = false;
+        if(!firstTimeOpenBlock) {
+            if(usericon_support) {
+                userIconBase64 = getUploadIcon(clientObj.mac.replace(/\:/g, ""));
+                userIconBase64_ori = userIconBase64;
+                if(userIconBase64 != "NoIcon") {
+                    $("#client_image").empty();
+                    if(clientObj.isUserUplaodImg){
+                        $('#client_image').append($('<img>').addClass('clientIcon_no_hover').attr('src',userIconBase64));
+                    }else{
+                        $('#client_image').append($('<i>').addClass(type).attr('style','--svg:url('+userIconBase64+');'));
+                    }
+                    userImageFlag = true;
+                }
+            }
+        }
+
+        if(!userImageFlag) {
+            userIconBase64 = "NoIcon";
+            if(type == "type36")
+                $("#client_image").find("i").addClass("flash");
+        }
+    }
+
+    if(useDefaultType && clientObj.isASUS && clientObj.name!=="ASUS"){
+        fetch(`https://nw-dlcdnet.asus.com/plugin/productIcons/${clientObj.name}.png`)
+            .then(response => {
+                if (response.status === 200) {
+                    response.blob().then(blob => {
+                        const reader = new FileReader();
+                        reader.readAsDataURL(blob);
+                        reader.onloadend = function () {
+                            $("#client_image").empty();
+                            $('#client_image').append($('<img>').addClass('clientIcon_no_hover').attr('src',reader.result));
+                            userIconBase64 = reader.result;
+                            userUploadFlag = true;
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                useTypeIcon(clientObj);
+            });
+    }else{
+        useTypeIcon(clientObj);
+    }
 }
 
 function hideEditBlock(){
@@ -1643,7 +1701,9 @@ function popupEditBlock(clientObj){
 				if(navigator.userAgent.toUpperCase().match(/CHROME\/([\d.]+)/)){
 					bandClass = "band_txt_chrome";
 				}
-				clientIconHtml += '<div class="band_block"><span class="' + bandClass + '">' + isWL_map[clientObj.isWL]["text"] + '</span></div>';
+				let band_text = isWL_map[clientObj.isWL]["text"];
+				if(isSupport("mlo") && clientObj.mlo == "1") band_text = `MLO`;
+				clientIconHtml += `<div class="band_block"><span class="${bandClass}">${band_text}</span></div>`;
 			}
 			document.getElementById('client_interface').innerHTML = clientIconHtml;
 			document.getElementById('client_interface').title = connectModeTip;
@@ -1729,13 +1789,15 @@ function popupEditBlock(clientObj){
 		}
 	
 		var setRadioIPBinding = function (state, mode, mac) {
+			const manually_dhcp_maximum  = (isSupport("MaxRule_extend_limit") == 0) ? 64: isSupport("MaxRule_extend_limit");
+			const parentctrl_maximum = (isSupport("MaxRule_parentctrl") == 0) ? 16 : isSupport("MaxRule_parentctrl");
 			switch (mode) {
 				case "ipBinding" :
 					$('#radio_IPBinding_enable').iphoneSwitch(state,
 						function(){
 							if(dhcp_staticlist_orig.search(mac) == -1) {
-								if(dhcp_staticlist_num == 64) {
-									if(confirm(stringSafeGet("<#Clientlist_IPMAC_Binding_max#>"))) {
+								if(dhcp_staticlist_num >= manually_dhcp_maximum) {
+									if(confirm(stringSafeGet("<#Clientlist_IPMAC_Binding_max#>".replace("64", manually_dhcp_maximum)))) {
 										location.href = "Advanced_DHCP_Content.asp" ;
 									}
 									else {
@@ -1758,8 +1820,8 @@ function popupEditBlock(clientObj){
 					$('#radio_BlockInternet_enable').iphoneSwitch(state,
 						function(){
 							if(MULTIFILTER_MAC_orig.search(mac) == -1) {
-								if(MULTIFILTER_num == 16) {
-									if(confirm(stringSafeGet("<#Clientlist_block_internet_max#>"))) {
+								if(MULTIFILTER_num >= parentctrl_maximum) {
+									if(confirm(stringSafeGet("<#Clientlist_block_internet_max#>".replace("16", parentctrl_maximum)))) {
 										location.href = "ParentalControl.asp" ;
 									}
 									else {
@@ -1782,8 +1844,8 @@ function popupEditBlock(clientObj){
 					$('#radio_TimeScheduling_enable').iphoneSwitch(state,
 						function(){
 							if(MULTIFILTER_MAC_orig.search(mac) == -1) {
-								if(MULTIFILTER_num == 16) {
-									if(confirm(stringSafeGet("<#Clientlist_block_internet_max#>"))) {
+								if(MULTIFILTER_num >= parentctrl_maximum) {
+									if(confirm(stringSafeGet("<#Clientlist_block_internet_max#>".replace("16", parentctrl_maximum)))) {
 										location.href = "ParentalControl.asp" ;
 									}
 									else {
@@ -1927,17 +1989,29 @@ function popupEditBlock(clientObj){
 }
 
 function check_usb3(){
-	if(based_modelid == "DSL-AC68U" || based_modelid == "RT-AC3200" || based_modelid == "RT-AC87U" || based_modelid == "RT-AC68U" || based_modelid == "RT-AC68U_V4" || based_modelid == "RT-AC68A" || based_modelid == "RT-AC56S" || based_modelid == "RT-AC56U" || based_modelid == "RT-AC55U" || based_modelid == "RT-AC55UHP" || based_modelid == "RT-N18U" || based_modelid == "RT-AC88U" || based_modelid == "RT-AC86U" || based_modelid == "GT-AC2900" || based_modelid == "RT-AC3100" || based_modelid == "RT-AC5300" || based_modelid == "RP-AC68U" || based_modelid == "RT-AC58U" || based_modelid == "RT-AC82U" || based_modelid == "MAP-AC3000" || based_modelid == "RT-AC85P" || based_modelid == "RT-AC85U" || based_modelid == "RT-AC65U" || based_modelid == "4G-AC68U" || based_modelid == "BLUECAVE" || based_modelid == "RT-AX92U" || based_modelid == "RT-ACRH26" || based_modelid == "RT-AX95Q" || based_modelid == "XT8PRO" || based_modelid == "BT12" || based_modelid == "BQ16" || based_modelid == "BM68" || based_modelid == "XT8_V2" || based_modelid == "RT-AXE95Q" || based_modelid == "ET8PRO" || based_modelid == "ET8_V2" || based_modelid == "RT-AX56_XD4" || based_modelid == "XD4PRO" || based_modelid == "CT-AX56_XD4" || based_modelid == "RT-AX58U" || based_modelid == "RT-AX58U_V2" || based_modelid == "TUF-AX3000" || based_modelid == "TUF-AX3000_V2" || based_modelid == "TUF-AX3000_V2" || based_modelid == "TUF-AX5400" || based_modelid == "TUF-AX5400_V2" || based_modelid == "DSL-AX82U" || based_modelid == "RT-AX82U" || based_modelid == "RT-AX82U_V2"  || based_modelid == "RT-AX56U" || based_modelid == "RT-ACRH18" || based_modelid == "GS-AX3000" || based_modelid == "GS-AX5400" || based_modelid == "PL-AX56_XP4" || productid == "RT-AX86S" || based_modelid == "RT-AX68U" || based_modelid == "GT-AX6000" || based_modelid == "RT-AXE7800" || based_modelid == "GT10" || based_modelid == "RT-AX9000" || based_modelid == "GT-AXE16000" || based_modelid == "GT-BE98" || based_modelid == "GT-BE98_PRO" || based_modelid == "RT-AX86U_PRO" || based_modelid == "TUF-AX4200" || based_modelid == "TUF-AX6000" || based_modelid == "RT-AX59U" || based_modelid == "RT-AX88U_PRO" || based_modelid == "RT-BE96U" || based_modelid == "XC5" || based_modelid == "EBG15" || based_modelid == "EBG19" || based_modelid == "PRT-AX57_GO" || based_modelid == "GT-BE96" || based_modelid == "GT-AX11000_PRO" || based_modelid == "RM-AC2100" || based_modelid == "R6800" || based_modelid == "R7000P" || based_modelid == "SBRAC3200P"){
-		document.getElementById('usb_text_1').innerHTML = "USB 3.0";
-	}
-	else if(based_modelid == "RT-AC88Q" || based_modelid == "RT-AX89U" || based_modelid == "RT-AD7200" || based_modelid == "RT-N65U" || based_modelid == "GT-AC5300" || based_modelid == "RT-AX88U" || based_modelid == "GT-AX11000" || based_modelid == "GT-AC9600" || based_modelid == "GT-AXY16000" || productid == "RT-AX86U" || based_modelid == "GT-AXE11000"){
-		document.getElementById('usb_text_1').innerHTML = "USB 3.0";
-		document.getElementById('usb_text_2').innerHTML = "USB 3.0";
-	}
-	else if(based_modelid == "BRT-AC828") {
+	if(based_modelid == "BRT-AC828") {
 		document.getElementById('usb_text_1').innerHTML = "USB 3.0";
 		document.getElementById('usb_text_2').innerHTML = "USB 3.0";
 		document.getElementById('usb_text_3').innerHTML = "M.2 SSD";
+	}
+	else{
+		const rate_map_USB = [
+			{value:"480",text:"USB 2.0"},
+			{value:"5000",text:"USB 3.0"},
+			{value:"10000",text:"USB 3.2"}
+		];
+		const get_usb_phy_port = (httpApi.hookGet("get_usb_phy_port") == undefined) ? [] : httpApi.hookGet("get_usb_phy_port");
+		$.each(get_usb_phy_port, function(index, usb_info){
+			const usb_text = rate_map_USB.find(function(item){
+				return (item.value == usb_info.max_rate);
+			});
+			if(usb_text != undefined){
+				const usb_idx = usb_info.label_name.substring(1,2);
+				if($(`#usb_text_${usb_idx}`).length > 0){
+					$(`#usb_text_${usb_idx}`).html(usb_text.text);
+				}
+			}
+		});
 	}
 }
 
@@ -1946,15 +2020,15 @@ function addToBlockMacList(macAddr){
 		if(timeSchedulingFlag || blockInternetFlag) {
 			if(document.list_form.MULTIFILTER_MAC.value == "") {
 				if(timeSchedulingFlag)
-					document.list_form.MULTIFILTER_ENABLE.value += "1";
+					document.list_form.MULTIFILTER_ENABLE.value = "1";
 				else if(blockInternetFlag)
-					document.list_form.MULTIFILTER_ENABLE.value += "2";
-				document.list_form.MULTIFILTER_MAC.value += macAddr;
-				document.list_form.MULTIFILTER_DEVICENAME.value += document.getElementById("client_name").value.trim();
+					document.list_form.MULTIFILTER_ENABLE.value = "2";
+				document.list_form.MULTIFILTER_MAC.value = macAddr;
+				document.list_form.MULTIFILTER_DEVICENAME.value = document.getElementById("client_name").value.trim();
 				if(isSupport("PC_SCHED_V3"))
-					document.list_form.MULTIFILTER_MACFILTER_DAYTIME_V2.value += "W03E21000700<W04122000800";
+					document.list_form.MULTIFILTER_MACFILTER_DAYTIME_V2.value = "W03E21000700<W04122000800";
 				else
-					document.list_form.MULTIFILTER_MACFILTER_DAYTIME.value += "<";
+					document.list_form.MULTIFILTER_MACFILTER_DAYTIME.value = "<";
 			}
 			else {
 				document.list_form.MULTIFILTER_ENABLE.value += ">";
@@ -2136,7 +2210,7 @@ function updateClientsCount() {
 	setTimeout("updateClientsCount();", 5000);
 }
 function setDefaultIcon() {
-	var mac = document.getElementById("macaddr_field").value;
+	const mac = document.getElementById("macaddr_field").value;
 	select_image(clientList[mac], true);
 }
 function closeClientDetailView() {
@@ -2181,7 +2255,7 @@ function notice_apply(){
 
 function close_phone_as_modem_hint(){
 	$("#phone_as_modem_div").hide();
-	cookie.unset("show_phone_as_modem_hints");
+	window.localStorage.removeItem("show_phone_as_modem_hints");
 }
 
 function copyDdnsName(e) {
@@ -2203,6 +2277,11 @@ function copyDdnsName(e) {
     let span = $("<span>").addClass("tooltiptext").html($(e).data('title'));
     $(e).parent().append(span);
     span.show().fadeOut(1500, function() { $(this).remove(); });
+}
+
+function showClientlistModal(){
+    const clientlistModal = new ClientlistModel();
+    clientlistModal.show();
 }
 
 </script>
@@ -2553,11 +2632,16 @@ function copyDdnsName(e) {
 							<span style="font-size:12px;font-family: Verdana, Arial, Helvetica, sans-serif;">WAN IP:</span>
 							<strong id="index_status" class="index_status" style="font-size:14px;"></strong>
 						</div>
+						<div id="wanIP_ipv6_div" style="margin-top:5px;display:none;">
+							<span style="font-size:12px;font-family: Verdana, Arial, Helvetica, sans-serif;"><#IPv6_wan_addr#>:</span><br>
+							<strong id="index_ipv6_status" class="index_status" style="font-size:11px;display:none;"></strong><br>
+							<strong id="index_ipv6_ll_status" class="index_status" style="font-size:11px;display:none;"></strong>
+						</div>
 						<div id="ddnsHostName_div" style="margin-top:5px;word-break:break-all;word-wrap:break-word;width:180px; display: inline-flex; align-items: center; gap: 3px; flex-direction: row; flex-wrap: wrap;">
 							<span style="font-size:12px;font-family: Verdana, Arial, Helvetica, sans-serif;">DDNS:</span>
 							<strong id="ddnsHostName" class="index_status" style="font-size:14px;"><#QIS_detectWAN_desc2#></strong>
 							<div class="icon-group-center">
-                                <div id="copyDdns" class="tooltip"><a onClick="copyDdnsName(this)" data-toggle="tooltip" data-title="Copied!"><i class="icon-copy"></i></a></div>
+                                <div id="copyDdns" class="tooltip"><a onClick="copyDdnsName(this)" data-toggle="tooltip" data-title="Copied!"><i class="icon-clone"></i></a></div>
                                 <span id="ddns_fail_hint" class="notificationoff" onClick="show_ddns_fail_hint();" onMouseOut="nd();"></span>
                                 <span><img id="le_icon" src="images/New_ui/networkmap/LE_badge_color.svg" style="width:25px; height:25px;"></span>
 							</div>
@@ -2646,7 +2730,7 @@ function copyDdnsName(e) {
 							<div class="clients" id="clientNumber" style="cursor:pointer;"></div>
 						</div>
 
-						<input type="button" class="button_gen" value="<#View_List#>" style="margin-top:15px;" onClick="pop_clientlist_listview(true)">
+						<input type="button" class="button_gen" value="<#View_List#>" style="margin-top:15px;" onClick="showClientlistModal()">
 
 						<div id="networkmap_switch" style="display:none">
 							<div align="center" class="left" style="width:94px; cursor:pointer;margin-top:10px" id="networkmap_enable_t"></div>

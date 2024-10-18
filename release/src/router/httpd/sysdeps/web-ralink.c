@@ -629,6 +629,16 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 				ret+=websWrite(wp, "Phy Mode	: unknown[%lu]\n", phy_mode);
 		}
 	}
+#if defined(RTCONFIG_MT798X)
+	unsigned long long bitrate;
+	int bw;
+	bitrate = get_bitrate(ifname);
+	ret += websWrite(wp, "Bit Rate	: %llu", bitrate);
+	if ((get_ch_cch_bw(ifname, NULL, NULL, &bw)) == 1) {
+		ret += websWrite(wp, ", %dMHz", bw);
+	}
+	ret += websWrite(wp, "\n");
+#endif
 
 	ret+=websWrite(wp, "Channel		: %d", channel);
 	if (unit == WL_5G_BAND || unit == WL_5G_2_BAND) {
@@ -916,7 +926,11 @@ wl_wps_info(int eid, webs_t wp, int argc, char_t **argv, int unit)
 		switch (j) {
 		case WL_2G_BAND:	/* fall through */
 		case WL_5G_BAND:	/* fall through */
+#if !(defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7))
 		case WL_5G_2_BAND:	/* fall through */
+#else
+		case WL_6G_BAND:	/* fall through */
+#endif
 		case WL_60G_BAND:	/* fall through */
 			u = j;
 			snprintf(tag1, sizeof(tag1), "<wps_info%d>", j);
@@ -984,7 +998,7 @@ wl_wps_info(int eid, webs_t wp, int argc, char_t **argv, int unit)
 		{
 			snprintf(tmpstr, sizeof(tmpstr), "%s%c", tmpstr, result.WscWPAKey[i]);
 		}
-		if (!strlen(tmpstr))
+		if (!safe_strlen(tmpstr))
 			retval += websWrite(wp, "%sNone%s\n", tag1, tag2);
 		else
 		{
@@ -999,7 +1013,7 @@ wl_wps_info(int eid, webs_t wp, int argc, char_t **argv, int unit)
 
 		//8. Saved WPAKey
 #if 0	//hide for security
-		if (!strlen(nvram_safe_get(strlcat_r(prefix, "wpa_psk", tmp, sizeof(tmp)))))
+		if (!safe_strlen(nvram_safe_get(strlcat_r(prefix, "wpa_psk", tmp, sizeof(tmp)))))
 			retval += websWrite(wp, "%s%s%s\n", tag1, "None", tag2);
 		else
 		{
@@ -1017,13 +1031,13 @@ wl_wps_info(int eid, webs_t wp, int argc, char_t **argv, int unit)
 
 		//A. WPS mode
 		wps_sta_pin = nvram_safe_get("wps_sta_pin");
-		if (strlen(wps_sta_pin) && strcmp(wps_sta_pin, "00000000"))
+		if (safe_strlen(wps_sta_pin) && strcmp(wps_sta_pin, "00000000"))
 			retval += websWrite(wp, "%s%s%s\n", tag1, "1", tag2);
 		else
 			retval += websWrite(wp, "%s%s%s\n", tag1, "2", tag2);
 
 		//B. current auth mode
-		if (!strlen(nvram_safe_get(strlcat_r(prefix, "auth_mode_x", tmp, sizeof(tmp)))))
+		if (!safe_strlen(nvram_safe_get(strlcat_r(prefix, "auth_mode_x", tmp, sizeof(tmp)))))
 			retval += websWrite(wp, "%s%s%s\n", tag1, "None", tag2);
 		else
 			retval += websWrite(wp, "%s%s%s\n", tag1, nvram_safe_get(strlcat_r(prefix, "auth_mode_x", tmp, sizeof(tmp))), tag2);
@@ -1039,17 +1053,51 @@ wl_wps_info(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	return retval;
 }
 
+#if defined(RTCONFIG_WIFI7)
+int
+ej_wps_info_6g(int eid, webs_t wp, int argc, char_t **argv)
+{
+	// TBD.
+	return wl_wps_info(eid, wp, argc, argv, WL_5G_BAND);
+}
+
+int
+ej_wl_rate_6g_2(int eid, webs_t wp, int argc, char_t **argv)
+{
+	// TBD.
+	return websWrite(wp, "");
+}
+
+int
+ej_wps_info_6g_2(int eid, webs_t wp, int argc, char_t **argv)
+{
+	// TBD.
+	return wl_wps_info(eid, wp, argc, argv, WL_5G_BAND);
+}
+#endif
+
 int
 ej_wps_info(int eid, webs_t wp, int argc, char_t **argv)
 {
-	return wl_wps_info(eid, wp, argc, argv, 1);
+	return wl_wps_info(eid, wp, argc, argv, WL_5G_BAND);
 }
 
 int
 ej_wps_info_2g(int eid, webs_t wp, int argc, char_t **argv)
 {
-	return wl_wps_info(eid, wp, argc, argv, 0);
+	return wl_wps_info(eid, wp, argc, argv, WL_2G_BAND);
 }
+ej_wps_info_5g(int eid, webs_t wp, int argc, char_t **argv)
+{
+	return wl_wps_info(eid, wp, argc, argv, WL_5G_BAND);
+}
+
+int
+ej_wps_info_5g_2(int eid, webs_t wp, int argc, char_t **argv)
+{
+	return wl_wps_info(eid, wp, argc, argv, WL_5G_2_BAND);
+}
+
 
 // Wireless Client List		 /* Start --Alicia, 08.09.23 */
 
@@ -1260,10 +1308,10 @@ int ej_wl_sta_list_5g(int eid, webs_t wp, int argc, char_t **argv)
 	}
 
 	/* error/exit */
+#endif	/* RTCONFIG_HAS_5G */
 exit:
 	if(hook_get_json == 1)
 		websWrite(wp, "}");
-#endif	/* RTCONFIG_HAS_5G */
 	return 0;
 }
 
@@ -1366,6 +1414,8 @@ int ej_get_wlstainfo_list(int eid, webs_t wp, int argc, char_t **argv)
 						rssi += mp2->Entry[j].AvgRssi2;
 						cnt++;
 					}
+					if (cnt == 0)
+						continue;	//skip this sta info
 
 					if (firstRow == 1) {
 						if (haveInfo)
@@ -1421,6 +1471,8 @@ int ej_get_wlstainfo_list(int eid, webs_t wp, int argc, char_t **argv)
 						rssi += mp->Entry[j].AvgRssi2;
 						cnt++;
 					}
+					if (cnt == 0)
+						continue;	//skip this sta info
 
 					if (firstRow == 1) {
 						if (haveInfo)
@@ -1764,7 +1816,7 @@ static int ej_wl_channel_list(int eid, webs_t wp, int argc, char_t **argv, int u
 	country_code = nvram_get(strlcat_r(prefix, "country_code", tmp, sizeof(tmp)));
 	band = unit;
 
-	if (country_code == NULL || strlen(country_code) != 2) return retval;
+	if (country_code == NULL || safe_strlen(country_code) != 2) return retval;
 
 	if (band != 0 && band != 1) return retval;
 
@@ -1904,8 +1956,10 @@ ej_wl_rate_2g(int eid, webs_t wp, int argc, char_t **argv)
 {
 	if(sw_mode() == SW_MODE_REPEATER|| wisp_mode())
 		return ej_wl_rate(eid, wp, argc, argv, 0);
+	else if(check_user_agent(user_agent) != FROM_BROWSER)
+		return websWrite(wp, "\"\"");
 	else
-	   	return 0;
+		return websWrite(wp, "");
 }
 
 int
@@ -1913,8 +1967,10 @@ ej_wl_rate_5g(int eid, webs_t wp, int argc, char_t **argv)
 {
 	if(sw_mode() == SW_MODE_REPEATER|| wisp_mode())
 		return ej_wl_rate(eid, wp, argc, argv, 1);
+	else if(check_user_agent(user_agent) != FROM_BROWSER)
+		return websWrite(wp, "\"\"");
 	else
-	   	return 0;
+		return websWrite(wp, "");
 }
 
 int
@@ -1922,8 +1978,10 @@ ej_wl_rate_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 {
 	if(sw_mode() == SW_MODE_REPEATER|| wisp_mode())
 		return ej_wl_rate(eid, wp, argc, argv, 2);
+	else if(check_user_agent(user_agent) != FROM_BROWSER)
+		return websWrite(wp, "\"\"");
 	else
-		return 0;
+		return websWrite(wp, "");
 }
 
 int
@@ -1931,8 +1989,10 @@ ej_wl_rate_6g(int eid, webs_t wp, int argc, char_t **argv)
 {
 	if(sw_mode() == SW_MODE_REPEATER|| wisp_mode())
 		return ej_wl_rate(eid, wp, argc, argv, 3);
+	else if(check_user_agent(user_agent) != FROM_BROWSER)
+		return websWrite(wp, "\"\"");
 	else
-		return 0;
+		return websWrite(wp, "");
 }
 
 int
@@ -1972,7 +2032,7 @@ void __validate_apply_set_wl_var(char *nv, char *val)
 
 		for (band = WL_2G_BAND; band < min(MAX_NR_WL_IF, WL_5G_2_BAND + 1); ++band) {
 			snprintf(prefix, sizeof(prefix), "wl%d_", band);
-			if (!strncmp(nv, prefix, strlen(prefix)))
+			if (!strncmp(nv, prefix, safe_strlen(prefix)))
 				continue;
 			nvram_pf_set(prefix, *p, val);
 			_dprintf("%s: set %s%s=%s\n", __func__, prefix, *p, val? : "NULL");
@@ -2012,3 +2072,4 @@ ej_wl_auth_psta(int eid, webs_t wp, int argc, char_t **argv)
 	return retval;
 }
 #endif
+

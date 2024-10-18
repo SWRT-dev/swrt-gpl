@@ -345,57 +345,6 @@
 
                 return `${value.toFixed(digital)} ${trafficUnit[defaultUnit]}`;
             }
-
-			var businessWrapper = true;
-
-			if(system.currentOPMode.id != "RT") $("#trafficAnalyzerCard").hide()
         </script>
-
-        <script src="js/trafficanalyzerWrapper.js"></script>
-		<div id="trafficAnalyzerCard">
-            <div class="col-12 mb-3">
-                <div class="card pt-2 h-100">
-                    <h5 class="card-header d-flex align-items-center justify-content-between"><#Traffic_Analyzer#></h5>
-                    <div class="card-body">
-                        <div class="row">
-							<iframe id="settingsWindow" style="
-								width:100%;
-								height:530px;
-							" src="/TrafficAnalyzer_Statistic.asp"></iframe>
-
-							<div class="col-12 mt-2">
-								<div class="d-flex align-items-center py-2">
-									<div class="card-data-title me-auto" id="bui_ta_percent_title"><#Traffic_Analyzer_usedpercent#></div>
-									<div class="d-flex card-data-value ms-3">
-										<span class="traffic-down-value-color" id="bui_ta_percent">--</span>
-									</div>
-								</div>
-								<div class="divide-line"></div>
-								<div class="d-flex align-items-center py-2">
-									<div class="card-data-title me-auto" id="bui_ta_current_title"><#Traffic_Analyzer_current#></div>
-									<div class="d-flex card-data-value ms-3">
-										<span class="traffic-down-value-color" id="bui_ta_current">--</span>
-									</div>
-								</div>
-								<div class="divide-line"></div>
-								<div class="d-flex align-items-center py-2">
-									<div class="card-data-title me-auto" id="bui_ta_daily_title"><#Traffic_Analyzer_daily#></div>
-									<div class="d-flex card-data-value ms-3">
-										<span class="traffic-down-value-color" id="bui_ta_daily">--</span>
-									</div>
-								</div>
-								<div class="divide-line"></div>
-	                        </div>
-                        </div>
-                    </div>
-					<div class="card-footer d-flex">
-						<div role="icon" class="icon-size-24 icon-delete me-3" onclick="clearTrafficAnalyzerLog();"></div>
-						<div class="form-check form-switch ms-auto">
-							<input class="form-check-input form-switch-large" type="checkbox" id="trafficAnalyzer_enable_switch" checked="">
-						</div>
-					</div>   
-	             </div>
-            </div>
-		</div>
     </body>
 </html>

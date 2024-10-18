@@ -13,12 +13,12 @@
 <link rel="stylesheet" type="text/css" href="form_style.css">
 <link rel="stylesheet" type="text/css" href="menu_style.css">
 <link rel="stylesheet" type="text/css" href="pwdmeter.css">
+<script type="text/javascript" src="/js/jquery.js"></script>
 <script language="JavaScript" type="text/javascript" src="/help.js"></script>
 <script language="JavaScript" type="text/javascript" src="/state.js"></script>
 <script language="JavaScript" type="text/javascript" src="/general.js"></script>
 <script language="JavaScript" type="text/javascript" src="/popup.js"></script>
 <script language="JavaScript" type="text/javascript" src="/validator.js"></script>
-<script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script language="JavaScript" type="text/javascript" src="/form.js"></script>
 <script type="text/javascript" src="/js/httpApi.js"></script>
@@ -100,7 +100,7 @@ var service_state = "";
 if (openvpn_unit == '1')
 	service_state = '<% nvram_get("vpn_server1_state"); %>';
 else if (openvpn_unit == '2')
-	ervice_state = '<% nvram_get("vpn_server2_state"); %>';
+	service_state = '<% nvram_get("vpn_server2_state"); %>';
 else
 	service_state = false;	
 
@@ -1672,7 +1672,7 @@ function handle_ipv6_submit_settings(){
 											</td>
 										</tr>
 										<tr id="trServerPortBasic">
-											<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(32,6);"><#WLANAuthentication11a_ExAuthDBPortNumber_itemname#></a>
+											<th><#WLANAuthentication11a_ExAuthDBPortNumber_itemname#>
 												<div class="setup_info_icon basic" style="display:none;"></div>
 											</th>
 											<td>
@@ -1874,7 +1874,7 @@ function handle_ipv6_submit_settings(){
 												</td>
 											</tr>
 											<tr>
-												<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(32,6);"><#WLANAuthentication11a_ExAuthDBPortNumber_itemname#></a>
+												<th><#WLANAuthentication11a_ExAuthDBPortNumber_itemname#>
 													<div class="setup_info_icon adv" style="display:none;"></div>
 												</th>
 												<td>

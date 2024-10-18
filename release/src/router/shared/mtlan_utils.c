@@ -309,6 +309,7 @@ static SUBNET_T *get_default_lan(SUBNET_T *ptr)
 
 	/* IPv4 */
 	strlcpy(ptr->ifname, nvram_safe_get("lan_ifname"), sizeof(ptr->ifname));
+	strlcpy(ptr->br_ifname, ptr->ifname, sizeof(ptr->br_ifname));
 	strlcpy(ptr->addr, nvram_safe_get("lan_ipaddr"), sizeof(ptr->addr));
 	strlcpy(ptr->netmask, nvram_safe_get("lan_netmask"), sizeof(ptr->netmask));
 	strlcpy(ptr->subnet, calc_subnet(ptr->addr, v4mask2int(ptr->netmask), subnet, sizeof(subnet)), sizeof(ptr->subnet));
@@ -453,10 +454,15 @@ static MTLAN_T *__get_mtlan(MTLAN_T *nwlst, size_t *lst_sz, int is_rm)
 				continue;
 			nwlst[cnt].vid = 0;
 			nwlst[cnt].port_isolation = 0;
+
+			if (sdn_idx && *sdn_idx && strtol(sdn_idx, NULL, 10))	// Special case. IoT use br0. Follow LAN IPv6 flow.
+				nwlst[cnt].nw_t.v6_enable = 0;
 		}
 
 		if (sdn_enable && *sdn_enable)
 			nwlst[cnt].enable = strtol(sdn_enable, NULL, 10);
+		if (sdn_name && *sdn_name)
+			strlcpy(nwlst[cnt].name, sdn_name, sizeof(nwlst[cnt].name));
 		if (createby && *createby)
 			strlcpy(nwlst[cnt].createby, createby, sizeof(nwlst[cnt].createby));
 		if (sdn_idx && *sdn_idx)
@@ -776,6 +782,8 @@ static VPN_PROTO_T _get_real_vpn_proto(const char* proto)
 		return VPN_PROTO_IPSEC;
 	else if (!strcmp(proto, VPN_PROTO_SURFSHARK_STR))
 		return VPN_PROTO_WG;
+	else if (!strcmp(proto, VPN_PROTO_CYBERGHOST_STR))
+		return VPN_PROTO_OVPN;
 	else
 		return VPN_PROTO_UNKNOWN;
 }
@@ -1145,7 +1153,7 @@ CP_PROFILE *get_cpX_profile_by_cpidx(int index, CP_PROFILE *lst)
 	while ((b = strsep(&nvp, "<")) != NULL) {
 		if(vstrsep(b, ">", &cp_able, &cp_au_tp, &cp_ctimeout, &cp_idtimeout, &cp_atimeout, &cp_rdirecturl, &cp_enable_tservice, &cp_blimit_ul, &cp_blimt_dl, &cp_nid, &cp_idx_cusui) < 1)
 			continue;
-		
+
 		if (!cp_able || strlen(cp_able) <= 0)
 			continue;
 
@@ -1164,21 +1172,21 @@ CP_PROFILE *get_cpX_profile_by_cpidx(int index, CP_PROFILE *lst)
 		if (cp_atimeout && *cp_atimeout)
 			lst->cp_authtimeout = strtol(cp_atimeout, NULL, 10);
 		if (cp_rdirecturl && *cp_rdirecturl)
-			strlcpy(lst->redirecturl , cp_rdirecturl, sizeof(lst->redirecturl));	
+			strlcpy(lst->redirecturl , cp_rdirecturl, sizeof(lst->redirecturl));
 		if (cp_enable_tservice && *cp_enable_tservice)
-			lst->cp_term_service = strtol(cp_enable_tservice, NULL, 10);		
+			lst->cp_term_service = strtol(cp_enable_tservice, NULL, 10);
 		if (cp_blimit_ul && *cp_blimit_ul)
-			lst->cp_bw_limit_ul = strtol(cp_blimit_ul, NULL, 10);	
+			lst->cp_bw_limit_ul = strtol(cp_blimit_ul, NULL, 10);
 		if (cp_blimt_dl && *cp_blimt_dl)
 			lst->cp_bw_limit_dl = strtol(cp_blimt_dl, NULL, 10);
 		if (cp_nid && *cp_nid)
-			strlcpy(lst->cp_nas_id , cp_nid, sizeof(lst->cp_nas_id));	
+			strlcpy(lst->cp_nas_id , cp_nid, sizeof(lst->cp_nas_id));
 		if (cp_idx_cusui && *cp_idx_cusui)
 			strlcpy(lst->cp_idx_ui_customizes , cp_idx_cusui, sizeof(lst->cp_idx_ui_customizes));
-		
+
 		break;
 	}
- 
+
 	free(nv);
 	return (found==1) ? lst : NULL;
 }
@@ -1186,17 +1194,15 @@ CP_PROFILE *get_cpX_profile_by_cpidx(int index, CP_PROFILE *lst)
 //type 0:close 1:freewifi 2:cp
 CP_LOCAL_AUTH *get_cp_localauth_bytype(CP_LOCAL_AUTH *lst, int index, int type)
 {
-	_dprintf("[FUN:%s][LINE:%d]-----index=%d------\n",__FUNCTION__,__LINE__,index);
 	int found = 0;
-	char *passcode;
 	char buf_f[128];
 	char *dst = NULL;
-
 	char profile_name[32];
-	memset(profile_name, 0, sizeof(profile_name));
-	snprintf(profile_name, sizeof(profile_name), "cp%d_local_auth_profile",index);
 	char *pf = profile_name;
 
+	_dprintf("[FUN:%s][LINE:%d]-----index=%d------\n",__FUNCTION__,__LINE__,index);
+	memset(profile_name, 0, sizeof(profile_name));
+	snprintf(profile_name, sizeof(profile_name), "cp%d_local_auth_profile",index);
 	if (index < 0 || !lst)
 		return NULL;
 

@@ -14,11 +14,11 @@
 <link rel="stylesheet" type="text/css" href="pwdmeter.css">
 <link rel="stylesheet" type="text/css" href="device-map/device-map.css">
 <link rel="stylesheet" type="text/css" href="css/icon.css">
+<script type="text/javascript" src="/js/jquery.js"></script>
 <script language="JavaScript" type="text/javascript" src="/state.js"></script>
 <script language="JavaScript" type="text/javascript" src="/general.js"></script>
 <script language="JavaScript" type="text/javascript" src="/popup.js"></script>
 <script language="JavaScript" type="text/javascript" src="/help.js"></script>
-<script language="JavaScript" type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/js/httpApi.js"></script>
 <script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
 <script language="JavaScript" type="text/javascript" src="/validator.js"></script>
@@ -434,7 +434,7 @@ function initial(){
 		document.form.bcm_overclock[1].disabled = false;
 	}
 
-	$("#https_download_cert").css("display", (le_enable != "1" && orig_http_enable != "0")? "": "none");
+	$("#https_download_cert").css("display", (le_enable == "0" && orig_http_enable != "0")? "": "none");
 
 	$("#login_captcha_tr").css("display", captcha_support? "": "none");
 
@@ -451,6 +451,11 @@ function initial(){
 	if(sysInfo.secret_code){
 		$("#pincode").html(sysInfo.secret_code);
 		$("#pincode").parent().parent().show();
+	}
+
+	if(isSupport("noWiFi")){
+		$("#pincode").parent().parent().hide();
+		$("#btn_ez_radiotoggle_tr").hide();
 	}
 }
 
@@ -644,7 +649,7 @@ function applyRule(){
 			
 			if (('<% nvram_get("enable_ftp"); %>' == "1")
 				&& ('<% nvram_get("ftp_tls"); %>' == "1")) {
-					action_script_tmp += ";restart_ftpd";
+					action_script_tmp += "restart_ftpd;";
 			}
 		}
 
@@ -897,9 +902,9 @@ var timezones = [
 	["NST3.30DST",	"(GMT-03:30) <#TZ20#>"],
 	["EBST3",	"(GMT-03:00) <#TZ21#>"],	//EBST3DST_1
 	["UTC3",	"(GMT-03:00) <#TZ22#>"],
+	["UTC3DST",     "(GMT-03:00) <#TZ87#>"],        //UTC2DST
 	["UTC2_1",	"(GMT-02:00) <#TZ23#>"],	//EBST3DST_2
 	["UTC2",	"(GMT-02:00) <#TZ24#>"],
-	["UTC2DST",	"(GMT-02:00) <#TZ87#>"],
 	["EUT1DST",	"(GMT-01:00) <#TZ25#>"],
 	["UTC1",	"(GMT-01:00) <#TZ26#>"],
 	["GMT0",	"(GMT) <#TZ27#>"],
@@ -958,7 +963,7 @@ var timezones = [
 	["UTC-8_1",     "(GMT+08:00) <#TZ70#>"],
 	["UTC-9_1",	"(GMT+09:00) <#TZ70_1#>"],
 	["UTC-9_3",	"(GMT+09:00) <#TZ72#>"],
-	["JST",		"(GMT+09:00) <#TZ71#>"],
+	["JST-9",	"(GMT+09:00) <#TZ71#>"],
 	["CST-9.30",	"(GMT+09:30) <#TZ73#>"],
 	["UTC-9.30DST",	"(GMT+09:30) <#TZ74#>"],
 	["UTC-10DST_1",	"(GMT+10:00) <#TZ75#>"],
@@ -1089,13 +1094,25 @@ function hide_https_lanport(_value){
 		$("#https_download_cert").css("display", "");
 		if(orig_http_enable == "0"){
 			$("#download_cert_btn").css("display", "none");
+			$("#clear_server_cert_btn").css("display", "none");
 			$("#clear_cert_btn").css("display", "none");
 			$("#download_cert_desc").css("display", "");
 		}
 		else{
-			$("#download_cert_btn").css("display", "");
-			$("#clear_cert_btn").css("display", "");
-			$("#download_cert_desc").css("display", "none");
+			if (le_enable == "0") {
+				$("#download_cert_btn").css("display", "");
+				$("#clear_server_cert_btn").css("display", "");
+				$("#clear_cert_btn").css("display", "");
+				if(top.webWrapper){
+					$("#clear_server_cert_btn").css({"margin-left":"8px","margin-right":"10px"});
+				}
+				$("#download_cert_desc").css("display", "");
+			} else {
+				$("#download_cert_btn").css("display", "none");
+				$("#clear_server_cert_btn").css("display", "none");
+				$("#clear_cert_btn").css("display", "none");
+				$("#download_cert_desc").css("display", "none");
+			}
 		}
 	}
 	else{
@@ -1150,6 +1167,10 @@ function show_http_clientlist(){
 	}
 	code +='</table>';
 	document.getElementById("http_clientlist_Block").innerHTML = code;
+	
+	if(top.webWrapper){
+		$(".list_table td").css({"color":"#1f2d35"});
+	}
 }
 
 function check_Timefield_checkbox(){	// To check Date checkbox checked or not and control Time field disabled or not
@@ -1199,7 +1220,7 @@ function addRow(obj, upper){
 		obj.select();
 		return false;
 	}
-	else if(validator.validIPForm(obj, 2) != true){
+	else if(validator.validIPForm(obj, 4) != true){
 		return false;
 	}
 	var access_type_value = 0;
@@ -1682,14 +1703,44 @@ function reset_portconflict_hint(){
 }
 
 function save_cert_key(){
-	location.href = "cert.tar";
+	location.href = "cert.crt";
+}
+
+function clear_server_cert_key(){
+	$.ajax({url: "clear_file.cgi?clear_file_name=server_certs"})
+	showLoading();
+	setTimeout(function(){
+		setInterval(function(){
+			var http = new XMLHttpRequest
+			http.onreadystatechange=function(){
+				if(http.readyState==4 && http.status==200){
+					top.location.href="/Advanced_System_Content.asp"
+				}
+			},
+
+			http.open("GET","/httpd_check.xml",!0);
+			http.send(null);
+		}, 1000);
+	}, 1000)
 }
 
 function clear_cert_key(){
-	if(confirm(stringSafeGet("<#Local_access_certificate_renewl#>"))){
+	if(confirm(`<#DDNS_Install_Root_Cert_Desc#>`)){
 		$.ajax({url: "clear_file.cgi?clear_file_name=cert.tgz"})
 		showLoading();
-		setTimeout(refreshpage, 1000);
+		setTimeout(function(){
+			setInterval(function(){
+				var http = new XMLHttpRequest
+				http.onreadystatechange=function(){
+					if(http.readyState==4 && http.status==200){
+						top.location.href="/Advanced_System_Content.asp"
+					}
+				},
+
+				http.open("GET","/httpd_check.xml",!0);
+				http.send(null);
+			}, 1000);
+		}, 1000)
 	}
 }
 
@@ -1791,7 +1842,7 @@ function check_httpd(){
 			setTimeout("check_httpd();", 1000);
 		},
 		success: function(response){
-			if(top.businessWrapper){
+			if(top.webWrapper){
 				setTimeout("top.location.href='Main_Login.asp'", 500);
 			}
 			else{
@@ -1968,6 +2019,8 @@ function change_passwd(){
 				return false;
 			}
 	}
+
+    showLoading();
 
 	postData.cur_passwd = $("#http_passwd_cur").val();
 	postData.new_passwd = $("#http_passwd_new").val();
@@ -2178,7 +2231,7 @@ function check_password_length(obj){
 						<td colspan="2">Persistent JFFS2 partition</td>
 					</tr>
 				</thead>
-				<tr style="display:none;">
+				<tr>
 					<th>Format JFFS partition at next boot</th>
 					<td>
 						<input type="radio" name="jffs2_format" value="1" <% nvram_match("jffs2_format", "1", "checked"); %>><#checkbox_Yes#>
@@ -2568,8 +2621,11 @@ function check_password_length(obj){
 				<tr id="https_download_cert" style="display: none;">
 					<th><#Local_access_certificate_download#></th>
 					<td>
-						<input id="download_cert_btn" class="button_gen buttonInTable" onclick="save_cert_key();" type="button" value="<#btn_Export#>" />
-						<input id="clear_cert_btn" class="button_gen buttonInTable" style="margin-left:10px" onclick="clear_cert_key();" type="button" value="<#CTL_renew#>" />
+					    <div style="display: flex;">
+                            <input id="download_cert_btn" class="button_gen buttonInTable" onclick="save_cert_key();" type="button" value="<#btn_Export#>" />
+                            <input id="clear_server_cert_btn" class="button_gen buttonInTable" style="margin-left:10px" onclick="clear_server_cert_key();" type="button" value="<#CTL_renew#> <#vpn_openvpn_KC_SA#>" /><!-- untranslated -->
+                            <input id="clear_cert_btn" class="button_gen buttonInTable" style="margin-left:10px" onclick="clear_cert_key();" type="button" value="<#CTL_renew#> Root Certificate" /><!-- untranslated -->
+						</div>
 						<span id="download_cert_desc"><#Local_access_certificate_desc#></span><a id="creat_cert_link" href="" style="font-family:Lucida Console;text-decoration:underline;color:#FFCC00; margin-left: 5px;" target="_blank">FAQ</a>
 					</td>
 				</tr>
@@ -2631,7 +2687,7 @@ function check_password_length(obj){
 					<td width="10%">-</td>
 					<td width="40%">
                         <div class="clientlist_dropdown_main" style="width: 100%;">
-                            <input type="text" class="input_25_table" maxlength="18" name="http_client_ip_x_0"  onKeyPress="" onClick="hideClients_Block();" autocorrect="off" autocapitalize="off">
+                            <input type="text" class="input_25_table" maxlength="39" name="http_client_ip_x_0"  onKeyPress="" onClick="hideClients_Block();" autocorrect="off" autocapitalize="off">
                             <img id="pull_arrow" height="14px;" src="/images/unfold_more.svg" onclick="pullLANIPList(this);" title="<#select_client#>">
                             <div id="ClientList_Block_PC" class="clientlist_dropdown"></div>
 						</div>
@@ -2654,17 +2710,17 @@ function check_password_length(obj){
 	</tr>
 </tbody>
 
-</table></td>
-</form>
+</table>
+                        </td>
+                    </tr>
+                </table>
+                <!--===================================Ending of Main Content===========================================-->
+            </td>
+            <td width="10" align="center" valign="top">&nbsp;</td>
         </tr>
     </table>
-		<!--===================================Ending of Main Content===========================================-->		
-	</td>
-		
-    <td width="10" align="center" valign="top">&nbsp;</td>
-	</tr>
-</table>
-
+</form>
 <div id="footer"></div>
 </body>
 </html>
+

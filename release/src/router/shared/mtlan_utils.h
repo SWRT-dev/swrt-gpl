@@ -13,7 +13,12 @@
 #include <shared.h>
 #include "shutils.h"
 
-#define MTLAN_MAXINUM             19 /* 1 (Default) + 16 + IPTV + VoIP */
+#ifdef RTCONFIG_MAX_MTLAN
+#define MTLAN_MAXINUM  (RTCONFIG_MAX_MTLAN+1)
+#else  	//RTCONFIG_MAX_MTLAN
+#define MTLAN_MAXINUM             17 /* 1 (Default) + 16 */
+#endif 	//RTCONFIG_MAX_MTLAN
+
 #define MTLAN_VPNS_MAXINUM        16
 #define MTLAN_GRE_MAXINUM         8
 #define SDN_LIST_BASIC_PARAM      6
@@ -113,6 +118,7 @@ typedef struct __multiple_lan_t__
 	int enable;
 	int vid;
 	int port_isolation;
+	char name[64];
 	char createby[8];
 	SUBNET_T nw_t;
 	SDNFT_T sdn_t;
@@ -198,6 +204,7 @@ typedef struct __cp_radius_list__
 #define VPN_PROTO_HMA_STR		PROTO_HMA
 #define VPN_PROTO_NORDVPN_STR	PROTO_NORDVPN
 #define VPN_PROTO_SURFSHARK_STR	PROTO_SURFSHARK
+#define VPN_PROTO_CYBERGHOST_STR	PROTO_CYBERGHOST
 #else
 #define VPN_PROTO_PPTP_STR "PPTP"
 #define VPN_PROTO_L2TP_STR "L2TP"
@@ -207,6 +214,7 @@ typedef struct __cp_radius_list__
 #define VPN_PROTO_HMA_STR "HMA"
 #define VPN_PROTO_NORDVPN_STR "NordVPN"
 #define VPN_PROTO_SURFSHARK_STR "Surfshark"
+#define VPN_PROTO_CYBERGHOST_STR "CyberGhost"
 #endif
 #define VPN_PROTO_L2GRE_STR "L2GRE"
 #define VPN_PROTO_L3GRE_STR "L3GRE"

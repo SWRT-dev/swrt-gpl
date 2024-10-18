@@ -148,7 +148,7 @@ int start_letsencrypt(void)
 		}
 		if(!d_exists(LE_ACME_CERT_HOME))
 			mkdir(LE_ACME_CERT_HOME, 0600);
-		snprintf(path, sizeof(path), "%s/%s", LE_ACME_CERT_HOME, conf.ddns_hostname);
+		snprintf(path, sizeof(path), "%s/%s%s", LE_ACME_CERT_HOME, conf.ddns_hostname, conf.ecc ? "_ecc" : "");
 		if(!d_exists(path))
 			mkdir(path, 0600);
 		if(!d_exists("/var/empty"))

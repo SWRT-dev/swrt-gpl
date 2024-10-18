@@ -28,8 +28,6 @@ helpcontent[0] = new Array("",
 			"<#Access_Intranet_desc#>",
 			"Smart Connect is the feature which could automatically steer clients to the most appropriate band (2.4GHz, 5GHz-1 and 5GHz-2)." /*untranslated*/
 			 );
-if ("<% nvram_get("wl2_band"); %>".length == 0)
-	helpcontent[0][27] = "Smart Connect is the feature which could automatically steer clients to the most appropriate band (2.4GHz and 5GHz)."; /*untranslated*/
 helpcontent[1] = new Array("",
 						   "<#WLANConfig11b_x_APMode_itemdesc#>",
 						   "<#WLANConfig11b_Channel_itemdesc#>",
@@ -76,7 +74,8 @@ helpcontent[3] = new Array("",
 							"<#WLANConfig11b_x_roamingassit_desc#>",	//31
 							"<#WLANConfig11b_x_Airtime_Fairness_itemdesc#>",
 							"<#WLANConfig11b_x_Auto#>",
-							"<#WLANConfig11b_x_BTCoexistence_itemdesc#>"
+							"<#WLANConfig11b_x_BTCoexistence_itemdesc#>",
+							"<#WLANConfig11b_x_client_limit_itemdesc#>"
 							 );
 
 helpcontent[4] = new Array("",
@@ -334,10 +333,8 @@ helpcontent[27] = new Array("",
 							"<#YandexDNS_mode1#>: <#YandexDNS_mode1desc#><br>" +
 							"<#YandexDNS_mode2#>: <#YandexDNS_mode2desc#>");
 
-if('<% nvram_default_get("lan_ipaddr"); %>' != "192.168.1.1"){
-	helpcontent[4][1] = "<#LANHostConfig_IPRouters_itemdesc#>".replace("192.168.1.1", '<% nvram_default_get("lan_ipaddr"); %>');
-	helpcontent[24][5] = "<#LANHostConfig_IPRouters_itemdesc#>".replace("192.168.1.1", '<% nvram_default_get("lan_ipaddr"); %>');
-}
+helpcontent[4][1] = "<#LANHostConfig_IPRouters_itemdesc#>".replace("192.168.1.1", '192.168.50.1');
+helpcontent[24][5] = "<#LANHostConfig_IPRouters_itemdesc#>".replace("192.168.1.1", '192.168.50.1');
 
 //28 is used by WAN Aggregation unexpectedly. Move help content of mobile broadband to 35.
 helpcontent[28] = new Array("");
@@ -367,7 +364,7 @@ helpcontent[32] = new Array("",
 							"Enable this option allows VPN clients use the Internet from your router instead of the one at their location.",/*untranslated*/
 							"Virtual network device type. TUN devices encapsulate IPv4 or IPv6 (OSI Layer 3) while TAP devices encapsulate Ethernet 802.3 (OSI Layer 2).",/*untranslated*/
 							"Choose the communicating protocol with remote host.",/*untranslated*/
-							"Set the port number to bind. The current default of 1194 represents the official IANA port number assignment for OpenVPN.",/*untranslated*/
+							"",
 							"<b>TLS</b>: OpenVPN runs in server mode and SSL/TLS authentication will be used;<br> <b>Static Key</b>: OpenVPN runs in P2P mode.",/*untranslated*/
 							"The bits size of automatically generated certificate.",/*untranslated*/
 							"Use username/password only allows client connect to server without certification and authentication by username/password. Be aware that using this directive is less secure than requiring certificates.",/*untranslated*/

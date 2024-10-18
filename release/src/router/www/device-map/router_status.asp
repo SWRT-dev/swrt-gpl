@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
 	<meta charset="utf-8">
@@ -49,12 +49,14 @@ $(document).ready(function(){
 	genRAMElement();
 	get_ethernet_ports();
 	get_plc_ports();
-	detect_CPU_RAM();
+    if(!parent.webWrapper){
+	    detect_CPU_RAM();
+    }
 	if(isSupport("ledg")){
 		$("#light_effect_tab").show();
 	}  
 
-	if(parent.businessWrapper){
+	if(parent.webWrapper){
 		$("body").hide().css("visibility", "visible").fadeIn();
 		$("#wireless_tab").parent().hide()
 		$("#cpu_field").hide()
@@ -86,7 +88,7 @@ function getVariable(){
 		_array.push.apply(_array, _element);
 	}
 
-	if(system.band60gSupport || system.modelName === 'GT-AXE16000' || system.modelName === 'GT-BE98' || system.modelName === 'GT-BE98_PRO'){
+	if(system.band60gSupport || system.modelName === 'GT-AXE16000' || system.modelName === 'GT-BE98' || system.modelName === 'GT-BE98_PRO' || system.modelName === 'BQ16' || system.modelName === 'BQ16_PRO'){
 		_element = ['wl3_hwaddr'];
 		_array.push.apply(_array, _element);
 	}
@@ -132,51 +134,24 @@ function genElement(){
 
 	// MAC Address
 	code += '<div class="info-block"><div class="info-title">LAN <#MAC_Address#></div><div class="info-content">'+ variable.lan_hwaddr +'</div></div>';
-	if(system.band2gSupport){
-		if(system.modelName === 'GT-AXE16000' || system.modelName === 'GT-BE98' || system.modelName === 'GT-BE98_PRO'){
-			code += '<div class="info-block"><div class="info-title">2.4 GHz <#MAC_Address#></div><div class="info-content">'+ variable.wl3_hwaddr +'</div></div>';
-		}
-		else if(odmpid === 'GT6'){
-			code += '<div class="info-block"><div class="info-title">2.4 GHz <#MAC_Address#></div><div class="info-content">'+ variable.wl2_hwaddr +'</div></div>';
-		}
-		else{
-			code += '<div class="info-block"><div class="info-title">2.4 GHz <#MAC_Address#></div><div class="info-content">'+ variable.wl0_hwaddr +'</div></div>';
-		}		
-	}
+	
+	var router_mac = httpApi.nvramGet([
+		"wl0_hwaddr",
+		"wl1_hwaddr",
+		"wl2_hwaddr",
+		"wl3_hwaddr",
+		"wl4_hwaddr"
+	])
 
-	if(system.triBandSupport){
-		if(system.band6gSupport){
-			code += '<div class="info-block"><div class="info-title">5 GHz <#MAC_Address#></div><div class="info-content">'+ variable.wl1_hwaddr +'</div></div>';
-			code += '<div class="info-block"><div class="info-title">6 GHz <#MAC_Address#></div><div class="info-content">'+ variable.wl2_hwaddr +'</div></div>';
+	for(var i = 0; i < bandName.length; i++){
+		if(get_wl_unit_by_band(bandName[i]) !== ""){
+			code += `
+				<div class="info-block">
+					<div class="info-title">${wl_nband_title[get_wl_unit_by_band(bandName[i])]} <#MAC_Address#></div>
+					<div class="info-content">${router_mac["wl" + get_wl_unit_by_band(bandName[i]) + "_hwaddr"]}</div>
+				</div>
+			`;
 		}
-		else{
-			if(system.modelName == 'MAP-AC2200')
-			{
-				code += '<div class="info-block"><div class="info-title">5 GHz-1 <#MAC_Address#></div><div class="info-content">'+ variable.wl2_hwaddr +'</div></div>';
-				code += '<div class="info-block"><div class="info-title">5 GHz-2 <#MAC_Address#></div><div class="info-content">'+ variable.wl1_hwaddr +'</div></div>';
-			}
-			else if(odmpid === 'GT6'){
-				code += '<div class="info-block"><div class="info-title">5 GHz-1 <#MAC_Address#></div><div class="info-content">'+ variable.wl0_hwaddr +'</div></div>';
-				code += '<div class="info-block"><div class="info-title">5 GHz-2 <#MAC_Address#></div><div class="info-content">'+ variable.wl1_hwaddr +'</div></div>';
-			}
-			else
-			{
-				code += '<div class="info-block"><div class="info-title">5 GHz-1 <#MAC_Address#></div><div class="info-content">'+ variable.wl1_hwaddr +'</div></div>';
-				code += '<div class="info-block"><div class="info-title">5 GHz-2 <#MAC_Address#></div><div class="info-content">'+ variable.wl2_hwaddr +'</div></div>';
-			}
-		}	
-	}
-	else if(system.modelName === 'GT-AXE16000' || system.modelName === 'GT-BE98' || system.modelName === 'GT-BE98_PRO'){
-		code += '<div class="info-block"><div class="info-title">5 GHz-1 <#MAC_Address#></div><div class="info-content">'+ variable.wl0_hwaddr +'</div></div>';
-		code += '<div class="info-block"><div class="info-title">5 GHz-2 <#MAC_Address#></div><div class="info-content">'+ variable.wl1_hwaddr +'</div></div>';
-		code += '<div class="info-block"><div class="info-title">6 GHz <#MAC_Address#></div><div class="info-content">'+ variable.wl2_hwaddr +'</div></div>';
-	}
-	else{
-		code += '<div class="info-block"><div class="info-title">5 GHz <#MAC_Address#></div><div class="info-content">'+ variable.wl1_hwaddr +'</div></div>';
-	}
-
-	if(system.band60gSupport){
-		code += '<div class="info-block"><div class="info-title">LAN <#MAC_Address#></div><div class="info-content">'+ variable.wl3_hwaddr +'</div></div>';
 	}
 
 	$('#hw_information_field').html(code);
@@ -208,7 +183,7 @@ function genElement(){
 }
 
 function register_event(){
-	$(function() {
+
 		$( "#slider" ).slider({
 			orientation: "horizontal",
 			range: "min",
@@ -224,7 +199,7 @@ function register_event(){
 				set_led(ui.value);	  
 			}
 		}); 
-	});
+
 }
 
 function set_led(value){
@@ -441,10 +416,16 @@ function get_ethernet_ports() {
 
 				var $error_port_list_bg = $("<div>").appendTo($hint_text_bg);
 				$.each(_error_port_list, function(index, port_item){
-					var display_name = ((port_item.special_port_name == "") ? port_item.label_port_name : port_item.special_port_name);
+					let port_text = "";
+					if(port_item.ui_display != undefined && port_item.ui_display != ""){
+						port_text = port_item.ui_display;
+					}
+					else{
+						port_text = port_item.special_port_name + " (" + port_item.label_port_name + ")";
+					}
 					var $port_item = $("<div>").css({"display":"flex", "flex-wrap":"nowrap", "align-items":"baseline"}).appendTo($error_port_list_bg);
 					$("<div>").css({"width":"12px", "height":"12px", "background":"#ECC000", "margin":"0 6px 0 10px"}).appendTo($port_item);
-					$("<div>").html(htmlEnDeCode.htmlEncode(display_name)).appendTo($port_item);
+					$("<div>").html(htmlEnDeCode.htmlEncode(port_text)).appendTo($port_item);
 				});
 				$("<div>").css({"background":"rgb(255 255 255 / 20%)", "height":"1px", "margin":"10px 0"}).appendTo($hint_text_bg);
 				$("<div>").css({"margin-bottom":"6px"}).html("<#Things_To_Check#> :").appendTo($hint_text_bg);
@@ -484,6 +465,7 @@ function get_ethernet_ports() {
 				var $label_W_bg = $("<div>").addClass("label_W_bg").appendTo($port_status_bg);
 				var $label_L_bg = $("<div>").addClass("label_L_bg").appendTo($port_status_bg);
 				var error_port_list = [];
+				let show_poe_status_desc = false;
 				$.each(port_info, function(label, label_array){
 					$.each(port_info[label], function(index, port_item){
 						var $port_bg = $("<div>").attr({"title":port_item.link_rate_text});
@@ -511,30 +493,57 @@ function get_ethernet_ports() {
 							else
 								$port_icon.addClass("unplug");
 						}
+						if(port_item.cap_support.POE){
+							show_poe_status_desc = true;
+							$port_icon.addClass(()=>{
+								return ("poe_port " + ((port_item.poe_info.poe_link == "1") ? "poe_en" : "poe_dis"));
+							});
+						};
 
-						if(port_item.cap_support.WAN){
+						if(port_item.cap_support.WAN || port_item.cap_support.WANAUTO){
 							$("<div>").addClass("wan_icon").appendTo($port_icon);
-							if(port_item.special_port_name != "")
-								$("<span>").addClass("port_text").html(htmlEnDeCode.htmlEncode(port_item.special_port_name)).appendTo($port_bg);
-						}
-						else if(port_item.cap_support.LAN){
-							if(top.businessWrapper){
-								if(port_item.special_port_name != ""){
-									$("<span>").addClass("port_text").html(htmlEnDeCode.htmlEncode(port_item.special_port_name)).appendTo($port_bg);
-								}
-								$("<div>").addClass("lan_idx").html(htmlEnDeCode.htmlEncode(port_item.label_idx)).appendTo($port_icon);
+							let port_text = "";
+							if(port_item.ui_display != undefined && port_item.ui_display != ""){
+								port_text = port_item.ui_display;
 							}
 							else{
-								if(port_item.special_port_name != "")
-									$("<span>").addClass("port_text").html(htmlEnDeCode.htmlEncode(port_item.special_port_name)).appendTo($port_bg);
-								else
-									$("<div>").addClass("lan_idx").html(htmlEnDeCode.htmlEncode(port_item.label_idx)).appendTo($port_icon);
+								if(port_item.special_port_name != ""){
+									port_text = port_item.special_port_name;
+								}
 							}
+							if(port_text != "")
+								$("<span>").addClass("port_text").html(htmlEnDeCode.htmlEncode(port_text)).appendTo($port_bg);
+						}
+						else if(port_item.cap_support.LAN){
+							let port_text = "";
+							let port_idx = "";
+							if(port_item.ui_display != undefined && port_item.ui_display != ""){
+								port_text = port_item.ui_display;
+							}
+							else{
+								if(port_item.special_port_name != ""){
+									port_text = port_item.special_port_name;
+								}
+								port_idx = port_item.label_idx;
+							}
+							if(port_text != "")
+								$("<span>").addClass("port_text").html(htmlEnDeCode.htmlEncode(port_text)).appendTo($port_bg);
+							if(port_idx != "")
+								$("<div>").addClass("lan_idx").html(htmlEnDeCode.htmlEncode(port_idx)).appendTo($port_icon);
 						}
 						else if(port_item.cap_support.USB){
 							$port_icon.addClass("USB");
-							if(port_item.special_port_name != "")
-								$("<span>").addClass("port_text").html(htmlEnDeCode.htmlEncode(port_item.special_port_name)).appendTo($port_bg);
+							let port_text = "";
+							if(port_item.ui_display != undefined && port_item.ui_display != ""){
+								port_text = port_item.ui_display;
+							}
+							else{
+								if(port_item.special_port_name != ""){
+									port_text = port_item.special_port_name;
+								}
+							}
+							if(port_text != "")
+								$("<span>").addClass("port_text").html(htmlEnDeCode.htmlEncode(port_text)).appendTo($port_bg);
 						}
 						else if(port_item.cap_support.MOCA){
 							$port_icon.addClass("MoCa");
@@ -549,21 +558,37 @@ function get_ethernet_ports() {
 					});
 				});
 
+				// hack for safari to prevent to bottom line overlaps LAN elements
+				if(!port_info.WAN || port_info.WAN.length === 0){
+					document.querySelector('.label_W_bg').style.display = 'none';
+				}
+
 				var $port_status_icon_desc = $("<div>").addClass("port_status_icon_desc").appendTo($("#phy_ports"));
-				if(top.businessWrapper){
-					$port_status_icon_desc.addClass("businessWrapper");
+				if(top.webWrapper){
+					$port_status_icon_desc.addClass("webWrapper");
 				}
 				$("<div>").addClass("conn").html("<#Connected#>").appendTo($port_status_icon_desc);
 				$("<div>").addClass("warn").html("<#Notice#>").appendTo($port_status_icon_desc);/* untranslated */
 				$("<div>").addClass("unplug").html("<#Status_Unplugged#>").appendTo($port_status_icon_desc);
+				if(show_poe_status_desc){
+					$("<div>").addClass("conn poe_en").html(`PoE <#Connected#>`).appendTo($port_status_icon_desc);
+					$("<div>").addClass("conn poe_dis").html(`PoE <#Status_Unplugged#>`).appendTo($port_status_icon_desc);
+				}
 
 				if(show_notice){
-					$("#phy_ports .port_status_notice_icon").css("display", "inline-block");
-					$("#phy_ports .port_status_notice_icon").unbind("click").click(function(e){
-						e = e || event;
-						e.stopPropagation();
-						popup_notice(error_port_list);
-					});
+					if(top.webWrapper){
+						if(typeof top.show_ethPortStatus_hint == "function"){
+							top.show_ethPortStatus_hint(error_port_list);
+						}
+					}
+					else{
+						$("#phy_ports .port_status_notice_icon").css("display", "inline-block");
+						$("#phy_ports .port_status_notice_icon").unbind("click").click(function(e){
+							e = e || event;
+							e.stopPropagation();
+							popup_notice(error_port_list);
+						});
+					}
 				}
 			}
 		});

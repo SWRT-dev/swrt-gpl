@@ -940,8 +940,12 @@ void get_gpio_values_once(int force)
 	for (i = 0; i < ARRAY_SIZE(led_gpio_table); ++i) {
 		led_gpio_table[i] = -1;
 	}
-	for (p = &led_btn_table[0]; p->p_val; ++p)
+
+	for (p = &led_btn_table[0]; p->p_val; ++p) {
 		*(p->p_val) = __get_gpio(p->nv);
+
+		if(force == 2)  _dprintf("%s, [%s][%d]\n", __func__, p->nv, *(p->p_val));
+	}
 }
 
 int button_pressed(int which)
@@ -950,7 +954,7 @@ int button_pressed(int which)
 	int gpio_value;
 
 	if (which < 0 || which >= BTN_ID_MAX)
-		return -1;
+		return 0;
 
 	get_gpio_values_once(0);
 	use_gpio = btn_gpio_table[which];
@@ -1009,13 +1013,14 @@ void dump_led_enum()
 {
 	const struct led_btn_table_s *p;
 	int enum_offset = 0;
-	char buf[16], *bp = NULL;
+	char buf[32], *bp = NULL;
 
+	_dprintf("LED_MAX=%d, dump led enum id\n", LED_ID_MAX);
 	for (p = &led_btn_table[0]; p->p_val; ++p) {
 		if(strncmp(p->nv, "led_", 4) == 0) {
 			enum_offset = p->p_val - led_gpio_table;
 			strlcpy(buf, p->nv, sizeof(buf));
-			if(bp = strstr(buf, "_gpio"))
+			if ((bp = strstr(buf, "_gpio")) != NULL)
 				*bp = 0;
 			//_dprintf("[%s]:[%d] (%p / %p)\n", buf, enum_offset, p->p_val, led_gpio_table);
 			_dprintf("[%s]:[%d] \n", buf, enum_offset);
@@ -1618,3 +1623,4 @@ void i2cled_control(int which, int onoff)
 #endif
 }
 #endif
+

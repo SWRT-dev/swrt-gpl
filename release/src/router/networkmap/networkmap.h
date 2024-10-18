@@ -78,11 +78,10 @@ enum
 };
 #endif
 
-
-#define USERAGENT			"Asuswrt/networkmap"
-#define NMPDB_FILE_LOCK			"nmpdb"
-#define USERAGENT			"Asuswrt/networkmap"
-#define NMP_VC_FILE_LOCK		"nmpvc"
+#define USERAGENT           "Asuswrt/networkmap"
+#define NMPDB_FILE_LOCK     "nmpdb"
+#define USERAGENT           "Asuswrt/networkmap"
+#define NMP_VC_FILE_LOCK    "nmpvc"
 
 #define CFG_FILE_LOCK                "cfg_mnt"
 #define ALLWEVENT_FILE_LOCK          "allwevent"
@@ -92,15 +91,24 @@ enum
 #define WIREDCLIENTLIST_FILE_LOCK    "wiredclientlist"
 #define WIRED_CLIENT_LIST_JSON_PATH  "/tmp/wiredclientlist.json"
 #define BRCTL_TABLE_PATH             "/tmp/nmp_brctl_table"
+#define NMP_CLIENT_LIST             "/tmp/nmp_client_list"
+
+#define ASUS_DEVICE_JSON_FILE  "/tmp/asus_device.json"
+
+#ifdef RTCONFIG_IPV6
+#define IP6_TABLE_PATH               "/tmp/nmp_ip6_table"
+#endif
 
 #define NCL_LIMIT		14336   //database limit to 14KB to avoid UI glitch
 
-#define NMP_DEBUG_FILE			"/tmp/NMP_DEBUG"
-#define NMP_DEBUG_MORE_FILE		"/tmp/NMP_DEBUG_MORE"
+#define IP_TABLE_PATH               "/tmp/nmp_ip_table"
+#define NMP_DEBUG_FILE				"/tmp/NMP_DEBUG"
+#define NMP_DEBUG_MORE_FILE			"/tmp/NMP_DEBUG_MORE"
 #define NMP_DEBUG_FUNCTION_FILE		"/tmp/NMP_DEBUG_FUNCTION"
-#define NMP_DEBUG_VC_FILE		"/tmp/NMP_DEBUG_VC"
+#define NMP_DEBUG_VC_FILE			"/tmp/NMP_DEBUG_VC"
 
 #define NEWORKMAP_OUI_FILE		"/usr/networkmap/networkmap.oui.js"
+
 #if (defined(RTCONFIG_JFFS2) || defined(RTCONFIG_JFFSV1) || defined(RTCONFIG_BRCM_NAND_JFFS2) || defined(RTCONFIG_UBIFS))
 #define NMP_CL_JSON_FILE		"/jffs/nmp_cl_json.js"
 #define NMP_VC_JSON_FILE		"/jffs/nmp_vc_json.js"
@@ -217,6 +225,10 @@ typedef struct {
 	unsigned char	device_type[MAX_NR_CLIENT_LIST][32];
 	unsigned char	vendorClass[MAX_NR_CLIENT_LIST][32];
 	unsigned char	os_type[MAX_NR_CLIENT_LIST];
+#ifdef RTCONFIG_IPV6
+	char			ip6_addr[MAX_NR_CLIENT_LIST][40];
+	char			ip6_prefix[MAX_NR_CLIENT_LIST][50];
+#endif
 #ifdef RTCONFIG_MULTILAN_CFG
 	unsigned char	sdn_idx[MAX_NR_CLIENT_LIST];
 	unsigned char	sdn_type[MAX_NR_CLIENT_LIST][32];
@@ -225,6 +237,7 @@ typedef struct {
 	unsigned char	type[MAX_NR_CLIENT_LIST];
 	unsigned char	ipMethod[MAX_NR_CLIENT_LIST][7];
 	unsigned char	opMode[MAX_NR_CLIENT_LIST];
+	unsigned char	dhcp_flag[MAX_NR_CLIENT_LIST];
 /* define bitmap flag:	0.http
 			1.printer
 			2.itune
@@ -236,7 +249,9 @@ typedef struct {
 /* wireless: 0:wired 1:2.4G 2:5G 3:5G-2
 */
 	unsigned char	wireless[MAX_NR_CLIENT_LIST];
-
+#ifdef RTCONFIG_MLO
+	unsigned char	mlo[MAX_NR_CLIENT_LIST];
+#endif
 	unsigned char	is_wireless[MAX_NR_CLIENT_LIST];
 	int        		conn_ts[MAX_NR_CLIENT_LIST];		// connect  timestamp
 	int        		offline_time[MAX_NR_CLIENT_LIST];
@@ -265,6 +280,7 @@ typedef struct {
 	int		asus_device_num;
 	int		commit_no;
 	char		delete_mac[13];
+
 } CLIENT_DETAIL_INFO_TABLE, *P_CLIENT_DETAIL_INFO_TABLE;
 
 // walf test
@@ -290,6 +306,9 @@ int isBaseType(int type);
 
 int QueryConvTypes(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, int i);
 
+#ifdef RTCONFIG_DNSQUERY_INTERCEPT
+void QueryDevType(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, int i);
+#endif
 
 #ifdef RTCONFIG_MULTILAN_CFG
 void get_subnet_ifname(const int subnet_idx, char * subnet_ifname, int ifname_len);
@@ -299,6 +318,10 @@ int get_sdn_idx_form_apg(char *papMac, char *ifname);
 #endif
 
 int get_brctl_macs(char * mac);
+
+#ifdef RTCONFIG_MLO
+int check_wrieless_mlo(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, const int i);
+#endif
 
 int check_wrieless_info(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, const int i, const int is_file, struct json_object *clients);
 
@@ -310,13 +333,29 @@ void regularly_check_devices(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab
 
 void check_clientlist_offline(CLIENT_DETAIL_INFO_TABLE *p_client_detail_info_tab);
 
+int check_wire_info(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, const int i);
+
 int check_wireless_clientlist(CLIENT_DETAIL_INFO_TABLE *p_client_detail_info_tab);
 
+int get_client_list();
+
+void check_clients_from_ip_cmd(CLIENT_DETAIL_INFO_TABLE *p_client_detail_info_tab);
+
+void check_dhcp_ip_online(CLIENT_DETAIL_INFO_TABLE *p_client_detail_info_tab, const char *mac, const char *ip_addr);
+
 void check_brctl_mac_online(CLIENT_DETAIL_INFO_TABLE *p_client_detail_info_tab);
+
+int check_asus_device(CLIENT_DETAIL_INFO_TABLE *p_client_detail_info_tab, const int i);
 
 void network_ip_scan();
 
 int json_checker(const char *json_str);
 
 int check_brctl_macs(CLIENT_DETAIL_INFO_TABLE *p_client_detail_info_tab);
+#ifdef RTCONFIG_IPV6
+void check_ip6_addr(CLIENT_DETAIL_INFO_TABLE *p_client_detail_info_tab);
+
+void check_ip6_mac(CLIENT_DETAIL_INFO_TABLE *p_client_detail_info_tab, const char *mac, const char *ip6_addr);
+#endif
+
 #endif  /*__NETWORKMAP_H__*/

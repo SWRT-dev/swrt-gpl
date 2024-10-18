@@ -13,8 +13,8 @@
 <link rel="stylesheet" type="text/css" href="form_style.css">
 <link rel="stylesheet" type="text/css" href="usp_style.css">
 <link rel="stylesheet" type="text/css" href="other.css">
+<script type="text/javascript" src="/js/jquery.js"></script>
 <script language="JavaScript" type="text/javascript" src="/state.js"></script>
-<script language="JavaScript" type="text/javascript" src="/js/jquery.js"></script>
 <script language="JavaScript" type="text/javascript" src="/general.js"></script>
 <script language="JavaScript" type="text/javascript" src="/popup.js"></script>
 <script language="JavaScript" type="text/javascript" src="/help.js"></script>
@@ -172,7 +172,7 @@ function initial(){
 				"value" : "6"
 			},
 			"label" : {
-				"text" : "Public WiFi Mode (WISP)"
+				"text" : "<#OP_WISP_item#>"
 			},
 			"mode" : "6",
 			"express" : "0",
@@ -377,6 +377,7 @@ function close_guest_unit(_unit, _subunit){
 }
 
 function saveMode(){
+	let sdn_change_mode_hint = `<#AiProtection_title#>, <#vpnc_title#>, <#BOP_isp_heart_item#>, and <#EzQoS_type_QoS#> are not available. The profile list of ${Guest_Network_naming} will be cleared. Please reconfigure it. We recommend that you download and save the configuration file before switching to #OPMODE.\n<#Setting_factorydefault_hint2#>`;
 	if(sw_mode_orig == document.form.sw_mode.value){
 		if(document.form.sw_mode.value != 2){				
 			alert("<#Web_Title2#> <#op_already_configured#>");
@@ -407,10 +408,7 @@ function saveMode(){
 	else if(document.form.sw_mode.value == 3){
 		var confirmFlag = true;
 		if(isSupport("mtlancfg") && sw_mode_orig == "1"){
-			var hint_text = "<#AiProtection_title#>, <#vpnc_title#>, <#BOP_isp_heart_item#>, and <#EzQoS_type_QoS#> are not available. The profile list of " + Guest_Network_naming + " will be cleared. Please reconfigure it. We recommend that you download and save the configuration file before switching to #OPMODE.".replace("#OPMODE", "<#WLANConfig11b_x_APMode_itemname#>");
-			hint_text += "\n";
-			hint_text += "<#Setting_factorydefault_hint2#>";
-			confirmFlag = confirm(hint_text);
+			confirmFlag = confirm(sdn_change_mode_hint.replace("#OPMODE", $("#apMode").find("label").html()));
 		}
 		if(confirmFlag){
 			parent.location.href = '/QIS_wizard.htm?flag=lanip';
@@ -430,7 +428,13 @@ function saveMode(){
 		return false;
 	}
 	else{ // default router
-		parent.location.href = '/QIS_wizard.htm?flag=rtMode';
+		let confirmFlag = true;
+		if(isSupport("mtlancfg") && sw_mode_orig == "3"){
+			confirmFlag = confirm(sdn_change_mode_hint.replace("#OPMODE", $("#routerMode").find("label").html()));
+		}
+		if(confirmFlag){
+			parent.location.href = '/QIS_wizard.htm?flag=rtMode';
+		}
 		return false;		
 	}
 

@@ -88,14 +88,12 @@ install:
 	( tar --exclude=.svn --exclude=*.bak -cpf - rom bin ) | ( cd $(INSTALLDIR) && tar -xpf - )
 ifeq ($(RTCONFIG_DEBUG),y)
 	$(if $(or $(RTCONFIG_SOC_IPQ8064),$(RTCONFIG_SOC_IPQ8074)),install -m 0755 $(if $(filter y,$(MUSL64)),gdb.ipq807x.musl64,gdb.ipq806x) $(INSTALLDIR)/bin/gdb)
+	$(if $(RTCONFIG_SOC_IPQ53XX),install -m 0755 gdb.ipq53xx.musl64 $(INSTALLDIR)/bin/gdb)
 	$(if $(RTCONFIG_MT798X),install -m 0755 gdb-10.1-arm64-musl $(INSTALLDIR)/bin/gdb)
 	$(if $(RTCONFIG_RALINK_MT7621),install -m 0755 gdb.mips-musl $(INSTALLDIR)/bin/gdb)
 endif
 
 	$(MAKE) certs-install
-ifeq ($(RTCONFIG_LETSENCRYPT),y)
-	install -m 0644 certs/DST_Root_CA_X3.pem $(INSTALLDIR)/rom/etc/ssl/certs/letsencrypt.pem
-endif
 ifeq ($(RTCONFIG_APP_FILEFLEX),y)
 	install -m 0644 ipkg.conf $(INSTALLDIR)/rom/ipkg.conf
 endif
@@ -397,7 +395,7 @@ else
 	rm -f $(INSTALLDIR)/rom/etc/profile.hnd
 endif
 
-ifeq ($(RTCONFIG_TPVPN),y)
+ifeq ($(RTCONFIG_HMA),y)
 	mkdir -p $(INSTALLDIR)/rom/vpn
 	install -m 0644 vpn/HMA_TCP.JSON $(INSTALLDIR)/rom/vpn/HMA_TCP.JSON
 	install -m 0644 vpn/HMA_UDP.JSON $(INSTALLDIR)/rom/vpn/HMA_UDP.JSON
@@ -444,3 +442,4 @@ ifeq ($(RTCONFIG_BCMARM),y)
 endif
 
 .PHONY: dummy
+

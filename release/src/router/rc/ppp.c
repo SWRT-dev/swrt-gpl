@@ -163,6 +163,9 @@ ipup_main(int argc, char **argv)
 	if ((value = getenv("DNS2")))
 		snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "%s%s", *buf ? " " : "", value);
 
+	// always backup received dns
+	nvram_set(strlcat_r(prefix, "dns_r", tmp, sizeof(tmp)), buf);
+
 	/* empty DNS means they either were not requested or peer refused to send them.
 	 * for this case static DNS can be used, if they are configured */
 	if (strlen(buf) == 0 && !nvram_get_int(strcat_r(prefix, "dnsenable_x", tmp)))
@@ -285,8 +288,10 @@ int ip6up_main(int argc, char **argv)
 	/* share the same interface with pppoe ipv4 connection */
 	nvram_set(strcat_r(prefix, "pppoe_ifname", tmp), wan_ifname);
 
-	if ((value = getenv("LLREMOTE")))
+	if ((value = getenv("LLREMOTE"))) {
 		nvram_set(ipv6_nvname_by_unit("ipv6_llremote", unit), value);
+		nvram_set(ipv6_nvname_by_unit("ipv6_gateway", unit), value);
+	}
 
 	wan6_up(wan_ifname);
 

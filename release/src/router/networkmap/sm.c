@@ -72,7 +72,7 @@ unsigned char prefix_search(ac_state *sm, const char *text, unsigned char *baseI
 	match_rule *rule_tmp;
 	ac_trans *trans_pt, *trans_pt2;
 
-	SM_DEBUG("Prefix search index\n");
+	SM_DEBUG("Prefix search\n");
 	SM_DEBUG("text length = %d:%s\n", len, text);
 	trans_pt = sm->nextTrans;
 	if(trans_pt == NULL){
@@ -137,7 +137,7 @@ unsigned int prefix_search_index(ac_state *sm, const char *text, unsigned char *
 	match_rule *rule_tmp;
 	ac_trans *trans_pt, *trans_pt2;
 
-	SM_DEBUG("Prefix search\n");
+	SM_DEBUG("Prefix search index\n");
 	SM_DEBUG("text length = %d:%s\n", len, text);
 	trans_pt = sm->nextTrans;
 	if(trans_pt == NULL){

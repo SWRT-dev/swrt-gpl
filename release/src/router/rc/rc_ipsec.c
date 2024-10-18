@@ -1426,8 +1426,89 @@ void ipsec_conf_local_set(FILE *fp, int prof_idx, ipsec_prof_type_t prof_type)
     return;
 }
 
+/*
+**
+** Note that 'rightdns' of strongSwan is a comma separated list of DNS server addresses.
+**
+*/
+/*******************************************************************
+* NAME: get_wan_dns_add_comma
+* AUTHOR: Renjie Lee
+* CREATE DATE: 2024/01/10
+* DESCRIPTION: Copy WAN DNS into buf, add a comma to separate them if there are multiple DNS addresses.
+* If WAN DNS is "168.95.192.1 168.95.1.1", then buf will be "168.95.192.1,168.95.1.1".
+* INPUT: buf, len
+* OUTPUT: buf
+* RETURN: NULL (on error case or empty buf) or buf (if buf is not empty)
+* NOTE: The 'rightdns' parameter of strongSwan is a comma separated list of DNS server addresses.
+*******************************************************************/
+char *get_wan_dns_add_comma(char *buf, size_t len)
+{
+#ifdef RTCONFIG_HND_ROUTER_BE_4916
+	char *next = NULL;
+	char all_dns[512] = {0};
+	char separate_dns[64] = {0};
+#endif
+
+	if(buf && (len > 0))
+	{
+		memset(buf, 0, len);
+#ifdef RTCONFIG_HND_ROUTER_BE_4916
+		if(1 == nvram_get_int("wan0_primary"))
+		{
+			snprintf(all_dns, sizeof(all_dns), "%s", nvram_safe_get("wan0_dns"));
+			foreach (separate_dns, all_dns, next)
+			{
+				snprintf(buf + strlen(buf), len - strlen(buf), "%s", separate_dns);
+				if(next)
+				{
+					//add a 'comma' character
+					snprintf(buf + strlen(buf), len - strlen(buf), "%s", ",");
+				}
+			}
+		}
+		else if(1 == nvram_get_int("wan1_primary"))
+		{
+			snprintf(all_dns, sizeof(all_dns), "%s", nvram_safe_get("wan1_dns"));
+			foreach (separate_dns, all_dns, next)
+			{
+				snprintf(buf + strlen(buf), len - strlen(buf), "%s", separate_dns);
+				if(next)
+				{
+					//add a 'comma' character
+					snprintf(buf + strlen(buf), len - strlen(buf), "%s", ",");
+				}
+			}
+		}
+		else
+		{
+			snprintf(buf, len, "%s", nvram_safe_get("lan_ipaddr"));
+		}
+#else /* RTCONFIG_HND_ROUTER_BE_4916 */
+		snprintf(buf, len, "%s", nvram_safe_get("lan_ipaddr"));
+#endif /* RTCONFIG_HND_ROUTER_BE_4916 */
+		logmessage("get_wan_dns_add_comma", "WAN DNS[%s]\n", buf);
+		if(strlen(buf) > 0)
+		{
+			return buf;
+		}
+		else
+		{
+			return NULL;
+		}
+	}
+	else
+	{
+		_dprintf("[%s]Failed to get WAN DNS.\n", __FUNCTION__);
+		logmessage("get_wan_dns_add_comma", "Failed to get WAN DNS.\n");
+		return NULL;
+	}
+}
+
 void ipsec_conf_remote_set(FILE *fp, int prof_idx, ipsec_prof_type_t prof_type)
 {
+    char wan_dns[256] = {0};
+
     if((VPN_TYPE_NET_NET_SVR == prof[prof_type][prof_idx].vpn_type) || 
        (VPN_TYPE_HOST_NET == prof[prof_type][prof_idx].vpn_type)){
         fprintf(fp, "  right=%%any\n");
@@ -1466,7 +1547,7 @@ void ipsec_conf_remote_set(FILE *fp, int prof_idx, ipsec_prof_type_t prof_type)
            ('\0' != prof[prof_type][prof_idx].virtual_subnet[0])){
             fprintf(fp, "#sourceip_en=%s\n  rightsourceip=%s\n"
                  , prof[prof_type][prof_idx].virtual_ip_en, prof[prof_type][prof_idx].virtual_subnet);
-	    fprintf(fp, "  rightdns=%s\n", nvram_safe_get("lan_ipaddr"));
+	    fprintf(fp, "  rightdns=%s\n", get_wan_dns_add_comma(wan_dns, sizeof(wan_dns)) ? wan_dns : nvram_safe_get("lan_ipaddr"));
         }
     }
     if((0 != strcmp(prof[prof_type][prof_idx].remote_id, "null")) &&
@@ -2933,9 +3014,10 @@ void rc_ipsec_set(ipsec_conn_status_t conn_status, ipsec_prof_type_t prof_type)
     if(NULL != fp){
         fclose(fp);
     }
-#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ60XX)
+#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ60XX) \
+ || defined(RTCONFIG_SOC_IPQ53XX)
 	reinit_ecm(-1);
-#elif defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_MT798X)
+#elif defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 	reinit_hwnat(-1);
 #endif
 	DBG(("rc_ipsec_down_stat<<<< CLI: 0x%x, SVR: 0x%x\n", cur_bitmap_en_p[PROF_CLI],cur_bitmap_en_p[PROF_SVR]));

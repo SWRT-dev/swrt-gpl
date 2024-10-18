@@ -1,4 +1,4 @@
-/* dnsmasq is Copyright (c) 2000-2021 Simon Kelley
+/* dnsmasq is Copyright (c) 2000-2024 Simon Kelley
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -19,10 +19,10 @@
 #ifdef HAVE_TFTP
 
 static void handle_tftp(time_t now, struct tftp_transfer *transfer, ssize_t len);
-static struct tftp_file *check_tftp_fileperm(ssize_t *len, char *prefix);
+static struct tftp_file *check_tftp_fileperm(ssize_t *len, char *prefix, char *client);
 static void free_transfer(struct tftp_transfer *transfer);
-static ssize_t tftp_err(int err, char *packet, char *message, char *file);
-static ssize_t tftp_err_oops(char *packet, char *file);
+static ssize_t tftp_err(int err, char *packet, char *message, char *file, char *arg2);
+static ssize_t tftp_err_oops(char *packet, const char *file);
 static ssize_t get_block(char *packet, struct tftp_transfer *transfer);
 static char *next(char **p, char *end);
 static void sanitise(char *buf);
@@ -39,6 +39,7 @@ static void sanitise(char *buf);
 #define ERR_PERM   2
 #define ERR_FULL   3
 #define ERR_ILL    4
+#define ERR_TID    5
 
 void tftp_request(struct listener *listen, time_t now)
 {
@@ -95,6 +96,10 @@ void tftp_request(struct listener *listen, time_t now)
   if ((len = recvmsg(listen->tftpfd, &msg, 0)) < 2)
     return;
 
+#ifdef HAVE_DUMPFILE
+  dump_packet_udp(DUMP_TFTP, (void *)packet, len, (union mysockaddr *)&peer, NULL, listen->tftpfd);
+#endif
+  
   /* Can always get recvd interface for IPv6 */
   if (!check_dest)
     {
@@ -223,7 +228,8 @@ void tftp_request(struct listener *listen, time_t now)
 #ifdef HAVE_DHCP      
 	  /* allowed interfaces are the same as for DHCP */
 	  for (tmp = daemon->dhcp_except; tmp; tmp = tmp->next)
-	    if (tmp->name && wildcard_match(tmp->name, name))
+	    if (tmp->name && (tmp->flags & INAME_4) && (tmp->flags & INAME_6) &&
+		wildcard_match(tmp->name, name))
 	      return;
 #endif
 	}
@@ -361,7 +367,7 @@ void tftp_request(struct listener *listen, time_t now)
       !(mode = next(&p, end)) ||
       (strcasecmp(mode, "octet") != 0 && strcasecmp(mode, "netascii") != 0))
     {
-      len = tftp_err(ERR_ILL, packet, _("unsupported request from %s"), daemon->addrbuff);
+      len = tftp_err(ERR_ILL, packet, _("unsupported request from %s"), daemon->addrbuff, NULL);
       is_err = 1;
     }
   else
@@ -400,7 +406,7 @@ void tftp_request(struct listener *listen, time_t now)
 	if (*p == '\\')
 	  *p = '/';
 	else if (option_bool(OPT_TFTP_LC))
-	  *p = tolower(*p);
+	  *p = tolower((unsigned char)*p);
 		
       strcpy(daemon->namebuff, "/");
       if (prefix)
@@ -471,7 +477,7 @@ void tftp_request(struct listener *listen, time_t now)
       strncat(daemon->namebuff, filename, (MAXDNAME-1) - strlen(daemon->namebuff));
       
       /* check permissions and open file */
-      if ((transfer->file = check_tftp_fileperm(&len, prefix)))
+      if ((transfer->file = check_tftp_fileperm(&len, prefix, daemon->addrbuff)))
 	{
 	  if ((len = get_block(packet, transfer)) == -1)
 	    len = tftp_err_oops(packet, daemon->namebuff);
@@ -481,6 +487,10 @@ void tftp_request(struct listener *listen, time_t now)
     }
 
   send_from(transfer->sockfd, !option_bool(OPT_SINGLE_PORT), packet, len, &peer, &addra, if_index);
+
+#ifdef HAVE_DUMPFILE
+  dump_packet_udp(DUMP_TFTP, (void *)packet, len, NULL, (union mysockaddr *)&peer, transfer->sockfd);
+#endif
   
   if (is_err)
     free_transfer(transfer);
@@ -491,7 +501,7 @@ void tftp_request(struct listener *listen, time_t now)
     }
 }
  
-static struct tftp_file *check_tftp_fileperm(ssize_t *len, char *prefix)
+static struct tftp_file *check_tftp_fileperm(ssize_t *len, char *prefix, char *client)
 {
   char *packet = daemon->packet, *namebuff = daemon->namebuff;
   struct tftp_file *file;
@@ -508,7 +518,7 @@ static struct tftp_file *check_tftp_fileperm(ssize_t *len, char *prefix)
     {
       if (errno == ENOENT)
 	{
-	  *len = tftp_err(ERR_FNF, packet, _("file %s not found"), namebuff);
+	  *len = tftp_err(ERR_FNF, packet, _("file %s not found for %s"), namebuff, client);
 	  return NULL;
 	}
       else if (errno == EACCES)
@@ -561,8 +571,7 @@ static struct tftp_file *check_tftp_fileperm(ssize_t *len, char *prefix)
   return file;
   
  perm:
-  errno = EACCES;
-  *len =  tftp_err(ERR_PERM, packet, _("cannot access %s: %s"), namebuff);
+  *len =  tftp_err(ERR_PERM, packet, _("cannot access %s: %s"), namebuff, strerror(EACCES));
   if (fd != -1)
     close(fd);
   return NULL;
@@ -576,18 +585,43 @@ static struct tftp_file *check_tftp_fileperm(ssize_t *len, char *prefix)
 
 void check_tftp_listeners(time_t now)
 {
+  struct listener *listener;
   struct tftp_transfer *transfer, *tmp, **up;
   
+  for (listener = daemon->listeners; listener; listener = listener->next)
+    if (listener->tftpfd != -1 && poll_check(listener->tftpfd, POLLIN))
+      tftp_request(listener, now);
+    
   /* In single port mode, all packets come via port 69 and tftp_request() */
   if (!option_bool(OPT_SINGLE_PORT))
     for (transfer = daemon->tftp_trans; transfer; transfer = transfer->next)
       if (poll_check(transfer->sockfd, POLLIN))
 	{
+	  union mysockaddr peer;
+	  socklen_t addr_len = sizeof(union mysockaddr);
+	  ssize_t len;
+	  
 	  /* we overwrote the buffer... */
 	  daemon->srv_save = NULL;
-	  handle_tftp(now, transfer, recv(transfer->sockfd, daemon->packet, daemon->packet_buff_sz, 0));
-	}
 
+	  if ((len = recvfrom(transfer->sockfd, daemon->packet, daemon->packet_buff_sz, 0, &peer.sa, &addr_len)) > 0)
+	    {
+	      if (sockaddr_isequal(&peer, &transfer->peer)) 
+		handle_tftp(now, transfer, len);
+	      else
+		{
+		  /* Wrong source address. See rfc1350 para 4. */
+		  prettyprint_addr(&peer, daemon->addrbuff);
+		  len = tftp_err(ERR_TID, daemon->packet, _("ignoring packet from %s (TID mismatch)"), daemon->addrbuff, NULL);
+		  while(retry_send(sendto(transfer->sockfd, daemon->packet, len, 0, &peer.sa, sa_len(&peer))));
+
+#ifdef HAVE_DUMPFILE
+		  dump_packet_udp(DUMP_TFTP, (void *)daemon->packet, len, NULL, (union mysockaddr *)&peer, transfer->sockfd);
+#endif
+		}
+	    }
+	}
+	  
   for (transfer = daemon->tftp_trans, up = &daemon->tftp_trans; transfer; transfer = tmp)
     {
       tmp = transfer->next;
@@ -602,7 +636,7 @@ void check_tftp_listeners(time_t now)
 	  	  
 	  /* we overwrote the buffer... */
 	  daemon->srv_save = NULL;
-	 
+
 	  if ((len = get_block(daemon->packet, transfer)) == -1)
 	    {
 	      len = tftp_err_oops(daemon->packet, transfer->file->filename);
@@ -618,9 +652,14 @@ void check_tftp_listeners(time_t now)
 	    }
 
 	  if (len != 0)
-	    send_from(transfer->sockfd, !option_bool(OPT_SINGLE_PORT), daemon->packet, len,
-		      &transfer->peer, &transfer->source, transfer->if_index);
-	  	  
+	    {
+	      send_from(transfer->sockfd, !option_bool(OPT_SINGLE_PORT), daemon->packet, len,
+			&transfer->peer, &transfer->source, transfer->if_index);
+#ifdef HAVE_DUMPFILE
+	      dump_packet_udp(DUMP_TFTP, (void *)daemon->packet, len, NULL, (union mysockaddr *)&transfer->peer, transfer->sockfd);
+#endif
+	    }
+	  
 	  if (endcon || len == 0)
 	    {
 	      strcpy(daemon->namebuff, transfer->file->filename);
@@ -726,33 +765,35 @@ static void sanitise(char *buf)
 }
 
 #define MAXMESSAGE 500 /* limit to make packet < 512 bytes and definitely smaller than buffer */ 
-static ssize_t tftp_err(int err, char *packet, char *message, char *file)
+static ssize_t tftp_err(int err, char *packet, char *message, char *file, char *arg2)
 {
   struct errmess {
     unsigned short op, err;
     char message[];
   } *mess = (struct errmess *)packet;
   ssize_t len, ret = 4;
-  char *errstr = strerror(errno);
-  
+    
   memset(packet, 0, daemon->packet_buff_sz);
-  sanitise(file);
+  if (file)
+    sanitise(file);
   
   mess->op = htons(OP_ERR);
   mess->err = htons(err);
-  len = snprintf(mess->message, MAXMESSAGE,  message, file, errstr);
+  len = snprintf(mess->message, MAXMESSAGE,  message, file, arg2);
   ret += (len < MAXMESSAGE) ? len + 1 : MAXMESSAGE; /* include terminating zero */
   
-  my_syslog(MS_TFTP | LOG_ERR, "%s", mess->message);
+  if (err != ERR_FNF || !option_bool(OPT_QUIET_TFTP))
+    my_syslog(MS_TFTP | LOG_ERR, "%s", mess->message);
   
   return  ret;
 }
 
-static ssize_t tftp_err_oops(char *packet, char *file)
+static ssize_t tftp_err_oops(char *packet, const char *file)
 {
   /* May have >1 refs to file, so potentially mangle a copy of the name */
-  strcpy(daemon->namebuff, file);
-  return tftp_err(ERR_NOTDEF, packet, _("cannot read %s: %s"), daemon->namebuff);
+  if (file != daemon->namebuff)
+    strcpy(daemon->namebuff, file);
+  return tftp_err(ERR_NOTDEF, packet, _("cannot read %s: %s"), daemon->namebuff, strerror(errno));
 }
 
 /* return -1 for error, zero for done. */

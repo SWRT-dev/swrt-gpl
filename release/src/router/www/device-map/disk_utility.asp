@@ -1,4 +1,4 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -80,11 +80,8 @@ function initial(){
 	var usb_hfs_mod = '<% nvram_get("usb_hfs_mod"); %>';
 
 	disk_list_array = { "info" : ["<#diskUtility_information#>", "disk.asp"], "health" : ["<#diskUtility#>", "disk_utility.asp"], "format" : ["<#CTL_format#>", "disk_format.asp"]};
-	if(!parent.diskUtility_support) {
+	if(!parent.diskUtility_support || usb_fatfs_mod != "tuxera" || (usb_ntfs_mod != "tuxera" && usb_ntfs_mod != "open") || usb_hfs_mod != "tuxera") {
 		delete disk_list_array.health;
-		delete disk_list_array.format;
-	}
-	if(usb_fatfs_mod != "tuxera" && usb_ntfs_mod != "tuxera" && usb_hfs_mod != "tuxera" && usb_ntfs_mod != "open") {
 		delete disk_list_array.format;
 	}
 	$('#diskTab').html(parent.gen_tab_menu(disk_list_array, "health"));

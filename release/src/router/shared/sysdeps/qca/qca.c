@@ -94,6 +94,12 @@ int get_internal_ini_filename(char *ini_fn, size_t ini_fn_size)
 {
 	return 0;
 }
+#elif defined(RTCONFIG_SOC_IPQ53XX)
+int get_internal_ini_filename(char *ini_fn, size_t ini_fn_size)
+{
+	snprintf(ini_fn, ini_fn_size, "%s/internal/%s", GLOBAL_INI_TOPDIR, "QCA5332_i.ini");
+	return 0;
+}
 #else
 #error FIXME
 #endif
@@ -147,8 +153,7 @@ int get_parameter_from_ini_file(const char *param_name, char *param_val, size_t 
 	return 0;
 }
 
-#if defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK) \
- || defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
+#if (SPF_VER >= SPF_VER_ID(11,0))
 /* Get one board/default parameter from .ini file and return it's value in string format.
  * If board-specific parameter absent, return default parameter instead.
  * If @param_name is replicated multi-times, first one is returned.
@@ -351,7 +356,7 @@ static int fill_sta_info_item(const char *line, const struct sta_info_item_s *st
 	const char f[] = "%s";
 	int i, n, ret = 0;
 	char fmt[MAX_NR_STA_ITEMS * sizeof(f)];
-	char v[MAX_NR_STA_ITEMS][sizeof("IEEE80211_MODE_11AXA_HE40MINUSXXXXX")];
+	char v[MAX_NR_STA_ITEMS][sizeof("IEEE80211_MODE_11BEA_EHT40MINUSXXXXX")];
 	const struct sta_info_item_s *p;
 
 	if (!line || !sta_info_items)
@@ -464,10 +469,31 @@ int get_channf(int band, const char *ifname)
  *  Current Operating class      : 0
  *  Supported Rates              : 12  18  24  36  48  72  96  108 
  *  Max STA phymode              : IEEE80211_MODE_11AC_VHT80 
+ *
+ *  SPF12.2 CSU1 QSDK example:
+ *  admin@TUF-BE6500-0100:/# wlanconfig ath1 list
+ *  ADDR               AID CHAN TXRATE RXRATE RSSI MINRSSI MAXRSSI IDLE  TXSEQ  RXSEQ  CAPS XCAPS ACAPS     ERP    STATE MAXRATE(DOT11) HTCAPS   VHTCAPS ASSOCTIME    IEs   MODE RXNSS TXNSS                   PSMODE
+ *  38:00:25:53:bc:ef    1   40   6M     18M  -71     -78     -65    0      0   65535   EPR   EQO NULL    0          b         866700           AWRSM          1gGTRs 00:00:08     RSN WME IEEE80211_MODE_11AC_VHT80  2 2   0
+ *  1a:7c:61:81:ac:ba    1    6 154M    206M   -7     -13      -7    0      0   65535  EPSs  ETWt NULL    0          f         688200           AWPSM          gGTRsS 00:06:56     RSN WME IEEE80211_MODE_11BEG_EHT40  2 2   0
+ *  1a:7c:61:81:ac:bb    1   60 2882M   1729M  -18     -20     -10    1      0   65535   EPs  ETWt NULL    0          b        5764800           AWPSM           gGTRs 00:06:50     RSN WME IEEE80211_MODE_11BEA_EHT160  4 4   0
+ *        LM BRP BRA BRT
+ *   RSSI is combined over chains in dBm
+ *   Minimum Tx Power             : 0
+ *   Maximum Tx Power             : 22
+ *   HT Capability                        : Yes
+ *   VHT Capability                       : Yes
+ *   MU capable                   : Yes
+ *   SNR                          : 24
+ *   Operating band                       : 5GHz
+ *   Current Operating class      : 128
+ *   Supported Operating classes  : 81  83  84  115  116  117  118  119  120  121  122  123  124  125  126  127
+ *   Supported Rates(Mbps)                : 6  9  12  18  24  36  48  54
+ *   Max STA phymode              : IEEE80211_MODE_11AC_VHT80
+ *   MLO                          : No
  */
 static int __get_QCA_sta_info_by_ifname(const char *ifname, char subunit_id, int (*handler)(const WLANCONFIG_LIST *rptr, void *arg), void *arg)
 {
-#if defined(RTCONFIG_SOC_IPQ8074)
+#if defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ53XX)
 	const int l2_offset = 91;
 #elif defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_)
 	const int l2_offset = 85;
@@ -516,7 +542,8 @@ static int __get_QCA_sta_info_by_ifname(const char *ifname, char subunit_id, int
 	if (!(fp = popen(cmd, "r")))
 		return -2;
 
-#if defined(RTCONFIG_WIFI_QCN5024_QCN5054)
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274) \
+ || defined(RTCONFIG_QCA_AXCHIP)
 	if (!find_word(nvram_safe_get("rc_support"), "11AX"))
 		ax2he = 1;
 #endif
@@ -535,7 +562,7 @@ static int __get_QCA_sta_info_by_ifname(const char *ifname, char subunit_id, int
 		l2 = q;
 #if defined(RTCONFIG_SOC_IPQ40XX)
 		init_sta_info_item(q + strlen("ACAPS"), part2_tbl);	/* skip ACAPS due to it doesn't have data. */
-#elif defined(RTCONFIG_SPF11_QSDK) || defined(RTCONFIG_SPF11_1_QSDK) || defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK)
+#elif SPF_VER >= SPF_VER_ID(11,0)
 		init_sta_info_item(q, part2_tbl);
 #else
 		/* ILQ2.x ~ SPF10 */
@@ -954,7 +981,7 @@ void add_beacon_vsie_by_unit(int unit, int subunit, char *hexdata)
 	//_dprintf("%s: ifname=%s\n", __func__, ifname);
 
 	if (ifname && strlen(ifname)) {
-		snprintf(cmd, sizeof(cmd), "hostapd_cli set_vsie -i%s %d DD%02X%02X%02X%02X%s",
+		snprintf(cmd, sizeof(cmd), "hostapd_cli -i%s set_vsie %d DD%02X%02X%02X%02X%s",
 			ifname, pktflag, (uint8_t)len, (uint8_t)OUI_ASUS[0], (uint8_t)OUI_ASUS[1], (uint8_t)OUI_ASUS[2], hexdata);
 		_dprintf("%s: cmd=%s\n", __func__, cmd);
 		system(cmd);
@@ -973,17 +1000,22 @@ void add_beacon_vsie_guest(char *hexdata)
     	char word[100], *next;
 
     	foreach (word, nvram_safe_get("wl_ifnames"), next) {
-        	if (nvram_get_int("re_mode") == 1)  // RE
-            		subunit = 2;
-        	else  // CAP/Router
-       		     	subunit = 1;
-        	for (; subunit <=  num_of_mssid_support(unit); subunit++) 
-		{
-                        char buf[] = "wlXX.XX_ifname";
-                        memset(buf, 0, sizeof(buf));
-                        snprintf(buf, sizeof(buf), "wl%d.%d_ifname", unit, subunit);
-            		if (is_intf_up(nvram_safe_get(buf)) != -1)  // interface exist
-                		add_beacon_vsie_by_unit(unit,subunit, hexdata);
+			if (nvram_get_int("re_mode") == 1)  // RE
+					subunit = 2;
+			else  // CAP/Router
+					subunit = 1;
+			for (; subunit <=  num_of_mssid_support(unit); subunit++) 
+			{
+				char buf[] = "wlXX.XX_ifname";
+				memset(buf, 0, sizeof(buf));
+				snprintf(buf, sizeof(buf), "wl%d.%d_ifname", unit, subunit);
+				if ((is_intf_up(nvram_safe_get(buf)) != -1)  // interface exist
+#if defined(RTCONFIG_MLO)
+					&& !is_mlo_dwb_mssid(nvram_safe_get(buf))
+					&& !is_compatible_network(nvram_safe_get(buf))
+#endif
+					)
+					add_beacon_vsie_by_unit(unit, subunit, hexdata);
         	}
         	unit++;
     	}
@@ -1008,8 +1040,10 @@ void add_beacon_vsie(char *hexdata)
         int unit = 0;
         char word[100], *next;
 #endif
-
-
+#ifdef RTCONFIG_MLO
+	int subunit=0;
+	char iotFhIfname[32] = {0};
+#endif
 
 #ifdef RTCONFIG_WIFI_SON
 	if (nvram_match("wifison_ready", "1"))
@@ -1033,11 +1067,23 @@ void add_beacon_vsie(char *hexdata)
 		_dprintf("%s: cmd=%s\n", __func__, cmd);
 		system(cmd);
 	}
-
 #ifdef RTCONFIG_BHCOST_OPT
 		unit++;
 	}
-#endif	
+#endif
+#ifdef RTCONFIG_BHCOST_OPT	
+#ifdef RTCONFIG_MLO
+	if(get_compatible_network(-1, iotFhIfname, sizeof(iotFhIfname)) != NULL)
+	{
+		foreach (word, iotFhIfname, next) {
+			unit = subunit = -1;
+			sscanf(word, "wl%d.%d", &unit, &subunit);
+			if(subunit > 0)
+				add_beacon_vsie_by_unit(unit, subunit, hexdata);
+		}
+	}
+#endif
+#endif
 }
 
 /**
@@ -1084,7 +1130,7 @@ void del_beacon_vsie_by_unit(int unit, int subunit, char *hexdata)
 	//_dprintf("%s: ifname=%s\n", __func__, ifname);
 
 	if (ifname && strlen(ifname)) {
-		snprintf(cmd, sizeof(cmd), "hostapd_cli del_vsie -i%s %d DD%02X%02X%02X%02X%s",
+		snprintf(cmd, sizeof(cmd), "hostapd_cli -i%s del_vsie %d DD%02X%02X%02X%02X%s",
 			ifname, pktflag, (uint8_t)len, (uint8_t)OUI_ASUS[0], (uint8_t)OUI_ASUS[1], (uint8_t)OUI_ASUS[2], hexdata);
 		_dprintf("%s: cmd=%s\n", __func__, cmd);
 		system(cmd);
@@ -1111,8 +1157,13 @@ void del_beacon_vsie_guest(char *hexdata)
                         char buf[] = "wlXX.XX_ifname";
                         memset(buf, 0, sizeof(buf));
                         snprintf(buf, sizeof(buf), "wl%d.%d_ifname", unit, subunit);
-            		if (is_intf_up(nvram_safe_get(buf)) != -1)  // interface exist
-                		del_beacon_vsie_by_unit(unit, subunit, hexdata);
+            		if ((is_intf_up(nvram_safe_get(buf)) != -1)  // interface exist
+#if defined(RTCONFIG_MLO)
+                        && !is_mlo_dwb_mssid(nvram_safe_get(buf))
+                        && !is_compatible_network(nvram_safe_get(buf))
+#endif
+                        )
+                        del_beacon_vsie_by_unit(unit, subunit, hexdata);
         	}
         	unit++;
     	}
@@ -1136,6 +1187,10 @@ void del_beacon_vsie(char *hexdata)
 #ifdef RTCONFIG_BHCOST_OPT
         int unit = 0;
         char word[100], *next;
+#ifdef RTCONFIG_MLO
+	int subunit=0;
+	char iotFhIfname[32] = {0};
+#endif
 #endif
 
 #ifdef RTCONFIG_WIFI_SON
@@ -1165,6 +1220,19 @@ void del_beacon_vsie(char *hexdata)
 #ifdef RTCONFIG_BHCOST_OPT
 		unit++;
 	}
+#endif	
+#ifdef RTCONFIG_BHCOST_OPT
+#ifdef RTCONFIG_MLO
+	if(get_compatible_network(-1, iotFhIfname, sizeof(iotFhIfname)) != NULL)
+	{
+		foreach (word, iotFhIfname, next) {
+			unit = subunit = -1;
+			sscanf(word, "wl%d.%d", &unit, &subunit);
+			if(subunit > 0)
+				del_beacon_vsie_by_unit(unit, subunit, hexdata);
+		}
+	}
+#endif
 #endif	
 }
 
@@ -1444,9 +1512,10 @@ int Pty_get_upstream_rssi(int band)
 
 	return 0;
 }
-
+#endif
 // softdown support platform //
 #if defined(RTCONFIG_SOC_IPQ60XX) || defined(RTCONFIG_SOC_IPQ50XX)  || defined(RTCONFIG_SOC_IPQ40XX) \
+ || defined(RTCONFIG_SOC_IPQ53XX) \
  || (defined(RTCONFIG_SOC_IPQ8074) && defined(RTCONFIG_CFG80211))
 #define QCA_SOFTDOWN_SUPPORT 1
 #else
@@ -1480,25 +1549,28 @@ int get_wlan_service_status(int bssidx, int vifidx)
 	if(bssidx < 0 || bssidx >= MAX_NR_WL_IF || vifidx < 0 || vifidx >= MAX_NO_MSSID)
 		return -1;
 
-	if(sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1")) {
-		if(vifidx == 0) { //sta
+	/* CAP: main ap
+	 * RE:  sta
+	 */
+	if (vifidx == 0) {
+		if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1")) {
 			strcpy(athfix, get_staifname(swap_5g_band(bssidx)));
 			is_sta = 1;
 		}
-		else if(vifidx == 1) //main ap
+		else
 			__get_wlifname(swap_5g_band(bssidx), 0, athfix);
-		else //guestnetwork or vif
-		{	
-			snprintf(ifname,sizeof(ifname), "wl%d.%d_ifname", swap_5g_band(bssidx), vifidx);
-			if(strlen(nvram_safe_get(ifname)))
-				strcpy(athfix,nvram_get(ifname));
-			else
-				return -1;
-		}			
 	}
+	/* CAP: guest network/vif
+	 * RE:  main ap/guest network/vif
+	 */
 	else {
-		__get_wlifname(swap_5g_band(bssidx), vifidx, athfix);
+		snprintf(ifname, sizeof(ifname), "wl%d.%d_ifname", swap_5g_band(bssidx), vifidx);
+		if (strlen(nvram_safe_get(ifname)))
+			strcpy(athfix, nvram_get(ifname));
+		else
+			return -1;
 	}
+	//_dprintf("%s: bssidx=%d, vifidx=%d, ifname=%s\n", __func__, bssidx, vifidx, athfix);
 
 #if defined(QCA_SOFTDOWN_SUPPORT)
 // softdown support platform //
@@ -1514,12 +1586,69 @@ int get_wlan_service_status(int bssidx, int vifidx)
 	return ret;
 }
 
+struct calc_nr_softdown_vap_s {
+	int count;	/* number of softdown/iface down/hostapd down VAP on the band */
+	int total;	/* number of VAP checked */
+};
+
+static int count_nr_softdown_vap(const char *basedir, const struct dirent *de, size_t de_size, void *arg)
+{
+	struct calc_nr_softdown_vap_s *s = (struct calc_nr_softdown_vap_s*) arg;
+	int r, c = 0;
+	char proc_vlan[sizeof("/proc/net/vlan/XXX") + IFNAMSIZ], vap[IFNAMSIZ];
+	char cmd[sizeof("hostapd_cli -i XXX status") + IFNAMSIZ], ans[sizeof("DISABLEDXXX")] = { 0 };
+
+	if (!s)
+		return -1;
+
+	if (sizeof(*de) != de_size) {
+		/* If size of struct dirent mismatch, make sure readdir_wrapper() and this function see same struct dirent.h.
+		 * e.g., it's different in uclibc if _FILE_OFFSET_BITS=64 is defined or not.
+		 */
+		dbg("%s: size of struct dirent mismatch (%u v.s. %u)!\n", __func__, sizeof(*de), de_size);
+		return -1;
+	}
+
+	snprintf(proc_vlan, sizeof(proc_vlan), "/proc/net/vlan/%s", de->d_name);
+	if (f_exists(proc_vlan))
+		return 0;
+	strlcpy(vap, de->d_name, sizeof(vap));
+	s->total++;
+	if ((r = iwpriv_get_int(vap, "g_softdown", &c)) != 0) {
+		//dbg("%s: Get softdown status of %s failed (return %d)\n", __func__, vap);
+		return -2;
+	} else if (c == 1) {
+		s->count++;
+		return 0;
+	}
+
+	/* check up/down status of the VAP. */
+	if (!get_radio_status(vap)) {
+		s->count++;
+		return 0;
+	}
+
+	/* check hostapd status of the VAP. Example:
+	 * # hostapd_cli -i ath1 status|head
+	 * state=DISABLED
+	 * phy=ath1
+	 * ......
+	 */
+	snprintf(cmd, sizeof(cmd), "hostapd_cli -i %s status", vap);
+	if (!(r = exec_and_parse(cmd, "state=", "state=%[^\n]", 1, ans)) && !strcmp(ans, "DISABLED")) {
+		s->count++;
+		return 0;
+	}
+	return 0;
+}
+
 void set_wlan_service_status(int bssidx, int vifidx, int enabled)
 {
 #if defined(QCA_SOFTDOWN_SUPPORT)
 // softdown support platform //
 	char tmp[100], prefix[] = "wlXXXXXXXXXXXXXX", athfix[]="athXXXXXX";
-	int sub, led;
+	int sub, led, onoff;
+	struct calc_nr_softdown_vap_s s = { 0 };
 #else
 	int cfg_stat;
 	char athfix[8];
@@ -1557,7 +1686,7 @@ void set_wlan_service_status(int bssidx, int vifidx, int enabled)
 	strcpy(athfix, nvram_safe_get(strcat_r(prefix, "ifname", tmp)));
 	eval(IWPRIV, athfix, "softdown", enabled? "0":"1");
 	if (enabled) {
-#if defined(RTCONFIG_SOC_IPQ8074)
+#if defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ53XX)
 		eval("hostapd_cli", "-i", athfix, "disable");
 		eval("hostapd_cli", "-i", athfix, "enable");
 #elif defined(RTAC95U)
@@ -1565,7 +1694,28 @@ void set_wlan_service_status(int bssidx, int vifidx, int enabled)
 #endif
 	}
 	led = get_wl_led_id(swap_5g_band(bssidx));
-	led_control(led, (inhibit_led_on() || !enabled)? LED_OFF : LED_ON);
+	onoff = (inhibit_led_on() || !enabled)? LED_OFF : LED_ON;
+	if (onoff == LED_OFF && !inhibit_led_on()) {
+		/* If WiFi LED is about to be turn off and it's not turn off by all LED off,
+		 * check status of all VAP on the band. If one or more VAP havn't been softdown,
+		 * turn on WiFi LED.
+		 */
+		if (!readdir_wrapper(SYS_CLASS_NET, get_wififname(bssidx), count_nr_softdown_vap, &s)
+		 && s.total > 0 && s.total != s.count)
+		{
+			onoff = LED_ON;
+		}
+	} else if (onoff == LED_ON) {
+		/* If WiFi LED is about to be turn on and status of all VAP have been softdown,
+		 * turn off WiFi LED.
+		 */
+		if (!readdir_wrapper(SYS_CLASS_NET, get_wififname(bssidx), count_nr_softdown_vap, &s)
+		 && s.total > 0 && s.total == s.count)
+		{
+			onoff = LED_OFF;
+		}
+	}
+	led_control(led, onoff);
 	// _dprintf("[%s %s softdown %s], enabled:%d\n", IWPRIV, athfix, enabled? "0":"1", enabled);
 #else
 	cfg_stat = nvram_get_int("cfg_alive");
@@ -1610,25 +1760,25 @@ int resolv_bw_nctrlsb(const char *mode, int *bw, int *nctrlsb)
 	}	
 	p += 2;
 
-	if((p2 = strstr(p, "HE")) != NULL) {	/* 11AHE, 11GHE */
-	}
-	else
-	if((p2 = strstr(p, "HT")) == NULL) {	/* 11A, 11B, 11G */
+	if ((p2 = strstr(p, "HE")) != NULL) {		/* 11AHE, 11GHE */
+	} else if((p2 = strstr(p, "HT")) == NULL) {	/* 11A, 11B, 11G */
 		*bw = 20;
 		return *bw;
 	}
 	p = p2 + 2;
 
-	if(memcmp(p, "20", 2) == 0)		/* 11NGHT20, 11NAHT20, 11ACVHT20 */
+	if (!memcmp(p, "20", 2))		/* 11NGHT20, 11AXG_HE20, 11BEG_EHT20, 11NAHT20, 11ACVHT20, 11BEA_EHT20 */
 		*bw = 20;
-	else if(memcmp(p, "40", 2) == 0)	/* 11NGHT40, 11NAHT40, 11ACVHT40 */
+	else if (!memcmp(p, "40", 2))		/* 11NGHT40, 11AXG_HE40, 11BEG_EHT40, 11NAHT40, 11ACVHT40, 11BEA_EHT40 */
 		*bw = 40;
-	else if(memcmp(p, "80_80", 5) == 0)	/* 11ACVHT80_80 */
+	else if (!memcmp(p, "80_80", 5))	/* 11ACVHT80_80, 11AXA_HE80_80 */
 		*bw = 160;
-	else if(memcmp(p, "80", 2) == 0)	/* 11ACVHT80 */
+	else if (!memcmp(p, "80", 2))		/* 11ACVHT80, 11AXA_HE80, 11BEA_EHT80 */
 		*bw = 80;
-	else if(memcmp(p, "160", 3) == 0)	/* 11ACVHT160 */
+	else if (!memcmp(p, "160", 3))		/* 11ACVHT160, 11AXA_HE160, 11BEA_EHT160 */
 		*bw = 160;
+	else if (!memcmp(p, "320", 3))		/* 11BEA_EHT320 */
+		*bw = 320;
 	else					/* 11A, 11B, 11G */
 		*bw = 20;
 
@@ -1646,7 +1796,7 @@ int resolv_bw_nctrlsb(const char *mode, int *bw, int *nctrlsb)
 char acs_string[2][20]={"acs_mode=","acs_ch="};
 #define IEEE80211_IOCTL_GETMODE         (SIOCIWFIRSTPRIV+17)
 #define IEEE80211_PARAM_ACS_RESULT 691	
-char ieee80211_phymode[33][40] ={
+char ieee80211_phymode[44][40] ={
     "IEEE80211_MODE_AUTO",    /* autoselect */
     "IEEE80211_MODE_11A",    /* 5GHz, OFDM */
     "IEEE80211_MODE_11B",    /* 2GHz, CCK */
@@ -1680,6 +1830,17 @@ char ieee80211_phymode[33][40] ={
     "IEEE80211_MODE_11AXA_HE80",   /* 5GHz, HE80 */
     "IEEE80211_MODE_11AXA_HE160",   /* 5GHz, HE160 */
     "IEEE80211_MODE_11AXA_HE80_80",   /* 5GHz, HE80_80 */
+    "IEEE80211_MODE_11BEA_EHT20",	/* 5GHz, EHT20 */
+    "IEEE80211_MODE_11BEG_EHT20",	/* 2GHz, EHT20 */
+    "IEEE80211_MODE_11BEA_EHT40PLUS",	/* 5GHz, EHT40 (ext ch +1) */
+    "IEEE80211_MODE_11BEA_EHT40MINUS",	/* 5GHz, EHT40 (ext ch -1) */
+    "IEEE80211_MODE_11BEG_EHT40PLUS",	/* 2GHz, EHT40 (ext ch +1) */
+    "IEEE80211_MODE_11BEG_EHT40MINUS",	/* 2GHz, EHT40 (ext ch -1) */
+    "IEEE80211_MODE_11BEA_EHT40",	/* 5GHz, EHT40 */
+    "IEEE80211_MODE_11BEG_EHT40",	/* 2GHz, EHT40 */
+    "IEEE80211_MODE_11BEA_EHT80",	/* 5GHz, EHT80 */
+    "IEEE80211_MODE_11BEA_EHT160",	/* 5GHz, EHT160 */
+    "IEEE80211_MODE_11BEA_EHT320",	/* 5GHz, EHT320 */
 };
 
 int update_band_info(int unit)
@@ -1854,7 +2015,6 @@ int diff_current_bssid(int unit, char bssid_str[])
 
 	return 1;
 }
-#endif
 
 int wl_get_bw(int unit)
 {
@@ -1978,13 +2138,15 @@ char *get_mode_str_by_bw(int unit, int channel, int bw, int nctrlsb)
 
 /* Reference to ieee80211_phymode and ieee80211_convert_mode() in qca-wifi. */
 static const char *phymode_str_tbl[IEEE80211_MODE_MAX] = {
-	"AUTO", "11A", "11B", "11G", "FH",
-	"TA", "TG", "11NAHT20", "11NGHT20", "11NAHT40PLUS",
-	"11NAHT40MINUS", "11NGHT40PLUS", "11NGHT40MINUS", "11NGHT40", "11NAHT40",
-	"11ACVHT20", "11ACVHT40PLUS", "11ACVHT40MINUS", "11ACVHT40", "11ACVHT80",
-	"11ACVHT160", "11ACVHT80_80", "11AHE20", "11GHE20", "11AHE40PLUS",
-	"11AHE40MINUS", "11GHE40PLUS", "11GHE40MINUS", "11AHE40", "11GHE40",
-	"11AHE80", "11AHE160", "11AHE80_80",
+	"AUTO", "11A", "11B", "11G", "FH",						/* 0 */
+	"TA", "TG", "11NAHT20", "11NGHT20", "11NAHT40PLUS",				/* 5 */
+	"11NAHT40MINUS", "11NGHT40PLUS", "11NGHT40MINUS", "11NGHT40", "11NAHT40",	/* 10 */
+	"11ACVHT20", "11ACVHT40PLUS", "11ACVHT40MINUS", "11ACVHT40", "11ACVHT80",	/* 15 */
+	"11ACVHT160", "11ACVHT80_80", "11AHE20", "11GHE20", "11AHE40PLUS",		/* 20 */
+	"11AHE40MINUS", "11GHE40PLUS", "11GHE40MINUS", "11AHE40", "11GHE40",		/* 25 */
+	"11AHE80", "11AHE160", "11AHE80_80", "11AEHT20", "11GEHT20",			/* 30 */
+	"11AEHT40PLUS", "11AEHT40MINUS", "11GEHT40PLUS", "11GEHT40MINUS", "11AEHT40",	/* 35 */
+	"11GEHT40", "11AEHT80", "11AEHT160", "11AEHT320"				/* 40 */
 };
 
 /* Get mode string of @phymode.
@@ -2013,7 +2175,9 @@ int get_bw_by_mode_str(char *mode)
 	if (!mode)
 		return r;
 
-	if (strstr(mode, "HE160") || strstr(mode, "HT160"))
+	if (strstr(mode, "HT320"))
+		r = 320;
+	else if (strstr(mode, "HE160") || strstr(mode, "HT160"))
 		r = 160;
 	else if (strstr(mode, "HE80") || strstr(mode, "HT80"))
 		r = 80;
@@ -2052,14 +2216,19 @@ int get_bw_by_phymode(int unit, int phymode)
 	}
 
 	switch (phymode) {
+	case IEEE80211_MODE_11BEA_EHT320:	/* fall-through */
+		ret = 320;
+		break;
 	case IEEE80211_MODE_11AC_VHT160:	/* fall-through */
 	case IEEE80211_MODE_11AXA_HE160:	/* fall-through */
+	case IEEE80211_MODE_11BEA_EHT160:	/* fall-through */
 		ret = 160;
 		break;
 	case IEEE80211_MODE_11AC_VHT80:		/* fall-through */
 	case IEEE80211_MODE_11AC_VHT80_80:	/* fall-through */
 	case IEEE80211_MODE_11AXA_HE80:		/* fall-through */
 	case IEEE80211_MODE_11AXA_HE80_80:	/* fall-through */
+	case IEEE80211_MODE_11BEA_EHT80:	/* fall-through */
 		ret = 80;
 		break;
 
@@ -2078,6 +2247,12 @@ int get_bw_by_phymode(int unit, int phymode)
 	case IEEE80211_MODE_11AXG_HE40MINUS:	/* fall-through */
 	case IEEE80211_MODE_11AXA_HE40:		/* fall-through */
 	case IEEE80211_MODE_11AXG_HE40:		/* fall-through */
+	case IEEE80211_MODE_11BEG_EHT40:	/* fall-through */
+	case IEEE80211_MODE_11BEA_EHT40:	/* fall-through */
+	case IEEE80211_MODE_11BEG_EHT40PLUS:	/* fall-through */
+	case IEEE80211_MODE_11BEG_EHT40MINUS:	/* fall-through */
+	case IEEE80211_MODE_11BEA_EHT40PLUS:	/* fall-through */
+	case IEEE80211_MODE_11BEA_EHT40MINUS:	/* fall-through */
 		ret = 40;
 		break;
 
@@ -2093,6 +2268,8 @@ int get_bw_by_phymode(int unit, int phymode)
 	case IEEE80211_MODE_11AC_VHT20:		/* fall-through */
 	case IEEE80211_MODE_11AXA_HE20:		/* fall-through */
 	case IEEE80211_MODE_11AXG_HE20:		/* fall-through */
+	case IEEE80211_MODE_11BEG_EHT20:	/* fall-through */
+	case IEEE80211_MODE_11BEA_EHT20:	/* fall-through */
 		ret = 20;
 		break;
 	default:
@@ -2100,6 +2277,138 @@ int get_bw_by_phymode(int unit, int phymode)
 	}
 
 	return ret;
+}
+
+static const uint64_t g_bw160ch_m[] = {
+	CH36_M | CH40_M | CH44_M | CH48_M | CH52_M | CH56_M | CH60_M | CH64_M,
+	CH100_M | CH104_M | CH108_M | CH112_M | CH116_M | CH120_M | CH124_M | CH128_M,
+	0
+}, g_bw80ch_m[] = {
+	CH36_M | CH40_M | CH44_M | CH48_M,
+	CH52_M | CH56_M | CH60_M | CH64_M,
+	CH100_M | CH104_M | CH108_M | CH112_M,
+	CH116_M | CH120_M | CH124_M | CH128_M,
+	CH132_M | CH136_M | CH140_M | CH144_M,
+	CH149_M | CH153_M | CH157_M | CH161_M,
+	0
+}, g_bw40ch_m[] = {
+	CH36_M | CH40_M,
+	CH44_M | CH48_M,
+	CH52_M | CH56_M,
+	CH60_M | CH64_M,
+	CH100_M | CH104_M,
+	CH108_M | CH112_M,
+	CH116_M | CH120_M,
+	CH124_M | CH128_M,
+	CH132_M | CH136_M,
+	CH140_M | CH144_M,
+	CH149_M | CH153_M,
+	CH157_M | CH161_M,
+	0
+};
+
+static const struct bw_chlist_s {
+	int bw;
+	const uint64_t *mask;
+} g_bw_5gchlist_tbl[] = {
+	{ 160, g_bw160ch_m },
+	{  80, g_bw80ch_m },
+	{  40, g_bw40ch_m },
+	{   0, NULL },
+};
+
+/* Return maximum bandwidth of channel list @avbl_ch_mask.
+ * Currently only 5G is supported.
+ * return:	20, 40, 80, 160
+ */
+int get_max_bw_by_chlist(int band, uint64_t avbl_ch_mask)
+{
+	int bw = 0;
+	const uint64_t *m;
+	const struct bw_chlist_s *p;
+
+	if (band < 0 || band >= WL_NR_BANDS)
+		return 0;
+	else if (band != WL_5G_BAND && band != WL_5G_2_BAND)
+		return 0;
+	else if (!avbl_ch_mask)
+		return 0;
+
+	for (p = g_bw_5gchlist_tbl; !bw && p->bw && p->mask; ++p) {
+		for (m = p->mask; !bw && m && *m; ++m) {
+			if ((avbl_ch_mask & *m) < *m)
+				continue;
+			bw = p->bw;
+		}
+	}
+
+	/*dbg("%s: avbl_ch_mask %" PRIu64 " [%s] return bw [%d]\n", __func__,
+		avbl_ch_mask, bitmask2chlist(band, avbl_ch_mask, " "), bw);*/
+	if (!bw && avbl_ch_mask)
+		bw = 20;
+
+	return bw;
+}
+
+/* Do ACS directly if available channel is able to offser channel for current bandwidth.
+ * If not, switch to smaller bandwith first and the do ACS.
+ * Because qca-wifi driver choose channel based on mode if it has been setup.
+ * Fet mode as AUTO and then ACS rarely success.
+ * @band:		enum wl_band_id
+ * @vap:		VAP interface name, e.g., athX.
+ * @avbl_ch_mask:	available channel bitmask, same as return value of chlist5g2bitmask(),
+ * 			bit-wise combination of CHXXX_M
+ */
+int acs_and_change_bw_if_need(int band, const char *vap, uint64_t avbl_ch_mask)
+{
+	int orig_bw, new_bw;
+	char *p, orig_mode[30] = "", new_mode[30] = "", main_prefix[sizeof("wlXXX_")];
+
+	/*dbg("%s: band %d vap %s avbl_ch_mask 0x%" PRIx64 "\n", __func__,
+		band, vap? : "NULL", avbl_ch_mask);*/
+	if (band < 0 || band >= WL_NR_BANDS || !vap || !iface_exist(vap))
+		return -1;
+	if (!avbl_ch_mask) {
+		_dprintf("%s: vap %s avbl_ch_mask 0x%" PRIx64 " none of any channel available!\n",
+			__func__, vap, avbl_ch_mask);
+		logmessage("WIFI", "%s: vap %s avbl_ch_mask 0x%" PRIx64 ", none of any channel available!\n",
+			__func__, vap, avbl_ch_mask);
+		goto acs_and_reduce_bw_if_need_do_acs;
+	}
+
+	strlcpy(orig_mode, iwpriv_get(vap, "get_mode")? : "", sizeof(orig_mode));
+	if ((orig_bw = get_bw_by_mode_str(orig_mode)) <= 20)
+		goto acs_and_reduce_bw_if_need_do_acs;
+
+	new_bw = get_max_bw_by_chlist(band, avbl_ch_mask);
+	snprintf(main_prefix, sizeof(main_prefix), "wl%d_", band);
+	if ((band == WL_5G_BAND || band == WL_5G_2_BAND) && new_bw > 80
+#if defined(RTCONFIG_BW160M)
+	 && (nvram_pf_match(main_prefix, "bw_160", "1"))
+#endif
+	   )
+		new_bw = 80;
+	if (new_bw > 0 && orig_bw > new_bw && !strncmp(orig_mode, "11", 2)) {
+		strlcpy(new_mode, orig_mode, sizeof(new_mode));
+		for (p = new_mode + strlen("11"); *p != '\0'; ++p) {
+			if (!isdigit(*p))
+				continue;
+			snprintf(p, (new_mode + sizeof(new_mode) - p), "%d", new_bw);
+			break;
+		}
+		if (strcmp(orig_mode, new_mode)) {
+			_dprintf("%s: vap %s mode %s -> %s, avbl_chlist [%s]\n", __func__,
+				vap, orig_mode, new_mode, bitmask2chlist(band, avbl_ch_mask, ","));
+			logmessage("WIFI", "%s: vap %s mode %s -> %s, avbl_chlist [%s]\n", __func__,
+				vap, orig_mode, new_mode, bitmask2chlist(band, avbl_ch_mask, ","));
+			eval(IWPRIV, (char*) vap, "mode", new_mode);
+			sleep(1);
+		}
+	}
+
+acs_and_reduce_bw_if_need_do_acs:
+	eval("iwconfig", (char*) vap, "channel", "0");
+	return 0;
 }
 
 /*
@@ -2116,9 +2425,11 @@ int get_bw_by_phymode(int unit, int phymode)
  */
 int wl_get_bw_cap(int unit, int *bwcap)
 {
-	int r, iv_des_hw_mode = 0, iv_cur_mode = 0, exp_bw, cur_bw;
+	int r, iv_des_hw_mode = 0, iv_cur_mode = 0, exp_bw, cur_bw, m, mask;
 	char mode[32] = "", cmd[sizeof("cat /proc/XXX/iv_config") + IFNAMSIZ];
+	char prefix[sizeof("wlXXX_")];
 
+	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 	if ((r = __wl_get_bw_cap(unit, bwcap)) != 0)
 		return r;
 
@@ -2126,25 +2437,39 @@ int wl_get_bw_cap(int unit, int *bwcap)
 	if (unit != WL_2G_BAND || !nvram_match(WLREADY, "1"))
 		return 0;
 
-	strlcpy(mode, iwpriv_get(get_wififname(unit), "get_mode"), sizeof(mode));
+	strlcpy(mode, iwpriv_get(get_wififname(unit), "get_mode")? : "", sizeof(mode));
 	if (strstr(mode, "HT40") || strstr(mode, "HE40")) {
 		return 0;
 	}
 
-	/* 2G is not 40MHz, remove 40MHz capability if it's failed to set as 40MHz. */
 	snprintf(cmd, sizeof(cmd), "cat /proc/%s/iv_config", get_wififname(unit));
-	if (exec_and_parse(cmd, "iv_des_hw_mode", "%*[^:]:%d", 1, &iv_des_hw_mode) || !iv_des_hw_mode
-	 || exec_and_parse(cmd, "iv_cur_mode", "%*[^:]:%d", 1, &iv_cur_mode) || !iv_cur_mode) {
-		dbg("%s: Failed to parse iv_des_hw_mode %d or iv_cur_mode %d from %s\n",
-			__func__, iv_des_hw_mode, iv_cur_mode, cmd + 4);
-		return 0;
+	if (nvram_pf_match(prefix, "radio", "0")
+	 && (!strcmp(mode, "11A") || !strcmp(mode, "11B"))) {
+		/* For SPF11.5, if radio is turn off, mode of VAP would be 11A or 11B and can't be changed.
+		 * In this case, we can't get supported bandwidth from mode. Parsing iv_des_hw_mode and
+		 * mask out unsupported higher bandwidth instead.
+		 */
+		exec_and_parse(cmd, "iv_des_hw_mode", "%*[^:]:%d", 1, &iv_des_hw_mode);
+		exp_bw = get_bw_by_phymode(unit, iv_des_hw_mode);
+		if ((m = get_cfg_bw_mask_by_bw(exp_bw)) != 0) {
+			mask = m | (m - 1);
+			*bwcap &= mask;
+		}
+	} else {
+		/* 2G is not 40MHz, remove 40MHz capability if it's failed to set as 40MHz. */
+		if (exec_and_parse(cmd, "iv_des_hw_mode", "%*[^:]:%d", 1, &iv_des_hw_mode) || !iv_des_hw_mode
+		 || exec_and_parse(cmd, "iv_cur_mode", "%*[^:]:%d", 1, &iv_cur_mode) || !iv_cur_mode) {
+			dbg("%s: Failed to parse iv_des_hw_mode %d or iv_cur_mode %d from %s\n",
+				__func__, iv_des_hw_mode, iv_cur_mode, cmd + 4);
+			return 0;
+		}
+		if (iv_cur_mode == iv_des_hw_mode)
+			return 0;
+		exp_bw = get_bw_by_phymode(unit, iv_des_hw_mode);
+		cur_bw = get_bw_by_phymode(unit, iv_cur_mode);
+		if (exp_bw > cur_bw)
+			*bwcap &= ~(get_cfg_bw_mask_by_bw(exp_bw));
 	}
-	if (iv_cur_mode == iv_des_hw_mode)
-		return 0;
-	exp_bw = get_bw_by_phymode(unit, iv_des_hw_mode);
-	cur_bw = get_bw_by_phymode(unit, iv_cur_mode);
-	if (exp_bw > cur_bw)
-		*bwcap &= ~(get_cfg_bw_mask_by_bw(exp_bw));
 
 	return 0;
 }
@@ -2167,9 +2492,9 @@ int chk_wifi_sched(int band)
 
 int wl_set_ch_bw(const char *ifname, int channel, int bw, int nctrlsb)
 {
-	char mode[32], *p = mode, *orig_mode;
 	int apply_mode = 0, apply_ch = 0, bwcap;
-	int unit, subunit, old_channel = 0;
+	int unit, subunit, old_channel = 0, orig_bw, new_bw;
+	char *p, orig_mode[30] = "", new_mode[30] = "";
 	char prefix[] = "wlXXXXXXXXXXXX_", ch_str[8] = "auto";
 	char cmd[sizeof("hostapd_cli -i XXX status") + IFNAMSIZ], state[16] = { 0 }; /* ref. state string in hostapd_state_text() */
 #if !defined(RTCONFIG_SPF11_4_QSDK)
@@ -2203,43 +2528,57 @@ int wl_set_ch_bw(const char *ifname, int channel, int bw, int nctrlsb)
 	if (get_wlif_unit(ifname, &unit, &subunit) < 0)
 		return -1;
 
+#if defined(RTCONFIG_LYRA_5G_SWAP)
+	snprintf(prefix, sizeof(prefix), "wl%d_", swap_5g_band(unit));
+#else
+	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+#endif
+
 	if (wl_get_bw_cap(unit, &bwcap) < 0)
 		return -1;
 
 	/* set mode via bwcap and band */
-#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
-	if (unit == 0)
-		p += sprintf(p, "11GHE%d", bw);
-	else
-		p += sprintf(p, "11AHE%d", bw);
-#else
-	if (bwcap & (0x08 | 0x04)) {				/* support BW160 || BW80 for AC */
-		p += sprintf(p, "11ACVHT%d", bw);
-	}
-	else if (bwcap & (0x02)) {				/* support  BW40 for NG OR NA */
-		if(unit == 0)
-			p += sprintf(p, "11NGHT%d", bw);
-		else
-			p += sprintf(p, "11NAHT%d", bw);
-	}
-	else {							/* support  BW20 for A OR G */
-		if(unit == 0)
-			p += sprintf(p, "11G");
-		else
-			p += sprintf(p, "11A");
-	}
-#endif
-
-	/* set extension channel when bw==40 and valid nctrlsb */
-	if (bw == 40 && nctrlsb >= 0) {
-		if(nctrlsb == 1)
-			p += sprintf(p, "MINUS");
-		else
-			p += sprintf(p, "PLUS");
+	strlcpy(orig_mode, iwpriv_get(ifname, "get_mode")? : "", sizeof(orig_mode));
+	orig_bw = get_bw_by_mode_str(orig_mode);
+	new_bw = 0;
+	if ((orig_bw != bw)
+	 && ((bw == 160 && (bwcap & 0x8))
+	  || (bw ==  80 && (bwcap & 0x4))
+	  || (bw ==  40 && (bwcap & 0x2))
+	  || (bw ==  20 && (bwcap & 0x1)))
+	) {
+		new_bw = bw;
 	}
 
-	orig_mode = iwpriv_get(ifname, "get_mode");
-	if (orig_mode && strcmp(orig_mode, mode))
+	*new_mode = '\0';
+	if (new_bw) {
+		strlcpy(new_mode, orig_mode, sizeof(new_mode));
+		for (p = new_mode + strlen("11"); *p != '\0'; ++p) {
+			if (!isdigit(*p))
+				continue;
+			snprintf(p, (new_mode + sizeof(new_mode) - p), "%d", new_bw);
+			break;
+		}
+
+		/* set extension channel when bw==40 and valid nctrlsb */
+		if (new_bw == 40 && nctrlsb >= 0)
+			strlcat(new_mode, (nctrlsb == 1)? "MINUS" : "PLUS", sizeof(new_mode));
+	}
+
+	if (nvram_pf_match(prefix, "radio", "0")
+	 && (!strcmp(orig_mode, "11A") || !strcmp(orig_mode, "11B"))) {
+		int iv_des_hw_mode = 0;
+		char cmd[sizeof("cat /proc/XXX/iv_config") + IFNAMSIZ];
+
+		/* For SPF11.5, mode of VAP is fixed to 11A or 11B if it's down.
+		 * Assume the function successful if iv_des_hw_mode same as
+		 * value of new mode.
+		 */
+		snprintf(cmd, sizeof(cmd), "cat /proc/%s/iv_config", ifname);
+		exec_and_parse(cmd, "iv_des_hw_mode", "%*[^:]:%d", 1, &iv_des_hw_mode);
+		if (*new_mode != '\0' && strcmp(phymode_str(iv_des_hw_mode), new_mode))
+			apply_mode++;
+	} else if (*new_mode != '\0' && strcmp(orig_mode, new_mode))
 		apply_mode++;
 
 	if (channel > 0) {
@@ -2272,14 +2611,12 @@ int wl_set_ch_bw(const char *ifname, int channel, int bw, int nctrlsb)
 		}
 #endif
 
-#if defined(RTCONFIG_LYRA_5G_SWAP)
-		snprintf(prefix, sizeof(prefix), "wl%d_", swap_5g_band(unit));
-#else
-		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-#endif
-
 		if (apply_mode) {
-			doSystem(IWPRIV " %s mode %s", ifname, mode);
+			_dprintf("%s: vap %s mode %s -> %s\n", __func__, ifname, orig_mode, new_mode);
+			logmessage("WIFI", "%s: vap %s mode %s -> %s\n", __func__, ifname, orig_mode, new_mode);
+			doSystem(IWPRIV " %s mode %s", ifname, new_mode);
+			if (apply_ch)
+				sleep(2);
 		}
 		if (apply_ch) {
 #if defined(RTCONFIG_WIFI6E)
@@ -2307,7 +2644,7 @@ int wl_set_ch_bw(const char *ifname, int channel, int bw, int nctrlsb)
 			_eval(radio_remove, NULL, 0, NULL);
 			_eval(radio_add, NULL, 0, NULL);
 			logmessage("CFG", "Add %s to hostapd again! (channel %d bw %d nctrlsb %d mode [%s -> %s] apply %d/%d)",
-				ifname, channel, bw, nctrlsb, orig_mode, mode, apply_mode, apply_ch);
+				ifname, channel, bw, nctrlsb, orig_mode, new_mode, apply_mode, apply_ch);
 		}
 
 		if (!is_up || !nvram_pf_match(prefix, "radio", "1") || !chk_wifi_sched(unit)) {
@@ -2347,6 +2684,113 @@ void sync_control_channel(int unit, int channel, int bw, int nctrlsb)
 	ret = wl_set_ch_bw(athfix, channel, bw, nctrlsb);
 }
 
+/*
+ * get_control_channel(unit, *channel, *bw, *nctrlsb)
+ *
+ * *bw:
+ * 	return the bandwitdh value, could be 20/40/80/160.
+ *
+ * nctrlsb:
+ * 	return the side band when in HT40 mode
+ * 	1: the control sideband is upper
+ * 	0: the control sideband is lower
+ * 	-1: invalid
+ *
+ */
+void get_control_channel(int unit, int *channel, int *bw, int *nctrlsb)
+{
+	char athfix[8];
+	int ret __attribute__ ((unused));
+
+	if (unit < 0 || unit >= MAX_NR_WL_IF)
+		return;
+	if (channel == NULL || bw == NULL || nctrlsb == NULL)
+		return;
+
+	__get_wlifname(swap_5g_band(unit), 0, athfix);
+	*channel = shared_get_channel(athfix);
+
+	ret = get_bw_nctrlsb(athfix, bw, nctrlsb);
+}
+
+#if defined(RTCONFIG_MLO)
+char *get_mld_mac_by_sta(char *ap_ifname, char *sta_mac, char *mld_mac, int mld_mac_len)
+{
+	FILE *fp;
+        unsigned char sta[6],cand_mac[6],mld[6];
+        char cmd[sizeof("wlanconfig XXX list") + IFNAMSIZ];
+        char *p,*q, line_buf[300];
+	int mac_match;
+        
+	if (sscanf(sta_mac,"%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX", &sta[0],&sta[1],&sta[2],&sta[3],&sta[4],&sta[5]) != 6)
+                return NULL;
+
+        snprintf(cmd, sizeof(cmd), "wlanconfig %s list", ap_ifname);
+        if (!(fp = popen(cmd, "r")))
+                return NULL;
+
+	mac_match=0;
+        /* Parsing client list */
+        while (fgets(line_buf, sizeof(line_buf), fp) != NULL) {
+		memset(cand_mac,0,sizeof(cand_mac));
+		memset(mld,0,sizeof(mld));
+                if (sscanf(line_buf, "%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX %*[^\n]", &cand_mac[0], &cand_mac[1], &cand_mac[2], &cand_mac[3], &cand_mac[4], &cand_mac[5]) != 6)
+		{
+		       if(mac_match==1) //parse capability
+		       {
+                		if ((q=strstr(line_buf, "MLD Addr")) != NULL) 
+				{
+					if((p=strstr(q,":"))!=NULL)
+					{	
+						if (sscanf(p+1, "%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX %*[^\n]", &mld[0], &mld[1], &mld[2], &mld[3], &mld[4], &mld[5]) == 6)
+							break; //mlo addr 
+					}
+				}	
+		       }
+		}
+		else 
+		{	
+			if(mac_match) //target is non-mlo sta / target's mlo parse fail
+				break; 
+			mac_match=0; 
+			if (!memcmp(sta, cand_mac, ETHER_ADDR_LEN))
+				mac_match=1;
+		}	
+        }
+
+        pclose(fp);
+	memset(mld_mac, 0, mld_mac_len);
+	if(mac_match)
+	{	
+		if(strlen(mld))
+			snprintf(mld_mac, mld_mac_len, "%02X:%02X:%02X:%02X:%02X:%02X",mld[0],mld[1],mld[2],mld[3],mld[4],mld[5]);
+	}
+	return mld_mac;
+}
+
+/**
+ * @brief add guest vsie
+ *
+ * @param hexdata vsie string
+ */
+void add_beacon_vsie_dwb(char *hexdata)
+{
+	int dwb_band = nvram_get_int("dwb_band");
+	int subunit = nvram_get_int("mlo_dwb_mssid_subunit");
+	if(subunit == 0)
+		return;
+	add_beacon_vsie_by_unit(dwb_band, subunit, hexdata);
+}
+
+void del_beacon_vsie_dwb(char *hexdata)
+{
+	int dwb_band = nvram_get_int("dwb_band");
+	int subunit = nvram_get_int("mlo_dwb_mssid_subunit");
+	if(subunit == 0)
+		return;
+	del_beacon_vsie_by_unit(dwb_band, subunit, hexdata);
+}
+#endif
 
 #ifdef RTCONFIG_CFGSYNC
 
@@ -2647,3 +3091,27 @@ double get_wifi_6G_maxpower()
 	return 0;
 }
 #endif
+
+
+
+#if defined(RTCONFIG_MULTILAN_CFG)
+char* get_all_lan_ifnames(void)
+{
+	int band;
+        char vif[sizeof("wlXXXXX_vifs")],result[200];
+	
+	memset(result,0,sizeof(result));
+	snprintf(result, sizeof(result), "%s ", nvram_safe_get("wl_ifnames"));
+
+        for (band = 0; band < MAX_NR_WL_IF; ++band) {
+                SKIP_ABSENT_BAND(band);
+                snprintf(vif, sizeof(vif), "wl%d_vifs", band);
+		strlcat(result,nvram_safe_get(vif),sizeof(result));
+		strlcat(result," ",sizeof(result));
+	}
+
+	result[strlen(result)-1] = '\0';
+	return strdup(result);
+}
+#endif
+

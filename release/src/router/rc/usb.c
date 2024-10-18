@@ -1208,7 +1208,7 @@ void stop_usb(int f_force)
 		modprobe_r("dwc3-ipq");
 		modprobe_r("udc-core");
 #endif
-#if defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 		modprobe_r("xhci-mtk");
 #endif
 		modprobe_r(USB30_MOD);
@@ -2532,7 +2532,7 @@ void remove_storage_main(int shutdn)
 	exec_for_host(-1, 0x02, shutdn ? EFH_SHUTDN : 0, umount_partition);
 }
 
-#if defined(RTCONFIG_REALTEK) || (defined(RTCONFIG_RALINK) && !defined(RTCONFIG_MT798X)) || (defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER))
+#if defined(RTCONFIG_REALTEK) || (defined(RTCONFIG_RALINK) && !defined(RTCONFIG_MT798X) && !defined(RTCONFIG_MT799X)) || (defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER))
 static const char *path_to_name(const char *path) {
 	const char *s = path, *tmp;
 	//_dprintf("%s(1)\n", __func__);
@@ -2679,7 +2679,7 @@ void hotplug_usb(void)
 	}
 	//_dprintf("device: %s\n", device);
 #endif /* RTCONFIG_REALTEK */
-#if (defined(RTCONFIG_RALINK) && !defined(RTCONFIG_MT798X))
+#if (defined(RTCONFIG_RALINK) && !defined(RTCONFIG_MT798X) && !defined(RTCONFIG_MT799X))
 	char *devpath = getenv("DEVPATH");
 	//_dprintf("devpath: %s\n", devpath);
 
@@ -2955,49 +2955,19 @@ void write_ftpd_conf()
 #if defined(RTCONFIG_HTTPS) && defined(RTCONFIG_FTP_SSL)
 	if(nvram_get_int("ftp_tls")){
 		fprintf(fp, "ssl_enable=YES\n");
+		if (!f_exists(HTTPD_CERT) || !f_exists(HTTPD_KEY))
+			restore_cert();
+
+		prepare_cert_in_etc();
+
 		fprintf(fp, "rsa_cert_file=%s\n", HTTPD_CERT);
 		fprintf(fp, "rsa_private_key_file=%s\n", HTTPD_KEY);
 
-		if(!f_exists(HTTPD_CERT) || !f_exists(HTTPD_KEY)
-#ifdef RTCONFIG_LETSENCRYPT
-			|| !cert_key_match(HTTPD_CERT, HTTPD_KEY)
-#endif
-			) {
-#ifdef RTCONFIG_LETSENCRYPT
-			if(nvram_match("le_enable", "1")) {
-				cp_le_cert(LE_FULLCHAIN, HTTPD_CERT);
-				cp_le_cert(LE_KEY, HTTPD_KEY);
-			}
-			else if(nvram_match("le_enable", "2")) {
-				unlink(HTTPD_CERT);
-				unlink(HTTPD_KEY);
-				if(f_exists(UPLOAD_CERT) && f_exists(UPLOAD_KEY)) {
-					eval("cp", UPLOAD_CERT, HTTPD_CERT);
-					eval("cp", UPLOAD_KEY, HTTPD_KEY);
-				}
-			}
-#else
-			if(f_exists(UPLOAD_CERT) && f_exists(UPLOAD_KEY)){
-				eval("cp", UPLOAD_CERT, HTTPD_CERT);
-				eval("cp", UPLOAD_KEY, HTTPD_KEY);
-			}
-#endif
-		}
-
 		// Is it valid now?  Otherwise, restore saved cert, or generate one.
-		if(!f_exists(HTTPD_CERT) || !f_exists(HTTPD_KEY)
-#ifdef RTCONFIG_LETSENCRYPT
-                        || !cert_key_match(HTTPD_CERT, HTTPD_KEY)
-#endif
-		) {
-			if (eval("tar", "-xzf", "/jffs/cert.tgz", "-C", "/", "etc/cert.pem", "etc/key.pem") == 0){
-				system("cat /etc/key.pem /etc/cert.pem > /etc/server.pem");
-				system("cp /etc/cert.pem /etc/cert.crt");
-			} else {
-				f_read("/dev/urandom", &sn, sizeof(sn));
-				sprintf(t, "%llu", sn & 0x7FFFFFFFFFFFFFFFULL);
-				eval("gencert.sh", t);
-			}
+		if (!f_exists(HTTPD_CERT) || !f_exists(HTTPD_KEY)) {
+			f_read("/dev/urandom", &sn, sizeof(sn));
+			sprintf(t, "%llu", sn & 0x7FFFFFFFFFFFFFFFULL);
+			GENCERT_SH(t);
 		}
 	} else {
 		fprintf(fp, "ssl_enable=NO\n");
@@ -3443,7 +3413,8 @@ start_samba(void)
 #if !defined(RTCONFIG_TUXERA_SMBD)
 #if defined(SMP)
 	char cpu_list[4];
-#if defined(RTCONFIG_BCMARM) || defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074)
+#if defined(RTCONFIG_BCMARM) || defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074) \
+ || defined(RTCONFIG_SOC_IPQ53XX)
 #ifndef RTCONFIG_BCMARM
 	char *cpu_list_manual = nvram_get("usb_user_core");
 #endif
@@ -3455,7 +3426,7 @@ start_samba(void)
 #endif // !defined(RTCONFIG_TUXERA_SMBD)
 
 	if (getpid() != 1) {
-		notify_rc_after_wait("start_samba");
+		notify_rc_and_wait_1min("start_samba");
 		return;
 	}
 
@@ -3625,7 +3596,8 @@ start_samba(void)
 
 #if !defined(RTCONFIG_TUXERA_SMBD)
 #if defined(SMP)
-#if defined(RTCONFIG_BCMARM) || defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074)
+#if defined(RTCONFIG_BCMARM) || defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074) \
+ || defined(RTCONFIG_SOC_IPQ53XX)
 #if defined(RTCONFIG_HND_ROUTER_AX_675X) || defined(BCM6750)
 	taskset_ret = -1;
 #else
@@ -3670,7 +3642,7 @@ start_samba(void)
 void stop_samba(int force)
 {
 	if(!force && getpid() != 1){
-		notify_rc_after_wait("stop_samba");
+		notify_rc_and_wait_1min("stop_samba");
 		return;
 	}
 
@@ -3877,6 +3849,7 @@ void start_dms(void)
 				"port=%d\n"
 				"friendly_name=%s\n"
 				"db_dir=%s\n"
+				"log_dir=%s\n"
 				"enable_tivo=%s\n"
 				"strict_dlna=%s\n"
 				"inotify=yes\n"
@@ -3885,6 +3858,7 @@ void start_dms(void)
 				nvram_safe_get("lan_ifname"),
 				(port < 0) || (port >= 0xffff) ? 0 : port,
 				friendly_name,
+				dbdir,
 				dbdir,
 				nvram_get_int("dms_tivo") ? "yes" : "no",
 				nvram_get_int("dms_stdlna") ? "yes" : "no");
@@ -5907,3 +5881,4 @@ void stop_wsdd() {
 	if (pids("wsdd2"))
 		killall_tk("wsdd2");
 }
+

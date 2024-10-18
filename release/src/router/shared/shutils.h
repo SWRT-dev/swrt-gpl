@@ -471,6 +471,20 @@ static inline int safe_atoi(const char *s)
     return (int)strtol(s, NULL, 10);
 }
 
+static inline long safe_atol(const char *s)
+{
+    return (long)strtol(s, NULL, 10);
+}
+
+static inline size_t safe_strlen(const char *s)
+{
+    if (s == NULL) {
+        return 0;
+    }
+
+    return strlen(s);
+}
+
 #define ONE_ENTRANT()                               \
 do {                                                            \
 	static int served = 0;  \
@@ -627,6 +641,7 @@ extern char *trimWS(char *str);
 extern int get_char_count(char *str, int ch);
 extern pid_t get_pid_by_name(char *name);
 extern pid_t get_pid_by_thrd_name(char *name);
+extern pid_t get_pid_by_process_name(char *name);
 extern char *get_process_name_by_pid(const int pid);
 extern char *ether_etoa2(const unsigned char *e, char *a);
 extern char *ATE_FACTORY_MODE_STR();
@@ -646,3 +661,4 @@ extern int ping_target_with_size(char *target, unsigned int size, unsigned int c
 extern int parse_ping_content(char *fname, ping_result_t *out);
 extern int replace_literal_newline(char *inputstr, char *output, int buflen);
 #endif /* _shutils_h_ */
+

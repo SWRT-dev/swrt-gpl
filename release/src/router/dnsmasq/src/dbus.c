@@ -1,4 +1,4 @@
-/* dnsmasq is Copyright (c) 2000-2021 Simon Kelley
+/* dnsmasq is Copyright (c) 2000-2024 Simon Kelley
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -52,6 +52,15 @@ const char* introspection_xml_template =
 "    <method name=\"SetFilterWin2KOption\">\n"
 "      <arg name=\"filterwin2k\" direction=\"in\" type=\"b\"/>\n"
 "    </method>\n"
+"    <method name=\"SetFilterA\">\n"
+"      <arg name=\"filter-a\" direction=\"in\" type=\"b\"/>\n"
+"    </method>\n"
+"    <method name=\"SetFilterAAAA\">\n"
+"      <arg name=\"filter-aaaa\" direction=\"in\" type=\"b\"/>\n"
+"    </method>\n"
+"    <method name=\"SetLocaliseQueriesOption\">\n"
+"      <arg name=\"localise-queries\" direction=\"in\" type=\"b\"/>\n"
+"    </method>\n"
 "    <method name=\"SetBogusPrivOption\">\n"
 "      <arg name=\"boguspriv\" direction=\"in\" type=\"b\"/>\n"
 "    </method>\n"
@@ -88,10 +97,16 @@ const char* introspection_xml_template =
 "    <method name=\"GetMetrics\">\n"
 "      <arg name=\"metrics\" direction=\"out\" type=\"a{su}\"/>\n"
 "    </method>\n"
+"    <method name=\"GetServerMetrics\">\n"
+"      <arg name=\"metrics\" direction=\"out\" type=\"a{ss}\"/>\n"
+"    </method>\n"
+"    <method name=\"ClearMetrics\">\n"
+"    </method>\n"
 "  </interface>\n"
 "</node>\n";
 
 static char *introspection_xml = NULL;
+static int watches_modified = 0;
 
 struct watch {
   DBusWatch *watch;      
@@ -113,14 +128,15 @@ static dbus_bool_t add_watch(DBusWatch *watch, void *data)
   w->watch = watch;
   w->next = daemon->watches;
   daemon->watches = w;
+  watches_modified++;
 
-  w = data; /* no warning */
+  (void)data; /* no warning */
   return TRUE;
 }
 
 static void remove_watch(DBusWatch *watch, void *data)
 {
-  struct watch **up, *w, *tmp;  
+  struct watch **up, *w, *tmp;
   
   for (up = &(daemon->watches), w = daemon->watches; w; w = tmp)
     {
@@ -129,21 +145,26 @@ static void remove_watch(DBusWatch *watch, void *data)
 	{
 	  *up = tmp;
 	  free(w);
+	  watches_modified++;
 	}
       else
 	up = &(w->next);
     }
 
-  w = data; /* no warning */
+  (void)data; /* no warning */
 }
 
-static void dbus_read_servers(DBusMessage *message)
+static DBusMessage* dbus_read_servers(DBusMessage *message)
 {
   DBusMessageIter iter;
   union  mysockaddr addr, source_addr;
   char *domain;
   
-  dbus_message_iter_init(message, &iter);
+  if (!dbus_message_iter_init(message, &iter))
+    {
+      return dbus_message_new_error(message, DBUS_ERROR_INVALID_ARGS,
+                                    "Failed to initialize dbus message iter");
+    }
 
   mark_servers(SERV_FROM_DBUS);
   
@@ -215,13 +236,14 @@ static void dbus_read_servers(DBusMessage *message)
 	  domain = NULL;
 	
 	if (!skip)
-	  add_update_server(SERV_FROM_DBUS, &addr, &source_addr, NULL, domain);
+	  add_update_server(SERV_FROM_DBUS, &addr, &source_addr, NULL, domain, NULL);
      
       } while (dbus_message_iter_get_arg_type(&iter) == DBUS_TYPE_STRING); 
     }
    
   /* unlink and free anything still marked. */
   cleanup_servers();
+  return NULL;
 }
 
 #ifdef HAVE_LOOP
@@ -276,9 +298,14 @@ static DBusMessage* dbus_read_servers_ex(DBusMessage *message, int strings)
     {
       const char *str = NULL;
       union  mysockaddr addr, source_addr;
-      int flags = 0;
+      u16 flags = 0;
       char interface[IF_NAMESIZE];
       char *str_addr, *str_domain = NULL;
+      struct server_details sdetails = { 0 };
+      sdetails.addr = &addr;
+      sdetails.source_addr = &source_addr;
+      sdetails.interface = interface;
+      sdetails.flags = &flags;
 
       if (strings)
 	{
@@ -361,24 +388,6 @@ static DBusMessage* dbus_read_servers_ex(DBusMessage *message, int strings)
 	  strcpy(str_addr, str);
 	}
 
-      memset(&addr, 0, sizeof(addr));
-      memset(&source_addr, 0, sizeof(source_addr));
-      memset(&interface, 0, sizeof(interface));
-
-      /* parse the IP address */
-      if ((addr_err = parse_server(str_addr, &addr, &source_addr, (char *) &interface, &flags)))
-	{
-          error = dbus_message_new_error_printf(message, DBUS_ERROR_INVALID_ARGS,
-                                                "Invalid IP address '%s': %s",
-                                                str, addr_err);
-          break;
-        }
-      
-      /* 0.0.0.0 for server address == NULL, for Dbus */
-      if (addr.in.sin_family == AF_INET &&
-          addr.in.sin_addr.s_addr == 0)
-        flags |= SERV_NO_ADDR;
-      
       if (strings)
 	{
 	  char *p;
@@ -392,7 +401,31 @@ static DBusMessage* dbus_read_servers_ex(DBusMessage *message, int strings)
 	    else 
 	      p = NULL;
 	    
-	    add_update_server(flags | SERV_FROM_DBUS, &addr, &source_addr, interface, str_domain);
+	     if (strings && strlen(str_addr) == 0)
+	       add_update_server(SERV_LITERAL_ADDRESS | SERV_FROM_DBUS, &addr, &source_addr, interface, str_domain, NULL);
+	     else
+	       {
+		 if ((addr_err = parse_server(str_addr, &sdetails)))
+		   {
+		     error = dbus_message_new_error_printf(message, DBUS_ERROR_INVALID_ARGS,
+							   "Invalid IP address '%s': %s",
+							   str, addr_err);
+		     break;
+		   }
+		 
+		 while (parse_server_next(&sdetails))
+		   {
+		     if ((addr_err = parse_server_addr(&sdetails)))
+		       {
+			 error = dbus_message_new_error_printf(message, DBUS_ERROR_INVALID_ARGS,
+							       "Invalid IP address '%s': %s",
+							       str, addr_err);
+			 break;
+		       }
+		     
+		     add_update_server(flags | SERV_FROM_DBUS, &addr, &source_addr, interface, str_domain, NULL);
+		   }
+	       }
 	  } while ((str_domain = p));
 	}
       else
@@ -406,17 +439,46 @@ static DBusMessage* dbus_read_servers_ex(DBusMessage *message, int strings)
 	    if (dbus_message_iter_get_arg_type(&string_iter) == DBUS_TYPE_STRING)
 	      dbus_message_iter_get_basic(&string_iter, &str);
 	    dbus_message_iter_next (&string_iter);
+
+	    if ((addr_err = parse_server(str_addr, &sdetails)))
+	      {
+		error = dbus_message_new_error_printf(message, DBUS_ERROR_INVALID_ARGS,
+						      "Invalid IP address '%s': %s",
+						      str, addr_err);
+		break;
+	      }
 	    
-	    add_update_server(flags | SERV_FROM_DBUS, &addr, &source_addr, interface, str);
+	    while (parse_server_next(&sdetails))
+	      {
+		if ((addr_err = parse_server_addr(&sdetails)))
+		  {
+		    error = dbus_message_new_error_printf(message, DBUS_ERROR_INVALID_ARGS,
+							  "Invalid IP address '%s': %s",
+							  str, addr_err);
+		    break;
+		  }
+		
+		/* 0.0.0.0 for server address == NULL, for Dbus */
+		if (addr.in.sin_family == AF_INET &&
+		    addr.in.sin_addr.s_addr == 0)
+		  flags |= SERV_LITERAL_ADDRESS;
+		else
+		  flags &= ~SERV_LITERAL_ADDRESS;
+		
+		add_update_server(flags | SERV_FROM_DBUS, &addr, &source_addr, interface, str, NULL);
+	      }
 	  } while (dbus_message_iter_get_arg_type(&string_iter) == DBUS_TYPE_STRING);
 	}
-	 
+      
+      if (sdetails.orig_hostinfo)
+	freeaddrinfo(sdetails.orig_hostinfo);
+      
       /* jump to next element in outer array */
       dbus_message_iter_next(&array_iter);
     }
 
   cleanup_servers();
-
+    
   if (dup)
     free(dup);
 
@@ -549,6 +611,10 @@ static DBusMessage *dbus_add_lease(DBusMessage* message)
 					 "Invalid IP address '%s'", ipaddr);
    
   hw_len = parse_hex((char*)hwaddr, dhcp_chaddr, DHCP_CHADDR_MAX, NULL, &hw_type);
+  if (hw_len < 0)
+    return dbus_message_new_error_printf(message, DBUS_ERROR_INVALID_ARGS,
+					 "Invalid HW address '%s'", hwaddr);
+
   if (hw_type == 0 && hw_len != 0)
     hw_type = ARPHRD_ETHER;
   
@@ -636,6 +702,77 @@ static DBusMessage *dbus_get_metrics(DBusMessage* message)
   return reply;
 }
 
+static void add_dict_entry(DBusMessageIter *container, const char *key, const char *val)
+{
+  DBusMessageIter dict;
+
+  dbus_message_iter_open_container(container, DBUS_TYPE_DICT_ENTRY, NULL, &dict);
+  dbus_message_iter_append_basic(&dict, DBUS_TYPE_STRING, &key);
+  dbus_message_iter_append_basic(&dict, DBUS_TYPE_STRING, &val);
+  dbus_message_iter_close_container(container, &dict);
+}
+
+static void add_dict_int(DBusMessageIter *container, const char *key, const unsigned int val)
+{
+  snprintf(daemon->namebuff, MAXDNAME, "%u", val);
+  
+  add_dict_entry(container, key, daemon->namebuff);
+}
+
+static DBusMessage *dbus_get_server_metrics(DBusMessage* message)
+{
+  DBusMessage *reply = dbus_message_new_method_return(message);
+  DBusMessageIter server_array, dict_array, server_iter;
+  struct server *serv;
+  
+  dbus_message_iter_init_append(reply, &server_iter);
+  dbus_message_iter_open_container(&server_iter, DBUS_TYPE_ARRAY, "a{ss}", &server_array);
+
+  /* sum counts from different records for same server */
+  for (serv = daemon->servers; serv; serv = serv->next)
+    serv->flags &= ~SERV_MARK;
+  
+  for (serv = daemon->servers; serv; serv = serv->next)
+    if (!(serv->flags & SERV_MARK))
+      {
+	unsigned int port;
+	unsigned int queries = 0, failed_queries = 0, nxdomain_replies = 0, retrys = 0;
+	unsigned int sigma_latency = 0, count_latency = 0;
+	
+	struct server *serv1;
+
+	for (serv1 = serv; serv1; serv1 = serv1->next)
+	  if (!(serv1->flags & SERV_MARK) && sockaddr_isequal(&serv->addr, &serv1->addr))
+	    {
+	      serv1->flags |= SERV_MARK;
+	      queries += serv1->queries;
+	      failed_queries += serv1->failed_queries;
+	      nxdomain_replies += serv1->nxdomain_replies;
+	      retrys += serv1->retrys;
+	      sigma_latency += serv1->query_latency;
+	      count_latency++;
+	    }
+	
+	dbus_message_iter_open_container(&server_array, DBUS_TYPE_ARRAY, "{ss}", &dict_array);
+	
+	port = prettyprint_addr(&serv->addr, daemon->namebuff);
+	add_dict_entry(&dict_array, "address", daemon->namebuff);
+	
+	add_dict_int(&dict_array, "port", port);
+	add_dict_int(&dict_array, "queries", serv->queries);
+	add_dict_int(&dict_array, "failed_queries", serv->failed_queries);
+	add_dict_int(&dict_array, "nxdomain", serv->nxdomain_replies);
+	add_dict_int(&dict_array, "retries", serv->retrys);
+	add_dict_int(&dict_array, "latency", sigma_latency/count_latency);
+	
+	dbus_message_iter_close_container(&server_array, &dict_array);
+      }
+  
+  dbus_message_iter_close_container(&server_iter, &server_array);
+  
+  return reply;
+}
+
 DBusHandlerResult message_handler(DBusConnection *connection, 
 				  DBusMessage *message, 
 				  void *user_data)
@@ -672,7 +809,7 @@ DBusHandlerResult message_handler(DBusConnection *connection,
 #endif
   else if (strcmp(method, "SetServers") == 0)
     {
-      dbus_read_servers(message);
+      reply = dbus_read_servers(message);
       new_servers = 1;
     }
   else if (strcmp(method, "SetServersEx") == 0)
@@ -688,6 +825,32 @@ DBusHandlerResult message_handler(DBusConnection *connection,
   else if (strcmp(method, "SetFilterWin2KOption") == 0)
     {
       reply = dbus_set_bool(message, OPT_FILTER, "filterwin2k");
+    }
+  else if (strcmp(method, "SetFilterA") == 0)
+    {
+      static int done = 0;
+      static struct rrlist list = { T_A, NULL };
+
+      if (!done)
+	{
+	  list.next = daemon->filter_rr;
+	  daemon->filter_rr = &list;
+	}
+    }
+  else if (strcmp(method, "SetFilterAAAA") == 0)
+    {
+      static int done = 0;
+      static struct rrlist list = { T_AAAA, NULL };
+
+      if (!done)
+	{
+	  list.next = daemon->filter_rr;
+	  daemon->filter_rr = &list;
+	}
+    }
+  else if (strcmp(method, "SetLocaliseQueriesOption") == 0)
+    {
+      reply = dbus_set_bool(message, OPT_LOCALISE, "localise-queries");
     }
   else if (strcmp(method, "SetBogusPrivOption") == 0)
     {
@@ -707,6 +870,14 @@ DBusHandlerResult message_handler(DBusConnection *connection,
     {
       reply = dbus_get_metrics(message);
     }
+  else if (strcmp(method, "GetServerMetrics") == 0)
+    {
+      reply = dbus_get_server_metrics(message);
+    }
+  else if (strcmp(method, "ClearMetrics") == 0)
+    {
+      clear_metrics();
+    }
   else if (strcmp(method, "ClearCache") == 0)
     clear_cache = 1;
   else
@@ -715,7 +886,7 @@ DBusHandlerResult message_handler(DBusConnection *connection,
   if (new_servers)
     {
       my_syslog(LOG_INFO, _("setting upstream servers from DBus"));
-      check_servers();
+      check_servers(0);
       if (option_bool(OPT_RELOAD))
 	clear_cache = 1;
     }
@@ -723,7 +894,7 @@ DBusHandlerResult message_handler(DBusConnection *connection,
   if (clear_cache)
     clear_cache_and_reload(dnsmasq_time());
   
-  method = user_data; /* no warning */
+  (void)user_data; /* no warning */
 
   /* If no reply or no error, return nothing */
   if (!reply)
@@ -749,8 +920,11 @@ char *dbus_init(void)
 
   dbus_error_init (&dbus_error);
   if (!(connection = dbus_bus_get (DBUS_BUS_SYSTEM, &dbus_error)))
-    return NULL;
-    
+    {
+      dbus_error_free(&dbus_error);
+      return NULL;
+    }
+  
   dbus_connection_set_exit_on_disconnect(connection, FALSE);
   dbus_connection_set_watch_functions(connection, add_watch, remove_watch, 
 				      NULL, NULL, NULL);
@@ -784,40 +958,52 @@ void set_dbus_listeners(void)
       {
 	unsigned int flags = dbus_watch_get_flags(w->watch);
 	int fd = dbus_watch_get_unix_fd(w->watch);
+	int poll_flags = POLLERR;
 	
 	if (flags & DBUS_WATCH_READABLE)
-	  poll_listen(fd, POLLIN);
-	
+	  poll_flags |= POLLIN;
 	if (flags & DBUS_WATCH_WRITABLE)
-	  poll_listen(fd, POLLOUT);
+	  poll_flags |= POLLOUT;
 	
-	poll_listen(fd, POLLERR);
+	poll_listen(fd, poll_flags);
       }
 }
 
-void check_dbus_listeners()
+static int check_dbus_watches()
 {
-  DBusConnection *connection = (DBusConnection *)daemon->dbus;
   struct watch *w;
 
+  watches_modified = 0;
   for (w = daemon->watches; w; w = w->next)
     if (dbus_watch_get_enabled(w->watch))
       {
 	unsigned int flags = 0;
 	int fd = dbus_watch_get_unix_fd(w->watch);
-	
-	if (poll_check(fd, POLLIN))
+	int poll_flags = poll_check(fd, POLLIN|POLLOUT|POLLERR);
+
+	if ((poll_flags & POLLIN) != 0)
 	  flags |= DBUS_WATCH_READABLE;
-	
-	if (poll_check(fd, POLLOUT))
+	if ((poll_flags & POLLOUT) != 0)
 	  flags |= DBUS_WATCH_WRITABLE;
-	
-	if (poll_check(fd, POLLERR))
+	if ((poll_flags & POLLERR) != 0)
 	  flags |= DBUS_WATCH_ERROR;
 
 	if (flags != 0)
-	  dbus_watch_handle(w->watch, flags);
+	  {
+	    dbus_watch_handle(w->watch, flags);
+	    if (watches_modified)
+	      return 0;
+	  }
       }
+
+  return 1;
+}
+
+void check_dbus_listeners()
+{
+  DBusConnection *connection = (DBusConnection *)daemon->dbus;
+
+  while (!check_dbus_watches()) ;
 
   if (connection)
     {

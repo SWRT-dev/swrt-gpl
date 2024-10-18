@@ -233,7 +233,7 @@ a{
     border-bottom: #EEE;
 }
 .instruction_text {
-    color: #000;
+    color: #000 !important;
 }
 .aimesh_info, .loading-container > div {
 	color: #000;

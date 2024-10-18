@@ -31,6 +31,8 @@
 #include "auth.h"
 #include "runopts.h"
 
+extern int asus_openssl_crypt(char *key, char *salt, char *out, int out_len);
+
 #if DROPBEAR_SVR_PASSWORD_AUTH
 
 /* not constant time when strings are differing lengths. 

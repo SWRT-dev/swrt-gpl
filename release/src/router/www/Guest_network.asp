@@ -195,7 +195,7 @@ function initial(){
 	}
 
 	//When redirect page from Free WiFi or Captive Portal, auto go to anchor tag
-	var gn_idx = cookie.get("captive_portal_gn_idx");
+	var gn_idx = window.localStorage.getItem("captive_portal_gn_idx");
 	if(gn_idx != "" && gn_idx != null) {
 		var gn_idx_array = gn_idx.split(">");
 		if(gn_idx_array.length == 2) {
@@ -217,7 +217,7 @@ function initial(){
 				alert("Guest Network – " + gn_num + " will used by " + type_hint);
 			}, 100);
 		}
-		cookie.unset("captive_portal_gn_idx");
+		window.localStorage.removeItem("captive_portal_gn_idx");
 	}
 
 	//LYRA_VOICE

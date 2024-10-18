@@ -55,6 +55,8 @@
 	"Host: %s\r\n"							\
 	"User-Agent: %s\r\n\r\n"
 
+extern int nvram_get_int(const char *key);
+
 /* Used to preserve values during reset at SIGHUP.  Time also initialized from cache file at startup. */
 static int cached_num_iterations = 0;
 extern ddns_info_t *conf_info_iterator(int first);

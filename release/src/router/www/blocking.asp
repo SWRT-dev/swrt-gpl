@@ -298,7 +298,15 @@ var target_info = {
 	desc: ""
 }
 
+function isSupport(_ptn){
+	var ui_support = [<% get_ui_support(); %>][0];
+	return (ui_support[_ptn]) ? ui_support[_ptn] : 0;
+}
+
 function initial(){
+	if(isSupport("ROG_UI") || isSupport("TS_UI") || isSupport("TUF_UI")){
+		$(".wrapper").css({"background-size":"cover"});
+	}
 	get_target_info();
 	show_information();
 }
@@ -417,12 +425,7 @@ function show_information(){
 	document.getElementById('suggestion').innerHTML = code_suggestion;
 
 	$("#goToSetup").click(function(){
-		function setValue(key, value, days) {
-			document.cookie = key + '=' + value + '; expires=' +
-			(new Date(new Date().getTime() + ((days ? days : 14) * 86400000))).toUTCString() + '; path=/';
-		}
-
-		setValue("malware", target_info.url)
+		window.localStorage.setItem("malware", target_info.url)
 		location.href = "/AiProtection_MaliciousSitesBlocking.asp"
 	})
 }

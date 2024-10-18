@@ -59,6 +59,10 @@ var assassinMode_enable = (function(){
 	
 	return false;
 })();
+
+var smart_connect_mode_maxLength = 4;
+if(get_wl_unit_by_band("6G2") != "") smart_connect_mode_maxLength++;
+
 $(document).ready(function(){
 	if(system.INTELplatform || system.modelName == 'RT-AC87U'){
 		checkWLReady();
@@ -70,6 +74,8 @@ $(document).ready(function(){
 		$("#light_effect_tab").show();
 	}
 });
+
+var _smart_connect_enable = 0;
 
 var nvram = new Object();
 var variable = new Object();
@@ -146,7 +152,7 @@ function getVariable(){
 		_array.push.apply(_array, _element);
 	}
 
-	if(system.modelName == 'GT-AXE16000' || system.modelName == 'GT-BE98' || system.modelName == 'GT-BE98_PRO'){
+	if(system.modelName == 'GT-AXE16000' || system.modelName == 'GT-BE98' || system.modelName == 'GT-BE98_PRO' || system.modelName == 'BQ16' || system.modelName == 'BQ16_PRO'){
 		var _element = new Array();
 		if(isSwMode('re') && (concurrep_support || wlc_band == '3')){
 			_element = ['wl3.1_nmode_x', 'wl3.1_auth_mode_x', 'wl3.1_crypto', 'wl3.1_mfp', 'wl3.1_wep_x', 'wl3.1_key', 'wl3.1_key1', 'wl3.1_key2', 'wl3.1_key3', 'wl3.1_key4'];
@@ -180,9 +186,12 @@ function getVariable(){
 
 	smart_connect_mode = variable['smart_connect_selif_x'];
 	smart_connect_mode = parseInt(smart_connect_mode).toString(2);
-	while(smart_connect_mode.length < 4){
+
+	while(smart_connect_mode.length < smart_connect_mode_maxLength){
 		smart_connect_mode = '0' + smart_connect_mode;
 	}
+
+	_smart_connect_enable = $("#smartConnectSwitch").val();
 }
 
 var wlInterface = new Array();	
@@ -193,6 +202,7 @@ function getInterface(){
 		'quadBandSmartConnect': [['3', 'Quad-Band Smart Connect', '3']],
 		'triBandSmartConnect': [['0', '<#smart_connect_tri#>', '0']],
 		'dualBand6GHzSmartConnect': [['0', '2.4 / 5 GHz', '0'], ['2', '6 GHz', '2']],
+		'dualBand5GHzHighSmartConnect': [['0', '2.4 / 5 GHz', '0'], ['2', '5 GHz-2', '2']],
 		'dualBandSmartConnect': [['0', '<#smart_connect_dual#>', '0']],
 		'triBand5GHzSmartConnect': [['0', '2.4 GHz', '0'], ['1', '5GHz Smart Connect', '1']],
 		'GT6-5GHzSmartConnect': [['2', '2.4 GHz', '2'], ['1', '5GHz Smart Connect', '1']],
@@ -210,22 +220,39 @@ function getInterface(){
 		'GT6-5GTriBand': [['0', '5 GHz-1', '0'], ['1', '5 GHz-2', '1']],
 		'6GTriBand': [['1', '5 GHz', '1'], ['2', '6 GHz', '2']],
 		'6GQuadBand': [['0', '5 GHz-1', '0'], ['1', '5 GHz-2', '1'], ['2', '6 GHz', '2']],
+		'dual6GQuadBand': [['0', '5 GHz', '0'], ['1', '6 GHz-1', '1'], ['2', '6 GHz-2', '2']],
 		'60G': [['3', '60 GHz','3']],
 		'5L5H6GSmartCommect': [['0', '5 GHz-1/5 GHz-2/6 GHz', '0'], ['3', '2.4 GHz', '3']],
 		'2.4G5H6GSmartCommect': [['1', '2.4 GHz/5 GHz-2/6 GHz', '1'], ['0', '5 GHz-1', '0']],
 		'2.4G5L6GSmartCommect': [['0', '2.4 GHz/5 GHz-1/6 GHz', '0'], ['1', '5 GHz-2', '1']],
-		'2.4G5L5HSmartCommect': [['0', '2.4 GHz/5 GHz-1/5 GHz-2', '0'], ['2', '6 GHz', '2']],
+		'2.4G5L5HSmartCommect': [['0', '2.4 GHz/5 GHz-1/5 GHz-2', '0'], ['2', '6 GHz', '2']],    
+		'2.4G5L5HTriSmartCommect': [['0', '2.4 GHz/5 GHz-1/5 GHz-2', '0']],
+        '5L5HSmartCommect': [['0', '5 GHz-1/5 GHz-2', '0'], ['3', '2.4 GHz', '3'], ['2', '6 GHz', '2']],
 		'5H6GSmartCommect': [['1', '5 GHz-2/6 GHz', '1'], ['3', '2.4 GHz', '3'], ['0', '5 GHz-1', '0']],
 		'5L6GSmartCommect': [['0', '5 GHz-1/6 GHz', '0'], ['3', '2.4 GHz', '3'], ['1', '5 GHz-2', '1']],
 		'2.4G6GSmartCommect': [['3', '2.4 GHz/6 GHz', '3'], ['0', '5 GHz-1', '0'], ['1', '5 GHz-2', '1']],
 		'5L5HGSmartCommect': [['0', '5 GHz-1/5 GHz-2', '0'], ['3', '2.4 GHz', '3'], ['2', '6 GHz', '2']],
+		'5L5HDual2GSmartCommect': [['1', '5 GHz-1/5 GHz-2', '1'], ['0', '2.4 GHz', '0']],
 		'2.4G5HSmartCommect': [['1', '2.4 GHz/5 GHz-2', '1'], ['0', '5 GHz-1', '0'], ['2', '6 GHz', '2']],
+		'2.4G5HDual5LSmartCommect': [['0', '2.4 GHz/5 GHz-2', '0'], ['1', '5 GHz-1', '1']],
 		'2.4G5LSmartCommect': [['0', '2.4 GHz/5 GHz-1', '0'], ['1', '5 GHz-2', '1'], ['2', '6 GHz', '2']],
+		'2.4G5LDual5HSmartCommect': [['0', '2.4 GHz/5 GHz-1', '0'], ['2', '5 GHz-2', '2']],
+		'2.4G5GDual6GSmartCommect': [['0', '2.4 GHz/5 GHz', '0'], ['1', '6 GHz-1', '1'], ['2', '6 GHz-2', '2']],
+		'2.4G6G1Dual6GSmartCommect': [['3', '2.4 GHz/6 GHz-1', '3'], ['0', '5 GHz', '0'], ['2', '6 GHz-2', '2']],
+		'5G6G1Dual6GSmartCommect': [['0', '5 GHz/6 GHz-1', '0'], ['3', '2.4 GHz', '3'], ['2', '6 GHz-2', '2']],
+		'2.4G5G6G1Dual6GSmartCommect': [['0', '2.4 GHz/5 GHz/6 GHz-1', '0'], ['2', '6 GHz-2', '2']],
+		'2.4G6G2Dual6GSmartCommect': [['3', '2.4 GHz/6 GHz-2', '3'], ['0', '5 GHz', '0'], ['1', '6 GHz-1', '1']],
+		'5G6G2Dual6GSmartCommect': [['0', '5 GHz/6 GHz-2', '0'], ['3', '2.4 GHz', '3'], ['1', '6 GHz-1', '1']],
+		'2.4G5G6G2Dual6GSmartCommect': [['3', '2.4 GHz/5 GHz/6 GHz-2', '3'], ['1', '6 GHz-1', '1']],
+		'6G16G2Dual6GSmartCommect': [['1', '6 GHz-1/6 GHz-2', '1'], ['3', '2.4 GHz', '3'], ['0', '5 GHz', '0']],
+		'2.4G6G16G2Dual6GSmartCommect': [['3', '2.4 GHz/6 GHz-1/6 GHz-2', '3'], ['0', '5 GHz', '0']],
+		'5G6G16G2Dual6GSmartCommect': [['0', '5 GHz/6 GHz-1/6 GHz-2', '0'], ['3', '2.4 GHz', '3']],
+		'2.4G5G6G16G2Dual6GSmartCommect': [['0', '2.4 GHz/5 GHz/6 GHz-1/6 GHz-2', '0']],
 	}
 
 	if(system.smartConnectSupport && variable.smart_connect_x != '0'){		// Smart Connect
 		if(variable.smart_connect_x == '1'){	// Tri/Dual-Band Smart Connect		
-			if(system.modelName === 'GT-AXE16000' || system.modelName === 'GT-BE98' || system.modelName === 'GT-BE98_PRO'){
+			if(system.modelName === 'GT-AXE16000' || system.modelName === 'GT-BE98' || system.modelName === 'GT-BE98_PRO' || system.modelName == 'BQ16' || system.modelName == 'BQ16_PRO' || system.modelName == 'GT-BE96'){
 				if(variable.smart_connect_selif_x === '15'){
 					_temp = typeObj['quadBandSmartConnect'];
 				}
@@ -237,27 +264,75 @@ function getInterface(){
 				}
 				else if(variable.smart_connect_selif_x === '11'){
 					_temp = typeObj['2.4G5L6GSmartCommect'];
+					if(system.modelName === 'GT-BE98_PRO'){
+						_temp = typeObj['2.4G5G6G1Dual6GSmartCommect'];
+					}
 				}
 				else if(variable.smart_connect_selif_x === '7'){
 					_temp = typeObj['2.4G5L5HSmartCommect'];
+					if(system.modelName === 'GT-BE96'){		
+						if(dwb_info.mode == 1){
+							_temp = typeObj['2.4G5LDual5HSmartCommect'];
+						}
+						else{
+							_temp = typeObj['2.4G5L5HTriSmartCommect'];
+						}							
+					}				
 				}
 				else if(variable.smart_connect_selif_x === '12'){
 					_temp = typeObj['5H6GSmartCommect'];
 				}
 				else if(variable.smart_connect_selif_x === '10'){
 					_temp = typeObj['5L6GSmartCommect'];
+
+					if(system.modelName === 'GT-BE98_PRO'){
+						_temp = typeObj['5G6G1Dual6GSmartCommect'];
+					}
 				}
 				else if(variable.smart_connect_selif_x === '9'){
 					_temp = typeObj['2.4G6GSmartCommect'];
+					if(system.modelName === 'GT-BE98_PRO'){
+						_temp = typeObj['2.4G6G1Dual6GSmartCommect'];
+					}
+					
 				}
 				else if(variable.smart_connect_selif_x === '6'){
 					_temp = typeObj['5L5HSmartCommect'];
 				}
 				else if(variable.smart_connect_selif_x === '5'){
 					_temp = typeObj['2.4G5HSmartCommect'];
+					if(system.modelName === 'GT-BE96'){
+						_temp = typeObj['2.4G5HDual5LSmartCommect'];
+					}	
 				}
 				else if(variable.smart_connect_selif_x === '3'){
 					_temp = typeObj['2.4G5LSmartCommect'];
+					if(system.modelName === 'GT-BE98_PRO'){
+						_temp = typeObj['2.4G5GDual6GSmartCommect'];
+					}else if(system.modelName === 'GT-BE96'){
+						_temp = typeObj['2.4G5LDual5HSmartCommect'];
+					}				
+				}
+				else if(variable.smart_connect_selif_x === '17'){
+					_temp = typeObj['2.4G6G2Dual6GSmartCommect'];
+				}
+				else if(variable.smart_connect_selif_x === '18'){
+					_temp = typeObj['5G6G2Dual6GSmartCommect'];
+				}
+				else if(variable.smart_connect_selif_x === '19'){
+					_temp = typeObj['2.4G5G6G2Dual6GSmartCommect'];
+				}
+				else if(variable.smart_connect_selif_x === '24'){
+					_temp = typeObj['6G16G2Dual6GSmartCommect'];
+				}
+				else if(variable.smart_connect_selif_x === '25'){
+					_temp = typeObj['2.4G6G16G2Dual6GSmartCommect'];
+				}
+				else if(variable.smart_connect_selif_x === '26'){
+					_temp = typeObj['5G6G16G2Dual6GSmartCommect'];
+				}
+				else if(variable.smart_connect_selif_x === '27'){
+					_temp = typeObj['2.4G5G6G16G2Dual6GSmartCommect'];
 				}
 			}
 			else if(system.modelName === 'RT-BE96U'){
@@ -267,6 +342,14 @@ function getInterface(){
 				else if(variable.smart_connect_selif_x === '3'){
 					_temp = typeObj['triBand6GHzMeshSmartConnect'];
 				}				
+			}
+			else if(system.modelName === 'GT-BE96'){
+				if(variable.smart_connect_selif_x === '7'){
+					_temp = typeObj['triBandSmartConnect'];
+				}
+				else if(variable.smart_connect_selif_x === '3'){
+					_temp = typeObj['dualBand5GHzHighSmartConnect'];
+				}	
 			}
 			else{
 				if(system.band5g2Support){
@@ -293,14 +376,13 @@ function getInterface(){
 						}
 					}
 					else{
-						_temp = typeObj['triBandSmartConnect'];
+						_temp = typeObj['triBandSmartConnect'];					
 					}
 				}
 				else{
 					_temp = typeObj['dualBandSmartConnect'];
 				}	
-			}
-				
+			}				
 		}
 		else if(variable.smart_connect_x == '3'){
 			_temp = typeObj['dualBand6GHzSmartConnect'];
@@ -309,9 +391,62 @@ function getInterface(){
 			if(odmpid === 'GT6'){								
 				_temp = typeObj['GT6-5GHzSmartConnect'];
 			}
+			else if(odmpid === 'GT-BE98_Pro' || system.modelName === 'BQ16_PRO'){
+                if(variable.smart_connect_selif_x === '30'){
+					_temp = typeObj['5G6G16G2Dual6GSmartCommect'];
+				}
+                else if(variable.smart_connect_selif_x === '28'){
+                    _temp = typeObj['6G16G2Dual6GSmartCommect'];
+                }
+				else if(variable.smart_connect_selif_x === '22'){
+                    _temp = typeObj['5G6G2Dual6GSmartCommect'];
+                }
+                else if(variable.smart_connect_selif_x === '14'){
+                    _temp = typeObj['5G6G1Dual6GSmartCommect'];
+                }
+			}
+            else if(odmpid === 'GT-BE98' || system.modelName === 'BQ16'){
+                if(variable.smart_connect_selif_x === '14'){
+					_temp = typeObj['5L5H6GSmartCommect'];
+				}
+                else if(variable.smart_connect_selif_x === '12'){
+                    _temp = typeObj['5H6GSmartCommect'];
+                }
+				else if(variable.smart_connect_selif_x === '10'){
+                    _temp = typeObj['5L6GSmartCommect'];
+                }
+                else if(variable.smart_connect_selif_x === '6'){
+                    _temp = typeObj['5L5HSmartCommect'];
+                }
+			}
+			else if(system.modelName === 'GT-BE96'){
+				_temp = typeObj['5L5HDual2GSmartCommect'];
+			}
+            else if(system.modelName === 'GT-AXE16000'){
+				if(variable.smart_connect_selif_x === '14'){
+					_temp = typeObj['5L5H6GSmartCommect'];
+				}
+				else if(variable.smart_connect_selif_x === '12'){
+					_temp = typeObj['5H6GSmartCommect'];
+				}
+				else if(variable.smart_connect_selif_x === '10'){
+					_temp = typeObj['5L6GSmartCommect'];
+				}
+				else if(variable.smart_connect_selif_x === '6'){
+					_temp = typeObj['5L5HSmartCommect'];
+				}
+			}
 			else {
-				_temp = typeObj['triBand5GHzSmartConnect'];
-			}			
+				if(variable.smart_connect_selif_x === '14'){
+					_temp = typeObj['5G6G16G2Dual6GSmartCommect'];
+				}
+				else if(variable.smart_connect_selif_x === '6'){
+					_temp = typeObj['5L5HGSmartCommect'];
+				}
+				else{
+					_temp = typeObj['triBand5GHzSmartConnect'];
+				}				
+			}				
 		}
 	}
 	else if(system.lyraHideSupport){
@@ -319,14 +454,14 @@ function getInterface(){
 	}
 	else{
 		if(system.band2gSupport){
-			if(system.modelName === 'GT-AXE16000'){
+			if(system.modelName === 'GT-AXE16000'  || system.modelName == 'BQ16'){
 				_temp = _temp.concat(typeObj['2.4G-AXE16000']);
 			}
 			else if(system.modelName === 'GT-BE98'){
 				_temp = _temp.concat(typeObj['2.4G-BE98']);
 			}
-			else if(system.modelName === 'GT-BE98_PRO'){
-				_temp = _temp.concat(typeObj['2.4G-BE98_PRO']);
+			else if(system.modelName === 'GT-BE98_PRO' || system.modelName == 'BQ16_PRO'){
+				_temp = _temp.concat(typeObj['2.4G-BE98_PRO']);				
 			}
 			else if(odmpid === 'GT6'){
 				_temp = _temp.concat(typeObj['2.4G-GT6']);
@@ -336,8 +471,11 @@ function getInterface(){
 			}			
 		}
 
-		if(system.modelName === 'GT-AXE16000' || system.modelName === 'GT-BE98' || system.modelName === 'GT-BE98_PRO'){
+		if(system.modelName === 'GT-AXE16000' || system.modelName === 'GT-BE98' || system.modelName == 'BQ16'){
 			_temp = _temp.concat(typeObj['6GQuadBand']);
+		}
+		else if(system.modelName === 'GT-BE98_PRO' || system.modelName == 'BQ16_PRO'){
+			_temp = _temp.concat(typeObj['dual6GQuadBand']);
 		}
 		else if(system.band5gSupport){
 			if(system.band5g2Support){
@@ -383,6 +521,49 @@ function getInterface(){
 	setOptions();
 }
 
+function isJoinSmartConnect(wlIfIndex){
+    wlIfIndex = wlIfIndex.toLowerCase();
+
+	if(wlIfIndex == "2g") wlIfIndex = "2g1";
+	if(wlIfIndex == "5g") wlIfIndex = "5g1";
+	if(wlIfIndex == "6g") wlIfIndex = "6g1";
+
+    const referenceArray = ["", "", "", "6g2", "6g1", "5g2", "5g1", "2g1"];
+	var smart_connect_selif_x = httpApi.nvramGet(["smart_connect_selif_x"]).smart_connect_selif_x;
+
+    var v2Band = smart_connect_mode.split("");
+	for(var i=v2Band.length; i<referenceArray.length; i++){
+		v2Band.unshift("0");
+	}
+
+    var version = isSupport("smart_connect_v2") ? "v2" : isSupport("smart_connect") || isSupport("bandstr") ? "v1" : "";
+    var v1Type = httpApi.nvramGet(["smart_connect_x"]).smart_connect_x;
+
+    if (version === "v2") {
+        let index = referenceArray.findIndex((element) => element === wlIfIndex);
+        return v2Band[index] === "1";
+    } else {
+        if (v1Type === "1") {
+            return true;
+        } else if (v1Type === "2") {
+            if (wlIfIndex === "5g1" || wlIfIndex === "5g2") {
+                return true;
+            }
+        } else if (v1Type === "3") {
+            if (wlIfIndex === "2g1" || wlIfIndex === "5g1") {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
+function get_band_by_wl_unit(wl_unit){
+	var wlnband_list = httpApi.nvramGet(["wlnband_list"]).wlnband_list.split("&#60");
+	return wlnband_list[wl_unit];
+}
+
 function genElement(){
 	var code = '';
 	var _temp = '';
@@ -404,25 +585,35 @@ function genElement(){
 	// part of Smart Connect
 	if(system.smartConnectSupport && variable.smart_connect_x != '0'){
 		$('#smart_connect_field').show();
-		if(system.modelName === 'GT-AXE16000' || system.modelName === 'GT-BE98' || system.modelName === 'GT-BE98_PRO'){
+		if(system.modelName === 'GT-AXE16000' || system.modelName === 'GT-BE98' || system.modelName === 'GT-BE98_PRO' || system.modelName == 'BQ16' || system.modelName == 'BQ16_PRO'){
 			var smartConnectType_ori = nvram['smart_connect_x'];
 			
-	
 			code += '<div class="info-block">';
 			code += '<div class="info-title"><#smart_connect#></div>';
 			
 		
-			code += '<select class="input_option" onchange="enableSmartConnect(this.value)">'
+			code += '<select class="input_option" id="smartConnectSwitch" onchange="enableSmartConnect(this.value)">'
 			code += '<option value="0" '+ (variable.smart_connect_x === '0' ? 'selected': '') +'><#CTL_close#>';
 			code += '<option value="1" '+ (variable.smart_connect_x !== '0' ? 'selected': '') +'><#CTL_Enabled#>';			
 			code += '</select>'
 	
-
 			code += '<div id="smart_connect_mode_field">';		
-			code += '<input id="smart_connect_check_0" type="checkbox" onchange="updateSmartConnect(0, this.checked)"'+ (smart_connect_mode[3] ==='1'? 'checked': '') +'>2.4 GHz';
-			code += '<input id="smart_connect_check_1" type="checkbox" onchange="updateSmartConnect(1, this.checked)"'+ (smart_connect_mode[2] ==='1'? 'checked': '') +'>5 GHz-1';
-			code += '<input id="smart_connect_check_2" type="checkbox" onchange="updateSmartConnect(2, this.checked)"'+ (smart_connect_mode[1] ==='1'? 'checked': '') +'>5 GHz-2';
-			code += '<input id="smart_connect_check_3" type="checkbox" onchange="updateSmartConnect(3, this.checked)"'+ (smart_connect_mode[0] ==='1'? 'checked': '') +'>6 GHz';								
+			
+			if(system.modelName === 'GT-BE98_PRO' || system.modelName === 'BQ16_PRO'){
+				code += '<input id="smart_connect_check_0" type="checkbox" onchange="updateSmartConnect(0, this.checked)"'+ (smart_connect_mode[4] ==='1'? 'checked': '') +'>2.4 GHz';
+				code += '<input id="smart_connect_check_1" type="checkbox" onchange="updateSmartConnect(1, this.checked)"'+ (smart_connect_mode[3] ==='1'? 'checked': '') +'>5 GHz';
+				code += '<input id="smart_connect_check_3" type="checkbox" onchange="updateSmartConnect(3, this.checked)"'+ (smart_connect_mode[1] ==='1'? 'checked': '') +'>6 GHz-1';								
+				code += '<input id="smart_connect_check_4" type="checkbox" onchange="updateSmartConnect(4, this.checked)"'+ (smart_connect_mode[0] ==='1'? 'checked': '') +'>6 GHz-2';
+			}
+			else{
+				code += '<input id="smart_connect_check_0" type="checkbox" onchange="updateSmartConnect(0, this.checked)"'+ (smart_connect_mode[3] ==='1'? 'checked': '') +'>2.4 GHz';
+				code += '<input id="smart_connect_check_1" type="checkbox" onchange="updateSmartConnect(1, this.checked)"'+ (smart_connect_mode[2] ==='1'? 'checked': '') +'>5 GHz-1';
+				code += '<input id="smart_connect_check_2" type="checkbox" onchange="updateSmartConnect(2, this.checked)"'+ (smart_connect_mode[1] ==='1'? 'checked': '') +'>5 GHz-2';
+				if(system.band6gSupport){
+					code += '<input id="smart_connect_check_3" type="checkbox" onchange="updateSmartConnect(3, this.checked)"'+ (smart_connect_mode[0] ==='1'? 'checked': '') +'>6 GHz';
+				}				
+			}											
+											
 			code += '</div>';
 			code += '</div>';
 		}
@@ -434,8 +625,7 @@ function genElement(){
 				code += '<div><select id="smart_connect_x" class="input_option" onchange="updateVariable(this.id, value)"></select></div>';
 				code += '</div>';
 			}
-		}
-		
+		}		
 
 		$('#smart_connect_field').html(code);
 		genSmartConnect();
@@ -452,7 +642,8 @@ function genElement(){
 
 		// Mesh, description of dedicated backhaul
 		code += '<div class="unit-block"><div class="division-block">'+ wlInterface[i][1] +'</div>';
-		if(dwb_info.mode == '1' && (dwb_info.band == UNIT)){
+
+		if(dwb_info.mode == '1' && (dwb_info.band == UNIT) && !isJoinSmartConnect(get_band_by_wl_unit(unit))){
 			var show_dwb_hint = false;
 			var wl_closed = httpApi.nvramGet(["wl" + dwb_info.band + "_closed"])["wl" + dwb_info.band + "_closed"];
 			if(isSupport("amas_fronthaul_network")){
@@ -469,16 +660,14 @@ function genElement(){
 			}
 
 			if(show_dwb_hint){
-				if(band6g_support){
-					code += '<div class="dwb_hint">6 GHz <#AiMesh_backhaul_band_5GHz-2_desc1#></div>';
-				}
-				else{
-					code += '<div class="dwb_hint">5 GHz-2 <#AiMesh_backhaul_band_5GHz-2_desc1#></div>';
-				}
 				var $dwb_hint = $("<div>").addClass("dwb_hint").html('<#AiMesh_backhaul_band_5GHz-2_desc2#>');
 				$dwb_hint.find(".faq-link").attr("onclick", "top.change_wl_unit_status(" + dwb_info.band + ");");
+
+				code += `<div class="dwb_hint">${wl_nband_title[dwb_info.band]} <#AiMesh_backhaul_band_5GHz-2_desc1#></div>`;
 				code += $dwb_hint[0].outerHTML;
-				break;
+				code += '</div>';
+
+				continue;
 			}
 		}
 
@@ -494,7 +683,7 @@ function genElement(){
 			code += '<div class="info-title"><#WLANConfig11b_AuthenticationMethod_itemname#></div>';
 			code += '<div><select id="wl'+ unit +'_auth_mode_x" class="input_option" onchange="updateVariable(this.id, value)">'+ _temp +'</select></div>';
 			if(unit != '2'){
-				code += '<span id="wl'+ unit +'_open_suggest" style="color:#FC0;display:none">Suggest to use "Enhanced Open transition" for better device compatibility</span>';
+				code += '<span id="wl'+ unit +'_open_suggest" style="color:#FC0;display:none">'+ stringSafeGet(`<#WLANConfig11b_AuthenticationMethod_EOT_desc#>`) +'</span>';
 			}
 			
 			code += '</div>';
@@ -596,10 +785,17 @@ function genSmartConnect(){
 				_optionArray = [['<#wl_securitylevel_0#>', '0'], ['<#smart_connect_dual#>', '1']];
 				if(isSupport("amas_fronthaul_network")){
 					var fh_ap_enabled = httpApi.nvramGet(["fh_ap_enabled"]).fh_ap_enabled;
-					if(fh_ap_enabled == "2")
-						_optionArray[1][0] = '<#smart_connect_tri#>';
+					if(fh_ap_enabled == "2"){
+						if(system.modelName !== 'RT-BE96U' || variable.smart_connect_selif_x !== '3'){						
+							_optionArray[1][0] = '<#smart_connect_tri#>';
+						}
+
+						if(wl_nband_array.length == 3 && get_wl_unit_by_band("5G2") != ""){
+							_optionArray[1][0] = '<#smart_connect_dual#>';
+						}
+					}
 				}
-			}			
+			}		
 		}
 		else{
 			if(isSupport("wifi6e")){
@@ -610,7 +806,13 @@ function genSmartConnect(){
 				if(variable['smart_connect_selif_x'] == '3'){
 					_smart_connect_x = '3';
 				}
-			}			
+			}
+			else if(system.modelName == 'GT-BE96'){
+				_optionArray = [['<#wl_securitylevel_0#>', '0'], ['<#smart_connect_tri#>', '1'], ['5 GHz Smart Connect', '2']];
+				if(variable['smart_connect_selif_x'] == '3'){
+					_smart_connect_x = '3';
+				}
+			}				
 			else{
 				_optionArray = [['<#wl_securitylevel_0#>', '0'], ['<#smart_connect_tri#>', '1'], ['5GHz Smart Connect', '2']];
 			}				
@@ -684,7 +886,7 @@ function genAuthMethod(unit, id, nmode_x, auth_mode_x){
 		}	
 	}
 	else if(unit == '3'){
-		if(system.modelName === 'GT-AXE16000' || system.modelName === 'GT-BE98' || system.modelName === 'GT-BE98_PRO'){
+		if(system.modelName === 'GT-AXE16000' || system.modelName === 'GT-BE98' || system.modelName === 'GT-BE98_PRO' || system.modelName == 'BQ16' || system.modelName == 'BQ16_PRO'){
 			auth_array = authObj['normalWithWPA3OWE'];
 		}
 		else{
@@ -774,7 +976,7 @@ function genAuthMethod(unit, id, nmode_x, auth_mode_x){
 	else{	// normal case
 		if(system.wpa3Support){
 			if(system.band6gSupport){
-				if(unit == '2'){
+				if(unit == '2' || (system.modelName === 'GT-BE98_PRO' && unit === '1')){
 					auth_array = authObj['6G'];
 				}
 				else{
@@ -883,7 +1085,7 @@ function genAuthMethod(unit, id, nmode_x, auth_mode_x){
 		}
     }
 	else if(auth_mode_x == 'open'){
-		if(document.getElementById('wl'+ unit +'_open_suggest')){
+		if(document.getElementById('wl'+ unit +'_open_suggest') && owe_trans_support){
 			document.getElementById('wl'+ unit +'_open_suggest').style.display = '';
 		}
 		
@@ -894,8 +1096,13 @@ function genAuthMethod(unit, id, nmode_x, auth_mode_x){
 				getWEPKey(unit, 'wl'+ unit +'_wep_key', variable['wl'+ unit +'_key']);
 			}
 			else{
-				document.getElementById('wl'+ unit +'_wep_x').style.display = 'none';
-				document.getElementById('wl'+ unit +'k_keyey').style.display = 'none';				
+				if(document.getElementById('wl'+ unit +'_wep_x')){
+					document.getElementById('wl'+ unit +'_wep_x').style.display = 'none';
+				}
+				
+				if(document.getElementById('wl'+ unit +'k_keyey')){
+					document.getElementById('wl'+ unit +'k_keyey').style.display = 'none';
+				}				
 			}
 		}
 	}
@@ -1014,14 +1221,81 @@ function apply(rc_flag){
 	}
 
 	if(system.modelName == 'RT-BE96U'){
-		if(variable['smart_connect_x'] == '1'){
-			variable['smart_connect_selif_x'] = '11';
-			variable['smart_connect_x'] = '1';
+		if(document.getElementById('smart_connect_x')){			
+			if(document.getElementById('smart_connect_x').value == '1'){
+				variable['smart_connect_selif_x'] = '11';
+				variable['smart_connect_x'] = '1';
+				variable['wl1_auth_mode_x'] = variable['wl0_auth_mode_x'];
+				variable['wl1_crypto'] = variable['wl0_crypto'];
+				variable['wl1_mfp'] = variable['wl0_mfp'];
+				variable['wl1_wpa_psk'] = variable['wl0_wpa_psk'];
+				if(variable['wl0_auth_mode_x'] === 'open' || variable['wl0_auth_mode_x'] === 'openowe'){
+					variable['wl2_auth_mode_x'] = 'owe';
+				}
+				else if(variable['wl0_auth_mode_x'] === 'psk2' || variable['wl0_auth_mode_x'] === 'pskpsk2' || variable['wl0_auth_mode_x'] === 'psk2sae'){
+					variable['wl2_auth_mode_x'] = 'sae';
+					variable['wl2_crypto'] = 'aes';
+					variable['wl2_mfp'] = '2';
+					variable['wl2_wpa_psk'] = variable['wl0_wpa_psk'];
+				}
+				else if(variable['wl0_auth_mode_x'] === 'wpa2' || variable['wl0_auth_mode_x'] === 'wpawpa2' || variable['wl0_auth_mode_x'] === 'wpa2wpa3'){
+					variable['wl2_auth_mode_x'] = 'wpa3';
+					variable['wl2_crypto'] = 'aes';
+					variable['wl2_mfp'] = '2';
+				}
+				else{
+					variable['wl2_auth_mode_x'] = variable['wl0_auth_mode_x'];
+					variable['wl2_crypto'] = variable['wl0_crypto'];
+					variable['wl2_mfp'] = variable['wl0_mfp'];
+					variable['wl2_wpa_psk'] = variable['wl0_wpa_psk'];
+				}				
+			}
+			else{
+				variable['smart_connect_selif_x'] = '3';
+				variable['smart_connect_x'] = '1';
+				variable['wl1_auth_mode_x'] = variable['wl0_auth_mode_x'];
+				variable['wl1_crypto'] = variable['wl0_crypto'];
+				variable['wl1_mfp'] = variable['wl0_mfp'];
+				variable['wl1_wpa_psk'] = variable['wl0_wpa_psk'];
+			}
 		}
-		else{
-			variable['smart_connect_selif_x'] = '3';
-			variable['smart_connect_x'] = '1';
+	}
+
+	if(system.modelName == 'GT-BE96'){	
+		if(variable['smart_connect_selif_x'] === '7'){
+			variable['wl1_ssid'] = variable['wl0_ssid'];
+			variable['wl1_auth_mode_x'] = variable['wl0_auth_mode_x'];
+			variable['wl1_crypto'] = variable['wl0_crypto'];
+			variable['wl1_mfp'] = variable['wl0_mfp'];
+			variable['wl1_wpa_psk'] = variable['wl0_wpa_psk'];
+			variable['wl2_ssid'] = variable['wl0_ssid'];
+			variable['wl2_auth_mode_x'] = variable['wl0_auth_mode_x'];			
+			variable['wl2_crypto'] = variable['wl0_crypto'];
+			variable['wl2_mfp'] = variable['wl0_mfp'];
+			variable['wl2_wpa_psk'] = variable['wl0_wpa_psk'];
 		}
+		else if(variable['smart_connect_selif_x'] === '6'){
+			variable['wl2_ssid'] = variable['wl1_ssid'];
+			variable['wl2_auth_mode_x'] = variable['wl1_auth_mode_x'];
+			variable['wl2_crypto'] = variable['wl1_crypto'];
+			variable['wl2_mfp'] = variable['wl1_mfp'];
+			variable['wl2_wpa_psk'] = variable['wl1_wpa_psk'];
+		}
+		else if(variable['smart_connect_selif_x'] === '5'){
+			variable['wl2_ssid'] = variable['wl0_ssid'];
+			variable['wl2_auth_mode_x'] = variable['wl0_auth_mode_x'];
+			variable['wl2_crypto'] = variable['wl0_crypto'];
+			variable['wl2_mfp'] = variable['wl0_mfp'];
+			variable['wl2_wpa_psk'] = variable['wl0_wpa_psk'];
+		}
+		else if(variable['smart_connect_selif_x'] === '3'){
+			variable['wl1_ssid'] = variable['wl0_ssid'];
+			variable['wl1_auth_mode_x'] = variable['wl0_auth_mode_x'];
+			variable['wl1_crypto'] = variable['wl0_crypto'];
+			variable['wl1_mfp'] = variable['wl0_mfp'];
+			variable['wl1_wpa_psk'] = variable['wl0_wpa_psk'];
+		}
+		
 	}
 
 	if(validateInput()){
@@ -1032,6 +1306,15 @@ function apply(rc_flag){
 		}
 		postObj = Object.assign(postObj, variable);
 		httpApi.nvramSet(postObj, function(){
+			if (Qcawifi_support || Rawifi_support) {
+				var restart_needed_time = this.restart_needed_time;	// restart wireless time
+				if (restart_needed_time) {
+					var tmp_rc_time = parseInt(restart_needed_time);
+					if (!isNaN(tmp_rc_time) && tmp_rc_time > 0 && tmp_rc_time < 300) {
+						rc_time = tmp_rc_time;
+					}
+				}
+			}
 			parent.showLoading(rc_time);
 			setTimeout(function(){
 				location.reload();
@@ -1051,6 +1334,17 @@ function updateVariable(id, value, flag){
 		}
 		else if(value == '3'){
 			variable.smart_connect_selif_x = '3';
+		}
+	}
+	else if(system.modelName == 'GT-BE96'){
+		if(value == '1'){
+			variable.smart_connect_selif_x = '7';
+		}
+		else if(value == '3'){
+			variable.smart_connect_selif_x = '3';
+		}
+		else if(value == '2'){
+			variable.smart_connect_selif_x = '6';
 		}
 	}
 
@@ -1089,6 +1383,8 @@ function updateVariable(id, value, flag){
 			variable['wl2_crypto'] = 'aes';
 			variable['wl2_mfp'] = '2';
 		}
+
+		_smart_connect_enable = value; // for amesh.js
 	}
 
 	// variable padding
@@ -1266,6 +1562,7 @@ function validateInput(){
 
 	return true;
 }
+
 function updateSmartConnect(unit, checked){
 	var offset = 0;
 
@@ -1283,14 +1580,18 @@ function updateSmartConnect(unit, checked){
 	else if(unit == '3'){
 		offset = checked ? 8 : -8;
 	}
+	else if(unit == '4'){
+		offset = checked ? 16 : -16;
+	}
 
 	value += offset;
 	if(value == 0
 	|| value == 1
 	|| value == 2
 	|| value == 4
-	|| value == 8){
-		alert('For Smart Connect to work, please select at least two radio bands.');
+	|| value == 8
+	|| value == 16){
+		alert('<#smart_connect_alert#>');
 		document.querySelector('#smart_connect_check_' + unit).checked = true;
 		return false;
 	}
@@ -1302,12 +1603,13 @@ function updateSmartConnect(unit, checked){
 		temp = r.toString() + temp;
 	}
 
-	while(temp.length < 4){
+	while(temp.length < smart_connect_mode_maxLength){
 		temp = '0' + temp;
 	}
 
 	smart_connect_mode = temp;
-	if(smart_connect_mode[3] === '1'){
+	if(smart_connect_mode.substr(-1) === '1'){
+		// have 2.4GHz
 		variable.smart_connect_x = '1';
 	}
 	else{
@@ -1322,15 +1624,18 @@ function enableSmartConnect(value){
 	if(value === '0'){
 		document.querySelector('#smart_connect_mode_field').style.display = 'none';
 		variable.smart_connect_x = '0';
+		_smart_connect_enable = "0"; // for amseh.js
 	}
 	else{
 		document.querySelector('#smart_connect_mode_field').style.display = '';
 		if(smart_connect_mode[3] === '1'){
 			variable.smart_connect_x = '1';
+			_smart_connect_enable = "1"; // for amseh.js
 		}
 		else{
 			variable.smart_connect_x = '2';
-		}		
+			_smart_connect_enable = "2"; // for amseh.js
+		}
 	}
 
 	getInterface();

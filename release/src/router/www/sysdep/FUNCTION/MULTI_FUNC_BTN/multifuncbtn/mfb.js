@@ -1,16 +1,20 @@
-let is_Web_iframe = ($(parent.document).find("#mainMenu").length > 0) ? true : false;
+const is_Web_iframe = (($(parent.document).find("#mainMenu").length > 0) || (top.webWrapper)) ? true : false;
 const vpn_title_text = (()=>{return (isSupport("vpn_fusion") ? `<#VPN_Fusion#>` : `<#vpnc_title#>`);})();
 let btnsw_list = [
 	{"title":vpn_title_text, "value":"4"},
 	{"title":`Operation`, "value":"1"},/* untranslated */
 	{"title":`LED`, "value":"2"},/* untranslated */
 	{"title":`WiFi`, "value":"3"},/* untranslated */
+	{"title":`${Guest_Network_naming}`, "value":"5"},
 	{"title":`No Function`, "value":"0"}/* untranslated */
 ];
 btnsw_list = btnsw_list.filter(item => item.value != "1");
 const support_vpn_btn = (isSupport("vpn_fusion") && isSwMode("rt"));
 if(!support_vpn_btn){
 	btnsw_list = btnsw_list.filter(item => item.value != "4")
+}
+if(!isSupport("mtlancfg")){
+	btnsw_list = btnsw_list.filter(item => item.value != "5")
 }
 let nv_btnsw_onoff = httpApi.nvramGet(["btnsw_onoff"]).btnsw_onoff;
 let vpnc_profile_list = [];
@@ -86,6 +90,9 @@ function Get_Component_Profile_Item(_profile_data){
 					case "4":
 						return Get_Component_BTNSW_VPN("popup");
 						break;
+					case "5":
+						return Get_Component_BTNSW_SDN("popup");
+						break;
 					default:
 						break;
 				}
@@ -111,6 +118,9 @@ function Get_Component_Profile_Item(_profile_data){
 						break;
 					case "4":
 						return Get_Component_BTNSW_VPN();
+						break;
+					case "5":
+						return Get_Component_BTNSW_SDN();
 						break;
 					default:
 						break;
@@ -140,12 +150,12 @@ function Update_Setting_Profile(_obj, _profile_data){
 			return "off";
 	})());
 
-	if(_profile_data.value == "4"){
+	if(_profile_data.value == "4"){//vpn
 		let $VPN_Profiles_cntr = $(_obj).find("[data-container=VPN_Profiles]");
-		const btnsw_vpn_idx = httpApi.nvramGet(["btnsw_vpn_idx"]).btnsw_vpn_idx;
-		$VPN_Profiles_cntr.find(".icon_radio").removeClass("clicked").filter("[data-idx="+btnsw_vpn_idx+"]").addClass("clicked");
-		if($VPN_Profiles_cntr.find(".icon_radio.clicked").length == 0){
-			$VPN_Profiles_cntr.find(".icon_radio[data-vpn-type=vpnc]").first().addClass("clicked");
+		const btnsw_vpn_idx = (httpApi.nvramGet(["btnsw_vpn_idx"]).btnsw_vpn_idx == "") ? "0" : httpApi.nvramGet(["btnsw_vpn_idx"]).btnsw_vpn_idx;
+		$VPN_Profiles_cntr.find(".rwd_icon_radio").removeClass("clicked").filter("[data-idx="+btnsw_vpn_idx+"]").addClass("clicked");
+		if($VPN_Profiles_cntr.find(".rwd_icon_radio.clicked").length == 0){
+			$VPN_Profiles_cntr.find(".rwd_icon_radio[data-vpn-type=vpnc]").first().addClass("clicked");
 		}
 		$.each(vpnc_profile_list, function(index, item){
 			if(item.activate == "0"){
@@ -157,6 +167,26 @@ function Update_Setting_Profile(_obj, _profile_data){
 		}
 		else{
 			$VPN_Profiles_cntr.hide();
+		}
+	}
+	if(_profile_data.value == "5"){//sdn
+		let $SDN_Profiles_cntr = $(_obj).find("[data-container=SDN_Profiles]");
+		const btnsw_sdn_idx = (httpApi.nvramGet(["btnsw_sdn_idx"]).btnsw_sdn_idx == "") ? "0" : httpApi.nvramGet(["btnsw_sdn_idx"]).btnsw_sdn_idx;
+		$SDN_Profiles_cntr.find(".rwd_icon_radio").removeClass("clicked").filter("[data-idx="+btnsw_sdn_idx+"]").addClass("clicked");
+		if($SDN_Profiles_cntr.find(".rwd_icon_radio.clicked").length == 0){
+			$SDN_Profiles_cntr.find(".rwd_icon_radio").first().addClass("clicked");
+		}
+		const $profile_list =  $SDN_Profiles_cntr.find(".profile_item");
+		$.each($profile_list, function(){
+			if($(this).attr("data-sdn_enable") == "0"){
+				$(this).find("[data-component=icon_warning]").show();
+			}
+		});
+		if(nv_btnsw_onoff == "5"){
+			$SDN_Profiles_cntr.show();
+		}
+		else{
+			$SDN_Profiles_cntr.hide();
 		}
 	}
 }
@@ -197,7 +227,7 @@ function Get_Component_BTNSW_VPN(view_mode){
 					$VPN_Profiles_cntr.hide();
 				}
 				resize_iframe_height();
-				let $selected_vpn = $VPN_Profiles_cntr.find(".icon_radio.clicked");
+				let $selected_vpn = $VPN_Profiles_cntr.find(".rwd_icon_radio.clicked");
 				if($selected_vpn.length){
 					const vpn_idx = $selected_vpn.attr("data-idx");
 					if(vpn_idx != "" && vpn_idx != undefined){
@@ -222,7 +252,7 @@ function Get_Component_BTNSW_VPN(view_mode){
 		let $setting_content_cntr = $(this).closest(".setting_content_container");
 		const this_btnsw_onoff = $setting_content_cntr.attr("data-btnsw-onoff");
 		const btnsw_switch = $setting_content_cntr.find("#btnsw_onoff").hasClass("on");
-		const vpn_idx = $(this).find(".icon_radio").attr("data-idx");
+		const vpn_idx = $(this).find(".rwd_icon_radio").attr("data-idx");
 		Set_BTNSW_ONOFF({
 			"btnsw_onoff": this_btnsw_onoff,
 			"switch_status": btnsw_switch,
@@ -371,8 +401,92 @@ function Get_Component_BTNSW_NoFun(view_mode){
 
 	return $container;
 }
+function Get_Component_BTNSW_SDN(view_mode){
+	let $container = $("<div>").addClass("setting_content_container no_action_container");
+
+	if(view_mode == "popup"){
+		Get_Component_Popup_Profile_Title(Guest_Network_naming).appendTo($container)
+			.find("#title_close_btn").unbind("click").click(function(e){
+				e = e || event;
+				e.stopPropagation();
+				close_popup_container($container);
+			});
+	}
+	else
+		Get_Component_Profile_Title(Guest_Network_naming).appendTo($container).find("#title_del_btn").remove();
+
+	let $content_container = $("<div>").addClass("popup_content_container profile_setting").appendTo($container);
+
+	Get_Component_Schematic({"fun_desc":`While switch on, ${Guest_Network_naming} connection will be turn on automatically.`}).appendTo($content_container);
+
+	let btnsw_onoff_parm = {"title":"Multi-Function Button Default", "type":"switch", "id":"btnsw_onoff", "set_value":"off"};
+	Get_Component_Switch(btnsw_onoff_parm).appendTo($content_container)
+		.find("#" + btnsw_onoff_parm.id + "").click(function(e){
+			e = e || event;
+			e.stopPropagation();
+			let $SDN_Profiles_cntr = $content_container.find("[data-container=SDN_Profiles]");
+			if($SDN_Profiles_cntr.find(".profile_item").length == 0){
+				$(this).toggleClass("off on");
+				show_customize_alert(stringSafeGet(`<#GuestNetwork_noProfile_hint#>`.replace(/VPN/g, Guest_Network_naming)));
+				return false;
+			}
+			else{
+				if($(this).hasClass("on")){
+					$SDN_Profiles_cntr.show();
+				}
+				else{
+					$SDN_Profiles_cntr.hide();
+				}
+				resize_iframe_height();
+				let $selected_sdn = $SDN_Profiles_cntr.find(".rwd_icon_radio.clicked");
+				if($selected_sdn.length){
+					const sdn_idx = $selected_sdn.attr("data-idx");
+					if(sdn_idx != "" && sdn_idx != undefined){
+						const this_btnsw_onoff = $(this).closest(".setting_content_container").attr("data-btnsw-onoff");
+						let postData = {"btnsw_onoff":this_btnsw_onoff, "switch_status":$(this).hasClass("on")};
+						if(postData.switch_status == true){
+							postData["btnsw_sdn_idx"] = sdn_idx;
+						}
+						Set_BTNSW_ONOFF(postData);
+					}
+				}
+			}
+		});
+
+	Get_Component_SDN_Profiles().appendTo($content_container).find(".profile_item").click(function(e){
+		e = e || event;
+		e.stopPropagation();
+		let $setting_content_cntr = $(this).closest(".setting_content_container");
+		const this_btnsw_onoff = $setting_content_cntr.attr("data-btnsw-onoff");
+		const btnsw_switch = $setting_content_cntr.find("#btnsw_onoff").hasClass("on");
+		const sdn_idx = $(this).find(".rwd_icon_radio").attr("data-idx");
+		Set_BTNSW_ONOFF({
+			"btnsw_onoff": this_btnsw_onoff,
+			"switch_status": btnsw_switch,
+			"btnsw_sdn_idx": sdn_idx
+		});
+	});
+
+	let sdn_btn_parm = {"id":"sdn_btn", "text":"<#btn_goSetting#>"};
+	Get_Component_Btn(sdn_btn_parm).appendTo($content_container)
+	.find("#" + sdn_btn_parm.id + "").click(function(e){
+		e = e || event;
+		e.stopPropagation();
+		if(is_Web_iframe){
+			top.location.href = "/SDN.asp";
+		}
+		else if(parent.businessWrapper){
+			top.location.href = "/index.html?url=sdn&current_theme=business";
+		}
+		else{
+			top.location.href = "/SDN/sdn.html" + ((typeof theme == "string" && theme != "") ? "?current_theme=" + theme + "" : "");
+		}
+	});
+
+	return $container;
+}
 function Get_Component_VPN_Profiles(){
-	let $container = $("<div>").addClass("VPN_list_container").attr({"data-container": "VPN_Profiles"});
+	let $container = $("<div>").addClass("feature_profiles_container").attr({"data-container": "VPN_Profiles"});
 
 	let $vpnc_group = $("<div>").addClass("profile_group").appendTo($container);
 	$("<div>").addClass("title").html(vpn_title_text).appendTo($vpnc_group);
@@ -390,8 +504,8 @@ function Get_Component_VPN_Profiles(){
 		$("<div>").addClass("profile_hint").html(stringSafeGet(`<#GuestNetwork_noProfile_hint#>`)).appendTo($vpnc_group);
 	}
 
-	if($container.find(".icon_radio.clicked").length == 0){
-		$container.find(".icon_radio[data-vpn-type=vpnc]").first().addClass("clicked");
+	if($container.find(".rwd_icon_radio.clicked").length == 0){
+		$container.find(".rwd_icon_radio[data-vpn-type=vpnc]").first().addClass("clicked");
 	}
 	return $container;
 
@@ -402,10 +516,10 @@ function Get_Component_VPN_Profiles(){
 			.unbind("click").click(function(e){
 				e = e || event;
 				e.stopPropagation();
-				if($(this).find(".icon_radio").attr("data-disabled") == "true")
+				if($(this).find(".rwd_icon_radio").attr("data-disabled") == "true")
 					return false;
-				$(this).closest("[data-container=VPN_Profiles]").find(".icon_radio").removeClass("clicked");
-				$(this).find(".icon_radio").addClass("clicked");
+				$(this).closest("[data-container=VPN_Profiles]").find(".rwd_icon_radio").removeClass("clicked");
+				$(this).find(".rwd_icon_radio").addClass("clicked");
 			});
 		let $text_container = $("<div>").addClass("text_container").appendTo($profile_cntr)
 		$("<div>").html(htmlEnDeCode.htmlEncode(_profile.text)).appendTo($text_container);
@@ -429,8 +543,112 @@ function Get_Component_VPN_Profiles(){
 			$(this).closest(".profile_item").append(Get_Component_Error_Hint({"text":error_hint}).show());
 		}).hide().appendTo($select_container);
 
-		$("<div>").addClass("icon_radio").attr({"data-idx":_profile.value, "data-vpn-type":_profile.type}).appendTo($select_container);
+		$("<div>").addClass("rwd_icon_radio").attr({"data-idx":_profile.value, "data-vpn-type":_profile.type}).appendTo($select_container);
 		return $profile_cntr;
+	}
+}
+function Get_Component_SDN_Profiles(){
+	let $container = $("<div>").addClass("feature_profiles_container").attr({"data-container": "SDN_Profiles"});
+
+	let $profile_group = $("<div>").addClass("profile_group").appendTo($container);
+	$("<div>").addClass("title").html(`<#GuestNetwork_ProfileList#>`).appendTo($profile_group);
+	let sdn_profile_list = init_sdn_all_list();
+	if(sdn_profile_list.length > 0){
+		let $content_cntr = $("<div>").addClass("profile_container").appendTo($profile_group);
+		$.each(sdn_profile_list, function(index, value){
+			Get_Component_SDN(value).appendTo($content_cntr);
+		});
+	}
+	else{
+		$("<div>").addClass("profile_hint").html(stringSafeGet(`<#GuestNetwork_noProfile_hint#>`.replace(/VPN/g, Guest_Network_naming))).appendTo($profile_group);
+	}
+
+	if($container.find(".rwd_icon_radio.clicked").length == 0){
+		$container.find(".rwd_icon_radio").first().addClass("clicked");
+	}
+	return $container;
+
+	function Get_Component_SDN(_profile){
+		let $profile_cntr = $("<div>").addClass("profile_item")
+			.attr({"data-sdn_enable":_profile.sdn_rl.sdn_enable})
+			.unbind("click").click(function(e){
+				e = e || event;
+				e.stopPropagation();
+				if($(this).find(".rwd_icon_radio").attr("data-disabled") == "true")
+					return false;
+				$(this).closest("[data-container=SDN_Profiles]").find(".rwd_icon_radio").removeClass("clicked");
+				$(this).find(".rwd_icon_radio").addClass("clicked");
+			});
+		let $text_container = $("<div>").addClass("text_container").appendTo($profile_cntr)
+		$("<div>").html(htmlEnDeCode.htmlEncode(_profile.apg_rl.ssid)).appendTo($text_container);
+
+		let $select_container = $("<div>").addClass("select_container").appendTo($profile_cntr);
+		$("<div>").addClass("icon_warning_amber").attr({"data-component":"icon_warning"}).unbind("click").click(function(e){
+			e = e || event;
+			e.stopPropagation();
+			$(this).closest("[data-container=SDN_Profiles]").find(".error_hint_container").remove();
+			let error_hint = `This ${Guest_Network_naming} profile is disabled. Please go to ${Guest_Network_naming} setting page and enable it. 
+			Click [ Go Setting ] below to ${Guest_Network_naming} Page.`;/* untranslated */
+			$(this).closest(".profile_item").append(Get_Component_Error_Hint({"text":error_hint}).show());
+		}).hide().appendTo($select_container);
+
+		$("<div>").addClass("rwd_icon_radio").attr({"data-idx":_profile.sdn_rl.idx}).appendTo($select_container);
+		return $profile_cntr;
+	}
+
+	function init_sdn_all_list(){
+		const sdn_rl_attr = function(){
+			this.idx = "0";
+			this.sdn_name = "";
+			this.sdn_enable = "1";
+			this.apg_idx = "0";
+		};
+		const apg_rl_attr = function(){
+			this.apg_idx = "";
+			this.ssid = "";
+		};
+		let sdn_profile_list = [];
+		let sdn_all_rl_info = httpApi.nvramCharToAscii(["sdn_rl"]);
+		let sdn_rl = decodeURIComponent(sdn_all_rl_info.sdn_rl);
+		let each_sdn_rl = sdn_rl.split("<");
+		$.each(each_sdn_rl, function(index, value){
+			if(value != ""){
+				let sdn_all_rl = {sdn_rl:{}, apg_rl:{}};
+				let profile_data = value.split(">");
+				let sdn_rl_profile = set_sdn_profile(profile_data);
+				if(sdn_rl_profile.idx == "0") return true;
+				sdn_all_rl.sdn_rl = sdn_rl_profile;
+				let apg_rl_list = get_apg_rl_list(sdn_rl_profile.apg_idx);
+				let specific_apg = apg_rl_list.filter(function(item, index, array){
+					return (item.apg_idx == sdn_rl_profile.apg_idx);
+				})[0];
+				if(specific_apg != undefined){
+					sdn_all_rl.apg_rl = specific_apg;
+				}
+				sdn_profile_list.push(sdn_all_rl);
+			}
+		});
+		return sdn_profile_list;
+
+		function set_sdn_profile(profile_data){
+			let sdn_profile = JSON.parse(JSON.stringify(new sdn_rl_attr()));
+			sdn_profile.idx = profile_data[0];
+			sdn_profile.sdn_name = profile_data[1];
+			sdn_profile.sdn_enable = profile_data[2];
+			sdn_profile.apg_idx = profile_data[5];
+			return sdn_profile;
+		}
+		function get_apg_rl_list(_apg_idx){
+			let apg_rl_list = [];
+			if(parseInt(_apg_idx) > 0){
+				let apg_profile = new apg_rl_attr();
+				let apg_info = httpApi.nvramCharToAscii(["apg" + _apg_idx + "_ssid"], true);
+				apg_profile.apg_idx = _apg_idx.toString();
+				apg_profile.ssid = decodeURIComponent(apg_info["apg" + _apg_idx + "_ssid"]);
+				apg_rl_list.push(JSON.parse(JSON.stringify(apg_profile)));
+			}
+			return apg_rl_list;
+		}
 	}
 }
 function Get_Component_Schematic(_parm){
@@ -446,6 +664,7 @@ function Get_Component_Schematic(_parm){
 	return $profile_setting_item;
 }
 function Set_BTNSW_ONOFF(_json_data){
+	let post_fun = "";
 	let nvramSet_obj = {"action_mode": "apply","rc_service": "restart_swbtn"};
 	if(_json_data.switch_status){
 		nvramSet_obj.btnsw_onoff = _json_data.btnsw_onoff;
@@ -454,13 +673,21 @@ function Set_BTNSW_ONOFF(_json_data){
 		nvramSet_obj.btnsw_onoff = "0";
 	}
 	if(_json_data.btnsw_vpn_idx){
-		nvramSet_obj.btnsw_vpn_idx = _json_data.btnsw_vpn_idx
+		nvramSet_obj.btnsw_vpn_idx = _json_data.btnsw_vpn_idx;
+		post_fun = "vpnc";
+	}
+	else if(_json_data.btnsw_sdn_idx){
+		nvramSet_obj.btnsw_sdn_idx = _json_data.btnsw_sdn_idx;
+		post_fun = "sdn";
 	}
 
 	httpApi.nvramSet(nvramSet_obj, function(){
 		let $profile_item_cntrs = $("#profile_list_content .profile_item_container");
 		$profile_item_cntrs.find(".item_tag").remove();
-		nv_btnsw_onoff = httpApi.nvramGet(["btnsw_onoff", "btnsw_vpn_idx"], true).btnsw_onoff;
+		let update_nv = ["btnsw_onoff"];
+		if(post_fun == "vpnc") update_nv.push("btnsw_vpn_idx");
+		if(post_fun == "sdn") update_nv.push("btnsw_sdn_idx");
+		nv_btnsw_onoff = httpApi.nvramGet(update_nv, true).btnsw_onoff;
 		$profile_item_cntrs.filter("[data-btnsw-onoff="+nv_btnsw_onoff+"]").find(".item_tag_container").append($("<div>").addClass("item_tag link").html("<#CTL_Default#>"));
 	});
 }

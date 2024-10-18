@@ -240,6 +240,8 @@ var chdom = function(){window.location.href=domainNameUrl};
 })();
 
 function initial(){
+	top.name = "";/* reset cache of state.js win.name */
+
 	var flag = login_info.error_status;
 	if(isIE8 || isIE9){
 		document.getElementById("name_title_ie").style.display ="";

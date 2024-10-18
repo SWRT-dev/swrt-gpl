@@ -300,6 +300,7 @@ int get_wan_unit(char *ifname)
 		case WAN_MAPE:
 		case WAN_V6PLUS:
 		case WAN_OCNVC:
+		case WAN_DSLITE:
 #endif
 			if (nvram_match(strlcat_r(prefix, "pppoe_ifname", tmp, sizeof(tmp)), ifname))
 				return unit;
@@ -404,6 +405,7 @@ char *get_wan_ifname(int unit)
 #ifdef RTCONFIG_SOFTWIRE46
 	case WAN_V6PLUS:
 	case WAN_OCNVC:
+	case WAN_DSLITE:
 		if (nvram_pf_get_int(prefix, "s46_hgw_case") >= S46_CASE_MAP_HGW_OFF) {
 			wan_ifname = nvram_safe_get(strlcat_r(prefix, "pppoe_ifname", tmp, sizeof(tmp)));
 			break;
@@ -610,7 +612,22 @@ rtk_wan_primary_ifunit(void)
 int
 wan_primary_ifunit_ipv6(void)
 {
-#ifdef RTCONFIG_DUALWAN
+#if defined(RTCONFIG_MULTIWAN_PROFILE)
+	int unit, real_unit;
+	char nvname[32];
+	int dualwan_idx;
+	char *p;
+	for (unit = MULTI_WAN_START_IDX; unit < MULTI_WAN_START_IDX + MAX_MULTI_WAN_NUM; unit++) {
+		dualwan_idx = -1;
+		snprintf(nvname, sizeof(nvname), "wan%d_dualwan_idx", unit);
+		if ((p = nvram_get(nvname)))
+			dualwan_idx = (int)strtol(p, NULL, 10);
+		real_unit = ((dualwan_idx >= 0) ? dualwan_idx : unit);
+		if (nvram_get_int(ipv6_nvname_by_unit("ipv6_primary", real_unit)))
+			return real_unit;
+	}
+	return WAN_UNIT_FIRST;
+#elif defined(RTCONFIG_DUALWAN)
 #if defined(RTCONFIG_MULTIWAN_CFG)
 	int unit = wan_primary_ifunit();
 
@@ -1192,12 +1209,13 @@ void add_lan_phy(char *phy)
 void del_lan_phy(const char *phy)
 {
 	char phys[128] = {0};
-	const char *ifnames, *p;
+	const char *p;
+	char ifnames[128] = {0};
 
 	if (phy == NULL || *phy == '\0')
 		return;
 
-	ifnames = nvram_safe_get("lan_ifnames");
+	nvram_safe_get_r("lan_ifnames", ifnames, sizeof(ifnames));
 	if(!(p = find_word(ifnames, phy)))
 		return;	// not exist
 	strncpy(phys, ifnames, p - ifnames);
@@ -1318,7 +1336,7 @@ char *get_default_ssid(int unit, int subunit)
 	char ssidbase[16], *macp = NULL;
 	unsigned char mac_binary[6];
 	const char *post_5g __attribute__((unused)) = "-1", *post_5g2 __attribute__((unused))= "-2", *post_guest = "_Guest";	/* postfix for RTCONFIG_NEWSSID_REV2 case */
-#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
+#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7) && !defined(RTCONFIG_WIFI7_NO_6G)
 	const char *post_6g __attribute__((unused)) = "6G";
 #endif
 #if defined(RTCONFIG_NEWSSID_REV2) || defined(RTCONFIG_NEWSSID_REV4) || defined(RTCONFIG_NEWSSID_REV5)
@@ -1336,7 +1354,7 @@ char *get_default_ssid(int unit, int subunit)
 #elif defined(RTCONFIG_NEWSSID_REV4)
 	post_5g = "";
 	post_5g2 = "";
-#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
+#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7) && !defined(RTCONFIG_WIFI7_NO_6G)
 	post_6g = "";
 #endif
 #elif !defined(RTCONFIG_NEWSSID_REV2) && !defined(RTCONFIG_NEWSSID_REV4) && !defined(RTCONFIG_SINGLE_SSID)
@@ -1560,7 +1578,7 @@ char *get_default_ssid(int unit, int subunit)
 			strlcat(ssid, "_2G", sizeof(ssid));
 			break;
 		case WL_5G_BAND:
-#if defined(RTCONFIG_QUADBAND) || (defined(RTCONFIG_HAS_5G_2) && !defined(RTCONFIG_WIFI6E) && !defined(RTCONFIG_WIFI7))
+#if defined(RTCONFIG_QUADBAND) || defined(RTCONFIG_HAS_5G_2) && ((!defined(RTCONFIG_WIFI6E) && !defined(RTCONFIG_WIFI7)) || (defined(RTCONFIG_WIFI7) && defined(RTCONFIG_WIFI7_NO_6G)))
 			strlcat(ssid, "_5G-1", sizeof(ssid));
 #else
 			strlcat(ssid, "_5G", sizeof(ssid));
@@ -1568,7 +1586,7 @@ char *get_default_ssid(int unit, int subunit)
 			break;
 #if defined(RTCONFIG_HAS_5G_2)
 		case WL_5G_2_BAND:
-#if defined(RTCONFIG_QUADBAND) || (!defined(RTCONFIG_WIFI6E) && !defined(RTCONFIG_WIFI7))
+#if defined(RTCONFIG_QUADBAND) || (!defined(RTCONFIG_WIFI6E) && !defined(RTCONFIG_WIFI7)) || (defined(RTCONFIG_WIFI7) && defined(RTCONFIG_WIFI7_NO_6G))
 			strlcat(ssid, "_5G-2", sizeof(ssid));
 #else
 #if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
@@ -1579,7 +1597,7 @@ char *get_default_ssid(int unit, int subunit)
 #endif
 			break;
 #endif
-#if defined(RTCONFIG_QUADBAND) && (defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7))
+#if (defined(RTCONFIG_QUADBAND) || defined(RTCONFIG_MT799X)) && (defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7))
 		case WL_6G_BAND:
 #if defined(RTCONFIG_HAS_6G_2)
 			strlcat(ssid, "_6G-1", sizeof(ssid));
@@ -1927,3 +1945,4 @@ int get_ms_idx_by_wan_unit(int wan_unit)
 		return -1;
 }
 #endif //RTCONFIG_MULTISERVICE_WAN
+

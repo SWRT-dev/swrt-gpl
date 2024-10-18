@@ -44,11 +44,13 @@ extern char *brcm_to_swconfig(char *vlan, char *buf);
 extern void reinit_hwnat(int unit);
 #elif defined(RTCONFIG_QCA)
 
-#if defined(RTCONFIG_SOC_QCA9557) || defined(RTCONFIG_QCA953X) || defined(RTCONFIG_QCA956X) || defined(RTCONFIG_QCN550X) || defined(RTCONFIG_SOC_IPQ40XX)
+#if defined(RTCONFIG_SOC_QCA9557) || defined(RTCONFIG_QCA953X) || defined(RTCONFIG_QCA956X) \
+ || defined(RTCONFIG_QCN550X) || defined(RTCONFIG_SOC_IPQ40XX)
 #define reinit_hwnat(unit) reinit_sfe(unit)
 extern void reinit_sfe(int unit);
 static inline void tweak_wifi_ps(const char *wif) { }
-#elif defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ60XX) || defined(RTCONFIG_SOC_IPQ50XX)
+#elif defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ60XX) \
+   || defined(RTCONFIG_SOC_IPQ50XX) || defined(RTCONFIG_SOC_IPQ53XX)
 #define reinit_hwnat(unit) reinit_ecm(unit)
 extern int ecm_selection(void);
 extern void init_ecm(void);
@@ -56,7 +58,7 @@ extern void reinit_ecm(int unit);
 extern void post_ecm(void);
 extern void tweak_wifi_ps(const char *wif);
 #else
-#error
+#error select NAT acceleration type!
 #endif
 #endif
 extern char *get_wlifname(int unit, int subunit, int subunit_x, char *buf);
@@ -78,7 +80,7 @@ extern char *wlc_nvname(char *keyword);
 #if defined(RTCONFIG_RALINK)
 extern int getWscStatus(int unit);
 #elif defined(RTCONFIG_QCA) || defined(RTCONFIG_ALPINE) || defined(RTCONFIG_LANTIQ)
-extern char *getWscStatus(int unit, char *buf, int buflen);
+extern char *getWscStatus(char *ifname, char *buf, int buflen);
 #endif
 
 #if defined(RTCONFIG_DSL)

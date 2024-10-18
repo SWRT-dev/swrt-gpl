@@ -388,6 +388,12 @@ static int _convert_data(const char *name, char *value, size_t value_len)
 	//value is username@domain.tld
 	const char pppoe_username_token[] = "pppoe_username";
 
+#ifdef RTCONFIG_MULTILAN_CFG
+	//value is  <band set>auth mode>crypto>psk>...
+	const char apg_security_token[] = "apg%d_security";
+	char token_name[128];
+#endif
+
 #if defined(RTCONFIG_QCA)
 	const char *token3[] = {
 		"wlc0_wpa_psk", "wlc1_wpa_psk",
@@ -483,6 +489,20 @@ static int _convert_data(const char *name, char *value, size_t value_len)
 	for (i = 0; token3[i]; i++) {
 		if (strcmp(name, token3[i]) == 0) {
 			memset(value, PROTECT_CHAR, strlen(value));
+			return 1;
+		}
+	}
+#endif
+
+#ifdef RTCONFIG_MULTILAN_CFG
+	//check the 4th token group in each token with index
+	//value is  <band set>auth mode>crypto>psk>...
+	for (i = 0; i < MTLAN_MAXINUM; ++i)
+	{
+		snprintf(token_name, sizeof(token_name), apg_security_token, i);
+		if (strcmp(name, token_name) == 0)
+		{
+			nvlist_memset(value, PROTECT_CHAR, (1u << 3));
 			return 1;
 		}
 	}
@@ -724,13 +744,18 @@ int issyspara(char *p)
 {
 	struct nvram_tuple *t/*eric--, *u*/;
 	extern struct nvram_tuple router_defaults[];
-	
-	// skip checking for wl[]_, wan[], lan[]_
-	if(strstr(p, "wl") || strstr(p, "wan") || strstr(p, "lan")
-		|| strstr(p, "vpn_server") || strstr(p, "vpn_client")
-		|| !strncmp(p, "wgs", 3) || !strncmp(p, "wgc", 3)
-	)
-		return 1;
+	extern struct nvram_tuple router_prefix_defaults[];
+
+	/* pass runtime create prefix nvram */
+	for (t = router_prefix_defaults; t->name; t++)
+	{
+		//if(!strncmp(p, t->name, strlen(t->name))){
+		if(strstr(p, t->name)){
+			if(!strcmp("wl", t->name) && !strncmp(p+3, "_failed", 7))
+				break;
+			return 1;
+		}
+	}
 
 	for (t = router_defaults; t->name; t++)
 	{

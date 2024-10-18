@@ -1135,6 +1135,10 @@ function show_connect_msg(_reMac, _newReMac, _node_info) {
 							postData["wps_enable"] = "1";
 						}
 
+						if(isSupport("mlo")){
+							if(httpApi.nvramGet(["mld_enable"]).mld_enable == "1") postData = {};
+						}
+
 						if(Object.keys(postData).length){
 							if(auth_flag){
 								var $amesh_wpa3_text = $('<div>');
@@ -2457,7 +2461,9 @@ function gen_AiMesh_node_client(_nodeClient_array) {
 			nodeClientHtml += "<div style='margin: auto;' class='radioIcon radio_" + rssi + "'></div>";
 			if(nodeClientObj.isWL != "0") {
 				var bandClass = (navigator.userAgent.toUpperCase().match(/CHROME\/([\d.]+)/)) ? "band_txt_chrome" : "band_txt";
-				nodeClientHtml += "<div class='band_block' style='margin: auto;'><span class=" + bandClass + " style='color: #000000;'>" + isWL_map[nodeClientObj.isWL]["text"] + "</span></div>";
+				let band_text = isWL_map[nodeClientObj.isWL]["text"];
+				if(isSupport("mlo") && nodeClientObj.mlo == "1") band_text = `MLO`;
+				nodeClientHtml += `<div class='band_block' style='margin: auto;'><span class="${bandClass}" style='color: #000000;'>${band_text}</span></div>`;
 			}
 			nodeClientHtml += "</td>";
 			nodeClientHtml += "</tr>";

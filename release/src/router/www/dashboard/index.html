@@ -14,29 +14,51 @@
         <script src="./js/asus.js"></script>
         <script src="./js/basic.js"></script>
         <script src="./js/wireless.js"></script>
+        <script src="./js/asus_policy.js"></script>
 
         <link rel="stylesheet" href="./css/bootstrap.min.css" />
         <link rel="stylesheet" href="./css/bootstrap-customize.css" />
         <link rel="stylesheet" href="./css/architecture.css" />
-        <script>
-            let urlParameter = new URLSearchParams(window.location.search);
-            /* DECIDE THEME */
-            let theme = (function () {
-                let array = ["dark", "white", "rog", "tuf"];
-                let default_theme = (function () {
-                    return isSupport("rog") ? "rog" : isSupport("tuf") ? "tuf" : "dark";
-                })();
-
-                let theme_string = (urlParameter.get("current_theme") || "").toLowerCase(); // handle null without parameter
-                let matched = array.find((element) => element === theme_string);
-
-                return matched === undefined ? default_theme : matched;
-            })();
-
-            document.querySelector("html").className = theme;
-        </script>
     </head>
     <script>
+        postMessageToApp({ web_ready: "1" });
+
+        const checkAuthInterval = setInterval(function () {
+            if(isSupport(`demoui`)) return false;
+            let loadingFlag = false;
+            const settingsWindow = document.querySelector('#settingsWindow');
+            const loadingDivDom = settingsWindow?.contentDocument?.querySelector('#Loading');
+            const loadingBarDivDom = settingsWindow?.contentDocument?.querySelector('#LoadingBar');
+            const loadingText = document.querySelector('#loading_text');
+
+            if ((loadingDivDom && loadingDivDom.style.visibility === 'visible') ||
+                (loadingBarDivDom && loadingBarDivDom.style.visibility === 'visible') ||
+                loadingText) {
+                loadingFlag = true;
+            }
+            if (loadingFlag) {
+                clearInterval(checkAuthInterval);
+            } else {
+                fetch("/check_Auth.cgi", {method: 'POST'})
+                    .then(response => response.json())
+                    .catch(e => {
+                        window.location.href = '/';
+                    })
+            }
+        }, 3000);
+
+        async function checkPolicy(){
+            if (policy_status.EULA == "0") {
+                const policyModal = new PolicyUpdateModalComponent();
+                policyModal.show();
+            } else if (policy_status.EULA == 1 && ((policy_status.PP == 1 && policy_status.PP_time != "") || (policy_status.PP == 0 && policy_status.PP_time == ""))) {
+                const policyModal = new PolicyModalComponent({
+                    policy: 'PP'
+                });
+                policyModal.show();
+            }
+        }
+
         document.addEventListener("DOMContentLoaded", function () {
             let urlPath = urlParameter.get("url") ? urlParameter.get("url") : "dashboard";
             for (let item of menuList) {
@@ -85,21 +107,28 @@
                     }
                 });
 
-            // hide header while page launched by APP
+            // hide HEADER/NAV while page launched by APP
             if (
                 window.appInterface || // from Android app
                 (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.appInterface) // for iOS app
             ) {
                 document.querySelector("header").classList.add("d-none");
+                document.querySelector("nav").classList.add("d-none");
             }
+
+            if(urlParameter.get("mapp")==="true"){ // for Multisite App
+                document.querySelector("header").classList.add("d-none");
+            }
+
+            checkPolicy();
         });
     </script>
     <script src="js/chart.min.js"></script>
-    <body>
-        <header class="container-fluid d-flex align-items-center p-3"></header>
-        <article class="container-fluid d-flex p-0">
-            <!-- MENU -->
-            <nav class="nav-menu-hide"></nav>
+    <body class="d-flex flex-row">
+        <!-- MENU -->
+        <nav class="notInApp nav-menu-hide"></nav>
+        <article class="container-fluid d-flex flex-column p-0">
+            <header class="notInApp container-fluid d-flex align-items-center p-2"></header>
             <section>
                 <!-- UPPER SIDE STATUS FIELD -->
                 <div role="info-banner" class="d-flex align-items-center flex-grow"></div>

@@ -2287,7 +2287,11 @@ int gen_ath_config(int band, int subnet)
 		fprintf(fp2, "%s %s ap_bridge %d\n", IWPRIV, wif, nvram_pf_get_int(prefix, "ap_isolate") ? 0 : 1);
 
 		/* only QCA need to enable arping isolate when amazon_wss is enabled*/
+#if LINUX_KERNEL_VERSION > KERNEL_VERSION(5,4,0)
+		fprintf(fp2, "echo %d > /sys/devices/virtual/net/%s/brport/isolated\n", nvram_pf_get_int(prefix, "ap_isolate"), wif);
+#else
 		fprintf(fp2, "echo %d > /sys/devices/virtual/net/%s/brport/isolate_mode\n", nvram_pf_get_int(prefix, "ap_isolate"), wif);
+#endif
 	}
 #endif
 
@@ -4790,14 +4794,14 @@ char *getWscStatus_enrollee(int unit, char *buf, int buflen)
 }
 #endif
 
-char *getWscStatus(int unit, char *buf, int buflen)
+char *getWscStatus(char *ifname, char *buf, int buflen)
 {
 	char cmd[512];
 	FILE *fp;
 	int len;
 	char *pt1,*pt2;
 
-	snprintf(cmd, sizeof(cmd), "hostapd_cli -i%s wps_get_status", get_wififname(unit));
+	snprintf(cmd, sizeof(cmd), "hostapd_cli -i%s wps_get_status", ifname);
 	fp = PS_popen(buf, "r");
 	if (fp) {
 		memset(buf, 0, buflen);

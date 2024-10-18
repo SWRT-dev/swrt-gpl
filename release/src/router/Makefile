@@ -748,6 +748,10 @@ ifneq ($(MTWANIF),)
 CFLAGS += -DMAX_MULTI_WAN_NUM=$(MTWANIF)
 endif
 
+ifneq ($(MAX_VPNF),)
+CFLAGS += -DMAX_VPNFUSION_NUM=$(MAX_VPNF)
+endif
+
 ifneq ($(findstring CONFIG_BRIDGE_NF_EBTABLES=y, $(shell cat $(LINUXDIR)/.config)),)
 CFLAGS += -DEBTABLES_BUILTIN
 endif
@@ -1010,7 +1014,7 @@ obj-y += k3screenctrl
 obj-y += sw-auth-lite
 endif
 ifeq ($(RTCONFIG_SOFTCENTER),y)
-obj-y += skipdbv2 softcenter libiconv-1.14 lua
+obj-y += skipdbv2 softcenter libiconv-1.14 lua onig-6.9.9 jq-1.7.1
 #obj-y += httpdb mbedtls
 endif
 ifeq ($(RTCONFIG_NLBWMON),y)
@@ -3351,11 +3355,13 @@ ifeq ($(HND_ROUTER),y)
 	mkdir -p $(BCM_FSBUILD_DIR)/public/include/openssl
 	cp -u $(OPENSSL)/include/openssl/* $(BCM_FSBUILD_DIR)/public/include/openssl
 endif
+	install -D -m 0700 httpd/gencert.sh $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/gencert.sh
+
 ifeq ($(RTCONFIG_ECC256),y)
-	install -D -m 0500 httpd/gencert_ecc.sh $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/gencert.sh
-else
-	install -D -m 0500 httpd/gencert.sh $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/gencert.sh
+	sed -i -e "s,^ECC256=0,ECC256=1," $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/gencert.sh
 endif
+	sed -i -e "s,^[ 	]*#[^!]*$$,," $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/gencert.sh
+	sed -i '/^$$/d' $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/gencert.sh
 
 openssl-stage:
 	@$(MAKE) $(OPENSSL)-stage
@@ -3369,6 +3375,7 @@ openssl-1.1/Makefile:
 	shared $(OPENSSL_CIPHERS) --api=1.0.0 \
 	    no-aria no-sm2 no-sm3 no-sm4 \
 	    $(if $(or $(RTCONFIG_RALINK),$(RTCONFIG_QCA),$(RTCONFIG_LANTIQ),$(RTCONFIG_HND_ROUTER)),enable-devcryptoeng -I$(TOP)/cryptodev-linux/src) \
+	    --with-rand-seed=devrandom \
 	    $(if $(filter y,$(RTCONFIG_WTFAST)),-DRTCONFIG_WTFAST,) \
 	    $(if $(filter y,$(HND_ROUTER)),,-DOPENSSL_PREFER_CHACHA_OVER_GCM)
 	@$(MAKE) -C openssl-1.1 depend
@@ -3384,16 +3391,16 @@ openssl-1.1-clean:
 
 openssl-1.1-install:
 	install -D openssl-1.1/libcrypto.so.1.1 $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libcrypto.so.1.1
-	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libcrypto.so.1.1
+	$(if $(RTCONFIG_DEBUG),,$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libcrypto.so.1.1)
 ifeq ($(or $(RTCONFIG_WEBDAV),$(RTCONFIG_FTP_SSL),$(RTCONFIG_OPENVPN),$(RTCONFIG_HTTPS)),y)
 	install -D openssl-1.1/libssl.so.1.1 $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.1.1
-	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.1.1
+	$(if $(RTCONFIG_DEBUG),,$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.1.1)
 endif
 	cd $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib && rm -f libcrypto.so && ln -sf libcrypto.so.1.1 libcrypto.so
 	[ ! -f $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.1.1 ] || \
 		cd $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib && rm -f libssl.so && ln -sf libssl.so.1.1 libssl.so
 	install -D openssl-1.1/apps/openssl $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/openssl
-	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/openssl
+	$(if $(RTCONFIG_DEBUG),,$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/openssl)
 	chmod 0500 $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/openssl
 
 openssl-1.1-stage:
@@ -5977,10 +5984,52 @@ ifneq ($(MEDIA_SERVER_STATIC),y)
 	$(STRIP) $(INSTALLDIR)/libvorbis/usr/lib/libvorbis.so.0
 endif
 
-minidlna: zlib sqlite ffmpeg libogg flac jpeg libexif libid3tag libvorbis
-	@$(SEP)
-	@cd minidlna && ./genosver.sh
-	$(MAKE) -C minidlna CC=$(CC) $(if $(MEDIA_SERVER_STATIC),STATIC=1) $(if $(RTCONFIG_MEDIASERVER_LIMIT),MS_LIMIT=1) minidlna
+minidlna-clean:
+	cd minidlna; make clean
+
+minidlna/configure:
+	if [ ! -f $@ ] ; then \
+		cd minidlna; autoreconf -fi; \
+	fi
+
+minidlna-configure: minidlna/configure
+	if [ ! -f minidlna/Makefile ] ; then \
+		cd minidlna; \
+		$(CONFIGURE) \
+		--with-log-path=/tmp/minidlna \
+		--with-db-path=/tmp/minidlna \
+		--with-os-name=asuswrt \
+		--with-os-version=$(LINUX_KERNEL) \
+		--with-os-url=http://www.asus.com/ \
+		--enable-tivo \
+		ac_cv_header_stddef_h=no ac_cv_header_stdlib_h=no \
+		$(if $(MSIPK),ac_cv_func_inotify_init=no ac_cv_header_sys_inotify_h=no) \
+		$(if $(MSIPK),$(if $(filter i686,$(PLATFORM)),EXTRACFLAGS="-DLINUX26 -DCONFIG_BCMWL5 -pipe -DBCMWPA2 -funit-at-a-time -Wno-pointer-sign -DLINUX_KERNEL_VERSION=132630 -DMS_IPK -DMS_I686",EXTRACFLAGS="-DLINUX26 -DCONFIG_BCMWL5 -pipe -DBCMWPA2 -funit-at-a-time -Wno-pointer-sign -mtune=mips32 -mips32 -DLINUX_KERNEL_VERSION=132630 -DMS_IPK"),) \
+		CFLAGS="-Wall -g -Os -D_GNU_SOURCE $(EXTRACFLAGS) \
+		-D_FILE_OFFSET_BITS=64 -ffunction-sections -fdata-sections \
+		-I$(TOP)/flac/include -I$(TOP)/sqlite -I$(TOP)/jpeg \
+		-I$(TOP)/libexif -I$(TOP)/libid3tag -I$(TOP)/libogg/include \
+		-I$(TOP)/libvorbis/include \
+		$(if $(MSIPK),-I$(TOP)/ffmpeg-0.5/libavutil -I$(TOP)/ffmpeg-0.5/libavcodec -I$(TOP)/ffmpeg-0.5/libavformat -I$(TOP)/ffmpeg-0.5/libswscale -I$(TOP)/ffmpeg-0.5,-I$(TOP)/ffmpeg) \
+		$(if $(RTCONFIG_BCMARM),-I$(SRCBASE)/shared/bcmwifi/include -DTYPEDEF_FLOAT_T,) \
+		$(if $(MSIPK),,-I$(TOP)/shared $(if $(RTAC68U),-I$(SRCBASE)/include) $(if $(RTN65U),-DRTN56U) $(if $(RTAC66U),-DRTN66U) $(if $(RTCONFIG_MEDIASERVER_LIMIT),-DMS_LIMIT) $(if $(RPAC68U),-DRPAC68U) $(if $(HND_ROUTER_BE_4916),-fcommon))" \
+		LDFLAGS="-ffunction-sections -fdata-sections -Wl,--gc-sections \
+		$(if $(MEDIA_SERVER_STATIC),-static,) \
+		-L$(TOP)/zlib -L$(TOP)/sqlite/.libs \
+		$(if $(MEDIA_SERVER_STATIC),-L$(TOP)/jpeg/.libs,-L$(TOP)/jpeg) \
+		-L$(TOP)/libvorbis/lib/.libs -L$(TOP)/libogg/src/.libs \
+		-L$(TOP)/libexif/libexif/.libs -L$(TOP)/flac/src/libFLAC/.libs \
+		$(if $(MEDIA_SERVER_STATIC),-L$(TOP)/APP-IPK/MediaServer-ipk/asusffmpeg_1.0.0.5/opt/lib,-L$(TOP)/ffmpeg/libavutil -L$(TOP)/ffmpeg/libavcodec -L$(TOP)/ffmpeg/libavformat -L$(TOP)/libid3tag/.libs) \
+		$(if $(or $(RTAC68U),$(RTAX82U),$(GTAX6000),$(RTAX82U_V2)),-L$(TOP_PLATFORM)/nvram${BCMEX} -lnvram -L$(TOP)/shared -lshared,)" \
+		LDLIBS="$(if $(MSIPK),-lpthread -lm -lvorbis -logg -lsqlite3 -lexif -ljpeg -lFLAC -lid3tag_ms -lz $(TOP)/libid3tag/.libs/libid3tag_ms.so $(TOP)/APP-IPK/MediaServer-ipk/asusffmpeg_1.0.0.5/opt/lib/libavformat_asus.so $(TOP)/APP-IPK/MediaServer-ipk/asusffmpeg_1.0.0.5/opt/lib/libavcodec_asus.so $(TOP)/APP-IPK/MediaServer-ipk/asusffmpeg_1.0.0.5/opt/lib/libavutil_asus.so $(if $(filter i686,$(PLATFORM)),-lrt),)$(if $(MEDIA_SERVER_STATIC),-lpthread -ldl -lm $(TOP)/libvorbis/lib/.libs/libvorbis.a $(TOP)/libogg/src/.libs/libogg.a $(TOP)/sqlite/.libs/libsqlite3.a $(TOP)/libexif/libexif/.libs/libexif.a $(TOP)/jpeg/libjpeg.a $(TOP)/flac/src/libFLAC/.libs/libFLAC.a $(TOP)/libid3tag/.libs/libid3tag.a $(TOP)/zlib/libz.a $(TOP)/ffmpeg/libavformat/libavformat.a $(TOP)/ffmpeg/libavcodec/libavcodec.a $(TOP)/ffmpeg/libavutil/libavutil.a,-lpthread -ldl -lm -lvorbis -logg -lsqlite3 -lexif -ljpeg -lFLAC -lid3tag -lz -lavformat -lavcodec -lavutil)"; \
+	fi
+
+minidlna: zlib sqlite ffmpeg libogg flac jpeg libexif libid3tag libvorbis minidlna-configure
+	cd minidlna; make
+
+minidlna-install: minidlna
+	install -D minidlna/minidlnad $(INSTALLDIR)/minidlna/usr/sbin/minidlna
+	$(STRIP) $(INSTALLDIR)/minidlna/usr/sbin/minidlna
 
 libgdbm/stamp-h1:
 	cd libgdbm && \
@@ -8576,7 +8625,7 @@ sysstat-10.0.3-install:
 	mv $(INSTALLDIR)/sysstat-10.0.3/etc $(INSTALLDIR)/sysstat-10.0.3/etc_sysstat
 	rm -rf $(INSTALLDIR)/sysstat-10.0.3/var
 
-asd: shared $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX) curl openssl libasc json-c
+asd: shared nvram$(BCMEX) curl openssl libasc json-c
 	$(MAKE) -C $@
 
 asd-install:
@@ -8588,7 +8637,42 @@ asd-install:
 asd-clean:
 	$(MAKE) -C asd clean
 
+onig-6.9.9:
+	cd onig-6.9.9 && \
+	autoreconf -i -f && \
+	./configure  --host=arm-linux LD=$(CROSS_COMPILE)ld --prefix=/usr --exec-prefix=/usr --bindir=/usr/bin --sbindir=/usr/sbin --libexecdir=/usr/lib && \
+	make
 
+onig-6.9.9-install:
+	install -D onig-6.9.9/src/.libs/libonig.so.5.4.0 $(INSTALLDIR)/usr/lib/libonig.so.5.4.0
+	$(STRIP) $(INSTALLDIR)/usr/lib/libonig.so.5.4.0
+	cd $(INSTALLDIR)/usr/lib && \
+		ln -sf libonig.so.5.4.0 libonig.so.5 && \
+		ln -sf libonig.so.5.4.0 libonig.so.4 && \
+		ln -sf libonig.so.5.4.0 libonig.so
+
+onig-6.9.9-clean:
+	cd onig-6.9.9 && \
+	make distclean
+
+jq-1.7.1:
+	cd jq-1.7.1 && \
+	autoreconf -i &&\
+	./configure --host=arm-linux --with-oniguruma=$(SRCBASE)/router/onig-6.9.9/src LD=$(CROSS_COMPILE)ld --prefix=/usr && \
+	make
+
+jq-1.7.1-install:
+	install -D  jq-1.7.1/.libs/libjq.so.1.0.4 $(INSTALLDIR)/jq-1.7.1/usr/lib/libjq.so.1.0.4
+	install -D  jq-1.7.1/jq $(INSTALLDIR)/jq-1.7.1/usr/bin/jq
+	$(STRIP) $(INSTALLDIR)/jq-1.7.1/usr/lib/libjq.so.1.0.4
+	$(STRIP) $(INSTALLDIR)/jq-1.7.1/usr/bin/jq
+	cd $(INSTALLDIR)/jq-1.7.1/usr/lib/ && \
+		ln -sf libjq.so.1.0.4 libjq.so.1 && \
+		ln -sf libjq.so.1.0.4 libjq.so
+
+jq-1.7.1-clean:
+	cd jq-1.7.1 && \
+	make distclean
 #
 # tunnel related
 #
@@ -10121,4 +10205,3 @@ $(obj-y) $(obj-n) $(obj-clean) $(obj-install): dummy
 .PHONY: all clean distclean mrproper install package image
 .PHONY: conf mconf oldconf kconf kmconf config menuconfig oldconfig
 .PHONY: dummy libnet libpcap
-

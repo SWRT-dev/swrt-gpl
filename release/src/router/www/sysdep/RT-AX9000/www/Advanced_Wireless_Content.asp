@@ -2250,7 +2250,13 @@ function he_frame_mode(obj) {
 	}
 }
 
-var band1_enable_bw_160 = '<% nvram_get("wl0_bw_160"); %>';
+var band1_enable_bw_160 = (function(){
+	if(!wl_info['1'].bw_160_support){
+		return '0';
+	}
+	
+	return '<% nvram_get("wl0_bw_160"); %>'
+})();
 var band2_enable_bw_160 = '<% nvram_get("wl1_bw_160"); %>';
 function separateGenBWTable(unit){
 	var bws = new Array();
@@ -2321,7 +2327,14 @@ function separateGenBWTable(unit){
 }
 function separateEnable_160MHz(obj){
 	if(obj.id == 'band1_160'){
-		band1_enable_bw_160 = obj.checked ? 1 : 0;
+		band1_enable_bw_160 = (function(){
+			if(!wl_info['1'].bw_160_support){
+				return '0';
+
+			}
+
+			return obj.checked ? 1 : 0;
+		})();
 		separateGenBWTable('0');
 	}
 	else if(obj.id == 'band2_160'){

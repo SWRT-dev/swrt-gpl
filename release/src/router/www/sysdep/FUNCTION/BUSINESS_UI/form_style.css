@@ -2187,33 +2187,29 @@ i.icon-comments {
 	background-color: #FFFFFF;
 }
 
-i.icon-copy {
-	-webkit-mask: url(/images/New_ui/icon_copy.svg) no-repeat;
-	mask: url(/images/New_ui/icon_copy.svg) no-repeat;
+i.icon-clone {
+	-webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: 100%;
+    mask-size: 100%;
+	-webkit-mask-image: url(/images/clone.svg);
+	mask-image: url(/images/clone.svg);
 	height: 20px;
 	width: 20px;
 	display: inline-block;
 	background-color: #92a0a5;
 }
 
-i.icon-copy:hover{
-	background-color: #FFFFFF;
-}
-
 i.icon_help {
-	-webkit-mask: url(/images/New_ui/SDN/dark_theme/Action/help_outline.svg) no-repeat;
-	mask: url(/images/New_ui/SDN/dark_theme/Action/help_outline.svg) no-repeat;
+	-webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: 100%;
+    mask-size: 100%;
+	-webkit-mask-image: url(/images/help.svg);
+	mask-image: url(/images/help.svg);
 	height: 24px;
 	width: 24px;
 	display: inline-block;
-	background-color: #92a0a5;
-	position: absolute;
-	margin-left: -5px;
-}
-}
-
-a i:hover {
-	cursor: pointer;
 }
 
 .text-list {
@@ -2237,13 +2233,6 @@ a i:hover {
 	text-align: right;
 }
 
-.formfonttitle_help i:hover {
-	background-color: #FFFFFF;
-	cursor: pointer;
-}
-.formfontdesc_help_left{
-	width: 95%;
-}
 .icon-group-center {
 	display: inline-flex;
 	align-items: center;

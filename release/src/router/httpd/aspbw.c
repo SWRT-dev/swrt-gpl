@@ -23,9 +23,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <httpd.h>
-#ifdef HND_ROUTER
 #include <shared.h>
-#endif
 
 #define nvram_match(name, match) ({ \
 	const char *value = nvram_get(name); \
@@ -107,7 +105,13 @@ const char *resmsg_get(void)
 
 void resmsg_set(const char *msg)
 {
-	set_cgi("resmsg", strdup(msg));	// m ok
+	char *pmsg = strdup(msg);
+
+	set_cgi("resmsg", pmsg);	// m ok
+
+	if(pmsg) {
+		free(pmsg);
+	}
 }
 
 // for bandwidth =========================================================
@@ -162,7 +166,7 @@ char *psname(int pid, char *buffer, int maxlen)
 	snprintf(path, sizeof(path), "/proc/%d/stat", pid);
 	if ((f_read_string(path, buf, sizeof(buf)) > 4) && ((p = strrchr(buf, ')')) != NULL)) {
 		*p = 0;
-		if (((p = strchr(buf, '(')) != NULL) && (atoi(buf) == pid)) {
+		if (((p = strchr(buf, '(')) != NULL) && (safe_atoi(buf) == pid)) {
 			strlcpy(buffer, p + 1, maxlen);
 		}
 	}

@@ -29,9 +29,9 @@
   background: url(images/New_ui/mode_operations.jpg);
   background-position: -0px -332px; width: 686px; height: 132px;
 }
-</style>	
+</style>
+<script type="text/javaScript" src="js/jquery.js"></script>
 <script language="JavaScript" type="text/javascript" src="/state.js"></script>
-<script language="JavaScript" type="text/javascript" src="/js/jquery.js"></script>
 <script language="JavaScript" type="text/javascript" src="/general.js"></script>
 <script language="JavaScript" type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" language="JavaScript" src="/help.js"></script>

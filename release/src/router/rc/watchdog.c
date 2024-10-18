@@ -120,6 +120,8 @@
 extern int send_cfgmnt_event(char *msg);
 #endif
 
+int no_need_to_start_wanduck(void);
+
 #define BCM47XX_SOFTWARE_RESET	0x40		/* GPIO 6 */
 #define RESET_WAIT		2		/* seconds */
 #define RESET_WAIT_COUNT	RESET_WAIT * 10 /* 10 times a second */
@@ -316,7 +318,7 @@ static const struct mfg_btn_s {
 	{ BTN_ID_MAX,	NULL,		NULL, NULL },
 };
 
-#if defined(RTCONFIG_QCA)
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 static time_t g_t1;
 #endif
 
@@ -2944,7 +2946,7 @@ static inline void __handle_led_onoff_button(int led_onoff)
 #endif
 
 		/* WL LEDs */
-		for (unit = WL_2G_BAND; unit < WL_NR_BANDS; ++unit) {
+		for (unit = 0; unit < WL_NR_BANDS; ++unit) {
 			SKIP_ABSENT_BAND(unit);
 
 			snprintf(prefix, sizeof(prefix), "wl%d_", unit);
@@ -2991,6 +2993,9 @@ static inline void __handle_led_onoff_button(int led_onoff)
 	start_aurargb();
 #endif
 	if (led_onoff) {
+#if 1
+		setAllLedNormal();
+#else
 		led_control(LED_POWER, LED_ON);
 		kill_pidfile_s("/var/run/wanduck.pid", SIGUSR2);
 #if defined(TUFAX3000_V2) || defined(RTAXE7800)
@@ -3069,16 +3074,17 @@ static inline void __handle_led_onoff_button(int led_onoff)
 #endif
 #if defined(GTAX11000_PRO)
 		// TBD, 2.5G LED
-		notify_rc("restart_ledg");
+		notify_rc_and_wait_2min("restart_ledg");
 #endif
 #if defined(GTAXE16000) || defined(GTBE98) || defined(GTBE98_PRO) || defined(GTBE96)
 		// TBD, 10G LED
-		notify_rc("restart_ledg");
+		notify_rc_and_wait_2min("restart_ledg");
 #endif
 #ifdef RTCONFIG_LOGO_LED
 		led_control(LED_LOGO, LED_ON);
 #endif
 		kill_pidfile_s("/var/run/usbled.pid", SIGTSTP); // inform usbled to reset status
+#endif
 	}
 	else
 		setAllLedOff();
@@ -3309,8 +3315,15 @@ static inline void handle_turbo_button(void)
 #elif defined(RTCONFIG_BCM_CLED)
 	case BOOST_AURA_RGB_SW:
 		nvram_set_int("ledg_led_enable", *bstatus);
+		if (nvram_get_int("ledg_scheme") != LEDG_SCHEME_OFF)
+		{
+			nvram_set_int("ledg_scheme_old", nvram_get_int("ledg_scheme"));
+			nvram_set_int("ledg_scheme", LEDG_SCHEME_OFF);
+		}
+		else
+			nvram_set_int("ledg_scheme", nvram_get_int("ledg_scheme_old"));
 		nvram_commit();
-		notify_rc("restart_ledg");
+		kill_pidfile_s("/var/run/ledg.pid", SIGTSTP);
 		break;
 #endif
 	case BOOST_GAME_BOOST_SW:
@@ -3385,7 +3398,7 @@ void btn_check(void)
 	char *argv[]={"/sbin/delay_exec","4","rc rc_service restart_allnet",NULL};
 #endif
 
-	eval("touch", "/tmp/watchdog_heartbeat");
+	//eval("touch", "/tmp/watchdog_heartbeat");
 
 	if (handle_btn_in_mfg())
 		return;
@@ -4915,10 +4928,12 @@ void timecheck(void)
 	char tmp2[100];
 	int unit, item;
 #endif
+#if !defined(RTCONFIG_MULTILAN_CFG)
 	char word[256], *next, tmp[100];
 	char lan_ifname[16];
 	char wl_vifs[256], nv[40];
 	int expire, need_commit = 0;
+#endif
 #if !defined(RTCONFIG_WL_SCHED_V2) && defined(RTCONFIG_AMAS) && defined(RTCONFIG_QCA)
        char sctmp[20];
 #endif 
@@ -5016,11 +5031,11 @@ void timecheck(void)
 #endif
 
 			if (activeNow == 0) {
-				eval("radio", "off", tmp);
+				set_wlan_service_status(atoi(tmp), -1, 0);
 				WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s] off\n", tmp);
 				logmessage("wifi scheduler", "Turn radio [band_index=%s] off.", tmp);
 			} else {
-				eval("radio", "on", tmp);
+				set_wlan_service_status(atoi(tmp), -1, 1);
 				WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s] on\n", tmp);
 				logmessage("wifi scheduler", "Turn radio [band_index=%s] on.", tmp);
 			}
@@ -5183,6 +5198,28 @@ end_of_wl_sched:
 }
 
 #ifdef RTCONFIG_WL_SCHED_V2
+#if defined(RTCONFIG_MULTILAN_CFG)
+wifi_band_cap_st band_cap[MAX_BAND_CAP_LIST_SIZE];
+int band_cap_total = 0;
+int is_reserved_if(int unit, int subunit)
+{
+	int i, j;
+	char prefix[]="wlXXXXXX";
+
+	snprintf(prefix, sizeof(prefix), "wl%d.%d", unit, subunit);
+
+	for (i = 0; i < band_cap_total; i++) {
+		for (j = 0; j < band_cap[i].vif_count; j++) {
+			if ((!strcmp(band_cap[i].vif_cap[j].prefix, prefix)) && 
+				((band_cap[i].vif_cap[j].type & VIF_TYPE_NO_USED) == 0)) {
+				return 1;
+			}
+		}
+	}
+	return 0;
+}
+#endif
+
 void timecheck_v2(void)
 {
 	int activeNow;
@@ -5247,6 +5284,12 @@ void timecheck_v2(void)
 	if (nvram_get_int("ntp_ready") != 1)
 		return;
 
+#ifdef RTCONFIG_MULTILAN_CFG
+	band_cap_total = 0;
+	memset(band_cap, 0, (sizeof(wifi_band_cap_st)*MAX_BAND_CAP_LIST_SIZE));
+	get_wifi_band_cap(band_cap, MAX_BAND_CAP_LIST_SIZE, &band_cap_total);
+#endif
+
 	// radio on/off
 	if (nvram_match("svc_ready", "1") && nvram_match("wlready", "1"))
 	foreach (word, nvram_safe_get("wl_ifnames"), next) {
@@ -5262,8 +5305,15 @@ void timecheck_v2(void)
 			snprintf(sctmp2, sizeof(sctmp2), "wl%d.%d_qca_sched", unit, subunit);
 #endif
 			timesched = nvram_get_int(strcat_r(prefix2, "timesched", tmp2));
-			if ((nvram_get_int(strcat_r(prefix2, "radio", tmp)) == 0)/* ||
+			if ((nvram_get_int(strcat_r(prefix2, "radio", tmp)) == 0 ||
+				(nvram_get_int(strcat_r(prefix2, "bss_enabled", tmp2)) == 0))/* ||
 				(timesched == 0)*/) {
+				subunit++;
+				continue;
+			}
+
+			if (is_reserved_if(unit, subunit)) {
+				WL_SCHED_DBG("[wifi-scheduler] [wl%d.%d] is reserved interface. bypass it.\n", unit, subunit);
 				subunit++;
 				continue;
 			}
@@ -5330,11 +5380,11 @@ void timecheck_v2(void)
 #endif
 
 				if (activeNow2 == 0) {
-					eval("radio", "off", tmp, tmp2);
+					set_wlan_service_status(atoi(tmp), atoi(tmp2), 0);
 					WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s, subunit=%s] off\n", tmp, tmp2);
 					logmessage("wifi scheduler", "Turn radio [band_index=%s, subunit=%s] off.", tmp, tmp2);
 				} else {
-					eval("radio", "on", tmp, tmp2);
+					set_wlan_service_status(atoi(tmp), atoi(tmp2), 1);
 					WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s, subunit=%s] on\n", tmp, tmp2);
 					logmessage("wifi scheduler", "Turn radio [band_index=%s, subunit=%s] on.", tmp, tmp2);
 				}	
@@ -5396,11 +5446,11 @@ void timecheck_v2(void)
 #endif
 
 			if (activeNow == 0) {
-				eval("radio", "off", tmp);
+				set_wlan_service_status(atoi(tmp), -1, 0);
 				WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s] off\n", tmp);
 				logmessage("wifi scheduler", "Turn radio [band_index=%s] off.", tmp);
 			} else {
-				eval("radio", "on", tmp);
+				set_wlan_service_status(atoi(tmp), -1, 1);
 				WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s] on\n", tmp);
 				logmessage("wifi scheduler", "Turn radio [band_index=%s] on.", tmp);
 			}
@@ -6649,7 +6699,7 @@ void init_sig()
 	fn_acts[SIGUSR2] = catch_sig;
 	fn_acts[SIGTSTP] = catch_sig;
 	fn_acts[SIGALRM] = watchdog;
-#if defined(RTCONFIG_QCA)
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 	g_t1 = uptime();
 #endif
 #if defined(RTAC1200G) || defined(RTAC1200GP)
@@ -6963,7 +7013,6 @@ void regular_ddns_check(void)
 	}
 	
 	//_dprintf("WAN IP change!\n");
-	nvram_set("ddns_update_by_wdog", "1");
 	if (wan_unit != last_unit) {
 #ifndef RTCONFIG_INADYN
 		unlink("/tmp/ddns.cache");
@@ -7048,7 +7097,7 @@ void ddns_check(void)
 	}
 
 	if (wan_unit == last_unit && nvram_match("ddns_updated", "1")) { //already updated success
-#ifdef RTCONFIG_IPV6
+#if defined(RTCONFIG_IPV6) && defined(RTCONFIG_INADYN)
 		/* not enable IPv6 or IPv6 already updated success */
 		if (!ipv6_enabled() || nvram_match("ddns_ipv6_update", "0") || (ipv6_enabled() && nvram_match("ddns_ipv6_update", "1") && nvram_match("ddns_ipv6_updated", "1"))) {
 			//logmessage("watchdog", "IPv4/IPv6 already updated success, exit DDNS Retry.\n");
@@ -7059,8 +7108,9 @@ void ddns_check(void)
 #endif
 	}
 
-	if (wan_unit == last_unit) { //Only Time-out, connect_fail, -1 (in asusddns) or not auth_fail (not in asusddns)
+	if (wan_unit == last_unit) { /* DDNS has already been run, ddns_last_wan_unit has been set. */
 		if ( nvram_match("ddns_server_x", "WWW.ASUS.COM") || nvram_match("ddns_server_x", "WWW.ASUS.COM.CN")) {
+			/* Only Time-out, connect_fail, -1 (in asusddns) or not auth_fail (not in asusddns) */
 			if ( !( !strcmp(nvram_safe_get("ddns_return_code_chk"),"Time-out") ||
 				!strcmp(nvram_safe_get("ddns_return_code_chk"),"connect_fail") ||
 				strstr(nvram_safe_get("ddns_return_code_chk"), "-1") ) )
@@ -7083,6 +7133,7 @@ void ddns_check(void)
 	ddns_check_retry--;
 	/* Stop retry and show the return code to UI */
 	if (ddns_check_retry <= 0) {
+		/* If in "ddns_query" then continue to next round, otherwise start ddns. */
 		if (nvram_match("ddns_return_code", "ddns_query")) {
 			nvram_set("ddns_return_code", nvram_safe_get("ddns_return_code_chk"));
 			ddns_recover_min = ((30 + rand_seed_by_time() % 30)*2);
@@ -7099,7 +7150,6 @@ void ddns_check(void)
 	}
 	nvram_set_int("ddns_check_retry", ddns_check_retry);
 
-	nvram_set("ddns_update_by_wdog", "1");
 	if (wan_unit != last_unit) {
 #ifndef RTCONFIG_INADYN
 		unlink("/tmp/ddns.cache");
@@ -7141,8 +7191,8 @@ void httpd_check()
 #if defined(RTL_WTDOG)
 		stop_rtl_watchdog();
 #endif
-		logmessage("watchdog", "restart httpd");
-		stop_httpd();
+		logmessage("watchdog", "start httpd");
+		//stop_httpd();
 		nvram_set("last_httpd_handle_request", nvram_safe_get("httpd_handle_request"));
 		nvram_set("last_httpd_handle_request_fromapp", nvram_safe_get("httpd_handle_request_fromapp"));
 		nvram_commit();
@@ -7399,21 +7449,50 @@ void dnsmasq_check()
 	)
 		return;
 
+#ifdef RTCONFIG_MULTILAN_CFG
+	int i;
+	size_t  mtl_sz = 0;
+	MTLAN_T *pmtl = (MTLAN_T *)INIT_MTLAN(sizeof(MTLAN_T));
+	char path[128] = {0};
+	char buf[16];
+	pid_t pid;
+	if (pmtl) {
+		get_mtlan(pmtl, &mtl_sz);
+		for (i = 0; i < mtl_sz; i++) {
+			if (pmtl[i].enable) {
+				if (pmtl[i].sdn_t.sdn_idx)
+					snprintf(path, sizeof(path), "/var/run/dnsmasq-%d.pid", pmtl[i].sdn_t.sdn_idx);
+				else
+					strlcpy(path, "/var/run/dnsmasq.pid", sizeof(path));
+				memset(buf, 0, sizeof(buf));
+				f_read_string(path, buf, sizeof(buf));
+				pid = strtoul(buf, NULL, 0);
+				if (pid && !process_exists(pid)) {
+#if defined(RTL_WTDOG)
+					stop_rtl_watchdog();
+#endif
+					start_dnsmasq(pmtl[i].sdn_t.sdn_idx);
+#if defined(RTL_WTDOG)
+					start_rtl_watchdog();
+#endif
+				}
+			}
+		}
+		FREE_MTLAN((void *)pmtl);
+	}
+#else
 	if (!pids("dnsmasq")) {
 #if defined(RTL_WTDOG)
 		stop_rtl_watchdog();
 #endif
-#ifdef RTCONFIG_MULTILAN_CFG
-		start_dnsmasq(ALL_SDN);
-#else
 		start_dnsmasq();
-#endif
 		TRACE_PT("watchdog: dnsmasq died. start dnsmasq...\n");
 
 #if defined(RTL_WTDOG)
 		start_rtl_watchdog();
 #endif
 	}
+#endif	//RTCONFIG_MULTILAN_CFG
 #ifdef RTCONFIG_DNSPRIVACY
 	else if (nvram_get_int("dnspriv_enable") && !pids("stubby")) {
 #if defined(RTL_WTDOG)
@@ -8051,13 +8130,6 @@ static void auto_firmware_check()
 		if (periodic_check)
 			asus_ctrl_sku_update();
 #endif
-#ifdef RTCONFIG_ASD
-		//notify asd to download version file
-		if (pids("asd") && (bootup_check || (periodic_check && period_retry == 0)))
-		{
-			killall("asd", SIGUSR1);
-		}
-#endif
 #ifdef RTCONFIG_HMA
 		if (bootup_check || (periodic_check && period_retry == 0))
 			system("hmavpn update &");
@@ -8651,7 +8723,8 @@ static void bt_turn_off_service()
 		return;
 	}
 #endif
-	if (!nvram_match("x_Setting", "0"))
+
+	if (!nvram_match("x_Setting", "0") && !nvram_match("w_Setting", "0"))
 		return;
 
 	memset(buf, '\0', sizeof(buf));
@@ -8667,6 +8740,7 @@ static void bt_turn_off_service()
 			stop_bluetooth_service();
 		}
 		nvram_set("w_Setting", "1");
+		nvram_set("cfg_pause", "0");
 
 		tmp = strtok(buf, delim);
 		while (tmp!=NULL) {
@@ -8707,8 +8781,10 @@ void amas_ctl_check()
 			notify_rc("start_amas_bhctrl");
 		if (nvram_match("amas_wlcconnect_service_ready", "1") && !pids("amas_wlcconnect"))
 			notify_rc("start_amas_wlcconnect");
+#if !defined(RTCONFIG_NOWL)
 		if (nvram_match("amas_lanctrl_service_ready", "1") && !pids("amas_lanctrl"))
 			notify_rc("start_amas_lanctrl");
+#endif
 #ifdef RTCONFIG_BHCOST_OPT
 		if (nvram_match("amas_status_service_ready", "1") && !pids("amas_status"))
 			notify_rc("start_amas_status");
@@ -8721,10 +8797,12 @@ void amas_ctl_check()
 	else
 	{
 #if defined(RTCONFIG_FRONTHAUL_DWB) || defined(RTCONFIG_VIF_ONBOARDING)
+#if !defined(RTCONFIG_NOWL)
 		if (nvram_match("amas_lanctrl_service_ready", "1") && !pids("amas_lanctrl")) {
 			if (is_router_mode() || access_point_mode())
 				start_amas_lanctrl();
 		}
+#endif
 #endif
 	}
 }
@@ -8733,6 +8811,7 @@ void onboarding_check()
 {
 	static int bh_selected = 0;
 	static int onboarding_count = 0;
+	int lock = 0;
 
 	if (!nvram_match("start_service_ready", "1"))
 		return;
@@ -8784,7 +8863,22 @@ void onboarding_check()
 #endif
 		}
 
-		notify_rc("resetdefault");
+#ifdef RTCONFIG_AMAS_NEWOB
+		if (nvram_get_int("newob_approval"))
+		{
+			_dprintf("### restore to rpt setting ###\n");
+			restore_rpt_setting();
+		}
+		else
+#endif
+		{
+			lock = file_lock("onboarding");
+			if (strlen(nvram_safe_get("cfg_group")) == 0) {
+				stop_cfgsync();
+				notify_rc("resetdefault");
+			}
+			file_unlock(lock);
+		}
 	}
 }
 #endif
@@ -8822,9 +8916,25 @@ void cfgsync_check()
   		if (nvram_match("x_Setting", "1") && !pids("cfg_client") && !pids("cfg_server"))
 		{
 			_dprintf("start cfgsync\n");
-			notify_rc("start_cfgsync");
+			notify_rc_and_wait_2min("start_cfgsync");
 		}
 		return;
+	}
+#endif
+
+#if defined(RTCONFIG_AMAS_NEWOB)
+	if (!pids("cfg_newob") && ((is_router_mode() && (nvram_get_int("x_Setting") == 0)))
+#if defined(RTCONFIG_AMAS_NEWOB_RP)
+		|| repeater_mode()
+#endif
+#if defined(RTCONFIG_AMAS_NEWOB_ROUTER_AP)
+		|| ((nvram_get_int("re_mode") == 0) &&(access_point_mode() && (nvram_get_int("cfg_recount") == 0))
+		|| ((is_router_mode() && (nvram_get_int("x_Setting") == 1)) && (nvram_get_int("cfg_recount") == 0))
+#endif
+		)
+	{
+		_dprintf("start cfgnewob\n");
+		notify_rc_and_wait_2min("start_cfgnewob");
 	}
 #endif
 
@@ -8840,21 +8950,21 @@ void cfgsync_check()
 #endif
 			nvram_get_int("re_mode") == 1
 			
-#ifdef RTCONFIG_AMAS
+#if defined(RTCONFIG_AMAS) && defined(RTCONFIG_SW_HW_AUTH)
 			&& ((getAmasSupportMode() & AMAS_RE)
 			&& (nvram_get_int("lan_state_t") == LAN_STATE_CONNECTED)
 			)
 #endif
 		) ||
 		(!pids("cfg_server") && (is_router_mode() || access_point_mode())
-#ifdef RTCONFIG_AMAS
+#if defined(RTCONFIG_AMAS) && defined(RTCONFIG_SW_HW_AUTH)
 			&& (getAmasSupportMode() & AMAS_CAP)
 			
 #endif
 	)))
 	{
 		_dprintf("start cfgsync\n");
-		notify_rc("start_cfgsync");
+		notify_rc_and_wait_2min("start_cfgsync");
 	}
 #endif	/* RTCONFIG_SW_HW_AUTH */
 }
@@ -9937,6 +10047,15 @@ void udhcpc_check(void)
 }
 #endif
 
+#ifdef RTCONFIG_MULTIWAN_IF
+void mtwan_check()
+{
+	if(!pids("mtwanduck") && !no_need_to_start_wanduck()){
+		start_mtwanduck();
+	}
+}
+#endif
+
 /*******************************************************************
 * NAME: record_current_sys_uptime
 * AUTHOR: Renjie Lee
@@ -9963,6 +10082,53 @@ void record_current_sys_uptime(void)
 	cnt %= record_period;
 }
 
+/*******************************************************************
+* NAME: feedback_check
+* AUTHOR: Renjie Lee
+* CREATE DATE: 2023/12/27
+* DESCRIPTION: Check 'fb_state', if it is '0', it means that the feedback was failed for some reasons at last time.
+*     We need to call 'sendfeedback' to resend the feedback.
+* INPUT:  None
+* OUTPUT: None
+* RETURN: None
+* NOTE: Watchdog calls this function for every 30 seconds.
+*     We skip the first 3 calls and execute the 4th call. So the function will work for every 120 seconds.
+*
+*******************************************************************/
+#ifdef RTCONFIG_FRS_FEEDBACK
+void feedback_check(void)
+{
+	static int check = -1;
+	int skip_times = 4;
+
+	check++;
+	check %= skip_times;
+	if(check != skip_times - 1)
+	{
+		return;
+	}
+
+	if(!nvram_get_int("ntp_ready"))
+	{
+		return;
+	}
+
+	if(nvram_match("fb_state", "0"))
+	{
+		char *cmd[] = {"sendfeedback", NULL};
+		int pid;
+
+		if(!pids("sendfeedback"))
+		{
+			logmessage("watchdog", "[%s] Resend the last feedback..\n", __FUNCTION__);
+			_dprintf("[%s] Resend the last feedback..\n", __FUNCTION__);
+			nvram_set("fb_resend", "1");
+			_eval(cmd, NULL, 0, &pid);
+		}
+	}
+}
+#endif /* RTCONFIG_FRS_FEEDBACK */
+
 /* wathchdog is runned in NORMAL_PERIOD, 1 seconds
  * check in each NORMAL_PERIOD
  *	1. button
@@ -9978,10 +10144,7 @@ void watchdog(int sig)
 	watchdog_func();
 #endif
 	/* handle button */
-#if !defined(BT12) && !defined(BQ16)
 	btn_check();
-#endif
-
 #ifdef RTCONFIG_BCM_7114
 	if (ATE_BRCM_FACTORY_MODE() || nvram_match("mfgfw", "1"))
 		httpd_check();
@@ -10105,7 +10268,8 @@ void watchdog(int sig)
         //nfcm_check();
 #endif
 
-#if defined(RTCONFIG_QCA)
+#if defined(RTCONFIG_QCA) \
+ || (defined(RTCONFIG_RALINK) && defined(RTCONFIG_MT799X))
 	if (nvram_match("Ate_power_on_off_enable", "2") && ((uptime() - g_t1) > 30)) {
 		ate_temperature_record();
 		g_t1 = uptime();
@@ -10292,8 +10456,10 @@ wdp:
 #if defined(K3)
 	k3screen_check();
 #endif
+#if !defined(RTCONFIG_NOWL)
 #ifdef RTCONFIG_NEW_USER_LOW_RSSI
 	roamast_check();
+#endif
 #endif
 #if defined(RPAX56)
 	amas_linkctrl();
@@ -10375,7 +10541,7 @@ wdp:
 #endif
 #endif
 
-#if defined(RTCONFIG_SOC_IPQ8074)
+#if defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ53XX)
 	beacon_counter_monitor();
 	thermal_monitor();
 #endif
@@ -10439,8 +10605,11 @@ wdp:
 		fbwifi_check();
 #endif
 #ifdef RTCONFIG_MULTIWAN_IF
-	check_mtwan_ipv6_route();
+	mtwan_check();
 #endif
+#ifdef RTCONFIG_FRS_FEEDBACK
+	feedback_check();
+#endif /* RTCONFIG_FRS_FEEDBACK */
 }
 
 #if ! (defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK))
@@ -10672,3 +10841,4 @@ static int  _is_moca_mps_ready_to_trigger()
 	}
 }
 #endif
+

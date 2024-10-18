@@ -29,12 +29,11 @@ var bw_160_support = (function(){
 
 var band6gBW160_limit = (function(){
 	if(isSupport('wifi6e') || isSupport('wifi7')){
-		if(based_modelid == "GT-AXE11000" 
-		|| based_modelid == "RT-AXE7800" 
-		|| based_modelid == "RT-AXE95Q" 
-		|| based_modelid == "ET8_V2" 
-		|| based_modelid == "ET8PRO" 
-		|| based_modelid == "ET12"){
+		if(based_modelid == "GT-AXE11000"
+		|| based_modelid == "RT-AXE95Q"
+		|| based_modelid == "ET12"
+		|| based_modelid == "ET8_V2"
+		|| based_modelid == "ET8PRO"){
 			return true
 		}
 	}
@@ -163,7 +162,7 @@ if(wl_info.band5g_2_support || isSupport('wifi6e') || isSupport('wifi7')){
 	}	
 }
 
-if(isSupport('wifi6e') || based_modelid == 'GT-BE98_PRO' || based_modelid == 'GT-BE98'){
+if(isSupport('wifi6e') || isSupport('wifi7') ){
 	var wl3 = {
 		"channel_20m": [],
 		"channel_40m": [],
@@ -232,7 +231,13 @@ try{
 	var mesh_5g2 = {};
 }
 try{
-	var mesh_6g = JSON.parse('<% get_wl_channel_list_6g(); %>');
+	if(based_modelid === 'GT-BE98_PRO'){
+		var mesh_6g = JSON.parse('<% get_wl_channel_list_6g_2(); %>');
+	}
+	else{
+		var mesh_6g = JSON.parse('<% get_wl_channel_list_6g(); %>');
+	}
+	
 }catch(e){
 	var mesh_6g = {};
 }
@@ -499,9 +504,15 @@ function wl_chanspec_list_change(){
 				if(document.getElementById('psc6g_checkbox').checked){
 					if(band6gBW160_limit){
 						wl_channel_list_6g = ['37', '53', '69', '85', '101', '117', '133', '149', '165', '181', '197', '213'];
+						if (ttc.indexOf("CH") != -1 || ttc.indexOf("JP") != -1) {
+                            wl_channel_list_6g = ["37", "53", "69", "85"];
+                        }
 					}
 					else{
 						wl_channel_list_6g = ['5', '21', '37', '53', '69', '85', '101', '117', '133', '149', '165', '181', '197', '213', '229'];
+						if (ttc.indexOf("CH") != -1 || ttc.indexOf("JP") != -1) {
+                            wl_channel_list_6g = ["5", "21", "37", "53", "69", "85"];
+                        }
 					}
 
 					if(is_EU_sku || ttc.indexOf('AU') != -1 || ttc.indexOf('AA') != -1){

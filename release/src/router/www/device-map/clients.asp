@@ -1,4 +1,4 @@
-﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
 "http://www.w3.org/TR/html4/loose.dtd">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -37,8 +37,8 @@ p{
 }
 
 </style>
-<script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/js/jquery.js"></script>
+<script type="text/javascript" src="/state.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/httpApi.js"></script>
 <script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
 <script type="text/javascript" src="/help.js"></script>
@@ -67,7 +67,7 @@ var pagesVar = {
 
 var clientMacUploadIcon = new Array();
 
-var wl_nband_isWL_map = {"2.4 GHz":"1", "5 GHz":"2", "5 GHz-1":"2", "5 GHz-2":"3", "6 GHz":"4"};
+var wl_nband_isWL_map = {"2.4 GHz":"1", "5 GHz":"2", "5 GHz-1":"2", "5 GHz-2":"3", "6 GHz":"4", "6 GHz-1":"4", "6 GHz-2":"5"};
 function generate_wireless_band_list(){
 	if(wl_nband_title.length == 1) return false;
 
@@ -123,6 +123,7 @@ function drawClientList(tab){
 		if((tab == 'wireless2' && clientObj.isWL != 2) || !clientObj.isOnline){i++; pagesVar.endIndex++; continue;}
 		if((tab == 'wireless3' && clientObj.isWL != 3) || !clientObj.isOnline){i++; pagesVar.endIndex++; continue;}
 		if((tab == 'wireless4' && clientObj.isWL != 4) || !clientObj.isOnline){i++; pagesVar.endIndex++; continue;}
+		if((tab == 'wireless5' && clientObj.isWL != 5) || !clientObj.isOnline){i++; pagesVar.endIndex++; continue;}
 		if(tab == 'custom' && clientObj.from != "customList"){i++; pagesVar.endIndex++; continue;}
 		var clientName = (clientObj.nickName == "") ? clientObj.name : clientObj.nickName;
 		if(clientName.toLowerCase().indexOf(document.getElementById("searchingBar").value.toLowerCase()) == -1){i++; pagesVar.endIndex++; continue;}
@@ -180,7 +181,7 @@ function drawClientList(tab){
 			}
 		}
 
-			clientHtmlTd += (parent.businessWrapper) ? '</td><td style="height:30px;font-size:16px;font-weight: bold;word-break:break-all;"><div>' : '</td><td style="height:30px;font-size:11px;word-break:break-all;"><div>';
+			clientHtmlTd += (parent.webWrapper) ? '</td><td style="height:30px;font-size:16px;font-weight: bold;word-break:break-all;"><div>' : '</td><td style="height:30px;font-size:11px;word-break:break-all;"><div>';
 		clientHtmlTd += clientName;
 		clientHtmlTd += '</div></td>';
 		
@@ -244,7 +245,9 @@ function drawClientList(tab){
 			clientHtmlTd += '<div class="' + radioIcon_css + ' radio_' + rssi_t +'" title="' + connectModeTip + '"></div>';
 			if(clientObj.isWL != 0 || (isSupport("mtlancfg") && clientObj.sdn_idx > 0)) {
 				var bandClass = (navigator.userAgent.toUpperCase().match(/CHROME\/([\d.]+)/)) ? "band_txt_chrome" : "band_txt";
-				clientHtmlTd += '<div class="band_block"><span class='+bandClass+'>' + isWL_map[clientObj.isWL]["text"] + '</span></div>';
+				let band_text = isWL_map[clientObj.isWL]["text"];
+				if(isSupport("mlo") && clientObj.mlo == "1") band_text = `MLO`;
+				clientHtmlTd += `<div class="band_block"><span class='${bandClass}'>${band_text}</span></div>`;
 			}
 			clientHtmlTd += '</div>';
 		}
@@ -279,7 +282,7 @@ function drawClientList(tab){
 		else
 			clientHtmlTd = '<div style="color:#FC0;height:30px;text-align:center;margin-top:15px"><#IPConnection_VSList_Norule#></div>';
 
-		if(parent.businessWrapper)
+		if(parent.webWrapper)
 			clientHtmlTd = '<div style="color:#000;height:30px;text-align:center;margin-top:50px;font-size: 22px;"><#IPConnection_VSList_Norule#></div>';
 	}
 

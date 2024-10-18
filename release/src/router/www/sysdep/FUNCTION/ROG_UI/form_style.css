@@ -152,7 +152,7 @@
 	margin-top:10px;
 	font-size:12px;
 	font-family:Arial, Helvetica, sans-serif;
-	border: 1px solid transparent;
+	border: 1px solid #333;
 	border-collapse: collapse;
 }
 .FormTable_table th{
@@ -895,11 +895,6 @@ form{
 	background: url(images/New_ui/helpicon.png) no-repeat;
 }
 /* CSS Document */
-@font-face{
-	font-family: rog;
-	src: url(/fonts/ROG_Fonts-Regular.woff) format("woff"),
-	     url(./fonts/ROG_Fonts-Regular.otf) format("opentype");
-}
 body{
 color:#FFFFFF;
 font-family:Arial, Helvetica, sans-serif;
@@ -1373,13 +1368,10 @@ padding-top:1px;
 	cursor: pointer;
 }
 .notificationon{
-	position: absolute;
-	display:inline;
+	display:inline-block;
 	background-image:url(images/New_ui/notification.png);
 	background-repeat:no-repeat;
 	background-position:2px 2px;
-	margin-top:-5px;
-	margin-top:3px \9;	/*IE*/
 	height:30px;
 	width:30px;
 	cursor: pointer;
@@ -2101,7 +2093,7 @@ padding-top:1px;
 	background: rgb(104,5,22);
 }
 .monitor_qos_bg{
-	background: rgb(62,3,13);
+	background: rgba(100, 100, 100, .1);
 }
 .arrow_up{
 	border-color:rgb(62,3,13) rgb(62,3,13) rgb(8,255,240) rgb(62,3,13);
@@ -2326,4 +2318,7 @@ padding-top:1px;
 #asus_pp_EULA_modal {
 	border: 3px solid #5C0C0B;
 	background: #000b !important;
+}
+.dnslist_viewlist {
+	background-color:#000 !important;;
 }

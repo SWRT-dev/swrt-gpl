@@ -44,9 +44,21 @@ SetFilterWin2KOption
 --------------------
 Takes boolean, sets or resets the --filterwin2k option.
 
+SetFilterA
+------------------------
+Takes boolean, sets or resets the --filter-A option.
+
+SetFilterAAAA
+------------------------
+Takes boolean, sets or resets the --filter-AAAA option.
+
 SetBogusPrivOption
 ------------------
 Takes boolean, sets or resets the --bogus-priv option.
+
+SetLocaliseQueriesOption
+------------------------
+Takes boolean, sets or resets the --localise-queries option.
 
 SetServers
 ----------
@@ -248,6 +260,15 @@ GetMetrics
 
 Returns an array with various metrics for DNS and DHCP.
 
+GetServerMetrics
+----------------
+
+Returns per-DNS-server metrics.
+
+ClearMetrics
+------------
+
+Clear call metric counters, global and per-server.
 
 2. SIGNALS
 ----------

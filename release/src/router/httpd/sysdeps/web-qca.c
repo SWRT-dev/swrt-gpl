@@ -111,6 +111,7 @@ extern int shared_get_channel(const char *ifname);
 #define WL_AD		(1U << 5)
 #define WL_AX		(1U << 6)
 #define WL_AY		(1U << 7)
+#define WL_BE		(1U << 8)
 
 static const struct mode_s {
 	unsigned int mask;
@@ -124,6 +125,7 @@ static const struct mode_s {
 	{ WL_AD, "ad" },
 	{ WL_AX, "ax" },
 	{ WL_AY, "ay" },
+	{ WL_BE, "be" },
 	{ 0, NULL },
 };
 
@@ -143,17 +145,17 @@ static void getWPSConfig(int unit, WPS_CONFIGURED_VALUE *result)
 			chomp(buf);
 			//BSSID
 			if ((pt1 = strstr(buf, "bssid="))) {
-				pt2 = pt1 + strlen("bssid=");
+				pt2 = pt1 + safe_strlen("bssid=");
 				strlcpy(result->BSSID, pt2, sizeof(result->BSSID));
 			}
 			//SSID
 			if ((pt1 = strstr(buf, "ssid="))) {
-				pt2 = pt1 + strlen("ssid=");
+				pt2 = pt1 + safe_strlen("ssid=");
 				strlcpy(result->SSID, pt2, sizeof(result->SSID));
 			}
 			//Configured
 			else if ((pt1 = strstr(buf, "wps_state="))) {
-				pt2 = pt1 + strlen("wps_state=");
+				pt2 = pt1 + safe_strlen("wps_state=");
 				if (!strcmp(pt2, "configured") ||
 				    (!strcmp(pt2, "disabled") && nvram_get_int("w_Setting"))
 				   )
@@ -163,17 +165,17 @@ static void getWPSConfig(int unit, WPS_CONFIGURED_VALUE *result)
 			}
 			//WPAKey
 			else if ((pt1 = strstr(buf, "passphrase="))) {
-				pt2 = pt1 + strlen("passphrase=");
+				pt2 = pt1 + safe_strlen("passphrase=");
 				strlcpy(result->WPAKey, pt2, sizeof(result->WPAKey));
 			}
 			//AuthMode
 			else if ((pt1 = strstr(buf, "key_mgmt="))) {
-				pt2 = pt1 + strlen("key_mgmt=");
+				pt2 = pt1 + safe_strlen("key_mgmt=");
 				strlcpy(result->AuthMode, pt2, sizeof(result->AuthMode));/* FIXME: NEED TRANSFORM CONTENT */
 			}
 			//Encryp
 			else if ((pt1 = strstr(buf, "rsn_pairwise_cipher="))) {
-				pt2 = pt1 + strlen("rsn_pairwise_cipher=");
+				pt2 = pt1 + safe_strlen("rsn_pairwise_cipher=");
 				if (!strcmp(pt2, "NONE"))
 					strlcpy(result->Encryp, "None", sizeof(result->Encryp));
 				else if (!strncmp(pt2, "WEP", 3))
@@ -204,7 +206,7 @@ static char *mode_mask_to_str(unsigned int mask)
 	size_t len, l;
 	int noax = 0;
 
-#if defined(RTCONFIG_WIFI_QCN5024_QCN5054)
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274)
 	if (!find_word(nvram_safe_get("rc_support"), "11AX"))
 		noax = 1;
 #endif
@@ -222,11 +224,11 @@ static char *mode_mask_to_str(unsigned int mask)
 
 		mask &= ~q->mask;
 		strlcat(p, sep, len);
-		l = strlen(sep);
+		l = safe_strlen(sep);
 		p += l;
 		len -= l;
 		strlcat(p, q->mode, len);
-		l = strlen(q->mode);
+		l = safe_strlen(q->mode);
 		p += l;
 		len -= l;
 		sep = "/";
@@ -265,15 +267,15 @@ char *getAPPhyModebyIface(const char *iface)
 		m = WL_N | WL_G | WL_B;
 	else if (!strncmp(mode, "11ACVHT", 7))
 		m = WL_AC | WL_N | WL_A;
-	else if (!strncmp(mode, "11AHE", 5))
-		m = WL_AX | WL_AC | WL_N | WL_A;
-	else if (!strncmp(mode, "11GHE", 5))
-		m = WL_AX | WL_N | WL_G | WL_B;
+	else if (!strncmp(mode, "11GEHT", 6))
+		m = WL_BE | WL_AX | WL_N | WL_B;
+	else if (!strncmp(mode, "11AEHT", 6))
+		m = WL_BE | WL_AX | WL_AC | WL_N | WL_A;
 	else if (!strncmp(mode, "AUTO", 4)) {
 		if (!strcmp(iface, get_staifname(WL_2G_BAND))) {
 			sta = 1;
 			m = WL_N | WL_G | WL_B;
-#if defined(RTCONFIG_WIFI_QCN5024_QCN5054)
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274)
 			m |= WL_AX;
 #endif
 		}
@@ -287,7 +289,7 @@ char *getAPPhyModebyIface(const char *iface)
 			) {
 			sta = 1;
 			m = WL_AC | WL_N | WL_A;
-#if defined(RTCONFIG_WIFI_QCN5024_QCN5054)
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274)
 			m |= WL_AX;
 #endif
 		}
@@ -300,7 +302,7 @@ char *getAPPhyModebyIface(const char *iface)
 
 	/* If puren is enabled, remove a/g/b. */
 	puren = iwpriv_get(iface, "get_puren");
-	if (!sta && safe_atoi(puren))
+	if (!sta && puren && safe_atoi(puren))
 		m &= ~(WL_A | WL_B | WL_G);
 
 	return mode_mask_to_str(m);
@@ -444,7 +446,7 @@ static unsigned int getAPChannelbyIWInfo(const char *ifname)
 	 * Freq = 60480
 	 */
 	r = f_read_string("/sys/kernel/debug/ieee80211/phy2/wil6210/freq", buf, sizeof(buf));
-	if (r < strlen("Freq = xxxxx"))
+	if (r < safe_strlen("Freq = xxxxx"))
 		return 0;
 
 	r = sscanf(buf, "Freq = %u", &freq);
@@ -687,25 +689,31 @@ static int __getAPBandwidth(const char *ifname, char *buf, size_t buf_len)
 
 	/* Ref to phymode_strings of qca-wifi driver.
 	 * "AUTO", "11A", "11B", "11G", "FH", "TA", "TG",
-	 * "11NGHT20", "11NAHT20", "11ACVHT20", "11AXA_HE20", "11AXG_HE20",
+	 * "11NGHT20", "11NAHT20", "11ACVHT20", "11AXA_HE20", "11AXG_HE20", "11GEHT20",
 	 * "11NGHT40PLUS", "11NGHT40MINUS", "11NGHT40", "11AXG_HE40MINUS", "11AXG_HE40",
+	 * "11GEHT40PLUS", "11GEHT40MINUS", "11GEHT40",
+	 * "11AEHT20",
 	 * "11NAHT40PLUS", "11NAHT40MINUS", "11NAHT40",
 	 * "11ACVHT40PLUS", "11ACVHT40MINUS", "11ACVHT40",
 	 * "11AXA_HE40PLUS", "11AXA_HE40MINUS", "11AXG_HE40PLUS", "11AXA_HE40",
-	 * "11ACVHT80", "11AXA_HE80",
-	 * "11ACVHT160", "11AXA_HE160",
+	 * "11AEHT40PLUS", "11AEHT40MINUS", "11AEHT40"
+	 * "11ACVHT80", "11AXA_HE80", "11AEHT80"
+	 * "11ACVHT160", "11AXA_HE160", "11AEHT160"
 	 * "11ACVHT80_80", "11AXA_HE80_80"
+	 * "11AEHT320"
 	 */
 	strlcpy(mode, m, sizeof(mode));
-	if (strstr(mode, "HE160") || strstr(mode, "VHT160"))
+	if (strstr(mode, "EHT320"))
+		strlcpy(buf, "320", buf_len);
+	else if (strstr(mode, "HE160") || strstr(mode, "VHT160") || strstr(mode, "EHT160"))
 		strlcpy(buf, "160", buf_len);
 	else if (strstr(mode, "HE80_80") || strstr(mode, "VHT80_80"))
 		strlcpy(buf, "80+80", buf_len);
-	else if (strstr(mode, "HE80") || strstr(mode, "VHT80"))
+	else if (strstr(mode, "HE80") || strstr(mode, "VHT80") || strstr(mode, "EHT80"))
 		strlcpy(buf, "80", buf_len);
-	else if (strstr(mode, "HT40") || strstr(mode, "HE40"))
+	else if (strstr(mode, "HT40") || strstr(mode, "HE40") || strstr(mode, "EHT40"))
 		strlcpy(buf, "40", buf_len);
-	else if (strstr(mode, "HT20") || strstr(mode, "HE20")
+	else if (strstr(mode, "HT20") || strstr(mode, "HE20") || strstr(mode, "EHT20")
 	     ||  !strcmp(mode, "AUTO") || !strcmp(mode, "11A") || !strcmp(mode, "11B")
 	     ||  !strcmp(mode, "11G") || !strcmp(mode, "FH") || !strcmp(mode, "TA") || !strcmp(mode, "TG"))
 		strlcpy(buf, "20", buf_len);
@@ -793,7 +801,7 @@ char* getSSIDbyIFace(int unit, const char *ifname)
 		if (!pt1)
 			return ssid;
 
-		pt2 = pt1 + strlen("ESSID:") + 1;	/* skip leading " */
+		pt2 = pt1 + safe_strlen("ESSID:") + 1;	/* skip leading " */
 		pt1 = strchr(pt2, '\n');
 		if (!pt1 || (pt1 - pt2) <= 1)
 			return ssid;
@@ -873,9 +881,9 @@ long getSTAConnTime(char *ifname, char *bssid)
 			buf[len-1] = '\0';
 			pt1 = strstr(buf, "connected_time=");
 			if (pt1) {
-				pt2 = pt1 + strlen("connected_time=");
+				pt2 = pt1 + safe_strlen("connected_time=");
 				chomp(pt2);
-				return atol(pt2);
+				return safe_atol(pt2);
 			}
 		}
 	}
@@ -916,6 +924,10 @@ static int __getSTAInfo(int unit, WIFI_STA_TABLE *sta_info, char *ifname, char i
 		snprintf(subunit_str, sizeof(subunit_str), "%d", subunit);
 	if (id == 'B' || id == 'F' || id == 'C')
 		snprintf(subunit_str, sizeof(subunit_str), "%c", id);
+#if defined(RTCONFIG_WIFI7)
+	if (is_iot_ifname(ifname))
+		snprintf(subunit_str, sizeof(subunit_str), "I");
+#endif
 
 	return get_qca_sta_info_by_ifname(ifname, subunit_str[0], sta_info);
 }
@@ -1067,7 +1079,7 @@ static int getNonStdGuestSTAInfo(int unit, char *ifnames,
 	char *p, *q, ifname[IFNAMSIZ];
 
 	if (absent_band(unit) || !ifnames || strncmp(ifnames, "wl", 2) ||
-	    strlen(ifnames) < 5 || !sta_info)
+	    safe_strlen(ifnames) < 5 || !sta_info)
 		return -1;
 
 	/* ifnames example: "wl0.6wl1.6", minus double quotes */
@@ -1219,7 +1231,7 @@ static int getSTAInfo(int unit, WIFI_STA_TABLE *sta_info)
 	unit_name = strdup(get_wifname(unit));
 	if (!unit_name)
 		return ret;
-#if defined(RTCONFIG_AMAS_WGN)  
+#if defined(RTCONFIG_AMAS_WGN) || defined(RTCONFIG_MULTILAN_CFG)
         wl_ifnames = get_all_lan_ifnames();
 #else
 	wl_ifnames = strdup(nvram_safe_get("lan_ifnames"));
@@ -1233,7 +1245,7 @@ static int getSTAInfo(int unit, WIFI_STA_TABLE *sta_info)
 		while (*ifname == ' ') ++ifname;
 		if (*ifname == 0) break;
 		SKIP_ABSENT_FAKE_IFACE(ifname);
-		if (strncmp(ifname, unit_name, strlen(unit_name)))
+		if (strncmp(ifname, unit_name, safe_strlen(unit_name)))
 			continue;
 
 #if defined(RTCONFIG_FBWIFI)
@@ -1296,6 +1308,9 @@ show_wliface_info(webs_t wp, int unit, char *ifname, char *op_mode)
 #endif
 	int i, ret = 0, cac = 0, radar_cnt = 0, radar_list[32];
 	uint64_t m = 0;
+#if defined(RTCONFIG_AMAS)
+	uint64_t all_ch_m = 0, unavbl_ch_m = 0;
+#endif
 	FILE *fp;
 	unsigned char mac_addr[ETHER_ADDR_LEN];
 	char tmpstr[1024], cmd[sizeof("iwconfig staXYYYYYY")], prefix[sizeof("wlX_XXX")];
@@ -1344,12 +1359,19 @@ show_wliface_info(webs_t wp, int unit, char *ifname, char *op_mode)
 	ret += websWrite(wp, "Phy Mode	: %s\n", tmpstr);
 	getVAPBitRate(unit, ifname, tmpstr, sizeof(tmpstr));
 	if (unit == WL_5G_BAND || unit == WL_5G_2_BAND) {
-		cac = safe_atoi(iwpriv_get(ifname, "get_cac_state"));
-		strcpy(vphy, get_vphyifname(swap_5g_band(unit)));
+		cac = safe_atoi(iwpriv_get(ifname, "get_cac_state")? : "0");
+		strlcpy(vphy, get_vphyifname(swap_5g_band(unit)), sizeof(vphy));
 		radar_cnt = get_radar_channel_list(vphy, radar_list, ARRAY_SIZE(radar_list));
 		for (i = 0; i < radar_cnt; ++i) {
 			m |= ch5g2bitmask(radar_list[i]);
 		}
+#if defined(RTCONFIG_AMAS)
+		all_ch_m = get_channel_list_mask(unit);
+		unavbl_ch_m = chlist5g2bitmask(nvram_pf_get(prefix, "unavbl_ch"), ",");
+		if (unavbl_ch_m && unavbl_ch_m == all_ch_m)
+			unavbl_ch_m = 0;
+		m |= unavbl_ch_m & DFS_CH_M;
+#endif
 	}
 	ret += websWrite(wp, "Bit Rate	: %s%s", tmpstr, cac? " (CAC scan)" : "");
 	getVAPBandwidth(unit, ifname, tmpstr, sizeof(tmpstr));
@@ -1393,7 +1415,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 #if !defined(RTCONFIG_CONCURRENTREPEATER)
 		/* Media bridge mode */
 		snprintf(prefix, sizeof(prefix), "wl%d.1_", unit);
-		ifname = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
+		ifname = nvram_pf_safe_get(prefix, "ifname");
 		if (unit != nvram_get_int("wlc_band")) {
 			snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 			ret += websWrite(wp, "%s radio is disabled\n",
@@ -1403,7 +1425,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 		ret += show_wliface_info(wp, unit, ifname, "Media Bridge");
 #else
 		snprintf(prefix, sizeof(prefix), "wl%d.1_", unit);
-		ifname = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
+		ifname = nvram_pf_safe_get(prefix, "ifname");
 		snprintf(wlc_prefix, sizeof(wlc_prefix), "wlc%d_", unit);
 		ret += show_wliface_info(wp, unit, ifname, "Media Bridge");
 		ret += websWrite(wp, "\n");
@@ -1423,7 +1445,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 			unit = 0;
 #else
 			snprintf(prefix, sizeof(prefix), "wl%d.1_", nvram_get_int("wlc_band"));
-			ifname = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
+			ifname = nvram_pf_safe_get(prefix, "ifname");
 			ret += show_wliface_info(wp, nvram_get_int("wlc_band"), ifname, "Repeater");
 			ret += websWrite(wp, "\n");
 #endif
@@ -1434,7 +1456,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 				if (nvram_get_int("wlc_express") == 0) {	/* concurrent repeater */
 					for (i = 0; i <= 1; i++) {
 						snprintf(prefix, sizeof(prefix), "wl%d.1_", i);
-						ifname = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
+						ifname = nvram_pf_safe_get(prefix, "ifname");
 						snprintf(wlc_prefix, sizeof(wlc_prefix), "wlc%d_", i);
 						ret += show_wliface_info(wp, i, ifname, "Repeater");
 						ret += websWrite(wp, "\n");
@@ -1442,7 +1464,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 				}
 				else {	/* express way (2G or 5G) */
 					snprintf(prefix, sizeof(prefix), "wl%d.1_", nvram_get_int("wlc_express") - 1);
-					ifname = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
+					ifname = nvram_pf_safe_get(prefix, "ifname");
 					snprintf(wlc_prefix, sizeof(wlc_prefix), "wlc%d_", nvram_get_int("wlc_express") - 1);
 					ret += show_wliface_info(wp, nvram_get_int("wlc_express") - 1, ifname, nvram_get_int("wlc_express") == 1 ? "Express Way 2.4 GHz" : "Express Way 5 GHz");
 					ret += websWrite(wp, "\n");
@@ -1459,7 +1481,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 #endif
 
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		ifname = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
+		ifname = nvram_pf_safe_get(prefix, "ifname");
 		if (!get_radio_status(ifname)) {
 #if defined(BAND_2G_ONLY)
 			ret += websWrite(wp, "2.4 GHz radio is disabled\n");
@@ -1477,7 +1499,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 			return ret;
 		}
 
-		wl_mode_x = nvram_get_int(strlcat_r(prefix, "mode_x", tmp, sizeof(tmp)));
+		wl_mode_x = nvram_pf_get_int(prefix, "mode_x");
 		op_mode = "AP";
 		if (wl_mode_x == 1)
 			op_mode = "WDS Only";
@@ -1504,19 +1526,26 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 			"idx", "MAC", "PhyMode", "RSSI", "TX_RATE", "RX_RATE", "Connect Time");
 
 		if ((sta_info = malloc(sizeof(*sta_info))) != NULL) {
+#if defined(RTCONFIG_WIFI7)
+			int decrease_idx = iot_exists() ? 1 : 0;
+#else
+			int decrease_idx = 0;
+#endif
 			getSTAInfo(unit, sta_info);
 			for(i = 0; i < sta_info->Num; i++) {
 				*subunit_str = '\0';
 				if (sta_info->Entry[i].subunit_id == '0')
 					strlcpy(subunit_str, "Main", sizeof(subunit_str));
 				else if (isdigit(sta_info->Entry[i].subunit_id))
-					snprintf(subunit_str, sizeof(subunit_str), "Guest Network-%c", sta_info->Entry[i].subunit_id);
+					snprintf(subunit_str, sizeof(subunit_str), "Guest Network-%c", sta_info->Entry[i].subunit_id - decrease_idx);
 				else if (sta_info->Entry[i].subunit_id == 'B')
 					strlcpy(subunit_str, "Facebook Wi-Fi", sizeof(subunit_str));
 				else if (sta_info->Entry[i].subunit_id == 'F')
 					strlcpy(subunit_str, "Free Wi-Fi", sizeof(subunit_str));
 				else if (sta_info->Entry[i].subunit_id == 'C')
 					strlcpy(subunit_str, "Captive Portal", sizeof(subunit_str));
+				else if (sta_info->Entry[i].subunit_id == 'I')
+					strlcpy(subunit_str, "IoT Network", sizeof(subunit_str));
 				else {
 					dbg("%s: Unknown subunit_id [%c]\n", sta_info->Entry[i].subunit_id);
 				}
@@ -1621,10 +1650,9 @@ int ej_wl_sta_list_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 #if defined(RTCONFIG_HAS_5G_2)
 	/* FIXME: I think it's not good to report 2-nd 5G station list in 1-st 5G station list. */
 	ej_wl_sta_list(2, wp);
-#else
+#endif
 	if(hook_get_json == 1)
 		websWrite(wp, "{}");
-#endif
 	return 0;
 }
 
@@ -1798,7 +1826,7 @@ char *getWscStatus(int unit)
 			buf[len-1] = '\0';
 			pt1 = strstr(buf, "Last WPS result: ");
 			if (pt1) {
-				pt2 = pt1 + strlen("Last WPS result: ");
+				pt2 = pt1 + safe_strlen("Last WPS result: ");
 				pt1 = strstr(pt2, "Peer Address: ");
 				if (pt1) {
 					*pt1 = '\0';
@@ -1874,7 +1902,7 @@ wl_wps_info(int eid, webs_t wp, int argc, char_t **argv, int unit)
 
 #if defined(RTCONFIG_WPSMULTIBAND)
 		SKIP_ABSENT_BAND(u);
-		if (!nvram_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp))))
+		if (!nvram_pf_get(prefix, "ifname"))
 			continue;
 #endif
 
@@ -1913,7 +1941,7 @@ wl_wps_info(int eid, webs_t wp, int argc, char_t **argv, int unit)
 
 		//6. WPS WPAKey
 #if 0	//hide for security
-		if (!strlen(result.WPAKey))
+		if (!safe_strlen(result.WPAKey))
 			retval += websWrite(wp, "%sNone%s\n", tag1, tag2);
 		else
 		{
@@ -1931,34 +1959,34 @@ wl_wps_info(int eid, webs_t wp, int argc, char_t **argv, int unit)
 
 		//8. Saved WPAKey
 #if 0	//hide for security
-		if (!strlen(nvram_safe_get(strlcat_r(prefix, "wpa_psk", tmp, sizeof(tmp)))))
+		if (!safe_strlen(nvram_pf_safe_get(prefix, "wpa_psk")))
 			retval += websWrite(wp, "%s%s%s\n", tag1, "None", tag2);
 		else
 		{
-			char_to_ascii(tmpstr, nvram_safe_get(strlcat_r(prefix, "wpa_psk", tmp, sizeof(tmp))));
+			char_to_ascii(tmpstr, nvram_pf_safe_get(prefix, "wpa_psk"));
 			retval += websWrite(wp, "%s%s%s\n", tag1, tmpstr, tag2);
 		}
 #else
 		retval += websWrite(wp, "%s%s\n", tag1, tag2);
 #endif
 		//9. WPS enable?
-		if (!strcmp(nvram_safe_get(strlcat_r(prefix, "wps_mode", tmp, sizeof(tmp))), "enabled"))
+		if (nvram_pf_match(prefix, "wps_mode", "enabled"))
 			retval += websWrite(wp, "%s%s%s\n", tag1, "None", tag2);
 		else
 			retval += websWrite(wp, "%s%s%s\n", tag1, nvram_safe_get("wps_enable"), tag2);
 
 		//A. WPS mode
 		wps_sta_pin = nvram_safe_get("wps_sta_pin");
-		if (strlen(wps_sta_pin) && strcmp(wps_sta_pin, "00000000"))
+		if (safe_strlen(wps_sta_pin) && strcmp(wps_sta_pin, "00000000"))
 			retval += websWrite(wp, "%s%s%s\n", tag1, "1", tag2);
 		else
 			retval += websWrite(wp, "%s%s%s\n", tag1, "2", tag2);
 
 		//B. current auth mode
-		if (!strlen(nvram_safe_get(strlcat_r(prefix, "auth_mode_x", tmp, sizeof(tmp)))))
+		if (!safe_strlen(nvram_pf_safe_get(prefix, "auth_mode_x")))
 			retval += websWrite(wp, "%s%s%s\n", tag1, "None", tag2);
 		else
-			retval += websWrite(wp, "%s%s%s\n", tag1, nvram_safe_get(strlcat_r(prefix, "auth_mode_x", tmp, sizeof(tmp))), tag2);
+			retval += websWrite(wp, "%s%s%s\n", tag1, nvram_pf_safe_get(prefix, "auth_mode_x"), tag2);
 
 		//C. WPS band
 		retval += websWrite(wp, "%s%d%s\n", tag1, u, tag2);
@@ -1974,13 +2002,45 @@ wl_wps_info(int eid, webs_t wp, int argc, char_t **argv, int unit)
 int
 ej_wps_info(int eid, webs_t wp, int argc, char_t **argv)
 {
-	return wl_wps_info(eid, wp, argc, argv, 1);
+	return wl_wps_info(eid, wp, argc, argv, WL_5G_BAND);
 }
 
 int
 ej_wps_info_2g(int eid, webs_t wp, int argc, char_t **argv)
 {
-	return wl_wps_info(eid, wp, argc, argv, 0);
+	return wl_wps_info(eid, wp, argc, argv, WL_2G_BAND);
+}
+
+int
+ej_wps_info_5g(int eid, webs_t wp, int argc, char_t **argv)
+{
+	return wl_wps_info(eid, wp, argc, argv, WL_5G_BAND);
+}
+
+int
+ej_wps_info_5g_2(int eid, webs_t wp, int argc, char_t **argv)
+{
+	return wl_wps_info(eid, wp, argc, argv, WL_5G_2_BAND);
+}
+
+int
+ej_wps_info_6g(int eid, webs_t wp, int argc, char_t **argv)
+{
+#if defined(RTCONFIG_HAS_6G)
+	return wl_wps_info(eid, wp, argc, argv, WL_6G_BAND);
+#else
+	return 0;
+#endif
+}
+
+int
+ej_wps_info_6g_2(int eid, webs_t wp, int argc, char_t **argv)
+{
+#if defined(RTCONFIG_HAS_6G_2)
+	return wl_wps_info(eid, wp, argc, argv, 3 /* FIXME: WL_6G_2_BAND */);
+#else
+	return 0;
+#endif
 }
 
 // Wireless Client List		 /* Start --Alicia, 08.09.23 */
@@ -2072,7 +2132,7 @@ static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 #endif
 	lock = file_lock("nvramcommit");
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-	snprintf(cmd, sizeof(cmd), "iwlist %s scanning", nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp))));
+	snprintf(cmd, sizeof(cmd), "iwlist %s scanning", nvram_pf_safe_get(prefix, "ifname"));
 	fp = popen(cmd, "r");
 	file_unlock(lock);
 #if defined(RTCONFIG_QCA_LBD)
@@ -2098,7 +2158,7 @@ static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 		{
 		   	while(fgets(buf[i], sizeof(buf[i]), fp))
 			{
-				fp_len += strlen(buf[i]);  	
+				fp_len += safe_strlen(buf[i]);  	
 				if(i!=0 && strstr(buf[i],"Cell") && strstr(buf[i],"Address"))
 				{
 					fseek(fp,-fp_len, SEEK_CUR);
@@ -2134,7 +2194,7 @@ static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 
 			pt2 = strstr(pt1,")");
 		   	memset(ch,0,sizeof(ch));
-			strlcpy(ch, pt1+strlen("Channel "), min(sizeof(ch), pt2-pt1-strlen("Channel ")+1));
+			strlcpy(ch, pt1+safe_strlen("Channel "), min(sizeof(ch), pt2-pt1-safe_strlen("Channel ")+1));
 		}   
 
 		//ssid
@@ -2142,7 +2202,7 @@ static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 		if(pt1)
 		{
 		   	memset(ssid,0,sizeof(ssid));
-			strlcpy(ssid, pt1+strlen("ESSID:")+1, min(sizeof(ssid), strlen(buf[1])-2-(pt1+strlen("ESSID:")+1-buf[1])+1));
+			strlcpy(ssid, pt1+safe_strlen("ESSID:")+1, min(sizeof(ssid), safe_strlen(buf[1])-2-(pt1+safe_strlen("ESSID:")+1-buf[1])+1));
 		}   
 
 
@@ -2151,7 +2211,7 @@ static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 		if(pt1)
 		{
 		   	memset(address,0,sizeof(address));
-			strlcpy(address, pt1+strlen("Address: "), min(sizeof(address), strlen(buf[0])-(pt1+strlen("Address: ")-buf[0])-1+1));
+			strlcpy(address, pt1+safe_strlen("Address: "), min(sizeof(address), safe_strlen(buf[0])-(pt1+safe_strlen("Address: ")-buf[0])-1+1));
 		}   
 	
 
@@ -2159,7 +2219,7 @@ static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 		pt1=strstr(buf[4],"Encryption key:");
 		if(pt1)
 		{   
-			if(strstr(pt1+strlen("Encryption key:"),"on"))
+			if(strstr(pt1+safe_strlen("Encryption key:"),"on"))
 			{  	
 				strlcpy(enc, "ENC", sizeof(enc));
 		
@@ -2182,7 +2242,7 @@ static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 			memset(sig,0,sizeof(sig));
 			memset(a1,0,sizeof(a1));
 			memset(a2,0,sizeof(a2));
-			strlcpy(a1, pt1+strlen("Quality="), min(sizeof(a1), pt2-pt1-strlen("Quality=")+1));
+			strlcpy(a1, pt1+safe_strlen("Quality="), min(sizeof(a1), pt2-pt1-safe_strlen("Quality=")+1));
 			strlcpy(a2, pt2+1, min(sizeof(a2), strstr(pt2," ")-(pt2+1)+1));
 			snprintf(sig, sizeof(sig), "%d",safe_atoi(a1)/safe_atoi(a2));
 
@@ -2263,9 +2323,9 @@ bypass:
 #endif
 
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-	country_code = nvram_get(strlcat_r(prefix, "country_code", tmp, sizeof(tmp)));
+	country_code = nvram_pf_safe_get(prefix, "country_code");
 
-	if (country_code == NULL || strlen(country_code) != 2) return retval;
+	if (country_code == NULL || safe_strlen(country_code) != 2) return retval;
 
 	//try getting channel list via wifi driver first
 #if defined(RTAC58U) || defined(RTAC59U)
@@ -2354,7 +2414,7 @@ static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	name = get_staifname(nvram_get_int("wlc_triBand"));
 #else
 	snprintf(prefix, sizeof(prefix), "wl%d.1_", unit);
-	name = nvram_safe_get(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)));
+	name = nvram_pf_safe_get(prefix, "ifname");
 #endif
 #if defined(RTCONFIG_WISP)
 	if(wisp_mode())
@@ -2405,7 +2465,7 @@ int
 ej_wl_rate_2g(int eid, webs_t wp, int argc, char_t **argv)
 {
 	if(sw_mode() == SW_MODE_REPEATER || wisp_mode())
-		return ej_wl_rate(eid, wp, argc, argv, 0);
+		return ej_wl_rate(eid, wp, argc, argv, WL_2G_BAND);
 	else if(check_user_agent(user_agent) != FROM_BROWSER)
 		return websWrite(wp, "\"\"");
 	else
@@ -2416,7 +2476,7 @@ int
 ej_wl_rate_5g(int eid, webs_t wp, int argc, char_t **argv)
 {
 	if(sw_mode() == SW_MODE_REPEATER || wisp_mode())
-		return ej_wl_rate(eid, wp, argc, argv, 1);
+		return ej_wl_rate(eid, wp, argc, argv, WL_5G_BAND);
 	else if(check_user_agent(user_agent) != FROM_BROWSER)
 		return websWrite(wp, "\"\"");
 	else
@@ -2427,23 +2487,57 @@ int
 ej_wl_rate_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 {
 	if(sw_mode() == SW_MODE_REPEATER || wisp_mode())
-		return ej_wl_rate(eid, wp, argc, argv, 2);
+		return ej_wl_rate(eid, wp, argc, argv, WL_5G_2_BAND);
 	else if(check_user_agent(user_agent) != FROM_BROWSER)
 		return websWrite(wp, "\"\"");
 	else
 		return websWrite(wp, "");
 }
 
+#if defined(RTCONFIG_HAS_6G)
 int
 ej_wl_rate_6g(int eid, webs_t wp, int argc, char_t **argv)
 {
 	if(sw_mode() == SW_MODE_REPEATER || wisp_mode())
-		return ej_wl_rate(eid, wp, argc, argv, 3);
+		return ej_wl_rate(eid, wp, argc, argv, WL_6G_BAND);
 	else if(check_user_agent(user_agent) != FROM_BROWSER)
 		return websWrite(wp, "\"\"");
 	else
 		return websWrite(wp, "");
 }
+#else
+int
+ej_wl_rate_6g(int eid, webs_t wp, int argc, char_t **argv)
+{
+	if(check_user_agent(user_agent) != FROM_BROWSER)
+		return websWrite(wp, "\"\"");
+	else
+		return websWrite(wp, "");
+}
+#endif	/* RTCONFIG_HAS_6G */
+
+#if defined(RTCONFIG_HAS_6G_2)
+int
+ej_wl_rate_6g_2(int eid, webs_t wp, int argc, char_t **argv)
+{
+	if (sw_mode() == SW_MODE_REPEATER || wisp_mode())
+		return ej_wl_rate(eid, wp, argc, argv, 3 /* FIXME: WL_6G_2_BAND */);
+	else if(check_user_agent(user_agent) != FROM_BROWSER)
+		return websWrite(wp, "\"\"");
+	else
+		return websWrite(wp, "");
+}
+#else
+int
+ej_wl_rate_6g_2(int eid, webs_t wp, int argc, char_t **argv)
+{
+	if(check_user_agent(user_agent) != FROM_BROWSER)
+		return websWrite(wp, "\"\"");
+	else
+		return websWrite(wp, "");
+}
+
+#endif	/* RTCONFIG_HAS_6G_2 */
 
 int
 ej_nat_accel_status(int eid, webs_t wp, int argc, char_t **argv)
@@ -2451,7 +2545,8 @@ ej_nat_accel_status(int eid, webs_t wp, int argc, char_t **argv)
 	return websWrite(wp, "%d", nat_acceleration_status());
 }
 
-#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274) \
+ || defined(RTCONFIG_QCA_AXCHIP)
 /* Hook validate_apply().
  * Sync wl[0~2]_yyy with wlx_yyy if yyy in global_params[].
  */
@@ -2471,7 +2566,7 @@ void __validate_apply_set_wl_var(char *nv, char *val)
 
 		for (band = WL_2G_BAND; band < min(MAX_NR_WL_IF, WL_5G_2_BAND + 1); ++band) {
 			snprintf(prefix, sizeof(prefix), "wl%d_", band);
-			if (!strncmp(nv, prefix, strlen(prefix)))
+			if (!strncmp(nv, prefix, safe_strlen(prefix)))
 				continue;
 			nvram_pf_set(prefix, *p, val);
 			_dprintf("%s: set %s%s=%s\n", __func__, prefix, *p, val? : "NULL");
@@ -2514,7 +2609,7 @@ ej_wl_auth_psta(int eid, webs_t wp, int argc, char_t **argv)
 
 const char *syslog_msg_filter[] = {
 	"net_ratelimit",
-#if defined(RTCONFIG_SOC_IPQ8074)
+#if defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ53XX)
 	"[AUTH] vap", "[MLME] vap", "[ASSOC] vap", "[INACT] vap", "LBDR ", "npu_corner", "apc_corner", "Sync active EEPROM set",
 	"wlan_send_mgmt", "hapdevent_proc_event", "HAPD:", "WSUP:", "APSTATS:", "THERMAL:", "skb recycler",
 #elif defined(RTCONFIG_SOC_IPQ8064)
@@ -2524,3 +2619,4 @@ const char *syslog_msg_filter[] = {
 	"ERROR: [send_redir_page",
 	NULL
 };
+

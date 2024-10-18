@@ -16,6 +16,7 @@
 <link rel="stylesheet" type="text/css" href="pwdmeter.css">
 <link rel="stylesheet" type="text/css" href="other.css">
 <link rel="stylesheet" type="text/css" href="css/confirm_block.css">
+<script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/js/confirm_block.js"></script>
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/help.js"></script>
@@ -23,7 +24,6 @@
 <script type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" src="/md5.js"></script>
 <script type="text/javascript" src="/validator.js"></script>
-<script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script type="text/javascript" src="/js/httpApi.js"></script>
 <style>
@@ -36,7 +36,9 @@
 	display: flex;
 	align-items: center;
 }
-
+.wpa_psk_input{
+    width: 100% !important;
+}
 .pwdmeter_container{
 	margin-left: 5px;
 	outline: 0px;
@@ -409,6 +411,10 @@ function initial(){
 		validator.ssidCheck($("#"+this.id), $("#ssid_msg"));
 	});
 
+	if(top.webWrapper){
+		$("input[name='wl_wpa_psk']").parent().css("flex-basis","60%");
+		$("input[name='wl_wpa_psk']").addClass("wpa_psk_input");
+	}
 	$("input[name='wl_wpa_psk']").parent().parent().append(Get_Component_PWD_Strength_Meter());
 	$("#scorebarBorder").addClass("pwdmeter_container short_pwdmeter");
 	$("#scorebarBorder *").addClass("short_pwdmeter");
@@ -421,6 +427,15 @@ function initial(){
 		if(based_modelid != 'RT-AX92U' || (wl_unit != '0' && wl_unit != '1')){
 			$("#twt_field").show();
 		}
+	}
+
+	if(isSupport("noWiFi")){
+		$("#wl_mode_field").hide();
+		$("#mbo_field").hide();
+		$("#wl_bw_field").hide();
+		$("#wl_channel_field").hide();
+		inputCtrl(document.form.wl_wpa_gtk_rekey, 0);
+		inputCtrl(document.form.wl_mfp, 0);
 	}
 }
 
@@ -461,11 +476,11 @@ function genBWTable(_unit){
 	}
 	else if (band60g_support && _unit == 3){
 		var ary = [], auto = [1], autoDesc = ["2.16"];
-		var bws = [6], bwsDesc = ["2.16 GHz"];
+		var bws = [10], bwsDesc = ["2.16 GHz"];
 		var ch_list = eval('<% channel_list_60g(); %>');
 
 		/* Generate all possible bandwidth */
-		for (var i = 7; i <= max_band60g_wl_bw; ++i) {
+		for (var i = 11; i <= max_band60g_wl_bw; ++i) {
 			if ((wigig_bw = wl_bw_to_wigig_bw(i)) <= 2160)
 				continue;
 			ary = filter_60g_edmg_channel_by_bw(ch_list, wigig_bw);
@@ -640,6 +655,33 @@ function add_options_value(o, arr, orig){
 		add_option(o, "mbss_"+arr, arr, 1);
 	else
 		add_option(o, "mbss_"+arr, arr, 0);
+}
+
+function saveParameterViaNvramSet(){
+	var postData = {"action_mode": "apply"};
+	var formData = new FormData(document.form);
+	var formDataObject = {};
+
+	formData.forEach(function(value, key) {
+		formDataObject[key] = value;
+	});
+
+	for(var nvram in formDataObject){
+		if(nvram.indexOf("wl_") == 0){
+			var nvram_RemoveSuffix = nvram.replace("wl_", "")
+			for(var band = 0; band < wl_nband_array.length; band++){
+				postData[`wl${band}_${nvram_RemoveSuffix}`] = formDataObject[nvram];
+			}
+		}
+	}
+
+	if(get_wl_unit_by_band("6G1"))
+		postData[`wl${get_wl_unit_by_band("6G1")}_auth_mode_x`] = "sae";
+
+	if(get_wl_unit_by_band("6G2"))
+		postData[`wl${get_wl_unit_by_band("6G2")}_auth_mode_x`] = "sae";
+
+	httpApi.nvramSet(postData);
 }
 
 function applyRule(){
@@ -834,6 +876,7 @@ function applyRule(){
 					htmlbodyforIE[0].style.overflow = "";
 					$("#loadingBlock").css('visibility', 'visible');
 					showLoading();
+					if(isSupport("noWiFi")){saveParameterViaNvramSet()}
 					document.form.submit();
 				},
 				left_button_args: {},
@@ -858,6 +901,7 @@ function applyRule(){
 		}
 		else{
 			showLoading();
+			if(isSupport("noWiFi")){saveParameterViaNvramSet()}
 			document.form.submit();
 		}
 	}
@@ -1567,7 +1611,7 @@ function handleMFP(){
 					</td>					
 				</tr>
 					  
-			  <tr>
+			  <tr id="wl_mode_field">
 					<th><a id="wl_mode_desc" class="hintstyle" href="javascript:void(0);" onClick="openHint(0, 4);"><#WLANConfig11b_x_Mode_itemname#></a></th>
 					<td>									
 						<select name="wl_nmode_x" class="input_option" onChange="wireless_mode_change(this);">
@@ -1842,3 +1886,4 @@ function handleMFP(){
 </script>
 </body>
 </html>
+

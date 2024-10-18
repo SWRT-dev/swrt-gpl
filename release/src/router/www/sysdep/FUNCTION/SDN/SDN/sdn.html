@@ -14,6 +14,7 @@
 <script type="text/javascript" src="/SDN/sdn.js"></script>
 </head>
 <script>
+const PAGE_CONTAINER = "sdn";
 var getUrlParameter = function getUrlParameter(param){
 	var url_parm = window.location.search.substring(1);
 	var parm_array = url_parm.split("&");
@@ -27,14 +28,13 @@ var getUrlParameter = function getUrlParameter(param){
 	}
 	return "";
 };
-var theme = getUrlParameter("current_theme").toLocaleUpperCase();
-var viewControl = getUrlParameter("wizard").toLocaleUpperCase();
-var profileControl = isNaN(parseInt(getUrlParameter("profile"))) ? "" : parseInt(getUrlParameter("profile"));
+var theme = getUrlParameter("current_theme").toUpperCase();
+if(theme == "GT") theme = "ROG";
 var app_control = {
 	"type": (function(){
-		var sdn_type = getUrlParameter("wizard").toLocaleUpperCase();
+		var sdn_type = getUrlParameter("wizard").toUpperCase();
 		var specific_type = wizard_type_text.filter(function(item, index, array){
-			return (item.type.toLocaleUpperCase() == sdn_type);
+			return (item.type.toUpperCase() == sdn_type);
 		})[0];
 		if(specific_type != undefined)
 			return specific_type.type;
@@ -50,7 +50,7 @@ var app_control = {
 	})()
 }
 $('link[group="extend_css"]').remove();
-if(theme == "WHITE" || theme == "ROG"){
+if(theme == "WHITE" || theme == "ROG" || theme == "TUF"){
 	$('link').last().after('<link group="extend_css" rel="stylesheet" type="text/css" href="/RWD_UI/rwd_component_' + theme + '.css">');
 	$('link').last().after('<link group="extend_css" rel="stylesheet" type="text/css" href="/SDN/sdn_' + theme + '.css">');
 }
@@ -70,7 +70,7 @@ function check_fbwifi2_id_secret(){
 }
 
 function initial(){
-	postMessageToApp({"web_ready": "1"});
+	postMessageToApp({"web_ready": "1", "web_init": "0"});
 
 	init_sdn_all_list();
 	show_loading_obj();
@@ -99,7 +99,7 @@ function initial(){
 
 	var delay_load = (app_control.type == "") ? 100 : 0;
 	setTimeout(function(){
-		if(theme == "WHITE" || theme == "ROG"){
+		if(theme == "WHITE" || theme == "ROG" || theme == "TUF"){
 			$('link').first().before('<link rel="stylesheet" type="text/css" href="/js/weekSchedule/schedule_ui_' + theme + '.css">');
 		}
 		$('link').first().before('<link rel="stylesheet" type="text/css" href="/js/weekSchedule/schedule_ui.css">');
@@ -113,25 +113,13 @@ function initial(){
 		$('<script />', { type : 'text/javascript', src : "/popup.js"}).appendTo('head');
 		$('<script />', { type : 'text/javascript', src : "/js/weekSchedule/schedule_ui.js"}).appendTo('head');
 		$('<script />', { type : 'text/javascript', src : "/form.js"}).appendTo('head');
-		if(isSwMode("rt")){
-			if(isSupport("captivePortal") && isSupport("cp_freewifi")){
-				$('<script />', { type : 'text/javascript', src : "/SDN/Captive_Portal/FreeWiFi_template.js"}).appendTo('head');
-				if(!isSupport("BUSINESS"))
-					$('<script />', { type : 'text/javascript', src : "/SDN/Captive_Portal/MessageBoard_template.js"}).appendTo('head');
-			}
-		}
 		$('<script />', { type : 'text/javascript', src : "/client_function.js"}).appendTo('head');
 		$('<script />', { type : 'text/javascript', src : "/js/qrcode/jquery.qrcode.min.js"}).appendTo('head');
-		if(is_Web_iframe)
-			showLoading = top.showLoading;
-		else
+		if(!is_Web_iframe)
 			showLoading = showLoading_RWD;//overwrite function
 
 		if(isSwMode("rt")){
 			Get_VPNC_Profile();
-			Get_DNS_List_DB();
-			if(isSupport("BUSINESS"))
-				Get_Scenarios_List();
 		}
 
 		if(app_control.type != ""){
@@ -149,6 +137,23 @@ function initial(){
 				$(".popup_container.popup_element_second").addClass("hide_title_cntr full_width mobile_view").find(".popup_title_container").hide();
 			}
 			$(".container, .hidden_mask").hide();
+		}
+
+		postMessageToApp({"web_init": "1"});
+
+		if(isSwMode("rt")){
+			Get_DNS_List_DB();
+			if(app_control.type == ""){
+				if(isSupport("BUSINESS")){
+					Get_Scenarios_List();
+				}
+			}
+
+			if(isSupport("captivePortal") && isSupport("cp_freewifi")){
+				Get_FreeWiFi_template();
+				if(!isSupport("BUSINESS"))
+					Get_MessageBoard_template();
+			}
 		}
 
 		if(isSupport("fbwifi_sdn"))
@@ -203,6 +208,8 @@ function initial(){
 		display: flex;
 		flex-direction: column;
 		justify-content: space-between;
+		font-family: Arial;
+		color: #000;
 	}
 	.print_wifi_info_title{
 		font-size: 1.25em;
@@ -220,9 +227,18 @@ function initial(){
 		flex-direction: column;
 		justify-content: space-evenly;
 	}
-	.print_qrcode_img{
+	.print_qrcode_img_cntr{
+		border: 0.5em solid #000;
+		border-radius: 4px;
 		height: 8em;
 		width: 8em;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+	.print_qrcode_img{
+		height: 90%;
+		width: 90%;
 		background-size: contain;
 	}
 	.print_qrcode_desc{
@@ -239,12 +255,25 @@ function initial(){
 	.print_wifi_info_cntr{
 		width: 80%;
 		padding: 16px;
-		border: 1px solid rgb(220, 220, 220);
+		padding-top: 1.5em;
 		font-size: 1em;
+		position: relative;
+	}
+	.print_wifi_info_cntr:before{
+		content: "";
+		position: absolute;
+		width: 80%;
+		border-top: 1px solid rgb(220, 220, 220);
+		top: 0;
+		left: 0;
+		right: 0;
+		margin: auto;
 	}
 	.print_wifi_info_cntr .print_wifi_info{
 		display: flex;
 		align-items: center;
+		flex-direction: column;
+		margin-bottom: 1.5em;
 	}
 	.print_wifi_info_cntr .print_wifi_info:not(:first-child){
 		margin-top: 0.75em
@@ -254,13 +283,9 @@ function initial(){
 		word-break: break-all;
 	}
 	.print_wifi_info .print_wifi_text{
-		font-size: 1.25em;
+		font-size: 1.5em;
 		font-weight: 700;
-	}
-	.print_manually_desc{
-		font-size: 1em;
-		text-align: center;
-		width: 80%;
+		margin-top: .5em;
 	}
 	.print_bottom_desc{
 		font-size: 0.75em;
@@ -278,25 +303,26 @@ function initial(){
 			<div id="print_wifi_info_desc" class="print_wifi_info_desc">ASUS ExpertWiFi</div>
 			<div style="height: 2.5em;"></div>
 			<div class="print_qrcode_info_cntr">
-				<div id="print_qrcode_img" class="print_qrcode_img"></div>
+				<div class="print_qrcode_img_cntr">
+					<div id="print_qrcode_img" class="print_qrcode_img"></div>
+				</div>
 				<div class="print_qrcode_desc"><#Scan_QR_Code_To_Connect_Desc#></div>
 			</div>
 			<div style="height: 2.5em;"></div>
 			<div class="print_manually_info_cntr">
 				<div class="print_wifi_info_cntr">
 					<div id="print_wifi_ssid_cntr" class="print_wifi_info">
-						<div><#QIS_finish_wireless_item1#>:</div>
+						<div><#QIS_finish_wireless_item1#></div>
 						<div id="print_wifi_ssid" class="print_wifi_text"></div>
 					</div>
 					<div id="print_wifi_pwd_cntr" class="print_wifi_info">
-						<div><#HSDPAConfig_Password_itemname#>:</div>
+						<div><#QIS_finish_wireless_item2#></div>
 						<div id="print_wifi_pwd" class="print_wifi_text"></div>
 					</div>
-				</div>
-				<div style="height: 1em;"></div>
-				<div class="print_manually_desc">
-					<div data-group="wifi_manually_desc" data-component="wifi_open"><#Manually_Connect_To_Network#></div>
-					<div data-group="wifi_manually_desc" data-component="wifi_pwd"><#Manually_Connect_To_Network#></div>
+					<div id="print_wifi_passcode_cntr" class="print_wifi_info">
+						<div><#FreeWiFi_Passcode#></div>
+						<div id="print_wifi_passcode" class="print_wifi_text"></div>
+					</div>
 				</div>
 			</div>
 		</div>

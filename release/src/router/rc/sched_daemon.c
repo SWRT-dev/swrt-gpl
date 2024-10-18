@@ -268,11 +268,16 @@ static void sched_daemon(int sig)
 
 // the svcStatus and vif_svcstatus is used to save previous radio state.
 static int svcStatus[12] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+#if defined(RTCONFIG_MULTILAN_CFG)
 static int vif_svcStatus[12][32];
-static void reset_svc_status() {
-	int unit = 0, subunit;
+#endif
+
+static void reset_svc_status()
+{
+	int unit = 0;
 	char word[256], *next;
 #if defined(RTCONFIG_MULTILAN_CFG)
+	int subunit;
 	char word2[256], *next2;
 	char nv[81];
 #endif
@@ -379,11 +384,11 @@ void wl_sched_v1(void)
 #endif
 
 			if (activeNow == 0) {
-				eval("radio", "off", tmp);
+				set_wlan_service_status(atoi(tmp), -1, 0);
 				SCHED_DAEMON_DBG(" Turn radio [band_index=%s] off", tmp);
 				logmessage("wifi scheduler", "Turn radio [band_index=%s] off.", tmp);
 			} else {
-				eval("radio", "on", tmp);
+				set_wlan_service_status(atoi(tmp), -1, 1);
 				SCHED_DAEMON_DBG(" Turn radio [band_index=%s] on", tmp);
 				logmessage("wifi scheduler", "Turn radio [band_index=%s] on.", tmp);
 			}
@@ -394,6 +399,12 @@ void wl_sched_v1(void)
 	}
 }
 #else
+#if defined(RTCONFIG_MULTILAN_CFG)
+extern wifi_band_cap_st band_cap[MAX_BAND_CAP_LIST_SIZE];
+extern int band_cap_total;
+extern int is_reserved_if(int unit, int subunit);
+#endif
+
 void wl_sched_v2(void)
 {
 	int activeNow;
@@ -435,6 +446,12 @@ void wl_sched_v2(void)
 		reset_svc_status();
 	}
 
+#ifdef RTCONFIG_MULTILAN_CFG
+	band_cap_total = 0;
+	memset(band_cap, 0, (sizeof(wifi_band_cap_st)*MAX_BAND_CAP_LIST_SIZE));
+	get_wifi_band_cap(band_cap, MAX_BAND_CAP_LIST_SIZE, &band_cap_total);
+#endif
+
 	// radio on/off
 	if (nvram_match("svc_ready", "1") && nvram_match("wlready", "1"))
 	foreach (word, nvram_safe_get("wl_ifnames"), next) {
@@ -453,6 +470,12 @@ void wl_sched_v2(void)
 			if ((nvram_get_int(strcat_r(prefix2, "radio", tmp)) == 0) ||
 				(nvram_get_int(strcat_r(prefix2, "bss_enabled", tmp2)) == 0)/* || 
 				(timesched == 0)*/) {
+				subunit++;
+				continue;
+			}
+
+			if (is_reserved_if(unit, subunit)) {
+				SCHED_DAEMON_DBG("[wifi-scheduler] [wl%d.%d] is reserved interface. bypass it.\n", unit, subunit);
 				subunit++;
 				continue;
 			}
@@ -525,11 +548,11 @@ void wl_sched_v2(void)
 #endif
 
 				if (activeNow2 == 0) {
-					eval("radio", "off", tmp, tmp2);
+					set_wlan_service_status(atoi(tmp), atoi(tmp2), 0);
 					SCHED_DAEMON_DBG("[wifi-scheduler] Turn radio [band_index=%s, subunit=%s] off\n", tmp, tmp2);
 					logmessage("wifi scheduler", "Turn radio [band_index=%s, subunit=%s] off.", tmp, tmp2);
 				} else {
-					eval("radio", "on", tmp, tmp2);
+					set_wlan_service_status(atoi(tmp), atoi(tmp2), 1);
 					SCHED_DAEMON_DBG("[wifi-scheduler] Turn radio [band_index=%s, subunit=%s] on\n", tmp, tmp2);
 					logmessage("wifi scheduler", "Turn radio [band_index=%s, subunit=%s] on.", tmp, tmp2);
 				}	
@@ -591,11 +614,11 @@ void wl_sched_v2(void)
 #endif
 
 			if (activeNow == 0) {
-				eval("radio", "off", tmp);
+				set_wlan_service_status(atoi(tmp), -1, 0);
 				SCHED_DAEMON_DBG(" Turn radio [band_index=%s] off", tmp);
 				logmessage("wifi scheduler", "Turn radio [band_index=%s] off.", tmp);
 			} else {
-				eval("radio", "on", tmp);
+				set_wlan_service_status(atoi(tmp), -1, 1);
 				SCHED_DAEMON_DBG(" Turn radio [band_index=%s] on", tmp);
 				logmessage("wifi scheduler", "Turn radio [band_index=%s] on.", tmp);
 			}
@@ -664,6 +687,12 @@ static void task_wireless_schedule(void)
 	wl_sched_v1();
 #else
 	wl_sched_v2();
+#endif
+#ifdef RTCONFIG_FU_TEST
+	time_t now = time(NULL);
+	char now_s[16];
+	snprintf(now_s, sizeof(now_s), "%u", now);
+	nvram_set("sched_last_ts", now_s);
 #endif
 #ifdef USE_TIMERUTIL
 	mod_timer(timer, PERIOD_30_SEC);

@@ -21,7 +21,8 @@
 
 #include "rtconfig.h"
 
-#if defined(RTCONFIG_SOC_IPQ40XX) || defined(RTCONFIG_SOC_IPQ50XX) || defined(RTCONFIG_SOC_IPQ60XX)
+#if defined(RTCONFIG_SOC_IPQ40XX) || defined(RTCONFIG_SOC_IPQ50XX) || defined(RTCONFIG_SOC_IPQ60XX) \
+	 || defined(RTCONFIG_SOC_IPQ53XX)
 #define NR_WANLAN_PORT	5
 #elif defined(RAX120)
 #define NR_WANLAN_PORT	6
@@ -127,6 +128,13 @@ enum {
 	WAN_PORT,
 	MAX_WANLAN_PORT
 #endif
+#elif defined(RTCONFIG_SOC_IPQ53XX)
+	LAN1_PORT=0,
+	LAN2_PORT,
+	LAN3_PORT,
+	LAN4_PORT,
+	WAN_PORT,
+	MAX_WANLAN_PORT
 #endif
 };
 
@@ -140,14 +148,17 @@ enum {
 #define QCA8074V2_I_INI		GLOBAL_INI_TOPDIR "/internal/QCA8074V2_i.ini"
 #if defined(RTCONFIG_SOC_IPQ60XX)
 #define QCA6018_I_INI		GLOBAL_INI_TOPDIR "/internal/QCA6018_i.ini"
+#elif defined(RTCONFIG_SOC_IPQ53XX)
+#define QCA5332_I_INI		GLOBAL_INI_TOPDIR "/internal/QCA5332_i.ini"
+#define QCN9224_I_INI		GLOBAL_INI_TOPDIR "/internal/QCN9224_i.ini"
 #endif
 #define CNSS2_SYSFS_COLDBOOT	"/sys/module/cnss2/parameters/cold_boot_support"
 #define CNSS2_SYSFS_DAEMON	"/sys/module/cnss2/parameters/daemon_support"
 
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054)
 #define EXTRA_PBUF_CORE0_FN		"/proc/sys/dev/nss/n2hcfg/extra_pbuf_core0"
-#define N2H_QUEUE_LIMIT_CORE0_FN	"/proc/sys/dev.nss/n2hcfg/n2h_queue_limit_core0"
-#define N2H_QUEUE_LIMIT_CORE1_FN	"/proc/sys/dev.nss/n2hcfg/n2h_queue_limit_core1"
+#define N2H_QUEUE_LIMIT_CORE0_FN	"/proc/sys/dev/nss/n2hcfg/n2h_queue_limit_core0"
+#define N2H_QUEUE_LIMIT_CORE1_FN	"/proc/sys/dev/nss/n2hcfg/n2h_queue_limit_core1"
 #else
 #define EXTRA_PBUF_CORE0_FN		"/proc/sys/dev/nss/general/extra_pbuf_core0"
 #endif
@@ -183,10 +194,8 @@ extern const char WIF_60G[];
 extern const char STA_60G[];
 extern const char VPHY_60G[];
 
-extern const char *max_2g_ax_mode;
-extern const char *max_5g_ax_mode;
-extern const char *max_2g_n_mode;
-extern const char *max_5g_ac_mode;
+extern const char *max_2g_n_mode, *max_2g_ax_mode, *max_2g_be_mode;
+extern const char *max_5g_ac_mode, *max_5g_ax_mode, *max_5g_be_mode;
 extern const char *bw20[2], *bw40[2], *bw80[2];
 extern const char *bw80_80_tbl[2], *bw160_tbl[2];
 
@@ -197,6 +206,9 @@ extern const char *bw80_80_tbl[2], *bw160_tbl[2];
 #elif defined(RTCONFIG_SWITCH_IPQ50XX_QCA8337)
 #define SWID_IPQ50XX    "sw0"
 #define SWID_QCA8337    "sw1"
+#elif defined(RTCONFIG_SOC_IPQ53XX) && defined(RTCONFIG_SWITCH_QCA8386)
+#define SWID_IPQ53XX    "sw0"
+#define SWID_QCA8386    "sw1"
 #endif
 
 #define QWPA_CLI		"/usr/bin/wpa_cli"		/* wpa_cli, installed by qca-hostap */
@@ -260,6 +272,17 @@ enum ieee80211_phymode {
     IEEE80211_MODE_11AXA_HE80       = 30,   /* 5GHz, HE80 */
     IEEE80211_MODE_11AXA_HE160      = 31,   /* 5GHz, HE160 */
     IEEE80211_MODE_11AXA_HE80_80    = 32,   /* 5GHz, HE80_80 */
+    IEEE80211_MODE_11BEA_EHT20       = 33,   /* 5GHz, EHT20 */
+    IEEE80211_MODE_11BEG_EHT20       = 34,   /* 2GHz, EHT20 */
+    IEEE80211_MODE_11BEA_EHT40PLUS   = 35,   /* 5GHz, EHT40 (ext ch +1) */
+    IEEE80211_MODE_11BEA_EHT40MINUS  = 36,   /* 5GHz, EHT40 (ext ch -1) */
+    IEEE80211_MODE_11BEG_EHT40PLUS   = 37,   /* 2GHz, EHT40 (ext ch +1) */
+    IEEE80211_MODE_11BEG_EHT40MINUS  = 38,   /* 2GHz, EHT40 (ext ch -1) */
+    IEEE80211_MODE_11BEA_EHT40       = 39,   /* 5GHz, EHT40 */
+    IEEE80211_MODE_11BEG_EHT40       = 40,   /* 2GHz, EHT40 */
+    IEEE80211_MODE_11BEA_EHT80       = 41,   /* 5GHz, EHT80 */
+    IEEE80211_MODE_11BEA_EHT160      = 42,   /* 5GHz, EHT160 */
+    IEEE80211_MODE_11BEA_EHT320      = 43,   /* 5GHz, EHT320 */
 
     IEEE80211_MODE_MAX
 };
@@ -555,6 +578,10 @@ enum ASUS_IOCTL_SUBCMD {
 #define ETH2_MAC_OFFSET			(0x4B000+0x100E)	/* 2G-2 EEPROM, first set of MAC address. */
 #endif
 
+#elif defined(RTCONFIG_WIFI_IPQ53XX_QCN6274)
+#define ETH0_MAC_OFFSET			0x1016				/* 2G EEPROM, first set of MAC address, for 2G (ath0). */
+#define ETH1_MAC_OFFSET			(QCA_2G_EEPROM_SIZE + 0x1010)	/* 5G EEPROM, first set of MAC address, for 5G (ath1). */
+
 #else
 #error Define MAC address offset.
 #endif
@@ -580,6 +607,10 @@ enum ASUS_IOCTL_SUBCMD {
 
 #elif defined(RTCONFIG_SOC_IPQ50XX)
 #define FTRY_PARM_SHIFT			(0x5F800)  /* (150KB * 3) - (16KB + 0xD000) */
+
+#elif defined(RTCONFIG_WIFI_IPQ53XX_QCN6274)
+/* 0x100 + 150k + 200k, ref. slot_X_size in ftm.conf */
+#define FTRY_PARM_SHIFT			(0x58800)
 
 #else /* Non QCN50XX, Legacy */
 #define FTRY_PARM_SHIFT			(0)
@@ -647,7 +678,7 @@ enum ASUS_IOCTL_SUBCMD {
 #if defined(RTCONFIG_SOC_IPQ60XX)
 #define	QCN50X4_EEPROM_SIZE		65536
 #else // @RTCONFIG_SOC_IPQ60XX
-#define	QCN50X4_EEPROM_SIZE		131072
+#define	QCN50X4_EEPROM_SIZE		131072	/* size of bdwlan.bin */
 #endif
 
 #elif defined(RTCONFIG_SOC_IPQ60XX)
@@ -660,6 +691,12 @@ enum ASUS_IOCTL_SUBCMD {
 #define OFFSET_MAC_ADDR			(MTD_FACTORY_BASE_ADDRESS + ETH1_MAC_OFFSET)	/* MAC address in 2G+5G EEPROM */
 #define OFFSET_MAC_ADDR_5G_2		(MTD_FACTORY_BASE_ADDRESS + ETH2_MAC_OFFSET)
 #define	QCN90XX_EEPROM_SIZE		131072
+
+#elif defined(RTCONFIG_WIFI_IPQ53XX_QCN6274)
+#define OFFSET_MAC_ADDR_2G		(MTD_FACTORY_BASE_ADDRESS + ETH0_MAC_OFFSET)	/* 1st MAC address in 2G EEPROM, for 2G (ath0). */
+#define OFFSET_MAC_ADDR			(MTD_FACTORY_BASE_ADDRESS + ETH1_MAC_OFFSET)	/* 1st MAC address in 5G EEPROM, for 5G (ath1). */
+#define	IPQ53XX_EEPROM_SIZE		0xf800	/* size of bdwlan.b12 */
+#define QCN6274_EEPROM_SIZE		0x18800	/* size of bdwlan_5G.b0015 */
 
 #else
 #error Define EEPROM offset and size
@@ -729,6 +766,8 @@ enum ASUS_IOCTL_SUBCMD {
 
 #define OFFSET_HWID			(MTD_FACTORY_BASE_ADDRESS + FTRY_PARM_SHIFT + 0x0FF00)  /*  4 bytes */
 #define HWID_LENGTH			(4)
+#define OFFSET_HWCOBRAND		(MTD_FACTORY_BASE_ADDRESS + FTRY_PARM_SHIFT + 0x0FF08)  /*  1 bytes */
+#define HWCOBRAND_LENGTH		(1)
 #define OFFSET_HWVERSION		(MTD_FACTORY_BASE_ADDRESS + FTRY_PARM_SHIFT + 0x0FF10)  /*  8 bytes */
 #define HWVERSION_LENGTH		(8)
 #define OFFSET_DATECODE			(MTD_FACTORY_BASE_ADDRESS + FTRY_PARM_SHIFT + 0x0FF18)  /*  8 bytes */
@@ -795,6 +834,16 @@ enum ASUS_IOCTL_SUBCMD {
 #define QCA_5G_EEPROM_SIZE		(QCN90XX_EEPROM_SIZE)
 #define QCA_5G2_EEPROM_SIZE		(QCN90XX_EEPROM_SIZE)
 
+#elif defined(RTCONFIG_WIFI_IPQ53XX_QCN6274)
+
+#define QCA_2G_EEPROM_CSUM_OFFSET	(0xc)		/* unit: byte */
+#define QCA_5G_EEPROM_CSUM_OFFSET	(0xc)		/* unit: byte */
+/* Reference to /lib/read_caldata_to_fs.sh and slot_X_size in ftm.conf
+ * it may >= size of boarddata file which is specified in XXX_EEPROM_SIZE.
+ */
+#define QCA_2G_EEPROM_SIZE		(150 * 1024)	/* slot_0_size */
+#define QCA_5G_EEPROM_SIZE		(200 * 1024)	/* slot_1_size */
+
 #endif
 
 /*
@@ -833,11 +882,18 @@ enum ASUS_IOCTL_SUBCMD {
 #define MII_IFNAME	"eth0"
 #elif defined(RTCONFIG_SOC_IPQ50XX)
 #define MII_IFNAME	"eth1"	/* SGMII+ */
+#elif defined(RTCONFIG_SOC_IPQ53XX)
+/*
+ * /# swconfig list
+ * Found: switch0 - QCA APPE
+ * Found: switch1 - QCA MHT
+ */
+#define MII_IFNAME	"switch0"	/* FIXME: Which one we should use? */
 #else
 #error Define MII_IFNAME interface!
 #endif
 
-#if defined(RTCONFIG_SOC_IPQ8074)
+#if defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ53XX)
 #define UNSQUASHFS	"/usr/sbin/unsquashfs"
 #define SQUASHFS_ROOT	"/tmp/.squashfs-root"
 #endif	/* RTCONFIG_SOC_IPQ8074 */
@@ -903,6 +959,15 @@ typedef struct {
 #define BD_5G_HW_DIR	"."
 #define BD_5G2_CHIP_DIR	"qcn9100"
 #define BD_5G2_HW_DIR	"."
+#elif defined(RTCONFIG_WIFI_IPQ53XX_QCN6274)
+#define BD_2G_PREFIX	"bdwlan.b12"
+#define BD_2G_CHIP_DIR	"IPQ5332"
+#define BD_2G_HW_DIR	"."
+#define BD_5G_PREFIX	"bdwlan.b0015"
+#define BD_5G_CHIP_DIR	"qcn9224"
+#define BD_5G_HW_DIR	"."
+#define REGDB_2G_FN	"IPQ5332/regdb.bin"
+#define REGDB_5G_FN	"qcn9224/regdb.bin"
 #elif defined(RTAC58U) || defined(VZWAC1300) || defined(SHAC1300) || defined(RT4GAC53U)
 #define BD_2G_PREFIX	"boardData_1_0_IPQ4019_Y9803_wifi0"
 #define BD_5G_PREFIX	"boardData_1_0_IPQ4019_Y9803_wifi1"
@@ -965,6 +1030,18 @@ typedef struct {
 #define BD_5G_HW_DIR	"hw.2"
 #endif
 
+#ifndef BD_2G_FNEXT
+#define BD_2G_FNEXT	"bin"
+#endif
+
+#ifndef BD_5G_FNEXT
+#define BD_5G_FNEXT	"bin"
+#endif
+
+#ifndef BD_5G2_FNEXT
+#define BD_5G2_FNEXT	"bin"
+#endif
+
 #define	QCA_MACCMD	"maccmd"
 #define	QCA_GETCMD	"get_maccmd"
 #define	QCA_ADDMAC	"addmac"
@@ -989,7 +1066,7 @@ extern int get_integer_parameter_from_ini_file(const char *param_name, int *para
 extern int get_channf(int band, const char *ifname);
 extern int __get_qca_sta_info_by_ifname(const char *ifname, char subunit_id, int (*handler)(const WLANCONFIG_LIST *rptr, void *arg), void *arg);
 extern int get_qca_sta_info_by_ifname(const char *ifname, char subunit_id, WIFI_STA_TABLE *sta_info);
-#if defined(RTCONFIG_AMAS_WGN) || defined(RTCONFIG_SOC_IPQ40XX)
+#if defined(RTCONFIG_AMAS_WGN) || defined(RTCONFIG_SOC_IPQ40XX) || defined(RTCONFIG_MULTILAN_CFG)
 extern char* get_all_lan_ifnames(void);
 extern int check_vlan_invalid(char *word,char *iface);
 #endif
@@ -1003,3 +1080,4 @@ static inline int nss_wifi_offloading(void) { return 0; }
 #endif
 
 #endif	/* _QCA_H_ */
+

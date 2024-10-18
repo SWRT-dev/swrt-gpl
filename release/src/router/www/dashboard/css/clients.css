@@ -38,7 +38,7 @@
 .content-data-title {
     color: var(--text-title-color);
     font-size: 16px;
-    font-weight: 500;
+    font-weight: bolder;
 }
 .chart-color-2g1 {
     background-color: var(--circle-chart-color-1);
@@ -360,6 +360,10 @@
     height: 1px;
     background-color: var(--bg-divide-line-color);
 }
+.clientBorder{
+    border: 1px solid var(--bg-divide-line-color);
+    border-radius: 16px;
+}
 .icon-color-active-1 {
     background-color: var(--icon-active-color);
 }
@@ -442,8 +446,8 @@ div[role~="icon-inner"] {
     position: absolute;
     top: 12px;
     right: 12px;
-    background-color: var(--bg-shade-color);
     border-radius: 4px;
+    border: 1px solid var(--bg-divide-line-color);
 }
 
 .detail-table-height {
@@ -477,4 +481,16 @@ div[role~="icon-inner"] {
         overflow-y: hidden;
         max-height: none;
     }
+}
+.top5Table{
+    min-height: 300px;
+}
+.aiProtection-scenario {
+    width: 75%;
+}
+.text-primary {
+    color: var(--bg-btn-confirm-color) !important;
+}
+.fixedChartSize {
+    height: 300px !important;
 }

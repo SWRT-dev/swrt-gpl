@@ -11,6 +11,9 @@
 #ifdef RTCONFIG_QCA
 #include <qca.h>
 #endif
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
+#include "flash_mtd.h"
+#endif
 #include "ate.h"
 #ifdef RTCONFIG_INTERNAL_GOBI
 #include <at_cmd.h>
@@ -195,6 +198,26 @@ static int setAllSpecificColorLedOn(enum ate_led_color color)
 		}
 		break;
 #endif
+#if defined(TUFBE6500)
+	case MODEL_TUFBE6500:
+		{
+			static enum led_id white_led[] = {
+				LED_POWER,
+				LED_WAN,
+				LED_LAN,
+				LED_2G, LED_5G,
+				LED_ID_MAX
+			};
+			static enum led_id red_led[] = {
+				LED_WAN_RED,
+				LED_ID_MAX
+			};
+
+			all_led[LED_COLOR_WHITE] = white_led;
+			all_led[LED_COLOR_RED] = red_led;
+		}
+		break;
+#endif
 #if defined(TUFAX4200) || defined(TUFAX6000)
 	case MODEL_TUFAX4200:
 	case MODEL_TUFAX6000:
@@ -234,14 +257,19 @@ static int setAllSpecificColorLedOn(enum ate_led_color color)
 		}
 		break;
 #endif	/* TUFAX4200, TUFAX6000 */
-#if defined(RTAC82U)
+#if defined(RTAC82U) || defined(RTAX57M)
 	case MODEL_RTAC82U:
+	case MODEL_RTAX57M:
 		{
 			static enum led_id blue_led[] = {
 				LED_POWER, LED_WAN, 
 				LED_2G, LED_5G,
+#ifdef RTCONFIG_LAN4WAN_LED
 				LED_LAN1,LED_LAN2,
 				LED_LAN3,LED_LAN4,
+#else
+				LED_LAN,
+#endif
 				LED_ID_MAX
 			};
 			static enum led_id red_led[] = {
@@ -2161,7 +2189,11 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
  || defined(RTCONFIG_PWMX1_GPIOX3_RGBLED) \
  || defined(RTCONFIG_PWMX2_GPIOX1_RGBLED) \
  || defined(RTCONFIG_PWMX3_RGBLED)
-		set_rgbled(RGBLED_ATE_MODE);
+		set_rgbled(RGBLED_ATE_MODE
+#if defined(RTCONFIG_ZENWIFI_RGBLED)
+			 | RGBLED_WHITE
+#endif
+			  );
 #endif
 		puts("1");
 		return 0;
@@ -2533,7 +2565,7 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 #endif
 #endif	/* RTCONFIG_HAS_5G */
 
-#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
+#if defined(RTCONFIG_HAS_6G)
 	else if (!strcmp(command, "Set_MacAddr_6G")) {
 #if defined(RTCONFIG_CFEZ) && defined(RTCONFIG_BCMARM)
 		if (!chk_envrams_proc())
@@ -3238,7 +3270,7 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 #endif
 		return 0;
 	}
-#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
+#if defined(RTCONFIG_WIFI6E) || (defined(RTCONFIG_WIFI7) && !defined(RTCONFIG_WIFI7_NO_6G))
 	else if (!strcmp(command, "Get_SSID_6G")) {
 #if defined(RTCONFIG_BCMARM) && defined(RTCONFIG_HAS_6G_2)
 		puts(nvram_safe_get("wl1_ssid"));
@@ -3297,7 +3329,7 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 		return 0;
 	}
 #endif
-#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
+#if defined(RTCONFIG_WIFI6E) || (defined(RTCONFIG_WIFI7) && !defined(RTCONFIG_WIFI7_NO_6G))
 	else if (!strcmp(command, "Get_MacAddr_6G")) {
 		getMAC_6G();
 		return 0;
@@ -3492,7 +3524,7 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 	}
 #endif
 #endif	/* RTCONFIG_HAS_5G */
-#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
+#if defined(RTCONFIG_WIFI6E) || (defined(RTCONFIG_WIFI7) && !defined(RTCONFIG_WIFI7_NO_6G))
 	else if (!strcmp(command, "Get_ChannelList_6G")) {
 		if (!Get_ChannelList_6G())
 			puts("ATE_ERROR");
@@ -3526,7 +3558,7 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 		Get_fail_dev_log();
 		return 0;
 	}
-#if defined(RTCONFIG_RALINK) && !defined(RTCONFIG_MT798X) // obsoleted error code?
+#if defined(RTCONFIG_RALINK) && !defined(RTCONFIG_MT798X) && !defined(RTCONFIG_MT799X) // obsoleted error code?
 #if !defined(RTCONFIG_RALINK_MT7629) && !defined(RTCONFIG_RALINK_MT7622) && !defined(RTCONFIG_RALINK_MT7621) && !defined(RTCONFIG_WLMODULE_MT7615E_AP) && !defined(RTCONFIG_WLMODULE_MT7915D_AP)
 	else if (!strcmp(command, "Ra_FWRITE")) {
 		return FWRITE(value, value2);
@@ -3705,11 +3737,12 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 		return 0;
 	}
 #endif
-#if defined(RTCONFIG_WIFI_QCA9990_QCA9990) || \
-      defined(RTCONFIG_WIFI_QCA9994_QCA9994) || \
-      defined(RTCONFIG_WIFI_QCN5024_QCN5054) || \
-      defined(RTCONFIG_PCIE_AR9888) || defined(RTCONFIG_PCIE_QCA9888) || \
-      defined(RTCONFIG_SOC_IPQ40XX)
+#if defined(RTCONFIG_WIFI_QCA9990_QCA9990) \
+ || defined(RTCONFIG_WIFI_QCA9994_QCA9994) \
+ || defined(RTCONFIG_WIFI_QCN5024_QCN5054) \
+ || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274) \
+ || defined(RTCONFIG_PCIE_AR9888) || defined(RTCONFIG_PCIE_QCA9888) \
+ || defined(RTCONFIG_SOC_IPQ40XX)
 	else if (!strcmp(command, "Set_Qcmbr")) {
 #if defined(RTCONFIG_QCA) && defined(RTCONFIG_SOC_IPQ40XX)
 		nvram_set_int("restwifi_qis", 1);
@@ -3720,18 +3753,20 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 		return 0;
 	}
 #endif
-#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274) \
+ || defined(RTCONFIG_QCA_AXCHIP)
 	else if (!strcmp(command, "Set_Ftm")) {
 		Set_Ftm(value);
 		return 0;
 	}
 #endif
-#if defined(RTCONFIG_WIFI_QCA9990_QCA9990) || \
-    defined(RTCONFIG_WIFI_QCA9994_QCA9994) || \
-    defined(RTCONFIG_WIFI_QCN5024_QCN5054) || \
-    defined(RTCONFIG_QCA_AXCHIP) || \
-    defined(RTCONFIG_PCIE_QCA9888) || \
-    defined(RTCONFIG_SOC_IPQ40XX)
+#if defined(RTCONFIG_WIFI_QCA9990_QCA9990) \
+ || defined(RTCONFIG_WIFI_QCA9994_QCA9994) \
+ || defined(RTCONFIG_WIFI_QCN5024_QCN5054) \
+ || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274) \
+ || defined(RTCONFIG_QCA_AXCHIP) \
+ || defined(RTCONFIG_PCIE_QCA9888) \
+ || defined(RTCONFIG_SOC_IPQ40XX)
 	/* ATE Get_BData_2G / ATE Get_BData_5G
 	 * To prevent whole ATE command strings exposed in rc binary,
 	 * compare these commands in 3 steps instead.
@@ -3739,6 +3774,17 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 	else if (!strncmp(command, "Get_", 4) && !strncmp(command + 4, "BData", 5) &&
 		 *(command + 9) == '_') {
 		Get_BData_X(command);
+		return 0;
+	}
+#endif
+#if defined(RTCONFIG_WIFI7)
+	/* ATE Get_RegDb_2G / ATE Get_RegDb_5G
+	 * To prevent whole ATE command strings exposed in rc binary,
+	 * compare these commands in 3 steps instead.
+	 */
+	else if (!strncmp(command, "Get_", 4) && !strncmp(command + 4, "RegDb", 5) &&
+		 *(command + 9) == '_') {
+		Get_RegDb_X(command);
 		return 0;
 	}
 #endif
@@ -3962,6 +4008,40 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 		return 0;
 	}
 #endif
+
+#ifdef RTCONFIG_PRESSURE_SENSOR
+	else if (!strcmp(command, "Get_PressureOffset")) {
+		get_pressure_offset();
+		return 0;
+	}
+	else if (!strcmp(command, "Set_PressureOffset")) {
+		char *endptr;
+		errno = 0;
+
+		if (!value || strlen(value) > PRESSURE_LEN){
+			puts("ATE_ERROR");
+			return EINVAL;
+		}
+
+		strtod(value, &endptr);
+		if (*endptr != '\0' || errno != 0) {
+			puts("ATE_ERROR_INCORRECT_PARAMETER");
+			return EINVAL;
+		} 
+
+		if ( !set_pressure_offset(value) ){
+			puts("ATE_ERROR_INCORRECT_PARAMETER");
+			return EINVAL;
+		}
+		
+		return 0;
+	}
+	else if (!strcmp(command, "Get_CurPressure")) {
+		get_cur_pressure();
+		return 0;
+	}	
+#endif
+
 #ifdef CONFIG_BCMWL5
 	else if (!strcmp(command, "Get_SSID_2G")) {
 #if defined(GTAXE16000) || defined(GTBE98) || defined(GTBE98_PRO)
@@ -4498,15 +4578,35 @@ int asus_ate_command(const char *command, const char *value, const char *value2)
 #endif
 #if defined(CONFIG_BCMWL5) || defined(RTCONFIG_COBRAND)
 	else if (!strcmp(command, "Set_CoBrand")) {
-		int n = atoi(value);
-		if ((n >= 0) && (n <= 100))
-			set_cb(n);
-		else
-			puts("ATE_ERROR");
+		int i = 0, n;
+
+		// check parmeter is not empty
+		if (!value){
+			puts("ATE_ERROR_INCORRECT_PARAMETER");
+        		return EINVAL;
+		}
+	
+		n = atoi(value);
+		while (value[i]) {
+        		if (!isdigit(value[i])){
+				puts("ATE_ERROR_INCORRECT_PARAMETER");
+            			return EINVAL;
+			}
+        		i++;
+    		}
+
+		if ((n >= 0) && (n <= 100)){
+			if(set_cb(n) < 0)
+				puts("ATE_ERROR_INCORRECT_PARAMETER");
+		} else
+			puts("ATE_ERROR_INCORRECT_PARAMETER");
 		return 0;
 	}
 	else if (!strcmp(command, "Unset_CoBrand")) {
-		unset_cb();
+		if ( unset_cb() < 0 ){
+			puts("ATE_ERROR_INCORRECT_PARAMETER");
+			return EINVAL;
+		}
 		return 0;
 	}
 	else if (!strcmp(command, "Get_CoBrand")) {
@@ -4945,7 +5045,7 @@ int ate_get_fw_upgrade_state(void) {
 int init_pass_nvram(void)
 {
 #ifdef RTCONFIG_NVRAM_ENCRYPT
-	char dec_passwd[128]={0};
+	char dec_passwd[128] __attribute__((unused)) = { 0 };
 #endif
 #if defined(RTCONFIG_BCMARM)
 	if (!nvram_get_int("x_Setting")) {
@@ -4965,9 +5065,12 @@ int init_pass_nvram(void)
 			_dprintf("READ ASUS PASS: Out of scope\n");
 			nvram_set("forget_it", "");
 		 } else {
-			int len = strlen(pass);
 			int i;
+#if defined(RTCONFIG_RALINK_MT7621)
+			if(/*PASS_OFFSET == REGSPEC_ADDR + 4*/(pass[0] == 'D' && (pass[1] == '1' || pass[1] == '2' || pass[1] == '3' || pass[1] == '4')) || pass[0] == 0xff)
+#else
 			if (pass[0] == 0xff)
+#endif
 				nvram_set("forget_it", "");
 			else
 			{
@@ -5000,3 +5103,4 @@ int init_pass_nvram(void)
 
 	return 0;
 }
+

@@ -65,8 +65,9 @@ int rtkswitch_ioctl(int val, int val2)
 	case 3:		/* Get link status of the specified LAN port */
 	case 4:		/* Get link status of LAN ports */
 	case 9:		/* LAN / WAN partition */
+	case 10:	/* power up LAN1 */
+	case 11:	/* power down LAN1 */
 #if 0
-	case 10:
 	case 22:
 	case 23:
 	case 24:
@@ -133,6 +134,7 @@ int rtkswitch_ioctl(int val, int val2)
 	case 5:		/* power up LAN ports */
 	case 6:		/* power down LAN ports */
 	case 8:		/* reset per port MIB counter */
+	case 382:	/* reinit vlan */
 	case 4020:      /* Get Led operation mode */
 	case 4030:      /* Get LED blinking rate */
 	case 4040:      /* Get Led group congiuration mode */
@@ -148,6 +150,7 @@ int rtkswitch_ioctl(int val, int val2)
 	case 44:	/* hardware reset */
 	case 45:	/* software reset */
 	case 451:	/* workaround serdes port link down */
+	case 49:	/* disable l2 learning */
 	case 491:	/* dump drop reason register pre */
 	case 492:	/* dump drop reason register post */
 	case 50:	/* get FlowControlJumboMode */
@@ -191,6 +194,9 @@ int config_rtkswitch(int argc, char *argv[])
 	int val2 = 0;
 	char *cmd = NULL;
 	char *cmd2 = NULL;
+
+	if (hnd_boardid_cmp("GT-BE98_BCM") == 0)
+		return 0;
 
 	if (argc >= 2)
 		cmd = argv[1];

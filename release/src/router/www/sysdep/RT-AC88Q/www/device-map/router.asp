@@ -134,8 +134,8 @@ $(function () {
 
 <% wl_get_parameter(); %>
 var flag = '<% get_parameter("flag"); %>';
-var wireless_unit = cookie.get("wireless_unit");
-var wireless_subunit = cookie.get("wireless_subunit");
+var wireless_unit = window.localStorage.getItem("wireless_unit");
+var wireless_subunit = window.localStorage.getItem("wireless_subunit");
 var smart_connect_flag_t;
 var wl_unit = '<% nvram_get("wl_unit"); %>';
 
@@ -587,7 +587,7 @@ function initial(){
 }
 
 function register_event(){
-	$(function() {
+
 		$( "#slider" ).slider({
 			orientation: "horizontal",
 			range: "min",
@@ -604,7 +604,7 @@ function register_event(){
 				set_led(ui.value);	  
 			}
 		}); 
-	});
+
 }
 
 function set_led(value){
@@ -640,7 +640,7 @@ function tabclickhandler(wl_unit){
 		}
 
 		document.form.wl_unit.value = wl_unit;
-		cookie.set("wireless_unit", wl_unit, 30);
+		window.localStorage.setItem("wireless_unit", wl_unit, 30);
 
 		if(parent.smart_connect_support && (parent.isSwMode("rt") || parent.isSwMode("ap"))){
 			var smart_connect_flag = document.form.smart_connect_x.value;
@@ -1007,8 +1007,8 @@ function submitForm(){
 		document.form.wl_subunit.value = wireless_subunit;
 		if(wireless_subunit == "-1")
 			wireless_subunit = "main";
-		cookie.set("wireless_unit", wireless_unit, 30);
-		cookie.set("wireless_subunit", wireless_subunit, 30);
+		window.localStorage.setItem("wireless_unit", wireless_unit, 30);
+		window.localStorage.setItem("wireless_subunit", wireless_subunit, 30);
 
 		var _unit_subunit = "wl" + document.form.wl_unit.value + "." + document.form.wl_subunit.value;
 		

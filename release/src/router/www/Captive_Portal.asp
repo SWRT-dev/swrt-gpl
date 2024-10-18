@@ -13,12 +13,12 @@
 <link rel="stylesheet" type="text/css" href="form_style.css">
 <link rel="stylesheet" type="text/css" href="other.css">
 <link rel="stylesheet" type="text/css" href="Captive_Portal.css">
+<script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="state.js"></script>
 <script type="text/javascript" src="general.js"></script>
 <script type="text/javascript" src="popup.js"></script>
 <script type="text/javascript" src="help.js"></script>
 <script type="text/javascript" src="validator.js"></script>
-<script type="text/javascript" src="js/jquery.js"></script>
 <script type="text/javascript" src="form.js"></script>
 <script type="text/javascript" src="disk_functions.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
@@ -870,7 +870,7 @@ function call_back_to_save_config(_splash_page_status) {
 		//if(based_modelid == "BRT-AC828") {
 			var captive_portal_enable_ori = '<% nvram_get("captive_portal_enable"); %>';
 			if(captive_portal_enable_ori == "off") {
-				cookie.set("captive_portal_gn_idx", get_captive_portal_wl_idx("freeWiFi") + ">freeWiFi", 1);
+				window.localStorage.setItem("captive_portal_gn_idx", get_captive_portal_wl_idx("freeWiFi") + ">freeWiFi", 1);
 				document.form.next_page.value = "Guest_network.asp";
 			}
 		//}

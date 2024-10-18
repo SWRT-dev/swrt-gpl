@@ -1,8 +1,7 @@
-/* DARK THEME, ORIGINAL*/
-/* DARK THEME, ORIGINAL*/
 .dark {
     --color-icon-default: 147, 162, 169; /* #93A2A9 */
     --color-icon-active: 255, 255, 255; /* #FFFFFF */
+    --color-icon-hover: 255, 255, 255; /*  #141414 */
     --color-icon-traffic-up: 19, 211, 202; /* #13D3CA */
     --color-icon-traffic-down: 72, 162, 255; /* #48A2FF */
     --color-bg-mainBody: 0, 0, 0; /* #000000 */
@@ -14,6 +13,7 @@
     --color-bg-time: 36, 80, 100; /* #245064 */
     --color-bg-shade: 9, 38, 54; /* #092636 */
     --color-bg-card: 42, 59, 72; /* #2A3B48 */
+    --color-bg-card-shadow: 9, 38, 54; /* #000000 */
     --color-bg-btn-regular: 39, 41, 43; /* #27292B */
     --color-bg-btn-confirm: 28, 113, 255; /* #1C71FF */
     --color-bg-btn-switch-active: 0, 145, 255; /* #0091FF */
@@ -47,6 +47,8 @@
     --color-text-loading: 120, 120, 120; /* #787878 */
     --color-text-loading-active: 30, 255, 202; /* #1EFFCA */
     --color-text-underline: 30, 255, 202; /* #1EFFCA */
+    --color-text-invert: 255, 255, 255; /* #FFFFFF */
+    --color-text-success: 52, 199, 89; /* 34c759 */
     --color-border-time: 0, 145, 255; /* #0091FF */
     --color-border-divide-line: 55, 97, 114; /* #376172 */
     --color-loader-active-1: 0, 145, 255; /* #0091FF */
@@ -58,87 +60,26 @@
     --color-circle-chart-3: 72, 162, 255; /* #48A2FF */
     --color-circle-chart-4: 224, 185, 3; /* #E0B903 */
     --color-circle-chart-5: 179, 100, 91; /* #B3645B */
-    --color-chart-good: 16, 185, 129;
-    --color-chart-warning: 240, 94, 22;
-    --color-chart-unplug: 153, 153, 153;
-}
-/* WHITE THEME*/
-.white {
-    --color-icon-default: 120, 120, 120; /* #787878 */
-    --color-icon-active: 20, 20, 20; /*  #141414 */
-    --color-icon-traffic-up: 19, 211, 202; /* #13D3CA */
-    --color-icon-traffic-down: 72, 162, 255; /* #48A2FF */
-    --color-bg-mainBody: 245, 245, 245; /* #F5F5F5 */
-    --color-bg-lang-item: 245, 245, 245; /* #F5F5F5 */
-    --color-bg-lang-item-focus: 0, 145, 255; /* #0091FF */
-    --color-bg-nav: 245, 245, 245; /* #F5F5F5 */
-    --color-bg-menu-active: 0, 145, 255; /* #0091FF */
-    --color-bg-banner: 225, 225, 225; /* #E1E1E1 */
-    --color-bg-time: 180, 207, 255; /* #B4CFFF */
-    --color-bg-shade: 204, 204, 204; /* #CCCCCC */
-    --color-bg-card: 245, 245, 245; /* #F5F5F5 */
-    --color-bg-btn-regular: 178, 223, 238; /*#B2DFEE */
-    --color-bg-btn-confirm: 75, 160, 255; /* #4BA0FF */
-    --color-bg-btn-switch-active: 0, 145, 255; /* #0091FF */
-    --color-bg-loader: 100, 100, 100; /* #646464 */
-    --color-bg-content: 140, 140, 140; /*#8C8C8C */
-    --color-bg-circle-chart: 205, 215, 218; /* #CDD7DA */
-    --color-bg-divide-line: 18, 18, 18; /* #121212 */
-    --color-gradient-body-1: 245, 245, 245; /* #F5F5F5 */
-    --color-gradient-body-2: 245, 245, 245; /* #F5F5F5 */
-    --color-gradient-body-3: 245, 245, 245; /* #F5F5F5 */
-    --color-gradient-header-1: 245, 245, 245; /* #F5F5F5 */
-    --color-gradient-header-2: 245, 245, 245; /* #F5F5F5 */
-    --color-gradient-nav-1: 1, 98, 202; /* #0162CA */
-    --color-gradient-nav-2: 38, 251, 255; /* #26FBFF */
-    --color-gradient-card-1: 245, 245, 245; /* #F5F5F5 */
-    --color-gradient-card-2: 245, 245, 245; /* #F5F5F5 */
-    --color-header-shadow: 100, 100, 100; /* #646464 */
-    --color-nav-shadow: 120, 120, 120; /* #787878 */
-    --color-banner-shadow: 100, 100, 100; /* #646464 */
-    --color-text-regular: 18, 18, 18; /* #121212 */
-    --color-text-feature-title: 120, 120, 120; /* #787878 */
-    --color-text-highlight: 20, 20, 20; /*  #141414 */
-    --color-text-menu-title: 120, 120, 120; /* #787878 */
-    --color-text-title: 18, 18, 18; /* #121212  */
-    --color-text-value: 120, 120, 120; /* #787878 */
-    --color-text-time-day: 0, 108, 225; /* #006CE1 */
-    --color-text-copyright: 153, 153, 153; /* #999999 */
-    --color-text-hint: 132, 0, 255; /* #8400FF */
-    --color-text-page-title: 18, 18, 18; /* #121212  */
-    --color-text-card-title: 0, 108, 225; /* #006CE1 */
-    --color-text-loading: 100, 100, 100; /* #646464 */
-    --color-text-loading-active: 0, 108, 225; /* #006CE1 */
-    --color-text-underline: 248, 23, 38; /* #F81726 */
-    --color-border-time: 0, 108, 225; /* #006CE1 */
-    --color-border-divide-line: 191, 191, 191; /* #BFBFBF */
-    --color-loader-active-1: 0, 108, 225; /* #006CE1 */
-    --color-loader-active-2: 38, 251, 255; /* #26FBFF */
-    --color-chart-1: 19, 211, 202; /* #13D3CA */
-    --color-chart-2: 72, 162, 255; /* #48A2FF */
-    --color-circle-chart-1: 22, 215, 118; /* #16D776 */
-    --color-circle-chart-2: 255, 110, 28; /* #FF6E1C */
-    --color-circle-chart-3: 72, 162, 255; /* #48A2FF */
-    --color-circle-chart-4: 224, 185, 3; /* #E0B903 */
-    --color-circle-chart-5: 179, 100, 91; /* #B3645B */
-    --color-chart-good: 16, 185, 129;
-    --color-chart-warning: 240, 94, 22;
-    --color-chart-unplug: 153, 153, 153;
+    --color-chart-good: 37, 193, 0; /* 25C100 */
+    --color-chart-warning: 236, 192, 0; /* ECC000 */
+    --color-chart-unplug: 215, 215, 215; /* D7D7D7 */
 }
 .rog {
     --color-icon-default: 146, 146, 146; /* #929292 */
     --color-icon-active: 255, 255, 255; /* #FFFFFF */
+    --color-icon-hover: 255, 255, 255; /* #FFFFFF */
     --color-icon-traffic-up: 19, 211, 202; /* #13D3CA */
     --color-icon-traffic-down: 72, 162, 255; /* #48A2FF */
     --color-bg-mainBody: 0, 0, 0; /* #000000 */
     --color-bg-lang-item: 0, 0, 0; /* #000000 */
     --color-bg-lang-item-focus: 248, 23, 38; /* #F81726 */
-    --color-bg-nav: 48, 48, 48; /* #303030 */
+    --color-bg-nav: 225, 225, 225; /* #303030 */
     --color-bg-menu-active: 248, 23, 38; /* #F81726 */
     --color-bg-banner: 0, 0, 0; /* #000000 */
     --color-bg-time: 68, 68, 68; /* #444444 */
     --color-bg-shade: 14, 14, 14; /* #0E0E0E */
     --color-bg-card: 36, 36, 36; /* #242424 */
+    --color-bg-card-shadow: 64, 64, 64; /* #FFFFFF */
     --color-bg-btn-regular: 68, 68, 68; /* #444444 */
     --color-bg-btn-confirm: 194, 0, 19; /* #C20013 */
     --color-bg-btn-switch-active: 248, 23, 38; /* #F81726 */
@@ -162,8 +103,8 @@
     --color-text-feature-title: 146, 146, 146; /* #929292 */
     --color-text-highlight: 255, 255, 255; /* #FFFFFF */
     --color-text-menu-title: 146, 146, 146; /* #929292 */
-    --color-text-title: 255, 255, 255; /* #FFFFFF */
-    --color-text-value: 3, 254, 219; /* #03FEDB */
+    --color-text-title: 225, 225, 225; /* #FFFFFF */
+    --color-text-value: 255, 255, 255; /* #03FEDB */
     --color-text-time-day: 255, 121, 0; /* #FF7900 */
     --color-text-copyright: 153, 153, 153; /* #999999 */
     --color-text-hint: 51, 254, 170; /* #33FEAA */
@@ -172,6 +113,8 @@
     --color-text-loading: 100, 100, 100; /* #646464 */
     --color-text-loading-active: 248, 23, 38; /* #F81726 */
     --color-text-underline: 248, 23, 38; /* #F81726 */
+    --color-text-invert: 255, 255, 255; /* #FFFFFF */
+    --color-text-success: 52, 199, 89; /* 34c759 */
     --color-border-time: 248, 23, 38; /* #F81726 */
     --color-border-divide-line: 241, 138, 81; /* #F18A51 */
     --color-loader-active-1: 165, 0, 42; /* #A5002A */
@@ -183,13 +126,14 @@
     --color-circle-chart-3: 72, 162, 255; /* #48A2FF */
     --color-circle-chart-4: 224, 185, 3; /* #E0B903 */
     --color-circle-chart-5: 179, 100, 91; /* #B3645B */
-    --color-chart-good: 16, 185, 129;
-    --color-chart-warning: 240, 94, 22;
-    --color-chart-unplug: 153, 153, 153;
+    --color-chart-good: 37, 193, 0; /* 25C100 */
+    --color-chart-warning: 236, 192, 0; /* ECC000 */
+    --color-chart-unplug: 215, 215, 215; /* D7D7D7 */
 }
 .tuf {
     --color-icon-default: 168, 168, 168; /* #A8A8A8 */
     --color-icon-active: 255, 255, 255; /* #FFFFFF */
+    --color-icon-hover: 255, 255, 255; /* #FFFFFF */
     --color-icon-traffic-up: 19, 211, 202; /* #13D3CA */
     --color-icon-traffic-down: 72, 162, 255; /* #48A2FF */
     --color-bg-mainBody: 32, 32, 32; /* #202020 */
@@ -201,6 +145,7 @@
     --color-bg-time: 68, 68, 68; /* #444444 */
     --color-bg-shade: 24, 24, 24; /* #181818 */
     --color-bg-card: 48, 48, 48; /* #303030 */
+    --color-bg-card-shadow: 124, 124, 124; /* #FFFFFF */
     --color-bg-btn-regular: 39, 41, 43; /* #27292B */
     --color-bg-btn-confirm: 243, 173, 0; /* #F3AD00 */
     --color-bg-btn-switch-active: 248, 185, 66; /* #F8B942 */
@@ -234,6 +179,8 @@
     --color-text-loading: 100, 100, 100; /* #646464 */
     --color-text-loading-active: 248, 185, 66; /* #F8B942 */
     --color-text-underline: 248, 185, 66; /* #F8B942 */
+    --color-text-invert: 255, 255, 255; /* #FFFFFF */
+    --color-text-success: 52, 199, 89; /* 34c759 */
     --color-border-time: 248, 185, 66; /* #F8B942 */
     --color-border-divide-line: 149, 111, 73; /* #956F49 */
     --color-loader-active-1: 255, 132, 0; /*#FF8400 */
@@ -245,29 +192,14 @@
     --color-circle-chart-3: 72, 162, 255; /* #48A2FF */
     --color-circle-chart-4: 224, 185, 3; /* #E0B903 */
     --color-circle-chart-5: 179, 100, 91; /* #B3645B */
-    --color-chart-good: 16, 185, 129;
-    --color-chart-warning: 240, 94, 22;
-    --color-chart-unplug: 153, 153, 153;
+    --color-chart-good: 37, 193, 0; /* 25C100 */
+    --color-chart-warning: 236, 192, 0; /* ECC000 */
+    --color-chart-unplug: 215, 215, 215; /* D7D7D7 */
 }
-.business {
-    /* To Be Defined */
-    --color-icon-bg-default: 164, 183, 195; /* #A4B7C3 */
-    --color-lang-dropdown: 236, 245, 255; /* #ECF5FF */
-    --color-bg-popup: 56, 68, 80; /* #384450 */
-    --color-nav-clicked: 255, 255, 255; /* FFFFFF */
-    --color-bg-card-shadow: 0, 0, 0; /* 000000 */
-    --color-ui-select: 204, 204, 204; /* #ccccccff; */
-    --color-text-nav: 38, 38, 38; /* #262626ff; */
-    --color-text-body: 24, 24, 24; /* #181818ff; */
-    --color-logo-bg: 45, 41, 38; /*#2D2926ff */
-
-    --color-chart-good: 16, 185, 129;
-    --color-chart-warning: 240, 94, 22;
-    --color-chart-unplug: 153, 153, 153;
-    /* To Be Defined */
-
+.white {
     --color-icon-default: 120, 120, 120; /* #787878 */
     --color-icon-active: 20, 20, 20; /*  #141414 */
+    --color-icon-hover: 38, 38, 38; /*  #141414 */
     --color-icon-traffic-up: 19, 211, 202; /* #13D3CA */
     --color-icon-traffic-down: 72, 162, 255; /* #48A2FF */
     --color-bg-mainBody: 245, 245, 245; /* #F5F5F5 */
@@ -278,12 +210,13 @@
     --color-bg-banner: 225, 225, 225; /* #E1E1E1 */
     --color-bg-time: 180, 207, 255; /* #B4CFFF */
     --color-bg-shade: 9, 38, 54; /* #092636 */
-    --color-bg-card: 245, 245, 245; /* #F5F5F5 */
+    --color-bg-card: 255, 255, 255; /* #F5F5F5 */
+    --color-bg-card-shadow: 64, 64, 64; /* #000000 */
     --color-bg-btn-regular: 178, 223, 238; /*#B2DFEE */
-    --color-bg-btn-confirm: 13, 110, 253; /* #4BA0FF */
+    --color-bg-btn-confirm: 13, 110, 253; /* #0D6EFD */
     --color-bg-btn-switch-active: 0, 145, 255; /* #0091FF */
     --color-bg-loader: 100, 100, 100; /* #646464 */
-    --color-bg-content: 245, 245, 245; /*#8C8C8C */
+    --color-bg-content: 225, 225, 225; /*#E1E1E1 */
     --color-bg-circle-chart: 205, 215, 218; /* #CDD7DA */
     --color-bg-divide-line: 18, 18, 18; /* #121212 */
     --color-gradient-body-1: 245, 245, 245; /* #F5F5F5 */
@@ -293,8 +226,8 @@
     --color-gradient-header-2: 245, 245, 245; /* #F5F5F5 */
     --color-gradient-nav-1: 1, 98, 202; /* #0162CA */
     --color-gradient-nav-2: 38, 251, 255; /* #26FBFF */
-    --color-gradient-card-1: 245, 245, 245; /* #F5F5F5 */
-    --color-gradient-card-2: 245, 245, 245; /* #F5F5F5 */
+    --color-gradient-card-1: 255, 255, 255; /* #FFFFFF */
+    --color-gradient-card-2: 255, 255, 255; /* #FFFFFF */
     --color-header-shadow: 100, 100, 100; /* #646464 */
     --color-nav-shadow: 120, 120, 120; /* #787878 */
     --color-banner-shadow: 100, 100, 100; /* #646464 */
@@ -312,6 +245,8 @@
     --color-text-loading: 100, 100, 100; /* #646464 */
     --color-text-loading-active: 0, 108, 225; /* #006CE1 */
     --color-text-underline: 248, 23, 38; /* #F81726 */
+    --color-text-invert: 255, 255, 255; /* #FFFFFF */
+    --color-text-success: 52, 199, 89; /* 34c759 */
     --color-border-time: 0, 108, 225; /* #006CE1 */
     --color-border-divide-line: 191, 191, 191; /* #BFBFBF */
     --color-loader-active-1: 0, 108, 225; /* #006CE1 */
@@ -323,4 +258,7 @@
     --color-circle-chart-3: 72, 162, 255; /* #48A2FF */
     --color-circle-chart-4: 224, 185, 3; /* #E0B903 */
     --color-circle-chart-5: 179, 100, 91; /* #B3645B */
+    --color-chart-good: 37, 193, 0; /* 25C100 */
+    --color-chart-warning: 236, 192, 0; /* ECC000 */
+    --color-chart-unplug: 215, 215, 215; /* D7D7D7 */
 }

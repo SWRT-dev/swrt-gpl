@@ -13,6 +13,10 @@ config RTCONFIG_MUSL_LIBC
 	bool "MUSL libc"
 	default n
 
+config RTCONFIG_MUSL_LIBC_1116_WAR
+	bool "Workaround for MUSL libc prior v1.1.19"
+	default n
+
 config RTCONFIG_L2TP
 	bool "L2TP"
 	default y
@@ -395,6 +399,10 @@ config RTCONFIG_IPERF
 
 config RTCONFIG_TCPDUMP
 	bool "tcpdump"
+	default n
+
+config RTCONFIG_TCPREPLAY
+	bool "tcpreplay"
 	default n
 
 config RTCONFIG_DUMP4000
@@ -927,6 +935,17 @@ config RTCONFIG_SPF11_4_QSDK
 	depends on RTCONFIG_QCA
 	default n
 
+config RTCONFIG_SPF11_5_QSDK
+	bool "SPF11.5 QSDK"
+	depends on RTCONFIG_QCA
+	depends on RTCONFIG_MUSL_LIBC
+	default n
+
+config RTCONFIG_SPF12_2_QSDK
+	bool "SPF12_2 QSDK"
+	depends on RTCONFIG_QCA
+	default n
+
 config RTCONFIG_QCA_BIGRATE_WIFI
 	bool "New QSDK wifi driver - need to adjust iwconfig bitrate"
 	default n
@@ -941,6 +960,11 @@ config RTCONFIG_QCA_ARM
 
 config RTCONFIG_SOC_QCA9557
 	bool "Qualcomm Atheros QCA9557 SoC"
+	depends on RTCONFIG_QCA
+	default n
+
+config RTCONFIG_SOC_IPQ53XX
+	bool "Qualcomm Atheros IPQ53XX SoC"
 	depends on RTCONFIG_QCA
 	default n
 
@@ -974,8 +998,8 @@ config RTCONFIG_PCIE_QCA9984
 	depends on RTCONFIG_QCA
 	default n
 
-config RTCONFIG_WIFI_QCN5024_QCN5054
-	bool "Qualcomm Atheros QCN5024 and QCN5054 WiFi chip"
+config RTCONFIG_WIFI_IPQ53XX_QCN6274
+	bool "Qualcomm Atheros QCN6274 WiFi chip"
 	depends on RTCONFIG_QCA
 	default n
 
@@ -994,6 +1018,11 @@ config RTCONFIG_WIFI_QCA9994_QCA9994
 	depends on RTCONFIG_QCA
 	default n
 
+config RTCONFIG_WIFI_QCN5024_QCN5054
+	bool "Qualcomm Atheros QCN5024 and QCN5054 WiFi chip"
+	depends on RTCONFIG_QCA
+	default n
+
 config RTCONFIG_NO_RELOAD_WIFI_DRV_IF_POSSIBLE
 	bool "Don't reload WiFi driver if possible"
 	depends on RTCONFIG_QCA
@@ -1006,7 +1035,7 @@ config RTCONFIG_CFG80211
 
 config RTCONFIG_GLOBAL_INI
 	bool "Qualcomm globa.ini support. (SPF9 or above)"
-	depends on RTCONFIG_QCA && (RTCONFIG_SPF10_QSDK || RTCONFIG_SPF11_QSDK || RTCONFIG_SPF11_1_QSDK || RTCONFIG_SPF11_3_QSDK || RTCONFIG_SPF11_4_QSDK || RTCONFIG_QSDK10CS || RTCONFIG_SOC_IPQ60XX)
+	depends on RTCONFIG_QCA && (RTCONFIG_SPF10_QSDK || RTCONFIG_SPF11_QSDK || RTCONFIG_SPF11_1_QSDK || RTCONFIG_SPF11_3_QSDK || RTCONFIG_SPF11_4_QSDK || RTCONFIG_SPF11_5_QSDK || RTCONFIG_SPF12_2_QSDK || RTCONFIG_QSDK10CS || RTCONFIG_SOC_IPQ60XX)
 	default n
 
 config RTCONFIG_SINGLE_HOSTAPD
@@ -1016,7 +1045,7 @@ config RTCONFIG_SINGLE_HOSTAPD
 
 config RTCONFIG_TEST_BOARDDATA_FILE
 	bool "Copy /lib/firmware/* to /jffs and bind mount /jffs to /lib/firmware for testing."
-	depends on RTCONFIG_SOC_IPQ8064 || RTCONFIG_SOC_IPQ8074
+	depends on RTCONFIG_SOC_IPQ8064 || RTCONFIG_SOC_IPQ8074 || RTCONFIG_SOC_IPQ53XX
 	default n
 
 config RTCONFIG_SWITCH_QCA8075_PHY_AQR107
@@ -1036,6 +1065,11 @@ config RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033
 
 config RTCONFIG_SWITCH_QCA8337N
 	bool "Qualcomm Atheros QCA8337N switch"
+	depends on RTCONFIG_QCA
+	default n
+
+config RTCONFIG_SWITCH_QCA8386
+	bool "Qualcomm Atheros QCA8386 switch"
 	depends on RTCONFIG_QCA
 	default n
 
@@ -1474,6 +1508,15 @@ config RTCONFIG_BUSINESS
 	bool "BUSINESS Model Support"
 	default n
 
+config RTCONFIG_SMART_HOME_MASTER_UI
+	bool "Smart Home Master UI of SDN"
+	default n
+
+config RTCONFIG_MAX_MTLAN
+    int "Support the maximum number of SDN"
+    depends on RTCONFIG_MULTILAN_CFG
+    default 16
+
 config RTCONFIG_TFTP_SERVER
 	bool "TFTP daemon"
 	default n
@@ -1570,6 +1613,16 @@ config RTCONFIG_HAS_5G
 
 config RTCONFIG_HAS_5G_2
 	bool "has 2-nd 5G band"
+	default n
+
+config RTCONFIG_HAS_6G
+	bool "has 6G band"
+	depends on (RTCONFIG_WIFI6E || RTCONFIG_WIFI7)
+	default n
+
+config RTCONFIG_HAS_6G_2
+	bool "has 2-nd 6G band"
+	depends on (RTCONFIG_WIFI6E || RTCONFIG_WIFI7)
 	default n
 
 config RTCONFIG_TFTP
@@ -1904,6 +1957,11 @@ config RTCONFIG_SOFTWIRE46
 
 config RTCONFIG_OCNVC
 	bool "IPoE - OCN Virtual Connect support"
+	depends on RTCONFIG_SOFTWIRE46
+	default n
+
+config RTCONFIG_DSLITE
+	bool "IPoE - DS-Lite support"
 	depends on RTCONFIG_SOFTWIRE46
 	default n
 
@@ -2366,6 +2424,10 @@ config RTCONFIG_MTK_BSD
 	bool "mtk smart-connect support"
 	default n
 
+config RTCONFIG_SW_BTN
+	bool "switch button"
+	default n
+
 config RTCONFIG_COBRAND
 	bool "cobrand support"
 	default n
@@ -2615,6 +2677,18 @@ config RTCONFIG_WIFI7
 	bool "WiFi 7"
 	default n
 
+config RTCONFIG_MLO
+	bool "MLO"
+	default n
+
+config RTCONFIG_DIS_MLO_QIS
+	bool "MLO"
+	default n
+
+config RTCONFIG_MLO_FH
+	bool "MLO FRONTHAUL"
+	default n
+
 config RTCONFIG_SYSCLASSGPIO
 	bool "enable sys class gpio"
 	default n
@@ -2707,16 +2781,6 @@ config RTCONFIG_TIME_QUOTA
 	bool "Parental Control Time Quota"
 	default n
 
-config RTCONFIG_SPF11_3_QSDK
-	bool "SPF11.3 QSDK"
-	depends on RTCONFIG_QCA
-	default n
-
-config RTCONFIG_SPF11_4_QSDK
-	bool "SPF11.4 QSDK"
-	depends on RTCONFIG_QCA
-	default n
-
 config RTCONFIG_QSDK_LM256
 	bool "LM256 for RAM 256MB hardware design"
 	default n
@@ -2729,6 +2793,11 @@ config RTCONFIG_QCA_WLAN_SCRIPTS
 config RTCONFIG_QCA_AXCHIP
 	depends on RTCONFIG_QCA
 	bool "enable some 11AX features"
+	default n
+
+config RTCONFIG_QCA_BECHIP
+	depends on RTCONFIG_QCA
+	bool "enable some 11BE features"
 	default n
 
 config RTCONFIG_WIREGUARD
@@ -2863,6 +2932,25 @@ config RTCONFIG_SWITCH_MT7986_MT7531
 	depends on RTCONFIG_MT798X
 	default n
 
+config RTCONFIG_MT799X
+        bool " MTK MT799X WiFi platform"
+        default n
+
+config RTCONFIG_SOC_MT7988A
+	bool "MTK SoC MT7988A"
+	depends on RTCONFIG_MT799X
+	default n
+
+config RTCONFIG_SOC_MT7988D
+	bool "MTK SoC MT7988D"
+	depends on RTCONFIG_MT799X
+	default n
+
+config RTCONFIG_SWITCH_MT7988
+	bool "MTK SoC MT7988 embedded switch"
+	depends on RTCONFIG_SOC_MT7988A || RTCONFIG_SOC_MT7988D
+	default n
+
 config RTCONFIG_FSCRYPTCTL
         bool "fscryptctl tool"
         default n
@@ -2891,9 +2979,6 @@ config RTCONFIG_SW_SPDLED
 	bool "sw speed led"
 	default n
 
-config RTCONFIG_HAS_6G_2
-	bool "has 2-nd 6G band"
-	default n
 
 config RTCONFIG_CHECK_PAP_WPAPSK
 	bool "QIS check selected AP password"
@@ -2917,6 +3002,27 @@ config RTCONFIG_PASS_V2
 config RTCONFIG_NVSW_IN_JFFS
 	bool "multiple profile in JFFS, nvram switching mechainsm"
 	depends on RTCONFIG_RALINK
+	default n
+
+config RTCONFIG_WIFI7_NO_6G
+	bool "no 6G band support in WiFi7"
+	depends on RTCONFIG_WIFI7
+	default n
+
+config RTCONFIG_FILTER_CUSTOM
+	bool "User customize iptables filter table rules"
+	default n
+
+config RTCONFIG_PRESSURE_SENSOR
+	bool "Pressure sensor"
+	default n
+
+config RTCONFIG_MLO_CONFIG_566
+	bool "MLO default config 566 in 2566 model"
+	default n
+
+config RTCONFIG_NL80211
+	bool "802.11 netlink interface support"
 	default n
 
 config RTCONFIG_SOFTCENTER

@@ -16,6 +16,7 @@
 <link rel="stylesheet" type="text/css" href="pwdmeter.css">
 <link rel="stylesheet" type="text/css" href="other.css">
 <link rel="stylesheet" type="text/css" href="css/confirm_block.css">
+<script type="text/javaScript" src="js/jquery.js"></script>
 <script type="text/javascript" src="/js/confirm_block.js"></script>
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/help.js"></script>
@@ -23,7 +24,6 @@
 <script type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" src="/md5.js"></script>
 <script type="text/javascript" src="/validator.js"></script>
-<script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script type="text/javascript" src="/js/httpApi.js"></script>
 <style>
@@ -141,22 +141,22 @@ function initial(){
 	}
 
 	// Disable channel dropdown menu for WISP mode
-	if(isSupport("wisp") && isSwMode("rt") && wlc_band_value != ""){
-		// Smart Connect is ON
-		if($('select[name="band' + wlc_band_value + '_channel"]').is(':visible')){
-			$('select[name="band' + wlc_band_value + '_bw"]').prop('disabled', true);
-			$('select[name="band' + wlc_band_value + '_channel"]').prop('disabled', true);
-			$('select[name="band' + wlc_band_value + '_nctrlsb"]').prop('disabled', true);
-		}
-
+    if(isSupport("wisp") && isSwMode("rt") && wlc_band_value != ""){
+        // Smart Connect is ON
+        if($('select[name="band' + wlc_band_value + '_channel"]').is(':visible')){
+            $('select[name="band' + wlc_band_value + '_bw"]').prop('disabled', true);
+            $('select[name="band' + wlc_band_value + '_channel"]').prop('disabled', true);
+            $('select[name="band' + wlc_band_value + '_nctrlsb"]').prop('disabled', true);
+        }
+        
 		// Smart Connect is OFF
-		if($(document.form.wl_bw).is(':visible') && wlc_band_value == wl_unit_value){
-			$('select[name="wl_bw"]').prop('disabled', true);
-			$('select[name="wl_channel"]').prop('disabled', true);
-			$('select[name="wl_nctrlsb"]').prop('disabled', true);
-		}
-	}
-	
+        if($(document.form.wl_bw).is(':visible') && wlc_band_value == wl_unit_value){
+            $('select[name="wl_bw"]').prop('disabled', true);
+               $('select[name="wl_channel"]').prop('disabled', true);
+               $('select[name="wl_nctrlsb"]').prop('disabled', true);
+        }
+    }
+
 	if((isSwMode("re") || isSwMode("mb")) && (wl_unit_value == wlc_band_value) && wl_subunit_value != '1' && !concurrep_support){
 		_change_wl_unit(wl_unit_value);
 	}
@@ -285,8 +285,11 @@ function initial(){
 	document.form.wl_channel.value = document.form.wl_channel_orig.value;
 
 	document.form.band0_ssid.value = decodeURIComponent('<% nvram_char_to_ascii("", "wl0_ssid"); %>');
+	document.form.band0_wpa_psk.value = decodeURIComponent('<% nvram_char_to_ascii("", "wl0_wpa_psk"); %>');
 	document.form.band01_ssid.value = decodeURIComponent('<% nvram_char_to_ascii("", "wl0_ssid"); %>');
+	document.form.band01_wpa_psk.value = decodeURIComponent('<% nvram_char_to_ascii("", "wl0_wpa_psk"); %>');
 	document.form.band1_ssid.value = decodeURIComponent('<% nvram_char_to_ascii("", "wl1_ssid"); %>');
+	document.form.band1_wpa_psk.value = decodeURIComponent('<% nvram_char_to_ascii("", "wl1_wpa_psk"); %>');
 	if (band60g_support && document.form.wl_unit.value == '3')
 		document.form.wl_edmg_channel.value = document.form.wl_edmg_channel_orig.value;
 	
@@ -487,13 +490,9 @@ function initial(){
 		// }
 	}
 
-	if(document.form.smart_connect_x.value == '1'){
-		genAuthMethod('01', nvram['wl0_nmode_x']);
-	}
-	else{
-		genAuthMethod('0', nvram['wl0_nmode_x']);
-		genAuthMethod('1', nvram['wl1_nmode_x']);
-	}
+	genAuthMethod('01', nvram['wl0_nmode_x']);
+	genAuthMethod('0', nvram['wl0_nmode_x']);
+	genAuthMethod('1', nvram['wl1_nmode_x']);
 
 	handle_bandwidth('0', nvram['wl0_bw']);
 	handle_bandwidth('1', nvram['wl1_bw']);	
@@ -514,6 +513,16 @@ function initial(){
 	}
 	else if(document.form.band0_nmode_x.value == '1'){
 		document.getElementById('band0_gmode_check').disabled = true;
+	}
+
+	if(is_KR_sku){
+		if(document.form.smart_connect_x.value == '1'){
+			$("#band01_auth_mode_x option[value='open']").remove();
+		}
+		else{
+			$("#band0_auth_mode_x option[value='open']").remove();
+			$("#band1_auth_mode_x option[value='open']").remove();
+		}
 	}
 }
 
@@ -560,11 +569,11 @@ function genBWTable(_unit, wl_nmode){
 	}
 	else if (band60g_support && _unit == 3){
 		var ary = [], auto = [1], autoDesc = ["2.16"];
-		var bws = [6], bwsDesc = ["2.16 GHz"];
+		var bws = [10], bwsDesc = ["2.16 GHz"];
 		var ch_list = eval('<% channel_list_60g(); %>');
 
 		/* Generate all possible bandwidth */
-		for (var i = 7; i <= max_band60g_wl_bw; ++i) {
+		for (var i = 11; i <= max_band60g_wl_bw; ++i) {
 			if ((wigig_bw = wl_bw_to_wigig_bw(i)) <= 2160)
 				continue;
 			ary = filter_60g_edmg_channel_by_bw(ch_list, wigig_bw);
@@ -591,7 +600,7 @@ function genBWTable(_unit, wl_nmode){
 		}
 		else{
 			bws = [1, 0, 2, 3];
-			bwsDesc = [document.form.wl_bw[0].text, "20 MHz", "40 MHz", "80 MHz"];
+			bwsDesc = ["20/40/80 MHz", "20 MHz", "40 MHz", "80 MHz"];
 		}
 
 		if(wl_nmode == 8 || (_unit != 0 && wl_nmode == 0)){// N/AC mixed or 5G Auto
@@ -1212,7 +1221,7 @@ function applyRule(){
 			rc_time = 60;
 
 			httpApi.nvramSet(postObj, function(response){
-				var restart_needed_time = this.restart_needed_time;
+				var restart_needed_time = this.restart_needed_time;	// restart wireless time
 				if (restart_needed_time) {
 					var tmp_rc_time = parseInt(restart_needed_time);
 					if (!isNaN(tmp_rc_time) && tmp_rc_time > 0 && tmp_rc_time < 300) {
@@ -1221,10 +1230,18 @@ function applyRule(){
 				}
 				showLoading(rc_time, "waiting");
 				setTimeout(function(){
-					var interval_isAlive = setInterval(function(){
-						httpApi.isAlive("", lan_ipaddr, function(){ clearInterval(interval_isAlive); location.href = "/Advanced_Wireless_Content.asp"; });
-					}, 1000);
-				}, 1000 * rc_time * 0.7);
+					setInterval(function(){
+						var http = new XMLHttpRequest
+						http.onreadystatechange=function(){
+							if(http.readyState==4 && http.status==200){
+								top.location.href="/Advanced_Wireless_Content.asp"
+							}						
+						},
+
+						http.open("GET","/httpd_check.xml",!0);
+						http.send(null);
+					}, 3000);
+				}, 10000);
 			});
 
 			// document.form.submit();
@@ -1249,15 +1266,32 @@ function validForm(){
 			return false;	
 
 	if(auth_mode == "psk" || auth_mode == "psk2" || auth_mode == "pskpsk2" || auth_mode == "sae" || auth_mode == "psk2sae"){ //2008.08.04 lock modified
-		if(is_KR_sku){
-			if(!validator.psk_KR(document.form.wl_wpa_psk))
+	
+	if(is_KR_sku){
+		if(document.form.smart_connect_x.value == '1'){
+			if(!validator.psk_KR(document.form.band01_wpa_psk))
 				return false;
 		}
 		else{
-			if(!validator.psk(document.form.wl_wpa_psk))
+			if(!validator.psk_KR(document.form.band0_wpa_psk))
+				return false;
+			if(!validator.psk_KR(document.form.band1_wpa_psk))
 				return false;
 		}
-		
+	}
+	else{
+		if(document.form.smart_connect_x.value == '1'){
+			if(!validator.psk(document.form.band01_wpa_psk))
+				return false;
+		}
+		else{
+			if(!validator.psk(document.form.band0_wpa_psk))
+				return false;
+			if(!validator.psk(document.form.band1_wpa_psk))
+				return false;
+		}
+	}
+	
 		//confirm common string combination	#JS_common_passwd#
 		var is_common_string = check_common_string(document.form.wl_wpa_psk.value, "wpa_key");
 		if(is_common_string){
@@ -1683,6 +1717,16 @@ function enableSmartCon(val){
 	}
 
 	controlHideSSIDHint();
+	
+	if(is_KR_sku){
+		if(document.form.smart_connect_x.value == '1'){
+			$("#band01_auth_mode_x option[value='open']").remove();
+		}
+		else{
+			$("#band0_auth_mode_x option[value='open']").remove();
+			$("#band1_auth_mode_x option[value='open']").remove();
+		}
+	}
 }
 
 function enable_160MHz(obj){
@@ -3574,7 +3618,7 @@ function handleAcsCh13(channel){
 				<tr>
 					<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(0, 5);"><#WLANConfig11b_AuthenticationMethod_itemname#></a></th>
 					<td>
-						<select name="band01_auth_mode_x" class="input_option" onChange="auth_mehtod_change('01', this.value);">
+						<select id="band01_auth_mode_x" name="band01_auth_mode_x" class="input_option" onChange="auth_mehtod_change('01', this.value);">
 							<option value="open"    <% nvram_match("wl0_auth_mode_x", "open",   "selected"); %>>Open System</option>
 							<option value="shared"  <% nvram_match("wl0_auth_mode_x", "shared", "selected"); %>>Shared Key</option>
 							<option value="psk"     <% nvram_match("wl0_auth_mode_x", "psk",    "selected"); %>>WPA-Personal</option>
@@ -3605,7 +3649,7 @@ function handleAcsCh13(channel){
 				  	<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(0, 7);"><#WLANConfig11b_x_PSKKey_itemname#></a></th>
 				  	<td>
 					  	<div class="wpa_psk_container">
-							<div><input type="text" name="band01_wpa_psk" maxlength="64" class="input_32_table" value="<% nvram_get("wl0_wpa_psk"); %>" autocorrect="off" autocapitalize="off"></div>
+							<div><input type="text" name="band01_wpa_psk" maxlength="64" class="input_32_table" value="" autocorrect="off" autocapitalize="off"></div>
 					  	</div>
 				  	</td>
 				</tr>
@@ -3820,7 +3864,7 @@ function handleAcsCh13(channel){
 				<tr id="band0_auth_mode_x_field">
 					<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(0, 5);"><#WLANConfig11b_AuthenticationMethod_itemname#></a></th>
 					<td>
-						<select name="band0_auth_mode_x" class="input_option" onChange="auth_mehtod_change(0, this.value);">
+						<select id="band0_auth_mode_x" name="band0_auth_mode_x" class="input_option" onChange="auth_mehtod_change(0, this.value);">
 							<option value="open"    <% nvram_match("wl0_auth_mode_x", "open",   "selected"); %>>Open System</option>
 							<option value="shared"  <% nvram_match("wl0_auth_mode_x", "shared", "selected"); %>>Shared Key</option>
 							<option value="psk"     <% nvram_match("wl0_auth_mode_x", "psk",    "selected"); %>>WPA-Personal</option>
@@ -3851,7 +3895,7 @@ function handleAcsCh13(channel){
 				  	<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(0, 7);"><#WLANConfig11b_x_PSKKey_itemname#></a></th>
 				  	<td>
 					  	<div class="wpa_psk_container">
-							<div><input type="text" name="band0_wpa_psk" maxlength="64" class="input_32_table" value="<% nvram_get("wl0_wpa_psk"); %>" autocorrect="off" autocapitalize="off"></div>
+							<div><input type="text" name="band0_wpa_psk" maxlength="64" class="input_32_table" value="" autocorrect="off" autocapitalize="off"></div>
 					  	</div>
 				  	</td>
 				</tr>
@@ -4068,7 +4112,7 @@ function handleAcsCh13(channel){
 				<tr id="band1_auth_mode_x_field">
 					<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(0, 5);"><#WLANConfig11b_AuthenticationMethod_itemname#></a></th>
 					<td>
-						<select name="band1_auth_mode_x" class="input_option" onChange="auth_mehtod_change(1, this.value);">
+						<select id="band1_auth_mode_x" name="band1_auth_mode_x" class="input_option" onChange="auth_mehtod_change(1, this.value);">
 							<option value="open"    <% nvram_match("wl1_auth_mode_x", "open",   "selected"); %>>Open System</option>
 							<option value="shared"  <% nvram_match("wl1_auth_mode_x", "shared", "selected"); %>>Shared Key</option>
 							<option value="psk"     <% nvram_match("wl1_auth_mode_x", "psk",    "selected"); %>>WPA-Personal</option>
@@ -4099,7 +4143,7 @@ function handleAcsCh13(channel){
 				  	<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(0, 7);"><#WLANConfig11b_x_PSKKey_itemname#></a></th>
 				  	<td>
 					  	<div class="wpa_psk_container">
-							<div><input type="text" name="band1_wpa_psk" maxlength="64" class="input_32_table" value="<% nvram_get("wl1_wpa_psk"); %>" autocorrect="off" autocapitalize="off"></div>
+							<div><input type="text" name="band1_wpa_psk" maxlength="64" class="input_32_table" value="" autocorrect="off" autocapitalize="off"></div>
 					  	</div>
 				  	</td>
 				</tr>

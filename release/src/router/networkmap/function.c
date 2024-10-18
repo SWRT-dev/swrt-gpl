@@ -156,19 +156,13 @@ int FindHostname(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, int i)
 				    !strchr(name, '*') &&	// Ensure it's not a clientid in
 				    !strchr(name, ':')){	// case device didn't have a hostname
 						strlcpy(tab->device_name[i], name, sizeof(tab->device_name[0]));
-						strlcpy(tab->device_type[i], name, sizeof(tab->device_type[0]));
+						strlcpy(tab->vendor_name[i], name, sizeof(tab->vendor_name[0]));
 						unsigned char type = tab->type[i];
-						if(type == 0 || type == 22 || type > 31){
+						if(type == 0 || type == 22 || type == 30 || type == 31){
 							unsigned char type2;
 							unsigned char *device_name = strdup(tab->device_name[i]);
 							unsigned char *tmp = device_name;
-							if(*device_name){
-								unsigned int c;
-								for(c = *tmp; *tmp; tmp++, c = *tmp){
-									if(c - 'A' < 26)
-										*tmp = c + 32;
-								}
-							}
+							toLowerCase(device_name);
 							type2 = full_search(g_conv_state, device_name, &base);
 							if(type2){
 								type_filter(tab, i, type2, base, 0);
@@ -223,26 +217,158 @@ int FindHostname(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, int i)
 	return 1;
 }
 
-void find_wireless_device(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, int offline)
+void find_wireless_device(P_CLIENT_DETAIL_INFO_TABLE p_tab, int x)
 {
-	int n;
-	char *nv, *nvp, *b;
-	char *android = "android";
-	char *device_name = p_client_detail_info_tab->device_name[offline];
-	nv = nvp = strdup(device_name);
-	if (nv) {
-		for(n = *nv; *nv; nv++, n = *nv){
-			if((n - 65) < 26)
-				*nv = n + 32;
+	char *device_name;
+	device_name = strdup(p_tab->device_name[x]);
+	toLowerCase(device_name);
+	if(strstr(device_name, "android")){
+		memset(p_tab->device_name[0], 0, sizeof(p_tab->device_name[0]));
+		if(p_tab->vendor_name[x][0] && strlen(p_tab->vendor_name[x]) < 23)
+			snprintf(p_tab->device_name[0], sizeof(p_tab->device_name[0]), "%s(android)", p_tab->vendor_name[x]);
+		else
+			snprintf(p_tab->device_name[0], sizeof(p_tab->device_name[0]), "%s", "android");
+	}
+	free(device_name);
+	NMP_DEBUG("android device filter:\n%s\n", p_tab->device_name[x]);
+}
+
+#ifdef RTCONFIG_MLO
+int check_wrieless_mlo(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, const int i)
+{
+//only work properly with aimesh
+	int lock, bandtype;
+	char macaddr[18] = {0}, mlo_mac[18] = {0};
+	struct json_object *root, *mld_mac_obj;
+	P_CLIENT_DETAIL_INFO_TABLE tab = p_client_detail_info_tab;
+	if(!check_if_file_exist(ALLWCLIENT_LIST_JSON_PATH))
+		return 0;
+	lock = file_lock(ALLWEVENT_FILE_LOCK);
+	root = json_object_from_file(ALLWCLIENT_LIST_JSON_PATH);
+	file_unlock(lock);
+	snprintf(macaddr, sizeof(macaddr), "%02X:%02X:%02X:%02X:%02X:%02X", tab->mac_addr[i][0], 
+		tab->mac_addr[i][1], tab->mac_addr[i][2], tab->mac_addr[i][3], tab->mac_addr[i][4], tab->mac_addr[i][5]);
+	if(root){
+		json_object_object_foreach(root, key, val){
+			json_object_object_foreach(val, key2, val2){
+				if(!strcmp(key2, macaddr)){
+					if(strstr(key2, "2G"))
+						bandtype = 1;
+					else if(strstr(key2, "5G1"))
+						bandtype = 3;
+					else if(strstr(key2, "5G"))
+						bandtype = 2;
+					else if(strstr(key2, "6G1"))
+						bandtype = 5;
+					else if(strstr(key2, "6G"))
+						bandtype = 4;
+					else
+						bandtype = 0;
+					json_object_object_foreach(val2, key3, val3){
+						json_object_object_get_ex(val3, "mld_mac", &mld_mac_obj);
+						if(mld_mac_obj){
+							snprintf(mlo_mac, sizeof(mlo_mac), "%s", json_object_get_string(mld_mac_obj));
+							NMP_DEBUG("key = %s, mac = %s, mlo_mac = %s\n", key3, macaddr, mlo_mac);
+							if(!strcmp(macaddr, mlo_mac))
+								break;
+						}
+						NMP_DEBUG("set mlo flag = 1, mac = %s, mlo_mac = %s\n", macaddr, mlo_mac);
+						tab->mlo[i] = 1;
+						if(tab->wireless[i]){
+							continue;
+						}
+						tab->wireless[i] = bandtype;
+						tab->is_wireless[i] = bandtype;
+						dword_42DBA4 = 1;//?
+					}
+				}
+			}
+		}
+		json_object_put(root);
+		return 1;
+	}
+	return 0;
+}
+#endif
+
+int check_asus_device(CLIENT_DETAIL_INFO_TABLE *p_client_detail_info_tab, const int i)
+{
+	char mac_buf[18] = {0}, mac_name[18] = {0};
+	struct json_object *root, *mac_obj;
+	CLIENT_DETAIL_INFO_TABLE *tab = p_client_detail_info_tab;
+	if(check_if_file_exist("/tmp/asus_device.json")){
+		snprintf(mac_buf, sizeof(mac_buf), "%02X:%02X:%02X:%02X:%02X:%02X", tab->mac_addr[i][0], 
+		tab->mac_addr[i][1], tab->mac_addr[i][2], tab->mac_addr[i][3], tab->mac_addr[i][4], tab->mac_addr[i][5]);
+		root = json_object_from_file("/tmp/asus_device.json");
+		if(root){
+			json_object_object_get_ex(root, mac_buf, &mac_obj);
+			if(mac_obj){
+				snprintf(mac_name, sizeof(mac_name), "%s", json_object_get_string(mac_obj));
+				NMP_DEBUG("check_asus_device,  mac_buf = %s, mac_name = %s\n", mac_buf, mac_name);
+				if(!strcmp(mac_name, "ally")){
+					tab->type[i] = 128;
+					tab->os_type[i] = 0;
+					strlcpy(tab->vendor_name[i], "ROG Ally", sizeof(tab->vendor_name[0]));
+				}
+			}
+		}
+		json_object_put(root);
+		return 0;
+	}
+	return -1;
+}
+
+#ifdef RTCONFIG_IPV6
+void check_ip6_mac(CLIENT_DETAIL_INFO_TABLE *p_client_detail_info_tab, const char *mac, const char *ip6_addr)
+{
+	int i = 0;
+	char ipaddr[16], macaddr[18];
+	CLIENT_DETAIL_INFO_TABLE *tab = p_client_detail_info_tab;
+	if(tab->ip_mac_num > 0){
+		for(i = 0; i < tab->ip_mac_num; i++){
+			snprintf(ipaddr, sizeof(ipaddr), "%d.%d.%d.%d", tab->ip_addr[i][0], tab->ip_addr[i][1], 
+				tab->ip_addr[i][2], tab->ip_addr[i][3]);
+			snprintf(macaddr, sizeof(macaddr), "%02x:%02x:%02x:%02x:%02x:%02x", tab->mac_addr[i][0], 
+				tab->mac_addr[i][1], tab->mac_addr[i][2], tab->mac_addr[i][3], tab->mac_addr[i][4], 
+				tab->mac_addr[i][5]);
+			if(!strcmp(mac, macaddr)){
+				if(ip6_addr[0] - '2' > 1){
+					if(ip6_addr[0] == 'f' && ip6_addr[1] == 'e' && ip6_addr[2] == '8' && ip6_addr[3] == '0')
+						strlcpy(tab->ip6_addr[i], ip6_addr, sizeof(tab->ip6_addr[0]));
+				}else if(ip6_addr[1] != ':' && ip6_addr[2] != ':' && ip6_addr[3] != ':'){
+					strlcpy(tab->ip6_prefix[i], ip6_addr, sizeof(tab->ip6_prefix[0]));
+					if(ip6_addr[0] == 'f' && ip6_addr[1] == 'e' && ip6_addr[2] == '8' && ip6_addr[3] == '0')
+						strlcpy(tab->ip6_addr[i], ip6_addr, sizeof(tab->ip6_addr[0]));
+				}
+				NMP_DEBUG("ip/mac[%d] = [%s / %s], ip6_addr = %s, ip6_prefix(len=%d) = %s\n", i, ipaddr, macaddr,
+					tab->ip6_addr[i], strlen(nvram_safe_get(ipv6_nvname("ipv6_prefix"))), tab->ip6_prefix[i]);
+				NMP_DEBUG("ip6[%d] = [%c , %c, %c, %c]\n", i, ip6_addr[0], ip6_addr[1], ip6_addr[2], ip6_addr[3]);
+			}
 		}
 	}
-	if(strstr(nvp, android)){
-		memset(device_name, 0, sizeof(p_client_detail_info_tab->device_name[offline]));
-		if(p_client_detail_info_tab->vendor_name[offline][0] && strlen(p_client_detail_info_tab->vendor_name[offline]) < 23)
-			sprintf(device_name, "%s(android)", p_client_detail_info_tab->vendor_name[offline]);
-		else
-			sprintf(device_name, "%s", android);
-	}
-	free(nvp);
-	NMP_DEBUG("android device filter:\n%s\n", device_name);
 }
+
+void check_ip6_addr(CLIENT_DETAIL_INFO_TABLE *p_client_detail_info_tab)
+{
+	int n = 0;
+	char cmd[64] = {0}, line[128];
+	char *ip6_addr, *dev, *br, *lla, *mac, *status;
+	FILE *fp;
+	CLIENT_DETAIL_INFO_TABLE *tab = p_client_detail_info_tab;
+	snprintf(cmd, sizeof(cmd), "ip -6 neigh | grep lladdr > %s", IP6_TABLE_PATH);
+	system(cmd);
+	fp = fopen(IP6_TABLE_PATH, "r");
+	if(fp){
+		while(fgets(line, sizeof(line), fp) != NULL){
+			n++;
+			if(vstrsep(line, " ", &ip6_addr, &dev, &br, &lla, &mac, &status) == 6){
+				NMP_DEBUG("[%d] : ip6_addr = %s, dev = %s, br = %s, lla = %s, mac = %s, status = %s\n", 
+				n, ip6_addr, dev, br, lla, mac, status);
+				check_ip6_mac(tab, mac, ip6_addr);
+			}
+		}
+		fclose(fp);
+	}
+	unlink(IP6_TABLE_PATH);
+}
+#endif

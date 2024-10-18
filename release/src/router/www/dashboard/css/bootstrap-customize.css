@@ -41,7 +41,7 @@
 }
 
 a {
-    color: #fff;
+    color: var(--text-invert-color);
 }
 .fs-7 {
     font-size: 0.75rem;

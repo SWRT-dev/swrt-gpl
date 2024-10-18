@@ -94,6 +94,10 @@
     -webkit-mask-image: url("../images/aiProtection.svg");
     mask-image: url("../images/aiProtection.svg");
 }
+.icon-trafficAnalyzer {
+    -webkit-mask-image: url("../images/traffic_analyzer.svg");
+    mask-image: url("../images/traffic_analyzer.svg");
+}
 .icon-help {
     -webkit-mask-image: url("../images/help.svg");
     mask-image: url("../images/help.svg");
@@ -120,13 +124,13 @@
     -webkit-mask-image: url("../images/settings.svg");
     mask-image: url("../images/settings.svg");
 }
-.icon-wan-connection{
+.icon-wan-connection {
     -webkit-mask-image: url("../images/wan-connection.svg");
     mask-image: url("../images/wan-connection.svg");
 }
-.icon-wan-cable{
+.icon-wan-cable {
     -webkit-mask-image: url("../images/wan-cable.svg");
-    mask-image: url("../images/wan-cable.svg"); 
+    mask-image: url("../images/wan-cable.svg");
 }
 
 /* DASHBOARD CLIENTS */
@@ -185,11 +189,11 @@
     mask-image: url("../images/refresh.svg");
 }
 
-.icon-traffic-up{
+.icon-traffic-up {
     -webkit-mask-image: url("../images/traffic_up.svg");
     mask-image: url("../images/traffic_up.svg");
 }
-.icon-traffic-down{
+.icon-traffic-down {
     -webkit-mask-image: url("../images/traffic_down.svg");
     mask-image: url("../images/traffic_down.svg");
 }

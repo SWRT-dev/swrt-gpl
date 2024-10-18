@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 	<head>
 		<link href="/form_style.css" rel="stylesheet" type="text/css" />
@@ -49,8 +49,8 @@
 	</body>
 	<script>
 		pop_clientlist_listview();
-		if(top.businessWrapper) parent.$("#client_all_count").html(totalClientNum.online)
-		if(top.businessWrapper) parent.$("#wireless_count").html(totalClientNum.wireless)
-		if(top.businessWrapper) parent.$("#wired_count").html(totalClientNum.wired)
+		if(top.webWrapper) parent.$("#client_all_count").html(totalClientNum.online)
+		if(top.webWrapper) parent.$("#wireless_count").html(totalClientNum.wireless)
+		if(top.webWrapper) parent.$("#wired_count").html(totalClientNum.wired)
 	</script>
 </html>

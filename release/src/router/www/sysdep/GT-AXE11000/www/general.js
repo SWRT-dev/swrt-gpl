@@ -292,17 +292,27 @@ function handle_11ac_80MHz(){
 function show_cert_settings(show){
 	var orig_le_enable = '<% nvram_get("le_enable"); %>';
 	if(show){
-		document.form.le_enable.disabled = false;
 		showhide("https_cert", 1);
-		if(orig_le_enable != "0")
-			showhide("cert_details", 1);
-		else
-			showhide("cert_details", 0);
+		showhide("cert_details", 1);
+		if (orig_le_enable == "1") {
+			showhide("CAcert_details", 0);
+		} else {
+			showhide("CAcert_details", 1);
+		}
+		if (letsencrypt_support) {
+			document.form.le_enable.disabled = false;
+			document.getElementById("le_crypt").style.display = "";
+		} else {
+			document.form.le_enable.disabled = true;
+			document.getElementById("le_crypt").style.display = "none";
+		}
 	}
 	else{
 		document.form.le_enable.disabled = true;
 		showhide("https_cert", 0);
 		showhide("cert_details", 0);
+		showhide("CAcert_details", 0);
+		document.getElementById("le_crypt").style.display = "none";
 	}
 }
 
@@ -337,9 +347,6 @@ function change_common_radio(o, s, v, r){
 				showhide("wildcard_field",1);
 			}
 
-			if(letsencrypt_support)
-				show_cert_settings(1);
-
 			change_ddns_setting(document.form.ddns_server_x.value);
 		}else{
 			if(document.form.ddns_server_x.value == "WWW.ASUS.COM"){
@@ -362,9 +369,11 @@ function change_common_radio(o, s, v, r){
 
 			document.getElementById("ddns_status_tr").style.display = "none";
 			document.getElementById("ddns_result_tr").style.display = "none";
-			if(letsencrypt_support)
-				show_cert_settings(0);
 		}
+		if (HTTPS_support)
+			show_cert_settings(1);
+		else
+			show_cert_settings(0);
 		update_ddns_wan_unit_option();
 	}
 	else if(v == "wan_dnsenable_x"){
@@ -772,13 +781,13 @@ function insertExtChannelOption(){
 
 function wl_bw_to_wigig_bw(wl_bw){
 	/* WL_BW_2160 ~ WL_BW_8640 */
-	if (wl_bw == 6)
+	if (wl_bw == 10)
 		return 2160;
-	else if (wl_bw == 7)
+	else if (wl_bw == 11)
 		return 4320;
-	else if (wl_bw == 8)
+	else if (wl_bw == 12)
 		return 6480;
-	else if (wl_bw == 9)
+	else if (wl_bw == 13)
 		return 8640;
 	else
 		return 0;
@@ -792,14 +801,14 @@ function insertChannelOption_60g(){
 	var CurrentEdmgCh = document.form.wl_edmg_channel.value;
 	var edma_ch_ary = [], ary = [], ch_v = [];
 
-	if (document.form.wl_bw.value == 6) {
+	if (document.form.wl_bw.value == 10) {
 		// 2.16GHz, hide EDMA channel.
 		document.getElementById("wl_edmg_field").style.display = "none";
 	} else {
 		if (document.form.wl_bw.value == 1) {
 			// auto-bandwidth, list channels of all possible bandwidth
 			max_wl_bw = max_band60g_wl_bw;
-			for (var i = 7; i <= max_wl_bw; ++i) {
+			for (var i = 11; i <= max_wl_bw; ++i) {
 				if (wl_bw_to_wigig_bw(i) <= 2160)
 					continue;
 				ary = filter_60g_edmg_channel_by_bw(wl_channel_list_60g, wl_bw_to_wigig_bw(i));
@@ -1845,8 +1854,8 @@ function limit_auth_method(g_unit){
 		}
 	}	
 
-	if(is_KR_sku){	// MODELDEP by Territory_code
-		auth_array.splice(0, 1); //remove Open System
+	if(is_KR_sku){ //remove Open System
+		auth_array = auth_array.filter(subArr => subArr[1] !== 'open');
 	}
 
 	if(isSupport("amas") && isSupport("amasRouter") && (isSwMode("rt") || isSwMode("ap"))){
@@ -2059,7 +2068,7 @@ function gen_tab_menu(_tab_list_array, _currentItem) {
 }
 
 function is_unit_24g(_unit) {
-	if (based_modelid == "GT-AXE16000" || based_modelid == "GT-BE98" || based_modelid === 'GT-BE98_PRO') {
+	if (based_modelid == "GT-AXE16000" || based_modelid == "GT-BE98" || based_modelid === 'GT-BE98_PRO' || based_modelid === 'BQ16' || based_modelid === 'BQ16_PRO') {
 		if (_unit == 3) return true;
 	} else {
 		if (_unit == 0) return true;
@@ -2068,7 +2077,7 @@ function is_unit_24g(_unit) {
 }
 
 function is_unit_5g(_unit) {
-	if (based_modelid == "GT-AXE16000" || based_modelid == "GT-BE98" || based_modelid === 'GT-BE98_PRO') {
+	if (based_modelid == "GT-AXE16000" || based_modelid == "GT-BE98" || based_modelid === 'GT-BE98_PRO' || based_modelid === 'BQ16' || based_modelid === 'BQ16_PRO') {
 		if (_unit == 0) return true;
 	} else if (wl_info.band5g_support) {
 		if (_unit == 1) return true;
@@ -2077,7 +2086,7 @@ function is_unit_5g(_unit) {
 }
 
 function is_unit_5g_2(_unit) {
-	if (based_modelid == "GT-AXE16000" || based_modelid == "GT-BE98" || based_modelid === 'GT-BE98_PRO') {
+	if (based_modelid == "GT-AXE16000" || based_modelid == "GT-BE98" || based_modelid === 'GT-BE98_PRO' || based_modelid === 'BQ16' || based_modelid === 'BQ16_PRO') {
 		if (_unit == 1) return true;
 	} else if (wl_info.band5g_2_support) {
 		if (_unit == 2) return true;

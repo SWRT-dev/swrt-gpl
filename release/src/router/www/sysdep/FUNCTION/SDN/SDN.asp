@@ -11,6 +11,7 @@
 <title><#Web_Title#> - SDN</title>
 <link rel="stylesheet" type="text/css" href="/index_style.css">
 <link rel="stylesheet" type="text/css" href="/form_style.css">
+<script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" src="/help.js"></script>
@@ -24,12 +25,15 @@ function initial(){
 	show_menu();
 	setTimeout(function(){
 		var curTheme = "";
-		if(parent.businessWrapper){
+		if(parent.webWrapper){
 			curTheme = "WHITE";
 		}
 		else{
 			if(based_modelid.substr(0,2) == "GT"){
 				curTheme = "ROG";
+			}
+			else if(based_modelid.substr(0,3) == "TUF"){
+				curTheme = "TUF";
 			}
 		}
 		if(curTheme != ""){

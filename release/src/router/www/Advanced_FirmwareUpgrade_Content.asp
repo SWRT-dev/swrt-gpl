@@ -102,19 +102,18 @@
 	cursor: pointer;	
 }
 </style>
-
+<script type="text/javascript" src="/js/jquery.js"></script>
 <script language="JavaScript" type="text/javascript" src="/state.js"></script>
 <script language="JavaScript" type="text/javascript" src="/help.js"></script>
 <script language="JavaScript" type="text/javascript" src="/general.js"></script>
 <script language="JavaScript" type="text/javascript" src="/validator.js"></script>
 <script language="JavaScript" type="text/javascript" src="/popup.js"></script>
-<script language="JavaScript" type="text/javascript" src="/js/jquery.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/confirm_block.js"></script>
 <script language="JavaScript" type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script language="JavaScript" type="text/javascript" src="/form.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/httpApi.js"></script>
 <script language="JavaScript" type="text/javascript" src="/replaceisp.js"></script>
-<script language="JavaScript" type="text/javascript" src="/js/asus_eula.js"></script>
+<script language="JavaScript" type="text/javascript" src="/js/asus_policy.js"></script>
 <!-- script language="JavaScript" type="text/javascript" src="/ajax/get_rbk_info.asp"></script -->
 <script>
 $(function () {
@@ -834,38 +833,19 @@ function cfgsync_firmware_upgrade(){
 }
 
 function detect_update(){
-	var download_info = 0;
-	if(sw_mode != "1" || (link_status == "2" && link_auxstatus == "0") || (link_status == "2" && link_auxstatus == "2")){
-		
-		download_info++;
-	}
-	else if(dualwan_enabled &&
-				((first_link_status == "2" && first_link_auxstatus == "0") || (first_link_status == "2" && first_link_auxstatus == "2")) ||
-				((secondary_link_status == "2" && secondary_link_auxstatus == "0") || (secondary_link_status == "2" && secondary_link_auxstatus == "2"))){
 
-		download_info++;
-	}		
+	document.getElementById('update_states').style.display="";
+	document.getElementById('update_states').innerHTML="<#check_proceeding#>";
+	document.getElementById('update_scan').style.display="";
+	document.getElementById('update').disabled = true;
+	if(cfg_sync_support){
+		cfgsync_firmware_check();
+	}
 	else{
-		document.getElementById('update_scan').style.display="none";
-		document.getElementById('update_states').style.display="";
-		document.getElementById('update_states').innerHTML="<#connect_failed#>";
-		return false;	
-	}
-
-	if(download_info > 0){
-		document.getElementById('update_states').style.display="";
-		document.getElementById('update_states').innerHTML="<#check_proceeding#>";
-		document.getElementById('update_scan').style.display="";
-		document.getElementById('update').disabled = true;
-		if(cfg_sync_support){
-			cfgsync_firmware_check();
-		}
-		else{
-			document.start_update.action_mode.value="apply";
-			document.start_update.webs_update_trigger.value="FWUG";
-			document.start_update.action_script.value="start_webs_update";
-			document.start_update.submit();
-		}
+		document.start_update.action_mode.value="apply";
+		document.start_update.webs_update_trigger.value="FWUG";
+		document.start_update.action_script.value="start_webs_update";
+		document.start_update.submit();
 	}
 }
 
@@ -1972,17 +1952,24 @@ function get_mobile_fw_upgrade_status(){
 					<script type="text/javascript">
 					$('#switch_webs_update_enable').iphoneSwitch('<% nvram_get("webs_update_enable"); %>',
 						function(){
-							ASUS_EULA.config(function(){
-								hide_upgrade_opt(1);
-								save_update_enable('on');
-							},
-								refreshpage
-							)
-
-							if(!ASUS_EULA.check("asus_pp", "AUTOUPGRADE")) return false;
-
-							hide_upgrade_opt(1);
-							save_update_enable('on');
+							if(policy_status.PP==0||policy_status.PP_time==""){
+                                const policyModal = new PolicyModalComponent({
+                                    policy: "PP",
+                                    submit_reload: 1,
+                                    agreeCallback: ()=>{
+                                        hide_upgrade_opt(1);
+                                        save_update_enable('on');
+                                    },
+                                    disagreeCallback: ()=>{
+                                        alert(`<#ASUS_POLICY_Function_Confirm#>`);
+                                    }
+                                });
+                                policyModal.show();
+                                return false;
+							}else{
+                                hide_upgrade_opt(1);
+                                save_update_enable('on');
+							}
 						},
 						function(){
 							hide_upgrade_opt(0);
@@ -2022,12 +2009,23 @@ function get_mobile_fw_upgrade_status(){
 					<script type="text/javascript">
 					$('#switch_security_update_enable').iphoneSwitch(httpApi.securityUpdate.get(),
 						function(){
-							//on
-							ASUS_EULA.config(function(){httpApi.securityUpdate.set(1);},refreshpage)
-							if(!ASUS_EULA.check("asus_pp", "ASD")) return false;
-							if(!ASUS_EULA.check("asus_pp", "AHS")) return false;
-
-							httpApi.securityUpdate.set(1);
+                            //on
+							if(policy_status.PP==0||policy_status.PP_time==""){
+                                const policyModal = new PolicyModalComponent({
+                                    policy: "PP",
+                                    submit_reload: 1,
+                                    agreeCallback: ()=>{
+                                        httpApi.securityUpdate.set(1);
+                                    },
+                                    disagreeCallback: ()=>{
+                                        alert(`<#ASUS_POLICY_Function_Confirm#>`);
+                                    }
+                                });
+                                policyModal.show();
+                                return false;
+							}else{
+                                httpApi.securityUpdate.set(1);
+							}
 						},
 						function(){
 							//off
@@ -2156,7 +2154,7 @@ function get_mobile_fw_upgrade_status(){
 <input type="hidden" name="webs_update_time" value="<% nvram_get("webs_update_time"); %>">
 <input type="hidden" name="webs_update_beta" value="<% nvram_get("webs_update_beta"); %>">
 <input type="hidden" name="webs_update_ts" value="<% nvram_get("webs_update_ts"); %>">
-</form>		
+</form>
 			  </td>
               </tr>
             </tbody>

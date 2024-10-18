@@ -132,42 +132,50 @@ extern int g_isEnrollee[MAX_NR_WL_IF];
 
 int is_wps_stopped(void)
 {
-	int i, ret = 1;
+	int i = 0, ret = 1;
 	char status[16], tmp[128], prefix[] = "wlXXXXXXXXXX_", word[256], *next, ifnames[128];
 	int wps_band = nvram_get_int("wps_band_x"), multiband = get_wps_multiband();
 	char tmpbuf[512];
 #if defined(RTCONFIG_WIFI_SON) || defined(RTCONFIG_AMAS)
 	int wps_enrollee_band = nvram_match("wifison_ready", "1") ? 1 : 0;
 #endif
+	int obding = nvram_match("cfg_obstatus", "4") ? 1 : 0;
 
 #ifdef RTCONFIG_QCA_PLC2
 	if (nvram_invmatch("wlready", "1"))
 		return 1;	// wifi not ready = stop
 #endif
 
-	i = 0;
-	strcpy(ifnames, nvram_safe_get("wl_ifnames"));
-	foreach (word, ifnames, next) {
-		if (i >= MAX_NR_WL_IF)
-			break;
-		if (!multiband && wps_band != i) {
-			++i;
-			continue;
-		}
-		SKIP_ABSENT_BAND_AND_INC_UNIT(i);
-		snprintf(prefix, sizeof(prefix), "wl%d_", i);
-#ifdef RTCONFIG_QCA_PLC2
-		if (get_radio_status(word) == 0) {
-			++i;
-			continue;
-		}
-#else
-		if (!__need_to_start_wps_band(prefix) || nvram_match(strcat_r(prefix, "radio", tmp), "0")) {
-			ret = 0;
-			++i;
-			continue;
-		}
+#ifdef RTCONFIG_VIF_ONBOARDING
+	if (get_vif_ifname(ifnames, sizeof(ifnames)) && nvram_match("cfg_obstatus", "4"))
+		;
+	else
 #endif
+		strcpy(ifnames, nvram_safe_get("wl_ifnames"));
+	foreach (word, ifnames, next) {
+		/* don't perform the following checks when onboarding */
+		if (obding == 0) {
+			if (i >= MAX_NR_WL_IF)
+				break;
+			if (!multiband && wps_band != i) {
+				++i;
+				continue;
+			}
+			SKIP_ABSENT_BAND_AND_INC_UNIT(i);
+			snprintf(prefix, sizeof(prefix), "wl%d_", i);
+#ifdef RTCONFIG_QCA_PLC2
+			if (get_radio_status(word) == 0) {
+				++i;
+				continue;
+			}
+#else
+			if (!__need_to_start_wps_band(prefix) || nvram_match(strcat_r(prefix, "radio", tmp), "0")) {
+				ret = 0;
+				++i;
+				continue;
+			}
+#endif
+		}
 
 #ifdef RTCONFIG_WPS_ENROLLEE
 		if (nvram_match("wps_enrollee", "1")) {
@@ -181,7 +189,7 @@ int is_wps_stopped(void)
 		}
 		else
 #endif
-			strcpy(status, getWscStatus(i, tmpbuf, sizeof(tmpbuf)));
+			strcpy(status, getWscStatus(word, tmpbuf, sizeof(tmpbuf)));
 
 		//dbG("band %d wps status: %s\n", i, status);
 		if (!strcmp(status, "Success") 

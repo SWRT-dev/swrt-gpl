@@ -23,7 +23,9 @@
 
 extern const char WIF_2G[];
 extern const char WIF_5G[];
+extern const char WIF_6G[];
 extern const char WDSIF_5G[];
+extern const char APCLI_6G[];
 extern const char APCLI_5G[];
 extern const char APCLI_2G[];
 #define URE	"apcli0"
@@ -31,7 +33,7 @@ extern const char APCLI_2G[];
 #ifndef ETHER_ADDR_LEN
 #define ETHER_ADDR_LEN		6
 #endif
-#if defined(RTCONFIG_MT798X) // 288 - 544
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X) // 288 - 544
 #define MAX_NUMBER_OF_MAC	544
 #else
 #define MAX_NUMBER_OF_MAC	64
@@ -42,7 +44,7 @@ extern const char APCLI_2G[];
 #define MODE_HTMIX		2
 #define MODE_HTGREENFIELD	3
 #define MODE_VHT		4
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 #define MODE_HE 5
 #define MODE_HE_SU	8
 #define MODE_HE_24G 7
@@ -161,7 +163,11 @@ struct _SITESURVEY_VSIE {
 #define	RTPRIV_IOCTL_SHOW		(SIOCIWFIRSTPRIV + 0x11)
 #define RTPRIV_IOCTL_WSC_PROFILE	(SIOCIWFIRSTPRIV + 0x12)
 #define RTPRIV_IOCTL_SWITCH		(SIOCIWFIRSTPRIV + 0x1D) //used by iNIC_RT3352 on RTN65U
+#if defined(RTCONFIG_MT799X)
+#define RTPRIV_IOCTL_ASUSCMD		(SIOCSIWPMKSA + 1)	//append at the END of standard wifi ioctl
+#else
 #define RTPRIV_IOCTL_ASUSCMD		(SIOCIWFIRSTPRIV + 0x1E)
+#endif
 #define RTPRIV_IOCTL_GET_MAC_TABLE_STRUCT	(SIOCIWFIRSTPRIV + 0x1F)	/* RT3352 iNIC driver doesn't support this ioctl. */
 #define OID_802_11_DISASSOCIATE		0x0114
 #define OID_802_11_BSSID_LIST_SCAN	0x0508
@@ -206,6 +212,7 @@ enum ASUS_IOCTL_SUBCMD {
     ASUS_SUBCMD_DFS_CH_STATUS,				//24
     ASUS_SUBCMD_GET_CH_BW,				//25
 	ASUS_SUBCMD_GET_BSCANING,			//26
+    ASUS_SUBCMD_GDFS_CH_NOPTIME,			//27: get the NOP time on each channel
 	ASUS_SUBCMD_MAX
 };
 
@@ -433,7 +440,11 @@ enum wnm_cmd_subid {
 
 struct GNU_PACKED wnm_command {
 	unsigned char command_id;
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
+	unsigned int command_len;
+#else
 	unsigned char command_len;
+#endif
 	unsigned char command_body[0];
 };
 #endif /* RTCONFIG_BTM_11V */
@@ -446,6 +457,8 @@ struct GNU_PACKED wnm_command {
 #define DEFAULT_EEPROM_SIZE_SHIFT	0x10000
 #elif defined(RTCONFIG_MT798X)
 #define SPI_PARALLEL_NOR_FLASH_FACTORY_LENGTH	(8*124*1024) // 8 UBI LEB
+#elif defined(RTCONFIG_MT799X)
+#define SPI_PARALLEL_NOR_FLASH_FACTORY_LENGTH	(11*124*1024) // 11 UBI LEB
 #else
 #define SPI_PARALLEL_NOR_FLASH_FACTORY_LENGTH	0x11000
 #define DEFAULT_EEPROM_SIZE_SHIFT	0x0
@@ -458,6 +471,8 @@ struct GNU_PACKED wnm_command {
 #define OFFSET_EEPROM_VER	0x40002
 #if defined(RTCONFIG_MT798X)
 #define FTRY_PARM_SHIFT		(0xA0000 + 0x10000) /* EEPROM end + 64KB */
+#elif defined(RTCONFIG_MT799X)
+#define FTRY_PARM_SHIFT		(0xF1000 + 0x10000) /* EEPROM end + 64KB */
 #else /* Legacy */
 #define	FTRY_PARM_SHIFT		(0)
 #endif
@@ -525,6 +540,13 @@ struct GNU_PACKED wnm_command {
 #define OFFSET_MAC_ADDR		OFFSET_MAC_ADDR_2G		// 5G MAC is derived from EEPROM MAC
 #define OFFSET_MAC_GMAC1	(OFFSET_MTD_FACTORY + 0x24)	// MTK eth1's MAC for WAN
 #define OFFSET_MAC_GMAC0	(OFFSET_MTD_FACTORY + 0x2A)	// MTK br-lan's MAC for LAN
+#elif defined(RTCONFIG_MT799X)
+#define OFFSET_MAC_ADDR_2G	(OFFSET_MTD_FACTORY + 0x4)	// MTK EEPROM MAC address
+#define OFFSET_MAC_ADDR		(OFFSET_MTD_FACTORY + 0xA)	// 5G MAC address
+#define OFFSET_MAC_ADDR_6G	(OFFSET_MTD_FACTORY + 0x2C0)	// 6G MAC address
+#define OFFSET_MAC_GMAC2	(OFFSET_MTD_FACTORY + 0xFFFEE)	// MTK RFB LAN2
+#define OFFSET_MAC_GMAC0	(OFFSET_MTD_FACTORY + 0xFFFF4)	// MTK RFB LAN
+#define OFFSET_MAC_GMAC1	(OFFSET_MTD_FACTORY + 0xFFFFA)	// MTK RFB WAN
 #else
 #define OFFSET_MAC_ADDR		0x40004
 #define OFFSET_MAC_ADDR_2G	0x48004
@@ -636,7 +658,7 @@ struct GNU_PACKED wnm_command {
 #endif
 
 #if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH) || defined(RTCONFIG_SWRT)
-#if defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 #define OFFSET_AMAS_BUNDLE_FLAG		(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xfd20)
 #define OFFSET_AMAS_BUNDLE_KEY		(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xfd00)
 #else
@@ -645,6 +667,9 @@ struct GNU_PACKED wnm_command {
 #endif
 #endif // RTCONFIG_AMAS
 
+#if defined(RTCONFIG_PRESSURE_SENSOR)
+#define OFFSET_PRESSURE		(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xfd30) // 16 bytes
+#endif
 
 #if defined(RTCONFIG_PASS_V2)
 #define PASS_OFFSET	OFFSET_PASS_ENC
@@ -656,7 +681,7 @@ struct GNU_PACKED wnm_command {
 
 
 #ifdef RTCONFIG_ASUSCTRL
-#if defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 #define OFFSET_ASUSCTRL_FLAGS		(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xFDF0)  /*  8 bytes */
 #define ASUSCTRL_FLAGS_LENGTH		(8)
 #define OFFSET_ASUSCTRL_CHG_SKU		(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xFDF8)  /*  2 bytes */
@@ -748,7 +773,7 @@ extern int wl_ioctl(const char *ifname, int cmd, struct iwreq *pwrq);
 extern void mtk_parse_ratedata(uint32_t ratedata, unsigned char *phymode, unsigned char *mcs, unsigned char *bw,
 	unsigned char *vht_nss,	 unsigned char *sgi, unsigned char *stbc);
 extern unsigned int mtk_mcs_to_rate(unsigned char mcs, unsigned char phy_mode, unsigned char bw, unsigned char sgi, unsigned char vht_nss, int unit);
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 extern void mtk_parse_heratedata(uint32_t ratedata, unsigned char *phymode, unsigned char *mcs, unsigned char *bw,
 	unsigned char *vht_nss,	 unsigned char *sgi, unsigned char *stbc);
 #endif
@@ -767,3 +792,4 @@ typedef struct {
 } phyState;
 
 #endif
+

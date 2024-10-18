@@ -48,7 +48,7 @@ endif
 
 ifeq ($(RTCONFIG_QCA),y)
 CFLAGS += -I./sysdeps/qca -I$(TOP)/wireless_tools$(WTOOL_SUFFIX)/ -DWE_NOLIBM
-CFLAGS += $(if $(or $(RTCONFIG_SOC_IPQ8064),$(RTCONFIG_SOC_IPQ8074)),-DSMP)
+CFLAGS += $(if $(or $(RTCONFIG_SOC_IPQ8064),$(RTCONFIG_SOC_IPQ8074),$(RTCONFIG_SOC_IPQ53XX)),-DSMP)
 endif
 
 ifeq ($(RTCONFIG_LANTIQ),y)
@@ -212,6 +212,9 @@ OBJS += mt7622.o
 else ifeq ($(RTCONFIG_SWITCH_MT7986_MT7531),y)
 CFLAGS += -I$(SRCBASE)/$(PLATFORM_ROUTER)/mii_mgr/source
 OBJS += mt7986_mt7531.o
+else ifeq ($(RTCONFIG_SWITCH_MT7988),y)
+CFLAGS += -I$(SRCBASE)/$(PLATFORM_ROUTER)/mii_mgr/source
+OBJS += mt7988.o
 else ifeq ($(BB_SOC),y)
 OBJS += econet.o
 else
@@ -242,6 +245,8 @@ else ifeq ($(RTCONFIG_SWITCH_IPQ50XX_QCA8337),y)
 OBJS += ipq50xx_qca8337.o
 else ifeq ($(RTCONFIG_SOC_IPQ50XX),y)
 OBJS += ipq50xx.o
+else ifeq ($(RTCONFIG_SOC_IPQ53XX)$(RTCONFIG_SWITCH_QCA8386),yy)
+OBJS += ipq53xx_qca8386.o mdio.o
 else
 OBJS += qca8337.o
 endif
@@ -403,7 +408,7 @@ OBJS += sched_v2.o
 vpath %.c sysdeps $(SRCBASE)/shared/ $(WLAN_ComponentSrcDirs)
 ifeq ($(RTCONFIG_RALINK),y)
 ifneq ($(RTCONFIG_DSL_REMOTE),y)
-CFLAGS += $(if $(MT798X),,-DTRX_NEW)
+CFLAGS += $(if $(MT798X)$(MT799X),,-DTRX_NEW)
 endif
 ifeq ($(RMAX6000),y)
 CFLAGS += -DTRX_NEW
@@ -592,3 +597,4 @@ endif
 ifneq ($(RT4GAC86U),y)
 -include $(OBJS:%.o=.%.depend)
 endif
+

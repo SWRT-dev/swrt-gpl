@@ -301,9 +301,7 @@ void start_ubifs(void)
 #endif
 		return;
 	}
-#if defined(TUFAX6000) || defined(TUFAX4200) || defined(PRTAX57_GO) || defined(RTAX52)
-//why?
-#else
+#if !defined(RTCONFIG_MT798X) && !defined(RTCONFIG_MT799X)
 	if (nvram_get_int("ubifs_clean_fs")) {
 		if (ubifs_unlock(dev, part)) {
 			error("unlocking");

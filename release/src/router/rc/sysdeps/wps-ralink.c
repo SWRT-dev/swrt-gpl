@@ -122,10 +122,10 @@ stop_wps_method(void)
 		SKIP_ABSENT_BAND_AND_INC_UNIT(i);
 		sprintf(prefix, "wl%d_", i);
 #if defined(RTCONFIG_AMAS)
-		if (wps_band == i)
+		if (wps_band == i || multiband)
 		{
 #ifdef RTCONFIG_VIF_ONBOARDING
-			if (wps_via_vif)
+			if (wps_via_vif && wps_band == i)
 				doSystem("iwpriv %s set WscStop=%d", nvram_safe_get(prefix_vif), 1);	// WPS disabled
 			else
 #endif
@@ -164,7 +164,9 @@ stop_wps_method(void)
 		doSystem("iwpriv %s set WscStop=1", get_wifname(i));	// Stop WPS Process.
 		++i;
 	}
-#if !defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_RALINK_RT3883) || defined(RTCONFIG_RALINK_RT3052)
+	/* don't delay 10s */
+#else
 	sleep(10);
 #endif
 	doSystem("iwpriv %s set WscConfMode=%d", get_wifname(0), 7);	// trigger Windows OS to give a popup about WPS PBC AP
@@ -318,4 +320,3 @@ stop_wps_method_ob(void)
 		runtime_onoff_wps(0);
 	return 0;
 }
-

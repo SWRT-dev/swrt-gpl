@@ -221,7 +221,7 @@ var httpApi ={
 		return reult;
 	},
 
-	"nvramSet": function(postData, handler){
+	"nvramSet": function(postData, handler, async = true){
 		delete postData.isError;
 
 		if(this.app_dataHandler){
@@ -232,8 +232,9 @@ var httpApi ={
 			$.ajax({
 				url: '/applyapp.cgi',
 				dataType: 'json',
-				data: postData,
+				data: encodeURIComponent(JSON.stringify(postData)),
 				type: 'POST',
+				async: async,
 				error: function(){},
 				success: function(response){
 					if(handler) handler.call(response);
@@ -519,7 +520,7 @@ var httpApi ={
 
 	"detwanGetRet": function(){
 		var wanInfo = httpApi.nvramGet(["wan0_state_t", "wan0_sbstate_t", "wan0_auxstate_t", "autodet_state", "autodet_auxstate", "wan0_proto",
-										 "link_internet", "x_Setting", "usb_modem_act_sim", "link_wan"], true);
+										 "link_internet", "x_Setting", "usb_modem_act_sim", "link_wan", "wans_dualwan", "wan1_state_t", "wan1_sbstate_t", "wan1_auxstate_t"], true);
 		var tcode = httpApi.nvramGet(["territory_code"], true).territory_code;
 
 		var sessionId = (typeof systemVariable != "undefined") ? systemVariable.qisSession : ""; 
@@ -605,7 +606,7 @@ var httpApi ={
 		else if(wanInfo.link_wan == ""){
 			retData.wanType = wanTypeList.check;
 		}
-		else if(wanInfo.link_wan == "0"){
+		else if(wanInfo.link_wan == "0" && (isSupport("gobi") || !hadPlugged("modem"))){
 			retData.wanType = wanTypeList.noWan;
 		}
 		else if(
@@ -627,17 +628,9 @@ var httpApi ={
 				retData.wanType = (iCanUsePPPoE) ? wanTypeList.pppoe : wanTypeList.dhcp;
 			}
 		}
-		else if(wanInfo.autodet_state == ""){
-			retData.wanType = wanTypeList.check;
-			if(this.detRetryCnt > 0){
-				this.detRetryCnt --;
-			}
-			else{
-				this.startAutoDet();
-				retData.isIPConflict = false;
-				retData.isError = false;
-				this.detRetryCnt = this.detRetryCnt_MAX;
-			}
+		else if(isSupport("usb_bk") && wanInfo.wans_dualwan == "wan usb" &&
+				wanInfo.link_internet == "2" && wanInfo.wan1_state_t == "2" && wanInfo.wan1_sbstate_t  == "0"){//USB tethering
+			retData.wanType = wanTypeList.connected;
 		}
 		else if(iCanUsePPPoE){
 			retData.wanType = wanTypeList.pppoe;
@@ -772,7 +765,9 @@ var httpApi ={
 			"unknow":"UNKNOW",
 			"v6plus":"V6PLUS",
 			"hgw_v6plus":"HGW_V6PLUS",
-			"ocnvc":"OCNVC"
+			"ocnvc":"OCNVC",
+			"dslite_xpass":"DSLITE_XPASS",
+			"dslite_transix":"DSLITE_TRANSIX"
 		}
 
 		var retData = {
@@ -805,6 +800,12 @@ var httpApi ={
 		else if(wanInfo.wan46det_state == "5"){
 			retData.wan46State = wanTypeList.ocnvc;
 		}
+		else if(wanInfo.wan46det_state == "6"){
+			retData.wan46State = wanTypeList.dslite_xpass;
+		}
+		else if(wanInfo.wan46det_state == "7"){
+			retData.wan46State = wanTypeList.dslite_transix;
+		}
 
 		return retData;
 	},
@@ -822,6 +823,7 @@ var httpApi ={
 			"map-e": "MAP-E",
 			"v6plus": "<#IPv6_plus#>",
 			"ocnvc": "<#IPv6_ocnvc#>",
+			"dslite": "DS-Lite",
 			"usb modem": "USB Modem"
 		};
 		var result = {
@@ -895,9 +897,10 @@ var httpApi ={
 	},
 
 	"isConnected": function(_index){
+		var sw_mode = httpApi.nvramGet(["sw_mode"], true).sw_mode;
 		var wan_index = (_index == undefined) ? 0 : _index;
 		var wanInfo = httpApi.nvramGet(["wan" + wan_index + "_state_t", "wan" + wan_index + "_sbstate_t", "wan" + wan_index + "_auxstate_t", "link_internet"], true);
-		return (
+		return (sw_mode != "1")? (wanInfo.link_internet == "2"):(
 			wanInfo.link_internet == "2" &&
 			wanInfo["wan" + wan_index + "_state_t"] == "2" &&
 			wanInfo["wan" + wan_index + "_sbstate_t"] == "0" &&
@@ -1013,73 +1016,88 @@ var httpApi ={
 		});
 	},
 
+	"newEula": {
+		"set": (enable, callback) => {
+			$.ajax({
+				url: '/set_ASUS_NEW_EULA.cgi',
+				data: {
+					"ASUS_NEW_EULA": enable
+				},
+				dataType: 'json',
+				success: callback
+			});
+		},
+		"get": () => {
+			return new Promise((resolve, reject) => {
+				const res = httpApi.nvramGet(["ASUS_NEW_EULA", "ASUS_NEW_EULA_time"], true)
+				resolve(res);
+			});
+		}
+	},
+
 	"privateEula": {
 		"set": function(enable, callback){
-			window.localStorage.setItem("PP", enable)
-			window.localStorage.setItem("PP_time", Date.now())
-
 			$.ajax({
 				url: '/set_ASUS_privacy_policy.cgi',
 				data: {
 					"ASUS_privacy_policy": enable
 				},
+				async: false,
 				dataType: 'json',
 				success: callback
 			});
 		},
 
 		"get": function(feature){
-			if(feature == undefined || feature == "") feature = "ASUS_privacy_policy";
+			return new Promise((resolve, reject) =>{
+				if (feature == undefined || feature == "") feature = "ASUS_privacy_policy";
 
-			var retData = {
-				ASUS_PP_EULA: window.localStorage["PP"],
-				ASUS_PP_EULA_time: window.localStorage["PP_time"]
-			};
+				let retData = {
+					ASUS_PP: 0,
+					ASUS_PP_time: ""
+				};
 
-			$.ajax({
-				url: '/get_ASUS_privacy_policy.cgi',
-				dataType: 'json',
-				async: false,
-				success: function(resp){
-					var ASUS_privacy_policy = resp.ASUS_privacy_policy;
-					var ASUS_privacy_policy_time = resp.ASUS_privacy_policy_time;
+				$.ajax({
+					url: '/get_ASUS_privacy_policy.cgi',
+					dataType: 'json',
+					async: false,
+					success: function (resp) {
+						var ASUS_privacy_policy = resp.ASUS_privacy_policy;
+						var ASUS_privacy_policy_time = resp.ASUS_privacy_policy_time;
 
-					if(feature == "SIGNED"){
-						var securityUpdate = httpApi.securityUpdate.get()
-						var audoUpgrade = httpApi.nvramGet(["webs_update_enable"]).webs_update_enable == "1";
+						if (feature == "SIGNED") {
+							var securityUpdate = httpApi.securityUpdate.get()
+							var audoUpgrade = httpApi.nvramGet(["webs_update_enable"]).webs_update_enable == "1";
 
-						if(ASUS_privacy_policy == "0" && ASUS_privacy_policy_time != ""){
-							retData.ASUS_PP_EULA = "1";
-							retData.ASUS_PP_EULA_time = "";
-						}
-						else if(
-							ASUS_privacy_policy_time == "" ||
-							ASUS_privacy_policy_time == undefined
-						){
-							retData.ASUS_PP_EULA = "0";
-							retData.ASUS_PP_EULA_time = "";
-						}
-						else if(
-							(ASUS_privacy_policy > "0" && resp.AHS > ASUS_privacy_policy && securityUpdate) ||
-							(ASUS_privacy_policy > "0" && resp.ASD > ASUS_privacy_policy && securityUpdate) ||
-							(ASUS_privacy_policy > "0" && resp.AUTOUPGRADE > ASUS_privacy_policy && audoUpgrade)
-						){
-							retData.ASUS_PP_EULA = "0";
-							retData.ASUS_PP_EULA_time = ASUS_privacy_policy_time;
-						}
-						else{
-							retData.ASUS_PP_EULA = "1";
-							retData.ASUS_PP_EULA_time = ASUS_privacy_policy_time;
+							if (ASUS_privacy_policy == "0" && ASUS_privacy_policy_time != "") {
+								retData.ASUS_PP = "1";
+								retData.ASUS_PP_time = "";
+							} else if (
+								ASUS_privacy_policy_time == "" ||
+								ASUS_privacy_policy_time == undefined
+							) {
+								retData.ASUS_PP = "0";
+								retData.ASUS_PP_time = "";
+							} else if (
+								(ASUS_privacy_policy > "1" && resp.AHS > ASUS_privacy_policy && securityUpdate) ||
+								(ASUS_privacy_policy > "1" && resp.ASD > ASUS_privacy_policy && securityUpdate) ||
+								(ASUS_privacy_policy > "1" && resp.AUTOUPGRADE > ASUS_privacy_policy && audoUpgrade)
+							) {
+								retData.ASUS_PP = "0";
+								retData.ASUS_PP_time = ASUS_privacy_policy_time;
+							} else {
+								retData.ASUS_PP = "1";
+								retData.ASUS_PP_time = ASUS_privacy_policy_time;
+							}
+						} else {
+							retData.ASUS_PP = ASUS_privacy_policy;
+							retData.ASUS_PP_time = ASUS_privacy_policy_time;
 						}
 					}
-					else{
-						retData.ASUS_PP_EULA = ((resp[feature] > ASUS_privacy_policy) || resp[feature] == 0 || resp[feature] == "") ? 0 : 1;
-						retData.ASUS_PP_EULA_time = ASUS_privacy_policy_time;
-					}
-				}
+				});
+
+				resolve(retData);
 			});
-
-			return retData;
 		}
 	},
 
@@ -1087,6 +1105,7 @@ var httpApi ={
 		"set": function(enable, callback){
 			$.ajax({
 				url: '/set_security_update.cgi?' + 'security_update=' + enable,
+				async: false,
 				success: callback
 			});
 		},
@@ -1150,26 +1169,26 @@ var httpApi ={
 				"boost_led": {
 					"title": "<#BoostKey_LED#>",
 					"value": 0,
-					"text": "<#BoostKey_LED#>",
-					"desc": "<#BoostKey_LED_desc#>"
+					"text": `<#BoostKey_LED#>`,
+					"desc": `<#BoostKey_LED_desc#>`
 				},
 				"boost_dfs": {
 					"title": "<#BoostKey_DFS#>",
 					"value": 1,
-					"text": "<#WLANConfig11b_EChannel_dfs#>",
-					"desc": "<#BoostKey_DFS_desc#>"
+					"text": `<#WLANConfig11b_EChannel_dfs#>`,
+					"desc": `<#BoostKey_DFS_desc#>`
 				},
 				"boost_aura": {
 					"title": "<#BoostKey_Aura_RGB#>",
 					"value": 2,
-					"text": "<#BoostKey_Aura_RGB#>",
-					"desc": "<#BoostKey_Aura_RGB_desc#>"
+					"text": `<#BoostKey_Aura_RGB#>`,
+					"desc": `<#BoostKey_Aura_RGB_desc#>`
 				},
 				"boost_qos": {
 					"title": "<#BoostKey_Boost#>",
 					"value": 3,
-					"text": "<#BoostKey_enable#>",
-					"desc": "<#BoostKey_Boost_desc#>"
+					"text": `<#BoostKey_enable#>`,
+					"desc": `<#BoostKey_Boost_desc#>`
 				}
 		};
 
@@ -1618,6 +1637,8 @@ var httpApi ={
 				{type:"MOBILE", bit:8},
 				{type:"WANLAN", bit:9},
 				{type:"MOCA", bit:10},
+				{type:"POE", bit:11},
+				{type:"WANAUTO", bit:12},
 				{type:"IPTV_BRIDGE", bit:26},
 				{type:"IPTV_VOIP", bit:27},
 				{type:"IPTV_STB", bit:28},
@@ -1650,25 +1671,27 @@ var httpApi ={
 		});
 	},
 	"get_port_status_array": function(mac, callBack){
+		//return a collection of ports that actually have wan capabilities or non-wan capabilities
+		//ex. WAN:[W0, USB], LAN:[...]; WAN:[L3, USB], LAN:[W0, W1, L1...]
 		var rate_map = [
 			{value:"10",text:"10 Mbps"},
 			{value:"100",text:"100 Mbps"},
 			{value:"1000",text:"1 Gbps"},
 			{value:"2500",text:"2.5 Gbps"},
+			{value:"5000",text:"5 Gbps"},
 			{value:"10000",text:"10 Gbps"}
 		];
 		var rate_map_USB = [
 			{value:"480",text:"USB2.0"},
 			{value:"5000",text:"USB3.0"},
-			{value:"10000",text:"USB3.1"},
-			{value:"20000",text:"USB3.2"}
+			{value:"10000",text:"USB3.2"}
 		];
 		httpApi.get_port_status(mac, function(response){
 			var response_temp = JSON.parse(JSON.stringify(response));
 			var port_info_temp = {};
 			if(response_temp["port_info"] != undefined){
 				if(response_temp["port_info"][mac] != undefined){
-					port_info_temp = {"WAN":[], "LAN":[]};
+					port_info_temp = {"WAN":[], "LAN":[]};//wan capabilities or non-wan capabilities
 					var port_info = response_temp["port_info"][mac];
 					$.each(port_info, function(index, data){
 						var label = index.substr(0,1);
@@ -1677,7 +1700,7 @@ var httpApi ={
 						data["label_priority"] = ((label == "W") ? 1 : ((label == "L") ? 2 : 3));
 						data["label_idx"] = label_idx;
 						data["label_port_name"] = (function(){
-							if(data.cap_support.WAN){
+							if(data.cap_support.WAN || data.cap_support.WANAUTO){
 								if(label_idx == "0")
 									return "WAN";
 								else
@@ -1743,8 +1766,8 @@ var httpApi ={
 									data["special_port_name"] = (data.is_on == "1") ? "USB Modem" : max_rate_data.text;
 								}
 								else{
-									var max_rate_value = parseInt(max_rate_data.value);
-									if(max_rate_value > 1000 || top.businessWrapper){
+									const max_rate_value = parseInt(max_rate_data.value);
+									if(max_rate_value > 1000){
 										data["special_port_name"] = max_rate_data.text.replace(" Gbps", "");
 										if(max_rate_value == 10000){
 											if(data["cap_support"]["SFPP"] == true)
@@ -1796,6 +1819,72 @@ var httpApi ={
 				callBack(port_info_temp);
 		});
 	},
+	"get_poe_port_status_array": function(mac, callBack){
+		httpApi.get_port_status(mac, function(response){
+			let node_poe_info = {"power_limit":"0","power_remain":"0","per_port_power_limit":"30","poe_port":[]};
+			if(response["node_info"] != undefined){
+				node_poe_info.power_limit = response["node_info"][mac].power_limit;
+				node_poe_info.power_remain = response["node_info"][mac].power_remain;
+				node_poe_info.per_port_power_limit = response["node_info"][mac].per_port_power_limit;
+			}
+			if(response["port_info"] != undefined){
+				if(response["port_info"][mac] != undefined){
+					$.each(response["port_info"][mac], function(index, data){
+						if(data.cap_support.POE && data.poe_info != undefined){
+							let port_info = {};
+							let label_idx = index.substr(1,1);
+							port_info["label_idx"] = label_idx;
+							port_info["label_port_name"] = (()=>{
+								if(data.cap_support.WAN){
+									if(label_idx == "0")
+										return "WAN";
+									else
+										return "WAN " + label_idx;
+								}
+								else if(data.cap_support.LAN){
+									return "LAN " + label_idx;
+								}
+								else if(data.cap_support.USB){
+									return "USB";
+								}
+								else if(data.cap_support.MOCA){
+									return "MoCa";
+								}
+								else if(data.cap_support.POE){
+									return "PoE";
+								}
+							})();
+							port_info["display_port_name"] = (()=>{
+								if(data["cap_support"]["GAME"] == true)
+									return `<#Port_Gaming#>`;
+								else{
+									let max_rate = isNaN(parseInt(data.max_rate)) ? 0 : parseInt(data.max_rate);
+									if(max_rate >= 10000)
+										return (parseInt(max_rate/1000) + ((data.cap_support.SFPP) ? "G SFP+" : "G baseT"));
+									else
+										return (parseInt(max_rate/1000) + "G");
+								}
+							})();
+							port_info["is_on"] = data.is_on;
+							port_info["ui_display"] = (data.ui_display != undefined) ? data.ui_display : "";
+							port_info["cap_support"] = data.cap_support;
+							port_info["poe_info"] = data.poe_info;
+							port_info["poe_info"].watts = (()=>{
+								let V = isNaN(parseInt(this.poe_info.V)) ? 0 : parseInt(this.poe_info.V);
+								let mA = isNaN(parseInt(this.poe_info.mA)) ? 0 : parseInt(this.poe_info.mA);
+								return (Math.round((V*mA)/1000));//watts
+							})();
+							port_info["poe_settings"] = {};
+							node_poe_info.poe_port.push(port_info);
+						}
+					});
+				}
+			}
+			if(callBack){
+				callBack(node_poe_info);
+			}
+		});
+	},
 
 	"set_antled" : function(postData, parmData){
 		var asyncDefault = true;
@@ -1839,6 +1928,8 @@ var httpApi ={
 		});
 	},
 	"aimesh_get_node_capability" : function(_node_info){
+		if(_node_info == undefined) _node_info = {};
+
 		var node_capability_list = {
 			"led_control" : {
 				"value" : 1,
@@ -1877,7 +1968,10 @@ var httpApi ={
 					"port_status" : {"bit" : 9},
 					"local_access" : {"bit" : 10},
 					"wpa3_enterprise" : {"bit" : 16},
-					"cd_iperf" : {"bit" : 18}
+					"cd_iperf" : {"bit" : 18},
+					"mlo_bh" : {"bit" : 20},
+					"mlo_fh" : {"bit" : 21},
+					"smart_home_master_ui" : {"bit" : 22}
 				}
 			},
 			"link_aggregation" : {
@@ -1891,7 +1985,7 @@ var httpApi ={
 				"def" : {
 					"GN_2G_1" : {"bit" : 0},
 					"GN_2G_2" : {"bit" : 1},
-					"GN_2G_3" : {"bit" : 2},
+					"GN_2G_3" : {"bit" : 2}
 				}
 			},
 			"GN_5G_NO" : {//Number of supported RE 5G guest network
@@ -1899,7 +1993,7 @@ var httpApi ={
 				"def" : {
 					"GN_5G_1" : {"bit" : 0},
 					"GN_5G_2" : {"bit" : 1},
-					"GN_5G_3" : {"bit" : 2},
+					"GN_5G_3" : {"bit" : 2}
 				}
 			},
 			"GN_5GH_NO" : {//Number of supported RE 5GH guest network
@@ -1907,7 +2001,7 @@ var httpApi ={
 				"def" : {
 					"GN_5GH_1" : {"bit" : 0},
 					"GN_5GH_2" : {"bit" : 1},
-					"GN_5GH_3" : {"bit" : 2},
+					"GN_5GH_3" : {"bit" : 2}
 				}
 			},
 			"wans_cap" : {
@@ -1954,7 +2048,8 @@ var httpApi ={
 					"wifi_radio_0" : {"bit" : 0}, //2G
 					"wifi_radio_1" : {"bit" : 1}, //5G or 5G-1
 					"wifi_radio_2" : {"bit" : 2}, //5G-2
-					"wifi_radio_3" : {"bit" : 3}  //6G
+					"wifi_radio_3" : {"bit" : 3}, //6G or 6G-1
+					"wifi_radio_4" : {"bit" : 4}  //6G-2
 				}
 			},
 			"conn_eap_mode" : {
@@ -1968,7 +2063,33 @@ var httpApi ={
 				"def" : {
 					"GN_6G_1" : {"bit" : 0},
 					"GN_6G_2" : {"bit" : 1},
-					"GN_6G_3" : {"bit" : 2},
+					"GN_6G_3" : {"bit" : 2}
+				}
+			},
+			"channel_plan" : {
+				"value" : 25,
+				"def" : {
+					"channel_plan_cap_off" : {"bit" : 0},
+					"channel_plan_cap_on" : {"bit" : 1},
+					"channel_plan_cap_manual" : {"bit" : 2},
+					"channel_plan_cap_central" : {"bit" : 3}
+				}
+			},
+			"wifi_txpower_ctl" : {
+				"value" : 33,
+				"def" : {
+					"tx_power_0" : {"bit" : 0}, //2G
+					"tx_power_1" : {"bit" : 1}, //5G or 5G-1
+					"tx_power_2" : {"bit" : 2}, //5G-2
+					"tx_power_3" : {"bit" : 3}  //6G
+				}
+			},
+			"GN_6GH_NO" : {//Number of supported RE 6GH guest network
+				"value" : 34,
+				"def" : {
+					"GN_6GH_1" : {"bit" : 0},
+					"GN_6GH_2" : {"bit" : 1},
+					"GN_6GH_3" : {"bit" : 2}
 				}
 			},
 		};
@@ -2057,23 +2178,28 @@ var httpApi ={
 						if(vif_data.type == "1")
 							band_info.no_used += 1;
 					});
+					band_info.mode = 2;//support SDN capability wifi_band
 					wifi_band_info.push(band_info);
 				});
 			}
 			if(wifi_band_info.length == 0){//not support SDN, then check Guestnetwork support
 				var node_capability = httpApi.aimesh_get_node_capability(_node_info);
 				if(node_capability.GN_2G_1){
-					wifi_band_info.push(get_band_info(1));
+					wifi_band_info.push(get_band_info(1));//2.4G
 				}
 				if(node_capability.GN_5G_1 && !node_capability.GN_5GH_1){
-					wifi_band_info.push(get_band_info(2));
+					wifi_band_info.push(get_band_info(2));//5G
 				}
 				if(node_capability.GN_5G_1 && node_capability.GN_5GH_1){
-					wifi_band_info.push(get_band_info(4));
-					wifi_band_info.push(get_band_info(8));
+					wifi_band_info.push(get_band_info(4));//5G-1
+					wifi_band_info.push(get_band_info(8));//5G-2
 				}
-				if(node_capability.GN_6G_1){
-					wifi_band_info.push(get_band_info(16));
+				if(node_capability.GN_6G_1 && !node_capability.GN_6GH_1){
+					wifi_band_info.push(get_band_info(16));//6G
+				}
+				if(node_capability.GN_6G_1 && node_capability.GN_6GH_1){
+					wifi_band_info.push(get_band_info(32));//6G-1
+					wifi_band_info.push(get_band_info(64));//6G-2
 				}
 
 				function get_band_info(_band){
@@ -2081,6 +2207,7 @@ var httpApi ={
 					band_info.band = parseInt(_band);
 					band_info.count = 1;//support one Guestnetwork
 					band_info.no_used = 1;
+					band_info.mode = 1;//support Guestnetwork first group sync to node
 					return band_info;
 				}
 			}
@@ -2278,7 +2405,7 @@ var httpApi ={
 		var logContentArray = [];
 
 		for(var key in window.localStorage){
-			if(typeof window.localStorage[key] !== "function" && key !== "length"){
+			if(!isNaN(key) && key.length == 13){
 				logContentArray.push([key, window.localStorage[key]])
 			}
 		};
@@ -2556,5 +2683,30 @@ var httpApi ={
 
 			return isAvailable;
 		}
+	},
+
+	"get_re_channel_info": function(mac, callBack){
+		$.ajax({
+			url: "/get_re_channel_info.cgi?re_mac=" + mac,
+			dataType: 'json',
+			async: true,
+			success: function(response){
+				if(callBack){
+					callBack(response);
+				}
+			}
+		});
+	},
+	"get_re_current_channel_info": function(mac, callBack){
+		$.ajax({
+			url: "/get_re_current_channel_info.cgi?re_mac=" + mac,
+			dataType: 'json',
+			async: true,
+			success: function(response){
+				if(callBack){
+					callBack(response);
+				}
+			}
+		});
 	}
 }

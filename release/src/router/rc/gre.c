@@ -79,16 +79,21 @@ void start_l2gre(int unit)
 	strlcpy(remote, nvram_pf_safe_get(prefix, "remote"), sizeof(remote));
 	v6 = is_valid_ip6(remote);
 	if (v6) {
-		strlcpy(local, getifaddr(get_wan6face(), AF_INET6, GIF_PREFIXLEN) ? : nvram_safe_get(ipv6_nvname("ipv6_wan_ipaddr")), sizeof(local));
+		strlcpy(local, nvram_pf_safe_get(prefix, "local"), sizeof(local));
+		if (!local[0] || !is_valid_ip6(local))
+			strlcpy(local, getifaddr(get_wan6face(), AF_INET6, GIF_PREFIXLEN) ? : nvram_safe_get(ipv6_nvname("ipv6_wan_ipaddr")), sizeof(local));
 		_gre_tunnel_create(GRE_TYPE_L2_V6, ifname, remote, local);
 	}
 	else {
-		strlcpy(local, get_wanip(), sizeof(local));
+		strlcpy(local, nvram_pf_safe_get(prefix, "local"), sizeof(local));
+		if (!local[0] || !is_valid_ip4(local))
+			strlcpy(local, get_wanip(), sizeof(local));
 		_gre_tunnel_create(GRE_TYPE_L2, ifname, remote, local);
 	}
 
 #ifdef RTCONFIG_MULTILAN_CFG
-	get_mtlan_by_idx(SDNFT_TYPE_GRE, gre_idx, pmtl, &mtl_sz);
+	if (gre_idx)
+		get_mtlan_by_idx(SDNFT_TYPE_GRE, gre_idx, pmtl, &mtl_sz);
 	if (mtl_sz)
 		strlcpy(br_ifname, pmtl[0].nw_t.br_ifname, sizeof(br_ifname));
 	else
@@ -265,11 +270,15 @@ void start_l3gre(int unit)
 	strlcpy(remote, nvram_pf_safe_get(prefix, "remote"), sizeof(remote));
 	v6 = is_valid_ip6(remote);
 	if (v6) {
-		strlcpy(local, getifaddr(get_wan6face(), AF_INET6, GIF_PREFIXLEN) ? : nvram_safe_get(ipv6_nvname("ipv6_wan_ipaddr")), sizeof(local));
+		strlcpy(local, nvram_pf_safe_get(prefix, "local"), sizeof(local));
+		if (!local[0] || !is_valid_ip6(local))
+			strlcpy(local, getifaddr(get_wan6face(), AF_INET6, GIF_PREFIXLEN) ? : nvram_safe_get(ipv6_nvname("ipv6_wan_ipaddr")), sizeof(local));
 		_gre_tunnel_create(GRE_TYPE_L3_V6, ifname, remote, local);
 	}
 	else {
-		strlcpy(local, get_wanip(), sizeof(local));
+		strlcpy(local, nvram_pf_safe_get(prefix, "local"), sizeof(local));
+		if (!local[0] || !is_valid_ip4(local))
+			strlcpy(local, get_wanip(), sizeof(local));
 		_gre_tunnel_create(GRE_TYPE_L3, ifname, remote, local);
 	}
 	snprintf(addr, sizeof(addr), "%s", nvram_pf_safe_get(prefix, "addr"));

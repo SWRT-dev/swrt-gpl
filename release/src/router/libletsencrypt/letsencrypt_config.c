@@ -78,9 +78,8 @@ le_auxsts_t check_le_status(void)
 	if(nvram_match("wans_mode", "lb")){
 		wanunit = nvram_get_int("ddns_wan_unit");
 		if(wanunit > 1){
-			wanunit = get_first_connected_public_wan_unit();
-			if(wanunit > 1)
-				return -2;
+			if(get_first_connected_public_wan_unit() <= 1)
+				wanunit = get_first_connected_public_wan_unit();
 		}
 	}
 	if(is_wan_connect(wanunit)){

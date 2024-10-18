@@ -46,6 +46,7 @@ static void cli_finished(void) ATTRIB_NORETURN;
 static void recv_msg_service_accept(void);
 static void cli_session_cleanup(void);
 static void recv_msg_global_request_cli(void);
+static void cli_algos_initialise(void);
 
 struct clientsession cli_ses; /* GLOBAL */
 
@@ -102,6 +103,9 @@ void cli_connected(int result, int sock, void* userdata, const char *errstring)
 		dropbear_exit("Connect failed: %s", errstring);
 	}
 	myses->sock_in = myses->sock_out = sock;
+	DEBUG1(("cli_connected"))
+	ses.socket_prio = DROPBEAR_PRIO_NORMAL;
+	/* switches to lowdelay */
 	update_channel_prio();
 }
 
@@ -114,6 +118,7 @@ void cli_session(int sock_in, int sock_out, struct dropbear_progress_connection 
 	}
 
 	chaninitialise(cli_chantypes);
+	cli_algos_initialise();
 
 	/* Set up cli_ses vars */
 	cli_session_init(proxy_cmd_pid);
@@ -165,6 +170,7 @@ static void cli_session_init(pid_t proxy_cmd_pid) {
 	/* Auth */
 	cli_ses.lastprivkey = NULL;
 	cli_ses.lastauthtype = 0;
+	cli_ses.is_trivial_auth = 1;
 
 	/* For printing "remote host closed" for the user */
 	ses.remoteclosed = cli_remoteclosed;
@@ -245,6 +251,9 @@ static void cli_sessionloop() {
 			/* We've got the transport layer sorted, we now need to request
 			 * userauth */
 			send_msg_service_request(SSH_SERVICE_USERAUTH);
+			/* We aren't using any "implicit server authentication" methods,
+			so don't need to wait for a response for SSH_SERVICE_USERAUTH
+			before sending the auth messages (rfc4253 10) */
 			cli_auth_getmethods();
 			cli_ses.state = USERAUTH_REQ_SENT;
 			TRACE(("leave cli_sessionloop: sent userauth methods req"))
@@ -408,9 +417,17 @@ void cleantext(char* dirtytext) {
 }
 
 static void recv_msg_global_request_cli(void) {
-	TRACE(("recv_msg_global_request_cli"))
-	/* Send a proper rejection */
-	send_msg_request_failure();
+	unsigned int wantreply = 0;
+
+	buf_eatstring(ses.payload);
+	wantreply = buf_getbool(ses.payload);
+
+	TRACE(("recv_msg_global_request_cli: want_reply: %u", wantreply));
+
+	if (wantreply) {
+		/* Send a proper rejection */
+		send_msg_request_failure();
+	}
 }
 
 void cli_dropbear_exit(int exitcode, const char* format, va_list param) {
@@ -470,5 +487,14 @@ void cli_dropbear_log(int priority, const char* format, va_list param) {
 
 	fprintf(stderr, "%s: %s\n", name, printbuf);
 	fflush(stderr);
+}
+
+static void cli_algos_initialise(void) {
+	algo_type *algo;
+	for (algo = sshkex; algo->name; algo++) {
+		if (strcmp(algo->name, SSH_STRICT_KEX_S) == 0) {
+			algo->usable = 0;
+		}
+	}
 }
 

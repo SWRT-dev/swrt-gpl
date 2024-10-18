@@ -283,6 +283,9 @@ var header_info = [<% get_header_info(); %>];
 var location_org = header_info[0].protocol + "://" + header_info[0].host + ":" + header_info[0].port;
 
 function initial(){
+	if(isSupport("ROG_UI") || isSupport("TS_UI") || isSupport("TUF_UI")){
+		$(".wrapper").css({"background-size":"cover"});
+	}
 	var is_logined = [<% is_logined_hook(); %>][0];
 	var html_code = '';
 	var url_flag = "";
@@ -595,8 +598,7 @@ function detect_ppp_connect(){
 }
 
 function show_phone_as_modem_hints(){
-	document.cookie = "show_phone_as_modem_hints = 1;" + '; expires=' +
-	(new Date(new Date().getTime() + 86400000)).toUTCString() + '; path=/';
+	window.localStorage.setItem("show_phone_as_modem_hints", "1")
 	top.location.href = '/index.asp';
 }
 </script>

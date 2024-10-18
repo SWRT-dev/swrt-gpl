@@ -15,15 +15,6 @@
  * MA 02111-1307 USA
  *
  * CGI helper functions
- *
- * Copyright 2003, ASUSTeK Inc.
- * All Rights Reserved.		
- *				     
- * This is UNPUBLISHED PROPRIETARY SOURCE CODE of ASUSTeK Inc.;   
- * the contents of this file may not be disclosed to third parties, copied
- * or duplicated in any form, in whole or in part, without the prior      
- * written permission of ASUSTeK Inc..			    
- *
  */
 
 #include <ctype.h>
@@ -74,7 +65,8 @@ unescape(char *s, size_t len)
 			if(isxdigit(s[1]) && isxdigit(s[2])){
 				sscanf(s + 1, "%02x", &c);
 				*s++ = (char) c;
-				memmove(s, s+2, strlen(s+2)+1);	//including the '\0'
+				memmove(s, s+2, safe_strlen(s+2)+1);	//including the '\0'
+				s[safe_strlen(s)] = '\0';
 			}else
 				s++;
 		}
@@ -186,7 +178,7 @@ init_cgi(char *query)
 
 	/* Parse into individual assignments */
 	q = query;
-	len = strlen(query);
+	len = safe_strlen(query);
 	nel = 1;
 	while (strsep(&q, "&;"))
 		nel++;
@@ -197,7 +189,7 @@ init_cgi(char *query)
 		unescape(name = value = q, len+1);
 
 		/* Skip to next assignment */
-		for (q += strlen(q); q < (query + len) && !*q; q++);
+		for (q += safe_strlen(q); q < (query + len) && !*q; q++);
 
 		/* Assign variable */
 		name = strsep(&value, "=");
@@ -267,8 +259,8 @@ void webcgi_init(char *query)
  
 //    cprintf("query = %s\n", query);
        
-	int len = strlen(query);
-	end = query + strlen(query);
+	int len = safe_strlen(query);
+	end = query + safe_strlen(query);
 	q = query;
 	nel = 1;
 	while (strsep(&q, "&;")) {
@@ -278,7 +270,7 @@ void webcgi_init(char *query)
  
        for (q = query; q < end; ) {
                value = q;
-               q += strlen(q) + 1;
+               q += safe_strlen(q) + 1;
  
                unescape(value, len+1);
                name = strsep(&value, "=");

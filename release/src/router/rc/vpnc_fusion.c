@@ -73,7 +73,7 @@ static int _set_routing_rule(const VPNC_ROUTE_CMD cmd, const VPNC_DEV_POLICY *po
 int clean_routing_rule_by_vpnc_idx(const int vpnc_idx);
 int clean_vpnc_setting_value(const int vpnc_idx);
 static int _get_vpnc_state(const int vpnc_idx);
-static int _vpnc_update_resolvconf(const int unit);
+int vpnc_update_resolvconf(const int unit);
 static int _set_network_routing_rule(const VPNC_ROUTE_CMD cmd, const int vpnc_idx);
 static int _gen_vpnc_resolv_conf(const int vpnc_idx);
 
@@ -181,6 +181,14 @@ static void _set_sdn0_vpnc_idx(int vpnc_idx)
 		free(sdn_rl);
 	}
 }
+
+// adjust for firmware upgrade
+void adjust_sdn0_vpnc_idx()
+{
+	int vpnc_default_wan = nvram_get_int("vpnc_default_wan");
+	if (vpnc_default_wan)
+		_set_sdn0_vpnc_idx(vpnc_default_wan);
+}
 #endif
 
 /*******************************************************************
@@ -231,7 +239,7 @@ int change_default_wan()
 	_set_default_routing_table(VPNC_ROUTE_ADD, default_wan_new);
 	nvram_set_int("vpnc_default_wan", default_wan_new);
 #endif
-	_vpnc_update_resolvconf(default_wan_new);
+	vpnc_update_resolvconf(default_wan_new);
 
 	nvram_set("vpnc_default_wan_tmp", "");
 
@@ -313,7 +321,7 @@ void update_ovpn_vpnc_state(const int vpnc_idx, const int state, const int reaso
 // Andy Chiu, 2019/12/27. Only the DNS setting of default WAN could be set in resolve.dnsmasq.
 // Don't modify resolve.conf.
 // If the default WAN does not include dns, copy resolve.conf to resolve.dnsmasq.
-static int _vpnc_update_resolvconf(const int unit)
+int vpnc_update_resolvconf(const int unit)
 {
 	FILE *fp = NULL, *fp_servers = NULL;
 	char tmp[100], prefix[sizeof("vpncXXXXXXXXXX_")];
@@ -436,7 +444,7 @@ int vpnc_up(const int unit, const char *vpnc_ifname)
 
 	/* Add dns servers to resolv.conf */
 	if (nvram_invmatch(strlcat_r(vpnc_prefix, "dns", tmp, sizeof(tmp)), ""))
-		_vpnc_update_resolvconf(unit);
+		vpnc_update_resolvconf(unit);
 
 	update_vpnc_state(unit, WAN_STATE_CONNECTED, 0);
 
@@ -788,7 +796,7 @@ int vpnc_ovpn_up_main(int argc, char **argv)
 		nvram_set(strlcat_r(prefix, "dns", tmp, sizeof(tmp)), ""); // clean dns
 
 		vpnc_ovpn_set_dns(unit);
-		_vpnc_update_resolvconf(vpnc_idx);
+		vpnc_update_resolvconf(vpnc_idx);
 		// update_resolvconf();
 		start_firewall(wan_primary_ifunit(), 0);
 	}
@@ -1653,6 +1661,11 @@ int start_vpnc_by_unit(const int unit)
 			eval("fc", "config", "--gre", "0");
 		}
 #endif
+#if defined(EBG15) || defined(EBG19) || defined(EBG19P)
+		_dprintf("%s <wan_proto:%s> disable fc.\n", __func__, wan_proto);
+		nvram_set("fc_disable", "1");
+		eval("fc", "disable");
+#endif
 
 		umask(mask);
 
@@ -1932,6 +1945,14 @@ int stop_vpnc_by_unit(const int unit)
 		rc_ipsec_ctrl(0, prof->config.ipsec.prof_idx, 0);
 	}
 #endif
+#if defined(EBG15) || defined(EBG19) || defined(EBG19P)
+        if(!nvram_match("wan0_proto", "pptp") && !nvram_match("wan0_proto", "l2tp")) {
+		_dprintf("%s <wan_proto:%s> enable fc.\n", __func__, nvram_safe_get("wan0_proto"));
+
+                nvram_set("fc_disable", "0");
+		eval("fc", "enable");
+	}
+#endif
 
 #ifdef RTCONFIG_MULTIWAN_IF
 	_del_mtwan_routing_rule(prof);
@@ -2189,14 +2210,14 @@ static int _set_default_routing_table(const VPNC_ROUTE_CMD cmd, const int table_
 {
 #if !defined(RTCONFIG_MULTILAN_CFG)
 	char id_str[8];
-	char tmp[256], *ifname, default_priority[256];
-	FILE *fp;
+	char *ifname, default_priority[256];
 	char word[256], *next;
-	int i;
-	int policy_cnt;
+#if defined(RTCONFIG_VPN_FUSION_SUPPORT_INTERFACE)
 	VPNC_DEV_POLICY dev_policy[MAX_DEV_POLICY] = {{0}};
+	int i, policy_cnt, flag;
+
 	policy_cnt = vpnc_get_dev_policy_list(dev_policy, MAX_DEV_POLICY, 0);
-	int flag;
+#endif
 #endif
 
 	remove_ip_rules(IP_RULE_PREF_DEFAULT_CONN, 0);
@@ -2817,7 +2838,7 @@ int set_vpnc_active_by_unit(int unit,char *onoff)
 		 //_dprintf("[%s]stop vpnc %d\n", __FUNCTION__, unit);
 	   	 stop_vpnc_by_unit(unit);
 	 }
-#if defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 	 reinit_hwnat(-1);
 #endif
 #if defined(RTCONFIG_BWDPI) && (defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK))

@@ -120,7 +120,7 @@ geoiplookup(GeoIP * gi, char *hostname, int i, char *ccode)
             if (country_id == 0) {
                 printf("%s: IP Address not found\n", GeoIPDBDescription[i]);
             }else {
-		memcpy(ccode, country_code, 2);
+		memmove(ccode, country_code, 2);
                 ccode[2] = '\0';
                 printf("%s: %s, %s\n", GeoIPDBDescription[i], country_code,
                        country_name);
@@ -131,7 +131,7 @@ geoiplookup(GeoIP * gi, char *hostname, int i, char *ccode)
             if (NULL == region || region->country_code[0] == '\0') {
                 printf("%s: IP Address not found\n", GeoIPDBDescription[i]);
             }else {
-		memcpy(ccode, region->country_code, 2);
+		memmove(ccode, region->country_code, 2);
                 ccode[2] = '\0';
                 printf("%s: %s, %s\n", GeoIPDBDescription[i],
                        region->country_code,
@@ -145,7 +145,7 @@ geoiplookup(GeoIP * gi, char *hostname, int i, char *ccode)
             if (NULL == gir) {
                 printf("%s: IP Address not found\n", GeoIPDBDescription[i]);
             }else {
-		memcpy(ccode, gir->country_code, 2);
+		memmove(ccode, gir->country_code, 2);
                 ccode[2] = '\0';
                 printf("%s: %s, %s, %s, %s, %s, %f, %f\n",
                        GeoIPDBDescription[i], gir->country_code, _mk_NA(
@@ -161,7 +161,7 @@ geoiplookup(GeoIP * gi, char *hostname, int i, char *ccode)
             if (NULL == gir) {
                 printf("%s: IP Address not found\n", GeoIPDBDescription[i]);
             }else {
-		memcpy(ccode, gir->country_code, 2);
+		memmove(ccode, gir->country_code, 2);
                 ccode[2] = '\0';
                 printf("%s: %s, %s, %s, %s, %s, %f, %f, %d, %d\n",
                        GeoIPDBDescription[i], gir->country_code, _mk_NA(

@@ -1161,7 +1161,7 @@ int ej_get_cfg_clientlist(int eid, webs_t wp, int argc, char **argv)
 				vifinfoobj = json_object_new_object();
 				memset(tmp, 0, sizeof(tmp));
 				if(subunit == 0){
-					snprintf(tmp, sizeof(tmp), "%s", get_wififname(unit));
+					snprintf(tmp, sizeof(tmp), "wl%d_ifname", unit);
 					json_object_object_add(vifinfoobj, "type", json_object_new_int(VIF_TYPE_MAIN));
 				}else{
 					snprintf(tmp, sizeof(tmp), "wl%d.%d_ifname", unit, subunit);

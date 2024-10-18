@@ -1,4 +1,4 @@
-/* menuTree_TUF.js */
+﻿/* menuTree_TUF.js */
 define(function(){
 	var menuTree = {
 		list: [
@@ -93,10 +93,10 @@ define(function(){
 				] 
 			},
 			{
-				menuName: "<#UU_Accelerator#>",
+				menuName: "网易UU加速器",
 				index: "menu_UU",
 				tab: [
-						{url: "UUAccelerator.asp", tabName: "<#UU_Accelerator#>"},
+						{url: "UUAccelerator.asp", tabName: "网易UU加速器"},
 						{url: "NULL", tabName: "__INHERIT__"}
 				]
 			},
@@ -109,10 +109,10 @@ define(function(){
 				]
 			},
 			{
-				menuName: "<#TencentAcceleration#>",
+				menuName: "腾讯网游加速器",
 				index: "menu_TencentAcceleration",
 				tab: [
-					{url: "GameBoost_Tencent.asp", tabName: "<#TencentAcceleration#>"},
+					{url: "GameBoost_Tencent.asp", tabName: "Tencent Game Acceleration"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				]
 			},
@@ -181,15 +181,7 @@ define(function(){
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
-			{
-				menuName: "<#Softcenter_tool#>",
-				index: "menu_Tools",
-				tab: [
-					{url: "Tools_Sysinfo.asp", tabName: "Sysinfo"},
-					{url: "Softcenter.asp", tabName: "<#Softcenter_tool#>"},
-					{url: "NULL", tabName: "__INHERIT__"}
-				] 
-			},
+
 			/* ============================================================================================================ */
 
 			{
@@ -211,6 +203,7 @@ define(function(){
 					{url: "Advanced_WAdvanced_Content.asp", tabName: "<#menu5_1_6#>"},
 					{url: "Advanced_WProxy_Content.asp", tabName: "<#WiFi_Proxy_item#>"},
 					{url: "Advanced_Roaming_Block_Content.asp", tabName: "<#WiFi_Roaming_Block_List#>"},
+					{url: "MLO.asp", tabName: `MLO`},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
@@ -228,7 +221,6 @@ define(function(){
 					{url: "Advanced_SwitchCtrl_Content.asp", tabName: "<#Switch_itemname#>"},
 					{url: "Advanced_VLAN_Switch_Content.asp", tabName: "VLAN"},
 					{url: "Advanced_VLAN_Profile_Content.asp", tabName: "__INHERIT__"},
-					{url: "Advanced_SmartDNS_Content.asp", tabName: "SmartDNS"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
@@ -335,39 +327,6 @@ define(function(){
 					{url: "Main_Netstat_Content.asp", tabName: "Netstat"},
 					{url: "Main_WOL_Content.asp", tabName: "<#NetworkTools_WOL#>"},
 					{url: "Advanced_Smart_Connect.asp", tabName: "<#smart_connect_rule#>"},
-					{url: "NULL", tabName: "__INHERIT__"}
-				]
-			},
-			{
-				menuName: "Entware",
-				index: "menu_Split",
-				tab: [
-					{url: "NULL", tabName: "__HIDE__"}
-				]
-			},
-			{
-				menuName: "Entware",
-				index: "menu_Entware",
-				tab: [
-					{url: "Entware_start.asp", tabName: "<#Entware_home#>"},
-					{url: "Entware_installed.asp", tabName: "<#Entware_installed#>"},
-					{url: "Entware_list.asp", tabName: "<#Entware_list#>"},
-					{url: "NULL", tabName: "__INHERIT__"}
-				] 
-			},
-			{
-				menuName: "<#Softcenter#>",
-				index: "menu_Split",
-				tab: [
-					{url: "NULL", tabName: "__HIDE__"}
-				]
-			},
-			{
-				menuName: "<#Softcenter#>",
-				index: "menu_Softcenter",
-				tab: [
-					{url: "Main_Soft_center.asp", tabName: "<#Softcenter#>"},
-					{url: "Main_Soft_setting.asp", tabName: "Offline Mode"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				]
 			}
@@ -523,16 +482,6 @@ define(function(){
 						retArray.push("menu_Alexa_IFTTT");
 					}
 				}
-				if (!softcenter_support || '<% nvram_get("sc_installed"); %>' != '1'){
-					retArray.push("menu_Softcenter");
-				}
-				if (!entware_support){
-					retArray.push("menu_Entware");
-					for(i=0; i<menuTree.list.length; i++){
-						if(menuTree.list[i].menuName == 'Entware')
-							menuTree.list.splice(i,1);
-					}
-				}
 
 				return retArray;
 			},
@@ -541,9 +490,6 @@ define(function(){
 				var retArray = [];
 
 				/* By RC Support */
-				if (!smartdns_support){
-					retArray.push("Advanced_SmartDNS_Content.asp");
-				}
 				if(!bwdpi_support){
 					retArray.push("AdaptiveQoS_Bandwidth_Monitor.asp");
 					retArray.push("AdaptiveQoS_WebHistory.asp");
@@ -632,7 +578,7 @@ define(function(){
 					retArray.push("Advanced_Notification_Content.asp");
 				}
 
-				if(!smart_connect_support || Qcawifi_support || Rawifi_support){
+				if((!smart_connect_support && !smart_connect_v2_support) || Qcawifi_support || Rawifi_support){
 					retArray.push("Advanced_Smart_Connect.asp");
 				}
 				
@@ -696,7 +642,7 @@ define(function(){
 					retArray.push("Guest_network_fbwifi.asp");
 				}
 
-				if(!mtlancfg_support){
+				if(!mtlancfg_support || isSupport("SMART_HOME_MASTER_UI")){
 					retArray.push("Advanced_VLAN_Switch_Content.asp");
 					retArray.push("Advanced_VLAN_Profile_Content.asp");
 				}
@@ -750,6 +696,10 @@ define(function(){
 					retArray.push("Guest_network_fbwifi.asp");
 				}
 
+				if(!isSupport("mtlancfg") || !isSupport("mlo")){
+					retArray.push("MLO.asp");
+				}
+
 				if(isSupport("BUSINESS")){
 					retArray.push("APP_Installation.asp");
 					retArray.push("aidisk.asp");
@@ -761,6 +711,11 @@ define(function(){
 
 				if(!isSupport("sw_btn")){
 					retArray.push("Advanced_MultiFuncBtn.asp");
+				}
+
+				if(isSupport("wifi7")){
+					retArray.push("cloud_sync.asp");
+					retArray.push("cloud_router_sync.asp");
 				}
 
 				/* Operation Mode */

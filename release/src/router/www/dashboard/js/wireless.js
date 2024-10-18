@@ -1,15 +1,17 @@
 var wireless = {};
 
 setTimeout(function () {
-    // 2.4 GHz
+    if (isSupport("noWiFi")) {
+        return false;
+    }
 
-    var object = { ...system.wlBandSeq };
-    var array = Object.keys(object);
+    let { wlBandSeq, isBRCMplatform } = system;
+    var array = Object.keys(wlBandSeq);
 
     for (var i = 0; i < array.length; i++) {
         var key = array[i];
-        var wl_unit = object[key].wl_unit;
-        var postfixHook = object[key].postfixHook;
+        var wl_unit = wlBandSeq[key].wl_unit;
+        var postfixHook = wlBandSeq[key].postfixHook;
         var nvram = httpApi.nvramGet([
             "wl" + wl_unit + "_ssid",
             "wl" + wl_unit + "_country_code",
@@ -70,7 +72,7 @@ setTimeout(function () {
         wireless[key].acSupport = key === "2g" ? false : isSupport("11AC");
 
         wireless[key].bw80MHzSupport = (function () {
-            if (system.BRCMplatform) {
+            if (isBRCMplatform) {
                 return wireless[key].channel80MHz.length !== 0 ? true : false;
             } else {
                 return key === "2g" ? false : isSupport("11AC");
@@ -78,7 +80,7 @@ setTimeout(function () {
         })();
 
         wireless[key].bw160MHzSupport = (function () {
-            if (system.BRCMplatform) {
+            if (isBRCMplatform) {
                 return wireless[key].channel160MHz.length !== 0 ? true : false;
             } else {
                 return key === "2g" ? false : isSupport("vht160");

@@ -15,10 +15,10 @@
 
 include ../common.mak
 
+CFLAGS += -I$(TOP)/json-c
 CFLAGS  += -I. -I$(TOP)/shared  -I$(SRCBASE)/include -Wall
 ifeq ($(RTCONFIG_AMAS),y)
 CFLAGS += -I$(TOP)/openssl/include
-CFLAGS += -I$(TOP)/json-c
 endif
 CFLAGS += $(PRIVATE_EXTRACFLAGS)
 ifeq ($(RTCONFIG_BCMWL6),y)
@@ -38,9 +38,10 @@ CFLAGS += -I$(SRCBASE)/common/include
 LDFLAGS += -lgcc_s
 endif
 
+CFLAGS += -I$(STAGEDIR)/usr/include/json-c
+LDFLAGS += -L$(STAGEDIR)/usr/lib -ljson-c
 ifeq ($(RTCONFIG_AMAS),y)
 LDFLAGS += -L$(TOP)/openssl -lcrypto -lssl
-LDFLAGS += -L$(TOP)/json-c/.libs -ljson-c
 ifeq ($(RTCONFIG_LLDPD_1_0_11),y)
 LLDPD_DIR = $(TOP)/lldpd-1.0.11
 else

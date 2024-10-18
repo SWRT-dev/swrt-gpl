@@ -493,7 +493,7 @@ start_wps_method(void)
 		if (nvram_match("wps_version2", "enabled") && strlen(nvram_safe_get("wps_autho_sta_mac")))
 			len += sprintf(buf + len, "wps_autho_sta_mac=\"%s\" ", nvram_safe_get("wps_autho_sta_mac"));
 
-		if (strlen(wps_sta_pin))
+		if (strlen(wps_sta_pin) && strcmp(wps_sta_pin, "00000000") && (wl_wpsPincheck(wps_sta_pin) == 0))
 			len += sprintf(buf + len, "wps_sta_pin=\"%s\" ", wps_sta_pin);
 		else
 			len += sprintf(buf + len, "wps_sta_pin=\"00000000\" ");
@@ -886,7 +886,71 @@ int hapd_cmd_chk_status(char* cmd) {
 	return success;
 }
 #endif
+void runtime_onoff_wps(int onoff)
+{
+#ifdef RTCONFIG_BRCM_HOSTAPD
+	FILE *fp = NULL;
+        int unit = 0, wait_hapd = HAPD_TIMEOUT;
+	int hapd_is_ready = 0;
+        char wif[8], *next, prefix[] = "wlXXXXXXXXXX_";
+        char hapd_ctrl[64], cmd[64];
+	char tmp[100], buf[256];
 
+	foreach(wif, nvram_safe_get("wl_ifnames"), next) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+                if ((nvram_pf_match(prefix, "nband", "1")
+		    || nvram_pf_match(prefix, "nband", "2"))
+		    && !nvram_pf_match(prefix, "auth_mode_x", "sae")
+		    && !nvram_pf_match(prefix, "auth_mode_x", "owe")
+		    && !nvram_pf_match(prefix, "auth_mode_x", "wpa3")
+		    && !nvram_pf_match(prefix, "auth_mode_x", "suite-b")) {
+			snprintf(hapd_ctrl, sizeof(hapd_ctrl), "%s/%s", HAPD_DIR, wif);
+                        snprintf(cmd, sizeof(cmd), "hostapd_cli -i %s ping", wif);
+                        while(wait_hapd) {
+                                if ((--wait_hapd) == 0) {
+                                        _dprintf("check hostapd status timeout [%s] - FAILED\n", wif);
+                                        break;
+                                }
+                                if(!f_exists(hapd_ctrl)) {
+					_dprintf("check %s error\n", hapd_ctrl);
+					sleep(1);
+					continue;
+				}
+
+                                fp = popen(cmd, "r");
+                                if(fp) {
+                                        while (fgets(buf, sizeof(buf), fp) != NULL) {
+                                                if(strstr(buf, "PONG") != NULL)
+                                                {
+                                                        hapd_is_ready = 1;
+                                                        _dprintf("check hostapd status ok [%s] - DONE\n", wif);
+                                                        sleep(1);
+                                                        break;
+                                                }
+                                        }
+                                        pclose(fp);
+                                }
+
+                                if(hapd_is_ready) {
+					if(!onoff) {
+						doSystem("hostapd_cli -i %s set wps_state 0", wif);
+						doSystem("hostapd_cli -i %s reload", wif);
+						doSystem("hostapd_cli -i %s update_beacon", wif);
+					}
+					else {
+						doSystem("hostapd_cli -i %s set wps_state 2", wif);
+						doSystem("hostapd_cli -i %s reload", wif);
+						doSystem("hostapd_cli -i %s disable", wif);
+						doSystem("hostapd_cli -i %s enable", wif);
+					}
+                                        break;
+				}
+                        }
+		}
+                unit++;
+        }
+#endif
+}
 #else // RTCONFIG_WPS
 
 int

@@ -14,8 +14,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  *
- * Copyright 2023, SWRTdev.
- * Copyright 2023, paldier <paldier@hotmail.com>.
+ * Copyright 2023-2024, SWRTdev.
+ * Copyright 2023-2024, paldier <paldier@hotmail.com>.
  * All Rights Reserved.
  * 
  */
@@ -38,9 +38,18 @@
 #include <shared.h>
 #include <shutils.h>
 #include <json.h>
+#include <httpd.h>
 #include <webapi.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <openssl/aes.h>
+#include <openssl/err.h>
+#include <openssl/sha.h>
+#include <openssl/hmac.h>
+#include <openssl/md5.h>
+#include <openssl/evp.h>
+#include <openssl/bio.h>
+#include <openssl/buffer.h>
 #ifdef RTCONFIG_CFGSYNC
 //#include <cfg_param.h>
 #include <cfg_slavelist.h>
@@ -104,6 +113,8 @@ struct JFFS_BACKUP_PROFILE_S jffs_backup_profile_t[] = {
 };
 extern const struct tcode_location_s tcode_location_list[];
 extern int is_CN_sku(void);
+extern char *get_cgi_json(char *name, json_object *root);
+extern char *safe_get_cgi_json(char *name, json_object *root);
 
 static int check_ip_cidr(const char *ip, int check_cidr)
 {
@@ -132,11 +143,26 @@ int upload_blacklist_config_cgi(char *blacklist_config)
 		return HTTP_INVALID_INPUT;
 	if(json_object_get_type(tmp_obj) == json_type_array){
 		ret = HTTP_OK;
-		json_object_to_file("/tmp/blacklist_config.json", tmp_obj);
+		json_object_to_file(BLACKLIST_CONFIG_FILE, tmp_obj);
 	}else
 		ret = HTTP_INVALID_INPUT;
 	json_object_put(tmp_obj);
 	return ret;
+}
+
+
+int is_amas_support(void)
+{
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_SWRTMESH)
+	char buf[2];
+	strlcpy(buf, nvram_safe_get("amas_support"), sizeof(buf));
+	if(buf[0])
+		return atoi(buf);
+	nvram_set_int("amas_support", getAmasSupportMode());
+	return getAmasSupportMode();
+#else
+	return 0;
+#endif
 }
 
 int RCisSupport(const char *name)
@@ -153,7 +179,7 @@ int RCisSupport(const char *name)
 			return 0;
 		return nvram_contains_word("rc_support", name) != 0;
 	}else if(!strcmp(name, "ipsec_srv"))
-		return 4;
+		return 5;
 	else if(!strcmp(name, "usericon"))
 		return 3;
 #if defined(RTCONFIG_OOKLA) || defined(RTCONFIG_OOKLA_LITE)
@@ -176,8 +202,22 @@ int RCisSupport(const char *name)
 #endif
 	else if(!strcmp(name, "conndiag") || !strcmp(name, "frs_feedback") || !strcmp(name, "dnsfilter"))
 		return 2;
+#if defined(RTCONFIG_SOFTWIRE46)
+	else if(!strcmp(name, "s46")){
+		if(strncmp(nvram_safe_get("territory_code"), "JP", 2)
+			return 0;
+		return 3;
+	}
+#endif
 	else if(!strcmp(name, "wtfast"))
 		return is_CN_sku() == 0;
+#if defined(RTCONFIG_MULTILAN_CFG)
+	else if(!strcmp(name, "mtlancfg")){
+		if(!is_amas_support())
+			return 0;
+		return 3;
+	}
+#endif
 	return nvram_contains_word("rc_support", name) != 0;
 }
 
@@ -392,18 +432,9 @@ int mssid_count(void)
 	return count;
 }
 
-int is_amas_support(void)
+int is_bss_maxassoc(void)
 {
-#ifdef RTCONFIG_AMAS
-	char buf[2];
-	strlcpy(buf, nvram_safe_get("amas_support"), sizeof(buf));
-	if(buf[0])
-		return atoi(buf);
-	nvram_set_int("amas_support", getAmasSupportMode());
-	return getAmasSupportMode();
-#else
 	return 0;
-#endif
 }
 
 #if defined(RTCONFIG_BWDPI)
@@ -532,7 +563,7 @@ int is_CN_Boost_support()
 	if(nvram_contains_word("rc_support", "loclist"))
 		++boost;
  	for(tptr = tcode_location_list; tptr->model; tptr++){
-		if(tptr->model == model){
+		if(tptr->model == model || tptr->model == MODEL_GENERIC){
 			if(!strncmp(tptr->location, "XX", 2)){
 				return boost == 2;
 			}
@@ -601,6 +632,7 @@ int get_ui_support_info(struct json_object *ui_support_obj)
 	json_object_object_add(ui_support_obj, "separate_ssid", json_object_new_int(separate_ssid(get_productid())));
 	json_object_object_add(ui_support_obj, "mssid_count", json_object_new_int(mssid_count()));
 	json_object_object_add(ui_support_obj, "dhcp_static_dns", json_object_new_int(1));
+	json_object_object_add(ui_support_obj, "maxassoc", json_object_new_int(is_bss_maxassoc()));
 #if defined(RTCONFIG_OOKLA)
 	json_object_object_add(ui_support_obj, "AWV_ookla", json_object_new_int(RCisSupport("AWV_ookla")));
 #endif
@@ -655,6 +687,9 @@ int get_ui_support_info(struct json_object *ui_support_obj)
 	json_object_object_add(ui_support_obj, "noFwManual", json_object_new_int(is_noFwManual()));
 	json_object_object_add(ui_support_obj, "noupdate", json_object_new_int(is_noUpdate()));
 #endif
+#if defined(RTCONFIG_WTFAST_V2)
+	json_object_object_add(ui_support_obj, "wtfast_v2", json_object_new_int(is_CN_sku() == 0));
+#endif
 	json_object_object_add(ui_support_obj, "WL_SCHED_V2", json_object_new_int(1));
 #if defined(RTCONFIG_PC_SCHED_V3)
 	json_object_object_add(ui_support_obj, "PC_SCHED_V3", json_object_new_int(2));
@@ -667,6 +702,9 @@ int get_ui_support_info(struct json_object *ui_support_obj)
 	json_object_object_add(ui_support_obj, "wpa3rp", json_object_new_int(is_wpa3rp()));
 #if defined(RTCONFIG_AMAS)
 	json_object_object_add(ui_support_obj, "led_ctrl_cap", json_object_new_int(nvram_get_int("led_ctrl_cap")));
+#if defined(RTCONFIG_AMAS_CENTRAL_CONTROL)
+	json_object_object_add(ui_support_obj, "amas_centrl", json_object_new_int(1));
+#endif
 #endif
 #if defined(RTCONFIG_BWDPI)
 	if(dump_dpi_support(INDEX_ADAPTIVE_QOS)/* && !check_tcode_blacklist()*/)
@@ -682,15 +720,23 @@ int get_ui_support_info(struct json_object *ui_support_obj)
 #ifdef RTCONFIG_PC_REWARD
 	json_object_object_add(ui_support_obj, "PC_REWARD", json_object_new_int(1));
 #endif
-	json_object_object_add(ui_support_obj, "MaxRule_extend_limit", json_object_new_int(64));
+	json_object_object_add(ui_support_obj, "MaxRule_extend_limit", json_object_new_int(128));
 #endif
 	json_object_object_add(ui_support_obj, "MaxLen_http_name", json_object_new_int(32));
 	json_object_object_add(ui_support_obj, "MaxLen_http_passwd", json_object_new_int(32));
 	json_object_object_add(ui_support_obj, "CHPASS", json_object_new_int(1));
 	json_object_object_add(ui_support_obj, "MaxRule_VPN_FUSION_Conn", json_object_new_int(nvram_get_int("vpnc_max_conn")));
 #if defined(RTCONFIG_MULTILAN_CFG)
-	json_object_object_add(ui_support_obj, "MaxRule_SDN", json_object_new_int(19));
+	json_object_object_add(ui_support_obj, "MaxRule_SDN", json_object_new_int(9));
 	json_object_object_add(ui_support_obj, "AWV_SDN", json_object_new_int(is_AWV_SDN()));
+#endif
+#if defined(RTCONFIG_TUF_UI)
+	json_object_object_add(ui_support_obj, "TUF_UI", json_object_new_int(1));
+#endif
+#if defined(RTCONFIG_DPSR)
+	json_object_object_add(ui_support_obj, "dpsr", json_object_new_int(1));
+#else
+	json_object_object_add(ui_support_obj, "dpsr", json_object_new_int(0));
 #endif
 #if defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER)
 	json_object_object_add(ui_support_obj, "bcm470x", json_object_new_int(1));
@@ -718,6 +764,7 @@ int get_ui_support_info(struct json_object *ui_support_obj)
 noamas:
 			cfgsync = 0;
 		json_object_object_add(ui_support_obj, "cfg_sync", json_object_new_int(cfgsync));
+		json_object_object_add(ui_support_obj, "cfg_pause", json_object_new_int(1));
 	}
 #endif
 #if defined(RTCONFIG_INADYN)
@@ -739,13 +786,16 @@ noamas:
 #if defined(RTCONFIG_ACCOUNT_BINDING)
 	json_object_object_add(ui_support_obj, "account_binding", json_object_new_int(2));
 #endif
-	json_object_object_add(ui_support_obj, "ddns", json_object_new_int(1));
+	json_object_object_add(ui_support_obj, "ddns", json_object_new_int(2));
 #if defined(RTCONFIG_NOTIFICATION_CENTER)
 	json_object_object_add(ui_support_obj, "nt_center", json_object_new_int(5));
 	json_object_object_add(ui_support_obj, "nt_center_ui", json_object_new_int(0));
 #endif
 #if defined(RTCONFIG_AMAS)
 	json_object_object_add(ui_support_obj, "wps_method_ob", json_object_new_int(1));
+#if defined(RTCONFIG_AMAS_CHANNEL_PLAN)
+	json_object_object_add(ui_support_obj, "channel_plan", json_object_new_int(1));
+#endif
 #endif
 	if(json_object_object_get_ex(ui_support_obj, "11AX", &ax_support))
 	{
@@ -753,25 +803,24 @@ noamas:
 	}
 	if(!strncmp(nvram_safe_get("territory_code"), "CH", 2))
 		json_object_object_add(ui_support_obj, "v6only", json_object_new_int(1));
-#if defined(TUFAX4200)
+#if defined(RTCONFIG_COBRAND)
 	if(!strcmp(get_productid(), "TUF-AX4200Q"))
 		json_object_object_add(ui_support_obj, "cobrand_change", json_object_new_int(1));
-	else
-#endif
-	if(nvram_get_int("CoBrand")){
+	else if(nvram_get_int("CoBrand")){
 		char file[128];
 		memset(file, 0, sizeof(file));
 		snprintf(file, sizeof(file), "images/Model_product_%d.png", nvram_get_int("CoBrand"));
 		json_object_object_add(ui_support_obj, "cobrand_change", json_object_new_int(check_if_file_exist(file) != 0));
 	}else
 		json_object_object_add(ui_support_obj, "cobrand_change", json_object_new_int(0));
+#endif
 	json_object_object_add(ui_support_obj, "wlband", json_object_new_int(1));
 	json_object_object_add(ui_support_obj, "profile_sync", json_object_new_int(0));
 	json_object_object_add(ui_support_obj, "CN_Boost", json_object_new_int(is_CN_Boost_support()));
 	json_object_object_add(ui_support_obj, "5g1_dfs", json_object_new_int(acs_dfs_support()));
 	json_object_object_add(ui_support_obj, "5g2_dfs", json_object_new_int(acs_dfs_support()));
 	json_object_object_add(ui_support_obj, "cd_iperf", json_object_new_int(0));
-	json_object_object_add(ui_support_obj, "rwd_mapping", json_object_new_int(0));
+	json_object_object_add(ui_support_obj, "rwd_mapping", json_object_new_int(1));
 	for(p_pp = &ASUS_PP_t[0]; p_pp->name; ++p_pp){
 		if(safe_atoi(p_pp->version) > version)
 			version = safe_atoi(p_pp->version);
@@ -780,12 +829,19 @@ noamas:
 //	if(!strcmp(get_productid(), "ExpertWiFi_EBG15") || !strcmp(get_productid(), "ExpertWiFi_EBG19"))
 //		json_object_object_add(ui_support_obj, "noAP", json_object_new_int(1));
 	json_object_object_add(ui_support_obj, "noWiFi", json_object_new_int(0));
+#if defined(RTCONFIG_DIS_MLO_QIS)
+	json_object_object_add(ui_support_obj, "dis_mlo_qis", json_object_new_int(1));
+#endif
+#if defined(RTCONFIG_MULTIWAN_CFG)
+	json_object_object_add(ui_support_obj, "multiwan", json_object_new_int(1));
+#else
+	json_object_object_add(ui_support_obj, "multiwan", json_object_new_int(0));
+#endif
 	json_object_object_add(ui_support_obj, "app_mnt", json_object_new_int(1));
 #if defined(RTCONFIG_SW_BTN)
 	json_object_object_add(ui_support_obj, "sw_btn", json_object_new_int(1));
-#else
-	json_object_object_add(ui_support_obj, "sw_btn", json_object_new_int(0));
 #endif
+	json_object_object_add(ui_support_obj, "SMART_HOME_MASTER_UI", json_object_new_int(1));
 	return 0;
 }
 
@@ -941,7 +997,7 @@ int set_wireguard_client(struct json_object *wireguard_client_obj, int *wgc_idx)
 	char wgc_name[64] = {0}, wgc_priv[64] = {0}, wgc_psk[64] = {0}, wgc_ppub[64] = {0}, wgc_enable[2] = {0};
 	char wgc_nat[2] = {0}, wgc_addr[64] = {0}, wgc_ep_addr[64] = {0}, wgc_aips[64] = {0}, wgc_dns[128] = {0};
 	char wgc_ep_port[6] = {0}, wgc_alive[6] = {0}, wgc_use_tnl[2] = {0}, wgc_ep_device_id[256] = {0};
-	char wgc_ep_area[256] = {0};
+	char wgc_ep_area[256] = {0}, vpnc_default_wan[2] = {0};
 	char dhcp_start[64] = {0}, dhcp_end[64] = {0}, lanip[64] = {0};
 	char *next;
 	struct json_object *tmp_obj;
@@ -1021,6 +1077,8 @@ int set_wireguard_client(struct json_object *wireguard_client_obj, int *wgc_idx)
 		strlcpy(wgc_use_tnl, json_object_get_string(tmp_obj), sizeof(wgc_use_tnl));
 	if(!isValidEnableOption(wgc_use_tnl, 1))
 		return HTTP_INVALID_ENABLE_OPT;
+	if(json_object_object_get_ex(wireguard_client_obj, "vpnc_default_wan", &tmp_obj))
+		strlcpy(vpnc_default_wan, json_object_get_string(tmp_obj), sizeof(vpnc_default_wan));
 	if(vpnc_clientlist[0])
 		strlcat(vpnc_clientlist, "<", sizeof(vpnc_clientlist));
 	snprintf(tmp, sizeof(tmp), "%s>WireGuard>%d>>>1>%d>>>%s>0>AMSAPP", wgc_name, (idx + 1), index, wgc_use_tnl);
@@ -1073,6 +1131,10 @@ int set_wireguard_client(struct json_object *wireguard_client_obj, int *wgc_idx)
 	strlcat(vpnc_pptp_options_x_list, "<auto", sizeof(vpnc_pptp_options_x_list));
 	nvram_set("vpnc_pptp_options_x_list", vpnc_pptp_options_x_list);
 	nvram_set_int("vpnc_unit", unit);
+	if(!strcmp(vpnc_default_wan, "1")){
+		nvram_set_int("vpnc_default_wan_tmp", index);
+		strlcat(cmd, "restart_default_wan;", sizeof(cmd));
+  }
 	httpd_nvram_commit();
 	if(json_object_object_get_ex(wireguard_client_obj, "do_rc", &tmp_obj)){
 		if(!strcmp(json_object_get_string(tmp_obj), "1"))
@@ -1262,7 +1324,7 @@ int start_config_sync_cgi()
 	struct json_object *root = NULL, *tmp_value = NULL;
 	struct nvram_tuple *t;
 #ifdef RTCONFIG_NVRAM_ENCRYPT
-	char buf[4000];
+	char buf[4096];
 #endif
 	root = json_object_from_file(SAVE_CONFIG_SYNC_FILE);
 	if(root == NULL)
@@ -1297,4 +1359,570 @@ int get_ASUS_privacy_policy_obj(struct json_object *ASUS_privacy_policy_obj)
 	for(p_pp = &ASUS_PP_t[0]; p_pp->name; ++p_pp)
 		json_object_object_add(ASUS_privacy_policy_obj, p_pp->name, json_object_new_string(p_pp->version));
 	return 0;
+}
+
+int check_chpass_auth(char *cur_username, char *cur_passwd)
+{
+	int i;
+	char *username, *passwd, *passwd_app;
+	char passwd_dec[256] = {0}, username_md5[33] = {0}, passwd_md5[33] = {0}, app_md5[33] = {0};
+	MD5_CTX ctx;
+	unsigned char key[MD5_DIGEST_LENGTH] = {0};
+	username = nvram_safe_get("http_username");
+	passwd = nvram_safe_get("http_passwd");
+	pw_dec(passwd, passwd_dec, sizeof(passwd_dec), 1);
+	MD5_Init(&ctx);
+	MD5_Update(&ctx, username, strlen(username));
+	MD5_Final(key, &ctx);
+	for(i = 0; i < 16; ++i)
+		snprintf(&username_md5[i*2], 3, "%02x", (unsigned int)key[i]);
+	MD5_Init(&ctx);
+	MD5_Update(&ctx, passwd_dec, strlen(passwd_dec));
+	MD5_Final(key, &ctx);
+	for(i = 0; i < 16; ++i)
+		snprintf(&passwd_md5[i*2], 3, "%02x", (unsigned int)key[i]);
+	passwd_app = nvram_safe_get("http_passwd_app");
+	if(*passwd_app){
+		memset(passwd_dec, 0, sizeof(passwd_dec));
+		pw_dec(passwd_app, passwd_dec, sizeof(passwd_dec), 1);
+		MD5_Init(&ctx);
+		MD5_Update(&ctx, passwd_dec, strlen(passwd_dec));
+		MD5_Final(key, &ctx);
+		for(i = 0; i < 16; ++i)
+			snprintf(&app_md5[i*2], 3, "%02x", (unsigned int)key[i]);
+	}
+	if(!strcmp(cur_username, username_md5)){ 
+		if(!strcmp(cur_passwd, passwd_md5))
+			return 1;
+		else if(*passwd_app && !strcmp(cur_passwd, app_md5))
+			return 1;
+	}
+	return 0;
+}
+
+int get_defpass(char *new_passwd, char *passwd, size_t len, int from_service_id)
+{
+	int ret = 0, l;
+	char buf[128] = {0}, passwd_enc[128] = {0};
+	char *defpass = nvram_safe_get("forget_it");
+	if(!nvram_contains_word("rc_support", "defpass") || !is_passwd_default())
+		return ret;
+	if(*defpass){
+		if(new_passwd && *new_passwd){
+			l = b64_decode(new_passwd, buf, sizeof(buf));
+			buf[l] = 0;
+		}
+		if(buf[0] && strlen(buf) == 32 && (from_service_id == FROM_DUTUtil || from_service_id == FROM_BLE)){
+			set_enc_nvram("http_passwd_app", buf, passwd_enc);
+			nvram_set("http_passwd_app", passwd_enc);
+		}
+		memset(passwd_enc, 0, sizeof(passwd_enc));
+		ret = pw_dec(defpass, passwd_enc, sizeof(passwd_enc), 1);
+		strlcpy(passwd, passwd_enc, len);
+	}
+	return ret;
+}
+
+int do_chpass(char *cur_username, char *cur_passwd, char *new_username, char *new_passwd, char *restart_httpd, char *defpass_enable, int from_service_id)
+{
+	int is_def_pwd = 0, chpass_login_try = 0, ret, len;
+	char username_str[128] = {0}, passwd_str[128] = {0};
+	char def_username[128] = {0}, def_passwd[128] = {0};
+	char real_action_script[256] = {0};
+//	struct json_object *root = NULL;
+#ifdef RTCONFIG_NVRAM_ENCRYPT
+	char *http_passwd_t = NULL;
+	char enc_passwd[128]={0};
+	memset(enc_passwd, 0, sizeof(enc_passwd));
+#endif
+#ifdef RTCONFIG_USB
+	char org_username[128] = {0};
+	char modified_acc[128] = {0}, modified_pass[128] = {0};
+	strlcpy(org_username, nvram_safe_get("http_username"), sizeof(org_username));
+#endif
+//	root = json_object_new_object();
+	is_def_pwd = is_passwd_default();
+	if(!is_def_pwd && !check_chpass_auth(cur_username, cur_passwd)){
+		chpass_login_try = nvram_get_int("chpass_login_try") + 1;
+		nvram_set_int("chpass_login_try", chpass_login_try);
+		if(chpass_login_try < DEFAULT_LOGIN_MAX_NUM)
+			ret = HTTP_CHPASS_FAIL;
+		else
+			ret = HTTP_CHPASS_FAIL_MAX;
+	}else{
+		len = b64_decode(new_username, (unsigned char*)username_str, sizeof(username_str));
+		username_str[len] = '\0';
+		if(!strcmp(defpass_enable, "1") && is_def_pwd){
+			if(get_defpass(new_passwd, def_passwd, sizeof(def_passwd), from_service_id))
+				strlcpy(passwd_str, def_passwd, sizeof(passwd_str));
+		}else{
+			len = b64_decode(new_passwd, (unsigned char*)passwd_str, sizeof(passwd_str));
+			passwd_str[len] = '\0';
+			if(passwd_str[0] != '\0')
+				reset_accpw();
+		}
+		if(strlen(username_str) > 0){
+			nvram_set("http_username", username_str);
+#ifdef RTCONFIG_USB
+			strlcpy(modified_acc, username_str, sizeof(modified_acc));
+#endif
+		}
+		if(strlen(passwd_str) > 0){
+#ifdef RTCONFIG_NVRAM_ENCRYPT
+			set_enc_nvram("http_passwd", passwd_str, enc_passwd);
+			nvram_set("http_passwd", enc_passwd);
+#else
+			nvram_set("http_passwd", passwd_str);
+#endif
+#ifdef RTCONFIG_USB
+			strlcpy(modified_pass, passwd_str, sizeof(modified_pass));
+#endif
+		}else{
+#ifdef RTCONFIG_NVRAM_ENCRYPT
+			http_passwd_t = nvram_safe_get("http_passwd");
+			pw_dec(http_passwd_t, enc_passwd, sizeof(enc_passwd), 1);
+#ifdef RTCONFIG_USB
+			strlcpy(modified_pass, enc_passwd, sizeof(modified_pass));
+#endif
+#else
+#ifdef RTCONFIG_USB
+			strlcpy(modified_pass, nvram_safe_get("http_passwd"), sizeof(modified_pass));
+#endif
+#endif
+		}
+#ifdef RTCONFIG_USB
+		if(strlen(modified_acc) > 0 && strlen(modified_pass) > 0)
+			mod_account(org_username, modified_acc, modified_pass);
+		else if(strlen(modified_acc) <= 0 && strlen(modified_pass) > 0)
+			mod_account(org_username, NULL, modified_pass);
+#endif
+		strlcat(real_action_script, "chpass;restart_time;restart_upnp;restart_usb_idle;restart_bhblock;restart_ftpsamba;", sizeof(real_action_script));
+		if(!strcmp(restart_httpd, "1"))
+			strlcat(real_action_script, "restart_httpd;", sizeof(real_action_script));
+		if(is_def_pwd){
+			nvram_set("x_Setting", "1");
+		}
+		nvram_set("p_Setting", "1");
+		httpd_nvram_commit();
+			notify_rc_and_wait(real_action_script);
+		if(is_def_pwd)
+			notify_rc("restart_firewall");
+		ret = HTTP_OK;
+	}
+//	if(root)
+//		json_object_put(root);
+	return ret;
+}
+
+void reset_accpw()
+{
+	char *passwd = nvram_safe_get("http_passwd_app");
+	if(*passwd)
+		nvram_set("http_passwd_app", "");
+}
+
+int set_ASUS_EULA(char *ASUS_EULA)
+{
+	time_t now;
+	char timebuf[100];
+
+	_dprintf("[%s(%d)]ASUS_EULA = %s\n", __FUNCTION__, __LINE__, ASUS_EULA);
+	if(!strcmp(ASUS_EULA, "0") || !strcmp(ASUS_EULA, "1"))
+	{
+		nvram_set("ASUS_EULA", ASUS_EULA);
+		now = time(NULL);
+		rfctime(&now, timebuf, sizeof(timebuf));
+		nvram_set("ASUS_EULA_time", timebuf);
+		if(!strcmp(ASUS_EULA, "0")){
+			if(nvram_match("ddns_server_x", "WWW.ASUS.COM")){
+				nvram_set("ddns_enable_x", "0");
+				nvram_set("ddns_server_x", "");
+				nvram_set("ddns_hostname_x", "");
+			}
+
+#if defined(RTCONFIG_IFTTT) || defined(RTCONFIG_ALEXA) || defined(RTCONFIG_GOOGLE_ASST)
+			nvram_set("ifttt_token", "");
+			nvram_unset("skill_act_code_t");
+			nvram_unset("skill_act_code");
+#endif
+		}
+
+		httpd_nvram_commit();
+#if defined(RTCONFIG_AIHOME_TUNNEL)
+		kill_pidfile_s(MASTIFF_PID_PATH, SIGUSR2);
+#endif
+		return HTTP_OK;
+	}
+	return HTTP_INVALID_INPUT;
+}
+
+int set_ASUS_NEW_EULA(char *ASUS_NEW_EULA, char *from_service)
+{
+	int status = HTTP_INVALID_INPUT;
+	time_t now;
+	char timebuf[100] = {0}, ts[11] = {0};
+#ifdef RTCONFIG_CFGSYNC
+	struct json_object *root = json_object_new_object();
+#endif
+	if(isValid_digit_string(ASUS_NEW_EULA) && strlen(ASUS_NEW_EULA) <= 2){
+		nvram_set("ASUS_NEW_EULA", ASUS_NEW_EULA);
+		now = time(NULL);
+		snprintf(ts, sizeof(ts), "%lu", now);
+		rfctime(&now, timebuf, sizeof(timebuf));
+		nvram_set("ASUS_NEW_EULA_time", timebuf);
+		nvram_set("ASUS_NEW_EULA_ts", ts);
+		if(from_service && strlen(from_service) < 200)
+			nvram_set("ASUS_NEW_EULA_from", from_service);
+		httpd_nvram_commit();
+#ifdef RTCONFIG_CFGSYNC
+		save_changed_param(root, "ASUS_NEW_EULA", ASUS_NEW_EULA);
+		save_changed_param(root, "ASUS_NEW_EULA_time", timebuf);
+		save_changed_param(root, "ASUS_NEW_EULA_ts", ts);
+		save_changed_param(root, "ASUS_NEW_EULA_from", from_service);
+		if(is_cfg_server_ready())
+			notify_cfg_server(root, 0);
+#endif
+		status = HTTP_OK;
+	}
+#ifdef RTCONFIG_CFGSYNC
+	if(root)
+		json_object_put(root);
+#endif
+	return status;
+}
+
+int do_feedback_mail(struct json_object *feedback_obj)
+{
+	return 0;
+}
+
+#ifdef RTCONFIG_CFGSYNC
+int is_cfg_server_ready()
+{
+	if (nvram_match("x_Setting", "1") &&
+		pids("cfg_server") && check_if_file_exist(CFG_SERVER_PID))
+		return 1;
+
+	return 0;
+}
+
+void notify_cfg_server(json_object *cfg_root, int check)
+{
+	char cfg_ver[9];
+	int apply_lock = 0;
+
+	if (is_cfg_server_ready()) {
+		if ((check && check_cfg_changed(cfg_root)) || !check) {
+			/* save the changed nvram parameters */
+			apply_lock = file_lock(CFG_APPLY_LOCK);
+			json_object_to_file(CFG_JSON_FILE, cfg_root);
+			file_unlock(apply_lock);
+
+			/* change cfg_ver when setting changed */
+			srand(time(NULL));
+			snprintf(cfg_ver, sizeof(cfg_ver), "%d%d", rand(), rand());
+			nvram_set("cfg_ver", cfg_ver);
+
+			/* trigger cfg_server to send notification */
+			kill_pidfile_s(CFG_SERVER_PID, SIGUSR2);
+		}
+	}
+}
+
+int save_changed_param(json_object *cfg_root, char *param, const char *value)
+{
+	int ret = 0;
+#if defined(RTCONFIG_AMAS_CENTRAL_CONTROL) && defined(RTCONFIG_AMAS_CAP_CONFIG)
+	int param_is_private = is_cap_private_cfg(param);
+#endif
+
+	if (is_cfg_server_ready()){
+		json_object *tmp = NULL;
+		struct param_mapping_s *pParam = &param_mapping_list[0];
+
+		json_object_object_get_ex(cfg_root, param, &tmp);
+		if (tmp == NULL) {
+			for (pParam = &param_mapping_list[0]; pParam->param != NULL; pParam++) {
+				if (!strcmp(param, pParam->param)) {
+#if defined(RTCONFIG_AMAS_CENTRAL_CONTROL) && defined(RTCONFIG_AMAS_CAP_CONFIG)
+					if (param_is_private && value)
+						json_object_object_add(cfg_root, param,
+							json_object_new_string(value));
+					else
+#endif
+					json_object_object_add(cfg_root, param,
+						json_object_new_string(""));
+					ret = 1;
+					break;
+				}
+			}
+		}
+	}
+
+	return ret;
+} 
+
+int check_cfg_changed(json_object *root)
+{
+	json_object *paramObj = NULL;
+	struct param_mapping_s *pParam = &param_mapping_list[0];
+
+	if (!root)
+		return 0;
+
+	for (pParam = &param_mapping_list[0]; pParam->param != NULL; pParam++) {
+		json_object_object_get_ex(root, pParam->param, &paramObj);
+		if (paramObj)
+			return 1;
+	}
+
+	return 0;
+}
+#ifdef RTCONFIG_AMAS_CENTRAL_CONTROL
+#ifdef RTCONFIG_AMAS_CAP_CONFIG
+int is_cap_private_cfg(char *param)
+{
+	struct param_mapping_s *pParam = &param_mapping_list[0];
+	json_object *privFtArray = json_object_from_file(CAP_PRIVATE_FEATURE_FILE);
+	json_object *ftEntry = NULL;
+	int ret = 0, privFtLen = 0, i = 0;
+	char *ftName = NULL;
+
+	if (privFtArray) {
+		privFtLen = json_object_array_length(privFtArray);
+
+		for (pParam = &param_mapping_list[0]; pParam->param != NULL; pParam++) {
+			if (strcmp(param, pParam->param) == 0) {
+				ftName = get_ft_name_by_ft_index(pParam->subfeature);
+				break;
+			}
+		}
+
+		if (ftName) {
+			for (i = 0; i < privFtLen; i++) {
+				if ((ftEntry = json_object_array_get_idx(privFtArray, i))) {
+					if (strcmp(ftName, json_object_get_string(ftEntry)) == 0) {
+						ret = 1;
+						break;
+					}
+				}
+			}
+		}
+
+		json_object_put(privFtArray);
+	}
+
+	return ret;
+}
+#endif
+#endif
+#endif
+#if defined(RTCONFIG_ASD) || defined(RTCONFIG_AHS)
+int set_security_update(char *security_update)
+{
+#ifdef RTCONFIG_AMAS
+	int update = 0;
+#endif
+	char tmp[32];
+#ifdef RTCONFIG_AMAS
+	char key[32];
+#endif
+#ifdef RTCONFIG_AMAS
+	struct json_object *cfg = json_object_new_object();
+#endif
+	if(isValidEnableOption(security_update, 1)){
+		if(webapi_get_b(ASUS_NV_PP_1, tmp, sizeof(tmp)) > 0){
+			if(strcmp(nvram_safe_get(tmp), security_update)){
+#ifdef RTCONFIG_AMAS
+				update = 1;
+				snprintf(key, sizeof(key), "%s_%d", pp_prefix, 1);
+				json_object_object_add(cfg, key, json_object_new_string(""));
+#endif
+			}
+			nvram_set(tmp, security_update);
+		}
+		if(webapi_get_b(ASUS_NV_PP_2, tmp, sizeof(tmp)) > 0){
+			if(strcmp(nvram_safe_get(tmp), security_update)){
+#ifdef RTCONFIG_AMAS
+				update = 1
+				snprintf(key, sizeof(key), "%s_%d", pp_prefix, 2);
+				json_object_object_add(cfg, key, json_object_new_string(""));
+#endif
+			}
+			nvram_set(tmp, security_update);
+		}
+		httpd_nvram_commit();
+#ifdef RTCONFIG_AMAS
+		if(update && is_cfg_server_ready())
+			notify_cfg_server(cfg, 0);
+		if(cfg)
+			json_object_put(cfg);
+#endif
+		return HTTP_OK;
+	}
+	return HTTP_INVALID_ENABLE_OPT;
+}
+
+int get_security_update(void)
+{
+	int ret = 0;
+	char tmp[32];
+	if(webapi_get_b(ASUS_NV_PP_1, tmp, sizeof(tmp)) > 0)
+		ret = nvram_get_int(tmp) == 1;
+	if(webapi_get_b(ASUS_NV_PP_2, tmp, sizeof(tmp)) > 0 && nvram_get_int(tmp) == 1)
+		ret = 1;
+	return ret;
+}
+#endif
+
+int set_ASUS_privacy_policy(char *ASUS_privacy_policy, char *force_version, char *from_service)
+{
+	int version = 0, status = 0;
+#ifdef RTCONFIG_AMAS
+	int update = 0;
+#endif
+	char tmp[32], tmp2[32], tmp3[200];
+#ifdef RTCONFIG_AMAS
+	char key[32];
+#endif
+#ifdef RTCONFIG_AMAS
+	struct json_object *cfg = json_object_new_object();
+#endif
+	struct ASUS_PP_table *p_pp;
+	time_t now;
+
+	if(!strcmp(ASUS_privacy_policy, "0")){
+		if(webapi_get_b(ASUS_NV_PP_1, tmp, sizeof(tmp)) > 0){
+#ifdef RTCONFIG_AMAS
+			if(strcmp(nvram_safe_get(tmp), ASUS_privacy_policy)){
+				update = 1
+				snprintf(key, sizeof(key), "%s_%d", pp_prefix, 1);
+				json_object_object_add(cfg, key, json_object_new_string(""));
+			}
+#endif
+			nvram_set(tmp, ASUS_privacy_policy);
+		}
+		if(webapi_get_b(ASUS_NV_PP_2, tmp, sizeof(tmp)) > 0){
+#ifdef RTCONFIG_AMAS
+			if(strcmp(nvram_safe_get(tmp), ASUS_privacy_policy)){
+				update = 1
+				snprintf(key, sizeof(key), "%s_%d", pp_prefix, 2);
+				json_object_object_add(cfg, key, json_object_new_string(""));
+			}
+#endif
+			nvram_set(tmp, ASUS_privacy_policy);
+		}
+		if(webapi_get_b(ASUS_NV_PP_3, tmp, sizeof(tmp)) > 0){
+#ifdef RTCONFIG_AMAS
+			if(strcmp(nvram_safe_get(tmp), ASUS_privacy_policy)){
+				update = 1
+				snprintf(key, sizeof(key), "%s_%d", pp_prefix, 3);
+				json_object_object_add(cfg, key, json_object_new_string(""));
+			}
+#endif
+			nvram_set(tmp, ASUS_privacy_policy);
+		}
+		nvram_set("webs_update_enable", ASUS_privacy_policy);
+		nvram_set("ddns_enable_x", ASUS_privacy_policy);
+		notify_rc("restart_ddns");
+		set_ASUS_EULA(ASUS_privacy_policy);
+	}else{
+		if(!strcmp(force_version, "1") && isValid_digit_string(ASUS_privacy_policy)){
+			version = safe_atoi(ASUS_privacy_policy);
+			if(get_ASUS_privacy_policy() > version)
+				version = get_ASUS_privacy_policy();
+		}else{
+			if(strcmp(ASUS_privacy_policy, "1")){
+				status = HTTP_INVALID_ENABLE_OPT;
+				goto error;
+			}
+			for(p_pp = &ASUS_PP_t[0]; p_pp->name; ++p_pp){
+				if(safe_atoi(p_pp->version) > 0)
+					version = safe_atoi(p_pp->version);
+			}
+		}
+		if(webapi_get_b(ASUS_NV_PP_3, tmp, sizeof(tmp)) > 0){
+#ifdef RTCONFIG_AMAS
+			if(strcmp(nvram_safe_get(tmp), ASUS_privacy_policy)){
+				update = 1
+				snprintf(key, sizeof(key), "%s_%d", pp_prefix, 3);
+				json_object_object_add(cfg, key, json_object_new_string(""));
+
+			}
+#endif
+			nvram_set_int(tmp, version);
+		}
+ 	}
+
+	now = time(NULL);
+	rfctime(&now, tmp2, sizeof(tmp2));
+	if(webapi_get_b(ASUS_NV_PP_4, tmp, sizeof(tmp)) > 0){
+#ifdef RTCONFIG_AMAS
+		if(strcmp(nvram_safe_get(tmp), tmp2)){
+			update = 1
+			snprintf(key, sizeof(key), "%s_%d", pp_prefix, 4);
+			json_object_object_add(cfg, key, json_object_new_string(""));
+		}
+#endif
+		nvram_set(tmp, tmp2);
+	}
+	if(webapi_get_b(ASUS_NV_PP_5, tmp, sizeof(tmp)) > 0){
+		snprintf(tmp2, sizeof(tmp2), "%lu", now);
+#ifdef RTCONFIG_AMAS
+		if(strcmp(nvram_safe_get(tmp), tmp2)){
+			update = 1
+			snprintf(key, sizeof(key), "%s_%d", pp_prefix, 5);
+			json_object_object_add(cfg, key, json_object_new_string(""));
+		}
+#endif
+		nvram_set(tmp, tmp2);
+	}
+	if(webapi_get_b(ASUS_NV_PP_10, tmp, sizeof(tmp)) > 0){
+		if(from_service && *from_service)
+			strlcpy(tmp3, from_service, sizeof(tmp3));
+#ifdef RTCONFIG_AMAS
+		if(strcmp(nvram_safe_get(tmp), tmp3)){
+			update = 1
+			snprintf(key, sizeof(key), "%s_%d", pp_prefix, 10);
+			json_object_object_add(cfg, key, json_object_new_string(""));
+		}
+#endif
+		nvram_set(tmp, tmp3);
+	}
+	httpd_nvram_commit();
+#ifdef RTCONFIG_AMAS
+	if(update && is_cfg_server_ready())
+		notify_cfg_server(cfg, 0);
+#endif
+	status = HTTP_OK;
+error:
+#ifdef RTCONFIG_AMAS
+	if(cfg)
+		json_object_put(cfg);
+#endif
+	return status;
+}
+
+int get_ASUS_privacy_policy_tbl(struct json_object *ASUS_privacy_policy_tbl)
+{
+	struct ASUS_PP_table *p_pp;
+	for(p_pp = &ASUS_PP_t[0]; p_pp->name; ++p_pp){
+		json_object_object_add(ASUS_privacy_policy_tbl, p_pp->name, json_object_new_string(p_pp->version));
+	}
+	return 0;
+}
+
+int get_ASUS_privacy_policy_info(struct json_object *ASUS_privacy_policy_info)
+{
+	char tmp[32], tmp2[32];
+	get_ASUS_privacy_policy_tbl(ASUS_privacy_policy_info);
+	if(webapi_get_b(ASUS_NV_PP_3, tmp, sizeof(tmp)) > 0){
+		strlcpy(tmp2, nvram_safe_get(tmp), sizeof(tmp2));
+		json_object_object_add(ASUS_privacy_policy_info, "ASUS_privacy_policy", json_object_new_string(tmp2));
+	}
+	if(webapi_get_b(ASUS_NV_PP_4, tmp, sizeof(tmp)) > 0){
+		strlcpy(tmp2, nvram_safe_get(tmp), sizeof(tmp2));
+		json_object_object_add(ASUS_privacy_policy_info, "ASUS_privacy_policy_time", json_object_new_string(tmp2));
+	}
+	return HTTP_OK;
 }

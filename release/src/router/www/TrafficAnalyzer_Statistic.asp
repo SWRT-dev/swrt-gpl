@@ -24,7 +24,7 @@
 <script type="text/javascript" src="/client_function.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script type="text/javascript" src="/popup.js"></script>
-<script language="JavaScript" type="text/javascript" src="/js/asus_eula.js"></script>
+<script language="JavaScript" type="text/javascript" src="/js/asus_policy.js"></script>
 <style>
 *{
 	box-sizing: content-box;
@@ -78,7 +78,7 @@ window.onresize = function(){
 
 function decide_dns_or_bwdpi(){
     if(dns_dpi_support){
-      switch_nvram_name = 'nfcm_enable';
+      switch_nvram_name = 'dns_dpi_trf_analysis';
       asp_suffix = '_Dns';
       log_name = 'dns_traffic_analyzer';
     }
@@ -101,7 +101,7 @@ function initial(){
  	
  	decide_dns_or_bwdpi();
         
-        if(dns_dpi_support && document.form.nfcm_enable.value == 1){
+        if(dns_dpi_support && document.form.dns_dpi_trf_analysis.value == 1){
             show_refresh = 1;
         } else if (document.form.bwdpi_db_enable.value ==1){
             show_refresh = 1;
@@ -122,8 +122,6 @@ function initial(){
 
 	$('#traffic_unit').val(getTrafficUnit());
 
-	if(!ASUS_EULA.status("tm"))
-		ASUS_EULA.config(eula_confirm, cancel);
 }
 
 var date_string = "";
@@ -313,8 +311,8 @@ function show_individual_info_block(client_index, type){
 
 function getTrafficUnit(){
 	var value = 9;
-	if(cookie.get('ASUS_Traffic_unit')){
-		value = cookie.get('ASUS_Traffic_unit');
+	if(window.localStorage.getItem('ASUS_Traffic_unit')){
+		value = window.localStorage.getItem('ASUS_Traffic_unit');
 	}
 
 	return value;
@@ -1478,9 +1476,9 @@ function eula_confirm(){
 
         if(!dns_dpi_support) {
 	  document.form.bwdpi_db_enable.value = 1;
-	  document.form.nfcm.value = 1; //align user experince during upgrade/download
+	  document.form.dns_dpi_trf_analysis.value = 1; //align user experince during upgrade/download
         } else {
-          document.form.nfcm_enable.value = 1;
+          document.form.dns_dpi_trf_analysis.value = 1;
 	  document.form.bwdpi_db_enable.value = 1; // align user epxerience
         }
 	document.form.action_wait.value = "15";
@@ -1495,30 +1493,31 @@ function cancel(){
 }
 function switch_control(_status){
 	if(_status) {
-              if(!dns_dpi_support){
-		if(reset_wan_to_fo.check_status()) {
-			if(ASUS_EULA.check("tm")){
-				document.form.bwdpi_db_enable.value = 1;
-				document.form.nfcm_enable.value = 1; //align user experience
-				applyRule();
-			}
-		}
-		else
-			cancel();
-               }
-              else {
-
-				document.form.bwdpi_db_enable.value = 1; // align user experience
-				document.form.nfcm_enable.value = 1;
-				applyRule();
-               }
+        if(!dns_dpi_support){
+            if(reset_wan_to_fo.check_status()) {
+                if(policy_status.TM == 0 || policy_status.TM_time == ''){
+                    const policyModal = new PolicyModalComponent({
+                        policy: "TM",
+                        agreeCallback: eula_confirm,
+                    });
+                    policyModal.show();
+                }else{
+                    eula_confirm();
+                }
+            }else
+                cancel();
+        }else {
+            document.form.bwdpi_db_enable.value = 1; // align user experience
+            document.form.dns_dpi_trf_analysis.value = 1;
+            applyRule();
+        }
 	}
 	else {
 		if(!dns_dpi_support) {
                   document.form.bwdpi_db_enable.value = 0;
-                  document.form.nfcm_enable.value = 0; //align user experience
+                  document.form.dns_dpi_trf_analysis.value = 0; //align user experience
                 } else {
-                  document.form.nfcm_enable.value = 0;
+                  document.form.dns_dpi_trf_analysis.value = 0;
                   document.form.bwdpi_db_enable.value = 0; // align user experience
                 }
 		applyRule();
@@ -1564,7 +1563,7 @@ function updateTrafficAnalyzer() {
 }
 
 function setUnit(unit){
-	cookie.set('ASUS_Traffic_unit', unit);
+	window.localStorage.setItem('ASUS_Traffic_unit', unit);
 	draw_flow(date_string, router_traffic_array);
 	get_client_used_apps_info(top5_client_array[0], client_used_app_array, top5_client_array, "router");
 	$('#current_traffic_field').html('');
@@ -1595,7 +1594,7 @@ function setUnit(unit){
 <input type="hidden" name="flag" value="">
 <input type="hidden" name="TM_EULA" value="<% nvram_get("TM_EULA"); %>">
 <input type="hidden" name="bwdpi_db_enable" value="<% nvram_get("bwdpi_db_enable"); %>">
-<input type="hidden" name="nfcm_enable" value="<% nvram_get("nfcm_enable"); %>">
+<input type="hidden" name="dns_dpi_trf_analysis" value="<% nvram_get("dns_dpi_trf_analysis"); %>">
 <table class="content" align="center" cellpadding="0" cellspacing="0">
 	<tr>
 		<td width="17">&nbsp;</td>
@@ -1627,7 +1626,7 @@ function setUnit(unit){
 																	<script type="text/javascript">
 
 if(dns_dpi_support) {
-																		$('#traffic_analysis_enable').iphoneSwitch('<% nvram_get("nfcm_enable"); %>',
+																		$('#traffic_analysis_enable').iphoneSwitch('<% nvram_get("dns_dpi_trf_analysis"); %>',
 																			function(){
 																				switch_control(1);
 																			},

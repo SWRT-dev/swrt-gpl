@@ -16,15 +16,6 @@
  */
 /*
  * Tiny Embedded JavaScript parser
- *
- * Copyright 2003, ASUSTeK Inc.
- * All Rights Reserved.		
- *				     
- * This is UNPUBLISHED PROPRIETARY SOURCE CODE of ASUSTeK Inc.;   
- * the contents of this file may not be disclosed to third parties, copied
- * or duplicated in any form, in whole or in part, without the prior      
- * written permission of ASUSTeK Inc..			    
- *
  */
 
 #include <stdio.h>
@@ -37,6 +28,7 @@
 #include <bcmnvram.h>
 #include <shutils.h>
 #include <shared.h>
+#include <webapi.h>
 
 #ifdef TRANSLATE_ON_FLY
 #include <json_object.h>
@@ -45,37 +37,6 @@ extern char *get_cgi_json(char *name, json_object *root);
 extern int do_json_decode(struct json_object *root);
 extern void parsing_payload(char *url, FILE *stream, int cl, char *method, struct json_object *payload_obj);
 #endif
-
-struct REPLACE_PRODUCTID_S replace_productid_t[] =
-{
-	{"LYRA_VOICE", "LYRA VOICE", "global"},
-	{"RT-AC57U_V2", "RT-AC57U V2", "global"},
-	{"RT-AC58U_V2", "RT-AC58U V2", "global"},
-	{"RT-AC1300G_PLUS_V2", "RT-AC1300G PLUS V2", "global"},
-	{"RT-AC1500G_PLUS", "RT-AC1500G PLUS", "global"},
-	{"ZenWiFi_CT8", "ZenWiFi AC", "global"},
-	{"ZenWiFi_CT8", "灵耀AC3000", "CN"},
-	{"ZenWiFi_XT8", "ZenWiFi AX", "global"},
-	{"ZenWiFi_XT8", "灵耀AX6600", "CN"},
-	{"ZenWiFi_XD4", "ZenWiFi AX Mini", "global"},
-	{"ZenWiFi_XD4", "灵耀AX魔方", "CN"},
-	{"ZenWiFi_CD6R", "ZenWiFi AC Mini", "global"},
-	{"ZenWiFi_CD6N", "ZenWiFi AC Mini", "global"},
-	{"ZenWiFi_XP4", "ZenWiFi AX Hybrid", "global"},
-	{"ZenWiFi_XP4", "灵耀AX XP4", "CN"},
-	{"ZenWiFi_CV4", "ZenWiFi Voice", "global"},
-	{"ZenWiFi_Pro_XT12", "灵耀Pro AX11000", "CN"},
-	{"ZenWiFi_XD4_Pro", "灵耀AX魔方Pro", "CN"},
-	{"ZenWiFi_XT9", "灵耀AX7800", "CN"},
-	{"ZenWiFi_XD6", "灵耀AX5400", "CN"},
-	{"TUF-AX3000_V2", "TUF GAMING 小旋风", "CN"},
-	{"GT6", "ROG魔方 • 幻", "CN"},
-	{"TUF-AX4200Q", "TUF GAMING 小旋风 Pro", "CN"},
-	{"TUF-AX4200", 	"TUF GAMING AX4200", "global"},
-	{"TX-AX6000", "天选游戏路由", "CN"},
-	{"TUF-AX6000",  "TUF GAMING AX6000", "global"},
-	{NULL, NULL, NULL}
-};
 
 static char * get_arg(char *args, char **next);
 static void call(char *func, FILE *stream);
@@ -88,12 +49,12 @@ unqstrstr(const char *haystack, const char *needle)
 	int q;
 
 	for (cur = (char*) haystack, q = 0;
-	     cur < (haystack + strlen(haystack)) && !(!q && !strncmp(needle, cur, strlen(needle)));
+	     cur < (haystack + safe_strlen(haystack)) && !(!q && !strncmp(needle, cur, safe_strlen(needle)));
 	     cur++) {
 		if (*cur == '"')
 			q ? q-- : q++;
 	}
-	return (cur < (haystack + strlen(haystack))) ? cur : NULL;
+	return (cur < (haystack + safe_strlen(haystack))) ? cur : NULL;
 }
 
 static char *
@@ -103,7 +64,7 @@ get_arg(char *args, char **next)
 
 	/* Parse out arg, ... */
 	if (!(end = unqstrstr(args, ","))) {
-		end = args + strlen(args);
+		end = args + safe_strlen(args);
 		*next = NULL;
 	} else
 		*next = end + 1;
@@ -139,7 +100,7 @@ call(char *func, FILE *stream)
 
 	/* Call handler */
 	for (handler = &ej_handlers[0]; handler->pattern; handler++) {
-//		if (strncmp(handler->pattern, func, strlen(handler->pattern)) == 0)
+//		if (strncmp(handler->pattern, func, safe_strlen(handler->pattern)) == 0)
 		if (strcmp(handler->pattern, func) == 0)
 			handler->output(0, stream, argc, argv);
 	}
@@ -168,45 +129,11 @@ process_asp (char *s, char *e, FILE *f)
 		call(func, f);
 
 		// skip asp_mark2
-		end = e + strlen (asp_mark2);
+		end = e + safe_strlen (asp_mark2);
 		break;
 	}
 
 	return end;
-}
-
-extern void replace_productid(char *GET_PID_STR, char *RP_PID_STR, int len){
-
-	struct REPLACE_PRODUCTID_S *p;
-	char *p_temp;
-
-	for(p = &replace_productid_t[0]; p->org_name; p++){
-		if(!strcmp(GET_PID_STR, p->org_name)){
-			if(!strncmp(nvram_safe_get("preferred_lang"), p->p_lang, 2))
-				strlcpy(RP_PID_STR, p->replace_name, len);
-
-			if(!strcmp("global", p->p_lang) && !strlen(RP_PID_STR))
-				strlcpy(RP_PID_STR, p->replace_name, len);
-		}
-	}
-
-	if(strlen(RP_PID_STR))
-		return;
-
-	if ((p_temp = strstr(GET_PID_STR, "ZenWiFi_")) && !strncmp(nvram_safe_get("preferred_lang"), "CN", 2)) {
-		p_temp += strlen("ZenWiFi_");
-		snprintf(RP_PID_STR, len, "灵耀%s", p_temp);
-	}
-	else{
-		strlcpy(RP_PID_STR, GET_PID_STR, len);
-	}
-
-	/* general  replace underscore with space */
-	for (; *RP_PID_STR; ++RP_PID_STR)
-	{
-		if (*RP_PID_STR == '_')
-			*RP_PID_STR = ' ';
-	}
 }
 
 struct REPLACE_TAG_S replace_tag_string_t[] =
@@ -240,8 +167,8 @@ static char *replace_tag_string(char *desc, char *pattern, int pattern_len){
 			strlcpy(replace_string, p->replace_name, sizeof(replace_string));
 		}
 
-		pid_len = strlen(target_string);
-		get_pid_len = strlen(replace_string);
+		pid_len = safe_strlen(target_string);
+		get_pid_len = safe_strlen(replace_string);
 		memset(pattern_tmp, 0, sizeof(pattern_tmp));
 
 		char *pSrc  = desc;
@@ -250,13 +177,13 @@ static char *replace_tag_string(char *desc, char *pattern, int pattern_len){
 		while((p_PID_STR = strstr(pSrc, target_string)))
 		{
 			if((p_PID_STR - pSrc) > 0){
-				memcpy(pDest, pSrc, p_PID_STR - pSrc);
+				memmove(pDest, pSrc, p_PID_STR - pSrc);
 				pDest[p_PID_STR - pSrc] = '\0';
 			}
 			pDest += (p_PID_STR - pSrc);
 			pSrc   =  p_PID_STR + pid_len;
 
-			memcpy(pDest, replace_string, get_pid_len);
+			memmove(pDest, replace_string, get_pid_len);
 			pDest[get_pid_len] = '\0';
 			pDest += get_pid_len;
 		}
@@ -295,7 +222,7 @@ translate_lang (char *s, char *e, FILE *f, kw_t *pkw)
 		}
 
 		// skip kw_mark2
-		end = e + strlen (kw_mark2);
+		end = e + safe_strlen (kw_mark2);
 		break;
 	}
 
@@ -471,12 +398,12 @@ do_ej(char *path, FILE *stream)
 			// post process
 			p = NULL;
 			if (postproc == 1) {				// translate
-				p = translate_lang (key + strlen (kw_mark1), key_end, stream, &kw);
+				p = translate_lang (key + safe_strlen (kw_mark1), key_end, stream, &kw);
 				if (no_translate == 0 && p != NULL) {
 					key = strstr (p, kw_mark1);
 				}
 			} else if (postproc == 2) {			// execute asp
-				p = process_asp (asp + strlen (asp_mark1), asp_end, stream);
+				p = process_asp (asp + safe_strlen (asp_mark1), asp_end, stream);
 				if (p != NULL)  {
 					asp = strstr (p, asp_mark1);
 				}

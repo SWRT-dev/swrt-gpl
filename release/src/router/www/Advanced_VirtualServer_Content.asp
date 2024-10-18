@@ -38,6 +38,10 @@
 	color: #FFFFFF;
 	padding: 20px;
 }
+
+.butten_gen_white{
+	display: initial;
+}
 </style>
 <script>
 var wItem = new Array(new Array("", "", "TCP"),
@@ -596,6 +600,10 @@ function editProfile(_mode, _this) {
 	$("#vts_target_x").val("");
 	$("#saveProfile").unbind("click");
 	$("#profile_setting").fadeIn(300);
+	if(top.webWrapper){
+		$("#saveProfile").addClass("butten_gen_white");
+		$("#saveProfile").prev().addClass("butten_gen_white");
+	}
 	adjust_panel_block_top("profile_setting", 100);
 	cal_panel_block("profile_setting", 0.25);
 
@@ -964,7 +972,7 @@ function cancelProfile() {
 			<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(7,25);"><#IPConnection_VSList_Internal_IP#></a></th>
 			<td>
                 <div class="clientlist_dropdown_main">
-                    <input type="text" maxlength="15" class="input_25_table" id="vts_ipaddr_x" align="left" onkeypress="return validator.isIPAddr(this, event);" onClick="hideClients_Block();" autocomplete="off" autocorrect="off" autocapitalize="off">
+                    <input type="text" maxlength="15" class="input_25_table" id="vts_ipaddr_x" name="vts_ipaddr_x" align="left" onkeypress="return validator.isIPAddr(this, event);" onClick="hideClients_Block();" autocomplete="off" autocorrect="off" autocapitalize="off">
                     <img id="pull_arrow" class="pull_arrow" height="16px;" src="images/unfold_more.svg" align="right" onclick="pullLANIPList(this);" title="<#select_IP#>">
                     <div id="ClientList_Block" class="clientlist_dropdown"></div>
 				</div>
@@ -993,7 +1001,7 @@ function cancelProfile() {
 		<br>
 		<#IPConnection_VSList_SourceTarget_desc#>
 	</div>
-	<div style="margin-top:15px;text-align:center;">
+	<div style="margin-top:15px;text-align:center;display: flex; justify-content: center; margin: auto;">
 		<input class="button_gen" type="button" onclick="cancelProfile();" value="<#CTL_Cancel#>">
 		<input id="saveProfile" class="button_gen" type="button" value="<#CTL_ok#>">
 	</div>

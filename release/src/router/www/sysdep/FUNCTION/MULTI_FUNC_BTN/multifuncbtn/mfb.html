@@ -13,7 +13,7 @@
 <script type="text/javascript" src="/multifuncbtn/mfb.js"></script>
 </head>
 <script>
-let theme = getUrlParameter("current_theme").toLocaleUpperCase();
+let theme = getUrlParameter("current_theme").toUpperCase();
 if(theme == "GT") theme = "ROG";
 $('link[group="extend_css"]').remove();
 if(theme == "WHITE" || theme == "ROG"){

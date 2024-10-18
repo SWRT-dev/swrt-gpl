@@ -64,7 +64,7 @@ for (var j=0; j<wl_nband_array.length; j++) {
 	}
 	else if(wl_nband_array[j] == '4'){
 		band6g_count++;
-		wl_nband_title.push("6 GHz");
+		wl_nband_title.push("6 GHz" + ((band6g_count > 1) ? ("-" + band6g_count) : ""));
 	}
 	else if(wl_nband_array[j] == '6'){
 		band60g_count++;
@@ -74,6 +74,7 @@ for (var j=0; j<wl_nband_array.length; j++) {
 
 if(wl_nband_title.indexOf("2.4 GHz-2") > 0) wl_nband_title[wl_nband_title.indexOf("2.4 GHz")] = "2.4 GHz-1";
 if(wl_nband_title.indexOf("5 GHz-2") > 0) wl_nband_title[wl_nband_title.indexOf("5 GHz")] = "5 GHz-1";
+if(wl_nband_title.indexOf("6 GHz-2") > 0) wl_nband_title[wl_nband_title.indexOf("6 GHz")] = "6 GHz-1";
 if(wl_nband_title.indexOf("60 GHz-2") > 0) wl_nband_title[wl_nband_title.indexOf("60 GHz")] = "60 GHz-1";
 
 function get_wl_unit_by_band(_band){
@@ -92,6 +93,8 @@ function get_wl_unit_by_band(_band){
 			wl_nband = "1";
 			break;
 		case "6G":
+		case "6G1":
+		case "6G2":
 			wl_nband = "4";
 			break;
 		case "60G":
@@ -429,6 +432,7 @@ function genClientList(){
 			}
 
 			clientList[thisClientMacAddr].ip = thisClient.ip;
+			clientList[thisClientMacAddr].ip6 = thisClient.ip6;
 			clientList[thisClientMacAddr].mac = thisClient.mac.toUpperCase();
 
 			clientList[thisClientMacAddr].name = thisClient.name.trim();
@@ -519,6 +523,9 @@ function genClientList(){
 
 			clientList[thisClientMacAddr].ROG = (thisClient.ROG == "1");
 			clientList[thisClientMacAddr].isUserUplaodImg = (uploadIconMacList.indexOf(thisClient.mac.toUpperCase().replace(/\:/g, "")) >= 0) ? true : false;
+			if(isSupport("mlo")){
+				clientList[thisClientMacAddr].mlo = (typeof thisClient.mlo == "undefined") ? false : (thisClient.mlo == "1" ? true : false);
+			}
 		}
 	}
 
@@ -591,15 +598,17 @@ genClientList();
 
 function getUploadIcon(clientMac) {
 	var result = "NoIcon";
-	$.ajax({
-		url: '/appGet.cgi?hook=get_upload_icon()&clientmac=' + clientMac,
-		dataType: 'json',
-		async: false,
-		success: function(response){
-			var base64_image = htmlEnDeCode.htmlEncode(response.get_upload_icon);
-			result = (isImageBase64(base64_image)) ? base64_image : "NoIcon";
-		}
-	});
+	if(isSupport("usericon")){
+		$.ajax({
+			url: '/appGet.cgi?hook=get_upload_icon()&clientmac=' + clientMac,
+			dataType: 'json',
+			async: false,
+			success: function(response){
+				var base64_image = htmlEnDeCode.htmlEncode(response.get_upload_icon);
+				result = (isImageBase64(base64_image)) ? base64_image : "NoIcon";
+			}
+		});
+	}
 	return result;
 
 	function isImageBase64(str){
@@ -635,28 +644,32 @@ function getUploadIcon(clientMac) {
 
 function getUploadIconCount() {
 	var count = 0;
-	$.ajax({
-		url: '/appGet.cgi?hook=get_upload_icon_count_list()',
-		dataType: 'json',
-		async: false,
-		success: function(response){
-			count = parseInt(response.get_upload_icon_count_list.upload_icon_count);
-			if(isNaN(count)) count = 0;
-		}
-	});
+	if(isSupport("usericon")){
+		$.ajax({
+			url: '/appGet.cgi?hook=get_upload_icon_count_list()',
+			dataType: 'json',
+			async: false,
+			success: function(response){
+				count = parseInt(response.get_upload_icon_count_list.upload_icon_count);
+				if(isNaN(count)) count = 0;
+			}
+		});
+	}
 	return count
 }
 
 function getUploadIconList() {
 	var list = "";
-	$.ajax({
-		url: '/appGet.cgi?hook=get_upload_icon_count_list()',
-		dataType: 'json',
-		async: false,
-		success: function(response){
-			list = response.get_upload_icon_count_list.upload_icon_list;
-		}
-	});
+	if(isSupport("usericon")){
+		$.ajax({
+			url: '/appGet.cgi?hook=get_upload_icon_count_list()',
+			dataType: 'json',
+			async: false,
+			success: function(response){
+				list = response.get_upload_icon_count_list.upload_icon_list;
+			}
+		});
+	}
 	return list
 }
 
@@ -853,6 +866,9 @@ function popClientListEditTable(event) {
 	code += '<input id="card_client_ipaddr_field" type="text" value="" class="input_32_table client_input_text_disabled" disabled>';
 	code += '</div>';
 	code += '<div style="margin-top:10px;">';
+	code += '<input id="card_client_ip6addr_field" type="text" value="" class="input_32_table client_input_text_disabled" disabled>';
+	code += '</div>';
+	code += '<div style="margin-top:10px;">';
 	code += '<input id="card_client_macaddr_field" type="text" value="" class="input_32_table client_input_text_disabled" disabled>';
 	code += '</div>';
 	code += '<div style="margin-top:10px;">';
@@ -1030,7 +1046,9 @@ function popClientListEditTable(event) {
 			clientIconHtml += '<div class="' + radioIcon_css + ' radio_' + rssi_t +'" title="' + connectModeTip + '"></div>';
 			if(clientInfo.isWL != 0 || (isSupport("mtlancfg") && clientInfo.sdn_idx > 0)){
 				var bandClass = (navigator.userAgent.toUpperCase().match(/CHROME\/([\d.]+)/)) ? "band_txt_chrome" : "band_txt";
-				clientIconHtml += '<div class="band_block"><span class="' + bandClass + '" style="color:#000000;">' + isWL_map[clientInfo.isWL]["text"] + '</span></div>';
+				let band_text = isWL_map[clientInfo.isWL]["text"];
+				if(isSupport("mlo") && clientInfo.mlo) band_text = `MLO`;
+				clientIconHtml += `<div class="band_block"><span class="${bandClass}" style="color:#000000;">${band_text}</span></div>`;
 			}
 			document.getElementById('card_client_interface').innerHTML = clientIconHtml;
 			document.getElementById("card_client_interface").title = connectModeTip;
@@ -1081,6 +1099,7 @@ function popClientListEditTable(event) {
 	//device icon and device info. start
 	document.getElementById("card_client_ipaddr_field_orig").value = clientInfo.ip;
 	document.getElementById("card_client_ipaddr_field").value = clientInfo.ip;
+	document.getElementById("card_client_ip6addr_field").value = clientInfo.ip6;
 	document.getElementById("card_client_macaddr_field").value = clientInfo.mac;
 	select_image(clientInfo);
 	if(card_client_variable.manual_dhcp_list[clientInfo.mac] != undefined) {
@@ -1572,15 +1591,15 @@ function card_confirm(event) {
 				if(card_client_variable.timeSchedulingFlag || card_client_variable.blockInternetFlag) {
 					if(document.card_clientlist_form.MULTIFILTER_MAC.value == "") {
 						if(card_client_variable.timeSchedulingFlag)
-							document.card_clientlist_form.MULTIFILTER_ENABLE.value += "1";
+							document.card_clientlist_form.MULTIFILTER_ENABLE.value = "1";
 						else if(card_client_variable.blockInternetFlag)
-							document.card_clientlist_form.MULTIFILTER_ENABLE.value += "2";
-						document.card_clientlist_form.MULTIFILTER_MAC.value += clientMac;
-						document.card_clientlist_form.MULTIFILTER_DEVICENAME.value += clientName;
+							document.card_clientlist_form.MULTIFILTER_ENABLE.value = "2";
+						document.card_clientlist_form.MULTIFILTER_MAC.value = clientMac;
+						document.card_clientlist_form.MULTIFILTER_DEVICENAME.value = clientName;
 						if(isSupport("PC_SCHED_V3"))
-							document.card_clientlist_form.MULTIFILTER_MACFILTER_DAYTIME_V2.value += "W03E21000700<W04122000800";
+							document.card_clientlist_form.MULTIFILTER_MACFILTER_DAYTIME_V2.value = "W03E21000700<W04122000800";
 						else
-							document.card_clientlist_form.MULTIFILTER_MACFILTER_DAYTIME.value += "<";
+							document.card_clientlist_form.MULTIFILTER_MACFILTER_DAYTIME.value = "<";
 					}
 					else {
 						document.card_clientlist_form.MULTIFILTER_ENABLE.value += ">";
@@ -2340,7 +2359,7 @@ function init_clientlist_listview_array(){
 			}
 			else{
 				gn_list = [];
-				for(var i=1; i<multissid_count+1; i++){
+				for(var i=1; i<isSupport("mssid_count")+1; i++){
 					gn_list["gn" + i + ""] = new Array();
 					sorter["gn" + i + "_index"] = 3;
 					sorter["gn" + i + "_display"] = true;
@@ -2451,7 +2470,7 @@ function changeClientListViewMode() {
 			});
 		}
 		else{
-			for(var i=1; i<multissid_count+1; i++)
+			for(var i=1; i<isSupport("mssid_count")+1; i++)
 				sorter["gn" + i + "_display"] = true;
 		}
 	}
@@ -2493,11 +2512,11 @@ function pop_clientlist_listview() {
 	clientlist_view_hide_flag = false;
 
 	create_clientlist_listview();
-	setTimeout(function(){parent.document.networkmapdRefresh.submit();}, 5000);//avoiding no data when open the view list
+	setTimeout(function(){httpApi.nvramSet({"action_mode": "update_client_list"});}, 5000);//avoiding no data when open the view list
 	clearInterval(interval_clientlist_listview_update);
 	interval_clientlist_listview_update = setInterval(function(){
 		if(document.getElementById("clientlist_viewlist_content").style.display != "none")
-			parent.document.networkmapdRefresh.submit();
+			httpApi.nvramSet({"action_mode": "update_client_list"});
 		else
 			clearInterval(interval_clientlist_listview_update);
 	}, 1000*60*3);
@@ -2517,8 +2536,8 @@ function exportClientListLog() {
 		for(var i = 0; i < array.length; i += 1) {
 			var tempArray = new Array(csv_items).fill("-");
 			tempArray[0] = (array[i][0] == 1) ? "Allow Internet access" : "Block Internet access";
-			tempArray[1] = array[i][1].replace(",", "");
-			tempArray[2] = array[i][2];
+			tempArray[1] = `"${array[i][1].replace(",", "")}"`;
+			tempArray[2] = `"${array[i][2]}"`;
 			tempArray[3] = array[i][3];
 			tempArray[4] = ipStateExport[clientList[array[i][4]].ipMethod];
 			tempArray[5] = array[i][4];
@@ -2561,7 +2580,7 @@ function exportClientListLog() {
 					});
 				}
 				else{
-					for(var i=1; i<multissid_count+1; i++)
+					for(var i=1; i<isSupport("mssid_count")+1; i++)
 						setArray(gn_list["gn"+i+""]);
 				}
 			}
@@ -2634,7 +2653,7 @@ function sorterClientList() {
 					});
 				}
 				else{
-					for(var i=1; i<multissid_count+1; i++)
+					for(var i=1; i<isSupport("mssid_count")+1; i++)
 						sorter.doSorter(sorter["gn"+i+"_index"], indexMapType[sorter["gn"+i+"_index"]], 'gn'+i+'_list');
 				}
 			}
@@ -2691,7 +2710,7 @@ function create_clientlist_listview() {
 			});
 		}
 		else{
-			for(var i=1; i<multissid_count+1; i++)
+			for(var i=1; i<isSupport("mssid_count")+1; i++)
 				gn_list["gn"+i+""] = [];
 		}
 	}
@@ -2772,38 +2791,41 @@ function create_clientlist_listview() {
 
 			var wl_map = {"2.4 GHz": "1",  "5 GHz": "2", "5 GHz-1": "2", "5 GHz-2": "3", "6 GHz": "4"};
 			var smart_connect_x = httpApi.nvramGet(["smart_connect_x"]).smart_connect_x;
-			if((isSupport("smart_connect") || isSupport("bandstr")) && smart_connect_x == "1"){
-				var wl_ssid_parm = "wl" +  get_wl_unit_by_band("2G") + "_ssid";
-				var tr_title = htmlEnDeCode.htmlEncode(decodeURIComponent(httpApi.nvramCharToAscii([wl_ssid_parm])[wl_ssid_parm]));
-				code += create_clientlist_card(tr_title,"sc",obj_width);
-			}
-			else{
-				for(var i = 0; i < wl_nband_title.length; i += 1) {
-					var tr_title = wl_nband_title[i];
-					if(isSupport("amas") && isSupport("mtlancfg")){
-						var wl_if = "";
-						switch(wl_map[wl_nband_title[i]]){
-							case "1":
-								wl_if = "2G";
-								break;
-							case "2":
-								wl_if = "5G";
-								break;
-							case "3":
-								wl_if = "5G2";
-								break;
-							case "4":
-								wl_if = "6G";
-								break;
+
+			if(!isSupport("noWiFi")){
+				if((isSupport("smart_connect") || isSupport("bandstr")) && smart_connect_x == "1"){
+					var wl_ssid_parm = "wl" +  get_wl_unit_by_band("2G") + "_ssid";
+					var tr_title = htmlEnDeCode.htmlEncode(decodeURIComponent(httpApi.nvramCharToAscii([wl_ssid_parm])[wl_ssid_parm]));
+					code += create_clientlist_card(tr_title,"sc",obj_width);
+				}
+				else{
+					for(var i = 0; i < wl_nband_title.length; i += 1) {
+						var tr_title = wl_nband_title[i];
+						if(isSupport("amas") && isSupport("mtlancfg")){
+							var wl_if = "";
+							switch(wl_map[wl_nband_title[i]]){
+								case "1":
+									wl_if = "2G";
+									break;
+								case "2":
+									wl_if = "5G";
+									break;
+								case "3":
+									wl_if = "5G2";
+									break;
+								case "4":
+									wl_if = "6G";
+									break;
+							}
+							if(wl_if != ""){
+								var wl_ssid_parm = "wl" +  get_wl_unit_by_band(wl_if) + "_ssid";
+								tr_title = htmlEnDeCode.htmlEncode(decodeURIComponent(httpApi.nvramCharToAscii([wl_ssid_parm])[wl_ssid_parm])) + " (" + tr_title + ")";
+							}
 						}
-						if(wl_if != ""){
-							var wl_ssid_parm = "wl" +  get_wl_unit_by_band(wl_if) + "_ssid";
-							tr_title = htmlEnDeCode.htmlEncode(decodeURIComponent(httpApi.nvramCharToAscii([wl_ssid_parm])[wl_ssid_parm])) + " (" + tr_title + ")";
-						}
+
+						code += create_clientlist_card(tr_title, "wl" + wl_map[wl_nband_title[i]], obj_width);
+
 					}
-
-					code += create_clientlist_card(tr_title, "wl" + wl_map[wl_nband_title[i]], obj_width);
-
 				}
 			}
 
@@ -2819,7 +2841,7 @@ function create_clientlist_listview() {
 					});
 				}
 				else{
-					for(var i=1; i<multissid_count+1; i++){
+					for(var i=1; i<isSupport("mssid_count")+1; i++){
 						code += create_clientlist_card("<#Guest_Network#> - " + i, "gn" + i, obj_width);
 					}
 				}
@@ -2863,7 +2885,8 @@ function create_clientlist_listview() {
 			var tempArray = [clientList[clientList[i]].internetState, deviceTypeName, clientName, clientList[clientList[i]].ip, 
 							clientList[clientList[i]].mac, clientList[clientList[i]].rssi, clientList[clientList[i]].curTx, clientList[clientList[i]].curRx, 
 							clientList[clientList[i]].wlConnectTime, clientList[clientList[i]].isWL, clientList[clientList[i]].vendor, clientList[clientList[i]].type,
-							clientList[clientList[i]].macRepeat, clientList[clientList[i]].isGN, clientList[clientList[i]].sdn_idx, clientList[clientList[i]].isUserUplaodImg];
+							clientList[clientList[i]].macRepeat, clientList[clientList[i]].isGN, clientList[clientList[i]].sdn_idx, clientList[clientList[i]].isUserUplaodImg,
+							clientList[clientList[i]].ip6, "", clientList[clientList[i]].mlo];
 			switch (clienlistViewMode) {
 				case "All" :
 					all_list.push(tempArray);
@@ -2949,7 +2972,7 @@ function create_clientlist_listview() {
 				});
 			}
 			else{
-				for(var i=1; i<multissid_count+1; i++){
+				for(var i=1; i<isSupport("mssid_count")+1; i++){
 					if(!sorter["gn"+i+"_display"]){
 						document.getElementById("clientlist_gn"+i+"_list_Block").style.display = "none";
 						document.getElementById("gn"+i+"_expander").innerHTML = "[ <#Clientlist_Show#> ]";
@@ -3040,6 +3063,8 @@ function drawClientListBlock(objID) {
 		this.isGN = _profile[13];
 		this.sdn_idx = _profile[14];
 		this.isUserUplaodImg = _profile[15];
+		this.ip6 = _profile[16];
+		this.mlo = _profile[18];
 	}
 
 	if(document.getElementById("clientlist_" + objID + "_Block") != null) {
@@ -3092,7 +3117,9 @@ function drawClientListBlock(objID) {
 					clientInterfaceCode += "<div class='interface_container'><div class='" + radioIcon_css + " radio_" + rssi_t + "'></div>";
 					if (clientlist_sort[j].isWL != 0 || (isSupport("mtlancfg") && clientlist_sort[j].sdn_idx > 0)) {
 						var bandClass = (navigator.userAgent.toUpperCase().match(/CHROME\/([\d.]+)/)) ? "band_txt_chrome" : "band_txt";
-						clientInterfaceCode += "<div class='band_block'><span class='" + bandClass + "'>" + isWL_map[clientlist_sort[j].isWL]["text"] + "</span></div>";
+						let band_text = isWL_map[clientlist_sort[j].isWL]["text"];
+						if(isSupport("mlo") && clientlist_sort[j].mlo) band_text = `MLO`;
+						clientInterfaceCode += `<div class='band_block'><span class='${bandClass}'>${band_text}</span></div>`;
 					}
 					clientInterfaceCode += "</div>";
 					clientListCode += "<td class='client-list-sm' width='" + obj_width[0] + "' align='center'>" + clientInterfaceCode + "</td>";
@@ -3179,7 +3206,7 @@ function drawClientListBlock(objID) {
 					"<div class='client-name'>" + "<div class='clientName' onclick='editClientName(this);'>" + clientNameEnCode + "</div>" +
 					"<input type='text' value='" + clientNameEnCode + "' maxlength='32' style='width:95%;margin-left:0px;display:none;' onblur='saveClientName(this, " + clientlist_sort[j].type + ", \"" + clientlist_sort[j].mac + "\");'>" + "</div>" +
 					"<div class='client-ip'>";
-				clientListCode += (clientList[clientlist_sort[j].mac].isWebServer) ? "<a class='link' href='http://" + clientlist_sort[j].ip + "' target='_blank'>" + clientlist_sort[j].ip + "</a>" : clientlist_sort[j].ip;
+				clientListCode += (clientList[clientlist_sort[j].mac].isWebServer) ? "<a class='link' href='http://" + clientlist_sort[j].ip + "' target='_blank'>" + clientlist_sort[j].ip + "</a>" : `<div style="display: flex;flex-direction: column; align-items: flex-start;"><div>${clientlist_sort[j].ip}</div><div>${clientlist_sort[j].ip6}</div></div>`;
 				if ('<% nvram_get("sw_mode"); %>' == "1") {
 					clientListCode += '<span style="float:right;margin-top:-3px;margin-right:5px;" class="ipMethodTag" onmouseover="return overlib(\''
 					clientListCode += ipState[clientList[clientlist_sort[j].mac].ipMethod];
@@ -3218,8 +3245,8 @@ function drawClientListBlock(objID) {
 				clientListCode += "<input type='text' value='" + clientNameEnCode + "' class='input_25_table' maxlength='32' style='width:95%;margin-left:0px;display:none;' onblur='saveClientName(this, " + clientlist_sort[j].type + ", \"" + clientlist_sort[j].mac + "\");'>";
 				clientListCode += "</td>";
 				var ipStyle = ('<% nvram_get("sw_mode"); %>' == "1") ? "line-height:16px;text-align:left;padding-left:10px;" : "line-height:16px;text-align:center;";
-				clientListCode += "<td class='client-list-xl text-left' width='" + obj_width[3] + "' style='" + ipStyle + "'>";
-				clientListCode += (clientList[clientlist_sort[j].mac].isWebServer) ? "<a class='link' href='http://" + clientlist_sort[j].ip + "' target='_blank'>" + clientlist_sort[j].ip + "</a>" : clientlist_sort[j].ip;
+				clientListCode += "<td class='client-list-xl text-left' width='" + obj_width[3] + "' style='" + ipStyle + "'><div style='display: flex;flex-direction: row; align-items: center; justify-content: space-between; gap:5px;'>";
+				clientListCode += (clientList[clientlist_sort[j].mac].isWebServer) ? "<a class='link' href='http://" + clientlist_sort[j].ip + "' target='_blank'>" + clientlist_sort[j].ip + "</a>" : `<div style="display: flex;flex-direction: column; align-items: flex-start;"><div>${clientlist_sort[j].ip}</div><div>${clientlist_sort[j].ip6}</div></div>`;
 				if ('<% nvram_get("sw_mode"); %>' == "1") {
 					clientListCode += '<span style="float:right;margin-top:-3px;margin-right:5px;" class="ipMethodTag" onmouseover="return overlib(\''
 					clientListCode += ipState[clientList[clientlist_sort[j].mac].ipMethod];
@@ -3227,7 +3254,7 @@ function drawClientListBlock(objID) {
 					clientListCode += clientList[clientlist_sort[j].mac].ipMethod + '</span>';
 				}
 
-				clientListCode += "</td>";
+				clientListCode += "</div></td>";
 				clientListCode += "<td class='client-list-xl' width='" + obj_width[4] + "'>" + clientlist_sort[j].mac + "</td>";
 
 				if (isSupport("stainfo") && !(isSwMode('mb') || isSwMode('ew'))) {
@@ -3687,7 +3714,7 @@ function showDropdownClientList(_callBackFun, _callBackFunParam, _interfaceMode,
 }
 
 function redirectTimeScheduling(_mac) {
-	cookie.set("time_scheduling_mac", _mac, 1);
+	window.localStorage.setItem("time_scheduling_mac", _mac, 1);
 	location.href = "ParentalControl.asp" ;
 }
 

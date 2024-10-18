@@ -6,7 +6,7 @@
 #include "shared.h"
 #include <ralink.h>
 
-#if defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 extern int iface_name_to_vport(const char *iface);
 #endif
 
@@ -22,6 +22,9 @@ extern int iface_name_to_vport(const char *iface);
 #else
 #define PORT_UNITS 6
 #endif
+#if defined(RTCONFIG_MT798X)
+extern int get_mt7986_mt7531_vport_info(unsigned int vport, unsigned int *link, unsigned int *speed, phy_info *info);
+#endif	/* RTCONFIG_MT798X */
 
 //Aimesh RE: vport to eth name
 static const char *query_ifname[PORT_UNITS] = { //Aimesh RE
@@ -127,7 +130,7 @@ int wl_get_bw_cap(int unit, int *bwcap)
 	else if (unit == 1)
 	{
 		*bwcap = 0x01 | 0x02 | 0x04;	/* 11AC 80MHz */
-#if defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 		*bwcap |= 0x08;
 #endif
 	}
@@ -166,6 +169,21 @@ void sync_control_channel(int unit, int channel, int bw, int nctrlsb)
 
 	__get_wlifname(unit, 0, ifname);
 	ret = wl_set_ch_bw(ifname, channel, bw, nctrlsb);
+}
+
+void get_control_channel(int unit, int *channel, int *bw, int *nctrlsb)
+{
+	char ifname[IFNAMSIZ];
+	int ret __attribute__ ((unused));
+
+	if (unit < 0 || unit >= MAX_NR_WL_IF)
+		return;
+	if (channel == NULL || bw == NULL || nctrlsb == NULL)
+		return;
+
+	__get_wlifname(unit, 0, ifname);
+
+	ret = get_channel_info(ifname, channel, bw, nctrlsb);
 }
 
 int get_psta_status(int unit)
@@ -272,8 +290,13 @@ void add_beacon_vsie_guest(char *hexdata)
         for (; subunit <= num_of_mssid_support(unit); subunit++) {
             char ifname[16];
             __get_wlifname(unit, subunit, ifname);
-            if (is_intf_up(ifname) != -1)  // interface exist
-		    	vsie_operation(unit, subunit, VSIE_BEACON | VSIE_PROBE_RESP, 1, hexdata);
+            if ((is_intf_up(ifname) != -1)  // interface exist
+#if defined(RTCONFIG_MLO)
+                && !is_mlo_dwb_mssid(ifname)
+                && !is_compatible_network(ifname)
+#endif
+                )
+                vsie_operation(unit, subunit, VSIE_BEACON | VSIE_PROBE_RESP, 1, hexdata);
        }
         unit++;
     }
@@ -284,11 +307,27 @@ void add_beacon_vsie(char *hexdata)
 #ifdef RTCONFIG_BHCOST_OPT
     int unit = 0;
     char word[100], *next;
+#ifdef RTCONFIG_MLO
+    int subunit=0;
+    char iotFhIfname[32] = {0};
+#endif
 
     foreach (word, nvram_safe_get("wl_ifnames"), next) {
     	vsie_operation(unit, 0, VSIE_BEACON | VSIE_PROBE_RESP, 1, hexdata);
         unit++;
     }
+
+#ifdef RTCONFIG_MLO
+    if(get_compatible_network(-1, iotFhIfname, sizeof(iotFhIfname)) != NULL)
+    {
+        foreach (word, iotFhIfname, next) {
+            unit = subunit = -1;
+            sscanf(word, "wl%d.%d", &unit, &subunit);
+            if(subunit > 0)
+                vsie_operation(unit, subunit, VSIE_BEACON | VSIE_PROBE_RESP, 1, hexdata);
+        }
+    }
+#endif
 #else
     vsie_operation(0, 0, VSIE_BEACON | VSIE_PROBE_RESP, 1, hexdata);
 #endif
@@ -324,8 +363,13 @@ void del_beacon_vsie_guest(char *hexdata)
         for (; subunit <= num_of_mssid_support(unit); subunit++) {
             char ifname[16];
             __get_wlifname(unit, subunit, ifname);
-            if (is_intf_up(ifname) != -1)  // interface exist
-		    	vsie_operation(unit, subunit, VSIE_BEACON | VSIE_PROBE_RESP, 3, hexdata);
+            if ((is_intf_up(ifname) != -1)  // interface exist
+#if defined(RTCONFIG_MLO)
+                && !is_mlo_dwb_mssid(nvram_safe_get(buf))
+                && !is_compatible_network(nvram_safe_get(buf))
+#endif
+                )
+                vsie_operation(unit, subunit, VSIE_BEACON | VSIE_PROBE_RESP, 3, hexdata);
         }
         unit++;
     }
@@ -336,11 +380,26 @@ void del_beacon_vsie(char *hexdata)
 #ifdef RTCONFIG_BHCOST_OPT
     int unit = 0;
     char word[100], *next;
+#ifdef RTCONFIG_MLO
+    int subunit=0;
+    char iotFhIfname[32] = {0};
+#endif
 
     foreach (word, nvram_safe_get("wl_ifnames"), next) {
     	vsie_operation(unit, 0, VSIE_BEACON | VSIE_PROBE_RESP, 3, hexdata);
         unit++;
     }
+#ifdef RTCONFIG_MLO
+    if(get_compatible_network(-1, iotFhIfname, sizeof(iotFhIfname)) != NULL)
+    {
+        foreach (word, iotFhIfname, next) {
+            unit = subunit = -1;
+            sscanf(word, "wl%d.%d", &unit, &subunit);
+            if(subunit > 0)
+                vsie_operation(unit, subunit, VSIE_BEACON | VSIE_PROBE_RESP, 3, hexdata);
+        }
+    }
+#endif
 #else
     vsie_operation(0, 0, VSIE_BEACON | VSIE_PROBE_RESP, 3, hexdata);
 #endif
@@ -393,30 +452,6 @@ int get_wlan_service_status(int bssidx, int vifidx)
     return 0;
 }
 
-void set_wlan_service_status(int bssidx, int vifidx, int enabled)
-{
-    if (nvram_get_int("wlready") == 0) return;
-
-    char *ifname = NULL;
-    char tmp[128] = {0}, prefix[] = "wlXXXXXXXXXX_";
-    char wl_radio[] = "wlXXXX_radio";
-
-    snprintf(wl_radio, sizeof(wl_radio), "wl%d_radio", bssidx);
-    if (nvram_get_int(wl_radio) == 0)
-        return;
-
-    if (vifidx > 0)
-        snprintf(prefix, sizeof(prefix), "wl%d.%d_", bssidx, vifidx);
-    else
-        snprintf(prefix, sizeof(prefix), "wl%d_", bssidx);
-
-    ifname = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
-    if (!enabled && bssidx)
-        doSystem("iwpriv %s set DfsCacClean=1", ifname);
-    eval("ifconfig", ifname, enabled? "up":"down");
-}
-
-
 #ifdef RTCONFIG_BHCOST_OPT
 #ifdef RTCONFIG_AMAS_ETHDETECT
 unsigned int get_uplinkports_linkrate(char *ifname)
@@ -433,8 +468,12 @@ unsigned int get_uplinkports_linkrate(char *ifname)
                 }
                 if (query_ifname[vport] != NULL && strstr(query_ifname[vport],ifname)) 
 		{
-#if defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
+#if defined(RTCONFIG_MT799X)
+			get_mt7988_vport_info(iface_name_to_vport(ifname), &connect, &speed, NULL);
+#else
 			get_mt7986_mt7531_vport_info(iface_name_to_vport(ifname), &connect, &speed, NULL);
+#endif
 			if(connect)
 			{	
 				link_rate=speed;
@@ -465,8 +504,12 @@ int get_uplinkports_status(char *ifname)
                 }
                 if (query_ifname[vport] != NULL && strstr(query_ifname[vport],ifname)) 
 		{
-#if defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
+#if defined(RTCONFIG_MT799X)
+			get_mt7988_vport_info(iface_name_to_vport(ifname), &connect, &speed, NULL);
+#else
 			get_mt7986_mt7531_vport_info(iface_name_to_vport(ifname), &connect, &speed, NULL);
+#endif
 			if(connect)
 				return 1;
 #else
@@ -503,6 +546,59 @@ int get_uplinkports_status(char *ifname)
 #endif  /* RTCONFIG_AMAS_ETHDETECT */
 #endif	/* RTCONFIG_BHCOST_OPT */
 #endif 
+
+void set_wlan_service_status(int bssidx, int vifidx, int enabled)
+{
+    if (nvram_get_int("wlready") == 0) return;
+
+    char *ifname = NULL;
+    char tmp[128] = {0}, prefix[] = "wlXXXXXXXXXX_";
+    char wl_radio[] = "wlXXXX_radio";
+
+    snprintf(wl_radio, sizeof(wl_radio), "wl%d_radio", bssidx);
+    if (nvram_get_int(wl_radio) == 0)
+        return;
+
+    if (vifidx > 0)
+        snprintf(prefix, sizeof(prefix), "wl%d.%d_", bssidx, vifidx);
+    else
+        snprintf(prefix, sizeof(prefix), "wl%d_", bssidx);
+
+    ifname = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+    if (!enabled && bssidx)
+        doSystem("iwpriv %s set DfsCacClean=1", ifname);
+    eval("ifconfig", ifname, enabled? "up":"down");
+}
+
+#if defined(RTCONFIG_MLO)
+char *get_mld_mac_by_sta(char *ap_ifname, char *sta_mac, char *mld_mac, int mld_mac_len)
+{
+	//TODO
+	return mld_mac;
+}
+/**
+ * @brief add guest vsie
+ *
+ * @param hexdata vsie string
+ */
+void add_beacon_vsie_dwb(char *hexdata)
+{
+	int dwb_band = nvram_get_int("dwb_band");
+	int subunit = nvram_get_int("mlo_dwb_mssid_subunit");
+	if(subunit == 0)
+		return;
+	add_beacon_vsie_by_unit(dwb_band, subunit, hexdata);
+}
+
+void del_beacon_vsie_dwb(char *hexdata)
+{
+	int dwb_band = nvram_get_int("dwb_band");
+	int subunit = nvram_get_int("mlo_dwb_mssid_subunit");
+	if(subunit == 0)
+		return;
+	del_beacon_vsie_by_unit(dwb_band, subunit, hexdata);
+}
+#endif
 
 #ifdef RTCONFIG_CFGSYNC
 void update_macfilter_relist(void)
@@ -604,8 +700,12 @@ extern int get_trunk_port_mapping(int trunk_port_value)
 
 #if defined(RTCONFIG_RALINK_MT7621)
 void mt7621_get_phy_port_mapping(phy_port_mapping *port_mapping);
-#else
+#endif
+#if defined(RTCONFIG_MT798X)
 void mt798x_get_phy_port_mapping(phy_port_mapping *port_mapping);
+#endif
+#if defined(RTCONFIG_MT799X)
+void mt799x_get_phy_port_mapping(phy_port_mapping *port_mapping);
 #endif
 
 /* phy port related start */
@@ -613,13 +713,15 @@ void get_phy_port_mapping(phy_port_mapping *port_mapping)
 {
 #if defined(RTCONFIG_RALINK_MT7621)
 	mt7621_get_phy_port_mapping(port_mapping);
+#elif defined(RTCONFIG_MT799X)
+	mt799x_get_phy_port_mapping(port_mapping);
 #else // RTCONFIG_MT798X
 	mt798x_get_phy_port_mapping(port_mapping);
 #endif
 }
 #endif
 
-#if !defined(RTCONFIG_WLMODULE_MT7915D_AP) && !defined(RTCONFIG_MT798X)
+#if !defined(RTCONFIG_WLMODULE_MT7915D_AP) && !defined(RTCONFIG_MT798X) && !defined(RTCONFIG_MT799X)
 int MCSMappingRateTable[] =
 	{2,  4,   11,  22, // CCK
 	12, 18,   24,  36, 48, 72, 96, 108, // OFDM
@@ -702,7 +804,7 @@ int MCSMappingRateTable_5G[] = {
 	20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37
 }; /* 3*3 */
 
-#elif defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+#elif defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 int MCSMappingRateTable[] = {
 	2,  4, 11, 22, 12,  18,  24,  36, 48,  72,  96, 108, 109, 110, 111, 112,/* CCK and OFDM */
 	13, 26, 39, 52, 78, 104, 117, 130, 26,  52,  78, 104, 156, 208, 234, 260,
@@ -863,7 +965,7 @@ unsigned short he_mcs_phyrate_mapping_table[MAX_NUM_HE_BANDWIDTHS][MAX_NUM_HE_SP
 
 unsigned int mtk_mcs_to_rate(unsigned char mcs, unsigned char phy_mode, unsigned char bw, unsigned char sgi, unsigned char vht_nss, int unit)
 {
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 #define MCSMAPTAB_5G MCSMappingRateTable
 #else
 #define MCSMAPTAB_5G MCSMappingRateTable_5G
@@ -879,7 +981,7 @@ unsigned int mtk_mcs_to_rate(unsigned char mcs, unsigned char phy_mode, unsigned
 		rate_count = sizeof(MCSMAPTAB_5G)/sizeof(int);
 	else
 		rate_count = sizeof(MCSMAPTAB)/sizeof(int);
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 	if (phy_mode >= MODE_HE){
 		if (vht_nss == 0) {	
 			vht_nss = 1;
@@ -951,7 +1053,7 @@ void mtk_parse_ratedata(uint32_t ratedata, unsigned char *phymode, unsigned char
 	}
 }
 
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 void mtk_parse_heratedata(uint32_t ratedata, unsigned char *phymode, unsigned char *mcs, unsigned char *bw,
 	unsigned char *vht_nss,	 unsigned char *sgi, unsigned char *stbc)
 {
@@ -986,24 +1088,4 @@ double get_wifi_6G_maxpower()
 	return 0;
 }
 #endif
-
-#ifdef RTCONFIG_MULTILAN_CFG
-void apg_switch_vlan_set(int vid, unsigned int default_portmask, unsigned int trunk_portmask, unsigned int access_portmask)
-{
-	if (__apg_switch_vlan_set)
-		__apg_switch_vlan_set(vid, default_portmask, trunk_portmask, access_portmask);
-}
-
-void apg_switch_vlan_unset(int vid, unsigned int portmask)
-{
-	if (__apg_switch_vlan_unset)
-		__apg_switch_vlan_unset(vid, portmask);
-}
-
-void apg_switch_isolation(int enable, unsigned int portmask)
-{
-	if (__apg_switch_isolation)
-		__apg_switch_isolation(enable, portmask);
-}
-#endif /* RTCONFIG_MULTILAN_CFG */
 

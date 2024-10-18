@@ -1289,31 +1289,31 @@ wl_dump_ext_cap(int eid, webs_t wp, int argc, char_t **argv, uint8* cp, uint len
 static int
 wl_print_hemcsnss(int eid, webs_t wp, int argc, char_t **argv, uint16 *mcsset)
 {
-	int i, nss;
+	int bw_idx, nss;
 	static const char zero[sizeof(uint16) * WL_HE_CAP_MCS_MAP_NSS_MAX] = { 0 };
-	int retval = 0;
 
 	uint rx_mcs, tx_mcs;
 	char *rx_mcs_str, *tx_mcs_str, *bw_str;
 	uint16 he_txmcsmap, he_rxmcsmap;
+	int retval = 0;
 
 	if (mcsset == NULL || !memcmp(mcsset, zero, sizeof(uint16) * WL_HE_CAP_MCS_MAP_NSS_MAX)) {
 		return retval;
 	}
 
-	for (i = 0; i < 3; i++) {
-		if (i == 0) {
-			bw_str = "80 Mhz";
-		} else if (i == 1) {
-			bw_str = "160 Mhz";
+	for (bw_idx = 0; bw_idx < 3; bw_idx++) {
+		if (bw_idx == 0) {
+			bw_str = "20/40/80 MHz";
+		} else if (bw_idx == 1) {
+			bw_str = "160 MHz";
 		} else {
-			bw_str = "80+80 Mhz";
+			bw_str = "80+80 MHz";
 		}
 
 		/* get he bw80, bw160, bw80p80 tx mcs from mcsset[0], mcsset[2], and mcsset[4] */
-		he_txmcsmap = dtoh16(mcsset[i * 2]);
+		he_txmcsmap = dtoh16(mcsset[bw_idx * 2]);
 		/* get he bw80, bw160, bw80p80 rx mcs from mcsset[1], mcsset[3], and mcsset[5] */
-		he_rxmcsmap = dtoh16(mcsset[(i * 2) + 1]);
+		he_rxmcsmap = dtoh16(mcsset[(bw_idx * 2) + 1]);
 
 		for (nss = 1; nss <= HE_CAP_MCS_MAP_NSS_MAX; nss++) {
 			tx_mcs = HE_CAP_MAX_MCS_NSS_GET_MCS(nss, he_txmcsmap);
@@ -1330,8 +1330,10 @@ wl_print_hemcsnss(int eid, webs_t wp, int argc, char_t **argv, uint16 *mcsset)
 				"---")));
 			if ((tx_mcs != HE_CAP_MAX_MCS_NONE) ||
 				(rx_mcs != HE_CAP_MAX_MCS_NONE)) {
-				if (nss == 1)
+				if (bw_str) {
 					retval += websWrite(wp, "\t    %s:\n", bw_str);
+					bw_str = NULL;
+				}
 				retval += websWrite(wp, "\t\tNSS%d Tx: %s  Rx: %s\n", nss,
 					tx_mcs_str, rx_mcs_str);
 			}
@@ -1393,7 +1395,7 @@ static int bcm_print_vs_ie(webs_t wp, uint8 *parse, int len)
 #endif
 
 static int
-dump_bss_info(int eid, webs_t wp, int argc, char_t **argv, void *bi_generic)
+dump_bss_info(int eid, webs_t wp, int argc, char_t **argv, void *bi_generic, int unit)
 {
 	char ssidbuf[SSID_FMT_BUF_LEN];
 	char chspec_str[CHANSPEC_STR_LEN];
@@ -1407,6 +1409,7 @@ dump_bss_info(int eid, webs_t wp, int argc, char_t **argv, void *bi_generic)
 	uint16 capability;
 	uint32 version;
 	uint32 length;
+	uint16 flags = 0;
 	int retval = 0;
 	char tmp[128];
 
@@ -1457,7 +1460,7 @@ dump_bss_info(int eid, webs_t wp, int argc, char_t **argv, void *bi_generic)
 
 	retval += websWrite(wp, "noise: %d dBm\t", bi->phy_noise);
 	if (bi->flags) {
-		uint16 flags = dtoh16(bi->flags);
+		flags = dtoh16(bi->flags);
 		retval += websWrite(wp, "Flags: ");
 		if (flags & WL_BSS_FLAGS_FROM_BEACON)
 			retval += websWrite(wp, "FromBcn ");
@@ -1756,7 +1759,7 @@ wlu_var_getbuf_sm(int unit, const char *iovar, void *param, int param_len, void 
 	strlcpy(buf, iovar, WLC_IOCTL_SMLEN);
 
 	/* include the null */
-	len = strlen(iovar) + 1;
+	len = safe_strlen(iovar) + 1;
 
 	if (param_len)
 		memcpy(&buf[len], param, param_len);
@@ -1778,7 +1781,7 @@ wlu_var_getbuf_param_len(int unit, const char *iovar, void *param, int param_len
 	strlcpy(buf, iovar, param_len);
 
 	/* include the null */
-	len = strlen(iovar) + 1;
+	len = safe_strlen(iovar) + 1;
 
 	if (param_len) {
 		memcpy(&buf[len], param, param_len);
@@ -1896,12 +1899,12 @@ wl_ht_nss(char *mcsset)
 
 	for (i = 0; i < (MCSSET_LEN * 8); i++) {
 		if (isset(mcsset, i)) {
-			if ((i % 8) == 0)
+			if (((i+1) % 8) == 0)
 				nss++;
 		}
 	}
 
-	return nss;
+	return nss ? : 1;
 }
 
 int
@@ -2062,7 +2065,8 @@ wl_sta_info_nss(void *buf, int unit)
 #define PHY_TYPE_N	3
 #define PHY_TYPE_AC	4
 #define PHY_TYPE_AX	5
-#define PHY_TYPE_MAX	6
+#define PHY_TYPE_BE     6
+#define PHY_TYPE_MAX	7
 
 const char *phy_type_str[PHY_TYPE_MAX] = {
 	"a",
@@ -2070,7 +2074,8 @@ const char *phy_type_str[PHY_TYPE_MAX] = {
 	"g",
 	"n",
 	"ac",
-	"ax"
+	"ax",
+	"be"
 };
 
 int wl_sta_info_phy(void *buf, int unit)
@@ -2113,7 +2118,8 @@ int wl_sta_info_phy(void *buf, int unit)
 #define WL_BW_40M              2
 #define WL_BW_80M              3
 #define WL_BW_160M             4
-#define WL_BW_MAX              5
+#define WL_BW_320M	       5
+#define WL_BW_MAX              6
 
 const char *wl_bw_str[WL_BW_MAX] = {
 	"",
@@ -2121,6 +2127,7 @@ const char *wl_bw_str[WL_BW_MAX] = {
 	"40M",
 	"80M",
 	"160M",
+	"320M"
 };
 
 int wl_sta_info_bw(void *buf)
@@ -2180,14 +2187,14 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 		    dtoh32(bi->version) == LEGACY2_WL_BSS_INFO_VERSION ||
 		    dtoh32(bi->version) == LEGACY_WL_BSS_INFO_VERSION)
 		{
-			retval += dump_bss_info(eid, wp, argc, argv, bi);
+			retval += dump_bss_info(eid, wp, argc, argv, bi, unit);
 
 			if (wl_iovar_getint(ifname, "chanim_enab", (int*)(void*)&chanim_enab))
 				chanim_enab = 0;
 
 			if (chanim_enab && !wl_iovar_getbuf(ifname, "chanim_state", &bi->chanspec, sizeof(chanspec_t), retbuf, WLC_IOCTL_SMLEN)) {
 				interference = *(int*)retbuf;
-				retval += websWrite(wp, "Interference Level: %s\n", CHANIMSTR(chanim_enab, interference, "Severe", "Acceptable"));
+				ret += websWrite(wp, "Interference Level: %s\n", CHANIMSTR(chanim_enab, interference, "Severe", "Acceptable"));
 			}
 		}
 		else
@@ -2218,7 +2225,7 @@ wl_sta_info(char *ifname, struct ether_addr *ea)
 	sta_info_t *sta = NULL;
 
 	strlcpy(buf, "sta_info", sizeof(buf));
-	memcpy(buf + strlen(buf) + 1, (void *)ea, ETHER_ADDR_LEN);
+	memcpy(buf + safe_strlen(buf) + 1, (void *)ea, ETHER_ADDR_LEN);
 
 	if (!wl_ioctl(ifname, WLC_GET_VAR, buf, sizeof(buf))) {
 		sta = (sta_info_t *)buf;
@@ -2435,7 +2442,7 @@ ej_wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	if ((repeater_mode() || psr_mode()) && (nvram_get_int("wlc_band") == unit))
 		snprintf(ifname, sizeof(ifname), "wl%d.%d", unit, 1);
 
-	if (!strlen(ifname))
+	if (!safe_strlen(ifname))
 		goto exit;
 
 #ifdef RTCONFIG_BCMWL6
@@ -2492,7 +2499,7 @@ ej_wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 #endif
 
 		strlcpy(buf, "per_chan_info", sizeof(buf));
-		memcpy((char *)(buf + strlen(buf) + 1), (char*)&chanspec_arg, sizeof(chanspec_arg));
+		memcpy((char *)(buf + safe_strlen(buf) + 1), (char*)&chanspec_arg, sizeof(chanspec_arg));
 
 		if (wl_ioctl(ifname, WLC_GET_VAR, buf, sizeof(buf)) < 0)
 			break;
@@ -2549,7 +2556,7 @@ wds_list:
 
 			len = snprintf(sta_buf, sizeof(sta_buf), "sta_info");
 			ether_atoe(mac, (unsigned char *)&sta_buf[len + 1]);
-			if (atoi(nvram_pf_safe_get(prefix, "wds_timeout")) &&
+			if (safe_atoi(nvram_pf_safe_get(prefix, "wds_timeout")) &&
 			    !wl_ioctl(ifname, WLC_GET_VAR, sta_buf, sizeof(sta_buf))) {
 				sta = (sta_info_t *)sta_buf;
 				ret += websWrite(wp, "%-7s", (sta->flags & WL_STA_WDS_LINKUP) ? "up" : "down");
@@ -2768,9 +2775,9 @@ ej_wl_status_2g(int eid, webs_t wp, int argc, char_t **argv)
 #endif
 		temp = nvram_get(nv_param);
 
-		if (temp && strlen(temp) > 0)
+		if (temp && safe_strlen(temp) > 0)
 		{
-			retval += ej_wl_status(eid, wp, argc, argv, atoi(temp));
+			retval += ej_wl_status(eid, wp, argc, argv, safe_atoi(temp));
 			retval += websWrite(wp, "\n");
 		}
 	}
@@ -2929,7 +2936,7 @@ static int ej_wl_channel_list(int eid, webs_t wp, int argc, char_t **argv, int u
 		goto ERROR;
 	}
 	
-#ifdef RTCONFIG_WIFI6E
+#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
 	for (i = 0; i < dtoh32(list->count) && i < MAXCHANNEL; i++) {
 #else
 	for (i = 0; i < dtoh32(list->count) && i < IW_MAX_FREQUENCIES; i++) {
@@ -2956,8 +2963,8 @@ static int ej_wl_channel_list(int eid, webs_t wp, int argc, char_t **argv, int u
 			strlcpy(tmp2, tmpx, sizeof(tmp2));
 		}
 
-		if (strlen(tmp2))
-			nvram_set(strlcat_r(prefix, "chlist", tmp, sizeof(tmp)), tmp2);
+		if (safe_strlen(tmp2))
+			nvram_pf_set(prefix, "chlist", tmp2);
 	}
 ERROR:
 	retval += websWrite(wp, "%s", tmp1);
@@ -3043,7 +3050,7 @@ ej_wl_chanspecs(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	} else
 	for (i = 0; i < count; i++) {
 		c = (chanspec_t)dtoh32(list->element[i]);
-		if (strlen(wf_chspec_ntoa(c, chanbuf)) == 0) {
+		if (safe_strlen(wf_chspec_ntoa(c, chanbuf)) == 0) {
 		    dbg("[0x%4x]malformed chanspec\n", c);
 		    if(i == 0)
 			need_brackets = 1;
@@ -3081,7 +3088,7 @@ ej_wl_chanspecs(int eid, webs_t wp, int argc, char_t **argv, int unit)
 		}
 
 		if (strlen(tmp2))
-			nvram_set(strlcat_r(prefix, "chansps", tmp, sizeof(tmp)), tmp2);
+			nvram_pf_set(prefix, "chansps", tmp2);
 	}
 
 ERROR:
@@ -3097,7 +3104,7 @@ ej_wl_channel_list_2g(int eid, webs_t wp, int argc, char_t **argv)
 	int unit;
 	for(unit = 0; unit < num_of_wl_if(); unit++) {
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		if(WL_NBAND_2G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))))
+		if(WL_NBAND_2G == nvram_pf_get_int(prefix, "nband"))
 			return ej_wl_channel_list(eid, wp, argc, argv, unit);
 	}
 
@@ -3112,7 +3119,7 @@ ej_wl_channel_list_5g(int eid, webs_t wp, int argc, char_t **argv)
 	int unit;
 	for(unit = 0; unit < num_of_wl_if(); unit++) {
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		if(WL_NBAND_5G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))))
+		if(WL_NBAND_5G == nvram_pf_get_int(prefix, "nband"))
 			return ej_wl_channel_list(eid, wp, argc, argv, unit);
 	}
 
@@ -3127,8 +3134,8 @@ ej_wl_channel_list_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 	int unit, count = 0;
 	for(unit = 0; unit < num_of_wl_if(); unit++) {
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		if( WL_NBAND_5G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))) ||
-		    WL_NBAND_6G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp)))) {
+		if( WL_NBAND_5G == nvram_pf_get_int(prefix, "nband") ||
+		    WL_NBAND_6G == nvram_pf_get_int(prefix, "nband")) {
 			if(!count) {
 				count++;
 				continue;
@@ -3148,12 +3155,32 @@ ej_wl_channel_list_6g(int eid, webs_t wp, int argc, char_t **argv)
 	int unit;
 	for(unit = 0; unit < num_of_wl_if(); unit++) {
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		if(WL_NBAND_6G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))))
+		if(WL_NBAND_6G == nvram_pf_get_int(prefix, "nband"))
 			return ej_wl_channel_list(eid, wp, argc, argv, unit);
 	}
 
 	return ej_wl_channel_list(eid, wp, argc, argv, 2);
 }
+
+int
+ej_wl_channel_list_6g_2(int eid, webs_t wp, int argc, char_t **argv)
+{
+	char prefix[16], tmp[32];
+	int unit, count = 0;
+	for(unit = 0; unit < num_of_wl_if(); unit++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if( WL_NBAND_6G == nvram_pf_get_int(prefix, "nband")) {
+			if(!count) {
+				count++;
+				continue;
+			}
+			return ej_wl_channel_list(eid, wp, argc, argv, unit);
+		}
+	}
+
+	return ej_wl_channel_list(eid, wp, argc, argv, 2);
+}
+
 #endif
 
 int
@@ -3163,7 +3190,7 @@ ej_wl_chanspecs_2g(int eid, webs_t wp, int argc, char_t **argv)
 	int unit;
 	for(unit = 0; unit < num_of_wl_if(); unit++) {
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		if(WL_NBAND_2G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))))
+		if(WL_NBAND_2G == nvram_pf_get_int(prefix, "nband"))
 			return ej_wl_chanspecs(eid, wp, argc, argv, unit);
 	}
 
@@ -3177,7 +3204,7 @@ ej_wl_chanspecs_5g(int eid, webs_t wp, int argc, char_t **argv)
 	int unit;
 	for(unit = 0; unit < num_of_wl_if(); unit++) {
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		if(WL_NBAND_5G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))))
+		if(WL_NBAND_5G == nvram_pf_get_int(prefix, "nband"))
 			return ej_wl_chanspecs(eid, wp, argc, argv, unit);
 	}
 
@@ -3191,8 +3218,8 @@ ej_wl_chanspecs_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 	int unit, count = 0;
 	for(unit = 0; unit < num_of_wl_if(); unit++) {
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		if( WL_NBAND_5G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))) ||
-		    WL_NBAND_6G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp)))) {
+		if( WL_NBAND_5G == nvram_pf_get_int(prefix, "nband") ||
+		    WL_NBAND_6G == nvram_pf_get_int(prefix, "nband")) {
 			if(!count) {
 				count++;
 				continue;
@@ -3211,12 +3238,32 @@ ej_wl_chanspecs_6g(int eid, webs_t wp, int argc, char_t **argv)
 	int unit;
 	for(unit = 0; unit < num_of_wl_if(); unit++) {
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		if(WL_NBAND_6G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))))
+		if(WL_NBAND_6G == nvram_pf_get_int(prefix, "nband"))
 			return ej_wl_chanspecs(eid, wp, argc, argv, unit);
 	}
 
 	return ej_wl_chanspecs(eid, wp, argc, argv, -1);
 }
+
+int
+ej_wl_chanspecs_6g_2(int eid, webs_t wp, int argc, char_t **argv)
+{
+	char prefix[16], tmp[32];
+	int unit, count = 0;
+	for(unit = 0; unit < num_of_wl_if(); unit++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if( WL_NBAND_6G == nvram_pf_get_int(prefix, "nband")) {
+			if(!count) {
+				count++;
+				continue;
+			}
+			return ej_wl_chanspecs(eid, wp, argc, argv, unit);
+		}
+	}
+
+	return ej_wl_chanspecs(eid, wp, argc, argv, -1);
+}
+
 #define	WL_IW_RSSI_NO_SIGNAL	-91	/* NDIS RSSI link quality cutoffs */
 
 static int ej_wl_rssi(int eid, webs_t wp, int argc, char_t **argv, int unit)
@@ -3529,14 +3576,14 @@ ej_wl_rate_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 	for(i=0; i<(sizeof(wl_band_list)/sizeof(wl_band_list[0])) && wl_band_list[i][0] != '\0'; i++){
 		if(strncmp("5g2", wl_band_list[i], 3) == 0)
 			break;
-#ifdef RTCONFIG_WIFI6E
+#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
 		else if((num_of_wl_if() == 3) && (strncmp("6g1", wl_band_list[i], 3) == 0))
 			break;
 #endif
 	}
 	return ej_wl_rate(eid, wp, argc, argv, i);
 }
-
+#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
 int
 ej_wl_rate_6g(int eid, webs_t wp, int argc, char_t **argv)
 {
@@ -3548,6 +3595,17 @@ ej_wl_rate_6g(int eid, webs_t wp, int argc, char_t **argv)
 	return ej_wl_rate(eid, wp, argc, argv, i);
 }
 
+int
+ej_wl_rate_6g_2(int eid, webs_t wp, int argc, char_t **argv)
+{
+	int i = 0;
+	for(i=0; i<(sizeof(wl_band_list)/sizeof(wl_band_list[0])) && wl_band_list[i][0] != '\0'; i++){
+		if(strncmp("6g2", wl_band_list[i], 3) == 0)
+			break;
+	}
+	return ej_wl_rate(eid, wp, argc, argv, i);
+}
+#endif
 static int ej_wl_cap(int eid, webs_t wp, int argc, char_t **argv, int unit)
 {
 	int retval = 0;
@@ -3594,7 +3652,7 @@ ej_wl_cap_2g(int eid, webs_t wp, int argc, char **argv)
 	int unit;
 	for(unit = 0; unit < num_of_wl_if(); unit++) {
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		if(WL_NBAND_2G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))))
+		if(WL_NBAND_2G == nvram_pf_get_int(prefix, "nband"))
 			return ej_wl_cap(eid, wp, argc, argv, unit);
 	}
 
@@ -3608,7 +3666,7 @@ ej_wl_cap_5g(int eid, webs_t wp, int argc, char **argv)
 	int unit;
 	for(unit = 0; unit < num_of_wl_if(); unit++) {
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		if(WL_NBAND_5G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))))
+		if(WL_NBAND_5G == nvram_pf_get_int(prefix, "nband"))
 			return ej_wl_cap(eid, wp, argc, argv, unit);
 	}
 
@@ -3622,8 +3680,8 @@ ej_wl_cap_5g_2(int eid, webs_t wp, int argc, char **argv)
 	int unit, count = 0;
 	for(unit = 0; unit < num_of_wl_if(); unit++) {
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		if( WL_NBAND_5G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))) ||
-		    WL_NBAND_6G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp)))) {
+		if( WL_NBAND_5G == nvram_pf_get_int(prefix, "nband") ||
+		    WL_NBAND_6G == nvram_pf_get_int(prefix, "nband")) {
 			if(!count) {
 				count++;
 				continue;
@@ -3635,7 +3693,7 @@ ej_wl_cap_5g_2(int eid, webs_t wp, int argc, char **argv)
 	return ej_wl_cap(eid, wp, argc, argv, 2);
 }
 
-#ifdef RTCONFIG_WIFI6E
+#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
 int
 ej_wl_cap_6g(int eid, webs_t wp, int argc, char **argv)
 {
@@ -3643,8 +3701,27 @@ ej_wl_cap_6g(int eid, webs_t wp, int argc, char **argv)
 	int unit;
 	for(unit = 0; unit < num_of_wl_if(); unit++) {
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		if(WL_NBAND_6G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))))
+		if(WL_NBAND_6G == nvram_pf_get_int(prefix, "nband"))
 			return ej_wl_cap(eid, wp, argc, argv, unit);
+	}
+
+	return ej_wl_cap(eid, wp, argc, argv, 2);
+}
+
+int
+ej_wl_cap_6g_2(int eid, webs_t wp, int argc, char **argv)
+{
+	char prefix[16], tmp[32];
+	int unit, count = 0;
+	for(unit = 0; unit < num_of_wl_if(); unit++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if(WL_NBAND_6G == nvram_pf_get_int(prefix, "nband")){
+			if(!count){
+				count++;
+				continue;
+			}
+			return ej_wl_cap(eid, wp, argc, argv, unit);
+		}			
 	}
 
 	return ej_wl_cap(eid, wp, argc, argv, 2);
@@ -3702,11 +3779,11 @@ ej_wl_chipnum_2g(int eid, webs_t wp, int argc, char **argv)
 	int unit;
 	for(unit = 0; unit < num_of_wl_if(); unit++) {
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		if(WL_NBAND_2G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))))
+		if(WL_NBAND_2G == nvram_pf_get_int(prefix, "nband"))
 			return ej_wl_chipnum(eid, wp, argc, argv, unit);
 	}
 
-	return ej_wl_chipnum(eid, wp, argc, argv, 0);
+	return ej_wl_chipnum(eid, wp, argc, argv, -1);
 }
 
 int
@@ -3716,11 +3793,11 @@ ej_wl_chipnum_5g(int eid, webs_t wp, int argc, char **argv)
 	int unit;
 	for(unit = 0; unit < num_of_wl_if(); unit++) {
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		if(WL_NBAND_5G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))))
+		if(WL_NBAND_5G == nvram_pf_get_int(prefix, "nband"))
 			return ej_wl_chipnum(eid, wp, argc, argv, unit);
 	}
 
-	return ej_wl_chipnum(eid, wp, argc, argv, 1);
+	return ej_wl_chipnum(eid, wp, argc, argv, -1);
 }
 
 int
@@ -3730,8 +3807,8 @@ ej_wl_chipnum_5g_2(int eid, webs_t wp, int argc, char **argv)
 	int unit, count = 0;
 	for(unit = 0; unit < num_of_wl_if(); unit++) {
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		if( WL_NBAND_5G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))) ||
-		    WL_NBAND_6G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp)))) {
+		if( WL_NBAND_5G == nvram_pf_get_int(prefix, "nband") ||
+		    WL_NBAND_6G == nvram_pf_get_int(prefix, "nband")) {
 			if(!count) {
 				count++;
 				continue;
@@ -3740,10 +3817,10 @@ ej_wl_chipnum_5g_2(int eid, webs_t wp, int argc, char **argv)
 		}
 	}
 
-	return ej_wl_chipnum(eid, wp, argc, argv, 2);
+	return ej_wl_chipnum(eid, wp, argc, argv, -1);
 }
 
-#ifdef RTCONFIG_WIFI6E
+#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
 int
 ej_wl_chipnum_6g(int eid, webs_t wp, int argc, char **argv)
 {
@@ -3751,11 +3828,30 @@ ej_wl_chipnum_6g(int eid, webs_t wp, int argc, char **argv)
 	int unit;
 	for(unit = 0; unit < num_of_wl_if(); unit++) {
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		if(WL_NBAND_6G == nvram_get_int(strlcat_r(prefix, "nband", tmp, sizeof(tmp))))
+		if(WL_NBAND_6G == nvram_pf_get_int(prefix, "nband"))
 			return ej_wl_chipnum(eid, wp, argc, argv, unit);
 	}
 
-	return ej_wl_chipnum(eid, wp, argc, argv, 2);
+	return ej_wl_chipnum(eid, wp, argc, argv, -1);
+}
+int
+ej_wl_chipnum_6g_2(int eid, webs_t wp, int argc, char **argv)
+{
+	char prefix[16], tmp[32];
+	int unit, count = 0;
+	for(unit = 0; unit < num_of_wl_if(); unit++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if(WL_NBAND_6G == nvram_pf_get_int(prefix, "nband")){
+			if(!count) {
+				count++;
+				continue;
+			}
+
+			return ej_wl_chipnum(eid, wp, argc, argv, unit);
+		}			
+	}
+
+	return ej_wl_chipnum(eid, wp, argc, argv, -1);
 }
 #endif
 
@@ -3885,248 +3981,218 @@ int wl_wps_info(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	int retval = 0;
 	char prefix[]="wlXXXXXXX_";
 	char *wps_sta_pin;
-#ifdef RTCONFIG_QTN
-	int ret;
-	qcsapi_SSID ssid;
-#if 0
-	string_64 key_passphrase;
-	char wps_pin[16];
-#endif
-#endif
-
 
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 
-	retval += websWrite(wp, "<wps>\n");
+	if(hook_get_json == 1){ //return json format
+		struct json_object *wps_info_obj = json_object_new_object();
 
-	//0. WSC Status
-	if (!strcmp(nvram_pf_safe_get(prefix, "wps_mode"), "enabled"))
-	{
-#ifdef RTCONFIG_QTN
-		if (unit)
+			//0. WSC Status
+		if (nvram_pf_match(prefix, "wps_mode", "enabled"))
 		{
-			if (!rpc_qtn_ready())
-				retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "5 GHz radio is not ready");
-			else
-				retval += websWrite(wp, "<wps_info>%s</wps_info>\n", getWscStatusStr_qtn());
+			json_object_object_add(wps_info_obj, "WSC_Status", json_object_new_string(getWscStatusStr()));
 		}
 		else
-#endif
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", getWscStatusStr());
-	}
-	else
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "Not used");
+			json_object_object_add(wps_info_obj, "WSC_Status", json_object_new_string("Not used"));
 
-	//1. WPSConfigured
-#ifdef RTCONFIG_QTN
-	if (unit)
-	{
-		if (!rpc_qtn_ready())
-			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "");
+		//1. WPSConfigured
+		if (!wps_is_oob())
+			json_object_object_add(wps_info_obj, "WPSConfigured", json_object_new_string("Yes"));
 		else
-			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", get_WPSConfiguredStr_qtn());
-	}
-	else
-#endif
-	if (!wps_is_oob())
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "Yes");
-	else
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "No");
+			json_object_object_add(wps_info_obj, "WPSConfigured", json_object_new_string("No"));
 
-	//2. WPSSSID
-#ifdef RTCONFIG_QTN
-	if (unit)
-	{
-		if (!rpc_qtn_ready())
-			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "");
+		//2. WPSSSID
+		{
+			memset(tmpstr, 0, sizeof(tmpstr));
+			char_to_ascii(tmpstr, nvram_pf_safe_get(prefix, "ssid"));
+			json_object_object_add(wps_info_obj, "WPSSSID", json_object_new_string(tmpstr));
+		}
+
+		{
+			memset(tmpstr, 0, sizeof(tmpstr));
+			getWPSAuthMode(unit, tmpstr, sizeof(tmpstr));
+			json_object_object_add(wps_info_obj, "WPSAuthMode", json_object_new_string(tmpstr));
+		}
+
+		//4. EncrypType
+		{
+			memset(tmpstr, 0, sizeof(tmpstr));
+			getWPSEncrypType(unit, tmpstr, sizeof(tmpstr));
+			json_object_object_add(wps_info_obj, "EncrypType", json_object_new_string(tmpstr));
+		}
+
+		//5. DefaultKeyIdx
+		{
+			memset(tmpstr, 0, sizeof(tmpstr));
+			snprintf(tmpstr, sizeof(tmpstr), "%s", nvram_pf_safe_get(prefix, "key"));
+			json_object_object_add(wps_info_obj, "DefaultKeyIdx", json_object_new_string(tmpstr));
+		}
+
+		//6. WPAKey
+#if 0
+		//hide for security
+		if (!strlen(nvram_pf_safe_get(prefix, "wpa_psk")))
+			json_object_object_add(wps_info_obj, "WPAKey", json_object_new_string("None"));
 		else
 		{
-			memset(&ssid, 0, sizeof(qcsapi_SSID));
-			ret = rpc_qcsapi_get_SSID(WIFINAME, &ssid);
-			if (ret < 0)
-				dbG("rpc_qcsapi_get_SSID %s error, return: %d\n", WIFINAME, ret);
-
 			memset(tmpstr, 0, sizeof(tmpstr));
-			char_to_ascii(tmpstr, ssid);
+			char_to_ascii(tmpstr, nvram_pf_safe_get(prefix, "wpa_psk"));
+			json_object_object_add(wps_info_obj, "WPAKey", json_object_new_string(tmpstr));
+		}
+#else
+#endif
+
+		//7. AP PIN Code
+		{
+			memset(tmpstr, 0, sizeof(tmpstr));
+			snprintf(tmpstr, sizeof(tmpstr), "%s", nvram_safe_get("wps_device_pin"));
+			json_object_object_add(wps_info_obj, "AP_PIN_Code", json_object_new_string(tmpstr));
+		}
+
+		//8. Saved WPAKey
+#if 0
+		//hide for security
+		if (!strlen(nvram_pf_safe_get(prefix, "wpa_psk")))
+		{
+			json_object_object_add(wps_info_obj, "Saved_WPAKey", json_object_new_string("None"));
+		}
+		else
+		{
+			memset(tmpstr, 0, sizeof(tmpstr));
+			char_to_ascii(tmpstr, nvram_pf_safe_get(prefix, "wpa_psk"));
+			json_object_object_add(wps_info_obj, "Saved_WPAKey", json_object_new_string(tmpstr));
+		}
+#else
+#endif
+		//9. WPS enable?
+		if (!strcmp(nvram_pf_safe_get(prefix, "wps_mode"), "enabled"))
+			json_object_object_add(wps_info_obj, "WPS_enable", json_object_new_string("1"));
+		else
+			json_object_object_add(wps_info_obj, "WPS_enable", json_object_new_string("0"));
+
+		//A. WPS mode
+		wps_sta_pin = nvram_safe_get("wps_sta_pin");
+		if (strlen(wps_sta_pin) && strcmp(wps_sta_pin, "00000000"))
+			json_object_object_add(wps_info_obj, "WPS_mode", json_object_new_string("1"));
+		else
+			json_object_object_add(wps_info_obj, "WPS_mode", json_object_new_string("2"));
+
+		//B. current auth mode
+		json_object_object_add(wps_info_obj, "current_auth_mode", json_object_new_string(nvram_pf_safe_get(prefix, "auth_mode_x")));
+
+		//C. WPS band
+		json_object_object_add(wps_info_obj, "WPS_band", json_object_new_string(nvram_safe_get("wps_band_x")));
+
+		retval += websWrite(wp, "%s", json_object_to_json_string(wps_info_obj));
+
+		if(wps_info_obj)
+			json_object_put(wps_info_obj);
+	}
+	else // return XML format
+	{
+		retval += websWrite(wp, "<wps>\n");
+
+		//0. WSC Status
+		if (!strcmp(nvram_pf_safe_get(prefix, "wps_mode"), "enabled"))
+		{
+			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", getWscStatusStr());
+		}
+		else
+			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "Not used");
+
+		//1. WPSConfigured
+		if (!wps_is_oob())
+			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "Yes");
+		else
+			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "No");
+
+		//2. WPSSSID
+		{
+			memset(tmpstr, 0, sizeof(tmpstr));
+			char_to_ascii(tmpstr, nvram_pf_safe_get(prefix, "ssid"));
 			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
 		}
-	}
-	else
-#endif
-	{
-		memset(tmpstr, 0, sizeof(tmpstr));
-		char_to_ascii(tmpstr, nvram_pf_safe_get(prefix, "ssid"));
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
-	}
 
-	//3. WPSAuthMode
-#ifdef RTCONFIG_QTN
-	if (unit)
-	{
-		if (!rpc_qtn_ready())
-			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "");
-		else
-			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", getWPSAuthMode_qtn());
-	}
-	else
-#endif
-	{
-		memset(tmpstr, 0, sizeof(tmpstr));
-		getWPSAuthMode(unit, tmpstr, sizeof(tmpstr));
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
-	}
+		//3. WPSAuthMode
+		{
+			memset(tmpstr, 0, sizeof(tmpstr));
+			getWPSAuthMode(unit, tmpstr, sizeof(tmpstr));
+			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
+		}
 
-	//4. EncrypType
-#ifdef RTCONFIG_QTN
-	if (unit)
-	{
-		if (!rpc_qtn_ready())
-			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "");
-		else
-			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", getWPSEncrypType_qtn());
-	}
-	else
-#endif
-	{
-		memset(tmpstr, 0, sizeof(tmpstr));
-		getWPSEncrypType(unit, tmpstr, sizeof(tmpstr));
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
-	}
+		//4. EncrypType
+		{
+			memset(tmpstr, 0, sizeof(tmpstr));
+			getWPSEncrypType(unit, tmpstr, sizeof(tmpstr));
+			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
+		}
 
-	//5. DefaultKeyIdx
-#ifdef RTCONFIG_QTN
-	if (unit)
-	{
-		if (!rpc_qtn_ready())
-			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "");
-		else
-			retval += websWrite(wp, "<wps_info>%d</wps_info>\n", 1);
-	}
-	else
-#endif
-	{
-		memset(tmpstr, 0, sizeof(tmpstr));
-		snprintf(tmpstr, sizeof(tmpstr), "%s", nvram_pf_safe_get(prefix, "key"));
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
-	}
+		//5. DefaultKeyIdx
+		{
+			memset(tmpstr, 0, sizeof(tmpstr));
+			snprintf(tmpstr, sizeof(tmpstr), "%s", nvram_pf_safe_get(prefix, "key"));
+			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
+		}
 
-	//6. WPAKey
-#if 0	//hide for security
-#ifdef RTCONFIG_QTN
-	if (unit)
-	{
-		if (!rpc_qtn_ready())
-			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "");
+		//6. WPAKey
+#if 0
+		//hide for security
+		if (!strlen(nvram_pf_safe_get(prefix, "wpa_psk")))
+			retval += websWrite(wp, "<wps_info>None</wps_info>\n");
 		else
 		{
-			memset(&key_passphrase, 0, sizeof(key_passphrase));
-			ret = rpc_qcsapi_get_key_passphrase(WIFINAME, (char *) &key_passphrase);
-			if (ret < 0)
-				dbG("rpc_qcsapi_get_key_passphrase %s error, return: %d\n", WIFINAME, ret);
-
-			if (!strlen(key_passphrase))
-				retval += websWrite(wp, "<wps_info>None</wps_info>\n");
-			else
-			{
-				memset(tmpstr, 0, sizeof(tmpstr));
-				char_to_ascii(tmpstr, key_passphrase);
-				retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
-			}
+			memset(tmpstr, 0, sizeof(tmpstr));
+			char_to_ascii(tmpstr, nvram_pf_safe_get(prefix, "wpa_psk"));
+			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
 		}
-	}
-	else
-#endif
-	if (!strlen(nvram_pf_safe_get(prefix, "wpa_psk")))
-		retval += websWrite(wp, "<wps_info>None</wps_info>\n");
-	else
-	{
-		memset(tmpstr, 0, sizeof(tmpstr));
-		char_to_ascii(tmpstr, nvram_pf_safe_get(prefix, "wpa_psk"));
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
-	}
 #else
-	retval += websWrite(wp, "<wps_info></wps_info>\n");
+		retval += websWrite(wp, "<wps_info></wps_info>\n");
 #endif
 
-	//7. AP PIN Code
-#ifdef RTCONFIG_QTNBAK
-	/* QTN get wps_device_pin from BRCM */
-	if (unit)
-	{
-		if (!rpc_qtn_ready())
-			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "");
+		//7. AP PIN Code
+		{
+			memset(tmpstr, 0, sizeof(tmpstr));
+			snprintf(tmpstr, sizeof(tmpstr), "%s", nvram_safe_get("wps_device_pin"));
+			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
+		}
+
+		//8. Saved WPAKey
+#if 0
+		//hide for security
+		if (!strlen(nvram_pf_safe_get(prefix, "wpa_psk")))
+		{
+			retval += websWrite(wp, "<wps_info>None</wps_info>\n");
+		}
 		else
 		{
-			wps_pin[0] = 0;
-			ret = rpc_qcsapi_wps_get_ap_pin(WIFINAME, wps_pin, 0);
-			if (ret < 0)
-				dbG("rpc_qcsapi_wps_get_ap_pin %s error, return: %d\n", WIFINAME, ret);
-
-			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", wps_pin);
+			memset(tmpstr, 0, sizeof(tmpstr));
+			char_to_ascii(tmpstr, nvram_pf_safe_get(prefix, "wpa_psk"));
+			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
 		}
-	}
-	else
-#endif
-	{
-		memset(tmpstr, 0, sizeof(tmpstr));
-		snprintf(tmpstr, sizeof(tmpstr), "%s", nvram_safe_get("wps_device_pin"));
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
-	}
-
-	//8. Saved WPAKey
-#if 0	//hide for security
-#ifdef RTCONFIG_QTN
-	if (unit)
-	{
-		if (!rpc_qtn_ready())
-			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "");
-		else
-		{
-			if (!strlen(key_passphrase))
-				retval += websWrite(wp, "<wps_info>None</wps_info>\n");
-			else
-			{
-				memset(tmpstr, 0, sizeof(tmpstr));
-				char_to_ascii(tmpstr, key_passphrase);
-				retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
-			}
-		}
-	}
-	else
-#endif
-	if (!strlen(nvram_pf_safe_get(prefix, "wpa_psk")))
-	{
-		retval += websWrite(wp, "<wps_info>None</wps_info>\n");
-	}
-	else
-	{
-		memset(tmpstr, 0, sizeof(tmpstr));
-		char_to_ascii(tmpstr, nvram_pf_safe_get(prefix, "wpa_psk"));
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
-	}
 #else
-	retval += websWrite(wp, "<wps_info></wps_info>\n");
+		retval += websWrite(wp, "<wps_info></wps_info>\n");
 #endif
-	//9. WPS enable?
-	if (!strcmp(nvram_pf_safe_get(prefix, "wps_mode"), "enabled"))
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "1");
-	else
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "0");
+		//9. WPS enable?
+		if (!strcmp(nvram_pf_safe_get(prefix, "wps_mode"), "enabled"))
+			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "1");
+		else
+			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "0");
 
-	//A. WPS mode
-	wps_sta_pin = nvram_safe_get("wps_sta_pin");
-	if (strlen(wps_sta_pin) && strcmp(wps_sta_pin, "00000000"))
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "1");
-	else
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "2");
+		//A. WPS mode
+		wps_sta_pin = nvram_safe_get("wps_sta_pin");
+		if (strlen(wps_sta_pin) && strcmp(wps_sta_pin, "00000000"))
+			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "1");
+		else
+			retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "2");
 
-	//B. current auth mode
-	retval += websWrite(wp, "<wps_info>%s</wps_info>\n", nvram_pf_safe_get(prefix, "auth_mode_x"));
+		//B. current auth mode
+		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", nvram_pf_safe_get(prefix, "auth_mode_x"));
 
-	//C. WPS band
-	retval += websWrite(wp, "<wps_info>%d</wps_info>\n", nvram_get_int("wps_band_x"));
+		//C. WPS band
+		retval += websWrite(wp, "<wps_info>%d</wps_info>\n", nvram_get_int("wps_band_x"));
 
-	retval += websWrite(wp, "</wps>");
+		retval += websWrite(wp, "</wps>");
+	}
 
 	return retval;
 }
@@ -4140,8 +4206,81 @@ ej_wps_info(int eid, webs_t wp, int argc, char_t **argv)
 int
 ej_wps_info_2g(int eid, webs_t wp, int argc, char_t **argv)
 {
-	return wl_wps_info(eid, wp, argc, argv, 0);
+	char prefix[16], tmp[32];
+	int unit;
+	for(unit = 0; unit < num_of_wl_if(); unit++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if(WL_NBAND_2G == nvram_pf_get_int(prefix, "nband"))
+			return wl_wps_info(eid, wp, argc, argv, unit);
+	}
+
+	return wl_wps_info(eid, wp, argc, argv, -1);
 }
+int
+ej_wps_info_5g(int eid, webs_t wp, int argc, char_t **argv)
+{
+	char prefix[16], tmp[32];
+	int unit;
+	for(unit = 0; unit < num_of_wl_if(); unit++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if(WL_NBAND_5G == nvram_pf_get_int(prefix, "nband"))
+			return wl_wps_info(eid, wp, argc, argv, unit);
+	}
+
+	return wl_wps_info(eid, wp, argc, argv, -1);
+}
+int
+ej_wps_info_5g_2(int eid, webs_t wp, int argc, char_t **argv)
+{
+	char prefix[16], tmp[32];
+	int unit, count = 0;
+	for(unit = 0; unit < num_of_wl_if(); unit++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if( WL_NBAND_5G == nvram_pf_get_int(prefix, "nband") ||
+		    WL_NBAND_6G == nvram_pf_get_int(prefix, "nband")) {
+			if(!count) {
+				count++;
+				continue;
+			}
+			return wl_wps_info(eid, wp, argc, argv, unit);
+		}
+	}
+
+	return wl_wps_info(eid, wp, argc, argv, -1);
+}
+#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
+int
+ej_wps_info_6g(int eid, webs_t wp, int argc, char_t **argv)
+{
+	char prefix[16], tmp[32];
+	int unit;
+	for(unit = 0; unit < num_of_wl_if(); unit++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if(WL_NBAND_6G == nvram_pf_get_int(prefix, "nband"))
+			return wl_wps_info(eid, wp, argc, argv, unit);
+	}
+
+	return wl_wps_info(eid, wp, argc, argv, -1);
+}
+int
+ej_wps_info_6g_2(int eid, webs_t wp, int argc, char_t **argv)
+{
+	char prefix[16], tmp[32];
+	int unit, count = 0;
+	for(unit = 0; unit < num_of_wl_if(); unit++) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if( WL_NBAND_6G == nvram_pf_get_int(prefix, "nband")) {
+			if(!count) {
+				count++;
+				continue;
+			}
+			return wl_wps_info(eid, wp, argc, argv, unit);
+		}
+	}
+
+	return wl_wps_info(eid, wp, argc, argv, -1);
+}
+#endif
 
 #if 0
 static int wpa_key_mgmt_to_bitfield(const unsigned char *s)
@@ -4815,7 +4954,7 @@ ap_list:
 	{
 		retval += websWrite(wp, "[");
 
-		if (strlen(apinfos[i].SSID) == 0)
+		if (safe_strlen(apinfos[i].SSID) == 0)
 			retval += websWrite(wp, "\"\", ");
 		else
 		{
@@ -4912,7 +5051,7 @@ ap_list:
 		}
 		else if (nvram_invmatch("wl0_ssid", "") && !strcmp(nvram_safe_get("wl0_ssid"), apinfos[i].SSID))
 		{
-			if (!strlen(ure_mac))
+			if (!safe_strlen(ure_mac))
 				retval += websWrite(wp, "\"%s\"", "1");				// in profile, disconnected
 			else if (!strcmp(ure_mac, apinfos[i].BSSID))
 			{
@@ -5011,7 +5150,7 @@ static int wl_sta_list(int eid, webs_t wp, int argc, char_t **argv, int unit) {
 	if(hook_get_json == 1)
 		websWrite(wp, "{");
 
-	if (!strlen(ifname))
+	if (!safe_strlen(ifname))
 		goto exit;
 
 	/* buffers and length */
@@ -5185,7 +5324,7 @@ static int wl_stainfo_list(int eid, webs_t wp, int argc, char_t **argv, int unit
 	if(hook_get_json == 1)
 		websWrite(wp, "[");
 
-	if (!strlen(ifname))
+	if (!safe_strlen(ifname))
 		goto exit;
 
 	/* buffers and length */
@@ -5360,7 +5499,7 @@ int ej_get_wlstainfo_list(int eid, webs_t wp, int argc, char_t **argv)
 		if ((repeater_mode() || psr_mode()) && (nvram_get_int("wlc_band") == unit))
 			snprintf(ifname, sizeof(ifname), "wl%d.%d", unit, 1);
 
-		if (!strlen(ifname))
+		if (!safe_strlen(ifname))
 			goto exit;
 
 		/* buffers and length */
@@ -6441,7 +6580,7 @@ wl_autho(char *name, struct ether_addr *ea)
 	char buf[sizeof(sta_info_t)];
 
 	strlcpy(buf, "sta_info", sizeof(buf));
-	memcpy(buf + strlen(buf) + 1, (void *)ea, ETHER_ADDR_LEN);
+	memcpy(buf + safe_strlen(buf) + 1, (void *)ea, ETHER_ADDR_LEN);
 
 	if (!wl_ioctl(name, WLC_GET_VAR, buf, sizeof(buf))) {
 		sta_info_t *sta = (sta_info_t *)buf;
@@ -6659,3 +6798,4 @@ int ej_cpu_plltype(int eid, webs_t wp, int argc, char_t **argv)
 	return 0;
 }
 #endif
+

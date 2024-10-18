@@ -5,9 +5,9 @@ ifeq ($(RTCONFIG_LANTIQ),y)
 SC_ARCH=mips
 else ifeq ($(or $(RTCONFIG_RALINK_MT7621),$(RTCONFIG_RALINK_EN7561)),y)
 SC_ARCH=mipsle
-else ifeq ($(or $(RTCONFIG_SOC_IPQ50XX),$(RTCONFIG_MT798X),$(AARCH64),$(MUSL64)),y)
+else ifeq ($(or $(RTCONFIG_SOC_IPQ50XX),$(RTCONFIG_SOC_IPQ53XX),$(RTCONFIG_MT798X),$(AARCH64),$(MUSL64)),y)
 SC_ARCH=arm64
-else ifeq ($(BRCM_CHIP),$(or 4908,4912))
+else ifeq ($(BRCM_CHIP),$(or 4908,4912,4916))
 SC_ARCH=arm64
 else ifeq ($(BUILD_NAME), $(filter $(BUILD_NAME), RT-AC68U RT-AC88U RT-AC3100 RT-AC3200 RT-AC5300))
 SC_ARCH=arm
@@ -21,9 +21,11 @@ all: versioncmp base64_encode resolveip
 versioncmp:
 	$(CC) versioncmp.c -o versioncmp
 	$(STRIP) versioncmp
+
 base64_encode:
 	$(CC) base64.c -o base64_encode
 	$(STRIP) base64_encode
+
 resolveip:
 	$(CC) resolveip.c -o resolveip
 	$(STRIP) resolveip
@@ -64,7 +66,7 @@ endif
 	install -m 0755 base64_encode $(INSTALLDIR)/usr/sbin
 	install -m 0755 resolveip $(INSTALLDIR)/usr/sbin
 	install -m 0755 softcenter/automount.sh $(INSTALLDIR)/rom/etc/softcenter
-	install -m 0755 softcenter/bin_arch/$(SC_ARCH)/jq $(INSTALLDIR)/rom/etc/softcenter/bin
+#	install -m 0755 softcenter/bin_arch/$(SC_ARCH)/jq $(INSTALLDIR)/rom/etc/softcenter/bin
 	install -m 0755 softcenter/bin_arch/$(SC_ARCH)/sc_auth $(INSTALLDIR)/rom/etc/softcenter/bin
 	install -m 0755 softcenter/bin/softcenter.sh $(INSTALLDIR)/rom/etc/softcenter/bin
 	install -m 0755 softcenter/bin/softcenter-mount.sh $(INSTALLDIR)/rom/etc/softcenter/bin

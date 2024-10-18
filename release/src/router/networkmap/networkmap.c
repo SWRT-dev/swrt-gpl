@@ -584,6 +584,8 @@ int check_vendorclass(const char *mac, CLIENT_DETAIL_INFO_TABLE *tab, int x, cha
 		strlcpy(tab->device_name[x], tab->vendorClass[x], sizeof(tab->device_name[0]));
 		type_filter(tab, x, typeID, base, 0);
 		NMP_DEBUG("%s >> mac[%s] >> vendor_class data >> Find vendorType >> device name = %s, vendor_name = %s, index = %d, typeID = %d,  os_type = %d \n", __func__, mac, tab->device_name[x], tab->vendor_name[x], x, typeID, base);
+		json_object_put(root);
+		return 0;
 	}
 	json_object_put(root);
 	return -1;
@@ -1010,13 +1012,12 @@ CLIENT_DETAIL_INFO_TABLE *init_shared_memory(CLIENT_DETAIL_INFO_TABLE *p_client_
 
 void type_filter(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, int x, unsigned char type, unsigned char base, int isDev)
 {
-	int n;
-	char *nv, *nvp;
+	char *devname;
 	P_CLIENT_DETAIL_INFO_TABLE tmp;
 	tmp = p_client_detail_info_tab;
-	if(type == 34 && (base == 2 || base == 4))
+	if(type == 34 && (base == 2 || base == 0))
 		tmp->type[x] = type;
-    else if(type < 29 && (base == 1 || base == 4))
+    else if(type < 29 && (base == 1 || base == 4 || base == 0))
 		tmp->type[x] = type;
 	else if(base == 0)
 		tmp->type[x] = type;
@@ -1025,6 +1026,21 @@ void type_filter(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, int x, uns
 		tmp->os_type[x] = base;
 	}
 	NMP_DEBUG("%s: define type %d, os_type = %d \n", __func__, tmp->type[x], tmp->os_type[x]);
+#if 0
+	if(isDev){
+		if(tmp->device_name[x][0] == 0x0)
+			strlcpy(tmp->device_name[x], tmp->bwdpi_device[x], sizeof(tmp->device_name[0]));
+		else{
+			devname = strdup(tmp->device_name[x]);
+			toLowerCase(devname);
+			if(strstr(devname, "android"))
+				strlcpy(tmp->device_name[x], tmp->bwdpi_device[x], sizeof(tmp->device_name[0]));
+			free(devname);
+		}
+		strlcpy(tmp->apple_model[x], tmp->bwdpi_device[x], sizeof(tmp->apple_model[0]));
+		NMP_DEBUG("*** Add BWDPI device model %s\n", __func__, tmp->apple_model[x]);
+	}
+#endif
 }
 
 
@@ -1348,9 +1364,9 @@ void handle_client_list_from_arp(CLIENT_DETAIL_INFO_TABLE *tab, const char *subn
 	fclose(fp);
 }
 
-void handle_client_list(CLIENT_DETAIL_INFO_TABLE *p_client_tab, ARP_HEADER *arp_hdr, int x, char *myip)
+void handle_client_list(CLIENT_DETAIL_INFO_TABLE *p_client_tab, ARP_HEADER *arp_hdr, char *myip, int x)
 {
-	int ip_mac_num, i, len = 0, isnew, lock;
+	int ip_mac_num, i, len = 0, isnew, lock, dhcp_flag = 0;
 	uint32_t gw_ipaddr = 0;
 	struct in_addr src_addr;
 	unsigned short msg_type;
@@ -1371,7 +1387,8 @@ void handle_client_list(CLIENT_DETAIL_INFO_TABLE *p_client_tab, ARP_HEADER *arp_
 	NMP_DEBUG("*It's an ARP Response to Router!\n");
 	NMP_DEBUG("*RCV %d.%d.%d.%d, mac:%02X:%02X:%02X:%02X:%02X:%02X, scanCount : %d, msg_type: %02x,IP num:%d\n", arp_hdr->source_ipaddr[0],arp_hdr->source_ipaddr[1], arp_hdr->source_ipaddr[2],arp_hdr->source_ipaddr[3], arp_hdr->source_hwaddr[0],arp_hdr->source_hwaddr[1], arp_hdr->source_hwaddr[2], arp_hdr->source_hwaddr[3], arp_hdr->source_hwaddr[4],arp_hdr->source_hwaddr[5], x, msg_type, p_client_tab->ip_mac_num);
 	NMP_DEBUG("*DEST IP %d.%d.%d.%d-%d,  sw_mode = %d, detail_info_num : %d,  ip_mac_num : %d\n", arp_hdr->dest_ipaddr[0],arp_hdr->dest_ipaddr[1],arp_hdr->dest_ipaddr[2], arp_hdr->dest_ipaddr[3], sw_mode, p_client_tab->detail_info_num, p_client_tab->ip_mac_num);
-	if(FindDevice(arp_hdr->source_ipaddr, arp_hdr->source_hwaddr, 1) == 0){
+	dhcp_flag = FindDevice(arp_hdr->source_ipaddr, arp_hdr->source_hwaddr, 1);
+	if(dhcp_flag == 0){
 #ifdef RTCONFIG_AMAS
 		char macaddr2[18], ipaddr2[16];
 		struct json_object *clientlist;
@@ -1423,7 +1440,7 @@ void handle_client_list(CLIENT_DETAIL_INFO_TABLE *p_client_tab, ARP_HEADER *arp_
 					break;
 				}else if(!memcmp(p_client_tab->mac_addr[i], arp_hdr->source_hwaddr, sizeof(p_client_tab->mac_addr[0]))){//same mac, different ip
 					isnew = 0;
-					FindDevice(arp_hdr->source_ipaddr, arp_hdr->source_hwaddr, 0);
+					dhcp_flag = FindDevice(arp_hdr->source_ipaddr, arp_hdr->source_hwaddr, 0);
 					if((p_client_tab->device_flag[i] & (1<<FLAG_EXIST)) == 0){
 						NMP_DEBUG("duplicate entry upon static IP: replace IP when original arp entry not exist");
 						p_client_tab->ip_addr[i][0] = arp_hdr->source_ipaddr[0];
@@ -1453,6 +1470,8 @@ void handle_client_list(CLIENT_DETAIL_INFO_TABLE *p_client_tab, ARP_HEADER *arp_
 			p_client_tab->mac_addr[ip_mac_num][4] = arp_hdr->source_hwaddr[4];
 			p_client_tab->mac_addr[ip_mac_num][5] = arp_hdr->source_hwaddr[5];
 			p_client_tab->device_flag[ip_mac_num] |= (1<<FLAG_EXIST);
+			if(dhcp_flag)
+				p_client_tab->dhcp_flag[ip_mac_num] = 1;
 			check_asus_discovery(p_client_tab, ip_mac_num);
 			if((p_client_tab->device_flag[ip_mac_num] & (1<<FLAG_ASUS)) == 0){
 				QueryVendorOuiInfo(p_client_tab, ip_mac_num);
@@ -1498,10 +1517,10 @@ void handle_client_list(CLIENT_DETAIL_INFO_TABLE *p_client_tab, ARP_HEADER *arp_
 
 void handle_detail_client_list(CLIENT_DETAIL_INFO_TABLE *tab)
 {
-	int i;
+	int i, hlock;
 	if(tab->detail_info_num < tab->ip_mac_num){
 		NMP_DEBUG("handle_detail_client_list Scan ! detail_info_num = %d, ip_mac_num = %d\n", tab->detail_info_num, tab->ip_mac_num);
-		lock = file_lock("networkmap");
+		hlock = file_lock("networkmap");
 		check_asus_discovery(tab, tab->detail_info_num);
 		if((tab->device_flag[tab->detail_info_num] & (1<<FLAG_ASUS)) == 0){
 			QueryVendorOuiInfo(tab, tab->detail_info_num);
@@ -1525,6 +1544,7 @@ void handle_detail_client_list(CLIENT_DETAIL_INFO_TABLE *tab)
 			}
 		}
 		check_wrieless_info(tab, tab->detail_info_num, 1, NULL);
+		check_asus_device(tab, tab->detail_info_num);
 		if((sw_mode == 3 || sw_mode == 1) && !nvram_get_int("re_mode"))
 			rc_diag_stainfo(tab, tab->detail_info_num);
 #ifdef RTCONFIG_MULTILAN_CFG
@@ -1540,7 +1560,7 @@ void handle_detail_client_list(CLIENT_DETAIL_INFO_TABLE *tab)
 		if(tab->type[tab->detail_info_num] == 9 && strstr(tab->vendor_name[tab->detail_info_num], "ASUS"))
 			tab->os_type[tab->detail_info_num] = 28;
 		check_brctl_mac_online(tab);
-		file_unlock(lock);
+		file_unlock(hlock);
 #ifdef NMP_DB
 		if(check_db_size())
 			write_to_DB(tab, nmp_cl_json);
@@ -1552,9 +1572,9 @@ void handle_detail_client_list(CLIENT_DETAIL_INFO_TABLE *tab)
 	else{
 		if(tab->detail_info_num != tab->commit_no || client_updated){
 			NMP_DEBUG_M("Write to DB file!\n");
-			lock = file_lock("networkmap");
+			hlock = file_lock("networkmap");
 			tab->commit_no = tab->detail_info_num;
-			file_unlock(lock);
+			file_unlock(hlock);
 			json_object_to_file(NMP_CL_JSON_FILE, nmp_cl_json);
 			client_updated = 0;
 			NMP_DEBUG_M("Finish Write to DB file!\n");
@@ -1564,10 +1584,11 @@ void handle_detail_client_list(CLIENT_DETAIL_INFO_TABLE *tab)
 	if(networkmap_fullscan == 2){
 		if(nvram_match("nmp_wl_offline_check", "1")){
 			check_brctl_macs(tab);
+			check_ip6_addr(tab);
 			if(sw_mode != 1){
-				lock = file_lock("networkmap");
+				hlock = file_lock("networkmap");
 				nmp_wl_offline_check(tab, 1);
-				file_unlock(lock);
+				file_unlock(hlock);
 				return;
 			}
 		}
@@ -1655,7 +1676,7 @@ int arp_loop(CLIENT_DETAIL_INFO_TABLE *p_client_tab, struct sockaddr_in router_a
 			}else{
 				arp_ptr = (ARP_HEADER*)(buffer);
 				if(p_client_tab->ip_mac_num < MAX_NR_CLIENT_LIST){
-					handle_client_list(p_client_tab, arp_ptr, scan_count, myip);
+					handle_client_list(p_client_tab, arp_ptr, myip, scan_count);
 				}else{
 					clean_client_list(0);
 					nvram_set("refresh_networkmap", "1");

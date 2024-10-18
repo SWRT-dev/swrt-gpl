@@ -41,6 +41,13 @@ struct swrt_eth_port {
 	struct swrt_eth_port *next;
 	int cable_diag_triger_link_st;
 	time_t cmd_time;
+	int seq_no;
+	char ui_display[32];
+	//POE_INFO poe_info;
+	int phy_port_id;
+	int ext_port_id;
+	char ifname[32];
+	unsigned int flag;
 };
 
 struct swrt_eth_port_table {

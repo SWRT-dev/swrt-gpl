@@ -49,6 +49,11 @@ var wanObj = {
 		"ipv6_service": "ipv6pt"
 	},
 
+	"dslite": {
+		"ipv6_service": "ipv6pt",
+		"wan_s46_dslite_mode": "0"
+	},
+
 	"wan46": {
 		"wan_proto": "",
 		"ipv6_service": "ipv6pt"
@@ -133,7 +138,22 @@ var wirelessObj = {
 		"wl3_ssid": "",
 		"wl3_wpa_psk": "",
 		"wl3_auth_mode_x": "",
-		"wl3_crypto": ""
+		"wl3_crypto": "",
+		"wl3_mfp": ""
+	}
+}
+var wireless_11be_Obj = {
+	"wl0": {
+		"wl0_11be": "0"
+	},
+	"wl1": {
+		"wl1_11be": "0"
+	},
+	"wl2": {
+		"wl2_11be": "0"
+	},
+	"wl3": {
+		"wl3_11be": "0"
 	}
 }
 
@@ -200,8 +220,20 @@ var wlcMultiObj = {
 		"wlc2_wep_key": "",
 		"wlc2_key": "",
 		"wlc2_ap_mac": ""
+	},
+	"wlc3" : {
+		"wlc3_band": "",
+		"wlc3_ssid": "",
+		"wlc3_auth_mode": "",
+		"wlc3_crypto": "",
+		"wlc3_wpa_psk": "",
+		"wlc3_wep": "",
+		"wlc3_wep_key": "",
+		"wlc3_key": "",
+		"wlc3_ap_mac": ""
 	}
 }
+
 var yandexObj = {
 	"yadns_enable_x": "",
 	"yadns_mode": ""	
@@ -359,7 +391,9 @@ var systemVariable = {
 		"profile_maximum_type" : "",
 		"is_dut_self" : false
 	},
-	"cfg_ready_check" : 0
+	"cfg_ready_check" : 0,
+	"sdn_idx" : 0,
+	"apg_idx" : 0
 }
 
 var aimeshObj = {
@@ -506,4 +540,36 @@ var dslIPTVObj = {
 	"dsltmp_cfg_iptv_idx": "",
 	"dsltmp_cfg_ispname": "",
 	"dsltmp_cfg_country": ""
+}
+
+var sdnObj = {
+	"sdn_rl": "",
+	"apg_enable": "1",
+	"apg_ssid": "",
+	"apg_hide_ssid": "",
+	"apg_security": "",
+	"apg_bw_limit": "<0>>",
+	"apg_timesched": "0",
+	"apg_sched": "0",
+	"apg_expiretime": "0",
+	"apg_ap_isolate": "0",
+	"apg_macmode": "",
+	"apg_mlo": "0",
+	"apg_maclist": "",
+	"apg_iot_max_cmpt": "",
+	"apg_dut_list": ""
+}
+
+var mloObj = {
+	"mld_enable": "1"
+}
+var multiWANObj = {
+	"mtwan_unit": "1",
+	"wans_mt_ioport": "W1",
+	"mtwan_mt_group": "1",
+	"mtwan_mt_weight": "1",
+	"mtwan_enable": "1",
+	"mtwan_mode": "1",
+	"mtwan_fb": "0",
+	"mtwan_order": "1"
 }

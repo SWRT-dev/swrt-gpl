@@ -476,8 +476,10 @@ int append_netdev_bled_if(const char *led_gpio, const char *ifname)
 	strlcpy(bl->id, led_gpio_id(led_gpio), sizeof(bl->id));
 
 	if ((r = ioctl(fd, BLED_CTL_ADD_NETDEV_IF, &nl)) < 0) {
-		_dprintf("%s: ioctl(BLED_CTL_ADD_NETDEV_IF) fail, ifname [%s] return %d errno %d (%s)\n",
-			__func__, ifname, r, errno, strerror(errno));
+		if (r != -EEXIST) {
+			_dprintf("%s: ioctl(BLED_CTL_ADD_NETDEV_IF) fail, ifname [%s] return %d errno %d (%s)\n",
+				__func__, ifname, r, errno, strerror(errno));
+		}
 		close(fd);
 		return -5;
 	}
@@ -519,8 +521,10 @@ int remove_netdev_bled_if(const char *led_gpio, const char *ifname)
 	strlcpy(bl->id, led_gpio_id(led_gpio), sizeof(bl->id));
 
 	if ((r = ioctl(fd, BLED_CTL_DEL_NETDEV_IF, &nl)) < 0) {
-		_dprintf("%s: ioctl(BLED_CTL_DEL_NETDEV_IF) fail, ifname [%s] return %d errno %d (%s)\n",
-			__func__, ifname, r, errno, strerror(errno));
+		if (r != -ENODEV) {
+			_dprintf("%s: ioctl(BLED_CTL_DEL_NETDEV_IF) fail, ifname [%s] return %d errno %d (%s)\n",
+				__func__, ifname, r, errno, strerror(errno));
+		}
 		close(fd);
 		return -5;
 	}
@@ -1398,3 +1402,4 @@ void led_blinking_by_bled(char *led_nvram, int led_id, char *ifname,
 }
 #endif
 #endif	/* RTCONFIG_BLINK_LED */
+

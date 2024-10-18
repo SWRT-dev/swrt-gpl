@@ -16,15 +16,6 @@
  */
 /*
  * Generic HTTP routines
- *
- * Copyright 2001, ASUSTeK Inc.
- * All Rights Reserved.
- *
- * This is UNPUBLISHED PROPRIETARY SOURCE CODE of ASUSTeK Inc.;
- * the contents of this file may not be disclosed to third parties, copied or
- * duplicated in any form, in whole or in part, without the prior written
- * permission of ASUSTeK Inc..
- *
  */
 
 #include <stdio.h>
@@ -99,7 +90,7 @@ wget(int method, const char *server, char *buf, size_t count, off_t offset)
 	}
 	if ((s = strchr(host, ':'))) {
 		*s++ = '\0';
-		port = atoi(s);
+		port = safe_atoi(s);
 	}
 
 	/* Open socket */
@@ -123,13 +114,13 @@ wget(int method, const char *server, char *buf, size_t count, off_t offset)
 	fprintf(fp, "%s /%s HTTP/1.1\r\n", method == METHOD_POST ? "POST" : "GET", path);
 	fprintf(fp, "Host: %s\r\n", host);
 	fprintf(fp, "User-Agent: wget\r\n");
-	if (strlen(auth))
+	if (safe_strlen(auth))
 		fprintf(fp, "Authorization: Basic %s\r\n", auth);
 	if (offset)
 		fprintf(fp, "Range: bytes=%ld-\r\n", offset);
 	if (method == METHOD_POST) {
 		fprintf(fp, "Content-Type: application/x-www-form-urlencoded\r\n");
-		fprintf(fp, "Content-Length: %d\r\n\r\n", strlen(buf));
+		fprintf(fp, "Content-Length: %d\r\n\r\n", safe_strlen(buf));
 		fputs(buf, fp);
 	} else
 		fprintf(fp,"Connection: close\r\n\r\n");
@@ -140,7 +131,7 @@ wget(int method, const char *server, char *buf, size_t count, off_t offset)
 		dprintf("%s", line);
 		for (s = line; *s && !isspace(*s); s++);
 		for (; isspace(*s); s++);
-		switch (atoi(s)) {
+		switch (safe_atoi(s)) {
 		case 200: if (offset) goto done; else break;
 		case 206: if (offset) break; else goto done;
 		default: goto done;
@@ -156,7 +147,7 @@ wget(int method, const char *server, char *buf, size_t count, off_t offset)
 		if (!strncasecmp(s, "Content-Length:", 15)) {
 			for (s += 15; isblank(*s); s++);
 			chomp(s);
-			len = atoi(s);
+			len = safe_atoi(s);
 		}
 		else if (!strncasecmp(s, "Transfer-Encoding:", 18)) {
 			for (s += 18; isblank(*s); s++);

@@ -47,6 +47,22 @@ ifeq ($(RTCONFIG_TRUSTZONE),y)
 LDFLAGS += -L$(TOP)/ateed/ -latee
 endif
 
+ifeq ($(RTCONFIG_HTTPS),y)
+CFLAGS += -I$(TOP)/mssl
+CFLAGS += -I$(TOP)/openssl/include
+LIBS += -L$(TOP)/mssl -lmssl
+LIBS += -L$(TOP)/openssl -lssl -lcrypto -ldl
+endif
+
+ifeq ($(RTCONFIG_USB),y)
+CFLAGS += -I$(TOP)/libdisk
+LIBS += -L$(TOP)/libdisk -ldisk
+ifeq ($(RTCONFIG_USB_SMS_MODEM),y)
+CFLAGS += -I$(TOP)/smspdu
+LIBS += -L$(TOP)/smspdu -lsmspdu
+endif
+endif
+
 #remove @ for no make command prints
 DEBUG = 
 

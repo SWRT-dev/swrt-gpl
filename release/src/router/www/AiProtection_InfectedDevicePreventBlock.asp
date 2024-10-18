@@ -293,7 +293,10 @@ function getIPSChart(type, date){
 			setTimeout("getIPSChart('cc', date);", 1000);
 		},
 		success: function(response){
-			collectChart(data, date);
+			if(data != ""){
+				data = JSON.parse(data);
+				collectChart(data, date);
+			}
 		}
 	});
 }
@@ -396,7 +399,7 @@ function getIPSDetailData(type, event){
 }
 
 function TMEvent(){
-	var url = 'https://esupport.trendmicro.com/en-us/home/pages/technical-support/smart-home-network/1123020.aspx';
+	var url = 'https://nw-dlcdnet.asus.com/trend/infected';
 	window.open(url, '_blank');
 }
 

@@ -39,6 +39,14 @@ const char APCLI_2G[]	= "apcli";
 const char APCLI_5G[]	= "apclix0";
 const char APCLI_2G[]	= "apcli0";
 #endif
+#elif defined(RTCONFIG_MT799X)
+const char WIF_6G[]	= "rax0";
+const char WIF_5G[]	= "rai0";
+const char WIF_2G[]	= "ra0";
+const char WDSIF_5G[]	= "wdsx";
+const char APCLI_6G[]	= "apclix0";
+const char APCLI_5G[]	= "apclii0";
+const char APCLI_2G[]	= "apcli0";
 #else
 const char WIF_5G[]	= "rai0";
 const char WIF_2G[]	= "ra0";
@@ -75,7 +83,7 @@ int get_mt7621_wan_unit_bytecount(int unit, unsigned long long *tx, unsigned lon
 }
 #endif
 
-#if defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 #include <limits.h>		//PATH_MAX, LONG_MIN, LONG_MAX
 #define GPIOLIB_DIR	"/sys/class/gpio"
 #define GPIOBASE 411
@@ -328,29 +336,22 @@ int get_radio(int unit, int subunit)
 void set_radio(int on, int unit, int subunit)
 {
 	char tmp[100], prefix[] = "wlXXXXXXXXXXXXXX";
+	const char *ifname;
 
 	if (subunit > 0)
 		snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, subunit);
 	else
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 
+	ifname = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
 	//if (nvram_match(strcat_r(prefix, "radio", tmp), "0")) return;
 	// TODO: replace hardcoded 
 	// TODO: handle subunit
 #if defined(RTCONFIG_WLMODULE_MT7629_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_WLMODULE_MT7615E_AP)
 	// MTK suggested MT7629/MT7915D use ifconfig down/up to instead RadioOn=0/1
-	if (subunit > 0)
-                doSystem("ifconfig %s %s", nvram_safe_get(strcat_r(prefix, "ifname", tmp)), on ? "up":"down");
-        else
-		doSystem("ifconfig %s %s", unit ? WIF_5G: WIF_2G, on ? "up":"down");
+	doSystem("ifconfig %s %s", ifname, on ? "up":"down");
 #else
-	if (subunit > 0) 
-		doSystem("iwpriv %s set RadioOn=%d", nvram_safe_get(strcat_r(prefix, "ifname", tmp)), on);
-	else {
-		if(unit==0)
-			doSystem("iwpriv %s set RadioOn=%d", WIF_2G, on);
-		else doSystem("iwpriv %s set RadioOn=%d", WIF_5G, on);
-	}
+	doSystem("iwpriv %s set RadioOn=%d", ifname, on);
 #endif
 
 #if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTACRH18) || defined(RTCONFIG_WLMODULE_MT7915D_AP) //5G:7612E 2G:7603E
@@ -935,7 +936,11 @@ char *get_wan_mac_name(void)
 
 char *get_2g_hwaddr(void)
 {
+#if defined(RTCONFIG_MT799X)
+        return get_lan_hwaddr();
+#else
         return get_wan_hwaddr();
+#endif
 }
 
 char *get_label_mac()
@@ -967,7 +972,7 @@ char *__get_wlifname(int band, int subunit, char *buf)
 	if (!buf)
 		return buf;
 
-	strcpy(buf, (!band)? WIF_2G:WIF_5G);
+	strcpy(buf, get_wififname(band));
 	if (subunit) {
 		sprintf(buf + strlen(buf) - 1, "%d", subunit);
 	}
@@ -986,10 +991,7 @@ char *get_wlifname(int unit, int subunit, int subunit_x, char *buf)
 #endif
 	 && subunit==1)
 	{
-		if(unit == 1)
-			sprintf(buf, "%s", APCLI_5G);
-		else
-			sprintf(buf, "%s", APCLI_2G);
+		sprintf(buf, "%s", get_staifname(unit));
 		return buf;
 	}	
 	else
@@ -1001,12 +1003,12 @@ char *get_wlifname(int unit, int subunit, int subunit_x, char *buf)
 	}
 #endif  /* RTCONFIG_AMAS */
 	{
+		int len;
 		memset(wifbuf, 0, sizeof(wifbuf));
 
-		if(unit==0) strncpy(wifbuf, WIF_2G, strlen(WIF_2G)-1);
-#if defined(RTCONFIG_HAS_5G)
-		else strncpy(wifbuf, WIF_5G, strlen(WIF_5G)-1);
-#endif	/* RTCONFIG_HAS_5G */
+		strlcpy(wifbuf, get_wififname(unit), sizeof(wifbuf));
+		len = strlen(wifbuf);
+		wifbuf[len - 1] = '\0';		//remove the last number
 
 		snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, subunit);
 		if (nvram_match(strcat_r(prefix, "bss_enabled", tmp), "1"))
@@ -1388,7 +1390,11 @@ int get_regular_class(const char* ifname)
 
 char *get_wififname(int band)
 {
+#if defined(RTCONFIG_MT799X)
+	const char *wif[] = { WIF_2G, WIF_5G, WIF_6G };
+#else
 	const char *wif[] = { WIF_2G, WIF_5G };
+#endif
 	if (band < 0 || band >= ARRAY_SIZE(wif)) {
 		printf("%s: Invalid wl%d band!\n", __func__, band);
 		band = 0;
@@ -1398,17 +1404,24 @@ char *get_wififname(int band)
 
 char *get_staifname(int band)
 {
+#if defined(RTCONFIG_MT799X)
+	const char *sta[] = { APCLI_2G, APCLI_5G, APCLI_6G };
+#else
 	const char *sta[] = { APCLI_2G, APCLI_5G };
+#endif
 	if (band < 0 || band >= ARRAY_SIZE(sta)) {
 		printf("%s: Invalid wl%d band!\n", __func__, band);
 		band = 0;
 	}
 	return (char*) sta[band];
 }
+
 int get_sta_ifname_unit(const char *ifname)
 {
         int band;
-#if defined(RTCONFIG_HAS_5G_2)	
+#if defined(RTCONFIG_MT799X)
+	const char *sta[] = { APCLI_2G, APCLI_5G, APCLI_6G };
+#elif defined(RTCONFIG_HAS_5G_2)
 	const char *sta[] = { APCLI_2G, APCLI_5G, APCLI_5G2};
 #else	
 	const char *sta[] = { APCLI_2G, APCLI_5G };
@@ -1542,3 +1555,100 @@ unsigned long long get_bitrate(const char *ifname)
 
 	return wrq.u.bitrate.value;
 }
+
+#ifdef RTCONFIG_MT799X
+int get_wifi_temperature(enum wl_band_id band)
+{
+	int t = 0;
+	char cmd[sizeof("mwctl dev XXXX stat")];
+
+	if (band >= MAX_NR_WL_IF)
+		return -1;
+	
+	/* cmd: mwctl dev ra0 stat
+	 * Example:
+	 * CurrentTemperature = 62
+	 * LVTS0 = 65358
+	 * LVTS1 = 65282
+	 * LVTS2 = 66443
+	 * LVTS3 = 65664
+	 * Tx success = 0
+	 * Tx fail count = 0, PER=0.0%
+	 * Current BW Tx count = 0
+	 * Other BW Tx count = 0
+	 * Rx success = 205216
+	 * Rx with CRC = 57263, PER=21.8%
+	 * Rx drop due to out of resource = 0
+	 * Rssi: 0 0 0 0 
+	 * CN Info: = 127
+	 *       ...
+	 *       ...
+	 */
+
+	snprintf(cmd, sizeof(cmd), "mwctl dev %s stat", get_wififname(band));
+	if (exec_and_parse(cmd, "CurrentTemperature", "%*[^=]=%d%*[^\n]", 1, &t))
+		return 0;
+	
+	return t;
+}
+#endif
+
+#if defined(RTCONFIG_SW_BTN)
+int set_sdn_active_by_unit(int sdn_idx, int onoff)
+{
+	char *nv = NULL;
+        char *nvp = NULL;
+        char *b = NULL,*p=NULL;
+        char *idx = NULL;
+        char *sdn_type = NULL;
+        char *sdn_enable = NULL;
+        char *vlan_idx = NULL;
+        char *sub_idx = NULL;
+        char *apg_idx = NULL;
+        int err;
+	int offset;
+	int i=0;
+	char apg_enable[20];
+	char sdn[MTLAN_MAXINUM][200],temp[200];
+        err=-1;
+        nv = nvp = strdup(nvram_safe_get("sdn_rl"));
+        if (!nv)
+                return err;
+	//_dprintf("sdn_rl=[%s]\n",nv);
+	err=-2;
+	memset(sdn,0,sizeof(sdn));
+        while ((b = strsep(&nvp, "<")) != NULL) {
+		memset(temp,0,sizeof(temp));
+		strlcat(temp,b,sizeof(temp));
+		i++;
+                if (vstrsep(b, ">", &idx, &sdn_type, &sdn_enable, &vlan_idx, &sub_idx, &apg_idx) < 6)
+                        continue;
+
+                if(atoi(idx) == sdn_idx){
+                        if(atoi(sdn_enable)!=onoff)
+			{
+				offset=strlen(idx)+1+strlen(sdn_type)+1;
+				temp[offset]=onoff+48; //'0' or '1'
+				snprintf(apg_enable,sizeof(apg_enable),"apg%d_enable",atoi(apg_idx));
+				nvram_set_int(apg_enable,onoff);
+				//_dprintf("==> %s=%d and update sdn rule=[%s]\n", apg_enable, onoff,temp);
+                                err=0;
+			}
+			else
+				err=-3; //no need to change
+                }
+		strcat(sdn,"<");
+		strlcat(sdn,temp,sizeof(sdn));
+        }	
+	if(err==0)
+	{
+		//_dprintf("update sdn=[%s]\n",sdn);
+		nvram_set("sdn_rl",sdn);
+		nvram_commit();
+	}	
+        free(nv);
+        return err;
+
+}	
+#endif
+

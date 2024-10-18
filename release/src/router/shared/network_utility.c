@@ -137,7 +137,7 @@ int is_valid_ip(const char* addr)
 	hint.ai_flags = AI_NUMERICHOST;
 
 	if (getaddrinfo(addr, NULL, &hint, &res))
-		ret = -1;
+		return -1;
 	else if (res->ai_family == AF_INET)
 		ret = 1;
 	else if (res->ai_family == AF_INET6)

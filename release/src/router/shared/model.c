@@ -50,6 +50,11 @@ static const struct model_s model_list[] = {
 	{ "RT-AX59U",		MODEL_RTAX59U		},
 	{ "PRT-AX57_GO",	MODEL_PRTAX57GO		},
 	{ "RT-AX52",		MODEL_RTAX52		},
+	{ "RT-AX57M",		MODEL_RTAX57M		},
+	{ "EAGLE_A",		MODEL_EAGLE_A		},
+	{ "EAGLE_D",		MODEL_EAGLE_D		},
+	{ "BT8",		MODEL_BT8		},
+	{ "BT6",		MODEL_BT6		},
 	{ "RT-AC59U",		MODEL_RTAC59U		},
 	{ "RT-AC59U_V2",	MODEL_RTAC59U		},
 	{ "PL-AX56_XP4",	MODEL_PLAX56XP4		},
@@ -74,6 +79,7 @@ static const struct model_s model_list[] = {
 	{ "RT-AX89U",		MODEL_RTAX89U		},
 	{ "ETJ",		MODEL_ETJ		},
 	{ "RT-AX57Q",		MODEL_RTAX57Q		},
+	{ "TUF-BE6500",		MODEL_TUFBE6500		},
 	{ "BLUECAVE",		MODEL_BLUECAVE		},
 	{ "BLUE_CAVE",		MODEL_BLUECAVE		},
 	{ "RT-AC68U",		MODEL_RTAC68U		},
@@ -148,6 +154,10 @@ static const struct model_s model_list[] = {
 	{ "BT12",		MODEL_BT12		},
 	{ "BQ16",		MODEL_BQ16		},
 	{ "GT-BE96",		MODEL_GTBE96		},
+	{ "EBG19P",		MODEL_EBG19P		},
+	{ "BQ16_PRO",		MODEL_BQ16_PRO		},
+	{ "RT-BE88U",           MODEL_RTBE88U           },
+	{ "RT-BE86U",		MODEL_RTBE86U		},
 	{ "K3", 			MODEL_K3 			},
 	{ "XWR3100", 		MODEL_XWR3100 		},
 	{ "R7000P", 		MODEL_R7000P 		},
@@ -509,3 +519,4 @@ char *get_cf_name(int cfid) {
 */
 
 #endif
+

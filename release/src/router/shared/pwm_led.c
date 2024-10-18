@@ -83,13 +83,18 @@ static void set_pwm(int pidx, unsigned int color)
 		{"3-128,750-"PWM_LOW_ACTIVE, "0x3-195-195"},	/* off:0.25s, on:0.75s */
 		{"3-128,500-"PWM_LOW_ACTIVE,   "0x3-49-49"},	/* off:0.125s, on:0.125s */
 		{    "1-128-"PWM_LOW_ACTIVE, "0x3-240-240"}	/* breathing */
-#else
+#elif (defined(RTCONFIG_SOC_MT7988D)||defined(RTCONFIG_SOC_MT7988A))
+		{    "2-128-"PWM_LOW_ACTIVE, "0x3-751-751"},	/* on */
+		{"3-128,500-"PWM_LOW_ACTIVE, "0x3-763-763"},	/* off:0.5s, on:0.5s */
+		{"3-128,750-"PWM_LOW_ACTIVE, "0x3-763-763"},	/* off:0.25s, on:0.75s */
+		{"3-128,500-"PWM_LOW_ACTIVE, "0x3-191-191"},	/* off:0.125s, on:0.125s */
+		{    "1-128-"PWM_LOW_ACTIVE, "0x3-939-939"}	/* breathing */
+#else // MT7986
 		{    "2-128-"PWM_LOW_ACTIVE, "0x3-500-500"},	/* on */
 		{"3-128,500-"PWM_LOW_ACTIVE, "0x3-508-508"},	/* off:0.5s, on:0.5s */
 		{"3-128,750-"PWM_LOW_ACTIVE, "0x3-508-508"},	/* off:0.25s, on:0.75s */
 		{"3-128,500-"PWM_LOW_ACTIVE, "0x3-127-127"},	/* off:0.125s, on:0.125s */
 		{    "1-128-"PWM_LOW_ACTIVE, "0x3-625-625"}	/* breathing */
-
 #endif
 	};
 	struct gpio_mapping g[] = {

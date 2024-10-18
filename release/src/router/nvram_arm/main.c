@@ -642,18 +642,20 @@ int nvram_save_new(char *file, char *buf)
 
 int issyspara(char *p)
 {
-	struct nvram_tuple *t;
+	struct nvram_tuple *t/*eric--, *u*/;
 	extern struct nvram_tuple router_defaults[];
-	
-	// skip checking for wl[]_, wan[], lan[]_
-	if ((strstr(p, "wl") && strncmp(p+3, "_failed", 7)) || strstr(p, "wan") || strstr(p, "lan")
-		|| strstr(p, "vpn_server") || strstr(p, "vpn_client")
-		|| !strncmp(p, "wgs", 3) || !strncmp(p, "wgc", 3)
-#ifdef RTCONFIG_DSL
-		|| !strncmp(p, "dsl", 3)
-#endif
-	)
-		return 1;
+	extern struct nvram_tuple router_prefix_defaults[];
+
+	/* pass runtime create prefix nvram */
+	for (t = router_prefix_defaults; t->name; t++)
+	{
+		//if(!strncmp(p, t->name, strlen(t->name))){
+		if(strstr(p, t->name)){
+			if(!strcmp("wl", t->name) && !strncmp(p+3, "_failed", 7))
+				break;
+			return 1;
+		}
+	}
 
 	for (t = router_defaults; t->name; t++)
 	{

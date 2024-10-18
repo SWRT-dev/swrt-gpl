@@ -21,7 +21,7 @@
 <script type="text/javascript" src="form.js"></script>
 <script type="text/javascript" src="switcherplugin/jquery.iphone-switch.js"></script>
 <script type="text/javascript" src="client_function.js"></script>
-<script language="JavaScript" type="text/javascript" src="/js/asus_eula.js"></script>
+<script language="JavaScript" type="text/javascript" src="/js/asus_policy.js"></script>
 <style>
 #switch_menu{
 	text-align:right
@@ -749,6 +749,7 @@ function cancel(){
 function eula_confirm(){
 	document.form.TM_EULA.value = 1;
 	document.form.wrs_app_enable.value = 1;
+    showhide("list_table",1);
 	applyRule();
 }
 
@@ -845,12 +846,15 @@ function setGroup(name){
 													$('#radio_web_restrict_enable').iphoneSwitch('<% nvram_get("wrs_app_enable"); %>',
 														function(){
 															curState = 1;
-															ASUS_EULA.config(eula_confirm, cancel);
-
-															if(ASUS_EULA.check("tm")){
-																document.form.wrs_app_enable.value = 1;
-																showhide("list_table",1);
-															}
+															if(policy_status.TM == 0 || policy_status.TM_time == ''){
+                                                                const policyModal = new PolicyModalComponent({
+                                                                    policy: "TM",
+                                                                    agreeCallback: eula_confirm,
+                                                                });
+                                                                policyModal.show();
+                                                            }else{
+                                                                eula_confirm();
+                                                            }
 														},
 														function(){
 															document.form.wrs_app_enable.value = 0;

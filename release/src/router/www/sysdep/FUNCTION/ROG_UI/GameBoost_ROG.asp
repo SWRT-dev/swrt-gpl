@@ -23,7 +23,7 @@
 <script type="text/javascript" src="/calendar/jquery-ui.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script type="text/javascript" src="/form.js"></script>
-<script language="JavaScript" type="text/javascript" src="/js/asus_eula.js"></script>
+<script language="JavaScript" type="text/javascript" src="/js/asus_policy.js"></script>
 <style type="text/css">
 .appIcons{
 	width:36px;
@@ -123,6 +123,10 @@ AUTOLOGOUT_MAX_MINUTE = 0;
 var detect_interval = 2;	// get information per second
 var qos_rulelist = "<% nvram_get("qos_rulelist"); %>".replace(/&#62/g, ">").replace(/&#60/g, "<");
 var curState = '<% nvram_get("apps_analysis"); %>';
+if(dns_dpi_support)
+{
+  curState = '<% nvram_get("dns_dpi_apps_analysis"); %>';
+}
 var ctf_disable = '<% nvram_get("ctf_disable"); %>';
 var ctf_fa_mode = '<% nvram_get("ctf_fa_mode"); %>';
 var bwdpi_app_rulelist = "<% nvram_get("bwdpi_app_rulelist"); %>".replace(/&#60/g, "<");
@@ -510,7 +514,11 @@ function show_clients(priority_type){
 	}
 
 	document.getElementById('sortable').innerHTML = code;
-	update_device_tarffic();
+  if(dns_dpi_support) {
+		update_device_tarffic_Dns();
+	} else {
+    update_device_tarffic();
+  }
 	setTimeout("register_event();",500);
 }
 
@@ -523,8 +531,14 @@ function show_apps(obj){
 	var clientObj = clientList[client_mac];
 	var code = "";
 
-	if(document.form.apps_analysis.value == 0)
+  if(dns_dpi_support) {
+		if(document.form.dns_dpi_apps_analysis.value == 0)
 		return false;
+	}
+	else {
+    if(document.form.apps_analysis.value == 0)
+		return false;
+  }
 
 	if(obj.className.indexOf("closed") == -1){			//close device's APPs
 		clearTimeout(apps_time_flag);
@@ -605,8 +619,13 @@ function show_apps(obj){
 				obj.setAttribute("class", "opened " + clientListCSS + " clicked qosLevel" + clientObj.qosLevel + " divUserIcon");
 			}
 		}
-		update_device_tarffic();
-		update_apps_tarffic(client_mac, obj, new_element);
+    if(dns_dpi_support) {
+			update_device_tarffic_Dns();
+			update_apps_tarffic_Dns(client_mac, obj, new_element);
+		} else {
+      update_device_tarffic();
+		  update_apps_tarffic(client_mac, obj, new_element);
+    }
 	}
 }
 
@@ -951,7 +970,19 @@ function calculate_apps_traffic(apps_traffic){
 
 			diff_tx = (apps_traffic_old[apps_traffic_new[i]]) ? apps_traffic_new[apps_traffic_new[i]].tx - apps_traffic_old[apps_traffic_new[i]].tx : 0;
 			diff_rx = (apps_traffic_old[apps_traffic_new[i]]) ? apps_traffic_new[apps_traffic_new[i]].rx - apps_traffic_old[apps_traffic_new[i]].rx : 0;
-
+      
+      /* dns dpi report current active conntrack and its accumulated bytes for simplicity
+			   However, a few conntrack might timeout and won't report next query then have a smaller app bytes compared to last query
+			   To fix in fw, need to have a baseline conntrack and add calculated diff , minus tracks which there is no same app_id active
+			   ct. Nice to have since fw already give correct acculmuated info
+			*/
+			if(dns_dpi_support) {
+				if(diff_tx < 0)
+					diff_tx = 0;
+				if(diff_rx < 0)
+					diff_rx = 0;
+			}
+			
 			diff_tx = diff_tx*8/detect_interval;
 			diff_rx = diff_rx*8/detect_interval;
 
@@ -1111,6 +1142,20 @@ function update_device_tarffic() {
     }
   });
 }
+function update_device_tarffic_Dns() {
+  $.ajax({
+    url: '/getTraffic_Dns.asp',
+    dataType: 'script',
+    error: function(xhr) {
+		setTimeout("update_device_tarffic_Dns();", detect_interval*1000);
+    },
+    success: function(response){
+		calculate_router_traffic(router_traffic);
+		calculate_traffic(array_traffic);
+		device_time_flag = setTimeout("update_device_tarffic_Dns();", detect_interval*1000);
+    }
+  });
+}
 
 var apps_time_flag = "";
 function update_apps_tarffic(mac, obj, new_element) {
@@ -1122,7 +1167,26 @@ function update_apps_tarffic(mac, obj, new_element) {
     },
     success: function(response){
 		render_apps(array_traffic, obj, new_element);
-		apps_time_flag = setTimeout((function (mac,obj,new_element){ return function (){ update_apps_tarffic(mac,obj,new_element); } })(mac,obj,new_element), detect_interval*1000);
+
+		apps_time_flag = setTimeout(function(){
+			update_apps_tarffic(mac,obj,new_element)
+		}, detect_interval*1000);
+    }
+  });
+}
+function update_apps_tarffic_Dns(mac, obj, new_element) {
+  $.ajax({
+    url: '/getTraffic_Dns.asp?client='+mac,
+    dataType: 'script',
+    error: function(xhr) {
+		setTimeout("update_apps_tarffic_Dns('"+mac+"');", detect_interval*1000);
+    },
+    success: function(response){
+		render_apps(array_traffic, obj, new_element);
+
+		apps_time_flag = setTimeout(function(){
+			update_apps_tarffic_Dns(mac,obj,new_element)
+		}, detect_interval*1000);
     }
   });
 }
@@ -1178,6 +1242,8 @@ function regen_qos_rule(obj, priority){
 }
 
 function applyRule(){
+  if(dns_dpi_support)
+		document.form.action_script.value = "restart_nfcm;restart_dnsqd;restart_qos;restart_firewall";
 	document.form.qos_rulelist.value = qos_rulelist;
 	document.form.submit();
 }
@@ -1185,9 +1251,11 @@ function applyRule(){
 function eula_confirm(){
 	var _flag = document.form._flag.value;
 	document.form.TM_EULA.value = 1;
-	if(_flag == "apps_analysis"){
+	if(_flag == "apps_analysis" || _flag == "dns_dpi_apps_analysis"){
 		document.form.apps_analysis.value = 1;
-		applyRule();
+    if(dns_dpi_support)
+		  document.form.dns_dpi_apps_analysis.value = 1;
+    applyRule();
 	}
 	else if(_flag == "game"){
 		document.form.qos_enable.value = '1';
@@ -1196,6 +1264,8 @@ function eula_confirm(){
 		document.form.bwdpi_app_rulelist.value = "9,20<8<4<0,5,6,15,17<4,13<13,24<1,3,14<7,10,11,21,23<game";
 		if(ctf_disable == 1){
 			document.form.action_script.value = "restart_qos;restart_firewall";
+      if(dns_dpi_support)
+		    document.form.action_script.value = "restart_nfcm;restart_dnsqd;restart_qos;restart_firewall";
 		}
 		else{
 			if(ctf_fa_mode == "2"){
@@ -1206,6 +1276,8 @@ function eula_confirm(){
 					FormActions("start_apply.htm", "apply", "reboot", "<% get_default_reboot_time(); %>");
 				else{
 					document.form.action_script.value = "restart_qos;restart_firewall";
+          if(dns_dpi_support)
+		        document.form.action_script.value = "restart_nfcm;restart_dnsqd;restart_qos;restart_firewall";
 				}
 			}
 		}
@@ -1221,6 +1293,36 @@ function cancel(){
 	else{
 		curState = 0;
 		$('#iphone_switch').animate({backgroundPosition: -37}, "slow", function() {});
+	}
+}
+
+function switch_control(_status){
+	if(_status) {
+        if(!dns_dpi_support){
+            if(reset_wan_to_fo.check_status()) {
+                if(policy_status.TM == 0 || policy_status.TM_time == ''){
+                    const policyModal = new PolicyModalComponent({
+                        policy: "TM",
+                        agreeCallback: eula_confirm,
+                        disagreeCallback: cancel
+                    });
+                    policyModal.show();
+                }else{
+                    eula_confirm();
+                }
+            }else
+                cancel();
+        }else {
+            document.form.apps_analysis.value = 1;
+            document.form.dns_dpi_apps_analysis.value = 1;
+            applyRule();
+        }
+	}
+	else {
+		document.form.apps_analysis.value = 0;
+		if(dns_dpi_support)
+			document.form.dns_dpi_apps_analysis.value = 0;
+		applyRule();
 	}
 }
 </script>
@@ -1249,6 +1351,7 @@ function cancel(){
 <input type="hidden" name="qos_rulelist" value="">
 <input type="hidden" name="TM_EULA" value="<% nvram_get("TM_EULA"); %>">
 <input type="hidden" name="apps_analysis" value="<% nvram_get("apps_analysis"); %>">
+<input type="hidden" name="dns_dpi_apps_analysis" value="<% nvram_get("dns_dpi_apps_analysis"); %>">
 <input type="hidden" name="qos_enable" value="<% nvram_get("qos_enable"); %>">
 <input type="hidden" name="qos_type" value="<% nvram_get("qos_type"); %>">
 <input type="hidden" name="qos_type_ori" value="<% nvram_get("qos_type"); %>">
@@ -1287,20 +1390,27 @@ function cancel(){
 														<td >
 															<div align="center" class="left" style="width:94px; float:left; cursor:pointer;" id="apps_analysis_enable"></div>
 															<script type="text/javascript">
-																$('#apps_analysis_enable').iphoneSwitch('<% nvram_get("apps_analysis"); %>',
+                              if(dns_dpi_support)
+                              {  
+																$('#apps_analysis_enable').iphoneSwitch('<% nvram_get("dns_dpi_apps_analysis"); %>',
 																	function(){
-																		ASUS_EULA.config(eula_confirm, cancel);
-																		document.form._flag.value = "apps_analysis";
-
-																		if(ASUS_EULA.check("tm")){
-																			eula_confirm()
-																		}
-																	},
-																	function(){
-																		document.form.apps_analysis.value = 0;
-																		applyRule();
-																	}
+                                                                        switch_control(1);
+                                                                    },
+                                                                    function(){
+                                                                        switch_control(0);
+                                                                    }
 																);
+                              } else 
+                              {
+                                                                $('#apps_analysis_enable').iphoneSwitch('<% nvram_get("apps_analysis"); %>',
+																	function(){
+                                                                        switch_control(1);
+                                                                    },
+                                                                    function(){
+                                                                        switch_control(0);
+                                                                    }
+																);
+                              }
 															</script>
 														</td>
 													</tr>
@@ -1358,12 +1468,16 @@ function cancel(){
 													<script type="text/javascript">
 														$('#radio_gameBoost_enable').iphoneSwitch(enable_GameBoost,
 															function(){
-																ASUS_EULA.config(eula_confirm, cancel);
 																document.form._flag.value = "game";
-
-																if(ASUS_EULA.check("tm")){
-																	eula_confirm();
-																}
+                                                                if(policy_status.TM == 0 || policy_status.TM_time == ''){
+                                                                    const policyModal = new PolicyModalComponent({
+                                                                        policy: "TM",
+                                                                        agreeCallback: eula_confirm,
+                                                                    });
+                                                                    policyModal.show();
+                                                                }else{
+                                                                    eula_confirm();
+                                                                }
 															},
 															function(){
 																document.form.qos_enable.value = '0';

@@ -9,12 +9,12 @@
 <title><#Web_Title#> - Game Dashboard</title>
 <link rel="icon" href="images/favicon.png">
 <link rel="stylesheet" type="text/css" href="index_style.css"> 
+<link rel="stylesheet" type="text/css" href="css/basic.css">
 <link rel="stylesheet" type="text/css" href="form_style.css">
 <link rel="stylesheet" type="text/css" href="tmmenu.css">
 <link rel="stylesheet" type="text/css" href="menu_style.css">
 <link rel="stylesheet" type="text/css" href="device-map/device-map.css">
 <link rel="stylesheet" type="text/css" href="css/rog_cod.css">
-<link rel="stylesheet" type="text/css" href="css/basic.css">
 <script type="text/javascript" src="js/loader.js"></script>
 <script type="text/javascript" src="/js/jquery.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/httpApi.js"></script>
@@ -26,7 +26,6 @@
 <script type="text/javascript" src="/client_function.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/html5kellycolorpicker.min.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
-<script language="JavaScript" type="text/javascript" src="/js/asus_eula.js"></script>
 <script type="text/javascript" src="/md5.js"></script>
 <style>
 .traffic_bar{
@@ -64,6 +63,12 @@
 .wl6_icon_on{
 	background-position: 0px -192px;
 }
+.wl6_1_icon_on{
+	background-position: 0px -240px;
+}
+.wl6_2_icon_on{
+	background-position: 0px -288px;
+}
 .wl0_icon_off{
 	background-position: 48px 0px;
 }
@@ -78,6 +83,12 @@
 }
 .wl6_icon_off{
 	background-position: 48px -192px;
+}
+.wl6_1_icon_off{
+	background-position: 48px -240px;
+}
+.wl6_2_icon_off{
+	background-position: 48px -288px;
 }
 .wan_state_icon{
 	width: 136px;
@@ -240,11 +251,12 @@
 	background: rgba(145,7,31, .7);
 }
 .boost-text{
+	font-family: Xolonium;
 	transform: skew(30deg);
 }
 .rog-title{
-	font-family: ROG;
-	font-size: 26px;
+	font-family: Xolonium;
+	font-size: 20px;
 	color:#BFBFBF;
 }
 .event-cancel{
@@ -266,6 +278,9 @@
 }
 .light_effect_iframe .light_effect_bg {
 	height: 160px;
+}
+#wan_state, #sw_mode_desc {
+	font-family: Xolonium;
 }
 </style>
 <script>
@@ -305,6 +320,7 @@ else if(odmpid == 'GT6'){
 	wl1_radio = wl0_radio;
 	wl0_radio = t;
 }
+
 var label_mac = <% get_label_mac(); %>;
 var CNSku = in_territory_code("CN");
 
@@ -480,10 +496,6 @@ function initial(){
 		$("#boostKey_desc").html(boostKey[this.id].desc)
 	})
 
-	if(!ASUS_EULA.status("tm")){
-		ASUS_EULA.config(tm_agree, tm_disagree);
-	}
-
 	httpApi.nvramGetAsync({
 		data: ["ping_target"],
 		success: function(nvram){
@@ -546,8 +558,11 @@ function check_wireless(){
 			wl1_radio = '0';
 		}
 
-		if(based_modelid === 'GT-AXE16000' || based_modelid === 'GT-BE98' || based_modelid === 'GT-BE98_PRO'){
+		if(based_modelid === 'GT-AXE16000' || based_modelid === 'GT-BE98'){
 			temp = (wl1_radio == "1") ? "wl1_1_icon_on" : "wl1_1_icon_off";
+		}
+		else if(based_modelid === 'GT-BE98_PRO'){
+			temp = (wl1_radio == "1") ? "wl1_icon_on" : "wl1_icon_off";
 		}
 		else{
 			temp = (wl1_radio == "1") ? "wl1_icon_on" : "wl1_icon_off"
@@ -572,12 +587,21 @@ function check_wireless(){
 			wl2_radio = '0';
 		}
 
-		if(based_modelid === 'GT-AXE16000' || based_modelid === 'GT-BE98' || based_modelid === 'GT-BE98_PRO'){
+		if(based_modelid === 'GT-AXE16000' || based_modelid === 'GT-BE98' ){
 			temp = (wl2_radio == "1") ? "wl2_icon_on" : "wl2_icon_off";
 			$("#wl2_icon").show();
 			$("#wl2_icon").addClass(temp);
 
 			temp = (wl3_radio == "1") ? "wl6_icon_on" : "wl6_icon_off";
+			$("#wl3_icon").show();
+			$("#wl3_icon").addClass(temp);
+		}
+		else if(based_modelid === 'GT-BE98_PRO'){
+			temp = (wl2_radio == "1") ? "wl6_1_icon_on" : "wl6_1_icon_off";
+			$("#wl2_icon").show();
+			$("#wl2_icon").addClass(temp);
+
+			temp = (wl3_radio == "1") ? "wl6_2_icon_on" : "wl6_2_icon_off";
 			$("#wl3_icon").show();
 			$("#wl3_icon").addClass(temp);
 		}
@@ -589,7 +613,6 @@ function check_wireless(){
 				temp = (wl2_radio == "1") ? "wl2_icon_on" : "wl2_icon_off";
 			}
 			
-
 			$("#wl2_icon").show();
 			$("#wl2_icon").addClass(temp);
 		}
@@ -999,9 +1022,11 @@ function handleBoostKey(obj){
 		return false;
 	}
 
-	var tm_status = httpApi.nvramGet(["TM_EULA", "TM_EULA_time"], true);
-	if(_id == 'boost_qos' && (tm_status.TM_EULA == "0" || tm_status.TM_EULA_time == "")){
-		ASUS_EULA.check("tm");
+	if(_id == 'boost_qos' && (policy_status.TM == "0" || policy_status.TM_time == "")){
+		const policyModal = new PolicyModalComponent({
+            policy: "TM"
+        });
+        policyModal.show();
 		return false;
 	}
 
@@ -1174,7 +1199,7 @@ function uuRegister(mac){
 											</div>
 											<div style="margin-top: 40px;text-align:center;color:#BFBFBF;">
 												<div class="rog-title" style="text-transform: uppercase;"><#Full_Clients#></div>
-												<div style="margin-top:15px;">
+												<div style="margin-top:15px;font-family: Xolonium;">
 													<span id="client_count" style="font-size: 20px;padding:0 10px;color:#57BDBA"></span>
 													<span style="font-size: 14px;color:#57BDBA;text-transform: uppercase;"><#Clientlist_Online#></span>
 												</div>	
@@ -1234,7 +1259,7 @@ function uuRegister(mac){
 												<polyline id="ping_graph" style="fill:none;stroke:#57BDBA;stroke-width:2;z-index:9999" points="0,250"></polyline>
 											</svg>
 										</div>
-										<div style="text-align: center;font-family: rog;font-size:20px;margin:255px 40px;position:absolute;width:300px;color:#BFBFBF"><#Average_value#> : <span id="pingAvg" style="font-size:30px">0 ms</span></div>
+										<div style="text-align: center;font-family: Xolonium;font-size:16px;margin:255px 40px;position:absolute;width:300px;color:#BFBFBF"><#Average_value#> : <span id="pingAvg" style="font-size:26px">0 ms</span></div>
 
 										<div class="rog-title" style="margin:45px 500px;position:absolute;width:200px;"><#ROG_PING_DEVIATION#></div>
 										<div id="svgJitterContainer" style="margin:85px 0px 0px 400px;position:absolute;background-color:#221712;"> 
@@ -1258,7 +1283,7 @@ function uuRegister(mac){
 												<polyline id="jitter_graph" style="fill:none;stroke:#BCBD4D;stroke-width:2;z-index:9999" points="0,250"></polyline>
 											</svg>
 										</div>
-										<div style="text-align: center;font-family: rog;font-size:20px;margin:255px 420px;position:absolute;width:300px;color:#BFBFBF"><#Average_value#> : <span id="jitterAvg" style="font-size:30px">0 ms</span></div>
+										<div style="text-align: center;font-family: Xolonium;font-size:16px;margin:255px 420px;position:absolute;width:300px;color:#BFBFBF"><#Average_value#> : <span id="jitterAvg" style="font-size:26px">0 ms</span></div>
 
 									</div>									
 									</div>
@@ -1275,14 +1300,31 @@ function uuRegister(mac){
 													setTimeout(function(){
 														$("#light_effect_iframe").attr("src", "/light_effect/light_effect.html");
 														$("#light_effect_iframe").load(function(){
-															$("#light_effect_iframe").contents().find(".light_effect_bg").css("height", "160px");
-															$("#light_effect_iframe").contents().find(".logo_container").css({"width":"18vw"});
+															let $ledg_html = $(this).contents();
+															$ledg_html.find(".light_effect_bg").css("height", "160px");
+															$ledg_html.find(".logo_container").css({"width":"18vw"});
 															if(isSupport("antled")){
-																$("#light_effect_iframe").contents().find(".switch_mode_list_bg")
+																$ledg_html.find(".switch_mode_list_bg")
 																	.css({"width":"160px", "height":"35px", "background-size":"190px 35px", "background-position":"100%"});
-																$("#light_effect_iframe").contents().find(".switch_mode_list_bg .mode_list_bg").css("width", "130px");
-																$("#light_effect_iframe").contents().find(".logo_container")
+																$ledg_html.find(".switch_mode_list_bg .mode_list_bg").css("width", "130px");
+																$ledg_html.find(".logo_container")
 																	.css({"width":"18vw", "background-position-y":"50%"});
+															}
+															const support_night_mode = (()=>{
+																return ((based_modelid == "GT-BE98" || based_modelid == "GT-BE98_PRO" || based_modelid == "GT-BE96") ? true : false);
+															})();
+															if(support_night_mode){
+																$ledg_html.find(".light_effect_mask").css({
+																	"width":"102%",
+																	"margin-left":"-1%",
+																	"height":"102%"
+																});
+																$(this).css({
+																	"transform":"scale(0.96)",
+																	"width":"106%",
+																	"height":"106%",
+																	"transform-origin":"top left"
+																});
 															}
 														});
 													}, 1000);

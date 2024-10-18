@@ -143,11 +143,11 @@ function initial(){
 		}
 	});
 
-	var malware = cookie.get("malware");
+	var malware = window.localStorage.getItem("malware");
 	if(malware){
 		showWhitelistField();
 		$("#newDomain").val(malware);
-		cookie.unset("malware");
+		window.localStorage.removeItem("malware");
 	}
 }
 
@@ -291,7 +291,10 @@ function getIPSChart(type, date){
 			setTimeout("getIPSChart('mals', date);", 1000);
 		},
 		success: function(response){
-			collectChart(data, date);
+			if(data != ""){
+				data = JSON.parse(data);
+				collectChart(data, date);
+			}
 		}
 	});
 }

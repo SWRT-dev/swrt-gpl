@@ -27,6 +27,16 @@
 	font-size: 16px;
 	margin-left: 24px;
 }
+.profile_item_container.profile_list .bottom_info{
+	background-color: rgb(245 245 245 / 50%);
+	color: #666;
+}
+.item_text_container .main_info:before{
+	background-image: url(/images/New_ui/SDN/white_theme/Category/ic-build.svg);
+}
+.profile_item_container.wizard .item_text_container .main_info:before{
+	background-image: url(/images/New_ui/SDN/white_theme/Category/ic-build.svg);
+}
 .profile_item_container.wizard .item_text_container .sub_info{
 	color: #4D4D4D;
 	margin-left: 24px;
@@ -61,6 +71,12 @@
 .profile_item_container.Scenario .item_text_container .main_info:before{
 	background-image: url(/images/New_ui/SDN/white_theme/Category/ic-scenario.svg);
 }
+.profile_item_container.MLO .item_text_container .main_info:before{
+	background-image: url(/images/New_ui/SDN/white_theme/Category/ic-mlo.svg);
+}
+.profile_item_container.LEGACY .item_text_container .main_info:before{
+	background-image: url(/images/New_ui/SDN/white_theme/Category/ic-legacy.svg);
+}
 .profile_item_container.feature_desc{
 	border: 1px solid #DCDCDC;
 	background: initial;
@@ -80,43 +96,55 @@
 .item_tag_container > .item_tag.Timer:before{
 	background-image: url(/images/New_ui/SDN/white_theme/Image/timer.svg);
 }
-.item_text_container .sub_info span{
-	color: #006CE1;
+.item_text_container .bottom_info > div:not(:first-child):before{
+	border-right: 1px solid #DCDCDC;
 }
-.item_text_container .sub_info .point_icon{
-	width: 4px;
-	height: 4px;
-	background-color: rgb(77 77 77 / 70%);
+.item_text_container .bottom_info span{
+	color: #181818;
 }
-.item_text_container .sub_info .clients_num{
-	color: #006CE1;
-}
-.item_text_container .sub_info .clients_num:before{
+.item_text_container .clients_num > .icon_client{
 	background-image: url(/images/New_ui/SDN/white_theme/Devices/devices.svg);
 }
-.sub_info .conn_type.WiFi_offline{
+.status_info .split_line{
+	background-color: #DCDCDC;
+}
+.status_info .conn_type.WiFi_offline{
 	background-image: url(/images/New_ui/SDN/white_theme/Notification/wifi_off.svg);
 }
-.sub_info .conn_type.WiFi_2G{
+.status_info .conn_type.WiFi_2G{
 	background-image: url(/images/New_ui/SDN/white_theme/Notification/wifi_2g.svg);
 }
-.sub_info .conn_type.WiFi_2G_lock{
+.status_info .conn_type.WiFi_2G_lock{
 	background-image: url(/images/New_ui/SDN/white_theme/Notification/wifi_2g_lock.svg);
 }
-.sub_info .conn_type.WiFi_5G{
+.status_info .conn_type.WiFi_5G{
 	background-image: url(/images/New_ui/SDN/white_theme/Notification/wifi_5g.svg);
 }
-.sub_info .conn_type.WiFi_5G_lock{
+.status_info .conn_type.WiFi_5G_lock{
 	background-image: url(/images/New_ui/SDN/white_theme/Notification/wifi_5g_lock.svg);
 }
-.sub_info .conn_type.WiFi_6G{
-	background-image: url(/images/New_ui/SDN/white_theme/Notification/wifi_5g.svg);
+.status_info .conn_type.WiFi_6G{
+	background-image: url(/images/New_ui/SDN/white_theme/Notification/wifi_6g.svg);
 }
-.sub_info .conn_type.WiFi_6G_lock{
-	background-image: url(/images/New_ui/SDN/white_theme/Notification/wifi_5g_lock.svg);
+.status_info .conn_type.WiFi_6G_lock{
+	background-image: url(/images/New_ui/SDN/white_theme/Notification/wifi_6g_lock.svg);
 }
-.sub_info .conn_type.LAN{
+.status_info .conn_type.WiFi_mlo{
+	background-image: url(/images/New_ui/SDN/white_theme/Notification/wifi_mlo.svg);
+}
+.status_info .conn_type.WiFi_mlo_lock{
+	background-image: url(/images/New_ui/SDN/white_theme/Notification/wifi_mlo_lock.svg);
+}
+.status_info .conn_type.LAN{
 	background-image: url(/images/New_ui/SDN/white_theme/Notification/LAN.svg);
+}
+.status_info .conn_type.WiFi,
+.status_info .conn_type.WiFi_offline,
+.status_info .conn_type.LAN{
+	background-color: #006CE1;
+}
+.status_info .conn_type.WiFi7{
+	background-color: #000;
 }
 .profile_setting.Get_Start{
 	display: flex;
@@ -194,6 +222,9 @@
 .node_content_container  > .node_info > .node_sub_info{
 	color: #006CE1;
 }
+.node_content_container > .icon_wifi_band{
+	background-image: url(/images/New_ui/amesh/white_theme/client_control.svg);
+}
 .node_container > .node_hint,
 .profile_group > .profile_hint{
 	color: #ff0000;
@@ -253,7 +284,13 @@
 }
 .clientlist_container .client_container:before,
 .clientlist_container .no_client_hint:before{
-	border-bottom: 1px solid #DCDCDC;
+	bottom: initial;
+	top: 0;
+	border-bottom: initial;
+}
+.clientlist_container .client_container:not(:first-child):before,
+.clientlist_container .no_client_hint:not(:first-child):before{
+	border-top: 1px solid #DCDCDC;
 }
 .clientlist_container .no_client_hint{
 	color: #181818;
@@ -281,6 +318,9 @@
 }
 .client_content_container .conn_type.WiFi_6G{
 	background-image: url(/images/New_ui/SDN/white_theme/Notification/wifi_6g.svg);
+}
+.client_content_container .conn_type.WiFi_MLO{
+	background-image: url(/images/New_ui/SDN/white_theme/Notification/wifi_mlo.svg);
 }
 .feature_desc_container .title{
 	color: #006CE1;
@@ -317,5 +357,8 @@
 @media (max-width: 575px) {
 	.popup_container .setting_subtab_container{
 		margin-top: initial;
+	}
+	.export_btn_container > .export_btn .btn_text:before{
+		background-image: url(/images/New_ui/SDN/white_theme/Action/share.svg);
 	}
 }

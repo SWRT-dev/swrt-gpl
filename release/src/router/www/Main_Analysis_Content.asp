@@ -11,13 +11,17 @@
 <link rel="stylesheet" type="text/css" href="index_style.css"> 
 <link rel="stylesheet" type="text/css" href="form_style.css">
 <link rel="stylesheet" type="text/css" href="/device-map/device-map.css">
+<script type="text/javascript" src="/js/jquery.js"></script>
 <script language="JavaScript" type="text/javascript" src="/state.js"></script>
 <script language="JavaScript" type="text/javascript" src="/general.js"></script>
 <script language="JavaScript" type="text/javascript" src="/popup.js"></script>
 <script language="JavaScript" type="text/javascript" src="/help.js"></script>
 <script language="JavaScript" type="text/javascript" src="/validator.js"></script>
-<script language="JavaScript" type="text/javascript" src="/js/jquery.js"></script>
 <script>
+var wans_dualwan_orig = '<% nvram_get("wans_dualwan"); %>';
+var wans_flag =  (wans_dualwan_orig.search("none") != -1 || !dualWAN_support) ? 0 : 1;
+var ipv6_proto_orig = '<% nvram_get("ipv6_service"); %>';
+var ipv61_proto_orig = '<% nvram_get("ipv61_service"); %>';
 function initial(){
 	show_menu();
 	showLANIPList();
@@ -49,11 +53,24 @@ function updateOptions(){
 		document.form.destIP.value = AppListArray[0][1];
 	}
 
-	if(document.form.cmdMethod.value == "ping"){	
+	if(document.form.cmdMethod.value == "ping"){
 		if(document.form.pingCNT.value == ""){
 			document.form.pingCNT.value = 5;
 		}
-		document.form.SystemCmd.value = "ping -c " + document.form.pingCNT.value + " " + document.form.destIP.value;
+		if($("#cmd_for_ipv6_checkbox").is(":checked")){
+			document.form.SystemCmd.value = "ping6 -c " + document.form.pingCNT.value + " " + document.form.destIP.value;
+		}
+		else{
+			document.form.SystemCmd.value = "ping -c " + document.form.pingCNT.value + " " + document.form.destIP.value;
+		}
+	}
+	else if(document.form.cmdMethod.value == "traceroute"){
+		if($("#cmd_for_ipv6_checkbox").is(":checked")){
+			document.form.SystemCmd.value = "traceroute6 " + document.form.destIP.value;
+		}
+		else{
+			document.form.SystemCmd.value = "traceroute " + document.form.destIP.value;
+		}
 	}
 	else
 		document.form.SystemCmd.value = document.form.cmdMethod.value + " " + document.form.destIP.value;
@@ -78,6 +95,7 @@ function hideCNT(_val){
 	}
 	else{
 		document.getElementById("pingCNT_tr").style.display = "none";
+		document.getElementById("cmd_for_ipv6").style.display = "none";
 		document.getElementById("cmdDesc").innerHTML = "<#NetworkTools_nslookup#>";
 	}
 	update_ntool_unit();
@@ -88,9 +106,30 @@ function update_ntool_unit(){
 	var wans_mode = '<%nvram_get("wans_mode");%>';
 	if(sw_mode != 1 || document.form.cmdMethod.value == "nslookup" || !dualWAN_support || wans_mode != "lb" || wans_dualwan_array.indexOf("none") != -1){
 		document.getElementById("wans_ntool_unit").style.display = "none";
+		if(ipv6_proto_orig != "disabled" && (document.form.cmdMethod.value == "ping" || document.form.cmdMethod.value == "traceroute")){
+			document.getElementById("cmd_for_ipv6").style.display = "";
+			$("#cmd_for_ipv6_checkbox").attr('checked', true);
+		}
+		
 		return;
 	}
 	document.getElementById("wans_ntool_unit").style.display = "";
+	if(mtwancfg_support || based_modelid == "BRT-AC828"){   //dual_wans on
+		if(document.form.wans_ntool_unit.value == '0'){
+
+			if(ipv6_proto_orig != "disabled" && (document.form.cmdMethod.value == "ping" || document.form.cmdMethod.value == "traceroute")){
+				document.getElementById("cmd_for_ipv6").style.display = "";
+				$("#cmd_for_ipv6_checkbox").attr('checked', true);
+			}
+		}
+		if(document.form.wans_ntool_unit.value == '1'){
+
+			if(ipv61_proto_orig != "disabled" && (document.form.cmdMethod.value == "ping" || document.form.cmdMethod.value == "traceroute")){
+				document.getElementById("cmd_for_ipv6").style.display = "";
+				$("#cmd_for_ipv6_checkbox").attr('checked', true);
+			}
+		}
+	}
 }
 
 
@@ -249,6 +288,7 @@ function pullLANIPList(obj){
                                                     <img id="pull_arrow" height="14px;" src="/images/unfold_more.svg" onclick="pullLANIPList(this);" title="<#select_network_host#>" onmouseover="over_var=1;" onmouseout="over_var=0;">
                                                     <div id="ClientList_Block_PC" class="clientlist_dropdown"></div>
 												</div>
+												<span id="cmd_for_ipv6" style="display:none;"><input id="cmd_for_ipv6_checkbox" type="checkbox">for IPv6 address</span> <!-- Untranslated -->
 											</td>
 										</tr>
 										<tr id="pingCNT_tr">

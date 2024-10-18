@@ -1,1 +1,0 @@
-../../FUNCTION/ROG_UI/Main_TrafficMonitor_last24.asp

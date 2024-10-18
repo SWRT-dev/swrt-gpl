@@ -128,5 +128,43 @@ extern int delete_wireguard_client(int wgc_index);
 extern int get_wgc_connect_status(struct json_object *wgc_connect_status_obj);
 extern int del_wgsc_list(int s_unit, int c_unit);
 extern int get_wgsc_list(int s_unit, struct json_object *wgsc_list_array);
-extern int get_ASUS_privacy_policy_obj(struct json_object *ASUS_privacy_policy_obj);
+extern int get_ASUS_privacy_policy_tbl(struct json_object *ASUS_privacy_policy_tbl);
+extern int get_ASUS_privacy_policy_info(struct json_object *ASUS_privacy_policy_info);
+extern int set_ASUS_EULA(char *ASUS_EULA);
+extern int set_ASUS_NEW_EULA(char *ASUS_NEW_EULA, char *from_service);
+extern int set_app_mnt(char *app_mnt);
+extern int get_app_mnt(struct json_object *app_mnt_obj);
+extern int set_ASUS_privacy_policy(char *ASUS_privacy_policy, char *force_version, char *from_service);
+#ifdef RTCONFIG_CFGSYNC
+#define CFG_SERVER_PID		"/var/run/cfg_server.pid"
+extern int is_cfg_server_ready();
+extern void notify_cfg_server(json_object *cfg_root, int check);
+extern int check_cfg_changed(json_object *root);
+extern int save_changed_param(json_object *cfg_root, char *param, const char *value);
+#ifdef RTCONFIG_AMAS_CENTRAL_CONTROL
+#ifdef RTCONFIG_AMAS_CAP_CONFIG
+extern int is_cap_private_cfg(char *param);
+#endif	/* RTCONFIG_AMAS_CAP_CONFIG */
+#endif	/* RTCONFIG_AMAS_CENTRAL_CONTROL */
+#endif	/* RTCONFIG_CFGSYNC */
+extern void reset_accpw();
+extern int b64_decode(const char *str, unsigned char *space, int size);
+extern int do_chpass(char *cur_username, char *cur_passwd, char *new_username, char *new_passwd, char *restart_httpd, char *defpass_enable, int from_service_id);
+extern void replace_productid(char *GET_PID_STR, char *RP_PID_STR, int len);
+#ifdef RTCONFIG_AMAS_NEWOB
+extern int amas_newre_selection(char *device_list);
+extern int get_newob_onboardinglist(struct json_object *new_ob_obj);
+#endif
+#ifdef RTCONFIG_AMAS
+extern int do_reboot_action(char *device_list);
+#endif
+extern int do_firmware_check(int from_id);
+extern int do_firmware_upgrade(void);
+extern int do_feedback_mail(struct json_object *feedback_obj);
+extern int is_noFwManual(void);
+extern int do_upload_config(void);
+#if defined(RTCONFIG_ASD) || defined(RTCONFIG_AHS)
+extern int set_security_update(char *security_update);
+extern int get_security_update(void);
+#endif
 #endif /* !__WEBAPI_H__ */

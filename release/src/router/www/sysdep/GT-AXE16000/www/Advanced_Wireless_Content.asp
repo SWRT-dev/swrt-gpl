@@ -57,7 +57,7 @@ wl_channel_list_5g_2 = JSON.parse('<% channel_list_5g_2(); %>');
 wl_channel_list_6g = JSON.parse('<% channel_list_6g(); %>');
 
 var meshBackhaulAutoSupport = false;
-if(based_modelid == 'XT8PRO' || based_modelid == 'BT12' || based_modelid == 'BQ16' || based_modelid == 'BM68'){
+if(based_modelid == 'XT8PRO' || based_modelid == 'BT12' || based_modelid == 'BQ16' || based_modelid == 'BQ16_PRO' || based_modelid == 'BM68'){
 	meshBackhaulAutoSupport = true;
 }
 
@@ -81,7 +81,7 @@ var unii4Support = (function(){
 	return false;
 })();
 var current_control_channel = [<% wl_control_channel(); %>][0];
-if(based_modelid == 'GT-AXE16000' || based_modelid == 'GT-BE98' || based_modelid == 'GT-BE98_PRO'){
+if(based_modelid == 'GT-AXE16000' || based_modelid == 'GT-BE98' || based_modelid == 'GT-BE98_PRO' || based_modelid == 'BQ16' || based_modelid == 'BQ16_PRO'){
 	var _t = current_control_channel[3];
 	current_control_channel[3] = current_control_channel[2];
 	current_control_channel[2] = current_control_channel[1];
@@ -106,6 +106,10 @@ var smart_connect_mode = parseInt(smart_connect_selif_x).toString(2);
 while(smart_connect_mode.length < 4){
 	smart_connect_mode = '0' + smart_connect_mode;
 }
+
+var wl_nband_info_ui = ["1", "2", "3", "0"];
+var dwb_band_ui_index = wl_nband_info_ui[dwb_info.band];
+
 function initial(){
 	show_menu();
 	if(smart_connect_mode[0] == '1'){
@@ -143,11 +147,23 @@ function initial(){
 
 	handle_smart_connect('<% nvram_get("smart_connect_x"); %>', 'init');
 
-	var showFronthaulAp = ($("#smart_connect_check_2").is(":visible") && $("#smart_connect_check_2").is(":checked")) ? 1 : 0;
+	var showFronthaulAp = ($("#smart_connect_check_" + dwb_band_ui_index).is(":visible") && $("#smart_connect_check_" + dwb_band_ui_index).is(":checked")) ? 1 : 0;
 	gen_fronthaul_ap(showFronthaulAp);
 
 	document.form.band0_ssid.value = decodeURIComponent('<% nvram_char_to_ascii("", "wl3_ssid"); %>');
-	document.form.band01_ssid.value = decodeURIComponent('<% nvram_char_to_ascii("", "wl3_ssid"); %>');
+	if(smart_connect_mode[3] == '1'){
+		document.form.band01_ssid.value = decodeURIComponent('<% nvram_char_to_ascii("", "wl3_ssid"); %>');
+	}
+	else if(smart_connect_mode[2] == '1'){
+		document.form.band01_ssid.value = decodeURIComponent('<% nvram_char_to_ascii("", "wl0_ssid"); %>');
+	}
+	else if(smart_connect_mode[1] == '1'){
+		document.form.band01_ssid.value = decodeURIComponent('<% nvram_char_to_ascii("", "wl1_ssid"); %>');
+	}
+	else if(smart_connect_mode[0] == '1'){
+		document.form.band01_ssid.value = decodeURIComponent('<% nvram_char_to_ascii("", "wl2_ssid"); %>');
+	}
+	
 	// document.form.band012_ssid.value = decodeURIComponent('<% nvram_char_to_ascii("", "wl3_ssid"); %>');
 	document.form.band1_ssid.value = decodeURIComponent('<% nvram_char_to_ascii("", "wl0_ssid"); %>');
 	document.form.band2_ssid.value = decodeURIComponent('<% nvram_char_to_ascii("", "wl1_ssid"); %>');
@@ -168,7 +184,7 @@ function initial(){
 
 	ajax_wl_channel();
 
-	if(meshBackhaulAutoSupport){
+	if(meshBackhaulAutoSupport && document.querySelector('#fh_ap_enabled')){
 		if(document.form.fh_ap_enabled.value === '1'){
 			document.form.fh_ap_enabled.value = '0';
 			document.querySelector('#fh_connection_hint').style.display = '';
@@ -399,7 +415,7 @@ function genBWTable(_unit){
 				based_modelid == "RT-AC66U" || 
 				based_modelid == "RT-AC3200" || 
 				based_modelid == "RT-AC3100" || based_modelid == "RT-AC88U" || based_modelid == "RT-AX88U" || based_modelid == "RT-AC86U" || based_modelid == "GT-AC2900" ||
-				based_modelid == "RT-AC5300" || based_modelid == "GT-AC5300" || based_modelid == "GT-AX11000" || based_modelid == "RT-AX92U" || based_modelid == "RT-AX95Q" || based_modelid == "XT8PRO" || based_modelid == "BT12" || based_modelid == "BQ16" || based_modelid == "BM68" || based_modelid == "XT8_V2" || based_modelid == "RT-AX56_XD4" || based_modelid == "XD4PRO" || based_modelid == "CT-AX56_XD4" || based_modelid == "RT-AX58U" || based_modelid == "RT-AX58U_V2" || based_modelid == "BR63" || based_modelid == "RT-AX3000N" || based_modelid == "TUF-AX3000" || based_modelid == "TUF-AX3000_V2" || based_modelid == "TUF-AX5400" || based_modelid == "TUF-AX5400_V2" || based_modelid == "DSL-AX82U" || based_modelid == "RT-AX82U" || based_modelid == "RT-AX82U_V2"  || based_modelid == "RT-AX56U" || based_modelid == "GT-AXE11000" || based_modelid == "GS-AX3000" || based_modelid == "GS-AX5400" || based_modelid == "GT-AX6000" || based_modelid == "GT-AX11000_PRO" || based_modelid == "ET12" || based_modelid == "XT12" || based_modelid == "GT-AXE16000" || based_modelid == "GT-BE98" || based_modelid == 'GT-BE98_PRO' || based_modelid == "RT-AXE7800" || based_modelid == "GT10" || based_modelid == "RT-AX9000" || based_modelid == "RT-AC53U" || based_modelid == "RT-BE96U" || based_modelid == "XC5" || based_modelid == "GT-BE96") && document.form.wl_nmode_x.value == 1){		//N only
+				based_modelid == "RT-AC5300" || based_modelid == "GT-AC5300" || based_modelid == "GT-AX11000" || based_modelid == "RT-AX92U" || based_modelid == "RT-AX95Q" || based_modelid == "XT8PRO" || based_modelid == "BT12" || based_modelid == "BQ16" || based_modelid == "BQ16_PRO" || based_modelid == "BM68" || based_modelid == "XT8_V2" || based_modelid == "RT-AX56_XD4" || based_modelid == "XD4PRO" || based_modelid == "CT-AX56_XD4" || based_modelid == "RT-AX58U" || based_modelid == "RT-AX58U_V2" || based_modelid == "BR63" || based_modelid == "RT-AX3000N" || based_modelid == "TUF-AX3000" || based_modelid == "TUF-AX3000_V2" || based_modelid == "TUF-AX5400" || based_modelid == "TUF-AX5400_V2" || based_modelid == "DSL-AX82U" || based_modelid == "RT-AX82U" || based_modelid == "RT-AX82U_V2"  || based_modelid == "RT-AX56U" || based_modelid == "GT-AXE11000" || based_modelid == "GS-AX3000" || based_modelid == "GS-AX5400" || based_modelid == "GT-AX6000" || based_modelid == "GT-AX11000_PRO" || based_modelid == "ET12" || based_modelid == "XT12" || based_modelid == "GT-AXE16000" || based_modelid == "GT-BE98" || based_modelid == 'GT-BE98_PRO' || based_modelid == "RT-AXE7800" || based_modelid == "GT10" || based_modelid == "RT-AX9000" || based_modelid == "RT-AC53U" || based_modelid == "RT-BE96U" || based_modelid == "XC5" || based_modelid == "GT-BE96" || based_modelid == "RT-BE88U" || based_modelid == "RT-BE86U") && document.form.wl_nmode_x.value == 1){		//N only
 				bws = [0, 1, 2];
 				bwsDesc = ["20/40 MHz", "20 MHz", "40 MHz"];
 				
@@ -1062,7 +1078,7 @@ function applyRule(){var postObj = new Object();
 	//}
 
 	if(isSupport("amas_fronthaul_network")){
-		if($("#fh_ap_enabled").val() != undefined && $("#fh_ap_enabled").val() != "")
+		if(document.querySelector('#fh_ap_enabled') && $("#fh_ap_enabled").val() != undefined && $("#fh_ap_enabled").val() != "")
 			variable['fh_ap_enabled'] = $("#fh_ap_enabled").val();
 	}
 
@@ -1094,7 +1110,7 @@ function applyRule(){var postObj = new Object();
 	// 	}
 	// }
 
-	if(meshBackhaulAutoSupport){
+	if(meshBackhaulAutoSupport && document.querySelector('#fh_ap_enabled')){
 		if(document.form.fh_ap_enabled.value === '0' && document.querySelector('#fh_connection_hint_checkbox').checked){
 			variable['fh_ap_enabled'] = '1';
 		}
@@ -1133,13 +1149,17 @@ function validateInput(){
 		if(!validator.stringSSID(document.form.band2_ssid)){
 			return false;
 		}
-		
-		if(!check_wl_auth_support($("select[name=band0_auth_mode_x] option:selected"), 0))
-			return false;
-		if(!check_wl_auth_support($("select[name=band1_auth_mode_x] option:selected"), 1))
-			return false;
-		if(!check_wl_auth_support($("select[name=band2_auth_mode_x] option:selected"), 2))
-			return false;
+
+		if(amesh_support && (isSwMode("rt") || isSwMode("ap")) && ameshRouter_support) {
+			if(!check_wl_auth_support($("select[name=band0_auth_mode_x] option:selected"), 3))
+				return false;
+			if(!check_wl_auth_support($("select[name=band1_auth_mode_x] option:selected"), 0))
+				return false;
+			if(!check_wl_auth_support($("select[name=band2_auth_mode_x] option:selected"), 1))
+				return false;
+			if(!check_wl_auth_support($("select[name=band3_auth_mode_x] option:selected"), 2))
+				return false;
+		}
 
 		if(document.form.band0_auth_mode_x.value == 'psk2'
 		|| document.form.band0_auth_mode_x.value == 'sae'
@@ -1717,7 +1737,7 @@ function enableSmartCon(val){
 		if(wl_unit != 0){
 			if(wl_info[wl_unit].bw_160_support){
 				$("#enable_160_field").show();
-				if((based_modelid == 'GT-AX11000' || based_modelid == 'RT-AX92U' || based_modelid == 'RT-AX95Q' || based_modelid == 'XT8PRO' || based_modelid == 'BT12' || based_modelid == 'BQ16' || based_modelid == 'BM68' || based_modelid == 'XT8_V2' || based_modelid == 'GT-AXE11000' || based_modelid == "GT-AX11000_PRO" || based_modelid == "ET12" || based_modelid == "XT12" || based_modelid == "GT-AXE16000" || based_modelid == "GT-BE98" || based_modelid == 'GT-BE98_PRO' || based_modelid == "GT-BE96") && wl2.channel_160m == '' && wl_unit == '2'){
+				if((based_modelid == 'GT-AX11000' || based_modelid == 'RT-AX92U' || based_modelid == 'RT-AX95Q' || based_modelid == 'XT8PRO' || based_modelid == 'BT12' || based_modelid == 'BQ16' || based_modelid == 'BQ16_PRO' || based_modelid == 'BM68' || based_modelid == 'XT8_V2' || based_modelid == 'GT-AXE11000' || based_modelid == "GT-AX11000_PRO" || based_modelid == "ET12" || based_modelid == "XT12" || based_modelid == "GT-AXE16000" || based_modelid == "GT-BE98" || based_modelid == 'GT-BE98_PRO' || based_modelid == "GT-BE96") && wl2.channel_160m == '' && wl_unit == '2'){
 					$("#enable_160_field").hide();
 				}
 			}
@@ -1764,7 +1784,7 @@ function enableSmartCon(val){
 		// document.getElementById("smart_connect_field").style.display = "";
 		document.getElementById("smartcon_rule_link").style.display = "table-cell";
 		$("#enable_160_field").hide();
-		if ((wl_unit == '0' && val == '2') || based_modelid == "RT-AC3200" || ((based_modelid == "RT-AX92U" || based_modelid == "RT-AX95Q" || based_modelid == "XT8PRO" || based_modelid == "BT12" || based_modelid == "BQ16" || based_modelid == "BM68" || based_modelid == "XT8_V2") && country != "EU" && wl_unit == "1")) {
+		if ((wl_unit == '0' && val == '2') || based_modelid == "RT-AC3200" || ((based_modelid == "RT-AX92U" || based_modelid == "RT-AX95Q" || based_modelid == "XT8PRO" || based_modelid == "BT12" || based_modelid == "BQ16" || based_modelid == "BQ16_PRO" || based_modelid == "BM68" || based_modelid == "XT8_V2") && country != "EU" && wl_unit == "1")) {
 			$("#dfs_checkbox").hide();
 		}
 		else {
@@ -1781,7 +1801,7 @@ function enableSmartCon(val){
 		
 		if(dwb_info.mode && wl_unit == dwb_info.band && wl_unit != 0 && bw_160_support) {
 			$("#enable_160_field").show();
-			if((based_modelid == 'GT-AX11000' || based_modelid == 'RT-AX92U' || based_modelid == 'RT-AX95Q' || based_modelid == 'XT8PRO' || based_modelid == 'BT12' || based_modelid == 'BQ16' || based_modelid == 'BM68' || based_modelid == 'XT8_V2' || based_modelid == 'GT-AXE11000' || based_modelid == "GT-AX11000_PRO" || based_modelid == "ET12" || based_modelid == "XT12" || based_modelid == "GT-AXE16000" || based_modelid == "GT-BE98" || based_modelid == 'GT-BE98_PRO' || based_modelid == "GT-BE96") && wl2.channel_160m == '' && wl_unit == '2'){
+			if((based_modelid == 'GT-AX11000' || based_modelid == 'RT-AX92U' || based_modelid == 'RT-AX95Q' || based_modelid == 'XT8PRO' || based_modelid == 'BT12' || based_modelid == 'BQ16' || based_modelid == 'BQ16_PRO' || based_modelid == 'BM68' || based_modelid == 'XT8_V2' || based_modelid == 'GT-AXE11000' || based_modelid == "GT-AX11000_PRO" || based_modelid == "ET12" || based_modelid == "XT12" || based_modelid == "GT-AXE16000" || based_modelid == "GT-BE98" || based_modelid == 'GT-BE98_PRO' || based_modelid == "GT-BE96") && wl2.channel_160m == '' && wl_unit == '2'){
 				$("#enable_160_field").hide();
 			}
 		}
@@ -1820,6 +1840,7 @@ function enableSmartCon(val){
 			if (wl_info.band5g_2_support || wl_info.band6g_support) {
 				band2_channel = '<% nvram_get("wl2_chanspec"); %>';
 				separateGenBWTable('2');
+				separateGenBWTable('3');
 				if(wl_info['2'].bw_160_support){
 					$('#band2_160_field').show();
 				}
@@ -2038,7 +2059,13 @@ function he_frame_mode(obj) {
 	}
 }
 
-var band1_enable_bw_160 = '<% nvram_get("wl0_bw_160"); %>';
+var band1_enable_bw_160 = (function(){
+	if(!wl_info['1'].bw_160_support){
+        return '0'
+    }
+
+	return '<% nvram_get("wl0_bw_160"); %>';
+})();
 var band2_enable_bw_160 = '<% nvram_get("wl1_bw_160"); %>';
 var band3_enable_bw_160 = '<% nvram_get("wl2_bw_160"); %>';
 function separateGenBWTable(unit){
@@ -2080,21 +2107,11 @@ function separateGenBWTable(unit){
 		add_options_x2(document.form.band1_bw, bwsDesc, bws, curBandwidth);
 	}
 	else if(unit == '2'){
-		if(based_modelid == 'GT-BE98'){
-			curBandwidth = '<% nvram_get("wl2_bw"); %>';
-			curChannel = '<% nvram_get("wl2_chanspec"); %>';
-		}
-		else{
-			curBandwidth = '<% nvram_get("wl1_bw"); %>';
-			curChannel = '<% nvram_get("wl1_chanspec"); %>';
-		}
+		curBandwidth = '<% nvram_get("wl1_bw"); %>';
+		curChannel = '<% nvram_get("wl1_chanspec"); %>';	
 		
 		if (band5g_11ax_support) {
-			if(wifi7_support){
-				bws = [0, 1, 2, 3, 5, 6];
-				bwsDesc = ["20/40/80/160/320 MHz", "20 MHz", "40 MHz", "80 MHz", "160 MHz", "320 MHz"];
-			}
-			else if (band2_enable_bw_160 == '1') {
+			if (band2_enable_bw_160 == '1') {
 				if (wl2.channel_160m == '') {
 					bws = [0, 1, 2, 3];
 					bwsDesc = ["20/40/80 MHz", "20 MHz", "40 MHz", "80 MHz"];
@@ -2114,6 +2131,46 @@ function separateGenBWTable(unit){
 			bwsDesc = ["20/40/80 MHz", "20 MHz", "40 MHz", "80 MHz"];
 		}
 
+		add_options_x2(document.form.band2_bw, bwsDesc, bws, curBandwidth);
+	}
+	else if(unit == '3'){
+		curBandwidth = '<% nvram_get("wl2_bw"); %>';
+		curChannel = '<% nvram_get("wl2_chanspec"); %>';
+		if (band5g_11ax_support) {
+			if(wifi7_support){
+				if(wl3.channel_320m.length !== 0){
+					bws = [0, 1, 2, 3, 5, 6];
+					bwsDesc = ["20/40/80/160/320 MHz", "20 MHz", "40 MHz", "80 MHz", "160 MHz", "320 MHz"];
+				}
+				else{
+					bws = [0, 1, 2, 3, 5];
+					bwsDesc = ["20/40/80/160 MHz", "20 MHz", "40 MHz", "80 MHz", "160 MHz"];
+				}
+				
+			}
+			else{
+				if (band3_enable_bw_160 == '1') {
+					if (wl3.channel_160m == '') {
+						bws = [0, 1, 2, 3];
+						bwsDesc = ["20/40/80 MHz", "20 MHz", "40 MHz", "80 MHz"];
+					}
+					else {
+						bws = [0, 1, 2, 3, 5];
+						bwsDesc = ["20/40/80/160 MHz", "20 MHz", "40 MHz", "80 MHz", "160 MHz"];
+					}
+				}
+				else {
+					bws = [0, 1, 2, 3];
+					bwsDesc = ["20/40/80 MHz", "20 MHz", "40 MHz", "80 MHz"];
+				}
+			}
+		
+		}
+		else {
+			bws = [0, 1, 2, 3];
+			bwsDesc = ["20/40/80 MHz", "20 MHz", "40 MHz", "80 MHz"];
+		}
+
 		add_options_x2(document.form.band3_bw, bwsDesc, bws, curBandwidth);
 	}
 
@@ -2121,12 +2178,19 @@ function separateGenBWTable(unit){
 }
 function separateEnable_160MHz(obj){
 	if(obj.id == 'band1_160'){
-		band1_enable_bw_160 = obj.checked ? '1' : '0';
+		band1_enable_bw_160 = (function(){
+			if(!wl_info['1'].bw_160_support){
+				return '0'
+			}
+
+			return obj.checked ? '1' : '0';
+		})();
 		separateGenBWTable('1');
 	}
 	else if(obj.id == 'band2_160'){
 		band2_enable_bw_160 = obj.checked ? '1' : '0';
 		separateGenBWTable('2');
+		separateGenBWTable('3');
 	}
 }
 
@@ -2523,7 +2587,7 @@ function separateGenChannel(unit, channel, bandwidth){
 		if (document.form.band2_channel.value == '0') {
 			if(channel_5g_2.indexOf('100') != -1){
 				$('#band2_acsDFS').show();
-				if(document.form.band2_bw.value == '5'){
+				if(document.form.band2_bw.value == '5' || channel_5g_2.indexOf('149') == -1){
 					document.form.band2_acsDFS_checkbox.checked = true;
 					document.form.band2_acsDFS_checkbox.disabled = true;
 				}
@@ -2544,9 +2608,15 @@ function separateGenChannel(unit, channel, bandwidth){
 			if(document.getElementById('band3_psc6g_checkbox').checked){
 				if(band6gBW160_limit){
 					channel_6g = ['37', '53', '69', '85', '101', '117', '133', '149', '165', '181', '197', '213'];
+					if(ttc.indexOf('CH') != -1 || ttc.indexOf('JP') != -1){
+						channel_6g = ['37', '53', '69', '85'];
+					}
 				}
 				else{
 					channel_6g = ['5', '21', '37', '53', '69', '85', '101', '117', '133', '149', '165', '181', '197', '213', '229'];
+					if(ttc.indexOf('CH') != -1 || ttc.indexOf('JP') != -1){
+						channel_6g = ['5', '21', '37', '53', '69', '85'];
+					}
 				}
 				
 				if(is_EU_sku || ttc.indexOf('AU') != -1 || ttc.indexOf('AA') != -1){
@@ -2571,11 +2641,10 @@ function separateGenChannel(unit, channel, bandwidth){
 
 		if (curBandwidth == '0') {
 			$('#band3_extChannel_field').show();
-
 			var _wl_channel = new Array();
 			loop_auto: for (i = 0; i < channel_6g.length; i++) {
 				var _cur_channel = parseInt(channel_6g[i]);
-				if (wifi7_support) {
+				if (wifi7_support && wl3.channel_320m.length !== 0) {
 					if((wl3.channel_320m.indexOf("6g" + _cur_channel + "/320-1") != -1) || (wl3.channel_320m.indexOf("6g" + _cur_channel + "/320-2") != -1)){
 						if(wl3.channel_320m.indexOf("6g" + _cur_channel + "/320-1") != -1){
 							channel_6g_val.push("6g" + _cur_channel + "/320-1");
@@ -2600,6 +2669,7 @@ function separateGenChannel(unit, channel, bandwidth){
 								channel_6g_val[i] = _cur_channel + "/160";
 							}
 							
+							_wl_channel.push(_cur_channel.toString());		
 							continue loop_auto;
 						}
 					}
@@ -2614,6 +2684,7 @@ function separateGenChannel(unit, channel, bandwidth){
 							channel_6g_val[i] = _cur_channel + "/80";
 						}
 						
+						_wl_channel.push(_cur_channel.toString());
 						continue loop_auto;
 					}
 				}
@@ -2627,6 +2698,7 @@ function separateGenChannel(unit, channel, bandwidth){
 							channel_6g_val[i] = wlextchannel_fourty(_cur_channel);
 						}
 						
+						_wl_channel.push(_cur_channel.toString());
 						continue loop_auto;
 					}
 				}
@@ -2890,7 +2962,7 @@ function separateChannelHandler(unit, channel){
 		if (curCtrlChannel == '0') {
 			if(channel_5g_2.indexOf('100') != -1){
 				$('#band2_acsDFS').show();
-				if(document.form.band2_bw.value == '5'){
+				if(document.form.band2_bw.value == '5' || channel_5g_2.indexOf('149') == -1){
 					document.form.band2_acsDFS_checkbox.checked = true;
 					document.form.band2_acsDFS_checkbox.disabled = true;
 				}
@@ -2909,7 +2981,7 @@ function separateChannelHandler(unit, channel){
 }
 function controlHideSSIDHint() {
 	$("#dwb_band_hide_hint").hide();
-	if(dwb_info.mode && (dwb_info.band == wl_unit) && document.form.smart_connect_x.value == "1" && (based_modelid == "RT-AX92U" || based_modelid == "RT-AX95Q" || based_modelid == "XT8PRO" || based_modelid == "BT12" || based_modelid == "BQ16" || based_modelid == "BM68" || based_modelid == "XT8_V2"))
+	if(dwb_info.mode && (dwb_info.band == wl_unit) && document.form.smart_connect_x.value == "1" && (based_modelid == "RT-AX92U" || based_modelid == "RT-AX95Q" || based_modelid == "XT8PRO" || based_modelid == "BT12" || based_modelid == "BQ16" || based_modelid == "BQ16_PRO" || based_modelid == "BM68" || based_modelid == "XT8_V2"))
 		$("#dwb_band_hide_hint").show();
 }
 function controlAXOnlyHint() {
@@ -2958,6 +3030,7 @@ function auth_method_change(unit, value, flag){
 			$('#band0_radius_ip_field').hide();
 			$('#band0_radius_port_field').hide();
 			$('#band0_radius_key_field').hide();
+			$('#band0_open_suggest').html(stringSafeGet(`<#WLANConfig11b_AuthenticationMethod_EOT_desc#>`));
 			$('#band0_open_suggest').show();
 		}
 		else if(value == 'openowe'){
@@ -3101,6 +3174,7 @@ function auth_method_change(unit, value, flag){
 			$('#band1_radius_ip_field').hide();
 			$('#band1_radius_port_field').hide();
 			$('#band1_radius_key_field').hide();
+			$('#band1_open_suggest').html(stringSafeGet(`<#WLANConfig11b_AuthenticationMethod_EOT_desc#>`));
 			$('#band1_open_suggest').show();
 		}
 		else if(value == 'openowe'){
@@ -3241,6 +3315,7 @@ function auth_method_change(unit, value, flag){
 			$('#band2_radius_ip_field').hide();
 			$('#band2_radius_port_field').hide();
 			$('#band2_radius_key_field').hide();
+			$('#band2_open_suggest').html(stringSafeGet(`<#WLANConfig11b_AuthenticationMethod_EOT_desc#>`));
 			$('#band2_open_suggest').show();
 		}
 		else if(value == 'openowe'){
@@ -3470,6 +3545,7 @@ function auth_method_change(unit, value, flag){
 			$('#band01_radius_ip_field').hide();
 			$('#band01_radius_port_field').hide();
 			$('#band01_radius_key_field').hide();
+			$('#band01_open_suggest').html(stringSafeGet(`<#WLANConfig11b_AuthenticationMethod_EOT_desc#>`));
 			$('#band01_open_suggest').show();
 			/*if(document.form.smart_connect_t.value == '1'){
 				if(document.form.band2_auth_mode_x.value != 'owe'){
@@ -3768,7 +3844,19 @@ function handle_channel(unit, channel){
 		cur_control_channel = channel;
 		_ch = '<% nvram_get("wl1_chanspec"); %>';
 		if(cur_control_channel == '0'){
-			$('#band2_acsDFS').show();
+			if(wl_channel_list_5g_2.indexOf('100') != -1){
+				$('#band2_acsDFS').show();
+				if(document.form.band2_bw.value == '5' || wl_channel_list_5g_2.indexOf('149') == -1){
+					document.form.band2_acsDFS_checkbox.checked = true;
+					document.form.band2_acsDFS_checkbox.disabled = true;
+				}
+				else{
+					document.form.band2_acsDFS_checkbox.disabled = false;
+				}
+			}
+			else{
+				$('#band2_acsDFS').hide();
+			}
 		}
 		else{
 			$('#band2_acsDFS').hide();
@@ -4163,9 +4251,15 @@ function channel_6g(bw){
 	if(document.getElementById('band3_psc6g_checkbox').checked){
 		if(band6gBW160_limit){
 			wl_channel_list_6g = ['37', '53', '69', '85', '101', '117', '133', '149', '165', '181', '197', '213'];
+			if(ttc.indexOf('CH') != -1 || ttc.indexOf('JP') != -1){
+				wl_channel_list_6g = ['37', '53', '69', '85'];
+			}
 		}
 		else{
 			wl_channel_list_6g = ['5', '21', '37', '53', '69', '85', '101', '117', '133', '149', '165', '181', '197', '213', '229'];
+			if(ttc.indexOf('CH') != -1 || ttc.indexOf('JP') != -1){
+				wl_channel_list_6g = ['5', '21', '37', '53', '69', '85'];
+			}
 		}		
 		
 		if(is_EU_sku || ttc.indexOf('AU') != -1 || ttc.indexOf('AA') != -1){
@@ -4406,7 +4500,7 @@ function handle_smart_connect(value, flag){
 			$("#band1_acsDFS").hide();
 		}
 
-		if(wl_info['2'].dfs_support){
+		if(wl_info['2'].dfs_support && document.form.band2_channel.value == '0'){
 			$("#band2_acsDFS").show();
 		}
 		else{
@@ -4454,12 +4548,11 @@ function handle_smart_connect(value, flag){
 				$("#band2_160_field").hide();	
 			}
 
-
-			if(wl_info['2'].dfs_support){
-				$("#band2_acsDFS").show();
-			}
-			else{
-				$("#band2_acsDFS").hide();
+				if(wl_info['2'].dfs_support && document.form.band2_channel.value == '0'){
+					$("#band2_acsDFS").show();
+				}
+				else{
+					$("#band2_acsDFS").hide();
 			}
 		}
 		else{
@@ -4475,7 +4568,7 @@ function handle_smart_connect(value, flag){
 			}
 
 
-			if(wl_info['2'].dfs_support){
+			if(wl_info['2'].dfs_support && document.form.band2_channel.value == '0'){
 				$("#band2_acsDFS").show();
 			}
 			else{
@@ -4551,7 +4644,7 @@ function handle_smart_connect(value, flag){
 			$('#band0_ssid_field').show();
 			$('#band0_auth_method_field').show();
 
-			auth_method_change('3', document.form.band0_auth_mode_x.value);
+			auth_method_change('0', document.form.band0_auth_mode_x.value);
 		}
 
 		if(value == '1'){
@@ -4725,13 +4818,13 @@ function handle_smart_connect(value, flag){
 	// 	}
 	// }
 
-	var showFronthaulAp = ($("#smart_connect_check_2").is(":visible") && $("#smart_connect_check_2").is(":checked")) ? 1 : 0;
+	var showFronthaulAp = ($("#smart_connect_check_" + dwb_band_ui_index).is(":visible") && $("#smart_connect_check_" + dwb_band_ui_index).is(":checked")) ? 1 : 0;
 	gen_fronthaul_ap(showFronthaulAp);
 }
 function handleAiMeshBackhaul(value){
 	var fh_ap_enabled = '<% nvram_get("fh_ap_enabled"); %>';
 	if(value === '2'){
-		if(meshBackhaulAutoSupport){
+		if(meshBackhaulAutoSupport && document.querySelector('#fh_ap_enabled')){
 			document.querySelector('#fh_connection_hint').style.display = 'none';
 			document.querySelector('#fh_ap_enabled').value = '2';
 		}
@@ -4790,12 +4883,10 @@ function handleUNII4Hint(value){
 }
 
 function gen_fronthaul_ap(value){
-	if(isSupport("amas_fronthaul_network")){
-		
+	if(isSupport("amas_fronthaul_network")){		
 		$(".fronthaul_ap").remove();
 		var get_cfg_clientlist = httpApi.hookGet("get_cfg_clientlist", true);
 		if(get_cfg_clientlist[0] != undefined){
-			
 			var $selectObj = $("<select/>").attr("id","fh_ap_enabled").addClass("input_option");
 			if(meshBackhaulAutoSupport || unii4Support) {
 				$selectObj.attr('onChange', 'handleAiMeshBackhaul(this.value)');
@@ -4824,7 +4915,7 @@ function gen_fronthaul_ap(value){
 					$trObj.append($thObj).append($tdObj.append(fh_connect_obj));
 				}
 
-				$("#band2_ssid_field").after($trObj);
+				$("#band" + dwb_band_ui_index + "_ssid_field").after($trObj);
 				var fh_ap_enabled = httpApi.nvramGet(["fh_ap_enabled"]).fh_ap_enabled;
 				if(fh_ap_enabled != "" && $selectObj.children("option[value=" + fh_ap_enabled + "]").length > 0)
 					$selectObj.val(fh_ap_enabled);
@@ -4996,7 +5087,7 @@ function updateSmartConnect(unit, checked){
 <input type="hidden" name="wl2_bw_160" value='<% nvram_get("wl2_bw_160"); %>'>
 <input type="hidden" name="wl2_auth_mode_x" value='<% nvram_get("wl2_auth_mode_x"); %>'>
 <input type="hidden" name="wl2_crypto" value='<% nvram_get("wl2_crypto"); %>'>
-<input type="hidden" name="wl2_wpa_psk" value='<% nvram_get("wl2_wpa_psk"); %>'>
+<input type="hidden" name="wl2_wpa_psk" value='<% nvram_char_to_ascii("WLANConfig11b", "wl2_wpa_psk"); %>'>
 <input type="hidden" name="wl2_mfp" value='<% nvram_get("wl2_mfp"); %>'>
 <input type="hidden" name="wl2_wpa_gtk_rekey" value='<% nvram_get("wl2_wpa_gtk_rekey"); %>'>
 
@@ -5159,7 +5250,7 @@ function updateSmartConnect(unit, checked){
 					<td>
 						<select name="band01_auth_mode_x" class="input_option select_auth_mode" onChange="auth_method_change('01', this.value);">
 							<option value="open"    <% nvram_match("wl0_auth_mode_x", "open",   "selected"); %>>Open System</option>
-							<option value="openowe" <% nvram_match("wl0_auth_mode_x", "openowe", "selected"); %>>Enhanced Open Transition</option>
+							<option value="openowe" <% nvram_match("wl0_auth_mode_x", "openowe", "selected"); %>><#WLANConfig11b_AuthenticationMethod_EOT#></option>
 							<option value="psk2"    <% nvram_match("wl0_auth_mode_x", "psk2",   "selected"); %>>WPA2-Personal</option>
 							<option value="sae"    <% nvram_match("wl0_auth_mode_x", "sae",   "selected"); %>>WPA3-Personal</option>
 							<option value="pskpsk2" <% nvram_match("wl0_auth_mode_x", "pskpsk2","selected"); %>>WPA/WPA2-Personal</option>
@@ -5171,7 +5262,7 @@ function updateSmartConnect(unit, checked){
 							<option value="suite-b" <% nvram_match("wl0_auth_mode_x", "suite-b","selected"); %>>WPA3 Enterprise 192-bit</option>
 						</select>
 						<div class="setup_help_icon" style="display:none;"></div>
-						<span id="band01_open_suggest" style="display:none">Suggest to use "Enhanced Open transition" for better device compatibility</span>
+						<span id="band01_open_suggest" style="display:none;"></span>
 					</td>
 				</tr>
 				<tr id="band01_encrypt_field">
@@ -5292,7 +5383,7 @@ function updateSmartConnect(unit, checked){
 					<td>
 						<select name="band0_auth_mode_x" class="input_option select_auth_mode" onChange="auth_method_change('0', this.value);">
 							<option value="open"    <% nvram_match("wl3_auth_mode_x", "open",   "selected"); %>>Open System</option>
-							<option value="openowe" <% nvram_match("wl3_auth_mode_x", "openowe", "selected"); %>>Enhanced Open Transition</option>
+							<option value="openowe" <% nvram_match("wl3_auth_mode_x", "openowe", "selected"); %>><#WLANConfig11b_AuthenticationMethod_EOT#></option>
 							<option value="psk2"    <% nvram_match("wl3_auth_mode_x", "psk2",   "selected"); %>>WPA2-Personal</option>
 							<option value="sae"    <% nvram_match("wl3_auth_mode_x", "sae",   "selected"); %>>WPA3-Personal</option>
 							<option value="pskpsk2" <% nvram_match("wl3_auth_mode_x", "pskpsk2","selected"); %>>WPA/WPA2-Personal</option>
@@ -5304,7 +5395,7 @@ function updateSmartConnect(unit, checked){
 							<option value="suite-b" <% nvram_match("wl3_auth_mode_x", "suite-b","selected"); %>>WPA3 Enterprise 192-bit</option>
 						</select>
 						<div class="setup_help_icon" style="display:none;"></div>
-						<span id="band0_open_suggest" style="display:none">Suggest to use "Enhanced Open transition" for better device compatibility</span>
+						<span id="band0_open_suggest" style="display:none;"></span>
 					</td>
 				</tr>
 
@@ -5428,7 +5519,7 @@ function updateSmartConnect(unit, checked){
 					<td>
 						<select name="band1_auth_mode_x" class="input_option select_auth_mode" onChange="auth_method_change('1', this.value);">
 							<option value="open"    <% nvram_match("wl0_auth_mode_x", "open",   "selected"); %>>Open System</option>
-							<option value="openowe" <% nvram_match("wl0_auth_mode_x", "openowe", "selected"); %>>Enhanced Open Transition</option>
+							<option value="openowe" <% nvram_match("wl0_auth_mode_x", "openowe", "selected"); %>><#WLANConfig11b_AuthenticationMethod_EOT#></option>
 							<option value="psk2"    <% nvram_match("wl0_auth_mode_x", "psk2",   "selected"); %>>WPA2-Personal</option>
 							<option value="sae"    <% nvram_match("wl0_auth_mode_x", "sae",   "selected"); %>>WPA3-Personal</option>
 							<option value="pskpsk2" <% nvram_match("wl0_auth_mode_x", "pskpsk2","selected"); %>>WPA/WPA2-Personal</option>
@@ -5440,7 +5531,7 @@ function updateSmartConnect(unit, checked){
 							<option value="suite-b" <% nvram_match("wl0_auth_mode_x", "suite-b","selected"); %>>WPA3 Enterprise 192-bit</option>
 						</select>
 						<div class="setup_help_icon" style="display:none;"></div>
-						<span id="band1_open_suggest">Suggest to use "Enhanced Open transition" for better device compatibility</span>
+						<span id="band1_open_suggest"  style="display:none;"></span>
 					</td>
 				</tr>
 
@@ -5566,7 +5657,7 @@ function updateSmartConnect(unit, checked){
 					<td>
 						<select name="band2_auth_mode_x" class="input_option select_auth_mode" onChange="auth_method_change('2', this.value);">
 							<option value="open"    <% nvram_match("wl1_auth_mode_x", "open",   "selected"); %>>Open System</option>
-							<option value="openowe" <% nvram_match("wl1_auth_mode_x", "openowe", "selected"); %>>Enhanced Open Transition</option>
+							<option value="openowe" <% nvram_match("wl1_auth_mode_x", "openowe", "selected"); %>><#WLANConfig11b_AuthenticationMethod_EOT#></option>
 							<option value="psk2"    <% nvram_match("wl1_auth_mode_x", "psk2",   "selected"); %>>WPA2-Personal</option>
 							<option value="sae"    <% nvram_match("wl1_auth_mode_x", "sae",   "selected"); %>>WPA3-Personal</option>
 							<option value="pskpsk2" <% nvram_match("wl1_auth_mode_x", "pskpsk2","selected"); %>>WPA/WPA2-Personal</option>
@@ -5578,7 +5669,7 @@ function updateSmartConnect(unit, checked){
 							<option value="suite-b" <% nvram_match("wl1_auth_mode_x", "suite-b","selected"); %>>WPA3 Enterprise 192-bit</option>
 						</select>
 						<div class="setup_help_icon" style="display:none;"></div>
-						<span id="band2_open_suggest" style="display:none">Suggest to use "Enhanced Open transition" for better device compatibility</span>
+						<span id="band2_open_suggest" style="display:none;"></span>
 					</td>
 				</tr>
 
@@ -5663,11 +5754,12 @@ function updateSmartConnect(unit, checked){
 					<th><#WLANConfig11b_ChannelBW_itemname#></th>
 					<td>
 						<select name="band3_bw" class="input_option" onChange="handle_bandwidth(3, this.value);">
-							<option value="0" <% nvram_match("wl2_bw", "0", "selected"); %>>20/40/80/160 MHz</option>
+							<option value="0" <% nvram_match("wl2_bw", "0", "selected"); %>>20/40/80/160/320 MHz</option>
 							<option value="1" <% nvram_match("wl2_bw", "1", "selected"); %>>20 MHz</option>
 							<option value="2" <% nvram_match("wl2_bw", "2", "selected"); %>>40 MHz</option>
 							<option value="3" <% nvram_match("wl2_bw", "3", "selected"); %>>80 MHz</option>
 							<option value="5" <% nvram_match("wl2_bw", "5", "selected"); %>>160 MHz</option>
+							<option value="6" <% nvram_match("wl2_bw", "6", "selected"); %>>320 MHz</option>
 						</select>
 					</td>
 				</tr>
@@ -5679,7 +5771,7 @@ function updateSmartConnect(unit, checked){
 						<span id="band3_psc6g" style="">
 							<input id="band3_psc6g_checkbox" type="checkbox" onclick="separateGenChannel('3', document.form.band3_channel.value, document.form.band3_bw.value);" <% nvram_match("psc6g", "1" , "checked" ); %>><#Enable_PSC_Hint#><br>
 						</span>
-						<span id="band3_auto_suggest">Suggest to use "Auto" for better device compatibility<br></span>
+						<span id="band3_auto_suggest"><#WLANConfig11b_AuthenticationMethod_auto_desc#><br></span>
 						<span><#PSC_Faq#></span>
 					</td>
 				</tr>

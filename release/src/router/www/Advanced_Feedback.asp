@@ -14,12 +14,12 @@
 <title><#Web_Title#> - <#menu_feedback#></title>
 <link rel="stylesheet" type="text/css" href="index_style.css"> 
 <link rel="stylesheet" type="text/css" href="form_style.css">
+<script type="text/javascript" src="/js/jquery.js"></script>
 <script language="JavaScript" type="text/javascript" src="/state.js"></script>
 <script language="JavaScript" type="text/javascript" src="/general.js"></script>
 <script language="JavaScript" type="text/javascript" src="/popup.js"></script>
 <script language="JavaScript" type="text/javascript" src="/help.js"></script>
 <script language="JavaScript" type="text/javascript" src="/validator.js"></script>
-<script language="JavaScript" type="text/javascript" src="js/jquery.js"></script>
 <script type="text/javascript" src="js/oauth.js"></script>
 <script type="text/javascript" src="js/httpApi.js"></script>
 <style>
@@ -60,6 +60,7 @@ var several_hour = "<#feedback_when_hour#>";
 var updated_several_hour = several_hour.replace('%2$@', '3');	//1-3
 var several_hours = "<#feedback_when_hours#>";
 var updated_several_hours = several_hour.replace('%1$@', '3').replace('%2$@', '12');	//3-12
+var fb_state = httpApi.nvramGet(["fb_state"], true).fb_state;
 
 function initial(){
 	show_menu();
@@ -72,6 +73,7 @@ function initial(){
 		document.getElementById("fb_desc0").style.display = "";
 		inputCtrl(document.form.fb_ISP, 0);
 		inputCtrl(document.form.fb_Subscribed_Info, 0);
+		document.form.gen_tarball_id.checked = false;
 		document.form.attach_syslog_id.checked = true;
 		document.form.attach_cfgfile_id.checked = true;
 		document.form.attach_iptables.checked = false;
@@ -108,6 +110,15 @@ function initial(){
 		init_diag_feature();
 	else {
 		$(".dblog_support_class").remove();
+	}
+
+	if(fb_state == "2"){
+		$('html, body').hide();
+		redirect();
+	}
+	else if(fb_state == "0"){
+		disbled_feedback_filed(0);
+		detect_fb_state();
 	}
 
 	if(false){
@@ -171,21 +182,37 @@ function gen_contact_sel(){
 	}
 }
 
+/*
+ * option status:
+ * 0: feedback proceeding
+ * 1: wan disconnect
+ */
+function disbled_feedback_filed(status){
+	document.form.eula_checkbox.disabled = true;
+	document.form.fb_country.disabled = true;
+	document.form.fb_email.disabled = true;
+	document.form.fb_serviceno.disabled = true;
+		document.form.gen_tarball.disabled = true;
+	document.form.attach_syslog.disabled = true;
+	document.form.attach_cfgfile.disabled = true;
+	document.form.attach_modemlog.disabled = true;
+	document.form.attach_wlanlog.disabled = true;
+	document.form.fb_ptype.disabled = true;
+	document.form.fb_pdesc.disabled = true;
+	document.form.fb_comment.disabled = true;
+	document.form.btn_send.disabled = true;
+	if(status == 0){
+		$(".dblog_disabled_status").find("input, textarea, button, select").attr("disabled", true);
+	}
+	else if(status == 1){
+		document.getElementById("fb_desc_disconnect").style.display = "";
+	}
+}
+
 function check_wan_state(){
 	
 	if(sw_mode != 3 && document.getElementById("connect_status").className == "connectstatusoff"){
-		document.getElementById("fb_desc_disconnect").style.display = "";
-		document.form.fb_country.disabled = true;
-		document.form.fb_email.disabled = true;
-		document.form.fb_serviceno.disabled = true;
-		document.form.attach_syslog.disabled = true;
-		document.form.attach_cfgfile.disabled = true;
-		document.form.attach_modemlog.disabled = true;
-		document.form.attach_wlanlog.disabled = true;
-		document.form.fb_ptype.disabled = true;
-		document.form.fb_pdesc.disabled = true;
-		document.form.fb_comment.disabled = true;
-		document.form.btn_send.disabled = true;
+		disbled_feedback_filed(1);
 		if(dsl_support){
 			document.form.fb_ISP.disabled = true;
 			document.form.fb_Subscribed_Info.disabled = true;
@@ -203,6 +230,7 @@ function check_wan_state(){
 		document.form.fb_country.disabled = "";
 		document.form.fb_email.disabled = "";
 		document.form.fb_serviceno.disabled = "";
+		document.form.gen_tarball.disabled = "";
 		document.form.attach_syslog.disabled = "";
 		document.form.attach_modemlog.disabled = "";
 		document.form.attach_wlanlog.disabled = "";
@@ -586,6 +614,11 @@ function applyRule(){
 				alert("Feedback report daily maximum(10) send limit reached.");
 				return false;
 		}*/
+		if(document.form.gen_tarball.checked == true)
+			document.form.fb_gen_tarball.value = 1;
+		else
+			document.form.fb_gen_tarball.value = 0;
+
 		if(document.form.attach_syslog.checked == true)
 			document.form.fb_attach_syslog.value = 1;
 		else
@@ -1206,6 +1239,14 @@ function CheckFBSize(){
 		}
 	});
 }
+
+function detect_fb_state(){
+	var fb_state = httpApi.nvramGet(["fb_state"], true).fb_state;
+	if(fb_state == "0")
+		setTimeout("detect_fb_state();", 5000);
+	else
+		top.location.href="Advanced_Feedback.asp";
+}
 </script>
 </head>
 <body onload="initial();" onunLoad="return unload_body();" class="bg">
@@ -1238,6 +1279,7 @@ function CheckFBSize(){
 <input type="hidden" name="action_mode" value="apply">
 <input type="hidden" name="action_script" value="restart_sendfeedback">
 <input type="hidden" name="action_wait" value="60">
+<input type="hidden" name="fb_gen_tarball" value="">
 <input type="hidden" name="fb_attach_syslog" value="">
 <input type="hidden" name="fb_attach_cfgfile" value="">
 <input type="hidden" name="fb_attach_iptables" value="">	
@@ -1319,6 +1361,12 @@ function CheckFBSize(){
 <td>
 	<select class="input_option" name="fb_contact_type"></select>
 	<input type="text" name="fb_phone" maxlength="50" class="input_25_table" value="" autocorrect="off" autocapitalize="off">	
+</td>
+</tr>
+<tr>
+<th>Special options</th>
+<td>
+	<input type="checkbox" class="input" name="gen_tarball" id="gen_tarball_id"><label for="gen_tarball_id">Generate downloadable logs as ASUS support requested<!--Untranslated--></label>&nbsp;&nbsp;&nbsp;
 </td>
 </tr>
 <tr>

@@ -283,9 +283,11 @@ function cal_panel_s46_ports(obj, multiple) {
 
 function exist_v6plus_conflict(){	//0 for no issue
 	var count=0;
-	$.each(check_ipv6_s46_ports, function (key, data) {
-	if(data=='1'){count += 1;}
-	})
+	if(check_ipv6_s46_ports != "0"){
+		$.each(check_ipv6_s46_ports, function (key, data) {
+			if(data=='1'){count += 1;}
+		})
+	}
 	return count;
 }
 
@@ -369,7 +371,7 @@ var notification = {
 	s46_ports: 0,
 	notiClick: function(){
 		// stop flashing after the event is checked.
-		cookie.set("notification_history", [notification.upgrade, notification.wifi_2g ,notification.wifi_5g, notification.wifi_5g2, notification.ftp ,notification.samba ,notification.loss_sync ,notification.experience_FB ,notification.notif_hint, notification.mobile_traffic, 
+		window.localStorage.setItem("notification_history", [notification.upgrade, notification.wifi_2g ,notification.wifi_5g, notification.wifi_5g2, notification.ftp ,notification.samba ,notification.loss_sync ,notification.experience_FB ,notification.notif_hint, notification.mobile_traffic, 
 											notification.send_debug_log, notification.sim_record, notification.pppoe_tw, notification.pppoe_tw_static, notification.ie_legacy, notification.s46_ports].join(), 1000);
 		clearInterval(notification.flashTimer);
 		document.getElementById("notification_status").className = "notification_on";
@@ -475,7 +477,7 @@ var notification = {
 		else if(notification.stat == "on" && !notification.mobile_traffic && !notification.sim_record && !notification.upgrade && !notification.wifi_2g &&
 				!notification.wifi_5g && !notification.ftp && !notification.samba && !notification.loss_sync && !notification.experience_FB && !notification.notif_hint && !notification.mobile_traffic && 
 				!notification.send_debug_log && !notification.pppoe_tw && !notification.pppoe_tw_static && !notification.ie_legacy && !notification.s46_ports){
-			cookie.unset("notification_history");
+			window.localStorage.removeItem("notification_history");
 			clearInterval(notification.flashTimer);
 			document.getElementById("notification_status").className = "notification_off";
 		}
@@ -483,7 +485,7 @@ var notification = {
 
 	run: function(){
 	/*-- notification start --*/
-		cookie.unset("notification_history");
+		window.localStorage.removeItem("notification_history");
 		if(notice_pw_is_default == 1){	//case1
 			notification.array[0] = 'noti_acpw';
 			notification.acpw = 1;
@@ -493,34 +495,29 @@ var notification = {
 		}else
 			notification.acpw = 0;
 
-		if(amesh_support && ameshRouter_support) {
-			if(aimesh_system_new_fw_flag) {
-				notification.array[1] = 'noti_upgrade';
-				notification.upgrade = 1;
-				notification.desc[1] = '<#ASUSGATE_note2#>';
-				notification.action_desc[1] = '<#ASUSGATE_act_update#>';
-				notification.clickCallBack[1] = "location.href = 'Advanced_FirmwareUpgrade_Content.asp?confirm_show=0';"
+		var noti_upgrade_flag = 0;
+		if(amesh_support && ameshRouter_support && aimesh_system_new_fw_flag) {
+			notification.array[1] = 'noti_upgrade';
+			noti_upgrade_flag = 1;
+			notification.desc[1] = '<#ASUSGATE_note2#>';
+			notification.action_desc[1] = '<#ASUSGATE_act_update#>';
+			notification.clickCallBack[1] = "location.href = 'Advanced_FirmwareUpgrade_Content.asp?confirm_show=0';"
+		}
+		if(noti_upgrade_flag == 0 && (webs_state_flag == 1 || webs_state_flag == 2)){
+			notification.array[1] = 'noti_upgrade';
+			noti_upgrade_flag = 1;
+			notification.desc[1] = '<#ASUSGATE_note2#>';
+			if(!live_update_support || !HTTPS_support){
+				notification.action_desc[1] = '<a id="link_to_downlodpage" target="_blank" href="'+get_helplink()+'" style="color:#FFCC00;"><#ASUSGATE_act_update#></a>';
+				notification.clickCallBack[1] = "";
 			}
-			else
-				notification.upgrade = 0;
+			else{
+				notification.action_desc[1] = '<#ASUSGATE_act_update#>';
+				notification.clickCallBack[1] = "location.href = 'Advanced_FirmwareUpgrade_Content.asp?confirm_show=0'";
+			}
 		}
-		else {
-			if(webs_state_flag == 1 || webs_state_flag == 2){
-				notification.array[1] = 'noti_upgrade';
-				notification.upgrade = 1;
-				notification.desc[1] = '<#ASUSGATE_note2#>';
-				if(!live_update_support || !HTTPS_support){
-					notification.action_desc[1] = '<a id="link_to_downlodpage" target="_blank" href="'+get_helplink()+'" style="color:#FFCC00;"><#ASUSGATE_act_update#></a>';
-					notification.clickCallBack[1] = "";
-				}
-				else{
-					notification.action_desc[1] = '<#ASUSGATE_act_update#>';
-					notification.clickCallBack[1] = "location.href = 'Advanced_FirmwareUpgrade_Content.asp?confirm_show=0'";
-				}
-			}else
-				notification.upgrade = 0;
-		}
-		
+		notification.upgrade = (noti_upgrade_flag == 1)? 1:0;
+				
 		if(band2g_support && sw_mode != 4 && noti_auth_mode_2g == 'open'){ //case3-1
 				notification.array[2] = 'noti_wifi_2g';
 				notification.wifi_2g = 1;
@@ -698,7 +695,7 @@ var notification = {
 			tarObj1.className = "notification_on1";
 		}
 
-		if(this.flash == "on" && cookie.get("notification_history") != [notification.upgrade, notification.wifi_2g ,notification.wifi_5g ,notification.ftp ,notification.samba ,notification.loss_sync ,notification.experience_FB ,notification.notif_hint, notification.mobile_traffic, notification.send_debug_log, notification.sim_record, notification.pppoe_tw, notification.pppoe_tw_static, notification.ie_legacy, notification.s46_ports].join()){
+		if(this.flash == "on" && window.localStorage.getItem("notification_history") != [notification.upgrade, notification.wifi_2g ,notification.wifi_5g ,notification.ftp ,notification.samba ,notification.loss_sync ,notification.experience_FB ,notification.notif_hint, notification.mobile_traffic, notification.send_debug_log, notification.sim_record, notification.pppoe_tw, notification.pppoe_tw_static, notification.ie_legacy, notification.s46_ports].join()){
 			notification.flashTimer = setInterval(function(){
 				tarObj.className = (tarObj.className == "notification_on") ? "notification_off" : "notification_on";
 			}, 1000);

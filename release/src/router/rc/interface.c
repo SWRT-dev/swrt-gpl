@@ -571,6 +571,69 @@ int ipv6_mapaddr4(struct in6_addr *addr6, int ip6len, struct in_addr *addr4, int
 }
 #endif
 
+#ifdef RTCONFIG_MULTISERVICE_WAN
+static void _mswan_stb_add()
+{
+#ifdef RTCONFIG_DUALWAN
+	int wan_type = get_dualwan_primary();
+#endif
+	int i = 0;
+	char wan_prefix[16] = {0};
+	int bridge_enable = 0;
+
+#ifdef RTCONFIG_DUALWAN
+	if (wan_type != WANS_DUALWAN_IF_WAN
+	 && wan_type != WANS_DUALWAN_IF_WAN2
+	)
+		return;
+#endif
+
+	for (i = 1; i < WAN_MULTISRV_MAX; i++) {
+		snprintf(wan_prefix, sizeof(wan_prefix), "wan%d_", get_ms_wan_unit(WAN_UNIT_FIRST, i));
+		if (nvram_pf_get_int(wan_prefix, "auto_stb"))
+			return;
+		if (nvram_pf_get_int(wan_prefix, "enable") && nvram_pf_match(wan_prefix, "proto", "bridge"))
+			bridge_enable = 1;
+	}
+
+	if (bridge_enable == 0) {
+		for (i = 1; i < WAN_MULTISRV_MAX; i++) {
+			snprintf(wan_prefix, sizeof(wan_prefix), "wan%d_", get_ms_wan_unit(WAN_UNIT_FIRST, i));
+			if (nvram_pf_get_int(wan_prefix, "enable"))
+				continue;
+			nvram_pf_set(wan_prefix, "enable", "1");
+			nvram_pf_set(wan_prefix, "proto", "bridge");
+			nvram_pf_set(wan_prefix, "auto_stb", "1");
+			break;
+		}
+	}
+}
+static void _mswan_stb_del()
+{
+#ifdef RTCONFIG_DUALWAN
+	int wan_type = get_dualwan_primary();
+#endif
+	int i = 0;
+	char wan_prefix[16] = {0};
+
+#ifdef RTCONFIG_DUALWAN
+	if (wan_type != WANS_DUALWAN_IF_WAN
+	 && wan_type != WANS_DUALWAN_IF_WAN2
+	)
+		return;
+#endif
+
+	for (i = 1; i < WAN_MULTISRV_MAX; i++) {
+		snprintf(wan_prefix, sizeof(wan_prefix), "wan%d_", get_ms_wan_unit(WAN_UNIT_FIRST, i));
+		if (nvram_pf_get_int(wan_prefix, "auto_stb")) {
+			nvram_pf_set(wan_prefix, "enable", "0");
+			nvram_pf_unset(wan_prefix, "auto_stb");
+			break;
+		}
+	}
+}
+#endif
+
 /* configure/start vlan interface(s) based on nvram settings */
 int start_vlan(void)
 {
@@ -669,16 +732,6 @@ int start_vlan(void)
 		set_wan_tag(wan_base_if);
 	}
 #endif
-#ifdef RTCONFIG_DUPVIF
-	if (nvram_match("switch_wantag", "hinet_mesh")) {
-		if (!module_loaded("dupvif")) {
-			char prefix[] = "wanXXX_", params[16];
-			snprintf(prefix, sizeof(prefix), "wan%d_", WAN_UNIT_IPTV);
-			snprintf(params, sizeof(params), "nic=%s", nvram_pf_get(prefix, "ifname"));
-			modprobe("dupvif", params);
-		}
-	}
-#endif
 #ifdef CONFIG_BCMWL5
 #ifndef HND_ROUTER
 	if(!nvram_match("switch_wantag", "none")&&!nvram_match("switch_wantag", "")&&!nvram_match("switch_wantag", "hinet"))
@@ -709,6 +762,9 @@ int start_vlan(void)
 
 #if defined(HND_ROUTER)
 	if (!nvram_match("switch_wantag", "")
+#if defined(RTCONFIG_AMAS)
+		&& (nvram_get_int("re_mode") != 1)
+#endif
 		&& (nvram_get_int("switch_stb_x") > 0 || (nvram_get_int("switch_stb_x") == 0 && nvram_get_int("switch_wan0tagid") > 0))) {
 		/*
 			case 1: STB != 0
@@ -720,6 +776,19 @@ int start_vlan(void)
 		mtwan_init_nvram();
 #endif
 	}
+#ifdef RTCONFIG_MULTISERVICE_WAN
+	if (nvram_match("switch_wantag", "none")
+#if defined(RTCONFIG_AMAS)
+		&& (nvram_get_int("re_mode") != 1)
+#endif
+	) {
+		if (nvram_get_int("switch_stb_x") > 0)
+			_mswan_stb_add();
+		else
+			_mswan_stb_del();
+	}
+#endif
+
 #elif defined(BLUECAVE)
 	if(!nvram_match("switch_wantag", "") && (nvram_get_int("switch_stb_x") > 0 || nvram_match("switch_wantag", "unifi_biz") || 
 		nvram_match("switch_wantag", "stuff_fibre") || nvram_match("switch_wantag", "spark") ||
@@ -763,14 +832,6 @@ int stop_vlan(void)
 
 	if ((strtoul(nvram_safe_get("boardflags"), NULL, 0) & BFL_ENETVLAN) == 0) return 0;
 	
-#ifdef RTCONFIG_DUPVIF
-	if (nvram_match("switch_wantag", "hinet_mesh")) {
-		if (module_loaded("dupvif")) {
-			modprobe_r("dupvif");
-		}
-	}
-#endif
-
 	for (i = 0; i <= VLAN_MAXVID; i ++) {
 		/* get the address of the EMAC on which the VLAN sits */
 		snprintf(nvvar_name, sizeof(nvvar_name), "vlan%dhwname", i);
@@ -785,4 +846,28 @@ int stop_vlan(void)
 
 	return 0;
 }
+
+#ifdef RTCONFIG_DUPVIF
+void start_dupvif(void)
+{
+	if (nvram_match("switch_wantag", "hinet_mesh")) {
+		if (!module_loaded("dupvif")) {
+			char prefix[] = "wanXXX_", params[16];
+
+			snprintf(prefix, sizeof(prefix), "wan%d_", WAN_UNIT_IPTV);
+			snprintf(params, sizeof(params), "nic=%s", nvram_pf_get(prefix, "ifname"));
+			modprobe("dupvif", params);
+		}
+	}
+}
+
+void stop_dupvif(void)
+{
+	if (nvram_match("switch_wantag", "hinet_mesh")) {
+		if (module_loaded("dupvif")) {
+			modprobe_r("dupvif");
+		}
+	}
+}
+#endif /* RTCONFIG_DUPVIF */
 

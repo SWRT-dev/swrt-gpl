@@ -22,7 +22,7 @@ MT7621ESW_MODEL_LIST = $(addprefix _,$(addsuffix _,RT-N56UB1 RT-N56UB2 RT-AC85U 
 MT7628ESW_MODEL_LIST = $(addprefix _,$(addsuffix _,RT-N11P_B1 RT-N10P_V3))
 RTL8370M_MODEL_LIST = $(addprefix _,$(addsuffix _,BRT-AC828 RT-AC88Q RT-AC88S RT-AD7200 4G-AC86U))
 DAKOTA_MODEL_LIST = $(addprefix _,$(addsuffix _,RT-AC58U 4G-AC53U 4G-AC56 RT-AC82U))
-DUMMY_SWITCH_MODEL_LIST = $(addprefix _,$(addsuffix _,RT-AC88N PL-AX56_XP4 ETJ RT-AX57Q TUF-AX4200 TUF-AX6000 RT-AX59U))
+DUMMY_SWITCH_MODEL_LIST = $(addprefix _,$(addsuffix _,RT-AC88N PL-AX56_XP4 ETJ RT-AX57Q TUF-AX4200 TUF-AX6000 RT-AX59U TUF-BE6500))
 PWM_IN_GPIOLIB_MODEL_LIST = $(addprefix _,$(addsuffix _,ETJ TUF-AX6000))
 
 _BUILD_NAME_ = $(addprefix _,$(addsuffix _,$(BUILD_NAME)))
@@ -76,3 +76,4 @@ endif
 
 # Dummy switch
 bled-objs += $(if $(findstring $(_BUILD_NAME_),$(DUMMY_SWITCH_MODEL_LIST)),check-dummy.o)
+

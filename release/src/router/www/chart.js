@@ -1011,7 +1011,7 @@ var pie_flag;
 							else
 								document.getElementById('current_traffic_percent_field').innerHTML = ((ChartElements[0].value/router_total_traffic)*100).toFixed(2) + " %";
 
-							if(parent.businessWrapper){
+							if(parent.webWrapper){
 								parent.document.getElementById('bui_ta_current').innerHTML = current_traffic[0] + " " + current_traffic[1];
 
 								if(router_total_traffic == 0)
@@ -2700,7 +2700,7 @@ var pie_flag;
 				width : this.chart.width,
 				ctx : this.chart.ctx,
 				//textColor : this.options.scaleFontColor,
-				textColor : (parent.businessWrapper) ? "#000" : "#FFF",
+				textColor : (parent.webWrapper) ? "#000" : "#FFF",
 				fontSize : this.options.scaleFontSize,
 				fontStyle : this.options.scaleFontStyle,
 				fontFamily : this.options.scaleFontFamily,

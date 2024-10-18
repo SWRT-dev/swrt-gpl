@@ -1333,6 +1333,7 @@ input:hover{
 .buttonInTable{
 	margin-top: 0px !important;
 	height: 40px !important;
+	display: inherit;
 }
 #clear_cert_btn{
 	margin: 0 !important;
@@ -1401,7 +1402,7 @@ input:hover{
 #phy_ports{
 	font-family: "Inter", "Microsoft JhengHei", "sans-serif";
 }
-.port_status_icon_desc.businessWrapper {
+.port_status_icon_desc.webWrapper {
 	display: none;
 }
 .port_status_icon_desc > div.warn:before, .port_status_notice_item.warn:before {
@@ -1414,37 +1415,37 @@ input:hover{
 .port_icon{
 	transform: scale(1.8);
 }
+.poe_settings_item .port_icon{
+	transform: initial;
+}
+.port_status_bg .port_icon.poe_port:after{
+	transform: scale(0.9);
+	border: 3px solid #FFFFFF;
+	right: -7px;
+}
 .port_status_bg {
 	display: block;
 }
 .port_status_bg.aimesh_page{
-	margin: 12px 12px 0 12px;
+	width: 94%;
+	margin-top: 12px;
+	margin-left: 3%;
 }
 .port_status_bg.aimesh_page .label_L_bg{
-	min-height: 90px !important;
-}
-.port_status_bg .label_L_bg:before{
-	display: none;
-	border-right: unset;
+	min-height: 60px !important;
+	margin-top: 10px !important;
 }
 .port_status_bg .label_W_bg:before{
-	position: absolute;
-	content: "";
-	right: 0;
-	top: 8%;
-	height: 100%;
-	width: 100%;
-	border-left: unset;
+	bottom: -6px;
 	border-bottom: 1px solid rgb(18 18 18 / 20%);
 }
-.port_status_bg .label_W_bg{
-    margin-right: unset !important;
-    justify-content: flex-start !important;
-}
 .port_status_bg .port_text {
-    margin-top: 20px;
-    transform: scale(1.3);
+	margin-top: 20px;
+	transform: scale(1.3);
 	font-weight: bolder;
+	margin-bottom: -10px;
+	width: 60%;
+	word-wrap: break-word;
 }
 .port_status_bg .label_L_bg{
 	margin-left: 0px;
@@ -1452,15 +1453,14 @@ input:hover{
 	margin-top: 30px;
 	min-height: 150px;
 }
+.port_status_bg .label_W_bg > div{
+	margin-bottom: 20px;
+}
 .port_status_bg .label_L_bg > div{
 	margin-bottom: 20px;
 }
-.label_W_bg > div, .label_L_bg > div {
-	flex-basis: 25% !important;
-}
-.label_W_bg, .label_L_bg {
-	flex-wrap: wrap !important;
-	max-width: unset !important;
+.port_status_bg.aimesh_page .label_L_bg > div{
+	margin-top: 20px;
 }
 #datepicker {
     margin-top: 10px;
@@ -1507,11 +1507,13 @@ input:hover{
 .container {
 	background-color: unset !important;
     width: 100% !important;
-	padding: 5px !important;
+	/* padding: 5px !important; */
 }
+/* 
 .bg_internetSpeed {
 	width: 95% !important;
-}
+} 
+*/
 .speedTest_div{
 	background-color: #FFFFFF !important;
 	box-shadow: unset !important;
@@ -1523,10 +1525,11 @@ input:hover{
 #cur_server_div {
 	border: 1px solid #CCC !important;
 }
+
 @media (max-width: 720px){
 	.ping_result_div {
 		box-shadow: unset !important;
-		border: 1px solid #CCC !important;
+		/* border: 1px solid #CCC !important; */
 	}
 }
 
@@ -1792,9 +1795,6 @@ div.icon-circle-mask {
 	background-color: rgb(30, 162, 255);
 }
 
-i.icon_help:hover {
-	background-color: #000000;
-}
 .eula_withdraw_content {
 	font-size: 13px;
     font-family: inherit;
@@ -1835,4 +1835,35 @@ i.icon_help:hover {
     border: 1px solid #000 !important;
     height: 140px !important;
 	visibility: visible !important;
+}
+
+.icon_eye_close,
+.icon_eye_open {
+	filter: invert(1);
+}
+
+#profile_list_content {
+	margin-left: 2px;
+}
+
+/* width < 1200px*/
+@media (max-width: 1200px) {
+	.scaleBody {
+		transform: scale(0.8);
+		transform-origin: top left;
+		width: 125% !important;
+		height: 100vh !important;
+	}
+}
+
+/* width < 1400px*/
+@media (max-width: 1400px) {
+	@media (min-width: 1200px) {
+		.scaleBody {
+			transform: scale(0.9);
+			transform-origin: top left;
+			width: 111% !important;
+			height: 100vh !important;
+		}
+	}
 }

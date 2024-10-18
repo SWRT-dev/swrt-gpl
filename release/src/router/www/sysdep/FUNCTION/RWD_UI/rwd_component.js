@@ -1,4 +1,4 @@
-if ( !Element.prototype.scrollIntoViewIfNeeded ) {
+﻿if ( !Element.prototype.scrollIntoViewIfNeeded ) {
 	Element.prototype.scrollIntoViewIfNeeded = function ( centerIfNeeded = true ) {
 		const el = this;
 		new IntersectionObserver( function( [entry] ) {
@@ -54,6 +54,28 @@ function Get_Component_Customize_Alert(_text){
 
 	return $popup_content_container;
 }
+function Get_Component_Customize_Confirm(_text){
+	let $popup_content_container = $("<div>").addClass("popup_content_container");
+
+	let $customize_confirm = $("<div>").addClass("customize_alert confirm").appendTo($popup_content_container);
+	let $desc = $("<div>").addClass("desc").html(_text).appendTo($customize_confirm);
+	let $action_btn_container = $("<div>").addClass("action_btn_container").appendTo($customize_confirm);
+	$("<div>").attr({"data-btn":"ok"}).addClass("ok btn").html("<#CTL_ok#>")
+		.unbind("click").click(function(e){
+			e = e || event;
+			e.stopPropagation();
+			close_popup_customize_alert();
+		}).appendTo($action_btn_container);
+
+	$("<div>").attr({"data-btn":"cancel"}).addClass("cancel btn").html("<#CTL_Cancel#>")
+		.unbind("click").click(function(e){
+			e = e || event;
+			e.stopPropagation();
+			close_popup_customize_alert();
+		}).appendTo($action_btn_container);
+
+	return $popup_content_container;
+}
 function Get_Component_Del_Profile(){
 	var $popup_content_container = $("<div>").addClass("popup_content_container");
 
@@ -95,6 +117,32 @@ function Get_Component_Profile_Title(_text){
 	var $del_btn = $("<div>").attr({"id":"title_del_btn"}).addClass("del_btn");
 	$del_btn.appendTo($title_container);
 	return $title_container;
+}
+function Get_Component_Pure_Text(_parm){
+	let $container = $("<div>").addClass("profile_setting_item textView_item");
+	if(_parm.container_id != undefined)
+		$container.attr("id", _parm.container_id);
+	let pure_text = "";
+	if(_parm.text != undefined)
+		pure_text = _parm.text;
+
+	if(_parm.openHint != undefined){
+		let hint_array = _parm.openHint.split("_");
+		$("<a>").addClass("hintstyle").attr({"href":"javascript:void(0);"}).html(htmlEnDeCode.htmlEncode(_parm.title)).unbind("click").click(function(){
+			openHint(hint_array[0], hint_array[1], "rwd_vpns");
+		}).appendTo($("<div>").addClass("title").appendTo($container));
+	}
+	else
+		$("<div>").addClass("title").html(htmlEnDeCode.htmlEncode(_parm.title)).appendTo($container);
+
+	let $input_container = $("<div>").addClass("input_container").appendTo($container);
+	$("<div>")
+		.addClass("textViewOnly")
+		.attr({"id":_parm.id})
+		.html(htmlEnDeCode.htmlEncode(pure_text))
+		.appendTo($input_container);
+
+	return $container;
 }
 function Get_Component_Pure_Text_And_Btn(_parm){
 	var $container = $("<div>").addClass("profile_setting_two_item nowrap");
@@ -316,6 +364,10 @@ function Get_Component_Custom_Select(_parm){
 
 	// input field
 	var $input_container = $("<div>").addClass("input_container").appendTo($container);
+	if(_parm.title == ""){
+		$container.css("justify-content", "center");
+		$input_container.css({"flex": "0 0 96%", "margin-left":"unset", "max-width": "unset"});
+	}
 	var $custom_select_container = $("<div>").addClass("custom_select_container").appendTo($input_container);
 	$custom_select_container.unbind("click").click(function(e){
 		e = e || event;
@@ -344,6 +396,7 @@ function Get_Component_Custom_Select(_parm){
 		specific_option = _parm.options.filter(function(item, index, array){
 			return (item.value == _parm.set_value);
 		})[0];
+		if(specific_option == undefined) specific_option = _parm.options[0];
 	}
 
 	var selected_text = "<#Setting_factorydefault_value#>";
@@ -604,13 +657,59 @@ function Get_Component_Error_Hint(_parm){
 	});
 	return $container
 }
+
+/*
+	_parm:
+		example: 
+			_parm = {"title": "RSA Encryption", "id": "vpn_server_tls_keysize", "options": _options_list, "openHint":"32_8", "display_type": "horizontal"};
+			_options_list = [{"text":"1024 bit","value":"0"},{"text":"2048 bit","value":"1"}];   
+*/
+function RWD_Get_Component_Radio(_parm){
+	var display_type = "horizontal";
+	if(_parm.display_type != undefined)
+		display_type = _parm.display_type;
+
+	var $container = $("<div>").addClass("profile_setting_item radio_item " + display_type + "");
+	if(_parm.container_id != undefined)
+		$container.attr("id", _parm.container_id);
+
+	if(_parm.openHint != undefined){
+		var hint_array = _parm.openHint.split("_");
+		$("<a>").addClass("hintstyle").attr({"href":"javascript:void(0);"}).html(htmlEnDeCode.htmlEncode(_parm.title)).unbind("click").click(function(){
+			openHint(hint_array[0], hint_array[1], "rwd_vpns");
+		}).appendTo($("<div>").addClass("title").appendTo($container));
+	}
+	else
+		$("<div>").addClass("title").html(htmlEnDeCode.htmlEncode(_parm.title)).appendTo($container);
+
+	var $input_container = $("<div>").addClass("input_container").attr("id", _parm.id).appendTo($container);
+	var $radio_options_container = $("<div>").addClass("rwd_radio_options_container " + display_type + "").appendTo($input_container);
+	_parm.options.forEach(function(item, index){
+		var $radio_container = $("<div>").addClass("rwd_radio_container").attr({"value":item.value}).appendTo($radio_options_container)
+			.unbind("click").click(function(e){
+				e = e || event;
+				e.stopPropagation();
+				$(this).closest(".rwd_radio_options_container").find(".rwd_radio_container").removeClass("selected");
+				$(this).addClass("selected");
+			});
+		if(index == 0)
+			$radio_container.addClass("selected");
+
+		$("<div>").addClass("rwd_icon_radio").appendTo($radio_container);
+		$("<div>").html(htmlEnDeCode.htmlEncode(item.text)).appendTo($radio_container);
+	});
+
+	return $container;
+}
+
 function set_value_Custom_Select(_obj, _id, _value){
 	var $items = $(_obj).find("#" + _id + ", #select_" + _id + "");
 	var $text = $items.eq(0);
 	var $select = $items.eq(1);
 	var selected_text = $select.children().removeClass("selected").filter("[value='" + _value + "']").addClass("selected").html();
-	if(selected_text == undefined)
-		selected_text = "";
+	if(selected_text == undefined){//error handle, select first option.
+		selected_text = $select.children().removeClass("selected").filter(":first").addClass("selected").html();
+	}
 	$text.html(htmlEnDeCode.htmlEncode(selected_text));
 }
 function resize_iframe_height(_preheight){
@@ -644,10 +743,15 @@ function show_customize_alert(_text){
 	$(".popup_customize_alert").css("display", "flex");
 	$(".container, .popup_container.popup_element, .popup_container.popup_element_second").addClass("blur_effect");
 	$(".popup_container .popup_customize_alert").empty();
-	if(_text != ""){
-		$(".popup_container.popup_customize_alert").append(Get_Component_Customize_Alert(_text));
-		adjust_popup_container_top($(".popup_container.popup_customize_alert"), 100);
-	}
+	$(".popup_container.popup_customize_alert").append(Get_Component_Customize_Alert(_text));
+	adjust_popup_container_top($(".popup_container.popup_customize_alert"), 100);
+}
+function show_customize_confirm(_text){
+	$(".popup_customize_alert").css("display", "flex");
+	$(".container, .popup_container.popup_element, .popup_container.popup_element_second").addClass("blur_effect");
+	$(".popup_container .popup_customize_alert").empty();
+	$(".popup_container.popup_customize_alert").append(Get_Component_Customize_Confirm(_text));
+	adjust_popup_container_top($(".popup_container.popup_customize_alert"), 100);
 }
 function close_popup_container(_obj){
 	if(_obj == "all"){

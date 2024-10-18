@@ -56,7 +56,22 @@ var gradient_color_GT10_CB_5 = {
 var gradient_color_GTAX11000_PRO_CB_3 = {
 	"id6": {"color" :[0,128,0,0,50,100,10,0,128],"left":145}
 }
-
+const gradient_color_GTBESeries = {//GT-BE98/GT-BE98_PRO/GT-BE96
+	"id10":{"color" :[100,0,0,120,0,30,100,0,128],"left":261}
+}
+const gradient_color_GTBESeries_night = {//GT-BE98/GT-BE98_PRO/GT-BE96
+	"id1": {"color" :[12,0,0,12,1,0,12,2,0],"left":0},
+	"id2": {"color" :[12,1,0,12,3,0,12,5,0],"left":29},
+	"id3": {"color" :[12,6,0,12,8,0,10,9,0],"left":58},
+	"id4": {"color" :[7,12,0,2,12,1,0,12,3],"left":87},
+	"id5": {"color" :[0,6,10,0,11,6,0,12,3],"left":116},
+	"id6": {"color" :[0,12,12,0,6,12,0,3,12],"left":145},
+	"id7": {"color" :[0,12,10,0,0,12,5,3,12],"left":174},
+	"id8": {"color" :[0,0,12,2,1,12,5,2,12],"left":203},
+	"id9": {"color" :[2,0,12,11,0,10,12,0,8],"left":232},
+	"id10":{"color" :[10,0,0,12,0,3,10,0,12],"left":261},
+	"id11":{"color" :[12,0,6,12,0,3,12,0,1],"left":290}
+}
 function retune_gradient_color(parm){
 	var gradient_color_temp = gradient_color;
 	if(parm.ledg_group == 5){//GS-AX3000 GS-AX5400
@@ -72,6 +87,9 @@ function retune_gradient_color(parm){
 			gradient_color = gradient_color_GTAXE16000;
 			if(parm.productid == "GT-AX11000_PRO" && parm.CoBrand == "3"){
 				gradient_color = $.extend(gradient_color_GTAXE16000 , gradient_color_GTAX11000_PRO_CB_3);
+			}
+			if(parm.productid == "GT-BE98" || parm.productid == "GT-BE98_PRO" || parm.productid == "GT-BE96"){
+				gradient_color = $.extend(gradient_color_GTAXE16000 , gradient_color_GTBESeries);
 			}
 		}
 		else if(parm.productid == "GT-AX6000"){
@@ -92,6 +110,13 @@ function retune_gradient_color(parm){
 		}
 	}
 	return gradient_color;
+}
+function retune_gradient_color_night(parm){
+	let gradient_color_night = JSON.parse(JSON.stringify(gradient_color));
+	if(parm.productid == "GT-BE98" || parm.productid == "GT-BE98_PRO" || parm.productid == "GT-BE96"){
+		gradient_color_night = gradient_color_GTBESeries_night
+	}
+	return gradient_color_night
 }
 function set_gradient_css(parm){
 	var gradient_css = {};
@@ -123,8 +148,11 @@ function retune_wave_color(parm){
 		else
 			ledg_rgb = "128,0,0,128,0,0,128,0,0";
 	}
-	else if(parm.productid == "GT-AXE16000" || parm.productid == "GT-AX11000_PRO" || parm.productid == "GT-BE98" || parm.productid == "GT-BE98_PRO" || parm.productid == "GT-BE96"){
+	else if(parm.productid == "GT-AXE16000" || parm.productid == "GT-AX11000_PRO"){
 		ledg_rgb = "20,0,128,110,0,100,128,0,80";
+	}
+	else if(parm.productid == "GT-BE98" || parm.productid == "GT-BE98_PRO" || parm.productid == "GT-BE96"){
+		ledg_rgb = (parm.night) ? "50,0,0,58,0,32,50,0,64" : "100,0,0,120,0,30,100,0,128";
 	}
 	else if(parm.productid == "GT10"){
 		ledg_rgb = "128,0,10,128,0,40,128,0,100";

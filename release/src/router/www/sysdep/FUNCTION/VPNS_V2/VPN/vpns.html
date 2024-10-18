@@ -34,7 +34,7 @@ $(function () {
 		return "";
 	};
 
-	var theme = getUrlParameter("current_theme").toLocaleUpperCase();
+	var theme = getUrlParameter("current_theme").toUpperCase();
 	if(theme == "WHITE" || theme == "GT" || theme == "TUF"){
 		$('link').last().after('<link group="extend_css" rel="stylesheet" type="text/css" href="/VPN/vpns' + theme + '.css">');
 	}

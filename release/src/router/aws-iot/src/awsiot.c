@@ -57,6 +57,7 @@ extern "C" {
 #include "awsiot_mnt.h"
 
 #include "webapi.h"
+#include <cfg_ipc.h>
 
 #define APP_DBG 1
 
@@ -93,7 +94,7 @@ struct subTopicHandler CHK_SUB_TOPICS[] = {
     { SUB_TOPIC_GENERAL, 0, 0, 5, "asus/[awsiotclientid]/general", rcv_general_data },
 #endif
 
-    { -1, NULL }
+    { -1, 0, 0, 0, "", NULL }
 };
 
 struct supportedFeatures {
@@ -106,10 +107,12 @@ struct supportedFeatures CHK_SUPPORTED_FEATURES[] = {
 #if defined(RTCONFIG_VPN_FUSION) || defined(RTCONFIG_WIREGUARD)
     { FEATURE_WIREGUARD_SERVER, "wireguard_server", 16},
     { FEATURE_WIREGUARD_CLIENT, "wireguard_client", 16},
+    { FEATURE_WIREGUARD_SERVER_IP_CHANGE, "changeMasterIP", 26},
 #endif
     { FEATURE_CHANGE_IP, "change_ip", 9},
     { FEATURE_TUNNEL_TEST, "tunnel_test", 11},
-    { -1, NULL, 0 }
+    { FEATURE_SYSTEM, "system", 6},
+    { -1, "", 0 }
 };
 
 // static char subscribe_topic_array[SUBSCRIBE_TOPIC_MAX_NUMBER][MAX_TOPIC_LENGTH];
@@ -128,12 +131,16 @@ static json_object *g_json_object_general_db_reported = NULL;
 
 MQTTContext_t mqttContext_g;
 
+int check_mqtt_timer = 0;
+
 // int get_mqtt_dif_session_number = 0;
 
 unsigned int search_tc_file_count = 0;
 
 bool publish_running = false;
 int publish_waiting = 0;
+
+int is_init_topic_data_ok = 0;
 
 /**
  * Provide default values for undefined configuration settings.
@@ -237,7 +244,7 @@ int publish_waiting = 0;
 /**
  * @brief Timeout for MQTT_ProcessLoop function in milliseconds.
  */
-#define MQTT_PROCESS_LOOP_TIMEOUT_MS        ( 500U )
+#define MQTT_PROCESS_LOOP_TIMEOUT_MS        ( 200U )
 
 /**
  * @brief The maximum time interval in seconds which is allowed to elapse
@@ -267,7 +274,7 @@ int publish_waiting = 0;
 /**
  * @brief Delay in seconds between two iterations of subscribeTopic().
  */
-#define MQTT_SUBPUB_LOOP_DELAY_SECONDS      ( 15U )
+#define MQTT_SUBPUB_LOOP_DELAY_SECONDS      ( 30U )
 
 /**
  * @brief Transport timeout in milliseconds for transport send and receive.
@@ -1123,8 +1130,8 @@ static int establishMqttSession( MQTTContext_t * pMqttContext,
 
     if( mqttStatus != MQTTSuccess ) {
         returnStatus = EXIT_FAILURE;
-        Cdbg(APP_DBG, "Connection with MQTT broker failed with status %s.",
-                    MQTT_Status_strerror( mqttStatus ) );
+        Cdbg(APP_DBG, "Connection with MQTT broker failed with status %s, mqttStatus = %d",
+                    MQTT_Status_strerror( mqttStatus ), mqttStatus);
     }
     else {
         Cdbg(APP_DBG, "MQTT connection successfully established with broker");
@@ -1154,7 +1161,8 @@ static int disconnectMqttSession( MQTTContext_t * pMqttContext ) {
 }
 /*-----------------------------------------------------------*/
 
-void publish_shadow_remote_connection(const int tunnel_enable, const char *state) {
+void publish_shadow_remote_connection(const int tunnel_enable, const char *state)
+{
 
     char publish_data[512] = {0};
     snprintf(publish_data, 512, "{ \"state\": %s}",  state);
@@ -1172,7 +1180,8 @@ void publish_shadow_remote_connection(const int tunnel_enable, const char *state
 }
 
 //  publish topic : asus / %awsiot_clientid% / {xxx} /update
-void publish_router_service_topic(const char *topic, const char *msg) {
+void publish_router_service_topic(const char *topic, const char *msg)
+{
 
     char publish_data[512] = {0};
     char service_topic[256] = {0};
@@ -1196,7 +1205,8 @@ void publish_router_service_topic(const char *topic, const char *msg) {
     }
 }
 
-void publish_shadow_tunnel_test_result(const char* source, const char* target, const char* type, int error) {
+void publish_shadow_tunnel_test_result(const char* source, const char* target, const char* type, int error)
+{
 
     if (g_json_object_general_db_reported==NULL) {
         return;
@@ -1224,9 +1234,11 @@ void publish_shadow_tunnel_test_result(const char* source, const char* target, c
     
 }
 
-void update_db_tunnel_test_result(const char* source, const char* target, const char* type, int error) {
+void update_db_tunnel_test_result(const char* source, const char* target, const char* type, int error)
+{
+#if defined(RTCONFIG_TUNNEL)    
     if (strlen(source)<=0 || strlen(target)<=0 || strlen(type)<=0) {
-        return 0;
+        return;
     }
 
     Cdbg(APP_DBG, "update_db_tunnel_test_result source=%s, target=%s, type=%s", source, target, type);
@@ -1238,7 +1250,10 @@ void update_db_tunnel_test_result(const char* source, const char* target, const 
 
     Cdbg(APP_DBG, "update_db_tunnel_test_result out=%s", out);
 
-    return 1;
+    return;
+#else
+    return;
+#endif
 }
 /*-----------------------------------------------------------*/
 
@@ -1600,7 +1615,8 @@ static int subscribeTopic( MQTTContext_t * pMqttContext,
     return returnStatus;
 }
 
-void enable_sub_topic(int sub_topic_id) {
+void enable_sub_topic(int sub_topic_id)
+{
 
     struct subTopicHandler *handler = NULL;
 
@@ -1624,6 +1640,10 @@ void enable_sub_topic(int sub_topic_id) {
 }
 
 static int update_default_shadow_data(MQTTContext_t * pMqttContext) {
+
+    if (strlen(default_shadow_topic)<=0) {
+        return EXIT_SUCCESS;
+    }
 
     char tencent_report_data[125] = {0};
 
@@ -1703,7 +1723,8 @@ static int notice_to_upload_settings() {
     }
 }
 
-int check_tencentgame_status() {
+int check_tencentgame_status()
+{
 
     if(nvram_get_int("tencent_download_enable") != tencentgame_download_enable_tmp) {
         Cdbg(APP_DBG, "tencentgame function > status change");
@@ -1713,13 +1734,15 @@ int check_tencentgame_status() {
     return EXIT_FAILURE;
 }
 
-int check_wireguard_config_has_been_applied(const char* feature_name, const char* group_name, const char* unique_key) {
+int check_wireguard_config_has_been_applied(const char* feature_name, const char* group_name, const char* unique_key)
+{
     
     if (!g_json_object_general_db_reported) {
         return 0;
     }
    	
 	if(!json_object_is_type(g_json_object_general_db_reported, json_type_object)) {
+        Cdbg(APP_DBG, "Invalid format!");
         return 0;
     }
  
@@ -1732,6 +1755,7 @@ int check_wireguard_config_has_been_applied(const char* feature_name, const char
         }
 		
 		if(!json_object_is_type(shadowFeatureObj, json_type_object)) {
+            Cdbg(APP_DBG, "Invalid format!");
         	continue;
     	}
 
@@ -1776,7 +1800,8 @@ int check_wireguard_config_has_been_applied(const char* feature_name, const char
     return 0;
 }
 
-int update_dynamic_db() {
+int update_dynamic_db()
+{
     
     if (!g_json_object_general_db_reported) {
         return EXIT_FAILURE;
@@ -1793,6 +1818,7 @@ int update_dynamic_db() {
     // }
    
 	if(!json_object_is_type(g_json_object_general_db_reported, json_type_object)) {
+        Cdbg(APP_DBG, "Invalid format!");
     	return EXIT_FAILURE;
     }
  
@@ -1810,6 +1836,7 @@ int update_dynamic_db() {
             case FEATURE_WIREGUARD_SERVER: {
                	
 				if(!json_object_is_type(shadowFeatureObj, json_type_object)) {
+                    Cdbg(APP_DBG, "Invalid format!");
         			break;
     			}
  
@@ -1867,6 +1894,7 @@ int update_dynamic_db() {
             case FEATURE_WIREGUARD_CLIENT: {
                	
 				if(!json_object_is_type(shadowFeatureObj, json_type_object)) {
+                    Cdbg(APP_DBG, "Invalid format!");
                     break;
                 }
  
@@ -1985,7 +2013,10 @@ int update_dynamic_db() {
     return EXIT_SUCCESS;
 }
 
-int update_db_wireguard(char* group_name, char* role, const char* content) {
+int update_db_wireguard(char* group_name, char* role, const char* content)
+{
+
+#if defined(RTCONFIG_TUNNEL)
     if (strlen(group_name)<=0 || strlen(role)<=0 || strlen(content)<=0) {
         return 0;
     }
@@ -2000,6 +2031,9 @@ int update_db_wireguard(char* group_name, char* role, const char* content) {
     Cdbg(APP_DBG, "update_db_wireguard out=%s", out);
 
     return 1;
+#else
+    return 0;
+#endif
 }
 
 // int publish_general_shadow_reported() {
@@ -2041,11 +2075,12 @@ int update_db_wireguard(char* group_name, char* role, const char* content) {
 //     return EXIT_SUCCESS;
 // }
 
-int run_tc_download() {
+int run_tc_download()
+{
 
     int tencent_download_enable = nvram_get_int("tencent_download_enable");
     if (tencent_download_enable!=1) {
-        return;
+        return 0;
     }
 
     LogInfo( ( "run_tc_download, search_tc_file_count = %d", search_tc_file_count) );
@@ -2075,7 +2110,8 @@ int run_tc_download() {
     return 0;
 }
 
-int main_loop(MQTTContext_t * pMqttContext, bool * pMqttSessionEstablished) {
+int main_loop(MQTTContext_t * pMqttContext, bool * pMqttSessionEstablished)
+{
 
     int returnStatus = EXIT_SUCCESS;
     MQTTStatus_t mqttStatus = MQTTSuccess;
@@ -2246,7 +2282,8 @@ static void awsiot_sig_handler(int sig) {
     }
 }
 
-size_t hdf(char* b, size_t size, size_t nitems, void *userdata) {
+size_t hdf(char* b, size_t size, size_t nitems, void *userdata)
+{
     printf("%s", b);
     return 0;
 }
@@ -2257,7 +2294,8 @@ struct url_data {
     char* data;
 };
 
-size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data) {
+size_t write_data(void *ptr, size_t size, size_t nmemb, struct url_data *data)
+{
 
     size_t index = data->size;
     size_t n = (size * nmemb);
@@ -2352,38 +2390,42 @@ static int rcv_newsite_provisioning_data(char *data, char* topic) {
         json_object* jdm_userticket;
         json_object* jdm_userrefreshticket;
         json_object* jdm_aae_portal;
-        // json_object* jdm_aae_area;
-        // json_object* jdm_auth_type;
-        // json_object* jdm_user_email;
+        json_object* jdm_aae_area;
+        json_object* jdm_auth_type;
+        json_object* jdm_user_email;
 
         json_object_object_get_ex(root, "cusid", &joauth_dm_cusid);
         json_object_object_get_ex(root, "userticket", &jdm_userticket);
         json_object_object_get_ex(root, "userrefreshticket", &jdm_userrefreshticket);
         json_object_object_get_ex(root, "aae_portal", &jdm_aae_portal);
-        // json_object_object_get_ex(root, "aae_area", &jdm_aae_area);
-        // json_object_object_get_ex(root, "auth_type", &jdm_auth_type);
-        // json_object_object_get_ex(root, "user_email", &jdm_user_email);
+        json_object_object_get_ex(root, "aae_area", &jdm_aae_area);
+        json_object_object_get_ex(root, "auth_type", &jdm_auth_type);
+        json_object_object_get_ex(root, "user_email", &jdm_user_email);
 
         const char* cusid = json_object_get_string(joauth_dm_cusid);
         const char* userticket = json_object_get_string(jdm_userticket);
         const char* userrefreshticket = json_object_get_string(jdm_userrefreshticket);
         const char* aae_portal = json_object_get_string(jdm_aae_portal);
-
-        json_object_put(root);
+		const char* aae_area = json_object_get_string(jdm_aae_area);
+		const char* auth_type = json_object_get_string(jdm_auth_type);
+		const char* user_email = json_object_get_string(jdm_user_email);
 
         Cdbg(APP_DBG, "cusid = %s", cusid);
         Cdbg(APP_DBG, "userticket = %s", userticket);
         Cdbg(APP_DBG, "userrefreshticket = %s", userrefreshticket);
         Cdbg(APP_DBG, "aae_portal = %s", aae_portal);
-        
+		Cdbg(APP_DBG, "aae_area = %s", aae_area);
+        Cdbg(APP_DBG, "auth_type = %s", auth_type);
+		Cdbg(APP_DBG, "user_email = %s", user_email);
+
         if (strlen(cusid)>0 && strlen(userrefreshticket)>0 && strlen(userticket)>0 && strlen(aae_portal)>0) {
             nvram_set("oauth_dm_cusid", cusid);
             nvram_set("oauth_dm_refresh_ticket", userrefreshticket);
             nvram_set("oauth_dm_user_ticket", userticket);
             nvram_set("aae_portal", aae_portal);
-            nvram_set("aae_area", "");
-            nvram_set("oauth_type", "");
-            nvram_set("oauth_user_email", "");
+            nvram_set("aae_area", aae_area);
+            nvram_set("oauth_type", auth_type);
+            nvram_set("oauth_user_email", user_email);
             nvram_set("oauth_auth_status", "1");
             nvram_set("aws_ca_download_status", "0");
             nvram_set("newsite_provisioning", "0");
@@ -2395,6 +2437,8 @@ static int rcv_newsite_provisioning_data(char *data, char* topic) {
         else {
             Cdbg(APP_DBG, "Fail to do newsite provisioning because data is empty!");
         }
+
+		json_object_put(root);
     }
 
     return 0;
@@ -2451,6 +2495,7 @@ static int process_general_shadow_delta_data(json_object* jconfig) {
     }
    	
 	if(!json_object_is_type(jconfig, json_type_object)) {
+        Cdbg(APP_DBG, "Invalid format!");
         return EXIT_FAILURE;
     }
  
@@ -2587,7 +2632,7 @@ static int process_general_shadow_delta_data(json_object* jconfig) {
                     }
 
                     struct json_object *json_object_result = json_object_new_object();
-
+                    
                     ret = set_wireguard_client(sub_json_config, &wgc_idx);
                     if (ret==HTTP_OK && wgc_idx>0) {
                         Cdbg(APP_DBG, "Successfully setup wireguard client[%d]", wgc_idx);
@@ -2619,13 +2664,72 @@ static int process_general_shadow_delta_data(json_object* jconfig) {
 
                 break;
             }
+
+            case FEATURE_WIREGUARD_SERVER_IP_CHANGE: {
+                struct json_object *wgs_index_obj = NULL;
+                struct json_object *wgs_ip_obj = NULL;
+
+                json_object_object_get_ex(json_config, "index", &wgs_index_obj);
+                if (wgs_index_obj==NULL) {
+                    continue;
+                }
+
+                json_object_object_get_ex(json_config, "ip", &wgs_ip_obj);
+                if (wgs_ip_obj==NULL) {
+                    continue;
+                }
+
+                const char* index = (char *)json_object_get_string(wgs_index_obj);
+                if (index==NULL) {
+                    continue;
+                }
+
+                const char* ip = (char *)json_object_get_string(wgs_ip_obj);
+                if (ip==NULL) {
+                    continue;
+                }
+
+                int wgc_idx = atoi(index);
+                if (wgc_idx<=0) {
+                    continue;
+                }
+
+                //- Update nvram wgc1_ep_addr, wgc1_ep_addr_r
+                char wgc_prefix[7] = {0};
+	            snprintf(wgc_prefix, sizeof(wgc_prefix), "wgc%d", wgc_idx);
+
+                char wgc_enable[16] = {0};
+                snprintf(wgc_enable, sizeof(wgc_enable), "%s_enable", wgc_prefix);
+                Cdbg(APP_DBG, "wgc_enable=%s, %d", wgc_enable, nvram_get_int(wgc_enable));
+                if (nvram_get_int(wgc_enable)==1) {
+                    char wgc_ep_addr[16] = {0};
+                    snprintf(wgc_ep_addr, sizeof(wgc_ep_addr), "%s_ep_addr", wgc_prefix);
+                    nvram_set(wgc_ep_addr, ip);
+
+                    char wgc_ep_addr_r[16] = {0};
+                    snprintf(wgc_ep_addr_r, sizeof(wgc_ep_addr_r), "%s_ep_addr_r", wgc_prefix);
+                    nvram_set(wgc_ep_addr_r, ip);
+                    nvram_commit();
+
+                    char action[32] = {0};
+                    snprintf(action, sizeof(action), "restart_wgc %d", wgc_idx);
+                    notify_rc(action);
+
+                    Cdbg(APP_DBG, "Success to change master ip: wgc_idx=[%d], ip=[%s]", wgc_idx, ip);
+                }
+                else {
+                    Cdbg(APP_DBG, "Fail to change master ip, because this profile[%d] is not enabled.", wgc_idx);
+                }
+
+                break;
+            }
 #endif
 
             case FEATURE_CHANGE_IP: {
                 //- To do
                 break;
             }
-
+            
             default: {
                 //- Not supported
                 break;
@@ -2769,9 +2873,10 @@ static int rcv_general_data(char *data, char* topic) {
     }
 	
 	if(!json_object_is_type(root, json_type_object)) {
+        Cdbg(APP_DBG, "Invalid format!");
         return EXIT_FAILURE;
     }
-
+    
     json_object_object_foreach(root, featureName, function_data_obj) {
 
         int feature_id = get_supported_feature_id(featureName);
@@ -2873,6 +2978,7 @@ static int rcv_general_data(char *data, char* topic) {
             }
 #endif
 
+#if defined(RTCONFIG_TUNNEL)
             case FEATURE_TUNNEL_TEST: {
 
                 char target_device_id[33] = {0};
@@ -2892,6 +2998,94 @@ static int rcv_general_data(char *data, char* topic) {
                 snprintf(event, sizeof(event), AAE_AWSIOT_TNL_TEST_MSG, EID_AWSIOT_TUNNEL_TEST, target_device_id);
                 aae_sendIpcMsgAndWaitResp(MASTIFF_IPC_SOCKET_PATH, event, strlen(event), out, sizeof(out), 5);
 
+                break;
+            }
+#endif
+
+            case FEATURE_SYSTEM: {
+                 
+                char system_action[30] = {0};
+                int ret = HTTP_FAIL;
+                struct json_object *param_obj = NULL;
+                
+                if(json_object_object_get_ex(function_data_obj, "action", &param_obj)){
+                    strlcpy(system_action, (char *)json_object_get_string(param_obj), sizeof(system_action));
+                }
+
+                if (strncmp(system_action, AWSIOT_ACTION_REBOOT, strlen(AWSIOT_ACTION_REBOOT))==0) {
+                    
+                    char device_list[100] = {0};
+                    struct json_object *param_obj = NULL;
+
+                    if(json_object_object_get_ex(function_data_obj, "mac", &param_obj)){
+                        strlcpy(device_list, (char *)json_object_get_string(param_obj), sizeof(system_action));
+                    }
+
+                    ret = do_reboot_action(device_list);
+                    
+                    Cdbg(APP_DBG, "Finish to do reboot, device_list=%s, ret=%d", device_list, ret);
+                }
+                else if (strncmp(system_action, AWSIOT_ACTION_FWUPGRADE, strlen(AWSIOT_ACTION_FWUPGRADE))==0) {
+                    // notify_rc_and_wait("stop_upgrade;start_webs_upgrade");
+                    // ret = HTTP_OK;
+                    // Cdbg(APP_DBG, "Success to upgrade firmware");
+
+                    if (do_firmware_check(FROM_AWSIOT)==0) {
+
+                        ret = do_firmware_upgrade();
+
+                        Cdbg(APP_DBG, "Finish to do firmware_upgrade, ret=%d", ret);
+                    }
+                }
+                else if (strncmp(system_action, AWSIOT_ACTION_FEEDBACK, strlen(AWSIOT_ACTION_FEEDBACK))==0) {
+
+                    struct json_object *param_obj = NULL;
+                    /*
+                    e.g.
+                    {\"fb_transid\":\"1234567890ABCDEE\",
+                    \"fb_country\":\"Taiwan No.1\",
+                    \"fb_email\":\"debug:Edison_Shih@asus.com\",
+                    \"fb_serviceno\":\"E1234567899\",
+                    \"PM_attach_syslog\":\"1\",
+                    \"PM_attach_cfgfile\":\"1\",
+                    \"PM_attach_modemlog\":\"1\",
+                    \"PM_attach_wlanlog\":\"1\",
+                    \"fb_ptype\":\"Other_Problem\",
+                    \"fb_pdesc\":\"others\",
+                    \"fb_comment\":\"test222\"}
+                    */
+
+                    if(json_object_object_get_ex(function_data_obj, "data", &param_obj)){
+                        ret = do_feedback_mail(param_obj);
+
+                        if (ret==HTTP_OK) {
+                            nvram_set("fb_from", "app");
+                        }
+                    }
+                    
+                    Cdbg(APP_DBG, "Finish to do feedback, ret=%d", ret);
+                }
+#ifdef RTCONFIG_AMAS_NEWOB
+                else if (strncmp(system_action, AWSIOT_ACTION_ONBOARD, strlen(AWSIOT_ACTION_ONBOARD))==0) {
+
+                    char device_list[100] = {0};
+                    struct json_object *param_obj = NULL;
+
+                    if(json_object_object_get_ex(function_data_obj, "mac", &param_obj)){
+                        strlcpy(device_list, (char *)json_object_get_string(param_obj), sizeof(system_action));
+                    }
+
+                    if (strlen(device_list)<17) {
+                        Cdbg(APP_DBG, "Invalid mac");
+                        ret = HTTP_FAIL;
+                        break;
+                    }
+
+                    ret = amas_newre_selection(device_list);
+
+                    Cdbg(APP_DBG, "Finish to do amas_newre_selection, device_list=%s, ret=%d", device_list, ret);
+                }
+#endif
                 break;
             }
 
@@ -2917,17 +3111,15 @@ void init_basic_data() {
 
         int ntp_ready = nvram_get_int("ntp_ready");
 
-        int svc_ready = nvram_get_int("svc_ready");
-
         int link_internet = nvram_get_int("link_internet"); // 2 -> connected
 
-        if((svc_ready == 1) && (ntp_ready == 1) && (link_internet == 2)) {
-            Cdbg(APP_DBG, "waiting svc_ready -> %d, ntp_ready -> %d, link_internet -> %d", svc_ready, ntp_ready, link_internet);
+        if((ntp_ready == 1) && (link_internet == 2)) {
+            Cdbg(APP_DBG, "waiting ntp_ready -> %d, link_internet -> %d", ntp_ready, link_internet);
             break;
         } 
         else {
             if(ready_count < 3) {
-                // Cdbg(APP_DBG, "waiting svc_ready -> %d, link_internet -> %d, tencent_download_enable -> %d", svc_ready, link_internet, tencent_download_enable);
+                // Cdbg(APP_DBG, "waiting link_internet -> %d, tencent_download_enable -> %d", link_internet, tencent_download_enable);
             }
         }
         sleep(30);
@@ -2970,7 +3162,7 @@ void init_basic_data() {
         snprintf(awsiot_endpoint, sizeof(awsiot_endpoint), "%s", nvram_safe_get("awsiotendpoint"));
         snprintf(awsiot_clientid, sizeof(awsiot_clientid), "%s", nvram_safe_get("awsiotclientid"));
 
-        if( (strlen(awsiot_endpoint) > 2) &&  (strlen(awsiot_clientid) > 2) ) {
+        if( (strlen(awsiot_endpoint) > 2) &&  (strlen(awsiot_clientid) > 2) && ((nvram_get_int("ASUS_EULA") == 1) || (get_ASUS_privacy_policy_state(ASUS_PP_ACCOUNT_BINDING) == 1)) ) {
             Cdbg(APP_DBG, "Get awsiot_endpoint -> %s, awsiot_clientid -> %s", awsiot_endpoint, awsiot_clientid);
             break;
         } 
@@ -2992,7 +3184,12 @@ void init_basic_data() {
                 rootCA, clientCRT, clientPrivateKey) );
 }
 
-void init_topic_data() {
+void init_topic_data()
+{
+
+    if (is_init_topic_data_ok==1) {
+        return;
+    }
 
 #if defined(RTCONFIG_TC_GAME_ACC) 
     if(nvram_get_int("tencent_download_enable") == 1) {
@@ -3007,26 +3204,32 @@ void init_topic_data() {
     if (nvram_get_int("newsite_provisioning") == 1) {
         enable_sub_topic(SUB_TOPIC_NEWSITE_PROVISIONING);
     }
+    else 
 #endif
-
+    {
 #ifdef RTCONFIG_ACCOUNT_BINDING
-    if (is_account_bound()) {
-        enable_sub_topic(SUB_TOPIC_REMOTECONNECTION);
-        enable_sub_topic(SUB_TOPIC_GENERAL_DELTA_SHADOW);
-        enable_sub_topic(SUB_TOPIC_GENERAL_GET_ACCEPTED);
-        enable_sub_topic(SUB_TOPIC_GENERAL);
+        if (is_account_bound()) {
+            enable_sub_topic(SUB_TOPIC_REMOTECONNECTION);
+            enable_sub_topic(SUB_TOPIC_GENERAL_DELTA_SHADOW);
+            enable_sub_topic(SUB_TOPIC_GENERAL_GET_ACCEPTED);
+            enable_sub_topic(SUB_TOPIC_GENERAL);
 
-        snprintf(shadow_remote_connection_topic, MAX_TOPIC_LENGTH, "$aws/things/%s/shadow/RemoteConnection/update", awsiot_clientid);
+            snprintf(shadow_remote_connection_topic, MAX_TOPIC_LENGTH, "$aws/things/%s/shadow/RemoteConnection/update", awsiot_clientid);
 
-        get_db_reported_data();
-    }
+            get_db_reported_data();
+        }
 #endif
 
-    snprintf(default_shadow_topic, MAX_TOPIC_LENGTH, "$aws/things/%s/shadow/update", awsiot_clientid);    
+        snprintf(default_shadow_topic, MAX_TOPIC_LENGTH, "$aws/things/%s/shadow/update", awsiot_clientid);
+    }
+
+    is_init_topic_data_ok = 1;
 }
 
-int get_db_reported_data() {
+int get_db_reported_data()
+{
     
+#if defined(RTCONFIG_TUNNEL)
     char event[AAE_MAX_IPC_PACKET_SIZE];
     char out[AAE_MAX_IPC_PACKET_SIZE];
     snprintf(event, sizeof(event), AAE_AWSIOT_GET_SHADOW_MSG, EID_AWSIOT_GET_SHADOW);
@@ -3084,6 +3287,33 @@ int get_db_reported_data() {
     json_object_put(root);
 
     return EXIT_SUCCESS;
+#else
+    return EXIT_FAILURE;
+#endif
+}
+
+int check_mqtt_port() {
+
+    int ret = -1;
+    FILE *fp;
+    char cmd[128] = {0};
+
+    strlcpy(cmd, "netstat -na | grep 8883 2>&1" , sizeof(cmd));
+    if ((fp = popen(cmd, "r")) != NULL)
+    {
+        while (fgets(cmd, sizeof(cmd), fp) != NULL)
+        {
+            if (strlen(cmd) > 5)
+            {
+                ret = 0;
+                break;
+            }
+            else
+                ret = -1;
+        }
+        pclose(fp);
+    }
+    return ret;
 }
 
 int main( int argc, char ** argv ) {
@@ -3135,20 +3365,18 @@ int main( int argc, char ** argv ) {
 
             if( returnStatus == EXIT_FAILURE ) {
 
-                /* Log error to indicate connection failure after all
-                 * reconnect attempts are over. */
-                // LogError( ( "Failed to connect to MQTT broker %.*s.",
-                //             AWS_IOT_ENDPOINT_LENGTH,
-                //             AWS_IOT_ENDPOINT ) );
+                /* connection failure after all reconnect attempts are over. */
+                Cdbg(APP_DBG, "TCP connection cannot be established, Failed to connect to MQTT broker %s, ntp_ready = %d, link_internet = %d",
+                            awsiot_endpoint, nvram_get_int("ntp_ready"), nvram_get_int("link_internet"));
 
-                // Cdbg(APP_DBG, "Failed to connect to MQTT broker %.*s.",
-                //             AWS_IOT_ENDPOINT_LENGTH,
-                //             AWS_IOT_ENDPOINT);
+                if(check_mqtt_port() < 0) {
+                    check_mqtt_timer++;
+                }
 
-
-                Cdbg(APP_DBG, "Failed to connect to MQTT broker %s.",
-                            awsiot_endpoint);
-
+                if(check_mqtt_timer > 5) {
+                    Cdbg(APP_DBG, "check_mqtt_timer = %d, restart", check_mqtt_timer);
+                    break;
+                }
             }
             else {
 
@@ -3159,14 +3387,19 @@ int main( int argc, char ** argv ) {
 
                 if(returnStatus == MQTTSuccess) {
 
-                    returnStatus = update_default_shadow_data(&mqttContext);
-                    if(returnStatus != MQTTSuccess) {
-                        continue;
-                    }
+#ifdef RTCONFIG_NEWSITE_PROVISIONING 
+                    if (nvram_get_int("newsite_provisioning") == 0)
+#endif
+                    {
+                        returnStatus = update_default_shadow_data(&mqttContext);
+                        if(returnStatus != MQTTSuccess) {
+                            continue;
+                        }
 
-                    returnStatus = get_general_shadow_data(&mqttContext);
-                    if(returnStatus != MQTTSuccess) {
-                        continue;
+                        returnStatus = get_general_shadow_data(&mqttContext);
+                        if(returnStatus != MQTTSuccess) {
+                            continue;
+                        }
                     }
 
                     returnStatus = main_loop(&mqttContext, &mqttSessionEstablished);
@@ -3184,8 +3417,9 @@ int main( int argc, char ** argv ) {
             //     break;
             // }
 
-            LogInfo( ( "Openssl disconnect, Short delay before starting the next iteration....\n" ) );
+            Cdbg(APP_DBG, "Openssl disconnect, Short delay before starting the next iteration....");
             sleep( MQTT_SUBPUB_LOOP_DELAY_SECONDS );
+
         }
     }
 

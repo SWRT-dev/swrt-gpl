@@ -222,6 +222,8 @@ var isIE8 = navigator.userAgent.search("MSIE 8") > -1;
 var isIE9 = navigator.userAgent.search("MSIE 9") > -1; 
 
 function initial(){
+	top.name = "";/* reset cache of state.js win.name */
+
 	if(is_KR_sku || is_SG_sku || is_AA_sku)
 		document.getElementById("KRHint").style.display = "";
 

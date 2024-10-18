@@ -48,6 +48,8 @@
 #define CAPTCHA_MAX_LOGIN_NUM   2
 #endif
 
+#define HTTPD_LOCK_VERSION 1
+
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #endif
@@ -95,7 +97,7 @@ struct stb_port {
 struct model_stb_port {
         int model;
         char *odmpid;
-        struct stb_port port_list[8];
+        struct stb_port port_list[9];
 };
 
 struct iptv_profile {
@@ -154,7 +156,7 @@ struct wl_sync_nvram {
 #define MIME_EXCEPTION_NOPASS           1<<4
 #define CHECK_REFERER	1
 
-#define SERVER_NAME "httpd/2.0"
+#define SERVER_NAME "httpd/3.0"
 #define SERVER_PORT 80
 #define PROTOCOL "HTTP/1.0"
 #define RFC1123FMT "%a, %d %b %Y %H:%M:%S GMT"
@@ -185,6 +187,10 @@ struct wl_sync_nvram {
 //Add Login Try
 #define NOLOGINTRY   0
 #define LOGINTRY   1
+
+#define HTTPD_AUTH_V1   0
+#define HTTPD_AUTH_V2   1
+
 
 #if defined(RTCONFIG_IFTTT) || defined(RTCONFIG_ALEXA) || defined(RTCONFIG_GOOGLE_ASST)
 #define IFTTTUSERAGENT  "asusrouter-Windows-IFTTT-1.0"
@@ -232,7 +238,17 @@ struct mime_referer {
 	int flag;
 };
 
+struct etag_filter_table {
+    const char *file;
+    int flag;
+};
+
 extern struct mime_referer mime_referers[];
+
+enum {
+    TOKEN_ACT_ADD,
+    TOKEN_ACT_DEL
+};
 
 typedef struct asus_token_table asus_token_t;
 struct asus_token_table{
@@ -241,6 +257,7 @@ struct asus_token_table{
 	char ipaddr[16];
 	char login_timestampstr[32];
 	char host[64];
+	time_t last_login_timestamp;
 	asus_token_t *next;
 };
 
@@ -442,12 +459,6 @@ extern int uaddr_is_localhost(uaddr *uip);
 extern int uaddr_is_equal(uaddr *a, uaddr *b);
 extern uaddr *uaddr_getpeer(webs_t wp, uaddr *uip);
 
-#if defined(RTCONFIG_ECC256)
-#define HTTPS_CA_JFFS  "/jffs/cert_ecdsa.tgz"
-#else
-#define HTTPS_CA_JFFS  "/jffs/cert.tgz"
-#endif
-
 /* web.c */
 extern int ej_lan_leases(int eid, webs_t wp, int argc, char_t **argv);
 extern int get_nat_vserver_table(int eid, webs_t wp, int argc, char_t **argv);
@@ -519,7 +530,7 @@ extern char cloud_file[256];
 #ifdef RTCONFIG_HTTPS
 extern int do_ssl;
 extern int ssl_stream_fd;
-extern int gen_ddns_hostname(char *ddns_hostname);
+extern int gen_ddns_hostname(char *ddns_hostname, int len);
 extern int check_model_name(void);
 extern char *pwenc(char *input, char *output, int len);
 #endif
@@ -619,14 +630,14 @@ extern void do_save_all_profile_cgi(char *url, FILE *stream);
 extern int get_jffs_cfgs(FILE *stream, int *len);
 #endif
 extern int delete_client_in_group_list(char *del_maclist, int del_idx, char *in_group_list, char *out_group_list, int out_len);
-extern int b64_decode(const char* str, unsigned char* space, int size);
 extern int redirect_service_page(char *next_page, webs_t wp);
 extern void store_file_var(char *login_url, char *file);
-extern int save_changed_param(json_object *cfg_root, char *param, const char *value);
 extern int get_active_wan_unit(void);
 extern int check_lock_status(time_t *dt);
 extern int last_time_lock_warning(void);
 extern int check_lock_status(time_t *dt);
 extern void check_lock_state();
 extern int gen_asus_token_cookie(char *asus_token, int asus_token_len, char *token_cookie, int cookie_len);
+extern void gen_random_string_v2(char *out, size_t len);
 #endif /* _httpd_h_ */
+
