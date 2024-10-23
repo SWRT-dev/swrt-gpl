@@ -329,64 +329,64 @@ static INT scan_active(RTMP_ADAPTER *pAd, UCHAR OpMode, UCHAR ScanType, struct w
 	   )
 		SsidLen = pAd->ScanCtrl.SsidLen;
 
-		{
-			UCHAR SsidIe = 0;
+	{
+		UCHAR SsidIe = 0;
 #ifdef CONFIG_AP_SUPPORT
-			/*IF_DEV_CONFIG_OPMODE_ON_AP(pAd) */
-			if (OpMode == OPMODE_AP) {
-				UCHAR *src_mac_addr = NULL;
+		/*IF_DEV_CONFIG_OPMODE_ON_AP(pAd) */
+		if (OpMode == OPMODE_AP) {
+			UCHAR *src_mac_addr = NULL;
 #ifdef APCLI_SUPPORT
 #ifdef WSC_INCLUDED
 
-				if (ScanType == SCAN_WSC_ACTIVE)
-					src_mac_addr = &pAd->ApCfg.ApCliTab[wdev->func_idx].wdev.if_addr[0];
-				else
+			if (ScanType == SCAN_WSC_ACTIVE)
+				src_mac_addr = &pAd->ApCfg.ApCliTab[wdev->func_idx].wdev.if_addr[0];
+			else
 #endif
 #endif
-				{/* search the first ap interface which use the same band */
+			{/* search the first ap interface which use the same band */
 #ifdef APCLI_SUPPORT
-				    if ((wdev->wdev_type == WDEV_TYPE_APCLI)
-						&& (pAd->ApCfg.ApCliTab[wdev->func_idx].wdev.DevInfo.Active)) {
-					src_mac_addr = &pAd->ApCfg.ApCliTab[wdev->func_idx].wdev.if_addr[0];
-				    } else
+			    if ((wdev->wdev_type == WDEV_TYPE_APCLI)
+					&& (pAd->ApCfg.ApCliTab[wdev->func_idx].wdev.DevInfo.Active)) {
+				src_mac_addr = &pAd->ApCfg.ApCliTab[wdev->func_idx].wdev.if_addr[0];
+			    } else
 #endif /* APCLI_SUPPORT */
-					{/* search the first ap interface which use the same band */
-					INT IdBss = 0;
+				{/* search the first ap interface which use the same band */
+				INT IdBss = 0;
 
-					for (IdBss = 0; IdBss < pAd->ApCfg.BssidNum; IdBss++) {
-						if (pAd->ApCfg.MBSSID[IdBss].wdev.DevInfo.Active) {
-							if (HcGetBandByWdev(&pAd->ApCfg.MBSSID[IdBss].wdev) == HcGetBandByWdev(wdev))
-								break;
-						}
+				for (IdBss = 0; IdBss < pAd->ApCfg.BssidNum; IdBss++) {
+					if (pAd->ApCfg.MBSSID[IdBss].wdev.DevInfo.Active) {
+						if (HcGetBandByWdev(&pAd->ApCfg.MBSSID[IdBss].wdev) == HcGetBandByWdev(wdev))
+							break;
 					}
-					src_mac_addr = &pAd->ApCfg.MBSSID[IdBss].wdev.bssid[0];
-				    }
 				}
-
-				MgtMacHeaderInitExt(pAd, &Hdr80211, SUBTYPE_PROBE_REQ, 0, BROADCAST_ADDR,
-									src_mac_addr,
-									BROADCAST_ADDR);
+				src_mac_addr = &pAd->ApCfg.MBSSID[IdBss].wdev.bssid[0];
+			    }
 			}
 
-#endif /* CONFIG_AP_SUPPORT */
-			SsidLen = strlen(&pAd->ScanCtrl.Ssid[0]);
-			/* Hidden SSID case */
-			if ((pAd->ScanCtrl.SsidLen == 0) && (SsidLen != 0))
-				pAd->ScanCtrl.SsidLen = SsidLen;
-			else
-				SsidLen = pAd->ScanCtrl.SsidLen;
-
-			MakeOutgoingFrame(frm_buf,               &FrameLen,
-							  sizeof(HEADER_802_11),    &Hdr80211,
-							  1,                        &SsidIe,
-							  1,                        &SsidLen,
-							  SsidLen,			        pAd->ScanCtrl.Ssid,
-							  END_OF_ARGS);
-			FrameLen += build_support_rate_ie(wdev, wdev->rate.SupRate, wdev->rate.SupRateLen, frm_buf + FrameLen);
-
-			FrameLen += build_support_ext_rate_ie(wdev, wdev->rate.SupRateLen,
-					wdev->rate.ExtRate, wdev->rate.ExtRateLen, frm_buf + FrameLen);
+			MgtMacHeaderInitExt(pAd, &Hdr80211, SUBTYPE_PROBE_REQ, 0, BROADCAST_ADDR,
+								src_mac_addr,
+								BROADCAST_ADDR);
 		}
+
+#endif /* CONFIG_AP_SUPPORT */
+		SsidLen = strlen(&pAd->ScanCtrl.Ssid[0]);
+		/* Hidden SSID case */
+		if ((pAd->ScanCtrl.SsidLen == 0) && (SsidLen != 0))
+			pAd->ScanCtrl.SsidLen = SsidLen;
+		else
+			SsidLen = pAd->ScanCtrl.SsidLen;
+
+		MakeOutgoingFrame(frm_buf,               &FrameLen,
+						  sizeof(HEADER_802_11),    &Hdr80211,
+						  1,                        &SsidIe,
+						  1,                        &SsidLen,
+						  SsidLen,			        pAd->ScanCtrl.Ssid,
+						  END_OF_ARGS);
+		FrameLen += build_support_rate_ie(wdev, wdev->rate.SupRate, wdev->rate.SupRateLen, frm_buf + FrameLen);
+
+		FrameLen += build_support_ext_rate_ie(wdev, wdev->rate.SupRateLen,
+			wdev->rate.ExtRate, wdev->rate.ExtRateLen, frm_buf + FrameLen);
+	}
 
 #ifdef DOT11_N_SUPPORT
 

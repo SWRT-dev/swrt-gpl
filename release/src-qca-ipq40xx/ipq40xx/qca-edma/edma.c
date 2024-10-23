@@ -1728,7 +1728,7 @@ void edma_flow_may_expire(unsigned long data)
 		struct hlist_head *hhead;
 		struct hlist_node *tmp;
 		struct edma_rfs_filter_node *n;
-		bool res;
+		int res;
 
 		hhead = &adapter->rfs.hlist_head[adapter->rfs.hashtoclean++];
 		hlist_for_each_entry_safe(n, tmp, hhead, node) {

@@ -24,8 +24,8 @@ Individual utilities
 * cxxfilt: (binutils)c++filt.                   MS-DOS name for c++filt.
 * dlltool: (binutils)dlltool.                   Create files needed to build 
                                                   and use DLLs.
-* elfedit: (binutils)elfedit.                   Update the ELF header of ELF 
-                                                  files.
+* elfedit: (binutils)elfedit.                   Update ELF header and property 
+                                                  of ELF files.
 * nm: (binutils)nm.                             List symbols from object files.
 * objcopy: (binutils)objcopy.                   Copy and translate object 
                                                   files.
@@ -48,6 +48,8 @@ Software development
 * As: (as).                     The GNU assembler.
 * Bfd: (bfd).                   The Binary File Descriptor library.
 * Binutils: (binutils).         The GNU binary utilities.
+* Cpp: (cpp).                   The GNU C preprocessor.
+* Cpplib: (cppinternals).       Cpplib internals.
 * Gas: (as).                    The GNU assembler.
 * Ld: (ld).                     The GNU linker.
 * g++: (gcc).                   The GNU C++ compiler.

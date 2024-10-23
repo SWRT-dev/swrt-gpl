@@ -30,16 +30,16 @@ export MUSL32=y
 export PLATFORM_ROUTER := mt7621
 export PLATFORM := mipsel-musl
 export PLATFORM_ARCH := mipsel-musl
-export TOOLS :=/opt/toolchain-mipsel_24kc_gcc-5.4.0_musl-1.1.24
-export CROSS_COMPILE := $(TOOLS)/bin/mipsel-openwrt-linux-musl-
+export TOOLS :=/opt/toolchain-mipsel_1004kc_gcc-8.5.0_musl-1.1.24
+export CROSS_COMPILE := $(TOOLS)/bin/mipsel-openwrt-linux-
 export CROSS_COMPILER := $(CROSS_COMPILE)
-export READELF := $(TOOLS)/bin/mipsel-openwrt-linux-musl-readelf
+export READELF := $(TOOLS)/bin/mipsel-openwrt-linux-readelf
 export CONFIGURE := ./configure --host=mipsel-linux --build=$(BUILD)
 export HOSTCONFIG := linux-mipsel
 export ARCH := mips
 export HOST := mipsel-linux
-export KERNELCC := $(TOOLS)/bin/mipsel-openwrt-linux-musl-gcc
-export KERNELLD := $(TOOLS)/bin/mipsel-openwrt-linux-musl-ld
+export KERNELCC := $(CROSS_COMPILE)gcc
+export KERNELLD := $(CROSS_COMPILE)ld
 export STAGING_DIR := $(TOOLS)
 else ifeq ($(RT4GAC86U),y)
 export EXTRACFLAGS += -DRT4GAC86U
@@ -90,7 +90,7 @@ endif
 
 # for OpenWRT SDK
 export DTS_DIR := $(LINUXDIR)/arch/$(ARCH)/boot/dts
-
+export TOOLCHAIN_TARGET_GCCVER := 8.5.0
 #ifeq ($(RT4GAC86U),y)
 EXTRA_CFLAGS := -DLINUX26 -DCONFIG_RALINK -pipe -DDEBUG_NOISY -DDEBUG_RCTEST
 #else

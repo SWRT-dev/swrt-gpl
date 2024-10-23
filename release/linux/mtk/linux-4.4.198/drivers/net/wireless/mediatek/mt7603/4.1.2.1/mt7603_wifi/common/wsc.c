@@ -3717,8 +3717,8 @@ VOID WscSendEapReqId(
     /* RFC 3748 Ch 4.1: recommended to initalize Identifier with a
 	 * random number */
 	Id = RandomByte(pAd);
-    if (Id == pWpsCtrl->lastId)
-        Id += 1;
+	if (Id == pWpsCtrl->lastId)
+		Id += 1;
 	EapFrame.Code   = EAP_CODE_REQ;
 	EapFrame.Id     = Id;
 	EapFrame.Length = cpu2be16(Length);
@@ -3727,8 +3727,8 @@ VOID WscSendEapReqId(
 	
     /* Out buffer for transmitting EAP-Req(Identity) */
 	os_alloc_mem(NULL, (UCHAR **)&pOutBuffer, MAX_LEN_OF_MLME_BUFFER);
-    if(pOutBuffer == NULL)
-        return;
+	if(pOutBuffer == NULL)
+		return;
 
 	FrameLen = 0;
 	
@@ -3888,34 +3888,34 @@ VOID WscSendEapRspId(
 
     /* Out buffer for transmitting EAP-Req(Identity) */
 	os_alloc_mem(NULL, (UCHAR **)&pOutBuffer, MAX_LEN_OF_MLME_BUFFER);
-    if(pOutBuffer == NULL)
-        return;
+	if(pOutBuffer == NULL)
+		return;
 
 	FrameLen = 0;
 
-    if (pWscControl->WscConfMode == WSC_REGISTRAR)
-    {
+	if (pWscControl->WscConfMode == WSC_REGISTRAR)
+	{
     	/* Make tx frame */
-	MakeOutgoingFrame(pOutBuffer, &FrameLen,
+		MakeOutgoingFrame(pOutBuffer, &FrameLen,
 						sizeof(IEEE8021X_FRAME), &Ieee_8021x,
 						sizeof(EapFrame), &EapFrame,
 						(sizeof(regIdentity) - 1), regIdentity,
 						END_OF_ARGS);
-    }
-    else if (pWscControl->WscConfMode == WSC_ENROLLEE)
-    {
+	}
+	else if (pWscControl->WscConfMode == WSC_ENROLLEE)
+	{
         /* Make	 Transmitting frame */
-    	MakeOutgoingFrame(pOutBuffer, &FrameLen,
+		MakeOutgoingFrame(pOutBuffer, &FrameLen,
     		sizeof(IEEE8021X_FRAME), &Ieee_8021x,
     		sizeof(EapFrame), &EapFrame, 
     		(sizeof(enrIdentity) - 1), enrIdentity,
     		END_OF_ARGS);
-    }
-    else
-    {
-        DBGPRINT(RT_DEBUG_TRACE, ("WscConfMode(%d) is not WSC_REGISTRAR nor WSC_ENROLLEE.\n", pWscControl->WscConfMode));	
-        goto out;
-    }
+	}
+	else
+	{
+		DBGPRINT(RT_DEBUG_TRACE, ("WscConfMode(%d) is not WSC_REGISTRAR nor WSC_ENROLLEE.\n", pWscControl->WscConfMode));	
+		goto out;
+	}
 
 	/* Copy frame to Tx ring */
 #ifdef CONFIG_AP_SUPPORT
@@ -4814,8 +4814,8 @@ VOID	WscSendEapFail(
 	
     /* Out buffer for transmitting EAP-Req(Identity) */
 	os_alloc_mem(NULL, (UCHAR **)&pOutBuffer, MAX_LEN_OF_MLME_BUFFER);
-    if(pOutBuffer == NULL)
-        return;
+	if(pOutBuffer == NULL)
+		return;
 
 	FrameLen = 0;
 	
@@ -8060,15 +8060,15 @@ INT	WscGetConfWithoutTrigger(
     IsAPConfigured = pWscControl->WscConfStatus;
     //pWscUPnPNodeInfo = &pWscControl->WscUPnPNodeInfo;
 
-    if (pWscControl->WscConfMode == WSC_DISABLE)
-    {
-        pWscControl->bWscTrigger = FALSE;
-        DBGPRINT(RT_DEBUG_TRACE, ("WscGetConfForUpnp:: WPS is disabled.\n"));
+	if (pWscControl->WscConfMode == WSC_DISABLE)
+	{
+		pWscControl->bWscTrigger = FALSE;
+		DBGPRINT(RT_DEBUG_TRACE, ("WscGetConfForUpnp:: WPS is disabled.\n"));
 		return FALSE;
-    }
+	}
 
-    if (bFromUPnP)
-        WscStop(pAd, FALSE, pWscControl);
+	if (bFromUPnP)
+		WscStop(pAd, FALSE, pWscControl);
     
 	if (pWscControl->WscMode == 1)
 		WscMode = DEV_PASS_ID_PIN;
@@ -8083,7 +8083,7 @@ INT	WscGetConfWithoutTrigger(
     RTMPSetTimer(&pWscControl->Wsc2MinsTimer, WSC_TWO_MINS_TIME_OUT);
     pWscControl->Wsc2MinsTimerRunning = TRUE;
     pWscControl->WscStatus = STATUS_WSC_LINK_UP;
-    if (bFromUPnP)
+	if (bFromUPnP)
 		WscSendUPnPConfReqMsg(pAd, apIdx, (PUCHAR)pAd->ApCfg.MBSSID[apIdx].Ssid, 
 									pAd->ApCfg.MBSSID[apIdx].wdev.bssid, 3, 0, AP_MODE);
 

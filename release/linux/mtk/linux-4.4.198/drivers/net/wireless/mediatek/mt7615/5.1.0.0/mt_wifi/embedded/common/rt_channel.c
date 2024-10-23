@@ -2703,7 +2703,7 @@ UINT8 GetCuntryMaxTxPwr(
 	if (i == pChCtrl->ChListNum)
 		return 0xff;
 
-		return pChCtrl->ChList[i].MaxTxPwr;
+	return pChCtrl->ChList[i].MaxTxPwr;
 }
 
 

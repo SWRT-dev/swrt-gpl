@@ -92,8 +92,8 @@ VOID RoutingTabDestory(
 	if (pMbss->RoutingTabFlag == 0) {
 		NdisFreeSpinLock(&pMbss->RoutingTabLock);
 
-	if (pMbss->pRoutingEntryPool)
-		os_free_mem(pMbss->pRoutingEntryPool);
+		if (pMbss->pRoutingEntryPool)
+			os_free_mem(pMbss->pRoutingEntryPool);
 		pMbss->pRoutingEntryPool = NULL;
 		initList(&pMbss->RoutingEntryFreeList);
 		pMbss->bRoutingTabInit = FALSE;

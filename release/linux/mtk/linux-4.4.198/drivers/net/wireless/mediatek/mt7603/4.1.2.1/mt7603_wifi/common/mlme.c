@@ -5277,8 +5277,8 @@ BOOLEAN MlmeEnqueueForWsc(
 	DBGPRINT(RT_DEBUG_TRACE, ("-----> MlmeEnqueueForWsc\n"));
     /* Do nothing if the driver is starting halt state.*/
     /* This might happen when timer already been fired before cancel timer with mlmehalt*/
-    if (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_HALT_IN_PROGRESS))
-        return FALSE;
+	if (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_HALT_IN_PROGRESS))
+		return FALSE;
 
 	/* First check the size, it MUST not exceed the mlme queue size*/
 	if (MsgLen > MGMT_DMA_BUFFER_SIZE)

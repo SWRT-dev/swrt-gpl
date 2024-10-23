@@ -2635,51 +2635,51 @@ Arguments:
 */
 RTMP_STRING *GetEncryptType(CHAR enc)
 {
-    if(enc == Ndis802_11WEPDisabled)
-        return "NONE";
-    if(enc == Ndis802_11WEPEnabled)
-    	return "WEP";
-    if(enc == Ndis802_11TKIPEnable)
-    	return "TKIP";
-    if(enc == Ndis802_11AESEnable)
-    	return "AES";
+	if(enc == Ndis802_11WEPDisabled)
+		return "NONE";
+	if(enc == Ndis802_11WEPEnabled)
+		return "WEP";
+	if(enc == Ndis802_11TKIPEnable)
+		return "TKIP";
+	if(enc == Ndis802_11AESEnable)
+		return "AES";
 	if(enc == Ndis802_11TKIPAESMix)
-    	return "TKIPAES";
+		return "TKIPAES";
 #ifdef WAPI_SUPPORT
 	if(enc == Ndis802_11EncryptionSMS4Enabled)
-    	return "SMS4";
+		return "SMS4";
 #endif /* WAPI_SUPPORT */
-    else
-    	return "UNKNOW";
+	else
+		return "UNKNOW";
 }
 
 RTMP_STRING *GetAuthMode(CHAR auth)
 {
-    if(auth == Ndis802_11AuthModeOpen)
-    	return "OPEN";
-    if(auth == Ndis802_11AuthModeShared)
-    	return "SHARED";
+	if(auth == Ndis802_11AuthModeOpen)
+		return "OPEN";
+	if(auth == Ndis802_11AuthModeShared)
+		return "SHARED";
 	if(auth == Ndis802_11AuthModeAutoSwitch)
 		return "WEPAUTO";
-    if(auth == Ndis802_11AuthModeWPA)
-    	return "WPA";
-    if(auth == Ndis802_11AuthModeWPAPSK)
-    	return "WPAPSK";
-    if(auth == Ndis802_11AuthModeWPANone)
-    	return "WPANONE";
-    if(auth == Ndis802_11AuthModeWPA2)
-    	return "WPA2";
-    if(auth == Ndis802_11AuthModeWPA2PSK)
-    	return "WPA2PSK";
+	if(auth == Ndis802_11AuthModeWPA)
+		return "WPA";
+	if(auth == Ndis802_11AuthModeWPAPSK)
+		return "WPAPSK";
+	if(auth == Ndis802_11AuthModeWPANone)
+		return "WPANONE";
+	if(auth == Ndis802_11AuthModeWPA2)
+		return "WPA2";
+	if(auth == Ndis802_11AuthModeWPA2PSK)
+		return "WPA2PSK";
 	if(auth == Ndis802_11AuthModeWPA1WPA2)
-    	return "WPA1WPA2";
+		return "WPA1WPA2";
 	if(auth == Ndis802_11AuthModeWPA1PSKWPA2PSK)
 		return "WPAPSKWPA2PSK";
 #ifdef WAPI_SUPPORT
 	if(auth == Ndis802_11AuthModeWAICERT)
-    	return "WAI-CERT";
+		return "WAI-CERT";
 	if(auth == Ndis802_11AuthModeWAIPSK)
-    	return "WAI-PSK";
+		return "WAI-PSK";
 #endif /* WAPI_SUPPORT */
 #ifdef DOT11_SAE_SUPPORT
 	if (auth == Ndis802_11AuthModeWPA3PSK)
@@ -2692,7 +2692,7 @@ RTMP_STRING *GetAuthMode(CHAR auth)
 		return "OWE";
 #endif
 	
-    	return "UNKNOW";
+	return "UNKNOW";
 }		
 
 
@@ -5957,8 +5957,8 @@ INT	Show_PMK_Proc(
 
 	
     sprintf(pBuf, "\tPMK = ");
-    for (idx = 0; idx < 32; idx++)
-        sprintf(pBuf+strlen(pBuf), "%02X", PMK[idx]);
+	for (idx = 0; idx < 32; idx++)
+		sprintf(pBuf+strlen(pBuf), "%02X", PMK[idx]);
 
 	return 0;
 }

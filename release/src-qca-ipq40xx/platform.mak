@@ -10,9 +10,9 @@ export BUILD := $(shell (gcc -dumpmachine))
 export KERNEL_BINARY=$(LINUXDIR)/vmlinux
 export MUSL32 :=y
 export PLATFORM := arm-musl
-export TOOLS := /opt/toolchain-arm_cortex-a7_gcc-5.2.0_musl_eabi
-export CROSS_COMPILE := $(TOOLS)/bin/arm-openwrt-linux-muslgnueabi-
-export READELF := $(TOOLS)/bin/arm-openwrt-linux-muslgnueabi-readelf
+export TOOLS := /opt/toolchain-arm_cortex-a7_gcc-8.5.0_musl-1.1.24_eabi
+export CROSS_COMPILE := $(TOOLS)/bin/arm-openwrt-linux-
+export READELF := $(CROSS_COMPILE)readelf
 export CROSS_COMPILER := $(CROSS_COMPILE)
 export CONFIGURE := ./configure --host=arm-linux --build=$(BUILD)
 export HOSTCONFIG := linux-armv4
@@ -36,7 +36,7 @@ EXTRA_CFLAGS := -DLINUX26 -DCONFIG_QCA -pipe -DDEBUG_NOISY -DDEBUG_RCTEST -march
 
 export CONFIG_LINUX26=y
 export CONFIG_QCA=y
-export TOOLCHAIN_TARGET_GCCVER := 5.2.0
+export TOOLCHAIN_TARGET_GCCVER := 8.5.0
 #EXTRA_CFLAGS += -DLINUX30
 export CONFIG_LINUX30=y
 

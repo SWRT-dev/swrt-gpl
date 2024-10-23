@@ -3730,11 +3730,11 @@ INT RTMPAPSetInformation(
 					}
 				} else
 					Status = -EINVAL;
-					break;
-				}
-			} else
-				Status = -EINVAL;
-			break;
+				break;
+			}
+		} else
+			Status = -EINVAL;
+		break;
 
 	case OID_SET_PSK:
 		{

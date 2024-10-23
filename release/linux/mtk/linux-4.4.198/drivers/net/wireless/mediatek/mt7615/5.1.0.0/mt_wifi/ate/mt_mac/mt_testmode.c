@@ -2812,8 +2812,8 @@ static INT32 MT_ATEStop(RTMP_ADAPTER *pAd)
 	RTMP_OS_NETDEV_START_QUEUE(pAd->net_dev);
 #ifdef CONFIG_AP_SUPPORT
 	IF_DEV_CONFIG_OPMODE_ON_AP(pAd) {
-	if (MaxNumBss > MAX_MBSSID_NUM(pAd))
-		MaxNumBss = MAX_MBSSID_NUM(pAd);
+		if (MaxNumBss > MAX_MBSSID_NUM(pAd))
+			MaxNumBss = MAX_MBSSID_NUM(pAd);
 
 		/*  first IdBss must not be 0 (BSS0), must be 1 (BSS1) */
 		for (IdBss = FIRST_MBSSID;

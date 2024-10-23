@@ -869,7 +869,7 @@ static int radio_get_scan_results(const char *name, struct wifi_bss *bsss, int *
 	char auth[16] = "", sig[9] = "", wmode[8] = "";
 	char temp1[200];
 	char a1[10], a2[10], a3[10];
-	char siglv[5] = "";
+	char siglv[11] = "";
 	char prefix_header[] = "Cell xx - Address:";
 	char *pt1, *pt2, *pt3, *pt4;
 	FILE *fp;
@@ -1025,7 +1025,7 @@ static int radio_get_scan_results(const char *name, struct wifi_bss *bsss, int *
 					if(pt3 && pt4)
 					{
 						strncpy(a3, pt3 + strlen("Signal level=-"), pt4 - pt3 - strlen("Signal level=-"));
-						sprintf(siglv, "%s", a3);
+						snprintf(siglv, sizeof(siglv), "%s", a3);
 						pbss->rssi = 0 - atoi(siglv);
 						libwifi_dbg("    Rssi: %d dBm", pbss->rssi);
 					}	
@@ -2188,7 +2188,7 @@ int qca_driver_info(const char *name, struct wifi_metainfo *info)
 	fd = open(path, O_RDONLY);
 	if (WARN_ON(fd < 0))
 		return -1;
-		if (WARN_ON(!read(fd, info->vendor_id, sizeof(info->vendor_id)))) {
+	if (WARN_ON(!read(fd, info->vendor_id, sizeof(info->vendor_id)))) {
 		close(fd);
 		return -1;
 	}
@@ -2200,7 +2200,7 @@ int qca_driver_info(const char *name, struct wifi_metainfo *info)
 	fd = open(path, O_RDONLY);
 	if (WARN_ON(fd < 0))
 		return -1;
-		if (WARN_ON(!read(fd, info->device_id, sizeof(info->device_id)))) {
+	if (WARN_ON(!read(fd, info->device_id, sizeof(info->device_id)))) {
 		close(fd);
 		return -1;
 	}

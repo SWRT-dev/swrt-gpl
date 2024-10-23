@@ -10,9 +10,9 @@ endif
 export KERNEL_BINARY=$(LINUXDIR)/arch/arm/boot/zImage
 export MUSL32 :=y
 export MUSL_LIBC :=y
-export TOOLS := $(SRCBASE)/../../toolchains/toolchain-arm_cortex-a9_gcc-8.4.0_musl_eabi
+export TOOLS := $(SRCBASE)/../../toolchains/toolchain-arm_cortex-a9_gcc-8.5.0_musl-1.1.24_eabi
 export PLATFORM_ARCH := arm-musl
-export CROSS_COMPILE := $(TOOLS)/bin/arm-openwrt-linux-
+export CROSS_COMPILE := $(TOOLS)/bin/arm-openwrt-linux-muslgnueabi-
 export CROSS_COMPILER := $(CROSS_COMPILE)
 export CONFIGURE := ./configure --host=arm-linux --build=$(BUILD)
 export HOSTCONFIG := linux-armv4
@@ -39,7 +39,7 @@ export CONFIG_LINUX26=y
 export CONFIG_LINUX30=y
 export CONFIG_BCMWL5=y
 export OPENSSL11=y
-
+export TOOLCHAIN_TARGET_GCCVER := 8.5.0
 
 define platformRouterOptions
 	@( \

@@ -2401,18 +2401,18 @@ VOID ApCliCtrlDeAuthAction(
 #endif /* MAC_REPEATER_SUPPORT */
 		bValid = pApCliEntry->Valid;
 
-		os_alloc_mem(pAd, (UCHAR **)&mlmeDeauth_Elem, sizeof(MLME_QUEUE_ELEM));
-	
-		if(mlmeDeauth_Elem == NULL)
-		{
-		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s: Send Deauth Failed!!\n", __func__));
-			return;
-		}
-		mlmeDeauth_Elem->Priv = Elem->Priv;
-		NdisCopyMemory(mlmeDeauth_Elem->Msg, &DeAuthFrame, sizeof(MLME_DEAUTH_REQ_STRUCT));
-		mlmeDeauth_Elem->MsgLen = sizeof(MLME_DEAUTH_REQ_STRUCT);
-		ApCliMlmeDeauthReqAction(pAd, mlmeDeauth_Elem);
-		os_free_mem(mlmeDeauth_Elem);
+	os_alloc_mem(pAd, (UCHAR **)&mlmeDeauth_Elem, sizeof(MLME_QUEUE_ELEM));
+
+	if(mlmeDeauth_Elem == NULL)
+	{
+	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s: Send Deauth Failed!!\n", __func__));
+		return;
+	}
+	mlmeDeauth_Elem->Priv = Elem->Priv;
+	NdisCopyMemory(mlmeDeauth_Elem->Msg, &DeAuthFrame, sizeof(MLME_DEAUTH_REQ_STRUCT));
+	mlmeDeauth_Elem->MsgLen = sizeof(MLME_DEAUTH_REQ_STRUCT);
+	ApCliMlmeDeauthReqAction(pAd, mlmeDeauth_Elem);
+	os_free_mem(mlmeDeauth_Elem);
 
 	if (bValid) {
 		*pLinkDownReason = APCLI_LINKDOWN_DEAUTH_REQ;

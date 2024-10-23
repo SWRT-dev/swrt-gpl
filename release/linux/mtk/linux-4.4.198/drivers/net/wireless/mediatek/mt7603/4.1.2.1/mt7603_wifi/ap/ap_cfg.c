@@ -2427,39 +2427,39 @@ INT RTMPAPSetInformation(
 					}
 				} else {
 #endif
-				if (pObj->ioctl_if < HW_BEACON_MAX_NUM) {
-					pMbss = &pAd->ApCfg.MBSSID[pObj->ioctl_if];
-					wdev = &pMbss->wdev;
-					NdisZeroMemory(pMbss->Ssid, MAX_LEN_OF_SSID);
-					Status = copy_from_user(pMbss->Ssid,
-								wrq->u.data.pointer,
-								wrq->u.data.length);
-					pMbss->SsidLen = wrq->u.data.length;
-					if (wdev == NULL) {
-						Status = -EINVAL;
-						break;
-					}
-					{
-						ap_send_broadcast_deauth(pAd, wdev);
-						if ((&wdev->AuthMode) && (&wdev->WpaMixPairCipher))
-							pMbss->CapabilityInfo |= 0x0010;
-						else
-							pMbss->CapabilityInfo &= ~(0x0010);
-						if (pAd->Dot11_H.RDMode != RD_SWITCHING_MODE) {
-							MbssKickOutStas(pAd, pObj->ioctl_if, REASON_DISASSOC_INACTIVE);
-							ap_security_init(pAd, wdev, pObj->ioctl_if);
-							ap_mlme_set_capability(pAd, pMbss);
-							ap_key_tb_single_init(pAd, pMbss);
-							APMakeBssBeacon(pAd, pObj->ioctl_if);
-							APUpdateBeaconFrame(pAd, pObj->ioctl_if);
+					if (pObj->ioctl_if < HW_BEACON_MAX_NUM) {
+						pMbss = &pAd->ApCfg.MBSSID[pObj->ioctl_if];
+						wdev = &pMbss->wdev;
+						NdisZeroMemory(pMbss->Ssid, MAX_LEN_OF_SSID);
+						Status = copy_from_user(pMbss->Ssid,
+									wrq->u.data.pointer,
+									wrq->u.data.length);
+						pMbss->SsidLen = wrq->u.data.length;
+						if (wdev == NULL) {
+							Status = -EINVAL;
+							break;
 						}
-						DBGPRINT(RT_DEBUG_TRACE,
-							("I/F(ra%d) Set_SSID::(Len=%d,Ssid=%s)\n",
-							pObj->ioctl_if,
-							pMbss->SsidLen, pMbss->Ssid));
-					}
-				} else
-					Status = -EINVAL;
+						{
+							ap_send_broadcast_deauth(pAd, wdev);
+							if ((&wdev->AuthMode) && (&wdev->WpaMixPairCipher))
+								pMbss->CapabilityInfo |= 0x0010;
+							else
+								pMbss->CapabilityInfo &= ~(0x0010);
+							if (pAd->Dot11_H.RDMode != RD_SWITCHING_MODE) {
+								MbssKickOutStas(pAd, pObj->ioctl_if, REASON_DISASSOC_INACTIVE);
+								ap_security_init(pAd, wdev, pObj->ioctl_if);
+								ap_mlme_set_capability(pAd, pMbss);
+								ap_key_tb_single_init(pAd, pMbss);
+								APMakeBssBeacon(pAd, pObj->ioctl_if);
+								APUpdateBeaconFrame(pAd, pObj->ioctl_if);
+							}
+							DBGPRINT(RT_DEBUG_TRACE,
+								("I/F(ra%d) Set_SSID::(Len=%d,Ssid=%s)\n",
+								pObj->ioctl_if,
+								pMbss->SsidLen, pMbss->Ssid));
+						}
+					} else
+						Status = -EINVAL;
 					break;
 				}
 			} else

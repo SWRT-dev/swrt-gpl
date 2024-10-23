@@ -991,9 +991,10 @@ struct foe_entry ppe_fill_info_blk(struct ethhdr *eth, struct foe_entry entry,
 	case IPV4_HNAT:
 		if (is_multicast_ether_addr(&eth->h_dest[0])) {
 			entry.ipv4_hnapt.iblk2.mcast = 1;
-			if (hnat_priv->data->version == MTK_HNAT_V3)
+			if (hnat_priv->data->version == MTK_HNAT_V3){
 				entry.bfib1.sta = 1;
 				entry.ipv4_hnapt.m_timestamp = foe_timestamp(hnat_priv);
+			}
 		} else {
 			entry.ipv4_hnapt.iblk2.mcast = 0;
 		}
@@ -1006,9 +1007,10 @@ struct foe_entry ppe_fill_info_blk(struct ethhdr *eth, struct foe_entry entry,
 	case IPV6_3T_ROUTE:
 		if (is_multicast_ether_addr(&eth->h_dest[0])) {
 			entry.ipv6_5t_route.iblk2.mcast = 1;
-			if (hnat_priv->data->version == MTK_HNAT_V3)
+			if (hnat_priv->data->version == MTK_HNAT_V3){
 				entry.bfib1.sta = 1;
 				entry.ipv4_hnapt.m_timestamp = foe_timestamp(hnat_priv);
+			}
 		} else {
 			entry.ipv6_5t_route.iblk2.mcast = 0;
 		}

@@ -32,7 +32,7 @@
 5. 使用 `git clone https://github.com/SWRT-dev/mtk-toolchains` 命令下载toolchains
 
 6. 分别执行 `cd mtk-toolchains`
-   `sudo ln -sf $(pwd)/toolchain-mipsel_24kc_gcc-5.4.0_musl-1.1.24 /opt/`
+   `sudo ln -sf $(pwd)/toolchain-mipsel_1004kc_gcc-8.5.0_musl-1.1.24 /opt/`
 
 7. 然后 `cd ../swrt-gpl/release/src-mtk-mips` 进入目录
 
@@ -72,7 +72,7 @@
 5. 使用 `git clone https://github.com/SWRT-dev/qca-toolchains` 命令下载toolchains
 
 6. 分别执行 `cd qca-toolchains`
-	`sudo ln -sf $(pwd)/toolchain-arm_cortex-a7_gcc-5.2.0_musl_eabi /opt/`
+	`sudo ln -sf $(pwd)/toolchain-arm_cortex-a7_gcc-8.5.0_musl-1.1.24_eabi /opt/`
 
 7. 然后 `cd ../swrt-gpl/release/src-qca-ipq40xx` 进入目录
 

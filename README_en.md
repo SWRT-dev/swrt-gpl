@@ -35,7 +35,7 @@ sudo apt-get -y install build-essential asciidoc binutils bison bzip2 gawk gette
 
 6. Run `cd mtk-toolchains` to enter the directory, and follow commands step by step 
 
-	`sudo ln -sf $(pwd)/toolchain-mipsel_24kc_gcc-5.4.0_musl-1.1.24 /opt/`
+	`sudo ln -sf $(pwd)/toolchain-mipsel_1004kc_gcc-8.5.0_musl-1.1.24 /opt/`
 
 7. Run `cd ../swrt-gpl/release/src-mtk-mips` to enter the directory
 
@@ -81,7 +81,7 @@ sudo apt-get -y install build-essential asciidoc binutils bison bzip2 gawk gette
 
 6. Run `cd qca-toolchains` to enter the directory, and follow commands step by step 
 
-	`sudo ln -sf $(pwd)/toolchain-arm_cortex-a7_gcc-5.2.0_musl_eabi /opt/`
+	`sudo ln -sf $(pwd)/toolchain-arm_cortex-a7_gcc-8.5.0_musl-1.1.24_eabi /opt/`
 
 7. Run `cd ../swrt-gpl/release/src-qca-ipq40xx` to enter the directory
 

@@ -590,10 +590,10 @@ VOID ZeroWaitDfsQueryAvalChListNonDbdc(PRTMP_ADAPTER pAd, UCHAR *Bw80ChNum, UCHA
 			if (dfs_check_ch_is_already_exist(&Bw40AvailableChList[0], Bw40TotalChNum, pChCtrl->ChList[idx].Channel) == TRUE)
 				continue;
 
-				Bw40AvailableChList[Bw40TotalChNum + ch_idx].Channel = pChCtrl->ChList[idx].Channel;
-				Bw40AvailableChList[Bw40TotalChNum + ch_idx].RadarHitCnt = pDfsParam->DfsChannelList[idx].NOPClrCnt;
-			} else
-				break;
+			Bw40AvailableChList[Bw40TotalChNum + ch_idx].Channel = pChCtrl->ChList[idx].Channel;
+			Bw40AvailableChList[Bw40TotalChNum + ch_idx].RadarHitCnt = pDfsParam->DfsChannelList[idx].NOPClrCnt;
+		} else
+			break;
 	}
 	*Bw40ChNum = Bw40TotalChNum + ch_idx;
 

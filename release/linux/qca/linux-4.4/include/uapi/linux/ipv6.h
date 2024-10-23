@@ -102,7 +102,7 @@ struct ipv6_destopt_hao {
 	__u8			type;
 	__u8			length;
 	struct in6_addr		addr;
-} __attribute__((packed));
+} __attribute__((packed, aligned(2)));
 
 /*
  *	IPv6 fixed header
@@ -129,7 +129,7 @@ struct ipv6hdr {
 
 	struct	in6_addr	saddr;
 	struct	in6_addr	daddr;
-} __attribute__((packed, aligned(2)));
+};
 
 
 /* index values for the variables in ipv6_devconf */
