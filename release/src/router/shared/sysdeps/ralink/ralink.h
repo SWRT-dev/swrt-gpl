@@ -64,6 +64,34 @@ extern const char APCLI_2G[];
 #define BW_8080         6
 
 #define MAC_ADDR_LEN			6
+
+typedef union _HTTRANSMIT_SETTING {
+#ifdef RT_BIG_ENDIAN
+	struct {
+		unsigned short MODE:3;	/* Use definition MODE_xxx. */
+		unsigned short iTxBF:1;
+		unsigned short eTxBF:1;
+		unsigned short STBC:1;	/* only support in HT/VHT mode with MCS0~7 */
+		unsigned short ShortGI:1;
+		unsigned short BW:2;	/* channel bandwidth 20MHz/40/80 MHz */
+		unsigned short ldpc:1;
+		unsigned short MCS:6;	/* MCS */
+	} field;
+#else
+	struct {
+		unsigned short MCS:6;
+		unsigned short ldpc:1;
+		unsigned short BW:2;
+		unsigned short ShortGI:1;
+		unsigned short STBC:1;
+		unsigned short eTxBF:1;
+		unsigned short iTxBF:1;
+		unsigned short MODE:3;
+	} field;
+#endif
+	unsigned short word;
+} HTTRANSMIT_SETTING, *PHTTRANSMIT_SETTING;
+
 /* MIMO Tx parameter, ShortGI, MCS, STBC, etc.  these are fields in TXWI. Don't change this definition!!! */
 typedef union  _MACHTTRANSMIT_SETTING {
 	struct  {
@@ -770,13 +798,9 @@ int ra_gpio_write_bit(int idx, int value);
 extern int wl_ioctl(const char *ifname, int cmd, struct iwreq *pwrq);
 
 //cal the rate from MACHTTRANSMIT_SETTING structure replied from ioctl(CMD_RTPRIV_IOCTL_GET_MAC_TABLE_STRUCT)
-extern void mtk_parse_ratedata(uint32_t ratedata, unsigned char *phymode, unsigned char *mcs, unsigned char *bw,
+extern void mtk_parse_ratedata(unsigned short ratedata, unsigned char *phymode, unsigned char *mcs, unsigned char *bw,
 	unsigned char *vht_nss,	 unsigned char *sgi, unsigned char *stbc);
 extern unsigned int mtk_mcs_to_rate(unsigned char mcs, unsigned char phy_mode, unsigned char bw, unsigned char sgi, unsigned char vht_nss, int unit);
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
-extern void mtk_parse_heratedata(uint32_t ratedata, unsigned char *phymode, unsigned char *mcs, unsigned char *bw,
-	unsigned char *vht_nss,	 unsigned char *sgi, unsigned char *stbc);
-#endif
 
 /* for ATE Get_WanLanStatus command */
 #if defined(RTCONFIG_RALINK_MT7621)

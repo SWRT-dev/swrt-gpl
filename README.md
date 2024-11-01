@@ -18,7 +18,7 @@
 
 ## 编译
 
-1. 首先装好 Ubuntu 64bit，推荐  Ubuntu  18 LTS x64 /  Mint 19.1
+1. 首先装好 Ubuntu 64bit，推荐  Ubuntu 20 LTS x64 / Mint 20.3
 
 2. 命令行输入`sudo ln -sf /bin/bash /bin/sh`
 

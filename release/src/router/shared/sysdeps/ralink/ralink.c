@@ -1037,38 +1037,34 @@ unsigned int mtk_mcs_to_rate(unsigned char mcs, unsigned char phy_mode, unsigned
 	return value;
 }
 
-void mtk_parse_ratedata(uint32_t ratedata, unsigned char *phymode, unsigned char *mcs, unsigned char *bw,
+void mtk_parse_ratedata(unsigned short ratedata, unsigned char *phymode, unsigned char *mcs, unsigned char *bw,
 	unsigned char *vht_nss,	 unsigned char *sgi, unsigned char *stbc)
 {
-	*phymode = (ratedata >> 13) & 0x7;
-	*mcs = ratedata & 0x3F;
-	*bw = (ratedata >> 7) & 0x3;
-	*sgi = (ratedata >> 9) & 0x1;
-	*stbc = (ratedata >> 10) & 0x1;
-	*vht_nss = 0;
+#if 0
+	*phymode = (ratedata >> 14) & 0x3;
+	*mcs = ratedata & 0xF;
+	*bw = (ratedata >> 7) & 0x1;
+	*sgi = (ratedata >> 8) & 0x1;
+	*stbc = (ratedata >> 9) & 0x1;
+#else
+	HTTRANSMIT_SETTING ht;
+	ht.word = ratedata;
 
-	if ( *phymode >= MODE_VHT ) {
-		*vht_nss = ((*mcs & (0x3 << 4)) >> 4) + 1;
-		*mcs &= 0xF;
-	}
-}
-
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
-void mtk_parse_heratedata(uint32_t ratedata, unsigned char *phymode, unsigned char *mcs, unsigned char *bw,
-	unsigned char *vht_nss,	 unsigned char *sgi, unsigned char *stbc)
-{
-	*phymode = (ratedata >> 16) & 0xF;
-	*sgi = (ratedata >> 14) & 0x3;
-	*mcs = (ratedata >> 8) & 0x3F;
-	*bw = (ratedata >> 5) & 0x7;
-	*stbc = (ratedata >> 4) & 0x1;
-	*vht_nss = ratedata & 0x7;
-
-	if ((*phymode == MODE_VHT && (*mcs & 0xF) > 9) || (*phymode >= MODE_HE && (*mcs & 0xF) > 11)) {
-		*vht_nss = (*vht_nss + 1) / (*stbc + 1);
-	}
-}
+	*phymode = ht.field.MODE;
+	*mcs = ht.field.MCS;
+	*bw = ht.field.BW;
+	*sgi = ht.field.ShortGI;
+	*stbc = ht.field.STBC;
 #endif
+	*vht_nss = 0;
+	if (*phymode == MODE_VHT
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
+		 || *phymode >= MODE_HE
+#endif
+	) {
+		*vht_nss = ((*mcs >> 4) & 0x3) + 1;//get 0-3 nss from kernel, meaning 1-4 nss
+	}
+}
 
 #ifdef RTCONFIG_AMAS
 double get_wifi_maxpower(int band_type)

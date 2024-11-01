@@ -1289,6 +1289,8 @@ void init_wl(void)
 		snprintf(cmd, sizeof(cmd), "dd if=/dev/mtdblock%d of=/lib/firmware/e2p bs=655360 skip=0 count=1", mtd_part);
 #endif
 		system(cmd);
+		if(mt798x_unlock_txpower)
+			mt798x_unlock_txpower();
 		system("ln -sf /rom/etc/wireless/mediatek /etc/wireless/");
 		doSystem("cp -s /rom/firmware/* /lib/firmware/");
 	}else

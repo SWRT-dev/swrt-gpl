@@ -652,8 +652,10 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	}
 	ret += websWrite(wp, "\n");
 
+	int iocmd = RTPRIV_IOCTL_GET_MAC_TABLE;
 #if defined(RTCONFIG_MT798X)
 	char data[sizeof(RT_802_11_MAC_TABLE_5G)]; // 2G, 5G use same structure
+	iocmd = RTPRIV_IOCTL_GET_MAC_TABLE_STRUCT;
 #else
 	char data[16384];
 #endif
@@ -662,7 +664,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	wrq3.u.data.length = sizeof(data);
 	wrq3.u.data.flags = 0;
 
-	if ((r = wl_ioctl(ifname, RTPRIV_IOCTL_GET_MAC_TABLE, &wrq3)) < 0) {
+	if ((r = wl_ioctl(ifname, iocmd, &wrq3)) < 0) {
 		_dprintf("%s: Take MAC table from i/f %s fail! ret %d, errno %d (%s)\n",
 			__func__, r, errno, strerror(errno));
 		return ret;
@@ -677,20 +679,20 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	ret+=websWrite(wp, "\nStations List		   \n");
 #endif
 	ret+=websWrite(wp, "----------------------------------------\n");
-	ret+=websWrite(wp, "%-18s%-4s%-8s%-4s%-4s%-5s%-7s%-12s\n",
-			   "MAC", "PSM", "PhyMode", "BW", "SGI", "STBC", "TxRate", "Connect Time");
+	ret+=websWrite(wp, "%-18s%-4s%-8s%-4s%-4s%-5s%-7s%-7s%-12s\n",
+			   "MAC", "PSM", "PhyMode", "BW", "SGI", "STBC", "TxRate", "RxRate", "Connect Time");
 
 #define SHOW_STA_INFO(_p,_i,_st, _unit) {											\
 		int hr, min, sec;															\
 		unsigned char phy, mcs, bw, vht_nss, sgi, stbc;								\
-		uint32_t ratedata = 0;														\
+		unsigned char phy_r, mcs_r, bw_r, vht_nss_r, sgi_r, stbc_r;					\
 		_st *Entry = ((_st *)(_p)) + _i;											\
 		hr = Entry->ConnectedTime/3600;												\
 		min = (Entry->ConnectedTime % 3600)/60;										\
 		sec = Entry->ConnectedTime - hr*3600 - min*60;								\
-		ratedata = (uint32_t)Entry->TxRate.word;									\
-		mtk_parse_ratedata(ratedata, &phy, &mcs, &bw, &vht_nss, &sgi, &stbc);		\
-		ret+=websWrite(wp, "%02X:%02X:%02X:%02X:%02X:%02X %s %-7s %s %s %s  %3dM %02d:%02d:%02d\n",		\
+		mtk_parse_ratedata(Entry->TxRate.word, &phy, &mcs, &bw, &vht_nss, &sgi, &stbc);		\
+		mtk_parse_ratedata((unsigned short)(Entry->LastRxRate & 0xffff), &phy_r, &mcs_r, &bw_r, &vht_nss_r, &sgi_r, &stbc_r);		\
+		ret+=websWrite(wp, "%02X:%02X:%02X:%02X:%02X:%02X %s %-7s %s %s %s  %3dM  %3dM %02d:%02d:%02d\n",		\
 				Entry->Addr[0], Entry->Addr[1],										\
 				Entry->Addr[2], Entry->Addr[3],										\
 				Entry->Addr[4], Entry->Addr[5],										\
@@ -700,6 +702,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 				sgi ? "Yes" : "NO ",												\
 				stbc ? "Yes" : "NO ",												\
 				mtk_mcs_to_rate(mcs, phy, bw, sgi, vht_nss, _unit),					\
+				mtk_mcs_to_rate(mcs_r, phy_r, bw_r, sgi_r, vht_nss_r, _unit),		\
 				hr, min, sec														\
 		);																			\
 	}

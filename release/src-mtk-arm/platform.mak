@@ -91,6 +91,7 @@ endif
 
 export CONFIG_LINUX26=y
 export CONFIG_RALINK=y
+export WTOOL_SUFFIX=_mt798x
 
 #EXTRA_CFLAGS += -DLINUX30
 export CONFIG_LINUX30=y
