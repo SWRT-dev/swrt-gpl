@@ -12,13 +12,14 @@
 <link rel="stylesheet" type="text/css" href="form_style.css"/>
 <link rel="stylesheet" type="text/css" href="/res/softcenter.css"/>
 <link rel="stylesheet" type="text/css" href="/res/layer/theme/default/layer.css"/>
+<script language="JavaScript" type="text/javascript" src="/js/jquery.js"></script>
+<script language="JavaScript" type="text/javascript" src="/js/httpApi.js"></script>
 <script language="JavaScript" type="text/javascript" src="/state.js"></script>
 <script language="JavaScript" type="text/javascript" src="/help.js"></script>
 <script language="JavaScript" type="text/javascript" src="/general.js"></script>
 <script language="JavaScript" type="text/javascript" src="/popup.js"></script>
 <script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
 <script language="JavaScript" type="text/javascript" src="/validator.js"></script>
-<script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/general.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script type="text/javascript" src="/form.js"></script>
@@ -276,7 +277,6 @@ input[type=button]:focus {
 <script>
 var db_softcenter_ = {};
 var scarch = "arm";
-var giturl;
 var odmpid = '<% nvram_get("odmpid");%>';
 var modelname = '<% nvram_get("modelname"); %>';
 var TIMEOUT_SECONDS = 18;
@@ -559,30 +559,15 @@ $(function() {
 				db_softcenter_["softcenter_home_url"] = "https://no.paldier.com";
 			else
 				db_softcenter_["softcenter_home_url"] = "https://sc.paldier.com";
-			if(db_softcenter_["softcenter_arch"] == "mips"){
-				scarch="mips";
-				giturl="softcenter";
-			} else if (db_softcenter_["softcenter_arch"] == "armng"){
-				scarch="armng";
-				giturl="softcenterarmng";
-			} else if (db_softcenter_["softcenter_arch"] == "aarch64"){
-				scarch="arm64";
-				giturl="softcenterarm64";
-			} else if (db_softcenter_["softcenter_arch"] == "mipsle"){
-				scarch="mipsle";
-				giturl="softcentermipsle";
-			} else {
-				scarch="arm";
-				giturl="softcenterarm";
-			}
+			scarch=db_softcenter_["softcenter_arch"];
 			if (!db_softcenter_["softcenter_version"]) {
 				db_softcenter_["softcenter_version"] = "0.0";
 			}
 			$("#spnCurrVersion").html("<em>" + db_softcenter_["softcenter_version"] + "</em>");
 			if(isEva)
-			$('#github').html('机体编号：<i><u>EVA01</u></i> </a><br/>技术支持： <a href="https://www.right.com.cn" target="_blank"> <i><u>right.com.cn</u></i> </a><br/>Project项目： <a href ="https://github.com/SWRT-dev/' + giturl +'" target="_blank"> <i><u>SWRT补完计划</u></i> </a><br/>Copyright： <a href="https://github.com/SWRT-dev" target="_blank"><i>SWRT补完委员会</i></a>')
+			$('#github').html('机体编号：<i><u>EVA01</u></i> </a><br/>技术支持： <a href="https://www.right.com.cn" target="_blank"> <i><u>right.com.cn</u></i> </a><br/>Project项目： <a href ="https://github.com/SWRT-dev/softcenter" target="_blank"> <i><u>SWRT补完计划</u></i> </a><br/>Copyright： <a href="https://github.com/SWRT-dev" target="_blank"><i>SWRT补完委员会</i></a>')
 			else
-			$('#github').html('论坛技术支持： <a href="https://www.right.com.cn" target="_blank"> <i><u>right.com.cn</u></i> </a><br/>Github项目： <a href ="https://github.com/SWRT-dev/' + giturl +'" target="_blank"> <i><u>https://github.com/SWRT-dev</u></i> </a><br/>Copyright： <a href="https://github.com/SWRT-dev" target="_blank"><i>SWRTdev</i></a>')
+			$('#github').html('论坛技术支持： <a href="https://www.right.com.cn" target="_blank"> <i><u>right.com.cn</u></i> </a><br/>Github项目： <a href ="https://github.com/SWRT-dev/softcenter" target="_blank"> <i><u>https://github.com/SWRT-dev</u></i> </a><br/>Copyright： <a href="https://github.com/SWRT-dev" target="_blank"><i>SWRTdev</i></a>')
 			var jff2_scripts="<% nvram_get("jffs2_scripts"); %>";
 			if(jff2_scripts != 1){
 				$('#software_center_message').html('<h1><font color="#FF9900">错误！</font></h1><h2>软件中心不可用！因为你没有开启Enable JFFS custom scripts and configs选项！</h2><h2>请前往【系统管理】-<a href="Advanced_System_Content.asp"><u><em>【系统设置】</em></u></a>开启此选项再使用软件中心！！</h2>')

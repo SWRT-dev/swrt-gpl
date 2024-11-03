@@ -497,7 +497,7 @@ BCMINITFN(_nvram_commit)(struct nvram_header *header)
 	end -= sizeof(wlnv_priv_t);
 
 	priv->length = sizeof(wlnv_priv_t);
-	strlcpy(priv->magic, "NVP", sizeof(priv->magic));
+	strncpy(priv->magic, "NVP", 3);
 	priv->commit_times = g_wlnv.last_commit_times;
 	ptr = (char*)priv + sizeof(wlnv_priv_t);
 #endif /* WL_NVRAM */

@@ -175,7 +175,7 @@ int flash_mtd_init_info(void)
 
 int flash_mtd_open(int num, int flags)
 {
-	char dev[12];//musl bug, strlen + 2
+	char dev[12];//musl, strlen + 2, others, strlen + 1
 	snprintf(dev, sizeof(dev), "/dev/mtd%d", num);
 #ifdef DEBUG
 	printf("-----------------%s:%s,%o\n", __func__, dev, flags);
@@ -185,7 +185,7 @@ int flash_mtd_open(int num, int flags)
 
 int flash_mtd_open_name(const char *dev_name, int flags)
 {
-	char dev[12];//musl bug, strlen + 2
+	char dev[12];//musl, strlen + 2, others, strlen + 1
 
 	if (!dev_name || *dev_name == '\0')
 		return -1;

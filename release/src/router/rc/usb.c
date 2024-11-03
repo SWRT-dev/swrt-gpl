@@ -308,8 +308,8 @@ void add_usb_host_modules(void)
 		u3_param = "u3intf=1";
 #if !defined(RTCONFIG_SOC_IPQ40XX)
 	modprobe(USB30_MOD, u3_param);
-#endif
 	load_kmods(POST_XHCI_KMODS);
+#endif
 #if defined(RTCONFIG_RALINK)
 	modprobe("xhci-mtk");
 #endif
@@ -368,9 +368,9 @@ void add_usb_host_modules(void)
 #endif
 
 #if defined(RTCONFIG_SOC_IPQ40XX)
-	load_kmods(PRE_XHCI_KMODS);
 #if defined(RTCONFIG_USB_XHCI)
 	modprobe(USB30_MOD, u3_param);
+	load_kmods(POST_XHCI_KMODS);
 	/* workaround for some USB dongle */
 	modprobe_r(USB_DWC3_IPQ);
 	modprobe(USB_DWC3_IPQ);

@@ -1,25 +1,13 @@
 # Select QSDK
 IPQ807X_MODEL_LIST := $(addprefix _,$(addsuffix _,GT-AXY16000 RT-AX89U RAX120))
 
-# Select IPQ807X SoC
-export HE12_MODEL_LIST := $(addprefix _,$(addsuffix _,RT-AX89U GT-6000N RAX120))
-export HE20_MODEL_LIST := $(addprefix _,$(addsuffix _,GT-AXY16000))
-
-# Select toolchain for kernel-space driver.
-# If model name is not list here, toolchain for user-space program is selected.
-GCC520_MUSLLIBC64_MODEL_LIST	:= $(addprefix _,$(addsuffix _,RT-AX89U GT-6000N RAX120))
-KERNEL_GCC520_MUSLLIBC64_MODEL_LIST	:= $(addprefix _,$(addsuffix _,RT-AX89U GT-6000N RAX120))
-
 BUILD_NAME ?= $(shell echo $(MAKECMDGOALS) | tr a-z A-Z)
 export _BUILD_NAME_ := $(addprefix _,$(addsuffix _,$(BUILD_NAME)))
 
 SWITCH_CHIP_ID_POOL =					\
 	"QCA8075_PHY_AQR107"				\
 	"QCA8075_PHY_AQR111"				\
-	"QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033"	\
-	"QCA8337N"					\
-	"RTL8370M_PHY_QCA8033_X2"			\
-	"RTL8370MB_PHY_QCA8033_X2"
+	"QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033"
 
 # related path to platform specific software package
 export PLATFORM_ROUTER := ipq807x

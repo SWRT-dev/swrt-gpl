@@ -16,7 +16,10 @@ void MTK_stainfo(int unit)
 	char prefix[] = "wlXXXXXXXXXX_";
 	STA_INFO_TABLE *sta_info_tab = NULL;
 	unsigned int wireless_type = 1;
-
+	int iocmd = RTPRIV_IOCTL_GET_MAC_TABLE;
+#if defined(RTCONFIG_MT798X)
+	iocmd = RTPRIV_IOCTL_GET_MAC_TABLE_STRUCT;
+#endif
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 	ifname = nvram_pf_safe_get(prefix, "ifname");
 
@@ -25,7 +28,7 @@ void MTK_stainfo(int unit)
 	wrq.u.data.pointer = data;
 	wrq.u.data.length = sizeof(data);
 	wrq.u.data.flags = 0;
-	if(wl_ioctl(ifname, RTPRIV_IOCTL_GET_MAC_TABLE_STRUCT, &wrq) >= 0){
+	if(wl_ioctl(ifname, iocmd, &wrq) >= 0){
 		mp = (RT_802_11_MAC_TABLE_5G *)wrq.u.data.pointer;
 		xTxR = nvram_pf_get_int(prefix, "HT_RxStream");
 		if(!strcmp(ifname, WIF_2G))
