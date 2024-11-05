@@ -166,16 +166,16 @@ endef
 # be 2 levels above the directory of this file.
 ifndef WLAN_TreeBaseA
 ifdef WLAN_CYGWIN_HOST
-WLAN_TreeBaseA := $(shell cygpath -m -a $(dir $(lastword $(MAKEFILE_LIST)))../..)
+WLAN_TreeBaseA := $(shell cygpath -m -a $(dir $(lastword $(MAKEFILE_LIST)))../../../..)
 else
-WLAN_TreeBaseA := $(subst \,/,$(realpath $(dir $(lastword $(MAKEFILE_LIST)))../..))
+WLAN_TreeBaseA := $(subst \,/,$(realpath $(dir $(lastword $(MAKEFILE_LIST)))../../../..))
 endif
 endif
 
 # We've observed a bug, or at least a surprising behavior, in emake which
 # causes the $(realpath) above to fail so this fallback is used.
 ifndef WLAN_TreeBaseA
-WLAN_TreeBaseA := $(shell cd $(dir $(lastword $(MAKEFILE_LIST)))../.. && pwd)
+WLAN_TreeBaseA := $(shell cd $(dir $(lastword $(MAKEFILE_LIST)))../../../.. && pwd)
 endif
 
 # Export these values so they can be used by scripts or nmake/pmake makefiles.
@@ -189,11 +189,11 @@ export WLAN_TreeBase := $(WLAN_TreeBaseA)
 include $(WLAN_TreeBaseA)/src/makefiles/RelPath.mk
 
 # This is a relativized version of $(WLAN_TreeBaseA).
-export WLAN_TreeBaseR = $(call relpath,$(WLAN_TreeBaseA))
+export WLAN_TreeBaseR = $(WLAN_TreeBaseA)
 
 # For compatibility, due to the prevalence of $(SRCBASE)
 WLAN_SrcBaseA := $(WLAN_TreeBaseA)/src
-WLAN_SrcBaseR  = $(patsubst %/,%,$(dir $(WLAN_TreeBaseR)))
+WLAN_SrcBaseR  = $(WLAN_SrcBaseA)
 
 # Show makefile list before we start including things.
 $(call wlan_dbgv, CURDIR MAKEFILE_LIST)

@@ -887,6 +887,8 @@ ifeq ($(or $(MT798X),$(MT799X)),y)
 ifeq ($(and $(LOADADDR),$(ENTRYADDR)),)
 	$(error Unknown load/entry address)
 endif
+	$(MAKE) -C asustools/u-boot-2014.10 prepare
+	$(MAKE) -C asustools/u-boot-2014.10 tools-only
 	# generate kernel part
 	@rm -rf $(PLATFORMDIR)/zImage.lzma ; \
 		$(CROSS_COMPILE)objcopy -O binary $(LINUXDIR)/vmlinux $(PLATFORMDIR)/vmlinus ; \
@@ -911,7 +913,7 @@ else ifeq ($(or $(MT7988A)),y)
 else ifeq ($(or $(MT7988D)),y)
 	asustools/mkits.sh -D mt7988d-$(lowercase_B) -o image/$(lowercase_B).its -k $(PLATFORMDIR)/zImage.img -R $(PLATFORMDIR)/target.image -d $(LINUXDIR)/arch/arm64/boot/dts/mediatek/mt7988d-$(BUILD_NAME).dtb -C lzma -a 0x$(LOADADDR) -e 0x$(ENTRYADDR) -c "config-1" -A arm64 -v $(KERNEL_VER)
 endif
-	asustools/mkimage -f image/$(lowercase_B).its image/$(IMGNAME).img
+	asustools/u-boot-2014.10/tools/mkimage -f image/$(lowercase_B).its image/$(IMGNAME).img
 	# create empty tail
 	@echo -n "" > image/tail_info
 ifeq ($(TRX_TAIL_INFO),y)
@@ -925,7 +927,7 @@ endif
 		RSIZE=`wc -c $(PLATFORMDIR)/target.image | awk '{print $$1}'` ; \
 		PAD2=`expr $${ISIZE} - $${KSIZE} - $${RSIZE} - $${TSIZE}` ; \
 		echo "PAD2: $${PAD2}" ; \
-	asustools/mkimage -A $(ARCH) -O linux -T kernel -C lzma -a $(LOADADDR) -e $(ENTRYADDR)\
+		asustools/u-boot-2014.10/tools/mkimage -A $(ARCH) -O linux -T kernel -C lzma -a $(LOADADDR) -e $(ENTRYADDR)\
 			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(SWRTEXTENDNO)" "0" "0" "0" "0" "0" "0" \
 			-d image/$(IMGNAME).img image/$(IMGNAME).trx
 else ifeq ($(EN7561),y)
@@ -956,6 +958,8 @@ else ifeq ($(CONFIG_RALINK),y)
 	# generate kernel part
 	@rm -rf $(PLATFORMDIR)/zImage.lzma ;
 	gcc asustools/patch-dtb.c -o asustools/patch-dtb
+	$(MAKE) -C asustools/u-boot-2014.10 prepare
+	$(MAKE) -C asustools/u-boot-2014.10 tools-only
 	if [ "$(BUILD_NAME)" = "RT-ACRH18" ] ; then \
 		$(CROSS_COMPILE)cpp -nostdinc -x assembler-with-cpp -I$(DTS_DIR) -I$(DTS_DIR)/include -undef -D__DTS__ -o $(DTS_DIR)/$(DTB).tmp $(DTS_DIR)/mt7629-lynx-rfb3-nmbm.dts ; \
 		$(LINUXDIR)/scripts/dtc/dtc -O dtb -i$(DTS_DIR) -o $(DTS_DIR)/$(DTB) $(DTS_DIR)/$(DTB).tmp ; \
