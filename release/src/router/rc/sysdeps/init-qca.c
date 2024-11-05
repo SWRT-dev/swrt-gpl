@@ -354,8 +354,9 @@ static unsigned int qca_wifi_type =
 #if defined(RTCONFIG_WIFI_QCA9990_QCA9990) \
  || defined(RTCONFIG_WIFI_QCA9994_QCA9994)
 	QWIFI_OL | QWIFI_ADF
-#elif defined(RTCONFIG_SOC_IPQ40XX) \
-   || defined(RTCONFIG_WIFI_QCN5024_QCN5054) \
+#elif defined(RTCONFIG_SOC_IPQ40XX)
+	QWIFI_DA | QWIFI_OL | QWIFI_QDF
+#elif defined(RTCONFIG_WIFI_QCN5024_QCN5054) \
    || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274)
 	QWIFI_OL | QWIFI_QDF	/* All Wi-Fi unit are offload. */
 #elif defined(RPAC51)
