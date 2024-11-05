@@ -170,6 +170,7 @@ static int __init set_reset_devices(char *str)
 
 __setup("reset_devices", set_reset_devices);
 
+#if !defined(CONFIG_PINCTRL_IPQ5332)
 long int rfs_offset;
 EXPORT_SYMBOL(rfs_offset);
 static int __init rfs_setup(char *str)
@@ -180,6 +181,7 @@ static int __init rfs_setup(char *str)
 	return 1;
 }
 __setup("root_rfs=", rfs_setup);
+#endif
 
 static const char *argv_init[MAX_INIT_ARGS+2] = { "init", NULL, };
 const char *envp_init[MAX_INIT_ENVS+2] = { "HOME=/", "TERM=linux", NULL, };

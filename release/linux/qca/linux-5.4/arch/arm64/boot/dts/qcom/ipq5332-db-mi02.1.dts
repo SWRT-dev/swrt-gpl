@@ -132,6 +132,7 @@
 			qcom,phy-mdio-addr = <30>;
 			qcom,link-poll = <1>;
 			phy-mode = "sgmii";
+			qcom,ppe-offload-disabled = <1>;
 		};
 
 		mdio:mdio@90000 {
@@ -155,16 +156,13 @@
 						port_id = <1>;
 						phy_address = <30>;
 						media-type = "sfp"; /* fiber mode */
-						sfp_rx_los_pin = <&tlmm 48 0>;
-						sfp_tx_dis_pin = <&tlmm 15 0>;
+						sfp_rx_los_pin = <&tlmm 48 GPIO_ACTIVE_HIGH>;
 
 					};
 					port@1 {
 						port_id = <2>;
 						phy_address = <31>;
 						media-type = "sfp"; /* fiber mode */
-						sfp_rx_los_pin = <&tlmm 45 0>;
-						sfp_tx_dis_pin = <&tlmm 24 0>;
 					};
 				};
 			};

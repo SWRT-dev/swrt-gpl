@@ -2,7 +2,7 @@
 /*
  * IPQ9574 AL02-C19 board device tree source
  *
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 /dts-v1/;
@@ -300,6 +300,7 @@
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <16>;
 			phy-mode = "sgmii";
+			qcom,ppe-offload-disabled = <1>;
 		};
 
 		dp2 {
@@ -312,6 +313,7 @@
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <17>;
 			phy-mode = "sgmii";
+			qcom,ppe-offload-disabled = <1>;
 		};
 
 		dp3 {
@@ -324,6 +326,7 @@
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <18>;
 			phy-mode = "sgmii";
+			qcom,ppe-offload-disabled = <1>;
 		};
 
 		dp4 {
@@ -336,6 +339,7 @@
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <19>;
 			phy-mode = "sgmii";
+			qcom,ppe-offload-disabled = <1>;
 		};
 
 		dp5 {

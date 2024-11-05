@@ -67,6 +67,8 @@
 #define	NAND_DEV_CMD1_RESTORE		0xdead
 #define	NAND_DEV_CMD_VLD_RESTORE	0xbeef
 
+#define SW_BAD_BLOCK_INDICATION 0x33
+
 /* NAND_FLASH_CMD bits */
 #define	PAGE_ACC			BIT(4)
 #define	LAST_PAGE			BIT(5)
@@ -284,7 +286,7 @@ nandc_set_reg(nandc, reg,			\
 #define QPIC_PER_CW_DATA_SGL		8
 #define	QPIC_PER_CW_STS_SGL		8
 
-#define QPIC_NAND_COMPLETION_TIMEOUT	msecs_to_jiffies(2000)
+#define QPIC_NAND_COMPLETION_TIMEOUT	msecs_to_jiffies(6000)
 
 /*
  * Flags used in DMA descriptor preparation helper functions
@@ -2567,10 +2569,11 @@ err:
 
 static int qcom_nandc_block_markbad(struct nand_chip *chip, loff_t ofs)
 {
+	struct mtd_info *mtd = nand_to_mtd(chip);
 	struct qcom_nand_host *host = to_qcom_nand_host(chip);
 	struct qcom_nand_controller *nandc = get_qcom_nand_controller(chip);
 	struct nand_ecc_ctrl *ecc = &chip->ecc;
-	int page, ret;
+	int page, ret, bbpos;
 
 	clear_read_regs(nandc);
 	clear_bam_transaction(nandc);
@@ -2581,6 +2584,9 @@ static int qcom_nandc_block_markbad(struct nand_chip *chip, loff_t ofs)
 	 * we aren't going to use this block again
 	 */
 	memset(nandc->data_buffer, 0x00, host->cw_size);
+
+	bbpos = mtd->writesize - host->cw_size * (ecc->steps - 1);
+	nandc->data_buffer[bbpos] = SW_BAD_BLOCK_INDICATION;
 
 	page = (int)(ofs >> chip->page_shift) & chip->pagemask;
 

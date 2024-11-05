@@ -302,6 +302,9 @@ qce_sgtable_add(struct sg_table *sgt, struct scatterlist *new_sgl,
 		max_len -= new_len;
 	}
 
+	if (!sg_last)
+		return ERR_PTR(-EINVAL);
+
 	return sg_last;
 }
 

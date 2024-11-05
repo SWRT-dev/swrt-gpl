@@ -786,6 +786,73 @@ void __cfg80211_connect_result(struct net_device *dev,
 	kfree(country_ie);
 }
 
+int cfg80211_update_current_bss(struct net_device *dev,
+				struct cfg80211_connect_resp_params *cr,
+				const u8 *ssid, size_t ssid_len)
+{
+	struct wireless_dev *wdev = dev->ieee80211_ptr;
+
+	ASSERT_WDEV_LOCK(wdev);
+
+	if (!ssid)
+		return -EINVAL;
+
+	memcpy(wdev->ssid, ssid, ssid_len);
+	wdev->ssid_len = ssid_len;
+
+	if (WARN_ON(wdev->iftype != NL80211_IFTYPE_STATION &&
+		    wdev->iftype != NL80211_IFTYPE_P2P_CLIENT)) {
+		cfg80211_put_bss(wdev->wiphy, cr->bss);
+		return -EINVAL;
+	}
+
+	if (!cr->bss && cr->status == WLAN_STATUS_SUCCESS) {
+		WARN_ON_ONCE(!wiphy_to_rdev(wdev->wiphy)->ops->connect);
+		cr->bss = cfg80211_get_bss(wdev->wiphy, NULL, cr->bssid,
+					   wdev->ssid, wdev->ssid_len,
+					   wdev->conn_bss_type,
+					   IEEE80211_PRIVACY_ANY);
+	}
+
+	if (!cr->bss) {
+		pr_warn("%s:bss not found\n", __func__);
+		return -EINVAL;
+	}
+
+	if (wdev->current_bss) {
+		cfg80211_unhold_bss(wdev->current_bss);
+		cfg80211_put_bss(wdev->wiphy, &wdev->current_bss->pub);
+		wdev->current_bss = NULL;
+	}
+
+	cfg80211_hold_bss(bss_from_pub(cr->bss));
+	wdev->current_bss = bss_from_pub(cr->bss);
+
+	return 0;
+}
+EXPORT_SYMBOL(cfg80211_update_current_bss);
+
+int cfg80211_clear_current_bss(struct net_device *dev)
+{
+	struct wireless_dev *wdev = dev->ieee80211_ptr;
+
+	ASSERT_WDEV_LOCK(wdev);
+
+	if (WARN_ON(wdev->iftype != NL80211_IFTYPE_STATION &&
+		    wdev->iftype != NL80211_IFTYPE_P2P_CLIENT)) {
+		return -EINVAL;
+	}
+
+	if (wdev->current_bss) {
+		cfg80211_unhold_bss(wdev->current_bss);
+		cfg80211_put_bss(wdev->wiphy, &wdev->current_bss->pub);
+		wdev->current_bss = NULL;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(cfg80211_clear_current_bss);
+
 /* Consumes bss object one way or another */
 void cfg80211_connect_done(struct net_device *dev,
 			   struct cfg80211_connect_resp_params *params,
@@ -1091,12 +1158,6 @@ void __cfg80211_disconnected(struct net_device *dev, const u8 *ie,
 		    wdev->iftype != NL80211_IFTYPE_P2P_CLIENT))
 		return;
 
-	if (link_id >= 0 && link_id <= NL80211_MLD_MAX_NUM_LINKS) {
-		/* MLO Link Downgrade */
-		nl80211_send_disconnected(rdev, dev, reason, ie,
-					  ie_len, from_ap, link_id);
-		return;
-	}
 
 	if (wdev->current_bss) {
 		cfg80211_unhold_bss(wdev->current_bss);
@@ -1109,8 +1170,11 @@ void __cfg80211_disconnected(struct net_device *dev, const u8 *ie,
 	kzfree(wdev->connect_keys);
 	wdev->connect_keys = NULL;
 
+	if (link_id < 0 || link_id > NL80211_MLD_MAX_NUM_LINKS)
+		link_id = NL80211_MLO_INVALID_LINK_ID;
+
 	nl80211_send_disconnected(rdev, dev, reason, ie, ie_len, from_ap,
-				  NL80211_MLO_INVALID_LINK_ID);
+				  link_id);
 
 	/* stop critical protocol if supported */
 	if (rdev->ops->crit_proto_stop && rdev->crit_proto_nlportid) {

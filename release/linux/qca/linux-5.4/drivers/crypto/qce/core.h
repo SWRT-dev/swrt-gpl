@@ -132,7 +132,6 @@ int qce_read_dma_get_lock(struct qce_device *qce);
 
 int qce_unlock_reg_dma(struct qce_device *qce);
 
-int qce_start_dma(struct crypto_async_request *async_req, u32 type,
-			u32 totallen, u32 offset);
+int qce_start_dma(struct crypto_async_request *async_req, u32 type);
 
 #endif /* _CORE_H_ */

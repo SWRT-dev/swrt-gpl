@@ -17,12 +17,30 @@
 #include <linux/mhi.h>
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
+#include <linux/jiffies.h>
+#include <linux/types.h>
+#include <asm/arch_timer.h>
 
 #define MHI_RMNET_IF_NAME "rmnet_mhi"
 #define MHI_NETDEV_DRIVER_NAME "mhi_netdev"
 #define WATCHDOG_TIMEOUT (30 * HZ)
 #define IPC_LOG_PAGES (100)
 #define MAX_NETBUF_SIZE (128)
+
+static bool mhi_rate_control;
+module_param(mhi_rate_control, bool, 0644);
+
+static unsigned long long mhi_byte_ceiling = 21200000;
+module_param(mhi_byte_ceiling, ullong, 0644);
+
+static unsigned long long mhi_sample_time_ceiling = 100;
+module_param(mhi_sample_time_ceiling, ullong, 0644);
+
+static unsigned long long mhi_drop_count;
+module_param(mhi_drop_count, ullong, 0444);
+
+static unsigned long long mhi_sample_time;
+module_param(mhi_sample_time, ullong, 0444);
 
 struct mhi_net_chain {
 	struct sk_buff *head, *tail; /* chained skb */
@@ -50,6 +68,8 @@ struct mhi_netdev {
 	bool is_rmnet;
 
 	struct dentry *dentry;
+	ktime_t first_jiffy;
+	u64 bytes_received_1;
 };
 
 struct mhi_netdev_priv {
@@ -648,6 +668,9 @@ static void mhi_netdev_xfer_dl_cb(struct mhi_device *mhi_dev,
 	struct net_device *ndev = mhi_netdev->ndev;
 	struct device *dev = mhi_dev->dev.parent->parent;
 	struct mhi_net_chain *chain = mhi_netdev->chain;
+	s64 time_difference = 0;
+	ktime_t second_jiffy;
+	u64 bytes_received_2;
 
 	netbuf->unmap(dev, mhi_buf->dma_addr, mhi_buf->len, DMA_FROM_DEVICE);
 
@@ -661,6 +684,36 @@ static void mhi_netdev_xfer_dl_cb(struct mhi_device *mhi_dev,
 	mhi_data_len += mhi_result->bytes_xferd;
 	ndev->stats.rx_packets++;
 	ndev->stats.rx_bytes += mhi_result->bytes_xferd;
+
+	if (mhi_rate_control) {
+		if (mhi_netdev->first_jiffy) {
+			second_jiffy = ktime_get();
+			bytes_received_2 = ndev->stats.rx_bytes;
+			if ((second_jiffy > mhi_netdev->first_jiffy) &&
+					(bytes_received_2 > mhi_netdev->bytes_received_1)) {
+
+				time_difference = ktime_to_ms(second_jiffy) - ktime_to_ms(mhi_netdev->first_jiffy);
+
+				if (time_difference < mhi_sample_time_ceiling) {
+					if ((bytes_received_2 - mhi_netdev->bytes_received_1) > mhi_byte_ceiling) {
+						ndev->stats.rx_dropped ++;
+						mhi_sample_time = time_difference;
+						mhi_drop_count += mhi_result->bytes_xferd;
+						__free_pages(mhi_buf->page, mhi_netdev->order);
+						return;
+					}
+				} else {
+					mhi_netdev->first_jiffy = second_jiffy;
+					mhi_netdev->bytes_received_1 = bytes_received_2;
+				}
+			} else {
+				mhi_netdev->first_jiffy = second_jiffy;
+				mhi_netdev->bytes_received_1 = bytes_received_2;
+			}
+		} else {
+			mhi_netdev->first_jiffy = ktime_get();
+		}
+	}
 
 	if (unlikely(!chain)) {
 		mhi_netdev_push_skb(mhi_netdev, mhi_buf, mhi_result);
@@ -896,6 +949,9 @@ static int mhi_netdev_probe(struct mhi_device *mhi_dev,
 	mhi_netdev->order = __ilog2_u32(mhi_netdev->mru / PAGE_SIZE);
 	if ((PAGE_SIZE << mhi_netdev->order) < mhi_netdev->mru)
 		return -EINVAL;
+
+	mhi_rate_control = of_property_read_bool(of_node,
+						 "mhi,enable-rate-control");
 
 	/* check if this device shared by a parent device */
 	phandle = of_parse_phandle(of_node, "mhi,rsc-parent", 0);

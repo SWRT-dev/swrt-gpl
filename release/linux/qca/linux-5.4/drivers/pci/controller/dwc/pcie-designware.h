@@ -239,6 +239,7 @@ struct dw_pcie_ops {
 	int	(*link_up)(struct dw_pcie *pcie);
 	int	(*start_link)(struct dw_pcie *pcie);
 	void	(*stop_link)(struct dw_pcie *pcie);
+	void	(*ltssm_read)(struct dw_pcie *pcie, u32 *val);
 };
 
 struct dw_pcie {

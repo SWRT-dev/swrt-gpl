@@ -53,6 +53,7 @@ static unsigned int bc1_num_parts;
 static unsigned int bc2_num_parts;
 
 static unsigned int flash_type_emmc;
+static unsigned int flash_type_norplusmmc;
 
 struct sbl_if_dualboot_info_type_v2 *bootconfig1;
 struct sbl_if_dualboot_info_type_v2 *bootconfig2;
@@ -97,6 +98,7 @@ static const struct file_operations getbinary_ops = {
 static int part_upgradepartition_show(struct seq_file *m, void *v)
 {
 	struct per_part_info *part_info_t = m->private;
+	unsigned is_emmc_part = 0;
 
 	/*
 	 * In case of NOR\NAND, SBLs change the names of paritions in
@@ -109,7 +111,21 @@ static int part_upgradepartition_show(struct seq_file *m, void *v)
 	 * we will take care of it here.
 	 */
 
-	if (flash_type_emmc && (part_info_t->primaryboot))
+	if (flash_type_norplusmmc) {
+		int i = 0;
+		char *emmc_part[] = {"rootfs", "0:HLOS",
+					"0:WIFIFW", NULL};
+		while(emmc_part[i]) {
+			if(!strncmp(emmc_part[i], part_info_t->name,
+					strnlen(part_info_t->name, 10))) {
+				is_emmc_part = 1;
+				break;
+			}
+		i++;
+		}
+	}
+
+	if ((is_emmc_part || flash_type_emmc) && (part_info_t->primaryboot))
 		seq_printf(m, "%s\n", part_info_t->name);
 	else
 		seq_printf(m, "%s_1\n", part_info_t->name);
@@ -243,7 +259,6 @@ static int trymode_inprogress_show(struct seq_file *m, void *v)
 	static uint8_t *update_age;
 	update_age = m->private;
 	seq_printf(m, "%x\n", *update_age);
-	*update_age = WRITE_DISABLE;
 	return 0;
 }
 
@@ -425,9 +440,15 @@ static int __init bootconfig_partition_init(void)
 	 */
 
 	mtd = get_mtd_device_nm(ROOTFS_PARTITION);
-	if (IS_ERR(mtd))
-		flash_type_emmc = 1;
-	else
+	if (IS_ERR(mtd)) {
+		mtd = get_mtd_device_nm(BOOTCONFIG_PARTITION);
+		if (IS_ERR(mtd)) {
+			flash_type_emmc = 1;
+		} else {
+			flash_type_norplusmmc = 1;
+			put_mtd_device(mtd);
+		}
+	} else
 		put_mtd_device(mtd);
 
 	mtd = get_mtd_device_nm(BOOTCONFIG_PARTITION);

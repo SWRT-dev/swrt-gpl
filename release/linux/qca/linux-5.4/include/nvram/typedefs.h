@@ -238,7 +238,7 @@ enum {
 #undef USE_TYPEDEF_DEFAULTS
 
 #ifndef TYPEDEF_BOOL
-typedef	/* @abstract@ */ unsigned char	bool;
+#include <stdbool.h>
 #endif
 
 /* define uchar, ushort, uint, ulong */

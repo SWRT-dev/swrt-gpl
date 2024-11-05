@@ -234,6 +234,7 @@ BRPORT_ATTR_FLAG(broadcast_flood, BR_BCAST_FLOOD);
 BRPORT_ATTR_FLAG(neigh_suppress, BR_NEIGH_SUPPRESS);
 BRPORT_ATTR_FLAG(isolated, BR_ISOLATED);
 
+#if defined(PLAX56_XP4)	/* ASUS block PLC MME control packet from bridge */
 static ssize_t show_untagged_vlan_en(struct net_bridge_port *p, char *buf)
 {
 	return sprintf(buf, "%u\n", p->untagged_port_vlan_en);
@@ -263,7 +264,7 @@ static int store_untagged_vlan(struct net_bridge_port *p, unsigned long v)
 }
 static BRPORT_ATTR(untagged_vlan, S_IRUGO | S_IWUSR,
 		   show_untagged_vlan, store_untagged_vlan);
-#if defined(PLAX56_XP4)	/* ASUS block PLC MME control packet from bridge */
+
 static ssize_t show_forward_88e1(struct net_bridge_port *p, char *buf)
 {
 	return sprintf(buf, "%u\n", p->forward_88e1);
@@ -332,9 +333,9 @@ static const struct brport_attribute *brport_attrs[] = {
 	&brport_attr_neigh_suppress,
 	&brport_attr_isolated,
 	&brport_attr_backup_port,
+#if defined(PLAX56_XP4)
 	&brport_attr_untagged_vlan_en,
 	&brport_attr_untagged_vlan,
-#if defined(PLAX56_XP4)
 	&brport_attr_forward_88e1,
 #endif
 	NULL

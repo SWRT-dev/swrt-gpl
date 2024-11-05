@@ -635,8 +635,8 @@
 };
 
 &pcie_x1 {
-	interrupts-extended = <&tlmm 19 0>, <&tlmm 0 0>;
-	interrupt-names = "wake_gpio", "mdm2ap_e911";
+	interrupts-extended = <&tlmm 19 0>, <&tlmm 0 0>, <&intc GIC_SPI 119 IRQ_TYPE_LEVEL_HIGH>;
+	interrupt-names = "wake_gpio", "mdm2ap_e911", "global_irq";
 
 	pinctrl-0 = <&pcie_wake_pins &mdm2ap_e911_status>;
 	e911-gpio =  <&tlmm 0 GPIO_ACTIVE_HIGH>;
@@ -714,6 +714,7 @@
 				mhi,chan = "IP_HW0";
 				mhi,interface-name = "rmnet_mhi";
 				mhi,mru = <0x4000>;
+				mhi,enable-rate-control;
 				mhi,chain-skb;
 			};
 

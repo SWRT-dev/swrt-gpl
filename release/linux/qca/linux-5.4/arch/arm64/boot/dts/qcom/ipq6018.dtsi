@@ -412,6 +412,7 @@
 				<&gcc GCC_BLSP1_AHB_CLK>;
 			clock-names = "core", "iface";
 			status = "disabled";
+			tx-watermark = <0>;
 		};
 
 		spi_0: spi@78b5000 {
@@ -848,6 +849,7 @@
 			num-lanes = <1>;
 			#address-cells = <3>;
 			#size-cells = <2>;
+			axi-halt-val = <0x1e>; /* increase halt window size to 1GB */
 
 			phys = <&pcie_phy0>;
 			phy-names = "pciephy";

@@ -197,10 +197,10 @@ static int __nf_queue(struct sk_buff *skb, const struct nf_hook_state *state,
 	/* QUEUE == DROP if no one is waiting, to be safe. */
 	if (queuetype == NF_IMQ_QUEUE) {
 #if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
-		qh = rcu_dereference(queue_imq_handler);
+	qh = rcu_dereference(queue_imq_handler);
 #else
-		BUG();
-		goto err;
+	BUG();
+	goto err_unlock;
 #endif
 	} else {
 		qh = rcu_dereference(net->nf.queue_handler);

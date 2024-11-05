@@ -24,6 +24,12 @@
 #include <linux/cpumask.h>
 #include <linux/audit.h>
 #include <net/sock.h>
+#if IS_ENABLED(CONFIG_BRIDGE_EBT_ARP)
+#include <linux/netfilter_bridge/ebt_arp.h>
+#endif
+#if IS_ENABLED(CONFIG_BRIDGE_EBT_IP)
+#include <linux/netfilter_bridge/ebt_ip.h>
+#endif
 /* needed for logical [in,out]-dev filtering */
 #include "../br_private.h"
 
@@ -42,6 +48,59 @@
 
 
 static DEFINE_MUTEX(ebt_mutex);
+
+#if IS_ENABLED(CONFIG_BRIDGE_EBT_ARP) || IS_ENABLED(CONFIG_BRIDGE_EBT_IP)
+#define	MAX_IP_MAC_MAPCNT	5
+#define	IPMAC_DST_MAGIC_BYTE	0x77
+typedef struct {
+	__be32 saddr;
+	unsigned char mac[ETH_ALEN];
+} ip_mac_record_t;
+static ip_mac_record_t ip_records[MAX_IP_MAC_MAPCNT] = { 0 };
+
+static void record_ip_mac(__be32 saddr, const unsigned char *macpt) {
+	int i;
+	if (!macpt || saddr == 0)
+		return;
+	for (i = 0; i < MAX_IP_MAC_MAPCNT; i++) {
+		if (ip_records[i].saddr == saddr) {
+			if (memcmp(ip_records[i].mac, macpt, ETH_ALEN)!=0)
+				memcpy(ip_records[i].mac, macpt, ETH_ALEN);
+			break;
+		}
+		if (ip_records[i].saddr == 0) { // empty slot
+			ip_records[i].saddr = saddr;
+			memcpy(ip_records[i].mac, macpt, ETH_ALEN);
+			break;
+		}
+	}
+	if (i == MAX_IP_MAC_MAPCNT)
+		printk_ratelimited(KERN_CRIT "[%s] slots full!!\n", __func__);
+}
+
+static ssize_t ipmac_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	int i;
+	int len = 0;
+	for (i = 0; i < MAX_IP_MAC_MAPCNT; i++) {
+		if (ip_records[i].saddr != 0)
+			len += sprintf(buf+len, "%pI4,%pM\n", &ip_records[i].saddr, ip_records[i].mac);
+	}
+	return len;
+}
+
+static ssize_t ipmac_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t len)
+{
+        if (len && buf[0] == 'c') {
+		int i;
+		for (i = 0; i < MAX_IP_MAC_MAPCNT; i++)
+			ip_records[i].saddr = 0;
+	}
+        return len;
+}
+
+static struct kobj_attribute ipmac_attr = __ATTR(ipmac, 0644, ipmac_show, ipmac_store);
+#endif
 
 #ifdef CONFIG_COMPAT
 static void ebt_standard_compat_from_user(void *dst, const void *src)
@@ -116,7 +175,7 @@ ebt_dev_check(const char *entry, const struct net_device *device)
 /* process standard matches */
 static inline int
 ebt_basic_match(const struct ebt_entry *e, const struct sk_buff *skb,
-		const struct net_device *in, const struct net_device *out)
+		const struct net_device *in, const struct net_device *out, __be16 *pt_proto)
 {
 	const struct ethhdr *h = eth_hdr(skb);
 	const struct net_bridge_port *p;
@@ -126,6 +185,7 @@ ebt_basic_match(const struct ebt_entry *e, const struct sk_buff *skb,
 		ethproto = htons(ETH_P_8021Q);
 	else
 		ethproto = h->h_proto;
+	*pt_proto = ethproto;
 
 	if (e->bitmask & EBT_802_3) {
 		if (NF_INVF(e, EBT_IPROTO, eth_proto_is_802_3(ethproto)))
@@ -152,7 +212,11 @@ ebt_basic_match(const struct ebt_entry *e, const struct sk_buff *skb,
 		if (NF_INVF(e, EBT_ISOURCE,
 			    !ether_addr_equal_masked(h->h_source, e->sourcemac,
 						     e->sourcemsk)))
+#if IS_ENABLED(CONFIG_BRIDGE_EBT_ARP) || IS_ENABLED(CONFIG_BRIDGE_EBT_IP)
+			return 3; // special handle
+#else
 			return 1;
+#endif
 	}
 	if (e->bitmask & EBT_DESTMAC) {
 		if (NF_INVF(e, EBT_IDEST,
@@ -211,8 +275,40 @@ unsigned int ebt_do_table(struct sk_buff *skb,
 	base = private->entries;
 	i = 0;
 	while (i < nentries) {
-		if (ebt_basic_match(point, skb, state->in, state->out))
+		int basic_match_ret;
+		__be16 proto;
+		basic_match_ret = ebt_basic_match(point, skb, state->in, state->out, &proto);
+		if (basic_match_ret == 1)
 			goto letscontinue;
+#if IS_ENABLED(CONFIG_BRIDGE_EBT_ARP) || IS_ENABLED(CONFIG_BRIDGE_EBT_IP)
+		else if (basic_match_ret == 3) { // eth src doesn't match
+#if IS_ENABLED(CONFIG_BRIDGE_EBT_ARP)
+			if (proto == htons(ETH_P_ARP)) {
+				if (!(point->bitmask & EBT_DESTMAC) && point->destmac[0] == IPMAC_DST_MAGIC_BYTE) { /// special rule
+					if (EBT_MATCH_ITERATE(point, ebt_do_match, skb, &acpar) == 0) { // IP matched!
+						const struct ethhdr *h = eth_hdr(skb);
+						struct ebt_entry_match *__match = (void *)point + sizeof(struct ebt_entry);
+						const struct ebt_arp_info *info = (void *)(__match->data);
+						record_ip_mac(info->saddr, h->h_source);
+					}
+				}
+			}
+#endif
+#if IS_ENABLED(CONFIG_BRIDGE_EBT_IP)
+			if (proto == htons(ETH_P_IP)) {
+				if (!(point->bitmask & EBT_DESTMAC) && point->destmac[0] == IPMAC_DST_MAGIC_BYTE) { /// special rule
+					if (EBT_MATCH_ITERATE(point, ebt_do_match, skb, &acpar) == 0) { // IP matched!
+						const struct ethhdr *h = eth_hdr(skb);
+						struct ebt_entry_match *__match = (void *)point + sizeof(struct ebt_entry);
+						const struct ebt_ip_info *info = (void *)(__match->data);
+						record_ip_mac(info->saddr, h->h_source);
+					}
+				}
+			}
+#endif
+			goto letscontinue;
+		}
+#endif
 
 		if (EBT_MATCH_ITERATE(point, ebt_do_match, skb, &acpar) != 0)
 			goto letscontinue;
@@ -700,6 +796,30 @@ ebt_check_entry(struct ebt_entry *e, struct net *net,
 	ret = EBT_MATCH_ITERATE(e, ebt_check_match, &mtpar, &i);
 	if (ret != 0)
 		goto cleanup_matches;
+#if IS_ENABLED(CONFIG_BRIDGE_EBT_ARP) || IS_ENABLED(CONFIG_BRIDGE_EBT_IP)
+	if ((e->bitmask & (EBT_SOURCEMAC|EBT_DESTMAC)) == EBT_SOURCEMAC) { /// special handle
+		/// find out arp -p ARP --arp-ip-src OR -p IPv4 --ip-src
+		if ( e->watchers_offset > sizeof(struct ebt_entry) ) {
+			struct ebt_entry_match *__match = (void *)e + sizeof(struct ebt_entry);
+#if IS_ENABLED(CONFIG_BRIDGE_EBT_ARP)
+			if (ntohs(e->ethproto) == ETH_P_ARP) {
+				const struct ebt_arp_info *info =  (void *)(__match->data);
+				if (info && info->bitmask == EBT_ARP_SRC_IP) {
+					e->destmac[0] = IPMAC_DST_MAGIC_BYTE; // magic number
+				}
+			}
+#endif
+#if IS_ENABLED(CONFIG_BRIDGE_EBT_IP)
+			if (ntohs(e->ethproto) == ETH_P_IP) {
+				const struct ebt_ip_info *info = (void *)(__match->data);
+				if (info && info->bitmask == EBT_IP_SOURCE) {
+					e->destmac[0] = IPMAC_DST_MAGIC_BYTE; // magic number
+				}
+			}
+#endif
+		}
+	}
+#endif
 	j = 0;
 	ret = EBT_WATCHER_ITERATE(e, ebt_check_watcher, &tgpar, &j);
 	if (ret != 0)
@@ -2464,12 +2584,18 @@ static int __init ebtables_init(void)
 		xt_unregister_target(&ebt_standard_target);
 		return ret;
 	}
+#if IS_ENABLED(CONFIG_BRIDGE_EBT_ARP) || IS_ENABLED(CONFIG_BRIDGE_EBT_IP)
+	sysfs_create_file(kernel_kobj, &ipmac_attr.attr);
+#endif
 
 	return 0;
 }
 
 static void __exit ebtables_fini(void)
 {
+#if IS_ENABLED(CONFIG_BRIDGE_EBT_ARP) || IS_ENABLED(CONFIG_BRIDGE_EBT_IP)
+	sysfs_remove_file(kernel_kobj, &ipmac_attr.attr);
+#endif
 	nf_unregister_sockopt(&ebt_sockopts);
 	xt_unregister_target(&ebt_standard_target);
 }

@@ -223,8 +223,10 @@ static int __init ipq_led_probe(struct platform_device *pdev)
 	char buf[BUF_NAME_LEN];
 	struct resource *res;
 	struct device_node *of_node = pdev->dev.of_node;
+#ifdef CONFIG_LEDS_TRIGGERS
 	struct device_node *child;
 	const char *led_default_trigger[MAX_BLINK_IDX] = {NULL};
+#endif
 
 	if (!of_node)
 		return -ENODEV;

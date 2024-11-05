@@ -399,21 +399,20 @@ static struct nf_queue_entry *nf_queue_entry_dup(struct nf_queue_entry *e)
 	return NULL;
 }
 
-#if IS_ENABLED(CONFIG_BRIDGE_NETFILTER)
+#ifdef CONFIG_BRIDGE_NETFILTER
 /* When called from bridge netfilter, skb->data must point to MAC header
  * before calling skb_gso_segment(). Else, original MAC header is lost
  * and segmented skbs will be sent to wrong destination.
  */
-#include <linux/netfilter_bridge.h>
 static void nf_bridge_adjust_skb_data(struct sk_buff *skb)
 {
-	if (nf_bridge_info_get(skb))
+	if (skb_ext_find(skb, SKB_EXT_BRIDGE_NF))
 		__skb_push(skb, skb->network_header - skb->mac_header);
 }
 
 static void nf_bridge_adjust_segmented_data(struct sk_buff *skb)
 {
-	if (nf_bridge_info_get(skb))
+	if (skb_ext_find(skb, SKB_EXT_BRIDGE_NF))
 		__skb_pull(skb, skb->network_header - skb->mac_header);
 }
 #else

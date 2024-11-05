@@ -117,6 +117,10 @@ struct nand_flash_dev nand_flash_ids[] = {
 		{ .id = {0xc8, 0x42} },
 		SZ_2K, SZ_256, SZ_128K, 0, 2, 128, NAND_ECC_INFO(8, SZ_512), 0},
 
+	{"GD5F2GM7REYIGR SPI NAND 2G",
+		{ .id = {0xc8, 0x82} },
+		SZ_2K, SZ_256, SZ_128K, 0, 2, 128, NAND_ECC_INFO(8, SZ_512), 0},
+
 	{"W25N01GWZEIG SPI NAND 1G 1.8V",
 		{ .id = {0xef, 0xba, 0x21} },
 		SZ_2K, SZ_128, SZ_128K, 0, 3, 64, NAND_ECC_INFO(4, SZ_512), 0},

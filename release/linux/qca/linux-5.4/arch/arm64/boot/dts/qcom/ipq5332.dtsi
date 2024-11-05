@@ -440,7 +440,7 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			compatible = "qcom,qca-mdio", "qcom,ipq40xx-mdio";
-			reg = <0x90000 0x64>;
+			reg = <0x90000 0x64>, <0x9B780 8>;
 			clocks = <&gcc GCC_MDIO_AHB_CLK>,
 			       <&gcc GCC_UNIPHY0_AHB_CLK>,
 			       <&gcc GCC_UNIPHY0_SYS_CLK>,
@@ -1317,8 +1317,9 @@
 				0x10000F20 0xa8
 				0x10001000 0x1000
 				0xf0000 0x3000
-				0x10100000 0x1000>;
-			reg-names = "dbi", "elbi", "atu", "parf", "config";
+				0x10100000 0x1000
+				0x59C188 0x4>;
+			reg-names = "dbi", "elbi", "atu", "parf", "config", "system_noc";
 			device_type = "pci";
 			linux,pci-domain = <2>;
 			bus-range = <0x00 0xff>;
@@ -1407,8 +1408,9 @@
 				0x18000F20 0xa8
 				0x18001000 0x1000
 				0x88000 0x3000
-				0x18100000 0x1000>;
-			reg-names = "dbi", "elbi", "atu", "parf", "config";
+				0x18100000 0x1000
+				0x59C210 0x4>;
+			reg-names = "dbi", "elbi", "atu", "parf", "config", "system_noc";
 			device_type = "pci";
 			linux,pci-domain = <1>;
 			bus-range = <0x00 0xff>;
@@ -1496,8 +1498,9 @@
 				0x20000F20 0xa8
 				0x20001000 0x1000
 				0x80000 0x3000
-				0x20100000 0x1000>;
-			reg-names = "dbi", "elbi", "atu", "parf", "config";
+				0x20100000 0x1000
+				0x59C108 0x4>;
+			reg-names = "dbi", "elbi", "atu", "parf", "config", "system_noc";
 			device_type = "pci";
 			linux,pci-domain = <0>;
 			bus-range = <0x00 0xff>;
@@ -2370,11 +2373,9 @@
 					<&gcc GCC_Q6_AHB_S_CLK>,
 					<&gcc GCC_Q6SS_ATBM_CLK>,
 					<&gcc GCC_Q6_AHB_CLK>,
-					<&gcc GCC_Q6_AXIM_CLK>,
 					<&gcc GCC_Q6SS_PCLKDBG_CLK>,
 					<&gcc GCC_WCSS_ECAHB_CLK>,
-					<&gcc GCC_SYS_NOC_WCSS_AHB_CLK>,
-					<&gcc GCC_MEM_NOC_Q6_AXI_CLK>;
+					<&gcc GCC_SYS_NOC_WCSS_AHB_CLK>;
 
 			assigned-clock-rates = <300000000>,
 						<120000000>,
@@ -2382,11 +2383,9 @@
 						<133333333>,
 						<240000000>,
 						<133333333>,
-						<533333333>,
 						<120000000>,
 						<133333333>,
-						<133333333>,
-						<533333333>;
+						<133333333>;
 
 			qcom,halt-regs = <&tcsr_q6_block 0xa000 0xd000 0x0>;
 
@@ -2397,7 +2396,8 @@
 			memory-region = <&q6_region>,
 					<&m3_dump>,
 					<&q6_etr_region>,
-					<&q6_caldb_region>;
+					<&q6_caldb_region>,
+					<&mlo_global_mem0>;
 			qcom,rproc = <&q6v5_wcss>;
 			qcom,bootargs_smem = <507>;
 			qcom,bootargs_version = <2>;

@@ -177,6 +177,7 @@
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <1>;
 			phy-mode = "sgmii";
+			qcom,ppe-offload-disabled = <1>;
 		};
 
 		dp2 {
@@ -189,6 +190,7 @@
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <2>;
 			phy-mode = "sgmii";
+			qcom,ppe-offload-disabled = <1>;
 		};
 
 		dp3 {
@@ -201,6 +203,7 @@
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <3>;
 			phy-mode = "sgmii";
+			qcom,ppe-offload-disabled = <1>;
 		};
 
 		dp4 {
@@ -213,6 +216,7 @@
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <4>;
 			phy-mode = "sgmii";
+			qcom,ppe-offload-disabled = <1>;
 		};
 
 		dp5 {

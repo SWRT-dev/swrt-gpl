@@ -2521,6 +2521,57 @@ void cpufreq_update_limits(unsigned int cpu)
 }
 EXPORT_SYMBOL_GPL(cpufreq_update_limits);
 
+char *cpufreq_enter_standby(void)
+{
+	struct cpufreq_policy *policy = cpufreq_cpu_get(0);
+	struct cpufreq_governor *new_gov;
+	char *old_gov_name;
+	int ret;
+
+	if (!policy)
+		return ERR_PTR(-ENODEV);
+
+	old_gov_name = policy->governor->name;
+
+	new_gov = cpufreq_parse_governor("userspace");
+	if (!new_gov)
+		return ERR_PTR(-EINVAL);
+
+	ret = cpufreq_set_policy(policy, new_gov, CPUFREQ_POLICY_UNKNOWN);
+	module_put(new_gov->owner);
+
+	policy->governor->store_setspeed(policy, policy->min);
+
+	if (ret)
+		return ERR_PTR(ret);
+
+	return old_gov_name;
+}
+EXPORT_SYMBOL_GPL(cpufreq_enter_standby);
+
+int cpufreq_exit_standby(char *old_gov_name)
+{
+	struct cpufreq_policy *policy = cpufreq_cpu_get(0);
+	struct cpufreq_governor *old_gov;
+	int ret;
+
+	if (!policy)
+		return -ENODEV;
+
+	if (!old_gov_name)
+		return -EINVAL;
+
+	old_gov = cpufreq_parse_governor(old_gov_name);
+	if (!old_gov)
+		return -EINVAL;
+
+	ret = cpufreq_set_policy(policy, old_gov, CPUFREQ_POLICY_UNKNOWN);
+	module_put(old_gov->owner);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(cpufreq_exit_standby);
+
 /*********************************************************************
  *               BOOST						     *
  *********************************************************************/

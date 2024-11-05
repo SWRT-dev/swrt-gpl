@@ -22,7 +22,7 @@
 
 #define bzero(p,l)		memset(p,0,l)
 #define sb_osh(s)		s
-#define MALLOC(o,s)		kmalloc(s, GFP_KERNEL)
+#define MALLOC(o,s)		kmalloc(s, GFP_ATOMIC)
 #define MFREE(o,a,s)	kfree(a);
 #define printf			printk
 

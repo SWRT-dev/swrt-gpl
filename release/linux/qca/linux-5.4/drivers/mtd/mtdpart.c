@@ -903,9 +903,9 @@ int add_mtd_partitions(struct mtd_info *master,
 			d = &ROOTFS_DEV;
 		else if (!strcmp(parts[i].name, "rootfs2"))
 			d = &ROOTFS2_DEV;
-
-		if (d)
+		if (d != NULL) {
 			*d = MKDEV(MTD_BLOCK_MAJOR, slave->mtd.index);
+		}
 #endif
 		cur_offset = slave->offset + slave->mtd.size;
 	}

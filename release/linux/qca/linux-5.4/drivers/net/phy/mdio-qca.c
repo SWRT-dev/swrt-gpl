@@ -24,6 +24,7 @@
 #include <linux/phy.h>
 #include <linux/platform_device.h>
 #include <linux/of_gpio.h>
+#include <linux/bitfield.h>
 #include <soc/qcom/socinfo.h>
 
 #define MDIO_CTRL_0_REG		0x40
@@ -81,6 +82,11 @@
 #define UNIPHY_ADDR_NUM			3
 #define MII_HIGH_ADDR_PREFIX			0x18
 #define MII_LOW_ADDR_PREFIX			0x10
+
+#define CMN_PLL_REFCLK_INDEX	GENMASK(3, 0)
+#define CMN_PLL_REFCLK_EXTERNAL	BIT(9)
+#define CMN_ANA_EN_SW_RSTN	BIT(6)
+
 static DEFINE_MUTEX(switch_mdio_lock);
 /* macro for mht chipset end */
 
@@ -90,6 +96,8 @@ struct qca_mdio_data {
 	void __iomem *membase;
 	int phy_irq[PHY_MAX_ADDR];
 	int clk_div;
+	bool force_c22;
+	void (*preinit)(struct mii_bus *bus);
 };
 
 static int qca_mdio_wait_busy(struct qca_mdio_data *am)
@@ -112,7 +120,7 @@ static int qca_mdio_wait_busy(struct qca_mdio_data *am)
 	return -ETIMEDOUT;
 }
 
-static int qca_mdio_read(struct mii_bus *bus, int mii_id, int regnum)
+static int _qca_mdio_read(struct mii_bus *bus, int mii_id, int regnum)
 {
 	struct qca_mdio_data *am = bus->priv;
 	int value = 0;
@@ -161,7 +169,7 @@ static int qca_mdio_read(struct mii_bus *bus, int mii_id, int regnum)
 	return value;
 }
 
-static int qca_mdio_write(struct mii_bus *bus, int mii_id, int regnum,
+static int _qca_mdio_write(struct mii_bus *bus, int mii_id, int regnum,
 			  u16 value)
 {
 	struct qca_mdio_data *am = bus->priv;
@@ -207,6 +215,43 @@ static int qca_mdio_write(struct mii_bus *bus, int mii_id, int regnum,
 		return -ETIMEDOUT;
 
 	return 0;
+}
+
+static int qca_mdio_read(struct mii_bus *bus, int mii_id, int regnum)
+{
+	struct qca_mdio_data *priv = bus->priv;
+
+	if (priv && priv->force_c22 && (regnum & MII_ADDR_C45)) {
+		unsigned int mmd = (regnum >> 16) & 0x1F;
+		unsigned int reg = regnum & 0xFFFF;
+
+		_qca_mdio_write(bus, mii_id, MII_MMD_CTRL, mmd);
+		_qca_mdio_write(bus, mii_id, MII_MMD_DATA, reg);
+		_qca_mdio_write(bus, mii_id, MII_MMD_CTRL, mmd | MII_MMD_CTRL_NOINCR);
+
+		return  _qca_mdio_read(bus, mii_id, MII_MMD_DATA);
+	}
+
+	return _qca_mdio_read(bus, mii_id, regnum);
+}
+
+static int qca_mdio_write(struct mii_bus *bus, int mii_id, int regnum,
+			  u16 value)
+{
+	struct qca_mdio_data *priv = bus->priv;
+
+	if (priv && priv->force_c22 && (regnum & MII_ADDR_C45)) {
+		unsigned int mmd = (regnum >> 16) & 0x1F;
+		unsigned int reg = regnum & 0xFFFF;
+
+		_qca_mdio_write(bus, mii_id, MII_MMD_CTRL, mmd);
+		_qca_mdio_write(bus, mii_id, MII_MMD_DATA, reg);
+		_qca_mdio_write(bus, mii_id, MII_MMD_CTRL, mmd | MII_MMD_CTRL_NOINCR);
+
+		return _qca_mdio_write(bus, mii_id, MII_MMD_DATA, value);
+	}
+
+	return _qca_mdio_write(bus, mii_id, regnum, value);
 }
 
 static int qca_phy_gpio_set(struct platform_device *pdev, int number)
@@ -641,8 +686,10 @@ static int qca_mdio_clock_set_and_enable(struct device *dev,
 	return clk_prepare_enable(clk);
 }
 
-void qca_mht_preinit(struct mii_bus *mii_bus, struct device_node *np)
+void qca_mht_preinit(struct mii_bus *mii_bus)
 {
+	struct device_node *np = mii_bus->parent->of_node;
+
 	if (!mii_bus || !np)
 		return;
 
@@ -654,12 +701,69 @@ void qca_mht_preinit(struct mii_bus *mii_bus, struct device_node *np)
 	return;
 }
 
+void qca_cmn_clk_reset(struct platform_device *pdev)
+{
+	struct resource *res;
+	void __iomem *cmn_clk_base;
+	u32 reg_val;
+	const char *cmn_ref_clk;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (res) {
+		cmn_clk_base = devm_ioremap_resource(&pdev->dev, res);
+		if (!IS_ERR(cmn_clk_base)) {
+			/* Select reference clock source */
+			reg_val = readl(cmn_clk_base + 4);
+			reg_val &= ~(CMN_PLL_REFCLK_EXTERNAL | CMN_PLL_REFCLK_INDEX);
+
+			cmn_ref_clk = of_get_property(pdev->dev.of_node, "cmn_clk", NULL);
+			if (!cmn_ref_clk) {
+				/* Internal 48MHZ selected by default */
+				reg_val |= FIELD_PREP(CMN_PLL_REFCLK_INDEX, 7);
+			} else {
+				if (!strcmp(cmn_ref_clk, "external_25MHz"))
+					reg_val |= (CMN_PLL_REFCLK_EXTERNAL |
+						FIELD_PREP(CMN_PLL_REFCLK_INDEX, 3));
+				else if (!strcmp(cmn_ref_clk, "external_31250KHz"))
+					reg_val |= (CMN_PLL_REFCLK_EXTERNAL |
+						FIELD_PREP(CMN_PLL_REFCLK_INDEX, 4));
+				else if (!strcmp(cmn_ref_clk, "external_40MHz"))
+					reg_val |= (CMN_PLL_REFCLK_EXTERNAL |
+						FIELD_PREP(CMN_PLL_REFCLK_INDEX, 6));
+				else if (!strcmp(cmn_ref_clk, "external_48MHz"))
+					reg_val |= (CMN_PLL_REFCLK_EXTERNAL |
+						FIELD_PREP(CMN_PLL_REFCLK_INDEX, 7));
+				else if (!strcmp(cmn_ref_clk, "external_50MHz"))
+					reg_val |= (CMN_PLL_REFCLK_EXTERNAL |
+						FIELD_PREP(CMN_PLL_REFCLK_INDEX, 8));
+				else
+					reg_val |= FIELD_PREP(CMN_PLL_REFCLK_INDEX, 7);
+			}
+
+			writel(reg_val, cmn_clk_base + 4);
+
+			/* Do the cmn clock reset */
+			reg_val = readl(cmn_clk_base);
+			reg_val &= ~CMN_ANA_EN_SW_RSTN;
+			writel(reg_val, cmn_clk_base);
+			msleep(1);
+
+			reg_val |= CMN_ANA_EN_SW_RSTN;
+			writel(reg_val, cmn_clk_base);
+			msleep(1);
+
+			dev_info(&pdev->dev, "CMN clock reset done\n");
+		}
+	}
+}
+
 static int qca_mdio_probe(struct platform_device *pdev)
 {
 	struct qca_mdio_data *am;
-	struct resource *res;
 	int ret, i;
 	struct reset_control *rst = ERR_PTR(-EINVAL);
+
+	qca_cmn_clk_reset(pdev);
 
 	if (of_machine_is_compatible("qcom,ipq5018")) {
 		qca_tcsr_ldo_rdy_set(true);
@@ -703,14 +807,7 @@ static int qca_mdio_probe(struct platform_device *pdev)
 			goto err_out;
 	}
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		dev_err(&pdev->dev, "no iomem resource found\n");
-		ret = -ENXIO;
-		goto err_disable_clk;
-	}
-
-	am->membase = devm_ioremap_resource(&pdev->dev, res);
+	am->membase = devm_platform_ioremap_resource(pdev, 0);
 	if (!am->membase) {
 		dev_err(&pdev->dev, "unable to ioremap registers\n");
 		ret = -ENOMEM;
@@ -724,6 +821,8 @@ static int qca_mdio_probe(struct platform_device *pdev)
 	}
 
 	am->clk_div = 0xf;
+	am->force_c22 = of_property_read_bool(pdev->dev.of_node, "force_clause22");
+
 	writel(CTRL_0_REG_DEFAULT_VALUE(am->clk_div), am->membase + MDIO_CTRL_0_REG);
 
 	am->mii_bus->name = "qca_mdio";
@@ -731,6 +830,7 @@ static int qca_mdio_probe(struct platform_device *pdev)
 	am->mii_bus->write = &qca_mdio_write;
 	am->mii_bus->priv = am;
 	am->mii_bus->parent = &pdev->dev;
+	am->preinit = qca_mht_preinit;
 	snprintf(am->mii_bus->id, MII_BUS_ID_SIZE, "%s", dev_name(&pdev->dev));
 
 	for (i = 0; i < PHY_MAX_ADDR; i++) {
@@ -740,8 +840,7 @@ static int qca_mdio_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, am);
 
-	qca_mht_preinit(am->mii_bus, pdev->dev.of_node);
-
+	am->preinit(am->mii_bus);
 	ret = of_mdiobus_register(am->mii_bus, pdev->dev.of_node);
 	if (ret)
 		goto err_free_bus;

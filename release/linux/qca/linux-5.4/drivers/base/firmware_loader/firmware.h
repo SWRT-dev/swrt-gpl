@@ -37,6 +37,7 @@ enum fw_opt {
 	FW_OPT_NO_WARN =        BIT(3),
 	FW_OPT_NOCACHE =        BIT(4),
 	FW_OPT_NOFALLBACK =     BIT(5),
+	FW_OPT_USERHELPER_FIRST =     BIT(6),
 };
 
 enum fw_status {

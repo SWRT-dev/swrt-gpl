@@ -242,6 +242,7 @@
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <16>;
 			phy-mode = "sgmii";
+			qcom,ppe-offload-disabled = <1>;
 		};
 
 		dp2 {
@@ -254,6 +255,7 @@
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <17>;
 			phy-mode = "sgmii";
+			qcom,ppe-offload-disabled = <1>;
 		};
 
 		dp3 {
@@ -266,6 +268,7 @@
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <18>;
 			phy-mode = "sgmii";
+			qcom,ppe-offload-disabled = <1>;
 		};
 
 		dp4 {
@@ -278,6 +281,7 @@
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <19>;
 			phy-mode = "sgmii";
+			qcom,ppe-offload-disabled = <1>;
 		};
 
 		dp5 {
@@ -388,30 +392,14 @@
 			pinctrl-names = "default";
 			perst-gpio = <&tlmm 23 1>;
 			max-payload-size = <1>; // 1-256 TLP bytes for WKK
-			status = "ok";
+			status = "disabled";
 			pcie0_rp {
 				reg = <0 0 0 0 0>;
-
-				wifi@0 {
-					reg = <0 0 0 0 0>;
-
-					qti,disable-rddm-prealloc;
-					qti,rddm-seg-len = <0x1000>;
-					boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
-							0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
-							0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
-					license-file = "";
-#if defined(__CNSS2__)
-					qrtr_node_id = <0x30>;
-					memory-region = <0>,<&mhi_region0>;
-#endif
-				};
-
 			};
 		};
 
 		pcie0_phy: phy@84000 {
-			status = "ok";
+			status = "disabled";
 		};
 
 		pcie1_x1: pci@10000000 {
@@ -742,15 +730,7 @@
 	status = "ok";
 };
 
-/* Enable the reserved memory regions of QCN9224 on PCIe0, PCIe1, PCIe2, PCIe3 */
-
-&mhi_region0 {
-	status = "ok";
-};
-
-&qcn9224_pcie0 {
-	status = "ok";
-};
+/* Enable the reserved memory regions of QCN9224 on PCIe1, PCIe2, PCIe3 */
 
 &qcn9224_pcie1 {
 	status = "ok";
@@ -776,41 +756,29 @@
 	status = "ok";
 };
 
-/* MLO GLOBAL MEM REGION size is 22MB for RDP with 4 QCN9224 radios */
 &mlo_global_mem0 {
-	size = <0x0 0x1800000>;
 	status = "ok";
 };
 
 &wifi0 {
        led-gpio = <&tlmm 64 1>;
-       status = "disabled";
-};
-
-&wifi4 {
-	hremote_node = <&qcn9224_pcie0>;
-	board_id = <0x01>;
-	interrupt-bmap = <0x080512>;
-	status = "ok";
+       status = "ok";
 };
 
 &wifi5 {
 	hremote_node = <&qcn9224_pcie1>;
-	board_id = <0x011>;
-	interrupt-bmap = <0x080512>;
+	board_id = <0x01>;
 	status = "ok";
 };
 
 &wifi6 {
 	hremote_node = <&qcn9224_pcie2>;
 	board_id = <0x04>;
-	interrupt-bmap = <0x080512>;
 	status = "ok";
 };
 
 &wifi7 {
 	hremote_node = <&qcn9224_pcie3>;
-	board_id = <0x12>;
-	interrupt-bmap = <0x080512>;
+	board_id = <0x02>;
 	status = "ok";
 };

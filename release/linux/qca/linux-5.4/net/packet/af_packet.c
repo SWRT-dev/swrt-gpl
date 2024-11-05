@@ -3328,13 +3328,17 @@ static int packet_create(struct net *net, struct socket *sock, int protocol,
 
 	po->prot_hook.af_packet_priv = sk;
 	po->prot_hook.af_packet_net = sock_net(sk);
+#if defined(CONFIG_PINCTRL_IPQ6018)
 	po->prot_hook.mcast_only = false;
+#endif
 
 	if (proto) {
 		po->prot_hook.type = proto;
+#if defined(CONFIG_PINCTRL_IPQ6018)
 		if ((sock->type == SOCK_RAW) && (proto == htons(ETH_P_ALL)) && !strcmp(current->comm, "lldpd")) {
 			po->prot_hook.mcast_only = true;
 		}
+#endif
 		__register_prot_hook(sk);
 	}
 

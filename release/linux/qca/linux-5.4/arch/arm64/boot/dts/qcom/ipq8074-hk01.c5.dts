@@ -505,8 +505,9 @@
 
 	interrupts-extended = <&tlmm 59 IRQ_TYPE_LEVEL_HIGH>,
 			      <&tlmm 33 IRQ_TYPE_LEVEL_HIGH>,
-			      <&tlmm 22 IRQ_TYPE_LEVEL_HIGH>;
-	interrupt-names = "wake_gpio", "mdm2ap_e911", "mdm2ap_e911_x65";
+			      <&tlmm 22 IRQ_TYPE_LEVEL_HIGH>,
+			      <&intc GIC_SPI 51 IRQ_TYPE_LEVEL_HIGH>;
+	interrupt-names = "wake_gpio", "mdm2ap_e911", "mdm2ap_e911_x65", "global_irq";
 
 	slot_id = <0>;
 	link_retries_count = <100>;

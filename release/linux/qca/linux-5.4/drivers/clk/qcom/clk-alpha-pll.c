@@ -213,7 +213,7 @@ EXPORT_SYMBOL_GPL(clk_alpha_pll_regs);
 static int wait_for_pll(struct clk_alpha_pll *pll, u32 mask, bool inverse,
 			const char *action)
 {
-	u32 val;
+	u32 val, status;
 	int count;
 	int ret;
 	const char *name = clk_hw_get_name(&pll->clkr.hw);
@@ -234,7 +234,8 @@ static int wait_for_pll(struct clk_alpha_pll *pll, u32 mask, bool inverse,
 		udelay(1);
 	}
 
-	WARN(1, "%s failed to %s!\n", name, action);
+	regmap_read(pll->clkr.regmap, PLL_STATUS(pll), &status);
+	WARN(1, "%s failed to %s! PLL_MODE 0x%x PLL_STATUS 0x%x\n", name, action, val, status);
 	return -ETIMEDOUT;
 }
 

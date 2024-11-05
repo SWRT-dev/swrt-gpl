@@ -1009,7 +1009,7 @@ static int msm_gpio_init(struct msm_pinctrl *pctrl)
 		return -EINVAL;
 
 	chip = &pctrl->chip;
-	chip->base = -1;
+	chip->base = 0;	/* Makes GPIO starts from zero instead of ARCH_NR_GPIOS(512) - ngpio(53). */
 	chip->ngpio = ngpio;
 	chip->label = dev_name(pctrl->dev);
 	chip->parent = pctrl->dev;

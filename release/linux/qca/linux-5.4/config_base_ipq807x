@@ -5222,4 +5222,5 @@ CONFIG_CORESIGHT_STREAM=m
 # CONFIG_MODEL_XMAX3600 is not set
 # CONFIG_MODEL_360V6 is not set
 # CONFIG_MODEL_RMAX5 is not set
+# CONFIG_MODEL_TUFBE6500 is not set
 # end of SWRT Miscellaneous options

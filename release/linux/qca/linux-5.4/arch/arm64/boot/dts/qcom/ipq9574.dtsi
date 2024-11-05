@@ -366,7 +366,7 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			compatible = "qcom,qca-mdio", "qcom,ipq40xx-mdio";
-			reg = <0x90000 0x64>;
+			reg = <0x90000 0x64>, <0x9B780 8>;
 			clocks = <&gcc GCC_MDIO_AHB_CLK>;
 			clock-names = "gcc_mdio_ahb_clk";
 			status = "disabled";

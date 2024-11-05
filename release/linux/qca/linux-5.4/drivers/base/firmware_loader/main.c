@@ -778,6 +778,11 @@ _request_firmware(const struct firmware **firmware_p, const char *name,
 	if (ret <= 0) /* error or already assigned */
 		goto out;
 
+	if ((opt_flags & FW_OPT_USERHELPER_FIRST)) {
+		ret = firmware_fallback_sysfs(fw, name, device, opt_flags, ret);
+		goto out;
+	}
+
 	/*
 	 * We are about to try to access the firmware file. Because we may have been
 	 * called by a driver when serving an unrelated request from userland, we use
@@ -906,6 +911,20 @@ int request_firmware_direct(const struct firmware **firmware_p,
 	return ret;
 }
 EXPORT_SYMBOL_GPL(request_firmware_direct);
+
+int request_firmware_sysfs(const struct firmware **firmware_p,
+			   const char *name, struct device *device)
+{
+	int ret;
+
+	__module_get(THIS_MODULE);
+	ret = _request_firmware(firmware_p, name, device, NULL, 0,
+				FW_OPT_UEVENT | FW_OPT_NO_WARN |
+				FW_OPT_USERHELPER_FIRST);
+	module_put(THIS_MODULE);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(request_firmware_sysfs);
 
 /**
  * firmware_request_cache() - cache firmware for suspend so resume can use it

@@ -17,7 +17,7 @@ NOTE：
 
 ## Compilation
 
-1. Install Ubuntu 64bit，Ubuntu 20 LTS x64 and Mint 20.3 are recommended
+1. Install Ubuntu 64bit，Ubuntu 22 LTS x64 and Mint 21 are recommended
 
 2. Run`sudo ln -sf /bin/bash /bin/sh` in terminal
 

@@ -2385,6 +2385,19 @@ static inline bool pci_is_thunderbolt_attached(struct pci_dev *pdev)
 void pci_uevent_ers(struct pci_dev *pdev, enum  pci_ers_result err_type);
 #endif
 
+#ifdef CONFIG_PCIE_QCOM
+int pcie_set_link_speed(struct pci_dev *dev, u16 target_link_speed);
+int pcie_set_link_width(struct pci_dev *dev, u16 target_link_width);
+#else
+static inline int pcie_set_link_speed(struct pci_dev *dev, u16 target_link_speed)
+{
+	return -ENODEV;
+}
+static inline int pcie_set_link_width(struct pci_dev *dev, u16 target_link_width)
+{
+	return -ENODEV;
+}
+#endif
 /* Provide the legacy pci_dma_* API */
 #include <linux/pci-dma-compat.h>
 

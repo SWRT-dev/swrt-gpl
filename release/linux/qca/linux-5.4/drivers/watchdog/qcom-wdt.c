@@ -88,6 +88,10 @@ static void qcom_wdt_bite(struct qcom_wdt *wdt, unsigned int ticks)
 	unsigned long nanosec_rem;
 	unsigned long long t = sched_clock();
 
+#ifdef CONFIG_DUMP_PREV_OOPS_MSG
+	enable_oopsbuf(1);
+#endif
+
 	nanosec_rem = do_div(t, 1000000000);
 	pr_info("Watchdog bark! Now = %lu.%06lu\n", (unsigned long) t,
 							nanosec_rem / 1000);

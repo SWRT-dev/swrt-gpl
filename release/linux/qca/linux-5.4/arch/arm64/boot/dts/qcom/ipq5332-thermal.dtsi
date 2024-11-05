@@ -17,7 +17,7 @@
  */
 
 / {
-	thermal-zones {
+	thermal_zones: thermal-zones {
 		tsens_tz_sensor11 {
 			polling-delay-passive = <0>;
 			polling-delay = <0>;
@@ -194,3 +194,54 @@
 		status = "ok";
 	};
 };
+
+/* If CPUFreq cooling is enabled */
+#if defined(__CPU_THERMAL__)
+
+&thermal_zones {
+	tsens_tz_sensor11 {
+		/delete-node/ trips;
+	};
+
+	tsens_tz_sensor12 {
+		/delete-node/ trips;
+	};
+
+	tsens_tz_sensor13 {
+		/delete-node/ trips;
+	};
+
+	tsens_tz_sensor14 {
+		/delete-node/ trips;
+
+		/* Trips with CPUFreq cooling maps */
+		trips {
+			cpu-critical-hi {
+				temperature = <115000>;
+				hysteresis = <9000>;
+				type = "critical_high";
+			};
+		};
+	};
+
+	tsens_tz_sensor15 {
+		/delete-node/ trips;
+	};
+};
+
+&CPU0 {
+	#cooling-cells = <2>;
+};
+
+&CPU1 {
+	#cooling-cells = <2>;
+};
+
+&CPU2 {
+	#cooling-cells = <2>;
+};
+
+&CPU3 {
+	#cooling-cells = <2>;
+};
+#endif

@@ -20,4 +20,8 @@ config  MODEL_RMAX5
         bool "RM-AX5"
         default n
 
+config  MODEL_TUFBE6500
+        bool "TUF-BE6500"
+        default n
+
 endmenu        

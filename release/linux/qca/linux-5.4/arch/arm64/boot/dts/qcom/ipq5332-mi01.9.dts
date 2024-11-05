@@ -65,3 +65,7 @@
        board_id = <0x15>;
        status = "ok";
 };
+
+&q6v5_wcss {
+	status = "disabled";
+};

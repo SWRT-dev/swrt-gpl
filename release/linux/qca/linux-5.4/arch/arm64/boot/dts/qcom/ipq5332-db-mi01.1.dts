@@ -133,6 +133,7 @@
 			qcom,phy-mdio-addr = <8>;
 			qcom,link-poll = <1>;
 			phy-mode = "sgmii";
+			qcom,ppe-offload-disabled = <1>;
 		};
 
 		mdio:mdio@90000 {

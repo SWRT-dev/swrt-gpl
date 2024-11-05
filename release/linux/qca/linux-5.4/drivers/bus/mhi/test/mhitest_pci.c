@@ -590,6 +590,10 @@ void mhitest_mhi_notify_status(struct mhi_controller *mhi_cntrl,
 		return;
 	case MHI_CB_EE_RDDM:
 		reason = MHI_RDDM;
+		if (temp->soc_reset_request) {
+			MHITEST_LOG("Ignoring RDDM CB for SOC_RESET_REQUEST\n");
+			return;
+		}
 		break;
 	case MHI_CB_EE_MISSION_MODE:
 		MHITEST_VERB("MHI_CB_EE_MISSION_MODE\n");
@@ -1326,6 +1330,8 @@ void mhitest_pci_remove(struct pci_dev *pci_dev)
 
 	mplat = get_mhitest_mplat_by_pcidev(pci_dev);
 	if (mplat) {
+		mplat->soc_reset_request = true;
+		mhi_soc_reset(mplat->mhi_ctrl);
 		mhitest_subsystem_unregister(mplat);
 		mhitest_event_work_deinit(mplat);
 		pci_load_and_free_saved_state(pci_dev, &mplat->pci_dev_default_state);

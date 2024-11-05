@@ -1428,12 +1428,12 @@ config DUMP_PREV_OOPS_MSG
 config DUMP_PREV_OOPS_MSG_BUF_ADDR
 	hex "Buffer start address to store previous kernel oops message."
 	depends on DUMP_PREV_OOPS_MSG
-	default "0x4C800000"
+	default "0x45300000"
 
 config DUMP_PREV_OOPS_MSG_BUF_LEN
 	hex "Buffer length to store previous kernel oops message."
 	depends on DUMP_PREV_OOPS_MSG
-	default "0x2000"
+	default "0x8000"
 
 config BUG
 	bool "BUG() support" if EXPERT

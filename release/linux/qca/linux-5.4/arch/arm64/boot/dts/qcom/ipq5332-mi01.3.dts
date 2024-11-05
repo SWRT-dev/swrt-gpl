@@ -97,22 +97,22 @@
 				};
 			};
 
-			mdio0_pins: mdio_pinmux {
+			mdio0_pins: mdio0_pinmux {
 				mux_0 {
 					pins = "gpio25";
 					function = "mdc0";
-					drive-strength = <8>;
-					bias-disable;
+					drive-strength = <2>;
+					bias-pull-up;
 				};
 				mux_1 {
 					pins = "gpio26";
 					function = "mdio0";
-					drive-strength = <8>;
+					drive-strength = <2>;
 					bias-pull-up;
 				};
 			};
 
-			mdio1_pins: mdio_pinmux {
+			mdio1_pins: mdio1_pinmux {
 				mux_0 {
 					pins = "gpio27";
 					function = "mdc1";
@@ -164,6 +164,8 @@
 			qcom,mactype = <1>;
 			local-mac-address = [000000000000];
 			phy-mode = "sgmii";
+			qcom,ppe-offload-disabled = <1>;
+			qcom,is_switch_connected = <1>;
 		};
 
 		mdio:mdio@90000 {
@@ -215,8 +217,6 @@
 						port_id = <2>;
 						phy_address = <30>;
 						media-type = "sfp"; /* fiber mode */
-						sfp_rx_los_pin = <&tlmm 45 0>;
-						sfp_tx_dis_pin = <&tlmm 24 0>;
 					};
 				};
 			};
@@ -232,6 +232,7 @@
 				switch_lan_bmp = <0x1e>; /* lan port bitmap */
 				switch_wan_bmp = <0x0>;  /* wan port bitmap */
 				link-polling-required = <0>;
+				fdb_sync = "interrupt";
 				link-intr-gpio = <&tlmm 23 0>;
 				qcom,port_phyinfo {
 					port@0 {

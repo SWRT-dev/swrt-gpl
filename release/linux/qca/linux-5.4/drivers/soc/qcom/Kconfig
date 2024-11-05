@@ -70,6 +70,12 @@ config QCOM_SDM845_LLCC
 	  data required to configure LLCC so that clients can start using the
 	  LLCC slices.
 
+config QCOM_SOC_NETSTANDBY
+	bool "Qualcomm Technologies, Inc. SoC network standby driver"
+	depends on ARCH_QCOM
+	help
+	  SoC network standby driver for ErP support
+
 config IPQ_REG_UPDATE
 	bool "QTI, Subsystem register update driver"
 	depends on ARCH_QCOM

@@ -40,6 +40,7 @@ enum _msm_id {
 	IPQ5322V1 = 0x251ul,
 	IPQ5312V1 = 0x252ul,
 	IPQ5302V1 = 0x253ul,
+	IPQ5300V1 = 0x270ul,
 	IPQ6018V1 = 0x192ul,
 	IPQ6028V1 = 0x193ul,
 	IPQ6000V1 = 0x1a5ul,
@@ -107,6 +108,7 @@ static enum _msm8996_version qcom_cpufreq_get_msm_id(void)
 	case IPQ5322V1:
 	case IPQ5312V1:
 	case IPQ5302V1:
+	case IPQ5300V1:
 		version = IPQ53XX_V1;
 		break;
 	case IPQ6018V1:

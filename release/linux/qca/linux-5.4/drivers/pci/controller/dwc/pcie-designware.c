@@ -463,6 +463,7 @@ void dw_pcie_disable_atu(struct dw_pcie *pci, int index,
 int dw_pcie_wait_for_link(struct dw_pcie *pci)
 {
 	int retries, max_link_retries;
+	u32 val;
 
 	if(pci->link_retries_count != 0)
 		max_link_retries = pci->link_retries_count;
@@ -478,7 +479,11 @@ int dw_pcie_wait_for_link(struct dw_pcie *pci)
 		usleep_range(LINK_WAIT_USLEEP_MIN, LINK_WAIT_USLEEP_MAX);
 	}
 
-	dev_info(pci->dev, "Phy link never came up\n");
+	if (pci->ops->ltssm_read) {
+		pci->ops->ltssm_read(pci, &val);
+		dev_info(pci->dev, "Phy link never came up. PARF_LTSSM: 0x%x\n",val);
+	} else
+		dev_info(pci->dev, "Phy link nave came up\n");
 
 	return -ETIMEDOUT;
 }

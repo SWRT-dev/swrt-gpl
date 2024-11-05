@@ -288,6 +288,10 @@ static void crashdump_init(struct rproc *rproc, struct rproc_dump_segment *segme
 
 	do_elf_ramdump(handle, segs, index);
 
+	for (index = 0; index < num_segs; index++) {
+		if (segs[index].v_address)
+			iounmap(segs[index].v_address);
+	}
 put_node:
 	kfree(segs);
 	of_node_put(np);

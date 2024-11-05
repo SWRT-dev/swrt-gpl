@@ -161,8 +161,10 @@ static DEFINE_SPINLOCK(ptype_lock);
 static DEFINE_SPINLOCK(offload_lock);
 struct list_head ptype_base[PTYPE_HASH_SIZE] __read_mostly;
 struct list_head ptype_all __read_mostly;	/* Taps */
+#if defined(CONFIG_PINCTRL_IPQ6018)
 struct list_head ptype_all_mcast __read_mostly;	/* Taps */
 static int mcast_check_cnt;
+#endif
 static struct list_head offload_base __read_mostly;
 static struct workqueue_struct *napi_workq __read_mostly;
 
@@ -335,10 +337,12 @@ void dev_add_pack(struct packet_type *pt)
 	struct list_head *head = ptype_head(pt);
 
 	spin_lock(&ptype_lock);
+#if defined(CONFIG_PINCTRL_IPQ6018)
 	if (pt->type == htons(ETH_P_ALL) && pt->mcast_only) {
 		list_add_rcu(&pt->list, &ptype_all_mcast);
 		mcast_check_cnt++;
 	} else
+#endif
 		list_add_rcu(&pt->list, head);
 	spin_unlock(&ptype_lock);
 }
@@ -363,11 +367,13 @@ void __dev_remove_pack(struct packet_type *pt)
 	struct packet_type *pt1;
 
 	spin_lock(&ptype_lock);
+
+#if defined(CONFIG_PINCTRL_IPQ6018)
 	if (pt->type == htons(ETH_P_ALL) && pt->mcast_only) {
 		head = &ptype_all_mcast;
 		mcast_check_cnt--;
 	}
-
+#endif
 	list_for_each_entry(pt1, head, list) {
 		if (pt == pt1) {
 			list_del_rcu(&pt->list);
@@ -3460,17 +3466,19 @@ static int xmit_one(struct sk_buff *skb, struct net_device *dev,
 	unsigned int len;
 	int rc;
 
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+	if ((!list_empty(&ptype_all) || !list_empty(&dev->ptype_all)) &&
+		!(skb->imq_flags & IMQ_F_ENQUEUE))
+#else
+	if (!list_empty(&ptype_all) || !list_empty(&dev->ptype_all))
+#endif
+
 	/* If this skb has been fast forwarded then we don't want it to
 	 * go to any taps (by definition we're trying to bypass them).
 	 */
 	if (unlikely(!skb->fast_forwarded)) {
-		if (dev_nit_active(dev)) {
-#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
-			if ((!list_empty(&ptype_all) || !list_empty(&dev->ptype_all)) &&
-				!(skb->imq_flags & IMQ_F_ENQUEUE))
-#endif
+		if (dev_nit_active(dev))
 			dev_queue_xmit_nit(skb, dev);
-		}
 	}
 
 #ifdef CONFIG_ETHERNET_PACKET_MANGLE
@@ -4293,7 +4301,7 @@ static int __dev_queue_xmit(struct sk_buff *skb, struct net_device *sb_dev)
 	else
 		skb_dst_force(skb);
 
-#if 1 /* IPTV tag only NIC */
+#if defined(CONFIG_PINCTRL_IPQ6018) /* IPTV tag only NIC */
 	if (dev->vlan_only && !skb_vlan_tag_present(skb)) {
 			// skip non-vlan
 			kfree_skb_list(skb);
@@ -5329,7 +5337,9 @@ static int __netif_receive_skb_core(struct sk_buff **pskb, bool pfmemalloc,
 				    struct packet_type **ppt_prev)
 {
 	struct packet_type *ptype, *pt_prev;
+#if defined(CONFIG_PINCTRL_IPQ6018)
 	unsigned char *mac_pt = NULL;
+#endif
 	rx_handler_func_t *rx_handler;
 	struct sk_buff *skb = *pskb;
 	struct net_device *orig_dev;
@@ -5385,7 +5395,7 @@ another_round:
 			goto out;
 	}
 
-#if 1 /* IPTV tag only NIC */
+#if defined(CONFIG_PINCTRL_IPQ6018) /* IPTV tag only NIC */
 	if (skb->dev && skb->dev->vlan_only) {
 		if (!skb_vlan_tag_present(skb)) {
 			// drop non-vlan
@@ -5420,7 +5430,7 @@ another_round:
 			ret = deliver_skb(skb, pt_prev, orig_dev);
 		pt_prev = ptype;
 	}
-
+#if defined(CONFIG_PINCTRL_IPQ6018)
 	if (mcast_check_cnt) {
 		if (skb_mac_header_was_set(skb)) {
 			mac_pt = skb_mac_header(skb);
@@ -5440,7 +5450,7 @@ another_round:
 			}
 		}
 	}
-
+#endif
 skip_taps:
 #ifdef CONFIG_NET_INGRESS
 	if (static_branch_unlikely(&ingress_needed_key)) {
@@ -5459,11 +5469,13 @@ skip_classify:
 
 	if (skb_vlan_tag_present(skb)) {
 		if (pt_prev) {
+#if defined(CONFIG_PINCTRL_IPQ6018)
 		if (pt_prev->mcast_only) {
 				if (mac_pt && (mac_pt[0]==0x01)){
 					ret = deliver_skb(skb, pt_prev, orig_dev);
 				}
 			} else
+#endif
 				ret = deliver_skb(skb, pt_prev, orig_dev);
 			pt_prev = NULL;
 		}
@@ -5476,11 +5488,13 @@ skip_classify:
 	rx_handler = rcu_dereference(skb->dev->rx_handler);
 	if (rx_handler) {
 		if (pt_prev) {
+#if defined(CONFIG_PINCTRL_IPQ6018)
 			if (pt_prev->mcast_only) {
 				if (mac_pt && (mac_pt[0]==0x01)){
 					ret = deliver_skb(skb, pt_prev, orig_dev);
 				}
 			} else
+#endif
 				ret = deliver_skb(skb, pt_prev, orig_dev);
 			pt_prev = NULL;
 		}
@@ -11021,8 +11035,10 @@ static int __init net_dev_init(void)
 		goto out;
 
 	INIT_LIST_HEAD(&ptype_all);
+#if defined(CONFIG_PINCTRL_IPQ6018)
 	INIT_LIST_HEAD(&ptype_all_mcast);
 	mcast_check_cnt = 0;
+#endif
 	for (i = 0; i < PTYPE_HASH_SIZE; i++)
 		INIT_LIST_HEAD(&ptype_base[i]);
 
@@ -11092,3 +11108,4 @@ out:
 }
 
 subsys_initcall(net_dev_init);
+

@@ -42,8 +42,9 @@
 			e911-gpio =  <&tlmm 43 GPIO_ACTIVE_HIGH>;
 
 			interrupts-extended = <&tlmm 33 IRQ_TYPE_LEVEL_HIGH>,
-			                      <&tlmm 43 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "wake_gpio", "mdm2ap_e911";
+			                      <&tlmm 43 IRQ_TYPE_LEVEL_HIGH>,
+					      <&intc GIC_SPI 188 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "wake_gpio", "mdm2ap_e911", "global_irq";
 
 			slot_id = <2>;
 			/* delete pcie3_rp node to remove QCN9000 related entries

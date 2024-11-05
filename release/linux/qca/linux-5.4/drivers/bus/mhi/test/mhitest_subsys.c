@@ -194,10 +194,13 @@ void mhitest_subsystem_unregister(struct mhitest_platform *mplat)
 		return;
 	}
 
-	if (mplat->subsys_handle)
-		rproc_shutdown(mplat->subsys_handle);
-	else
+	if (!mplat->subsys_handle) {
 		MHITEST_ERR("mplat->subsys_handle is NULL\n");
+		return;
+	}
 
+	rproc_shutdown(mplat->subsys_handle);
+	rproc_del(mplat->subsys_handle);
+	rproc_free(mplat->subsys_handle);
 	mplat->subsys_handle = NULL;
 }

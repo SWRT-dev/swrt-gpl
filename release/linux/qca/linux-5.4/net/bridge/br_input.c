@@ -99,6 +99,7 @@ int br_handle_frame_finish(struct net *net, struct sock *sk, struct sk_buff *skb
 	if (!p || p->state == BR_STATE_DISABLED)
 		goto drop;
 
+#if defined(PLAX56_XP4)
 	if (p->untagged_port_vlan_en && skb_vlan_tag_present(skb)){
 		u16 skb_vid;
 		skb_vid = skb_vlan_tag_get_id(skb);
@@ -108,6 +109,7 @@ int br_handle_frame_finish(struct net *net, struct sock *sk, struct sk_buff *skb
 		}
 		skb->vlan_tci = 0; // clear
 	}
+#endif
 
 	if (!br_allowed_ingress(p->br, nbp_vlan_group_rcu(p), skb, &vid))
 		goto out;

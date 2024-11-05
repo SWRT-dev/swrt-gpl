@@ -33,6 +33,7 @@ struct nf_queue_handler {
 void nf_register_queue_handler(struct net *net, const struct nf_queue_handler *qh);
 void nf_unregister_queue_handler(struct net *net);
 void nf_reinject(struct nf_queue_entry *entry, unsigned int verdict);
+void nf_queue_entry_release_refs(struct nf_queue_entry *entry);
 
 #if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
 void nf_register_queue_imq_handler(const struct nf_queue_handler *qh);

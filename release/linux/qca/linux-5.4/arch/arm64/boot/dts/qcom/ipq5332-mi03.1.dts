@@ -90,6 +90,7 @@
 			pinctrl-names = "default";
 			/*gpio31 for 8033 reset, gpio22 for s17c reset*/
 			phy-reset-gpio = <&tlmm 31 0 &tlmm 22 0>;
+			force_clause22; /* force MDIO bus to use clause22 because of S17C */
 			phy0: ethernet-phy@0 {
 				reg = <5>;
 			};
@@ -215,6 +216,7 @@
 			qcom,mactype = <0>;
 			local-mac-address = [000000000000];
 			phy-mode = "sgmii";
+			qcom,is_switch_connected = <1>;
 		};
 
 		/* EDMA host driver configuration for the board */

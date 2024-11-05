@@ -850,7 +850,7 @@ int br_dev_is_vlan_filter_enabled(const struct net_device *dev)
 		/*
 		 * It's a bridge port
 		 */
-		master = netdev_master_upper_dev_get_rcu((struct net_device *)dev);
+		master = netdev_master_upper_dev_get_rcu(dev);
 		if (!master) {
 			return -EINVAL;
 		}

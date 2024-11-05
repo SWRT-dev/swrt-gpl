@@ -6,6 +6,10 @@
  */
 
 / {
+
+#if defined(__IPQ_MEM_PROFILE_512_MB__)
+	MP_512;
+#endif
 	memory {
 		device_type = "memory";
 		reg = <0x0 0x40000000 0x0 0x20000000>;

@@ -185,6 +185,7 @@ struct mhitest_platform {
 	int d_instance;
 /* klog level for mhitest driver */
 	enum MHITEST_DEBUG_KLVL  mhitest_klog_lvl;
+	bool soc_reset_request;
 };
 enum MHI_STATE {
 	MHI_INIT,

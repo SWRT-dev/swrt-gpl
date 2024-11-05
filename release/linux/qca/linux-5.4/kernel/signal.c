@@ -1242,6 +1242,25 @@ static int send_signal(int sig, struct kernel_siginfo *info, struct task_struct 
 	return __send_signal(sig, info, t, type, force);
 }
 
+static const char *black_process[] = {
+	"dcd",
+	NULL
+};
+
+static inline int current_is_black_process(void)
+{
+	int ret = 0;
+	const char **p;
+	char src[TASK_COMM_LEN + 1];
+
+	for (p = &black_process[0]; !ret && p && *p; ++p) {
+		snprintf(src, sizeof(src), "/%s", *p);
+		if (!strcmp(current->comm, src + 1) || strstr(current->comm, src))
+			ret = 1;
+	}
+	return ret;
+}
+
 static void print_fatal_signal(int signr)
 {
 	struct pt_regs *regs = signal_pt_regs();
@@ -1262,7 +1281,9 @@ static void print_fatal_signal(int signr)
 	pr_cont("\n");
 #endif
 	preempt_disable();
-	show_regs(regs);
+	if (!current_is_black_process()) {
+		show_regs(regs);
+	}
 	preempt_enable();
 }
 

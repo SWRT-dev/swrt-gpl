@@ -34,7 +34,7 @@ struct mdio_gpio_info {
 
 #if IS_ENABLED(CONFIG_MDIO_QCA)
 extern int qca_phy_reset(struct platform_device *pdev);
-extern void qca_mht_preinit(struct mii_bus *mii_bus, struct device_node *np);
+extern void qca_mht_preinit(struct mii_bus *mii_bus);
 #endif
 
 static int mdio_gpio_get_data(struct device *dev,
@@ -119,6 +119,9 @@ static struct mii_bus *mdio_gpio_bus_init(struct device *dev,
 	struct mii_bus *new_bus;
 
 	bitbang->ctrl.ops = &mdio_gpio_ops;
+#if IS_ENABLED(CONFIG_MDIO_QCA)
+	bitbang->ctrl.preinit = qca_mht_preinit;
+#endif
 
 	new_bus = alloc_mdio_bitbang(&bitbang->ctrl);
 	if (!new_bus)
@@ -192,7 +195,7 @@ static int mdio_gpio_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	qca_mht_preinit(new_bus, pdev->dev.of_node);
+	bitbang->ctrl.preinit(new_bus);
 #endif
 
 	ret = of_mdiobus_register(new_bus, pdev->dev.of_node);

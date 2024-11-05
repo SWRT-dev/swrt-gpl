@@ -13,6 +13,10 @@
  */
 #define ASUS_NVRAM
 #define WL_NVRAM	/* wear-levelling nvram */
+#if defined(CONFIG_PINCTRL_IPQ8074) || defined(CONFIG_PINCTRL_IPQ6018) || defined(CONFIG_PINCTRL_IPQ5018) || defined(CONFIG_PINCTRL_IPQ4019)
+#else
+#define COMPRESS_NVRAM
+#endif
 
 #include <linux/init.h>
 #include <linux/module.h>
@@ -84,6 +88,10 @@
 #include <nvram/bcmendian.h>
 #include <nvram/bcmnvram.h>
 #include <nvram/bcmutils.h>
+#ifdef COMPRESS_NVRAM
+#include <linux/zlib.h>
+#include <linux/zutil.h>
+#endif
 
 #include "nvram.c"
 
@@ -218,7 +226,7 @@ asusnls_u2c(char *name)
 	char *xfrstr;
 	struct nls_table *nls;
 	int ret, len=0;
-	
+
 	strcpy(codebuf, name);
 	codepage=codebuf+strlen(NLS_NVRAM_U2C);
 	if((xfrstr=strchr(codepage, '_')))
@@ -433,11 +441,11 @@ early_nvram_init(void)
 	header = (struct nvram_header *) KSEG1ADDR(base + 4 KB);
 	if (header->magic == NVRAM_MAGIC)
 		goto found;
-	
+
 	header = (struct nvram_header *) KSEG1ADDR(base + 1 KB);
 	if (header->magic == NVRAM_MAGIC)
 		goto found;
-	
+
 	printk("early_nvram_init: NVRAM not found\n");
 	return;
 
@@ -638,6 +646,205 @@ static const struct file_operations nvram_file_ops = {
 };
 #endif	// ASUS_NVRAM
 
+#ifdef COMPRESS_NVRAM
+/* reference from fs/jffs2/compr_zlib.c */
+#define STREAM_END_SPACE 12
+
+static DEFINE_MUTEX(deflate_mutex);
+static DEFINE_MUTEX(inflate_mutex);
+static z_stream inf_strm, def_strm;
+
+#ifdef __KERNEL__ /* Linux-only */
+#include <linux/vmalloc.h>
+#include <linux/mutex.h>
+
+static int __init alloc_workspaces(void)
+{
+	def_strm.workspace = vmalloc(zlib_deflate_workspacesize(MAX_WBITS,
+							MAX_MEM_LEVEL));
+	if (!def_strm.workspace)
+		return -ENOMEM;
+
+	//printk("Allocated %d bytes for deflate workspace\n",
+	//	  zlib_deflate_workspacesize(MAX_WBITS, MAX_MEM_LEVEL));
+	inf_strm.workspace = vmalloc(zlib_inflate_workspacesize());
+	if (!inf_strm.workspace) {
+		vfree(def_strm.workspace);
+		return -ENOMEM;
+	}
+	//printk("Allocated %d bytes for inflate workspace\n",
+	//	  zlib_inflate_workspacesize());
+	return 0;
+}
+
+static void free_workspaces(void)
+{
+	vfree(def_strm.workspace);
+	vfree(inf_strm.workspace);
+}
+#else
+#define alloc_workspaces() (0)
+#define free_workspaces() do { } while(0)
+#endif /* __KERNEL__ */
+
+static int kzlib_compress(unsigned char *data_in,
+			  unsigned char *cpage_out,
+			  uint32_t *sourcelen, uint32_t *dstlen)
+{
+	int ret;
+
+	if (*dstlen <= STREAM_END_SPACE)
+		return -1;
+
+	mutex_lock(&deflate_mutex);
+
+	if (Z_OK != zlib_deflateInit(&def_strm, 3)) {
+		printk(KERN_WARNING "deflateInit failed\n");
+		mutex_unlock(&deflate_mutex);
+		return -1;
+	}
+
+	def_strm.next_in = data_in;
+	def_strm.total_in = 0;
+
+	def_strm.next_out = cpage_out;
+	def_strm.total_out = 0;
+
+	while (def_strm.total_out < *dstlen - STREAM_END_SPACE && def_strm.total_in < *sourcelen) {
+		def_strm.avail_out = *dstlen - (def_strm.total_out + STREAM_END_SPACE);
+		def_strm.avail_in = min_t(unsigned long,
+			(*sourcelen-def_strm.total_in), def_strm.avail_out);
+		//printk("calling deflate with avail_in %d, avail_out %d\n",
+		//	  def_strm.avail_in, def_strm.avail_out);
+		ret = zlib_deflate(&def_strm, Z_PARTIAL_FLUSH);
+		//printk("deflate returned with avail_in %d, avail_out %d, total_in %ld, total_out %ld\n",
+		//	  def_strm.avail_in, def_strm.avail_out,
+		//	  def_strm.total_in, def_strm.total_out);
+		if (ret != Z_OK) {
+			printk("deflate in loop returned %d\n", ret);
+			zlib_deflateEnd(&def_strm);
+			mutex_unlock(&deflate_mutex);
+			return -1;
+		}
+	}
+	def_strm.avail_out += STREAM_END_SPACE;
+	def_strm.avail_in = 0;
+	ret = zlib_deflate(&def_strm, Z_FINISH);
+	zlib_deflateEnd(&def_strm);
+
+	if (ret != Z_STREAM_END) {
+		printk("final deflate returned %d\n", ret);
+		ret = -1;
+		goto out;
+	}
+
+	if (def_strm.total_out >= def_strm.total_in) {
+		printk("zlib compressed %ld bytes into %ld; failing\n",
+			  def_strm.total_in, def_strm.total_out);
+		ret = -1;
+		goto out;
+	}
+
+	//printk("zlib compressed %ld bytes into %ld\n",
+	//	  def_strm.total_in, def_strm.total_out);
+
+	*dstlen = def_strm.total_out;
+	*sourcelen = def_strm.total_in;
+	ret = 0;
+ out:
+	mutex_unlock(&deflate_mutex);
+	return ret;
+}
+
+static int kzlib_decompress(unsigned char *data_in,
+			    unsigned char *cpage_out,
+			    uint32_t srclen, uint32_t *destlen)
+{
+	int ret;
+	int wbits = MAX_WBITS;
+
+	mutex_lock(&inflate_mutex);
+
+	inf_strm.next_in = data_in;
+	inf_strm.avail_in = srclen;
+	inf_strm.total_in = 0;
+
+	inf_strm.next_out = cpage_out;
+	inf_strm.avail_out = *destlen;
+	inf_strm.total_out = 0;
+
+	/* If it's deflate, and it's got no preset dictionary, then
+	   we can tell zlib to skip the adler32 check. */
+	if (srclen > 2 && !(data_in[1] & PRESET_DICT) &&
+	    ((data_in[0] & 0x0f) == Z_DEFLATED) &&
+	    !(((data_in[0]<<8) + data_in[1]) % 31)) {
+
+		//printk("inflate skipping adler32\n");
+		wbits = -((data_in[0] >> 4) + 8);
+		inf_strm.next_in += 2;
+		inf_strm.avail_in -= 2;
+	} else {
+		/* Let this remain D1 for now -- it should never happen */
+		printk("inflate not skipping adler32\n");
+	}
+
+
+	if (Z_OK != zlib_inflateInit2(&inf_strm, wbits)) {
+		pr_warn("inflateInit failed\n");
+		mutex_unlock(&inflate_mutex);
+		return 1;
+	}
+
+	while((ret = zlib_inflate(&inf_strm, Z_FINISH)) == Z_OK)
+		;
+	if (ret != Z_STREAM_END) {
+		pr_notice("inflate returned %d\n", ret);
+	}
+	zlib_inflateEnd(&inf_strm);
+	mutex_unlock(&inflate_mutex);
+	*destlen -= inf_strm.avail_out;
+	return 0;
+}
+
+static int kzlib_init(void)
+{
+	return alloc_workspaces();
+}
+
+static void kzlib_exit(void)
+{
+	free_workspaces();
+}
+
+/* Reserve allocated COMPRESS_NVRAM memory */
+struct mms {
+	unsigned char *mem;
+	unsigned long size;
+} cmprnv = {
+	NULL,
+	0
+};
+
+inline int cmprnv_alloc(struct mms *pmms, unsigned long size, gfp_t flags)
+{
+retry:
+	if (pmms->mem == NULL) {
+		pmms->mem = kmalloc(size, flags);
+		if (pmms->mem == NULL) {
+			pr_crit("%s: @@@@@@@@@@@@@ fail @@@@@@@@@@@@@\n", __func__);
+			return -1;
+		}
+		pmms->size = size;
+	}
+	else if (pmms->size < size) {
+		kfree(pmms->mem);
+		pmms->mem = NULL;
+		goto retry;
+	}
+
+	return 0;
+}
+#endif /* COMPRESS_NVRAM */
 
 /*
  * Read raw nvram data from nvram MTD partition of FLASH. Include nvram_header and variables.
@@ -660,6 +867,11 @@ _nvram_read(char *buf)
 	unsigned long t1, t2;
 	struct nvram_header *valid_h = (struct nvram_header *) valid_buf;
 	wlnv_priv_t *priv = NULL;
+#ifdef COMPRESS_NVRAM
+	char *cbuf = NULL;
+	char *cptr, *ptr;
+	int dlen, clen, skip = sizeof(struct nvram_header) + sizeof(wlnv_priv_t);
+#endif
 
 	if (!nvram_mtd) {
 		recover_flag = 1;
@@ -677,7 +889,11 @@ _nvram_read(char *buf)
 		    continue;
 	    }
 
-	    if (h->magic != NVRAM_MAGIC) {
+	    if (h->magic != NVRAM_MAGIC
+#ifdef COMPRESS_NVRAM
+	     && h->magic != ZLIB_NVRAM_MAGIC
+#endif
+	    ) {
 		    continue;
 	    }
 
@@ -709,7 +925,11 @@ _nvram_read(char *buf)
 	g_wlnv.may_erase_nexttime = 0;
 	printk("offset 0x%x elapse %lums\n", valid_offset, ((t2 - t1) * 1000)/HZ);
 
-	if (cmt_times > 0 && valid_h->magic == NVRAM_MAGIC) {
+	if (cmt_times > 0 && (valid_h->magic == NVRAM_MAGIC
+#ifdef COMPRESS_NVRAM
+			   || valid_h->magic == ZLIB_NVRAM_MAGIC
+#endif
+	)) {
 		/* read nvram from latest offset that provide max. commit_times.
 		 * skip wlnv_priv_t structure according to it's length.
 		 */
@@ -721,6 +941,32 @@ _nvram_read(char *buf)
 		} else {
 			g_wlnv.last_commit_times = cmt_times;
 			g_wlnv.cur_offset = valid_offset;
+
+#ifdef COMPRESS_NVRAM
+			if (valid_h->magic == NVRAM_MAGIC)
+				goto exit__nvram_read;
+
+			ptr = buf + skip;
+			clen = rlen - skip;
+
+			if (cmprnv_alloc(&cmprnv, rlen, GFP_ATOMIC)) {
+				printk("%s: cbuf kmalloc failed\n", __func__);
+				goto exit__nvram_read;
+			}
+			cbuf = cmprnv.mem;
+			memcpy(cbuf, buf, rlen);
+
+			cptr = cbuf + skip;
+			dlen = NVRAM_SPACE - skip;
+			if (kzlib_decompress(cptr, ptr, clen, &dlen)) {
+				printk("%s: decompress nvram failed\n", __func__);
+				goto exit__nvram_read;
+			}
+			//printk("%s: decompress nvram %d into %d bytes\n", __func__, clen, dlen);
+
+			header->len = skip + dlen;
+			header->magic = NVRAM_MAGIC;
+#endif
 		}
 	} else {
 		/* try to read last unit (size: NVRAM_SPACE). for compatible */
@@ -792,8 +1038,8 @@ _nvram_free(struct nvram_tuple *t)
 #if defined(NVRAM_MULTIPLE) && (NVRAM_MULTIPLE > 1)
 		nvram_idx = (nvram_idx + 1) % NVRAM_MULTIPLE;
 #endif	/* NVRAM_MULTIPLE */
-		printk("%s: %d(%s) nvram_idx(%d / %d)\n",
-			__func__, current->pid, current->comm, nvram_idx, NVRAM_MULTIPLE);
+		/*printk("%s: %d(%s) nvram_idx(%d / %d)\n",
+			__func__, current->pid, current->comm, nvram_idx, NVRAM_MULTIPLE);*/
 	}
 	else
 		kfree(t);
@@ -855,7 +1101,7 @@ real_nvram_get(const char *name)
 
 char *
 nvram_get(const char *name)
-{	
+{
 	if (nvram_major >= 0)
 		return real_nvram_get(name);
 	else
@@ -882,6 +1128,8 @@ nvram_unset(const char *name)
 int
 nvram_commit(void)
 {
+	#define HEADER		(zlib_done ? (uint8_t *)cbuf : (uint8_t *)header)
+	#define HEADER_LEN	(zlib_done ? h->len : header->len)
 	size_t erasesize, len;
 	int ret, is_nand = 0;
 	struct nvram_header *header;
@@ -893,6 +1141,13 @@ nvram_commit(void)
 	size_t rlen, wlen, d_len, total_wlen;
 	uint8_t *data, *d;
 	u_int32_t o, prev_erase_offset, next_erase_offset, unit_offset, end_offset;
+	struct nvram_header *h;
+	char *cbuf = NULL;
+#ifdef COMPRESS_NVRAM
+	char *cptr, *ptr;
+	int dlen, clen, skip = sizeof(struct nvram_header) + sizeof(wlnv_priv_t);
+#endif
+	int zlib_done = 0;
 #else	/* !WL_NVRAM */
 	unsigned int i;
 #endif	/* WL_NVRAM */
@@ -923,11 +1178,38 @@ nvram_commit(void)
 	ret = _nvram_commit(header);
 	spin_unlock_irqrestore(&nvram_lock, flags);
 
+#ifdef COMPRESS_NVRAM
+	ptr = (char *)header + skip;
+	dlen = header->len - skip;
+
+	if (cmprnv_alloc(&cmprnv, (nvram_mtd->size - rsv_blk_size), GFP_ATOMIC)) {
+		printk("%s: cbuf kmalloc failed\n", __func__);
+		goto compress_fail;
+	}
+	cbuf = cmprnv.mem;
+	memcpy(cbuf, (char *)header, skip);
+
+	cptr = cbuf + skip;
+	clen = nvram_mtd->size - rsv_blk_size - skip;
+	if (kzlib_compress(ptr, cptr, &dlen, &clen)) {
+		printk("%s: compress nvram failed\n", __func__);
+		goto compress_fail;
+	}
+	//printk("%s: compress nvram %d into %d bytes\n", __func__, dlen, clen);
+
+	h = (struct nvram_header *)cbuf;
+	h->len = skip + clen;
+	h->magic = ZLIB_NVRAM_MAGIC;
+	zlib_done = 1;
+
+compress_fail:
+#endif
+
 nvram_commit_wrapped:
 	unit_offset = g_wlnv.next_offset;
-	total_wlen = header->len;
+	total_wlen = HEADER_LEN;
 	if (is_nand)
-		total_wlen = ROUNDUP(header->len, nvram_mtd->writesize);
+		total_wlen = ROUNDUP(HEADER_LEN, nvram_mtd->writesize);
 	end_offset = unit_offset + total_wlen;
 
 	if (end_offset > nvram_mtd->size) {
@@ -936,7 +1218,7 @@ nvram_commit_wrapped:
 		goto nvram_commit_wrapped;
 	}
 
-	for (offset = unit_offset, data = (uint8_t*) header; offset < end_offset && total_wlen > 0; offset = next_erase_offset) {
+	for (offset = unit_offset, data = HEADER; offset < end_offset && total_wlen > 0; offset = next_erase_offset) {
 		o = offset;
 		e_retry = w_retry = need_erase = 0;
 		prev_erase_offset = ROUNDDOWN(offset, nvram_mtd->erasesize);
@@ -1016,9 +1298,9 @@ start_erase_write:
 	g_wlnv.cur_offset = unit_offset;
 	g_wlnv.next_offset = ROUNDUP(end_offset, step_unit);
 	if (g_wlnv.avg_len)
-		g_wlnv.avg_len = (g_wlnv.avg_len + header->len) / 2;
+		g_wlnv.avg_len = (g_wlnv.avg_len + HEADER_LEN) / 2;
 	else
-		g_wlnv.avg_len = header->len;
+		g_wlnv.avg_len = HEADER_LEN;
 	g_wlnv.may_erase_nexttime = ((g_wlnv.next_offset + g_wlnv.avg_len) >= nvram_mtd->size)? 1:0;
 
 	offset = unit_offset;
@@ -1199,7 +1481,7 @@ dev_nvram_write(struct file *file, const char *buf, size_t count, loff_t *ppos)
 		kfree(name);
 
 	return ret;
-}	
+}
 
 static char *
 nvram_xfr(const char *buf)
@@ -1226,7 +1508,7 @@ nvram_xfr(const char *buf)
 		strcpy(tmpbuf, "");
 		//printk("nvram xfr 2: %s\n", tmpbuf);	// tmp test
 	}
-	
+
 	if (copy_to_user((char*)buf, tmpbuf, sizeof(tmpbuf)))
 	{
 		ret = -EFAULT;
@@ -1243,7 +1525,7 @@ static long
 dev_nvram_do_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	if (cmd == NVRAM_IOCTL_GET_SPACE && arg != 0) {
-		unsigned int nvram_space = NVRAM_SPACE_FULL;
+		unsigned int nvram_space = NVRAM_SPACE;
 		copy_to_user((unsigned int *)arg, &nvram_space, sizeof(nvram_space));
 		return 0;
 	}
@@ -1271,7 +1553,7 @@ dev_nvram_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 }
 
 #if defined (ASUS_NVRAM) && !defined (CONFIG_MMU)
-static unsigned long 
+static unsigned long
 dev_nvram_get_unmapped_area (struct file *file, unsigned long addr, unsigned long len, unsigned long pgoff, unsigned long flags)
 {
 	/* If driver need shared mmap, it have to provide an get_unmapped_area method on MMU-less system.
@@ -1316,7 +1598,7 @@ dev_nvram_mmap(struct file *file, struct vm_area_struct *vma)
 
 	if ((ret = remap_page_range(vma->vm_start, offset, vma->vm_end-vma->vm_start, vma->vm_page_prot)))
 #endif	// LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,8)
-		
+
 #else	// !ASUS_NVRAM
 	int ret;
 
@@ -1369,6 +1651,10 @@ dev_nvram_exit(void)
 	int order = 0;
 	struct page *page, *end;
 
+#ifdef COMPRESS_NVRAM
+	kzlib_exit();
+#endif
+
 #ifdef ASUS_NVRAM
 	if (s_nvram_device) {
 		device_destroy(s_nvram_class, MKDEV(nvram_major, 0));
@@ -1408,7 +1694,7 @@ dev_nvram_exit(void)
 	if (g_pdentry != NULL)	{
 		remove_proc_entry(NVRAM_DRV_NAME, NULL);
 	}
- 
+
 	kfree (nvram_buf);
 #endif	// ASUS_NVRAM
 
@@ -1454,8 +1740,12 @@ dev_nvram_init(void)
 		else
 		{
 			if (!strcmp(nvram_mtd->name, MTD_NVRAM_NAME) &&
-			    nvram_mtd->size >= NVRAM_SPACE)
-			{
+#ifdef COMPRESS_NVRAM
+			    nvram_mtd->size >= (NVRAM_SPACE / 2)
+#else
+			    nvram_mtd->size >= NVRAM_SPACE
+#endif
+			) {
 				break;
 			}
 			put_mtd_device(nvram_mtd);
@@ -1500,6 +1790,10 @@ dev_nvram_init(void)
 		ret = -ENOMEM;
 		goto err;
 	}
+#endif
+
+#ifdef COMPRESS_NVRAM
+	kzlib_init();
 #endif
 
 	/* Initialize hash table lock */
@@ -1768,3 +2062,4 @@ MODULE_LICENSE("GPL");
 #endif	// ASUS_NVRAM
 
 MODULE_VERSION("V0.01");
+

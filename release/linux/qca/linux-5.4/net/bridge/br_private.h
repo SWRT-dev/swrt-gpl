@@ -280,9 +280,9 @@ struct net_bridge_port {
 #endif
 	u16				group_fwd_mask;
 	u16				backup_redirected_cnt;
+#if defined(PLAX56_XP4)
 	u8				untagged_port_vlan_en; /* if untagged vlan is enalbed */
 	u16				untagged_port_vlan; /* vlan value of this port */
-#if defined(PLAX56_XP4)
 	u8				forward_88e1; /* forward ethertype 0x88e1 (PLC MME control packets) to bridge or not */
 #endif
 };

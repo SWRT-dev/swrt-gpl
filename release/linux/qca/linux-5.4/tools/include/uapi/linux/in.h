@@ -62,6 +62,8 @@ enum {
 #define IPPROTO_MTP		IPPROTO_MTP
   IPPROTO_BEETPH = 94,		/* IP option pseudo header for BEET	*/
 #define IPPROTO_BEETPH		IPPROTO_BEETPH
+  IPPROTO_ETHERIP = 97,		/* ETHERIP protocol number		*/
+#define IPPROTO_ETHERIP		IPPROTO_ETHERIP
   IPPROTO_ENCAP = 98,		/* Encapsulation Header			*/
 #define IPPROTO_ENCAP		IPPROTO_ENCAP
   IPPROTO_PIM = 103,		/* Protocol Independent Multicast	*/
@@ -303,7 +305,7 @@ struct sockaddr_in {
 #endif
 
 /* <asm/byteorder.h> contains the htonl type stuff.. */
-#include <asm/byteorder.h> 
+#include <asm/byteorder.h>
 
 
 #endif /* _UAPI_LINUX_IN_H */

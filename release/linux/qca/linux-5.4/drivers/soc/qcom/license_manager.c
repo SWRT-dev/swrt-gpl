@@ -735,7 +735,7 @@ static void qmi_handle_feature_list_req(struct qmi_handle *handle,
 	if (!list_empty(&lm_svc->clients_feature_list)) {
 		list_for_each_entry_safe(itr, tmp, &lm_svc->clients_feature_list,
 								node) {
-			if (itr->sq_node == sq->sq_node && itr->sq_port == sq->sq_port) {
+			if (itr->sq_node == sq->sq_node) {
 				list_del(&itr->node);
 				kfree(itr);
 			}
@@ -800,18 +800,16 @@ static ssize_t show_licensed_features(struct kobject *k,
 static struct kobj_attribute lm_licensed_features_attr =
 	__ATTR(licensed_features, 0400, show_licensed_features, NULL);
 
-static void lm_qmi_svc_disconnect_cb(struct qmi_handle *qmi,
-	unsigned int node, unsigned int port)
+static void lm_qmi_svc_bye_cb(struct qmi_handle *qmi, unsigned int node)
 {
-	struct client_info *itr, *tmp;
+	struct feature_info *itr, *tmp;
 
-	if (!list_empty(&lm_svc->clients_connected)) {
-		list_for_each_entry_safe(itr, tmp, &lm_svc->clients_connected,
+	/* Clear feature list based on node ID */
+	if (!list_empty(&lm_svc->clients_feature_list)) {
+		list_for_each_entry_safe(itr, tmp, &lm_svc->clients_feature_list,
 								node) {
-			if (itr->sq_node == node && itr->sq_port == port) {
-				pr_info("Received LM QMI client disconnect "
-					"from node:0x%x port:%d\n",
-					node, port);
+			if (itr->sq_node == node) {
+				pr_info("Received LM QMI Bye from node:0x%x \n", node);
 				list_del(&itr->node);
 				kfree(itr);
 			}
@@ -820,7 +818,7 @@ static void lm_qmi_svc_disconnect_cb(struct qmi_handle *qmi,
 }
 
 static struct qmi_ops lm_server_ops = {
-	.del_client = lm_qmi_svc_disconnect_cb,
+	.bye = lm_qmi_svc_bye_cb,
 };
 static struct qmi_msg_handler lm_req_handlers[] = {
 	{

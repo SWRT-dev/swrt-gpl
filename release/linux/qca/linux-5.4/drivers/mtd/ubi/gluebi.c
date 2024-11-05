@@ -46,6 +46,8 @@ static unsigned long check_csum_t2 = 0;
 #define CHECK_INTERVAL	(600 * HZ)
 #endif
 
+static void *g_factory_buf = NULL;
+
 #define err_msg(fmt, ...)                                   \
 	pr_err("gluebi (pid %d): %s: " fmt "\n",            \
 	       current->pid, __func__, ##__VA_ARGS__)
@@ -817,7 +819,7 @@ static int factory_read(struct mtd_info *mtd, loff_t from, size_t len,
 static int factory_write(struct mtd_info *mtd, loff_t to, size_t len,
 			size_t *retlen, const u_char *buf)
 {
-	int ret, err = 0, alloc_type = 0;
+	int ret, err = 0;
 	size_t rdlen = 0, wrlen = 0;
 	loff_t offset;
 	struct mtd_info *factory_mtd;
@@ -835,18 +837,8 @@ static int factory_write(struct mtd_info *mtd, loff_t to, size_t len,
 	factory_mtd = __reload_eeprom_set();
 	if (!factory_mtd)
 		return -EINVAL;
-	p = kmalloc(FACTORY_SIZE, GFP_KERNEL);
-	if (!p) {
-		if ((p = vmalloc(FACTORY_SIZE)) != NULL)
-			alloc_type = 1;
-		else {
-			printk(KERN_ERR "%s: allocate 0x%x bytes fail!\n",
-				__func__, FACTORY_SIZE);
-			mutex_unlock(&act_set->mutex);
-			return -ENOMEM;
-		}
-	}
 
+	p = g_factory_buf;
 	/* read actived EEPROM set to RAM */
 	offset = act_set->id * FACTORY_SIZE;
 	ret = gluebi_read(factory_mtd, offset, FACTORY_SIZE, &rdlen, p);
@@ -886,10 +878,6 @@ static int factory_write(struct mtd_info *mtd, loff_t to, size_t len,
 	__list_all_eeprom_set_status();
 
 out_factory_write:
-	if (!alloc_type)
-		kfree(p);
-	else
-		vfree(p);
 	mutex_unlock(&act_set->mutex);
 
 	return err;
@@ -931,7 +919,12 @@ static int create_rootfs_partition(struct mtd_info *mtd,
 				   struct ubi_volume_info *vi)
 {
 	struct mtd_partition *part = NULL;
-#if 0
+#if defined(SWRT360V6) || defined(JDCAX1800)
+	int ret = 0;
+	size_t retlen;
+	uint32_t rootfs_offset = 0;
+	u32 magic;
+#else
 	int i, r;
 	size_t retlen;
 	struct boot_param_header blob;
@@ -942,12 +935,6 @@ static int create_rootfs_partition(struct mtd_info *mtd,
 		uint32_t rfs_offset_net_endian;
 		uint8_t p[4];
 	} u;
-#endif
-#if defined(SWRT360V6) || defined(JDCAX1800)
-	int ret = 0;
-	size_t retlen;
-	uint32_t rootfs_offset = 0;
-	u32 magic;
 #endif
 
 	if (!mtd || !di || !vi)
@@ -972,10 +959,24 @@ static int create_rootfs_partition(struct mtd_info *mtd,
 	part->offset = 0;
 	part->size = mtd->size;
 	part->mask_flags |= MTD_WRITEABLE;
-#if 0
+#if defined(SWRT360V6) || defined(JDCAX1800)
+	for(rootfs_offset = 0x3c0000; rootfs_offset < 0x400000; rootfs_offset += 0x40) {
+		ret = mtd_read(mtd, rootfs_offset, sizeof(magic), &retlen, (unsigned char *) &magic);
+		if (le32_to_cpu(magic) == SQUASHFS_MAGIC){
+			ret = 0;
+			break;
+		}
+	}
+	if (ret) {
+		pr_info("no rootfs found in \"%s\"\n", mtd->name);
+		return ret;
+	}
+	part->offset = rootfs_offset;
+	part->size = mtd->size - rootfs_offset;
+#else
 	r = mtd->_read(mtd, 0, 0x40, &retlen, (unsigned char*) &hdr);
 	if (r || retlen != sizeof(hdr)) {
-		printk(KERN_WARNING "%s: read image header fail. (r 0x%x retlen %d)\n",
+		printk(KERN_WARNING "%s: read image header fail. (r 0x%x retlen %zu)\n",
 			__func__, r, retlen);
 	}
 	else {
@@ -995,7 +996,7 @@ static int create_rootfs_partition(struct mtd_info *mtd,
 			r = mtd->_read(mtd, rfs_offset, sizeof(blob), &retlen, (unsigned char*) &blob);
 			if (r || retlen != sizeof(blob)) {
 				printk(KERN_WARNING "%s: read blob header fail. "
-					"(r 0x%x retlen %d)\n", __func__, r, retlen);
+					"(r 0x%x retlen %zu)\n", __func__, r, retlen);
 			} else {
 				if (be32_to_cpu(blob.magic) == OF_DT_HEADER) {
 					dtb_len = be32_to_cpu(blob.totalsize);
@@ -1009,27 +1010,9 @@ static int create_rootfs_partition(struct mtd_info *mtd,
 			part->size = mtd->size - rfs_offset;
 		}
 	}
-#elif defined(SWRT360V6) || defined(JDCAX1800)
-	for(rootfs_offset = 0x3c0000; rootfs_offset < 0x400000; rootfs_offset += 0x40) {
-		ret = mtd_read(mtd, rootfs_offset, sizeof(magic), &retlen, (unsigned char *) &magic);
-		if (le32_to_cpu(magic) == SQUASHFS_MAGIC){
-			ret = 0;
-			break;
-		}
-	}
-	if (ret) {
-		pr_info("no rootfs found in \"%s\"\n", mtd->name);
-		return ret;
-	}
-	part->offset = rootfs_offset;
-	part->size = mtd->size - rootfs_offset;
-#else
-	part->offset = rfs_offset;
-	part->size = mtd->size - rfs_offset;
-
 #endif
 
-	printk(KERN_DEBUG "volume %s rfs_offset %lx mtd->size %lx\n",
+	printk(KERN_DEBUG "volume %s rfs_offset %x mtd->size %lx\n",
 		vi->name, rfs_offset, (unsigned long)mtd->size);
 	mtd_device_register(mtd, part, 1);
 
@@ -1144,12 +1127,10 @@ static int gluebi_create(struct ubi_device_info *di,
 			    !act_set->all_sets_damaged)
 			{
 				act_set->nr_bad = act_set->ver_diff = 0;
-				if ((p = kmalloc(FACTORY_SIZE, GFP_KERNEL)) != NULL) {
-					ret = gluebi_read(factory_mtd, act_set->id * FACTORY_SIZE, FACTORY_SIZE, &rdlen, p);
-					if (!ret && rdlen == FACTORY_SIZE)
-						__sync_eeprom_sets(p);
-				}
-				kfree(p);
+				p = g_factory_buf;
+				ret = gluebi_read(factory_mtd, act_set->id * FACTORY_SIZE, FACTORY_SIZE, &rdlen, p);
+				if (!ret && rdlen == FACTORY_SIZE)
+					__sync_eeprom_sets(p);
 			}
 		}
 		mutex_unlock(&act_set->mutex);
@@ -1310,12 +1291,22 @@ static int __init ubi_gluebi_init(void)
 	mutex_init(&act_set->mutex);
 #endif
 
+	g_factory_buf = kmalloc(FACTORY_SIZE, GFP_KERNEL);
+	if (!g_factory_buf) {
+		printk(KERN_ERR "%s: allocate 0x%x bytes fail!\n",
+			__func__, FACTORY_SIZE);
+		return -ENOMEM;
+	}
+
 	return ubi_register_volume_notifier(&gluebi_notifier, 0);
 }
 
 static void __exit ubi_gluebi_exit(void)
 {
 	struct gluebi_device *gluebi, *g;
+
+	kfree(g_factory_buf);
+	g_factory_buf = NULL;
 
 #if defined(CONFIG_FACTORY_CHECKSUM)
 	mutex_lock(&act_set->mutex);

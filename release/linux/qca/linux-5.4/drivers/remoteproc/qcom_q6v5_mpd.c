@@ -310,6 +310,7 @@ struct wcss_data {
 	int (* wcss_clk_enable)(struct q6_wcss *wcss);
 	void (* q6_clk_disable)(struct q6_wcss *wcss);
 	void (* wcss_clk_disable)(struct q6_wcss *wcss);
+	int (*q6_clk_set_rate)(struct q6_wcss *wcss);
 	const char *q6_firmware_name;
 	int crash_reason_smem;
 	int remote_id;
@@ -521,6 +522,11 @@ static void crashdump_init(struct rproc *rproc,
 
 	release_firmware(fw);
 	do_elf_ramdump(handle, segs, index);
+
+	for (index = 0; index < num_segs; index++) {
+		if (segs[index].v_address)
+			iounmap(segs[index].v_address);
+	}
 put_node:
 	of_node_put(np);
 free_device:
@@ -998,7 +1004,7 @@ int enable_ipq5332_wcss_clocks(struct q6_wcss *wcss)
 	return 0;
 }
 
-static int enable_ipq5332_q6_configurable_clocks(struct q6_wcss *wcss)
+static int ipq5332_q6_clk_set_rate(struct q6_wcss *wcss)
 {
 	int ret, i;
 	unsigned long rate = TURBO_FREQ;
@@ -1018,14 +1024,27 @@ static int enable_ipq5332_q6_configurable_clocks(struct q6_wcss *wcss)
 			else
 				rate = NOMIN_FREQ;
 		}
-
 		ret = clk_set_rate(wcss->cfg_clks[i].clk, rate);
 		if (ret) {
-			dev_err(dev, "failed to set rate for %s",
-				wcss->cfg_clks[i].id);
+			dev_err(dev, "failed to set rate for %s ret:%d",
+				wcss->cfg_clks[i].id, ret);
 			return ret;
 		}
+	}
+	return 0;
+}
 
+static int enable_ipq5332_q6_configurable_clocks(struct q6_wcss *wcss)
+{
+	int ret, i;
+	struct device *dev = wcss->dev;
+	const struct wcss_data *desc;
+
+	desc = of_device_get_match_data(wcss->dev);
+	if (!desc)
+		return -EINVAL;
+
+	for (i = 0; i < wcss->num_cfg_clks; i++) {
 		ret = clk_prepare_enable(wcss->cfg_clks[i].clk);
 		if (ret) {
 			dev_err(dev, "failed to enable %s",
@@ -1520,6 +1539,9 @@ static int q6_wcss_start(struct rproc *rproc)
 		return -EINVAL;
 
 	qcom_q6v5_prepare(&wcss->q6);
+
+	if (desc->q6_clk_set_rate)
+		desc->q6_clk_set_rate(wcss);
 
 	if (wcss->need_mem_protection) {
 		ret = qcom_scm_pas_auth_and_reset(desc->pasid, debug_wcss,
@@ -3769,6 +3791,7 @@ static const struct wcss_data q6_ipq5332_res_init = {
 	.init_clock = ipq5332_init_q6_clock,
 	.init_irq = qcom_q6v5_init,
 	.q6_clk_enable = ipq5332_q6_clk_enable,
+	.q6_clk_set_rate = ipq5332_q6_clk_set_rate,
 	.crash_reason_smem = WCSS_CRASH_REASON,
 	.remote_id = WCSS_SMEM_HOST,
 	.wcss_q6_reset_required = true,

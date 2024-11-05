@@ -13,6 +13,8 @@ else ifeq ($(CONFIG_MODEL_360V6),y)
 dtb-y += ipq6018-360v6.dtb
 else ifeq ($(CONFIG_MODEL_RMAX5),y)
 dtb-y += ipq6018-rmax5.dtb
+else ifeq ($(CONFIG_MODEL_TUFBE6500),y)
+dtb-y += ipq5332-tuf-be6500.dtb
 else
 dtb-$(CONFIG_ARCH_QCOM)	+= apq8016-sbc.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= apq8096-db820c.dtb
@@ -73,6 +75,9 @@ dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-al02-c16.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-al02-c17.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-al02-c18.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-al02-c19.dtb
+dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-al02-c20.dtb
+dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-al05.dtb
+dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-al06.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-db-al01-c1.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-db-al01-c2.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-db-al01-c3.dtb

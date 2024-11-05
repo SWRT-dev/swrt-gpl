@@ -22,6 +22,7 @@
 #include <linux/nospec.h>
 #include "core.h"
 #include "rdev-ops.h"
+#include "nl80211.h"
 
 
 struct ieee80211_rate *
@@ -2216,3 +2217,22 @@ bool cfg80211_iftype_allowed(struct wiphy *wiphy, enum nl80211_iftype iftype,
 	return false;
 }
 EXPORT_SYMBOL(cfg80211_iftype_allowed);
+
+void
+cfg80211_dfs_event_notify(struct wiphy *wiphy,
+			  struct cfg80211_chan_def *chandef,
+			  enum nl80211_radar_event event,
+			  struct net_device *dev)
+{
+	struct cfg80211_registered_device *rdev = wiphy_to_rdev(wiphy);
+	gfp_t gfp = GFP_ATOMIC;
+
+	if (!rdev || !chandef ||!dev)
+		return;
+
+	if (in_task())
+		gfp = GFP_KERNEL;
+
+	nl80211_radar_notify(rdev, chandef, event, dev, gfp);
+}
+EXPORT_SYMBOL(cfg80211_dfs_event_notify);

@@ -32,6 +32,7 @@ volatile int force_graceful = 0;
 static int ap2mdm_gpio, mdm2ap_gpio;
 
 #define	SDX55	0x0306
+#define	SDX65	0x0308
 
 bool mhi_ssr_negotiate;
 
@@ -1311,12 +1312,26 @@ error_init_pci:
 void mhi_pci_device_removed(struct pci_dev *pci_dev)
 {
 	struct mhi_controller *mhi_cntrl;
+	struct device *pdev = &pci_dev->bus->parent->dev;
 	struct gpio_desc *mdm2ap;
+	static int e911_gpio, e911;
 	bool graceful;
 
 	graceful = SDX55 == pci_dev->device ? 0 : 1;
 
 	mhi_cntrl = dev_get_drvdata(&pci_dev->dev);
+
+	if (pci_dev->device == SDX65) {
+		graceful = 1;
+		e911_gpio = of_get_named_gpio(pdev->of_node, "e911-gpio", 0);
+		if (e911_gpio < 0) {
+			MHI_LOG("e911-gpio not configured");
+		} else {
+			e911 = gpio_get_value(e911_gpio);
+			if (!e911 && mhi_cntrl->dev_state == MHI_STATE_M0)
+				graceful = 0;
+		}
+	}
 
 	if (mhi_cntrl) {
 

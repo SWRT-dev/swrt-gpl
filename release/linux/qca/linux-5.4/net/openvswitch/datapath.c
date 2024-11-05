@@ -2522,7 +2522,7 @@ int ovs_accel_flow_stats_update(void *dp_inst, void *out_vport,
 
 	rcu_read_unlock();
 
-	spin_lock(&stats->lock);
+	spin_lock_bh(&stats->lock);
 	stats->used = jiffies;
 	stats->packet_count += pkts;
 	stats->byte_count += bytes;
@@ -2544,7 +2544,7 @@ int ovs_accel_flow_stats_update(void *dp_inst, void *out_vport,
 	dp_stats->n_mask_hit += n_mask_hit * pkts;
 	u64_stats_update_end(&dp_stats->syncp);
 
-	spin_unlock(&stats->lock);
+	spin_unlock_bh(&stats->lock);
 	return 0;
 }
 EXPORT_SYMBOL(ovs_accel_flow_stats_update);

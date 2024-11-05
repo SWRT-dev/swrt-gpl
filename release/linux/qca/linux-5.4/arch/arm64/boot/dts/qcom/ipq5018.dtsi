@@ -700,14 +700,16 @@
 				0x80000F20 0xa8
 				0x80001000 0x1000
 				0x78000 0x3000
-				0x80100000 0x1000>;
-			reg-names = "dbi", "elbi", "atu", "parf", "config";
+				0x80100000 0x1000
+				0x560508 0x4>;
+			reg-names = "dbi", "elbi", "atu", "parf", "config", "system_noc";
 			device_type = "pci";
 			linux,pci-domain = <0>;
 			bus-range = <0x00 0xff>;
 			num-lanes = <1>;
 			#address-cells = <3>;
 			#size-cells = <2>;
+			axi-halt-val = <0x1e>; /* increase halt window size to 1GB */
 
 			phys = <&pcie_x1phy>;
 			phy-names ="pciephy";
@@ -777,14 +779,16 @@
 				0xa0000F20 0xa8
 				0xa0001000 0x1000
 				0x80000 0x3000
-				0xa0100000 0x1000>;
-			reg-names = "dbi", "elbi", "atu", "parf", "config";
+				0xa0100000 0x1000
+				0x560608 0x4>;
+			reg-names = "dbi", "elbi", "atu", "parf", "config", "system_noc";
 			device_type = "pci";
 			linux,pci-domain = <1>;
 			bus-range = <0x00 0xff>;
 			num-lanes = <2>;
 			#address-cells = <3>;
 			#size-cells = <2>;
+			axi-halt-val = <0x1e>; /* increase halt window size to 1GB */
 
 			phys = <&pcie_x2phy>;
 			phy-names ="pciephy";

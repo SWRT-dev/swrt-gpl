@@ -1393,9 +1393,9 @@ enum nl80211_commands {
 
 	NL80211_CMD_PROBE_MESH_LINK,
 
-	NL80211_CMD_CONTROL_PORT_FRAME_TX_STATUS = 140,
+	NL80211_CMD_CONTROL_PORT_FRAME_TX_STATUS = 139,
 
-	NL80211_CMD_SET_FILS_AAD = 147,
+	NL80211_CMD_SET_FILS_AAD = 146,
 
 	/* add new commands above here */
 
@@ -5707,8 +5707,9 @@ enum nl80211_feature_flags {
  * @NL80211_EXT_FEATURE_MLO: Driver/Device support Multi-link Operation(MLO)
  *  feature.
  *
- * @NL80211_EXT_FEATURE_AUTH_TX_RANDOM_TA: Device supports randomized TA
- *	for authentication frames in @NL80211_CMD_FRAME.
+ * @NL80211_EXT_FEATURE_AUTH_AND_DEAUTH_RANDOM_TA: Device supports randomized TA
+ *	for authentication and deauthentication frames sent to unassociated peer
+ *	using @NL80211_CMD_FRAME.
  *
  * @NUM_NL80211_EXT_FEATURES: number of extended features.
  * @MAX_NL80211_EXT_FEATURES: highest extended feature index.
@@ -5762,7 +5763,7 @@ enum nl80211_ext_feature_index {
 	NL80211_EXT_FEATURE_CONTROL_PORT_OVER_NL80211_TX_STATUS = 48,
 	NL80211_EXT_FEATURE_FILS_CRYPTO_OFFLOAD = 59,
 	NL80211_EXT_FEATURE_MLO = 72,
-	NL80211_EXT_FEATURE_AUTH_TX_RANDOM_TA,
+	NL80211_EXT_FEATURE_AUTH_AND_DEAUTH_RANDOM_TA,
 
 	/* add new features before the definition below */
 	NUM_NL80211_EXT_FEATURES,

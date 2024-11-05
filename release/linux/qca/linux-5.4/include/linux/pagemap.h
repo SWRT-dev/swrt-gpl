@@ -17,11 +17,13 @@
 #include <linux/hugetlb_inline.h>
 
 struct pagevec;
+#if !defined(CONFIG_PINCTRL_IPQ5332)
 extern int pagecache_ratio;
 extern unsigned int pagecache_limit;
 
 extern int pagecache_ratio_sysctl_handler(struct ctl_table *, int,
 			void __user *, size_t *, loff_t *);
+#endif
 
 /*
  * Bits in mapping->flags.
