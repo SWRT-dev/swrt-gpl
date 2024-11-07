@@ -5803,6 +5803,91 @@ int init_nvram(void)
 		break;
 #endif	/* RTAX52 */
 
+#if defined(SWRT360T7)
+	case MODEL_SWRT360T7:
+		nvram_set("boardflags", "0x100"); // although it is not used in ralink driver, set for vlan
+		nvram_set("lan_ifname", "br0");
+
+		wan0 = "wan";
+		lan_1 = "lan3 lan2";	/* LAN ifaces could be enslaved to LAN LACP. */
+		lan_2 = "lan1";		/* Rest of LAN ifaces, except sku specific 2.5G LAN. */
+#if defined(RTCONFIG_LACP)
+		if (nvram_match("lacp_enabled", "1")) {
+			nvram_set("bond0_ifnames", lan_1);
+			lan_1 = "bond0";
+		} else {
+			nvram_unset("bond0_ifnames");
+		}
+#endif	/* RTCONFIG_LACP */
+
+		wan_ifaces[WAN_IFACE_ID] = wan0;
+		wl_ifaces[WL_2G_BAND] = "ra0";
+		wl_ifaces[WL_5G_BAND] = "rax0";
+		snprintf(lan_ifs, sizeof(lan_ifs), "%s %s", lan_1, lan_2);
+
+		/* Remove iface from lan_ifs if it's LANx as WAN. */
+		if (sw_mode == SW_MODE_ROUTER
+		 && (get_wans_dualwan() & WANSCAP_LAN)
+		 && nvram_get_int("wans_lanport") >= 1
+		 && nvram_get_int("wans_lanport") <= 4
+		) {
+			static char dw_lan_buf[IFNAMSIZ] = "";
+
+			snprintf(dw_lan_buf, sizeof(dw_lan_buf), "%s", bs_port_id_to_iface(nvram_get_int("wans_lanport")));
+			dw_lan = dw_lan_buf;
+			remove_word(lan_ifs, dw_lan_buf);
+		}
+
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC) || defined(RTCONFIG_EASYMESH)
+		nvram_set("wired_ifnames", lan_ifs);
+#endif
+		set_basic_ifname_vars(wan_ifaces, lan_ifs, wl_ifaces, "usb", NULL, NULL, dw_lan, 0);
+		// button
+		nvram_set_int("btn_wps_gpio", 0|GPIO_ACTIVE_LOW);
+		nvram_set_int("btn_rst_gpio", 1|GPIO_ACTIVE_LOW);
+		// led
+		nvram_set_int("led_pwr_gpio", 3|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_wan_gpio", 7|GPIO_ACTIVE_LOW);
+
+		nvram_set("ct_max", "300000"); // force
+
+		if (nvram_get("wl_mssid") && nvram_match("wl_mssid", "1"))
+			add_rc_support("mssid");
+		add_rc_support("2.4G 5G update");
+		add_rc_support("rawifi");
+		add_rc_support("switchctrl");
+		add_rc_support("manual_stb");
+		add_rc_support("11AC");
+		add_rc_support("11AX mbo ofdma");
+		add_rc_support("wpa3");
+		//either txpower or singlesku supports rc.
+		add_rc_support("pwrctrl");
+		add_rc_support("smart_connect");
+		add_rc_support("wbmenu");
+		// the following values is model dep. so move it from default.c to here
+		nvram_set("wl0_HT_TxStream", "2");
+		nvram_set("wl0_HT_RxStream", "2");
+		nvram_set("wl1_HT_TxStream", "2");
+		nvram_set("wl1_HT_RxStream", "2");
+		add_rc_support("vht160");
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
+		if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1")) {
+			_dprintf("[%s][%d] sw mode = %d, repeater=%d, ap= %d ",
+						__func__, __LINE__,
+						sw_mode(),SW_MODE_REPEATER,SW_MODE_AP);
+			add_lan_phy((char *)APCLI_2G);
+			add_lan_phy((char *)APCLI_5G);
+			nvram_set("eth_ifnames", "wan");			/* WAN(eth1)*/
+			nvram_set("amas_ethif_type", "4");			/* 1G */
+			nvram_set("eth_priority", "0 1 1");			/* eth1: 1G(idx:0,prio:1,used:1) */
+			nvram_set("sta_phy_ifnames", "apcli0 apclix0");		/* 2G name, 5G name */
+			nvram_set("sta_ifnames", "apcli0 apclix0");		/* 2G name, 5G name */
+			nvram_set("sta_priority", "2 0 3 1" " 5 1 2 1");	/* 2G priority:3, 5G priority:2 */
+		}
+#endif
+		break;
+#endif
+
 #if defined(RTAX57M)
 	case MODEL_RTAX57M:
 		nvram_set("boardflags", "0x100"); // although it is not used in ralink driver, set for vlan

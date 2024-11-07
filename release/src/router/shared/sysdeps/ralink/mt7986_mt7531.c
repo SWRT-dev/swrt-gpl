@@ -39,7 +39,8 @@
 #if !defined(PANTHERB) \
  && !defined(RTAX59U) \
  && !defined(CHEETAH) \
- && !defined(RMAX6000)
+ && !defined(RMAX6000) \
+ && !defined(SWRT360T7)
 #define REDUCE_DUPLICATED_MDIO_QUERY
 #endif
 
@@ -59,7 +60,7 @@
 #define NR_WANLAN_PORT	4
 #elif defined(PRTAX57_GO)
 #define NR_WANLAN_PORT	2
-#elif defined(RMAX6000)
+#elif defined(RMAX6000) || defined(SWRT360T7)
 #define NR_WANLAN_PORT	4
 #else
 #define NR_WANLAN_PORT	5
@@ -98,7 +99,7 @@ enum {
 #elif defined(PRTAX57_GO)
 	LAN1_PORT=0,
 	WAN_PORT,
-#elif defined(RMAX6000)
+#elif defined(RMAX6000) || defined(SWRT360T7)
 	LAN3_PORT=0,
 	LAN2_PORT,
 	LAN1_PORT,
@@ -114,7 +115,7 @@ enum {
 };
 
 static const char *upstream_iptv_ifaces[16] = {
-#if defined(RMAX6000)
+#if defined(RMAX6000) || defined(SWRT360T7)
 	[WANS_DUALWAN_IF_WAN] = "wan",
 #else
 	[WANS_DUALWAN_IF_WAN] = "eth1",
@@ -166,7 +167,7 @@ static const int lan_wan_partition[9][NR_WANLAN_PORT] = {
 	{1,0}, // no use
 	{1,0}, // no use
 	{1,1}  // ALL
-#elif defined(RMAX6000)
+#elif defined(RMAX6000) || defined(SWRT360T7)
 	/* L1, L2, L3, W1G */
 	{1,1,1,0}, // Normal
 	{0,1,1,0}, // IPTV STB port = LAN1
@@ -196,7 +197,7 @@ static const int lan_wan_partition[9][NR_WANLAN_PORT] = {
  */
 static const int bsport_to_vport[MAX_WANLAN_PORT] = {
 	WAN_PORT, LAN1_PORT, LAN2_PORT, LAN3_PORT
-#if !defined(RTAX59U) && !defined(RTAX52) && !defined(RMAX6000)
+#if !defined(RTAX59U) && !defined(RTAX52) && !defined(RMAX6000) && !defined(SWRT360T7)
 	, LAN4_PORT
 #endif
 #if defined(PANTHERA)
@@ -234,7 +235,7 @@ static const int vport_to_phy_addr[MAX_WANLAN_PORT] = {
 	124, 100					/* LAN1, WAN */
 #elif defined(RTAX52)
 	0, 1, 2, 100					/* LAN3~1, WAN */
-#elif defined(RMAX6000)
+#elif defined(RMAX6000) || defined(SWRT360T7)
 	3, 2, 1, 4					/* LAN3~1, WAN */
 #else /* PANTHERB */
 	0, 1, 2, 3, 4					/* LAN4~1, WAN */
@@ -265,12 +266,12 @@ static const char *vport_to_iface[MAX_WANLAN_PORT] = {
 	"eth0",							/* LAN1 */
 #elif defined(RTAX52)
 	"lan1", "lan2", "lan3",					/* LAN3~1 */
-#elif defined(RMAX6000)
+#elif defined(RMAX6000) || defined(SWRT360T7)
 	"lan3", "lan2", "lan1",					/* LAN3~1 */
 #else /* PANTHERB */
 	"lan0", "lan1", "lan2", "lan3",				/* LAN4~1 */
 #endif
-#if defined(RMAX6000)
+#if defined(RMAX6000) || defined(SWRT360T7)
 	"wan"							/* WAN */
 #else
 	"eth1"							/* WAN */
@@ -281,7 +282,7 @@ static const char *vport_to_iface[MAX_WANLAN_PORT] = {
  * array element:	platform specific VoIP/STB virtual port bitmask.
  */
 static const unsigned int stb_to_mask[7] = { 0,
-#if defined(RTAX59U) || defined(RTAX52) || defined(RMAX6000)
+#if defined(RTAX59U) || defined(RTAX52) || defined(RMAX6000) || defined(SWRT360T7)
 	(1U << LAN1_PORT),
 	(1U << LAN2_PORT),
 	(1U << LAN2_PORT), /* unused */
@@ -310,7 +311,7 @@ static unsigned int wanlanports_mask =
 					(1U << WAN_PORT) | (1U << LAN1_PORT) | (1U << LAN2_PORT) | (1U << LAN3_PORT);
 #elif defined(PRTAX57_GO)
 					(1U << WAN_PORT) | (1U << LAN1_PORT);
-#elif defined(RMAX6000)
+#elif defined(RMAX6000) || defined(SWRT360T7)
 					(1U << WAN_PORT) | (1U << LAN1_PORT) | (1U << LAN2_PORT) | (1U << LAN3_PORT);
 #else /* PANTHERB */
 					(1U << WAN_PORT) | (1U << LAN1_PORT) | (1U << LAN2_PORT) | (1U << LAN3_PORT) | (1U << LAN4_PORT);
@@ -331,7 +332,7 @@ int esw_fd;
  * array value:	Model-specific virtual port number
  */
 static int n56u_to_model_port_mapping[] = {
-#if defined(RTAX59U) || defined(RTAX52) || defined(RMAX6000)
+#if defined(RTAX59U) || defined(RTAX52) || defined(RMAX6000) || defined(SWRT360T7)
 	LAN3_PORT,	//0000 0000 0001 LAN4 (convert to LAN3)
 	LAN2_PORT,	//0000 0000 0010 LAN3 (convert to LAN2)
 	LAN2_PORT,	//0000 0000 0100 LAN2
@@ -360,7 +361,7 @@ const int lan_id_to_vport[NR_WANLAN_PORT] = {
 #if !defined(PRTAX57_GO)
 	LAN2_PORT,
 	LAN3_PORT,
-#if !defined(RTAX59U) && !defined(RTAX52) && !defined(RMAX6000)
+#if !defined(RTAX59U) && !defined(RTAX52) && !defined(RMAX6000) && !defined(SWRT360T7)
 	LAN4_PORT,
 #endif
 #if defined(PANTHERA)
@@ -1913,7 +1914,7 @@ void mt798x_get_phy_port_mapping(phy_port_mapping *port_mapping)
 		.port[2] = { .phy_port_id = LAN2_PORT, .ext_port_id = -1, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0, .seq_no = -1, .ui_display = NULL },
 		.port[3] = { .phy_port_id = LAN3_PORT, .ext_port_id = -1, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0, .seq_no = -1, .ui_display = NULL },
 		.port[4] = { .phy_port_id = LAN4_PORT, .ext_port_id = -1, .label_name = "L4", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0, .seq_no = -1, .ui_display = NULL },
-#elif defined(RTAX59U) || defined(RTAX52) || defined(RMAX6000)
+#elif defined(RTAX59U) || defined(RTAX52) || defined(RMAX6000) || defined(SWRT360T7)
 		.count = NR_WANLAN_PORT,
 		.port[0] = { .phy_port_id = WAN_PORT,  .ext_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_WAN, .max_rate = 1000, .ifname = NULL, .flag = 0, .seq_no = -1, .ui_display = NULL },
 		.port[1] = { .phy_port_id = LAN1_PORT, .ext_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0, .seq_no = -1, .ui_display = NULL },

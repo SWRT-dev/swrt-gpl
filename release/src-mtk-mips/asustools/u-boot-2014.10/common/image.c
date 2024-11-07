@@ -288,8 +288,8 @@ static void image_print_type(const image_header_t *hdr)
  * returns:
  *     no returned results
  */
-int vargv;
-int rfs_offset;
+extern int vargv;
+extern int rfs_offset;
 void image_print_contents(const void *ptr)
 {
 	const image_header_t *hdr = (const image_header_t *)ptr;

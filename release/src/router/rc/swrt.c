@@ -190,6 +190,8 @@ void swrt_init_pre()
 		nvram_set("modelname", "RGMA3062");
 #elif defined(JCGQ20)
 		nvram_set("modelname", "JCGQ20");
+#elif defined(SWRT360T7)
+		nvram_set("modelname", "360T7");
 //asus
 #elif defined(RTAC68U)
 		nvram_set("modelname", "RTAC68U");

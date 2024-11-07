@@ -134,17 +134,6 @@ define platformRouterOptions
 		echo "RTCONFIG_QAM1024_5G=y" >>$(1); \
 		sed -i "/RTCONFIG_MFP\>/d" $(1); \
 		echo "RTCONFIG_MFP=y" >>$(1); \
-		if [ "$(MT7986_AX4200)" = "y" ]; then \
-			sed -i "/CONFIG_MTK_WIFI_SKU_TYPE=/d" $(1); \
-			echo "CONFIG_MTK_WIFI_SKU_TYPE=\"AX4200\"" >> $(1); \
-		fi; \
-		if [ "$(MTK_ADIE)" = "mt7976" ]; then \
-			sed -i "/CONFIG_MTK_WIFI_ADIE_TYPE=/d" $(1); \
-			echo "CONFIG_MTK_WIFI_ADIE_TYPE=\"mt7976\"" >> $(1); \
-		elif [ "$(MTK_ADIE)" = "mt7975" ]; then \
-			sed -i "/CONFIG_MTK_WIFI_ADIE_TYPE=/d" $(1); \
-			echo "CONFIG_MTK_WIFI_ADIE_TYPE=\"mt7975\"" >> $(1); \
-		fi; \
 	else \
 		sed -i "/RTCONFIG_RALINK_MT798X/d" $(1); \
 		echo "# RTCONFIG_RALINK_MT798X is not set" >>$(1); \
@@ -335,12 +324,6 @@ define platformKernelConfig
 		echo "# CONFIG_AIROHA_EN8801S_PHY is not set" >>$(1); \
 		echo "CONFIG_AIROHA_EN8801S_PHY=y" >>$(1); \
 	fi; \
-	if [ "$(RMAX6000)" = "y" ]; then \
-		sed -i "/CONFIG_MODEL_RMAX6000/d" $(1); \
-		echo "CONFIG_MODEL_RMAX6000=y" >>$(1); \
-		sed -i "/CONFIG_CMDLINE_OVERRIDE/d" $(1); \
-		echo "CONFIG_CMDLINE_OVERRIDE=y" >>$(1); \
-	fi; \
 	if [ "$(SWRT_FULLCONEV2)" = "y" ]; then \
 		sed -i "/CONFIG_SWRT_FULLCONE/d" $(1); \
 		echo "# CONFIG_SWRT_FULLCONE is not set" >>$(1); \
@@ -354,7 +337,22 @@ define platformKernelConfig
 		echo "# CONFIG_SWRT_FULLCONE is not set" >>$(1); \
 		echo "# CONFIG_SWRT_FULLCONEV2 is not set" >>$(1); \
 	fi; \
+	if [ "$(MT7986_AX4200)" = "y" ]; then \
+		sed -i "/CONFIG_WIFI_SKU_TYPE=/d" $(1); \
+		echo "CONFIG_WIFI_SKU_TYPE=\"AX4200\"" >> $(1); \
+	fi; \
+	if [ "$(MTK_ADIE)" = "mt7976" ]; then \
+		sed -i "/CONFIG_WIFI_ADIE_TYPE=/d" $(1); \
+		echo "CONFIG_WIFI_ADIE_TYPE=\"mt7976\"" >> $(1); \
+	elif [ "$(MTK_ADIE)" = "mt7975" ]; then \
+		sed -i "/CONFIG_WIFI_ADIE_TYPE=/d" $(1); \
+		echo "CONFIG_WIFI_ADIE_TYPE=\"mt7975\"" >> $(1); \
+	fi; \
 	if [ "$(BUILD_NAME)" = "RM-AX6000" ]; then \
+		sed -i "/CONFIG_MODEL_RMAX6000/d" $(1); \
+		echo "CONFIG_MODEL_RMAX6000=y" >>$(1); \
+		sed -i "/CONFIG_CMDLINE_OVERRIDE/d" $(1); \
+		echo "CONFIG_CMDLINE_OVERRIDE=y" >>$(1); \
 		sed -i "/CONFIG_LEDS_CLASS_MULTICOLOR\>/d" $(1); \
 		echo "CONFIG_LEDS_CLASS_MULTICOLOR=y" >>$(1); \
 		sed -i "/CONFIG_BLK_DEV_RAM\>/d" $(1); \
@@ -371,7 +369,9 @@ define platformKernelConfig
 		echo "# CONFIG_NMBM_LOG_LEVEL_NONE is not set" >>$(1); \
 		echo "CONFIG_NMBM_MTD=y" >>$(1); \
 	fi; \
-	if [ "$(BUILD_NAME)" = "SWRT360-T7" ]; then \
+	if [ "$(BUILD_NAME)" = "SWRT360T7" ]; then \
+		sed -i "/CONFIG_CMDLINE_OVERRIDE/d" $(1); \
+		echo "CONFIG_CMDLINE_OVERRIDE=y" >>$(1); \
 		sed -i "/CONFIG_MODEL_SWRT360T7/d" $(1); \
 		echo "CONFIG_MODEL_SWRT360T7=y" >>$(1); \
 		sed -i "/CONFIG_BLK_DEV_RAM\>/d" $(1); \

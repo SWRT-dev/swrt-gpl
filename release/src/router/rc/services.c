@@ -15923,7 +15923,7 @@ again:
 						system("dd if=/tmp/linux.trx of=/dev/mtdblock4 skip=1 bs=64 > /dev/null 2>&1");
 #elif defined(SWRT360V6)
 						eval("mtd-write", "-i", upgrade_file, "-d", "firmware", "-s", header_size);
-#elif defined(RMAX6000)
+#elif defined(RMAX6000) || defined(SWRT360T7)
 						eval("mtd-write", "-i", upgrade_file, "-d", "kernel", "-s", header_size);
 #else
 						_dprintf("mtd-write and skip header_size(%s)\n", header_size);

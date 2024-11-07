@@ -5,7 +5,7 @@ ifneq ($(wildcard $(SDK_DIR_PLATFORM)/8021xd/Makefile),)
 	$(MAKE) -C 8021xd all
 else
 	mkdir -p 8021xd
-	cp prebuilt/8021xd 8021xd/8021xd
+	cp prebuilt/$(BUILD_NAME)/8021xd 8021xd/8021xd
 endif
 
 install:

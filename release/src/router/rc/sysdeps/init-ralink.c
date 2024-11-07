@@ -1283,7 +1283,7 @@ void init_wl(void)
 #if defined(RTCONFIG_MT798X)
 	int mtd_part = 0, mtd_size = 0;
 	if (mtd_getinfo("Factory", &mtd_part, &mtd_size)){
-#if defined(RMAX6000)
+#if defined(RMAX6000) || defined(SWRT360T7)
 		snprintf(cmd, sizeof(cmd), "dd if=/dev/mtdblock%d of=/lib/firmware/e2p bs=720896 skip=0 count=1", mtd_part);
 #else
 		snprintf(cmd, sizeof(cmd), "dd if=/dev/mtdblock%d of=/lib/firmware/e2p bs=655360 skip=0 count=1", mtd_part);
@@ -2853,7 +2853,7 @@ void gen_1905d_config(void)
 			fprintf(fp, "lan=lan1\n");
 			fprintf(fp, "lan=lan2\n");
 			fprintf(fp, "lan=lan3\n");
-#if !defined(RMAX6000)
+#if !defined(RMAX6000) && !defined(SWRT360T7)
 			fprintf(fp, "lan=lan4\n");//1G
 #if 0
 			fprintf(fp, "lan=lan5\n");//2.5G
@@ -2906,7 +2906,7 @@ void gen_1905d_config(void)
 		fprintf(fp, "lan=lan1");
 		fprintf(fp, " lan2");
 		fprintf(fp, " lan3");
-#if !defined(RMAX6000)
+#if !defined(RMAX6000) && !defined(SWRT360T7)
 		fprintf(fp, " lan4");//1G
 #if 0
 		fprintf(fp, " lan5");//2.5G
@@ -3329,7 +3329,7 @@ void start_mapd(void)
 	char *fwdd_argv[] = { "/usr/sbin/fwdd", "-p", ap2gifname, apcli2gifname, "-p", ap5gifname, apcli5gifname, "-e", "vlan1", "5G", NULL };
 #else
 	char *fwdd_argv[] = { "/usr/sbin/fwdd", "-d1", "-e", "eth0", "5G", "-e", "lan1", "5G", "-e", "lan2", "5G", "-e", "lan3", "5G",
-#if !defined(RMAX6000)
+#if !defined(RMAX6000) && !defined(SWRT360T7)
 		"-e", "lan4", "5G",
 #if 0
 		"-e", "lan5", "5G",
