@@ -13,7 +13,7 @@
  */
 #define ASUS_NVRAM
 #define WL_NVRAM	/* wear-levelling nvram */
-#if !defined(CONFIG_MODEL_RMAX6000)
+#if !defined(CONFIG_MODEL_RMAX6000) && !defined(CONFIG_MODEL_SWRT360T7)
 #define COMPRESS_NVRAM
 #endif
 

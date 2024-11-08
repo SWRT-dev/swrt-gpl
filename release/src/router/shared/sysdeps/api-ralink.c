@@ -86,7 +86,11 @@ int get_mt7621_wan_unit_bytecount(int unit, unsigned long long *tx, unsigned lon
 #if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 #include <limits.h>		//PATH_MAX, LONG_MIN, LONG_MAX
 #define GPIOLIB_DIR	"/sys/class/gpio"
+#if defined(RTCONFIG_SOC_MT7981)
+#define GPIOBASE 455
+#else
 #define GPIOBASE 411
+#endif
 
 /* Export specified GPIO
  * @return:

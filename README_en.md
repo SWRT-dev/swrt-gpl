@@ -73,6 +73,8 @@ sudo apt-get -y install build-essential asciidoc binutils bison bzip2 gawk gette
 
 	rm-ax6000 : `make swrt-rm-ax6000`
 
+	360t7 : `make swrt-swrt360t7`
+
 9. Build result will be produced to `swrt-gpl/release/src-mtk-arm/image` directory
 
 #### QCA

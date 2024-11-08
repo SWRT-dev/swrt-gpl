@@ -188,39 +188,6 @@ endef
 define platformBusyboxOptions
 endef
 
-FIRST_IF_POOL =		\
-	"NONE"	\
-	"RT2860"	\
-	"RT3092"	\
-	"RT5392"	\
-	"RT5592"	\
-	"RT3593"	\
-	"MT7610E"	\
-	"MT7612E"	\
-	"MT7603E"	\
-	"MT7602E"	\
-	"MT7615E"
-
-SECOND_IF_POOL = 	\
-	"NONE"		\
-	"RT3092"	\
-	"RT5392"	\
-	"RT5592"	\
-	"RT3593"	\
-	"RT3572"	\
-	"RT5572"	\
-	"MT7620"	\
-	"MT7621"	\
-	"MT7610U"	\
-	"MT7610E"	\
-	"RT8592"	\
-	"MT7612U"	\
-	"MT7612E"	\
-	"MT7602E"	\
-	"MT7603E"	\
-	"MT7615E"
-
-
 define platformKernelConfig
 	@( \
 	sed -i "/CONFIG_NVRAM_SIZE\>/d" $(1); \
@@ -321,8 +288,19 @@ define platformKernelConfig
 		sed -i "/CONFIG_PINCTRL_MT7986/d" $(1); \
 		echo "# CONFIG_PINCTRL_MT7986 is not set" >>$(1); \
 		echo "CONFIG_PINCTRL_MT7981=y" >>$(1); \
+		sed -i "/CONFIG_AIROHA_EN8801S_PHY/d" $(1); \
 		echo "# CONFIG_AIROHA_EN8801S_PHY is not set" >>$(1); \
-		echo "CONFIG_AIROHA_EN8801S_PHY=y" >>$(1); \
+		sed -i "/CONFIG_AIROHA_EN8801SC_PHY/d" $(1); \
+		echo "CONFIG_AIROHA_EN8801SC_PHY=y" >>$(1); \
+		sed -i "/CONFIG_MAXLINEAR_GPHY/d" $(1); \
+		echo "# CONFIG_MAXLINEAR_GPHY is not set" >>$(1); \
+		sed -i "/CONFIG_MEDIATEK_GE_PHY/d" $(1); \
+		echo "CONFIG_MEDIATEK_GE_PHY=y" >>$(1); \
+		sed -i "/CONFIG_REALTEK_PHY/d" $(1); \
+		echo "CONFIG_REALTEK_PHY=y" >>$(1); \
+		sed -i "/CONFIG_NR_CPUS/d" $(1); \
+		echo "CONFIG_NR_CPUS=2" >>$(1); \
+		echo "CONFIG_MEMORY_SHRINK=y" >>$(1); \
 	fi; \
 	if [ "$(SWRT_FULLCONEV2)" = "y" ]; then \
 		sed -i "/CONFIG_SWRT_FULLCONE/d" $(1); \
@@ -374,10 +352,15 @@ define platformKernelConfig
 		echo "CONFIG_CMDLINE_OVERRIDE=y" >>$(1); \
 		sed -i "/CONFIG_MODEL_SWRT360T7/d" $(1); \
 		echo "CONFIG_MODEL_SWRT360T7=y" >>$(1); \
-		sed -i "/CONFIG_BLK_DEV_RAM\>/d" $(1); \
-		echo "CONFIG_BLK_DEV_RAM=y" >>$(1); \
-		echo "CONFIG_BLK_DEV_RAM_COUNT=1" >>$(1); \
-		echo "CONFIG_BLK_DEV_RAM_SIZE=26624" >>$(1); \
+		sed -i "/CONFIG_NMBM\>/d" $(1); \
+		echo "CONFIG_NMBM=y" >>$(1); \
+		echo "# CONFIG_NMBM_LOG_LEVEL_DEBUG is not set" >>$(1); \
+		echo "CONFIG_NMBM_LOG_LEVEL_INFO=y" >>$(1); \
+		echo "# CONFIG_NMBM_LOG_LEVEL_WARN is not set" >>$(1); \
+		echo "# CONFIG_NMBM_LOG_LEVEL_ERR is not set" >>$(1); \
+		echo "# CONFIG_NMBM_LOG_LEVEL_EMERG is not set" >>$(1); \
+		echo "# CONFIG_NMBM_LOG_LEVEL_NONE is not set" >>$(1); \
+		echo "CONFIG_NMBM_MTD=y" >>$(1); \
 	fi; \
 	if [ "$(DUMP_OOPS_MSG)" = "y" ]; then \
 		echo "CONFIG_DUMP_PREV_OOPS_MSG=y" >>$(1); \

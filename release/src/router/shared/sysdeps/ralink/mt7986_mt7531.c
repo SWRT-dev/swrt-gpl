@@ -235,8 +235,10 @@ static const int vport_to_phy_addr[MAX_WANLAN_PORT] = {
 	124, 100					/* LAN1, WAN */
 #elif defined(RTAX52)
 	0, 1, 2, 100					/* LAN3~1, WAN */
-#elif defined(RMAX6000) || defined(SWRT360T7)
+#elif defined(RMAX6000) 
 	3, 2, 1, 4					/* LAN3~1, WAN */
+#elif defined(SWRT360T7)
+	0, 1, 2, 3
 #else /* PANTHERB */
 	0, 1, 2, 3, 4					/* LAN4~1, WAN */
 #endif

@@ -276,9 +276,12 @@ extern int PS_pclose(FILE *);
 #define FAN_CUR_STATE		SYS_COOLINGDEV "/cur_state"
 #define FAN_RPM			"/sys/devices/platform/gpio-fan/hwmon/hwmon0/fan1_input"
 
-#if defined(RTCONFIG_RALINK_MT7621) || defined(RMAX6000) || defined(SWRT360T7)
+#if defined(RTCONFIG_RALINK_MT7621) 
 #define LINUX_MTD_NAME      "Kernel"
 #define LINUX2_MTD_NAME     "Kernel2"
+#elif defined(RMAX6000) || defined(SWRT360T7)
+#define LINUX_MTD_NAME      "kernel"
+#define LINUX2_MTD_NAME     "kernel2"
 #else
 #define LINUX_MTD_NAME		"linux"
 #define LINUX2_MTD_NAME		"linux2"

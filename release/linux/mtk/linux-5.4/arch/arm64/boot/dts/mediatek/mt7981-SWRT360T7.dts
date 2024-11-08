@@ -7,6 +7,7 @@
 
 	chosen {
 		/*bootargs = "console=ttyS0,115200n1 loglevel=8 earlycon=uart8250,mmio32,0x11002000";*/
+		/*bootargs-override = "console=ttyS0,115200n8 loglevel=8 ubi.mtd=ubi root=/dev/ram0 rw";*/
 		bootargs-override = "console=ttyS0,115200n8 loglevel=8 ubi.mtd=ubi rootfstype=squashfs";
 	};
 
@@ -27,13 +28,6 @@
 				linux,code = <KEY_WPS_BUTTON>;
 				gpios = <&pio 0 GPIO_ACTIVE_LOW>;
 			};
-	};
-
-	gsw: gsw@0 {
-		compatible = "mediatek,mt753x";
-		mediatek,ethsys = <&ethsys>;
-		#address-cells = <1>;
-		#size-cells = <0>;
 	};
 
 	nmbm_spim_nand {
@@ -145,14 +139,19 @@
                 #address-cells = <1>;
                 #size-cells = <0>;
 
+                port@0 {
+                    reg = <0>;
+                    label = "lan3";
+                };
+
                 port@1 {
                     reg = <1>;
-                    label = "lan3";
+                    label = "lan2";
                 };
 
                 port@2 {
                     reg = <2>;
-                    label = "lan2";
+                    label = "lan1";
                 };
                 
                 port@3 {

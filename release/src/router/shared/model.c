@@ -185,7 +185,7 @@ static const struct model_s model_list[] = {
 	{ "UNR030N", 		MODEL_UNR030N 		},
 	{ "XM-CR660X", 		MODEL_XMCR660X 		},
 	{ "JCG-Q20", 		MODEL_JCGQ20 		},
-	{ "360T7", 			MODEL_SWRT360T7 	},
+	{ "SWRT360T7", 		MODEL_SWRT360T7 	},
 	{ NULL, 0 },
 };
 

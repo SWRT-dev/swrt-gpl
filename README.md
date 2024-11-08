@@ -65,6 +65,8 @@
 
 8. 输入 `make swrt-rm-ax6000` 即可开始编译你要的固件了。
 
+   360t7 : `make swrt-swrt360t7`
+
 9. 编译完成后输出固件路径：swrt-gpl/release/src-mtk-arm/image
 
 #### QCA
