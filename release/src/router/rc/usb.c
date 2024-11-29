@@ -784,6 +784,10 @@ void start_usb(int mode)
 				modprobe("jbd");
 				modprobe("ext3");
 #if defined(RTCONFIG_BCMARM) || defined(RTCONFIG_EXT4FS)
+#if defined(RTCONFIG_EMMC)
+				if(module_loaded("ext4"))
+					modprobe_r("ext4");
+#endif
 				modprobe("ext4");
 #endif
 				modprobe("ext2");

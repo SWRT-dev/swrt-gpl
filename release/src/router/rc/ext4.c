@@ -69,7 +69,8 @@ void start_ext4(void)
 		nvram_set("ubifs_size", s);
 		nvram_commit_x();
 	}
-
+	if(!module_loaded("ext4"))
+		modprobe("ext4");
 	if (mount(dev_mtd, EXT4_MNT_DIR, EXT4_FS_TYPE, MS_NOATIME, "") != 0) {
 		_dprintf("*** ext4 mount error\n");
 		return;

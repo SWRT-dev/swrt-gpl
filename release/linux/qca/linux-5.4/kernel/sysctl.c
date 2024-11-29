@@ -1726,6 +1726,7 @@ static struct ctl_table vm_table[] = {
 		.extra2		= SYSCTL_ONE,
 	},
 #endif
+#if !defined(CONFIG_PINCTRL_IPQ5332)
 	{
 		.procname	= "pagecache_ratio",
 		.data		= &pagecache_ratio,
@@ -1735,6 +1736,7 @@ static struct ctl_table vm_table[] = {
 		.extra1		= &five,
 		.extra2		= &one_hundred,
 	},
+#endif
 	{
 		.procname	= "user_reserve_kbytes",
 		.data		= &sysctl_user_reserve_kbytes,

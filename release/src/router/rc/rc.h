@@ -1976,6 +1976,9 @@ extern int mtd_write(const char *path, const char *mtd);
 extern int mtd_write_main(int argc, char *argv[]);
 extern int mtd_unlock_erase_main(int argc, char *argv[]);
 #endif
+#if defined(RTCONFIG_EMMC)
+extern int block_write_main(int argc, char *argv[]);
+#endif
 #ifdef RTCONFIG_URLFW
 extern FILE *url_fopen(const char *path, const char *mode);
 #endif /* RTCONFIG_URLFW */

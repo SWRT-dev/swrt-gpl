@@ -748,3 +748,4 @@ RTCONFIG_LLDPD_0_9_8=y
 # RTCONFIG_NLBWMON is not set
 # RTCONFIG_SWRTMESH is not set
 # RTCONFIG_SFE is not set
+# RTCONFIG_EMMC is not set

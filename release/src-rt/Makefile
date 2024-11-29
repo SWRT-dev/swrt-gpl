@@ -166,6 +166,23 @@ export SDK_DIR_PLATFORM := $(SDK_DIR)/econet/en7561
 else ifeq ($(EN7562),y)
 export SDK_DIR_PLATFORM := $(SDK_DIR)/econet/en7562
 endif
+#special patches, e.g. zero-copy, non-public
+ifeq ($(MT7621),y)
+export SDK_PATCHES_K := $(SDK_DIR)/patches/mt7621_k
+export SDK_PATCHES_U := $(SDK_DIR)/patches/mt7621_u
+else ifeq ($(MT798X),y)
+export SDK_PATCHES_K := $(SDK_DIR)/patches/mt7986_k
+export SDK_PATCHES_U := $(SDK_DIR)/patches/mt7986_u
+else ifeq ($(or $(IPQ50XX),$(IPQ60XX),$(IPQ807X),$(IPQ53XX)),y)
+export SDK_PATCHES_K := $(SDK_DIR)/patches/qca_k
+export SDK_PATCHES_U := $(SDK_DIR)/patches/qca_u
+else ifeq ($(IPQ40XX),y)
+export SDK_PATCHES_K := $(SDK_DIR)/patches/ipq4019_k
+export SDK_PATCHES_U := $(SDK_DIR)/patches/ipq4019_u
+else ifeq ($(LANTIQ),y)
+export SDK_PATCHES_K := $(SDK_DIR)/patches/lantiq_k
+export SDK_PATCHES_U := $(SDK_DIR)/patches/lantiq_u
+endif
 endif
 
 export SWRT_VER := $(SWRT_VER_MAJOR)$(SWRT_VER_MINOR)
@@ -927,7 +944,7 @@ endif
 		RSIZE=`wc -c $(PLATFORMDIR)/target.image | awk '{print $$1}'` ; \
 		PAD2=`expr $${ISIZE} - $${KSIZE} - $${RSIZE} - $${TSIZE}` ; \
 		echo "PAD2: $${PAD2}" ; \
-		asustools/u-boot-2014.10/tools/mkimage -A $(ARCH) -O linux -T kernel -C lzma -a $(LOADADDR) -e $(ENTRYADDR)\
+	asustools/u-boot-2014.10/tools/mkimage -A $(ARCH) -O linux -T kernel -C lzma -a $(LOADADDR) -e $(ENTRYADDR)\
 			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(SWRTEXTENDNO)" "0" "0" "0" "0" "0" "0" \
 			-d image/$(IMGNAME).img image/$(IMGNAME).trx
 else ifeq ($(EN7561),y)
@@ -2601,7 +2618,11 @@ define RouterOptions
 		sed -i "/RTCONFIG_UBIFS/d" $(1); \
 		echo "# RTCONFIG_UBIFS is not set" >>$(1); \
 	fi;
-	if [ "$(UBI)" = "y" ] || [ "$(JFFS2)" = "y" ] || [ "$(BRCM_NAND_JFFS2)" = "y" ]; then \
+	if [ "$(EMMC)" = "y" ]; then \
+		sed -i "/RTCONFIG_EMMC/d" $(1); \
+		echo "RTCONFIG_EMMC=y" >>$(1); \
+	fi; \
+	if [ "$(UBI)" = "y" ] || [ "$(JFFS2)" = "y" ] || [ "$(BRCM_NAND_JFFS2)" = "y" ] || [ "$(EMMC)" = "y" ]; then \
 		if [ "$(SAVEJFFS)" = "y" ] ; then \
 			sed -i "/RTCONFIG_SAVEJFFS/d" $(1); \
 			echo "RTCONFIG_SAVEJFFS=y" >>$(1); \
@@ -2682,7 +2703,7 @@ define RouterOptions
 			echo "# RTCONFIG_JFFS2USERICON is not set" >>$(1); \
 		fi; \
 	fi;
-	if [ "$(WPSMULTIBAND)" = "y" ]; then \
+	if [ "$(WPSMULTIBAND)" = "y" ] || [ "$(EMMC)" = "y" ]; then \
 		sed -i "/RTCONFIG_WPSMULTIBAND/d" $(1); \
 		echo "RTCONFIG_WPSMULTIBAND=y" >>$(1); \
 	else \

@@ -196,7 +196,7 @@ config RTCONFIG_BRCM_NAND_JFFS2
 
 config RTCONFIG_JFFS_NVRAM
 	bool "NVRAM on JFFS support"
-	depends on RTCONFIG_BRCM_NAND_JFFS2 || RTCONFIG_UBIFS
+	depends on RTCONFIG_BRCM_NAND_JFFS2 || RTCONFIG_UBIFS || RTCONFIG_EMMC
 	default y
 
 config RTCONFIG_JFFS2
@@ -2094,7 +2094,7 @@ config RTCONFIG_DNSFILTER
 
 config RTCONFIG_LETSENCRYPT
 	bool "Let's Encrypt"
-	depends on RTCONFIG_HTTPS && (RTCONFIG_JFFS2 || RTCONFIG_BRCM_NAND_JFFS2 || RTCONFIG_UBIFS)
+	depends on RTCONFIG_HTTPS && (RTCONFIG_JFFS2 || RTCONFIG_BRCM_NAND_JFFS2 || RTCONFIG_UBIFS || RTCONFIG_EMMC)
 	default n
 
 config RTCONFIG_DETWAN
@@ -3116,4 +3116,8 @@ config RTCONFIG_SWRTMESH
 config RTCONFIG_SFE
 	bool "Shortcut Forwarding Engine"
 	depends on RTCONFIG_RALINK || RTCONFIG_BCMARM
+	default n
+
+config RTCONFIG_EMMC
+	bool "emmc support"
 	default n

@@ -236,7 +236,11 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 					    && !strcmp(variant, "0xa")
 					    && !strcmp(part, "0x801")
 					    && (!strcmp(arch, "7") || !strcmp(arch, "8")))
+#if defined(RTCONFIG_SOC_IPQ53XX)
+						sprintf(model, "IPQ53xx - Cortex A53 ARMv8 revision %s", revision);
+#else
 						sprintf(model, "IPQ60xx - Cortex A53 ARMv8 revision %s", revision);
+#endif
 					else if (!strcmp(variant, "0x2")
 					    && !strcmp(part, "0xd03")
 					    && !strcmp(arch, "7"))
