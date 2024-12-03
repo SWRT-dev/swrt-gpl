@@ -9,8 +9,12 @@
  * %End-Header%
  */
 
+#ifndef _LARGEFILE_SOURCE
 #define _LARGEFILE_SOURCE
+#endif
+#ifndef _LARGEFILE64_SOURCE
 #define _LARGEFILE64_SOURCE
+#endif
 
 #include "config.h"
 #if HAVE_SYS_TYPES_H
@@ -31,68 +35,32 @@
 
 #ifdef __linux__
 
-#if defined(HAVE_LSEEK64) && defined(HAVE_LSEEK64_PROTOTYPE)
-
-#define my_llseek lseek64
-
-#else
-#if defined(HAVE_LLSEEK)
-#include <sys/syscall.h>
-
-#ifndef HAVE_LLSEEK_PROTOTYPE
-extern long long llseek (int fd, long long offset, int origin);
-#endif
-
-#define my_llseek llseek
-
-#else	/* ! HAVE_LLSEEK */
-
-#if SIZEOF_LONG == SIZEOF_LONG_LONG
-
-#define llseek lseek
-
-#else /* SIZEOF_LONG != SIZEOF_LONG_LONG */
-
 #include <linux/unistd.h>
-
-#ifndef __NR__llseek
-#define __NR__llseek            140
-#endif
-
-#ifndef __i386__
-static int _llseek (unsigned int, unsigned long,
-		   unsigned long, ext2_loff_t *, unsigned int);
-
-static _syscall5(int,_llseek,unsigned int,fd,unsigned long,offset_high,
-		 unsigned long, offset_low,ext2_loff_t *,result,
-		 unsigned int, origin)
-#endif
 
 static ext2_loff_t my_llseek (int fd, ext2_loff_t offset, int origin)
 {
-	ext2_loff_t result;
+#if SIZEOF_OFF_T >= 8
+	return lseek(fd, offset, origin);
+#elif HAVE_LSEEK64_PROTOTYPE
+	return lseek64(fd, offset, origin);
+#elif HAVE_LLSEEK_PROTOTYPE
+	return llseek(fd, offset, origin);
+#elif defined(__NR__llseek)
+	loff_t result;
 	int retval;
-
-#ifndef __i386__
-	retval = _llseek(fd, ((unsigned long long) offset) >> 32,
+	retval = syscall(__NR__llseek, fd,
+		(unsigned long)(offset >> 32),
+		(unsigned long)(offset & 0xffffffff),
+		&result, origin);
+	return (retval == -1 ? retval : result);
 #else
-	retval = syscall(__NR__llseek, fd, (unsigned long long) (offset >> 32),
+	errno = ENOSYS;
+	return -1;
 #endif
-			  ((unsigned long long) offset) & 0xffffffff,
-			&result, origin);
-	return (retval == -1 ? (ext2_loff_t) retval : result);
 }
-
-#endif	/* __alpha__ || __ia64__ */
-
-#endif /* HAVE_LLSEEK */
-#endif /* defined(HAVE_LSEEK64) && defined(HAVE_LSEEK64_PROTOTYPE) */
 
 ext2_loff_t ext2fs_llseek (int fd, ext2_loff_t offset, int origin)
 {
-#if SIZEOF_OFF_T >= SIZEOF_LONG_LONG
-	return lseek (fd, offset, origin);
-#else
 	ext2_loff_t result;
 	static int do_compat = 0;
 
@@ -113,7 +81,6 @@ ext2_loff_t ext2fs_llseek (int fd, ext2_loff_t offset, int origin)
 		return -1;
 	}
 	return result;
-#endif
 }
 
 #else /* !linux */

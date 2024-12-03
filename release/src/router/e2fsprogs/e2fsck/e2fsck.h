@@ -36,8 +36,8 @@
 #include "blkid/blkid.h"
 #endif
 
-#include "profile.h"
-#include "prof_err.h"
+#include "support/profile.h"
+#include "support/prof_err.h"
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
@@ -67,7 +67,15 @@
 #define E2FSCK_ATTR(x)
 #endif
 
-#include "quota/quotaio.h"
+#include "support/quotaio.h"
+#if __GNUC_PREREQ (4, 6)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+#endif
+#include "ext2fs/fast_commit.h"
+#if __GNUC_PREREQ (4, 6)
+#pragma GCC diagnostic pop
+#endif
 
 /*
  * Exit codes used by fsck-type programs
@@ -104,11 +112,12 @@ struct dir_info {
  * directories which contain a hash tree index.
  */
 struct dx_dir_info {
-	ext2_ino_t		ino; 		/* Inode number */
-	int			numblocks;	/* number of blocks */
-	int			hashversion;
-	short			depth;		/* depth of tree */
-	struct dx_dirblock_info	*dx_block; 	/* Array of size numblocks */
+	ext2_ino_t		ino;		/* Inode number */
+	short			depth;		/* depth of tree (15 bits) */
+	__u8			hashversion;
+	__u8			casefolded_hash:1;
+	blk_t			numblocks;	/* number of blocks in dir */
+	struct dx_dirblock_info	*dx_block;	/* Array of size numblocks */
 };
 
 #define DX_DIRBLOCK_ROOT	1
@@ -119,9 +128,10 @@ struct dx_dir_info {
 
 struct dx_dirblock_info {
 	int		type;
-	blk64_t		phys;
 	int		flags;
+	blk64_t		phys;
 	blk64_t		parent;
+	blk64_t		previous;
 	ext2_dirhash_t	min_hash;
 	ext2_dirhash_t	max_hash;
 	ext2_dirhash_t	node_min_hash;
@@ -132,6 +142,8 @@ struct dx_dirblock_info {
 #define DX_FLAG_DUP_REF		2
 #define DX_FLAG_FIRST		4
 #define DX_FLAG_LAST		8
+
+struct encrypted_file_info;
 
 #define RESOURCE_TRACK
 
@@ -167,16 +179,23 @@ struct resource_track {
 #define E2F_OPT_FRAGCHECK	0x0800
 #define E2F_OPT_JOURNAL_ONLY	0x1000 /* only replay the journal */
 #define E2F_OPT_DISCARD		0x2000
+#define E2F_OPT_CONVERT_BMAP	0x4000 /* convert blockmap to extent */
+#define E2F_OPT_FIXES_ONLY	0x8000 /* skip all optimizations */
+#define E2F_OPT_NOOPT_EXTENTS	0x10000 /* don't optimize extents */
+#define E2F_OPT_ICOUNT_FULLMAP	0x20000 /* use an array for inode counts */
+#define E2F_OPT_UNSHARE_BLOCKS  0x40000
+#define E2F_OPT_CLEAR_UNINIT	0x80000 /* Hack to clear the uninit bit */
+#define E2F_OPT_CHECK_ENCODING  0x100000 /* Force verification of encoded filenames */
 
 /*
  * E2fsck flags
  */
 #define E2F_FLAG_ABORT		0x0001 /* Abort signaled */
 #define E2F_FLAG_CANCEL		0x0002 /* Cancel signaled */
-#define E2F_FLAG_SIGNAL_MASK	0x0003
+#define E2F_FLAG_SIGNAL_MASK	(E2F_FLAG_ABORT | E2F_FLAG_CANCEL)
 #define E2F_FLAG_RESTART	0x0004 /* Restart signaled */
+#define E2F_FLAG_RUN_RETURN	(E2F_FLAG_SIGNAL_MASK | E2F_FLAG_RESTART)
 #define E2F_FLAG_RESTART_LATER	0x0008 /* Restart after all iterations done */
-
 #define E2F_FLAG_SETJMP_OK	0x0010 /* Setjmp valid for abort */
 
 #define E2F_FLAG_PROG_BAR	0x0020 /* Progress bar on screen */
@@ -190,6 +209,7 @@ struct resource_track {
 #define E2F_FLAG_EXITING	0x1000 /* E2fsck exiting due to errors */
 #define E2F_FLAG_TIME_INSANE	0x2000 /* Time is insane */
 #define E2F_FLAG_PROBLEMS_FIXED	0x4000 /* At least one problem was fixed */
+#define E2F_FLAG_ALLOC_OK	0x8000 /* Can we allocate blocks? */
 
 #define E2F_RESET_FLAGS (E2F_FLAG_TIME_INSANE | E2F_FLAG_PROBLEMS_FIXED)
 
@@ -213,7 +233,32 @@ typedef struct ea_refcount *ext2_refcount_t;
  */
 typedef struct e2fsck_struct *e2fsck_t;
 
-#define MAX_EXTENT_DEPTH_COUNT 5
+#define MAX_EXTENT_DEPTH_COUNT 8
+
+/*
+ * This structure is used to manage the list of extents in a file. Placing
+ * it here since this is used by fast_commit.h.
+ */
+struct extent_list {
+	blk64_t blocks_freed;
+	struct ext2fs_extent *extents;
+	unsigned int count;
+	unsigned int size;
+	unsigned int ext_read;
+	errcode_t retval;
+	ext2_ino_t ino;
+};
+
+/* State structure for fast commit replay */
+struct e2fsck_fc_replay_state {
+	struct extent_list fc_extent_list;
+	int fc_replay_num_tags;
+	int fc_replay_expected_off;
+	enum passtype fc_current_pass;
+	int fc_cur_tag;
+	unsigned int fc_crc;
+	__u16 fc_super_state;
+};
 
 struct e2fsck_struct {
 	ext2_filsys fs;
@@ -223,14 +268,16 @@ struct e2fsck_struct {
 	char *io_options;
 	FILE	*logf;
 	char	*log_fn;
+	FILE	*problem_logf;
+	char	*problem_log_fn;
 	int	flags;		/* E2fsck internal flags */
 	int	options;
-	int	blocksize;	/* blocksize */
+	unsigned blocksize;	/* blocksize */
 	blk64_t	use_superblock;	/* sb requested by user */
 	blk64_t	superblock;	/* sb used to open fs */
 	blk64_t	num_blocks;	/* Total number of blocks */
-	blk64_t free_blocks;
-	ino_t	free_inodes;
+	blk64_t	free_blocks;
+	ext2_ino_t free_inodes;
 	int	mount_flags;
 	int	openfs_flags;
 	blkid_cache blkid;	/* blkid cache */
@@ -249,6 +296,7 @@ struct e2fsck_struct {
 	ext2fs_inode_bitmap inode_bb_map; /* Inodes which are in bad blocks */
 	ext2fs_inode_bitmap inode_imagic_map; /* AFS inodes */
 	ext2fs_inode_bitmap inode_reg_map; /* Inodes which are regular files*/
+	ext2fs_inode_bitmap inode_casefold_map; /* Inodes which are casefolded */
 
 	ext2fs_block_bitmap block_found_map; /* Blocks which are in use */
 	ext2fs_block_bitmap block_dup_map; /* Blks referenced more than once */
@@ -262,6 +310,17 @@ struct e2fsck_struct {
 
 	ext2_refcount_t	refcount;
 	ext2_refcount_t refcount_extra;
+
+	/*
+	 * Quota blocks and inodes to be charged for each ea block.
+	 */
+	ext2_refcount_t ea_block_quota_blocks;
+	ext2_refcount_t ea_block_quota_inodes;
+
+	/*
+	 * ea_inode references from attr entries.
+	 */
+	ext2_refcount_t ea_inode_refs;
 
 	/*
 	 * Array of flags indicating whether an inode bitmap, block
@@ -297,14 +356,19 @@ struct e2fsck_struct {
 	/*
 	 * Indexed directory information
 	 */
-	int		dx_dir_info_count;
-	int		dx_dir_info_size;
-	struct dx_dir_info *dx_dir_info;
+	ext2_ino_t		dx_dir_info_count;
+	ext2_ino_t		dx_dir_info_size;
+	struct dx_dir_info	*dx_dir_info;
 
 	/*
 	 * Directories to hash
 	 */
 	ext2_u32_list	dirs_to_hash;
+
+	/*
+	 * Encrypted file information
+	 */
+	struct encrypted_file_info *encrypted_files;
 
 	/*
 	 * Tuning parameters
@@ -358,6 +422,7 @@ struct e2fsck_struct {
 	__u32 fs_fragmented;
 	__u32 fs_fragmented_dir;
 	__u32 large_files;
+	__u32 large_dirs;
 	__u32 fs_ext_attr_inodes;
 	__u32 fs_ext_attr_blocks;
 	__u32 extent_depth_count[MAX_EXTENT_DEPTH_COUNT];
@@ -368,6 +433,7 @@ struct e2fsck_struct {
 	int ext_attr_ver;
 	profile_t	profile;
 	int blocks_per_page;
+	ext2_u32_list casefolded_dirs;
 
 	/* Reserve blocks for root and l+f re-creation */
 	blk64_t root_repair_block, lnf_repair_block;
@@ -377,10 +443,37 @@ struct e2fsck_struct {
 	 * e2fsck functions themselves.
 	 */
 	void *priv_data;
+	ext2fs_block_bitmap block_metadata_map; /* Metadata blocks */
+
+	/* How much are we allowed to readahead? */
+	unsigned long long readahead_kb;
+
+	/*
+	 * Inodes to rebuild extent trees
+	 */
+	ext2fs_inode_bitmap inodes_to_rebuild;
+
+	/* Undo file */
+	char *undo_file;
+
+	/* Fast commit replay state */
+	struct e2fsck_fc_replay_state fc_replay_state;
+};
+
+/* Data structures to evaluate whether an extent tree needs rebuilding. */
+struct extent_tree_level {
+	unsigned int	num_extents;
+	unsigned int	max_extents;
+};
+
+struct extent_tree_info {
+	ext2_ino_t ino;
+	int force_rebuild;
+	struct extent_tree_level	ext_info[MAX_EXTENT_DEPTH_COUNT];
 };
 
 /* Used by the region allocation code */
-typedef __u32 region_addr_t;
+typedef __u64 region_addr_t;
 typedef struct region_struct *region_t;
 
 #ifndef HAVE_STRNLEN
@@ -410,9 +503,6 @@ extern int e2fsck_run(e2fsck_t ctx);
 extern void read_bad_blocks_file(e2fsck_t ctx, const char *bad_blocks_file,
 				 int replace_bad_blocks);
 
-/* crc32.c */
-extern __u32 crc32_be(__u32 crc, unsigned char const *p, size_t len);
-
 /* dirinfo.c */
 extern void e2fsck_add_dir_info(e2fsck_t ctx, ext2_ino_t ino, ext2_ino_t parent);
 extern void e2fsck_free_dir_info(e2fsck_t ctx);
@@ -431,29 +521,70 @@ extern int e2fsck_dir_info_get_dotdot(e2fsck_t ctx, ext2_ino_t ino,
 				      ext2_ino_t *dotdot);
 
 /* dx_dirinfo.c */
-extern void e2fsck_add_dx_dir(e2fsck_t ctx, ext2_ino_t ino, int num_blocks);
+extern void e2fsck_add_dx_dir(e2fsck_t ctx, ext2_ino_t ino,
+			      struct ext2_inode *inode, int num_blocks);
 extern struct dx_dir_info *e2fsck_get_dx_dir_info(e2fsck_t ctx, ext2_ino_t ino);
 extern void e2fsck_free_dx_dir_info(e2fsck_t ctx);
-extern int e2fsck_get_num_dx_dirinfo(e2fsck_t ctx);
-extern struct dx_dir_info *e2fsck_dx_dir_info_iter(e2fsck_t ctx, int *control);
+extern ext2_ino_t e2fsck_get_num_dx_dirinfo(e2fsck_t ctx);
+extern struct dx_dir_info *e2fsck_dx_dir_info_iter(e2fsck_t ctx,
+						   ext2_ino_t *control);
 
 /* ea_refcount.c */
-extern errcode_t ea_refcount_create(int size, ext2_refcount_t *ret);
+typedef __u64 ea_key_t;
+typedef __u64 ea_value_t;
+
+/*
+ * Special refcount value we use for inodes which have EA_INODE flag set but we
+ * do not yet know about any references.
+ */
+#define EA_INODE_NO_REFS (~(ea_value_t)0)
+
+extern errcode_t ea_refcount_create(size_t size, ext2_refcount_t *ret);
 extern void ea_refcount_free(ext2_refcount_t refcount);
-extern errcode_t ea_refcount_fetch(ext2_refcount_t refcount, blk64_t blk, int *ret);
+extern errcode_t ea_refcount_fetch(ext2_refcount_t refcount, ea_key_t ea_key,
+				   ea_value_t *ret);
 extern errcode_t ea_refcount_increment(ext2_refcount_t refcount,
-				       blk64_t blk, int *ret);
+				       ea_key_t ea_key, ea_value_t *ret);
 extern errcode_t ea_refcount_decrement(ext2_refcount_t refcount,
-				       blk64_t blk, int *ret);
-extern errcode_t ea_refcount_store(ext2_refcount_t refcount,
-				   blk64_t blk, int count);
-extern blk_t ext2fs_get_refcount_size(ext2_refcount_t refcount);
+				       ea_key_t ea_key, ea_value_t *ret);
+extern errcode_t ea_refcount_store(ext2_refcount_t refcount, ea_key_t ea_key,
+				   ea_value_t count);
+extern size_t ext2fs_get_refcount_size(ext2_refcount_t refcount);
 extern void ea_refcount_intr_begin(ext2_refcount_t refcount);
-extern blk64_t ea_refcount_intr_next(ext2_refcount_t refcount, int *ret);
+extern ea_key_t ea_refcount_intr_next(ext2_refcount_t refcount,
+				      ea_value_t *ret);
 
 /* ehandler.c */
 extern const char *ehandler_operation(const char *op);
 extern void ehandler_init(io_channel channel);
+
+/* encrypted_files.c */
+
+struct problem_context;
+int add_encrypted_file(e2fsck_t ctx, struct problem_context *pctx);
+
+#define NO_ENCRYPTION_POLICY		((__u32)-1)
+#define CORRUPT_ENCRYPTION_POLICY	((__u32)-2)
+#define UNRECOGNIZED_ENCRYPTION_POLICY	((__u32)-3)
+__u32 find_encryption_policy(e2fsck_t ctx, ext2_ino_t ino);
+
+void destroy_encryption_policy_map(e2fsck_t ctx);
+void destroy_encrypted_file_info(e2fsck_t ctx);
+
+/* extents.c */
+errcode_t e2fsck_rebuild_extents_later(e2fsck_t ctx, ext2_ino_t ino);
+int e2fsck_ino_will_be_rebuilt(e2fsck_t ctx, ext2_ino_t ino);
+void e2fsck_pass1e(e2fsck_t ctx);
+errcode_t e2fsck_check_rebuild_extents(e2fsck_t ctx, ext2_ino_t ino,
+				       struct ext2_inode *inode,
+				       struct problem_context *pctx);
+errcode_t e2fsck_should_rebuild_extents(e2fsck_t ctx,
+					struct problem_context *pctx,
+					struct extent_tree_info *eti,
+					struct ext2_extent_info *info);
+errcode_t e2fsck_read_extents(e2fsck_t ctx, struct extent_list *extents);
+errcode_t e2fsck_rewrite_extent_tree(e2fsck_t ctx,
+				     struct extent_list *extents);
 
 /* journal.c */
 extern errcode_t e2fsck_check_ext3_journal(e2fsck_t ctx);
@@ -466,10 +597,12 @@ extern void set_up_logging(e2fsck_t ctx);
 
 /* quota.c */
 extern void e2fsck_hide_quota(e2fsck_t ctx);
+extern void e2fsck_validate_quota_inodes(e2fsck_t ctx);
 
 /* pass1.c */
-extern void e2fsck_setup_tdb_icount(e2fsck_t ctx, int flags,
-				    ext2_icount_t *ret);
+extern errcode_t e2fsck_setup_icount(e2fsck_t ctx, const char *icount_name,
+				     int flags, ext2_icount_t hint,
+				     ext2_icount_t *ret);
 extern void e2fsck_use_inode_shortcuts(e2fsck_t ctx, int use_shortcuts);
 extern int e2fsck_pass1_check_device_inode(ext2_filsys fs,
 					   struct ext2_inode *inode);
@@ -492,6 +625,23 @@ extern ext2_ino_t e2fsck_get_lost_and_found(e2fsck_t ctx, int fix);
 extern errcode_t e2fsck_adjust_inode_count(e2fsck_t ctx, ext2_ino_t ino,
 					   int adj);
 
+/* readahead.c */
+#define E2FSCK_READA_SUPER	(0x01)
+#define E2FSCK_READA_GDT	(0x02)
+#define E2FSCK_READA_BBITMAP	(0x04)
+#define E2FSCK_READA_IBITMAP	(0x08)
+#define E2FSCK_READA_ITABLE	(0x10)
+#define E2FSCK_READA_ALL_FLAGS	(0x1F)
+errcode_t e2fsck_readahead(ext2_filsys fs, int flags, dgrp_t start,
+			   dgrp_t ngroups);
+#define E2FSCK_RA_DBLIST_IGNORE_BLOCKCNT	(0x01)
+#define E2FSCK_RA_DBLIST_ALL_FLAGS		(0x01)
+errcode_t e2fsck_readahead_dblist(ext2_filsys fs, int flags,
+				  ext2_dblist dblist,
+				  unsigned long long start,
+				  unsigned long long count);
+int e2fsck_can_readahead(ext2_filsys fs);
+unsigned long long e2fsck_guess_readahead(ext2_filsys fs);
 
 /* region.c */
 extern region_t region_create(region_addr_t min, region_addr_t max);
@@ -499,7 +649,10 @@ extern void region_free(region_t region);
 extern int region_allocate(region_t region, region_addr_t start, int n);
 
 /* rehash.c */
-errcode_t e2fsck_rehash_dir(e2fsck_t ctx, ext2_ino_t ino);
+void e2fsck_rehash_dir_later(e2fsck_t ctx, ext2_ino_t ino);
+int e2fsck_dir_will_be_rehashed(e2fsck_t ctx, ext2_ino_t ino);
+errcode_t e2fsck_rehash_dir(e2fsck_t ctx, ext2_ino_t ino,
+			    struct problem_context *pctx);
 void e2fsck_rehash_directories(e2fsck_t ctx);
 
 /* sigcatcher.c */
@@ -509,13 +662,15 @@ void sigcatcher_setup(void);
 void check_super_block(e2fsck_t ctx);
 int check_backup_super_block(e2fsck_t ctx);
 void check_resize_inode(e2fsck_t ctx);
+int check_init_orphan_file(e2fsck_t ctx);
 
 /* util.c */
-extern void *e2fsck_allocate_memory(e2fsck_t ctx, unsigned int size,
+extern void *e2fsck_allocate_memory(e2fsck_t ctx, unsigned long size,
 				    const char *description);
 extern int ask(e2fsck_t ctx, const char * string, int def);
 extern int ask_yn(e2fsck_t ctx, const char * string, int def);
-extern void fatal_error(e2fsck_t ctx, const char * fmt_string);
+extern void fatal_error(e2fsck_t ctx, const char * fmt_string)
+	E2FSCK_ATTR((noreturn));
 extern void log_out(e2fsck_t ctx, const char *fmt, ...)
 	E2FSCK_ATTR((format(printf, 2, 3)));
 extern void log_err(e2fsck_t ctx, const char *fmt, ...)
@@ -523,9 +678,7 @@ extern void log_err(e2fsck_t ctx, const char *fmt, ...)
 extern void e2fsck_read_bitmaps(e2fsck_t ctx);
 extern void e2fsck_write_bitmaps(e2fsck_t ctx);
 extern void preenhalt(e2fsck_t ctx);
-extern char *string_copy(e2fsck_t ctx, const char *str, int len);
-extern errcode_t e2fsck_zero_blocks(ext2_filsys fs, blk_t blk, int num,
-				    blk_t *ret_blk, int *ret_count);
+extern char *string_copy(e2fsck_t ctx, const char *str, size_t len);
 extern int fs_proc_check(const char *fs_name);
 extern int check_for_modules(const char *fs_name);
 #ifdef RESOURCE_TRACK
@@ -557,7 +710,8 @@ extern blk64_t get_backup_sb(e2fsck_t ctx, ext2_filsys fs,
 			   const char *name, io_manager manager);
 extern int ext2_file_type(unsigned int mode);
 extern int write_all(int fd, char *buf, size_t count);
-void dump_mmp_msg(struct mmp_struct *mmp, const char *msg);
+void dump_mmp_msg(struct mmp_struct *mmp, const char *fmt, ...)
+	E2FSCK_ATTR((format(printf, 2, 3)));
 errcode_t e2fsck_mmp_update(ext2_filsys fs);
 
 extern void e2fsck_set_bitmap_type(ext2_filsys fs,
@@ -579,9 +733,13 @@ extern errcode_t e2fsck_allocate_subcluster_bitmap(ext2_filsys fs,
 						   int default_type,
 						   const char *profile_name,
 						   ext2fs_block_bitmap *ret);
+unsigned long long get_memory_size(void);
 
 /* unix.c */
 extern void e2fsck_clear_progbar(e2fsck_t ctx);
 extern int e2fsck_simple_progress(e2fsck_t ctx, const char *label,
 				  float percent, unsigned int dpynum);
+
+#define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
+
 #endif /* _E2FSCK_H */

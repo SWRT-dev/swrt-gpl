@@ -12,8 +12,12 @@
  * %End-Header%
  */
 
+#ifndef _LARGEFILE_SOURCE
 #define _LARGEFILE_SOURCE
+#endif
+#ifndef _LARGEFILE64_SOURCE
 #define _LARGEFILE64_SOURCE
+#endif
 
 #include "config.h"
 #include <stdio.h>
@@ -67,10 +71,11 @@
 #define HAVE_GET_FILE_SIZE_EX 1
 #endif
 
-errcode_t ext2fs_get_device_size(const char *file, int blocksize,
-				 blk_t *retblocks)
+errcode_t ext2fs_get_device_size2(const char *file, int blocksize,
+				  blk64_t *retblocks)
 {
-	HANDLE dev;
+	int fd;
+	HANDLE h;
 	PARTITION_INFORMATION pi;
 	DISK_GEOMETRY gi;
 	DWORD retbytes;
@@ -80,20 +85,18 @@ errcode_t ext2fs_get_device_size(const char *file, int blocksize,
 	DWORD filesize;
 #endif /* HAVE_GET_FILE_SIZE_EX */
 
-	dev = CreateFile(file, GENERIC_READ,
-			 FILE_SHARE_READ | FILE_SHARE_WRITE ,
-                	 NULL,  OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,  NULL);
-
-	if (dev == INVALID_HANDLE_VALUE)
-		return EBADF;
-	if (DeviceIoControl(dev, IOCTL_DISK_GET_PARTITION_INFO,
+	fd = ext2fs_open_file(file, O_RDONLY, 0);
+	if (fd < 0)
+		return errno;
+	h = (HANDLE)_get_osfhandle(fd);
+	if (DeviceIoControl(h, IOCTL_DISK_GET_PARTITION_INFO,
 			    &pi, sizeof(PARTITION_INFORMATION),
 			    &pi, sizeof(PARTITION_INFORMATION),
 			    &retbytes, NULL)) {
 
 		*retblocks = pi.PartitionLength.QuadPart / blocksize;
 
-	} else if (DeviceIoControl(dev, IOCTL_DISK_GET_DRIVE_GEOMETRY,
+	} else if (DeviceIoControl(h, IOCTL_DISK_GET_DRIVE_GEOMETRY,
 				&gi, sizeof(DISK_GEOMETRY),
 				&gi, sizeof(DISK_GEOMETRY),
 				&retbytes, NULL)) {
@@ -104,19 +107,19 @@ errcode_t ext2fs_get_device_size(const char *file, int blocksize,
 			     gi.Cylinders.QuadPart / blocksize;
 
 #ifdef HAVE_GET_FILE_SIZE_EX
-	} else if (GetFileSizeEx(dev, &filesize)) {
+	} else if (GetFileSizeEx(h, &filesize)) {
 		*retblocks = filesize.QuadPart / blocksize;
 	}
 #else
 	} else {
-		filesize = GetFileSize(dev, NULL);
+		filesize = GetFileSize(h, NULL);
 		if (INVALID_FILE_SIZE != filesize) {
 			*retblocks = filesize / blocksize;
 		}
 	}
 #endif /* HAVE_GET_FILE_SIZE_EX */
 
-	CloseHandle(dev);
+	close(fd);
 	return 0;
 }
 
@@ -147,9 +150,12 @@ errcode_t ext2fs_get_device_size2(const char *file, int blocksize,
 	if (fd < 0)
 		return errno;
 
-#ifdef DKIOCGETBLOCKCOUNT	/* For Apple Darwin */
-	if (ioctl(fd, DKIOCGETBLOCKCOUNT, &size64) >= 0) {
-		*retblocks = size64 / (blocksize / 512);
+#if defined DKIOCGETBLOCKCOUNT && defined DKIOCGETBLOCKSIZE	/* For Apple Darwin */
+	unsigned int size;
+
+	if (ioctl(fd, DKIOCGETBLOCKCOUNT, &size64) >= 0 &&
+	    ioctl(fd, DKIOCGETBLOCKSIZE, &size) >= 0) {
+		*retblocks = size64 * size / blocksize;
 		goto out;
 	}
 #endif
@@ -268,6 +274,8 @@ out:
 	return rc;
 }
 
+#endif /* WIN32 */
+
 errcode_t ext2fs_get_device_size(const char *file, int blocksize,
 				 blk_t *retblocks)
 {
@@ -283,12 +291,10 @@ errcode_t ext2fs_get_device_size(const char *file, int blocksize,
 	return 0;
 }
 
-#endif /* WIN32 */
-
 #ifdef DEBUG
 int main(int argc, char **argv)
 {
-	blk_t	blocks;
+	blk64_t	blocks;
 	int	retval;
 
 	if (argc < 2) {
@@ -296,13 +302,14 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	retval = ext2fs_get_device_size(argv[1], 1024, &blocks);
+	retval = ext2fs_get_device_size2(argv[1], 1024, &blocks);
 	if (retval) {
 		com_err(argv[0], retval,
 			"while calling ext2fs_get_device_size");
 		exit(1);
 	}
-	printf("Device %s has %u 1k blocks.\n", argv[1], blocks);
+	printf("Device %s has %llu 1k blocks.\n", argv[1],
+	       (unsigned long long) locks);
 	exit(0);
 }
 #endif

@@ -20,7 +20,13 @@ int main(void) {
 	exit(EXIT_FAILURE);
 }
 #else
+#ifndef _LARGEFILE_SOURCE
+#define _LARGEFILE_SOURCE
+#endif
+#ifndef _LARGEFILE64_SOURCE
 #define _LARGEFILE64_SOURCE
+#endif
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,17 +45,22 @@ extern int optind;
 #include <sys/stat.h>
 #include <sys/vfs.h>
 #include <sys/ioctl.h>
+#ifdef HAVE_LINUX_FD_H
 #include <linux/fd.h>
+#endif
 #include <ext2fs/ext2fs.h>
 #include <ext2fs/ext2_types.h>
 #include <ext2fs/fiemap.h>
+#include "../version.h"
 
 int verbose = 0;
-int blocksize;		/* Use specified blocksize (default 1kB) */
+unsigned int blocksize;	/* Use specified blocksize (default 1kB) */
 int sync_file = 0;	/* fsync file before getting the mapping */
+int precache_file = 0;	/* precache the file before getting the mapping */
 int xattr_map = 0;	/* get xattr mapping */
-int force_bmap;	/* force use of FIBMAP instead of FIEMAP */
+int force_bmap;		/* force use of FIBMAP instead of FIEMAP */
 int force_extent;	/* print output in extent format always */
+int use_extent_cache;	/* Use extent cache */
 int logical_width = 8;
 int physical_width = 10;
 const char *ext_fmt = "%4d: %*llu..%*llu: %*llu..%*llu: %6llu: %s\n";
@@ -65,7 +76,7 @@ const char *hex_fmt = "%4d: %*llx..%*llx: %*llx..%*llx: %6llx: %s\n";
 #define	EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
 #define	EXT3_IOC_GETFLAGS		_IOR('f', 1, long)
 
-static int int_log2(int arg)
+static int ulong_log2(unsigned long arg)
 {
 	int     l = 0;
 
@@ -77,7 +88,7 @@ static int int_log2(int arg)
 	return l;
 }
 
-static int int_log10(unsigned long long arg)
+static int ulong_log10(unsigned long long arg)
 {
 	int     l = 0;
 
@@ -122,11 +133,47 @@ static void print_extent_header(void)
 
 static void print_flag(__u32 *flags, __u32 mask, char *buf, const char *name)
 {
+	char hex[sizeof(mask) * 2 + 4]; /* 2 chars/byte + 0x, + NUL */
+
 	if ((*flags & mask) == 0)
 		return;
 
+	if (name == NULL) {
+		sprintf(hex, "%#04x,", mask);
+		name = hex;
+	}
 	strcat(buf, name);
 	*flags &= ~mask;
+}
+
+static void print_flags(__u32 fe_flags, char *flags, int len, int print_unknown)
+{
+	__u32 mask;
+
+	print_flag(&fe_flags, FIEMAP_EXTENT_LAST, flags, "last,");
+	print_flag(&fe_flags, FIEMAP_EXTENT_UNKNOWN, flags, "unknown_loc,");
+	print_flag(&fe_flags, FIEMAP_EXTENT_DELALLOC, flags, "delalloc,");
+	print_flag(&fe_flags, FIEMAP_EXTENT_ENCODED, flags, "encoded,");
+	print_flag(&fe_flags, FIEMAP_EXTENT_DATA_ENCRYPTED, flags,"encrypted,");
+	print_flag(&fe_flags, FIEMAP_EXTENT_NOT_ALIGNED, flags, "not_aligned,");
+	print_flag(&fe_flags, FIEMAP_EXTENT_DATA_INLINE, flags, "inline,");
+	print_flag(&fe_flags, FIEMAP_EXTENT_DATA_TAIL, flags, "tail_packed,");
+	print_flag(&fe_flags, FIEMAP_EXTENT_UNWRITTEN, flags, "unwritten,");
+	print_flag(&fe_flags, FIEMAP_EXTENT_MERGED, flags, "merged,");
+	print_flag(&fe_flags, FIEMAP_EXTENT_SHARED, flags, "shared,");
+	print_flag(&fe_flags, EXT4_FIEMAP_EXTENT_HOLE, flags, "hole,");
+
+	if (!print_unknown)
+		goto out;
+
+	/* print any unknown flags as hex values */
+	for (mask = 1; fe_flags != 0 && mask != 0; mask <<= 1)
+		print_flag(&fe_flags, mask, flags, NULL);
+out:
+	/* Remove trailing comma, if any */
+	if (flags[0])
+		flags[strnlen(flags, len) - 1] = '\0';
+
 }
 
 static void print_extent_info(struct fiemap_extent *fm_extent, int cur_ex,
@@ -137,7 +184,7 @@ static void print_extent_info(struct fiemap_extent *fm_extent, int cur_ex,
 	unsigned long long logical_blk;
 	unsigned long long ext_len;
 	unsigned long long ext_blks;
-	__u32 fe_flags, mask;
+	unsigned long long ext_blks_phys;
 	char flags[256] = "";
 
 	/* For inline data all offsets should be in bytes, not blocks */
@@ -153,77 +200,73 @@ static void print_extent_info(struct fiemap_extent *fm_extent, int cur_ex,
 		physical_blk = fm_extent->fe_physical >> blk_shift;
 	}
 
-	if (expected)
+	if (expected &&
+	    !(fm_extent->fe_flags & FIEMAP_EXTENT_UNKNOWN) &&
+	    !(fm_extent->fe_flags & EXT4_FIEMAP_EXTENT_HOLE))
 		sprintf(flags, ext_fmt == hex_fmt ? "%*llx: " : "%*llu: ",
 			physical_width, expected >> blk_shift);
 	else
 		sprintf(flags, "%.*s  ", physical_width, "                   ");
 
-	fe_flags = fm_extent->fe_flags;
-	print_flag(&fe_flags, FIEMAP_EXTENT_LAST, flags, "last,");
-	print_flag(&fe_flags, FIEMAP_EXTENT_UNKNOWN, flags, "unknown_loc,");
-	print_flag(&fe_flags, FIEMAP_EXTENT_DELALLOC, flags, "delalloc,");
-	print_flag(&fe_flags, FIEMAP_EXTENT_ENCODED, flags, "encoded,");
-	print_flag(&fe_flags, FIEMAP_EXTENT_DATA_ENCRYPTED, flags,"encrypted,");
-	print_flag(&fe_flags, FIEMAP_EXTENT_NOT_ALIGNED, flags, "not_aligned,");
-	print_flag(&fe_flags, FIEMAP_EXTENT_DATA_INLINE, flags, "inline,");
-	print_flag(&fe_flags, FIEMAP_EXTENT_DATA_TAIL, flags, "tail_packed,");
-	print_flag(&fe_flags, FIEMAP_EXTENT_UNWRITTEN, flags, "unwritten,");
-	print_flag(&fe_flags, FIEMAP_EXTENT_MERGED, flags, "merged,");
-	print_flag(&fe_flags, FIEMAP_EXTENT_SHARED, flags, "shared,");
-	/* print any unknown flags as hex values */
-	for (mask = 1; fe_flags != 0 && mask != 0; mask <<= 1) {
-		char hex[6];
+	print_flags(fm_extent->fe_flags, flags, sizeof(flags), 1);
 
-		if ((fe_flags & mask) == 0)
-			continue;
-		sprintf(hex, "%#04x,", mask);
-		print_flag(&fe_flags, mask, flags, hex);
-	}
+	if (fm_extent->fe_logical + fm_extent->fe_length >=
+	    (unsigned long long)st->st_size)
+		strcat(flags, flags[0] ? ",eof" : "eof");
 
-	if (fm_extent->fe_logical + fm_extent->fe_length >= st->st_size)
-		strcat(flags, "eof,");
-
-	/* Remove trailing comma, if any */
-	if (flags[0] != '\0')
-		flags[strnlen(flags, sizeof(flags)) - 1] = '\0';
+	if ((fm_extent->fe_flags & FIEMAP_EXTENT_UNKNOWN) ||
+	    (fm_extent->fe_flags & EXT4_FIEMAP_EXTENT_HOLE)) {
+		ext_len = 0;
+		ext_blks_phys = 0;
+	} else
+		ext_blks_phys = ext_blks;
 
 	printf(ext_fmt, cur_ex, logical_width, logical_blk,
 	       logical_width, logical_blk + ext_blks,
 	       physical_width, physical_blk,
-	       physical_width, physical_blk + ext_blks,
+	       physical_width, physical_blk + ext_blks_phys,
 	       ext_len, flags);
 }
 
 static int filefrag_fiemap(int fd, int blk_shift, int *num_extents,
 			   ext2fs_struct_stat *st)
 {
-	char buf[16384];
+	__u64 buf[2048];	/* __u64 for proper field alignment */
 	struct fiemap *fiemap = (struct fiemap *)buf;
 	struct fiemap_extent *fm_ext = &fiemap->fm_extents[0];
+	struct fiemap_extent fm_last;
 	int count = (sizeof(buf) - sizeof(*fiemap)) /
 			sizeof(struct fiemap_extent);
 	unsigned long long expected = 0;
+	unsigned long long expected_dense = 0;
 	unsigned long flags = 0;
 	unsigned int i;
+	unsigned long cmd = FS_IOC_FIEMAP;
 	int fiemap_header_printed = 0;
 	int tot_extents = 0, n = 0;
 	int last = 0;
 	int rc;
 
 	memset(fiemap, 0, sizeof(struct fiemap));
+	memset(&fm_last, 0, sizeof(fm_last));
 
 	if (sync_file)
 		flags |= FIEMAP_FLAG_SYNC;
 
+	if (precache_file)
+		flags |= FIEMAP_FLAG_CACHE;
+
 	if (xattr_map)
 		flags |= FIEMAP_FLAG_XATTR;
+
+	if (use_extent_cache)
+		cmd = EXT4_IOC_GET_ES_CACHE;
 
 	do {
 		fiemap->fm_length = ~0ULL;
 		fiemap->fm_flags = flags;
 		fiemap->fm_extent_count = count;
-		rc = ioctl(fd, FS_IOC_FIEMAP, (unsigned long) fiemap);
+		rc = ioctl(fd, cmd, (unsigned long) fiemap);
 		if (rc < 0) {
 			static int fiemap_incompat_printed;
 
@@ -247,8 +290,13 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents,
 		}
 
 		for (i = 0; i < fiemap->fm_mapped_extents; i++) {
+			expected_dense = fm_last.fe_physical +
+					 fm_last.fe_length;
+			expected = fm_last.fe_physical +
+				   fm_ext[i].fe_logical - fm_last.fe_logical;
 			if (fm_ext[i].fe_logical != 0 &&
-			    fm_ext[i].fe_physical != expected) {
+			    fm_ext[i].fe_physical != expected &&
+			    fm_ext[i].fe_physical != expected_dense) {
 				tot_extents++;
 			} else {
 				expected = 0;
@@ -258,10 +306,9 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents,
 			if (verbose)
 				print_extent_info(&fm_ext[i], n, expected,
 						  blk_shift, st);
-
-			expected = fm_ext[i].fe_physical + fm_ext[i].fe_length;
 			if (fm_ext[i].fe_flags & FIEMAP_EXTENT_LAST)
 				last = 1;
+			fm_last = fm_ext[i];
 			n++;
 		}
 
@@ -280,20 +327,21 @@ static int filefrag_fibmap(int fd, int blk_shift, int *num_extents,
 			   ext2fs_struct_stat *st,
 			   unsigned long numblocks, int is_ext2)
 {
-	struct fiemap_extent	fm_ext;
+	struct fiemap_extent	fm_ext, fm_last;
 	unsigned long		i, last_block;
-	unsigned long long	logical;
+	unsigned long long	logical, expected = 0;
 				/* Blocks per indirect block */
 	const long		bpib = st->st_blksize / 4;
 	int			count;
 
+	memset(&fm_ext, 0, sizeof(fm_ext));
+	memset(&fm_last, 0, sizeof(fm_last));
 	if (force_extent) {
-		memset(&fm_ext, 0, sizeof(fm_ext));
 		fm_ext.fe_flags = FIEMAP_EXTENT_MERGED;
 	}
 
-	if (sync_file)
-		fsync(fd);
+	if (sync_file && fsync(fd) != 0)
+		return -errno;
 
 	for (i = 0, logical = 0, *num_extents = 0, count = last_block = 0;
 	     i < numblocks;
@@ -315,38 +363,52 @@ static int filefrag_fibmap(int fd, int blk_shift, int *num_extents,
 			return rc;
 		if (block == 0)
 			continue;
-		if (*num_extents == 0) {
-			(*num_extents)++;
-			if (force_extent) {
-				print_extent_header();
-				fm_ext.fe_physical = block * st->st_blksize;
+
+		if (*num_extents == 0 || block != last_block + 1 ||
+		    fm_ext.fe_logical + fm_ext.fe_length != logical) {
+			/*
+			 * This is the start of a new extent; figure out where
+			 * we expected it to be and report the extent.
+			 */
+			if (*num_extents != 0 && fm_last.fe_length) {
+				expected = fm_last.fe_physical +
+					(fm_ext.fe_logical - fm_last.fe_logical);
+				if (expected == fm_ext.fe_physical)
+					expected = 0;
 			}
-		}
-		count++;
-		if (force_extent && last_block != 0 &&
-		    (block != last_block + 1 ||
-		     fm_ext.fe_logical + fm_ext.fe_length != logical)) {
-			print_extent_info(&fm_ext, *num_extents - 1,
-					  (last_block + 1) * st->st_blksize,
-					  blk_shift, st);
-			fm_ext.fe_length = 0;
+			if (force_extent && *num_extents == 0)
+				print_extent_header();
+			if (force_extent && *num_extents != 0) {
+				print_extent_info(&fm_ext, *num_extents - 1,
+						  expected, blk_shift, st);
+			}
+			if (verbose && expected != 0) {
+				printf("Discontinuity: Block %llu is at %llu "
+				       "(was %llu)\n",
+				       (unsigned long long) (fm_ext.fe_logical / st->st_blksize),
+				       (unsigned long long) (fm_ext.fe_physical / st->st_blksize),
+				       (unsigned long long) (expected / st->st_blksize));
+			}
+			/* create the new extent */
+			fm_last = fm_ext;
 			(*num_extents)++;
-		} else if (last_block && (block != last_block + 1)) {
-			if (verbose)
-				printf("Discontinuity: Block %ld is at %lu (was "
-				       "%lu)\n", i, block, last_block + 1);
+			fm_ext.fe_physical = block * st->st_blksize;
+			fm_ext.fe_logical = logical;
 			fm_ext.fe_length = 0;
-			(*num_extents)++;
 		}
-		fm_ext.fe_logical = logical;
-		fm_ext.fe_physical = block * st->st_blksize;
 		fm_ext.fe_length += st->st_blksize;
 		last_block = block;
 	}
-
-	if (force_extent)
-		print_extent_info(&fm_ext, *num_extents - 1,
-				  last_block * st->st_blksize, blk_shift, st);
+	if (force_extent && *num_extents != 0) {
+		if (fm_last.fe_length) {
+			expected = fm_last.fe_physical +
+				   (fm_ext.fe_logical - fm_last.fe_logical);
+			if (expected == fm_ext.fe_physical)
+				expected = 0;
+		}
+		print_extent_info(&fm_ext, *num_extents - 1, expected,
+				  blk_shift, st);
+	}
 
 	return count;
 }
@@ -387,13 +449,13 @@ static int frag_report(const char *filename)
 		goto out_close;
 	}
 
-	if (last_device != st.st_dev) {
+	if ((last_device != st.st_dev) || !st.st_dev) {
 		if (fstatfs(fd, &fsinfo) < 0) {
 			rc = -errno;
 			perror("fstatfs");
 			goto out_close;
 		}
-		if (ioctl(fd, FIGETBSZ, &blksize) < 0)
+		if ((ioctl(fd, FIGETBSZ, &blksize) < 0) || !blksize)
 			blksize = fsinfo.f_bsize;
 		if (verbose)
 			printf("Filesystem type is: %lx\n",
@@ -421,28 +483,49 @@ static int frag_report(const char *filename)
 	}
 	last_device = st.st_dev;
 
-	width = int_log10(fsinfo.f_blocks);
+	width = ulong_log10(fsinfo.f_blocks);
 	if (width > physical_width)
 		physical_width = width;
 
 	numblocks = (st.st_size + blksize - 1) / blksize;
 	if (blocksize != 0)
-		blk_shift = int_log2(blocksize);
+		blk_shift = ulong_log2(blocksize);
 	else
-		blk_shift = int_log2(blksize);
+		blk_shift = ulong_log2(blksize);
 
-	width = int_log10(numblocks);
+	if (use_extent_cache)
+		width = 10;
+	else
+		width = ulong_log10(numblocks);
 	if (width > logical_width)
 		logical_width = width;
-	if (verbose)
-		printf("File size of %s is %llu (%llu block%s of %d bytes)\n",
-		       filename, (unsigned long long)st.st_size,
-		       numblocks * blksize >> blk_shift,
+	if (verbose) {
+		__u32 state;
+
+		printf("File size of %s is %llu (%llu block%s of %d bytes)",
+		       filename, (unsigned long long) st.st_size,
+		       (unsigned long long) (numblocks * blksize >> blk_shift),
 		       numblocks == 1 ? "" : "s", 1 << blk_shift);
+		if (use_extent_cache &&
+		    ioctl(fd, EXT4_IOC_GETSTATE, &state) == 0 &&
+		    (state & EXT4_STATE_FLAG_EXT_PRECACHED))
+			fputs(" -- pre-cached", stdout);
+		fputc('\n', stdout);
+	}
 
 	if (!force_bmap) {
 		rc = filefrag_fiemap(fd, blk_shift, &num_extents, &st);
 		expected = 0;
+		if (rc < 0 &&
+		    (use_extent_cache || precache_file || xattr_map)) {
+			if (rc != -EBADR)
+				fprintf(stderr, "%s: %s: %s\n ",
+					filename,
+					use_extent_cache ?
+					"EXT4_IOC_GET_ES_CACHE" :
+					"FS_IOC_FIEMAP", strerror(-rc));
+			goto out_close;
+		}
 	}
 
 	if (force_bmap || rc < 0) { /* FIEMAP failed, try FIBMAP instead */
@@ -450,8 +533,8 @@ static int frag_report(const char *filename)
 					   &st, numblocks, is_ext2);
 		if (expected < 0) {
 			if (expected == -EINVAL || expected == -ENOTTY) {
-				fprintf(stderr, "%s: FIBMAP unsupported\n",
-					filename);
+				fprintf(stderr, "%s: FIBMAP%s unsupported\n",
+					filename, force_bmap ? "" : "/FIEMAP");
 			} else if (expected == -EPERM) {
 				fprintf(stderr,
 					"%s: FIBMAP requires root privileges\n",
@@ -486,7 +569,7 @@ out_close:
 
 static void usage(const char *progname)
 {
-	fprintf(stderr, "Usage: %s [-b{blocksize}] [-BeklsvxX] file ...\n",
+	fprintf(stderr, "Usage: %s [-b{blocksize}[KMG]] [-BeEksvxX] file ...\n",
 		progname);
 	exit(1);
 }
@@ -495,8 +578,9 @@ int main(int argc, char**argv)
 {
 	char **cpp;
 	int rc = 0, c;
+	int version = 0;
 
-	while ((c = getopt(argc, argv, "Bb::eksvxX")) != EOF) {
+	while ((c = getopt(argc, argv, "Bb::eEkPsvVxX")) != EOF) {
 		switch (c) {
 		case 'B':
 			force_bmap++;
@@ -504,25 +588,44 @@ int main(int argc, char**argv)
 		case 'b':
 			if (optarg) {
 				char *end;
-				blocksize = strtoul(optarg, &end, 0);
+				unsigned long val;
+
+				val = strtoul(optarg, &end, 0);
 				if (end) {
+#if __GNUC_PREREQ (7, 0)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
 					switch (end[0]) {
 					case 'g':
 					case 'G':
-						blocksize *= 1024;
-						/* no break */
+						val *= 1024;
+						/* fall through */
 					case 'm':
 					case 'M':
-						blocksize *= 1024;
-						/* no break */
+						val *= 1024;
+						/* fall through */
 					case 'k':
 					case 'K':
-						blocksize *= 1024;
+						val *= 1024;
 						break;
 					default:
 						break;
 					}
+#if __GNUC_PREREQ (7, 0)
+#pragma GCC diagnostic pop
+#endif
 				}
+				/* Specifying too large a blocksize will just
+				 * shift all extents down to zero length. Even
+				 * 1GB is questionable, but caveat emptor. */
+				if (val > 1024 * 1024 * 1024) {
+					fprintf(stderr,
+						"%s: blocksize %lu over 1GB\n",
+						argv[0], val);
+					usage(argv[0]);
+				}
+				blocksize = val;
 			} else { /* Allow -b without argument for compat. Remove
 				  * this eventually so "-b {blocksize}" works */
 				fprintf(stderr, "%s: -b needs a blocksize "
@@ -531,6 +634,9 @@ int main(int argc, char**argv)
 				blocksize = 1024;
 			}
 			break;
+		case 'E':
+			use_extent_cache++;
+			/* fallthrough */
 		case 'e':
 			force_extent++;
 			if (!verbose)
@@ -539,11 +645,17 @@ int main(int argc, char**argv)
 		case 'k':
 			blocksize = 1024;
 			break;
+		case 'P':
+			precache_file++;
+			break;
 		case 's':
 			sync_file++;
 			break;
 		case 'v':
 			verbose++;
+			break;
+		case 'V':
+			version++;
 			break;
 		case 'x':
 			xattr_map++;
@@ -556,11 +668,22 @@ int main(int argc, char**argv)
 			break;
 		}
 	}
+	if (version) {
+		/* Print version number and exit */
+		printf("filefrag %s (%s)\n", E2FSPROGS_VERSION, E2FSPROGS_DATE);
+		if (version + verbose > 1) {
+			char flags[256] = "";
+
+			print_flags(0xffffffff, flags, sizeof(flags), 0);
+			printf("supported: %s\n", flags);
+		}
+		exit(0);
+	}
 
 	if (optind == argc)
 		usage(argv[0]);
 
-	for (cpp = argv + optind; *cpp != '\0'; cpp++) {
+	for (cpp = argv + optind; *cpp != NULL; cpp++) {
 		int rc2 = frag_report(*cpp);
 
 		if (rc2 < 0 && rc == 0)

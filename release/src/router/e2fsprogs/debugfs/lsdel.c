@@ -71,7 +71,8 @@ static int lsdel_proc(ext2_filsys fs,
 	return 0;
 }
 
-void do_lsdel(int argc, char **argv)
+void do_lsdel(int argc, ss_argv_t argv, int sci_idx EXT2FS_ATTR((unused)),
+	      void *infop EXT2FS_ATTR((unused)))
 {
 	struct lsdel_struct 	lsd;
 	struct deleted_info	*delarray;
@@ -133,7 +134,7 @@ void do_lsdel(int argc, char **argv)
 
 	while (ino) {
 		if ((inode.i_dtime == 0) ||
-		    (secs && ((unsigned) abs(now - secs) > inode.i_dtime)))
+		    (secs && (labs(now - secs) > (long) inode.i_dtime)))
 			goto next;
 
 		lsd.inode = ino;
@@ -141,15 +142,19 @@ void do_lsdel(int argc, char **argv)
 		lsd.free_blocks = 0;
 		lsd.bad_blocks = 0;
 
-		retval = ext2fs_block_iterate3(current_fs, ino,
-					       BLOCK_FLAG_READ_ONLY, block_buf,
-					       lsdel_proc, &lsd);
-		if (retval) {
-			com_err("ls_deleted_inodes", retval,
-				"while calling ext2fs_block_iterate2");
-			goto next;
+		if (ext2fs_inode_has_valid_blocks2(current_fs, &inode)) {
+			retval = ext2fs_block_iterate3(current_fs, ino,
+						       BLOCK_FLAG_READ_ONLY,
+						       block_buf,
+						       lsdel_proc, &lsd);
+			if (retval) {
+				com_err("ls_deleted_inodes", retval,
+					"while calling ext2fs_block_iterate2");
+				goto next;
+			}
 		}
-		if (lsd.free_blocks && !lsd.bad_blocks) {
+		if ((lsd.free_blocks && !lsd.bad_blocks) ||
+		    inode.i_flags & EXT4_INLINE_DATA_FL) {
 			if (num_delarray >= max_delarray) {
 				max_delarray += 50;
 				delarray = realloc(delarray,
@@ -166,7 +171,7 @@ void do_lsdel(int argc, char **argv)
 			delarray[num_delarray].mode = inode.i_mode;
 			delarray[num_delarray].uid = inode_uid(inode);
 			delarray[num_delarray].size = EXT2_I_SIZE(&inode);
-			delarray[num_delarray].dtime = inode.i_dtime;
+			delarray[num_delarray].dtime = (__s32) inode.i_dtime;
 			delarray[num_delarray].num_blocks = lsd.num_blocks;
 			delarray[num_delarray].free_blocks = lsd.free_blocks;
 			num_delarray++;
@@ -193,8 +198,10 @@ void do_lsdel(int argc, char **argv)
 	for (i = 0; i < num_delarray; i++) {
 		fprintf(out, "%6u %6d %6o %6llu %6lld/%6lld %s",
 			delarray[i].ino,
-			delarray[i].uid, delarray[i].mode, delarray[i].size,
-			delarray[i].free_blocks, delarray[i].num_blocks,
+			delarray[i].uid, delarray[i].mode,
+			(unsigned long long) delarray[i].size,
+			(long long) delarray[i].free_blocks,
+			(long long) delarray[i].num_blocks,
 			time_to_string(delarray[i].dtime));
 	}
 	fprintf(out, "%d deleted inodes found.\n", num_delarray);

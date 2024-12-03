@@ -46,13 +46,12 @@ int ext2fs_reserve_super_and_bgd(ext2_filsys fs,
 				 ext2fs_block_bitmap bmap)
 {
 	blk64_t	super_blk, old_desc_blk, new_desc_blk;
-	blk_t	used_blks;
-	int	old_desc_blocks, num_blocks;
+	blk_t	used_blks, old_desc_blocks, num_blocks;
 
 	ext2fs_super_and_bgd_loc2(fs, group, &super_blk,
 				  &old_desc_blk, &new_desc_blk, &used_blks);
 
-	if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG)
+	if (ext2fs_has_feature_meta_bg(fs->super))
 		old_desc_blocks = fs->super->s_first_meta_bg;
 	else
 		old_desc_blocks =
@@ -78,4 +77,29 @@ int ext2fs_reserve_super_and_bgd(ext2_filsys fs,
 	num_blocks -= 2 + fs->inode_blocks_per_group + used_blks;
 
 	return num_blocks  ;
+}
+
+/*
+ * This function reserves the superblock and block group descriptors
+ * for a given block group and returns the number of blocks used by the
+ * super block and group descriptors by looking up the block bitmap.
+ */
+errcode_t ext2fs_reserve_super_and_bgd2(ext2_filsys fs,
+				        dgrp_t group,
+				        ext2fs_block_bitmap bmap,
+				        blk_t *desc_blocks)
+{
+	blk64_t	num_blocks;
+	errcode_t retval = 0;
+
+	ext2fs_reserve_super_and_bgd(fs, group, bmap);
+
+	retval = ext2fs_count_used_blocks(fs,
+					ext2fs_group_first_block2(fs, group),
+					ext2fs_group_last_block2(fs, group),
+					&num_blocks);
+	if (!retval)
+		*desc_blocks = num_blocks;
+
+	return retval;
 }

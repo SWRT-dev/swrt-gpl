@@ -23,8 +23,12 @@
  * %End-Header%
  */
 
+#ifndef _LARGEFILE_SOURCE
 #define _LARGEFILE_SOURCE
+#endif
+#ifndef _LARGEFILE64_SOURCE
 #define _LARGEFILE64_SOURCE
+#endif
 
 #include "config.h"
 #include <fcntl.h>
@@ -110,7 +114,7 @@ static int qcow2_read_l1_table(struct ext2_qcow2_image *img)
 }
 
 static int qcow2_read_l2_table(struct ext2_qcow2_image *img,
-			       ext2_off64_t offset, blk64_t **l2_table)
+			       __u64 offset, blk64_t **l2_table)
 {
 	int fd = img->fd;
 	size_t size;
@@ -127,10 +131,12 @@ static int qcow2_read_l2_table(struct ext2_qcow2_image *img,
 	return 0;
 }
 
-static int qcow2_copy_data(int fdin, int fdout, ext2_off64_t off_in,
-			   ext2_off64_t off_out, void *buf, size_t count)
+static int qcow2_copy_data(int fdin, int fdout, __u64 off_in,
+			   __u64 off_out, void *buf, size_t count)
 {
-	size_t size;
+	ssize_t c1, c2, c;
+	void *ptr;
+	int retries = 10;
 
 	assert(buf);
 
@@ -140,14 +146,24 @@ static int qcow2_copy_data(int fdin, int fdout, ext2_off64_t off_in,
 	if (ext2fs_llseek(fdin, off_in, SEEK_SET) < 0)
 		return errno;
 
-	size = read(fdin, buf, count);
-	if (size != count)
-		return errno;
+	while (count > 0) {
+		errno = 0;
+		c1 = read(fdin, buf, count);
+		if (c1 < 0 || ((c1 == 0) && errno))
+			return errno;
+		if (c1 == 0)
+			break; 	/* EOF */
 
-	size = write(fdout, buf, count);
-	if (size != count)
-		return errno;
-
+		for (ptr = buf, c = c1; c > 0; ptr += c2, c -= c2) {
+			errno = 0;
+			c2 = write(fdout, ptr, c1);
+			if (c2 < 0 || ((c2 == 0) && errno))
+				return errno;
+			if (c2 == 0 && --retries <= 0)
+				break; /* This should never happen...  */
+		}
+		count -= c1;
+	}
 	return 0;
 }
 
@@ -158,10 +174,11 @@ int qcow2_write_raw_image(int qcow2_fd, int raw_fd,
 	struct ext2_qcow2_image img;
 	errcode_t ret = 0;
 	unsigned int l1_index, l2_index;
-	ext2_off64_t offset;
+	__u64 offset;
 	blk64_t *l1_table, *l2_table = NULL;
 	void *copy_buf = NULL;
 	size_t size;
+	unsigned int max_l1_size;
 
 	if (hdr->crypt_method)
 		return -QCOW_ENCRYPTED;
@@ -171,12 +188,21 @@ int qcow2_write_raw_image(int qcow2_fd, int raw_fd,
 	img.l2_cache = NULL;
 	img.l1_table = NULL;
 	img.cluster_bits = ext2fs_be32_to_cpu(hdr->cluster_bits);
+	if (img.cluster_bits < 9 || img.cluster_bits > 31)
+		return -QCOW_CORRUPTED;
 	img.cluster_size = 1 << img.cluster_bits;
 	img.l1_size = ext2fs_be32_to_cpu(hdr->l1_size);
 	img.l1_offset = ext2fs_be64_to_cpu(hdr->l1_table_offset);
 	img.l2_size = 1 << (img.cluster_bits - 3);
 	img.image_size = ext2fs_be64_to_cpu(hdr->size);
 
+	if (img.l1_offset & (img.cluster_size - 1))
+		return -QCOW_CORRUPTED;
+
+	max_l1_size = (img.image_size >> ((2 * img.cluster_bits) - 3)) +
+		img.cluster_size;
+	if (img.l1_size > max_l1_size)
+		return -QCOW_CORRUPTED;
 
 	ret = ext2fs_get_memzero(img.cluster_size, &l2_table);
 	if (ret)
@@ -198,7 +224,7 @@ int qcow2_write_raw_image(int qcow2_fd, int raw_fd,
 	l1_table = img.l1_table;
 	/* Walk through l1 table */
 	for (l1_index = 0; l1_index < img.l1_size; l1_index++) {
-		ext2_off64_t off_out;
+		__u64 off_out;
 
 		offset = ext2fs_be64_to_cpu(l1_table[l1_index]) &
 			 ~QCOW_OFLAG_COPIED;
@@ -224,7 +250,7 @@ int qcow2_write_raw_image(int qcow2_fd, int raw_fd,
 			if (offset == 0)
 				continue;
 
-			off_out = (l1_index * img.l2_size) +
+			off_out = ((__u64)l1_index * img.l2_size) +
 				  l2_index;
 			off_out <<= img.cluster_bits;
 			ret = qcow2_copy_data(qcow2_fd, raw_fd, offset,

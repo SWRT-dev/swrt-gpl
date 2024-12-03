@@ -17,8 +17,6 @@
 #endif
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
-#else
-extern int errno;
 #endif
 #include "ss_internal.h"
 #include <stdio.h>
@@ -102,7 +100,7 @@ static int check_request_table(register ss_request_table *rqtbl, int argc,
 	for (name = request->command_names; *name; name++)
 	    if (!strcmp(*name, string)) {
 		info->current_request = request->command_names[0];
-		(request->function)(argc, (const char *const *) argv,
+		(request->function)(argc, (ss_argv_t) argv,
 				    sci_idx,info->info_ptr);
 		info->current_request = (char *)NULL;
 		return(0);
@@ -171,6 +169,8 @@ int ss_execute_command(int sci_idx, register char *argv[])
 	for (argp = argv; *argp; argp++)
 		argc++;
 	argp = (char **)malloc((argc+1)*sizeof(char *));
+	if (!argp)
+		return(ENOMEM);
 	for (i = 0; i <= argc; i++)
 		argp[i] = argv[i];
 	i = really_execute_command(sci_idx, argc, &argp);

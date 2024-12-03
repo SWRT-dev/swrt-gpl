@@ -11,28 +11,19 @@
  */
 
 extern int	 journal_size;
+extern int	 journal_fc_size;
 extern int	 journal_flags;
 extern char	*journal_device;
 extern char	*journal_location_string;
-
-/*
- * Flags for check_plausibility()
- */
-#define CHECK_BLOCK_DEV	0x0001
-#define CREATE_FILE	0x0002
-#define CHECK_FS_EXIST	0x0004
-#define VERBOSE_CREATE	0x0008
-#define NO_SIZE		0x0010
 
 #ifndef HAVE_STRCASECMP
 extern int strcasecmp (char *s1, char *s2);
 #endif
 extern char *get_progname(char *argv_zero);
 extern void proceed_question(int delay);
-extern int check_plausibility(const char *device, int flags,
-			      int *ret_is_dev);
 extern void parse_journal_opts(const char *opts);
 extern void check_mount(const char *device, int force, const char *type);
-extern unsigned int figure_journal_size(int size, ext2_filsys fs);
+extern void figure_journal_size(struct ext2fs_journal_params *jparams,
+		int requested_j_size, int requested_fc_size, ext2_filsys fs);
 extern void print_check_message(int, unsigned int);
 extern void dump_mmp_msg(struct mmp_struct *mmp, const char *msg);

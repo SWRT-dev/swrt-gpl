@@ -50,6 +50,9 @@ extern int optind;
 #include <setjmp.h>
 #include <time.h>
 #include <limits.h>
+#ifdef HAVE_MBSTOWCS
+#include <wchar.h>
+#endif
 
 #include <sys/time.h>
 #include <sys/ioctl.h>
@@ -59,7 +62,7 @@ extern int optind;
 #include "ext2fs/ext2_io.h"
 #include "ext2fs/ext2_fs.h"
 #include "ext2fs/ext2fs.h"
-#include "nls-enable.h"
+#include "support/nls-enable.h"
 
 #ifndef O_LARGEFILE
 #define O_LARGEFILE 0
@@ -94,7 +97,7 @@ static unsigned int sys_page_size = 4096;
 static void usage(void)
 {
 	fprintf(stderr, _(
-"Usage: %s [-b block_size] [-i input_file] [-o output_file] [-svwnf]\n"
+"Usage: %s [-b block_size] [-i input_file] [-o output_file] [-svwnfBX]\n"
 "       [-c blocks_at_once] [-d delay_factor_between_reads] [-e max_bad_blocks]\n"
 "       [-p num_passes] [-t test_pattern [-t test_pattern [...]]]\n"
 "       device [last_block [first_block]]\n"),
@@ -127,7 +130,7 @@ static void *allocate_buffer(size_t size)
 	void	*ret = 0;
 
 #ifdef HAVE_POSIX_MEMALIGN
-	if (posix_memalign(&ret, sys_page_size, size) < 0)
+	if (posix_memalign(&ret, sys_page_size, size) != 0)
 		ret = 0;
 #else
 #ifdef HAVE_MEMALIGN
@@ -216,6 +219,9 @@ static void print_status(void)
 {
 	struct timeval time_end;
 	char diff_buf[32], line_buf[128];
+#ifdef HAVE_MBSTOWCS
+	wchar_t wline_buf[128];
+#endif
 	int len;
 
 	gettimeofday(&time_end, 0);
@@ -229,7 +235,10 @@ static void print_status(void)
 		       num_write_errors,
 		       num_corruption_errors);
 #ifdef HAVE_MBSTOWCS
-	len = mbstowcs(NULL, line_buf, sizeof(line_buf));
+	mbstowcs(wline_buf, line_buf, sizeof(line_buf));
+	len = wcswidth(wline_buf, sizeof(line_buf));
+	if (len < 0)
+		len = strlen(line_buf); /* Should never happen... */
 #endif
 	fputs(line_buf, stderr);
 	memset(line_buf, '\b', len);
@@ -380,7 +389,7 @@ static int do_read (int dev, unsigned char * buffer, int try, int block_size,
 	/* Try the read */
 	if (d_flag)
 		gettimeofday(&tv1, NULL);
-	got = read (dev, buffer, try * block_size);
+	got = read (dev, buffer, (size_t) try * block_size);
 	if (d_flag)
 		gettimeofday(&tv2, NULL);
 	if (got < 0)
@@ -451,7 +460,7 @@ static int do_write(int dev, unsigned char * buffer, int try, int block_size,
 		com_err (program_name, errno, "%s", _("during seek"));
 
 	/* Try the write */
-	got = write (dev, buffer, try * block_size);
+	got = write (dev, buffer, (size_t) try * block_size);
 	if (got < 0)
 		got = 0;
 	if (got & 511)
@@ -501,9 +510,9 @@ static unsigned int test_ro (int dev, blk_t last_block,
 	} while (next_bad && next_bad < first_block);
 
 	if (t_flag) {
-		blkbuf = allocate_buffer((blocks_at_once + 1) * block_size);
+		blkbuf = allocate_buffer(((size_t) blocks_at_once + 1) * block_size);
 	} else {
-		blkbuf = allocate_buffer(blocks_at_once * block_size);
+		blkbuf = allocate_buffer((size_t) blocks_at_once * block_size);
 	}
 	if (!blkbuf)
 	{
@@ -603,7 +612,7 @@ static unsigned int test_rw (int dev, blk_t last_block,
 	/* set up abend handler */
 	capture_terminate(NULL);
 
-	buffer = allocate_buffer(2 * blocks_at_once * block_size);
+	buffer = allocate_buffer((size_t) 2 * blocks_at_once * block_size);
 	read_buffer = buffer + blocks_at_once * block_size;
 
 	if (!buffer) {
@@ -762,7 +771,7 @@ static unsigned int test_nd (int dev, blk_t last_block,
 		ext2fs_badblocks_list_iterate (bb_iter, &next_bad);
 	} while (next_bad && next_bad < first_block);
 
-	blkbuf = allocate_buffer(3 * blocks_at_once * block_size);
+	blkbuf = allocate_buffer((size_t) 3 * blocks_at_once * block_size);
 	test_record = malloc(blocks_at_once * sizeof(struct saved_blk_record));
 	if (!blkbuf || !test_record) {
 		com_err(program_name, ENOMEM, "%s",
@@ -883,7 +892,6 @@ static unsigned int test_nd (int dev, blk_t last_block,
 			test_ptr += got * block_size;
 			currently_testing += got;
 			if (got != try) {
-				try = 1;
 				if (recover_block == ~0U)
 					recover_block = currently_testing -
 						got + blocks_at_once;
@@ -1028,9 +1036,12 @@ static unsigned int parse_uint(const char *str, const char *descr)
 
 	errno = 0;
 	ret = strtoul(str, &tmp, 0);
-	if (*tmp || errno || (ret > UINT_MAX) ||
-	    (ret == ULONG_MAX && errno == ERANGE)) {
+	if (*tmp || errno) {
 		com_err (program_name, 0, _("invalid %s - %s"), descr, str);
+		exit (1);
+	} else if ((ret > UINT_MAX) ||
+	    (ret == ULONG_MAX && errno == ERANGE)) {
+		com_err (program_name, 0, _("%s too large - %lu"), descr, ret);
 		exit (1);
 	}
 	return ret;
@@ -1044,7 +1055,7 @@ int main (int argc, char ** argv)
 	char * input_file = NULL;
 	char * output_file = NULL;
 	FILE * in = NULL;
-	int block_size = 1024;
+	unsigned int block_size = 1024;
 	unsigned int blocks_at_once = 64;
 	blk64_t last_block, first_block;
 	int num_passes = 0;
@@ -1057,7 +1068,7 @@ int main (int argc, char ** argv)
 				  unsigned int);
 	int open_flag;
 	long sysval;
-	blk64_t inblk;
+	unsigned long long inblk;
 
 	setbuf(stdout, NULL);
 	setbuf(stderr, NULL);
@@ -1085,6 +1096,8 @@ int main (int argc, char ** argv)
 
 	if (argc && *argv)
 		program_name = *argv;
+	else
+		usage();
 	while ((c = getopt (argc, argv, "b:d:e:fi:o:svwnc:p:h:t:BX")) != EOF) {
 		switch (c) {
 		case 'b':
@@ -1192,12 +1205,29 @@ int main (int argc, char ** argv)
 			exit(1);
 		}
 	}
+	if ((block_size == 0) || (block_size > (1 << 24)) ||
+	    (block_size & (block_size - 1))) {
+		com_err(program_name, 0, _("Invalid block size: %u\n"),
+			block_size);
+		exit(1);
+	}
+	if (blocks_at_once == 0) {
+		com_err(program_name, 0, _("Invalid number of blocks: %d\n"),
+			blocks_at_once);
+		exit(1);
+	} else if (((size_t) block_size * blocks_at_once) > SIZE_MAX / 3) {
+		/* maximum usage is in test_nd() */
+		com_err(program_name, 0, _("For block size %d, number of blocks too large: %d\n"),
+			block_size, blocks_at_once);
+		exit(1);
+	}
+
 	if (optind > argc - 1)
 		usage();
 	device_name = argv[optind++];
 	if (optind > argc - 1) {
 		errcode = ext2fs_get_device_size2(device_name,
-						 block_size,
+						 (int) block_size,
 						 &last_block);
 		if (errcode == EXT2_ET_UNIMPLEMENTED) {
 			com_err(program_name, 0, "%s",
@@ -1222,14 +1252,15 @@ int main (int argc, char ** argv)
 	} else first_block = 0;
 	if (first_block >= last_block) {
 	    com_err (program_name, 0, _("invalid starting block (%llu): must be less than %llu"),
-		     first_block, last_block);
+		     (unsigned long long) first_block,
+		     (unsigned long long) last_block);
 	    exit (1);
 	}
 	/* ext2 badblocks file can't handle large values */
 	if (last_block >> 32) {
 		com_err(program_name, EOVERFLOW,
 			_("invalid end block (%llu): must be 32-bit value"),
-			last_block);
+			(unsigned long long) last_block);
 		exit(1);
 	}
 	if (w_flag)
@@ -1326,7 +1357,7 @@ int main (int argc, char ** argv)
 	do {
 		unsigned int bb_count;
 
-		bb_count = test_func(dev, last_block, block_size,
+		bb_count = test_func(dev, last_block, (int) block_size,
 				     first_block, blocks_at_once);
 		if (bb_count)
 			passes_clean = 0;

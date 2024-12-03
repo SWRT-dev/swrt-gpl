@@ -36,12 +36,6 @@
 
 #include "config.h"
 
-#ifdef _WIN32
-#define _WIN32_WINNT 0x0500
-#include <windows.h>
-#define UUID MYUUID
-#endif
-
 #include <stdio.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -165,7 +159,7 @@ main(int argc, char **argv)
 		printf("Warning: not a time-based UUID, so UUID time "
 		       "decoding will likely not work!\n");
 	}
-	printf("UUID time is: (%ld, %ld): %s\n", tv.tv_sec, (long)tv.tv_usec,
+	printf("UUID time is: (%ld, %ld): %s\n", (long)tv.tv_sec, (long)tv.tv_usec,
 	       ctime(&time_reg));
 
 	return 0;

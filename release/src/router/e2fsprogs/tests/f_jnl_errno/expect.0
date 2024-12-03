@@ -26,13 +26,15 @@ Check interval:           0 (<none>)
 Reserved blocks uid:      0
 Reserved blocks gid:      0
 First inode:              11
-Inode size:	          128
+Inode size:               128
 Journal inode:            8
 Default directory hash:   half_md4
 Journal backup:           inode blocks
 Journal features:         (none)
-Journal size:             1024k
-Journal length:           1024
+Total journal size:       1024k
+Total journal blocks:     1024
+Max transaction length:   1024
+Fast commit length:       0
 Journal sequence:         0x00000005
 Journal start:            0
 
@@ -40,7 +42,8 @@ Journal start:            0
 Group 0: (Blocks 1-8191) [ITABLE_ZEROED]
   Primary superblock at 1, Group descriptors at 2-2
   Reserved GDT blocks at 3-33
-  Block bitmap at 34 (+33), Inode bitmap at 50 (+49)
+  Block bitmap at 34 (+33)
+  Inode bitmap at 50 (+49)
   Inode table at 66-321 (+65)
   6862 free blocks, 2037 free inodes, 2 directories, 2037 unused inodes
   Free blocks: 1330-8191

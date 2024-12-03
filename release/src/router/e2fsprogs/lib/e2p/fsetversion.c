@@ -16,8 +16,12 @@
  * 93/10/30	- Creation
  */
 
+#ifndef _LARGEFILE_SOURCE
 #define _LARGEFILE_SOURCE
+#endif
+#ifndef _LARGEFILE64_SOURCE
 #define _LARGEFILE64_SOURCE
+#endif
 
 #include "config.h"
 #if HAVE_ERRNO_H
@@ -27,7 +31,9 @@
 #include <unistd.h>
 #endif
 #include <fcntl.h>
+#if HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
+#endif
 
 #include "e2p.h"
 
@@ -59,7 +65,6 @@ int fsetversion (const char * name, unsigned long version)
    return syscall(SYS_fsctl, name, EXT2_IOC_SETVERSION, &ver, 0);
 #endif
 #else /* ! HAVE_EXT2_IOCTLS */
-	extern int errno;
 	errno = EOPNOTSUPP;
 	return -1;
 #endif /* ! HAVE_EXT2_IOCTLS */

@@ -13,7 +13,7 @@ export LINUXDIR := $(SRCBASE)/linux/linux-5.4.x
 export SDKDIR := $(SDK_DIR_PLATFORM)
 export BUILD := $(shell (gcc -dumpmachine))
 export KERNEL_BINARY=$(LINUXDIR)/vmlinux
-export PLATFORM := arm-musl
+export PLATFORM := aarch64-musl
 export TOOLS := /opt/toolchain-aarch64_cortex-a53+neon-vfpv4_gcc-8.3.0_musl
 export CROSS_COMPILE := $(TOOLS)/bin/aarch64-openwrt-linux-musl-
 export READELF := $(TOOLS)/bin/aarch64-openwrt-linux-musl-readelf
@@ -43,6 +43,53 @@ export CONFIG_QCA=y
 EXTRA_CFLAGS += -DLINUX30
 export CONFIG_LINUX30=y
 
+# Reference to QSDK/include/cmake.mk
+# Set below variable in Makefile and then use the script if need.
+# CMAKE_OPTIONS
+#
+# $(1): CMAKE_BINARY_DIR
+# $(2): CMAKE_SOURCE_DIR
+define owrt_cmake
+$(if $(1),,$(error empty CMAKE_BINARY_DIR!))
+$(if $(2),,$(error empty CMAKE_SOURCE_DIR!))
+[ -e $(1) ] || mkdir -p $(1) ; \
+(cd $(1); \
+	CFLAGS="$(TARGET_CFLAGS) $(EXTRA_CFLAGS)" \
+	CXXFLAGS="$(TARGET_CXXFLAGS) $(EXTRA_CXXFLAGS)" \
+	LDFLAGS="$(TARGET_LDFLAGS) $(EXTRA_LDFLAGS)" \
+	cmake \
+		-DCMAKE_SYSTEM_NAME=Linux \
+		-DCMAKE_SYSTEM_VERSION=1 \
+		-DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_C_FLAGS_RELEASE="-DNDEBUG" \
+		-DCMAKE_CXX_FLAGS_RELEASE="-DNDEBUG" \
+		-DCMAKE_C_COMPILER="$(CROSS_COMPILE)gcc" \
+		-DCMAKE_C_COMPILER_ARG1="" \
+		-DCMAKE_CXX_COMPILER="$(CROSS_COMPILE)g++" \
+		-DCMAKE_CXX_COMPILER_ARG1="" \
+		-DCMAKE_ASM_COMPILER="$(CROSS_COMPILE)gcc" \
+		-DCMAKE_ASM_COMPILER_ARG1="" \
+		-DCMAKE_EXE_LINKER_FLAGS:STRING="-L$(STAGEDIR)/usr/lib -L$(STAGEDIR)/lib -L$(TOOLS)/usr/lib -L$(TOOLS)/lib -fPIC -znow -zrelro" \
+		-DCMAKE_MODULE_LINKER_FLAGS:STRING="-L$(STAGEDIR)/usr/lib -L$(STAGEDIR)/lib -L$(TOOLS)/usr/lib -L$(TOOLS)/lib -fPIC -znow -zrelro -Wl,-Bsymbolic-functions" \
+		-DCMAKE_SHARED_LINKER_FLAGS:STRING="-L$(STAGEDIR)/usr/lib -L$(STAGEDIR)/lib -L$(TOOLS)/usr/lib -L$(TOOLS)/lib -fPIC -znow -zrelro -Wl,-Bsymbolic-functions" \
+		-DCMAKE_AR="$(CROSS_COMPILE)gcc-ar" \
+		-DCMAKE_NM="$(CROSS_COMPILE)gcc-nm" \
+		-DCMAKE_RANLIB="$(CROSS_COMPILE)gcc-ranlib" \
+		-DCMAKE_FIND_ROOT_PATH="$(STAGEDIR)/usr;$(TOOLS)" \
+		-DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=BOTH \
+		-DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+		-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
+		-DCMAKE_STRIP=: \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		-DDL_LIBRARY=$(STAGEDIR) \
+		-DCMAKE_PREFIX_PATH=$(STAGEDIR) \
+		-DCMAKE_SKIP_RPATH=TRUE \
+		$(CMAKE_OPTIONS) \
+	$(2) \
+)
+endef
+
 define platformRouterOptions
 	@( \
 	sed -i "/RTCONFIG_QCA\>/d" $(1); \
@@ -62,8 +109,8 @@ define platformRouterOptions
 		sed -i "/RTCONFIG_DUAL_TRX2/d" $(1); \
 		echo "# RTCONFIG_DUAL_TRX2 is not set" >>$(1); \
 	fi; \
-	sed -i "/RTCONFIG_SOC_IPQ8074/d" $(1); \
-	echo "RTCONFIG_SOC_IPQ8074=y" >>$(1); \
+	sed -i "/RTCONFIG_SOC_IPQ50XX/d" $(1); \
+	echo "RTCONFIG_SOC_IPQ50XX=y" >>$(1); \
 	sed -i "/RTCONFIG_SINGLE_HOSTAPD\>/d" $(1); \
 	echo "RTCONFIG_SINGLE_HOSTAPD=y" >>$(1); \
 	sed -i "/RTCONFIG_MFP\>/d" $(1); \
@@ -72,30 +119,16 @@ define platformRouterOptions
 	echo "RTCONFIG_QCA_ARM=y" >>$(1); \
 	sed -i "/RTCONFIG_32BYTES_ODMPID/d" $(1); \
 	echo "RTCONFIG_32BYTES_ODMPID=y" >>$(1); \
-	if [ "$(BUILD_NAME)" != "RAX120" ] ; then \
-		sed -i "/RTCONFIG_FITFDT/d" $(1); \
-		echo "# RTCONFIG_FITFDT is not set" >>$(1); \
+	sed -i "/RTCONFIG_FITFDT/d" $(1); \
+	echo "RTCONFIG_FITFDT=y" >>$(1); \
+	if [ "$(QCA_VAP_LOCALMAC)" = "y" ]; then \
+		sed -i "/RTCONFIG_QCA_VAP_LOCALMAC/d" $(1); \
+		echo "RTCONFIG_QCA_VAP_LOCALMAC=y" >>$(1); \
 	fi; \
-	if [ "$(WIFI_CHIP)" = "BEELINER" ] ; then \
-		sed -i "/RTCONFIG_WIFI_QCA9990_QCA9990/d" $(1); \
-		echo "RTCONFIG_WIFI_QCA9990_QCA9990=y" >>$(1); \
-		sed -i "/RTCONFIG_VHT80_80/d" $(1); \
-		echo "RTCONFIG_VHT80_80=y" >>$(1); \
-	fi; \
-	if [ "$(WIFI_CHIP)" = "CASCADE" ] ; then \
-		sed -i "/RTCONFIG_WIFI_QCA9994_QCA9994/d" $(1); \
-		echo "RTCONFIG_WIFI_QCA9994_QCA9994=y" >>$(1); \
-		sed -i "/RTCONFIG_VHT80_80/d" $(1); \
-		echo "RTCONFIG_VHT80_80=y" >>$(1); \
-	fi; \
-	if [ "$(WIFI_CHIP)" = "QCN50X4" ] ; then \
-		sed -i "/RTCONFIG_WIFI_QCN5024_QCN5054/d" $(1); \
-		echo "RTCONFIG_WIFI_QCN5024_QCN5054=y" >>$(1); \
-		sed -i "/RTCONFIG_VHT80_80/d" $(1); \
-		echo "# RTCONFIG_VHT80_80 is not set" >>$(1); \
-		sed -i "/RTCONFIG_QCA_BIGRATE_WIFI\>/d" $(1); \
-		echo "RTCONFIG_QCA_BIGRATE_WIFI=y" >>$(1); \
-	fi; \
+	sed -i "/RTCONFIG_VHT80_80/d" $(1); \
+	echo "# RTCONFIG_VHT80_80 is not set" >>$(1); \
+	sed -i "/RTCONFIG_QCA_BIGRATE_WIFI\>/d" $(1); \
+	echo "RTCONFIG_QCA_BIGRATE_WIFI=y" >>$(1); \
 	sed -i "/RTCONFIG_VHT160/d" $(1); \
 	if [ "$(BW160M)" = "y" ]; then \
 		echo "RTCONFIG_VHT160=y" >>$(1); \
@@ -152,7 +185,7 @@ endef
 
 define platformKernelConfig
 	@( \
-	if [ "$(IPQ807X)" = "y" ] ; then \
+	if [ "$(IPQ50XX)" = "y" ] ; then \
 		sed -i "/CONFIG_BRIDGE_NETFILTER/d" $(1); \
 		echo "CONFIG_BRIDGE_NETFILTER=y" >>$(1); \
 		sed -i "/CONFIG_NETFILTER_XT_TARGET_TPROXY/d" $(1); \
@@ -187,14 +220,12 @@ define platformKernelConfig
 		echo "CONFIG_PPS=m" >>$(1); \
 		sed -i "/CONFIG_PTP_1588_CLOCK/d" $(1); \
 		echo "CONFIG_PTP_1588_CLOCK=m" >>$(1); \
-		sed -i "/CONFIG_PINCTRL_IPQ807x/d" $(1); \
-		echo "CONFIG_PINCTRL_IPQ807x=y" >>$(1); \
-		sed -i "/CONFIG_IPQ_ADSS_807x/d" $(1); \
-		echo "CONFIG_IPQ_ADSS_807x=y" >>$(1); \
-		sed -i "/CONFIG_IPQ_APSS_807x/d" $(1); \
-		echo "CONFIG_IPQ_APSS_807x=y" >>$(1); \
-		sed -i "/CONFIG_IPQ_GCC_807x/d" $(1); \
-		echo "CONFIG_IPQ_GCC_807x=y" >>$(1); \
+		sed -i "/CONFIG_PINCTRL_IPQ5018/d" $(1); \
+		echo "CONFIG_PINCTRL_IPQ5018=y" >>$(1); \
+		sed -i "/CONFIG_IPQ_APSS_5018/d" $(1); \
+		echo "CONFIG_IPQ_APSS_5018=y" >>$(1); \
+		sed -i "/CONFIG_IPQ_GCC_5018/d" $(1); \
+		echo "CONFIG_IPQ_GCC_5018=y" >>$(1); \
 		sed -i "/CONFIG_PHY_QCA_PCIE_QMP/d" $(1); \
 		echo "CONFIG_PHY_QCA_PCIE_QMP=y" >>$(1); \
 		sed -i "/CONFIG_CRYPTO_CCM/d" $(1); \
@@ -318,26 +349,12 @@ define platformKernelConfig
 			echo "CONFIG_NET_L3_MASTER_DEV=y" >>$(1); \
 			sed -i "/CONFIG_CNSS2_UCODE_DUMP\>/d" $(1); \
 			echo "CONFIG_CNSS2_UCODE_DUMP=y" >>$(1); \
-			if [ "$(WIGIG)" = "y" ] ; then \
-				sed -i "/CONFIG_ATH_CARDS\>/d" $(1); \
-				echo "CONFIG_ATH_CARDS=m" >>$(1); \
-				sed -i "/CONFIG_WIL6210/d" $(1); \
-				echo "CONFIG_WIL6210=m" >>$(1); \
-				echo "CONFIG_WIL6210_ISR_COR=y" >>$(1); \
-				sed -i "/CONFIG_WIL6210_NSS_SUPPORT\>/d" $(1); \
-				echo "# CONFIG_WIL6210_NSS_SUPPORT is not set" >>$(1); \
-				echo "CONFIG_WIL6210_DEBUGFS=y" >>$(1); \
-				echo "# CONFIG_WIL6210_TRACING is not set" >>$(1); \
-				echo "CONFIG_WIL6210_WRITE_IOCTL=y" >>$(1); \
-			fi; \
 		fi; \
 		if [ -n "$(findstring $(_BUILD_NAME_),$(IPQ807X_MODEL_LIST))" ] ; then \
 			sed -i "/CONFIG_HAVE_GCC_PLUGINS\>/d" $(1); \
 			echo "CONFIG_HAVE_GCC_PLUGINS=y" >>$(1); \
 			sed -i "/CONFIG_IPC_ROUTER\>/d" $(1); \
 			echo "# CONFIG_IPC_ROUTER is not set" >>$(1); \
-			sed -i "/CONFIG_IPQ807X_REMOTEPROC\>/d" $(1); \
-			echo "# CONFIG_IPQ807X_REMOTEPROC is not set" >>$(1); \
 			sed -i "/CONFIG_IPQ_REMOTEPROC_ADSP\>/d" $(1); \
 			echo "# CONFIG_IPQ_REMOTEPROC_ADSP is not set" >>$(1); \
 			sed -i "/CONFIG_MSM_GLINK\>/d" $(1); \
@@ -436,10 +453,6 @@ define platformKernelConfig
 		elif [ "$(RAX120)" = "y" ] ; then \
 			sed -i "/CONFIG_MODEL_RAX120/d" $(1); \
 			echo "CONFIG_MODEL_RAX120=y" >>$(1); \
-		fi; \
-		if [ "$(WIGIG)" = "y" ] ; then \
-			sed -i "/CONFIG_MSM_NUM_PCIE/d" $(1); \
-			echo "CONFIG_MSM_NUM_PCIE=3" >>$(1); \
 		fi; \
 		for chip in $(SWITCH_CHIP_ID_POOL) ; do \
 			sed -i "/CONFIG_SWITCH_$${chip}\>/d" $(1); \
@@ -687,17 +700,6 @@ endef
 # $1: $(TARGETDIR)
 # $2: Top dir of kernel modules. $(TARGETDIR)/lib/modules/x.y.z
 define platformGen_Target
-	@( \
-	if [ "$(IPQ807X)" = "y" ] ; then \
-		if [ "$(WIGIG)" = "y" ] ; then \
-			if [ -e $(2)/wil6210.ko -a \
-			     -e $(2)/kernel/drivers/net/wireless/ath/wil6210/wil6210.ko ] ; then \
-				$(RM) -f $(2)/kernel/drivers/net/wireless/ath/wil6210/wil6210.ko ; \
-				sed -ie "/kernel\/drivers\/net\/wireless\/ath\/wil6210/d" $(2)/modules.dep ; $(RM) -f $(2)/modules.depe ; \
-			fi; \
-		fi; \
-	fi; \
-	)
 endef
 
 export PARALLEL_BUILD := -j$(shell grep -c '^processor' /proc/cpuinfo)

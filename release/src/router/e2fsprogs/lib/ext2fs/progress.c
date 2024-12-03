@@ -19,6 +19,12 @@
 static char spaces[80], backspaces[80];
 static time_t last_update;
 
+struct ext2fs_progress_ops ext2fs_numeric_progress_ops = {
+	.init		= ext2fs_numeric_progress_init,
+	.update		= ext2fs_numeric_progress_update,
+	.close		= ext2fs_numeric_progress_close,
+};
+
 static int int_log10(unsigned int arg)
 {
 	int	l;
@@ -47,7 +53,7 @@ void ext2fs_numeric_progress_init(ext2_filsys fs,
 	backspaces[sizeof(backspaces)-1] = 0;
 
 	memset(progress, 0, sizeof(*progress));
-	if (getenv("E2FSPROGS_SKIP_PROGRESS"))
+	if (ext2fs_safe_getenv("E2FSPROGS_SKIP_PROGRESS"))
 		progress->skip_progress++;
 
 
@@ -79,8 +85,8 @@ void ext2fs_numeric_progress_update(ext2_filsys fs,
 		return;
 	last_update = now;
 
-	printf("%*llu/%*llu", progress->log_max, val,
-	       progress->log_max, progress->max);
+	printf("%*llu/%*llu", progress->log_max, (unsigned long long) val,
+	       progress->log_max, (unsigned long long) progress->max);
 	fprintf(stdout, "%.*s", (2*progress->log_max)+1, backspaces);
 }
 

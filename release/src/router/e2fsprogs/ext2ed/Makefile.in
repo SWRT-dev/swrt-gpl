@@ -8,6 +8,7 @@ VPATH = @srcdir@
 top_builddir = ..
 my_dir = ext2ed
 INSTALL = @INSTALL@
+MKDIR_P = @MKDIR_P@
 
 @MCONFIG@
 
@@ -34,6 +35,7 @@ DOCS=   doc/ext2ed-design.pdf doc/user-guide.pdf doc/ext2fs-overview.pdf \
 .c.o:
 	$(CC) -c $(ALL_CFLAGS) $< -o $@
 	$(CHECK_CMD) $(ALL_CFLAGS) $<
+	$(CPPCHECK_CMD) $(CPPFLAGS) $<
 
 .SUFFIXES: .sgml .ps .pdf .html
 

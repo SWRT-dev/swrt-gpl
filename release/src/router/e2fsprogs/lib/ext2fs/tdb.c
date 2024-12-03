@@ -26,7 +26,7 @@ Last Changed Date: 2007-06-22 13:36:10 -0400 (Fri, 22 Jun 2007)
 
    You should have received a copy of the GNU Lesser General Public
    License along with this library; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
 #ifdef CONFIG_STAND_ALONE
@@ -36,7 +36,9 @@ Last Changed Date: 2007-06-22 13:36:10 -0400 (Fri, 22 Jun 2007)
 #define HAVE_UTIME_H
 #define HAVE_UTIME
 #endif
+#ifndef __FreeBSD__
 #define _XOPEN_SOURCE 600
+#endif
 
 #include "config.h"
 #include <unistd.h>
@@ -63,6 +65,12 @@ Last Changed Date: 2007-06-22 13:36:10 -0400 (Fri, 22 Jun 2007)
 #include <sys/mman.h>
 #endif
 
+#ifdef __GNUC__
+#define EXT2FS_ATTR(x) __attribute__(x)
+#else
+#define EXT2FS_ATTR(x)
+#endif
+
 #ifndef MAP_FILE
 #define MAP_FILE 0
 #endif
@@ -77,12 +85,10 @@ static char *rep_strdup(const char *s)
 {
 	char *ret;
 	int length;
+
 	if (!s)
 		return NULL;
-
-	if (!length)
-		length = strlen(s);
-
+	length = strlen(s);
 	ret = malloc(length + 1);
 	if (ret) {
 		strncpy(ret, s, length);
@@ -246,6 +252,7 @@ struct tdb_context {
 	int page_size;
 	int max_dead_records;
 	bool have_transaction_lock;
+	tdb_len_t real_map_size; /* how much space has been mapped */
 };
 
 
@@ -255,6 +262,7 @@ struct tdb_context {
 static int tdb_munmap(struct tdb_context *tdb);
 static void tdb_mmap(struct tdb_context *tdb);
 static int tdb_lock(struct tdb_context *tdb, int list, int ltype);
+int tdb_lock_nonblock(struct tdb_context *tdb, int list, int ltype);
 static int tdb_unlock(struct tdb_context *tdb, int list, int ltype);
 static int tdb_brlock(struct tdb_context *tdb, tdb_off_t offset, int rw_type, int lck_type, int probe, size_t len);
 static int tdb_transaction_lock(struct tdb_context *tdb, int ltype);
@@ -409,7 +417,7 @@ static int _tdb_lock(struct tdb_context *tdb, int list, int ltype, int op)
 
 	/* a global lock allows us to avoid per chain locks */
 	if (tdb->global_lock.count &&
-	    (ltype == tdb->global_lock.ltype || ltype == F_RDLCK)) {
+	    ((u32)ltype == tdb->global_lock.ltype || ltype == F_RDLCK)) {
 		return 0;
 	}
 
@@ -504,7 +512,7 @@ int tdb_unlock(struct tdb_context *tdb, int list, int ltype)
 
 	/* a global lock allows us to avoid per chain locks */
 	if (tdb->global_lock.count &&
-	    (ltype == tdb->global_lock.ltype || ltype == F_RDLCK)) {
+	    ((u32)ltype == tdb->global_lock.ltype || ltype == F_RDLCK)) {
 		return 0;
 	}
 
@@ -625,7 +633,7 @@ static int _tdb_lockall(struct tdb_context *tdb, int ltype, int op)
 	if (tdb->read_only || tdb->traverse_read)
 		return TDB_ERRCODE(TDB_ERR_LOCK, -1);
 
-	if (tdb->global_lock.count && tdb->global_lock.ltype == ltype) {
+	if (tdb->global_lock.count && tdb->global_lock.ltype == (u32)ltype) {
 		tdb->global_lock.count++;
 		return 0;
 	}
@@ -669,7 +677,8 @@ static int _tdb_unlockall(struct tdb_context *tdb, int ltype)
 		return TDB_ERRCODE(TDB_ERR_LOCK, -1);
 	}
 
-	if (tdb->global_lock.ltype != ltype || tdb->global_lock.count == 0) {
+	if (tdb->global_lock.ltype != (u32)ltype ||
+	    tdb->global_lock.count == 0) {
 		return TDB_ERRCODE(TDB_ERR_LOCK, -1);
 	}
 
@@ -709,7 +718,7 @@ int tdb_lockall_unmark(struct tdb_context *tdb)
 	return _tdb_unlockall(tdb, F_WRLCK | TDB_MARK_LOCK);
 }
 
-/* lock entire database with write lock - nonblocking varient */
+/* lock entire database with write lock - nonblocking variant */
 int tdb_lockall_nonblock(struct tdb_context *tdb)
 {
 	return _tdb_lockall(tdb, F_WRLCK, F_SETLK);
@@ -727,7 +736,7 @@ int tdb_lockall_read(struct tdb_context *tdb)
 	return _tdb_lockall(tdb, F_RDLCK, F_SETLKW);
 }
 
-/* lock entire database with read lock - nonblock varient */
+/* lock entire database with read lock - nonblock variant */
 int tdb_lockall_read_nonblock(struct tdb_context *tdb)
 {
 	return _tdb_lockall(tdb, F_RDLCK, F_SETLK);
@@ -852,7 +861,7 @@ static int tdb_oob(struct tdb_context *tdb, tdb_off_t len, int probe)
 		return TDB_ERRCODE(TDB_ERR_IO, -1);
 	}
 
-	if (st.st_size < (size_t)len) {
+	if (st.st_size < (off_t)len) {
 		if (!probe) {
 			/* Ensure ecode is set for log fn. */
 			tdb->ecode = TDB_ERR_IO;
@@ -970,9 +979,10 @@ int tdb_munmap(struct tdb_context *tdb)
 
 #ifdef HAVE_MMAP
 	if (tdb->map_ptr) {
-		int ret = munmap(tdb->map_ptr, tdb->map_size);
+		int ret = munmap(tdb->map_ptr, tdb->real_map_size);
 		if (ret != 0)
 			return ret;
+		tdb->real_map_size = 0;
 	}
 #endif
 	tdb->map_ptr = NULL;
@@ -995,10 +1005,12 @@ void tdb_mmap(struct tdb_context *tdb)
 		 */
 
 		if (tdb->map_ptr == MAP_FAILED) {
+			tdb->real_map_size = 0;
 			tdb->map_ptr = NULL;
 			TDB_LOG((tdb, TDB_DEBUG_WARNING, "tdb_mmap failed for size %d (%s)\n",
 				 tdb->map_size, strerror(errno)));
 		}
+		tdb->real_map_size = tdb->map_size;
 	} else {
 		tdb->map_ptr = NULL;
 	}
@@ -1270,7 +1282,7 @@ void tdb_io_init(struct tdb_context *tdb)
     although once a transaction is started then an exclusive lock is
     gained until the transaction is committed or cancelled
 
-  - the commit stategy involves first saving away all modified data
+  - the commit strategy involves first saving away all modified data
     into a linearised buffer in the transaction recovery area, then
     marking the transaction recovery area with a magic value to
     indicate a valid recovery record. In total 4 fsync/msync calls are
@@ -1533,7 +1545,8 @@ static void transaction_next_hash_chain(struct tdb_context *tdb, u32 *chain)
 /*
   out of bounds check during a transaction
 */
-static int transaction_oob(struct tdb_context *tdb, tdb_off_t len, int probe)
+static int transaction_oob(struct tdb_context *tdb, tdb_off_t len,
+			   int probe EXT2FS_ATTR((unused)))
 {
 	if (len <= tdb->map_size) {
 		return 0;
@@ -1559,8 +1572,12 @@ static int transaction_expand_file(struct tdb_context *tdb, tdb_off_t size,
 /*
   brlock during a transaction - ignore them
 */
-static int transaction_brlock(struct tdb_context *tdb, tdb_off_t offset,
-			      int rw_type, int lck_type, int probe, size_t len)
+static int transaction_brlock(struct tdb_context *tdb EXT2FS_ATTR((unused)),
+			      tdb_off_t offset EXT2FS_ATTR((unused)),
+			      int rw_type EXT2FS_ATTR((unused)),
+			      int lck_type EXT2FS_ATTR((unused)),
+			      int probe EXT2FS_ATTR((unused)),
+			      size_t len EXT2FS_ATTR((unused)))
 {
 	return 0;
 }
@@ -2182,6 +2199,7 @@ int tdb_transaction_recover(struct tdb_context *tdb)
 				   rec.data_len, 0) == -1) {
 		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction_recover: failed to read recovery data\n"));
 		tdb->ecode = TDB_ERR_IO;
+		free(data);
 		return -1;
 	}
 
@@ -2317,7 +2335,7 @@ static int update_tailer(struct tdb_context *tdb, tdb_off_t offset,
 }
 
 /* Add an element into the freelist. Merge adjacent records if
-   neccessary. */
+   necessary. */
 int tdb_free(struct tdb_context *tdb, tdb_off_t offset, struct list_struct *rec)
 {
 	tdb_off_t right, left;
@@ -2668,7 +2686,7 @@ static int tdb_next_lock(struct tdb_context *tdb, struct tdb_traverse_lock *tloc
 			   that we have done at least one fcntl lock at the
 			   start of a search to guarantee that memory is
 			   coherent on SMP systems. If records are added by
-			   others during the search then thats OK, and we
+			   others during the search then that's OK, and we
 			   could possibly miss those with this trick, but we
 			   could miss them anyway without this trick, so the
 			   semantics don't change.
@@ -2756,7 +2774,7 @@ static int tdb_traverse_internal(struct tdb_context *tdb,
 	struct list_struct rec;
 	int ret, count = 0;
 
-	/* This was in the initializaton, above, but the IRIX compiler
+	/* This was in the initialization, above, but the IRIX compiler
 	 * did not like it.  crh
 	 */
 	tl->next = tdb->travlocks.next;
@@ -3002,7 +3020,7 @@ static int tdb_dump_chain(struct tdb_context *tdb, int i)
 void tdb_dump_all(struct tdb_context *tdb)
 {
 	int i;
-	for (i=0;i<tdb->header.hash_size;i++) {
+	for (i = 0; i < (int)tdb->header.hash_size; i++) {
 		tdb_dump_chain(tdb, i);
 	}
 	printf("freelist:\n");
@@ -3071,9 +3089,10 @@ void tdb_increment_seqnum_nonblock(struct tdb_context *tdb)
 	/* we ignore errors from this, as we have no sane way of
 	   dealing with them.
 	*/
-	tdb_ofs_read(tdb, TDB_SEQNUM_OFS, &seqnum);
+	if (tdb_ofs_read(tdb, TDB_SEQNUM_OFS, &seqnum) == -1)
+		return;
 	seqnum++;
-	tdb_ofs_write(tdb, TDB_SEQNUM_OFS, &seqnum);
+	(void) tdb_ofs_write(tdb, TDB_SEQNUM_OFS, &seqnum);
 }
 
 /*
@@ -3095,7 +3114,8 @@ static void tdb_increment_seqnum(struct tdb_context *tdb)
 	tdb_brlock(tdb, TDB_SEQNUM_OFS, F_UNLCK, F_SETLKW, 1, 1);
 }
 
-static int tdb_key_compare(TDB_DATA key, TDB_DATA data, void *private_data)
+static int tdb_key_compare(TDB_DATA key, TDB_DATA data,
+			   void *private_data EXT2FS_ATTR((unused)))
 {
 	return memcmp(data.dptr, key.dptr, data.dsize);
 }
@@ -3673,7 +3693,8 @@ int tdb_get_seqnum(struct tdb_context *tdb)
 {
 	tdb_off_t seqnum=0;
 
-	tdb_ofs_read(tdb, TDB_SEQNUM_OFS, &seqnum);
+	if (tdb_ofs_read(tdb, TDB_SEQNUM_OFS, &seqnum) == -1)
+		return 0;
 	return seqnum;
 }
 
@@ -3799,7 +3820,9 @@ struct tdb_context *tdb_open(const char *name, int hash_size, int tdb_flags,
 
 /* a default logging function */
 static void null_log_fn(struct tdb_context *tdb, enum tdb_debug_level level, const char *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
-static void null_log_fn(struct tdb_context *tdb, enum tdb_debug_level level, const char *fmt, ...)
+static void null_log_fn(struct tdb_context *tdb EXT2FS_ATTR((unused)),
+			enum tdb_debug_level level EXT2FS_ATTR((unused)),
+			const char *fmt EXT2FS_ATTR((unused)), ...)
 {
 }
 
@@ -3893,7 +3916,8 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 	}
 
 	if (read(tdb->fd, &tdb->header, sizeof(tdb->header)) != sizeof(tdb->header)
-	    || strcmp(tdb->header.magic_food, TDB_MAGIC_FOOD) != 0
+	    || memcmp(tdb->header.magic_food, TDB_MAGIC_FOOD,
+		      sizeof(TDB_MAGIC_FOOD)) != 0
 	    || (tdb->header.version != TDB_VERSION
 		&& !(rev = (tdb->header.version==TDB_BYTEREV(TDB_VERSION))))) {
 		/* its not a valid database - possibly initialise it */
@@ -4045,7 +4069,7 @@ int tdb_close(struct tdb_context *tdb)
 	return ret;
 }
 
-/* register a loging function */
+/* register a logging function */
 void tdb_set_logging_function(struct tdb_context *tdb,
                               const struct tdb_logging_context *log_ctx)
 {
@@ -4136,5 +4160,15 @@ int tdb_reopen_all(int parent_longlived)
 			return -1;
 	}
 
+	return 0;
+}
+
+/**
+ * Flush a database file from the page cache.
+ **/
+int tdb_flush(struct tdb_context *tdb)
+{
+	if (tdb->fd != -1)
+		return fsync(tdb->fd);
 	return 0;
 }

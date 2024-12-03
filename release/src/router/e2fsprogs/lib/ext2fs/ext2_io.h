@@ -12,6 +12,8 @@
 #ifndef _EXT2FS_EXT2_IO_H
 #define _EXT2FS_EXT2_IO_H
 
+#include <ext2fs/ext2_types.h>
+
 /*
  * ext2_loff_t is defined here since unix_io.c needs it.
  */
@@ -31,6 +33,9 @@ typedef struct struct_io_stats *io_stats;
 #define CHANNEL_FLAGS_WRITETHROUGH	0x01
 #define CHANNEL_FLAGS_DISCARD_ZEROES	0x02
 #define CHANNEL_FLAGS_BLOCK_DEVICE	0x04
+#define CHANNEL_FLAGS_THREADS		0x08
+#define CHANNEL_FLAGS_NODISCARD		0x10
+#define CHANNEL_FLAGS_NOZEROOUT		0x20
 
 #define io_channel_discard_zeroes_data(i) (i->flags & CHANNEL_FLAGS_DISCARD_ZEROES)
 
@@ -54,7 +59,7 @@ struct struct_io_channel {
 				       int actual_bytes_written,
 				       errcode_t error);
 	int		refcount;
-	int		flags;
+	unsigned int	flags;
 	long		reserved[14];
 	void		*private_data;
 	void		*app_data;
@@ -90,12 +95,20 @@ struct struct_io_manager {
 					int count, const void *data);
 	errcode_t (*discard)(io_channel channel, unsigned long long block,
 			     unsigned long long count);
-	long	reserved[16];
+	errcode_t (*cache_readahead)(io_channel channel,
+				     unsigned long long block,
+				     unsigned long long count);
+	errcode_t (*zeroout)(io_channel channel, unsigned long long block,
+			     unsigned long long count);
+	long	reserved[14];
 };
 
 #define IO_FLAG_RW		0x0001
 #define IO_FLAG_EXCLUSIVE	0x0002
 #define IO_FLAG_DIRECT_IO	0x0004
+#define IO_FLAG_FORCE_BOUNCE	0x0008
+#define IO_FLAG_THREADS		0x0010
+#define IO_FLAG_NOCACHE		0x0020
 
 /*
  * Convenience functions....
@@ -122,11 +135,29 @@ extern errcode_t io_channel_write_blk64(io_channel channel,
 extern errcode_t io_channel_discard(io_channel channel,
 				    unsigned long long block,
 				    unsigned long long count);
+extern errcode_t io_channel_zeroout(io_channel channel,
+				    unsigned long long block,
+				    unsigned long long count);
 extern errcode_t io_channel_alloc_buf(io_channel channel,
 				      int count, void *ptr);
+extern errcode_t io_channel_cache_readahead(io_channel io,
+					    unsigned long long block,
+					    unsigned long long count);
 
+#ifdef _WIN32
+/* windows_io.c */
+extern io_manager windows_io_manager;
+#define default_io_manager windows_io_manager
+#else
 /* unix_io.c */
 extern io_manager unix_io_manager;
+extern io_manager unixfd_io_manager;
+#define default_io_manager unix_io_manager
+#endif
+
+/* sparse_io.c */
+extern io_manager sparse_io_manager;
+extern io_manager sparsefd_io_manager;
 
 /* undo_io.c */
 extern io_manager undo_io_manager;

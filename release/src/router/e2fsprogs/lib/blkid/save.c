@@ -27,6 +27,10 @@
 #endif
 #include "blkidP.h"
 
+#ifdef _WIN32
+#include "windows.h"
+#endif
+
 static int save_dev(blkid_dev dev, FILE *file)
 {
 	struct list_head *p;
@@ -102,7 +106,11 @@ int blkid_flush_cache(blkid_cache cache)
 				file = fdopen(fd, "w");
 				opened = tmp;
 			}
+#ifndef _WIN32
 			fchmod(fd, 0644);
+#else
+			chmod(tmp, 0644);
+#endif
 		}
 	}
 
@@ -146,7 +154,15 @@ int blkid_flush_cache(blkid_cache cache)
 			if (backup) {
 				sprintf(backup, "%s.old", filename);
 				unlink(backup);
+#if defined(__GNUC__) && __GNUC__ >= 5
+/* explicit (void) cast is not enough with glibc and _FORTIFY_SOURCE */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result"
+#endif
 				(void) link(filename, backup);
+#if defined(__GNUC__) && __GNUC__ >= 5
+#pragma GCC diagnostic pop
+#endif
 				free(backup);
 			}
 			if (rename(opened, filename) < 0)

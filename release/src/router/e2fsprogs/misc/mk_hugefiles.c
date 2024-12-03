@@ -2,12 +2,8 @@
  * mk_hugefiles.c -- create huge files
  */
 
-#define _XOPEN_SOURCE 600 /* for inclusion of PATH_MAX in Solaris */
-#define _BSD_SOURCE	  /* for makedev() and major() */
-
 #include "config.h"
 #include <stdio.h>
-#include <stdarg.h>
 #include <string.h>
 #include <strings.h>
 #include <fcntl.h>
@@ -31,15 +27,18 @@ extern int optind;
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
 #endif
+#ifdef HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
+#endif
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <libgen.h>
-#include <limits.h>
-#include <blkid/blkid.h>
 #ifdef HAVE_SYS_SYSMACROS_H
 #include <sys/sysmacros.h>
 #endif
+#include <libgen.h>
+#include <limits.h>
+#include <blkid/blkid.h>
+
 #include "ext2fs/ext2_fs.h"
 #include "ext2fs/ext2fsP.h"
 #include "et/com_err.h"
@@ -47,9 +46,9 @@ extern int optind;
 #include "e2p/e2p.h"
 #include "ext2fs/ext2fs.h"
 #include "util.h"
-#include "profile.h"
-#include "prof_err.h"
-#include "nls-enable.h"
+#include "support/profile.h"
+#include "support/prof_err.h"
+#include "support/nls-enable.h"
 #include "mke2fs.h"
 
 static int uid;
@@ -64,141 +63,30 @@ static char *fn_buf;
 static char *fn_numbuf;
 int zero_hugefile = 1;
 
-#define SYSFS_PATH_LEN 256
-typedef char sysfs_path_t[SYSFS_PATH_LEN];
-
-#ifndef HAVE_SNPRINTF
-/*
- * We are very careful to avoid needing to worry about buffer
- * overflows, so we don't really need to use snprintf() except as an
- * additional safety check.  So if snprintf() is not present, it's
- * safe to fall back to vsprintf().  This provides portability since
- * vsprintf() is guaranteed by C89, while snprintf() is only
- * guaranteed by C99 --- which for example, Microsoft Visual Studio
- * has *still* not bothered to implement.  :-/  (Not that I expect
- * mke2fs to be ported to MS Visual Studio any time soon, but
- * libext2fs *does* get built on Microsoft platforms, and we might
- * want to move this into libext2fs some day.)
- */
-static int my_snprintf(char *str, size_t size, const char *format, ...)
+static blk64_t
+get_partition_start(const char *device_name EXT2FS_ATTR((unused)))
 {
-	va_list	ap;
-	int ret;
-
-	va_start(ap, format);
-	ret = vsprintf(str, format, ap);
-	va_end(ap);
-	return ret;
-}
-
-#define snprintf my_snprintf
-#endif
-
-/*
- * Fall back to Linux's definitions of makedev and major are needed.
- * The search_sysfs_block() function is highly unlikely to work on
- * non-Linux systems anyway.
- */
-#ifndef makedev
-#define makedev(maj, min) (((maj) << 8) + (min))
-#endif
-
-static char *search_sysfs_block(dev_t devno, sysfs_path_t ret_path)
-{
-	struct dirent	*de, *p_de;
-	DIR		*dir = NULL, *p_dir = NULL;
-	FILE		*f;
-	sysfs_path_t	path, p_path;
-	unsigned int	major, minor;
-	char		*ret = ret_path;
-
-	ret_path[0] = 0;
-	if ((dir = opendir("/sys/block")) == NULL)
-		return NULL;
-	while ((de = readdir(dir)) != NULL) {
-		if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, "..") ||
-		    strlen(de->d_name) > sizeof(path)-32)
-			continue;
-		snprintf(path, SYSFS_PATH_LEN,
-			 "/sys/block/%s/dev", de->d_name);
-		f = fopen(path, "r");
-		if (f &&
-		    (fscanf(f, "%u:%u", &major, &minor) == 2)) {
-			fclose(f); f = NULL;
-			if (makedev(major, minor) == devno) {
-				snprintf(ret_path, SYSFS_PATH_LEN,
-					 "/sys/block/%s", de->d_name);
-				goto success;
-			}
-#ifdef major
-			if (major(devno) != major)
-				continue;
-#endif
-		}
-		if (f)
-			fclose(f);
-
-		snprintf(path, SYSFS_PATH_LEN, "/sys/block/%s", de->d_name);
-
-		if (p_dir)
-			closedir(p_dir);
-		if ((p_dir = opendir(path)) == NULL)
-			continue;
-		while ((p_de = readdir(p_dir)) != NULL) {
-			if (!strcmp(p_de->d_name, ".") ||
-			    !strcmp(p_de->d_name, "..") ||
-			    (strlen(p_de->d_name) >
-			     SYSFS_PATH_LEN - strlen(path) - 32))
-				continue;
-			snprintf(p_path, SYSFS_PATH_LEN, "%s/%s/dev",
-				 path, p_de->d_name);
-
-			f = fopen(p_path, "r");
-			if (f &&
-			    (fscanf(f, "%u:%u", &major, &minor) == 2) &&
-			    (((major << 8) + minor) == devno)) {
-				fclose(f);
-				snprintf(ret_path, SYSFS_PATH_LEN, "%s/%s",
-					 path, p_de->d_name);
-				goto success;
-			}
-			if (f)
-				fclose(f);
-		}
-	}
-	ret = NULL;
-success:
-	if (dir)
-		closedir(dir);
-	if (p_dir)
-		closedir(p_dir);
-	return ret;
-}
-
-static blk64_t get_partition_start(const char *device_name)
-{
+#ifdef __linux__
 	unsigned long long start;
-	sysfs_path_t	path;
+	char		path[128];
 	struct stat	st;
 	FILE		*f;
-	char		*cp;
 	int		n;
 
 	if ((stat(device_name, &st) < 0) || !S_ISBLK(st.st_mode))
 		return 0;
 
-	cp = search_sysfs_block(st.st_rdev, path);
-	if (!cp)
-		return 0;
-	if (strlen(path) > SYSFS_PATH_LEN - sizeof("/start"))
-		return 0;
-	strcat(path, "/start");
+	sprintf(path, "/sys/dev/block/%d:%d/start",
+		major(st.st_rdev), minor(st.st_rdev));
 	f = fopen(path, "r");
 	if (!f)
 		return 0;
 	n = fscanf(f, "%llu", &start);
 	fclose(f);
 	return (n == 1) ? start : 0;
+#else
+	return 0;
+#endif
 }
 
 static errcode_t create_directory(ext2_filsys fs, char *dir,
@@ -289,6 +177,14 @@ static errcode_t mk_hugefile(ext2_filsys fs, blk64_t num,
 	if (retval)
 		return retval;
 
+	/*
+	 * We don't use ext2fs_fallocate() here because hugefiles are
+	 * designed to be physically contiguous (if the block group
+	 * descriptors are configured to be in a single block at the
+	 * beginning of the file system, by using the
+	 * packed_meta_blocks layout), with the extent tree blocks
+	 * allocated near the beginning of the file system.
+	 */
 	lblk = 0;
 	left = num ? num : 1;
 	while (left) {
@@ -325,7 +221,8 @@ static errcode_t mk_hugefile(ext2_filsys fs, blk64_t num,
 			if (retval)
 				com_err(program_name, retval,
 					_("while zeroing block %llu "
-					  "for hugefile"), ret_blk);
+					  "for hugefile"),
+					(unsigned long long) ret_blk);
 		}
 
 		while (n) {
@@ -415,7 +312,8 @@ static blk64_t calc_overhead(ext2_filsys fs, blk64_t num)
 	e_blocks2 = (e_blocks + extents_per_block - 1) / extents_per_block;
 	e_blocks3 = (e_blocks2 + extents_per_block - 1) / extents_per_block;
 	e_blocks4 = (e_blocks3 + extents_per_block - 1) / extents_per_block;
-	return e_blocks + e_blocks2 + e_blocks3 + e_blocks4;
+	return (e_blocks + e_blocks2 + e_blocks3 + e_blocks4) *
+		EXT2FS_CLUSTER_RATIO(fs);
 }
 
 /*
@@ -478,6 +376,9 @@ errcode_t mk_hugefiles(ext2_filsys fs, const char *device_name)
 	if (!get_bool_from_profile(fs_types, "make_hugefiles", 0))
 		return 0;
 
+	if (!ext2fs_has_feature_extents(fs->super))
+		return EXT2_ET_EXTENT_NOT_SUPPORTED;
+
 	uid = get_int_from_profile(fs_types, "hugefiles_uid", 0);
 	gid = get_int_from_profile(fs_types, "hugefiles_gid", 0);
 	fs->umask = get_int_from_profile(fs_types, "hugefiles_umask", 077);
@@ -498,7 +399,7 @@ errcode_t mk_hugefiles(ext2_filsys fs, const char *device_name)
 			fprintf(stderr,
 				_("Partition offset of %llu (%uk) blocks "
 				  "not compatible with cluster size %u.\n"),
-				part_offset, fs->blocksize,
+				(unsigned long long) part_offset, fs->blocksize,
 				EXT2_CLUSTER_SIZE(fs->super));
 			exit(1);
 		}
@@ -531,10 +432,10 @@ errcode_t mk_hugefiles(ext2_filsys fs, const char *device_name)
 
 	fs_blocks = ext2fs_free_blocks_count(fs->super);
 	if (fs_blocks < num_slack + align)
-		return ENOMEM;
+		return ENOSPC;
 	fs_blocks -= num_slack + align;
 	if (num_blocks && num_blocks > fs_blocks)
-		return ENOMEM;
+		return ENOSPC;
 	if (num_blocks == 0 && num_files == 0)
 		num_files = 1;
 
@@ -552,22 +453,23 @@ errcode_t mk_hugefiles(ext2_filsys fs, const char *device_name)
 		num_blocks = fs_blocks / num_files;
 	}
 
-	num_slack += calc_overhead(fs, num_blocks) * num_files;
+	num_slack += (calc_overhead(fs, num_blocks ? num_blocks : fs_blocks) *
+		      num_files);
 	num_slack += (num_files / 16) + 1; /* space for dir entries */
 	goal = get_start_block(fs, num_slack);
 	goal = round_up_align(goal, align, part_offset);
 
 	if ((num_blocks ? num_blocks : fs_blocks) >
 	    (0x80000000UL / fs->blocksize))
-		fs->super->s_feature_ro_compat |=
-			EXT2_FEATURE_RO_COMPAT_LARGE_FILE;
+		ext2fs_set_feature_large_file(fs->super);
 
 	if (!quiet) {
 		if (zero_hugefile && verbose)
 			printf("%s", _("Huge files will be zero'ed\n"));
 		printf(_("Creating %lu huge file(s) "), num_files);
 		if (num_blocks)
-			printf(_("with %llu blocks each"), num_blocks);
+			printf(_("with %llu blocks each"),
+			       (unsigned long long) num_blocks);
 		fputs(": ", stdout);
 	}
 	for (i=0; i < num_files; i++) {

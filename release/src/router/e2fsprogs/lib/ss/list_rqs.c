@@ -12,6 +12,9 @@
  */
 #include "config.h"
 #include "ss_internal.h"
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 #include <signal.h>
 #include <setjmp.h>
 #include <sys/wait.h>
@@ -19,7 +22,7 @@
 typedef void sigret_t;
 
 void ss_list_requests(int argc __SS_ATTR((unused)),
-		      const char * const *argv __SS_ATTR((unused)),
+		      ss_argv_t argv __SS_ATTR((unused)),
 		      int sci_idx, void *infop __SS_ATTR((unused)))
 {
     ss_request_entry *entry;
@@ -46,6 +49,12 @@ void ss_list_requests(int argc __SS_ATTR((unused)),
         return;
     }
     output = fdopen(fd, "w");
+    if (!output) {
+        perror("fdopen");
+        close(fd);
+        (void) signal(SIGINT, func);
+        return;
+    }
     sigprocmask(SIG_SETMASK, &omask, (sigset_t *) 0);
 
     fprintf (output, "Available %s requests:\n\n",

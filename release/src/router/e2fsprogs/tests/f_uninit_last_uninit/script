@@ -1,4 +1,7 @@
-if test -x $DEBUGFS_EXE; then
+if ! test -x $DEBUGFS_EXE; then
+	echo "$test_name: $test_description: skipped (no debugfs)"
+	return 0
+fi
 
 SKIP_GUNZIP="true"
 
@@ -14,13 +17,9 @@ set_bg 1 checksum calc
 q
 EOF
 
-E2FSCK_TIME=200704102100
+E2FSCK_TIME=1176238800
 export E2FSCK_TIME
 
 . $cmd_dir/run_e2fsck
 
 unset E2FSCK_TIME
-
-else #if test -x $DEBUGFS_EXE; then
-	echo "$test_name: $test_description: skipped"
-fi 

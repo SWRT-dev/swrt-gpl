@@ -31,17 +31,37 @@ struct fiemap {
 	__u32 fm_mapped_extents;/* number of extents that were mapped (out) */
 	__u32 fm_extent_count;  /* size of fm_extents array (in) */
 	__u32 fm_reserved;
+#if __GNUC_PREREQ (4, 8)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
 	struct fiemap_extent fm_extents[0]; /* array of mapped extents (out) */
+#if __GNUC_PREREQ (4, 8)
+#pragma GCC diagnostic pop
+#endif
 };
 
-#ifndef FS_IOC_FIEMAP
+#if defined(__linux__) && !defined(FS_IOC_FIEMAP)
 #define FS_IOC_FIEMAP	_IOWR('f', 11, struct fiemap)
+#endif
+
+#if defined(__linux__) && !defined(FS_IOC_GETSTATE)
+#define EXT4_IOC_GETSTATE		_IOW('f', 41, __u32)
+#endif
+
+#if defined(__linux__) && !defined(EXT4_IOC_GET_ES_CACHE)
+#define EXT4_IOC_GET_ES_CACHE		_IOWR('f', 42, struct fiemap)
+#endif
+
+#if defined(__linux__) && !defined(EXT4_STATE_FLAG_EXT_PRECACHED)
+#define EXT4_STATE_FLAG_EXT_PRECACHED	0x00000001
 #endif
 
 #define FIEMAP_MAX_OFFSET	(~0ULL)
 
 #define FIEMAP_FLAG_SYNC	0x00000001 /* sync file data before map */
 #define FIEMAP_FLAG_XATTR	0x00000002 /* map extended attribute tree */
+#define FIEMAP_FLAG_CACHE	0x00000004 /* request caching of the extents */
 
 #define FIEMAP_FLAGS_COMPAT	(FIEMAP_FLAG_SYNC | FIEMAP_FLAG_XATTR)
 
@@ -66,5 +86,8 @@ struct fiemap {
 						    * merged for efficiency. */
 #define FIEMAP_EXTENT_SHARED		0x00002000 /* Space shared with other
 						    * files. */
+
+#define EXT4_FIEMAP_EXTENT_HOLE		0x08000000 /* Entry in extent status
+						      cache for a hole*/
 
 #endif /* _LINUX_FIEMAP_H */

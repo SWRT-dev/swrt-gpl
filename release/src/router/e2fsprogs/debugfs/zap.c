@@ -25,7 +25,8 @@ extern char *optarg;
 
 #include "debugfs.h"
 
-void do_zap_block(int argc, char *argv[])
+void do_zap_block(int argc, ss_argv_t argv, int sci_idx EXT2FS_ATTR((unused)),
+		    void *infop EXT2FS_ATTR((unused)))
 {
 	unsigned long	pattern = 0;
 	unsigned char	*buf;
@@ -132,7 +133,8 @@ void do_zap_block(int argc, char *argv[])
 				       block, 0, &block);
 		if (errcode) {
 			com_err(argv[0], errcode,
-				"while mapping logical block %llu\n", block);
+				"while mapping logical block %llu\n",
+				(unsigned long long) block);
 			return;
 		}
 	}
@@ -146,7 +148,8 @@ void do_zap_block(int argc, char *argv[])
 	errcode = io_channel_read_blk64(current_fs->io, block, 1, buf);
 	if (errcode) {
 		com_err(argv[0], errcode,
-			"while reading block %llu\n", block);
+			"while reading block %llu\n",
+			(unsigned long long) block);
 		goto errout;
 	}
 
@@ -158,7 +161,8 @@ void do_zap_block(int argc, char *argv[])
 	errcode = io_channel_write_blk64(current_fs->io, block, 1, buf);
 	if (errcode) {
 		com_err(argv[0], errcode,
-			"while write block %llu\n", block);
+			"while write block %llu\n",
+			(unsigned long long) block);
 		goto errout;
 	}
 
@@ -167,26 +171,29 @@ errout:
 	return;
 }
 
-void do_block_dump(int argc, char *argv[])
+void do_block_dump(int argc, ss_argv_t argv, int sci_idx EXT2FS_ATTR((unused)),
+		    void *infop EXT2FS_ATTR((unused)))
 {
 	unsigned char	*buf;
 	ext2_ino_t	inode;
 	errcode_t	errcode;
 	blk64_t		block;
 	char		*file = NULL;
-	unsigned int	i, j;
+	int		xattr_dump = 0;
 	int		c, err;
 
 	if (check_fs_open(argv[0]))
 		return;
 
 	reset_getopt();
-	while ((c = getopt (argc, argv, "f:")) != EOF) {
+	while ((c = getopt (argc, argv, "f:x")) != EOF) {
 		switch (c) {
 		case 'f':
 			file = optarg;
 			break;
-
+		case 'x':
+			xattr_dump = 1;
+			break;
 		default:
 			goto print_usage;
 		}
@@ -194,7 +201,7 @@ void do_block_dump(int argc, char *argv[])
 
 	if (argc != optind + 1) {
 	print_usage:
-		com_err(0, 0, "Usage: block_dump [-f inode] block_num");
+		com_err(0, 0, "Usage: block_dump [-x] [-f inode] block_num");
 		return;
 	}
 
@@ -210,7 +217,8 @@ void do_block_dump(int argc, char *argv[])
 				       block, 0, &block);
 		if (errcode) {
 			com_err(argv[0], errcode,
-				"while mapping logical block %llu\n", block);
+				"while mapping logical block %llu\n",
+				(unsigned long long) block);
 			return;
 		}
 	}
@@ -224,42 +232,15 @@ void do_block_dump(int argc, char *argv[])
 	errcode = io_channel_read_blk64(current_fs->io, block, 1, buf);
 	if (errcode) {
 		com_err(argv[0], errcode,
-			"while reading block %llu\n", block);
+			"while reading block %llu\n",
+			(unsigned long long) block);
 		goto errout;
 	}
 
-	do_byte_hexdump(stdout, buf, current_fs->blocksize);
+	if (xattr_dump)
+		block_xattr_dump(stdout, buf, current_fs->blocksize);
+	else
+		do_byte_hexdump(stdout, buf, current_fs->blocksize);
 errout:
 	free(buf);
-}
-
-void do_byte_hexdump(FILE *fp, unsigned char *buf, size_t bufsize)
-{
-	size_t		i, j;
-	int		suppress = -1;
-
-	for (i = 0; i < bufsize; i += 16) {
-		if (suppress < 0) {
-			if (i && memcmp(buf + i, buf + i - 16, 16) == 0) {
-				suppress = i;
-				fprintf(fp, "*\n");
-				continue;
-			}
-		} else {
-			if (memcmp(buf + i, buf + suppress, 16) == 0)
-				continue;
-			suppress = -1;
-		}
-		fprintf(fp, "%04o  ", (unsigned int)i);
-		for (j = 0; j < 16; j++) {
-			fprintf(fp, "%02x", buf[i+j]);
-			if ((j % 2) == 1)
-				fprintf(fp, " ");
-		}
-		fprintf(fp, " ");
-		for (j = 0; j < 16; j++)
-			fprintf(fp, "%c", isprint(buf[i+j]) ? buf[i+j] : '.');
-		fprintf(fp, "\n");
-	}
-	fprintf(fp, "\n");
 }

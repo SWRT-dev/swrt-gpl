@@ -1,7 +1,3 @@
-#define _FILE_OFFSET_BITS 64
-#define _LARGEFILE_SOURCE
-#define _LARGEFILE64_SOURCE
-
 #include <unistd.h>
 #ifndef _POSIX_SOURCE
 #define _POSIX_SOURCE
@@ -122,7 +118,7 @@ static int shorten_path (char *path, char *abspath)
 
 	/* get rid of unnecessary "../dir" sequences */
 	while (abspath && strlen(abspath) > 1 && (p = strstr(path,"../"))) {
-		/* find innermost occurance of "../dir", and save "dir" */
+		/* find innermost occurrence of "../dir", and save "dir" */
 		int slashes = 2;
 		char *a, *s, *d = dir;
 		while ((s = strstr(p+3, "../"))) {
@@ -166,7 +162,7 @@ static void fix_symlink (char *path, dev_t my_dev)
 	struct stat stbuf, lstbuf;
 	int c, fix_abs = 0, fix_messy = 0, fix_long = 0;
 
-	if ((c = readlink(path, lpath, sizeof(lpath))) == -1) {
+	if ((c = readlink(path, lpath, sizeof(lpath) - 1)) == -1) {
 		perror(path);
 		return;
 	}

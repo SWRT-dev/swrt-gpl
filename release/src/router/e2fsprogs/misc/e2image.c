@@ -10,8 +10,12 @@
  * %End-Header%
  */
 
+#ifndef _LARGEFILE_SOURCE
 #define _LARGEFILE_SOURCE
+#endif
+#ifndef _LARGEFILE64_SOURCE
 #define _LARGEFILE64_SOURCE
+#endif
 
 #include "config.h"
 #include <fcntl.h>
@@ -39,16 +43,19 @@ extern int optind;
 
 #include "ext2fs/ext2_fs.h"
 #include "ext2fs/ext2fs.h"
+#include "ext2fs/ext2fsP.h"
 #include "et/com_err.h"
 #include "uuid/uuid.h"
 #include "e2p/e2p.h"
 #include "ext2fs/e2image.h"
 #include "ext2fs/qcow2.h"
 
+#include "support/nls-enable.h"
+#include "support/plausible.h"
+#include "support/quotaio.h"
 #include "../version.h"
-#include "nls-enable.h"
 
-#define QCOW_OFLAG_COPIED     (1LL << 63)
+#define QCOW_OFLAG_COPIED     (1ULL << 63)
 #define NO_BLK ((blk64_t) -1)
 
 /* Image types */
@@ -98,10 +105,11 @@ static int get_bits_from_size(size_t size)
 
 static void usage(void)
 {
-	fprintf(stderr, _("Usage: %s [ -r|Q ] [ -fr ] device image-file\n"),
+	fprintf(stderr, _("Usage: %s [ -r|-Q ] [ -f ] [ -b superblock ] [ -B blocksize ] "
+			  "device image-file\n"),
 		program_name);
 	fprintf(stderr, _("       %s -I device image-file\n"), program_name);
-	fprintf(stderr, _("       %s -ra  [  -cfnp  ] [ -o src_offset ] "
+	fprintf(stderr, _("       %s -ra [ -cfnp ] [ -o src_offset ] "
 			  "[ -O dest_offset ] src_fs [ dest_fs ]\n"),
 		program_name);
 	exit (1);
@@ -185,7 +193,8 @@ static void generic_write(int fd, void *buf, int blocksize, blk64_t block)
 
 		if (block)
 			com_err(program_name, err,
-				_("error writing block %llu"), block);
+				_("error writing block %llu"),
+				(unsigned long long) block);
 		else
 			com_err(program_name, err, "%s",
 				_("error in generic_write()"));
@@ -230,11 +239,12 @@ static void write_image_file(ext2_filsys fs, int fd)
 	struct ext2_image_hdr	hdr;
 	struct stat		st;
 	errcode_t		retval;
+	time_t			now = time(0);
 
 	write_header(fd, NULL, sizeof(struct ext2_image_hdr), fs->blocksize);
 	memset(&hdr, 0, sizeof(struct ext2_image_hdr));
 
-	hdr.offset_super = seek_relative(fd, 0);
+	hdr.offset_super = ext2fs_cpu_to_le32(seek_relative(fd, 0));
 	retval = ext2fs_image_super_write(fs, fd, 0);
 	if (retval) {
 		com_err(program_name, retval, "%s",
@@ -242,7 +252,7 @@ static void write_image_file(ext2_filsys fs, int fd)
 		exit(1);
 	}
 
-	hdr.offset_inode = seek_relative(fd, 0);
+	hdr.offset_inode = ext2fs_cpu_to_le32(seek_relative(fd, 0));
 	retval = ext2fs_image_inode_write(fs, fd,
 				  (fd != 1) ? IMAGER_FLAG_SPARSEWRITE : 0);
 	if (retval) {
@@ -251,7 +261,7 @@ static void write_image_file(ext2_filsys fs, int fd)
 		exit(1);
 	}
 
-	hdr.offset_blockmap = seek_relative(fd, 0);
+	hdr.offset_blockmap = ext2fs_cpu_to_le32(seek_relative(fd, 0));
 	retval = ext2fs_image_bitmap_write(fs, fd, 0);
 	if (retval) {
 		com_err(program_name, retval, "%s",
@@ -259,7 +269,7 @@ static void write_image_file(ext2_filsys fs, int fd)
 		exit(1);
 	}
 
-	hdr.offset_inodemap = seek_relative(fd, 0);
+	hdr.offset_inodemap = ext2fs_cpu_to_le32(seek_relative(fd, 0));
 	retval = ext2fs_image_bitmap_write(fs, fd, IMAGER_FLAG_INODEMAP);
 	if (retval) {
 		com_err(program_name, retval, "%s",
@@ -267,23 +277,28 @@ static void write_image_file(ext2_filsys fs, int fd)
 		exit(1);
 	}
 
-	hdr.magic_number = EXT2_ET_MAGIC_E2IMAGE;
+	hdr.magic_number = ext2fs_cpu_to_le32(EXT2_ET_MAGIC_E2IMAGE);
 	strcpy(hdr.magic_descriptor, "Ext2 Image 1.0");
 	gethostname(hdr.fs_hostname, sizeof(hdr.fs_hostname));
 	strncpy(hdr.fs_device_name, device_name, sizeof(hdr.fs_device_name)-1);
 	hdr.fs_device_name[sizeof(hdr.fs_device_name) - 1] = 0;
-	hdr.fs_blocksize = fs->blocksize;
+	hdr.fs_blocksize = ext2fs_cpu_to_le32(fs->blocksize);
 
 	if (stat(device_name, &st) == 0)
-		hdr.fs_device = st.st_rdev;
+		hdr.fs_device = ext2fs_cpu_to_le32(st.st_rdev);
 
 	if (fstat(fd, &st) == 0) {
-		hdr.image_device = st.st_dev;
-		hdr.image_inode = st.st_ino;
+		hdr.image_device = ext2fs_cpu_to_le32(st.st_dev);
+		hdr.image_inode = ext2fs_cpu_to_le32(st.st_ino);
 	}
 	memcpy(hdr.fs_uuid, fs->super->s_uuid, sizeof(hdr.fs_uuid));
 
-	hdr.image_time = time(0);
+	hdr.image_time_lo = ext2fs_cpu_to_le32(now & 0xFFFFFFFF);
+#if (SIZEOF_TIME_T > 4)
+	hdr.image_time_hi = ext2fs_cpu_to_le32(now >> 32);
+#else
+	hdr.image_time_hi = 0;
+#endif
 	write_header(fd, &hdr, sizeof(struct ext2_image_hdr), fs->blocksize);
 }
 
@@ -305,7 +320,7 @@ struct process_block_struct {
  * structure, so there's no point in letting the ext2fs library read
  * the inode again.
  */
-static ino_t stashed_ino = 0;
+static ext2_ino_t stashed_ino = 0;
 static struct ext2_inode *stashed_inode;
 
 static errcode_t meta_get_blocks(ext2_filsys fs EXT2FS_ATTR((unused)),
@@ -410,6 +425,14 @@ static void mark_table_blocks(ext2_filsys fs)
 	}
 	meta_blocks_count += fs->desc_blocks;
 
+	/*
+	 *  Mark MMP block
+	 */
+	if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_MMP) {
+		ext2fs_mark_block_bitmap2(meta_block_map, fs->super->s_mmp_block);
+		meta_blocks_count++;
+	}
+
 	for (i = 0; i < fs->group_desc_count; i++) {
 		/*
 		 * Mark the blocks used for the inode table
@@ -419,9 +442,7 @@ static void mark_table_blocks(ext2_filsys fs)
 		    ext2fs_inode_table_loc(fs, i)) {
 			unsigned int end = (unsigned) fs->inode_blocks_per_group;
 			/* skip unused blocks */
-			if (!output_is_blk &&
-			    EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-						       EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
+			if (!output_is_blk && ext2fs_has_group_desc_csum(fs))
 				end -= (ext2fs_bg_itable_unused(fs, i) /
 					EXT2_INODES_PER_BLOCK(fs->super));
 			for (j = 0, b = ext2fs_inode_table_loc(fs, i);
@@ -548,12 +569,14 @@ static void sigint_handler(int unused EXT2FS_ATTR((unused)))
 
 #define calc_percent(a, b) ((int) ((100.0 * (((float) (a)) / \
 					     ((float) (b)))) + 0.5))
-#define calc_rate(t, b, d) (((float)(t) / ((1024 * 1024) / (b))) / (d))
+#define calc_rate(t, b, d) (((float)(t) / ((float)(1024 * 1024) / (b))) / (d))
 
 static int print_progress(blk64_t num, blk64_t total)
 {
-	return fprintf(stderr, _("%llu / %llu blocks (%d%%)"), num, total,
-		      calc_percent(num, total));
+	return fprintf(stderr, _("%llu / %llu blocks (%d%%)"),
+		       (unsigned long long) num,
+		       (unsigned long long) total,
+		       calc_percent(num, total));
 }
 
 static void output_meta_data_blocks(ext2_filsys fs, int fd, int flags)
@@ -658,7 +681,8 @@ more_blocks:
 			retval = io_channel_read_blk64(fs->io, blk, 1, buf);
 			if (retval) {
 				com_err(program_name, retval,
-					_("error reading block %llu"), blk);
+					_("error reading block %llu"),
+					(unsigned long long) blk);
 			}
 			total_written++;
 			if (scramble_block_map &&
@@ -713,7 +737,8 @@ more_blocks:
 		fputc('\r', stderr);
 		strftime(buff, 30, "%T", gmtime(&duration));
 		fprintf(stderr, _("Copied %llu / %llu blocks (%d%%) in %s "),
-			total_written, meta_blocks_count,
+			(unsigned long long) total_written,
+			(unsigned long long) meta_blocks_count,
 			calc_percent(total_written, meta_blocks_count), buff);
 		if (duration)
 			fprintf(stderr, _("at %.2f MB/s"),
@@ -870,14 +895,18 @@ static int init_refcount(struct ext2_qcow2_image *img, blk64_t table_offset)
 	return ret;
 }
 
-static int initialize_qcow2_image(int fd, ext2_filsys fs,
-			    struct ext2_qcow2_image *image)
+static errcode_t initialize_qcow2_image(int fd, ext2_filsys fs,
+					struct ext2_qcow2_image *image)
 {
 	struct ext2_qcow2_hdr *header;
 	blk64_t total_size, offset;
 	int shift, l2_bits, header_size, l1_size, ret;
 	int cluster_bits = get_bits_from_size(fs->blocksize);
 	struct ext2_super_block *sb = fs->super;
+
+	/* Sbould never happen, but just in case... */
+	if (cluster_bits < 0)
+		return EXT2_FILSYS_CORRUPTED;
 
 	/* Allocate header */
 	ret = ext2fs_get_memzero(sizeof(struct ext2_qcow2_hdr), &header);
@@ -920,7 +949,7 @@ static int initialize_qcow2_image(int fd, ext2_filsys fs,
 	header->refcount_table_clusters =
 		ext2fs_cpu_to_be32(image->refcount.refcount_table_clusters);
 	offset += image->cluster_size;
-	offset += image->refcount.refcount_table_clusters <<
+	offset += (blk64_t) image->refcount.refcount_table_clusters <<
 		image->cluster_bits;
 
 	/* Make space for L2 tables */
@@ -1105,7 +1134,7 @@ static int update_refcount(int fd, struct ext2_qcow2_image *img,
 	/*
 	 * We are relying on the fact that we are creating the qcow2
 	 * image sequentially, hence we will always allocate refcount
-	 * block items sequentialy.
+	 * block items sequentially.
 	 */
 	ref->refcount_block[ref->refcount_block_index] = ext2fs_cpu_to_be16(1);
 	ref->refcount_block_index++;
@@ -1185,7 +1214,8 @@ static void output_qcow2_meta_data_blocks(ext2_filsys fs, int fd)
 			retval = io_channel_read_blk64(fs->io, blk, 1, buf);
 			if (retval) {
 				com_err(program_name, retval,
-					_("error reading block %llu"), blk);
+					_("error reading block %llu"),
+					(unsigned long long) blk);
 				continue;
 			}
 			if (scramble_block_map &&
@@ -1239,7 +1269,7 @@ static void output_qcow2_meta_data_blocks(ext2_filsys fs, int fd)
 			offset += img->cluster_size;
 		}
 	}
-	update_refcount(fd, img, offset, offset);
+	(void) update_refcount(fd, img, offset, offset);
 	flush_l2_cache(img);
 	sync_refcount(fd, img);
 
@@ -1252,7 +1282,8 @@ static void output_qcow2_meta_data_blocks(ext2_filsys fs, int fd)
 	free_qcow2_image(img);
 }
 
-static void write_raw_image_file(ext2_filsys fs, int fd, int type, int flags)
+static void write_raw_image_file(ext2_filsys fs, int fd, int type, int flags,
+				 blk64_t superblock)
 {
 	struct process_block_struct	pb;
 	struct ext2_inode		inode;
@@ -1280,9 +1311,25 @@ static void write_raw_image_file(ext2_filsys fs, int fd, int type, int flags)
 		}
 	}
 
+	if (superblock) {
+		unsigned int j;
+
+		ext2fs_mark_block_bitmap2(meta_block_map, superblock);
+		meta_blocks_count++;
+
+		/*
+		 * Mark the backup superblock descriptors
+		 */
+		for (j = 0; j < fs->desc_blocks; j++) {
+			ext2fs_mark_block_bitmap2(meta_block_map,
+			ext2fs_descriptor_block_loc2(fs, superblock, j));
+		}
+		meta_blocks_count += fs->desc_blocks;
+	}
+
 	mark_table_blocks(fs);
 	if (show_progress)
-		printf("%s", _("Scanning inodes...\n"));
+		fprintf(stderr, "%s", _("Scanning inodes...\n"));
 
 	retval = ext2fs_open_inode_scan(fs, 0, &scan);
 	if (retval) {
@@ -1325,9 +1372,12 @@ static void write_raw_image_file(ext2_filsys fs, int fd, int type, int flags)
 		pb.ino = ino;
 		pb.is_dir = LINUX_S_ISDIR(inode.i_mode);
 		if (LINUX_S_ISDIR(inode.i_mode) ||
-		    (LINUX_S_ISLNK(inode.i_mode) &&
-		     ext2fs_inode_has_valid_blocks2(fs, &inode)) ||
-		    ino == fs->super->s_journal_inum) {
+		    LINUX_S_ISLNK(inode.i_mode) ||
+		    ino == fs->super->s_journal_inum ||
+		    ino == quota_type2inum(USRQUOTA, fs->super) ||
+		    ino == quota_type2inum(GRPQUOTA, fs->super) ||
+		    ino == quota_type2inum(PRJQUOTA, fs->super) ||
+		    ino == fs->super->s_orphan_file_inum) {
 			retval = ext2fs_block_iterate3(fs, ino,
 					BLOCK_FLAG_READ_ONLY, block_buf,
 					process_dir_block, &pb);
@@ -1371,7 +1421,8 @@ static void install_image(char *device, char *image_fn, int type)
 {
 	errcode_t retval;
 	ext2_filsys fs;
-	int open_flag = EXT2_FLAG_IMAGE_FILE | EXT2_FLAG_64BITS;
+	int open_flag = EXT2_FLAG_IMAGE_FILE | EXT2_FLAG_64BITS |
+			EXT2_FLAG_IGNORE_CSUM_ERRORS;
 	int fd = 0;
 	io_manager	io_ptr;
 	io_channel	io;
@@ -1418,7 +1469,7 @@ static void install_image(char *device, char *image_fn, int type)
 
 	ext2fs_rewrite_to_io(fs, io);
 
-	seek_set(fd, fs->image_header->offset_inode);
+	seek_set(fd, ext2fs_le32_to_cpu(fs->image_header->offset_inode));
 
 	retval = ext2fs_image_inode_read(fs, fd, 0);
 	if (retval) {
@@ -1448,7 +1499,8 @@ int main (int argc, char ** argv)
 	ext2_filsys fs;
 	char *image_fn, offset_opt[64];
 	struct ext2_qcow2_hdr *header = NULL;
-	int open_flag = EXT2_FLAG_64BITS;
+	int open_flag = EXT2_FLAG_64BITS | EXT2_FLAG_THREADS |
+		EXT2_FLAG_IGNORE_CSUM_ERRORS;
 	int img_type = 0;
 	int flags = 0;
 	int mount_flags = 0;
@@ -1458,6 +1510,8 @@ int main (int argc, char ** argv)
 	int ignore_rw_mount = 0;
 	int check = 0;
 	struct stat st;
+	blk64_t superblock = 0;
+	int blocksize = 0;
 
 #ifdef ENABLE_NLS
 	setlocale(LC_MESSAGES, "");
@@ -1470,9 +1524,17 @@ int main (int argc, char ** argv)
 		 E2FSPROGS_DATE);
 	if (argc && *argv)
 		program_name = *argv;
+	else
+		usage();
 	add_error_table(&et_ext2_error_table);
-	while ((c = getopt(argc, argv, "nrsIQafo:O:pc")) != EOF)
+	while ((c = getopt(argc, argv, "b:B:nrsIQafo:O:pc")) != EOF)
 		switch (c) {
+		case 'b':
+			superblock = strtoull(optarg, NULL, 0);
+			break;
+		case 'B':
+			blocksize = strtoul(optarg, NULL, 0);
+			break;
 		case 'I':
 			flags |= E2IMAGE_INSTALL_FLAG;
 			break;
@@ -1521,6 +1583,11 @@ int main (int argc, char ** argv)
 
 	if (all_data && !img_type) {
 		com_err(program_name, 0, "%s", _("-a option can only be used "
+						 "with raw or QCOW2 images."));
+		exit(1);
+	}
+	if (superblock && !img_type) {
+		com_err(program_name, 0, "%s", _("-b option can only be used "
 						 "with raw or QCOW2 images."));
 		exit(1);
 	}
@@ -1573,13 +1640,15 @@ int main (int argc, char ** argv)
 			goto skip_device;
 		}
 	}
-	sprintf(offset_opt, "offset=%llu", source_offset);
-	retval = ext2fs_open2(device_name, offset_opt, open_flag, 0, 0,
-			      unix_io_manager, &fs);
+	sprintf(offset_opt, "offset=%llu", (unsigned long long) source_offset);
+	retval = ext2fs_open2(device_name, offset_opt, open_flag,
+			      superblock, blocksize, unix_io_manager, &fs);
         if (retval) {
 		com_err (program_name, retval, _("while trying to open %s"),
 			 device_name);
 		fputs(_("Couldn't find valid filesystem superblock.\n"), stdout);
+		if (retval == EXT2_ET_BAD_MAGIC)
+			check_plausibility(device_name, CHECK_FS_EXIST, NULL);
 		exit(1);
 	}
 
@@ -1614,7 +1683,7 @@ skip_device:
 				_("Can not stat output\n"));
 			exit(1);
 		}
-		if (S_ISBLK(st.st_mode))
+		if (ext2fsP_is_disk_device(st.st_mode))
 			output_is_blk = 1;
 	}
 	if (flags & E2IMAGE_IS_QCOW2_FLAG) {
@@ -1623,13 +1692,18 @@ skip_device:
 			if (ret == -QCOW_COMPRESSED)
 				fprintf(stderr, _("Image (%s) is compressed\n"),
 					image_fn);
-			if (ret == -QCOW_ENCRYPTED)
+			else if (ret == -QCOW_ENCRYPTED)
 				fprintf(stderr, _("Image (%s) is encrypted\n"),
 					image_fn);
-			com_err(program_name, ret,
-				_("while trying to convert qcow2 image"
-				  " (%s) into raw image (%s)"),
-				device_name, image_fn);
+			else if (ret == -QCOW_CORRUPTED)
+				fprintf(stderr, _("Image (%s) is corrupted\n"),
+					image_fn);
+			else
+				com_err(program_name, ret,
+					_("while trying to convert qcow2 image"
+					  " (%s) into raw image (%s)"),
+					image_fn, device_name);
+			ret = 1;
 		}
 		goto out;
 	}
@@ -1658,7 +1732,7 @@ skip_device:
 		exit(1);
 	}
 	if (img_type)
-		write_raw_image_file(fs, fd, img_type, flags);
+		write_raw_image_file(fs, fd, img_type, flags, superblock);
 	else
 		write_image_file(fs, fd);
 

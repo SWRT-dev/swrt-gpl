@@ -23,14 +23,6 @@
 #if HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
-#ifdef HAVE_SYS_PRCTL_H
-#include <sys/prctl.h>
-#else
-#define PR_GET_DUMPABLE 3
-#endif
-#if (!defined(HAVE_PRCTL) && defined(linux))
-#include <sys/syscall.h>
-#endif
 
 #include "ext2_fs.h"
 #include "ext2fs.h"
@@ -85,6 +77,8 @@ void (*test_io_cb_write_byte)
 #define TEST_FLAG_DUMP			0x10
 #define TEST_FLAG_SET_OPTION		0x20
 #define TEST_FLAG_DISCARD		0x40
+#define TEST_FLAG_READAHEAD		0x80
+#define TEST_FLAG_ZEROOUT		0x100
 
 static void test_dump_block(io_channel channel,
 			    struct test_private_data *data,
@@ -142,29 +136,6 @@ static void test_abort(io_channel channel, unsigned long block)
 	abort();
 }
 
-static char *safe_getenv(const char *arg)
-{
-	if ((getuid() != geteuid()) || (getgid() != getegid()))
-		return NULL;
-#if HAVE_PRCTL
-	if (prctl(PR_GET_DUMPABLE, 0, 0, 0, 0) == 0)
-		return NULL;
-#else
-#if (defined(linux) && defined(SYS_prctl))
-	if (syscall(SYS_prctl, PR_GET_DUMPABLE, 0, 0, 0, 0) == 0)
-		return NULL;
-#endif
-#endif
-
-#if defined(HAVE_SECURE_GETENV)
-	return secure_getenv(arg);
-#elif defined(HAVE___SECURE_GETENV)
-	return __secure_getenv(arg);
-#else
-	return getenv(arg);
-#endif
-}
-
 static errcode_t test_open(const char *name, int flags, io_channel *channel)
 {
 	io_channel	io = NULL;
@@ -193,6 +164,7 @@ static errcode_t test_open(const char *name, int flags, io_channel *channel)
 	io->read_error = 0;
 	io->write_error = 0;
 	io->refcount = 1;
+	io->flags = 0;
 
 	memset(data, 0, sizeof(struct test_private_data));
 	data->magic = EXT2_ET_MAGIC_TEST_IO_CHANNEL;
@@ -212,34 +184,39 @@ static errcode_t test_open(const char *name, int flags, io_channel *channel)
 	data->write_blk64 =	test_io_cb_write_blk64;
 
 	data->outfile = NULL;
-	if ((value = safe_getenv("TEST_IO_LOGFILE")) != NULL)
+	if ((value = ext2fs_safe_getenv("TEST_IO_LOGFILE")) != NULL)
 		data->outfile = fopen(value, "w");
 	if (!data->outfile)
 		data->outfile = stderr;
 
 	data->flags = 0;
-	if ((value = safe_getenv("TEST_IO_FLAGS")) != NULL)
+	if ((value = ext2fs_safe_getenv("TEST_IO_FLAGS")) != NULL)
 		data->flags = strtoul(value, NULL, 0);
 
 	data->block = 0;
-	if ((value = safe_getenv("TEST_IO_BLOCK")) != NULL)
+	if ((value = ext2fs_safe_getenv("TEST_IO_BLOCK")) != NULL)
 		data->block = strtoul(value, NULL, 0);
 
 	data->read_abort_count = 0;
-	if ((value = safe_getenv("TEST_IO_READ_ABORT")) != NULL)
+	if ((value = ext2fs_safe_getenv("TEST_IO_READ_ABORT")) != NULL)
 		data->read_abort_count = strtoul(value, NULL, 0);
 
 	data->write_abort_count = 0;
-	if ((value = safe_getenv("TEST_IO_WRITE_ABORT")) != NULL)
+	if ((value = ext2fs_safe_getenv("TEST_IO_WRITE_ABORT")) != NULL)
 		data->write_abort_count = strtoul(value, NULL, 0);
 
-	if (data->real)
+	if (data->real) {
 		io->align = data->real->align;
+		if (data->real->flags & CHANNEL_FLAGS_THREADS)
+			io->flags |= CHANNEL_FLAGS_THREADS;
+	}
 
 	*channel = io;
 	return 0;
 
 cleanup:
+	if (io && io->name)
+		ext2fs_free_mem(&io->name);
 	if (io)
 		ext2fs_free_mem(&io);
 	if (data)
@@ -486,6 +463,45 @@ static errcode_t test_discard(io_channel channel, unsigned long long block,
 	return retval;
 }
 
+static errcode_t test_cache_readahead(io_channel channel,
+				      unsigned long long block,
+				      unsigned long long count)
+{
+	struct test_private_data *data;
+	errcode_t	retval = 0;
+
+	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
+	data = (struct test_private_data *) channel->private_data;
+	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_TEST_IO_CHANNEL);
+
+	if (data->real)
+		retval = io_channel_cache_readahead(data->real, block, count);
+	if (data->flags & TEST_FLAG_READAHEAD)
+		fprintf(data->outfile,
+			"Test_io: readahead(%llu, %llu) returned %s\n",
+			block, count, retval ? error_message(retval) : "OK");
+	return retval;
+}
+
+static errcode_t test_zeroout(io_channel channel, unsigned long long block,
+			      unsigned long long count)
+{
+	struct test_private_data *data;
+	errcode_t	retval = 0;
+
+	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
+	data = (struct test_private_data *) channel->private_data;
+	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_TEST_IO_CHANNEL);
+
+	if (data->real)
+		retval = io_channel_zeroout(data->real, block, count);
+	if (data->flags & TEST_FLAG_ZEROOUT)
+		fprintf(data->outfile,
+			"Test_io: zeroout(%llu, %llu) returned %s\n",
+			block, count, retval ? error_message(retval) : "OK");
+	return retval;
+}
+
 static struct struct_io_manager struct_test_manager = {
 	.magic		= EXT2_ET_MAGIC_IO_MANAGER,
 	.name		= "Test I/O Manager",
@@ -501,6 +517,8 @@ static struct struct_io_manager struct_test_manager = {
 	.read_blk64	= test_read_blk64,
 	.write_blk64	= test_write_blk64,
 	.discard	= test_discard,
+	.cache_readahead	= test_cache_readahead,
+	.zeroout	= test_zeroout,
 };
 
 io_manager test_io_manager = &struct_test_manager;

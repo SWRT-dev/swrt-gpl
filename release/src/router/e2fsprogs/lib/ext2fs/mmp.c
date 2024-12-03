@@ -12,6 +12,9 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE	/* since glibc 2.20 _SVID_SOURCE is deprecated */
+#endif
 
 #include "config.h"
 
@@ -31,8 +34,16 @@
 #define O_DIRECT 0
 #endif
 
+#if __GNUC_PREREQ (4, 6)
+#pragma GCC diagnostic push
+#ifndef CONFIG_MMP
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
+#endif
+
 errcode_t ext2fs_mmp_read(ext2_filsys fs, blk64_t mmp_blk, void *buf)
 {
+#ifdef CONFIG_MMP
 	struct mmp_struct *mmp_cmp;
 	errcode_t retval = 0;
 
@@ -46,7 +57,20 @@ errcode_t ext2fs_mmp_read(ext2_filsys fs, blk64_t mmp_blk, void *buf)
 	 * regardless of how the io_manager is doing reads, to avoid caching of
 	 * the MMP block by the io_manager or the VM.  It needs to be fresh. */
 	if (fs->mmp_fd <= 0) {
-		fs->mmp_fd = open(fs->device_name, O_RDWR | O_DIRECT);
+		struct stat st;
+		int flags = O_RDONLY | O_DIRECT;
+
+		/*
+		 * There is no reason for using O_DIRECT if we're working with
+		 * regular file. Disabling it also avoids problems with
+		 * alignment when the device of the host file system has sector
+		 * size larger than blocksize of the fs we're working with.
+		 */
+		if (stat(fs->device_name, &st) == 0 &&
+		    S_ISREG(st.st_mode))
+			flags &= ~O_DIRECT;
+
+		fs->mmp_fd = open(fs->device_name, flags);
 		if (fs->mmp_fd < 0) {
 			retval = EXT2_ET_MMP_OPEN_DIRECT;
 			goto out;
@@ -75,6 +99,11 @@ errcode_t ext2fs_mmp_read(ext2_filsys fs, blk64_t mmp_blk, void *buf)
 	}
 
 	mmp_cmp = fs->mmp_cmp;
+
+	if (!(fs->flags & EXT2_FLAG_IGNORE_CSUM_ERRORS) &&
+	    !ext2fs_mmp_csum_verify(fs, mmp_cmp))
+		retval = EXT2_ET_MMP_CSUM_INVALID;
+
 #ifdef WORDS_BIGENDIAN
 	ext2fs_swap_mmp(mmp_cmp);
 #endif
@@ -89,10 +118,14 @@ errcode_t ext2fs_mmp_read(ext2_filsys fs, blk64_t mmp_blk, void *buf)
 
 out:
 	return retval;
+#else
+	return EXT2_ET_OP_NOT_SUPPORTED;
+#endif
 }
 
 errcode_t ext2fs_mmp_write(ext2_filsys fs, blk64_t mmp_blk, void *buf)
 {
+#ifdef CONFIG_MMP
 	struct mmp_struct *mmp_s = buf;
 	struct timeval tv;
 	errcode_t retval = 0;
@@ -109,6 +142,10 @@ errcode_t ext2fs_mmp_write(ext2_filsys fs, blk64_t mmp_blk, void *buf)
 	ext2fs_swap_mmp(mmp_s);
 #endif
 
+	retval = ext2fs_mmp_csum_set(fs, mmp_s);
+	if (retval)
+		return retval;
+
 	/* I was tempted to make this use O_DIRECT and the mmp_fd, but
 	 * this caused no end of grief, while leaving it as-is works. */
 	retval = io_channel_write_blk64(fs->io, mmp_blk, -(int)sizeof(struct mmp_struct), buf);
@@ -120,6 +157,9 @@ errcode_t ext2fs_mmp_write(ext2_filsys fs, blk64_t mmp_blk, void *buf)
 	/* Make sure the block gets to disk quickly */
 	io_channel_flush(fs->io);
 	return retval;
+#else
+	return EXT2_ET_OP_NOT_SUPPORTED;
+#endif
 }
 
 #ifdef HAVE_SRANDOM
@@ -129,11 +169,14 @@ errcode_t ext2fs_mmp_write(ext2_filsys fs, blk64_t mmp_blk, void *buf)
 
 unsigned ext2fs_mmp_new_seq(void)
 {
+#ifdef CONFIG_MMP
 	unsigned new_seq;
 	struct timeval tv;
+	unsigned long pid = getpid();
 
 	gettimeofday(&tv, 0);
-	srand((getpid() << 16) ^ getuid() ^ tv.tv_sec ^ tv.tv_usec);
+	pid = (pid >> 16) | ((pid & 0xFFFF) << 16);
+	srand(pid ^ getuid() ^ tv.tv_sec ^ tv.tv_usec);
 
 	gettimeofday(&tv, 0);
 	/* Crank the random number generator a few times */
@@ -145,8 +188,12 @@ unsigned ext2fs_mmp_new_seq(void)
 	} while (new_seq > EXT4_MMP_SEQ_MAX);
 
 	return new_seq;
+#else
+	return EXT2_ET_OP_NOT_SUPPORTED;
+#endif
 }
 
+#ifdef CONFIG_MMP
 static errcode_t ext2fs_mmp_reset(ext2_filsys fs)
 {
 	struct mmp_struct *mmp_s = NULL;
@@ -164,12 +211,12 @@ static errcode_t ext2fs_mmp_reset(ext2_filsys fs)
 	mmp_s->mmp_magic = EXT4_MMP_MAGIC;
 	mmp_s->mmp_seq = EXT4_MMP_SEQ_CLEAN;
 	mmp_s->mmp_time = 0;
-#if _BSD_SOURCE || _XOPEN_SOURCE >= 500
-	gethostname(mmp_s->mmp_nodename, sizeof(mmp_s->mmp_nodename));
+#ifdef HAVE_GETHOSTNAME
+	gethostname((char *) mmp_s->mmp_nodename, sizeof(mmp_s->mmp_nodename));
 #else
 	mmp_s->mmp_nodename[0] = '\0';
 #endif
-	strncpy(mmp_s->mmp_bdevname, fs->device_name,
+	strncpy((char *) mmp_s->mmp_bdevname, fs->device_name,
 		sizeof(mmp_s->mmp_bdevname));
 
 	mmp_s->mmp_check_interval = fs->super->s_mmp_update_interval;
@@ -180,9 +227,16 @@ static errcode_t ext2fs_mmp_reset(ext2_filsys fs)
 out:
 	return retval;
 }
+#endif
+
+errcode_t ext2fs_mmp_update(ext2_filsys fs)
+{
+	return ext2fs_mmp_update2(fs, 0);
+}
 
 errcode_t ext2fs_mmp_clear(ext2_filsys fs)
 {
+#ifdef CONFIG_MMP
 	errcode_t retval = 0;
 
 	if (!(fs->flags & EXT2_FLAG_RW))
@@ -191,10 +245,14 @@ errcode_t ext2fs_mmp_clear(ext2_filsys fs)
 	retval = ext2fs_mmp_reset(fs);
 
 	return retval;
+#else
+	return EXT2_ET_OP_NOT_SUPPORTED;
+#endif
 }
 
 errcode_t ext2fs_mmp_init(ext2_filsys fs)
 {
+#ifdef CONFIG_MMP
 	struct ext2_super_block *sb = fs->super;
 	blk64_t mmp_block;
 	errcode_t retval;
@@ -223,13 +281,21 @@ errcode_t ext2fs_mmp_init(ext2_filsys fs)
 
 out:
 	return retval;
+#else
+	return EXT2_ET_OP_NOT_SUPPORTED;
+#endif
 }
+
+#ifndef min
+#define min(x, y) ((x) < (y) ? (x) : (y))
+#endif
 
 /*
  * Make sure that the fs is not mounted or being fsck'ed while opening the fs.
  */
 errcode_t ext2fs_mmp_start(ext2_filsys fs)
 {
+#ifdef CONFIG_MMP
 	struct mmp_struct *mmp_s;
 	unsigned seq;
 	unsigned int mmp_check_interval;
@@ -271,7 +337,7 @@ errcode_t ext2fs_mmp_start(ext2_filsys fs)
 	if (mmp_s->mmp_check_interval > mmp_check_interval)
 		mmp_check_interval = mmp_s->mmp_check_interval;
 
-	sleep(2 * mmp_check_interval + 1);
+	sleep(min(mmp_check_interval * 2 + 1, mmp_check_interval + 60));
 
 	retval = ext2fs_mmp_read(fs, fs->super->s_mmp_block, fs->mmp_buf);
 	if (retval)
@@ -287,19 +353,19 @@ clean_seq:
 		goto mmp_error;
 
 	mmp_s->mmp_seq = seq = ext2fs_mmp_new_seq();
-#if _BSD_SOURCE || _XOPEN_SOURCE >= 500
-	gethostname(mmp_s->mmp_nodename, sizeof(mmp_s->mmp_nodename));
+#ifdef HAVE_GETHOSTNAME
+	gethostname((char *) mmp_s->mmp_nodename, sizeof(mmp_s->mmp_nodename));
 #else
-	strcpy(mmp_s->mmp_nodename, "unknown host");
+	strcpy((char *) mmp_s->mmp_nodename, "unknown host");
 #endif
-	strncpy(mmp_s->mmp_bdevname, fs->device_name,
+	strncpy((char *) mmp_s->mmp_bdevname, fs->device_name,
 		sizeof(mmp_s->mmp_bdevname));
 
 	retval = ext2fs_mmp_write(fs, fs->super->s_mmp_block, fs->mmp_buf);
 	if (retval)
 		goto mmp_error;
 
-	sleep(2 * mmp_check_interval + 1);
+	sleep(min(2 * mmp_check_interval + 1, mmp_check_interval + 60));
 
 	retval = ext2fs_mmp_read(fs, fs->super->s_mmp_block, fs->mmp_buf);
 	if (retval)
@@ -319,6 +385,9 @@ clean_seq:
 
 mmp_error:
 	return retval;
+#else
+	return EXT2_ET_OP_NOT_SUPPORTED;
+#endif
 }
 
 /*
@@ -329,14 +398,16 @@ mmp_error:
  */
 errcode_t ext2fs_mmp_stop(ext2_filsys fs)
 {
+#ifdef CONFIG_MMP
 	struct mmp_struct *mmp, *mmp_cmp;
 	errcode_t retval = 0;
 
-	if (!(fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_MMP) ||
-	    !(fs->flags & EXT2_FLAG_RW) || (fs->flags & EXT2_FLAG_SKIP_MMP))
+	if (!ext2fs_has_feature_mmp(fs->super) ||
+	    !(fs->flags & EXT2_FLAG_RW) || (fs->flags & EXT2_FLAG_SKIP_MMP) ||
+	    (fs->mmp_buf == NULL) || (fs->mmp_cmp == NULL))
 		goto mmp_error;
 
-	retval = ext2fs_mmp_read(fs, fs->super->s_mmp_block, fs->mmp_buf);
+	retval = ext2fs_mmp_read(fs, fs->super->s_mmp_block, NULL);
 	if (retval)
 		goto mmp_error;
 
@@ -358,6 +429,13 @@ mmp_error:
 	}
 
 	return retval;
+#else
+	if (!ext2fs_has_feature_mmp(fs->super) ||
+	    !(fs->flags & EXT2_FLAG_RW) || (fs->flags & EXT2_FLAG_SKIP_MMP))
+		return 0;
+
+	return EXT2_ET_OP_NOT_SUPPORTED;
+#endif
 }
 
 #define EXT2_MIN_MMP_UPDATE_INTERVAL 60
@@ -365,18 +443,20 @@ mmp_error:
 /*
  * Update the on-disk mmp buffer, after checking that it hasn't been changed.
  */
-errcode_t ext2fs_mmp_update(ext2_filsys fs)
+errcode_t ext2fs_mmp_update2(ext2_filsys fs, int immediately)
 {
+#ifdef CONFIG_MMP
 	struct mmp_struct *mmp, *mmp_cmp;
 	struct timeval tv;
 	errcode_t retval = 0;
 
-	if (!(fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_MMP) ||
+	if (!ext2fs_has_feature_mmp(fs->super) ||
 	    !(fs->flags & EXT2_FLAG_RW) || (fs->flags & EXT2_FLAG_SKIP_MMP))
 		return 0;
 
 	gettimeofday(&tv, 0);
-	if (tv.tv_sec - fs->mmp_last_written < EXT2_MIN_MMP_UPDATE_INTERVAL)
+	if (!immediately &&
+	    tv.tv_sec - fs->mmp_last_written < EXT2_MIN_MMP_UPDATE_INTERVAL)
 		return 0;
 
 	retval = ext2fs_mmp_read(fs, fs->super->s_mmp_block, NULL);
@@ -395,4 +475,14 @@ errcode_t ext2fs_mmp_update(ext2_filsys fs)
 
 mmp_error:
 	return retval;
+#else
+	if (!ext2fs_has_feature_mmp(fs->super) ||
+	    !(fs->flags & EXT2_FLAG_RW) || (fs->flags & EXT2_FLAG_SKIP_MMP))
+		return 0;
+
+	return EXT2_ET_OP_NOT_SUPPORTED;
+#endif
 }
+#if __GNUC_PREREQ (4, 6)
+#pragma GCC diagnostic pop
+#endif

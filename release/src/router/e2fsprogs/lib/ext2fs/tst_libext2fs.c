@@ -38,12 +38,14 @@ static int print_blocks_proc(ext2_filsys fs EXT2FS_ATTR((unused)),
 			     void *private EXT2FS_ATTR((unused)))
 {
 	printf("%6lld %8llu (%d %llu)\n", (long long) blockcnt,
-	       (unsigned long long)*blocknr, ref_offset, ref_block);
+	       (unsigned long long) *blocknr, ref_offset,
+	       (unsigned long long) ref_block);
 	return 0;
 }
 
 
-void do_block_iterate(int argc, char **argv)
+void do_block_iterate(int argc, char **argv, int sci_idx EXT2FS_ATTR((unused)),
+		      void *infop EXT2FS_ATTR((unused)))
 {
 	const char	*usage = "block_iterate <file> <flags";
 	ext2_ino_t	ino;

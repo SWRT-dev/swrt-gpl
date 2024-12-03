@@ -20,7 +20,9 @@
 #if HAVE_ERRNO_H
 #include <errno.h>
 #endif
+#if HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
+#endif
 
 #include "e2p.h"
 
@@ -33,7 +35,6 @@ int getversion (int fd, unsigned long * version)
 	*version = ver;
 	return r;
 #else /* ! HAVE_EXT2_IOCTLS */
-	extern int errno;
 	errno = EOPNOTSUPP;
 	return -1;
 #endif /* ! HAVE_EXT2_IOCTLS */
