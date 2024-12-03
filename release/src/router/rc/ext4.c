@@ -73,7 +73,9 @@ void start_ext4(void)
 		modprobe("ext4");
 	if (mount(dev_mtd, EXT4_MNT_DIR, EXT4_FS_TYPE, MS_NOATIME, "") != 0) {
 		_dprintf("*** ext4 mount error\n");
-		return;
+		eval("e2fsck", "-y", "-f", dev_mtd);
+		if (mount(dev_mtd, EXT4_MNT_DIR, EXT4_FS_TYPE, MS_NOATIME, "") != 0)
+			return;
 	}
 	if (nvram_match("ext4_clean_fs", "1") || nvram_match("ubifs_clean_fs", "1")) {
 		nvram_unset("ext4_clean_fs");
@@ -97,6 +99,12 @@ void start_ext4(void)
 	if (!check_if_dir_exist("/jffs/multiap/")) mkdir("/jffs/multiap/", 0755);
 	system("ln -sf /jffs/swrtmesh /etc/config");
 	system("ln -sf /jffs/multiap /etc/multiap");
+#endif
+#if defined(JDCBE6500)
+	if (check_if_dir_exist("/jffs/jdc_docker/")){
+		doSystem("rm -rf /jffs/jdc_docker");
+		doSystem("rm -rf /jffs/aiecplugin*");
+	}
 #endif
 }
 
