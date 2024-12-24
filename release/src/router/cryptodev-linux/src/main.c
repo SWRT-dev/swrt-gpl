@@ -168,7 +168,7 @@ __crypto_run_zc(struct csession *ses_ptr, struct kernel_crypt_op *kcop)
 	struct crypt_op *cop = &kcop->cop;
 	int ret = 0;
 
-#if defined(QCANSS)
+#if defined(QCANSS) || defined(QCAEIP)
 //openssl bug!!!
 	if (unlikely(cop->src != cop->dst)) {
 		return __crypto_run_std(ses_ptr, cop);

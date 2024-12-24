@@ -86,8 +86,9 @@ static int image_verify_header(unsigned char *ptr, int image_size,
 }
 
 TAIL tail_pre;
-uint32_t rfs_offset;
-int vargv;
+uint32_t rfs_offset=0;
+int vargv =0;
+
 static void image_set_header(char *ptr, struct stat *sbuf, int ifd,
 				struct image_tool_params *params)
 {

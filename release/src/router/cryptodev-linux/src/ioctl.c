@@ -833,7 +833,7 @@ static inline void tfm_info_to_alg_info(struct alg_info *dst, struct crypto_tfm 
 			"%s", crypto_tfm_alg_driver_name(tfm));
 }
 
-#if defined(QCANSS) || defined(QCA) || defined(MT7621) || defined(MT7622) || defined(LANTIQ) || defined(BCM675X) || defined(BCM49XX) || defined(MT798X)
+#if defined(QCANSS) || defined(QCA) || defined(MT7621) || defined(MT7622) || defined(LANTIQ) || defined(BCM675X) || defined(BCM49XX) || defined(MT798X) || defined(QCAEIP)
 static unsigned int is_known_accelerated(struct crypto_tfm *tfm)
 {
 	const char *name = crypto_tfm_alg_driver_name(tfm);
@@ -844,6 +844,9 @@ static unsigned int is_known_accelerated(struct crypto_tfm *tfm)
 	/* look for known crypto engine names */
 #if defined(QCANSS)
 	if (!strncmp(name, "nss-", 4))
+		return 1;
+#elif defined(QCAEIP)
+	if (!strncmp(name, "eip-", 4))
 		return 1;
 #elif defined(QCA)
 	if (!strncmp(name, "qcrypto", 7))
@@ -888,7 +891,7 @@ static int get_session_info(struct fcrypt *fcr, struct session_info_op *siop)
 		else
 			tfm = crypto_aead_tfm(ses_ptr->cdata.async.as);
 		tfm_info_to_alg_info(&siop->cipher_info, tfm);
-#if defined(QCANSS) || defined(QCA) || defined(MT7621) || defined(MT7622) || defined(LANTIQ) || defined(BCM675X) || defined(BCM49XX) || defined(MT798X)
+#if defined(QCANSS) || defined(QCA) || defined(MT7621) || defined(MT7622) || defined(LANTIQ) || defined(BCM675X) || defined(BCM49XX) || defined(MT798X) || defined(QCAEIP)
 		if (is_known_accelerated(tfm))
 			siop->flags |= SIOP_FLAG_KERNEL_DRIVER_ONLY;
 #else
@@ -899,7 +902,7 @@ static int get_session_info(struct fcrypt *fcr, struct session_info_op *siop)
 	if (ses_ptr->hdata.init) {
 		tfm = crypto_ahash_tfm(ses_ptr->hdata.async.s);
 		tfm_info_to_alg_info(&siop->hash_info, tfm);
-#if defined(QCANSS) || defined(QCA) || defined(MT7621) || defined(MT7622) || defined(LANTIQ) || defined(BCM675X) || defined(BCM49XX) || defined(MT798X)
+#if defined(QCANSS) || defined(QCA) || defined(MT7621) || defined(MT7622) || defined(LANTIQ) || defined(BCM675X) || defined(BCM49XX) || defined(MT798X) || defined(QCAEIP)
 		if (is_known_accelerated(tfm))
 			siop->flags |= SIOP_FLAG_KERNEL_DRIVER_ONLY;
 #else

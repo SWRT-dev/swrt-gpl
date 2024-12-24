@@ -131,9 +131,9 @@ int mkimage_verify_print_header (void *ptr, struct stat *sbuf)
 }
 
 // ASUS_EXT
-extern int vargv =0;
+extern int vargv;
+extern uint32_t rfs_offset;
 extern TAIL tail_pre;
-extern uint32_t rfs_offset=0;
 
 int
 main (int argc, char **argv)

@@ -1274,7 +1274,7 @@ static void init_switch_qca(void)
 		"diagchar", "qca-mcs",
 		/* 53 */
 		"qca-nss-ppe-gretap", "qca-nss-ppe-mapt", "qca-nss-ppe-tun",
-		"qca-nss-ppe-vxlanmgr", "qca-nss-ppe-tunipip6",
+		"qca-nss-ppe-vxlanmgr", "qca-nss-ppe-tunipip6", /* qca-nss-eip-crypto, */
 #endif	/* RTCONFIG_SOC_IPQ53XX */
 		NULL
 	}, **qmod;
