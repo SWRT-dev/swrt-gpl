@@ -4,7 +4,7 @@
 if [ "$(nvram get preferred_lang)" = "CN" ];then
 servers="default stun.miwifi.com:3478 stun.qq.com:3478"
 else
-servers="default stun.l.google.com:19302 stun.iptel.org stun.stunprotocol.org stun.xten.com"
+servers="default stun.l.google.com:19302 stun1.l.google.com:19302 stun2.l.google.com:19302 stun3.l.google.com:19302 stun4.l.google.com:19302"
 fi
 prefixes="wan0_ wan1_"
 
