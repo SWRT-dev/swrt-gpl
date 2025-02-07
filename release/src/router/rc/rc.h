@@ -878,7 +878,7 @@ extern void check_pap_passwrod(void);
 #endif
 #endif	/* RTCONFIG_QCA */
 
-#if defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ53XX)
+#if 0//defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ53XX)
 extern int upgrade_bootloader_v2(void);
 extern int pre_firmware_upgrade(const char *fname);
 #else	/* !RTCONFIG_SOC_IPQ8074 */

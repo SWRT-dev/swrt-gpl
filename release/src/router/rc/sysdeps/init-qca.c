@@ -250,8 +250,10 @@ static struct load_wifi_kmod_seq_s {
 		.params = qdf_params
 	},
 #endif
+#if !defined(RTCONFIG_WIFI_QCN5024_QCN5054)
 	{ .kmod_name = "ath_dfs" },
 	{ .kmod_name = "ath_spectral" },
+#endif
 	{ .kmod_name = "umac",
 		.remove_sleep = 2, .params = umac_params,
 		.mission_mode_param_hook_fn = umac_param_hook,
@@ -908,11 +910,11 @@ void init_devs(void)
     defined(RTCONFIG_QCN550X)
 	eval("ln", "-sf", "/dev/mtdblock2", "/dev/caldata");	/* mtdblock2 = SPI flash, Factory MTD partition */
 #else
-#if defined(RAX120)
+#if defined(RAX120) || defined(SWRT360V6) || defined(JDCAX1800) || defined(JDCBE6500)
 	int mtd_part = 0, mtd_size = 0;
 	char dev_mtd[] = "/dev/mtdblockXXX";
 	if (mtd_getinfo("Factory", &mtd_part, &mtd_size)){
-		snprintf(dev_mtd, sizeof(dev_mtd), "/dev/mtd%d", mtd_part);
+		snprintf(dev_mtd, sizeof(dev_mtd), "/dev/mtdblock%d", mtd_part);
 		eval("ln", "-sf", dev_mtd, "/dev/caldata");
 	}else
 		printf("init_devs: can't find Factory MTD partition\n");
@@ -4788,6 +4790,9 @@ void init_syspara(void)
 	}
 #endif
 #endif
+#if defined(SWRT360V6) || defined(JDCAX1800)
+	nvram_set("wl_mssid", "1");
+#endif
 
 	set_et0macaddr(macaddr, macaddr2); //macaddr2 is 5G MAC
 
@@ -5755,4 +5760,3 @@ void set_tagged_based_vlan_config(char *interface)
 #endif
 
 #endif
-

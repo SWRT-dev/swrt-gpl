@@ -885,8 +885,8 @@ ifeq ($(BCM),y)
 		exit 1; \
 	fi;
 endif
-	md5sum $(IMAGEDIR)/$(COMBINE_NAME)_$(IMAGEVER).trx > $(IMAGEDIR)/$(COMBINE_NAME)_$(IMAGEVER).md5
-	openssl sha1 -sign $(SRC_ROOT)/../../buildtools/private.pem -out $(IMAGEDIR)/$(COMBINE_NAME)_$(IMAGEVER)_rsa.zip $(IMAGEDIR)/$(COMBINE_NAME)_$(IMAGEVER).trx
+#	md5sum $(IMAGEDIR)/$(COMBINE_NAME)_$(IMAGEVER).trx > $(IMAGEDIR)/$(COMBINE_NAME)_$(IMAGEVER).md5
+#	openssl sha1 -sign $(SRC_ROOT)/../../buildtools/private.pem -out $(IMAGEDIR)/$(COMBINE_NAME)_$(IMAGEVER)_rsa.zip $(IMAGEDIR)/$(COMBINE_NAME)_$(IMAGEVER).trx
 
 ecnt_bootloader:
 	$(MAKE) -f $(TRUNK_DIR)/build/bootloader.mak ecnt_bootloader
@@ -1263,19 +1263,19 @@ endif
 #general rsasign file
 ifneq ($(LIVE_UPDATE_RSA),)
 ifneq (,$(wildcard $(KEY_PATH)/private*.pem))
-	for f in $(KEY_PATH)/private*.pem; do \
-		rsa_idx=$$(echo $${f} | sed "s/.*\///" | sed "s/private//" | sed "s/.pem//"); \
-		$$(openssl sha1 -sign $(KEY_PATH)/private$${rsa_idx}.pem -out image/$(IMGNAME)_rsa$${rsa_idx}.zip image/$(IMGNAME).trx); \
-	done
+#	for f in $(KEY_PATH)/private*.pem; do \
+#		rsa_idx=$$(echo $${f} | sed "s/.*\///" | sed "s/private//" | sed "s/.pem//"); \
+#		$$(openssl sha1 -sign $(KEY_PATH)/private$${rsa_idx}.pem -out image/$(IMGNAME)_rsa$${rsa_idx}.zip image/$(IMGNAME).trx); \
+#	done
 else
 ifneq (,$(wildcard $(SRC_ROOT)/../../buildtools/private.pem))
-	openssl sha1 -sign $(SRC_ROOT)/../../buildtools/private.pem -out image/$(IMGNAME)_rsa.zip image/$(IMGNAME).trx
+#	openssl sha1 -sign $(SRC_ROOT)/../../buildtools/private.pem -out image/$(IMGNAME)_rsa.zip image/$(IMGNAME).trx
 endif
 endif
 else
 ifeq ($(HTTPS),y)
 ifneq (,$(wildcard $(SRC_ROOT)/../../buildtools/private.pem))
-	openssl sha1 -sign $(SRC_ROOT)/../../buildtools/private.pem -out image/$(IMGNAME)_rsa.zip image/$(IMGNAME).trx
+#	openssl sha1 -sign $(SRC_ROOT)/../../buildtools/private.pem -out image/$(IMGNAME)_rsa.zip image/$(IMGNAME).trx
 endif
 endif
 endif

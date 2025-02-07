@@ -33976,11 +33976,11 @@ do_lte_upgrade_cgi(char *url, FILE *stream)
 }
 #endif	// RTCONFIG_INTERNAL_GOBI
 
-#if defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033)
+#if defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033) || defined(RTCONFIG_SWITCH_QCA8075_PHY_AQR111)
 static int
 ej_chk_aqr_fw(int eid, webs_t wp, int argc, char **argv)
 {
-#if defined(RTCONFIG_SPF11_1_QSDK) || defined(RTCONFIG_SPF11_3_QSDK) || defined(RTCONFIG_SPF11_4_QSDK) || defined(RTCONFIG_SPF11_5_QSDK)
+#if (SPF_VER >= SPF_VER_ID(11,1))
 	/* *.cld in aq-fw-download don't have version string, define version number manually. */
 	const char *aqr107_fw_ver = "3.7.B";		/* AQR107, AQR-G2_v3.7.B-AQR_Asus_GT-AX6000-prov1_TXDis_ID44757_VER12795.cld */
 	const char *aqr113_fw_ver = "5.4.A";		/* AQR113/113C, AQR-G4_v5.4.B-AQR_Asus_RT-AX89X_TXDis_ID44751_VER11505.cld */
@@ -39986,7 +39986,7 @@ struct ej_handler ej_handlers[] = {
 #ifdef RTCONFIG_WTF_REDEEM
 	{ "get_redeem_code", ej_get_redeem_code},
 #endif
-#if defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033)
+#if defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033) || defined(RTCONFIG_SWITCH_QCA8075_PHY_AQR111)
 	{ "chk_aqr_fw", ej_chk_aqr_fw },
 #endif
 #ifdef RTCONFIG_INTERNAL_GOBI

@@ -9961,7 +9961,7 @@ int init_nvram(void)
 
 		wan0 = "eth3";				/*  1G RJ-45 */
 		add_rc_support("11AX ofdma wpa3 mbo 10GS_LWAN");
-#if defined(RTCONFIG_SPF11_4_QSDK) || defined(RTCONFIG_SPF11_5_QSDK)
+#if (SPF_VER >= SPF_VER_ID(11,4))
 		add_rc_support("non_frameburst");
 #endif
 		add_rc_support("sfp+");

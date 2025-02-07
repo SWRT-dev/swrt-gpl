@@ -6519,16 +6519,6 @@ int test_bl_updater_main(int argc, char *argv[])
 	return 0;
 }
 
-int test_switch_log_main(int argc, char *argv[])
-{
-	return 0;
-}
-
-int test_wifi_stats_log_main(int argc, char *argv[])
-{
-	return 0;
-}
-
 void beacon_counter_monitor(void)
 {
 }

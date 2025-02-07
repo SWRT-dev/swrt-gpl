@@ -6,14 +6,16 @@ OOKLA_VER = 38000# updated in 2022.08.16
 OOKLA_PATH = OOKLA-$(OOKLA_VER)
 
 prebuild:
-	-@mkdir prebuild
+	-@mkdir -p prebuild
 # QCA
-ifeq ($(or $(RTCONFIG_SOC_IPQ8064),$(RTCONFIG_SOC_IPQ8074),$(RTCONFIG_SOC_IPQ40XX)),y)
+ifeq ($(or $(RTCONFIG_SOC_IPQ8064),$(RTCONFIG_SOC_IPQ40XX)),y)
 	-cp -f $(OOKLA_PATH)/ookla-IPQ807-401X  prebuild/ookla # IPQ80XX / IPQ40XX
 else ifeq ($(RTCONFIG_SOC_IPQ60XX),y)
 	-cp -f $(OOKLA_PATH)/ookla-IPQ60XX      prebuild/ookla # IPQ60XX
 else ifeq ($(RTCONFIG_QCN550X),y)
 	-cp -f $(OOKLA_PATH)/ookla-QCN5502      prebuild/ookla # QCN550X (3.7.12.35)
+else ifeq ($(or $(RTCONFIG_SOC_IPQ53XX),$(RTCONFIG_SOC_IPQ8074)),y)
+	-cp -f $(OOKLA_PATH)/ookla-IPQ53XX      prebuild/ookla
 else
 	# nothing
 endif
@@ -44,3 +46,4 @@ install: all
 
 clean:
 	-rm -rf prebuild
+
