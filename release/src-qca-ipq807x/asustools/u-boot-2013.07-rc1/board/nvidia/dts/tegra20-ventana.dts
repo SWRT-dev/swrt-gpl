@@ -1,0 +1,59 @@
+/dts-v1/;
+
+#include "tegra20.dtsi"
+
+/ {
+	model = "NVIDIA Tegra20 Ventana evaluation board";
+	compatible = "nvidia,ventana", "nvidia,tegra20";
+
+	aliases {
+		usb0 = "/usb@c5008000";
+		sdhci0 = "/sdhci@c8000600";
+		sdhci1 = "/sdhci@c8000400";
+	};
+
+	memory {
+		reg = <0x00000000 0x40000000>;
+	};
+
+	serial@70006300 {
+		clock-frequency = < 216000000 >;
+	};
+
+	i2c@7000c000 {
+		status = "disabled";
+	};
+
+	i2c@7000c400 {
+		status = "disabled";
+	};
+
+	i2c@7000c500 {
+		status = "disabled";
+	};
+
+	i2c@7000d000 {
+		status = "disabled";
+	};
+
+	usb@c5000000 {
+		status = "disabled";
+	};
+
+	usb@c5004000 {
+		status = "disabled";
+	};
+
+	sdhci@c8000400 {
+		status = "okay";
+		cd-gpios = <&gpio 69 1>; /* gpio PI5 */
+		wp-gpios = <&gpio 57 0>; /* gpio PH1 */
+		power-gpios = <&gpio 70 0>; /* gpio PI6 */
+		bus-width = <4>;
+	};
+
+	sdhci@c8000600 {
+		status = "okay";
+		bus-width = <8>;
+	};
+};

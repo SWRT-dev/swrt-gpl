@@ -1133,19 +1133,30 @@ else
 		exit 1 ; \
 	fi
 ifeq ($(RAX120),y)
-	# RAX120 kernel.gz rootfs DTB=$(DTB) IMG=$(IMGNAME)
+	# RAX120 kernel.gz rootfs DTB=$(DTB) IMG=$(IMGNAME) 91000 or 93000,
 	gcc asustools/mkdniimg.c -o asustools/mkdniimg
+	gcc asustools/rax120.c -o asustools/rax120
+	make -C asustools/u-boot-2013.07-rc1 tools
+	cp -f asustools/u-boot-2013.07-rc1/tools/mkimage asustools/mkimage
 	@$(CROSS_COMPILE)objcopy -O binary $(LINUXDIR)/vmlinux $(PLATFORMDIR)/vmlinus
 	@gzip -9 -c $(PLATFORMDIR)/vmlinus > $(PLATFORMDIR)/rax120.kernel
 	@cp -f $(PLATFORMDIR)/rax120.kernel $(PLATFORMDIR)/Image.img
-	asustools/mkits.sh -D ipq807x-rax120 -o image/ipq807x-rax120.its -k $(PLATFORMDIR)/Image.img -d $(LINUXDIR)/arch/$(ARCH)/boot/dts/$(DTB) -C gzip -a 0x41208000 -e 0x41208000 -A $(ARCH) -v $(KERNEL_VER)
-	@PATH=$(LINUXDIR)/scripts/dtc asustools/mkimage -f image/ipq807x-rax120.its image/$(IMGNAME).img
+	@SIZE=`wc -c $(PLATFORMDIR)/Image.img | awk '{print $$1}'` ; \
+		PAD=`expr 6422528 - $${SIZE} - 64 - 93000` ; \
+		dd if=/dev/zero count=1 bs=$${PAD} 2> /dev/null | tr \\000 \\377 >> $(PLATFORMDIR)/Image.img
+	asustools/mkits.sh -D qcom-ipq807x-rax120 -o image/qcom-ipq807x-rax120.its -k $(PLATFORMDIR)/Image.img -d $(LINUXDIR)/arch/$(ARCH)/boot/dts/$(DTB) -C gzip -a 0x41208000 -e 0x41208000 -A $(ARCH) -v $(KERNEL_VER) -c "config@hk01"
+	@PATH=$(LINUXDIR)/scripts/dtc asustools/mkimage -f image/qcom-ipq807x-rax120.its image/$(IMGNAME).img
 	@SIZE=`wc -c image/$(IMGNAME).img | awk '{print $$1}'` ; \
-		PAD=`expr 64 - $${SIZE} % 64` ; \
+		PAD=`expr 6422528 - $${SIZE} - 64` ; \
 		dd if=/dev/zero count=1 bs=$${PAD} 2> /dev/null | tr \\000 \\377 >> image/$(IMGNAME).img
-	cat $(PLATFORMDIR)/target.image >> image/$(IMGNAME).img
+	cp -f image/$(IMGNAME).img image/kernel.pad
+	dd if=$(PLATFORMDIR)/target.image bs=64k of=$(PLATFORMDIR)/target.image.paded
+	asustools/mkimage -A arm -O linux -C lzma -T kernel -a 0x41208000 -e 0x41208000 -n 'Linux-4.4' -d $(PLATFORMDIR)/target.image $(PLATFORMDIR)/target.uImage
+	asustools/rax120 $(PLATFORMDIR)/target.uImage $(PLATFORMDIR)/target.tmp
+	dd if=$(PLATFORMDIR)/target.tmp bs=64 count=1 >> image/$(IMGNAME).img
+	cat $(PLATFORMDIR)/target.image.paded >> image/$(IMGNAME).img
 	# generate NETGEAR Image
-	asustools/mkdniimg -B "RAX120" -v "V1.2.1.22" -r "" -H "29765589+0+512+1024+4x4+8x8" -i image/$(IMGNAME).img -o image/RAX120_OFW2ASUS.img
+	asustools/mkdniimg -B "RAX120" -v "V1.2.1.22" -r "" -H "29765589+0+512+1024+4x4+8x8" -i image/$(IMGNAME).img -o image/RAX120_NTGR2ASUS.img
 	@echo -n "" > image/tail_info
 	# generate ASUS Image
 	@ISIZE=`wc -c image/$(IMGNAME).img | awk '{print $$1}'` ; \
@@ -1154,7 +1165,8 @@ ifeq ($(RAX120),y)
 		RSIZE=`wc -c $(PLATFORMDIR)/target.image | awk '{print $$1}'` ; \
 		PAD2=`expr $${ISIZE} - $${KSIZE} - $${RSIZE} - $${TSIZE}` ; \
 		RFSOFFSET=`expr 64 + $${KSIZE} + $${PAD2}` ; \
-		asustools/mkimage -A $(ARCH) -O linux -T kernel -C none \
+		TRANS_ARCH=`if [ "$(ARCH)" = "arm64" ]; then echo -n arm; else echo -n $(ARCH); fi` ; \
+		asustools/mkimage -A $${TRANS_ARCH} -O linux -T kernel -C none \
 			-a $(LOADADDR) -e $(ENTRYADDR) -r $${RFSOFFSET} \
 			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(SWRTEXTENDNO)" "0" "0" "0" "0" "0" "0" \
 			-d image/$(IMGNAME).img image/$(IMGNAME).trx
@@ -1198,7 +1210,8 @@ endif
 		RSIZE=`wc -c $(PLATFORMDIR)/target.image | awk '{print $$1}'` ; \
 		PAD2=`expr $${ISIZE} - $${KSIZE} - $${RSIZE} - $${TSIZE}` ; \
 		RFSOFFSET=`expr 64 + $${KSIZE} + $${PAD2}` ; \
-		asustools/mkimage -A $(ARCH) -O linux -T kernel -C lzma \
+		TRANS_ARCH=`if [ "$(ARCH)" = "arm64" ]; then echo -n arm; else echo -n $(ARCH); fi` ; \
+		asustools/mkimage -A $${TRANS_ARCH} -O linux -T kernel -C lzma \
 			-a $(LOADADDR) -e $(ENTRYADDR) -r $${RFSOFFSET} \
 			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "$(SERIALNO)" "$(SWRTEXTENDNO)" "0" "0" "0" "0" "0" "0" \
 			-d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx

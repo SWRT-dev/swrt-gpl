@@ -1122,11 +1122,13 @@ static void init_switch_qca(void)
 		"qca-nss-drv",
 		"qca-nss-qdisc",
 #elif defined(RTCONFIG_SOC_IPQ8074)
+#if (SPF_VER < SPF_VER_ID(12,0))
 		/* 09-shortcut-fe */
 		"shortcut-fe", "shortcut-fe-ipv6",
 
 		/* 10-shortcut-fe-drv */
 		"shortcut-fe-drv",
+#endif
 #if defined(RTCONFIG_SWITCH_QCA8337N) || defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033) || defined(RTCONFIG_SWITCH_QCA8075_PHY_AQR111)
 		"qca-ssdk",
 #endif
