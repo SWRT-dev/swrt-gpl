@@ -580,7 +580,7 @@ typedef struct {
 	struct	semaphore sema;
 	int	terminated;
 	struct	completion completed;
-	spinlock_t	spinlock;
+	raw_spinlock_t	spinlock;
 	int		up_cnt;
 } tsk_ctl_t;
 
@@ -597,13 +597,13 @@ static inline bool binary_sema_down(tsk_ctl_t *tsk)
 {
 	if (down_interruptible(&tsk->sema) == 0) {
 		unsigned long flags = 0;
-		spin_lock_irqsave(&tsk->spinlock, flags);
+		raw_spin_lock_irqsave(&tsk->spinlock, flags);
 		if (tsk->up_cnt == 1)
 			tsk->up_cnt--;
 		else {
 			DBG_THR(("dhd_dpc_thread: Unexpected up_cnt %d\n", tsk->up_cnt));
 		}
-		spin_unlock_irqrestore(&tsk->spinlock, flags);
+		raw_spin_unlock_irqrestore(&tsk->spinlock, flags);
 		return false;
 	} else
 		return true;
@@ -614,7 +614,7 @@ static inline bool binary_sema_up(tsk_ctl_t *tsk)
 	bool sem_up = false;
 	unsigned long flags = 0;
 
-	spin_lock_irqsave(&tsk->spinlock, flags);
+	raw_spin_lock_irqsave(&tsk->spinlock, flags);
 	if (tsk->up_cnt == 0) {
 		tsk->up_cnt++;
 		sem_up = true;
@@ -623,7 +623,7 @@ static inline bool binary_sema_up(tsk_ctl_t *tsk)
 	} else
 		DBG_THR(("dhd_sched_dpc: unexpected up cnt %d!\n", tsk->up_cnt));
 
-	spin_unlock_irqrestore(&tsk->spinlock, flags);
+	raw_spin_unlock_irqrestore(&tsk->spinlock, flags);
 
 	if (sem_up)
 		up(&tsk->sema);
@@ -646,7 +646,7 @@ static inline bool binary_sema_up(tsk_ctl_t *tsk)
 	(tsk_ctl)->terminated = FALSE; \
 	(tsk_ctl)->p_task  = kthread_run(thread_func, tsk_ctl, (char*)name); \
 	(tsk_ctl)->thr_pid = (tsk_ctl)->p_task->pid; \
-	spin_lock_init(&((tsk_ctl)->spinlock)); \
+	raw_spin_lock_init(&((tsk_ctl)->spinlock)); \
 	DBG_THR(("%s(): thread:%s:%lx started\n", __FUNCTION__, \
 		(tsk_ctl)->proc_name, (tsk_ctl)->thr_pid)); \
 }
