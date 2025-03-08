@@ -21,7 +21,7 @@
 #include <linux/of_gpio.h>
 #include <linux/of_net.h>
 #include <linux/of_irq.h>
-#if defined(CONFIG_MODEL_R6800) || defined(CONFIG_MODEL_RTAC85P)
+#if defined(CONFIG_MODEL_R6800) || defined(CONFIG_MODEL_RTAC85P) || defined(CONFIG_MODEL_CMCCA9)
 #include <linux/fs.h>
 #include <linux/proc_fs.h>
 #endif
@@ -564,7 +564,7 @@ static const char *phy_speed_to_str(int speed)
 	}
 }
 
-#if defined(CONFIG_MODEL_R6800)
+#if defined(CONFIG_MODEL_R6800) || defined(CONFIG_MODEL_CMCCA9)
 struct port_s {
 	int status;
 	int speed;
@@ -870,7 +870,7 @@ static int mt753x_probe(struct platform_device *pdev)
 	if (gsw->irq >= 0)
 		mt753x_irq_enable(gsw);
 
-#if defined(CONFIG_MODEL_R6800)
+#if defined(CONFIG_MODEL_R6800) || defined(CONFIG_MODEL_CMCCA9)
 	swconfig_entry = proc_mkdir("swconfig_led", NULL);
 	proc_create("ports_status", 0644, swconfig_entry, &ports_ops);
 #elif defined(CONFIG_MODEL_RTAC85P)
@@ -899,7 +899,7 @@ static int mt753x_remove(struct platform_device *pdev)
 #ifdef CONFIG_SWCONFIG
 	mt753x_swconfig_destroy(gsw);
 #endif
-#if defined(CONFIG_MODEL_R6800)
+#if defined(CONFIG_MODEL_R6800) || defined(CONFIG_MODEL_CMCCA9)
 	remove_proc_entry("ports_status", swconfig_entry);
 	remove_proc_entry("swconfig_led", NULL);
 #elif defined(CONFIG_MODEL_RTAC85P)

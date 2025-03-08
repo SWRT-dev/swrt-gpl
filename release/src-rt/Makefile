@@ -513,7 +513,7 @@ else
 export KEY_PATH = $(SRC_ROOT)/../../key
 endif
 
-LANTIQ_LINUX_DIR=linux/linux-3.10.104
+LANTIQ_LINUX_DIR=linux/linux-4.9.x
 
 define build_bluecave_image
 	mips-openwrt-linux-uclibc-objcopy -O binary -R .reginfo -R .notes -R .note -R .comment -R .mdebug -R .note.gnu.build-id -S $(LANTIQ_LINUX_DIR)/vmlinux ./vmlinux
@@ -524,7 +524,7 @@ define build_bluecave_image
 	tools/patch-dtb ./vmlinux-easy350_anywan_router_800m ./easy350_anywan_router_800m.dtb 32768
 	tools/lzma e ./vmlinux-easy350_anywan_router_800m ./vmlinux-easy350_anywan_router_800m.lzma
 	mv ./vmlinux-easy350_anywan_router_800m.lzma ./vmlinux.lzma
-	tools/mkimage -A mips -O linux -T kernel -a 0x80002000 -C lzma -e 0x80002000 -n 'MIPS OpenWrt $(LANTIQ_LINUX_DIR)' -d ./vmlinux.lzma ./uImage
+	tools/mkimage -A mips -O linux -T kernel -a 0xa0020000 -C lzma -e 0xa0020000 -n 'MIPS OpenWrt $(LANTIQ_LINUX_DIR)' -d ./vmlinux.lzma ./uImage
 	len2=`wc -c ./vmlinux.lzma | awk '{ printf $$1 }'` ; \
 	echo "Raymond: $$len2"
 	len=`wc -c ./vmlinux.lzma | awk '{ printf $$1 }'`; pad=`expr  131072 - $$len %  131072`; pad=`expr $$pad %  131072`; pad=`expr $$pad -  64`; [ $$pad -lt 0 ] && pad=0; echo pad is $$pad; echo len is $$len; cat ./vmlinux.lzma > ./vmlinux.lzma.padded; dd if=/dev/zero of=./vmlinux.lzma.padded bs=1 count=$$pad seek=$$len
@@ -999,7 +999,7 @@ else ifeq ($(CONFIG_RALINK),y)
 		asustools/lzma_9k e $(PLATFORMDIR)/vmlinus $(PLATFORMDIR)/zImage.lzma -lc2 -lp2 -pb2 -mfbt2 ; \
 	elif [ "$(BUILD_NAME)" = "RT-AC85U" ] ; then \
 		$(CROSS_COMPILE)cpp -nostdinc -x assembler-with-cpp -I$(DTS_DIR) -I$(DTS_DIR)/include -undef -D__DTS__ -o $(DTS_DIR)/ralink/$(DTB).tmp $(DTS_DIR)/ralink/mt7621-rtac85u.dts ; \
-	elif [ "$(BUILD_NAME)" = "RT-AC85P" ] || [ "$(BUILD_NAME)" = "R6800" ] || [ "$(BUILD_NAME)" = "RM-AC2100" ] || [ "$(BUILD_NAME)" = "PGB-M1" ] || [ "$(BUILD_NAME)" = "JCG-Q10PRO" ] || [ "$(BUILD_NAME)" = "H3C-TX1801" ] || [ "$(BUILD_NAME)" = "XM-CR660X" ] || [ "$(BUILD_NAME)" = "JCG-Q20" ] ; then \
+	elif [ "$(BUILD_NAME)" = "RT-AC85P" ] || [ "$(BUILD_NAME)" = "R6800" ] || [ "$(BUILD_NAME)" = "RM-AC2100" ] || [ "$(BUILD_NAME)" = "PGB-M1" ] || [ "$(BUILD_NAME)" = "JCG-Q10PRO" ] || [ "$(BUILD_NAME)" = "H3C-TX1801" ] || [ "$(BUILD_NAME)" = "XM-CR660X" ] || [ "$(BUILD_NAME)" = "JCG-Q20" ] || [ "$(BUILD_NAME)" = "CMCC-A9" ] ; then \
 		$(CROSS_COMPILE)cpp -nostdinc -x assembler-with-cpp -I$(DTS_DIR) -I$(DTS_DIR)/include -undef -D__DTS__ -o $(DTS_DIR)/ralink/$(DTB).tmp $(DTS_DIR)/ralink/mt7621-$(BUILD_NAME).dts ; \
 		$(LINUXDIR)/scripts/dtc/dtc -O dtb -i$(DTS_DIR)/ralink -o $(DTS_DIR)/ralink/$(DTB) $(DTS_DIR)/ralink/$(DTB).tmp ; \
 		rm $(DTS_DIR)/ralink/$(DTB).tmp ; \
@@ -1044,7 +1044,7 @@ else ifeq ($(CONFIG_RALINK),y)
 	RSIZE=`wc -c $(PLATFORMDIR)/target.image | awk '{print $$1}'` ; \
 	PAD2=`expr $${ISIZE} - $${KSIZE} - $${RSIZE}` ; \
 	RFSOFFSET=`expr 64 + $${KSIZE} + $${PAD2}` ; \
-	if [ "$(BUILD_NAME)" = "RT-AC85U" ] || [ "$(BUILD_NAME)" = "RT-AC85P" ] || [ "$(BUILD_NAME)" = "RT-AC65U" ] || [ "$(BUILD_NAME)" = "RT-ACRH26" ] || [ "$(BUILD_NAME)" = "TUF-AC1750" ] || [ "$(BUILD_NAME)" = "RM-AC2100" ] || [ "$(BUILD_NAME)" = "R6800" ] || [ "$(BUILD_NAME)" = "PGB-M1" ] || [ "$(BUILD_NAME)" = "JCG-Q10PRO" ] || [ "$(BUILD_NAME)" = "H3C-TX1801" ] || [ "$(BUILD_NAME)" = "XM-CR660X" ] || [ "$(BUILD_NAME)" = "JCG-Q20" ]; then \
+	if [ "$(BUILD_NAME)" = "RT-AC85U" ] || [ "$(BUILD_NAME)" = "RT-AC85P" ] || [ "$(BUILD_NAME)" = "RT-AC65U" ] || [ "$(BUILD_NAME)" = "RT-ACRH26" ] || [ "$(BUILD_NAME)" = "TUF-AC1750" ] || [ "$(BUILD_NAME)" = "RM-AC2100" ] || [ "$(BUILD_NAME)" = "R6800" ] || [ "$(BUILD_NAME)" = "PGB-M1" ] || [ "$(BUILD_NAME)" = "JCG-Q10PRO" ] || [ "$(BUILD_NAME)" = "H3C-TX1801" ] || [ "$(BUILD_NAME)" = "XM-CR660X" ] || [ "$(BUILD_NAME)" = "JCG-Q20" ] || [ "$(BUILD_NAME)" = "CMCC-A9" ]; then \
 		asustools/u-boot-2014.10/tools/mkimage -A mips -O linux -T kernel -C lzma -a 0x81001000 -e 0x81001000 -r $${RFSOFFSET} \
 		-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)"  "$(SERIALNO)" "$(SWRTEXTENDNO)" "0" "0" "0" "0" "0" "0"  \
 		-d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx ; \
@@ -1332,14 +1332,14 @@ export_config:
 
 kernel_patch:
 ifeq ($(CONFIG_LANTIQ),y)
-	cd grx500; rm -rf ltq_eip97_1.2.25; tar zxf ltq_eip97_1.2.25.tar.gz
-	cd grx500; rm -rf ${SRCBASE}/router/rom_lantiq/; tar zxf rom_lantiq_05.04.00.131.tgz -C ${SRCBASE}/router/ ; mv ${SRCBASE}/router/rom_lantiq_05.04.00.131 ${SRCBASE}/router/rom_lantiq/
-	cp patches/iptables-1.4.21/extensions/* ${SRCBASE}/router/iptables-1.4.21/extensions/
+	#cd grx500; rm -rf ltq_eip97_1.2.25; tar zxf ltq_eip97_1.2.25.tar.gz
+	#cd grx500; rm -rf ${SRCBASE}/router/rom_lantiq/; tar zxf rom_lantiq_05.04.00.131.tgz -C ${SRCBASE}/router/ ; mv ${SRCBASE}/router/rom_lantiq_05.04.00.131 ${SRCBASE}/router/rom_lantiq/
+	cp grx500/libxt_EXTMARK.c ${SRCBASE}/router/iptables-1.4.21/extensions/
 	# rm -f ${SRCBASE}/router/rom_lantiq/opt/lantiq/wave/images/cal_wlan0.bin
 	# rm -f ${SRCBASE}/router/rom_lantiq/opt/lantiq/wave/images/cal_wlan1.bin
 	# rm -f grx500/rom_lantiq/opt/lantiq/wave/images/cal_wlan0.bin
 	# rm -f grx500/rom_lantiq/opt/lantiq/wave/images/cal_wlan1.bin
-	cd grx500; cp -rf rom_lantiq_05.04.00.131_patch/* ${SRCBASE}/router/rom_lantiq/
+	#cd grx500; cp -rf rom_lantiq_05.04.00.131_patch/* ${SRCBASE}/router/rom_lantiq/
 	# cp -f grx500/linux-3.10.104/firmware/lantiq/phy11g_ip_BE.bin linux/linux-3.10.104/firmware/lantiq/phy11g_ip_BE.bin
 endif
 
@@ -1354,11 +1354,11 @@ prepare_toolchain:
 			cd ${SRCBASE}/tools; tar zxf ${TOOLCHAIN_HOST_NAME}.tgz ; \
 		fi \
 	fi
-ifeq ($(CONFIG_LANTIQ),y)
-	if [ ! -f "${SRCBASE}/tools/${TOOLCHAIN_NAME}/.patched" ] ; then \
-		cd ${SRCBASE}/tools/${TOOLCHAIN_NAME}; patch -p1 < ${SRCBASE}/patches/toolchain/0001-rp-pppoe_if_pppox.patch ; \
-	fi
-endif
+#ifeq ($(CONFIG_LANTIQ),y)
+#	if [ ! -f "${SRCBASE}/tools/${TOOLCHAIN_NAME}/.patched" ] ; then \
+#		cd ${SRCBASE}/tools/${TOOLCHAIN_NAME}; patch -p1 < ${SRCBASE}/patches/toolchain/0001-rp-pppoe_if_pppox.patch ; \
+#	fi
+#endif
 	if [ ! -f "${SRCBASE}/tools/${TOOLCHAIN_NAME}/.patched" ] ; then \
 		cd ${SRCBASE}/tools/${TOOLCHAIN_NAME}/lib; cp ${SRCBASE}/patches/toolchain/lib/libnsl-0.9.33.2.so .; cp ${SRCBASE}/patches/toolchain/lib/libresolv-0.9.33.2.so . ; ln -s libnsl-0.9.33.2.so libnsl.so.0; ln -s libnsl.so.0 libnsl.so ; ln -s libresolv-0.9.33.2.so libresolv.so.0 ; \
 		touch ${SRCBASE}/tools/${TOOLCHAIN_NAME}/.patched ; \
@@ -6879,7 +6879,7 @@ else ifeq ($(MT7621),y)
 		cp $(LINUXDIR)/config_base.MT7629 $(LINUXDIR)/config_$(lowercase_B) ; \
 	elif [ "$(BUILD_NAME)" = "4G-AC86U" ]; then \
 		cp $(LINUXDIR)/config_base.MT7622 $(LINUXDIR)/config_$(lowercase_B) ; \
-	elif [ "$(BUILD_NAME)" = "RT-AX53U" ] || [ "$(BUILD_NAME)" = "RT-AX54" ] || [ "$(BUILD_NAME)" = "4G-AX56" ] || [ "$(BUILD_NAME)" = "H3C-TX1801" ] || [ "$(BUILD_NAME)" = "JCG-Q10PRO" ] || [ "$(BUILD_NAME)" = "PGB-M1" ] || [ "$(BUILD_NAME)" = "XM-CR660X" ] || [ "$(BUILD_NAME)" = "JCG-Q20" ] ; then \
+	elif [ "$(BUILD_NAME)" = "RT-AX53U" ] || [ "$(BUILD_NAME)" = "RT-AX54" ] || [ "$(BUILD_NAME)" = "4G-AX56" ] || [ "$(BUILD_NAME)" = "H3C-TX1801" ] || [ "$(BUILD_NAME)" = "JCG-Q10PRO" ] || [ "$(BUILD_NAME)" = "PGB-M1" ] || [ "$(BUILD_NAME)" = "XM-CR660X" ] || [ "$(BUILD_NAME)" = "JCG-Q20" ] || [ "$(BUILD_NAME)" = "CMCC-A9" ]; then \
 		cp $(LINUXDIR)/config_base.ax $(LINUXDIR)/config_$(lowercase_B) ; \
 	elif [ "$(BUILD_NAME)" = "RM-AC2100" ] || [ "$(BUILD_NAME)" = "R6800" ]; then \
 		cp $(LINUXDIR)/config_base.ac $(LINUXDIR)/config_$(lowercase_B) ; \

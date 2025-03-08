@@ -68,6 +68,10 @@ config  MODEL_JCGQ20
         bool "JCG-Q20"
         default n
 
+config  MODEL_CMCCA9
+        bool "CMCC-A9"
+        default n
+
 config  ASUS_EXT
         bool "ASUS_EXT"
         default n

@@ -192,6 +192,10 @@ void swrt_init_pre()
 		nvram_set("modelname", "JCGQ20");
 #elif defined(SWRT360T7)
 		nvram_set("modelname", "360T7");
+#elif defined(JDCBE6500)
+		nvram_set("modelname", "JDCBE6500");
+#elif defined(CMCCA9)
+		nvram_set("modelname", "CMCCA9");
 //asus
 #elif defined(RTAC68U)
 		nvram_set("modelname", "RTAC68U");
@@ -307,13 +311,16 @@ void swrt_init_pre()
 		nvram_set("modelname", "GT6");
 #elif defined(RTAXE7800)
 		nvram_set("modelname", "RTAXE7800");
+#elif defined(RTBE86U)
+		nvram_set("modelname", "RTBE86U");
 #elif defined(RTBE88U)
 		nvram_set("modelname", "RTBE88U");
-#elif defined(GTBE98_PRO)
-		nvram_set("modelname", "GTBE98PRO");
-#elif defined(RTBE96U) || defined(GTBE19000)
+#elif defined(RTBE96U)
 		nvram_set("modelname", "RTBE96U");
 #elif defined(GTBE96)
+		nvram_set("modelname", "GTBE96");
+#elif defined(GTBE98_PRO)
+		nvram_set("modelname", "GTBE98PRO");
 #endif
 	if(!nvram_get("swrt_beta"))
 		nvram_set("swrt_beta", "0");
@@ -2191,7 +2198,7 @@ int set_wltxpower_swrt(void)
 	memset(tmp1, 0, sizeof(tmp1));
 	get_nvramstr(1, tmp1, sizeof(tmp1), SUFFIX_TXPWR);
 	max5g = nvram_get_int(tmp1);
-#if defined(RTCONFIG_HAS_5G_2) || defined(RTCONFIG_WIFI6E)
+#if defined(RTCONFIG_HAS_5G_2) || defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_HAS_6G_2)
 	memset(tmp1, 0, sizeof(tmp1));
 	get_nvramstr(2, tmp1, sizeof(tmp1), SUFFIX_TXPWR);
 	max5g2 = nvram_get_int(tmp1);
@@ -2213,7 +2220,7 @@ int set_wltxpower_swrt(void)
 		unit |= 2;
 		nvram_set("wl1_txpower", "100");
 	}
-#if defined(RTCONFIG_HAS_5G_2) || defined(RTCONFIG_WIFI6E)
+#if defined(RTCONFIG_HAS_5G_2) || defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_HAS_6G_2)
 	if(nvram_get_int("wl2_cpenable") == 1){
 		unit |= 4;
 		nvram_set("wl2_txpower", "100");
@@ -2226,7 +2233,7 @@ int set_wltxpower_swrt(void)
 	}
 #endif
 	if((unit & 1) == 0 || (unit & 2) == 0
-#if defined(RTCONFIG_HAS_5G_2) || defined(RTCONFIG_WIFI6E)
+#if defined(RTCONFIG_HAS_5G_2) || defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_HAS_6G_2)
 	|| (unit & 4) == 0
 #endif
 #if defined(RTCONFIG_QUADBAND)
@@ -2288,7 +2295,7 @@ int set_wltxpower_swrt(void)
 		snprintf(tmp2, sizeof(tmp2), "%d", max5g - p2);
 		eval("wl", "-i", nvram_get("wl1_ifname"), "txpwr_degrade", tmp2);
 	}
-#if defined(RTCONFIG_HAS_5G_2) || defined(RTCONFIG_WIFI6E)
+#if defined(RTCONFIG_HAS_5G_2) || defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_HAS_6G_2)
 	if(unit & 4){
 		logmessage("SWRT", "[%s], unit: %d, txpower: %d, max: %d\n", __func__, 2, p3, max5g2);
 		snprintf(tmp2, sizeof(tmp2), "%d", max5g2 - p3);

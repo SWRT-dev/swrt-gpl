@@ -1,7 +1,7 @@
 export LINUXDIR := $(SRCBASE)/linux/linux-4.9.x
 
 ifeq ($(EXTRACFLAGS),)
-EXTRACFLAGS := -DCONFIG_LANTIQ -DDEBUG_NOISY -DDEBUG_RCTEST -pipe -funit-at-a-time -Wno-pointer-sign -DLINUX30 -mips32r2 -mno-branch-likely -mtune=1004kc
+EXTRACFLAGS := -DCONFIG_LANTIQ -DDEBUG_NOISY -DDEBUG_RCTEST -pipe -funit-at-a-time -Wno-pointer-sign -DLINUX30 -mno-branch-likely -mips32r2 -mtune=24kc
 endif
 export KERNEL_BINARY=$(LINUXDIR)/vmlinux
 export PLATFORM := mips-musl
@@ -25,7 +25,7 @@ export RTVER := 0.9.30.1
 export RTVER := 0.9.30.1
 
 # Kernel load address and entry address
-export LOADADDR := 41508000
+export LOADADDR := 0x80002000
 export ENTRYADDR := $(LOADADDR)
 export s_load_addr := 0xa0020000
 export s_entry_addr := 0xa002df00

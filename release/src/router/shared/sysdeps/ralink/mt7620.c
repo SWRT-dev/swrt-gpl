@@ -216,6 +216,18 @@ enum {
 	P7_PORT=7,
 };
 #define MT7621_GSW
+#elif defined(CMCCA9)
+enum {
+	WAN_PORT=1,
+	LAN1_PORT=2,
+	LAN2_PORT=3,
+	LAN3_PORT=4,
+	LAN4_PORT=0,
+	P5_PORT=5,
+	CPU_PORT=6,
+	P7_PORT=7,
+};
+#define MT7621_GSW
 #elif defined(H3CTX1801)
 enum {
 	WAN_PORT=4,
@@ -2840,7 +2852,7 @@ void ATE_mt7621_esw_port_status(void)
 	switch_fini();
 }
 
-#if defined(RTCONFIG_SWRT_I2CLED)
+#if defined(RTCONFIG_SWRT_I2CLED) || defined(CMCCA9)
 void swrt_esw_port_status(int port, int *mode, int *speed)
 {
 	int i;

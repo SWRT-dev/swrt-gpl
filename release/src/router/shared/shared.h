@@ -1296,6 +1296,10 @@ enum led_id {
 	LED_LAN2,
 	LED_LAN3,
 	LED_LAN4,
+#elif defined(CMCCA9)
+	LED_LAN1,
+	LED_LAN2,
+	LED_LAN3,
 #else
 	LED_LAN,
 #endif
@@ -4251,7 +4255,7 @@ extern void add_lan_phy(char *phy);
 extern void del_lan_phy(const char *phy);
 extern void set_wan_phy(char *phy);
 extern void add_wan_phy(char *phy);
-#if defined(RTCONFIG_SWRT_I2CLED)
+#if defined(RTCONFIG_SWRT_I2CLED) || defined(CMCCA9)
 extern void swrt_esw_port_status(int port, int *mode, int *speed);
 #endif
 

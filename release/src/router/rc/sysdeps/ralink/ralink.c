@@ -6415,9 +6415,21 @@ int update_wan_leds(int wan_unit, int link_wan_unit)
 int LanWanLedCtrl(void)
 {
 	if(get_lanports_status() && nvram_match("AllLED", "1"))
+#if defined(CMCCA9)
+		lanwan_led_check();
+#else
 		led_control(LED_LAN, LED_ON);
+#endif
 	else
+#if defined(CMCCA9)
+	{
+    	led_control(LED_LAN1, LED_OFF);
+	    led_control(LED_LAN2, LED_OFF);
+	    led_control(LED_LAN3, LED_OFF);
+	}
+#else
 		led_control(LED_LAN, LED_OFF);
+#endif
 	return 1;
 }
 #endif

@@ -186,6 +186,7 @@ static const struct model_s model_list[] = {
 	{ "XM-CR660X", 		MODEL_XMCR660X 		},
 	{ "JCG-Q20", 		MODEL_JCGQ20 		},
 	{ "SWRT360T7", 		MODEL_SWRT360T7 	},
+	{ "CMCC-A9", 		MODEL_CMCCA9		 },
 	{ NULL, 0 },
 };
 
@@ -351,6 +352,8 @@ static const struct model_s modelname_list[] = {
 	{ "JCGQ20", 	SWRT_MODEL_JCGQ20 },
 	{ "RAX80", 		SWRT_MODEL_RAX80 },
 	{ "360T7", 		SWRT_MODEL_SWRT360T7 },
+	{ "JDCBE6500", 	SWRT_MODEL_JDCBE6500 },
+	{ "CMCCA9", 	SWRT_MODEL_CMCCA9 },
 	{ NULL, 0 },
 };
 

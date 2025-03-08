@@ -105,6 +105,10 @@ static const struct led_btn_table_s {
 	{ "led_lan2_gpio",	&led_gpio_table[LED_LAN2] },
 	{ "led_lan3_gpio",	&led_gpio_table[LED_LAN3] },
 	{ "led_lan4_gpio",	&led_gpio_table[LED_LAN4] },
+#elif defined(CMCCA9)
+	{ "led_lan1_gpio",	&led_gpio_table[LED_LAN1] },
+	{ "led_lan2_gpio",	&led_gpio_table[LED_LAN2] },
+	{ "led_lan3_gpio",	&led_gpio_table[LED_LAN3] },
 #else
 	{ "led_lan_gpio",	&led_gpio_table[LED_LAN] },
 #endif
@@ -452,6 +456,8 @@ int init_gpio(void)
 #endif
 #ifdef RTCONFIG_LAN4WAN_LED
 		, "led_lan1_gpio", "led_lan2_gpio", "led_lan3_gpio", "led_lan4_gpio"
+#elif defined(CMCCA9)
+		, "led_lan1_gpio", "led_lan2_gpio", "led_lan3_gpio"
 #else
 		, "led_lan_gpio"
 #endif

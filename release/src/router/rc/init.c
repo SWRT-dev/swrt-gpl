@@ -1924,6 +1924,7 @@ misc_defaults(int restore_defaults)
 		case MODEL_H3CTX1801:
 		case MODEL_XMCR660X:
 		case MODEL_JCGQ20:
+		case MODEL_CMCCA9:
 			nvram_set("reboot_time", "90");		// default is 70 sec
 			break;
 #endif
@@ -5202,6 +5203,74 @@ int init_nvram(void)
 		nvram_set_int("btn_wps_gpio",  16|GPIO_ACTIVE_LOW);
 		nvram_set_int("led_pwr_gpio",  15|GPIO_ACTIVE_LOW);
 		nvram_set_int("led_wan_gpio", 14);
+
+		nvram_set("ehci_ports", "");
+		nvram_set("ohci_ports", "");
+		nvram_set("ct_max", "300000"); // force
+
+		if (nvram_get("wl_mssid") && nvram_match("wl_mssid", "1"))
+			add_rc_support("mssid");
+		add_rc_support("2.4G 5G update");
+		add_rc_support("rawifi");
+		add_rc_support("switchctrl");
+		add_rc_support("manual_stb");
+		add_rc_support("11AC");
+		add_rc_support("11AX mbo ofdma");
+		add_rc_support("wpa3");
+		//either txpower or singlesku supports rc.
+		add_rc_support("pwrctrl");
+		// the following values is model dep. so move it from default.c to here
+		nvram_set("wl0_HT_TxStream", "2");
+		nvram_set("wl0_HT_RxStream", "2");
+		nvram_set("wl1_HT_TxStream", "2");
+		nvram_set("wl1_HT_RxStream", "2");
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
+		if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1")) {
+			_dprintf("[%s][%d] sw mode = %d, repeater=%d, ap= %d ",
+						__func__, __LINE__,
+						sw_mode(),SW_MODE_REPEATER,SW_MODE_AP);
+			add_lan_phy((char *)APCLI_2G);
+			add_lan_phy((char *)APCLI_5G);
+			nvram_set("eth_ifnames", "eth1"); /* WAN(eth1)*/
+			nvram_set("amas_ethif_type", "4"); /* 1G */
+			nvram_set("eth_priority", "0 1 1"); /* eth1: 1G(idx:0,prio:1,used:1) */
+			nvram_set("sta_phy_ifnames", "apcli0 apclii0"); /* 2G name, 5G name */
+			nvram_set("sta_ifnames", "apcli0 apclii0"); /* 2G name, 5G name */
+			nvram_set("sta_priority", "2 0 3 1" " 5 1 2 1"); /* 2G priority:3, 5G priority:2 */
+		}
+#endif
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_CFGSYNC) || defined(RTCONFIG_EASYMESH)
+		nvram_set("wired_ifnames", "vlan1");
+#endif
+		break;
+#endif
+
+#if defined(CMCCA9)
+	case MODEL_CMCCA9:
+		nvram_set("boardflags", "0x100"); // although it is not used in ralink driver, set for vlan
+		nvram_set("vlan1hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
+		nvram_set("vlan2hwname", "et0");  // vlan. used to get "%smacaddr" for compare and find parent interface.
+		nvram_set("lan_ifname", "br0");
+		wan_ifaces[WAN_IFACE_ID] = "eth1";
+		wl_ifaces[WL_2G_BAND] = "ra0";
+		wl_ifaces[WL_5G_BAND] = "rai0";
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH)
+		if(nvram_match("re_mode", "1")) //RE mode.
+			set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "eth1 vlan1", NULL, "vlan3", 0);
+		else
+#endif
+		set_basic_ifname_vars(wan_ifaces, "vlan1", wl_ifaces, "usb", "vlan1", NULL, "vlan3", 0);
+
+		nvram_set_int("btn_rst_gpio",  18|GPIO_ACTIVE_LOW);
+		nvram_set_int("btn_wps_gpio",  16|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_pwr_gpio",  17|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_wps_gpio",  6|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_5g_gpio", 13|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_2g_gpio", 15|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_wan_gpio", 4|GPIO_ACTIVE_LOW);//4/8
+		nvram_set_int("led_lan1_gpio", 7|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_lan2_gpio", 3|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_lan3_gpio", 14|GPIO_ACTIVE_LOW);
 
 		nvram_set("ehci_ports", "");
 		nvram_set("ohci_ports", "");

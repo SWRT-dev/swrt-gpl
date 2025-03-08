@@ -2801,7 +2801,7 @@ static inline void handle_eject_usb_button(void) { }
 #if defined(RMAC2100)
 void led_on_off(void)
 {
-	if (nvram_match("led_disable", "0")) {
+	if (nvram_match("AllLED", "1")) {
 		led_control(LED_POWER, LED_ON);
 		led_control(LED_WAN, LED_ON);
 		led_control(LED_ALL, LED_ON);
@@ -2824,7 +2824,8 @@ void i2c_led_check(void)
 {
 	int mode = 0, speed = 0;
 	int i;
-
+	if(nvram_match("AllLED", "0"))
+		return;
 	for(i = 0; i < 5; i++){
 		swrt_esw_port_status(i, &mode, &speed);
 		switch(i){
@@ -2871,6 +2872,65 @@ void i2c_led_check(void)
 						i2cled_control(I2CLED_LAN1_WHITE, 1);
 					else
 						i2cled_control(I2CLED_LAN1_WHITE, 0);
+				}
+				break;
+			default:
+				break;
+		}
+	}
+}
+#elif defined(CMCCA9)
+struct led_lanwan_s {
+	int lan1status;
+	int lan2status;
+	int lan3status;
+	int wanstatus;
+};
+struct led_lanwan_s led_lanwan_list[] = {{0}};
+
+void lanwan_led_check(void)
+{
+	int mode = 0, speed = 0;
+	int i;
+	if(nvram_match("AllLED", "0"))
+		return;
+	for(i = 1; i < 5; i++){
+		swrt_esw_port_status(i, &mode, &speed);
+		switch(i){
+			case 1:
+				if(mode != led_lanwan_list->wanstatus){
+					led_lanwan_list->wanstatus = mode;
+					if(mode)
+						led_control(LED_WAN, LED_ON);
+					else
+						led_control(LED_WAN, LED_OFF);
+				}
+				break;
+			case 2:
+				if(mode != led_lanwan_list->lan1status){
+					led_lanwan_list->lan1status = mode;
+					if(mode)
+						led_control(LED_LAN1, LED_ON);
+					else
+						led_control(LED_LAN1, LED_OFF);
+				}
+				break;
+			case 3:
+				if(mode != led_lanwan_list->lan2status){
+					led_lanwan_list->lan2status = mode;
+					if(mode)
+						led_control(LED_LAN2, LED_ON);
+					else
+						led_control(LED_LAN2, LED_OFF);
+				}
+				break;
+			case 4:
+				if(mode != led_lanwan_list->lan3status){
+					led_lanwan_list->lan3status = mode;
+					if(mode)
+						led_control(LED_LAN3, LED_ON);
+					else
+						led_control(LED_LAN3, LED_OFF);
 				}
 				break;
 			default:
@@ -10284,6 +10344,8 @@ void watchdog(int sig)
 	led_on_off();
 #elif defined(R6800)
 	i2c_led_check();
+#elif defined(CMCCA9)
+	lanwan_led_check();
 #endif
 
 	watchdog_period = (watchdog_period + 1) % 30;
