@@ -511,8 +511,8 @@ function init(cb) {
 				});
 				// icon 规则:
 				// 如果已安装的插件,那图标必定在 /jffs/softcenter/res 目录, 通过 /res/icon-{name}.png 请求路径得到图标
-				// 如果是未安装的插件,则必定在 https://sc.paldier.com/softcenter/softcenter/icon-{name}.png
-				item.icon = parseInt(item.install, 10) !== 0 ? ('/res/icon-' + item.name + '.png') : ('https://sc.paldier.com' + new Array(3).join('/softcenter') + '/res/icon-' + item.name + '.png');
+				// 如果是未安装的插件,则必定在 https://sc.paldier.com/res/icon-{name}.png
+				item.icon = parseInt(item.install, 10) !== 0 ? ('/res/icon-' + item.name + '.png') : ('https://sc.paldier.com/res/icon-' + item.name + '.png');
 			});
 			return result;
 		};

@@ -244,6 +244,14 @@ install_module() {
 
 	chmod a+x /tmp/${softcenter_installing_todo}/install.sh
 	sh /tmp/${softcenter_installing_todo}/install.sh
+	if [ "$?" != "0" ];then
+		rm -rf /jffs/softcenter/scripts/uninstall_${softcenter_installing_todo}.sh
+		echo_date "-------------------------------------------------------------------"
+		echo_date "软件中心：插件安装失败！如插件未提示原因请联系插件作者以解决问题！"
+		echo_date "-------------------------------------------------------------------"
+		echo_date "本次插件安装失败！退出！"
+		quit_install
+	fi
 	[ "${softcenter_installing_todo}" != "softcenter" ] && echo_date =========================== step 3 ================================
 	if [ "$softcenter_installing_todo" != "softcenter" ]; then
 		echo_date "为插件【${softcenter_installing_name}】设置版本号：${softcenter_installing_version}"
