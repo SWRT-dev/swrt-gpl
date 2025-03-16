@@ -5103,7 +5103,7 @@ void write_rpt_wpa_supplicant_conf(int band, const char *prefix_mssid, char *pre
 		fprintf(fp_wpa, "\tgroup=%s\n", "CCMP");
 		fprintf(fp_wpa, "\tpsk=\"%s\"\n",nvram_pf_safe_get(prefix_wlc, "wpa_psk"));
 	}else if (nvram_pf_match(prefix_wlc, "auth_mode", "psk2sae")){
-		fprintf(fp_wpa,"\tkey_mgmt=%s\n", "SAE WPA-PSK");
+		fprintf(fp_wpa,"\tkey_mgmt=WPA-PSK SAE\n");
 		fprintf(fp_wpa,"\tproto=RSN\n");
 		fprintf(fp_wpa, "\tpairwise=%s\n", "CCMP");
 		fprintf(fp_wpa, "\tgroup=%s\n", "CCMP");
@@ -5359,7 +5359,7 @@ int gen_hostapd_config(int band, int subunit)
 		fprintf(fp_h, "eapol_version=2\n");
 		fprintf(fp_h, "ieee80211w=2\n");
 	} else if (nvram_pf_match(prefix, "auth_mode_x", "psk2sae")) {
-		fprintf(fp_h, "wpa_key_mgmt=%s\n", "SAE WPA-PSK");
+		fprintf(fp_h, "wpa_key_mgmt=%s\n", "WPA-PSK SAE");
 		fprintf(fp_h, "rsn_pairwise=%s\n", "CCMP");
 		fprintf(fp_h, "wpa_ptk_rekey=0\n");
 		fprintf(fp_h, "wpa_pairwise_update_count=4\n");
@@ -5406,6 +5406,7 @@ int gen_hostapd_config(int band, int subunit)
 	} else if (nvram_pf_match(prefix, "auth_mode_x", "sae") || nvram_pf_match(prefix, "auth_mode_x", "psk2sae")){
 		wpapsk = 4;
 		fprintf(fp_h, "wpa=2\n");
+		fprintf(fp_h, "sae_password=%s\n", nvram_pf_safe_get(prefix, "wpa_psk"));
 	} else if (nvram_pf_match(prefix, "auth_mode_x", "psk2") || nvram_pf_match(prefix, "auth_mode_x", "wpa2")) {
 		wpapsk = 2;
 		fprintf(fp_h, "wpa=2\n");

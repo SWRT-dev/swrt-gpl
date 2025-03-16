@@ -402,21 +402,21 @@ void find_backup_mac_date(char *mpname)
 	if(!(dir = opendir(dir_path)))
 		return;
 	while((ptr = readdir(dir))!=NULL)
-    	{
-	if (!strncmp(ptr->d_name, "loop", 4) ||
-	    !strncmp(ptr->d_name, "mtdblock", 8) ||
-	    !strncmp(ptr->d_name, "ram", 3) ||
-	    !strcmp(ptr->d_name, ".AppleDouble")||
-	    !strcmp(ptr->d_name, ".") ||
-	    !strcmp(ptr->d_name, "..")
-	   )
-		continue;
-        	sprintf(backup_path,"%s/%s", dir_path, ptr->d_name);
-        	sprintf(mac_name,"%s", ptr->d_name);		
+    {
+		if (!strncmp(ptr->d_name, "loop", 4) ||
+			!strncmp(ptr->d_name, "mtdblock", 8) ||
+			!strncmp(ptr->d_name, "ram", 3) ||
+			!strcmp(ptr->d_name, ".AppleDouble")||
+			!strcmp(ptr->d_name, ".") ||
+			!strcmp(ptr->d_name, "..")
+		   )
+			continue;
+        sprintf(backup_path,"%s/%s", dir_path, ptr->d_name);
+        sprintf(mac_name,"%s", ptr->d_name);		
 		sprintf(test_log,"mac_name = %s",mac_name);
 		logmessage("Timemachine", test_log);
 		write_timemachine_tokeninfo(mac_name);
-    	}
+    }
    	closedir(dir);
 
 	//find date
