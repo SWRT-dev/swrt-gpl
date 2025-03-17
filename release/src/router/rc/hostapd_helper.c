@@ -1,6 +1,6 @@
 /*
- * Copyright 2023, SWRTdev
- * Copyright 2023, paldier <paldier@hotmail.com>.
+ * Copyright 2023-2025, SWRTdev
+ * Copyright 2023-2025, paldier <paldier@hotmail.com>.
  * All Rights Reserved.
  */
 
@@ -24,7 +24,7 @@
 int is_hostapd_running(const char *ifname)
 {
 	struct wpa_ctrl *ctrl = NULL;
-	char path[256], buf[3];
+	char path[256], buf[5] = {0};
 	size_t len;
 
 	snprintf(path, sizeof(path), "/var/run/hostapd/%s", ifname);

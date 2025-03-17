@@ -258,8 +258,8 @@ int get_wpa_key_mgmt(int band, char *auth_mode, int mfp, char *wpa_key_mgmt)
 			strlcpy(wpa_key_mgmt, "OWE", 128);
 	}
 #endif
-	if(!*wpa_key_mgmt && strcmp(auth_mode, "open") && strcmp(auth_mode, "shared")){
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP) || defined(RTCONFIG_QCA_BECHIP)
+	if(!*wpa_key_mgmt && strcmp(auth_mode, "open") && strcmp(auth_mode, "shared")){
 		if(!strcmp(auth_mode, "suite-b"))
 			strlcpy(wpa_key_mgmt, "WPA-EAP-SUITE-B-192", 128);
 		else if(!strcmp(auth_mode, "wpa3"))
@@ -309,8 +309,8 @@ int calculate_bw_of_each_5g_channel(int band)
 	char *next;
 	int i, j, k;
 	int bw1 = 0, bw2 = 0;
-	int chlist40[] = { 36, 0, 44, 0, 52, 0, 60, 0, 100, 0, 108, 0, 116, 0, 124, 0, 132, 0, 140, 0, 149, 0, 157, 0, 0};
-	int chlist80[] = { 36, 0, 52, 0, 100, 0, 116, 0, 132, 0, 149, 0, 0};
+	int chlist40[] = { 36, 0, 44, 0, 52, 0, 60, 0, 100, 0, 108, 0, 116, 0, 124, 0, 132, 0, 140, 0, 149, 0, 157, 0};
+	int chlist80[] = { 36, 0, 52, 0, 100, 0, 116, 0, 132, 0, 149, 0};
 
 	if(band > WL_5G_2_BAND)
 		return -1;
@@ -319,12 +319,12 @@ int calculate_bw_of_each_5g_channel(int band)
 	{
 		foreach_44(word, chList, next){
 			i = safe_atoi(word);
-			for(j = 0; j < sizeof(chlist40); j += 2){
+			for(j = 0; j < (sizeof(chlist40)/sizeof(int)); j += 2){
 				k = i - chlist40[j];
 				if(k < 5)
 					chlist40[j + 1] += 1;
 			}
-			for(j = 0; j < sizeof(chlist80); j += 2){
+			for(j = 0; j < (sizeof(chlist80)/sizeof(int)); j += 2){
 				k = i - chlist80[j];
 				if(k < 13)
 					chlist80[j + 1] += 1;
@@ -841,8 +841,8 @@ int get_bw_via_channel(int band, int channel)
 	}
 
 	//check for TW band2
-	snprintf(buf, sizeof(buf), "wl%d_country_code", band);
-	if(nvram_match(buf, "TW")) {
+	snprintf(prefix, sizeof(prefix), "wl%d_", band);
+	if(nvram_pf_match(prefix, "country_code", "TW")) {
 		if(channel == 56)
 			return 0;
 		if(channel == 60 || channel == 64) {
@@ -978,8 +978,9 @@ void write_wpa_supplicant_network(FILE *fp, int band, const char *prefix, int di
 	if(!strcmp(auth_mode, "sae") || !strcmp(auth_mode, "wpa3") || !strcmp(auth_mode, "owe")
 		|| !strcmp(auth_mode, "suite-b"))
 		mfp = 2;
+	else
 #endif
-	else if((!strcmp(auth_mode, "psk2") || !strcmp(auth_mode, "wpawpa2")
+	if((!strcmp(auth_mode, "psk2") || !strcmp(auth_mode, "wpawpa2")
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP) || defined(RTCONFIG_QCA_BECHIP)
 		|| !strcmp(auth_mode, "psk2sae")|| !strcmp(auth_mode, "wpa2wpa3")
 #endif
@@ -2103,10 +2104,10 @@ int gen_ath_config(int band, int subnet)
 #else
 	unsigned int maxsta = 127;
 #endif
-	char br_if[IFNAMSIZ];
+	char br_if[IFNAMSIZ], wpa_key_mgmt[128] = {0};
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP) || defined(RTCONFIG_QCA_BECHIP)
 	FILE *fp4;
-	char path4[50], wpa_key_mgmt[128] = {0};
+	char path4[50];
 	int acs_dfs = nvram_get_int("acs_dfs");
 	int memtotal = get_meminfo_item("MemTotal");
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054)
@@ -4123,13 +4124,13 @@ FOUND:
 				dbg("WDS:defcaps 0x%x\n", caps);
 				fprintf(fp2,"%s %s wds 1\n", IWPRIV, wif);
 				fprintf(fp2,"wlanconfig %s nawds override 1\n",wif);
-				fprintf(fp2,"wlanconfig %s nawds defcaps 0x%x\n", wif, caps);
+				fprintf(fp2,"wlanconfig %s nawds defcaps 0x%lx\n", wif, caps);
 				if(WdsEnable!=2 || nvram_pf_match(prefix, "wdsapply_x", "1"))
 					fprintf(fp2,"wlanconfig %s nawds mode %d\n",wif,(WdsEnable==2)?4:3);
 
 				for(i=0;i<4;i++)
 					if(strlen(wds_mac[i]) && nvram_pf_match(prefix, "wdsapply_x", "1"))
-						fprintf(fp5, "wlanconfig %s nawds add-repeater %s 0x%x\n", wif, wds_mac[i], caps);
+						fprintf(fp5, "wlanconfig %s nawds add-repeater %s 0x%lx\n", wif, wds_mac[i], caps);
 
 				if(WdsEncrypType==0)
 					dbg("WDS:open/none\n");

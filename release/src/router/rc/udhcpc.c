@@ -18,7 +18,9 @@
  * $Id: udhcpc.c,v 1.27 2009/12/02 20:06:40 Exp $
  */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
