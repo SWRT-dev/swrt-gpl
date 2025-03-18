@@ -564,7 +564,7 @@ static const char *phy_speed_to_str(int speed)
 	}
 }
 
-#if defined(CONFIG_MODEL_R6800) || defined(CONFIG_MODEL_CMCCA9)
+#if defined(CONFIG_MODEL_R6800)
 struct port_s {
 	int status;
 	int speed;
@@ -600,7 +600,7 @@ static const struct file_operations ports_ops = {
 	.owner = THIS_MODULE,
 	.read = ports_ops_read,
 };
-#elif defined(CONFIG_MODEL_RTAC85P)
+#elif defined(CONFIG_MODEL_RTAC85P) || defined(CONFIG_MODEL_CMCCA9)
 int led_enable = 1;
 static struct proc_dir_entry *swconfig_entry = NULL;
 
@@ -870,10 +870,10 @@ static int mt753x_probe(struct platform_device *pdev)
 	if (gsw->irq >= 0)
 		mt753x_irq_enable(gsw);
 
-#if defined(CONFIG_MODEL_R6800) || defined(CONFIG_MODEL_CMCCA9)
+#if defined(CONFIG_MODEL_R6800)
 	swconfig_entry = proc_mkdir("swconfig_led", NULL);
 	proc_create("ports_status", 0644, swconfig_entry, &ports_ops);
-#elif defined(CONFIG_MODEL_RTAC85P)
+#elif defined(CONFIG_MODEL_RTAC85P) || defined(CONFIG_MODEL_CMCCA9)
 	swconfig_entry = proc_mkdir("swconfig_led", NULL);
 	proc_create("led_enable", 0644, swconfig_entry, &led_ops);
 #endif
@@ -899,10 +899,10 @@ static int mt753x_remove(struct platform_device *pdev)
 #ifdef CONFIG_SWCONFIG
 	mt753x_swconfig_destroy(gsw);
 #endif
-#if defined(CONFIG_MODEL_R6800) || defined(CONFIG_MODEL_CMCCA9)
+#if defined(CONFIG_MODEL_R6800)
 	remove_proc_entry("ports_status", swconfig_entry);
 	remove_proc_entry("swconfig_led", NULL);
-#elif defined(CONFIG_MODEL_RTAC85P)
+#elif defined(CONFIG_MODEL_RTAC85P) || defined(CONFIG_MODEL_CMCCA9)
 	remove_proc_entry("led_enable", swconfig_entry);
 	remove_proc_entry("swconfig_led", NULL);
 #endif

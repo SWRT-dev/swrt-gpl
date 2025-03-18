@@ -219,9 +219,9 @@ enum {
 #elif defined(CMCCA9)
 enum {
 	WAN_PORT=1,
-	LAN1_PORT=2,
+	LAN1_PORT=4,
 	LAN2_PORT=3,
-	LAN3_PORT=4,
+	LAN3_PORT=2,
 	LAN4_PORT=0,
 	P5_PORT=5,
 	CPU_PORT=6,

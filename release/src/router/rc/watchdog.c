@@ -2906,7 +2906,7 @@ void lanwan_led_check(void)
 						led_control(LED_WAN, LED_OFF);
 				}
 				break;
-			case 2:
+			case 4:
 				if(mode != led_lanwan_list->lan1status){
 					led_lanwan_list->lan1status = mode;
 					if(mode)
@@ -2924,7 +2924,7 @@ void lanwan_led_check(void)
 						led_control(LED_LAN2, LED_OFF);
 				}
 				break;
-			case 4:
+			case 2:
 				if(mode != led_lanwan_list->lan3status){
 					led_lanwan_list->lan3status = mode;
 					if(mode)
