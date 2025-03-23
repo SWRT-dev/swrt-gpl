@@ -664,6 +664,7 @@ void replace_null_to_space(char *str, int len) {
 pid_t
 get_pid_by_process_name(char *name)
 {
+	int r;
 	size_t size = 0;
 	char p_name[128] = {0}, filename[256] = {0};
 	pid_t           pid = -1;
@@ -681,7 +682,9 @@ get_pid_by_process_name(char *name)
 			continue;
 
 		memset(filename, 0, sizeof(filename));
-		snprintf(filename, sizeof(filename), "/proc/%s/cmdline", next->d_name);
+		r = snprintf(filename, sizeof(filename), "/proc/%s/cmdline", next->d_name);
+		if(unlikely(r < 0))
+			dbg("snprintf failed\n");
 		FILE* f = fopen(filename,"r");
 		if(f){
 			size = fread(p_name, sizeof(char), sizeof(p_name), f);

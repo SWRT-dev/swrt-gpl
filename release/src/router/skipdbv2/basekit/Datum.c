@@ -162,8 +162,8 @@ size_t Datum_matchingPrefixSizeWith_(Datum *self, Datum *other)
 	for (i = 0; i < min; i ++)
 	{
 		if (*b1 != *b2) break;
-		*b1 ++;
-		*b2 ++;
+		b1++;
+		b2++;
 	}
 	
 	return i;
@@ -188,8 +188,7 @@ Datum *Datum_newFrom_to_(Datum *self, size_t start, size_t end)
 long Datum_find_(Datum *self, void *delimsList, size_t startIndex) 
 {
 	List *delims = (List *)delimsList;
-	List *results = List_new();
-	size_t i, last = 0;
+	size_t i;
 	
 	if (startIndex > self->size) return -1;
 	

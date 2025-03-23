@@ -25,6 +25,13 @@
 #include "SkipDB.h"
 #include "skipd.h"
 
+#ifndef likely
+#define likely(x) __builtin_expect((x), 1)
+#endif
+#ifndef unlikely
+#define unlikely(x) __builtin_expect((x), 0)
+#endif
+
 typedef struct _skipd_server {
     ev_io io;
     int fd;
@@ -250,11 +257,11 @@ static void client_read(EV_P_ ev_io *w, int revents) {
 
 static void client_write(EV_P_ ev_io *w, int revents) {
     skipd_client* client = container_of(w, skipd_client, io_write);
-    int rt;
+//    int rt;
 
     //skipd_log(SKIPD_DEBUG, "begin for writing\n");
 
-    rt = client_ccr_write(EV_A_ client);
+    /*rt = */client_ccr_write(EV_A_ client);
     if(ccr_break_killed == client->break_level) {
         client_release(EV_A_ client);
     } else {
@@ -318,7 +325,7 @@ static void delay_cmd_cb(EV_P_ ev_timer* watcher, int revents) {
     ev_timer_stop(EV_A_ watcher);
     free(delay_obj);
 }
-
+#if 0
 static void time_cmd_cb(EV_P_ ev_timer* watcher, int revents) {
     char* p1;
     time_cmd* time_obj = container_of(watcher, time_cmd, watcher);
@@ -346,7 +353,7 @@ static void time_cmd_cb(EV_P_ ev_timer* watcher, int revents) {
     } while(0);
 
 }
-
+#endif
 static int client_send_key(EV_P_ skipd_client* client, char* cmd, char* key, char* buf, int len) {
     char pref_buf[HEADER_PREFIX+1];
     int n, resp_len = (len + 2);
@@ -356,7 +363,7 @@ static int client_send_key(EV_P_ skipd_client* client, char* cmd, char* key, cha
     resp_len += strlen(cmd);
     resp_len += strlen(key);
 
-    sprintf(pref_buf + MAGIC_LEN, "%07d ", resp_len);
+    snprintf(pref_buf + MAGIC_LEN, sizeof(pref_buf) - MAGIC_LEN, "%07d ", resp_len);
     resp_len += HEADER_PREFIX;
 
     if(NULL == client->send) {
@@ -501,12 +508,9 @@ static int client_ccr_read_util(skipd_client* client, int step_len) {
 static int client_run_command(EV_P_ skipd_client* client)
 {
     char *p1, *p2;
-    time_t t1, t2, epoch;
     int tmpi, tmp2;
-    struct tm tm1, tm2, *tnow;
     Datum dkey, dvalue;
     delay_cmd* delay_obj;
-    time_cmd* time_obj;
     struct ccrContextTag* ctx = &client->ccr_read;
 
     //stack
@@ -1043,10 +1047,12 @@ int unix_socket_init(struct sockaddr_un* socket_un, char* sock_path, int max_que
 }
 
 static void server_open(skipd_server* server) {
+	int ret;
     char real_path[SK_PATH_MAX];
+#if 0
     char nbuf[10];
     int n, sf;
-#if 0
+
     sprintf(real_path, "%s/switch", server->db_path);
     sf = open(real_path, O_RDONLY);
     if(sf > 0) {
@@ -1067,7 +1073,9 @@ static void server_open(skipd_server* server) {
     close(sf);
 #endif
 	server->curr_db = 0;
-    sprintf(real_path, "%s/%d", server->db_path, server->curr_db);
+    ret = snprintf(real_path, sizeof(real_path), "%s/%d", server->db_path, server->curr_db);
+	if(unlikely(ret < 0))
+		syslog(LOG_PERROR, "snprintf failed\n");
     server->db = SkipDB_new();
     SkipDB_setPath_(server->db, real_path);
     SkipDB_open(server->db);
@@ -1077,10 +1085,12 @@ static void server_open(skipd_server* server) {
 static void server_switch(skipd_server* server) {
     char real_path[SK_PATH_MAX];
     char nbuf[10];
-    int n1, n2, sf;
+    int n1, n2, sf, ret;
     SkipDB *tmp, *other = SkipDB_new();
     n2 = 1 - server->curr_db;
-    sprintf(real_path, "%s/%d", server->db_path, n2);
+    ret = snprintf(real_path, sizeof(real_path), "%s/%d", server->db_path, n2);
+	if(unlikely(ret < 0))
+		syslog(LOG_PERROR, "snprintf failed\n");
     SkipDB_setPath_(other, real_path);
     SkipDB_delete(other);
     SkipDB_open(other);
@@ -1090,13 +1100,15 @@ static void server_switch(skipd_server* server) {
     SkipDB_commitTransaction(other);
 
     tmp = server->db;
-    sprintf(real_path, "%s/switch", server->db_path);
+    ret = snprintf(real_path, sizeof(real_path), "%s/switch", server->db_path);
+	if(unlikely(ret < 0))
+		syslog(LOG_PERROR, "snprintf failed\n");
     sf = open(real_path, O_TRUNC | O_RDWR | O_CREAT, 0640);
     if (sf < 0) {
         skipd_log(SKIPD_DEBUG, "cannot write switch file");
         exit(1);
     }
-    n1 = sprintf(nbuf, "%d", n2);
+    n1 = snprintf(nbuf, sizeof(nbuf), "%d", n2);
     write(sf, nbuf, n1);
     close(sf);
 
@@ -1196,6 +1208,7 @@ static void server_init_delay(EV_P_ skipd_server *server) {
     }
 }
 
+#if 0
 static void server_init_time(EV_P_ skipd_server *server) {
     int n1;
     char *p1;
@@ -1263,6 +1276,7 @@ static void server_init_time(EV_P_ skipd_server *server) {
         SkipDBCursor_release(cursor);
     }
 }
+#endif
 
 static void server_cmd_init(EV_P_ ev_timer *w, int revents) {
     skipd_server *server = global_server;

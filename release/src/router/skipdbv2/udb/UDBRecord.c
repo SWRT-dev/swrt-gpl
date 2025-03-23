@@ -130,9 +130,9 @@ Datum UDBRecord_readDatum(UDBRecord *self)
     JFile_fseek(self->file, self->pos + sizeof(UDBRecordHeader), SEEK_SET);
     
     UArray_setSize_(ba, size);
-    JFile_fread(self->file, UArray_bytes(ba), size, 1);
+    JFile_fread(self->file, (uint8_t *)UArray_bytes(ba), size, 1);
     d.size = size;
-    d.data = UArray_bytes(ba);
+    d.data = (uint8_t *)UArray_bytes(ba);
     return d;
 }
 
@@ -144,7 +144,7 @@ void UDBRecord_moveToPos_(UDBRecord *self, PID_TYPE newPos)
     unsigned char *data;
     UArray *ba = UDBRecord_data(self);
     UArray_setSize_(ba, totalSize);
-    data = UArray_bytes(ba); 
+    data = (uint8_t *)UArray_bytes(ba); 
        
     JFile_fseek(self->file, self->pos, SEEK_SET);
     JFile_fread(self->file, data, totalSize, 1);

@@ -1214,10 +1214,12 @@ void convert_wl_sched_v1_to_sched_v2() {
 	char wl_ifnames[512];
 	char word[256], *next, tmp[100];
 	char prefix[]="wlXXXXXX_", str_sched_v2[MAX_NVRAM_SCHED_LEN];
-	int unit = 0, changed = 0;
+	int unit = 0, changed = 0, ret;
 	snprintf(wl_ifnames, sizeof(wl_ifnames), "%s", nvram_safe_get("wl_ifnames"));
 	foreach (word, wl_ifnames, next) {
-		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		ret = snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if(unlikely(ret < 0))
+			dbg("snprintf failed\n");
 
 #if 0 //def RTCONFIG_AMAS
 		if (nvram_match("re_mode", "1"))
@@ -1311,7 +1313,7 @@ void convert_pc_sched_v1_to_sched_v2() {
 	char str_sched_v2[MAX_NVRAM_SCHED_LEN];
 	char tmp_str_sched_v2[MAX_NVRAM_SCHED_LEN];
 	char word[MAX_NVRAM_SCHED_LEN], *next_word;
-	int changed = 0, count;
+	int changed = 0, count, ret;
 
 	if (!nvram_match("MULTIFILTER_MACFILTER_DAYTIME_V2_CONVERTED", "1")) {
 		snprintf(str_sched_v1, sizeof(str_sched_v1), "%s", nvram_safe_get("MULTIFILTER_MACFILTER_DAYTIME"));
@@ -1323,7 +1325,9 @@ void convert_pc_sched_v1_to_sched_v2() {
 				// convert to v2 and merge same period to one rule
 				if (convert_to_str_sched_v2(word, 1, tmp_str_sched_v2, sizeof(tmp_str_sched_v2))) {
 					SCHED_DBG("tmp_str_sched_v2  : %s", tmp_str_sched_v2);
-					snprintf(str_sched_v2 + strlen(str_sched_v2), sizeof(str_sched_v2) - strlen(str_sched_v2), "%s>", tmp_str_sched_v2);
+					ret = snprintf(str_sched_v2 + strlen(str_sched_v2), sizeof(str_sched_v2) - strlen(str_sched_v2), "%s>", tmp_str_sched_v2);
+					if(unlikely(ret < 0))
+						dbg("snprintf failed\n");
 					changed = 1;
 				}
 			}

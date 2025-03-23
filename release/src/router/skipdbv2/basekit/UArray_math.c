@@ -7,7 +7,7 @@
 #include <math.h>
 #include <float.h>
 
-#warning Uncomment the IO_USE_SIMD define to turn on SIMD acceleration
+//#warning Uncomment the IO_USE_SIMD define to turn on SIMD acceleration
 //#define IO_USE_SIMD 1
 
 #ifdef IO_USE_SIMD
@@ -134,6 +134,7 @@ void UArray_divide_(UArray *self, const UArray *other)
 double UArray_dotProduct_(const UArray *self, const UArray *other)
 {
 	DUARRAY_OP(UARRAY_DOT, NULL, self, other);
+    return 0;
 }
 
 // basic scalar math

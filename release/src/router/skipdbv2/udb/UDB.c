@@ -10,7 +10,10 @@ UDB ioDoc(
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <fcntl.h>
+
+int UDB_readCommitted(UDB *self);
 
 UDB *UDB_new(void)
 {
@@ -140,7 +143,7 @@ void UDB_setCommittedFlag_(UDB *self, int flag)
 	#ifdef F_FULLFSYNC
 		fcntl(fileno(self->committedFile), F_FULLFSYNC, NULL);
 	#else
-		#warning Linux doesn't support syncing to physical media
+		//#warning Linux doesn't support syncing to physical media
 		fsync(fileno(self->committedFile));
 	#endif
 }

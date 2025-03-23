@@ -550,7 +550,7 @@ int get_uplinkports_status(char *ifname)
 void set_wlan_service_status(int bssidx, int vifidx, int enabled)
 {
     if (nvram_get_int("wlready") == 0) return;
-
+	int r;
     char *ifname = NULL;
     char tmp[128] = {0}, prefix[] = "wlXXXXXXXXXX_";
     char wl_radio[] = "wlXXXX_radio";
@@ -559,11 +559,13 @@ void set_wlan_service_status(int bssidx, int vifidx, int enabled)
     if (nvram_get_int(wl_radio) == 0)
         return;
 
-    if (vifidx > 0)
-        snprintf(prefix, sizeof(prefix), "wl%d.%d_", bssidx, vifidx);
-    else
-        snprintf(prefix, sizeof(prefix), "wl%d_", bssidx);
-
+    if (vifidx > 0){
+        r = snprintf(prefix, sizeof(prefix), "wl%d.%d_", bssidx, vifidx);
+    }else{
+        r = snprintf(prefix, sizeof(prefix), "wl%d_", bssidx);
+	}
+	if(unlikely(r < 0))
+		dbg("snprintf failed\n");
     ifname = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
     if (!enabled && bssidx)
         doSystem("iwpriv %s set DfsCacClean=1", ifname);

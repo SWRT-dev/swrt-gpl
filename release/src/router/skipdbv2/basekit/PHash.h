@@ -41,8 +41,9 @@ typedef struct
 //#define PHash_mask(self) (self->tableSize-1)
 #define PHash_maxLoops(self) (self->tableSize)
 #define PHash_maxKeys(self) (self->tableSize)
-
+#if 0
 BASEKIT_API void PHash_print(PHash *self); // to debug
+#endif
 
 BASEKIT_API PHash *PHash_new(void);
 BASEKIT_API void PHash_free(PHash *self);

@@ -337,6 +337,17 @@ int get_radio(int unit, int subunit)
 		return get_radio_status(nvram_safe_get(strcat_r(prefix, "ifname", tmp)));
 }
 
+
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTACRH18) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
+void led_onoff(int unit)
+{   
+	if(get_radio(unit, 0))
+		led_control(get_wl_led_id(unit), LED_ON);
+	else
+		led_control(get_wl_led_id(unit), LED_OFF);
+}
+#endif
+
 void set_radio(int on, int unit, int subunit)
 {
 	char tmp[100], prefix[] = "wlXXXXXXXXXXXXXX";
@@ -880,17 +891,6 @@ int get_channel_list_via_country(int unit, const char *country_code, char *buffe
 	return (p - buffer);
 }
 
-
-#if defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTACRH18) || defined(RTCONFIG_WLMODULE_MT7915D_AP)
-void led_onoff(int unit)
-{   
-	if(get_radio(unit, 0))
-		led_control(get_wl_led_id(unit), LED_ON);
-	else
-		led_control(get_wl_led_id(unit), LED_OFF);
-}
-#endif
-
 static char wan_base_if[IFNAMSIZ] = "";
 int set_wan_base_if(char *wan_ifaces)
 {
@@ -1046,7 +1046,7 @@ char *get_wlifname(int unit, int subunit, int subunit_x, char *buf)
  */
 char *get_wlxy_ifname(int x, int y, char *buf)
 {
-	int i, sidx;
+	int i, sidx, r;
 	char prefix[sizeof("wlX.Yxxx")];
 
 	if (!buf)
@@ -1067,7 +1067,9 @@ char *get_wlxy_ifname(int x, int y, char *buf)
 			break;
 		}
 
-		snprintf(prefix, sizeof(prefix), "wl%d.%d_", x, i);
+		r = snprintf(prefix, sizeof(prefix), "wl%d.%d_", x, i);
+		if(unlikely(r < 0))
+			dbg("snprintf failed\n");
 		if (is_bss_enabled(prefix))
 			sidx++;
 	}

@@ -123,11 +123,11 @@ UArray *UArray_asNumberArrayString(const UArray *self)
 
 		if(UArray_isFloatType(self))
 		{
-			sprintf(s, "%f", v);
+			sprintf(s, "%f", (double)v);
 		}
 		else
 		{
-			sprintf(s, "%i", v);
+			sprintf(s, "%i", (int)v);
 		}
 
 		if(i != UArray_size(self) -1 ) strcat(s, ", ");
@@ -152,7 +152,7 @@ UArray *UArray_asUTF8(const UArray *self)
 		void *sourceEnd   = self->data + self->size * self->itemSize;
 		UTF8 *targetStart = out->data;
 		UTF8 *targetEnd   = out->data + out->size * out->itemSize;
-		size_t outSize;
+		//size_t outSize;
 
 		switch(self->encoding)
 		{

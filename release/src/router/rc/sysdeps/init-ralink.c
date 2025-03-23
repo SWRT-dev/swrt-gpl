@@ -31,6 +31,10 @@
 #include <swrtmesh.h>
 #endif
 
+#if defined(RTCONFIG_SWRTMESH)
+void stop_wifi_wpa_supplicant();
+#endif
+
 void init_devs(void)
 {
 #define MKNOD(name,mode,dev)	if(mknod(name,mode,dev)) perror("## mknod " name)
@@ -448,7 +452,7 @@ static int vlan_bitmask_shift(unsigned int input)
 void config_switch()
 {
 	int model = get_model();
-	int stbport;
+	int stbport, r;
 	int controlrate_unknown_unicast;
 	int controlrate_unknown_multicast;
 	int controlrate_multicast;
@@ -939,7 +943,9 @@ void config_switch()
 			controlrate_unknown_unicast = 0;
 		if (controlrate_unknown_unicast)
 		{
-			sprintf(parm_buf, "%d", controlrate_unknown_unicast);
+			r = snprintf(parm_buf, sizeof(parm_buf), "%d", controlrate_unknown_unicast);
+			if(unlikely(r < 0))
+				dbg("snprintf failed\n");
 			eval("rtkswitch", "22", parm_buf);
 		}
 	
@@ -952,7 +958,9 @@ void config_switch()
 			controlrate_unknown_multicast = 0;
 		if (controlrate_unknown_multicast)
 		{
-			sprintf(parm_buf, "%d", controlrate_unknown_multicast);
+			r = snprintf(parm_buf, sizeof(parm_buf), "%d", controlrate_unknown_multicast);
+			if(unlikely(r < 0))
+				dbg("snprintf failed\n");
 			eval("rtkswitch", "23", parm_buf);
 		}
 	
@@ -965,7 +973,9 @@ void config_switch()
 			controlrate_multicast = 0;
 		if (controlrate_multicast)
 		{
-			sprintf(parm_buf, "%d", controlrate_multicast);
+			r = snprintf(parm_buf, sizeof(parm_buf), "%d", controlrate_multicast);
+			if(unlikely(r < 0))
+				dbg("snprintf failed\n");
 			eval("rtkswitch", "24", parm_buf);
 		}
 	
@@ -978,7 +988,9 @@ void config_switch()
 			controlrate_broadcast = 0;
 		if (controlrate_broadcast)
 		{
-			sprintf(parm_buf, "%d", controlrate_broadcast);
+			r = snprintf(parm_buf, sizeof(parm_buf), "%d", controlrate_broadcast);
+			if(unlikely(r < 0))
+				dbg("snprintf failed\n");
 			eval("rtkswitch", "25", parm_buf);
 		}
 	}
@@ -1128,7 +1140,7 @@ void init_wl(void)
 	char tmpStr2[24];
 	char tmpStr3[24];
 	char cmd[1024];
-	int i;
+	int i, r;
 #if defined(RTCONFIG_MT798X)
 	char iptv_vids[32], vid[100], str[120];
 #endif
@@ -1155,8 +1167,9 @@ void init_wl(void)
 			}
 		}
 	}
-	sprintf(tmpStr1, "regspec=%s", dst);
-	
+	r = snprintf(tmpStr1, sizeof(tmpStr1), "regspec=%s", dst);
+	if(unlikely(r < 0))
+		dbg("snprintf failed\n");
 	memset(dst, 0, MAX_REGDOMAIN_LEN+1);
 	if(FRead(dst, REG2G_EEPROM_ADDR, MAX_REGDOMAIN_LEN) < 0)
 	{
@@ -1172,8 +1185,9 @@ void init_wl(void)
 			}
 		}
 	}
-	sprintf(tmpStr2, "regspec_2g=%s", dst);
-
+	r = snprintf(tmpStr2, sizeof(tmpStr2), "regspec_2g=%s", dst);
+	if(unlikely(r < 0))
+		dbg("snprintf failed\n");
 	memset(dst, 0, MAX_REGDOMAIN_LEN+1);
 	if(FRead(dst, REG5G_EEPROM_ADDR, MAX_REGDOMAIN_LEN) < 0)
 	{
@@ -1189,8 +1203,9 @@ void init_wl(void)
 			}
 		}
 	}
-	sprintf(tmpStr3, "regspec_5g=%s", dst);
-
+	r = snprintf(tmpStr3, sizeof(tmpStr3), "regspec_5g=%s", dst);
+	if(unlikely(r < 0))
+		dbg("snprintf failed\n");
 	if (!module_loaded("rt2860v2_ap"))
 		modprobe("rt2860v2_ap");
 
@@ -1513,7 +1528,7 @@ void init_syspara(void)
 	unsigned char buffer[16];
 	unsigned char *dst, reg_spec[MAX_REGSPEC_LEN + 1] = { 0 }, reg_2g[MAX_REGDOMAIN_LEN + 1] = { 0 }, reg_5g[MAX_REGDOMAIN_LEN + 1] = { 0 };
 	unsigned int bytes;
-	int i;
+	int i, r;
 	char macaddr[]="00:11:22:33:44:55";
 	char macaddr2[]="00:11:22:33:44:58";
 #if defined(RTCONFIG_EASYMESH)
@@ -1936,7 +1951,9 @@ void init_syspara(void)
 	{
 		strncpy(productid, buffer + 4, 12);
 		productid[12] = 0;
-		sprintf(fwver, "%d.%d.%d.%d", buffer[0], buffer[1], buffer[2], buffer[3]);
+		r = snprintf(fwver, sizeof(fwver), "%d.%d.%d.%d", buffer[0], buffer[1], buffer[2], buffer[3]);
+		if(unlikely(r < 0))
+			dbg("snprintf failed\n");
 		nvram_set("productid", trim_r(productid));
 		nvram_set("firmver", trim_r(fwver));
 	}

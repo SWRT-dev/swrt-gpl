@@ -557,7 +557,7 @@ int gen_ralink_config(int band, int is_iNIC)
 	FILE *fp;
 	char *str = NULL;
 	char *str2 = NULL;
-	int  i;
+	int  i, r;
 	int ssid_num = 1;
 	char list[2048];
 	int flag_8021x = 0;
@@ -620,8 +620,9 @@ int gen_ralink_config(int band, int is_iNIC)
 #if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RALINK_DBDC_MODE) || defined(RTCONFIG_MT798X)
 	fprintf(fp, "DBDC_MODE=1\n");
 #endif
-	snprintf(prefix, sizeof(prefix), "wl%d_", band);
-
+	r = snprintf(prefix, sizeof(prefix), "wl%d_", band);
+	if(unlikely(r < 0))
+		dbg("snprintf failed\n");
 	//CountryRegion
 	str = nvram_pf_get(prefix, "country_code");
 	if (str && *str)
@@ -1161,7 +1162,9 @@ int gen_ralink_config(int band, int is_iNIC)
 	//AckPolicy
 	enum_sname_mvalue_w_fixed_value(fp, 4, "AckPolicy", nvram_pf_match(prefix, "wme_no_ack", "on") ? "1" : "0");
 
-	snprintf(prefix, sizeof(prefix), "wl%d_", band);
+	r = snprintf(prefix, sizeof(prefix), "wl%d_", band);
+	if(unlikely(r < 0))
+		dbg("snprintf failed\n");
 //	snprintf(prefix2, sizeof(prefix2), "wl%d_", band);
 
 	//APSDCapable UAPSDCapable
@@ -1434,7 +1437,7 @@ int gen_ralink_config(int band, int is_iNIC)
 							else
 							{
 								if(atoi(nvram_safe_get("acs_dfs")) == 0) {							
-									sprintf(tmpstr,"%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d",52,56,60,64,100,104,108,112,116,120,124,128,132,136,140);	
+									sprintf(tmpstr,"%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d",52,56,60,64,100,104,108,112,116,120,124,128,132,136,140);
 									fprintf(fp,"AutoChannelSkipList=%s\n",tmpstr);
 									nvram_set("skip_channel_5g", "band23");
 								}
@@ -1470,7 +1473,7 @@ int gen_ralink_config(int band, int is_iNIC)
 							if(IEEE80211H)
 							{
 								if((nvram_pf_get_int(prefix, "bw") == 1) || (nvram_pf_get_int(prefix, "bw") == 3)){
-									sprintf(tmpstr,"%s;%d;%d;%d;%d", tmpstr, 116, 132, 136, 140);
+									strlcat(tmpstr, ";116;132;136;140", sizeof(tmpstr));
 								}
 								else if(nvram_pf_get_int(prefix, "bw") == 2){
 									strlcat(tmpstr, ";116;140", sizeof(tmpstr));
@@ -1648,9 +1651,12 @@ int gen_ralink_config(int band, int is_iNIC)
 	for (i = 0; i < ssid_num; i++)
 	{
 		if (i)
-			snprintf(prefix_mssid, sizeof(prefix_mssid), "wl%d.%d_", band, i);
+			r = snprintf(prefix_mssid, sizeof(prefix_mssid), "wl%d.%d_", band, i);
 		else
-			snprintf(prefix_mssid, sizeof(prefix_mssid), "wl%d_", band);
+			r = snprintf(prefix_mssid, sizeof(prefix_mssid), "wl%d_", band);
+
+		if(unlikely(r < 0))
+			dbg("snprintf failed\n");
 
 		if (i)
 			strlcat(tmpstr, ";", sizeof(tmpstr));
@@ -3044,8 +3050,11 @@ int gen_ralink_config(int band, int is_iNIC)
 		nvram_set("ure_disable", "0");
 		if((sw_mode == SW_MODE_REPEATER && nvram_invmatch("wlc_ssid", "")) || wisp_mode())
 			snprintf(prefix_wlc, sizeof(prefix_wlc), "wlc_");
-		else
-			snprintf(prefix_wlc, sizeof(prefix_wlc), "wlc%d_", band);
+		else{
+			r = snprintf(prefix_wlc, sizeof(prefix_wlc), "wlc%d_", band);
+			if(unlikely(r < 0))
+				dbg("snprintf failed\n");
+		}
 		if(!wisp_mode()){
 			nvram_pf_set(prefix, "ssid", nvram_pf_safe_get(prefix_wlc, "ssid"));
 			nvram_pf_set(prefix, "auth_mode_x", nvram_pf_safe_get(prefix_wlc, "auth_mode"));
@@ -3359,7 +3368,9 @@ next_mrate:
 		if (!i) {
 			fprintf(fp, "MaxStaNum=0;");
 		} else {
-			sprintf(prefix_mssid, "wl%d.%d_", band, i);
+			r = snprintf(prefix_mssid, sizeof(prefix_mssid), "wl%d.%d_", band, i);
+			if(unlikely(r < 0))
+				dbg("snprintf failed\n");
 			maxsta = nvram_pf_get_int(prefix_mssid, "guest_num");
 			/* If maxsta illegal, disable MaxStaNum. */
 			if (maxsta < 0 || maxsta > 32)
@@ -5188,7 +5199,7 @@ void gen_hostapd_wps_config(FILE *fp_h, int band, int subnet, char *br_if)
 
 int gen_hostapd_config(int band, int subunit)
 {
-	int v;
+	int v, r;
 	int sw_mode = sw_mode(), wpapsk;
 	int rep_mode, macmode;
 	int flag_8021x = 0;
@@ -5271,9 +5282,11 @@ int gen_hostapd_config(int band, int subunit)
 	}
 #endif /* RTCONFIG_WIRELESSREPEATER */
 	if(subunit)
-		snprintf(prefix, sizeof(prefix), "wl%d.%d_", band, subunit);
+		r = snprintf(prefix, sizeof(prefix), "wl%d.%d_", band, subunit);
 	else
-		snprintf(prefix, sizeof(prefix), "wl%d_", band);
+		r= snprintf(prefix, sizeof(prefix), "wl%d_", band);
+	if(unlikely(r < 0))
+		dbg("snprintf failed\n");
 	fprintf(fp_h, "interface=%s\n", wif);
 	fprintf(fp_h, "ctrl_interface=/var/run/hostapd\n");
 	fprintf(fp_h, "driver=nl80211\n");
@@ -5471,7 +5484,7 @@ void ralink_hostapd_start(void)
 {
 	FILE *fp;
 	pid_t pid;
-	int unit = 0, subunit = 0; 
+	int unit = 0, subunit = 0, r; 
 	char prefix[] = "wlXXXXXXX_";
 	char wif[IFNAMSIZ];
 	char hostapd_path[24] = {0}, conf_path[50], pid_path[32], log_path[32], entropy_path[32];
@@ -5494,12 +5507,20 @@ void ralink_hostapd_start(void)
 #if defined(RTCONFIG_SINGLE_HOSTAPD)
 				fprintf(fp, "wpa_cli -g /var/run/hostapd/global raw ADD bss_config=%s:/etc/Wireless/hostapd_%s.conf", wif, wif);
 #else
-				snprintf(hostapd_path, sizeof(hostapd_path), "/tmp/hostapd_%s", wif);
+				r = snprintf(hostapd_path, sizeof(hostapd_path), "/tmp/hostapd_%s", wif);
+				if(unlikely(r < 0))
+					dbg("snprintf failed\n");
 				doSystem("ln -sf /usr/sbin/hostapd %s", hostapd_path);
 				snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/hostapd_%s.conf", wif);
-				snprintf(pid_path, sizeof(pid_path), "/var/run/hostapd_%s.pid", wif);
-				snprintf(log_path, sizeof(log_path), "/tmp/hostapd_%s.log", wif);
-				snprintf(entropy_path, sizeof(entropy_path), "/var/run/entropy_%s.bin", wif);
+				r = snprintf(pid_path, sizeof(pid_path), "/var/run/hostapd_%s.pid", wif);
+				if(unlikely(r < 0))
+					dbg("snprintf failed\n");
+				r = snprintf(log_path, sizeof(log_path), "/tmp/hostapd_%s.log", wif);
+				if(unlikely(r < 0))
+					dbg("snprintf failed\n");
+				r = snprintf(entropy_path, sizeof(entropy_path), "/var/run/entropy_%s.bin", wif);
+				if(unlikely(r < 0))
+					dbg("snprintf failed\n");
 				doSystem("echo \"%s -B -P %s -f %s -e %s %s\" >> /tmp/hostapd.log", hostapd_path, pid_path, log_path, entropy_path, conf_path);
 				fprintf(fp, "while [ -z $(pidof hostapd_%s) ]\n", wif);
 				fprintf(fp, "do\n");
@@ -5520,6 +5541,7 @@ void ralink_hostapd_start(void)
 		|| wisp_mode()
 #endif
 	){
+		int r;
 		int wlc_band = nvram_get_int("wlc_band");
 		snprintf(wif, sizeof(wif), "%s", get_staifname(wlc_band));
 		ifconfig(wif, IFUP, NULL, NULL);//up ifname
@@ -5527,9 +5549,13 @@ void ralink_hostapd_start(void)
 		if(!wisp_mode())
 #endif
 		eval("brctl", "addif", "br0", wif);//add to bridge
-		snprintf(pid_path, sizeof(pid_path), "/var/run/wifi-%s.pid", wif);
+		r = snprintf(pid_path, sizeof(pid_path), "/var/run/wifi-%s.pid", wif);
+		if(unlikely(r < 0))
+			dbg("snprintf failed\n");
 		snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/wpa_supplicant-%s.conf", wif);
-		snprintf(log_path, sizeof(log_path), "/tmp/hostapd_%s.log", wif);
+		r = snprintf(log_path, sizeof(log_path), "/tmp/hostapd_%s.log", wif);
+		if(unlikely(r < 0))
+			dbg("snprintf failed\n");
 		fprintf(fp, "while [ -z $(pidof wpa_supplicant) ]\n");
 		fprintf(fp, "do\n");
 		fprintf(fp, "wpa_supplicant -B -P %s -D nl80211 -i %s -b br0 -f %s -c %s\n", pid_path, wif, log_path, conf_path);
@@ -5568,7 +5594,7 @@ void gen_ralink_wifi_cfgs(void)
 
 void ralink_hostapd_stop(void)
 {
-	int unit = 0, subunit = 0; 
+	int unit = 0, subunit = 0, r; 
 	char prefix[] = "wlXXXXXXX_";
 	char wif[IFNAMSIZ];
 #if defined(RTCONFIG_SINGLE_HOSTAPD)
@@ -5587,13 +5613,17 @@ void ralink_hostapd_stop(void)
 			snprintf(cmd, sizeof(cmd), "wpa_cli -g /var/run/hostapd/global raw REMOVE %s", wif);
 			doSystem(cmd);
 #else
-			snprintf(pid_path, sizeof(pid_path), "/var/run/hostapd_%s.pid", wif);
+			r = snprintf(pid_path, sizeof(pid_path), "/var/run/hostapd_%s.pid", wif);
+			if(unlikely(r < 0))
+				dbg("snprintf failed\n");
 			if(f_exists(pid_path)){
 				kill_pidfile_tk(pid_path);
 				unlink(pid_path);
 //				ifconfig(wif, 0, NULL, NULL);
 			}
-			snprintf(pid_path, sizeof(pid_path), "/var/run/hostapd/%s", wif);
+			r = snprintf(pid_path, sizeof(pid_path), "/var/run/hostapd/%s", wif);
+			if(unlikely(r < 0))
+				dbg("snprintf failed\n");
 			if(f_exists(pid_path))
 				unlink(pid_path);
 #endif
@@ -5609,11 +5639,13 @@ void ralink_hostapd_stop(void)
 
 void stop_wifi_wpa_supplicant(void)
 {
-	int unit = 0; 
+	int unit = 0, r; 
 	char wif[IFNAMSIZ], pid_path[32];
 	for(unit = 0; unit < MAX_NR_WL_IF; unit++){
 		snprintf(wif, sizeof(wif), "%s", get_staifname(unit));
-		snprintf(pid_path, sizeof(pid_path), "/var/run/wifi-%s.pid", wif);
+		r = snprintf(pid_path, sizeof(pid_path), "/var/run/wifi-%s.pid", wif);
+		if(unlikely(r < 0))
+			dbg("snprintf failed\n");
 		if(f_exists(pid_path)){
 			kill_pidfile_tk(pid_path);
 			unlink(pid_path);
@@ -5817,7 +5849,7 @@ void stop_wds_ra(const char* lan_ifname, const char* wif)
 {
 	char prefix[32];
 	char wdsif[32];
-	int i;
+	int i, r;
 
 	if (strcmp(wif, WIF_2G) && strcmp(wif, WIF_5G))
 		return;
@@ -5834,7 +5866,9 @@ void stop_wds_ra(const char* lan_ifname, const char* wif)
 
 	for (i = 0; i < 4; i++)
 	{
-		sprintf(wdsif, "%s%d", prefix, i);
+		r = snprintf(wdsif, sizeof(wdsif), "%s%d", prefix, i);
+		if(unlikely(r < 0))
+			dbg("snprintf failed\n");
 		doSystem("brctl delif %s %s 1>/dev/null 2>&1", lan_ifname, wdsif);
 		ifconfig(wdsif, 0, NULL, NULL);
 	}

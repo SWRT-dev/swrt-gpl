@@ -781,9 +781,9 @@ void UArray_at_putPointer_(UArray *self, size_t pos, void *v)
 				UArray_changed(self);
 			}
 			return;
+		default:
+			UArray_error_(self, "UArray_at_putPointer_ not supported with this type");
 	}
-
-	UArray_error_(self, "UArray_at_putPointer_ not supported with this type");
 }
 
 void UArray_appendLong_(UArray *self, long v)
@@ -1024,8 +1024,8 @@ int UArray_isZero(const UArray *self)
 
 // find
 
-// printf("i %i %c j %i %c\n", i, v1, j, v2);\
-// printf("j%i == %i\n", i, other->size);\
+// printf("i %i %c j %i %c\n", i, v1, j, v2);
+// printf("j%i == %i\n", i, other->size);
 
 #define UARRAY_FIND_TYPES(OP2, TYPE1, self, TYPE2, other)\
 {\
@@ -1216,6 +1216,7 @@ int UArray_isSignedType(const UArray *self)
 		case CTYPE_int64_t:   return 1;
 		case CTYPE_float32_t: return 1;
 		case CTYPE_float64_t: return 1;
+		case CTYPE_uintptr_t: return 0;
 	}
 	return 0;
 }

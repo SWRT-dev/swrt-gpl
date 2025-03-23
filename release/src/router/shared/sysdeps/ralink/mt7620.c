@@ -922,7 +922,7 @@ static void get_mt7621_esw_phy_linkStatus(unsigned int mask, unsigned int *linkS
 
 static void build_wan_lan_mask(int stb)
 {
-	int unit;
+	int unit, r;
 	int wanscap_lan = get_wans_dualwan() & WANSCAP_LAN;
 	int wans_lanport = nvram_get_int("wans_lanport");
 	int sw_mode = sw_mode();
@@ -962,8 +962,9 @@ static void build_wan_lan_mask(int stb)
 
 	for (unit = WAN_UNIT_FIRST; unit < WAN_UNIT_MAX; ++unit) {
 		snprintf(prefix, sizeof(prefix), "%d", unit);
-		snprintf(nvram_ports, sizeof(nvram_ports), "wan%sports_mask", (unit == WAN_UNIT_FIRST)?"":prefix);
-
+		r = snprintf(nvram_ports, sizeof(nvram_ports), "wan%sports_mask", (unit == WAN_UNIT_FIRST)?"":prefix);
+		if(unlikely(r < 0))
+			dbg("snprintf failed\n");
 		if (get_dualwan_by_unit(unit) == WANS_DUALWAN_IF_WAN) {
 			nvram_set_int(nvram_ports, wan_mask);
 		}

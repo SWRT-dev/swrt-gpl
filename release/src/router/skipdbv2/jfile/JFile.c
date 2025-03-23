@@ -453,9 +453,7 @@ size_t JFile_logSize(JFile *self)
 long JFile_lastCommitPosition(JFile *self)
 {
 	long lastCommitPosition = 0;
-	long end;
 	fseek(self->log, 0, SEEK_END);
-	end = ftell(self->log);
 	fseek(self->log, 0, SEEK_SET);
 
 	while (1)

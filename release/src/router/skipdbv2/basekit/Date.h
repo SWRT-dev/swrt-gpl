@@ -39,7 +39,7 @@ BASEKIT_API time_t Date_asTime(const Date *self);
 // zone
 
 BASEKIT_API void Date_setToLocalTimeZone(Date *self);
-struct timezone Date_timeZone(const Date *self);
+BASEKIT_API struct timezone Date_timeZone(const Date *self);
 BASEKIT_API void Date_setTimeZone_(Date *self, struct timezone tz);
 BASEKIT_API void Date_convertToTimeZone_(Date *self, struct timezone tz);
 
@@ -62,6 +62,9 @@ BASEKIT_API int Date_minute(const Date *self);
 
 BASEKIT_API void Date_setSecond_(Date *self, double s);
 BASEKIT_API double Date_second(const Date *self);
+
+BASEKIT_API UArray *Date_asSerialization(Date *self);
+BASEKIT_API Date *Date_fromSerialization(Date *self, UArray *serialization);
 
 BASEKIT_API unsigned char Date_isDaylightSavingsTime(const Date *self);
 BASEKIT_API int Date_isLeapYear(const Date *self);

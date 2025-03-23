@@ -9,10 +9,10 @@ static void SkipDBPointer_setRecord_(SkipDBPointer *self, SkipDBRecord *r)
 }
 
 
-static PID_TYPE SkipDBPointer_pid(SkipDBPointer *self)
-{
-	return self->pid;
-}
+//static PID_TYPE SkipDBPointer_pid(SkipDBPointer *self)
+//{
+//	return self->pid;
+//}
 
 //-----------------------------------------------------
 

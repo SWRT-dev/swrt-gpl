@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#include <sys/fcntl.h> // fcntl
+#include <fcntl.h> // fcntl
 #include <unistd.h> // close
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -431,7 +431,7 @@ dbclient* gclient;
 int main(int argc, char **argv, char * envp[])
 {
     int n1, n2, err = 0;
-    struct tm tm1;
+//    struct tm tm1;
     dbclient* client;
     int remote_fd;
 

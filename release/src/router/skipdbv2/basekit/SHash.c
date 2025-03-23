@@ -9,6 +9,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#if 0
 void SHash_print(SHash* self)
 {
 	printf("self->log2tableSize = %d\n", self->log2tableSize);
@@ -53,6 +54,7 @@ void SHash_print(SHash* self)
 		printf("balance : %d / %d [%1.3f]\n", count[0], count[1], (count[0]-count[1])/(double)(count[0]+count[1]) );
 	}
 }
+#endif
 
 void SHash_tableInit_(SHash* self, int log2tableSize)
 {

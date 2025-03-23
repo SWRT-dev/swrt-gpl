@@ -129,7 +129,7 @@ int flash_mtd_init_info(void)
 {
 	FILE *fp;
 	char line[128];
-	int i, sz, esz;
+	int i, sz, esz, r;
 	char nm[12];
 	int total_sz;
 
@@ -141,7 +141,9 @@ int flash_mtd_init_info(void)
 				if (i >= NUM_INFO)
 					printf("please enlarge 'NUM_INFO'\n");
 				else {
-					snprintf(info[i].dev, sizeof(info[i].dev), "mtd%d", i);
+					r = snprintf(info[i].dev, sizeof(info[i].dev), "mtd%d", i);
+					if(unlikely(r < 0))
+						dbg("snprintf failed\n");
 					info[i].size = sz;
 					info[i].erasesize = esz;
 					nm[strlen((char *)nm)-1] = '\0'; //FIXME: sscanf

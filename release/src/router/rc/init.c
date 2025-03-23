@@ -1137,7 +1137,7 @@ reset_rp_def_ssid()
 {
 	char ssid[32];
 	char word[256], *next;
-	int unit;
+	int unit, r;
 	unsigned int max_mssid __attribute__((unused));
 	char prefix[]="wlXXXXXX_", tmp[100];
 
@@ -1158,7 +1158,9 @@ reset_rp_def_ssid()
 	unit = 0;
 	foreach (word, nvram_safe_get("wl_ifnames"), next) {
 		SKIP_ABSENT_BAND_AND_INC_UNIT(unit);
-		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		r = snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if(unlikely(r < 0))
+			dbg("snprintf failed\n");
 		max_mssid = num_of_mssid_support(unit);
 #if defined(RPAX56) || defined(RPAX58)
                 if(unit==0) {
@@ -1183,7 +1185,7 @@ restore_rp_defaults_wifi(int all)
 {
 	char ssid[32];
 	char word[256], *next;
-	int unit, subunit;
+	int unit, subunit, r;
 	unsigned int max_mssid;
 	char prefix[]="wlXXXXXX_", tmp[100];
 
@@ -1195,7 +1197,9 @@ restore_rp_defaults_wifi(int all)
 	unit = 0;
 	foreach (word, nvram_safe_get("wl_ifnames"), next) {
 		SKIP_ABSENT_BAND_AND_INC_UNIT(unit);
-		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		r = snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if(unlikely(r < 0))
+			dbg("snprintf failed\n");
 		max_mssid = num_of_mssid_support(unit);
 #if defined(RPAX56) || defined(RPAX58)
 		if(unit==0)
@@ -1210,8 +1214,9 @@ restore_rp_defaults_wifi(int all)
 
 		if (all)
 		for (subunit = 1; subunit < max_mssid+1; subunit++) {
-			snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, subunit);
-
+			r = snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, subunit);
+			if(unlikely(r < 0))
+				dbg("snprintf failed\n");
 			sprintf(ssid, "%s_%02X", "ASUS_RP", mac_binary[5]);
 
 				nvram_set(strcat_r(prefix, "ssid", tmp), ssid);
@@ -1228,7 +1233,7 @@ restore_rp_defaults_wifi(int all)
 void
 restore_defaults_wifi(int all)
 {
-	int rev3 = 0;
+	int rev3 = 0, r;
 	char ssid[32];
 #if defined(EBG15) || defined(EBG19)
 	char psk[32];
@@ -1251,7 +1256,9 @@ restore_defaults_wifi(int all)
 	unit = 0;
 	foreach (word, nvram_safe_get("wl_ifnames"), next) {
 		SKIP_ABSENT_BAND_AND_INC_UNIT(unit);
-		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		r = snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if(unlikely(r < 0))
+			dbg("snprintf failed\n");
 		max_mssid = num_of_mssid_support(unit);
 
 		strlcpy(ssid, get_default_ssid(unit, 0), sizeof(ssid));
@@ -1290,8 +1297,9 @@ restore_defaults_wifi(int all)
 
 		if (all)
 		for (subunit = 1; subunit < max_mssid+1; subunit++) {
-			snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, subunit);
-
+			r = snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, subunit);
+			if(unlikely(r < 0))
+				dbg("snprintf failed\n");
 			strlcpy(ssid, get_default_ssid(unit, subunit), sizeof(ssid));
 #ifndef RTCONFIG_SSID_AMAPS
 			if (defpsk
@@ -1434,7 +1442,7 @@ wan_defaults(void)
 	struct nvram_tuple *t;
 	char prefix[]="wanXXXXXX_", tmp[100];
 	char word[256], *next;
-	int unit;
+	int unit, r;
 _dprintf("%s: running...\n", __func__);
 
 	for(unit = WAN_UNIT_FIRST; unit < WAN_UNIT_MAX; ++unit){
@@ -1454,8 +1462,9 @@ _dprintf("%s: running...\n", __func__);
 
 	unit = WAN_UNIT_FIRST;
 	foreach(word, nvram_safe_get("wan_ifnames"), next){
-		snprintf(prefix, sizeof(prefix), "wan%d_", unit);
-
+		r = snprintf(prefix, sizeof(prefix), "wan%d_", unit);
+		if(unlikely(r < 0))
+			dbg("snprintf failed\n");
 		if(dualwan_unit__nonusbif(unit))
 			nvram_set(strcat_r(prefix, "ifname", tmp), word);
 
@@ -1466,7 +1475,9 @@ _dprintf("%s: running...\n", __func__);
 	if (nvram_get_int("switch_stb_x") > 6) {
 		unit = WAN_UNIT_IPTV;
 		foreach (word, nvram_safe_get("iptv_wan_ifnames"), next) {
-			snprintf(prefix, sizeof(prefix), "wan%d_", unit);
+			r = snprintf(prefix, sizeof(prefix), "wan%d_", unit);
+			if(unlikely(r < 0))
+				dbg("snprintf failed\n");
 			nvram_set(strcat_r(prefix, "ifname", tmp), word);
 			if (nvram_match("switch_wantag", "singtel"))
 				nvram_set(strcat_r(prefix, "vendorid", tmp),"S_iptvsys");
@@ -23966,8 +23977,12 @@ static void sysinit(void)
 	if ((d = opendir("/rom/etc")) != NULL) {
 		while ((de = readdir(d)) != NULL) {
 			if (de->d_name[0] == '.') continue;
-			snprintf(s, sizeof(s), "%s/%s", "/rom/etc", de->d_name);
-			snprintf(t, sizeof(t), "%s/%s", "/etc", de->d_name);
+			r = snprintf(s, sizeof(s), "%s/%s", "/rom/etc", de->d_name);
+			if(unlikely(r < 0))
+				dbg("snprintf failed\n");
+			r = snprintf(t, sizeof(t), "%s/%s", "/etc", de->d_name);
+			if(unlikely(r < 0))
+				dbg("snprintf failed\n");
 			symlink(s, t);
 		}
 		closedir(d);
@@ -24009,8 +24024,12 @@ static void sysinit(void)
 	if ((d = opendir("/usr/codepages")) != NULL) {
 		while ((de = readdir(d)) != NULL) {
 			if (de->d_name[0] == '.') continue;
-			snprintf(s, sizeof(s), "/usr/codepages/%s", de->d_name);
-			snprintf(t, sizeof(t), "/usr/share/%s", de->d_name);
+			r = snprintf(s, sizeof(s), "/usr/codepages/%s", de->d_name);
+			if(unlikely(r < 0))
+				dbg("snprintf failed\n");
+			r = snprintf(t, sizeof(t), "/usr/share/%s", de->d_name);
+			if(unlikely(r < 0))
+				dbg("snprintf failed\n");
 			symlink(s, t);
 		}
 		closedir(d);

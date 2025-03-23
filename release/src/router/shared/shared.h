@@ -5555,10 +5555,10 @@ enum {
 extern int cpu_plltype(void);
 #endif
 #ifndef likely
-#define likely(x) __builtin_expect((x), 1)
+#define likely(x) __builtin_expect(!!(x), 1)
 #endif
 #ifndef unlikely
-#define unlikely(x) __builtin_expect((x), 0)
+#define unlikely(x) __builtin_expect(!!(x), 0)
 #endif
 #endif	/* !__SHARED_H__ */
 

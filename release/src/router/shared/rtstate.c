@@ -1617,7 +1617,10 @@ char *get_default_ssid(int unit, int subunit)
 		strlcat(ssid, post_guest, sizeof(ssid));
 #endif
 		if (subunit > 1) {
-			snprintf(ssid2, sizeof(ssid2), "%s%d", ssid, subunit);
+			int r;
+			r = snprintf(ssid2, sizeof(ssid2), "%s%d", ssid, subunit);
+			if(unlikely(r < 0))
+				dbg("snprintf failed\n");
 			strlcpy(ssid, ssid2, sizeof(ssid));
 		}
 	}

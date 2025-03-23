@@ -50,7 +50,9 @@ typedef struct
 #define SHash_setKeysEqualCallback(self, v)  (self->keysEqual = v)
 #define SHash_setHashForKeyCallback(self, v)  (self->hashForKey = v)
 
+#if 0
 BASEKIT_API void SHash_print(SHash *self); // to debug
+#endif
 
 BASEKIT_API SHash *SHash_new(void);
 BASEKIT_API void SHash_free(SHash *self);

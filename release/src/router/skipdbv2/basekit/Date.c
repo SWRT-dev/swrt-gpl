@@ -59,14 +59,14 @@ double Date_SecondsFrom1970ToNow(void)
 
 void Date_now(Date *self)
 {
-	double s, us;
+//	double s, us;
 	struct timeval timeval;
 	struct timezone timezone;
 
 	gettimeofday(&timeval, &timezone);
-	s = timeval.tv_sec;
-	s -= timezone.tz_minuteswest * 60;
-	us = timeval.tv_usec;
+//	s = timeval.tv_sec;
+//	s -= timezone.tz_minuteswest * 60;
+//	us = timeval.tv_usec;
 
 	self->tv = timeval;
 	self->tz = timezone;
@@ -143,7 +143,9 @@ void Date_addSeconds_(Date *self, double s)
 
 double Date_secondsSince_(const Date *self, const Date *other)
 {
-	return Date_asSeconds(self) - Date_asSeconds(other);
+    long s = self->tv.tv_sec - other->tv.tv_sec;
+    long us = self->tv.tv_usec - other->tv.tv_usec;
+    return ((double)s) + (((double)us) / 1000000.0);
 }
 
 // components --------------------------------------------------------
@@ -159,7 +161,7 @@ void Date_setYear_(Date *self, long v)
 {
 	time_t t = self->tv.tv_sec;
 	struct tm *tm = localtime(&t);
-	tm->tm_year = v - 1900;
+	tm->tm_year = (int)v - 1900;
 	self->tv.tv_sec = mktime(tm);
 }
 
@@ -239,6 +241,29 @@ void Date_setSecond_(Date *self, double v)
 	self->tv.tv_usec = (v - ((long)v))*1000000;
 }
 
+UArray *Date_asSerialization(Date *self)
+{
+    int32_t *data = malloc(4 * sizeof(int32_t));
+
+    data[0] = (int32_t)self->tv.tv_sec;
+    data[1] = self->tv.tv_usec;
+    data[2] = self->tz.tz_minuteswest;
+    data[3] = self->tz.tz_dsttime;
+
+    return UArray_newWithData_type_encoding_size_copy_(data, CTYPE_int32_t,
+                                                       CENCODING_NUMBER, 4, 0);
+}
+
+Date *Date_fromSerialization(Date *self, UArray *serialization)
+{
+    self->tv.tv_sec = UArray_longAt_(serialization, 0);
+    self->tv.tv_usec = (int)UArray_longAt_(serialization, 1);
+    self->tz.tz_minuteswest = (int)UArray_longAt_(serialization, 2);
+    self->tz.tz_dsttime = (int)UArray_longAt_(serialization, 3);
+
+    return self;
+}
+
 unsigned char Date_isDaylightSavingsTime(const Date *self)
 {
 	time_t t = self->tv.tv_sec;
@@ -248,7 +273,7 @@ unsigned char Date_isDaylightSavingsTime(const Date *self)
 
 int Date_isLeapYear(const Date *self)
 {
-	int year = Date_year(self);
+	long year = Date_year(self);
 
 	if (((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0))
 	{
@@ -317,9 +342,10 @@ void Date_subtractDuration_(Date *self, const Duration *d)
 
 double Date_secondsSinceNow(const Date *self)
 {
-	double n = Date_SecondsFrom1970ToNow();
-	double s = Date_asSeconds(self);
-	return n - s;
+    Date *now = Date_new();
+    double s = Date_secondsSince_(now, self);
+    Date_free(now);
+    return s;
 }
 
 // format --------------------------------------------------------
