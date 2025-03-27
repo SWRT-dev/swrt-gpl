@@ -10133,6 +10133,9 @@ htop-install:
 	$(STRIP) $(INSTALLDIR)/htop/usr/sbin/htop
 	cp -rf $(STAGEDIR)/usr/share/terminfo/* $(INSTALLDIR)/htop/usr/share/terminfo/
 
+ksmbd: libnl
+	$(MAKE) -C ksmbd
+
 #
 # Generic rules
 #
